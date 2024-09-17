@@ -3,6 +3,8 @@ package full
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"os"
@@ -84,6 +86,8 @@ type EthModuleAPI interface {
 	EthTraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error)
 	EthTraceTransaction(ctx context.Context, txHash string) ([]*ethtypes.EthTraceTransaction, error)
 	EthTraceFilter(ctx context.Context, filter ethtypes.EthTraceFilterCriteria) ([]*ethtypes.EthTraceFilterResult, error)
+	EthGetBlockReceiptsLimited(ctx context.Context, blkParam ethtypes.EthBlockNumberOrHash, limit abi.ChainEpoch) ([]*api.EthTxReceipt, error)
+	EthGetBlockReceipts(ctx context.Context, blkParam ethtypes.EthBlockNumberOrHash) ([]*api.EthTxReceipt, error)
 }
 
 type EthEventAPI interface {
@@ -131,6 +135,7 @@ var (
 // "Latest executed epoch" refers to the tipset that this node currently
 // accepts as the best parent tipset, based on the blocks it is accumulating
 // within the HEAD tipset.
+
 type EthModule struct {
 	Chain                    *store.ChainStore
 	Mpool                    *messagepool.MessagePool
@@ -525,9 +530,13 @@ func (a *EthModule) EthGetTransactionReceiptLimited(ctx context.Context, txHash 
 		return nil, xerrors.Errorf("failed to convert %s into an Eth Txn: %w", txHash, err)
 	}
 
-	receipt, err := newEthTxReceipt(ctx, tx, msgLookup, a.ChainAPI, a.StateAPI, a.EthEventHandler)
+	receipt, err := newEthTxReceipt(ctx, tx, &api.MsgLookup{
+		Receipt: msgLookup.Receipt,
+		TipSet:  msgLookup.TipSet,
+		Height:  msgLookup.Height,
+	}, a.ChainAPI, a.StateAPI, a.EthEventHandler)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to convert %s into an Eth Receipt: %w", txHash, err)
+		return nil, xerrors.Errorf("failed to create Eth receipt: %w", err)
 	}
 
 	return &receipt, nil
@@ -2134,4 +2143,117 @@ func (g gasRewardSorter) Swap(i, j int) {
 }
 func (g gasRewardSorter) Less(i, j int) bool {
 	return g[i].premium.Int.Cmp(g[j].premium.Int) == -1
+}
+
+func (a *EthModule) EthGetBlockReceipts(ctx context.Context, blockParam ethtypes.EthBlockNumberOrHash) ([]*api.EthTxReceipt, error) {
+	return a.EthGetBlockReceiptsLimited(ctx, blockParam, api.LookbackNoLimit)
+}
+
+func (a *EthModule) EthGetBlockReceiptsLimited(ctx context.Context, blockParam ethtypes.EthBlockNumberOrHash, limit abi.ChainEpoch) ([]*api.EthTxReceipt, error) {
+	ts, err := getTipsetByEthBlockNumberOrHash(ctx, a.Chain, blockParam)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get tipset: %w", err)
+	}
+
+	// Calculate the correct Ethereum block hash
+	ethBlockHash, err := ethBlockHashFromTipSet(ts)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to calculate Ethereum block hash: %w", err)
+	}
+
+	// Execute the tipset to get the receipts, messages, and events
+	st, msgs, receipts, err := executeTipset(ctx, ts, a.Chain, a.StateAPI)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to execute tipset: %w", err)
+	}
+
+	// Load the state tree
+	stateTree, err := a.StateManager.StateTree(st)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load state tree: %w", err)
+	}
+
+	// Get the parent tipset CID
+	parentTsCid, err := ts.Parents().Cid()
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get parent tipset cid: %w", err)
+	}
+
+	// Use the LoadExecutedMessages function
+	execStore := a.Chain.ActorStore(ctx)
+	executedMsgs, err := filter.LoadExecutedMessages(ctx, execStore, msgs, receipts)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load executed messages: %w", err)
+	}
+
+	// Convert executed messages to events
+	events := make([]*filter.CollectedEvent, 0, len(executedMsgs))
+	for _, em := range executedMsgs {
+		for _, ev := range em.Events() {
+			addr, err := address.NewIDAddress(uint64(ev.Emitter))
+			if err != nil {
+				return nil, xerrors.Errorf("failed to create ID address: %w", err)
+			}
+			events = append(events, &filter.CollectedEvent{
+				Entries:     ev.Entries,
+				EmitterAddr: addr,
+				Height:      ts.Height(),
+				TipSetKey:   ts.Key(),
+				MsgCid:      em.Message().Cid(),
+			})
+		}
+	}
+
+	// Convert raw events to Ethereum logs
+	logs, err := ethFilterLogsFromEvents(ctx, events, a.StateAPI)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to convert events to logs: %w", err)
+	}
+
+	ethReceipts := make([]*api.EthTxReceipt, 0, len(msgs))
+	for i, msg := range msgs {
+		tx, err := newEthTx(ctx, a.Chain, stateTree, ts.Height(), parentTsCid, msg.Cid(), i)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to create Eth transaction: %w", err)
+		}
+
+		receipt, err := newEthTxReceipt(ctx, tx, &api.MsgLookup{
+			Receipt: receipts[i],
+			TipSet:  ts.Key(),
+			Height:  ts.Height(),
+		}, a.ChainAPI, a.StateAPI, a.EthEventHandler)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to create Eth receipt: %w", err)
+		}
+
+		// Set the correct Ethereum block hash
+		receipt.BlockHash = ethBlockHash
+
+		// Filter logs by transaction hash
+		receipt.Logs = filterLogsByTxHash(logs, receipt.TransactionHash)
+
+		ethReceipts = append(ethReceipts, &receipt)
+	}
+
+	return ethReceipts, nil
+}
+
+// Helper function to filter logs by transaction hash
+func filterLogsByTxHash(logs []ethtypes.EthLog, txHash ethtypes.EthHash) []ethtypes.EthLog {
+	var filteredLogs []ethtypes.EthLog
+	for _, log := range logs {
+		if log.TransactionHash == txHash {
+			filteredLogs = append(filteredLogs, log)
+		}
+	}
+	return filteredLogs
+}
+
+func ethBlockHashFromTipSet(ts *types.TipSet) (ethtypes.EthHash, error) {
+	tsKey := ts.Key()
+	heightBytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(heightBytes, uint64(ts.Height()))
+
+	hash := sha256.Sum256(append(tsKey.Bytes(), heightBytes...))
+	return ethtypes.EthHash(hash), nil
 }

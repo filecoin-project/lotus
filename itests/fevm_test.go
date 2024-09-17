@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -20,6 +21,7 @@ import (
 	"github.com/filecoin-project/go-state-types/manifest"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
@@ -1051,5 +1053,147 @@ func TestFEVMErrorParsing(t *testing.T) {
 				require.ErrorContains(t, err, expected)
 			})
 		})
+	}
+}
+
+// TestEthGetBlockReceipts tests retrieving block receipts after invoking a contract
+func TestEthGetBlockReceipts(t *testing.T) {
+	blockTime := 500 * time.Millisecond
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
+
+	ens.InterconnectAll().BeginMining(blockTime)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	// Create a new Ethereum account
+	key, ethAddr, deployer := client.EVM().NewAccount()
+	// Send some funds to the f410 address
+	kit.SendFunds(ctx, t, client, deployer, types.FromFil(10))
+
+	// Deploy MultipleEvents contract
+	tx := deployContractWithEth(ctx, t, client, ethAddr, "./contracts/MultipleEvents.hex")
+
+	client.EVM().SignTransaction(tx, key.PrivateKey)
+	hash := client.EVM().SubmitTransaction(ctx, tx)
+
+	receipt, err := client.EVM().WaitTransaction(ctx, hash)
+	require.NoError(t, err)
+	require.NotNil(t, receipt)
+	require.EqualValues(t, ethtypes.EthUint64(0x1), receipt.Status)
+
+	contractAddr := client.EVM().ComputeContractAddress(ethAddr, 0)
+
+	// Prepare function call data
+	params4Events, err := hex.DecodeString("98e8da00")
+	require.NoError(t, err)
+	params3Events, err := hex.DecodeString("05734db70000000000000000000000001cd1eeecac00fe01f9d11803e48c15c478fe1d22000000000000000000000000000000000000000000000000000000000000000b")
+	require.NoError(t, err)
+
+	// Estimate gas
+	gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
+		From: &ethAddr,
+		To:   &contractAddr,
+		Data: params4Events,
+	}})
+	require.NoError(t, err)
+
+	gaslimit, err := client.EthEstimateGas(ctx, gasParams)
+	require.NoError(t, err)
+
+	maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)
+	require.NoError(t, err)
+
+	paramsArray := [][]byte{params4Events, params3Events, params3Events}
+
+	var hashes []ethtypes.EthHash
+
+	nonce := 1
+	for _, params := range paramsArray {
+		invokeTx := ethtypes.Eth1559TxArgs{
+			ChainID:              build.Eip155ChainId,
+			To:                   &contractAddr,
+			Value:                big.Zero(),
+			Nonce:                nonce,
+			MaxFeePerGas:         types.NanoFil,
+			MaxPriorityFeePerGas: big.Int(maxPriorityFeePerGas),
+			GasLimit:             int(gaslimit),
+			Input:                params,
+			V:                    big.Zero(),
+			R:                    big.Zero(),
+			S:                    big.Zero(),
+		}
+
+		client.EVM().SignTransaction(&invokeTx, key.PrivateKey)
+		hash := client.EVM().SubmitTransaction(ctx, &invokeTx)
+		hashes = append(hashes, hash)
+		nonce++
+	}
+
+	// Wait for the transactions to be mined
+	var lastReceipt *api.EthTxReceipt
+	for _, hash := range hashes {
+		receipt, err := client.EVM().WaitTransaction(ctx, hash)
+		require.NoError(t, err)
+		require.NotNil(t, receipt)
+		lastReceipt = receipt
+	}
+
+	// Get block receipts
+	blockReceipts, err := client.EthGetBlockReceipts(ctx, ethtypes.EthBlockNumberOrHash{BlockHash: &lastReceipt.BlockHash})
+	require.NoError(t, err)
+	require.NotEmpty(t, blockReceipts)
+
+	// Verify receipts
+	require.Len(t, blockReceipts, 3) // Ensure there are three receipts
+
+	expectedLogCounts := []int{4, 3, 3}
+	for i, receipt := range blockReceipts {
+		require.Equal(t, &contractAddr, receipt.To)
+		require.Equal(t, ethtypes.EthUint64(1), receipt.Status)
+		require.NotEmpty(t, receipt.BlockHash, "Block hash should not be empty")
+		require.Equal(t, expectedLogCounts[i], len(receipt.Logs), fmt.Sprintf("Transaction %d should have %d event logs", i+1, expectedLogCounts[i]))
+	}
+
+	// Verify that all receipts have the same block hash
+	firstBlockHash := blockReceipts[0].BlockHash
+	for _, receipt := range blockReceipts {
+		require.Equal(t, firstBlockHash, receipt.BlockHash, "All receipts should have the same block hash")
+	}
+}
+
+func deployContractWithEth(ctx context.Context, t *testing.T, client *kit.TestFullNode, ethAddr ethtypes.EthAddress,
+	contractPath string) *ethtypes.Eth1559TxArgs {
+	// install contract
+	contractHex, err := os.ReadFile(contractPath)
+	require.NoError(t, err)
+
+	contract, err := hex.DecodeString(string(contractHex))
+	require.NoError(t, err)
+
+	gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
+		From: &ethAddr,
+		Data: contract,
+	}})
+	require.NoError(t, err)
+
+	gaslimit, err := client.EthEstimateGas(ctx, gasParams)
+	require.NoError(t, err)
+
+	maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)
+	require.NoError(t, err)
+
+	// now deploy a contract from the embryo, and validate it went well
+	return &ethtypes.Eth1559TxArgs{
+		ChainID:              build.Eip155ChainId,
+		Value:                big.Zero(),
+		Nonce:                0,
+		MaxFeePerGas:         types.NanoFil,
+		MaxPriorityFeePerGas: big.Int(maxPriorityFeePerGas),
+		GasLimit:             int(gaslimit),
+		Input:                contract,
+		V:                    big.Zero(),
+		R:                    big.Zero(),
+		S:                    big.Zero(),
 	}
 }
