@@ -25,8 +25,8 @@ There are these versions at play for a network upgrade:
 ### Network Upgrade Dependency Relationships
 The table below gives an overview of how Lotus and its critical dependencies relate to each other and are versioned relative to network versions.
 
-| Repo | For every network upgrade (increase in Network Version)... | Versioning Scheme | Versioning Docs | go.mod direct dependencies | cargo.toml direct dependencies | Other direct dependencies |
-| --- | -------------- | --- | --- | --- | --- | --- |
+| Repo | <div style="width:250px">For every network upgrade (increase in Network Version)...</div> | Versioning Scheme | Versioning Docs | go.mod direct dependencies | cargo.toml direct dependencies | Other direct dependencies |
+| --- | --- | --- | --- | --- | --- | --- |
 | `lotus` | There is at least one `lotus` minor version. [^0] | 1.<small>LOTUS_MINOR_VERSION.x</small> | [link](https://github.com/filecoin-project/lotus/blob/master/LOTUS_RELEASE_FLOW.md#adopted-conventions) | `go-state-types` | n/a | * `filecoin-ffi` via git submodule<br/>* `builtin-actors` via pack script |
 | `filecoin-ffi` | There is at least one `filecoin-ffi` minor version (since `filecion-ffi` tracks `lotus`). | 1.<small>LOTUS_MINOR_VERSION.x</small> | [link](https://github.com/filecoin-project/filecoin-ffi?tab=readme-ov-file#versioning) | `go-state-types` | `ref-fvm` | None |
 | `go-state-types` | There are zero or one `go-state-types` minor versions (since `go-state-types` minor versions track `builtin-actors` major versions) | 0.<small>ACTORS_VERSION.x</small> | [link](https://github.com/filecoin-project/go-state-types?tab=readme-ov-file#versioning) | None | n/a | None |
