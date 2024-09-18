@@ -216,12 +216,12 @@ func MutateSealingConfig(mut func(sc *config.SealingConfig)) NodeOpt {
 func F3Enabled(bootstrapEpoch abi.ChainEpoch, blockDelay time.Duration, finality abi.ChainEpoch, manifestProvider peer.ID) NodeOpt {
 	return ConstructorOpts(
 		node.Override(new(*lf3.Config), func(nn dtypes.NetworkName) *lf3.Config {
-			c := lf3.NewConfig(manifestProvider)(nn)
+			c := lf3.NewConfig(manifestProvider, true)(nn)
 			c.InitialManifest.Pause = false
 			c.InitialManifest.EC.Period = blockDelay
 			c.InitialManifest.EC.Finality = int64(finality)
 			c.InitialManifest.BootstrapEpoch = int64(bootstrapEpoch)
-			c.InitialManifest.EC.HeadLookback = int(finality)
+			c.InitialManifest.EC.HeadLookback = 0
 			return c
 		}),
 		node.Override(new(manifest.ManifestProvider), lf3.NewManifestProvider),

@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/go-f3/manifest"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -42,9 +43,11 @@ type F3Params struct {
 	PubSub           *pubsub.PubSub
 	Host             host.Host
 	ChainStore       *store.ChainStore
+	Syncer           *chain.Syncer
 	StateManager     *stmgr.StateManager
 	Datastore        dtypes.MetadataDS
 	Wallet           api.Wallet
+	Config           *Config
 }
 
 var log = logging.Logger("f3")
@@ -54,6 +57,8 @@ func New(mctx helpers.MetricsCtx, lc fx.Lifecycle, params F3Params) (*F3, error)
 	ec := &ecWrapper{
 		ChainStore:   params.ChainStore,
 		StateManager: params.StateManager,
+		Syncer:       params.Syncer,
+		Checkpoint:   params.Config.F3ConsensusEnabled,
 	}
 	verif := blssig.VerifierWithKeyOnG1()
 

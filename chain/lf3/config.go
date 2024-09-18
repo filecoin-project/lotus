@@ -16,9 +16,10 @@ import (
 type Config struct {
 	InitialManifest         *manifest.Manifest
 	DynamicManifestProvider peer.ID
+	F3ConsensusEnabled      bool
 }
 
-func NewConfig(manifestProvider peer.ID) func(dtypes.NetworkName) *Config {
+func NewConfig(manifestProvider peer.ID, consensusEnabled bool) func(dtypes.NetworkName) *Config {
 	return func(nn dtypes.NetworkName) *Config {
 		m := manifest.LocalDevnetManifest()
 		m.NetworkName = gpbft.NetworkName(nn)
@@ -39,6 +40,7 @@ func NewConfig(manifestProvider peer.ID) func(dtypes.NetworkName) *Config {
 		return &Config{
 			InitialManifest:         m,
 			DynamicManifestProvider: manifestProvider,
+			F3ConsensusEnabled:      consensusEnabled,
 		}
 	}
 }

@@ -6485,9 +6485,7 @@
                                         "type": "string"
                                     },
                                     "PowerTable": {
-                                        "media": {
-                                            "binaryEncoding": "base64"
-                                        },
+                                        "title": "Content Identifier",
                                         "type": "string"
                                     }
                                 },
@@ -6548,9 +6546,7 @@
                                     "type": "array"
                                 },
                                 "PowerTable": {
-                                    "media": {
-                                        "binaryEncoding": "base64"
-                                    },
+                                    "title": "Content Identifier",
                                     "type": "string"
                                 }
                             },
@@ -6822,9 +6818,7 @@
                                         "type": "string"
                                     },
                                     "PowerTable": {
-                                        "media": {
-                                            "binaryEncoding": "base64"
-                                        },
+                                        "title": "Content Identifier",
                                         "type": "string"
                                     }
                                 },
@@ -6885,9 +6879,7 @@
                                     "type": "array"
                                 },
                                 "PowerTable": {
-                                    "media": {
-                                        "binaryEncoding": "base64"
-                                    },
+                                    "title": "Content Identifier",
                                     "type": "string"
                                 }
                             },
