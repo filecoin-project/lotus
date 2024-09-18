@@ -16,8 +16,6 @@
 
 ## Bug Fixes
 
-- Update BLS dependency to fix [filecoin-project/lotus#12467](https://github.com/filecoin-project/lotus/pull/12467).
-
 # Node v1.29.1 / 2024-09-16
 
 This is a Lotus Node patch release that addresses a critical sync issue affecting users of the v1.29.0 release. The primary fix in this release is:
@@ -35,7 +33,6 @@ This is a Lotus Node patch release that addresses a critical sync issue affectin
 
 ## Bug Fixes
 - Update BLS dependency to fix [filecoin-project/lotus#12467](https://github.com/filecoin-project/lotus/pull/12467).
-
 
 # Node v1.29.0 / 2024-09-02
 
