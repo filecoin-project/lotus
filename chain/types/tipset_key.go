@@ -10,6 +10,7 @@ import (
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	typegen "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
 )
@@ -52,7 +53,7 @@ func NewTipSetKey(cids ...cid.Cid) TipSetKey {
 func TipSetKeyFromBytes(encoded []byte) (TipSetKey, error) {
 	_, err := decodeKey(encoded)
 	if err != nil {
-		return EmptyTSK, err
+		return EmptyTSK, xerrors.Errorf("decoding tpiset key: %w", err)
 	}
 	return TipSetKey{string(encoded)}, nil
 }
