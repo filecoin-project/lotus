@@ -1,7 +1,8 @@
 # Lotus changelog
 
 # UNRELEASED
-
+ - https://github.com/filecoin-project/lotus/pull/12474: feat: lotus-shed tooling for chain indexer
+ 
 ## ☢️ Upgrade Warnings ☢️
 
 ## New features
