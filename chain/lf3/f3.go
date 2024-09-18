@@ -38,7 +38,6 @@ type F3 struct {
 type F3Params struct {
 	fx.In
 
-	NetworkName      dtypes.NetworkName
 	ManifestProvider manifest.ManifestProvider
 	PubSub           *pubsub.PubSub
 	Host             host.Host
@@ -51,7 +50,6 @@ type F3Params struct {
 var log = logging.Logger("f3")
 
 func New(mctx helpers.MetricsCtx, lc fx.Lifecycle, params F3Params) (*F3, error) {
-
 	ds := namespace.Wrap(params.Datastore, datastore.NewKey("/f3"))
 	ec := &ecWrapper{
 		ChainStore:   params.ChainStore,
@@ -165,10 +163,18 @@ func (fff *F3) GetLatestCert(ctx context.Context) (*certs.FinalityCertificate, e
 	return fff.inner.GetLatestCert(ctx)
 }
 
+func (fff *F3) GetManifest() *manifest.Manifest {
+	return fff.inner.Manifest()
+}
+
 func (fff *F3) GetPowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) {
 	return fff.ec.getPowerTableLotusTSK(ctx, tsk)
 }
 
 func (fff *F3) GetF3PowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) {
 	return fff.inner.GetPowerTable(ctx, tsk.Bytes())
+}
+
+func (fff *F3) IsRunning() bool {
+	return fff.inner.IsRunning()
 }

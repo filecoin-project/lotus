@@ -87,6 +87,8 @@
   * [F3GetECPowerTable](#F3GetECPowerTable)
   * [F3GetF3PowerTable](#F3GetF3PowerTable)
   * [F3GetLatestCertificate](#F3GetLatestCertificate)
+  * [F3GetManifest](#F3GetManifest)
+  * [F3IsRunning](#F3IsRunning)
   * [F3Participate](#F3Participate)
 * [Filecoin](#Filecoin)
   * [FilecoinAddressToEthAddress](#FilecoinAddressToEthAddress)
@@ -2414,6 +2416,61 @@ Response:
   "PowerTableDelta": null
 }
 ```
+
+### F3GetManifest
+F3GetGetManifest returns the current manifest being used for F3
+
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "Pause": false,
+  "ProtocolVersion": 0,
+  "InitialInstance": 0,
+  "BootstrapEpoch": 0,
+  "NetworkName": "",
+  "ExplicitPower": null,
+  "IgnoreECPower": false,
+  "InitialPowerTable": null,
+  "CommitteeLookback": 0,
+  "CatchUpAlignment": 0,
+  "Gpbft": {
+    "Delta": 0,
+    "DeltaBackOffExponent": 0,
+    "MaxLookaheadRounds": 0,
+    "RebroadcastBackoffBase": 0,
+    "RebroadcastBackoffExponent": 0,
+    "RebroadcastBackoffMax": 0
+  },
+  "EC": {
+    "Period": 0,
+    "Finality": 0,
+    "DelayMultiplier": 0,
+    "BaseDecisionBackoffTable": null,
+    "HeadLookback": 0
+  },
+  "CertificateExchange": {
+    "ClientRequestTimeout": 0,
+    "ServerRequestTimeout": 0,
+    "MinimumPollInterval": 0,
+    "MaximumPollInterval": 0
+  }
+}
+```
+
+### F3IsRunning
+F3IsRunning returns true if the F3 instance is running, and an error if F3 is disabled in the node.
+
+
+Perms: read
+
+Inputs: `null`
+
+Response: `true`
 
 ### F3Participate
 F3Participate should be called by a storage provider to participate in signing F3 consensus.
