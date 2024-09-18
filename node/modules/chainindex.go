@@ -99,7 +99,6 @@ func InitChainIndexer(lc fx.Lifecycle, mctx helpers.MetricsCtx, indexer index.In
 				unlockObserver()
 				return xerrors.Errorf("error while reconciling chain index with chain state: %w", err)
 			}
-			log.Infof("chain indexer reconciled with chain state; observer will start upates from height: %d", head.Height())
 			unlockObserver()
 
 			if err := indexer.Start(); err != nil {
@@ -113,10 +112,6 @@ func InitChainIndexer(lc fx.Lifecycle, mctx helpers.MetricsCtx, indexer index.In
 
 func ChainIndexHandler(cfg config.ChainIndexerConfig) func(helpers.MetricsCtx, repo.LockedRepo, fx.Lifecycle, index.Indexer) (*full.ChainIndexHandler, error) {
 	return func(mctx helpers.MetricsCtx, r repo.LockedRepo, lc fx.Lifecycle, indexer index.Indexer) (*full.ChainIndexHandler, error) {
-		if !cfg.EnableIndexer {
-			return nil, nil
-		}
-
 		return full.NewChainIndexHandler(indexer), nil
 	}
 }

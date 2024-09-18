@@ -32,7 +32,7 @@ type ChainIndexHandler struct {
 
 func (ch *ChainIndexHandler) ChainValidateIndex(ctx context.Context, epoch abi.ChainEpoch, backfill bool) (*types.IndexValidation, error) {
 	if ch.indexer == nil {
-		return nil, errors.New("chain indexer is not initialized")
+		return nil, errors.New("chain indexer is disabled")
 	}
 	return ch.indexer.ChainValidateIndex(ctx, epoch, backfill)
 }

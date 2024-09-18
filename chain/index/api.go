@@ -99,6 +99,7 @@ func (si *SqliteIndexer) ChainValidateIndex(ctx context.Context, epoch abi.Chain
 		return si.backfillMissingTipset(ctx, expectedTs, backfill)
 	}
 
+	// see if the tipset at this epoch is already indexed or if we need to backfill
 	revertedCount, nonRevertedCount, err := si.getTipsetCountsAtHeight(ctx, epoch)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -108,6 +109,7 @@ func (si *SqliteIndexer) ChainValidateIndex(ctx context.Context, epoch abi.Chain
 	}
 	switch {
 	case revertedCount == 0 && nonRevertedCount == 0:
+		// no tipsets at this epoch in the index, backfill
 		return si.backfillMissingTipset(ctx, expectedTs, backfill)
 
 	case revertedCount > 0 && nonRevertedCount == 0:
@@ -133,6 +135,25 @@ func (si *SqliteIndexer) ChainValidateIndex(ctx context.Context, epoch abi.Chain
 	}
 	if !indexedTsKeyCid.Equals(expectedTsKeyCid) {
 		return nil, xerrors.Errorf("index corruption: non-reverted tipset at height %d has key %s, but canonical chain has %s", epoch, indexedTsKeyCid, expectedTsKeyCid)
+	}
+
+	// index the parent tipset and it's events so we dont need to look forward when validating/backfilling the parent
+	parentTs, err := si.cs.GetTipSetFromKey(ctx, expectedTs.Parents())
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get parent tipset: %w", err)
+	}
+	err = withTx(ctx, si.db, func(tx *sql.Tx) error {
+		if err := si.indexTipset(ctx, tx, parentTs); err != nil {
+			return xerrors.Errorf("error indexing parent tipset: %w", err)
+		}
+		if err := si.indexEvents(ctx, tx, parentTs, expectedTs); err != nil {
+			return xerrors.Errorf("error indexing events for tipset at height %d: %w", expectedTs.Height(), err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, xerrors.Errorf("error validating tipset: %w", err)
 	}
 
 	// indexedTsKeyCid and expectedTsKeyCid are the same, so we can use `expectedTs` to fetch the indexed data
