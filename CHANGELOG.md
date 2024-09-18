@@ -18,6 +18,10 @@
 
 - Update BLS dependency to fix [filecoin-project/lotus#12467](https://github.com/filecoin-project/lotus/pull/12467).
 
+# UNRELEASED v1.29.2
+
+See https://github.com/filecoin-project/lotus/blob/release/v1.29.2/CHANGELOG.md
+
 # Node v1.29.0 / 2024-09-02
 
 This is a Lotus Node only release, which includes a variety of new features, improvements, and fixes, particularly focused on enhancing ETH RPC functionality. Key highlights of this release include:
