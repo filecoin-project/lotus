@@ -16,11 +16,11 @@ func (si *SqliteIndexer) sanityCheckBackfillEpoch(ctx context.Context, epoch abi
 	// should be less than the max non reverted height in the Index
 	var maxNonRevertedHeight sql.NullInt64
 	err := si.stmts.getMaxNonRevertedHeightStmt.QueryRowContext(ctx).Scan(&maxNonRevertedHeight)
-	if err != nil {
+	if err != nil && err != sql.ErrNoRows {
 		return xerrors.Errorf("failed to get max non reverted height: %w", err)
 	}
 	// couldn't find any non-reverted entries
-	if !maxNonRevertedHeight.Valid {
+	if err == sql.ErrNoRows || !maxNonRevertedHeight.Valid {
 		return nil
 	}
 	if epoch >= abi.ChainEpoch(maxNonRevertedHeight.Int64) {
