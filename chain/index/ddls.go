@@ -59,8 +59,8 @@ var ddls = []string{
 // the preparedStatements struct.
 func preparedStatementMapping(ps *preparedStatements) map[**sql.Stmt]string {
 	return map[**sql.Stmt]string{
-		&ps.getNonRevertedMsgInfoStmt:             "SELECT tipset_key_cid, height FROM tipset_message WHERE message_cid = ? AND reverted = 0",
-		&ps.getMsgCidFromEthHashStmt:              "SELECT message_cid FROM eth_tx_hash WHERE tx_hash = ?",
+		&ps.getNonRevertedMsgInfoStmt:             "SELECT tipset_key_cid, height FROM tipset_message WHERE message_cid = ? AND reverted = 0 LIMIT 1",
+		&ps.getMsgCidFromEthHashStmt:              "SELECT message_cid FROM eth_tx_hash WHERE tx_hash = ? LIMIT 1",
 		&ps.insertEthTxHashStmt:                   "INSERT INTO eth_tx_hash (tx_hash, message_cid) VALUES (?, ?) ON CONFLICT (tx_hash) DO UPDATE SET inserted_at = CURRENT_TIMESTAMP",
 		&ps.insertTipsetMessageStmt:               "INSERT INTO tipset_message (tipset_key_cid, height, reverted, message_cid, message_index) VALUES (?, ?, ?, ?, ?) ON CONFLICT (tipset_key_cid, message_cid) DO UPDATE SET reverted = 0",
 		&ps.hasTipsetStmt:                         "SELECT EXISTS(SELECT 1 FROM tipset_message WHERE tipset_key_cid = ?)",
@@ -75,7 +75,7 @@ func preparedStatementMapping(ps *preparedStatements) map[**sql.Stmt]string {
 		&ps.hasNonRevertedTipsetStmt:              "SELECT EXISTS(SELECT 1 FROM tipset_message WHERE tipset_key_cid = ? AND reverted = 0)",
 		&ps.updateEventsToRevertedStmt:            "UPDATE event SET reverted = 1 WHERE message_id IN (SELECT message_id FROM tipset_message WHERE tipset_key_cid = ?)",
 		&ps.updateEventsToNonRevertedStmt:         "UPDATE event SET reverted = 0 WHERE message_id IN (SELECT message_id FROM tipset_message WHERE tipset_key_cid = ?)",
-		&ps.getMsgIdForMsgCidAndTipsetStmt:        "SELECT message_id FROM tipset_message WHERE tipset_key_cid = ? AND message_cid = ? AND reverted = 0",
+		&ps.getMsgIdForMsgCidAndTipsetStmt:        "SELECT message_id FROM tipset_message WHERE tipset_key_cid = ? AND message_cid = ? AND reverted = 0 LIMIT 1",
 		&ps.insertEventStmt:                       "INSERT INTO event (message_id, event_index, emitter_addr, reverted) VALUES (?, ?, ?, ?)",
 		&ps.insertEventEntryStmt:                  "INSERT INTO event_entry (event_id, indexed, flags, key, codec, value) VALUES (?, ?, ?, ?, ?, ?)",
 	}

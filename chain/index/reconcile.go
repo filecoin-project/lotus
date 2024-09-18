@@ -60,22 +60,9 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, head *types.Tip
 			return si.backfillIndex(ctx, tx, head, 0)
 		}
 
-		// Find the minimum applied tipset in the index; this will mark the absolute min height of the reconciliation walk
-		var reconciliationEpochInIndex sql.NullInt64
-		var reconciliationEpoch abi.ChainEpoch
-
-		row := tx.StmtContext(ctx, si.stmts.getMinNonRevertedHeightStmt).QueryRowContext(ctx)
-		if err := row.Scan(&reconciliationEpochInIndex); err != nil {
-			if err != sql.ErrNoRows {
-				return xerrors.Errorf("failed to scan minimum non-reverted height: %w", err)
-			}
-			log.Warn("index only contains reverted tipsets; setting reconciliation epoch to 0")
-			reconciliationEpoch = 0
-		} else if !reconciliationEpochInIndex.Valid {
-			log.Warn("index only contains reverted tipsets; setting reconciliation epoch to 0")
-			reconciliationEpoch = 0
-		} else {
-			reconciliationEpoch = abi.ChainEpoch(reconciliationEpochInIndex.Int64)
+		reconciliationEpoch, err := si.getReconciliationEpoch(ctx, tx)
+		if err != nil {
+			return xerrors.Errorf("failed to get reconciliation epoch: %w", err)
 		}
 
 		currTs := head
@@ -159,6 +146,29 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, head *types.Tip
 
 		return nil
 	})
+}
+
+func (si *SqliteIndexer) getReconciliationEpoch(ctx context.Context, tx *sql.Tx) (abi.ChainEpoch, error) {
+	var reconciliationEpochInIndex sql.NullInt64
+
+	err := tx.StmtContext(ctx, si.stmts.getMinNonRevertedHeightStmt).
+		QueryRowContext(ctx).
+		Scan(&reconciliationEpochInIndex)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			log.Warn("index only contains reverted tipsets; setting reconciliation epoch to 0")
+			return 0, nil
+		}
+		return 0, xerrors.Errorf("failed to scan minimum non-reverted height: %w", err)
+	}
+
+	if !reconciliationEpochInIndex.Valid {
+		log.Warn("index only contains reverted tipsets; setting reconciliation epoch to 0")
+		return 0, nil
+	}
+
+	return abi.ChainEpoch(reconciliationEpochInIndex.Int64), nil
 }
 
 // backfillIndex backfills the chain index with missing tipsets starting from the given head tipset
