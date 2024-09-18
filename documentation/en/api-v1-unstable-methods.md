@@ -2444,6 +2444,7 @@ Response:
     "MaxLookaheadRounds": 0,
     "RebroadcastBackoffBase": 0,
     "RebroadcastBackoffExponent": 0,
+    "RebroadcastBackoffSpread": 0,
     "RebroadcastBackoffMax": 0
   },
   "EC": {

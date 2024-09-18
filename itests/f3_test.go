@@ -5,13 +5,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-f3/manifest"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/libp2p/go-libp2p"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/stretchr/testify/require"
-
-	"github.com/filecoin-project/go-f3/manifest"
-	"github.com/filecoin-project/go-state-types/abi"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/node"
@@ -26,11 +26,10 @@ const (
 type testEnv struct {
 	minerFullNodes []*kit.TestFullNode
 	// observer currently not use but may come handy to test certificate exchanges
-	observer *kit.TestFullNode
-	ms       *manifest.ManifestSender
-	m        *manifest.Manifest
-	t        *testing.T
-	testCtx  context.Context
+	ms      *manifest.ManifestSender
+	m       *manifest.Manifest
+	t       *testing.T
+	testCtx context.Context
 }
 
 // Test that checks that F3 is enabled successfully,
@@ -172,13 +171,18 @@ func (e *testEnv) waitFor(f func(n *kit.TestFullNode) bool, timeout time.Duratio
 // a miner. The last return value is the manifest sender for the network.
 func setup(t *testing.T, blocktime time.Duration) *testEnv {
 	ctx, cancel := context.WithCancel(context.Background())
-	t.Cleanup(cancel)
+	errgrp, ctx := errgroup.WithContext(ctx)
+
+	t.Cleanup(func() {
+		cancel()
+		require.NoError(t, errgrp.Wait())
+	})
 
 	// create manifest host first to get the manifest ID to setup F3
-	h, err := libp2p.New(libp2p.ListenAddrStrings("/ip4/0.0.0.0/udp/0/quic-v1"))
+	manifestServerHost, err := libp2p.New(libp2p.ListenAddrStrings("/ip4/127.0.0.1/udp/0/quic-v1"))
 	require.NoError(t, err)
 
-	f3NOpt := kit.F3Enabled(DefaultBootsrapEpoch, blocktime, DefaultFinality, h.ID())
+	f3NOpt := kit.F3Enabled(DefaultBootsrapEpoch, blocktime, DefaultFinality, manifestServerHost.ID())
 	f3MOpt := kit.ConstructorOpts(node.Override(node.F3Participation, modules.F3Participation))
 
 	var (
@@ -212,13 +216,17 @@ func setup(t *testing.T, blocktime time.Duration) *testEnv {
 	e.minerFullNodes = []*kit.TestFullNode{&n1, &n2, &n3}
 
 	// create manifest sender and connect to full-nodes
-	e.ms = e.newManifestSender(context.Background(), t, h, blocktime)
+	e.ms = e.newManifestSender(context.Background(), t, manifestServerHost, blocktime)
 	for _, n := range e.minerFullNodes {
 		err = n.NetConnect(ctx, e.ms.PeerInfo())
 		require.NoError(t, err)
 	}
 
-	go e.ms.Run(ctx)
+	errgrp.Go(func() error {
+		defer manifestServerHost.Close()
+		return e.ms.Run(ctx)
+	})
+
 	return e
 }
 
