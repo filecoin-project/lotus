@@ -919,7 +919,6 @@ var validateChainIndexCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		// Initialize Full Node Services
 		srv, err := lcli.GetFullNodeServices(cctx)
 		if err != nil {
 			return fmt.Errorf("failed to get full node services: %w", err)
@@ -933,7 +932,6 @@ var validateChainIndexCmd = &cli.Command{
 		api := srv.FullNodeAPI()
 		ctx := lcli.ReqContext(cctx)
 
-		// Determine Starting Epoch
 		fromEpoch := cctx.Int("from")
 		if fromEpoch == 0 {
 			curTs, err := api.ChainHead(ctx)
@@ -945,13 +943,15 @@ var validateChainIndexCmd = &cli.Command{
 			fromEpoch = fromEpoch - 1
 		}
 
-		// Determine Ending Epoch
+		if fromEpoch <= 0 {
+			return fmt.Errorf("invalid from epoch: %d", fromEpoch)
+		}
+
 		toEpoch := cctx.Int("to")
 		if toEpoch > fromEpoch {
 			return fmt.Errorf("to epoch must be less than from epoch")
 		}
 
-		// Flags
 		backfill := cctx.Bool("backfill")
 		failfast := cctx.Bool("failfast")
 		output := cctx.Bool("output")
@@ -969,7 +969,8 @@ var validateChainIndexCmd = &cli.Command{
 			}(),
 			fromEpoch, toEpoch)
 
-		// Iterate Over Epochs
+		// starting from the FromEpoch-1 and going down to the ToEpoch
+		// this is because `ChainValidateIndex` fetches the tipset.height()+1, which might not be available in case of chain head
 		for epoch := fromEpoch; epoch >= toEpoch; epoch-- {
 			if ctx.Err() != nil {
 				return ctx.Err()
