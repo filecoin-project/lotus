@@ -12,8 +12,6 @@ replace github.com/filecoin-project/test-vectors => ./extern/test-vectors // pro
 
 replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi // provided via a git submodule
 
-replace github.com/kilic/bls12-381 v0.1.1-0.20220929213557-ca162e8a70f4 => github.com/kilic/bls12-381 v0.1.0 // to fix bls signature validation
-
 require (
 	contrib.go.opencensus.io/exporter/prometheus v0.4.2
 	github.com/BurntSushi/toml v1.3.2
@@ -247,7 +245,7 @@ require (
 	github.com/jessevdk/go-flags v1.4.0 // indirect
 	github.com/joeshaw/multierror v0.0.0-20140124173710-69b34d4ec901 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
-	github.com/kilic/bls12-381 v0.1.1-0.20220929213557-ca162e8a70f4 // indirect
+	github.com/kilic/bls12-381 v0.1.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.8 // indirect
 	github.com/koron/go-ssdp v0.0.4 // indirect
 	github.com/libp2p/go-cidranger v1.1.0 // indirect
