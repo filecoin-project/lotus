@@ -101,3 +101,7 @@ var WhitelistedBlock = cid.Undef
 const F3Enabled = true
 const ManifestServerID = "12D3KooWJr9jy4ngtJNR7JC1xgLFra3DjEtyxskRYWvBK9TC3Yn6"
 const F3BootstrapEpoch abi.ChainEpoch = 1000
+
+// F3Consensus set whether F3 should checkpoint tipsets finalized by F3. This
+// flag has no effect if F3 is not enabled.
+const F3Consensus = true
