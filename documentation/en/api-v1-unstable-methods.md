@@ -7211,7 +7211,8 @@ Response: `"0"`
 ### StateMinerInitialPledgeForSector
 StateMinerInitialPledgeForSector returns the initial pledge collateral for a given sector
 duration, size, and combined size of any verified pieces within the sector. This calculation
-depends on current network conditions at the given tipset.
+depends on current network conditions (total power, total pledge and current rewards) at the
+given tipset.
 
 
 Perms: read

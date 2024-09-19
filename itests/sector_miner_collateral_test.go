@@ -444,7 +444,7 @@ func TestPledgeCalculations(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, exitcode.Ok, r.Receipt.ExitCode)
 
-	tsk := r.TipSet // we're going to perform all pledge calculations at this tipset so we have consistent power outputs
+	tsk := r.TipSet // we're going to perform all pledge calculations at this tipset so we have consistent power, pledge, reward outputs
 
 	verifyPledge := func(sectorNumber abi.SectorNumber, verifiedSize uint64) big.Int {
 		// Compare deprecated pledge calculation that uses PreCommit with Deal information with the

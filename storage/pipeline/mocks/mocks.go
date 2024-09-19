@@ -172,7 +172,7 @@ func (mr *MockCommitBatcherApiMockRecorder) StateMinerInfo(arg0, arg1, arg2 inte
 }
 
 // StateMinerInitialPledgeForSector mocks base method.
-func (m *MockCommitBatcherApi) StateMinerInitialPledgeForSector(arg0 context.Context, arg1 abi.SectorSize, arg2 abi.ChainEpoch, arg3 []miner.PieceActivationManifest, arg4 types.TipSetKey) (big.Int, error) {
+func (m *MockCommitBatcherApi) StateMinerInitialPledgeForSector(arg0 context.Context, arg1 abi.ChainEpoch, arg2 abi.SectorSize, arg3 uint64, arg4 types.TipSetKey) (big.Int, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateMinerInitialPledgeForSector", arg0, arg1, arg2, arg3, arg4)
 	ret0, _ := ret[0].(big.Int)
