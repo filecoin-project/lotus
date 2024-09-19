@@ -26,8 +26,6 @@ import (
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
 )
 
-//go:generate go run github.com/golang/mock/mockgen -destination=mocks/mock_precommit_batcher.go -package=mocks . PreCommitBatcherApi
-
 type PreCommitBatcherApi interface {
 	MpoolPushMessage(context.Context, *types.Message, *api.MessageSendSpec) (*types.SignedMessage, error)
 	GasEstimateMessageGas(context.Context, *types.Message, *api.MessageSendSpec, types.TipSetKey) (*types.Message, error)

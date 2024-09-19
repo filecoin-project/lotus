@@ -311,7 +311,6 @@ bundle-gen:
 	$(GOCC) fmt ./build/...
 .PHONY: bundle-gen
 
-
 api-gen:
 	$(GOCC) run ./gen/api
 	goimports -w api
@@ -330,38 +329,13 @@ appimage: lotus
 	cp ./lotus AppDir/usr/bin/
 	appimage-builder
 
-docsgen: docsgen-md docsgen-openrpc fiximports
-
-docsgen-md-bin: api-gen actors-gen
-	$(GOCC) build $(GOFLAGS) -o docgen-md ./api/docgen/cmd
-docsgen-openrpc-bin: api-gen actors-gen
-	$(GOCC) build $(GOFLAGS) -o docgen-openrpc ./api/docgen-openrpc/cmd
-
-docsgen-md: docsgen-md-full docsgen-md-storage docsgen-md-worker
-
-docsgen-md-full: docsgen-md-bin
-	./docgen-md "api/api_full.go" "FullNode" "api" "./api" > documentation/en/api-v1-unstable-methods.md
-	./docgen-md "api/v0api/full.go" "FullNode" "v0api" "./api/v0api" > documentation/en/api-v0-methods.md
-docsgen-md-storage: docsgen-md-bin
-	./docgen-md "api/api_storage.go" "StorageMiner" "api" "./api" > documentation/en/api-v0-methods-miner.md
-docsgen-md-worker: docsgen-md-bin
-	./docgen-md "api/api_worker.go" "Worker" "api" "./api" > documentation/en/api-v0-methods-worker.md
-
-docsgen-openrpc: docsgen-openrpc-full docsgen-openrpc-storage docsgen-openrpc-worker docsgen-openrpc-gateway
-
-docsgen-openrpc-full: docsgen-openrpc-bin
-	./docgen-openrpc "api/api_full.go" "FullNode" "api" "./api" > build/openrpc/full.json
-docsgen-openrpc-storage: docsgen-openrpc-bin
-	./docgen-openrpc "api/api_storage.go" "StorageMiner" "api" "./api" > build/openrpc/miner.json
-docsgen-openrpc-worker: docsgen-openrpc-bin
-	./docgen-openrpc "api/api_worker.go" "Worker" "api" "./api" > build/openrpc/worker.json
-docsgen-openrpc-gateway: docsgen-openrpc-bin
-	./docgen-openrpc "api/api_gateway.go" "Gateway" "api" "./api" > build/openrpc/gateway.json
-
-.PHONY: docsgen docsgen-md-bin docsgen-openrpc-bin
+docsgen: fiximports
+	$(GOCC) run ./gen/docs
+.PHONY: docsgen
 
 fiximports:
 	$(GOCC) run ./scripts/fiximports
+.PHONY: fiximports
 
 gen: actors-code-gen type-gen cfgdoc-gen docsgen api-gen
 	$(GOCC) run ./scripts/fiximports

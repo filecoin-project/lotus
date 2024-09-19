@@ -33,8 +33,6 @@ import (
 var aggFeeNum = big.NewInt(110)
 var aggFeeDen = big.NewInt(100)
 
-//go:generate go run github.com/golang/mock/mockgen -destination=mocks/mock_commit_batcher.go -package=mocks . CommitBatcherApi
-
 type CommitBatcherApi interface {
 	MpoolPushMessage(context.Context, *types.Message, *api.MessageSendSpec) (*types.SignedMessage, error)
 	GasEstimateMessageGas(context.Context, *types.Message, *api.MessageSendSpec, types.TipSetKey) (*types.Message, error)
