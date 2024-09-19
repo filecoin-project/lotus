@@ -1,12 +1,15 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"database/sql"
 	"fmt"
 	"math"
+	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -78,6 +81,7 @@ var backfillEventsCmd = &cli.Command{
 			Value: false,
 			Usage: "run VACUUM on the database after backfilling is complete; this will reclaim space from deleted rows, but may take a long time",
 		},
+		&cli.StringFlag{Name: "db-path", Value: ""},
 	},
 	Action: func(cctx *cli.Context) error {
 		srv, err := lcli.GetFullNodeServices(cctx)
@@ -121,6 +125,9 @@ var backfillEventsCmd = &cli.Command{
 				"it may cause the node to fail to record recent events due to the need to obtain an exclusive lock on the database for writes.")
 
 		dbPath := path.Join(basePath, "sqlite", "events.db")
+		if cctx.String("db-path") != "" {
+			dbPath = cctx.String("db-path")
+		}
 		db, err := sql.Open("sqlite3", dbPath+"?_txlock=immediate")
 		if err != nil {
 			return err
@@ -413,6 +420,11 @@ var inspectEventsCmd = &cli.Command{
 			Usage: "log tipsets that have no detected problems",
 			Value: false,
 		},
+		&cli.StringFlag{
+			Name:  "epoch-file",
+			Value: "",
+		},
+		&cli.StringFlag{Name: "db-path", Value: ""},
 	},
 	Action: func(cctx *cli.Context) error {
 		srv, err := lcli.GetFullNodeServices(cctx)
@@ -456,7 +468,38 @@ var inspectEventsCmd = &cli.Command{
 			return err
 		}
 
+		var epochList []abi.ChainEpoch
+		if cctx.String("epoch-file") != "" {
+			epochFile, err := homedir.Expand(cctx.String("epoch-file"))
+			if err != nil {
+				return err
+			}
+			// each line of the epoch file is an int which converts to an abi.ChainEpoch
+			epochList = make([]abi.ChainEpoch, 0)
+			// open file and read lines
+			file, err := os.Open(epochFile)
+			if err != nil {
+				return err
+			}
+			defer file.Close()
+			scanner := bufio.NewScanner(file)
+			for scanner.Scan() {
+				txt := scanner.Text()
+				if txt == "" {
+					continue
+				}
+				epoch, err := strconv.Atoi(txt)
+				if err != nil {
+					return err
+				}
+				epochList = append(epochList, abi.ChainEpoch(epoch))
+			}
+		}
+
 		dbPath := path.Join(basePath, "sqlite", "events.db")
+		if cctx.String("db-path") != "" {
+			dbPath = cctx.String("db-path")
+		}
 		db, err := sql.Open("sqlite3", dbPath+"?mode=ro")
 		if err != nil {
 			return err
@@ -553,24 +596,49 @@ var inspectEventsCmd = &cli.Command{
 			return nil
 		}
 
-		for i := 0; ctx.Err() == nil && i < epochs; i++ {
-			// get receipts for the parent of the previous tipset (which will be currTs)
-			receipts, err := api.ChainGetParentReceipts(ctx, prevTs.Blocks()[0].Cid())
-			if err != nil {
-				_, _ = fmt.Fprintf(cctx.App.ErrWriter, "Missing parent receipts for epoch %d (checked %d epochs)", prevTs.Height(), i)
-				break
-			}
+		if len(epochList) > 0 {
+			for _, epoch := range epochList {
+				ts, err := api.ChainGetTipSetAfterHeight(ctx, epoch+1, types.EmptyTSK)
+				if err != nil {
+					return fmt.Errorf("failed to load tipset at epoch %d: %w", epoch, err)
+				}
 
-			err = processHeight(ctx, currTs, receipts)
-			if err != nil {
-				return err
-			}
+				receipts, err := api.ChainGetParentReceipts(ctx, ts.Blocks()[0].Cid())
+				if err != nil {
+					return fmt.Errorf("failed to load receipts for epoch %d: %w", epoch, err)
+				}
 
-			// advance prevTs and currTs up the chain
-			prevTs = currTs
-			currTs, err = api.ChainGetTipSet(ctx, currTs.Parents())
-			if err != nil {
-				return fmt.Errorf("failed to load tipset %s: %w", currTs, err)
+				ts, err = api.ChainGetTipSet(ctx, ts.Parents())
+				if err != nil {
+					return err
+				}
+				if ts.Height() != epoch {
+					return fmt.Errorf("expected tipset at epoch %d, got %d", epoch, ts.Height())
+				}
+				if err = processHeight(ctx, ts, receipts); err != nil {
+					return err
+				}
+			}
+		} else {
+			for i := 0; ctx.Err() == nil && i < epochs; i++ {
+				// get receipts for the parent of the previous tipset (which will be currTs)
+				receipts, err := api.ChainGetParentReceipts(ctx, prevTs.Blocks()[0].Cid())
+				if err != nil {
+					_, _ = fmt.Fprintf(cctx.App.ErrWriter, "Missing parent receipts for epoch %d (checked %d epochs)", prevTs.Height(), i)
+					break
+				}
+
+				err = processHeight(ctx, currTs, receipts)
+				if err != nil {
+					return err
+				}
+
+				// advance prevTs and currTs up the chain
+				prevTs = currTs
+				currTs, err = api.ChainGetTipSet(ctx, currTs.Parents())
+				if err != nil {
+					return fmt.Errorf("failed to load tipset %s: %w", currTs, err)
+				}
 			}
 		}
 
