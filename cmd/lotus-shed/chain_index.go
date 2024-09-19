@@ -3,47 +3,50 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/chain/types"
-	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-state-types/abi"
+
+	lcli "github.com/filecoin-project/lotus/cli"
 )
 
-type IndexValidationJSON struct {
-	TipsetKey        types.TipSetKey `json:"tipset_key"`
-	IndexHeight      uint64          `json:"index_height"`
-	IndexMsgCount    uint64          `json:"index_msg_count"`
-	IndexEventsCount uint64          `json:"index_events_count"`
+var chainIndexCmds = &cli.Command{
+	Name:            "chainindex",
+	Usage:           "Commands related to managing the chainindex",
+	HideHelpCommand: true,
+	Subcommands: []*cli.Command{
+		withCategory("chainindex", validateBackfillChainIndexCmd),
+	},
 }
 
-var validateChainIndexCmd = &cli.Command{
-	Name:  "validate-chainindex",
-	Usage: "Validates the chainindex for a range of epochs",
+var validateBackfillChainIndexCmd = &cli.Command{
+	Name:  "validate-backfill",
+	Usage: "Validates and optionally backfills the chainindex for a range of epochs",
 	Description: `
-		validate-chainindex is a command-line tool that validates the chainindex for a specified range of epochs.
-		It fetches the chain index entry for each epoch, checks for missing entries, and optionally backfills them.
-		The command provides options to specify the range of epochs, control backfilling, and handle validation errors.
+		'./lotus-shed chainindex validate-backfill' is a command-line tool that validates the chainindex for a specified range of epochs.
+		It validates the chain index entries for each epoch, checks for missing entries, and optionally backfills them.
 
 		Usage:
-		lotus-shed validate-chainindex --from 200 --to 100 --backfill --output
+		lotus-shed chainindex validate-backfill --from 200 --to 100 --backfill --log-good
 
 		Flags:
-		--from     Starting tipset epoch for validation (required)
-		--to       Ending tipset epoch for validation (required)
+		--from     Starting tipset epoch for validation (inclusive) (required)
+		--to       Ending tipset epoch for validation (inclusive) (required)
 		--backfill Backfill missing index entries (default: true)
-		--output   Output backfilling results in JSON format (default: false)
+		--log-good Log tipsets that have no detected problems (default: false)
 	`,
 	Flags: []cli.Flag{
 		&cli.IntFlag{
 			Name:     "from",
-			Usage:    "from specifies the starting tipset epoch for validation. If set to 0, validation starts from the tipset just before the current head",
+			Usage:    "from specifies the starting tipset epoch for validation (inclusive)",
 			Required: true,
 		},
 		&cli.IntFlag{
 			Name:     "to",
-			Usage:    "to specifies the ending tipset epoch for validation",
+			Usage:    "to specifies the ending tipset epoch for validation (inclusive)",
 			Required: true,
 		},
 		&cli.BoolFlag{
@@ -52,9 +55,9 @@ var validateChainIndexCmd = &cli.Command{
 			Value: true,
 		},
 		&cli.BoolFlag{
-			Name:  "output",
-			Usage: "output specifies whether to output the backfilling results in JSON format (default: true)",
-			Value: true,
+			Name:  "log-good",
+			Usage: "log tipsets that have no detected problems",
+			Value: false,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -64,7 +67,7 @@ var validateChainIndexCmd = &cli.Command{
 		}
 		defer func() {
 			if closeErr := srv.Close(); closeErr != nil {
-				log.Errorf("error closing services: %v", closeErr)
+				log.Errorf("error closing services: %w", closeErr)
 			}
 		}()
 
@@ -72,40 +75,25 @@ var validateChainIndexCmd = &cli.Command{
 		ctx := lcli.ReqContext(cctx)
 
 		fromEpoch := cctx.Int("from")
-		if fromEpoch == 0 {
-			curTs, err := api.ChainHead(ctx)
-			if err != nil {
-				return xerrors.Errorf("failed to get chain head: %w", err)
-			}
-			fromEpoch = int(curTs.Height()) - 1
-		}
-
 		if fromEpoch <= 0 {
 			return xerrors.Errorf("invalid from epoch: %d, must be greater than 0", fromEpoch)
 		}
 
 		toEpoch := cctx.Int("to")
+		if toEpoch <= 0 {
+			return xerrors.Errorf("invalid to epoch: %d, must be greater than 0", toEpoch)
+		}
 		if toEpoch > fromEpoch {
 			return xerrors.Errorf("to epoch (%d) must be less than or equal to from epoch (%d)", toEpoch, fromEpoch)
 		}
 
-		if toEpoch <= 0 {
-			return xerrors.Errorf("invalid to epoch: %d, must be greater than 0", toEpoch)
-		}
-
 		backfill := cctx.Bool("backfill")
-		output := cctx.Bool("output")
 
 		// Results Tracking
-		var results []IndexValidationJSON
-		var backfilledEpochs []int
+		logGood := cctx.Bool("log-good")
 
-		action := "chainindex validation"
-		if backfill {
-			action = "chainindex backfill and validation"
-		}
-
-		_, _ = fmt.Fprintf(cctx.App.Writer, "starting %s; from epoch: %d; to epoch: %d\n", action, fromEpoch, toEpoch)
+		_, _ = fmt.Fprintf(cctx.App.Writer, "starting chainindex validation; from epoch: %d; to epoch: %d; backfill: %t; log-good: %t\n", fromEpoch, toEpoch,
+			backfill, logGood)
 
 		totalEpochs := fromEpoch - toEpoch + 1
 		for epoch := fromEpoch; epoch >= toEpoch; epoch-- {
@@ -115,59 +103,40 @@ var validateChainIndexCmd = &cli.Command{
 
 			if (fromEpoch-epoch+1)%2880 == 0 {
 				progress := float64(fromEpoch-epoch+1) / float64(totalEpochs) * 100
-				_, _ = fmt.Fprintf(cctx.App.Writer, "chain index validation progress: %.2f%%\n", progress)
+				log.Infof("-------- chain index validation progress: %.2f%%\n", progress)
 			}
 
 			indexValidateResp, err := api.ChainValidateIndex(ctx, abi.ChainEpoch(epoch), backfill)
 			if err != nil {
-				return xerrors.Errorf("failed to validate index for epoch %d: %w", epoch, err)
+				// is it a retryable error ?
+				if strings.Contains(err.Error(), "retry") {
+					log.Warnf("epoch %d; failed to validate index with re-tryable error: %s. retrying...", epoch, err)
+					epoch++ // Increment epoch to retry the same epoch
+					continue
+				}
+
+				_, _ = fmt.Fprintf(cctx.App.Writer, "✗ Epoch %d; failure: %s\n", epoch, err)
 			}
 
-			if indexValidateResp == nil {
-				results = append(results, IndexValidationJSON{
-					TipsetKey:        types.EmptyTSK,
-					IndexHeight:      uint64(epoch),
-					IndexMsgCount:    0,
-					IndexEventsCount: 0,
-				})
-				// this was a null round -> continue
+			// is it a null round ?
+			if indexValidateResp.IsNullRound {
+				if logGood {
+					_, _ = fmt.Fprintf(cctx.App.Writer, "✓ Epoch %d; null round\n", epoch)
+				}
 				continue
 			}
 
-			if backfill {
-				backfilledEpochs = append(backfilledEpochs, epoch)
-			}
+			// log success
+			if logGood {
+				jsonData, err := json.Marshal(indexValidateResp)
+				if err != nil {
+					return fmt.Errorf("failed to marshal results to JSON: %w", err)
+				}
 
-			if output {
-				results = append(results, IndexValidationJSON{
-					TipsetKey:        indexValidateResp.TipSetKey,
-					IndexHeight:      indexValidateResp.Height,
-					IndexMsgCount:    indexValidateResp.IndexedMessagesCount,
-					IndexEventsCount: indexValidateResp.IndexedEventsCount,
-				})
+				_, _ = fmt.Fprintf(cctx.App.Writer, "✓ Epoch %d (%s)\n", epoch, string(jsonData))
 			}
 		}
-
-		// Output JSON Results
-		if output {
-			if err := outputResults(cctx, results); err != nil {
-				return xerrors.Errorf("failed to output results: %w", err)
-			}
-		}
-
-		// Log Summary
-		_, _ = fmt.Fprintf(cctx.App.Writer, "validation of chain index from epoch %d to %d completed successfully; backfilled %d missing epochs\n", fromEpoch, toEpoch, len(backfilledEpochs))
 
 		return nil
 	},
-}
-
-// outputResults marshals the results into JSON and outputs them.
-func outputResults(cctx *cli.Context, results []IndexValidationJSON) error {
-	jsonData, err := json.MarshalIndent(results, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal results to JSON: %w", err)
-	}
-	_, _ = fmt.Fprintf(cctx.App.Writer, "chain validation was successful for the following epochs: %s\n", string(jsonData))
-	return nil
 }

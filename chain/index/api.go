@@ -3,6 +3,7 @@ package index
 import (
 	"context"
 	"database/sql"
+	"errors"
 
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
@@ -12,65 +13,27 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-func (si *SqliteIndexer) sanityCheckBackfillEpoch(ctx context.Context, epoch abi.ChainEpoch) error {
-	// should be less than the max non reverted height in the Index
-	var maxNonRevertedHeight sql.NullInt64
-	err := si.stmts.getMaxNonRevertedHeightStmt.QueryRowContext(ctx).Scan(&maxNonRevertedHeight)
-	if err != nil && err != sql.ErrNoRows {
-		return xerrors.Errorf("failed to get max non reverted height: %w", err)
-	}
-	// couldn't find any non-reverted entries
-	if err == sql.ErrNoRows || !maxNonRevertedHeight.Valid {
-		return nil
-	}
-	if epoch >= abi.ChainEpoch(maxNonRevertedHeight.Int64) {
-		return xerrors.Errorf("failed to validate index at epoch %d; can only validate at or before epoch %d for safety", epoch, maxNonRevertedHeight.Int64-1)
-	}
-
-	return nil
-}
-
-func (si *SqliteIndexer) validateIsNullRound(ctx context.Context, epoch abi.ChainEpoch) (*types.IndexValidation, error) {
-	// make sure we do not have ANY non-reverted tipset at this epoch
-	var isNullRound bool
-	err := si.stmts.hasNullRoundAtHeightStmt.QueryRowContext(ctx, epoch).Scan(&isNullRound)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to check if null round exists at height %d: %w", epoch, err)
-	}
-	if !isNullRound {
-		return nil, xerrors.Errorf("index corruption: height %d should be a null round but is not", epoch)
-	}
-
-	return nil, nil
-}
-
-func (si *SqliteIndexer) getTipsetCountsAtHeight(ctx context.Context, height abi.ChainEpoch) (revertedCount, nonRevertedCount int, err error) {
-	err = si.stmts.countTipsetsAtHeightStmt.QueryRowContext(ctx, height).Scan(&revertedCount, &nonRevertedCount)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			// No tipsets found at this height
-			return 0, 0, nil
-		}
-		return 0, 0, xerrors.Errorf("failed to query tipset counts: %w", err)
-	}
-
-	return revertedCount, nonRevertedCount, nil
-}
+var ErrChainForked = xerrors.New("chain forked")
 
 func (si *SqliteIndexer) ChainValidateIndex(ctx context.Context, epoch abi.ChainEpoch, backfill bool) (*types.IndexValidation, error) {
+	// return an error if the indexer is not started
 	if !si.started {
-		return nil, xerrors.Errorf("ChainValidateIndex can only be called after the indexer has been started")
+		return nil, errors.New("ChainValidateIndex called before indexer start")
 	}
 
+	// return an error if the indexer is closed
 	if si.isClosed() {
-		return nil, xerrors.Errorf("ChainValidateIndex can only be called before the indexer has been closed")
+		return nil, errors.New("ChainValidateIndex called on closed indexer")
 	}
 
+	// we need to take a write lock here so that back-filling does not race with real time chain indexing
 	si.writerLk.Lock()
 	defer si.writerLk.Unlock()
 
-	if err := si.sanityCheckBackfillEpoch(ctx, epoch); err != nil {
-		return nil, err
+	// this API only works for epoch < head because of deferred execution in Filecoin
+	head := si.cs.GetHeaviestTipSet()
+	if epoch >= head.Height() {
+		return nil, xerrors.Errorf("cannot validate index at epoch %d, can only validate at an epoch less than chain head epoch %d", epoch, head.Height())
 	}
 
 	var isIndexEmpty bool
@@ -82,13 +45,17 @@ func (si *SqliteIndexer) ChainValidateIndex(ctx context.Context, epoch abi.Chain
 	// fetch the tipset at the given epoch on the canonical chain
 	expectedTs, err := si.cs.GetTipsetByHeight(ctx, epoch, nil, true)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get tipset by height: %w", err)
+		return nil, xerrors.Errorf("failed to get tipset at height %d: %w", epoch, err)
 	}
 
-	// Canonical chain has a null round at the epoch -> return if index is empty otherwise validate
-	if expectedTs.Height() != epoch { // Canonical chain has a null round at the epoch
+	// Canonical chain has a null round at the epoch -> return if index is empty otherwise validate that index also
+	// has a null round at this epoch i.e. it does not have anything indexed at all for this epoch
+	if expectedTs.Height() != epoch {
 		if isIndexEmpty {
-			return nil, nil
+			return &types.IndexValidation{
+				Height:      uint64(epoch),
+				IsNullRound: true,
+			}, nil
 		}
 		// validate the db has a hole here and error if not, we don't attempt to repair because something must be very wrong for this to fail
 		return si.validateIsNullRound(ctx, epoch)
@@ -105,8 +72,9 @@ func (si *SqliteIndexer) ChainValidateIndex(ctx context.Context, epoch abi.Chain
 		if err == sql.ErrNoRows {
 			return si.backfillMissingTipset(ctx, expectedTs, backfill)
 		}
-		return nil, xerrors.Errorf("failed to get tipset counts at height: %w", err)
+		return nil, xerrors.Errorf("failed to get tipset counts at height %d: %w", epoch, err)
 	}
+
 	switch {
 	case revertedCount == 0 && nonRevertedCount == 0:
 		// no tipsets at this epoch in the index, backfill
@@ -123,8 +91,9 @@ func (si *SqliteIndexer) ChainValidateIndex(ctx context.Context, epoch abi.Chain
 	var indexedTsKeyCidBytes []byte
 	err = si.stmts.getNonRevertedTipsetAtHeightStmt.QueryRowContext(ctx, epoch).Scan(&indexedTsKeyCidBytes)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get non-reverted tipset at height: %w", err)
+		return nil, xerrors.Errorf("failed to get non-reverted tipset at height %d: %w", epoch, err)
 	}
+
 	indexedTsKeyCid, err := cid.Cast(indexedTsKeyCidBytes)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to cast tipset key cid: %w", err)
@@ -134,26 +103,7 @@ func (si *SqliteIndexer) ChainValidateIndex(ctx context.Context, epoch abi.Chain
 		return nil, xerrors.Errorf("failed to get tipset key cid: %w", err)
 	}
 	if !indexedTsKeyCid.Equals(expectedTsKeyCid) {
-		return nil, xerrors.Errorf("index corruption: non-reverted tipset at height %d has key %s, but canonical chain has %s", epoch, indexedTsKeyCid, expectedTsKeyCid)
-	}
-
-	// index the parent tipset and it's events so we dont need to look forward when validating/backfilling the parent
-	parentTs, err := si.cs.GetTipSetFromKey(ctx, expectedTs.Parents())
-	if err != nil {
-		return nil, xerrors.Errorf("failed to get parent tipset: %w", err)
-	}
-	err = withTx(ctx, si.db, func(tx *sql.Tx) error {
-		if err := si.indexTipset(ctx, tx, parentTs); err != nil {
-			return xerrors.Errorf("error indexing parent tipset: %w", err)
-		}
-		if err := si.indexEvents(ctx, tx, parentTs, expectedTs); err != nil {
-			return xerrors.Errorf("error indexing events for tipset at height %d: %w", expectedTs.Height(), err)
-		}
-
-		return nil
-	})
-	if err != nil {
-		return nil, xerrors.Errorf("error validating tipset: %w", err)
+		return nil, xerrors.Errorf("index corruption: indexed tipset at height %d has key %s, but canonical chain has %s", epoch, indexedTsKeyCid, expectedTsKeyCid)
 	}
 
 	// indexedTsKeyCid and expectedTsKeyCid are the same, so we can use `expectedTs` to fetch the indexed data
@@ -163,7 +113,7 @@ func (si *SqliteIndexer) ChainValidateIndex(ctx context.Context, epoch abi.Chain
 	}
 
 	if indexedData == nil {
-		return nil, xerrors.Errorf("invalid indexed data for tipset at height %d", expectedTs.Height())
+		return nil, xerrors.Errorf("nil indexed data for tipset at height %d", expectedTs.Height())
 	}
 
 	if err = si.verifyIndexedData(ctx, expectedTs, indexedData); err != nil {
@@ -176,6 +126,36 @@ func (si *SqliteIndexer) ChainValidateIndex(ctx context.Context, epoch abi.Chain
 		IndexedMessagesCount: uint64(indexedData.nonRevertedMessageCount),
 		IndexedEventsCount:   uint64(indexedData.nonRevertedEventCount),
 	}, nil
+}
+
+func (si *SqliteIndexer) validateIsNullRound(ctx context.Context, epoch abi.ChainEpoch) (*types.IndexValidation, error) {
+	// make sure we do not have tipset(reverted or non-reverted) indexed at this epoch
+	var isNullRound bool
+	err := si.stmts.hasNullRoundAtHeightStmt.QueryRowContext(ctx, epoch).Scan(&isNullRound)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to check if null round exists at height %d: %w", epoch, err)
+	}
+	if !isNullRound {
+		return nil, xerrors.Errorf("index corruption: height %d should be a null round but is not", epoch)
+	}
+
+	return &types.IndexValidation{
+		Height:      uint64(epoch),
+		IsNullRound: true,
+	}, nil
+}
+
+func (si *SqliteIndexer) getTipsetCountsAtHeight(ctx context.Context, height abi.ChainEpoch) (revertedCount, nonRevertedCount int, err error) {
+	err = si.stmts.countTipsetsAtHeightStmt.QueryRowContext(ctx, height).Scan(&revertedCount, &nonRevertedCount)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			// No tipsets found at this height
+			return 0, 0, nil
+		}
+		return 0, 0, xerrors.Errorf("failed to query tipset counts at height %d: %w", height, err)
+	}
+
+	return revertedCount, nonRevertedCount, nil
 }
 
 type indexedTipSetData struct {
@@ -212,31 +192,17 @@ func (si *SqliteIndexer) getIndexedTipSetData(ctx context.Context, ts *types.Tip
 func (si *SqliteIndexer) verifyIndexedData(ctx context.Context, ts *types.TipSet, indexedData *indexedTipSetData) (err error) {
 	tsKeyCid, err := ts.Key().Cid()
 	if err != nil {
-		return xerrors.Errorf("failed to get tipset key cid: %w", err)
+		return xerrors.Errorf("failed to get tipset key cid at height %d: %w", ts.Height(), err)
 	}
 
-	// get the tipset where the messages of `ts` will be executed (deferred execution)
-	executionTs, err := si.cs.GetTipsetByHeight(ctx, ts.Height()+1, nil, false)
+	executionTs, err := si.getNextTipset(ctx, ts)
 	if err != nil {
-		return xerrors.Errorf("failed to get tipset by height: %w", err)
-	}
-
-	eParentTsKeyCid, err := executionTs.Parents().Cid()
-	if err != nil {
-		return xerrors.Errorf("failed to get execution tipset parent key cid: %w", err)
-	}
-
-	// the parent tipset of the execution tipset should be the same as the indexed tipset (`ts` should be the parent of `executionTs`)
-	// if that is not the case, it means that the chain forked after we fetched the tipset `ts` from the canonical chain and
-	// `ts` is no longer part of the canonical chain. Simply return an error here and ask the user to retry.
-	if !eParentTsKeyCid.Equals(tsKeyCid) {
-		return xerrors.Errorf("execution tipset parent key mismatch: chainstore has %s, index has %s; please retry your request as this could have been caused by a chain reorg",
-			eParentTsKeyCid, tsKeyCid)
+		return xerrors.Errorf("failed to get next tipset for height %d: %w", ts.Height(), err)
 	}
 
 	executedMsgs, err := si.loadExecutedMessages(ctx, ts, executionTs)
 	if err != nil {
-		return xerrors.Errorf("failed to load executed messages: %w", err)
+		return xerrors.Errorf("failed to load executed messages for height %d: %w", ts.Height(), err)
 	}
 
 	totalEventsCount := 0
@@ -245,22 +211,22 @@ func (si *SqliteIndexer) verifyIndexedData(ctx context.Context, ts *types.TipSet
 	}
 
 	if totalEventsCount != indexedData.nonRevertedEventCount {
-		return xerrors.Errorf("event count mismatch: chainstore has %d, index has %d", totalEventsCount, indexedData.nonRevertedEventCount)
+		return xerrors.Errorf("event count mismatch for height %d: chainstore has %d, index has %d", ts.Height(), totalEventsCount, indexedData.nonRevertedEventCount)
 	}
 
 	totalExecutedMsgCount := len(executedMsgs)
 	if totalExecutedMsgCount != indexedData.nonRevertedMessageCount {
-		return xerrors.Errorf("message count mismatch: chainstore has %d, index has %d", totalExecutedMsgCount, indexedData.nonRevertedMessageCount)
+		return xerrors.Errorf("message count mismatch for height %d: chainstore has %d, index has %d", ts.Height(), totalExecutedMsgCount, indexedData.nonRevertedMessageCount)
 	}
 
 	// if non-reverted events exist which means that tipset `ts` has been executed, there should be 0 reverted events in the DB
 	var hasRevertedEventsInTipset bool
 	err = si.stmts.hasRevertedEventsInTipsetStmt.QueryRowContext(ctx, tsKeyCid.Bytes()).Scan(&hasRevertedEventsInTipset)
 	if err != nil {
-		return xerrors.Errorf("failed to check if there are reverted events in tipset: %w", err)
+		return xerrors.Errorf("failed to check if there are reverted events in tipset for height %d: %w", ts.Height(), err)
 	}
 	if hasRevertedEventsInTipset {
-		return xerrors.Errorf("index corruption: reverted events found for an executed tipset %s", tsKeyCid)
+		return xerrors.Errorf("index corruption: reverted events found for an executed tipset %s at height %d", tsKeyCid, ts.Height())
 	}
 
 	return nil
@@ -268,29 +234,38 @@ func (si *SqliteIndexer) verifyIndexedData(ctx context.Context, ts *types.TipSet
 
 func (si *SqliteIndexer) backfillMissingTipset(ctx context.Context, ts *types.TipSet, backfill bool) (*types.IndexValidation, error) {
 	if !backfill {
-		return nil, xerrors.Errorf("missing tipset at height %d in the chain index, set backfill to true to backfill", ts.Height())
+		return nil, xerrors.Errorf("missing tipset at height %d in the chain index, set backfill flag to true to fix", ts.Height())
 	}
 	// backfill the tipset in the Index
 	parentTs, err := si.cs.GetTipSetFromKey(ctx, ts.Parents())
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get parent tipset: %w", err)
+		return nil, xerrors.Errorf("failed to get parent tipset at height %d: %w", ts.Height(), err)
+	}
+
+	executionTs, err := si.getNextTipset(ctx, ts)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get next tipset at height %d: %w", ts.Height(), err)
 	}
 
 	err = withTx(ctx, si.db, func(tx *sql.Tx) error {
+		if err := si.indexTipsetWithParentEvents(ctx, tx, ts, executionTs); err != nil {
+			return xerrors.Errorf("error indexing (ts, executionTs): %w", err)
+		}
+
 		if err := si.indexTipsetWithParentEvents(ctx, tx, parentTs, ts); err != nil {
-			return xerrors.Errorf("error indexing tipset: %w", err)
+			return xerrors.Errorf("error indexing (parentTs, ts): %w", err)
 		}
 
 		return nil
 	})
 
 	if err != nil {
-		return nil, xerrors.Errorf("error applying tipset: %w", err)
+		return nil, xerrors.Errorf("failed to backfill tipset a: %w", err)
 	}
 
 	indexedData, err := si.getIndexedTipSetData(ctx, ts)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get tipset message and event counts at height %d: %w", ts.Height(), err)
+		return nil, xerrors.Errorf("failed to get indexed tipset data: %w", err)
 	}
 
 	return &types.IndexValidation{
@@ -300,4 +275,17 @@ func (si *SqliteIndexer) backfillMissingTipset(ctx context.Context, ts *types.Ti
 		IndexedMessagesCount: uint64(indexedData.nonRevertedMessageCount),
 		IndexedEventsCount:   uint64(indexedData.nonRevertedEventCount),
 	}, nil
+}
+
+func (si *SqliteIndexer) getNextTipset(ctx context.Context, ts *types.TipSet) (*types.TipSet, error) {
+	nextEpochTs, err := si.cs.GetTipsetByHeight(ctx, ts.Height()+1, nil, false)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get tipset at height %d: %w", ts.Height()+1, err)
+	}
+
+	if nextEpochTs.Parents() != ts.Key() {
+		return nil, xerrors.Errorf("chain forked at height %d; please retry your request; err: %w", ts.Height(), ErrChainForked)
+	}
+
+	return nextEpochTs, nil
 }

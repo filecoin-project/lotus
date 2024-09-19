@@ -2066,7 +2066,8 @@
                             "Height": 42,
                             "IndexedMessagesCount": 42,
                             "IndexedEventsCount": 42,
-                            "Backfilled": true
+                            "Backfilled": true,
+                            "IsNullRound": true
                         }
                     ],
                     "additionalProperties": false,
@@ -2085,6 +2086,9 @@
                         "IndexedMessagesCount": {
                             "title": "number",
                             "type": "number"
+                        },
+                        "IsNullRound": {
+                            "type": "boolean"
                         },
                         "TipSetKey": {
                             "additionalProperties": false,

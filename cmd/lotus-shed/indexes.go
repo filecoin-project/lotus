@@ -51,7 +51,6 @@ var indexesCmd = &cli.Command{
 		withCategory("txhash", backfillTxHashCmd),
 		withCategory("events", backfillEventsCmd),
 		withCategory("events", inspectEventsCmd),
-		withCategory("chainindex", validateChainIndexCmd),
 	},
 }
 

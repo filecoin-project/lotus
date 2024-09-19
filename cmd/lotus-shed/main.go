@@ -87,6 +87,7 @@ func main() {
 		gasTraceCmd,
 		replayOfflineCmd,
 		indexesCmd,
+		chainIndexCmds,
 		FevmAnalyticsCmd,
 		mismatchesCmd,
 		blockCmd,

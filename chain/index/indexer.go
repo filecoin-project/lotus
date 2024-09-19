@@ -44,7 +44,6 @@ type preparedStatements struct {
 	insertEventStmt                       *sql.Stmt
 	insertEventEntryStmt                  *sql.Stmt
 
-	getMaxNonRevertedHeightStmt      *sql.Stmt
 	hasNullRoundAtHeightStmt         *sql.Stmt
 	getNonRevertedTipsetAtHeightStmt *sql.Stmt
 	countTipsetsAtHeightStmt         *sql.Stmt
