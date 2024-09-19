@@ -51,7 +51,7 @@ The table below gives an overview of how Lotus and its critical dependencies rel
 | `filecoin-ffi` | There is at least one `filecoin-ffi` minor version (since `filecoin-ffi` tracks `lotus`). | 1.<small>LOTUS_MINOR_VERSION.x</small> | [link](https://github.com/filecoin-project/filecoin-ffi?tab=readme-ov-file#versioning) | `go-state-types` | `ref-fvm` | None |
 | `go-state-types` | There are zero or one `go-state-types` minor versions (since `go-state-types` minor versions track `builtin-actors` major versions) | 0.<small>ACTORS_VERSION.x</small> | [link](https://github.com/filecoin-project/go-state-types?tab=readme-ov-file#versioning) | None | n/a | None |
 | `builtin-actors` | There are zero or one actors major versions (i.e., we can have a new network upgrade without an actors bump) | <small>ACTORS_VERSION.0.x<small> | [link](https://github.com/filecoin-project/builtin-actors?tab=readme-ov-file#versioning) | n/a |`ref-fvm` | None |
-| `ref-fvm` | There may be a major version bump.If there isn't, there is at least a minor version bump to enable support for the new network version. | <small>FVM_ MAJOR_VERSION.y.x<small> | [link](https://github.com/filecoin-project/ref-fvm?tab=readme-ov-file#versioning) | n/a | None | None |
+| `ref-fvm` | There may be a major version bump. If there isn't, there is at least a minor version bump to enable support for the new network version. | <small>FVM_ MAJOR_VERSION.y.x</small> | [link](https://github.com/filecoin-project/ref-fvm?tab=readme-ov-file#versioning) | n/a | None | None |
 
 [^0]: Exceptional case of no Lotus minor version for when we have two-stage upgrades where one network version enables some new feature and the next version disables the deprecated feature.
 
