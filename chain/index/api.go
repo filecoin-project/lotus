@@ -9,8 +9,10 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
 var ErrChainForked = xerrors.New("chain forked")
@@ -125,6 +127,7 @@ func (si *SqliteIndexer) ChainValidateIndex(ctx context.Context, epoch abi.Chain
 		Height:               uint64(expectedTs.Height()),
 		IndexedMessagesCount: uint64(indexedData.nonRevertedMessageCount),
 		IndexedEventsCount:   uint64(indexedData.nonRevertedEventCount),
+		IndexedTxHashCount:   uint64(indexedData.txHashCount),
 	}, nil
 }
 
@@ -161,6 +164,7 @@ func (si *SqliteIndexer) getTipsetCountsAtHeight(ctx context.Context, height abi
 type indexedTipSetData struct {
 	nonRevertedMessageCount int
 	nonRevertedEventCount   int
+	txHashCount             int
 }
 
 // getIndexedTipSetData fetches the indexed tipset data for a tipset
@@ -178,6 +182,10 @@ func (si *SqliteIndexer) getIndexedTipSetData(ctx context.Context, ts *types.Tip
 
 		if err = tx.Stmt(si.stmts.getNonRevertedTipsetEventCountStmt).QueryRowContext(ctx, tsKeyCidBytes).Scan(&data.nonRevertedEventCount); err != nil {
 			return xerrors.Errorf("failed to query non reverted event count: %w", err)
+		}
+
+		if err = tx.Stmt(si.stmts.getTxHashCountStmt).QueryRowContext(ctx, tsKeyCidBytes).Scan(&data.txHashCount); err != nil {
+			return xerrors.Errorf("failed to query tx hash count: %w", err)
 		}
 
 		return nil
@@ -200,23 +208,21 @@ func (si *SqliteIndexer) verifyIndexedData(ctx context.Context, ts *types.TipSet
 		return xerrors.Errorf("failed to get next tipset for height %d: %w", ts.Height(), err)
 	}
 
-	executedMsgs, err := si.loadExecutedMessages(ctx, ts, executionTs)
+	chainStoreData, err := si.getChainStoreTipsetData(ctx, ts, executionTs)
 	if err != nil {
-		return xerrors.Errorf("failed to load executed messages for height %d: %w", ts.Height(), err)
+		return xerrors.Errorf("failed to get chain store data for tipset at height %d: %w", ts.Height(), err)
 	}
 
-	totalEventsCount := 0
-	for _, emsg := range executedMsgs {
-		totalEventsCount += len(emsg.evs)
+	if chainStoreData == nil {
+		return xerrors.Errorf("invalid chain store data for tipset at height %d", ts.Height())
 	}
 
-	if totalEventsCount != indexedData.nonRevertedEventCount {
-		return xerrors.Errorf("event count mismatch for height %d: chainstore has %d, index has %d", ts.Height(), totalEventsCount, indexedData.nonRevertedEventCount)
+	if chainStoreData.totalMsgCount != indexedData.nonRevertedMessageCount {
+		return xerrors.Errorf("message count mismatch: chainstore has %d, index has %d", chainStoreData.totalMsgCount, indexedData.nonRevertedMessageCount)
 	}
 
-	totalExecutedMsgCount := len(executedMsgs)
-	if totalExecutedMsgCount != indexedData.nonRevertedMessageCount {
-		return xerrors.Errorf("message count mismatch for height %d: chainstore has %d, index has %d", ts.Height(), totalExecutedMsgCount, indexedData.nonRevertedMessageCount)
+	if chainStoreData.totalEventsCount != indexedData.nonRevertedEventCount {
+		return xerrors.Errorf("event count mismatch: chainstore has %d, index has %d", chainStoreData.totalEventsCount, indexedData.nonRevertedEventCount)
 	}
 
 	// if non-reverted events exist which means that tipset `ts` has been executed, there should be 0 reverted events in the DB
@@ -229,7 +235,62 @@ func (si *SqliteIndexer) verifyIndexedData(ctx context.Context, ts *types.TipSet
 		return xerrors.Errorf("index corruption: reverted events found for an executed tipset %s at height %d", tsKeyCid, ts.Height())
 	}
 
+	if chainStoreData.totalTxHashCount != indexedData.txHashCount {
+		return xerrors.Errorf("tx hash count mismatch: chainstore has %d, index has %d", chainStoreData.totalTxHashCount, indexedData.txHashCount)
+	}
+
 	return nil
+}
+
+type chainStoreTipsetData struct {
+	totalMsgCount    int
+	totalEventsCount int
+	totalTxHashCount int
+}
+
+func (si *SqliteIndexer) getChainStoreTipsetData(ctx context.Context, ts *types.TipSet, executionTs *types.TipSet) (*chainStoreTipsetData, error) {
+	executedMsgs, err := si.loadExecutedMessages(ctx, ts, executionTs)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load executed messages: %w", err)
+	}
+
+	msgCount := len(executedMsgs)
+	eventsCount := 0
+	txHashCount := 0
+
+	for _, emsg := range executedMsgs {
+		eventsCount += len(emsg.evs)
+	}
+
+	for _, header := range ts.Blocks() {
+		_, smsgs, err := si.cs.MessagesForBlock(ctx, header)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to get messages for block: %w", err)
+		}
+
+		for _, smsg := range smsgs {
+			if smsg.Signature.Type != crypto.SigTypeDelegated {
+				continue
+			}
+
+			tx, err := ethtypes.EthTransactionFromSignedFilecoinMessage(smsg)
+			if err != nil {
+				return nil, xerrors.Errorf("failed to convert from signed message: %w at epoch: %d", err, ts.Height())
+			}
+
+			if _, err = tx.TxHash(); err != nil {
+				return nil, xerrors.Errorf("failed to calculate hash for ethTx: %w at epoch: %d", err, ts.Height())
+			}
+
+			txHashCount++
+		}
+	}
+
+	return &chainStoreTipsetData{
+		totalMsgCount:    msgCount,
+		totalEventsCount: eventsCount,
+		totalTxHashCount: txHashCount,
+	}, nil
 }
 
 func (si *SqliteIndexer) backfillMissingTipset(ctx context.Context, ts *types.TipSet, backfill bool) (*types.IndexValidation, error) {
@@ -274,6 +335,7 @@ func (si *SqliteIndexer) backfillMissingTipset(ctx context.Context, ts *types.Ti
 		Backfilled:           true,
 		IndexedMessagesCount: uint64(indexedData.nonRevertedMessageCount),
 		IndexedEventsCount:   uint64(indexedData.nonRevertedEventCount),
+		IndexedTxHashCount:   uint64(indexedData.txHashCount),
 	}, nil
 }
 

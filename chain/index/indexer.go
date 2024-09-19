@@ -51,6 +51,7 @@ type preparedStatements struct {
 
 	getNonRevertedTipsetMessageCountStmt *sql.Stmt
 	getNonRevertedTipsetEventCountStmt   *sql.Stmt
+	getTxHashCountStmt                   *sql.Stmt
 	hasRevertedEventsInTipsetStmt        *sql.Stmt
 }
 

@@ -51,7 +51,9 @@ var ddls = []string{
 
 	`CREATE INDEX IF NOT EXISTS idx_height ON tipset_message (height)`,
 
-	`CREATE INDEX IF NOT EXISTS event_entry_event_id ON event_entry(event_id)`,
+	`CREATE INDEX IF NOT EXISTS idx_eth_tx_hash_message_cid ON eth_tx_hash (message_cid);`,
+
+	`CREATE INDEX IF NOT EXISTS event_entry_event_id ON event_entry(event_id);`,
 }
 
 // preparedStatementMapping returns a map of fields of the preparedStatements struct to the SQL
@@ -84,5 +86,6 @@ func preparedStatementMapping(ps *preparedStatements) map[**sql.Stmt]string {
 		&ps.getNonRevertedTipsetMessageCountStmt:  "SELECT COUNT(*) FROM tipset_message WHERE tipset_key_cid = ? AND reverted = 0 AND message_cid IS NOT NULL",
 		&ps.getNonRevertedTipsetEventCountStmt:    "SELECT COUNT(*) FROM event WHERE reverted = 0 AND message_id IN (SELECT message_id FROM tipset_message WHERE tipset_key_cid = ? AND reverted = 0)",
 		&ps.hasRevertedEventsInTipsetStmt:         "SELECT EXISTS(SELECT 1 FROM event WHERE reverted = 1 AND message_id IN (SELECT message_id FROM tipset_message WHERE tipset_key_cid = ?))",
+		&ps.getTxHashCountStmt:                    "SELECT COUNT(e.tx_hash) AS tx_hash_count FROM tipset_message t INNER JOIN eth_tx_hash e ON t.message_cid = e.message_cid WHERE t.tipset_key_cid = ? AND t.reverted = 0 AND t.message_cid IS NOT NULL",
 	}
 }

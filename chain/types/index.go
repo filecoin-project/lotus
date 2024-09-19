@@ -6,6 +6,7 @@ type IndexValidation struct {
 
 	IndexedMessagesCount uint64
 	IndexedEventsCount   uint64
+	IndexedTxHashCount   uint64
 	Backfilled           bool
 	IsNullRound          bool
 }
