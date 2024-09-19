@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/lib/sqlite"
@@ -85,6 +86,10 @@ type SqliteIndexer struct {
 
 func NewSqliteIndexer(path string, cs ChainStore, gcRetentionEpochs int64, reconcileEmptyIndex bool,
 	maxReconcileTipsets uint64) (si *SqliteIndexer, err error) {
+
+	if gcRetentionEpochs != 0 && gcRetentionEpochs <= builtin.EpochsInDay {
+		return nil, xerrors.Errorf("gc retention epochs must be 0 or greater than %d", builtin.EpochsInDay)
+	}
 
 	db, err := sqlite.Open(path)
 	if err != nil {
