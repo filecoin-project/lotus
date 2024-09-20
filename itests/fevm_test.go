@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -20,6 +21,7 @@ import (
 	"github.com/filecoin-project/go-state-types/manifest"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
@@ -88,9 +90,9 @@ func TestFEVMRecursiveFail(t *testing.T) {
 	for _, failCallCount := range failCallCounts {
 		failCallCount := failCallCount // linter unhappy unless callCount is local to loop
 		t.Run(fmt.Sprintf("TestFEVMRecursiveFail%d", failCallCount), func(t *testing.T) {
-			_, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", buildInputFromUint64(failCallCount))
+			_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", buildInputFromUint64(failCallCount))
 			require.Error(t, err)
-			require.Equal(t, exitcode.ExitCode(37), wait.Receipt.ExitCode)
+			require.Equal(t, exitcode.ExitCode(37), err.Error())
 		})
 	}
 }
@@ -294,9 +296,9 @@ func TestFEVMDelegateCallRevert(t *testing.T) {
 	inputData := append(inputDataContract, inputDataValue...)
 
 	//verify that the returned value of the call to setvars is 7
-	_, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, storageAddr, "setVarsRevert(address,uint256)", inputData)
+	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, storageAddr, "setVarsRevert(address,uint256)", inputData)
 	require.Error(t, err)
-	require.Equal(t, exitcode.ExitCode(33), wait.Receipt.ExitCode)
+	require.Equal(t, exitcode.ExitCode(33), err.Error())
 
 	//test the value is 0 via calling the getter and was not set to 7
 	expectedResult, err := hex.DecodeString("0000000000000000000000000000000000000000000000000000000000000000")
@@ -321,9 +323,9 @@ func TestFEVMSimpleRevert(t *testing.T) {
 	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameStorage)
 
 	//call revert
-	_, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "revert()", []byte{})
+	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "revert()", []byte{})
 
-	require.Equal(t, wait.Receipt.ExitCode, exitcode.ExitCode(33))
+	require.Equal(t, exitcode.ExitCode(33), err.Error())
 	require.Error(t, err)
 }
 
@@ -496,9 +498,9 @@ func TestFEVMDelegateCallRecursiveFail(t *testing.T) {
 	inputData := append(inputDataContract, inputDataValue...)
 
 	//verify that we run out of gas then revert.
-	_, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, actorAddr, "setVarsSelf(address,uint256)", inputData)
+	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, actorAddr, "setVarsSelf(address,uint256)", inputData)
 	require.Error(t, err)
-	require.Equal(t, exitcode.ExitCode(33), wait.Receipt.ExitCode)
+	require.Equal(t, exitcode.ExitCode(33), err.Error())
 
 	//assert no fatal errors but still there are errors::
 	errorAny := "fatal error"
@@ -1054,28 +1056,144 @@ func TestFEVMErrorParsing(t *testing.T) {
 	}
 }
 
+// TestEthGetBlockReceipts tests retrieving block receipts after invoking a contract
 func TestEthGetBlockReceipts(t *testing.T) {
-	ctx, cancel, client := kit.SetupFEVMTest(t)
+	blockTime := 500 * time.Millisecond
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
+
+	ens.InterconnectAll().BeginMining(blockTime)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	// Deploy a contract to generate a transaction
-	_, contractAddr := client.EVM().DeployContractFromFilename(ctx, "contracts/SimpleCoin.hex")
+	// Create a new Ethereum account
+	key, ethAddr, deployer := client.EVM().NewAccount()
+	// Send some funds to the f410 address
+	kit.SendFunds(ctx, t, client, deployer, types.FromFil(10))
 
-	// Invoke a function to ensure there is a transaction
-	_, _, err := client.EVM().InvokeContractByFuncName(ctx, client.DefaultKey.Address, contractAddr, "someFunction()", []byte{})
+	// Deploy MultipleEvents contract
+	tx := deployContractWithEth(ctx, t, client, ethAddr, "./contracts/MultipleEvents.hex")
+
+	client.EVM().SignTransaction(tx, key.PrivateKey)
+	hash := client.EVM().SubmitTransaction(ctx, tx)
+
+	receipt, err := client.EVM().WaitTransaction(ctx, hash)
+	require.NoError(t, err)
+	require.NotNil(t, receipt)
+	require.EqualValues(t, ethtypes.EthUint64(0x1), receipt.Status)
+
+	contractAddr := client.EVM().ComputeContractAddress(ethAddr, 0)
+
+	// Prepare function call data
+	params4Events, err := hex.DecodeString("98e8da00")
+	require.NoError(t, err)
+	params3Events, err := hex.DecodeString("05734db70000000000000000000000001cd1eeecac00fe01f9d11803e48c15c478fe1d22000000000000000000000000000000000000000000000000000000000000000b")
 	require.NoError(t, err)
 
-	// Get the latest block
-	latestBlock, err := client.EthGetBlockByNumber(ctx, "latest", true)
+	// Estimate gas
+	gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
+		From: &ethAddr,
+		To:   &contractAddr,
+		Data: params4Events,
+	}})
 	require.NoError(t, err)
+
+	gaslimit, err := client.EthEstimateGas(ctx, gasParams)
+	require.NoError(t, err)
+
+	maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)
+	require.NoError(t, err)
+
+	paramsArray := [][]byte{params4Events, params3Events, params3Events}
+
+	var hashes []ethtypes.EthHash
+
+	nonce := 1
+	for _, params := range paramsArray {
+		invokeTx := ethtypes.Eth1559TxArgs{
+			ChainID:              build.Eip155ChainId,
+			To:                   &contractAddr,
+			Value:                big.Zero(),
+			Nonce:                nonce,
+			MaxFeePerGas:         types.NanoFil,
+			MaxPriorityFeePerGas: big.Int(maxPriorityFeePerGas),
+			GasLimit:             int(gaslimit),
+			Input:                params,
+			V:                    big.Zero(),
+			R:                    big.Zero(),
+			S:                    big.Zero(),
+		}
+
+		client.EVM().SignTransaction(&invokeTx, key.PrivateKey)
+		hash := client.EVM().SubmitTransaction(ctx, &invokeTx)
+		hashes = append(hashes, hash)
+		nonce++
+	}
+
+	// Wait for the transactions to be mined
+	var lastReceipt *api.EthTxReceipt
+	for _, hash := range hashes {
+		receipt, err := client.EVM().WaitTransaction(ctx, hash)
+		require.NoError(t, err)
+		require.NotNil(t, receipt)
+		lastReceipt = receipt
+	}
 
 	// Get block receipts
-	receipts, err := client.EthGetBlockReceipts(ctx, ethtypes.EthBlockNumberOrHash{BlockHash: &latestBlock.Hash})
+	blockReceipts, err := client.EthGetBlockReceipts(ctx, ethtypes.EthBlockNumberOrHash{BlockHash: &lastReceipt.BlockHash})
 	require.NoError(t, err)
+	require.NotEmpty(t, blockReceipts)
 
 	// Verify receipts
-	require.Len(t, receipts, 1)
-	require.Equal(t, contractAddr, receipts[0].ContractAddress)
-	require.Equal(t, ethtypes.EthUint64(1), receipts[0].Status)
-	require.Equal(t, latestBlock.Hash, receipts[0].BlockHash)
+	require.Len(t, blockReceipts, 3) // Ensure there are three receipts
+
+	expectedLogCounts := []int{4, 3, 3}
+	for i, receipt := range blockReceipts {
+		require.Equal(t, &contractAddr, receipt.To)
+		require.Equal(t, ethtypes.EthUint64(1), receipt.Status)
+		require.NotEmpty(t, receipt.BlockHash, "Block hash should not be empty")
+		require.Equal(t, expectedLogCounts[i], len(receipt.Logs), fmt.Sprintf("Transaction %d should have %d event logs", i+1, expectedLogCounts[i]))
+	}
+
+	// Verify that all receipts have the same block hash
+	firstBlockHash := blockReceipts[0].BlockHash
+	for _, receipt := range blockReceipts {
+		require.Equal(t, firstBlockHash, receipt.BlockHash, "All receipts should have the same block hash")
+	}
+}
+
+func deployContractWithEth(ctx context.Context, t *testing.T, client *kit.TestFullNode, ethAddr ethtypes.EthAddress,
+	contractPath string) *ethtypes.Eth1559TxArgs {
+	// install contract
+	contractHex, err := os.ReadFile(contractPath)
+	require.NoError(t, err)
+
+	contract, err := hex.DecodeString(string(contractHex))
+	require.NoError(t, err)
+
+	gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
+		From: &ethAddr,
+		Data: contract,
+	}})
+	require.NoError(t, err)
+
+	gaslimit, err := client.EthEstimateGas(ctx, gasParams)
+	require.NoError(t, err)
+
+	maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)
+	require.NoError(t, err)
+
+	// now deploy a contract from the embryo, and validate it went well
+	return &ethtypes.Eth1559TxArgs{
+		ChainID:              build.Eip155ChainId,
+		Value:                big.Zero(),
+		Nonce:                0,
+		MaxFeePerGas:         types.NanoFil,
+		MaxPriorityFeePerGas: big.Int(maxPriorityFeePerGas),
+		GasLimit:             int(gaslimit),
+		Input:                contract,
+		V:                    big.Zero(),
+		R:                    big.Zero(),
+		S:                    big.Zero(),
+	}
 }
