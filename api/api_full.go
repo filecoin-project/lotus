@@ -919,7 +919,8 @@ type FullNode interface {
 	F3GetECPowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) //perm:read
 	// F3GetF3PowerTable returns a F3 specific power table.
 	F3GetF3PowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) //perm:read
-	// F3IsRunning returns true if the F3 instance is running, and an error if F3 is disabled in the node.
+	// F3IsRunning returns true if the F3 instance is running, false if it's not running but
+	// it's enabled, and an error when disabled entirely.
 	F3IsRunning(ctx context.Context) (bool, error) //perm:read
 }
 
