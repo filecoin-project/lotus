@@ -100,7 +100,7 @@ var WhitelistedBlock = cid.Undef
 
 const F3Enabled = true
 
-var F3ManifestServerID = MustPeerID("12D3KooWJr9jy4ngtJNR7JC1xgLFra3DjEtyxskRYWvBK9TC3Yn6")
+var F3ManifestServerID = MustParseID("12D3KooWJr9jy4ngtJNR7JC1xgLFra3DjEtyxskRYWvBK9TC3Yn6")
 
 const F3BootstrapEpoch abi.ChainEpoch = 1000
 
