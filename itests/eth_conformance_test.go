@@ -357,7 +357,7 @@ func TestEthOpenRPCConformance(t *testing.T) {
 		{
 			method: "eth_getBlockReceipts",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthGetBlockReceipts(context.Background(), ethtypes.NewEthBlockNumberOrHashFromPredefined(blockHashWithMessage.String()))
+				return ethapi.EthGetBlockReceipts(context.Background(), ethtypes.NewEthBlockNumberOrHashFromNumber(blockNumberWithMessage))
 			},
 		},
 		{

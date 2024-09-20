@@ -326,7 +326,7 @@ func (m *EventFilterManager) Apply(ctx context.Context, from, to *types.TipSet) 
 	tse := &TipSetEvents{
 		msgTs: from,
 		rctTs: to,
-		load:  m.LoadExecutedMessages,
+		load:  m.loadExecutedMessages,
 	}
 
 	if m.EventIndex != nil {
@@ -357,7 +357,7 @@ func (m *EventFilterManager) Revert(ctx context.Context, from, to *types.TipSet)
 	tse := &TipSetEvents{
 		msgTs: to,
 		rctTs: from,
-		load:  m.LoadExecutedMessages,
+		load:  m.loadExecutedMessages,
 	}
 
 	if m.EventIndex != nil {
@@ -432,7 +432,7 @@ func (m *EventFilterManager) Remove(ctx context.Context, id types.FilterID) erro
 	return nil
 }
 
-func (m *EventFilterManager) LoadExecutedMessages(ctx context.Context, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
+func (m *EventFilterManager) loadExecutedMessages(ctx context.Context, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
 	msgs, err := m.ChainStore.MessagesForTipset(ctx, msgTs)
 	if err != nil {
 		return nil, xerrors.Errorf("read messages: %w", err)
@@ -446,8 +446,8 @@ func (m *EventFilterManager) LoadExecutedMessages(ctx context.Context, msgTs, rc
 	}
 
 	receipts := make([]types.MessageReceipt, arr.Length())
-	for i := uint64(0); i < arr.Length(); i++ {
-		found, err := arr.Get(i, &receipts[i])
+	for i := 0; i < len(receipts); i++ {
+		found, err := arr.Get(uint64(i), &receipts[i])
 		if err != nil {
 			return nil, xerrors.Errorf("load receipt: %w", err)
 		}
@@ -488,12 +488,10 @@ func LoadExecutedMessages(ctx context.Context, store adt.Store, msgs []types.Cha
 			if err := evt.UnmarshalCBOR(bytes.NewReader(deferred.Raw)); err != nil {
 				return err
 			}
-
 			cpy := evt
 			ems[i].evs[int(u)] = &cpy
 			return nil
 		})
-
 		if err != nil {
 			return nil, xerrors.Errorf("read events: %w", err)
 		}

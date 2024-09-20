@@ -498,9 +498,9 @@ func TestFEVMDelegateCallRecursiveFail(t *testing.T) {
 	inputData := append(inputDataContract, inputDataValue...)
 
 	//verify that we run out of gas then revert.
-	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, actorAddr, "setVarsSelf(address,uint256)", inputData)
+	_, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, actorAddr, "setVarsSelf(address,uint256)", inputData)
 	require.Error(t, err)
-	require.Equal(t, exitcode.ExitCode(33), err.Error())
+	require.Equal(t, exitcode.ExitCode(33), wait.Receipt.ExitCode)
 
 	//assert no fatal errors but still there are errors::
 	errorAny := "fatal error"
