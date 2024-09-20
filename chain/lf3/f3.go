@@ -36,33 +36,29 @@ type F3 struct {
 	newLeases chan leaseRequest
 }
 
-type F3ConsensusEnabled bool
-
 type F3Params struct {
 	fx.In
 
-	NetworkName        dtypes.NetworkName
-	ManifestProvider   manifest.ManifestProvider
-	PubSub             *pubsub.PubSub
-	Host               host.Host
-	ChainStore         *store.ChainStore
-	Syncer             *chain.Syncer
-	StateManager       *stmgr.StateManager
-	Datastore          dtypes.MetadataDS
-	Wallet             api.Wallet
-	F3ConsensusEnabled F3ConsensusEnabled
+	ManifestProvider manifest.ManifestProvider
+	PubSub           *pubsub.PubSub
+	Host             host.Host
+	ChainStore       *store.ChainStore
+	Syncer           *chain.Syncer
+	StateManager     *stmgr.StateManager
+	Datastore        dtypes.MetadataDS
+	Wallet           api.Wallet
+	Config           *Config
 }
 
 var log = logging.Logger("f3")
 
 func New(mctx helpers.MetricsCtx, lc fx.Lifecycle, params F3Params) (*F3, error) {
-
 	ds := namespace.Wrap(params.Datastore, datastore.NewKey("/f3"))
 	ec := &ecWrapper{
 		ChainStore:   params.ChainStore,
 		StateManager: params.StateManager,
 		Syncer:       params.Syncer,
-		Checkpoint:   bool(params.F3ConsensusEnabled),
+		Checkpoint:   params.Config.F3ConsensusEnabled,
 	}
 	verif := blssig.VerifierWithKeyOnG1()
 
@@ -172,10 +168,18 @@ func (fff *F3) GetLatestCert(ctx context.Context) (*certs.FinalityCertificate, e
 	return fff.inner.GetLatestCert(ctx)
 }
 
+func (fff *F3) GetManifest() *manifest.Manifest {
+	return fff.inner.Manifest()
+}
+
 func (fff *F3) GetPowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) {
 	return fff.ec.getPowerTableLotusTSK(ctx, tsk)
 }
 
 func (fff *F3) GetF3PowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) {
 	return fff.inner.GetPowerTable(ctx, tsk.Bytes())
+}
+
+func (fff *F3) IsRunning() bool {
+	return fff.inner.IsRunning()
 }

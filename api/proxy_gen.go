@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-f3/certs"
 	"github.com/filecoin-project/go-f3/gpbft"
+	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -262,6 +263,10 @@ type FullNodeMethods struct {
 	F3GetF3PowerTable func(p0 context.Context, p1 types.TipSetKey) (gpbft.PowerEntries, error) `perm:"read"`
 
 	F3GetLatestCertificate func(p0 context.Context) (*certs.FinalityCertificate, error) `perm:"read"`
+
+	F3GetManifest func(p0 context.Context) (*manifest.Manifest, error) `perm:"read"`
+
+	F3IsRunning func(p0 context.Context) (bool, error) `perm:"read"`
 
 	F3Participate func(p0 context.Context, p1 address.Address, p2 time.Time, p3 time.Time) (bool, error) `perm:"sign"`
 
@@ -2145,6 +2150,28 @@ func (s *FullNodeStruct) F3GetLatestCertificate(p0 context.Context) (*certs.Fina
 
 func (s *FullNodeStub) F3GetLatestCertificate(p0 context.Context) (*certs.FinalityCertificate, error) {
 	return nil, ErrNotSupported
+}
+
+func (s *FullNodeStruct) F3GetManifest(p0 context.Context) (*manifest.Manifest, error) {
+	if s.Internal.F3GetManifest == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.F3GetManifest(p0)
+}
+
+func (s *FullNodeStub) F3GetManifest(p0 context.Context) (*manifest.Manifest, error) {
+	return nil, ErrNotSupported
+}
+
+func (s *FullNodeStruct) F3IsRunning(p0 context.Context) (bool, error) {
+	if s.Internal.F3IsRunning == nil {
+		return false, ErrNotSupported
+	}
+	return s.Internal.F3IsRunning(p0)
+}
+
+func (s *FullNodeStub) F3IsRunning(p0 context.Context) (bool, error) {
+	return false, ErrNotSupported
 }
 
 func (s *FullNodeStruct) F3Participate(p0 context.Context, p1 address.Address, p2 time.Time, p3 time.Time) (bool, error) {
