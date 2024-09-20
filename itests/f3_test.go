@@ -5,13 +5,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-f3/manifest"
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/libp2p/go-libp2p"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/filecoin-project/go-f3/manifest"
+	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/node"
