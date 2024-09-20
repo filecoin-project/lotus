@@ -11,6 +11,7 @@ import (
 	"math/big"
 
 	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
@@ -124,7 +125,7 @@ var (
 	BootstrappersFile                 = ""
 	GenesisFile                       = ""
 	F3Enabled                         = false
-	F3ManifestServerID                = ""
+	F3ManifestServerID peer.ID        = ""
 	F3BootstrapEpoch   abi.ChainEpoch = -1
 
 	// F3Consensus set whether F3 should checkpoint tipsets finalized by F3. This
