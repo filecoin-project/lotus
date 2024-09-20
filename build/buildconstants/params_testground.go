@@ -120,12 +120,12 @@ var (
 
 	ZeroAddress = MustParseAddress("f3yaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaby2smx7a")
 
-	WhitelistedBlock                 = cid.Undef
-	BootstrappersFile                = ""
-	GenesisFile                      = ""
-	F3Enabled                        = false
-	ManifestServerID                 = ""
-	F3BootstrapEpoch  abi.ChainEpoch = -1
+	WhitelistedBlock                  = cid.Undef
+	BootstrappersFile                 = ""
+	GenesisFile                       = ""
+	F3Enabled                         = false
+	F3ManifestServerID                = ""
+	F3BootstrapEpoch   abi.ChainEpoch = -1
 
 	// F3Consensus set whether F3 should checkpoint tipsets finalized by F3. This
 	// flag has no effect if F3 is not enabled.
