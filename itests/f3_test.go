@@ -224,7 +224,9 @@ func setup(t *testing.T, blocktime time.Duration) *testEnv {
 	}
 
 	errgrp.Go(func() error {
-		defer manifestServerHost.Close()
+		defer func() {
+			require.NoError(t, manifestServerHost.Close())
+		}()
 		return e.ms.Run(ctx)
 	})
 

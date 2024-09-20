@@ -17,7 +17,6 @@ import (
 	"golang.org/x/crypto/blake2b"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-f3/gpbft"
 	"github.com/filecoin-project/go-f3/manifest"
 
 	"github.com/filecoin-project/lotus/build"
@@ -389,7 +388,7 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 	allowTopics = append(allowTopics, drandTopics...)
 
 	if in.F3Config != nil {
-		f3BaseTopicName := manifest.PubSubTopicFromNetworkName(gpbft.NetworkName(in.F3Config.InitialManifest.NetworkName))
+		f3BaseTopicName := manifest.PubSubTopicFromNetworkName(in.F3Config.InitialManifest.NetworkName)
 		allowTopics = append(allowTopics, f3BaseTopicName)
 		if in.F3Config.DynamicManifestProvider != "" {
 			allowTopics = append(allowTopics, manifest.ManifestPubSubTopicName)
