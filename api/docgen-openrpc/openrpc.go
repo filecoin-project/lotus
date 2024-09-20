@@ -1,8 +1,10 @@
 package docgenopenrpc
 
 import (
+	"compress/gzip"
 	"encoding/json"
 	"go/ast"
+	"io"
 	"net"
 	"reflect"
 
@@ -28,6 +30,37 @@ const integerD = `{
         }`
 
 const cidCidD = `{"title": "Content Identifier", "type": "string", "description": "Cid represents a self-describing content addressed identifier. It is formed by a Version, a Codec (which indicates a multicodec-packed content type) and a Multihash."}`
+
+func Generate(out io.Writer, iface, pkg string, ainfo docgen.ApiASTInfo, outGzip bool) error {
+	doc := NewLotusOpenRPCDocument(ainfo.Comments, ainfo.GroupComments)
+	i, _, _ := docgen.GetAPIType(iface, pkg)
+	doc.RegisterReceiverName("Filecoin", i)
+
+	dout, err := doc.Discover()
+	if err != nil {
+		return err
+	}
+
+	switch {
+	case outGzip:
+		jsonOut, err := json.Marshal(dout)
+		if err != nil {
+			return err
+		}
+		writer := gzip.NewWriter(out)
+		if _, err = writer.Write(jsonOut); err != nil {
+			return err
+		}
+		return writer.Close()
+	default:
+		jsonOut, err := json.MarshalIndent(dout, "", "    ")
+		if err != nil {
+			return err
+		}
+		_, err = out.Write(jsonOut)
+		return err
+	}
+}
 
 func OpenRPCSchemaTypeMapper(ty reflect.Type) *jsonschema.Type {
 	unmarshalJSONToJSONSchemaType := func(input string) *jsonschema.Type {

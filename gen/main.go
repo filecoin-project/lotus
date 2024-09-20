@@ -5,6 +5,7 @@ import (
 	"os"
 
 	gen "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
@@ -12,15 +13,138 @@ import (
 	"github.com/filecoin-project/lotus/chain/market"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/cmd/lotus-shed/shedgen"
+	"github.com/filecoin-project/lotus/conformance/chaos"
 	"github.com/filecoin-project/lotus/node/hello"
 	"github.com/filecoin-project/lotus/paychmgr"
+	sealing "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/filecoin-project/lotus/storage/pipeline/piece"
 	sectorstorage "github.com/filecoin-project/lotus/storage/sealer"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 func main() {
-	err := gen.WriteTupleEncodersToFile("./chain/types/cbor_gen.go", "types",
+	var lets errgroup.Group
+	lets.Go(generateApi)
+	lets.Go(generateBlockstore)
+	lets.Go(generateChainExchange)
+	lets.Go(generateChainMarket)
+	lets.Go(generateChainTypes)
+	lets.Go(generateConformanceChaos)
+	lets.Go(generateLotusShed)
+	lets.Go(generateNodeHello)
+	lets.Go(generatePaychmgr)
+	lets.Go(generateStoragePipeline)
+	lets.Go(generateStoragePipelinePiece)
+	lets.Go(generateStorageSealer)
+	lets.Go(generateStorageSealerInterface)
+	if err := lets.Wait(); err != nil {
+		fmt.Println("Error:", err)
+		os.Exit(1)
+	}
+	fmt.Println("All CBOR encoders have been generated successfully.")
+}
+
+func generateBlockstore() error {
+	return gen.WriteTupleEncodersToFile("./blockstore/cbor_gen.go", "blockstore",
+		blockstore.NetRpcReq{},
+		blockstore.NetRpcResp{},
+		blockstore.NetRpcErr{},
+	)
+}
+
+func generateLotusShed() error {
+	return gen.WriteMapEncodersToFile("./cmd/lotus-shed/shedgen/cbor_gen.go", "shedgen",
+		shedgen.CarbNode{},
+	)
+}
+
+func generateStorageSealer() error {
+	return gen.WriteMapEncodersToFile("./storage/sealer/cbor_gen.go", "sealer",
+		sectorstorage.Call{},
+		sectorstorage.WorkState{},
+		sectorstorage.WorkID{},
+	)
+}
+
+func generateStoragePipeline() error {
+	return gen.WriteMapEncodersToFile("./storage/pipeline/cbor_gen.go", "sealing",
+		sealing.SectorInfo{},
+		sealing.Log{},
+	)
+}
+
+func generateStoragePipelinePiece() error {
+	return gen.WriteMapEncodersToFile("./storage/pipeline/piece/cbor_gen.go", "piece",
+		piece.PieceDealInfo{},
+		piece.DealSchedule{},
+	)
+}
+
+func generateStorageSealerInterface() error {
+	return gen.WriteMapEncodersToFile("./storage/sealer/storiface/cbor_gen.go", "storiface",
+		storiface.CallID{},
+		storiface.SecDataHttpHeader{},
+		storiface.SectorLocation{},
+	)
+}
+
+func generateChainExchange() error {
+	return gen.WriteTupleEncodersToFile("./chain/exchange/cbor_gen.go", "exchange",
+		exchange.Request{},
+		exchange.Response{},
+		exchange.CompactedMessagesCBOR{},
+		exchange.BSTipSet{},
+	)
+}
+
+func generateConformanceChaos() error {
+	return gen.WriteTupleEncodersToFile("./conformance/chaos/cbor_gen.go", "chaos",
+		chaos.State{},
+		chaos.CallerValidationArgs{},
+		chaos.CreateActorArgs{},
+		chaos.ResolveAddressResponse{},
+		chaos.SendArgs{},
+		chaos.SendReturn{},
+		chaos.MutateStateArgs{},
+		chaos.AbortWithArgs{},
+		chaos.InspectRuntimeReturn{},
+	)
+}
+
+func generateChainMarket() error {
+	return gen.WriteTupleEncodersToFile("./chain/market/cbor_gen.go", "market",
+		market.FundedAddressState{},
+	)
+}
+
+func generateNodeHello() error {
+	return gen.WriteTupleEncodersToFile("./node/hello/cbor_gen.go", "hello",
+		hello.HelloMessage{},
+		hello.LatencyMessage{},
+	)
+}
+
+func generateApi() error {
+	return gen.WriteMapEncodersToFile("./api/cbor_gen.go", "api",
+		api.PaymentInfo{},
+		api.SealedRef{},
+		api.SealedRefs{},
+		api.SealTicket{},
+		api.SealSeed{},
+		api.SectorPiece{},
+	)
+}
+
+func generatePaychmgr() error {
+	return gen.WriteMapEncodersToFile("./paychmgr/cbor_gen.go", "paychmgr",
+		paychmgr.VoucherInfo{},
+		paychmgr.ChannelInfo{},
+		paychmgr.MsgInfo{},
+	)
+}
+
+func generateChainTypes() error {
+	return gen.WriteTupleEncodersToFile("./chain/types/cbor_gen.go", "types",
 		types.BlockHeader{},
 		types.Ticket{},
 		types.ElectionProof{},
@@ -44,104 +168,4 @@ func main() {
 		types.ReturnTrace{},
 		types.ExecutionTrace{},
 	)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
-	err = gen.WriteMapEncodersToFile("./paychmgr/cbor_gen.go", "paychmgr",
-		paychmgr.VoucherInfo{},
-		paychmgr.ChannelInfo{},
-		paychmgr.MsgInfo{},
-	)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
-	err = gen.WriteMapEncodersToFile("./api/cbor_gen.go", "api",
-		api.PaymentInfo{},
-		api.SealedRef{},
-		api.SealedRefs{},
-		api.SealTicket{},
-		api.SealSeed{},
-		api.SectorPiece{},
-	)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
-	err = gen.WriteTupleEncodersToFile("./node/hello/cbor_gen.go", "hello",
-		hello.HelloMessage{},
-		hello.LatencyMessage{},
-	)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
-	err = gen.WriteTupleEncodersToFile("./chain/market/cbor_gen.go", "market",
-		market.FundedAddressState{},
-	)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
-	err = gen.WriteTupleEncodersToFile("./chain/exchange/cbor_gen.go", "exchange",
-		exchange.Request{},
-		exchange.Response{},
-		exchange.CompactedMessagesCBOR{},
-		exchange.BSTipSet{},
-	)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
-	err = gen.WriteMapEncodersToFile("./storage/sealer/storiface/cbor_gen.go", "storiface",
-		storiface.CallID{},
-		storiface.SecDataHttpHeader{},
-		storiface.SectorLocation{},
-	)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
-	err = gen.WriteMapEncodersToFile("./storage/pipeline/piece/cbor_gen.go", "piece",
-		piece.PieceDealInfo{},
-		piece.DealSchedule{},
-	)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
-	err = gen.WriteMapEncodersToFile("./storage/sealer/cbor_gen.go", "sealer",
-		sectorstorage.Call{},
-		sectorstorage.WorkState{},
-		sectorstorage.WorkID{},
-	)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-	err = gen.WriteMapEncodersToFile("./cmd/lotus-shed/shedgen/cbor_gen.go", "shedgen",
-		shedgen.CarbNode{},
-	)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-	err = gen.WriteTupleEncodersToFile("./blockstore/cbor_gen.go", "blockstore",
-		blockstore.NetRpcReq{},
-		blockstore.NetRpcResp{},
-		blockstore.NetRpcErr{},
-	)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
 }
