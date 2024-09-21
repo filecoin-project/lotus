@@ -90,9 +90,9 @@ func TestFEVMRecursiveFail(t *testing.T) {
 	for _, failCallCount := range failCallCounts {
 		failCallCount := failCallCount // linter unhappy unless callCount is local to loop
 		t.Run(fmt.Sprintf("TestFEVMRecursiveFail%d", failCallCount), func(t *testing.T) {
-			_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", buildInputFromUint64(failCallCount))
+			_, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", buildInputFromUint64(failCallCount))
 			require.Error(t, err)
-			require.Equal(t, exitcode.ExitCode(37), err.Error())
+			require.Equal(t, exitcode.ExitCode(37), wait.Receipt.ExitCode)
 		})
 	}
 }
@@ -296,9 +296,9 @@ func TestFEVMDelegateCallRevert(t *testing.T) {
 	inputData := append(inputDataContract, inputDataValue...)
 
 	//verify that the returned value of the call to setvars is 7
-	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, storageAddr, "setVarsRevert(address,uint256)", inputData)
+	_, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, storageAddr, "setVarsRevert(address,uint256)", inputData)
 	require.Error(t, err)
-	require.Equal(t, exitcode.ExitCode(33), err.Error())
+	require.Equal(t, exitcode.ExitCode(33), wait.Receipt.ExitCode)
 
 	//test the value is 0 via calling the getter and was not set to 7
 	expectedResult, err := hex.DecodeString("0000000000000000000000000000000000000000000000000000000000000000")
