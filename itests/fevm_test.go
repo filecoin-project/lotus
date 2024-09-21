@@ -323,9 +323,9 @@ func TestFEVMSimpleRevert(t *testing.T) {
 	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameStorage)
 
 	//call revert
-	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "revert()", []byte{})
+	_, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "revert()", []byte{})
 
-	require.Equal(t, exitcode.ExitCode(33), err.Error())
+	require.Equal(t, wait.Receipt.ExitCode, exitcode.ExitCode(33))
 	require.Error(t, err)
 }
 
