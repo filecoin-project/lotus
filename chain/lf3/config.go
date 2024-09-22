@@ -3,6 +3,7 @@ package lf3
 import (
 	"time"
 
+	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/filecoin-project/go-f3/gpbft"
@@ -19,7 +20,7 @@ type Config struct {
 	F3ConsensusEnabled      bool
 }
 
-func NewConfig(manifestProvider peer.ID, consensusEnabled bool) func(dtypes.NetworkName) *Config {
+func NewConfig(manifestProvider peer.ID, consensusEnabled bool, initialPowerTable cid.Cid) func(dtypes.NetworkName) *Config {
 	return func(nn dtypes.NetworkName) *Config {
 		m := manifest.LocalDevnetManifest()
 		m.NetworkName = gpbft.NetworkName(nn)
@@ -33,6 +34,7 @@ func NewConfig(manifestProvider peer.ID, consensusEnabled bool) func(dtypes.Netw
 		}
 		m.EC.Finality = int64(policy.ChainFinality)
 		m.CommitteeLookback = 5
+		m.InitialPowerTable = initialPowerTable
 
 		// TODO: We're forcing this to start paused for now. We need to remove this for the final
 		// mainnet launch.
