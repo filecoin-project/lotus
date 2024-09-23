@@ -295,7 +295,7 @@ func executeTipset(ctx context.Context, ts *types.TipSet, cs *store.ChainStore, 
 
 	stRoot, rcptRoot, err := sa.StateManager.TipSetState(ctx, ts)
 	if err != nil {
-		return cid.Undef, nil, nil, xerrors.Errorf("failed to compute state: %w", err)
+		return cid.Undef, nil, nil, xerrors.Errorf("failed to compute tipset state: %w", err)
 	}
 
 	rcpts, err := cs.ReadReceipts(ctx, rcptRoot)
@@ -679,7 +679,7 @@ func newEthTx(ctx context.Context, cs *store.ChainStore, st *state.StateTree, bl
 	return tx, nil
 }
 
-func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLookup, ca ChainAPI, sa StateAPI, ev *EthEventHandler) (api.EthTxReceipt, error) {
+func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLookup, ca ChainAPI, ev *EthEventHandler) (api.EthTxReceipt, error) {
 	var (
 		transactionIndex ethtypes.EthUint64
 		blockHash        ethtypes.EthHash
