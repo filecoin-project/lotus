@@ -9,7 +9,7 @@ Please do not report security vulnerabilities via public GitHub issues.
 Instead, we ask that you report potential security issues responsibly through our Bug Bounty Program hosted on Immunefi
 
 ### Report through Filecoin Bug Bounty Program:
-- We offer rewards for valid security vulnerability reports through our [Immunefi Bug Bounty Program](https://immunefi.com/bounty/filecoin/). This is our preferred method for handling reports, and the program outlines the types of vulnerabilities eligible for rewards. We offer upto 150k USD bounty for consensus critical issues. 
+- We offer rewards for valid security vulnerability reports through our [Immunefi Bug Bounty Program](https://immunefi.com/bounty/filecoin/). This is our preferred method for handling reports, and the program outlines the types of vulnerabilities eligible for rewards. We offer up to 150k USD bounty for consensus critical issues. 
 
 - If you've any questions on eligibility for the bug bounty or security in general, feel free to reach out to us at security@fil.org.
 
