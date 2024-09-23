@@ -86,6 +86,14 @@ var validateBackfillChainIndexCmd = &cli.Command{
 			return xerrors.Errorf("to epoch (%d) must be less than or equal to from epoch (%d)", toEpoch, fromEpoch)
 		}
 
+		head, err := api.ChainHead(ctx)
+		if err != nil {
+			return xerrors.Errorf("failed to get chain head: %w", err)
+		}
+		if head.Height() <= abi.ChainEpoch(fromEpoch) {
+			return xerrors.Errorf("from epoch (%d) must be less than chain head (%d)", fromEpoch, head.Height())
+		}
+
 		backfill := cctx.Bool("backfill")
 
 		// Results Tracking
