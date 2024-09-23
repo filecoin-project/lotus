@@ -23,12 +23,10 @@ var pragmas = []string{
 	"PRAGMA synchronous = normal",
 	"PRAGMA temp_store = memory",
 	"PRAGMA mmap_size = 30000000000",
-	"PRAGMA page_size = 32768",
 	"PRAGMA auto_vacuum = NONE",
 	"PRAGMA automatic_index = OFF",
 	"PRAGMA journal_mode = WAL",
-	"PRAGMA wal_autocheckpoint = 256", // checkpoint @ 256 pages
-	"PRAGMA journal_size_limit = 0",   // always reset journal and wal files
+	"PRAGMA journal_size_limit = 0", // always reset journal and wal files
 	"PRAGMA foreign_keys = ON",
 }
 
