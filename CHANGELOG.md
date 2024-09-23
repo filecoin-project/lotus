@@ -1,7 +1,7 @@
 # Lotus changelog
 
 # UNRELEASED
-Add `EthGetBlockReceipts` RPC method to retrieve transaction receipts for a specified block. This method allows users to obtain the receipts of all transactions included in a given Ethereum block. ([filecoin-project/lotus#12478](https://github.com/filecoin-project/lotus/pull/12478))
+Add `EthGetBlockReceipts` RPC method to retrieve transaction receipts for a specified block. This method allows users to obtain Ethereum format receipts of all transactions included in a given tipset as specified by its Ethereum block equivalent. ([filecoin-project/lotus#12478](https://github.com/filecoin-project/lotus/pull/12478))
 
 ## ☢️ Upgrade Warnings ☢️
 

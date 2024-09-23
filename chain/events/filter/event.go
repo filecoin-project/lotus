@@ -16,7 +16,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 
-	"github.com/filecoin-project/lotus/chain/actors/adt"
 	cstore "github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -309,9 +308,10 @@ type EventFilterManager struct {
 	AddressResolver  func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool)
 	MaxFilterResults int
 	EventIndex       *EventIndex
-	mu               sync.Mutex // guards mutations to filters
-	filters          map[types.FilterID]EventFilter
-	currentHeight    abi.ChainEpoch
+
+	mu            sync.Mutex // guards mutations to filters
+	filters       map[types.FilterID]EventFilter
+	currentHeight abi.ChainEpoch
 }
 
 func (m *EventFilterManager) Apply(ctx context.Context, from, to *types.TipSet) error {
@@ -438,43 +438,37 @@ func (m *EventFilterManager) loadExecutedMessages(ctx context.Context, msgTs, rc
 		return nil, xerrors.Errorf("read messages: %w", err)
 	}
 
-	store := m.ChainStore.ActorStore(ctx)
+	st := m.ChainStore.ActorStore(ctx)
 
-	arr, err := blockadt.AsArray(store, rctTs.Blocks()[0].ParentMessageReceipts)
+	arr, err := blockadt.AsArray(st, rctTs.Blocks()[0].ParentMessageReceipts)
 	if err != nil {
 		return nil, xerrors.Errorf("load receipts amt: %w", err)
 	}
 
-	receipts := make([]types.MessageReceipt, arr.Length())
-	for i := 0; i < len(receipts); i++ {
-		found, err := arr.Get(uint64(i), &receipts[i])
-		if err != nil {
-			return nil, xerrors.Errorf("load receipt: %w", err)
-		}
-		if !found {
-			return nil, xerrors.Errorf("receipt %d not found", i)
-		}
-	}
-
-	return LoadExecutedMessages(ctx, store, msgs, receipts)
-}
-
-func LoadExecutedMessages(ctx context.Context, store adt.Store, msgs []types.ChainMsg, receipts []types.MessageReceipt) ([]executedMessage, error) {
-	if len(msgs) != len(receipts) {
-		return nil, xerrors.Errorf("mismatching message and receipt counts (%d msgs, %d rcts)", len(msgs), len(receipts))
+	if uint64(len(msgs)) != arr.Length() {
+		return nil, xerrors.Errorf("mismatching message and receipt counts (%d msgs, %d rcts)", len(msgs), arr.Length())
 	}
 
 	ems := make([]executedMessage, len(msgs))
 
 	for i := 0; i < len(msgs); i++ {
 		ems[i].msg = msgs[i]
-		ems[i].rct = &receipts[i]
 
-		if receipts[i].EventsRoot == nil {
+		var rct types.MessageReceipt
+		found, err := arr.Get(uint64(i), &rct)
+		if err != nil {
+			return nil, xerrors.Errorf("load receipt: %w", err)
+		}
+		if !found {
+			return nil, xerrors.Errorf("receipt %d not found", i)
+		}
+		ems[i].rct = &rct
+
+		if rct.EventsRoot == nil {
 			continue
 		}
 
-		evtArr, err := amt4.LoadAMT(ctx, store, *receipts[i].EventsRoot, amt4.UseTreeBitWidth(types.EventAMTBitwidth))
+		evtArr, err := amt4.LoadAMT(ctx, st, *rct.EventsRoot, amt4.UseTreeBitWidth(types.EventAMTBitwidth))
 		if err != nil {
 			return nil, xerrors.Errorf("load events amt: %w", err)
 		}
@@ -488,13 +482,16 @@ func LoadExecutedMessages(ctx context.Context, store adt.Store, msgs []types.Cha
 			if err := evt.UnmarshalCBOR(bytes.NewReader(deferred.Raw)); err != nil {
 				return err
 			}
+
 			cpy := evt
-			ems[i].evs[int(u)] = &cpy
+			ems[i].evs[int(u)] = &cpy //nolint:scopelint
 			return nil
 		})
+
 		if err != nil {
 			return nil, xerrors.Errorf("read events: %w", err)
 		}
+
 	}
 
 	return ems, nil

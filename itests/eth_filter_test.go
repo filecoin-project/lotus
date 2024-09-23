@@ -517,7 +517,6 @@ func TestEthGetLogsBasic(t *testing.T) {
 	require.NotNil(rct)
 
 	require.Len(rct.Logs, 1)
-
 	var rctLogs []*ethtypes.EthLog
 	for _, rctLog := range rct.Logs {
 		addr := &rctLog
