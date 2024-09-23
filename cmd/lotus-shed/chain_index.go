@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -108,26 +107,18 @@ var validateBackfillChainIndexCmd = &cli.Command{
 
 			indexValidateResp, err := api.ChainValidateIndex(ctx, abi.ChainEpoch(epoch), backfill)
 			if err != nil {
-				// is it a retryable error ?
-				if strings.Contains(err.Error(), "retry") {
-					log.Warnf("epoch %d; failed to validate index with re-tryable error: %s. retrying...", epoch, err)
-					epoch++ // Increment epoch to retry the same epoch
-					continue
-				}
-
 				_, _ = fmt.Fprintf(cctx.App.Writer, "✗ Epoch %d; failure: %s\n", epoch, err)
+				continue
+			}
+
+			if !logGood {
+				continue
 			}
 
 			// is it a null round ?
 			if indexValidateResp.IsNullRound {
-				if logGood {
-					_, _ = fmt.Fprintf(cctx.App.Writer, "✓ Epoch %d; null round\n", epoch)
-				}
-				continue
-			}
-
-			// log success
-			if logGood {
+				_, _ = fmt.Fprintf(cctx.App.Writer, "✓ Epoch %d; null round\n", epoch)
+			} else {
 				jsonData, err := json.Marshal(indexValidateResp)
 				if err != nil {
 					return fmt.Errorf("failed to marshal results to JSON: %w", err)
