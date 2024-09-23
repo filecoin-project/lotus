@@ -30,4 +30,4 @@ More information on the rewards and impact can be found [here](https://immunefi.
 
 ## Coordinated Disclosure
 
-Filecoin follows the principle of Coordinated Disclosure (CVD). We ask that security researchers give us a reasonable timeframe to address the issue before making any public disclosures. More information can be found [here](https://www.fil.org/security/coordinated-disclosure-policy).
+Filecoin follows the principle of Coordinated Disclosure Policy (CDP). We ask that security researchers give us a reasonable timeframe to address the issue before making any public disclosures. More information can be found [here](https://www.fil.org/security/coordinated-disclosure-policy).
