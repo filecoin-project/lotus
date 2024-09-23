@@ -93,6 +93,9 @@ It is strongly recommended to keep this set to true if you are an RPC provider.`
 The garbage collection (GC) process removes data older than this retention period.
 Setting this to 0 disables GC, preserving all historical data indefinitely.
 
+If set, the minimum value must be greater than builtin.EpochsInDay (i.e. "2880" epochs for mainnet).
+This ensures a reasonable retention period for the indexed data.
+
 Default: 0 (GC disabled)`,
 		},
 		{

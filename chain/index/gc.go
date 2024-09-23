@@ -83,7 +83,7 @@ func (si *SqliteIndexer) gc(ctx context.Context) {
 	}
 
 	log.Infof("gc'ing eth hashes older than %d days", gcRetentionDays)
-	res, err = si.stmts.removeEthHashesOlderThanStmt.Exec("-" + strconv.Itoa(int(gcRetentionDays)) + " day")
+	res, err = si.stmts.removeEthHashesOlderThanStmt.ExecContext(ctx, "-"+strconv.Itoa(int(gcRetentionDays))+" day")
 	if err != nil {
 		log.Errorf("failed to gc eth hashes older than %d days: %w", gcRetentionDays, err)
 		return
