@@ -52,8 +52,6 @@ var ddls = []string{
 	`CREATE INDEX IF NOT EXISTS idx_height ON tipset_message (height)`,
 
 	`CREATE INDEX IF NOT EXISTS event_entry_event_id ON event_entry(event_id)`,
-
-	`CREATE INDEX IF NOT EXISTS idx_tipset_key_reverted_message_id ON tipset_message (tipset_key_cid, reverted, message_id)`,
 }
 
 // preparedStatementMapping returns a map of fields of the preparedStatements struct to the SQL
@@ -85,7 +83,7 @@ func preparedStatementMapping(ps *preparedStatements) map[**sql.Stmt]string {
 		&ps.countTipsetsAtHeightStmt:                  "SELECT COUNT(CASE WHEN reverted = 1 THEN 1 END) AS reverted_count, COUNT(CASE WHEN reverted = 0 THEN 1 END) AS non_reverted_count FROM (SELECT tipset_key_cid, MAX(reverted) AS reverted FROM tipset_message WHERE height = ? GROUP BY tipset_key_cid) AS unique_tipsets",
 		&ps.getNonRevertedTipsetMessageCountStmt:      "SELECT COUNT(*) FROM tipset_message WHERE tipset_key_cid = ? AND reverted = 0 AND message_cid IS NOT NULL",
 		&ps.getNonRevertedTipsetEventCountStmt:        "SELECT COUNT(*) FROM event WHERE reverted = 0 AND message_id IN (SELECT message_id FROM tipset_message WHERE tipset_key_cid = ? AND reverted = 0)",
-		&ps.getNonRevertedTipsetEventEntriesCountStmt: "SELECT COUNT(ee.event_id) AS event_entry_count FROM tipset_message AS t INNER JOIN event AS ev ON t.message_id = ev.message_id INNER JOIN event_entry AS ee ON ev.event_id = ee.event_id WHERE t.tipset_key_cid = ? AND t.reverted = 0",
 		&ps.hasRevertedEventsInTipsetStmt:             "SELECT EXISTS(SELECT 1 FROM event WHERE reverted = 1 AND message_id IN (SELECT message_id FROM tipset_message WHERE tipset_key_cid = ?))",
+		&ps.getNonRevertedTipsetEventEntriesCountStmt: "SELECT COUNT(ee.event_id) AS entry_count FROM event_entry ee JOIN event e ON ee.event_id = e.event_id JOIN tipset_message tm ON e.message_id = tm.message_id WHERE tm.tipset_key_cid = ? AND tm.reverted = 0",
 	}
 }
