@@ -553,20 +553,26 @@ func (a *EthModule) EthGetBlockReceiptsLimited(ctx context.Context, blockParam e
 		return nil, xerrors.Errorf("failed to get tipset: %w", err)
 	}
 
-	cid, err := ts.Key().Cid()
+	tsCid, err := ts.Key().Cid()
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get tipset key cid: %w", err)
 	}
 
-	blkHash, err := ethtypes.EthHashFromCid(cid)
+	blkHash, err := ethtypes.EthHashFromCid(tsCid)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to parse eth hash from cid: %w", err)
 	}
 
 	// Execute the tipset to get the receipts, messages, and events
-	_, msgs, receipts, err := executeTipset(ctx, ts, a.Chain, a.StateAPI)
+	st, msgs, receipts, err := executeTipset(ctx, ts, a.Chain, a.StateAPI)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to execute tipset: %w", err)
+	}
+
+	// Load the state tree
+	stateTree, err := a.StateManager.StateTree(st)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load state tree: %w", err)
 	}
 
 	ethReceipts := make([]*api.EthTxReceipt, 0, len(msgs))
@@ -580,9 +586,9 @@ func (a *EthModule) EthGetBlockReceiptsLimited(ctx context.Context, blockParam e
 			Height:  ts.Height(),
 		}
 
-		tx, err := newEthTxFromMessageLookup(ctx, msgLookup, i, a.Chain, a.StateAPI)
+		tx, err := newEthTx(ctx, a.Chain, stateTree, ts.Height(), tsCid, msg.Cid(), i)
 		if err != nil {
-			return nil, xerrors.Errorf("failed to convert msg to EthTx: %w", err)
+			return nil, xerrors.Errorf("failed to create EthTx: %w", err)
 		}
 
 		receipt, err := newEthTxReceipt(ctx, tx, msgLookup, a.ChainAPI, a.EthEventHandler)
@@ -1692,7 +1698,7 @@ func (e *EthEventHandler) ethGetEventsForFilter(ctx context.Context, filterSpec 
 	}
 
 	// Create a temporary filter
-	f, err := e.EventFilterManager.Install(ctx, pf.minHeight, pf.maxHeight, pf.tipsetCid, pf.addresses, pf.keys, true)
+	f, err := e.EventFilterManager.Install(ctx, pf.minHeight, pf.maxHeight, pf.tipsetCid, pf.addresses, pf.keys, false)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to install event filter: %w", err)
 	}

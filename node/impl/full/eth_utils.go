@@ -651,7 +651,7 @@ func newEthTxFromMessageLookup(ctx context.Context, msgLookup *api.MsgLookup, tx
 	return newEthTx(ctx, cs, st, parentTs.Height(), parentTsCid, msgLookup.Message, txIdx)
 }
 
-func newEthTx(ctx context.Context, cs *store.ChainStore, st *state.StateTree, blockHeight abi.ChainEpoch, parentTsCid cid.Cid, msgCid cid.Cid, txIdx int) (ethtypes.EthTx, error) {
+func newEthTx(ctx context.Context, cs *store.ChainStore, st *state.StateTree, blockHeight abi.ChainEpoch, msgTsCid cid.Cid, msgCid cid.Cid, txIdx int) (ethtypes.EthTx, error) {
 	smsg, err := getSignedMessage(ctx, cs, msgCid)
 	if err != nil {
 		return ethtypes.EthTx{}, xerrors.Errorf("failed to get signed msg: %w", err)
@@ -667,7 +667,7 @@ func newEthTx(ctx context.Context, cs *store.ChainStore, st *state.StateTree, bl
 		ti = ethtypes.EthUint64(txIdx)
 	)
 
-	blkHash, err := ethtypes.EthHashFromCid(parentTsCid)
+	blkHash, err := ethtypes.EthHashFromCid(msgTsCid)
 	if err != nil {
 		return ethtypes.EthTx{}, err
 	}
