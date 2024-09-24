@@ -75,8 +75,8 @@ func generateMarkdownForCLI(cli string) error {
 }
 
 func writeCommandDocs(file *os.File, command string, depth int) error {
-	// For sanity, fail fast if depth exceeds some arbitrarily large number. The
-	// chances are there is a bug in this script.
+	// For sanity, fail fast if depth exceeds some arbitrarily large number. In which
+	// case, chances are there is a bug in this script.
 	if depth > depthRecursionLimit {
 		return fmt.Errorf("recursion exceeded limit of %d", depthRecursionLimit)
 	}
