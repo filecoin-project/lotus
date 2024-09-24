@@ -350,7 +350,7 @@ snap: lotus lotus-miner lotus-worker
 
 # separate from gen because it needs binaries
 docsgen-cli: lotus lotus-miner lotus-worker
-	python3 ./scripts/generate-lotus-cli.py
+	$(GOCC) run ./scripts/docsgen-cli
 	./lotus config default > documentation/en/default-lotus-config.toml
 	./lotus-miner config default > documentation/en/default-lotus-miner-config.toml
 .PHONY: docsgen-cli

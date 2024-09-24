@@ -21,6 +21,7 @@ runs:
           ./extern/filecoin-ffi/libfilcrypto.a
           ./extern/filecoin-ffi/filcrypto.pc
           ./build/.filecoin-install
+          ./build/.update-modules
     - if: steps.cache-ffi.outputs.cache-hit != 'true'
       shell: bash
       working-directory: ${{ inputs.working-directory || github.workspace }}
@@ -36,3 +37,4 @@ runs:
           ./extern/filecoin-ffi/libfilcrypto.a
           ./extern/filecoin-ffi/filcrypto.pc
           ./build/.filecoin-install
+          ./build/.update-modules
