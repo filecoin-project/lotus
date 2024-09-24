@@ -9,31 +9,27 @@ We're shipping a new Indexer implementation in Lotus (`ChainIndexer`) to index F
 This document is aimed at RPC providers and node operators who serve RPC requests and aims to walk through the configuration changes, migration flow and operations/maintenance work needed to enable, backfill and maintain the `ChainIndexer`. 
 
 ## ChainIndexer Config
+### Enablement
 
-The `ChainIndexer` must be enabled on an RPC node as it is disabled by default. Here is the mandatory config to use for all RPC providers to enable the `ChainIndexer` and for ensuring the `EthRPC` and `ActorEventsAPI` are enabled:
+The following must be enabled on an RPC node before starting as they are disabled by default:
 
 ```toml
 [ChainIndexer]
-# This is set to false by default which disables the ChainIndexer. 
-# Please ensure that you set it to true before starting your node.
+# Enable the ChainIndexer. 
   EnableIndexer = true 
 
 [Fevm]
-# This is set to false by default which disables the ETH RPC API. 
-# Please ensure that you set it to true before starting your node.
+# Enable the ETH RPC APIs.
   EnableEthRPC = true
 
 [Events]
-# This is set to false by default which disables the Actor Events API. 
-# Please ensure that you set it to true before starting your node.
+# Enable the Actor Events APIs.
   EnableActorEventsAPI = true
 ```
 
 ### Garbage Collection
 
 The `ChainIndexer` includes a garbage collection (GC) mechanism to manage the amount of historical data retained. By default, GC is disabled to preserve all indexed data.
-
-#### Configuration
 
 To configure GC, use the `GCRetentionEpochs` parameter in the `ChainIndexer` section of your config.
 
@@ -44,8 +40,8 @@ The ChainIndexer periodically runs GC if `GCRetentionEpochs` is > 0 and removes 
   GCRetentionEpochs = X  # Replace X with your desired value
 ```
 
-- Setting `GCRetentionEpochs` to 0 (**this is the default**) completely disables GC.
-- Any non-zero value enables GC and determines the number of epochs of historical data to retain.
+- Setting `GCRetentionEpochs` to 0 (**default**) disables GC.
+- Any positive value enables GC and determines the number of epochs of historical data to retain.
 
 #### Recommendations
 
@@ -54,7 +50,7 @@ The ChainIndexer periodically runs GC if `GCRetentionEpochs` is > 0 and removes 
 2. **Non-Archival Nodes**:  Set `GCRetentionEpochs` to match the amount of chain state your node retains 
 (*for example:* if your node is configured to retain 2 days of Filecoin chain state with the Splitstore, set `GCRetentionEpochs` to (number of Filecoin epochs in a day *2) = 5760).
 
----
+### Removed Options
 
 **Note: The following config options no longer exist in Lotus and have been removed in favor of the `ChainIndexer` config options explained above:**
 
@@ -67,13 +63,10 @@ DisableHistoricFilterAPI = false
 DatabasePath = ""
 ```
 
-These options are now deprecated and will not have any effect if used in your configuration file. Please use the `ChainIndexer` config options as described above.
-
----
 
 ## Migration Guide
 
-Migrating to the new `ChainIndexer` involves several steps to ensure a smooth transition. Here's a guide to help you through the process:
+Migrating to the new `ChainIndexer` involves several steps to ensure a smooth transition:
 
 1. **Backup Existing Index Databases**
    - Before restarting your Lotus node, create a backup of your existing index databases.
@@ -84,15 +77,16 @@ Migrating to the new `ChainIndexer` involves several steps to ensure a smooth tr
    - After creating backups, remove the SQLite database files for `MsgIndex`, `EthTxIndex`, and `EventIndex` from the `{$LOTUS_PATH/sqlite}` directory.
 
 3. **Update Configuration**
-   - Modify your Lotus configuration to enable the `ChainIndexer` as described in the `ChainIndexer Config` section above.
+   - Modify your Lotus configuration to enable the `ChainIndexer` as described in the [`ChainIndexer Config` section above](#chainindexer-config] .
 
 4. **Restart Lotus Node**
    - Restart your Lotus node with the new configuration.
    - The `ChainIndexer` will begin indexing **real-time chain state changes** immediately.
 
-Once Lotus starts with the `ChainIndexer` enabled, it will begin indexing real-time chain state changes i.e. new incoming tipsets. However, it will not index any historical chain state i.e. any previously existing chain state. To index historical chain state (aka **"backfilling"**), you can use the following tools that we're shipping with the `ChainIndexer`:
+### Backfilling
+Once Lotus starts with the `ChainIndexer` enabled, it will begin indexing real-time chain state changes (i.e., new incoming tipsets). However, it will not index any historical chain state (i.e., any previously existing chain state). To index historical chain state (i.e., **"backfilling"**), you can use the following tools.
 
-### The `ChainValidateIndex` JSON RPC API
+#### The `ChainValidateIndex` JSON RPC API
 
 The `ChainValidateIndex` JSON RPC API serves a dual purpose: it validates/diagnoses the integrity of the index at a specific epoch (i.e., it ensures consistency between indexed data and actual chain state), while also providing the option to backfill the `ChainIndexer` if it does have data for the specified epoch. 
 
@@ -107,7 +101,7 @@ type IndexValidation struct {
 	IndexedMessagesCount uint64
 	// IndexedEventsCount signifies the number of indexed events for the canonical tipset at this epoch.
 	IndexedEventsCount uint64
-	// Backfilled denotes whether missing data was successfully backfilled during validation.
+	// Backfilled denotes whether missing data was successfully backfilled into the index during validation.
 	Backfilled bool
 	// IsNullRound indicates if the epoch corresponds to a null round and therefore does not have any indexed messages or events.
 	IsNullRound bool
@@ -142,15 +136,12 @@ The `ChainValidateIndex` API serves multiple purposes:
 3. Detects "holes" in the index:
    - If `backfill` is `false` and the index lacks data for the specified epoch, the API returns an error indicating missing data
 
-This API is available for use once the Lotus daemon has started with the `ChainIndexer` enabled. However, calling the API for a single epoch at a time can be cumbersome, especially when backfilling or validating the index over a range of historical epochs, such as during a migration. 
+The `ChainValidateIndex` RPC API  is available for use once the Lotus daemon has started with [`ChainIndexer` enabled](#link-to-section). 
 
-To simplify this process, we're also providing a command-line tool in `lotus-shed`.
+#### `lotus-shed chainindex validate-backfill` tool
+The `lotus-shed chainindex validate-backfill` command is a tool for validating and optionally backfilling the chain index over a range of epochs since calling the API for a single epoch at a time can be cumbersome, especially when backfilling or validating the index over a range of historical epochs, such as during a migration. It wraps the `ChainValidateIndex` API to efficiently process multiple epochs.
 
-### The `lotus-shed chainindex validate-backfill` command-line tool
-
-**Note: This command can only be run when the Lotus daemon is already running with the `ChainIndexer` enabled as it depends on the `ChainValidateIndex` RPC API described above.**
-
-The `lotus-shed chainindex validate-backfill` command is a tool for validating and optionally backfilling the chain index over a range of epochs. It wraps the `ChainValidateIndex` API to efficiently process multiple epochs.
+**Note: This command can only be run when the Lotus daemon is already running with the [`ChainIndexer` enabled](#link-to-appropriate-sectoin) as it depends on the [`ChainValidateIndex` RPC API](#link-to-appropriate-section).**
 
 #### Usage:
 ```
@@ -170,7 +161,7 @@ The command validates the chain index entries for each epoch in the specified ra
 - If the `ChainValidateIndex` API returns an error for an epoch, indicating an inconsistency between the index and chain state, an error message is logged for that epoch.
 
 #### Logging:
-- **Progress is logged every 2880 epochs (1 day worth of epochs) during the validation process.**
+- **Progress is logged every 2880 epochs (1 day worth of epochs) processed during the validation process.**
 - If `--log-good` is enabled, details are also logged for each epoch that has no detected problems. This includes:
   - Null rounds with no messages/events.
   - Epochs with a valid indexed entry.
@@ -185,4 +176,5 @@ lotus-shed chainindex validate-backfill --from 1000000 --to 994240 --log-good
 
 This command is useful for backfilling the chain index over a range of historical epochs during the migration to the new `ChainIndexer`. **It can also be run periodically to validate the index's integrity.**
 
+## Need more help?
 Please free to ask questions on `#fil-lotus-dev` on Filecoin Slack or create issues on Lotus [GitHub](https://github.com/filecoin-project/lotus/issues) for any questions/bugs/comments/concerns.
