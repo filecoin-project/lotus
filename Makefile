@@ -28,6 +28,7 @@ endif
 
 GOFLAGS+=-ldflags="$(ldflags)"
 
+FIX_IMPORTS = $(GOCC) run ./scripts/fiximports
 
 ## FFI
 
@@ -295,7 +296,7 @@ dist-clean:
 type-gen: api-gen
 	$(GOCC) run ./gen/main.go
 	$(GOCC) generate -x ./...
-	goimports -w api/
+	$(FIX_IMPORTS)
 
 actors-code-gen:
 	$(GOCC) run ./gen/inline-gen . gen/inlinegen-data.json
@@ -313,8 +314,7 @@ bundle-gen:
 
 api-gen:
 	$(GOCC) run ./gen/api
-	goimports -w api
-	goimports -w api
+	$(FIX_IMPORTS)
 .PHONY: api-gen
 
 cfgdoc-gen:
@@ -334,7 +334,7 @@ docsgen: fiximports
 .PHONY: docsgen
 
 fiximports:
-	$(GOCC) run ./scripts/fiximports
+	$(FIX_IMPORTS)
 .PHONY: fiximports
 
 gen: actors-code-gen type-gen cfgdoc-gen docsgen api-gen
