@@ -9,7 +9,8 @@
 ## New features
 
 * Add `EthSendRawTransactionUntrusted` RPC method to be used for the gateway when accepting `EthSendRawTransaction` and `eth_sendRawTransaction`. Applies a tighter limit on the number of messages in the queue from a single sender and applies additional restrictions on nonce increments. ([filecoin-project/lotus#12431](https://github.com/filecoin-project/lotus/pull/12431))
-* [Checkpoint TipSets finalized by F3](https://github.com/filecoin-project/lotus/pull/12460): Once a decision is made by F3, the TipSet is check-pointed in `ChainStore`. As part of this change, any missing TipSets are asynchronously synced as required by the `ChainStore` checkpointing mechanism. 
+* [Checkpoint TipSets finalized by F3](https://github.com/filecoin-project/lotus/pull/12460): Once a decision is made by F3, the TipSet is check-pointed in `ChainStore`. As part of this change, any missing TipSets are asynchronously synced as required by the `ChainStore` checkpointing mechanism.
+* Add an environment variable, `F3_INITIAL_POWERTABLE_CID` to allow specifying the initial power table used by F3 ([filecoin-project/lotus#12502](https://github.com/filecoin-project/lotus/pull/12502)). This may be used to help a lotus node re-sync the F3 chain when syncing from a snapshot after the F3 upgrade epoch. The precise CID to use here won't be known until the F3 is officially "live".
 
 ## Improvements
 

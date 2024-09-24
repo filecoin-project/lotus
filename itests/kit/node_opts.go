@@ -4,6 +4,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/filecoin-project/go-f3/manifest"
@@ -216,7 +217,7 @@ func MutateSealingConfig(mut func(sc *config.SealingConfig)) NodeOpt {
 func F3Enabled(bootstrapEpoch abi.ChainEpoch, blockDelay time.Duration, finality abi.ChainEpoch, manifestProvider peer.ID) NodeOpt {
 	return ConstructorOpts(
 		node.Override(new(*lf3.Config), func(nn dtypes.NetworkName) *lf3.Config {
-			c := lf3.NewConfig(manifestProvider, true)(nn)
+			c := lf3.NewConfig(manifestProvider, true, cid.Undef)(nn)
 			c.InitialManifest.Pause = false
 			c.InitialManifest.EC.Period = blockDelay
 			c.InitialManifest.EC.Finality = int64(finality)
