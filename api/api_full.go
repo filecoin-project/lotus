@@ -65,36 +65,6 @@ type FullNode interface {
 
 	// MethodGroup: ChainIndexer
 	// The ChainIndexer method group contains methods for interacting with the chain indexer.
-
-	// IndexValidation contains detailed information about the validation status of a specific chain epoch.
-	//type IndexValidation struct {
-	//	// TipSetKey is the key of the canonical tipset for this epoch.
-	//	TipSetKey TipSetKey
-	//	// Height is the epoch height at which the validation is performed.
-	//	Height uint64
-	//	// IndexedMessagesCount indicates the number of indexed messages for the canonical tipset at this epoch.
-	//	IndexedMessagesCount uint64
-	//	// IndexedEventsCount signifies the number of indexed events for the canonical tipset at this epoch.
-	//	IndexedEventsCount uint64
-	//	// Backfilled denotes whether missing data was successfully backfilled into the index during validation.
-	//	Backfilled bool
-	//	// IsNullRound indicates if the epoch corresponds to a null round and therefore does not have any indexed messages or events.
-	//	IsNullRound bool
-	//}
-	//
-	// ChainValidateIndex validates the integrity of the chain index at a specified epoch and also optionally backfills missing data.
-	//
-	// Parameters:
-	//   - epoch: The specific chain epoch for which to validate/backfill the index.
-	//   - backfill: A boolean flag indicating whether to attempt backfilling of missing data if the index does not have data for the
-	//               specified epoch.
-	//
-	// Returns:
-	//   - *types.IndexValidation: A pointer to an IndexValidation struct containing the results of the validation/backfill.
-	//   - error: An error object if the validation/backfill fails. The error message will contain details about the index
-	//            corruption if the call fails because of an incosistency between indexed data and the actual chain state.
-	//
-	// Note: The API returns an error if the index does not have data for the specified epoch and backfill is set to false.
 	//
 	// The `ChainValidateIndex` API serves multiple purposes:
 	//
@@ -109,6 +79,18 @@ type FullNode interface {
 	// 3. Detects "holes" in the index:
 	//   - If `backfill` is `false` and the index lacks data for the specified epoch, the API returns an error indicating missing data
 	//
+	// ChainValidateIndex validates the integrity of the chain index at a specified epoch and also optionally backfills missing data.
+	//
+	// Parameters:
+	//   - epoch: The specific chain epoch for which to validate/backfill the index.
+	//   - backfill: A boolean flag indicating whether to attempt backfilling of missing data if the index does not have data for the
+	//               specified epoch.
+	//
+	// Returns:
+	//   - *types.IndexValidation: A pointer to an IndexValidation struct containing the results of the validation/backfill.
+	//   - error: An error object if the validation/backfill fails. The error message will contain details about the index
+	//            corruption if the call fails because of an incosistency between indexed data and the actual chain state.
+	//            Note: The API returns an error if the index does not have data for the specified epoch and backfill is set to false.
 	ChainValidateIndex(ctx context.Context, epoch abi.ChainEpoch, backfill bool) (*types.IndexValidation, error) //perm:write
 
 	// MethodGroup: Chain

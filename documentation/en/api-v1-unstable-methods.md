@@ -1235,49 +1235,7 @@ Inputs:
 Response: `"0"`
 
 ### ChainValidateIndex
-IndexValidation contains detailed information about the validation status of a specific chain epoch.
-type IndexValidation struct {
-	// TipSetKey is the key of the canonical tipset for this epoch.
-	TipSetKey TipSetKey
-	// Height is the epoch height at which the validation is performed.
-	Height uint64
-	// IndexedMessagesCount indicates the number of indexed messages for the canonical tipset at this epoch.
-	IndexedMessagesCount uint64
-	// IndexedEventsCount signifies the number of indexed events for the canonical tipset at this epoch.
-	IndexedEventsCount uint64
-	// Backfilled denotes whether missing data was successfully backfilled into the index during validation.
-	Backfilled bool
-	// IsNullRound indicates if the epoch corresponds to a null round and therefore does not have any indexed messages or events.
-	IsNullRound bool
-}
-
-ChainValidateIndex validates the integrity of the chain index at a specified epoch and also optionally backfills missing data.
-
-Parameters:
-  - epoch: The specific chain epoch for which to validate/backfill the index.
-  - backfill: A boolean flag indicating whether to attempt backfilling of missing data if the index does not have data for the
-              specified epoch.
-
-Returns:
-  - *types.IndexValidation: A pointer to an IndexValidation struct containing the results of the validation/backfill.
-  - error: An error object if the validation/backfill fails. The error message will contain details about the index
-           corruption if the call fails because of an incosistency between indexed data and the actual chain state.
-
-Note: The API returns an error if the index does not have data for the specified epoch and backfill is set to false.
-
-The `ChainValidateIndex` API serves multiple purposes:
-
-1. Validates the chain index at a specific epoch:
-  - Ensures consistency between indexed data and actual chain state
-  - Reports any errors found during validation (i.e. the indexed data does not match the actual chain state, missing data, etc.)
-
-2. Optionally backfills missing data:
-  - Backfills data if the index is missing information for the specified epoch
-  - Backfilling only occurs when the `backfill` parameter is set to `true`
-
-3. Detects "holes" in the index:
-  - If `backfill` is `false` and the index lacks data for the specified epoch, the API returns an error indicating missing data
-
+There are not yet any comments for this method.
 
 Perms: write
 
