@@ -24,10 +24,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
-	minertypes13 "github.com/filecoin-project/go-state-types/builtin/v13/miner"
 	verifregtypes13 "github.com/filecoin-project/go-state-types/builtin/v13/verifreg"
 	datacap2 "github.com/filecoin-project/go-state-types/builtin/v9/datacap"
-	verifregtypes9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
@@ -237,16 +235,16 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 			{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "provider", Value: must.One(ipld.Encode(basicnode.NewInt(int64(minerId)), dagcbor.Encode))},
 			{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "piece-cid", Value: must.One(ipld.Encode(basicnode.NewLink(cidlink.Link{Cid: bogusPieceCid}), dagcbor.Encode))},
 			{Flags: 0x01, Codec: uint64(multicodec.Cbor), Key: "piece-size", Value: must.One(ipld.Encode(basicnode.NewInt(int64(pieceSize.Padded())), dagcbor.Encode))},
-			{Flags: 0x01, Codec: uint64(multicodec.Cbor), Key: "term-min", Value: must.One(ipld.Encode(basicnode.NewInt(verifregtypes13.MinimumVerifiedAllocationTerm), dagcbor.Encode))},
-			{Flags: 0x01, Codec: uint64(multicodec.Cbor), Key: "term-max", Value: must.One(ipld.Encode(basicnode.NewInt(verifregtypes13.MaximumVerifiedAllocationTerm), dagcbor.Encode))},
+			{Flags: 0x01, Codec: uint64(multicodec.Cbor), Key: "term-min", Value: must.One(ipld.Encode(basicnode.NewInt(verifreg.MinimumVerifiedAllocationTerm), dagcbor.Encode))},
+			{Flags: 0x01, Codec: uint64(multicodec.Cbor), Key: "term-max", Value: must.One(ipld.Encode(basicnode.NewInt(verifreg.MaximumVerifiedAllocationTerm), dagcbor.Encode))},
 			{Flags: 0x01, Codec: uint64(multicodec.Cbor), Key: "expiration", Value: must.One(ipld.Encode(basicnode.NewInt(int64(bogusAllocationExpiry)), dagcbor.Encode))},
 		}
 		require.Equal(t, expectedEntries, allocationEvents[0].Entries)
 
 		// the second, real allocation
-		expectedEntries[1].Value = must.One(ipld.Encode(basicnode.NewInt(int64(allocationId)), dagcbor.Encode))                                 // "id"
-		expectedEntries[4].Value = must.One(ipld.Encode(basicnode.NewLink(cidlink.Link{Cid: dc.PieceCID}), dagcbor.Encode))                     // "piece-cid"
-		expectedEntries[8].Value = must.One(ipld.Encode(basicnode.NewInt(verifregtypes13.MaximumVerifiedAllocationExpiration), dagcbor.Encode)) // "expiration"
+		expectedEntries[1].Value = must.One(ipld.Encode(basicnode.NewInt(int64(allocationId)), dagcbor.Encode))                          // "id"
+		expectedEntries[4].Value = must.One(ipld.Encode(basicnode.NewLink(cidlink.Link{Cid: dc.PieceCID}), dagcbor.Encode))              // "piece-cid"
+		expectedEntries[8].Value = must.One(ipld.Encode(basicnode.NewInt(verifreg.MaximumVerifiedAllocationExpiration), dagcbor.Encode)) // "expiration"
 		require.Equal(t, expectedEntries, allocationEvents[1].Entries)
 	}
 
@@ -262,8 +260,8 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 			{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "provider", Value: must.One(ipld.Encode(basicnode.NewInt(int64(minerId)), dagcbor.Encode))},
 			{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "piece-cid", Value: must.One(ipld.Encode(basicnode.NewLink(cidlink.Link{Cid: bogusPieceCid}), dagcbor.Encode))},
 			{Flags: 0x01, Codec: uint64(multicodec.Cbor), Key: "piece-size", Value: must.One(ipld.Encode(basicnode.NewInt(int64(pieceSize.Padded())), dagcbor.Encode))},
-			{Flags: 0x01, Codec: uint64(multicodec.Cbor), Key: "term-min", Value: must.One(ipld.Encode(basicnode.NewInt(verifregtypes13.MinimumVerifiedAllocationTerm), dagcbor.Encode))},
-			{Flags: 0x01, Codec: uint64(multicodec.Cbor), Key: "term-max", Value: must.One(ipld.Encode(basicnode.NewInt(verifregtypes13.MaximumVerifiedAllocationTerm), dagcbor.Encode))},
+			{Flags: 0x01, Codec: uint64(multicodec.Cbor), Key: "term-min", Value: must.One(ipld.Encode(basicnode.NewInt(verifreg.MinimumVerifiedAllocationTerm), dagcbor.Encode))},
+			{Flags: 0x01, Codec: uint64(multicodec.Cbor), Key: "term-max", Value: must.One(ipld.Encode(basicnode.NewInt(verifreg.MaximumVerifiedAllocationTerm), dagcbor.Encode))},
 			{Flags: 0x01, Codec: uint64(multicodec.Cbor), Key: "expiration", Value: must.One(ipld.Encode(basicnode.NewInt(int64(bogusAllocationExpiry)), dagcbor.Encode))},
 		}
 		require.Equal(t, expectedEntries, allocationEvents[0].Entries)
@@ -281,8 +279,8 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 			{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "provider", Value: must.One(ipld.Encode(basicnode.NewInt(int64(minerId)), dagcbor.Encode))},
 			{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "piece-cid", Value: must.One(ipld.Encode(basicnode.NewLink(cidlink.Link{Cid: dc.PieceCID}), dagcbor.Encode))},
 			{Flags: 0x01, Codec: uint64(multicodec.Cbor), Key: "piece-size", Value: must.One(ipld.Encode(basicnode.NewInt(int64(pieceSize.Padded())), dagcbor.Encode))},
-			{Flags: 0x01, Codec: uint64(multicodec.Cbor), Key: "term-min", Value: must.One(ipld.Encode(basicnode.NewInt(verifregtypes13.MinimumVerifiedAllocationTerm), dagcbor.Encode))},
-			{Flags: 0x01, Codec: uint64(multicodec.Cbor), Key: "term-max", Value: must.One(ipld.Encode(basicnode.NewInt(verifregtypes13.MaximumVerifiedAllocationTerm), dagcbor.Encode))},
+			{Flags: 0x01, Codec: uint64(multicodec.Cbor), Key: "term-min", Value: must.One(ipld.Encode(basicnode.NewInt(verifreg.MinimumVerifiedAllocationTerm), dagcbor.Encode))},
+			{Flags: 0x01, Codec: uint64(multicodec.Cbor), Key: "term-max", Value: must.One(ipld.Encode(basicnode.NewInt(verifreg.MaximumVerifiedAllocationTerm), dagcbor.Encode))},
 			{Flags: 0x01, Codec: uint64(multicodec.Cbor), Key: "term-start", Value: must.One(ipld.Encode(basicnode.NewInt(int64(claimEvents[0].Height)), dagcbor.Encode))},
 			{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "sector", Value: must.One(ipld.Encode(basicnode.NewInt(int64(si.SectorID)), dagcbor.Encode))},
 		}
@@ -300,14 +298,14 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 		fmt.Printf("Claim<provider=%s, client=%s, data=%s, size=%d, termMin=%d, termMax=%d, termStart=%d, sector=%d>\n",
 			p, c, claim.Data, claim.Size, claim.TermMin, claim.TermMax, claim.TermStart, claim.Sector)
 	}
-	require.Equal(t, []*verifregtypes9.Claim{
+	require.Equal(t, []*verifreg.Claim{
 		{
 			Provider:  abi.ActorID(minerId),
 			Client:    clientId,
 			Data:      dc.PieceCID,
 			Size:      dc.Size,
-			TermMin:   verifregtypes13.MinimumVerifiedAllocationTerm,
-			TermMax:   verifregtypes13.MaximumVerifiedAllocationTerm,
+			TermMin:   verifreg.MinimumVerifiedAllocationTerm,
+			TermMax:   verifreg.MaximumVerifiedAllocationTerm,
 			TermStart: si.Activation,
 			Sector:    so.Sector,
 		},
@@ -429,35 +427,35 @@ func ddoVerifiedSetupAllocations(
 	tmax abi.ChainEpoch,
 ) (clientID abi.ActorID, allocationID verifregtypes13.AllocationId) {
 	if tmax == 0 {
-		tmax = verifregtypes13.MaximumVerifiedAllocationTerm
+		tmax = verifreg.MaximumVerifiedAllocationTerm
 	}
 
-	var requests []verifregtypes13.AllocationRequest
+	var requests []verifreg.AllocationRequest
 
 	if bogusAllocExpiration != 0 {
 		// design this one to expire so we can observe allocation-removed
-		allocationRequestBogus := verifregtypes13.AllocationRequest{
+		allocationRequestBogus := verifreg.AllocationRequest{
 			Provider:   abi.ActorID(minerId),
 			Data:       bogusPieceCid,
 			Size:       dc.Size,
-			TermMin:    verifregtypes13.MinimumVerifiedAllocationTerm,
+			TermMin:    verifreg.MinimumVerifiedAllocationTerm,
 			TermMax:    tmax,
 			Expiration: bogusAllocExpiration,
 		}
 		requests = append(requests, allocationRequestBogus)
 	}
 
-	allocationRequest := verifregtypes13.AllocationRequest{
+	allocationRequest := verifreg.AllocationRequest{
 		Provider:   abi.ActorID(minerId),
 		Data:       dc.PieceCID,
 		Size:       dc.Size,
-		TermMin:    verifregtypes13.MinimumVerifiedAllocationTerm,
+		TermMin:    verifreg.MinimumVerifiedAllocationTerm,
 		TermMax:    tmax,
-		Expiration: verifregtypes13.MaximumVerifiedAllocationExpiration,
+		Expiration: verifreg.MaximumVerifiedAllocationExpiration,
 	}
 	requests = append(requests, allocationRequest)
 
-	allocationRequests := verifregtypes13.AllocationRequests{
+	allocationRequests := verifreg.AllocationRequests{
 		Allocations: requests,
 	}
 
@@ -508,7 +506,7 @@ func ddoVerifiedSetupAllocations(
 			break
 		}
 	}
-	require.NotEqual(t, verifregtypes13.AllocationId(0), allocationID) // found it in there
+	require.NotEqual(t, verifreg.AllocationId(0), allocationID) // found it in there
 	return clientID, allocationID
 }
 
@@ -528,7 +526,7 @@ func ddoVerifiedOnboardPiece(ctx context.Context, t *testing.T, miner *kit.TestM
 		PieceActivationManifest: &minertypes.PieceActivationManifest{
 			CID:                   dc.PieceCID,
 			Size:                  dc.Size,
-			VerifiedAllocationKey: &minertypes13.VerifiedAllocationKey{Client: clientId, ID: allocationId},
+			VerifiedAllocationKey: &minertypes.VerifiedAllocationKey{Client: clientId, ID: allocationId},
 			Notify:                nil,
 		},
 	})
@@ -553,7 +551,7 @@ func ddoVerifiedOnboardPiece(ctx context.Context, t *testing.T, miner *kit.TestM
 
 func ddoVerifiedRemoveAllocations(ctx context.Context, t *testing.T, node v1api.FullNode, verifiedClientAddr address.Address, clientId abi.ActorID) {
 	// trigger an allocation removal
-	removalParams, aerr := actors.SerializeParams(&verifregtypes13.RemoveExpiredAllocationsParams{Client: clientId})
+	removalParams, aerr := actors.SerializeParams(&verifreg.RemoveExpiredAllocationsParams{Client: clientId})
 	require.NoError(t, aerr)
 
 	msg := &types.Message{
@@ -572,9 +570,9 @@ func ddoVerifiedRemoveAllocations(ctx context.Context, t *testing.T, node v1api.
 	require.EqualValues(t, 0, res.Receipt.ExitCode)
 }
 
-func ddoVerifiedBuildClaimsFromMessages(ctx context.Context, t *testing.T, eventsFromMessages []*types.ActorEvent, node v1api.FullNode) []*verifregtypes9.Claim {
+func ddoVerifiedBuildClaimsFromMessages(ctx context.Context, t *testing.T, eventsFromMessages []*types.ActorEvent, node v1api.FullNode) []*verifreg.Claim {
 	claimKeyCbor := must.One(ipld.Encode(basicnode.NewString("claim"), dagcbor.Encode))
-	claims := make([]*verifregtypes9.Claim, 0)
+	claims := make([]*verifreg.Claim, 0)
 	for _, event := range eventsFromMessages {
 		var isClaim bool
 		var claimId int64 = -1
@@ -595,7 +593,7 @@ func ddoVerifiedBuildClaimsFromMessages(ctx context.Context, t *testing.T, event
 		if isClaim && claimId != -1 && providerId != -1 {
 			provider, err := address.NewIDAddress(uint64(providerId))
 			require.NoError(t, err)
-			claim, err := node.StateGetClaim(ctx, provider, verifregtypes9.ClaimId(claimId), types.EmptyTSK)
+			claim, err := node.StateGetClaim(ctx, provider, verifreg.ClaimId(claimId), types.EmptyTSK)
 			require.NoError(t, err)
 			claims = append(claims, claim)
 		}
@@ -667,7 +665,7 @@ func ddoVerifiedSetupVerifiedClient(ctx context.Context, t *testing.T, client *k
 	}
 
 	allowance := big.NewInt(100000000000)
-	params, aerr := actors.SerializeParams(&verifregtypes13.AddVerifierParams{Address: verifierAddr, Allowance: allowance})
+	params, aerr := actors.SerializeParams(&verifreg.AddVerifierParams{Address: verifierAddr, Allowance: allowance})
 	require.NoError(t, aerr)
 
 	msg := &types.Message{
@@ -693,7 +691,7 @@ func ddoVerifiedSetupVerifiedClient(ctx context.Context, t *testing.T, client *k
 	for _, ad := range ret {
 		initialDatacap := big.NewInt(10000)
 
-		params, aerr = actors.SerializeParams(&verifregtypes13.AddVerifiedClientParams{Address: ad, Allowance: initialDatacap})
+		params, aerr = actors.SerializeParams(&verifreg.AddVerifiedClientParams{Address: ad, Allowance: initialDatacap})
 		require.NoError(t, aerr)
 
 		msg = &types.Message{
@@ -858,11 +856,11 @@ func TestVerifiedDDOExtendClaim(t *testing.T) {
 	require.EqualValues(t, newclaim.TermMax-oldclaim.TermMax, 3000)
 
 	// Extend claim with non-verified client | should fail
-	_, err = cli.CreateExtendClaimMsg(ctx, client.FullNode, pcm, []string{}, unverifiedClient.Address, verifregtypes13.MaximumVerifiedAllocationTerm, false, true, 100)
+	_, err = cli.CreateExtendClaimMsg(ctx, client.FullNode, pcm, []string{}, unverifiedClient.Address, verifreg.MaximumVerifiedAllocationTerm, false, true, 100)
 	require.ErrorContains(t, err, "does not have any datacap")
 
 	// Extend all claim with verified client
-	msgs, err = cli.CreateExtendClaimMsg(ctx, client.FullNode, nil, []string{miner.ActorAddr.String()}, verifiedClientAddr2, verifregtypes13.MaximumVerifiedAllocationTerm, true, true, 100)
+	msgs, err = cli.CreateExtendClaimMsg(ctx, client.FullNode, nil, []string{miner.ActorAddr.String()}, verifiedClientAddr2, verifreg.MaximumVerifiedAllocationTerm, true, true, 100)
 	require.NoError(t, err)
 	require.Len(t, msgs, 1)
 	smsg, err = client.MpoolPushMessage(ctx, msgs[0], nil)
@@ -882,5 +880,5 @@ func TestVerifiedDDOExtendClaim(t *testing.T) {
 
 	// TODO: check "claim-updated" event
 	// New TermMax should be more than 5 years
-	require.Greater(t, int(newclaim.TermMax), verifregtypes13.MaximumVerifiedAllocationTerm)
+	require.Greater(t, int(newclaim.TermMax), verifreg.MaximumVerifiedAllocationTerm)
 }
