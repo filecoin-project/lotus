@@ -543,6 +543,7 @@ func TestEthGetLogsBasic(t *testing.T) {
 
 		totalMessageCount := 0
 		totalEventCount := 0
+		totalEventEntriesCount := 0
 		messages, err := client.ChainGetMessagesInTipset(ctx, ts.Key())
 		require.NoError(err)
 		totalMessageCount = len(messages)
@@ -555,6 +556,9 @@ func TestEthGetLogsBasic(t *testing.T) {
 				events, err := client.ChainGetEvents(ctx, *receipt.Receipt.EventsRoot)
 				require.NoError(err)
 				totalEventCount += len(events)
+				for _, event := range events {
+					totalEventEntriesCount += len(event.Entries)
+				}
 			}
 		}
 		t.Logf("tipset %d: %d messages, %d events", height, totalMessageCount, totalEventCount)
@@ -566,6 +570,7 @@ func TestEthGetLogsBasic(t *testing.T) {
 		require.EqualValues(height, iv.Height)
 		require.EqualValues(totalMessageCount, iv.IndexedMessagesCount)
 		require.EqualValues(totalEventCount, iv.IndexedEventsCount)
+		require.EqualValues(totalEventEntriesCount, iv.IndexedEventEntriesCount)
 		require.False(iv.Backfilled)
 	}
 }

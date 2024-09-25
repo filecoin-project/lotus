@@ -1261,6 +1261,7 @@ Response:
   "Height": 42,
   "IndexedMessagesCount": 42,
   "IndexedEventsCount": 42,
+  "IndexedEventEntriesCount": 42,
   "Backfilled": true,
   "IsNullRound": true
 }
