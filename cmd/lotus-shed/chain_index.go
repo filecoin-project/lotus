@@ -27,26 +27,37 @@ var validateBackfillChainIndexCmd = &cli.Command{
 	Description: `
 lotus-shed chainindex validate-backfill --from <start_epoch> --to <end_epoch> [--backfill] [--log-good]
 
-The command validates the chain index entries for each epoch in the specified range, 
-checking for missing or inconsistent entries (i.e. the indexed data does not match the actual chain state). 
-If '--backfill' is enabled (which it is by default), it will attempt to backfill any missing entries using 
-the 'ChainValidateIndex' API.
+The command validates the chain index entries for each epoch in the specified range, checking for missing or 
+inconsistent entries (i.e. the indexed data does not match the actual chain state). If '--backfill' is enabled 
+(which it is by default), it will attempt to backfill any missing entries using the 'ChainValidateIndex' API.
 
 Parameters:
   - '--from' (required): The starting epoch (inclusive) for the validation range. Must be greater than 0.
-  - '--to' (required): The ending epoch (inclusive) for the validation range. Must be greater than 0 and less than or equal to 'from'.
+  - '--to' (required): The ending epoch (inclusive) for the validation range. Must be greater than 0 and less 
+                        than or equal to 'from'.
   - '--backfill' (optional, default: true): Whether to backfill missing index entries during validation. 
   - '--log-good' (optional, default: false): Whether to log details for tipsets that have no detected problems.
 
 Error conditions:
   - If 'from' or 'to' are invalid (<=0 or 'to' > 'from'), an error is returned.
-  - If the 'ChainValidateIndex' API returns an error for an epoch, indicating an inconsistency between the index and chain state, an error message is logged for that epoch.
+  - If the 'ChainValidateIndex' API returns an error for an epoch, indicating an inconsistency between the index 
+    and chain state, an error message is logged for that epoch.
 
 Logging:
   - Progress is logged every 2880 epochs (1 day worth of epochs) processed during the validation process.
   - If '--log-good' is enabled, details are also logged for each epoch that has no detected problems. This includes:
     - Null rounds with no messages/events.
     - Epochs with a valid indexed entry.
+
+Example usage:
+
+To validate and backfill the chain index for the last 5760 epochs (2 days) and log details for all epochs:
+
+lotus-shed chainindex validate-backfill --from 1000000 --to 994240 --log-good 
+
+This command is useful for backfilling the chain index over a range of historical epochs during the migration to 
+the new ChainIndexer. It can also be run periodically to validate the index's integrity using system schedulers 
+like cron.
 	`,
 	Flags: []cli.Flag{
 		&cli.IntFlag{

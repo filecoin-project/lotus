@@ -1,26 +1,5 @@
 # ChainIndexer Documentation for RPC Providers
-
-# Table of Contents
-
-- [ChainIndexer Documentation for RPC Providers](#chainindexer-documentation-for-rpc-providers)
-  - [Introduction](#introduction)
-  - [ChainIndexer Config](#chainindexer-config)
-    - [Enablement](#enablement)
-    - [Garbage Collection](#garbage-collection)
-      - [Recommendations](#recommendations)
-    - [Removed Options](#removed-options)
-  - [Migration Guide](#migration-guide)
-    - [Backfilling](#backfilling)
-      - [The `ChainValidateIndex` JSON RPC API](#the-chainvalidateindex-json-rpc-api)
-      - [`lotus-shed chainindex validate-backfill` CLI tool](#lotus-shed-chainindex-validate-backfill-cli-tool)
-        - [Usage](#usage)
-        - [Parameters](#parameters)
-        - [Error conditions](#error-conditions)
-        - [Logging](#logging)
-        - [Example usage](#example-usage)
-  - [Rollback](#rollback)
-  - [Need more help?](#need-more-help)
-
+  
 ## Introduction
 
 This document is for RPC providers and node operators who serve RPC requests walking through the configuration changes, migration flow and operations/maintenance work needed to enable, backfill and maintain the `ChainIndexer`.
@@ -71,7 +50,8 @@ The ChainIndexer [periodically runs](https://github.com/filecoin-project/lotus/b
 1. **Archival Nodes**: **Keep GC disabled** (`GCRetentionEpochs` = 0) to retain all indexed data.
 
 2. **Non-Archival Nodes**:  Set `GCRetentionEpochs` to match the amount of chain state your node retains 
-(*Example:* if your node is configured to retain 2 days of Filecoin chain state with the Splitstore, set `GCRetentionEpochs` to `retentionDays * epochsPerDay = 2 * 2880 = 5760`.)
+(*Example:* if your node is configured to retain 2 days of Filecoin chain state with the Splitstore, set `GCRetentionEpochs` to `retentionDays * epochsPerDay = 2 * 2880 = 5760`).
+**Warning:** Setting this value below the chain state retention period will degrade RPC performance and reliability because the Index will lack data for epochs still present in the chain state.  
 
 ### Removed Options
 
@@ -118,14 +98,17 @@ Migrating to the new `ChainIndexer` involves several steps to ensure a smooth tr
    - The `ChainIndexer` will begin indexing **real-time chain state changes** immediately.
    - **However, it will not automatically index any historical chain state (i.e., any previously existing chain state). To perform backfilling, please see the [`Backfilling` section below](#backfilling).**
 
-### Backfilling
+## Backfill
 To index historical chain state (i.e., **"backfilling"**), you can use the following tools:
 
-#### `ChainValidateIndex` JSON RPC API
+### `ChainValidateIndex` JSON RPC API
 
 Please refer to the [Lotus API documentation](https://github.com/filecoin-project/lotus/blob/master/documentation/en/api-v1-unstable-methods.md) for detailed documentation of the `ChainValidateIndex` JSON RPC API.
 
 The `ChainValidateIndex` JSON RPC API serves a dual purpose: it validates/diagnoses the integrity of the index at a specific epoch (i.e., it ensures consistency between indexed data and actual chain state), while also providing the option to backfill the `ChainIndexer` if it does not have data for the specified epoch. 
+
+
+The `ChainValidateIndex` RPC API is available for use once the Lotus daemon has started with `ChainIndexer` [enabled](#enablement). 
 
 Here are some examples of how to use the `ChainValidateIndex` JSON RPC API for validating/ backfilling the index:
 
@@ -211,9 +194,7 @@ curl -X POST -H "Content-Type: application/json" --data '{
 }
 ```
 
-The `ChainValidateIndex` RPC API  is available for use once the Lotus daemon has started with `ChainIndexer` [enabled](#enablement). 
-
-#### `lotus-shed chainindex validate-backfill` CLI tool
+### `lotus-shed chainindex validate-backfill` CLI tool
 The `lotus-shed chainindex validate-backfill` command is a tool for validating and optionally backfilling the chain index over a range of epochs since calling the `ChainValidateIndex` API for a single epoch at a time can be cumbersome, especially when backfilling or validating the index over a range of historical epochs, such as during a migration. It wraps the `ChainValidateIndex` API to efficiently process multiple epochs.
 
 **Note: This command can only be run when the Lotus daemon is already running with the [`ChainIndexer` enabled](#enablement) as it depends on the `ChainValidateIndex` RPC API.**
@@ -225,31 +206,7 @@ lotus-shed chainindex validate-backfill --from <start_epoch> --to <end_epoch> [-
 
 The command validates the chain index entries for each epoch in the specified range, checking for missing or inconsistent entries(i.e. the indexed data does not match the actual chain state). If `--backfill` is enabled (which it is by default), it will attempt to backfill any missing entries using the `ChainValidateIndex` API.
 
-#### Parameters:
-- `--from` (required): The starting epoch (inclusive) for the validation range. Must be greater than 0.
-- `--to` (required): The ending epoch (inclusive) for the validation range. Must be greater than 0 and less than or equal to `from`.
-- `--backfill` (optional, default: true): Whether to backfill missing index entries during validation. 
-- `--log-good` (optional, default: false): Whether to log details for tipsets that have no detected problems.
-
-#### Error conditions:
-- If `from` or `to` are invalid (<=0 or `to` > `from`), an error is returned.
-- If the `ChainValidateIndex` API returns an error for an epoch, indicating an inconsistency between the index and chain state, an error message is logged for that epoch.
-
-#### Logging:
-- **Progress is logged every 2880 epochs (1 day worth of epochs) processed during the validation process.**
-- If `--log-good` is enabled, details are also logged for each epoch that has no detected problems. This includes:
-  - Null rounds with no messages/events.
-  - Epochs with a valid indexed entry.
-
-#### Example usage
-
-To validate and backfill the chain index for the last 5760 epochs (2 days) and log details for all epochs:
-
-```
-lotus-shed chainindex validate-backfill --from 1000000 --to 994240 --log-good 
-```
-
-This command is useful for backfilling the chain index over a range of historical epochs during the migration to the new `ChainIndexer`. **It can also be run periodically to validate the index's integrity using system schedulers like `cron`.**
+You can learn about how to use the tool with `lotus-shed chainindex validate-backfill -h`.
 
 ## Rollback
 
@@ -261,6 +218,3 @@ In case you need to rollback to the previous indexing system (`EthTxIndex`, `Msg
 4. Ensure that you've set the correct config for the existing `EthTxIndex`, `MsgIndex`, and `EventIndex` indices in the `config.toml` file.
 5. Restart your Lotus node.
 6. Backfill the `EthTxIndex`, `MsgIndex`, and `EventIndex` indices using the `lotus-shed index backfill-*` CLI tooling available in the previous indexing system for the epoch range in [epochs between the upgrade to `ChainIndexer` and the rollback of `ChainIndexer`].
-
-## Need more help?
-Please free to ask questions on `#fil-lotus-dev` on Filecoin Slack or create issues on [Lotus GitHub](https://github.com/filecoin-project/lotus/issues) for any questions/bugs/comments/concerns.
