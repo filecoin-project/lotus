@@ -23,7 +23,7 @@
 
 ## Introduction
 
-This document is aimed at RPC providers and node operators who serve RPC requests and aims to walk through the configuration changes, migration flow and operations/maintenance work needed to enable, backfill and maintain the `ChainIndexer`.
+This document is for RPC providers and node operators who serve RPC requests walking through the configuration changes, migration flow and operations/maintenance work needed to enable, backfill and maintain the `ChainIndexer`.
 
 **Note: If you are a Storage Provider or node operator who does not serve RPC requests, you can skip this document as the `ChainIndexer` is already disabled by default**. 
  
@@ -56,7 +56,7 @@ The `ChainIndexer` includes a garbage collection (GC) mechanism to manage the am
 
 To configure GC, use the `GCRetentionEpochs` parameter in the `ChainIndexer` section of your config.
 
-The ChainIndexer periodically runs GC if `GCRetentionEpochs` is > 0 and removes indexed data for epochs older than `(current_head_height - GCRetentionEpochs)`.
+The ChainIndexer [periodically runs](https://github.com/filecoin-project/lotus/blob/master/chain/index/gc.go#L15) GC if `GCRetentionEpochs` is > 0 and removes indexed data for epochs older than `(current_head_height - GCRetentionEpochs)`.
 
 ```toml
 [ChainIndexer]
@@ -71,11 +71,11 @@ The ChainIndexer periodically runs GC if `GCRetentionEpochs` is > 0 and removes 
 1. **Archival Nodes**: **Keep GC disabled** (`GCRetentionEpochs` = 0) to retain all indexed data.
 
 2. **Non-Archival Nodes**:  Set `GCRetentionEpochs` to match the amount of chain state your node retains 
-(*for example:* if your node is configured to retain 2 days of Filecoin chain state with the Splitstore, set `GCRetentionEpochs` to (number of Filecoin epochs in a day *2) = 5760).
+(*Example:* if your node is configured to retain 2 days of Filecoin chain state with the Splitstore, set `GCRetentionEpochs` to `retentionDays * epochsPerDay = 2 * 2880 = 5760`.)
 
 ### Removed Options
 
-**Note: The following config options no longer exist in Lotus and have been removed in favor of the ChainIndexer config options explained above. They can be removed when upgrading to the Lotus vX.XX.X version.**
+**Note: The following config options no longer exist in Lotus and have been removed in favor of the ChainIndexer config options explained above. They can be removed when upgrading to Lotus v1.31.0.**
 
 ```toml
 [Fevm]
@@ -94,7 +94,7 @@ Migrating to the new `ChainIndexer` involves several steps to ensure a smooth tr
    - Stop your Lotus node before starting the upgrade and migration process.
 
 2. **Backup Existing Index Databases**
-   - Before restarting your Lotus node, back up the directory containing your existing index databases (`MsgIndex`, `EthTxIndex`, and `EventIndex`).
+   - Back up the directory containing your existing index databases (`MsgIndex`, `EthTxIndex`, and `EventIndex`).
    - These databases are located in the `{$LOTUS_PATH/sqlite}` directory.
    - Use the following command to copy the entire directory:
      ```bash
@@ -121,7 +121,7 @@ Migrating to the new `ChainIndexer` involves several steps to ensure a smooth tr
 ### Backfilling
 To index historical chain state (i.e., **"backfilling"**), you can use the following tools:
 
-#### The `ChainValidateIndex` JSON RPC API
+#### `ChainValidateIndex` JSON RPC API
 
 Please refer to the [Lotus API documentation](https://github.com/filecoin-project/lotus/blob/master/documentation/en/api-v1-unstable-methods.md) for detailed documentation of the `ChainValidateIndex` JSON RPC API.
 
@@ -129,16 +129,18 @@ The `ChainValidateIndex` JSON RPC API serves a dual purpose: it validates/diagno
 
 Here are some examples of how to use the `ChainValidateIndex` JSON RPC API for validating/ backfilling the index:
 
-```
+
 1) Validating the index for an epoch that is a NULL round:
  
+ ```bash
  curl -X POST -H "Content-Type: application/json" --data '{
   "jsonrpc": "2.0",
   "method": "Filecoin.ChainValidateIndex",
   "params": [1954383, false],
   "id": 1
 }' http://localhost:1234/rpc/v1 | jq .
-
+```
+```json
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -151,16 +153,19 @@ Here are some examples of how to use the `ChainValidateIndex` JSON RPC API for v
     "IsNullRound": true
   }
 }
+```
 
 2) Validating the Index for an epoch for which the Indexer has missing data with backfilling disabled:
 
+```bash
 curl -X POST -H "Content-Type: application/json" --data '{
   "jsonrpc": "2.0",
   "method": "Filecoin.ChainValidateIndex",
   "params": [1995103, false],
   "id": 1
 }' http://localhost:1234/rpc/v1 | jq .
-
+```
+```json
 {
   "error": {
     "code": 1,
@@ -169,16 +174,19 @@ curl -X POST -H "Content-Type: application/json" --data '{
   "id": 1,
   "jsonrpc": "2.0"
 }
+```
 
 3) Validating the Index for an epoch for which the Indexer has missing data with backfilling enabled:
 
+```bash
 curl -X POST -H "Content-Type: application/json" --data '{
   "jsonrpc": "2.0",
   "method": "Filecoin.ChainValidateIndex",
   "params": [1995103, true],
   "id": 1
 }' http://localhost:1234/rpc/v1 | jq .
- 
+```
+```json
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -233,7 +241,7 @@ The command validates the chain index entries for each epoch in the specified ra
   - Null rounds with no messages/events.
   - Epochs with a valid indexed entry.
 
-#### Example usage:
+#### Example usage
 
 To validate and backfill the chain index for the last 5760 epochs (2 days) and log details for all epochs:
 
@@ -241,7 +249,7 @@ To validate and backfill the chain index for the last 5760 epochs (2 days) and l
 lotus-shed chainindex validate-backfill --from 1000000 --to 994240 --log-good 
 ```
 
-This command is useful for backfilling the chain index over a range of historical epochs during the migration to the new `ChainIndexer`. **It can also be run periodically to validate the index's integrity.**
+This command is useful for backfilling the chain index over a range of historical epochs during the migration to the new `ChainIndexer`. **It can also be run periodically to validate the index's integrity using system schedulers like `cron`.**
 
 ## Rollback
 
@@ -252,7 +260,7 @@ In case you need to rollback to the previous indexing system (`EthTxIndex`, `Msg
 3. Build your Lotus binary for the rollback version which has the old `EthTxIndex`, `MsgIndex`, and `EventIndex` Indices.
 4. Ensure that you've set the correct config for the existing `EthTxIndex`, `MsgIndex`, and `EventIndex` indices in the `config.toml` file.
 5. Restart your Lotus node.
-6. Perform backfilling for the `EthTxIndex`, `MsgIndex`, and `EventIndex` indices using the `lotus-shed index backfill-*` CLI tooling available in the previous indexing system for the epoch range in [epochs between the upgrade to `ChainIndexer` and the rollback of `ChainIndexer`].
+6. Backfill the `EthTxIndex`, `MsgIndex`, and `EventIndex` indices using the `lotus-shed index backfill-*` CLI tooling available in the previous indexing system for the epoch range in [epochs between the upgrade to `ChainIndexer` and the rollback of `ChainIndexer`].
 
 ## Need more help?
 Please free to ask questions on `#fil-lotus-dev` on Filecoin Slack or create issues on [Lotus GitHub](https://github.com/filecoin-project/lotus/issues) for any questions/bugs/comments/concerns.
