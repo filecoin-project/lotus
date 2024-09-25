@@ -171,6 +171,21 @@ func (mr *MockCommitBatcherApiMockRecorder) StateMinerInfo(arg0, arg1, arg2 inte
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMinerInfo", reflect.TypeOf((*MockCommitBatcherApi)(nil).StateMinerInfo), arg0, arg1, arg2)
 }
 
+// StateMinerInitialPledgeForSector mocks base method.
+func (m *MockCommitBatcherApi) StateMinerInitialPledgeForSector(arg0 context.Context, arg1 abi.ChainEpoch, arg2 abi.SectorSize, arg3 uint64, arg4 types.TipSetKey) (big.Int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateMinerInitialPledgeForSector", arg0, arg1, arg2, arg3, arg4)
+	ret0, _ := ret[0].(big.Int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateMinerInitialPledgeForSector indicates an expected call of StateMinerInitialPledgeForSector.
+func (mr *MockCommitBatcherApiMockRecorder) StateMinerInitialPledgeForSector(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMinerInitialPledgeForSector", reflect.TypeOf((*MockCommitBatcherApi)(nil).StateMinerInitialPledgeForSector), arg0, arg1, arg2, arg3, arg4)
+}
+
 // StateNetworkVersion mocks base method.
 func (m *MockCommitBatcherApi) StateNetworkVersion(arg0 context.Context, arg1 types.TipSetKey) (network.Version, error) {
 	m.ctrl.T.Helper()
@@ -756,19 +771,19 @@ func (mr *MockSealingAPIMockRecorder) StateMinerInfo(arg0, arg1, arg2 interface{
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMinerInfo", reflect.TypeOf((*MockSealingAPI)(nil).StateMinerInfo), arg0, arg1, arg2)
 }
 
-// StateMinerInitialPledgeCollateral mocks base method.
-func (m *MockSealingAPI) StateMinerInitialPledgeCollateral(arg0 context.Context, arg1 address.Address, arg2 miner0.SectorPreCommitInfo, arg3 types.TipSetKey) (big.Int, error) {
+// StateMinerInitialPledgeForSector mocks base method.
+func (m *MockSealingAPI) StateMinerInitialPledgeForSector(arg0 context.Context, arg1 abi.ChainEpoch, arg2 abi.SectorSize, arg3 uint64, arg4 types.TipSetKey) (big.Int, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StateMinerInitialPledgeCollateral", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "StateMinerInitialPledgeForSector", arg0, arg1, arg2, arg3, arg4)
 	ret0, _ := ret[0].(big.Int)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// StateMinerInitialPledgeCollateral indicates an expected call of StateMinerInitialPledgeCollateral.
-func (mr *MockSealingAPIMockRecorder) StateMinerInitialPledgeCollateral(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+// StateMinerInitialPledgeForSector indicates an expected call of StateMinerInitialPledgeForSector.
+func (mr *MockSealingAPIMockRecorder) StateMinerInitialPledgeForSector(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMinerInitialPledgeCollateral", reflect.TypeOf((*MockSealingAPI)(nil).StateMinerInitialPledgeCollateral), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMinerInitialPledgeForSector", reflect.TypeOf((*MockSealingAPI)(nil).StateMinerInitialPledgeForSector), arg0, arg1, arg2, arg3, arg4)
 }
 
 // StateMinerPartitions mocks base method.

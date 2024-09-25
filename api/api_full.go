@@ -18,7 +18,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
-	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
 	abinetwork "github.com/filecoin-project/go-state-types/network"
@@ -410,8 +409,20 @@ type FullNode interface {
 	StateMinerRecoveries(context.Context, address.Address, types.TipSetKey) (bitfield.BitField, error) //perm:read
 	// StateMinerPreCommitDepositForPower returns the precommit deposit for the specified miner's sector
 	StateMinerPreCommitDepositForPower(context.Context, address.Address, miner.SectorPreCommitInfo, types.TipSetKey) (types.BigInt, error) //perm:read
-	// StateMinerInitialPledgeCollateral returns the initial pledge collateral for the specified miner's sector
+	// StateMinerInitialPledgeCollateral attempts to calculate the initial pledge collateral based on a SectorPreCommitInfo.
+	// This method uses the DealIDs field in SectorPreCommitInfo to determine the amount of verified
+	// deal space in the sector in order to perform a QAP calculation. Since network version 22 and
+	// the introduction of DDO, the DealIDs field can no longer be used to reliably determine verified
+	// deal space; therefore, this method is deprecated. Use StateMinerInitialPledgeForSector instead
+	// and pass in the verified deal space directly.
+	//
+	// Deprecated: Use StateMinerInitialPledgeForSector instead.
 	StateMinerInitialPledgeCollateral(context.Context, address.Address, miner.SectorPreCommitInfo, types.TipSetKey) (types.BigInt, error) //perm:read
+	// StateMinerInitialPledgeForSector returns the initial pledge collateral for a given sector
+	// duration, size, and combined size of any verified pieces within the sector. This calculation
+	// depends on current network conditions (total power, total pledge and current rewards) at the
+	// given tipset.
+	StateMinerInitialPledgeForSector(ctx context.Context, sectorDuration abi.ChainEpoch, sectorSize abi.SectorSize, verifiedSize uint64, tsk types.TipSetKey) (types.BigInt, error) //perm:read
 	// StateMinerAvailableBalance returns the portion of a miner's balance that can be withdrawn or spent
 	StateMinerAvailableBalance(context.Context, address.Address, types.TipSetKey) (types.BigInt, error) //perm:read
 	// StateMinerSectorAllocated checks if a sector number is marked as allocated.
@@ -481,21 +492,21 @@ type FullNode interface {
 	StateMarketStorageDeal(context.Context, abi.DealID, types.TipSetKey) (*MarketDeal, error) //perm:read
 	// StateGetAllocationForPendingDeal returns the allocation for a given deal ID of a pending deal. Returns nil if
 	// pending allocation is not found.
-	StateGetAllocationForPendingDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*verifregtypes.Allocation, error) //perm:read
+	StateGetAllocationForPendingDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*verifreg.Allocation, error) //perm:read
 	// StateGetAllocationIdForPendingDeal is like StateGetAllocationForPendingDeal except it returns the allocation ID
 	StateGetAllocationIdForPendingDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (verifreg.AllocationId, error) //perm:read
 	// StateGetAllocation returns the allocation for a given address and allocation ID.
-	StateGetAllocation(ctx context.Context, clientAddr address.Address, allocationId verifregtypes.AllocationId, tsk types.TipSetKey) (*verifregtypes.Allocation, error) //perm:read
+	StateGetAllocation(ctx context.Context, clientAddr address.Address, allocationId verifreg.AllocationId, tsk types.TipSetKey) (*verifreg.Allocation, error) //perm:read
 	// StateGetAllocations returns the all the allocations for a given client.
-	StateGetAllocations(ctx context.Context, clientAddr address.Address, tsk types.TipSetKey) (map[verifregtypes.AllocationId]verifregtypes.Allocation, error) //perm:read
+	StateGetAllocations(ctx context.Context, clientAddr address.Address, tsk types.TipSetKey) (map[verifreg.AllocationId]verifreg.Allocation, error) //perm:read
 	// StateGetAllAllocations returns the all the allocations available in verified registry actor.
-	StateGetAllAllocations(ctx context.Context, tsk types.TipSetKey) (map[verifregtypes.AllocationId]verifregtypes.Allocation, error) //perm:read
+	StateGetAllAllocations(ctx context.Context, tsk types.TipSetKey) (map[verifreg.AllocationId]verifreg.Allocation, error) //perm:read
 	// StateGetClaim returns the claim for a given address and claim ID.
-	StateGetClaim(ctx context.Context, providerAddr address.Address, claimId verifregtypes.ClaimId, tsk types.TipSetKey) (*verifregtypes.Claim, error) //perm:read
+	StateGetClaim(ctx context.Context, providerAddr address.Address, claimId verifreg.ClaimId, tsk types.TipSetKey) (*verifreg.Claim, error) //perm:read
 	// StateGetClaims returns the all the claims for a given provider.
-	StateGetClaims(ctx context.Context, providerAddr address.Address, tsk types.TipSetKey) (map[verifregtypes.ClaimId]verifregtypes.Claim, error) //perm:read
+	StateGetClaims(ctx context.Context, providerAddr address.Address, tsk types.TipSetKey) (map[verifreg.ClaimId]verifreg.Claim, error) //perm:read
 	// StateGetAllClaims returns the all the claims available in verified registry actor.
-	StateGetAllClaims(ctx context.Context, tsk types.TipSetKey) (map[verifregtypes.ClaimId]verifregtypes.Claim, error) //perm:read
+	StateGetAllClaims(ctx context.Context, tsk types.TipSetKey) (map[verifreg.ClaimId]verifreg.Claim, error) //perm:read
 	// StateComputeDataCID computes DataCID from a set of on-chain deals
 	StateComputeDataCID(ctx context.Context, maddr address.Address, sectorType abi.RegisteredSealProof, deals []abi.DealID, tsk types.TipSetKey) (cid.Cid, error) //perm:read
 	// StateLookupID retrieves the ID address of the given address
