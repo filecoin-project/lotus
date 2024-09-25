@@ -18,6 +18,9 @@
 
 ## Bug Fixes
 
+## Deps
+- chore: bump go-libp2p to v0.35.5 ([filecoin-project/lotus#12511](https://github.com/filecoin-project/lotus/pull/12511))
+
 # Node v1.29.1 / 2024-09-16
 
 This is a Lotus Node patch release that addresses a critical sync issue affecting users of the v1.29.0 release. The primary fix in this release is:
