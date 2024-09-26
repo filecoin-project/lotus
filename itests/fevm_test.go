@@ -1148,17 +1148,15 @@ func TestEthGetBlockReceipts(t *testing.T) {
 	require.Len(t, blockReceipts, 3) // Ensure there are three receipts
 
 	expectedLogCounts := []int{4, 3, 3}
+
 	for i, receipt := range blockReceipts {
 		require.Equal(t, &contractAddr, receipt.To)
 		require.Equal(t, ethtypes.EthUint64(1), receipt.Status)
 		require.NotEmpty(t, receipt.BlockHash, "Block hash should not be empty")
 		require.Equal(t, expectedLogCounts[i], len(receipt.Logs), fmt.Sprintf("Transaction %d should have %d event logs", i+1, expectedLogCounts[i]))
-	}
-
-	// Verify that all receipts have the same block hash
-	firstBlockHash := blockReceipts[0].BlockHash
-	for _, receipt := range blockReceipts {
-		require.Equal(t, firstBlockHash, receipt.BlockHash, "All receipts should have the same block hash")
+		if i > 0 {
+			require.Equal(t, blockReceipts[i-1].BlockHash, receipt.BlockHash, "All receipts should have the same block hash")
+		}
 	}
 }
 

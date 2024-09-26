@@ -144,6 +144,16 @@ func TestDeployment(t *testing.T) {
 	receipts, err := client.EthGetBlockReceipts(ctx, ethtypes.EthBlockNumberOrHash{BlockHash: &receipt.BlockHash})
 	require.NoError(t, err)
 	require.NotNil(t, receipts)
+	require.Greater(t, len(receipts), 0)
+	var matchingReceipt *api.EthTxReceipt
+	for _, r := range receipts {
+		if r.TransactionHash == receipt.TransactionHash {
+			require.Nil(t, matchingReceipt, "Multiple matching receipts found")
+			matchingReceipt = r
+		}
+	}
+	require.NotNil(t, matchingReceipt, "No matching receipt found")
+	require.Equal(t, receipt, matchingReceipt)
 
 	// logs must be an empty array, not a nil value, to avoid tooling compatibility issues
 	require.Empty(t, receipt.Logs)
