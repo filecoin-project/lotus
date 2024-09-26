@@ -588,10 +588,7 @@ func (a *EthModule) EthGetBlockReceiptsLimited(ctx context.Context, blockParam e
 		return nil, xerrors.Errorf("failed to load state tree: %w", err)
 	}
 
-	baseFee, err := a.StateManager.ChainStore().ComputeBaseFee(ctx, ts)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to compute base fee: %w", err)
-	}
+	baseFee := ts.Blocks()[0].ParentBaseFee
 
 	ethReceipts := make([]*api.EthTxReceipt, 0, len(msgs))
 	for i, msg := range msgs {
