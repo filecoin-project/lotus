@@ -527,12 +527,20 @@ func (a *EthModule) EthGetTransactionReceiptLimited(ctx context.Context, txHash 
 		return nil, xerrors.Errorf("failed to convert %s into an Eth Txn: %w", txHash, err)
 	}
 
-	parentTs, err := a.Chain.GetTipSetFromKey(ctx, msgLookup.TipSet)
+	ts, err := a.Chain.GetTipSetFromKey(ctx, msgLookup.TipSet)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to load parent tipset: %w", err)
+		return nil, xerrors.Errorf("failed to lookup tipset %s when constructing the eth txn receipt: %w", msgLookup.TipSet, err)
 	}
 
-	receipt, err := newEthTxReceipt(ctx, tx, parentTs.Blocks()[0].ParentBaseFee, msgLookup.Receipt, a.EthEventHandler)
+	// The tx is located in the parent tipset
+	parentTs, err := a.Chain.LoadTipSet(ctx, ts.Parents())
+	if err != nil {
+		return nil, xerrors.Errorf("failed to lookup tipset %s when constructing the eth txn receipt: %w", ts.Parents(), err)
+	}
+
+	baseFee := parentTs.Blocks()[0].ParentBaseFee
+
+	receipt, err := newEthTxReceipt(ctx, tx, baseFee, msgLookup.Receipt, a.EthEventHandler)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to create Eth receipt: %w", err)
 	}
