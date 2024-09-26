@@ -1157,6 +1157,10 @@ func TestEthGetBlockReceipts(t *testing.T) {
 		if i > 0 {
 			require.Equal(t, blockReceipts[i-1].BlockHash, receipt.BlockHash, "All receipts should have the same block hash")
 		}
+
+		txReceipt, err := client.EthGetTransactionReceipt(ctx, receipt.TransactionHash)
+		require.NoError(t, err)
+		require.Equal(t, txReceipt, receipt)
 	}
 }
 

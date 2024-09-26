@@ -527,7 +527,12 @@ func (a *EthModule) EthGetTransactionReceiptLimited(ctx context.Context, txHash 
 		return nil, xerrors.Errorf("failed to convert %s into an Eth Txn: %w", txHash, err)
 	}
 
-	receipt, err := newEthTxReceipt(ctx, tx, msgLookup, a.ChainAPI, a.EthEventHandler)
+	parentTs, err := a.Chain.GetTipSetFromKey(ctx, msgLookup.TipSet)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load parent tipset: %w", err)
+	}
+
+	receipt, err := newEthTxReceipt(ctx, tx, parentTs.Blocks()[0].ParentBaseFee, msgLookup.Receipt, a.EthEventHandler)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to create Eth receipt: %w", err)
 	}
@@ -575,23 +580,21 @@ func (a *EthModule) EthGetBlockReceiptsLimited(ctx context.Context, blockParam e
 		return nil, xerrors.Errorf("failed to load state tree: %w", err)
 	}
 
+	baseFee, err := a.StateManager.ChainStore().ComputeBaseFee(ctx, ts)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to compute base fee: %w", err)
+	}
+
 	ethReceipts := make([]*api.EthTxReceipt, 0, len(msgs))
 	for i, msg := range msgs {
 		msg := msg
-
-		msgLookup := &api.MsgLookup{
-			Message: msg.Cid(),
-			Receipt: receipts[i],
-			TipSet:  ts.Key(),
-			Height:  ts.Height(),
-		}
 
 		tx, err := newEthTx(ctx, a.Chain, stateTree, ts.Height(), tsCid, msg.Cid(), i)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to create EthTx: %w", err)
 		}
 
-		receipt, err := newEthTxReceipt(ctx, tx, msgLookup, a.ChainAPI, a.EthEventHandler)
+		receipt, err := newEthTxReceipt(ctx, tx, baseFee, receipts[i], a.EthEventHandler)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to create Eth receipt: %w", err)
 		}

@@ -679,7 +679,7 @@ func newEthTx(ctx context.Context, cs *store.ChainStore, st *state.StateTree, bl
 	return tx, nil
 }
 
-func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLookup, ca ChainAPI, ev *EthEventHandler) (api.EthTxReceipt, error) {
+func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, baseFee big.Int, msgReceipt types.MessageReceipt, ev *EthEventHandler) (api.EthTxReceipt, error) {
 	var (
 		transactionIndex ethtypes.EthUint64
 		blockHash        ethtypes.EthHash
@@ -696,7 +696,7 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 		blockNumber = *tx.BlockNumber
 	}
 
-	receipt := api.EthTxReceipt{
+	txReceipt := api.EthTxReceipt{
 		TransactionHash:  tx.Hash,
 		From:             tx.From,
 		To:               tx.To,
@@ -708,30 +708,16 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 		LogsBloom:        ethtypes.NewEmptyEthBloom(),
 	}
 
-	if lookup.Receipt.ExitCode.IsSuccess() {
-		receipt.Status = 1
+	if msgReceipt.ExitCode.IsSuccess() {
+		txReceipt.Status = 1
 	} else {
-		receipt.Status = 0
+		txReceipt.Status = 0
 	}
 
-	receipt.GasUsed = ethtypes.EthUint64(lookup.Receipt.GasUsed)
+	txReceipt.GasUsed = ethtypes.EthUint64(msgReceipt.GasUsed)
 
 	// TODO: handle CumulativeGasUsed
-	receipt.CumulativeGasUsed = ethtypes.EmptyEthInt
-
-	// TODO: avoid loading the tipset twice (once here, once when we convert the message to a txn)
-	ts, err := ca.Chain.GetTipSetFromKey(ctx, lookup.TipSet)
-	if err != nil {
-		return api.EthTxReceipt{}, xerrors.Errorf("failed to lookup tipset %s when constructing the eth txn receipt: %w", lookup.TipSet, err)
-	}
-
-	// The tx is located in the parent tipset
-	parentTs, err := ca.Chain.LoadTipSet(ctx, ts.Parents())
-	if err != nil {
-		return api.EthTxReceipt{}, xerrors.Errorf("failed to lookup tipset %s when constructing the eth txn receipt: %w", ts.Parents(), err)
-	}
-
-	baseFee := parentTs.Blocks()[0].ParentBaseFee
+	txReceipt.CumulativeGasUsed = ethtypes.EmptyEthInt
 
 	gasFeeCap, err := tx.GasFeeCap()
 	if err != nil {
@@ -742,44 +728,44 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 		return api.EthTxReceipt{}, xerrors.Errorf("failed to get gas premium: %w", err)
 	}
 
-	gasOutputs := vm.ComputeGasOutputs(lookup.Receipt.GasUsed, int64(tx.Gas), baseFee, big.Int(gasFeeCap),
+	gasOutputs := vm.ComputeGasOutputs(msgReceipt.GasUsed, int64(tx.Gas), baseFee, big.Int(gasFeeCap),
 		big.Int(gasPremium), true)
 	totalSpent := big.Sum(gasOutputs.BaseFeeBurn, gasOutputs.MinerTip, gasOutputs.OverEstimationBurn)
 
 	effectiveGasPrice := big.Zero()
-	if lookup.Receipt.GasUsed > 0 {
-		effectiveGasPrice = big.Div(totalSpent, big.NewInt(lookup.Receipt.GasUsed))
+	if msgReceipt.GasUsed > 0 {
+		effectiveGasPrice = big.Div(totalSpent, big.NewInt(msgReceipt.GasUsed))
 	}
-	receipt.EffectiveGasPrice = ethtypes.EthBigInt(effectiveGasPrice)
+	txReceipt.EffectiveGasPrice = ethtypes.EthBigInt(effectiveGasPrice)
 
-	if receipt.To == nil && lookup.Receipt.ExitCode.IsSuccess() {
+	if txReceipt.To == nil && msgReceipt.ExitCode.IsSuccess() {
 		// Create and Create2 return the same things.
 		var ret eam.CreateExternalReturn
-		if err := ret.UnmarshalCBOR(bytes.NewReader(lookup.Receipt.Return)); err != nil {
+		if err := ret.UnmarshalCBOR(bytes.NewReader(msgReceipt.Return)); err != nil {
 			return api.EthTxReceipt{}, xerrors.Errorf("failed to parse contract creation result: %w", err)
 		}
 		addr := ethtypes.EthAddress(ret.EthAddress)
-		receipt.ContractAddress = &addr
+		txReceipt.ContractAddress = &addr
 	}
 
-	if rct := lookup.Receipt; rct.EventsRoot != nil {
+	if rct := msgReceipt; rct.EventsRoot != nil {
 		logs, err := ev.getEthLogsForBlockAndTransaction(ctx, &blockHash, tx.Hash)
 		if err != nil {
 			return api.EthTxReceipt{}, xerrors.Errorf("failed to get eth logs for block and transaction: %w", err)
 		}
 		if len(logs) > 0 {
-			receipt.Logs = logs
+			txReceipt.Logs = logs
 		}
 	}
 
-	for _, log := range receipt.Logs {
+	for _, log := range txReceipt.Logs {
 		for _, topic := range log.Topics {
-			ethtypes.EthBloomSet(receipt.LogsBloom, topic[:])
+			ethtypes.EthBloomSet(txReceipt.LogsBloom, topic[:])
 		}
-		ethtypes.EthBloomSet(receipt.LogsBloom, log.Address[:])
+		ethtypes.EthBloomSet(txReceipt.LogsBloom, log.Address[:])
 	}
 
-	return receipt, nil
+	return txReceipt, nil
 }
 
 func encodeFilecoinParamsAsABI(method abi.MethodNum, codec uint64, params []byte) []byte {
