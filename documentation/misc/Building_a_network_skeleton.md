@@ -34,7 +34,7 @@ graph TD
     fvm[ref-fvm]
     proofs[rust-filecoin-proofs-api]
 
-    lotus -->gst
+    lotus --> gst
     lotus -->|via submodule| ffi
     lotus -->|via pack script| ba
 
@@ -61,10 +61,10 @@ The table below gives an overview of how Lotus and its critical dependencies rel
 
 ## Setup
 
-0. Create a tracking issue for this effort:
+1. Create a tracking issue for this effort:
 
-Title: Skeleton for nvXX to support development and testing
-<details><summary>Body:</summary>
+   Title: Skeleton for nvXX to support development and testing
+   <details><summary>Body:</summary>
 
 ````
 ## Done Criteria
@@ -85,13 +85,11 @@ There is a network skeleton in Lotus, which bubbles up all the other dependencie
 ````
 </details>
 
-1. Clone the [ref-fvm](https://github.com/filecoin-project/ref-fvm.git) repository.
-
-2. Clone the [go-state-types](https://github.com/filecoin-project/go-state-types) repository.
-   
-3. Clone the [filecoin-ffi](https://github.com/filecoin-project/filecoin-ffi.git) repository.
-
-4. Clone the [lotus](https://github.com/filecoin-project/lotus) repository.
+2. Clone Repos
+   1. [ref-fvm](https://github.com/filecoin-project/ref-fvm.git)
+   2. [go-state-types](https://github.com/filecoin-project/go-state-types)
+   3. [filecoin-ffi](https://github.com/filecoin-project/filecoin-ffi.git)
+   4. [lotus](https://github.com/filecoin-project/lotus)
 
 ## Ref-FVM Checklist
 
@@ -182,7 +180,7 @@ You can take a look at [this PR as a reference](https://github.com/filecoin-proj
 
     👉 You can take a look at this [Filecoin-FFI PR as a reference](https://github.com/filecoin-project/filecoin-ffi/pull/481), which was for network version 24.
 
-Note: only when a network upgrade is introducing new types in `go-state-types` do we need to update `filecion-ffi`'s dependency on `go-state-types` (see [below](#new-types-in-go-state-types)).  Otherwise, `filecion-ffi`'s dependency on `go-state-types` is just updated when doing fiinal releases before the network upgrade.  
+Note: one only needs to update `filecion-ffi`'s dependency on `go-state-types` when a network upgrade is introducing new types in `go-state-types`  (see [below](#new-types-in-go-state-types)).  Otherwise, `filecion-ffi`'s dependency on `go-state-types` is just updated when doing fiinal releases before the network upgrade. 
 
 ## Lotus Checklist
 
@@ -266,7 +264,7 @@ You can take a look at this [Lotus PR as a reference](https://github.com/filecoi
 ## Special Cases
 
 ### New types in go-state-types
-Typically it's safe to not upgrade filecoin-ffi's version of go-state-types.  The exception is when we add a new type (e.g., a new proof variant).  In that case, filecoin-ffi needs to be tracking the dev/rc releases of go-state-types.
+Typically it's safe to not upgrade filecoin-ffi's version of go-state-types.  The exception is when we add a new type (e.g., a new proof variant).  In that case, filecoin-ffi needs to be tracking the dev/rc releases of go-state-types.  During network skeleton time, any new `go-state-type` types are likely not known, so even if one needs to bump the `filecoin-ffi` version of `go-state-types` to a development/rc release, that will come later in the network upgrade process.
 
 ---
 [^1]: Here is system.go template for a simple migration:
