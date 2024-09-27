@@ -144,6 +144,10 @@ func (sr *stateRand) getBeaconEntryV2(ctx context.Context, round abi.ChainEpoch)
 
 // network v14 and on
 func (sr *stateRand) getBeaconEntryV3(ctx context.Context, filecoinEpoch abi.ChainEpoch) (*types.BeaconEntry, error) {
+	if filecoinEpoch < 0 {
+		return sr.getBeaconEntryV2(ctx, filecoinEpoch)
+	}
+
 	randTs, err := sr.GetBeaconRandomnessTipset(ctx, filecoinEpoch, false)
 	if err != nil {
 		return nil, err
@@ -153,6 +157,9 @@ func (sr *stateRand) getBeaconEntryV3(ctx context.Context, filecoinEpoch abi.Cha
 
 	round := sr.beacon.BeaconForEpoch(filecoinEpoch).MaxBeaconRoundForEpoch(nv, filecoinEpoch)
 
+	// Search back for the beacon entry, in normal operation it should be in randTs but for devnets
+	// where the blocktime is faster than the beacon period we may need to search back a bit to find
+	// the beacon entry for the requested round.
 	for i := 0; i < 20; i++ {
 		cbe := randTs.Blocks()[0].BeaconEntries
 		for _, v := range cbe {
@@ -185,13 +192,13 @@ func (sr *stateRand) GetChainRandomness(ctx context.Context, filecoinEpoch abi.C
 func (sr *stateRand) GetBeaconEntry(ctx context.Context, filecoinEpoch abi.ChainEpoch) (*types.BeaconEntry, error) {
 	nv := sr.networkVersionGetter(ctx, filecoinEpoch)
 
-	if filecoinEpoch > 0 && nv >= network.Version14 {
+	if nv >= network.Version14 {
 		be, err := sr.getBeaconEntryV3(ctx, filecoinEpoch)
 		if err != nil {
 			log.Errorf("failed to get beacon entry as expected: %s", err)
 		}
 		return be, err
-	} else if nv == network.Version13 || filecoinEpoch < 0 {
+	} else if nv == network.Version13 {
 		return sr.getBeaconEntryV2(ctx, filecoinEpoch)
 	}
 	return sr.getBeaconEntryV1(ctx, filecoinEpoch)
