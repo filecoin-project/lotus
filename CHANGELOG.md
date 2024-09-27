@@ -17,6 +17,7 @@ Add `EthGetBlockReceipts` RPC method to retrieve transaction receipts for a spec
 ## Improvements
 
 - Reduce size of embedded genesis CAR files by removing WASM actor blocks and compressing with zstd. This reduces the `lotus` binary size by approximately 10 MiB. ([filecoin-project/lotus#12439](https://github.com/filecoin-project/lotus/pull/12439))
+- Add ChainSafe operated Calibration archival node to the bootstrap list ([filecoin-project/lotus#12517](https://github.com/filecoin-project/lotus/pull/12517))
 - Legacy/historical Drand lookups via `StateGetBeaconEntry` now work again for all historical epochs. `StateGetBeaconEntry` now uses the on-chain beacon entries and follows the same rules for historical Drand round matching as `StateGetRandomnessFromBeacon` and the `get_beacon_randomness` FVM syscall. Be aware that there will be some some variance in matching Filecoin epochs to Drand rounds where null Filecoin rounds are involved prior to network version 14. ([filecoin-project/lotus#12428](https://github.com/filecoin-project/lotus/pull/12428)).
 
 ## Bug Fixes
@@ -116,6 +117,7 @@ From https://github.com/filecoin-project/lotus/compare/v1.28.2...release/v1.29.0
 - github.com/filecoin-project/jackc/pgx (v5.4.1 -> v5.6.0)
 - feat(f3): update from v0.0.7 to v0.1.0 (#12382) ([filecoin-project/lotus#12382](https://github.com/filecoin-project/lotus/pull/12382))
 - feat: f3: update go-f3 to 0.2.0 (#12390) ([filecoin-project/lotus#12390](https://github.com/filecoin-project/lotus/pull/12390))
+- feat: update cheggaaa's pb to v3 ([filecoin-project/lotus#12518](https://github.com/filecoin-project/lotus/pull/12518))
 
 ### Chores
 
