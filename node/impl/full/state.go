@@ -1904,6 +1904,16 @@ func (a *StateAPI) StateGetRandomnessDigestFromBeacon(ctx context.Context, randE
 }
 
 func (a *StateAPI) StateGetBeaconEntry(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) {
+	if epoch <= a.Chain.GetHeaviestTipSet().Height() {
+		if epoch < 0 {
+			epoch = 0
+		}
+		// get the beacon entry off the chain
+		return a.StateManager.GetBeaconEntry(ctx, epoch, types.EmptyTSK)
+	}
+
+	// else we're asking for the future, get it from drand and block until it arrives
+
 	b := a.Beacon.BeaconForEpoch(epoch)
 	rr := b.MaxBeaconRoundForEpoch(a.StateManager.GetNetworkVersion(ctx, epoch), epoch)
 	e := b.Entry(ctx, rr)
