@@ -1347,7 +1347,7 @@ func (cs *ChainStore) GetLatestBeaconEntry(ctx context.Context, ts *types.TipSet
 
 	// Search for a beacon entry, in normal operation one should be in the requested tipset, but for
 	// devnets where the blocktime is faster than the beacon period we may need to search back a bit
-	// to find a tips with a beacon entry.
+	// to find a tipset with a beacon entry.
 	for i := 0; i < 20; i++ {
 		cbe := cur.Blocks()[0].BeaconEntries
 		if len(cbe) > 0 {
