@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 	"os"
 
+	"github.com/cheggaaa/pb/v3"
 	"github.com/docker/go-units"
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
-	"gopkg.in/cheggaaa/pb.v1"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-paramfetch"
@@ -235,14 +235,9 @@ func restore(ctx context.Context, cctx *cli.Context, targetPath string, strConfi
 		return err
 	}
 
-	bar := pb.New64(st.Size())
+	bar := pb.Full.Start64(st.Size())
 	br := bar.NewProxyReader(f)
-	bar.ShowTimeLeft = true
-	bar.ShowPercent = true
-	bar.ShowSpeed = true
-	bar.Units = pb.U_BYTES
 
-	bar.Start()
 	err = backupds.RestoreInto(br, mds)
 	bar.Finish()
 
