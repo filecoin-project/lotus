@@ -1199,3 +1199,82 @@ func deployContractWithEth(ctx context.Context, t *testing.T, client *kit.TestFu
 		S:                    big.Zero(),
 	}
 }
+
+func TestEthGetTransactionCount(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	// Create a new Ethereum account
+	key, ethAddr, filAddr := client.EVM().NewAccount()
+
+	// Test initial state (should be zero)
+	initialCount, err := client.EVM().EthGetTransactionCount(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
+	require.NoError(t, err)
+	require.Zero(t, initialCount)
+
+	// Send some funds to the new account (this shouldn't change the nonce)
+	kit.SendFunds(ctx, t, client, filAddr, types.FromFil(10))
+
+	// Check nonce again (should still be zero)
+	count, err := client.EVM().EthGetTransactionCount(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
+	require.NoError(t, err)
+	require.Zero(t, count)
+
+	// Prepare and send multiple transactions
+	numTx := 5
+	var lastHash ethtypes.EthHash
+
+	contractHex, err := os.ReadFile("./contracts/SelfDestruct.hex")
+	require.NoError(t, err)
+	contract, err := hex.DecodeString(string(contractHex))
+	require.NoError(t, err)
+
+	gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
+		From: &ethAddr,
+		Data: contract,
+	}})
+	require.NoError(t, err)
+	gaslimit, err := client.EthEstimateGas(ctx, gasParams)
+	require.NoError(t, err)
+	for i := 0; i < numTx; i++ {
+		tx := &ethtypes.Eth1559TxArgs{
+			ChainID:              buildconstants.Eip155ChainId,
+			To:                   &ethAddr, // sending to self
+			Value:                big.NewInt(1000),
+			Nonce:                i,
+			MaxFeePerGas:         types.NanoFil,
+			MaxPriorityFeePerGas: types.NanoFil,
+			GasLimit:             int(gaslimit),
+		}
+		client.EVM().SignTransaction(tx, key.PrivateKey)
+		lastHash = client.EVM().SubmitTransaction(ctx, tx)
+
+		// Wait for the transaction to be mined
+		_, err := client.EVM().WaitTransaction(ctx, lastHash)
+		require.NoError(t, err)
+	}
+
+	// Get the latest transaction count
+	latestCount, err := client.EVM().EthGetTransactionCount(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
+	require.NoError(t, err)
+	require.Equal(t, ethtypes.EthUint64(numTx), latestCount)
+
+	// Test with a contract
+	createReturn := client.EVM().DeployContract(ctx, client.DefaultKey.Address, contract)
+	contractAddr := createReturn.EthAddress
+	contractFilAddr := *createReturn.RobustAddress
+
+	// Check contract nonce (should be 1 after deployment)
+	contractNonce, err := client.EVM().EthGetTransactionCount(ctx, contractAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
+	require.NoError(t, err)
+	require.Equal(t, ethtypes.EthUint64(1), contractNonce)
+
+	// Destroy the contract
+	_, _, err = client.EVM().InvokeContractByFuncName(ctx, client.DefaultKey.Address, contractFilAddr, "destroy()", nil)
+	require.NoError(t, err)
+
+	// Check contract nonce after destruction (should be 0)
+	contractNonceAfterDestroy, err := client.EVM().EthGetTransactionCount(ctx, contractAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
+	require.NoError(t, err)
+	require.Zero(t, contractNonceAfterDestroy)
+}
