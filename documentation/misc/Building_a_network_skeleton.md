@@ -7,8 +7,8 @@ This guide will walk you through the process of creating a skeleton for a networ
   - [Network Upgrade Dependency Relationships](#network-upgrade-dependency-relationships)
 - [Setup](#setup)
 - [Ref-FVM Checklist](#ref-fvm-checklist)
-- [Filecoin-FFI Checklist](#filecoin-ffi-checklist)
 - [Go-State-Types Checklist](#go-state-types-checklist)
+- [Filecoin-FFI Checklist](#filecoin-ffi-checklist)
 - [Lotus Checklist](#lotus-checklist)
 
 Each repository has its own set of steps that need to be followed. This guide provides detailed instructions for each repository in the proper order.
@@ -40,6 +40,7 @@ graph TD
 
     ffi --> fvm
     ffi --> proofs
+    ffi --> gst
 
     ba --> fvm
 ```
@@ -49,7 +50,7 @@ The table below gives an overview of how Lotus and its critical dependencies rel
 | Repo | <div style="width:250px">For every network upgrade (increase in Network Version)...</div> | Versioning Scheme | Versioning Docs | go.mod direct dependencies | cargo.toml direct dependencies | Other direct dependencies |
 | --- | --- | --- | --- | --- | --- | --- |
 | `lotus` | There is at least one `lotus` minor version. [^0] | <small>1.LOTUS_MINOR_VERSION.x</small> | [link](https://github.com/filecoin-project/lotus/blob/master/LOTUS_RELEASE_FLOW.md#adopted-conventions) | `go-state-types` | n/a | * `filecoin-ffi` via git submodule<br/>* `builtin-actors` via pack script |
-| `filecoin-ffi` | There is at least one `filecoin-ffi` minor version (since `filecoin-ffi` tracks `lotus`). | <small>1.LOTUS_MINOR_VERSION.x</small> | [link](https://github.com/filecoin-project/filecoin-ffi?tab=readme-ov-file#versioning) | | * `ref-fvm`<br/>* `rust-filecoin-proofs-api` | None |
+| `filecoin-ffi` | There is at least one `filecoin-ffi` minor version (since `filecoin-ffi` tracks `lotus`). | <small>1.LOTUS_MINOR_VERSION.x</small> | [link](https://github.com/filecoin-project/filecoin-ffi?tab=readme-ov-file#versioning) | `go-state-types` | * `ref-fvm`<br/>* `rust-filecoin-proofs-api` | None |
 | `go-state-types` | There are zero or one `go-state-types` minor versions (since `go-state-types` minor versions track `builtin-actors` major versions) | <small>0.ACTORS_VERSION.x</small> | [link](https://github.com/filecoin-project/go-state-types?tab=readme-ov-file#versioning) | None | n/a | None |
 | `builtin-actors` | There are zero or one actors major versions (i.e., we can have a new network upgrade without an actors bump) | <small>ACTORS_VERSION.0.x</small> | [link](https://github.com/filecoin-project/builtin-actors?tab=readme-ov-file#versioning) | n/a |`ref-fvm` | None |
 | `ref-fvm` | There may be a major version bump. If there isn't, there is at least a minor version bump to enable support for the new network version. | <small>FVM_ MAJOR_VERSION.y.x</small> | [link](https://github.com/filecoin-project/ref-fvm?tab=readme-ov-file#versioning) | n/a | None | None |
@@ -93,16 +94,6 @@ You can take a look at [this Ref-FVM PR as a reference](https://github.com/filec
 
 You can take a look at [this PR as a reference](https://github.com/filecoin-project/ref-fvm/pull/2002). Wait for the PR to be merged, then the reviewer will publish a new release.
 
-## Filecoin-FFI Checklist
-
-1. Update the `TryFrom<u32>` implementation for `EngineVersion` in `rust/src/fvm/engine.rs`
-    - Add the new network version number (XX+1) to the existing match arm for the network version.
-
-2. Patch the FVM-dependency (fvm4 and fvm4_shared) in `rust/cargo.toml` to use the newly published Ref-FVM release.
-    -  Add `features = ["nvXX+1-dev"]`.
-
-You can take a look at this [Filecoin-FFI PR as a reference](https://github.com/filecoin-project/filecoin-ffi/pull/454), which added the skeleton for network version 23.
-
 ## Go-State-Types Checklist
 
 1. Follow the [go-state-types actor version checklist](https://github.com/filecoin-project/go-state-types/blob/master/actors_version_checklist.md):
@@ -144,6 +135,16 @@ You can take a look at this [Filecoin-FFI PR as a reference](https://github.com/
     - Copy the top.go template [^2], and add it to your `/builtin/vXX+1/migration` folder.
 
     👉 You can take a look at this [Go-State-Types PR as a reference](https://github.com/filecoin-project/go-state-types/pull/258), which added added a simple migration for network version 23.
+
+## Filecoin-FFI Checklist
+
+1. Update the `TryFrom<u32>` implementation for `EngineVersion` in `rust/src/fvm/engine.rs`
+    - Add the new network version number (XX+1) to the existing match arm for the network version.
+
+2. Patch the FVM-dependency (fvm4 and fvm4_shared) in `rust/cargo.toml` to use the newly published Ref-FVM release.
+    -  Add `features = ["nvXX+1-dev"]`.
+
+You can take a look at this [Filecoin-FFI PR as a reference](https://github.com/filecoin-project/filecoin-ffi/pull/454), which added the skeleton for network version 23.
 
 ## Lotus Checklist
 
