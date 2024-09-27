@@ -64,7 +64,7 @@ The table below gives an overview of how Lotus and its critical dependencies rel
 1. Create a tracking issue for this effort:
 
    Title: Skeleton for nvXX to support development and testing
-   <details><summary>Body:</summary>
+   Body:<
 
 ````
 ## Done Criteria
@@ -83,7 +83,6 @@ There is a network skeleton in Lotus, which bubbles up all the other dependencie
 ```
 
 ````
-</details>
 
 2. Clone Repos
    1. [ref-fvm](https://github.com/filecoin-project/ref-fvm.git)
