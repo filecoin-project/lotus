@@ -546,12 +546,12 @@ fr32 padding is removed from the output.`,
 		br := bar.NewProxyReader(upr)
 
 		_, err = io.CopyN(os.Stdout, br, l)
-		if err != nil {
-			bar.Finish()
-			return xerrors.Errorf("reading data: %w", err)
-		}
 
 		bar.Finish()
+
+		if err != nil {
+			return xerrors.Errorf("reading data: %w", err)
+		}
 		return nil
 	},
 }
