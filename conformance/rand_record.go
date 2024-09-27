@@ -74,7 +74,7 @@ func (r *RecordingRand) GetBeaconRandomness(ctx context.Context, round abi.Chain
 		return [32]byte{}, err
 	}
 
-	r.reporter.Logf("fetched and recorded beacon randomness for: epoch=%d,  result=%x", round, ret)
+	r.reporter.Logf("fetched and recorded beacon randomness for: epoch=%d, result=%x", round, ret)
 
 	match := schema.RandomnessMatch{
 		On: schema.RandomnessRule{
@@ -88,6 +88,29 @@ func (r *RecordingRand) GetBeaconRandomness(ctx context.Context, round abi.Chain
 	r.lk.Unlock()
 
 	return *(*[32]byte)(ret), err
+}
+
+func (r *RecordingRand) GetBeaconEntry(ctx context.Context, round abi.ChainEpoch) (*types.BeaconEntry, error) {
+	r.once.Do(r.loadHead)
+	ret, err := r.api.StateGetBeaconEntry(ctx, round)
+	if err != nil {
+		return nil, err
+	}
+
+	r.reporter.Logf("fetched and recorded beacon randomness for: epoch=%d, result=%x", round, ret)
+
+	match := schema.RandomnessMatch{
+		On: schema.RandomnessRule{
+			Kind:  schema.RandomnessBeacon,
+			Epoch: int64(round),
+		},
+		Return: ret.Data,
+	}
+	r.lk.Lock()
+	r.recorded = append(r.recorded, match)
+	r.lk.Unlock()
+
+	return ret, err
 }
 
 func (r *RecordingRand) Recorded() schema.Randomness {
