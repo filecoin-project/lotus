@@ -76,16 +76,29 @@ func New(mctx helpers.MetricsCtx, lc fx.Lifecycle, params F3Params) (*F3, error)
 		newLeases: make(chan leaseRequest, 4), // some buffer to avoid blocking
 	}
 
+	// Start F3
+	lc.Append(fx.Hook{
+		OnStart: fff.inner.Start,
+		OnStop:  fff.inner.Stop,
+	})
+
+	// Start signing F3 messages.
 	lCtx, cancel := context.WithCancel(mctx)
-	lc.Append(fx.StartStopHook(
-		func() {
-			err := fff.inner.Start(lCtx)
-			if err != nil {
-				log.Errorf("running f3: %+v", err)
-				return
-			}
-			go fff.runSigningLoop(lCtx)
-		}, cancel))
+	doneCh := make(chan struct{})
+	lc.Append(fx.Hook{
+		OnStart: func(context.Context) error {
+			go func() {
+				defer close(doneCh)
+				fff.runSigningLoop(lCtx)
+			}()
+			return nil
+		},
+		OnStop: func(context.Context) error {
+			cancel()
+			<-doneCh
+			return nil
+		},
+	})
 
 	return fff, nil
 }
