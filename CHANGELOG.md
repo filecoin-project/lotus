@@ -119,6 +119,7 @@ From https://github.com/filecoin-project/lotus/compare/v1.28.2...release/v1.29.0
 
 ### Chores
 
+- feat(eth): fix EthGetTransactionCount for pending block parameter ([filecoin-project/lotus#12520](https://github.com/filecoin-project/lotus/pull/11581))
 - chore: ffi: copy verifier iface, mock & ffi out of storage (#11581) ([filecoin-project/lotus#11581](https://github.com/filecoin-project/lotus/pull/11581))
 - docs: update LOTUS_RELEASE_FLOW.MD document (#12322) ([filecoin-project/lotus#12322](https://github.com/filecoin-project/lotus/pull/12322))
 - docs: update references to releases branch (#12396) ([filecoin-project/lotus#12396](https://github.com/filecoin-project/lotus/pull/12396))
