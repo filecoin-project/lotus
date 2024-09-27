@@ -10,7 +10,7 @@ This is the first release candidate for Lotus node v1.29.2. Key updates in this 
 
 ## 📝 Changelog
 
-See https://github.com/filecoin-project/lotus/compare/v1.29.1...release/v1.29.1-rc1 for the set of changes since the last release.
+See https://github.com/filecoin-project/lotus/compare/v1.29.1...release/v1.29.2-rc1 for the set of changes since the last release.
 
 # Node v1.29.1 / 2024-09-16
 
