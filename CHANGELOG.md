@@ -117,6 +117,7 @@ From https://github.com/filecoin-project/lotus/compare/v1.28.2...release/v1.29.0
 - github.com/filecoin-project/jackc/pgx (v5.4.1 -> v5.6.0)
 - feat(f3): update from v0.0.7 to v0.1.0 (#12382) ([filecoin-project/lotus#12382](https://github.com/filecoin-project/lotus/pull/12382))
 - feat: f3: update go-f3 to 0.2.0 (#12390) ([filecoin-project/lotus#12390](https://github.com/filecoin-project/lotus/pull/12390))
+- feat: update cheggaaa's pb to v3 ([filecoin-project/lotus#12518](https://github.com/filecoin-project/lotus/pull/12518))
 
 ### Chores
 
