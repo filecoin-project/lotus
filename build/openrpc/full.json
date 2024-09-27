@@ -18983,7 +18983,7 @@
         {
             "name": "Filecoin.StateGetBeaconEntry",
             "description": "```go\nfunc (s *FullNodeStruct) StateGetBeaconEntry(p0 context.Context, p1 abi.ChainEpoch) (*types.BeaconEntry, error) {\n\tif s.Internal.StateGetBeaconEntry == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.StateGetBeaconEntry(p0, p1)\n}\n```",
-            "summary": "StateGetBeaconEntry returns the beacon entry for the given filecoin epoch. If\nthe entry has not yet been produced, the call will block until the entry\nbecomes available\n",
+            "summary": "StateGetBeaconEntry returns the beacon entry for the given filecoin epoch\nby using the recorded entries on the chain. If the entry for the requested\nepoch has not yet been produced, the call will block until the entry\nbecomes available.\n",
             "paramStructure": "by-position",
             "params": [
                 {

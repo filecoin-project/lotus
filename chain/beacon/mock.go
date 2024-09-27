@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"sync"
 	"time"
 
 	"github.com/minio/blake2b-simd"
@@ -15,26 +16,54 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-// mockBeacon assumes that filecoin rounds are 1:1 mapped with the beacon rounds
-type mockBeacon struct {
-	interval time.Duration
+// MockBeacon assumes that filecoin rounds are 1:1 mapped with the beacon rounds
+type MockBeacon struct {
+	interval     time.Duration
+	maxIndex     int
+	waitingEntry int
+	lk           sync.Mutex
+	cond         *sync.Cond
 }
 
-func (mb *mockBeacon) IsChained() bool {
+func (mb *MockBeacon) IsChained() bool {
 	return true
 }
 
 func NewMockBeacon(interval time.Duration) RandomBeacon {
-	mb := &mockBeacon{interval: interval}
-
+	mb := &MockBeacon{interval: interval, maxIndex: -1}
+	mb.cond = sync.NewCond(&mb.lk)
 	return mb
 }
 
-func (mb *mockBeacon) RoundTime() time.Duration {
+// SetMaxIndex sets the maximum index that the beacon will return, and optionally blocks until all
+// waiting requests are satisfied. If maxIndex is -1, the beacon will return entries indefinitely.
+func (mb *MockBeacon) SetMaxIndex(maxIndex int, blockTillNoneWaiting bool) {
+	mb.lk.Lock()
+	defer mb.lk.Unlock()
+	mb.maxIndex = maxIndex
+	mb.cond.Broadcast()
+	if !blockTillNoneWaiting {
+		return
+	}
+
+	for mb.waitingEntry > 0 {
+		mb.cond.Wait()
+	}
+}
+
+// WaitingOnEntryCount returns the number of requests that are currently waiting for an entry. Where
+// maxIndex has not been set, this will always return 0 as beacon entries are generated on demand.
+func (mb *MockBeacon) WaitingOnEntryCount() int {
+	mb.lk.Lock()
+	defer mb.lk.Unlock()
+	return mb.waitingEntry
+}
+
+func (mb *MockBeacon) RoundTime() time.Duration {
 	return mb.interval
 }
 
-func (mb *mockBeacon) entryForIndex(index uint64) types.BeaconEntry {
+func (mb *MockBeacon) entryForIndex(index uint64) types.BeaconEntry {
 	buf := make([]byte, 8)
 	binary.BigEndian.PutUint64(buf, index)
 	rval := blake2b.Sum256(buf)
@@ -44,14 +73,32 @@ func (mb *mockBeacon) entryForIndex(index uint64) types.BeaconEntry {
 	}
 }
 
-func (mb *mockBeacon) Entry(ctx context.Context, index uint64) <-chan Response {
-	e := mb.entryForIndex(index)
+func (mb *MockBeacon) Entry(ctx context.Context, index uint64) <-chan Response {
 	out := make(chan Response, 1)
-	out <- Response{Entry: e}
+
+	mb.lk.Lock()
+	defer mb.lk.Unlock()
+
+	if mb.maxIndex >= 0 && index > uint64(mb.maxIndex) {
+		mb.waitingEntry++
+		go func() {
+			mb.lk.Lock()
+			defer mb.lk.Unlock()
+			for index > uint64(mb.maxIndex) {
+				mb.cond.Wait()
+			}
+			out <- Response{Entry: mb.entryForIndex(index)}
+			mb.waitingEntry--
+			mb.cond.Broadcast()
+		}()
+	} else {
+		out <- Response{Entry: mb.entryForIndex(index)}
+	}
+
 	return out
 }
 
-func (mb *mockBeacon) VerifyEntry(from types.BeaconEntry, _prevEntrySig []byte) error {
+func (mb *MockBeacon) VerifyEntry(from types.BeaconEntry, _prevEntrySig []byte) error {
 	// TODO: cache this, especially for bls
 	oe := mb.entryForIndex(from.Round)
 	if !bytes.Equal(from.Data, oe.Data) {
@@ -60,9 +107,9 @@ func (mb *mockBeacon) VerifyEntry(from types.BeaconEntry, _prevEntrySig []byte) 
 	return nil
 }
 
-func (mb *mockBeacon) MaxBeaconRoundForEpoch(nv network.Version, epoch abi.ChainEpoch) uint64 {
+func (mb *MockBeacon) MaxBeaconRoundForEpoch(nv network.Version, epoch abi.ChainEpoch) uint64 {
 	// offset for better testing
 	return uint64(epoch + 100)
 }
 
-var _ RandomBeacon = (*mockBeacon)(nil)
+var _ RandomBeacon = (*MockBeacon)(nil)
