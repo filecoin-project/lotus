@@ -22,6 +22,10 @@ Updating these dependencies in Lotus is usually related to network upgrades.  Se
 
 ## Updating Filecoin-FFI
 
+0. In Lotus´s [go.mod file](https://github.com/filecoin-project/lotus/blob/master/go.mod), search for `filecoin-ffi` and update the version to your wanted version.
+
+0. Run `go mod tidy`, and commit your changes.
+
 1. In your `lotus` directory, `cd extern/filecoin-ffi`.
 
 2. `git fetch` to ensure you have the latests changes for *filecoin-ffi*.
