@@ -56,7 +56,8 @@ type Indexer interface {
 	IndexEthTxHash(ctx context.Context, txHash ethtypes.EthHash, c cid.Cid) error
 
 	SetIdToRobustAddrFunc(idToRobustAddrFunc IdToRobustAddrFunc)
-	SetRecomputeTipSetStateFunc(recomputeTipSetStateFunc recomputeTipSetStateFunc)
+	SetEventLoaderFunc(eventLoaderFunc eventLoaderFunc)
+
 	Apply(ctx context.Context, from, to *types.TipSet) error
 	Revert(ctx context.Context, from, to *types.TipSet) error
 

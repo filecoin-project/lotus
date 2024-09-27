@@ -216,7 +216,7 @@ func (si *SqliteIndexer) verifyIndexedData(ctx context.Context, ts *types.TipSet
 		return xerrors.Errorf("index corruption: reverted events found for an executed tipset %s at height %d", tsKeyCid, ts.Height())
 	}
 
-	executedMsgs, err := si.loadExecutedMessages(ctx, ts, executionTs)
+	executedMsgs, err := si.eventLoaderFunc(ctx, si.cs, ts, executionTs)
 	if err != nil {
 		return xerrors.Errorf("failed to load executed messages for height %d: %w", ts.Height(), err)
 	}

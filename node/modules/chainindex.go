@@ -35,7 +35,6 @@ func ChainIndexer(cfg config.ChainIndexerConfig) func(lc fx.Lifecycle, mctx help
 			return nil, err
 		}
 
-		// TODO Implement config driven auto-backfilling
 		chainIndexer, err := index.NewSqliteIndexer(filepath.Join(sqlitePath, index.DefaultDbFilename),
 			cs, cfg.GCRetentionEpochs, cfg.ReconcileEmptyIndex, cfg.MaxReconcileTipsets)
 		if err != nil {
@@ -72,10 +71,12 @@ func InitChainIndexer(lc fx.Lifecycle, mctx helpers.MetricsCtx, indexer index.In
 				return *actor.DelegatedAddress, true
 			})
 
-			indexer.SetRecomputeTipSetStateFunc(func(ctx context.Context, ts *types.TipSet) error {
+			eventLoaderFunc := index.MakeLoadExecutedMessages(func(ctx context.Context, ts *types.TipSet) error {
 				_, _, err := sm.RecomputeTipSetState(ctx, ts)
 				return err
 			})
+
+			indexer.SetEventLoaderFunc(eventLoaderFunc)
 
 			ch, err := mp.Updates(ctx)
 			if err != nil {

@@ -3,6 +3,7 @@ package index
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"os"
 
 	ipld "github.com/ipfs/go-ipld-format"
@@ -80,6 +81,9 @@ func PopulateFromSnapshot(ctx context.Context, path string, cs ChainStore) error
 }
 
 func toTipsetKeyCidBytes(ts *types.TipSet) ([]byte, error) {
+	if ts == nil {
+		return nil, errors.New("failed to get tipset key cid: tipset is nil")
+	}
 	tsKeyCid, err := ts.Key().Cid()
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get tipset key cid: %w", err)
