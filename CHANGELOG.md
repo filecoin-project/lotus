@@ -17,6 +17,7 @@ Add `EthGetBlockReceipts` RPC method to retrieve transaction receipts for a spec
 ## Improvements
 
 - Reduce size of embedded genesis CAR files by removing WASM actor blocks and compressing with zstd. This reduces the `lotus` binary size by approximately 10 MiB. ([filecoin-project/lotus#12439](https://github.com/filecoin-project/lotus/pull/12439))
+- Add ChainSafe operated Calibration archival node to the bootstrap list ([filecoin-project/lotus#12517](https://github.com/filecoin-project/lotus/pull/12517))
 
 ## Bug Fixes
 
