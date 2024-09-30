@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-f3/certs"
 	"github.com/filecoin-project/go-f3/gpbft"
+	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -193,6 +194,10 @@ type FullNodeMethods struct {
 
 	EthGetBlockByNumber func(p0 context.Context, p1 string, p2 bool) (ethtypes.EthBlock, error) `perm:"read"`
 
+	EthGetBlockReceipts func(p0 context.Context, p1 ethtypes.EthBlockNumberOrHash) ([]*EthTxReceipt, error) `perm:"read"`
+
+	EthGetBlockReceiptsLimited func(p0 context.Context, p1 ethtypes.EthBlockNumberOrHash, p2 abi.ChainEpoch) ([]*EthTxReceipt, error) `perm:"read"`
+
 	EthGetBlockTransactionCountByHash func(p0 context.Context, p1 ethtypes.EthHash) (ethtypes.EthUint64, error) `perm:"read"`
 
 	EthGetBlockTransactionCountByNumber func(p0 context.Context, p1 ethtypes.EthUint64) (ethtypes.EthUint64, error) `perm:"read"`
@@ -262,6 +267,10 @@ type FullNodeMethods struct {
 	F3GetF3PowerTable func(p0 context.Context, p1 types.TipSetKey) (gpbft.PowerEntries, error) `perm:"read"`
 
 	F3GetLatestCertificate func(p0 context.Context) (*certs.FinalityCertificate, error) `perm:"read"`
+
+	F3GetManifest func(p0 context.Context) (*manifest.Manifest, error) `perm:"read"`
+
+	F3IsRunning func(p0 context.Context) (bool, error) `perm:"read"`
 
 	F3Participate func(p0 context.Context, p1 address.Address, p2 time.Time, p3 time.Time) (bool, error) `perm:"sign"`
 
@@ -423,23 +432,23 @@ type FullNodeMethods struct {
 
 	StateGetActor func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*types.Actor, error) `perm:"read"`
 
-	StateGetAllAllocations func(p0 context.Context, p1 types.TipSetKey) (map[verifregtypes.AllocationId]verifregtypes.Allocation, error) `perm:"read"`
+	StateGetAllAllocations func(p0 context.Context, p1 types.TipSetKey) (map[verifreg.AllocationId]verifreg.Allocation, error) `perm:"read"`
 
-	StateGetAllClaims func(p0 context.Context, p1 types.TipSetKey) (map[verifregtypes.ClaimId]verifregtypes.Claim, error) `perm:"read"`
+	StateGetAllClaims func(p0 context.Context, p1 types.TipSetKey) (map[verifreg.ClaimId]verifreg.Claim, error) `perm:"read"`
 
-	StateGetAllocation func(p0 context.Context, p1 address.Address, p2 verifregtypes.AllocationId, p3 types.TipSetKey) (*verifregtypes.Allocation, error) `perm:"read"`
+	StateGetAllocation func(p0 context.Context, p1 address.Address, p2 verifreg.AllocationId, p3 types.TipSetKey) (*verifreg.Allocation, error) `perm:"read"`
 
-	StateGetAllocationForPendingDeal func(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*verifregtypes.Allocation, error) `perm:"read"`
+	StateGetAllocationForPendingDeal func(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*verifreg.Allocation, error) `perm:"read"`
 
 	StateGetAllocationIdForPendingDeal func(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (verifreg.AllocationId, error) `perm:"read"`
 
-	StateGetAllocations func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (map[verifregtypes.AllocationId]verifregtypes.Allocation, error) `perm:"read"`
+	StateGetAllocations func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (map[verifreg.AllocationId]verifreg.Allocation, error) `perm:"read"`
 
 	StateGetBeaconEntry func(p0 context.Context, p1 abi.ChainEpoch) (*types.BeaconEntry, error) `perm:"read"`
 
-	StateGetClaim func(p0 context.Context, p1 address.Address, p2 verifregtypes.ClaimId, p3 types.TipSetKey) (*verifregtypes.Claim, error) `perm:"read"`
+	StateGetClaim func(p0 context.Context, p1 address.Address, p2 verifreg.ClaimId, p3 types.TipSetKey) (*verifreg.Claim, error) `perm:"read"`
 
-	StateGetClaims func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (map[verifregtypes.ClaimId]verifregtypes.Claim, error) `perm:"read"`
+	StateGetClaims func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (map[verifreg.ClaimId]verifreg.Claim, error) `perm:"read"`
 
 	StateGetNetworkParams func(p0 context.Context) (*NetworkParams, error) `perm:"read"`
 
@@ -482,6 +491,8 @@ type FullNodeMethods struct {
 	StateMinerInfo func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (MinerInfo, error) `perm:"read"`
 
 	StateMinerInitialPledgeCollateral func(p0 context.Context, p1 address.Address, p2 miner.SectorPreCommitInfo, p3 types.TipSetKey) (types.BigInt, error) `perm:"read"`
+
+	StateMinerInitialPledgeForSector func(p0 context.Context, p1 abi.ChainEpoch, p2 abi.SectorSize, p3 uint64, p4 types.TipSetKey) (types.BigInt, error) `perm:"read"`
 
 	StateMinerPartitions func(p0 context.Context, p1 address.Address, p2 uint64, p3 types.TipSetKey) ([]Partition, error) `perm:"read"`
 
@@ -642,6 +653,10 @@ type GatewayMethods struct {
 	EthGetBlockByHash func(p0 context.Context, p1 ethtypes.EthHash, p2 bool) (ethtypes.EthBlock, error) ``
 
 	EthGetBlockByNumber func(p0 context.Context, p1 string, p2 bool) (ethtypes.EthBlock, error) ``
+
+	EthGetBlockReceipts func(p0 context.Context, p1 ethtypes.EthBlockNumberOrHash) ([]*EthTxReceipt, error) ``
+
+	EthGetBlockReceiptsLimited func(p0 context.Context, p1 ethtypes.EthBlockNumberOrHash, p2 abi.ChainEpoch) ([]*EthTxReceipt, error) ``
 
 	EthGetBlockTransactionCountByHash func(p0 context.Context, p1 ethtypes.EthHash) (ethtypes.EthUint64, error) ``
 
@@ -1762,6 +1777,28 @@ func (s *FullNodeStub) EthGetBlockByNumber(p0 context.Context, p1 string, p2 boo
 	return *new(ethtypes.EthBlock), ErrNotSupported
 }
 
+func (s *FullNodeStruct) EthGetBlockReceipts(p0 context.Context, p1 ethtypes.EthBlockNumberOrHash) ([]*EthTxReceipt, error) {
+	if s.Internal.EthGetBlockReceipts == nil {
+		return *new([]*EthTxReceipt), ErrNotSupported
+	}
+	return s.Internal.EthGetBlockReceipts(p0, p1)
+}
+
+func (s *FullNodeStub) EthGetBlockReceipts(p0 context.Context, p1 ethtypes.EthBlockNumberOrHash) ([]*EthTxReceipt, error) {
+	return *new([]*EthTxReceipt), ErrNotSupported
+}
+
+func (s *FullNodeStruct) EthGetBlockReceiptsLimited(p0 context.Context, p1 ethtypes.EthBlockNumberOrHash, p2 abi.ChainEpoch) ([]*EthTxReceipt, error) {
+	if s.Internal.EthGetBlockReceiptsLimited == nil {
+		return *new([]*EthTxReceipt), ErrNotSupported
+	}
+	return s.Internal.EthGetBlockReceiptsLimited(p0, p1, p2)
+}
+
+func (s *FullNodeStub) EthGetBlockReceiptsLimited(p0 context.Context, p1 ethtypes.EthBlockNumberOrHash, p2 abi.ChainEpoch) ([]*EthTxReceipt, error) {
+	return *new([]*EthTxReceipt), ErrNotSupported
+}
+
 func (s *FullNodeStruct) EthGetBlockTransactionCountByHash(p0 context.Context, p1 ethtypes.EthHash) (ethtypes.EthUint64, error) {
 	if s.Internal.EthGetBlockTransactionCountByHash == nil {
 		return *new(ethtypes.EthUint64), ErrNotSupported
@@ -2145,6 +2182,28 @@ func (s *FullNodeStruct) F3GetLatestCertificate(p0 context.Context) (*certs.Fina
 
 func (s *FullNodeStub) F3GetLatestCertificate(p0 context.Context) (*certs.FinalityCertificate, error) {
 	return nil, ErrNotSupported
+}
+
+func (s *FullNodeStruct) F3GetManifest(p0 context.Context) (*manifest.Manifest, error) {
+	if s.Internal.F3GetManifest == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.F3GetManifest(p0)
+}
+
+func (s *FullNodeStub) F3GetManifest(p0 context.Context) (*manifest.Manifest, error) {
+	return nil, ErrNotSupported
+}
+
+func (s *FullNodeStruct) F3IsRunning(p0 context.Context) (bool, error) {
+	if s.Internal.F3IsRunning == nil {
+		return false, ErrNotSupported
+	}
+	return s.Internal.F3IsRunning(p0)
+}
+
+func (s *FullNodeStub) F3IsRunning(p0 context.Context) (bool, error) {
+	return false, ErrNotSupported
 }
 
 func (s *FullNodeStruct) F3Participate(p0 context.Context, p1 address.Address, p2 time.Time, p3 time.Time) (bool, error) {
@@ -3027,47 +3086,47 @@ func (s *FullNodeStub) StateGetActor(p0 context.Context, p1 address.Address, p2 
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) StateGetAllAllocations(p0 context.Context, p1 types.TipSetKey) (map[verifregtypes.AllocationId]verifregtypes.Allocation, error) {
+func (s *FullNodeStruct) StateGetAllAllocations(p0 context.Context, p1 types.TipSetKey) (map[verifreg.AllocationId]verifreg.Allocation, error) {
 	if s.Internal.StateGetAllAllocations == nil {
-		return *new(map[verifregtypes.AllocationId]verifregtypes.Allocation), ErrNotSupported
+		return *new(map[verifreg.AllocationId]verifreg.Allocation), ErrNotSupported
 	}
 	return s.Internal.StateGetAllAllocations(p0, p1)
 }
 
-func (s *FullNodeStub) StateGetAllAllocations(p0 context.Context, p1 types.TipSetKey) (map[verifregtypes.AllocationId]verifregtypes.Allocation, error) {
-	return *new(map[verifregtypes.AllocationId]verifregtypes.Allocation), ErrNotSupported
+func (s *FullNodeStub) StateGetAllAllocations(p0 context.Context, p1 types.TipSetKey) (map[verifreg.AllocationId]verifreg.Allocation, error) {
+	return *new(map[verifreg.AllocationId]verifreg.Allocation), ErrNotSupported
 }
 
-func (s *FullNodeStruct) StateGetAllClaims(p0 context.Context, p1 types.TipSetKey) (map[verifregtypes.ClaimId]verifregtypes.Claim, error) {
+func (s *FullNodeStruct) StateGetAllClaims(p0 context.Context, p1 types.TipSetKey) (map[verifreg.ClaimId]verifreg.Claim, error) {
 	if s.Internal.StateGetAllClaims == nil {
-		return *new(map[verifregtypes.ClaimId]verifregtypes.Claim), ErrNotSupported
+		return *new(map[verifreg.ClaimId]verifreg.Claim), ErrNotSupported
 	}
 	return s.Internal.StateGetAllClaims(p0, p1)
 }
 
-func (s *FullNodeStub) StateGetAllClaims(p0 context.Context, p1 types.TipSetKey) (map[verifregtypes.ClaimId]verifregtypes.Claim, error) {
-	return *new(map[verifregtypes.ClaimId]verifregtypes.Claim), ErrNotSupported
+func (s *FullNodeStub) StateGetAllClaims(p0 context.Context, p1 types.TipSetKey) (map[verifreg.ClaimId]verifreg.Claim, error) {
+	return *new(map[verifreg.ClaimId]verifreg.Claim), ErrNotSupported
 }
 
-func (s *FullNodeStruct) StateGetAllocation(p0 context.Context, p1 address.Address, p2 verifregtypes.AllocationId, p3 types.TipSetKey) (*verifregtypes.Allocation, error) {
+func (s *FullNodeStruct) StateGetAllocation(p0 context.Context, p1 address.Address, p2 verifreg.AllocationId, p3 types.TipSetKey) (*verifreg.Allocation, error) {
 	if s.Internal.StateGetAllocation == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.StateGetAllocation(p0, p1, p2, p3)
 }
 
-func (s *FullNodeStub) StateGetAllocation(p0 context.Context, p1 address.Address, p2 verifregtypes.AllocationId, p3 types.TipSetKey) (*verifregtypes.Allocation, error) {
+func (s *FullNodeStub) StateGetAllocation(p0 context.Context, p1 address.Address, p2 verifreg.AllocationId, p3 types.TipSetKey) (*verifreg.Allocation, error) {
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) StateGetAllocationForPendingDeal(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*verifregtypes.Allocation, error) {
+func (s *FullNodeStruct) StateGetAllocationForPendingDeal(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*verifreg.Allocation, error) {
 	if s.Internal.StateGetAllocationForPendingDeal == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.StateGetAllocationForPendingDeal(p0, p1, p2)
 }
 
-func (s *FullNodeStub) StateGetAllocationForPendingDeal(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*verifregtypes.Allocation, error) {
+func (s *FullNodeStub) StateGetAllocationForPendingDeal(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*verifreg.Allocation, error) {
 	return nil, ErrNotSupported
 }
 
@@ -3082,15 +3141,15 @@ func (s *FullNodeStub) StateGetAllocationIdForPendingDeal(p0 context.Context, p1
 	return *new(verifreg.AllocationId), ErrNotSupported
 }
 
-func (s *FullNodeStruct) StateGetAllocations(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (map[verifregtypes.AllocationId]verifregtypes.Allocation, error) {
+func (s *FullNodeStruct) StateGetAllocations(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (map[verifreg.AllocationId]verifreg.Allocation, error) {
 	if s.Internal.StateGetAllocations == nil {
-		return *new(map[verifregtypes.AllocationId]verifregtypes.Allocation), ErrNotSupported
+		return *new(map[verifreg.AllocationId]verifreg.Allocation), ErrNotSupported
 	}
 	return s.Internal.StateGetAllocations(p0, p1, p2)
 }
 
-func (s *FullNodeStub) StateGetAllocations(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (map[verifregtypes.AllocationId]verifregtypes.Allocation, error) {
-	return *new(map[verifregtypes.AllocationId]verifregtypes.Allocation), ErrNotSupported
+func (s *FullNodeStub) StateGetAllocations(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (map[verifreg.AllocationId]verifreg.Allocation, error) {
+	return *new(map[verifreg.AllocationId]verifreg.Allocation), ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateGetBeaconEntry(p0 context.Context, p1 abi.ChainEpoch) (*types.BeaconEntry, error) {
@@ -3104,26 +3163,26 @@ func (s *FullNodeStub) StateGetBeaconEntry(p0 context.Context, p1 abi.ChainEpoch
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) StateGetClaim(p0 context.Context, p1 address.Address, p2 verifregtypes.ClaimId, p3 types.TipSetKey) (*verifregtypes.Claim, error) {
+func (s *FullNodeStruct) StateGetClaim(p0 context.Context, p1 address.Address, p2 verifreg.ClaimId, p3 types.TipSetKey) (*verifreg.Claim, error) {
 	if s.Internal.StateGetClaim == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.StateGetClaim(p0, p1, p2, p3)
 }
 
-func (s *FullNodeStub) StateGetClaim(p0 context.Context, p1 address.Address, p2 verifregtypes.ClaimId, p3 types.TipSetKey) (*verifregtypes.Claim, error) {
+func (s *FullNodeStub) StateGetClaim(p0 context.Context, p1 address.Address, p2 verifreg.ClaimId, p3 types.TipSetKey) (*verifreg.Claim, error) {
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) StateGetClaims(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (map[verifregtypes.ClaimId]verifregtypes.Claim, error) {
+func (s *FullNodeStruct) StateGetClaims(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (map[verifreg.ClaimId]verifreg.Claim, error) {
 	if s.Internal.StateGetClaims == nil {
-		return *new(map[verifregtypes.ClaimId]verifregtypes.Claim), ErrNotSupported
+		return *new(map[verifreg.ClaimId]verifreg.Claim), ErrNotSupported
 	}
 	return s.Internal.StateGetClaims(p0, p1, p2)
 }
 
-func (s *FullNodeStub) StateGetClaims(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (map[verifregtypes.ClaimId]verifregtypes.Claim, error) {
-	return *new(map[verifregtypes.ClaimId]verifregtypes.Claim), ErrNotSupported
+func (s *FullNodeStub) StateGetClaims(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (map[verifreg.ClaimId]verifreg.Claim, error) {
+	return *new(map[verifreg.ClaimId]verifreg.Claim), ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateGetNetworkParams(p0 context.Context) (*NetworkParams, error) {
@@ -3354,6 +3413,17 @@ func (s *FullNodeStruct) StateMinerInitialPledgeCollateral(p0 context.Context, p
 }
 
 func (s *FullNodeStub) StateMinerInitialPledgeCollateral(p0 context.Context, p1 address.Address, p2 miner.SectorPreCommitInfo, p3 types.TipSetKey) (types.BigInt, error) {
+	return *new(types.BigInt), ErrNotSupported
+}
+
+func (s *FullNodeStruct) StateMinerInitialPledgeForSector(p0 context.Context, p1 abi.ChainEpoch, p2 abi.SectorSize, p3 uint64, p4 types.TipSetKey) (types.BigInt, error) {
+	if s.Internal.StateMinerInitialPledgeForSector == nil {
+		return *new(types.BigInt), ErrNotSupported
+	}
+	return s.Internal.StateMinerInitialPledgeForSector(p0, p1, p2, p3, p4)
+}
+
+func (s *FullNodeStub) StateMinerInitialPledgeForSector(p0 context.Context, p1 abi.ChainEpoch, p2 abi.SectorSize, p3 uint64, p4 types.TipSetKey) (types.BigInt, error) {
 	return *new(types.BigInt), ErrNotSupported
 }
 
@@ -4169,6 +4239,28 @@ func (s *GatewayStruct) EthGetBlockByNumber(p0 context.Context, p1 string, p2 bo
 
 func (s *GatewayStub) EthGetBlockByNumber(p0 context.Context, p1 string, p2 bool) (ethtypes.EthBlock, error) {
 	return *new(ethtypes.EthBlock), ErrNotSupported
+}
+
+func (s *GatewayStruct) EthGetBlockReceipts(p0 context.Context, p1 ethtypes.EthBlockNumberOrHash) ([]*EthTxReceipt, error) {
+	if s.Internal.EthGetBlockReceipts == nil {
+		return *new([]*EthTxReceipt), ErrNotSupported
+	}
+	return s.Internal.EthGetBlockReceipts(p0, p1)
+}
+
+func (s *GatewayStub) EthGetBlockReceipts(p0 context.Context, p1 ethtypes.EthBlockNumberOrHash) ([]*EthTxReceipt, error) {
+	return *new([]*EthTxReceipt), ErrNotSupported
+}
+
+func (s *GatewayStruct) EthGetBlockReceiptsLimited(p0 context.Context, p1 ethtypes.EthBlockNumberOrHash, p2 abi.ChainEpoch) ([]*EthTxReceipt, error) {
+	if s.Internal.EthGetBlockReceiptsLimited == nil {
+		return *new([]*EthTxReceipt), ErrNotSupported
+	}
+	return s.Internal.EthGetBlockReceiptsLimited(p0, p1, p2)
+}
+
+func (s *GatewayStub) EthGetBlockReceiptsLimited(p0 context.Context, p1 ethtypes.EthBlockNumberOrHash, p2 abi.ChainEpoch) ([]*EthTxReceipt, error) {
+	return *new([]*EthTxReceipt), ErrNotSupported
 }
 
 func (s *GatewayStruct) EthGetBlockTransactionCountByHash(p0 context.Context, p1 ethtypes.EthHash) (ethtypes.EthUint64, error) {

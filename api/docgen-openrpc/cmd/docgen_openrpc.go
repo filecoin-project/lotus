@@ -1,10 +1,7 @@
 package main
 
 import (
-	"compress/gzip"
-	"encoding/json"
-	"io"
-	"log"
+	"fmt"
 	"os"
 
 	"github.com/filecoin-project/lotus/api/docgen"
@@ -29,45 +26,22 @@ Use:
 */
 
 func main() {
-	Comments, GroupDocs := docgen.ParseApiASTInfo(os.Args[1], os.Args[2], os.Args[3], os.Args[4])
-
-	doc := docgen_openrpc.NewLotusOpenRPCDocument(Comments, GroupDocs)
-
-	i, _, _ := docgen.GetAPIType(os.Args[2], os.Args[3])
-	doc.RegisterReceiverName("Filecoin", i)
-
-	out, err := doc.Discover()
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	var jsonOut []byte
-	var writer io.WriteCloser
-
 	// Use os.Args to handle a somewhat hacky flag for the gzip option.
 	// Could use flags package to handle this more cleanly, but that requires changes elsewhere
 	// the scope of which just isn't warranted by this one use case which will usually be run
 	// programmatically anyways.
-	if len(os.Args) > 5 && os.Args[5] == "-gzip" {
-		jsonOut, err = json.Marshal(out)
-		if err != nil {
-			log.Fatalln(err)
-		}
-		writer = gzip.NewWriter(os.Stdout)
-	} else {
-		jsonOut, err = json.MarshalIndent(out, "", "    ")
-		if err != nil {
-			log.Fatalln(err)
-		}
-		writer = os.Stdout
-	}
-
-	_, err = writer.Write(jsonOut)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	err = writer.Close()
-	if err != nil {
-		log.Fatalln(err)
+	var (
+		apiFile = os.Args[1]
+		iface   = os.Args[2]
+		pkg     = os.Args[3]
+		dir     = os.Args[4]
+		outGzip = len(os.Args) > 5 && os.Args[5] == "-gzip"
+	)
+	if ainfo, err := docgen.ParseApiASTInfo(apiFile, iface, pkg, dir); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "Failed to parse API AST info: %v\n", err)
+		os.Exit(1)
+	} else if err := docgen_openrpc.Generate(os.Stdout, iface, pkg, ainfo, outGzip); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "Failed to generate OpenRPC docs: %v\n", err)
+		os.Exit(1)
 	}
 }

@@ -14,8 +14,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 )
 
-//go:generate go run ./gen
-
 // Actor is a chaos actor. It implements a variety of illegal behaviours that
 // trigger violations of VM invariants. These behaviours are not found in
 // production code, but are important to test that the VM constraints are

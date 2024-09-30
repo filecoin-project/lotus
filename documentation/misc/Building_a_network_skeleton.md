@@ -181,6 +181,16 @@ You can take a look at [this PR as a reference](https://github.com/filecoin-proj
 
 Note: one only needs to update `filecion-ffi`'s dependency on `go-state-types` when a network upgrade is introducing new types in `go-state-types`  (see [below](#new-types-in-go-state-types)).  Otherwise, `filecion-ffi`'s dependency on `go-state-types` is just updated when doing fiinal releases before the network upgrade. 
 
+## Filecoin-FFI Checklist
+
+1. Update the `TryFrom<u32>` implementation for `EngineVersion` in `rust/src/fvm/engine.rs`
+    - Add the new network version number (XX+1) to the existing match arm for the network version.
+
+2. Patch the FVM-dependency (fvm4 and fvm4_shared) in `rust/cargo.toml` to use the newly published Ref-FVM release.
+    -  Add `features = ["nvXX+1-dev"]`.
+
+You can take a look at this [Filecoin-FFI PR as a reference](https://github.com/filecoin-project/filecoin-ffi/pull/454), which added the skeleton for network version 23.
+
 ## Lotus Checklist
 
 1. To integrate the network skeleton into Lotus, ensure that the relevant releases for ref-fvm, go-state-types, and filecoin-ffi are bubbled up to Lotus.

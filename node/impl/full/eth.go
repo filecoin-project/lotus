@@ -84,6 +84,8 @@ type EthModuleAPI interface {
 	EthTraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error)
 	EthTraceTransaction(ctx context.Context, txHash string) ([]*ethtypes.EthTraceTransaction, error)
 	EthTraceFilter(ctx context.Context, filter ethtypes.EthTraceFilterCriteria) ([]*ethtypes.EthTraceFilterResult, error)
+	EthGetBlockReceiptsLimited(ctx context.Context, blkParam ethtypes.EthBlockNumberOrHash, limit abi.ChainEpoch) ([]*api.EthTxReceipt, error)
+	EthGetBlockReceipts(ctx context.Context, blkParam ethtypes.EthBlockNumberOrHash) ([]*api.EthTxReceipt, error)
 }
 
 type EthEventAPI interface {
@@ -525,9 +527,22 @@ func (a *EthModule) EthGetTransactionReceiptLimited(ctx context.Context, txHash 
 		return nil, xerrors.Errorf("failed to convert %s into an Eth Txn: %w", txHash, err)
 	}
 
-	receipt, err := newEthTxReceipt(ctx, tx, msgLookup, a.ChainAPI, a.StateAPI, a.EthEventHandler)
+	ts, err := a.Chain.GetTipSetFromKey(ctx, msgLookup.TipSet)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to convert %s into an Eth Receipt: %w", txHash, err)
+		return nil, xerrors.Errorf("failed to lookup tipset %s when constructing the eth txn receipt: %w", msgLookup.TipSet, err)
+	}
+
+	// The tx is located in the parent tipset
+	parentTs, err := a.Chain.LoadTipSet(ctx, ts.Parents())
+	if err != nil {
+		return nil, xerrors.Errorf("failed to lookup tipset %s when constructing the eth txn receipt: %w", ts.Parents(), err)
+	}
+
+	baseFee := parentTs.Blocks()[0].ParentBaseFee
+
+	receipt, err := newEthTxReceipt(ctx, tx, baseFee, msgLookup.Receipt, a.EthEventHandler)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to create Eth receipt: %w", err)
 	}
 
 	return &receipt, nil
@@ -539,6 +554,63 @@ func (a *EthAPI) EthGetTransactionByBlockHashAndIndex(context.Context, ethtypes.
 
 func (a *EthAPI) EthGetTransactionByBlockNumberAndIndex(context.Context, ethtypes.EthUint64, ethtypes.EthUint64) (ethtypes.EthTx, error) {
 	return ethtypes.EthTx{}, ErrUnsupported
+}
+
+func (a *EthModule) EthGetBlockReceipts(ctx context.Context, blockParam ethtypes.EthBlockNumberOrHash) ([]*api.EthTxReceipt, error) {
+	return a.EthGetBlockReceiptsLimited(ctx, blockParam, api.LookbackNoLimit)
+}
+
+func (a *EthModule) EthGetBlockReceiptsLimited(ctx context.Context, blockParam ethtypes.EthBlockNumberOrHash, limit abi.ChainEpoch) ([]*api.EthTxReceipt, error) {
+	ts, err := getTipsetByEthBlockNumberOrHash(ctx, a.Chain, blockParam)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get tipset: %w", err)
+	}
+
+	tsCid, err := ts.Key().Cid()
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get tipset key cid: %w", err)
+	}
+
+	blkHash, err := ethtypes.EthHashFromCid(tsCid)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to parse eth hash from cid: %w", err)
+	}
+
+	// Execute the tipset to get the receipts, messages, and events
+	st, msgs, receipts, err := executeTipset(ctx, ts, a.Chain, a.StateAPI)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to execute tipset: %w", err)
+	}
+
+	// Load the state tree
+	stateTree, err := a.StateManager.StateTree(st)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load state tree: %w", err)
+	}
+
+	baseFee := ts.Blocks()[0].ParentBaseFee
+
+	ethReceipts := make([]*api.EthTxReceipt, 0, len(msgs))
+	for i, msg := range msgs {
+		msg := msg
+
+		tx, err := newEthTx(ctx, a.Chain, stateTree, ts.Height(), tsCid, msg.Cid(), i)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to create EthTx: %w", err)
+		}
+
+		receipt, err := newEthTxReceipt(ctx, tx, baseFee, receipts[i], a.EthEventHandler)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to create Eth receipt: %w", err)
+		}
+
+		// Set the correct Ethereum block hash
+		receipt.BlockHash = blkHash
+
+		ethReceipts = append(ethReceipts, &receipt)
+	}
+
+	return ethReceipts, nil
 }
 
 // EthGetCode returns string value of the compiled bytecode
@@ -1634,7 +1706,7 @@ func (e *EthEventHandler) ethGetEventsForFilter(ctx context.Context, filterSpec 
 	}
 
 	// Create a temporary filter
-	f, err := e.EventFilterManager.Install(ctx, pf.minHeight, pf.maxHeight, pf.tipsetCid, pf.addresses, pf.keys, true)
+	f, err := e.EventFilterManager.Install(ctx, pf.minHeight, pf.maxHeight, pf.tipsetCid, pf.addresses, pf.keys, false)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to install event filter: %w", err)
 	}

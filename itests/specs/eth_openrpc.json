@@ -4203,6 +4203,214 @@
 			}
 		},
 		{
+			"name": "eth_getBlockReceipts",
+			"summary": "Returns an array of all transaction receipts in a block by block number, block hash, or block tag.",
+			"params": [
+				{
+					"name": "blockParam",
+					"description": "The block identifier. Can be a block number, block hash, or block tag.",
+					"schema": {
+						"oneOf": [
+							{
+								"title": "Block Number",
+								"type": "string",
+								"pattern": "^0x([1-9a-f]+[0-9a-f]*|0)$",
+								"description": "The hex encoded block number"
+							},
+							{
+								"title": "Block Hash",
+								"type": "string",
+								"pattern": "^0x[0-9a-f]{64}$",
+								"description": "The 32-byte block hash"
+							},
+							{
+								"title": "Block Tag",
+								"type": "string",
+								"enum": [
+									"earliest",
+									"latest",
+									"pending"
+								],
+								"description": "The block tag string"
+							}
+						]
+					}
+				}
+			],
+			"result": {
+				"name": "Block Receipts",
+				"schema": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"title": "EthTxReceipt",
+						"required": [
+							"transactionHash",
+							"transactionIndex",
+							"blockHash",
+							"blockNumber",
+							"from",
+							"to",
+							"cumulativeGasUsed",
+							"gasUsed",
+							"contractAddress",
+							"logs",
+							"logsBloom",
+							"status",
+							"effectiveGasPrice"
+						],
+						"properties": {
+							"transactionHash": {
+								"title": "transaction hash",
+								"type": "string",
+								"pattern": "^0x[0-9a-f]{64}$"
+							},
+							"transactionIndex": {
+								"title": "transaction index",
+								"type": "string",
+								"pattern": "^0x([1-9a-f]+[0-9a-f]*|0)$"
+							},
+							"blockHash": {
+								"title": "block hash",
+								"type": "string",
+								"pattern": "^0x[0-9a-f]{64}$",
+								"description": "Ethereum-compatible block hash calculated from the Filecoin tipset"
+							},
+							"blockNumber": {
+								"title": "block number",
+								"type": "string",
+								"pattern": "^0x([1-9a-f]+[0-9a-f]*|0)$"
+							},
+							"from": {
+								"title": "from",
+								"type": "string",
+								"pattern": "^0x[0-9,a-f,A-F]{40}$"
+							},
+							"to": {
+								"title": "to",
+								"type": "string",
+								"pattern": "^0x[0-9,a-f,A-F]{40}$",
+								"description": "Address of the receiver. null for contract creation transactions."
+							},
+							"cumulativeGasUsed": {
+								"title": "cumulative gas used",
+								"type": "string",
+								"pattern": "^0x([1-9a-f]+[0-9a-f]*|0)$",
+								"description": "The total amount of gas used in the block up to and including this transaction"
+							},
+							"gasUsed": {
+								"title": "gas used",
+								"type": "string",
+								"pattern": "^0x([1-9a-f]+[0-9a-f]*|0)$",
+								"description": "The amount of gas used by this specific transaction"
+							},
+							"contractAddress": {
+								"title": "contract address",
+								"description": "The contract address created, if the transaction was a contract creation, otherwise null.",
+								"oneOf": [
+									{
+										"title": "hex encoded address",
+										"type": "string",
+										"pattern": "^0x[0-9,a-f,A-F]{40}$"
+									},
+									{
+										"title": "null",
+										"type": "null"
+									}
+								]
+							},
+							"logs": {
+								"title": "logs",
+								"type": "array",
+								"items": {
+									"title": "EthLog",
+									"type": "object",
+									"required": [
+										"removed",
+										"logIndex",
+										"transactionIndex",
+										"transactionHash",
+										"blockHash",
+										"blockNumber",
+										"address",
+										"data",
+										"topics"
+									],
+									"properties": {
+										"removed": {
+											"title": "removed",
+											"type": "boolean"
+										},
+										"logIndex": {
+											"title": "log index",
+											"type": "string",
+											"pattern": "^0x([1-9a-f]+[0-9a-f]*|0)$"
+										},
+										"transactionIndex": {
+											"title": "transaction index",
+											"type": "string",
+											"pattern": "^0x([1-9a-f]+[0-9a-f]*|0)$"
+										},
+										"transactionHash": {
+											"title": "transaction hash",
+											"type": "string",
+											"pattern": "^0x[0-9a-f]{64}$"
+										},
+										"blockHash": {
+											"title": "block hash",
+											"type": "string",
+											"pattern": "^0x[0-9a-f]{64}$"
+										},
+										"blockNumber": {
+											"title": "block number",
+											"type": "string",
+											"pattern": "^0x([1-9a-f]+[0-9a-f]*|0)$"
+										},
+										"address": {
+											"title": "address",
+											"type": "string",
+											"pattern": "^0x[0-9,a-f,A-F]{40}$"
+										},
+										"data": {
+											"title": "data",
+											"type": "string",
+											"pattern": "^0x[0-9a-f]*$"
+										},
+										"topics": {
+											"title": "topics",
+											"type": "array",
+											"items": {
+												"title": "32 hex encoded bytes",
+												"type": "string",
+												"pattern": "^0x[0-9a-f]{64}$"
+											}
+										}
+									}
+								}
+							},
+							"logsBloom": {
+								"title": "logs bloom",
+								"type": "string",
+								"pattern": "^0x[0-9a-f]{512}$"
+							},
+							"status": {
+								"title": "status",
+								"type": "string",
+								"pattern": "^0x([1-9a-f]+[0-9a-f]*|0)$",
+								"description": "Either 1 (success) or 0 (failure)"
+							},
+							"effectiveGasPrice": {
+								"title": "effective gas price",
+								"type": "string",
+								"pattern": "^0x([1-9a-f]+[0-9a-f]*|0)$",
+								"description": "The actual value per gas deducted from the sender's account"
+							}
+						}
+					}
+				}
+			}
+		},
+		{
 			"name": "debug_getRawHeader",
 			"summary": "Returns an RLP-encoded header.",
 			"params": [

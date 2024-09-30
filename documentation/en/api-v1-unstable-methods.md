@@ -51,6 +51,8 @@
   * [EthGetBalance](#EthGetBalance)
   * [EthGetBlockByHash](#EthGetBlockByHash)
   * [EthGetBlockByNumber](#EthGetBlockByNumber)
+  * [EthGetBlockReceipts](#EthGetBlockReceipts)
+  * [EthGetBlockReceiptsLimited](#EthGetBlockReceiptsLimited)
   * [EthGetBlockTransactionCountByHash](#EthGetBlockTransactionCountByHash)
   * [EthGetBlockTransactionCountByNumber](#EthGetBlockTransactionCountByNumber)
   * [EthGetCode](#EthGetCode)
@@ -87,6 +89,8 @@
   * [F3GetECPowerTable](#F3GetECPowerTable)
   * [F3GetF3PowerTable](#F3GetF3PowerTable)
   * [F3GetLatestCertificate](#F3GetLatestCertificate)
+  * [F3GetManifest](#F3GetManifest)
+  * [F3IsRunning](#F3IsRunning)
   * [F3Participate](#F3Participate)
 * [Filecoin](#Filecoin)
   * [FilecoinAddressToEthAddress](#FilecoinAddressToEthAddress)
@@ -239,6 +243,7 @@
   * [StateMinerFaults](#StateMinerFaults)
   * [StateMinerInfo](#StateMinerInfo)
   * [StateMinerInitialPledgeCollateral](#StateMinerInitialPledgeCollateral)
+  * [StateMinerInitialPledgeForSector](#StateMinerInitialPledgeForSector)
   * [StateMinerPartitions](#StateMinerPartitions)
   * [StateMinerPower](#StateMinerPower)
   * [StateMinerPreCommitDepositForPower](#StateMinerPreCommitDepositForPower)
@@ -1482,6 +1487,105 @@ Response:
 }
 ```
 
+### EthGetBlockReceipts
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "string value"
+]
+```
+
+Response:
+```json
+[
+  {
+    "transactionHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
+    "transactionIndex": "0x5",
+    "blockHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
+    "blockNumber": "0x5",
+    "from": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+    "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+    "root": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
+    "status": "0x5",
+    "contractAddress": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+    "cumulativeGasUsed": "0x5",
+    "gasUsed": "0x5",
+    "effectiveGasPrice": "0x0",
+    "logsBloom": "0x07",
+    "logs": [
+      {
+        "address": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+        "data": "0x07",
+        "topics": [
+          "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"
+        ],
+        "removed": true,
+        "logIndex": "0x5",
+        "transactionIndex": "0x5",
+        "transactionHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
+        "blockHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
+        "blockNumber": "0x5"
+      }
+    ],
+    "type": "0x5"
+  }
+]
+```
+
+### EthGetBlockReceiptsLimited
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "string value",
+  10101
+]
+```
+
+Response:
+```json
+[
+  {
+    "transactionHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
+    "transactionIndex": "0x5",
+    "blockHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
+    "blockNumber": "0x5",
+    "from": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+    "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+    "root": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
+    "status": "0x5",
+    "contractAddress": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+    "cumulativeGasUsed": "0x5",
+    "gasUsed": "0x5",
+    "effectiveGasPrice": "0x0",
+    "logsBloom": "0x07",
+    "logs": [
+      {
+        "address": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+        "data": "0x07",
+        "topics": [
+          "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"
+        ],
+        "removed": true,
+        "logIndex": "0x5",
+        "transactionIndex": "0x5",
+        "transactionHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
+        "blockHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
+        "blockNumber": "0x5"
+      }
+    ],
+    "type": "0x5"
+  }
+]
+```
+
 ### EthGetBlockTransactionCountByHash
 EthGetBlockTransactionCountByHash returns the number of messages in the TipSet
 
@@ -2414,6 +2518,63 @@ Response:
   "PowerTableDelta": null
 }
 ```
+
+### F3GetManifest
+F3GetGetManifest returns the current manifest being used for F3
+
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "Pause": false,
+  "ProtocolVersion": 0,
+  "InitialInstance": 0,
+  "BootstrapEpoch": 0,
+  "NetworkName": "",
+  "ExplicitPower": null,
+  "IgnoreECPower": false,
+  "InitialPowerTable": null,
+  "CommitteeLookback": 0,
+  "CatchUpAlignment": 0,
+  "Gpbft": {
+    "Delta": 0,
+    "DeltaBackOffExponent": 0,
+    "MaxLookaheadRounds": 0,
+    "RebroadcastBackoffBase": 0,
+    "RebroadcastBackoffExponent": 0,
+    "RebroadcastBackoffSpread": 0,
+    "RebroadcastBackoffMax": 0
+  },
+  "EC": {
+    "Period": 0,
+    "Finality": 0,
+    "DelayMultiplier": 0,
+    "BaseDecisionBackoffTable": null,
+    "HeadLookback": 0
+  },
+  "CertificateExchange": {
+    "ClientRequestTimeout": 0,
+    "ServerRequestTimeout": 0,
+    "MinimumPollInterval": 0,
+    "MaximumPollInterval": 0
+  }
+}
+```
+
+### F3IsRunning
+F3IsRunning returns true if the F3 instance is running, false if it's not running but
+it's enabled, and an error when disabled entirely.
+
+
+Perms: read
+
+Inputs: `null`
+
+Response: `true`
 
 ### F3Participate
 F3Participate should be called by a storage provider to participate in signing F3 consensus.
@@ -6361,9 +6522,10 @@ Inputs:
 Response: `{}`
 
 ### StateGetBeaconEntry
-StateGetBeaconEntry returns the beacon entry for the given filecoin epoch. If
-the entry has not yet been produced, the call will block until the entry
-becomes available
+StateGetBeaconEntry returns the beacon entry for the given filecoin epoch
+by using the recorded entries on the chain. If the entry for the requested
+epoch has not yet been produced, the call will block until the entry
+becomes available.
 
 
 Perms: read
@@ -7104,7 +7266,14 @@ Response:
 ```
 
 ### StateMinerInitialPledgeCollateral
-StateMinerInitialPledgeCollateral returns the initial pledge collateral for the specified miner's sector
+StateMinerInitialPledgeCollateral attempts to calculate the initial pledge collateral based on a SectorPreCommitInfo.
+This method uses the DealIDs field in SectorPreCommitInfo to determine the amount of verified
+deal space in the sector in order to perform a QAP calculation. Since network version 22 and
+the introduction of DDO, the DealIDs field can no longer be used to reliably determine verified
+deal space; therefore, this method is deprecated. Use StateMinerInitialPledgeForSector instead
+and pass in the verified deal space directly.
+
+Deprecated: Use StateMinerInitialPledgeForSector instead.
 
 
 Perms: read
@@ -7128,6 +7297,34 @@ Inputs:
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     }
   },
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `"0"`
+
+### StateMinerInitialPledgeForSector
+StateMinerInitialPledgeForSector returns the initial pledge collateral for a given sector
+duration, size, and combined size of any verified pieces within the sector. This calculation
+depends on current network conditions (total power, total pledge and current rewards) at the
+given tipset.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  10101,
+  34359738368,
+  42,
   [
     {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"

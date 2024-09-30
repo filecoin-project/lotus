@@ -13,6 +13,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/consensus"
@@ -164,6 +165,11 @@ var ChainNode = Options(
 	),
 
 	If(build.IsF3Enabled(),
+		Override(new(*lf3.Config), lf3.NewConfig(
+			buildconstants.F3ManifestServerID,
+			buildconstants.F3Consensus,
+			buildconstants.F3InitialPowerTableCID,
+		)),
 		Override(new(manifest.ManifestProvider), lf3.NewManifestProvider),
 		Override(new(*lf3.F3), lf3.New),
 	),

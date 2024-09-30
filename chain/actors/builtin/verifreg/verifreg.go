@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	builtin15 "github.com/filecoin-project/go-state-types/builtin"
+	verifregtypes12 "github.com/filecoin-project/go-state-types/builtin/v12/verifreg"
 	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/manifest"
@@ -187,9 +188,21 @@ func AllCodes() []cid.Cid {
 	}
 }
 
-type Allocation = verifregtypes.Allocation
-type AllocationId = verifregtypes.AllocationId
-type Claim = verifregtypes.Claim
-type ClaimId = verifregtypes.ClaimId
+type (
+	Allocation                     = verifregtypes.Allocation
+	AllocationId                   = verifregtypes.AllocationId
+	Claim                          = verifregtypes.Claim
+	ClaimId                        = verifregtypes.ClaimId
+	AllocationRequest              = verifregtypes12.AllocationRequest
+	AllocationRequests             = verifregtypes12.AllocationRequests
+	RemoveExpiredAllocationsParams = verifregtypes12.RemoveExpiredAllocationsParams
+	AddVerifierParams              = verifregtypes12.AddVerifierParams
+	AddVerifiedClientParams        = verifregtypes12.AddVerifiedClientParams
+)
 
-const NoAllocationID = verifregtypes.NoAllocationID
+const (
+	NoAllocationID                      = verifregtypes.NoAllocationID
+	MinimumVerifiedAllocationTerm       = verifregtypes12.MinimumVerifiedAllocationTerm
+	MaximumVerifiedAllocationTerm       = verifregtypes12.MaximumVerifiedAllocationTerm
+	MaximumVerifiedAllocationExpiration = verifregtypes12.MaximumVerifiedAllocationExpiration
+)

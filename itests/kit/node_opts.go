@@ -2,11 +2,17 @@ package kit
 
 import (
 	"math"
+	"time"
 
+	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p/core/peer"
+
+	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/lotus/build/buildconstants"
+	"github.com/filecoin-project/lotus/chain/lf3"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/node"
@@ -206,6 +212,23 @@ func MutateSealingConfig(mut func(sc *config.SealingConfig)) NodeOpt {
 				return modules.ToSealingConfig(cf.Dealmaking, cf.Sealing), nil
 			}, nil
 		})))
+}
+
+func F3Enabled(bootstrapEpoch abi.ChainEpoch, blockDelay time.Duration, finality abi.ChainEpoch, manifestProvider peer.ID) NodeOpt {
+	return ConstructorOpts(
+		node.Override(new(*lf3.Config), func(nn dtypes.NetworkName) *lf3.Config {
+			c := lf3.NewConfig(manifestProvider, true, cid.Undef)(nn)
+			c.InitialManifest.Pause = false
+			c.InitialManifest.EC.Period = blockDelay
+			c.InitialManifest.Gpbft.Delta = blockDelay / 5
+			c.InitialManifest.EC.Finality = int64(finality)
+			c.InitialManifest.BootstrapEpoch = int64(bootstrapEpoch)
+			c.InitialManifest.EC.HeadLookback = 0
+			return c
+		}),
+		node.Override(new(manifest.ManifestProvider), lf3.NewManifestProvider),
+		node.Override(new(*lf3.F3), lf3.New),
+	)
 }
 
 // SectorSize sets the sector size for this miner. Start() will populate the
