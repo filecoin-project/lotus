@@ -2600,6 +2600,11 @@ func upgradeActorsV14Common(
 	return newRoot, nil
 }
 
+// PreUpgradeActorsV15 runs the premigration for v15 actors. Note that this migration contains no
+// cached migrators, so the only purpose of running a premigration is to prime the blockstore with
+// IPLD blocks that would be created during the migration, to reduce the amount of work that needs
+// to be done during the actual migration since block Puts become simple Has operations. But the
+// same amount of migration work will need to be done otherwise.
 func PreUpgradeActorsV15(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) error {
 	// Use half the CPUs for pre-migration, but leave at least 3.
 	workerCount := MigrationMaxWorkerCount
@@ -2609,7 +2614,7 @@ func PreUpgradeActorsV15(ctx context.Context, sm *stmgr.StateManager, cache stmg
 		workerCount /= 2
 	}
 
-	lbts, lbRoot, err := stmgr.GetLookbackTipSetForRound(ctx, sm, ts, epoch)
+	_, lbRoot, err := stmgr.GetLookbackTipSetForRound(ctx, sm, ts, epoch)
 	if err != nil {
 		return xerrors.Errorf("error getting lookback ts for premigration: %w", err)
 	}
@@ -2619,12 +2624,19 @@ func PreUpgradeActorsV15(ctx context.Context, sm *stmgr.StateManager, cache stmg
 		ProgressLogPeriod: time.Minute * 5,
 	}
 
-	_, err = upgradeActorsV15Common(ctx, sm, cache, lbRoot, epoch, lbts, config)
+	_, err = upgradeActorsV15Common(ctx, sm, cache, lbRoot, epoch, config)
 	return err
 }
 
-func UpgradeActorsV15(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, cb stmgr.ExecMonitor,
-	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+func UpgradeActorsV15(
+	ctx context.Context,
+	sm *stmgr.StateManager,
+	cache stmgr.MigrationCache,
+	cb stmgr.ExecMonitor,
+	root cid.Cid,
+	epoch abi.ChainEpoch,
+	ts *types.TipSet,
+) (cid.Cid, error) {
 	// Use all the CPUs except 2.
 	workerCount := MigrationMaxWorkerCount - 3
 	if workerCount <= 0 {
@@ -2636,7 +2648,7 @@ func UpgradeActorsV15(ctx context.Context, sm *stmgr.StateManager, cache stmgr.M
 		ResultQueueSize:   100,
 		ProgressLogPeriod: 10 * time.Second,
 	}
-	newRoot, err := upgradeActorsV15Common(ctx, sm, cache, root, epoch, ts, config)
+	newRoot, err := upgradeActorsV15Common(ctx, sm, cache, root, epoch, config)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("migrating actors vXX state: %w", err)
 	}
@@ -2644,8 +2656,11 @@ func UpgradeActorsV15(ctx context.Context, sm *stmgr.StateManager, cache stmgr.M
 }
 
 func upgradeActorsV15Common(
-	ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache,
-	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet,
+	ctx context.Context,
+	sm *stmgr.StateManager,
+	cache stmgr.MigrationCache,
+	root cid.Cid,
+	epoch abi.ChainEpoch,
 	config migration.Config,
 ) (cid.Cid, error) {
 	writeStore := blockstore.NewAutobatch(ctx, sm.ChainStore().StateBlockstore(), units.GiB/4)
@@ -2674,10 +2689,21 @@ func upgradeActorsV15Common(
 	}
 
 	// Perform the migration
-	newHamtRoot, err := nv24.MigrateStateTree(ctx, adtStore, manifest, stateRoot.Actors, epoch, config,
-		migrationLogger{}, cache)
+	newHamtRoot, err := nv24.MigrateStateTree(
+		ctx,
+		adtStore,
+		manifest,
+		stateRoot.Actors,
+		epoch,
+		// two FIP-0081 constants for this migration only
+		int64(buildconstants.UpgradeTuktukHeight),           // powerRampStartEpoch
+		buildconstants.UpgradeTuktukPowerRampDurationEpochs, // powerRampDurationEpochs
+		config,
+		migrationLogger{},
+		cache,
+	)
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("upgrading to actors vXX+1: %w", err)
+		return cid.Undef, xerrors.Errorf("upgrading to actors v15: %w", err)
 	}
 
 	// Persist the result.

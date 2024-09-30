@@ -96,6 +96,14 @@ func (s *state15) MinerCounts() (uint64, uint64, error) {
 	return uint64(s.State.MinerAboveMinPowerCount), uint64(s.State.MinerCount), nil
 }
 
+func (s *state15) RampStartEpoch() int64 {
+	return s.State.RampStartEpoch
+}
+
+func (s *state15) RampDurationEpochs() uint64 {
+	return s.State.RampDurationEpochs
+}
+
 func (s *state15) ListAllMiners() ([]address.Address, error) {
 	claims, err := s.claims()
 	if err != nil {
