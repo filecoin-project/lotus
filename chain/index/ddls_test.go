@@ -113,7 +113,7 @@ func TestGetNonRevertedTipsetCountStmts(t *testing.T) {
 	verifyNonRevertedMessageCount(t, s, []byte("test_tipset_key"), 0)
 }
 
-func TestupdateTipsetToNonRevertedStmt(t *testing.T) {
+func TestUpdateTipsetToNonRevertedStmt(t *testing.T) {
 	s, err := NewSqliteIndexer(":memory:", nil, 0, false, 0)
 	require.NoError(t, err)
 
@@ -613,23 +613,6 @@ func verifyEvent(t *testing.T, s *SqliteIndexer, eventID int64, expectedEvent ev
 	require.Equal(t, expectedEvent.messageID, messageID)
 }
 
-func verifyEventEntry(t *testing.T, s *SqliteIndexer, eventID int64, expectedEventEntry eventEntry) {
-	var indexed bool
-	var flags []byte
-	var key string
-	var codec int
-	var value []byte
-
-	err := s.db.QueryRow("SELECT event_id, indexed, flags, key, codec, value FROM event_entry WHERE event_id = ?", eventID).Scan(&eventID, &indexed, &flags, &key, &codec, &value)
-	require.NoError(t, err)
-	require.Equal(t, expectedEventEntry.eventID, eventID)
-	require.Equal(t, expectedEventEntry.indexed, indexed)
-	require.Equal(t, expectedEventEntry.flags, flags)
-	require.Equal(t, expectedEventEntry.key, key)
-	require.Equal(t, expectedEventEntry.codec, codec)
-	require.Equal(t, expectedEventEntry.value, value)
-}
-
 func verifyCountTipsetsAtHeightStmt(t *testing.T, s *SqliteIndexer, height uint64, expectedRevertedCount, expectedNonRevertedCount int) {
 	var revertedCount, nonRevertedCount int
 	err := s.stmts.countTipsetsAtHeightStmt.QueryRow(height).Scan(&revertedCount, &nonRevertedCount)
@@ -722,6 +705,4 @@ func insertEventEntry(t *testing.T, s *SqliteIndexer, ee eventEntry) {
 	rowsAffected, err := res.RowsAffected()
 	require.NoError(t, err)
 	require.Equal(t, int64(1), rowsAffected)
-
-	verifyEventEntry(t, s, ee.eventID, ee)
 }

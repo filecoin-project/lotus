@@ -206,7 +206,8 @@ func (si *SqliteIndexer) verifyIndexedData(ctx context.Context, ts *types.TipSet
 		return xerrors.Errorf("failed to get next tipset for height %d: %w", ts.Height(), err)
 	}
 
-	// if non-reverted events exist which means that tipset `ts` has been executed, there should be 0 reverted events in the DB
+	// given that `ts` is on the canonical chain and `executionTs` is the next tipset in the chain
+	// `ts` can not have reverted events
 	var hasRevertedEventsInTipset bool
 	err = si.stmts.hasRevertedEventsInTipsetStmt.QueryRowContext(ctx, tsKeyCid.Bytes()).Scan(&hasRevertedEventsInTipset)
 	if err != nil {

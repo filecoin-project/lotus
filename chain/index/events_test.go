@@ -23,13 +23,13 @@ func TestGetEventsForFilterNoEvents(t *testing.T) {
 
 	headHeight := abi.ChainEpoch(60)
 	si, _, cs := setupWithHeadIndexed(t, headHeight, rng)
-	defer si.Close()
+	defer func() { _ = si.Close() }()
 
 	// Create a fake tipset at height 1
 	fakeTipSet1 := fakeTipSet(t, rng, 1, nil)
 
 	// Set the dummy chainstore to return this tipset for height 1
-	cs.SetTipsetByHeight(1, fakeTipSet1) // empty DB
+	cs.SetTipsetByHeightAndKey(1, fakeTipSet1.Key(), fakeTipSet1) // empty DB
 
 	// tipset is not indexed
 	f := &EventFilter{
@@ -52,8 +52,7 @@ func TestGetEventsForFilterNoEvents(t *testing.T) {
 
 	// tipset is indexed but has no events
 	err = withTx(ctx, si.db, func(tx *sql.Tx) error {
-		si.indexTipset(ctx, tx, fakeTipSet1)
-		return nil
+		return si.indexTipset(ctx, tx, fakeTipSet1)
 	})
 	require.NoError(t, err)
 
@@ -83,7 +82,7 @@ func TestGetEventsForFilterWithEvents(t *testing.T) {
 	rng := pseudo.New(pseudo.NewSource(time.Now().UnixNano()))
 	headHeight := abi.ChainEpoch(60)
 	si, _, cs := setupWithHeadIndexed(t, headHeight, rng)
-	defer si.Close()
+	defer func() { _ = si.Close() }()
 
 	ev1 := fakeEvent(
 		abi.ActorID(1),
@@ -133,8 +132,8 @@ func TestGetEventsForFilterWithEvents(t *testing.T) {
 	fakeTipSet2 := fakeTipSet(t, rng, 2, nil)
 
 	// Set the dummy chainstore to return this tipset for height 1
-	cs.SetTipsetByHeight(1, fakeTipSet1) // empty DB
-	cs.SetTipsetByHeight(2, fakeTipSet2) // empty DB
+	cs.SetTipsetByHeightAndKey(1, fakeTipSet1.Key(), fakeTipSet1) // empty DB
+	cs.SetTipsetByHeightAndKey(2, fakeTipSet2.Key(), fakeTipSet2) // empty DB
 
 	cs.SetMessagesForTipset(fakeTipSet1, []types.ChainMsg{fm})
 

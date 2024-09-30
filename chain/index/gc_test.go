@@ -18,7 +18,7 @@ func TestGC(t *testing.T) {
 	// retention epochs is 20
 	si, _, _ := setupWithHeadIndexed(t, 60, rng)
 	si.gcRetentionEpochs = 20
-	defer si.Close()
+	defer func() { _ = si.Close() }()
 
 	tsCid1 := randomCid(t, rng)
 	tsCid10 := randomCid(t, rng)
