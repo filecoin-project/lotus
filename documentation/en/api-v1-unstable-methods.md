@@ -90,6 +90,8 @@
   * [F3GetF3PowerTable](#F3GetF3PowerTable)
   * [F3GetLatestCertificate](#F3GetLatestCertificate)
   * [F3GetManifest](#F3GetManifest)
+  * [F3GetOrRenewParticipationTicket](#F3GetOrRenewParticipationTicket)
+  * [F3GetProgress](#F3GetProgress)
   * [F3IsRunning](#F3IsRunning)
   * [F3Participate](#F3Participate)
 * [Filecoin](#Filecoin)
@@ -2337,7 +2339,7 @@ Response: `true`
 
 
 ### F3GetCertificate
-F3GetCertificate returns a finality certificate at given instance number
+F3GetCertificate returns a finality certificate at given instance.
 
 
 Perms: read
@@ -2462,7 +2464,7 @@ Response:
 ```
 
 ### F3GetLatestCertificate
-F3GetLatestCertificate returns the latest finality certificate
+F3GetLatestCertificate returns the latest finality certificate.
 
 
 Perms: read
@@ -2520,7 +2522,7 @@ Response:
 ```
 
 ### F3GetManifest
-F3GetGetManifest returns the current manifest being used for F3
+F3GetManifest returns the current manifest being used for F3 operations.
 
 
 Perms: read
@@ -2566,6 +2568,58 @@ Response:
 }
 ```
 
+### F3GetOrRenewParticipationTicket
+F3GetOrRenewParticipationTicket retrieves or renews a participation ticket
+necessary for a miner to engage in the F3 consensus process for the given
+number of instances.
+
+This function accepts an optional previous ticket. If provided, a new ticket
+will be issued only under one the following conditions:
+  1. The previous ticket has expired.
+  2. The issuer of the previous ticket matches the node processing this
+     request.
+
+If there is an issuer mismatch (ErrF3ParticipationIssuerMismatch), the miner
+must retry obtaining a new ticket to ensure it is only participating in one F3
+instance at any time. If the number of instances is beyond the maximum leasable
+participation instances accepted by the node ErrF3ParticipationTooManyInstances
+is returned.
+
+Note: Successfully acquiring a ticket alone does not constitute participation.
+The retrieved ticket must be used to invoke F3Participate to actively engage
+in the F3 consensus process.
+
+
+Perms: sign
+
+Inputs:
+```json
+[
+  "f01234",
+  "Bw==",
+  42
+]
+```
+
+Response: `"Bw=="`
+
+### F3GetProgress
+F3GetProgress returns the progress of the current F3 instance in terms of instance ID, round and phase.
+
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "Instance": 42,
+  "Round": 42,
+  "Phase": 0
+}
+```
+
 ### F3IsRunning
 F3IsRunning returns true if the F3 instance is running, false if it's not running but
 it's enabled, and an error when disabled entirely.
@@ -2578,18 +2632,20 @@ Inputs: `null`
 Response: `true`
 
 ### F3Participate
-F3Participate should be called by a storage provider to participate in signing F3 consensus.
-Calling this API gives the lotus node a lease to sign in F3 on behalf of given SP.
-The lease should be active only on one node. The lease will expire at the newLeaseExpiration.
-To continue participating in F3 with the given node, call F3Participate again before
-the newLeaseExpiration time.
-newLeaseExpiration cannot be further than 5 minutes in the future.
-It is recommended to call F3Participate every 60 seconds
-with newLeaseExpiration set 2min into the future.
-The oldLeaseExpiration has to be set to newLeaseExpiration of the last successful call.
-For the first call to F3Participate, set the oldLeaseExpiration to zero value/time in the past.
-F3Participate will return true if the lease was accepted.
-The minerID has to be the ID address of the miner.
+F3Participate enrolls a storage provider in the F3 consensus process using a
+provided participation ticket. This ticket grants a temporary lease that enables
+the provider to sign transactions as part of the F3 consensus.
+
+The function verifies the ticket's validity and checks if the ticket's issuer
+aligns with the current node. If there is an issuer mismatch
+(ErrF3ParticipationIssuerMismatch), the provider should retry with the same
+ticket, assuming the issue is due to transient network problems or operational
+deployment conditions. If the ticket is invalid
+(ErrF3ParticipationTicketInvalid) or has expired
+(ErrF3ParticipationTicketExpired), the provider must obtain a new ticket by
+calling F3GetOrRenewParticipationTicket.
+
+For details on obtaining or renewing a ticket, see F3GetOrRenewParticipationTicket.
 
 
 Perms: sign
@@ -2597,13 +2653,19 @@ Perms: sign
 Inputs:
 ```json
 [
-  "f01234",
-  "0001-01-01T00:00:00Z",
-  "0001-01-01T00:00:00Z"
+  "Bw=="
 ]
 ```
 
-Response: `true`
+Response:
+```json
+{
+  "Issuer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  "MinerID": 42,
+  "FromInstance": 42,
+  "ValidityTerm": 42
+}
+```
 
 ## Filecoin
 

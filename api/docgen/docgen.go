@@ -124,6 +124,7 @@ func init() {
 	addExample(api.FullAPIVersion1)
 	addExample(api.PCHInbound)
 	addExample(time.Minute)
+	addExample(gpbft.INITIAL_PHASE)
 
 	addExample(network.ReachabilityPublic)
 	addExample(buildconstants.TestNetworkVersion)

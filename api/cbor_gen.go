@@ -9,6 +9,7 @@ import (
 	"sort"
 
 	cid "github.com/ipfs/go-cid"
+	peer "github.com/libp2p/go-libp2p/core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 
@@ -23,6 +24,195 @@ var _ = cid.Undef
 var _ = math.E
 var _ = sort.Sort
 
+func (t *F3ParticipationLease) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+
+	cw := cbg.NewCborWriter(w)
+
+	if _, err := cw.Write([]byte{164}); err != nil {
+		return err
+	}
+
+	// t.Issuer (peer.ID) (string)
+	if len("Issuer") > 8192 {
+		return xerrors.Errorf("Value in field \"Issuer\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Issuer"))); err != nil {
+		return err
+	}
+	if _, err := cw.WriteString(string("Issuer")); err != nil {
+		return err
+	}
+
+	if len(t.Issuer) > 8192 {
+		return xerrors.Errorf("Value in field t.Issuer was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.Issuer))); err != nil {
+		return err
+	}
+	if _, err := cw.WriteString(string(t.Issuer)); err != nil {
+		return err
+	}
+
+	// t.MinerID (uint64) (uint64)
+	if len("MinerID") > 8192 {
+		return xerrors.Errorf("Value in field \"MinerID\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("MinerID"))); err != nil {
+		return err
+	}
+	if _, err := cw.WriteString(string("MinerID")); err != nil {
+		return err
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.MinerID)); err != nil {
+		return err
+	}
+
+	// t.FromInstance (uint64) (uint64)
+	if len("FromInstance") > 8192 {
+		return xerrors.Errorf("Value in field \"FromInstance\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("FromInstance"))); err != nil {
+		return err
+	}
+	if _, err := cw.WriteString(string("FromInstance")); err != nil {
+		return err
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.FromInstance)); err != nil {
+		return err
+	}
+
+	// t.ValidityTerm (uint64) (uint64)
+	if len("ValidityTerm") > 8192 {
+		return xerrors.Errorf("Value in field \"ValidityTerm\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("ValidityTerm"))); err != nil {
+		return err
+	}
+	if _, err := cw.WriteString(string("ValidityTerm")); err != nil {
+		return err
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.ValidityTerm)); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (t *F3ParticipationLease) UnmarshalCBOR(r io.Reader) (err error) {
+	*t = F3ParticipationLease{}
+
+	cr := cbg.NewCborReader(r)
+
+	maj, extra, err := cr.ReadHeader()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+	}()
+
+	if maj != cbg.MajMap {
+		return fmt.Errorf("cbor input should be of type map")
+	}
+
+	if extra > cbg.MaxLength {
+		return fmt.Errorf("F3ParticipationLease: map struct too large (%d)", extra)
+	}
+
+	var name string
+	n := extra
+
+	for i := uint64(0); i < n; i++ {
+
+		{
+			sval, err := cbg.ReadStringWithMax(cr, 8192)
+			if err != nil {
+				return err
+			}
+
+			name = string(sval)
+		}
+
+		switch name {
+		// t.Issuer (peer.ID) (string)
+		case "Issuer":
+
+			{
+				sval, err := cbg.ReadStringWithMax(cr, 8192)
+				if err != nil {
+					return err
+				}
+
+				t.Issuer = peer.ID(sval)
+			}
+			// t.MinerID (uint64) (uint64)
+		case "MinerID":
+
+			{
+
+				maj, extra, err = cr.ReadHeader()
+				if err != nil {
+					return err
+				}
+				if maj != cbg.MajUnsignedInt {
+					return fmt.Errorf("wrong type for uint64 field")
+				}
+				t.MinerID = uint64(extra)
+
+			}
+			// t.FromInstance (uint64) (uint64)
+		case "FromInstance":
+
+			{
+
+				maj, extra, err = cr.ReadHeader()
+				if err != nil {
+					return err
+				}
+				if maj != cbg.MajUnsignedInt {
+					return fmt.Errorf("wrong type for uint64 field")
+				}
+				t.FromInstance = uint64(extra)
+
+			}
+			// t.ValidityTerm (uint64) (uint64)
+		case "ValidityTerm":
+
+			{
+
+				maj, extra, err = cr.ReadHeader()
+				if err != nil {
+					return err
+				}
+				if maj != cbg.MajUnsignedInt {
+					return fmt.Errorf("wrong type for uint64 field")
+				}
+				t.ValidityTerm = uint64(extra)
+
+			}
+
+		default:
+			// Field doesn't exist on this type, so ignore it
+			cbg.ScanForLinks(r, func(cid.Cid) {})
+		}
+	}
+
+	return nil
+}
 func (t *PaymentInfo) MarshalCBOR(w io.Writer) error {
 	if t == nil {
 		_, err := w.Write(cbg.CborNull)
