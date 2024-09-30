@@ -1695,12 +1695,6 @@ func (e *EthEventHandler) ethGetEventsForFilter(ctx context.Context, filterSpec 
 
 	if pf.minHeight >= head.Height() || pf.maxHeight >= head.Height() {
 		return nil, xerrors.New("cannot ask for events for a tipset at or greater than head")
-  }
-
-	// Create a temporary filter
-	f, err := e.EventFilterManager.Install(ctx, pf.minHeight, pf.maxHeight, pf.tipsetCid, pf.addresses, pf.keys, false)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to install event filter: %w", err)
 	}
 
 	ef := &index.EventFilter{
