@@ -64,7 +64,7 @@ The table below gives an overview of how Lotus and its critical dependencies rel
 1. Create a tracking issue for this effort:
 
    Title: Skeleton for nvXX to support development and testing
-   Body:<
+   Body:
 
 ````
 ## Done Criteria
