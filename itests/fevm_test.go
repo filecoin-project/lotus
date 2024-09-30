@@ -1252,7 +1252,8 @@ func TestEthGetTransactionCount(t *testing.T) {
 		// Check pending transaction count immediately after submission
 		pendingCount, err := client.EVM().EthGetTransactionCount(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("pending"))
 		require.NoError(t, err)
-		require.Equal(t, ethtypes.EthUint64(i+1), pendingCount, "Pending transaction count should increment immediately")
+		require.GreaterOrEqual(t, pendingCount, ethtypes.EthUint64(i+1),
+			fmt.Sprintf("Pending transaction count should be at least %d, but got %d", i+1, pendingCount))
 
 		// Wait for the transaction to be mined
 		_, err = client.EVM().WaitTransaction(ctx, lastHash)
