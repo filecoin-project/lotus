@@ -5,14 +5,20 @@ NETWORKS=(devnet mainnet caterpillarnet butterflynet testing testing-fake-proofs
 set -e
 
 if [[ $# -lt 2 ]]; then
-    echo "Usage: $0 VERSION RELEASE [NETWORK=RELEASE_OVERRIDE]..." >&2
-    echo "expected at least two arguments, an actors version (e.g., v8), an actors release, and any number of release overrides." >&2
+    echo "Usage: $0 VERSION RELEASE [LOCAL_DIR] [NETWORK=RELEASE_OVERRIDE]..." >&2
+    echo "expected at least two arguments, an actors version (e.g., v8), an actors release, an optional local directory, and any number of release overrides." >&2
     exit 1
 fi
 
 VERSION="$1" # actors version
 RELEASE="$2" # actors release name
-RELEASE_OVERRIDES=("${@:3}")
+LOCAL_DIR=""
+if [[ $# -ge 3 && ! "${3}" =~ "=" ]]; then
+    LOCAL_DIR="$3"
+    RELEASE_OVERRIDES=("${@:4}")
+else
+    RELEASE_OVERRIDES=("${@:3}")
+fi
 
 echo "Downloading bundles for actors version ${VERSION} release ${RELEASE}"
 echo "With release overrides ${RELEASE_OVERRIDES[*]}"
@@ -36,13 +42,26 @@ for network in "${NETWORKS[@]}"; do
         fi
     done
     encoded_release="$(encode_release "$release")"
-    echo "Downloading $release for network $network."
-    wget "https://github.com/filecoin-project/builtin-actors/releases/download/${encoded_release}/builtin-actors-${network}"{.car,.sha256}
+    if [[ -n "$LOCAL_DIR" ]]; then
+        if [[ -f "${LOCAL_DIR}/builtin-actors-${network}.car" ]]; then
+            echo "Fetching $release for network $network from local directory."
+            cp "${LOCAL_DIR}/builtin-actors-${network}.car" .
+        else
+            echo "Error: File ${LOCAL_DIR}/builtin-actors-${network}.car not found in local directory."
+            exit 1
+        fi
+    else
+        echo "Downloading $release for network $network."
+        wget "https://github.com/filecoin-project/builtin-actors/releases/download/${encoded_release}/builtin-actors-${network}"{.car,.sha256}
+    fi
 done
 
-echo "Checking the checksums..."
-
-sha256sum -c -- *.sha256
+if [[ -z "$LOCAL_DIR" ]]; then
+    echo "Checking the checksums..."
+    sha256sum -c -- *.sha256
+else
+    echo "Skipping checksum verification for local files."
+fi
 
 echo "Packing..."
 
