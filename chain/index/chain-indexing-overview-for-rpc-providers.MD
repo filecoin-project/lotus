@@ -72,30 +72,13 @@ Migrating to the new `ChainIndexer` involves several steps to ensure a smooth tr
 
 1. **Stop the Lotus Node**
    - Stop your Lotus node before starting the upgrade and migration process.
-
-2. **Backup Existing Index Databases**
-   - Back up the directory containing your existing index databases (`MsgIndex`, `EthTxIndex`, and `EventIndex`).
-   - These databases are located in the `{$LOTUS_PATH/sqlite}` directory.
-   - Use the following command to copy the entire directory:
-     ```bash
-     cp -r $LOTUS_PATH/sqlite {destination_path}
-     ```
-   - **Note: If you have configured a custom directory path for the Index databases using the `Events.DatabasePath` config option, replace `{$LOTUS_PATH/sqlite}` with your custom path.**
-   - These backups are essential for potential rollbacks, even though they are not used in the migration process.
-
-3. **Remove Old Index Files**
-   - After creating backups, remove the `{$LOTUS_PATH/sqlite}` directory (*or your custom index database path*) using the following command:
-     ```bash
-     rm -rf $LOTUS_PATH/sqlite
-     ```
-   - **Warning: Please ensure and validate that you have made backups of your existing index databases before removing the directory.**
-
-4. **Update Configuration**
+   - 
+2. **Update Configuration**
    - Modify your Lotus configuration to enable the `ChainIndexer` as described in the [`ChainIndexer Config` section above](#chainindexer-config).
 
-5. **Restart Lotus Node**
+3. **Restart Lotus Node**
    - Restart your Lotus node with the new configuration.
-   - The `ChainIndexer` will begin indexing **real-time chain state changes** immediately.
+   - The `ChainIndexer` will begin indexing **real-time chain state changes** immediately in the `${LOTUS_PATH}/chainindex` directory.
    - **However, it will not automatically index any historical chain state (i.e., any previously existing chain state). To perform backfilling, please see the [`Backfilling` section below](#backfilling).**
 
 ## Backfill
@@ -213,8 +196,7 @@ You can learn about how to use the tool with `lotus-shed chainindex validate-bac
 In case you need to rollback to the previous indexing system (`EthTxIndex`, `MsgIndex`, and `EventIndex`), follow these steps:
 
 1. Stop your Lotus node.
-2. Remove the current `${LOTUS_PATH}/sqlite` directory and replace it with the backup taken in the "**Backup Existing Index Databases**" section of the [Migration Guide](#migration-guide).
-3. Build your Lotus binary for the rollback version which has the old `EthTxIndex`, `MsgIndex`, and `EventIndex` Indices.
+2. Build your Lotus binary for the rollback version which has the implementation of the old `EthTxIndex`, `MsgIndex`, and `EventIndex` Indices.
 4. Ensure that you've set the correct config for the existing `EthTxIndex`, `MsgIndex`, and `EventIndex` indices in the `config.toml` file.
 5. Restart your Lotus node.
 6. Backfill the `EthTxIndex`, `MsgIndex`, and `EventIndex` indices using the `lotus-shed index backfill-*` CLI tooling available in the previous indexing system for the epoch range in [epochs between the upgrade to `ChainIndexer` and the rollback of `ChainIndexer`].

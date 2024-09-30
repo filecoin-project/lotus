@@ -30,13 +30,13 @@ func ChainIndexer(cfg config.ChainIndexerConfig) func(lc fx.Lifecycle, mctx help
 			return nil, nil
 		}
 
-		sqlitePath, err := r.SqlitePath()
+		chainIndexPath, err := r.ChainIndexPath()
 		if err != nil {
 			return nil, err
 		}
 
 		// TODO Implement config driven auto-backfilling
-		chainIndexer, err := index.NewSqliteIndexer(filepath.Join(sqlitePath, index.DefaultDbFilename),
+		chainIndexer, err := index.NewSqliteIndexer(filepath.Join(chainIndexPath, index.DefaultDbFilename),
 			cs, cfg.GCRetentionEpochs, cfg.ReconcileEmptyIndex, cfg.MaxReconcileTipsets)
 		if err != nil {
 			return nil, err
