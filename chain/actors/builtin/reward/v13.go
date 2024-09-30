@@ -76,7 +76,7 @@ func (s *state13) CumsumRealized() (reward13.Spacetime, error) {
 	return s.State.CumsumRealized, nil
 }
 
-func (s *state13) InitialPledgeForPower(qaPower abi.StoragePower, networkTotalPledge abi.TokenAmount, networkQAPower *builtin.FilterEstimate, circSupply abi.TokenAmount) (abi.TokenAmount, error) {
+func (s *state13) InitialPledgeForPower(qaPower abi.StoragePower, _ abi.TokenAmount, networkQAPower *builtin.FilterEstimate, circSupply abi.TokenAmount, epochsSinceRampStart int64, rampDurationEpochs uint64) (abi.TokenAmount, error) {
 	return miner13.InitialPledgeForPower(
 		qaPower,
 		s.State.ThisEpochBaselinePower,

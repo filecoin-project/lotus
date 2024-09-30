@@ -107,6 +107,8 @@ var (
 	UpgradeWaffleHeight               abi.ChainEpoch = -29
 	UpgradeTuktukHeight               abi.ChainEpoch = -30
 
+	UpgradeTuktukPowerRampDurationEpochs uint64 = 0
+
 	DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 		0:                    DrandMainnet,
 		UpgradePhoenixHeight: DrandQuicknet,

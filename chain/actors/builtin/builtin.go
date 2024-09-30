@@ -40,6 +40,7 @@ var (
 const (
 	EpochDurationSeconds = builtin.EpochDurationSeconds
 	EpochsInDay          = builtin.EpochsInDay
+	EpochsInYear         = builtin.EpochsInYear
 	SecondsInDay         = builtin.SecondsInDay
 )
 

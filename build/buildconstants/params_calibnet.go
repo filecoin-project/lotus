@@ -13,6 +13,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 )
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
@@ -99,6 +101,14 @@ const UpgradeWaffleHeight = 1779094
 
 // ??????
 const UpgradeTuktukHeight = 999999999999999
+
+// FIP-0081: for the power actor state for pledge calculations.
+// UpgradeTuktukPowerRampDurationEpochs ends up in the power actor state after
+// Tuktuk migration. along with a RampStartEpoch matching the upgrade height.
+//
+// For calibrationnet, we set this to 3 days so we can observe and confirm the
+// ramp behavior before mainnet upgrade.
+var UpgradeTuktukPowerRampDurationEpochs = uint64(builtin.EpochsInDay * 3)
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,

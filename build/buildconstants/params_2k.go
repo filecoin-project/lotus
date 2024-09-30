@@ -72,6 +72,11 @@ var UpgradeWaffleHeight = abi.ChainEpoch(-26)
 
 var UpgradeTuktukHeight = abi.ChainEpoch(200)
 
+// FIP-0081: for the power actor state for pledge calculations.
+// UpgradeTuktukPowerRampDurationEpochs ends up in the power actor state after
+// Tuktuk migration. along with a RampStartEpoch matching the upgrade height.
+var UpgradeTuktukPowerRampDurationEpochs uint64 = 200
+
 // This fix upgrade only ran on calibrationnet
 const UpgradeWatermelonFixHeight = -100
 
