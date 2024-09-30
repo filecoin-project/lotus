@@ -461,7 +461,6 @@ func (a *EthModule) EthGetTransactionHashByCid(ctx context.Context, cid cid.Cid)
 
 func (a *EthModule) EthGetTransactionCount(ctx context.Context, sender ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthUint64, error) {
 	addr, err := sender.ToFilecoinAddress()
-
 	if err != nil {
 		return ethtypes.EthUint64(0), xerrors.Errorf("invalid address: %w", err)
 	}
