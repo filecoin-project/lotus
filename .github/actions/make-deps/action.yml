@@ -1,0 +1,40 @@
+name: Make Deps
+description: Runs `make deps` with caching
+
+inputs:
+  working-directory:
+    description: Specifies the working directory where the command is run.
+    required: false
+  github-token:
+    description: Specifies the token to use when calling GitHub APIs while building FFI.
+    required: false
+
+runs:
+  using: composite
+  steps:
+    - id: cache-ffi
+      uses: actions/cache/restore@v4
+      with:
+        key: ${{ runner.os }}-${{ runner.arch }}-ffi-${{ hashFiles('./.git/modules/extern/filecoin-ffi/HEAD') }}
+        path: |
+          ./extern/filecoin-ffi/filcrypto.h
+          ./extern/filecoin-ffi/libfilcrypto.a
+          ./extern/filecoin-ffi/filcrypto.pc
+          ./build/.filecoin-install
+          ./build/.update-modules
+    - if: steps.cache-ffi.outputs.cache-hit != 'true'
+      shell: bash
+      working-directory: ${{ inputs.working-directory || github.workspace }}
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token || github.token }}
+      run: FFI_PORTABLE=1 make deps
+    - if: steps.cache-ffi.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        key: ${{ runner.os }}-${{ runner.arch }}-ffi-${{ hashFiles('./.git/modules/extern/filecoin-ffi/HEAD') }}
+        path: |
+          ./extern/filecoin-ffi/filcrypto.h
+          ./extern/filecoin-ffi/libfilcrypto.a
+          ./extern/filecoin-ffi/filcrypto.pc
+          ./build/.filecoin-install
+          ./build/.update-modules

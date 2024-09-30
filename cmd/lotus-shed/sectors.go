@@ -15,10 +15,10 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/cheggaaa/pb/v3"
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
-	"gopkg.in/cheggaaa/pb.v1"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
@@ -542,20 +542,16 @@ fr32 padding is removed from the output.`,
 
 		l := int64(abi.PaddedPieceSize(length).Unpadded())
 
-		bar := pb.New64(l)
+		bar := pb.Full.Start64(l)
 		br := bar.NewProxyReader(upr)
-		bar.ShowTimeLeft = true
-		bar.ShowPercent = true
-		bar.ShowSpeed = true
-		bar.Units = pb.U_BYTES
-		bar.Output = os.Stderr
-		bar.Start()
 
 		_, err = io.CopyN(os.Stdout, br, l)
+
+		bar.Finish()
+
 		if err != nil {
 			return xerrors.Errorf("reading data: %w", err)
 		}
-
 		return nil
 	},
 }

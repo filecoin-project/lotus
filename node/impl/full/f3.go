@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-f3/certs"
 	"github.com/filecoin-project/go-f3/gpbft"
+	"github.com/filecoin-project/go-f3/manifest"
 
 	"github.com/filecoin-project/lotus/chain/lf3"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -58,6 +59,21 @@ func (f3api *F3API) F3GetLatestCertificate(ctx context.Context) (*certs.Finality
 	}
 	return f3api.F3.GetLatestCert(ctx)
 }
+
+func (f3api *F3API) F3GetManifest(_ctx context.Context) (*manifest.Manifest, error) {
+	if f3api.F3 == nil {
+		return nil, ErrF3Disabled
+	}
+	return f3api.F3.GetManifest(), nil
+}
+
+func (f3api *F3API) F3IsRunning(_ctx context.Context) (bool, error) {
+	if f3api.F3 == nil {
+		return false, ErrF3Disabled
+	}
+	return f3api.F3.IsRunning(), nil
+}
+
 func (f3api *F3API) F3GetECPowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) {
 	if f3api.F3 == nil {
 		return nil, ErrF3Disabled

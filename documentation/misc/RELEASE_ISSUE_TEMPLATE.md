@@ -1,18 +1,16 @@
-> Release Issue Template
-
 # Lotus Node|Miner X.Y.Z Release
 
 [//]: # (Below are non-visible steps intended for the issue creator)
 [//]: # (❗️ Complete the steps below as part of creating a release issue and mark them complete with an X or ✅ when done.)
 [//]: # ([ ] Start an issue with title "[WIP] Lotus Node|Miner vX.Y.Z Release" and adjust the title for whether it's a Node or Miner release.)
 [//]: # ([ ] Copy in the content of https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md)
-[//]: # ([ ] Find/Replace "X.Y.Z+1" with the actual values. This is intentionally done before the find/replace X.Y.Z step because that will also match.)
-[//]: # ([ ] Find/Replace "X.Y.Z" with the actual values.)
+[//]: # ([ ] Find/Replace "X.Y.(Z+1)" with the actual values (e.g., v1.30.1).
+[//]: # ([ ] Find/Replace "X.Y.Z" with the actual values.
 [//]: # ([ ] If this isn't a release tied to a network upgrade, remove all items with "\(network upgrade\)")
 [//]: # ([ ] If this is a patch release, remove all items with "\(minor release\)")
 [//]: # ([ ] If this is a minor release, remove all items with "\(patch release\)")
-[//]: # ([ ] Copy/paste the "Release Checklist > RCX" section to "Release Checklist > Stable \(non-RC\) Release" and apply the "diff" called out there.)
-[//]: # ([ ] Find/Replace "RCX" with "RC1".)
+[//]: # ([ ] Copy/paste the "Release Checklist > rcX" section to "Release Checklist > Stable \(non-RC\) Release" and apply the "diff" called out there.)
+[//]: # ([ ] Find/Replace "rcX" with "rc1".)
 [//]: # ([ ] Adjust the "Meta" section values.)
 [//]: # ([ ] Apply the `tpm` label to the issue)
 [//]: # ([ ] Create the issue)
@@ -22,6 +20,8 @@
 * Scope: Node|Miner MINOR|PATCH
 * Is this linked with a network upgrade, and thus mandatory? Yes|No
 * Related network upgrade version: nvXX|n/a
+   * (network upgrade) Scope, dates, and epochs: <link to post in https://github.com/filecoin-project/community/discussions/74>
+   * (network upgrade) Lotus changelog with Lotus specifics: <link to section in https://github.com/filecoin-project/lotus/blob/master/CHANGELOG.md with more details>
 
 ## 🚢 Estimated shipping date
 
@@ -40,7 +40,7 @@
 > 3. They are presented here for quick reference, but backporting is tracked in each `Release Checklist`.
 
 [//]: # (Copy/paste this for each RC, and increment "X")
-### RCX
+### rcX
 - [ ] To Be Added
 
 ### Stable (non-RC)
@@ -55,21 +55,24 @@
    - Link to PR:
    - There likely aren't any changes at this point, but this can be opened with a small whitespace change so the PR is open and we can more easily hold the standard of making improvements incrementally since improvements are usually better done by collecting changes/notes along the way rather than just thinking about it at the end.
    - This will get merged in a `Post Release` step.
-- [ ] (patch release) Fork a new branch (`release/vX.Y.Z` or `release/miner/vX.Y.Z`) from the last stable `release/vX.Y.Z` or `release/miner/vX.Y.Z` and make any further release-related changes to this branch.
+- [ ] (patch release) Fork a new branch (`release/vX.Y.Z` or `release/miner/vX.Y.Z`) from the last stable `release/vX.Y.x` or `release/miner/vX.Y.x` and make any further release-related changes to this branch.
 - [ ] (minor release) Fork a new branch (`release/vX.Y.Z` or `release/miner/vX.Y.Z`) from `master` and make any further release-related changes to this branch.
-- (minor release) `master` branch Version string updates
+- `master` branch Version string updates
+   - Skip this set of steps if you are patching a previos minor release. 
    - [ ] bump the version(s) in `build/version.go` to `vX.Y.(Z+1)-dev`. 
       - Ensure to update the appropriate version string based on whether you are creating a node release (`NodeBuildVersion`), a miner release (`MinerBuildVersion`), or both.
    - [ ] Run `make gen && make docsgen-cli` before committing changes.
-   - [ ] Remove the contents in the `Unreleased Changelog` section.
-   - [ ] Create a PR with title `build: update Lotus Node|Miner version to vX.Y.Z+1-dev in master`
+   - [ ] Update the CHANGELOG
+     - [ ] Change the `UNRELEASED` section to `UNRELEASED vX.Y.Z` and set the section's content to be `See https://github.com/filecoin-project/lotus/blob/release/vX.Y.Z/CHANGELOG.md`
+     - [ ] Add a new `UNRELEASED` header to top.
+   - [ ] Create a PR with title `build: update Lotus Node|Miner version to vX.Y.(Z+1)-dev in master`
      - Link to PR: 
    - [ ] Merge PR
 
 ### RCs
 
-[//]: # (Copy/paste this "RCX" section for each additional RC, and increment "X")
-#### RCX
+[//]: # (Copy/paste this whole "rcX" section for each additional RC, and increment "X")
+#### rcX
 > [!IMPORTANT]
 > These PRs should be done in and target the `release/vX.Y.Z` or `release/miner/vX.Y.Z` branch.
 
@@ -91,48 +94,47 @@
 - [ ] Update the version string(s) in `build/version.go` to one ending with '-rcX'. 
     - Ensure to update the appropriate version string based on whether you are creating a node release (`NodeBuildVersion`), a miner release (`MinerBuildVersion`), or both.
 - [ ] Run `make gen && make docsgen-cli` to generate documentation
-- [ ] Create a PR with title `build: release Lotus node|miner vX.Y.Z-rcX`
+- [ ] Create a draft PR with title `build: release Lotus node|miner vX.Y.Z-rcX`
    - Link to PR: 
    - Opening a PR will trigger a CI run that will build assets, create a draft GitHub release, and attach the assets.
 - [ ] Changelog prep
-   - [ ] Go to the [releases page](https://github.com/filecoin-project/lotus/releases) and copy the auto generated changelog into your release PR and adjust the changelog accordingly.
-   - [ ] Editorial review (e.g., callout breaking changes, new features, FIPs, actor bundles)
+   - [ ] Go to the [releases page](https://github.com/filecoin-project/lotus/releases) and copy the auto-generated release notes into the CHANGELOG
+   - [ ] Perform editorial review (e.g., callout breaking changes, new features, FIPs, actor bundles)
    - [ ] (network upgrade) Specify whether the Calibration or Mainnet upgrade epoch has been specified or not yet.
       - Example where these weren't specified yet: [PR #12169](https://github.com/filecoin-project/lotus/pull/12169)
    - [ ] Ensure no missing content when spot checking git history
       - Example command looking at git commits: `git log --oneline --graph vA.B.C..`, where A.B.C correspond to the previous release. 
       - Example GitHub UI search looking at merged PRs into master: https://github.com/filecoin-project/lotus/pulls?q=is%3Apr+base%3Amaster+merged%3A%3EYYYY-MM-DD
       - Example `gh` cli command looking at merged PRs into master and sorted by title to group similar areas (where `YYYY-MM-DD` is the start search date): `gh pr list --repo filecoin-project/lotus --search "base:master merged:>YYYY-MM-DD" --json number,mergedAt,author,title | jq -r '.[] | [.number, .mergedAt, .author.login, .title] | @tsv' | sort -k4`
+    - [ ] Update the PR with the commit(s) made to the CHANGELOG
+- [ ] Mark the PR "ready for review" (non-draft)
 - [ ] Merge the PR
-   - Opening the PR will trigger a CI run that will build assets, attach the assets to the GitHub release, publish the GitHub release, and create the corresponding git tag.
+   - Merging the PR will trigger a CI run that will build assets, attach the assets to the GitHub release, publish the GitHub release, and create the corresponding git tag.
  - [ ] Update `🚢 Estimated shipping date` table
  - [ ] Comment on this issue announcing the RC
     - Link to issue comment:   
 
-### Testing
+**Testing**
 > [!NOTE]
 > Link to any special steps for testing releases beyond ensuring CI is green.  Steps can be inlined here or tracked elsewhere.
 
 ### Stable (non-RC) Release
 
-[//]: # (This "NOTE" below with the "diff" to apply to the "RC copy/pasted content" is here to avoid the duplication in the template itself.)
+[//]: # (This "NOTE" below with the "diff" to apply to the "rcX copy/pasted content" is here to avoid the duplication in the template itself.)
 [//]: # (This is done as a visible NOTE rather than a comment to make sure it's clear what needs to be added to this section.)
 [//]: # (These comments ^^^ can be removed once the NOTE steps below are completed.)
 > [!NOTE]
-> Copy/paste in the `RCX` section above and then make these changes:
-> 1. Under "Release PR > Update the version string...", edit:
+> 1️⃣ Copy/paste in the `rcX` section above to below this `[!Note]`
+>
+> 2️⃣ make these changes:
+> 1. Release PR > Update the version string...
+>    * Update the version string in `build/version.go` to one **NOT** ending with '-rcX'
+> 2. Release PR > Changelog prep...
+>    * Add `(network upgrade) Ensure the Mainnet upgrade epoch is specified.`
+> 3. Release PR > Update the version string...
+>    * Create a PR with title `build: release vX.Y.Z`
 > 
-> Update the version string in `build/version.go` to one **NOT** ending with '-rcX'
->
-> 2. Under "Release PR > Changelog prep...", add:
-> 
-> (network upgrade) Ensure the Mainnet upgrade epoch is specified.
->
-> 3. Under "Release PR > Update the version string...", edit:
->
-> Create a PR with title `build: release vX.Y.Z`
->
-> 4. Remove this `[!Note]` and the related invisible comments.
+> 3️⃣ Remove this `[!Note]` and the related invisible comments.
 
 ### Post-Release
 

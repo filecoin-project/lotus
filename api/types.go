@@ -192,6 +192,7 @@ type ForkUpgradeParams struct {
 	UpgradeDragonHeight      abi.ChainEpoch
 	UpgradePhoenixHeight     abi.ChainEpoch
 	UpgradeWaffleHeight      abi.ChainEpoch
+	UpgradeTuktukHeight      abi.ChainEpoch
 }
 
 // ChainExportConfig holds configuration for chain ranged exports.

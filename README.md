@@ -19,7 +19,8 @@ Lotus is an implementation of the Filecoin Distributed Storage Network. For more
 
 ## Building & Documentation
 
-> Note: The default `master` branch is the dev branch, please use with caution. For the latest stable version, checkout the [latest release](https://github.com/filecoin-project/lotus/blob/master/LOTUS_RELEASE_FLOW.md#why-is-the-releases-branch-deprecated-and-what-are-alternatives).
+> [!NOTE]
+> The default `master` branch is the dev branch, please use with caution. For the latest stable version, checkout the [latest release](https://github.com/filecoin-project/lotus/blob/master/LOTUS_RELEASE_FLOW.md#why-is-the-releases-branch-deprecated-and-what-are-alternatives).
 
 For complete instructions on how to build, install and setup lotus, please visit [https://lotus.filecoin.io](https://lotus.filecoin.io/lotus/install/prerequisites/#supported-platforms). Basic build instructions can be found further down in this readme.
 
@@ -57,10 +58,10 @@ For other distributions you can find the required dependencies [here.](https://l
 
 #### Go
 
-To build Lotus, you need a working installation of [Go 1.21.7 or higher](https://golang.org/dl/):
+To build Lotus, you need a working installation of [Go 1.22.7 or higher](https://golang.org/dl/):
 
 ```bash
-wget -c https://golang.org/dl/go1.21.7.linux-amd64.tar.gz -O - | sudo tar -xz -C /usr/local
+wget -c https://golang.org/dl/go1.22.7.linux-amd64.tar.gz -O - | sudo tar -xz -C /usr/local
 ```
 
 **TIP:**

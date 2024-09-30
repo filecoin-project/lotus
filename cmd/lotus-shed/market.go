@@ -21,8 +21,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
-	market11 "github.com/filecoin-project/go-state-types/builtin/v11/market"
-	"github.com/filecoin-project/go-state-types/builtin/v11/util/adt"
+	market14 "github.com/filecoin-project/go-state-types/builtin/v14/market"
+	"github.com/filecoin-project/go-state-types/builtin/v14/util/adt"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -73,7 +73,7 @@ var marketCronStateCmd = &cli.Command{
 			return err
 		}
 
-		var mSt market11.State
+		var mSt market14.State
 		err = adtStore.Get(ctx, mAct.Head, &mSt)
 		if err != nil {
 			return err
@@ -95,7 +95,7 @@ var marketCronStateCmd = &cli.Command{
 			return err
 		}
 
-		dealOpsMultiMap, err := market11.AsSetMultimap(adtStore, mSt.DealOpsByEpoch, builtin.DefaultHamtBitwidth, builtin.DefaultHamtBitwidth)
+		dealOpsMultiMap, err := market14.AsSetMultimap(adtStore, mSt.DealOpsByEpoch, builtin.DefaultHamtBitwidth, builtin.DefaultHamtBitwidth)
 		if err != nil {
 			return err
 		}
