@@ -820,17 +820,21 @@ func TestTraceFilter(t *testing.T) {
 	require.NotNil(t, traces)
 	require.NotEmpty(t, traces)
 
-	// Assert that iniital transactions returned by the trace are valid
-	require.EqualValues(t, len(traces), 3)
-	require.EqualValues(t, traces[0].TransactionPosition, 1)
-	require.EqualValues(t, traces[0].EthTrace.Type, "call")
-	require.EqualValues(t, traces[1].TransactionPosition, 1)
-	require.EqualValues(t, traces[1].EthTrace.Type, "call")
+	for i, trace := range traces {
+		t.Logf("Trace %d: TransactionPosition=%d, TransactionHash=%s, Type=%s", i, trace.TransactionPosition, trace.TransactionHash, trace.EthTrace.Type)
+	}
 
-	//our transaction will be in the third element of traces with the expected hash
-	require.EqualValues(t, traces[2].TransactionPosition, 1)
-	require.EqualValues(t, traces[2].TransactionHash, hash)
-	require.EqualValues(t, traces[2].EthTrace.Type, "create")
+	// Assert that initial transactions returned by the trace are valid
+	require.Len(t, traces, 3)
+	require.Equal(t, 1, traces[0].TransactionPosition)
+	require.Equal(t, "call", traces[0].EthTrace.Type)
+	require.Equal(t, 1, traces[1].TransactionPosition)
+	require.Equal(t, "call", traces[1].EthTrace.Type)
+
+	// our transaction will be in the third element of traces with the expected hash
+	require.Equal(t, 1, traces[2].TransactionPosition)
+	require.Equal(t, hash, traces[2].TransactionHash)
+	require.Equal(t, "create", traces[2].EthTrace.Type)
 
 	toBlock = "latest"
 	filter = ethtypes.EthTraceFilterCriteria{
@@ -847,10 +851,10 @@ func TestTraceFilter(t *testing.T) {
 	require.NotEmpty(t, tracesAddressFilter)
 
 	//we should only get our contract deploy transaction
-	require.EqualValues(t, len(tracesAddressFilter), 1)
-	require.EqualValues(t, tracesAddressFilter[0].TransactionPosition, 1)
-	require.EqualValues(t, tracesAddressFilter[0].TransactionHash, hash)
-	require.EqualValues(t, tracesAddressFilter[0].EthTrace.Type, "create")
+	require.Len(t, tracesAddressFilter, 1)
+	require.Equal(t, 1, tracesAddressFilter[0].TransactionPosition)
+	require.Equal(t, hash, tracesAddressFilter[0].TransactionHash)
+	require.Equal(t, "create", tracesAddressFilter[0].EthTrace.Type)
 
 	after := ethtypes.EthUint64(1)
 	count := ethtypes.EthUint64(2)
@@ -867,8 +871,7 @@ func TestTraceFilter(t *testing.T) {
 	require.NotEmpty(t, traces)
 
 	//we should only get the last two results from the first trace query
-	require.EqualValues(t, len(tracesAfterCount), 2)
-	require.EqualValues(t, tracesAfterCount[0].TransactionHash, traces[1].TransactionHash)
-	require.EqualValues(t, tracesAfterCount[1].TransactionHash, traces[2].TransactionHash)
-
+	require.Len(t, tracesAfterCount, 2)
+	require.Equal(t, traces[1].TransactionHash, tracesAfterCount[0].TransactionHash)
+	require.Equal(t, traces[2].TransactionHash, tracesAfterCount[1].TransactionHash)
 }
