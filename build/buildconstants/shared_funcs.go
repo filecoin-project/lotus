@@ -2,6 +2,7 @@ package buildconstants
 
 import (
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -30,4 +31,12 @@ func IsNearUpgrade(epoch, upgradeEpoch abi.ChainEpoch) bool {
 		return false
 	}
 	return epoch > upgradeEpoch-policy.ChainFinality && epoch < upgradeEpoch+policy.ChainFinality
+}
+
+func MustParseID(id string) peer.ID {
+	p, err := peer.Decode(id)
+	if err != nil {
+		panic(err)
+	}
+	return p
 }

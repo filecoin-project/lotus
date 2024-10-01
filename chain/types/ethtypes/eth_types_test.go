@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
@@ -104,6 +105,17 @@ func TestEthHash(t *testing.T) {
 		jm, err := json.Marshal(h)
 		require.NoError(t, err)
 		require.Equal(t, hash, string(jm))
+	}
+
+	for _, c := range []cid.Cid{
+		cid.Undef,
+		cid.MustParse("bafy2bzacaa"),
+		cid.MustParse("bafkqaaa"),
+		cid.MustParse("bafy2bzacidqenpags5upxuhzpynnbhaojm5cy6dfoiojibz4gk2u4degs4qiclksacibt65ogzfjqionu7o25nl3y4ayzsizwbc32crqgnrqntqv"),
+		cid.MustParse("bafyrgqhai26anf3i7pips7q22coa4sz2fr4gk4q4sqdtymvvjyginfzaqewveaeqdh524nsktaq43j65v22xxrybrtertmcfxufdam3da3hbk"),
+	} {
+		_, err := EthHashFromCid(c)
+		require.ErrorContains(t, err, "CID does not have the expected prefix")
 	}
 }
 
@@ -524,4 +536,15 @@ func TestFilecoinAddressToEthAddressParams(t *testing.T) {
 
 func stringPtr(s string) *string {
 	return &s
+}
+
+func BenchmarkEthHashFromCid(b *testing.B) {
+	c := cid.MustParse("bafy2bzacedwviarjtjraqakob5pslltmuo5n3xev3nt5zylezofkbbv5jclyu")
+
+	for i := 0; i < b.N; i++ {
+		_, err := EthHashFromCid(c)
+		if err != nil {
+			b.Fatalf("Error in EthHashFromCid: %v", err)
+		}
+	}
 }

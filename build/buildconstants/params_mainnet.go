@@ -105,7 +105,10 @@ const UpgradeDragonHeight abi.ChainEpoch = 3855360
 const UpgradePhoenixHeight abi.ChainEpoch = UpgradeDragonHeight + 120
 
 // 2024-08-06T12:00:00Z
-var UpgradeWaffleHeight abi.ChainEpoch = 4154640
+const UpgradeWaffleHeight abi.ChainEpoch = 4154640
+
+// ??????
+var UpgradeTuktukHeight = abi.ChainEpoch(9999999999)
 
 // This fix upgrade only ran on calibrationnet
 const UpgradeWatermelonFixHeight abi.ChainEpoch = -1
@@ -131,8 +134,8 @@ func init() {
 		SetAddressNetwork(address.Mainnet)
 	}
 
-	if os.Getenv("LOTUS_DISABLE_WAFFLE") == "1" {
-		UpgradeWaffleHeight = math.MaxInt64 - 1
+	if os.Getenv("LOTUS_DISABLE_TUKTUK") == "1" {
+		UpgradeTuktukHeight = math.MaxInt64 - 1
 	}
 
 	// NOTE: DO NOT change this unless you REALLY know what you're doing. This is not consensus critical, however,
@@ -167,6 +170,15 @@ const Eip155ChainId = 314
 // WhitelistedBlock skips checks on message validity in this block to sidestep the zero-bls signature
 var WhitelistedBlock = cid.MustParse("bafy2bzaceapyg2uyzk7vueh3xccxkuwbz3nxewjyguoxvhx77malc2lzn2ybi")
 
+// The F3 manifest server ID, if any.
+var F3ManifestServerID = MustParseID("12D3KooWENMwUF9YxvQxar7uBWJtZkA6amvK4xWmKXfSiHUo2Qq7")
+
+// The initial F3 power table CID.
+var F3InitialPowerTableCID cid.Cid = cid.Undef
+
 const F3Enabled = true
-const ManifestServerID = "12D3KooWENMwUF9YxvQxar7uBWJtZkA6amvK4xWmKXfSiHUo2Qq7"
 const F3BootstrapEpoch abi.ChainEpoch = -1
+
+// F3Consensus set whether F3 should checkpoint tipsets finalized by F3. This
+// flag has no effect if F3 is not enabled.
+const F3Consensus = false

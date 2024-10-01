@@ -20,8 +20,6 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
-//go:generate go run github.com/golang/mock/mockgen -destination=mocks/statemachine.go -package=mocks . Context
-
 // Context is a go-statemachine context
 type Context interface {
 	Context() context.Context

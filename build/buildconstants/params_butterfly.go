@@ -53,8 +53,10 @@ const UpgradeThunderHeight = -23
 const UpgradeWatermelonHeight = -24
 const UpgradeDragonHeight = -25
 const UpgradePhoenixHeight = -26
+const UpgradeWaffleHeight = -27
 
-const UpgradeWaffleHeight = 100
+// ??????
+const UpgradeTuktukHeight = 999999999999999
 
 // This fix upgrade only ran on calibrationnet
 const UpgradeWatermelonFixHeight = -100
@@ -97,5 +99,14 @@ const Eip155ChainId = 3141592
 var WhitelistedBlock = cid.Undef
 
 const F3Enabled = true
-const ManifestServerID = "12D3KooWJr9jy4ngtJNR7JC1xgLFra3DjEtyxskRYWvBK9TC3Yn6"
+
+var F3ManifestServerID = MustParseID("12D3KooWJr9jy4ngtJNR7JC1xgLFra3DjEtyxskRYWvBK9TC3Yn6")
+
+// The initial F3 power table CID.
+var F3InitialPowerTableCID cid.Cid = cid.Undef
+
 const F3BootstrapEpoch abi.ChainEpoch = 1000
+
+// F3Consensus set whether F3 should checkpoint tipsets finalized by F3. This
+// flag has no effect if F3 is not enabled.
+const F3Consensus = true

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"text/template"
 
+	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 )
 
@@ -22,6 +23,25 @@ type methodMeta struct {
 type Visitor struct {
 	Methods map[string]map[string]*methodMeta
 	Include map[string][]string
+}
+
+func main() {
+	var lets errgroup.Group
+	lets.Go(generateApi)
+	lets.Go(generateApiV0)
+	if err := lets.Wait(); err != nil {
+		fmt.Println("Error:", err)
+		os.Exit(1)
+	}
+	fmt.Println("All API proxy files generated successfully.")
+}
+
+func generateApiV0() error {
+	return generate("./api/v0api", "v0api", "v0api", "./api/v0api/proxy_gen.go")
+}
+
+func generateApi() error {
+	return generate("./api", "api", "api", "./api/proxy_gen.go")
 }
 
 func (v *Visitor) Visit(node ast.Node) ast.Visitor {
@@ -50,18 +70,6 @@ func (v *Visitor) Visit(node ast.Node) ast.Visitor {
 	}
 
 	return v
-}
-
-func main() {
-	// latest (v1)
-	if err := generate("./api", "api", "api", "./api/proxy_gen.go"); err != nil {
-		fmt.Println("error: ", err)
-	}
-
-	// v0
-	if err := generate("./api/v0api", "v0api", "v0api", "./api/v0api/proxy_gen.go"); err != nil {
-		fmt.Println("error: ", err)
-	}
 }
 
 func typeName(e ast.Expr, pkg string) (string, error) {

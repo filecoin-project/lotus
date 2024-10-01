@@ -11,6 +11,7 @@ import (
 	"math/big"
 
 	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
@@ -104,6 +105,7 @@ var (
 	UpgradePhoenixHeight              abi.ChainEpoch = -27
 	UpgradeCalibrationDragonFixHeight abi.ChainEpoch = -28
 	UpgradeWaffleHeight               abi.ChainEpoch = -29
+	UpgradeTuktukHeight               abi.ChainEpoch = -30
 
 	DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 		0:                    DrandMainnet,
@@ -119,12 +121,17 @@ var (
 
 	ZeroAddress = MustParseAddress("f3yaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaby2smx7a")
 
-	WhitelistedBlock                 = cid.Undef
-	BootstrappersFile                = ""
-	GenesisFile                      = ""
-	F3Enabled                        = false
-	ManifestServerID                 = ""
-	F3BootstrapEpoch  abi.ChainEpoch = -1
+	WhitelistedBlock                      = cid.Undef
+	BootstrappersFile                     = ""
+	GenesisFile                           = ""
+	F3Enabled                             = false
+	F3ManifestServerID     peer.ID        = ""
+	F3BootstrapEpoch       abi.ChainEpoch = -1
+	F3InitialPowerTableCID                = cid.Undef
+
+	// F3Consensus set whether F3 should checkpoint tipsets finalized by F3. This
+	// flag has no effect if F3 is not enabled.
+	F3Consensus = true
 )
 
 func init() {

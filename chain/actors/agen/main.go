@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"text/template"
 
+	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 
 	lotusactors "github.com/filecoin-project/lotus/chain/actors"
@@ -31,25 +32,16 @@ var actors = map[string][]int{
 }
 
 func main() {
-	if err := generateAdapters(); err != nil {
-		fmt.Println(err)
-		return
+	var lets errgroup.Group
+	lets.Go(generateAdapters)
+	lets.Go(generatePolicy)
+	lets.Go(generateBuiltin)
+	lets.Go(generateRegistry)
+	if err := lets.Wait(); err != nil {
+		fmt.Println("Error:", err)
+		os.Exit(1)
 	}
-
-	if err := generatePolicy("chain/actors/policy/policy.go"); err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	if err := generateBuiltin("chain/actors/builtin/builtin.go"); err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	if err := generateRegistry("chain/actors/builtin/registry.go"); err != nil {
-		fmt.Println(err)
-		return
-	}
+	fmt.Println("All chain actor files generated successfully.")
 }
 
 func generateAdapters() error {
@@ -162,8 +154,8 @@ func generateMessages(actDir string) error {
 	return nil
 }
 
-func generatePolicy(policyPath string) error {
-
+func generatePolicy() error {
+	const policyPath = "chain/actors/policy/policy.go"
 	pf, err := os.ReadFile(policyPath + ".template")
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -193,8 +185,8 @@ func generatePolicy(policyPath string) error {
 	return nil
 }
 
-func generateBuiltin(builtinPath string) error {
-
+func generateBuiltin() error {
+	const builtinPath = "chain/actors/builtin/builtin.go"
 	bf, err := os.ReadFile(builtinPath + ".template")
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -224,8 +216,8 @@ func generateBuiltin(builtinPath string) error {
 	return nil
 }
 
-func generateRegistry(registryPath string) error {
-
+func generateRegistry() error {
+	const registryPath = "chain/actors/builtin/registry.go"
 	bf, err := os.ReadFile(registryPath + ".template")
 	if err != nil {
 		if os.IsNotExist(err) {
