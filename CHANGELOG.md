@@ -1,7 +1,7 @@
 # Lotus changelog
 
 # UNRELEASED
- (`ChainIndexer`) to index Filecoin chain state such as tipsets, messages, events and ETH transactions for accurate and faster RPC responses. The `ChainIndexer` replaces the existing `MsgIndex`, `EthTxIndex` and `EventIndex` implementations in Lotus which[ suffer from a multitude of known problems](https://github.com/filecoin-project/lotus/issues/12293).  If you are an RPC provider/node operator , please refer to the [ChainIndexer documentation for RPC providers](TODO: URL) for information on how to enable, configure and use the new Indexer.
+ (`ChainIndexer`) to index Filecoin chain state such as tipsets, messages, events and ETH transactions for accurate and faster RPC responses. The `ChainIndexer` replaces the existing `MsgIndex`, `EthTxIndex` and `EventIndex` implementations in Lotus, which [suffer from a multitude of known problems](https://github.com/filecoin-project/lotus/issues/12293).  If you are an RPC provider/node operator, please refer to the [ChainIndexer documentation for RPC providers](TODO: URL) for information on how to enable, configure and use the new Indexer.
 
  
 ## ☢️ Upgrade Warnings ☢️
