@@ -462,21 +462,35 @@ func (a *EthModule) EthGetTransactionHashByCid(ctx context.Context, cid cid.Cid)
 func (a *EthModule) EthGetTransactionCount(ctx context.Context, sender ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthUint64, error) {
 	addr, err := sender.ToFilecoinAddress()
 	if err != nil {
-		return ethtypes.EthUint64(0), nil
+		return ethtypes.EthUint64(0), xerrors.Errorf("invalid address: %w", err)
 	}
 
+	// Handle "pending" block parameter separately
+	if blkParam.PredefinedBlock != nil && *blkParam.PredefinedBlock == "pending" {
+		nonce, err := a.MpoolAPI.MpoolGetNonce(ctx, addr)
+		if err != nil {
+			return ethtypes.EthUint64(0), xerrors.Errorf("failed to get nonce from mpool: %w", err)
+		}
+		return ethtypes.EthUint64(nonce), nil
+	}
+
+	// For all other cases, get the tipset based on the block parameter
 	ts, err := getTipsetByEthBlockNumberOrHash(ctx, a.Chain, blkParam)
 	if err != nil {
 		return ethtypes.EthUint64(0), xerrors.Errorf("failed to process block param: %v; %w", blkParam, err)
 	}
 
-	// First, handle the case where the "sender" is an EVM actor.
-	if actor, err := a.StateManager.LoadActor(ctx, addr, ts); err != nil {
+	// Get the actor state at the specified tipset
+	actor, err := a.StateManager.LoadActor(ctx, addr, ts)
+	if err != nil {
 		if errors.Is(err, types.ErrActorNotFound) {
 			return 0, nil
 		}
-		return 0, xerrors.Errorf("failed to lookup contract %s: %w", sender, err)
-	} else if builtinactors.IsEvmActor(actor.Code) {
+		return 0, xerrors.Errorf("failed to lookup actor %s: %w", sender, err)
+	}
+
+	// Handle EVM actor case
+	if builtinactors.IsEvmActor(actor.Code) {
 		evmState, err := builtinevm.Load(a.Chain.ActorStore(ctx), actor)
 		if err != nil {
 			return 0, xerrors.Errorf("failed to load evm state: %w", err)
@@ -490,11 +504,8 @@ func (a *EthModule) EthGetTransactionCount(ctx context.Context, sender ethtypes.
 		return ethtypes.EthUint64(nonce), err
 	}
 
-	nonce, err := a.Mpool.GetNonce(ctx, addr, ts.Key())
-	if err != nil {
-		return ethtypes.EthUint64(0), nil
-	}
-	return ethtypes.EthUint64(nonce), nil
+	// For non-EVM actors, get the nonce from the actor state
+	return ethtypes.EthUint64(actor.Nonce), nil
 }
 
 func (a *EthModule) EthGetTransactionReceipt(ctx context.Context, txHash ethtypes.EthHash) (*api.EthTxReceipt, error) {
