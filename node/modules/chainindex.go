@@ -35,9 +35,8 @@ func ChainIndexer(cfg config.ChainIndexerConfig) func(lc fx.Lifecycle, mctx help
 			return nil, err
 		}
 
-
-	chainIndexer, err := index.NewSqliteIndexer(filepath.Join(chainIndexPath, index.DefaultDbFilename),
-                       cs, cfg.GCRetentionEpochs, cfg.ReconcileEmptyIndex, cfg.MaxReconcileTipsets)
+		dbPath := filepath.Join(chainIndexPath, index.DefaultDbFilename)
+		chainIndexer, err := index.NewSqliteIndexer(dbPath, cs, cfg.GCRetentionEpochs, cfg.ReconcileEmptyIndex, cfg.MaxReconcileTipsets)
 		if err != nil {
 			return nil, err
 		}
