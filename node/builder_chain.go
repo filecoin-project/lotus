@@ -144,6 +144,10 @@ var ChainNode = Options(
 		Override(new(full.EthModuleAPI), From(new(api.Gateway))),
 		Override(new(full.EthEventAPI), From(new(api.Gateway))),
 		Override(new(full.ActorEventAPI), From(new(api.Gateway))),
+
+		Override(new(index.Indexer), modules.ChainIndexer(config.ChainIndexerConfig{
+			EnableIndexer: false,
+		})),
 	),
 
 	// Full node API / service startup
