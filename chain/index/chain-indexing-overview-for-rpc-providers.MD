@@ -72,7 +72,6 @@ Migrating to the new `ChainIndexer` involves several steps to ensure a smooth tr
 
 1. **Stop the Lotus Node**
    - Stop your Lotus node before starting the upgrade and migration process.
-   - 
 2. **Update Configuration**
    - Modify your Lotus configuration to enable the `ChainIndexer` as described in the [`ChainIndexer Config` section above](#chainindexer-config).
 
@@ -81,6 +80,7 @@ Migrating to the new `ChainIndexer` involves several steps to ensure a smooth tr
    - The `ChainIndexer` will begin indexing **real-time chain state changes** immediately in the `${LOTUS_PATH}/chainindex` directory.
    - **However, it will not automatically index any historical chain state (i.e., any previously existing chain state). To perform backfilling, please see the [`Backfilling` section below](#backfilling).**
 
+Note: The ChainIndexer will write state to `${LOTUS_HOME}/chainindex` rather than the [removed option](#removed-options) for `Events.DatabasePath` (which defaulted to `${LOTUS_HOME}/sqllite`).  It's recommended to keep the legacy directory around until you've confirmed you don't need to [rollback](#rollback).
 ## Backfill
 To index historical chain state (i.e., **"backfilling"**), you can use the following tools:
 
