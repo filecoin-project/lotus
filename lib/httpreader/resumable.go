@@ -24,7 +24,7 @@ type ResumableReader struct {
 	reader        io.ReadCloser
 }
 
-var _ io.ReadCloser = &ResumableReader{}
+var _ io.ReadCloser = (*ResumableReader)(nil)
 
 func NewResumableReader(ctx context.Context, url string) (*ResumableReader, error) {
 	finalURL := ""
