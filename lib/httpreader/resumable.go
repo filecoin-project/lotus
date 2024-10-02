@@ -24,6 +24,8 @@ type ResumableReader struct {
 	reader        io.ReadCloser
 }
 
+var _ io.ReadCloser = (*ResumableReader)(nil)
+
 func NewResumableReader(ctx context.Context, url string) (*ResumableReader, error) {
 	finalURL := ""
 
@@ -75,6 +77,13 @@ func NewResumableReader(ctx context.Context, url string) (*ResumableReader, erro
 
 func (r *ResumableReader) ContentLength() int64 {
 	return r.contentLength
+}
+
+func (r *ResumableReader) Close() error {
+	if r.reader != nil {
+		return r.reader.Close()
+	}
+	return nil
 }
 
 func (r *ResumableReader) Read(p []byte) (n int, err error) {
