@@ -9,13 +9,9 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
-	mh "github.com/multiformats/go-multihash"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/crypto"
-
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
@@ -77,41 +73,6 @@ func TestGetMsgInfo(t *testing.T) {
 	require.Equal(t, msgCid, mi.Message)
 	require.Equal(t, tsKeyCid, mi.TipSet)
 	require.Equal(t, abi.ChainEpoch(1), mi.Epoch)
-}
-
-func setupWithHeadIndexed(t *testing.T, headHeight abi.ChainEpoch, rng *pseudo.Rand) (*SqliteIndexer, *types.TipSet, *dummyChainStore) {
-	head := fakeTipSet(t, rng, headHeight, []cid.Cid{})
-	d := newDummyChainStore()
-	d.SetHeaviestTipSet(head)
-
-	s, err := NewSqliteIndexer(":memory:", d, 0, false, 0)
-	require.NoError(t, err)
-	insertHead(t, s, head, headHeight)
-
-	return s, head, d
-}
-
-func insertHead(t *testing.T, s *SqliteIndexer, head *types.TipSet, height abi.ChainEpoch) {
-	headKeyBytes, err := toTipsetKeyCidBytes(head)
-	require.NoError(t, err)
-
-	insertTipsetMessage(t, s, tipsetMessage{
-		tipsetKeyCid: headKeyBytes,
-		height:       uint64(height),
-		reverted:     false,
-		messageCid:   nil,
-		messageIndex: -1,
-	})
-}
-
-func insertEthTxHash(t *testing.T, s *SqliteIndexer, ethTxHash ethtypes.EthHash, messageCid cid.Cid) {
-	msgCidBytes := messageCid.Bytes()
-
-	res, err := s.stmts.insertEthTxHashStmt.Exec(ethTxHash.String(), msgCidBytes)
-	require.NoError(t, err)
-	rowsAffected, err := res.RowsAffected()
-	require.NoError(t, err)
-	require.Equal(t, int64(1), rowsAffected)
 }
 
 type dummyChainStore struct {
@@ -239,65 +200,4 @@ func (d *dummyChainStore) SetTipsetByHeightAndKey(h abi.ChainEpoch, tsk types.Ti
 
 	d.heightToTipSet[h] = ts
 	d.keyToTipSet[tsk] = ts
-}
-
-func randomIDAddr(tb testing.TB, rng *pseudo.Rand) address.Address {
-	tb.Helper()
-	addr, err := address.NewIDAddress(uint64(rng.Int63()))
-	require.NoError(tb, err)
-	return addr
-}
-
-func randomCid(tb testing.TB, rng *pseudo.Rand) cid.Cid {
-	tb.Helper()
-	cb := cid.V1Builder{Codec: cid.Raw, MhType: mh.IDENTITY}
-	c, err := cb.Sum(randomBytes(10, rng))
-	require.NoError(tb, err)
-	return c
-}
-
-func randomBytes(n int, rng *pseudo.Rand) []byte {
-	buf := make([]byte, n)
-	rng.Read(buf)
-	return buf
-}
-
-func fakeTipSet(tb testing.TB, rng *pseudo.Rand, h abi.ChainEpoch, parents []cid.Cid) *types.TipSet {
-	tb.Helper()
-	ts, err := types.NewTipSet([]*types.BlockHeader{
-		{
-			Height: h,
-			Miner:  randomIDAddr(tb, rng),
-
-			Parents: parents,
-
-			Ticket: &types.Ticket{VRFProof: []byte{byte(h % 2)}},
-
-			ParentStateRoot:       randomCid(tb, rng),
-			Messages:              randomCid(tb, rng),
-			ParentMessageReceipts: randomCid(tb, rng),
-
-			BlockSig:     &crypto.Signature{Type: crypto.SigTypeBLS},
-			BLSAggregate: &crypto.Signature{Type: crypto.SigTypeBLS},
-		},
-		{
-			Height: h,
-			Miner:  randomIDAddr(tb, rng),
-
-			Parents: parents,
-
-			Ticket: &types.Ticket{VRFProof: []byte{byte((h + 1) % 2)}},
-
-			ParentStateRoot:       randomCid(tb, rng),
-			Messages:              randomCid(tb, rng),
-			ParentMessageReceipts: randomCid(tb, rng),
-
-			BlockSig:     &crypto.Signature{Type: crypto.SigTypeBLS},
-			BLSAggregate: &crypto.Signature{Type: crypto.SigTypeBLS},
-		},
-	})
-
-	require.NoError(tb, err)
-
-	return ts
 }
