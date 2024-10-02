@@ -14,6 +14,8 @@ var (
 	cleanupInterval = time.Duration(4) * time.Hour
 )
 
+const graceEpochs = 10
+
 func (si *SqliteIndexer) gcLoop() {
 	defer si.wg.Done()
 
@@ -49,7 +51,7 @@ func (si *SqliteIndexer) gc(ctx context.Context) {
 
 	head := si.cs.GetHeaviestTipSet()
 
-	removalEpoch := int64(head.Height()) - si.gcRetentionEpochs - 10 // 10 is for some grace period
+	removalEpoch := int64(head.Height()) - si.gcRetentionEpochs - graceEpochs
 	if removalEpoch <= 0 {
 		log.Info("no tipsets to gc")
 		return
@@ -76,9 +78,9 @@ func (si *SqliteIndexer) gc(ctx context.Context) {
 
 	currHeadTime := time.Unix(int64(head.MinTimestamp()), 0)
 	retentionDuration := time.Duration(si.gcRetentionEpochs*builtin.EpochDurationSeconds) * time.Second
-
-	// gcTime is the time that is gcRetentionEpochs before currHeadTime
-	gcTime := currHeadTime.Add(-retentionDuration)
+	totalRetentionDuration := retentionDuration + (time.Duration(graceEpochs) * time.Duration(builtin.EpochDurationSeconds) * time.Second)
+	// gcTime is the time that is (gcRetentionEpochs + graceEpochs) before currHeadTime
+	gcTime := currHeadTime.Add(-totalRetentionDuration)
 
 	log.Infof("gc'ing eth hashes before time %s", gcTime.UTC().String())
 

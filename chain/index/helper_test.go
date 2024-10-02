@@ -97,6 +97,11 @@ func setupWithHeadIndexed(t *testing.T, headHeight abi.ChainEpoch, rng *pseudo.R
 	return s, head, d
 }
 
+func cleanup(t *testing.T, s *SqliteIndexer) {
+	err := s.Close()
+	require.NoError(t, err)
+}
+
 func insertHead(t *testing.T, s *SqliteIndexer, head *types.TipSet, height abi.ChainEpoch) {
 	headKeyBytes, err := toTipsetKeyCidBytes(head)
 	require.NoError(t, err)

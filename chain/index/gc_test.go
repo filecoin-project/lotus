@@ -6,71 +6,149 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-state-types/abi"
+)
+
+const (
+	epochOne   = 1
+	epochTen   = 10
+	epochFifty = 50
+	headEpoch  = 60
+
+	validRetentionEpochs = 20
+	highRetentionEpochs  = 100
+	lowRetentionEpochs   = 1
 )
 
 func TestGC(t *testing.T) {
-	ctx := context.Background()
-	genesisTime := time.Now()
-	rng := pseudo.New(pseudo.NewSource(genesisTime.UnixNano()))
+	type tipsetData struct {
+		height   abi.ChainEpoch
+		reverted bool
+	}
 
-	// head at height 60
-	// insert tipsets at heigh 1,10,50.
-	// retention epochs is 20
-	// tipset at height 60 will be in the future
-	si, _, _ := setupWithHeadIndexed(t, 60, rng)
-	si.gcRetentionEpochs = 20
-	defer func() { _ = si.Close() }()
+	tests := []struct {
+		name                          string
+		headHeight                    abi.ChainEpoch
+		gcRetentionEpochs             int64
+		tipsets                       []tipsetData
+		expectedEpochTipsetDataCounts map[abi.ChainEpoch]int // expected data count(tipsetMsg, event, eventEntry), for each epoch
+		expectedEthTxHashCount        int                    // expected eth tx hash count after gc
+	}{
+		{
+			name:              "Basic GC with some tipsets removed",
+			headHeight:        headEpoch,
+			gcRetentionEpochs: validRetentionEpochs,
+			tipsets: []tipsetData{
+				{height: epochOne, reverted: false},
+				{height: epochTen, reverted: false},
+				{height: epochFifty, reverted: false},
+			},
+			expectedEpochTipsetDataCounts: map[abi.ChainEpoch]int{
+				epochOne:   0, // Should be removed
+				epochTen:   0, // Should be removed
+				epochFifty: 1, // Should remain
+			},
+			expectedEthTxHashCount: 1, // Only the entry for height 50 should remain
+		},
+		{
+			name:              "No GC when retention epochs is high",
+			headHeight:        headEpoch,
+			gcRetentionEpochs: highRetentionEpochs,
+			tipsets: []tipsetData{
+				{height: epochOne, reverted: false},
+				{height: epochTen, reverted: false},
+				{height: epochFifty, reverted: false},
+			},
+			expectedEpochTipsetDataCounts: map[abi.ChainEpoch]int{
+				epochOne:   1, // Should remain
+				epochTen:   1, // Should remain
+				epochFifty: 1, // Should remain
+			},
+			expectedEthTxHashCount: 3, // All entries should remain
+		},
+		{
+			name:              "No GC when gcRetentionEpochs is zero",
+			headHeight:        headEpoch,
+			gcRetentionEpochs: 0,
+			tipsets: []tipsetData{
+				{height: epochOne, reverted: false},
+				{height: epochTen, reverted: false},
+				{height: epochFifty, reverted: false},
+			},
+			expectedEpochTipsetDataCounts: map[abi.ChainEpoch]int{
+				epochOne:   1, // Should remain
+				epochTen:   1, // Should remain
+				epochFifty: 1, // Should remain
+			},
+			expectedEthTxHashCount: 3, // All entries should remain
+		},
+		{
+			name:              "GC should remove tipsets that are older than gcRetentionEpochs + gracEpochs",
+			headHeight:        headEpoch,
+			gcRetentionEpochs: lowRetentionEpochs, // headHeight - gcRetentionEpochs - graceEpochs = 60 - 5 - 10 = 45 (removalEpoch)
+			tipsets: []tipsetData{
+				{height: 1, reverted: false},
+				{height: 10, reverted: false},
+				{height: 50, reverted: false},
+			},
+			expectedEpochTipsetDataCounts: map[abi.ChainEpoch]int{
+				epochOne:   0, // Should be removed
+				epochTen:   0, // Should be removed
+				epochFifty: 1, // Should remain
+			},
+			expectedEthTxHashCount: 1, // Only the entry for height 50 should remain
+		},
+	}
 
-	// all tipsets will be in future
-	tsKeyCid1, _, _ := insertRandomTipsetAtHeight(t, si, 1, false, genesisTime)
-	tsKeyCid2, _, _ := insertRandomTipsetAtHeight(t, si, 10, false, genesisTime)
-	tsKeyCid3, _, _ := insertRandomTipsetAtHeight(t, si, 50, false, genesisTime)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			genesisTime := time.Now()
+			rng := pseudo.New(pseudo.NewSource(genesisTime.UnixNano()))
 
-	si.gc(ctx)
+			si, _, _ := setupWithHeadIndexed(t, tt.headHeight, rng)
+			si.gcRetentionEpochs = tt.gcRetentionEpochs
+			defer func() { _ = si.Close() }()
 
-	// tipset at height 1 data should be removed
-	var count int
-	err := si.db.QueryRow("SELECT COUNT(*) FROM tipset_message WHERE height = 1").Scan(&count)
-	require.NoError(t, err)
-	require.Equal(t, 0, count)
+			tipsetKeyCids := make(map[abi.ChainEpoch]cid.Cid)
 
-	err = si.stmts.getNonRevertedTipsetEventCountStmt.QueryRow(tsKeyCid1.Bytes()).Scan(&count)
-	require.NoError(t, err)
-	require.Equal(t, 0, count)
+			for _, tsData := range tt.tipsets {
+				t.Logf("inserting tipset at height %d", tsData.height)
 
-	err = si.stmts.getNonRevertedTipsetEventEntriesCountStmt.QueryRow(tsKeyCid1.Bytes()).Scan(&count)
-	require.NoError(t, err)
-	require.Equal(t, 0, count)
+				tsKeyCid, _, _ := insertRandomTipsetAtHeight(t, si, uint64(tsData.height), tsData.reverted, genesisTime)
+				tipsetKeyCids[tsData.height] = tsKeyCid
+			}
 
-	// tipset at height 10 data should be removed
-	err = si.db.QueryRow("SELECT COUNT(*) FROM tipset_message WHERE height = 10").Scan(&count)
-	require.NoError(t, err)
-	require.Equal(t, 0, count)
+			si.gc(ctx)
 
-	err = si.stmts.getNonRevertedTipsetEventCountStmt.QueryRow(tsKeyCid2.Bytes()).Scan(&count)
-	require.NoError(t, err)
-	require.Equal(t, 0, count)
+			for height, expectedCount := range tt.expectedEpochTipsetDataCounts {
+				var count int
 
-	err = si.stmts.getNonRevertedTipsetEventEntriesCountStmt.QueryRow(tsKeyCid2.Bytes()).Scan(&count)
-	require.NoError(t, err)
-	require.Equal(t, 0, count)
+				err := si.db.QueryRow("SELECT COUNT(*) FROM tipset_message WHERE height = ?", height).Scan(&count)
+				require.NoError(t, err)
+				require.Equal(t, expectedCount, count, "Unexpected tipset_message count for height %d", height)
 
-	// tipset at height 50 should not be removed
-	err = si.db.QueryRow("SELECT COUNT(*) FROM tipset_message WHERE height = 50").Scan(&count)
-	require.NoError(t, err)
-	require.Equal(t, 1, count)
+				tsKeyCid := tipsetKeyCids[height]
+				err = si.stmts.getNonRevertedTipsetEventCountStmt.QueryRow(tsKeyCid.Bytes()).Scan(&count)
+				require.NoError(t, err)
+				require.Equal(t, expectedCount, count, "Unexpected events count for height %d", height)
 
-	err = si.stmts.getNonRevertedTipsetEventCountStmt.QueryRow(tsKeyCid3.Bytes()).Scan(&count)
-	require.NoError(t, err)
-	require.Equal(t, 1, count)
+				err = si.stmts.getNonRevertedTipsetEventEntriesCountStmt.QueryRow(tsKeyCid.Bytes()).Scan(&count)
+				require.NoError(t, err)
+				require.Equal(t, expectedCount, count, "Unexpected event_entries count for height %d", height)
+			}
 
-	err = si.stmts.getNonRevertedTipsetEventEntriesCountStmt.QueryRow(tsKeyCid3.Bytes()).Scan(&count)
-	require.NoError(t, err)
-	require.Equal(t, 1, count)
+			var ethTxHashCount int
+			err := si.db.QueryRow("SELECT COUNT(*) FROM eth_tx_hash").Scan(&ethTxHashCount)
+			require.NoError(t, err)
+			require.Equal(t, tt.expectedEthTxHashCount, ethTxHashCount, "Unexpected eth_tx_hash count")
 
-	err = si.db.QueryRow("SELECT COUNT(*) FROM eth_tx_hash").Scan(&count)
-	require.NoError(t, err)
-	// eth_tx_hash for tipset at height 50 timestamp should not be removed
-	require.Equal(t, 1, count)
+			t.Cleanup(func() {
+				cleanup(t, si)
+			})
+		})
+	}
 }
