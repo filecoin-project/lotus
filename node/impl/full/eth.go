@@ -474,6 +474,10 @@ func (a *EthModule) EthGetTransactionCount(ctx context.Context, sender ethtypes.
 		return ethtypes.EthUint64(nonce), nil
 	}
 
+	if blkParam.PredefinedBlock != nil && *blkParam.PredefinedBlock == "earliest" {
+		return ethtypes.EthUint64(0), nil
+	}
+
 	// For all other cases, get the tipset based on the block parameter
 	ts, err := getTipsetByEthBlockNumberOrHash(ctx, a.Chain, blkParam)
 	if err != nil {
