@@ -67,7 +67,7 @@ func preparedStatementMapping(ps *preparedStatements) map[**sql.Stmt]string {
 		&ps.updateTipsetToNonRevertedStmt:             "UPDATE tipset_message SET reverted = 0 WHERE tipset_key_cid = ?",
 		&ps.updateTipsetToRevertedStmt:                "UPDATE tipset_message SET reverted = 1 WHERE tipset_key_cid = ?",
 		&ps.removeTipsetsBeforeHeightStmt:             "DELETE FROM tipset_message WHERE height < ?",
-		&ps.removeEthHashesOlderThanStmt:              "DELETE FROM eth_tx_hash WHERE inserted_at < datetime('now', ?)",
+		&ps.removeEthHashesBeforeTimeStmt:             "DELETE FROM eth_tx_hash WHERE inserted_at < ?",
 		&ps.updateTipsetsToRevertedFromHeightStmt:     "UPDATE tipset_message SET reverted = 1 WHERE height >= ?",
 		&ps.updateEventsToRevertedFromHeightStmt:      "UPDATE event SET reverted = 1 WHERE message_id IN (SELECT message_id FROM tipset_message WHERE height >= ?)",
 		&ps.isIndexEmptyStmt:                          "SELECT NOT EXISTS(SELECT 1 FROM tipset_message LIMIT 1)",

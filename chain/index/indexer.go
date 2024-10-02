@@ -34,7 +34,7 @@ type preparedStatements struct {
 	hasTipsetStmt                         *sql.Stmt
 	updateTipsetToNonRevertedStmt         *sql.Stmt
 	removeTipsetsBeforeHeightStmt         *sql.Stmt
-	removeEthHashesOlderThanStmt          *sql.Stmt
+	removeEthHashesBeforeTimeStmt         *sql.Stmt
 	updateTipsetsToRevertedFromHeightStmt *sql.Stmt
 	updateEventsToRevertedFromHeightStmt  *sql.Stmt
 	isIndexEmptyStmt                      *sql.Stmt

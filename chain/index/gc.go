@@ -2,7 +2,6 @@ package index
 
 import (
 	"context"
-	"strconv"
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -75,17 +74,17 @@ func (si *SqliteIndexer) gc(ctx context.Context) {
 	// -------------------------------------------------------------------------------------------------
 	// Also GC eth hashes
 
-	// Convert gcRetentionEpochs to number of days
-	gcRetentionDays := si.gcRetentionEpochs / (builtin.EpochsInDay)
-	if gcRetentionDays < 1 {
-		log.Infof("skipping gc of eth hashes as retention days is less than 1")
-		return
-	}
+	currHeadTime := time.Unix(int64(head.MinTimestamp()), 0)
+	retentionDuration := time.Duration(si.gcRetentionEpochs*builtin.EpochDurationSeconds) * time.Second
 
-	log.Infof("gc'ing eth hashes older than %d days", gcRetentionDays)
-	res, err = si.stmts.removeEthHashesOlderThanStmt.ExecContext(ctx, "-"+strconv.Itoa(int(gcRetentionDays))+" day")
+	// gcTime is the time that is gcRetentionEpochs before currHeadTime
+	gcTime := currHeadTime.Add(-retentionDuration)
+
+	log.Infof("gc'ing eth hashes before time %s", gcTime.UTC().String())
+
+	res, err = si.stmts.removeEthHashesBeforeTimeStmt.ExecContext(ctx, gcTime.Unix())
 	if err != nil {
-		log.Errorf("failed to gc eth hashes older than %d days: %w", gcRetentionDays, err)
+		log.Errorf("failed to gc eth hashes before time %s: %w", gcTime.String(), err)
 		return
 	}
 
@@ -95,5 +94,5 @@ func (si *SqliteIndexer) gc(ctx context.Context) {
 		return
 	}
 
-	log.Infof("gc'd %d eth hashes older than %d days", rows, gcRetentionDays)
+	log.Infof("gc'd %d eth hashes before time %s", rows, gcTime.String())
 }
