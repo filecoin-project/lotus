@@ -362,8 +362,6 @@ func TestFilecoinAddressToEthAddressFinalised(t *testing.T) {
 func TestEthGetGenesis(t *testing.T) {
 	blockTime := 100 * time.Millisecond
 	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
-	require.NotNil(t, client, "Client should not be nil")
-	require.NotNil(t, ens, "Ensemble should not be nil")
 
 	ens.InterconnectAll().BeginMining(blockTime)
 
@@ -373,28 +371,15 @@ func TestEthGetGenesis(t *testing.T) {
 	ethBlk, err := client.EVM().EthGetBlockByNumber(ctx, "0x0", true)
 	require.NoError(t, err)
 
-	// Check if the block is nil (null round)
-	if ethBlk == nil {
-		t.Log("Genesis block is a null round, skipping EthBlock checks")
-	} else {
-		require.NotNil(t, ethBlk, "EthBlock should not be nil")
-	}
-
 	genesis, err := client.ChainGetGenesis(ctx)
 	require.NoError(t, err)
-	require.NotNil(t, genesis, "Genesis block should not be nil")
 
 	genesisCid, err := genesis.Key().Cid()
 	require.NoError(t, err)
-	require.NotEmpty(t, genesisCid, "Genesis CID should not be empty")
 
 	genesisHash, err := ethtypes.EthHashFromCid(genesisCid)
 	require.NoError(t, err)
-	require.NotEmpty(t, genesisHash, "Genesis hash should not be empty")
-
-	if ethBlk != nil {
-		require.Equal(t, ethBlk.Hash, genesisHash)
-	}
+	require.Equal(t, ethBlk.Hash, genesisHash)
 }
 
 func TestNetVersion(t *testing.T) {
@@ -429,7 +414,6 @@ func TestEthBlockNumberAliases(t *testing.T) {
 		var err error
 		latestEthBlk, err = client.EVM().EthGetBlockByNumber(ctx, "latest", true)
 		require.NoError(t, err)
-
 		afterHead, err := client.ChainHead(ctx)
 		require.NoError(t, err)
 		if afterHead.Height() == head.Height() {
@@ -447,7 +431,7 @@ func TestEthBlockNumberAliases(t *testing.T) {
 	// safe should be latest-30
 	safeEthBlk, err := client.EVM().EthGetBlockByNumber(ctx, "safe", true)
 	require.NoError(t, err)
-	diff = int64(latestEthBlk.Number) - int64(30) - int64(safeEthBlk.Number)
+	diff = int64(latestEthBlk.Number-30) - int64(safeEthBlk.Number)
 	require.GreaterOrEqual(t, diff, int64(0))
 	require.LessOrEqual(t, diff, int64(2))
 

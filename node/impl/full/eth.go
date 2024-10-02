@@ -342,7 +342,7 @@ func (a *EthModule) EthGetBlockByHash(ctx context.Context, blkHash ethtypes.EthH
 }
 
 func (a *EthModule) EthGetBlockByNumber(ctx context.Context, blkParam string, fullTxInfo bool) (*ethtypes.EthBlock, error) {
-	// Get the tipset for the specified block number
+	// Get the tipset for the specified block parameter
 	ts, err := getTipsetByBlockNumber(ctx, a.Chain, blkParam, true)
 	if err != nil {
 		if err == ErrNullRound {
@@ -351,12 +351,6 @@ func (a *EthModule) EthGetBlockByNumber(ctx context.Context, blkParam string, fu
 		}
 		return nil, xerrors.Errorf("failed to get tipset: %w", err)
 	}
-
-	// Check if the tipset is valid
-	if ts == nil || ts.Height() == 0 || len(ts.Blocks()) == 0 {
-		return nil, nil
-	}
-
 	// Create an Ethereum block from the Filecoin tipset
 	block, err := newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo, a.Chain, a.StateAPI)
 	if err != nil {

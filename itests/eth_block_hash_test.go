@@ -65,11 +65,9 @@ func TestEthBlockHashesCorrect_MultiBlockTipset(t *testing.T) {
 		require.NoError(t, err)
 
 		ethBlockA, err := n2.EthGetBlockByNumber(ctx, hex, true)
-		if err != nil {
-			if strings.Contains(err.Error(), "null round") {
-				continue
-			}
-			require.NoError(t, err)
+		if err != nil && strings.Contains(err.Error(), "null round") {
+			require.Less(t, ts.Height(), abi.ChainEpoch(i), "did not expect a tipset at epoch %d", i)
+			continue
 		}
 
 		// Check if the tipset height is less than or equal to the current epoch
