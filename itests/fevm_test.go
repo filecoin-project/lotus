@@ -1162,6 +1162,16 @@ func TestEthGetBlockReceipts(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, txReceipt, receipt)
 	}
+
+	// try with the geth request format for `EthBlockNumberOrHash`
+	var req ethtypes.EthBlockNumberOrHash
+	reqStr := fmt.Sprintf(`"%s"`, lastReceipt.BlockHash.String())
+	err = req.UnmarshalJSON([]byte(reqStr))
+	require.NoError(t, err)
+
+	gethBlockReceipts, err := client.EthGetBlockReceipts(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, gethBlockReceipts, 3)
 }
 
 func deployContractWithEth(ctx context.Context, t *testing.T, client *kit.TestFullNode, ethAddr ethtypes.EthAddress,
