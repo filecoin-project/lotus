@@ -2,17 +2,52 @@
 
 # UNRELEASED
  (`ChainIndexer`) to index Filecoin chain state such as tipsets, messages, events and ETH transactions for accurate and faster RPC responses. The `ChainIndexer` replaces the existing `MsgIndex`, `EthTxIndex` and `EventIndex` implementations in Lotus, which [suffer from a multitude of known problems](https://github.com/filecoin-project/lotus/issues/12293).  If you are an RPC provider/node operator, please refer to the [ChainIndexer documentation for RPC providers](TODO: URL) for information on how to enable, configure and use the new Indexer.
+Add `EthGetBlockReceipts` RPC method to retrieve transaction receipts for a specified block. This method allows users to obtain Ethereum format receipts of all transactions included in a given tipset as specified by its Ethereum block equivalent. ([filecoin-project/lotus#12478](https://github.com/filecoin-project/lotus/pull/12478))
 
  
 ## ☢️ Upgrade Warnings ☢️
 
+- Minimum go-version been updated to v1.22.7 ([filecoin-project/lotus#12459](https://github.com/filecoin-project/lotus/pull/12459))
+
 ## New features
 
 * Add `EthSendRawTransactionUntrusted` RPC method to be used for the gateway when accepting `EthSendRawTransaction` and `eth_sendRawTransaction`. Applies a tighter limit on the number of messages in the queue from a single sender and applies additional restrictions on nonce increments. ([filecoin-project/lotus#12431](https://github.com/filecoin-project/lotus/pull/12431))
+* [Checkpoint TipSets finalized by F3](https://github.com/filecoin-project/lotus/pull/12460): Once a decision is made by F3, the TipSet is check-pointed in `ChainStore`. As part of this change, any missing TipSets are asynchronously synced as required by the `ChainStore` checkpointing mechanism.
+* Add an environment variable, `F3_INITIAL_POWERTABLE_CID` to allow specifying the initial power table used by F3 ([filecoin-project/lotus#12502](https://github.com/filecoin-project/lotus/pull/12502)). This may be used to help a lotus node re-sync the F3 chain when syncing from a snapshot after the F3 upgrade epoch. The precise CID to use here won't be known until the F3 is officially "live".
+* Added `StateMinerInitialPledgeForSector` RPC method and deprecated existing `StateMinerInitialPledgeCollateral` method. Since ProveCommitSectors3 and ProveReplicaUpdates3, sector onboarding no longer includes an explicit notion of "deals", and precommit messages no longer contain deal information. This makes the existing `StateMinerInitialPledgeCollateral` unable to properly calculate pledge requirements with only the precommit. `StateMinerInitialPledgeForSector` is a new simplified calculator that simply takes duration, sector size, and verified size and estimates pledge based on current network conditions. Please note that the `StateMinerInitialPledgeCollateral` method will be removed entirely in the next non-patch release. ([filecoin-project/lotus#12384](https://github.com/filecoin-project/lotus/pull/12384)
 
 ## Improvements
 
 - Reduce size of embedded genesis CAR files by removing WASM actor blocks and compressing with zstd. This reduces the `lotus` binary size by approximately 10 MiB. ([filecoin-project/lotus#12439](https://github.com/filecoin-project/lotus/pull/12439))
+- Add ChainSafe operated Calibration archival node to the bootstrap list ([filecoin-project/lotus#12517](https://github.com/filecoin-project/lotus/pull/12517))
+- Legacy/historical Drand lookups via `StateGetBeaconEntry` now work again for all historical epochs. `StateGetBeaconEntry` now uses the on-chain beacon entries and follows the same rules for historical Drand round matching as `StateGetRandomnessFromBeacon` and the `get_beacon_randomness` FVM syscall. Be aware that there will be some some variance in matching Filecoin epochs to Drand rounds where null Filecoin rounds are involved prior to network version 14. ([filecoin-project/lotus#12428](https://github.com/filecoin-project/lotus/pull/12428)).
+
+## Bug Fixes
+
+## Deps
+- chore: bump go-libp2p to v0.35.5 ([filecoin-project/lotus#12511](https://github.com/filecoin-project/lotus/pull/12511))
+
+# Node v1.29.1 / 2024-09-16
+
+This is a Lotus Node patch release that addresses a critical sync issue affecting users of the v1.29.0 release. The primary fix in this release is:
+
+- Downgrade of a dependency that was causing invalid BLS signatures, leading to sync failures for many Lotus nodes. See [#12467](https://github.com/filecoin-project/lotus/issues/12467) for more information about the bug.
+
+We strongly recommend that all users currently running Lotus v1.29.0 upgrade to this version to resolve the syncing problems.
+
+## Bug Fixes
+- Update BLS dependency to fix [filecoin-project/lotus#12467](https://github.com/filecoin-project/lotus/pull/12467).
+
+# 1.28.3 / 2024-09-16
+
+This is a Lotus Node patch release that addresses a critical sync issue affecting users of the v1.28.2 release. The primary fix in this patch release is downgrading of a dependency that was causing invalid BLS signatures, leading to sync failures for many Lotus nodes. See #12467 for more information about the issue/bug.
+
+## Bug Fixes
+- Update BLS dependency to fix [filecoin-project/lotus#12467](https://github.com/filecoin-project/lotus/pull/12467).
+
+# UNRELEASED v1.29.2
+
+See https://github.com/filecoin-project/lotus/blob/release/v1.29.2/CHANGELOG.md
 
 # Node v1.29.0 / 2024-09-02
 
@@ -84,6 +119,7 @@ From https://github.com/filecoin-project/lotus/compare/v1.28.2...release/v1.29.0
 - github.com/filecoin-project/jackc/pgx (v5.4.1 -> v5.6.0)
 - feat(f3): update from v0.0.7 to v0.1.0 (#12382) ([filecoin-project/lotus#12382](https://github.com/filecoin-project/lotus/pull/12382))
 - feat: f3: update go-f3 to 0.2.0 (#12390) ([filecoin-project/lotus#12390](https://github.com/filecoin-project/lotus/pull/12390))
+- feat: update cheggaaa's pb to v3 ([filecoin-project/lotus#12518](https://github.com/filecoin-project/lotus/pull/12518))
 
 ### Chores
 

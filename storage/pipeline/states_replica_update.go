@@ -131,21 +131,34 @@ func (m *Sealing) handleSubmitReplicaUpdate(ctx statemachine.Context, sector Sec
 		return ctx.Send(SectorSubmitReplicaUpdateFailed{})
 	}
 
-	weightUpdate, err := m.sectorWeight(ctx.Context(), sector, onChainInfo.Expiration)
+	duration := onChainInfo.Expiration - ts.Height()
+
+	ssize, err := sector.SectorType.SectorSize()
 	if err != nil {
-		log.Errorf("failed to get sector weight: %+v", err)
-		return ctx.Send(SectorSubmitReplicaUpdateFailed{})
+		return xerrors.Errorf("failed to resolve sector size for seal proof: %w", err)
 	}
 
-	collateral, err := m.pledgeForPower(ctx.Context(), weightUpdate)
+	var verifiedSize uint64
+	for _, piece := range sector.Pieces {
+		if piece.HasDealInfo() {
+			alloc, err := piece.GetAllocation(ctx.Context(), m.Api, ts.Key())
+			if err != nil || alloc == nil {
+				if err != nil {
+					log.Errorw("failed to get allocation", "error", err)
+				}
+				verifiedSize += uint64(piece.Piece().Size)
+			}
+		}
+	}
+
+	collateral, err := m.Api.StateMinerInitialPledgeForSector(ctx.Context(), duration, ssize, verifiedSize, ts.Key())
 	if err != nil {
-		log.Errorf("failed to get pledge for power: %+v", err)
-		return ctx.Send(SectorSubmitReplicaUpdateFailed{})
+		return xerrors.Errorf("getting initial pledge collateral: %w", err)
 	}
 
 	log.Infow("submitting replica update",
 		"sector", sector.SectorNumber,
-		"weight", types.FIL(weightUpdate),
+		"verifiedSize", verifiedSize,
 		"totalPledge", types.FIL(collateral),
 		"initialPledge", types.FIL(onChainInfo.InitialPledge),
 		"toPledge", types.FIL(big.Sub(collateral, onChainInfo.InitialPledge)))

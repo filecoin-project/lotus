@@ -27,8 +27,6 @@ import (
 var HeartbeatInterval = 10 * time.Second
 var SkippedHeartbeatThresh = HeartbeatInterval * 5
 
-//go:generate go run github.com/golang/mock/mockgen -destination=mocks/index.go -package=mocks . SectorIndex
-
 type SectorIndex interface { // part of storage-miner api
 	StorageAttach(context.Context, storiface.StorageInfo, fsutil.FsStat) error
 	StorageDetach(ctx context.Context, id storiface.ID, url string) error

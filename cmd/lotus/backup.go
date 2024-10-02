@@ -3,11 +3,11 @@ package main
 import (
 	"os"
 
+	"github.com/cheggaaa/pb/v3"
 	dstore "github.com/ipfs/go-datastore"
 	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
-	"gopkg.in/cheggaaa/pb.v1"
 
 	"github.com/filecoin-project/go-jsonrpc"
 
@@ -92,14 +92,9 @@ func restore(cctx *cli.Context, r repo.Repo) error {
 		return err
 	}
 
-	bar := pb.New64(st.Size())
+	bar := pb.Full.Start64(st.Size())
 	br := bar.NewProxyReader(f)
-	bar.ShowTimeLeft = true
-	bar.ShowPercent = true
-	bar.ShowSpeed = true
-	bar.Units = pb.U_BYTES
 
-	bar.Start()
 	err = backupds.RestoreInto(br, mds)
 	bar.Finish()
 

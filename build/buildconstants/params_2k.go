@@ -20,7 +20,7 @@ const GenesisFile = ""
 var NetworkBundle = "devnet"
 var ActorDebugging = true
 
-var GenesisNetworkVersion = network.Version22
+var GenesisNetworkVersion = network.Version23
 
 var UpgradeBreezeHeight = abi.ChainEpoch(-1)
 
@@ -68,7 +68,9 @@ var UpgradeDragonHeight = abi.ChainEpoch(-24)
 
 var UpgradePhoenixHeight = abi.ChainEpoch(-25)
 
-var UpgradeWaffleHeight = abi.ChainEpoch(200)
+var UpgradeWaffleHeight = abi.ChainEpoch(-26)
+
+var UpgradeTuktukHeight = abi.ChainEpoch(200)
 
 // This fix upgrade only ran on calibrationnet
 const UpgradeWatermelonFixHeight = -100
@@ -156,8 +158,9 @@ func init() {
 	UpgradeWatermelonHeight = getUpgradeHeight("LOTUS_WATERMELON_HEIGHT", UpgradeWatermelonHeight)
 	UpgradeDragonHeight = getUpgradeHeight("LOTUS_DRAGON_HEIGHT", UpgradeDragonHeight)
 	UpgradeWaffleHeight = getUpgradeHeight("LOTUS_WAFFLE_HEIGHT", UpgradeWaffleHeight)
-
 	UpgradePhoenixHeight = getUpgradeHeight("LOTUS_PHOENIX_HEIGHT", UpgradePhoenixHeight)
+	UpgradeTuktukHeight = getUpgradeHeight("LOTUS_TUKTUK_HEIGHT", UpgradeTuktukHeight)
+
 	DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 		0: DrandQuicknet,
 	}
@@ -194,6 +197,13 @@ var WhitelistedBlock = cid.Undef
 
 var F3Enabled = true
 
-const ManifestServerID = "12D3KooWHcNBkqXEBrsjoveQvj6zDF3vK5S9tAfqyYaQF1LGSJwG"
+var F3ManifestServerID = MustParseID("12D3KooWHcNBkqXEBrsjoveQvj6zDF3vK5S9tAfqyYaQF1LGSJwG")
+
+// The initial F3 power table CID.
+var F3InitialPowerTableCID cid.Cid = cid.Undef
 
 var F3BootstrapEpoch abi.ChainEpoch = 1000
+
+// F3Consensus set whether F3 should checkpoint tipsets finalized by F3. This
+// flag has no effect if F3 is not enabled.
+const F3Consensus = true

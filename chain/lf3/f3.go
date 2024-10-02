@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/go-f3/manifest"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -38,24 +39,26 @@ type F3 struct {
 type F3Params struct {
 	fx.In
 
-	NetworkName      dtypes.NetworkName
 	ManifestProvider manifest.ManifestProvider
 	PubSub           *pubsub.PubSub
 	Host             host.Host
 	ChainStore       *store.ChainStore
+	Syncer           *chain.Syncer
 	StateManager     *stmgr.StateManager
 	Datastore        dtypes.MetadataDS
 	Wallet           api.Wallet
+	Config           *Config
 }
 
 var log = logging.Logger("f3")
 
 func New(mctx helpers.MetricsCtx, lc fx.Lifecycle, params F3Params) (*F3, error) {
-
 	ds := namespace.Wrap(params.Datastore, datastore.NewKey("/f3"))
 	ec := &ecWrapper{
 		ChainStore:   params.ChainStore,
 		StateManager: params.StateManager,
+		Syncer:       params.Syncer,
+		Checkpoint:   params.Config.F3ConsensusEnabled,
 	}
 	verif := blssig.VerifierWithKeyOnG1()
 
@@ -73,16 +76,29 @@ func New(mctx helpers.MetricsCtx, lc fx.Lifecycle, params F3Params) (*F3, error)
 		newLeases: make(chan leaseRequest, 4), // some buffer to avoid blocking
 	}
 
+	// Start F3
+	lc.Append(fx.Hook{
+		OnStart: fff.inner.Start,
+		OnStop:  fff.inner.Stop,
+	})
+
+	// Start signing F3 messages.
 	lCtx, cancel := context.WithCancel(mctx)
-	lc.Append(fx.StartStopHook(
-		func() {
-			err := fff.inner.Start(lCtx)
-			if err != nil {
-				log.Errorf("running f3: %+v", err)
-				return
-			}
-			go fff.runSigningLoop(lCtx)
-		}, cancel))
+	doneCh := make(chan struct{})
+	lc.Append(fx.Hook{
+		OnStart: func(context.Context) error {
+			go func() {
+				defer close(doneCh)
+				fff.runSigningLoop(lCtx)
+			}()
+			return nil
+		},
+		OnStop: func(context.Context) error {
+			cancel()
+			<-doneCh
+			return nil
+		},
+	})
 
 	return fff, nil
 }
@@ -165,10 +181,18 @@ func (fff *F3) GetLatestCert(ctx context.Context) (*certs.FinalityCertificate, e
 	return fff.inner.GetLatestCert(ctx)
 }
 
+func (fff *F3) GetManifest() *manifest.Manifest {
+	return fff.inner.Manifest()
+}
+
 func (fff *F3) GetPowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) {
 	return fff.ec.getPowerTableLotusTSK(ctx, tsk)
 }
 
 func (fff *F3) GetF3PowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) {
 	return fff.inner.GetPowerTable(ctx, tsk.Bytes())
+}
+
+func (fff *F3) IsRunning() bool {
+	return fff.inner.IsRunning()
 }
