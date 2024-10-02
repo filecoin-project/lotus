@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -27,20 +28,20 @@ var validateBackfillChainIndexCmd = &cli.Command{
 	Description: `
 lotus-shed chainindex validate-backfill --from <start_epoch> --to <end_epoch> [--backfill] [--log-good]
 
-The command validates the chain index entries for each epoch in the specified range, checking for missing or 
-inconsistent entries (i.e. the indexed data does not match the actual chain state). If '--backfill' is enabled 
+The command validates the chain index entries for each epoch in the specified range, checking for missing or
+inconsistent entries (i.e. the indexed data does not match the actual chain state). If '--backfill' is enabled
 (which it is by default), it will attempt to backfill any missing entries using the 'ChainValidateIndex' API.
 
 Parameters:
   - '--from' (required): The starting epoch (inclusive) for the validation range. Must be greater than 0.
-  - '--to' (required): The ending epoch (inclusive) for the validation range. Must be greater than 0 and less 
+  - '--to' (required): The ending epoch (inclusive) for the validation range. Must be greater than 0 and less
                         than or equal to 'from'.
-  - '--backfill' (optional, default: true): Whether to backfill missing index entries during validation. 
+  - '--backfill' (optional, default: true): Whether to backfill missing index entries during validation.
   - '--log-good' (optional, default: false): Whether to log details for tipsets that have no detected problems.
 
 Error conditions:
   - If 'from' or 'to' are invalid (<=0 or 'to' > 'from'), an error is returned.
-  - If the 'ChainValidateIndex' API returns an error for an epoch, indicating an inconsistency between the index 
+  - If the 'ChainValidateIndex' API returns an error for an epoch, indicating an inconsistency between the index
     and chain state, an error message is logged for that epoch.
 
 Logging:
@@ -53,10 +54,10 @@ Example usage:
 
 To validate and backfill the chain index for the last 5760 epochs (2 days) and log details for all epochs:
 
-lotus-shed chainindex validate-backfill --from 1000000 --to 994240 --log-good 
+lotus-shed chainindex validate-backfill --from 1000000 --to 994240 --log-good
 
-This command is useful for backfilling the chain index over a range of historical epochs during the migration to 
-the new ChainIndexer. It can also be run periodically to validate the index's integrity using system schedulers 
+This command is useful for backfilling the chain index over a range of historical epochs during the migration to
+the new ChainIndexer. It can also be run periodically to validate the index's integrity using system schedulers
 like cron.
 	`,
 	Flags: []cli.Flag{
@@ -121,8 +122,9 @@ like cron.
 		// Results Tracking
 		logGood := cctx.Bool("log-good")
 
-		_, _ = fmt.Fprintf(cctx.App.Writer, "starting chainindex validation; from epoch: %d; to epoch: %d; backfill: %t; log-good: %t\n", fromEpoch, toEpoch,
-			backfill, logGood)
+		startTime := time.Now()
+		_, _ = fmt.Fprintf(cctx.App.Writer, "%s starting chainindex validation; from epoch: %d; to epoch: %d; backfill: %t; log-good: %t\n", currentTimeString(),
+			fromEpoch, toEpoch, backfill, logGood)
 
 		totalEpochs := fromEpoch - toEpoch + 1
 		for epoch := fromEpoch; epoch >= toEpoch; epoch-- {
@@ -130,14 +132,16 @@ like cron.
 				return ctx.Err()
 			}
 
-			if (fromEpoch-epoch+1)%2880 == 0 {
+			if (fromEpoch-epoch+1)%2880 == 0 || epoch == toEpoch {
 				progress := float64(fromEpoch-epoch+1) / float64(totalEpochs) * 100
-				log.Infof("-------- chain index validation progress: %.2f%%\n", progress)
+				elapsed := time.Since(startTime)
+				_, _ = fmt.Fprintf(cctx.App.Writer, "%s -------- Chain index validation progress: %.2f%%; Time elapsed: %s Minutes\n",
+					currentTimeString(), progress, elapsed.Round(time.Minute))
 			}
 
 			indexValidateResp, err := api.ChainValidateIndex(ctx, abi.ChainEpoch(epoch), backfill)
 			if err != nil {
-				_, _ = fmt.Fprintf(cctx.App.Writer, "✗ Epoch %d; failure: %s\n", epoch, err)
+				_, _ = fmt.Fprintf(cctx.App.Writer, "%s ✗ Epoch %d; failure: %s\n", currentTimeString(), epoch, err)
 				continue
 			}
 
@@ -147,17 +151,22 @@ like cron.
 
 			// is it a null round ?
 			if indexValidateResp.IsNullRound {
-				_, _ = fmt.Fprintf(cctx.App.Writer, "✓ Epoch %d; null round\n", epoch)
+				_, _ = fmt.Fprintf(cctx.App.Writer, "%s ✓ Epoch %d; null round\n", currentTimeString(), epoch)
 			} else {
 				jsonData, err := json.Marshal(indexValidateResp)
 				if err != nil {
 					return fmt.Errorf("failed to marshal results to JSON: %w", err)
 				}
 
-				_, _ = fmt.Fprintf(cctx.App.Writer, "✓ Epoch %d (%s)\n", epoch, string(jsonData))
+				_, _ = fmt.Fprintf(cctx.App.Writer, "%s ✓ Epoch %d (%s)\n", currentTimeString(), epoch, string(jsonData))
 			}
 		}
 
 		return nil
 	},
+}
+
+func currentTimeString() string {
+	currentTime := time.Now().Format("2006-01-02 15:04:05.000")
+	return currentTime
 }

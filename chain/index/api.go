@@ -106,18 +106,35 @@ func (si *SqliteIndexer) ChainValidateIndex(ctx context.Context, epoch abi.Chain
 		return nil, xerrors.Errorf("index corruption: indexed tipset at height %d has key %s, but canonical chain has %s", epoch, indexedTsKeyCid, expectedTsKeyCid)
 	}
 
-	// indexedTsKeyCid and expectedTsKeyCid are the same, so we can use `expectedTs` to fetch the indexed data
-	indexedData, err := si.getIndexedTipSetData(ctx, expectedTs)
+	getAndVerifyIndexedData := func() (*indexedTipSetData, error) {
+		indexedData, err := si.getIndexedTipSetData(ctx, expectedTs)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to get indexed data for tipset at height %d: %w", expectedTs.Height(), err)
+		}
+		if indexedData == nil {
+			return nil, xerrors.Errorf("nil indexed data for tipset at height %d", expectedTs.Height())
+		}
+		if err = si.verifyIndexedData(ctx, expectedTs, indexedData); err != nil {
+			return nil, err
+		}
+		return indexedData, nil
+	}
+
+	indexedData, err := getAndVerifyIndexedData()
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get indexed data for tipset at height %d: %w", expectedTs.Height(), err)
-	}
+		if !backfill {
+			return nil, xerrors.Errorf("failed to verify indexed data at height %d: %w", expectedTs.Height(), err)
+		}
 
-	if indexedData == nil {
-		return nil, xerrors.Errorf("nil indexed data for tipset at height %d", expectedTs.Height())
-	}
+		log.Warnf("failed to verify indexed data at height %d; err:%s; backfilling once and validating again", expectedTs.Height(), err)
+		if _, err := si.backfillMissingTipset(ctx, expectedTs, backfill); err != nil {
+			return nil, xerrors.Errorf("failed to backfill missing tipset at height %d during validation; err: %w", expectedTs.Height(), err)
+		}
 
-	if err = si.verifyIndexedData(ctx, expectedTs, indexedData); err != nil {
-		return nil, xerrors.Errorf("failed to verify indexed data at height %d: %w", expectedTs.Height(), err)
+		indexedData, err = getAndVerifyIndexedData()
+		if err != nil {
+			return nil, xerrors.Errorf("failed to verify indexed data at height %d after backfill: %w", expectedTs.Height(), err)
+		}
 	}
 
 	return &types.IndexValidation{
