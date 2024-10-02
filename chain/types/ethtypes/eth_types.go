@@ -1025,6 +1025,16 @@ func (e *EthBlockNumberOrHash) UnmarshalJSON(b []byte) error {
 		return nil
 	}
 
+	// check if input is a block hash (66 characters long)
+	if len(str) == 66 && strings.HasPrefix(str, "0x") {
+		hash, err := ParseEthHash(str)
+		if err != nil {
+			return err
+		}
+		e.BlockHash = &hash
+		return nil
+	}
+
 	// check if block param is a number (decimal or hex)
 	var num EthUint64
 	if err := num.UnmarshalJSON(b); err == nil {
