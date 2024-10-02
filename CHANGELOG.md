@@ -24,6 +24,7 @@ Add `EthGetBlockReceipts` RPC method to retrieve transaction receipts for a spec
 
 ## Deps
 - chore: bump go-libp2p to v0.35.5 ([filecoin-project/lotus#12511](https://github.com/filecoin-project/lotus/pull/12511))
+- chore: bump go-multiaddr-dns to v0.4.0 ([filecoin-project/lotus#12540](https://github.com/filecoin-project/lotus/pull/12540))
 
 # Node v1.29.1 / 2024-09-16
 
