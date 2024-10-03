@@ -16,10 +16,13 @@ import (
 // message topic will be filtered
 var MaxDynamicManifestChangesAllowed = 1000
 
-func NewManifestProvider(config *Config, ps *pubsub.PubSub, mds dtypes.MetadataDS) manifest.ManifestProvider {
+func NewManifestProvider(config *Config, ps *pubsub.PubSub, mds dtypes.MetadataDS) (manifest.ManifestProvider, error) {
 	if config.DynamicManifestProvider == "" {
 		return manifest.NewStaticManifestProvider(config.InitialManifest)
 	}
 	ds := namespace.Wrap(mds, datastore.NewKey("/f3-dynamic-manifest"))
-	return manifest.NewDynamicManifestProvider(config.InitialManifest, ds, ps, config.DynamicManifestProvider)
+	return manifest.NewDynamicManifestProvider(ps, config.DynamicManifestProvider,
+		manifest.DynamicManifestProviderWithInitialManifest(config.InitialManifest),
+		manifest.DynamicManifestProviderWithDatastore(ds),
+	)
 }
