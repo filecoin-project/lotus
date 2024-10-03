@@ -61,7 +61,6 @@ func New(mctx helpers.MetricsCtx, lc fx.Lifecycle, params F3Params) (*F3, error)
 		ChainStore:   params.ChainStore,
 		StateManager: params.StateManager,
 		Syncer:       params.Syncer,
-		Checkpoint:   params.Config.F3ConsensusEnabled,
 	}
 	verif := blssig.VerifierWithKeyOnG1()
 

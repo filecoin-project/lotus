@@ -17,10 +17,9 @@ import (
 type Config struct {
 	InitialManifest         *manifest.Manifest
 	DynamicManifestProvider peer.ID
-	F3ConsensusEnabled      bool
 }
 
-func NewConfig(manifestProvider peer.ID, consensusEnabled bool, initialPowerTable cid.Cid) func(dtypes.NetworkName) *Config {
+func NewConfig(manifestProvider peer.ID, initialPowerTable cid.Cid) func(dtypes.NetworkName) *Config {
 	return func(nn dtypes.NetworkName) *Config {
 		m := manifest.LocalDevnetManifest()
 		m.NetworkName = gpbft.NetworkName(nn)
@@ -35,6 +34,7 @@ func NewConfig(manifestProvider peer.ID, consensusEnabled bool, initialPowerTabl
 		m.EC.Finality = int64(policy.ChainFinality)
 		m.CommitteeLookback = 5
 		m.InitialPowerTable = initialPowerTable
+		m.EC.Finalize = buildconstants.F3Consensus
 
 		// TODO: We're forcing this to start paused for now. We need to remove this for the final
 		// mainnet launch.
@@ -42,7 +42,6 @@ func NewConfig(manifestProvider peer.ID, consensusEnabled bool, initialPowerTabl
 		return &Config{
 			InitialManifest:         m,
 			DynamicManifestProvider: manifestProvider,
-			F3ConsensusEnabled:      consensusEnabled,
 		}
 	}
 }
