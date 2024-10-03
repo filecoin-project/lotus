@@ -226,6 +226,9 @@ func F3Enabled(bootstrapEpoch abi.ChainEpoch, blockDelay time.Duration, finality
 			c.InitialManifest.BootstrapEpoch = int64(bootstrapEpoch)
 			c.InitialManifest.EC.HeadLookback = 0
 			c.InitialManifest.EC.Finalize = true
+			c.InitialManifest.CatchUpAlignment = blockDelay / 2
+			c.InitialManifest.CertificateExchange.MinimumPollInterval = 2 * blockDelay
+			c.InitialManifest.CertificateExchange.MaximumPollInterval = 10 * blockDelay
 			return c
 		}),
 		node.Override(new(manifest.ManifestProvider),

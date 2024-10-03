@@ -24,6 +24,7 @@ func NewConfig(manifestProvider peer.ID, initialPowerTable cid.Cid) func(dtypes.
 		m := manifest.LocalDevnetManifest()
 		m.NetworkName = gpbft.NetworkName(nn)
 		m.EC.Period = time.Duration(buildconstants.BlockDelaySecs) * time.Second
+		m.CatchUpAlignment = time.Duration(buildconstants.BlockDelaySecs) * time.Second / 2
 		if buildconstants.F3BootstrapEpoch < 0 {
 			// if unset, set to a sane default so we don't get scary logs and pause.
 			m.BootstrapEpoch = 2 * int64(policy.ChainFinality)
