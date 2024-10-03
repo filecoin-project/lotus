@@ -8,6 +8,7 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/peer"
 
+	"github.com/filecoin-project/go-f3/gpbft"
 	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -218,23 +219,18 @@ func MutateSealingConfig(mut func(sc *config.SealingConfig)) NodeOpt {
 func F3Enabled(bootstrapEpoch abi.ChainEpoch, blockDelay time.Duration, finality abi.ChainEpoch, manifestProvider peer.ID) NodeOpt {
 	return ConstructorOpts(
 		node.Override(new(*lf3.Config), func(nn dtypes.NetworkName) *lf3.Config {
-			c := lf3.NewConfig(manifestProvider, cid.Undef)(nn)
-			c.InitialManifest.Pause = false
-			c.InitialManifest.EC.Period = blockDelay
-			c.InitialManifest.Gpbft.Delta = blockDelay / 5
-			c.InitialManifest.EC.Finality = int64(finality)
-			c.InitialManifest.BootstrapEpoch = int64(bootstrapEpoch)
-			c.InitialManifest.EC.HeadLookback = 0
-			c.InitialManifest.EC.Finalize = true
-			c.InitialManifest.CatchUpAlignment = blockDelay / 2
-			c.InitialManifest.CertificateExchange.MinimumPollInterval = 2 * blockDelay
-			c.InitialManifest.CertificateExchange.MaximumPollInterval = 10 * blockDelay
-			return c
+			m := lf3.NewManifest(gpbft.NetworkName(nn), finality, bootstrapEpoch, blockDelay, cid.Undef)
+			return &lf3.Config{
+				BaseNetworkName:          gpbft.NetworkName(nn),
+				StaticManifest:           m,
+				DynamicManifestProvider:  manifestProvider,
+				PrioritizeStaticManifest: false,
+			}
 		}),
 		node.Override(new(manifest.ManifestProvider),
 			func(config *lf3.Config, ps *pubsub.PubSub) (manifest.ManifestProvider, error) {
 				return manifest.NewDynamicManifestProvider(ps, config.DynamicManifestProvider,
-					manifest.DynamicManifestProviderWithInitialManifest(config.InitialManifest),
+					manifest.DynamicManifestProviderWithInitialManifest(config.StaticManifest),
 				)
 			}),
 		node.Override(new(*lf3.F3), lf3.New),
