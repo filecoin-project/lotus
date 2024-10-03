@@ -2554,7 +2554,8 @@ Response:
     "Finality": 0,
     "DelayMultiplier": 0,
     "BaseDecisionBackoffTable": null,
-    "HeadLookback": 0
+    "HeadLookback": 0,
+    "Finalize": false
   },
   "CertificateExchange": {
     "ClientRequestTimeout": 0,
