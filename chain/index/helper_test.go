@@ -39,9 +39,12 @@ func randomBytes(n int, rng *pseudo.Rand) []byte {
 	return buf
 }
 
-func fakeTipSet(tb testing.TB, rng *pseudo.Rand, h abi.ChainEpoch, parents []cid.Cid) *types.TipSet {
+func randomTipsetWithTimestamp(tb testing.TB, rng *pseudo.Rand, h abi.ChainEpoch, parents []cid.Cid, timeStamp uint64) *types.TipSet {
 	tb.Helper()
-	timeStamp := uint64(time.Now().Add(time.Duration(h) * builtin.EpochDurationSeconds * time.Second).Unix())
+
+	if timeStamp == 0 {
+		timeStamp = uint64(time.Now().Add(time.Duration(h) * builtin.EpochDurationSeconds * time.Second).Unix())
+	}
 
 	ts, err := types.NewTipSet([]*types.BlockHeader{
 		{
@@ -77,6 +80,47 @@ func fakeTipSet(tb testing.TB, rng *pseudo.Rand, h abi.ChainEpoch, parents []cid
 			BLSAggregate: &crypto.Signature{Type: crypto.SigTypeBLS},
 
 			Timestamp: timeStamp,
+		},
+	})
+
+	require.NoError(tb, err)
+
+	return ts
+}
+
+func fakeTipSet(tb testing.TB, rng *pseudo.Rand, h abi.ChainEpoch, parents []cid.Cid) *types.TipSet {
+	tb.Helper()
+
+	ts, err := types.NewTipSet([]*types.BlockHeader{
+		{
+			Height: h,
+			Miner:  randomIDAddr(tb, rng),
+
+			Parents: parents,
+
+			Ticket: &types.Ticket{VRFProof: []byte{byte(h % 2)}},
+
+			ParentStateRoot:       randomCid(tb, rng),
+			Messages:              randomCid(tb, rng),
+			ParentMessageReceipts: randomCid(tb, rng),
+
+			BlockSig:     &crypto.Signature{Type: crypto.SigTypeBLS},
+			BLSAggregate: &crypto.Signature{Type: crypto.SigTypeBLS},
+		},
+		{
+			Height: h,
+			Miner:  randomIDAddr(tb, rng),
+
+			Parents: parents,
+
+			Ticket: &types.Ticket{VRFProof: []byte{byte((h + 1) % 2)}},
+
+			ParentStateRoot:       randomCid(tb, rng),
+			Messages:              randomCid(tb, rng),
+			ParentMessageReceipts: randomCid(tb, rng),
+
+			BlockSig:     &crypto.Signature{Type: crypto.SigTypeBLS},
+			BLSAggregate: &crypto.Signature{Type: crypto.SigTypeBLS},
 		},
 	})
 

@@ -77,17 +77,21 @@ func (si *SqliteIndexer) gc(ctx context.Context) {
 	// Also GC eth hashes
 
 	// Calculate the retention duration based on the number of epochs to retain.
-	// retentionDuration represents the total duration (in nano seconds) for which data should be retained before considering it for garbage collection.
-	// graceDuration represents the additional duration (in nano seconds) to retain data after the retention duration.
-	// Since time.Duration expects a nanosecond value, we multiply the total seconds by time.Second to convert it to nanoseconds.
+	// retentionDuration represents the total duration (in seconds) for which data should be retained before considering it for garbage collection.
+	// graceDuration represents the additional duration (in seconds) to retain data after the retention duration.
+	// Since time.Duration expects a nanosecond value, we multiply the total seconds by time.Second to convert it to seconds.
 	retentionDuration := time.Duration(si.gcRetentionEpochs*builtin.EpochDurationSeconds) * time.Second
 	graceDuration := time.Duration(graceEpochs*builtin.EpochDurationSeconds) * time.Second
 
 	// Calculate the total duration to retain data.
 	totalRetentionDuration := retentionDuration + graceDuration
 	currHeadTime := time.Unix(int64(head.MinTimestamp()), 0)
-	// gcTime is the time that is (gcRetentionEpochs + graceEpochs) in nano seconds before currHeadTime
+	// gcTime is the time that is (gcRetentionEpochs + graceEpochs) in seconds before currHeadTime
 	gcTime := currHeadTime.Add(-totalRetentionDuration)
+	if gcTime.Before(time.Unix(0, 0)) || gcTime.IsZero() {
+		log.Info("gcTime is invalid, skipping gc")
+		return
+	}
 
 	log.Infof("gc'ing eth hashes before time %s", gcTime.UTC().String())
 
