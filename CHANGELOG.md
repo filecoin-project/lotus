@@ -1,8 +1,8 @@
 # Lotus changelog
 
-# Node v1.29.2-rc1 / 2024-09-27
+# Node v1.29.2 / 2024-10-03
 
-This is the first release candidate for Lotus node v1.29.2. Key updates in this release include:
+This is the stable release for Lotus node v1.29.2. Key updates in this release include:
 
 - **New API Support:** Added support for `EthGetBlockReceipts` RPC method to retrieve transaction receipts for a specified block. This method allows users to obtain Ethereum format receipts of all transactions included in a given tipset as specified by its Ethereum block equivalent. ([filecoin-project/lotus#12478](https://github.com/filecoin-project/lotus/pull/12478))
 - **Dependency Update:** Upgraded go-libp2p to version v0.35.5 ([filecoin-project/lotus#12511](https://github.com/filecoin-project/lotus/pull/12511)), and go-multiaddr-dns to v0.4.0 ([filecoin-project/lotus#12540](https://github.com/filecoin-project/lotus/pull/12540)).
@@ -13,7 +13,17 @@ This is the first release candidate for Lotus node v1.29.2. Key updates in this 
 
 ## 📝 Changelog
 
-See https://github.com/filecoin-project/lotus/compare/v1.29.1...release/v1.29.2-rc1 for the set of changes since the last release.
+See https://github.com/filecoin-project/lotus/compare/v1.29.1...release/v1.29.2 for the set of changes since the last release.
+
+## 👨‍👩‍👧‍👦 Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| aarshkshah1992 | 2 | +1753/-662 | 12 |
+| Viraj Bhartiya | 1 | +770/-38 | 18 |
+| Rod Vagg | 1 | +480/-83 | 14 |
+| Phi-rjan | 2 | +20/-13 | 9 |
+| Phi | 2 | +6/-25 | 7 |
 
 # Node v1.29.1 / 2024-09-16
 
