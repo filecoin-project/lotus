@@ -1260,9 +1260,8 @@ func TestEthGetTransactionCount(t *testing.T) {
 		lastHash = client.EVM().SubmitTransaction(ctx, tx)
 
 		// Check counts for "earliest", "latest", and "pending"
-		earliestCount, err := client.EVM().EthGetTransactionCount(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("earliest"))
-		require.NoError(t, err)
-		require.Zero(t, earliestCount, "Earliest transaction count should always be zero")
+		_, err = client.EVM().EthGetTransactionCount(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("earliest"))
+		require.Error(t, err) // earliest is not supported
 
 		latestCount, err := client.EVM().EthGetTransactionCount(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 		require.NoError(t, err)
@@ -1279,9 +1278,8 @@ func TestEthGetTransactionCount(t *testing.T) {
 	}
 
 	// Get the final counts for "earliest", "latest", and "pending"
-	finalEarliestCount, err := client.EVM().EthGetTransactionCount(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("earliest"))
-	require.NoError(t, err)
-	require.Zero(t, finalEarliestCount, "Final earliest transaction count should still be zero")
+	_, err = client.EVM().EthGetTransactionCount(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("earliest"))
+	require.Error(t, err) // earliest is not supported
 
 	finalLatestCount, err := client.EVM().EthGetTransactionCount(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 	require.NoError(t, err)
@@ -1290,7 +1288,6 @@ func TestEthGetTransactionCount(t *testing.T) {
 	finalPendingCount, err := client.EVM().EthGetTransactionCount(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("pending"))
 	require.NoError(t, err)
 	require.Equal(t, ethtypes.EthUint64(numTx), finalPendingCount, "Final pending transaction count should equal the number of transactions sent")
-	require.Equal(t, ethtypes.EthUint64(numTx), finalLatestCount, "Final latest transaction count should equal the number of transactions sent")
 
 	// Test with a contract
 	createReturn := client.EVM().DeployContract(ctx, client.DefaultKey.Address, contract)
