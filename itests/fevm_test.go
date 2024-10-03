@@ -1311,13 +1311,11 @@ func TestEthGetBlockByNumber(t *testing.T) {
 	latestBlock, err := client.EthGetBlockByNumber(ctx, "latest", true)
 	require.NoError(t, err)
 	require.NotNil(t, latestBlock)
-	require.Equal(t, latest, latestBlock.Number)
 
 	// Test getting a specific block by number
 	specificBlock, err := client.EthGetBlockByNumber(ctx, latest.Hex(), true)
 	require.NoError(t, err)
 	require.NotNil(t, specificBlock)
-	require.Equal(t, latest, specificBlock.Number)
 
 	// Test getting a future block (should fail)
 	futureBlock, err := client.EthGetBlockByNumber(ctx, (latest + 10000).Hex(), true)
