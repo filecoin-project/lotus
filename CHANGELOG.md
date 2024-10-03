@@ -1,11 +1,6 @@
 # Lotus changelog
 
 # UNRELEASED
-Add `EthGetBlockReceipts` RPC method to retrieve transaction receipts for a specified block. This method allows users to obtain Ethereum format receipts of all transactions included in a given tipset as specified by its Ethereum block equivalent. ([filecoin-project/lotus#12478](https://github.com/filecoin-project/lotus/pull/12478))
-
-## ☢️ Upgrade Warnings ☢️
-
-- Minimum go-version been updated to v1.22.7 ([filecoin-project/lotus#12459](https://github.com/filecoin-project/lotus/pull/12459))
 
 ## New features
 
@@ -13,18 +8,40 @@ Add `EthGetBlockReceipts` RPC method to retrieve transaction receipts for a spec
 * [Checkpoint TipSets finalized by F3](https://github.com/filecoin-project/lotus/pull/12460): Once a decision is made by F3, the TipSet is check-pointed in `ChainStore`. As part of this change, any missing TipSets are asynchronously synced as required by the `ChainStore` checkpointing mechanism.
 * Add an environment variable, `F3_INITIAL_POWERTABLE_CID` to allow specifying the initial power table used by F3 ([filecoin-project/lotus#12502](https://github.com/filecoin-project/lotus/pull/12502)). This may be used to help a lotus node re-sync the F3 chain when syncing from a snapshot after the F3 upgrade epoch. The precise CID to use here won't be known until the F3 is officially "live".
 * Added `StateMinerInitialPledgeForSector` RPC method and deprecated existing `StateMinerInitialPledgeCollateral` method. Since ProveCommitSectors3 and ProveReplicaUpdates3, sector onboarding no longer includes an explicit notion of "deals", and precommit messages no longer contain deal information. This makes the existing `StateMinerInitialPledgeCollateral` unable to properly calculate pledge requirements with only the precommit. `StateMinerInitialPledgeForSector` is a new simplified calculator that simply takes duration, sector size, and verified size and estimates pledge based on current network conditions. Please note that the `StateMinerInitialPledgeCollateral` method will be removed entirely in the next non-patch release. ([filecoin-project/lotus#12384](https://github.com/filecoin-project/lotus/pull/12384)
+* Implement [FIP-0081](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0081.md) and its migration for NV24. Initial pledge collateral will now be calculated using a 70% / 30% split between "simple" and "baseline" in the initial consensus pledge contribution to collateral calculation. The change in this calculation will begin at NV24 activation and ramp up from the current split of 100% / 0% to the eventual 70% / 30% over the course of a year so as to minimise impact on existing operations. ([filecoin-project/lotus#12526](https://github.com/filecoin-project/lotus/pull/12526)
 
 ## Improvements
+
 
 - Update `EthGetBlockByNumber` to return a pointer to ethtypes.EthBlock or nil for null rounds. ([filecoin-project/lotus#12529](https://github.com/filecoin-project/lotus/pull/12529))
 - Reduce size of embedded genesis CAR files by removing WASM actor blocks and compressing with zstd. This reduces the `lotus` binary size by approximately 10 MiB. ([filecoin-project/lotus#12439](https://github.com/filecoin-project/lotus/pull/12439))
 - Add ChainSafe operated Calibration archival node to the bootstrap list ([filecoin-project/lotus#12517](https://github.com/filecoin-project/lotus/pull/12517))
-- Legacy/historical Drand lookups via `StateGetBeaconEntry` now work again for all historical epochs. `StateGetBeaconEntry` now uses the on-chain beacon entries and follows the same rules for historical Drand round matching as `StateGetRandomnessFromBeacon` and the `get_beacon_randomness` FVM syscall. Be aware that there will be some some variance in matching Filecoin epochs to Drand rounds where null Filecoin rounds are involved prior to network version 14. ([filecoin-project/lotus#12428](https://github.com/filecoin-project/lotus/pull/12428)).
 
 ## Bug Fixes
 
 ## Deps
-- chore: bump go-libp2p to v0.35.5 ([filecoin-project/lotus#12511](https://github.com/filecoin-project/lotus/pull/12511))
+
+# Node v1.29.2 / 2024-10-03
+
+This is the stable release for Lotus node v1.29.2. Key updates in this release include:
+
+- **New API Support:** Added support for `EthGetBlockReceipts` RPC method to retrieve transaction receipts for a specified block. This method allows users to obtain Ethereum format receipts of all transactions included in a given tipset as specified by its Ethereum block equivalent. ([filecoin-project/lotus#12478](https://github.com/filecoin-project/lotus/pull/12478))
+- **Dependency Update:** Upgraded go-libp2p to version v0.35.5 ([filecoin-project/lotus#12511](https://github.com/filecoin-project/lotus/pull/12511)), and go-multiaddr-dns to v0.4.0 ([filecoin-project/lotus#12540](https://github.com/filecoin-project/lotus/pull/12540)).
+- **Bug Fix:** Legacy/historical Drand lookups via `StateGetBeaconEntry` now work again for all historical epochs. `StateGetBeaconEntry` now uses the on-chain beacon entries and follows the same rules for historical Drand round matching as `StateGetRandomnessFromBeacon` and the `get_beacon_randomness` FVM syscall. Be aware that there will be some some variance in matching Filecoin epochs to Drand rounds where null Filecoin rounds are involved prior to network version 14. ([filecoin-project/lotus#12428](https://github.com/filecoin-project/lotus/pull/12428)).
+
+## ☢️ Upgrade Warnings ☢️
+
+- Minimum go-version been updated to v1.22.7 ([filecoin-project/lotus#12459](https://github.com/filecoin-project/lotus/pull/12459))
+
+## 👨‍👩‍👧‍👦 Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| aarshkshah1992 | 2 | +1753/-662 | 12 |
+| Viraj Bhartiya | 1 | +770/-38 | 18 |
+| Rod Vagg | 1 | +480/-83 | 14 |
+| Phi-rjan | 2 | +20/-13 | 9 |
+| Phi | 2 | +6/-25 | 7 |
 
 # Node v1.29.1 / 2024-09-16
 
@@ -318,7 +335,7 @@ We are one step closer to reduce Filecoin's finality from 7.5 hours to a minute 
 
 F3 (Fast Finality) is experimental in this release. All the new F3 APIs  are unstable and subject to until nv24 release (assuming f3 will be fully activated in this upgrade).
 
-Exchanges and RPC providers are recommended to opt-out of F3 functionality for now. You can disable F3 by adding the `DISABLE_F3 = 1` environment variable, which will output a log saying that F3 has been disabled.
+Exchanges and RPC providers are recommended to opt-out of F3 functionality for now. You can disable F3 by adding the `LOTUS_DISABLE_F3 = 1` environment variable, which will output a log saying that F3 has been disabled.
 
 ## Dependencies
 

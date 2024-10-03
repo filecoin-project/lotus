@@ -49,7 +49,7 @@ require (
 	github.com/filecoin-project/go-jsonrpc v0.6.0
 	github.com/filecoin-project/go-padreader v0.0.1
 	github.com/filecoin-project/go-paramfetch v0.0.4
-	github.com/filecoin-project/go-state-types v0.15.0-dev
+	github.com/filecoin-project/go-state-types v0.15.0-rc1
 	github.com/filecoin-project/go-statemachine v1.0.3
 	github.com/filecoin-project/go-statestore v0.2.0
 	github.com/filecoin-project/go-storedcounter v0.1.0
@@ -90,7 +90,7 @@ require (
 	github.com/ipfs/go-ds-leveldb v0.5.0
 	github.com/ipfs/go-ds-measure v0.2.0
 	github.com/ipfs/go-fs-lock v0.0.7
-	github.com/ipfs/go-ipld-cbor v0.1.0
+	github.com/ipfs/go-ipld-cbor v0.2.0
 	github.com/ipfs/go-ipld-format v0.6.0
 	github.com/ipfs/go-log/v2 v2.5.1
 	github.com/ipfs/go-metrics-interface v0.0.1
@@ -117,8 +117,8 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.16
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-base32 v0.1.0
-	github.com/multiformats/go-multiaddr v0.12.4
-	github.com/multiformats/go-multiaddr-dns v0.3.1
+	github.com/multiformats/go-multiaddr v0.13.0
+	github.com/multiformats/go-multiaddr-dns v0.4.0
 	github.com/multiformats/go-multicodec v0.9.0
 	github.com/multiformats/go-multihash v0.2.3
 	github.com/multiformats/go-varint v0.0.7
@@ -162,7 +162,7 @@ require (
 	golang.org/x/term v0.24.0
 	golang.org/x/time v0.5.0
 	golang.org/x/tools v0.24.0
-	golang.org/x/xerrors v0.0.0-20240716161551-93cc26a95ae9
+	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da
 	gotest.tools v2.2.0+incompatible
 )
 
@@ -218,7 +218,6 @@ require (
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/gopacket v1.1.19 // indirect
 	github.com/google/pprof v0.0.0-20240509144519-723abb6459b7 // indirect
-	github.com/gopherjs/gopherjs v1.17.2 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/golang-lru v1.0.2 // indirect
 	github.com/huin/goupnp v1.3.0 // indirect

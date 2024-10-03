@@ -1163,6 +1163,16 @@ func TestEthGetBlockReceipts(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, txReceipt, receipt)
 	}
+
+	// try with the geth request format for `EthBlockNumberOrHash`
+	var req ethtypes.EthBlockNumberOrHash
+	reqStr := fmt.Sprintf(`"%s"`, lastReceipt.BlockHash.String())
+	err = req.UnmarshalJSON([]byte(reqStr))
+	require.NoError(t, err)
+
+	gethBlockReceipts, err := client.EthGetBlockReceipts(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, gethBlockReceipts, 3)
 }
 
 func deployContractWithEth(ctx context.Context, t *testing.T, client *kit.TestFullNode, ethAddr ethtypes.EthAddress,
@@ -1250,7 +1260,14 @@ func TestEthGetTransactionCount(t *testing.T) {
 		client.EVM().SignTransaction(tx, key.PrivateKey)
 		lastHash = client.EVM().SubmitTransaction(ctx, tx)
 
-		// Check pending transaction count immediately after submission
+		// Check counts for "earliest", "latest", and "pending"
+		_, err = client.EVM().EthGetTransactionCount(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("earliest"))
+		require.Error(t, err) // earliest is not supported
+
+		latestCount, err := client.EVM().EthGetTransactionCount(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
+		require.NoError(t, err)
+		require.Equal(t, ethtypes.EthUint64(i), latestCount, "Latest transaction count should be equal to the number of mined transactions")
+
 		pendingCount, err := client.EVM().EthGetTransactionCount(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("pending"))
 		require.NoError(t, err)
 		require.True(t, int(pendingCount) == i || int(pendingCount) == i+1,
@@ -1259,17 +1276,19 @@ func TestEthGetTransactionCount(t *testing.T) {
 		// Wait for the transaction to be mined
 		_, err = client.EVM().WaitTransaction(ctx, lastHash)
 		require.NoError(t, err)
-
-		// Check latest transaction count after the transaction is mined
-		latestCount, err := client.EVM().EthGetTransactionCount(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
-		require.NoError(t, err)
-		require.Equal(t, ethtypes.EthUint64(i+1), latestCount, "Latest transaction count should increment after mining")
 	}
 
-	// Get the final latest transaction count
+	// Get the final counts for "earliest", "latest", and "pending"
+	_, err = client.EVM().EthGetTransactionCount(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("earliest"))
+	require.Error(t, err) // earliest is not supported
+
 	finalLatestCount, err := client.EVM().EthGetTransactionCount(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 	require.NoError(t, err)
-	require.Equal(t, ethtypes.EthUint64(numTx), finalLatestCount)
+	require.Equal(t, ethtypes.EthUint64(numTx), finalLatestCount, "Final latest transaction count should equal the number of transactions sent")
+
+	finalPendingCount, err := client.EVM().EthGetTransactionCount(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("pending"))
+	require.NoError(t, err)
+	require.Equal(t, ethtypes.EthUint64(numTx), finalPendingCount, "Final pending transaction count should equal the number of transactions sent")
 
 	// Test with a contract
 	createReturn := client.EVM().DeployContract(ctx, client.DefaultKey.Address, contract)

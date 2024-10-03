@@ -19,10 +19,11 @@ import (
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	power11 "github.com/filecoin-project/go-state-types/builtin/v11/power"
 	miner14 "github.com/filecoin-project/go-state-types/builtin/v14/miner"
+	miner15 "github.com/filecoin-project/go-state-types/builtin/v15/miner"
+	power15 "github.com/filecoin-project/go-state-types/builtin/v15/power"
+	smoothing15 "github.com/filecoin-project/go-state-types/builtin/v15/util/smoothing"
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
-	miner9 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
-	smoothing9 "github.com/filecoin-project/go-state-types/builtin/v9/util/smoothing"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
@@ -473,19 +474,22 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 					return cid.Undef, xerrors.Errorf("getting current epoch reward: %w", err)
 				}
 
-				tpow, err := currentTotalPower(ctx, genesisVm, minerInfos[i].maddr)
+				qaps, err := currentQualityAdjPowerSmoothed(ctx, nv, genesisVm, minerInfos[i].maddr)
 				if err != nil {
 					return cid.Undef, xerrors.Errorf("getting current total power: %w", err)
 				}
 
-				pcd := miner9.PreCommitDepositForPower(smoothing9.FilterEstimate(rewardSmoothed), smoothing9.FilterEstimate(*tpow.QualityAdjPowerSmoothed), miner9.QAPowerMax(m.SectorSize))
+				pcd := miner15.PreCommitDepositForPower(smoothing15.FilterEstimate(rewardSmoothed), qaps, miner15.QAPowerMax(m.SectorSize))
 
-				pledge := miner9.InitialPledgeForPower(
+				pledge := miner15.InitialPledgeForPower(
 					sectorWeight,
 					baselinePower,
-					smoothing9.FilterEstimate(rewardSmoothed),
-					smoothing9.FilterEstimate(*tpow.QualityAdjPowerSmoothed),
+					smoothing15.FilterEstimate(rewardSmoothed),
+					qaps,
 					big.Zero(),
+					// epochsSinceRampStart and rampDurationEpochs: InternalSectorSetupForPreseal uses 0,0 for
+					// these parameters, regardless of what the power actor state says.
+					0, 0,
 				)
 
 				pledge = big.Add(pcd, pledge)
@@ -658,17 +662,23 @@ func (fr *fakeRand) GetBeaconRandomness(ctx context.Context, randEpoch abi.Chain
 	return *(*[32]byte)(out), nil
 }
 
-func currentTotalPower(ctx context.Context, vm vm.Interface, maddr address.Address) (*power0.CurrentTotalPowerReturn, error) {
+func currentQualityAdjPowerSmoothed(ctx context.Context, nv network.Version, vm vm.Interface, maddr address.Address) (smoothing15.FilterEstimate, error) {
 	pwret, err := doExecValue(ctx, vm, power.Address, maddr, big.Zero(), builtin0.MethodsPower.CurrentTotalPower, nil)
 	if err != nil {
-		return nil, err
+		return smoothing15.FilterEstimate{}, err
+	}
+	if nv >= network.Version24 {
+		var pwr power15.CurrentTotalPowerReturn
+		if err := pwr.UnmarshalCBOR(bytes.NewReader(pwret)); err != nil {
+			return smoothing15.FilterEstimate{}, err
+		}
+		return pwr.QualityAdjPowerSmoothed, nil
 	}
 	var pwr power0.CurrentTotalPowerReturn
 	if err := pwr.UnmarshalCBOR(bytes.NewReader(pwret)); err != nil {
-		return nil, err
+		return smoothing15.FilterEstimate{}, err
 	}
-
-	return &pwr, nil
+	return smoothing15.FilterEstimate(*pwr.QualityAdjPowerSmoothed), nil
 }
 
 func currentEpochBlockReward(ctx context.Context, vm vm.Interface, maddr address.Address, av actorstypes.Version) (abi.StoragePower, builtin.FilterEstimate, error) {
