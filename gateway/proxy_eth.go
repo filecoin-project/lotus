@@ -188,13 +188,13 @@ func (gw *Node) EthGetBlockByHash(ctx context.Context, blkHash ethtypes.EthHash,
 	return gw.target.EthGetBlockByHash(ctx, blkHash, fullTxInfo)
 }
 
-func (gw *Node) EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (ethtypes.EthBlock, error) {
+func (gw *Node) EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (*ethtypes.EthBlock, error) {
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
-		return ethtypes.EthBlock{}, err
+		return nil, err
 	}
 
 	if err := gw.checkBlkParam(ctx, blkNum, 0); err != nil {
-		return ethtypes.EthBlock{}, err
+		return nil, err
 	}
 
 	return gw.target.EthGetBlockByNumber(ctx, blkNum, fullTxInfo)

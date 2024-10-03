@@ -12,7 +12,8 @@
 
 ## Improvements
 
-- Update `TestEthGetTransactionCount` to test for `earliest`, `pending` and `finalized`.  ([filecoin-project/lotus#12448](https://github.com/filecoin-project/lotus/pull/12448))
+
+- Update `EthGetBlockByNumber` to return a pointer to ethtypes.EthBlock or nil for null rounds. ([filecoin-project/lotus#12529](https://github.com/filecoin-project/lotus/pull/12529))
 - Reduce size of embedded genesis CAR files by removing WASM actor blocks and compressing with zstd. This reduces the `lotus` binary size by approximately 10 MiB. ([filecoin-project/lotus#12439](https://github.com/filecoin-project/lotus/pull/12439))
 - Add ChainSafe operated Calibration archival node to the bootstrap list ([filecoin-project/lotus#12517](https://github.com/filecoin-project/lotus/pull/12517))
 

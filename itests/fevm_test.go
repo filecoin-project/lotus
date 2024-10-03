@@ -23,6 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/build/buildconstants"
+	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/itests/kit"
@@ -1307,4 +1308,79 @@ func TestEthGetTransactionCount(t *testing.T) {
 	contractNonceAfterDestroy, err := client.EVM().EthGetTransactionCount(ctx, contractAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 	require.NoError(t, err)
 	require.Zero(t, contractNonceAfterDestroy)
+}
+
+func TestEthGetBlockByNumber(t *testing.T) {
+	blockTime := 100 * time.Millisecond
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
+
+	bms := ens.InterconnectAll().BeginMining(blockTime)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	// Create a new Ethereum account
+	_, ethAddr, filAddr := client.EVM().NewAccount()
+	// Send some funds to the f410 address
+	kit.SendFunds(ctx, t, client, filAddr, types.FromFil(10))
+
+	// Test getting the latest block
+	latest, err := client.EthBlockNumber(ctx)
+	require.NoError(t, err)
+	latestBlock, err := client.EthGetBlockByNumber(ctx, "latest", true)
+	require.NoError(t, err)
+	require.NotNil(t, latestBlock)
+
+	// Test getting a specific block by number
+	specificBlock, err := client.EthGetBlockByNumber(ctx, latest.Hex(), true)
+	require.NoError(t, err)
+	require.NotNil(t, specificBlock)
+
+	// Test getting a future block (should fail)
+	futureBlock, err := client.EthGetBlockByNumber(ctx, (latest + 10000).Hex(), true)
+	require.Error(t, err)
+	require.Nil(t, futureBlock)
+
+	// Inject 10 null rounds
+	bms[0].InjectNulls(10)
+
+	// Wait until we produce blocks again
+	tctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	ch, err := client.ChainNotify(tctx)
+	require.NoError(t, err)
+	<-ch       // current
+	hc := <-ch // wait for next block
+	require.Equal(t, store.HCApply, hc[0].Type)
+
+	afterNullHeight := hc[0].Val.Height()
+
+	// Find the first null round
+	nullHeight := afterNullHeight - 1
+	for nullHeight > 0 {
+		ts, err := client.ChainGetTipSetByHeight(ctx, nullHeight, types.EmptyTSK)
+		require.NoError(t, err)
+		if ts.Height() == nullHeight {
+			nullHeight--
+		} else {
+			break
+		}
+	}
+
+	// Test getting a block for a null round
+	nullRoundBlock, err := client.EthGetBlockByNumber(ctx, (ethtypes.EthUint64(nullHeight)).Hex(), true)
+	require.NoError(t, err)
+	require.Nil(t, nullRoundBlock)
+
+	// Test getting balance on a null round
+	bal, err := client.EthGetBalance(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromNumber(ethtypes.EthUint64(nullHeight)))
+	require.NoError(t, err)
+	require.NotEqual(t, big.Zero(), bal)
+	require.Equal(t, types.FromFil(10).Int, bal.Int)
+
+	// Test getting block by pending
+	pendingBlock, err := client.EthGetBlockByNumber(ctx, "pending", true)
+	require.NoError(t, err)
+	require.NotNil(t, pendingBlock)
+	require.True(t, pendingBlock.Number >= latest)
 }
