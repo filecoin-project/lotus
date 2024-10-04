@@ -31,7 +31,7 @@ This method does not extend to being able to run your Lotus changes in CI with a
 
 ### Replacing actors bundles
 
-An alternative method to the environment variable override is to simply replace the current `vX.tar.zst` file in [`build/actors/`](../../build/actors/) with your custom bundle. This method can be used to check in code for pull requests to run in CI.
+An alternative method to the [environment variable override](#environment-variable-override) is to simply replace the current `vX.tar.zst` file in [`build/actors/`](../../build/actors/) with your custom bundle. This method can be used to check in code for pull requests to run in CI.
 
 > [!IMPORTANT]
 > Do not attempt to check your replaced file in to the Lotus codebase **unless it is a tagged (and verified) builtin-actors bundle**. 
