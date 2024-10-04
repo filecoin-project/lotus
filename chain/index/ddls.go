@@ -85,5 +85,6 @@ func preparedStatementMapping(ps *preparedStatements) map[**sql.Stmt]string {
 		&ps.getNonRevertedTipsetEventCountStmt:        "SELECT COUNT(*) FROM event WHERE reverted = 0 AND message_id IN (SELECT message_id FROM tipset_message WHERE tipset_key_cid = ? AND reverted = 0)",
 		&ps.hasRevertedEventsInTipsetStmt:             "SELECT EXISTS(SELECT 1 FROM event WHERE reverted = 1 AND message_id IN (SELECT message_id FROM tipset_message WHERE tipset_key_cid = ?))",
 		&ps.getNonRevertedTipsetEventEntriesCountStmt: "SELECT COUNT(ee.event_id) AS entry_count FROM event_entry ee JOIN event e ON ee.event_id = e.event_id JOIN tipset_message tm ON e.message_id = tm.message_id WHERE tm.tipset_key_cid = ? AND tm.reverted = 0",
+		&ps.removeRevertedTipsetsBeforeHeightStmt:     "DELETE FROM tipset_message WHERE reverted = 1 AND height < ?",
 	}
 }

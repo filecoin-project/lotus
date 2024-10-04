@@ -54,6 +54,7 @@ type preparedStatements struct {
 	getNonRevertedTipsetEventCountStmt        *sql.Stmt
 	getNonRevertedTipsetEventEntriesCountStmt *sql.Stmt
 	hasRevertedEventsInTipsetStmt             *sql.Stmt
+	removeRevertedTipsetsBeforeHeightStmt     *sql.Stmt
 }
 
 type SqliteIndexer struct {
