@@ -33,6 +33,9 @@ func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *typ
 	if si.idToRobustAddrFunc == nil {
 		return xerrors.Errorf("indexer can not index events without an address resolver")
 	}
+	if si.eventLoaderFunc == nil {
+		return xerrors.Errorf("indexer can not index events without an event loader")
+	}
 
 	// check if we have an event indexed for any message in the `msgTs` tipset -> if so, there's nothig to do here
 	// this makes event inserts idempotent
@@ -59,7 +62,7 @@ func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *typ
 		return nil
 	}
 
-	ems, err := si.loadExecutedMessages(ctx, msgTs, executionTs)
+	ems, err := si.eventLoaderFunc(ctx, si.cs, msgTs, executionTs)
 	if err != nil {
 		return xerrors.Errorf("failed to load executed messages: %w", err)
 	}
@@ -124,13 +127,20 @@ func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *typ
 	return nil
 }
 
-func (si *SqliteIndexer) loadExecutedMessages(ctx context.Context, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
-	msgs, err := si.cs.MessagesForTipset(ctx, msgTs)
+func MakeLoadExecutedMessages(recomputeTipSetStateFunc recomputeTipSetStateFunc) func(ctx context.Context,
+	cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
+	return func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
+		return loadExecutedMessages(ctx, cs, recomputeTipSetStateFunc, msgTs, rctTs)
+	}
+}
+
+func loadExecutedMessages(ctx context.Context, cs ChainStore, recomputeTipSetStateFunc recomputeTipSetStateFunc, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
+	msgs, err := cs.MessagesForTipset(ctx, msgTs)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get messages for tipset: %w", err)
 	}
 
-	st := si.cs.ActorStore(ctx)
+	st := cs.ActorStore(ctx)
 
 	receiptsArr, err := blockadt.AsArray(st, rctTs.Blocks()[0].ParentMessageReceipts)
 	if err != nil {
@@ -163,12 +173,12 @@ func (si *SqliteIndexer) loadExecutedMessages(ctx context.Context, msgTs, rctTs 
 
 		eventsArr, err := amt4.LoadAMT(ctx, st, *rct.EventsRoot, amt4.UseTreeBitWidth(types.EventAMTBitwidth))
 		if err != nil {
-			if si.recomputeTipSetStateFunc == nil {
+			if recomputeTipSetStateFunc == nil {
 				return nil, xerrors.Errorf("failed to load events amt for message %s: %w", ems[i].msg.Cid(), err)
 			}
 			log.Warnf("failed to load events amt for message %s: %s; recomputing tipset state to regenerate events", ems[i].msg.Cid(), err)
 
-			if err := si.recomputeTipSetStateFunc(ctx, msgTs); err != nil {
+			if err := recomputeTipSetStateFunc(ctx, msgTs); err != nil {
 				return nil, xerrors.Errorf("failed to recompute missing events; failed to recompute tipset state: %w", err)
 			}
 
@@ -252,6 +262,9 @@ func (si *SqliteIndexer) getTipsetKeyCidByHeight(ctx context.Context, height abi
 	ts, err := si.cs.GetTipsetByHeight(ctx, height, nil, false)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get tipset by height: %w", err)
+	}
+	if ts == nil {
+		return nil, xerrors.Errorf("tipset is nil for height: %d", height)
 	}
 
 	if ts.Height() != height {
