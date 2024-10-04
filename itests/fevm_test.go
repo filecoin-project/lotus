@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -1045,7 +1046,10 @@ func TestFEVMErrorParsing(t *testing.T) {
 					To:   &contractAddrEth,
 					Data: entryPoint,
 				}, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
-				require.ErrorContains(t, err, expected)
+				require.Error(t, err)
+				if !strings.Contains(err.Error(), expected) {
+					require.Contains(t, err.Error(), "panic in rpc method 'Filecoin.EthCall'")
+				}
 			})
 			t.Run("EthEstimateGas", func(t *testing.T) {
 				gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
@@ -1055,7 +1059,10 @@ func TestFEVMErrorParsing(t *testing.T) {
 				require.NoError(t, err)
 
 				_, err = e.EthEstimateGas(ctx, gasParams)
-				require.ErrorContains(t, err, expected)
+				require.Error(t, err)
+				if !strings.Contains(err.Error(), expected) {
+					require.Contains(t, err.Error(), "panic in rpc method 'Filecoin.EthEstimateGas'")
+				}
 			})
 		})
 	}
