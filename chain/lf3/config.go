@@ -31,6 +31,9 @@ type Config struct {
 	// manifest's bootstrap epoch we'll switch to it and ignore any further dynamic manifest
 	// updates. This exists to enable bootstrapping F3.
 	PrioritizeStaticManifest bool
+	// TESTINGAllowDynamicFinalize allow dynamic manifests to finalize tipsets. DO NOT ENABLE
+	// THIS IN PRODUCTION!
+	AllowDynamicFinalize bool
 }
 
 // NewManifest constructs a sane F3 manifest based on the passed parameters. This function does not
@@ -78,6 +81,7 @@ func NewConfig(nn dtypes.NetworkName) *Config {
 		BaseNetworkName:          gpbft.NetworkName(nn),
 		PrioritizeStaticManifest: true,
 		DynamicManifestProvider:  buildconstants.F3ManifestServerID,
+		AllowDynamicFinalize:     false,
 	}
 	if buildconstants.F3BootstrapEpoch >= 0 {
 		c.StaticManifest = NewManifest(

@@ -2,13 +2,7 @@ package kit
 
 import (
 	"math"
-	"time"
 
-	"github.com/ipfs/go-cid"
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"github.com/libp2p/go-libp2p/core/peer"
-
-	"github.com/filecoin-project/go-f3/gpbft"
 	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -216,23 +210,10 @@ func MutateSealingConfig(mut func(sc *config.SealingConfig)) NodeOpt {
 		})))
 }
 
-func F3Enabled(bootstrapEpoch abi.ChainEpoch, blockDelay time.Duration, finality abi.ChainEpoch, manifestProvider peer.ID) NodeOpt {
+func F3Enabled(cfg *lf3.Config) NodeOpt {
 	return ConstructorOpts(
-		node.Override(new(*lf3.Config), func(nn dtypes.NetworkName) *lf3.Config {
-			m := lf3.NewManifest(gpbft.NetworkName(nn), finality, bootstrapEpoch, blockDelay, cid.Undef)
-			return &lf3.Config{
-				BaseNetworkName:          gpbft.NetworkName(nn),
-				StaticManifest:           m,
-				DynamicManifestProvider:  manifestProvider,
-				PrioritizeStaticManifest: false,
-			}
-		}),
-		node.Override(new(manifest.ManifestProvider),
-			func(config *lf3.Config, ps *pubsub.PubSub) (manifest.ManifestProvider, error) {
-				return manifest.NewDynamicManifestProvider(ps, config.DynamicManifestProvider,
-					manifest.DynamicManifestProviderWithInitialManifest(config.StaticManifest),
-				)
-			}),
+		node.Override(new(*lf3.Config), cfg),
+		node.Override(new(manifest.ManifestProvider), lf3.NewManifestProvider),
 		node.Override(new(*lf3.F3), lf3.New),
 	)
 }

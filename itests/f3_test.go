@@ -5,15 +5,18 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/filecoin-project/go-f3/gpbft"
 	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/chain/lf3"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/node"
@@ -21,8 +24,9 @@ import (
 )
 
 const (
-	DefaultBootsrapEpoch = 20
-	DefaultFinality      = 5
+	DefaultBootstrapEpoch                   = 20
+	DefaultFinality                         = 5
+	BaseNetworkName       gpbft.NetworkName = "test"
 )
 
 type testEnv struct {
@@ -61,7 +65,7 @@ func TestF3_Rebootstrap(t *testing.T) {
 
 	cpy := *e.m
 	cpy.BootstrapEpoch = 25
-	cpy.NetworkName += "/1"
+	cpy.NetworkName = BaseNetworkName + "/2"
 	e.ms.UpdateManifest(&cpy)
 
 	newManifest := e.waitTillManifestChange(&cpy, 20*time.Second)
@@ -90,7 +94,7 @@ func TestF3_PauseAndRebootstrap(t *testing.T) {
 	e.waitTillF3Runs(30 * time.Second)
 
 	cpy := *e.m
-	cpy.NetworkName += "/1"
+	cpy.NetworkName = BaseNetworkName + "/2"
 	cpy.BootstrapEpoch = 25
 	e.ms.UpdateManifest(&cpy)
 
@@ -188,7 +192,18 @@ func setup(t *testing.T, blocktime time.Duration) *testEnv {
 	manifestServerHost, err := libp2p.New(libp2p.ListenAddrStrings("/ip4/127.0.0.1/udp/0/quic-v1"))
 	require.NoError(t, err)
 
-	f3NOpt := kit.F3Enabled(DefaultBootsrapEpoch, blocktime, DefaultFinality, manifestServerHost.ID())
+	v1NetworkName := BaseNetworkName + "/1"
+
+	manif := lf3.NewManifest(v1NetworkName, DefaultFinality, DefaultBootstrapEpoch, blocktime, cid.Undef)
+	cfg := &lf3.Config{
+		BaseNetworkName:          BaseNetworkName,
+		StaticManifest:           manif,
+		DynamicManifestProvider:  manifestServerHost.ID(),
+		PrioritizeStaticManifest: false,
+		AllowDynamicFinalize:     true,
+	}
+
+	f3NOpt := kit.F3Enabled(cfg)
 	f3MOpt := kit.ConstructorOpts(node.Override(node.F3Participation, modules.F3Participation))
 
 	var (

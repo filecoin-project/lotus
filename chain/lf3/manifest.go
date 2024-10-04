@@ -54,10 +54,17 @@ func NewManifestProvider(mctx helpers.MetricsCtx, config *Config, cs *store.Chai
 		)
 	}
 
+	if config.AllowDynamicFinalize {
+		log.Error("dynamic F3 manifests are allowed to finalize tipsets, do not enable this in production!")
+	}
+
 	networkNameBase := config.BaseNetworkName + "/"
 	filter := func(m *manifest.Manifest) error {
 		if m.EC.Finalize {
-			return fmt.Errorf("refusing dynamic manifest that finalizes tipsets")
+			if !config.AllowDynamicFinalize {
+				return fmt.Errorf("refusing dynamic manifest that finalizes tipsets")
+			}
+			log.Error("WARNING: loading a dynamic F3 manifest that will finalize new tipsets")
 		}
 		if !strings.HasPrefix(string(m.NetworkName), string(networkNameBase)) {
 			return fmt.Errorf(
