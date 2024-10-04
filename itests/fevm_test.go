@@ -1328,16 +1328,21 @@ func TestMcopy(t *testing.T) {
 	// try to deploy the contract before the upgrade, expect an error somewhere' in deploy or in call,
 	// if the error is in deploy we may need to implement DeployContractFromFilename here where we can
 	// assert an error
-	filenameActor := "contracts/Blocktest.hex"
+	filenameActor := "contracts/mcopy/MCOPYTest.hex"
 	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
-	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "testChainID()", []byte{})
-	require.NoError(t, err)
+	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "optimizedCopy(string)", []byte("testdata"))
+	// We expect an error here due to the contract reverting or another issue.
+	require.Error(t, err)
+
+	// Also check for the specific error message
+	expectedErrMsg := "contract reverted (33)"
+	require.Contains(t, err.Error(), expectedErrMsg)
 
 	// wait for the upgrade
 	client.WaitTillChain(ctx, kit.HeightAtLeast(nv24epoch+5))
 
 	// should be able to deploy and call the contract now
 	fromAddr, contractAddr = client.EVM().DeployContractFromFilename(ctx, filenameActor)
-	_, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "testChainID()", []byte{})
+	_, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "optimizedCopy(string)", []byte("testdata"))
 	require.NoError(t, err)
 }
