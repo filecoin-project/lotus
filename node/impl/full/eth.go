@@ -177,6 +177,15 @@ type EthAPI struct {
 	EthEventAPI
 }
 
+type EthCallError struct {
+	Message string
+	Data    []byte
+}
+
+func (e *EthCallError) Error() string {
+	return e.Message
+}
+
 var ErrNullRound = errors.New("requested epoch was a null round")
 
 func (a *EthModule) StateNetworkName(ctx context.Context) (dtypes.NetworkName, error) {
@@ -1473,10 +1482,14 @@ func (a *EthModule) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (et
 		// guts of EthCall). This will give us an ethereum specific error with revert
 		// information.
 		msg.GasLimit = buildconstants.BlockGasLimit
-		if _, err2 := a.applyMessage(ctx, msg, ts.Key()); err2 != nil {
+		invokeResult, err2 := a.applyMessage(ctx, msg, ts.Key())
+		if err2 != nil {
 			err = err2
 		}
-		return ethtypes.EthUint64(0), xerrors.Errorf("failed to estimate gas: %w", err)
+		return ethtypes.EthUint64(0), &EthCallError{
+			Message: fmt.Sprintf("failed to estimate gas: %s", err),
+			Data:    []byte(parseEthRevert(invokeResult.MsgRct.Return)),
+		}
 	}
 
 	expectedGas, err := ethGasSearch(ctx, a.Chain, a.Stmgr, a.Mpool, gassedMsg, ts)
@@ -1624,7 +1637,10 @@ func (a *EthModule) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam e
 
 	invokeResult, err := a.applyMessage(ctx, msg, ts.Key())
 	if err != nil {
-		return nil, err
+		return nil, &EthCallError{
+			Message: err.Error(),
+			Data:    []byte(parseEthRevert(invokeResult.MsgRct.Return)),
+		}
 	}
 
 	if msg.To == builtintypes.EthereumAddressManagerActorAddr {
