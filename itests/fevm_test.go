@@ -15,14 +15,18 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/manifest"
+	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/build/buildconstants"
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
+	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/itests/kit"
@@ -1298,4 +1302,42 @@ func TestEthGetTransactionCount(t *testing.T) {
 	contractNonceAfterDestroy, err := client.EVM().EthGetTransactionCount(ctx, contractAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 	require.NoError(t, err)
 	require.Zero(t, contractNonceAfterDestroy)
+}
+
+func TestMcopy(t *testing.T) {
+	// MCOPY introduced in nv24, start the test on nv23 to check the error, then upgrade at epoch 100
+	// and check that an MCOPY contract can be deployed and run.
+	nv24epoch := abi.ChainEpoch(100)
+	upgradeSchedule := kit.UpgradeSchedule(
+		stmgr.Upgrade{
+			Network: network.Version23,
+			Height:  -1,
+		},
+		stmgr.Upgrade{
+			Network:   network.Version24,
+			Height:    nv24epoch,
+			Migration: filcns.UpgradeActorsV15,
+		},
+	)
+
+	ctx, cancel, client := kit.SetupFEVMTest(t, upgradeSchedule)
+	defer cancel()
+
+	// TODO: below here ------------------------------------------------------------------------------
+
+	// try to deploy the contract before the upgrade, expect an error somewhere' in deploy or in call,
+	// if the error is in deploy we may need to implement DeployContractFromFilename here where we can
+	// assert an error
+	filenameActor := "contracts/Blocktest.hex"
+	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
+	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "testChainID()", []byte{})
+	require.NoError(t, err)
+
+	// wait for the upgrade
+	client.WaitTillChain(ctx, kit.HeightAtLeast(nv24epoch+5))
+
+	// should be able to deploy and call the contract now
+	fromAddr, contractAddr = client.EVM().DeployContractFromFilename(ctx, filenameActor)
+	_, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "testChainID()", []byte{})
+	require.NoError(t, err)
 }
