@@ -102,6 +102,35 @@ func TestF3_PauseAndRebootstrap(t *testing.T) {
 	e.waitTillF3Rebootstrap(20 * time.Second)
 }
 
+// Tests that pause/resume and rebootstrapping F3 works
+func TestF3_Bootstrap(t *testing.T) {
+	kit.QuietMiningLogs()
+
+	var bootstrapEpoch abi.ChainEpoch = 50
+	blocktime := 100 * time.Millisecond
+	staticManif := lf3.NewManifest(BaseNetworkName, DefaultFinality, bootstrapEpoch, blocktime, cid.Undef)
+	dynamicManif := *staticManif
+	dynamicManif.BootstrapEpoch = 5
+	dynamicManif.EC.Finalize = false
+	dynamicManif.NetworkName = BaseNetworkName + "/1"
+
+	e := setupWithStaticManifest(t, staticManif, true)
+	e.ms.UpdateManifest(&dynamicManif)
+	e.waitTillManifestChange(&dynamicManif, 20*time.Second)
+	e.waitTillF3Instance(2, 20*time.Second)
+	e.waitTillManifestChange(staticManif, 20*time.Second)
+	e.waitTillF3Instance(2, 20*time.Second)
+
+	// Try to switch back, we should ignore the manifest update.
+	e.ms.UpdateManifest(&dynamicManif)
+	time.Sleep(time.Second)
+	for _, n := range e.minerFullNodes {
+		m, err := n.F3GetManifest(e.testCtx)
+		require.NoError(e.t, err)
+		require.True(t, m.Equal(staticManif))
+	}
+}
+
 func (e *testEnv) waitTillF3Rebootstrap(timeout time.Duration) {
 	e.waitFor(func(n *kit.TestFullNode) bool {
 		// the prev epoch yet, check if we already bootstrapped and from
@@ -180,8 +209,15 @@ func (e *testEnv) waitFor(f func(n *kit.TestFullNode) bool, timeout time.Duratio
 // and the second full-node is an observer that is not directly connected to
 // a miner. The last return value is the manifest sender for the network.
 func setup(t *testing.T, blocktime time.Duration) *testEnv {
+	manif := lf3.NewManifest(BaseNetworkName+"/1", DefaultFinality, DefaultBootstrapEpoch, blocktime, cid.Undef)
+	return setupWithStaticManifest(t, manif, false)
+}
+
+func setupWithStaticManifest(t *testing.T, manif *manifest.Manifest, testBootstrap bool) *testEnv {
 	ctx, stopServices := context.WithCancel(context.Background())
 	errgrp, ctx := errgroup.WithContext(ctx)
+
+	blocktime := manif.EC.Period
 
 	t.Cleanup(func() {
 		stopServices()
@@ -192,15 +228,12 @@ func setup(t *testing.T, blocktime time.Duration) *testEnv {
 	manifestServerHost, err := libp2p.New(libp2p.ListenAddrStrings("/ip4/127.0.0.1/udp/0/quic-v1"))
 	require.NoError(t, err)
 
-	v1NetworkName := BaseNetworkName + "/1"
-
-	manif := lf3.NewManifest(v1NetworkName, DefaultFinality, DefaultBootstrapEpoch, blocktime, cid.Undef)
 	cfg := &lf3.Config{
 		BaseNetworkName:          BaseNetworkName,
 		StaticManifest:           manif,
 		DynamicManifestProvider:  manifestServerHost.ID(),
-		PrioritizeStaticManifest: false,
-		AllowDynamicFinalize:     true,
+		PrioritizeStaticManifest: testBootstrap,
+		AllowDynamicFinalize:     !testBootstrap,
 	}
 
 	f3NOpt := kit.F3Enabled(cfg)
