@@ -71,7 +71,7 @@ func (si *SqliteIndexer) cleanUpRevertedTipsets(ctx context.Context) {
 		return
 	}
 
-	log.Infof("removed %d reverted tipsets before epoch %d", rows, removalEpoch)
+	log.Infof("removed %d reverted entries before epoch %d", rows, removalEpoch)
 }
 
 func (si *SqliteIndexer) gc(ctx context.Context) {
@@ -106,7 +106,7 @@ func (si *SqliteIndexer) gc(ctx context.Context) {
 		return
 	}
 
-	log.Infof("gc'd %d tipsets before epoch %d", rows, removalEpoch)
+	log.Infof("gc'd %d entries before epoch %d", rows, removalEpoch)
 
 	// -------------------------------------------------------------------------------------------------
 	// Also GC eth hashes
