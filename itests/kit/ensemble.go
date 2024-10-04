@@ -1089,7 +1089,7 @@ func (n *Ensemble) generateGenesis() *genesis.Template {
 		Accounts:         n.genesis.accounts,
 		Miners:           n.genesis.miners,
 		NetworkName:      "test",
-		Timestamp:        uint64(time.Now().Unix() - int64(n.options.pastOffset.Seconds())),
+		Timestamp:        uint64(time.Now().Unix()),
 		VerifregRootKey:  verifRoot,
 		RemainderAccount: gen.DefaultRemainderAccountActor,
 	}

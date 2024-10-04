@@ -1,8 +1,6 @@
 package kit
 
 import (
-	"time"
-
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/build"
@@ -19,7 +17,6 @@ type genesisAccount struct {
 }
 
 type ensembleOpts struct {
-	pastOffset   time.Duration
 	verifiedRoot genesisAccount
 	accounts     []genesisAccount
 	mockProofs   bool
@@ -28,7 +25,6 @@ type ensembleOpts struct {
 }
 
 var DefaultEnsembleOpts = ensembleOpts{
-	pastOffset: 10000000 * time.Second, // time sufficiently in the past to trigger catch-up mining.
 	upgradeSchedule: stmgr.UpgradeSchedule{{
 		Height:  -1,
 		Network: buildconstants.TestNetworkVersion,
