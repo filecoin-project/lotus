@@ -30,9 +30,6 @@ type ecWrapper struct {
 	ChainStore   *store.ChainStore
 	Syncer       *chain.Syncer
 	StateManager *stmgr.StateManager
-
-	// Checkpoint sets whether to checkpoint tipsets finalized by F3 in ChainStore.
-	Checkpoint bool
 }
 
 type f3TipSet struct {
@@ -212,9 +209,6 @@ func (ec *ecWrapper) getPowerTableLotusTSK(ctx context.Context, tsk types.TipSet
 }
 
 func (ec *ecWrapper) Finalize(ctx context.Context, key gpbft.TipSetKey) error {
-	if !ec.Checkpoint {
-		return nil // Nothing to do; checkpointing is not enabled.
-	}
 	tsk, err := toLotusTipSetKey(key)
 	if err != nil {
 		return err

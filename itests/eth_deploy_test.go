@@ -206,7 +206,7 @@ func TestDeployment(t *testing.T) {
 	blkNum := strconv.FormatInt(int64(*chainTx.BlockNumber), 10)
 	block2, err := client.EthGetBlockByNumber(ctx, blkNum, false)
 	require.Nil(t, err)
-	require.True(t, reflect.DeepEqual(block1, block2))
+	require.True(t, reflect.DeepEqual(block1, *block2))
 
 	// verify that the block contains full tx objects
 	block3, err := client.EthGetBlockByHash(ctx, *chainTx.BlockHash, true)
@@ -235,7 +235,7 @@ func TestDeployment(t *testing.T) {
 	// make sure the _full_ block got from EthGetBlockByNumber is the same
 	block4, err := client.EthGetBlockByNumber(ctx, blkNum, true)
 	require.Nil(t, err)
-	require.True(t, reflect.DeepEqual(block3, block4))
+	require.True(t, reflect.DeepEqual(block3, *block4))
 
 	// Verify that the deployer is now an account.
 	client.AssertActorType(ctx, deployer, manifest.EthAccountKey)

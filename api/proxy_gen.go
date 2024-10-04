@@ -192,7 +192,7 @@ type FullNodeMethods struct {
 
 	EthGetBlockByHash func(p0 context.Context, p1 ethtypes.EthHash, p2 bool) (ethtypes.EthBlock, error) `perm:"read"`
 
-	EthGetBlockByNumber func(p0 context.Context, p1 string, p2 bool) (ethtypes.EthBlock, error) `perm:"read"`
+	EthGetBlockByNumber func(p0 context.Context, p1 string, p2 bool) (*ethtypes.EthBlock, error) `perm:"read"`
 
 	EthGetBlockReceipts func(p0 context.Context, p1 ethtypes.EthBlockNumberOrHash) ([]*EthTxReceipt, error) `perm:"read"`
 
@@ -652,7 +652,7 @@ type GatewayMethods struct {
 
 	EthGetBlockByHash func(p0 context.Context, p1 ethtypes.EthHash, p2 bool) (ethtypes.EthBlock, error) ``
 
-	EthGetBlockByNumber func(p0 context.Context, p1 string, p2 bool) (ethtypes.EthBlock, error) ``
+	EthGetBlockByNumber func(p0 context.Context, p1 string, p2 bool) (*ethtypes.EthBlock, error) ``
 
 	EthGetBlockReceipts func(p0 context.Context, p1 ethtypes.EthBlockNumberOrHash) ([]*EthTxReceipt, error) ``
 
@@ -1766,15 +1766,15 @@ func (s *FullNodeStub) EthGetBlockByHash(p0 context.Context, p1 ethtypes.EthHash
 	return *new(ethtypes.EthBlock), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthGetBlockByNumber(p0 context.Context, p1 string, p2 bool) (ethtypes.EthBlock, error) {
+func (s *FullNodeStruct) EthGetBlockByNumber(p0 context.Context, p1 string, p2 bool) (*ethtypes.EthBlock, error) {
 	if s.Internal.EthGetBlockByNumber == nil {
-		return *new(ethtypes.EthBlock), ErrNotSupported
+		return nil, ErrNotSupported
 	}
 	return s.Internal.EthGetBlockByNumber(p0, p1, p2)
 }
 
-func (s *FullNodeStub) EthGetBlockByNumber(p0 context.Context, p1 string, p2 bool) (ethtypes.EthBlock, error) {
-	return *new(ethtypes.EthBlock), ErrNotSupported
+func (s *FullNodeStub) EthGetBlockByNumber(p0 context.Context, p1 string, p2 bool) (*ethtypes.EthBlock, error) {
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) EthGetBlockReceipts(p0 context.Context, p1 ethtypes.EthBlockNumberOrHash) ([]*EthTxReceipt, error) {
@@ -4230,15 +4230,15 @@ func (s *GatewayStub) EthGetBlockByHash(p0 context.Context, p1 ethtypes.EthHash,
 	return *new(ethtypes.EthBlock), ErrNotSupported
 }
 
-func (s *GatewayStruct) EthGetBlockByNumber(p0 context.Context, p1 string, p2 bool) (ethtypes.EthBlock, error) {
+func (s *GatewayStruct) EthGetBlockByNumber(p0 context.Context, p1 string, p2 bool) (*ethtypes.EthBlock, error) {
 	if s.Internal.EthGetBlockByNumber == nil {
-		return *new(ethtypes.EthBlock), ErrNotSupported
+		return nil, ErrNotSupported
 	}
 	return s.Internal.EthGetBlockByNumber(p0, p1, p2)
 }
 
-func (s *GatewayStub) EthGetBlockByNumber(p0 context.Context, p1 string, p2 bool) (ethtypes.EthBlock, error) {
-	return *new(ethtypes.EthBlock), ErrNotSupported
+func (s *GatewayStub) EthGetBlockByNumber(p0 context.Context, p1 string, p2 bool) (*ethtypes.EthBlock, error) {
+	return nil, ErrNotSupported
 }
 
 func (s *GatewayStruct) EthGetBlockReceipts(p0 context.Context, p1 ethtypes.EthBlockNumberOrHash) ([]*EthTxReceipt, error) {

@@ -3,6 +3,7 @@ package lf3
 import (
 	"context"
 	"errors"
+	"path/filepath"
 	"time"
 
 	"github.com/ipfs/go-datastore"
@@ -26,6 +27,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
+	"github.com/filecoin-project/lotus/node/repo"
 )
 
 type F3 struct {
@@ -48,6 +50,7 @@ type F3Params struct {
 	Datastore        dtypes.MetadataDS
 	Wallet           api.Wallet
 	Config           *Config
+	LockedRepo       repo.LockedRepo
 }
 
 var log = logging.Logger("f3")
@@ -58,12 +61,12 @@ func New(mctx helpers.MetricsCtx, lc fx.Lifecycle, params F3Params) (*F3, error)
 		ChainStore:   params.ChainStore,
 		StateManager: params.StateManager,
 		Syncer:       params.Syncer,
-		Checkpoint:   params.Config.F3ConsensusEnabled,
 	}
 	verif := blssig.VerifierWithKeyOnG1()
 
+	f3FsPath := filepath.Join(params.LockedRepo.Path(), "f3")
 	module, err := f3.New(mctx, params.ManifestProvider, ds,
-		params.Host, params.PubSub, verif, ec)
+		params.Host, params.PubSub, verif, ec, f3FsPath)
 
 	if err != nil {
 		return nil, xerrors.Errorf("creating F3: %w", err)
