@@ -193,6 +193,126 @@ func TestGetEventsForFilterWithEvents(t *testing.T) {
 	require.Equal(t, 2, len(ces))
 }
 
+func TestGetEventsFilterByAddress(t *testing.T) {
+	ctx := context.Background()
+	rng := pseudo.New(pseudo.NewSource(time.Now().UnixNano()))
+	headHeight := abi.ChainEpoch(60)
+	si, _, cs := setupWithHeadIndexed(t, headHeight, rng)
+	defer func() { _ = si.Close() }()
+
+	addr1, err := address.NewIDAddress(1)
+	require.NoError(t, err)
+	addr2, err := address.NewIDAddress(2)
+	require.NoError(t, err)
+	addr3, err := address.NewIDAddress(3)
+	require.NoError(t, err)
+
+	ev1 := fakeEvent(
+		abi.ActorID(1),
+		[]kv{
+			{k: "type", v: []byte("approval")},
+			{k: "signer", v: []byte("addr1")},
+		},
+		[]kv{
+			{k: "amount", v: []byte("2988181")},
+		},
+	)
+
+	ev2 := fakeEvent(
+		abi.ActorID(2),
+		[]kv{
+			{k: "type", v: []byte("approval")},
+			{k: "signer", v: []byte("addr2")},
+		},
+		[]kv{
+			{k: "amount", v: []byte("2988181")},
+		},
+	)
+
+	events := []types.Event{*ev1, *ev2}
+
+	fm := fakeMessage(address.TestAddress, address.TestAddress)
+	em1 := executedMessage{
+		msg: fm,
+		evs: events,
+	}
+
+	si.SetIdToRobustAddrFunc(func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool) {
+		idAddr, err := address.NewIDAddress(uint64(emitter))
+		if err != nil {
+			return address.Undef, false
+		}
+		return idAddr, true
+	})
+
+	si.SetEventLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
+		return []executedMessage{em1}, nil
+	})
+
+	// Create a fake tipset at height 1
+	fakeTipSet1 := fakeTipSet(t, rng, 1, nil)
+	fakeTipSet2 := fakeTipSet(t, rng, 2, nil)
+
+	// Set the dummy chainstore to return this tipset for height 1
+	cs.SetTipsetByHeightAndKey(1, fakeTipSet1.Key(), fakeTipSet1) // empty DB
+	cs.SetTipsetByHeightAndKey(2, fakeTipSet2.Key(), fakeTipSet2) // empty DB
+
+	cs.SetMessagesForTipset(fakeTipSet1, []types.ChainMsg{fm})
+
+	require.NoError(t, si.Apply(ctx, fakeTipSet1, fakeTipSet2))
+
+	testCases := []struct {
+		name          string
+		f             *EventFilter
+		expectedCount int
+	}{
+		{
+			name: "matching single address",
+			f: &EventFilter{
+				Addresses: []address.Address{addr1},
+				MinHeight: 1,
+				MaxHeight: 1,
+			},
+			expectedCount: 1,
+		},
+		{
+			name: "matching multiple addresses",
+			f: &EventFilter{
+				Addresses: []address.Address{addr1, addr2},
+				MinHeight: 1,
+				MaxHeight: 1,
+			},
+			expectedCount: 2,
+		},
+		{
+			name: "no matching address",
+			f: &EventFilter{
+				Addresses: []address.Address{addr3},
+				MinHeight: 1,
+				MaxHeight: 1,
+			},
+			expectedCount: 0,
+		},
+		{
+			name: "empty address list",
+			f: &EventFilter{
+				Addresses: []address.Address{},
+				MinHeight: 1,
+				MaxHeight: 1,
+			},
+			expectedCount: 2, // should return all events
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ces, err := si.GetEventsForFilter(ctx, tc.f, false)
+			require.NoError(t, err)
+			require.Equal(t, tc.expectedCount, len(ces))
+		})
+	}
+}
+
 func fakeMessage(to, from address.Address) *types.Message {
 	return &types.Message{
 		To:         to,
