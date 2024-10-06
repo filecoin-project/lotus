@@ -156,7 +156,7 @@ That said, one can still programmatically get the latest release based on the [B
 * Lotus Miner: `git tag -l 'miner/v*' | grep -v "-" | sort -V -r | head -n 1` 
 
 ### Why does Lotus still use a `master` branch instead of `main`?
-There was a [push in 202109](https://github.com/filecoin-project/lotus/issues/7356) on changing the default branch to `main` from `master` for good reason. 3 years later though, the migration was never completed and `master` has ossified 😔.  The effort's failure was acknowledged and commented on in the issue above in 202409.  
+There was a [push in September 2021](https://github.com/filecoin-project/lotus/issues/7356) on changing the default branch to `main` from `master` for good reason. 3 years later though, the migration was never completed and `master` has ossified 😔.  The effort's failure was acknowledged and commented on in the issue above in 202409.  
 
 ## Related Items
 
