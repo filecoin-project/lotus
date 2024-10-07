@@ -1443,3 +1443,42 @@ func TestEthGetBlockByNumber(t *testing.T) {
 	require.NotNil(t, pendingBlock)
 	require.True(t, pendingBlock.Number >= latest)
 }
+
+func TestEthCall(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	filename := "contracts/Errors.hex"
+	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filename)
+
+	divideByZeroSignature := kit.CalcFuncSignature("failDivZero()")
+
+	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "failDivZero()", []byte{})
+	require.Error(t, err)
+
+	latestBlock, err := client.EthBlockNumber(ctx)
+	require.NoError(t, err)
+
+	contractAddrEth, err := ethtypes.EthAddressFromFilecoinAddress(contractAddr)
+	require.NoError(t, err)
+
+	callParams := ethtypes.EthCall{
+		From: nil,
+		To:   &contractAddrEth,
+		Data: divideByZeroSignature,
+	}
+
+	t.Run("FailedToProcessBlockParam", func(t *testing.T) {
+		invalidBlockNumber := ethtypes.EthUint64(latestBlock + 1000)
+		_, err = client.EthCall(ctx, callParams, ethtypes.NewEthBlockNumberOrHashFromNumber(invalidBlockNumber))
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "requested a future epoch (beyond 'latest')")
+	})
+
+	t.Run("DivideByZeroError", func(t *testing.T) {
+		_, err = client.EthCall(ctx, callParams, ethtypes.NewEthBlockNumberOrHashFromNumber(latestBlock))
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "contract reverted")
+		require.Contains(t, err.Error(), "DivideByZero()")
+	})
+}
