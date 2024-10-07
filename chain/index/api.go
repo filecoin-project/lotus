@@ -121,6 +121,7 @@ func (si *SqliteIndexer) ChainValidateIndex(ctx context.Context, epoch abi.Chain
 	}
 
 	indexedData, err := getAndVerifyIndexedData()
+	var backfill bool
 	if err != nil {
 		if !backfill {
 			return nil, xerrors.Errorf("failed to verify indexed data at height %d: %w", expectedTs.Height(), err)
@@ -135,6 +136,7 @@ func (si *SqliteIndexer) ChainValidateIndex(ctx context.Context, epoch abi.Chain
 		if err != nil {
 			return nil, xerrors.Errorf("failed to verify indexed data at height %d after backfill: %w", expectedTs.Height(), err)
 		}
+		backfill = true
 	}
 
 	return &types.IndexValidation{
@@ -143,6 +145,7 @@ func (si *SqliteIndexer) ChainValidateIndex(ctx context.Context, epoch abi.Chain
 		IndexedMessagesCount:     uint64(indexedData.nonRevertedMessageCount),
 		IndexedEventsCount:       uint64(indexedData.nonRevertedEventCount),
 		IndexedEventEntriesCount: uint64(indexedData.nonRevertedEventEntriesCount),
+		Backfilled:               backfill,
 	}, nil
 }
 

@@ -135,8 +135,8 @@ like cron.
 			if (fromEpoch-epoch+1)%2880 == 0 || epoch == toEpoch {
 				progress := float64(fromEpoch-epoch+1) / float64(totalEpochs) * 100
 				elapsed := time.Since(startTime)
-				_, _ = fmt.Fprintf(cctx.App.Writer, "%s -------- Chain index validation progress: %.2f%%; Time elapsed: %s Minutes\n",
-					currentTimeString(), progress, elapsed.Round(time.Minute))
+				_, _ = fmt.Fprintf(cctx.App.Writer, "%s -------- Chain index validation progress: %.2f%%; Time elapsed: %s\n",
+					currentTimeString(), progress, elapsed)
 			}
 
 			indexValidateResp, err := api.ChainValidateIndex(ctx, abi.ChainEpoch(epoch), backfill)
