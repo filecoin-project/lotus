@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
@@ -284,20 +286,31 @@ func (si *SqliteIndexer) backfillMissingTipset(ctx context.Context, ts *types.Ti
 		return nil, xerrors.Errorf("failed to get next tipset at height %d: %w", ts.Height(), err)
 	}
 
-	err = withTx(ctx, si.db, func(tx *sql.Tx) error {
-		if err := si.indexTipsetWithParentEvents(ctx, tx, ts, executionTs); err != nil {
-			return xerrors.Errorf("error indexing (ts, executionTs): %w", err)
+	backfillFunc := func() error {
+		return withTx(ctx, si.db, func(tx *sql.Tx) error {
+			if err := si.indexTipsetWithParentEvents(ctx, tx, ts, executionTs); err != nil {
+				return xerrors.Errorf("error indexing (ts, executionTs): %w", err)
+			}
+
+			if err := si.indexTipsetWithParentEvents(ctx, tx, parentTs, ts); err != nil {
+				return xerrors.Errorf("error indexing (parentTs, ts): %w", err)
+			}
+
+			return nil
+		})
+	}
+
+	err = backfillFunc()
+	if err != nil && strings.Contains(err.Error(), "database is locked") {
+		log.Warnf("backfill of height %d failed due to database lock, retrying in 100ms", ts.Height())
+		time.Sleep(100 * time.Millisecond)
+		err = backfillFunc()
+		if err == nil {
+			log.Infof("backfill of height %d succeeded after retry", ts.Height())
 		}
-
-		if err := si.indexTipsetWithParentEvents(ctx, tx, parentTs, ts); err != nil {
-			return xerrors.Errorf("error indexing (parentTs, ts): %w", err)
-		}
-
-		return nil
-	})
-
+	}
 	if err != nil {
-		return nil, xerrors.Errorf("failed to backfill tipset a: %w", err)
+		return nil, xerrors.Errorf("failed to backfill tipset: %w", err)
 	}
 
 	indexedData, err := si.getIndexedTipSetData(ctx, ts)
