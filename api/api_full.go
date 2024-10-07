@@ -976,6 +976,8 @@ type F3ParticipationTicket []byte
 // participating in F3 consensus, detailing the session identifier, issuer,
 // subject, and the expiration instance.
 type F3ParticipationLease struct {
+	// Network is the name of the network this lease belongs to.
+	Network gpbft.NetworkName
 	// Issuer is the identity of the node that issued the lease.
 	Issuer peer.ID
 	// MinerID is the actor ID of the miner that holds the lease.

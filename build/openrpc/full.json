@@ -7878,6 +7878,7 @@
                 "schema": {
                     "examples": [
                         {
+                            "Network": "filecoin",
                             "Issuer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
                             "MinerID": 42,
                             "FromInstance": 42,
@@ -7896,6 +7897,9 @@
                         "MinerID": {
                             "title": "number",
                             "type": "number"
+                        },
+                        "Network": {
+                            "type": "string"
                         },
                         "ValidityTerm": {
                             "title": "number",

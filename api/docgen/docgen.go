@@ -421,6 +421,7 @@ func init() {
 	})
 	addExample(&certs.FinalityCertificate{})
 	addExample(&manifest.Manifest{})
+	addExample(gpbft.NetworkName("filecoin"))
 	addExample(gpbft.ActorID(1000))
 }
 

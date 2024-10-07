@@ -456,6 +456,20 @@ func (p *f3Participator) tryF3Participate(ctx context.Context, ticket api.F3Part
 func (p *f3Participator) awaitLeaseExpiry(ctx context.Context, lease api.F3ParticipationLease) error {
 	p.backoff.Reset()
 	for ctx.Err() == nil {
+		switch manifest, err := p.node.F3GetManifest(ctx); {
+		case errors.Is(err, api.ErrF3Disabled):
+			log.Errorw("Cannot await F3 participation lease expiry as F3 is disabled.", "err", err)
+			return xerrors.Errorf("awaiting F3 participation lease expiry: %w", err)
+		case err != nil:
+			if p.backoff.Attempt() > float64(p.maxCheckProgressAttempts) {
+				log.Errorw("Too many failures while attempting to check F3  progress. Restarting participation.", "attempts", p.backoff.Attempt(), "err", err)
+				return nil
+			}
+			log.Errorw("Failed to check F3 progress while awaiting lease expiry. Retrying after backoff.", "attempts", p.backoff.Attempt(), "backoff", p.backoff.Duration(), "err", err)
+			p.backOff(ctx)
+		case manifest.NetworkName != lease.Network:
+			return nil
+		}
 		switch progress, err := p.node.F3GetProgress(ctx); {
 		case errors.Is(err, api.ErrF3Disabled):
 			log.Errorw("Cannot await F3 participation lease expiry as F3 is disabled.", "err", err)

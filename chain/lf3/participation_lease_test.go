@@ -2,11 +2,14 @@ package lf3
 
 import (
 	"testing"
+	"time"
 
+	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-f3/gpbft"
+	"github.com/filecoin-project/go-f3/manifest"
 
 	"github.com/filecoin-project/lotus/api"
 )
@@ -157,10 +160,12 @@ func TestLeaser(t *testing.T) {
 	})
 }
 
+var testManifest = NewManifest("fakenet", 30, 30, 30*time.Second, cid.Undef)
+
 type mockProgress struct{ currentInstance uint64 }
 
-func (m *mockProgress) Progress() gpbft.Instant {
-	return gpbft.Instant{
+func (m *mockProgress) Progress() (*manifest.Manifest, gpbft.Instant) {
+	return testManifest, gpbft.Instant{
 		ID:    m.currentInstance,
 		Round: 0,
 		Phase: gpbft.INITIAL_PHASE,

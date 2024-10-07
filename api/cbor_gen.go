@@ -13,6 +13,7 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 
+	gpbft "github.com/filecoin-project/go-f3/gpbft"
 	abi "github.com/filecoin-project/go-state-types/abi"
 	paych "github.com/filecoin-project/go-state-types/builtin/v8/paych"
 
@@ -32,7 +33,7 @@ func (t *F3ParticipationLease) MarshalCBOR(w io.Writer) error {
 
 	cw := cbg.NewCborWriter(w)
 
-	if _, err := cw.Write([]byte{164}); err != nil {
+	if _, err := cw.Write([]byte{165}); err != nil {
 		return err
 	}
 
@@ -72,6 +73,29 @@ func (t *F3ParticipationLease) MarshalCBOR(w io.Writer) error {
 	}
 
 	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.MinerID)); err != nil {
+		return err
+	}
+
+	// t.Network (gpbft.NetworkName) (string)
+	if len("Network") > 8192 {
+		return xerrors.Errorf("Value in field \"Network\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Network"))); err != nil {
+		return err
+	}
+	if _, err := cw.WriteString(string("Network")); err != nil {
+		return err
+	}
+
+	if len(t.Network) > 8192 {
+		return xerrors.Errorf("Value in field t.Network was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.Network))); err != nil {
+		return err
+	}
+	if _, err := cw.WriteString(string(t.Network)); err != nil {
 		return err
 	}
 
@@ -173,6 +197,17 @@ func (t *F3ParticipationLease) UnmarshalCBOR(r io.Reader) (err error) {
 				}
 				t.MinerID = uint64(extra)
 
+			}
+			// t.Network (gpbft.NetworkName) (string)
+		case "Network":
+
+			{
+				sval, err := cbg.ReadStringWithMax(cr, 8192)
+				if err != nil {
+					return err
+				}
+
+				t.Network = gpbft.NetworkName(sval)
 			}
 			// t.FromInstance (uint64) (uint64)
 		case "FromInstance":

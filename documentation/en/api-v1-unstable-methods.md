@@ -2665,6 +2665,7 @@ Inputs:
 Response:
 ```json
 {
+  "Network": "filecoin",
   "Issuer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
   "MinerID": 42,
   "FromInstance": 42,

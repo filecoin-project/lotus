@@ -10,23 +10,26 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-f3/gpbft"
+	"github.com/filecoin-project/go-f3/manifest"
 
 	"github.com/filecoin-project/lotus/api"
 )
+
+type f3Status = func() (*manifest.Manifest, gpbft.Instant)
 
 type leaser struct {
 	mutex                sync.Mutex
 	leases               map[uint64]api.F3ParticipationLease
 	issuer               peer.ID
-	progress             gpbft.Progress
+	status               f3Status
 	maxLeasableInstances uint64
 }
 
-func newParticipationLeaser(nodeId peer.ID, progress gpbft.Progress, maxLeasedInstances uint64) *leaser {
+func newParticipationLeaser(nodeId peer.ID, status f3Status, maxLeasedInstances uint64) *leaser {
 	return &leaser{
 		leases:               make(map[uint64]api.F3ParticipationLease),
 		issuer:               nodeId,
-		progress:             progress,
+		status:               status,
 		maxLeasableInstances: maxLeasedInstances,
 	}
 }
@@ -37,7 +40,11 @@ func (l *leaser) getOrRenewParticipationTicket(participant uint64, previous api.
 		return nil, api.ErrF3ParticipationTooManyInstances
 	}
 
-	currentInstance := l.progress().ID
+	manifest, instant := l.status()
+	if manifest == nil {
+		return nil, api.ErrF3NotReady
+	}
+	currentInstance := instant.ID
 	if len(previous) != 0 {
 		// A previous ticket is present. To avoid overlapping lease across multiple
 		// instances for the same participant check its validity and only proceed to
@@ -46,7 +53,7 @@ func (l *leaser) getOrRenewParticipationTicket(participant uint64, previous api.
 		//   - it is valid and was issued by this node.
 		//
 		// Otherwise, return ErrF3ParticipationIssuerMismatch to signal to the caller the need for retry.
-		switch _, err := l.validate(currentInstance, previous); {
+		switch _, err := l.validate(manifest.NetworkName, currentInstance, previous); {
 		case errors.Is(err, api.ErrF3ParticipationTicketInvalid):
 			// Invalid ticket means the miner must have got the ticket from a node with a potentially different version.
 			// Refuse to issue a new ticket in case there is some other node with active lease for the miner.
@@ -72,19 +79,22 @@ func (l *leaser) getOrRenewParticipationTicket(participant uint64, previous api.
 		log.Debugw("Renewing previously issued participation ticket with overlapping lease", "participant", participant, "startInstance", currentInstance, "validFor", instances)
 	}
 
-	return l.newParticipationTicket(participant, currentInstance, instances)
+	return l.newParticipationTicket(manifest.NetworkName, participant, currentInstance, instances)
 }
 
 func (l *leaser) participate(ticket api.F3ParticipationTicket) (api.F3ParticipationLease, error) {
-	currentInstance := l.progress().ID
-	newLease, err := l.validate(currentInstance, ticket)
+	manifest, instant := l.status()
+	if manifest == nil {
+		return api.F3ParticipationLease{}, api.ErrF3NotReady
+	}
+	newLease, err := l.validate(manifest.NetworkName, instant.ID, ticket)
 	if err != nil {
 		return api.F3ParticipationLease{}, err
 	}
 	l.mutex.Lock()
 	defer l.mutex.Unlock()
 	currentLease, found := l.leases[newLease.MinerID]
-	if found && currentLease.FromInstance > newLease.FromInstance {
+	if found && currentLease.Network == newLease.Network && currentLease.FromInstance > newLease.FromInstance {
 		// For safety, strictly require lease start instance to never decrease.
 		return api.F3ParticipationLease{}, api.ErrF3ParticipationTicketStartBeforeExisting
 	}
@@ -107,13 +117,14 @@ func (l *leaser) getParticipantsByInstance(instance uint64) []uint64 {
 	return participants
 }
 
-func (l *leaser) newParticipationTicket(participant uint64, from uint64, instances uint64) (api.F3ParticipationTicket, error) {
+func (l *leaser) newParticipationTicket(nn gpbft.NetworkName, participant uint64, from uint64, instances uint64) (api.F3ParticipationTicket, error) {
 	// Lotus node API and miners run in a trusted environment. For now we make the
 	// ticket to simply be the CBOR encoding of the lease. In the future, where the
 	// assumptions of trust may no longer hold, ticket could be encrypted and
 	// decrypted at the time of issuing the actual lease.
 	var buf bytes.Buffer
 	if err := (&api.F3ParticipationLease{
+		Network:      nn,
 		Issuer:       l.issuer,
 		MinerID:      participant,
 		FromInstance: from,
@@ -124,7 +135,7 @@ func (l *leaser) newParticipationTicket(participant uint64, from uint64, instanc
 	return buf.Bytes(), nil
 }
 
-func (l *leaser) validate(currentInstance uint64, t api.F3ParticipationTicket) (api.F3ParticipationLease, error) {
+func (l *leaser) validate(currentNetwork gpbft.NetworkName, currentInstance uint64, t api.F3ParticipationTicket) (api.F3ParticipationLease, error) {
 	var lease api.F3ParticipationLease
 	reader := bytes.NewReader(t)
 	if err := lease.UnmarshalCBOR(reader); err != nil {
@@ -134,7 +145,7 @@ func (l *leaser) validate(currentInstance uint64, t api.F3ParticipationTicket) (
 	// Combine the errors to remove significance of the order by which they are
 	// checked outside if this function.
 	var err error
-	if currentInstance > lease.FromInstance+lease.ValidityTerm {
+	if currentNetwork != lease.Network || currentInstance > lease.FromInstance+lease.ValidityTerm {
 		err = multierr.Append(err, api.ErrF3ParticipationTicketExpired)
 	}
 	if l.issuer != lease.Issuer {

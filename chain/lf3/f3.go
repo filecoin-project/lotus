@@ -79,11 +79,14 @@ func New(mctx helpers.MetricsCtx, lc fx.Lifecycle, params F3Params) (*F3, error)
 	// maxLeasableInstances is the maximum number of leased F3 instances this node
 	// would give out.
 	const maxLeasableInstances = 5
+	status := func() (*manifest.Manifest, gpbft.Instant) {
+		return module.Manifest(), module.Progress()
+	}
 	fff := &F3{
 		inner:  module,
 		ec:     ec,
 		signer: &signer{params.Wallet},
-		leaser: newParticipationLeaser(nodeId, module.Progress, maxLeasableInstances),
+		leaser: newParticipationLeaser(nodeId, status, maxLeasableInstances),
 	}
 
 	// Start F3

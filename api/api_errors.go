@@ -16,6 +16,7 @@ const (
 	EF3ParticipationIssuerMismatch
 	EF3ParticipationTooManyInstances
 	EF3ParticipationTicketStartBeforeExisting
+	EF3NotReady
 )
 
 var (
@@ -35,6 +36,9 @@ var (
 	// ErrF3ParticipationTicketStartBeforeExisting signals that participation ticket
 	// is before the start instance of an existing lease held by the miner.
 	ErrF3ParticipationTicketStartBeforeExisting = errF3ParticipationTicketStartBeforeExisting{}
+	// ErrF3NotREady signals that the F3 instance isn't ready for participation yet. The caller
+	// should back off and try again later.
+	ErrF3NotReady = errF3NotReady{}
 
 	_ error = (*ErrOutOfGas)(nil)
 	_ error = (*ErrActorNotFound)(nil)
@@ -42,6 +46,7 @@ var (
 	_ error = (*errF3ParticipationTicketInvalid)(nil)
 	_ error = (*errF3ParticipationTicketExpired)(nil)
 	_ error = (*errF3ParticipationIssuerMismatch)(nil)
+	_ error = (*errF3NotReady)(nil)
 )
 
 func init() {
@@ -53,6 +58,7 @@ func init() {
 	RPCErrors.Register(EF3ParticipationIssuerMismatch, new(*errF3ParticipationIssuerMismatch))
 	RPCErrors.Register(EF3ParticipationTooManyInstances, new(*errF3ParticipationTooManyInstances))
 	RPCErrors.Register(EF3ParticipationTicketStartBeforeExisting, new(*errF3ParticipationTicketStartBeforeExisting))
+	RPCErrors.Register(EF3NotReady, new(*errF3NotReady))
 }
 
 func ErrorIsIn(err error, errorTypes []error) bool {
@@ -100,3 +106,7 @@ type errF3ParticipationTicketStartBeforeExisting struct{}
 func (errF3ParticipationTicketStartBeforeExisting) Error() string {
 	return "ticket starts before existing lease"
 }
+
+type errF3NotReady struct{}
+
+func (errF3NotReady) Error() string { return "f3 isn't yet ready to participate" }
