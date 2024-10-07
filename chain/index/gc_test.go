@@ -8,7 +8,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 func TestCleanupRevertedTipsets(t *testing.T) {
@@ -74,55 +76,101 @@ func TestCleanupRevertedTipsets(t *testing.T) {
 func TestGC(t *testing.T) {
 	ctx := context.Background()
 	rng := pseudo.New(pseudo.NewSource(time.Now().UnixNano()))
-
-	// head at height 60
-	// insert tipsets at heigh 1,10,50.
-	// retention epochs is 20
-	si, _, _ := setupWithHeadIndexed(t, 60, rng)
-	si.gcRetentionEpochs = 20
+	headHeight := abi.ChainEpoch(60)
+	si, _, cs := setupWithHeadIndexed(t, headHeight, rng)
 	defer func() { _ = si.Close() }()
 
-	tsCid1 := randomCid(t, rng)
-	tsCid10 := randomCid(t, rng)
-	tsCid50 := randomCid(t, rng)
+	si.gcRetentionEpochs = 20
 
-	insertTipsetMessage(t, si, tipsetMessage{
-		tipsetKeyCid: tsCid1.Bytes(),
-		height:       1,
-		reverted:     false,
-		messageCid:   randomCid(t, rng).Bytes(),
-		messageIndex: 0,
+	ev1 := fakeEvent(
+		abi.ActorID(1),
+		[]kv{
+			{k: "type", v: []byte("approval")},
+			{k: "signer", v: []byte("addr1")},
+		},
+		[]kv{
+			{k: "amount", v: []byte("2988181")},
+		},
+	)
+
+	ev2 := fakeEvent(
+		abi.ActorID(2),
+		[]kv{
+			{k: "type", v: []byte("approval")},
+			{k: "signer", v: []byte("addr2")},
+		},
+		[]kv{
+			{k: "amount", v: []byte("2988181")},
+		},
+	)
+
+	events := []types.Event{*ev1, *ev2}
+
+	fm := fakeMessage(address.TestAddress, address.TestAddress)
+	em1 := executedMessage{
+		msg: fm,
+		evs: events,
+	}
+
+	si.SetIdToRobustAddrFunc(func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool) {
+		idAddr, err := address.NewIDAddress(uint64(emitter))
+		if err != nil {
+			return address.Undef, false
+		}
+
+		return idAddr, true
 	})
 
-	insertTipsetMessage(t, si, tipsetMessage{
-		tipsetKeyCid: tsCid10.Bytes(),
-		height:       10,
-		reverted:     false,
-		messageCid:   randomCid(t, rng).Bytes(),
-		messageIndex: 0,
+	si.SetEventLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
+		if msgTs.Height() == 1 {
+			return []executedMessage{em1}, nil
+		}
+		return nil, nil
 	})
 
-	insertTipsetMessage(t, si, tipsetMessage{
-		tipsetKeyCid: tsCid50.Bytes(),
-		height:       50,
-		reverted:     false,
-		messageCid:   randomCid(t, rng).Bytes(),
-		messageIndex: 0,
-	})
+	// Create a fake tipset at height 1
+	fakeTipSet1 := fakeTipSet(t, rng, 1, nil)
+	fakeTipSet2 := fakeTipSet(t, rng, 10, nil)
+	fakeTipSet3 := fakeTipSet(t, rng, 50, nil)
+
+	// Set the dummy chainstore to return this tipset for height 1
+	cs.SetTipsetByHeightAndKey(1, fakeTipSet1.Key(), fakeTipSet1)  // empty DB
+	cs.SetTipsetByHeightAndKey(10, fakeTipSet2.Key(), fakeTipSet2) // empty DB
+	cs.SetTipsetByHeightAndKey(50, fakeTipSet3.Key(), fakeTipSet3) // empty DB
+
+	cs.SetMessagesForTipset(fakeTipSet1, []types.ChainMsg{fm})
+
+	// index tipset and events
+	require.NoError(t, si.Apply(ctx, fakeTipSet1, fakeTipSet2))
+	require.NoError(t, si.Apply(ctx, fakeTipSet2, fakeTipSet3))
+
+	// getLogs works for height 1
+	filter := &EventFilter{
+		MinHeight: 1,
+		MaxHeight: 1,
+	}
+	ces, err := si.GetEventsForFilter(ctx, filter, false)
+	require.NoError(t, err)
+	require.Len(t, ces, 2)
 
 	si.gc(ctx)
 
-	// tipset at height 1 and 10 should be removed
+	// getLogs does not work for height 1
+	_, err = si.GetEventsForFilter(ctx, filter, false)
+	require.Error(t, err)
+
+	// Verify that the tipset at height 1 is removed
 	var count int
-	err := si.db.QueryRow("SELECT COUNT(*) FROM tipset_message WHERE height = 1").Scan(&count)
+	err = si.db.QueryRow("SELECT COUNT(*) FROM tipset_message WHERE height = 1").Scan(&count)
 	require.NoError(t, err)
 	require.Equal(t, 0, count)
 
+	// Verify that the tipset at height 10 is not removed
 	err = si.db.QueryRow("SELECT COUNT(*) FROM tipset_message WHERE height = 10").Scan(&count)
 	require.NoError(t, err)
 	require.Equal(t, 0, count)
 
-	// tipset at height 50 should not be removed
+	// Verify that the tipset at height 50 is not removed
 	err = si.db.QueryRow("SELECT COUNT(*) FROM tipset_message WHERE height = 50").Scan(&count)
 	require.NoError(t, err)
 	require.Equal(t, 1, count)
