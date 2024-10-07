@@ -37,7 +37,7 @@ func (l *leaser) getOrRenewParticipationTicket(participant uint64, previous api.
 		return nil, api.ErrF3ParticipationTooManyInstances
 	}
 
-	currentInstance, _, _ := l.progress()
+	currentInstance := l.progress().ID
 	if len(previous) != 0 {
 		// A previous ticket is present. To avoid overlapping lease across multiple
 		// instances for the same participant check its validity and only proceed to
@@ -76,7 +76,7 @@ func (l *leaser) getOrRenewParticipationTicket(participant uint64, previous api.
 }
 
 func (l *leaser) participate(ticket api.F3ParticipationTicket) (api.F3ParticipationLease, error) {
-	currentInstance, _, _ := l.progress()
+	currentInstance := l.progress().ID
 	newLease, err := l.validate(currentInstance, ticket)
 	if err != nil {
 		return api.F3ParticipationLease{}, err

@@ -7769,25 +7769,25 @@
         },
         {
             "name": "Filecoin.F3GetProgress",
-            "description": "```go\nfunc (s *FullNodeStruct) F3GetProgress(p0 context.Context) (F3Progress, error) {\n\tif s.Internal.F3GetProgress == nil {\n\t\treturn *new(F3Progress), ErrNotSupported\n\t}\n\treturn s.Internal.F3GetProgress(p0)\n}\n```",
+            "description": "```go\nfunc (s *FullNodeStruct) F3GetProgress(p0 context.Context) (gpbft.Instant, error) {\n\tif s.Internal.F3GetProgress == nil {\n\t\treturn *new(gpbft.Instant), ErrNotSupported\n\t}\n\treturn s.Internal.F3GetProgress(p0)\n}\n```",
             "summary": "F3GetProgress returns the progress of the current F3 instance in terms of instance ID, round and phase.\n",
             "paramStructure": "by-position",
             "params": [],
             "result": {
-                "name": "F3Progress",
-                "description": "F3Progress",
+                "name": "gpbft.Instant",
+                "description": "gpbft.Instant",
                 "summary": "",
                 "schema": {
                     "examples": [
                         {
-                            "Instance": 42,
+                            "ID": 42,
                             "Round": 42,
                             "Phase": 0
                         }
                     ],
                     "additionalProperties": false,
                     "properties": {
-                        "Instance": {
+                        "ID": {
                             "title": "number",
                             "type": "number"
                         },

@@ -85,11 +85,9 @@ func (f3api *F3API) F3GetF3PowerTable(ctx context.Context, tsk types.TipSetKey) 
 	return f3api.F3.GetF3PowerTable(ctx, tsk)
 }
 
-func (f3api *F3API) F3GetProgress(context.Context) (api.F3Progress, error) {
+func (f3api *F3API) F3GetProgress(context.Context) (gpbft.Instant, error) {
 	if f3api.F3 == nil {
-		return api.F3Progress{}, api.ErrF3Disabled
+		return gpbft.Instant{}, api.ErrF3Disabled
 	}
-	var progress api.F3Progress
-	progress.Instance, progress.Round, progress.Phase = f3api.F3.Progress()
-	return progress, nil
+	return f3api.F3.Progress(), nil
 }

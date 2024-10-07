@@ -189,6 +189,6 @@ func (fff *F3) IsRunning() bool {
 	return fff.inner.IsRunning()
 }
 
-func (fff *F3) Progress() (instance, round uint64, phase gpbft.Phase) {
+func (fff *F3) Progress() gpbft.Instant {
 	return fff.inner.Progress()
 }

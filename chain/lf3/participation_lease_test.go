@@ -159,6 +159,10 @@ func TestLeaser(t *testing.T) {
 
 type mockProgress struct{ currentInstance uint64 }
 
-func (m *mockProgress) Progress() (uint64, uint64, gpbft.Phase) {
-	return m.currentInstance, 0, gpbft.INITIAL_PHASE
+func (m *mockProgress) Progress() gpbft.Instant {
+	return gpbft.Instant{
+		ID:    m.currentInstance,
+		Round: 0,
+		Phase: gpbft.INITIAL_PHASE,
+	}
 }

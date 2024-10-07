@@ -965,7 +965,7 @@ type FullNode interface {
 	// it's enabled, and an error when disabled entirely.
 	F3IsRunning(ctx context.Context) (bool, error) //perm:read
 	// F3GetProgress returns the progress of the current F3 instance in terms of instance ID, round and phase.
-	F3GetProgress(ctx context.Context) (F3Progress, error) //perm:read
+	F3GetProgress(ctx context.Context) (gpbft.Instant, error) //perm:read
 }
 
 // F3ParticipationTicket represents a ticket that authorizes a miner to
@@ -985,16 +985,6 @@ type F3ParticipationLease struct {
 	// ValidityTerm specifies the number of instances for which the lease remains
 	// valid from the FromInstance.
 	ValidityTerm uint64
-}
-
-// F3Progress encapsulates the current progress of the F3 instance, specifying
-// the instance ID, round, and the current phase of the consensus process.
-//
-// See FullNode.F3GetProgress.
-type F3Progress struct {
-	Instance uint64
-	Round    uint64
-	Phase    gpbft.Phase
 }
 
 // EthSubscriber is the reverse interface to the client, called after EthSubscribe

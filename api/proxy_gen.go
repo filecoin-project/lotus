@@ -272,7 +272,7 @@ type FullNodeMethods struct {
 
 	F3GetOrRenewParticipationTicket func(p0 context.Context, p1 address.Address, p2 F3ParticipationTicket, p3 uint64) (F3ParticipationTicket, error) `perm:"sign"`
 
-	F3GetProgress func(p0 context.Context) (F3Progress, error) `perm:"read"`
+	F3GetProgress func(p0 context.Context) (gpbft.Instant, error) `perm:"read"`
 
 	F3IsRunning func(p0 context.Context) (bool, error) `perm:"read"`
 
@@ -2210,15 +2210,15 @@ func (s *FullNodeStub) F3GetOrRenewParticipationTicket(p0 context.Context, p1 ad
 	return *new(F3ParticipationTicket), ErrNotSupported
 }
 
-func (s *FullNodeStruct) F3GetProgress(p0 context.Context) (F3Progress, error) {
+func (s *FullNodeStruct) F3GetProgress(p0 context.Context) (gpbft.Instant, error) {
 	if s.Internal.F3GetProgress == nil {
-		return *new(F3Progress), ErrNotSupported
+		return *new(gpbft.Instant), ErrNotSupported
 	}
 	return s.Internal.F3GetProgress(p0)
 }
 
-func (s *FullNodeStub) F3GetProgress(p0 context.Context) (F3Progress, error) {
-	return *new(F3Progress), ErrNotSupported
+func (s *FullNodeStub) F3GetProgress(p0 context.Context) (gpbft.Instant, error) {
+	return *new(gpbft.Instant), ErrNotSupported
 }
 
 func (s *FullNodeStruct) F3IsRunning(p0 context.Context) (bool, error) {
