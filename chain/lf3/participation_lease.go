@@ -77,14 +77,19 @@ func (l *leaser) getOrRenewParticipationTicket(participant uint64, previous api.
 
 func (l *leaser) participate(ticket api.F3ParticipationTicket) (api.F3ParticipationLease, error) {
 	currentInstance, _, _ := l.progress()
-	lease, err := l.validate(currentInstance, ticket)
+	newLease, err := l.validate(currentInstance, ticket)
 	if err != nil {
 		return api.F3ParticipationLease{}, err
 	}
 	l.mutex.Lock()
-	l.leases[lease.MinerID] = lease
-	l.mutex.Unlock()
-	return lease, nil
+	defer l.mutex.Unlock()
+	currentLease, found := l.leases[newLease.MinerID]
+	if found && currentLease.FromInstance > newLease.FromInstance {
+		// For safety, strictly require lease start instance to never decrease.
+		return api.F3ParticipationLease{}, api.ErrF3ParticipationTicketStartBeforeExisting
+	}
+	l.leases[newLease.MinerID] = newLease
+	return newLease, nil
 }
 
 func (l *leaser) getParticipantsByInstance(instance uint64) []uint64 {

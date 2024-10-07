@@ -91,6 +91,24 @@ func TestLeaser(t *testing.T) {
 		require.ErrorIs(t, err, api.ErrF3ParticipationIssuerMismatch)
 		require.Zero(t, lease)
 	})
+	t.Run("never decreasing start", func(t *testing.T) {
+		progress.currentInstance++
+		earlierTicket, err := subject.getOrRenewParticipationTicket(123, nil, 5)
+		require.NoError(t, err)
+		progress.currentInstance++
+		laterTicket, err := subject.getOrRenewParticipationTicket(123, nil, 5)
+		require.NoError(t, err)
+
+		lease, err := subject.participate(laterTicket)
+		require.NoError(t, err)
+		require.Equal(t, uint64(123), lease.MinerID)
+		require.Equal(t, uint64(5), lease.ValidityTerm)
+		require.Equal(t, progress.currentInstance, lease.FromInstance)
+
+		lease, err = subject.participate(earlierTicket)
+		require.ErrorIs(t, err, api.ErrF3ParticipationTicketStartBeforeExisting)
+		require.Zero(t, lease)
+	})
 	t.Run("expired previous ticket", func(t *testing.T) {
 		previous, err := subject.getOrRenewParticipationTicket(123, nil, 5)
 		require.NoError(t, err)

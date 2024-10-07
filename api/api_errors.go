@@ -15,6 +15,7 @@ const (
 	EF3ParticipationTicketExpired
 	EF3ParticipationIssuerMismatch
 	EF3ParticipationTooManyInstances
+	EF3ParticipationTicketStartBeforeExisting
 )
 
 var (
@@ -31,6 +32,9 @@ var (
 	// ErrF3ParticipationTooManyInstances signals that participation ticket cannot be
 	// issued because it asks for too many instances.
 	ErrF3ParticipationTooManyInstances = errF3ParticipationTooManyInstances{}
+	// ErrF3ParticipationTicketStartBeforeExisting signals that participation ticket
+	// is before the start instance of an existing lease held by the miner.
+	ErrF3ParticipationTicketStartBeforeExisting = errF3ParticipationTicketStartBeforeExisting{}
 
 	_ error = (*ErrOutOfGas)(nil)
 	_ error = (*ErrActorNotFound)(nil)
@@ -48,6 +52,7 @@ func init() {
 	RPCErrors.Register(EF3ParticipationTicketExpired, new(*errF3ParticipationTicketExpired))
 	RPCErrors.Register(EF3ParticipationIssuerMismatch, new(*errF3ParticipationIssuerMismatch))
 	RPCErrors.Register(EF3ParticipationTooManyInstances, new(*errF3ParticipationTooManyInstances))
+	RPCErrors.Register(EF3ParticipationTicketStartBeforeExisting, new(*errF3ParticipationTicketStartBeforeExisting))
 }
 
 func ErrorIsIn(err error, errorTypes []error) bool {
@@ -89,3 +94,9 @@ func (errF3ParticipationIssuerMismatch) Error() string { return "issuer does not
 type errF3ParticipationTooManyInstances struct{}
 
 func (errF3ParticipationTooManyInstances) Error() string { return "requested instance count too high" }
+
+type errF3ParticipationTicketStartBeforeExisting struct{}
+
+func (errF3ParticipationTicketStartBeforeExisting) Error() string {
+	return "ticket starts before existing lease"
+}

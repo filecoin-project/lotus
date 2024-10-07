@@ -428,6 +428,9 @@ func (p *f3Participator) tryF3Participate(ctx context.Context, ticket api.F3Part
 		case errors.Is(err, api.ErrF3ParticipationTicketExpired):
 			log.Warnw("F3 participation ticket expired while attempting to participate. Acquiring a new ticket.", "attempts", p.backoff.Attempt(), "err", err)
 			return api.F3ParticipationLease{}, false, nil
+		case errors.Is(err, api.ErrF3ParticipationTicketStartBeforeExisting):
+			log.Warnw("F3 participation ticket starts before the existing lease. Acquiring a new ticket.", "attempts", p.backoff.Attempt(), "err", err)
+			return api.F3ParticipationLease{}, false, nil
 		case errors.Is(err, api.ErrF3ParticipationTicketInvalid):
 			log.Errorw("F3 participation ticket is not valid. Acquiring a new ticket after backoff.", "backoff", p.backoff.Duration(), "attempts", p.backoff.Attempt(), "err", err)
 			p.backOff(ctx)
@@ -485,6 +488,7 @@ func (p *f3Participator) backOffFor(ctx context.Context, d time.Duration) {
 	// mutex despite the fact that f3Participator is never (and should never) be
 	// called from multiple goroutines.
 	timer := time.NewTimer(d)
+	defer timer.Stop()
 	select {
 	case <-ctx.Done():
 		return
@@ -510,35 +514,37 @@ func F3Participation(mctx helpers.MetricsCtx, lc fx.Lifecycle, node v1api.FullNo
 		// leaseTerm The number of instances the miner will attempt to lease from nodes.
 		leaseTerm = 5
 	)
+
+	participator := newF3Participator(
+		node,
+		participant,
+		&backoff.Backoff{
+			Min:    1 * time.Second,
+			Max:    1 * time.Minute,
+			Factor: 1.5,
+		},
+		checkProgressMaxAttempts,
+		checkProgressInterval,
+		leaseTerm,
+	)
+
 	ctx, cancel := context.WithCancel(mctx)
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
-		participator := newF3Participator(
-			node,
-			participant,
-			&backoff.Backoff{
-				Min:    1 * time.Second,
-				Max:    1 * time.Minute,
-				Factor: 1.5,
-			},
-			checkProgressMaxAttempts,
-			checkProgressInterval,
-			leaseTerm,
-		)
-
-		switch err := participator.participate(ctx); {
-		case err == nil, errors.Is(err, context.Canceled):
-			log.Infof("Stopped participating in F3")
-		default:
-			log.Errorw("F3 participation stopped abruptly", "err", err)
-		}
-	}()
-
 	lc.Append(fx.Hook{
-		OnStop: func(ctx context.Context) error {
+		OnStart: func(context.Context) error {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				switch err := participator.participate(ctx); {
+				case err == nil, ctx.Err() != nil:
+					log.Infof("Stopped participating in F3")
+				default:
+					log.Errorw("F3 participation stopped abruptly", "err", err)
+				}
+			}()
+			return nil
+		},
+		OnStop: func(context.Context) error {
 			cancel()
 			wg.Wait()
 			return nil

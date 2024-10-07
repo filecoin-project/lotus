@@ -944,6 +944,11 @@ type FullNode interface {
 	// (ErrF3ParticipationTicketExpired), the provider must obtain a new ticket by
 	// calling F3GetOrRenewParticipationTicket.
 	//
+	// The start instance associated to the given ticket cannot be less than the
+	// start instance of any existing lease held by the miner. Otherwise,
+	// ErrF3ParticipationTicketStartBeforeExisting is returned. In this case, the
+	// miner should acquire a new ticket before attempting to participate again.
+	//
 	// For details on obtaining or renewing a ticket, see F3GetOrRenewParticipationTicket.
 	F3Participate(ctx context.Context, ticket F3ParticipationTicket) (F3ParticipationLease, error) //perm:sign
 	// F3GetCertificate returns a finality certificate at given instance.
