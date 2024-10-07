@@ -1165,3 +1165,14 @@ type EthCreateTraceResult struct {
 	GasUsed EthUint64   `json:"gasUsed"`
 	Code    EthBytes    `json:"code"`
 }
+
+type EthCallError struct {
+	Message string
+	Data    string
+	Code    int
+	Meta    []byte
+}
+
+func (e *EthCallError) Error() string {
+	return string(e.Data)
+}

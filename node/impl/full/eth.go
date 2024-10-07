@@ -179,11 +179,12 @@ type EthAPI struct {
 
 type EthCallError struct {
 	Message string
-	Data    []byte
+	Code    int
+	Data    string
 }
 
 func (e *EthCallError) Error() string {
-	return e.Message
+	return e.Data
 }
 
 var ErrNullRound = errors.New("requested epoch was a null round")
@@ -1488,7 +1489,8 @@ func (a *EthModule) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (et
 		}
 		return ethtypes.EthUint64(0), &EthCallError{
 			Message: fmt.Sprintf("failed to estimate gas: %s", err),
-			Data:    []byte(parseEthRevert(invokeResult.MsgRct.Return)),
+			Code:    -32000,
+			Data:    parseEthRevert(invokeResult.MsgRct.Return),
 		}
 	}
 
@@ -1627,27 +1629,77 @@ func ethGasSearch(
 func (a *EthModule) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {
 	msg, err := ethCallToFilecoinMessage(ctx, tx)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to convert ethcall to filecoin message: %w", err)
+		return nil, &ethtypes.EthCallError{
+			Message: fmt.Sprintf("failed to convert ethcall to filecoin message: %s", err),
+			Code:    -32000,
+			Data:    err.Error(),
+		}
 	}
 
 	ts, err := getTipsetByEthBlockNumberOrHash(ctx, a.Chain, blkParam)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to process block param: %v; %w", blkParam, err)
+		return nil, &ethtypes.EthCallError{
+			Message: fmt.Sprintf("failed to process block param: %v; %s", blkParam, err),
+			Code:    -32000,
+			Data:    err.Error(),
+		}
 	}
 
 	invokeResult, err := a.applyMessage(ctx, msg, ts.Key())
 	if err != nil {
-		return nil, &EthCallError{
-			Message: err.Error(),
-			Data:    []byte(parseEthRevert(invokeResult.MsgRct.Return)),
+
+		if ethErr, ok := err.(*EthCallError); ok {
+			return nil, ethErr
+		}
+
+		if strings.Contains(err.Error(), "execution reverted") {
+			revertReason := parseEthRevert([]byte(err.Error()))
+			return nil, &ethtypes.EthCallError{
+				Message: fmt.Sprintf("execution reverted: %s", revertReason),
+				Code:    -32000,
+				Data:    revertReason,
+			}
+		}
+
+		return nil, &ethtypes.EthCallError{
+			Message: fmt.Sprintf("call failed: %s", err.Error()),
+			Code:    -32000,
+			Data:    err.Error(),
 		}
 	}
 
+	if invokeResult == nil {
+		return nil, &ethtypes.EthCallError{
+			Message: "invoke result is nil",
+			Code:    -32000,
+			Data:    "invoke result is nil",
+		}
+	}
+
+	if invokeResult.MsgRct == nil {
+		return ethtypes.EthBytes{}, nil
+	}
+
 	if msg.To == builtintypes.EthereumAddressManagerActorAddr {
-		// As far as I can tell, the Eth API always returns empty on contract deployment
 		return ethtypes.EthBytes{}, nil
 	} else if len(invokeResult.MsgRct.Return) > 0 {
-		return cbg.ReadByteArray(bytes.NewReader(invokeResult.MsgRct.Return), uint64(len(invokeResult.MsgRct.Return)))
+		result := ethtypes.EthBytes{}
+		defer func() {
+			if r := recover(); r != nil {
+				result = ethtypes.EthBytes{}
+			}
+		}()
+
+		reader := bytes.NewReader(invokeResult.MsgRct.Return)
+		result, err = cbg.ReadByteArray(reader, uint64(len(invokeResult.MsgRct.Return)))
+		if err != nil {
+			return nil, &ethtypes.EthCallError{
+				Message: fmt.Sprintf("failed to read byte array: %s", err),
+				Code:    -32000,
+				Data:    fmt.Sprintf("failed to read byte array: %s", err),
+			}
+		}
+		return result, nil
 	}
 
 	return ethtypes.EthBytes{}, nil
