@@ -43,7 +43,10 @@ For certain node operators, such as full archival nodes or systems that need to 
 
 ## 📝 Changelog
 
-See https://github.com/filecoin-project/lotus/compare/v1.29.2...release/v1.30.0 for the set of changes since the last stable release.
+For the set of changes since the last stable release:
+
+* Node: https://github.com/filecoin-project/lotus/compare/v1.29.2...v1.30.0-rc1
+* Miner: https://github.com/filecoin-project/lotus/compare/v1.28.3...miner/v1.30.0-rc1
 
 ## 👨‍👩‍👧‍👦 Contributors
 
