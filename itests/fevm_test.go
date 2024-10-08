@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"testing"
 	"time"
@@ -1323,19 +1324,29 @@ func TestMcopy(t *testing.T) {
 	ctx, cancel, client := kit.SetupFEVMTest(t, upgradeSchedule)
 	defer cancel()
 
-	// TODO: below here ------------------------------------------------------------------------------
-
 	// try to deploy the contract before the upgrade, expect an error somewhere' in deploy or in call,
 	// if the error is in deploy we may need to implement DeployContractFromFilename here where we can
 	// assert an error
+
+	// 0000000000000000000000000000000000000000000000000000000000000020: The offset for the bytes argument (32 bytes).
+	// 0000000000000000000000000000000000000000000000000000000000000008: The length of the bytes data (8 bytes for "testdata").
+	// 7465737464617461000000000000000000000000000000000000000000000000: The hexadecimal representation of "testdata", padded to 32 bytes.
+	hexString := "000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000087465737464617461000000000000000000000000000000000000000000000000"
+
+	// Decode the hex string into a byte slice
+	inputArgument, err := hex.DecodeString(hexString)
+	if err != nil {
+		log.Fatalf("Failed to decode hex string: %v", err)
+	}
+
 	filenameActor := "contracts/mcopy/MCOPYTest.hex"
 	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
-	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "optimizedCopy(string)", []byte("testdata"))
+	_, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "optimizedCopy(bytes)", inputArgument)
 	// We expect an error here due to the contract reverting or another issue.
 	require.Error(t, err)
 
 	// Also check for the specific error message
-	expectedErrMsg := "contract reverted (33)"
+	expectedErrMsg := "undefined instruction (35)"
 	require.Contains(t, err.Error(), expectedErrMsg)
 
 	// wait for the upgrade
@@ -1343,6 +1354,6 @@ func TestMcopy(t *testing.T) {
 
 	// should be able to deploy and call the contract now
 	fromAddr, contractAddr = client.EVM().DeployContractFromFilename(ctx, filenameActor)
-	_, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "optimizedCopy(string)", []byte("testdata"))
+	_, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "optimizedCopy(bytes)", inputArgument)
 	require.NoError(t, err)
 }
