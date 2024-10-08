@@ -43,7 +43,7 @@ require (
 	github.com/filecoin-project/go-cbor-util v0.0.1
 	github.com/filecoin-project/go-commp-utils/v2 v2.1.0
 	github.com/filecoin-project/go-crypto v0.1.0
-	github.com/filecoin-project/go-f3 v0.3.0
+	github.com/filecoin-project/go-f3 v0.7.0
 	github.com/filecoin-project/go-fil-commcid v0.2.0
 	github.com/filecoin-project/go-hamt-ipld/v3 v3.4.0
 	github.com/filecoin-project/go-jsonrpc v0.6.0
@@ -177,10 +177,13 @@ require (
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/benbjohnson/clock v1.3.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
+	github.com/bits-and-blooms/bitset v1.13.0 // indirect
 	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/cilium/ebpf v0.9.1 // indirect
+	github.com/consensys/bavard v0.1.13 // indirect
+	github.com/consensys/gnark-crypto v0.12.1 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.4 // indirect
 	github.com/cskr/pubsub v1.0.2 // indirect
 	github.com/daaku/go.zipexe v1.0.2 // indirect
@@ -267,6 +270,7 @@ require (
 	github.com/mikioh/tcpopt v0.0.0-20190314235656-172688c1accc // indirect
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1 // indirect
 	github.com/minio/sha256-simd v1.0.1 // indirect
+	github.com/mmcloughlin/addchain v0.4.0 // indirect
 	github.com/mr-tron/base58 v1.2.0 // indirect
 	github.com/multiformats/go-base36 v0.2.0 // indirect
 	github.com/multiformats/go-multiaddr-fmt v0.1.0 // indirect
@@ -322,6 +326,7 @@ require (
 	github.com/zondax/ledger-go v0.14.3 // indirect
 	gitlab.com/yawning/secp256k1-voi v0.0.0-20230925100816-f2616030848b // indirect
 	gitlab.com/yawning/tuplehash v0.0.0-20230713102510-df83abbf9a02 // indirect
+	go.dedis.ch/kyber/v4 v4.0.0-pre2.0.20240924132404-4de33740016e // indirect
 	go.opentelemetry.io/otel/trace v1.28.0 // indirect
 	go.uber.org/dig v1.17.1 // indirect
 	go.uber.org/mock v0.4.0 // indirect
@@ -337,4 +342,5 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	howett.net/plist v0.0.0-20181124034731-591f970eefbb // indirect
 	lukechampine.com/blake3 v1.3.0 // indirect
+	rsc.io/tmplfunc v0.0.3 // indirect
 )

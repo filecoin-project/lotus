@@ -2,10 +2,6 @@ package kit
 
 import (
 	"math"
-	"time"
-
-	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -214,18 +210,9 @@ func MutateSealingConfig(mut func(sc *config.SealingConfig)) NodeOpt {
 		})))
 }
 
-func F3Enabled(bootstrapEpoch abi.ChainEpoch, blockDelay time.Duration, finality abi.ChainEpoch, manifestProvider peer.ID) NodeOpt {
+func F3Enabled(cfg *lf3.Config) NodeOpt {
 	return ConstructorOpts(
-		node.Override(new(*lf3.Config), func(nn dtypes.NetworkName) *lf3.Config {
-			c := lf3.NewConfig(manifestProvider, true, cid.Undef)(nn)
-			c.InitialManifest.Pause = false
-			c.InitialManifest.EC.Period = blockDelay
-			c.InitialManifest.Gpbft.Delta = blockDelay / 5
-			c.InitialManifest.EC.Finality = int64(finality)
-			c.InitialManifest.BootstrapEpoch = int64(bootstrapEpoch)
-			c.InitialManifest.EC.HeadLookback = 0
-			return c
-		}),
+		node.Override(new(*lf3.Config), cfg),
 		node.Override(new(manifest.ManifestProvider), lf3.NewManifestProvider),
 		node.Override(new(*lf3.F3), lf3.New),
 	)
