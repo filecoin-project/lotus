@@ -5,12 +5,17 @@ import (
 	"database/sql"
 	"errors"
 	"os"
+	"strings"
+	"time"
 
 	ipld "github.com/ipfs/go-ipld-format"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/types"
 )
+
+const maxRetries = 3
+const retryDelay = 150 * time.Millisecond
 
 // PopulateFromSnapshot initializes and populates the chain index from a snapshot.
 //
@@ -91,29 +96,55 @@ func toTipsetKeyCidBytes(ts *types.TipSet) ([]byte, error) {
 	return tsKeyCid.Bytes(), nil
 }
 
-func withTx(ctx context.Context, db *sql.DB, fn func(*sql.Tx) error) (err error) {
-	var tx *sql.Tx
-	tx, err = db.BeginTx(ctx, nil)
-	if err != nil {
-		return xerrors.Errorf("failed to begin transaction: %w", err)
+func withTx(ctx context.Context, db *sql.DB, fn func(*sql.Tx) error) error {
+	var err error
+	for i := 0; i < maxRetries; i++ {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		var tx *sql.Tx
+		tx, err = db.BeginTx(ctx, nil)
+		if err != nil {
+			return xerrors.Errorf("failed to begin transaction: %w", err)
+		}
+
+		defer func() {
+			if p := recover(); p != nil {
+				// A panic occurred, rollback and repanic
+				if tx != nil {
+					_ = tx.Rollback()
+				}
+				panic(p)
+			}
+		}()
+
+		err = fn(tx)
+		if err == nil {
+			if commitErr := tx.Commit(); commitErr != nil {
+				return xerrors.Errorf("failed to commit transaction: %w", commitErr)
+			}
+			return nil
+		}
+
+		_ = tx.Rollback()
+
+		if !isRetryableError(err) {
+			return xerrors.Errorf("transaction failed: %w", err)
+		}
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(retryDelay):
+			// Retry after delay
+		}
 	}
 
-	defer func() {
-		if p := recover(); p != nil {
-			// A panic occurred, rollback and repanic
-			_ = tx.Rollback()
-			panic(p)
-		} else if err != nil {
-			// Something went wrong, rollback
-			_ = tx.Rollback()
-		} else {
-			// All good, commit
-			err = tx.Commit()
-		}
-	}()
+	return xerrors.Errorf("transaction failed after %d retries; last error: %w", maxRetries, err)
+}
 
-	err = fn(tx)
-	return
+func isRetryableError(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "database is locked")
 }
 
 func isIndexedValue(b uint8) bool {

@@ -4,8 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"strings"
-	"time"
 
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
@@ -28,26 +26,25 @@ func (si *SqliteIndexer) ChainValidateIndex(ctx context.Context, epoch abi.Chain
 		return nil, errors.New("ChainValidateIndex called on closed indexer")
 	}
 
-	// we need to take a write lock here so that back-filling does not race with real time chain indexing
-	si.writerLk.Lock()
-	defer si.writerLk.Unlock()
-
 	// this API only works for epoch < head because of deferred execution in Filecoin
 	head := si.cs.GetHeaviestTipSet()
 	if epoch >= head.Height() {
 		return nil, xerrors.Errorf("cannot validate index at epoch %d, can only validate at an epoch less than chain head epoch %d", epoch, head.Height())
 	}
 
-	var isIndexEmpty bool
-	err := si.stmts.isIndexEmptyStmt.QueryRowContext(ctx).Scan(&isIndexEmpty)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to check if index is empty: %w", err)
-	}
-
 	// fetch the tipset at the given epoch on the canonical chain
 	expectedTs, err := si.cs.GetTipsetByHeight(ctx, epoch, nil, true)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get tipset at height %d: %w", epoch, err)
+	}
+
+	// we need to take a write lock here so that back-filling does not race with real time chain indexing
+	si.writerLk.Lock()
+	defer si.writerLk.Unlock()
+
+	var isIndexEmpty bool
+	if err := si.stmts.isIndexEmptyStmt.QueryRowContext(ctx).Scan(&isIndexEmpty); err != nil {
+		return nil, xerrors.Errorf("failed to check if index is empty: %w", err)
 	}
 
 	// Canonical chain has a null round at the epoch -> return if index is empty otherwise validate that index also
@@ -300,16 +297,7 @@ func (si *SqliteIndexer) backfillMissingTipset(ctx context.Context, ts *types.Ti
 		})
 	}
 
-	err = backfillFunc()
-	if err != nil && strings.Contains(err.Error(), "database is locked") {
-		log.Warnf("backfill of height %d failed due to database lock, retrying in 100ms", ts.Height())
-		time.Sleep(100 * time.Millisecond)
-		err = backfillFunc()
-		if err == nil {
-			log.Infof("backfill of height %d succeeded after retry", ts.Height())
-		}
-	}
-	if err != nil {
+	if err := backfillFunc(); err != nil {
 		return nil, xerrors.Errorf("failed to backfill tipset: %w", err)
 	}
 
