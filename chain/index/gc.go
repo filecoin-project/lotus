@@ -8,7 +8,6 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
-	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
 
 var (
@@ -21,7 +20,6 @@ func (si *SqliteIndexer) gcLoop() {
 
 	// Initial cleanup before entering the loop
 	si.gc(si.ctx)
-	si.cleanUpRevertedTipsets(si.ctx)
 
 	cleanupTicker := time.NewTicker(cleanupInterval)
 	defer cleanupTicker.Stop()
@@ -34,50 +32,13 @@ func (si *SqliteIndexer) gcLoop() {
 		select {
 		case <-cleanupTicker.C:
 			si.gc(si.ctx)
-			si.cleanUpRevertedTipsets(si.ctx)
 		case <-si.ctx.Done():
 			return
 		}
 	}
 }
 
-func (si *SqliteIndexer) cleanUpRevertedTipsets(ctx context.Context) {
-	si.writerLk.Lock()
-	defer si.writerLk.Unlock()
-
-	log.Info("starting cleanup of reverted tipsets")
-
-	head := si.cs.GetHeaviestTipSet()
-	if head == nil {
-		log.Warn("no head found, skipping reverted tipset cleanup")
-		return
-	}
-
-	removalEpoch := head.Height() - (3 * policy.ChainFinality)
-	if removalEpoch <= 0 {
-		log.Info("no applicable reverted tipsets to remove; skipping reverted tipset cleanup")
-		return
-	}
-
-	res, err := si.stmts.removeRevertedTipsetsBeforeHeightStmt.ExecContext(ctx, removalEpoch)
-	if err != nil {
-		log.Errorw("failed to remove reverted tipsets before height", "height", removalEpoch, "error", err)
-		return
-	}
-
-	rows, err := res.RowsAffected()
-	if err != nil {
-		log.Errorw("failed to get rows affected for reverted tipsets cleanup", "error", err)
-		return
-	}
-
-	log.Infof("removed %d reverted entries before epoch %d", rows, removalEpoch)
-}
-
 func (si *SqliteIndexer) gc(ctx context.Context) {
-	si.writerLk.Lock()
-	defer si.writerLk.Unlock()
-
 	if si.gcRetentionEpochs <= 0 {
 		log.Info("gc retention epochs is not set, skipping gc")
 		return
