@@ -124,6 +124,7 @@ func init() {
 	addExample(api.FullAPIVersion1)
 	addExample(api.PCHInbound)
 	addExample(time.Minute)
+	addExample(gpbft.INITIAL_PHASE)
 
 	addExample(network.ReachabilityPublic)
 	addExample(buildconstants.TestNetworkVersion)
@@ -420,6 +421,7 @@ func init() {
 	})
 	addExample(&certs.FinalityCertificate{})
 	addExample(&manifest.Manifest{})
+	addExample(gpbft.NetworkName("filecoin"))
 	addExample(gpbft.ActorID(1000))
 }
 

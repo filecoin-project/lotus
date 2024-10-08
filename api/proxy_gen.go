@@ -270,9 +270,13 @@ type FullNodeMethods struct {
 
 	F3GetManifest func(p0 context.Context) (*manifest.Manifest, error) `perm:"read"`
 
+	F3GetOrRenewParticipationTicket func(p0 context.Context, p1 address.Address, p2 F3ParticipationTicket, p3 uint64) (F3ParticipationTicket, error) `perm:"sign"`
+
+	F3GetProgress func(p0 context.Context) (gpbft.Instant, error) `perm:"read"`
+
 	F3IsRunning func(p0 context.Context) (bool, error) `perm:"read"`
 
-	F3Participate func(p0 context.Context, p1 address.Address, p2 time.Time, p3 time.Time) (bool, error) `perm:"sign"`
+	F3Participate func(p0 context.Context, p1 F3ParticipationTicket) (F3ParticipationLease, error) `perm:"sign"`
 
 	FilecoinAddressToEthAddress func(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthAddress, error) `perm:"read"`
 
@@ -2195,6 +2199,28 @@ func (s *FullNodeStub) F3GetManifest(p0 context.Context) (*manifest.Manifest, er
 	return nil, ErrNotSupported
 }
 
+func (s *FullNodeStruct) F3GetOrRenewParticipationTicket(p0 context.Context, p1 address.Address, p2 F3ParticipationTicket, p3 uint64) (F3ParticipationTicket, error) {
+	if s.Internal.F3GetOrRenewParticipationTicket == nil {
+		return *new(F3ParticipationTicket), ErrNotSupported
+	}
+	return s.Internal.F3GetOrRenewParticipationTicket(p0, p1, p2, p3)
+}
+
+func (s *FullNodeStub) F3GetOrRenewParticipationTicket(p0 context.Context, p1 address.Address, p2 F3ParticipationTicket, p3 uint64) (F3ParticipationTicket, error) {
+	return *new(F3ParticipationTicket), ErrNotSupported
+}
+
+func (s *FullNodeStruct) F3GetProgress(p0 context.Context) (gpbft.Instant, error) {
+	if s.Internal.F3GetProgress == nil {
+		return *new(gpbft.Instant), ErrNotSupported
+	}
+	return s.Internal.F3GetProgress(p0)
+}
+
+func (s *FullNodeStub) F3GetProgress(p0 context.Context) (gpbft.Instant, error) {
+	return *new(gpbft.Instant), ErrNotSupported
+}
+
 func (s *FullNodeStruct) F3IsRunning(p0 context.Context) (bool, error) {
 	if s.Internal.F3IsRunning == nil {
 		return false, ErrNotSupported
@@ -2206,15 +2232,15 @@ func (s *FullNodeStub) F3IsRunning(p0 context.Context) (bool, error) {
 	return false, ErrNotSupported
 }
 
-func (s *FullNodeStruct) F3Participate(p0 context.Context, p1 address.Address, p2 time.Time, p3 time.Time) (bool, error) {
+func (s *FullNodeStruct) F3Participate(p0 context.Context, p1 F3ParticipationTicket) (F3ParticipationLease, error) {
 	if s.Internal.F3Participate == nil {
-		return false, ErrNotSupported
+		return *new(F3ParticipationLease), ErrNotSupported
 	}
-	return s.Internal.F3Participate(p0, p1, p2, p3)
+	return s.Internal.F3Participate(p0, p1)
 }
 
-func (s *FullNodeStub) F3Participate(p0 context.Context, p1 address.Address, p2 time.Time, p3 time.Time) (bool, error) {
-	return false, ErrNotSupported
+func (s *FullNodeStub) F3Participate(p0 context.Context, p1 F3ParticipationTicket) (F3ParticipationLease, error) {
+	return *new(F3ParticipationLease), ErrNotSupported
 }
 
 func (s *FullNodeStruct) FilecoinAddressToEthAddress(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthAddress, error) {

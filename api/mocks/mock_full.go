@@ -1290,6 +1290,36 @@ func (mr *MockFullNodeMockRecorder) F3GetManifest(arg0 interface{}) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3GetManifest", reflect.TypeOf((*MockFullNode)(nil).F3GetManifest), arg0)
 }
 
+// F3GetOrRenewParticipationTicket mocks base method.
+func (m *MockFullNode) F3GetOrRenewParticipationTicket(arg0 context.Context, arg1 address.Address, arg2 api.F3ParticipationTicket, arg3 uint64) (api.F3ParticipationTicket, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "F3GetOrRenewParticipationTicket", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(api.F3ParticipationTicket)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// F3GetOrRenewParticipationTicket indicates an expected call of F3GetOrRenewParticipationTicket.
+func (mr *MockFullNodeMockRecorder) F3GetOrRenewParticipationTicket(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3GetOrRenewParticipationTicket", reflect.TypeOf((*MockFullNode)(nil).F3GetOrRenewParticipationTicket), arg0, arg1, arg2, arg3)
+}
+
+// F3GetProgress mocks base method.
+func (m *MockFullNode) F3GetProgress(arg0 context.Context) (gpbft.Instant, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "F3GetProgress", arg0)
+	ret0, _ := ret[0].(gpbft.Instant)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// F3GetProgress indicates an expected call of F3GetProgress.
+func (mr *MockFullNodeMockRecorder) F3GetProgress(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3GetProgress", reflect.TypeOf((*MockFullNode)(nil).F3GetProgress), arg0)
+}
+
 // F3IsRunning mocks base method.
 func (m *MockFullNode) F3IsRunning(arg0 context.Context) (bool, error) {
 	m.ctrl.T.Helper()
@@ -1306,18 +1336,18 @@ func (mr *MockFullNodeMockRecorder) F3IsRunning(arg0 interface{}) *gomock.Call {
 }
 
 // F3Participate mocks base method.
-func (m *MockFullNode) F3Participate(arg0 context.Context, arg1 address.Address, arg2, arg3 time.Time) (bool, error) {
+func (m *MockFullNode) F3Participate(arg0 context.Context, arg1 api.F3ParticipationTicket) (api.F3ParticipationLease, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "F3Participate", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(bool)
+	ret := m.ctrl.Call(m, "F3Participate", arg0, arg1)
+	ret0, _ := ret[0].(api.F3ParticipationLease)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // F3Participate indicates an expected call of F3Participate.
-func (mr *MockFullNodeMockRecorder) F3Participate(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+func (mr *MockFullNodeMockRecorder) F3Participate(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3Participate", reflect.TypeOf((*MockFullNode)(nil).F3Participate), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3Participate", reflect.TypeOf((*MockFullNode)(nil).F3Participate), arg0, arg1)
 }
 
 // FilecoinAddressToEthAddress mocks base method.
