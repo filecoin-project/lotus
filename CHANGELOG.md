@@ -1,27 +1,107 @@
 # Lotus changelog
 
-# UNRELEASED
+# Node and Miner v1.30.0-rc1 / 2024-10-08
 
-## New features
+This is the first release candidate of the upcoming MANDATORY Lotus v1.30.0 release, which will deliver the Filecoin network version 24, codenamed Tuk Tuk 🛺.
 
-* Add `EthSendRawTransactionUntrusted` RPC method to be used for the gateway when accepting `EthSendRawTransaction` and `eth_sendRawTransaction`. Applies a tighter limit on the number of messages in the queue from a single sender and applies additional restrictions on nonce increments. ([filecoin-project/lotus#12431](https://github.com/filecoin-project/lotus/pull/12431))
-* [Checkpoint TipSets finalized by F3](https://github.com/filecoin-project/lotus/pull/12460): Once a decision is made by F3, the TipSet is check-pointed in `ChainStore`. As part of this change, any missing TipSets are asynchronously synced as required by the `ChainStore` checkpointing mechanism.
-* Add an environment variable, `F3_INITIAL_POWERTABLE_CID` to allow specifying the initial power table used by F3 ([filecoin-project/lotus#12502](https://github.com/filecoin-project/lotus/pull/12502)). This may be used to help a lotus node re-sync the F3 chain when syncing from a snapshot after the F3 upgrade epoch. The precise CID to use here won't be known until the F3 is officially "live".
-* Added `StateMinerInitialPledgeForSector` RPC method and deprecated existing `StateMinerInitialPledgeCollateral` method. Since ProveCommitSectors3 and ProveReplicaUpdates3, sector onboarding no longer includes an explicit notion of "deals", and precommit messages no longer contain deal information. This makes the existing `StateMinerInitialPledgeCollateral` unable to properly calculate pledge requirements with only the precommit. `StateMinerInitialPledgeForSector` is a new simplified calculator that simply takes duration, sector size, and verified size and estimates pledge based on current network conditions. Please note that the `StateMinerInitialPledgeCollateral` method will be removed entirely in the next non-patch release. ([filecoin-project/lotus#12384](https://github.com/filecoin-project/lotus/pull/12384)
-* Implement [FIP-0081](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0081.md) and its migration for NV24. Initial pledge collateral will now be calculated using a 70% / 30% split between "simple" and "baseline" in the initial consensus pledge contribution to collateral calculation. The change in this calculation will begin at NV24 activation and ramp up from the current split of 100% / 0% to the eventual 70% / 30% over the course of a year so as to minimise impact on existing operations. ([filecoin-project/lotus#12526](https://github.com/filecoin-project/lotus/pull/12526)
-* Update to F3 0.4.0 ([filecoin-project/lotus#12547](https://github.com/filecoin-project/lotus/pull/12547)). This includes additional performance enhancements and bug fixes.
-* [Ticket-based F3 participation API](https://github.com/filecoin-project/lotus/pull/12531): This update introduces a new design where participation tickets grant a temporary lease, allowing storage providers to sign as part of a single GPBFT instance at any given point in time. This design ensures that tickets are checked for validity and issuer alignment, handling errors robustly in order to avoid self-equivocation during GPBFT instances.
+> [!NOTE]
+> 1. This release candidate does NOT set a calibration network upgrade epoch.  It will be added in the second release candidate (expected October 14th).
+> 2. This release candidate does NOT set the mainnet network upgrade epoch.  It will be added in the final release (expected October 30th).
 
-## Improvements
+- You can follow this release issue for keeping up with the release dates, epochs, and updates: https://github.com/filecoin-project/lotus/issues/12480
 
+## ☢️ Upgrade Warnings ☢️
 
-- Update `EthGetBlockByNumber` to return a pointer to ethtypes.EthBlock or nil for null rounds. ([filecoin-project/lotus#12529](https://github.com/filecoin-project/lotus/pull/12529))
-- Reduce size of embedded genesis CAR files by removing WASM actor blocks and compressing with zstd. This reduces the `lotus` binary size by approximately 10 MiB. ([filecoin-project/lotus#12439](https://github.com/filecoin-project/lotus/pull/12439))
-- Add ChainSafe operated Calibration archival node to the bootstrap list ([filecoin-project/lotus#12517](https://github.com/filecoin-project/lotus/pull/12517))
+- If you are running the v1.28.x version of Lotus, please go through the Upgrade Warnings section for the v1.28.* releases and v1.29.*, before upgrading to this RC.
+- This release requires a minimum Go version of v1.22.7 or higher.
+- The `releases` branch has been deprecated with the 202408 split of 'Lotus Node' and 'Lotus Miner'. See https://github.com/filecoin-project/lotus/blob/master/LOTUS_RELEASE_FLOW.md#why-is-the-releases-branch-deprecated-and-what-are-alternatives for more info and alternatives for getting the latest release for both the 'Lotus Node' and 'Lotus Miner' based on the Branch and Tag Strategy.
+   - To get the latest Lotus Node tag: git tag -l 'v*' | sort -V -r | head -n 1
+   - To get the latest Lotus Miner tag: git tag -l 'miner/v*' | sort -V -r | head -n 1
 
-## Bug Fixes
+## 🏛️ Filecoin network version 24 FIPs
 
-## Deps
+- [FIP-0081: Introduce lower bound for sector initial pledge](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0081.md)
+- [FIP-0086: Fast Finality in Filecoin (F3)](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0086.md)
+- [FIP-0094: Add Support for EIP-5656 (MCOPY Opcode) in the FEVM](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0094.md)
+- [FIP-0095: Add FEVM precompile to fetch beacon digest from chain history](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0095.md)
+
+## 📦 v15 Builtin Actor Bundle
+
+This release candidate uses the [v15.0.0-rc1](https://github.com/filecoin-project/builtin-actors/releases/tag/v15.0.0-rc1)
+
+## 🚚 Migration
+
+All node operators, including storage providers, should be aware that ONE pre-migration is being scheduled 120 epochs before the network upgrade. The migration for the NV24 upgrade is expected to be light with no heavy pre-migrations:
+
+- Pre-Migration is expected to take less then 1 minute.
+- The migration on the upgrade epoch is expected to take less than 30 seconds on a node with a NVMe-drive and a newer CPU. For nodes running on slower disks/CPU, it is still expected to take less then 1 minute.
+- RAM usages is expected to be under 20GiB RAM for both the pre-migration and migration.
+
+We recommend node operators (who haven't enabled splitstore discard mode) that do not care about historical chain states, to prune the chain blockstore by syncing from a snapshot 1-2 days before the upgrade.
+
+For certain node operators, such as full archival nodes or systems that need to keep large amounts of state (RPC providers), we recommend skipping the pre-migration and run the non-cached migration (i.e., just running the migration at the network upgrade epoch), and schedule for some additional downtime. Operators of such nodes can read the [How to disable premigration in network upgrade tutorial](https://lotus.filecoin.io/kb/disable-premigration/).
+
+## 📝 Changelog
+
+For the set of changes since the last stable release:
+
+* Node: https://github.com/filecoin-project/lotus/compare/v1.29.2...v1.30.0-rc1
+* Miner: https://github.com/filecoin-project/lotus/compare/v1.28.3...miner/v1.30.0-rc1
+
+## 👨‍👩‍👧‍👦 Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Krishang | 2 | +34106/-0 | 109 |
+| Rod Vagg | 86 | +10643/-8291 | 456 |
+| Masih H. Derkani | 59 | +7700/-4725 | 298 |
+| Steven Allen | 55 | +6113/-3169 | 272 |
+| kamuik16 | 7 | +4618/-1333 | 285 |
+| Jakub Sztandera | 10 | +3995/-1226 | 94 |
+| Peter Rabbitson | 26 | +2313/-2718 | 275 |
+| Viraj Bhartiya | 5 | +2624/-580 | 50 |
+| Phi | 7 | +1337/-1519 | 257 |
+| Mikers | 1 | +1274/-455 | 23 |
+| Phi-rjan | 29 | +736/-600 | 92 |
+| Andrew Jackson (Ajax) | 3 | +732/-504 | 75 |
+| LexLuthr | 3 | +167/-996 | 8 |
+| Aarsh Shah | 12 | +909/-177 | 47 |
+| web3-bot | 40 | +445/-550 | 68 |
+| Piotr Galar | 6 | +622/-372 | 15 |
+| aarshkshah1992 | 18 | +544/-299 | 40 |
+| Steve Loeppky | 14 | +401/-196 | 22 |
+| Frrist | 1 | +403/-22 | 5 |
+| Łukasz Magiera | 4 | +266/-27 | 13 |
+| winniehere | 1 | +146/-144 | 3 |
+| Jon | 1 | +209/-41 | 4 |
+| Aryan Tikarya | 2 | +183/-8 | 7 |
+| adlrocha | 2 | +123/-38 | 21 |
+| dependabot[bot] | 11 | +87/-61 | 22 |
+| Jiaying Wang | 8 | +61/-70 | 12 |
+| Ian Davis | 2 | +60/-38 | 5 |
+| Aayush Rajasekaran | 2 | +81/-3 | 3 |
+| hanabi1224 | 4 | +46/-4 | 5 |
+| Laurent Senta | 1 | +44/-1 | 2 |
+| jennijuju | 6 | +21/-20 | 17 |
+| parthshah1 | 1 | +23/-13 | 1 |
+| Brendan O'Brien | 1 | +25/-10 | 2 |
+| Jennifer Wang | 4 | +24/-8 | 6 |
+| Matthew Rothenberg | 3 | +10/-18 | 6 |
+| riskrose | 1 | +8/-8 | 7 |
+| linghuying | 1 | +5/-5 | 5 |
+| fsgerse | 2 | +3/-7 | 3 |
+| PolyMa | 1 | +5/-5 | 5 |
+| zhangguanzhang | 1 | +3/-3 | 2 |
+| luozexuan | 1 | +3/-3 | 3 |
+| Po-Chun Chang | 1 | +6/-0 | 2 |
+| Kevin Martin | 1 | +4/-1 | 2 |
+| simlecode | 1 | +2/-2 | 2 |
+| ZenGround0 | 1 | +2/-2 | 2 |
+| GFZRZK | 1 | +2/-1 | 1 |
+| DemoYeti | 1 | +2/-1 | 1 |
+| qwdsds | 1 | +1/-1 | 1 |
+| Samuel Arogbonlo | 1 | +2/-0 | 2 |
+| Elias Rad | 1 | +1/-1 | 1 |
 
 # Node v1.29.2 / 2024-10-03
 
