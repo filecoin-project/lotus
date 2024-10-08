@@ -440,6 +440,10 @@ func (p *f3Participator) tryF3Participate(ctx context.Context, ticket api.F3Part
 			p.backOff(ctx)
 			log.Debugw("Reattempting F3 participation with the same ticket.", "attempts", p.backoff.Attempt())
 			continue
+		case errors.Is(err, api.ErrF3NotReady):
+			log.Warnw("F3 is not ready. Retrying F3 participation after backoff.", "backoff", p.backoff.Duration(), "err", err)
+			p.backOff(ctx)
+			continue
 		case err != nil:
 			log.Errorw("Unexpected error while attempting F3 participation. Retrying after backoff", "backoff", p.backoff.Duration(), "attempts", p.backoff.Attempt(), "err", err)
 			p.backOff(ctx)

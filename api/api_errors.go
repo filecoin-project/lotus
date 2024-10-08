@@ -36,7 +36,7 @@ var (
 	// ErrF3ParticipationTicketStartBeforeExisting signals that participation ticket
 	// is before the start instance of an existing lease held by the miner.
 	ErrF3ParticipationTicketStartBeforeExisting = errF3ParticipationTicketStartBeforeExisting{}
-	// ErrF3NotREady signals that the F3 instance isn't ready for participation yet. The caller
+	// ErrF3NotReady signals that the F3 instance isn't ready for participation yet. The caller
 	// should back off and try again later.
 	ErrF3NotReady = errF3NotReady{}
 
