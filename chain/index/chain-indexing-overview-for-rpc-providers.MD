@@ -78,7 +78,7 @@ Upgrading to the new `ChainIndexer` involves these steps:
 3. **Restart Lotus Node**
    - Restart your Lotus node with the new configuration.
    - The `ChainIndexer` will begin indexing **real-time chain state changes** immediately in the `${LOTUS_PATH}/chainindex` directory.
-   - **However, it will not automatically index any historical chain state (i.e., any previously existing chain state). To perform backfilling, please see the [`Backfill` section below](#backfill).**
+   - **However, it will not automatically index any historical chain state (i.e., any previously existing chain state prior to the upgrade). To perform backfilling, please see the [`Backfill` section below](#backfill).**
 
 > **Note:** It's recommended to keep the [pre-ChainIndexer](#previous-indexing-system) state directory around until you've confirmed you don't need to [downgrade](#downgrade).  After sustained successful operations after the upgrade, the [pre-ChainIndexer](#previous-indexing-system) state directory can be removed to reclaim disk space.  
 
