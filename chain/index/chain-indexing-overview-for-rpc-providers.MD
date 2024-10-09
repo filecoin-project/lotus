@@ -192,6 +192,8 @@ The command validates the chain index entries for each epoch in the specified ra
 
 You can learn about how to use the tool with `lotus-shed chainindex validate-backfill -h`.
 
+Note: If you are using a non-standard Lotus repo directory then you can run the command with `lotus-shed -repo /path/to/lotus/repo chainindex validate-backfill ...`, or by setting the `LOTUS_PATH` environment variable.
+
 ## Downgrade
 
 In case you need to downgrade to the [previous indexing system](#previous-indexing-system), follow these steps:
