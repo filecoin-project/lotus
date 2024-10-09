@@ -9,7 +9,7 @@ This document is for RPC providers and node operators who serve RPC requests wal
 ## ChainIndexer Config
 ### Enablement
 
-The following must be enabled on an RPC node before starting as they are disabled by default:
+The following must be enabled on an Lotus node before starting as they are disabled by default:
 
 ```toml
 [ChainIndexer]
