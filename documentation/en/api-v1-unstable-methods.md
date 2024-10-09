@@ -37,6 +37,7 @@
   * [ChainSetHead](#ChainSetHead)
   * [ChainStatObj](#ChainStatObj)
   * [ChainTipSetWeight](#ChainTipSetWeight)
+  * [ChainValidateIndex](#ChainValidateIndex)
 * [Create](#Create)
   * [CreateBackup](#CreateBackup)
 * [Eth](#Eth)
@@ -1237,6 +1238,39 @@ Inputs:
 ```
 
 Response: `"0"`
+
+### ChainValidateIndex
+There are not yet any comments for this method.
+
+Perms: write
+
+Inputs:
+```json
+[
+  10101,
+  true
+]
+```
+
+Response:
+```json
+{
+  "TipSetKey": [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ],
+  "Height": 42,
+  "IndexedMessagesCount": 42,
+  "IndexedEventsCount": 42,
+  "IndexedEventEntriesCount": 42,
+  "Backfilled": true,
+  "IsNullRound": true
+}
+```
 
 ## Create
 

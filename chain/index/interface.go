@@ -56,7 +56,8 @@ type Indexer interface {
 	IndexEthTxHash(ctx context.Context, txHash ethtypes.EthHash, c cid.Cid) error
 
 	SetIdToRobustAddrFunc(idToRobustAddrFunc IdToRobustAddrFunc)
-	SetRecomputeTipSetStateFunc(recomputeTipSetStateFunc recomputeTipSetStateFunc)
+	SetEventLoaderFunc(eventLoaderFunc eventLoaderFunc)
+
 	Apply(ctx context.Context, from, to *types.TipSet) error
 	Revert(ctx context.Context, from, to *types.TipSet) error
 
@@ -66,6 +67,8 @@ type Indexer interface {
 	GetMsgInfo(ctx context.Context, m cid.Cid) (*MsgInfo, error)
 
 	GetEventsForFilter(ctx context.Context, f *EventFilter, excludeReverted bool) ([]*CollectedEvent, error)
+
+	ChainValidateIndex(ctx context.Context, epoch abi.ChainEpoch, backfill bool) (*types.IndexValidation, error)
 
 	Close() error
 }

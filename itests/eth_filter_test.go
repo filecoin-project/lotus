@@ -524,6 +524,55 @@ func TestEthGetLogsBasic(t *testing.T) {
 	}
 
 	AssertEthLogs(t, rctLogs, expected, received)
+
+	head, err := client.ChainHead(ctx)
+	require.NoError(err)
+
+	for height := 0; height < int(head.Height()); height++ {
+		// for each tipset
+		ts, err := client.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(height), types.EmptyTSK)
+		require.NoError(err)
+
+		if ts.Height() != abi.ChainEpoch(height) {
+			iv, err := client.ChainValidateIndex(ctx, abi.ChainEpoch(height), false)
+			require.Nil(iv)
+			require.NoError(err)
+			t.Logf("tipset %d is a null round", height)
+			continue
+		}
+
+		totalMessageCount := 0
+		totalEventCount := 0
+		totalEventEntriesCount := 0
+		messages, err := client.ChainGetMessagesInTipset(ctx, ts.Key())
+		require.NoError(err)
+		totalMessageCount = len(messages)
+		for _, m := range messages {
+			receipt, err := client.StateSearchMsg(ctx, types.EmptyTSK, m.Cid, -1, false)
+			require.NoError(err)
+			require.NotNil(receipt)
+			// receipt
+			if receipt.Receipt.EventsRoot != nil {
+				events, err := client.ChainGetEvents(ctx, *receipt.Receipt.EventsRoot)
+				require.NoError(err)
+				totalEventCount += len(events)
+				for _, event := range events {
+					totalEventEntriesCount += len(event.Entries)
+				}
+			}
+		}
+		t.Logf("tipset %d: %d messages, %d events", height, totalMessageCount, totalEventCount)
+
+		iv, err := client.ChainValidateIndex(ctx, abi.ChainEpoch(height), false)
+		require.NoError(err)
+		require.NotNil(iv)
+		t.Logf("tipset %d: %+v", height, iv)
+		require.EqualValues(height, iv.Height)
+		require.EqualValues(totalMessageCount, iv.IndexedMessagesCount)
+		require.EqualValues(totalEventCount, iv.IndexedEventsCount)
+		require.EqualValues(totalEventEntriesCount, iv.IndexedEventEntriesCount)
+		require.False(iv.Backfilled)
+	}
 }
 
 func TestEthSubscribeLogsNoTopicSpec(t *testing.T) {

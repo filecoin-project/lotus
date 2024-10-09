@@ -25,12 +25,9 @@ func (si *SqliteIndexer) gcLoop() {
 	defer cleanupTicker.Stop()
 
 	for si.ctx.Err() == nil {
-		si.closeLk.RLock()
-		if si.closed {
-			si.closeLk.RUnlock()
+		if si.isClosed() {
 			return
 		}
-		si.closeLk.RUnlock()
 
 		select {
 		case <-cleanupTicker.C:
@@ -70,7 +67,7 @@ func (si *SqliteIndexer) gc(ctx context.Context) {
 		return
 	}
 
-	log.Infof("gc'd %d tipsets before epoch %d", rows, removalEpoch)
+	log.Infof("gc'd %d entries before epoch %d", rows, removalEpoch)
 
 	// -------------------------------------------------------------------------------------------------
 	// Also GC eth hashes

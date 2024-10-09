@@ -31,25 +31,21 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, head *types.Tip
 		log.Warn("chain indexer is not storing events during reconciliation; please ensure this is intentional")
 	}
 
-	si.closeLk.RLock()
-	if si.closed {
-		si.closeLk.RUnlock()
+	if si.isClosed() {
 		return ErrClosed
 	}
-	si.closeLk.RUnlock()
 
 	if head == nil {
 		return nil
 	}
 
 	return withTx(ctx, si.db, func(tx *sql.Tx) error {
-		var hasTipset bool
-		err := tx.StmtContext(ctx, si.stmts.isTipsetMessageNonEmptyStmt).QueryRowContext(ctx).Scan(&hasTipset)
+		var isIndexEmpty bool
+		err := tx.StmtContext(ctx, si.stmts.isIndexEmptyStmt).QueryRowContext(ctx).Scan(&isIndexEmpty)
 		if err != nil {
-			return xerrors.Errorf("failed to check if tipset message is empty: %w", err)
+			return xerrors.Errorf("failed to check if index is empty: %w", err)
 		}
 
-		isIndexEmpty := !hasTipset
 		if isIndexEmpty && !si.reconcileEmptyIndex {
 			log.Info("chain index is empty and reconcileEmptyIndex is disabled; skipping reconciliation")
 			return nil
