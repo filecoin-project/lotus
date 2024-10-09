@@ -1168,11 +1168,34 @@ type EthCreateTraceResult struct {
 
 type EthCallError struct {
 	Message string
-	Data    string
 	Code    int
 	Meta    []byte
+	Data    string
 }
 
 func (e *EthCallError) Error() string {
-	return string(e.Data)
+	if e.Message == "" {
+		return fmt.Sprintf("json-rpc error %d", e.Code)
+	}
+	return e.Message
+}
+
+func (e *EthCallError) ErrorData() interface{} {
+	return e.Data
+}
+
+func EthCallErrorWithDefaultCode(msg string, data string) *EthCallError {
+	return &EthCallError{
+		Message: msg,
+		Code:    -32000,
+		Data:    data,
+	}
+}
+
+func EthCallErrorWithCode(msg string, code int, data string) *EthCallError {
+	return &EthCallError{
+		Message: msg,
+		Code:    code,
+		Data:    data,
+	}
 }

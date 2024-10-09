@@ -1443,9 +1443,9 @@ func (a *EthModule) applyMessage(ctx context.Context, msg *types.Message, tsk ty
 	}
 
 	if res.MsgRct.ExitCode.IsError() {
-		reason := parseEthRevert(res.MsgRct.Return)
-		return nil, xerrors.Errorf("message execution failed: exit %s, revert reason: %s, vm error: %s", res.MsgRct.ExitCode, reason, res.Error)
+		return nil, errors.New(parseEthRevert(res.MsgRct.Return))
 	}
+
 	return res, nil
 }
 
@@ -1629,51 +1629,33 @@ func ethGasSearch(
 func (a *EthModule) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {
 	msg, err := ethCallToFilecoinMessage(ctx, tx)
 	if err != nil {
-		return nil, &ethtypes.EthCallError{
-			Message: fmt.Sprintf("failed to convert ethcall to filecoin message: %s", err),
-			Code:    -32000,
-			Data:    err.Error(),
-		}
+		return nil, ethtypes.EthCallErrorWithDefaultCode(
+			fmt.Sprintf("failed to convert ethcall to filecoin message"),
+			err.Error(),
+		)
 	}
 
 	ts, err := getTipsetByEthBlockNumberOrHash(ctx, a.Chain, blkParam)
 	if err != nil {
-		return nil, &ethtypes.EthCallError{
-			Message: fmt.Sprintf("failed to process block param: %v; %s", blkParam, err),
-			Code:    -32000,
-			Data:    err.Error(),
-		}
+		return nil, ethtypes.EthCallErrorWithDefaultCode(
+			fmt.Sprintf("failed to process block param: %v; %s", blkParam),
+			err.Error(),
+		)
 	}
 
 	invokeResult, err := a.applyMessage(ctx, msg, ts.Key())
 	if err != nil {
-
-		if ethErr, ok := err.(*EthCallError); ok {
-			return nil, ethErr
-		}
-
-		if strings.Contains(err.Error(), "execution reverted") {
-			revertReason := parseEthRevert([]byte(err.Error()))
-			return nil, &ethtypes.EthCallError{
-				Message: fmt.Sprintf("execution reverted: %s", revertReason),
-				Code:    -32000,
-				Data:    revertReason,
-			}
-		}
-
-		return nil, &ethtypes.EthCallError{
-			Message: fmt.Sprintf("call failed: %s", err.Error()),
-			Code:    -32000,
-			Data:    err.Error(),
-		}
+		return nil, ethtypes.EthCallErrorWithDefaultCode(
+			fmt.Sprintf("execution revereted"),
+			err.Error(),
+		)
 	}
 
 	if invokeResult == nil {
-		return nil, &ethtypes.EthCallError{
-			Message: "invoke result is nil",
-			Code:    -32000,
-			Data:    "invoke result is nil",
-		}
+		return nil, ethtypes.EthCallErrorWithDefaultCode(
+			fmt.Sprintf("execution revereted"),
+			"invoke result is nil",
+		)
 	}
 
 	if invokeResult.MsgRct == nil {
@@ -1693,11 +1675,10 @@ func (a *EthModule) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam e
 		reader := bytes.NewReader(invokeResult.MsgRct.Return)
 		result, err = cbg.ReadByteArray(reader, uint64(len(invokeResult.MsgRct.Return)))
 		if err != nil {
-			return nil, &ethtypes.EthCallError{
-				Message: fmt.Sprintf("failed to read byte array: %s", err),
-				Code:    -32000,
-				Data:    fmt.Sprintf("failed to read byte array: %s", err),
-			}
+			return nil, ethtypes.EthCallErrorWithDefaultCode(
+				fmt.Sprintf("execution revereted"),
+				err.Error(),
+			)
 		}
 		return result, nil
 	}
