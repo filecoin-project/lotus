@@ -83,7 +83,7 @@ Upgrading to the new `ChainIndexer` involves these steps:
 > **Note:** It's recommended to keep the [pre-ChainIndexer](#previous-indexing-system) indexing database directory (`${LOTUS_PATH}/sqlite`) around until you've confirmed you don't need to [downgrade](#downgrade).  After sustained successful operations after the upgrade, the [pre-ChainIndexer](#previous-indexing-system) indexing database directory can be removed to reclaim disk space.  
 
 ## Backfill
-There is no migration from [pre-ChainIndexer indices](#previous-indexing-system) to the [ChainIndex](#chainindexer-indexing-system) because the [pre-ChainIndexer indices](#previous-indexing-system) are not fully reliable.  Instead one needs to index historical chain state (i.e., backfill) using one of the following tools.
+There is no automated migration from [pre-ChainIndexer indices](#previous-indexing-system) to the [ChainIndex](#chainindexer-indexing-system).  Instead one needs to index historical chain state (i.e., backfill) using one of the following tools.
 
 > **Note:** The ChainIndex will consume ~10GB of storage per month of tipsets (e.g., ~86400 epochs).  Ensure you have sufficient disk space before proceeding.
 
