@@ -209,7 +209,7 @@ In case you need to downgrade to the [previous indexing system](#previous-indexi
 * This corresponds to the indexing system used in Lotus versions before v1.31.0.  
 * It has been replaced by the [ChainIndex](#chainindexer-indexing-system).
 * It was composed of three indexers using three separate databases: [`EthTxHashLookup`](https://github.com/filecoin-project/lotus/blob/master/chain/ethhashlookup/eth_transaction_hash_lookup.go), [`MsgIndex`](https://github.com/filecoin-project/lotus/blob/master/chain/index/msgindex.go), and [`EventIndex`](https://github.com/filecoin-project/lotus/blob/master/chain/events/filter/index.go).
-* It persisted state to the [removed option](#removed-options) for `Events.DatabasePath`, which defaulted to `${LOTUS_HOME}/sqllite`.
+* It persisted state to the [removed option](#removed-options) for `Events.DatabasePath`, which defaulted to `${LOTUS_PATH}/sqlite`.
 * It had CLI backfill tooling: `lotus-shed index backfill-*`
 
 ### ChainIndexer Indexing System
