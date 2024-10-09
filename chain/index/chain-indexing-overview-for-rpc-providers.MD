@@ -199,7 +199,7 @@ Note: If you are using a non-standard Lotus repo directory then you can run the 
 In case you need to downgrade to the [previous indexing system](#previous-indexing-system), follow these steps:
 
 1. Stop your Lotus node.
-2. Build your Lotus binary for the rollback version which has the implementation of the old `EthTxHashLookup`, `MsgIndex`, and `EventIndex` indices.
+2. Download or build a Lotus binary for the rollback version which has the implementation of the old `EthTxHashLookup`, `MsgIndex`, and `EventIndex` indices.
 4. Ensure that you've set the correct config for the existing `EthTxHashLookup`, `MsgIndex`, and `EventIndex` indices in the `config.toml` file.
 5. Restart your Lotus node.
 6. Backfill the `EthTxHashLookup`, `MsgIndex`, and `EventIndex` indices using the `lotus-shed index backfill-*` CLI tooling available in the [previous indexing system](#previous-indexing-system) for the epoch range in [epochs between the upgrade to `ChainIndexer` and the rollback of `ChainIndexer`].
