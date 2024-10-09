@@ -212,6 +212,7 @@ var backfillEventsCmd = &cli.Command{
 				return fmt.Errorf("failed to get tipset key cid: %w", err)
 			}
 
+			eventCount := 0
 			// loop over each message receipt and backfill the events
 			for idx, receipt := range receipts {
 				msg := msgs[idx]
@@ -229,7 +230,7 @@ var backfillEventsCmd = &cli.Command{
 					return fmt.Errorf("failed to load events for tipset %s: %w", currTs, err)
 				}
 
-				for eventIdx, event := range events {
+				for _, event := range events {
 					addr, found := addressLookups[event.Emitter]
 					if !found {
 						var ok bool
@@ -248,7 +249,7 @@ var backfillEventsCmd = &cli.Command{
 						currTs.Key().Bytes(),
 						tsKeyCid.Bytes(),
 						addr.Bytes(),
-						eventIdx,
+						eventCount,
 						msg.Cid.Bytes(),
 						idx,
 					).Scan(&entryID)
@@ -267,7 +268,7 @@ var backfillEventsCmd = &cli.Command{
 						currTs.Key().Bytes(), // tipset_key
 						tsKeyCid.Bytes(),     // tipset_key_cid
 						addr.Bytes(),         // emitter_addr
-						eventIdx,             // event_index
+						eventCount,           // event_index
 						msg.Cid.Bytes(),      // message_cid
 						idx,                  // message_index
 						false,                // reverted
@@ -307,6 +308,7 @@ var backfillEventsCmd = &cli.Command{
 						}
 						entriesAffected += rowsAffected
 					}
+					eventCount++
 				}
 			}
 
