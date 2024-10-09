@@ -122,6 +122,11 @@ like cron.
 		// Results Tracking
 		logGood := cctx.Bool("log-good")
 
+		failedRPCs := 0
+		successfulBackfills := 0
+		successfulValidations := 0
+		successfulNullRounds := 0
+
 		startTime := time.Now()
 		_, _ = fmt.Fprintf(cctx.App.Writer, "%s starting chainindex validation; from epoch: %d; to epoch: %d; backfill: %t; log-good: %t\n", currentTimeString(),
 			fromEpoch, toEpoch, backfill, logGood)
@@ -142,14 +147,22 @@ like cron.
 			indexValidateResp, err := api.ChainValidateIndex(ctx, abi.ChainEpoch(epoch), backfill)
 			if err != nil {
 				_, _ = fmt.Fprintf(cctx.App.Writer, "%s ✗ Epoch %d; failure: %s\n", currentTimeString(), epoch, err)
+				failedRPCs++
 				continue
+			}
+
+			if indexValidateResp.Backfilled {
+				successfulBackfills++
+			} else if indexValidateResp.IsNullRound {
+				successfulNullRounds++
+			} else {
+				successfulValidations++
 			}
 
 			if !logGood {
 				continue
 			}
 
-			// is it a null round ?
 			if indexValidateResp.IsNullRound {
 				_, _ = fmt.Fprintf(cctx.App.Writer, "%s ✓ Epoch %d; null round\n", currentTimeString(), epoch)
 			} else {
@@ -161,6 +174,12 @@ like cron.
 				_, _ = fmt.Fprintf(cctx.App.Writer, "%s ✓ Epoch %d (%s)\n", currentTimeString(), epoch, string(jsonData))
 			}
 		}
+
+		_, _ = fmt.Fprintf(cctx.App.Writer, "\n%s Chain index validation summary:\n", currentTimeString())
+		_, _ = fmt.Fprintf(cctx.App.Writer, "Total failed RPC calls: %d\n", failedRPCs)
+		_, _ = fmt.Fprintf(cctx.App.Writer, "Total successful backfills: %d\n", successfulBackfills)
+		_, _ = fmt.Fprintf(cctx.App.Writer, "Total successful validations without backfilling: %d\n", successfulValidations)
+		_, _ = fmt.Fprintf(cctx.App.Writer, "Total successful Null round validations: %d\n", successfulNullRounds)
 
 		return nil
 	},
