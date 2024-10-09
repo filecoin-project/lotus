@@ -21,6 +21,8 @@
 
 ## Bug Fixes
 
+- Fix a bug in the `lotus-shed indexes backfill-events` command that may result in either duplicate events being backfilled where there are existing events (such an operation *should* be idempotent) or events erroneously having duplicate `logIndex` values when queried via ETH APIs. ([filecoin-project/lotus#12567](https://github.com/filecoin-project/lotus/pull/12567))
+
 ## Deps
 
 # Node v1.29.2 / 2024-10-03
