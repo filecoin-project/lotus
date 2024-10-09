@@ -2,10 +2,9 @@
   
 ## Introduction
 
-This document is for RPC providers and node operators who serve RPC requests walking through the configuration changes, migration flow and operations/maintenance work needed to enable, backfill and maintain the `ChainIndexer`.
+This document is for RPC providers and node operators who serve RPC requests walking through the configuration changes, migration flow and operations/maintenance work needed to enable, backfill and maintain the [`ChainIndexer`](#chainindexer-indexing-system).
 
-**Note: If you are a Storage Provider or node operator who does not serve RPC requests, you can skip this document as the `ChainIndexer` is already disabled by default**. 
- 
+**Note: If you are a Storage Provider or node operator who does not serve RPC requests (i.e, if `Fevm.EnableEthRPC = false`), you can skip this document as the `ChainIndexer` is already disabled by default**. 
 
 ## ChainIndexer Config
 ### Enablement
@@ -66,23 +65,27 @@ DisableHistoricFilterAPI = false
 DatabasePath = ""
 ```
 
-## Migration Guide
+## Upgrade Steps
 
-Migrating to the new `ChainIndexer` involves several steps to ensure a smooth transition:
+> **Note:** One can upgrade/downgrade between [pre-ChainIndexer](#previous-indexing-system) and [with-ChainIndexer](#chainindexer-indexing-system) Lotus versions without conflict because they persist state to different directories and don't rely on each other. No backup is necessary (but extra backups don't hurt).  
+
+Upgrading to the new `ChainIndexer` involves these steps:
 
 1. **Stop the Lotus Node**
    - Stop your Lotus node before starting the upgrade and migration process.
 2. **Update Configuration**
    - Modify your Lotus configuration to enable the `ChainIndexer` as described in the [`ChainIndexer Config` section above](#chainindexer-config).
-
 3. **Restart Lotus Node**
    - Restart your Lotus node with the new configuration.
    - The `ChainIndexer` will begin indexing **real-time chain state changes** immediately in the `${LOTUS_PATH}/chainindex` directory.
-   - **However, it will not automatically index any historical chain state (i.e., any previously existing chain state). To perform backfilling, please see the [`Backfilling` section below](#backfilling).**
+   - **However, it will not automatically index any historical chain state (i.e., any previously existing chain state). To perform backfilling, please see the [`Backfill` section below](#backfill).**
 
-Note: The ChainIndexer will write state to `${LOTUS_HOME}/chainindex` rather than the [removed option](#removed-options) for `Events.DatabasePath` (which defaulted to `${LOTUS_HOME}/sqllite`).  It's recommended to keep the legacy directory around until you've confirmed you don't need to [rollback](#rollback).
+> **Note:** It's recommended to keep the [pre-ChainIndexer](#previous-indexing-system) state directory around until you've confirmed you don't need to [downgrade](#downgrade).  After sustained successful operations after the upgrade, the [pre-ChainIndexer](#previous-indexing-system) state directory can be removed to reclaim disk space.  
+
 ## Backfill
-To index historical chain state (i.e., **"backfilling"**), you can use the following tools:
+There is no migration from [pre-ChainIndexer indices](#previous-indexing-system) to the [ChainIndex](#chainindexer-indexing-system) because the [pre-ChainIndexer indices](#previous-indexing-system) are not fully reliable.  Instead one needs to index historical chain state (i.e., backfill) using one of the following tools.
+
+> **Note:** The ChainIndex will consume ~10GB of storage per month of tipsets (e.g., ~86400 epochs).  Ensure you have sufficient disk space before proceeding.
 
 ### `ChainValidateIndex` JSON RPC API
 
@@ -90,11 +93,9 @@ Please refer to the [Lotus API documentation](https://github.com/filecoin-projec
 
 The `ChainValidateIndex` JSON RPC API serves a dual purpose: it validates/diagnoses the integrity of the index at a specific epoch (i.e., it ensures consistency between indexed data and actual chain state), while also providing the option to backfill the `ChainIndexer` if it does not have data for the specified epoch. 
 
-
 The `ChainValidateIndex` RPC API is available for use once the Lotus daemon has started with `ChainIndexer` [enabled](#enablement). 
 
 Here are some examples of how to use the `ChainValidateIndex` JSON RPC API for validating/ backfilling the index:
-
 
 1) Validating the index for an epoch that is a NULL round:
  
@@ -191,12 +192,27 @@ The command validates the chain index entries for each epoch in the specified ra
 
 You can learn about how to use the tool with `lotus-shed chainindex validate-backfill -h`.
 
-## Rollback
+## Downgrade
 
-In case you need to rollback to the previous indexing system (`EthTxIndex`, `MsgIndex`, and `EventIndex`), follow these steps:
+In case you need to downgrade to the [previous indexing system](#previous-indexing-system), follow these steps:
 
 1. Stop your Lotus node.
-2. Build your Lotus binary for the rollback version which has the implementation of the old `EthTxIndex`, `MsgIndex`, and `EventIndex` Indices.
-4. Ensure that you've set the correct config for the existing `EthTxIndex`, `MsgIndex`, and `EventIndex` indices in the `config.toml` file.
+2. Build your Lotus binary for the rollback version which has the implementation of the old `EthTxHashLookup`, `MsgIndex`, and `EventIndex` indices.
+4. Ensure that you've set the correct config for the existing `EthTxHashLookup`, `MsgIndex`, and `EventIndex` indices in the `config.toml` file.
 5. Restart your Lotus node.
-6. Backfill the `EthTxIndex`, `MsgIndex`, and `EventIndex` indices using the `lotus-shed index backfill-*` CLI tooling available in the previous indexing system for the epoch range in [epochs between the upgrade to `ChainIndexer` and the rollback of `ChainIndexer`].
+6. Backfill the `EthTxHashLookup`, `MsgIndex`, and `EventIndex` indices using the `lotus-shed index backfill-*` CLI tooling available in the [previous indexing system](#previous-indexing-system) for the epoch range in [epochs between the upgrade to `ChainIndexer` and the rollback of `ChainIndexer`].
+
+## Terminology
+### Previous Indexing System
+* This corresponds to the indexing system used in Lotus versions before v1.31.0.  
+* It has been replaced by the [ChainIndex](#chainindexer-indexing-system).
+* It was composed of three indexers using three separate databases: [`EthTxHashLookup`](https://github.com/filecoin-project/lotus/blob/master/chain/ethhashlookup/eth_transaction_hash_lookup.go), [`MsgIndex`](https://github.com/filecoin-project/lotus/blob/master/chain/index/msgindex.go), and [`EventIndex`](https://github.com/filecoin-project/lotus/blob/master/chain/events/filter/index.go).
+* It persisted state to the [removed option](#removed-options) for `Events.DatabasePath`, which defaulted to `${LOTUS_HOME}/sqllite`.
+* It had CLI backfill tooling: `lotus-shed index backfill-*`
+
+### ChainIndexer Indexing System
+* This corresponds to the indexing system used in Lotus versions v1.31.0 onwards.  
+* It replaced the [previous indexing system](#previous-indexing-system).
+* It is composed of a single indexer, [`ChainIndexer`](https://github.com/filecoin-project/lotus/blob/master/chain/index/indexer.go), using a [single database for transactions, messages, and events](https://github.com/filecoin-project/lotus/blob/master/chain/index/ddls.go).
+* It persists state to `${LOTUS_HOME}/chainindex`.
+* It has this CLI backfill tooling: [`lotus-shed chainindex validate-backfill`](#lotus-shed-chainindex-validate-backfill-cli-tool)
