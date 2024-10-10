@@ -636,7 +636,7 @@ func checkNv24Invariants(ctx context.Context, oldStateRootCid cid.Cid, newStateR
 		return xerrors.Errorf("failed to decode state root: %w", err)
 	}
 
-	actorCodeCids, err := actors.GetActorCodeIDs(actorstypes.Version14)
+	actorCodeCids, err := actors.GetActorCodeIDs(actorstypes.Version15)
 	if err != nil {
 		return err
 	}
