@@ -46,7 +46,7 @@ func TestF3_Enabled(t *testing.T) {
 	blocktime := 100 * time.Millisecond
 	e := setup(t, blocktime)
 
-	e.waitTillF3Instance(3, 25*time.Second)
+	e.waitTillF3Instance(modules.F3LeaseTerm+1, 40*time.Second)
 }
 
 // Test that checks that F3 can be rebootsrapped by changing the manifest
