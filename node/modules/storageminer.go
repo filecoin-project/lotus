@@ -47,6 +47,9 @@ import (
 	"github.com/filecoin-project/lotus/storage/wdpost"
 )
 
+// F3LeaseTerm The number of instances the miner will attempt to lease from nodes.
+const F3LeaseTerm = 5
+
 type UuidWrapper struct {
 	v1api.FullNode
 }
@@ -380,14 +383,27 @@ func newF3Participator(node v1api.FullNode, participant dtypes.MinerAddress, bac
 
 func (p *f3Participator) participate(ctx context.Context) error {
 	for ctx.Err() == nil {
-		if ticket, err := p.tryGetF3ParticipationTicket(ctx); err != nil {
+		start := time.Now()
+		ticket, err := p.tryGetF3ParticipationTicket(ctx)
+		if err != nil {
 			return err
-		} else if lease, participating, err := p.tryF3Participate(ctx, ticket); err != nil {
+		}
+		lease, participating, err := p.tryF3Participate(ctx, ticket)
+		if err != nil {
 			return err
-		} else if !participating {
-			continue
-		} else if err := p.awaitLeaseExpiry(ctx, lease); err != nil {
-			return err
+		}
+		if participating {
+			if err := p.awaitLeaseExpiry(ctx, lease); err != nil {
+				return err
+			}
+		}
+		const minPeriod = 500 * time.Millisecond
+		if sinceLastLoop := time.Since(start); sinceLastLoop < minPeriod {
+			select {
+			case <-time.After(minPeriod - sinceLastLoop):
+			case <-ctx.Done():
+				return ctx.Err()
+			}
 		}
 		log.Info("Restarting F3 participation")
 	}
@@ -449,7 +465,11 @@ func (p *f3Participator) tryF3Participate(ctx context.Context, ticket api.F3Part
 			p.backOff(ctx)
 			continue
 		default:
-			log.Infow("Successfully acquired F3 participation lease.", "issuer", lease.Issuer, "expiry", lease.ValidityTerm)
+			log.Infow("Successfully acquired F3 participation lease.",
+				"issuer", lease.Issuer,
+				"not-before", lease.FromInstance,
+				"not-after", lease.FromInstance+lease.ValidityTerm,
+			)
 			p.previousTicket = ticket
 			return lease, true, nil
 		}
@@ -485,8 +505,8 @@ func (p *f3Participator) awaitLeaseExpiry(ctx context.Context, lease api.F3Parti
 			}
 			log.Errorw("Failed to check F3 progress while awaiting lease expiry. Retrying after backoff.", "attempts", p.backoff.Attempt(), "backoff", p.backoff.Duration(), "err", err)
 			p.backOff(ctx)
-		case progress.ID+2 >= lease.ValidityTerm:
-			log.Infof("F3 progressed (%d) to within two instances of lease expiry (%d). Restarting participation.", progress.ID, lease.ValidityTerm)
+		case progress.ID+2 >= lease.FromInstance+lease.ValidityTerm:
+			log.Infof("F3 progressed (%d) to within two instances of lease expiry (%d+%d). Restarting participation.", progress.ID, lease.FromInstance, lease.ValidityTerm)
 			return nil
 		default:
 			remainingInstanceLease := lease.ValidityTerm - progress.ID
@@ -529,8 +549,6 @@ func F3Participation(mctx helpers.MetricsCtx, lc fx.Lifecycle, node v1api.FullNo
 		// checkProgressInterval defines the duration between progress checks in normal operation mode.
 		// This interval is used when there are no errors in retrieving the current progress.
 		checkProgressInterval = 10 * time.Second
-		// leaseTerm The number of instances the miner will attempt to lease from nodes.
-		leaseTerm = 5
 	)
 
 	participator := newF3Participator(
@@ -543,7 +561,7 @@ func F3Participation(mctx helpers.MetricsCtx, lc fx.Lifecycle, node v1api.FullNo
 		},
 		checkProgressMaxAttempts,
 		checkProgressInterval,
-		leaseTerm,
+		F3LeaseTerm,
 	)
 
 	ctx, cancel := context.WithCancel(mctx)
