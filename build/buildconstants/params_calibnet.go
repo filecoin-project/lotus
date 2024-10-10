@@ -99,8 +99,8 @@ const UpgradeCalibrationDragonFixHeight = 1493854
 // 2024-07-11T12:00:00Z
 const UpgradeWaffleHeight = 1779094
 
-// ??????
-const UpgradeTuktukHeight = 999999999999999
+// 2024-10-23T13:30:00Z
+const UpgradeTuktukHeight = 2078794
 
 // FIP-0081: for the power actor state for pledge calculations.
 // UpgradeTuktukPowerRampDurationEpochs ends up in the power actor state after
@@ -162,7 +162,8 @@ var F3ManifestServerID = MustParseID("12D3KooWS9vD9uwm8u2uPyJV32QBAhKAmPYwmziAgr
 // The initial F3 power table CID.
 var F3InitialPowerTableCID cid.Cid = cid.Undef
 
-const F3BootstrapEpoch abi.ChainEpoch = UpgradeWaffleHeight + 100
+// Calibnet F3 activation epoch is 2024-10-24T13:30:00Z - Epoch 2081674
+const F3BootstrapEpoch abi.ChainEpoch = UpgradeTuktukHeight + 2880
 
 // F3Consensus set whether F3 should checkpoint tipsets finalized by F3. This
 // flag has no effect if F3 is not enabled.
