@@ -462,7 +462,7 @@ func (p *f3Participator) tryF3Participate(ctx context.Context, ticket api.F3Part
 			p.backOff(ctx)
 			continue
 		default:
-			log.Infow("Successfully acquired F3 participation lease.", "issuer", lease.Issuer, "expiry", lease.ValidityTerm)
+			log.Infow("Successfully acquired F3 participation lease.", "issuer", lease.Issuer, "expiry", lease.FromInstance+lease.ValidityTerm)
 			p.previousTicket = ticket
 			return lease, true, nil
 		}
