@@ -2,11 +2,9 @@ package modules
 
 import (
 	"context"
-	"path/filepath"
 	"time"
 
 	"go.uber.org/fx"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -14,6 +12,7 @@ import (
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/events/filter"
+	"github.com/filecoin-project/lotus/chain/index"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -95,40 +94,17 @@ func EthEventHandler(cfg config.EventsConfig, enableEthRPC bool) func(helpers.Me
 	}
 }
 
-func EventFilterManager(cfg config.EventsConfig) func(helpers.MetricsCtx, repo.LockedRepo, fx.Lifecycle, *store.ChainStore, *stmgr.StateManager, EventHelperAPI, full.ChainAPI) (*filter.EventFilterManager, error) {
-	return func(mctx helpers.MetricsCtx, r repo.LockedRepo, lc fx.Lifecycle, cs *store.ChainStore, sm *stmgr.StateManager, evapi EventHelperAPI, chainapi full.ChainAPI) (*filter.EventFilterManager, error) {
+func EventFilterManager(cfg config.EventsConfig) func(helpers.MetricsCtx, repo.LockedRepo, fx.Lifecycle, *store.ChainStore,
+	*stmgr.StateManager, EventHelperAPI, full.ChainAPI, index.Indexer) (*filter.EventFilterManager, error) {
+	return func(mctx helpers.MetricsCtx, r repo.LockedRepo, lc fx.Lifecycle, cs *store.ChainStore, sm *stmgr.StateManager,
+		evapi EventHelperAPI, chainapi full.ChainAPI, ci index.Indexer) (*filter.EventFilterManager, error) {
 		ctx := helpers.LifecycleCtx(mctx, lc)
 
 		// Enable indexing of actor events
-		var eventIndex *filter.EventIndex
-		if !cfg.DisableHistoricFilterAPI {
-			var dbPath string
-			if cfg.DatabasePath == "" {
-				sqlitePath, err := r.SqlitePath()
-				if err != nil {
-					return nil, xerrors.Errorf("failed to resolve event index database path: %w", err)
-				}
-				dbPath = filepath.Join(sqlitePath, filter.DefaultDbFilename)
-			} else {
-				dbPath = cfg.DatabasePath
-			}
-
-			var err error
-			eventIndex, err = filter.NewEventIndex(ctx, dbPath, chainapi.Chain)
-			if err != nil {
-				return nil, xerrors.Errorf("failed to initialize event index database: %w", err)
-			}
-
-			lc.Append(fx.Hook{
-				OnStop: func(context.Context) error {
-					return eventIndex.Close()
-				},
-			})
-		}
 
 		fm := &filter.EventFilterManager{
-			ChainStore: cs,
-			EventIndex: eventIndex, // will be nil unless EnableHistoricFilterAPI is true
+			ChainStore:   cs,
+			ChainIndexer: ci,
 			// TODO:
 			// We don't need this address resolution anymore once https://github.com/filecoin-project/lotus/issues/11594 lands
 			AddressResolver: func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool) {
