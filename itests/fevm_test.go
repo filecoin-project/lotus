@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"testing"
 	"time"
@@ -15,14 +16,18 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/manifest"
+	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/build/buildconstants"
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
+	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
@@ -1308,6 +1313,59 @@ func TestEthGetTransactionCount(t *testing.T) {
 	contractNonceAfterDestroy, err := client.EVM().EthGetTransactionCount(ctx, contractAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 	require.NoError(t, err)
 	require.Zero(t, contractNonceAfterDestroy)
+}
+
+func TestMcopy(t *testing.T) {
+	// MCOPY introduced in nv24, start the test on nv23 to check the error, then upgrade at epoch 100
+	// and check that an MCOPY contract can be deployed and run.
+	nv24epoch := abi.ChainEpoch(100)
+	upgradeSchedule := kit.UpgradeSchedule(
+		stmgr.Upgrade{
+			Network: network.Version23,
+			Height:  -1,
+		},
+		stmgr.Upgrade{
+			Network:   network.Version24,
+			Height:    nv24epoch,
+			Migration: filcns.UpgradeActorsV15,
+		},
+	)
+
+	ctx, cancel, client := kit.SetupFEVMTest(t, upgradeSchedule)
+	defer cancel()
+
+	// try to deploy the contract before the upgrade, expect an error somewhere' in deploy or in call,
+	// if the error is in deploy we may need to implement DeployContractFromFilename here where we can
+	// assert an error
+
+	// 0000000000000000000000000000000000000000000000000000000000000020: The offset for the bytes argument (32 bytes).
+	// 0000000000000000000000000000000000000000000000000000000000000008: The length of the bytes data (8 bytes for "testdata").
+	// 7465737464617461000000000000000000000000000000000000000000000000: The hexadecimal representation of "testdata", padded to 32 bytes.
+	hexString := "000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000087465737464617461000000000000000000000000000000000000000000000000"
+
+	// Decode the hex string into a byte slice
+	inputArgument, err := hex.DecodeString(hexString)
+	if err != nil {
+		log.Fatalf("Failed to decode hex string: %v", err)
+	}
+
+	filenameActor := "contracts/mcopy/MCOPYTest.hex"
+	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
+	_, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "optimizedCopy(bytes)", inputArgument)
+	// We expect an error here due to the contract reverting or another issue.
+	require.Error(t, err)
+
+	// Also check for the specific error message
+	expectedErrMsg := "undefined instruction (35)"
+	require.Contains(t, err.Error(), expectedErrMsg)
+
+	// wait for the upgrade
+	client.WaitTillChain(ctx, kit.HeightAtLeast(nv24epoch+5))
+
+	// should be able to deploy and call the contract now
+	fromAddr, contractAddr = client.EVM().DeployContractFromFilename(ctx, filenameActor)
+	_, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "optimizedCopy(bytes)", inputArgument)
+	require.NoError(t, err)
 }
 
 func TestEthGetBlockByNumber(t *testing.T) {
