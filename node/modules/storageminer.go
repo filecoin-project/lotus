@@ -468,7 +468,7 @@ func (p *f3Participator) tryF3Participate(ctx context.Context, ticket api.F3Part
 			log.Infow("Successfully acquired F3 participation lease.",
 				"issuer", lease.Issuer,
 				"not-before", lease.FromInstance,
-				"not-after", lease.FromInstance+lease.ValidityTerm,
+				"not-after", lease.ToInstance(),
 			)
 			p.previousTicket = ticket
 			return lease, true, nil
@@ -505,11 +505,11 @@ func (p *f3Participator) awaitLeaseExpiry(ctx context.Context, lease api.F3Parti
 			}
 			log.Errorw("Failed to check F3 progress while awaiting lease expiry. Retrying after backoff.", "attempts", p.backoff.Attempt(), "backoff", p.backoff.Duration(), "err", err)
 			p.backOff(ctx)
-		case progress.ID+2 >= lease.FromInstance+lease.ValidityTerm:
-			log.Infof("F3 progressed (%d) to within two instances of lease expiry (%d+%d). Renewing participation.", progress.ID, lease.FromInstance, lease.ValidityTerm)
+		case progress.ID+2 >= lease.ToInstance():
+			log.Infof("F3 progressed (%d) to within two instances of lease expiry (%d). Renewing participation.", progress.ID, lease.ToInstance())
 			return nil
 		default:
-			remainingInstanceLease := lease.ValidityTerm - progress.ID
+			remainingInstanceLease := lease.ToInstance() - progress.ID
 			log.Debugf("F3 participation lease is valid for further %d instances. Re-checking after %s.", remainingInstanceLease, p.checkProgressInterval)
 			p.backOffFor(ctx, p.checkProgressInterval)
 		}
