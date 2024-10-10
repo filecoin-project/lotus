@@ -10,9 +10,11 @@
 
 ## Deps
 
-# UNRELEASED v1.30.0
+# UNRELEASED Node v1.30.0  
+See https://github.com/filecoin-project/lotus/blob/release/v1.30.0/CHANGELOG.md  
 
-See https://github.com/filecoin-project/lotus/blob/release/v1.30.0-rc1/CHANGELOG.md
+# UNRELEASED Miner v1.30.0  
+See https://github.com/filecoin-project/lotus/blob/release/miner/v1.30.0/CHANGELOG.md  
 
 # Node v1.29.2 / 2024-10-03
 
