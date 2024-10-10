@@ -47,6 +47,9 @@ import (
 	"github.com/filecoin-project/lotus/storage/wdpost"
 )
 
+// F3LeaseTerm The number of instances the miner will attempt to lease from nodes.
+const F3LeaseTerm = 5
+
 type UuidWrapper struct {
 	v1api.FullNode
 }
@@ -546,8 +549,6 @@ func F3Participation(mctx helpers.MetricsCtx, lc fx.Lifecycle, node v1api.FullNo
 		// checkProgressInterval defines the duration between progress checks in normal operation mode.
 		// This interval is used when there are no errors in retrieving the current progress.
 		checkProgressInterval = 10 * time.Second
-		// leaseTerm The number of instances the miner will attempt to lease from nodes.
-		leaseTerm = 5
 	)
 
 	participator := newF3Participator(
@@ -560,7 +561,7 @@ func F3Participation(mctx helpers.MetricsCtx, lc fx.Lifecycle, node v1api.FullNo
 		},
 		checkProgressMaxAttempts,
 		checkProgressInterval,
-		leaseTerm,
+		F3LeaseTerm,
 	)
 
 	ctx, cancel := context.WithCancel(mctx)
