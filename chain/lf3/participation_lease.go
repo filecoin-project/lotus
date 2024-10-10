@@ -23,6 +23,8 @@ type leaser struct {
 	issuer               peer.ID
 	status               f3Status
 	maxLeasableInstances uint64
+	// Signals that a lease was created and/or updated.
+	notifyParticipation chan struct{}
 }
 
 func newParticipationLeaser(nodeId peer.ID, status f3Status, maxLeasedInstances uint64) *leaser {
@@ -30,6 +32,7 @@ func newParticipationLeaser(nodeId peer.ID, status f3Status, maxLeasedInstances 
 		leases:               make(map[uint64]api.F3ParticipationLease),
 		issuer:               nodeId,
 		status:               status,
+		notifyParticipation:  make(chan struct{}, 1),
 		maxLeasableInstances: maxLeasedInstances,
 	}
 }
@@ -99,6 +102,10 @@ func (l *leaser) participate(ticket api.F3ParticipationTicket) (api.F3Participat
 		return api.F3ParticipationLease{}, api.ErrF3ParticipationTicketStartBeforeExisting
 	}
 	l.leases[newLease.MinerID] = newLease
+	select {
+	case l.notifyParticipation <- struct{}{}:
+	default:
+	}
 	return newLease, nil
 }
 
