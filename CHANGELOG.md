@@ -11,6 +11,7 @@
 * Implement [FIP-0081](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0081.md) and its migration for NV24. Initial pledge collateral will now be calculated using a 70% / 30% split between "simple" and "baseline" in the initial consensus pledge contribution to collateral calculation. The change in this calculation will begin at NV24 activation and ramp up from the current split of 100% / 0% to the eventual 70% / 30% over the course of a year so as to minimise impact on existing operations. ([filecoin-project/lotus#12526](https://github.com/filecoin-project/lotus/pull/12526)
 * Update to F3 0.4.0 ([filecoin-project/lotus#12547](https://github.com/filecoin-project/lotus/pull/12547)). This includes additional performance enhancements and bug fixes.
 * [Ticket-based F3 participation API](https://github.com/filecoin-project/lotus/pull/12531): This update introduces a new design where participation tickets grant a temporary lease, allowing storage providers to sign as part of a single GPBFT instance at any given point in time. This design ensures that tickets are checked for validity and issuer alignment, handling errors robustly in order to avoid self-equivocation during GPBFT instances.
+* `lotus-shed indexes inspect-indexes` now has a `--compare-amt` flag that will do a comprehensive comparison of the event index data for each message by comparing the AMT root CID from the message receipt with the root of a reconstructed AMT. ([filecoin-project/lotus#12570](https://github.com/filecoin-project/lotus/pull/12570))
 
 ## Improvements
 
