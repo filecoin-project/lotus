@@ -366,17 +366,15 @@ type f3Participator struct {
 	backoff                  *backoff.Backoff
 	maxCheckProgressAttempts int
 	previousTicket           api.F3ParticipationTicket
-	checkProgressInterval    time.Duration
 	leaseTerm                uint64
 }
 
-func newF3Participator(node v1api.FullNode, participant dtypes.MinerAddress, backoff *backoff.Backoff, maxCheckProgress int, checkProgressInterval time.Duration, leaseTerm uint64) *f3Participator {
+func newF3Participator(node v1api.FullNode, participant dtypes.MinerAddress, backoff *backoff.Backoff, maxCheckProgress int, leaseTerm uint64) *f3Participator {
 	return &f3Participator{
 		node:                     node,
 		participant:              address.Address(participant),
 		backoff:                  backoff,
 		maxCheckProgressAttempts: maxCheckProgress,
-		checkProgressInterval:    checkProgressInterval,
 		leaseTerm:                leaseTerm,
 	}
 }
@@ -479,8 +477,10 @@ func (p *f3Participator) tryF3Participate(ctx context.Context, ticket api.F3Part
 
 func (p *f3Participator) awaitLeaseExpiry(ctx context.Context, lease api.F3ParticipationLease) error {
 	p.backoff.Reset()
+	renewLeaseWithin := p.leaseTerm / 2
 	for ctx.Err() == nil {
-		switch manifest, err := p.node.F3GetManifest(ctx); {
+		manifest, err := p.node.F3GetManifest(ctx)
+		switch {
 		case errors.Is(err, api.ErrF3Disabled):
 			log.Errorw("Cannot await F3 participation lease expiry as F3 is disabled.", "err", err)
 			return xerrors.Errorf("awaiting F3 participation lease expiry: %w", err)
@@ -509,13 +509,17 @@ func (p *f3Participator) awaitLeaseExpiry(ctx context.Context, lease api.F3Parti
 			}
 			log.Errorw("Failed to check F3 progress while awaiting lease expiry. Retrying after backoff.", "attempts", p.backoff.Attempt(), "backoff", p.backoff.Duration(), "err", err)
 			p.backOff(ctx)
-		case progress.ID+2 >= lease.ToInstance():
-			log.Infof("F3 progressed (%d) to within two instances of lease expiry (%d). Renewing participation.", progress.ID, lease.ToInstance())
+		case progress.ID+renewLeaseWithin >= lease.ToInstance():
+			log.Infof("F3 progressed (%d) to within %d instances of lease expiry (%d). Renewing participation.", progress.ID, renewLeaseWithin, lease.ToInstance())
 			return nil
 		default:
 			remainingInstanceLease := lease.ToInstance() - progress.ID
-			log.Debugf("F3 participation lease is valid for further %d instances. Re-checking after %s.", remainingInstanceLease, p.checkProgressInterval)
-			p.backOffFor(ctx, p.checkProgressInterval)
+			waitTime := time.Duration(remainingInstanceLease-renewLeaseWithin) * manifest.CatchUpAlignment
+			if waitTime == 0 {
+				waitTime = 100 * time.Millisecond
+			}
+			log.Debugf("F3 participation lease is valid for further %d instances. Re-checking after %s.", remainingInstanceLease, waitTime)
+			p.backOffFor(ctx, waitTime)
 		}
 	}
 	return ctx.Err()
@@ -550,9 +554,6 @@ func F3Participation(mctx helpers.MetricsCtx, lc fx.Lifecycle, node v1api.FullNo
 		// typically when we would try to renew the participation ticket. Hence, the value
 		// to 13.
 		checkProgressMaxAttempts = 13
-		// checkProgressInterval defines the duration between progress checks in normal operation mode.
-		// This interval is used when there are no errors in retrieving the current progress.
-		checkProgressInterval = 10 * time.Second
 	)
 
 	participator := newF3Participator(
@@ -564,7 +565,6 @@ func F3Participation(mctx helpers.MetricsCtx, lc fx.Lifecycle, node v1api.FullNo
 			Factor: 1.5,
 		},
 		checkProgressMaxAttempts,
-		checkProgressInterval,
 		F3LeaseTerm,
 	)
 
