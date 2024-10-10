@@ -989,6 +989,10 @@ type F3ParticipationLease struct {
 	ValidityTerm uint64
 }
 
+func (l *F3ParticipationLease) ToInstance() uint64 {
+	return l.FromInstance + l.ValidityTerm
+}
+
 // EthSubscriber is the reverse interface to the client, called after EthSubscribe
 type EthSubscriber interface {
 	// note: the parameter is ethtypes.EthSubscriptionResponse serialized as json object
