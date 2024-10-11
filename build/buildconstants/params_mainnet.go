@@ -137,9 +137,13 @@ var PropagationDelaySecs = uint64(10)
 var EquivocationDelaySecs = uint64(2)
 
 func init() {
+	var addrNetwork address.Network
 	if os.Getenv("LOTUS_USE_TEST_ADDRESSES") != "1" {
-		SetAddressNetwork(address.Mainnet)
+		addrNetwork = address.Mainnet
+	} else {
+		addrNetwork = address.Testnet
 	}
+	SetAddressNetwork(addrNetwork)
 
 	if os.Getenv("LOTUS_DISABLE_TUKTUK") == "1" {
 		UpgradeTuktukHeight = math.MaxInt64 - 1
