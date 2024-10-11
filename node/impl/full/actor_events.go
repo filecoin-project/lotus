@@ -107,7 +107,8 @@ func (a *ActorEventHandler) GetActorEventsRaw(ctx context.Context, evtFilter *ty
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tipset cid: %w", err)
 	}
-	f, err := a.eventFilterManager.Install(ctx, params.MinHeight, params.MaxHeight, tipSetCid, evtFilter.Addresses, evtFilter.Fields, false)
+	excludeReverted := tipSetCid == cid.Undef
+	f, err := a.eventFilterManager.Install(ctx, params.MinHeight, params.MaxHeight, tipSetCid, evtFilter.Addresses, evtFilter.Fields, excludeReverted)
 	if err != nil {
 		return nil, err
 	}

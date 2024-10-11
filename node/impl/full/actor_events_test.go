@@ -146,6 +146,11 @@ func TestGetActorEventsRaw(t *testing.T) {
 	minerAddr, err := address.NewIDAddress(uint64(rng.Int63()))
 	req.NoError(err)
 
+	c := mkCid(t, "c")
+	tskey := types.NewTipSetKey(c)
+	tsKeyCid, err := tskey.Cid()
+	req.NoError(err)
+
 	testCases := []struct {
 		name                   string
 		filter                 *types.ActorEventFilter
@@ -159,16 +164,18 @@ func TestGetActorEventsRaw(t *testing.T) {
 		expectErr              string
 	}{
 		{
-			name:             "nil filter",
-			filter:           nil,
-			installMinHeight: -1,
-			installMaxHeight: -1,
+			name:                   "nil filter",
+			filter:                 nil,
+			installMinHeight:       -1,
+			installMaxHeight:       -1,
+			installExcludeReverted: true,
 		},
 		{
-			name:             "empty filter",
-			filter:           &types.ActorEventFilter{},
-			installMinHeight: -1,
-			installMaxHeight: -1,
+			name:                   "empty filter",
+			filter:                 &types.ActorEventFilter{},
+			installMinHeight:       -1,
+			installMaxHeight:       -1,
+			installExcludeReverted: true,
 		},
 		{
 			name: "basic height range filter",
@@ -176,25 +183,38 @@ func TestGetActorEventsRaw(t *testing.T) {
 				FromHeight: epochPtr(0),
 				ToHeight:   epochPtr(maxFilterHeightRange),
 			},
-			installMinHeight: 0,
-			installMaxHeight: maxFilterHeightRange,
+			installMinHeight:       0,
+			installMaxHeight:       maxFilterHeightRange,
+			installExcludeReverted: true,
+		},
+		{
+			name: "query for tipset key",
+			filter: &types.ActorEventFilter{
+				TipSetKey: &tskey,
+			},
+			installTipSetKey:       tsKeyCid,
+			installMinHeight:       0,
+			installMaxHeight:       0,
+			installExcludeReverted: false,
 		},
 		{
 			name: "from, no to height",
 			filter: &types.ActorEventFilter{
 				FromHeight: epochPtr(0),
 			},
-			currentHeight:    maxFilterHeightRange - 1,
-			installMinHeight: 0,
-			installMaxHeight: -1,
+			currentHeight:          maxFilterHeightRange - 1,
+			installMinHeight:       0,
+			installMaxHeight:       -1,
+			installExcludeReverted: true,
 		},
 		{
 			name: "to, no from height",
 			filter: &types.ActorEventFilter{
 				ToHeight: epochPtr(maxFilterHeightRange - 1),
 			},
-			installMinHeight: -1,
-			installMaxHeight: maxFilterHeightRange - 1,
+			installMinHeight:       -1,
+			installMaxHeight:       maxFilterHeightRange - 1,
+			installExcludeReverted: true,
 		},
 		{
 			name: "from, no to height, too far",
