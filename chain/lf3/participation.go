@@ -3,6 +3,7 @@ package lf3
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/jpillora/backoff"
@@ -82,8 +83,12 @@ func (p *Participant) Stop(ctx context.Context) error {
 
 func (p *Participant) run(ctx context.Context) (_err error) {
 	defer func() {
-		if ctx.Err() == nil && _err != nil {
-			log.Errorw("F3 participation stopped unexpectedly", "error", _err)
+		if ctx.Err() != nil {
+			_err = nil
+		}
+		if _err != nil {
+			_err = fmt.Errorf("F3 participant stopped unexpectedly: %w", _err)
+			log.Error(_err)
 		}
 	}()
 
