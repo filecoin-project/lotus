@@ -1443,7 +1443,11 @@ func (a *EthModule) applyMessage(ctx context.Context, msg *types.Message, tsk ty
 	}
 
 	if res.MsgRct.ExitCode.IsError() {
-		return nil, errors.New(parseEthRevert(res.MsgRct.Return))
+		return nil, &EthCallError{
+			Message: "execution reverted",
+			Code:    -32000,
+			Data:    parseEthRevert(res.MsgRct.Return),
+		}
 	}
 
 	return res, nil
@@ -1629,33 +1633,21 @@ func ethGasSearch(
 func (a *EthModule) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {
 	msg, err := ethCallToFilecoinMessage(ctx, tx)
 	if err != nil {
-		return nil, ethtypes.EthCallErrorWithDefaultCode(
-			fmt.Sprintf("failed to convert ethcall to filecoin message"),
-			err.Error(),
-		)
+		return nil, xerrors.Errorf("failed to convert ethcall to filecoin message: %w", err)
 	}
 
 	ts, err := getTipsetByEthBlockNumberOrHash(ctx, a.Chain, blkParam)
 	if err != nil {
-		return nil, ethtypes.EthCallErrorWithDefaultCode(
-			fmt.Sprintf("failed to process block param: %v; %s", blkParam),
-			err.Error(),
-		)
+		return nil, xerrors.Errorf("failed to process block param: %v; %w", blkParam, err)
 	}
 
 	invokeResult, err := a.applyMessage(ctx, msg, ts.Key())
 	if err != nil {
-		return nil, ethtypes.EthCallErrorWithDefaultCode(
-			fmt.Sprintf("execution revereted"),
-			err.Error(),
-		)
+		return nil, err
 	}
 
 	if invokeResult == nil {
-		return nil, ethtypes.EthCallErrorWithDefaultCode(
-			fmt.Sprintf("execution revereted"),
-			"invoke result is nil",
-		)
+		return nil, xerrors.New("invoke result is nil")
 	}
 
 	if invokeResult.MsgRct == nil {
@@ -1675,10 +1667,7 @@ func (a *EthModule) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam e
 		reader := bytes.NewReader(invokeResult.MsgRct.Return)
 		result, err = cbg.ReadByteArray(reader, uint64(len(invokeResult.MsgRct.Return)))
 		if err != nil {
-			return nil, ethtypes.EthCallErrorWithDefaultCode(
-				fmt.Sprintf("execution revereted"),
-				err.Error(),
-			)
+			return nil, xerrors.Errorf("failed to read byte array: %w", err)
 		}
 		return result, nil
 	}
