@@ -1706,7 +1706,9 @@ func (e *EthEventHandler) ethGetEventsForFilter(ctx context.Context, filterSpec 
 		MaxResults:    e.EventFilterManager.MaxFilterResults,
 	}
 
-	ces, err := e.EventFilterManager.ChainIndexer.GetEventsForFilter(ctx, ef, true)
+	excludeReverted := ef.TipsetCid == cid.Undef
+
+	ces, err := e.EventFilterManager.ChainIndexer.GetEventsForFilter(ctx, ef, excludeReverted)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get events for filter from chain indexer: %w", err)
 	}
