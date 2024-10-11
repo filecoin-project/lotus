@@ -1469,7 +1469,7 @@ func TestEthCall(t *testing.T) {
 	}
 
 	t.Run("FailedToProcessBlockParam", func(t *testing.T) {
-		invalidBlockNumber := ethtypes.EthUint64(latestBlock + 1000)
+		invalidBlockNumber := latestBlock + 1000
 		_, err = client.EthCall(ctx, callParams, ethtypes.NewEthBlockNumberOrHashFromNumber(invalidBlockNumber))
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "requested a future epoch (beyond 'latest')")
