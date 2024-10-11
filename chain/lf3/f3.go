@@ -141,20 +141,28 @@ func (fff *F3) runSigningLoop(ctx context.Context) {
 
 	msgCh := fff.inner.MessagesToSign()
 
-loop:
+	var mb *gpbft.MessageBuilder
+	alreadyParticipated := make(map[uint64]struct{})
 	for ctx.Err() == nil {
 		select {
 		case <-ctx.Done():
 			return
-		case mb, ok := <-msgCh:
-			if !ok {
-				continue loop
+		case <-fff.leaser.notifyParticipation:
+			if mb == nil {
+				continue
 			}
-			participants := fff.leaser.getParticipantsByInstance(mb.Payload.Instance)
-			for _, id := range participants {
-				if err := participateOnce(ctx, mb, id); err != nil {
-					log.Errorf("while participating for miner f0%d: %+v", id, err)
-				}
+		case mb = <-msgCh: // never closed
+			clear(alreadyParticipated)
+		}
+
+		participants := fff.leaser.getParticipantsByInstance(mb.Payload.Instance)
+		for _, id := range participants {
+			if _, ok := alreadyParticipated[id]; ok {
+				continue
+			} else if err := participateOnce(ctx, mb, id); err != nil {
+				log.Errorf("while participating for miner f0%d: %+v", id, err)
+			} else {
+				alreadyParticipated[id] = struct{}{}
 			}
 		}
 	}
