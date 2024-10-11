@@ -413,7 +413,7 @@ func (m *EventFilterManager) Fill(
 
 	if m.EventIndex != nil && minHeight != -1 && minHeight < currentHeight {
 		// Filter needs historic events
-		excludeReverted := tipsetCid != cid.Undef
+		excludeReverted := tipsetCid == cid.Undef
 		if err := m.EventIndex.prefillFilter(ctx, f, excludeReverted); err != nil {
 			return nil, err
 		}
