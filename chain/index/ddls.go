@@ -25,11 +25,12 @@ var ddls = []string{
 		event_id INTEGER PRIMARY KEY,
 		message_id INTEGER NOT NULL,
 		event_index INTEGER NOT NULL,
-		emitter_addr BLOB NOT NULL,
+		emitter_id INTEGER NOT NULL,
+		emitter_addr BLOB,
 		reverted INTEGER NOT NULL,
 		FOREIGN KEY (message_id) REFERENCES tipset_message(message_id) ON DELETE CASCADE,
 		UNIQUE (message_id, event_index)
-    )`,
+	)`,
 
 	`CREATE TABLE IF NOT EXISTS event_entry (
 		event_id INTEGER NOT NULL,
@@ -76,7 +77,7 @@ func preparedStatementMapping(ps *preparedStatements) map[**sql.Stmt]string {
 		&ps.updateEventsToRevertedStmt:            "UPDATE event SET reverted = 1 WHERE message_id IN (SELECT message_id FROM tipset_message WHERE tipset_key_cid = ?)",
 		&ps.updateEventsToNonRevertedStmt:         "UPDATE event SET reverted = 0 WHERE message_id IN (SELECT message_id FROM tipset_message WHERE tipset_key_cid = ?)",
 		&ps.getMsgIdForMsgCidAndTipsetStmt:        "SELECT message_id FROM tipset_message WHERE tipset_key_cid = ? AND message_cid = ? AND reverted = 0 LIMIT 1",
-		&ps.insertEventStmt:                       "INSERT INTO event (message_id, event_index, emitter_addr, reverted) VALUES (?, ?, ?, ?)",
+		&ps.insertEventStmt:                       "INSERT INTO event (message_id, event_index, emitter_id, emitter_addr, reverted) VALUES (?, ?, ?, ?, ?)",
 		&ps.insertEventEntryStmt:                  "INSERT INTO event_entry (event_id, indexed, flags, key, codec, value) VALUES (?, ?, ?, ?, ?, ?)",
 	}
 }

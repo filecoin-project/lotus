@@ -91,8 +91,13 @@ func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *typ
 				addressLookups[event.Emitter] = addr
 			}
 
+			robustAddrbytes := addr.Bytes()
+			if addr.Protocol() != address.Delegated {
+				robustAddrbytes = nil
+			}
+
 			// Insert event into events table
-			eventResult, err := tx.Stmt(si.stmts.insertEventStmt).ExecContext(ctx, messageID, eventCount, addr.Bytes(), 0)
+			eventResult, err := tx.Stmt(si.stmts.insertEventStmt).ExecContext(ctx, messageID, eventCount, uint64(event.Emitter), robustAddrbytes, 0)
 			if err != nil {
 				return xerrors.Errorf("failed to insert event: %w", err)
 			}
@@ -289,6 +294,7 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter,
 				id           int64
 				height       uint64
 				tipsetKeyCid []byte
+				emitterID    uint64
 				emitterAddr  []byte
 				eventIndex   int
 				messageCid   []byte
@@ -304,6 +310,7 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter,
 				&row.id,
 				&row.height,
 				&row.tipsetKeyCid,
+				&row.emitterID,
 				&row.emitterAddr,
 				&row.eventIndex,
 				&row.messageCid,
@@ -337,9 +344,16 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter,
 					MsgIdx:   row.messageIndex,
 				}
 
-				ce.EmitterAddr, err = address.NewFromBytes(row.emitterAddr)
-				if err != nil {
-					return nil, xerrors.Errorf("parse emitter addr: %w", err)
+				if row.emitterAddr == nil {
+					ce.EmitterAddr, err = address.NewIDAddress(row.emitterID)
+					if err != nil {
+						return nil, xerrors.Errorf("failed to parse emitter id: %w", err)
+					}
+				} else {
+					ce.EmitterAddr, err = address.NewFromBytes(row.emitterAddr)
+					if err != nil {
+						return nil, xerrors.Errorf("parse emitter addr: %w", err)
+					}
 				}
 
 				tsKeyCid, err := cid.Cast(row.tipsetKeyCid)
@@ -383,7 +397,10 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter,
 		return ces, nil
 	}
 
-	values, query := makePrefillFilterQuery(f, excludeReverted)
+	values, query, err := makePrefillFilterQuery(f, excludeReverted)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to make prefill filter query: %w", err)
+	}
 
 	stmt, err := si.db.Prepare(query)
 	if err != nil {
@@ -413,7 +430,7 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter,
 	return ces, nil
 }
 
-func makePrefillFilterQuery(f *EventFilter, excludeReverted bool) ([]any, string) {
+func makePrefillFilterQuery(f *EventFilter, excludeReverted bool) ([]any, string, error) {
 	clauses := []string{}
 	values := []any{}
 	joins := []string{}
@@ -445,10 +462,39 @@ func makePrefillFilterQuery(f *EventFilter, excludeReverted bool) ([]any, string
 	}
 
 	if len(f.Addresses) > 0 {
+		idAddresses := make([]uint64, 0)
+		delegatedAddresses := make([][]byte, 0)
+
 		for _, addr := range f.Addresses {
-			values = append(values, addr.Bytes())
+			switch addr.Protocol() {
+			case address.ID:
+				id, err := address.IDFromAddress(addr)
+				if err != nil {
+					return nil, "", xerrors.Errorf("failed to get ID from address: %w", err)
+				}
+				idAddresses = append(idAddresses, id)
+			case address.Delegated:
+				delegatedAddresses = append(delegatedAddresses, addr.Bytes())
+			default:
+				return nil, "", xerrors.Errorf("can only query events by ID or Delegated addresses; but request has address: %s", addr)
+			}
 		}
-		clauses = append(clauses, "e.emitter_addr IN ("+strings.Repeat("?,", len(f.Addresses)-1)+"?)")
+
+		if len(idAddresses) > 0 {
+			placeholders := strings.Repeat("?,", len(idAddresses)-1) + "?"
+			clauses = append(clauses, "e.emitter_id IN ("+placeholders+")")
+			for _, id := range idAddresses {
+				values = append(values, id)
+			}
+		}
+
+		if len(delegatedAddresses) > 0 {
+			placeholders := strings.Repeat("?,", len(delegatedAddresses)-1) + "?"
+			clauses = append(clauses, "e.emitter_addr IN ("+placeholders+")")
+			for _, addr := range delegatedAddresses {
+				values = append(values, addr)
+			}
+		}
 	}
 
 	if len(f.KeysWithCodec) > 0 {
@@ -474,6 +520,7 @@ func makePrefillFilterQuery(f *EventFilter, excludeReverted bool) ([]any, string
 			e.event_id,
 			tm.height,
 			tm.tipset_key_cid,
+			e.emitter_id,
 			e.emitter_addr,
 			e.event_index,
 			tm.message_cid,
@@ -497,5 +544,5 @@ func makePrefillFilterQuery(f *EventFilter, excludeReverted bool) ([]any, string
 
 	// retain insertion order of event_entry rows
 	s += " ORDER BY tm.height DESC, ee._rowid_ ASC"
-	return values, s
+	return values, s, nil
 }
