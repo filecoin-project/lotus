@@ -491,7 +491,11 @@ func (p *f3Participator) awaitLeaseExpiry(ctx context.Context, lease api.F3Parti
 			}
 			log.Errorw("Failed to check F3 progress while awaiting lease expiry. Retrying after backoff.", "attempts", p.backoff.Attempt(), "backoff", p.backoff.Duration(), "err", err)
 			p.backOff(ctx)
-		case manifest.NetworkName != lease.Network:
+		case manifest == nil || manifest.NetworkName != lease.Network:
+			// If we got an unexpected manifest, or no manifest, go back to the
+			// beginning and try to get another ticket. Switching from having a manifest
+			// to having no manifest can theoretically happen if the lotus node reboots
+			// and has no static manifest.
 			return nil
 		}
 		switch progress, err := p.node.F3GetProgress(ctx); {
