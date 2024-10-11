@@ -101,6 +101,9 @@ func (l *leaser) participate(ticket api.F3ParticipationTicket) (api.F3Participat
 		// For safety, strictly require lease start instance to never decrease.
 		return api.F3ParticipationLease{}, api.ErrF3ParticipationTicketStartBeforeExisting
 	}
+	if !found {
+		log.Infof("started participating in F3 for miner %d", newLease.MinerID)
+	}
 	l.leases[newLease.MinerID] = newLease
 	select {
 	case l.notifyParticipation <- struct{}{}:
@@ -117,6 +120,7 @@ func (l *leaser) getParticipantsByInstance(instance uint64) []uint64 {
 		if instance > lease.ToInstance() {
 			// Lazily delete the expired leases.
 			delete(l.leases, id)
+			log.Warnf("lost F3 participation lease for miner %d", id)
 		} else {
 			participants = append(participants, id)
 		}
