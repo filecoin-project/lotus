@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	pseudo "math/rand"
+	"sort"
 	"testing"
 	"time"
 
@@ -207,6 +208,9 @@ func TestGetEventsFilterByAddress(t *testing.T) {
 	addr3, err := address.NewIDAddress(3)
 	require.NoError(t, err)
 
+	delegatedAddr1, err := address.NewFromString("f410fagkp3qx2f76maqot74jaiw3tzbxe76k76zrkl3xifk67isrnbn2sll3yua")
+	require.NoError(t, err)
+
 	ev1 := fakeEvent(
 		abi.ActorID(1),
 		[]kv{
@@ -238,6 +242,9 @@ func TestGetEventsFilterByAddress(t *testing.T) {
 	}
 
 	si.SetIdToRobustAddrFunc(func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool) {
+		if emitter == abi.ActorID(1) {
+			return delegatedAddr1, true
+		}
 		idAddr, err := address.NewIDAddress(uint64(emitter))
 		if err != nil {
 			return address.Undef, false
@@ -262,18 +269,40 @@ func TestGetEventsFilterByAddress(t *testing.T) {
 	require.NoError(t, si.Apply(ctx, fakeTipSet1, fakeTipSet2))
 
 	testCases := []struct {
-		name          string
-		f             *EventFilter
-		expectedCount int
+		name              string
+		f                 *EventFilter
+		expectedCount     int
+		expectedAddresses []address.Address
 	}{
 		{
-			name: "matching single address",
+			name: "matching single ID address (non-delegated)",
+			f: &EventFilter{
+				Addresses: []address.Address{addr2},
+				MinHeight: 1,
+				MaxHeight: 1,
+			},
+			expectedCount:     1,
+			expectedAddresses: []address.Address{addr2},
+		},
+		{
+			name: "matching single ID address",
 			f: &EventFilter{
 				Addresses: []address.Address{addr1},
 				MinHeight: 1,
 				MaxHeight: 1,
 			},
-			expectedCount: 1,
+			expectedCount:     1,
+			expectedAddresses: []address.Address{delegatedAddr1},
+		},
+		{
+			name: "matching single delegated address",
+			f: &EventFilter{
+				Addresses: []address.Address{delegatedAddr1},
+				MinHeight: 1,
+				MaxHeight: 1,
+			},
+			expectedCount:     1,
+			expectedAddresses: []address.Address{delegatedAddr1},
 		},
 		{
 			name: "matching multiple addresses",
@@ -282,7 +311,8 @@ func TestGetEventsFilterByAddress(t *testing.T) {
 				MinHeight: 1,
 				MaxHeight: 1,
 			},
-			expectedCount: 2,
+			expectedCount:     2,
+			expectedAddresses: []address.Address{delegatedAddr1, addr2},
 		},
 		{
 			name: "no matching address",
@@ -291,7 +321,8 @@ func TestGetEventsFilterByAddress(t *testing.T) {
 				MinHeight: 1,
 				MaxHeight: 1,
 			},
-			expectedCount: 0,
+			expectedCount:     0,
+			expectedAddresses: []address.Address{},
 		},
 		{
 			name: "empty address list",
@@ -300,7 +331,8 @@ func TestGetEventsFilterByAddress(t *testing.T) {
 				MinHeight: 1,
 				MaxHeight: 1,
 			},
-			expectedCount: 2, // should return all events
+			expectedCount:     2,
+			expectedAddresses: []address.Address{delegatedAddr1, addr2},
 		},
 	}
 
@@ -309,8 +341,24 @@ func TestGetEventsFilterByAddress(t *testing.T) {
 			ces, err := si.GetEventsForFilter(ctx, tc.f, false)
 			require.NoError(t, err)
 			require.Equal(t, tc.expectedCount, len(ces))
+
+			actualAddresses := make([]address.Address, len(ces))
+			for i, ce := range ces {
+				actualAddresses[i] = ce.EmitterAddr
+			}
+
+			sortAddresses(tc.expectedAddresses)
+			sortAddresses(actualAddresses)
+
+			require.Equal(t, tc.expectedAddresses, actualAddresses)
 		})
 	}
+}
+
+func sortAddresses(addrs []address.Address) {
+	sort.Slice(addrs, func(i, j int) bool {
+		return addrs[i].String() < addrs[j].String()
+	})
 }
 
 func fakeMessage(to, from address.Address) *types.Message {

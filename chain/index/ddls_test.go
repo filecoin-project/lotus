@@ -27,6 +27,7 @@ func TestHasRevertedEventsInTipsetStmt(t *testing.T) {
 	insertEvent(t, s, event{
 		messageID:   messageID,
 		eventIndex:  0,
+		emitterId:   1,
 		emitterAddr: []byte("test_emitter_addr"),
 		reverted:    true,
 	})
@@ -63,12 +64,14 @@ func TestGetNonRevertedTipsetCountStmts(t *testing.T) {
 	eventID1 := insertEvent(t, s, event{
 		messageID:   messageID,
 		eventIndex:  0,
+		emitterId:   1,
 		emitterAddr: []byte("test_emitter_addr"),
 		reverted:    false,
 	})
 	eventID2 := insertEvent(t, s, event{
 		messageID:   messageID,
 		eventIndex:  1,
+		emitterId:   2,
 		emitterAddr: []byte("test_emitter_addr"),
 		reverted:    false,
 	})
@@ -202,12 +205,14 @@ func TestUpdateEventsToRevertedStmt(t *testing.T) {
 	insertEvent(t, s, event{
 		messageID:   messageID,
 		eventIndex:  0,
+		emitterId:   1,
 		emitterAddr: []byte("test_emitter_addr"),
 		reverted:    false,
 	})
 	insertEvent(t, s, event{
 		messageID:   messageID,
 		eventIndex:  1,
+		emitterId:   2,
 		emitterAddr: []byte("test_emitter_addr"),
 		reverted:    false,
 	})
@@ -463,6 +468,7 @@ func TestForeignKeyCascadeDelete(t *testing.T) {
 	eventID := insertEvent(t, s, event{
 		messageID:   messageID,
 		eventIndex:  0,
+		emitterId:   2,
 		emitterAddr: []byte("test_emitter_addr"),
 		reverted:    false,
 	})
@@ -531,6 +537,7 @@ type tipsetMessage struct {
 
 type event struct {
 	eventIndex  uint64
+	emitterId   uint64
 	emitterAddr []byte
 	reverted    bool
 	messageID   int64
@@ -682,7 +689,7 @@ func insertTipsetMessage(t *testing.T, s *SqliteIndexer, ts tipsetMessage) int64
 }
 
 func insertEvent(t *testing.T, s *SqliteIndexer, e event) int64 {
-	res, err := s.stmts.insertEventStmt.Exec(e.messageID, e.eventIndex, e.emitterAddr, e.reverted)
+	res, err := s.stmts.insertEventStmt.Exec(e.messageID, e.eventIndex, e.emitterId, e.emitterAddr, e.reverted)
 	require.NoError(t, err)
 
 	rowsAffected, err := res.RowsAffected()

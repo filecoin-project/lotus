@@ -312,6 +312,7 @@ func TestIndexCorruption(t *testing.T) {
 				insertEvent(t, si, event{
 					messageID:   messageID,
 					eventIndex:  0,
+					emitterId:   1,
 					emitterAddr: randomIDAddr(t, rng).Bytes(),
 					reverted:    true,
 				})
@@ -379,12 +380,14 @@ func TestIndexCorruption(t *testing.T) {
 				insertEvent(t, si, event{
 					messageID:   messageID,
 					eventIndex:  0,
+					emitterId:   2,
 					emitterAddr: randomIDAddr(t, rng).Bytes(),
 					reverted:    false,
 				})
 				insertEvent(t, si, event{
 					messageID:   messageID,
 					eventIndex:  1,
+					emitterId:   3,
 					emitterAddr: randomIDAddr(t, rng).Bytes(),
 					reverted:    false,
 				})
@@ -428,6 +431,7 @@ func TestIndexCorruption(t *testing.T) {
 				eventID := insertEvent(t, si, event{
 					messageID:   messageID,
 					eventIndex:  0,
+					emitterId:   4,
 					emitterAddr: randomIDAddr(t, rng).Bytes(),
 					reverted:    false,
 				})
