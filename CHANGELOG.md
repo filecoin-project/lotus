@@ -2,9 +2,7 @@
 
 # UNRELEASED
 
-- https://github.com/filecoin-project/lotus/pull/12585
-  - Event APIs(ETH Events API and Actor Events API) should only return reverted events if client queries by block hash.
-  - Both event Subscibr APIs should always return reverted events to enable accurate observation of real time changes.
+- Event APIs (Eth events and actor events) should only return reverted events if client queries by specific block hash / tipset. Eth and actor event subscription APIs should always return reverted events to enable accurate observation of real-time changes. ([filecoin-project/lotus#12585](https://github.com/filecoin-project/lotus/pull/12585))
 
 ## New features
 
