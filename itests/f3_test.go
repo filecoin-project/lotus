@@ -245,13 +245,13 @@ func setupWithStaticManifest(t *testing.T, manif *manifest.Manifest, testBootstr
 	)
 
 	ens := kit.NewEnsemble(t, kit.MockProofs()).
-		FullNode(&n1, kit.WithAllSubsystems(), f3NOpt).
-		FullNode(&n2, kit.WithAllSubsystems(), f3NOpt).
-		FullNode(&n3, kit.WithAllSubsystems(), f3NOpt).
-		Miner(&m1, &n1, kit.WithAllSubsystems(), f3MOpt).
-		Miner(&m2, &n2, kit.WithAllSubsystems(), f3MOpt).
-		Miner(&m3, &n3, kit.WithAllSubsystems(), f3MOpt).
-		Miner(&m4, &n3, kit.WithAllSubsystems(), f3MOpt).
+		FullNode(&n1, f3NOpt).
+		FullNode(&n2, f3NOpt).
+		FullNode(&n3, f3NOpt).
+		Miner(&m1, &n1, kit.WithAllSubsystems(), kit.PresealSectors(1), kit.NoStorage(), f3MOpt).
+		Miner(&m2, &n2, kit.WithAllSubsystems(), kit.PresealSectors(1), kit.NoStorage(), f3MOpt).
+		Miner(&m3, &n3, kit.WithAllSubsystems(), kit.PresealSectors(1), kit.NoStorage(), f3MOpt).
+		Miner(&m4, &n3, kit.WithAllSubsystems(), kit.PresealSectors(1), kit.NoStorage(), f3MOpt).
 		Start()
 
 	ens.InterconnectAll().BeginMining(blocktime)
