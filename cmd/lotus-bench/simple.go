@@ -16,13 +16,10 @@ import (
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/abi"
 	prf "github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
-	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
@@ -586,10 +583,6 @@ var simpleCommit2 = &cli.Command{
 		var c2in Commit2In
 		if err := json.Unmarshal(inb, &c2in); err != nil {
 			return xerrors.Errorf("unmarshalling input file: %w", err)
-		}
-
-		if err := paramfetch.GetParams(lcli.ReqContext(c), build.ParametersJSON(), build.SrsJSON(), c2in.SectorSize); err != nil {
-			return xerrors.Errorf("getting params: %w", err)
 		}
 
 		maddr, err := address.NewFromString(c.String("miner-addr"))
