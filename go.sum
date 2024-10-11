@@ -287,8 +287,6 @@ github.com/filecoin-project/go-hamt-ipld/v3 v3.0.1/go.mod h1:gXpNmr3oQx8l3o7qkGy
 github.com/filecoin-project/go-hamt-ipld/v3 v3.1.0/go.mod h1:bxmzgT8tmeVQA1/gvBwFmYdT8SOFUwB3ovSUfG1Ux0g=
 github.com/filecoin-project/go-hamt-ipld/v3 v3.4.0 h1:nYs6OPUF8KbZ3E8o9p9HJnQaE8iugjHR5WYVMcicDJc=
 github.com/filecoin-project/go-hamt-ipld/v3 v3.4.0/go.mod h1:s0qiHRhFyrgW0SvdQMSJFQxNa4xEIG5XvqCBZUEgcbc=
-github.com/filecoin-project/go-jsonrpc v0.6.0 h1:/fFJIAN/k6EgY90m7qbyfY28woMwyseZmh2gVs5sYjY=
-github.com/filecoin-project/go-jsonrpc v0.6.0/go.mod h1:/n/niXcS4ZQua6i37LcVbY1TmlJR0UIK9mDFQq2ICek=
 github.com/filecoin-project/go-padreader v0.0.1 h1:8h2tVy5HpoNbr2gBRr+WD6zV6VD6XHig+ynSGJg8ZOs=
 github.com/filecoin-project/go-padreader v0.0.1/go.mod h1:VYVPJqwpsfmtoHnAmPx6MUwmrK6HIcDqZJiuZhtmfLQ=
 github.com/filecoin-project/go-paramfetch v0.0.4 h1:H+Me8EL8T5+79z/KHYQQcT8NVOzYVqXIi7nhb48tdm8=
@@ -1281,6 +1279,8 @@ github.com/valyala/fasttemplate v1.0.1 h1:tY9CJiPnMXf1ERmG2EyK7gNUd+c6RKGD0IfU8W
 github.com/valyala/fasttemplate v1.0.1/go.mod h1:UQGH1tvbgY+Nz5t2n7tXsz52dQxojPUpymEIMZ47gx8=
 github.com/viant/assertly v0.4.8/go.mod h1:aGifi++jvCrUaklKEKT0BU95igDNaqkvz+49uaYMPRU=
 github.com/viant/toolbox v0.24.0/go.mod h1:OxMCG57V0PXuIP2HNQrtJf2CjqdmbrOx5EkMILuUhzM=
+github.com/virajbhartiya/go-jsonrpc v0.0.0-20241011111701-53eab64ec154 h1:k3+bv8KyRZZXFjNtT5CK2Y8KqIK19ISShIPMqO6uEQI=
+github.com/virajbhartiya/go-jsonrpc v0.0.0-20241011111701-53eab64ec154/go.mod h1:lAUpS8BSVtKaA8+/CFUMA5dokMiSM7n0ehf8bHOFdpE=
 github.com/warpfork/go-testmark v0.12.1 h1:rMgCpJfwy1sJ50x0M0NgyphxYYPMOODIJHhsXyEHU0s=
 github.com/warpfork/go-testmark v0.12.1/go.mod h1:kHwy7wfvGSPh1rQJYKayD4AbtNaeyZdcGi9tNJTaa5Y=
 github.com/warpfork/go-wish v0.0.0-20180510122957-5ad1f5abf436/go.mod h1:x6AKhvSSexNrVSrViXSHUEbICjmGXhtgABaHIySUSGw=

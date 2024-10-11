@@ -177,16 +177,6 @@ type EthAPI struct {
 	EthEventAPI
 }
 
-type EthCallError struct {
-	Message string
-	Code    int
-	Data    string
-}
-
-func (e *EthCallError) Error() string {
-	return e.Data
-}
-
 var ErrNullRound = errors.New("requested epoch was a null round")
 
 func (a *EthModule) StateNetworkName(ctx context.Context) (dtypes.NetworkName, error) {
@@ -1443,11 +1433,10 @@ func (a *EthModule) applyMessage(ctx context.Context, msg *types.Message, tsk ty
 	}
 
 	if res.MsgRct.ExitCode.IsError() {
-		return nil, &EthCallError{
-			Message: "execution reverted",
-			Code:    -32000,
-			Data:    parseEthRevert(res.MsgRct.Return),
-		}
+		return nil, ethtypes.NewExecutionRevertedWithDataError(
+			errcodeDefault,
+			parseEthRevert(res.MsgRct.Return),
+		)
 	}
 
 	return res, nil
@@ -1487,15 +1476,18 @@ func (a *EthModule) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (et
 		// guts of EthCall). This will give us an ethereum specific error with revert
 		// information.
 		msg.GasLimit = buildconstants.BlockGasLimit
-		invokeResult, err2 := a.applyMessage(ctx, msg, ts.Key())
-		if err2 != nil {
+		if _, err2 := a.applyMessage(ctx, msg, ts.Key()); err2 != nil {
+			// If err2 is an ExecutionRevertedError, return it
+			var executionRevertedError *ethtypes.ExecutionRevertedError
+			if errors.As(err2, &executionRevertedError) {
+				return ethtypes.EthUint64(0), err2
+			}
+
+			// Otherwise, return the error from applyMessage with failed to estimate gas
 			err = err2
 		}
-		return ethtypes.EthUint64(0), &EthCallError{
-			Message: fmt.Sprintf("failed to estimate gas: %s", err),
-			Code:    -32000,
-			Data:    parseEthRevert(invokeResult.MsgRct.Return),
-		}
+
+		return ethtypes.EthUint64(0), xerrors.Errorf("failed to estimate gas: %w", err)
 	}
 
 	expectedGas, err := ethGasSearch(ctx, a.Chain, a.Stmgr, a.Mpool, gassedMsg, ts)
@@ -1631,6 +1623,13 @@ func ethGasSearch(
 }
 
 func (a *EthModule) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {
+	var result ethtypes.EthBytes
+	defer func() {
+		if r := recover(); r != nil {
+			result = ethtypes.EthBytes{}
+		}
+	}()
+
 	msg, err := ethCallToFilecoinMessage(ctx, tx)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to convert ethcall to filecoin message: %w", err)
@@ -1646,33 +1645,16 @@ func (a *EthModule) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam e
 		return nil, err
 	}
 
-	if invokeResult == nil {
-		return nil, xerrors.New("invoke result is nil")
-	}
-
-	if invokeResult.MsgRct == nil {
-		return ethtypes.EthBytes{}, nil
-	}
-
 	if msg.To == builtintypes.EthereumAddressManagerActorAddr {
 		return ethtypes.EthBytes{}, nil
 	} else if len(invokeResult.MsgRct.Return) > 0 {
-		result := ethtypes.EthBytes{}
-		defer func() {
-			if r := recover(); r != nil {
-				result = ethtypes.EthBytes{}
-			}
-		}()
-
-		reader := bytes.NewReader(invokeResult.MsgRct.Return)
-		result, err = cbg.ReadByteArray(reader, uint64(len(invokeResult.MsgRct.Return)))
+		result, err = cbg.ReadByteArray(bytes.NewReader(invokeResult.MsgRct.Return), uint64(len(invokeResult.MsgRct.Return)))
 		if err != nil {
-			return nil, xerrors.Errorf("failed to read byte array: %w", err)
+			return nil, xerrors.Errorf("failed to read msg recipient: %w", err)
 		}
-		return result, nil
 	}
 
-	return ethtypes.EthBytes{}, nil
+	return result, nil
 }
 
 // TODO: For now, we're fetching logs from the index for the entire block and then filtering them by the transaction hash
