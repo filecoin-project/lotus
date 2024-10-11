@@ -10,6 +10,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 )
@@ -98,6 +99,7 @@ var ConsensusMinerMinPower = abi.NewStoragePower(2048)
 var PreCommitChallengeDelay = abi.ChainEpoch(10)
 
 func init() {
+	SetAddressNetwork(address.Testnet)
 	getGenesisNetworkVersion := func(ev string, def network.Version) network.Version {
 		hs, found := os.LookupEnv(ev)
 		if found {

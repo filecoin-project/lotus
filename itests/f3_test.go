@@ -46,7 +46,7 @@ func TestF3_Enabled(t *testing.T) {
 	blocktime := 100 * time.Millisecond
 	e := setup(t, blocktime)
 
-	e.waitTillF3Instance(3, 25*time.Second)
+	e.waitTillF3Instance(modules.F3LeaseTerm+1, 40*time.Second)
 }
 
 // Test that checks that F3 can be rebootsrapped by changing the manifest
@@ -265,12 +265,12 @@ func setupWithStaticManifest(t *testing.T, manif *manifest.Manifest, testBootstr
 	m, err := n1.F3GetManifest(ctx)
 	require.NoError(t, err)
 
-	e := &testEnv{m: m, t: t, testCtx: context.Background()}
+	e := &testEnv{m: m, t: t, testCtx: ctx}
 	// in case we want to use more full-nodes in the future
 	e.minerFullNodes = []*kit.TestFullNode{&n1, &n2, &n3}
 
 	// create manifest sender and connect to full-nodes
-	e.ms = e.newManifestSender(context.Background(), t, manifestServerHost, blocktime)
+	e.ms = e.newManifestSender(ctx, t, manifestServerHost, blocktime)
 	for _, n := range e.minerFullNodes {
 		err = n.NetConnect(ctx, e.ms.PeerInfo())
 		require.NoError(t, err)
