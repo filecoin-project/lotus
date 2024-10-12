@@ -21,24 +21,36 @@ const (
 var bootstrapfs embed.FS
 
 func BuiltinBootstrap() ([]peer.AddrInfo, error) {
+
+	// do not connect to anything for itests
 	if DisableBuiltinAssets {
 		return nil, nil
 	}
+
+	var bsList, bsListFin []string
+
+	// envvar always takes precedence
 	if bootstrappers, found := os.LookupEnv(BootstrappersOverrideEnvVarKey); found {
 		log.Infof("Using bootstrap nodes overridden by environment variable %s", BootstrappersOverrideEnvVarKey)
-		return addrutil.ParseAddresses(context.TODO(), strings.Split(strings.TrimSpace(bootstrappers), ","))
-	}
-	if buildconstants.BootstrappersFile != "" {
+		bsList = strings.Split(bootstrappers, ",")
+	} else if buildconstants.BootstrappersFile != "" {
 		spi, err := bootstrapfs.ReadFile(path.Join("bootstrap", buildconstants.BootstrappersFile))
 		if err != nil {
 			return nil, err
 		}
-		if len(spi) == 0 {
-			return nil, nil
-		}
-
-		return addrutil.ParseAddresses(context.TODO(), strings.Split(strings.TrimSpace(string(spi)), "\n"))
+		bsList = strings.Split(string(spi), "\n")
 	}
 
-	return nil, nil
+	for _, s := range bsList {
+		s = strings.TrimSpace(s)
+		if s != "" {
+			bsListFin = append(bsListFin, s)
+		}
+	}
+
+	if len(bsListFin) == 0 {
+		return nil, nil
+	}
+
+	return addrutil.ParseAddresses(context.TODO(), bsListFin)
 }
