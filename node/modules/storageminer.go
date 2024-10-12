@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net/http"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -31,6 +30,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
+	"github.com/filecoin-project/lotus/chain/lf3"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/journal"
 	lotusminer "github.com/filecoin-project/lotus/miner"
@@ -46,6 +46,9 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 	"github.com/filecoin-project/lotus/storage/wdpost"
 )
+
+// F3LeaseTerm The number of instances the miner will attempt to lease from nodes.
+const F3LeaseTerm = 5
 
 type UuidWrapper struct {
 	v1api.FullNode
@@ -357,163 +360,6 @@ func SectorStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, lstor *paths.Local,
 	return sst, nil
 }
 
-type f3Participator struct {
-	node                     v1api.FullNode
-	participant              address.Address
-	backoff                  *backoff.Backoff
-	maxCheckProgressAttempts int
-	previousTicket           api.F3ParticipationTicket
-	checkProgressInterval    time.Duration
-	leaseTerm                uint64
-}
-
-func newF3Participator(node v1api.FullNode, participant dtypes.MinerAddress, backoff *backoff.Backoff, maxCheckProgress int, checkProgressInterval time.Duration, leaseTerm uint64) *f3Participator {
-	return &f3Participator{
-		node:                     node,
-		participant:              address.Address(participant),
-		backoff:                  backoff,
-		maxCheckProgressAttempts: maxCheckProgress,
-		checkProgressInterval:    checkProgressInterval,
-		leaseTerm:                leaseTerm,
-	}
-}
-
-func (p *f3Participator) participate(ctx context.Context) error {
-	for ctx.Err() == nil {
-		if ticket, err := p.tryGetF3ParticipationTicket(ctx); err != nil {
-			return err
-		} else if lease, participating, err := p.tryF3Participate(ctx, ticket); err != nil {
-			return err
-		} else if !participating {
-			continue
-		} else if err := p.awaitLeaseExpiry(ctx, lease); err != nil {
-			return err
-		}
-		log.Info("Restarting F3 participation")
-	}
-	return ctx.Err()
-}
-
-func (p *f3Participator) tryGetF3ParticipationTicket(ctx context.Context) (api.F3ParticipationTicket, error) {
-	p.backoff.Reset()
-	for ctx.Err() == nil {
-		switch ticket, err := p.node.F3GetOrRenewParticipationTicket(ctx, p.participant, p.previousTicket, p.leaseTerm); {
-		case ctx.Err() != nil:
-			return api.F3ParticipationTicket{}, ctx.Err()
-		case errors.Is(err, api.ErrF3Disabled):
-			log.Errorw("Cannot participate in F3 as it is disabled.", "err", err)
-			return api.F3ParticipationTicket{}, xerrors.Errorf("acquiring F3 participation ticket: %w", err)
-		case err != nil:
-			log.Errorw("Failed to acquire F3 participation ticket; retrying after backoff", "backoff", p.backoff.Duration(), "err", err)
-			p.backOff(ctx)
-			log.Debugw("Reattempting to acquire F3 participation ticket.", "attempts", p.backoff.Attempt())
-			continue
-		default:
-			log.Debug("Successfully acquired F3 participation ticket")
-			return ticket, nil
-		}
-	}
-	return api.F3ParticipationTicket{}, ctx.Err()
-}
-
-func (p *f3Participator) tryF3Participate(ctx context.Context, ticket api.F3ParticipationTicket) (api.F3ParticipationLease, bool, error) {
-	p.backoff.Reset()
-	for ctx.Err() == nil {
-		switch lease, err := p.node.F3Participate(ctx, ticket); {
-		case ctx.Err() != nil:
-			return api.F3ParticipationLease{}, false, ctx.Err()
-		case errors.Is(err, api.ErrF3Disabled):
-			log.Errorw("Cannot participate in F3 as it is disabled.", "err", err)
-			return api.F3ParticipationLease{}, false, xerrors.Errorf("attempting F3 participation with ticket: %w", err)
-		case errors.Is(err, api.ErrF3ParticipationTicketExpired):
-			log.Warnw("F3 participation ticket expired while attempting to participate. Acquiring a new ticket.", "attempts", p.backoff.Attempt(), "err", err)
-			return api.F3ParticipationLease{}, false, nil
-		case errors.Is(err, api.ErrF3ParticipationTicketStartBeforeExisting):
-			log.Warnw("F3 participation ticket starts before the existing lease. Acquiring a new ticket.", "attempts", p.backoff.Attempt(), "err", err)
-			return api.F3ParticipationLease{}, false, nil
-		case errors.Is(err, api.ErrF3ParticipationTicketInvalid):
-			log.Errorw("F3 participation ticket is not valid. Acquiring a new ticket after backoff.", "backoff", p.backoff.Duration(), "attempts", p.backoff.Attempt(), "err", err)
-			p.backOff(ctx)
-			return api.F3ParticipationLease{}, false, nil
-		case errors.Is(err, api.ErrF3ParticipationIssuerMismatch):
-			log.Warnw("Node is not the issuer of F3 participation ticket. Miner maybe load-balancing or node has changed. Retrying F3 participation after backoff.", "backoff", p.backoff.Duration(), "err", err)
-			p.backOff(ctx)
-			log.Debugw("Reattempting F3 participation with the same ticket.", "attempts", p.backoff.Attempt())
-			continue
-		case errors.Is(err, api.ErrF3NotReady):
-			log.Warnw("F3 is not ready. Retrying F3 participation after backoff.", "backoff", p.backoff.Duration(), "err", err)
-			p.backOff(ctx)
-			continue
-		case err != nil:
-			log.Errorw("Unexpected error while attempting F3 participation. Retrying after backoff", "backoff", p.backoff.Duration(), "attempts", p.backoff.Attempt(), "err", err)
-			p.backOff(ctx)
-			continue
-		default:
-			log.Infow("Successfully acquired F3 participation lease.", "issuer", lease.Issuer, "expiry", lease.ValidityTerm)
-			p.previousTicket = ticket
-			return lease, true, nil
-		}
-	}
-	return api.F3ParticipationLease{}, false, ctx.Err()
-}
-
-func (p *f3Participator) awaitLeaseExpiry(ctx context.Context, lease api.F3ParticipationLease) error {
-	p.backoff.Reset()
-	for ctx.Err() == nil {
-		switch manifest, err := p.node.F3GetManifest(ctx); {
-		case errors.Is(err, api.ErrF3Disabled):
-			log.Errorw("Cannot await F3 participation lease expiry as F3 is disabled.", "err", err)
-			return xerrors.Errorf("awaiting F3 participation lease expiry: %w", err)
-		case err != nil:
-			if p.backoff.Attempt() > float64(p.maxCheckProgressAttempts) {
-				log.Errorw("Too many failures while attempting to check F3  progress. Restarting participation.", "attempts", p.backoff.Attempt(), "err", err)
-				return nil
-			}
-			log.Errorw("Failed to check F3 progress while awaiting lease expiry. Retrying after backoff.", "attempts", p.backoff.Attempt(), "backoff", p.backoff.Duration(), "err", err)
-			p.backOff(ctx)
-		case manifest.NetworkName != lease.Network:
-			return nil
-		}
-		switch progress, err := p.node.F3GetProgress(ctx); {
-		case errors.Is(err, api.ErrF3Disabled):
-			log.Errorw("Cannot await F3 participation lease expiry as F3 is disabled.", "err", err)
-			return xerrors.Errorf("awaiting F3 participation lease expiry: %w", err)
-		case err != nil:
-			if p.backoff.Attempt() > float64(p.maxCheckProgressAttempts) {
-				log.Errorw("Too many failures while attempting to check F3  progress. Restarting participation.", "attempts", p.backoff.Attempt(), "err", err)
-				return nil
-			}
-			log.Errorw("Failed to check F3 progress while awaiting lease expiry. Retrying after backoff.", "attempts", p.backoff.Attempt(), "backoff", p.backoff.Duration(), "err", err)
-			p.backOff(ctx)
-		case progress.ID+2 >= lease.ValidityTerm:
-			log.Infof("F3 progressed (%d) to within two instances of lease expiry (%d). Restarting participation.", progress.ID, lease.ValidityTerm)
-			return nil
-		default:
-			remainingInstanceLease := lease.ValidityTerm - progress.ID
-			log.Debugf("F3 participation lease is valid for further %d instances. Recking after %s.", remainingInstanceLease, p.checkProgressInterval)
-			p.backOffFor(ctx, p.checkProgressInterval)
-		}
-	}
-	return ctx.Err()
-}
-
-func (p *f3Participator) backOff(ctx context.Context) {
-	p.backOffFor(ctx, p.backoff.Duration())
-}
-
-func (p *f3Participator) backOffFor(ctx context.Context, d time.Duration) {
-	// Create a timer every time to avoid potential risk of deadlock or the need for
-	// mutex despite the fact that f3Participator is never (and should never) be
-	// called from multiple goroutines.
-	timer := time.NewTimer(d)
-	defer timer.Stop()
-	select {
-	case <-ctx.Done():
-		return
-	case <-timer.C:
-	}
-}
-
 func F3Participation(mctx helpers.MetricsCtx, lc fx.Lifecycle, node v1api.FullNode, participant dtypes.MinerAddress) error {
 	const (
 		// maxCheckProgressAttempts defines the maximum number of failed attempts
@@ -526,14 +372,10 @@ func F3Participation(mctx helpers.MetricsCtx, lc fx.Lifecycle, node v1api.FullNo
 		// typically when we would try to renew the participation ticket. Hence, the value
 		// to 13.
 		checkProgressMaxAttempts = 13
-		// checkProgressInterval defines the duration between progress checks in normal operation mode.
-		// This interval is used when there are no errors in retrieving the current progress.
-		checkProgressInterval = 10 * time.Second
-		// leaseTerm The number of instances the miner will attempt to lease from nodes.
-		leaseTerm = 5
 	)
 
-	participator := newF3Participator(
+	p := lf3.NewParticipant(
+		mctx,
 		node,
 		participant,
 		&backoff.Backoff{
@@ -542,31 +384,12 @@ func F3Participation(mctx helpers.MetricsCtx, lc fx.Lifecycle, node v1api.FullNo
 			Factor: 1.5,
 		},
 		checkProgressMaxAttempts,
-		checkProgressInterval,
-		leaseTerm,
+		F3LeaseTerm,
 	)
 
-	ctx, cancel := context.WithCancel(mctx)
-	var wg sync.WaitGroup
 	lc.Append(fx.Hook{
-		OnStart: func(context.Context) error {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				switch err := participator.participate(ctx); {
-				case err == nil, ctx.Err() != nil:
-					log.Infof("Stopped participating in F3")
-				default:
-					log.Errorw("F3 participation stopped abruptly", "err", err)
-				}
-			}()
-			return nil
-		},
-		OnStop: func(context.Context) error {
-			cancel()
-			wg.Wait()
-			return nil
-		},
+		OnStart: p.Start,
+		OnStop:  p.Stop,
 	})
 	return nil
 }

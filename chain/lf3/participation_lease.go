@@ -23,6 +23,8 @@ type leaser struct {
 	issuer               peer.ID
 	status               f3Status
 	maxLeasableInstances uint64
+	// Signals that a lease was created and/or updated.
+	notifyParticipation chan struct{}
 }
 
 func newParticipationLeaser(nodeId peer.ID, status f3Status, maxLeasedInstances uint64) *leaser {
@@ -30,6 +32,7 @@ func newParticipationLeaser(nodeId peer.ID, status f3Status, maxLeasedInstances 
 		leases:               make(map[uint64]api.F3ParticipationLease),
 		issuer:               nodeId,
 		status:               status,
+		notifyParticipation:  make(chan struct{}, 1),
 		maxLeasableInstances: maxLeasedInstances,
 	}
 }
@@ -98,7 +101,14 @@ func (l *leaser) participate(ticket api.F3ParticipationTicket) (api.F3Participat
 		// For safety, strictly require lease start instance to never decrease.
 		return api.F3ParticipationLease{}, api.ErrF3ParticipationTicketStartBeforeExisting
 	}
+	if !found {
+		log.Infof("started participating in F3 for miner %d", newLease.MinerID)
+	}
 	l.leases[newLease.MinerID] = newLease
+	select {
+	case l.notifyParticipation <- struct{}{}:
+	default:
+	}
 	return newLease, nil
 }
 
@@ -107,9 +117,10 @@ func (l *leaser) getParticipantsByInstance(instance uint64) []uint64 {
 	defer l.mutex.Unlock()
 	var participants []uint64
 	for id, lease := range l.leases {
-		if instance > lease.FromInstance+lease.ValidityTerm {
+		if instance > lease.ToInstance() {
 			// Lazily delete the expired leases.
 			delete(l.leases, id)
+			log.Warnf("lost F3 participation lease for miner %d", id)
 		} else {
 			participants = append(participants, id)
 		}
@@ -145,7 +156,7 @@ func (l *leaser) validate(currentNetwork gpbft.NetworkName, currentInstance uint
 	// Combine the errors to remove significance of the order by which they are
 	// checked outside if this function.
 	var err error
-	if currentNetwork != lease.Network || currentInstance > lease.FromInstance+lease.ValidityTerm {
+	if currentNetwork != lease.Network || currentInstance > lease.ToInstance() {
 		err = multierr.Append(err, api.ErrF3ParticipationTicketExpired)
 	}
 	if l.issuer != lease.Issuer {

@@ -32,13 +32,19 @@ type ChainAccessor interface {
 }
 
 type EventFilterManager interface {
+	Fill(
+		ctx context.Context,
+		minHeight, maxHeight abi.ChainEpoch,
+		tipsetCid cid.Cid,
+		addresses []address.Address,
+		keysWithCodec map[string][]types.ActorEventBlock,
+	) (filter.EventFilter, error)
 	Install(
 		ctx context.Context,
 		minHeight, maxHeight abi.ChainEpoch,
 		tipsetCid cid.Cid,
 		addresses []address.Address,
 		keysWithCodec map[string][]types.ActorEventBlock,
-		excludeReverted bool,
 	) (filter.EventFilter, error)
 	Remove(ctx context.Context, id types.FilterID) error
 }
@@ -102,21 +108,15 @@ func (a *ActorEventHandler) GetActorEventsRaw(ctx context.Context, evtFilter *ty
 		return nil, err
 	}
 
-	// Install a filter just for this call, collect events, remove the filter
+	// Fill a filter and collect events
 	tipSetCid, err := params.GetTipSetCid()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tipset cid: %w", err)
 	}
-	f, err := a.eventFilterManager.Install(ctx, params.MinHeight, params.MaxHeight, tipSetCid, evtFilter.Addresses, evtFilter.Fields, false)
+	f, err := a.eventFilterManager.Fill(ctx, params.MinHeight, params.MaxHeight, tipSetCid, evtFilter.Addresses, evtFilter.Fields)
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		// Remove the temporary filter regardless of the original context.
-		if err := a.eventFilterManager.Remove(context.Background(), f.ID()); err != nil {
-			log.Warnf("failed to remove filter: %s", err)
-		}
-	}()
 	return getCollected(ctx, f), nil
 }
 
@@ -217,7 +217,7 @@ func (a *ActorEventHandler) SubscribeActorEventsRaw(ctx context.Context, evtFilt
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tipset cid: %w", err)
 	}
-	fm, err := a.eventFilterManager.Install(ctx, params.MinHeight, params.MaxHeight, tipSetCid, evtFilter.Addresses, evtFilter.Fields, false)
+	fm, err := a.eventFilterManager.Install(ctx, params.MinHeight, params.MaxHeight, tipSetCid, evtFilter.Addresses, evtFilter.Fields)
 	if err != nil {
 		return nil, err
 	}

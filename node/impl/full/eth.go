@@ -1727,14 +1727,12 @@ func (e *EthEventHandler) ethGetEventsForFilter(ctx context.Context, filterSpec 
 		}
 	}
 
-	// Create a temporary filter
-	f, err := e.EventFilterManager.Install(ctx, pf.minHeight, pf.maxHeight, pf.tipsetCid, pf.addresses, pf.keys, false)
+	// Fill a filter and collect events
+	f, err := e.EventFilterManager.Fill(ctx, pf.minHeight, pf.maxHeight, pf.tipsetCid, pf.addresses, pf.keys)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to install event filter: %w", err)
 	}
 	ces := f.TakeCollectedEvents(ctx)
-
-	_ = e.uninstallFilter(ctx, f)
 
 	return ces, nil
 }
@@ -1957,7 +1955,7 @@ func (e *EthEventHandler) EthNewFilter(ctx context.Context, filterSpec *ethtypes
 		return ethtypes.EthFilterID{}, err
 	}
 
-	f, err := e.EventFilterManager.Install(ctx, pf.minHeight, pf.maxHeight, pf.tipsetCid, pf.addresses, pf.keys, true)
+	f, err := e.EventFilterManager.Install(ctx, pf.minHeight, pf.maxHeight, pf.tipsetCid, pf.addresses, pf.keys)
 	if err != nil {
 		return ethtypes.EthFilterID{}, xerrors.Errorf("failed to install event filter: %w", err)
 	}
@@ -2123,7 +2121,7 @@ func (e *EthEventHandler) EthSubscribe(ctx context.Context, p jsonrpc.RawParams)
 			}
 		}
 
-		f, err := e.EventFilterManager.Install(ctx, -1, -1, cid.Undef, addresses, keysToKeysWithCodec(keys), true)
+		f, err := e.EventFilterManager.Install(ctx, -1, -1, cid.Undef, addresses, keysToKeysWithCodec(keys))
 		if err != nil {
 			// clean up any previous filters added and stop the sub
 			_, _ = e.EthUnsubscribe(ctx, sub.id)
