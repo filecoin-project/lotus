@@ -1345,9 +1345,7 @@ func TestMcopy(t *testing.T) {
 
 	// Decode the hex string into a byte slice
 	inputArgument, err := hex.DecodeString(hexString)
-	if err != nil {
-		log.Fatalf("Failed to decode hex string: %v", err)
-	}
+	require.NoError(t, err)
 
 	filenameActor := "contracts/mcopy/MCOPYTest.hex"
 	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
