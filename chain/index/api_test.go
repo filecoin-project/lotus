@@ -82,7 +82,7 @@ func TestValidateIsNullRoundSimple(t *testing.T) {
 				require.NoError(t, err)
 				require.NotNil(t, res)
 				require.Equal(t, tt.expectedResult, res.IsNullRound)
-				require.Equal(t, uint64(tt.epoch), res.Height)
+				require.Equal(t, tt.epoch, res.Height)
 			}
 		})
 	}
@@ -208,7 +208,7 @@ func TestBackfillMissingEpoch(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.True(t, result.Backfilled)
-	require.Equal(t, uint64(missingEpoch), result.Height)
+	require.EqualValues(t, missingEpoch, result.Height)
 	require.Equal(t, uint64(1), result.IndexedMessagesCount)
 	require.Equal(t, uint64(1), result.IndexedEventsCount)
 	require.Equal(t, uint64(2), result.IndexedEventEntriesCount)
