@@ -39,9 +39,7 @@ func (ch *ChainIndexHandler) ChainValidateIndex(ctx context.Context, epoch abi.C
 
 var _ ChainIndexerAPI = (*ChainIndexHandler)(nil)
 
-func NewChainIndexHandler(
-	indexer index.Indexer,
-) *ChainIndexHandler {
+func NewChainIndexHandler(indexer index.Indexer) *ChainIndexHandler {
 	return &ChainIndexHandler{
 		indexer: indexer,
 	}
