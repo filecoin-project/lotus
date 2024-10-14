@@ -410,7 +410,7 @@ func removeLeadingZeros(data []byte) []byte {
 	return data[firstNonZeroIndex:]
 }
 
-func SetupFEVMTest(t *testing.T) (context.Context, context.CancelFunc, *TestFullNode) {
+func SetupFEVMTest(t *testing.T, opts ...interface{}) (context.Context, context.CancelFunc, *TestFullNode) {
 	// make all logs extra quiet for fevm tests
 	lvl, err := logging.LevelFromString("error")
 	if err != nil {
@@ -419,7 +419,9 @@ func SetupFEVMTest(t *testing.T) (context.Context, context.CancelFunc, *TestFull
 	logging.SetAllLoggers(lvl)
 
 	blockTime := 100 * time.Millisecond
-	client, _, ens := EnsembleMinimal(t, MockProofs(), ThroughRPC())
+
+	opts = append([]interface{}{MockProofs(), ThroughRPC()}, opts...)
+	client, _, ens := EnsembleMinimal(t, opts...)
 	ens.InterconnectAll().BeginMining(blockTime)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 
