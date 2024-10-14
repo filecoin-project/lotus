@@ -8,6 +8,7 @@ import (
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
@@ -775,7 +776,7 @@ type FullNode interface {
 	EthGetBlockTransactionCountByHash(ctx context.Context, blkHash ethtypes.EthHash) (ethtypes.EthUint64, error) //perm:read
 
 	EthGetBlockByHash(ctx context.Context, blkHash ethtypes.EthHash, fullTxInfo bool) (ethtypes.EthBlock, error)                                //perm:read
-	EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (ethtypes.EthBlock, error)                                         //perm:read
+	EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (*ethtypes.EthBlock, error)                                        //perm:read
 	EthGetTransactionByHash(ctx context.Context, txHash *ethtypes.EthHash) (*ethtypes.EthTx, error)                                             //perm:read
 	EthGetTransactionByHashLimited(ctx context.Context, txHash *ethtypes.EthHash, limit abi.ChainEpoch) (*ethtypes.EthTx, error)                //perm:read
 	EthGetTransactionHashByCid(ctx context.Context, cid cid.Cid) (*ethtypes.EthHash, error)                                                     //perm:read
@@ -910,24 +911,51 @@ type FullNode interface {
 
 	//*********************************** ALL F3 APIs below are not stable & subject to change ***********************************
 
-	// F3Participate should be called by a storage provider to participate in signing F3 consensus.
-	// Calling this API gives the lotus node a lease to sign in F3 on behalf of given SP.
-	// The lease should be active only on one node. The lease will expire at the newLeaseExpiration.
-	// To continue participating in F3 with the given node, call F3Participate again before
-	// the newLeaseExpiration time.
-	// newLeaseExpiration cannot be further than 5 minutes in the future.
-	// It is recommended to call F3Participate every 60 seconds
-	// with newLeaseExpiration set 2min into the future.
-	// The oldLeaseExpiration has to be set to newLeaseExpiration of the last successful call.
-	// For the first call to F3Participate, set the oldLeaseExpiration to zero value/time in the past.
-	// F3Participate will return true if the lease was accepted.
-	// The minerID has to be the ID address of the miner.
-	F3Participate(ctx context.Context, minerID address.Address, newLeaseExpiration time.Time, oldLeaseExpiration time.Time) (bool, error) //perm:sign
-	// F3GetCertificate returns a finality certificate at given instance number
+	// F3GetOrRenewParticipationTicket retrieves or renews a participation ticket
+	// necessary for a miner to engage in the F3 consensus process for the given
+	// number of instances.
+	//
+	// This function accepts an optional previous ticket. If provided, a new ticket
+	// will be issued only under one the following conditions:
+	//   1. The previous ticket has expired.
+	//   2. The issuer of the previous ticket matches the node processing this
+	//      request.
+	//
+	// If there is an issuer mismatch (ErrF3ParticipationIssuerMismatch), the miner
+	// must retry obtaining a new ticket to ensure it is only participating in one F3
+	// instance at any time. If the number of instances is beyond the maximum leasable
+	// participation instances accepted by the node ErrF3ParticipationTooManyInstances
+	// is returned.
+	//
+	// Note: Successfully acquiring a ticket alone does not constitute participation.
+	// The retrieved ticket must be used to invoke F3Participate to actively engage
+	// in the F3 consensus process.
+	F3GetOrRenewParticipationTicket(ctx context.Context, minerID address.Address, previous F3ParticipationTicket, instances uint64) (F3ParticipationTicket, error) //perm:sign
+	// F3Participate enrolls a storage provider in the F3 consensus process using a
+	// provided participation ticket. This ticket grants a temporary lease that enables
+	// the provider to sign transactions as part of the F3 consensus.
+	//
+	// The function verifies the ticket's validity and checks if the ticket's issuer
+	// aligns with the current node. If there is an issuer mismatch
+	// (ErrF3ParticipationIssuerMismatch), the provider should retry with the same
+	// ticket, assuming the issue is due to transient network problems or operational
+	// deployment conditions. If the ticket is invalid
+	// (ErrF3ParticipationTicketInvalid) or has expired
+	// (ErrF3ParticipationTicketExpired), the provider must obtain a new ticket by
+	// calling F3GetOrRenewParticipationTicket.
+	//
+	// The start instance associated to the given ticket cannot be less than the
+	// start instance of any existing lease held by the miner. Otherwise,
+	// ErrF3ParticipationTicketStartBeforeExisting is returned. In this case, the
+	// miner should acquire a new ticket before attempting to participate again.
+	//
+	// For details on obtaining or renewing a ticket, see F3GetOrRenewParticipationTicket.
+	F3Participate(ctx context.Context, ticket F3ParticipationTicket) (F3ParticipationLease, error) //perm:sign
+	// F3GetCertificate returns a finality certificate at given instance.
 	F3GetCertificate(ctx context.Context, instance uint64) (*certs.FinalityCertificate, error) //perm:read
-	// F3GetLatestCertificate returns the latest finality certificate
+	// F3GetLatestCertificate returns the latest finality certificate.
 	F3GetLatestCertificate(ctx context.Context) (*certs.FinalityCertificate, error) //perm:read
-	// F3GetGetManifest returns the current manifest being used for F3
+	// F3GetManifest returns the current manifest being used for F3 operations.
 	F3GetManifest(ctx context.Context) (*manifest.Manifest, error) //perm:read
 	// F3GetECPowerTable returns a F3 specific power table for use in standalone F3 nodes.
 	F3GetECPowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) //perm:read
@@ -936,6 +964,33 @@ type FullNode interface {
 	// F3IsRunning returns true if the F3 instance is running, false if it's not running but
 	// it's enabled, and an error when disabled entirely.
 	F3IsRunning(ctx context.Context) (bool, error) //perm:read
+	// F3GetProgress returns the progress of the current F3 instance in terms of instance ID, round and phase.
+	F3GetProgress(ctx context.Context) (gpbft.Instant, error) //perm:read
+}
+
+// F3ParticipationTicket represents a ticket that authorizes a miner to
+// participate in the F3 consensus.
+type F3ParticipationTicket []byte
+
+// F3ParticipationLease defines the lease granted to a storage provider for
+// participating in F3 consensus, detailing the session identifier, issuer,
+// subject, and the expiration instance.
+type F3ParticipationLease struct {
+	// Network is the name of the network this lease belongs to.
+	Network gpbft.NetworkName
+	// Issuer is the identity of the node that issued the lease.
+	Issuer peer.ID
+	// MinerID is the actor ID of the miner that holds the lease.
+	MinerID uint64
+	// FromInstance specifies the instance ID from which this lease is valid.
+	FromInstance uint64
+	// ValidityTerm specifies the number of instances for which the lease remains
+	// valid from the FromInstance.
+	ValidityTerm uint64
+}
+
+func (l *F3ParticipationLease) ToInstance() uint64 {
+	return l.FromInstance + l.ValidityTerm
 }
 
 // EthSubscriber is the reverse interface to the client, called after EthSubscribe

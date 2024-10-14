@@ -2,10 +2,15 @@
 
 This guide will walk through how to update the most common dependencies in Lotus. These are the dependencies this guide currently covers:
 
-- [Ref-FVM](#updating-ref-fvm)
-- [Filecoin-FFI](#updating-filecoin-ffi)
-- [Go-State-Types](#updating-go-state-types)
-- [Builtin-Actors](#updating-builtin-actors)
+<!-- no toc -->
+- [Updating Ref-FVM](#updating-ref-fvm)
+- [Updating Filecoin-FFI](#updating-filecoin-ffi)
+- [Updating Go-State-Types](#updating-go-state-types)
+- [Updating Builtin-Actors](#updating-builtin-actors)
+
+## Context
+
+Updating these dependencies in Lotus is usually related to network upgrades.  See [building a network upgrade skeleton in Lotus context](./Building_a_network_skeleton.md#context) for information on the versions and relationships at play.
 
 ## Updating Ref-FVM
 
@@ -17,11 +22,15 @@ This guide will walk through how to update the most common dependencies in Lotus
 
 ## Updating Filecoin-FFI
 
+0. In Lotus´s [go.mod file](https://github.com/filecoin-project/lotus/blob/master/go.mod), search for `filecoin-ffi` and update the version to your wanted version.
+
+0. Run `go mod tidy`, and commit your changes.
+
 1. In your `lotus` directory, `cd extern/filecoin-ffi`.
 
 2. `git fetch` to ensure you have the latests changes for *filecoin-ffi*.
 
-3. `git checkout vX.XX.X` to checkout the version you want to update to.
+3. `git checkout vX.Y.Z` to checkout the version you want to update to.
 
 4. Then commit the update to your Lotus branch and open a PR for updating Filecoin-FFI.
 
@@ -43,10 +52,10 @@ This guide will walk through how to update the most common dependencies in Lotus
 
 1. In your `lotus` directory, `cd build/actors`.
 
-2. Run this script `./pack.sh vXX vXX.X.X-rcX` to pull in the builtin-actors bundle into your Lotus repo. 
+2. Run this script `./pack.sh vXX vX.Y.Z-rcX` to pull in the builtin-actors bundle into your Lotus repo. 
 
 - `vXX` is the network version you are bundling this builtin-actors for.
-- `vXX.X.X-rcX` is the builtin-actors release you are bundling.
+- `vX.Y.Z-rcX` is the builtin-actors release you are bundling.
 
 👉 Example of a [PR updating Builtin-Actors bundle](https://github.com/filecoin-project/lotus/pull/11682/)
 

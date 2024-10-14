@@ -124,6 +124,18 @@ var terminateSectorPenaltyEstimationCmd = &cli.Command{
 			return err
 		}
 
+		ownerAddr, err := nodeApi.StateAccountKey(ctx, mi.Owner, types.EmptyTSK)
+		if err != nil {
+			ownerAddr = mi.Owner
+		}
+
+		var fromAddr address.Address
+		if ownerAddr.Protocol() == address.Delegated {
+			fromAddr = mi.Worker
+		} else {
+			fromAddr = mi.Owner
+		}
+
 		terminationDeclarationParams := []miner2.TerminationDeclaration{}
 
 		for _, sn := range cctx.Args().Slice() {
@@ -159,7 +171,7 @@ var terminateSectorPenaltyEstimationCmd = &cli.Command{
 		}
 
 		msg := &types.Message{
-			From:   mi.Owner,
+			From:   fromAddr,
 			To:     maddr,
 			Method: builtin.MethodsMiner.TerminateSectors,
 

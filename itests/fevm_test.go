@@ -23,6 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/build/buildconstants"
+	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/itests/kit"
@@ -1162,6 +1163,16 @@ func TestEthGetBlockReceipts(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, txReceipt, receipt)
 	}
+
+	// try with the geth request format for `EthBlockNumberOrHash`
+	var req ethtypes.EthBlockNumberOrHash
+	reqStr := fmt.Sprintf(`"%s"`, lastReceipt.BlockHash.String())
+	err = req.UnmarshalJSON([]byte(reqStr))
+	require.NoError(t, err)
+
+	gethBlockReceipts, err := client.EthGetBlockReceipts(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, gethBlockReceipts, 3)
 }
 
 func deployContractWithEth(ctx context.Context, t *testing.T, client *kit.TestFullNode, ethAddr ethtypes.EthAddress,
@@ -1198,4 +1209,178 @@ func deployContractWithEth(ctx context.Context, t *testing.T, client *kit.TestFu
 		R:                    big.Zero(),
 		S:                    big.Zero(),
 	}
+}
+
+func TestEthGetTransactionCount(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	// Create a new Ethereum account
+	key, ethAddr, filAddr := client.EVM().NewAccount()
+
+	// Test initial state (should be zero)
+	initialCount, err := client.EVM().EthGetTransactionCount(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
+	require.NoError(t, err)
+	require.Zero(t, initialCount)
+
+	// Send some funds to the new account (this shouldn't change the nonce)
+	kit.SendFunds(ctx, t, client, filAddr, types.FromFil(10))
+
+	// Check nonce again (should still be zero)
+	count, err := client.EVM().EthGetTransactionCount(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
+	require.NoError(t, err)
+	require.Zero(t, count)
+
+	// Prepare and send multiple transactions
+	numTx := 5
+	var lastHash ethtypes.EthHash
+
+	contractHex, err := os.ReadFile("./contracts/SelfDestruct.hex")
+	require.NoError(t, err)
+	contract, err := hex.DecodeString(string(contractHex))
+	require.NoError(t, err)
+
+	gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
+		From: &ethAddr,
+		Data: contract,
+	}})
+	require.NoError(t, err)
+	gaslimit, err := client.EthEstimateGas(ctx, gasParams)
+	require.NoError(t, err)
+	for i := 0; i < numTx; i++ {
+		tx := &ethtypes.Eth1559TxArgs{
+			ChainID:              buildconstants.Eip155ChainId,
+			To:                   &ethAddr, // sending to self
+			Value:                big.NewInt(1000),
+			Nonce:                i,
+			MaxFeePerGas:         types.NanoFil,
+			MaxPriorityFeePerGas: types.NanoFil,
+			GasLimit:             int(gaslimit),
+		}
+		client.EVM().SignTransaction(tx, key.PrivateKey)
+		lastHash = client.EVM().SubmitTransaction(ctx, tx)
+
+		// Check counts for "earliest", "latest", and "pending"
+		_, err = client.EVM().EthGetTransactionCount(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("earliest"))
+		require.Error(t, err) // earliest is not supported
+
+		latestCount, err := client.EVM().EthGetTransactionCount(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
+		require.NoError(t, err)
+		require.Equal(t, ethtypes.EthUint64(i), latestCount, "Latest transaction count should be equal to the number of mined transactions")
+
+		pendingCount, err := client.EVM().EthGetTransactionCount(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("pending"))
+		require.NoError(t, err)
+		require.True(t, int(pendingCount) == i || int(pendingCount) == i+1,
+			fmt.Sprintf("Pending transaction count should be either %d or %d, but got %d", i, i+1, pendingCount))
+
+		// Wait for the transaction to be mined
+		_, err = client.EVM().WaitTransaction(ctx, lastHash)
+		require.NoError(t, err)
+	}
+
+	// Get the final counts for "earliest", "latest", and "pending"
+	_, err = client.EVM().EthGetTransactionCount(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("earliest"))
+	require.Error(t, err) // earliest is not supported
+
+	finalLatestCount, err := client.EVM().EthGetTransactionCount(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
+	require.NoError(t, err)
+	require.Equal(t, ethtypes.EthUint64(numTx), finalLatestCount, "Final latest transaction count should equal the number of transactions sent")
+
+	finalPendingCount, err := client.EVM().EthGetTransactionCount(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("pending"))
+	require.NoError(t, err)
+	require.Equal(t, ethtypes.EthUint64(numTx), finalPendingCount, "Final pending transaction count should equal the number of transactions sent")
+
+	// Test with a contract
+	createReturn := client.EVM().DeployContract(ctx, client.DefaultKey.Address, contract)
+	contractAddr := createReturn.EthAddress
+	contractFilAddr := *createReturn.RobustAddress
+
+	// Check contract nonce (should be 1 after deployment)
+	contractNonce, err := client.EVM().EthGetTransactionCount(ctx, contractAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
+	require.NoError(t, err)
+	require.Equal(t, ethtypes.EthUint64(1), contractNonce)
+
+	// Destroy the contract
+	_, _, err = client.EVM().InvokeContractByFuncName(ctx, client.DefaultKey.Address, contractFilAddr, "destroy()", nil)
+	require.NoError(t, err)
+
+	// Check contract nonce after destruction (should be 0)
+	contractNonceAfterDestroy, err := client.EVM().EthGetTransactionCount(ctx, contractAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
+	require.NoError(t, err)
+	require.Zero(t, contractNonceAfterDestroy)
+}
+
+func TestEthGetBlockByNumber(t *testing.T) {
+	blockTime := 100 * time.Millisecond
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
+
+	bms := ens.InterconnectAll().BeginMining(blockTime)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	// Create a new Ethereum account
+	_, ethAddr, filAddr := client.EVM().NewAccount()
+	// Send some funds to the f410 address
+	kit.SendFunds(ctx, t, client, filAddr, types.FromFil(10))
+
+	// Test getting the latest block
+	latest, err := client.EthBlockNumber(ctx)
+	require.NoError(t, err)
+	latestBlock, err := client.EthGetBlockByNumber(ctx, "latest", true)
+	require.NoError(t, err)
+	require.NotNil(t, latestBlock)
+
+	// Test getting a specific block by number
+	specificBlock, err := client.EthGetBlockByNumber(ctx, latest.Hex(), true)
+	require.NoError(t, err)
+	require.NotNil(t, specificBlock)
+
+	// Test getting a future block (should fail)
+	futureBlock, err := client.EthGetBlockByNumber(ctx, (latest + 10000).Hex(), true)
+	require.Error(t, err)
+	require.Nil(t, futureBlock)
+
+	// Inject 10 null rounds
+	bms[0].InjectNulls(10)
+
+	// Wait until we produce blocks again
+	tctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	ch, err := client.ChainNotify(tctx)
+	require.NoError(t, err)
+	<-ch       // current
+	hc := <-ch // wait for next block
+	require.Equal(t, store.HCApply, hc[0].Type)
+
+	afterNullHeight := hc[0].Val.Height()
+
+	// Find the first null round
+	nullHeight := afterNullHeight - 1
+	for nullHeight > 0 {
+		ts, err := client.ChainGetTipSetByHeight(ctx, nullHeight, types.EmptyTSK)
+		require.NoError(t, err)
+		if ts.Height() == nullHeight {
+			nullHeight--
+		} else {
+			break
+		}
+	}
+
+	// Test getting a block for a null round
+	nullRoundBlock, err := client.EthGetBlockByNumber(ctx, (ethtypes.EthUint64(nullHeight)).Hex(), true)
+	require.NoError(t, err)
+	require.Nil(t, nullRoundBlock)
+
+	// Test getting balance on a null round
+	bal, err := client.EthGetBalance(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromNumber(ethtypes.EthUint64(nullHeight)))
+	require.NoError(t, err)
+	require.NotEqual(t, big.Zero(), bal)
+	require.Equal(t, types.FromFil(10).Int, bal.Int)
+
+	// Test getting block by pending
+	pendingBlock, err := client.EthGetBlockByNumber(ctx, "pending", true)
+	require.NoError(t, err)
+	require.NotNil(t, pendingBlock)
+	require.True(t, pendingBlock.Number >= latest)
 }

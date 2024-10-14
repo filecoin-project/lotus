@@ -43,13 +43,13 @@ require (
 	github.com/filecoin-project/go-cbor-util v0.0.1
 	github.com/filecoin-project/go-commp-utils/v2 v2.1.0
 	github.com/filecoin-project/go-crypto v0.1.0
-	github.com/filecoin-project/go-f3 v0.3.0
+	github.com/filecoin-project/go-f3 v0.7.0
 	github.com/filecoin-project/go-fil-commcid v0.2.0
 	github.com/filecoin-project/go-hamt-ipld/v3 v3.4.0
 	github.com/filecoin-project/go-jsonrpc v0.6.0
 	github.com/filecoin-project/go-padreader v0.0.1
 	github.com/filecoin-project/go-paramfetch v0.0.4
-	github.com/filecoin-project/go-state-types v0.15.0-dev
+	github.com/filecoin-project/go-state-types v0.15.0-rc1
 	github.com/filecoin-project/go-statemachine v1.0.3
 	github.com/filecoin-project/go-statestore v0.2.0
 	github.com/filecoin-project/go-storedcounter v0.1.0
@@ -90,7 +90,7 @@ require (
 	github.com/ipfs/go-ds-leveldb v0.5.0
 	github.com/ipfs/go-ds-measure v0.2.0
 	github.com/ipfs/go-fs-lock v0.0.7
-	github.com/ipfs/go-ipld-cbor v0.1.0
+	github.com/ipfs/go-ipld-cbor v0.2.0
 	github.com/ipfs/go-ipld-format v0.6.0
 	github.com/ipfs/go-log/v2 v2.5.1
 	github.com/ipfs/go-metrics-interface v0.0.1
@@ -117,8 +117,8 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.16
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-base32 v0.1.0
-	github.com/multiformats/go-multiaddr v0.12.4
-	github.com/multiformats/go-multiaddr-dns v0.3.1
+	github.com/multiformats/go-multiaddr v0.13.0
+	github.com/multiformats/go-multiaddr-dns v0.4.0
 	github.com/multiformats/go-multicodec v0.9.0
 	github.com/multiformats/go-multihash v0.2.3
 	github.com/multiformats/go-varint v0.0.7
@@ -162,7 +162,7 @@ require (
 	golang.org/x/term v0.24.0
 	golang.org/x/time v0.5.0
 	golang.org/x/tools v0.24.0
-	golang.org/x/xerrors v0.0.0-20240716161551-93cc26a95ae9
+	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da
 	gotest.tools v2.2.0+incompatible
 )
 
@@ -177,10 +177,13 @@ require (
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/benbjohnson/clock v1.3.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
+	github.com/bits-and-blooms/bitset v1.13.0 // indirect
 	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/cilium/ebpf v0.9.1 // indirect
+	github.com/consensys/bavard v0.1.13 // indirect
+	github.com/consensys/gnark-crypto v0.12.1 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.4 // indirect
 	github.com/cskr/pubsub v1.0.2 // indirect
 	github.com/daaku/go.zipexe v1.0.2 // indirect
@@ -218,7 +221,6 @@ require (
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/gopacket v1.1.19 // indirect
 	github.com/google/pprof v0.0.0-20240509144519-723abb6459b7 // indirect
-	github.com/gopherjs/gopherjs v1.17.2 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/golang-lru v1.0.2 // indirect
 	github.com/huin/goupnp v1.3.0 // indirect
@@ -268,6 +270,7 @@ require (
 	github.com/mikioh/tcpopt v0.0.0-20190314235656-172688c1accc // indirect
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1 // indirect
 	github.com/minio/sha256-simd v1.0.1 // indirect
+	github.com/mmcloughlin/addchain v0.4.0 // indirect
 	github.com/mr-tron/base58 v1.2.0 // indirect
 	github.com/multiformats/go-base36 v0.2.0 // indirect
 	github.com/multiformats/go-multiaddr-fmt v0.1.0 // indirect
@@ -323,6 +326,7 @@ require (
 	github.com/zondax/ledger-go v0.14.3 // indirect
 	gitlab.com/yawning/secp256k1-voi v0.0.0-20230925100816-f2616030848b // indirect
 	gitlab.com/yawning/tuplehash v0.0.0-20230713102510-df83abbf9a02 // indirect
+	go.dedis.ch/kyber/v4 v4.0.0-pre2.0.20240924132404-4de33740016e // indirect
 	go.opentelemetry.io/otel/trace v1.28.0 // indirect
 	go.uber.org/dig v1.17.1 // indirect
 	go.uber.org/mock v0.4.0 // indirect
@@ -338,4 +342,5 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	howett.net/plist v0.0.0-20181124034731-591f970eefbb // indirect
 	lukechampine.com/blake3 v1.3.0 // indirect
+	rsc.io/tmplfunc v0.0.3 // indirect
 )

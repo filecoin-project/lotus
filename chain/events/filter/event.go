@@ -354,8 +354,14 @@ func (m *EventFilterManager) Revert(ctx context.Context, from, to *types.TipSet)
 	return nil
 }
 
-func (m *EventFilterManager) Install(ctx context.Context, minHeight, maxHeight abi.ChainEpoch, tipsetCid cid.Cid, addresses []address.Address,
-	keysWithCodec map[string][]types.ActorEventBlock, excludeReverted bool) (EventFilter, error) {
+func (m *EventFilterManager) Fill(
+	ctx context.Context,
+	minHeight,
+	maxHeight abi.ChainEpoch,
+	tipsetCid cid.Cid,
+	addresses []address.Address,
+	keysWithCodec map[string][]types.ActorEventBlock,
+) (EventFilter, error) {
 	m.mu.Lock()
 	if m.currentHeight == 0 {
 		// sync in progress, we haven't had an Apply
@@ -392,6 +398,7 @@ func (m *EventFilterManager) Install(ctx context.Context, minHeight, maxHeight a
 			KeysWithCodec: keysWithCodec,
 			MaxResults:    m.MaxFilterResults,
 		}
+		excludeReverted := tipsetCid == cid.Undef
 		ces, err := m.ChainIndexer.GetEventsForFilter(ctx, ef, excludeReverted)
 		if err != nil {
 			return nil, xerrors.Errorf("get events for filter: %w", err)
@@ -400,11 +407,27 @@ func (m *EventFilterManager) Install(ctx context.Context, minHeight, maxHeight a
 		f.setCollectedEvents(ces)
 	}
 
+	return f, nil
+}
+
+func (m *EventFilterManager) Install(
+	ctx context.Context,
+	minHeight,
+	maxHeight abi.ChainEpoch,
+	tipsetCid cid.Cid,
+	addresses []address.Address,
+	keysWithCodec map[string][]types.ActorEventBlock,
+) (EventFilter, error) {
+	f, err := m.Fill(ctx, minHeight, maxHeight, tipsetCid, addresses, keysWithCodec)
+	if err != nil {
+		return nil, err
+	}
+
 	m.mu.Lock()
 	if m.filters == nil {
 		m.filters = make(map[types.FilterID]EventFilter)
 	}
-	m.filters[id] = f
+	m.filters[f.(*eventFilter).id] = f
 	m.mu.Unlock()
 
 	return f, nil

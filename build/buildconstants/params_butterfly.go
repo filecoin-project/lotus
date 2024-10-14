@@ -10,6 +10,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 )
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
@@ -57,6 +59,11 @@ const UpgradeWaffleHeight = -27
 
 // ??????
 const UpgradeTuktukHeight = 999999999999999
+
+// FIP-0081: for the power actor state for pledge calculations.
+// UpgradeTuktukPowerRampDurationEpochs ends up in the power actor state after
+// Tuktuk migration. along with a RampStartEpoch matching the upgrade height.
+var UpgradeTuktukPowerRampDurationEpochs = uint64(builtin.EpochsInYear)
 
 // This fix upgrade only ran on calibrationnet
 const UpgradeWatermelonFixHeight = -100

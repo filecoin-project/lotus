@@ -39,7 +39,7 @@ This document aims to describe how the Lotus maintainers ship releases of Lotus.
 
 - Lotus software use semantic versioning (`MAJOR`.`MINOR`.`PATCH`).
 - **`MAJOR` releases** are reserved for significant architectural changes to Lotus. 
-- **`MINOR` releases** are shipped for network upgrades, API breaking changes, or non-backwards-compatible feature enhancements.
+- **`MINOR` releases** are shipped for [network upgrades](./documentation/misc/Building_a_network_skeleton.md#context), API breaking changes, or non-backwards-compatible feature enhancements.
 - **`PATCH` releases** contain backwards-compatible bug fixes or feature enhancements.
 - Releases are almost always branched from the `master` branch, even if they include a network upgrade. The main exception is if there is a critical security patch we need to rush out. In that case, we would patch an existing release to increase release speed and reduce barrier to adoption.
 - We aim to ship a new release of the Lotus Node software approximately every 4 weeks, except during network upgrade periods which may have longer release cycles.
@@ -72,7 +72,8 @@ Bumps to the Lotus software minor version number (e.g., 1.28.0, 1.29.0) are used
 - API breaking changes
 - Non-backwards-compatible feature enhancements
 
-Users MUST upgrade to minor releases that include a network upgrade before a certain time to keep in sync with the Filecoin network. We recommend everyone to subscribe to status.filecoin.io for updates when these are happening, as well checking the release notes of a minor version. 
+Users MUST upgrade to minor releases that include a network upgrade before a certain time to keep in sync with the Filecoin network. We recommend everyone subscribe to status.filecoin.io for updates when these are happening, as well as checking the release notes of a minor version. ([Learn more about how network upgrades relate to Lotus and its key dependencies.](./documentation/misc/Building_a_network_skeleton.md#context))
+
 Users can decide whether to upgrade to minor version releases that don't include a network upgrade. They are still encouraged to upgrade so they get the latest functionality and improvements and deploy a smaller delta of new code when there is a subsequent minor release they must adopt as part of a network upgrade later. 
 
 ### Patch Releases

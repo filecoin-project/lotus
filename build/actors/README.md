@@ -24,3 +24,9 @@ To build a bundle, but specify a different release/tag for a specific network, a
 ```bash
 ./pack.sh v8 dev/20220602 mainnet=v8.0.0 calibrationnet=v8.0.0-rc.1
 ```
+
+Alternatively, if using a set of locally compiled builtin-actors bundles (`make all-bundles` in builtin-actors), you can specify the path to the directory containing the bundles. For example:
+
+```bash
+./pack v15 local/20240930 /path/to/builtin-actors/build/actors
+```

@@ -1,29 +1,51 @@
 # Lotus changelog
 
 # UNRELEASED
-Add `EthGetBlockReceipts` RPC method to retrieve transaction receipts for a specified block. This method allows users to obtain Ethereum format receipts of all transactions included in a given tipset as specified by its Ethereum block equivalent. ([filecoin-project/lotus#12478](https://github.com/filecoin-project/lotus/pull/12478))
+
+## New features
+- Update `EthGetBlockByNumber` to return a pointer to ethtypes.EthBlock or nil for null rounds. ([filecoin-project/lotus#12529](https://github.com/filecoin-project/lotus/pull/12529))
+- Reduce size of embedded genesis CAR files by removing WASM actor blocks and compressing with zstd. This reduces the `lotus` binary size by approximately 10 MiB. ([filecoin-project/lotus#12439](https://github.com/filecoin-project/lotus/pull/12439))
+- Add ChainSafe operated Calibration archival node to the bootstrap list ([filecoin-project/lotus#12517](https://github.com/filecoin-project/lotus/pull/12517))
+- Fix hotloop in F3 pariticpation API ([filecoin-project/lotus#12575](https://github.com/filecoin-project/lotus/pull/12575))
+
+## Bug Fixes
+- Fix a bug in the `lotus-shed indexes backfill-events` command that may result in either duplicate events being backfilled where there are existing events (such an operation *should* be idempotent) or events erroneously having duplicate `logIndex` values when queried via ETH APIs. ([filecoin-project/lotus#12567](https://github.com/filecoin-project/lotus/pull/12567))
+- Event APIs (Eth events and actor events) should only return reverted events if client queries by specific block hash / tipset. Eth and actor event subscription APIs should always return reverted events to enable accurate observation of real-time changes. ([filecoin-project/lotus#12585](https://github.com/filecoin-project/lotus/pull/12585))
+- Add logic to check if the miner's owner address is delegated (f4 address). If it is delegated, the `lotus-shed sectors termination-estimate` command now sends the termination state call using the worker ID. This fix resolves the issue where termination-estimate did not function correctly for miners with delegated owner addresses. ([filecoin-project/lotus#12569](https://github.com/filecoin-project/lotus/pull/12569))
+
+## Improvements
+
+## Improvements
+
+## Deps
+
+# UNRELEASED Node v1.30.0  
+See https://github.com/filecoin-project/lotus/blob/release/v1.30.0/CHANGELOG.md  
+
+# UNRELEASED Miner v1.30.0  
+See https://github.com/filecoin-project/lotus/blob/release/miner/v1.30.0/CHANGELOG.md  
+
+# Node v1.29.2 / 2024-10-03
+
+This is the stable release for Lotus node v1.29.2. Key updates in this release include:
+
+- **New API Support:** Added support for `EthGetBlockReceipts` RPC method to retrieve transaction receipts for a specified block. This method allows users to obtain Ethereum format receipts of all transactions included in a given tipset as specified by its Ethereum block equivalent. ([filecoin-project/lotus#12478](https://github.com/filecoin-project/lotus/pull/12478))
+- **Dependency Update:** Upgraded go-libp2p to version v0.35.5 ([filecoin-project/lotus#12511](https://github.com/filecoin-project/lotus/pull/12511)), and go-multiaddr-dns to v0.4.0 ([filecoin-project/lotus#12540](https://github.com/filecoin-project/lotus/pull/12540)).
+- **Bug Fix:** Legacy/historical Drand lookups via `StateGetBeaconEntry` now work again for all historical epochs. `StateGetBeaconEntry` now uses the on-chain beacon entries and follows the same rules for historical Drand round matching as `StateGetRandomnessFromBeacon` and the `get_beacon_randomness` FVM syscall. Be aware that there will be some some variance in matching Filecoin epochs to Drand rounds where null Filecoin rounds are involved prior to network version 14. ([filecoin-project/lotus#12428](https://github.com/filecoin-project/lotus/pull/12428)).
 
 ## ☢️ Upgrade Warnings ☢️
 
 - Minimum go-version been updated to v1.22.7 ([filecoin-project/lotus#12459](https://github.com/filecoin-project/lotus/pull/12459))
 
-## New features
+## 👨‍👩‍👧‍👦 Contributors
 
-* Add `EthSendRawTransactionUntrusted` RPC method to be used for the gateway when accepting `EthSendRawTransaction` and `eth_sendRawTransaction`. Applies a tighter limit on the number of messages in the queue from a single sender and applies additional restrictions on nonce increments. ([filecoin-project/lotus#12431](https://github.com/filecoin-project/lotus/pull/12431))
-* [Checkpoint TipSets finalized by F3](https://github.com/filecoin-project/lotus/pull/12460): Once a decision is made by F3, the TipSet is check-pointed in `ChainStore`. As part of this change, any missing TipSets are asynchronously synced as required by the `ChainStore` checkpointing mechanism.
-* Add an environment variable, `F3_INITIAL_POWERTABLE_CID` to allow specifying the initial power table used by F3 ([filecoin-project/lotus#12502](https://github.com/filecoin-project/lotus/pull/12502)). This may be used to help a lotus node re-sync the F3 chain when syncing from a snapshot after the F3 upgrade epoch. The precise CID to use here won't be known until the F3 is officially "live".
-* Added `StateMinerInitialPledgeForSector` RPC method and deprecated existing `StateMinerInitialPledgeCollateral` method. Since ProveCommitSectors3 and ProveReplicaUpdates3, sector onboarding no longer includes an explicit notion of "deals", and precommit messages no longer contain deal information. This makes the existing `StateMinerInitialPledgeCollateral` unable to properly calculate pledge requirements with only the precommit. `StateMinerInitialPledgeForSector` is a new simplified calculator that simply takes duration, sector size, and verified size and estimates pledge based on current network conditions. Please note that the `StateMinerInitialPledgeCollateral` method will be removed entirely in the next non-patch release. ([filecoin-project/lotus#12384](https://github.com/filecoin-project/lotus/pull/12384)
-
-## Improvements
-
-- Reduce size of embedded genesis CAR files by removing WASM actor blocks and compressing with zstd. This reduces the `lotus` binary size by approximately 10 MiB. ([filecoin-project/lotus#12439](https://github.com/filecoin-project/lotus/pull/12439))
-- Add ChainSafe operated Calibration archival node to the bootstrap list ([filecoin-project/lotus#12517](https://github.com/filecoin-project/lotus/pull/12517))
-- Legacy/historical Drand lookups via `StateGetBeaconEntry` now work again for all historical epochs. `StateGetBeaconEntry` now uses the on-chain beacon entries and follows the same rules for historical Drand round matching as `StateGetRandomnessFromBeacon` and the `get_beacon_randomness` FVM syscall. Be aware that there will be some some variance in matching Filecoin epochs to Drand rounds where null Filecoin rounds are involved prior to network version 14. ([filecoin-project/lotus#12428](https://github.com/filecoin-project/lotus/pull/12428)).
-
-## Bug Fixes
-
-## Deps
-- chore: bump go-libp2p to v0.35.5 ([filecoin-project/lotus#12511](https://github.com/filecoin-project/lotus/pull/12511))
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| aarshkshah1992 | 2 | +1753/-662 | 12 |
+| Viraj Bhartiya | 1 | +770/-38 | 18 |
+| Rod Vagg | 1 | +480/-83 | 14 |
+| Phi-rjan | 2 | +20/-13 | 9 |
+| Phi | 2 | +6/-25 | 7 |
 
 # Node v1.29.1 / 2024-09-16
 
@@ -121,6 +143,7 @@ From https://github.com/filecoin-project/lotus/compare/v1.28.2...release/v1.29.0
 
 ### Chores
 
+- feat(eth): fix EthGetTransactionCount for pending block parameter ([filecoin-project/lotus#12520](https://github.com/filecoin-project/lotus/pull/11581))
 - chore: ffi: copy verifier iface, mock & ffi out of storage (#11581) ([filecoin-project/lotus#11581](https://github.com/filecoin-project/lotus/pull/11581))
 - docs: update LOTUS_RELEASE_FLOW.MD document (#12322) ([filecoin-project/lotus#12322](https://github.com/filecoin-project/lotus/pull/12322))
 - docs: update references to releases branch (#12396) ([filecoin-project/lotus#12396](https://github.com/filecoin-project/lotus/pull/12396))
@@ -316,7 +339,7 @@ We are one step closer to reduce Filecoin's finality from 7.5 hours to a minute 
 
 F3 (Fast Finality) is experimental in this release. All the new F3 APIs  are unstable and subject to until nv24 release (assuming f3 will be fully activated in this upgrade).
 
-Exchanges and RPC providers are recommended to opt-out of F3 functionality for now. You can disable F3 by adding the `DISABLE_F3 = 1` environment variable, which will output a log saying that F3 has been disabled.
+Exchanges and RPC providers are recommended to opt-out of F3 functionality for now. You can disable F3 by adding the `LOTUS_DISABLE_F3 = 1` environment variable, which will output a log saying that F3 has been disabled.
 
 ## Dependencies
 

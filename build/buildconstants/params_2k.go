@@ -10,6 +10,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 )
@@ -72,6 +73,11 @@ var UpgradeWaffleHeight = abi.ChainEpoch(-26)
 
 var UpgradeTuktukHeight = abi.ChainEpoch(200)
 
+// FIP-0081: for the power actor state for pledge calculations.
+// UpgradeTuktukPowerRampDurationEpochs ends up in the power actor state after
+// Tuktuk migration. along with a RampStartEpoch matching the upgrade height.
+var UpgradeTuktukPowerRampDurationEpochs uint64 = 200
+
 // This fix upgrade only ran on calibrationnet
 const UpgradeWatermelonFixHeight = -100
 
@@ -93,6 +99,7 @@ var ConsensusMinerMinPower = abi.NewStoragePower(2048)
 var PreCommitChallengeDelay = abi.ChainEpoch(10)
 
 func init() {
+	SetAddressNetwork(address.Testnet)
 	getGenesisNetworkVersion := func(ev string, def network.Version) network.Version {
 		hs, found := os.LookupEnv(ev)
 		if found {
