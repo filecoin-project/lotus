@@ -167,7 +167,7 @@ func TestBackfillMissingEpoch(t *testing.T) {
 	si.Start()
 
 	// Initialize address resolver
-	si.SetIdToRobustAddrFunc(func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool) {
+	si.SetActorToDelegatedAddresFunc(func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool) {
 		idAddr, err := address.NewIDAddress(uint64(emitter))
 		if err != nil {
 			return address.Undef, false
