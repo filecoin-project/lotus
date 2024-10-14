@@ -33,7 +33,7 @@ func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *typ
 	if si.idToRobustAddrFunc == nil {
 		return xerrors.Errorf("indexer can not index events without an address resolver")
 	}
-	if si.eventLoaderFunc == nil {
+	if si.executedMessagesLoaderFunc == nil {
 		return xerrors.Errorf("indexer can not index events without an event loader")
 	}
 
@@ -62,7 +62,7 @@ func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *typ
 		return nil
 	}
 
-	ems, err := si.eventLoaderFunc(ctx, si.cs, msgTs, executionTs)
+	ems, err := si.executedMessagesLoaderFunc(ctx, si.cs, msgTs, executionTs)
 	if err != nil {
 		return xerrors.Errorf("failed to load executed messages: %w", err)
 	}

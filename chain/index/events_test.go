@@ -20,11 +20,13 @@ import (
 
 func TestGetEventsForFilterNoEvents(t *testing.T) {
 	ctx := context.Background()
-	rng := pseudo.New(pseudo.NewSource(time.Now().UnixNano()))
+	seed := time.Now().UnixNano()
+	t.Logf("seed: %d", seed)
+	rng := pseudo.New(pseudo.NewSource(seed))
 
 	headHeight := abi.ChainEpoch(60)
 	si, _, cs := setupWithHeadIndexed(t, headHeight, rng)
-	defer func() { _ = si.Close() }()
+	t.Cleanup(func() { _ = si.Close() })
 
 	// Create a fake tipset at height 1
 	fakeTipSet1 := fakeTipSet(t, rng, 1, nil)
@@ -80,10 +82,12 @@ func TestGetEventsForFilterNoEvents(t *testing.T) {
 
 func TestGetEventsForFilterWithEvents(t *testing.T) {
 	ctx := context.Background()
-	rng := pseudo.New(pseudo.NewSource(time.Now().UnixNano()))
+	seed := time.Now().UnixNano()
+	t.Logf("seed: %d", seed)
+	rng := pseudo.New(pseudo.NewSource(seed))
 	headHeight := abi.ChainEpoch(60)
 	si, _, cs := setupWithHeadIndexed(t, headHeight, rng)
-	defer func() { _ = si.Close() }()
+	t.Cleanup(func() { _ = si.Close() })
 
 	ev1 := fakeEvent(
 		abi.ActorID(1),
@@ -124,7 +128,7 @@ func TestGetEventsForFilterWithEvents(t *testing.T) {
 		return idAddr, true
 	})
 
-	si.SetEventLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
+	si.SetExecutedMessagesLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
 		return []executedMessage{em1}, nil
 	})
 
@@ -196,10 +200,12 @@ func TestGetEventsForFilterWithEvents(t *testing.T) {
 
 func TestGetEventsFilterByAddress(t *testing.T) {
 	ctx := context.Background()
-	rng := pseudo.New(pseudo.NewSource(time.Now().UnixNano()))
+	seed := time.Now().UnixNano()
+	t.Logf("seed: %d", seed)
+	rng := pseudo.New(pseudo.NewSource(seed))
 	headHeight := abi.ChainEpoch(60)
 	si, _, cs := setupWithHeadIndexed(t, headHeight, rng)
-	defer func() { _ = si.Close() }()
+	t.Cleanup(func() { _ = si.Close() })
 
 	addr1, err := address.NewIDAddress(1)
 	require.NoError(t, err)
@@ -252,7 +258,7 @@ func TestGetEventsFilterByAddress(t *testing.T) {
 		return idAddr, true
 	})
 
-	si.SetEventLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
+	si.SetExecutedMessagesLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
 		return []executedMessage{em1}, nil
 	})
 

@@ -15,9 +15,11 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-func TestValidateIsNullRound(t *testing.T) {
+func TestValidateIsNullRoundSimple(t *testing.T) {
 	ctx := context.Background()
-	rng := pseudo.New(pseudo.NewSource(time.Now().UnixNano()))
+	seed := time.Now().UnixNano()
+	t.Logf("seed: %d", seed)
+	rng := pseudo.New(pseudo.NewSource(seed))
 	headHeight := abi.ChainEpoch(100)
 
 	tests := []struct {
@@ -63,7 +65,7 @@ func TestValidateIsNullRound(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			si, _, _ := setupWithHeadIndexed(t, headHeight, rng)
-			defer func() { _ = si.Close() }()
+			t.Cleanup(func() { _ = si.Close() })
 
 			if tt.setupFunc != nil {
 				tt.setupFunc(si)
@@ -88,12 +90,14 @@ func TestValidateIsNullRound(t *testing.T) {
 
 func TestFailureHeadHeight(t *testing.T) {
 	ctx := context.Background()
-	rng := pseudo.New(pseudo.NewSource(time.Now().UnixNano()))
+	seed := time.Now().UnixNano()
+	t.Logf("seed: %d", seed)
+	rng := pseudo.New(pseudo.NewSource(seed))
 	headHeight := abi.ChainEpoch(100)
 
 	si, head, _ := setupWithHeadIndexed(t, headHeight, rng)
-	defer func() { _ = si.Close() }()
-	_ = si.Start()
+	t.Cleanup(func() { _ = si.Close() })
+	si.Start()
 
 	_, err := si.ChainValidateIndex(ctx, head.Height(), false)
 	require.Error(t, err)
@@ -102,12 +106,14 @@ func TestFailureHeadHeight(t *testing.T) {
 
 func TestBackfillNullRound(t *testing.T) {
 	ctx := context.Background()
-	rng := pseudo.New(pseudo.NewSource(time.Now().UnixNano()))
+	seed := time.Now().UnixNano()
+	t.Logf("seed: %d", seed)
+	rng := pseudo.New(pseudo.NewSource(seed))
 	headHeight := abi.ChainEpoch(100)
 
 	si, _, cs := setupWithHeadIndexed(t, headHeight, rng)
-	defer func() { _ = si.Close() }()
-	_ = si.Start()
+	t.Cleanup(func() { _ = si.Close() })
+	si.Start()
 
 	nullRoundEpoch := abi.ChainEpoch(50)
 	nonNullRoundEpoch := abi.ChainEpoch(51)
@@ -128,12 +134,14 @@ func TestBackfillNullRound(t *testing.T) {
 
 func TestBackfillReturnsError(t *testing.T) {
 	ctx := context.Background()
-	rng := pseudo.New(pseudo.NewSource(time.Now().UnixNano()))
+	seed := time.Now().UnixNano()
+	t.Logf("seed: %d", seed)
+	rng := pseudo.New(pseudo.NewSource(seed))
 	headHeight := abi.ChainEpoch(100)
 
 	si, _, cs := setupWithHeadIndexed(t, headHeight, rng)
-	defer func() { _ = si.Close() }()
-	_ = si.Start()
+	t.Cleanup(func() { _ = si.Close() })
+	si.Start()
 
 	missingEpoch := abi.ChainEpoch(50)
 
@@ -149,12 +157,14 @@ func TestBackfillReturnsError(t *testing.T) {
 
 func TestBackfillMissingEpoch(t *testing.T) {
 	ctx := context.Background()
-	rng := pseudo.New(pseudo.NewSource(time.Now().UnixNano()))
+	seed := time.Now().UnixNano()
+	t.Logf("seed: %d", seed)
+	rng := pseudo.New(pseudo.NewSource(seed))
 	headHeight := abi.ChainEpoch(100)
 
 	si, _, cs := setupWithHeadIndexed(t, headHeight, rng)
-	defer func() { _ = si.Close() }()
-	_ = si.Start()
+	t.Cleanup(func() { _ = si.Close() })
+	si.Start()
 
 	// Initialize address resolver
 	si.SetIdToRobustAddrFunc(func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool) {
@@ -186,7 +196,7 @@ func TestBackfillMissingEpoch(t *testing.T) {
 	}
 
 	cs.SetMessagesForTipset(missingTs, []types.ChainMsg{fakeMsg})
-	si.SetEventLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
+	si.SetExecutedMessagesLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
 		if msgTs.Height() == missingTs.Height() {
 			return []executedMessage{executedMsg}, nil
 		}
@@ -215,7 +225,9 @@ func TestBackfillMissingEpoch(t *testing.T) {
 
 func TestIndexCorruption(t *testing.T) {
 	ctx := context.Background()
-	rng := pseudo.New(pseudo.NewSource(time.Now().UnixNano()))
+	seed := time.Now().UnixNano()
+	t.Logf("seed: %d", seed)
+	rng := pseudo.New(pseudo.NewSource(seed))
 	headHeight := abi.ChainEpoch(100)
 
 	tests := []struct {
@@ -347,7 +359,7 @@ func TestIndexCorruption(t *testing.T) {
 				})
 
 				// Setup dummy event loader
-				si.SetEventLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
+				si.SetExecutedMessagesLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
 					return []executedMessage{{msg: fakeMessage(randomIDAddr(t, rng), randomIDAddr(t, rng))}}, nil
 				})
 
@@ -393,7 +405,7 @@ func TestIndexCorruption(t *testing.T) {
 				})
 
 				// Setup dummy event loader to return only one event
-				si.SetEventLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
+				si.SetExecutedMessagesLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
 					return []executedMessage{
 						{
 							msg: fakeMessage(randomIDAddr(t, rng), randomIDAddr(t, rng)),
@@ -453,7 +465,7 @@ func TestIndexCorruption(t *testing.T) {
 				})
 
 				// Setup dummy event loader to return one event with only one entry
-				si.SetEventLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
+				si.SetExecutedMessagesLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
 					return []executedMessage{
 						{
 							msg: fakeMessage(randomIDAddr(t, rng), randomIDAddr(t, rng)),
@@ -474,8 +486,8 @@ func TestIndexCorruption(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			si, _, cs := setupWithHeadIndexed(t, headHeight, rng)
-			defer func() { _ = si.Close() }()
-			_ = si.Start()
+			t.Cleanup(func() { _ = si.Close() })
+			si.Start()
 
 			tt.setupFunc(t, si, cs)
 

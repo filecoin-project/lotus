@@ -22,7 +22,7 @@ var _ Indexer = (*SqliteIndexer)(nil)
 
 // IdToRobustAddrFunc is a function type that resolves an actor ID to a robust address
 type IdToRobustAddrFunc func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool)
-type eventLoaderFunc func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error)
+type emsLoaderFunc func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error)
 type recomputeTipSetStateFunc func(ctx context.Context, ts *types.TipSet) error
 
 type preparedStatements struct {
@@ -65,8 +65,8 @@ type SqliteIndexer struct {
 	db *sql.DB
 	cs ChainStore
 
-	idToRobustAddrFunc IdToRobustAddrFunc
-	eventLoaderFunc    eventLoaderFunc
+	idToRobustAddrFunc         IdToRobustAddrFunc
+	executedMessagesLoaderFunc emsLoaderFunc
 
 	stmts *preparedStatements
 
@@ -133,21 +133,19 @@ func NewSqliteIndexer(path string, cs ChainStore, gcRetentionEpochs int64, recon
 	return si, nil
 }
 
-func (si *SqliteIndexer) Start() error {
+func (si *SqliteIndexer) Start() {
 	si.wg.Add(1)
 	go si.gcLoop()
 
 	si.started = true
-
-	return nil
 }
 
 func (si *SqliteIndexer) SetIdToRobustAddrFunc(idToRobustAddrFunc IdToRobustAddrFunc) {
 	si.idToRobustAddrFunc = idToRobustAddrFunc
 }
 
-func (si *SqliteIndexer) SetEventLoaderFunc(eventLoaderFunc eventLoaderFunc) {
-	si.eventLoaderFunc = eventLoaderFunc
+func (si *SqliteIndexer) SetExecutedMessagesLoaderFunc(eventLoaderFunc emsLoaderFunc) {
+	si.executedMessagesLoaderFunc = eventLoaderFunc
 }
 
 func (si *SqliteIndexer) Close() error {

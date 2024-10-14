@@ -22,7 +22,9 @@ import (
 )
 
 func TestGetCidFromHash(t *testing.T) {
-	rng := pseudo.New(pseudo.NewSource(time.Now().UnixNano()))
+	seed := time.Now().UnixNano()
+	t.Logf("seed: %d", seed)
+	rng := pseudo.New(pseudo.NewSource(seed))
 	ctx := context.Background()
 
 	s, _, _ := setupWithHeadIndexed(t, 10, rng)
@@ -51,7 +53,9 @@ func TestGetCidFromHash(t *testing.T) {
 
 func TestGetMsgInfo(t *testing.T) {
 	ctx := context.Background()
-	rng := pseudo.New(pseudo.NewSource(time.Now().UnixNano()))
+	seed := time.Now().UnixNano()
+	t.Logf("seed: %d", seed)
+	rng := pseudo.New(pseudo.NewSource(seed))
 	s, _, _ := setupWithHeadIndexed(t, 10, rng)
 
 	msgCid := randomCid(t, rng)

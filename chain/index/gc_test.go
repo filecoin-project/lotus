@@ -16,10 +16,12 @@ import (
 
 func TestGC(t *testing.T) {
 	ctx := context.Background()
-	rng := pseudo.New(pseudo.NewSource(time.Now().UnixNano()))
+	seed := time.Now().UnixNano()
+	t.Logf("seed: %d", seed)
+	rng := pseudo.New(pseudo.NewSource(seed))
 	headHeight := abi.ChainEpoch(60)
 	si, _, cs := setupWithHeadIndexed(t, headHeight, rng)
-	defer func() { _ = si.Close() }()
+	t.Cleanup(func() { _ = si.Close() })
 
 	si.gcRetentionEpochs = 20
 
@@ -62,7 +64,7 @@ func TestGC(t *testing.T) {
 		return idAddr, true
 	})
 
-	si.SetEventLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
+	si.SetExecutedMessagesLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
 		if msgTs.Height() == 1 {
 			return []executedMessage{em1}, nil
 		}

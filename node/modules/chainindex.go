@@ -71,12 +71,12 @@ func InitChainIndexer(lc fx.Lifecycle, mctx helpers.MetricsCtx, indexer index.In
 				return *actor.DelegatedAddress, true
 			})
 
-			eventLoaderFunc := index.MakeLoadExecutedMessages(func(ctx context.Context, ts *types.TipSet) error {
+			executedMessagesLoaderFunc := index.MakeLoadExecutedMessages(func(ctx context.Context, ts *types.TipSet) error {
 				_, _, err := sm.RecomputeTipSetState(ctx, ts)
 				return err
 			})
 
-			indexer.SetEventLoaderFunc(eventLoaderFunc)
+			indexer.SetExecutedMessagesLoaderFunc(executedMessagesLoaderFunc)
 
 			ch, err := mp.Updates(ctx)
 			if err != nil {
@@ -102,9 +102,7 @@ func InitChainIndexer(lc fx.Lifecycle, mctx helpers.MetricsCtx, indexer index.In
 			}
 			unlockObserver()
 
-			if err := indexer.Start(); err != nil {
-				return err
-			}
+			indexer.Start()
 
 			return nil
 		},
