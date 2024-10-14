@@ -5,7 +5,7 @@ type IndexValidation struct {
 	// TipSetKey is the key of the canonical tipset for this epoch.
 	TipSetKey TipSetKey
 	// Height is the epoch height at which the validation is performed.
-	Height uint64
+	Height abi.ChainEpoch
 	// IndexedMessagesCount is the number of indexed messages for the canonical tipset at this epoch.
 	IndexedMessagesCount uint64
 	// IndexedEventsCount is the number of indexed events for the canonical tipset at this epoch.
