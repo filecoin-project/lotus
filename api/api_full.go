@@ -66,22 +66,21 @@ type FullNode interface {
 	// MethodGroup: ChainIndexer
 	// The ChainIndexer method group contains methods for interacting with the chain indexer.
 
-	// ChainValidateIndex validates and optionally backfills the chain index at a specific epoch.
+	// ChainValidateIndex validates the integrity of and optionally backfills
+	// the chain index at a specific epoch.
 	//
 	// It can be used to:
 	//
-	// 1. Validates the chain index at a specific epoch:
+	// 1. Validate the chain index at a specific epoch:
 	//   - Ensures consistency between indexed data and actual chain state
 	//   - Reports any errors found during validation (i.e. the indexed data does not match the actual chain state, missing data, etc.)
 	//
-	// 2. Optionally backfills missing data:
+	// 2. Optionally backfill missing data:
 	//   - Backfills data if the index is missing information for the specified epoch
 	//   - Backfilling only occurs when the `backfill` parameter is set to `true`
 	//
-	// 3. Detects "holes" in the index:
+	// 3. Detect "holes" in the index:
 	//   - If `backfill` is `false` and the index lacks data for the specified epoch, the API returns an error indicating missing data
-	//
-	// ChainValidateIndex validates the integrity of the chain index at a specified epoch and also optionally backfills missing data.
 	//
 	// Parameters:
 	//   - epoch: The specific chain epoch for which to validate/backfill the index.
