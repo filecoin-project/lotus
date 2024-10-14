@@ -1,7 +1,6 @@
 package main
 
 import (
-	"api"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -13,6 +12,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 )
@@ -199,7 +199,7 @@ like cron.
 }
 
 func tipsetKeyCid(ctx context.Context, epoch abi.ChainEpoch, a api.FullNode) (cid.Cid, error) {
-	ts, err := api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(epoch), types.EmptyTSK)
+	ts, err := a.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(epoch), types.EmptyTSK)
 	if err != nil {
 		return cid.Undef, fmt.Errorf("failed to get tipset for epoch %d: %w", epoch, err)
 	}

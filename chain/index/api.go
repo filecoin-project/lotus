@@ -52,7 +52,7 @@ func (si *SqliteIndexer) ChainValidateIndex(ctx context.Context, epoch abi.Chain
 	if expectedTs.Height() != epoch {
 		if isIndexEmpty {
 			return &types.IndexValidation{
-				Height:      uint64(epoch),
+				Height:      epoch,
 				IsNullRound: true,
 			}, nil
 		}
@@ -148,7 +148,7 @@ func (si *SqliteIndexer) ChainValidateIndex(ctx context.Context, epoch abi.Chain
 
 	return &types.IndexValidation{
 		TipSetKey:                expectedTs.Key(),
-		Height:                   uint64(expectedTs.Height()),
+		Height:                   expectedTs.Height(),
 		IndexedMessagesCount:     uint64(indexedData.nonRevertedMessageCount),
 		IndexedEventsCount:       uint64(indexedData.nonRevertedEventCount),
 		IndexedEventEntriesCount: uint64(indexedData.nonRevertedEventEntriesCount),
@@ -168,7 +168,7 @@ func (si *SqliteIndexer) validateIsNullRound(ctx context.Context, epoch abi.Chai
 	}
 
 	return &types.IndexValidation{
-		Height:      uint64(epoch),
+		Height:      epoch,
 		IsNullRound: true,
 	}, nil
 }
@@ -313,7 +313,7 @@ func (si *SqliteIndexer) backfillMissingTipset(ctx context.Context, ts *types.Ti
 
 	return &types.IndexValidation{
 		TipSetKey:                ts.Key(),
-		Height:                   uint64(ts.Height()),
+		Height:                   ts.Height(),
 		Backfilled:               true,
 		IndexedMessagesCount:     uint64(indexedData.nonRevertedMessageCount),
 		IndexedEventsCount:       uint64(indexedData.nonRevertedEventCount),
