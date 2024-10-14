@@ -221,7 +221,13 @@ func (si *SqliteIndexer) getIndexedTipSetData(ctx context.Context, ts *types.Tip
 
 // verifyIndexedData verifies that the indexed data for a tipset is correct
 // by comparing the number of messages and events in the chainstore to the number of messages and events indexed.
-// NOTE: Events are loaded from the executed messages of the tipset at the next epoch (ts.Height() + 1).
+//
+// Notes:
+//
+// - Events are loaded from the executed messages of the tipset at the next epoch (ts.Height() + 1).
+// - This is not a comprehensive verification because we only compare counts, assuming that a match
+//   means that the entries are correct. A future iteration may compare message and event details to
+//   confirm that they are what is expected.
 func (si *SqliteIndexer) verifyIndexedData(ctx context.Context, ts *types.TipSet, indexedData *indexedTipSetData) (err error) {
 	tsKeyCid, err := ts.Key().Cid()
 	if err != nil {
