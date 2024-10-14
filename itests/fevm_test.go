@@ -1358,8 +1358,9 @@ func TestMcopy(t *testing.T) {
 
 	// should be able to deploy and call the contract now
 	fromAddr, contractAddr = client.EVM().DeployContractFromFilename(ctx, filenameActor)
-	_, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "optimizedCopy(bytes)", inputArgument)
+	result, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "optimizedCopy(bytes)", inputArgument)
 	require.NoError(t, err)
+	require.Equal(t, inputArgument, result)
 }
 
 func TestEthGetBlockByNumber(t *testing.T) {
