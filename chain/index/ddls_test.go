@@ -7,39 +7,67 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	tipsetKeyCid1 = "test_tipset_key"
+	tipsetKeyCid2 = "test_tipset_key_2"
+	messageCid1   = "test_message_cid"
+	messageCid2   = "test_message_cid_2"
+	emitterAddr1  = "test_emitter_addr"
+)
+
 func TestHasRevertedEventsInTipsetStmt(t *testing.T) {
 	s, err := NewSqliteIndexer(":memory:", nil, 0, false, 0)
 	require.NoError(t, err)
 
 	// running on empty DB should return false
-	verifyHasRevertedEventsInTipsetStmt(t, s, []byte("test_tipset_key"), false)
+	verifyHasRevertedEventsInTipsetStmt(t, s, []byte(tipsetKeyCid1), false)
 
 	// Insert tipset with a reverted event
 	ts := tipsetMessage{
-		tipsetKeyCid: []byte("test_tipset_key"),
+		tipsetKeyCid: []byte(tipsetKeyCid1),
 		height:       1,
 		reverted:     false,
-		messageCid:   []byte("test_message_cid"),
+		messageCid:   []byte(messageCid1),
 		messageIndex: 0,
 	}
 	messageID := insertTipsetMessage(t, s, ts)
 
+	// this event will be un-reverted later
 	insertEvent(t, s, event{
 		messageID:   messageID,
 		eventIndex:  0,
 		emitterId:   1,
-		emitterAddr: []byte("test_emitter_addr"),
+		emitterAddr: []byte(emitterAddr1),
+		reverted:    true,
+	})
+
+	// this event should not be un-reverted
+	ts = tipsetMessage{
+		tipsetKeyCid: []byte(tipsetKeyCid2),
+		height:       1,
+		reverted:     false,
+		messageCid:   []byte(messageCid2),
+		messageIndex: 0,
+	}
+	messageID2 := insertTipsetMessage(t, s, ts)
+	insertEvent(t, s, event{
+		messageID:   messageID2,
+		eventIndex:  0,
+		emitterId:   2,
+		emitterAddr: []byte(emitterAddr1),
 		reverted:    true,
 	})
 
 	// Verify `hasRevertedEventsInTipset` returns true
-	verifyHasRevertedEventsInTipsetStmt(t, s, []byte("test_tipset_key"), true)
+	verifyHasRevertedEventsInTipsetStmt(t, s, []byte(tipsetKeyCid1), true)
+	verifyHasRevertedEventsInTipsetStmt(t, s, []byte(tipsetKeyCid2), true)
 
 	// change event to non-reverted
-	updateEventsToNonReverted(t, s, []byte("test_tipset_key"))
+	updateEventsToNonReverted(t, s, []byte(tipsetKeyCid1))
 
 	// Verify `hasRevertedEventsInTipset` returns false
-	verifyHasRevertedEventsInTipsetStmt(t, s, []byte("test_tipset_key"), false)
+	verifyHasRevertedEventsInTipsetStmt(t, s, []byte(tipsetKeyCid1), false)
+	verifyHasRevertedEventsInTipsetStmt(t, s, []byte(tipsetKeyCid2), true)
 }
 
 func TestGetNonRevertedTipsetCountStmts(t *testing.T) {
@@ -47,16 +75,16 @@ func TestGetNonRevertedTipsetCountStmts(t *testing.T) {
 	require.NoError(t, err)
 
 	// running on empty DB should return 0
-	verifyNonRevertedEventEntriesCount(t, s, []byte("test_tipset_key"), 0)
-	verifyNonRevertedEventCount(t, s, []byte("test_tipset_key"), 0)
-	verifyNonRevertedMessageCount(t, s, []byte("test_tipset_key"), 0)
+	verifyNonRevertedEventEntriesCount(t, s, []byte(tipsetKeyCid1), 0)
+	verifyNonRevertedEventCount(t, s, []byte(tipsetKeyCid1), 0)
+	verifyNonRevertedMessageCount(t, s, []byte(tipsetKeyCid1), 0)
 
 	// Insert non-reverted tipset
 	messageID := insertTipsetMessage(t, s, tipsetMessage{
-		tipsetKeyCid: []byte("test_tipset_key"),
+		tipsetKeyCid: []byte(tipsetKeyCid1),
 		height:       1,
 		reverted:     false,
-		messageCid:   []byte("test_message_cid"),
+		messageCid:   []byte(messageCid1),
 		messageIndex: 0,
 	})
 
@@ -65,14 +93,14 @@ func TestGetNonRevertedTipsetCountStmts(t *testing.T) {
 		messageID:   messageID,
 		eventIndex:  0,
 		emitterId:   1,
-		emitterAddr: []byte("test_emitter_addr"),
+		emitterAddr: []byte(emitterAddr1),
 		reverted:    false,
 	})
 	eventID2 := insertEvent(t, s, event{
 		messageID:   messageID,
 		eventIndex:  1,
 		emitterId:   2,
-		emitterAddr: []byte("test_emitter_addr"),
+		emitterAddr: []byte(emitterAddr1),
 		reverted:    false,
 	})
 
@@ -95,25 +123,25 @@ func TestGetNonRevertedTipsetCountStmts(t *testing.T) {
 	})
 
 	// verify 2 event entries
-	verifyNonRevertedEventEntriesCount(t, s, []byte("test_tipset_key"), 2)
+	verifyNonRevertedEventEntriesCount(t, s, []byte(tipsetKeyCid1), 2)
 
 	// Verify event count
-	verifyNonRevertedEventCount(t, s, []byte("test_tipset_key"), 2)
+	verifyNonRevertedEventCount(t, s, []byte(tipsetKeyCid1), 2)
 
 	// verify message count is 1
-	verifyNonRevertedMessageCount(t, s, []byte("test_tipset_key"), 1)
+	verifyNonRevertedMessageCount(t, s, []byte(tipsetKeyCid1), 1)
 
 	// mark tipset as reverted
-	revertTipset(t, s, []byte("test_tipset_key"))
+	revertTipset(t, s, []byte(tipsetKeyCid1))
 
 	// Verify `getNonRevertedTipsetEventEntriesCountStmt` returns 0
-	verifyNonRevertedEventEntriesCount(t, s, []byte("test_tipset_key"), 0)
+	verifyNonRevertedEventEntriesCount(t, s, []byte(tipsetKeyCid1), 0)
 
 	// verify event count is 0
-	verifyNonRevertedEventCount(t, s, []byte("test_tipset_key"), 0)
+	verifyNonRevertedEventCount(t, s, []byte(tipsetKeyCid1), 0)
 
 	// verify message count is 0
-	verifyNonRevertedMessageCount(t, s, []byte("test_tipset_key"), 0)
+	verifyNonRevertedMessageCount(t, s, []byte(tipsetKeyCid1), 0)
 }
 
 func TestUpdateTipsetToNonRevertedStmt(t *testing.T) {
@@ -122,17 +150,17 @@ func TestUpdateTipsetToNonRevertedStmt(t *testing.T) {
 
 	// insert a reverted tipset
 	ts := tipsetMessage{
-		tipsetKeyCid: []byte("test_tipset_key"),
+		tipsetKeyCid: []byte(tipsetKeyCid1),
 		height:       1,
 		reverted:     true,
-		messageCid:   []byte("test_message_cid"),
+		messageCid:   []byte(messageCid1),
 		messageIndex: 0,
 	}
 
 	// Insert tipset
 	messageId := insertTipsetMessage(t, s, ts)
 
-	res, err := s.stmts.updateTipsetToNonRevertedStmt.Exec([]byte("test_tipset_key"))
+	res, err := s.stmts.updateTipsetToNonRevertedStmt.Exec([]byte(tipsetKeyCid1))
 	require.NoError(t, err)
 
 	rowsAffected, err := res.RowsAffected()
@@ -154,10 +182,10 @@ func TestHasNullRoundAtHeightStmt(t *testing.T) {
 
 	// insert tipset
 	insertTipsetMessage(t, s, tipsetMessage{
-		tipsetKeyCid: []byte("test_tipset_key"),
+		tipsetKeyCid: []byte(tipsetKeyCid1),
 		height:       1,
 		reverted:     false,
-		messageCid:   []byte("test_message_cid"),
+		messageCid:   []byte(messageCid1),
 		messageIndex: 0,
 	})
 
@@ -170,19 +198,19 @@ func TestHasTipsetStmt(t *testing.T) {
 	require.NoError(t, err)
 
 	// running on empty DB should return false
-	verifyHasTipsetStmt(t, s, []byte("test_tipset_key"), false)
+	verifyHasTipsetStmt(t, s, []byte(tipsetKeyCid1), false)
 
 	// insert tipset
 	insertTipsetMessage(t, s, tipsetMessage{
-		tipsetKeyCid: []byte("test_tipset_key"),
+		tipsetKeyCid: []byte(tipsetKeyCid1),
 		height:       1,
 		reverted:     false,
-		messageCid:   []byte("test_message_cid"),
+		messageCid:   []byte(messageCid1),
 		messageIndex: 0,
 	})
 
 	// verify tipset exists
-	verifyHasTipsetStmt(t, s, []byte("test_tipset_key"), true)
+	verifyHasTipsetStmt(t, s, []byte(tipsetKeyCid1), true)
 
 	// verify non-existent tipset
 	verifyHasTipsetStmt(t, s, []byte("non_existent_tipset_key"), false)
@@ -194,10 +222,10 @@ func TestUpdateEventsToRevertedStmt(t *testing.T) {
 
 	// Insert a non-reverted tipset
 	messageID := insertTipsetMessage(t, s, tipsetMessage{
-		tipsetKeyCid: []byte("test_tipset_key"),
+		tipsetKeyCid: []byte(tipsetKeyCid1),
 		height:       1,
 		reverted:     false,
-		messageCid:   []byte("test_message_cid"),
+		messageCid:   []byte(messageCid1),
 		messageIndex: 0,
 	})
 
@@ -206,14 +234,14 @@ func TestUpdateEventsToRevertedStmt(t *testing.T) {
 		messageID:   messageID,
 		eventIndex:  0,
 		emitterId:   1,
-		emitterAddr: []byte("test_emitter_addr"),
+		emitterAddr: []byte(emitterAddr1),
 		reverted:    false,
 	})
 	insertEvent(t, s, event{
 		messageID:   messageID,
 		eventIndex:  1,
 		emitterId:   2,
-		emitterAddr: []byte("test_emitter_addr"),
+		emitterAddr: []byte(emitterAddr1),
 		reverted:    false,
 	})
 
@@ -224,7 +252,7 @@ func TestUpdateEventsToRevertedStmt(t *testing.T) {
 	require.Equal(t, 2, count)
 
 	// Execute updateEventsToRevertedStmt
-	_, err = s.stmts.updateEventsToRevertedStmt.Exec([]byte("test_tipset_key"))
+	_, err = s.stmts.updateEventsToRevertedStmt.Exec([]byte(tipsetKeyCid1))
 	require.NoError(t, err)
 
 	// Verify events are now reverted
@@ -410,8 +438,8 @@ func TestGetMsgIdForMsgCidAndTipsetStmt(t *testing.T) {
 	require.NoError(t, err)
 
 	// Insert a non-reverted tipset
-	tipsetKeyCid := []byte("test_tipset_key")
-	messageCid := []byte("test_message_cid")
+	tipsetKeyCid := []byte(tipsetKeyCid1)
+	messageCid := []byte(messageCid1)
 	insertTipsetMessage(t, s, tipsetMessage{
 		tipsetKeyCid: tipsetKeyCid,
 		height:       1,
@@ -460,7 +488,7 @@ func TestForeignKeyCascadeDelete(t *testing.T) {
 		tipsetKeyCid: []byte("test_tipset_key"),
 		height:       1,
 		reverted:     false,
-		messageCid:   []byte("test_message_cid"),
+		messageCid:   []byte(messageCid1),
 		messageIndex: 0,
 	})
 
@@ -503,7 +531,7 @@ func TestInsertTipsetMessage(t *testing.T) {
 		tipsetKeyCid: []byte("test_tipset_key"),
 		height:       1,
 		reverted:     false,
-		messageCid:   []byte("test_message_cid"),
+		messageCid:   []byte(messageCid1),
 		messageIndex: 0,
 	}
 

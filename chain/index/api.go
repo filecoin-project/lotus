@@ -224,10 +224,10 @@ func (si *SqliteIndexer) getIndexedTipSetData(ctx context.Context, ts *types.Tip
 //
 // Notes:
 //
-// - Events are loaded from the executed messages of the tipset at the next epoch (ts.Height() + 1).
-// - This is not a comprehensive verification because we only compare counts, assuming that a match
-//   means that the entries are correct. A future iteration may compare message and event details to
-//   confirm that they are what is expected.
+//   - Events are loaded from the executed messages of the tipset at the next epoch (ts.Height() + 1).
+//   - This is not a comprehensive verification because we only compare counts, assuming that a match
+//     means that the entries are correct. A future iteration may compare message and event details to
+//     confirm that they are what is expected.
 func (si *SqliteIndexer) verifyIndexedData(ctx context.Context, ts *types.TipSet, indexedData *indexedTipSetData) (err error) {
 	tsKeyCid, err := ts.Key().Cid()
 	if err != nil {

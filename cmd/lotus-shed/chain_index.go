@@ -199,7 +199,7 @@ like cron.
 }
 
 func tipsetKeyCid(ctx context.Context, epoch abi.ChainEpoch, a api.FullNode) (cid.Cid, error) {
-	ts, err := a.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(epoch), types.EmptyTSK)
+	ts, err := a.ChainGetTipSetByHeight(ctx, epoch, types.EmptyTSK)
 	if err != nil {
 		return cid.Undef, fmt.Errorf("failed to get tipset for epoch %d: %w", epoch, err)
 	}
