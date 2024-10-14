@@ -57,7 +57,7 @@ func InitChainIndexer(lc fx.Lifecycle, mctx helpers.MetricsCtx, indexer index.In
 
 	lc.Append(fx.Hook{
 		OnStart: func(_ context.Context) error {
-			indexer.SetIdToRobustAddrFunc(func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool) {
+			indexer.SetActorToDelegatedAddresFunc(func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool) {
 				idAddr, err := address.NewIDAddress(uint64(emitter))
 				if err != nil {
 					return address.Undef, false

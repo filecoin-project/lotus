@@ -55,7 +55,8 @@ type Indexer interface {
 	IndexSignedMessage(ctx context.Context, msg *types.SignedMessage) error
 	IndexEthTxHash(ctx context.Context, txHash ethtypes.EthHash, c cid.Cid) error
 
-	SetIdToRobustAddrFunc(idToRobustAddrFunc IdToRobustAddrFunc)
+	SetActorToDelegatedAddresFunc(idToRobustAddrFunc ActorToDelegatedAddressFunc)
+	SetRecomputeTipSetStateFunc(recomputeTipSetStateFunc recomputeTipSetStateFunc)
 	SetExecutedMessagesLoaderFunc(f emsLoaderFunc)
 
 	Apply(ctx context.Context, from, to *types.TipSet) error

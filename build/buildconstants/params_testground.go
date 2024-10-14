@@ -13,6 +13,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/peer"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
@@ -107,6 +108,8 @@ var (
 	UpgradeWaffleHeight               abi.ChainEpoch = -29
 	UpgradeTuktukHeight               abi.ChainEpoch = -30
 
+	UpgradeTuktukPowerRampDurationEpochs uint64 = 0
+
 	DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 		0:                    DrandMainnet,
 		UpgradePhoenixHeight: DrandQuicknet,
@@ -135,6 +138,7 @@ var (
 )
 
 func init() {
+	SetAddressNetwork(address.Testnet)
 	Devnet = true
 }
 

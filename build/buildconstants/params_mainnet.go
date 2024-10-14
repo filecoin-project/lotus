@@ -14,6 +14,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 )
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
@@ -110,6 +112,11 @@ const UpgradeWaffleHeight abi.ChainEpoch = 4154640
 // ??????
 var UpgradeTuktukHeight = abi.ChainEpoch(9999999999)
 
+// FIP-0081: for the power actor state for pledge calculations.
+// UpgradeTuktukPowerRampDurationEpochs ends up in the power actor state after
+// Tuktuk migration. along with a RampStartEpoch matching the upgrade height.
+var UpgradeTuktukPowerRampDurationEpochs = uint64(builtin.EpochsInYear)
+
 // This fix upgrade only ran on calibrationnet
 const UpgradeWatermelonFixHeight abi.ChainEpoch = -1
 
@@ -130,9 +137,13 @@ var PropagationDelaySecs = uint64(10)
 var EquivocationDelaySecs = uint64(2)
 
 func init() {
+	var addrNetwork address.Network
 	if os.Getenv("LOTUS_USE_TEST_ADDRESSES") != "1" {
-		SetAddressNetwork(address.Mainnet)
+		addrNetwork = address.Mainnet
+	} else {
+		addrNetwork = address.Testnet
 	}
+	SetAddressNetwork(addrNetwork)
 
 	if os.Getenv("LOTUS_DISABLE_TUKTUK") == "1" {
 		UpgradeTuktukHeight = math.MaxInt64 - 1
@@ -174,7 +185,7 @@ var WhitelistedBlock = cid.MustParse("bafy2bzaceapyg2uyzk7vueh3xccxkuwbz3nxewjyg
 var F3ManifestServerID = MustParseID("12D3KooWENMwUF9YxvQxar7uBWJtZkA6amvK4xWmKXfSiHUo2Qq7")
 
 // The initial F3 power table CID.
-var F3InitialPowerTableCID cid.Cid = cid.Undef
+var F3InitialPowerTableCID = cid.Undef
 
 const F3Enabled = true
 const F3BootstrapEpoch abi.ChainEpoch = -1

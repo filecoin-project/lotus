@@ -774,11 +774,22 @@ var chainPledgeCmd = &cli.Command{
 			circ.FilCirculating = big.Zero()
 		}
 
+		var epochsSinceRampStart int64
+		var rampDurationEpochs uint64
+
+		if powerActor, err := state.GetActor(power.Address); err != nil {
+			return xerrors.Errorf("loading power actor: %w", err)
+		} else if powerState, err := power.Load(store, powerActor); err != nil {
+			return xerrors.Errorf("loading power actor state: %w", err)
+		} else if powerState.RampStartEpoch() > 0 {
+			epochsSinceRampStart = epoch - powerState.RampStartEpoch()
+			rampDurationEpochs = powerState.RampDurationEpochs()
+		}
+
 		rewardActor, err := state.GetActor(reward.Address)
 		if err != nil {
 			return xerrors.Errorf("loading miner actor: %w", err)
 		}
-
 		rewardState, err := reward.Load(store, rewardActor)
 		if err != nil {
 			return xerrors.Errorf("loading reward actor state: %w", err)
@@ -801,6 +812,8 @@ var chainPledgeCmd = &cli.Command{
 				pledgeCollateral,
 				&powerSmoothed,
 				circ.FilCirculating,
+				epochsSinceRampStart,
+				rampDurationEpochs,
 			)
 			if err != nil {
 				return xerrors.Errorf("calculating initial pledge: %w", err)

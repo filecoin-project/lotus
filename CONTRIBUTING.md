@@ -5,6 +5,7 @@ Lotus is a universally open project and welcomes contributions of all kinds: cod
 
 - [Before Contributing](#before-contributing)
 - [Implementing Changes](#implementing-changes)
+- [Working with builtin-actors](#working-with-builtin-actors)
 - [PR Title Conventions](#pr-title-conventions)
 - [CHANGELOG Management](#changelog-management)
 - [Markdown Conventions](#markdown-conventions)
@@ -29,6 +30,10 @@ When implementing a change:
 5. Lint your code with [`golangci-lint`](https://golangci-lint.run) (CI will reject your PR if unlinted).
 6. Add tests.
 7. Write clean, thoughtful, and detailed [commit messages](https://chris.beams.io/posts/git-commit/). This is even more important than the PR description, because commit messages are stored _inside_ the Git history. One good rule is: if you are happy posting the commit message as the PR description, then it's a good commit message.
+
+## Working with builtin-actors
+
+For doing FIP development that involves a change in [builtin-actors](https://github.com/filecoin-project/builtin-actors) which needs to also be exposed in Lotus, see the [builtin-actor Development Guide](documentation/misc/Builtin-actors_Development.md).
 
 ## PR Title Conventions
 

@@ -20,8 +20,8 @@ import (
 
 var _ Indexer = (*SqliteIndexer)(nil)
 
-// IdToRobustAddrFunc is a function type that resolves an actor ID to a robust address
-type IdToRobustAddrFunc func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool)
+// ActorToDelegatedAddressFunc is a function type that resolves an actor ID to a DelegatedAddress if one exists for that actor, otherwise returns nil
+type ActorToDelegatedAddressFunc func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool)
 type emsLoaderFunc func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error)
 type recomputeTipSetStateFunc func(ctx context.Context, ts *types.TipSet) error
 
@@ -65,7 +65,8 @@ type SqliteIndexer struct {
 	db *sql.DB
 	cs ChainStore
 
-	idToRobustAddrFunc         IdToRobustAddrFunc
+	actorToDelegatedAddresFunc ActorToDelegatedAddressFunc
+	recomputeTipSetStateFunc   recomputeTipSetStateFunc
 	executedMessagesLoaderFunc emsLoaderFunc
 
 	stmts *preparedStatements
@@ -90,7 +91,7 @@ type SqliteIndexer struct {
 func NewSqliteIndexer(path string, cs ChainStore, gcRetentionEpochs int64, reconcileEmptyIndex bool,
 	maxReconcileTipsets uint64) (si *SqliteIndexer, err error) {
 
-	if gcRetentionEpochs != 0 && gcRetentionEpochs <= builtin.EpochsInDay {
+	if gcRetentionEpochs != 0 && gcRetentionEpochs < builtin.EpochsInDay {
 		return nil, xerrors.Errorf("gc retention epochs must be 0 or greater than %d", builtin.EpochsInDay)
 	}
 
@@ -140,8 +141,8 @@ func (si *SqliteIndexer) Start() {
 	si.started = true
 }
 
-func (si *SqliteIndexer) SetIdToRobustAddrFunc(idToRobustAddrFunc IdToRobustAddrFunc) {
-	si.idToRobustAddrFunc = idToRobustAddrFunc
+func (si *SqliteIndexer) SetActorToDelegatedAddresFunc(actorToDelegatedAddresFunc ActorToDelegatedAddressFunc) {
+	si.actorToDelegatedAddresFunc = actorToDelegatedAddresFunc
 }
 
 func (si *SqliteIndexer) SetExecutedMessagesLoaderFunc(eventLoaderFunc emsLoaderFunc) {

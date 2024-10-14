@@ -91,7 +91,7 @@ func toTipsetKeyCidBytes(ts *types.TipSet) ([]byte, error) {
 	}
 	tsKeyCid, err := ts.Key().Cid()
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get tipset key cid: %w", err)
+		return nil, err
 	}
 	return tsKeyCid.Bytes(), nil
 }
@@ -147,7 +147,7 @@ func isRetryableError(err error) bool {
 	return err != nil && strings.Contains(err.Error(), "database is locked")
 }
 
-func isIndexedValue(b uint8) bool {
+func isIndexedFlag(b uint8) bool {
 	// currently we mark the full entry as indexed if either the key
 	// or the value are indexed; in the future we will need finer-grained
 	// management of indices

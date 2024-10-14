@@ -1558,17 +1558,36 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 		return types.EmptyInt, xerrors.Errorf("getting circulating supply: %w", err)
 	}
 
+	epochsSinceRampStart, rampDurationEpochs, err := a.getPledgeRampParams(ctx, ts.Height(), state)
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("getting pledge ramp params: %w", err)
+	}
+
 	initialPledge, err := rewardState.InitialPledgeForPower(
 		sectorWeight,
 		pledgeCollateral,
 		powerSmoothed,
 		circSupply.FilCirculating,
+		epochsSinceRampStart,
+		rampDurationEpochs,
 	)
 	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("calculating initial pledge: %w", err)
 	}
 
 	return types.BigDiv(types.BigMul(initialPledge, initialPledgeNum), initialPledgeDen), nil
+}
+
+// getPledgeRampParams returns epochsSinceRampStart, rampDurationEpochs, or 0, 0 if the pledge ramp is not active.
+func (a *StateAPI) getPledgeRampParams(ctx context.Context, height abi.ChainEpoch, state *state.StateTree) (int64, uint64, error) {
+	if powerActor, err := state.GetActor(power.Address); err != nil {
+		return 0, 0, xerrors.Errorf("loading power actor: %w", err)
+	} else if powerState, err := power.Load(a.Chain.ActorStore(ctx), powerActor); err != nil {
+		return 0, 0, xerrors.Errorf("loading power actor state: %w", err)
+	} else if powerState.RampStartEpoch() > 0 {
+		return int64(height) - powerState.RampStartEpoch(), powerState.RampDurationEpochs(), nil
+	}
+	return 0, 0, nil
 }
 
 func (a *StateAPI) StateMinerInitialPledgeForSector(ctx context.Context, sectorDuration abi.ChainEpoch, sectorSize abi.SectorSize, verifiedSize uint64, tsk types.TipSetKey) (types.BigInt, error) {
@@ -1615,18 +1634,24 @@ func (a *StateAPI) StateMinerInitialPledgeForSector(ctx context.Context, sectorD
 	verifiedWeight := big.Mul(big.NewIntUnsigned(verifiedSize), big.NewInt(int64(sectorDuration)))
 	sectorWeight := builtin.QAPowerForWeight(sectorSize, sectorDuration, big.Zero(), verifiedWeight)
 
+	epochsSinceRampStart, rampDurationEpochs, err := a.getPledgeRampParams(ctx, ts.Height(), state)
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("getting pledge ramp params: %w", err)
+	}
+
 	initialPledge, err := rewardState.InitialPledgeForPower(
 		sectorWeight,
 		pledgeCollateral,
 		powerSmoothed,
 		circSupply.FilCirculating,
+		epochsSinceRampStart,
+		rampDurationEpochs,
 	)
 	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("calculating initial pledge: %w", err)
 	}
 
 	return types.BigDiv(types.BigMul(initialPledge, initialPledgeNum), initialPledgeDen), nil
-
 }
 
 func (a *StateAPI) StateMinerAvailableBalance(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (types.BigInt, error) {

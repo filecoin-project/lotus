@@ -126,6 +126,7 @@ func generateNodeHello() error {
 
 func generateApi() error {
 	return gen.WriteMapEncodersToFile("./api/cbor_gen.go", "api",
+		api.F3ParticipationLease{},
 		api.PaymentInfo{},
 		api.SealedRef{},
 		api.SealedRefs{},

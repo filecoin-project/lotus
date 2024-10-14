@@ -30,7 +30,7 @@ type executedMessage struct {
 
 // events are indexed against their inclusion/message tipset when we get the corresponding execution tipset
 func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *types.TipSet, executionTs *types.TipSet) error {
-	if si.idToRobustAddrFunc == nil {
+	if si.actorToDelegatedAddresFunc == nil {
 		return xerrors.Errorf("indexer can not index events without an address resolver")
 	}
 	if si.executedMessagesLoaderFunc == nil {
@@ -86,7 +86,7 @@ func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *typ
 			addr, found := addressLookups[event.Emitter]
 			if !found {
 				var ok bool
-				addr, ok = si.idToRobustAddrFunc(ctx, event.Emitter, executionTs)
+				addr, ok = si.actorToDelegatedAddresFunc(ctx, event.Emitter, executionTs)
 				if !ok {
 					// not an address we will be able to match against
 					continue
@@ -94,9 +94,9 @@ func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *typ
 				addressLookups[event.Emitter] = addr
 			}
 
-			robustAddrbytes := addr.Bytes()
-			if addr.Protocol() != address.Delegated {
-				robustAddrbytes = nil
+			var robustAddrbytes []byte
+			if addr.Protocol() == address.Delegated {
+				robustAddrbytes = addr.Bytes()
 			}
 
 			// Insert event into events table
@@ -115,7 +115,7 @@ func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *typ
 			for _, entry := range event.Entries {
 				_, err := tx.Stmt(si.stmts.insertEventEntryStmt).ExecContext(ctx,
 					eventID,
-					isIndexedValue(entry.Flags),
+					isIndexedFlag(entry.Flags),
 					[]byte{entry.Flags},
 					entry.Key,
 					entry.Codec,
@@ -162,11 +162,9 @@ func loadExecutedMessages(ctx context.Context, cs ChainStore, recomputeTipSetSta
 		ems[i].msg = msgs[i]
 
 		var rct types.MessageReceipt
-		found, err := receiptsArr.Get(uint64(i), &rct)
-		if err != nil {
+		if found, err := receiptsArr.Get(uint64(i), &rct); err != nil {
 			return nil, xerrors.Errorf("failed to load receipt %d: %w", i, err)
-		}
-		if !found {
+		} else if !found {
 			return nil, xerrors.Errorf("receipt %d not found", i)
 		}
 		ems[i].rct = rct
@@ -189,7 +187,7 @@ func loadExecutedMessages(ctx context.Context, cs ChainStore, recomputeTipSetSta
 
 			eventsArr, err = amt4.LoadAMT(ctx, st, *rct.EventsRoot, amt4.UseTreeBitWidth(types.EventAMTBitwidth))
 			if err != nil {
-				return nil, xerrors.Errorf("failed to load events amt for message %s: %w", ems[i].msg.Cid(), err)
+				return nil, xerrors.Errorf("failed to load events amt for re-executed tipset for message %s: %w", ems[i].msg.Cid(), err)
 			}
 
 			log.Infof("successfully recomputed tipset state and loaded events amt for message %s", ems[i].msg.Cid())
@@ -250,12 +248,9 @@ func (si *SqliteIndexer) checkTipsetIndexedStatus(ctx context.Context, f *EventF
 	}
 
 	// Check if the determined tipset is indexed
-	exists, err := si.isTipsetIndexed(ctx, tipsetKeyCid)
-	if err != nil {
+	if exists, err := si.isTipsetIndexed(ctx, tipsetKeyCid); err != nil {
 		return xerrors.Errorf("failed to check if tipset is indexed: %w", err)
-	}
-
-	if exists {
+	} else if exists {
 		return nil // Tipset is indexed
 	}
 
@@ -337,6 +332,8 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter,
 				return nil, xerrors.Errorf("read prefill row: %w", err)
 			}
 
+			// The query will return all entries for all matching events, so we need to keep track
+			// of which event we are dealing with and create a new one each time we see a new id
 			if row.id != currentID {
 				if ce != nil {
 					ces = append(ces, ce)
@@ -465,6 +462,8 @@ func makePrefillFilterQuery(f *EventFilter, excludeReverted bool) ([]any, string
 			} else if f.MaxHeight >= 0 {
 				clauses = append(clauses, "tm.height <= ?")
 				values = append(values, f.MaxHeight)
+			} else {
+				return nil, "", xerrors.Errorf("filter must specify either a tipset or a height range")
 			}
 		}
 	}

@@ -388,9 +388,12 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 	allowTopics = append(allowTopics, drandTopics...)
 
 	if in.F3Config != nil {
-		f3BaseTopicName := manifest.PubSubTopicFromNetworkName(in.F3Config.InitialManifest.NetworkName)
-		allowTopics = append(allowTopics, f3BaseTopicName)
+		if in.F3Config.StaticManifest != nil {
+			f3TopicName := manifest.PubSubTopicFromNetworkName(in.F3Config.StaticManifest.NetworkName)
+			allowTopics = append(allowTopics, f3TopicName)
+		}
 		if in.F3Config.DynamicManifestProvider != "" {
+			f3BaseTopicName := manifest.PubSubTopicFromNetworkName(in.F3Config.BaseNetworkName)
 			allowTopics = append(allowTopics, manifest.ManifestPubSubTopicName)
 			for i := 0; i < lf3.MaxDynamicManifestChangesAllowed; i++ {
 				allowTopics = append(allowTopics, fmt.Sprintf("%s/%d", f3BaseTopicName, i))

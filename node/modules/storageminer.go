@@ -30,11 +30,11 @@ import (
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
+	"github.com/filecoin-project/lotus/chain/lf3"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/journal"
 	lotusminer "github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/config"
-	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -46,6 +46,9 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 	"github.com/filecoin-project/lotus/storage/wdpost"
 )
+
+// F3LeaseTerm The number of instances the miner will attempt to lease from nodes.
+const F3LeaseTerm = 5
 
 type UuidWrapper struct {
 	v1api.FullNode
@@ -357,78 +360,37 @@ func SectorStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, lstor *paths.Local,
 	return sst, nil
 }
 
-func F3Participation(mctx helpers.MetricsCtx, lc fx.Lifecycle, api v1api.FullNode, minerAddress dtypes.MinerAddress) error {
-	ctx := helpers.LifecycleCtx(mctx, lc)
-	b := &backoff.Backoff{
-		Min:    1 * time.Second,
-		Max:    1 * time.Minute,
-		Factor: 1.5,
-		Jitter: false,
-	}
-	go func() {
-		timer := time.NewTimer(0)
-		defer timer.Stop()
+func F3Participation(mctx helpers.MetricsCtx, lc fx.Lifecycle, node v1api.FullNode, participant dtypes.MinerAddress) error {
+	const (
+		// maxCheckProgressAttempts defines the maximum number of failed attempts
+		// before we abandon the current lease and restart the participation process.
+		//
+		// The default backoff takes 12 attempts to reach a maximum delay of 1 minute.
+		// Allowing for 13 failures results in approximately 2 minutes of backoff since
+		// the lease was granted. Given a lease validity of up to 5 instances, this means
+		// we would give up on checking the lease during its mid-validity period;
+		// typically when we would try to renew the participation ticket. Hence, the value
+		// to 13.
+		checkProgressMaxAttempts = 13
+	)
 
-		if !timer.Stop() {
-			<-timer.C
-		}
+	p := lf3.NewParticipant(
+		mctx,
+		node,
+		participant,
+		&backoff.Backoff{
+			Min:    1 * time.Second,
+			Max:    1 * time.Minute,
+			Factor: 1.5,
+		},
+		checkProgressMaxAttempts,
+		F3LeaseTerm,
+	)
 
-		leaseTime := 120 * time.Second
-		// start with some time in the past
-		oldLease := time.Now().Add(-24 * time.Hour)
-
-		for ctx.Err() == nil {
-			newLease := time.Now().Add(leaseTime)
-
-			ok, err := api.F3Participate(ctx, address.Address(minerAddress), newLease, oldLease)
-
-			if ctx.Err() != nil {
-				return
-			}
-			if errors.Is(err, full.ErrF3Disabled) {
-				log.Errorf("Cannot participate in F3 as it is disabled: %+v", err)
-				return
-			}
-			if err != nil {
-				log.Errorf("while starting to participate in F3: %+v", err)
-				// use exponential backoff to avoid hotloop
-				timer.Reset(b.Duration())
-				select {
-				case <-ctx.Done():
-					return
-				case <-timer.C:
-				}
-				continue
-			}
-			if !ok {
-				log.Errorf("lotus node refused our lease, are you loadbalancing or did the miner just restart?")
-
-				sleepFor := b.Duration()
-				if d := time.Until(oldLease); d > 0 && d < sleepFor {
-					sleepFor = d
-				}
-				timer.Reset(sleepFor)
-				select {
-				case <-ctx.Done():
-					return
-				case <-timer.C:
-				}
-				continue
-			}
-
-			// we have succeeded in giving a lease, reset the backoff
-			b.Reset()
-
-			oldLease = newLease
-			// wait for the half of the lease time and then refresh
-			timer.Reset(leaseTime / 2)
-			select {
-			case <-ctx.Done():
-				return
-			case <-timer.C:
-			}
-		}
-	}()
+	lc.Append(fx.Hook{
+		OnStart: p.Start,
+		OnStop:  p.Stop,
+	})
 	return nil
 }
 

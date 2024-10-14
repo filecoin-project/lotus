@@ -512,9 +512,13 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 		if err != nil {
 			return xerrors.Errorf("fetching chain CAR failed: setting up resumable reader: %w", err)
 		}
+		defer rrd.Close() //nolint:errcheck
 
-		rd = rrd
 		l = rrd.ContentLength()
+		// without limiting the reader to exactly what we expect, an overread could
+		// result in a virtually freeform remote-error which we would then be unable
+		// to handle properly on our end
+		rd = io.LimitReader(rrd, l)
 	} else {
 		fname, err = homedir.Expand(fname)
 		if err != nil {

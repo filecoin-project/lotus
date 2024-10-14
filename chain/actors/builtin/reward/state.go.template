@@ -83,8 +83,20 @@ func (s *state{{.v}}) CumsumRealized() (reward{{.v}}.Spacetime, error) {
 	return s.State.CumsumRealized, nil
 }
 {{if (ge .v 2)}}
-func (s *state{{.v}}) InitialPledgeForPower(qaPower abi.StoragePower, networkTotalPledge abi.TokenAmount, networkQAPower *builtin.FilterEstimate, circSupply abi.TokenAmount) (abi.TokenAmount, error) {
-	return miner{{.v}}.InitialPledgeForPower(
+func (s *state{{.v}}) InitialPledgeForPower(qaPower abi.StoragePower, _ abi.TokenAmount, networkQAPower *builtin.FilterEstimate, circSupply abi.TokenAmount, epochsSinceRampStart int64, rampDurationEpochs uint64) (abi.TokenAmount, error) {
+{{if (ge .v 15)}}return miner{{.v}}.InitialPledgeForPower(
+		qaPower,
+		s.State.ThisEpochBaselinePower,
+		s.State.ThisEpochRewardSmoothed,
+		smoothing{{.v}}.FilterEstimate{
+			PositionEstimate: networkQAPower.PositionEstimate,
+			VelocityEstimate: networkQAPower.VelocityEstimate,
+		},
+		circSupply,
+		epochsSinceRampStart,
+		rampDurationEpochs,
+	), nil
+{{else}}return miner{{.v}}.InitialPledgeForPower(
 		qaPower,
 		s.State.ThisEpochBaselinePower,
 		s.State.ThisEpochRewardSmoothed,
@@ -94,9 +106,9 @@ func (s *state{{.v}}) InitialPledgeForPower(qaPower abi.StoragePower, networkTot
 		},
 		circSupply,
 	), nil
-}
+{{end}}}
 {{else}}
-func (s *state0) InitialPledgeForPower(sectorWeight abi.StoragePower, networkTotalPledge abi.TokenAmount, networkQAPower *builtin.FilterEstimate, circSupply abi.TokenAmount) (abi.TokenAmount, error) {
+func (s *state0) InitialPledgeForPower(sectorWeight abi.StoragePower, networkTotalPledge abi.TokenAmount, networkQAPower *builtin.FilterEstimate, circSupply abi.TokenAmount, _ int64, _ uint64) (abi.TokenAmount, error) {
 	return miner0.InitialPledgeForPower(
 		sectorWeight,
 		s.State.ThisEpochBaselinePower,

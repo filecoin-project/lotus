@@ -18,7 +18,10 @@ import (
 	miner11 "github.com/filecoin-project/go-state-types/builtin/v11/miner"
 	power11 "github.com/filecoin-project/go-state-types/builtin/v11/power"
 	adt11 "github.com/filecoin-project/go-state-types/builtin/v11/util/adt"
-	account "github.com/filecoin-project/go-state-types/builtin/v15/account"
+	account14 "github.com/filecoin-project/go-state-types/builtin/v14/account"
+	miner14 "github.com/filecoin-project/go-state-types/builtin/v14/miner"
+	smoothing14 "github.com/filecoin-project/go-state-types/builtin/v14/util/smoothing"
+	miner15 "github.com/filecoin-project/go-state-types/builtin/v15/miner"
 	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	migration "github.com/filecoin-project/go-state-types/builtin/v9/migration/test"
 	miner9 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
@@ -31,11 +34,14 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
 	builtin2 "github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/datacap"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/system"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
@@ -894,6 +900,257 @@ func TestMigrationNV23(t *testing.T) {
 	require.True(t, f090ActorPost.Code.Equals(accountNV23))
 	f090StatePost, err := clientApi.StateReadState(ctx, f090Addr, types.EmptyTSK)
 	require.NoError(t, err)
-	state := f090StatePost.State.(*account.State)
+	state := f090StatePost.State.(*account14.State)
 	require.Equal(t, state.Address, f090Addr)
+}
+
+func TestMigrationNV24(t *testing.T) {
+	req := require.New(t)
+
+	kit.QuietMiningLogs()
+
+	const (
+		nv24epoch               abi.ChainEpoch = 100
+		powerRampDurationEpochs uint64         = 200
+		blockTime                              = 10 * time.Millisecond
+	)
+	buildconstants.UpgradeTuktukPowerRampDurationEpochs = powerRampDurationEpochs
+	buildconstants.UpgradeTuktukHeight = nv24epoch
+
+	// InitialPledgeMaxPerByte is a little too low for an itest environment so gets in the way of
+	// testing the underlying calculation, so we bump it up here so it doesn't interfere.
+	miner14.InitialPledgeMaxPerByte = big.Mul(miner14.InitialPledgeMaxPerByte, big.NewInt(10)) // pre migration
+	miner15.InitialPledgeMaxPerByte = big.Mul(miner15.InitialPledgeMaxPerByte, big.NewInt(10)) // post migration
+
+	// Observe the rate of change of the pledge calculation during and after the power ramp; change
+	// is measured as a difference between the pre-FIP-0081 pledge calculation and the calculation
+	// after FIP-0081 has been applied.
+	var (
+		rateOfChangeDuringRamp []float64
+		rateOfChangeAfterRamp  []float64
+	)
+
+	testClient, _, ens := kit.EnsembleMinimal(
+		t,
+		kit.MockProofs(),
+		kit.UpgradeSchedule(
+			stmgr.Upgrade{
+				Network: network.Version23,
+				Height:  -1,
+			},
+			stmgr.Upgrade{
+				Network:   network.Version24,
+				Height:    nv24epoch,
+				Migration: filcns.UpgradeActorsV15,
+				PreMigrations: []stmgr.PreMigration{{ // should have no effect on measurements
+					PreMigration:    filcns.PreUpgradeActorsV15,
+					StartWithin:     nv24epoch / 2,
+					DontStartWithin: 2,
+					StopWithin:      2,
+				}},
+				Expensive: true,
+			},
+		))
+
+	ens.InterconnectAll().BeginMining(blockTime)
+
+	clientApi := testClient.FullNode.(*impl.FullNodeAPI)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Watch the chain and capture the pledge every ~5 epochs to observe the rate of change before,
+	// during, and after the FIP-0081 pledge ramp.
+	doneCh := make(chan struct{})
+	go func() {
+		var lastRelativeChange float64
+		var lastEpoch abi.ChainEpoch
+
+		start, err := clientApi.ChainHead(ctx)
+		assert.NoError(t, err)
+
+		for i := 0; ; i++ {
+			head := testClient.WaitTillChain(ctx, kit.HeightAtLeast(start.Height()+abi.ChainEpoch(i*5)))
+			if i > 0 && head.Height() == lastEpoch {
+				t.Logf("skipping duplicate pledge calculation @%d, slow test runner?", head.Height())
+				continue
+			}
+			lastEpoch = head.Height()
+
+			pledge, err := clientApi.StateMinerInitialPledgeForSector(ctx, abi.ChainEpoch(builtin.EpochsInYear), abi.SectorSize(2<<10), 0, head.Key())
+			if err != nil {
+				t.Errorf("failed to calculate pledge %d: %s", head.Height(), err)
+				break
+			}
+			preFip0081Pledge := preFip0081StateMinerInitialPledgeForSector(ctx, t, clientApi, abi.ChainEpoch(builtin.EpochsInYear), abi.SectorSize(2<<10), 0, head.Key())
+
+			relativeChange := float64(pledge.Uint64()-preFip0081Pledge.Uint64()) / float64(preFip0081Pledge.Uint64())
+			if i > 0 {
+				if head.Height() > nv24epoch {
+					// We want to see an increasing distance between the pre-FIP-0081 pledge and original pledge
+					// calculation, so the relative change should be increasing from the migration onward.
+					// This test depends on network power being below baseline, once we are above baseline
+					// then the FIP-0081 70/30 split (including ramp) should not differ from the pre-FIP-0081
+					// pledge calculation.
+					if relativeChange < lastRelativeChange {
+						t.Errorf("relative change decreased: %f -> %f @%d", lastRelativeChange, relativeChange, head.Height())
+						break
+					}
+				}
+
+				rateOfChange := relativeChange - lastRelativeChange
+				t.Logf("Pledge @%d: %d (pre-fip-0081: %d, rate of change: %f)", head.Height(), pledge.Uint64(), preFip0081Pledge.Uint64(), rateOfChange)
+				switch {
+				case head.Height() < nv24epoch:
+					if rateOfChange != 0 {
+						// likely something's wrong with our preFip0081StateMinerInitialPledgeForSector implementation
+						t.Errorf("rate of change should be zero before the migration: %f @%d", rateOfChange, head.Height())
+						break
+					}
+				case head.Height() <= nv24epoch+abi.ChainEpoch(powerRampDurationEpochs):
+					rateOfChangeDuringRamp = append(rateOfChangeDuringRamp, rateOfChange)
+				default:
+					rateOfChangeAfterRamp = append(rateOfChangeAfterRamp, rateOfChange)
+				}
+			}
+			lastRelativeChange = relativeChange
+
+			// Observe for another `powerRampDurationEpochs` epochs after the ramp
+			if head.Height() > nv24epoch+abi.ChainEpoch(powerRampDurationEpochs*2) {
+				break
+			}
+		}
+
+		close(doneCh)
+	}()
+
+	testClient.WaitTillChain(ctx, kit.HeightAtLeast(nv24epoch+5))
+
+	bs := blockstore.NewAPIBlockstore(testClient)
+	ctxStore := gstStore.WrapBlockStore(ctx, bs)
+
+	// Get state before the migration
+	preMigrationTs, err := clientApi.ChainGetTipSetByHeight(ctx, nv24epoch-1, types.EmptyTSK)
+	req.NoError(err)
+
+	root := preMigrationTs.Blocks()[0].ParentStateRoot
+	preStateTree, err := state.LoadStateTree(ctxStore, root)
+	req.NoError(err)
+	req.Equal(types.StateTreeVersion5, preStateTree.Version())
+
+	// FIP-0081 pledge ramp settings are unset before migration
+	powerActor, err := preStateTree.GetActor(builtin.StoragePowerActorAddr)
+	req.NoError(err)
+	powerState, err := power.Load(ctxStore, powerActor)
+	req.NoError(err)
+	req.Equal(int64(0), powerState.RampStartEpoch())
+	req.Equal(uint64(0), powerState.RampDurationEpochs())
+
+	// Get state after the migration
+	postMigrationTs, err := clientApi.ChainHead(ctx)
+	req.NoError(err)
+	postStateTree, err := state.LoadStateTree(ctxStore, postMigrationTs.Blocks()[0].ParentStateRoot)
+	req.NoError(err)
+
+	// Check the new system actor
+	systemAct, err := postStateTree.GetActor(builtin.SystemActorAddr)
+	req.NoError(err)
+	systemCode, ok := actors.GetActorCodeID(actorstypes.Version15, manifest.SystemKey)
+	req.True(ok)
+	req.Equal(systemCode, systemAct.Code)
+
+	// FIP-0081 pledge ramp settings are set after migration
+	powerActor, err = postStateTree.GetActor(builtin.StoragePowerActorAddr)
+	req.NoError(err)
+	powerState, err = power.Load(ctxStore, powerActor)
+	req.NoError(err)
+	req.Equal(int64(nv24epoch), powerState.RampStartEpoch())
+	req.Equal(powerRampDurationEpochs, powerState.RampDurationEpochs())
+
+	// Sanity check our preFip0081StateMinerInitialPledgeForSector calculation is correct for pre-0081
+	preMigrationPledge, err := clientApi.StateMinerInitialPledgeForSector(ctx, abi.ChainEpoch(builtin.EpochsInYear), abi.SectorSize(2<<10), 0, preMigrationTs.Key())
+	req.NoError(err)
+	preFip0081Pledge := preFip0081StateMinerInitialPledgeForSector(ctx, t, clientApi, abi.ChainEpoch(builtin.EpochsInYear), abi.SectorSize(2<<10), 0, preMigrationTs.Key())
+	req.Equal(preFip0081Pledge, preMigrationPledge)
+
+	// Wait for the rate of change calculation to complete
+	<-doneCh
+
+	average := func(arr []float64) float64 {
+		sum := 0.0
+		for _, v := range arr {
+			sum += v
+		}
+		return sum / float64(len(arr))
+	}
+
+	avgRateOfChangeDuringRamp := average(rateOfChangeDuringRamp)
+	avgRateOfChangeAfterRamp := average(rateOfChangeAfterRamp)
+	t.Logf("Average rate of change during ramp: %f", avgRateOfChangeDuringRamp)
+	t.Logf("Average rate of change after ramp: %f", avgRateOfChangeAfterRamp)
+	req.Less(avgRateOfChangeAfterRamp, avgRateOfChangeDuringRamp)
+}
+
+// preFip0081StateMinerInitialPledgeForSector is the same calculation as StateMinerInitialPledgeForSector
+// but uses miner14's version of the calculation without the FIP-0081 changes.
+func preFip0081StateMinerInitialPledgeForSector(ctx context.Context, t *testing.T, client *impl.FullNodeAPI, sectorDuration abi.ChainEpoch, sectorSize abi.SectorSize, verifiedSize uint64, tsk types.TipSetKey) types.BigInt {
+	req := require.New(t)
+
+	bs := blockstore.NewAPIBlockstore(client)
+	ctxStore := gstStore.WrapBlockStore(ctx, bs)
+
+	ts, err := client.ChainGetTipSet(ctx, tsk)
+	req.NoError(err)
+
+	circSupply, err := client.StateVMCirculatingSupplyInternal(ctx, ts.Key())
+	req.NoError(err)
+
+	powerActor, err := client.StateGetActor(ctx, power.Address, ts.Key())
+	req.NoError(err)
+
+	powerState, err := power.Load(ctxStore, powerActor)
+	req.NoError(err)
+
+	rewardActor, err := client.StateGetActor(ctx, reward.Address, ts.Key())
+	req.NoError(err)
+
+	rewardState, err := reward.Load(ctxStore, rewardActor)
+	req.NoError(err)
+
+	networkQAPower, err := powerState.TotalPowerSmoothed()
+	req.NoError(err)
+
+	verifiedWeight := big.Mul(big.NewIntUnsigned(verifiedSize), big.NewInt(int64(sectorDuration)))
+	sectorWeight := builtin2.QAPowerForWeight(sectorSize, sectorDuration, big.Zero(), verifiedWeight)
+
+	thisEpochBaselinePower, err := rewardState.(interface {
+		ThisEpochBaselinePower() (abi.StoragePower, error)
+	}).ThisEpochBaselinePower()
+	req.NoError(err)
+	thisEpochRewardSmoothed, err := rewardState.(interface {
+		ThisEpochRewardSmoothed() (builtin2.FilterEstimate, error)
+	}).ThisEpochRewardSmoothed()
+	req.NoError(err)
+
+	rewardEstimate := smoothing14.FilterEstimate{
+		PositionEstimate: thisEpochRewardSmoothed.PositionEstimate,
+		VelocityEstimate: thisEpochRewardSmoothed.VelocityEstimate,
+	}
+	networkQAPowerEstimate := smoothing14.FilterEstimate{
+		PositionEstimate: networkQAPower.PositionEstimate,
+		VelocityEstimate: networkQAPower.VelocityEstimate,
+	}
+
+	initialPledge, err := miner14.InitialPledgeForPower(
+		sectorWeight,
+		thisEpochBaselinePower,
+		rewardEstimate,
+		networkQAPowerEstimate,
+		circSupply.FilCirculating,
+	), nil
+	req.NoError(err)
+
+	var initialPledgeNum = types.NewInt(110)
+	var initialPledgeDen = types.NewInt(100)
+
+	return types.BigDiv(types.BigMul(initialPledge, initialPledgeNum), initialPledgeDen)
 }
