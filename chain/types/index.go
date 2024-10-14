@@ -1,5 +1,9 @@
 package types
 
+import (
+	"github.com/filecoin-project/go-state-types/abi"
+)
+
 // IndexValidation contains detailed information about the validation status of a specific chain epoch.
 type IndexValidation struct {
 	// TipSetKey is the key of the canonical tipset for this epoch.

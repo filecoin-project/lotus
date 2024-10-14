@@ -1,15 +1,19 @@
 package main
 
 import (
+	"api"
+	"context"
 	"encoding/json"
 	"fmt"
 	"time"
 
+	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 )
 
@@ -146,7 +150,11 @@ like cron.
 
 			indexValidateResp, err := api.ChainValidateIndex(ctx, abi.ChainEpoch(epoch), backfill)
 			if err != nil {
-				_, _ = fmt.Fprintf(cctx.App.Writer, "%s ✗ Epoch %d; failure: %s\n", currentTimeString(), epoch, err)
+				tsKeyCid, err := tipsetKeyCid(ctx, abi.ChainEpoch(epoch), api)
+				if err != nil {
+					return fmt.Errorf("failed to get tipset key cid for epoch %d: %w", epoch, err)
+				}
+				_, _ = fmt.Fprintf(cctx.App.Writer, "%s ✗ Epoch %d (%s); failure: %s\n", currentTimeString(), epoch, tsKeyCid, err)
 				failedRPCs++
 				continue
 			}
@@ -164,7 +172,12 @@ like cron.
 			}
 
 			if indexValidateResp.IsNullRound {
-				_, _ = fmt.Fprintf(cctx.App.Writer, "%s ✓ Epoch %d; null round\n", currentTimeString(), epoch)
+				tsKeyCid, err := tipsetKeyCid(ctx, abi.ChainEpoch(epoch), api)
+				if err != nil {
+					return fmt.Errorf("failed to get tipset key cid for epoch %d: %w", epoch, err)
+				}
+				_, _ = fmt.Fprintf(cctx.App.Writer, "%s ✓ Epoch %d (%s); null round\n", currentTimeString(), epoch,
+					tsKeyCid)
 			} else {
 				jsonData, err := json.Marshal(indexValidateResp)
 				if err != nil {
@@ -183,6 +196,18 @@ like cron.
 
 		return nil
 	},
+}
+
+func tipsetKeyCid(ctx context.Context, epoch abi.ChainEpoch, a api.FullNode) (cid.Cid, error) {
+	ts, err := api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(epoch), types.EmptyTSK)
+	if err != nil {
+		return cid.Undef, fmt.Errorf("failed to get tipset for epoch %d: %w", epoch, err)
+	}
+	tsKeyCid, err := ts.Key().Cid()
+	if err != nil {
+		return cid.Undef, fmt.Errorf("failed to get tipset key cid for epoch %d: %w", epoch, err)
+	}
+	return tsKeyCid, nil
 }
 
 func currentTimeString() string {
