@@ -74,7 +74,7 @@ func TestValidateIsNullRound(t *testing.T) {
 			if tt.expectError {
 				require.Error(t, err)
 				if tt.errorContains != "" {
-					require.Contains(t, err.Error(), tt.errorContains)
+					require.ErrorContains(t, err, tt.errorContains)
 				}
 			} else {
 				require.NoError(t, err)
@@ -144,7 +144,7 @@ func TestBackfillReturnsError(t *testing.T) {
 	// Attempt to validate the missing epoch with backfill flag set to false
 	_, err := si.ChainValidateIndex(ctx, missingEpoch, false)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "missing tipset at height 50 in the chain index")
+	require.ErrorContains(t, err, "missing tipset at height 50 in the chain index")
 }
 
 func TestBackfillMissingEpoch(t *testing.T) {

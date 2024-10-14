@@ -33,7 +33,7 @@ func (si *SqliteIndexer) ChainValidateIndex(ctx context.Context, epoch abi.Chain
 	}
 
 	// fetch the tipset at the given epoch on the canonical chain
-	expectedTs, err := si.cs.GetTipsetByHeight(ctx, epoch, nil, true)
+	expectedTs, err := si.cs.GetTipsetByHeight(ctx, epoch, head.Key(), true)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get tipset at height %d: %w", epoch, err)
 	}
