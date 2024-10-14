@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/index"
 	"github.com/filecoin-project/lotus/chain/messagepool"
@@ -17,6 +18,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/repo"
 )
@@ -28,14 +30,13 @@ func ChainIndexer(cfg config.ChainIndexerConfig) func(lc fx.Lifecycle, mctx help
 			return nil, nil
 		}
 
-		sqlitePath, err := r.SqlitePath()
+		chainIndexPath, err := r.ChainIndexPath()
 		if err != nil {
 			return nil, err
 		}
 
-		// TODO Implement config driven auto-backfilling
-		chainIndexer, err := index.NewSqliteIndexer(filepath.Join(sqlitePath, index.DefaultDbFilename),
-			cs, cfg.GCRetentionEpochs, cfg.ReconcileEmptyIndex, cfg.MaxReconcileTipsets)
+		dbPath := filepath.Join(chainIndexPath, index.DefaultDbFilename)
+		chainIndexer, err := index.NewSqliteIndexer(dbPath, cs, cfg.GCRetentionEpochs, cfg.ReconcileEmptyIndex, cfg.MaxReconcileTipsets)
 		if err != nil {
 			return nil, err
 		}
@@ -70,16 +71,18 @@ func InitChainIndexer(lc fx.Lifecycle, mctx helpers.MetricsCtx, indexer index.In
 				return *actor.DelegatedAddress, true
 			})
 
-			indexer.SetRecomputeTipSetStateFunc(func(ctx context.Context, ts *types.TipSet) error {
+			executedMessagesLoaderFunc := index.MakeLoadExecutedMessages(func(ctx context.Context, ts *types.TipSet) error {
 				_, _, err := sm.RecomputeTipSetState(ctx, ts)
 				return err
 			})
+
+			indexer.SetExecutedMessagesLoaderFunc(executedMessagesLoaderFunc)
 
 			ch, err := mp.Updates(ctx)
 			if err != nil {
 				return err
 			}
-			go index.WaitForMpoolUpdates(ctx, ch, indexer)
+			go WaitForMpoolUpdates(ctx, ch, indexer)
 
 			ev, err := events.NewEvents(ctx, &evapi)
 			if err != nil {
@@ -97,14 +100,37 @@ func InitChainIndexer(lc fx.Lifecycle, mctx helpers.MetricsCtx, indexer index.In
 				unlockObserver()
 				return xerrors.Errorf("error while reconciling chain index with chain state: %w", err)
 			}
-			log.Infof("chain indexer reconciled with chain state; observer will start upates from height: %d", head.Height())
 			unlockObserver()
 
-			if err := indexer.Start(); err != nil {
-				return err
-			}
+			indexer.Start()
 
 			return nil
 		},
 	})
+}
+
+func ChainIndexHandler(cfg config.ChainIndexerConfig) func(helpers.MetricsCtx, repo.LockedRepo, fx.Lifecycle, index.Indexer) (*full.ChainIndexHandler, error) {
+	return func(mctx helpers.MetricsCtx, r repo.LockedRepo, lc fx.Lifecycle, indexer index.Indexer) (*full.ChainIndexHandler, error) {
+		return full.NewChainIndexHandler(indexer), nil
+	}
+}
+
+func WaitForMpoolUpdates(ctx context.Context, ch <-chan api.MpoolUpdate, indexer index.Indexer) {
+	for ctx.Err() == nil {
+		select {
+		case <-ctx.Done():
+			return
+		case u := <-ch:
+			if u.Type != api.MpoolAdd {
+				continue
+			}
+			if u.Message == nil {
+				continue
+			}
+			err := indexer.IndexSignedMessage(ctx, u.Message)
+			if err != nil {
+				log.Errorw("failed to index signed Mpool message", "error", err)
+			}
+		}
+	}
 }

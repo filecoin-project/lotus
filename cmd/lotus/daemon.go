@@ -644,7 +644,7 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 	}
 
 	// populate the chain Index from the snapshot
-	basePath, err := lr.SqlitePath()
+	basePath, err := lr.ChainIndexPath()
 	if err != nil {
 		return err
 	}

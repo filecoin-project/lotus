@@ -50,13 +50,14 @@ type EventFilter struct {
 }
 
 type Indexer interface {
-	Start() error
+	Start()
 	ReconcileWithChain(ctx context.Context, currHead *types.TipSet) error
 	IndexSignedMessage(ctx context.Context, msg *types.SignedMessage) error
 	IndexEthTxHash(ctx context.Context, txHash ethtypes.EthHash, c cid.Cid) error
 
 	SetActorToDelegatedAddresFunc(idToRobustAddrFunc ActorToDelegatedAddressFunc)
-	SetRecomputeTipSetStateFunc(recomputeTipSetStateFunc recomputeTipSetStateFunc)
+	SetExecutedMessagesLoaderFunc(f emsLoaderFunc)
+
 	Apply(ctx context.Context, from, to *types.TipSet) error
 	Revert(ctx context.Context, from, to *types.TipSet) error
 
@@ -66,6 +67,8 @@ type Indexer interface {
 	GetMsgInfo(ctx context.Context, m cid.Cid) (*MsgInfo, error)
 
 	GetEventsForFilter(ctx context.Context, f *EventFilter, excludeReverted bool) ([]*CollectedEvent, error)
+
+	ChainValidateIndex(ctx context.Context, epoch abi.ChainEpoch, backfill bool) (*types.IndexValidation, error)
 
 	Close() error
 }

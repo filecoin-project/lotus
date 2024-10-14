@@ -22,6 +22,7 @@ var _ Indexer = (*SqliteIndexer)(nil)
 
 // ActorToDelegatedAddressFunc is a function type that resolves an actor ID to a DelegatedAddress if one exists for that actor, otherwise returns nil
 type ActorToDelegatedAddressFunc func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool)
+type emsLoaderFunc func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error)
 type recomputeTipSetStateFunc func(ctx context.Context, ts *types.TipSet) error
 
 type preparedStatements struct {
@@ -36,7 +37,7 @@ type preparedStatements struct {
 	removeEthHashesOlderThanStmt          *sql.Stmt
 	updateTipsetsToRevertedFromHeightStmt *sql.Stmt
 	updateEventsToRevertedFromHeightStmt  *sql.Stmt
-	isTipsetMessageNonEmptyStmt           *sql.Stmt
+	isIndexEmptyStmt                      *sql.Stmt
 	getMinNonRevertedHeightStmt           *sql.Stmt
 	hasNonRevertedTipsetStmt              *sql.Stmt
 	updateEventsToRevertedStmt            *sql.Stmt
@@ -44,6 +45,16 @@ type preparedStatements struct {
 	getMsgIdForMsgCidAndTipsetStmt        *sql.Stmt
 	insertEventStmt                       *sql.Stmt
 	insertEventEntryStmt                  *sql.Stmt
+
+	hasNullRoundAtHeightStmt         *sql.Stmt
+	getNonRevertedTipsetAtHeightStmt *sql.Stmt
+	countTipsetsAtHeightStmt         *sql.Stmt
+
+	getNonRevertedTipsetMessageCountStmt      *sql.Stmt
+	getNonRevertedTipsetEventCountStmt        *sql.Stmt
+	getNonRevertedTipsetEventEntriesCountStmt *sql.Stmt
+	hasRevertedEventsInTipsetStmt             *sql.Stmt
+	removeRevertedTipsetsBeforeHeightStmt     *sql.Stmt
 }
 
 type SqliteIndexer struct {
@@ -56,6 +67,7 @@ type SqliteIndexer struct {
 
 	actorToDelegatedAddresFunc ActorToDelegatedAddressFunc
 	recomputeTipSetStateFunc   recomputeTipSetStateFunc
+	executedMessagesLoaderFunc emsLoaderFunc
 
 	stmts *preparedStatements
 
@@ -67,8 +79,13 @@ type SqliteIndexer struct {
 	updateSubs   map[uint64]*updateSub
 	subIdCounter uint64
 
+	started bool
+
 	closeLk sync.RWMutex
 	closed  bool
+
+	// ensures writes are serialized so backfilling does not race with index updates
+	writerLk sync.Mutex
 }
 
 func NewSqliteIndexer(path string, cs ChainStore, gcRetentionEpochs int64, reconcileEmptyIndex bool,
@@ -117,18 +134,19 @@ func NewSqliteIndexer(path string, cs ChainStore, gcRetentionEpochs int64, recon
 	return si, nil
 }
 
-func (si *SqliteIndexer) Start() error {
+func (si *SqliteIndexer) Start() {
 	si.wg.Add(1)
 	go si.gcLoop()
-	return nil
+
+	si.started = true
 }
 
 func (si *SqliteIndexer) SetActorToDelegatedAddresFunc(actorToDelegatedAddresFunc ActorToDelegatedAddressFunc) {
 	si.actorToDelegatedAddresFunc = actorToDelegatedAddresFunc
 }
 
-func (si *SqliteIndexer) SetRecomputeTipSetStateFunc(recomputeTipSetStateFunc recomputeTipSetStateFunc) {
-	si.recomputeTipSetStateFunc = recomputeTipSetStateFunc
+func (si *SqliteIndexer) SetExecutedMessagesLoaderFunc(eventLoaderFunc emsLoaderFunc) {
+	si.executedMessagesLoaderFunc = eventLoaderFunc
 }
 
 func (si *SqliteIndexer) Close() error {
@@ -165,12 +183,9 @@ func (si *SqliteIndexer) initStatements() error {
 }
 
 func (si *SqliteIndexer) IndexEthTxHash(ctx context.Context, txHash ethtypes.EthHash, msgCid cid.Cid) error {
-	si.closeLk.RLock()
-	if si.closed {
-		si.closeLk.RUnlock()
+	if si.isClosed() {
 		return ErrClosed
 	}
-	si.closeLk.RUnlock()
 
 	return withTx(ctx, si.db, func(tx *sql.Tx) error {
 		return si.indexEthTxHash(ctx, tx, txHash, msgCid)
@@ -191,12 +206,10 @@ func (si *SqliteIndexer) IndexSignedMessage(ctx context.Context, msg *types.Sign
 	if msg.Signature.Type != crypto.SigTypeDelegated {
 		return nil
 	}
-	si.closeLk.RLock()
-	if si.closed {
-		si.closeLk.RUnlock()
+
+	if si.isClosed() {
 		return ErrClosed
 	}
-	si.closeLk.RUnlock()
 
 	return withTx(ctx, si.db, func(tx *sql.Tx) error {
 		return si.indexSignedMessage(ctx, tx, msg)
@@ -218,12 +231,11 @@ func (si *SqliteIndexer) indexSignedMessage(ctx context.Context, tx *sql.Tx, msg
 }
 
 func (si *SqliteIndexer) Apply(ctx context.Context, from, to *types.TipSet) error {
-	si.closeLk.RLock()
-	if si.closed {
-		si.closeLk.RUnlock()
+	if si.isClosed() {
 		return ErrClosed
 	}
-	si.closeLk.RUnlock()
+
+	si.writerLk.Lock()
 
 	// We're moving the chain ahead from the `from` tipset to the `to` tipset
 	// Height(to) > Height(from)
@@ -236,8 +248,10 @@ func (si *SqliteIndexer) Apply(ctx context.Context, from, to *types.TipSet) erro
 	})
 
 	if err != nil {
+		si.writerLk.Unlock()
 		return xerrors.Errorf("failed to apply tipset: %w", err)
 	}
+	si.writerLk.Unlock()
 
 	si.notifyUpdateSubs()
 
@@ -335,12 +349,9 @@ func (si *SqliteIndexer) restoreTipsetIfExists(ctx context.Context, tx *sql.Tx, 
 }
 
 func (si *SqliteIndexer) Revert(ctx context.Context, from, to *types.TipSet) error {
-	si.closeLk.RLock()
-	if si.closed {
-		si.closeLk.RUnlock()
+	if si.isClosed() {
 		return ErrClosed
 	}
-	si.closeLk.RUnlock()
 
 	// We're reverting the chain from the tipset at `from` to the tipset at `to`.
 	// Height(to) < Height(from)
@@ -357,13 +368,21 @@ func (si *SqliteIndexer) Revert(ctx context.Context, from, to *types.TipSet) err
 		return xerrors.Errorf("failed to get tipset key cid: %w", err)
 	}
 
+	si.writerLk.Lock()
+
 	err = withTx(ctx, si.db, func(tx *sql.Tx) error {
+		// revert the `from` tipset
 		if _, err := tx.Stmt(si.stmts.updateTipsetToRevertedStmt).ExecContext(ctx, revertTsKeyCid); err != nil {
 			return xerrors.Errorf("failed to mark tipset %s as reverted: %w", revertTsKeyCid, err)
 		}
 
+		// index the `to` tipset -> it is idempotent
+		if err := si.indexTipset(ctx, tx, to); err != nil {
+			return xerrors.Errorf("failed to index tipset: %w", err)
+		}
+
 		// events are indexed against the message inclusion tipset, not the message execution tipset.
-		// So we need to revert the events for the message inclusion tipset.
+		// So we need to revert the events for the message inclusion tipset i.e. `to` tipset.
 		if _, err := tx.Stmt(si.stmts.updateEventsToRevertedStmt).ExecContext(ctx, eventTsKeyCid); err != nil {
 			return xerrors.Errorf("failed to revert events for tipset %s: %w", eventTsKeyCid, err)
 		}
@@ -371,10 +390,18 @@ func (si *SqliteIndexer) Revert(ctx context.Context, from, to *types.TipSet) err
 		return nil
 	})
 	if err != nil {
+		si.writerLk.Unlock()
 		return xerrors.Errorf("failed during revert transaction: %w", err)
 	}
 
+	si.writerLk.Unlock()
 	si.notifyUpdateSubs()
 
 	return nil
+}
+
+func (si *SqliteIndexer) isClosed() bool {
+	si.closeLk.RLock()
+	defer si.closeLk.RUnlock()
+	return si.closed
 }

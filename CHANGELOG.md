@@ -1,6 +1,13 @@
 # Lotus changelog
 
 # UNRELEASED
+ (`ChainIndexer`) to index Filecoin chain state such as tipsets, messages, events and ETH transactions for accurate and faster RPC responses. The `ChainIndexer` replaces the existing `MsgIndex`, `EthTxIndex` and `EventIndex` implementations in Lotus, which [suffer from a multitude of known problems](https://github.com/filecoin-project/lotus/issues/12293).  If you are an RPC provider/node operator, please refer to the [ChainIndexer documentation for RPC providers](TODO: URL) for information on how to enable, configure and use the new Indexer.
+Add `EthGetBlockReceipts` RPC method to retrieve transaction receipts for a specified block. This method allows users to obtain Ethereum format receipts of all transactions included in a given tipset as specified by its Ethereum block equivalent. ([filecoin-project/lotus#12478](https://github.com/filecoin-project/lotus/pull/12478))
+
+ 
+## ☢️ Upgrade Warnings ☢️
+
+- Minimum go-version been updated to v1.22.7 ([filecoin-project/lotus#12459](https://github.com/filecoin-project/lotus/pull/12459))
 
 ## New features
 - Update `EthGetBlockByNumber` to return a pointer to ethtypes.EthBlock or nil for null rounds. ([filecoin-project/lotus#12529](https://github.com/filecoin-project/lotus/pull/12529))
