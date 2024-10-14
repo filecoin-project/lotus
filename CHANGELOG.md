@@ -1,12 +1,11 @@
 # Lotus changelog
 
-# Node and Miner v1.30.0-rc1 / 2024-10-08
+# Node and Miner v1.30.0-rc2 / 2024-10-14
 
-This is the first release candidate of the upcoming MANDATORY Lotus v1.30.0 release, which will deliver the Filecoin network version 24, codenamed Tuk Tuk 🛺.
+This is the second release candidate of the upcoming MANDATORY Lotus v1.30.0 release, which will deliver the Filecoin network version 24, codenamed Tuk Tuk 🛺. This release candidate sets the calibration network upgrade to `epoch 207879`, which corresponds to `2024-10-23T13:30:00Z`. F3 is set to be automatically activated one day later at epoch `2081674`, which corresponds to `2024-10-24T13:30:00Z`.
 
 > [!NOTE]
-> 1. This release candidate does NOT set a calibration network upgrade epoch.  It will be added in the second release candidate (expected October 14th).
-> 2. This release candidate does NOT set the mainnet network upgrade epoch.  It will be added in the final release (expected October 30th).
+> 1. This release candidate does NOT set the mainnet network upgrade epoch.  It will be added in the final release (expected October 30th).
 
 - You can follow this release issue for keeping up with the release dates, epochs, and updates: https://github.com/filecoin-project/lotus/issues/12480
 
@@ -45,8 +44,8 @@ For certain node operators, such as full archival nodes or systems that need to 
 
 For the set of changes since the last stable release:
 
-* Node: https://github.com/filecoin-project/lotus/compare/v1.29.2...v1.30.0-rc1
-* Miner: https://github.com/filecoin-project/lotus/compare/v1.28.3...miner/v1.30.0-rc1
+* Node: https://github.com/filecoin-project/lotus/compare/v1.29.2...v1.30.0-rc2
+* Miner: https://github.com/filecoin-project/lotus/compare/v1.28.3...miner/v1.30.0-rc2
 
 ## 👨‍👩‍👧‍👦 Contributors
 
