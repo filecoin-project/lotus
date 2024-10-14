@@ -2,6 +2,7 @@ package itests
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -99,6 +100,7 @@ func TestF3_PauseAndRebootstrap(t *testing.T) {
 	e.ms.UpdateManifest(&cpy)
 
 	e.waitTillManifestChange(&cpy, 20*time.Second)
+	e.waitTillF3Instance(0, 200*time.Second)
 	e.waitTillF3Rebootstrap(20 * time.Second)
 }
 
@@ -196,6 +198,21 @@ func (e *testEnv) waitFor(f func(n *kit.TestFullNode) bool, timeout time.Duratio
 		e.t.Helper()
 		for _, n := range e.minerFullNodes {
 			if !f(n) {
+				var wg sync.WaitGroup
+				printProgress := func(n *kit.TestFullNode) {
+					defer wg.Done()
+					id, err := n.ID(e.testCtx)
+					require.NoError(e.t, err)
+
+					progress, err := n.F3GetProgress(e.testCtx)
+					require.NoError(e.t, err)
+					e.t.Logf("###### %s -> %v", id, progress)
+				}
+				for _, n := range e.minerFullNodes {
+					wg.Add(1)
+					go printProgress(n)
+				}
+				wg.Wait()
 				return false
 			}
 		}
@@ -210,6 +227,13 @@ func (e *testEnv) waitFor(f func(n *kit.TestFullNode) bool, timeout time.Duratio
 // a miner. The last return value is the manifest sender for the network.
 func setup(t *testing.T, blocktime time.Duration) *testEnv {
 	manif := lf3.NewManifest(BaseNetworkName+"/1", DefaultFinality, DefaultBootstrapEpoch, blocktime, cid.Undef)
+	manif.Gpbft.Delta = 250 * time.Millisecond
+	manif.Gpbft.DeltaBackOffExponent = 1.3
+	manif.Gpbft.RebroadcastBackoffBase = manif.Gpbft.Delta * 2
+	manif.Gpbft.RebroadcastBackoffMax = manif.Gpbft.RebroadcastBackoffBase * 2
+	manif.Gpbft.RebroadcastBackoffExponent = manif.Gpbft.DeltaBackOffExponent
+	manif.Gpbft.RebroadcastBackoffSpread = 0.2
+
 	return setupWithStaticManifest(t, manif, false)
 }
 
@@ -275,6 +299,18 @@ func setupWithStaticManifest(t *testing.T, manif *manifest.Manifest, testBootstr
 		err = n.NetConnect(ctx, e.ms.PeerInfo())
 		require.NoError(t, err)
 	}
+
+	m.CertificateExchange.MinimumPollInterval = 200 * time.Millisecond
+	m.CertificateExchange.MaximumPollInterval = 1 * time.Second
+	m.Gpbft.Delta = 250 * time.Millisecond
+	m.Gpbft.DeltaBackOffExponent = 1.3
+	m.Gpbft.RebroadcastBackoffBase = m.Gpbft.Delta * 2
+	m.Gpbft.RebroadcastBackoffMax = m.Gpbft.RebroadcastBackoffBase * 2
+	m.Gpbft.RebroadcastBackoffExponent = m.Gpbft.DeltaBackOffExponent
+	m.Gpbft.RebroadcastBackoffSpread = 0.2
+
+	e.ms.UpdateManifest(m)
+	e.waitTillManifestChange(m, 30*time.Second)
 
 	errgrp.Go(func() error {
 		defer func() {
