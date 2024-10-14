@@ -65,8 +65,10 @@ type FullNode interface {
 
 	// MethodGroup: ChainIndexer
 	// The ChainIndexer method group contains methods for interacting with the chain indexer.
+
+	// ChainValidateIndex validates and optionally backfills the chain index at a specific epoch.
 	//
-	// The `ChainValidateIndex` API serves multiple purposes:
+	// It can be used to:
 	//
 	// 1. Validates the chain index at a specific epoch:
 	//   - Ensures consistency between indexed data and actual chain state
