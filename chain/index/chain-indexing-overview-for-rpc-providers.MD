@@ -183,6 +183,12 @@ The `lotus-shed chainindex validate-backfill` command is a tool for validating a
 
 **Note: This command can only be run when the Lotus daemon is already running with the [`ChainIndexer` enabled](#enablement) as it depends on the `ChainValidateIndex` RPC API.**
 
+TODO: from https://github.com/filecoin-project/lotus/pull/12450#discussion_r1771217907
+Let us provide some basic on resource usage here, some potential questions from users I foresee is:
+How long does it take to backfill XX epochs.
+How much CPU / RAM does it require (i.e do we need to shift traffic to other nodes when running the backfill)
+
+
 #### Usage:
 ```
 lotus-shed chainindex validate-backfill --from <start_epoch> --to <end_epoch> [--backfill] [--log-good]
