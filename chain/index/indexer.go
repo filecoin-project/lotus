@@ -54,8 +54,8 @@ type SqliteIndexer struct {
 	db *sql.DB
 	cs ChainStore
 
-	idToRobustAddrFunc       IdToRobustAddrFunc
-	recomputeTipSetStateFunc recomputeTipSetStateFunc
+	actorToDelegatedAddresFunc ActorToDelegatedAddressFunc
+	recomputeTipSetStateFunc   recomputeTipSetStateFunc
 
 	stmts *preparedStatements
 
@@ -123,8 +123,8 @@ func (si *SqliteIndexer) Start() error {
 	return nil
 }
 
-func (si *SqliteIndexer) SetIdToRobustAddrFunc(idToRobustAddrFunc IdToRobustAddrFunc) {
-	si.idToRobustAddrFunc = idToRobustAddrFunc
+func (si *SqliteIndexer) SetActorToDelegatedAddresFunc(actorToDelegatedAddresFunc ActorToDelegatedAddressFunc) {
+	si.actorToDelegatedAddresFunc = actorToDelegatedAddresFunc
 }
 
 func (si *SqliteIndexer) SetRecomputeTipSetStateFunc(recomputeTipSetStateFunc recomputeTipSetStateFunc) {

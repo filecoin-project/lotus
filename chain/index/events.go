@@ -30,7 +30,7 @@ type executedMessage struct {
 
 // events are indexed against their inclusion/message tipset when we get the corresponding execution tipset
 func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *types.TipSet, executionTs *types.TipSet) error {
-	if si.idToRobustAddrFunc == nil {
+	if si.actorToDelegatedAddresFunc == nil {
 		return xerrors.Errorf("indexer can not index events without an address resolver")
 	}
 
@@ -83,7 +83,7 @@ func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *typ
 			addr, found := addressLookups[event.Emitter]
 			if !found {
 				var ok bool
-				addr, ok = si.idToRobustAddrFunc(ctx, event.Emitter, executionTs)
+				addr, ok = si.actorToDelegatedAddresFunc(ctx, event.Emitter, executionTs)
 				if !ok {
 					// not an address we will be able to match against
 					continue
@@ -112,7 +112,7 @@ func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *typ
 			for _, entry := range event.Entries {
 				_, err := tx.Stmt(si.stmts.insertEventEntryStmt).ExecContext(ctx,
 					eventID,
-					isIndexedValue(entry.Flags),
+					isIndexedFlag(entry.Flags),
 					[]byte{entry.Flags},
 					entry.Key,
 					entry.Codec,
