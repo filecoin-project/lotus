@@ -66,7 +66,6 @@ type SqliteIndexer struct {
 	cs ChainStore
 
 	actorToDelegatedAddresFunc ActorToDelegatedAddressFunc
-	recomputeTipSetStateFunc   recomputeTipSetStateFunc
 	executedMessagesLoaderFunc emsLoaderFunc
 
 	stmts *preparedStatements
