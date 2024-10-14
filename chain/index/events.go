@@ -91,9 +91,9 @@ func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *typ
 				addressLookups[event.Emitter] = addr
 			}
 
-			robustAddrbytes := addr.Bytes()
-			if addr.Protocol() != address.Delegated {
-				robustAddrbytes = nil
+			var robustAddrbytes []byte
+			if addr.Protocol() == address.Delegated {
+				robustAddrbytes = addr.Bytes()
 			}
 
 			// Insert event into events table
@@ -152,11 +152,9 @@ func (si *SqliteIndexer) loadExecutedMessages(ctx context.Context, msgTs, rctTs 
 		ems[i].msg = msgs[i]
 
 		var rct types.MessageReceipt
-		found, err := receiptsArr.Get(uint64(i), &rct)
-		if err != nil {
+		if found, err := receiptsArr.Get(uint64(i), &rct); err != nil {
 			return nil, xerrors.Errorf("failed to load receipt %d: %w", i, err)
-		}
-		if !found {
+		} else if !found {
 			return nil, xerrors.Errorf("receipt %d not found", i)
 		}
 		ems[i].rct = rct
@@ -179,7 +177,7 @@ func (si *SqliteIndexer) loadExecutedMessages(ctx context.Context, msgTs, rctTs 
 
 			eventsArr, err = amt4.LoadAMT(ctx, st, *rct.EventsRoot, amt4.UseTreeBitWidth(types.EventAMTBitwidth))
 			if err != nil {
-				return nil, xerrors.Errorf("failed to load events amt for message %s: %w", ems[i].msg.Cid(), err)
+				return nil, xerrors.Errorf("failed to load events amt for re-executed tipset for message %s: %w", ems[i].msg.Cid(), err)
 			}
 
 			log.Infof("successfully recomputed tipset state and loaded events amt for message %s", ems[i].msg.Cid())
@@ -240,12 +238,9 @@ func (si *SqliteIndexer) checkTipsetIndexedStatus(ctx context.Context, f *EventF
 	}
 
 	// Check if the determined tipset is indexed
-	exists, err := si.isTipsetIndexed(ctx, tipsetKeyCid)
-	if err != nil {
+	if exists, err := si.isTipsetIndexed(ctx, tipsetKeyCid); err != nil {
 		return xerrors.Errorf("failed to check if tipset is indexed: %w", err)
-	}
-
-	if exists {
+	} else if exists {
 		return nil // Tipset is indexed
 	}
 
@@ -324,6 +319,8 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter,
 				return nil, xerrors.Errorf("read prefill row: %w", err)
 			}
 
+			// The query will return all entries for all matching events, so we need to keep track
+			// of which event we are dealing with and create a new one each time we see a new id
 			if row.id != currentID {
 				if ce != nil {
 					ces = append(ces, ce)
