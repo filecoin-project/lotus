@@ -449,6 +449,8 @@ func makePrefillFilterQuery(f *EventFilter, excludeReverted bool) ([]any, string
 			} else if f.MaxHeight >= 0 {
 				clauses = append(clauses, "tm.height <= ?")
 				values = append(values, f.MaxHeight)
+			} else {
+				return nil, "", xerrors.Errorf("filter must specify either a tipset or a height range")
 			}
 		}
 	}
