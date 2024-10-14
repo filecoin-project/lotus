@@ -1352,12 +1352,8 @@ func TestMcopy(t *testing.T) {
 	filenameActor := "contracts/mcopy/MCOPYTest.hex"
 	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
 	_, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "optimizedCopy(bytes)", inputArgument)
-	// We expect an error here due to the contract reverting or another issue.
-	require.Error(t, err)
-
-	// Also check for the specific error message
-	expectedErrMsg := "undefined instruction (35)"
-	require.Contains(t, err.Error(), expectedErrMsg)
+	// We expect an error here due to MCOPY not being available in this network version
+	require.ErrorContains(t, err, "undefined instruction (35)")
 
 	// wait for the upgrade
 	client.WaitTillChain(ctx, kit.HeightAtLeast(nv24epoch+5))
