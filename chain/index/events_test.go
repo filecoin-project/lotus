@@ -166,10 +166,29 @@ func TestGetEventsForFilterWithEvents(t *testing.T) {
 	}
 	ces, err = si.GetEventsForFilter(ctx, f, false)
 	require.NoError(t, err)
-	require.Equal(t, 2, len(ces))
 
-	require.Equal(t, ev1.Entries, ces[0].Entries)
-	require.Equal(t, ev2.Entries, ces[1].Entries)
+	require.Equal(t, []*CollectedEvent{
+		{
+			Entries:     ev1.Entries,
+			EmitterAddr: must.One(address.NewIDAddress(uint64(ev1.Emitter))),
+			EventIdx:    0,
+			Reverted:    false,
+			Height:      1,
+			TipSetKey:   fakeTipSet1.Key(),
+			MsgIdx:      0,
+			MsgCid:      fm.Cid(),
+		},
+		{
+			Entries:     ev2.Entries,
+			EmitterAddr: must.One(address.NewIDAddress(uint64(ev2.Emitter))),
+			EventIdx:    1,
+			Reverted:    false,
+			Height:      1,
+			TipSetKey:   fakeTipSet1.Key(),
+			MsgIdx:      0,
+			MsgCid:      fm.Cid(),
+		},
+	}, ces)
 
 	// mark fakeTipSet2 as reverted so events for fakeTipSet1 are reverted
 	require.NoError(t, si.Revert(ctx, fakeTipSet2, fakeTipSet1))
