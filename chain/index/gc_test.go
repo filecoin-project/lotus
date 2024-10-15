@@ -80,6 +80,9 @@ func TestGC(t *testing.T) {
 	cs.SetTipsetByHeightAndKey(1, fakeTipSet1.Key(), fakeTipSet1)  // empty DB
 	cs.SetTipsetByHeightAndKey(10, fakeTipSet2.Key(), fakeTipSet2) // empty DB
 	cs.SetTipsetByHeightAndKey(50, fakeTipSet3.Key(), fakeTipSet3) // empty DB
+	cs.SetTipSetByCid(t, fakeTipSet1)
+	cs.SetTipSetByCid(t, fakeTipSet2)
+	cs.SetTipSetByCid(t, fakeTipSet3)
 
 	cs.SetMessagesForTipset(fakeTipSet1, []types.ChainMsg{fm})
 
@@ -92,14 +95,14 @@ func TestGC(t *testing.T) {
 		MinHeight: 1,
 		MaxHeight: 1,
 	}
-	ces, err := si.GetEventsForFilter(ctx, filter, false)
+	ces, err := si.GetEventsForFilter(ctx, filter)
 	require.NoError(t, err)
 	require.Len(t, ces, 2)
 
 	si.gc(ctx)
 
 	// getLogs does not work for height 1
-	_, err = si.GetEventsForFilter(ctx, filter, false)
+	_, err = si.GetEventsForFilter(ctx, filter)
 	require.Error(t, err)
 
 	// Verify that the tipset at height 1 is removed

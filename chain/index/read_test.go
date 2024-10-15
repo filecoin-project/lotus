@@ -124,9 +124,9 @@ type dummyChainStore struct {
 	heightToTipSet    map[abi.ChainEpoch]*types.TipSet
 	messagesForTipset map[*types.TipSet][]types.ChainMsg
 	keyToTipSet       map[types.TipSetKey]*types.TipSet
+	tipsetCidToTipset map[cid.Cid]*types.TipSet
 
 	heaviestTipSet   *types.TipSet
-	tipSetByCid      func(ctx context.Context, tsKeyCid cid.Cid) (*types.TipSet, error)
 	messagesForBlock func(ctx context.Context, b *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error)
 	actorStore       func(ctx context.Context) adt.Store
 }
@@ -136,6 +136,7 @@ func newDummyChainStore() *dummyChainStore {
 		heightToTipSet:    make(map[abi.ChainEpoch]*types.TipSet),
 		messagesForTipset: make(map[*types.TipSet][]types.ChainMsg),
 		keyToTipSet:       make(map[types.TipSetKey]*types.TipSet),
+		tipsetCidToTipset: make(map[cid.Cid]*types.TipSet),
 	}
 }
 
@@ -156,13 +157,22 @@ func (d *dummyChainStore) GetHeaviestTipSet() *types.TipSet {
 	return d.heaviestTipSet
 }
 
-func (d *dummyChainStore) GetTipSetByCid(ctx context.Context, tsKeyCid cid.Cid) (*types.TipSet, error) {
+func (d *dummyChainStore) GetTipSetByCid(_ context.Context, tsKeyCid cid.Cid) (*types.TipSet, error) {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
-	if d.tipSetByCid != nil {
-		return d.tipSetByCid(ctx, tsKeyCid)
+	if _, ok := d.tipsetCidToTipset[tsKeyCid]; !ok {
+		return nil, errors.New("not found")
 	}
-	return nil, nil
+	return d.tipsetCidToTipset[tsKeyCid], nil
+}
+
+func (d *dummyChainStore) SetTipSetByCid(t *testing.T, ts *types.TipSet) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	tsKeyCid, err := ts.Key().Cid()
+	require.NoError(t, err)
+	d.tipsetCidToTipset[tsKeyCid] = ts
 }
 
 func (d *dummyChainStore) GetTipSetFromKey(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error) {
@@ -217,24 +227,6 @@ func (d *dummyChainStore) SetHeaviestTipSet(ts *types.TipSet) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.heaviestTipSet = ts
-}
-
-func (d *dummyChainStore) SetTipSetByCid(f func(ctx context.Context, tsKeyCid cid.Cid) (*types.TipSet, error)) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	d.tipSetByCid = f
-}
-
-func (d *dummyChainStore) SetMessagesForBlock(f func(ctx context.Context, b *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error)) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	d.messagesForBlock = f
-}
-
-func (d *dummyChainStore) SetActorStore(f func(ctx context.Context) adt.Store) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	d.actorStore = f
 }
 
 func (d *dummyChainStore) SetTipsetByHeightAndKey(h abi.ChainEpoch, tsk types.TipSetKey, ts *types.TipSet) {

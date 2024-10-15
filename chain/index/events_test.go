@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/must"
 )
 
 func TestGetEventsForFilterNoEvents(t *testing.T) {
@@ -39,7 +40,7 @@ func TestGetEventsForFilterNoEvents(t *testing.T) {
 		MinHeight: 1,
 		MaxHeight: 1,
 	}
-	ces, err := si.GetEventsForFilter(ctx, f, false)
+	ces, err := si.GetEventsForFilter(ctx, f)
 	require.True(t, errors.Is(err, ErrNotFound))
 	require.Equal(t, 0, len(ces))
 
@@ -49,7 +50,7 @@ func TestGetEventsForFilterNoEvents(t *testing.T) {
 		TipsetCid: tsCid,
 	}
 
-	ces, err = si.GetEventsForFilter(ctx, f, false)
+	ces, err = si.GetEventsForFilter(ctx, f)
 	require.True(t, errors.Is(err, ErrNotFound))
 	require.Equal(t, 0, len(ces))
 
@@ -59,14 +60,14 @@ func TestGetEventsForFilterNoEvents(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	ces, err = si.GetEventsForFilter(ctx, f, false)
+	ces, err = si.GetEventsForFilter(ctx, f)
 	require.NoError(t, err)
 	require.Equal(t, 0, len(ces))
 
 	f = &EventFilter{
 		TipsetCid: tsCid,
 	}
-	ces, err = si.GetEventsForFilter(ctx, f, false)
+	ces, err = si.GetEventsForFilter(ctx, f)
 	require.NoError(t, err)
 	require.Equal(t, 0, len(ces))
 
@@ -75,7 +76,7 @@ func TestGetEventsForFilterNoEvents(t *testing.T) {
 		MinHeight: 100,
 		MaxHeight: 200,
 	}
-	ces, err = si.GetEventsForFilter(ctx, f, false)
+	ces, err = si.GetEventsForFilter(ctx, f)
 	require.NoError(t, err)
 	require.Equal(t, 0, len(ces))
 }
@@ -139,6 +140,8 @@ func TestGetEventsForFilterWithEvents(t *testing.T) {
 	// Set the dummy chainstore to return this tipset for height 1
 	cs.SetTipsetByHeightAndKey(1, fakeTipSet1.Key(), fakeTipSet1) // empty DB
 	cs.SetTipsetByHeightAndKey(2, fakeTipSet2.Key(), fakeTipSet2) // empty DB
+	cs.SetTipSetByCid(t, fakeTipSet1)
+	cs.SetTipSetByCid(t, fakeTipSet2)
 
 	cs.SetMessagesForTipset(fakeTipSet1, []types.ChainMsg{fm})
 
@@ -150,7 +153,7 @@ func TestGetEventsForFilterWithEvents(t *testing.T) {
 		MinHeight: 1,
 		MaxHeight: 1,
 	}
-	ces, err := si.GetEventsForFilter(ctx, f, false)
+	ces, err := si.GetEventsForFilter(ctx, f)
 	require.NoError(t, err)
 	require.Equal(t, 2, len(ces))
 
@@ -164,7 +167,7 @@ func TestGetEventsForFilterWithEvents(t *testing.T) {
 	f = &EventFilter{
 		TipsetCid: tsCid1,
 	}
-	ces, err = si.GetEventsForFilter(ctx, f, false)
+	ces, err = si.GetEventsForFilter(ctx, f)
 	require.NoError(t, err)
 
 	require.Equal(t, []*CollectedEvent{
@@ -203,16 +206,20 @@ func TestGetEventsForFilterWithEvents(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, reverted2)
 
-	// fetching events fails if excludeReverted is true
+	// fetching events fails if excludeReverted is true i.e. we request events by height
 	f = &EventFilter{
-		TipsetCid: tsCid1,
+		MinHeight: 1,
+		MaxHeight: 1,
 	}
-	ces, err = si.GetEventsForFilter(ctx, f, true)
+	ces, err = si.GetEventsForFilter(ctx, f)
 	require.NoError(t, err)
 	require.Equal(t, 0, len(ces))
 
-	// works if excludeReverted is false
-	ces, err = si.GetEventsForFilter(ctx, f, false)
+	// works if excludeReverted is false i.e. we request events by hash
+	f = &EventFilter{
+		TipsetCid: tsCid1,
+	}
+	ces, err = si.GetEventsForFilter(ctx, f)
 	require.NoError(t, err)
 	require.Equal(t, 2, len(ces))
 }
@@ -288,6 +295,8 @@ func TestGetEventsFilterByAddress(t *testing.T) {
 	// Set the dummy chainstore to return this tipset for height 1
 	cs.SetTipsetByHeightAndKey(1, fakeTipSet1.Key(), fakeTipSet1) // empty DB
 	cs.SetTipsetByHeightAndKey(2, fakeTipSet2.Key(), fakeTipSet2) // empty DB
+	cs.SetTipSetByCid(t, fakeTipSet1)
+	cs.SetTipSetByCid(t, fakeTipSet2)
 
 	cs.SetMessagesForTipset(fakeTipSet1, []types.ChainMsg{fm})
 
@@ -363,7 +372,7 @@ func TestGetEventsFilterByAddress(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			ces, err := si.GetEventsForFilter(ctx, tc.f, false)
+			ces, err := si.GetEventsForFilter(ctx, tc.f)
 			require.NoError(t, err)
 			require.Equal(t, tc.expectedCount, len(ces))
 

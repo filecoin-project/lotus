@@ -374,6 +374,9 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter)
 				if err != nil {
 					return nil, xerrors.Errorf("get tipset by cid: %w", err)
 				}
+				if ts == nil {
+					return nil, xerrors.Errorf("failed to get tipset from cid: tipset is nil for cid: %s", tsKeyCid)
+				}
 
 				ce.TipSetKey = ts.Key()
 
