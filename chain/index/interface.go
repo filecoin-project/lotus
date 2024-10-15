@@ -66,7 +66,7 @@ type Indexer interface {
 	// Returns (nil, ErrNotFound) if the message was not found
 	GetMsgInfo(ctx context.Context, m cid.Cid) (*MsgInfo, error)
 
-	GetEventsForFilter(ctx context.Context, f *EventFilter, excludeReverted bool) ([]*CollectedEvent, error)
+	GetEventsForFilter(ctx context.Context, f *EventFilter) ([]*CollectedEvent, error)
 
 	ChainValidateIndex(ctx context.Context, epoch abi.ChainEpoch, backfill bool) (*types.IndexValidation, error)
 

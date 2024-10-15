@@ -398,8 +398,8 @@ func (m *EventFilterManager) Fill(
 			KeysWithCodec: keysWithCodec,
 			MaxResults:    m.MaxFilterResults,
 		}
-		excludeReverted := tipsetCid == cid.Undef
-		ces, err := m.ChainIndexer.GetEventsForFilter(ctx, ef, excludeReverted)
+
+		ces, err := m.ChainIndexer.GetEventsForFilter(ctx, ef)
 		if err != nil {
 			return nil, xerrors.Errorf("get events for filter: %w", err)
 		}

@@ -278,7 +278,7 @@ func (si *SqliteIndexer) getTipsetKeyCidByHeight(ctx context.Context, height abi
 // Returns nil, nil if the filter has no matching events
 // Returns nil, ErrNotFound if the filter has no matching events and the tipset is not indexed
 // Returns nil, err for all other errors
-func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter, excludeReverted bool) ([]*CollectedEvent, error) {
+func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter) ([]*CollectedEvent, error) {
 	getEventsFnc := func(stmt *sql.Stmt, values []any) ([]*CollectedEvent, error) {
 		q, err := stmt.QueryContext(ctx, values...)
 		if err != nil {
@@ -406,7 +406,7 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter,
 		return ces, nil
 	}
 
-	values, query, err := makePrefillFilterQuery(f, excludeReverted)
+	values, query, err := makePrefillFilterQuery(f)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to make prefill filter query: %w", err)
 	}
@@ -439,7 +439,7 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter,
 	return ces, nil
 }
 
-func makePrefillFilterQuery(f *EventFilter, excludeReverted bool) ([]any, string, error) {
+func makePrefillFilterQuery(f *EventFilter) ([]any, string, error) {
 	clauses := []string{}
 	values := []any{}
 	joins := []string{}
@@ -467,7 +467,7 @@ func makePrefillFilterQuery(f *EventFilter, excludeReverted bool) ([]any, string
 		}
 	}
 
-	if excludeReverted {
+	if f.TipsetCid == cid.Undef {
 		clauses = append(clauses, "e.reverted=?")
 		values = append(values, false)
 	}

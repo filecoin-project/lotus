@@ -572,7 +572,7 @@ func TestEthGetLogsBasic(t *testing.T) {
 
 		iv, err := client.ChainValidateIndex(ctx, abi.ChainEpoch(height), false)
 		require.NoError(err)
-		require.Equal(actualValidation, &expectedValidation)
+		require.Equal(iv, &expectedValidation)
 	}
 }
 
