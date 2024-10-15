@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/ipfs/go-cid"
+	ipld "github.com/ipfs/go-ipld-format"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
@@ -176,6 +177,10 @@ func loadExecutedMessages(ctx context.Context, cs ChainStore, recomputeTipSetSta
 
 		eventsArr, err := amt4.LoadAMT(ctx, st, *rct.EventsRoot, amt4.UseTreeBitWidth(types.EventAMTBitwidth))
 		if err != nil {
+			if !ipld.IsNotFound(err) {
+				return nil, xerrors.Errorf("failed to load events root for message %s: err: %w", ems[i].msg.Cid(), err)
+			}
+
 			if recomputeTipSetStateFunc == nil {
 				return nil, xerrors.Errorf("failed to load events amt for message %s: %w", ems[i].msg.Cid(), err)
 			}
