@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -16,6 +17,11 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 )
+
+func withCategory(cat string, cmd *cli.Command) *cli.Command {
+	cmd.Category = strings.ToUpper(cat)
+	return cmd
+}
 
 var chainIndexCmds = &cli.Command{
 	Name:            "chainindex",
