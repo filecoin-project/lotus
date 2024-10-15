@@ -508,16 +508,12 @@ var inspectEventsCmd = &cli.Command{
 			}
 
 			var problems []string
-			var hasEvents bool
 
 			checkEventAndEntryCounts := func() error {
 				// compare by counting events, using ChainGetEvents to load the events from the chain
 				expectEvents, expectEntries, err := chainEventAndEntryCountsAt(ctx, currTs, receipts, api)
 				if err != nil {
 					return err
-				}
-				if expectEvents > 0 {
-					hasEvents = true
 				}
 
 				actualEvents, actualEntries, err := dbEventAndEntryCountsAt(currTs, stmtEventCount, stmtEntryCount)
@@ -545,6 +541,7 @@ var inspectEventsCmd = &cli.Command{
 			addrIdCache := make(map[address.Address]abi.ActorID)
 
 			eventIndex := 0
+			var hasEvents bool
 			for msgIndex, receipt := range receipts {
 				if receipt.EventsRoot == nil {
 					continue
