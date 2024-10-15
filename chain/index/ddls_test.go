@@ -590,7 +590,7 @@ func updateEventsToNonReverted(t *testing.T, s *SqliteIndexer, tsKeyCid []byte) 
 
 	// read all events for this tipset and verify they are not reverted using a COUNT query
 	var count int
-	err = s.db.QueryRow("SELECT COUNT(*) FROM event e JOIN tipset_message tm ON e.message_id = tm.message_id WHERE tm.tipset_key_cid = ? AND e.reverted = 1", tsKeyCid).Scan(&count)
+	err = s.db.QueryRow("SELECT COUNT(*) FROM event e JOIN tipset_message tm ON e.message_id = tm.id WHERE tm.tipset_key_cid = ? AND e.reverted = 1", tsKeyCid).Scan(&count)
 	require.NoError(t, err)
 	require.Equal(t, 0, count, "Expected no reverted events for this tipset")
 }
@@ -615,7 +615,7 @@ func verifyTipsetMessage(t *testing.T, s *SqliteIndexer, messageID int64, expect
 	var reverted bool
 	var messageCid []byte
 	var messageIndex int64
-	err := s.db.QueryRow("SELECT tipset_key_cid, height, reverted, message_cid, message_index FROM tipset_message WHERE message_id = ?", messageID).Scan(&tipsetKeyCid, &height, &reverted, &messageCid, &messageIndex)
+	err := s.db.QueryRow("SELECT tipset_key_cid, height, reverted, message_cid, message_index FROM tipset_message WHERE id = ?", messageID).Scan(&tipsetKeyCid, &height, &reverted, &messageCid, &messageIndex)
 	require.NoError(t, err)
 	require.Equal(t, expectedTipsetMessage.tipsetKeyCid, tipsetKeyCid)
 	require.Equal(t, expectedTipsetMessage.height, height)

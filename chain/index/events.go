@@ -566,7 +566,7 @@ func makePrefillFilterQuery(f *EventFilter) ([]any, string, error) {
 			ee.codec,
 			ee.value
 		FROM event e
-		JOIN tipset_message tm ON e.message_id = tm.message_id
+		JOIN tipset_message tm ON e.message_id = tm.id
 		JOIN event_entry ee ON e.event_id = ee.event_id`
 
 	if len(joins) > 0 {
