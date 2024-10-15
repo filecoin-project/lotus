@@ -570,7 +570,7 @@ var inspectEventsCmd = &cli.Command{
 				if problem != "" {
 					problems = append(problems, problem)
 				} else if amtRoot != *receipt.EventsRoot {
-					problems = append(problems, fmt.Sprintf("events root mismatch for event %d", eventIndex))
+					problems = append(problems, fmt.Sprintf("events root mismatch for message %s", messages[msgIndex].Cid))
 					// also provide more information about the mismatch
 					if err := checkEventAndEntryCounts(); err != nil {
 						return err
