@@ -179,6 +179,10 @@ func ConfigFullNode(c interface{}) Option {
 		return Error(xerrors.Errorf("invalid config from repo, got: %T", c))
 	}
 
+	if cfg.Fevm.EnableEthRPC && !cfg.ChainIndexer.EnableIndexer {
+		return Error(xerrors.New("chain indexer must be enabled if ETH RPC is enabled"))
+	}
+
 	return Options(
 		ConfigCommon(&cfg.Common, build.NodeUserVersion()),
 
