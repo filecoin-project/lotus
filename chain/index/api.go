@@ -151,9 +151,9 @@ func (si *SqliteIndexer) ChainValidateIndex(ctx context.Context, epoch abi.Chain
 	return &types.IndexValidation{
 		TipSetKey:                expectedTs.Key(),
 		Height:                   expectedTs.Height(),
-		IndexedMessagesCount:     uint64(indexedData.nonRevertedMessageCount),
-		IndexedEventsCount:       uint64(indexedData.nonRevertedEventCount),
-		IndexedEventEntriesCount: uint64(indexedData.nonRevertedEventEntriesCount),
+		IndexedMessagesCount:     indexedData.nonRevertedMessageCount,
+		IndexedEventsCount:       indexedData.nonRevertedEventCount,
+		IndexedEventEntriesCount: indexedData.nonRevertedEventEntriesCount,
 		Backfilled:               bf,
 	}, nil
 }
@@ -189,9 +189,9 @@ func (si *SqliteIndexer) getTipsetCountsAtHeight(ctx context.Context, height abi
 }
 
 type indexedTipSetData struct {
-	nonRevertedMessageCount      int
-	nonRevertedEventCount        int
-	nonRevertedEventEntriesCount int
+	nonRevertedMessageCount      uint64
+	nonRevertedEventCount        uint64
+	nonRevertedEventEntriesCount uint64
 }
 
 // getIndexedTipSetData fetches the indexed tipset data for a tipset
@@ -258,13 +258,13 @@ func (si *SqliteIndexer) verifyIndexedData(ctx context.Context, ts *types.TipSet
 	}
 
 	var (
-		totalEventsCount       = 0
-		totalEventEntriesCount = 0
+		totalEventsCount       = uint64(0)
+		totalEventEntriesCount = uint64(0)
 	)
 	for _, emsg := range executedMsgs {
-		totalEventsCount += len(emsg.evs)
+		totalEventsCount += uint64(len(emsg.evs))
 		for _, ev := range emsg.evs {
-			totalEventEntriesCount += len(ev.Entries)
+			totalEventEntriesCount += uint64(len(ev.Entries))
 		}
 	}
 
@@ -272,7 +272,7 @@ func (si *SqliteIndexer) verifyIndexedData(ctx context.Context, ts *types.TipSet
 		return xerrors.Errorf("event count mismatch for height %d: chainstore has %d, index has %d", ts.Height(), totalEventsCount, indexedData.nonRevertedEventCount)
 	}
 
-	totalExecutedMsgCount := len(executedMsgs)
+	totalExecutedMsgCount := uint64(len(executedMsgs))
 	if totalExecutedMsgCount != indexedData.nonRevertedMessageCount {
 		return xerrors.Errorf("message count mismatch for height %d: chainstore has %d, index has %d", ts.Height(), totalExecutedMsgCount, indexedData.nonRevertedMessageCount)
 	}
@@ -323,9 +323,9 @@ func (si *SqliteIndexer) backfillMissingTipset(ctx context.Context, ts *types.Ti
 		TipSetKey:                ts.Key(),
 		Height:                   ts.Height(),
 		Backfilled:               true,
-		IndexedMessagesCount:     uint64(indexedData.nonRevertedMessageCount),
-		IndexedEventsCount:       uint64(indexedData.nonRevertedEventCount),
-		IndexedEventEntriesCount: uint64(indexedData.nonRevertedEventEntriesCount),
+		IndexedMessagesCount:     indexedData.nonRevertedMessageCount,
+		IndexedEventsCount:       indexedData.nonRevertedEventCount,
+		IndexedEventEntriesCount: indexedData.nonRevertedEventEntriesCount,
 	}, nil
 }
 
