@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 	"testing"
 	"time"
 
@@ -1040,7 +1039,7 @@ func TestFEVMErrorParsing(t *testing.T) {
 		"failCustom()":       customError,
 	} {
 		sig := sig
-		expected := fmt.Sprintf("exit 33, revert reason: %s, vm error", expected)
+		expected := expected
 		t.Run(sig, func(t *testing.T) {
 			entryPoint := kit.CalcFuncSignature(sig)
 			t.Run("EthCall", func(t *testing.T) {
@@ -1049,8 +1048,13 @@ func TestFEVMErrorParsing(t *testing.T) {
 					Data: entryPoint,
 				}, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 				require.Error(t, err)
-				if !strings.Contains(err.Error(), expected) {
-					require.Contains(t, err.Error(), "panic in rpc method 'Filecoin.EthCall'")
+
+				var dataErr jsonrpc.ErrorWithData
+				if errors.As(err, &dataErr) {
+					errData := dataErr.ErrorData()
+					require.Contains(t, errData, expected, "Error data should contain the expected error")
+				} else {
+					t.Fatalf("Expected error to implement jsonrpc.ErrorWithData")
 				}
 			})
 			t.Run("EthEstimateGas", func(t *testing.T) {
@@ -1062,8 +1066,13 @@ func TestFEVMErrorParsing(t *testing.T) {
 
 				_, err = e.EthEstimateGas(ctx, gasParams)
 				require.Error(t, err)
-				if !strings.Contains(err.Error(), expected) {
-					require.Contains(t, err.Error(), "panic in rpc method 'Filecoin.EthEstimateGas'")
+
+				var dataErr jsonrpc.ErrorWithData
+				if errors.As(err, &dataErr) {
+					errData := dataErr.ErrorData()
+					require.Contains(t, errData, expected, "Error data should contain the expected error")
+				} else {
+					t.Fatalf("Expected error to implement jsonrpc.ErrorWithData")
 				}
 			})
 		})
