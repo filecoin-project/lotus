@@ -1481,10 +1481,10 @@ func TestEthCall(t *testing.T) {
 		_, err = client.EthCall(ctx, callParams, ethtypes.NewEthBlockNumberOrHashFromNumber(latestBlock))
 		require.Error(t, err)
 
-		var dataErr jsonrpc.DataError
+		var dataErr jsonrpc.ErrorWithData
 		ok := errors.As(err, &dataErr)
 		require.True(t, ok, "Expected error to implement jsonrpc.DataError")
-		require.Equal(t, ethtypes.ErrExecutionReverted, dataErr.Error(), "Expected 'execution reverted' message")
+		require.Equal(t, ethtypes.ErrExecutionReverted.Error(), dataErr.Error(), "Expected 'execution reverted' message")
 
 		// Get the error data
 		errData := dataErr.ErrorData()

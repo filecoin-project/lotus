@@ -1434,7 +1434,7 @@ func (a *EthModule) applyMessage(ctx context.Context, msg *types.Message, tsk ty
 
 	if res.MsgRct.ExitCode.IsError() {
 		return nil, ethtypes.NewExecutionRevertedWithDataError(
-			errcodeDefault,
+			int(res.MsgRct.ExitCode),
 			parseEthRevert(res.MsgRct.Return),
 		)
 	}
@@ -1623,13 +1623,6 @@ func ethGasSearch(
 }
 
 func (a *EthModule) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {
-	var result ethtypes.EthBytes
-	defer func() {
-		if r := recover(); r != nil {
-			result = ethtypes.EthBytes{}
-		}
-	}()
-
 	msg, err := ethCallToFilecoinMessage(ctx, tx)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to convert ethcall to filecoin message: %w", err)
@@ -1648,13 +1641,10 @@ func (a *EthModule) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam e
 	if msg.To == builtintypes.EthereumAddressManagerActorAddr {
 		return ethtypes.EthBytes{}, nil
 	} else if len(invokeResult.MsgRct.Return) > 0 {
-		result, err = cbg.ReadByteArray(bytes.NewReader(invokeResult.MsgRct.Return), uint64(len(invokeResult.MsgRct.Return)))
-		if err != nil {
-			return nil, xerrors.Errorf("failed to read msg recipient: %w", err)
-		}
+		return cbg.ReadByteArray(bytes.NewReader(invokeResult.MsgRct.Return), uint64(len(invokeResult.MsgRct.Return)))
 	}
 
-	return result, nil
+	return ethtypes.EthBytes{}, nil
 }
 
 // TODO: For now, we're fetching logs from the index for the entire block and then filtering them by the transaction hash

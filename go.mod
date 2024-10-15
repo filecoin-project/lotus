@@ -12,7 +12,7 @@ replace github.com/filecoin-project/test-vectors => ./extern/test-vectors // pro
 
 replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi // provided via a git submodule
 
-replace github.com/filecoin-project/go-jsonrpc => github.com/virajbhartiya/go-jsonrpc v0.0.0-20241011111701-53eab64ec154
+replace github.com/filecoin-project/go-jsonrpc => github.com/virajbhartiya/go-jsonrpc v0.0.0-20241015140831-4358258fa25e
 
 require (
 	contrib.go.opencensus.io/exporter/prometheus v0.4.2

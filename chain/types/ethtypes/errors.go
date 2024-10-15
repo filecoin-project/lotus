@@ -12,7 +12,6 @@ var ErrExecutionReverted = xerrors.New("execution reverted")
 type ExecutionRevertedError struct {
 	Message string
 	Code    int
-	Meta    []byte
 	Data    string
 }
 
@@ -31,7 +30,7 @@ func (e *ExecutionRevertedError) ErrorData() interface{} {
 
 // ErrorCode returns the JSON error code for a revert.
 func (e *ExecutionRevertedError) ErrorCode() int {
-	return 3
+	return e.Code
 }
 
 // NewExecutionRevertedWithDataError returns an ExecutionRevertedError with the given code and data.
