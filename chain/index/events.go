@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"math"
 	"sort"
@@ -21,6 +22,8 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/types"
 )
+
+const maxLookBackForWait = 120 // one hour of tipsets
 
 type executedMessage struct {
 	msg types.ChainMsg
@@ -430,6 +433,19 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter)
 		return nil, xerrors.Errorf("failed to get events: %w", err)
 	}
 	if len(ces) == 0 {
+		if f.MaxHeight > 0 {
+			head := si.cs.GetHeaviestTipSet()
+			if head == nil {
+				return nil, errors.New("failed to get head: head is nil")
+			}
+			headHeight := head.Height()
+			maxLookBackHeight := headHeight - maxLookBackForWait
+
+			if f.MaxHeight <= maxLookBackHeight {
+				return nil, si.checkTipsetIndexedStatus(ctx, f)
+			}
+		}
+
 		// there's no matching events for the filter, wait till index has caught up to the head and then retry
 		if err := si.waitTillHeadIndexed(ctx); err != nil {
 			return nil, xerrors.Errorf("failed to wait for head to be indexed: %w", err)
