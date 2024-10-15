@@ -31,10 +31,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/vm"
 )
 
-const (
-	errcodeDefault = -32000
-)
-
 // The address used in messages to actors that have since been deleted.
 //
 // 0xff0000000000000000000000ffffffffffffffff
