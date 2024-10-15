@@ -195,7 +195,7 @@ func (sm *StateManager) searchForIndexedMsg(ctx context.Context, mcid cid.Cid, m
 	}
 	minfo, err := sm.chainIndexer.GetMsgInfo(ctx, mcid)
 	if err != nil {
-		return nil, nil, cid.Undef, xerrors.Errorf("error looking up message in indexes: %w", err)
+		return nil, nil, cid.Undef, xerrors.Errorf("error looking up message in index: %w", err)
 	}
 
 	// check the height against the current tipset; minimum execution confidence requires that the
