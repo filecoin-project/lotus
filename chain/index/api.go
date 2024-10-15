@@ -38,9 +38,11 @@ func (si *SqliteIndexer) ChainValidateIndex(ctx context.Context, epoch abi.Chain
 		return nil, xerrors.Errorf("failed to get tipset at height %d: %w", epoch, err)
 	}
 
-	// we need to take a write lock here so that back-filling does not race with real time chain indexing
-	si.writerLk.Lock()
-	defer si.writerLk.Unlock()
+	// we need to take a write lock here so that back-filling does not race with real-time chain indexing
+	if backfill {
+		si.writerLk.Lock()
+		defer si.writerLk.Unlock()
+	}
 
 	var isIndexEmpty bool
 	if err := si.stmts.isIndexEmptyStmt.QueryRowContext(ctx).Scan(&isIndexEmpty); err != nil {

@@ -211,7 +211,6 @@ func loadExecutedMessages(ctx context.Context, cs ChainStore, recomputeTipSetSta
 		if err != nil {
 			return nil, xerrors.Errorf("failed to iterate over events for message %d: %w", i, err)
 		}
-
 	}
 
 	return ems, nil
