@@ -16,8 +16,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
+	"github.com/libp2p/go-libp2p"
 	libp2pcrypto "github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/p2p/net/conngater"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 	"github.com/stretchr/testify/require"
 
@@ -57,6 +59,7 @@ import (
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/lotus/node/modules/lp2p"
 	testing2 "github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage/paths"
@@ -438,6 +441,13 @@ func (n *Ensemble) Start() *Ensemble {
 			node.If(full.options.disableLibp2p, node.MockHost(n.mn)),
 			node.Test(),
 
+			// If we're using real libp2p, disable outbound connections to all but localhost.
+			node.If(!full.options.disableLibp2p,
+				node.Override(node.ConnGaterKey, func(gater *conngater.BasicConnectionGater) (opts lp2p.Libp2pOpts, err error) {
+					opts.Opts = append(opts.Opts, libp2p.ConnectionGater(&loopbackConnGater{gater}))
+					return
+				})),
+
 			// so that we subscribe to pubsub topics immediately
 			node.Override(new(dtypes.Bootstrapper), dtypes.Bootstrapper(true)),
 
@@ -707,6 +717,7 @@ func (n *Ensemble) Start() *Ensemble {
 			node.Repo(r),
 			node.Test(),
 
+			node.Override(node.DefaultTransportsKey, lp2p.QUIC),
 			node.If(m.options.disableLibp2p, node.MockHost(n.mn)),
 			node.Override(new(v1api.RawFullNodeAPI), m.FullNode),
 			node.Override(new(*lotusminer.Miner), lotusminer.NewTestMiner(mineBlock, m.ActorAddr)),
