@@ -5,7 +5,7 @@ move this to lotus-docs
   
 ## Introduction
 
-This document is for externally-available and/or high-performance RPC providers.  It walks through the configuration changes, migration flow and operations/maintenance work needed to enable, backfill and maintain the [`ChainIndexer`](#chainindexer-indexing-system).
+This document is for externally-available and/or high-performance RPC providers.  It walks through the configuration changes, migration flow and operations/maintenance work needed to enable, backfill and maintain the [`ChainIndexer`](#chainindexer-indexing-system).  The justification for and benefits of the `ChainIndexer` are documented [here](https://github.com/filecoin-project/lotus/issues/12453). 
 
 **Note: If you are a Storage Provider or node operator who does not serve public RPC requests (i.e, if `Fevm.EnableEthRPC = false`), you can skip this document as the `ChainIndexer` is already disabled by default**. 
 
