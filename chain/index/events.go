@@ -542,7 +542,7 @@ func makePrefillFilterQuery(f *EventFilter) ([]any, string, error) {
 			if len(vals) > 0 {
 				join++
 				joinAlias := fmt.Sprintf("ee%d", join)
-				joins = append(joins, fmt.Sprintf("event_entry %s ON e.event_id=%[1]s.event_id", joinAlias))
+				joins = append(joins, fmt.Sprintf("event_entry %s ON e.id=%[1]s.event_id", joinAlias))
 				clauses = append(clauses, fmt.Sprintf("%s.indexed=1 AND %[1]s.key=?", joinAlias))
 				values = append(values, key)
 				subclauses := make([]string, 0, len(vals))
@@ -556,7 +556,7 @@ func makePrefillFilterQuery(f *EventFilter) ([]any, string, error) {
 	}
 
 	s := `SELECT
-			e.event_id,
+			e.id,
 			tm.height,
 			tm.tipset_key_cid,
 			e.emitter_id,
@@ -571,7 +571,7 @@ func makePrefillFilterQuery(f *EventFilter) ([]any, string, error) {
 			ee.value
 		FROM event e
 		JOIN tipset_message tm ON e.message_id = tm.id
-		JOIN event_entry ee ON e.event_id = ee.event_id`
+		JOIN event_entry ee ON e.id = ee.event_id`
 
 	if len(joins) > 0 {
 		s = s + ", " + strings.Join(joins, ", ")

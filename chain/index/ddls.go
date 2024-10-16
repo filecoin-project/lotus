@@ -22,7 +22,7 @@ var ddls = []string{
 	)`,
 
 	`CREATE TABLE IF NOT EXISTS event (
-		event_id INTEGER PRIMARY KEY,
+		id INTEGER PRIMARY KEY,
 		message_id INTEGER NOT NULL,
 		event_index INTEGER NOT NULL,
 		emitter_id INTEGER NOT NULL,
@@ -39,7 +39,7 @@ var ddls = []string{
 		key TEXT NOT NULL,
 		codec INTEGER,
 		value BLOB NOT NULL,
-		FOREIGN KEY (event_id) REFERENCES event(event_id) ON DELETE CASCADE
+		FOREIGN KEY (event_id) REFERENCES event(id) ON DELETE CASCADE
 	)`,
 
 	`CREATE INDEX IF NOT EXISTS insertion_time_index ON eth_tx_hash (inserted_at)`,
@@ -85,7 +85,7 @@ func preparedStatementMapping(ps *preparedStatements) map[**sql.Stmt]string {
 		&ps.getNonRevertedTipsetMessageCountStmt:      "SELECT COUNT(*) FROM tipset_message WHERE tipset_key_cid = ? AND reverted = 0 AND message_cid IS NOT NULL",
 		&ps.getNonRevertedTipsetEventCountStmt:        "SELECT COUNT(*) FROM event WHERE reverted = 0 AND message_id IN (SELECT id FROM tipset_message WHERE tipset_key_cid = ? AND reverted = 0)",
 		&ps.hasRevertedEventsInTipsetStmt:             "SELECT EXISTS(SELECT 1 FROM event WHERE reverted = 1 AND message_id IN (SELECT id FROM tipset_message WHERE tipset_key_cid = ?))",
-		&ps.getNonRevertedTipsetEventEntriesCountStmt: "SELECT COUNT(ee.event_id) AS entry_count FROM event_entry ee JOIN event e ON ee.event_id = e.event_id JOIN tipset_message tm ON e.message_id = tm.id WHERE tm.tipset_key_cid = ? AND tm.reverted = 0",
+		&ps.getNonRevertedTipsetEventEntriesCountStmt: "SELECT COUNT(ee.event_id) AS entry_count FROM event_entry ee JOIN event e ON ee.event_id = e.id JOIN tipset_message tm ON e.message_id = tm.id WHERE tm.tipset_key_cid = ? AND tm.reverted = 0",
 		&ps.removeRevertedTipsetsBeforeHeightStmt:     "DELETE FROM tipset_message WHERE reverted = 1 AND height < ?",
 		&ps.getNonRevertedMsgInfoStmt:                 "SELECT tipset_key_cid, height FROM tipset_message WHERE message_cid = ? AND reverted = 0 LIMIT 1",
 		&ps.getMsgCidFromEthHashStmt:                  "SELECT message_cid FROM eth_tx_hash WHERE tx_hash = ? LIMIT 1",

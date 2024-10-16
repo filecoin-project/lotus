@@ -631,7 +631,7 @@ func verifyEventEntryAbsent(t *testing.T, s *SqliteIndexer, eventID int64) {
 
 func verifyEventAbsent(t *testing.T, s *SqliteIndexer, eventID int64) {
 	var eventIndex uint64
-	err := s.db.QueryRow("SELECT event_index FROM event WHERE event_id = ?", eventID).Scan(&eventIndex)
+	err := s.db.QueryRow("SELECT event_index FROM event WHERE id = ?", eventID).Scan(&eventIndex)
 	require.Equal(t, sql.ErrNoRows, err)
 }
 
@@ -640,7 +640,7 @@ func verifyEvent(t *testing.T, s *SqliteIndexer, eventID int64, expectedEvent ev
 	var emitterAddr []byte
 	var reverted bool
 	var messageID int64
-	err := s.db.QueryRow("SELECT event_index, emitter_addr, reverted, message_id FROM event WHERE event_id = ?", eventID).Scan(&eventIndex, &emitterAddr, &reverted, &messageID)
+	err := s.db.QueryRow("SELECT event_index, emitter_addr, reverted, message_id FROM event WHERE id = ?", eventID).Scan(&eventIndex, &emitterAddr, &reverted, &messageID)
 	require.NoError(t, err)
 	require.Equal(t, expectedEvent.eventIndex, eventIndex)
 	require.Equal(t, expectedEvent.emitterAddr, emitterAddr)
