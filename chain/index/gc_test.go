@@ -64,7 +64,7 @@ func TestGC(t *testing.T) {
 		return idAddr, true
 	})
 
-	si.SetExecutedMessagesLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
+	si.setExecutedMessagesLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
 		if msgTs.Height() == 1 {
 			return []executedMessage{em1}, nil
 		}

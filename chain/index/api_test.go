@@ -196,7 +196,7 @@ func TestBackfillMissingEpoch(t *testing.T) {
 	}
 
 	cs.SetMessagesForTipset(missingTs, []types.ChainMsg{fakeMsg})
-	si.SetExecutedMessagesLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
+	si.setExecutedMessagesLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
 		if msgTs.Height() == missingTs.Height() {
 			return []executedMessage{executedMsg}, nil
 		}
@@ -359,7 +359,7 @@ func TestIndexCorruption(t *testing.T) {
 				})
 
 				// Setup dummy event loader
-				si.SetExecutedMessagesLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
+				si.setExecutedMessagesLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
 					return []executedMessage{{msg: fakeMessage(randomIDAddr(t, rng), randomIDAddr(t, rng))}}, nil
 				})
 
@@ -405,7 +405,7 @@ func TestIndexCorruption(t *testing.T) {
 				})
 
 				// Setup dummy event loader to return only one event
-				si.SetExecutedMessagesLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
+				si.setExecutedMessagesLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
 					return []executedMessage{
 						{
 							msg: fakeMessage(randomIDAddr(t, rng), randomIDAddr(t, rng)),
@@ -465,7 +465,7 @@ func TestIndexCorruption(t *testing.T) {
 				})
 
 				// Setup dummy event loader to return one event with only one entry
-				si.SetExecutedMessagesLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
+				si.setExecutedMessagesLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
 					return []executedMessage{
 						{
 							msg: fakeMessage(randomIDAddr(t, rng), randomIDAddr(t, rng)),

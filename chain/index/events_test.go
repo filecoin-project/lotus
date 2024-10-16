@@ -129,7 +129,7 @@ func TestGetEventsForFilterWithEvents(t *testing.T) {
 		return idAddr, true
 	})
 
-	si.SetExecutedMessagesLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
+	si.setExecutedMessagesLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
 		return []executedMessage{em1}, nil
 	})
 
@@ -284,7 +284,7 @@ func TestGetEventsFilterByAddress(t *testing.T) {
 		return idAddr, true
 	})
 
-	si.SetExecutedMessagesLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
+	si.setExecutedMessagesLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
 		return []executedMessage{em1}, nil
 	})
 

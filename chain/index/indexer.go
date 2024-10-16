@@ -144,8 +144,14 @@ func (si *SqliteIndexer) SetActorToDelegatedAddresFunc(actorToDelegatedAddresFun
 	si.actorToDelegatedAddresFunc = actorToDelegatedAddresFunc
 }
 
-func (si *SqliteIndexer) SetExecutedMessagesLoaderFunc(eventLoaderFunc emsLoaderFunc) {
-	si.executedMessagesLoaderFunc = eventLoaderFunc
+func (si *SqliteIndexer) SetRecomputeTipSetStateFunc(f recomputeTipSetStateFunc) {
+	si.buildExecutedMessagesLoader(f)
+}
+
+func (si *SqliteIndexer) buildExecutedMessagesLoader(rf recomputeTipSetStateFunc) {
+	si.executedMessagesLoaderFunc = func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
+		return loadExecutedMessages(ctx, cs, rf, msgTs, rctTs)
+	}
 }
 
 func (si *SqliteIndexer) Close() error {
@@ -403,4 +409,8 @@ func (si *SqliteIndexer) isClosed() bool {
 	si.closeLk.RLock()
 	defer si.closeLk.RUnlock()
 	return si.closed
+}
+
+func (si *SqliteIndexer) setExecutedMessagesLoaderFunc(f emsLoaderFunc) {
+	si.executedMessagesLoaderFunc = f
 }

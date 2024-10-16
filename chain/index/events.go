@@ -136,13 +136,6 @@ func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *typ
 	return nil
 }
 
-func MakeLoadExecutedMessages(recomputeTipSetStateFunc recomputeTipSetStateFunc) func(ctx context.Context,
-	cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
-	return func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
-		return loadExecutedMessages(ctx, cs, recomputeTipSetStateFunc, msgTs, rctTs)
-	}
-}
-
 func loadExecutedMessages(ctx context.Context, cs ChainStore, recomputeTipSetStateFunc recomputeTipSetStateFunc, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
 	msgs, err := cs.MessagesForTipset(ctx, msgTs)
 	if err != nil {
