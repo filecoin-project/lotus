@@ -34,6 +34,7 @@ func TestGetEventsForFilterNoEvents(t *testing.T) {
 
 	// Set the dummy chainstore to return this tipset for height 1
 	cs.SetTipsetByHeightAndKey(1, fakeTipSet1.Key(), fakeTipSet1) // empty DB
+	cs.SetTipSetByCid(t, fakeTipSet1)
 
 	// tipset is not indexed
 	f := &EventFilter{
