@@ -56,8 +56,11 @@ The ChainIndexer [periodically runs](https://github.com/filecoin-project/lotus/b
 1. **Archival Nodes**: **Keep GC disabled** (`GCRetentionEpochs` = 0) to retain all indexed data.
 
 2. **Non-Archival Nodes**:  Set `GCRetentionEpochs` to match the amount of chain state your node retains 
-(*Example:* if your node is configured to retain Filecoin chain state with a Splitstore Hotstore that approximates 2 days of epochs, set `GCRetentionEpochs` to at least `retentionDays * epochsPerDay = 2 * 2880 = 5760`).
+
+**Example:** if your node is configured to retain Filecoin chain state with a Splitstore Hotstore that approximates 2 days of epochs, set `GCRetentionEpochs` to at least `retentionDays * epochsPerDay = 2 * 2880 = 5760`).
+
 **Warning:** Setting this value below the chain state retention period will degrade RPC performance and reliability because the ChainIndexer will lack data for epochs still present in the chain state.
+
 **Note:** `Chainstore.Splitstore` is configured in terms of bytes (not epochs) and `ChainIndexer.GCRetentionEpochs` is in terms of epochs (not bytes).  For the purposes of this discussion, we're assuming operators have determined `Chainstore.Splitstore.HotStoreMaxSpaceTarget` and `Chainstore.Splitstore.HotStoreMaxSpaceThreshold` values that approximate a certain number days of storage in the Splitstore Hotstore.  The guidance here is to make sure this approximation exceeds `ChainIndexer.GCRetentionEpochs`.
 
 ### Removed Options
@@ -95,7 +98,7 @@ One should also check to ensure they have [sufficient disk space](#backfill-disk
 4. **Restart Lotus Node**
    - Restart the Lotus node with the new configuration.
    - The `ChainIndexer` will begin indexing **real-time chain state changes** immediately in the `${LOTUS_HOME}/chainindex` directory.
-   - __However, it will not automatically index any historical chain state (i.e., any previously existing chain state prior to the upgrade).__
+   - *However, it will not automatically index any historical chain state (i.e., any previously existing chain state prior to the upgrade).*
 5. **Backfill**
    - See the ["Backfill" section below](#backfill).
    - This could potentially take days per [Backfill Timing](#backfill-timing).
@@ -115,7 +118,7 @@ Now that one has a `${LOTUS_HOME}/chainindex/chaindinex.db` from a trusted node,
 4. **Restart Lotus Node**
    - Restart your Lotus node with the new configuration.
    - The `ChainIndexer` will begin indexing **real-time chain state changes** immediately in the `${LOTUS_HOME}/chainindex` directory.
-   - __However, it will not automatically index the chain state from where the copied-in `chaindinex.db` ends.  This will need to be done manually.__
+   - *However, it will not automatically index the chain state from where the copied-in `chaindinex.db` ends.  This will need to be done manually.*
 5. **Backfill the small data gap from after the copied-in `chaindinex.db`**
    - See the [`Backfill` section below](#backfill).
    - This should be quick since this gaps is presumably on the order of epoch minutes, hours, or days rather than months.
@@ -153,7 +156,7 @@ The command validates the chain index entries for each epoch in the specified ra
 
 You can learn about how to use the tool with `lotus-shed chainindex validate-backfill -h`.
 
-Note: If you are using a non-standard Lotus repo directory then you can run the command with `lotus-shed -repo /path/to/lotus/repo chainindex validate-backfill ...`, or by setting the `LOTUS_PATH` environment variable.
+Note: If you are using a non-standard Lotus repo directory then you can run the command with `lotus-shed -repo /path/to/lotus/repo chainindex validate-backfill ...`, or by setting the `LOTUS_HOME` environment variable.
 
 ## Downgrade Steps
 
@@ -164,7 +167,7 @@ In case you need to downgrade to the [previous indexing system](#previous-indexi
 3. Download or build a Lotus binary for the rollback version which has the implementation of the old `EthTxHashLookup`, `MsgIndex`, and `EventIndex` indices.
 4. Ensure that you've set the correct config for the existing `EthTxHashLookup`, `MsgIndex`, and `EventIndex` indices in the `config.toml` file.
 5. Restart your Lotus node.
-6. Backfill the `EthTxHashLookup`, `MsgIndex`, and `EventIndex` indices using the `lotus-shed index backfill-*` CLI tooling available in the [previous indexing system](#previous-indexing-system) for the epoch range in [epochs between the upgrade to `ChainIndexer` and the rollback of `ChainIndexer`].
+6. Backfill the `EthTxHashLookup`, `MsgIndex`, and `EventIndex` indices using the `lotus-shed index backfill-*` CLI tooling available in the [previous indexing system](#previous-indexing-system) for the range of epochs between the upgrade to `ChainIndexer` and the rollback of `ChainIndexer`.
 7. Route traffic back to the node.  
 
 ## Terminology
