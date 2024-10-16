@@ -96,7 +96,6 @@ The ChainIndexer [periodically runs](https://github.com/filecoin-project/lotus/b
 ```toml
 [Fevm]
 EthTxHashMappingLifetimeDays
-DisableHistoricFilterAPI
 
 [Events]
 DisableHistoricFilterAPI
