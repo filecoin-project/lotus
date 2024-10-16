@@ -238,7 +238,11 @@ func (si *SqliteIndexer) checkTipsetIndexedStatus(ctx context.Context, f *EventF
 			return xerrors.Errorf("failed to get tipset key cid by height: %w", err)
 		}
 	default:
-		// Filter doesn't specify a specific tipset
+		// This function distinguishes between two scenarios:
+		// 1. Missing events: The requested tipset is not present in the Index (an error condition).
+		// 2. Valid case: The tipset exists but contains no events (a normal situation).
+		// Currently, this distinction is only made for the common use case where a user requests events for a single tipset.
+		// TODO: Implement this functionality for a range of tipsets. This is expensive and not a common use case so it's deferred for now.
 		return nil
 	}
 
