@@ -262,8 +262,8 @@ rewards. This address should have adequate funds to cover gas fees.`,
 			Name: "EnableEthRPC",
 			Type: "bool",
 
-			Comment: `EnableEthRPC enables eth_ rpc, and enables storing a mapping of eth transaction hashes to filecoin message Cids.
-This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be disabled by config options above.`,
+			Comment: `EnableEthRPC enables eth_ RPC methods and will also enable the RealTimeFilterAPI.
+Setting this to true will also require that ChainIndexer is enabled, otherwise it will cause an error at startup.`,
 		},
 		{
 			Name: "EthTraceFilterMaxResults",
