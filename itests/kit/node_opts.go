@@ -2,6 +2,12 @@ package kit
 
 import (
 	"math"
+	"time"
+
+	"github.com/libp2p/go-libp2p/core/connmgr"
+	"github.com/libp2p/go-libp2p/core/peer"
+	multiaddr "github.com/multiformats/go-multiaddr"
+	manet "github.com/multiformats/go-multiaddr/net"
 
 	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -56,6 +62,23 @@ type nodeOpts struct {
 	workerName       string
 }
 
+// Libp2p connection gater that only allows outbound connections to loopback addresses.
+type loopbackConnGater struct{ connmgr.ConnectionGater }
+
+// InterceptAddrDial implements connmgr.ConnectionGater.
+func (l *loopbackConnGater) InterceptAddrDial(p peer.ID, a multiaddr.Multiaddr) (allow bool) {
+	if !l.ConnectionGater.InterceptAddrDial(p, a) {
+		return false
+	}
+	ip, err := manet.ToIP(a)
+	if err != nil {
+		return false
+	}
+	return ip.IsLoopback()
+}
+
+var _ connmgr.ConnectionGater = (*loopbackConnGater)(nil)
+
 // DefaultNodeOpts are the default options that will be applied to test nodes.
 var DefaultNodeOpts = nodeOpts{
 	balance:    big.Mul(big.NewInt(100000000), types.NewInt(buildconstants.FilecoinPrecision)),
@@ -70,6 +93,17 @@ var DefaultNodeOpts = nodeOpts{
 			cfg.ChainIndexer.EnableIndexer = true
 			cfg.Events.MaxFilterHeightRange = math.MaxInt64
 			cfg.Events.EnableActorEventsAPI = true
+
+			// Disable external networking ffs.
+			cfg.Libp2p.ListenAddresses = []string{
+				"/ip4/127.0.0.1/udp/0/quic-v1",
+			}
+			cfg.Libp2p.DisableNatPortMap = true
+
+			// Nerf the connection manager.
+			cfg.Libp2p.ConnMgrLow = 1024
+			cfg.Libp2p.ConnMgrHigh = 2048
+			cfg.Libp2p.ConnMgrGrace = config.Duration(time.Hour)
 			cfg.ChainIndexer.ReconcileEmptyIndex = true
 			cfg.ChainIndexer.MaxReconcileTipsets = 10000
 			return nil

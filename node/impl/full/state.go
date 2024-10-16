@@ -1504,9 +1504,17 @@ func (a *StateAPI) StateMinerPreCommitDepositForPower(ctx context.Context, maddr
 		return types.EmptyInt, xerrors.Errorf("loading reward actor state: %w", err)
 	}
 
-	sectorWeight, err := a.calculateSectorWeight(ctx, maddr, pci, ts.Height(), state)
-	if err != nil {
-		return types.EmptyInt, err
+	var sectorWeight abi.StoragePower
+	if a.StateManager.GetNetworkVersion(ctx, ts.Height()) <= network.Version16 {
+		if sectorWeight, err = a.calculateSectorWeight(ctx, maddr, pci, ts.Height(), state); err != nil {
+			return types.EmptyInt, err
+		}
+	} else {
+		ssize, err := pci.SealProof.SectorSize()
+		if err != nil {
+			return types.EmptyInt, xerrors.Errorf("failed to resolve sector size for seal proof: %w", err)
+		}
+		sectorWeight = miner.QAPowerMax(ssize)
 	}
 
 	_, powerSmoothed, err := a.pledgeCalculationInputs(ctx, state)
