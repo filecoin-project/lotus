@@ -1,12 +1,6 @@
 package ethtypes
 
-import (
-	"fmt"
-
-	"golang.org/x/xerrors"
-)
-
-var ErrExecutionReverted = xerrors.New("execution reverted")
+const defaultMessage = "execution reverted"
 
 // ExecutionRevertedError is an error that occurs when a transaction reverts.
 type ExecutionRevertedError struct {
@@ -17,9 +11,6 @@ type ExecutionRevertedError struct {
 
 // Error implements the error interface.
 func (e *ExecutionRevertedError) Error() string {
-	if e.Message == "" {
-		return fmt.Sprintf("json-rpc error %d", e.Code)
-	}
 	return e.Message
 }
 
@@ -33,10 +24,10 @@ func (e *ExecutionRevertedError) ErrorCode() int {
 	return e.Code
 }
 
-// NewExecutionRevertedWithDataError returns an ExecutionRevertedError with the given code and data.
-func NewExecutionRevertedWithDataError(code int, data string) *ExecutionRevertedError {
+// NewExecutionRevertedErrorWithData returns an ExecutionRevertedError with the given code and data.
+func NewExecutionRevertedErrorWithData(code int, data string) *ExecutionRevertedError {
 	return &ExecutionRevertedError{
-		Message: ErrExecutionReverted.Error(),
+		Message: defaultMessage,
 		Code:    code,
 		Data:    data,
 	}

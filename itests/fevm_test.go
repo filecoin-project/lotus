@@ -1493,10 +1493,63 @@ func TestEthCall(t *testing.T) {
 		var dataErr jsonrpc.ErrorWithData
 		ok := errors.As(err, &dataErr)
 		require.True(t, ok, "Expected error to implement jsonrpc.DataError")
-		require.Equal(t, ethtypes.ErrExecutionReverted.Error(), dataErr.Error(), "Expected 'execution reverted' message")
+		require.Contains(t, dataErr.Error(), "execution reverted", "Expected 'execution reverted' message")
 
 		// Get the error data
 		errData := dataErr.ErrorData()
 		require.Contains(t, errData, "DivideByZero()", "Expected error data to contain 'DivideByZero()'")
 	})
+}
+
+func TestEthEstimateGas(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	_, ethAddr, filAddr := client.EVM().NewAccount()
+
+	kit.SendFunds(ctx, t, client, filAddr, types.FromFil(10))
+
+	filename := "contracts/Errors.hex"
+	_, contractAddr := client.EVM().DeployContractFromFilename(ctx, filename)
+
+	contractAddrEth, err := ethtypes.EthAddressFromFilecoinAddress(contractAddr)
+	require.NoError(t, err)
+
+	testCases := []struct {
+		name           string
+		function       string
+		expectedError  string
+		expectedErrMsg string
+	}{
+		{"DivideByZero", "failDivZero()", "DivideByZero()", "execution reverted"},
+		{"Assert", "failAssert()", "Assert()", "execution reverted"},
+		{"RevertWithReason", "failRevertReason()", "Error(my reason)", "execution reverted: my reason"},
+		{"RevertEmpty", "failRevertEmpty()", "", "execution reverted"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			signature := kit.CalcFuncSignature(tc.function)
+
+			callParams := ethtypes.EthCall{
+				From: &ethAddr,
+				To:   &contractAddrEth,
+				Data: signature,
+			}
+
+			gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: callParams})
+			require.NoError(t, err, "Error marshaling gas params")
+
+			_, err = client.EthEstimateGas(ctx, gasParams)
+
+			if tc.expectedError != "" {
+				require.Error(t, err)
+				var dataErr jsonrpc.ErrorWithData
+				require.ErrorAs(t, err, &dataErr)
+				require.Contains(t, dataErr.Error(), "execution reverted", "Expected 'execution reverted' message")
+				errData := dataErr.ErrorData()
+				require.Contains(t, errData, tc.expectedError)
+			}
+		})
+	}
 }

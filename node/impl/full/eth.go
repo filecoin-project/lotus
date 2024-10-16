@@ -1433,7 +1433,7 @@ func (a *EthModule) applyMessage(ctx context.Context, msg *types.Message, tsk ty
 	}
 
 	if res.MsgRct.ExitCode.IsError() {
-		return nil, ethtypes.NewExecutionRevertedWithDataError(
+		return nil, ethtypes.NewExecutionRevertedErrorWithData(
 			int(res.MsgRct.ExitCode),
 			parseEthRevert(res.MsgRct.Return),
 		)
