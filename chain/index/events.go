@@ -488,6 +488,7 @@ func makePrefillFilterQuery(f *EventFilter) ([]any, string, error) {
 		}
 	}
 
+	// unless asking for a specific tipset, we never want to see reverted historical events
 	if f.TipsetCid == cid.Undef {
 		clauses = append(clauses, "e.reverted=?")
 		values = append(values, false)
