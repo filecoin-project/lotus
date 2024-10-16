@@ -118,7 +118,6 @@ func (l *leaser) getParticipantsByInstance(network gpbft.NetworkName, instance u
 	currentManifest, _ := l.status()
 	currentNetwork := currentManifest.NetworkName
 	if currentNetwork != network {
-		log.Warnf("no participants for network: current network (%s) does not match requested network (%s) at instance %d", currentNetwork, network, instance)
 		return nil
 	}
 	var participants []uint64

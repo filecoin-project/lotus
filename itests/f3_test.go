@@ -229,14 +229,42 @@ func (e *testEnv) waitFor(f func(n *kit.TestFullNode) bool, timeout time.Duratio
 // and the second full-node is an observer that is not directly connected to
 // a miner. The last return value is the manifest sender for the network.
 func setup(t *testing.T, blocktime time.Duration) *testEnv {
-	manif := lf3.NewManifest(BaseNetworkName+"/1", DefaultFinality, DefaultBootstrapEpoch, blocktime, cid.Undef)
-	manif.Gpbft.Delta = 250 * time.Millisecond
-	manif.Gpbft.DeltaBackOffExponent = 1.3
-	manif.Gpbft.RebroadcastBackoffBase = manif.Gpbft.Delta * 2
-	manif.Gpbft.RebroadcastBackoffMax = manif.Gpbft.RebroadcastBackoffBase * 2
-	manif.Gpbft.RebroadcastBackoffExponent = manif.Gpbft.DeltaBackOffExponent
+	return setupWithStaticManifest(t, newTestManifest(blocktime), false)
+}
 
-	return setupWithStaticManifest(t, manif, false)
+func newTestManifest(blocktime time.Duration) *manifest.Manifest {
+	return &manifest.Manifest{
+		ProtocolVersion:   manifest.VersionCapability,
+		BootstrapEpoch:    DefaultBootstrapEpoch,
+		NetworkName:       BaseNetworkName + "/1",
+		InitialPowerTable: cid.Undef,
+		CommitteeLookback: manifest.DefaultCommitteeLookback,
+		CatchUpAlignment:  blocktime / 2,
+		Gpbft: manifest.GpbftConfig{
+			// Use smaller time intervals for more responsive test progress/assertion.
+			Delta:                      250 * time.Millisecond,
+			DeltaBackOffExponent:       1.3,
+			MaxLookaheadRounds:         5,
+			RebroadcastBackoffBase:     500 * time.Millisecond,
+			RebroadcastBackoffSpread:   0.1,
+			RebroadcastBackoffExponent: 1.3,
+			RebroadcastBackoffMax:      1 * time.Second,
+		},
+		EC: manifest.EcConfig{
+			Period:                   blocktime,
+			Finality:                 DefaultFinality,
+			DelayMultiplier:          manifest.DefaultEcConfig.DelayMultiplier,
+			BaseDecisionBackoffTable: manifest.DefaultEcConfig.BaseDecisionBackoffTable,
+			HeadLookback:             0,
+			Finalize:                 true,
+		},
+		CertificateExchange: manifest.CxConfig{
+			ClientRequestTimeout: manifest.DefaultCxConfig.ClientRequestTimeout,
+			ServerRequestTimeout: manifest.DefaultCxConfig.ServerRequestTimeout,
+			MinimumPollInterval:  blocktime,
+			MaximumPollInterval:  4 * blocktime,
+		},
+	}
 }
 
 func setupWithStaticManifest(t *testing.T, manif *manifest.Manifest, testBootstrap bool) *testEnv {
@@ -288,10 +316,7 @@ func setupWithStaticManifest(t *testing.T, manif *manifest.Manifest, testBootstr
 		cancel()
 	}
 
-	m, err := n1.F3GetManifest(ctx)
-	require.NoError(t, err)
-
-	e := &testEnv{m: m, t: t, testCtx: ctx}
+	e := &testEnv{m: manif, t: t, testCtx: ctx}
 	// in case we want to use more full-nodes in the future
 	e.minerFullNodes = []*kit.TestFullNode{&n1, &n2, &n3}
 
@@ -308,16 +333,9 @@ func setupWithStaticManifest(t *testing.T, manif *manifest.Manifest, testBootstr
 		return e.ms.Run(ctx)
 	})
 
-	// Update initial manifest params to shorten the timeouts and backoff for
-	// testing, and assert it is consistently applied to all nodes.
-	e.m.Gpbft.Delta = 250 * time.Millisecond
-	e.m.Gpbft.DeltaBackOffExponent = 1.3
-	e.m.Gpbft.RebroadcastBackoffBase = manif.Gpbft.Delta * 2
-	e.m.Gpbft.RebroadcastBackoffMax = manif.Gpbft.RebroadcastBackoffBase * 2
-	e.m.Gpbft.RebroadcastBackoffExponent = manif.Gpbft.DeltaBackOffExponent
-	e.ms.UpdateManifest(m)
-	e.waitTillManifestChange(m, 20*time.Second)
-
+	// Assure manifest is picked up by all nodes.
+	e.ms.UpdateManifest(manif)
+	e.waitTillManifestChange(manif, 20*time.Second)
 	return e
 }
 
