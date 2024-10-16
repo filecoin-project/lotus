@@ -230,6 +230,12 @@ func (e *testEnv) waitFor(f func(n *kit.TestFullNode) bool, timeout time.Duratio
 // a miner. The last return value is the manifest sender for the network.
 func setup(t *testing.T, blocktime time.Duration) *testEnv {
 	manif := lf3.NewManifest(BaseNetworkName+"/1", DefaultFinality, DefaultBootstrapEpoch, blocktime, cid.Undef)
+	manif.Gpbft.Delta = 250 * time.Millisecond
+	manif.Gpbft.DeltaBackOffExponent = 1.3
+	manif.Gpbft.RebroadcastBackoffBase = manif.Gpbft.Delta * 2
+	manif.Gpbft.RebroadcastBackoffMax = manif.Gpbft.RebroadcastBackoffBase * 2
+	manif.Gpbft.RebroadcastBackoffExponent = manif.Gpbft.DeltaBackOffExponent
+
 	return setupWithStaticManifest(t, manif, false)
 }
 
@@ -295,13 +301,22 @@ func setupWithStaticManifest(t *testing.T, manif *manifest.Manifest, testBootstr
 		err = n.NetConnect(ctx, e.ms.PeerInfo())
 		require.NoError(t, err)
 	}
-
 	errgrp.Go(func() error {
 		defer func() {
 			require.NoError(t, manifestServerHost.Close())
 		}()
 		return e.ms.Run(ctx)
 	})
+
+	// Update initial manifest params to shorten the timeouts and backoff for
+	// testing, and assert it is consistently applied to all nodes.
+	e.m.Gpbft.Delta = 250 * time.Millisecond
+	e.m.Gpbft.DeltaBackOffExponent = 1.3
+	e.m.Gpbft.RebroadcastBackoffBase = manif.Gpbft.Delta * 2
+	e.m.Gpbft.RebroadcastBackoffMax = manif.Gpbft.RebroadcastBackoffBase * 2
+	e.m.Gpbft.RebroadcastBackoffExponent = manif.Gpbft.DeltaBackOffExponent
+	e.ms.UpdateManifest(m)
+	e.waitTillManifestChange(m, 20*time.Second)
 
 	return e
 }
