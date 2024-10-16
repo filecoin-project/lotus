@@ -25,7 +25,7 @@ func (e *ExecutionRevertedError) ErrorCode() int {
 }
 
 // NewExecutionRevertedErrorWithData returns an ExecutionRevertedError with the given code and data.
-func NewExecutionRevertedErrorWithData(code int, data string) *ExecutionRevertedError {
+func NewExecutionRevertedError(code int, data string) *ExecutionRevertedError {
 	return &ExecutionRevertedError{
 		Message: defaultMessage,
 		Code:    code,
