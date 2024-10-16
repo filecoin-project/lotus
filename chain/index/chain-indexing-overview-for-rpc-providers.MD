@@ -94,14 +94,14 @@ The previously deprecated `Fevm.Events` options are now also all removed:
 
 ## Upgrade
 
-### Preparation
+### Part 1: Preparation
 > **Note:** One can upgrade/downgrade between [pre-ChainIndexer](#previous-indexing-system) and [with-ChainIndexer](#chainindexer-indexing-system) Lotus versions without conflict because they persist state to different directories and don't rely on each other. No backup is necessary (but extra backups don't hurt). There is still a [backfilling step though when downgrading](#downgrade-steps).
 
 These upgrade steps assume one has multiple nodes in their fleet and can afford to have a node not handling traffic, potentially for days per [backfill timing below](#backfill-timing).
 
 One should also check to ensure they have [sufficient disk space](#backfill-disk-space-requirements).
 
-### Part 1: Create a Backfilled ChainIndexer `chainindex.db`
+### Part 2: Create a Backfilled ChainIndexer `chainindex.db`
 1. **Route traffic away from an initial node**
    - Example: prevent a load balancer from routing traffic to a designated node.
 2. **Stop the designated Lotus Node**
@@ -110,7 +110,7 @@ One should also check to ensure they have [sufficient disk space](#backfill-disk
    - Modify the Lotus configuration to enable the `ChainIndexer` as described in the [`ChainIndexer Config` section above](#chainindexer-config). 
 4. **Restart Lotus Node**
    - Restart the Lotus node with the new configuration.
-   - The `ChainIndexer` will begin indexing **real-time chain state changes** immediately in the `${LOTUS_HOME}/chainindex` directory.
+   - The `ChainIndexer` will begin indexing **real-time chain state changes** immediately in the `${LOTUS_PATH}/chainindex` directory.
    - *However, it will not automatically index any historical chain state (i.e., any previously existing chain state prior to the upgrade).*
 5. **Backfill**
    - See the ["Backfill" section below](#backfill).
@@ -121,18 +121,26 @@ One should also check to ensure they have [sufficient disk space](#backfill-disk
 8. **Ensure equal or better correctness and performance**
    - ChainIndexer-using nodes should have full correctness and better performance when compared to [pre-ChainIndexer](#previous-indexing-system) nodes.
 
-### Part 2: Update Other Nodes
-Now that one has a `${LOTUS_HOME}/chainindex/chaindinex.db` from a trusted node, it can be copied to additional nodes to expedite bootstrapping.
+### Part 3: Create a copyable `chainindex.db`
+[Part 4 below](#part-4-update-other-nodes) is going to use the backfilled `chainindex.db` from above with other nodes so they don't have to undergo as long of a backfill process.  That said, this backfilled `chaindex.db` shouldn't be done while the updated-and-backfilled node is running.  Options include :
+1.  Stop the updated-and-backfilled node before copying it.
+  * `cp ${LOTUS_PATH}/chainindex/chainindex.db /copy/destination/path/chainindex.db`
+2.  While the node is running, use the `sqlite3` CLI utility (which should be at least version 3.37) to clone it. 
+  * `sqlite3 ${LOTUS_PATH}/chainindex/chainindex.db '.clone /copy/destination/path/chainindex.db'`
+Both of these will result in a file `/copy/destination/path/chainindex.db` that can be copied around in part 4 below.
+
+### Part 4: Update Other Nodes
+Now that one has a `${LOTUS_PATH}/chainindex/chainindex.db` from a trusted node, it can be copied to additional nodes to expedite bootstrapping.
 1. **Route traffic away from the next node to upgrade**
 2. **Stop the Lotus Node**
 3. **Update Configuration**
    - Modify the Lotus configuration to enable the `ChainIndexer` as described in the [`ChainIndexer Config` section above](#chainindexer-config). 
-4. **Copy `${LOTUS_HOME}/chainindex/chaindinex.db` from the trusted node**
+4. **Copy `/copy/destination/path/chainindex.db` from the trusted node in [part 3 above](#part-3-create-a-copyable-chainindexdb)**
 4. **Restart Lotus Node**
    - Restart your Lotus node with the new configuration.
-   - The `ChainIndexer` will begin indexing **real-time chain state changes** immediately in the `${LOTUS_HOME}/chainindex` directory.
-   - *However, it will not automatically index the chain state from where the copied-in `chaindinex.db` ends.  This will need to be done manually.*
-5. **Backfill the small data gap from after the copied-in `chaindinex.db`**
+   - The `ChainIndexer` will begin indexing **real-time chain state changes** immediately in the `${LOTUS_PATH}/chainindex` directory.
+   - *However, it will not automatically index the chain state from where the copied-in `chainindex.db` ends.  This will need to be done manually.*
+5. **Backfill the small data gap from after the copied-in `chainindex.db`**
    - See the [`Backfill` section below](#backfill).
    - This should be quick since this gaps is presumably on the order of epoch minutes, hours, or days rather than months.
 6. **Ensure node health**
@@ -140,15 +148,15 @@ Now that one has a `${LOTUS_HOME}/chainindex/chaindinex.db` from a trusted node,
 7. **Route traffic to this newly upgraded ChainIndexer-enabled node**
 8. **Repeat for other nodes that need to upgrade**
 
-### Part 3: Cleanup
-It's recommended to keep the [pre-ChainIndexer](#previous-indexing-system) indexing database directory (`${LOTUS_HOME}/sqlite`) around until you've confirmed you don't need to [downgrade](#downgrade).  After sustained successful operations after the upgrade, the [pre-ChainIndexer](#previous-indexing-system) database directory can be removed to reclaim disk space.  
+### Part 5: Cleanup
+It's recommended to keep the [pre-ChainIndexer](#previous-indexing-system) indexing database directory (`${LOTUS_PATH}/sqlite`) around until you've confirmed you don't need to [downgrade](#downgrade).  After sustained successful operations after the upgrade, the [pre-ChainIndexer](#previous-indexing-system) database directory can be removed to reclaim disk space.  
 
 ## Backfill
 There is no automated migration from [pre-ChainIndexer indices](#previous-indexing-system) to the [ChainIndex](#chainindexer-indexing-system).  Instead one needs to index historical chain state (i.e., backfill), if RPC access to that historical state is required. (If curious, [read why](#wny-isnt-there-an-automated-migration-from-the-previous-indexing-system-to-the-chainindexer-indexing-system).]
 
 ### Backfill Timing
 
-Backfilling the new `ChainIndexer` was [benchmarked to take approximately ~12 hours per month of epochs on a sample archival node doing no other work](https://github.com/filecoin-project/lotus/issues/12453#issuecomment-2405306468). Your results will vary depending on hardware, network, and competing processes.  This means if one is upgrading a FEVM archival node, they should plan on the node being out of production service for ~10 days.  Additional nodes to update don't need to go throuh the same time-intensive process though.  They can get a `${LOTUS_HOME}/chainindex/chaindinex.db` copied from a trusted node per the [upgrade steps](#upgrade).  
+Backfilling the new `ChainIndexer` was [benchmarked to take approximately ~12 hours per month of epochs on a sample archival node doing no other work](https://github.com/filecoin-project/lotus/issues/12453#issuecomment-2405306468). Your results will vary depending on hardware, network, and competing processes.  This means if one is upgrading a FEVM archival node, they should plan on the node being out of production service for ~10 days.  Additional nodes to update don't need to go throuh the same time-intensive process though.  They can get a `${LOTUS_PATH}/chainindex/chainindex.db` copied from a trusted node per the [upgrade steps](#upgrade).  
 
 ### Backfill Disk Space Requirements
 
@@ -195,7 +203,7 @@ In case you need to downgrade to the [previous indexing system](#previous-indexi
 * This corresponds to the indexing system used in Lotus versions v1.31.0 onwards.  
 * It replaced the [previous indexing system](#previous-indexing-system).
 * It is composed of a single indexer, [`ChainIndexer`](https://github.com/filecoin-project/lotus/blob/master/chain/index/indexer.go), using a [single database for transactions, messages, and events](https://github.com/filecoin-project/lotus/blob/master/chain/index/ddls.go).
-* It persists state to `${LOTUS_HOME}/chainindex`.
+* It persists state to `${LOTUS_PATH}/chainindex`.
 * It has this CLI backfill tooling: [`lotus-shed chainindex validate-backfill`](#lotus-shed-chainindex-validate-backfill-cli-tool)
 * **Storage requirements:** See the [backfill disk space requirements](#backfill-disk-space-requirements).
 * **Backfil times:** See the [backfill timing](#backfill-timing).
