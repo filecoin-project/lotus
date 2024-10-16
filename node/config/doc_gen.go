@@ -272,12 +272,6 @@ This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, bu
 			Comment: `EthTraceFilterMaxResults sets the maximum results returned per request by trace_filter`,
 		},
 		{
-			Name: "Events",
-			Type: "DeprecatedEvents",
-
-			Comment: ``,
-		},
-		{
 			Name: "EthBlkCacheSize",
 			Type: "int",
 

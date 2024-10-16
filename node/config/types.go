@@ -545,37 +545,12 @@ type FevmConfig struct {
 	// EthTraceFilterMaxResults sets the maximum results returned per request by trace_filter
 	EthTraceFilterMaxResults uint64
 
-	Events DeprecatedEvents `toml:"Events,omitempty"`
-
 	// EthBlkCacheSize specifies the size of the cache used for caching Ethereum blocks.
 	// This cache enhances the performance of the eth_getBlockByHash RPC call by minimizing the need to access chain state for
 	// recently requested blocks that are already cached.
 	// The default size of the cache is 500 blocks.
 	// Note: Setting this value to 0 disables the cache.
 	EthBlkCacheSize int
-}
-
-type DeprecatedEvents struct {
-	// DisableRealTimeFilterAPI is DEPRECATED and will be removed in a future release. Use Events.DisableRealTimeFilterAPI instead.
-	DisableRealTimeFilterAPI bool `moved:"Events.DisableRealTimeFilterAPI" toml:"DisableRealTimeFilterAPI,omitempty"`
-
-	// DisableHistoricFilterAPI is DEPRECATED and will be removed in a future release. Use Events.DisableHistoricFilterAPI instead.
-	DisableHistoricFilterAPI bool `moved:"Events.DisableHistoricFilterAPI" toml:"DisableHistoricFilterAPI,omitempty"`
-
-	// FilterTTL is DEPRECATED and will be removed in a future release. Use Events.FilterTTL instead.
-	FilterTTL Duration `moved:"Events.FilterTTL" toml:"FilterTTL,omitzero"`
-
-	// MaxFilters is DEPRECATED and will be removed in a future release. Use Events.MaxFilters instead.
-	MaxFilters int `moved:"Events.MaxFilters" toml:"MaxFilters,omitzero"`
-
-	// MaxFilterResults is DEPRECATED and will be removed in a future release. Use Events.MaxFilterResults instead.
-	MaxFilterResults int `moved:"Events.MaxFilterResults" toml:"MaxFilterResults,omitzero"`
-
-	// MaxFilterHeightRange is DEPRECATED and will be removed in a future release. Use Events.MaxFilterHeightRange instead.
-	MaxFilterHeightRange uint64 `moved:"Events.MaxFilterHeightRange" toml:"MaxFilterHeightRange,omitzero"`
-
-	// DatabasePath is DEPRECATED and will be removed in a future release. Use Events.DatabasePath instead.
-	DatabasePath string `moved:"Events.DatabasePath" toml:"DatabasePath,omitempty"`
 }
 
 type EventsConfig struct {
