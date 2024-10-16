@@ -966,6 +966,8 @@ type FullNode interface {
 	F3IsRunning(ctx context.Context) (bool, error) //perm:read
 	// F3GetProgress returns the progress of the current F3 instance in terms of instance ID, round and phase.
 	F3GetProgress(ctx context.Context) (gpbft.Instant, error) //perm:read
+	// F3ListParticipants returns the list of miners that are currently participating in F3 via this node.
+	F3ListParticipants(ctx context.Context) ([]address.Address, error) //perm:read
 }
 
 // F3ParticipationTicket represents a ticket that authorizes a miner to

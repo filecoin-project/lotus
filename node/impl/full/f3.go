@@ -91,3 +91,10 @@ func (f3api *F3API) F3GetProgress(context.Context) (gpbft.Instant, error) {
 	}
 	return f3api.F3.Progress(), nil
 }
+
+func (f3api *F3API) F3ListParticipants(context.Context) ([]address.Address, error) {
+	if f3api.F3 == nil {
+		return nil, api.ErrF3Disabled
+	}
+	return f3api.F3.ListParticipants()
+}
