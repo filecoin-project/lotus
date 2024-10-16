@@ -13,7 +13,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
-const headIndexedWaitTimeout = 5 * time.Second
+const headIndexedWaitTimeout = 90 * time.Second
 
 func (si *SqliteIndexer) GetCidFromHash(ctx context.Context, txHash ethtypes.EthHash) (cid.Cid, error) {
 	if si.isClosed() {
