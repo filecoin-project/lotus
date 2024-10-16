@@ -366,18 +366,18 @@ func (a *EthModule) EthGetTransactionByHashLimited(ctx context.Context, txHash *
 	if txHash == nil {
 		return nil, nil
 	}
+	if a.ChainIndexer == nil {
+		return nil, errors.New("chain indexer is disabled; please enable the ChainIndexer to use the ETH RPC API")
+	}
 
 	var c cid.Cid
 	var err error
-	if a.ChainIndexer != nil {
-		c, err = a.ChainIndexer.GetCidFromHash(ctx, *txHash)
-
-		if err != nil && errors.Is(err, index.ErrNotFound) {
-			log.Debug("could not find transaction hash %s in chain indexer", txHash.String())
-		} else if err != nil {
-			log.Errorf("failed to lookup transaction hash %s in chain indexer: %s", txHash.String(), err)
-			return nil, xerrors.Errorf("failed to lookup transaction hash %s in chain indexer: %w", txHash.String(), err)
-		}
+	c, err = a.ChainIndexer.GetCidFromHash(ctx, *txHash)
+	if err != nil && errors.Is(err, index.ErrNotFound) {
+		log.Debug("could not find transaction hash %s in chain indexer", txHash.String())
+	} else if err != nil {
+		log.Errorf("failed to lookup transaction hash %s in chain indexer: %s", txHash.String(), err)
+		return nil, xerrors.Errorf("failed to lookup transaction hash %s in chain indexer: %w", txHash.String(), err)
 	}
 
 	// This isn't an eth transaction we have the mapping for, so let's look it up as a filecoin message
@@ -433,17 +433,18 @@ func (a *EthModule) EthGetMessageCidByTransactionHash(ctx context.Context, txHas
 	if txHash == nil {
 		return nil, nil
 	}
+	if a.ChainIndexer == nil {
+		return nil, errors.New("chain indexer is disabled; please enable the ChainIndexer to use the ETH RPC API")
+	}
 
 	var c cid.Cid
 	var err error
-	if a.ChainIndexer != nil {
-		c, err = a.ChainIndexer.GetCidFromHash(ctx, *txHash)
-		if err != nil && errors.Is(err, index.ErrNotFound) {
-			log.Debug("could not find transaction hash %s in chain indexer", txHash.String())
-		} else if err != nil {
-			log.Errorf("failed to lookup transaction hash %s in chain indexer: %s", txHash.String(), err)
-			return nil, xerrors.Errorf("failed to lookup transaction hash %s in chain indexer: %w", txHash.String(), err)
-		}
+	c, err = a.ChainIndexer.GetCidFromHash(ctx, *txHash)
+	if err != nil && errors.Is(err, index.ErrNotFound) {
+		log.Debug("could not find transaction hash %s in chain indexer", txHash.String())
+	} else if err != nil {
+		log.Errorf("failed to lookup transaction hash %s in chain indexer: %s", txHash.String(), err)
+		return nil, xerrors.Errorf("failed to lookup transaction hash %s in chain indexer: %w", txHash.String(), err)
 	}
 
 	if errors.Is(err, index.ErrNotFound) {
@@ -539,15 +540,16 @@ func (a *EthModule) EthGetTransactionReceipt(ctx context.Context, txHash ethtype
 func (a *EthModule) EthGetTransactionReceiptLimited(ctx context.Context, txHash ethtypes.EthHash, limit abi.ChainEpoch) (*api.EthTxReceipt, error) {
 	var c cid.Cid
 	var err error
+	if a.ChainIndexer == nil {
+		return nil, errors.New("chain indexer is disabled; please enable the ChainIndexer to use the ETH RPC API")
+	}
 
-	if a.ChainIndexer != nil {
-		c, err = a.ChainIndexer.GetCidFromHash(ctx, txHash)
-		if err != nil && errors.Is(err, index.ErrNotFound) {
-			log.Debug("could not find transaction hash %s in chain indexer", txHash.String())
-		} else if err != nil {
-			log.Errorf("failed to lookup transaction hash %s in chain indexer: %s", txHash.String(), err)
-			return nil, xerrors.Errorf("failed to lookup transaction hash %s in chain indexer: %w", txHash.String(), err)
-		}
+	c, err = a.ChainIndexer.GetCidFromHash(ctx, txHash)
+	if err != nil && errors.Is(err, index.ErrNotFound) {
+		log.Debug("could not find transaction hash %s in chain indexer", txHash.String())
+	} else if err != nil {
+		log.Errorf("failed to lookup transaction hash %s in chain indexer: %s", txHash.String(), err)
+		return nil, xerrors.Errorf("failed to lookup transaction hash %s in chain indexer: %w", txHash.String(), err)
 	}
 
 	// This isn't an eth transaction we have the mapping for, so let's look it up as a filecoin message
