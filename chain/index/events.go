@@ -423,7 +423,18 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter)
 		return nil, xerrors.Errorf("failed to get events: %w", err)
 	}
 	if len(ces) == 0 {
-		if f.MaxHeight > 0 {
+		height := f.MaxHeight
+		if f.TipsetCid != cid.Undef {
+			ts, err := si.cs.GetTipSetByCid(ctx, f.TipsetCid)
+			if err != nil {
+				return nil, xerrors.Errorf("failed to get tipset by cid: %w", err)
+			}
+			if ts == nil {
+				return nil, xerrors.Errorf("failed to get tipset from cid: tipset is nil for cid: %s", f.TipsetCid)
+			}
+			height = ts.Height()
+		}
+		if height > 0 {
 			head := si.cs.GetHeaviestTipSet()
 			if head == nil {
 				return nil, errors.New("failed to get head: head is nil")
@@ -431,7 +442,9 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter)
 			headHeight := head.Height()
 			maxLookBackHeight := headHeight - maxLookBackForWait
 
-			if f.MaxHeight <= maxLookBackHeight {
+			// if the height is old enough, we'll assume the index is caught up to it and not bother
+			// waiting for it to be indexed
+			if height <= maxLookBackHeight {
 				return nil, si.checkTipsetIndexedStatus(ctx, f)
 			}
 		}
