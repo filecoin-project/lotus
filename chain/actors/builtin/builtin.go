@@ -8,8 +8,8 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v15/miner"
 	smoothingtypes "github.com/filecoin-project/go-state-types/builtin/v8/util/smoothing"
-	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/go-state-types/proof"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
@@ -56,8 +56,8 @@ type ExtendedSectorInfo = proof.ExtendedSectorInfo
 type PoStProof = proof.PoStProof
 type FilterEstimate = smoothingtypes.FilterEstimate
 
-func QAPowerForWeight(size abi.SectorSize, duration abi.ChainEpoch, dealWeight, verifiedWeight abi.DealWeight) abi.StoragePower {
-	return minertypes.QAPowerForWeight(size, duration, dealWeight, verifiedWeight)
+func QAPowerForWeight(size abi.SectorSize, duration abi.ChainEpoch, verifiedWeight abi.DealWeight) abi.StoragePower {
+	return minertypes.QAPowerForWeight(size, duration, verifiedWeight)
 }
 
 func ActorNameByCode(c cid.Cid) string {

@@ -14,8 +14,7 @@
 - Add logic to check if the miner's owner address is delegated (f4 address). If it is delegated, the `lotus-shed sectors termination-estimate` command now sends the termination state call using the worker ID. This fix resolves the issue where termination-estimate did not function correctly for miners with delegated owner addresses. ([filecoin-project/lotus#12569](https://github.com/filecoin-project/lotus/pull/12569))
 
 ## Improvements
-
-## Improvements
+- The miner actor builtin `QAPowerForWeight` no longer accepts the unused "dealWeight" parameter, the function signature now only takes 3 arguments: sectorSize, sectorDuration, verifiedWeight. ([filecoin-project/lotus#12445](https://github.com/filecoin-project/lotus/pull/12445))
 
 ## Deps
 

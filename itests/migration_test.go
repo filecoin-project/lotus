@@ -1120,7 +1120,7 @@ func preFip0081StateMinerInitialPledgeForSector(ctx context.Context, t *testing.
 	req.NoError(err)
 
 	verifiedWeight := big.Mul(big.NewIntUnsigned(verifiedSize), big.NewInt(int64(sectorDuration)))
-	sectorWeight := builtin2.QAPowerForWeight(sectorSize, sectorDuration, big.Zero(), verifiedWeight)
+	sectorWeight := builtin2.QAPowerForWeight(sectorSize, sectorDuration, verifiedWeight)
 
 	thisEpochBaselinePower, err := rewardState.(interface {
 		ThisEpochBaselinePower() (abi.StoragePower, error)
