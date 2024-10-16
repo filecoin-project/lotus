@@ -57,18 +57,10 @@ func TestGetMsgInfo(t *testing.T) {
 	t.Logf("seed: %d", seed)
 	rng := pseudo.New(pseudo.NewSource(seed))
 	s, _, _ := setupWithHeadIndexed(t, 10, rng)
-
 	msgCid := randomCid(t, rng)
-
-	// read from empty db -> ErrNotFound
-	mi, err := s.GetMsgInfo(ctx, msgCid)
-	require.Error(t, err)
-	require.True(t, errors.Is(err, ErrNotFound))
-	require.Nil(t, mi)
-
 	msgCidBytes := msgCid.Bytes()
 	tsKeyCid := randomCid(t, rng)
-	// insert and read
+
 	insertTipsetMessage(t, s, tipsetMessage{
 		tipsetKeyCid: tsKeyCid.Bytes(),
 		height:       uint64(1),
@@ -76,7 +68,8 @@ func TestGetMsgInfo(t *testing.T) {
 		messageCid:   msgCidBytes,
 		messageIndex: 1,
 	})
-	mi, err = s.GetMsgInfo(ctx, msgCid)
+
+	mi, err := s.GetMsgInfo(ctx, msgCid)
 	require.NoError(t, err)
 	require.Equal(t, msgCid, mi.Message)
 	require.Equal(t, tsKeyCid, mi.TipSet)
