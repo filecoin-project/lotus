@@ -26,7 +26,7 @@ func TestGetEventsForFilterNoEvents(t *testing.T) {
 	rng := pseudo.New(pseudo.NewSource(seed))
 
 	headHeight := abi.ChainEpoch(60)
-	si, _, cs := setupWithHeadIndexed(t, headHeight, rng)
+	si, _, cs := setupWithHeadIndexed(t, headHeight, rng, nil)
 	t.Cleanup(func() { _ = si.Close() })
 
 	// Create a fake tipset at height 1
@@ -87,8 +87,6 @@ func TestGetEventsForFilterWithEvents(t *testing.T) {
 	t.Logf("seed: %d", seed)
 	rng := pseudo.New(pseudo.NewSource(seed))
 	headHeight := abi.ChainEpoch(60)
-	si, _, cs := setupWithHeadIndexed(t, headHeight, rng)
-	t.Cleanup(func() { _ = si.Close() })
 
 	ev1 := fakeEvent(
 		abi.ActorID(1),
@@ -120,6 +118,11 @@ func TestGetEventsForFilterWithEvents(t *testing.T) {
 		evs: events,
 	}
 
+	si, _, cs := setupWithHeadIndexed(t, headHeight, rng, func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
+		return []executedMessage{em1}, nil
+	})
+	t.Cleanup(func() { _ = si.Close() })
+
 	si.SetActorToDelegatedAddresFunc(func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool) {
 		idAddr, err := address.NewIDAddress(uint64(emitter))
 		if err != nil {
@@ -127,10 +130,6 @@ func TestGetEventsForFilterWithEvents(t *testing.T) {
 		}
 
 		return idAddr, true
-	})
-
-	si.SetExecutedMessagesLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
-		return []executedMessage{em1}, nil
 	})
 
 	// Create a fake tipset at height 1
@@ -230,8 +229,6 @@ func TestGetEventsFilterByAddress(t *testing.T) {
 	t.Logf("seed: %d", seed)
 	rng := pseudo.New(pseudo.NewSource(seed))
 	headHeight := abi.ChainEpoch(60)
-	si, _, cs := setupWithHeadIndexed(t, headHeight, rng)
-	t.Cleanup(func() { _ = si.Close() })
 
 	addr1, err := address.NewIDAddress(1)
 	require.NoError(t, err)
@@ -272,6 +269,10 @@ func TestGetEventsFilterByAddress(t *testing.T) {
 		msg: fm,
 		evs: events,
 	}
+	si, _, cs := setupWithHeadIndexed(t, headHeight, rng, func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
+		return []executedMessage{em1}, nil
+	})
+	t.Cleanup(func() { _ = si.Close() })
 
 	si.SetActorToDelegatedAddresFunc(func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool) {
 		if emitter == abi.ActorID(1) {
@@ -282,10 +283,6 @@ func TestGetEventsFilterByAddress(t *testing.T) {
 			return address.Undef, false
 		}
 		return idAddr, true
-	})
-
-	si.SetExecutedMessagesLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
-		return []executedMessage{em1}, nil
 	})
 
 	// Create a fake tipset at height 1

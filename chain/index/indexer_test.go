@@ -15,7 +15,7 @@ func TestRestoreTipsetIfExists(t *testing.T) {
 	seed := time.Now().UnixNano()
 	t.Logf("seed: %d", seed)
 	rng := pseudo.New(pseudo.NewSource(seed))
-	si, _, _ := setupWithHeadIndexed(t, 10, rng)
+	si, _, _ := setupWithHeadIndexed(t, 10, rng, nil)
 
 	tsKeyCid := randomCid(t, rng)
 	tsKeyCidBytes := tsKeyCid.Bytes()

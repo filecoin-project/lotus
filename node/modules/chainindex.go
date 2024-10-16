@@ -71,12 +71,10 @@ func InitChainIndexer(lc fx.Lifecycle, mctx helpers.MetricsCtx, indexer index.In
 				return *actor.DelegatedAddress, true
 			})
 
-			executedMessagesLoaderFunc := index.MakeLoadExecutedMessages(func(ctx context.Context, ts *types.TipSet) error {
+			indexer.SetRecomputeTipSetStateFunc(func(ctx context.Context, ts *types.TipSet) error {
 				_, _, err := sm.RecomputeTipSetState(ctx, ts)
 				return err
 			})
-
-			indexer.SetExecutedMessagesLoaderFunc(executedMessagesLoaderFunc)
 
 			ch, err := mp.Updates(ctx)
 			if err != nil {

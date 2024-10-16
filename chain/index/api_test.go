@@ -64,7 +64,7 @@ func TestValidateIsNullRoundSimple(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			si, _, _ := setupWithHeadIndexed(t, headHeight, rng)
+			si, _, _ := setupWithHeadIndexed(t, headHeight, rng, nil)
 			t.Cleanup(func() { _ = si.Close() })
 
 			if tt.setupFunc != nil {
@@ -95,7 +95,7 @@ func TestFailureHeadHeight(t *testing.T) {
 	rng := pseudo.New(pseudo.NewSource(seed))
 	headHeight := abi.ChainEpoch(100)
 
-	si, head, _ := setupWithHeadIndexed(t, headHeight, rng)
+	si, head, _ := setupWithHeadIndexed(t, headHeight, rng, nil)
 	t.Cleanup(func() { _ = si.Close() })
 	si.Start()
 
@@ -111,7 +111,7 @@ func TestBackfillNullRound(t *testing.T) {
 	rng := pseudo.New(pseudo.NewSource(seed))
 	headHeight := abi.ChainEpoch(100)
 
-	si, _, cs := setupWithHeadIndexed(t, headHeight, rng)
+	si, _, cs := setupWithHeadIndexed(t, headHeight, rng, nil)
 	t.Cleanup(func() { _ = si.Close() })
 	si.Start()
 
@@ -139,7 +139,7 @@ func TestBackfillReturnsError(t *testing.T) {
 	rng := pseudo.New(pseudo.NewSource(seed))
 	headHeight := abi.ChainEpoch(100)
 
-	si, _, cs := setupWithHeadIndexed(t, headHeight, rng)
+	si, _, cs := setupWithHeadIndexed(t, headHeight, rng, nil)
 	t.Cleanup(func() { _ = si.Close() })
 	si.Start()
 
@@ -162,29 +162,11 @@ func TestBackfillMissingEpoch(t *testing.T) {
 	rng := pseudo.New(pseudo.NewSource(seed))
 	headHeight := abi.ChainEpoch(100)
 
-	si, _, cs := setupWithHeadIndexed(t, headHeight, rng)
-	t.Cleanup(func() { _ = si.Close() })
-	si.Start()
-
-	// Initialize address resolver
-	si.SetActorToDelegatedAddresFunc(func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool) {
-		idAddr, err := address.NewIDAddress(uint64(emitter))
-		if err != nil {
-			return address.Undef, false
-		}
-		return idAddr, true
-	})
-
 	missingEpoch := abi.ChainEpoch(50)
 
 	parentTs := fakeTipSet(t, rng, missingEpoch-1, []cid.Cid{})
-	cs.SetTipsetByHeightAndKey(missingEpoch-1, parentTs.Key(), parentTs)
-
 	missingTs := fakeTipSet(t, rng, missingEpoch, parentTs.Cids())
-	cs.SetTipsetByHeightAndKey(missingEpoch, missingTs.Key(), missingTs)
-
 	executionTs := fakeTipSet(t, rng, missingEpoch+1, missingTs.Key().Cids())
-	cs.SetTipsetByHeightAndKey(missingEpoch+1, executionTs.Key(), executionTs)
 
 	// Create fake messages and events
 	fakeMsg := fakeMessage(randomIDAddr(t, rng), randomIDAddr(t, rng))
@@ -195,13 +177,29 @@ func TestBackfillMissingEpoch(t *testing.T) {
 		evs: []types.Event{*fakeEvent},
 	}
 
-	cs.SetMessagesForTipset(missingTs, []types.ChainMsg{fakeMsg})
-	si.SetExecutedMessagesLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
+	si, _, cs := setupWithHeadIndexed(t, headHeight, rng, func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
 		if msgTs.Height() == missingTs.Height() {
 			return []executedMessage{executedMsg}, nil
 		}
 		return nil, nil
 	})
+	t.Cleanup(func() { _ = si.Close() })
+	si.Start()
+
+	cs.SetTipsetByHeightAndKey(missingEpoch-1, parentTs.Key(), parentTs)
+	cs.SetTipsetByHeightAndKey(missingEpoch, missingTs.Key(), missingTs)
+	cs.SetTipsetByHeightAndKey(missingEpoch+1, executionTs.Key(), executionTs)
+
+	// Initialize address resolver
+	si.SetActorToDelegatedAddresFunc(func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool) {
+		idAddr, err := address.NewIDAddress(uint64(emitter))
+		if err != nil {
+			return address.Undef, false
+		}
+		return idAddr, true
+	})
+
+	cs.SetMessagesForTipset(missingTs, []types.ChainMsg{fakeMsg})
 
 	// Attempt to validate and backfill the missing epoch
 	result, err := si.ChainValidateIndex(ctx, missingEpoch, true)
@@ -231,10 +229,11 @@ func TestIndexCorruption(t *testing.T) {
 	headHeight := abi.ChainEpoch(100)
 
 	tests := []struct {
-		name          string
-		setupFunc     func(*testing.T, *SqliteIndexer, *dummyChainStore)
-		epoch         abi.ChainEpoch
-		errorContains string
+		name             string
+		setupFunc        func(*testing.T, *SqliteIndexer, *dummyChainStore)
+		executedMessages []executedMessage
+		epoch            abi.ChainEpoch
+		errorContains    string
 	}{
 		{
 			name: "only reverted tipsets",
@@ -358,17 +357,13 @@ func TestIndexCorruption(t *testing.T) {
 					messageIndex: 1,
 				})
 
-				// Setup dummy event loader
-				si.SetExecutedMessagesLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
-					return []executedMessage{{msg: fakeMessage(randomIDAddr(t, rng), randomIDAddr(t, rng))}}, nil
-				})
-
 				// Set up the next tipset for event execution
 				nextTs := fakeTipSet(t, rng, epoch+1, ts.Key().Cids())
 				cs.SetTipsetByHeightAndKey(epoch+1, nextTs.Key(), nextTs)
 			},
-			epoch:         50,
-			errorContains: "failed to verify indexed data at height 50: message count mismatch for height 50: chainstore has 1, index has 2",
+			executedMessages: []executedMessage{{msg: fakeMessage(randomIDAddr(t, rng), randomIDAddr(t, rng))}},
+			epoch:            50,
+			errorContains:    "failed to verify indexed data at height 50: message count mismatch for height 50: chainstore has 1, index has 2",
 		},
 		{
 			name: "event count mismatch",
@@ -404,19 +399,16 @@ func TestIndexCorruption(t *testing.T) {
 					reverted:    false,
 				})
 
-				// Setup dummy event loader to return only one event
-				si.SetExecutedMessagesLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
-					return []executedMessage{
-						{
-							msg: fakeMessage(randomIDAddr(t, rng), randomIDAddr(t, rng)),
-							evs: []types.Event{*fakeEvent(1, []kv{{k: "test", v: []byte("value")}}, nil)},
-						},
-					}, nil
-				})
-
 				// Set up the next tipset for event execution
 				nextTs := fakeTipSet(t, rng, epoch+1, ts.Key().Cids())
 				cs.SetTipsetByHeightAndKey(epoch+1, nextTs.Key(), nextTs)
+			},
+			// Setup dummy events loader to return only one event
+			executedMessages: []executedMessage{
+				{
+					msg: fakeMessage(randomIDAddr(t, rng), randomIDAddr(t, rng)),
+					evs: []types.Event{*fakeEvent(1, []kv{{k: "test", v: []byte("value")}}, nil)},
+				},
 			},
 			epoch:         50,
 			errorContains: "failed to verify indexed data at height 50: event count mismatch for height 50: chainstore has 1, index has 2",
@@ -464,19 +456,16 @@ func TestIndexCorruption(t *testing.T) {
 					value:   []byte("value2"),
 				})
 
-				// Setup dummy event loader to return one event with only one entry
-				si.SetExecutedMessagesLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
-					return []executedMessage{
-						{
-							msg: fakeMessage(randomIDAddr(t, rng), randomIDAddr(t, rng)),
-							evs: []types.Event{*fakeEvent(1, []kv{{k: "key1", v: []byte("value1")}}, nil)},
-						},
-					}, nil
-				})
-
 				// Set up the next tipset for event execution
 				nextTs := fakeTipSet(t, rng, epoch+1, ts.Key().Cids())
 				cs.SetTipsetByHeightAndKey(epoch+1, nextTs.Key(), nextTs)
+			},
+			// Setup dummy events loader to return one event with only one entry
+			executedMessages: []executedMessage{
+				{
+					msg: fakeMessage(randomIDAddr(t, rng), randomIDAddr(t, rng)),
+					evs: []types.Event{*fakeEvent(1, []kv{{k: "key1", v: []byte("value1")}}, nil)},
+				},
 			},
 			epoch:         50,
 			errorContains: "failed to verify indexed data at height 50: event entries count mismatch for height 50: chainstore has 1, index has 2",
@@ -485,7 +474,9 @@ func TestIndexCorruption(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			si, _, cs := setupWithHeadIndexed(t, headHeight, rng)
+			si, _, cs := setupWithHeadIndexed(t, headHeight, rng, func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
+				return tt.executedMessages, nil
+			})
 			t.Cleanup(func() { _ = si.Close() })
 			si.Start()
 

@@ -27,7 +27,7 @@ func TestGetCidFromHash(t *testing.T) {
 	rng := pseudo.New(pseudo.NewSource(seed))
 	ctx := context.Background()
 
-	s, _, _ := setupWithHeadIndexed(t, 10, rng)
+	s, _, _ := setupWithHeadIndexed(t, 10, rng, nil)
 
 	ethTxHash := ethtypes.EthHash([32]byte{1})
 	msgCid := randomCid(t, rng)
@@ -56,7 +56,7 @@ func TestGetMsgInfo(t *testing.T) {
 	seed := time.Now().UnixNano()
 	t.Logf("seed: %d", seed)
 	rng := pseudo.New(pseudo.NewSource(seed))
-	s, _, _ := setupWithHeadIndexed(t, 10, rng)
+	s, _, _ := setupWithHeadIndexed(t, 10, rng, nil)
 
 	msgCid := randomCid(t, rng)
 
@@ -83,12 +83,18 @@ func TestGetMsgInfo(t *testing.T) {
 	require.Equal(t, abi.ChainEpoch(1), mi.Epoch)
 }
 
-func setupWithHeadIndexed(t *testing.T, headHeight abi.ChainEpoch, rng *pseudo.Rand) (*SqliteIndexer, *types.TipSet, *dummyChainStore) {
+func setupWithHeadIndexed(t *testing.T, headHeight abi.ChainEpoch, rng *pseudo.Rand, executedMessagesLoaderFunc emsLoaderFunc) (*SqliteIndexer, *types.TipSet, *dummyChainStore) {
 	head := fakeTipSet(t, rng, headHeight, []cid.Cid{})
 	d := newDummyChainStore()
 	d.SetHeaviestTipSet(head)
 
-	s, err := NewSqliteIndexer(":memory:", d, 0, false, 0)
+	var s *SqliteIndexer
+	var err error
+	if executedMessagesLoaderFunc == nil {
+		s, err = NewSqliteIndexer(":memory:", d, 0, false, 0)
+	} else {
+		s, err = NewSqliteIndexerWithExecutedMessagesLoader(":memory:", d, 0, false, 0, executedMessagesLoaderFunc)
+	}
 	require.NoError(t, err)
 	insertHead(t, s, head, headHeight)
 

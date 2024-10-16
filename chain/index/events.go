@@ -136,14 +136,7 @@ func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *typ
 	return nil
 }
 
-func MakeLoadExecutedMessages(recomputeTipSetStateFunc recomputeTipSetStateFunc) func(ctx context.Context,
-	cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
-	return func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
-		return loadExecutedMessages(ctx, cs, recomputeTipSetStateFunc, msgTs, rctTs)
-	}
-}
-
-func loadExecutedMessages(ctx context.Context, cs ChainStore, recomputeTipSetStateFunc recomputeTipSetStateFunc, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
+func (si *SqliteIndexer) loadExecutedMessages(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
 	msgs, err := cs.MessagesForTipset(ctx, msgTs)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get messages for tipset: %w", err)
@@ -184,12 +177,12 @@ func loadExecutedMessages(ctx context.Context, cs ChainStore, recomputeTipSetSta
 				return nil, xerrors.Errorf("failed to load events root for message %s: err: %w", ems[i].msg.Cid(), err)
 			}
 
-			if recomputeTipSetStateFunc == nil {
+			if si.recomputeTipSetStateFunc == nil {
 				return nil, xerrors.Errorf("failed to load events amt for message %s: %w", ems[i].msg.Cid(), err)
 			}
 			log.Warnf("failed to load events amt for message %s: %s; recomputing tipset state to regenerate events", ems[i].msg.Cid(), err)
 
-			if err := recomputeTipSetStateFunc(ctx, msgTs); err != nil {
+			if err := si.recomputeTipSetStateFunc(ctx, msgTs); err != nil {
 				return nil, xerrors.Errorf("failed to recompute missing events; failed to recompute tipset state: %w", err)
 			}
 

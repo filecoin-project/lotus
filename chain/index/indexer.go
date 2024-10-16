@@ -22,8 +22,9 @@ var _ Indexer = (*SqliteIndexer)(nil)
 
 // ActorToDelegatedAddressFunc is a function type that resolves an actor ID to a DelegatedAddress if one exists for that actor, otherwise returns nil
 type ActorToDelegatedAddressFunc func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool)
+type RecomputeTipSetStateFunc func(ctx context.Context, ts *types.TipSet) error
+
 type emsLoaderFunc func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error)
-type recomputeTipSetStateFunc func(ctx context.Context, ts *types.TipSet) error
 
 type preparedStatements struct {
 	insertEthTxHashStmt                   *sql.Stmt
@@ -66,6 +67,7 @@ type SqliteIndexer struct {
 	cs ChainStore
 
 	actorToDelegatedAddresFunc ActorToDelegatedAddressFunc
+	recomputeTipSetStateFunc   RecomputeTipSetStateFunc
 	executedMessagesLoaderFunc emsLoaderFunc
 
 	stmts *preparedStatements
@@ -87,8 +89,15 @@ type SqliteIndexer struct {
 	writerLk sync.Mutex
 }
 
-func NewSqliteIndexer(path string, cs ChainStore, gcRetentionEpochs int64, reconcileEmptyIndex bool,
-	maxReconcileTipsets uint64) (si *SqliteIndexer, err error) {
+func NewSqliteIndexer(path string, cs ChainStore, gcRetentionEpochs int64, reconcileEmptyIndex bool, maxReconcileTipsets uint64) (si *SqliteIndexer, err error) {
+	return NewSqliteIndexerWithExecutedMessagesLoader(path, cs, gcRetentionEpochs, reconcileEmptyIndex, maxReconcileTipsets, nil)
+}
+
+// NewSqliteIndexerWithExecutedMessagesLoader creates a new SqliteIndexer with a custom executed messages loader function.
+// This is useful for testing and for injecting a custom loader function that can be used to load executed messages from the chain store.
+// Typical use of the SqliteIndexer should use NewSqliteIndexer instead.
+func NewSqliteIndexerWithExecutedMessagesLoader(path string, cs ChainStore, gcRetentionEpochs int64, reconcileEmptyIndex bool,
+	maxReconcileTipsets uint64, executedMessagesLoaderFunc emsLoaderFunc) (si *SqliteIndexer, err error) {
 
 	if gcRetentionEpochs != 0 && gcRetentionEpochs < builtin.EpochsInDay {
 		return nil, xerrors.Errorf("gc retention epochs must be 0 or greater than %d", builtin.EpochsInDay)
@@ -114,16 +123,21 @@ func NewSqliteIndexer(path string, cs ChainStore, gcRetentionEpochs int64, recon
 	}
 
 	si = &SqliteIndexer{
-		ctx:                 ctx,
-		cancel:              cancel,
-		db:                  db,
-		cs:                  cs,
-		updateSubs:          make(map[uint64]*updateSub),
-		subIdCounter:        0,
-		gcRetentionEpochs:   gcRetentionEpochs,
-		reconcileEmptyIndex: reconcileEmptyIndex,
-		maxReconcileTipsets: maxReconcileTipsets,
-		stmts:               &preparedStatements{},
+		ctx:                        ctx,
+		cancel:                     cancel,
+		db:                         db,
+		cs:                         cs,
+		updateSubs:                 make(map[uint64]*updateSub),
+		subIdCounter:               0,
+		gcRetentionEpochs:          gcRetentionEpochs,
+		reconcileEmptyIndex:        reconcileEmptyIndex,
+		maxReconcileTipsets:        maxReconcileTipsets,
+		stmts:                      &preparedStatements{},
+		executedMessagesLoaderFunc: executedMessagesLoaderFunc,
+	}
+
+	if si.executedMessagesLoaderFunc == nil {
+		si.executedMessagesLoaderFunc = si.loadExecutedMessages
 	}
 
 	if err = si.initStatements(); err != nil {
@@ -144,8 +158,8 @@ func (si *SqliteIndexer) SetActorToDelegatedAddresFunc(actorToDelegatedAddresFun
 	si.actorToDelegatedAddresFunc = actorToDelegatedAddresFunc
 }
 
-func (si *SqliteIndexer) SetExecutedMessagesLoaderFunc(eventLoaderFunc emsLoaderFunc) {
-	si.executedMessagesLoaderFunc = eventLoaderFunc
+func (si *SqliteIndexer) SetRecomputeTipSetStateFunc(recomputeTipSetStateFunc RecomputeTipSetStateFunc) {
+	si.recomputeTipSetStateFunc = recomputeTipSetStateFunc
 }
 
 func (si *SqliteIndexer) Close() error {

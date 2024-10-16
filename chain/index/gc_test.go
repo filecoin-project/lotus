@@ -20,10 +20,6 @@ func TestGC(t *testing.T) {
 	t.Logf("seed: %d", seed)
 	rng := pseudo.New(pseudo.NewSource(seed))
 	headHeight := abi.ChainEpoch(60)
-	si, _, cs := setupWithHeadIndexed(t, headHeight, rng)
-	t.Cleanup(func() { _ = si.Close() })
-
-	si.gcRetentionEpochs = 20
 
 	ev1 := fakeEvent(
 		abi.ActorID(1),
@@ -55,6 +51,16 @@ func TestGC(t *testing.T) {
 		evs: events,
 	}
 
+	si, _, cs := setupWithHeadIndexed(t, headHeight, rng, func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
+		if msgTs.Height() == 1 {
+			return []executedMessage{em1}, nil
+		}
+		return nil, nil
+	})
+	t.Cleanup(func() { _ = si.Close() })
+
+	si.gcRetentionEpochs = 20
+
 	si.SetActorToDelegatedAddresFunc(func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool) {
 		idAddr, err := address.NewIDAddress(uint64(emitter))
 		if err != nil {
@@ -62,13 +68,6 @@ func TestGC(t *testing.T) {
 		}
 
 		return idAddr, true
-	})
-
-	si.SetExecutedMessagesLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
-		if msgTs.Height() == 1 {
-			return []executedMessage{em1}, nil
-		}
-		return nil, nil
 	})
 
 	// Create a fake tipset at height 1
