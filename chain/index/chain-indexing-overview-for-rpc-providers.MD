@@ -72,15 +72,25 @@ The ChainIndexer [periodically runs](https://github.com/filecoin-project/lotus/b
 
 ```toml
 [Fevm]
-EthTxHashMappingLifetimeDays = 0
-
-TODO: https://github.com/filecoin-project/lotus/pull/12450#discussion_r1792743250
-> see note in #12421, this one is duplicated with a moved redirect
+EthTxHashMappingLifetimeDays
+DisableHistoricFilterAPI
 
 [Events]
-DisableHistoricFilterAPI = false
-DatabasePath = ""
+DisableHistoricFilterAPI
+DatabasePath
+
+[Index]
+EnableMsgIndex
 ```
+
+The previously deprecated `Fevm.Events` options are now also all removed:
+* `Fevm.Events.DatabasePath`
+* `Fevm.Events.DisableRealTimeFilterAPI`
+* `Fevm.Events.DisableHistoricFilterAPI`
+* `Fevm.Events.FilterTTL`
+* `Fevm.Events.MaxFilters`
+* `Fevm.Events.MaxFilterResults`
+* `Fevm.Events.MaxFilterHeightRange`
 
 ## Upgrade
 
