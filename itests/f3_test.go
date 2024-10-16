@@ -333,9 +333,6 @@ func setupWithStaticManifest(t *testing.T, manif *manifest.Manifest, testBootstr
 		return e.ms.Run(ctx)
 	})
 
-	// Assure manifest is picked up by all nodes.
-	e.ms.UpdateManifest(manif)
-	e.waitTillManifestChange(manif, 20*time.Second)
 	return e
 }
 
