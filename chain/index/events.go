@@ -339,15 +339,11 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter)
 			// The query will return all entries for all matching events, so we need to keep track
 			// of which event we are dealing with and create a new one each time we see a new id
 			if row.id != currentID {
-				if ce != nil {
-					ces = append(ces, ce)
-					ce = nil
-					// Unfortunately we can't easily incorporate the max results limit into the query due to the
-					// unpredictable number of rows caused by joins
-					// Break here to stop collecting rows
-					if f.MaxResults > 0 && len(ces) >= f.MaxResults {
-						break
-					}
+				// Unfortunately we can't easily incorporate the max results limit into the query due to the
+				// unpredictable number of rows caused by joins
+				// Break here to stop collecting rows
+				if f.MaxResults > 0 && len(ces) >= f.MaxResults {
+					break
 				}
 
 				currentID = row.id
@@ -357,6 +353,7 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter)
 					Height:   abi.ChainEpoch(row.height),
 					MsgIdx:   row.messageIndex,
 				}
+				ces = append(ces, ce)
 
 				if row.emitterAddr == nil {
 					ce.EmitterAddr, err = address.NewIDAddress(row.emitterID)
@@ -397,10 +394,6 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter)
 				Codec: row.codec,
 				Value: row.value,
 			})
-		}
-
-		if ce != nil {
-			ces = append(ces, ce)
 		}
 
 		if len(ces) == 0 {
