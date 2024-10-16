@@ -492,10 +492,7 @@ func makePrefillFilterQuery(f *EventFilter) ([]any, string, error) {
 				return nil, "", xerrors.Errorf("filter must specify either a tipset or a height range")
 			}
 		}
-	}
-
-	// unless asking for a specific tipset, we never want to see reverted historical events
-	if f.TipsetCid == cid.Undef {
+		// unless asking for a specific tipset, we never want to see reverted historical events
 		clauses = append(clauses, "e.reverted=?")
 		values = append(values, false)
 	}
