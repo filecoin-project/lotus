@@ -1,8 +1,30 @@
-TODO: https://github.com/filecoin-project/lotus/pull/12450#discussion_r1772125029
-move this to lotus-docs
+# ChainIndexer Documentation for RPC Providers <!-- omit in toc -->
 
-# ChainIndexer Documentation for RPC Providers
-  
+- [Introduction](#introduction)
+- [ChainIndexer Config](#chainindexer-config)
+  - [Enablement](#enablement)
+  - [Garbage Collection](#garbage-collection)
+    - [Recommendations](#recommendations)
+  - [Removed Options](#removed-options)
+- [Upgrade](#upgrade)
+  - [Part 1: Preparation](#part-1-preparation)
+  - [Part 2: Create a Backfilled ChainIndexer `chainindex.db`](#part-2-create-a-backfilled-chainindexer-chainindexdb)
+  - [Part 3: Create a copyable `chainindex.db`](#part-3-create-a-copyable-chainindexdb)
+  - [Part 4: Update Other Nodes](#part-4-update-other-nodes)
+  - [Part 5: Cleanup](#part-5-cleanup)
+- [Backfill](#backfill)
+  - [Backfill Timing](#backfill-timing)
+  - [Backfill Disk Space Requirements](#backfill-disk-space-requirements)
+  - [`lotus-shed chainindex validate-backfill` CLI tool](#lotus-shed-chainindex-validate-backfill-cli-tool)
+    - [Usage](#usage)
+- [Downgrade Steps](#downgrade-steps)
+- [Terminology](#terminology)
+  - [Previous Indexing System](#previous-indexing-system)
+  - [ChainIndexer Indexing System](#chainindexer-indexing-system)
+- [Appendix](#appendix)
+  - [Wny isn't there an automated migration from the previous indexing system to the ChainIndexer indexing system?](#wny-isnt-there-an-automated-migration-from-the-previous-indexing-system-to-the-chainindexer-indexing-system)
+  - [`ChainValidateIndex` RPC API](#chainvalidateindex-rpc-api)
+
 ## Introduction
 
 This document is for externally-available and/or high-performance RPC providers.  It walks through the configuration changes, migration flow and operations/maintenance work needed to enable, backfill and maintain the [`ChainIndexer`](#chainindexer-indexing-system).  The justification for and benefits of the `ChainIndexer` are documented [here](https://github.com/filecoin-project/lotus/issues/12453). 
