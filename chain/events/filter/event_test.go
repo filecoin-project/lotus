@@ -441,7 +441,10 @@ func (a addressMap) add(actorID abi.ActorID, addr address.Address) {
 	a[actorID] = addr
 }
 
-func (a addressMap) ResolveAddress(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool) {
+func (a addressMap) ResolveAddress(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) address.Address {
 	ra, ok := a[emitter]
-	return ra, ok
+	if ok {
+		return ra
+	}
+	return address.Undef
 }

@@ -1,6 +1,7 @@
 # Lotus changelog
 
 # UNRELEASED
+- Improve eth filter performance for nodes serving many clients. ([filecoin-project/lotus#12603](https://github.com/filecoin-project/lotus/pull/12603))
 
 # Node and Miner v1.31.0-rc1 / 2024-11-12
 
