@@ -1496,8 +1496,7 @@ func TestEthCall(t *testing.T) {
 		require.Contains(t, dataErr.Error(), "execution reverted", "Expected 'execution reverted' message")
 
 		// Get the error data
-		errData := dataErr.ErrorData()
-		require.Contains(t, errData, "DivideByZero()", "Expected error data to contain 'DivideByZero()'")
+		require.Equal(t, dataErr.ErrorData(), "DivideByZero()", "Expected error data to contain 'DivideByZero()'")
 	})
 }
 
@@ -1523,7 +1522,7 @@ func TestEthEstimateGas(t *testing.T) {
 	}{
 		{"DivideByZero", "failDivZero()", "DivideByZero()", "execution reverted"},
 		{"Assert", "failAssert()", "Assert()", "execution reverted"},
-		{"RevertWithReason", "failRevertReason()", "Error(my reason)", "execution reverted: my reason"},
+		{"RevertWithReason", "failRevertReason()", "Error(my reason)", "execution reverted"},
 		{"RevertEmpty", "failRevertEmpty()", "", "execution reverted"},
 	}
 
@@ -1545,10 +1544,9 @@ func TestEthEstimateGas(t *testing.T) {
 			if tc.expectedError != "" {
 				require.Error(t, err)
 				var dataErr jsonrpc.ErrorWithData
-				require.ErrorAs(t, err, &dataErr)
-				require.Contains(t, dataErr.Error(), "execution reverted", "Expected 'execution reverted' message")
-				errData := dataErr.ErrorData()
-				require.Contains(t, errData, tc.expectedError)
+				require.ErrorAs(t, err, &dataErr, "Expected error to implement jsonrpc.DataError")
+				require.Equal(t, tc.expectedErrMsg, dataErr.Error())
+				require.Contains(t, tc.expectedError, dataErr.ErrorData())
 			}
 		})
 	}

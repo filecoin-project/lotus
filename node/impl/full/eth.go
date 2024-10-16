@@ -1433,8 +1433,7 @@ func (a *EthModule) applyMessage(ctx context.Context, msg *types.Message, tsk ty
 	}
 
 	if res.MsgRct.ExitCode.IsError() {
-		return nil, ethtypes.NewExecutionRevertedError(
-			int(res.MsgRct.ExitCode),
+		return nil, api.NewErrExecutionRevertedWithData(
 			parseEthRevert(res.MsgRct.Return),
 		)
 	}
@@ -1478,8 +1477,8 @@ func (a *EthModule) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (et
 		msg.GasLimit = buildconstants.BlockGasLimit
 		if _, err2 := a.applyMessage(ctx, msg, ts.Key()); err2 != nil {
 			// If err2 is an ExecutionRevertedError, return it
-			var executionRevertedError *ethtypes.ExecutionRevertedError
-			if errors.As(err2, &executionRevertedError) {
+			var ed *api.ErrExecutionRevertedWithData
+			if errors.As(err2, &ed) {
 				return ethtypes.EthUint64(0), err2
 			}
 

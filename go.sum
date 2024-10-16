@@ -1279,8 +1279,8 @@ github.com/valyala/fasttemplate v1.0.1 h1:tY9CJiPnMXf1ERmG2EyK7gNUd+c6RKGD0IfU8W
 github.com/valyala/fasttemplate v1.0.1/go.mod h1:UQGH1tvbgY+Nz5t2n7tXsz52dQxojPUpymEIMZ47gx8=
 github.com/viant/assertly v0.4.8/go.mod h1:aGifi++jvCrUaklKEKT0BU95igDNaqkvz+49uaYMPRU=
 github.com/viant/toolbox v0.24.0/go.mod h1:OxMCG57V0PXuIP2HNQrtJf2CjqdmbrOx5EkMILuUhzM=
-github.com/virajbhartiya/go-jsonrpc v0.0.0-20241015140831-4358258fa25e h1:3h97ea4qBVrP4xGbJ0KWjvl7tERC7YdWxzaIevyse90=
-github.com/virajbhartiya/go-jsonrpc v0.0.0-20241015140831-4358258fa25e/go.mod h1:lAUpS8BSVtKaA8+/CFUMA5dokMiSM7n0ehf8bHOFdpE=
+github.com/virajbhartiya/go-jsonrpc v0.0.0-20241016130229-4e33c9f29a6a h1:7iKYazcDTV1Gs3PZ3KM36ecW86eHXwf1hXhjt+obUt8=
+github.com/virajbhartiya/go-jsonrpc v0.0.0-20241016130229-4e33c9f29a6a/go.mod h1:lAUpS8BSVtKaA8+/CFUMA5dokMiSM7n0ehf8bHOFdpE=
 github.com/warpfork/go-testmark v0.12.1 h1:rMgCpJfwy1sJ50x0M0NgyphxYYPMOODIJHhsXyEHU0s=
 github.com/warpfork/go-testmark v0.12.1/go.mod h1:kHwy7wfvGSPh1rQJYKayD4AbtNaeyZdcGi9tNJTaa5Y=
 github.com/warpfork/go-wish v0.0.0-20180510122957-5ad1f5abf436/go.mod h1:x6AKhvSSexNrVSrViXSHUEbICjmGXhtgABaHIySUSGw=

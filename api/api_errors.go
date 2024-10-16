@@ -7,6 +7,8 @@ import (
 	"github.com/filecoin-project/go-jsonrpc"
 )
 
+const executionRevertedDefaultMsg = "execution reverted"
+
 const (
 	EOutOfGas = iota + jsonrpc.FirstUserCode
 	EActorNotFound
@@ -17,6 +19,7 @@ const (
 	EF3ParticipationTooManyInstances
 	EF3ParticipationTicketStartBeforeExisting
 	EF3NotReady
+	EExecutionRevertedWithData
 )
 
 var (
@@ -47,6 +50,7 @@ var (
 	_ error = (*errF3ParticipationTicketExpired)(nil)
 	_ error = (*errF3ParticipationIssuerMismatch)(nil)
 	_ error = (*errF3NotReady)(nil)
+	_ error = (*ErrExecutionRevertedWithData)(nil)
 )
 
 func init() {
@@ -59,6 +63,7 @@ func init() {
 	RPCErrors.Register(EF3ParticipationTooManyInstances, new(*errF3ParticipationTooManyInstances))
 	RPCErrors.Register(EF3ParticipationTicketStartBeforeExisting, new(*errF3ParticipationTicketStartBeforeExisting))
 	RPCErrors.Register(EF3NotReady, new(*errF3NotReady))
+	RPCErrors.Register(EExecutionRevertedWithData, new(*ErrExecutionRevertedWithData))
 }
 
 func ErrorIsIn(err error, errorTypes []error) bool {
@@ -110,3 +115,22 @@ func (errF3ParticipationTicketStartBeforeExisting) Error() string {
 type errF3NotReady struct{}
 
 func (errF3NotReady) Error() string { return "f3 isn't yet ready to participate" }
+
+type ErrExecutionRevertedWithData struct {
+	message string
+	data    string
+}
+
+// Error returns the error message.
+func (e *ErrExecutionRevertedWithData) Error() string { return e.message }
+
+// ErrorData returns the error data.
+func (e *ErrExecutionRevertedWithData) ErrorData() interface{} { return e.data }
+
+// NewErrExecutionRevertedWithData creates a new ErrExecutionRevertedWithData.
+func NewErrExecutionRevertedWithData(data string) *ErrExecutionRevertedWithData {
+	return &ErrExecutionRevertedWithData{
+		message: executionRevertedDefaultMsg,
+		data:    data,
+	}
+}
