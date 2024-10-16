@@ -24,7 +24,7 @@ func (e *ExecutionRevertedError) ErrorCode() int {
 	return e.Code
 }
 
-// NewExecutionRevertedErrorWithData returns an ExecutionRevertedError with the given code and data.
+// NewExecutionRevertedError returns an ExecutionRevertedError with the given code and data.
 func NewExecutionRevertedError(code int, data string) *ExecutionRevertedError {
 	return &ExecutionRevertedError{
 		Message: defaultMessage,
