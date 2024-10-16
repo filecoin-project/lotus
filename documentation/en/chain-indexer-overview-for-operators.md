@@ -46,6 +46,7 @@ The following must be enabled on an Lotus node before starting as they are disab
 
 [Events]
 # Enable the Actor Events APIs.
+# This is not required for ChainIndexer support, but ChainIndexer is required if you enable this.
   EnableActorEventsAPI = true
 
 [ChainIndexer]
