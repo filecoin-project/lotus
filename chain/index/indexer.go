@@ -23,7 +23,7 @@ var _ Indexer = (*SqliteIndexer)(nil)
 // ActorToDelegatedAddressFunc is a function type that resolves an actor ID to a DelegatedAddress if one exists for that actor, otherwise returns nil
 type ActorToDelegatedAddressFunc func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool)
 type emsLoaderFunc func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error)
-type recomputeTipSetStateFunc func(ctx context.Context, ts *types.TipSet) error
+type RecomputeTipSetStateFunc func(ctx context.Context, ts *types.TipSet) error
 
 type preparedStatements struct {
 	insertEthTxHashStmt                   *sql.Stmt
