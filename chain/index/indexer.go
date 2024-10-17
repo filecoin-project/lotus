@@ -144,11 +144,11 @@ func (si *SqliteIndexer) SetActorToDelegatedAddresFunc(actorToDelegatedAddresFun
 	si.actorToDelegatedAddresFunc = actorToDelegatedAddresFunc
 }
 
-func (si *SqliteIndexer) SetRecomputeTipSetStateFunc(f recomputeTipSetStateFunc) {
+func (si *SqliteIndexer) SetRecomputeTipSetStateFunc(f RecomputeTipSetStateFunc) {
 	si.buildExecutedMessagesLoader(f)
 }
 
-func (si *SqliteIndexer) buildExecutedMessagesLoader(rf recomputeTipSetStateFunc) {
+func (si *SqliteIndexer) buildExecutedMessagesLoader(rf RecomputeTipSetStateFunc) {
 	si.executedMessagesLoaderFunc = func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
 		return loadExecutedMessages(ctx, cs, rf, msgTs, rctTs)
 	}

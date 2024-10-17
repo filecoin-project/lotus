@@ -136,7 +136,7 @@ func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *typ
 	return nil
 }
 
-func loadExecutedMessages(ctx context.Context, cs ChainStore, recomputeTipSetStateFunc recomputeTipSetStateFunc, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
+func loadExecutedMessages(ctx context.Context, cs ChainStore, recomputeTipSetStateFunc RecomputeTipSetStateFunc, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
 	msgs, err := cs.MessagesForTipset(ctx, msgTs)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get messages for tipset: %w", err)
