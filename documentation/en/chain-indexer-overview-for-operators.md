@@ -151,7 +151,7 @@ One should also check to ensure they have [sufficient disk space](#backfill-disk
    - ChainIndexer-using nodes should have full correctness and better performance when compared to [pre-ChainIndexer](#previous-indexing-system) nodes.
 
 #### Part 2: Create a copyable `chainindex.db`
-[Part 3 below](#part-3-update-other-nodes) is going to use the backfilled `chainindex.db` from above with other nodes so they don't have to undergo as long of a backfill process.  That said, this backfilled `chaindex.db` shouldn't be done while the updated-and-backfilled node is running.  Options include :
+[Part 3 below](#part-3-update-other-nodes) is going to use the backfilled `chainindex.db` from above with other nodes so they don't have to undergo as long of a backfill process.  That said, this backfilled `chaindex.db` shouldn't be done while the updated-and-backfilled node is running.  Options include:
 1.  Stop the updated-and-backfilled node before copying it.
   * `cp ${LOTUS_PATH}/chainindex/chainindex.db /copy/destination/path/chainindex.db`
 2.  While the node is running, use the `sqlite3` CLI utility (which should be at least version 3.37) to clone it. 
@@ -192,17 +192,17 @@ Note: this upgrade path assumes one is starting a fresh node and importing chain
 4. **Start lotus with the snapshot import**
    - `lotus daemon --import-snapshot`
 5. **Wait for the Lotus daemon to sync**
-  * As the Lotus daemon syncs the chain, the ChainIndexer will automatically index the synced messages, but it will not automatically sync ETH RPC events and transactions.
+   - As the Lotus daemon syncs the chain, the ChainIndexer will automatically index the synced messages, but it will not automatically sync ETH RPC events and transactions.
 6. **Backfill so ETH RPC events and transactions are indexed as well**
    - See the ["Backfill" section below](#backfill).
    - This will look something like `lotus-shed chainindex validate-backfill --from <head_epoch> --to <epoch_corresponding_with_how_much_state_in_past_want_to_index>  --backfill`
-     - Example: if current head is epoch 4360000 and one wants to index a day's worth of epochs (2880), then they'd use `--from 4360000 --to 4357120`
+     - Example: if the current head is epoch 4360000 and one wants to index a day's worth of epochs (2880), then they'd use `--from 4360000 --to 4357120`
 6. **Ensure node health**
    - Perform whatever steps are usually done to validate a node's health before handling traffic (e.g., log scans, smoke tests)
 7. **Route traffic to the backfilled node that is now using ChainIndexer**
 
 ## Backfill
-There is no automated migration from [pre-ChainIndexer indices](#previous-indexing-system) to the [ChainIndex](#chainindexer-indexing-system).  Instead one needs to index historical chain state (i.e., backfill), if RPC access to that historical state is required. (If curious, [read why](#wny-isnt-there-an-automated-migration-from-the-previous-indexing-system-to-the-chainindexer-indexing-system).]
+There is no automated migration from [pre-ChainIndexer indices](#previous-indexing-system) to the [ChainIndex](#chainindexer-indexing-system).  Instead one needs to index historical chain state (i.e., backfill), if RPC access to that historical state is required. (If curious, [read why](#wny-isnt-there-an-automated-migration-from-the-previous-indexing-system-to-the-chainindexer-indexing-system).)
 
 ### Backfill Timing
 
@@ -262,7 +262,7 @@ In case you need to downgrade to the [previous indexing system](#previous-indexi
 
 ### Wny isn't there an automated migration from the [previous indexing system](#previous-indexing-system) to the [ChainIndexer indexing system](#chainindexer-indexing-system)?
 
-The decision not invest here ultimately comes down to the development-time cost vs. benefit ratio.
+The decision to not invest here ultimately comes down to the development-time cost vs. benefit ratio.
 
 For achival nodes, we don't have the confidence that the [previous indexing system](#previous-indexing-system) has the correct data to bootstrap from. In 2024, Lotus maintainers have fixed multiple bugs in the [previous indexing system](#previous-indexing-system), but they still see reports of missing data, mismatched event index counts, etc.  Investing here in a migration isn't guaranteed to yield a correct index. As a result, one would still need to perform the [backfill steps](#backfill) to validate and correct the data anyway.  While this should be faster having partially correct data than no data, it would still require an archival node to take an outage on the order of days which isn't good enough.
 
