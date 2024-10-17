@@ -88,12 +88,11 @@ func DefaultFullNode() *FullNode {
 			EthBlkCacheSize:          500,
 		},
 		Events: EventsConfig{
-			DisableRealTimeFilterAPI: false,
-			EnableActorEventsAPI:     false,
-			FilterTTL:                Duration(time.Hour * 1),
-			MaxFilters:               100,
-			MaxFilterResults:         10000,
-			MaxFilterHeightRange:     2880, // conservative limit of one day
+			EnableActorEventsAPI: false,
+			FilterTTL:            Duration(time.Hour * 1),
+			MaxFilters:           100,
+			MaxFilterResults:     10000,
+			MaxFilterHeightRange: 2880, // conservative limit of one day
 		},
 		ChainIndexer: ChainIndexerConfig{
 			EnableIndexer:       false,

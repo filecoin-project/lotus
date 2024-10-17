@@ -42,7 +42,7 @@ func EthEventHandler(cfg config.EventsConfig, enableEthRPC bool) func(helpers.Me
 			SubscribtionCtx:      ctx,
 		}
 
-		if !enableEthRPC || cfg.DisableRealTimeFilterAPI {
+		if !enableEthRPC {
 			// all event functionality is disabled
 			// the historic filter API relies on the real time one
 			return ee, nil
@@ -141,7 +141,7 @@ func EventFilterManager(cfg config.EventsConfig) func(helpers.MetricsCtx, repo.L
 
 func ActorEventHandler(cfg config.EventsConfig) func(helpers.MetricsCtx, repo.LockedRepo, fx.Lifecycle, *filter.EventFilterManager, *store.ChainStore, *stmgr.StateManager, EventHelperAPI, *messagepool.MessagePool, full.StateAPI, full.ChainAPI) (*full.ActorEventHandler, error) {
 	return func(mctx helpers.MetricsCtx, r repo.LockedRepo, lc fx.Lifecycle, fm *filter.EventFilterManager, cs *store.ChainStore, sm *stmgr.StateManager, evapi EventHelperAPI, mp *messagepool.MessagePool, stateapi full.StateAPI, chainapi full.ChainAPI) (*full.ActorEventHandler, error) {
-		if !cfg.EnableActorEventsAPI || cfg.DisableRealTimeFilterAPI {
+		if !cfg.EnableActorEventsAPI {
 			return full.NewActorEventHandler(
 				cs,
 				nil, // no EventFilterManager disables API calls

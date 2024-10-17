@@ -554,10 +554,6 @@ type FevmConfig struct {
 }
 
 type EventsConfig struct {
-	// DisableRealTimeFilterAPI will disable the RealTimeFilterAPI that can create and query filters for actor events as they are emitted.
-	// The API is enabled when Fevm.EnableEthRPC or EnableActorEventsAPI is true, but can be disabled selectively with this flag.
-	DisableRealTimeFilterAPI bool
-
 	// EnableActorEventsAPI enables the Actor events API that enables clients to consume events
 	// emitted by (smart contracts + built-in Actors).
 	// This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be
@@ -581,11 +577,6 @@ type EventsConfig struct {
 	// MaxFilterHeightRange specifies the maximum range of heights that can be used in a filter (to avoid querying
 	// the entire chain)
 	MaxFilterHeightRange uint64
-
-	// Others, not implemented yet:
-	// Set a limit on the number of active websocket subscriptions (may be zero)
-	// Set a timeout for subscription clients
-	// Set upper bound on index size
 }
 
 type ChainIndexerConfig struct {
