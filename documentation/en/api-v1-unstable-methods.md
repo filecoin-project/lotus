@@ -2643,7 +2643,11 @@ Inputs: `null`
 Response:
 ```json
 [
-  "f01234"
+  {
+    "MinerID": 42,
+    "FromInstance": 42,
+    "ValidityTerm": 42
+  }
 ]
 ```
 

@@ -7842,23 +7842,41 @@
         },
         {
             "name": "Filecoin.F3ListParticipants",
-            "description": "```go\nfunc (s *FullNodeStruct) F3ListParticipants(p0 context.Context) ([]address.Address, error) {\n\tif s.Internal.F3ListParticipants == nil {\n\t\treturn *new([]address.Address), ErrNotSupported\n\t}\n\treturn s.Internal.F3ListParticipants(p0)\n}\n```",
+            "description": "```go\nfunc (s *FullNodeStruct) F3ListParticipants(p0 context.Context) ([]F3Participant, error) {\n\tif s.Internal.F3ListParticipants == nil {\n\t\treturn *new([]F3Participant), ErrNotSupported\n\t}\n\treturn s.Internal.F3ListParticipants(p0)\n}\n```",
             "summary": "F3ListParticipants returns the list of miners that are currently participating in F3 via this node.\n",
             "paramStructure": "by-position",
             "params": [],
             "result": {
-                "name": "[]address.Address",
-                "description": "[]address.Address",
+                "name": "[]F3Participant",
+                "description": "[]F3Participant",
                 "summary": "",
                 "schema": {
                     "examples": [
                         [
-                            "f01234"
+                            {
+                                "MinerID": 42,
+                                "FromInstance": 42,
+                                "ValidityTerm": 42
+                            }
                         ]
                     ],
                     "items": [
                         {
                             "additionalProperties": false,
+                            "properties": {
+                                "FromInstance": {
+                                    "title": "number",
+                                    "type": "number"
+                                },
+                                "MinerID": {
+                                    "title": "number",
+                                    "type": "number"
+                                },
+                                "ValidityTerm": {
+                                    "title": "number",
+                                    "type": "number"
+                                }
+                            },
                             "type": [
                                 "object"
                             ]

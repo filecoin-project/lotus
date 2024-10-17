@@ -230,17 +230,19 @@ func (e *testEnv) allMinersParticipate() bool {
 	//  1) all miners are participating,
 	//  2) each miner is participating only via one node, and
 	//  3) each node has at least one participant.
-	minerIDs := make(map[address.Address]struct{})
+	minerIDs := make(map[uint64]struct{})
 	for _, miner := range e.miners {
-		minerIDs[miner.ActorAddr] = struct{}{}
+		id, err := address.IDFromAddress(miner.ActorAddr)
+		require.NoError(e.t, err)
+		minerIDs[id] = struct{}{}
 	}
 	for _, n := range e.nodes {
 		participants, err := n.F3ListParticipants(e.testCtx)
 		require.NoError(e.t, err)
 		var foundAtLeastOneMiner bool
-		for _, addr := range participants {
-			if _, found := minerIDs[addr]; found {
-				delete(minerIDs, addr)
+		for _, participant := range participants {
+			if _, found := minerIDs[participant.MinerID]; found {
+				delete(minerIDs, participant.MinerID)
 				foundAtLeastOneMiner = true
 			}
 		}

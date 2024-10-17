@@ -1336,10 +1336,10 @@ func (mr *MockFullNodeMockRecorder) F3IsRunning(arg0 interface{}) *gomock.Call {
 }
 
 // F3ListParticipants mocks base method.
-func (m *MockFullNode) F3ListParticipants(arg0 context.Context) ([]address.Address, error) {
+func (m *MockFullNode) F3ListParticipants(arg0 context.Context) ([]api.F3Participant, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "F3ListParticipants", arg0)
-	ret0, _ := ret[0].([]address.Address)
+	ret0, _ := ret[0].([]api.F3Participant)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

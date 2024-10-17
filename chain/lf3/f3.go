@@ -13,7 +13,6 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-f3"
 	"github.com/filecoin-project/go-f3/blssig"
 	"github.com/filecoin-project/go-f3/certs"
@@ -205,20 +204,15 @@ func (fff *F3) Progress() gpbft.Instant {
 	return fff.inner.Progress()
 }
 
-func (fff *F3) ListParticipants() ([]address.Address, error) {
-	currentManifest := fff.inner.Manifest()
-	if currentManifest == nil {
-		return nil, nil
-	}
-	progress := fff.inner.Progress()
-	participantIDs := fff.leaser.getParticipantsByInstance(currentManifest.NetworkName, progress.ID)
-	var addresses []address.Address
-	for _, id := range participantIDs {
-		addr, err := address.NewIDAddress(id)
-		if err != nil {
-			return nil, xerrors.Errorf("listing F3 participants: %w", err)
+func (fff *F3) ListParticipants() []api.F3Participant {
+	leases := fff.leaser.getValidLeases()
+	participants := make([]api.F3Participant, len(leases))
+	for i, lease := range leases {
+		participants[i] = api.F3Participant{
+			MinerID:      lease.MinerID,
+			FromInstance: lease.FromInstance,
+			ValidityTerm: lease.ValidityTerm,
 		}
-		addresses = append(addresses, addr)
 	}
-	return addresses, nil
+	return participants
 }

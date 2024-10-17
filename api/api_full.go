@@ -967,7 +967,7 @@ type FullNode interface {
 	// F3GetProgress returns the progress of the current F3 instance in terms of instance ID, round and phase.
 	F3GetProgress(ctx context.Context) (gpbft.Instant, error) //perm:read
 	// F3ListParticipants returns the list of miners that are currently participating in F3 via this node.
-	F3ListParticipants(ctx context.Context) ([]address.Address, error) //perm:read
+	F3ListParticipants(ctx context.Context) ([]F3Participant, error) //perm:read
 }
 
 // F3ParticipationTicket represents a ticket that authorizes a miner to
@@ -993,6 +993,19 @@ type F3ParticipationLease struct {
 
 func (l *F3ParticipationLease) ToInstance() uint64 {
 	return l.FromInstance + l.ValidityTerm
+}
+
+// F3Participant captures information about the miners that are currently
+// participating in F3, along with the number of instances for which their lease
+// is valid.
+type F3Participant struct {
+	// MinerID is the actor ID of the miner that is
+	MinerID uint64
+	// FromInstance specifies the instance ID from which this lease is valid.
+	FromInstance uint64
+	// ValidityTerm specifies the number of instances for which the lease remains
+	// valid from the FromInstance.
+	ValidityTerm uint64
 }
 
 // EthSubscriber is the reverse interface to the client, called after EthSubscribe
