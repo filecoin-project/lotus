@@ -93,6 +93,7 @@
   * [F3GetOrRenewParticipationTicket](#F3GetOrRenewParticipationTicket)
   * [F3GetProgress](#F3GetProgress)
   * [F3IsRunning](#F3IsRunning)
+  * [F3ListParticipants](#F3ListParticipants)
   * [F3Participate](#F3Participate)
 * [Filecoin](#Filecoin)
   * [FilecoinAddressToEthAddress](#FilecoinAddressToEthAddress)
@@ -2630,6 +2631,25 @@ Perms: read
 Inputs: `null`
 
 Response: `true`
+
+### F3ListParticipants
+F3ListParticipants returns the list of miners that are currently participating in F3 via this node.
+
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+[
+  {
+    "MinerID": 42,
+    "FromInstance": 42,
+    "ValidityTerm": 42
+  }
+]
+```
 
 ### F3Participate
 F3Participate enrolls a storage provider in the F3 consensus process using a

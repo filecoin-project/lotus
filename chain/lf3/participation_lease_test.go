@@ -47,6 +47,23 @@ func TestLeaser(t *testing.T) {
 		require.Contains(t, participants, uint64(123))
 		require.Contains(t, participants, uint64(456))
 
+		leases := subject.getValidLeases()
+		require.Len(t, leases, 2)
+		require.Contains(t, leases, api.F3ParticipationLease{
+			Network:      testManifest.NetworkName,
+			Issuer:       nodeID,
+			MinerID:      123,
+			FromInstance: 11,
+			ValidityTerm: 4,
+		})
+		require.Contains(t, leases, api.F3ParticipationLease{
+			Network:      testManifest.NetworkName,
+			Issuer:       nodeID,
+			MinerID:      456,
+			FromInstance: 11,
+			ValidityTerm: 5,
+		})
+
 		// After instance 16, only participant 456 should be valid.
 		participants = subject.getParticipantsByInstance(testManifest.NetworkName, 16)
 		require.Len(t, participants, 1)
