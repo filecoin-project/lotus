@@ -72,6 +72,12 @@ var ChainCmd = &cli.Command{
 var ChainHeadCmd = &cli.Command{
 	Name:  "head",
 	Usage: "Print chain head",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "height",
+			Usage: "print just the epoch number of the chain head",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		afmt := NewAppFmt(cctx.App)
 
@@ -87,8 +93,12 @@ var ChainHeadCmd = &cli.Command{
 			return err
 		}
 
-		for _, c := range head.Cids() {
-			afmt.Println(c)
+		if cctx.Bool("height") {
+			afmt.Println(head.Height())
+		} else {
+			for _, c := range head.Cids() {
+				afmt.Println(c)
+			}
 		}
 		return nil
 	},

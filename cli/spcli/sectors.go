@@ -910,12 +910,18 @@ func SectorsExtendCmd(getActorAddress ActorAddressGetter) *cli.Command {
 									if !ok {
 										return xerrors.Errorf("failed to find sector in active sector set: %w", err)
 									}
-									if !cctx.Bool("drop-claims") ||
+									if !cctx.Bool("drop-claims") {
+										fmt.Printf("skipping sector %d because claim %d (client f0%s, piece %s) cannot be maintained in the extended sector (use --drop-claims to drop claims)\n", sectorNumber, claimId, claim.Client, claim.Data)
+										cannotExtendSector = true
+										break
+									} else if currEpoch <= (claim.TermStart + claim.TermMin) {
 										// FIP-0045 requires the claim minimum duration to have passed
-										currEpoch <= (claim.TermStart+claim.TermMin) ||
+										fmt.Printf("skipping sector %d because claim %d (client f0%s, piece %s) has not reached its minimum duration\n", sectorNumber, claimId, claim.Client, claim.Data)
+										cannotExtendSector = true
+										break
+									} else if currEpoch <= sectorInfo.Expiration-builtin.EndOfLifeClaimDropPeriod {
 										// FIP-0045 requires the sector to be in its last 30 days of life
-										(currEpoch <= sectorInfo.Expiration-builtin.EndOfLifeClaimDropPeriod) {
-										fmt.Printf("skipping sector %d because claim %d (client f0%s, piece %s) does not live long enough \n", sectorNumber, claimId, claim.Client, claim.Data)
+										fmt.Printf("skipping sector %d because claim %d (client f0%s, piece %s) is not in its last 30 days of life\n", sectorNumber, claimId, claim.Client, claim.Data)
 										cannotExtendSector = true
 										break
 									}
