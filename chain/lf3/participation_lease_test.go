@@ -42,18 +42,18 @@ func TestLeaser(t *testing.T) {
 		require.NoError(t, err)
 
 		// Both participants should still be valid.
-		participants := subject.getParticipantsByInstance(11)
+		participants := subject.getParticipantsByInstance(testManifest.NetworkName, 11)
 		require.Len(t, participants, 2)
 		require.Contains(t, participants, uint64(123))
 		require.Contains(t, participants, uint64(456))
 
 		// After instance 16, only participant 456 should be valid.
-		participants = subject.getParticipantsByInstance(16)
+		participants = subject.getParticipantsByInstance(testManifest.NetworkName, 16)
 		require.Len(t, participants, 1)
 		require.Contains(t, participants, uint64(456))
 
 		// After instance 17, no participant must have a lease.
-		participants = subject.getParticipantsByInstance(17)
+		participants = subject.getParticipantsByInstance(testManifest.NetworkName, 17)
 		require.Empty(t, participants)
 	})
 	t.Run("expired ticket", func(t *testing.T) {
