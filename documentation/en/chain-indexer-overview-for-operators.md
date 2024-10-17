@@ -100,6 +100,7 @@ The ChainIndexer [periodically runs](https://github.com/filecoin-project/lotus/b
 EthTxHashMappingLifetimeDays
 
 [Events]
+DisableRealTimeFilterAPI
 DisableHistoricFilterAPI
 DatabasePath
 
