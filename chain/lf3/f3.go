@@ -203,3 +203,16 @@ func (fff *F3) IsRunning() bool {
 func (fff *F3) Progress() gpbft.Instant {
 	return fff.inner.Progress()
 }
+
+func (fff *F3) ListParticipants() []api.F3Participant {
+	leases := fff.leaser.getValidLeases()
+	participants := make([]api.F3Participant, len(leases))
+	for i, lease := range leases {
+		participants[i] = api.F3Participant{
+			MinerID:      lease.MinerID,
+			FromInstance: lease.FromInstance,
+			ValidityTerm: lease.ValidityTerm,
+		}
+	}
+	return participants
+}
