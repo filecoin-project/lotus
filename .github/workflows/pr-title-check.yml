@@ -25,7 +25,7 @@ jobs:
             const title = context.payload.pull_request.title;
             // This should match https://github.com/filecoin-project/lotus/blob/master/README.md#pr-title-conventions
             // 202408: Beyond Conventional Commit conventions, we also optionally suport the "scope" outside of paranenthesis for a transitionary period from legacy conventions per https://github.com/filecoin-project/lotus/pull/12340 
-            const pattern = /^(\[skip changelog\]\s)?(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([\w.]+\))?!?:?\s(\w+:)?\s?[a-z].+$/;
+            const pattern = /^(\[skip changelog\]\s)?(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([\w.]+\))?!?:?\s(\w+:)?\s?["'`a-z].+$/;
             
             if (!pattern.test(title)) {
               await github.rest.pulls.createReview({
