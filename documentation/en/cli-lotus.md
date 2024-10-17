@@ -1616,6 +1616,7 @@ USAGE:
    lotus chain head [command options] [arguments...]
 
 OPTIONS:
+   --height    print just the epoch number of the chain head (default: false)
    --help, -h  show help
 ```
 
