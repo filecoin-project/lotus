@@ -157,13 +157,14 @@ func (o *observer) applyChanges(ctx context.Context, changes []*api.HeadChange) 
 }
 
 func (o *observer) headChange(ctx context.Context, rev, app []*types.TipSet) error {
+	o.lk.Lock()
+	defer o.lk.Unlock()
+
 	ctx, span := trace.StartSpan(ctx, "events.HeadChange")
 	span.AddAttributes(trace.Int64Attribute("reverts", int64(len(rev))))
 	span.AddAttributes(trace.Int64Attribute("applies", int64(len(app))))
 
-	o.lk.Lock()
 	head := o.head
-	o.lk.Unlock()
 
 	defer func() {
 		span.AddAttributes(trace.Int64Attribute("endHeight", int64(head.Height())))
@@ -199,14 +200,12 @@ func (o *observer) headChange(ctx context.Context, rev, app []*types.TipSet) err
 		// 1. We need to get the observers every time in case some registered/deregistered.
 		// 2. We need to atomically set the head so new observers don't see events twice or
 		// skip them.
-		o.lk.Lock()
-		observers := o.observers
-		o.head = to
-		o.lk.Unlock()
 
-		for _, obs := range observers {
+		o.head = to
+
+		for _, obs := range o.observers {
 			if err := obs.Revert(ctx, from, to); err != nil {
-				log.Errorf("observer %T failed to apply tipset %s (%d) with: %s", obs, from.Key(), from.Height(), err)
+				log.Errorf("observer %T failed to revert tipset %s (%d) with: %s", obs, from.Key(), from.Height(), err)
 			}
 		}
 
@@ -225,14 +224,11 @@ func (o *observer) headChange(ctx context.Context, rev, app []*types.TipSet) err
 			)
 		}
 
-		o.lk.Lock()
-		observers := o.observers
 		o.head = to
-		o.lk.Unlock()
 
-		for _, obs := range observers {
+		for _, obs := range o.observers {
 			if err := obs.Apply(ctx, head, to); err != nil {
-				log.Errorf("observer %T failed to revert tipset %s (%d) with: %s", obs, to.Key(), to.Height(), err)
+				log.Errorf("observer %T failed to apply tipset %s (%d) with: %s", obs, to.Key(), to.Height(), err)
 			}
 		}
 		if to.Height() > o.maxHeight {
@@ -242,6 +238,41 @@ func (o *observer) headChange(ctx context.Context, rev, app []*types.TipSet) err
 		head = to
 	}
 	return nil
+}
+
+// ObserveAndBlock registers the observer and returns the current tipset along with an unlock function.
+//
+// This method guarantees that the observer will receive tipset updates starting from the returned tipset.
+// It blocks all tipset updates for all clients until the returned unlock function is called.
+//
+// The typical usage pattern is:
+// 1. Call ObserveAndBlock to register the observer
+// 2. Perform any necessary initialization using the returned current tipset
+// 3. Call the unlock function to start receiving updates
+//
+// Important notes:
+// - This method should only be called after the observer has been started
+// - The unlock function must be called to prevent blocking of tipset updates for all registered observers
+// - This method returns an error if the observer hasn't started yet
+//
+// Returns:
+// - *types.TipSet: The current tipset at the time of registration
+// - func(): An unlock function that must be called to start receiving updates
+// - error: An error if the observer hasn't started yet
+func (o *observer) ObserveAndBlock(obs TipSetObserver) (*types.TipSet, func(), error) {
+	o.lk.Lock()
+	currentHead := o.head
+	if currentHead == nil {
+		o.lk.Unlock()
+		return nil, func() {}, xerrors.New("observer not started")
+	}
+
+	o.observers = append(o.observers, obs)
+	unlockHandle := func() {
+		o.lk.Unlock()
+	}
+
+	return currentHead, unlockHandle, nil
 }
 
 // Observe registers the observer, and returns the current tipset. The observer is guaranteed to
