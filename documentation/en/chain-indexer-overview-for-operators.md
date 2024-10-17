@@ -1,4 +1,4 @@
-# ChainIndexer Documentation for RPC Providers <!-- omit in toc -->
+# ChainIndexer Documentation for Operators <!-- omit in toc -->
 
 - [Introduction](#introduction)
 - [ChainIndexer Config](#chainindexer-config)
@@ -7,11 +7,13 @@
     - [Recommendations](#recommendations)
   - [Removed Options](#removed-options)
 - [Upgrade](#upgrade)
-  - [Part 1: Preparation](#part-1-preparation)
-  - [Part 2: Create a Backfilled ChainIndexer `chainindex.db`](#part-2-create-a-backfilled-chainindexer-chainindexdb)
-  - [Part 3: Create a copyable `chainindex.db`](#part-3-create-a-copyable-chainindexdb)
-  - [Part 4: Update Other Nodes](#part-4-update-other-nodes)
-  - [Part 5: Cleanup](#part-5-cleanup)
+  - [Preparation](#preparation)
+  - [Upgrade when using existing `LOTUS_PATH` chain state](#upgrade-when-using-existing-lotus_path-chain-state)
+    - [Part 1: Create a backfilled ChainIndexer `chainindex.db`](#part-1-create-a-backfilled-chainindexer-chainindexdb)
+    - [Part 2: Create a copyable `chainindex.db`](#part-2-create-a-copyable-chainindexdb)
+    - [Part 3: Update other nodes](#part-3-update-other-nodes)
+    - [Part 4: Cleanup](#part-4-cleanup)
+  - [Upgrade when importing chain state from a snapshot](#upgrade-when-importing-chain-state-from-a-snapshot)
 - [Backfill](#backfill)
   - [Backfill Timing](#backfill-timing)
   - [Backfill Disk Space Requirements](#backfill-disk-space-requirements)
@@ -116,14 +118,19 @@ The previously deprecated `Fevm.Events` options are now also all removed:
 
 ## Upgrade
 
-### Part 1: Preparation
-> **Note:** One can upgrade/downgrade between [pre-ChainIndexer](#previous-indexing-system) and [with-ChainIndexer](#chainindexer-indexing-system) Lotus versions without conflict because they persist state to different directories and don't rely on each other. No backup is necessary (but extra backups don't hurt). There is still a [backfilling step though when downgrading](#downgrade-steps).
+### Preparation
+One can upgrade/downgrade between [pre-ChainIndexer](#previous-indexing-system) and [with-ChainIndexer](#chainindexer-indexing-system) Lotus versions without conflict because they persist state to different directories and don't rely on each other. No backup is necessary (but extra backups don't hurt). There is still a [backfilling step though when downgrading](#downgrade-steps).
 
 These upgrade steps assume one has multiple nodes in their fleet and can afford to have a node not handling traffic, potentially for days per [backfill timing below](#backfill-timing).
 
 One should also check to ensure they have [sufficient disk space](#backfill-disk-space-requirements).
 
-### Part 2: Create a Backfilled ChainIndexer `chainindex.db`
+### Upgrade when using existing `LOTUS_PATH` chain state
+* This upgrade path assumes one has an existing node with existing `LOTUS_PATH` chain state they want to keep using and they don't want to import chain state from a snapshot.  A prime example is an existing archival node.  
+* Perform the [preparation steps](#preparation) before proceeding.
+* See [here for the snapshot upgrade path](#upgrade-when-importing-chain-state-from-a-snapshot).
+
+#### Part 1: Create a backfilled ChainIndexer `chainindex.db`
 1. **Route traffic away from an initial node**
    - Example: prevent a load balancer from routing traffic to a designated node.
 2. **Stop the designated Lotus Node**
@@ -143,21 +150,21 @@ One should also check to ensure they have [sufficient disk space](#backfill-disk
 8. **Ensure equal or better correctness and performance**
    - ChainIndexer-using nodes should have full correctness and better performance when compared to [pre-ChainIndexer](#previous-indexing-system) nodes.
 
-### Part 3: Create a copyable `chainindex.db`
-[Part 4 below](#part-4-update-other-nodes) is going to use the backfilled `chainindex.db` from above with other nodes so they don't have to undergo as long of a backfill process.  That said, this backfilled `chaindex.db` shouldn't be done while the updated-and-backfilled node is running.  Options include :
+#### Part 2: Create a copyable `chainindex.db`
+[Part 3 below](#part-3-update-other-nodes) is going to use the backfilled `chainindex.db` from above with other nodes so they don't have to undergo as long of a backfill process.  That said, this backfilled `chaindex.db` shouldn't be done while the updated-and-backfilled node is running.  Options include :
 1.  Stop the updated-and-backfilled node before copying it.
   * `cp ${LOTUS_PATH}/chainindex/chainindex.db /copy/destination/path/chainindex.db`
 2.  While the node is running, use the `sqlite3` CLI utility (which should be at least version 3.37) to clone it. 
   * `sqlite3 ${LOTUS_PATH}/chainindex/chainindex.db '.clone /copy/destination/path/chainindex.db'`
 Both of these will result in a file `/copy/destination/path/chainindex.db` that can be copied around in part 4 below.
 
-### Part 4: Update Other Nodes
+#### Part 3: Update other nodes
 Now that one has a `${LOTUS_PATH}/chainindex/chainindex.db` from a trusted node, it can be copied to additional nodes to expedite bootstrapping.
 1. **Route traffic away from the next node to upgrade**
 2. **Stop the Lotus Node**
 3. **Update Configuration**
    - Modify the Lotus configuration to enable the `ChainIndexer` as described in the [`ChainIndexer Config` section above](#chainindexer-config). 
-4. **Copy `/copy/destination/path/chainindex.db` from the trusted node in [part 3 above](#part-3-create-a-copyable-chainindexdb)**
+4. **Copy `/copy/destination/path/chainindex.db` from the trusted node in [part 2 above](#part-2-create-a-copyable-chainindexdb)**
 4. **Restart Lotus Node**
    - Restart your Lotus node with the new configuration.
    - The `ChainIndexer` will begin indexing **real-time chain state changes** immediately in the `${LOTUS_PATH}/chainindex` directory.
@@ -170,8 +177,29 @@ Now that one has a `${LOTUS_PATH}/chainindex/chainindex.db` from a trusted node,
 7. **Route traffic to this newly upgraded ChainIndexer-enabled node**
 8. **Repeat for other nodes that need to upgrade**
 
-### Part 5: Cleanup
+#### Part 4: Cleanup
 It's recommended to keep the [pre-ChainIndexer](#previous-indexing-system) indexing database directory (`${LOTUS_PATH}/sqlite`) around until you've confirmed you don't need to [downgrade](#downgrade).  After sustained successful operations after the upgrade, the [pre-ChainIndexer](#previous-indexing-system) database directory can be removed to reclaim disk space.  
+
+### Upgrade when importing chain state from a snapshot
+Note: this upgrade path assumes one is starting a fresh node and importing chain state with a snapshot (i.e., `lotus daemon --import-snapshot`).  A prime example is an operator adding another node to their fleet that has limited history.  If not using a snapshot, see the ["upgrade with existing chain state" path](#upgrade-when-using-existing-lotus_path-chain-state).
+
+1. **Review the [preparation steps](#preparation)**
+   - The disk space and upgrade times will be much smaller than the ["upgrade with existing chain state" path](#upgrade-when-using-existing-lotus_path-chain-state) assuming this is a non-archival node that is only indexing a limited number of days of epochs.
+2. **Ensure the node is stopped and won't take any traffic initially upon starting**
+   - Example: prevent a load balancer from routing traffic to the node.
+3. **Update Configuration**
+   - Modify the Lotus configuration to enable the `ChainIndexer` as described in the [`ChainIndexer Config` section above](#chainindexer-config). 
+4. **Start lotus with the snapshot import**
+   - `lotus daemon --import-snapshot`
+5. **Wait for the Lotus daemon to sync**
+  * As the Lotus daemon syncs the chain, the ChainIndexer will automatically index the synced messages, but it will not automatically sync ETH RPC events and transactions.
+6. **Backfill so ETH RPC events and transactions are indexed as well**
+   - See the ["Backfill" section below](#backfill).
+   - This will look something like `lotus-shed chainindex validate-backfill --from <head_epoch> --to <epoch_corresponding_with_how_much_state_in_past_want_to_index>  --backfill`
+     - Example: if current head is epoch 4360000 and one wants to index a day's worth of epochs (2880), then they'd use `--from 4360000 --to 4357120`
+6. **Ensure node health**
+   - Perform whatever steps are usually done to validate a node's health before handling traffic (e.g., log scans, smoke tests)
+7. **Route traffic to the backfilled node that is now using ChainIndexer**
 
 ## Backfill
 There is no automated migration from [pre-ChainIndexer indices](#previous-indexing-system) to the [ChainIndex](#chainindexer-indexing-system).  Instead one needs to index historical chain state (i.e., backfill), if RPC access to that historical state is required. (If curious, [read why](#wny-isnt-there-an-automated-migration-from-the-previous-indexing-system-to-the-chainindexer-indexing-system).]
