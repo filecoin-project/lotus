@@ -42,7 +42,10 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
-var ErrUnsupported = errors.New("unsupported method")
+var (
+	ErrUnsupported          = errors.New("unsupported method")
+	ErrChainIndexerDisabled = errors.New("chain indexer is disabled; please enable the ChainIndexer to use the ETH RPC API")
+)
 
 const maxEthFeeHistoryRewardPercentiles = 100
 
@@ -367,7 +370,7 @@ func (a *EthModule) EthGetTransactionByHashLimited(ctx context.Context, txHash *
 		return nil, nil
 	}
 	if a.ChainIndexer == nil {
-		return nil, errors.New("chain indexer is disabled; please enable the ChainIndexer to use the ETH RPC API")
+		return nil, ErrChainIndexerDisabled
 	}
 
 	var c cid.Cid
@@ -434,7 +437,7 @@ func (a *EthModule) EthGetMessageCidByTransactionHash(ctx context.Context, txHas
 		return nil, nil
 	}
 	if a.ChainIndexer == nil {
-		return nil, errors.New("chain indexer is disabled; please enable the ChainIndexer to use the ETH RPC API")
+		return nil, ErrChainIndexerDisabled
 	}
 
 	var c cid.Cid
@@ -541,7 +544,7 @@ func (a *EthModule) EthGetTransactionReceiptLimited(ctx context.Context, txHash 
 	var c cid.Cid
 	var err error
 	if a.ChainIndexer == nil {
-		return nil, errors.New("chain indexer is disabled; please enable the ChainIndexer to use the ETH RPC API")
+		return nil, ErrChainIndexerDisabled
 	}
 
 	c, err = a.ChainIndexer.GetCidFromHash(ctx, txHash)
@@ -1697,7 +1700,7 @@ func (e *EthEventHandler) ethGetEventsForFilter(ctx context.Context, filterSpec 
 	}
 
 	if e.EventFilterManager.ChainIndexer == nil {
-		return nil, xerrors.Errorf("cannot use `eth_getLogs` if chain indexer is disabled")
+		return nil, ErrChainIndexerDisabled
 	}
 
 	pf, err := e.parseEthFilterSpec(filterSpec)
