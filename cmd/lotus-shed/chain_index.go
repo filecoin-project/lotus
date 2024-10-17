@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/urfave/cli/v2"
@@ -14,17 +13,11 @@ import (
 	lcli "github.com/filecoin-project/lotus/cli"
 )
 
-func withCategory(cat string, cmd *cli.Command) *cli.Command {
-	cmd.Category = strings.ToUpper(cat)
-	return cmd
-}
-
 var chainIndexCmds = &cli.Command{
-	Name:            "chainindex",
-	Usage:           "Commands related to managing the chainindex",
-	HideHelpCommand: true,
+	Name:  "chainindex",
+	Usage: "Commands related to managing the chainindex",
 	Subcommands: []*cli.Command{
-		withCategory("chainindex", validateBackfillChainIndexCmd),
+		validateBackfillChainIndexCmd,
 	},
 }
 
@@ -32,18 +25,11 @@ var validateBackfillChainIndexCmd = &cli.Command{
 	Name:  "validate-backfill",
 	Usage: "Validates and optionally backfills the chainindex for a range of epochs",
 	Description: `
-lotus-shed chainindex validate-backfill --from <start_epoch> --to <end_epoch> [--backfill] [--log-good]
+lotus-shed chainindex validate-backfill --from <start_epoch> --to <end_epoch> [--backfill] [--log-good] [--quiet]
 
 The command validates the chain index entries for each epoch in the specified range, checking for missing or
 inconsistent entries (i.e. the indexed data does not match the actual chain state). If '--backfill' is enabled
 (which it is by default), it will attempt to backfill any missing entries using the 'ChainValidateIndex' API.
-
-Parameters:
-  - '--from' (required): The starting epoch (inclusive) for the validation range. Must be greater than 0.
-  - '--to' (required): The ending epoch (inclusive) for the validation range. Must be greater than 0 and less
-                        than or equal to 'from'.
-  - '--backfill' (optional, default: true): Whether to backfill missing index entries during validation.
-  - '--log-good' (optional, default: false): Whether to log details for tipsets that have no detected problems.
 
 Error conditions:
   - If 'from' or 'to' are invalid (<=0 or 'to' > 'from'), an error is returned.
@@ -55,6 +41,8 @@ Logging:
   - If '--log-good' is enabled, details are also logged for each epoch that has no detected problems. This includes:
     - Null rounds with no messages/events.
     - Epochs with a valid indexed entry.
+  - If --quiet is enabled, only errors are logged, unless --log-good is also enabled, in which case good tipsets
+    are also logged.
 
 Example usage:
 
@@ -65,6 +53,9 @@ lotus-shed chainindex validate-backfill --from 1000000 --to 994240 --log-good
 This command is useful for backfilling the chain index over a range of historical epochs during the migration to
 the new ChainIndexer. It can also be run periodically to validate the index's integrity using system schedulers
 like cron.
+
+If there are any errors during the validation process, the command will exit with a non-zero status and log the
+number of failed RPC calls. Otherwise, it will exit with a zero status.
 	`,
 	Flags: []cli.Flag{
 		&cli.IntFlag{
@@ -86,6 +77,10 @@ like cron.
 			Name:  "log-good",
 			Usage: "log tipsets that have no detected problems",
 			Value: false,
+		},
+		&cli.BoolFlag{
+			Name:  "quiet",
+			Usage: "suppress output except for errors (or good tipsets if log-good is enabled)",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -128,14 +123,18 @@ like cron.
 		// Results Tracking
 		logGood := cctx.Bool("log-good")
 
+		quiet := cctx.Bool("quiet")
+
 		failedRPCs := 0
 		successfulBackfills := 0
 		successfulValidations := 0
 		successfulNullRounds := 0
 
 		startTime := time.Now()
-		_, _ = fmt.Fprintf(cctx.App.Writer, "%s starting chainindex validation; from epoch: %d; to epoch: %d; backfill: %t; log-good: %t\n", currentTimeString(),
-			fromEpoch, toEpoch, backfill, logGood)
+		if !quiet {
+			_, _ = fmt.Fprintf(cctx.App.Writer, "%s starting chainindex validation; from epoch: %d; to epoch: %d; backfill: %t; log-good: %t\n", currentTimeString(),
+				fromEpoch, toEpoch, backfill, logGood)
+		}
 
 		totalEpochs := fromEpoch - toEpoch + 1
 		for epoch := fromEpoch; epoch >= toEpoch; epoch-- {
@@ -146,8 +145,10 @@ like cron.
 			if (fromEpoch-epoch+1)%2880 == 0 || epoch == toEpoch {
 				progress := float64(fromEpoch-epoch+1) / float64(totalEpochs) * 100
 				elapsed := time.Since(startTime)
-				_, _ = fmt.Fprintf(cctx.App.ErrWriter, "%s -------- Chain index validation progress: %.2f%%; Time elapsed: %s\n",
-					currentTimeString(), progress, elapsed)
+				if !quiet {
+					_, _ = fmt.Fprintf(cctx.App.ErrWriter, "%s -------- Chain index validation progress: %.2f%%; Time elapsed: %s\n",
+						currentTimeString(), progress, elapsed)
+				}
 			}
 
 			indexValidateResp, err := api.ChainValidateIndex(ctx, abi.ChainEpoch(epoch), backfill)
@@ -181,11 +182,17 @@ like cron.
 			}
 		}
 
-		_, _ = fmt.Fprintf(cctx.App.Writer, "\n%s Chain index validation summary:\n", currentTimeString())
-		_, _ = fmt.Fprintf(cctx.App.Writer, "Total failed RPC calls: %d\n", failedRPCs)
-		_, _ = fmt.Fprintf(cctx.App.Writer, "Total successful backfills: %d\n", successfulBackfills)
-		_, _ = fmt.Fprintf(cctx.App.Writer, "Total successful validations without backfilling: %d\n", successfulValidations)
-		_, _ = fmt.Fprintf(cctx.App.Writer, "Total successful Null round validations: %d\n", successfulNullRounds)
+		if !quiet {
+			_, _ = fmt.Fprintf(cctx.App.Writer, "\n%s Chain index validation summary:\n", currentTimeString())
+			_, _ = fmt.Fprintf(cctx.App.Writer, "Total failed RPC calls: %d\n", failedRPCs)
+			_, _ = fmt.Fprintf(cctx.App.Writer, "Total successful backfills: %d\n", successfulBackfills)
+			_, _ = fmt.Fprintf(cctx.App.Writer, "Total successful validations without backfilling: %d\n", successfulValidations)
+			_, _ = fmt.Fprintf(cctx.App.Writer, "Total successful Null round validations: %d\n", successfulNullRounds)
+		}
+
+		if failedRPCs > 0 {
+			return fmt.Errorf("chain index validation failed with %d RPC errors", failedRPCs)
+		}
 
 		return nil
 	},
