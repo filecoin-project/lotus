@@ -155,7 +155,7 @@ func (fff *F3) runSigningLoop(ctx context.Context) {
 			clear(alreadyParticipated)
 		}
 
-		participants := fff.leaser.getParticipantsByInstance(mb.Payload.Instance)
+		participants := fff.leaser.getParticipantsByInstance(mb.NetworkName, mb.Payload.Instance)
 		for _, id := range participants {
 			if _, ok := alreadyParticipated[id]; ok {
 				continue
