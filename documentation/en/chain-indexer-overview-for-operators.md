@@ -19,6 +19,7 @@
   - [Backfill Disk Space Requirements](#backfill-disk-space-requirements)
   - [`lotus-shed chainindex validate-backfill` CLI tool](#lotus-shed-chainindex-validate-backfill-cli-tool)
     - [Usage](#usage)
+- [Regular Checks](#regular-checks)
 - [Downgrade Steps](#downgrade-steps)
 - [Terminology](#terminology)
   - [Previous Indexing System](#previous-indexing-system)
@@ -228,6 +229,54 @@ The command validates the chain index entries for each epoch in the specified ra
 You can learn about how to use the tool with `lotus-shed chainindex validate-backfill -h`.
 
 Note: If you are using a non-standard Lotus repo directory then you can run the command with `lotus-shed -repo /path/to/lotus/repo chainindex validate-backfill ...`, or by setting the `LOTUS_REPO` environment variable.
+
+## Regular Checks
+
+During normal operation, it is possible, but not strictly necessary, to run periodic checks on the index to ensure it remains consistent with the chain state. The ChainIndexer is designed to be resilient and consistent, but unconsidered edge-cases, or bugs, could cause the index to become inconsistent.
+
+The `lotus-shed chainindex validate-backfill` command can be used to validate the index over a range of epochs and can be run periodically via cron, systemd timers, or some other means, to ensure the index remains consistent. An example bash script one could use to validate the index over the last 24 hours every 24 hours is provided below:
+
+
+```bash
+#!/bin/bash
+
+LOGFILE="/var/log/lotus_chainindex_validate.log"
+current_date=$(date '+%Y-%m-%d %H:%M:%S')
+
+# Configurable setting for backfill option, set to 'false' to simply report errors as we should
+# not expect regular errors in the index.
+BACKFILL_OPTION=false
+
+# Path to the lotus-shed binary
+LOTUS_SHED_PATH="/path/to/lotus-shed"
+
+# Get the current chain head epoch number
+start_epoch=$(lotus chain head --height)
+# Subtract 1 to account for deferred execution
+start_epoch=$((start_epoch - 1))
+
+# Define the number of epochs for validation, set to 3000 to validate the last 24 hours plus some buffer
+epochs_to_validate=3000
+
+# Calculate the end epoch
+end_epoch=$((start_epoch - epochs_to_validate + 1))
+
+# Run the Lotus chainindex validate-backfill command
+validation_output=$("$LOTUS_SHED_PATH" chainindex validate-backfill --from="$start_epoch" --to="$end_epoch" --backfill="$BACKFILL_OPTION" --quiet 2>&1)
+
+# Check the exit status of the command to determine if errors occurred
+if [ $? -ne 0 ]; then
+    # Log the error with a timestamp
+    {
+        echo "[$current_date] Validation error:"
+        echo "$validation_output"
+    } >> "$LOGFILE"
+else
+    echo "[$current_date] Validation completed successfully." >> "$LOGFILE"
+fi
+```
+
+Note that this script simply logs any errors that occur during the validation process. It is up to the operator to determine the appropriate response to any errors that occur, including reporting potential bugs to Lotus maintainers. A further enhancement could be to send an alert to an operator if an error occurs.
 
 ## Downgrade Steps
 
