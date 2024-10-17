@@ -1697,7 +1697,7 @@ func (e *EthEventHandler) ethGetEventsForFilter(ctx context.Context, filterSpec 
 	}
 
 	if e.EventFilterManager.ChainIndexer == nil {
-		return nil, xerrors.Errorf("cannot use `eth_get_logs` if chain indexer is disabled")
+		return nil, xerrors.Errorf("cannot use `eth_getLogs` if chain indexer is disabled")
 	}
 
 	pf, err := e.parseEthFilterSpec(filterSpec)
