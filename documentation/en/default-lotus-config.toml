@@ -246,13 +246,6 @@
 
 
 [Events]
-  # DisableRealTimeFilterAPI will disable the RealTimeFilterAPI that can create and query filters for actor events as they are emitted.
-  # The API is enabled when Fevm.EnableEthRPC or EnableActorEventsAPI is true, but can be disabled selectively with this flag.
-  #
-  # type: bool
-  # env var: LOTUS_EVENTS_DISABLEREALTIMEFILTERAPI
-  #DisableRealTimeFilterAPI = false
-
   # EnableActorEventsAPI enables the Actor events API that enables clients to consume events
   # emitted by (smart contracts + built-in Actors).
   # This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be

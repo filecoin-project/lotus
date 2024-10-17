@@ -174,13 +174,6 @@ may increase startup time.`,
 	},
 	"EventsConfig": {
 		{
-			Name: "DisableRealTimeFilterAPI",
-			Type: "bool",
-
-			Comment: `DisableRealTimeFilterAPI will disable the RealTimeFilterAPI that can create and query filters for actor events as they are emitted.
-The API is enabled when Fevm.EnableEthRPC or EnableActorEventsAPI is true, but can be disabled selectively with this flag.`,
-		},
-		{
 			Name: "EnableActorEventsAPI",
 			Type: "bool",
 
