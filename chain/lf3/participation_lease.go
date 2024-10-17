@@ -112,15 +112,25 @@ func (l *leaser) participate(ticket api.F3ParticipationTicket) (api.F3Participat
 	return newLease, nil
 }
 
-func (l *leaser) getParticipantsByInstance(instance uint64) []uint64 {
+func (l *leaser) getParticipantsByInstance(network gpbft.NetworkName, instance uint64) []uint64 {
 	l.mutex.Lock()
 	defer l.mutex.Unlock()
+	currentManifest, _ := l.status()
+	currentNetwork := currentManifest.NetworkName
+	if currentNetwork != network {
+		return nil
+	}
 	var participants []uint64
 	for id, lease := range l.leases {
-		if instance > lease.ToInstance() {
+		if currentNetwork != lease.Network {
+			// Lazily delete any lease that does not belong to network, likely acquired from
+			// prior manifests.
+			delete(l.leases, id)
+			log.Warnf("lost F3 participation lease for miner %d at instance %d due to network mismatch: %s != %s", id, instance, currentNetwork, lease.Network)
+		} else if instance > lease.ToInstance() {
 			// Lazily delete the expired leases.
 			delete(l.leases, id)
-			log.Warnf("lost F3 participation lease for miner %d", id)
+			log.Warnf("lost F3 participation lease for miner %d due to instance (%d) > lease to instance (%d)", id, instance, lease.ToInstance())
 		} else {
 			participants = append(participants, id)
 		}

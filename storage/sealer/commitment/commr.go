@@ -5,8 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/triplewz/poseidon"
-	ff "github.com/triplewz/poseidon/bls12_381"
 	"golang.org/x/xerrors"
 )
 
@@ -25,7 +25,7 @@ func CommR(commC, commRLast [32]byte) ([32]byte, error) {
 	input_b.SetBytes(commRLast[:])
 	input := []*big.Int{input_a, input_b}
 
-	cons, err := poseidon.GenPoseidonConstants(3)
+	cons, err := poseidon.GenPoseidonConstants[*fr.Element](3)
 	if err != nil {
 		return [32]byte{}, err
 	}
@@ -35,7 +35,7 @@ func CommR(commC, commRLast [32]byte) ([32]byte, error) {
 		return [32]byte{}, err
 	}
 
-	h1element := new(ff.Element).SetBigInt(h1).Bytes()
+	h1element := new(fr.Element).SetBigInt(h1).Bytes()
 
 	// reverse the bytes so that endianness is correct
 	for i, j := 0, len(h1element)-1; i < j; i, j = i+1, j-1 {
