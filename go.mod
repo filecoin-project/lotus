@@ -12,6 +12,8 @@ replace github.com/filecoin-project/test-vectors => ./extern/test-vectors // pro
 
 replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi // provided via a git submodule
 
+replace github.com/filecoin-project/go-jsonrpc => github.com/virajbhartiya/go-jsonrpc v0.0.0-20241016130229-4e33c9f29a6a
+
 require (
 	contrib.go.opencensus.io/exporter/prometheus v0.4.2
 	github.com/BurntSushi/toml v1.3.2
