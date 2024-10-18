@@ -20,24 +20,32 @@ type f3Status = func() (*manifest.Manifest, gpbft.Instant)
 type leaser struct {
 	mutex                sync.Mutex
 	leases               map[uint64]api.F3ParticipationLease
-	issuer               peer.ID
+	issuer               []byte
 	status               f3Status
 	maxLeasableInstances uint64
 	// Signals that a lease was created and/or updated.
 	notifyParticipation chan struct{}
 }
 
-func newParticipationLeaser(nodeId peer.ID, status f3Status, maxLeasedInstances uint64) *leaser {
+func newParticipationLeaser(nodeId peer.ID, status f3Status, maxLeasedInstances uint64) (*leaser, error) {
+	issuer, err := nodeId.MarshalBinary()
+	if err != nil {
+		return nil, xerrors.Errorf("marshalling issuer: %w", err)
+	}
 	return &leaser{
 		leases:               make(map[uint64]api.F3ParticipationLease),
-		issuer:               nodeId,
+		issuer:               issuer,
 		status:               status,
 		notifyParticipation:  make(chan struct{}, 1),
 		maxLeasableInstances: maxLeasedInstances,
-	}
+	}, nil
 }
 
 func (l *leaser) getOrRenewParticipationTicket(participant uint64, previous api.F3ParticipationTicket, instances uint64) (api.F3ParticipationTicket, error) {
+
+	if instances == 0 {
+		return nil, errors.New("not enough instances")
+	}
 
 	if instances > l.maxLeasableInstances {
 		return nil, api.ErrF3ParticipationTooManyInstances
@@ -184,7 +192,7 @@ func (l *leaser) validateLease(currentNetwork gpbft.NetworkName, currentInstance
 	if currentNetwork != lease.Network || currentInstance > lease.ToInstance() {
 		err = multierr.Append(err, api.ErrF3ParticipationTicketExpired)
 	}
-	if l.issuer != lease.Issuer {
+	if !bytes.Equal(l.issuer, lease.Issuer) {
 		err = multierr.Append(err, api.ErrF3ParticipationIssuerMismatch)
 	}
 	if lease.ValidityTerm > l.maxLeasableInstances {

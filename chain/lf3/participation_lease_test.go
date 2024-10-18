@@ -15,10 +15,16 @@ import (
 )
 
 func TestLeaser(t *testing.T) {
-	nodeID := peer.ID("peerID")
+	issuer := []byte("peerID")
 	progress := mockProgress{currentInstance: 10}
-	subject := newParticipationLeaser(nodeID, progress.Progress, 5)
+	subject, err := newParticipationLeaser(peer.ID(issuer), progress.Progress, 5)
+	require.NoError(t, err)
 
+	t.Run("participate zero", func(t *testing.T) {
+		ticket, err := subject.getOrRenewParticipationTicket(123, nil, 0)
+		require.Error(t, err)
+		require.Nil(t, ticket)
+	})
 	t.Run("participate", func(t *testing.T) {
 		ticket, err := subject.getOrRenewParticipationTicket(123, nil, 5)
 		require.NoError(t, err)
@@ -26,7 +32,7 @@ func TestLeaser(t *testing.T) {
 		lease, err := subject.participate(ticket)
 		require.NoError(t, err)
 		require.Equal(t, uint64(123), lease.MinerID)
-		require.Equal(t, nodeID, lease.Issuer)
+		require.Equal(t, issuer, lease.Issuer)
 		require.Equal(t, uint64(5), lease.ValidityTerm) // Current instance (10) + offset (5)
 	})
 	t.Run("get participants", func(t *testing.T) {
@@ -51,14 +57,14 @@ func TestLeaser(t *testing.T) {
 		require.Len(t, leases, 2)
 		require.Contains(t, leases, api.F3ParticipationLease{
 			Network:      testManifest.NetworkName,
-			Issuer:       nodeID,
+			Issuer:       issuer,
 			MinerID:      123,
 			FromInstance: 11,
 			ValidityTerm: 4,
 		})
 		require.Contains(t, leases, api.F3ParticipationLease{
 			Network:      testManifest.NetworkName,
-			Issuer:       nodeID,
+			Issuer:       issuer,
 			MinerID:      456,
 			FromInstance: 11,
 			ValidityTerm: 5,
@@ -89,7 +95,8 @@ func TestLeaser(t *testing.T) {
 
 		// Generate a token from the same subject but with higher term, then assert that
 		// original subject with lower term rejects it.
-		subjectSpoofWithHigherMaxLease := newParticipationLeaser(nodeID, progress.Progress, 6)
+		subjectSpoofWithHigherMaxLease, err := newParticipationLeaser(peer.ID(issuer), progress.Progress, 6)
+		require.NoError(t, err)
 		ticket, err = subjectSpoofWithHigherMaxLease.getOrRenewParticipationTicket(123, nil, 6)
 		require.NoError(t, err)
 		require.NotEmpty(t, ticket)
@@ -104,7 +111,8 @@ func TestLeaser(t *testing.T) {
 		require.Zero(t, lease)
 	})
 	t.Run("issuer mismatch", func(t *testing.T) {
-		anotherIssuer := newParticipationLeaser("barreleye", progress.Progress, 5)
+		anotherIssuer, err := newParticipationLeaser("barreleye", progress.Progress, 5)
+		require.NoError(t, err)
 		ticket, err := anotherIssuer.getOrRenewParticipationTicket(123, nil, 5)
 		require.NoError(t, err)
 		lease, err := subject.participate(ticket)
@@ -155,7 +163,8 @@ func TestLeaser(t *testing.T) {
 
 		// Get or renew with valid but mismatching issuer
 		progress.currentInstance -= 10
-		anotherIssuer := newParticipationLeaser("barreleye", progress.Progress, 5)
+		anotherIssuer, err := newParticipationLeaser("barreleye", progress.Progress, 5)
+		require.NoError(t, err)
 		newTicket, err = anotherIssuer.getOrRenewParticipationTicket(123, previous, 5)
 		require.ErrorIs(t, err, api.ErrF3ParticipationIssuerMismatch)
 		require.Empty(t, newTicket)
@@ -169,7 +178,8 @@ func TestLeaser(t *testing.T) {
 
 		// Get or renew with expired but mismatching session
 		progress.currentInstance -= 10
-		subjectAtNewSession := newParticipationLeaser(nodeID, progress.Progress, 5)
+		subjectAtNewSession, err := newParticipationLeaser(peer.ID(issuer), progress.Progress, 5)
+		require.NoError(t, err)
 		newTicket, err = subjectAtNewSession.getOrRenewParticipationTicket(123, previous, 5)
 		require.NoError(t, err)
 		require.NotNil(t, newTicket)
