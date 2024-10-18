@@ -46,16 +46,15 @@ func (t *F3ParticipationLease) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.Issuer ([]uint8) (slice)
-	if len(t.Issuer) > 2097152 {
-		return xerrors.Errorf("Byte array in field t.Issuer was too long")
+	// t.Issuer (string) (string)
+	if len(t.Issuer) > 8192 {
+		return xerrors.Errorf("Value in field t.Issuer was too long")
 	}
 
-	if err := cw.WriteMajorTypeHeader(cbg.MajByteString, uint64(len(t.Issuer))); err != nil {
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.Issuer))); err != nil {
 		return err
 	}
-
-	if _, err := cw.Write(t.Issuer); err != nil {
+	if _, err := cw.WriteString(string(t.Issuer)); err != nil {
 		return err
 	}
 
@@ -113,28 +112,16 @@ func (t *F3ParticipationLease) UnmarshalCBOR(r io.Reader) (err error) {
 
 		t.Network = gpbft.NetworkName(sval)
 	}
-	// t.Issuer ([]uint8) (slice)
+	// t.Issuer (string) (string)
 
-	maj, extra, err = cr.ReadHeader()
-	if err != nil {
-		return err
-	}
+	{
+		sval, err := cbg.ReadStringWithMax(cr, 8192)
+		if err != nil {
+			return err
+		}
 
-	if extra > 2097152 {
-		return fmt.Errorf("t.Issuer: byte array too large (%d)", extra)
+		t.Issuer = string(sval)
 	}
-	if maj != cbg.MajByteString {
-		return fmt.Errorf("expected byte array")
-	}
-
-	if extra > 0 {
-		t.Issuer = make([]uint8, extra)
-	}
-
-	if _, err := io.ReadFull(cr, t.Issuer); err != nil {
-		return err
-	}
-
 	// t.MinerID (uint64) (uint64)
 
 	{

@@ -82,15 +82,11 @@ func New(mctx helpers.MetricsCtx, lc fx.Lifecycle, params F3Params) (*F3, error)
 	status := func() (*manifest.Manifest, gpbft.Instant) {
 		return module.Manifest(), module.Progress()
 	}
-	participationLeaser, err := newParticipationLeaser(nodeId, status, maxLeasableInstances)
-	if err != nil {
-		return nil, xerrors.Errorf("creating leaser: %w", err)
-	}
 	fff := &F3{
 		inner:  module,
 		ec:     ec,
 		signer: &signer{params.Wallet},
-		leaser: participationLeaser,
+		leaser: newParticipationLeaser(nodeId, status, maxLeasableInstances),
 	}
 
 	// Start F3

@@ -2686,10 +2686,10 @@ Response:
 ```json
 {
   "Network": "filecoin",
-  "Issuer": "Ynl0ZSBhcnJheQ==",
-  "MinerID": 42,
-  "FromInstance": 42,
-  "ValidityTerm": 42
+  "Issuer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  "MinerID": 1234,
+  "FromInstance": 10,
+  "ValidityTerm": 15
 }
 ```
 

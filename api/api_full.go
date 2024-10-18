@@ -979,8 +979,8 @@ type F3ParticipationTicket []byte
 type F3ParticipationLease struct {
 	// Network is the name of the network this lease belongs to.
 	Network gpbft.NetworkName
-	// Issuer is the identity of the node that issued the lease.
-	Issuer []byte
+	// Issuer is the identity of the node that issued the lease, encoded as base58.
+	Issuer string
 	// MinerID is the actor ID of the miner that holds the lease.
 	MinerID uint64
 	// FromInstance specifies the instance ID from which this lease is valid.
