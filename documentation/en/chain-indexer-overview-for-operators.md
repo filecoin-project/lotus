@@ -30,11 +30,11 @@
 
 ## Introduction
 
-This document is for externally-available and/or high-performance RPC providers.  It walks through the configuration changes, migration flow and operations/maintenance work needed to enable, backfill and maintain the [`ChainIndexer`](#chainindexer-indexing-system).  The justification for and benefits of the `ChainIndexer` are documented [here](https://github.com/filecoin-project/lotus/issues/12453). 
+This document is for externally-available, high-performance RPC providers and for node operators who use or expose the Ethereum and/or events APIs.  It walks through the configuration changes, migration flow and operations/maintenance work needed to enable, backfill and maintain the [`ChainIndexer`](#chainindexer-indexing-system).  The justification for and benefits of the `ChainIndexer` are documented [here](https://github.com/filecoin-project/lotus/issues/12453). 
 
 The ChainIndexer is now also required if you enable Ethereum (`eth_*`) APIs using the `EnableEthRPC` Lotus configuration option.
 
-**Note: If you are a Storage Provider or node operator who does not serve public RPC requests or does not need Ethereum APIs enabled (i.e, if `Fevm.EnableEthRPC = false`), you can skip this document as the `ChainIndexer` is already disabled by default**. 
+**Note: If you are a Storage Provider or node operator who does not serve public RPC requests or does not need Ethereum or Event APIs (i.e, if `Fevm.EnableEthRPC = false` and `Events.EnableActorEventsAPI = false`, their default values), you can skip this document as the `ChainIndexer` is already disabled by default**. 
 
 ## ChainIndexer Config
 ### Enablement
@@ -55,7 +55,8 @@ The following must be enabled on an Lotus node before starting as they are disab
 [ChainIndexer]
 # Enable the ChainIndexer, which is required for the ETH RPC APIs and Actor Events APIs.
 # If they are enabled, but the ChainIndexer is not, Lotus will exit during startup.
-# (ChainIndexer needs to be explicitly enabled to signal to the node operator the extra supporting functionalithy that will now be running.)
+# (ChainIndexer needs to be explicitly enabled to signal to the node operator the extra
+# supporting functionality that will now be running.)
   EnableIndexer = true 
 ```
 
