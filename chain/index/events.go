@@ -144,9 +144,35 @@ func loadExecutedMessages(ctx context.Context, cs ChainStore, recomputeTipSetSta
 
 	st := cs.ActorStore(ctx)
 
+	var recomputed bool
+	recompute := func() error {
+		tskCid, err2 := rctTs.Key().Cid()
+		if err2 != nil {
+			return xerrors.Errorf("failed to compute tipset key cid: %w", err2)
+		}
+
+		log.Warnf("failed to load receipts for tipset %s (height %d): %s; recomputing tipset state", tskCid.String(), rctTs.Height(), err.Error())
+		if err := recomputeTipSetStateFunc(ctx, msgTs); err != nil {
+			return xerrors.Errorf("failed to recompute tipset state: %w", err)
+		}
+		log.Warnf("successfully recomputed tipset state and loaded events for %s (height %d)", tskCid.String(), rctTs.Height())
+		return nil
+	}
+
 	receiptsArr, err := blockadt.AsArray(st, rctTs.Blocks()[0].ParentMessageReceipts)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to load message receipts array: %w", err)
+		if !ipld.IsNotFound(err) || recomputeTipSetStateFunc == nil {
+			return nil, xerrors.Errorf("failed to load message receipts: %w", err)
+		}
+
+		if err := recompute(); err != nil {
+			return nil, err
+		}
+		recomputed = true
+		receiptsArr, err = blockadt.AsArray(st, rctTs.Blocks()[0].ParentMessageReceipts)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to load receipts after tipset state recompute: %w", err)
+		}
 	}
 
 	if uint64(len(msgs)) != receiptsArr.Length() {
@@ -173,25 +199,17 @@ func loadExecutedMessages(ctx context.Context, cs ChainStore, recomputeTipSetSta
 
 		eventsArr, err := amt4.LoadAMT(ctx, st, *rct.EventsRoot, amt4.UseTreeBitWidth(types.EventAMTBitwidth))
 		if err != nil {
-			if !ipld.IsNotFound(err) {
+			if !ipld.IsNotFound(err) || recomputeTipSetStateFunc == nil || recomputed {
 				return nil, xerrors.Errorf("failed to load events root for message %s: err: %w", ems[i].msg.Cid(), err)
 			}
-
-			if recomputeTipSetStateFunc == nil {
-				return nil, xerrors.Errorf("failed to load events amt for message %s: %w", ems[i].msg.Cid(), err)
+			// we may have the receipts but not the events, IsStoringEvents may have been false
+			if err := recompute(); err != nil {
+				return nil, err
 			}
-			log.Warnf("failed to load events amt for message %s: %s; recomputing tipset state to regenerate events", ems[i].msg.Cid(), err)
-
-			if err := recomputeTipSetStateFunc(ctx, msgTs); err != nil {
-				return nil, xerrors.Errorf("failed to recompute missing events; failed to recompute tipset state: %w", err)
-			}
-
 			eventsArr, err = amt4.LoadAMT(ctx, st, *rct.EventsRoot, amt4.UseTreeBitWidth(types.EventAMTBitwidth))
 			if err != nil {
 				return nil, xerrors.Errorf("failed to load events amt for re-executed tipset for message %s: %w", ems[i].msg.Cid(), err)
 			}
-
-			log.Infof("successfully recomputed tipset state and loaded events amt for message %s", ems[i].msg.Cid())
 		}
 
 		ems[i].evs = make([]types.Event, eventsArr.Len())
