@@ -95,6 +95,16 @@ func init() {
 	addExample(pid)
 	addExample(&pid)
 
+	f3Lease := api.F3ParticipationLease{
+		Network:      "filecoin",
+		Issuer:       pid.String(),
+		MinerID:      1234,
+		FromInstance: 10,
+		ValidityTerm: 15,
+	}
+	addExample(f3Lease)
+	addExample(&f3Lease)
+
 	block := blocks.Block(&blocks.BasicBlock{})
 	ExampleValues[reflect.TypeOf(&block).Elem()] = block
 

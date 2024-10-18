@@ -8,7 +8,6 @@ import (
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
@@ -923,9 +922,9 @@ type FullNode interface {
 	//
 	// If there is an issuer mismatch (ErrF3ParticipationIssuerMismatch), the miner
 	// must retry obtaining a new ticket to ensure it is only participating in one F3
-	// instance at any time. If the number of instances is beyond the maximum leasable
-	// participation instances accepted by the node ErrF3ParticipationTooManyInstances
-	// is returned.
+	// instance at any time. The number of instances must be at least 1. If the
+	// number of instances is beyond the maximum leasable participation instances
+	// accepted by the node ErrF3ParticipationTooManyInstances is returned.
 	//
 	// Note: Successfully acquiring a ticket alone does not constitute participation.
 	// The retrieved ticket must be used to invoke F3Participate to actively engage
@@ -980,8 +979,8 @@ type F3ParticipationTicket []byte
 type F3ParticipationLease struct {
 	// Network is the name of the network this lease belongs to.
 	Network gpbft.NetworkName
-	// Issuer is the identity of the node that issued the lease.
-	Issuer peer.ID
+	// Issuer is the identity of the node that issued the lease, encoded as base58.
+	Issuer string
 	// MinerID is the actor ID of the miner that holds the lease.
 	MinerID uint64
 	// FromInstance specifies the instance ID from which this lease is valid.
