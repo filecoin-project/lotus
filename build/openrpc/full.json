@@ -7676,7 +7676,7 @@
         {
             "name": "Filecoin.F3GetOrRenewParticipationTicket",
             "description": "```go\nfunc (s *FullNodeStruct) F3GetOrRenewParticipationTicket(p0 context.Context, p1 address.Address, p2 F3ParticipationTicket, p3 uint64) (F3ParticipationTicket, error) {\n\tif s.Internal.F3GetOrRenewParticipationTicket == nil {\n\t\treturn *new(F3ParticipationTicket), ErrNotSupported\n\t}\n\treturn s.Internal.F3GetOrRenewParticipationTicket(p0, p1, p2, p3)\n}\n```",
-            "summary": "F3GetOrRenewParticipationTicket retrieves or renews a participation ticket\nnecessary for a miner to engage in the F3 consensus process for the given\nnumber of instances.\n\nThis function accepts an optional previous ticket. If provided, a new ticket\nwill be issued only under one the following conditions:\n  1. The previous ticket has expired.\n  2. The issuer of the previous ticket matches the node processing this\n     request.\n\nIf there is an issuer mismatch (ErrF3ParticipationIssuerMismatch), the miner\nmust retry obtaining a new ticket to ensure it is only participating in one F3\ninstance at any time. If the number of instances is beyond the maximum leasable\nparticipation instances accepted by the node ErrF3ParticipationTooManyInstances\nis returned.\n\nNote: Successfully acquiring a ticket alone does not constitute participation.\nThe retrieved ticket must be used to invoke F3Participate to actively engage\nin the F3 consensus process.\n",
+            "summary": "F3GetOrRenewParticipationTicket retrieves or renews a participation ticket\nnecessary for a miner to engage in the F3 consensus process for the given\nnumber of instances.\n\nThis function accepts an optional previous ticket. If provided, a new ticket\nwill be issued only under one the following conditions:\n  1. The previous ticket has expired.\n  2. The issuer of the previous ticket matches the node processing this\n     request.\n\nIf there is an issuer mismatch (ErrF3ParticipationIssuerMismatch), the miner\nmust retry obtaining a new ticket to ensure it is only participating in one F3\ninstance at any time. The number of instances must be at least 1. If the\nnumber of instances is beyond the maximum leasable participation instances\naccepted by the node ErrF3ParticipationTooManyInstances is returned.\n\nNote: Successfully acquiring a ticket alone does not constitute participation.\nThe retrieved ticket must be used to invoke F3Participate to actively engage\nin the F3 consensus process.\n",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -7935,9 +7935,9 @@
                         {
                             "Network": "filecoin",
                             "Issuer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-                            "MinerID": 42,
-                            "FromInstance": 42,
-                            "ValidityTerm": 42
+                            "MinerID": 1234,
+                            "FromInstance": 10,
+                            "ValidityTerm": 15
                         }
                     ],
                     "additionalProperties": false,
