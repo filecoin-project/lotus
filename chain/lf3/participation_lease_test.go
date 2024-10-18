@@ -17,7 +17,7 @@ import (
 func TestLeaser(t *testing.T) {
 	issuer := peer.ID("peerID")
 	progress := mockProgress{currentInstance: 10}
-	subject := newParticipationLeaser(peer.ID(issuer), progress.Progress, 5)
+	subject := newParticipationLeaser(issuer, progress.Progress, 5)
 
 	t.Run("participate zero", func(t *testing.T) {
 		ticket, err := subject.getOrRenewParticipationTicket(123, nil, 0)
