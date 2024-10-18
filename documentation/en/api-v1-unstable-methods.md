@@ -2582,9 +2582,9 @@ will be issued only under one the following conditions:
 
 If there is an issuer mismatch (ErrF3ParticipationIssuerMismatch), the miner
 must retry obtaining a new ticket to ensure it is only participating in one F3
-instance at any time. If the number of instances is beyond the maximum leasable
-participation instances accepted by the node ErrF3ParticipationTooManyInstances
-is returned.
+instance at any time. The number of instances must be at least 1. If the
+number of instances is beyond the maximum leasable participation instances
+accepted by the node ErrF3ParticipationTooManyInstances is returned.
 
 Note: Successfully acquiring a ticket alone does not constitute participation.
 The retrieved ticket must be used to invoke F3Participate to actively engage
@@ -2687,9 +2687,9 @@ Response:
 {
   "Network": "filecoin",
   "Issuer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-  "MinerID": 42,
-  "FromInstance": 42,
-  "ValidityTerm": 42
+  "MinerID": 1234,
+  "FromInstance": 10,
+  "ValidityTerm": 15
 }
 ```
 
