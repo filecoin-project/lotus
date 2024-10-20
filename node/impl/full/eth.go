@@ -175,6 +175,7 @@ type EthAPI struct {
 
 	EthModuleAPI
 	EthEventAPI
+	StateAPI StateAPI
 }
 
 var ErrNullRound = errors.New("requested epoch was a null round")
@@ -570,12 +571,78 @@ func (a *EthModule) EthGetTransactionReceiptLimited(ctx context.Context, txHash 
 	return &receipt, nil
 }
 
-func (a *EthAPI) EthGetTransactionByBlockHashAndIndex(context.Context, ethtypes.EthHash, ethtypes.EthUint64) (ethtypes.EthTx, error) {
-	return ethtypes.EthTx{}, ErrUnsupported
+func (a *EthAPI) EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash ethtypes.EthHash, index ethtypes.EthUint64) (ethtypes.EthTx, error) {
+	ts, err := a.Chain.GetTipSetByCid(ctx, blkHash.ToCid())
+	if err != nil {
+		return ethtypes.EthTx{}, xerrors.Errorf("failed to find tipset for block hash %s: %w", blkHash, err)
+	}
+
+	return a.getTransactionByTipsetAndIndex(ctx, ts, index)
 }
 
-func (a *EthAPI) EthGetTransactionByBlockNumberAndIndex(context.Context, ethtypes.EthUint64, ethtypes.EthUint64) (ethtypes.EthTx, error) {
-	return ethtypes.EthTx{}, ErrUnsupported
+func (a *EthAPI) EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum ethtypes.EthUint64, index ethtypes.EthUint64) (ethtypes.EthTx, error) {
+	ts, err := getTipsetByBlockNumber(ctx, a.Chain, strconv.FormatUint(uint64(blkNum), 10), false)
+	if err != nil {
+		return ethtypes.EthTx{}, xerrors.Errorf("failed to get tipset: %w", err)
+	}
+	return a.getTransactionByTipsetAndIndex(ctx, ts, index)
+}
+func (a *EthAPI) getTransactionByTipsetAndIndex(ctx context.Context, ts *types.TipSet, index ethtypes.EthUint64) (ethtypes.EthTx, error) {
+	msgs, err := a.Chain.MessagesForTipset(ctx, ts)
+	if err != nil {
+		log.Errorf("Failed to get messages for tipset: %v", err)
+		return ethtypes.EthTx{}, xerrors.Errorf("failed to get messages for tipset: %w", err)
+	}
+
+	if uint64(index) >= uint64(len(msgs)) {
+		log.Errorf("Transaction index %d out of bounds (total messages: %d)", index, len(msgs))
+		return ethtypes.EthTx{}, xerrors.Errorf("transaction index out of bounds")
+	}
+
+	msg := msgs[index]
+
+	log.Debugf("Searching for message with CID %s in tipset %s", msg.Cid(), ts.Key())
+
+	msgLookup, err := a.StateAPI.StateSearchMsg(ctx, ts.Key(), msg.Cid(), 10, false)
+	if err != nil {
+		log.Errorf("Failed to search for message: %v", err)
+		return ethtypes.EthTx{}, xerrors.Errorf("failed to search for message: %w", err)
+	}
+
+	if msgLookup == nil {
+		log.Debugf("Message not found in chain, attempting retry")
+		for i := 0; i < 3; i++ {
+			time.Sleep(time.Second * 2)
+			msgLookup, err = a.StateAPI.StateSearchMsg(ctx, ts.Key(), msg.Cid(), 10, false)
+			if err != nil {
+				log.Errorf("Retry %d failed to search for message: %v", i+1, err)
+				continue
+			}
+			if msgLookup != nil {
+				break
+			}
+		}
+	}
+
+	if msgLookup == nil {
+		log.Debugf("Message not found in chain after retries, returning pending transaction")
+		pendingTx, err := newEthTxFromSignedMessage(&types.SignedMessage{Message: *msg.VMMessage()}, nil)
+		if err != nil {
+			log.Errorf("Failed to create pending Ethereum transaction: %v", err)
+			return ethtypes.EthTx{}, xerrors.Errorf("failed to create pending Ethereum transaction: %w", err)
+		}
+		return pendingTx, nil
+	}
+
+	log.Debugf("Message found in chain: %+v", msgLookup)
+
+	tx, err := newEthTxFromMessageLookup(ctx, msgLookup, -1, a.Chain, a.StateAPI)
+	if err != nil {
+		log.Errorf("Failed to convert message to Ethereum transaction: %v", err)
+		return ethtypes.EthTx{}, xerrors.Errorf("failed to convert message to Ethereum transaction: %w", err)
+	}
+	log.Debugf("Retrieved transaction: %+v", tx)
+	return tx, nil
 }
 
 func (a *EthModule) EthGetBlockReceipts(ctx context.Context, blockParam ethtypes.EthBlockNumberOrHash) ([]*api.EthTxReceipt, error) {

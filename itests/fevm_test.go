@@ -1436,3 +1436,78 @@ func TestEthGetBlockByNumber(t *testing.T) {
 	require.NotNil(t, pendingBlock)
 	require.True(t, pendingBlock.Number >= latest)
 }
+
+func TestEthGetTransactionByBlockHashAndIndex(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	key, ethAddr, filAddr := client.EVM().NewAccount()
+	// Send some funds to the f410 address
+	kit.SendFunds(ctx, t, client, filAddr, types.FromFil(10))
+
+	// Deploy the Blocktest contract
+	tx := deployContractWithEth(ctx, t, client, ethAddr, "./contracts/MultipleEvents.hex")
+	client.EVM().SignTransaction(tx, key.PrivateKey)
+	hash := client.EVM().SubmitTransaction(ctx, tx)
+
+	receipt, err := client.EVM().WaitTransaction(ctx, hash)
+	require.NoError(t, err)
+	require.NotNil(t, receipt)
+	require.Equal(t, ethtypes.EthUint64(1), receipt.Status)
+
+	// Use the block hash from the receipt
+	blockHash := receipt.BlockHash
+
+	// Get the block by its hash
+	block, err := client.EthGetBlockByHash(ctx, blockHash, false)
+	require.NoError(t, err)
+	require.NotNil(t, block)
+
+	ethTx, err := client.EthGetTransactionByBlockHashAndIndex(ctx, block.Hash, ethtypes.EthUint64(0))
+	require.NoError(t, err)
+	require.NotNil(t, ethTx)
+	require.Equal(t, hash, ethTx.Hash)
+}
+
+func TestEthGetTransactionByBlockNumberAndIndex(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	key, ethAddr, filAddr := client.EVM().NewAccount()
+	// Send some funds to the f410 address
+	kit.SendFunds(ctx, t, client, filAddr, types.FromFil(10))
+
+	tx := deployContractWithEth(ctx, t, client, ethAddr, "./contracts/MultipleEvents.hex")
+	client.EVM().SignTransaction(tx, key.PrivateKey)
+	hash := client.EVM().SubmitTransaction(ctx, tx)
+
+	receipt, err := client.EVM().WaitTransaction(ctx, hash)
+	require.NoError(t, err)
+	require.NotNil(t, receipt)
+	require.Equal(t, ethtypes.EthUint64(1), receipt.Status)
+
+	blockHash := receipt.BlockHash
+
+	// Get the block by its hash
+	block, err := client.EthGetBlockByHash(ctx, blockHash, false)
+	require.NoError(t, err)
+	require.NotNil(t, block)
+
+	require.NotNil(t, receipt.BlockNumber)
+	require.Greater(t, receipt.BlockNumber, ethtypes.EthUint64(0))
+
+	ethTx, err := client.EthGetTransactionByBlockNumberAndIndex(ctx, receipt.BlockNumber, ethtypes.EthUint64(0))
+	if err != nil {
+		t.Logf("Error getting transaction: %v", err)
+		block, blockErr := client.EthGetBlockByNumber(ctx, receipt.BlockNumber.Hex(), false)
+		if blockErr != nil {
+			t.Logf("Error getting block: %v", blockErr)
+		} else {
+			t.Logf("Block exists, transaction count: %d", len(block.Transactions))
+		}
+	}
+
+	require.NoError(t, err)
+	require.NotNil(t, ethTx)
+	require.Equal(t, hash, ethTx.Hash)
+}
