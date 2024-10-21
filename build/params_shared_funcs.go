@@ -2,6 +2,7 @@ package build
 
 import (
 	"os"
+	"strings"
 
 	"github.com/libp2p/go-libp2p/core/protocol"
 
@@ -36,5 +37,21 @@ var MustParseAddress = buildconstants.MustParseAddress
 
 func IsF3Enabled() bool {
 	const F3DisableEnvKey = "LOTUS_DISABLE_F3"
-	return buildconstants.F3Enabled && len(os.Getenv(F3DisableEnvKey)) == 0
+	if !buildconstants.F3Enabled {
+		// Build constant takes precedence over environment variable.
+		return false
+	}
+	v, disableEnvVarSet := os.LookupEnv(F3DisableEnvKey)
+	if !disableEnvVarSet {
+		// Environment variable to disable F3 is not set.
+		return true
+	}
+	switch strings.TrimSpace(strings.ToLower(v)) {
+	case "", "0", "false", "no":
+		// Consider these values as "do not disable".
+		return true
+	default:
+		// Consider any other value as disable.
+		return false
+	}
 }
