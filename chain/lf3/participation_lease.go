@@ -20,7 +20,7 @@ type f3Status = func() (*manifest.Manifest, gpbft.Instant)
 type leaser struct {
 	mutex                sync.Mutex
 	leases               map[uint64]api.F3ParticipationLease
-	issuer               peer.ID
+	issuer               string // issuer is the base58 encoding of the node peer ID.
 	status               f3Status
 	maxLeasableInstances uint64
 	// Signals that a lease was created and/or updated.
@@ -30,7 +30,7 @@ type leaser struct {
 func newParticipationLeaser(nodeId peer.ID, status f3Status, maxLeasedInstances uint64) *leaser {
 	return &leaser{
 		leases:               make(map[uint64]api.F3ParticipationLease),
-		issuer:               nodeId,
+		issuer:               nodeId.String(),
 		status:               status,
 		notifyParticipation:  make(chan struct{}, 1),
 		maxLeasableInstances: maxLeasedInstances,
@@ -38,6 +38,10 @@ func newParticipationLeaser(nodeId peer.ID, status f3Status, maxLeasedInstances 
 }
 
 func (l *leaser) getOrRenewParticipationTicket(participant uint64, previous api.F3ParticipationTicket, instances uint64) (api.F3ParticipationTicket, error) {
+
+	if instances == 0 {
+		return nil, errors.New("not enough instances")
+	}
 
 	if instances > l.maxLeasableInstances {
 		return nil, api.ErrF3ParticipationTooManyInstances
@@ -56,7 +60,7 @@ func (l *leaser) getOrRenewParticipationTicket(participant uint64, previous api.
 		//   - it is valid and was issued by this node.
 		//
 		// Otherwise, return ErrF3ParticipationIssuerMismatch to signal to the caller the need for retry.
-		switch _, err := l.validate(manifest.NetworkName, currentInstance, previous); {
+		switch _, err := l.validateTicket(manifest.NetworkName, currentInstance, previous); {
 		case errors.Is(err, api.ErrF3ParticipationTicketInvalid):
 			// Invalid ticket means the miner must have got the ticket from a node with a potentially different version.
 			// Refuse to issue a new ticket in case there is some other node with active lease for the miner.
@@ -90,7 +94,7 @@ func (l *leaser) participate(ticket api.F3ParticipationTicket) (api.F3Participat
 	if manifest == nil {
 		return api.F3ParticipationLease{}, api.ErrF3NotReady
 	}
-	newLease, err := l.validate(manifest.NetworkName, instant.ID, ticket)
+	newLease, err := l.validateTicket(manifest.NetworkName, instant.ID, ticket)
 	if err != nil {
 		return api.F3ParticipationLease{}, err
 	}
@@ -112,20 +116,42 @@ func (l *leaser) participate(ticket api.F3ParticipationTicket) (api.F3Participat
 	return newLease, nil
 }
 
-func (l *leaser) getParticipantsByInstance(instance uint64) []uint64 {
+func (l *leaser) getParticipantsByInstance(network gpbft.NetworkName, instance uint64) []uint64 {
 	l.mutex.Lock()
 	defer l.mutex.Unlock()
+	currentManifest, _ := l.status()
+	currentNetwork := currentManifest.NetworkName
+	if currentNetwork != network {
+		return nil
+	}
 	var participants []uint64
 	for id, lease := range l.leases {
-		if instance > lease.ToInstance() {
-			// Lazily delete the expired leases.
+		if _, err := l.validateLease(currentNetwork, instance, lease); err != nil {
+			// Lazily clear old leases.
+			log.Warnf("lost F3 participation lease for miner %d at instance %d since it is no loger valid: %v ", id, instance, err)
 			delete(l.leases, id)
-			log.Warnf("lost F3 participation lease for miner %d", id)
 		} else {
 			participants = append(participants, id)
 		}
 	}
 	return participants
+}
+
+func (l *leaser) getValidLeases() []api.F3ParticipationLease {
+	l.mutex.Lock()
+	defer l.mutex.Unlock()
+	currentManifest, progress := l.status()
+	var leases []api.F3ParticipationLease
+	for id, lease := range l.leases {
+		// Lazily clear old leases.
+		if validatedLease, err := l.validateLease(currentManifest.NetworkName, progress.ID, lease); err != nil {
+			log.Warnf("lost F3 participation lease for miner %d at instance %d while getting valid leases since it is no loger valid: %v ", id, progress.ID, err)
+			delete(l.leases, id)
+		} else {
+			leases = append(leases, validatedLease)
+		}
+	}
+	return leases
 }
 
 func (l *leaser) newParticipationTicket(nn gpbft.NetworkName, participant uint64, from uint64, instances uint64) (api.F3ParticipationTicket, error) {
@@ -146,13 +172,16 @@ func (l *leaser) newParticipationTicket(nn gpbft.NetworkName, participant uint64
 	return buf.Bytes(), nil
 }
 
-func (l *leaser) validate(currentNetwork gpbft.NetworkName, currentInstance uint64, t api.F3ParticipationTicket) (api.F3ParticipationLease, error) {
+func (l *leaser) validateTicket(currentNetwork gpbft.NetworkName, currentInstance uint64, t api.F3ParticipationTicket) (api.F3ParticipationLease, error) {
 	var lease api.F3ParticipationLease
 	reader := bytes.NewReader(t)
 	if err := lease.UnmarshalCBOR(reader); err != nil {
 		return api.F3ParticipationLease{}, api.ErrF3ParticipationTicketInvalid
 	}
+	return l.validateLease(currentNetwork, currentInstance, lease)
+}
 
+func (l *leaser) validateLease(currentNetwork gpbft.NetworkName, currentInstance uint64, lease api.F3ParticipationLease) (api.F3ParticipationLease, error) {
 	// Combine the errors to remove significance of the order by which they are
 	// checked outside if this function.
 	var err error
@@ -165,6 +194,7 @@ func (l *leaser) validate(currentNetwork gpbft.NetworkName, currentInstance uint
 	if lease.ValidityTerm > l.maxLeasableInstances {
 		err = multierr.Append(err, api.ErrF3ParticipationTooManyInstances)
 	}
+
 	if err != nil {
 		return api.F3ParticipationLease{}, err
 	}
