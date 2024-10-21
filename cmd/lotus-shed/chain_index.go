@@ -137,7 +137,6 @@ number of failed RPC calls. Otherwise, it will exit with a zero status.
 				fromEpoch, toEpoch, backfill, logGood)
 		}
 		totalEpochs := fromEpoch - toEpoch + 1
-		haltNoData := false
 		haltHeight := -1
 
 		for epoch := fromEpoch; epoch >= toEpoch; epoch-- {
@@ -158,7 +157,6 @@ number of failed RPC calls. Otherwise, it will exit with a zero status.
 			if err != nil {
 				if strings.Contains(err.Error(), "chain store does not contain data") {
 					haltHeight = epoch
-					haltNoData = true
 					break
 				}
 
@@ -199,7 +197,7 @@ number of failed RPC calls. Otherwise, it will exit with a zero status.
 			_, _ = fmt.Fprintf(cctx.App.Writer, "Total successful Null round validations: %d\n", successfulNullRounds)
 		}
 
-		if haltNoData {
+		if haltHeight >= 0 {
 			return fmt.Errorf("chain index validation and backfilled halted at height %d as chain state does contain data for that height", haltHeight)
 		} else if failedRPCs > 0 {
 			return fmt.Errorf("chain index validation failed with %d RPC errors", failedRPCs)
