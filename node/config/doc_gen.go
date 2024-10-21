@@ -179,8 +179,7 @@ may increase startup time.`,
 
 			Comment: `EnableActorEventsAPI enables the Actor events API that enables clients to consume events
 emitted by (smart contracts + built-in Actors).
-This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be
-disabled by setting their respective Disable* options.`,
+Note: Setting this to true will also require that ChainIndexer is enabled, otherwise it will cause an error at startup.`,
 		},
 		{
 			Name: "FilterTTL",
@@ -255,8 +254,8 @@ rewards. This address should have adequate funds to cover gas fees.`,
 			Name: "EnableEthRPC",
 			Type: "bool",
 
-			Comment: `EnableEthRPC enables eth_ RPC methods and will also enable the RealTimeFilterAPI.
-Setting this to true will also require that ChainIndexer is enabled, otherwise it will cause an error at startup.`,
+			Comment: `EnableEthRPC enables eth_ RPC methods.
+Note: Setting this to true will also require that ChainIndexer is enabled, otherwise it will cause an error at startup.`,
 		},
 		{
 			Name: "EthTraceFilterMaxResults",

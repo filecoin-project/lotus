@@ -538,8 +538,8 @@ type FeeConfig struct {
 }
 
 type FevmConfig struct {
-	// EnableEthRPC enables eth_ RPC methods and will also enable the RealTimeFilterAPI.
-	// Setting this to true will also require that ChainIndexer is enabled, otherwise it will cause an error at startup.
+	// EnableEthRPC enables eth_ RPC methods.
+	// Note: Setting this to true will also require that ChainIndexer is enabled, otherwise it will cause an error at startup.
 	EnableEthRPC bool
 
 	// EthTraceFilterMaxResults sets the maximum results returned per request by trace_filter
@@ -556,8 +556,7 @@ type FevmConfig struct {
 type EventsConfig struct {
 	// EnableActorEventsAPI enables the Actor events API that enables clients to consume events
 	// emitted by (smart contracts + built-in Actors).
-	// This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be
-	// disabled by setting their respective Disable* options.
+	// Note: Setting this to true will also require that ChainIndexer is enabled, otherwise it will cause an error at startup.
 	EnableActorEventsAPI bool
 
 	// FilterTTL specifies the time to live for actor event filters. Filters that haven't been accessed longer than
