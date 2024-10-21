@@ -131,10 +131,6 @@ var (
 	F3ManifestServerID     peer.ID        = ""
 	F3BootstrapEpoch       abi.ChainEpoch = -1
 	F3InitialPowerTableCID                = cid.Undef
-
-	// F3Consensus set whether F3 should checkpoint tipsets finalized by F3. This
-	// flag has no effect if F3 is not enabled.
-	F3Consensus = true
 )
 
 func init() {
