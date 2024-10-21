@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/urfave/cli/v2"
@@ -135,8 +136,10 @@ number of failed RPC calls. Otherwise, it will exit with a zero status.
 			_, _ = fmt.Fprintf(cctx.App.Writer, "%s starting chainindex validation; from epoch: %d; to epoch: %d; backfill: %t; log-good: %t\n", currentTimeString(),
 				fromEpoch, toEpoch, backfill, logGood)
 		}
-
 		totalEpochs := fromEpoch - toEpoch + 1
+		haltNoData := false
+		haltHeight := -1
+
 		for epoch := fromEpoch; epoch >= toEpoch; epoch-- {
 			if ctx.Err() != nil {
 				return ctx.Err()
@@ -153,6 +156,12 @@ number of failed RPC calls. Otherwise, it will exit with a zero status.
 
 			indexValidateResp, err := api.ChainValidateIndex(ctx, abi.ChainEpoch(epoch), backfill)
 			if err != nil {
+				if strings.Contains(err.Error(), "chain store does not contain data") {
+					haltHeight = epoch
+					haltNoData = true
+					break
+				}
+
 				_, _ = fmt.Fprintf(cctx.App.Writer, "%s ✗ Epoch %d; failure: %s\n", currentTimeString(), epoch, err)
 				failedRPCs++
 				continue
@@ -190,7 +199,9 @@ number of failed RPC calls. Otherwise, it will exit with a zero status.
 			_, _ = fmt.Fprintf(cctx.App.Writer, "Total successful Null round validations: %d\n", successfulNullRounds)
 		}
 
-		if failedRPCs > 0 {
+		if haltNoData {
+			return fmt.Errorf("chain index validation and backfilled halted at height %d as chain state does contain data for that height", haltHeight)
+		} else if failedRPCs > 0 {
 			return fmt.Errorf("chain index validation failed with %d RPC errors", failedRPCs)
 		}
 
