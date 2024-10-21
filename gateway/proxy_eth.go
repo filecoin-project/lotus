@@ -200,6 +200,14 @@ func (gw *Node) EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxIn
 	return gw.target.EthGetBlockByNumber(ctx, blkNum, fullTxInfo)
 }
 
+func (gw *Node) EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash ethtypes.EthHash, txIndex ethtypes.EthUint64) (*ethtypes.EthTx, error) {
+	return gw.target.EthGetTransactionByBlockHashAndIndex(ctx, blkHash, txIndex)
+}
+
+func (gw *Node) EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum ethtypes.EthUint64, txIndex ethtypes.EthUint64) (*ethtypes.EthTx, error) {
+	return gw.target.EthGetTransactionByBlockNumberAndIndex(ctx, blkNum, txIndex)
+}
+
 func (gw *Node) EthGetTransactionByHash(ctx context.Context, txHash *ethtypes.EthHash) (*ethtypes.EthTx, error) {
 	return gw.target.EthGetTransactionByHashLimited(ctx, txHash, api.LookbackNoLimit)
 }
