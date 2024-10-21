@@ -595,7 +595,7 @@ func (a *EthAPI) getTransactionByTipsetAndIndex(ctx context.Context, ts *types.T
 	}
 
 	if uint64(index) >= uint64(len(msgs)) {
-		return nil, xerrors.Errorf("index out of range")
+		return nil, xerrors.Errorf("index %d out of range: tipset contains %d messages", index, len(msgs))
 	}
 
 	msg := msgs[index]
