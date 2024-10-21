@@ -2,8 +2,6 @@ module github.com/filecoin-project/lotus
 
 go 1.22.7
 
-toolchain go1.22.7
-
 retract v1.14.0 // Accidentally force-pushed tag, use v1.14.1+ instead.
 
 retract v1.20.2 // Wrongfully cherry picked PR, use v1.20.2+ instead.
@@ -309,7 +307,7 @@ require (
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/prometheus/statsd_exporter v0.22.7 // indirect
 	github.com/quic-go/qpack v0.5.1 // indirect
-	github.com/quic-go/quic-go v0.48.0 // indirect
+	github.com/quic-go/quic-go v0.48.1 // indirect
 	github.com/quic-go/webtransport-go v0.8.1-0.20241018022711-4ac2c9250e66 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
@@ -349,4 +347,4 @@ require (
 )
 
 // Temporary prior to go-libp2p v0.37.0 release
-replace github.com/libp2p/go-libp2p => github.com/libp2p/go-libp2p v0.36.3-0.20241018175510-868635d2ca72
+replace github.com/libp2p/go-libp2p => github.com/libp2p/go-libp2p v0.36.3-0.20241022183817-df7dfb647035
