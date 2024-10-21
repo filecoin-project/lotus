@@ -6,6 +6,7 @@ import (
 	"errors"
 
 	"github.com/ipfs/go-cid"
+	ipld "github.com/ipfs/go-ipld-format"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -285,12 +286,6 @@ func (si *SqliteIndexer) verifyIndexedData(ctx context.Context, ts *types.TipSet
 }
 
 func (si *SqliteIndexer) backfillMissingTipset(ctx context.Context, ts *types.TipSet) (*types.IndexValidation, error) {
-	// backfill the tipset in the Index
-	parentTs, err := si.cs.GetTipSetFromKey(ctx, ts.Parents())
-	if err != nil {
-		return nil, xerrors.Errorf("failed to get parent tipset at height %d: %w", ts.Height(), err)
-	}
-
 	executionTs, err := si.getNextTipset(ctx, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get next tipset at height %d: %w", ts.Height(), err)
@@ -298,20 +293,15 @@ func (si *SqliteIndexer) backfillMissingTipset(ctx context.Context, ts *types.Ti
 
 	backfillFunc := func() error {
 		return withTx(ctx, si.db, func(tx *sql.Tx) error {
-			if err := si.indexTipsetWithParentEvents(ctx, tx, ts, executionTs); err != nil {
-				return xerrors.Errorf("error indexing (ts, executionTs): %w", err)
-			}
-
-			if err := si.indexTipsetWithParentEvents(ctx, tx, parentTs, ts); err != nil {
-				return xerrors.Errorf("error indexing (parentTs, ts): %w", err)
-			}
-
-			return nil
+			return si.indexTipsetWithParentEvents(ctx, tx, ts, executionTs)
 		})
 	}
 
 	if err := backfillFunc(); err != nil {
-		return nil, xerrors.Errorf("failed to backfill tipset: %w", err)
+		if ipld.IsNotFound(err) {
+			return nil, xerrors.Errorf("failed to backfill tipset at epoch %d: chain store does not contain data: %w", ts.Height(), err)
+		}
+		return nil, xerrors.Errorf("failed to backfill tipset at epoch %d; err: %w", ts.Height(), err)
 	}
 
 	indexedData, err := si.getIndexedTipSetData(ctx, ts)
