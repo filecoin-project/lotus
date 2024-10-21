@@ -25,14 +25,16 @@
   - [Previous Indexing System](#previous-indexing-system)
   - [ChainIndexer Indexing System](#chainindexer-indexing-system)
 - [Appendix](#appendix)
-  - [Wny isn't there an automated migration from the previous indexing system to the ChainIndexer indexing system?](#wny-isnt-there-an-automated-migration-from-the-previous-indexing-system-to-the-chainindexer-indexing-system)
+  - [Why isn't there an automated migration from the previous indexing system to the ChainIndexer indexing system?](#why-isnt-there-an-automated-migration-from-the-previous-indexing-system-to-the-chainindexer-indexing-system)
   - [`ChainValidateIndex` RPC API](#chainvalidateindex-rpc-api)
 
 ## Introduction
 
 This document is for externally-available, high-performance RPC providers and for node operators who use or expose the Ethereum and/or events APIs.  It walks through the configuration changes, migration flow and operations/maintenance work needed to enable, backfill and maintain the [`ChainIndexer`](#chainindexer-indexing-system).  The justification for and benefits of the `ChainIndexer` are documented [here](https://github.com/filecoin-project/lotus/issues/12453). 
 
-The ChainIndexer is now also required if you enable Ethereum (`eth_*`) APIs using the `EnableEthRPC` Lotus configuration option.
+The ChainIndexer is now also required if you enable:
+1. Ethereum (`eth_*`) APIs using the `EnableEthRPC` Lotus configuration option OR
+2. ActorEvent APIs using the `EnableActorEventsAPI` Lotus configuration option
 
 **Note: If you are a Storage Provider or node operator who does not serve public RPC requests or does not need Ethereum or Event APIs (i.e, if `Fevm.EnableEthRPC = false` and `Events.EnableActorEventsAPI = false`, their default values), you can skip this document as the `ChainIndexer` is already disabled by default**. 
 
@@ -118,6 +120,7 @@ The previously deprecated `Fevm.Events` options are now also all removed:
 * `Fevm.Events.MaxFilters`
 * `Fevm.Events.MaxFilterResults`
 * `Fevm.Events.MaxFilterHeightRange`
+They do still exist in `EventsConfig` and can be configured there.
 
 ## Upgrade
 
@@ -311,7 +314,7 @@ In case you need to downgrade to the [previous indexing system](#previous-indexi
 
 ## Appendix
 
-### Wny isn't there an automated migration from the [previous indexing system](#previous-indexing-system) to the [ChainIndexer indexing system](#chainindexer-indexing-system)?
+### Why isn't there an automated migration from the [previous indexing system](#previous-indexing-system) to the [ChainIndexer indexing system](#chainindexer-indexing-system)?
 
 The decision to not invest here ultimately comes down to the development-time cost vs. benefit ratio.
 
