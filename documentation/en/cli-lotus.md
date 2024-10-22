@@ -34,6 +34,7 @@ COMMANDS:
    NETWORK:
      net   Manage P2P Network
      sync  Inspect or interact with the chain syncer
+     f3    Manages Filecoin Fast Finality (F3) interactions
    STATUS:
      status  Check node status
 
@@ -2717,6 +2718,61 @@ USAGE:
 OPTIONS:
    --epoch value  checkpoint the tipset at the given epoch (default: 0)
    --help, -h     show help
+```
+
+## lotus f3
+```
+NAME:
+   lotus f3 - Manages Filecoin Fast Finality (F3) interactions
+
+USAGE:
+   lotus f3 command [command options] [arguments...]
+
+COMMANDS:
+   list-miners, lp  Lists the miners that currently participate in F3 via this node.
+   manifest         Gets the current manifest used by F3.
+   status           Checks the F3 status.
+   help, h          Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help
+```
+
+### lotus f3 list-miners
+```
+NAME:
+   lotus f3 list-miners - Lists the miners that currently participate in F3 via this node.
+
+USAGE:
+   lotus f3 list-miners [command options] [arguments...]
+
+OPTIONS:
+   --help, -h  show help
+```
+
+### lotus f3 manifest
+```
+NAME:
+   lotus f3 manifest - Gets the current manifest used by F3.
+
+USAGE:
+   lotus f3 manifest [command options] [arguments...]
+
+OPTIONS:
+   --output value  The output format. Supported formats: text, json (default: "text")
+   --help, -h      show help
+```
+
+### lotus f3 status
+```
+NAME:
+   lotus f3 status - Checks the F3 status.
+
+USAGE:
+   lotus f3 status [command options] [arguments...]
+
+OPTIONS:
+   --help, -h  show help
 ```
 
 ## lotus status
