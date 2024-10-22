@@ -886,7 +886,7 @@ func (mr *MockFullNodeMockRecorder) EthGetTransactionByBlockHashAndIndex(arg0, a
 }
 
 // EthGetTransactionByBlockNumberAndIndex mocks base method.
-func (m *MockFullNode) EthGetTransactionByBlockNumberAndIndex(arg0 context.Context, arg1, arg2 ethtypes.EthUint64) (*ethtypes.EthTx, error) {
+func (m *MockFullNode) EthGetTransactionByBlockNumberAndIndex(arg0 context.Context, arg1 string, arg2 ethtypes.EthUint64) (*ethtypes.EthTx, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetTransactionByBlockNumberAndIndex", arg0, arg1, arg2)
 	ret0, _ := ret[0].(*ethtypes.EthTx)

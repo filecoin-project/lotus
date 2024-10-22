@@ -204,7 +204,7 @@ func (gw *Node) EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHas
 	return gw.target.EthGetTransactionByBlockHashAndIndex(ctx, blkHash, txIndex)
 }
 
-func (gw *Node) EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum ethtypes.EthUint64, txIndex ethtypes.EthUint64) (*ethtypes.EthTx, error) {
+func (gw *Node) EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum string, txIndex ethtypes.EthUint64) (*ethtypes.EthTx, error) {
 	return gw.target.EthGetTransactionByBlockNumberAndIndex(ctx, blkNum, txIndex)
 }
 

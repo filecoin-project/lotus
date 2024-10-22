@@ -4511,22 +4511,20 @@
         },
         {
             "name": "Filecoin.EthGetTransactionByBlockNumberAndIndex",
-            "description": "```go\nfunc (s *FullNodeStruct) EthGetTransactionByBlockNumberAndIndex(p0 context.Context, p1 ethtypes.EthUint64, p2 ethtypes.EthUint64) (*ethtypes.EthTx, error) {\n\tif s.Internal.EthGetTransactionByBlockNumberAndIndex == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.EthGetTransactionByBlockNumberAndIndex(p0, p1, p2)\n}\n```",
+            "description": "```go\nfunc (s *FullNodeStruct) EthGetTransactionByBlockNumberAndIndex(p0 context.Context, p1 string, p2 ethtypes.EthUint64) (*ethtypes.EthTx, error) {\n\tif s.Internal.EthGetTransactionByBlockNumberAndIndex == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.EthGetTransactionByBlockNumberAndIndex(p0, p1, p2)\n}\n```",
             "summary": "",
             "paramStructure": "by-position",
             "params": [
                 {
                     "name": "p1",
-                    "description": "ethtypes.EthUint64",
+                    "description": "string",
                     "summary": "",
                     "schema": {
-                        "title": "number",
-                        "description": "Number is a number",
                         "examples": [
-                            "0x5"
+                            "string value"
                         ],
                         "type": [
-                            "number"
+                            "string"
                         ]
                     },
                     "required": true,

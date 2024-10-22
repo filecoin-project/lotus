@@ -580,12 +580,44 @@ func (a *EthAPI) EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHa
 	return a.getTransactionByTipsetAndIndex(ctx, ts, index)
 }
 
-func (a *EthAPI) EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum ethtypes.EthUint64, index ethtypes.EthUint64) (*ethtypes.EthTx, error) {
-	ts, err := getTipsetByBlockNumber(ctx, a.Chain, strconv.FormatUint(uint64(blkNum), 10), false)
-	if err != nil {
-		return nil, xerrors.Errorf("block not found")
+func (a *EthAPI) EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkParam string, index ethtypes.EthUint64) (*ethtypes.EthTx, error) {
+	validBlockTags := map[string]bool{
+		"latest":   true,
+		"pending":  true,
+		"earliest": true,
+		"final":    true,
 	}
-	return a.getTransactionByTipsetAndIndex(ctx, ts, index)
+
+	var blockNumber string
+
+	if validBlockTags[blkParam] {
+		blockNumber = blkParam
+	} else {
+		blkNum, err := ethtypes.EthUint64FromHex(blkParam)
+		if err != nil {
+			return nil, fmt.Errorf("invalid block number format: %w", err)
+		}
+		blockNumber = strconv.FormatUint(uint64(blkNum), 10)
+	}
+
+	ts, err := getTipsetByBlockNumber(ctx, a.Chain, blockNumber, true)
+	if err != nil {
+		if err == ErrNullRound {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get tipset for block %s: %w", blockNumber, err)
+	}
+
+	if ts == nil {
+		return nil, fmt.Errorf("tipset not found for block %s", blockNumber)
+	}
+
+	tx, err := a.getTransactionByTipsetAndIndex(ctx, ts, index)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get transaction at index %d: %w", index, err)
+	}
+
+	return tx, nil
 }
 
 func (a *EthAPI) getTransactionByTipsetAndIndex(ctx context.Context, ts *types.TipSet, index ethtypes.EthUint64) (*ethtypes.EthTx, error) {

@@ -1785,7 +1785,7 @@ Perms: read
 Inputs:
 ```json
 [
-  "0x5",
+  "string value",
   "0x5"
 ]
 ```

@@ -216,7 +216,7 @@ type FullNodeMethods struct {
 
 	EthGetTransactionByBlockHashAndIndex func(p0 context.Context, p1 ethtypes.EthHash, p2 ethtypes.EthUint64) (*ethtypes.EthTx, error) `perm:"read"`
 
-	EthGetTransactionByBlockNumberAndIndex func(p0 context.Context, p1 ethtypes.EthUint64, p2 ethtypes.EthUint64) (*ethtypes.EthTx, error) `perm:"read"`
+	EthGetTransactionByBlockNumberAndIndex func(p0 context.Context, p1 string, p2 ethtypes.EthUint64) (*ethtypes.EthTx, error) `perm:"read"`
 
 	EthGetTransactionByHash func(p0 context.Context, p1 *ethtypes.EthHash) (*ethtypes.EthTx, error) `perm:"read"`
 
@@ -682,7 +682,7 @@ type GatewayMethods struct {
 
 	EthGetTransactionByBlockHashAndIndex func(p0 context.Context, p1 ethtypes.EthHash, p2 ethtypes.EthUint64) (*ethtypes.EthTx, error) ``
 
-	EthGetTransactionByBlockNumberAndIndex func(p0 context.Context, p1 ethtypes.EthUint64, p2 ethtypes.EthUint64) (*ethtypes.EthTx, error) ``
+	EthGetTransactionByBlockNumberAndIndex func(p0 context.Context, p1 string, p2 ethtypes.EthUint64) (*ethtypes.EthTx, error) ``
 
 	EthGetTransactionByHash func(p0 context.Context, p1 *ethtypes.EthHash) (*ethtypes.EthTx, error) ``
 
@@ -1908,14 +1908,14 @@ func (s *FullNodeStub) EthGetTransactionByBlockHashAndIndex(p0 context.Context, 
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthGetTransactionByBlockNumberAndIndex(p0 context.Context, p1 ethtypes.EthUint64, p2 ethtypes.EthUint64) (*ethtypes.EthTx, error) {
+func (s *FullNodeStruct) EthGetTransactionByBlockNumberAndIndex(p0 context.Context, p1 string, p2 ethtypes.EthUint64) (*ethtypes.EthTx, error) {
 	if s.Internal.EthGetTransactionByBlockNumberAndIndex == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.EthGetTransactionByBlockNumberAndIndex(p0, p1, p2)
 }
 
-func (s *FullNodeStub) EthGetTransactionByBlockNumberAndIndex(p0 context.Context, p1 ethtypes.EthUint64, p2 ethtypes.EthUint64) (*ethtypes.EthTx, error) {
+func (s *FullNodeStub) EthGetTransactionByBlockNumberAndIndex(p0 context.Context, p1 string, p2 ethtypes.EthUint64) (*ethtypes.EthTx, error) {
 	return nil, ErrNotSupported
 }
 
@@ -4405,14 +4405,14 @@ func (s *GatewayStub) EthGetTransactionByBlockHashAndIndex(p0 context.Context, p
 	return nil, ErrNotSupported
 }
 
-func (s *GatewayStruct) EthGetTransactionByBlockNumberAndIndex(p0 context.Context, p1 ethtypes.EthUint64, p2 ethtypes.EthUint64) (*ethtypes.EthTx, error) {
+func (s *GatewayStruct) EthGetTransactionByBlockNumberAndIndex(p0 context.Context, p1 string, p2 ethtypes.EthUint64) (*ethtypes.EthTx, error) {
 	if s.Internal.EthGetTransactionByBlockNumberAndIndex == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.EthGetTransactionByBlockNumberAndIndex(p0, p1, p2)
 }
 
-func (s *GatewayStub) EthGetTransactionByBlockNumberAndIndex(p0 context.Context, p1 ethtypes.EthUint64, p2 ethtypes.EthUint64) (*ethtypes.EthTx, error) {
+func (s *GatewayStub) EthGetTransactionByBlockNumberAndIndex(p0 context.Context, p1 string, p2 ethtypes.EthUint64) (*ethtypes.EthTx, error) {
 	return nil, ErrNotSupported
 }
 

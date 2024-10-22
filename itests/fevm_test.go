@@ -1437,8 +1437,6 @@ func TestEthGetBlockByNumber(t *testing.T) {
 	require.True(t, pendingBlock.Number >= latest)
 }
 
-// ... (previous imports and helper functions remain unchanged)
-
 func TestEthGetTransactionByBlockHashAndIndexAndNumber(t *testing.T) {
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
@@ -1492,13 +1490,11 @@ func TestEthGetTransactionByBlockHashAndIndexAndNumber(t *testing.T) {
 
 	// Test EthGetTransactionByBlockNumberAndIndex
 	for i, hash := range txHashes {
-		ethTx, err := client.EthGetTransactionByBlockNumberAndIndex(ctx, blockNumber, ethtypes.EthUint64(i))
+		ethTx, err := client.EthGetTransactionByBlockNumberAndIndex(ctx, blockNumber.Hex(), ethtypes.EthUint64(i))
 		require.NoError(t, err)
 		require.NotNil(t, ethTx)
 		require.Equal(t, hash, ethTx.Hash)
 	}
-
-	// Test error cases
 
 	// 1. Invalid block hash
 	invalidBlockHash := ethtypes.EthHash{1}
@@ -1507,18 +1503,18 @@ func TestEthGetTransactionByBlockHashAndIndexAndNumber(t *testing.T) {
 	require.ErrorContains(t, err, "not found")
 
 	// 2. Invalid block number (future block)
-	_, err = client.EthGetTransactionByBlockNumberAndIndex(ctx, blockNumber+1000, ethtypes.EthUint64(0))
+	_, err = client.EthGetTransactionByBlockNumberAndIndex(ctx, (blockNumber + 1000).Hex(), ethtypes.EthUint64(0))
 	require.Error(t, err)
-	require.ErrorContains(t, err, "not found")
+	require.ErrorContains(t, err, "failed to get tipset")
 
 	// 3. Index out of range
 	_, err = client.EthGetTransactionByBlockHashAndIndex(ctx, blockHash, ethtypes.EthUint64(numTx))
 	require.Error(t, err)
-	require.ErrorContains(t, err, "index out of range")
+	require.ErrorContains(t, err, "out of range")
 
-	_, err = client.EthGetTransactionByBlockNumberAndIndex(ctx, blockNumber, ethtypes.EthUint64(numTx))
+	_, err = client.EthGetTransactionByBlockNumberAndIndex(ctx, blockNumber.Hex(), ethtypes.EthUint64(numTx))
 	require.Error(t, err)
-	require.ErrorContains(t, err, "index out of range")
+	require.ErrorContains(t, err, "out of range")
 
 	// 4. Tipset with no messages
 	emptyBlock, err := client.EthGetBlockByNumber(ctx, "latest", false)
@@ -1527,10 +1523,10 @@ func TestEthGetTransactionByBlockHashAndIndexAndNumber(t *testing.T) {
 
 	_, err = client.EthGetTransactionByBlockHashAndIndex(ctx, emptyBlock.Hash, ethtypes.EthUint64(0))
 	require.Error(t, err)
-	require.ErrorContains(t, err, "index out of range")
+	require.ErrorContains(t, err, "out of range")
 
-	_, err = client.EthGetTransactionByBlockNumberAndIndex(ctx, emptyBlock.Number, ethtypes.EthUint64(0))
+	_, err = client.EthGetTransactionByBlockNumberAndIndex(ctx, "latest", ethtypes.EthUint64(0))
 	require.Error(t, err)
-	require.ErrorContains(t, err, "index out of range")
+	require.ErrorContains(t, err, "out of range")
 
 }

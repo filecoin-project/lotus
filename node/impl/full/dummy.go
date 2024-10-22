@@ -87,7 +87,7 @@ func (e *EthModuleDummy) EthGetTransactionByBlockHashAndIndex(ctx context.Contex
 	return nil, ErrModuleDisabled
 }
 
-func (e *EthModuleDummy) EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum ethtypes.EthUint64, txIndex ethtypes.EthUint64) (*ethtypes.EthTx, error) {
+func (e *EthModuleDummy) EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum string, txIndex ethtypes.EthUint64) (*ethtypes.EthTx, error) {
 	return nil, ErrModuleDisabled
 }
 

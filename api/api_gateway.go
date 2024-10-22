@@ -136,7 +136,7 @@ type Gateway interface {
 	EthTraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error)
 	EthTraceTransaction(ctx context.Context, txHash string) ([]*ethtypes.EthTraceTransaction, error)
 	EthTraceFilter(ctx context.Context, filter ethtypes.EthTraceFilterCriteria) ([]*ethtypes.EthTraceFilterResult, error)
-	EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum ethtypes.EthUint64, index ethtypes.EthUint64) (*ethtypes.EthTx, error)
+	EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum string, index ethtypes.EthUint64) (*ethtypes.EthTx, error)
 	EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash ethtypes.EthHash, index ethtypes.EthUint64) (*ethtypes.EthTx, error)
 	GetActorEventsRaw(ctx context.Context, filter *types.ActorEventFilter) ([]*types.ActorEvent, error)
 	SubscribeActorEventsRaw(ctx context.Context, filter *types.ActorEventFilter) (<-chan *types.ActorEvent, error)
