@@ -535,8 +535,8 @@ func TestEthGetLogsBasic(t *testing.T) {
 
 		if ts.Height() != abi.ChainEpoch(height) {
 			iv, err := client.ChainValidateIndex(ctx, abi.ChainEpoch(height), false)
-			require.Nil(iv)
 			require.NoError(err)
+			require.True(iv.IsNullRound)
 			t.Logf("tipset %d is a null round", height)
 			continue
 		}
