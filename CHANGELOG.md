@@ -10,7 +10,7 @@
 - `lotus chain head` now supports a `--height` flag to print just the epoch number of the current chain head ([filecoin-project/lotus#12609](https://github.com/filecoin-project/lotus/pull/12609))
 - `lotus-shed indexes inspect-indexes` now performs a comprehensive comparison of the event index data for each message by comparing the AMT root CID from the message receipt with the root of a reconstructed AMT. Previously `inspect-indexes` simply compared event counts, comparing AMT roots confirms all the event data is byte-perfect. ([filecoin-project/lotus#12570](https://github.com/filecoin-project/lotus/pull/12570))
 - Expose APIs to list the miner IDs that are currently participating in F3 via node. ([filecoin-project/lotus#12608](https://github.com/filecoin-project/lotus/pull/12608))
-- Implement `EthGetTransactionByBlockNumberAndIndex` and `EthGetTransactionByBlockHashAndIndex` methods. ([filecoin-project/lotus#12618](https://github.com/filecoin-project/lotus/pull/12618))
+- Implement `EthGetTransactionByBlockNumberAndIndex` (`eth_getTransactionByBlockNumberAndIndex`) and `EthGetTransactionByBlockHashAndIndex` (`eth_getTransactionByBlockHashAndIndex`) methods. ([filecoin-project/lotus#12618](https://github.com/filecoin-project/lotus/pull/12618))
 - Implement new `lotus f3` CLI commands to list F3 participants, dump manifest and check the F3 status. ([filecoin-project/lotus#12617](https://github.com/filecoin-project/lotus/pull/12617))
 
 ## Bug Fixes
