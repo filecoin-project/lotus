@@ -112,15 +112,15 @@ DatabasePath
 EnableMsgIndex
 ```
 
-The previously deprecated `Fevm.Events` options are now also all removed:
-* `Fevm.Events.DatabasePath`
-* `Fevm.Events.DisableRealTimeFilterAPI`
-* `Fevm.Events.DisableHistoricFilterAPI`
-* `Fevm.Events.FilterTTL`
-* `Fevm.Events.MaxFilters`
-* `Fevm.Events.MaxFilterResults`
-* `Fevm.Events.MaxFilterHeightRange`
-They do still exist in `EventsConfig` and can be configured there.
+The `Fevm.Events` options were marked as deprecated in Lotus 1.26, having been moved to the new top-level `Events` section, and have now been removed with Lotus 1.31.
+
+* `Fevm.Events.DatabasePath` (no replacement available)
+* `Fevm.Events.DisableRealTimeFilterAPI` (no replacement available)
+* `Fevm.Events.DisableHistoricFilterAPI` (no replacement available)
+* `Fevm.Events.FilterTTL` (use `Events.FilterTTL` intead)
+* `Fevm.Events.MaxFilters` (use `Events.MaxFilters` instead)
+* `Fevm.Events.MaxFilterResults` (use `Events.MaxFilterResults` instead)
+* `Fevm.Events.MaxFilterHeightRange` (use `Events.MaxFilterHeightRange` instead)
 
 ## Upgrade
 
