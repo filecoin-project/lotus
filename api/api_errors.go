@@ -4,8 +4,9 @@ import (
 	"errors"
 	"reflect"
 
-	"github.com/filecoin-project/go-jsonrpc"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-jsonrpc"
 )
 
 const executionRevertedDefaultMsg = "execution reverted"

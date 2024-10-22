@@ -1047,7 +1047,9 @@ func TestFEVMErrorParsing(t *testing.T) {
 				}, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 				require.Error(t, err)
 
-				require.Contains(t, err.Error(), expected, "Error data should contain the expected error")
+				var dataErr *api.ErrExecutionRevertedWithData
+				require.ErrorAs(t, err, &dataErr, "Expected error to be ErrExecutionRevertedWithData")
+				require.Contains(t, dataErr.Data, expected, "Error data should contain the expected error")
 			})
 			t.Run("EthEstimateGas", func(t *testing.T) {
 				gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
@@ -1058,7 +1060,9 @@ func TestFEVMErrorParsing(t *testing.T) {
 
 				_, err = e.EthEstimateGas(ctx, gasParams)
 				require.Error(t, err)
-				require.Contains(t, err.Error(), expected, "Error data should contain the expected error")
+				var dataErr *api.ErrExecutionRevertedWithData
+				require.ErrorAs(t, err, &dataErr, "Expected error to be ErrExecutionRevertedWithData")
+				require.Contains(t, dataErr.Data, expected, "Error data should contain the expected error")
 			})
 		})
 	}
