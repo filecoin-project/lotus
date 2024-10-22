@@ -2729,10 +2729,11 @@ USAGE:
    lotus f3 command [command options] [arguments...]
 
 COMMANDS:
-   list-miners, lp  Lists the miners that currently participate in F3 via this node.
-   manifest         Gets the current manifest used by F3.
-   status           Checks the F3 status.
-   help, h          Shows a list of commands or help for one command
+   list-miners, lm     Lists the miners that currently participate in F3 via this node.
+   certs, fc, c, cert  Manages interactions with F3 finality certificates.
+   manifest            Gets the current manifest used by F3.
+   status              Checks the F3 status.
+   help, h             Shows a list of commands or help for one command
 
 OPTIONS:
    --help, -h  show help
@@ -2748,6 +2749,53 @@ USAGE:
 
 OPTIONS:
    --help, -h  show help
+```
+
+### lotus f3 certs
+```
+NAME:
+   lotus f3 certs - Manages interactions with F3 finality certificates.
+
+USAGE:
+   lotus f3 certs command [command options] [arguments...]
+
+COMMANDS:
+   get      Gets an F3 finality certificate.
+   list     Lists a set of F3 finality certificates.
+   help, h  Shows a list of commands or help for one command
+
+OPTIONS:
+   --output value  The output format. Supported formats: text, json (default: "text")
+   --help, -h      show help
+```
+
+#### lotus f3 certs get
+```
+NAME:
+   lotus f3 certs get - Gets an F3 finality certificate.
+
+USAGE:
+   lotus f3 certs get [command options] [arguments...]
+
+OPTIONS:
+   --output value                          The output format. Supported formats: text, json (default: "text")
+   --instance value, -i value, --id value  The instance ID for which to get the finality certificate. (default: Latest instance.)
+   --help, -h                              show help
+```
+
+#### lotus f3 certs list
+```
+NAME:
+   lotus f3 certs list - Lists a set of F3 finality certificates.
+
+USAGE:
+   lotus f3 certs list [command options] [arguments...]
+
+OPTIONS:
+   --output value        The output format. Supported formats: text, json (default: "text")
+   --fromInstance value  The start instance ID. (default: Latest instance.)
+   --limit value         The maximum number of instances. A value less than 0 indicates no limit. (default: 10)
+   --help, -h            show help
 ```
 
 ### lotus f3 manifest
