@@ -5,6 +5,7 @@ import (
 	"reflect"
 
 	"github.com/filecoin-project/go-jsonrpc"
+	"golang.org/x/xerrors"
 )
 
 const executionRevertedDefaultMsg = "execution reverted"
@@ -43,14 +44,15 @@ var (
 	// should back off and try again later.
 	ErrF3NotReady = errF3NotReady{}
 
-	_ error = (*ErrOutOfGas)(nil)
-	_ error = (*ErrActorNotFound)(nil)
-	_ error = (*errF3Disabled)(nil)
-	_ error = (*errF3ParticipationTicketInvalid)(nil)
-	_ error = (*errF3ParticipationTicketExpired)(nil)
-	_ error = (*errF3ParticipationIssuerMismatch)(nil)
-	_ error = (*errF3NotReady)(nil)
-	_ error = (*ErrExecutionRevertedWithData)(nil)
+	_ error              = (*ErrOutOfGas)(nil)
+	_ error              = (*ErrActorNotFound)(nil)
+	_ error              = (*errF3Disabled)(nil)
+	_ error              = (*errF3ParticipationTicketInvalid)(nil)
+	_ error              = (*errF3ParticipationTicketExpired)(nil)
+	_ error              = (*errF3ParticipationIssuerMismatch)(nil)
+	_ error              = (*errF3NotReady)(nil)
+	_ error              = (*ErrExecutionRevertedWithData)(nil)
+	_ jsonrpc.ErrorCodec = (*ErrExecutionRevertedWithData)(nil)
 )
 
 func init() {
@@ -117,20 +119,42 @@ type errF3NotReady struct{}
 func (errF3NotReady) Error() string { return "f3 isn't yet ready to participate" }
 
 type ErrExecutionRevertedWithData struct {
-	message string
-	data    string
+	Message string
+	Data    string
 }
 
 // Error returns the error message.
-func (e *ErrExecutionRevertedWithData) Error() string { return e.message }
+func (e *ErrExecutionRevertedWithData) Error() string { return e.Message }
 
-// ErrorData returns the error data.
-func (e *ErrExecutionRevertedWithData) ErrorData() interface{} { return e.data }
+// FromJSONRPCError converts a JSONRPCError to ErrExecutionRevertedWithData.
+func (e *ErrExecutionRevertedWithData) FromJSONRPCError(jerr jsonrpc.JSONRPCError) error {
+	if jerr.Code != EExecutionRevertedWithData {
+		return nil
+	}
+
+	data, ok := jerr.Data.(string)
+	if !ok {
+		return xerrors.Errorf("expected string data in execution reverted error, got %T", jerr.Data)
+	}
+
+	e.Message = jerr.Message
+	e.Data = data
+	return nil
+}
+
+// ToJSONRPCError converts ErrExecutionRevertedWithData to a JSONRPCError.
+func (e *ErrExecutionRevertedWithData) ToJSONRPCError() (jsonrpc.JSONRPCError, error) {
+	return jsonrpc.JSONRPCError{
+		Code:    EExecutionRevertedWithData,
+		Message: e.Message,
+		Data:    e.Data,
+	}, nil
+}
 
 // NewErrExecutionRevertedWithData creates a new ErrExecutionRevertedWithData.
 func NewErrExecutionRevertedWithData(data string) *ErrExecutionRevertedWithData {
 	return &ErrExecutionRevertedWithData{
-		message: executionRevertedDefaultMsg,
-		data:    data,
+		Message: executionRevertedDefaultMsg,
+		Data:    data,
 	}
 }

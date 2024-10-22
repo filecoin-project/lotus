@@ -7,7 +7,6 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"testing"
@@ -16,7 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
@@ -1043,19 +1041,13 @@ func TestFEVMErrorParsing(t *testing.T) {
 		t.Run(sig, func(t *testing.T) {
 			entryPoint := kit.CalcFuncSignature(sig)
 			t.Run("EthCall", func(t *testing.T) {
-				_, err := e.EthCall(ctx, ethtypes.EthCall{
+				_, err = e.EthCall(ctx, ethtypes.EthCall{
 					To:   &contractAddrEth,
 					Data: entryPoint,
 				}, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 				require.Error(t, err)
 
-				var dataErr jsonrpc.ErrorWithData
-				if errors.As(err, &dataErr) {
-					errData := dataErr.ErrorData()
-					require.Contains(t, errData, expected, "Error data should contain the expected error")
-				} else {
-					t.Fatalf("Expected error to implement jsonrpc.ErrorWithData")
-				}
+				require.Contains(t, err.Error(), expected, "Error data should contain the expected error")
 			})
 			t.Run("EthEstimateGas", func(t *testing.T) {
 				gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
@@ -1066,14 +1058,7 @@ func TestFEVMErrorParsing(t *testing.T) {
 
 				_, err = e.EthEstimateGas(ctx, gasParams)
 				require.Error(t, err)
-
-				var dataErr jsonrpc.ErrorWithData
-				if errors.As(err, &dataErr) {
-					errData := dataErr.ErrorData()
-					require.Contains(t, errData, expected, "Error data should contain the expected error")
-				} else {
-					t.Fatalf("Expected error to implement jsonrpc.ErrorWithData")
-				}
+				require.Contains(t, err.Error(), expected, "Error data should contain the expected error")
 			})
 		})
 	}
@@ -1490,13 +1475,12 @@ func TestEthCall(t *testing.T) {
 		_, err = client.EthCall(ctx, callParams, ethtypes.NewEthBlockNumberOrHashFromNumber(latestBlock))
 		require.Error(t, err)
 
-		var dataErr jsonrpc.ErrorWithData
-		ok := errors.As(err, &dataErr)
-		require.True(t, ok, "Expected error to implement jsonrpc.DataError")
-		require.Contains(t, dataErr.Error(), "execution reverted", "Expected 'execution reverted' message")
+		var dataErr *api.ErrExecutionRevertedWithData
+		require.ErrorAs(t, err, &dataErr, "Expected error to be ErrExecutionRevertedWithData")
+		require.Contains(t, dataErr.Message, "execution reverted", "Expected 'execution reverted' message")
 
 		// Get the error data
-		require.Equal(t, dataErr.ErrorData(), "DivideByZero()", "Expected error data to contain 'DivideByZero()'")
+		require.Equal(t, dataErr.Data, "DivideByZero()", "Expected error data to contain 'DivideByZero()'")
 	})
 }
 
@@ -1543,10 +1527,10 @@ func TestEthEstimateGas(t *testing.T) {
 
 			if tc.expectedError != "" {
 				require.Error(t, err)
-				var dataErr jsonrpc.ErrorWithData
-				require.ErrorAs(t, err, &dataErr, "Expected error to implement jsonrpc.DataError")
-				require.Equal(t, tc.expectedErrMsg, dataErr.Error())
-				require.Contains(t, tc.expectedError, dataErr.ErrorData())
+				var dataErr *api.ErrExecutionRevertedWithData
+				require.ErrorAs(t, err, &dataErr, "Expected error to be ErrExecutionRevertedWithData")
+				require.Equal(t, tc.expectedErrMsg, dataErr.Message)
+				require.Contains(t, tc.expectedError, dataErr.Data)
 			}
 		})
 	}
