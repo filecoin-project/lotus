@@ -152,13 +152,14 @@ func prettyPrintManifest(out io.Writer, manifest *manifest.Manifest) error {
   Protocol Version:     {{.ProtocolVersion}}
   Paused:               {{.Pause}}
   Initial Instance:     {{.InitialInstance}}
+  Initial Power Table:  {{if .InitialPowerTable.Defined}}{{.InitialPowerTable}}{{else}}unknown{{end}}
   Bootstrap Epoch:      {{.BootstrapEpoch}}
   Network Name:         {{.NetworkName}}
   Ignore EC Power:      {{.IgnoreECPower}}
   Committee Lookback:   {{.CommitteeLookback}}
   Catch Up Alignment:   {{.CatchUpAlignment}}
 
-  GPBFT Delta:                      {{.Gpbft.Delta}}
+  GPBFT Delta:                       {{.Gpbft.Delta}}
   GPBFT Delta BackOff Exponent:      {{.Gpbft.DeltaBackOffExponent}}
   GPBFT Max Lookahead Rounds:        {{.Gpbft.MaxLookaheadRounds}}
   GPBFT Rebroadcast Backoff Base:    {{.Gpbft.RebroadcastBackoffBase}}
@@ -171,8 +172,8 @@ func prettyPrintManifest(out io.Writer, manifest *manifest.Manifest) error {
   EC Head Lookback:     {{.EC.HeadLookback}}
   EC Finalize:          {{.EC.Finalize}}
 
-  Certificate Exchange Client Timeout:  {{.CertificateExchange.ClientRequestTimeout}}
-  Certificate Exchange Server Timeout:  {{.CertificateExchange.ServerRequestTimeout}}
+  Certificate Exchange Client Timeout:    {{.CertificateExchange.ClientRequestTimeout}}
+  Certificate Exchange Server Timeout:    {{.CertificateExchange.ServerRequestTimeout}}
   Certificate Exchange Min Poll Interval: {{.CertificateExchange.MinimumPollInterval}}
   Certificate Exchange Max Poll Interval: {{.CertificateExchange.MaximumPollInterval}}
 `
