@@ -45,15 +45,15 @@ var (
 	// should back off and try again later.
 	ErrF3NotReady = errF3NotReady{}
 
-	_ error              = (*ErrOutOfGas)(nil)
-	_ error              = (*ErrActorNotFound)(nil)
-	_ error              = (*errF3Disabled)(nil)
-	_ error              = (*errF3ParticipationTicketInvalid)(nil)
-	_ error              = (*errF3ParticipationTicketExpired)(nil)
-	_ error              = (*errF3ParticipationIssuerMismatch)(nil)
-	_ error              = (*errF3NotReady)(nil)
-	_ error              = (*ErrExecutionRevertedWithData)(nil)
-	_ jsonrpc.ErrorCodec = (*ErrExecutionRevertedWithData)(nil)
+	_ error                 = (*ErrOutOfGas)(nil)
+	_ error                 = (*ErrActorNotFound)(nil)
+	_ error                 = (*errF3Disabled)(nil)
+	_ error                 = (*errF3ParticipationTicketInvalid)(nil)
+	_ error                 = (*errF3ParticipationTicketExpired)(nil)
+	_ error                 = (*errF3ParticipationIssuerMismatch)(nil)
+	_ error                 = (*errF3NotReady)(nil)
+	_ error                 = (*ErrExecutionRevertedWithData)(nil)
+	_ jsonrpc.RPCErrorCodec = (*ErrExecutionRevertedWithData)(nil)
 )
 
 func init() {
