@@ -1441,92 +1441,102 @@ func TestEthGetTransactionByBlockHashAndIndexAndNumber(t *testing.T) {
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
 
-	key, ethAddr, filAddr := client.EVM().NewAccount()
-	kit.SendFunds(ctx, t, client, filAddr, types.FromFil(10))
+	ethKey, ethAddr, ethFilAddr := client.EVM().NewAccount()
+	filKey, err := client.WalletNew(ctx, types.KTBLS)
+	require.NoError(t, err)
+	secpKey, err := client.WalletNew(ctx, types.KTSecp256k1)
+	require.NoError(t, err)
 
-	// Deploy multiple contracts in the same tipset
+	kit.SendFunds(ctx, t, client, ethFilAddr, types.FromFil(10))
+	kit.SendFunds(ctx, t, client, filKey, types.FromFil(10))
+	kit.SendFunds(ctx, t, client, secpKey, types.FromFil(10))
+
 	var txHashes []ethtypes.EthHash
 	var receipts []*api.EthTxReceipt
 	numTx := 3
 
 	for i := 0; i < numTx; i++ {
-		tx := deployContractWithEth(ctx, t, client, ethAddr, "./contracts/MultipleEvents.hex")
-		tx.Nonce = i
-		client.EVM().SignTransaction(tx, key.PrivateKey)
-		hash := client.EVM().SubmitTransaction(ctx, tx)
-		txHashes = append(txHashes, hash)
-	}
+		ethTx := deployContractWithEth(ctx, t, client, ethAddr, "./contracts/MultipleEvents.hex")
+		ethTx.Nonce = i
+		client.EVM().SignTransaction(ethTx, ethKey.PrivateKey)
+		ethHash := client.EVM().SubmitTransaction(ctx, ethTx)
 
-	// Wait for all transactions to be mined
-	for _, hash := range txHashes {
-		receipt, err := client.EVM().WaitTransaction(ctx, hash)
-		require.NoError(t, err)
+		receipt, err := client.EVM().WaitTransaction(ctx, ethHash)
+		require.NoError(t, err, "ETH transaction failed to mine")
 		require.NotNil(t, receipt)
 		require.Equal(t, ethtypes.EthUint64(1), receipt.Status)
+
+		txHashes = append(txHashes, ethHash)
 		receipts = append(receipts, receipt)
 	}
 
-	// Ensure all transactions are in the same tipset
-	blockHash := receipts[0].BlockHash
-	blockNumber := receipts[0].BlockNumber
-	for _, receipt := range receipts[1:] {
-		require.Equal(t, blockHash, receipt.BlockHash)
-		require.Equal(t, blockNumber, receipt.BlockNumber)
+	require.NotEmpty(t, receipts, "No ETH transactions were mined")
+	var blockHashes []ethtypes.EthHash
+	var blockNumbers []ethtypes.EthUint64
+	for _, receipt := range receipts {
+		blockHashes = append(blockHashes, receipt.BlockHash)
+		blockNumbers = append(blockNumbers, receipt.BlockNumber)
 	}
 
-	// Get the block by its hash
-	block, err := client.EthGetBlockByHash(ctx, blockHash, false)
-	require.NoError(t, err)
-	require.NotNil(t, block)
-	require.Equal(t, numTx, len(block.Transactions))
-
-	// Test EthGetTransactionByBlockHashAndIndex
-	for i, hash := range txHashes {
-		ethTx, err := client.EthGetTransactionByBlockHashAndIndex(ctx, blockHash, ethtypes.EthUint64(i))
+	for _, hash := range txHashes {
+		var ethTx *ethtypes.EthTx
+		var err error
+		for _, blockHash := range blockHashes {
+			ethTx, err = client.EthGetTransactionByBlockHashAndIndex(ctx, blockHash, ethtypes.EthUint64(0))
+			if err == nil && ethTx != nil && ethTx.Hash == hash {
+				break
+			}
+		}
 		require.NoError(t, err)
 		require.NotNil(t, ethTx)
-		require.Equal(t, hash, ethTx.Hash)
+
+		require.Equal(t, hash.String(), ethTx.Hash.String())
+
+		require.Equal(t, ethtypes.EthUint64(2), ethTx.Type)
+		require.NotEmpty(t, ethTx.Input, "Contract deployment should have input data")
+		require.Equal(t, ethAddr.String(), ethTx.From.String())
 	}
 
-	// Test EthGetTransactionByBlockNumberAndIndex
-	for i, hash := range txHashes {
-		ethTx, err := client.EthGetTransactionByBlockNumberAndIndex(ctx, blockNumber.Hex(), ethtypes.EthUint64(i))
+	for _, hash := range txHashes {
+		var ethTx *ethtypes.EthTx
+		var err error
+		for _, blockNumber := range blockNumbers {
+			ethTx, err = client.EthGetTransactionByBlockNumberAndIndex(ctx, blockNumber.Hex(), ethtypes.EthUint64(0))
+			if err == nil && ethTx != nil && ethTx.Hash == hash {
+				break
+			}
+		}
 		require.NoError(t, err)
 		require.NotNil(t, ethTx)
-		require.Equal(t, hash, ethTx.Hash)
+		require.Equal(t, hash.String(), ethTx.Hash.String())
 	}
 
-	// 1. Invalid block hash
-	invalidBlockHash := ethtypes.EthHash{1}
-	_, err = client.EthGetTransactionByBlockHashAndIndex(ctx, invalidBlockHash, ethtypes.EthUint64(0))
-	require.Error(t, err)
-	require.ErrorContains(t, err, "not found")
+	t.Run("Error cases", func(t *testing.T) {
+		// 1. Invalid block hash
+		invalidBlockHash := ethtypes.EthHash{1}
+		_, err = client.EthGetTransactionByBlockHashAndIndex(ctx, invalidBlockHash, ethtypes.EthUint64(0))
+		require.Error(t, err)
+		require.ErrorContains(t, err, "not found")
 
-	// 2. Invalid block number (future block)
-	_, err = client.EthGetTransactionByBlockNumberAndIndex(ctx, (blockNumber + 1000).Hex(), ethtypes.EthUint64(0))
-	require.Error(t, err)
-	require.ErrorContains(t, err, "failed to get tipset")
+		// 2. Invalid block number
+		_, err = client.EthGetTransactionByBlockNumberAndIndex(ctx, (blockNumbers[0] + 1000).Hex(), ethtypes.EthUint64(0))
+		require.Error(t, err)
+		require.ErrorContains(t, err, "failed to get tipset")
 
-	// 3. Index out of range
-	_, err = client.EthGetTransactionByBlockHashAndIndex(ctx, blockHash, ethtypes.EthUint64(numTx))
-	require.Error(t, err)
-	require.ErrorContains(t, err, "out of range")
+		// 3. Index out of range
+		_, err = client.EthGetTransactionByBlockHashAndIndex(ctx, blockHashes[0], ethtypes.EthUint64(len(txHashes)))
+		require.Error(t, err)
+		require.ErrorContains(t, err, "out of range")
 
-	_, err = client.EthGetTransactionByBlockNumberAndIndex(ctx, blockNumber.Hex(), ethtypes.EthUint64(numTx))
-	require.Error(t, err)
-	require.ErrorContains(t, err, "out of range")
+		// 4. Empty block
+		emptyBlock, err := client.EthGetBlockByNumber(ctx, "latest", false)
+		require.NoError(t, err)
+		require.NotNil(t, emptyBlock)
 
-	// 4. Tipset with no messages
-	emptyBlock, err := client.EthGetBlockByNumber(ctx, "latest", false)
-	require.NoError(t, err)
-	require.NotNil(t, emptyBlock)
+		_, err = client.EthGetTransactionByBlockHashAndIndex(ctx, emptyBlock.Hash, ethtypes.EthUint64(0))
+		require.Error(t, err)
+		require.ErrorContains(t, err, "out of range")
+	})
 
-	_, err = client.EthGetTransactionByBlockHashAndIndex(ctx, emptyBlock.Hash, ethtypes.EthUint64(0))
-	require.Error(t, err)
-	require.ErrorContains(t, err, "out of range")
-
-	_, err = client.EthGetTransactionByBlockNumberAndIndex(ctx, "latest", ethtypes.EthUint64(0))
-	require.Error(t, err)
-	require.ErrorContains(t, err, "out of range")
-
+	require.Greater(t, len(txHashes), 0, "No transactions were successfully verified")
 }

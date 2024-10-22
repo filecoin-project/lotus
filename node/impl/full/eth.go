@@ -175,7 +175,6 @@ type EthAPI struct {
 
 	EthModuleAPI
 	EthEventAPI
-	StateAPI StateAPI
 }
 
 var ErrNullRound = errors.New("requested epoch was a null round")
@@ -581,40 +580,22 @@ func (a *EthAPI) EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHa
 }
 
 func (a *EthAPI) EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkParam string, index ethtypes.EthUint64) (*ethtypes.EthTx, error) {
-	validBlockTags := map[string]bool{
-		"latest":   true,
-		"pending":  true,
-		"earliest": true,
-		"final":    true,
-	}
 
-	var blockNumber string
-
-	if validBlockTags[blkParam] {
-		blockNumber = blkParam
-	} else {
-		blkNum, err := ethtypes.EthUint64FromHex(blkParam)
-		if err != nil {
-			return nil, fmt.Errorf("invalid block number format: %w", err)
-		}
-		blockNumber = strconv.FormatUint(uint64(blkNum), 10)
-	}
-
-	ts, err := getTipsetByBlockNumber(ctx, a.Chain, blockNumber, true)
+	ts, err := getTipsetByBlockNumber(ctx, a.Chain, blkParam, true)
 	if err != nil {
 		if err == ErrNullRound {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("failed to get tipset for block %s: %w", blockNumber, err)
+		return nil, xerrors.Errorf("failed to get tipset for block %s: %w", blkParam, err)
 	}
 
 	if ts == nil {
-		return nil, fmt.Errorf("tipset not found for block %s", blockNumber)
+		return nil, xerrors.Errorf("tipset not found for block %s", blkParam)
 	}
 
 	tx, err := a.getTransactionByTipsetAndIndex(ctx, ts, index)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get transaction at index %d: %w", index, err)
+		return nil, xerrors.Errorf("failed to get transaction at index %d: %w", index, err)
 	}
 
 	return tx, nil
@@ -637,7 +618,13 @@ func (a *EthAPI) getTransactionByTipsetAndIndex(ctx context.Context, ts *types.T
 		return nil, xerrors.Errorf("failed to get tipset key cid: %w", err)
 	}
 
-	tx, err := newEthTx(ctx, a.Chain, nil, ts.Height(), cid, msg.Cid(), int(index))
+	// First, get the state tree
+	st, err := a.StateManager.StateTree(ts.ParentState())
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load state tree: %w", err)
+	}
+
+	tx, err := newEthTx(ctx, a.Chain, st, ts.Height(), cid, msg.Cid(), int(index))
 	if err != nil {
 		return nil, xerrors.Errorf("failed to create Ethereum transaction: %w", err)
 	}
