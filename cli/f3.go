@@ -177,5 +177,9 @@ func prettyPrintManifest(out io.Writer, manifest *manifest.Manifest) error {
   Certificate Exchange Min Poll Interval: {{.CertificateExchange.MinimumPollInterval}}
   Certificate Exchange Max Poll Interval: {{.CertificateExchange.MaximumPollInterval}}
 `
-	return template.New("manifest").ExecuteTemplate(out, manifestTemplate, manifest)
+	t, err := template.New("manifest").Parse(manifestTemplate)
+	if err != nil {
+		return fmt.Errorf("failed to parse manifest template: %w", err)
+	}
+	return t.ExecuteTemplate(out, "manifest", manifest)
 }
