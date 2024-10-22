@@ -26,6 +26,7 @@
 - Upgrade go-f3 to 0.7.1 to resolve Tipset not found errors when trying to establish instance start time ([filecoin-project/lotus#12651](https://github.com/filecoin-project/lotus/pull/12651)).
 - Try harder in the F3 participation loop to participate using the same lotus node ([filecoin-project/lotus#12664](https://github.com/filecoin-project/lotus/pull/12664)).
 - The mining loop will now correctly "stick" to the same upstream lotus node for all operations pertaining to mining a single block ([filecoin-project/lotus#12665](https://github.com/filecoin-project/lotus/pull/12665)).
+- Make the ordering of event output for `eth_` APIs and `GetActorEventsRaw` consistent, sorting ascending on: epoch, message index, event index and original event entry order. ([filecoin-project/lotus#12623](https://github.com/filecoin-project/lotus/pull/12623))
 
 ## Deps
 

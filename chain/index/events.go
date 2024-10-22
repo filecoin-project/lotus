@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"sort"
 	"strings"
 
 	"github.com/ipfs/go-cid"
@@ -418,10 +417,6 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter)
 			return nil, nil
 		}
 
-		// collected event list is in inverted order since we selected only the most recent events
-		// sort it into height order
-		sort.Slice(ces, func(i, j int) bool { return ces[i].Height < ces[j].Height })
-
 		return ces, nil
 	}
 
@@ -597,6 +592,6 @@ func makePrefillFilterQuery(f *EventFilter) ([]any, string, error) {
 	}
 
 	// retain insertion order of event_entry rows
-	s += " ORDER BY tm.height DESC, ee._rowid_ ASC"
+	s += " ORDER BY tm.height ASC, tm.message_index ASC, e.event_index ASC, ee._rowid_ ASC"
 	return values, s, nil
 }
