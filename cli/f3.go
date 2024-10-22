@@ -75,7 +75,6 @@ var (
 				Name:    "certs",
 				Aliases: []string{"fc", "c", "cert"},
 				Usage:   "Manages interactions with F3 finality certificates.",
-				Flags:   []cli.Flag{f3FlagOutput},
 				Subcommands: []*cli.Command{
 					{
 						Name:  "get",
@@ -118,7 +117,6 @@ var (
 							f3FlagInstanceFrom,
 							f3FlagInstanceLimit,
 						},
-						Before: nil,
 						After: func(cctx *cli.Context) error {
 							api, closer, err := GetFullNodeAPIV1(cctx)
 							if err != nil {
@@ -129,7 +127,7 @@ var (
 							var count int
 							limit := cctx.Int(f3FlagInstanceLimit.Name)
 							var cert *certs.FinalityCertificate
-							for cctx.Context.Err() == nil && count <= limit {
+							for cctx.Context.Err() == nil && count < limit {
 								if cert == nil {
 									if cctx.IsSet(f3FlagInstanceFrom.Name) {
 										cert, err = api.F3GetCertificate(cctx.Context, cctx.Uint64(f3FlagInstanceFrom.Name))
