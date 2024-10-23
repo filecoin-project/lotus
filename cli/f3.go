@@ -1,23 +1,22 @@
 package cli
 
 import (
-	"bytes"
-	"encoding/base64"
+	"embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"text/template"
 
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-f3/certs"
 	"github.com/filecoin-project/go-f3/gpbft"
 	"github.com/filecoin-project/go-f3/manifest"
 
-	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/tablewriter"
 )
@@ -73,17 +72,24 @@ var (
 			},
 			{
 				Name:    "certs",
-				Aliases: []string{"fc", "c", "cert"},
+				Aliases: []string{"c"},
 				Usage:   "Manages interactions with F3 finality certificates.",
 				Subcommands: []*cli.Command{
 					{
-						Name:  "get",
-						Usage: "Gets an F3 finality certificate.",
+						Name: "get",
+						Usage: "Gets an F3 finality certificate to a given instance ID, " +
+							"or the latest certificate if no instance is specified.",
+						ArgsUsage: "[instance]",
 						Flags: []cli.Flag{
 							f3FlagOutput,
-							f3FlagInstanceID,
 						},
-						After: func(cctx *cli.Context) error {
+						Before: func(cctx *cli.Context) error {
+							if count := cctx.NArg(); count > 1 {
+								return fmt.Errorf("too many arguments: expected at most 1 but got %d", count)
+							}
+							return nil
+						},
+						Action: func(cctx *cli.Context) error {
 							api, closer, err := GetFullNodeAPIV1(cctx)
 							if err != nil {
 								return err
@@ -93,8 +99,12 @@ var (
 							// Get the certificate, either for the given instance or the latest if no
 							// instance is specified.
 							var cert *certs.FinalityCertificate
-							if cctx.IsSet(f3FlagInstanceID.Name) {
-								cert, err = api.F3GetCertificate(cctx.Context, cctx.Uint64(f3FlagInstanceID.Name))
+							if cctx.Args().Present() {
+								instance, err := strconv.ParseUint(cctx.Args().First(), 10, 64)
+								if err != nil {
+									return fmt.Errorf("parsing instance: %w", err)
+								}
+								cert, err = api.F3GetCertificate(cctx.Context, instance)
 							} else {
 								cert, err = api.F3GetLatestCertificate(cctx.Context)
 							}
@@ -106,54 +116,84 @@ var (
 								return nil
 							}
 
-							return outputFinalityCertificate(cctx, api, cert)
+							return outputFinalityCertificate(cctx, cert)
 						},
 					},
 					{
-						Name:  "list",
-						Usage: "Lists a set of F3 finality certificates.",
+						Name: "list",
+						Usage: `Lists a range of F3 finality certificates.
+
+A range may optionally be specified as the first argument to indicate 
+inclusive range of 'from' and 'to' instances in following notation:
+'<from>..<to>'. Either <from> or <to> may be omitted, but not both.
+An omitted instance is interpreted as the latest instance.
+
+If no range is specified, certificates are listed in descending order
+of instance, starting from the latest until the limit is reached, i.e.
+the default range of '..0'.
+
+Examples:
+  * '5..': from instance 5 to the latest instance.
+  * '..0': from the latest instance to instance 0.
+  * '3..2': from instance 3 to instance 2.
+  * '2..3': from instance 2 to instance 3.
+`,
+						ArgsUsage: "[range]",
 						Flags: []cli.Flag{
 							f3FlagOutput,
-							f3FlagInstanceFrom,
 							f3FlagInstanceLimit,
 						},
-						After: func(cctx *cli.Context) error {
+						Before: func(cctx *cli.Context) error {
+							if count := cctx.NArg(); count > 1 {
+								return fmt.Errorf("too many arguments: expected at most 1 but got %d", count)
+							}
+							return nil
+						},
+						Action: func(cctx *cli.Context) error {
 							api, closer, err := GetFullNodeAPIV1(cctx)
 							if err != nil {
 								return err
 							}
 							defer closer()
 
-							var count int
 							limit := cctx.Int(f3FlagInstanceLimit.Name)
+							fromTo := cctx.Args().First()
+							if fromTo == "" {
+								fromTo = "..0"
+							}
+							r, err := newRanger(fromTo, limit, func() (uint64, error) {
+								latest, err := api.F3GetLatestCertificate(cctx.Context)
+								if err != nil {
+									return 0, fmt.Errorf("getting latest finality certificate: %w", err)
+								}
+								if latest == nil {
+									return 0, errors.New("no latest finality certificate")
+								}
+								return latest.GPBFTInstance, nil
+							})
+							if err != nil {
+								return err
+							}
+
 							var cert *certs.FinalityCertificate
-							for cctx.Context.Err() == nil && count < limit {
-								if cert == nil {
-									if cctx.IsSet(f3FlagInstanceFrom.Name) {
-										cert, err = api.F3GetCertificate(cctx.Context, cctx.Uint64(f3FlagInstanceFrom.Name))
-									} else {
-										cert, err = api.F3GetLatestCertificate(cctx.Context)
-									}
-									if err != nil {
-										return fmt.Errorf("getting finality certificate: %w", err)
-									}
-								} else if cert.GPBFTInstance > 0 {
-									cert, err = api.F3GetCertificate(cctx.Context, cert.GPBFTInstance-1)
-									if err != nil {
-										return fmt.Errorf("getting finality certificate for instance %d: %w", cert.GPBFTInstance-1, err)
-									}
-								} else {
+							for cctx.Context.Err() == nil {
+
+								next, proceed := r.next()
+								if !proceed {
 									return nil
 								}
-
+								cert, err = api.F3GetCertificate(cctx.Context, next)
+								if err != nil {
+									return fmt.Errorf("getting finality certificate for instance %d: %w", next, err)
+								}
 								if cert == nil {
 									_, _ = fmt.Fprintln(cctx.App.Writer, "No certificate.")
 									return nil
 								}
-								if err := outputFinalityCertificate(cctx, api, cert); err != nil {
+								if err := outputFinalityCertificate(cctx, cert); err != nil {
 									return err
 								}
-								count++
+								_, _ = fmt.Fprintln(cctx.App.Writer, "---")
 							}
 							return nil
 						},
@@ -242,38 +282,30 @@ var (
 			}
 		},
 	}
-	f3FlagInstanceID = &cli.Uint64Flag{
-		Name:        "instance",
-		Aliases:     []string{"i", "id"},
-		Usage:       "The instance ID for which to get the finality certificate.",
-		DefaultText: "Latest instance.",
-	}
-	f3FlagInstanceFrom = &cli.Uint64Flag{
-		Name:        "fromInstance",
-		Usage:       "The start instance ID.",
-		DefaultText: "Latest instance.",
-	}
 	f3FlagInstanceLimit = &cli.IntFlag{
 		Name:  "limit",
 		Usage: "The maximum number of instances. A value less than 0 indicates no limit.",
 		Value: 10,
 	}
+	//go:embed templates/f3_*.go.tmpl
+	f3TemplatesFS embed.FS
+	f3Templates   = template.Must(
+		template.New("").
+			Funcs(template.FuncMap{
+				"ptDiffToString":            f3PowerTableDiffsToString,
+				"tipSetKeyToLotusTipSetKey": types.TipSetKeyFromBytes,
+				"add":                       func(a, b int) int { return a + b },
+				"sub":                       func(a, b int) int { return a - b },
+			}).
+			ParseFS(f3TemplatesFS, "templates/f3_*.go.tmpl"),
+	)
 )
 
-func outputFinalityCertificate(cctx *cli.Context, api v1api.FullNode, cert *certs.FinalityCertificate) error {
-	// Get the power table used by the GPBFT instance that resulted in the cert, i.e.
-	// the power table corresponding the base of the finalised chin.
-	ltsk, err := types.TipSetKeyFromBytes(cert.ECChain.Base().Key)
-	if err != nil {
-		return fmt.Errorf("decoding latest certificate tipset key: %w", err)
-	}
-	pt, err := api.F3GetF3PowerTable(cctx.Context, ltsk)
-	if err != nil {
-		return fmt.Errorf("getting F3 power table: %w", err)
-	}
+func outputFinalityCertificate(cctx *cli.Context, cert *certs.FinalityCertificate) error {
+
 	switch output := cctx.String(f3FlagOutput.Name); strings.ToLower(output) {
 	case "text":
-		return prettyPrintFinalityCertificate(cctx.App.Writer, cert, pt)
+		return prettyPrintFinalityCertificate(cctx.App.Writer, cert)
 	case "json":
 		encoder := json.NewEncoder(cctx.App.Writer)
 		encoder.SetIndent("", "  ")
@@ -289,146 +321,83 @@ func prettyPrintManifest(out io.Writer, manifest *manifest.Manifest) error {
 		return err
 	}
 
-	const manifestTemplate = `Manifest:
-  Protocol Version:     {{.ProtocolVersion}}
-  Paused:               {{.Pause}}
-  Initial Instance:     {{.InitialInstance}}
-  Initial Power Table:  {{if .InitialPowerTable.Defined}}{{.InitialPowerTable}}{{else}}unknown{{end}}
-  Bootstrap Epoch:      {{.BootstrapEpoch}}
-  Network Name:         {{.NetworkName}}
-  Ignore EC Power:      {{.IgnoreECPower}}
-  Committee Lookback:   {{.CommitteeLookback}}
-  Catch Up Alignment:   {{.CatchUpAlignment}}
-
-  GPBFT Delta:                       {{.Gpbft.Delta}}
-  GPBFT Delta BackOff Exponent:      {{.Gpbft.DeltaBackOffExponent}}
-  GPBFT Max Lookahead Rounds:        {{.Gpbft.MaxLookaheadRounds}}
-  GPBFT Rebroadcast Backoff Base:    {{.Gpbft.RebroadcastBackoffBase}}
-  GPBFT Rebroadcast Backoff Spread:  {{.Gpbft.RebroadcastBackoffSpread}}
-  GPBFT Rebroadcast Backoff Max:     {{.Gpbft.RebroadcastBackoffMax}}
-
-  EC Period:            {{.EC.Period}}
-  EC Finality:          {{.EC.Finality}}
-  EC Delay Multiplier:  {{.EC.DelayMultiplier}}
-  EC Head Lookback:     {{.EC.HeadLookback}}
-  EC Finalize:          {{.EC.Finalize}}
-
-  Certificate Exchange Client Timeout:    {{.CertificateExchange.ClientRequestTimeout}}
-  Certificate Exchange Server Timeout:    {{.CertificateExchange.ServerRequestTimeout}}
-  Certificate Exchange Min Poll Interval: {{.CertificateExchange.MinimumPollInterval}}
-  Certificate Exchange Max Poll Interval: {{.CertificateExchange.MaximumPollInterval}}
-`
-	t, err := template.New("manifest").Parse(manifestTemplate)
-	if err != nil {
-		return fmt.Errorf("failed to parse manifest template: %w", err)
-	}
-	return t.ExecuteTemplate(out, "manifest", manifest)
+	return f3Templates.ExecuteTemplate(out, "f3_manifest.go.tmpl", manifest)
 }
 
-func prettyPrintFinalityCertificate(out io.Writer, cert *certs.FinalityCertificate, entries gpbft.PowerEntries) error {
+func prettyPrintFinalityCertificate(out io.Writer, cert *certs.FinalityCertificate) error {
 	if cert == nil {
 		_, _ = fmt.Fprintln(out, "Certificate: None")
 		return nil
 	}
-
-	const certificateTemplate = `---
-Instance: {{.GPBFTInstance}}
-Finalized Chain:
-  {{ .ECChain }}
-
-Supplemental Data:
-  Commitments:          {{printf "%X" .SupplementalData.Commitments}}
-  Power Table CID:      {{.SupplementalData.PowerTable}}
-
-Power Table Delta:
-{{ptDiffToString .PowerTableDelta}}
-Signers:
-{{ signersToString .Signers }}
-Signature (base64 encoded):
-  {{ base64 .Signature }}
-`
-
-	t, err := template.New("certificate").
-		Funcs(template.FuncMap{
-			"ptDiffToString": func(diff certs.PowerTableDiff) (string, error) {
-				var buf bytes.Buffer
-				if err := prettyPrintPowerTableDiffs(&buf, diff); err != nil {
-					return "", err
-				}
-				return buf.String(), nil
-			},
-			"signersToString": func(signers bitfield.BitField) (string, error) {
-				var buf bytes.Buffer
-				if err := prettyPrintSigners(&buf, signers, entries); err != nil {
-					return "", err
-				}
-				return buf.String(), nil
-			},
-			"base64": base64.StdEncoding.EncodeToString,
-		}).Parse(certificateTemplate)
-	if err != nil {
-		return fmt.Errorf("failed to parse certificate template: %w", err)
-	}
-	return t.Execute(out, cert)
+	return f3Templates.ExecuteTemplate(out, "f3_finality_cert.go.tmpl", cert)
 }
 
-func prettyPrintPowerTableDiffs(out io.Writer, diff certs.PowerTableDiff) error {
+func f3PowerTableDiffsToString(diff certs.PowerTableDiff) (string, error) {
 	if len(diff) == 0 {
-		_, _ = fmt.Fprintln(out, "[]")
-		return nil
+		return "None", nil
 	}
-	const (
-		miner       = "Miner"
-		deltaColumn = "Power Delta"
-	)
-	tw := tablewriter.New(
-		tablewriter.Col(miner),
-		tablewriter.Col(deltaColumn),
-	)
+	totalDiff := new(gpbft.StoragePower).Int
 	for _, delta := range diff {
-		addr, err := address.NewIDAddress(uint64(delta.ParticipantID))
-		if err != nil {
-			return fmt.Errorf("getting ID address: %w", err)
+		if !delta.IsZero() {
+			totalDiff = totalDiff.Add(totalDiff, delta.PowerDelta.Int)
 		}
-		tw.Write(map[string]interface{}{
-			miner:       addr,
-			deltaColumn: delta.PowerDelta,
-		})
 	}
-	return tw.Flush(out)
+	if totalDiff.Cmp(new(gpbft.StoragePower).Int) == 0 {
+		return "None", nil
+	}
+	return fmt.Sprintf("Total of %s storage power across %d miner(s).", totalDiff, len(diff)), nil
 }
 
-func prettyPrintSigners(out io.Writer, signers bitfield.BitField, entries gpbft.PowerEntries) error {
-	pt := gpbft.NewPowerTable()
-	if err := pt.Add(entries...); err != nil {
-		return fmt.Errorf("populating power table from entries: %w", err)
+type ranger struct {
+	from, to uint64
+	limit    int
+	ascend   bool
+}
+
+func newRanger(fromTo string, limit int, latest func() (uint64, error)) (*ranger, error) {
+	parts := strings.Split(strings.TrimSpace(fromTo), "..")
+	if len(parts) != 2 || (parts[0] == "" && parts[1] == "") {
+		return nil, fmt.Errorf("invalid range format: expected '<from>..<to>', got: %s", fromTo)
 	}
 
-	const (
-		miner        = "Miner"
-		powerScaled  = "Scaled Power"
-		powerPercent = "Power %"
-	)
-	tw := tablewriter.New(
-		tablewriter.Col(miner),
-		tablewriter.Col(powerScaled),
-		tablewriter.Col(powerPercent),
-	)
-	if err := signers.ForEach(func(index uint64) error {
-		entry := pt.Entries[index]
-		addr, err := address.NewIDAddress(uint64(entry.ID))
-		if err != nil {
-			return fmt.Errorf("getting ID address: %w", err)
+	parsePart := func(part string) (uint64, error) {
+		if part == "" {
+			return latest()
 		}
-		signerPowerPercent := (float64(pt.ScaledPower[index]) / float64(pt.ScaledTotal)) * 100
-		tw.Write(map[string]interface{}{
-			miner:        addr,
-			powerScaled:  pt.ScaledPower[index],
-			powerPercent: fmt.Sprintf("%.2f%%", signerPowerPercent),
-		})
-		return nil
-	}); err != nil {
-		return err
+		return strconv.ParseUint(part, 10, 64)
 	}
-	return tw.Flush(out)
+
+	from, err := parsePart(parts[0])
+	if err != nil {
+		return nil, fmt.Errorf("determining 'from' instance: %v", err)
+	}
+	to, err := parsePart(parts[1])
+	if err != nil {
+		return nil, fmt.Errorf("determining 'to' instance: %v", err)
+	}
+	return &ranger{
+		from:   from,
+		to:     to,
+		limit:  limit,
+		ascend: from < to,
+	}, nil
+}
+
+func (r *ranger) next() (uint64, bool) {
+	if r.limit == 0 {
+		return 0, false
+	}
+
+	next := r.from
+	if r.from == r.to {
+		r.limit = 0
+		return next, true
+	}
+	if r.ascend {
+		r.from++
+	} else if r.from > 0 {
+		r.from--
+	}
+	r.limit--
+	return next, true
 }

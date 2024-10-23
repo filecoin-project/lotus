@@ -2729,11 +2729,11 @@ USAGE:
    lotus f3 command [command options] [arguments...]
 
 COMMANDS:
-   list-miners, lm     Lists the miners that currently participate in F3 via this node.
-   certs, fc, c, cert  Manages interactions with F3 finality certificates.
-   manifest            Gets the current manifest used by F3.
-   status              Checks the F3 status.
-   help, h             Shows a list of commands or help for one command
+   list-miners, lm  Lists the miners that currently participate in F3 via this node.
+   certs, c         Manages interactions with F3 finality certificates.
+   manifest         Gets the current manifest used by F3.
+   status           Checks the F3 status.
+   help, h          Shows a list of commands or help for one command
 
 OPTIONS:
    --help, -h  show help
@@ -2760,42 +2760,71 @@ USAGE:
    lotus f3 certs command [command options] [arguments...]
 
 COMMANDS:
-   get      Gets an F3 finality certificate.
-   list     Lists a set of F3 finality certificates.
+   get      Gets an F3 finality certificate to a given instance ID, or the latest certificate if no instance is specified.
+   list     Lists a range of F3 finality certificates.
+
+            A range may optionally be specified as the first argument to indicate 
+            inclusive range of 'from' and 'to' instances in following notation:
+            '<from>..<to>'. Either <from> or <to> may be omitted, but not both.
+            An omitted instance is interpreted as the latest instance.
+
+            If no range is specified, certificates are listed in descending order
+            of instance, starting from the latest until the limit is reached, i.e.
+            the default range of '..0'.
+
+            Examples:
+              * '5..': from instance 5 to the latest instance.
+              * '..0': from the latest instance to instance 0.
+              * '3..2': from instance 3 to instance 2.
+              * '2..3': from instance 2 to instance 3.
+
    help, h  Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help
+```
+
+#### lotus f3 certs get
+```
+NAME:
+   lotus f3 certs get - Gets an F3 finality certificate to a given instance ID, or the latest certificate if no instance is specified.
+
+USAGE:
+   lotus f3 certs get [command options] [instance]
 
 OPTIONS:
    --output value  The output format. Supported formats: text, json (default: "text")
    --help, -h      show help
 ```
 
-#### lotus f3 certs get
-```
-NAME:
-   lotus f3 certs get - Gets an F3 finality certificate.
-
-USAGE:
-   lotus f3 certs get [command options] [arguments...]
-
-OPTIONS:
-   --output value                          The output format. Supported formats: text, json (default: "text")
-   --instance value, -i value, --id value  The instance ID for which to get the finality certificate. (default: Latest instance.)
-   --help, -h                              show help
-```
-
 #### lotus f3 certs list
 ```
 NAME:
-   lotus f3 certs list - Lists a set of F3 finality certificates.
+   lotus f3 certs list - Lists a range of F3 finality certificates.
+
+                         A range may optionally be specified as the first argument to indicate 
+                         inclusive range of 'from' and 'to' instances in following notation:
+                         '<from>..<to>'. Either <from> or <to> may be omitted, but not both.
+                         An omitted instance is interpreted as the latest instance.
+
+                         If no range is specified, certificates are listed in descending order
+                         of instance, starting from the latest until the limit is reached, i.e.
+                         the default range of '..0'.
+
+                         Examples:
+                           * '5..': from instance 5 to the latest instance.
+                           * '..0': from the latest instance to instance 0.
+                           * '3..2': from instance 3 to instance 2.
+                           * '2..3': from instance 2 to instance 3.
+
 
 USAGE:
-   lotus f3 certs list [command options] [arguments...]
+   lotus f3 certs list [command options] [range]
 
 OPTIONS:
-   --output value        The output format. Supported formats: text, json (default: "text")
-   --fromInstance value  The start instance ID. (default: Latest instance.)
-   --limit value         The maximum number of instances. A value less than 0 indicates no limit. (default: 10)
-   --help, -h            show help
+   --output value  The output format. Supported formats: text, json (default: "text")
+   --limit value   The maximum number of instances. A value less than 0 indicates no limit. (default: 10)
+   --help, -h      show help
 ```
 
 ### lotus f3 manifest
