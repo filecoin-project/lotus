@@ -100,7 +100,8 @@ var (
 							// instance is specified.
 							var cert *certs.FinalityCertificate
 							if cctx.Args().Present() {
-								instance, err := strconv.ParseUint(cctx.Args().First(), 10, 64)
+								var instance uint64
+								instance, err = strconv.ParseUint(cctx.Args().First(), 10, 64)
 								if err != nil {
 									return fmt.Errorf("parsing instance: %w", err)
 								}
