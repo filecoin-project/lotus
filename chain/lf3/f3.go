@@ -184,8 +184,20 @@ func (fff *F3) GetLatestCert(ctx context.Context) (*certs.FinalityCertificate, e
 	return fff.inner.GetLatestCert(ctx)
 }
 
-func (fff *F3) GetManifest() *manifest.Manifest {
-	return fff.inner.Manifest()
+func (fff *F3) GetManifest(ctx context.Context) *manifest.Manifest {
+	m := fff.inner.Manifest()
+	if m.InitialPowerTable.Defined() {
+		return m
+	}
+	cert0, err := fff.inner.GetCert(ctx, 0)
+	if err != nil {
+		return m
+	}
+
+	var mCopy = *m
+	m = &mCopy
+	m.InitialPowerTable = cert0.ECChain.Base().PowerTable
+	return m
 }
 
 func (fff *F3) GetPowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) {
@@ -202,4 +214,17 @@ func (fff *F3) IsRunning() bool {
 
 func (fff *F3) Progress() gpbft.Instant {
 	return fff.inner.Progress()
+}
+
+func (fff *F3) ListParticipants() []api.F3Participant {
+	leases := fff.leaser.getValidLeases()
+	participants := make([]api.F3Participant, len(leases))
+	for i, lease := range leases {
+		participants[i] = api.F3Participant{
+			MinerID:      lease.MinerID,
+			FromInstance: lease.FromInstance,
+			ValidityTerm: lease.ValidityTerm,
+		}
+	}
+	return participants
 }

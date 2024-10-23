@@ -164,7 +164,3 @@ var F3InitialPowerTableCID cid.Cid = cid.Undef
 
 // Calibnet F3 activation epoch is 2024-10-24T13:30:00Z - Epoch 2081674
 const F3BootstrapEpoch abi.ChainEpoch = UpgradeTuktukHeight + 2880
-
-// F3Consensus set whether F3 should checkpoint tipsets finalized by F3. This
-// flag has no effect if F3 is not enabled.
-const F3Consensus = true

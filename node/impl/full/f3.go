@@ -57,11 +57,11 @@ func (f3api *F3API) F3GetLatestCertificate(ctx context.Context) (*certs.Finality
 	return f3api.F3.GetLatestCert(ctx)
 }
 
-func (f3api *F3API) F3GetManifest(context.Context) (*manifest.Manifest, error) {
+func (f3api *F3API) F3GetManifest(ctx context.Context) (*manifest.Manifest, error) {
 	if f3api.F3 == nil {
 		return nil, api.ErrF3Disabled
 	}
-	return f3api.F3.GetManifest(), nil
+	return f3api.F3.GetManifest(ctx), nil
 }
 
 func (f3api *F3API) F3IsRunning(context.Context) (bool, error) {
@@ -90,4 +90,11 @@ func (f3api *F3API) F3GetProgress(context.Context) (gpbft.Instant, error) {
 		return gpbft.Instant{}, api.ErrF3Disabled
 	}
 	return f3api.F3.Progress(), nil
+}
+
+func (f3api *F3API) F3ListParticipants(context.Context) ([]api.F3Participant, error) {
+	if f3api.F3 == nil {
+		return nil, api.ErrF3Disabled
+	}
+	return f3api.F3.ListParticipants(), nil
 }

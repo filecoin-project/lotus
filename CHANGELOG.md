@@ -9,6 +9,8 @@
 - Fix hotloop in F3 pariticpation API ([filecoin-project/lotus#12575](https://github.com/filecoin-project/lotus/pull/12575))
 - `lotus chain head` now supports a `--height` flag to print just the epoch number of the current chain head ([filecoin-project/lotus#12609](https://github.com/filecoin-project/lotus/pull/12609))
 - `lotus-shed indexes inspect-indexes` now performs a comprehensive comparison of the event index data for each message by comparing the AMT root CID from the message receipt with the root of a reconstructed AMT. Previously `inspect-indexes` simply compared event counts, comparing AMT roots confirms all the event data is byte-perfect. ([filecoin-project/lotus#12570](https://github.com/filecoin-project/lotus/pull/12570))
+- Expose APIs to list the miner IDs that are currently participating in F3 via node. ([filecoin-project/lotus#12608](https://github.com/filecoin-project/lotus/pull/12608))
+- Implement new `lotus f3` CLI commands to list F3 participants, dump manifest and check the F3 status. ([filecoin-project/lotus#12617](https://github.com/filecoin-project/lotus/pull/12617))
 - Return a `Data` field from RPC when `eth_call` and `eth_estimateGas` APIs encounter `execution reverted` errors([filecoin-project/lotus#12553](https://github.com/filecoin-project/lotus/pull/12553))
 
 ## Bug Fixes
@@ -16,6 +18,8 @@
 - Event APIs (Eth events and actor events) should only return reverted events if client queries by specific block hash / tipset. Eth and actor event subscription APIs should always return reverted events to enable accurate observation of real-time changes. ([filecoin-project/lotus#12585](https://github.com/filecoin-project/lotus/pull/12585))
 - Add logic to check if the miner's owner address is delegated (f4 address). If it is delegated, the `lotus-shed sectors termination-estimate` command now sends the termination state call using the worker ID. This fix resolves the issue where termination-estimate did not function correctly for miners with delegated owner addresses. ([filecoin-project/lotus#12569](https://github.com/filecoin-project/lotus/pull/12569))
 - Fix a bug in F3 participation API where valid leases may get removed due to dynamic manifest update. ([filecoin-project/lotus#12597](https://github.com/filecoin-project/lotus/pull/12597))
+
+- Change the F3 participation ticket encoding to allow parity testing across non-go implementations, where a ticket issued by Lotus may need to be decoded by, for example, Forest . The changes also enforce the minimum instance participation of 1 for miners. ([filecoin-project/lotus#12615](https://github.com/filecoin-project/lotus/pull/12615))
 
 ## Deps
 

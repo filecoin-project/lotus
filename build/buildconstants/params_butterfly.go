@@ -113,7 +113,3 @@ var F3ManifestServerID = MustParseID("12D3KooWJr9jy4ngtJNR7JC1xgLFra3DjEtyxskRYW
 var F3InitialPowerTableCID cid.Cid = cid.Undef
 
 const F3BootstrapEpoch abi.ChainEpoch = 1000
-
-// F3Consensus set whether F3 should checkpoint tipsets finalized by F3. This
-// flag has no effect if F3 is not enabled.
-const F3Consensus = true
