@@ -9,7 +9,21 @@ import (
 	"github.com/filecoin-project/go-jsonrpc"
 )
 
-const executionRevertedDefaultMsg = "execution reverted"
+var invalidExecutionRevertedWithDataMsg = xerrors.New("invalid execution reverted with data error")
+
+// Default messages for errors.
+const (
+	executionRevertedDefaultMsg         = "execution reverted"
+	outOfGasDefaultMsg                  = "call ran out of gas"
+	actorNotFoundDefaultMsg             = "actor not found"
+	f3DisabledDefaultMsg                = "f3 is disabled"
+	ticketInvalidDefaultMsg             = "ticket is not valid"
+	ticketExpiredDefaultMsg             = "ticket has expired"
+	ticketIssuerMismatchDefaultMsg      = "issuer does not match current node"
+	tooManyInstancesDefaultMsg          = "requested instance count too high"
+	ticketStartBeforeExistingDefaultMsg = "ticket starts before existing lease"
+	f3NotReadyDefaultMsg                = "f3 isn't yet ready to participate"
+)
 
 const (
 	EOutOfGas = iota + jsonrpc.FirstUserCode
@@ -82,42 +96,42 @@ func ErrorIsIn(err error, errorTypes []error) bool {
 // ErrOutOfGas signals that a call failed due to insufficient gas.
 type ErrOutOfGas struct{}
 
-func (ErrOutOfGas) Error() string { return "call ran out of gas" }
+func (ErrOutOfGas) Error() string { return outOfGasDefaultMsg }
 
 // ErrActorNotFound signals that the actor is not found.
 type ErrActorNotFound struct{}
 
-func (ErrActorNotFound) Error() string { return "actor not found" }
+func (ErrActorNotFound) Error() string { return actorNotFoundDefaultMsg }
 
 type errF3Disabled struct{}
 
-func (errF3Disabled) Error() string { return "f3 is disabled" }
+func (errF3Disabled) Error() string { return f3DisabledDefaultMsg }
 
 type errF3ParticipationTicketInvalid struct{}
 
-func (errF3ParticipationTicketInvalid) Error() string { return "ticket is not valid" }
+func (errF3ParticipationTicketInvalid) Error() string { return ticketInvalidDefaultMsg }
 
 type errF3ParticipationTicketExpired struct{}
 
-func (errF3ParticipationTicketExpired) Error() string { return "ticket has expired" }
+func (errF3ParticipationTicketExpired) Error() string { return ticketExpiredDefaultMsg }
 
 type errF3ParticipationIssuerMismatch struct{}
 
-func (errF3ParticipationIssuerMismatch) Error() string { return "issuer does not match current node" }
+func (errF3ParticipationIssuerMismatch) Error() string { return ticketIssuerMismatchDefaultMsg }
 
 type errF3ParticipationTooManyInstances struct{}
 
-func (errF3ParticipationTooManyInstances) Error() string { return "requested instance count too high" }
+func (errF3ParticipationTooManyInstances) Error() string { return tooManyInstancesDefaultMsg }
 
 type errF3ParticipationTicketStartBeforeExisting struct{}
 
 func (errF3ParticipationTicketStartBeforeExisting) Error() string {
-	return "ticket starts before existing lease"
+	return ticketStartBeforeExistingDefaultMsg
 }
 
 type errF3NotReady struct{}
 
-func (errF3NotReady) Error() string { return "f3 isn't yet ready to participate" }
+func (errF3NotReady) Error() string { return f3NotReadyDefaultMsg }
 
 type ErrExecutionRevertedWithData struct {
 	Message string
@@ -129,8 +143,8 @@ func (e *ErrExecutionRevertedWithData) Error() string { return e.Message }
 
 // FromJSONRPCError converts a JSONRPCError to ErrExecutionRevertedWithData.
 func (e *ErrExecutionRevertedWithData) FromJSONRPCError(jerr jsonrpc.JSONRPCError) error {
-	if jerr.Code != EExecutionRevertedWithData {
-		return nil
+	if jerr.Code != EExecutionRevertedWithData || jerr.Message == "" || jerr.Data == "" {
+		return invalidExecutionRevertedWithDataMsg
 	}
 
 	data, ok := jerr.Data.(string)
