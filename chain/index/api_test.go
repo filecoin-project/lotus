@@ -190,9 +190,13 @@ func TestBackfillMissingEpoch(t *testing.T) {
 	fakeMsg := fakeMessage(randomIDAddr(t, rng), randomIDAddr(t, rng))
 	fakeEvent := fakeEvent(1, []kv{{k: "test", v: []byte("value")}, {k: "test2", v: []byte("value2")}}, nil)
 
+	ec := randomCid(t, rng)
 	executedMsg := executedMessage{
 		msg: fakeMsg,
 		evs: []types.Event{*fakeEvent},
+		rct: types.MessageReceipt{
+			EventsRoot: &ec,
+		},
 	}
 
 	cs.SetMessagesForTipset(missingTs, []types.ChainMsg{fakeMsg})
@@ -214,7 +218,26 @@ func TestBackfillMissingEpoch(t *testing.T) {
 	require.Equal(t, uint64(2), result.IndexedEventEntriesCount)
 
 	// Verify that the epoch is now indexed
+	// fails as the events root dont match
 	verificationResult, err := si.ChainValidateIndex(ctx, missingEpoch, false)
+	require.ErrorContains(t, err, "events AMT root mismatch")
+	require.Nil(t, verificationResult)
+
+	tsKeyCid, err := missingTs.Key().Cid()
+	require.NoError(t, err)
+
+	root, b, err := si.amtRootForEvents(ctx, tsKeyCid, fakeMsg.Cid())
+	require.NoError(t, err)
+	require.True(t, b)
+	executedMsg.rct.EventsRoot = &root
+	si.setExecutedMessagesLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
+		if msgTs.Height() == missingTs.Height() {
+			return []executedMessage{executedMsg}, nil
+		}
+		return nil, nil
+	})
+
+	verificationResult, err = si.ChainValidateIndex(ctx, missingEpoch, false)
 	require.NoError(t, err)
 	require.NotNil(t, verificationResult)
 	require.False(t, verificationResult.Backfilled)

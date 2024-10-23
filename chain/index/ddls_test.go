@@ -144,6 +144,129 @@ func TestGetNonRevertedTipsetCountStmts(t *testing.T) {
 	verifyNonRevertedMessageCount(t, s, []byte(tipsetKeyCid1), 0)
 }
 
+func TestGetEventIdAndEmitterIdStmtAndGetEventEntriesStmt(t *testing.T) {
+	s, err := NewSqliteIndexer(":memory:", nil, 0, false, 0)
+	require.NoError(t, err)
+
+	// Insert a tipset message
+	tsKeyCid := []byte("test_tipset_key")
+	msgCid := []byte("test_message_cid")
+	messageID := insertTipsetMessage(t, s, tipsetMessage{
+		tipsetKeyCid: tsKeyCid,
+		height:       1,
+		reverted:     false,
+		messageCid:   msgCid,
+		messageIndex: 0,
+	})
+
+	// Insert events
+	event1ID := insertEvent(t, s, event{
+		messageID:   messageID,
+		eventIndex:  0,
+		emitterId:   1,
+		emitterAddr: []byte("emitter_addr_1"),
+		reverted:    false,
+	})
+	event2ID := insertEvent(t, s, event{
+		messageID:   messageID,
+		eventIndex:  1,
+		emitterId:   2,
+		emitterAddr: []byte("emitter_addr_2"),
+		reverted:    false,
+	})
+
+	// Insert event entries
+	insertEventEntry(t, s, eventEntry{
+		eventID: event1ID,
+		indexed: true,
+		flags:   []byte{0x01},
+		key:     "key1",
+		codec:   1,
+		value:   []byte("value1"),
+	})
+	insertEventEntry(t, s, eventEntry{
+		eventID: event1ID,
+		indexed: false,
+		flags:   []byte{0x00},
+		key:     "key2",
+		codec:   2,
+		value:   []byte("value2"),
+	})
+	insertEventEntry(t, s, eventEntry{
+		eventID: event2ID,
+		indexed: true,
+		flags:   []byte{0x01},
+		key:     "key3",
+		codec:   3,
+		value:   []byte("value3"),
+	})
+
+	// Test getEventIdAndEmitterIdStmt
+	rows, err := s.stmts.getEventIdAndEmitterIdStmt.Query(tsKeyCid, msgCid)
+	require.NoError(t, err)
+	defer func() {
+		_ = rows.Close()
+	}()
+	var eventIDs []int64
+	var emitterIDs []uint64
+	for rows.Next() {
+		var eventID int64
+		var emitterID uint64
+		err := rows.Scan(&eventID, &emitterID)
+		require.NoError(t, err)
+		eventIDs = append(eventIDs, eventID)
+		emitterIDs = append(emitterIDs, emitterID)
+	}
+	require.NoError(t, rows.Err())
+	require.Equal(t, []int64{event1ID, event2ID}, eventIDs)
+	require.Equal(t, []uint64{1, 2}, emitterIDs)
+
+	// Test getEventEntriesStmt for event1
+	rows, err = s.stmts.getEventEntriesStmt.Query(event1ID)
+	require.NoError(t, err)
+	defer func() {
+		_ = rows.Close()
+	}()
+
+	var entries []eventEntry
+	for rows.Next() {
+		var entry eventEntry
+		err := rows.Scan(&entry.flags, &entry.key, &entry.codec, &entry.value)
+		require.NoError(t, err)
+		entries = append(entries, entry)
+	}
+	require.NoError(t, rows.Err())
+	require.Len(t, entries, 2)
+	require.Equal(t, []byte{0x01}, entries[0].flags)
+	require.Equal(t, "key1", entries[0].key)
+	require.Equal(t, 1, entries[0].codec)
+	require.Equal(t, []byte("value1"), entries[0].value)
+	require.Equal(t, []byte{0x00}, entries[1].flags)
+	require.Equal(t, "key2", entries[1].key)
+	require.Equal(t, 2, entries[1].codec)
+	require.Equal(t, []byte("value2"), entries[1].value)
+
+	// Test getEventEntriesStmt for event2
+	rows, err = s.stmts.getEventEntriesStmt.Query(event2ID)
+	require.NoError(t, err)
+	defer func() {
+		_ = rows.Close()
+	}()
+
+	entries = nil
+	for rows.Next() {
+		var entry eventEntry
+		err := rows.Scan(&entry.flags, &entry.key, &entry.codec, &entry.value)
+		require.NoError(t, err)
+		entries = append(entries, entry)
+	}
+	require.NoError(t, rows.Err())
+	require.Len(t, entries, 1)
+	require.Equal(t, []byte{0x01}, entries[0].flags)
+	require.Equal(t, "key3", entries[0].key)
+	require.Equal(t, 3, entries[0].codec)
+	require.Equal(t, []byte("value3"), entries[0].value)
+}
 func TestUpdateTipsetToNonRevertedStmt(t *testing.T) {
 	s, err := NewSqliteIndexer(":memory:", nil, 0, false, 0)
 	require.NoError(t, err)

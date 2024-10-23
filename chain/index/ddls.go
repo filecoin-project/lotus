@@ -105,5 +105,7 @@ func preparedStatementMapping(ps *preparedStatements) map[**sql.Stmt]string {
 		&ps.getMsgIdForMsgCidAndTipsetStmt:            "SELECT id FROM tipset_message WHERE tipset_key_cid = ? AND message_cid = ? AND reverted = 0 LIMIT 1",
 		&ps.insertEventStmt:                           "INSERT INTO event (message_id, event_index, emitter_id, emitter_addr, reverted) VALUES (?, ?, ?, ?, ?)",
 		&ps.insertEventEntryStmt:                      "INSERT INTO event_entry (event_id, indexed, flags, key, codec, value) VALUES (?, ?, ?, ?, ?, ?)",
+		&ps.getEventEntriesStmt:                       "SELECT flags, key, codec, value FROM event_entry WHERE event_id=? ORDER BY _rowid_ ASC",
+		&ps.getEventIdAndEmitterIdStmt:                "SELECT e.id, e.emitter_id FROM event e JOIN tipset_message tm ON e.message_id = tm.id WHERE tm.tipset_key_cid = ? AND tm.message_cid = ? ORDER BY e.event_index ASC",
 	}
 }
