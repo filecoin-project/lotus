@@ -45,6 +45,8 @@ type preparedStatements struct {
 	getMsgIdForMsgCidAndTipsetStmt        *sql.Stmt
 	insertEventStmt                       *sql.Stmt
 	insertEventEntryStmt                  *sql.Stmt
+	getEventIdAndEmitterIdStmt            *sql.Stmt
+	getEventEntriesStmt                   *sql.Stmt
 
 	hasNullRoundAtHeightStmt         *sql.Stmt
 	getNonRevertedTipsetAtHeightStmt *sql.Stmt

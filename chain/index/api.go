@@ -6,11 +6,15 @@ import (
 	"errors"
 
 	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	ipld "github.com/ipfs/go-ipld-format"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
+	amt4 "github.com/filecoin-project/go-amt-ipld/v4"
 	"github.com/filecoin-project/go-state-types/abi"
 
+	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -282,6 +286,32 @@ func (si *SqliteIndexer) verifyIndexedData(ctx context.Context, ts *types.TipSet
 		return xerrors.Errorf("event entries count mismatch for height %d: chainstore has %d, index has %d", ts.Height(), totalEventEntriesCount, indexedData.nonRevertedEventEntriesCount)
 	}
 
+	// compare the events AMT root between the indexed events and the events in the chain state
+	for _, emsg := range executedMsgs {
+		indexedRoot, hasEvents, err := si.amtRootForEvents(ctx, tsKeyCid, emsg.msg.Cid())
+		if err != nil {
+			return xerrors.Errorf("failed to generate AMT root for indexed events of message %s at height %d: %w", emsg.msg.Cid(), ts.Height(), err)
+		}
+
+		if !hasEvents && emsg.rct.EventsRoot == nil {
+			// No events in index and no events in receipt, this is fine
+			continue
+		}
+
+		if hasEvents && emsg.rct.EventsRoot == nil {
+			return xerrors.Errorf("index corruption: events found in index for message %s at height %d, but message receipt has no events root", emsg.msg.Cid(), ts.Height())
+		}
+
+		if !hasEvents && emsg.rct.EventsRoot != nil {
+			return xerrors.Errorf("index corruption: no events found in index for message %s at height %d, but message receipt has events root %s", emsg.msg.Cid(), ts.Height(), emsg.rct.EventsRoot)
+		}
+
+		// Both index and receipt have events, compare the roots
+		if !indexedRoot.Equals(*emsg.rct.EventsRoot) {
+			return xerrors.Errorf("index corruption: events AMT root mismatch for message %s at height %d. Index root: %s, Receipt root: %s", emsg.msg.Cid(), ts.Height(), indexedRoot, emsg.rct.EventsRoot)
+		}
+	}
+
 	return nil
 }
 
@@ -334,4 +364,78 @@ func (si *SqliteIndexer) getNextTipset(ctx context.Context, ts *types.TipSet) (*
 
 func makeBackfillRequiredErr(height abi.ChainEpoch) error {
 	return xerrors.Errorf("missing tipset at height %d in the chain index, set backfill flag to true to fix", height)
+}
+
+// amtRootForEvents generates the events AMT root CID for a given message's events, and returns
+// whether the message has events and a fatal error if one occurred.
+func (si *SqliteIndexer) amtRootForEvents(
+	ctx context.Context,
+	tsKeyCid cid.Cid,
+	msgCid cid.Cid,
+) (cid.Cid, bool, error) {
+	events := make([]cbg.CBORMarshaler, 0)
+
+	err := withTx(ctx, si.db, func(tx *sql.Tx) error {
+		rows, err := tx.Stmt(si.stmts.getEventIdAndEmitterIdStmt).QueryContext(ctx, tsKeyCid.Bytes(), msgCid.Bytes())
+		if err != nil {
+			return xerrors.Errorf("failed to query events: %w", err)
+		}
+		defer func() {
+			_ = rows.Close()
+		}()
+
+		for rows.Next() {
+			var eventId int
+			var actorId int64
+			if err := rows.Scan(&eventId, &actorId); err != nil {
+				return xerrors.Errorf("failed to scan row: %w", err)
+			}
+
+			event := types.Event{
+				Emitter: abi.ActorID(actorId),
+				Entries: make([]types.EventEntry, 0),
+			}
+
+			rows2, err := tx.Stmt(si.stmts.getEventEntriesStmt).QueryContext(ctx, eventId)
+			if err != nil {
+				return xerrors.Errorf("failed to query event entries: %w", err)
+			}
+			defer func() {
+				_ = rows2.Close()
+			}()
+
+			for rows2.Next() {
+				var flags []byte
+				var key string
+				var codec uint64
+				var value []byte
+				if err := rows2.Scan(&flags, &key, &codec, &value); err != nil {
+					return xerrors.Errorf("failed to scan row: %w", err)
+				}
+				entry := types.EventEntry{
+					Flags: flags[0],
+					Key:   key,
+					Codec: codec,
+					Value: value,
+				}
+				event.Entries = append(event.Entries, entry)
+			}
+
+			events = append(events, &event)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return cid.Undef, false, xerrors.Errorf("failed to retrieve events for message %s in tipset %s: %w", msgCid, tsKeyCid, err)
+	}
+
+	// construct the AMT from our slice to an in-memory IPLD store just so we can get the root,
+	// we don't need the blocks themselves
+	root, err := amt4.FromArray(ctx, cbor.NewCborStore(bstore.NewMemory()), events, amt4.UseTreeBitWidth(types.EventAMTBitwidth))
+	if err != nil {
+		return cid.Undef, false, xerrors.Errorf("failed to create AMT: %w", err)
+	}
+	return root, len(events) > 0, nil
 }
