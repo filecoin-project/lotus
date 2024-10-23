@@ -911,17 +911,12 @@ func (cs *ChainStore) IsAncestorOf(ctx context.Context, a, b *types.TipSet) (boo
 		return false, nil
 	}
 
-	cur := b
-	for !a.Equals(cur) && cur.Height() > a.Height() {
-		next, err := cs.LoadTipSet(ctx, cur.Parents())
-		if err != nil {
-			return false, err
-		}
-
-		cur = next
+	target, err := cs.GetTipsetByHeight(ctx, a.Height(), b, false)
+	if err != nil {
+		return false, err
 	}
 
-	return cur.Equals(a), nil
+	return target.Equals(a), nil
 }
 
 func (cs *ChainStore) NearestCommonAncestor(ctx context.Context, a, b *types.TipSet) (*types.TipSet, error) {
