@@ -99,7 +99,7 @@ There is a network skeleton in Lotus, which bubbles up all the other dependencie
     - In fvm/src/machine/default.rs, locate the new function within your machine context. You'll find a SUPPORTED_VERSIONS constant that sets the range of supported network versions. Update this range to include the new network version. Do this by replacing the existing feature flag nvXX-dev and NetworkVersion::VXX with the new ones corresponding to your new network version.
     - In `shared/src/version/mod.rs`, in the `NetworkVersion` implementation, you will find a series of constants representing different network versions. To add a new network version, you need to declare a new constant: `pub const (VXX+1): Self = Self(XX+1);` 
 
-You can take a look at [this Ref-FVM PR as a reference](https://github.com/filecoin-project/ref-fvm/pull/2000), which added the skeleton for network version 23. You can also check out the [releasing primary FVM crates checklist here](https://github.com/filecoin-project/ref-fvm/blob/master/CONTRIBUTING.md#primary-fvm-crates)
+You can take a look at [this Ref-FVM PR as a reference](https://github.com/filecoin-project/ref-fvm/pull/2029), which added the skeleton for network version 24. You can also check out the [releasing primary FVM crates checklist here](https://github.com/filecoin-project/ref-fvm/blob/master/CONTRIBUTING.md#primary-fvm-crates)
 
 2. In a seperate PR bump the Ref-FVM version:
 
@@ -115,7 +115,7 @@ You can take a look at [this Ref-FVM PR as a reference](https://github.com/filec
    section. It may be appropriate to duplicate some entries across these crates if the changes are
    relevant to multiple crates.
 
-You can take a look at [this PR as a reference](https://github.com/filecoin-project/ref-fvm/pull/2002). 
+You can take a look at [this PR as a reference](https://github.com/filecoin-project/ref-fvm/pull/2030).
 
 3. Wait for the PR to be merged and the reviewer to [publish a new release](https://github.com/filecoin-project/ref-fvm/blob/master/CONTRIBUTING.md#releasing).
 
@@ -152,14 +152,14 @@ You can take a look at [this PR as a reference](https://github.com/filecoin-proj
     - Commit the above changes with a `Delete migration specific for nvXX` message so its easier to review.
     - Check your `/builtin/vXX+1/check.go` file, and see if there is any Invariant TODOs that stems from the previous migration that needs to be cleaned up.
 
-    👉 You can take a look at this [Go-State-Types PR as a reference](https://github.com/filecoin-project/go-state-types/pull/257), which added the skeleton for network version 23.
+    👉 You can take a look at this [Go-State-Types PR as a reference](https://github.com/filecoin-project/go-state-types/pull/299), which added the skeleton for network version 24.
 
 2. In a second PR based off your first PR, add a simple migration for the network upgrade:
 
     - Copy the system.go template [^1], and add it to your `/builtin/vXX+1/migration` folder.
     - Copy the top.go template [^2], and add it to your `/builtin/vXX+1/migration` folder.
 
-    👉 You can take a look at this [Go-State-Types PR as a reference](https://github.com/filecoin-project/go-state-types/pull/258), which added a simple migration for network version 23.
+    👉 You can take a look at this [Go-State-Types PR as a reference](https://github.com/filecoin-project/go-state-types/pull/304), which added a simple migration for network version 24.
 
 3. [Follow the release process](https://github.com/filecoin-project/go-state-types#release-process) to publish `v0.NEW_VERSION.0-dev`
 
@@ -173,23 +173,13 @@ You can take a look at [this PR as a reference](https://github.com/filecoin-proj
 2. Patch the FVM-dependency (fvm4 and fvm4_shared) in `rust/cargo.toml` to use the newly published Ref-FVM release.
     -  Add `features = ["nvXX+1-dev"]`.
 
-    👉 You can take a look at this [Filecoin-FFI PR as a reference](https://github.com/filecoin-project/filecoin-ffi/pull/454), which added the skeleton for network version 23.
+    👉 You can take a look at this [Filecoin-FFI PR as a reference](https://github.com/filecoin-project/filecoin-ffi/pull/479), which added the skeleton for network version 24.
 
 3.  [Follow the release process](https://github.com/filecoin-project/filecoin-ffi/blob/master/RELEASE.md) to publish `v1.NEW_LOTUS_MINOR_VERSION.0-dev`
 
     👉 You can take a look at this [Filecoin-FFI PR as a reference](https://github.com/filecoin-project/filecoin-ffi/pull/481), which was for network version 24.
 
-Note: one only needs to update `filecion-ffi`'s dependency on `go-state-types` when a network upgrade is introducing new types in `go-state-types`  (see [below](#new-types-in-go-state-types)).  Otherwise, `filecion-ffi`'s dependency on `go-state-types` is just updated when doing fiinal releases before the network upgrade. 
-
-## Filecoin-FFI Checklist
-
-1. Update the `TryFrom<u32>` implementation for `EngineVersion` in `rust/src/fvm/engine.rs`
-    - Add the new network version number (XX+1) to the existing match arm for the network version.
-
-2. Patch the FVM-dependency (fvm4 and fvm4_shared) in `rust/cargo.toml` to use the newly published Ref-FVM release.
-    -  Add `features = ["nvXX+1-dev"]`.
-
-You can take a look at this [Filecoin-FFI PR as a reference](https://github.com/filecoin-project/filecoin-ffi/pull/454), which added the skeleton for network version 23.
+Note: one only needs to update `filecion-ffi`'s dependency on `go-state-types` when a network upgrade is introducing new types in `go-state-types`  (see [below](#new-types-in-go-state-types)).  Otherwise, `filecion-ffi`'s dependency on `go-state-types` is just updated when doing fiinal releases before the network upgrade.
 
 ## Lotus Checklist
 
@@ -268,7 +258,7 @@ And you're done! These are all the steps necessary to create a network upgrade s
 - Complete the migration at upgrade epoch, with a successful upgrade.
 - Sync the new network version with the mock actor bundle, and be able to see that you are on a new network version with `lotus state network-version`
 
-You can take a look at this [Lotus PR as a reference](https://github.com/filecoin-project/lotus/pull/11964), which added the skeleton for network version 23.
+You can take a look at this [Lotus PR as a reference](https://github.com/filecoin-project/lotus/pull/12419) and [this](https://github.com/filecoin-project/lotus/pull/12455), which added the skeleton for network version 24.
 
 ## Special Cases
 
