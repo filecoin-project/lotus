@@ -143,7 +143,7 @@ func (e *ErrExecutionRevertedWithData) Error() string { return e.Message }
 
 // FromJSONRPCError converts a JSONRPCError to ErrExecutionRevertedWithData.
 func (e *ErrExecutionRevertedWithData) FromJSONRPCError(jerr jsonrpc.JSONRPCError) error {
-	if jerr.Code != EExecutionRevertedWithData || jerr.Message == "" || jerr.Data == "" {
+	if jerr.Code != EExecutionRevertedWithData || jerr.Message == "" || jerr.Data == nil {
 		return invalidExecutionRevertedWithDataMsg
 	}
 
