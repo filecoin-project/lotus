@@ -41,7 +41,7 @@ var f3ClearStateCmd = &cli.Command{
 			return xerrors.Errorf("lotus repo doesn't exist")
 		}
 
-		lr, err := r.Lock(repo.NewRepoTypeFromString(cctx.String("repo-type")))
+		lr, err := r.Lock(repo.FullNode)
 		if err != nil {
 			return err
 		}
