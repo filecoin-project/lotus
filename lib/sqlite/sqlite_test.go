@@ -32,9 +32,8 @@ func TestSqlite(t *testing.T) {
 	tmpDir := t.TempDir()
 	dbPath := filepath.Join(tmpDir, "/test.db")
 
-	db, exists, err := sqlite.Open(dbPath)
+	db, err := sqlite.Open(dbPath)
 	req.NoError(err)
-	req.False(exists)
 	req.NotNil(db)
 
 	err = sqlite.InitDb(context.Background(), "testdb", db, ddl, nil)
@@ -95,9 +94,8 @@ func TestSqlite(t *testing.T) {
 
 	// open again, check contents is the same
 
-	db, exists, err = sqlite.Open(dbPath)
+	db, err = sqlite.Open(dbPath)
 	req.NoError(err)
-	req.True(exists)
 	req.NotNil(db)
 
 	err = sqlite.InitDb(context.Background(), "testdb", db, ddl, nil)
@@ -113,9 +111,9 @@ func TestSqlite(t *testing.T) {
 
 	// open again, with a migration
 
-	db, exists, err = sqlite.Open(dbPath)
+	db, err = sqlite.Open(dbPath)
 	req.NoError(err)
-	req.True(exists)
+	req.NotNil(db)
 	req.NotNil(db)
 
 	migration1 := func(ctx context.Context, tx *sql.Tx) error {
@@ -156,9 +154,8 @@ func TestSqlite(t *testing.T) {
 
 	// open again, with another migration
 
-	db, exists, err = sqlite.Open(dbPath)
+	db, err = sqlite.Open(dbPath)
 	req.NoError(err)
-	req.True(exists)
 	req.NotNil(db)
 
 	migration2 := func(ctx context.Context, tx *sql.Tx) error {

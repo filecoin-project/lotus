@@ -11,6 +11,7 @@ import (
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
+	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/xerrors"
 )
 
@@ -22,12 +23,11 @@ var pragmas = []string{
 	"PRAGMA synchronous = normal",
 	"PRAGMA temp_store = memory",
 	"PRAGMA mmap_size = 30000000000",
-	"PRAGMA page_size = 32768",
 	"PRAGMA auto_vacuum = NONE",
 	"PRAGMA automatic_index = OFF",
 	"PRAGMA journal_mode = WAL",
-	"PRAGMA wal_autocheckpoint = 256", // checkpoint @ 256 pages
-	"PRAGMA journal_size_limit = 0",   // always reset journal and wal files
+	"PRAGMA journal_size_limit = 0", // always reset journal and wal files
+	"PRAGMA foreign_keys = ON",
 }
 
 const metaTableDdl = `CREATE TABLE IF NOT EXISTS _meta (
@@ -45,30 +45,37 @@ func metaDdl(version uint64) []string {
 }
 
 // Open opens a database at the given path. If the database does not exist, it will be created.
-func Open(path string) (*sql.DB, bool, error) {
+func Open(path string) (*sql.DB, error) {
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-		return nil, false, xerrors.Errorf("error creating database base directory [@ %s]: %w", path, err)
+		return nil, xerrors.Errorf("error creating database base directory [@ %s]: %w", path, err)
 	}
 
 	_, err := os.Stat(path)
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
-		return nil, false, xerrors.Errorf("error checking file status for database [@ %s]: %w", path, err)
+		return nil, xerrors.Errorf("error checking file status for database [@ %s]: %w", path, err)
 	}
-	exists := err == nil
 
 	db, err := sql.Open("sqlite3", path+"?mode=rwc")
 	if err != nil {
-		return nil, false, xerrors.Errorf("error opening database [@ %s]: %w", path, err)
+		return nil, xerrors.Errorf("error opening database [@ %s]: %w", path, err)
 	}
 
 	for _, pragma := range pragmas {
 		if _, err := db.Exec(pragma); err != nil {
 			_ = db.Close()
-			return nil, false, xerrors.Errorf("error setting database pragma %q: %w", pragma, err)
+			return nil, xerrors.Errorf("error setting database pragma %q: %w", pragma, err)
 		}
 	}
 
-	return db, exists, nil
+	var foreignKeysEnabled int
+	if err := db.QueryRow("PRAGMA foreign_keys;").Scan(&foreignKeysEnabled); err != nil {
+		return nil, xerrors.Errorf("failed to check foreign keys setting: %w", err)
+	}
+	if foreignKeysEnabled == 0 {
+		return nil, xerrors.Errorf("foreign keys are not enabled for database [@ %s]", path)
+	}
+
+	return db, nil
 }
 
 // InitDb initializes the database by checking whether it needs to be created or upgraded.

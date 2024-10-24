@@ -13,13 +13,14 @@ import (
 	"github.com/filecoin-project/go-jsonrpc"
 
 	"github.com/filecoin-project/lotus/chain/events/filter"
+	"github.com/filecoin-project/lotus/chain/index"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
 type filterEventCollector interface {
-	TakeCollectedEvents(context.Context) []*filter.CollectedEvent
+	TakeCollectedEvents(context.Context) []*index.CollectedEvent
 }
 
 type filterMessageCollector interface {
@@ -93,7 +94,7 @@ func ethLogFromEvent(entries []types.EventEntry) (data []byte, topics []ethtypes
 	return data, topics, true
 }
 
-func ethFilterLogsFromEvents(ctx context.Context, evs []*filter.CollectedEvent, sa StateAPI) ([]ethtypes.EthLog, error) {
+func ethFilterLogsFromEvents(ctx context.Context, evs []*index.CollectedEvent, sa StateAPI) ([]ethtypes.EthLog, error) {
 	var logs []ethtypes.EthLog
 	for _, ev := range evs {
 		log := ethtypes.EthLog{
@@ -140,7 +141,7 @@ func ethFilterLogsFromEvents(ctx context.Context, evs []*filter.CollectedEvent, 
 	return logs, nil
 }
 
-func ethFilterResultFromEvents(ctx context.Context, evs []*filter.CollectedEvent, sa StateAPI) (*ethtypes.EthFilterResult, error) {
+func ethFilterResultFromEvents(ctx context.Context, evs []*index.CollectedEvent, sa StateAPI) (*ethtypes.EthFilterResult, error) {
 	logs, err := ethFilterLogsFromEvents(ctx, evs, sa)
 	if err != nil {
 		return nil, err
@@ -347,8 +348,8 @@ func (e *ethSubscription) start(ctx context.Context) {
 			return
 		case v := <-e.in:
 			switch vt := v.(type) {
-			case *filter.CollectedEvent:
-				evs, err := ethFilterResultFromEvents(ctx, []*filter.CollectedEvent{vt}, e.StateAPI)
+			case *index.CollectedEvent:
+				evs, err := ethFilterResultFromEvents(ctx, []*index.CollectedEvent{vt}, e.StateAPI)
 				if err != nil {
 					continue
 				}

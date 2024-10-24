@@ -90,6 +90,7 @@ var DefaultNodeOpts = nodeOpts{
 			// test defaults
 
 			cfg.Fevm.EnableEthRPC = true
+			cfg.ChainIndexer.EnableIndexer = true
 			cfg.Events.MaxFilterHeightRange = math.MaxInt64
 			cfg.Events.EnableActorEventsAPI = true
 
@@ -103,6 +104,8 @@ var DefaultNodeOpts = nodeOpts{
 			cfg.Libp2p.ConnMgrLow = 1024
 			cfg.Libp2p.ConnMgrHigh = 2048
 			cfg.Libp2p.ConnMgrGrace = config.Duration(time.Hour)
+			cfg.ChainIndexer.ReconcileEmptyIndex = true
+			cfg.ChainIndexer.MaxReconcileTipsets = 10000
 			return nil
 		},
 	},
