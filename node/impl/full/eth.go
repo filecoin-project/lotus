@@ -573,9 +573,6 @@ func (a *EthModule) EthGetTransactionReceiptLimited(ctx context.Context, txHash 
 func (a *EthAPI) EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash ethtypes.EthHash, index ethtypes.EthUint64) (*ethtypes.EthTx, error) {
 	ts, err := a.Chain.GetTipSetByCid(ctx, blkHash.ToCid())
 	if err != nil {
-		if err == ErrNullRound {
-			return nil, xerrors.Errorf("block hash %s was a null round", blkHash)
-		}
 		return nil, xerrors.Errorf("failed to get tipset by cid: %w", err)
 	}
 
@@ -585,9 +582,6 @@ func (a *EthAPI) EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHa
 func (a *EthAPI) EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkParam string, index ethtypes.EthUint64) (*ethtypes.EthTx, error) {
 	ts, err := getTipsetByBlockNumber(ctx, a.Chain, blkParam, true)
 	if err != nil {
-		if err == ErrNullRound {
-			return nil, xerrors.Errorf("block number %s was a null round", blkParam)
-		}
 		return nil, xerrors.Errorf("failed to get tipset for block %s: %w", blkParam, err)
 	}
 
