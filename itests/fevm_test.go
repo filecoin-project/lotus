@@ -1506,6 +1506,7 @@ func TestEthGetTransactionByBlockHashAndIndexAndNumber(t *testing.T) {
 		if allInSameTipset {
 			break
 		}
+		t.Logf("Retrying because transactions didn't land in the same tipset")
 	}
 
 	require.NotEmpty(t, receipts, "No transactions were mined")
@@ -1535,7 +1536,7 @@ func TestEthGetTransactionByBlockHashAndIndexAndNumber(t *testing.T) {
 		invalidBlockHash := ethtypes.EthHash{1}
 		_, err = client.EthGetTransactionByBlockHashAndIndex(ctx, invalidBlockHash, ethtypes.EthUint64(0))
 		require.Error(t, err)
-		require.ErrorContains(t, err, "not found")
+		require.ErrorContains(t, err, "failed to get tipset by cid")
 
 		// 2. Invalid block number
 		_, err = client.EthGetTransactionByBlockNumberAndIndex(ctx, (blockNumber + 1000).Hex(), ethtypes.EthUint64(0))
