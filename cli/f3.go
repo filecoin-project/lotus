@@ -113,7 +113,7 @@ var (
 								return fmt.Errorf("getting finality certificate: %w", err)
 							}
 							if cert == nil {
-								_, _ = fmt.Fprintln(cctx.App.Writer, "No certificate.")
+								_, _ = fmt.Fprintln(cctx.App.ErrWriter, "No certificate.")
 								return nil
 							}
 
@@ -124,25 +124,44 @@ var (
 						Name: "list",
 						Usage: `Lists a range of F3 finality certificates.
 
+By default the certificates are listed in newest to oldest order,
+i.e. descending instance IDs. The order may be reversed using the
+'--reverse' flag.
+
 A range may optionally be specified as the first argument to indicate 
 inclusive range of 'from' and 'to' instances in following notation:
 '<from>..<to>'. Either <from> or <to> may be omitted, but not both.
-An omitted instance is interpreted as the latest instance.
+An omitted <from> value is always interpreted as 0, and an omitted
+<to> value indicates the latest instance. If both are specified, <from>
+must never exceed <to>.
 
-If no range is specified, certificates are listed in descending order
-of instance, starting from the latest until the limit is reached, i.e.
-the default range of '..0'.
+If no range is specified all certificates are listed, i.e. the range
+of '0..'.
 
 Examples:
-  * '5..': from instance 5 to the latest instance.
-  * '..0': from the latest instance to instance 0.
-  * '3..2': from instance 3 to instance 2.
-  * '2..3': from instance 2 to instance 3.
+  * All certificates from newest to oldest:
+      $ lotus f3 certs list 0..
+
+  * Three newest certificates:
+      $ lotus f3 certs list --limit 3 0..
+
+  * Three oldest certificates:
+      $ lotus f3 certs list --limit 3 --reverse 0..
+
+  * Up to three certificates starting from instance 1413 to the oldest:
+      $ lotus f3 certs list --limit 3 ..1413
+
+  * Up to 3 certificates starting from instance 1413 to the newest:
+      $ lotus f3 certs list --limit 3 --reverse 1413..
+
+  * All certificates from instance 3 to 1413 in order of newest to oldest:
+      $ lotus f3 certs list 3..1413
 `,
 						ArgsUsage: "[range]",
 						Flags: []cli.Flag{
 							f3FlagOutput,
 							f3FlagInstanceLimit,
+							f3FlagReverseOrder,
 						},
 						Before: func(cctx *cli.Context) error {
 							if count := cctx.NArg(); count > 1 {
@@ -158,11 +177,12 @@ Examples:
 							defer closer()
 
 							limit := cctx.Int(f3FlagInstanceLimit.Name)
+							reverse := cctx.Bool(f3FlagReverseOrder.Name)
 							fromTo := cctx.Args().First()
 							if fromTo == "" {
-								fromTo = "..0"
+								fromTo = "0.."
 							}
-							r, err := newRanger(fromTo, limit, func() (uint64, error) {
+							r, err := newRanger(fromTo, limit, reverse, func() (uint64, error) {
 								latest, err := api.F3GetLatestCertificate(cctx.Context)
 								if err != nil {
 									return 0, fmt.Errorf("getting latest finality certificate: %w", err)
@@ -178,7 +198,6 @@ Examples:
 
 							var cert *certs.FinalityCertificate
 							for cctx.Context.Err() == nil {
-
 								next, proceed := r.next()
 								if !proceed {
 									return nil
@@ -188,13 +207,14 @@ Examples:
 									return fmt.Errorf("getting finality certificate for instance %d: %w", next, err)
 								}
 								if cert == nil {
-									_, _ = fmt.Fprintln(cctx.App.Writer, "No certificate.")
-									return nil
+									// This is unexpected, because the range of iteration was determined earlier and
+									// certstore should to have all the certs. Error out.
+									return fmt.Errorf("nil finality certificate for instance %d", next)
 								}
 								if err := outputFinalityCertificate(cctx, cert); err != nil {
 									return err
 								}
-								_, _ = fmt.Fprintln(cctx.App.Writer, "---")
+								_, _ = fmt.Fprintln(cctx.App.Writer)
 							}
 							return nil
 						},
@@ -284,9 +304,14 @@ Examples:
 		},
 	}
 	f3FlagInstanceLimit = &cli.IntFlag{
-		Name:  "limit",
-		Usage: "The maximum number of instances. A value less than 0 indicates no limit.",
-		Value: 10,
+		Name:        "limit",
+		Usage:       "The maximum number of instances. A value less than 0 indicates no limit.",
+		DefaultText: "No limit",
+		Value:       -1,
+	}
+	f3FlagReverseOrder = &cli.BoolFlag{
+		Name:  "reverse",
+		Usage: "Reverses the default order of output. ",
 	}
 	//go:embed templates/f3_*.go.tmpl
 	f3TemplatesFS embed.FS
@@ -337,13 +362,13 @@ func f3PowerTableDiffsToString(diff certs.PowerTableDiff) (string, error) {
 	if len(diff) == 0 {
 		return "None", nil
 	}
-	totalDiff := new(gpbft.StoragePower).Int
+	totalDiff := gpbft.NewStoragePower(0).Int
 	for _, delta := range diff {
 		if !delta.IsZero() {
 			totalDiff = totalDiff.Add(totalDiff, delta.PowerDelta.Int)
 		}
 	}
-	if totalDiff.Cmp(new(gpbft.StoragePower).Int) == 0 {
+	if totalDiff.Cmp(gpbft.NewStoragePower(0).Int) == 0 {
 		return "None", nil
 	}
 	return fmt.Sprintf("Total of %s storage power across %d miner(s).", totalDiff, len(diff)), nil
@@ -355,33 +380,38 @@ type ranger struct {
 	ascend   bool
 }
 
-func newRanger(fromTo string, limit int, latest func() (uint64, error)) (*ranger, error) {
+func newRanger(fromTo string, limit int, ascend bool, latest func() (uint64, error)) (*ranger, error) {
 	parts := strings.Split(strings.TrimSpace(fromTo), "..")
 	if len(parts) != 2 || (parts[0] == "" && parts[1] == "") {
 		return nil, fmt.Errorf("invalid range format: expected '<from>..<to>', got: %s", fromTo)
 	}
 
-	parsePart := func(part string) (uint64, error) {
-		if part == "" {
-			return latest()
+	r := ranger{
+		limit:  limit,
+		ascend: ascend,
+	}
+	var err error
+	if parts[0] != "" {
+		r.from, err = strconv.ParseUint(parts[0], 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("determining 'from' instance: %v", err)
 		}
-		return strconv.ParseUint(part, 10, 64)
 	}
-
-	from, err := parsePart(parts[0])
-	if err != nil {
-		return nil, fmt.Errorf("determining 'from' instance: %v", err)
+	if parts[1] != "" {
+		r.to, err = strconv.ParseUint(parts[1], 10, 64)
+	} else {
+		r.to, err = latest()
 	}
-	to, err := parsePart(parts[1])
 	if err != nil {
 		return nil, fmt.Errorf("determining 'to' instance: %v", err)
 	}
-	return &ranger{
-		from:   from,
-		to:     to,
-		limit:  limit,
-		ascend: from < to,
-	}, nil
+	if r.from > r.to {
+		return nil, fmt.Errorf("invalid range: 'from' cannot exceed 'to':  %d > %d", r.from, r.to)
+	}
+	if !ascend {
+		r.from, r.to = r.to, r.from
+	}
+	return &r, nil
 }
 
 func (r *ranger) next() (uint64, bool) {
