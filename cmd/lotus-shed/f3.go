@@ -73,7 +73,7 @@ var f3ClearStateCmd = &cli.Command{
 			if r.Error != nil {
 				return xerrors.Errorf("failed to read datastore: %w", err)
 			}
-			fmt.Fprintf(cctx.App.Writer, "deleting: %q\n", r.Key)
+			_, _ = fmt.Fprintf(cctx.App.Writer, "deleting: %q\n", r.Key)
 			if !dryRun {
 				if err := batch.Delete(cctx.Context, datastore.NewKey(r.Key)); err != nil {
 					return xerrors.Errorf("failed to delete %q: %w", r.Key, err)
@@ -91,7 +91,7 @@ var f3ClearStateCmd = &cli.Command{
 		}
 
 		if dryRun {
-			fmt.Fprintln(cctx.App.Writer, "NOTE: dry run complete, re-run with --really-do-it to actually delete F3 state")
+			_, _ = fmt.Fprintln(cctx.App.Writer, "NOTE: dry run complete, re-run with --really-do-it to actually delete F3 state")
 		}
 
 		return nil
