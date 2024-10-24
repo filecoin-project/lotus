@@ -1047,8 +1047,8 @@ func TestFEVMErrorParsing(t *testing.T) {
 				}, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 				require.Error(t, err)
 
-				var dataErr *api.ErrExecutionRevertedWithData
-				require.ErrorAs(t, err, &dataErr, "Expected error to be ErrExecutionRevertedWithData")
+				var dataErr *api.ErrExecutionReverted
+				require.ErrorAs(t, err, &dataErr, "Expected error to be ErrExecutionReverted")
 				require.Contains(t, dataErr.Data, expected, "Error data should contain the expected error")
 			})
 			t.Run("EthEstimateGas", func(t *testing.T) {
@@ -1060,8 +1060,8 @@ func TestFEVMErrorParsing(t *testing.T) {
 
 				_, err = e.EthEstimateGas(ctx, gasParams)
 				require.Error(t, err)
-				var dataErr *api.ErrExecutionRevertedWithData
-				require.ErrorAs(t, err, &dataErr, "Expected error to be ErrExecutionRevertedWithData")
+				var dataErr *api.ErrExecutionReverted
+				require.ErrorAs(t, err, &dataErr, "Expected error to be ErrExecutionReverted")
 				require.Contains(t, dataErr.Data, expected, "Error data should contain the expected error")
 			})
 		})
@@ -1479,8 +1479,8 @@ func TestEthCall(t *testing.T) {
 		_, err = client.EthCall(ctx, callParams, ethtypes.NewEthBlockNumberOrHashFromNumber(latestBlock))
 		require.Error(t, err)
 
-		var dataErr *api.ErrExecutionRevertedWithData
-		require.ErrorAs(t, err, &dataErr, "Expected error to be ErrExecutionRevertedWithData")
+		var dataErr *api.ErrExecutionReverted
+		require.ErrorAs(t, err, &dataErr, "Expected error to be ErrExecutionReverted")
 		require.Contains(t, dataErr.Message, "execution reverted", "Expected 'execution reverted' message")
 
 		// Get the error data
@@ -1531,8 +1531,8 @@ func TestEthEstimateGas(t *testing.T) {
 
 			if tc.expectedError != "" {
 				require.Error(t, err)
-				var dataErr *api.ErrExecutionRevertedWithData
-				require.ErrorAs(t, err, &dataErr, "Expected error to be ErrExecutionRevertedWithData")
+				var dataErr *api.ErrExecutionReverted
+				require.ErrorAs(t, err, &dataErr, "Expected error to be ErrExecutionReverted")
 				require.Equal(t, tc.expectedErrMsg, dataErr.Message)
 				require.Contains(t, tc.expectedError, dataErr.Data)
 			}
