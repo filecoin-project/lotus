@@ -4,11 +4,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/ipfs/go-datastore"
 	dsq "github.com/ipfs/go-datastore/query"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/lotus/node/repo"
 )
 
 var f3Cmd = &cli.Command{
