@@ -79,6 +79,15 @@ var f3ClearStateCmd = &cli.Command{
 				}
 			}
 		}
+		if !dryRun {
+			if err := batch.Commit(cctx.Context); err != nil {
+				return xerrors.Errorf("failed to flush the batch: %w", err)
+			}
+		}
+
+		if err := ds.Close(); err != nil {
+			return xerrors.Errorf("error when closing datastore: %w", err)
+		}
 
 		if dryRun {
 			fmt.Fprintln(cctx.App.Writer, "NOTE: dry run complete, re-run with --really-do-it to actually delete F3 state")
