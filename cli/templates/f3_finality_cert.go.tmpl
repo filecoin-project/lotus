@@ -1,0 +1,37 @@
+Instance:     {{.GPBFTInstance}}
+Power Table:
+  Next:       {{.SupplementalData.PowerTable}}
+  Delta:      {{ptDiffToString .PowerTableDelta}}
+Finalized Chain:
+  Length:     {{ $chainLength := len .ECChain -}}{{ $chainLength }}
+  Epochs:     {{ .ECChain.Base.Epoch -}}-{{ .ECChain.Head.Epoch }}
+  Chain:
+{{- $maxTipSets := 10 -}}
+{{- $maxTipSetKeys := 2 -}}
+{{- range $i, $tipset := .ECChain -}}
+    {{- if lt $i $maxTipSets -}}
+        {{- if lt (add $i 1) $chainLength }}
+    ├──
+        {{- else }}
+    └──
+        {{- end -}}
+        {{- $ltsk := tipSetKeyToLotusTipSetKey $tipset.Key -}}
+        {{- $ltskLength := len $ltsk.Cids -}}
+        {{ $tipset.Epoch }} (length: {{ $ltskLength }}): [
+        {{- range $j, $cid := $ltsk.Cids -}}
+            {{- if lt $j $maxTipSetKeys -}}
+                {{- if lt (add $j 1) $ltskLength -}}
+                    {{- $cid -}}, {{ else -}}
+                    {{- $cid -}}
+                {{- end -}}
+            {{- else -}}
+                ...
+                {{- break -}}
+            {{- end -}}
+        {{- end -}}]
+    {{- else }}
+    └──...omitted the remaining {{ sub $chainLength $maxTipSets }} tipsets.
+        {{- break -}}
+    {{- end -}}
+{{- end }}
+Signed by {{ .Signers.Count }} miner(s).

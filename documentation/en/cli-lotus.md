@@ -2718,6 +2718,175 @@ OPTIONS:
    --help, -h     show help
 ```
 
+## lotus f3
+```
+NAME:
+   lotus f3 - Manages Filecoin Fast Finality (F3) interactions
+
+USAGE:
+   lotus f3 command [command options] [arguments...]
+
+COMMANDS:
+   list-miners, lm  Lists the miners that currently participate in F3 via this node.
+   certs, c         Manages interactions with F3 finality certificates.
+   manifest         Gets the current manifest used by F3.
+   status           Checks the F3 status.
+   help, h          Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help
+```
+
+### lotus f3 list-miners
+```
+NAME:
+   lotus f3 list-miners - Lists the miners that currently participate in F3 via this node.
+
+USAGE:
+   lotus f3 list-miners [command options] [arguments...]
+
+OPTIONS:
+   --help, -h  show help
+```
+
+### lotus f3 certs
+```
+NAME:
+   lotus f3 certs - Manages interactions with F3 finality certificates.
+
+USAGE:
+   lotus f3 certs command [command options] [arguments...]
+
+COMMANDS:
+   get      Gets an F3 finality certificate to a given instance ID, or the latest certificate if no instance is specified.
+   list     Lists a range of F3 finality certificates.
+
+            By default the certificates are listed in newest to oldest order,
+            i.e. descending instance IDs. The order may be reversed using the
+            '--reverse' flag.
+
+            A range may optionally be specified as the first argument to indicate 
+            inclusive range of 'from' and 'to' instances in following notation:
+            '<from>..<to>'. Either <from> or <to> may be omitted, but not both.
+            An omitted <from> value is always interpreted as 0, and an omitted
+            <to> value indicates the latest instance. If both are specified, <from>
+            must never exceed <to>.
+
+            If no range is specified all certificates are listed, i.e. the range
+            of '0..'.
+
+            Examples:
+              * All certificates from newest to oldest:
+                  $ lotus f3 certs list 0..
+
+              * Three newest certificates:
+                  $ lotus f3 certs list --limit 3 0..
+
+              * Three oldest certificates:
+                  $ lotus f3 certs list --limit 3 --reverse 0..
+
+              * Up to three certificates starting from instance 1413 to the oldest:
+                  $ lotus f3 certs list --limit 3 ..1413
+
+              * Up to 3 certificates starting from instance 1413 to the newest:
+                  $ lotus f3 certs list --limit 3 --reverse 1413..
+
+              * All certificates from instance 3 to 1413 in order of newest to oldest:
+                  $ lotus f3 certs list 3..1413
+
+   help, h  Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help
+```
+
+#### lotus f3 certs get
+```
+NAME:
+   lotus f3 certs get - Gets an F3 finality certificate to a given instance ID, or the latest certificate if no instance is specified.
+
+USAGE:
+   lotus f3 certs get [command options] [instance]
+
+OPTIONS:
+   --output value  The output format. Supported formats: text, json (default: "text")
+   --help, -h      show help
+```
+
+#### lotus f3 certs list
+```
+NAME:
+   lotus f3 certs list - Lists a range of F3 finality certificates.
+
+                         By default the certificates are listed in newest to oldest order,
+                         i.e. descending instance IDs. The order may be reversed using the
+                         '--reverse' flag.
+
+                         A range may optionally be specified as the first argument to indicate 
+                         inclusive range of 'from' and 'to' instances in following notation:
+                         '<from>..<to>'. Either <from> or <to> may be omitted, but not both.
+                         An omitted <from> value is always interpreted as 0, and an omitted
+                         <to> value indicates the latest instance. If both are specified, <from>
+                         must never exceed <to>.
+
+                         If no range is specified all certificates are listed, i.e. the range
+                         of '0..'.
+
+                         Examples:
+                           * All certificates from newest to oldest:
+                               $ lotus f3 certs list 0..
+
+                           * Three newest certificates:
+                               $ lotus f3 certs list --limit 3 0..
+
+                           * Three oldest certificates:
+                               $ lotus f3 certs list --limit 3 --reverse 0..
+
+                           * Up to three certificates starting from instance 1413 to the oldest:
+                               $ lotus f3 certs list --limit 3 ..1413
+
+                           * Up to 3 certificates starting from instance 1413 to the newest:
+                               $ lotus f3 certs list --limit 3 --reverse 1413..
+
+                           * All certificates from instance 3 to 1413 in order of newest to oldest:
+                               $ lotus f3 certs list 3..1413
+
+
+USAGE:
+   lotus f3 certs list [command options] [range]
+
+OPTIONS:
+   --output value  The output format. Supported formats: text, json (default: "text")
+   --limit value   The maximum number of instances. A value less than 0 indicates no limit. (default: No limit)
+   --reverse       Reverses the default order of output.  (default: false)
+   --help, -h      show help
+```
+
+### lotus f3 manifest
+```
+NAME:
+   lotus f3 manifest - Gets the current manifest used by F3.
+
+USAGE:
+   lotus f3 manifest [command options] [arguments...]
+
+OPTIONS:
+   --output value  The output format. Supported formats: text, json (default: "text")
+   --help, -h      show help
+```
+
+### lotus f3 status
+```
+NAME:
+   lotus f3 status - Checks the F3 status.
+
+USAGE:
+   lotus f3 status [command options] [arguments...]
+
+OPTIONS:
+   --help, -h  show help
+```
+
 ## lotus status
 ```
 NAME:
