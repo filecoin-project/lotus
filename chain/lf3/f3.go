@@ -155,7 +155,7 @@ func (fff *F3) runSigningLoop(ctx context.Context) {
 			clear(alreadyParticipated)
 		}
 
-		participants := fff.leaser.getParticipantsByInstance(mb.Payload.Instance)
+		participants := fff.leaser.getParticipantsByInstance(mb.NetworkName, mb.Payload.Instance)
 		for _, id := range participants {
 			if _, ok := alreadyParticipated[id]; ok {
 				continue
@@ -202,4 +202,17 @@ func (fff *F3) IsRunning() bool {
 
 func (fff *F3) Progress() gpbft.Instant {
 	return fff.inner.Progress()
+}
+
+func (fff *F3) ListParticipants() []api.F3Participant {
+	leases := fff.leaser.getValidLeases()
+	participants := make([]api.F3Participant, len(leases))
+	for i, lease := range leases {
+		participants[i] = api.F3Participant{
+			MinerID:      lease.MinerID,
+			FromInstance: lease.FromInstance,
+			ValidityTerm: lease.ValidityTerm,
+		}
+	}
+	return participants
 }

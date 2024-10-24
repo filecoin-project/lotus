@@ -276,6 +276,8 @@ type FullNodeMethods struct {
 
 	F3IsRunning func(p0 context.Context) (bool, error) `perm:"read"`
 
+	F3ListParticipants func(p0 context.Context) ([]F3Participant, error) `perm:"read"`
+
 	F3Participate func(p0 context.Context, p1 F3ParticipationTicket) (F3ParticipationLease, error) `perm:"sign"`
 
 	FilecoinAddressToEthAddress func(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthAddress, error) `perm:"read"`
@@ -2230,6 +2232,17 @@ func (s *FullNodeStruct) F3IsRunning(p0 context.Context) (bool, error) {
 
 func (s *FullNodeStub) F3IsRunning(p0 context.Context) (bool, error) {
 	return false, ErrNotSupported
+}
+
+func (s *FullNodeStruct) F3ListParticipants(p0 context.Context) ([]F3Participant, error) {
+	if s.Internal.F3ListParticipants == nil {
+		return *new([]F3Participant), ErrNotSupported
+	}
+	return s.Internal.F3ListParticipants(p0)
+}
+
+func (s *FullNodeStub) F3ListParticipants(p0 context.Context) ([]F3Participant, error) {
+	return *new([]F3Participant), ErrNotSupported
 }
 
 func (s *FullNodeStruct) F3Participate(p0 context.Context, p1 F3ParticipationTicket) (F3ParticipationLease, error) {

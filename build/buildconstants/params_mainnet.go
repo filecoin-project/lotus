@@ -189,7 +189,3 @@ var F3InitialPowerTableCID = cid.Undef
 
 const F3Enabled = true
 const F3BootstrapEpoch abi.ChainEpoch = -1
-
-// F3Consensus set whether F3 should checkpoint tipsets finalized by F3. This
-// flag has no effect if F3 is not enabled.
-const F3Consensus = false

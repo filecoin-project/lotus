@@ -24,7 +24,8 @@ import (
 
 func main() {
 	var lets errgroup.Group
-	lets.Go(generateApi)
+	lets.Go(generateApiMaps)
+	lets.Go(generateApiTuples)
 	lets.Go(generateBlockstore)
 	lets.Go(generateChainExchange)
 	lets.Go(generateChainMarket)
@@ -124,15 +125,20 @@ func generateNodeHello() error {
 	)
 }
 
-func generateApi() error {
+func generateApiMaps() error {
 	return gen.WriteMapEncodersToFile("./api/cbor_gen.go", "api",
-		api.F3ParticipationLease{},
 		api.PaymentInfo{},
 		api.SealedRef{},
 		api.SealedRefs{},
 		api.SealTicket{},
 		api.SealSeed{},
 		api.SectorPiece{},
+	)
+}
+
+func generateApiTuples() error {
+	return gen.WriteTupleEncodersToFile("./api/cbor_tuples_gen.go", "api",
+		api.F3ParticipationLease{},
 	)
 }
 
