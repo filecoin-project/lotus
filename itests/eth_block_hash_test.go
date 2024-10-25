@@ -65,24 +65,18 @@ func TestEthBlockHashesCorrect_MultiBlockTipset(t *testing.T) {
 		require.NoError(t, err)
 
 		ethBlockA, err := n2.EthGetBlockByNumber(ctx, hex, true)
+		// Cannot use static ErrFullRound error for comparison since it gets reserialized as a JSON RPC error.
 		if err != nil && strings.Contains(err.Error(), "null round") {
 			require.Less(t, ts.Height(), abi.ChainEpoch(i), "did not expect a tipset at epoch %d", i)
 			continue
 		}
-
-		// Check if the tipset height is less than or equal to the current epoch
-		require.LessOrEqual(t, ts.Height(), abi.ChainEpoch(i), "tipset height should not exceed the current epoch")
-
-		// Skip Null rounds
-		if ethBlockA == nil {
-			continue
-		}
+		require.NoError(t, err)
+		require.Equal(t, ts.Height(), abi.ChainEpoch(i), "expected a tipset at epoch %i", i)
 
 		ethBlockB, err := n2.EthGetBlockByHash(ctx, ethBlockA.Hash, true)
 		require.NoError(t, err)
-		require.NotNil(t, ethBlockB)
 
-		require.Equal(t, *ethBlockA, ethBlockB)
+		require.Equal(t, ethBlockA, ethBlockB)
 
 		numBlocks := len(ts.Blocks())
 		expGasLimit := ethtypes.EthUint64(int64(numBlocks) * buildconstants.BlockGasLimit)

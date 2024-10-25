@@ -408,7 +408,7 @@ func TestEthBlockNumberAliases(t *testing.T) {
 
 	head := client.WaitTillChain(ctx, kit.HeightAtLeast(policy.ChainFinality+100))
 	// latest should be head-1 (parents)
-	var latestEthBlk *ethtypes.EthBlock
+	var latestEthBlk ethtypes.EthBlock
 	for {
 		var err error
 		latestEthBlk, err = client.EVM().EthGetBlockByNumber(ctx, "latest", true)
