@@ -101,11 +101,16 @@ func (l *leaser) participate(ticket api.F3ParticipationTicket) (api.F3Participat
 	l.mutex.Lock()
 	defer l.mutex.Unlock()
 	currentLease, found := l.leases[newLease.MinerID]
-	if found && currentLease.Network == newLease.Network && currentLease.FromInstance > newLease.FromInstance {
-		// For safety, strictly require lease start instance to never decrease.
-		return api.F3ParticipationLease{}, api.ErrF3ParticipationTicketStartBeforeExisting
-	}
-	if !found {
+	if found {
+		// short-circuite for reparticipation.
+		if currentLease == newLease {
+			return newLease, nil
+		}
+		if currentLease.Network == newLease.Network && currentLease.FromInstance > newLease.FromInstance {
+			// For safety, strictly require lease start instance to never decrease.
+			return api.F3ParticipationLease{}, api.ErrF3ParticipationTicketStartBeforeExisting
+		}
+	} else {
 		log.Infof("started participating in F3 for miner %d", newLease.MinerID)
 	}
 	l.leases[newLease.MinerID] = newLease
@@ -113,6 +118,8 @@ func (l *leaser) participate(ticket api.F3ParticipationTicket) (api.F3Participat
 	case l.notifyParticipation <- struct{}{}:
 	default:
 	}
+	newLease.ValidityTerm = newLease.ToInstance() - instant.ID
+	newLease.FromInstance = instant.ID
 	return newLease, nil
 }
 
