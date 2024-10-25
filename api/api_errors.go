@@ -4,8 +4,12 @@ import (
 	"errors"
 	"reflect"
 
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-jsonrpc"
 )
+
+var invalidExecutionRevertedMsg = xerrors.New("invalid execution reverted error")
 
 const (
 	EOutOfGas = iota + jsonrpc.FirstUserCode
@@ -17,6 +21,7 @@ const (
 	EF3ParticipationTooManyInstances
 	EF3ParticipationTicketStartBeforeExisting
 	EF3NotReady
+	EExecutionReverted
 )
 
 var (
@@ -40,13 +45,15 @@ var (
 	// should back off and try again later.
 	ErrF3NotReady = &errF3NotReady{}
 
-	_ error = (*ErrOutOfGas)(nil)
-	_ error = (*ErrActorNotFound)(nil)
-	_ error = (*errF3Disabled)(nil)
-	_ error = (*errF3ParticipationTicketInvalid)(nil)
-	_ error = (*errF3ParticipationTicketExpired)(nil)
-	_ error = (*errF3ParticipationIssuerMismatch)(nil)
-	_ error = (*errF3NotReady)(nil)
+	_ error                 = (*ErrOutOfGas)(nil)
+	_ error                 = (*ErrActorNotFound)(nil)
+	_ error                 = (*errF3Disabled)(nil)
+	_ error                 = (*errF3ParticipationTicketInvalid)(nil)
+	_ error                 = (*errF3ParticipationTicketExpired)(nil)
+	_ error                 = (*errF3ParticipationIssuerMismatch)(nil)
+	_ error                 = (*errF3NotReady)(nil)
+	_ error                 = (*ErrExecutionReverted)(nil)
+	_ jsonrpc.RPCErrorCodec = (*ErrExecutionReverted)(nil)
 )
 
 func init() {
@@ -59,6 +66,7 @@ func init() {
 	RPCErrors.Register(EF3ParticipationTooManyInstances, new(*errF3ParticipationTooManyInstances))
 	RPCErrors.Register(EF3ParticipationTicketStartBeforeExisting, new(*errF3ParticipationTicketStartBeforeExisting))
 	RPCErrors.Register(EF3NotReady, new(*errF3NotReady))
+	RPCErrors.Register(EExecutionReverted, new(*ErrExecutionReverted))
 }
 
 func ErrorIsIn(err error, errorTypes []error) bool {
@@ -110,3 +118,45 @@ func (errF3ParticipationTicketStartBeforeExisting) Error() string {
 type errF3NotReady struct{}
 
 func (errF3NotReady) Error() string { return "f3 isn't yet ready to participate" }
+
+// ErrExecutionReverted is used to return execution reverted with a reason for a revert in the `data` field.
+type ErrExecutionReverted struct {
+	Message string
+	Data    string
+}
+
+// Error returns the error message.
+func (e *ErrExecutionReverted) Error() string { return e.Message }
+
+// FromJSONRPCError converts a JSONRPCError to ErrExecutionReverted.
+func (e *ErrExecutionReverted) FromJSONRPCError(jerr jsonrpc.JSONRPCError) error {
+	if jerr.Code != EExecutionReverted || jerr.Message == "" || jerr.Data == nil {
+		return invalidExecutionRevertedMsg
+	}
+
+	data, ok := jerr.Data.(string)
+	if !ok {
+		return xerrors.Errorf("expected string data in execution reverted error, got %T", jerr.Data)
+	}
+
+	e.Message = jerr.Message
+	e.Data = data
+	return nil
+}
+
+// ToJSONRPCError converts ErrExecutionReverted to a JSONRPCError.
+func (e *ErrExecutionReverted) ToJSONRPCError() (jsonrpc.JSONRPCError, error) {
+	return jsonrpc.JSONRPCError{
+		Code:    EExecutionReverted,
+		Message: e.Message,
+		Data:    e.Data,
+	}, nil
+}
+
+// NewErrExecutionReverted creates a new ErrExecutionReverted with the given reason.
+func NewErrExecutionReverted(reason string) *ErrExecutionReverted {
+	return &ErrExecutionReverted{
+		Message: "execution reverted",
+		Data:    reason,
+	}
+}
