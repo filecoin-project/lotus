@@ -1444,6 +1444,128 @@ func TestEthGetBlockByNumber(t *testing.T) {
 	require.True(t, pendingBlock.Number >= latest)
 }
 
+func TestEthGetTransactionByBlockHashAndIndexAndNumber(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	ethKey, ethAddr, ethFilAddr := client.EVM().NewAccount()
+	kit.SendFunds(ctx, t, client, ethFilAddr, types.FromFil(10))
+
+	var txHashes []ethtypes.EthHash
+	var receipts []*api.EthTxReceipt
+	numTx := 3
+
+	contractHex, err := os.ReadFile("./contracts/MultipleEvents.hex")
+	require.NoError(t, err)
+	contract, err := hex.DecodeString(string(contractHex))
+	require.NoError(t, err)
+
+	gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
+		From: &ethAddr,
+		Data: contract,
+	}})
+	require.NoError(t, err)
+	gaslimit, err := client.EthEstimateGas(ctx, gasParams)
+	require.NoError(t, err)
+
+	maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)
+	require.NoError(t, err)
+
+	for {
+		txHashes = nil
+		receipts = nil
+		nonce, err := client.MpoolGetNonce(ctx, ethFilAddr)
+		require.NoError(t, err)
+
+		for i := 0; i < numTx; i++ {
+			tx := &ethtypes.Eth1559TxArgs{
+				ChainID:              buildconstants.Eip155ChainId,
+				Value:                big.Zero(),
+				Nonce:                int(nonce) + i,
+				MaxFeePerGas:         types.NanoFil,
+				MaxPriorityFeePerGas: big.Int(maxPriorityFeePerGas),
+				GasLimit:             int(gaslimit),
+				Input:                contract,
+				V:                    big.Zero(),
+				R:                    big.Zero(),
+				S:                    big.Zero(),
+			}
+			client.EVM().SignTransaction(tx, ethKey.PrivateKey)
+			hash := client.EVM().SubmitTransaction(ctx, tx)
+			txHashes = append(txHashes, hash)
+		}
+
+		for _, hash := range txHashes {
+			receipt, err := client.EVM().WaitTransaction(ctx, hash)
+			require.NoError(t, err)
+			require.NotNil(t, receipt)
+			receipts = append(receipts, receipt)
+		}
+
+		allInSameTipset := true
+		for i := 1; i < len(receipts); i++ {
+			if receipts[i].BlockHash != receipts[0].BlockHash {
+				allInSameTipset = false
+				break
+			}
+		}
+
+		if allInSameTipset {
+			break
+		}
+		t.Logf("Retrying because transactions didn't land in the same tipset")
+	}
+
+	require.NotEmpty(t, receipts, "No transactions were mined")
+	blockHash := receipts[0].BlockHash
+	blockNumber := receipts[0].BlockNumber
+
+	for _, receipt := range receipts {
+		t.Logf("transaction index: %d", receipt.TransactionIndex)
+		ethTx, err := client.EthGetTransactionByBlockHashAndIndex(ctx, blockHash, receipt.TransactionIndex)
+		require.NoError(t, err)
+		require.NotNil(t, ethTx)
+		require.Equal(t, receipt.TransactionHash.String(), ethTx.Hash.String())
+		require.Equal(t, ethtypes.EthUint64(2), ethTx.Type)
+		require.NotEmpty(t, ethTx.Input, "Contract deployment should have input data")
+		require.Equal(t, ethAddr.String(), ethTx.From.String())
+	}
+
+	for _, receipt := range receipts {
+		ethTx, err := client.EthGetTransactionByBlockNumberAndIndex(ctx, blockNumber.Hex(), receipt.TransactionIndex)
+		require.NoError(t, err)
+		require.NotNil(t, ethTx)
+		require.Equal(t, receipt.TransactionHash.String(), ethTx.Hash.String())
+	}
+
+	t.Run("Error cases", func(t *testing.T) {
+		// 1. Invalid block hash
+		invalidBlockHash := ethtypes.EthHash{1}
+		_, err = client.EthGetTransactionByBlockHashAndIndex(ctx, invalidBlockHash, ethtypes.EthUint64(0))
+		require.Error(t, err)
+		require.ErrorContains(t, err, "failed to get tipset by cid")
+
+		// 2. Invalid block number
+		_, err = client.EthGetTransactionByBlockNumberAndIndex(ctx, (blockNumber + 1000).Hex(), ethtypes.EthUint64(0))
+		require.Error(t, err)
+		require.ErrorContains(t, err, "failed to get tipset")
+
+		// 3. Index out of range
+		_, err = client.EthGetTransactionByBlockHashAndIndex(ctx, blockHash, ethtypes.EthUint64(100))
+		require.Error(t, err)
+		require.ErrorContains(t, err, "out of range")
+
+		// 4. Empty block
+		emptyBlock, err := client.EthGetBlockByNumber(ctx, "latest", false)
+		require.NoError(t, err)
+		require.NotNil(t, emptyBlock)
+
+		_, err = client.EthGetTransactionByBlockHashAndIndex(ctx, emptyBlock.Hash, ethtypes.EthUint64(0))
+		require.Error(t, err)
+		require.ErrorContains(t, err, "out of range")
+	})
+}
+
 func TestEthCall(t *testing.T) {
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()

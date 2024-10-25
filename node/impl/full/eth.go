@@ -570,12 +570,62 @@ func (a *EthModule) EthGetTransactionReceiptLimited(ctx context.Context, txHash 
 	return &receipt, nil
 }
 
-func (a *EthAPI) EthGetTransactionByBlockHashAndIndex(context.Context, ethtypes.EthHash, ethtypes.EthUint64) (ethtypes.EthTx, error) {
-	return ethtypes.EthTx{}, ErrUnsupported
+func (a *EthAPI) EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash ethtypes.EthHash, index ethtypes.EthUint64) (*ethtypes.EthTx, error) {
+	ts, err := a.Chain.GetTipSetByCid(ctx, blkHash.ToCid())
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get tipset by cid: %w", err)
+	}
+
+	return a.getTransactionByTipsetAndIndex(ctx, ts, index)
 }
 
-func (a *EthAPI) EthGetTransactionByBlockNumberAndIndex(context.Context, ethtypes.EthUint64, ethtypes.EthUint64) (ethtypes.EthTx, error) {
-	return ethtypes.EthTx{}, ErrUnsupported
+func (a *EthAPI) EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkParam string, index ethtypes.EthUint64) (*ethtypes.EthTx, error) {
+	ts, err := getTipsetByBlockNumber(ctx, a.Chain, blkParam, true)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get tipset for block %s: %w", blkParam, err)
+	}
+
+	if ts == nil {
+		return nil, xerrors.Errorf("tipset not found for block %s", blkParam)
+	}
+
+	tx, err := a.getTransactionByTipsetAndIndex(ctx, ts, index)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get transaction at index %d: %w", index, err)
+	}
+
+	return tx, nil
+}
+
+func (a *EthAPI) getTransactionByTipsetAndIndex(ctx context.Context, ts *types.TipSet, index ethtypes.EthUint64) (*ethtypes.EthTx, error) {
+	msgs, err := a.Chain.MessagesForTipset(ctx, ts)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get messages for tipset: %w", err)
+	}
+
+	if uint64(index) >= uint64(len(msgs)) {
+		return nil, xerrors.Errorf("index %d out of range: tipset contains %d messages", index, len(msgs))
+	}
+
+	msg := msgs[index]
+
+	cid, err := ts.Key().Cid()
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get tipset key cid: %w", err)
+	}
+
+	// First, get the state tree
+	st, err := a.StateManager.StateTree(ts.ParentState())
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load state tree: %w", err)
+	}
+
+	tx, err := newEthTx(ctx, a.Chain, st, ts.Height(), cid, msg.Cid(), int(index))
+	if err != nil {
+		return nil, xerrors.Errorf("failed to create Ethereum transaction: %w", err)
+	}
+
+	return &tx, nil
 }
 
 func (a *EthModule) EthGetBlockReceipts(ctx context.Context, blockParam ethtypes.EthBlockNumberOrHash) ([]*api.EthTxReceipt, error) {
