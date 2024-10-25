@@ -118,7 +118,7 @@ func (l *leaser) participate(ticket api.F3ParticipationTicket) (api.F3Participat
 	case l.notifyParticipation <- struct{}{}:
 	default:
 	}
-	newLease.ValidityTerm = instant.ID - newLease.FromInstance
+	newLease.ValidityTerm = newLease.ToInstance() - instant.ID
 	newLease.FromInstance = instant.ID
 	return newLease, nil
 }
