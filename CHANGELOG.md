@@ -10,7 +10,7 @@
 - `lotus chain head` now supports a `--height` flag to print just the epoch number of the current chain head ([filecoin-project/lotus#12609](https://github.com/filecoin-project/lotus/pull/12609))
 - `lotus-shed indexes inspect-indexes` now performs a comprehensive comparison of the event index data for each message by comparing the AMT root CID from the message receipt with the root of a reconstructed AMT. Previously `inspect-indexes` simply compared event counts, comparing AMT roots confirms all the event data is byte-perfect. ([filecoin-project/lotus#12570](https://github.com/filecoin-project/lotus/pull/12570))
 - Expose APIs to list the miner IDs that are currently participating in F3 via node. ([filecoin-project/lotus#12608](https://github.com/filecoin-project/lotus/pull/12608))
-- Implement new `lotus f3` CLI commands to list F3 participants, dump manifest and check the F3 status. ([filecoin-project/lotus#12617](https://github.com/filecoin-project/lotus/pull/12617))
+- Implement new `lotus f3` CLI commands to list F3 participants, dump manifest, get/list finality certificates and check the F3 status. ([filecoin-project/lotus#12617](https://github.com/filecoin-project/lotus/pull/12617), [filecoin-project/lotus#12627](https://github.com/filecoin-project/lotus/pull/12627))
 - Return a `"data"` field on the `"error"` returned from RPC when `eth_call` and `eth_estimateGas` APIs encounter `execution reverted` errors. ([filecoin-project/lotus#12553](https://github.com/filecoin-project/lotus/pull/12553))
 
 ## Bug Fixes

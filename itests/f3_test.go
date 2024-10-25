@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/filecoin-project/go-state-types/abi"
 
+	lotus_api "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/lf3"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
@@ -157,6 +158,23 @@ func TestF3_Bootstrap(t *testing.T) {
 	e.requireAllMinersParticipate()
 }
 
+func TestF3_JsonRPCErrorsPassThrough(t *testing.T) {
+	const blocktime = 100 * time.Millisecond
+	e := setup(t, blocktime, kit.ThroughRPC())
+	n := e.nodes[0].FullNode
+
+	lease, err := n.F3Participate(e.testCtx, []byte("fish"))
+	require.ErrorIs(t, err, lotus_api.ErrF3ParticipationTicketInvalid)
+	require.Zero(t, lease)
+
+	addr, err := address.NewIDAddress(1413)
+	require.NoError(t, err)
+
+	ticket, err := n.F3GetOrRenewParticipationTicket(e.testCtx, addr, nil, 100)
+	require.ErrorIs(t, err, lotus_api.ErrF3ParticipationTooManyInstances)
+	require.Zero(t, ticket)
+}
+
 func (e *testEnv) waitTillF3Rebootstrap(timeout time.Duration) {
 	e.waitFor(func(n *kit.TestFullNode) bool {
 		// the prev epoch yet, check if we already bootstrapped and from
@@ -289,8 +307,8 @@ func (e *testEnv) waitFor(f func(n *kit.TestFullNode) bool, timeout time.Duratio
 // The first node returned by the function is directly connected to a miner,
 // and the second full-node is an observer that is not directly connected to
 // a miner. The last return value is the manifest sender for the network.
-func setup(t *testing.T, blocktime time.Duration) *testEnv {
-	return setupWithStaticManifest(t, newTestManifest(BaseNetworkName+"/1", DefaultBootstrapEpoch, blocktime), false)
+func setup(t *testing.T, blocktime time.Duration, opts ...kit.NodeOpt) *testEnv {
+	return setupWithStaticManifest(t, newTestManifest(BaseNetworkName+"/1", DefaultBootstrapEpoch, blocktime), false, opts...)
 }
 
 func newTestManifest(networkName gpbft.NetworkName, bootstrapEpoch int64, blocktime time.Duration) *manifest.Manifest {
@@ -328,7 +346,7 @@ func newTestManifest(networkName gpbft.NetworkName, bootstrapEpoch int64, blockt
 	}
 }
 
-func setupWithStaticManifest(t *testing.T, manif *manifest.Manifest, testBootstrap bool) *testEnv {
+func setupWithStaticManifest(t *testing.T, manif *manifest.Manifest, testBootstrap bool, extraOpts ...kit.NodeOpt) *testEnv {
 	ctx, stopServices := context.WithCancel(context.Background())
 	errgrp, ctx := errgroup.WithContext(ctx)
 
@@ -351,8 +369,10 @@ func setupWithStaticManifest(t *testing.T, manif *manifest.Manifest, testBootstr
 		AllowDynamicFinalize:     !testBootstrap,
 	}
 
-	f3NOpt := kit.F3Enabled(cfg)
-	f3MOpt := kit.ConstructorOpts(node.Override(node.F3Participation, modules.F3Participation))
+	nodeOpts := []kit.NodeOpt{kit.WithAllSubsystems(), kit.F3Enabled(cfg)}
+	nodeOpts = append(nodeOpts, extraOpts...)
+	minerOpts := []kit.NodeOpt{kit.WithAllSubsystems(), kit.ConstructorOpts(node.Override(node.F3Participation, modules.F3Participation))}
+	minerOpts = append(minerOpts, extraOpts...)
 
 	var (
 		n1, n2, n3     kit.TestFullNode
@@ -360,13 +380,13 @@ func setupWithStaticManifest(t *testing.T, manif *manifest.Manifest, testBootstr
 	)
 
 	ens := kit.NewEnsemble(t, kit.MockProofs()).
-		FullNode(&n1, kit.WithAllSubsystems(), f3NOpt).
-		FullNode(&n2, kit.WithAllSubsystems(), f3NOpt).
-		FullNode(&n3, kit.WithAllSubsystems(), f3NOpt).
-		Miner(&m1, &n1, kit.WithAllSubsystems(), f3MOpt).
-		Miner(&m2, &n2, kit.WithAllSubsystems(), f3MOpt).
-		Miner(&m3, &n3, kit.WithAllSubsystems(), f3MOpt).
-		Miner(&m4, &n3, kit.WithAllSubsystems(), f3MOpt).
+		FullNode(&n1, nodeOpts...).
+		FullNode(&n2, nodeOpts...).
+		FullNode(&n3, nodeOpts...).
+		Miner(&m1, &n1, minerOpts...).
+		Miner(&m2, &n2, minerOpts...).
+		Miner(&m3, &n3, minerOpts...).
+		Miner(&m4, &n3, minerOpts...).
 		Start()
 
 	ens.InterconnectAll().BeginMining(blocktime)
