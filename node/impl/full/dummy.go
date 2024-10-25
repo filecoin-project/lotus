@@ -51,8 +51,8 @@ func (e *EthModuleDummy) EthGetBlockByHash(ctx context.Context, blkHash ethtypes
 	return ethtypes.EthBlock{}, ErrModuleDisabled
 }
 
-func (e *EthModuleDummy) EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (*ethtypes.EthBlock, error) {
-	return nil, ErrModuleDisabled
+func (e *EthModuleDummy) EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (ethtypes.EthBlock, error) {
+	return ethtypes.EthBlock{}, ErrModuleDisabled
 }
 
 func (e *EthModuleDummy) EthGetTransactionByHash(ctx context.Context, txHash *ethtypes.EthHash) (*ethtypes.EthTx, error) {

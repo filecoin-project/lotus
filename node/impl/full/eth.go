@@ -57,7 +57,7 @@ type EthModuleAPI interface {
 	EthGetBlockTransactionCountByNumber(ctx context.Context, blkNum ethtypes.EthUint64) (ethtypes.EthUint64, error)
 	EthGetBlockTransactionCountByHash(ctx context.Context, blkHash ethtypes.EthHash) (ethtypes.EthUint64, error)
 	EthGetBlockByHash(ctx context.Context, blkHash ethtypes.EthHash, fullTxInfo bool) (ethtypes.EthBlock, error)
-	EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (*ethtypes.EthBlock, error)
+	EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (ethtypes.EthBlock, error)
 	EthGetTransactionByHash(ctx context.Context, txHash *ethtypes.EthHash) (*ethtypes.EthTx, error)
 	EthGetTransactionByHashLimited(ctx context.Context, txHash *ethtypes.EthHash, limit abi.ChainEpoch) (*ethtypes.EthTx, error)
 	EthGetMessageCidByTransactionHash(ctx context.Context, txHash *ethtypes.EthHash) (*cid.Cid, error)
@@ -341,23 +341,12 @@ func (a *EthModule) EthGetBlockByHash(ctx context.Context, blkHash ethtypes.EthH
 	return blk, nil
 }
 
-func (a *EthModule) EthGetBlockByNumber(ctx context.Context, blkParam string, fullTxInfo bool) (*ethtypes.EthBlock, error) {
-	// Get the tipset for the specified block parameter
+func (a *EthModule) EthGetBlockByNumber(ctx context.Context, blkParam string, fullTxInfo bool) (ethtypes.EthBlock, error) {
 	ts, err := getTipsetByBlockNumber(ctx, a.Chain, blkParam, true)
 	if err != nil {
-		if err == ErrNullRound {
-			// Return nil for null rounds
-			return nil, nil
-		}
-		return nil, xerrors.Errorf("failed to get tipset: %w", err)
+		return ethtypes.EthBlock{}, err
 	}
-	// Create an Ethereum block from the Filecoin tipset
-	block, err := newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo, a.Chain, a.StateAPI)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to create Ethereum block: %w", err)
-	}
-
-	return &block, nil
+	return newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo, a.Chain, a.StateAPI)
 }
 
 func (a *EthModule) EthGetTransactionByHash(ctx context.Context, txHash *ethtypes.EthHash) (*ethtypes.EthTx, error) {

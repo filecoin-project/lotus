@@ -1389,9 +1389,8 @@ func TestEthGetBlockByNumber(t *testing.T) {
 	require.NotNil(t, specificBlock)
 
 	// Test getting a future block (should fail)
-	futureBlock, err := client.EthGetBlockByNumber(ctx, (latest + 10000).Hex(), true)
+	_, err = client.EthGetBlockByNumber(ctx, (latest + 10000).Hex(), true)
 	require.Error(t, err)
-	require.Nil(t, futureBlock)
 
 	// Inject 10 null rounds
 	bms[0].InjectNulls(10)
@@ -1420,9 +1419,8 @@ func TestEthGetBlockByNumber(t *testing.T) {
 	}
 
 	// Test getting a block for a null round
-	nullRoundBlock, err := client.EthGetBlockByNumber(ctx, (ethtypes.EthUint64(nullHeight)).Hex(), true)
-	require.NoError(t, err)
-	require.Nil(t, nullRoundBlock)
+	_, err = client.EthGetBlockByNumber(ctx, (ethtypes.EthUint64(nullHeight)).Hex(), true)
+	require.ErrorContains(t, err, "requested epoch was a null round")
 
 	// Test getting balance on a null round
 	bal, err := client.EthGetBalance(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromNumber(ethtypes.EthUint64(nullHeight)))
