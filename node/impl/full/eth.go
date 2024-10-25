@@ -1483,9 +1483,11 @@ func (a *EthModule) applyMessage(ctx context.Context, msg *types.Message, tsk ty
 	}
 
 	if res.MsgRct.ExitCode.IsError() {
-		reason := parseEthRevert(res.MsgRct.Return)
-		return nil, xerrors.Errorf("message execution failed: exit %s, revert reason: %s, vm error: %s", res.MsgRct.ExitCode, reason, res.Error)
+		return nil, api.NewErrExecutionReverted(
+			parseEthRevert(res.MsgRct.Return),
+		)
 	}
+
 	return res, nil
 }
 
@@ -1524,8 +1526,16 @@ func (a *EthModule) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (et
 		// information.
 		msg.GasLimit = buildconstants.BlockGasLimit
 		if _, err2 := a.applyMessage(ctx, msg, ts.Key()); err2 != nil {
+			// If err2 is an ExecutionRevertedError, return it
+			var ed *api.ErrExecutionReverted
+			if errors.As(err2, &ed) {
+				return ethtypes.EthUint64(0), err2
+			}
+
+			// Otherwise, return the error from applyMessage with failed to estimate gas
 			err = err2
 		}
+
 		return ethtypes.EthUint64(0), xerrors.Errorf("failed to estimate gas: %w", err)
 	}
 
@@ -1678,7 +1688,6 @@ func (a *EthModule) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam e
 	}
 
 	if msg.To == builtintypes.EthereumAddressManagerActorAddr {
-		// As far as I can tell, the Eth API always returns empty on contract deployment
 		return ethtypes.EthBytes{}, nil
 	} else if len(invokeResult.MsgRct.Return) > 0 {
 		return cbg.ReadByteArray(bytes.NewReader(invokeResult.MsgRct.Return), uint64(len(invokeResult.MsgRct.Return)))
