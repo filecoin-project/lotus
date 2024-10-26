@@ -504,15 +504,17 @@ func waitForMessageWithEvents(ctx context.Context, t *testing.T, client *kit.Tes
 	require.NoError(t, err)
 	require.NotNil(t, msgHash)
 
-	ts, err := client.ChainGetTipSet(ctx, ret.TipSet)
+	receipt, err := client.EVM().WaitTransaction(ctx, *msgHash)
 	require.NoError(t, err)
+	require.NotNil(t, receipt)
 
-	blockNumber := ethtypes.EthUint64(ts.Height())
+	blockHash := receipt.BlockHash
+	blockNumber := receipt.BlockNumber
 
-	tsCid, err := ts.Key().Cid()
+	ethTx, err := client.EthGetTransactionByBlockHashAndIndex(ctx, blockHash, receipt.TransactionIndex)
 	require.NoError(t, err)
+	require.NotNil(t, ethTx)
+	require.Equal(t, msgHash.String(), ethTx.Hash.String())
 
-	blockHash, err := ethtypes.EthHashFromCid(tsCid)
-	require.NoError(t, err)
 	return *msgHash, blockHash, blockNumber
 }
