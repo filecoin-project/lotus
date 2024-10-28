@@ -88,7 +88,7 @@ func getTipsetByBlockNumber(ctx context.Context, chain *store.ChainStore, blkPar
 			return nil, fmt.Errorf("cannot get tipset at height: %v", num)
 		}
 		if strict && ts.Height() != abi.ChainEpoch(num) {
-			return nil, ErrNullRound
+			return nil, api.NewErrNullRound(int64(num))
 		}
 		return ts, nil
 	}

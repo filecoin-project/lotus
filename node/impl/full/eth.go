@@ -177,8 +177,6 @@ type EthAPI struct {
 	EthEventAPI
 }
 
-var ErrNullRound = errors.New("requested epoch was a null round")
-
 func (a *EthModule) StateNetworkName(ctx context.Context) (dtypes.NetworkName, error) {
 	return stmgr.GetNetworkName(ctx, a.StateManager, a.Chain.GetHeaviestTipSet().ParentState())
 }
@@ -246,7 +244,7 @@ func (a *EthAPI) FilecoinAddressToEthAddress(ctx context.Context, p jsonrpc.RawP
 	// Get the tipset for the specified block
 	ts, err := getTipsetByBlockNumber(ctx, a.Chain, blkParam, true)
 	if err != nil {
-		return ethtypes.EthAddress{}, xerrors.Errorf("failed to get tipset for block %s: %w", blkParam, err)
+		return ethtypes.EthAddress{}, err
 	}
 
 	// Lookup the ID address
@@ -345,11 +343,7 @@ func (a *EthModule) EthGetBlockByNumber(ctx context.Context, blkParam string, fu
 	// Get the tipset for the specified block parameter
 	ts, err := getTipsetByBlockNumber(ctx, a.Chain, blkParam, true)
 	if err != nil {
-		if err == ErrNullRound {
-			// Return nil for null rounds
-			return nil, nil
-		}
-		return nil, xerrors.Errorf("failed to get tipset: %w", err)
+		return nil, err
 	}
 	// Create an Ethereum block from the Filecoin tipset
 	block, err := newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo, a.Chain, a.StateAPI)
@@ -953,7 +947,7 @@ func (a *EthModule) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (eth
 
 	ts, err := getTipsetByBlockNumber(ctx, a.Chain, params.NewestBlkNum, false)
 	if err != nil {
-		return ethtypes.EthFeeHistory{}, fmt.Errorf("bad block parameter %s: %s", params.NewestBlkNum, err)
+		return ethtypes.EthFeeHistory{}, err
 	}
 
 	var (
@@ -1112,7 +1106,7 @@ func (a *EthModule) Web3ClientVersion(ctx context.Context) (string, error) {
 func (a *EthModule) EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.EthTraceBlock, error) {
 	ts, err := getTipsetByBlockNumber(ctx, a.Chain, blkNum, false)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get tipset: %w", err)
+		return nil, err
 	}
 
 	stRoot, trace, err := a.StateManager.ExecutionTrace(ctx, ts)
@@ -1184,7 +1178,7 @@ func (a *EthModule) EthTraceReplayBlockTransactions(ctx context.Context, blkNum 
 
 	ts, err := getTipsetByBlockNumber(ctx, a.Chain, blkNum, false)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get tipset: %w", err)
+		return nil, err
 	}
 
 	stRoot, trace, err := a.StateManager.ExecutionTrace(ctx, ts)

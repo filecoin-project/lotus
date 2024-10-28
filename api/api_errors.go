@@ -2,6 +2,7 @@ package api
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 
 	"golang.org/x/xerrors"
@@ -22,6 +23,7 @@ const (
 	EF3ParticipationTicketStartBeforeExisting
 	EF3NotReady
 	EExecutionReverted
+	ENullRound
 )
 
 var (
@@ -54,6 +56,7 @@ var (
 	_ error                 = (*errF3NotReady)(nil)
 	_ error                 = (*ErrExecutionReverted)(nil)
 	_ jsonrpc.RPCErrorCodec = (*ErrExecutionReverted)(nil)
+	_ error                 = (*ErrNullRound)(nil)
 )
 
 func init() {
@@ -67,6 +70,7 @@ func init() {
 	RPCErrors.Register(EF3ParticipationTicketStartBeforeExisting, new(*errF3ParticipationTicketStartBeforeExisting))
 	RPCErrors.Register(EF3NotReady, new(*errF3NotReady))
 	RPCErrors.Register(EExecutionReverted, new(*ErrExecutionReverted))
+	RPCErrors.Register(ENullRound, new(*ErrNullRound))
 }
 
 func ErrorIsIn(err error, errorTypes []error) bool {
@@ -159,4 +163,20 @@ func NewErrExecutionReverted(reason string) *ErrExecutionReverted {
 		Message: "execution reverted",
 		Data:    reason,
 	}
+}
+
+type ErrNullRound struct {
+	Epoch int64
+}
+
+func NewErrNullRound(epoch int64) *ErrNullRound {
+	return &ErrNullRound{Epoch: epoch}
+}
+
+func (e *ErrNullRound) Error() string {
+	return fmt.Sprintf("requested epoch was a null round (%d)", e.Epoch)
+}
+
+func init() {
+	RPCErrors.Register(ENullRound, new(*ErrNullRound))
 }
