@@ -950,15 +950,6 @@ func (cs *ChainStore) IsAncestorOf(ctx context.Context, a, b *types.TipSet) (boo
 	return target.Equals(a), nil
 }
 
-func (cs *ChainStore) NearestCommonAncestor(ctx context.Context, a, b *types.TipSet) (*types.TipSet, error) {
-	l, _, err := cs.ReorgOps(ctx, a, b)
-	if err != nil {
-		return nil, err
-	}
-
-	return cs.LoadTipSet(ctx, l[len(l)-1].Parents())
-}
-
 // ReorgOps takes two tipsets (which can be at different heights), and walks
 // their corresponding chains backwards one step at a time until we find
 // a common ancestor. It then returns the respective chain segments that fork
