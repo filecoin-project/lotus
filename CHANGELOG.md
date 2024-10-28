@@ -19,7 +19,8 @@
 - Fix hotloop in F3 pariticpation API ([filecoin-project/lotus#12575](https://github.com/filecoin-project/lotus/pull/12575))
 - Fix a bug in F3 participation API where valid leases may get removed due to dynamic manifest update. ([filecoin-project/lotus#12597](https://github.com/filecoin-project/lotus/pull/12597))
 - Change the F3 participation ticket encoding to allow parity testing across non-go implementations, where a ticket issued by Lotus may need to be decoded by, for example, Forest . The changes also enforce the minimum instance participation of 1 for miners. ([filecoin-project/lotus#12615](https://github.com/filecoin-project/lotus/pull/12615))
-- Fix issue where F3 wouldn't start participating again if Lotus restarted without restarting the Miner ([filecoin-project/lotus#1240](https://github.com/filecoin-project/lotus/pull/12640)).
+- Fix issue where F3 wouldn't start participating again if Lotus restarted without restarting the Miner ([filecoin-project/lotus#12640](https://github.com/filecoin-project/lotus/pull/12640)).
+- Change the F3 HeadLookback parameter to 4 ([filecoin-project/lotus#12648](https://github.com/filecoin-project/lotus/pull/12648)).
 
 ## Deps
 
