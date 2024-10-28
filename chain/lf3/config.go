@@ -57,7 +57,7 @@ func NewManifest(
 			Finality:                 int64(finality),
 			DelayMultiplier:          manifest.DefaultEcConfig.DelayMultiplier,
 			BaseDecisionBackoffTable: manifest.DefaultEcConfig.BaseDecisionBackoffTable,
-			HeadLookback:             0,
+			HeadLookback:             4,
 			Finalize:                 true,
 		},
 		CertificateExchange: manifest.CxConfig{
