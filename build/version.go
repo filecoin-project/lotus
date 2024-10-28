@@ -7,7 +7,7 @@ import (
 )
 
 // NodeBuildVersion is the local build version of the Lotus daemon
-const NodeBuildVersion string = "1.30.0-rc2"
+const NodeBuildVersion string = "1.30.0-rc3"
 
 func NodeUserVersion() BuildVersion {
 	if os.Getenv("LOTUS_VERSION_IGNORE_COMMIT") == "1" {
@@ -18,7 +18,7 @@ func NodeUserVersion() BuildVersion {
 }
 
 // MinerBuildVersion is the local build version of the Lotus miner
-const MinerBuildVersion = "1.30.0-rc2"
+const MinerBuildVersion = "1.30.0-rc3"
 
 func MinerUserVersion() BuildVersion {
 	if os.Getenv("LOTUS_VERSION_IGNORE_COMMIT") == "1" {
