@@ -620,7 +620,7 @@ func TestTxReceiptBloom(t *testing.T) {
 	// We need to add the address bits before comparing.
 	ethtypes.EthBloomSet(expectedBloom, receipt.To[:])
 
-	require.Equal(t, []uint8(expectedBloom), []uint8(receipt.LogsBloom))
+	require.Equal(t, expectedBloom, []uint8(receipt.LogsBloom))
 }
 
 func TestMultipleEvents(t *testing.T) {
