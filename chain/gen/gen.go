@@ -77,6 +77,10 @@ type ChainGen struct {
 
 	GetMessages func(*ChainGen) ([]*types.SignedMessage, error)
 
+	// Set to false to allow the chain to advance without updating the state-tree (e.g., this
+	// allows one to keep the power without having to post).
+	AdvanceState bool
+
 	w *wallet.LocalWallet
 
 	eppProvs  map[address.Address]WinningPoStProver
@@ -272,11 +276,12 @@ func NewGeneratorWithSectorsAndUpgradeSchedule(numSectors int, us stmgr.UpgradeS
 		beacon:       beac,
 		w:            w,
 
-		GetMessages: getRandomMessages,
-		Miners:      miners,
-		eppProvs:    mgen,
-		banker:      banker,
-		receivers:   receievers,
+		GetMessages:  getRandomMessages,
+		AdvanceState: true,
+		Miners:       miners,
+		eppProvs:     mgen,
+		banker:       banker,
+		receivers:    receievers,
 
 		CurTipset: gents,
 
@@ -355,6 +360,8 @@ func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m add
 	mbi, err := mc.MinerGetBaseInfo(ctx, m, round, pts.Key())
 	if err != nil {
 		return nil, nil, nil, xerrors.Errorf("get miner base info: %w", err)
+	} else if mbi == nil {
+		return nil, nil, nil, nil
 	}
 
 	entries := mbi.BeaconEntries
@@ -521,6 +528,10 @@ func (cg *ChainGen) makeBlock(parents *types.TipSet, m address.Address, vrfticke
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	if !cg.AdvanceState {
+		fblk.Header.ParentStateRoot = parents.ParentState()
 	}
 
 	return fblk, err
