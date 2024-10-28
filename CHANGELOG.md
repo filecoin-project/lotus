@@ -1,6 +1,6 @@
 # Lotus changelog
 
-# Node and Miner v1.30.0-rc2 / 2024-10-14
+# Node and Miner v1.30.0-rc3 / 2024-10-28
 
 This is the third release candidate of the upcoming MANDATORY Lotus v1.30.0 release, which will deliver the Filecoin network version 24, codenamed Tuk Tuk 🛺.
 
