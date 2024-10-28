@@ -160,7 +160,7 @@ const F3Enabled = true
 var F3ManifestServerID = MustParseID("12D3KooWS9vD9uwm8u2uPyJV32QBAhKAmPYwmziAgr3Xzk2FU1Mr")
 
 // The initial F3 power table CID.
-var F3InitialPowerTableCID cid.Cid = cid.Undef
+var F3InitialPowerTableCID cid.Cid = cid.MustParse("bafy2bzaceab236vmmb3n4q4tkvua2n4dphcbzzxerxuey3mot4g3cov5j3r2c")
 
 // Calibnet F3 activation epoch is 2024-10-24T13:30:00Z - Epoch 2081674
 const F3BootstrapEpoch abi.ChainEpoch = UpgradeTuktukHeight + 2880
