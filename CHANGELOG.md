@@ -3,7 +3,6 @@
 # UNRELEASED
 
 ## New features
-- Update `EthGetBlockByNumber` to return a pointer to ethtypes.EthBlock or nil for null rounds. ([filecoin-project/lotus#12529](https://github.com/filecoin-project/lotus/pull/12529))
 - Reduce size of embedded genesis CAR files by removing WASM actor blocks and compressing with zstd. This reduces the `lotus` binary size by approximately 10 MiB. ([filecoin-project/lotus#12439](https://github.com/filecoin-project/lotus/pull/12439))
 - Add ChainSafe operated Calibration archival node to the bootstrap list ([filecoin-project/lotus#12517](https://github.com/filecoin-project/lotus/pull/12517))
 - `lotus chain head` now supports a `--height` flag to print just the epoch number of the current chain head ([filecoin-project/lotus#12609](https://github.com/filecoin-project/lotus/pull/12609))
@@ -20,7 +19,9 @@
 - Fix hotloop in F3 pariticpation API ([filecoin-project/lotus#12575](https://github.com/filecoin-project/lotus/pull/12575))
 - Fix a bug in F3 participation API where valid leases may get removed due to dynamic manifest update. ([filecoin-project/lotus#12597](https://github.com/filecoin-project/lotus/pull/12597))
 - Change the F3 participation ticket encoding to allow parity testing across non-go implementations, where a ticket issued by Lotus may need to be decoded by, for example, Forest . The changes also enforce the minimum instance participation of 1 for miners. ([filecoin-project/lotus#12615](https://github.com/filecoin-project/lotus/pull/12615))
-- Fix issue where F3 wouldn't start participating again if Lotus restarted without restarting the Miner ([filecoin-project/lotus#1240](https://github.com/filecoin-project/lotus/pull/12640)).
+- Fix issue where F3 wouldn't start participating again if Lotus restarted without restarting the Miner ([filecoin-project/lotus#12640](https://github.com/filecoin-project/lotus/pull/12640)).
+- Change the F3 HeadLookback parameter to 4 ([filecoin-project/lotus#12648](https://github.com/filecoin-project/lotus/pull/12648)).
+- Upgrade go-f3 to 0.7.1 to resolve Tipset not found errors when trying to establish instance start time ([filecoin-project/lotus#12651](https://github.com/filecoin-project/lotus/pull/12651)).
 
 ## Deps
 

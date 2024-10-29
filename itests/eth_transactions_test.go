@@ -454,9 +454,8 @@ func TestGetBlockByNumber(t *testing.T) {
 	}
 
 	// Fail when trying to fetch a null round.
-	block, err := client.EthGetBlockByNumber(ctx, (ethtypes.EthUint64(nullHeight)).Hex(), true)
-	require.NoError(t, err)
-	require.Nil(t, block)
+	_, err = client.EthGetBlockByNumber(ctx, (ethtypes.EthUint64(nullHeight)).Hex(), true)
+	require.Error(t, err)
 
 	// Fetch balance on a null round; should not fail and should return previous balance.
 	bal, err := client.EthGetBalance(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromNumber(ethtypes.EthUint64(nullHeight)))
