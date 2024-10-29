@@ -133,7 +133,7 @@ require (
 	github.com/sirupsen/logrus v1.9.2
 	github.com/stretchr/testify v1.9.0
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
-	github.com/triplewz/poseidon v0.0.2-0.20240407130934-5265fab9d889
+	github.com/triplewz/poseidon v0.0.2
 	github.com/urfave/cli/v2 v2.25.5
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
 	github.com/whyrusleeping/cbor-gen v0.1.2
