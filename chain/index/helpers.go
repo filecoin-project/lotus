@@ -144,7 +144,7 @@ func withTx(ctx context.Context, db *sql.DB, fn func(*sql.Tx) error) error {
 }
 
 func isRetryableError(err error) bool {
-	return err != nil && strings.Contains(err.Error(), "database is locked")
+	return err != nil && (strings.Contains(err.Error(), "database is locked") || strings.Contains(err.Error(), "statement is closed"))
 }
 
 func isIndexedFlag(b uint8) bool {
