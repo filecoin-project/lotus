@@ -278,7 +278,6 @@ func (si *SqliteIndexer) indexTipset(ctx context.Context, tx *sql.Tx, ts *types.
 	}
 
 	height := ts.Height()
-	insertTipsetMsgStmt := tx.Stmt(si.stmts.insertTipsetMessageStmt)
 
 	msgs, err := si.cs.MessagesForTipset(ctx, ts)
 	if err != nil {
@@ -286,6 +285,7 @@ func (si *SqliteIndexer) indexTipset(ctx context.Context, tx *sql.Tx, ts *types.
 	}
 
 	if len(msgs) == 0 {
+		insertTipsetMsgStmt := tx.Stmt(si.stmts.insertTipsetMessageStmt)
 		// If there are no messages, just insert the tipset and return
 		if _, err := insertTipsetMsgStmt.ExecContext(ctx, tsKeyCidBytes, height, 0, nil, -1); err != nil {
 			return xerrors.Errorf("failed to insert empty tipset: %w", err)
@@ -294,6 +294,7 @@ func (si *SqliteIndexer) indexTipset(ctx context.Context, tx *sql.Tx, ts *types.
 	}
 
 	for i, msg := range msgs {
+		insertTipsetMsgStmt := tx.Stmt(si.stmts.insertTipsetMessageStmt)
 		msg := msg
 		if _, err := insertTipsetMsgStmt.ExecContext(ctx, tsKeyCidBytes, height, 0, msg.Cid().Bytes(), i); err != nil {
 			return xerrors.Errorf("failed to insert tipset message: %w", err)

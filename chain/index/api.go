@@ -331,6 +331,9 @@ func (si *SqliteIndexer) backfillMissingTipset(ctx context.Context, ts *types.Ti
 		if ipld.IsNotFound(err) {
 			return nil, xerrors.Errorf("failed to backfill tipset at epoch %d: chain store does not contain data: %w", ts.Height(), err)
 		}
+		if ctx.Err() != nil {
+			log.Errorf("failed to backfill tipset at epoch %d due to context cancellation: %s", ts.Height(), err)
+		}
 		return nil, xerrors.Errorf("failed to backfill tipset at epoch %d; err: %w", ts.Height(), err)
 	}
 
