@@ -57,6 +57,7 @@ var (
 	_ error                 = (*ErrExecutionReverted)(nil)
 	_ jsonrpc.RPCErrorCodec = (*ErrExecutionReverted)(nil)
 	_ error                 = (*ErrNullRound)(nil)
+	_ jsonrpc.RPCErrorCodec = (*ErrNullRound)(nil)
 )
 
 func init() {
@@ -166,17 +167,40 @@ func NewErrExecutionReverted(reason string) *ErrExecutionReverted {
 }
 
 type ErrNullRound struct {
-	Epoch int64
+	Epoch   int64
+	Message string
 }
 
 func NewErrNullRound(epoch int64) *ErrNullRound {
-	return &ErrNullRound{Epoch: epoch}
+	return &ErrNullRound{
+		Epoch:   epoch,
+		Message: fmt.Sprintf("requested epoch was a null round (%d)", epoch),
+	}
 }
 
 func (e *ErrNullRound) Error() string {
-	return fmt.Sprintf("requested epoch was a null round (%d)", e.Epoch)
+	return e.Message
 }
 
-func init() {
-	RPCErrors.Register(ENullRound, new(*ErrNullRound))
+func (e *ErrNullRound) FromJSONRPCError(jerr jsonrpc.JSONRPCError) error {
+	if jerr.Code != ENullRound {
+		return fmt.Errorf("unexpected error code: %d", jerr.Code)
+	}
+
+	epoch, ok := jerr.Data.(float64)
+	if !ok {
+		return fmt.Errorf("expected number data in null round error, got %T", jerr.Data)
+	}
+
+	e.Epoch = int64(epoch)
+	e.Message = jerr.Message
+	return nil
+}
+
+func (e *ErrNullRound) ToJSONRPCError() (jsonrpc.JSONRPCError, error) {
+	return jsonrpc.JSONRPCError{
+		Code:    ENullRound,
+		Message: e.Message,
+		Data:    e.Epoch,
+	}, nil
 }

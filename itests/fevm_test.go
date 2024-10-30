@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"testing"
@@ -1656,6 +1657,103 @@ func TestEthEstimateGas(t *testing.T) {
 				require.Equal(t, tc.expectedErrMsg, dataErr.Message)
 				require.Contains(t, tc.expectedError, dataErr.Data)
 			}
+		})
+	}
+}
+
+func TestEthNullRoundHandling(t *testing.T) {
+	blockTime := 100 * time.Millisecond
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
+
+	bms := ens.InterconnectAll().BeginMining(blockTime)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	bms[0].InjectNulls(10)
+
+	tctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	ch, err := client.ChainNotify(tctx)
+	require.NoError(t, err)
+	<-ch
+	hc := <-ch
+	require.Equal(t, store.HCApply, hc[0].Type)
+
+	afterNullHeight := hc[0].Val.Height()
+
+	nullHeight := afterNullHeight - 1
+	for nullHeight > 0 {
+		ts, err := client.ChainGetTipSetByHeight(ctx, nullHeight, types.EmptyTSK)
+		require.NoError(t, err)
+		if ts.Height() == nullHeight {
+			nullHeight--
+		} else {
+			break
+		}
+	}
+
+	nullBlockHex := fmt.Sprintf("0x%x", nullHeight)
+
+	testCases := []struct {
+		name     string
+		testFunc func() error
+	}{
+		{
+			name: "EthGetBlockByNumber",
+			testFunc: func() error {
+				_, err := client.EthGetBlockByNumber(ctx, nullBlockHex, true)
+				if err == nil {
+					return errors.New("expected error for null round")
+				}
+				return err
+			},
+		},
+		{
+			name: "EthFeeHistory",
+			testFunc: func() error {
+				params, err := json.Marshal([]interface{}{1, nullBlockHex})
+				if err != nil {
+					return err
+				}
+				_, err = client.EthFeeHistory(ctx, params)
+				return err
+			},
+		},
+		{
+			name: "EthTraceBlock",
+			testFunc: func() error {
+				_, err := client.EthTraceBlock(ctx, nullBlockHex)
+				return err
+			},
+		},
+		{
+			name: "EthTraceReplayBlockTransactions",
+			testFunc: func() error {
+				_, err := client.EthTraceReplayBlockTransactions(ctx, nullBlockHex, []string{"trace"})
+				return err
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.testFunc()
+			t.Logf("error: %v", err)
+			require.Error(t, err)
+
+			// Test errors.Is
+			require.True(t, errors.Is(err, new(api.ErrNullRound)),
+				"error should be or wrap ErrNullRound")
+
+			// Test errors.As and verify message
+			var nullRoundErr *api.ErrNullRound
+			require.True(t, errors.As(err, &nullRoundErr),
+				"error should be convertible to ErrNullRound")
+
+			expectedMsg := fmt.Sprintf("block number %s was a null round", nullBlockHex)
+			require.Equal(t, expectedMsg, nullRoundErr.Error())
+			require.Equal(t, nullHeight, nullRoundErr.Epoch)
 		})
 	}
 }
