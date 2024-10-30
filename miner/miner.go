@@ -400,11 +400,8 @@ type MiningBase struct {
 }
 
 // GetBestMiningCandidate implements the fork choice rule from a miner's
-// perspective.
-//
-// It obtains the current chain head (HEAD), and compares it to the last tipset
-// we selected as our mining base (LAST). If HEAD's weight is larger than
-// LAST's weight, it selects HEAD to build on. Else, it selects LAST.
+// perspective, returning the best head to mine on. This includes the number of null rounds we think
+// we should insert and the time at which we received said head.
 func (m *Miner) GetBestMiningCandidate(ctx context.Context) (*MiningBase, error) {
 	m.lk.Lock()
 	defer m.lk.Unlock()
@@ -414,27 +411,10 @@ func (m *Miner) GetBestMiningCandidate(ctx context.Context) (*MiningBase, error)
 		return nil, err
 	}
 
-	if m.lastWork != nil {
-		if m.lastWork.TipSet.Equals(bts) {
-			return m.lastWork, nil
-		}
-
-		btsw, err := m.api.ChainTipSetWeight(ctx, bts.Key())
-		if err != nil {
-			return nil, err
-		}
-		ltsw, err := m.api.ChainTipSetWeight(ctx, m.lastWork.TipSet.Key())
-		if err != nil {
-			m.lastWork = nil
-			return nil, err
-		}
-
-		if types.BigCmp(btsw, ltsw) <= 0 {
-			return m.lastWork, nil
-		}
+	if m.lastWork == nil || !m.lastWork.TipSet.Equals(bts) {
+		m.lastWork = &MiningBase{TipSet: bts, ComputeTime: time.Now()}
 	}
 
-	m.lastWork = &MiningBase{TipSet: bts, ComputeTime: time.Now()}
 	return m.lastWork, nil
 }
 
