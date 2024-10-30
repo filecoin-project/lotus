@@ -37,7 +37,7 @@ require (
 	github.com/elastic/gosigar v0.14.2
 	github.com/etclabscore/go-openrpc-reflect v0.0.36
 	github.com/fatih/color v1.15.0
-	github.com/filecoin-project/filecoin-ffi v1.28.0-rc2
+	github.com/filecoin-project/filecoin-ffi v1.30.0
 	github.com/filecoin-project/go-address v1.2.0
 	github.com/filecoin-project/go-amt-ipld/v4 v4.4.0
 	github.com/filecoin-project/go-bitfield v0.2.4
