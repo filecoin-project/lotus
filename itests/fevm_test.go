@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
@@ -1546,7 +1547,7 @@ func TestEthGetTransactionByBlockHashAndIndexAndNumber(t *testing.T) {
 		// 2. Invalid block number
 		_, err = client.EthGetTransactionByBlockNumberAndIndex(ctx, (blockNumber + 1000).Hex(), ethtypes.EthUint64(0))
 		require.Error(t, err)
-		require.ErrorContains(t, err, "failed to get tipset")
+		require.ErrorContains(t, err, "requested a future epoch")
 
 		// 3. Index out of range
 		_, err = client.EthGetTransactionByBlockHashAndIndex(ctx, blockHash, ethtypes.EthUint64(100))
@@ -1656,6 +1657,98 @@ func TestEthEstimateGas(t *testing.T) {
 				require.Equal(t, tc.expectedErrMsg, dataErr.Message)
 				require.Contains(t, tc.expectedError, dataErr.Data)
 			}
+		})
+	}
+}
+
+func TestEthNullRoundHandling(t *testing.T) {
+	blockTime := 100 * time.Millisecond
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
+
+	bms := ens.InterconnectAll().BeginMining(blockTime)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	client.WaitTillChain(ctx, kit.HeightAtLeast(10))
+
+	bms[0].InjectNulls(10)
+
+	tctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	ch, err := client.ChainNotify(tctx)
+	require.NoError(t, err)
+	<-ch
+	hc := <-ch
+	require.Equal(t, store.HCApply, hc[0].Type)
+
+	afterNullHeight := hc[0].Val.Height()
+
+	nullHeight := afterNullHeight - 1
+	for nullHeight > 0 {
+		ts, err := client.ChainGetTipSetByHeight(ctx, nullHeight, types.EmptyTSK)
+		require.NoError(t, err)
+		if ts.Height() == nullHeight {
+			nullHeight--
+		} else {
+			break
+		}
+	}
+
+	nullBlockHex := fmt.Sprintf("0x%x", int(nullHeight))
+	client.WaitTillChain(ctx, kit.HeightAtLeast(nullHeight+2))
+	testCases := []struct {
+		name     string
+		testFunc func() error
+	}{
+		{
+			name: "EthGetBlockByNumber",
+			testFunc: func() error {
+				_, err := client.EthGetBlockByNumber(ctx, nullBlockHex, true)
+				return err
+			},
+		},
+		{
+			name: "EthFeeHistory",
+			testFunc: func() error {
+				_, err := client.EthFeeHistory(ctx, jsonrpc.RawParams([]byte(`[1,"`+nullBlockHex+`",[]]`)))
+				return err
+			},
+		},
+		{
+			name: "EthTraceBlock",
+			testFunc: func() error {
+				_, err := client.EthTraceBlock(ctx, nullBlockHex)
+				return err
+			},
+		},
+		{
+			name: "EthTraceReplayBlockTransactions",
+			testFunc: func() error {
+				_, err := client.EthTraceReplayBlockTransactions(ctx, nullBlockHex, []string{"trace"})
+				return err
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.testFunc()
+			if err == nil {
+				return
+			}
+			require.Error(t, err)
+
+			// Test errors.Is
+			require.ErrorIs(t, err, new(api.ErrNullRound), "error should be or wrap ErrNullRound")
+
+			// Test errors.As and verify message
+			var nullRoundErr *api.ErrNullRound
+			require.ErrorAs(t, err, &nullRoundErr, "error should be convertible to ErrNullRound")
+
+			expectedMsg := fmt.Sprintf("requested epoch was a null round (%d)", nullHeight)
+			require.Equal(t, expectedMsg, nullRoundErr.Error())
+			require.Equal(t, nullHeight, nullRoundErr.Epoch)
 		})
 	}
 }
