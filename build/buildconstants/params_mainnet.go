@@ -109,8 +109,8 @@ const UpgradePhoenixHeight abi.ChainEpoch = UpgradeDragonHeight + 120
 // 2024-08-06T12:00:00Z
 const UpgradeWaffleHeight abi.ChainEpoch = 4154640
 
-// ??????
-var UpgradeTuktukHeight = abi.ChainEpoch(9999999999)
+// 2024-11-20T23:00:00Z
+var UpgradeTuktukHeight = abi.ChainEpoch(4461240)
 
 // FIP-0081: for the power actor state for pledge calculations.
 // UpgradeTuktukPowerRampDurationEpochs ends up in the power actor state after
@@ -188,4 +188,6 @@ var F3ManifestServerID = MustParseID("12D3KooWENMwUF9YxvQxar7uBWJtZkA6amvK4xWmKX
 var F3InitialPowerTableCID = cid.Undef
 
 const F3Enabled = true
-const F3BootstrapEpoch abi.ChainEpoch = -1
+
+// 2024-12-04T23:00:00Z
+const F3BootstrapEpoch abi.ChainEpoch = 4501560
