@@ -1164,6 +1164,9 @@ func (a *EthModule) EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtyp
 }
 
 func (a *EthModule) EthTraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error) {
+	if len(traceTypes) != 1 || traceTypes[0] != "trace" {
+		return nil, fmt.Errorf("only 'trace' is supported")
+	}
 	ts, err := getTipsetByBlockNumber(ctx, a.Chain, blkNum, true)
 	if err != nil {
 		return nil, err
