@@ -55,7 +55,7 @@ type EthModuleAPI interface {
 	EthGetBlockTransactionCountByNumber(ctx context.Context, blkNum ethtypes.EthUint64) (ethtypes.EthUint64, error)
 	EthGetBlockTransactionCountByHash(ctx context.Context, blkHash ethtypes.EthHash) (ethtypes.EthUint64, error)
 	EthGetBlockByHash(ctx context.Context, blkHash ethtypes.EthHash, fullTxInfo bool) (ethtypes.EthBlock, error)
-	EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (*ethtypes.EthBlock, error)
+	EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (ethtypes.EthBlock, error)
 	EthGetTransactionByHash(ctx context.Context, txHash *ethtypes.EthHash) (*ethtypes.EthTx, error)
 	EthGetTransactionByHashLimited(ctx context.Context, txHash *ethtypes.EthHash, limit abi.ChainEpoch) (*ethtypes.EthTx, error)
 	EthGetMessageCidByTransactionHash(ctx context.Context, txHash *ethtypes.EthHash) (*cid.Cid, error)
@@ -341,23 +341,12 @@ func (a *EthModule) EthGetBlockByHash(ctx context.Context, blkHash ethtypes.EthH
 	return blk, nil
 }
 
-func (a *EthModule) EthGetBlockByNumber(ctx context.Context, blkParam string, fullTxInfo bool) (*ethtypes.EthBlock, error) {
-	// Get the tipset for the specified block parameter
+func (a *EthModule) EthGetBlockByNumber(ctx context.Context, blkParam string, fullTxInfo bool) (ethtypes.EthBlock, error) {
 	ts, err := getTipsetByBlockNumber(ctx, a.Chain, blkParam, true)
 	if err != nil {
-		if err == ErrNullRound {
-			// Return nil for null rounds
-			return nil, nil
-		}
-		return nil, xerrors.Errorf("failed to get tipset: %w", err)
+		return ethtypes.EthBlock{}, err
 	}
-	// Create an Ethereum block from the Filecoin tipset
-	block, err := newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo, a.Chain, a.StateAPI)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to create Ethereum block: %w", err)
-	}
-
-	return &block, nil
+	return newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo, a.Chain, a.StateAPI)
 }
 
 func (a *EthModule) EthGetTransactionByHash(ctx context.Context, txHash *ethtypes.EthHash) (*ethtypes.EthTx, error) {
@@ -596,12 +585,62 @@ func (a *EthModule) EthGetTransactionReceiptLimited(ctx context.Context, txHash 
 	return &receipt, nil
 }
 
-func (a *EthAPI) EthGetTransactionByBlockHashAndIndex(context.Context, ethtypes.EthHash, ethtypes.EthUint64) (ethtypes.EthTx, error) {
-	return ethtypes.EthTx{}, ErrUnsupported
+func (a *EthAPI) EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash ethtypes.EthHash, index ethtypes.EthUint64) (*ethtypes.EthTx, error) {
+	ts, err := a.Chain.GetTipSetByCid(ctx, blkHash.ToCid())
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get tipset by cid: %w", err)
+	}
+
+	return a.getTransactionByTipsetAndIndex(ctx, ts, index)
 }
 
-func (a *EthAPI) EthGetTransactionByBlockNumberAndIndex(context.Context, ethtypes.EthUint64, ethtypes.EthUint64) (ethtypes.EthTx, error) {
-	return ethtypes.EthTx{}, ErrUnsupported
+func (a *EthAPI) EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkParam string, index ethtypes.EthUint64) (*ethtypes.EthTx, error) {
+	ts, err := getTipsetByBlockNumber(ctx, a.Chain, blkParam, true)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get tipset for block %s: %w", blkParam, err)
+	}
+
+	if ts == nil {
+		return nil, xerrors.Errorf("tipset not found for block %s", blkParam)
+	}
+
+	tx, err := a.getTransactionByTipsetAndIndex(ctx, ts, index)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get transaction at index %d: %w", index, err)
+	}
+
+	return tx, nil
+}
+
+func (a *EthAPI) getTransactionByTipsetAndIndex(ctx context.Context, ts *types.TipSet, index ethtypes.EthUint64) (*ethtypes.EthTx, error) {
+	msgs, err := a.Chain.MessagesForTipset(ctx, ts)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get messages for tipset: %w", err)
+	}
+
+	if uint64(index) >= uint64(len(msgs)) {
+		return nil, xerrors.Errorf("index %d out of range: tipset contains %d messages", index, len(msgs))
+	}
+
+	msg := msgs[index]
+
+	cid, err := ts.Key().Cid()
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get tipset key cid: %w", err)
+	}
+
+	// First, get the state tree
+	st, err := a.StateManager.StateTree(ts.ParentState())
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load state tree: %w", err)
+	}
+
+	tx, err := newEthTx(ctx, a.Chain, st, ts.Height(), cid, msg.Cid(), int(index))
+	if err != nil {
+		return nil, xerrors.Errorf("failed to create Ethereum transaction: %w", err)
+	}
+
+	return &tx, nil
 }
 
 func (a *EthModule) EthGetBlockReceipts(ctx context.Context, blockParam ethtypes.EthBlockNumberOrHash) ([]*api.EthTxReceipt, error) {
@@ -1461,9 +1500,11 @@ func (a *EthModule) applyMessage(ctx context.Context, msg *types.Message, tsk ty
 	}
 
 	if res.MsgRct.ExitCode.IsError() {
-		reason := parseEthRevert(res.MsgRct.Return)
-		return nil, xerrors.Errorf("message execution failed: exit %s, revert reason: %s, vm error: %s", res.MsgRct.ExitCode, reason, res.Error)
+		return nil, api.NewErrExecutionReverted(
+			parseEthRevert(res.MsgRct.Return),
+		)
 	}
+
 	return res, nil
 }
 
@@ -1502,8 +1543,16 @@ func (a *EthModule) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (et
 		// information.
 		msg.GasLimit = buildconstants.BlockGasLimit
 		if _, err2 := a.applyMessage(ctx, msg, ts.Key()); err2 != nil {
+			// If err2 is an ExecutionRevertedError, return it
+			var ed *api.ErrExecutionReverted
+			if errors.As(err2, &ed) {
+				return ethtypes.EthUint64(0), err2
+			}
+
+			// Otherwise, return the error from applyMessage with failed to estimate gas
 			err = err2
 		}
+
 		return ethtypes.EthUint64(0), xerrors.Errorf("failed to estimate gas: %w", err)
 	}
 
@@ -1656,7 +1705,6 @@ func (a *EthModule) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam e
 	}
 
 	if msg.To == builtintypes.EthereumAddressManagerActorAddr {
-		// As far as I can tell, the Eth API always returns empty on contract deployment
 		return ethtypes.EthBytes{}, nil
 	} else if len(invokeResult.MsgRct.Return) > 0 {
 		return cbg.ReadByteArray(bytes.NewReader(invokeResult.MsgRct.Return), uint64(len(invokeResult.MsgRct.Return)))

@@ -44,10 +44,10 @@ require (
 	github.com/filecoin-project/go-cbor-util v0.0.1
 	github.com/filecoin-project/go-commp-utils/v2 v2.1.0
 	github.com/filecoin-project/go-crypto v0.1.0
-	github.com/filecoin-project/go-f3 v0.7.0
+	github.com/filecoin-project/go-f3 v0.7.1
 	github.com/filecoin-project/go-fil-commcid v0.2.0
 	github.com/filecoin-project/go-hamt-ipld/v3 v3.4.0
-	github.com/filecoin-project/go-jsonrpc v0.6.0
+	github.com/filecoin-project/go-jsonrpc v0.7.0
 	github.com/filecoin-project/go-padreader v0.0.1
 	github.com/filecoin-project/go-paramfetch v0.0.4
 	github.com/filecoin-project/go-state-types v0.15.0-rc1
@@ -133,7 +133,7 @@ require (
 	github.com/sirupsen/logrus v1.9.2
 	github.com/stretchr/testify v1.9.0
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
-	github.com/triplewz/poseidon v0.0.2-0.20240407130934-5265fab9d889
+	github.com/triplewz/poseidon v0.0.2
 	github.com/urfave/cli/v2 v2.25.5
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
 	github.com/whyrusleeping/cbor-gen v0.1.2

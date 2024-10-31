@@ -273,8 +273,8 @@ github.com/filecoin-project/go-commp-utils/v2 v2.1.0/go.mod h1:NbxJYlhxtWaNhlVCj
 github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03/go.mod h1:+viYnvGtUTgJRdy6oaeF4MTFKAfatX071MPDPBL11EQ=
 github.com/filecoin-project/go-crypto v0.1.0 h1:Pob2MphoipMbe/ksxZOMcQvmBHAd3sI/WEqcbpIsGI0=
 github.com/filecoin-project/go-crypto v0.1.0/go.mod h1:K9UFXvvoyAVvB+0Le7oGlKiT9mgA5FHOJdYQXEE8IhI=
-github.com/filecoin-project/go-f3 v0.7.0 h1:JNo39SAELT5hEn+rmQZbSJQBJfmGJtp70RfyWJrIayY=
-github.com/filecoin-project/go-f3 v0.7.0/go.mod h1:QoxuoK4aktNZD1R/unlhNbhV6TnlNTAbA/QODCnAjak=
+github.com/filecoin-project/go-f3 v0.7.1 h1:3xCxKgVtlQVTZooeUWIL1isk5MK/BGcdrhZlR0ZbIIU=
+github.com/filecoin-project/go-f3 v0.7.1/go.mod h1:QoxuoK4aktNZD1R/unlhNbhV6TnlNTAbA/QODCnAjak=
 github.com/filecoin-project/go-fil-commcid v0.2.0 h1:B+5UX8XGgdg/XsdUpST4pEBviKkFOw+Fvl2bLhSKGpI=
 github.com/filecoin-project/go-fil-commcid v0.2.0/go.mod h1:8yigf3JDIil+/WpqR5zoKyP0jBPCOGtEqq/K1CcMy9Q=
 github.com/filecoin-project/go-fil-commp-hashhash v0.2.0 h1:HYIUugzjq78YvV3vC6rL95+SfC/aSTVSnZSZiDV5pCk=
@@ -287,8 +287,8 @@ github.com/filecoin-project/go-hamt-ipld/v3 v3.0.1/go.mod h1:gXpNmr3oQx8l3o7qkGy
 github.com/filecoin-project/go-hamt-ipld/v3 v3.1.0/go.mod h1:bxmzgT8tmeVQA1/gvBwFmYdT8SOFUwB3ovSUfG1Ux0g=
 github.com/filecoin-project/go-hamt-ipld/v3 v3.4.0 h1:nYs6OPUF8KbZ3E8o9p9HJnQaE8iugjHR5WYVMcicDJc=
 github.com/filecoin-project/go-hamt-ipld/v3 v3.4.0/go.mod h1:s0qiHRhFyrgW0SvdQMSJFQxNa4xEIG5XvqCBZUEgcbc=
-github.com/filecoin-project/go-jsonrpc v0.6.0 h1:/fFJIAN/k6EgY90m7qbyfY28woMwyseZmh2gVs5sYjY=
-github.com/filecoin-project/go-jsonrpc v0.6.0/go.mod h1:/n/niXcS4ZQua6i37LcVbY1TmlJR0UIK9mDFQq2ICek=
+github.com/filecoin-project/go-jsonrpc v0.7.0 h1:mqA5pIOlBODx7ascY9cJdBAYonhgbdUOIn2dyYI1YBg=
+github.com/filecoin-project/go-jsonrpc v0.7.0/go.mod h1:lAUpS8BSVtKaA8+/CFUMA5dokMiSM7n0ehf8bHOFdpE=
 github.com/filecoin-project/go-padreader v0.0.1 h1:8h2tVy5HpoNbr2gBRr+WD6zV6VD6XHig+ynSGJg8ZOs=
 github.com/filecoin-project/go-padreader v0.0.1/go.mod h1:VYVPJqwpsfmtoHnAmPx6MUwmrK6HIcDqZJiuZhtmfLQ=
 github.com/filecoin-project/go-paramfetch v0.0.4 h1:H+Me8EL8T5+79z/KHYQQcT8NVOzYVqXIi7nhb48tdm8=
@@ -1264,8 +1264,8 @@ github.com/tidwall/match v1.1.1/go.mod h1:eRSPERbgtNPcGhD8UCthc6PmLEQXEWd3PRB5JT
 github.com/tidwall/pretty v1.0.0/go.mod h1:XNkn88O1ChpSDQmQeStsy+sBenx6DDtFZJxhVysOjyk=
 github.com/tidwall/pretty v1.2.0 h1:RWIZEg2iJ8/g6fDDYzMpobmaoGh5OLl4AXtGUGPcqCs=
 github.com/tidwall/pretty v1.2.0/go.mod h1:ITEVvHYasfjBbM0u2Pg8T2nJnzm8xPwvNhhsoaGGjNU=
-github.com/triplewz/poseidon v0.0.2-0.20240407130934-5265fab9d889 h1:cbYPZOEknyV/Gyud82ebTPiciOnVSv6tiMCQi5Y+mAs=
-github.com/triplewz/poseidon v0.0.2-0.20240407130934-5265fab9d889/go.mod h1:fmoxtMcbtMUjlSJmpuS3Wk/oKSvdJpIp9YWRbsOu3T0=
+github.com/triplewz/poseidon v0.0.2 h1:s5QMVYnUfqvgM1eIqp7O9hHjZLVrKnkhx0E7EQTf9Nk=
+github.com/triplewz/poseidon v0.0.2/go.mod h1:fmoxtMcbtMUjlSJmpuS3Wk/oKSvdJpIp9YWRbsOu3T0=
 github.com/uber/jaeger-client-go v2.30.0+incompatible h1:D6wyKGCecFaSRUpo8lCVbaOOb6ThwMmTEbhRwtKR97o=
 github.com/uber/jaeger-client-go v2.30.0+incompatible/go.mod h1:WVhlPFC8FDjOFMMWRy2pZqQJSXxYSwNYOkTr/Z6d3Kk=
 github.com/uber/jaeger-lib v2.4.1+incompatible h1:td4jdvLcExb4cBISKIpHuGoVXh+dVKhn2Um6rjCsSsg=

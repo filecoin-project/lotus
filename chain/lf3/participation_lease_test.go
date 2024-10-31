@@ -32,7 +32,8 @@ func TestLeaser(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, uint64(123), lease.MinerID)
 		require.Equal(t, issuer.String(), lease.Issuer)
-		require.Equal(t, uint64(5), lease.ValidityTerm) // Current instance (10) + offset (5)
+		require.Equal(t, uint64(10), lease.FromInstance) // Current instance (10) + offset (5)
+		require.Equal(t, uint64(5), lease.ValidityTerm)  // Current instance (10) + offset (5)
 	})
 	t.Run("get participants", func(t *testing.T) {
 		progress.currentInstance = 11

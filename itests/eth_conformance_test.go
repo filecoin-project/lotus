@@ -49,7 +49,7 @@ type ethAPIRaw struct {
 	EthGetLogs                             func(context.Context, *ethtypes.EthFilterSpec) (json.RawMessage, error)
 	EthGetStorageAt                        func(context.Context, ethtypes.EthAddress, ethtypes.EthBytes, ethtypes.EthBlockNumberOrHash) (json.RawMessage, error)
 	EthGetTransactionByBlockHashAndIndex   func(context.Context, ethtypes.EthHash, ethtypes.EthUint64) (json.RawMessage, error)
-	EthGetTransactionByBlockNumberAndIndex func(context.Context, ethtypes.EthUint64, ethtypes.EthUint64) (json.RawMessage, error)
+	EthGetTransactionByBlockNumberAndIndex func(context.Context, string, ethtypes.EthUint64) (json.RawMessage, error)
 	EthGetTransactionByHash                func(context.Context, *ethtypes.EthHash) (json.RawMessage, error)
 	EthGetTransactionCount                 func(context.Context, ethtypes.EthAddress, ethtypes.EthBlockNumberOrHash) (json.RawMessage, error)
 	EthGetTransactionReceipt               func(context.Context, ethtypes.EthHash) (json.RawMessage, error)
@@ -322,15 +322,13 @@ func TestEthOpenRPCConformance(t *testing.T) {
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
 				return ethapi.EthGetTransactionByBlockHashAndIndex(context.Background(), blockHashWithMessage, ethtypes.EthUint64(0))
 			},
-			skipReason: "unimplemented",
 		},
 
 		{
 			method: "eth_getTransactionByBlockNumberAndIndex",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthGetTransactionByBlockNumberAndIndex(context.Background(), blockNumberWithMessage, ethtypes.EthUint64(0))
+				return ethapi.EthGetTransactionByBlockNumberAndIndex(context.Background(), blockNumberWithMessage.Hex(), ethtypes.EthUint64(0))
 			},
-			skipReason: "unimplemented",
 		},
 
 		{
@@ -506,12 +504,15 @@ func waitForMessageWithEvents(ctx context.Context, t *testing.T, client *kit.Tes
 	require.NoError(t, err)
 	require.NotNil(t, msgHash)
 
-	ts, err := client.ChainGetTipSet(ctx, ret.TipSet)
+	executionTs, err := client.ChainGetTipSet(ctx, ret.TipSet)
 	require.NoError(t, err)
 
-	blockNumber := ethtypes.EthUint64(ts.Height())
+	inclusionTs, err := client.ChainGetTipSet(ctx, executionTs.Parents())
+	require.NoError(t, err)
 
-	tsCid, err := ts.Key().Cid()
+	blockNumber := ethtypes.EthUint64(inclusionTs.Height())
+
+	tsCid, err := inclusionTs.Key().Cid()
 	require.NoError(t, err)
 
 	blockHash, err := ethtypes.EthHashFromCid(tsCid)
