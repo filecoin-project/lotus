@@ -204,6 +204,9 @@ func (e *ErrNullRound) ToJSONRPCError() (jsonrpc.JSONRPCError, error) {
 		Data:    e.Epoch,
 	}, nil
 }
+
+// Is performs a non-strict type check, we only care if the target is an ErrNullRound
+// and will ignore the contents (specifically there is no matching on Epoch).
 func (e *ErrNullRound) Is(target error) bool {
 	_, ok := target.(*ErrNullRound)
 	return ok

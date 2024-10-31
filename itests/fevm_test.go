@@ -1547,7 +1547,7 @@ func TestEthGetTransactionByBlockHashAndIndexAndNumber(t *testing.T) {
 		// 2. Invalid block number
 		_, err = client.EthGetTransactionByBlockNumberAndIndex(ctx, (blockNumber + 1000).Hex(), ethtypes.EthUint64(0))
 		require.Error(t, err)
-		require.ErrorContains(t, err, "failed to get tipset")
+		require.ErrorContains(t, err, "requested a future epoch")
 
 		// 3. Index out of range
 		_, err = client.EthGetTransactionByBlockHashAndIndex(ctx, blockHash, ethtypes.EthUint64(100))
@@ -1746,7 +1746,7 @@ func TestEthNullRoundHandling(t *testing.T) {
 
 			expectedMsg := fmt.Sprintf("requested epoch was a null round (%d)", nullHeight)
 			require.Equal(t, expectedMsg, nullRoundErr.Error())
-			require.Equal(t, abi.ChainEpoch(nullHeight), abi.ChainEpoch(nullRoundErr.Epoch))
+			require.Equal(t, nullHeight, abi.ChainEpoch(nullRoundErr.Epoch))
 		})
 	}
 }

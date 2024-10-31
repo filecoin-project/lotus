@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/itests/kit"
@@ -24,18 +25,37 @@ import (
 // smaller than startHeight, and then looks back at requestAmount of items. It also considers
 // scenarios where there are not enough items to look back.
 func calculateExpectations(tsHeights []int, requestAmount, startHeight int) (count, oldestHeight int) {
-	latestIdx := sort.SearchInts(tsHeights, startHeight)
-	// SearchInts returns the index of the number that's larger than the target if the target
-	// doesn't exist. However, we're looking for the closet number that's smaller that the target
-	for tsHeights[latestIdx] > startHeight {
-		latestIdx--
+	if len(tsHeights) == 0 {
+		return 0, 0
 	}
-	cnt := requestAmount
-	oldestIdx := latestIdx - requestAmount + 1
-	if oldestIdx < 0 {
-		cnt = latestIdx + 1
-		oldestIdx = 0
+
+	latestIdx := sort.SearchInts(tsHeights, startHeight+1) - 1
+	if latestIdx >= len(tsHeights) {
+		latestIdx = len(tsHeights) - 1
 	}
+
+	if latestIdx < 0 {
+		if startHeight > tsHeights[len(tsHeights)-1] {
+			return 0, 0
+		}
+		latestIdx = 0
+	}
+
+	// Calculate how many continuous blocks we can include
+	cnt := 1
+	oldestIdx := latestIdx
+	remainingBlocks := requestAmount - 1
+
+	for i := latestIdx - 1; i >= 0 && remainingBlocks > 0; i-- {
+		if tsHeights[oldestIdx]-tsHeights[i] == 1 {
+			cnt++
+			oldestIdx = i
+			remainingBlocks--
+		} else {
+			break
+		}
+	}
+
 	return cnt, tsHeights[oldestIdx]
 }
 
@@ -141,7 +161,7 @@ func TestEthFeeHistory(t *testing.T) {
 	history, err = client.EthFeeHistory(ctx, result.Wrap[jsonrpc.RawParams](
 		json.Marshal([]interface{}{5, "10"}),
 	).Assert(require.NoError))
-	require.NoError(err)
+	require.ErrorIs(err, new(api.ErrNullRound), "error should be or wrap ErrNullRound")
 	assertHistory(&history, 5, 10)
 	require.Nil(history.Reward)
 
