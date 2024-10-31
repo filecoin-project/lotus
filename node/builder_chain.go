@@ -141,9 +141,12 @@ var ChainNode = Options(
 		Override(new(full.StateModuleAPI), From(new(api.Gateway))),
 		Override(new(stmgr.StateManagerAPI), rpcstmgr.NewRPCStateManager),
 		Override(new(full.EthModuleAPI), From(new(api.Gateway))),
-		Override(new(full.EthTxHashManager), &full.EthTxHashManagerDummy{}),
 		Override(new(full.EthEventAPI), From(new(api.Gateway))),
 		Override(new(full.ActorEventAPI), From(new(api.Gateway))),
+
+		Override(new(index.Indexer), modules.ChainIndexer(config.ChainIndexerConfig{
+			EnableIndexer: false,
+		})),
 	),
 
 	// Full node API / service startup
@@ -174,6 +177,13 @@ func ConfigFullNode(c interface{}) Option {
 	cfg, ok := c.(*config.FullNode)
 	if !ok {
 		return Error(xerrors.Errorf("invalid config from repo, got: %T", c))
+	}
+
+	if cfg.Fevm.EnableEthRPC && !cfg.ChainIndexer.EnableIndexer {
+		return Error(xerrors.New("chain indexer must be enabled if ETH RPC is enabled"))
+	}
+	if cfg.Events.EnableActorEventsAPI && !cfg.ChainIndexer.EnableIndexer {
+		return Error(xerrors.New("chain indexer must be enabled if actor events API is enabled"))
 	}
 
 	return Options(
@@ -240,7 +250,7 @@ func ConfigFullNode(c interface{}) Option {
 		// If the Eth JSON-RPC is enabled, enable storing events at the ChainStore.
 		// This is the case even if real-time and historic filtering are disabled,
 		// as it enables us to serve logs in eth_getTransactionReceipt.
-		If(cfg.Fevm.EnableEthRPC || cfg.Events.EnableActorEventsAPI, Override(StoreEventsKey, modules.EnableStoringEvents)),
+		If(cfg.Fevm.EnableEthRPC || cfg.Events.EnableActorEventsAPI || cfg.ChainIndexer.EnableIndexer, Override(StoreEventsKey, modules.EnableStoringEvents)),
 
 		If(cfg.Wallet.RemoteBackend != "",
 			Override(new(*remotewallet.RemoteWallet), remotewallet.SetupRemoteWallet(cfg.Wallet.RemoteBackend)),
@@ -263,14 +273,12 @@ func ConfigFullNode(c interface{}) Option {
 
 			If(cfg.Fevm.EnableEthRPC,
 				Override(new(*full.EthEventHandler), modules.EthEventHandler(cfg.Events, cfg.Fevm.EnableEthRPC)),
-				Override(new(full.EthTxHashManager), modules.EthTxHashManager(cfg.Fevm)),
 				Override(new(full.EthModuleAPI), modules.EthModuleAPI(cfg.Fevm)),
 				Override(new(full.EthEventAPI), From(new(*full.EthEventHandler))),
 			),
 			If(!cfg.Fevm.EnableEthRPC,
 				Override(new(full.EthModuleAPI), &full.EthModuleDummy{}),
 				Override(new(full.EthEventAPI), &full.EthModuleDummy{}),
-				Override(new(full.EthTxHashManager), &full.EthTxHashManagerDummy{}),
 			),
 
 			If(cfg.Events.EnableActorEventsAPI,
@@ -281,13 +289,21 @@ func ConfigFullNode(c interface{}) Option {
 			),
 		),
 
-		// enable message index for full node when configured by the user, otherwise use dummy.
-		If(cfg.Index.EnableMsgIndex, Override(new(index.MsgIndex), modules.MsgIndex)),
-		If(!cfg.Index.EnableMsgIndex, Override(new(index.MsgIndex), modules.DummyMsgIndex)),
-
 		// enable fault reporter when configured by the user
 		If(cfg.FaultReporter.EnableConsensusFaultReporter,
 			Override(ConsensusReporterKey, modules.RunConsensusFaultReporter(cfg.FaultReporter)),
+		),
+
+		ApplyIf(isLiteNode,
+			Override(new(full.ChainIndexerAPI), func() full.ChainIndexerAPI { return nil }),
+		),
+
+		ApplyIf(isFullNode,
+			Override(new(index.Indexer), modules.ChainIndexer(cfg.ChainIndexer)),
+			Override(new(full.ChainIndexerAPI), modules.ChainIndexHandler(cfg.ChainIndexer)),
+			If(cfg.ChainIndexer.EnableIndexer,
+				Override(InitChainIndexerKey, modules.InitChainIndexer),
+			),
 		),
 	)
 }

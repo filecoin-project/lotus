@@ -523,6 +523,56 @@ func TestEthGetLogsBasic(t *testing.T) {
 	}
 
 	AssertEthLogs(t, rctLogs, expected, received)
+
+	head, err := client.ChainHead(ctx)
+	require.NoError(err)
+
+	for height := 0; height < int(head.Height()); height++ {
+		// for each tipset
+		ts, err := client.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(height), types.EmptyTSK)
+		require.NoError(err)
+
+		if ts.Height() != abi.ChainEpoch(height) {
+			iv, err := client.ChainValidateIndex(ctx, abi.ChainEpoch(height), false)
+			require.NoError(err)
+			require.True(iv.IsNullRound)
+			t.Logf("tipset %d is a null round", height)
+			continue
+		}
+
+		expectedValidation := types.IndexValidation{
+			TipSetKey:                ts.Key(),
+			Height:                   ts.Height(),
+			IndexedMessagesCount:     0,
+			IndexedEventsCount:       0,
+			IndexedEventEntriesCount: 0,
+			Backfilled:               false,
+			IsNullRound:              false,
+		}
+		messages, err := client.ChainGetMessagesInTipset(ctx, ts.Key())
+		require.NoError(err)
+		expectedValidation.IndexedMessagesCount = uint64(len(messages))
+		for _, m := range messages {
+			receipt, err := client.StateSearchMsg(ctx, types.EmptyTSK, m.Cid, -1, false)
+			require.NoError(err)
+			require.NotNil(receipt)
+			// receipt
+			if receipt.Receipt.EventsRoot != nil {
+				events, err := client.ChainGetEvents(ctx, *receipt.Receipt.EventsRoot)
+				require.NoError(err)
+				expectedValidation.IndexedEventsCount += uint64(len(events))
+				for _, event := range events {
+					expectedValidation.IndexedEventEntriesCount += uint64(len(event.Entries))
+				}
+			}
+		}
+
+		t.Logf("tipset %d: %+v", height, expectedValidation)
+
+		iv, err := client.ChainValidateIndex(ctx, abi.ChainEpoch(height), false)
+		require.NoError(err)
+		require.Equal(iv, &expectedValidation)
+	}
 }
 
 func TestEthSubscribeLogsNoTopicSpec(t *testing.T) {
