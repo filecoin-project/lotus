@@ -8,6 +8,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-jsonrpc"
+	"github.com/filecoin-project/go-state-types/abi"
 )
 
 var invalidExecutionRevertedMsg = xerrors.New("invalid execution reverted error")
@@ -167,11 +168,11 @@ func NewErrExecutionReverted(reason string) *ErrExecutionReverted {
 }
 
 type ErrNullRound struct {
-	Epoch   int64
+	Epoch   abi.ChainEpoch
 	Message string
 }
 
-func NewErrNullRound(epoch int64) *ErrNullRound {
+func NewErrNullRound(epoch abi.ChainEpoch) *ErrNullRound {
 	return &ErrNullRound{
 		Epoch:   epoch,
 		Message: fmt.Sprintf("requested epoch was a null round (%d)", epoch),
@@ -192,7 +193,7 @@ func (e *ErrNullRound) FromJSONRPCError(jerr jsonrpc.JSONRPCError) error {
 		return fmt.Errorf("expected number data in null round error, got %T", jerr.Data)
 	}
 
-	e.Epoch = int64(epoch)
+	e.Epoch = abi.ChainEpoch(epoch)
 	e.Message = jerr.Message
 	return nil
 }

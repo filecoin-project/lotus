@@ -241,8 +241,7 @@ func (a *EthAPI) FilecoinAddressToEthAddress(ctx context.Context, p jsonrpc.RawP
 		blkParam = *params.BlkParam
 	}
 
-	// Get the tipset for the specified block
-	ts, err := getTipsetByBlockNumber(ctx, a.Chain, blkParam, true)
+	ts, err := getTipsetByBlockNumber(ctx, a.Chain, blkParam, false)
 	if err != nil {
 		return ethtypes.EthAddress{}, err
 	}
@@ -938,7 +937,7 @@ func (a *EthModule) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (eth
 		}
 	}
 
-	ts, err := getTipsetByBlockNumber(ctx, a.Chain, params.NewestBlkNum, true)
+	ts, err := getTipsetByBlockNumber(ctx, a.Chain, params.NewestBlkNum, false)
 	if err != nil {
 		return ethtypes.EthFeeHistory{}, err
 	}
@@ -1165,10 +1164,6 @@ func (a *EthModule) EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtyp
 }
 
 func (a *EthModule) EthTraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error) {
-	if len(traceTypes) != 1 || traceTypes[0] != "trace" {
-		return nil, fmt.Errorf("only 'trace' is supported")
-	}
-
 	ts, err := getTipsetByBlockNumber(ctx, a.Chain, blkNum, true)
 	if err != nil {
 		return nil, err

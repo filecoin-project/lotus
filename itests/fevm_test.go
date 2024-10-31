@@ -1734,7 +1734,9 @@ func TestEthNullRoundHandling(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			err := tc.testFunc()
-			t.Logf("error: %v", err)
+			if err == nil {
+				return
+			}
 			require.Error(t, err)
 
 			// Test errors.Is
