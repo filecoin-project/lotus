@@ -1748,7 +1748,7 @@ func TestEthNullRoundHandling(t *testing.T) {
 
 			expectedMsg := fmt.Sprintf("requested epoch was a null round (%d)", nullHeight)
 			require.Equal(t, expectedMsg, nullRoundErr.Error())
-			require.Equal(t, nullHeight, abi.ChainEpoch(nullRoundErr.Epoch))
+			require.Equal(t, nullHeight, nullRoundErr.Epoch)
 		})
 	}
 }
