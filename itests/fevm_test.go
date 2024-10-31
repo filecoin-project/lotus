@@ -7,7 +7,6 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"testing"
@@ -16,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
@@ -1670,6 +1670,8 @@ func TestEthNullRoundHandling(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
+	client.WaitTillChain(ctx, kit.HeightAtLeast(10))
+
 	bms[0].InjectNulls(10)
 
 	tctx, cancel := context.WithTimeout(ctx, 30*time.Second)
@@ -1693,8 +1695,8 @@ func TestEthNullRoundHandling(t *testing.T) {
 		}
 	}
 
-	nullBlockHex := fmt.Sprintf("0x%x", nullHeight)
-
+	nullBlockHex := fmt.Sprintf("0x%x", int(nullHeight))
+	client.WaitTillChain(ctx, kit.HeightAtLeast(nullHeight+2))
 	testCases := []struct {
 		name     string
 		testFunc func() error
@@ -1703,20 +1705,13 @@ func TestEthNullRoundHandling(t *testing.T) {
 			name: "EthGetBlockByNumber",
 			testFunc: func() error {
 				_, err := client.EthGetBlockByNumber(ctx, nullBlockHex, true)
-				if err == nil {
-					return errors.New("expected error for null round")
-				}
 				return err
 			},
 		},
 		{
 			name: "EthFeeHistory",
 			testFunc: func() error {
-				params, err := json.Marshal([]interface{}{1, nullBlockHex})
-				if err != nil {
-					return err
-				}
-				_, err = client.EthFeeHistory(ctx, params)
+				_, err := client.EthFeeHistory(ctx, jsonrpc.RawParams([]byte(`[1,"`+nullBlockHex+`",[]]`)))
 				return err
 			},
 		},
@@ -1743,17 +1738,15 @@ func TestEthNullRoundHandling(t *testing.T) {
 			require.Error(t, err)
 
 			// Test errors.Is
-			require.True(t, errors.Is(err, new(api.ErrNullRound)),
-				"error should be or wrap ErrNullRound")
+			require.ErrorIs(t, err, new(api.ErrNullRound), "error should be or wrap ErrNullRound")
 
 			// Test errors.As and verify message
 			var nullRoundErr *api.ErrNullRound
-			require.True(t, errors.As(err, &nullRoundErr),
-				"error should be convertible to ErrNullRound")
+			require.ErrorAs(t, err, &nullRoundErr, "error should be convertible to ErrNullRound")
 
-			expectedMsg := fmt.Sprintf("block number %s was a null round", nullBlockHex)
+			expectedMsg := fmt.Sprintf("requested epoch was a null round (%d)", nullHeight)
 			require.Equal(t, expectedMsg, nullRoundErr.Error())
-			require.Equal(t, nullHeight, nullRoundErr.Epoch)
+			require.Equal(t, abi.ChainEpoch(nullHeight), abi.ChainEpoch(nullRoundErr.Epoch))
 		})
 	}
 }

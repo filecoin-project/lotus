@@ -204,3 +204,7 @@ func (e *ErrNullRound) ToJSONRPCError() (jsonrpc.JSONRPCError, error) {
 		Data:    e.Epoch,
 	}, nil
 }
+func (e *ErrNullRound) Is(target error) bool {
+	_, ok := target.(*ErrNullRound)
+	return ok
+}

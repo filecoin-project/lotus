@@ -569,7 +569,7 @@ func (a *EthAPI) EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHa
 func (a *EthAPI) EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkParam string, index ethtypes.EthUint64) (*ethtypes.EthTx, error) {
 	ts, err := getTipsetByBlockNumber(ctx, a.Chain, blkParam, true)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get tipset for block %s: %w", blkParam, err)
+		return nil, err
 	}
 
 	if ts == nil {
@@ -938,7 +938,7 @@ func (a *EthModule) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (eth
 		}
 	}
 
-	ts, err := getTipsetByBlockNumber(ctx, a.Chain, params.NewestBlkNum, false)
+	ts, err := getTipsetByBlockNumber(ctx, a.Chain, params.NewestBlkNum, true)
 	if err != nil {
 		return ethtypes.EthFeeHistory{}, err
 	}
@@ -1097,7 +1097,7 @@ func (a *EthModule) Web3ClientVersion(ctx context.Context) (string, error) {
 }
 
 func (a *EthModule) EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.EthTraceBlock, error) {
-	ts, err := getTipsetByBlockNumber(ctx, a.Chain, blkNum, false)
+	ts, err := getTipsetByBlockNumber(ctx, a.Chain, blkNum, true)
 	if err != nil {
 		return nil, err
 	}
@@ -1169,7 +1169,7 @@ func (a *EthModule) EthTraceReplayBlockTransactions(ctx context.Context, blkNum 
 		return nil, fmt.Errorf("only 'trace' is supported")
 	}
 
-	ts, err := getTipsetByBlockNumber(ctx, a.Chain, blkNum, false)
+	ts, err := getTipsetByBlockNumber(ctx, a.Chain, blkNum, true)
 	if err != nil {
 		return nil, err
 	}
