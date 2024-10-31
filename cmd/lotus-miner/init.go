@@ -667,7 +667,7 @@ func createStorageMiner(ctx context.Context, api v1api.FullNode, ssize abi.Secto
 	}
 
 	// make sure the sender account exists on chain
-	_, err = api.StateLookupID(ctx, owner, types.EmptyTSK)
+	_, err = api.StateLookupID(ctx, sender, types.EmptyTSK)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("sender must exist on chain: %w", err)
 	}
