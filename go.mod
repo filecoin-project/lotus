@@ -37,7 +37,7 @@ require (
 	github.com/elastic/gosigar v0.14.2
 	github.com/etclabscore/go-openrpc-reflect v0.0.36
 	github.com/fatih/color v1.15.0
-	github.com/filecoin-project/filecoin-ffi v1.28.0-rc2
+	github.com/filecoin-project/filecoin-ffi v1.30.0
 	github.com/filecoin-project/go-address v1.2.0
 	github.com/filecoin-project/go-amt-ipld/v4 v4.4.0
 	github.com/filecoin-project/go-bitfield v0.2.4
@@ -50,7 +50,7 @@ require (
 	github.com/filecoin-project/go-jsonrpc v0.6.0
 	github.com/filecoin-project/go-padreader v0.0.1
 	github.com/filecoin-project/go-paramfetch v0.0.4
-	github.com/filecoin-project/go-state-types v0.15.0-rc1
+	github.com/filecoin-project/go-state-types v0.15.0
 	github.com/filecoin-project/go-statemachine v1.0.3
 	github.com/filecoin-project/go-statestore v0.2.0
 	github.com/filecoin-project/go-storedcounter v0.1.0
@@ -136,7 +136,7 @@ require (
 	github.com/triplewz/poseidon v0.0.2-0.20240407130934-5265fab9d889
 	github.com/urfave/cli/v2 v2.25.5
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
-	github.com/whyrusleeping/cbor-gen v0.1.2
+	github.com/whyrusleeping/cbor-gen v0.2.0
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
 	github.com/xeipuuv/gojsonschema v1.2.0
 	github.com/xorcare/golden v0.6.1-0.20191112154924-b87f686d7542
@@ -155,12 +155,12 @@ require (
 	go.uber.org/fx v1.22.1
 	go.uber.org/multierr v1.11.0
 	go.uber.org/zap v1.27.0
-	golang.org/x/crypto v0.27.0
+	golang.org/x/crypto v0.28.0
 	golang.org/x/mod v0.20.0
 	golang.org/x/net v0.29.0
 	golang.org/x/sync v0.8.0
-	golang.org/x/sys v0.25.0
-	golang.org/x/term v0.24.0
+	golang.org/x/sys v0.26.0
+	golang.org/x/term v0.25.0
 	golang.org/x/time v0.5.0
 	golang.org/x/tools v0.24.0
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da
@@ -332,7 +332,7 @@ require (
 	go.uber.org/mock v0.4.0 // indirect
 	go4.org v0.0.0-20230225012048-214862532bf5 // indirect
 	golang.org/x/exp v0.0.0-20240904232852-e7e105dedf7e // indirect
-	golang.org/x/text v0.18.0 // indirect
+	golang.org/x/text v0.19.0 // indirect
 	gonum.org/v1/gonum v0.15.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240515191416-fc5f0ca64291 // indirect
 	google.golang.org/grpc v1.64.0 // indirect
