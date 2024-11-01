@@ -62,7 +62,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
-	"github.com/filecoin-project/lotus/chain/index"
 	proofsffi "github.com/filecoin-project/lotus/chain/proofs/ffi"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -178,7 +177,8 @@ var migrationsCmd = &cli.Command{
 		defer cs.Close() //nolint:errcheck
 
 		// Note: we use a map datastore for the metadata to avoid writing / using cached migration results in the metadata store
-		sm, err := stmgr.NewStateManager(cs, consensus.NewTipSetExecutor(filcns.RewardFunc), vm.Syscalls(proofsffi.ProofVerifier), filcns.DefaultUpgradeSchedule(), nil, datastore.NewMapDatastore(), index.DummyMsgIndex)
+		sm, err := stmgr.NewStateManager(cs, consensus.NewTipSetExecutor(filcns.RewardFunc), vm.Syscalls(proofsffi.ProofVerifier), filcns.DefaultUpgradeSchedule(), nil,
+			datastore.NewMapDatastore(), nil)
 		if err != nil {
 			return err
 		}

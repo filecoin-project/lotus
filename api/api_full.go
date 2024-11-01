@@ -63,6 +63,37 @@ type FullNode interface {
 	Common
 	Net
 
+	// MethodGroup: ChainIndexer
+	// The ChainIndexer method group contains methods for interacting with the chain indexer.
+
+	// ChainValidateIndex validates the integrity of and optionally backfills
+	// the chain index at a specific epoch.
+	//
+	// It can be used to:
+	//
+	// 1. Validate the chain index at a specific epoch:
+	//   - Ensures consistency between indexed data and actual chain state
+	//   - Reports any errors found during validation (i.e. the indexed data does not match the actual chain state, missing data, etc.)
+	//
+	// 2. Optionally backfill missing data:
+	//   - Backfills data if the index is missing information for the specified epoch
+	//   - Backfilling only occurs when the `backfill` parameter is set to `true`
+	//
+	// 3. Detect "holes" in the index:
+	//   - If `backfill` is `false` and the index lacks data for the specified epoch, the API returns an error indicating missing data
+	//
+	// Parameters:
+	//   - epoch: The specific chain epoch for which to validate/backfill the index.
+	//   - backfill: A boolean flag indicating whether to attempt backfilling of missing data if the index does not have data for the
+	//               specified epoch.
+	//
+	// Returns:
+	//   - *types.IndexValidation: A pointer to an IndexValidation struct containing the results of the validation/backfill.
+	//   - error: An error object if the validation/backfill fails. The error message will contain details about the index
+	//            corruption if the call fails because of an incosistency between indexed data and the actual chain state.
+	//            Note: The API returns an error if the index does not have data for the specified epoch and backfill is set to false.
+	ChainValidateIndex(ctx context.Context, epoch abi.ChainEpoch, backfill bool) (*types.IndexValidation, error) //perm:write
+
 	// MethodGroup: Chain
 	// The Chain method group contains methods for interacting with the
 	// blockchain, but that do not require any form of state computation.

@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
-	"github.com/filecoin-project/lotus/chain/index"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -107,7 +106,8 @@ func (nd *Node) LoadSim(ctx context.Context, name string) (*Simulation, error) {
 	if err != nil {
 		return nil, xerrors.Errorf("failed to create upgrade schedule for simulation %s: %w", name, err)
 	}
-	sim.StateManager, err = stmgr.NewStateManager(nd.Chainstore, consensus.NewTipSetExecutor(filcns.RewardFunc), vm.Syscalls(mock.Verifier), us, nil, nd.MetadataDS, index.DummyMsgIndex)
+	sim.StateManager, err = stmgr.NewStateManager(nd.Chainstore, consensus.NewTipSetExecutor(filcns.RewardFunc), vm.Syscalls(mock.Verifier), us,
+		nil, nd.MetadataDS, nil)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to create state manager for simulation %s: %w", name, err)
 	}
@@ -126,7 +126,8 @@ func (nd *Node) CreateSim(ctx context.Context, name string, head *types.TipSet) 
 	if err != nil {
 		return nil, err
 	}
-	sm, err := stmgr.NewStateManager(nd.Chainstore, consensus.NewTipSetExecutor(filcns.RewardFunc), vm.Syscalls(mock.Verifier), filcns.DefaultUpgradeSchedule(), nil, nd.MetadataDS, index.DummyMsgIndex)
+	sm, err := stmgr.NewStateManager(nd.Chainstore, consensus.NewTipSetExecutor(filcns.RewardFunc),
+		vm.Syscalls(mock.Verifier), filcns.DefaultUpgradeSchedule(), nil, nd.MetadataDS, nil)
 	if err != nil {
 		return nil, xerrors.Errorf("creating state manager: %w", err)
 	}

@@ -2,11 +2,13 @@ package api
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-jsonrpc"
+	"github.com/filecoin-project/go-state-types/abi"
 )
 
 var invalidExecutionRevertedMsg = xerrors.New("invalid execution reverted error")
@@ -22,6 +24,7 @@ const (
 	EF3ParticipationTicketStartBeforeExisting
 	EF3NotReady
 	EExecutionReverted
+	ENullRound
 )
 
 var (
@@ -54,6 +57,8 @@ var (
 	_ error                 = (*errF3NotReady)(nil)
 	_ error                 = (*ErrExecutionReverted)(nil)
 	_ jsonrpc.RPCErrorCodec = (*ErrExecutionReverted)(nil)
+	_ error                 = (*ErrNullRound)(nil)
+	_ jsonrpc.RPCErrorCodec = (*ErrNullRound)(nil)
 )
 
 func init() {
@@ -67,6 +72,7 @@ func init() {
 	RPCErrors.Register(EF3ParticipationTicketStartBeforeExisting, new(*errF3ParticipationTicketStartBeforeExisting))
 	RPCErrors.Register(EF3NotReady, new(*errF3NotReady))
 	RPCErrors.Register(EExecutionReverted, new(*ErrExecutionReverted))
+	RPCErrors.Register(ENullRound, new(*ErrNullRound))
 }
 
 func ErrorIsIn(err error, errorTypes []error) bool {
@@ -159,4 +165,50 @@ func NewErrExecutionReverted(reason string) *ErrExecutionReverted {
 		Message: "execution reverted",
 		Data:    reason,
 	}
+}
+
+type ErrNullRound struct {
+	Epoch   abi.ChainEpoch
+	Message string
+}
+
+func NewErrNullRound(epoch abi.ChainEpoch) *ErrNullRound {
+	return &ErrNullRound{
+		Epoch:   epoch,
+		Message: fmt.Sprintf("requested epoch was a null round (%d)", epoch),
+	}
+}
+
+func (e *ErrNullRound) Error() string {
+	return e.Message
+}
+
+func (e *ErrNullRound) FromJSONRPCError(jerr jsonrpc.JSONRPCError) error {
+	if jerr.Code != ENullRound {
+		return fmt.Errorf("unexpected error code: %d", jerr.Code)
+	}
+
+	epoch, ok := jerr.Data.(float64)
+	if !ok {
+		return fmt.Errorf("expected number data in null round error, got %T", jerr.Data)
+	}
+
+	e.Epoch = abi.ChainEpoch(epoch)
+	e.Message = jerr.Message
+	return nil
+}
+
+func (e *ErrNullRound) ToJSONRPCError() (jsonrpc.JSONRPCError, error) {
+	return jsonrpc.JSONRPCError{
+		Code:    ENullRound,
+		Message: e.Message,
+		Data:    e.Epoch,
+	}, nil
+}
+
+// Is performs a non-strict type check, we only care if the target is an ErrNullRound
+// and will ignore the contents (specifically there is no matching on Epoch).
+func (e *ErrNullRound) Is(target error) bool {
+	_, ok := target.(*ErrNullRound)
+	return ok
 }
