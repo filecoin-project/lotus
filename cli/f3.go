@@ -135,8 +135,9 @@ An omitted <from> value is always interpreted as 0, and an omitted
 <to> value indicates the latest instance. If both are specified, <from>
 must never exceed <to>.
 
-If no range is specified all certificates are listed, i.e. the range
-of '0..'.
+If no range is specified, the latest 10 certificates are listed, i.e. 
+the range of '0..' with limit of 10. Otherwise, all certificates in
+the specified range are listed unless limit is explicitly specified.
 
 Examples:
   * All certificates from newest to oldest:
@@ -181,6 +182,10 @@ Examples:
 							fromTo := cctx.Args().First()
 							if fromTo == "" {
 								fromTo = "0.."
+								if !cctx.IsSet(f3FlagInstanceLimit.Name) {
+									// Default to limit of 10 if no explicit range and limit is given.
+									limit = 10
+								}
 							}
 							r, err := newRanger(fromTo, limit, reverse, func() (uint64, error) {
 								latest, err := api.F3GetLatestCertificate(cctx.Context)
@@ -306,7 +311,7 @@ Examples:
 	f3FlagInstanceLimit = &cli.IntFlag{
 		Name:        "limit",
 		Usage:       "The maximum number of instances. A value less than 0 indicates no limit.",
-		DefaultText: "No limit",
+		DefaultText: "10 when no range is specified. Otherwise, unlimited.",
 		Value:       -1,
 	}
 	f3FlagReverseOrder = &cli.BoolFlag{
