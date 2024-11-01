@@ -22,6 +22,7 @@
 - Fix issue where F3 wouldn't start participating again if Lotus restarted without restarting the Miner ([filecoin-project/lotus#12640](https://github.com/filecoin-project/lotus/pull/12640)).
 - Change the F3 HeadLookback parameter to 4 ([filecoin-project/lotus#12648](https://github.com/filecoin-project/lotus/pull/12648)).
 - Upgrade go-f3 to 0.7.1 to resolve Tipset not found errors when trying to establish instance start time ([filecoin-project/lotus#12651](https://github.com/filecoin-project/lotus/pull/12651)).
+- Try harder in the F3 participation loop to participate using the same lotus node ([filecoin-project/lotus#12664](https://github.com/filecoin-project/lotus/pull/12664)).
 
 ## Deps
 
