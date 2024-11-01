@@ -311,7 +311,8 @@ minerLoop:
 		onDone(b != nil, h, nil)
 
 		// Process the mined block.
-		if b != nil {
+		switch {
+		case b != nil:
 			// Record the event of mining a block.
 			m.journal.RecordEvent(m.evtTypes[evtTypeBlockMined], func() interface{} {
 				return map[string]interface{}{
@@ -348,19 +349,19 @@ minerLoop:
 				if err != nil {
 					log.Errorf("<!!> SLASH FILTER ERRORED: %s", err)
 					// Continue here, because it's _probably_ wiser to not submit this block
-					continue
+					break
 				}
 
 				if fault {
 					log.Errorf("<!!> SLASH FILTER DETECTED FAULT due to blocks %s and %s", b.Header.Cid(), witness)
-					continue
+					break
 				}
 			}
 
 			// Check for blocks created at the same height.
 			if _, ok := m.minedBlockHeights.Get(b.Header.Height); ok {
 				log.Warnw("Created a block at the same height as another block we've created", "height", b.Header.Height, "miner", b.Header.Miner, "parents", b.Header.Parents)
-				continue
+				break
 			}
 
 			// Add the block height to the mined block heights.
@@ -369,24 +370,26 @@ minerLoop:
 			// Submit the newly mined block.
 			if err := m.api.SyncSubmitBlock(ctx, b); err != nil {
 				log.Errorf("failed to submit newly mined block: %+v", err)
+				break
 			}
-		} else {
-			// If no block was mined, increase the null rounds and wait for the next epoch.
-			base.NullRounds++
+			continue // TODO: we should probably remove this continue and wait in this case as well... but that's a bigger change.
+		}
 
-			// Calculate the time for the next round.
-			nextRound := time.Unix(int64(base.TipSet.MinTimestamp()+buildconstants.BlockDelaySecs*uint64(base.NullRounds))+int64(buildconstants.PropagationDelaySecs), 0)
+		// If no block was mined or if we fail to submit the block, increase the null rounds and wait for the next epoch.
+		base.NullRounds++
 
-			// Wait for the next round or stop signal.
-			select {
-			case <-build.Clock.After(build.Clock.Until(nextRound)):
-			case <-m.stop:
-				stopping := m.stopping
-				m.stop = nil
-				m.stopping = nil
-				close(stopping)
-				return
-			}
+		// Calculate the time for the next round.
+		nextRound := time.Unix(int64(base.TipSet.MinTimestamp()+buildconstants.BlockDelaySecs*uint64(base.NullRounds))+int64(buildconstants.PropagationDelaySecs), 0)
+
+		// Wait for the next round or stop signal.
+		select {
+		case <-build.Clock.After(build.Clock.Until(nextRound)):
+		case <-m.stop:
+			stopping := m.stopping
+			m.stop = nil
+			m.stopping = nil
+			close(stopping)
+			return
 		}
 	}
 }
