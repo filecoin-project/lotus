@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"encoding/json"
@@ -10,12 +10,10 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
-
-	lcli "github.com/filecoin-project/lotus/cli"
 )
 
-var chainIndexCmds = &cli.Command{
-	Name:  "chainindex",
+var IndexCmd = &cli.Command{
+	Name:  "index",
 	Usage: "Commands related to managing the chainindex",
 	Subcommands: []*cli.Command{
 		validateBackfillChainIndexCmd,
@@ -85,7 +83,7 @@ number of failed RPC calls. Otherwise, it will exit with a zero status.
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		srv, err := lcli.GetFullNodeServices(cctx)
+		srv, err := GetFullNodeServices(cctx)
 		if err != nil {
 			return xerrors.Errorf("failed to get full node services: %w", err)
 		}
@@ -96,7 +94,7 @@ number of failed RPC calls. Otherwise, it will exit with a zero status.
 		}()
 
 		api := srv.FullNodeAPI()
-		ctx := lcli.ReqContext(cctx)
+		ctx := ReqContext(cctx)
 
 		fromEpoch := cctx.Int("from")
 		if fromEpoch <= 0 {
