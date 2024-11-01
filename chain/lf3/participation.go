@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-f3/manifest"
 
 	"github.com/filecoin-project/lotus/api"
+	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
@@ -88,6 +89,11 @@ func (p *Participant) run(ctx context.Context) (_err error) {
 			log.Error(_err)
 		}
 	}()
+
+	// Try to make send all requests to the same node. If a request fails, we'll switch nodes.
+	// This interacts with the FullNodeProxy, which is how we support multi-node setups by
+	// default.
+	ctx = cliutil.OnSingleNode(ctx)
 
 	var ticket api.F3ParticipationTicket
 	for ctx.Err() == nil {
