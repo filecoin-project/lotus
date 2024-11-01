@@ -230,7 +230,10 @@ func GetFullNodeAPI(ctx *cli.Context) (v0api.FullNode, jsonrpc.ClientCloser, err
 
 type contextKey string
 
-// OnSingleNode is not thread safe
+// OnSingleNode returns a modified context that, when passed to a method on a FullNodeProxy, will
+// cause all calls to be directed at the same node when possible.
+//
+// Think "sticky sessions".
 func OnSingleNode(ctx context.Context) context.Context {
 	return context.WithValue(ctx, contextKey("retry-node"), new(atomic.Int32))
 }
