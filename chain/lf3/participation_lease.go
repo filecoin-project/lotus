@@ -104,6 +104,8 @@ func (l *leaser) participate(ticket api.F3ParticipationTicket) (api.F3Participat
 	if found {
 		// short-circuite for reparticipation.
 		if currentLease == newLease {
+			newLease.ValidityTerm = newLease.ToInstance() - instant.ID
+			newLease.FromInstance = instant.ID
 			return newLease, nil
 		}
 		if currentLease.Network == newLease.Network && currentLease.FromInstance > newLease.FromInstance {
