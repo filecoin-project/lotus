@@ -2774,8 +2774,9 @@ COMMANDS:
             <to> value indicates the latest instance. If both are specified, <from>
             must never exceed <to>.
 
-            If no range is specified all certificates are listed, i.e. the range
-            of '0..'.
+            If no range is specified, the latest 10 certificates are listed, i.e. 
+            the range of '0..' with limit of 10. Otherwise, all certificates in
+            the specified range are listed unless limit is explicitly specified.
 
             Examples:
               * All certificates from newest to oldest:
@@ -2831,8 +2832,9 @@ NAME:
                          <to> value indicates the latest instance. If both are specified, <from>
                          must never exceed <to>.
 
-                         If no range is specified all certificates are listed, i.e. the range
-                         of '0..'.
+                         If no range is specified, the latest 10 certificates are listed, i.e. 
+                         the range of '0..' with limit of 10. Otherwise, all certificates in
+                         the specified range are listed unless limit is explicitly specified.
 
                          Examples:
                            * All certificates from newest to oldest:
@@ -2859,7 +2861,7 @@ USAGE:
 
 OPTIONS:
    --output value  The output format. Supported formats: text, json (default: "text")
-   --limit value   The maximum number of instances. A value less than 0 indicates no limit. (default: No limit)
+   --limit value   The maximum number of instances. A value less than 0 indicates no limit. (default: 10 when no range is specified. Otherwise, unlimited.)
    --reverse       Reverses the default order of output.  (default: false)
    --help, -h      show help
 ```
