@@ -1496,9 +1496,16 @@ func (a *EthModule) applyMessage(ctx context.Context, msg *types.Message, tsk ty
 	}
 
 	if res.MsgRct.ExitCode.IsError() {
-		return nil, api.NewErrExecutionReverted(
-			parseEthRevert(res.MsgRct.Return),
-		)
+		reason := "none"
+		var cbytes abi.CborBytes
+		if err := cbytes.UnmarshalCBOR(bytes.NewReader(res.MsgRct.Return)); err != nil {
+			log.Warnw("failed to unmarshal cbor bytes from message receipt return", "error", err)
+			reason = "ERROR: revert reason is not cbor encoded bytes"
+		} // else leave as empty bytes
+		if len(cbytes) > 0 {
+			reason = parseEthRevert(cbytes)
+		}
+		return nil, api.NewErrExecutionReverted(res.MsgRct.ExitCode, reason, res.Error, cbytes)
 	}
 
 	return res, nil
