@@ -345,7 +345,7 @@ minerLoop:
 
 			// Check for slash filter conditions.
 			if os.Getenv("LOTUS_MINER_NO_SLASHFILTER") != "_yes_i_know_i_can_and_probably_will_lose_all_my_fil_and_power_" && !buildconstants.IsNearUpgrade(base.TipSet.Height(), buildconstants.UpgradeWatermelonFixHeight) {
-				witness, fault, err := m.sf.MinedBlock(ctx, b.Header, base.TipSet.Height()+base.NullRounds)
+				witness, fault, err := m.sf.MinedBlock(ctx, b.Header, base.TipSet.Height())
 				if err != nil {
 					log.Errorf("<!!> SLASH FILTER ERRORED: %s", err)
 					// Continue here, because it's _probably_ wiser to not submit this block
