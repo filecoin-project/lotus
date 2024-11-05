@@ -496,6 +496,9 @@ func (c *client) sendRequestToPeer(ctx context.Context, peer peer.ID, req *Reque
 
 // AddPeer implements Client.AddPeer(). Refer to the godocs there.
 func (c *client) AddPeer(p peer.ID) {
+	if p == c.host.ID() {
+		return
+	}
 	c.peerTracker.addPeer(p)
 }
 
