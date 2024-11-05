@@ -132,13 +132,11 @@ func (hs *Service) HandleStream(s inet.Stream) {
 		return
 	}
 
-	if ts.TipSet().Height() > 0 {
-		hs.h.ConnManager().TagPeer(s.Conn().RemotePeer(), "fcpeer", 10)
+	hs.h.ConnManager().TagPeer(s.Conn().RemotePeer(), "fcpeer", 10)
 
-		// don't bother informing about genesis
-		log.Debugf("Got new tipset through Hello: %s from %s", ts.Cids(), s.Conn().RemotePeer())
-		hs.syncer.InformNewHead(s.Conn().RemotePeer(), ts)
-	}
+	// don't bother informing about genesis
+	log.Debugf("Got new tipset through Hello: %s from %s", ts.Cids(), s.Conn().RemotePeer())
+	hs.syncer.InformNewHead(s.Conn().RemotePeer(), ts)
 }
 
 func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
