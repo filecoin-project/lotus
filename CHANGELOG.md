@@ -1,17 +1,12 @@
 # Lotus changelog
 
-# Node and Miner v1.30.0-rc3 / 2024-10-28
+# Node and Miner v1.30.0 / 2024-11-06
 
-This is the third release candidate of the upcoming MANDATORY Lotus v1.30.0 release, which will deliver the Filecoin network version 24, codenamed Tuk Tuk 🛺.
-
-> [!NOTE]
-> 1. This release candidate does NOT set the mainnet network upgrade epoch.  It will be added in the final release (expected October 30th).
-
-- You can follow this release issue for keeping up with the release dates, epochs, and updates: https://github.com/filecoin-project/lotus/issues/12480.
+This is the final release of the upcoming MANDATORY Lotus v1.30.0 release, which will deliver the Filecoin network version 24, codenamed Tuk Tuk 🛺.
 
 ## ☢️ Upgrade Warnings ☢️
 
-- If you are running the v1.28.x version of Lotus, please go through the Upgrade Warnings section for the v1.28.* releases and v1.29.*, before upgrading to this RC.
+- If you are running the v1.28.x version of Lotus, please go through the Upgrade Warnings section for the v1.28.* releases and v1.29.*, before upgrading to this release.
 - This release requires a minimum Go version of v1.22.7 or higher.
 - The `releases` branch has been deprecated with the 202408 split of 'Lotus Node' and 'Lotus Miner'. See https://github.com/filecoin-project/lotus/blob/master/LOTUS_RELEASE_FLOW.md#why-is-the-releases-branch-deprecated-and-what-are-alternatives for more info and alternatives for getting the latest release for both the 'Lotus Node' and 'Lotus Miner' based on the Branch and Tag Strategy.
    - To get the latest Lotus Node tag: git tag -l 'v*' | sort -V -r | head -n 1
@@ -20,13 +15,39 @@ This is the third release candidate of the upcoming MANDATORY Lotus v1.30.0 rele
 ## 🏛️ Filecoin network version 24 FIPs
 
 - [FIP-0081: Introduce lower bound for sector initial pledge](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0081.md)
-- [FIP-0086: Fast Finality in Filecoin (F3)](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0086.md)
 - [FIP-0094: Add Support for EIP-5656 (MCOPY Opcode) in the FEVM](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0094.md)
 - [FIP-0095: Add FEVM precompile to fetch beacon digest from chain history](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0095.md)
 
+*⚠️ The activation of F3 (Fast Finality) has been postponed for mainnet* due to unresolved issues in the Client/SP code and the F3 protocol itself. These issues require further testing and resolution before we can safely deploy F3 on the mainnet. Read the full [post here](https://github.com/filecoin-project/community/discussions/74?sort=new#discussioncomment-11164349).
+
 ## 📦 v15 Builtin Actor Bundle
 
-This release candidate uses the [v15.0.0-rc1](https://github.com/filecoin-project/builtin-actors/releases/tag/v15.0.0-rc1)
+The [v15.0.0](https://github.com/filecoin-project/builtin-actors/releases/tag/v15.0.0) actor bundle is used for supporting this upgrade. Make sure that your Lotus actor bundle matches the v15 actors manifest by running the following cli after upgrading to this release:
+
+```
+lotus state actor-cids --network-version=24
+Network Version: 24
+Actor Version: 15
+Manifest CID: bafy2bzaceakwje2hyinucrhgtsfo44p54iw4g6otbv5ghov65vajhxgntr53u
+
+Actor             CID  
+account           bafk2bzacecia5zacqt4gvd4z7275lnkhgraq75shy63cphakphhw6crf4joii
+cron              bafk2bzacecbyx7utt3tkvhqnfk64kgtlt5jlvv56o2liwczikgzfowk2cvqvk
+datacap           bafk2bzacecrypcpyzidphfl3sf3vhrjbiwzu7w3hoole45wsk2bqpverw4tni
+eam               bafk2bzacebybq7keb45l6isqfaiwxy5oi5wlpknhggjheut7q6xwp7mbxxku4
+ethaccount        bafk2bzaceajdy72edg3t2zcb6qwv2wgdsysfwdtczcklxcp4hlwh7pkxekja4
+evm               bafk2bzaceandffodu45eyro7jr7bizxw7ibipaiskt36xbp4vpvsxtrpkyjfm
+init              bafk2bzaceb5mjmy56ediswt2hvwqdfs2xzi4qw3cefkufoat57yyt3iwkg7kw
+multisig          bafk2bzaced3csl3buj7chpunsubrhwhchtskx674fpukfen4u6pbpkcheueya
+paymentchannel    bafk2bzacea3dpsfxw7cnj6zljmjnnaubp43a5kvuausigztmukektesg2flei
+placeholder       bafk2bzacedfvut2myeleyq67fljcrw4kkmn5pb5dpyozovj7jpoez5irnc3ro
+reward            bafk2bzaceapkgue3gcxmwx7bvypn33okppa2nwpelcfp7oyo5yln3brixpjpm
+storagemarket     bafk2bzaceaqrnikbxymygwhwa2rsvhnqj5kfch75pn5xawnx243brqlfglsl6
+storageminer      bafk2bzacecnl2hqe3nozwo7al7kdznqgdrv2hbbbmpcbcwzh3yl4trog433hc
+storagepower      bafk2bzacecb3tvvppxmktll3xehjc7mqbfilt6bd4gragbdwxn77hm5frkuac
+system            bafk2bzacecvcqje6kcfqeayj66hezlwzfznytwqkxgw7p64xac5f5lcwjpbwe
+verifiedregistry  bafk2bzacecudaqwbz6dukmdbfok7xuxcpjqighnizhxun4spdqvnqgftkupp2
+```
 
 ## 🚚 Migration
 
@@ -44,8 +65,8 @@ For certain node operators, such as full archival nodes or systems that need to 
 
 For the set of changes since the last stable release:
 
-* Node: https://github.com/filecoin-project/lotus/compare/v1.29.2...v1.30.0-rc2
-* Miner: https://github.com/filecoin-project/lotus/compare/v1.28.3...miner/v1.30.0-rc2
+* Node: https://github.com/filecoin-project/lotus/compare/v1.29.2...v1.30.0
+* Miner: https://github.com/filecoin-project/lotus/compare/v1.28.3...miner/v1.30.0
 
 ## 👨‍👩‍👧‍👦 Contributors
 
