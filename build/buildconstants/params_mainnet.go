@@ -188,6 +188,4 @@ var F3ManifestServerID = MustParseID("12D3KooWENMwUF9YxvQxar7uBWJtZkA6amvK4xWmKX
 var F3InitialPowerTableCID = cid.Undef
 
 const F3Enabled = true
-
-// 2024-12-04T23:00:00Z
-const F3BootstrapEpoch abi.ChainEpoch = 4501560
+const F3BootstrapEpoch abi.ChainEpoch = -1
