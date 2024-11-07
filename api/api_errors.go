@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/exitcode"
 )
 
 var invalidExecutionRevertedMsg = xerrors.New("invalid execution reverted error")
@@ -160,10 +161,10 @@ func (e *ErrExecutionReverted) ToJSONRPCError() (jsonrpc.JSONRPCError, error) {
 }
 
 // NewErrExecutionReverted creates a new ErrExecutionReverted with the given reason.
-func NewErrExecutionReverted(reason string) *ErrExecutionReverted {
+func NewErrExecutionReverted(exitCode exitcode.ExitCode, error, reason string, data []byte) *ErrExecutionReverted {
 	return &ErrExecutionReverted{
-		Message: "execution reverted",
-		Data:    reason,
+		Message: fmt.Sprintf("message execution failed (exit=[%s], revert reason=[%s], vm error=[%s])", exitCode, reason, error),
+		Data:    fmt.Sprintf("0x%x", data),
 	}
 }
 

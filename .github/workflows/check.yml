@@ -26,7 +26,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: "recursive"
+          submodules: 'recursive'
+          fetch-depth: 0
       - uses: ./.github/actions/install-system-dependencies
       - uses: ./.github/actions/install-go
       - uses: ./.github/actions/make-deps
@@ -38,7 +39,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: "recursive"
+          submodules: 'recursive'
+          fetch-depth: 0
       - uses: ./.github/actions/install-system-dependencies
       - uses: ./.github/actions/install-go
       - uses: ./.github/actions/make-deps
@@ -50,7 +52,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: "recursive"
+          submodules: 'recursive'
+          fetch-depth: 0
       - uses: ./.github/actions/install-go
       - run: go fmt ./...
       - run: git diff --exit-code
@@ -60,7 +63,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: "recursive"
+          submodules: 'recursive'
+          fetch-depth: 0
       - uses: ./.github/actions/install-go
       - run: go mod tidy -v
       - run: git diff --exit-code

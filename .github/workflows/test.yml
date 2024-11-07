@@ -29,6 +29,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
+          fetch-depth: 0
       - id: test
         env:
           # Unit test groups other than unit-rest
@@ -176,6 +177,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
+          fetch-depth: 0
       - id: fetch_params
         env:
           CACHE_KEY: fetch-params-${{ hashFiles('./extern/filecoin-ffi/parameters.json') }}
@@ -240,6 +242,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
+          fetch-depth: 0
       - uses: ./.github/actions/install-system-dependencies
       - uses: ./.github/actions/install-go
       - name: Install gotestsum

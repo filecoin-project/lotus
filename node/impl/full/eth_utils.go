@@ -331,28 +331,18 @@ var panicErrorCodes = map[uint64]string{
 //
 // See https://docs.soliditylang.org/en/latest/control-structures.html#panic-via-assert-and-error-via-require
 func parseEthRevert(ret []byte) string {
-	if len(ret) == 0 {
-		return "none"
-	}
-	var cbytes abi.CborBytes
-	if err := cbytes.UnmarshalCBOR(bytes.NewReader(ret)); err != nil {
-		return "ERROR: revert reason is not cbor encoded bytes"
-	}
-	if len(cbytes) == 0 {
-		return "none"
-	}
 	// If it's not long enough to contain an ABI encoded response, return immediately.
-	if len(cbytes) < 4+32 {
-		return ethtypes.EthBytes(cbytes).String()
+	if len(ret) < 4+32 {
+		return ethtypes.EthBytes(ret).String()
 	}
-	switch string(cbytes[:4]) {
+	switch string(ret[:4]) {
 	case panicFunctionSelector:
-		cbytes := cbytes[4 : 4+32]
+		ret := ret[4 : 4+32]
 		// Read the and check the code.
-		code, err := ethtypes.EthUint64FromBytes(cbytes)
+		code, err := ethtypes.EthUint64FromBytes(ret)
 		if err != nil {
 			// If it's too big, just return the raw value.
-			codeInt := big.PositiveFromUnsignedBytes(cbytes)
+			codeInt := big.PositiveFromUnsignedBytes(ret)
 			return fmt.Sprintf("Panic(%s)", ethtypes.EthBigInt(codeInt).String())
 		}
 		if s, ok := panicErrorCodes[uint64(code)]; ok {
@@ -360,33 +350,33 @@ func parseEthRevert(ret []byte) string {
 		}
 		return fmt.Sprintf("Panic(0x%x)", code)
 	case errorFunctionSelector:
-		cbytes := cbytes[4:]
-		cbytesLen := ethtypes.EthUint64(len(cbytes))
+		ret := ret[4:]
+		retLen := ethtypes.EthUint64(len(ret))
 		// Read the and check the offset.
-		offset, err := ethtypes.EthUint64FromBytes(cbytes[:32])
+		offset, err := ethtypes.EthUint64FromBytes(ret[:32])
 		if err != nil {
 			break
 		}
-		if cbytesLen < offset {
+		if retLen < offset {
 			break
 		}
 
 		// Read and check the length.
-		if cbytesLen-offset < 32 {
+		if retLen-offset < 32 {
 			break
 		}
 		start := offset + 32
-		length, err := ethtypes.EthUint64FromBytes(cbytes[offset : offset+32])
+		length, err := ethtypes.EthUint64FromBytes(ret[offset : offset+32])
 		if err != nil {
 			break
 		}
-		if cbytesLen-start < length {
+		if retLen-start < length {
 			break
 		}
 		// Slice the error message.
-		return fmt.Sprintf("Error(%s)", cbytes[start:start+length])
+		return fmt.Sprintf("Error(%s)", ret[start:start+length])
 	}
-	return ethtypes.EthBytes(cbytes).String()
+	return ethtypes.EthBytes(ret).String()
 }
 
 // lookupEthAddress makes its best effort at finding the Ethereum address for a

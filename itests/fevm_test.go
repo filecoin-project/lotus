@@ -1031,10 +1031,10 @@ func TestFEVMErrorParsing(t *testing.T) {
 	require.NoError(t, err)
 	customError := ethtypes.EthBytes(kit.CalcFuncSignature("CustomError()")).String()
 	for sig, expected := range map[string]string{
-		"failRevertEmpty()":  "none",
-		"failRevertReason()": "Error(my reason)",
-		"failAssert()":       "Assert()",
-		"failDivZero()":      "DivideByZero()",
+		"failRevertEmpty()":  "0x",
+		"failRevertReason()": fmt.Sprintf("%x", []byte("my reason")),
+		"failAssert()":       "0x4e487b710000000000000000000000000000000000000000000000000000000000000001", // Assert()
+		"failDivZero()":      "0x4e487b710000000000000000000000000000000000000000000000000000000000000012", // DivideByZero()
 		"failCustom()":       customError,
 	} {
 		sig := sig
@@ -1602,10 +1602,10 @@ func TestEthCall(t *testing.T) {
 
 		var dataErr *api.ErrExecutionReverted
 		require.ErrorAs(t, err, &dataErr, "Expected error to be ErrExecutionReverted")
-		require.Contains(t, dataErr.Message, "execution reverted", "Expected 'execution reverted' message")
+		require.Regexp(t, `message execution failed [\s\S]+\[DivideByZero\(\)\]`, dataErr.Message)
 
 		// Get the error data
-		require.Equal(t, dataErr.Data, "DivideByZero()", "Expected error data to contain 'DivideByZero()'")
+		require.Equal(t, dataErr.Data, "0x4e487b710000000000000000000000000000000000000000000000000000000000000012", "Expected error data to contain 'DivideByZero()'")
 	})
 }
 
@@ -1627,12 +1627,12 @@ func TestEthEstimateGas(t *testing.T) {
 		name           string
 		function       string
 		expectedError  string
-		expectedErrMsg string
+		expectedErrMsg interface{}
 	}{
-		{"DivideByZero", "failDivZero()", "DivideByZero()", "execution reverted"},
-		{"Assert", "failAssert()", "Assert()", "execution reverted"},
-		{"RevertWithReason", "failRevertReason()", "Error(my reason)", "execution reverted"},
-		{"RevertEmpty", "failRevertEmpty()", "", "execution reverted"},
+		{"DivideByZero", "failDivZero()", "0x4e487b710000000000000000000000000000000000000000000000000000000000000012", `message execution failed [\s\S]+\[DivideByZero\(\)\]`},
+		{"Assert", "failAssert()", "0x4e487b710000000000000000000000000000000000000000000000000000000000000001", `message execution failed [\s\S]+\[Assert\(\)\]`},
+		{"RevertWithReason", "failRevertReason()", fmt.Sprintf("%x", []byte("my reason")), `message execution failed [\s\S]+\[Error\(my reason\)\]`},
+		{"RevertEmpty", "failRevertEmpty()", "0x", `message execution failed [\s\S]+\[none\]`},
 	}
 
 	for _, tc := range testCases {
@@ -1654,8 +1654,8 @@ func TestEthEstimateGas(t *testing.T) {
 				require.Error(t, err)
 				var dataErr *api.ErrExecutionReverted
 				require.ErrorAs(t, err, &dataErr, "Expected error to be ErrExecutionReverted")
-				require.Equal(t, tc.expectedErrMsg, dataErr.Message)
-				require.Contains(t, tc.expectedError, dataErr.Data)
+				require.Regexp(t, tc.expectedErrMsg, dataErr.Message)
+				require.Contains(t, dataErr.Data, tc.expectedError)
 			}
 		})
 	}
