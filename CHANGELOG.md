@@ -2,7 +2,7 @@
 
 # Node and Miner v1.30.0 / 2024-11-06
 
-This is the final release of the MANDATORY Lotus v1.30.0 release, which will deliver the Filecoin network version 24, codenamed Tuk Tuk 🛺.
+This is the final release of the MANDATORY Lotus v1.30.0 release, which delivers the Filecoin network version 24, codenamed Tuk Tuk 🛺. **This release sets the Mainnet to upgrade at epoch `4461240`, corresponding to `2024-11-20T23:00:00Z`.**
 
 ## ☢️ Upgrade Warnings ☢️
 
