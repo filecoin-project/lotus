@@ -1,0 +1,34 @@
+name: Generate Documentation
+
+permissions:
+  contents: write
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - test/docsgen-cli-auto
+
+jobs:
+  generate-docs:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate documentation
+        run: make docsgen-cli
+
+      - name: Commit and push generated docs
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            git config user.name "GitHub Actions"
+            git config user.email noreply@github.com
+            git add .
+            git commit --amend --no-edit
+            git push --force
+          else
+            echo "No changes to commit"
+          fi
