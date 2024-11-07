@@ -1,0 +1,124 @@
+name: Check and Generate
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  check-gen:
+    name: Check (gen-check)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          submodules: 'recursive'
+          fetch-depth: 0
+      - uses: ./.github/actions/install-system-dependencies
+      - uses: ./.github/actions/install-go
+      - uses: ./.github/actions/make-deps
+      - run: make gen
+      - run: git diff --exit-code
+  check-lint:
+    name: Check (lint-all)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+          fetch-depth: 0
+      - uses: ./.github/actions/install-system-dependencies
+      - uses: ./.github/actions/install-go
+      - uses: ./.github/actions/make-deps
+      - run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.59.0
+      - run: golangci-lint run -v --timeout 10m --concurrency 4
+  check-fmt:
+    name: Check (gofmt)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+          fetch-depth: 0
+      - uses: ./.github/actions/install-go
+      - run: go fmt ./...
+      - run: git diff --exit-code
+  check-mod-tidy:
+    name: Check (mod-tidy-check)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+          fetch-depth: 0
+      - uses: ./.github/actions/install-go
+      - run: go mod tidy -v
+      - run: git diff --exit-code
+  generate-docs:
+    name: Generate Documentation
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+          fetch-depth: 0
+
+      - uses: ./.github/actions/install-system-dependencies
+      - uses: ./.github/actions/install-go
+      - uses: ./.github/actions/make-deps
+
+      - name: Generate API documentation using docsgen-cli
+        run: |
+          make docsgen-cli || {
+            echo "Error: Documentation generation failed"
+            exit 1
+          }
+
+      - name: Check for documentation changes
+        id: check_changes
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "::set-output name=changes::true"
+          else
+            echo "::set-output name=changes::false"
+          fi
+
+      - name: Commit and push if documentation changed
+        if: steps.check_changes.outputs.changes == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+            # Bot email is configured from: https://github.com/orgs/community/discussions/26560
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -am "docs: update API documentation via docsgen-cli"
+            REPO_URL="https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.event.pull_request.head.repo.full_name }}"
+            BRANCH_NAME=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}
+            git push $REPO_URL HEAD:$BRANCH_NAME
+
+      - name: Comment on the pull request
+        if: steps.check_changes.outputs.changes == 'true'
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const comment = 'CLI documentation has been generated and pushed to the branch.';
+            await github.issues.createComment({
+              ...context.repo,
+              issue_number: context.payload.pull_request.number,
+              body: comment
+            });
