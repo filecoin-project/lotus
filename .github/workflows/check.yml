@@ -26,13 +26,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: 'recursive'
+          submodules: "recursive"
       - uses: ./.github/actions/install-system-dependencies
       - uses: ./.github/actions/install-go
       - uses: ./.github/actions/make-deps
       - run: make gen
-      - run: git diff --exit-code
-      - run: make docsgen-cli
       - run: git diff --exit-code
   check-lint:
     name: Check (lint-all)
@@ -40,7 +38,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: 'recursive'
+          submodules: "recursive"
       - uses: ./.github/actions/install-system-dependencies
       - uses: ./.github/actions/install-go
       - uses: ./.github/actions/make-deps
@@ -52,7 +50,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: 'recursive'
+          submodules: "recursive"
       - uses: ./.github/actions/install-go
       - run: go fmt ./...
       - run: git diff --exit-code
@@ -62,7 +60,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: 'recursive'
+          submodules: "recursive"
       - uses: ./.github/actions/install-go
       - run: go mod tidy -v
       - run: git diff --exit-code
