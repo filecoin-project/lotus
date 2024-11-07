@@ -5,13 +5,12 @@ permissions:
 
 on:
   pull_request:
-    types: [closed]
     branches:
       - master
+    types: [opened, synchronize, reopened]
 
 jobs:
   generate-docs:
-    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
 
     steps:
