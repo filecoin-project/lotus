@@ -57,23 +57,74 @@ func TestGetMsgInfo(t *testing.T) {
 	t.Logf("seed: %d", seed)
 	rng := pseudo.New(pseudo.NewSource(seed))
 	s, _, _ := setupWithHeadIndexed(t, 10, rng)
-	msgCid := randomCid(t, rng)
-	msgCidBytes := msgCid.Bytes()
-	tsKeyCid := randomCid(t, rng)
 
-	insertTipsetMessage(t, s, tipsetMessage{
-		tipsetKeyCid: tsKeyCid.Bytes(),
-		height:       uint64(1),
-		reverted:     false,
-		messageCid:   msgCidBytes,
-		messageIndex: 1,
+	t.Run("message exists", func(t *testing.T) {
+		msgCid := randomCid(t, rng)
+		msgCidBytes := msgCid.Bytes()
+		tsKeyCid := randomCid(t, rng)
+
+		insertTipsetMessage(t, s, tipsetMessage{
+			tipsetKeyCid: tsKeyCid.Bytes(),
+			height:       uint64(1),
+			reverted:     false,
+			messageCid:   msgCidBytes,
+			messageIndex: 1,
+		})
+
+		mi, err := s.GetMsgInfo(ctx, msgCid)
+		require.NoError(t, err)
+		require.Equal(t, msgCid, mi.Message)
+		require.Equal(t, tsKeyCid, mi.TipSet)
+		require.Equal(t, abi.ChainEpoch(1), mi.Epoch)
 	})
 
-	mi, err := s.GetMsgInfo(ctx, msgCid)
-	require.NoError(t, err)
-	require.Equal(t, msgCid, mi.Message)
-	require.Equal(t, tsKeyCid, mi.TipSet)
-	require.Equal(t, abi.ChainEpoch(1), mi.Epoch)
+	t.Run("message appears after head indexed", func(t *testing.T) {
+		msgCid := randomCid(t, rng)
+		tsKeyCid := randomCid(t, rng)
+
+		// Create a context with timeout
+		ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+		defer cancel()
+
+		// Start a goroutine that will insert the message after a short delay
+		go func() {
+			time.Sleep(100 * time.Millisecond)
+			insertTipsetMessage(t, s, tipsetMessage{
+				tipsetKeyCid: tsKeyCid.Bytes(),
+				height:       uint64(2),
+				reverted:     false,
+				messageCid:   msgCid.Bytes(),
+				messageIndex: 1,
+			})
+		}()
+
+		// Retry with backoff until message is found or context times out
+		var mi *MsgInfo
+		var err error
+		for {
+			mi, err = s.GetMsgInfo(ctx, msgCid)
+			if err == nil {
+				break
+			}
+			if ctx.Err() != nil {
+				t.Fatalf("timed out waiting for message to appear: %v", err)
+			}
+			time.Sleep(50 * time.Millisecond)
+		}
+
+		require.NoError(t, err)
+		require.Equal(t, msgCid, mi.Message)
+		require.Equal(t, tsKeyCid, mi.TipSet)
+		require.Equal(t, abi.ChainEpoch(2), mi.Epoch)
+	})
+
+	t.Run("message not found", func(t *testing.T) {
+		nonExistentMsgCid := randomCid(t, rng)
+		mi, err := s.GetMsgInfo(ctx, nonExistentMsgCid)
+		require.Error(t, err)
+		require.True(t, errors.Is(err, ErrNotFound))
+		require.Nil(t, mi)
+	})
 }
 
 func setupWithHeadIndexed(t *testing.T, headHeight abi.ChainEpoch, rng *pseudo.Rand) (*SqliteIndexer, *types.TipSet, *dummyChainStore) {

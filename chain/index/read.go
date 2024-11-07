@@ -48,7 +48,12 @@ func (si *SqliteIndexer) GetMsgInfo(ctx context.Context, messageCid cid.Cid) (*M
 	var tipsetKeyCidBytes []byte
 	var height int64
 
-	if err := si.queryMsgInfo(ctx, messageCid, &tipsetKeyCidBytes, &height); err != nil {
+	if err := si.readWithHeadIndexWait(ctx, func() error {
+		return si.queryMsgInfo(ctx, messageCid, &tipsetKeyCidBytes, &height)
+	}); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ErrNotFound
+		}
 		return nil, err
 	}
 
