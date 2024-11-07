@@ -17,7 +17,7 @@
 - [Backfill](#backfill)
   - [Backfill Timing](#backfill-timing)
   - [Backfill Disk Space Requirements](#backfill-disk-space-requirements)
-  - [`lotus-shed chainindex validate-backfill` CLI tool](#lotus-shed-chainindex-validate-backfill-cli-tool)
+  - [`lotus index validate-backfill` CLI tool](#lotus-shed-chainindex-validate-backfill-cli-tool)
     - [Usage](#usage)
 - [Regular Checks](#regular-checks)
 - [Downgrade Steps](#downgrade-steps)
@@ -201,7 +201,7 @@ Note: this upgrade path assumes one is starting a fresh node and importing chain
    - As the Lotus daemon syncs the chain, the ChainIndexer will automatically index the synced messages, but it will not automatically sync ETH RPC events and transactions.
 6. **Backfill so ETH RPC events and transactions are indexed as well**
    - See the ["Backfill" section below](#backfill).
-   - This will look something like `lotus-shed chainindex validate-backfill --from <head_epoch> --to <epoch_corresponding_with_how_much_state_in_past_want_to_index>  --backfill`
+   - This will look something like `lotus index validate-backfill --from <head_epoch> --to <epoch_corresponding_with_how_much_state_in_past_want_to_index>  --backfill`
      - Example: if the current head is epoch 4360000 and one wants to index a day's worth of epochs (2880), then they'd use `--from 4360000 --to 4357120`
 6. **Ensure node health**
    - Perform whatever steps are usually done to validate a node's health before handling traffic (e.g., log scans, smoke tests)
@@ -218,20 +218,20 @@ Backfilling the new `ChainIndexer` was [benchmarked to take approximately ~12 ho
 
 As of 202410, ChainIndexer will accumulate approximately ~340 MiB per day of data, or 10 GiB per month (see [here](https://github.com/filecoin-project/lotus/issues/12453)).
 
-### `lotus-shed chainindex validate-backfill` CLI tool
-The `lotus-shed chainindex validate-backfill` command is a tool for validating and optionally backfilling the chain index over a range of epochs since calling the [`ChainValidateIndex` API](#chainvalidateindex-rpc-api) for a single epoch at a time can be cumbersome, especially when backfilling or validating the index over a range of historical epochs, such as during a backfill. This tool wraps the `ChainValidateIndex` API to efficiently process multiple epochs.
+### `lotus index validate-backfill` CLI tool
+The `lotus index validate-backfill` command is a tool for validating and optionally backfilling the chain index over a range of epochs since calling the [`ChainValidateIndex` API](#chainvalidateindex-rpc-api) for a single epoch at a time can be cumbersome, especially when backfilling or validating the index over a range of historical epochs, such as during a backfill. This tool wraps the `ChainValidateIndex` API to efficiently process multiple epochs.
 
 **Note: This command can only be run when the Lotus daemon is already running with the [`ChainIndexer` enabled](#enablement) as it depends on the `ChainValidateIndex` RPC API.**
 
 #### Usage
 
 ```
-lotus-shed chainindex validate-backfill --from <start_epoch> --to <end_epoch> [--backfill] [--log-good]
+lotus index validate-backfill --from <start_epoch> --to <end_epoch> [--backfill] [--log-good]
 ```
 
 The command validates the chain index entries for each epoch in the specified range, checking for missing or inconsistent entries (i.e. the indexed data does not match the actual chain state). If `--backfill` is enabled (which it is by default), it will attempt to backfill any missing entries using the `ChainValidateIndex` API.
 
-You can learn about how to use the tool with `lotus-shed chainindex validate-backfill -h`.
+You can learn about how to use the tool with `lotus index validate-backfill -h`.
 
 Note: If you are using a non-standard Lotus repo directory then you can run the command with `lotus-shed -repo /path/to/lotus/repo chainindex validate-backfill ...`, or by setting the `LOTUS_REPO` environment variable.
 
@@ -239,7 +239,7 @@ Note: If you are using a non-standard Lotus repo directory then you can run the 
 
 During normal operation, it is possible, but not strictly necessary, to run periodic checks on the index to ensure it remains consistent with the chain state. The ChainIndexer is designed to be resilient and consistent, but unconsidered edge-cases, or bugs, could cause the index to become inconsistent.
 
-The `lotus-shed chainindex validate-backfill` command can be used to validate the index over a range of epochs and can be run periodically via cron, systemd timers, or some other means, to ensure the index remains consistent. An example bash script one could use to validate the index over the last 24 hours every 24 hours is provided below:
+The `lotus index validate-backfill` command can be used to validate the index over a range of epochs and can be run periodically via cron, systemd timers, or some other means, to ensure the index remains consistent. An example bash script one could use to validate the index over the last 24 hours every 24 hours is provided below:
 
 
 ```bash
@@ -308,7 +308,7 @@ In case you need to downgrade to the [previous indexing system](#previous-indexi
 * It replaced the [previous indexing system](#previous-indexing-system).
 * It is composed of a single indexer, [`ChainIndexer`](https://github.com/filecoin-project/lotus/blob/master/chain/index/indexer.go), using a [single database for transactions, messages, and events](https://github.com/filecoin-project/lotus/blob/master/chain/index/ddls.go).
 * It persists state to `${LOTUS_PATH}/chainindex`.
-* It has this CLI backfill tooling: [`lotus-shed chainindex validate-backfill`](#lotus-shed-chainindex-validate-backfill-cli-tool)
+* It has this CLI backfill tooling: [`lotus index validate-backfill`](#lotus-shed-chainindex-validate-backfill-cli-tool)
 * **Storage requirements:** See the [backfill disk space requirements](#backfill-disk-space-requirements).
 * **Backfil times:** See the [backfill timing](#backfill-timing).
 
