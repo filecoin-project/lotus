@@ -11,7 +11,6 @@ import (
 
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
-	"github.com/multiformats/go-multicodec"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
@@ -566,9 +565,9 @@ func makePrefillFilterQuery(f *EventFilter) ([]any, string, error) {
 				clauses = append(clauses, "("+strings.Join(subclauses, " OR ")+")")
 			}
 		}
-	} else {
+	} else if f.Codec != 0 { // if no keys are specified, we can use the codec filter
 		clauses = append(clauses, "ee.codec=?")
-		values = append(values, uint64(multicodec.Raw))
+		values = append(values, f.Codec)
 	}
 
 	s := `SELECT

@@ -47,6 +47,8 @@ type EventFilter struct {
 
 	KeysWithCodec map[string][]types.ActorEventBlock // map of key names to a list of alternate values that may match
 	MaxResults    int                                // maximum number of results to collect, 0 is unlimited
+
+	Codec uint64 // optional codec filter, only used if KeysWithCodec is not set
 }
 
 type Indexer interface {

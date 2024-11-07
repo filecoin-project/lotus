@@ -1778,12 +1778,19 @@ func (e *EthEventHandler) ethGetEventsForFilter(ctx context.Context, filterSpec 
 		return nil, xerrors.New("cannot ask for events for a tipset at or greater than head")
 	}
 
+	var codec uint64
+	// if no keys are specified, we can use the codec filter to make sure we only get `raw` encoded events
+	if len(pf.keys) == 0 {
+		codec = uint64(multicodec.Raw)
+	}
+
 	ef := &index.EventFilter{
 		MinHeight:     pf.minHeight,
 		MaxHeight:     pf.maxHeight,
 		TipsetCid:     pf.tipsetCid,
 		Addresses:     pf.addresses,
 		KeysWithCodec: pf.keys,
+		Codec:         codec,
 		MaxResults:    e.EventFilterManager.MaxFilterResults,
 	}
 
