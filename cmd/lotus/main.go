@@ -71,7 +71,7 @@ func main() {
 
 	app := &cli.App{
 		Name:                 "lotus",
-		Usage:                "Filecoin decentralized storage network client",
+		Usage:                "Spacecraft launch and control software",
 		Version:              string(build.NodeUserVersion()),
 		EnableBashCompletion: true,
 		Flags: []cli.Flag{
