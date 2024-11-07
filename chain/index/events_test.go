@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
+	"github.com/multiformats/go-multicodec"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
@@ -390,6 +391,257 @@ func TestGetEventsFilterByAddress(t *testing.T) {
 	}
 }
 
+func TestGetEventsForFilterWithRawCodec(t *testing.T) {
+	ctx := context.Background()
+	seed := time.Now().UnixNano()
+	t.Logf("seed: %d", seed)
+	rng := pseudo.New(pseudo.NewSource(seed))
+	headHeight := abi.ChainEpoch(60)
+
+	// Setup the indexer and chain store with the specified head height
+	si, _, cs := setupWithHeadIndexed(t, headHeight, rng)
+	t.Cleanup(func() { _ = si.Close() })
+
+	// Define codec constants (replace with actual multicodec values)
+	var (
+		codecRaw  = uint64(multicodec.Raw)
+		codecCBOR = uint64(multicodec.Cbor)
+	)
+
+	// Create events with different codecs
+	evRaw1 := fakeEventWithCodec(
+		abi.ActorID(1),
+		[]kv{
+			{k: "type", v: []byte("approval")},
+			{k: "signer", v: []byte("addr1")},
+		},
+		codecRaw,
+	)
+
+	evCBOR := fakeEventWithCodec(
+		abi.ActorID(2),
+		[]kv{
+			{k: "type", v: []byte("approval")},
+			{k: "signer", v: []byte("addr2")},
+		},
+		codecCBOR,
+	)
+
+	evRaw2 := fakeEventWithCodec(
+		abi.ActorID(3),
+		[]kv{
+			{k: "type", v: []byte("transfer")},
+			{k: "recipient", v: []byte("addr3")},
+		},
+		codecRaw,
+	)
+
+	// Aggregate events
+	events := []types.Event{*evRaw1, *evCBOR, *evRaw2}
+
+	// Create a fake message and associate it with the events
+	fm := fakeMessage(address.TestAddress, address.TestAddress)
+	em1 := executedMessage{
+		msg: fm,
+		evs: events,
+	}
+
+	// Mock the Actor to Address mapping
+	si.SetActorToDelegatedAddresFunc(func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool) {
+		idAddr, err := address.NewIDAddress(uint64(emitter))
+		if err != nil {
+			return address.Undef, false
+		}
+		return idAddr, true
+	})
+
+	// Mock the executed messages loader
+	si.setExecutedMessagesLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
+		return []executedMessage{em1}, nil
+	})
+
+	// Create fake tipsets
+	fakeTipSet1 := fakeTipSet(t, rng, 1, nil)
+	fakeTipSet2 := fakeTipSet(t, rng, 2, nil)
+
+	// Associate tipsets with their heights and CIDs
+	cs.SetTipsetByHeightAndKey(1, fakeTipSet1.Key(), fakeTipSet1) // Height 1
+	cs.SetTipsetByHeightAndKey(2, fakeTipSet2.Key(), fakeTipSet2) // Height 2
+	cs.SetTipSetByCid(t, fakeTipSet1)
+	cs.SetTipSetByCid(t, fakeTipSet2)
+
+	// Associate messages with tipsets
+	cs.SetMessagesForTipset(fakeTipSet1, []types.ChainMsg{fm})
+
+	// Apply the indexer to process the tipsets
+	require.NoError(t, si.Apply(ctx, fakeTipSet1, fakeTipSet2))
+
+	t.Run("FilterEventsByRawCodecWithoutKeys", func(t *testing.T) {
+		f := &EventFilter{
+			MinHeight: 1,
+			MaxHeight: 2,
+			Codec:     codecRaw, // Set to RAW codec
+		}
+
+		// Retrieve events based on the filter
+		ces, err := si.GetEventsForFilter(ctx, f)
+		require.NoError(t, err)
+
+		// Define expected collected events (only RAW encoded events)
+		expectedCES := []*CollectedEvent{
+			{
+				Entries:     evRaw1.Entries,
+				EmitterAddr: must.One(address.NewIDAddress(uint64(evRaw1.Emitter))),
+				EventIdx:    0,
+				Reverted:    false,
+				Height:      1,
+				TipSetKey:   fakeTipSet1.Key(),
+				MsgIdx:      0,
+				MsgCid:      fm.Cid(),
+			},
+			{
+				Entries:     evRaw2.Entries,
+				EmitterAddr: must.One(address.NewIDAddress(uint64(evRaw2.Emitter))),
+				EventIdx:    2, // Adjust based on actual indexing
+				Reverted:    false,
+				Height:      1,
+				TipSetKey:   fakeTipSet1.Key(),
+				MsgIdx:      0,
+				MsgCid:      fm.Cid(),
+			},
+		}
+
+		require.Equal(t, expectedCES, ces)
+	})
+}
+
+func TestMaxFilterResults(t *testing.T) {
+	ctx := context.Background()
+	seed := time.Now().UnixNano()
+	t.Logf("seed: %d", seed)
+	rng := pseudo.New(pseudo.NewSource(seed))
+	headHeight := abi.ChainEpoch(60)
+
+	// Setup the indexer and chain store with the specified head height
+	si, _, cs := setupWithHeadIndexed(t, headHeight, rng)
+	t.Cleanup(func() { _ = si.Close() })
+
+	// Define codec constants (replace with actual multicodec values)
+	var (
+		codecRaw  = uint64(multicodec.Raw)
+		codecCBOR = uint64(multicodec.Cbor)
+	)
+
+	// Create events with different codecs
+	evRaw1 := fakeEventWithCodec(
+		abi.ActorID(1),
+		[]kv{
+			{k: "type", v: []byte("approval")},
+			{k: "signer", v: []byte("addr1")},
+		},
+		codecRaw,
+	)
+
+	evCBOR := fakeEventWithCodec(
+		abi.ActorID(2),
+		[]kv{
+			{k: "type", v: []byte("approval")},
+			{k: "signer", v: []byte("addr2")},
+		},
+		codecCBOR,
+	)
+
+	evRaw2 := fakeEventWithCodec(
+		abi.ActorID(3),
+		[]kv{
+			{k: "type", v: []byte("transfer")},
+			{k: "recipient", v: []byte("addr3")},
+		},
+		codecRaw,
+	)
+
+	evRaw3 := fakeEventWithCodec(
+		abi.ActorID(4),
+		[]kv{
+			{k: "type", v: []byte("transfer")},
+			{k: "recipient", v: []byte("addr4")},
+		},
+		codecCBOR,
+	)
+
+	// Aggregate events
+	events := []types.Event{*evRaw1, *evCBOR, *evRaw2, *evRaw3}
+
+	// Create a fake message and associate it with the events
+	fm := fakeMessage(address.TestAddress, address.TestAddress)
+	em1 := executedMessage{
+		msg: fm,
+		evs: events,
+	}
+
+	// Mock the Actor to Address mapping
+	si.SetActorToDelegatedAddresFunc(func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool) {
+		idAddr, err := address.NewIDAddress(uint64(emitter))
+		if err != nil {
+			return address.Undef, false
+		}
+		return idAddr, true
+	})
+
+	// Mock the executed messages loader
+	si.setExecutedMessagesLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
+		return []executedMessage{em1}, nil
+	})
+
+	// Create fake tipsets
+	fakeTipSet1 := fakeTipSet(t, rng, 1, nil)
+	fakeTipSet2 := fakeTipSet(t, rng, 2, nil)
+
+	// Associate tipsets with their heights and CIDs
+	cs.SetTipsetByHeightAndKey(1, fakeTipSet1.Key(), fakeTipSet1) // Height 1
+	cs.SetTipsetByHeightAndKey(2, fakeTipSet2.Key(), fakeTipSet2) // Height 2
+	cs.SetTipSetByCid(t, fakeTipSet1)
+	cs.SetTipSetByCid(t, fakeTipSet2)
+
+	// Associate messages with tipsets
+	cs.SetMessagesForTipset(fakeTipSet1, []types.ChainMsg{fm})
+
+	// Apply the indexer to process the tipsets
+	require.NoError(t, si.Apply(ctx, fakeTipSet1, fakeTipSet2))
+
+	// if we hit max results, we should get an error
+	// we have total 4 events
+	testCases := []struct {
+		name          string
+		maxResults    int
+		expectedCount int
+		expectedErr   string
+	}{
+		{name: "no max results", maxResults: 0, expectedCount: 4},
+		{name: "max result more that total events", maxResults: 10, expectedCount: 4},
+		{name: "max results less than total events", maxResults: 1, expectedErr: ErrMaxResultsReached.Error()},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			f := &EventFilter{
+				MinHeight:  1,
+				MaxHeight:  2,
+				MaxResults: tc.maxResults,
+			}
+
+			ces, err := si.GetEventsForFilter(ctx, f)
+			if tc.expectedErr != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tc.expectedErr)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tc.expectedCount, len(ces))
+			}
+		})
+	}
+}
+
 func sortAddresses(addrs []address.Address) {
 	sort.Slice(addrs, func(i, j int) bool {
 		return addrs[i].String() < addrs[j].String()
@@ -428,6 +680,23 @@ func fakeEvent(emitter abi.ActorID, indexed []kv, unindexed []kv) *types.Event {
 			Flags: 0x00,
 			Key:   in.k,
 			Codec: cid.Raw,
+			Value: in.v,
+		})
+	}
+
+	return ev
+}
+
+func fakeEventWithCodec(emitter abi.ActorID, indexed []kv, codec uint64) *types.Event {
+	ev := &types.Event{
+		Emitter: emitter,
+	}
+
+	for _, in := range indexed {
+		ev.Entries = append(ev.Entries, types.EventEntry{
+			Flags: 0x01,
+			Key:   in.k,
+			Codec: codec,
 			Value: in.v,
 		})
 	}
