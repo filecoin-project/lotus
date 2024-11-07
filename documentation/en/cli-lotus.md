@@ -31,6 +31,7 @@ COMMANDS:
      wait-api      Wait for lotus api to come online
      fetch-params  Fetch proving parameters
      evm           Commands related to the Filecoin EVM runtime
+     index         Commands related to managing the chainindex
    NETWORK:
      net   Manage P2P Network
      sync  Inspect or interact with the chain syncer
@@ -2239,6 +2240,74 @@ USAGE:
 OPTIONS:
    --bin       write the bytecode as raw binary and don't hex-encode (default: false)
    --help, -h  show help
+```
+
+## lotus index
+```
+NAME:
+   lotus index - Commands related to managing the chainindex
+
+USAGE:
+   lotus index command [command options] [arguments...]
+
+COMMANDS:
+   validate-backfill  Validates and optionally backfills the chainindex for a range of epochs
+   help, h            Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help
+```
+
+### lotus index validate-backfill
+```
+NAME:
+   lotus index validate-backfill - Validates and optionally backfills the chainindex for a range of epochs
+
+USAGE:
+   lotus index validate-backfill [command options] [arguments...]
+
+DESCRIPTION:
+   
+   lotus-shed chainindex validate-backfill --from <start_epoch> --to <end_epoch> [--backfill] [--log-good] [--quiet]
+
+   The command validates the chain index entries for each epoch in the specified range, checking for missing or
+   inconsistent entries (i.e. the indexed data does not match the actual chain state). If '--backfill' is enabled
+   (which it is by default), it will attempt to backfill any missing entries using the 'ChainValidateIndex' API.
+
+   Error conditions:
+     - If 'from' or 'to' are invalid (<=0 or 'to' > 'from'), an error is returned.
+     - If the 'ChainValidateIndex' API returns an error for an epoch, indicating an inconsistency between the index
+       and chain state, an error message is logged for that epoch.
+
+   Logging:
+     - Progress is logged every 2880 epochs (1 day worth of epochs) processed during the validation process.
+     - If '--log-good' is enabled, details are also logged for each epoch that has no detected problems. This includes:
+       - Null rounds with no messages/events.
+       - Epochs with a valid indexed entry.
+     - If --quiet is enabled, only errors are logged, unless --log-good is also enabled, in which case good tipsets
+       are also logged.
+
+   Example usage:
+
+   To validate and backfill the chain index for the last 5760 epochs (2 days) and log details for all epochs:
+
+   lotus-shed chainindex validate-backfill --from 1000000 --to 994240 --log-good
+
+   This command is useful for backfilling the chain index over a range of historical epochs during the migration to
+   the new ChainIndexer. It can also be run periodically to validate the index's integrity using system schedulers
+   like cron.
+
+   If there are any errors during the validation process, the command will exit with a non-zero status and log the
+   number of failed RPC calls. Otherwise, it will exit with a zero status.
+     
+
+OPTIONS:
+   --from value  from specifies the starting tipset epoch for validation (inclusive) (default: 0)
+   --to value    to specifies the ending tipset epoch for validation (inclusive) (default: 0)
+   --backfill    backfill determines whether to backfill missing index entries during validation (default: true) (default: true)
+   --log-good    log tipsets that have no detected problems (default: false)
+   --quiet       suppress output except for errors (or good tipsets if log-good is enabled) (default: false)
+   --help, -h    show help
 ```
 
 ## lotus net
