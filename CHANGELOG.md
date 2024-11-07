@@ -83,58 +83,58 @@ For the set of changes since the last stable release:
 
 ## 👨‍👩‍👧‍👦 Contributors
 
-| Contributor | Commits | Lines ± | Files Changed |
-|-------------|---------|---------|---------------|
-| Krishang | 2 | +34106/-0 | 109 |
-| Rod Vagg | 86 | +10643/-8291 | 456 |
-| Masih H. Derkani | 59 | +7700/-4725 | 298 |
-| Steven Allen | 55 | +6113/-3169 | 272 |
-| kamuik16 | 7 | +4618/-1333 | 285 |
-| Jakub Sztandera | 10 | +3995/-1226 | 94 |
-| Peter Rabbitson | 26 | +2313/-2718 | 275 |
-| Viraj Bhartiya | 5 | +2624/-580 | 50 |
-| Phi | 7 | +1337/-1519 | 257 |
-| Mikers | 1 | +1274/-455 | 23 |
-| Phi-rjan | 29 | +736/-600 | 92 |
-| Andrew Jackson (Ajax) | 3 | +732/-504 | 75 |
-| LexLuthr | 3 | +167/-996 | 8 |
-| Aarsh Shah | 12 | +909/-177 | 47 |
-| web3-bot | 40 | +445/-550 | 68 |
-| Piotr Galar | 6 | +622/-372 | 15 |
-| aarshkshah1992 | 18 | +544/-299 | 40 |
-| Steve Loeppky | 14 | +401/-196 | 22 |
-| Frrist | 1 | +403/-22 | 5 |
-| Łukasz Magiera | 4 | +266/-27 | 13 |
-| winniehere | 1 | +146/-144 | 3 |
-| Jon | 1 | +209/-41 | 4 |
-| Aryan Tikarya | 2 | +183/-8 | 7 |
-| adlrocha | 2 | +123/-38 | 21 |
-| dependabot[bot] | 11 | +87/-61 | 22 |
-| Jiaying Wang | 8 | +61/-70 | 12 |
-| Ian Davis | 2 | +60/-38 | 5 |
-| Aayush Rajasekaran | 2 | +81/-3 | 3 |
-| hanabi1224 | 4 | +46/-4 | 5 |
-| Laurent Senta | 1 | +44/-1 | 2 |
-| jennijuju | 6 | +21/-20 | 17 |
-| parthshah1 | 1 | +23/-13 | 1 |
-| Brendan O'Brien | 1 | +25/-10 | 2 |
-| Jennifer Wang | 4 | +24/-8 | 6 |
-| Matthew Rothenberg | 3 | +10/-18 | 6 |
-| riskrose | 1 | +8/-8 | 7 |
-| linghuying | 1 | +5/-5 | 5 |
-| fsgerse | 2 | +3/-7 | 3 |
-| PolyMa | 1 | +5/-5 | 5 |
-| zhangguanzhang | 1 | +3/-3 | 2 |
-| luozexuan | 1 | +3/-3 | 3 |
-| Po-Chun Chang | 1 | +6/-0 | 2 |
-| Kevin Martin | 1 | +4/-1 | 2 |
-| simlecode | 1 | +2/-2 | 2 |
-| ZenGround0 | 1 | +2/-2 | 2 |
-| GFZRZK | 1 | +2/-1 | 1 |
-| DemoYeti | 1 | +2/-1 | 1 |
-| qwdsds | 1 | +1/-1 | 1 |
-| Samuel Arogbonlo | 1 | +2/-0 | 2 |
-| Elias Rad | 1 | +1/-1 | 1 |
+| Contributor           | Commits | Lines ±      | Files Changed |
+| --------------------- | ------- | ------------ | ------------- |
+| Krishang              | 2       | +34106/-0    | 109           |
+| Rod Vagg              | 86      | +10643/-8291 | 456           |
+| Masih H. Derkani      | 59      | +7700/-4725  | 298           |
+| Steven Allen          | 55      | +6113/-3169  | 272           |
+| kamuik16              | 7       | +4618/-1333  | 285           |
+| Jakub Sztandera       | 10      | +3995/-1226  | 94            |
+| Peter Rabbitson       | 26      | +2313/-2718  | 275           |
+| Viraj Bhartiya        | 5       | +2624/-580   | 50            |
+| Phi                   | 7       | +1337/-1519  | 257           |
+| Mikers                | 1       | +1274/-455   | 23            |
+| Phi-rjan              | 29      | +736/-600    | 92            |
+| Andrew Jackson (Ajax) | 3       | +732/-504    | 75            |
+| LexLuthr              | 3       | +167/-996    | 8             |
+| Aarsh Shah            | 12      | +909/-177    | 47            |
+| web3-bot              | 40      | +445/-550    | 68            |
+| Piotr Galar           | 6       | +622/-372    | 15            |
+| aarshkshah1992        | 18      | +544/-299    | 40            |
+| Steve Loeppky         | 14      | +401/-196    | 22            |
+| Frrist                | 1       | +403/-22     | 5             |
+| Łukasz Magiera        | 4       | +266/-27     | 13            |
+| winniehere            | 1       | +146/-144    | 3             |
+| Jon                   | 1       | +209/-41     | 4             |
+| Aryan Tikarya         | 2       | +183/-8      | 7             |
+| adlrocha              | 2       | +123/-38     | 21            |
+| dependabot[bot]       | 11      | +87/-61      | 22            |
+| Jiaying Wang          | 8       | +61/-70      | 12            |
+| Ian Davis             | 2       | +60/-38      | 5             |
+| Aayush Rajasekaran    | 2       | +81/-3       | 3             |
+| hanabi1224            | 4       | +46/-4       | 5             |
+| Laurent Senta         | 1       | +44/-1       | 2             |
+| jennijuju             | 6       | +21/-20      | 17            |
+| parthshah1            | 1       | +23/-13      | 1             |
+| Brendan O'Brien       | 1       | +25/-10      | 2             |
+| Jennifer Wang         | 4       | +24/-8       | 6             |
+| Matthew Rothenberg    | 3       | +10/-18      | 6             |
+| riskrose              | 1       | +8/-8        | 7             |
+| linghuying            | 1       | +5/-5        | 5             |
+| fsgerse               | 2       | +3/-7        | 3             |
+| PolyMa                | 1       | +5/-5        | 5             |
+| zhangguanzhang        | 1       | +3/-3        | 2             |
+| luozexuan             | 1       | +3/-3        | 3             |
+| Po-Chun Chang         | 1       | +6/-0        | 2             |
+| Kevin Martin          | 1       | +4/-1        | 2             |
+| simlecode             | 1       | +2/-2        | 2             |
+| ZenGround0            | 1       | +2/-2        | 2             |
+| GFZRZK                | 1       | +2/-1        | 1             |
+| DemoYeti              | 1       | +2/-1        | 1             |
+| qwdsds                | 1       | +1/-1        | 1             |
+| Samuel Arogbonlo      | 1       | +2/-0        | 2             |
+| Elias Rad             | 1       | +1/-1        | 1             |
 
 # Node v1.29.2 / 2024-10-03
 
@@ -150,13 +150,13 @@ This is the stable release for Lotus node v1.29.2. Key updates in this release i
 
 ## 👨‍👩‍👧‍👦 Contributors
 
-| Contributor | Commits | Lines ± | Files Changed |
-|-------------|---------|---------|---------------|
-| aarshkshah1992 | 2 | +1753/-662 | 12 |
-| Viraj Bhartiya | 1 | +770/-38 | 18 |
-| Rod Vagg | 1 | +480/-83 | 14 |
-| Phi-rjan | 2 | +20/-13 | 9 |
-| Phi | 2 | +6/-25 | 7 |
+| Contributor    | Commits | Lines ±    | Files Changed |
+| -------------- | ------- | ---------- | ------------- |
+| aarshkshah1992 | 2       | +1753/-662 | 12            |
+| Viraj Bhartiya | 1       | +770/-38   | 18            |
+| Rod Vagg       | 1       | +480/-83   | 14            |
+| Phi-rjan       | 2       | +20/-13    | 9             |
+| Phi            | 2       | +6/-25     | 7             |
 
 # Node v1.29.1 / 2024-09-16
 
@@ -313,51 +313,51 @@ chore: all: fix comment (#12256) ([filecoin-project/lotus#12256](https://github.
 
 ## 👨‍👩‍👧‍👦 Contributors
 
-| Contributor | Commits | Lines ± | Files Changed |
-|-------------|---------|---------|---------------|
-| Rod Vagg | 45 | +4839/-2634 | 217 |
-| Peter Rabbitson | 18 | +2503/-2195 | 209 |
-| Jakub Sztandera | 5 | +2695/-1074 | 61 |
-| Mikers | 1 | +1274/-455 | 23 |
-| Masih H. Derkani | 7 | +873/-682 | 37 |
-| Andrew Jackson (Ajax) | 3 | +732/-504 | 75 |
-| LexLuthr | 3 | +167/-996 | 8 |
-| Piotr Galar | 6 | +622/-372 | 15 |
-| Aarsh Shah | 11 | +791/-177 | 44 |
-| Phi-rjan | 15 | +476/-178 | 50 |
-| web3-bot | 32 | +330/-319 | 39 |
-| Steven Allen | 8 | +367/-165 | 41 |
-| aarshkshah1992 | 17 | +379/-87 | 32 |
-| Frrist | 1 | +403/-22 | 5 |
-| Łukasz Magiera | 4 | +266/-27 | 13 |
-| winniehere | 1 | +146/-144 | 3 |
-| Steve Loeppky | 5 | +162/-53 | 7 |
-| Aryan Tikarya | 2 | +183/-8 | 7 |
-| adlrocha | 2 | +123/-38 | 21 |
-| Jiaying Wang | 7 | +52/-68 | 9 |
-| Ian Davis | 2 | +60/-38 | 5 |
-| Aayush Rajasekaran | 1 | +80/-2 | 2 |
-| hanabi1224 | 4 | +46/-4 | 5 |
-| Laurent Senta | 1 | +44/-1 | 2 |
-| jennijuju | 6 | +21/-20 | 17 |
-| Brendan O'Brien | 1 | +25/-10 | 2 |
-| Jennifer Wang | 4 | +24/-8 | 6 |
-| dependabot[bot] | 4 | +15/-15 | 8 |
-| riskrose | 1 | +8/-8 | 7 |
-| Phi | 1 | +6/-6 | 6 |
-| linghuying | 1 | +5/-5 | 5 |
-| fsgerse | 2 | +3/-7 | 3 |
-| PolyMa | 1 | +5/-5 | 5 |
-| zhangguanzhang | 1 | +3/-3 | 2 |
-| luozexuan | 1 | +3/-3 | 3 |
-| Po-Chun Chang | 1 | +6/-0 | 2 |
-| Kevin Martin | 1 | +4/-1 | 2 |
-| simlecode | 1 | +2/-2 | 2 |
-| ZenGround0 | 1 | +2/-2 | 2 |
-| GFZRZK | 1 | +2/-1 | 1 |
-| zl | 1 | +1/-1 | 1 |
-| qwdsds | 1 | +1/-1 | 1 |
-| Elias Rad | 1 | +1/-1 | 1 |
+| Contributor           | Commits | Lines ±     | Files Changed |
+| --------------------- | ------- | ----------- | ------------- |
+| Rod Vagg              | 45      | +4839/-2634 | 217           |
+| Peter Rabbitson       | 18      | +2503/-2195 | 209           |
+| Jakub Sztandera       | 5       | +2695/-1074 | 61            |
+| Mikers                | 1       | +1274/-455  | 23            |
+| Masih H. Derkani      | 7       | +873/-682   | 37            |
+| Andrew Jackson (Ajax) | 3       | +732/-504   | 75            |
+| LexLuthr              | 3       | +167/-996   | 8             |
+| Piotr Galar           | 6       | +622/-372   | 15            |
+| Aarsh Shah            | 11      | +791/-177   | 44            |
+| Phi-rjan              | 15      | +476/-178   | 50            |
+| web3-bot              | 32      | +330/-319   | 39            |
+| Steven Allen          | 8       | +367/-165   | 41            |
+| aarshkshah1992        | 17      | +379/-87    | 32            |
+| Frrist                | 1       | +403/-22    | 5             |
+| Łukasz Magiera        | 4       | +266/-27    | 13            |
+| winniehere            | 1       | +146/-144   | 3             |
+| Steve Loeppky         | 5       | +162/-53    | 7             |
+| Aryan Tikarya         | 2       | +183/-8     | 7             |
+| adlrocha              | 2       | +123/-38    | 21            |
+| Jiaying Wang          | 7       | +52/-68     | 9             |
+| Ian Davis             | 2       | +60/-38     | 5             |
+| Aayush Rajasekaran    | 1       | +80/-2      | 2             |
+| hanabi1224            | 4       | +46/-4      | 5             |
+| Laurent Senta         | 1       | +44/-1      | 2             |
+| jennijuju             | 6       | +21/-20     | 17            |
+| Brendan O'Brien       | 1       | +25/-10     | 2             |
+| Jennifer Wang         | 4       | +24/-8      | 6             |
+| dependabot[bot]       | 4       | +15/-15     | 8             |
+| riskrose              | 1       | +8/-8       | 7             |
+| Phi                   | 1       | +6/-6       | 6             |
+| linghuying            | 1       | +5/-5       | 5             |
+| fsgerse               | 2       | +3/-7       | 3             |
+| PolyMa                | 1       | +5/-5       | 5             |
+| zhangguanzhang        | 1       | +3/-3       | 2             |
+| luozexuan             | 1       | +3/-3       | 3             |
+| Po-Chun Chang         | 1       | +6/-0       | 2             |
+| Kevin Martin          | 1       | +4/-1       | 2             |
+| simlecode             | 1       | +2/-2       | 2             |
+| ZenGround0            | 1       | +2/-2       | 2             |
+| GFZRZK                | 1       | +2/-1       | 1             |
+| zl                    | 1       | +1/-1       | 1             |
+| qwdsds                | 1       | +1/-1       | 1             |
+| Elias Rad             | 1       | +1/-1       | 1             |
 
 # 1.28.2 / 2024-08-15
 
@@ -515,14 +515,14 @@ This is the stable release of Lotus v1.27.2. This will be an OPTIONAL Lotus rele
 
 Contributors
 
-| Contributor | Commits | Lines ± | Files Changed |
-|-------------|---------|---------|---------------|
-| Aarsh Shah | 2 | +424/-28 | 4 |
-| Steven Allen | 1 | +137/-0 | 3 |
-| Mikers | 1 | +63/-0 | 4 |
-| Phi-rjan | 1 | +10/-10 | 2 |
-| Peter Rabbitson | 1 | +4/-8 | 1 |
-| Hubert | 1 | +0/-1 | 1 |
+| Contributor     | Commits | Lines ±  | Files Changed |
+| --------------- | ------- | -------- | ------------- |
+| Aarsh Shah      | 2       | +424/-28 | 4             |
+| Steven Allen    | 1       | +137/-0  | 3             |
+| Mikers          | 1       | +63/-0   | 4             |
+| Phi-rjan        | 1       | +10/-10  | 2             |
+| Peter Rabbitson | 1       | +4/-8    | 1             |
+| Hubert          | 1       | +0/-1    | 1             |
 
 # v1.27.1 / 2024-06-24
 
@@ -654,23 +654,23 @@ There is no change in the behaviour when a call returns an error, as the error o
 
 ## Contributors
 
-| Contributor | Commits | Lines ± | Files Changed |
-|-------------|---------|---------|---------------|
-| Aarsh Shah | 9 | +5710/-35899 | 201 |
-| Łukasz Magiera | 21 | +1891/-33776 | 335 |
-| LexLuthr | 9 | +4916/-1637 | 107 |
-| Phi-rjan | 9 | +3544/-187 | 92 |
-| Rod Vagg | 15 | +2183/-479 | 164 |
-| Piotr Galar | 6 | +130/-2386 | 30 |
-| Andrew Jackson (Ajax) | 6 | +1072/-533 | 63 |
-| ZenGround0 | 1 | +235/-13 | 3 |
-| Hubert Bugaj | 3 | +57/-37 | 5 |
-| Steven Allen | 3 | +25/-15 | 6 |
-| Peter Rabbitson | 1 | +16/-8 | 4 |
-| tomfees | 1 | +6/-6 | 5 |
-| imxyb | 1 | +6/-0 | 1 |
-| yumeiyin | 1 | +2/-2 | 2 |
-| galargh | 1 | +2/-2 | 1 |
+| Contributor           | Commits | Lines ±      | Files Changed |
+| --------------------- | ------- | ------------ | ------------- |
+| Aarsh Shah            | 9       | +5710/-35899 | 201           |
+| Łukasz Magiera        | 21      | +1891/-33776 | 335           |
+| LexLuthr              | 9       | +4916/-1637  | 107           |
+| Phi-rjan              | 9       | +3544/-187   | 92            |
+| Rod Vagg              | 15      | +2183/-479   | 164           |
+| Piotr Galar           | 6       | +130/-2386   | 30            |
+| Andrew Jackson (Ajax) | 6       | +1072/-533   | 63            |
+| ZenGround0            | 1       | +235/-13     | 3             |
+| Hubert Bugaj          | 3       | +57/-37      | 5             |
+| Steven Allen          | 3       | +25/-15      | 6             |
+| Peter Rabbitson       | 1       | +16/-8       | 4             |
+| tomfees               | 1       | +6/-6        | 5             |
+| imxyb                 | 1       | +6/-0        | 1             |
+| yumeiyin              | 1       | +2/-2        | 2             |
+| galargh               | 1       | +2/-2        | 1             |
 
 # v1.27.0 / 2024-05-27
 
@@ -840,43 +840,43 @@ Visit the Curio Official Website insert link
 
 ## Contributors
 
-| Contributor | Commits | Lines ± | Files Changed |
-|-------------|---------|---------|---------------|
-| Rod Vagg | 20 | +55315/-204 | 58 |
-| Łukasz Magiera | 201 | +16244/-6541 | 647 |
-| Andrew Jackson (Ajax) | 53 | +15293/-6764 | 394 |
-| Phi-rjan | 6 | +12669/-4521 | 221 |
-| LexLuthr | 20 | +5972/-2815 | 120 |
-| Steven Allen | 22 | +1626/-1264 | 77 |
-| Piotr Galar | 9 | +790/-412 | 33 |
-| Aayush Rajasekaran | 4 | +642/-509 | 12 |
-| Lee | 1 | +601/-533 | 9 |
-| qwdsds | 3 | +617/-510 | 11 |
-| Phi | 11 | +551/-83 | 32 |
-| Jiaying Wang | 5 | +433/-20 | 13 |
-| Masih H. Derkani | 4 | +350/-101 | 18 |
-| Aayush | 4 | +143/-76 | 17 |
-| Aarsh Shah | 3 | +63/-11 | 5 |
-| jennijuju | 3 | +22/-22 | 12 |
-| hunjixin | 1 | +21/-14 | 4 |
-| beck | 2 | +17/-17 | 2 |
-| tom123222 | 2 | +28/-4 | 2 |
-| Ian Norden | 1 | +21/-1 | 1 |
-| ZenGround0 | 1 | +3/-15 | 1 |
-| shuangcui | 1 | +7/-7 | 6 |
-| Vid Bregar | 1 | +7/-4 | 2 |
-| writegr | 1 | +5/-5 | 5 |
-| Nagaprasad V R | 1 | +9/-0 | 1 |
-| forcedebug | 1 | +4/-4 | 4 |
-| parthshah1 | 2 | +6/-1 | 2 |
-| fuyangpengqi | 1 | +3/-3 | 3 |
-| Samuel Arogbonlo | 1 | +6/-0 | 2 |
-| GlacierWalrus | 1 | +0/-6 | 1 |
-| Aloxaf | 1 | +6/-0 | 2 |
-| Rob Quist | 2 | +2/-3 | 3 |
-| wersfeds | 1 | +2/-2 | 1 |
-| Jon | 1 | +2/-0 | 1 |
-| 0x5459 | 1 | +1/-0 | 1 |
+| Contributor           | Commits | Lines ±      | Files Changed |
+| --------------------- | ------- | ------------ | ------------- |
+| Rod Vagg              | 20      | +55315/-204  | 58            |
+| Łukasz Magiera        | 201     | +16244/-6541 | 647           |
+| Andrew Jackson (Ajax) | 53      | +15293/-6764 | 394           |
+| Phi-rjan              | 6       | +12669/-4521 | 221           |
+| LexLuthr              | 20      | +5972/-2815  | 120           |
+| Steven Allen          | 22      | +1626/-1264  | 77            |
+| Piotr Galar           | 9       | +790/-412    | 33            |
+| Aayush Rajasekaran    | 4       | +642/-509    | 12            |
+| Lee                   | 1       | +601/-533    | 9             |
+| qwdsds                | 3       | +617/-510    | 11            |
+| Phi                   | 11      | +551/-83     | 32            |
+| Jiaying Wang          | 5       | +433/-20     | 13            |
+| Masih H. Derkani      | 4       | +350/-101    | 18            |
+| Aayush                | 4       | +143/-76     | 17            |
+| Aarsh Shah            | 3       | +63/-11      | 5             |
+| jennijuju             | 3       | +22/-22      | 12            |
+| hunjixin              | 1       | +21/-14      | 4             |
+| beck                  | 2       | +17/-17      | 2             |
+| tom123222             | 2       | +28/-4       | 2             |
+| Ian Norden            | 1       | +21/-1       | 1             |
+| ZenGround0            | 1       | +3/-15       | 1             |
+| shuangcui             | 1       | +7/-7        | 6             |
+| Vid Bregar            | 1       | +7/-4        | 2             |
+| writegr               | 1       | +5/-5        | 5             |
+| Nagaprasad V R        | 1       | +9/-0        | 1             |
+| forcedebug            | 1       | +4/-4        | 4             |
+| parthshah1            | 2       | +6/-1        | 2             |
+| fuyangpengqi          | 1       | +3/-3        | 3             |
+| Samuel Arogbonlo      | 1       | +6/-0        | 2             |
+| GlacierWalrus         | 1       | +0/-6        | 1             |
+| Aloxaf                | 1       | +6/-0        | 2             |
+| Rob Quist             | 2       | +2/-3        | 3             |
+| wersfeds              | 1       | +2/-2        | 1             |
+| Jon                   | 1       | +2/-0        | 1             |
+| 0x5459                | 1       | +1/-0        | 1             |
 
 # v1.26.3 / 2024-04-22
 
@@ -1284,39 +1284,39 @@ For more information on how to use SupraSeal PC2 with your `lotus-worker`, as we
 
 ## Contributors
 
-| Contributor | Commits | Lines ± | Files Changed |
-|-------------|---------|---------|---------------|
-| Andrew Jackson (Ajax) | 161 | +24328/-12464 | 4148 |
-| Łukasz Magiera | 99 | +5238/-2690 | 260 |
-| Shrenuj Bansal | 27 | +3402/-1265 | 76 |
-| Fridrik Asmundsson | 15 | +1148/-307 | 58 |
-| Steven Allen | 15 | +674/-337 | 35 |
-| Ian Norden | 1 | +625/-3 | 4 |
-| Aarsh Shah | 4 | +227/-167 | 14 |
-| Phi | 19 | +190/-183 | 32 |
-| Aayush Rajasekaran | 3 | +291/-56 | 16 |
-| Mikers | 2 | +76/-262 | 19 |
-| Aayush | 14 | +111/-59 | 21 |
-| Friðrik Ásmundsson | 1 | +101/-1 | 2 |
-| Alejandro Criado-Pérez | 1 | +36/-36 | 27 |
-| Jie Hou | 5 | +36/-10 | 5 |
-| Florian RUEN | 2 | +24/-19 | 5 |
-| Phi-rjan | 3 | +20/-8 | 3 |
-| Icarus9913 | 1 | +11/-11 | 6 |
-| Jiaying Wang | 3 | +8/-7 | 5 |
-| guangwu | 1 | +3/-10 | 2 |
-| Marten Seemann | 1 | +6/-6 | 2 |
-| simlecode | 1 | +0/-6 | 2 |
-| GlacierWalrus | 2 | +0/-5 | 2 |
-| Anton Evangelatov | 1 | +2/-2 | 1 |
-| Ales Dumikau | 3 | +2/-2 | 3 |
-| renran | 1 | +2/-1 | 1 |
-| Volker Mische | 1 | +1/-1 | 1 |
-| Icarus Wu | 1 | +1/-1 | 1 |
-| Hubert | 1 | +1/-1 | 1 |
-| Aloxaf | 1 | +1/-1 | 1 |
-| Alejandro | 1 | +1/-1 | 1 |
-| lazavikmaria | 1 | +1/-0 | 1 |
+| Contributor            | Commits | Lines ±       | Files Changed |
+| ---------------------- | ------- | ------------- | ------------- |
+| Andrew Jackson (Ajax)  | 161     | +24328/-12464 | 4148          |
+| Łukasz Magiera         | 99      | +5238/-2690   | 260           |
+| Shrenuj Bansal         | 27      | +3402/-1265   | 76            |
+| Fridrik Asmundsson     | 15      | +1148/-307    | 58            |
+| Steven Allen           | 15      | +674/-337     | 35            |
+| Ian Norden             | 1       | +625/-3       | 4             |
+| Aarsh Shah             | 4       | +227/-167     | 14            |
+| Phi                    | 19      | +190/-183     | 32            |
+| Aayush Rajasekaran     | 3       | +291/-56      | 16            |
+| Mikers                 | 2       | +76/-262      | 19            |
+| Aayush                 | 14      | +111/-59      | 21            |
+| Friðrik Ásmundsson     | 1       | +101/-1       | 2             |
+| Alejandro Criado-Pérez | 1       | +36/-36       | 27            |
+| Jie Hou                | 5       | +36/-10       | 5             |
+| Florian RUEN           | 2       | +24/-19       | 5             |
+| Phi-rjan               | 3       | +20/-8        | 3             |
+| Icarus9913             | 1       | +11/-11       | 6             |
+| Jiaying Wang           | 3       | +8/-7         | 5             |
+| guangwu                | 1       | +3/-10        | 2             |
+| Marten Seemann         | 1       | +6/-6         | 2             |
+| simlecode              | 1       | +0/-6         | 2             |
+| GlacierWalrus          | 2       | +0/-5         | 2             |
+| Anton Evangelatov      | 1       | +2/-2         | 1             |
+| Ales Dumikau           | 3       | +2/-2         | 3             |
+| renran                 | 1       | +2/-1         | 1             |
+| Volker Mische          | 1       | +1/-1         | 1             |
+| Icarus Wu              | 1       | +1/-1         | 1             |
+| Hubert                 | 1       | +1/-1         | 1             |
+| Aloxaf                 | 1       | +1/-1         | 1             |
+| Alejandro              | 1       | +1/-1         | 1             |
+| lazavikmaria           | 1       | +1/-0         | 1             |
 
 # v1.25.1 / 2023-12-09
 
@@ -1805,32 +1805,32 @@ This feature release adds a dedicated `lotus-miner sectors unseal` command and A
 
 Contributors
 
-| Contributor | Commits | Lines ± | Files Changed |
-|-------------|---------|---------|---------------|
-| vyzo | 70 | +1990/-429 | 135 |
-| Alfonso de la Rocha | 25 | +814/-299 | 56 |
-| Steven Allen | 14 | +125/-539 | 28 |
-| Shrenuj Bansal | 13 | +482/-138 | 52 |
-| Aayush | 17 | +317/-301 | 90 |
-| Łukasz Magiera | 13 | +564/-26 | 16 |
-| Jennifer Wang | 7 | +401/-140 | 10 |
-| Fridrik Asmundsson | 14 | +315/-84 | 20 |
-| Jorropo | 2 | +139/-137 | 74 |
-| Mikers | 6 | +114/-43 | 14 |
-| Hector Sanjuan | 5 | +92/-44 | 5 |
-| Ales Dumikau | 1 | +117/-0 | 10 |
-| Mike Seiler | 4 | +51/-51 | 6 |
-| zenground0 | 6 | +33/-25 | 8 |
-| Phi | 8 | +32/-10 | 10 |
-| Aayush Rajasekaran | 1 | +1/-32 | 2 |
-| Ian Davis | 2 | +7/-10 | 3 |
-| Marcel Telka | 1 | +5/-7 | 1 |
-| ychiao | 1 | +8/-3 | 2 |
-| jennijuju | 1 | +4/-4 | 8 |
-| adlrocha | 2 | +2/-2 | 2 |
-| Jiaying Wang | 1 | +0/-4 | 1 |
-| ZenGround0 | 1 | +2/-1 | 2 |
-| Zeng Li | 1 | +1/-1 | 1 |
+| Contributor         | Commits | Lines ±    | Files Changed |
+| ------------------- | ------- | ---------- | ------------- |
+| vyzo                | 70      | +1990/-429 | 135           |
+| Alfonso de la Rocha | 25      | +814/-299  | 56            |
+| Steven Allen        | 14      | +125/-539  | 28            |
+| Shrenuj Bansal      | 13      | +482/-138  | 52            |
+| Aayush              | 17      | +317/-301  | 90            |
+| Łukasz Magiera      | 13      | +564/-26   | 16            |
+| Jennifer Wang       | 7       | +401/-140  | 10            |
+| Fridrik Asmundsson  | 14      | +315/-84   | 20            |
+| Jorropo             | 2       | +139/-137  | 74            |
+| Mikers              | 6       | +114/-43   | 14            |
+| Hector Sanjuan      | 5       | +92/-44    | 5             |
+| Ales Dumikau        | 1       | +117/-0    | 10            |
+| Mike Seiler         | 4       | +51/-51    | 6             |
+| zenground0          | 6       | +33/-25    | 8             |
+| Phi                 | 8       | +32/-10    | 10            |
+| Aayush Rajasekaran  | 1       | +1/-32     | 2             |
+| Ian Davis           | 2       | +7/-10     | 3             |
+| Marcel Telka        | 1       | +5/-7      | 1             |
+| ychiao              | 1       | +8/-3      | 2             |
+| jennijuju           | 1       | +4/-4      | 8             |
+| adlrocha            | 2       | +2/-2      | 2             |
+| Jiaying Wang        | 1       | +0/-4      | 1             |
+| ZenGround0          | 1       | +2/-1      | 2             |
+| Zeng Li             | 1       | +1/-1      | 1             |
 
 # v1.23.0 / 2023-04-21
 
@@ -2228,49 +2228,49 @@ The `lotus-miner sector list` is now running in parallel - which should speed up
 
 ## Contributors
 
-| Contributor | Commits | Lines ± | Files Changed |
-|-------------|---------|---------|---------------|
-| Hannah Howard | 2 | +2909/-6026 | 84 |
-| Łukasz Magiera | 42 | +2967/-1848 | 95 |
-| Steven Allen | 20 | +1703/-1345 | 88 |
-| Alfonso de la Rocha | 17 | +823/-1808 | 86 |
-| Peter Rabbitson | 9 | +1957/-219 | 34 |
-| Geoff Stuart | 12 | +818/-848 | 29 |
-| hannahhoward | 5 | +507/-718 | 36 |
-| Hector Sanjuan | 6 | +443/-726 | 35 |
-| Kevin Li | 1 | +1124/-14 | 22 |
-| zenground0 | 30 | +791/-269 | 88 |
-| frrist | 1 | +992/-16 | 13 |
-| Travis Person | 4 | +837/-53 | 24 |
-| Phi | 20 | +622/-254 | 34 |
-| Ian Davis | 7 | +35/-729 | 20 |
-| Aayush | 10 | +378/-177 | 40 |
-| Raúl Kripalani | 15 | +207/-138 | 19 |
-| Arsenii Petrovich | 7 | +248/-94 | 30 |
-| ZenGround0 | 5 | +238/-39 | 15 |
-| Neel Virdy | 1 | +109/-107 | 58 |
-| ychiao | 1 | +135/-39 | 3 |
-| Jorropo | 2 | +87/-82 | 67 |
-| Marten Seemann | 8 | +69/-64 | 17 |
-| Rod Vagg | 1 | +55/-16 | 3 |
-| Masih H. Derkani | 3 | +39/-27 | 12 |
-| raulk | 2 | +30/-29 | 5 |
-| dependabot[bot] | 4 | +37/-17 | 8 |
-| beck | 2 | +38/-2 | 2 |
-| Jennifer Wang | 4 | +20/-19 | 19 |
-| Richard Guan | 3 | +28/-8 | 5 |
-| omahs | 7 | +14/-14 | 7 |
-| dirkmc | 2 | +19/-7 | 6 |
-| David Choi | 2 | +16/-5 | 2 |
-| Mike Greenberg | 1 | +18/-1 | 1 |
-| Adin Schmahmann | 1 | +19/-0 | 2 |
-| Phi-rjan | 5 | +12/-4 | 5 |
-| Dirk McCormick | 2 | +6/-6 | 3 |
-| Aayush Rajasekaran | 2 | +9/-3 | 2 |
-| Jiaying Wang | 5 | +6/-4 | 5 |
-| Anjor Kanekar | 1 | +5/-5 | 1 |
-| vyzo | 1 | +3/-3 | 2 |
-| 0x5459 | 1 | +1/-1 | 1 |
+| Contributor         | Commits | Lines ±     | Files Changed |
+| ------------------- | ------- | ----------- | ------------- |
+| Hannah Howard       | 2       | +2909/-6026 | 84            |
+| Łukasz Magiera      | 42      | +2967/-1848 | 95            |
+| Steven Allen        | 20      | +1703/-1345 | 88            |
+| Alfonso de la Rocha | 17      | +823/-1808  | 86            |
+| Peter Rabbitson     | 9       | +1957/-219  | 34            |
+| Geoff Stuart        | 12      | +818/-848   | 29            |
+| hannahhoward        | 5       | +507/-718   | 36            |
+| Hector Sanjuan      | 6       | +443/-726   | 35            |
+| Kevin Li            | 1       | +1124/-14   | 22            |
+| zenground0          | 30      | +791/-269   | 88            |
+| frrist              | 1       | +992/-16    | 13            |
+| Travis Person       | 4       | +837/-53    | 24            |
+| Phi                 | 20      | +622/-254   | 34            |
+| Ian Davis           | 7       | +35/-729    | 20            |
+| Aayush              | 10      | +378/-177   | 40            |
+| Raúl Kripalani      | 15      | +207/-138   | 19            |
+| Arsenii Petrovich   | 7       | +248/-94    | 30            |
+| ZenGround0          | 5       | +238/-39    | 15            |
+| Neel Virdy          | 1       | +109/-107   | 58            |
+| ychiao              | 1       | +135/-39    | 3             |
+| Jorropo             | 2       | +87/-82     | 67            |
+| Marten Seemann      | 8       | +69/-64     | 17            |
+| Rod Vagg            | 1       | +55/-16     | 3             |
+| Masih H. Derkani    | 3       | +39/-27     | 12            |
+| raulk               | 2       | +30/-29     | 5             |
+| dependabot[bot]     | 4       | +37/-17     | 8             |
+| beck                | 2       | +38/-2      | 2             |
+| Jennifer Wang       | 4       | +20/-19     | 19            |
+| Richard Guan        | 3       | +28/-8      | 5             |
+| omahs               | 7       | +14/-14     | 7             |
+| dirkmc              | 2       | +19/-7      | 6             |
+| David Choi          | 2       | +16/-5      | 2             |
+| Mike Greenberg      | 1       | +18/-1      | 1             |
+| Adin Schmahmann     | 1       | +19/-0      | 2             |
+| Phi-rjan            | 5       | +12/-4      | 5             |
+| Dirk McCormick      | 2       | +6/-6       | 3             |
+| Aayush Rajasekaran  | 2       | +9/-3       | 2             |
+| Jiaying Wang        | 5       | +6/-4       | 5             |
+| Anjor Kanekar       | 1       | +5/-5       | 1             |
+| vyzo                | 1       | +3/-3       | 2             |
+| 0x5459              | 1       | +1/-1       | 1             |
 
 # v1.22.1 / 2023-04-23
 
@@ -2713,30 +2713,30 @@ If you have any questions or concerns, please raise them in [Lotus discussion](h
 
 ## Contributors
 
-| Contributor | Commits | Lines ± | Files Changed |
-|-------------|---------|---------|---------------|
-| Geoff Stuart | 69 | +4745/-19478 | 405 |
-| Shrenuj Bansal | 39 | +5257/-2183 | 243 |
-| Łukasz Magiera | 32 | +2763/-730 | 169 |
-| Aayush | 47 | +1439/-1138 | 157 |
-| Ian Davis | 21 | +556/-1065 | 41 |
-| Rod Vagg | 5 | +657/-320 | 18 |
-| jennijuju | 4 | +632/-317 | 6 |
-| Aayush Rajasekaran | 13 | +700/-135 | 18 |
-| Jennifer Wang | 14 | +740/-54 | 25 |
-| ZenGround0 | 1 | +193/-195 | 14 |
-| Hannah Howard | 4 | +138/-122 | 52 |
-| Steven Allen | 4 | +105/-24 | 11 |
-| zenground0 | 9 | +109/-16 | 14 |
-| Peter Rabbitson | 1 | +27/-23 | 3 |
-| hannahhoward | 2 | +49/-0 | 2 |
-| Airenas Vaičiūnas | 2 | +31/-16 | 2 |
-| simlecode | 6 | +19/-10 | 12 |
-| Phi | 5 | +16/-10 | 7 |
-| sectrgt | 2 | +18/-0 | 2 |
-| Jiaying Wang | 2 | +4/-4 | 3 |
-| Rob Quist | 1 | +3/-1 | 1 |
-| Jakub Sztandera | 1 | +1/-1 | 1 |
+| Contributor        | Commits | Lines ±      | Files Changed |
+| ------------------ | ------- | ------------ | ------------- |
+| Geoff Stuart       | 69      | +4745/-19478 | 405           |
+| Shrenuj Bansal     | 39      | +5257/-2183  | 243           |
+| Łukasz Magiera     | 32      | +2763/-730   | 169           |
+| Aayush             | 47      | +1439/-1138  | 157           |
+| Ian Davis          | 21      | +556/-1065   | 41            |
+| Rod Vagg           | 5       | +657/-320    | 18            |
+| jennijuju          | 4       | +632/-317    | 6             |
+| Aayush Rajasekaran | 13      | +700/-135    | 18            |
+| Jennifer Wang      | 14      | +740/-54     | 25            |
+| ZenGround0         | 1       | +193/-195    | 14            |
+| Hannah Howard      | 4       | +138/-122    | 52            |
+| Steven Allen       | 4       | +105/-24     | 11            |
+| zenground0         | 9       | +109/-16     | 14            |
+| Peter Rabbitson    | 1       | +27/-23      | 3             |
+| hannahhoward       | 2       | +49/-0       | 2             |
+| Airenas Vaičiūnas  | 2       | +31/-16      | 2             |
+| simlecode          | 6       | +19/-10      | 12            |
+| Phi                | 5       | +16/-10      | 7             |
+| sectrgt            | 2       | +18/-0       | 2             |
+| Jiaying Wang       | 2       | +4/-4        | 3             |
+| Rob Quist          | 1       | +3/-1        | 1             |
+| Jakub Sztandera    | 1       | +1/-1        | 1             |
 
 # 1.18.2 / 2022-12-10
 
@@ -2868,25 +2868,25 @@ If you have any questions or concerns, please raise them in [Lotus discussion](h
 
 ## Contributors
 
-| Contributor | Commits | Lines ± | Files Changed |
-|-------------|---------|---------|---------------|
-| @geoff-vball | 73 | +14533/-19712 | 509 |
-| @arajasek | 16 | +2230/-303 | 49 |
-| @arajasek | 29 | +701/-297 | 117 |
-| @magik6k | 5 | +429/-135 | 45 |
-| @Frrist | 1 | +246/-203 | 25 |
-| @stebalien | 2 | +323/-2 | 6 |
-| @shrenujbansal  | 3 | +176/-61 | 10 |
-| @ZenGround0 | 2 | +78/-38 | 5 |
-| @jennijuju | 8 | +97/-18 | 16 |
-| @simlecode | 5 | +18/-9 | 11 |
-| Kevin Li | 1 | +7/-0 | 1 |
-| @zenground0 | 2 | +3/-3 | 3 |
-| @jennijuju | 1 | +3/-3 | 2 |
-| Rod Vagg | 1 | +3/-2 | 2 |
-| @jennijuju | 1 | +2/-2 | 2 |
-| Peter Rabbitson | 1 | +3/-0 | 1 |
-| Jakub Sztandera | 1 | +1/-1 | 1 |
+| Contributor     | Commits | Lines ±       | Files Changed |
+| --------------- | ------- | ------------- | ------------- |
+| @geoff-vball    | 73      | +14533/-19712 | 509           |
+| @arajasek       | 16      | +2230/-303    | 49            |
+| @arajasek       | 29      | +701/-297     | 117           |
+| @magik6k        | 5       | +429/-135     | 45            |
+| @Frrist         | 1       | +246/-203     | 25            |
+| @stebalien      | 2       | +323/-2       | 6             |
+| @shrenujbansal  | 3       | +176/-61      | 10            |
+| @ZenGround0     | 2       | +78/-38       | 5             |
+| @jennijuju      | 8       | +97/-18       | 16            |
+| @simlecode      | 5       | +18/-9        | 11            |
+| Kevin Li        | 1       | +7/-0         | 1             |
+| @zenground0     | 2       | +3/-3         | 3             |
+| @jennijuju      | 1       | +3/-3         | 2             |
+| Rod Vagg        | 1       | +3/-2         | 2             |
+| @jennijuju      | 1       | +2/-2         | 2             |
+| Peter Rabbitson | 1       | +3/-0         | 1             |
+| Jakub Sztandera | 1       | +1/-1         | 1             |
 
 # v1.17.2 / 2022-10-05
 
@@ -3000,31 +3000,31 @@ In v1.17.2 the default PropagationDelay has been raised from 6 seconds -> 10 sec
 
 Contributors
 
-| Contributor | Commits | Lines ± | Files Changed |
-|-------------|---------|---------|---------------|
-| Aayush Rajasekaran | 8 | +23010/-2122 | 109 |
-| Aayush | 15 | +6168/-2679 | 360 |
-| Łukasz Magiera | 69 | +6462/-2137 | 606 |
-| Geoff Stuart | 19 | +3080/-1177 | 342 |
-| Marco Munizaga | 16 | +543/-424 | 41 |
-| Shrenuj Bansal | 30 | +485/-419 | 88 |
-| LexLuthr | 3 | +498/-12 | 19 |
-| Phi | 15 | +330/-70 | 17 |
-| Jennifer Wang | 7 | +132/-12 | 11 |
-| TippyFlitsUK | 1 | +43/-45 | 12 |
-| Steven Allen | 1 | +18/-28 | 2 |
-| Frrist | 1 | +19/-11 | 2 |
-| Eng Zer Jun | 1 | +14/-11 | 6 |
-| Dirk McCormick | 2 | +23/-1 | 3 |
-| Ian Davis | 3 | +7/-9 | 3 |
-| Masih H. Derkani | 1 | +11/-0 | 1 |
-| Anton Evangelatov | 1 | +11/-0 | 1 |
-| Yu | 2 | +4/-4 | 5 |
-| Hannah Howard | 1 | +4/-4 | 1 |
-| Phi-rjan | 1 | +1/-2 | 1 |
-| Jiaying Wang | 1 | +3/-0 | 1 |
-| nujz | 1 | +1/-1 | 1 |
-| Rob Quist | 1 | +1/-1 | 1 |
+| Contributor        | Commits | Lines ±      | Files Changed |
+| ------------------ | ------- | ------------ | ------------- |
+| Aayush Rajasekaran | 8       | +23010/-2122 | 109           |
+| Aayush             | 15      | +6168/-2679  | 360           |
+| Łukasz Magiera     | 69      | +6462/-2137  | 606           |
+| Geoff Stuart       | 19      | +3080/-1177  | 342           |
+| Marco Munizaga     | 16      | +543/-424    | 41            |
+| Shrenuj Bansal     | 30      | +485/-419    | 88            |
+| LexLuthr           | 3       | +498/-12     | 19            |
+| Phi                | 15      | +330/-70     | 17            |
+| Jennifer Wang      | 7       | +132/-12     | 11            |
+| TippyFlitsUK       | 1       | +43/-45      | 12            |
+| Steven Allen       | 1       | +18/-28      | 2             |
+| Frrist             | 1       | +19/-11      | 2             |
+| Eng Zer Jun        | 1       | +14/-11      | 6             |
+| Dirk McCormick     | 2       | +23/-1       | 3             |
+| Ian Davis          | 3       | +7/-9        | 3             |
+| Masih H. Derkani   | 1       | +11/-0       | 1             |
+| Anton Evangelatov  | 1       | +11/-0       | 1             |
+| Yu                 | 2       | +4/-4        | 5             |
+| Hannah Howard      | 1       | +4/-4        | 1             |
+| Phi-rjan           | 1       | +1/-2        | 1             |
+| Jiaying Wang       | 1       | +3/-0        | 1             |
+| nujz               | 1       | +1/-1        | 1             |
+| Rob Quist          | 1       | +1/-1        | 1             |
 
 # v1.17.1 / 2022-09-06
 
@@ -3105,28 +3105,28 @@ This is an optional release of Lotus. This release introduces the [Splitstore v2
 
 Contributors
 
-| Contributor | Commits | Lines ± | Files Changed |
-|-------------|---------|---------|---------------|
-| Łukasz Magiera | 34 | +2329/-317 | 163 |
-| ZenGround0 | 2 | +1527/-89 | 38 |
-| Ian Davis | 14 | +751/-232 | 30 |
-| LexLuthr | 17 | +480/-225 | 63 |
-| TheMenko | 4 | +323/-61 | 5 |
-| Aayush | 10 | +285/-92 | 30 |
-| beck | 3 | +143/-93 | 3 |
-| Steven Allen | 4 | +95/-75 | 9 |
-| zenground0 | 5 | +44/-116 | 9 |
-| Shrenuj Bansal | 7 | +136/-7 | 16 |
-| Patrick Deuse | 3 | +76/-57 | 3 |
-| Jennifer Wang | 3 | +6/-52 | 11 |
-| zl | 2 | +20/-16 | 2 |
-| Aayush Rajasekaran | 2 | +6/-6 | 2 |
-| Clint Armstrong | 1 | +7/-3 | 1 |
-| Cory Schwartz | 2 | +9/-0 | 2 |
-| Jorropo | 1 | +3/-2 | 2 |
-| Geoff Stuart | 1 | +5/-0 | 1 |
-| Frank Y | 1 | +2/-2 | 2 |
-| Aloxaf | 1 | +2/-2 | 1 |
+| Contributor        | Commits | Lines ±    | Files Changed |
+| ------------------ | ------- | ---------- | ------------- |
+| Łukasz Magiera     | 34      | +2329/-317 | 163           |
+| ZenGround0         | 2       | +1527/-89  | 38            |
+| Ian Davis          | 14      | +751/-232  | 30            |
+| LexLuthr           | 17      | +480/-225  | 63            |
+| TheMenko           | 4       | +323/-61   | 5             |
+| Aayush             | 10      | +285/-92   | 30            |
+| beck               | 3       | +143/-93   | 3             |
+| Steven Allen       | 4       | +95/-75    | 9             |
+| zenground0         | 5       | +44/-116   | 9             |
+| Shrenuj Bansal     | 7       | +136/-7    | 16            |
+| Patrick Deuse      | 3       | +76/-57    | 3             |
+| Jennifer Wang      | 3       | +6/-52     | 11            |
+| zl                 | 2       | +20/-16    | 2             |
+| Aayush Rajasekaran | 2       | +6/-6      | 2             |
+| Clint Armstrong    | 1       | +7/-3      | 1             |
+| Cory Schwartz      | 2       | +9/-0      | 2             |
+| Jorropo            | 1       | +3/-2      | 2             |
+| Geoff Stuart       | 1       | +5/-0      | 1             |
+| Frank Y            | 1       | +2/-2      | 2             |
+| Aloxaf             | 1       | +2/-2      | 1             |
 
 
 # Lotus changelog
@@ -3250,59 +3250,59 @@ PSA: Markets related features, enhancements and fixes is now lower priority for 
  
 Contributors
 
-| Contributor | Commits | Lines ± | Files Changed |
-|-------------|---------|---------|---------------|
-| Masih H. Derkani | 153 | +15515/-16832 | 660 |
-| Łukasz Magiera | 92 | +10429/-8024 | 1580 |
-| Andrew Gillis | 43 | +4149/-1765 | 208 |
-| Jennifer Wang | 10 | +1441/-1138 | 34 |
-| Geoff Stuart | 18 | +1348/-859 | 113 |
-| dirkmc | 11 | +1827/-210 | 70 |
-| Aayush | 21 | +1134/-894 | 69 |
-| Steven Allen | 9 | +743/-889 | 66 |
-| Marco Munizaga | 15 | +990/-252 | 36 |
-| gammazero | 47 | +681/-411 | 104 |
-| Will | 4 | +514/-246 | 29 |
-| web3-bot | 15 | +409/-348 | 20 |
-| Steven Fraser | 1 | +671/-0 | 36 |
-| Cory Schwartz | 27 | +520/-89 | 36 |
-| Hannah Howard | 3 | +318/-105 | 8 |
-| Piotr Galar | 2 | +337/-59 | 7 |
-| swift-mx | 14 | +264/-131 | 17 |
-| vyzo | 7 | +357/-15 | 16 |
-| Petar Maymounkov | 6 | +221/-23 | 14 |
-| LexLuthr | 7 | +182/-21 | 14 |
-| Aayush Rajasekaran | 5 | +97/-70 | 33 |
-| Raúl Kripalani | 5 | +87/-45 | 7 |
-| unknown | 1 | +114/-0 | 8 |
-| sti-bot | 44 | +54/-60 | 44 |
-| Aarsh Shah | 2 | +61/-50 | 8 |
-| Lucas Molas | 1 | +74/-27 | 3 |
-| zenground0 | 8 | +80/-18 | 14 |
-| Dirk McCormick | 3 | +52/-33 | 8 |
-| frank | 3 | +73/-7 | 3 |
-| Will Scott | 4 | +45/-11 | 5 |
-| kaola526 | 5 | +44/-11 | 5 |
-| dependabot[bot] | 3 | +16/-10 | 8 |
-| zl | 1 | +15/-4 | 4 |
-| Phi | 5 | +12/-6 | 6 |
-| Marcin Rataj | 1 | +11/-7 | 1 |
-| github-actions[bot] | 7 | +8/-8 | 7 |
-| Anton Evangelatov | 2 | +13/-0 | 4 |
-| Nicolas Gimenez | 1 | +12/-0 | 1 |
-| Marten Seemann | 2 | +5/-7 | 5 |
-| Chris Harden | 1 | +10/-0 | 2 |
-| jennijuju | 1 | +4/-4 | 7 |
-| Travis Person | 2 | +2/-6 | 2 |
-| Rod Vagg | 1 | +3/-3 | 2 |
-| Rob Quist | 1 | +3/-3 | 1 |
-| Jiaying Wang | 1 | +2/-3 | 2 |
-| zengroundumbass | 1 | +3/-1 | 1 |
-| lifei | 1 | +1/-1 | 1 |
-| Mike | 1 | +2/-0 | 1 |
-| Hubert | 1 | +1/-1 | 1 |
-| Daniel N | 1 | +1/-1 | 1 |
-| BMZ | 1 | +1/-1 | 1 |
+| Contributor         | Commits | Lines ±       | Files Changed |
+| ------------------- | ------- | ------------- | ------------- |
+| Masih H. Derkani    | 153     | +15515/-16832 | 660           |
+| Łukasz Magiera      | 92      | +10429/-8024  | 1580          |
+| Andrew Gillis       | 43      | +4149/-1765   | 208           |
+| Jennifer Wang       | 10      | +1441/-1138   | 34            |
+| Geoff Stuart        | 18      | +1348/-859    | 113           |
+| dirkmc              | 11      | +1827/-210    | 70            |
+| Aayush              | 21      | +1134/-894    | 69            |
+| Steven Allen        | 9       | +743/-889     | 66            |
+| Marco Munizaga      | 15      | +990/-252     | 36            |
+| gammazero           | 47      | +681/-411     | 104           |
+| Will                | 4       | +514/-246     | 29            |
+| web3-bot            | 15      | +409/-348     | 20            |
+| Steven Fraser       | 1       | +671/-0       | 36            |
+| Cory Schwartz       | 27      | +520/-89      | 36            |
+| Hannah Howard       | 3       | +318/-105     | 8             |
+| Piotr Galar         | 2       | +337/-59      | 7             |
+| swift-mx            | 14      | +264/-131     | 17            |
+| vyzo                | 7       | +357/-15      | 16            |
+| Petar Maymounkov    | 6       | +221/-23      | 14            |
+| LexLuthr            | 7       | +182/-21      | 14            |
+| Aayush Rajasekaran  | 5       | +97/-70       | 33            |
+| Raúl Kripalani      | 5       | +87/-45       | 7             |
+| unknown             | 1       | +114/-0       | 8             |
+| sti-bot             | 44      | +54/-60       | 44            |
+| Aarsh Shah          | 2       | +61/-50       | 8             |
+| Lucas Molas         | 1       | +74/-27       | 3             |
+| zenground0          | 8       | +80/-18       | 14            |
+| Dirk McCormick      | 3       | +52/-33       | 8             |
+| frank               | 3       | +73/-7        | 3             |
+| Will Scott          | 4       | +45/-11       | 5             |
+| kaola526            | 5       | +44/-11       | 5             |
+| dependabot[bot]     | 3       | +16/-10       | 8             |
+| zl                  | 1       | +15/-4        | 4             |
+| Phi                 | 5       | +12/-6        | 6             |
+| Marcin Rataj        | 1       | +11/-7        | 1             |
+| github-actions[bot] | 7       | +8/-8         | 7             |
+| Anton Evangelatov   | 2       | +13/-0        | 4             |
+| Nicolas Gimenez     | 1       | +12/-0        | 1             |
+| Marten Seemann      | 2       | +5/-7         | 5             |
+| Chris Harden        | 1       | +10/-0        | 2             |
+| jennijuju           | 1       | +4/-4         | 7             |
+| Travis Person       | 2       | +2/-6         | 2             |
+| Rod Vagg            | 1       | +3/-3         | 2             |
+| Rob Quist           | 1       | +3/-3         | 1             |
+| Jiaying Wang        | 1       | +2/-3         | 2             |
+| zengroundumbass     | 1       | +3/-1         | 1             |
+| lifei               | 1       | +1/-1         | 1             |
+| Mike                | 1       | +2/-0         | 1             |
+| Hubert              | 1       | +1/-1         | 1             |
+| Daniel N            | 1       | +1/-1         | 1             |
+| BMZ                 | 1       | +1/-1         | 1             |
 
 # 1.16.1 / 2022-07-07
 
@@ -3397,30 +3397,30 @@ All deal proposals with non-utf8 string as the label in the metadata store will 
 
 ## Contributors
 
-| Contributor | Commits | Lines ± | Files Changed |
-|-------------|---------|---------|---------------|
-| @geoff-vball | 37 | +10565/-8454 | 150 |
-| @arajasek | 33 | +7964/-6340 | 473 |
-| @arajasek | 37 | +6220/-6976 | 457 |
-| @vyzo | 135 | +7287/-5380 | 546 |
-| @ZenGround0 | 19 | +5958/-2920 | 226 |
-| @stebalien | 18 | +1566/-1101 | 116 |
-| Alex | 5 | +323/-2304 | 32 |
-| @zenground0 | 9 | +583/-358 | 56 |
-| @jennijuju | 5 | +853/-27 | 19 |
-| @jennijuju | 24 | +392/-201 | 60 |
-| Marco Munizaga | 3 | +236/-83 | 5 |
-| @raulk| 9 | +93/-15 | 15 |
-| @travisperson | 3 | +37/-37 | 12 |
-| @Kubuxu | 1 | +41/-5 | 1 |
-| @koalacxr | 1 | +29/-13 | 3 |
-| @gammazero | 2 | +18/-10 | 4 |
-| Peter Rabbitson | 1 | +5/-3 | 1 |
-| Steve Loeppky | 1 | +6/-0 | 1 |
-| @masih | 1 | +3/-3 | 2 |
-| @magik6k | 1 | +4/-0 | 1 |
-| @jennijuju | 1 | +2/-2 | 1 |
-| tian zhou | 1 | +1/-1 | 1 |
+| Contributor     | Commits | Lines ±      | Files Changed |
+| --------------- | ------- | ------------ | ------------- |
+| @geoff-vball    | 37      | +10565/-8454 | 150           |
+| @arajasek       | 33      | +7964/-6340  | 473           |
+| @arajasek       | 37      | +6220/-6976  | 457           |
+| @vyzo           | 135     | +7287/-5380  | 546           |
+| @ZenGround0     | 19      | +5958/-2920  | 226           |
+| @stebalien      | 18      | +1566/-1101  | 116           |
+| Alex            | 5       | +323/-2304   | 32            |
+| @zenground0     | 9       | +583/-358    | 56            |
+| @jennijuju      | 5       | +853/-27     | 19            |
+| @jennijuju      | 24      | +392/-201    | 60            |
+| Marco Munizaga  | 3       | +236/-83     | 5             |
+| @raulk          | 9       | +93/-15      | 15            |
+| @travisperson   | 3       | +37/-37      | 12            |
+| @Kubuxu         | 1       | +41/-5       | 1             |
+| @koalacxr       | 1       | +29/-13      | 3             |
+| @gammazero      | 2       | +18/-10      | 4             |
+| Peter Rabbitson | 1       | +5/-3        | 1             |
+| Steve Loeppky   | 1       | +6/-0        | 1             |
+| @masih          | 1       | +3/-3        | 2             |
+| @magik6k        | 1       | +4/-0        | 1             |
+| @jennijuju      | 1       | +2/-2        | 1             |
+| tian zhou       | 1       | +1/-1        | 1             |
 
 # 1.15.3 / 2022-05-31
 
@@ -3474,25 +3474,25 @@ This is an optional release of lotus that include new APIs, some improvements an
 - chore: bundle: remove wrongly committed bundle cars #8763
 ## Contributors
 
-| Contributor | Commits | Lines ± | Files Changed |
-|-------------|---------|---------|---------------|
-| @stebalien | 4 | +607/-95 | 19 |
-| @magik6k  | 9 | +550/-37 | 43 |
-| @geoff-vball | 5 | +279/-219 | 27 |
-| @simlecode | 1 | +306/-39 | 20 |
-| @arajasek | 1 | +256/-34 | 10 |
-| @zenground0 | 11 | +214/-66 | 31 |
-| @arajasek | 2 | +149/-99 | 8 |
-| @vyzo | 3 | +125/-81 | 4 |
-| @Masih| 1 | +134/-15 | 7 |
-| @travisperson | 3 | +24/-32 | 6 |
-| @Rjan | 6 | +16/-16 | 9 |
-| @jennijuju | 3 | +9/-8 | 15 |
-| Rob Quist | 3 | +12/-4 | 3 |
-| @Icarus9913 | 1 | +3/-3 | 3 |
-| @swift-mx | 1 | +3/-0 | 1 |
-| @Phi-rjan | 1 | +1/-1 | 1 |
-| @lifei | 1 | +1/-0 | 1 |
+| Contributor   | Commits | Lines ±   | Files Changed |
+| ------------- | ------- | --------- | ------------- |
+| @stebalien    | 4       | +607/-95  | 19            |
+| @magik6k      | 9       | +550/-37  | 43            |
+| @geoff-vball  | 5       | +279/-219 | 27            |
+| @simlecode    | 1       | +306/-39  | 20            |
+| @arajasek     | 1       | +256/-34  | 10            |
+| @zenground0   | 11      | +214/-66  | 31            |
+| @arajasek     | 2       | +149/-99  | 8             |
+| @vyzo         | 3       | +125/-81  | 4             |
+| @Masih        | 1       | +134/-15  | 7             |
+| @travisperson | 3       | +24/-32   | 6             |
+| @Rjan         | 6       | +16/-16   | 9             |
+| @jennijuju    | 3       | +9/-8     | 15            |
+| Rob Quist     | 3       | +12/-4    | 3             |
+| @Icarus9913   | 1       | +3/-3     | 3             |
+| @swift-mx     | 1       | +3/-0     | 1             |
+| @Phi-rjan     | 1       | +1/-1     | 1             |
+| @lifei        | 1       | +1/-0     | 1             |
 
 
 # 1.15.2 / 2022-05-06
@@ -3612,39 +3612,39 @@ The Filecoin Network introduced Snap Deal with the network v15 OhSnap upgrade, a
 
 ## Contributors
 
-| Contributor | Commits | Lines ± | Files Changed |
-|-------------|---------|---------|---------------|
-| @magik6k | 95 | +5147/-2922 | 401 |
-| @mz-sirius | 3 | +1789/-546 | 48 |
-| @nonsense  | 11 | +777/-567 | 121 |
-| @arajasek | 11 | +336/-231 | 28 |
-| Darko Brdareski | 1 | +463/-13 | 95 |
-| @coryschwartz | 11 | +147/-217 | 13 |
-| spark8899 | 2 | +300/-0 | 2 |
-| @zenground0 | 2 | +6/-193 | 7 |
-| Eng Zer Jun | 1 | +31/-158 | 11 |
-| Kevin Li | 2 | +174/-0 | 14 |
-| @arajasek | 5 | +85/-86 | 18 |
-| @jennijuju | 1 | +0/-119 | 3 |
-| @jennijuju | 1 | +0/-98 | 6 |
-| @raulk | 1 | +60/-1 | 1 |
-| @frrist | 1 | +56/-0 | 2 |
-| @vyzo | 3 | +18/-16 | 5 |
-| @Masih | 3 | +29/-4 | 3 |
-| @jennijuju | 4 | +18/-11 | 11 |
-| @hannahhoward | 1 | +13/-10 | 2 |
-| @dirkmc | 1 | +21/-1 | 1 |
-| koalacxr | 1 | +10/-11 | 4 |
-| Aarsh Shah | 1 | +19/-1 | 1 |
-| @Rjan | 6 | +10/-8 | 7 |
-| @zl | 1 | +7/-1 | 1 |
-| KAYUII | 1 | +3/-2 | 1 |
-| @simlecode | 1 | +4/-0 | 1 |
-| @dirkmc | 1 | +1/-3 | 1 |
-| Jerry | 1 | +3/-0 | 1 |
-| @steblian | 1 | +1/-1 | 1 |
-| Geoff Stuart | 1 | +1/-0 | 1 |
-| Florian Ruen | 1 | +0/-1 | 1 |
+| Contributor     | Commits | Lines ±     | Files Changed |
+| --------------- | ------- | ----------- | ------------- |
+| @magik6k        | 95      | +5147/-2922 | 401           |
+| @mz-sirius      | 3       | +1789/-546  | 48            |
+| @nonsense       | 11      | +777/-567   | 121           |
+| @arajasek       | 11      | +336/-231   | 28            |
+| Darko Brdareski | 1       | +463/-13    | 95            |
+| @coryschwartz   | 11      | +147/-217   | 13            |
+| spark8899       | 2       | +300/-0     | 2             |
+| @zenground0     | 2       | +6/-193     | 7             |
+| Eng Zer Jun     | 1       | +31/-158    | 11            |
+| Kevin Li        | 2       | +174/-0     | 14            |
+| @arajasek       | 5       | +85/-86     | 18            |
+| @jennijuju      | 1       | +0/-119     | 3             |
+| @jennijuju      | 1       | +0/-98      | 6             |
+| @raulk          | 1       | +60/-1      | 1             |
+| @frrist         | 1       | +56/-0      | 2             |
+| @vyzo           | 3       | +18/-16     | 5             |
+| @Masih          | 3       | +29/-4      | 3             |
+| @jennijuju      | 4       | +18/-11     | 11            |
+| @hannahhoward   | 1       | +13/-10     | 2             |
+| @dirkmc         | 1       | +21/-1      | 1             |
+| koalacxr        | 1       | +10/-11     | 4             |
+| Aarsh Shah      | 1       | +19/-1      | 1             |
+| @Rjan           | 6       | +10/-8      | 7             |
+| @zl             | 1       | +7/-1       | 1             |
+| KAYUII          | 1       | +3/-2       | 1             |
+| @simlecode      | 1       | +4/-0       | 1             |
+| @dirkmc         | 1       | +1/-3       | 1             |
+| Jerry           | 1       | +3/-0       | 1             |
+| @steblian       | 1       | +1/-1       | 1             |
+| Geoff Stuart    | 1       | +1/-0       | 1             |
+| Florian Ruen    | 1       | +0/-1       | 1             |
 
 # 1.15.1 / 2022-04-07
 
@@ -3855,38 +3855,38 @@ This is an optional release with retrieval improvements(client side), SP ux with
 - Disable appimage ([filecoin-project/lotus#7707](https://github.com/filecoin-project/lotus/pull/7707))
 
 ## Contributors
-| Contributor | Commits | Lines ± | Files Changed |
-|-------------|---------|---------|---------------|
-| @arajasek | 73 | +7232/-2778 | 386 |
-| @zenground0 | 27 | +5604/-1049 | 219 |
-| @vyzo | 118 | +4356/-1470 | 253 |
-| @zl | 1 | +3725/-309 | 8 |
-| @dirkmc | 7 | +1392/-1110 | 61 |
-| arajasek | 37 | +221/-1329 | 90 |
-| @magik6k | 33 | +1138/-336 | 101 |
-| @whyrusleeping | 2 | +483/-585 | 28 |
-| Darko Brdareski | 14 | +725/-276 | 154 |
-| @rvagg | 2 | +43/-947 | 10 |
-| @hannahhoward | 5 | +436/-335 | 31 |
-| @hannahhoward | 12 | +507/-133 | 37 |
-| @jennijuju | 27 | +333/-178 | 54 |
-| @TheMenko | 8 | +237/-179 | 17 |
-| c r | 2 | +227/-45 | 12 |
-| @dirkmck | 12 | +188/-40 | 27 |
-| @ribasushi | 3 | +128/-62 | 3 |
-| @raulk | 6 | +128/-49 | 9 |
-| @Whyrusleeping | 1 | +76/-70 | 8 |
-| @Stebalien | 1 | +55/-37 | 1 |
-| @jennijuju | 11 | +29/-16 | 11 |
-| @aarshkshah1992 | 1 | +23/-19 | 5 |
-| @travisperson | 1 | +0/-18 | 2 |
-| @gstuart | 3 | +12/-1 | 3 |
-| @coryschwartz | 4 | +5/-6 | 4 |
-| @pefish | 1 | +4/-3 | 1 |
-| @Kubuxu | 1 | +5/-2 | 2 |
-| Colin Kennedy | 1 | +4/-2 | 1 |
-| Rob Quist | 1 | +2/-2 | 1 |
-| @shotcollin | 1 | +1/-1 | 1 |
+| Contributor     | Commits | Lines ±     | Files Changed |
+| --------------- | ------- | ----------- | ------------- |
+| @arajasek       | 73      | +7232/-2778 | 386           |
+| @zenground0     | 27      | +5604/-1049 | 219           |
+| @vyzo           | 118     | +4356/-1470 | 253           |
+| @zl             | 1       | +3725/-309  | 8             |
+| @dirkmc         | 7       | +1392/-1110 | 61            |
+| arajasek        | 37      | +221/-1329  | 90            |
+| @magik6k        | 33      | +1138/-336  | 101           |
+| @whyrusleeping  | 2       | +483/-585   | 28            |
+| Darko Brdareski | 14      | +725/-276   | 154           |
+| @rvagg          | 2       | +43/-947    | 10            |
+| @hannahhoward   | 5       | +436/-335   | 31            |
+| @hannahhoward   | 12      | +507/-133   | 37            |
+| @jennijuju      | 27      | +333/-178   | 54            |
+| @TheMenko       | 8       | +237/-179   | 17            |
+| c r             | 2       | +227/-45    | 12            |
+| @dirkmck        | 12      | +188/-40    | 27            |
+| @ribasushi      | 3       | +128/-62    | 3             |
+| @raulk          | 6       | +128/-49    | 9             |
+| @Whyrusleeping  | 1       | +76/-70     | 8             |
+| @Stebalien      | 1       | +55/-37     | 1             |
+| @jennijuju      | 11      | +29/-16     | 11            |
+| @aarshkshah1992 | 1       | +23/-19     | 5             |
+| @travisperson   | 1       | +0/-18      | 2             |
+| @gstuart        | 3       | +12/-1      | 3             |
+| @coryschwartz   | 4       | +5/-6       | 4             |
+| @pefish         | 1       | +4/-3       | 1             |
+| @Kubuxu         | 1       | +5/-2       | 2             |
+| Colin Kennedy   | 1       | +4/-2       | 1             |
+| Rob Quist       | 1       | +2/-2       | 1             |
+| @shotcollin     | 1       | +1/-1       | 1             |
 
 
 # 1.14.4 / 2022-03-03
@@ -3921,12 +3921,12 @@ Wanna know how to Snap your deal? Check [this](https://github.com/filecoin-proje
 ## Contributors
 
 | Contributor | Commits | Lines ± | Files Changed |
-|-------------|---------|---------|---------------|
-| @zenground0 | 2 | +73/-58 | 12 |
-| @eben.xie | 1 | +7/-0 | 1 |
-| @jennijuju | 1 | +4/-0 | 1 |
-| @jennijuju | 1 | +2/-1 | 1 |
-| @ribasushi | 1 | +2/-0 | 1 |
+| ----------- | ------- | ------- | ------------- |
+| @zenground0 | 2       | +73/-58 | 12            |
+| @eben.xie   | 1       | +7/-0   | 1             |
+| @jennijuju  | 1       | +4/-0   | 1             |
+| @jennijuju  | 1       | +2/-1   | 1             |
+| @ribasushi  | 1       | +2/-0   | 1             |
 
 # 1.14.1 / 2022-02-18
 
@@ -3983,22 +3983,22 @@ All node operators, including storage providers, should be aware that a pre-migr
 
 ## Contributors
 
-| Contributor | Commits | Lines ± | Files Changed |
-|-------------|---------|---------|---------------|
-| Aayush Rajasekaran | 41 | +5538/-1205 | 189 |
-| zenground0 | 11 | +3316/-524 | 124 |
-| Jennifer Wang | 29 | +714/-599 | 68 |
-| ZenGround0 | 3 | +263/-25 | 11 |
-| c r | 2 | +198/-30 | 6 |
-| vyzo | 4 | +189/-7 | 7 |
-| Aayush | 11 | +146/-48 | 49 |
-| web3-bot | 10 | +99/-17 | 10 |
-| Steven Allen | 1 | +55/-37 | 1 |
-| Jiaying Wang | 5 | +30/-8 | 5 |
-| Jakub Sztandera | 2 | +8/-3 | 3 |
-| Łukasz Magiera | 1 | +3/-3 | 2 |
-| Travis Person | 1 | +2/-2 | 2 |
-| Rod Vagg | 1 | +2/-2 | 2 |
+| Contributor        | Commits | Lines ±     | Files Changed |
+| ------------------ | ------- | ----------- | ------------- |
+| Aayush Rajasekaran | 41      | +5538/-1205 | 189           |
+| zenground0         | 11      | +3316/-524  | 124           |
+| Jennifer Wang      | 29      | +714/-599   | 68            |
+| ZenGround0         | 3       | +263/-25    | 11            |
+| c r                | 2       | +198/-30    | 6             |
+| vyzo               | 4       | +189/-7     | 7             |
+| Aayush             | 11      | +146/-48    | 49            |
+| web3-bot           | 10      | +99/-17     | 10            |
+| Steven Allen       | 1       | +55/-37     | 1             |
+| Jiaying Wang       | 5       | +30/-8      | 5             |
+| Jakub Sztandera    | 2       | +8/-3       | 3             |
+| Łukasz Magiera     | 1       | +3/-3       | 2             |
+| Travis Person      | 1       | +2/-2       | 2             |
+| Rod Vagg           | 1       | +2/-2       | 2             |
 
 # v1.13.2 /  2022-01-09
 
@@ -4082,23 +4082,23 @@ worker management, schedule enhancements and so on.
 
 ## Contributors
 
-| Contributor | Commits | Lines ± | Files Changed |
-|-------------|---------|---------|---------------|
-| @magik6k | 89 | +5200/-1818 | 232 |
-| Travis Person | 5 | +1473/-953 | 38 |
-| @arajasek | 6 | +550/-38 | 19 |
-| @clinta | 4 | +393/-123 | 26 |
-| @ribasushi | 3 | +334/-68 | 7 |
-| @jennijuju| 13 | +197/-120 | 67 |
-| @Kubuxu | 10 | +153/-30 | 10 |
-| @coryschwartz | 6 | +18/-26 | 6 |
-| Marten Seemann | 2 | +6/-34 | 5 |
-| @vyzo | 1 | +3/-3 | 2 |
-| @hannahhoward | 1 | +3/-3 | 2 |
-| @zenground0 | 2 | +2/-2 | 2 |
-| @yaohcn | 2 | +2/-2 | 2 |
-| @jennijuju | 1 | +1/-1 | 1 |
-| @hunjixin | 1 | +1/-0 | 1 |
+| Contributor    | Commits | Lines ±     | Files Changed |
+| -------------- | ------- | ----------- | ------------- |
+| @magik6k       | 89      | +5200/-1818 | 232           |
+| Travis Person  | 5       | +1473/-953  | 38            |
+| @arajasek      | 6       | +550/-38    | 19            |
+| @clinta        | 4       | +393/-123   | 26            |
+| @ribasushi     | 3       | +334/-68    | 7             |
+| @jennijuju     | 13      | +197/-120   | 67            |
+| @Kubuxu        | 10      | +153/-30    | 10            |
+| @coryschwartz  | 6       | +18/-26     | 6             |
+| Marten Seemann | 2       | +6/-34      | 5             |
+| @vyzo          | 1       | +3/-3       | 2             |
+| @hannahhoward  | 1       | +3/-3       | 2             |
+| @zenground0    | 2       | +2/-2       | 2             |
+| @yaohcn        | 2       | +2/-2       | 2             |
+| @jennijuju     | 1       | +1/-1       | 1             |
+| @hunjixin      | 1       | +1/-0       | 1             |
 
 
 
@@ -4163,26 +4163,26 @@ This is an optional Lotus v1.13.1 release.
 
 Contributors
 
-| Contributor | Commits | Lines ± | Files Changed |
-|-------------|---------|---------|---------------|
-| @magik6k | 27 | +1285/-531 | 76 |
-| @ribasushi | 7 | +265/-1635 | 21 |
-| @raulk | 2 | +2/-737 | 13 |
-| @nonsens | 4 | +391/-21 | 19 |
-| @arajasek | 6 | +216/-23 | 14 |
-| @jennijuju| 8 | +102/-37 | 29 |
-| Steven Allen | 2 | +77/-29 | 6 |
-| @jennijuju | 4 | +19/-18 | 11 |
-| @dirkmc | 2 | +9/-9 | 4 |
-| @@coryschwartz | 1 | +16/-2 | 2 |
-| @frrist | 1 | +12/-0 | 2 |
-| @Kubuxu | 5 | +5/-5 | 5 |
-| @hunjixin | 2 | +6/-3 | 2 |
-| @vyzo | 1 | +3/-3 | 2 |
-| @@rvagg | 1 | +3/-3 | 2 |
-| @hannahhoward | 1 | +3/-2 | 2 |
-| Marten Seemann | 1 | +3/-0 | 1 |
-| @ZenGround0 | 1 | +1/-1 | 1 |
+| Contributor    | Commits | Lines ±    | Files Changed |
+| -------------- | ------- | ---------- | ------------- |
+| @magik6k       | 27      | +1285/-531 | 76            |
+| @ribasushi     | 7       | +265/-1635 | 21            |
+| @raulk         | 2       | +2/-737    | 13            |
+| @nonsens       | 4       | +391/-21   | 19            |
+| @arajasek      | 6       | +216/-23   | 14            |
+| @jennijuju     | 8       | +102/-37   | 29            |
+| Steven Allen   | 2       | +77/-29    | 6             |
+| @jennijuju     | 4       | +19/-18    | 11            |
+| @dirkmc        | 2       | +9/-9      | 4             |
+| @@coryschwartz | 1       | +16/-2     | 2             |
+| @frrist        | 1       | +12/-0     | 2             |
+| @Kubuxu        | 5       | +5/-5      | 5             |
+| @hunjixin      | 2       | +6/-3      | 2             |
+| @vyzo          | 1       | +3/-3      | 2             |
+| @@rvagg        | 1       | +3/-3      | 2             |
+| @hannahhoward  | 1       | +3/-2      | 2             |
+| Marten Seemann | 1       | +3/-0      | 1             |
+| @ZenGround0    | 1       | +1/-1      | 1             |
 
 
 # v1.13.0 / 2021-10-18
@@ -4255,28 +4255,28 @@ This feature release includes the latest functionalities and improvements, like 
 
 ## Contributors
 
-| Contributor | Commits | Lines ± | Files Changed |
-|-------------|---------|---------|---------------|
-| @dirkmc | 8 | +845/-375 | 55 |
-| @magik6k | 10 | +1056/-60 | 26 |
-| @aarshkshah1992 | 6 | +813/-259 | 16 |
-| @arajasek | 10 | +552/-251 | 43 |
-| @ribasushi | 6 | +505/-78 | 22 |
-| @jennijuju | 7 | +212/-323 | 34 |
-| @nonsense | 10 | +335/-139 | 19 |
-| @dirkmc | 8 | +149/-55 | 16 |
-| @hannahhoward | 4 | +56/-32 | 17 |
-| @rvagg | 4 | +61/-13 | 9 |
-| @jennijuju | 2 | +0/-57 | 2 |
-| @hannahhoward | 1 | +33/-18 | 7 |
-| @Kubuxu | 8 | +27/-16 | 9 |
-| @coryschwartz | 1 | +16/-2 | 2 |
-| @travisperson | 1 | +14/-0 | 1 |
-| @frrist | 1 | +12/-0 | 2 |
-| @ognots | 1 | +0/-10 | 2 |
-| @lanzafame  | 1 | +3/-3 | 1 |
-| @jennijuju | 1 | +2/-2 | 1 |
-| @swift-mx | 1 | +1/-1 | 1 |
+| Contributor     | Commits | Lines ±   | Files Changed |
+| --------------- | ------- | --------- | ------------- |
+| @dirkmc         | 8       | +845/-375 | 55            |
+| @magik6k        | 10      | +1056/-60 | 26            |
+| @aarshkshah1992 | 6       | +813/-259 | 16            |
+| @arajasek       | 10      | +552/-251 | 43            |
+| @ribasushi      | 6       | +505/-78  | 22            |
+| @jennijuju      | 7       | +212/-323 | 34            |
+| @nonsense       | 10      | +335/-139 | 19            |
+| @dirkmc         | 8       | +149/-55  | 16            |
+| @hannahhoward   | 4       | +56/-32   | 17            |
+| @rvagg          | 4       | +61/-13   | 9             |
+| @jennijuju      | 2       | +0/-57    | 2             |
+| @hannahhoward   | 1       | +33/-18   | 7             |
+| @Kubuxu         | 8       | +27/-16   | 9             |
+| @coryschwartz   | 1       | +16/-2    | 2             |
+| @travisperson   | 1       | +14/-0    | 1             |
+| @frrist         | 1       | +12/-0    | 2             |
+| @ognots         | 1       | +0/-10    | 2             |
+| @lanzafame      | 1       | +3/-3     | 1             |
+| @jennijuju      | 1       | +2/-2     | 1             |
+| @swift-mx       | 1       | +1/-1     | 1             |
 
 # v1.12.0 / 2021-10-12
 
@@ -4330,19 +4330,19 @@ Note that this release is built on top of lotus v1.11.3. Enterprising users like
 
 ## Contributors
 
-| Contributor | Commits | Lines ± | Files Changed |
-|-------------|---------|---------|---------------|
-| @ZenGround0 | 12 | +4202/-2752 | 187 |
-| @arajasek | 25 | +4567/-854 | 190 |
-| @laudiacay | 4 | +1276/-435 | 37 |
-| @laudiacay | 12 | +1350/-209 | 43 |
-| @magik6k |  1 | +171/-13 | 8 |
-| @Stebalien | 2 | +115/-12 | 6 |
-| @jennijuju | 7 | +73/-34 | 26 |
-| @travisperson | 2 | +19/-19 | 7 |
-| @coryschwartz | 1 | +16/-2 | 2 |
-| @Kubuxu | 5 | +5/-5 | 5 |
-| @ribasushi | 1 | +5/-3 | 1 |
+| Contributor   | Commits | Lines ±     | Files Changed |
+| ------------- | ------- | ----------- | ------------- |
+| @ZenGround0   | 12      | +4202/-2752 | 187           |
+| @arajasek     | 25      | +4567/-854  | 190           |
+| @laudiacay    | 4       | +1276/-435  | 37            |
+| @laudiacay    | 12      | +1350/-209  | 43            |
+| @magik6k      | 1       | +171/-13    | 8             |
+| @Stebalien    | 2       | +115/-12    | 6             |
+| @jennijuju    | 7       | +73/-34     | 26            |
+| @travisperson | 2       | +19/-19     | 7             |
+| @coryschwartz | 1       | +16/-2      | 2             |
+| @Kubuxu       | 5       | +5/-5       | 5             |
+| @ribasushi    | 1       | +5/-3       | 1             |
 
 # v1.11.3 / 2021-09-29
 
@@ -4433,31 +4433,31 @@ improvements in different area, like deal making, sealing and so on.
 
 ## Contributors
 
-| Contributor | Commits | Lines ± | Files Changed |
-|-------------|---------|---------|---------------|
-| @magik6k | 39 | +3311/-1825 | 179 |
-| @Stebalien | 23 | +1935/-1417 | 84 |
-| @dirkmc | 12 | +921/-732 | 111 |
-| @dirkmc | 12 | +663/-790 | 30 |
-| @hannahhoward | 3 | +482/-275 | 46 |
-| @travisperson | 1 | +317/-65 | 5 |
-| @jennijuju | 11 | +223/-126 | 24 |
-| @hannahhoward | 7 | +257/-55 | 16 |
-| @nonsense| 9 | +258/-37 | 19 |
-| @raulk | 4 | +127/-36 | 13 |
-| @raulk | 1 | +43/-60 | 15 |
-| @arajasek | 4 | +74/-8 | 10 |
-| @Frank | 2 | +68/-8 | 3 |
-| @placer14|  2 | +52/-1 | 4 |
-| @ldoublewood | 2 | +15/-13 | 3 |
-| @lanzafame | 1 | +16/-2 | 1 |
-| @aarshkshah1992 | 2 | +11/-6 | 2 |
-| @ZenGround0 | 2 | +7/-6 | 2 |
-| @ognots | 1 | +0/-10 | 2 |
-| @KAYUII | 2 | +4/-4 | 2 |
-| @lanzafame | 1 | +6/-0 | 1 |
-| @jacobheun | 1 | +3/-3 | 1 |
-| @frank | 1 | +4/-0 | 1 |
+| Contributor     | Commits | Lines ±     | Files Changed |
+| --------------- | ------- | ----------- | ------------- |
+| @magik6k        | 39      | +3311/-1825 | 179           |
+| @Stebalien      | 23      | +1935/-1417 | 84            |
+| @dirkmc         | 12      | +921/-732   | 111           |
+| @dirkmc         | 12      | +663/-790   | 30            |
+| @hannahhoward   | 3       | +482/-275   | 46            |
+| @travisperson   | 1       | +317/-65    | 5             |
+| @jennijuju      | 11      | +223/-126   | 24            |
+| @hannahhoward   | 7       | +257/-55    | 16            |
+| @nonsense       | 9       | +258/-37    | 19            |
+| @raulk          | 4       | +127/-36    | 13            |
+| @raulk          | 1       | +43/-60     | 15            |
+| @arajasek       | 4       | +74/-8      | 10            |
+| @Frank          | 2       | +68/-8      | 3             |
+| @placer14       | 2       | +52/-1      | 4             |
+| @ldoublewood    | 2       | +15/-13     | 3             |
+| @lanzafame      | 1       | +16/-2      | 1             |
+| @aarshkshah1992 | 2       | +11/-6      | 2             |
+| @ZenGround0     | 2       | +7/-6       | 2             |
+| @ognots         | 1       | +0/-10      | 2             |
+| @KAYUII         | 2       | +4/-4       | 2             |
+| @lanzafame      | 1       | +6/-0       | 1             |
+| @jacobheun      | 1       | +3/-3       | 1             |
+| @frank          | 1       | +4/-0       | 1             |
 
 
 # v1.11.2 / 2021-09-06
@@ -4580,34 +4580,34 @@ storage providers and clients.
 
 Contributors
 
-| Contributor | Commits | Lines ± | Files Changed |
-|-------------|---------|---------|---------------|
-| @magik6k | 23 | +5040/-8389 | 114 |
-| @aarshkshah1992 | 11 | +4859/-1078 | 101 |
-| @raulk | 5 | +4170/-1662 | 104 |
-| @vyzo | 30 | +1092/-702 | 49 |
-| @nonsense | 6 | +630/-472 | 19 |
-| @ZenGround0 | 31 | +556/-274 | 74 |
-| @He Weidong | 16 | +680/-128 | 16 |
-| @raulk | 16 | +444/-277 | 49 |
-| @Stebalien | 11 | +403/-259 | 48 |
-| @jennijuju| 17 | +276/-281 | 42 |
-| @dirkmc | 5 | +204/-138 | 20 |
-| @placer14 | 7 | +178/-77 | 17 |
-| @BlocksOnAChain | 1 | +138/-0 | 1 |
-| @Frrist | 1 | +63/-56 | 2 |
-| @arajasek | 7 | +74/-42 | 13 |
-| @frrist | 2 | +67/-6 | 6 |
-| @hannahhoward | 2 | +13/-11 | 3 |
-| @coryschwartz | 1 | +16/-6 | 3 |
-| @whyrusleeping | 1 | +7/-7 | 1 |
-| @hunjixin | 1 | +8/-6 | 1 |
-| @aarshkshah1992 | 1 | +6/-6 | 2 |
-| @dirkmc | 2 | +8/-0 | 2 |
-| @mx | 2 | +6/-1 | 2 |
-| @travisperson | 1 | +3/-2 | 1 |
-| @jennijuju | 2 | +2/-2 | 2 |
-| @ribasushi | 1 | +1/-2 | 2 |
+| Contributor     | Commits | Lines ±     | Files Changed |
+| --------------- | ------- | ----------- | ------------- |
+| @magik6k        | 23      | +5040/-8389 | 114           |
+| @aarshkshah1992 | 11      | +4859/-1078 | 101           |
+| @raulk          | 5       | +4170/-1662 | 104           |
+| @vyzo           | 30      | +1092/-702  | 49            |
+| @nonsense       | 6       | +630/-472   | 19            |
+| @ZenGround0     | 31      | +556/-274   | 74            |
+| @He Weidong     | 16      | +680/-128   | 16            |
+| @raulk          | 16      | +444/-277   | 49            |
+| @Stebalien      | 11      | +403/-259   | 48            |
+| @jennijuju      | 17      | +276/-281   | 42            |
+| @dirkmc         | 5       | +204/-138   | 20            |
+| @placer14       | 7       | +178/-77    | 17            |
+| @BlocksOnAChain | 1       | +138/-0     | 1             |
+| @Frrist         | 1       | +63/-56     | 2             |
+| @arajasek       | 7       | +74/-42     | 13            |
+| @frrist         | 2       | +67/-6      | 6             |
+| @hannahhoward   | 2       | +13/-11     | 3             |
+| @coryschwartz   | 1       | +16/-6      | 3             |
+| @whyrusleeping  | 1       | +7/-7       | 1             |
+| @hunjixin       | 1       | +8/-6       | 1             |
+| @aarshkshah1992 | 1       | +6/-6       | 2             |
+| @dirkmc         | 2       | +8/-0       | 2             |
+| @mx             | 2       | +6/-1       | 2             |
+| @travisperson   | 1       | +3/-2       | 1             |
+| @jennijuju      | 2       | +2/-2       | 2             |
+| @ribasushi      | 1       | +1/-2       | 2             |
 
 # 1.11.1 / 2021-08-16
 
@@ -4739,50 +4739,50 @@ This is a  **highly recommended** but optional Lotus v1.11.1 release that introd
 
 ## Contributors
 
-| Contributor | Commits | Lines ± | Files Changed |
-|-------------|---------|---------|---------------|
-| @vyzo | 313 | +8928/-6010 | 415 |
-| @nonsense | 103 | +6041/-4041 | 304 |
-| @magik6k | 37 | +3851/-1611 | 146 |
-| @ZenGround0 | 24 | +1693/-1394 | 95 |
-| @placer14 | 1 | +2310/-578 | 8 |
-| @dirkmc | 7 | +1154/-726 | 29 |
-| @raulk | 44 | +969/-616 | 141 |
-| @jennijuju | 15 | +682/-354 | 47 |
-| @ribasushi | 18 | +469/-273 | 64 |
-| @coryschwartz | 5 | +576/-135 | 14 |
-| @hunjixin | 7 | +404/-82 | 19 |
-| @dirkmc | 17 | +348/-47 | 17 |
-| @tchardin | 2 | +262/-34 | 5 |
-| @aarshkshah1992 | 9 | +233/-63 | 44 |
-| @Kubuxu | 4 | +254/-16 | 4 |
-| @hannahhoward | 6 | +163/-75 | 8 |
-| @whyrusleeping | 4 | +157/-16 | 9 |
-| @Whyrusleeping | 2 | +87/-66 | 10 |
-| @arajasek | 10 | +81/-53 | 13 |
-| @zgfzgf | 2 | +104/-4 | 2 |
-| @aarshkshah1992 | 6 | +85/-19 | 10 |
-| @llifezou | 4 | +59/-20 | 4 |
-| @Stebalien | 7 | +47/-17 | 9 |
-| @johnli-helloworld | 3 | +46/-15 | 5 |
-| @frrist | 1 | +28/-23 | 2 |
-| @hannahhoward | 4 | +46/-5 | 11 |
-| @Jennifer | 4 | +31/-2 | 4 |
-| @wangchao | 1 | +1/-27 | 1 |
-| @jennijuju | 2 | +7/-21 | 2 |
-| @chadwick2143 | 1 | +15/-1 | 1 |
-| @Jerry | 2 | +9/-4 | 2 |
-| Steve Loeppky | 2 | +12/-0 | 2 |
-| David Dias | 1 | +9/-0 | 1 |
-| dependabot[bot] | 1 | +3/-3 | 1 |
-| zhoutian527 | 1 | +2/-2 | 1 |
-| xloem | 1 | +4/-0 | 1 |
-| | 2 | +2/-2 | 3 |
-| Liviu Damian | 2 | +2/-2 | 2 |
-| @jimpick | 2 | +2/-2 | 2 |
-| Frank | 1 | +3/-0 | 1 |
-| turuslan | 1 | +1/-1 | 1 |
-| Kirk Baird | 1 | +0/-0 | 1 |
+| Contributor        | Commits | Lines ±     | Files Changed |
+| ------------------ | ------- | ----------- | ------------- |
+| @vyzo              | 313     | +8928/-6010 | 415           |
+| @nonsense          | 103     | +6041/-4041 | 304           |
+| @magik6k           | 37      | +3851/-1611 | 146           |
+| @ZenGround0        | 24      | +1693/-1394 | 95            |
+| @placer14          | 1       | +2310/-578  | 8             |
+| @dirkmc            | 7       | +1154/-726  | 29            |
+| @raulk             | 44      | +969/-616   | 141           |
+| @jennijuju         | 15      | +682/-354   | 47            |
+| @ribasushi         | 18      | +469/-273   | 64            |
+| @coryschwartz      | 5       | +576/-135   | 14            |
+| @hunjixin          | 7       | +404/-82    | 19            |
+| @dirkmc            | 17      | +348/-47    | 17            |
+| @tchardin          | 2       | +262/-34    | 5             |
+| @aarshkshah1992    | 9       | +233/-63    | 44            |
+| @Kubuxu            | 4       | +254/-16    | 4             |
+| @hannahhoward      | 6       | +163/-75    | 8             |
+| @whyrusleeping     | 4       | +157/-16    | 9             |
+| @Whyrusleeping     | 2       | +87/-66     | 10            |
+| @arajasek          | 10      | +81/-53     | 13            |
+| @zgfzgf            | 2       | +104/-4     | 2             |
+| @aarshkshah1992    | 6       | +85/-19     | 10            |
+| @llifezou          | 4       | +59/-20     | 4             |
+| @Stebalien         | 7       | +47/-17     | 9             |
+| @johnli-helloworld | 3       | +46/-15     | 5             |
+| @frrist            | 1       | +28/-23     | 2             |
+| @hannahhoward      | 4       | +46/-5      | 11            |
+| @Jennifer          | 4       | +31/-2      | 4             |
+| @wangchao          | 1       | +1/-27      | 1             |
+| @jennijuju         | 2       | +7/-21      | 2             |
+| @chadwick2143      | 1       | +15/-1      | 1             |
+| @Jerry             | 2       | +9/-4       | 2             |
+| Steve Loeppky      | 2       | +12/-0      | 2             |
+| David Dias         | 1       | +9/-0       | 1             |
+| dependabot[bot]    | 1       | +3/-3       | 1             |
+| zhoutian527        | 1       | +2/-2       | 1             |
+| xloem              | 1       | +4/-0       | 1             |
+|                    | 2       | +2/-2       | 3             |
+| Liviu Damian       | 2       | +2/-2       | 2             |
+| @jimpick           | 2       | +2/-2       | 2             |
+| Frank              | 1       | +3/-0       | 1             |
+| turuslan           | 1       | +1/-1       | 1             |
+| Kirk Baird         | 1       | +0/-0       | 1             |
 
 # 1.11.0 / 2021-07-22
 
@@ -4935,44 +4935,44 @@ This is a **highly recommended** release of Lotus that have many bug fixes, impr
 
 ## Contributors
 
-| Contributor | Commits | Lines ± | Files Changed |
-|-------------|---------|---------|---------------|
-| @raulk | 118 | +11972/-10860 | 472 |
-| @magik6k | 65 | +10824/-4158 | 353 |
-| @aarshkshah1992 | 59 | +8057/-3355 | 224 |
-| @arajasek | 41 | +8786/-1691 | 331 |
-| @Stebalien | 106 | +7653/-2718 | 273 |
-| dirkmc | 11 | +2580/-1371 | 77 |
-| @dirkmc | 39 | +1865/-1194 | 79 |
-|  | 19 | +1973/-485 | 81 |
-| @vyzo | 4 | +1748/-330 | 50 |
-| @aarshkshah1992 | 5 | +1462/-213 | 27 |
-| @coryschwartz | 35 | +568/-206 | 59 |
-| @chadwick2143 | 3 | +739/-1 | 4 |
-| @ribasushi | 21 | +487/-164 | 36 |
-| @hannahhoward | 5 | +544/-5 | 19 |
-| @jennijuju | 9 | +241/-174 | 19 |
-| @frrist | 1 | +137/-88 | 7 |
-| @travisperson | 3 | +175/-6 | 7 |
-| @wadeAlexC | 1 | +48/-129 | 1 |
-| @whyrusleeping | 8 | +161/-13 | 11 |
-| lotus | 1 | +114/-46 | 1 |
-| @nonsense | 8 | +107/-53 | 20 |
-| @rjan90 | 4 | +115/-33 | 4 |
-| @ZenGround0 | 3 | +114/-1 | 4 |
-| @Aloxaf | 1 | +43/-61 | 7 |
-| @yaohcn | 4 | +89/-9 | 5 |
-| @mitchellsoo | 1 | +51/-0 | 1 |
-| @placer14 | 3 | +28/-18 | 4 |
-| @jennijuju | 6 | +9/-14 | 6 |
-| @Frank | 2 | +11/-10 | 2 |
-| @wangchao | 3 | +5/-4 | 4 |
-| @Steve Loeppky | 1 | +7/-1 | 1 |
-| @Lion | 1 | +4/-2 | 1 |
-| @Mimir | 1 | +2/-2 | 1 |
-| @raulk | 1 | +1/-1 | 1 |
-| @Jack Yao | 1 | +1/-1 | 1 |
-| @IPFSUnion | 1 | +1/-1 | 1 |
+| Contributor     | Commits | Lines ±       | Files Changed |
+| --------------- | ------- | ------------- | ------------- |
+| @raulk          | 118     | +11972/-10860 | 472           |
+| @magik6k        | 65      | +10824/-4158  | 353           |
+| @aarshkshah1992 | 59      | +8057/-3355   | 224           |
+| @arajasek       | 41      | +8786/-1691   | 331           |
+| @Stebalien      | 106     | +7653/-2718   | 273           |
+| dirkmc          | 11      | +2580/-1371   | 77            |
+| @dirkmc         | 39      | +1865/-1194   | 79            |
+|                 | 19      | +1973/-485    | 81            |
+| @vyzo           | 4       | +1748/-330    | 50            |
+| @aarshkshah1992 | 5       | +1462/-213    | 27            |
+| @coryschwartz   | 35      | +568/-206     | 59            |
+| @chadwick2143   | 3       | +739/-1       | 4             |
+| @ribasushi      | 21      | +487/-164     | 36            |
+| @hannahhoward   | 5       | +544/-5       | 19            |
+| @jennijuju      | 9       | +241/-174     | 19            |
+| @frrist         | 1       | +137/-88      | 7             |
+| @travisperson   | 3       | +175/-6       | 7             |
+| @wadeAlexC      | 1       | +48/-129      | 1             |
+| @whyrusleeping  | 8       | +161/-13      | 11            |
+| lotus           | 1       | +114/-46      | 1             |
+| @nonsense       | 8       | +107/-53      | 20            |
+| @rjan90         | 4       | +115/-33      | 4             |
+| @ZenGround0     | 3       | +114/-1       | 4             |
+| @Aloxaf         | 1       | +43/-61       | 7             |
+| @yaohcn         | 4       | +89/-9        | 5             |
+| @mitchellsoo    | 1       | +51/-0        | 1             |
+| @placer14       | 3       | +28/-18       | 4             |
+| @jennijuju      | 6       | +9/-14        | 6             |
+| @Frank          | 2       | +11/-10       | 2             |
+| @wangchao       | 3       | +5/-4         | 4             |
+| @Steve Loeppky  | 1       | +7/-1         | 1             |
+| @Lion           | 1       | +4/-2         | 1             |
+| @Mimir          | 1       | +2/-2         | 1             |
+| @raulk          | 1       | +1/-1         | 1             |
+| @Jack Yao       | 1       | +1/-1         | 1             |
+| @IPFSUnion      | 1       | +1/-1         | 1             |
 
 # 1.10.1 / 2021-07-05
 
@@ -4996,15 +4996,15 @@ This is an optional but **highly recommended** release of Lotus for lotus miners
 
 Contributors
 
-| Contributor | Commits | Lines ± | Files Changed |
-|-------------|---------|---------|---------------|
-| @magik6k| 7 | +151/-56 | 21 |
-| @llifezou | 4 | +59/-20 | 4 |
-| @johnli-helloworld | 2 | +45/-14 | 4 |
-| @wangchao | 1 | +1/-27 | 1 |
-| Jerry | 2 | +9/-4 | 2 |
-| @zhoutian527 | 1 | +2/-2 | 1 |
-| @ribasushi| 1 | +1/-1 | 1 |
+| Contributor        | Commits | Lines ±  | Files Changed |
+| ------------------ | ------- | -------- | ------------- |
+| @magik6k           | 7       | +151/-56 | 21            |
+| @llifezou          | 4       | +59/-20  | 4             |
+| @johnli-helloworld | 2       | +45/-14  | 4             |
+| @wangchao          | 1       | +1/-27   | 1             |
+| Jerry              | 2       | +9/-4    | 2             |
+| @zhoutian527       | 1       | +2/-2    | 1             |
+| @ribasushi         | 1       | +1/-1    | 1             |
 
 # 1.10.1 / 2021-07-05
 
@@ -5028,15 +5028,15 @@ This is an optional but **highly recommended** release of Lotus for lotus miners
 
 Contributors
 
-| Contributor | Commits | Lines ± | Files Changed |
-|-------------|---------|---------|---------------|
-| @magik6k| 7 | +151/-56 | 21 |
-| @llifezou | 4 | +59/-20 | 4 |
-| @johnli-helloworld | 2 | +45/-14 | 4 |
-| @wangchao | 1 | +1/-27 | 1 |
-| Jerry | 2 | +9/-4 | 2 |
-| @zhoutian527 | 1 | +2/-2 | 1 |
-| @ribasushi| 1 | +1/-1 | 1 |
+| Contributor        | Commits | Lines ±  | Files Changed |
+| ------------------ | ------- | -------- | ------------- |
+| @magik6k           | 7       | +151/-56 | 21            |
+| @llifezou          | 4       | +59/-20  | 4             |
+| @johnli-helloworld | 2       | +45/-14  | 4             |
+| @wangchao          | 1       | +1/-27   | 1             |
+| Jerry              | 2       | +9/-4    | 2             |
+| @zhoutian527       | 1       | +2/-2    | 1             |
+| @ribasushi         | 1       | +1/-1    | 1             |
 
 # 1.10.0 / 2021-06-23
 
@@ -5157,23 +5157,23 @@ Included in the HyperDrive upgrade is [FIP-0015](https://github.com/filecoin-pro
 
 💙Thank you to all the contributors!
 
-| Contributor        | Commits | Lines ±     | Files Changed |
-|--------------------|---------|-------------|---------------|
-| @magik6k    | 81      | +9606/-1536 | 361           |
-| @arajasek  | 41      | +6543/-679  | 189           |
-| @ZenGround0         | 11      | +4074/-727  | 110           |
-| @anorth                | 10      | +2035/-1177 | 55            |
-| @iand           | 1       | +779/-12    | 5             |
-| @frrist             | 2       | +722/-6     | 6             |
-| @Stebalien       | 6       | +368/-24    | 15            |
-| @jennijuju      | 11      | +204/-111   | 19            |
-| @vyzo               | 6       | +155/-66    | 13            |
-| @coryschwartz      | 10      | +171/-27    | 14            |
-| @Kubuxu    | 4       | +177/-13    | 7             |
+| Contributor   | Commits | Lines ±     | Files Changed |
+| ------------- | ------- | ----------- | ------------- |
+| @magik6k      | 81      | +9606/-1536 | 361           |
+| @arajasek     | 41      | +6543/-679  | 189           |
+| @ZenGround0   | 11      | +4074/-727  | 110           |
+| @anorth       | 10      | +2035/-1177 | 55            |
+| @iand         | 1       | +779/-12    | 5             |
+| @frrist       | 2       | +722/-6     | 6             |
+| @Stebalien    | 6       | +368/-24    | 15            |
+| @jennijuju    | 11      | +204/-111   | 19            |
+| @vyzo         | 6       | +155/-66    | 13            |
+| @coryschwartz | 10      | +171/-27    | 14            |
+| @Kubuxu       | 4       | +177/-13    | 7             |
 | @ribasushi    | 4       | +65/-42     | 5             |
-| @travisperson      | 2       | +11/-11     | 4             |
-| @kirk-baird | 1       | +1/-5       | 1             |
-| @wangchao           | 2       | +3/-2       | 2             |
+| @travisperson | 2       | +11/-11     | 4             |
+| @kirk-baird   | 1       | +1/-5       | 1             |
+| @wangchao     | 2       | +3/-2       | 2             |
 
 
 # 1.9.0 / 2021-05-17
@@ -6118,19 +6118,19 @@ This consensus-breaking release of Lotus upgrades the actors version to v2.0.0. 
 The following contributors had 5 or more commits go into this release.
 We are grateful for every contribution!
 
-| Contributor        | Commits | Lines ±       |
-|--------------------|---------|---------------|
-| Stebalien          | 84       | +3425/-2287  |
-| magik6k            | 41       | +2121/-506   |
-| arajasek           | 39       | +2467/-424   |
-| Kubuxu             | 25       | +2344/-775   |
-| raulk              | 21       | +287/-196    |
-| whyrusleeping      | 13       | +727/-71     |
-| hsanjuan           | 13       | +5886/-7956  |
-| dirkmc             | 11       | +2634/-576   | 
-| travisperson       | 8        | +923/-202    |
-| ribasushi          | 6        | +188/-128    |
-| zgfzgf             | 5        | +21/-17      |
+| Contributor   | Commits | Lines ±     |
+| ------------- | ------- | ----------- |
+| Stebalien     | 84      | +3425/-2287 |
+| magik6k       | 41      | +2121/-506  |
+| arajasek      | 39      | +2467/-424  |
+| Kubuxu        | 25      | +2344/-775  |
+| raulk         | 21      | +287/-196   |
+| whyrusleeping | 13      | +727/-71    |
+| hsanjuan      | 13      | +5886/-7956 |
+| dirkmc        | 11      | +2634/-576  |
+| travisperson  | 8       | +923/-202   |
+| ribasushi     | 6       | +188/-128   |
+| zgfzgf        | 5       | +21/-17     |
 
 # 0.8.1 / 2020-09-30
 
@@ -6240,20 +6240,20 @@ This release also updates go-fil-markets to fix an incompatibility issue between
 The following contributors had 5 or more commits go into this release.
 We are grateful for every contribution!
 
-| Contributor        | Commits | Lines ±       |
-|--------------------|---------|---------------|
-| arajasek           | 66       | +3140/-1261  |
-| Stebalien          | 64       | +3797/-3434  |
-| magik6k            | 48       | +1892/-976   |
-| raulk              | 40       | +2412/-1549  |
-| vyzo               | 22       | +287/-196    |
-| alanshaw           | 15       | +761/-146    |
-| whyrusleeping      | 15       | +736/-52     |
-| hannahhoward       | 14       | +1237/-837   | 
-| anton              | 6        | +32/-8       |
-| travisperson       | 5        | +502/-6      |
-| Frank              | 5        | +78/-39      |
-| Jennifer           | 5        | +148/-41     |
+| Contributor   | Commits | Lines ±     |
+| ------------- | ------- | ----------- |
+| arajasek      | 66      | +3140/-1261 |
+| Stebalien     | 64      | +3797/-3434 |
+| magik6k       | 48      | +1892/-976  |
+| raulk         | 40      | +2412/-1549 |
+| vyzo          | 22      | +287/-196   |
+| alanshaw      | 15      | +761/-146   |
+| whyrusleeping | 15      | +736/-52    |
+| hannahhoward  | 14      | +1237/-837  |
+| anton         | 6       | +32/-8      |
+| travisperson  | 5       | +502/-6     |
+| Frank         | 5       | +78/-39     |
+| Jennifer      | 5       | +148/-41    |
 
 # 0.7.2 / 2020-09-23
 
@@ -6353,21 +6353,21 @@ This consensus-breaking release of Lotus is designed to test a network upgrade o
 The following contributors had commits go into this release.
 We are grateful for every contribution!
 
-| Contributor        | Commits | Lines ±       |
-|--------------------|---------|---------------|
-| arajasek           | 28      | +1144/-239    |
-| Kubuxu             | 19      | +452/-261     |
-| whyrusleeping      | 13      | +456/-87      |
-| vyzo               | 11      | +318/-20      |
-| raulk              | 10      | +1289/-350    |
-| magik6k            | 6       | +188/-55      |
-| dirkmc             | 3       | +31/-8        |
-| alanshaw           | 3       | +176/-37      |
-| Stebalien          | 2       | +9/-12        |
-| lanzafame          | 1       | +1/-1         |
-| frrist             | 1       | +1/-1         |
-| mishmosh           | 1       | +1/-1         |
-| nonsense           | 1       | +1/-0         |
+| Contributor   | Commits | Lines ±    |
+| ------------- | ------- | ---------- |
+| arajasek      | 28      | +1144/-239 |
+| Kubuxu        | 19      | +452/-261  |
+| whyrusleeping | 13      | +456/-87   |
+| vyzo          | 11      | +318/-20   |
+| raulk         | 10      | +1289/-350 |
+| magik6k       | 6       | +188/-55   |
+| dirkmc        | 3       | +31/-8     |
+| alanshaw      | 3       | +176/-37   |
+| Stebalien     | 2       | +9/-12     |
+| lanzafame     | 1       | +1/-1      |
+| frrist        | 1       | +1/-1      |
+| mishmosh      | 1       | +1/-1      |
+| nonsense      | 1       | +1/-0      |
 
 # 0.6.2 / 2020-09-09
 
@@ -6738,27 +6738,27 @@ features can be found [here](https://github.com/filecoin-project/lotus/issues/23
 The following contributors had 10 or more commits go into this release.
 We are grateful for every contribution!
 
-| Contributor        | Commits | Lines ±       |
-|--------------------|---------|---------------|
-| magik6k            | 361     | +13197/-6136  |
-| Kubuxu             | 227     | +5670/-2587   |
-| arajasek           | 120     | +2916/-1264   |
-| whyrusleeping      | 112     | +3979/-1089   |
-| vyzo               | 99      | +3343/-1305   |
-| dirkmc             | 68      | +8732/-3621   |
-| laser              | 45      | +1489/-501    |
-| hannahhoward       | 43      | +2654/-990    |
-| frrist             | 37      | +6630/-4338   |
-| schomatis          | 28      | +3016/-1368   |
-| placer14           | 27      | +824/-350     |
-| raulk              | 25      | +28718/-29849 |
-| mrsmkl             | 22      | +560/-368     |
-| travisperson       | 18      | +1354/-314    |
-| nonsense           | 16      | +2956/-2842   |
-| ingar              | 13      | +331/-123     |
-| daviddias          | 11      | +311/-11      |
-| Stebalien          | 11      | +1204/-980    |
-| RobQuistNL         | 10      | +69/-74       |
+| Contributor   | Commits | Lines ±       |
+| ------------- | ------- | ------------- |
+| magik6k       | 361     | +13197/-6136  |
+| Kubuxu        | 227     | +5670/-2587   |
+| arajasek      | 120     | +2916/-1264   |
+| whyrusleeping | 112     | +3979/-1089   |
+| vyzo          | 99      | +3343/-1305   |
+| dirkmc        | 68      | +8732/-3621   |
+| laser         | 45      | +1489/-501    |
+| hannahhoward  | 43      | +2654/-990    |
+| frrist        | 37      | +6630/-4338   |
+| schomatis     | 28      | +3016/-1368   |
+| placer14      | 27      | +824/-350     |
+| raulk         | 25      | +28718/-29849 |
+| mrsmkl        | 22      | +560/-368     |
+| travisperson  | 18      | +1354/-314    |
+| nonsense      | 16      | +2956/-2842   |
+| ingar         | 13      | +331/-123     |
+| daviddias     | 11      | +311/-11      |
+| Stebalien     | 11      | +1204/-980    |
+| RobQuistNL    | 10      | +69/-74       |
 
 # 0.1.0 / 2019-12-11
 
