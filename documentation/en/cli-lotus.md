@@ -2268,7 +2268,7 @@ USAGE:
 
 DESCRIPTION:
    
-   lotus-shed chainindex validate-backfill --from <start_epoch> --to <end_epoch> [--backfill] [--log-good] [--quiet]
+   lotus index validate-backfill --from <start_epoch> --to <end_epoch> [--backfill] [--log-good] [--quiet]
 
    The command validates the chain index entries for each epoch in the specified range, checking for missing or
    inconsistent entries (i.e. the indexed data does not match the actual chain state). If '--backfill' is enabled
@@ -2291,7 +2291,7 @@ DESCRIPTION:
 
    To validate and backfill the chain index for the last 5760 epochs (2 days) and log details for all epochs:
 
-   lotus-shed chainindex validate-backfill --from 1000000 --to 994240 --log-good
+   lotus index validate-backfill --from 1000000 --to 994240 --log-good
 
    This command is useful for backfilling the chain index over a range of historical epochs during the migration to
    the new ChainIndexer. It can also be run periodically to validate the index's integrity using system schedulers
