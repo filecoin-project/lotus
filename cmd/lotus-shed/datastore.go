@@ -39,6 +39,7 @@ var datastoreCmd = &cli.Command{
 		datastoreVlog2CarCmd,
 		datastoreImportCmd,
 		datastoreExportCmd,
+		datastoreClearCmd,
 	},
 }
 
@@ -105,6 +106,98 @@ var datastoreListCmd = &cli.Command{
 			if err := printKv(res.Key, res.Value); err != nil {
 				return err
 			}
+		}
+
+		return nil
+	},
+}
+
+var datastoreClearCmd = &cli.Command{
+	Name:        "clear",
+	Description: "Clear a part or all of the given datastore.",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "repo-type",
+			Usage: "node type (FullNode, StorageMiner, Worker, Wallet)",
+			Value: "FullNode",
+		},
+		&cli.StringFlag{
+			Name:  "prefix",
+			Usage: "only delete key/values with the given prefix",
+			Value: "",
+		},
+		&cli.BoolFlag{
+			Name:  "really-do-it",
+			Usage: "must be specified for the action to take effect",
+		},
+	},
+	ArgsUsage: "[namespace]",
+	Action: func(cctx *cli.Context) (_err error) {
+		if cctx.NArg() != 2 {
+			return xerrors.Errorf("requires 2 arguments: the datastore prefix")
+		}
+		namespace := cctx.Args().Get(0)
+
+		r, err := repo.NewFS(cctx.String("repo"))
+		if err != nil {
+			return xerrors.Errorf("opening fs repo: %w", err)
+		}
+
+		exists, err := r.Exists()
+		if err != nil {
+			return err
+		}
+		if !exists {
+			return xerrors.Errorf("lotus repo doesn't exist")
+		}
+
+		lr, err := r.Lock(repo.NewRepoTypeFromString(cctx.String("repo-type")))
+		if err != nil {
+			return err
+		}
+		defer lr.Close() //nolint:errcheck
+
+		ds, err := lr.Datastore(cctx.Context, namespace)
+		if err != nil {
+			return err
+		}
+		defer func() {
+			_err = multierr.Append(_err, ds.Close())
+		}()
+
+		dryRun := !cctx.Bool("really-do-it")
+
+		query, err := ds.Query(cctx.Context, dsq.Query{
+			Prefix: cctx.String("prefix"),
+		})
+		if err != nil {
+			return err
+		}
+		defer query.Close() //nolint:errcheck
+
+		batch, err := ds.Batch(cctx.Context)
+		if err != nil {
+			return xerrors.Errorf("failed to create a datastore batch: %w", err)
+		}
+
+		for res, ok := query.NextSync(); ok; res, ok = query.NextSync() {
+			if res.Error != nil {
+				return xerrors.Errorf("failed to read from datastore: %w", res.Error)
+			}
+			_, _ = fmt.Fprintf(cctx.App.Writer, "deleting: %q\n", res.Key)
+			if !dryRun {
+				if err := batch.Delete(cctx.Context, datastore.NewKey(res.Key)); err != nil {
+					return xerrors.Errorf("failed to delete %q: %w", res.Key, err)
+				}
+			}
+		}
+
+		if !dryRun {
+			if err := batch.Commit(cctx.Context); err != nil {
+				return xerrors.Errorf("failed to flush the batch: %w", err)
+			}
+		} else {
+			_, _ = fmt.Fprintln(cctx.App.Writer, "NOTE: dry run complete, re-run with --really-do-it to actually delete this state.")
 		}
 
 		return nil
@@ -240,6 +333,7 @@ var datastoreExportCmd = &cli.Command{
 				Value: res.Value,
 			}
 
+			_, _ = fmt.Fprintf(cctx.App.Writer, "exporting: %q\n", res.Key)
 			if err := entry.MarshalCBOR(snapshotWriter); err != nil {
 				return xerrors.Errorf("failed to write %q to snapshot: %w", res.Key, err)
 			}
@@ -308,6 +402,8 @@ var datastoreImportCmd = &cli.Command{
 			return err
 		}
 
+		dryRun := !cctx.Bool("really-do-it")
+
 		snapshotReader := cbg.NewCborReader(bufio.NewReader(snapshot))
 		for {
 			var entry shedgen.DatastoreEntry
@@ -317,14 +413,23 @@ var datastoreImportCmd = &cli.Command{
 				}
 				return xerrors.Errorf("failed to read entry from snapshot: %w", err)
 			}
-			key := datastore.NewKey(string(entry.Key))
-			if err := batch.Put(cctx.Context, key, entry.Value); err != nil {
-				return xerrors.Errorf("failed to put %q: %w", key, err)
+
+			_, _ = fmt.Fprintf(cctx.App.Writer, "importing: %q\n", string(entry.Key))
+
+			if !dryRun {
+				key := datastore.NewKey(string(entry.Key))
+				if err := batch.Put(cctx.Context, key, entry.Value); err != nil {
+					return xerrors.Errorf("failed to put %q: %w", key, err)
+				}
 			}
 		}
 
-		if err := batch.Commit(cctx.Context); err != nil {
-			return xerrors.Errorf("failed to commit batch: %w", err)
+		if !dryRun {
+			if err := batch.Commit(cctx.Context); err != nil {
+				return xerrors.Errorf("failed to commit batch: %w", err)
+			}
+		} else {
+			_, _ = fmt.Fprintln(cctx.App.Writer, "NOTE: dry run complete, re-run with --really-do-it to actually import the datastore snapshot, overwriting any conflicting state.")
 		}
 		return nil
 	},
