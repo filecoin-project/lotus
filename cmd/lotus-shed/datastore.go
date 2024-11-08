@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -17,10 +18,12 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/polydawn/refmt/cbor"
 	"github.com/urfave/cli/v2"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
 
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/cmd/lotus-shed/shedgen"
 	"github.com/filecoin-project/lotus/lib/backupds"
 	"github.com/filecoin-project/lotus/node/repo"
 )
@@ -34,6 +37,8 @@ var datastoreCmd = &cli.Command{
 		datastoreGetCmd,
 		datastoreRewriteCmd,
 		datastoreVlog2CarCmd,
+		datastoreImportCmd,
+		datastoreExportCmd,
 	},
 }
 
@@ -155,6 +160,173 @@ var datastoreGetCmd = &cli.Command{
 		}
 
 		return printVal(cctx.String("enc"), val)
+	},
+}
+
+var datastoreExportCmd = &cli.Command{
+	Name:        "export",
+	Description: "Export part or all of the specified datastore, appending to the specified datastore snapshot.",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "repo-type",
+			Usage: "node type (FullNode, StorageMiner, Worker, Wallet)",
+			Value: "FullNode",
+		},
+		&cli.StringFlag{
+			Name:  "prefix",
+			Usage: "export only keys with the given prefix",
+			Value: "",
+		},
+	},
+	ArgsUsage: "[namespace filename]",
+	Action: func(cctx *cli.Context) (_err error) {
+		if cctx.NArg() != 2 {
+			return xerrors.Errorf("requires 2 arguments: the datastore prefix and the filename to which the snapshot will be written")
+		}
+		namespace := cctx.Args().Get(0)
+		fname := cctx.Args().Get(1)
+
+		snapshot, err := os.OpenFile(fname, os.O_WRONLY|os.O_APPEND|os.O_CREATE, os.ModePerm)
+		if err != nil {
+			return xerrors.Errorf("failed to open snapshot: %w", err)
+		}
+		defer func() {
+			_err = multierr.Append(_err, snapshot.Close())
+		}()
+
+		r, err := repo.NewFS(cctx.String("repo"))
+		if err != nil {
+			return xerrors.Errorf("opening fs repo: %w", err)
+		}
+
+		exists, err := r.Exists()
+		if err != nil {
+			return err
+		}
+		if !exists {
+			return xerrors.Errorf("lotus repo doesn't exist")
+		}
+
+		lr, err := r.Lock(repo.NewRepoTypeFromString(cctx.String("repo-type")))
+		if err != nil {
+			return err
+		}
+		defer lr.Close() //nolint:errcheck
+
+		ds, err := lr.Datastore(cctx.Context, namespace)
+		if err != nil {
+			return err
+		}
+		defer func() {
+			_err = multierr.Append(_err, ds.Close())
+		}()
+
+		query, err := ds.Query(cctx.Context, dsq.Query{
+			Prefix: cctx.String("prefix"),
+		})
+		if err != nil {
+			return err
+		}
+
+		bufWriter := bufio.NewWriter(snapshot)
+		snapshotWriter := cbg.NewCborWriter(bufWriter)
+		for res, ok := query.NextSync(); ok; res, ok = query.NextSync() {
+			if res.Error != nil {
+				return xerrors.Errorf("failed to read from datastore: %w", res.Error)
+			}
+
+			entry := shedgen.DatastoreEntry{
+				Key:   []byte(res.Key),
+				Value: res.Value,
+			}
+
+			if err := entry.MarshalCBOR(snapshotWriter); err != nil {
+				return xerrors.Errorf("failed to write %q to snapshot: %w", res.Key, err)
+			}
+		}
+		if err := bufWriter.Flush(); err != nil {
+			return xerrors.Errorf("failed to flush snapshot: %w", err)
+		}
+
+		return nil
+	},
+}
+
+var datastoreImportCmd = &cli.Command{
+	Name: "import",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "repo-type",
+			Usage: "node type (FullNode, StorageMiner, Worker, Wallet)",
+			Value: "FullNode",
+		},
+	},
+	Description: "Import the specified datastore snapshot.",
+	ArgsUsage:   "[namespace filename]",
+	Action: func(cctx *cli.Context) (_err error) {
+		if cctx.NArg() != 2 {
+			return xerrors.Errorf("requires 2 arguments: the datastore prefix and the filename of the snapshot to import")
+		}
+		namespace := cctx.Args().Get(0)
+		fname := cctx.Args().Get(1)
+
+		snapshot, err := os.Open(fname)
+		if err != nil {
+			return xerrors.Errorf("failed to open snapshot: %w", err)
+		}
+		defer snapshot.Close()
+
+		r, err := repo.NewFS(cctx.String("repo"))
+		if err != nil {
+			return xerrors.Errorf("opening fs repo: %w", err)
+		}
+
+		exists, err := r.Exists()
+		if err != nil {
+			return err
+		}
+		if !exists {
+			return xerrors.Errorf("lotus repo doesn't exist")
+		}
+
+		lr, err := r.Lock(repo.NewRepoTypeFromString(cctx.String("repo-type")))
+		if err != nil {
+			return err
+		}
+		defer lr.Close() //nolint:errcheck
+
+		ds, err := lr.Datastore(cctx.Context, namespace)
+		if err != nil {
+			return err
+		}
+		defer func() {
+			_err = multierr.Append(_err, ds.Close())
+		}()
+
+		batch, err := ds.Batch(cctx.Context)
+		if err != nil {
+			return err
+		}
+
+		snapshotReader := cbg.NewCborReader(bufio.NewReader(snapshot))
+		for {
+			var entry shedgen.DatastoreEntry
+			if err := entry.UnmarshalCBOR(snapshotReader); err != nil {
+				if errors.Is(err, io.EOF) {
+					break
+				}
+				return xerrors.Errorf("failed to read entry from snapshot: %w", err)
+			}
+			key := datastore.NewKey(string(entry.Key))
+			if err := batch.Put(cctx.Context, key, entry.Value); err != nil {
+				return xerrors.Errorf("failed to put %q: %w", key, err)
+			}
+		}
+
+		if err := batch.Commit(cctx.Context); err != nil {
+			return xerrors.Errorf("failed to commit batch: %w", err)
+		}
+		return nil
 	},
 }
 
