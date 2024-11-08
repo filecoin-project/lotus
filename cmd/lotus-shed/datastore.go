@@ -368,7 +368,7 @@ var datastoreImportCmd = &cli.Command{
 		if err != nil {
 			return xerrors.Errorf("failed to open snapshot: %w", err)
 		}
-		defer snapshot.Close()
+		defer snapshot.Close() //nolint:errcheck
 
 		r, err := repo.NewFS(cctx.String("repo"))
 		if err != nil {
