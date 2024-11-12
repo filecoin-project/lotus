@@ -584,7 +584,7 @@ var ChainListCmd = &cli.Command{
 		&cli.Uint64Flag{Name: "height", DefaultText: "current head"},
 		&cli.IntFlag{Name: "count", Value: 30},
 		&cli.StringFlag{
-			Name:  "format",
+			Name: "format",
 			Usage: `specify the format to print out tipsets. Valid placeholders:
   <height>: The height of the tipset
   <time>: The timestamp of the tipset
@@ -957,6 +957,7 @@ func printTipSet(format string, ts *types.TipSet, afmt *AppFmt) {
 	if strings.Contains(format, "<json_tipset>") {
 		jsonTipset, err := json.MarshalIndent(ts, "", "  ")
 		if err != nil {
+			// should not happen
 			afmt.Println("Error encoding tipset to JSON:", err)
 			return
 		}
