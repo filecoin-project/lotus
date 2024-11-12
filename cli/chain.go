@@ -955,7 +955,7 @@ func printTipSet(format string, ts *types.TipSet, afmt *AppFmt) {
 	format = strings.ReplaceAll(format, "<tipset>", strings.Join(sCids, ","))
 	format = strings.ReplaceAll(format, "<blocks>", blks)
 	if strings.Contains(format, "<json_tipset>") {
-		jsonTipset, err := json.MarshalIndent(ts, "", "  ")
+		jsonTipset, err := json.Marshal(ts)
 		if err != nil {
 			// should not happen
 			afmt.Println("Error encoding tipset to JSON:", err)
