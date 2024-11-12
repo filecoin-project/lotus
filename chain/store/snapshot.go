@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	blocks "github.com/ipfs/go-block-format"
@@ -17,7 +18,6 @@ import (
 	carv2 "github.com/ipld/go-car/v2"
 	"github.com/multiformats/go-multicodec"
 	cbg "github.com/whyrusleeping/cbor-gen"
-	"go.uber.org/atomic"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 
