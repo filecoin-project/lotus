@@ -590,7 +590,8 @@ var ChainListCmd = &cli.Command{
   <time>: The timestamp of the tipset
   <blocks>: A list of blocks in the tipset
   <tipset>: A comma-separated list of CIDs for the tipset
-  <weight>: The parent weight of the first block in the tipset`,
+  <weight>: The parent weight of the first block in the tipset
+  <json_tipset>: JSON encoding of the tipset`,
 			Value: "<height>: (<time>) <blocks>",
 		},
 		&cli.BoolFlag{
@@ -953,6 +954,15 @@ func printTipSet(format string, ts *types.TipSet, afmt *AppFmt) {
 
 	format = strings.ReplaceAll(format, "<tipset>", strings.Join(sCids, ","))
 	format = strings.ReplaceAll(format, "<blocks>", blks)
+	if strings.Contains(format, "<json_tipset>") {
+		jsonTipset, err := json.MarshalIndent(ts, "", "  ")
+		if err != nil {
+			afmt.Println("Error encoding tipset to JSON:", err)
+			return
+		}
+		format = strings.ReplaceAll(format, "<json_tipset>", string(jsonTipset))
+	}
+
 	format = strings.ReplaceAll(format, "<weight>", fmt.Sprint(ts.Blocks()[0].ParentWeight))
 
 	afmt.Println(format)
