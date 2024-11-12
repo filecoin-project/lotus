@@ -581,12 +581,12 @@ var ChainListCmd = &cli.Command{
 	Aliases: []string{"love"},
 	Usage:   "View a segment of the chain",
 	Flags: []cli.Flag{
-		&cli.Uint64Flag{Name: "height", DefaultText: "current head"},
+		&cli.Uint64Flag{Name: "epoch", Aliases: []string{"height"}, DefaultText: "current head"},
 		&cli.IntFlag{Name: "count", Value: 30},
 		&cli.StringFlag{
-			Name: "format",
-			Usage: "specify the format to print out tipsets using placeholders like <height>, <time>, <blocks>, <tipset>, <weight>, <json_tipset>",
-			Value: "<height>: (<time>) <blocks>",
+			Name:  "format",
+			Usage: "specify the format to print out tipsets using placeholders: <epoch>, <time>, <blocks>, <weight>, <tipset>, <json_tipset>\n",
+			Value: "<epoch>: (<time>) <blocks>",
 		},
 		&cli.BoolFlag{
 			Name:  "gas-stats",
@@ -932,7 +932,9 @@ func handleHamtAddress(ctx context.Context, api v0api.FullNode, r cid.Cid) error
 }
 
 func printTipSet(format string, ts *types.TipSet, afmt *AppFmt) {
-	format = strings.ReplaceAll(format, "<height>", fmt.Sprint(ts.Height()))
+	format = strings.ReplaceAll(format, "<epoch>", fmt.Sprint(ts.Height()))
+	format = strings.ReplaceAll(format, "<height>", fmt.Sprint(ts.Height())) // backwards compatibility
+
 	format = strings.ReplaceAll(format, "<time>", time.Unix(int64(ts.MinTimestamp()), 0).Format(time.Stamp))
 	blks := "[ "
 	for _, b := range ts.Blocks() {
