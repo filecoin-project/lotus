@@ -585,13 +585,7 @@ var ChainListCmd = &cli.Command{
 		&cli.IntFlag{Name: "count", Value: 30},
 		&cli.StringFlag{
 			Name: "format",
-			Usage: `specify the format to print out tipsets. Valid placeholders:
-  <height>: The height of the tipset
-  <time>: The timestamp of the tipset
-  <blocks>: A list of blocks in the tipset
-  <tipset>: A comma-separated list of CIDs for the tipset
-  <weight>: The parent weight of the first block in the tipset
-  <json_tipset>: JSON encoding of the tipset`,
+			Usage: "specify the format to print out tipsets using placeholders like <height>, <time>, <blocks>, <tipset>, <weight>, <json_tipset>",
 			Value: "<height>: (<time>) <blocks>",
 		},
 		&cli.BoolFlag{
