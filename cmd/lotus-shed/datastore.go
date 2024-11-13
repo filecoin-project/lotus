@@ -133,8 +133,8 @@ var datastoreClearCmd = &cli.Command{
 	},
 	ArgsUsage: "[namespace]",
 	Action: func(cctx *cli.Context) (_err error) {
-		if cctx.NArg() != 2 {
-			return xerrors.Errorf("requires 2 arguments: the datastore prefix")
+		if cctx.NArg() != 1 {
+			return xerrors.Errorf("requires 1 argument: the datastore prefix")
 		}
 		namespace := cctx.Args().Get(0)
 
@@ -157,7 +157,7 @@ var datastoreClearCmd = &cli.Command{
 		}
 		defer lr.Close() //nolint:errcheck
 
-		ds, err := lr.Datastore(cctx.Context, namespace)
+		ds, err := lr.Datastore(cctx.Context, datastore.NewKey(namespace).String())
 		if err != nil {
 			return err
 		}
@@ -306,7 +306,7 @@ var datastoreExportCmd = &cli.Command{
 		}
 		defer lr.Close() //nolint:errcheck
 
-		ds, err := lr.Datastore(cctx.Context, namespace)
+		ds, err := lr.Datastore(cctx.Context, datastore.NewKey(namespace).String())
 		if err != nil {
 			return err
 		}
@@ -389,7 +389,7 @@ var datastoreImportCmd = &cli.Command{
 		}
 		defer lr.Close() //nolint:errcheck
 
-		ds, err := lr.Datastore(cctx.Context, namespace)
+		ds, err := lr.Datastore(cctx.Context, datastore.NewKey(namespace).String())
 		if err != nil {
 			return err
 		}
