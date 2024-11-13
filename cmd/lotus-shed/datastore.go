@@ -354,6 +354,10 @@ var datastoreImportCmd = &cli.Command{
 			Usage: "node type (FullNode, StorageMiner, Worker, Wallet)",
 			Value: "FullNode",
 		},
+		&cli.BoolFlag{
+			Name:  "really-do-it",
+			Usage: "must be specified for the action to take effect",
+		},
 	},
 	Description: "Import the specified datastore snapshot.",
 	ArgsUsage:   "[namespace filename]",
