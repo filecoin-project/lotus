@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"bufio"
+	"context"
 	"embed"
 	"encoding/json"
 	"errors"
@@ -10,13 +12,16 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-f3/certs"
 	"github.com/filecoin-project/go-f3/gpbft"
 	"github.com/filecoin-project/go-f3/manifest"
+	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/tablewriter"
 )
@@ -29,7 +34,11 @@ var (
 			{
 				Name:    "list-miners",
 				Aliases: []string{"lm"},
-				Usage:   "Lists the miners that currently participate in F3 via this node.",
+				Usage: `Lists the miners that currently participate in F3 via this node.
+
+The instance may be specified as the first argument. If unspecified,
+the latest instance is used.
+`,
 				Action: func(cctx *cli.Context) error {
 					api, closer, err := GetFullNodeAPIV1(cctx)
 					if err != nil {
@@ -68,6 +77,242 @@ var (
 						})
 					}
 					return tw.Flush(cctx.App.Writer)
+				},
+			},
+			{
+				Name:    "powertable",
+				Aliases: []string{"pt"},
+				Subcommands: []*cli.Command{
+					{
+						Name:      "get",
+						Aliases:   []string{"g"},
+						Usage:     "Get F3 power table at a specific instance ID or latest instance if none is specified.",
+						ArgsUsage: "[instance]",
+						Flags:     []cli.Flag{f3FlagPowerTableFromEC},
+						Before: func(cctx *cli.Context) error {
+							if cctx.Args().Len() > 1 {
+								return fmt.Errorf("too many arguments")
+							}
+							return nil
+						},
+						Action: func(cctx *cli.Context) error {
+							api, closer, err := GetFullNodeAPIV1(cctx)
+							if err != nil {
+								return err
+							}
+							defer closer()
+
+							progress, err := api.F3GetProgress(cctx.Context)
+							if err != nil {
+								return fmt.Errorf("getting progress: %w", err)
+							}
+
+							var instance uint64
+							if cctx.Args().Present() {
+								instance, err = strconv.ParseUint(cctx.Args().First(), 10, 64)
+								if err != nil {
+									return fmt.Errorf("parsing instance: %w", err)
+								}
+								if instance > progress.ID {
+									// TODO: Technically we can return power table for instances ahead as long as
+									//       instance is within lookback. Implement it.
+									return fmt.Errorf("instance is ahead the current instance in progress: %d > %d", instance, progress.ID)
+								}
+							} else {
+								instance = progress.ID
+							}
+
+							ltsk, expectedPowerTableCID, err := f3GetPowerTableTSKByInstance(cctx.Context, api, instance)
+							if err != nil {
+								return fmt.Errorf("getting power table tsk for instance %d: %w", instance, err)
+							}
+
+							var result = struct {
+								Instance   uint64
+								FromEC     bool
+								PowerTable struct {
+									CID         string
+									Entries     gpbft.PowerEntries
+									Total       gpbft.StoragePower
+									ScaledTotal int64
+								}
+							}{
+								Instance: instance,
+								FromEC:   cctx.Bool(f3FlagPowerTableFromEC.Name),
+							}
+							if result.FromEC {
+								result.PowerTable.Entries, err = api.F3GetECPowerTable(cctx.Context, ltsk)
+							} else {
+								result.PowerTable.Entries, err = api.F3GetF3PowerTable(cctx.Context, ltsk)
+							}
+							if err != nil {
+								return fmt.Errorf("getting f3 power table at instance %d: %w", instance, err)
+							}
+
+							pt := gpbft.NewPowerTable()
+							if err := pt.Add(result.PowerTable.Entries...); err != nil {
+								// Sanity check the entries returned by the API.
+								return fmt.Errorf("retrieved power table is not valid for instance %d: %w", instance, err)
+							}
+							result.PowerTable.Total = pt.Total
+							result.PowerTable.ScaledTotal = pt.ScaledTotal
+
+							actualPowerTableCID, err := certs.MakePowerTableCID(result.PowerTable.Entries)
+							if err != nil {
+								return fmt.Errorf("gettingh power table CID at instance %d: %w", instance, err)
+							}
+							if !expectedPowerTableCID.Equals(actualPowerTableCID) {
+								return fmt.Errorf("expected power table CID %s at instance %d, got: %s", expectedPowerTableCID, instance, actualPowerTableCID)
+							}
+							result.PowerTable.CID = actualPowerTableCID.String()
+
+							output, err := json.MarshalIndent(result, "", "  ")
+							if err != nil {
+								return fmt.Errorf("marshalling f3 power table at instance %d: %w", instance, err)
+							}
+							_, _ = fmt.Fprint(cctx.App.Writer, string(output))
+							return nil
+						},
+					},
+					{
+						Name:    "get-proportion",
+						Aliases: []string{"gp"},
+						Usage: `Gets the total proportion of power for a list of actors at a given instance.
+
+The instance may be specified as the first argument. If unspecified,
+the latest instance is used.
+
+The list of actors may be specified as Actor ID or miner address, space
+separated, pied to STDIN. Example:
+  $ echo "1413 t01234 f12345" | lotus f3 powertable get-proportion 42
+`,
+						ArgsUsage: "[instance]",
+						Flags:     []cli.Flag{f3FlagPowerTableFromEC},
+						Before: func(cctx *cli.Context) error {
+							if cctx.Args().Len() > 1 {
+								return fmt.Errorf("too many arguments")
+							}
+							return nil
+						},
+						Action: func(cctx *cli.Context) error {
+							api, closer, err := GetFullNodeAPIV1(cctx)
+							if err != nil {
+								return err
+							}
+							defer closer()
+
+							progress, err := api.F3GetProgress(cctx.Context)
+							if err != nil {
+								return fmt.Errorf("getting progress: %w", err)
+							}
+
+							var instance uint64
+							if cctx.Args().Present() {
+								instance, err = strconv.ParseUint(cctx.Args().First(), 10, 64)
+								if err != nil {
+									return fmt.Errorf("parsing instance: %w", err)
+								}
+								if instance > progress.ID {
+									// TODO: Technically we can return power table for instances ahead as long as
+									//       instance is within lookback. Implement it.
+									return fmt.Errorf("instance is ahead the current instance in progress: %d > %d", instance, progress.ID)
+								}
+							} else {
+								instance = progress.ID
+							}
+
+							ltsk, expectedPowerTableCID, err := f3GetPowerTableTSKByInstance(cctx.Context, api, instance)
+							if err != nil {
+								return fmt.Errorf("getting power table tsk for instance %d: %w", instance, err)
+							}
+
+							var result = struct {
+								Instance   uint64
+								FromEC     bool
+								PowerTable struct {
+									CID         string
+									ScaledTotal int64
+								}
+								ScaledSum  int64
+								Proportion float64
+							}{
+								Instance: instance,
+								FromEC:   cctx.Bool(f3FlagPowerTableFromEC.Name),
+							}
+
+							var powerEntries gpbft.PowerEntries
+							if result.FromEC {
+								powerEntries, err = api.F3GetECPowerTable(cctx.Context, ltsk)
+							} else {
+								powerEntries, err = api.F3GetF3PowerTable(cctx.Context, ltsk)
+							}
+							if err != nil {
+								return fmt.Errorf("getting f3 power table at instance %d: %w", instance, err)
+							}
+
+							actualPowerTableCID, err := certs.MakePowerTableCID(powerEntries)
+							if err != nil {
+								return fmt.Errorf("gettingh power table CID at instance %d: %w", instance, err)
+							}
+							if !expectedPowerTableCID.Equals(actualPowerTableCID) {
+								return fmt.Errorf("expected power table CID %s at instance %d, got: %s", expectedPowerTableCID, instance, actualPowerTableCID)
+							}
+							result.PowerTable.CID = actualPowerTableCID.String()
+
+							scanner := bufio.NewScanner(cctx.App.Reader)
+							if !scanner.Scan() {
+								return fmt.Errorf("reading actor IDs from stdin: %w", scanner.Err())
+							}
+							inputIDs := strings.Split(strings.TrimSpace(scanner.Text()), " ")
+
+							pt := gpbft.NewPowerTable()
+							if err := pt.Add(powerEntries...); err != nil {
+								return fmt.Errorf("constructing power table from entries: %w", err)
+							}
+							result.PowerTable.ScaledTotal = pt.ScaledTotal
+
+							seenIDs := map[gpbft.ActorID]struct{}{}
+							for _, stringID := range inputIDs {
+								var actorID gpbft.ActorID
+								switch addr, err := address.NewFromString(stringID); {
+								case err == nil:
+									idAddr, err := address.IDFromAddress(addr)
+									if err != nil {
+										return fmt.Errorf("parsing ID from address %q: %w", stringID, err)
+									}
+									actorID = gpbft.ActorID(idAddr)
+								case errors.Is(err, address.ErrUnknownNetwork),
+									errors.Is(err, address.ErrUnknownProtocol):
+									// Try parsing as uint64 straight up.
+									id, err := strconv.ParseUint(stringID, 10, 64)
+									if err != nil {
+										return fmt.Errorf("parsing as uint64 %q: %w", stringID, err)
+									}
+									actorID = gpbft.ActorID(id)
+								default:
+									return fmt.Errorf("parsing address %q: %w", stringID, err)
+								}
+								// Prune duplicate IDs.
+								if _, ok := seenIDs[actorID]; ok {
+									continue
+								} else {
+									seenIDs[actorID] = struct{}{}
+								}
+								scaled, key := pt.Get(actorID)
+								if key == nil {
+									return fmt.Errorf("actor ID %q not found in power table", actorID)
+								}
+								result.ScaledSum += scaled
+							}
+							result.Proportion = float64(result.ScaledSum) / float64(result.PowerTable.ScaledTotal)
+							output, err := json.MarshalIndent(result, "", "  ")
+							if err != nil {
+								return fmt.Errorf("marshalling f3 power table at instance %d: %w", instance, err)
+							}
+							_, _ = fmt.Fprint(cctx.App.Writer, string(output))
+							return nil
+						},
+					},
 				},
 			},
 			{
@@ -318,6 +563,10 @@ Examples:
 		Name:  "reverse",
 		Usage: "Reverses the default order of output. ",
 	}
+	f3FlagPowerTableFromEC = &cli.BoolFlag{
+		Name:  "ec",
+		Usage: "Whether to get the power table from EC.",
+	}
 	//go:embed templates/f3_*.go.tmpl
 	f3TemplatesFS embed.FS
 	f3Templates   = template.Must(
@@ -331,6 +580,35 @@ Examples:
 			ParseFS(f3TemplatesFS, "templates/f3_*.go.tmpl"),
 	)
 )
+
+func f3GetPowerTableTSKByInstance(ctx context.Context, api v1api.FullNode, instance uint64) (types.TipSetKey, cid.Cid, error) {
+	mfst, err := api.F3GetManifest(ctx)
+	if err != nil {
+		return types.EmptyTSK, cid.Undef, fmt.Errorf("getting manifest: %w", err)
+	}
+
+	if instance < mfst.InitialInstance+mfst.CommitteeLookback {
+		ts, err := api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(mfst.BootstrapEpoch-mfst.EC.Finality), types.EmptyTSK)
+		if err != nil {
+			return types.EmptyTSK, cid.Undef, fmt.Errorf("getting bootstrap epoch tipset: %w", err)
+		}
+		return ts.Key(), mfst.InitialPowerTable, nil
+	}
+
+	previous, err := api.F3GetCertificate(ctx, instance-1)
+	if err != nil {
+		return types.EmptyTSK, cid.Undef, fmt.Errorf("getting certificate for previous instance: %w", err)
+	}
+	lookback, err := api.F3GetCertificate(ctx, instance-mfst.CommitteeLookback)
+	if err != nil {
+		return types.EmptyTSK, cid.Undef, fmt.Errorf("getting certificate for lookback instance: %w", err)
+	}
+	ltsk, err := types.TipSetKeyFromBytes(lookback.ECChain.Head().Key)
+	if err != nil {
+		return types.EmptyTSK, cid.Undef, fmt.Errorf("getting lotus tipset key from head of lookback certificate: %w", err)
+	}
+	return ltsk, previous.SupplementalData.PowerTable, nil
+}
 
 func outputFinalityCertificate(cctx *cli.Context, cert *certs.FinalityCertificate) error {
 
