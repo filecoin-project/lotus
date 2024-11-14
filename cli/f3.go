@@ -34,11 +34,7 @@ var (
 			{
 				Name:    "list-miners",
 				Aliases: []string{"lm"},
-				Usage: `Lists the miners that currently participate in F3 via this node.
-
-The instance may be specified as the first argument. If unspecified,
-the latest instance is used.
-`,
+				Usage:   `Lists the miners that currently participate in F3 via this node.`,
 				Action: func(cctx *cli.Context) error {
 					api, closer, err := GetFullNodeAPIV1(cctx)
 					if err != nil {
@@ -84,9 +80,12 @@ the latest instance is used.
 				Aliases: []string{"pt"},
 				Subcommands: []*cli.Command{
 					{
-						Name:      "get",
-						Aliases:   []string{"g"},
-						Usage:     "Get F3 power table at a specific instance ID or latest instance if none is specified.",
+						Name:    "get",
+						Aliases: []string{"g"},
+						Usage: `Get F3 power table at a specific instance ID or latest instance if none is specified.
+
+The instance may be specified as the first argument. If unspecified,
+the latest instance is used.`,
 						ArgsUsage: "[instance]",
 						Flags:     []cli.Flag{f3FlagPowerTableFromEC},
 						Before: func(cctx *cli.Context) error {
@@ -184,8 +183,7 @@ the latest instance is used.
 
 The list of actors may be specified as Actor ID or miner address, space
 separated, pied to STDIN. Example:
-  $ echo "1413 t01234 f12345" | lotus f3 powertable get-proportion 42
-`,
+  $ echo "1413 t01234 f12345" | lotus f3 powertable get-proportion 42`,
 						ArgsUsage: "[instance]",
 						Flags:     []cli.Flag{f3FlagPowerTableFromEC},
 						Before: func(cctx *cli.Context) error {
