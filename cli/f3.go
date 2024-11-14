@@ -295,9 +295,8 @@ separated, pied to STDIN. Example:
 								// Prune duplicate IDs.
 								if _, ok := seenIDs[actorID]; ok {
 									continue
-								} else {
-									seenIDs[actorID] = struct{}{}
 								}
+								seenIDs[actorID] = struct{}{}
 								scaled, key := pt.Get(actorID)
 								if key == nil {
 									return fmt.Errorf("actor ID %q not found in power table", actorID)
