@@ -1,4 +1,4 @@
-name: Check and Generate
+name: Check
 
 on:
   pull_request:
@@ -71,9 +71,6 @@ jobs:
   generate-docs:
     name: Generate Documentation
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/release/'))
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -84,21 +81,17 @@ jobs:
       - uses: ./.github/actions/install-go
       - uses: ./.github/actions/make-deps
 
-      - name: Generate API documentation using docsgen-cli
-        run: |
-          make docsgen-cli || {
-            echo "Error: Documentation generation failed"
-            exit 1
-          }
+      - name: Generate documentation
+        run: make docsgen-cli
 
-      - name: Commit and push if documentation changed
+      - name: Commit and push if changed
         run: |
           if [ -n "$(git status --porcelain)" ]; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add .
-            git commit -m "docs: update API documentation via docsgen-cli"
+            git commit -m "docs: update generated documentation"
             git push
           else
-            echo "No documentation changes to commit"
+            echo "No changes to commit"
           fi
