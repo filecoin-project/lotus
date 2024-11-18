@@ -193,7 +193,7 @@ func (p *Participant) tryParticipate(ctx context.Context, ticket api.F3Participa
 			log.Debugw("Reattempting F3 participation with the same ticket.", "attempts", p.backoff.Attempt())
 			continue
 		case errors.Is(err, api.ErrF3NotReady):
-			log.Warnw("F3 is not ready. Retrying F3 participation after backoff.", "backoff", p.backoff.Duration(), "err", err)
+			log.Debugw("F3 is not ready. Retrying F3 participation after backoff.", "backoff", p.backoff.Duration(), "err", err)
 			p.backOff(ctx)
 			continue
 		case err != nil:
