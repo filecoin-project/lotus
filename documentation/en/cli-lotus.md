@@ -2836,12 +2836,12 @@ COMMANDS:
                        the latest instance is used.
    get-proportion, gp  Gets the total proportion of power for a list of actors at a given instance.
 
-                       The instance may be specified as the first argument. If unspecified,
-                       the latest instance is used.
+                       The instance may be specified via --instance flag. If unspecified, the
+                       latest instance is used.
 
                        The list of actors may be specified as Actor ID or miner address, space
-                       separated, pied to STDIN. Example:
-                         $ echo "1413 t01234 f12345" | lotus f3 powertable get-proportion 42
+                       separated, via arguments. Example:
+                         $ lotus f3 powertable get-proportion -i 42 1413 t01234 f12345
    help, h             Shows a list of commands or help for one command
 
 OPTIONS:

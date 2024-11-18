@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"bufio"
 	"context"
 	"embed"
 	"encoding/json"
@@ -178,17 +177,20 @@ the latest instance is used.`,
 						Aliases: []string{"gp"},
 						Usage: `Gets the total proportion of power for a list of actors at a given instance.
 
-The instance may be specified as the first argument. If unspecified,
-the latest instance is used.
+The instance may be specified via --instance flag. If unspecified, the
+latest instance is used.
 
 The list of actors may be specified as Actor ID or miner address, space
-separated, pied to STDIN. Example:
-  $ echo "1413 t01234 f12345" | lotus f3 powertable get-proportion 42`,
-						ArgsUsage: "[instance]",
-						Flags:     []cli.Flag{f3FlagPowerTableFromEC},
+separated, via arguments. Example:
+  $ lotus f3 powertable get-proportion -i 42 1413 t01234 f12345`,
+						ArgsUsage: "<actor-id> [actor-id] ...",
+						Flags: []cli.Flag{
+							f3FlagPowerTableFromEC,
+							f3FlagInstanceID,
+						},
 						Before: func(cctx *cli.Context) error {
-							if cctx.Args().Len() > 1 {
-								return fmt.Errorf("too many arguments")
+							if cctx.Args().Len() < 1 {
+								return fmt.Errorf("at least one actor ID must be specified")
 							}
 							return nil
 						},
@@ -205,11 +207,8 @@ separated, pied to STDIN. Example:
 							}
 
 							var instance uint64
-							if cctx.Args().Present() {
-								instance, err = strconv.ParseUint(cctx.Args().First(), 10, 64)
-								if err != nil {
-									return fmt.Errorf("parsing instance: %w", err)
-								}
+							if cctx.IsSet(f3FlagInstanceID.Name) {
+								instance = cctx.Uint64(f3FlagInstanceID.Name)
 								if instance > progress.ID {
 									// TODO: Technically we can return power table for instances ahead as long as
 									//       instance is within lookback. Implement it.
@@ -257,20 +256,15 @@ separated, pied to STDIN. Example:
 							}
 							result.PowerTable.CID = actualPowerTableCID.String()
 
-							scanner := bufio.NewScanner(cctx.App.Reader)
-							if !scanner.Scan() {
-								return fmt.Errorf("reading actor IDs from stdin: %w", scanner.Err())
-							}
-							inputIDs := strings.Split(strings.TrimSpace(scanner.Text()), " ")
-
 							pt := gpbft.NewPowerTable()
 							if err := pt.Add(powerEntries...); err != nil {
 								return fmt.Errorf("constructing power table from entries: %w", err)
 							}
 							result.PowerTable.ScaledTotal = pt.ScaledTotal
 
+							inputActorIDs := cctx.Args().Slice()
 							seenIDs := map[gpbft.ActorID]struct{}{}
-							for _, stringID := range inputIDs {
+							for _, stringID := range inputActorIDs {
 								var actorID gpbft.ActorID
 								switch addr, err := address.NewFromString(stringID); {
 								case err == nil:
@@ -563,6 +557,12 @@ Examples:
 	f3FlagPowerTableFromEC = &cli.BoolFlag{
 		Name:  "ec",
 		Usage: "Whether to get the power table from EC.",
+	}
+	f3FlagInstanceID = &cli.Uint64Flag{
+		Name:        "instance",
+		Aliases:     []string{"i"},
+		Usage:       "The F3 instance ID.",
+		DefaultText: "Latest Instance",
 	}
 	//go:embed templates/f3_*.go.tmpl
 	f3TemplatesFS embed.FS
