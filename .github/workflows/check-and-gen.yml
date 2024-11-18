@@ -26,7 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: 'recursive'
+          submodules: "recursive"
           fetch-depth: 0
       - uses: ./.github/actions/install-system-dependencies
       - uses: ./.github/actions/install-go
@@ -39,7 +39,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: 'recursive'
+          submodules: "recursive"
           fetch-depth: 0
       - uses: ./.github/actions/install-system-dependencies
       - uses: ./.github/actions/install-go
@@ -52,7 +52,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: 'recursive'
+          submodules: "recursive"
           fetch-depth: 0
       - uses: ./.github/actions/install-go
       - run: go fmt ./...
@@ -63,8 +63,42 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: 'recursive'
+          submodules: "recursive"
           fetch-depth: 0
       - uses: ./.github/actions/install-go
       - run: go mod tidy -v
       - run: git diff --exit-code
+  generate-docs:
+    name: Generate API Documentation
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/release/'))
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: "recursive"
+          fetch-depth: 0
+
+      - uses: ./.github/actions/install-system-dependencies
+      - uses: ./.github/actions/install-go
+      - uses: ./.github/actions/make-deps
+
+      - name: Generate API documentation using docsgen-cli
+        run: |
+          make docsgen-cli || {
+            echo "Error: Documentation generation failed"
+            exit 1
+          }
+
+      - name: Commit and push if documentation changed
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add .
+            git commit -m "docs: update API documentation via docsgen-cli"
+            git push
+          else
+            echo "No documentation changes to commit"
+          fi
