@@ -83,7 +83,10 @@ It is a crucial component for optimizing Lotus RPC response times.
 Default: false (indexer is disabled)
 
 Setting this to true will enable the indexer, which will significantly improve RPC performance.
-It is strongly recommended to keep this set to true if you are an RPC provider.`,
+It is strongly recommended to keep this set to true if you are an RPC provider.
+
+If EnableEthRPC or EnableActorEventsAPI are set to true, the ChainIndexer must be enabled using
+this option to avoid errors at startup.`,
 		},
 		{
 			Name: "GCRetentionEpochs",
@@ -179,7 +182,8 @@ may increase startup time.`,
 
 			Comment: `EnableActorEventsAPI enables the Actor events API that enables clients to consume events
 emitted by (smart contracts + built-in Actors).
-Note: Setting this to true will also require that ChainIndexer is enabled, otherwise it will cause an error at startup.`,
+Note: Setting this to true will also require that ChainIndexer is enabled, otherwise it will cause an error at startup.
+Set EnableIndexer in the ChainIndexer section of the config to true to enable the ChainIndexer.`,
 		},
 		{
 			Name: "FilterTTL",
@@ -255,7 +259,8 @@ rewards. This address should have adequate funds to cover gas fees.`,
 			Type: "bool",
 
 			Comment: `EnableEthRPC enables eth_ RPC methods.
-Note: Setting this to true will also require that ChainIndexer is enabled, otherwise it will cause an error at startup.`,
+Note: Setting this to true will also require that ChainIndexer is enabled, otherwise it will cause an error at startup.
+Set EnableIndexer in the ChainIndexer section of the config to true to enable the ChainIndexer.`,
 		},
 		{
 			Name: "EthTraceFilterMaxResults",
