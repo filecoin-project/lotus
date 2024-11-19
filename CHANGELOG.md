@@ -2,6 +2,10 @@
 
 # UNRELEASED
 
+## Bug Fixes
+
+- Make `EthTraceFilter` / `trace_filter` skip null rounds instead of erroring. ([filecoin-project/lotus#12702](https://github.com/filecoin-project/lotus/pull/12702))
+
 # UNRELEASED v1.31.0
 
 See https://github.com/filecoin-project/lotus/blob/release/v1.31.0/CHANGELOG.md
