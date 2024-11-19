@@ -404,8 +404,8 @@ func TestGetEventsForFilterWithRawCodec(t *testing.T) {
 
 	// Define codec constants (replace with actual multicodec values)
 	var (
-		codecRaw  = uint64(multicodec.Raw)
-		codecCBOR = uint64(multicodec.Cbor)
+		codecRaw  = multicodec.Raw
+		codecCBOR = multicodec.Cbor
 	)
 
 	// Create events with different codecs
@@ -528,8 +528,8 @@ func TestMaxFilterResults(t *testing.T) {
 
 	// Define codec constants (replace with actual multicodec values)
 	var (
-		codecRaw  = uint64(multicodec.Raw)
-		codecCBOR = uint64(multicodec.Cbor)
+		codecRaw  = multicodec.Raw
+		codecCBOR = multicodec.Cbor
 	)
 
 	// Create events with different codecs
@@ -687,7 +687,7 @@ func fakeEvent(emitter abi.ActorID, indexed []kv, unindexed []kv) *types.Event {
 	return ev
 }
 
-func fakeEventWithCodec(emitter abi.ActorID, indexed []kv, codec uint64) *types.Event {
+func fakeEventWithCodec(emitter abi.ActorID, indexed []kv, codec multicodec.Code) *types.Event {
 	ev := &types.Event{
 		Emitter: emitter,
 	}
@@ -696,7 +696,7 @@ func fakeEventWithCodec(emitter abi.ActorID, indexed []kv, codec uint64) *types.
 		ev.Entries = append(ev.Entries, types.EventEntry{
 			Flags: 0x01,
 			Key:   in.k,
-			Codec: codec,
+			Codec: uint64(codec),
 			Value: in.v,
 		})
 	}

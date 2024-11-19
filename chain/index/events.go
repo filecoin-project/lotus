@@ -22,7 +22,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-var ErrMaxResultsReached = xerrors.New("max results limit reached, results truncated")
+var ErrMaxResultsReached = fmt.Errorf("filter matches too many events, try a more restricted filter")
 
 const maxLookBackForWait = 120 // one hour of tipsets
 
