@@ -2831,17 +2831,7 @@ USAGE:
 
 COMMANDS:
    get, g              Get F3 power table at a specific instance ID or latest instance if none is specified.
-
-                       The instance may be specified as the first argument. If unspecified,
-                       the latest instance is used.
    get-proportion, gp  Gets the total proportion of power for a list of actors at a given instance.
-
-                       The instance may be specified via --instance flag. If unspecified, the
-                       latest instance is used.
-
-                       The list of actors may be specified as Actor ID or miner address, space
-                       separated, via arguments. Example:
-                         $ lotus f3 powertable get-proportion -i 42 1413 t01234 f12345
    help, h             Shows a list of commands or help for one command
 
 OPTIONS:
@@ -2853,15 +2843,26 @@ OPTIONS:
 NAME:
    lotus f3 powertable get - Get F3 power table at a specific instance ID or latest instance if none is specified.
 
-                             The instance may be specified as the first argument. If unspecified,
-                             the latest instance is used.
-
 USAGE:
    lotus f3 powertable get [command options] [instance]
 
 OPTIONS:
    --ec        Whether to get the power table from EC. (default: false)
    --help, -h  show help
+```
+
+#### lotus f3 powertable get-proportion
+```
+NAME:
+   lotus f3 powertable get-proportion - Gets the total proportion of power for a list of actors at a given instance.
+
+USAGE:
+   lotus f3 powertable get-proportion [command options] <actor-id> [actor-id] ...
+
+OPTIONS:
+   --ec                        Whether to get the power table from EC. (default: false)
+   --instance value, -i value  The F3 instance ID. (default: Latest Instance)
+   --help, -h                  show help
 ```
 
 ### lotus f3 certs

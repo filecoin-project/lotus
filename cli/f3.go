@@ -85,12 +85,9 @@ var f3SubCmdPowerTable = &cli.Command{
 	Aliases: []string{"pt"},
 	Subcommands: []*cli.Command{
 		{
-			Name:    "get",
-			Aliases: []string{"g"},
-			Usage: `Get F3 power table at a specific instance ID or latest instance if none is specified.
-
-The instance may be specified as the first argument. If unspecified,
-the latest instance is used.`,
+			Name:      "get",
+			Aliases:   []string{"g"},
+			Usage:     `Get F3 power table at a specific instance ID or latest instance if none is specified.`,
 			ArgsUsage: "[instance]",
 			Flags:     []cli.Flag{f3FlagPowerTableFromEC},
 			Before: func(cctx *cli.Context) error {
@@ -179,16 +176,9 @@ the latest instance is used.`,
 			},
 		},
 		{
-			Name:    "get-proportion",
-			Aliases: []string{"gp"},
-			Usage: `Gets the total proportion of power for a list of actors at a given instance.
-
-The instance may be specified via --instance flag. If unspecified, the
-latest instance is used.
-
-The list of actors may be specified as Actor ID or miner address, space
-separated, via arguments. Example:
-  $ lotus f3 powertable get-proportion -i 42 1413 t01234 f12345`,
+			Name:      "get-proportion",
+			Aliases:   []string{"gp"},
+			Usage:     `Gets the total proportion of power for a list of actors at a given instance.`,
 			ArgsUsage: "<actor-id> [actor-id] ...",
 			Flags: []cli.Flag{
 				f3FlagPowerTableFromEC,
