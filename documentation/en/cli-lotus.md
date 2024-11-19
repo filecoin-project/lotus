@@ -2799,6 +2799,7 @@ USAGE:
 
 COMMANDS:
    list-miners, lm  Lists the miners that currently participate in F3 via this node.
+   powertable, pt   
    certs, c         Manages interactions with F3 finality certificates.
    manifest         Gets the current manifest used by F3.
    status           Checks the F3 status.
@@ -2818,6 +2819,50 @@ USAGE:
 
 OPTIONS:
    --help, -h  show help
+```
+
+### lotus f3 powertable
+```
+NAME:
+   lotus f3 powertable
+
+USAGE:
+   lotus f3 powertable command [command options] [arguments...]
+
+COMMANDS:
+   get, g              Get F3 power table at a specific instance ID or latest instance if none is specified.
+   get-proportion, gp  Gets the total proportion of power for a list of actors at a given instance.
+   help, h             Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help
+```
+
+#### lotus f3 powertable get
+```
+NAME:
+   lotus f3 powertable get - Get F3 power table at a specific instance ID or latest instance if none is specified.
+
+USAGE:
+   lotus f3 powertable get [command options] [instance]
+
+OPTIONS:
+   --ec        Whether to get the power table from EC. (default: false)
+   --help, -h  show help
+```
+
+#### lotus f3 powertable get-proportion
+```
+NAME:
+   lotus f3 powertable get-proportion - Gets the total proportion of power for a list of actors at a given instance.
+
+USAGE:
+   lotus f3 powertable get-proportion [command options] <actor-id> [actor-id] ...
+
+OPTIONS:
+   --ec                        Whether to get the power table from EC. (default: false)
+   --instance value, -i value  The F3 instance ID. (default: Latest Instance)
+   --help, -h                  show help
 ```
 
 ### lotus f3 certs
