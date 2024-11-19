@@ -6,6 +6,10 @@
 
 - Make `EthTraceFilter` / `trace_filter` skip null rounds instead of erroring. ([filecoin-project/lotus#12702](https://github.com/filecoin-project/lotus/pull/12702))
 
+## New Features
+
+* Implement F3 utility CLIs to list the power table for a given instance and sum the proportional power of a set of actors that participate in a given instance. See: https://github.com/filecoin-project/lotus/pull/12698.
+
 # UNRELEASED v1.31.0
 
 See https://github.com/filecoin-project/lotus/blob/release/v1.31.0/CHANGELOG.md
