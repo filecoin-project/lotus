@@ -180,10 +180,10 @@ func ConfigFullNode(c interface{}) Option {
 	}
 
 	if cfg.Fevm.EnableEthRPC && !cfg.ChainIndexer.EnableIndexer {
-		return Error(xerrors.New("chain indexer must be enabled if ETH RPC is enabled"))
+		return Error(xerrors.New("EnableIndexer in the ChainIndexer configuration section must be set to true when setting EnableEthRPC to true"))
 	}
 	if cfg.Events.EnableActorEventsAPI && !cfg.ChainIndexer.EnableIndexer {
-		return Error(xerrors.New("chain indexer must be enabled if actor events API is enabled"))
+		return Error(xerrors.New("EnableIndexer in the ChainIndexer configuration section must be set to true when setting EnableActorEventsAPI to true"))
 	}
 
 	return Options(

@@ -50,7 +50,7 @@ type StorageInfo struct {
 	// storage path
 	MaxStorage uint64
 
-	// CanStore is true when the path is allowed to be used for io-intensive
+	// CanSeal is true when the path is allowed to be used for io-intensive
 	// sealing operations
 	CanSeal bool
 
