@@ -55,8 +55,9 @@ var UpgradeWatermelonHeight = abi.ChainEpoch(-24)
 var UpgradeDragonHeight = abi.ChainEpoch(-25)
 var UpgradePhoenixHeight = abi.ChainEpoch(-26)
 var UpgradeWaffleHeight = abi.ChainEpoch(-27)
+var UpgradeTuktukHeight = abi.ChainEpoch(-28)
 
-const UpgradeTuktukHeight = 50
+const UpgradeXxHeight = 50
 
 // FIP-0081: for the power actor state for pledge calculations.
 // UpgradeTuktukPowerRampDurationEpochs ends up in the power actor state after
