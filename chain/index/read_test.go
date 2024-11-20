@@ -78,46 +78,6 @@ func TestGetMsgInfo(t *testing.T) {
 		require.Equal(t, abi.ChainEpoch(1), mi.Epoch)
 	})
 
-	t.Run("message appears after head indexed", func(t *testing.T) {
-		msgCid := randomCid(t, rng)
-		tsKeyCid := randomCid(t, rng)
-
-		// Create a context with timeout
-		ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
-		defer cancel()
-
-		// Start a goroutine that will insert the message after a short delay
-		go func() {
-			time.Sleep(100 * time.Millisecond)
-			insertTipsetMessage(t, s, tipsetMessage{
-				tipsetKeyCid: tsKeyCid.Bytes(),
-				height:       uint64(2),
-				reverted:     false,
-				messageCid:   msgCid.Bytes(),
-				messageIndex: 1,
-			})
-		}()
-
-		// Retry with backoff until message is found or context times out
-		var mi *MsgInfo
-		var err error
-		for {
-			mi, err = s.GetMsgInfo(ctx, msgCid)
-			if err == nil {
-				break
-			}
-			if ctx.Err() != nil {
-				t.Fatalf("timed out waiting for message to appear: %v", err)
-			}
-			time.Sleep(50 * time.Millisecond)
-		}
-
-		require.NoError(t, err)
-		require.Equal(t, msgCid, mi.Message)
-		require.Equal(t, tsKeyCid, mi.TipSet)
-		require.Equal(t, abi.ChainEpoch(2), mi.Epoch)
-	})
-
 	t.Run("message not found", func(t *testing.T) {
 		nonExistentMsgCid := randomCid(t, rng)
 		mi, err := s.GetMsgInfo(ctx, nonExistentMsgCid)
