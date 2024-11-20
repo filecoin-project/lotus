@@ -1784,6 +1784,7 @@ func (e *EthEventHandler) ethGetEventsForFilter(ctx context.Context, filterSpec 
 		TipsetCid:     pf.tipsetCid,
 		Addresses:     pf.addresses,
 		KeysWithCodec: pf.keys,
+		Codec:         multicodec.Raw,
 		MaxResults:    e.EventFilterManager.MaxFilterResults,
 	}
 
