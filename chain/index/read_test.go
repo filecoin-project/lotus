@@ -82,7 +82,7 @@ func TestGetMsgInfo(t *testing.T) {
 		nonExistentMsgCid := randomCid(t, rng)
 		mi, err := s.GetMsgInfo(ctx, nonExistentMsgCid)
 		require.Error(t, err)
-		require.True(t, errors.Is(err, ErrNotFound))
+		require.ErrorIs(t, err, ErrNotFound)
 		require.Nil(t, mi)
 	})
 }

@@ -3,7 +3,6 @@ package index
 import (
 	"context"
 	"database/sql"
-	"strings"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -50,7 +49,7 @@ func (si *SqliteIndexer) GetMsgInfo(ctx context.Context, messageCid cid.Cid) (*M
 	var height int64
 
 	if err := si.queryMsgInfo(ctx, messageCid, &tipsetKeyCidBytes, &height); err != nil {
-		if strings.Contains(err.Error(), "no rows in result set") {
+		if err == sql.ErrNoRows {
 			return nil, ErrNotFound
 		}
 		return nil, err
