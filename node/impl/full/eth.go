@@ -1364,6 +1364,9 @@ func (a *EthModule) EthTraceFilter(ctx context.Context, filter ethtypes.EthTrace
 	for blkNum := fromBlock; blkNum <= toBlock; blkNum++ {
 		blockTraces, err := a.EthTraceBlock(ctx, strconv.FormatUint(uint64(blkNum), 10))
 		if err != nil {
+			if errors.Is(err, &api.ErrNullRound{}) {
+				continue
+			}
 			return nil, xerrors.Errorf("cannot get trace for block %d: %w", blkNum, err)
 		}
 
@@ -1496,9 +1499,16 @@ func (a *EthModule) applyMessage(ctx context.Context, msg *types.Message, tsk ty
 	}
 
 	if res.MsgRct.ExitCode.IsError() {
-		return nil, api.NewErrExecutionReverted(
-			parseEthRevert(res.MsgRct.Return),
-		)
+		reason := "none"
+		var cbytes abi.CborBytes
+		if err := cbytes.UnmarshalCBOR(bytes.NewReader(res.MsgRct.Return)); err != nil {
+			log.Warnw("failed to unmarshal cbor bytes from message receipt return", "error", err)
+			reason = "ERROR: revert reason is not cbor encoded bytes"
+		} // else leave as empty bytes
+		if len(cbytes) > 0 {
+			reason = parseEthRevert(cbytes)
+		}
+		return nil, api.NewErrExecutionReverted(res.MsgRct.ExitCode, reason, res.Error, cbytes)
 	}
 
 	return res, nil
@@ -1774,6 +1784,7 @@ func (e *EthEventHandler) ethGetEventsForFilter(ctx context.Context, filterSpec 
 		TipsetCid:     pf.tipsetCid,
 		Addresses:     pf.addresses,
 		KeysWithCodec: pf.keys,
+		Codec:         multicodec.Raw,
 		MaxResults:    e.EventFilterManager.MaxFilterResults,
 	}
 

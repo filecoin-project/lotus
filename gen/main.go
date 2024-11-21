@@ -56,6 +56,7 @@ func generateBlockstore() error {
 func generateLotusShed() error {
 	return gen.WriteMapEncodersToFile("./cmd/lotus-shed/shedgen/cbor_gen.go", "shedgen",
 		shedgen.CarbNode{},
+		shedgen.DatastoreEntry{},
 	)
 }
 

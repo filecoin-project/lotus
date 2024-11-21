@@ -21,6 +21,7 @@ var Commands = []*cli.Command{
 	lcli.WithCategory("developer", lcli.WaitApiCmd),
 	lcli.WithCategory("developer", lcli.FetchParamCmd),
 	lcli.WithCategory("developer", lcli.EvmCmd),
+	lcli.WithCategory("developer", lcli.IndexCmd),
 	lcli.WithCategory("network", lcli.NetCmd),
 	lcli.WithCategory("network", lcli.SyncCmd),
 	lcli.WithCategory("network", lcli.F3Cmd),
