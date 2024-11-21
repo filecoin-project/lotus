@@ -23,7 +23,14 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	miner14 "github.com/filecoin-project/go-state-types/builtin/v14/miner"
+	smoothing14 "github.com/filecoin-project/go-state-types/builtin/v14/util/smoothing"
+	miner15 "github.com/filecoin-project/go-state-types/builtin/v15/miner"
+	smoothing15 "github.com/filecoin-project/go-state-types/builtin/v15/util/smoothing"
+	gststore "github.com/filecoin-project/go-state-types/store"
 
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
@@ -69,6 +76,7 @@ var auditsCmd = &cli.Command{
 		chainBalanceSanityCheckCmd,
 		chainBalanceStateCmd,
 		chainPledgeCmd,
+		chainFip0081PledgeCmd,
 		fillBalancesCmd,
 		duplicatedMessagesCmd,
 	},
@@ -940,4 +948,336 @@ var fillBalancesCmd = &cli.Command{
 		w.Flush()
 		return nil
 	},
+}
+
+var chainFip0081PledgeCmd = &cli.Command{
+	Name:        "fip0081-pledge",
+	Description: "Calculate sector pledge values comparing current to pre-FIP-0081",
+	ArgsUsage:   "[epoch number]",
+	Action: func(cctx *cli.Context) error {
+
+		ctx := lcli.ReqContext(cctx)
+
+		api, acloser, err := lcli.GetFullNodeAPIV1(cctx)
+		if err != nil {
+			return err
+		}
+		defer acloser()
+
+		var ts *types.TipSet
+		if cctx.Args().Present() {
+			epoch, err := strconv.ParseInt(cctx.Args().First(), 10, 64)
+			if err != nil {
+				return xerrors.Errorf("parsing epoch arg: %w", err)
+			}
+			ts, err = api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(epoch), types.EmptyTSK)
+			if err != nil {
+				return err
+			}
+		} else {
+			ts, err = api.ChainHead(ctx)
+			if err != nil {
+				return err
+			}
+		}
+
+		cases := []struct {
+			sectorSize   abi.SectorSize
+			verifiedSize uint64
+			duration     abi.ChainEpoch
+		}{
+			{
+				sectorSize:   2 << 10,
+				verifiedSize: 2 << 10,
+				duration:     builtin.EpochsInYear,
+			},
+			{
+				sectorSize:   2 << 10,
+				verifiedSize: (2 << 10) / 2,
+				duration:     builtin.EpochsInYear,
+			},
+			{
+				sectorSize:   2 << 10,
+				verifiedSize: 0,
+				duration:     builtin.EpochsInYear,
+			},
+			{
+				sectorSize:   2 << 10,
+				verifiedSize: 2 << 10,
+				duration:     3 * builtin.EpochsInYear,
+			},
+			{
+				sectorSize:   2 << 10,
+				verifiedSize: (2 << 10) / 2,
+				duration:     3 * builtin.EpochsInYear,
+			},
+			{
+				sectorSize:   2 << 10,
+				verifiedSize: 0,
+				duration:     3 * builtin.EpochsInYear,
+			},
+			{
+				sectorSize:   32 << 30,
+				verifiedSize: 32 << 30,
+				duration:     builtin.EpochsInYear,
+			},
+			{
+				sectorSize:   32 << 30,
+				verifiedSize: (32 << 30) / 2,
+				duration:     builtin.EpochsInYear,
+			},
+			{
+				sectorSize:   32 << 30,
+				verifiedSize: 0,
+				duration:     builtin.EpochsInYear,
+			},
+			{
+				sectorSize:   32 << 30,
+				verifiedSize: 32 << 30,
+				duration:     3 * builtin.EpochsInYear,
+			},
+			{
+				sectorSize:   32 << 30,
+				verifiedSize: (32 << 30) / 2,
+				duration:     3 * builtin.EpochsInYear,
+			},
+			{
+				sectorSize:   32 << 30,
+				verifiedSize: 0,
+				duration:     3 * builtin.EpochsInYear,
+			},
+			{
+				sectorSize:   64 << 30,
+				verifiedSize: 64 << 30,
+				duration:     builtin.EpochsInYear,
+			},
+			{
+				sectorSize:   64 << 30,
+				verifiedSize: (64 << 30) / 2,
+				duration:     builtin.EpochsInYear,
+			},
+			{
+				sectorSize:   64 << 30,
+				verifiedSize: 0,
+				duration:     builtin.EpochsInYear,
+			},
+			{
+				sectorSize:   64 << 30,
+				verifiedSize: 64 << 30,
+				duration:     3 * builtin.EpochsInYear,
+			},
+			{
+				sectorSize:   64 << 30,
+				verifiedSize: (64 << 30) / 2,
+				duration:     3 * builtin.EpochsInYear,
+			},
+			{
+				sectorSize:   64 << 30,
+				verifiedSize: 0,
+				duration:     3 * builtin.EpochsInYear,
+			},
+		}
+
+		fmt.Printf("\033[3mCalculating at epoch %d\033[0m\n", ts.Height())
+		fmt.Printf(" \033[1mSector Size\033[0m | \033[1mVerified %%\033[0m | \033[1mDuration\033[0m  | \033[1mActual\033[0m                   | \033[1mPre-FIP-0081\033[0m             | \033[1mDifference\033[0m\n")
+		fmt.Println(strings.Repeat("-", 119))
+
+		for _, c := range cases {
+			pledge, err := api.StateMinerInitialPledgeForSector(ctx, c.duration, c.sectorSize, c.verifiedSize, ts.Key())
+			if err != nil {
+				return err
+			}
+			newPledge, err := postFip0081StateMinerInitialPledgeForSector(ctx, api, c.duration, c.sectorSize, c.verifiedSize, ts)
+			if err != nil {
+				return err
+			}
+			if !pledge.Equals(newPledge) {
+				return xerrors.Errorf("failed to sanity check StateMinerInitialPledgeForSector calculation!")
+			}
+			oldPledge, err := preFip0081StateMinerInitialPledgeForSector(ctx, api, c.duration, c.sectorSize, c.verifiedSize, ts)
+			if err != nil {
+				return err
+			}
+
+			fmt.Printf(" %-11s | % 4.f%%      | %0.f year(s) | %-24s | %-24s | %s\n",
+				c.sectorSize.ShortString(),
+				float64(c.verifiedSize)/float64(c.sectorSize)*100,
+				float64(c.duration)/builtin.EpochsInYear,
+				types.FIL(pledge).String(),
+				types.FIL(oldPledge).String(),
+				types.FIL(types.BigSub(pledge, oldPledge)).String(),
+			)
+		}
+		fmt.Println(strings.Repeat("-", 119))
+
+		return nil
+	},
+}
+
+// from itests/migration_test.go
+
+// preFip0081StateMinerInitialPledgeForSector is the same calculation as StateMinerInitialPledgeForSector
+// but uses miner14's version of the calculation without the FIP-0081 changes.
+func preFip0081StateMinerInitialPledgeForSector(
+	ctx context.Context,
+	client api.FullNode,
+	sectorDuration abi.ChainEpoch,
+	sectorSize abi.SectorSize,
+	verifiedSize uint64,
+	ts *types.TipSet,
+) (types.BigInt, error) {
+	bs := blockstore.NewAPIBlockstore(client)
+	ctxStore := gststore.WrapBlockStore(ctx, bs)
+
+	circSupply, err := client.StateVMCirculatingSupplyInternal(ctx, ts.Key())
+	if err != nil {
+		return types.NewInt(0), err
+	}
+
+	powerActor, err := client.StateGetActor(ctx, power.Address, ts.Key())
+	if err != nil {
+		return types.NewInt(0), err
+	}
+
+	powerState, err := power.Load(ctxStore, powerActor)
+	if err != nil {
+		return types.NewInt(0), err
+	}
+
+	rewardActor, err := client.StateGetActor(ctx, reward.Address, ts.Key())
+	if err != nil {
+		return types.NewInt(0), err
+	}
+
+	rewardState, err := reward.Load(ctxStore, rewardActor)
+	if err != nil {
+		return types.NewInt(0), err
+	}
+
+	networkQAPower, err := powerState.TotalPowerSmoothed()
+	if err != nil {
+		return types.NewInt(0), err
+	}
+
+	verifiedWeight := big.Mul(big.NewIntUnsigned(verifiedSize), big.NewInt(int64(sectorDuration)))
+	sectorWeight := builtin.QAPowerForWeight(sectorSize, sectorDuration, verifiedWeight)
+
+	thisEpochBaselinePower, err := rewardState.(interface {
+		ThisEpochBaselinePower() (abi.StoragePower, error)
+	}).ThisEpochBaselinePower()
+	if err != nil {
+		return types.NewInt(0), err
+	}
+	thisEpochRewardSmoothed, err := rewardState.(interface {
+		ThisEpochRewardSmoothed() (builtin.FilterEstimate, error)
+	}).ThisEpochRewardSmoothed()
+	if err != nil {
+		return types.NewInt(0), err
+	}
+
+	rewardEstimate := smoothing14.FilterEstimate{
+		PositionEstimate: thisEpochRewardSmoothed.PositionEstimate,
+		VelocityEstimate: thisEpochRewardSmoothed.VelocityEstimate,
+	}
+	networkQAPowerEstimate := smoothing14.FilterEstimate{
+		PositionEstimate: networkQAPower.PositionEstimate,
+		VelocityEstimate: networkQAPower.VelocityEstimate,
+	}
+
+	initialPledge := miner14.InitialPledgeForPower(
+		sectorWeight,
+		thisEpochBaselinePower,
+		rewardEstimate,
+		networkQAPowerEstimate,
+		circSupply.FilCirculating,
+	)
+
+	var initialPledgeNum = types.NewInt(110)
+	var initialPledgeDen = types.NewInt(100)
+
+	return types.BigDiv(types.BigMul(initialPledge, initialPledgeNum), initialPledgeDen), nil
+}
+
+// postFip0081StateMinerInitialPledgeForSector should be the same calculation as StateMinerInitialPledgeForSector,
+// it's here for sanity checking.
+func postFip0081StateMinerInitialPledgeForSector(
+	ctx context.Context,
+	client api.FullNode,
+	sectorDuration abi.ChainEpoch,
+	sectorSize abi.SectorSize,
+	verifiedSize uint64,
+	ts *types.TipSet,
+) (types.BigInt, error) {
+	bs := blockstore.NewAPIBlockstore(client)
+	ctxStore := gststore.WrapBlockStore(ctx, bs)
+
+	circSupply, err := client.StateVMCirculatingSupplyInternal(ctx, ts.Key())
+	if err != nil {
+		return types.NewInt(0), err
+	}
+
+	powerActor, err := client.StateGetActor(ctx, power.Address, ts.Key())
+	if err != nil {
+		return types.NewInt(0), err
+	}
+
+	powerState, err := power.Load(ctxStore, powerActor)
+	if err != nil {
+		return types.NewInt(0), err
+	}
+
+	rewardActor, err := client.StateGetActor(ctx, reward.Address, ts.Key())
+	if err != nil {
+		return types.NewInt(0), err
+	}
+
+	rewardState, err := reward.Load(ctxStore, rewardActor)
+	if err != nil {
+		return types.NewInt(0), err
+	}
+
+	networkQAPower, err := powerState.TotalPowerSmoothed()
+	if err != nil {
+		return types.NewInt(0), err
+	}
+
+	verifiedWeight := big.Mul(big.NewIntUnsigned(verifiedSize), big.NewInt(int64(sectorDuration)))
+	sectorWeight := builtin.QAPowerForWeight(sectorSize, sectorDuration, verifiedWeight)
+
+	thisEpochBaselinePower, err := rewardState.(interface {
+		ThisEpochBaselinePower() (abi.StoragePower, error)
+	}).ThisEpochBaselinePower()
+	if err != nil {
+		return types.NewInt(0), err
+	}
+	thisEpochRewardSmoothed, err := rewardState.(interface {
+		ThisEpochRewardSmoothed() (builtin.FilterEstimate, error)
+	}).ThisEpochRewardSmoothed()
+	if err != nil {
+		return types.NewInt(0), err
+	}
+
+	rewardEstimate := smoothing15.FilterEstimate{
+		PositionEstimate: thisEpochRewardSmoothed.PositionEstimate,
+		VelocityEstimate: thisEpochRewardSmoothed.VelocityEstimate,
+	}
+	networkQAPowerEstimate := smoothing15.FilterEstimate{
+		PositionEstimate: networkQAPower.PositionEstimate,
+		VelocityEstimate: networkQAPower.VelocityEstimate,
+	}
+
+	initialPledge := miner15.InitialPledgeForPower(
+		sectorWeight,
+		thisEpochBaselinePower,
+		rewardEstimate,
+		networkQAPowerEstimate,
+		circSupply.FilCirculating,
+		int64(ts.Height())-powerState.RampStartEpoch(),
+		powerState.RampDurationEpochs(),
+	)
+
+	var initialPledgeNum = types.NewInt(110)
+	var initialPledgeDen = types.NewInt(100)
+
+	return types.BigDiv(types.BigMul(initialPledge, initialPledgeNum), initialPledgeDen), nil
 }

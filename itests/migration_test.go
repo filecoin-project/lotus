@@ -1140,14 +1140,13 @@ func preFip0081StateMinerInitialPledgeForSector(ctx context.Context, t *testing.
 		VelocityEstimate: networkQAPower.VelocityEstimate,
 	}
 
-	initialPledge, err := miner14.InitialPledgeForPower(
+	initialPledge := miner14.InitialPledgeForPower(
 		sectorWeight,
 		thisEpochBaselinePower,
 		rewardEstimate,
 		networkQAPowerEstimate,
 		circSupply.FilCirculating,
-	), nil
-	req.NoError(err)
+	)
 
 	var initialPledgeNum = types.NewInt(110)
 	var initialPledgeDen = types.NewInt(100)
