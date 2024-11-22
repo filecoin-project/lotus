@@ -3,11 +3,13 @@ package main
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
+	"github.com/urfave/cli/v2"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/filecoin-project/lotus/cli/worker"
 )
 
 const (
@@ -46,88 +48,157 @@ func main() {
 
 	fmt.Println("Generating CLI documentation...")
 	var eg errgroup.Group
-	for _, cmd := range []string{"lotus", "lotus-miner", "lotus-worker"} {
+	// Add CLI apps for documentation generation
+	cliApps := map[string]*cli.App{
+		"lotus-worker": worker.App(),
+		// Add other CLI apps like lotus, lotus-miner as needed
+	}
+
+	for name, app := range cliApps {
 		eg.Go(func() error {
-			err := generateMarkdownForCLI(cmd)
+			err := generateDocsFromApp(name, app)
 			if err != nil {
-				fmt.Printf(" ❌ %s: %v\n", cmd, err)
+				fmt.Printf(" ❌ %s: %v\n", name, err)
 			} else {
-				fmt.Printf(" ✅ %s\n", cmd)
+				fmt.Printf(" ✅ %s\n", name)
 			}
 			return err
 		})
 	}
+
 	if err := eg.Wait(); err != nil {
 		fmt.Printf("Failed to generate CLI documentation: %v\n", err)
 		os.Exit(1)
 	}
+
 	fmt.Println("Documentation generation complete.")
 }
 
-func generateMarkdownForCLI(cli string) error {
-	md := filepath.Join(outputDir, fmt.Sprintf("cli-%s.md", cli))
+func generateDocsFromApp(name string, app *cli.App) error {
+	md := filepath.Join(outputDir, fmt.Sprintf("cli-%s.md", name))
 	out, err := os.Create(md)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = out.Close() }()
-	return writeCommandDocs(out, cli, 0)
+
+	// Write top-level documentation
+	if _, err := out.WriteString(formatAppHeader(app)); err != nil {
+		return err
+	}
+
+	return writeDocs(out, app.Commands, 0, name)
 }
 
-func writeCommandDocs(file *os.File, command string, depth int) error {
-	// For sanity, fail fast if depth exceeds some arbitrarily large number. In which
-	// case, chances are there is a bug in this script.
-	if depth > depthRecursionLimit {
-		return fmt.Errorf("recursion exceeded limit of %d", depthRecursionLimit)
+// formatAppHeader dynamically generates the header for the CLI app.
+func formatAppHeader(app *cli.App) string {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("# %s\n\n", app.Name))
+	sb.WriteString("```\n")
+	sb.WriteString(fmt.Sprintf("NAME:\n   %s - %s\n\n", app.Name, app.Usage))
+	sb.WriteString(fmt.Sprintf("USAGE:\n   %s\n\n", generateUsage(app.Name, nil))) // Dynamically fetch usage text
+	sb.WriteString(fmt.Sprintf("VERSION:\n   %s\n\n", app.Version))
+
+	sb.WriteString("COMMANDS:\n")
+	for _, cmd := range app.Commands {
+		sb.WriteString(fmt.Sprintf("   %-10s %s\n", cmd.Name, cmd.Usage))
 	}
 
-	// Get usage from the command.
-	usage, err := exec.Command("sh", "-c", "./"+command+" -h").Output()
-	if err != nil {
-		return fmt.Errorf("failed to run '%s': %v", command, err)
+	sb.WriteString("\nGLOBAL OPTIONS:\n")
+	for _, flag := range app.Flags {
+		sb.WriteString(formatFlag(flag))
+	}
+	sb.WriteString("```\n")
+	return sb.String()
+}
+
+// formatFlag formats a cli.Flag into a string for documentation.
+func formatFlag(flag cli.Flag) string {
+	switch f := flag.(type) {
+	case *cli.StringFlag:
+		return fmt.Sprintf("   --%-20s %s (default: \"%s\") [%s]\n", f.Name, f.Usage, f.Value, strings.Join(f.EnvVars, ", "))
+	case *cli.BoolFlag:
+		return fmt.Sprintf("   --%-20s %s (default: %t) [%s]\n", f.Name, f.Usage, f.Value, strings.Join(f.EnvVars, ", "))
+	case *cli.IntFlag:
+		return fmt.Sprintf("   --%-20s %s (default: %d) [%s]\n", f.Name, f.Usage, f.Value, strings.Join(f.EnvVars, ", "))
+	default:
+		return fmt.Sprintf("   --%-20s %s\n", flag.Names()[0], flag.String())
+	}
+}
+
+// generateUsage creates the `USAGE` dynamically for root or subcommands.
+func generateUsage(parentName string, cmd *cli.Command) string {
+	if cmd == nil {
+		// Root command usage
+		return fmt.Sprintf("%s [global options] command [command options] [arguments...]", parentName)
 	}
 
-	// Skip the first new line since the docs do not start with a newline at the very
-	// top.
-	if depth != 0 {
-		if _, err := file.WriteString("\n"); err != nil {
+	// Subcommand usage
+	return fmt.Sprintf("%s %s [command options] [arguments...]", parentName, cmd.Name)
+}
+
+func writeDocs(file *os.File, commands []*cli.Command, depth int, rootCommandName string) error {
+	for _, cmd := range commands {
+		cmdName := cmd.Name
+		if rootCommandName != cmdName {
+			cmdName = rootCommandName + " " + cmdName
+		}
+
+		header := fmt.Sprintf("\n%s %s\n\n", strings.Repeat("#", depth+2), cmdName)
+		if _, err := file.WriteString(header); err != nil {
+			return err
+		}
+
+		if _, err := file.WriteString("```\n"); err != nil {
+			return err
+		}
+
+		// Write command details
+		if _, err := file.WriteString(fmt.Sprintf("NAME:\n   %s - %s\n\n", cmd.Name, cmd.Usage)); err != nil {
+			return err
+		}
+
+		if _, err := file.WriteString(fmt.Sprintf("USAGE:\n   %s\n\n", generateUsage(rootCommandName, cmd))); err != nil {
+			return err
+		}
+
+		if len(cmd.Description) > 0 {
+			if _, err := file.WriteString(fmt.Sprintf("DESCRIPTION:\n   %s\n\n", cmd.Description)); err != nil {
+				return err
+			}
+		}
+
+		// Write options for the command
+		if len(cmd.Flags) > 0 {
+			if _, err := file.WriteString("OPTIONS:\n"); err != nil {
+				return err
+			}
+			for _, flag := range cmd.Flags {
+				if _, err := file.WriteString(formatFlag(flag)); err != nil {
+					return err
+				}
+			}
+			if _, err := file.WriteString("\n"); err != nil {
+				return err
+			}
+		}
+
+		if len(cmd.Subcommands) > 0 {
+			if _, err := file.WriteString("```\n"); err != nil {
+				return err
+			}
+
+			if err := writeDocs(file, cmd.Subcommands, depth+1, cmdName); err != nil {
+				return err
+			}
+
+			continue
+		}
+
+		if _, err := file.WriteString("```\n"); err != nil {
 			return err
 		}
 	}
 
-	// Write out command header and usage.
-	header := fmt.Sprintf("%s# %s\n", strings.Repeat("#", depth), command)
-	if _, err := file.WriteString(header); err != nil {
-		return err
-	} else if _, err := file.WriteString("```\n"); err != nil {
-		return err
-	} else if _, err := file.Write(usage); err != nil {
-		return err
-	} else if _, err := file.WriteString("```\n"); err != nil {
-		return err
-	}
-
-	// Recurse sub-commands.
-	commands := false
-	lines := strings.Split(string(usage), "\n")
-	for _, line := range lines {
-		switch line = strings.TrimSpace(line); {
-		case line == "":
-			commands = false
-		case line == "COMMANDS:":
-			commands = true
-		case strings.HasPrefix(line, "help, h"):
-			// Skip usage command.
-		case commands:
-			// Find the sub command and trim any potential comma in case of alias.
-			subCommand := strings.TrimSuffix(strings.Fields(line)[0], ",")
-			// Skip sections in usage that have no command.
-			if !strings.Contains(subCommand, ":") {
-				if err := writeCommandDocs(file, command+" "+subCommand, depth+1); err != nil {
-					return err
-				}
-			}
-		}
-	}
 	return nil
 }
