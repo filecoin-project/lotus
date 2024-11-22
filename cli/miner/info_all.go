@@ -1,4 +1,4 @@
-package main
+package miner
 
 import (
 	"flag"
@@ -194,7 +194,7 @@ var infoAllCmd = &cli.Command{
 
 		if !_test {
 			fmt.Println("\n#: Goroutines")
-			if err := lcli.PprofGoroutines.Action(cctx); err != nil {
+			if err := lcli.PprofGoroutinesCmd.Action(cctx); err != nil {
 				fmt.Println("ERROR: ", err)
 			}
 		}

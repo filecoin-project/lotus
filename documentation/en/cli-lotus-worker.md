@@ -1,4 +1,5 @@
 # lotus-worker
+
 ```
 NAME:
    lotus-worker - Remote miner worker
@@ -27,6 +28,7 @@ GLOBAL OPTIONS:
 ```
 
 ## lotus-worker run
+
 ```
 NAME:
    lotus-worker run - Start lotus worker
@@ -89,6 +91,7 @@ OPTIONS:
 ```
 
 ## lotus-worker stop
+
 ```
 NAME:
    lotus-worker stop - Stop a running lotus worker
@@ -101,6 +104,7 @@ OPTIONS:
 ```
 
 ## lotus-worker info
+
 ```
 NAME:
    lotus-worker info - Print worker info
@@ -113,6 +117,7 @@ OPTIONS:
 ```
 
 ## lotus-worker storage
+
 ```
 NAME:
    lotus-worker storage - manage sector storage
@@ -131,6 +136,7 @@ OPTIONS:
 ```
 
 ### lotus-worker storage attach
+
 ```
 NAME:
    lotus-worker storage attach - attach local storage path
@@ -150,6 +156,7 @@ OPTIONS:
 ```
 
 ### lotus-worker storage detach
+
 ```
 NAME:
    lotus-worker storage detach - detach local storage path
@@ -163,6 +170,7 @@ OPTIONS:
 ```
 
 ### lotus-worker storage redeclare
+
 ```
 NAME:
    lotus-worker storage redeclare - redeclare sectors in a local storage path
@@ -178,6 +186,7 @@ OPTIONS:
 ```
 
 ## lotus-worker resources
+
 ```
 NAME:
    lotus-worker resources - Manage resource table overrides
@@ -192,6 +201,7 @@ OPTIONS:
 ```
 
 ## lotus-worker tasks
+
 ```
 NAME:
    lotus-worker tasks - Manage task processing
@@ -209,6 +219,7 @@ OPTIONS:
 ```
 
 ### lotus-worker tasks enable
+
 ```
 NAME:
    lotus-worker tasks enable - Enable a task type
@@ -222,6 +233,7 @@ OPTIONS:
 ```
 
 ### lotus-worker tasks disable
+
 ```
 NAME:
    lotus-worker tasks disable - Disable a task type
