@@ -172,7 +172,7 @@ type StorageMiner interface {
 	// SealingSchedDiag dumps internal sealing scheduler state
 	SealingSchedDiag(ctx context.Context, doSched bool) (interface{}, error) //perm:admin
 	SealingAbort(ctx context.Context, call storiface.CallID) error           //perm:admin
-	// SealingSchedRemove removes a request from sealing pipeline
+	// SealingRemoveRequest removes a request from sealing pipeline
 	SealingRemoveRequest(ctx context.Context, schedId uuid.UUID) error //perm:admin
 
 	// paths.SectorIndex
