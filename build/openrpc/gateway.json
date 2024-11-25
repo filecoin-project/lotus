@@ -10252,7 +10252,7 @@
                     "title": "number",
                     "description": "Number is a number",
                     "examples": [
-                        24
+                        25
                     ],
                     "type": [
                         "number"

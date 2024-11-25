@@ -61,6 +61,9 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 		case actorstypes.Version15:
 			return load15(store, act.Head)
 
+		case actorstypes.Version16:
+			return load16(store, act.Head)
+
 		}
 	}
 
@@ -139,6 +142,9 @@ func MakeState(store adt.Store, av actors.Version) (State, error) {
 
 	case actors.Version15:
 		return make15(store)
+
+	case actors.Version16:
+		return make16(store)
 
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
@@ -406,5 +412,6 @@ func AllCodes() []cid.Cid {
 		(&state13{}).Code(),
 		(&state14{}).Code(),
 		(&state15{}).Code(),
+		(&state16{}).Code(),
 	}
 }

@@ -110,7 +110,11 @@ const UpgradePhoenixHeight abi.ChainEpoch = UpgradeDragonHeight + 120
 const UpgradeWaffleHeight abi.ChainEpoch = 4154640
 
 // 2024-11-20T23:00:00Z
-var UpgradeTuktukHeight = abi.ChainEpoch(4461240)
+// var because of TestMigrationNV24 in itests/migration_test.go to test the FIP-0081 pledge ramp
+var UpgradeTuktukHeight abi.ChainEpoch = 4461240
+
+// ??????
+var UpgradeXxHeight = abi.ChainEpoch(9999999999)
 
 // FIP-0081: for the power actor state for pledge calculations.
 // UpgradeTuktukPowerRampDurationEpochs ends up in the power actor state after
@@ -145,8 +149,8 @@ func init() {
 	}
 	SetAddressNetwork(addrNetwork)
 
-	if os.Getenv("LOTUS_DISABLE_TUKTUK") == "1" {
-		UpgradeTuktukHeight = math.MaxInt64 - 1
+	if os.Getenv("LOTUS_DISABLE_XX") == "1" {
+		UpgradeXxHeight = math.MaxInt64 - 1
 	}
 
 	// NOTE: DO NOT change this unless you REALLY know what you're doing. This is not consensus critical, however,

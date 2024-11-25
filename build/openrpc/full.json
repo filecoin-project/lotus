@@ -17089,7 +17089,7 @@
                         "title": "number",
                         "description": "Number is a number",
                         "examples": [
-                            24
+                            25
                         ],
                         "type": [
                             "number"
@@ -17141,7 +17141,7 @@
                         "title": "number",
                         "description": "Number is a number",
                         "examples": [
-                            24
+                            25
                         ],
                         "type": [
                             "number"
@@ -19914,7 +19914,8 @@
                                 "UpgradeDragonHeight": 10101,
                                 "UpgradePhoenixHeight": 10101,
                                 "UpgradeWaffleHeight": 10101,
-                                "UpgradeTuktukHeight": 10101
+                                "UpgradeTuktukHeight": 10101,
+                                "UpgradeXxHeight": 10101
                             },
                             "Eip155ChainID": 123
                         }
@@ -20049,6 +20050,10 @@
                                     "type": "number"
                                 },
                                 "UpgradeWatermelonHeight": {
+                                    "title": "number",
+                                    "type": "number"
+                                },
+                                "UpgradeXxHeight": {
                                     "title": "number",
                                     "type": "number"
                                 }
@@ -23198,7 +23203,7 @@
                     "title": "number",
                     "description": "Number is a number",
                     "examples": [
-                        24
+                        25
                     ],
                     "type": [
                         "number"
