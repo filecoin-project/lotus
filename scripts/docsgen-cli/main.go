@@ -10,6 +10,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/filecoin-project/lotus/cli/lotus"
+	"github.com/filecoin-project/lotus/cli/miner"
 	"github.com/filecoin-project/lotus/cli/worker"
 )
 
@@ -53,6 +54,7 @@ func main() {
 	cliApps := map[string]*cli.App{
 		"lotus":        lotus.App(),
 		"lotus-worker": worker.App(),
+		"lotus-miner":  miner.App(),
 	}
 
 	for name, app := range cliApps {

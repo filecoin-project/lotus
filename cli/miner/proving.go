@@ -1,4 +1,4 @@
-package main
+package miner
 
 import (
 	"encoding/json"
@@ -244,7 +244,7 @@ It will not send any messages to the chain.`,
 			return err
 		}
 
-		//convert sector information into easily readable information
+		// convert sector information into easily readable information
 		type PoStPartition struct {
 			Index   uint64
 			Skipped []uint64

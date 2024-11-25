@@ -1,5 +1,5 @@
 // stm: #integration
-package main
+package miner
 
 import (
 	"flag"
