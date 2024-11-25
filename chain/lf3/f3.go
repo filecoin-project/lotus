@@ -29,6 +29,21 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
+var _ F3Backend = (*F3)(nil)
+
+type F3Backend interface {
+	GetOrRenewParticipationTicket(_ context.Context, minerID uint64, previous api.F3ParticipationTicket, instances uint64) (api.F3ParticipationTicket, error)
+	Participate(_ context.Context, ticket api.F3ParticipationTicket) (api.F3ParticipationLease, error)
+	ListParticipants() []api.F3Participant
+	GetManifest(ctx context.Context) (*manifest.Manifest, error)
+	GetCert(ctx context.Context, instance uint64) (*certs.FinalityCertificate, error)
+	GetLatestCert(ctx context.Context) (*certs.FinalityCertificate, error)
+	GetPowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error)
+	GetF3PowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error)
+	IsRunning() bool
+	Progress() gpbft.InstanceProgress
+}
+
 type F3 struct {
 	inner *f3.F3
 	ec    *ecWrapper

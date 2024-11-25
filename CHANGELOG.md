@@ -9,6 +9,8 @@
 
 # UNRELEASED
 
+- feat: implement ChainGetTipSet in Lotus v2 APIs
+
 # Node and Miner v1.32.1 / 2025-03-28
 
 The Lotus v1.32.1 release is a **MANDATORY patch release**, which will deliver the Filecoin network version 25, codenamed “Teep” 🦵. This release sets the upgrade epoch for the Mainnet to **Epoch 4867320 - 2025-04-10T23:00:00Z**, and correctly sets the F3 activationcontract address to `0xA19080A1Bcb82Bb61bcb9691EC94653Eb5315716`. You can find more details about how the F3 activation on Mainnet will be executed in the [F3 Activation Procedure](https://github.com/filecoin-project/go-f3/issues/920#issuecomment-2761448485).
