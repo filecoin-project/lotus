@@ -110,7 +110,8 @@ const UpgradePhoenixHeight abi.ChainEpoch = UpgradeDragonHeight + 120
 const UpgradeWaffleHeight abi.ChainEpoch = 4154640
 
 // 2024-11-20T23:00:00Z
-const UpgradeTuktukHeight abi.ChainEpoch = 4461240
+// var because of TestMigrationNV24 in itests/migration_test.go to test the FIP-0081 pledge ramp
+var UpgradeTuktukHeight abi.ChainEpoch = 4461240
 
 // ??????
 var UpgradeXxHeight = abi.ChainEpoch(9999999999)
