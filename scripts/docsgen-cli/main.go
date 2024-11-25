@@ -96,7 +96,7 @@ func formatAppHeader(app *cli.App) string {
 	sb.WriteString(fmt.Sprintf("# %s\n\n", app.Name))
 	sb.WriteString("```\n")
 	sb.WriteString(fmt.Sprintf("NAME:\n   %s - %s\n\n", app.Name, app.Usage))
-	sb.WriteString(fmt.Sprintf("USAGE:\n   %s\n\n", generateUsage(app.Name, nil))) // Dynamically fetch usage text
+	sb.WriteString(fmt.Sprintf("USAGE:\n   %s\n\n", generateUsage(app.Name, nil, ""))) // Dynamically fetch usage text
 	sb.WriteString(fmt.Sprintf("VERSION:\n   %s\n\n", app.Version))
 
 	sb.WriteString("COMMANDS:\n")
@@ -127,14 +127,26 @@ func formatFlag(flag cli.Flag) string {
 }
 
 // generateUsage creates the `USAGE` dynamically for root or subcommands.
-func generateUsage(parentName string, cmd *cli.Command) string {
+func generateUsage(parentName string, cmd *cli.Command, argsUsage string) string {
 	if cmd == nil {
 		// Root command usage
 		return fmt.Sprintf("%s [global options] command [command options] [arguments...]", parentName)
 	}
 
-	// Subcommand usage
-	return fmt.Sprintf("%s %s [command options] [arguments...]", parentName, cmd.Name)
+	usage := ""
+	if len(cmd.Subcommands) > 0 {
+		usage = fmt.Sprintf("%s %s command [command options]", parentName, cmd.Name)
+	} else {
+		usage = fmt.Sprintf("%s %s [command options] ", parentName, cmd.Name)
+	}
+
+	if argsUsage != "" {
+		usage += " " + argsUsage
+	} else {
+		usage += " [arguments...]"
+	}
+
+	return usage
 }
 
 func writeDocs(file *os.File, commands []*cli.Command, depth int, rootCommandName string) error {
@@ -154,11 +166,11 @@ func writeDocs(file *os.File, commands []*cli.Command, depth int, rootCommandNam
 		}
 
 		// Write command details
-		if _, err := file.WriteString(fmt.Sprintf("NAME:\n   %s - %s\n\n", cmd.Name, cmd.Usage)); err != nil {
+		if _, err := file.WriteString(fmt.Sprintf("NAME:\n   %s - %s\n\n", cmdName, cmd.Usage)); err != nil {
 			return err
 		}
 
-		if _, err := file.WriteString(fmt.Sprintf("USAGE:\n   %s\n\n", generateUsage(rootCommandName, cmd))); err != nil {
+		if _, err := file.WriteString(fmt.Sprintf("USAGE:\n   %s\n\n", generateUsage(rootCommandName, cmd, cmd.ArgsUsage))); err != nil {
 			return err
 		}
 
@@ -184,6 +196,16 @@ func writeDocs(file *os.File, commands []*cli.Command, depth int, rootCommandNam
 		}
 
 		if len(cmd.Subcommands) > 0 {
+			if _, err := file.WriteString("COMMANDS:\n"); err != nil {
+				return err
+			}
+
+			for _, subcmd := range cmd.Subcommands {
+				if _, err := file.WriteString(fmt.Sprintf("   %-10s %s\n", subcmd.Name, subcmd.Usage)); err != nil {
+					return err
+				}
+			}
+
 			if _, err := file.WriteString("```\n"); err != nil {
 				return err
 			}
