@@ -41,6 +41,9 @@ func loadF3IDList(path string) ([]gpbft.ActorID, error) {
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		line := scanner.Text()
+		if line == "" || line[0] == '#' {
+			continue
+		}
 		id, err := strconv.ParseUint(line, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse ID: %w", err)
@@ -171,7 +174,7 @@ var f3GenExplicitPower = &cli.Command{
 			result = result[:endSize]
 		}
 		sort.Sort(result)
-		res, err := json.MarshalIndent(result, "    ", "  ")
+		res, err := json.MarshalIndent(result, "  ", "  ")
 		if err != nil {
 			return fmt.Errorf("marshalling to json: %w", err)
 		}
