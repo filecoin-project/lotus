@@ -1167,7 +1167,7 @@ Inputs:
 Response: `{}`
 
 ### SealingRemoveRequest
-SealingSchedRemove removes a request from sealing pipeline
+SealingRemoveRequest removes a request from sealing pipeline
 
 
 Perms: admin

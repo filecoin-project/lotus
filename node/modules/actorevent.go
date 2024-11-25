@@ -105,20 +105,18 @@ func EventFilterManager(cfg config.EventsConfig) func(helpers.MetricsCtx, repo.L
 		fm := &filter.EventFilterManager{
 			ChainStore:   cs,
 			ChainIndexer: ci,
-			// TODO:
-			// We don't need this address resolution anymore once https://github.com/filecoin-project/lotus/issues/11594 lands
-			AddressResolver: func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool) {
+			AddressResolver: func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) address.Address {
 				idAddr, err := address.NewIDAddress(uint64(emitter))
 				if err != nil {
-					return address.Undef, false
+					return address.Undef
 				}
 
 				actor, err := sm.LoadActor(ctx, idAddr, ts)
 				if err != nil || actor.DelegatedAddress == nil {
-					return idAddr, true
+					return idAddr
 				}
 
-				return *actor.DelegatedAddress, true
+				return *actor.DelegatedAddress
 			},
 
 			MaxFilterResults: cfg.MaxFilterResults,

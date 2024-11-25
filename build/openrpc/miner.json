@@ -3235,7 +3235,7 @@
         {
             "name": "Filecoin.SealingRemoveRequest",
             "description": "```go\nfunc (s *StorageMinerStruct) SealingRemoveRequest(p0 context.Context, p1 uuid.UUID) error {\n\tif s.Internal.SealingRemoveRequest == nil {\n\t\treturn ErrNotSupported\n\t}\n\treturn s.Internal.SealingRemoveRequest(p0, p1)\n}\n```",
-            "summary": "SealingSchedRemove removes a request from sealing pipeline\n",
+            "summary": "SealingRemoveRequest removes a request from sealing pipeline\n",
             "paramStructure": "by-position",
             "params": [
                 {
