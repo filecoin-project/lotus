@@ -2,6 +2,7 @@
 
 # UNRELEASED
 - Improve eth filter performance for nodes serving many clients. ([filecoin-project/lotus#12603](https://github.com/filecoin-project/lotus/pull/12603))
+- Add Market PendingProposals API / CLI. ([filecoin-project/lotus#12724](https://github.com/filecoin-project/lotus/pull/12724))
 
 ## Improvements
 

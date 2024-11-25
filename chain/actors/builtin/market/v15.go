@@ -106,6 +106,14 @@ func (s *state15) Proposals() (DealProposals, error) {
 	return &dealProposals15{proposalArray}, nil
 }
 
+func (s *state15) PendingProposals() (PendingProposals, error) {
+	proposalCidSet, err := adt15.AsSet(s.store, s.State.PendingProposals, builtin.DefaultHamtBitwidth)
+	if err != nil {
+		return nil, err
+	}
+	return &pendingProposals15{proposalCidSet}, nil
+}
+
 func (s *state15) EscrowTable() (BalanceTable, error) {
 	bt, err := adt15.AsBalanceTable(s.store, s.State.EscrowTable)
 	if err != nil {
@@ -282,6 +290,14 @@ func (s *dealProposals15) decode(val *cbg.Deferred) (*DealProposal, error) {
 
 func (s *dealProposals15) array() adt.Array {
 	return s.Array
+}
+
+type pendingProposals15 struct {
+	*adt15.Set
+}
+
+func (s *pendingProposals15) Has(proposalCid cid.Cid) (bool, error) {
+	return s.Set.Has(abi.CidKey(proposalCid))
 }
 
 func fromV15DealProposal(v15 market15.DealProposal) (DealProposal, error) {
