@@ -9,6 +9,7 @@ import (
 	"github.com/urfave/cli/v2"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/filecoin-project/lotus/cli/lotus"
 	"github.com/filecoin-project/lotus/cli/worker"
 )
 
@@ -50,8 +51,8 @@ func main() {
 	var eg errgroup.Group
 	// Add CLI apps for documentation generation
 	cliApps := map[string]*cli.App{
+		"lotus":        lotus.App(),
 		"lotus-worker": worker.App(),
-		// Add other CLI apps like lotus, lotus-miner as needed
 	}
 
 	for name, app := range cliApps {
@@ -135,15 +136,15 @@ func generateUsage(parentName string, cmd *cli.Command, argsUsage string) string
 
 	usage := ""
 	if len(cmd.Subcommands) > 0 {
-		usage = fmt.Sprintf("%s %s command [command options]", parentName, cmd.Name)
+		usage = fmt.Sprintf("%s %s command [command options] ", parentName, cmd.Name)
 	} else {
 		usage = fmt.Sprintf("%s %s [command options] ", parentName, cmd.Name)
 	}
 
 	if argsUsage != "" {
-		usage += " " + argsUsage
+		usage += argsUsage
 	} else {
-		usage += " [arguments...]"
+		usage += "[arguments...]"
 	}
 
 	return usage
