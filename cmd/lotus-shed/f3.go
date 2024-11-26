@@ -17,6 +17,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-f3/gpbft"
+	lcli "github.com/filecoin-project/lotus/cli"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/node/repo"
 )
@@ -90,22 +91,26 @@ var f3GenExplicitPower = &cli.Command{
 			Usage: "the iteration of randomization, random entries will be exclusive across iterations",
 			Value: 0,
 		},
+		&cli.StringFlag{
+			Name:  "tipset",
+			Usage: "specify tipset to call method on (pass comma separated array of cids) or @epoch",
+		},
 	},
 
 	Action: func(cctx *cli.Context) error {
+		ctx := cliutil.ReqContext(cctx)
 		api, closer, err := cliutil.GetFullNodeAPIV1(cctx)
 		if err != nil {
 			return fmt.Errorf("getting api: %w", err)
 		}
-		if cctx.IsSet("N") && cctx.IsSet("ratio") {
-			return fmt.Errorf("N and ratio options are exclusive")
-		}
-
 		defer closer()
-		ctx := cliutil.ReqContext(cctx)
-		ts, err := api.ChainHead(ctx)
+
+		ts, err := lcli.LoadTipSet(ctx, cctx, api)
 		if err != nil {
 			return fmt.Errorf("getting chain head: %w", err)
+		}
+		if cctx.IsSet("N") && cctx.IsSet("ratio") {
+			return fmt.Errorf("N and ratio options are exclusive")
 		}
 
 		allPowerEntries, err := api.F3GetECPowerTable(ctx, ts.Key())
@@ -144,7 +149,9 @@ var f3GenExplicitPower = &cli.Command{
 		}
 
 		for _, id := range goodList {
-			add(id)
+			if _, ok := powerMap[id]; ok {
+				add(id)
+			}
 		}
 
 		seed := cctx.Int64("seed")
