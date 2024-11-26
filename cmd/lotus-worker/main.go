@@ -3,10 +3,11 @@ package main
 import (
 	"os"
 
+	logging "github.com/ipfs/go-log/v2"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/cli/worker"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
-	logging "github.com/ipfs/go-log/v2"
 )
 
 var log = logging.Logger("main")

@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"github.com/fatih/color"
-	cliutil "github.com/filecoin-project/lotus/cli/util"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/mattn/go-isatty"
 	"github.com/urfave/cli/v2"
@@ -14,6 +13,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/cli/clicommands"
+	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/lib/tracing"
 	"github.com/filecoin-project/lotus/node/repo"
