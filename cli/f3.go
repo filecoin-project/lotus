@@ -162,7 +162,7 @@ var f3SubCmdPowerTable = &cli.Command{
 				if err != nil {
 					return fmt.Errorf("gettingh power table CID at instance %d: %w", instance, err)
 				}
-				if !expectedPowerTableCID.Equals(actualPowerTableCID) {
+				if !cid.Undef.Equals(expectedPowerTableCID) && !expectedPowerTableCID.Equals(actualPowerTableCID) {
 					return fmt.Errorf("expected power table CID %s at instance %d, got: %s", expectedPowerTableCID, instance, actualPowerTableCID)
 				}
 				result.PowerTable.CID = actualPowerTableCID.String()
@@ -247,7 +247,7 @@ var f3SubCmdPowerTable = &cli.Command{
 				if err != nil {
 					return fmt.Errorf("gettingh power table CID at instance %d: %w", instance, err)
 				}
-				if !expectedPowerTableCID.Equals(actualPowerTableCID) {
+				if !cid.Undef.Equals(expectedPowerTableCID) && !expectedPowerTableCID.Equals(actualPowerTableCID) {
 					return fmt.Errorf("expected power table CID %s at instance %d, got: %s", expectedPowerTableCID, instance, actualPowerTableCID)
 				}
 				result.PowerTable.CID = actualPowerTableCID.String()
