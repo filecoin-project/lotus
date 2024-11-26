@@ -37,7 +37,7 @@ func loadF3IDList(path string) ([]gpbft.ActorID, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file: %w", err)
 	}
-	defer file.Close()
+	defer file.Close() //nolint:errcheck
 
 	var ids []gpbft.ActorID
 	scanner := bufio.NewScanner(file)
@@ -157,7 +157,7 @@ var f3GenExplicitPower = &cli.Command{
 
 		seed := cctx.Int64("seed")
 		if seed == -1 {
-			seed = int64(time.Now().UnixNano())
+			seed = time.Now().UnixNano()
 		}
 		rng := rand.New(rand.NewSource(seed))
 
