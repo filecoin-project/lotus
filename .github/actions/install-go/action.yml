@@ -19,5 +19,5 @@ runs:
         working-directory: ${{ inputs.working-directory || github.workspace }}
     - uses: actions/setup-go@v5
       with:
-        go-version: ${{ fromJSON(steps.go-mod.outputs.json).Go }}.x
+        go-version: ${{ fromJSON(steps.go-mod.outputs.json).Go }}
         cache: false
