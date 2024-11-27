@@ -186,7 +186,7 @@ var f3GenExplicitPower = &cli.Command{
 		if err != nil {
 			return fmt.Errorf("marshalling to json: %w", err)
 		}
-		_, err = os.Stdout.Write(res)
+		_, err = cctx.App.Writer.Write(res)
 		if err != nil {
 			return fmt.Errorf("writing result: %w", err)
 		}
