@@ -256,6 +256,8 @@ func (si *SqliteIndexer) checkTipsetIndexedStatus(ctx context.Context, f *EventF
 
 			return xerrors.Errorf("failed to get tipset key cid by height: %w", err)
 		}
+	case f.MinHeight >= 0 && f.MaxHeight >= 0 && f.MinHeight != f.MaxHeight:
+		return si.checkRangeIndexedStatus(ctx, f)
 	default:
 		// This function distinguishes between two scenarios:
 		// 1. Missing events: The requested tipset is not present in the Index (an error condition).
@@ -278,6 +280,39 @@ func (si *SqliteIndexer) checkTipsetIndexedStatus(ctx context.Context, f *EventF
 	}
 
 	return ErrNotFound // Tipset is not indexed
+}
+
+func (si *SqliteIndexer) checkRangeIndexedStatus(ctx context.Context, f *EventFilter) error {
+	startCid, err := si.getTipsetKeyCidByHeight(ctx, f.MinHeight)
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			// Null round for the start of the range is acceptable
+			return nil
+		}
+		return xerrors.Errorf("failed to get tipset key cid for start height: %w", err)
+	}
+
+	endCid, err := si.getTipsetKeyCidByHeight(ctx, f.MaxHeight)
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			// Check if the range ends in the future
+			head := si.cs.GetHeaviestTipSet()
+			if head == nil || f.MaxHeight > head.Height() {
+				return xerrors.Errorf("range end is in the future: %w", err)
+			}
+			return ErrNotFound // End is unindexed
+		}
+		return xerrors.Errorf("failed to get tipset key cid for end height: %w", err)
+	}
+
+	if exists, err := si.isTipsetIndexed(ctx, startCid); err != nil || !exists {
+		return xerrors.Errorf("start tipset not indexed: %w", err)
+	}
+	if exists, err := si.isTipsetIndexed(ctx, endCid); err != nil || !exists {
+		return xerrors.Errorf("end tipset not indexed: %w", err)
+	}
+
+	return nil
 }
 
 // getTipsetKeyCidByHeight retrieves the tipset key CID for a given height.
