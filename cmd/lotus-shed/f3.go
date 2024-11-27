@@ -75,7 +75,7 @@ var f3GenExplicitPower = &cli.Command{
 			Usage: "new line delimited file with known bad IDs to be excluded",
 		},
 		&cli.IntFlag{
-			Name:  "N",
+			Name:  "n",
 			Usage: "generate N entries, exclusive with ratio",
 		},
 		&cli.Float64Flag{
