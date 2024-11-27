@@ -49,7 +49,7 @@ Note that this is enforced with https://github.com/filecoin-project/lotus/blob/m
 
 ## CHANGELOG Management
 
-To expedite the release process, the CHANGELOG is built-up incrementally.  
+To expedite the release process, the CHANGELOG is built-up incrementally.
 We enforce that each PR updates CHANGELOG.md or signals that the change doesn't need it.
 If the PR affects users (e.g., new feature, bug fix, system requirements change), update the CHANGELOG.md and add details to the UNRELEASED section.
 If the change does not require a CHANGELOG.md entry, do one of the following:
@@ -57,6 +57,14 @@ If the change does not require a CHANGELOG.md entry, do one of the following:
 - Add the label `skip/changelog` to the PR
 
 Note that this is enforced with https://github.com/filecoin-project/lotus/blob/master/.github/workflows/changelog.yml
+
+## Dependency Management
+
+We enforce that each dependency on an unreleased version of a package, as long as said package has any released versions (i.e. it is not a `v0.0.0`), is explicitly documented in the `ALLOWED` list stored in [.github/workflows/dependency-check.yml](.github/workflows/dependency-check.yml).
+If you are adding such a dependency, please add it to the `ALLOWED` list.
+Please note that this requirement applies both to direct and indirect dependencies.
+
+Note that this is enforced with https://github.com/filecoin-project/lotus/blob/master/.github/workflows/dependency-check.yml
 
 ## Markdown Conventions
 We optimize our markdown files for viewing on GitHub. That isn't to say other syntaxes can't be used, but that is the flavor we focus on and at the minimum don't want to break.
