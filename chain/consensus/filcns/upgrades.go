@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/docker/go-units"
-	"github.com/dustin/go-humanize"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"golang.org/x/term"
@@ -3011,7 +3010,7 @@ func (ml migrationLogger) Log(level rt.LogLevel, msg string, args ...interface{}
 			percentComplete := float64(doneNow) / float64(jobsNow) * 100
 
 			log.Infof("Performing migration: %s of %s jobs complete (%.1f%%, %s/s)",
-				doneStr, jobsStr, percentComplete, humanize.Comma(int64(rate)))
+				doneStr, jobsStr, percentComplete, rate)
 		} else {
 			log.Infof(msg, args...)
 		}
