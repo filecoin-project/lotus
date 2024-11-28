@@ -68,6 +68,11 @@ jobs:
                 "Path": "honnef.co/go/tools",
                 "Version": "v0.0.1-2020.1.4",
                 "Reason": "unknown"
+              },
+              {
+                "Path": "github.com/quic-go/webtransport-go",
+                "Version": "v0.8.1-0.20241018022711-4ac2c9250e66",
+                "Reason": "unknown"
               }
             ]
         run: |
