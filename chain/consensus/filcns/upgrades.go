@@ -9,9 +9,11 @@ import (
 	"os"
 	"runtime"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/docker/go-units"
+	"github.com/dustin/go-humanize"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"golang.org/x/term"
@@ -2756,7 +2758,7 @@ func PreUpgradeActorsV16(ctx context.Context, sm *stmgr.StateManager, cache stmg
 
 	config := migration.Config{
 		MaxWorkers:        uint(workerCount),
-		ProgressLogPeriod: time.Minute * 5,
+		ProgressLogPeriod: time.Second * 2,
 	}
 
 	_, err = upgradeActorsV16Common(ctx, sm, cache, lbRoot, epoch, lbts, config)
@@ -2774,7 +2776,7 @@ func UpgradeActorsV16(ctx context.Context, sm *stmgr.StateManager, cache stmgr.M
 		MaxWorkers:        uint(workerCount),
 		JobQueueSize:      1000,
 		ResultQueueSize:   100,
-		ProgressLogPeriod: 10 * time.Second,
+		ProgressLogPeriod: time.Second * 2,
 	}
 	newRoot, err := upgradeActorsV16Common(ctx, sm, cache, root, epoch, ts, config)
 	if err != nil {
@@ -2998,7 +3000,21 @@ func (ml migrationLogger) Log(level rt.LogLevel, msg string, args ...interface{}
 	case rt.DEBUG:
 		log.Debugf(msg, args...)
 	case rt.INFO:
-		log.Infof(msg, args...)
+		if strings.Contains(msg, "jobs created") {
+			jobsNow := args[0].(int64)
+			doneNow := args[1].(int64)
+			rate := args[4].(float64)
+
+			jobsStr := jobsNow
+			doneStr := doneNow
+
+			percentComplete := float64(doneNow) / float64(jobsNow) * 100
+
+			log.Infof("Performing migration: %s of %s jobs complete (%.1f%%, %s/s)",
+				doneStr, jobsStr, percentComplete, humanize.Comma(int64(rate)))
+		} else {
+			log.Infof(msg, args...)
+		}
 	case rt.WARN:
 		log.Warnf(msg, args...)
 	case rt.ERROR:
