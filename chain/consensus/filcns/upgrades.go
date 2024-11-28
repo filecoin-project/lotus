@@ -9,7 +9,6 @@ import (
 	"os"
 	"runtime"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/docker/go-units"
@@ -2999,21 +2998,7 @@ func (ml migrationLogger) Log(level rt.LogLevel, msg string, args ...interface{}
 	case rt.DEBUG:
 		log.Debugf(msg, args...)
 	case rt.INFO:
-		if strings.Contains(msg, "jobs created") {
-			jobsNow := args[0].(int64)
-			doneNow := args[1].(int64)
-			rate := args[4].(float64)
-
-			jobsStr := jobsNow
-			doneStr := doneNow
-
-			percentComplete := float64(doneNow) / float64(jobsNow) * 100
-
-			log.Infof("Performing migration: %s of %s jobs complete (%.1f%%, %s/s)",
-				doneStr, jobsStr, percentComplete, rate)
-		} else {
-			log.Infof(msg, args...)
-		}
+		log.Infof(msg, args...)
 	case rt.WARN:
 		log.Warnf(msg, args...)
 	case rt.ERROR:
