@@ -20169,7 +20169,7 @@
         {
             "name": "Filecoin.StateGetRandomnessDigestFromTickets",
             "description": "```go\nfunc (s *FullNodeStruct) StateGetRandomnessDigestFromTickets(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) (abi.Randomness, error) {\n\tif s.Internal.StateGetRandomnessDigestFromTickets == nil {\n\t\treturn *new(abi.Randomness), ErrNotSupported\n\t}\n\treturn s.Internal.StateGetRandomnessDigestFromTickets(p0, p1, p2)\n}\n```",
-            "summary": "StateGetRandomnessDigestFromTickets. is used to sample the chain for randomness.\n",
+            "summary": "StateGetRandomnessDigestFromTickets is used to sample the chain for randomness.\n",
             "paramStructure": "by-position",
             "params": [
                 {
