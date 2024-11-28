@@ -161,7 +161,7 @@
         {
             "name": "Filecoin.ActorWithdrawBalance",
             "description": "```go\nfunc (s *StorageMinerStruct) ActorWithdrawBalance(p0 context.Context, p1 abi.TokenAmount) (cid.Cid, error) {\n\tif s.Internal.ActorWithdrawBalance == nil {\n\t\treturn *new(cid.Cid), ErrNotSupported\n\t}\n\treturn s.Internal.ActorWithdrawBalance(p0, p1)\n}\n```",
-            "summary": "WithdrawBalance allows to withdraw balance from miner actor to owner address\nSpecify amount as \"0\" to withdraw full balance. This method returns a message CID\nand does not wait for message execution\n",
+            "summary": "ActorWithdrawBalance allows to withdraw balance from miner actor to owner address\nSpecify amount as \"0\" to withdraw full balance. This method returns a message CID\nand does not wait for message execution\n",
             "paramStructure": "by-position",
             "params": [
                 {

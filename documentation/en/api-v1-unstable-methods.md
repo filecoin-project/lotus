@@ -6833,7 +6833,7 @@ Inputs:
 Response: `"Bw=="`
 
 ### StateGetRandomnessDigestFromTickets
-StateGetRandomnessDigestFromTickets. is used to sample the chain for randomness.
+StateGetRandomnessDigestFromTickets is used to sample the chain for randomness.
 
 
 Perms: read

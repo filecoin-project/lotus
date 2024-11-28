@@ -45,7 +45,7 @@ type StorageMiner interface {
 	ActorSectorSize(context.Context, address.Address) (abi.SectorSize, error) //perm:read
 	ActorAddressConfig(ctx context.Context) (AddressConfig, error)            //perm:read
 
-	// WithdrawBalance allows to withdraw balance from miner actor to owner address
+	// ActorWithdrawBalance allows to withdraw balance from miner actor to owner address
 	// Specify amount as "0" to withdraw full balance. This method returns a message CID
 	// and does not wait for message execution
 	ActorWithdrawBalance(ctx context.Context, amount abi.TokenAmount) (cid.Cid, error) //perm:admin
