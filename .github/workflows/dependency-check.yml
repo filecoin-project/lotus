@@ -82,7 +82,10 @@ jobs:
       - if: steps.dependencies.outputs.unreleased != '[]'
         env:
           MESSAGE: |
-            A new unreleased dependency was discovered in this PR. Please do one of the options in [changelog management conventions](https://github.com/filecoin-project/lotus/blob/master/CONTRIBUTING.md#changelog-management)
+            A new unreleased dependency was discovered in this PR. Please do one of the options in [dependency management conventions](https://github.com/filecoin-project/lotus/blob/master/CONTRIBUTING.md#dependency-management)
+
+            Unreleased dependencies:
+            ${{steps.dependencies.outputs.unreleased}}
         run: |
           echo "::error::${MESSAGE//$'\n'/%0A}"
           exit 1
