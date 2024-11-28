@@ -13,6 +13,8 @@ jobs:
     name: Dependency Check
     steps:
       - uses: actions/checkout@v3
+        with:
+          submodules: 'recursive'
       - id: dependencies
         env:
           ALLOWED: |
