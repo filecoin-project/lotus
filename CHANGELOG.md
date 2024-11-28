@@ -2,9 +2,9 @@
 
 # UNRELEASED
 
-# Node and Miner v1.31.0-rc1 / 2024-11-12
+# Node and Miner v1.31.0 / 2024-11-28
 
-This Lotus release candidate introduces the new `ChainIndexer` subsystem, enhancing the indexing of Filecoin chain state for improved RPC performance. Several bug fixes in the block production loop are also included. Please review the upgrade warnings and documentation for any important changes affecting RPC providers, node operators and storage providers.
+The Lotus v1.31.0 release introduces the new `ChainIndexer` subsystem, enhancing the indexing of Filecoin chain state for improved RPC performance. Several bug fixes in the block production loop are also included. Please review the upgrade warnings and documentation for any important changes affecting RPC providers, node operators and storage providers.
 
 ## ☢️ Upgrade Warnings ☢️
 - The introduction of the new `ChainIndexer` subsystem replaces the existing `MsgIndex`, `EthTxHashLookup`, and `EventIndex` implementations. This change may affect RPC providers and node operators who use or expose Ethereum and/or events APIs. It is crucial to review the [ChainIndexer documentation for operators](./documentation/en/chain-indexer-overview-for-operators.md) to understand how to enable, configure, and use the new Indexer.
@@ -31,8 +31,8 @@ This Lotus release candidate introduces the new `ChainIndexer` subsystem, enhanc
 
 For the full set of changes since the last stable release:
 
-* Node: https://github.com/filecoin-project/lotus/compare/v1.30.0...v1.31.0-rc1
-* Miner: https://github.com/filecoin-project/lotus/compare/v1.30.0...miner/v1.31.0-rc1
+* Node: https://github.com/filecoin-project/lotus/compare/v1.30.0...v1.31.0
+* Miner: https://github.com/filecoin-project/lotus/compare/v1.30.0...miner/v1.31.0
 
 ## 👨‍👩‍👧‍👦 Contributors
 
