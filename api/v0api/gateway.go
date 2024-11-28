@@ -7,6 +7,7 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/dline"
@@ -35,7 +36,21 @@ import (
 //  * Generate markdown docs
 //  * Generate openrpc blobs
 
+type Partition struct {
+	AllSectors        bitfield.BitField
+	FaultySectors     bitfield.BitField
+	RecoveringSectors bitfield.BitField
+	LiveSectors       bitfield.BitField
+	ActiveSectors     bitfield.BitField
+}
+
 type Gateway interface {
+	ChainGetNode(ctx context.Context, p string) (*api.IpldObject, error)
+	StateMinerPartitions(ctx context.Context, m address.Address, dlIdx uint64, tsk types.TipSetKey) ([]api.Partition, error)
+	StateMinerSectors(context.Context, address.Address, *bitfield.BitField, types.TipSetKey) ([]*miner.SectorOnChainInfo, error)
+	StateMinerFaults(context.Context, address.Address, types.TipSetKey) (bitfield.BitField, error)
+	StateMinerAvailableBalance(context.Context, address.Address, types.TipSetKey) (types.BigInt, error)
+	StateMarketParticipants(context.Context, types.TipSetKey) (map[string]api.MarketBalance, error)
 	MpoolPending(context.Context, types.TipSetKey) ([]*types.SignedMessage, error)
 	ChainGetBlock(context.Context, cid.Cid) (*types.BlockHeader, error)
 	MinerGetBaseInfo(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*api.MiningBaseInfo, error)
