@@ -14,12 +14,12 @@ import (
 	"time"
 
 	masterminds "github.com/Masterminds/semver/v3"
+	"github.com/google/go-github/v66/github"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/mod/semver"
 
 	"github.com/filecoin-project/lotus/build"
-	"github.com/google/go-github/v66/github"
 )
 
 var _tags []string
