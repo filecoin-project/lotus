@@ -12,6 +12,8 @@
 
 - The miner actor builtin `QAPowerForWeight` no longer accepts the unused "dealWeight" parameter, the function signature now only takes 3 arguments: sectorSize, sectorDuration, verifiedWeight. ([filecoin-project/lotus#12445](https://github.com/filecoin-project/lotus/pull/12445))
 
+- Lotus now reports the network name in the metrics. ([filecoin-project/lotus#12733](https://github.com/filecoin-project/lotus/pull/12733))
+
 ## Bug Fixes
 
 - Make `EthTraceFilter` / `trace_filter` skip null rounds instead of erroring. ([filecoin-project/lotus#12702](https://github.com/filecoin-project/lotus/pull/12702))
