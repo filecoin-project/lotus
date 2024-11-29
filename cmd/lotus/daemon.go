@@ -207,7 +207,7 @@ var DaemonCmd = &cli.Command{
 		default:
 			return fmt.Errorf("unrecognized profile type: %q", profile)
 		}
-		network := strings.Split(string(buildconstants.BuildTypeString()), "+")[1]
+		network := strings.Split(buildconstants.BuildTypeString(), "+")[1]
 		ctx, _ := tag.New(context.Background(),
 			tag.Insert(metrics.Version, build.NodeBuildVersion),
 			tag.Insert(metrics.Commit, build.CurrentCommit),

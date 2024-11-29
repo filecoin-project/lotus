@@ -57,7 +57,7 @@ var runCmd = &cli.Command{
 			}
 		}
 
-		network := strings.Split(string(buildconstants.BuildTypeString()), "+")[1]
+		network := strings.Split(buildconstants.BuildTypeString(), "+")[1]
 		ctx, _ := tag.New(lcli.DaemonContext(cctx),
 			tag.Insert(metrics.Version, build.MinerBuildVersion),
 			tag.Insert(metrics.Commit, build.CurrentCommit),
