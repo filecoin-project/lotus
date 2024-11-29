@@ -1507,8 +1507,9 @@ USAGE:
    lotus state market command [command options] [arguments...]
 
 COMMANDS:
-   balance  Get the market balance (locked and escrowed) for a given account
-   help, h  Shows a list of commands or help for one command
+   balance           Get the market balance (locked and escrowed) for a given account
+   proposal-pending  check if a given proposal CID is pending in the market actor
+   help, h           Shows a list of commands or help for one command
 
 OPTIONS:
    --help, -h  show help
@@ -1521,6 +1522,18 @@ NAME:
 
 USAGE:
    lotus state market balance [command options] [address]
+
+OPTIONS:
+   --help, -h  show help
+```
+
+#### lotus state market proposal-pending
+```
+NAME:
+   lotus state market proposal-pending - check if a given proposal CID is pending in the market actor
+
+USAGE:
+   lotus state market proposal-pending [command options] [proposal CID]
 
 OPTIONS:
    --help, -h  show help

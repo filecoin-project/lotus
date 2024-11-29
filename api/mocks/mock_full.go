@@ -3332,6 +3332,21 @@ func (mr *MockFullNodeMockRecorder) StateMarketParticipants(arg0, arg1 interface
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMarketParticipants", reflect.TypeOf((*MockFullNode)(nil).StateMarketParticipants), arg0, arg1)
 }
 
+// StateMarketProposalPending mocks base method.
+func (m *MockFullNode) StateMarketProposalPending(arg0 context.Context, arg1 cid.Cid, arg2 types.TipSetKey) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateMarketProposalPending", arg0, arg1, arg2)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateMarketProposalPending indicates an expected call of StateMarketProposalPending.
+func (mr *MockFullNodeMockRecorder) StateMarketProposalPending(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMarketProposalPending", reflect.TypeOf((*MockFullNode)(nil).StateMarketProposalPending), arg0, arg1, arg2)
+}
+
 // StateMarketStorageDeal mocks base method.
 func (m *MockFullNode) StateMarketStorageDeal(arg0 context.Context, arg1 abi.DealID, arg2 types.TipSetKey) (*api.MarketDeal, error) {
 	m.ctrl.T.Helper()

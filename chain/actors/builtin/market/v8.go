@@ -13,6 +13,7 @@ import (
 	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/builtin"
 	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
 	adt8 "github.com/filecoin-project/go-state-types/builtin/v8/util/adt"
 	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
@@ -103,6 +104,14 @@ func (s *state8) Proposals() (DealProposals, error) {
 		return nil, err
 	}
 	return &dealProposals8{proposalArray}, nil
+}
+
+func (s *state8) PendingProposals() (PendingProposals, error) {
+	proposalCidSet, err := adt8.AsSet(s.store, s.State.PendingProposals, builtin.DefaultHamtBitwidth)
+	if err != nil {
+		return nil, err
+	}
+	return &pendingProposals8{proposalCidSet}, nil
 }
 
 func (s *state8) EscrowTable() (BalanceTable, error) {
@@ -281,6 +290,14 @@ func (s *dealProposals8) decode(val *cbg.Deferred) (*DealProposal, error) {
 
 func (s *dealProposals8) array() adt.Array {
 	return s.Array
+}
+
+type pendingProposals8 struct {
+	*adt8.Set
+}
+
+func (s *pendingProposals8) Has(proposalCid cid.Cid) (bool, error) {
+	return s.Set.Has(abi.CidKey(proposalCid))
 }
 
 func fromV8DealProposal(v8 market8.DealProposal) (DealProposal, error) {

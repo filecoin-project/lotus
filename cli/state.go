@@ -1513,6 +1513,7 @@ var StateMarketCmd = &cli.Command{
 	Usage: "Inspect the storage market actor",
 	Subcommands: []*cli.Command{
 		stateMarketBalanceCmd,
+		stateMarketProposalPending,
 	},
 }
 
@@ -1551,6 +1552,37 @@ var stateMarketBalanceCmd = &cli.Command{
 		fmt.Printf("Escrow: %s\n", types.FIL(balance.Escrow))
 		fmt.Printf("Locked: %s\n", types.FIL(balance.Locked))
 
+		return nil
+	},
+}
+
+var stateMarketProposalPending = &cli.Command{
+	Name:      "proposal-pending",
+	Usage:     "check if a given proposal CID is pending in the market actor",
+	ArgsUsage: "[proposal CID]",
+	Action: func(cctx *cli.Context) error {
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
+		}
+
+		api, closer, err := GetFullNodeAPIV1(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		propCid, err := cid.Decode(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		pending, err := api.StateMarketProposalPending(ctx, propCid, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("pending: %t", pending)
 		return nil
 	},
 }
