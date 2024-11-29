@@ -4,6 +4,7 @@ import (
 	"fmt"
 	_ "net/http/pprof"
 	"os"
+	"strings"
 
 	"github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli/v2"
@@ -16,6 +17,7 @@ import (
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/ulimit"
 	"github.com/filecoin-project/lotus/metrics"
@@ -55,10 +57,12 @@ var runCmd = &cli.Command{
 			}
 		}
 
+		network := strings.Split(string(buildconstants.BuildTypeString()), "+")[1]
 		ctx, _ := tag.New(lcli.DaemonContext(cctx),
 			tag.Insert(metrics.Version, build.MinerBuildVersion),
 			tag.Insert(metrics.Commit, build.CurrentCommit),
 			tag.Insert(metrics.NodeType, "miner"),
+			tag.Insert(metrics.Network, network),
 		)
 		// Register all metric views
 		if err := view.Register(
