@@ -284,7 +284,7 @@ func main() {
 						}
 					}
 					if rc1Date != "" {
-						_, err := time.Parse("1999-12-31", rc1Date)
+						_, err := time.Parse("2006-01-02", rc1Date)
 						if err != nil {
 							return fmt.Errorf("invalid value for the 'rc1-date' flag. Must be a valid date (YYYY-MM-DD)")
 						}
@@ -300,7 +300,7 @@ func main() {
 						}
 					}
 					if stableDate != "" {
-						_, err := time.Parse("1999-12-31", stableDate)
+						_, err := time.Parse("2006-01-02", stableDate)
 						if err != nil {
 							return fmt.Errorf("invalid value for the 'stable-date' flag. Must be a valid date (YYYY-MM-DD)")
 						}
