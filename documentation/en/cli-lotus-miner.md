@@ -11,34 +11,38 @@ VERSION:
    1.31.1-dev
 
 COMMANDS:
-   init                           Initialize a lotus miner repo
-   run                            Start a lotus miner process
-   stop                           Stop a running lotus miner
-   config                         Manage node config
-   backup                         Create node metadata backup
-   actor                          manipulate the miner actor
-   info                           Print miner info
-   sectors                        interact with sector store
-   proving                        View proving information
-   storage                        manage sector storage
-   sealing                        interact with sealing pipeline
-   auth                           Manage RPC permissions
-   log                            Manage logging
-   wait-api                       Wait for lotus api to come online
-   fetch-params                   Fetch proving parameters
-   pprof                          
-   version                        Print version
-   help, h                        Shows a list of commands or help for one command
+   init          Initialize a lotus miner repo
+   run           Start a lotus miner process
+   stop          Stop a running lotus miner
+   config        Manage node config
+   backup        Create node metadata backup
+   pprof         
+   version       Print version
+   help, h       Shows a list of commands or help for one command
+   CHAIN:
+     actor  manipulate the miner actor
+     info   Print miner info
+   STORAGE:
+     sectors  interact with sector store
+     proving  View proving information
+     storage  manage sector storage
+     sealing  interact with sealing pipeline
+   DEVELOPER:
+     auth          Manage RPC permissions
+     log           Manage logging
+     wait-api      Wait for lotus api to come online
+     fetch-params  Fetch proving parameters
 
 GLOBAL OPTIONS:
    --actor value, -a              specify other actor to query / manipulate
-   --color                        use color in display output (default: false)
+   --color                        use color in display output (default: depends on output being a TTY)
    --panic-reports value           (default: "~/.lotusminer") [LOTUS_PANIC_REPORT_PATH]
    --repo value                    (default: "~/.lotus") [LOTUS_PATH]
    --miner-repo value, --storagerepo Specify miner repo path. flag(storagerepo) and env(LOTUS_STORAGE_PATH) are DEPRECATION, will REMOVE SOON (default: "~/.lotusminer") [LOTUS_MINER_PATH, LOTUS_STORAGE_PATH]
    --vv                           enables very verbose mode, useful for debugging the CLI (default: false)
-   --help, -h                     show help (default: false)
-   --version, -v                  print the version (default: false)
+   --help, -h                     show help
+   --version, -v                  print the version
+
 ```
 
 ## lotus-miner init

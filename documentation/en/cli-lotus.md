@@ -11,41 +11,46 @@ VERSION:
    1.31.1-dev
 
 COMMANDS:
-   daemon                         Start a lotus daemon process
-   backup                         Create node metadata backup
-   config                         Manage node config
-   send                           Send funds between accounts
-   wallet                         Manage wallet
-   info                           Print node info
-   msig                           Interact with a multisig wallet
-   filplus                        Interact with the verified registry actor used by Filplus
-   paych                          Manage payment channels
-   auth                           Manage RPC permissions
-   mpool                          Manage message pool
-   state                          Interact with and query filecoin chain state
-   chain                          Interact with filecoin blockchain
-   log                            Manage logging
-   wait-api                       Wait for lotus api to come online
-   fetch-params                   Fetch proving parameters
-   evm                            Commands related to the Filecoin EVM runtime
-   index                          Commands related to managing the chainindex
-   net                            Manage P2P Network
-   sync                           Inspect or interact with the chain syncer
-   f3                             Manages Filecoin Fast Finality (F3) interactions
-   status                         Check node status
-   pprof                          
-   version                        Print version
-   help, h                        Shows a list of commands or help for one command
+   daemon        Start a lotus daemon process
+   backup        Create node metadata backup
+   config        Manage node config
+   pprof         
+   version       Print version
+   help, h       Shows a list of commands or help for one command
+   BASIC:
+     send     Send funds between accounts
+     wallet   Manage wallet
+     info     Print node info
+     msig     Interact with a multisig wallet
+     filplus  Interact with the verified registry actor used by Filplus
+     paych    Manage payment channels
+   DEVELOPER:
+     auth          Manage RPC permissions
+     mpool         Manage message pool
+     state         Interact with and query filecoin chain state
+     chain         Interact with filecoin blockchain
+     log           Manage logging
+     wait-api      Wait for lotus api to come online
+     fetch-params  Fetch proving parameters
+     evm           Commands related to the Filecoin EVM runtime
+     index         Commands related to managing the chainindex
+   NETWORK:
+     net   Manage P2P Network
+     sync  Inspect or interact with the chain syncer
+     f3    Manages Filecoin Fast Finality (F3) interactions
+   STATUS:
+     status  Check node status
 
 GLOBAL OPTIONS:
    --panic-reports value           (default: "~/.lotus") [LOTUS_PANIC_REPORT_PATH]
-   --color                        use color in display output (default: false)
+   --color                        use color in display output (default: depends on output being a TTY)
    --repo value                    (default: "~/.lotus") [LOTUS_PATH]
    --interactive                  setting to false will disable interactive functionality of commands (default: true)
    --force-send                   if true, will ignore pre-send checks (default: false)
    --vv                           enables very verbose mode, useful for debugging the CLI (default: false)
-   --help, -h                     show help (default: false)
-   --version, -v                  print the version (default: false)
+   --help, -h                     show help
+   --version, -v                  print the version
+
 ```
 
 ## lotus daemon

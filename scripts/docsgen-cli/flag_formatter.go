@@ -37,9 +37,9 @@ func (ff *FlagFormatter) Format() string {
 func (ff *FlagFormatter) GetData() (string, string, string, []string) {
 	switch f := ff.flag.(type) {
 	case *cli.StringFlag:
-		return ff.formatFlagNames(true), f.Usage, formatDefaultValue(f.Value), f.EnvVars
+		return ff.formatFlagNames(true), f.Usage, formatStringValue(f.Value), f.EnvVars
 	case *cli.BoolFlag:
-		return ff.formatFlagNames(false), f.Usage, fmt.Sprintf("%t", f.Value), f.EnvVars
+		return ff.formatFlagNames(false), f.Usage, formatBoolValue(f), f.EnvVars
 	case *cli.IntFlag:
 		return ff.formatFlagNames(true), f.Usage, fmt.Sprintf("%d", f.Value), f.EnvVars
 	case *cli.Float64Flag:
