@@ -42,3 +42,11 @@ func helpCommandSummary() string {
 		Usage:   "Shows a list of commands or help for one command",
 	})
 }
+
+// formatDefaultValue formats default values properly
+func formatDefaultValue(value string) string {
+	if value == "" {
+		return ""
+	}
+	return fmt.Sprintf("%q", value)
+}

@@ -32,9 +32,15 @@ func (g *DocGenerator) Generate(name string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create markdown file: %w", err)
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			fmt.Printf("failed to close markdown file: %v\n", err)
+		}
+	}()
 
 	g.writer = file
+	g.app.Writer = g.writer
+
 	return g.generateDocs(name)
 }
 
@@ -52,7 +58,6 @@ func (g *DocGenerator) writeAppHeader() error {
 	header := &strings.Builder{}
 	header.WriteString(fmt.Sprintf("# %s\n\n```\n", g.app.Name))
 
-	// App metadata
 	metadata := []struct {
 		section string
 		content string
@@ -89,8 +94,21 @@ func (g *DocGenerator) writeAppHeader() error {
 // writeCommandDocs writes documentation for all commands recursively
 func (g *DocGenerator) writeCommandDocs(commands []*cli.Command, rootName string, depth int) error {
 	for _, cmd := range commands {
-		formatter := NewCommandFormatter(cmd, rootName, depth)
-		if _, err := g.writer.Write([]byte(formatter.Format())); err != nil {
+		if cmd.Name == "help" {
+			continue
+		}
+
+		cmdName := fmt.Sprintf("%s %s", rootName, cmd.Name)
+
+		if _, err := g.writer.Write([]byte(fmt.Sprintf("\n%s %s\n\n```\n", strings.Repeat("#", depth+2), cmdName))); err != nil {
+			return fmt.Errorf("failed to write command docs: %w", err)
+		}
+
+		if err := g.app.Run(getArgs(rootName, cmd.Name)); err != nil {
+			return fmt.Errorf("failed to write command docs: %w", err)
+		}
+
+		if _, err := g.writer.Write([]byte("```\n")); err != nil {
 			return fmt.Errorf("failed to write command docs: %w", err)
 		}
 
@@ -99,7 +117,13 @@ func (g *DocGenerator) writeCommandDocs(commands []*cli.Command, rootName string
 				return err
 			}
 		}
-
 	}
 	return nil
+}
+
+func getArgs(rootName string, cmdName string) []string {
+	args := strings.Split(rootName, " ")
+	args = append(args, cmdName)
+	args = append(args, "-h")
+	return args
 }

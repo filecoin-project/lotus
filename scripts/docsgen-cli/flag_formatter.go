@@ -17,52 +17,60 @@ func NewFlagFormatter(flag cli.Flag) *FlagFormatter {
 	return &FlagFormatter{flag: flag}
 }
 
+// Format formats the flag string with optional environment variables
 func (ff *FlagFormatter) Format() string {
-	switch f := ff.flag.(type) {
-	case *cli.StringFlag:
-		return ff.formatWithEnv(strings.Join(f.Names(), ", "), f.Usage, f.Value, f.EnvVars)
-	case *cli.BoolFlag:
-		return ff.formatWithEnv(strings.Join(f.Names(), ", "), f.Usage, fmt.Sprintf("%t", f.Value), f.EnvVars)
-	case *cli.IntFlag:
-		return ff.formatWithEnv(strings.Join(f.Names(), ", "), f.Usage, fmt.Sprintf("%d", f.Value), f.EnvVars)
-	default:
-		names := make([]string, len(ff.flag.Names()))
-		for i, n := range ff.flag.Names() {
-			if len(n) == 1 {
-				names[i] = "-" + n
-			} else {
-				names[i] = "--" + n
-			}
-		}
-		return fmt.Sprintf("   %-30s %s\n", strings.Join(names, ", "), ff.flag.String())
+	names, usage, value, envVars := ff.GetData()
+
+	var formatted string
+	if value != "" {
+		formatted = fmt.Sprintf("   %-30s %s (default: %s)", names, usage, value)
+	} else {
+		formatted = fmt.Sprintf("   %-30s %s", names, usage)
 	}
-}
-
-// formatWithEnv formats the flag string with optional environment variables
-func (ff *FlagFormatter) formatWithEnv(name, usage, value string, envVars []string) string {
-	// Get all names (including aliases)
-	names := ff.flag.Names()
-
-	// Format all names with proper prefix
-	formattedNames := make([]string, len(names))
-	for i, n := range names {
-		if len(n) == 1 {
-			// Short flag format: -v
-			formattedNames[i] = "-" + n
-		} else {
-			// Long flag format: --verbose
-			formattedNames[i] = "--" + n
-		}
-	}
-
-	// Join all names with comma
-	nameStr := strings.Join(formattedNames, ", ")
-
-	const flagFormat = "   %-30s %s (default: \"%s\")"
-	formatted := fmt.Sprintf(flagFormat, nameStr, usage, value)
 
 	if len(envVars) > 0 {
 		return formatted + fmt.Sprintf(" [%s]\n", strings.Join(envVars, ", "))
 	}
 	return formatted + "\n"
+}
+
+func (ff *FlagFormatter) GetData() (string, string, string, []string) {
+	switch f := ff.flag.(type) {
+	case *cli.StringFlag:
+		return ff.formatFlagNames(true), f.Usage, formatDefaultValue(f.Value), f.EnvVars
+	case *cli.BoolFlag:
+		return ff.formatFlagNames(false), f.Usage, fmt.Sprintf("%t", f.Value), f.EnvVars
+	case *cli.IntFlag:
+		return ff.formatFlagNames(true), f.Usage, fmt.Sprintf("%d", f.Value), f.EnvVars
+	case *cli.Float64Flag:
+		return ff.formatFlagNames(true), f.Usage, fmt.Sprintf("%g", f.Value), f.EnvVars
+	case *cli.Int64Flag:
+		return ff.formatFlagNames(true), f.Usage, fmt.Sprintf("%d", f.Value), f.EnvVars
+	case *cli.UintFlag:
+		return ff.formatFlagNames(true), f.Usage, fmt.Sprintf("%d", f.Value), f.EnvVars
+	case *cli.Uint64Flag:
+		return ff.formatFlagNames(true), f.Usage, fmt.Sprintf("%d", f.Value), f.EnvVars
+	default:
+		return ff.formatFlagNames(true), f.String(), "", nil
+	}
+}
+
+// formatFlagNames formats all flag names and aliases
+func (ff *FlagFormatter) formatFlagNames(showValue bool) string {
+	names := ff.flag.Names()
+	formattedNames := make([]string, len(names))
+
+	for i, name := range names {
+		if len(name) == 1 {
+			formattedNames[i] = fmt.Sprintf("-%s", name) // Short flag
+		} else {
+			formattedNames[i] = fmt.Sprintf("--%s", name) // Long flag
+		}
+
+		if showValue && i == 0 {
+			formattedNames[i] += " value"
+		}
+	}
+
+	return strings.Join(formattedNames, ", ")
 }

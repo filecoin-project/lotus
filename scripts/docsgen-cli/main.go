@@ -4,11 +4,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/urfave/cli/v2"
-
 	"github.com/filecoin-project/lotus/cli/lotus"
 	"github.com/filecoin-project/lotus/cli/miner"
 	"github.com/filecoin-project/lotus/cli/worker"
+	"github.com/urfave/cli/v2"
 )
 
 const (

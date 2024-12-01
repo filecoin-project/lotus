@@ -38,14 +38,14 @@ COMMANDS:
    help, h                        Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
-   --panic-reports                 (default: "~/.lotus") [LOTUS_PANIC_REPORT_PATH]
-   --color                        use color in display output (default: "false")
-   --repo                          (default: "~/.lotus") [LOTUS_PATH]
-   --interactive                  setting to false will disable interactive functionality of commands (default: "true")
-   --force-send                   if true, will ignore pre-send checks (default: "false")
-   --vv                           enables very verbose mode, useful for debugging the CLI (default: "false")
-   --help, -h                     show help (default: "false")
-   --version, -v                  print the version (default: "false")
+   --panic-reports value           (default: "~/.lotus") [LOTUS_PANIC_REPORT_PATH]
+   --color                        use color in display output (default: false)
+   --repo value                    (default: "~/.lotus") [LOTUS_PATH]
+   --interactive                  setting to false will disable interactive functionality of commands (default: true)
+   --force-send                   if true, will ignore pre-send checks (default: false)
+   --vv                           enables very verbose mode, useful for debugging the CLI (default: false)
+   --help, -h                     show help (default: false)
+   --version, -v                  print the version (default: false)
 ```
 
 ## lotus daemon
@@ -57,30 +57,27 @@ NAME:
 USAGE:
    lotus daemon command [command options] [arguments...]
 
-OPTIONS:
-   --api                           (default: "1234")
-   --lotus-make-genesis            (default: "")
-   --genesis-template              (default: "")
-   --import-key                   on first run, import a default key from a given file (default: "")
-   --genesis                      genesis file to use for first node run (default: "")
-   --bootstrap                     (default: "true")
-   --import-chain                 on first run, load chain from given file or url and validate (default: "")
-   --import-snapshot              import chain state from a given chain export file or url (default: "")
-   --remove-existing-chain        remove existing chain and splitstore data on a snapshot-import (default: "false")
-   --halt-after-import            halt the process after importing chain from file (default: "false")
-   --lite                         start lotus in lite mode (default: "false")
-   --pprof                        specify name of file for writing cpu profile to (default: "")
-   --profile                      specify type of node (default: "")
-   --manage-fdlimit               manage open file limit (default: "true")
-   --config                       specify path of config file to use (default: "")
-   --api-max-req-size             maximum API request size accepted by the JSON RPC server (default: "0")
-   --restore                      --restore value	restore from backup file
-   --restore-config               --restore-config value	config file to use when restoring from backup
-   --help, -h                     show help (default: "false")
-
 COMMANDS:
-   stop                           Stop a running lotus daemon
-   help, h                        Shows a list of commands or help for one command
+   stop     Stop a running lotus daemon
+   help, h  Shows a list of commands or help for one command
+
+OPTIONS:
+   --api value               (default: "1234")
+   --genesis value           genesis file to use for first node run
+   --bootstrap               (default: true)
+   --import-chain value      on first run, load chain from given file or url and validate
+   --import-snapshot value   import chain state from a given chain export file or url
+   --remove-existing-chain   remove existing chain and splitstore data on a snapshot-import (default: false)
+   --halt-after-import       halt the process after importing chain from file (default: false)
+   --lite                    start lotus in lite mode (default: false)
+   --pprof value             specify name of file for writing cpu profile to
+   --profile value           specify type of node
+   --manage-fdlimit          manage open file limit (default: true)
+   --config value            specify path of config file to use
+   --api-max-req-size value  maximum API request size accepted by the JSON RPC server (default: 0)
+   --restore value           restore from backup file
+   --restore-config value    config file to use when restoring from backup
+   --help, -h                show help
 ```
 
 ### lotus daemon stop
@@ -92,6 +89,8 @@ NAME:
 USAGE:
    lotus daemon stop [command options] [arguments...]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ## lotus backup
@@ -106,15 +105,14 @@ USAGE:
 DESCRIPTION:
    The backup command writes a copy of node metadata under the specified path
 
-Online backups:
-For security reasons, the daemon must be have LOTUS_BACKUP_BASE_PATH env var set
-to a path where backup files are supposed to be saved, and the path specified in
-this command must be within this base path
+   Online backups:
+   For security reasons, the daemon must be have LOTUS_BACKUP_BASE_PATH env var set
+   to a path where backup files are supposed to be saved, and the path specified in
+   this command must be within this base path
 
 OPTIONS:
-   --offline                      create backup without the node running (default: "false")
-   --help, -h                     show help (default: "false")
-
+   --offline   create backup without the node running (default: false)
+   --help, -h  show help
 ```
 
 ## lotus config
@@ -127,9 +125,12 @@ USAGE:
    lotus config command [command options] [arguments...]
 
 COMMANDS:
-   default                        Print default node config
-   updated                        Print updated node config
-   help, h                        Shows a list of commands or help for one command
+   default  Print default node config
+   updated  Print updated node config
+   help, h  Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus config default
@@ -142,9 +143,8 @@ USAGE:
    lotus config default [command options] [arguments...]
 
 OPTIONS:
-   --no-comment                   don't comment default values (default: "false")
-   --help, -h                     show help (default: "false")
-
+   --no-comment  don't comment default values (default: false)
+   --help, -h    show help
 ```
 
 ### lotus config updated
@@ -157,9 +157,8 @@ USAGE:
    lotus config updated [command options] [arguments...]
 
 OPTIONS:
-   --no-comment                   don't comment default values (default: "false")
-   --help, -h                     show help (default: "false")
-
+   --no-comment  don't comment default values (default: false)
+   --help, -h    show help
 ```
 
 ## lotus send
@@ -171,19 +170,21 @@ NAME:
 USAGE:
    lotus send [command options] [targetAddress] [amount]
 
-OPTIONS:
-   --from                         optionally specify the account to send funds from (default: "")
-   --from-eth-addr                optionally specify the eth addr to send funds from (default: "")
-   --gas-premium                  specify gas price to use in AttoFIL (default: "0")
-   --gas-feecap                   specify gas fee cap to use in AttoFIL (default: "0")
-   --gas-limit                    --gas-limit value	specify gas limit (default: 0)
-   --nonce                        --nonce value	specify the nonce to use (default: 0)
-   --method                       --method value	specify method to invoke (default: 0)
-   --params-json                  specify invocation parameters in json (default: "")
-   --params-hex                   specify invocation parameters in hex (default: "")
-   --force                        Deprecated: use global 'force-send' (default: "false")
-   --help, -h                     show help (default: "false")
+CATEGORY:
+   BASIC
 
+OPTIONS:
+   --from value           optionally specify the account to send funds from
+   --from-eth-addr value  optionally specify the eth addr to send funds from
+   --gas-premium value    specify gas price to use in AttoFIL (default: "0")
+   --gas-feecap value     specify gas fee cap to use in AttoFIL (default: "0")
+   --gas-limit value      specify gas limit (default: 0)
+   --nonce value          specify the nonce to use (default: 0)
+   --method value         specify method to invoke (default: 0)
+   --params-json value    specify invocation parameters in json
+   --params-hex value     specify invocation parameters in hex
+   --force                Deprecated: use global 'force-send' (default: false)
+   --help, -h             show help
 ```
 
 ## lotus wallet
@@ -196,18 +197,21 @@ USAGE:
    lotus wallet command [command options] [arguments...]
 
 COMMANDS:
-   new                            Generate a new key of the given type
-   list                           List wallet address
-   balance                        Get account balance
-   export                         export keys
-   import                         import keys
-   default                        Get default wallet address
-   set-default                    Set default wallet address
-   sign                           sign a message
-   verify                         verify the signature of a message
-   delete                         Soft delete an address from the wallet - hard deletion needed for permanent removal
-   market                         Interact with market balances
-   help, h                        Shows a list of commands or help for one command
+   new          Generate a new key of the given type
+   list         List wallet address
+   balance      Get account balance
+   export       export keys
+   import       import keys
+   default      Get default wallet address
+   set-default  Set default wallet address
+   sign         sign a message
+   verify       verify the signature of a message
+   delete       Soft delete an address from the wallet - hard deletion needed for permanent removal
+   market       Interact with market balances
+   help, h      Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus wallet new
@@ -219,6 +223,8 @@ NAME:
 USAGE:
    lotus wallet new [command options] [bls|secp256k1|delegated (default secp256k1)]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus wallet list
@@ -231,11 +237,10 @@ USAGE:
    lotus wallet list [command options] [arguments...]
 
 OPTIONS:
-   --addr-only, -a                Only print addresses (default: "false")
-   --id, -i                       Output ID addresses (default: "false")
-   --market, -m                   Output market balances (default: "false")
-   --help, -h                     show help (default: "false")
-
+   --addr-only, -a  Only print addresses (default: false)
+   --id, -i         Output ID addresses (default: false)
+   --market, -m     Output market balances (default: false)
+   --help, -h       show help
 ```
 
 ### lotus wallet balance
@@ -247,6 +252,8 @@ NAME:
 USAGE:
    lotus wallet balance [command options] [address]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus wallet export
@@ -258,6 +265,8 @@ NAME:
 USAGE:
    lotus wallet export [command options] [address]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus wallet import
@@ -270,10 +279,9 @@ USAGE:
    lotus wallet import [command options] [<path> (optional, will read from stdin if omitted)]
 
 OPTIONS:
-   --format                       specify input format for key (default: "hex-lotus")
-   --as-default                   import the given key as your new default key (default: "false")
-   --help, -h                     show help (default: "false")
-
+   --format value  specify input format for key (default: "hex-lotus")
+   --as-default    import the given key as your new default key (default: false)
+   --help, -h      show help
 ```
 
 ### lotus wallet default
@@ -285,6 +293,8 @@ NAME:
 USAGE:
    lotus wallet default [command options] [arguments...]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus wallet set-default
@@ -296,6 +306,8 @@ NAME:
 USAGE:
    lotus wallet set-default [command options] [address]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus wallet sign
@@ -307,6 +319,8 @@ NAME:
 USAGE:
    lotus wallet sign [command options] <signing address> <hexMessage>
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus wallet verify
@@ -318,6 +332,8 @@ NAME:
 USAGE:
    lotus wallet verify [command options] <signing address> <hexMessage> <signature>
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus wallet delete
@@ -329,6 +345,8 @@ NAME:
 USAGE:
    lotus wallet delete [command options] <address> 
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus wallet market
@@ -341,9 +359,12 @@ USAGE:
    lotus wallet market command [command options] [arguments...]
 
 COMMANDS:
-   withdraw                       Withdraw funds from the Storage Market Actor
-   add                            Add funds to the Storage Market Actor
-   help, h                        Shows a list of commands or help for one command
+   withdraw  Withdraw funds from the Storage Market Actor
+   add       Add funds to the Storage Market Actor
+   help, h   Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help
 ```
 
 #### lotus wallet market withdraw
@@ -356,11 +377,10 @@ USAGE:
    lotus wallet market withdraw [command options] [amount (FIL) optional, otherwise will withdraw max available]
 
 OPTIONS:
-   --wallet, -w                   Specify address to withdraw funds to, otherwise it will use the default wallet address (default: "")
-   --address, -a                  Market address to withdraw from (account or miner actor address, defaults to --wallet address) (default: "")
-   --confidence                   number of block confirmations to wait for (default: "5")
-   --help, -h                     show help (default: "false")
-
+   --wallet value, -w value   Specify address to withdraw funds to, otherwise it will use the default wallet address
+   --address value, -a value  Market address to withdraw from (account or miner actor address, defaults to --wallet address)
+   --confidence value         number of block confirmations to wait for (default: 5)
+   --help, -h                 show help
 ```
 
 #### lotus wallet market add
@@ -373,10 +393,9 @@ USAGE:
    lotus wallet market add [command options] <amount>
 
 OPTIONS:
-   --from, -f                     Specify address to move funds from, otherwise it will use the default wallet address (default: "")
-   --address, -a                  Market address to move funds to (account or miner actor address, defaults to --from address) (default: "")
-   --help, -h                     show help (default: "false")
-
+   --from value, -f value     Specify address to move funds from, otherwise it will use the default wallet address
+   --address value, -a value  Market address to move funds to (account or miner actor address, defaults to --from address)
+   --help, -h                 show help
 ```
 
 ## lotus info
@@ -388,6 +407,11 @@ NAME:
 USAGE:
    lotus info [command options] [arguments...]
 
+CATEGORY:
+   BASIC
+
+OPTIONS:
+   --help, -h  show help
 ```
 
 ## lotus msig
@@ -399,29 +423,29 @@ NAME:
 USAGE:
    lotus msig command [command options] [arguments...]
 
-OPTIONS:
-   --confidence                   number of block confirmations to wait for (default: "5")
-   --help, -h                     show help (default: "false")
-
 COMMANDS:
-   create                         Create a new multisig wallet
-   inspect                        Inspect a multisig wallet
-   propose                        Propose a multisig transaction
-   propose-remove                 Propose to remove a signer
-   approve                        Approve a multisig message
-   cancel                         Cancel a multisig message
-   add-propose                    Propose to add a signer
-   add-approve                    Approve a message to add a signer
-   add-cancel                     Cancel a message to add a signer
-   swap-propose                   Propose to swap signers
-   swap-approve                   Approve a message to swap signers
-   swap-cancel                    Cancel a message to swap signers
-   lock-propose                   Propose to lock up some balance
-   lock-approve                   Approve a message to lock up some balance
-   lock-cancel                    Cancel a message to lock up some balance
-   vested                         Gets the amount vested in an msig between two epochs
-   propose-threshold              Propose setting a different signing threshold on the account
-   help, h                        Shows a list of commands or help for one command
+   create             Create a new multisig wallet
+   inspect            Inspect a multisig wallet
+   propose            Propose a multisig transaction
+   propose-remove     Propose to remove a signer
+   approve            Approve a multisig message
+   cancel             Cancel a multisig message
+   add-propose        Propose to add a signer
+   add-approve        Approve a message to add a signer
+   add-cancel         Cancel a message to add a signer
+   swap-propose       Propose to swap signers
+   swap-approve       Approve a message to swap signers
+   swap-cancel        Cancel a message to swap signers
+   lock-propose       Propose to lock up some balance
+   lock-approve       Approve a message to lock up some balance
+   lock-cancel        Cancel a message to lock up some balance
+   vested             Gets the amount vested in an msig between two epochs
+   propose-threshold  Propose setting a different signing threshold on the account
+   help, h            Shows a list of commands or help for one command
+
+OPTIONS:
+   --confidence value  number of block confirmations to wait for (default: 5)
+   --help, -h          show help
 ```
 
 ### lotus msig create
@@ -434,12 +458,11 @@ USAGE:
    lotus msig create [command options] [address1 address2 ...]
 
 OPTIONS:
-   --required                     --required value	number of required approvals (uses number of signers provided if omitted) (default: 0)
-   --value                        initial funds to give to multisig (default: "0")
-   --duration                     length of the period over which funds unlock (default: "0")
-   --from                         account to send the create message from (default: "")
-   --help, -h                     show help (default: "false")
-
+   --required value  number of required approvals (uses number of signers provided if omitted) (default: 0)
+   --value value     initial funds to give to multisig (default: "0")
+   --duration value  length of the period over which funds unlock (default: "0")
+   --from value      account to send the create message from
+   --help, -h        show help
 ```
 
 ### lotus msig inspect
@@ -452,10 +475,9 @@ USAGE:
    lotus msig inspect [command options] [address]
 
 OPTIONS:
-   --vesting                      Include vesting details (default: "false")
-   --decode-params                Decode parameters of transaction proposals (default: "false")
-   --help, -h                     show help (default: "false")
-
+   --vesting        Include vesting details (default: false)
+   --decode-params  Decode parameters of transaction proposals (default: false)
+   --help, -h       show help
 ```
 
 ### lotus msig propose
@@ -468,9 +490,8 @@ USAGE:
    lotus msig propose [command options] [multisigAddress destinationAddress value <methodId methodParams> (optional)]
 
 OPTIONS:
-   --from                         account to send the propose message from (default: "")
-   --help, -h                     show help (default: "false")
-
+   --from value  account to send the propose message from
+   --help, -h    show help
 ```
 
 ### lotus msig propose-remove
@@ -483,10 +504,9 @@ USAGE:
    lotus msig propose-remove [command options] [multisigAddress signer]
 
 OPTIONS:
-   --decrease-threshold           whether the number of required signers should be decreased (default: "false")
-   --from                         account to send the propose message from (default: "")
-   --help, -h                     show help (default: "false")
-
+   --decrease-threshold  whether the number of required signers should be decreased (default: false)
+   --from value          account to send the propose message from
+   --help, -h            show help
 ```
 
 ### lotus msig approve
@@ -499,9 +519,8 @@ USAGE:
    lotus msig approve [command options] <multisigAddress messageId> [proposerAddress destination value [methodId methodParams]]
 
 OPTIONS:
-   --from                         account to send the approve message from (default: "")
-   --help, -h                     show help (default: "false")
-
+   --from value  account to send the approve message from
+   --help, -h    show help
 ```
 
 ### lotus msig cancel
@@ -514,9 +533,8 @@ USAGE:
    lotus msig cancel [command options] <multisigAddress messageId> [destination value [methodId methodParams]]
 
 OPTIONS:
-   --from                         account to send the cancel message from (default: "")
-   --help, -h                     show help (default: "false")
-
+   --from value  account to send the cancel message from
+   --help, -h    show help
 ```
 
 ### lotus msig add-propose
@@ -529,10 +547,9 @@ USAGE:
    lotus msig add-propose [command options] [multisigAddress signer]
 
 OPTIONS:
-   --increase-threshold           whether the number of required signers should be increased (default: "false")
-   --from                         account to send the propose message from (default: "")
-   --help, -h                     show help (default: "false")
-
+   --increase-threshold  whether the number of required signers should be increased (default: false)
+   --from value          account to send the propose message from
+   --help, -h            show help
 ```
 
 ### lotus msig add-approve
@@ -545,9 +562,8 @@ USAGE:
    lotus msig add-approve [command options] [multisigAddress proposerAddress txId newAddress increaseThreshold]
 
 OPTIONS:
-   --from                         account to send the approve message from (default: "")
-   --help, -h                     show help (default: "false")
-
+   --from value  account to send the approve message from
+   --help, -h    show help
 ```
 
 ### lotus msig add-cancel
@@ -560,9 +576,8 @@ USAGE:
    lotus msig add-cancel [command options] [multisigAddress txId newAddress increaseThreshold]
 
 OPTIONS:
-   --from                         account to send the approve message from (default: "")
-   --help, -h                     show help (default: "false")
-
+   --from value  account to send the approve message from
+   --help, -h    show help
 ```
 
 ### lotus msig swap-propose
@@ -575,9 +590,8 @@ USAGE:
    lotus msig swap-propose [command options] [multisigAddress oldAddress newAddress]
 
 OPTIONS:
-   --from                         account to send the approve message from (default: "")
-   --help, -h                     show help (default: "false")
-
+   --from value  account to send the approve message from
+   --help, -h    show help
 ```
 
 ### lotus msig swap-approve
@@ -590,9 +604,8 @@ USAGE:
    lotus msig swap-approve [command options] [multisigAddress proposerAddress txId oldAddress newAddress]
 
 OPTIONS:
-   --from                         account to send the approve message from (default: "")
-   --help, -h                     show help (default: "false")
-
+   --from value  account to send the approve message from
+   --help, -h    show help
 ```
 
 ### lotus msig swap-cancel
@@ -605,9 +618,8 @@ USAGE:
    lotus msig swap-cancel [command options] [multisigAddress txId oldAddress newAddress]
 
 OPTIONS:
-   --from                         account to send the approve message from (default: "")
-   --help, -h                     show help (default: "false")
-
+   --from value  account to send the approve message from
+   --help, -h    show help
 ```
 
 ### lotus msig lock-propose
@@ -620,9 +632,8 @@ USAGE:
    lotus msig lock-propose [command options] [multisigAddress startEpoch unlockDuration amount]
 
 OPTIONS:
-   --from                         account to send the propose message from (default: "")
-   --help, -h                     show help (default: "false")
-
+   --from value  account to send the propose message from
+   --help, -h    show help
 ```
 
 ### lotus msig lock-approve
@@ -635,9 +646,8 @@ USAGE:
    lotus msig lock-approve [command options] [multisigAddress proposerAddress txId startEpoch unlockDuration amount]
 
 OPTIONS:
-   --from                         account to send the approve message from (default: "")
-   --help, -h                     show help (default: "false")
-
+   --from value  account to send the approve message from
+   --help, -h    show help
 ```
 
 ### lotus msig lock-cancel
@@ -650,9 +660,8 @@ USAGE:
    lotus msig lock-cancel [command options] [multisigAddress txId startEpoch unlockDuration amount]
 
 OPTIONS:
-   --from                         account to send the cancel message from (default: "")
-   --help, -h                     show help (default: "false")
-
+   --from value  account to send the cancel message from
+   --help, -h    show help
 ```
 
 ### lotus msig vested
@@ -665,10 +674,9 @@ USAGE:
    lotus msig vested [command options] [multisigAddress]
 
 OPTIONS:
-   --start-epoch                  --start-epoch value	start epoch to measure vesting from (default: 0)
-   --end-epoch                    --end-epoch value	end epoch to stop measure vesting at (default: 0)
-   --help, -h                     show help (default: "false")
-
+   --start-epoch value  start epoch to measure vesting from (default: 0)
+   --end-epoch value    end epoch to stop measure vesting at (default: -1)
+   --help, -h           show help
 ```
 
 ### lotus msig propose-threshold
@@ -681,9 +689,8 @@ USAGE:
    lotus msig propose-threshold [command options] <multisigAddress newM>
 
 OPTIONS:
-   --from                         account to send the proposal from (default: "")
-   --help, -h                     show help (default: "false")
-
+   --from value  account to send the proposal from
+   --help, -h    show help
 ```
 
 ## lotus filplus
@@ -708,6 +715,9 @@ COMMANDS:
    remove-expired-claims          remove expired claims (if no claims are specified all eligible claims are removed)
    extend-claim                   extends claim expiration (TermMax)
    help, h                        Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus filplus grant-datacap
@@ -720,9 +730,8 @@ USAGE:
    lotus filplus grant-datacap [command options] [clientAddress datacap]
 
 OPTIONS:
-   --from                         specify your notary address to send the message from (default: "")
-   --help, -h                     show help (default: "false")
-
+   --from value  specify your notary address to send the message from
+   --help, -h    show help
 ```
 
 ### lotus filplus list-notaries
@@ -734,6 +743,8 @@ NAME:
 USAGE:
    lotus filplus list-notaries [command options] [arguments...]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus filplus list-clients
@@ -745,6 +756,8 @@ NAME:
 USAGE:
    lotus filplus list-clients [command options] [arguments...]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus filplus check-client-datacap
@@ -756,6 +769,8 @@ NAME:
 USAGE:
    lotus filplus check-client-datacap [command options] clientAddress
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus filplus check-notary-datacap
@@ -767,6 +782,8 @@ NAME:
 USAGE:
    lotus filplus check-notary-datacap [command options] notaryAddress
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus filplus sign-remove-data-cap-proposal
@@ -779,9 +796,8 @@ USAGE:
    lotus filplus sign-remove-data-cap-proposal [command options] [verifierAddress clientAddress allowanceToRemove]
 
 OPTIONS:
-   --id                           --id value	specify the RemoveDataCapProposal ID (will look up on chain if unspecified) (default: 0)
-   --help, -h                     show help (default: "false")
-
+   --id value  specify the RemoveDataCapProposal ID (will look up on chain if unspecified) (default: 0)
+   --help, -h  show help
 ```
 
 ### lotus filplus list-allocations
@@ -794,10 +810,9 @@ USAGE:
    lotus filplus list-allocations [command options] clientAddress
 
 OPTIONS:
-   --expired                      list only expired allocations (default: "false")
-   --json                         output results in json format (default: "false")
-   --help, -h                     show help (default: "false")
-
+   --expired   list only expired allocations (default: false)
+   --json      output results in json format (default: false)
+   --help, -h  show help
 ```
 
 ### lotus filplus list-claims
@@ -810,10 +825,9 @@ USAGE:
    lotus filplus list-claims [command options] providerAddress
 
 OPTIONS:
-   --expired                      list only expired claims (default: "false")
-   --json                         output results in json format (default: "false")
-   --help, -h                     show help (default: "false")
-
+   --expired   list only expired claims (default: false)
+   --json      output results in json format (default: false)
+   --help, -h  show help
 ```
 
 ### lotus filplus remove-expired-allocations
@@ -826,9 +840,8 @@ USAGE:
    lotus filplus remove-expired-allocations [command options] clientAddress Optional[...allocationId]
 
 OPTIONS:
-   --from                         optionally specify the account to send the message from (default: "")
-   --help, -h                     show help (default: "false")
-
+   --from value  optionally specify the account to send the message from
+   --help, -h    show help
 ```
 
 ### lotus filplus remove-expired-claims
@@ -841,9 +854,8 @@ USAGE:
    lotus filplus remove-expired-claims [command options] providerAddress Optional[...claimId]
 
 OPTIONS:
-   --from                         optionally specify the account to send the message from (default: "")
-   --help, -h                     show help (default: "false")
-
+   --from value  optionally specify the account to send the message from
+   --help, -h    show help
 ```
 
 ### lotus filplus extend-claim
@@ -853,18 +865,20 @@ NAME:
    lotus filplus extend-claim - extends claim expiration (TermMax)
 
 USAGE:
-   lotus filplus extend-claim [command options] <claim1> <claim2> ... or <miner1=claim1> <miner2=claims2> ...
+   Extends claim expiration (TermMax).
+   If the client is original client then claim can be extended to maximum 5 years and no Datacap is required.
+   If the client id different then claim can be extended up to maximum 5 years from now and Datacap is required.
+
 
 OPTIONS:
-   --term-max, --tmax             --term-max value, --tmax value	The maximum period for which a provider can earn quality-adjusted power for the piece (epochs). Default is 5 years. (default: 0)
-   --client                       the client address that will used to send the message (default: "")
-   --all                          automatically extend TermMax of all claims for specified miner[s] to --term-max (default: 5 years from claim start epoch) (default: "false")
-   --miner, -m, --provider, -p    --miner value, -m value, --provider value, -p value [ --miner value, -m value, --provider value, -p value ]	storage provider address[es]
-   --assume-yes, -y, --yes        automatic yes to prompts; assume 'yes' as answer to all prompts and run non-interactively (default: "false")
-   --confidence                   number of block confirmations to wait for (default: "5")
-   --batch-size                   number of extend requests per batch. If set incorrectly, this will lead to out of gas error (default: "500")
-   --help, -h                     show help (default: "false")
-
+   --term-max value, --tmax value                                                                               The maximum period for which a provider can earn quality-adjusted power for the piece (epochs). Default is 5 years. (default: 5256000)
+   --client value                                                                                               the client address that will used to send the message
+   --all                                                                                                        automatically extend TermMax of all claims for specified miner[s] to --term-max (default: 5 years from claim start epoch) (default: false)
+   --miner value, -m value, --provider value, -p value [ --miner value, -m value, --provider value, -p value ]  storage provider address[es]
+   --assume-yes, -y, --yes                                                                                      automatic yes to prompts; assume 'yes' as answer to all prompts and run non-interactively (default: false)
+   --confidence value                                                                                           number of block confirmations to wait for (default: 5)
+   --batch-size value                                                                                           number of extend requests per batch. If set incorrectly, this will lead to out of gas error (default: 500)
+   --help, -h                                                                                                   show help
 ```
 
 ## lotus paych
@@ -877,14 +891,17 @@ USAGE:
    lotus paych command [command options] [arguments...]
 
 COMMANDS:
-   add-funds                      Add funds to the payment channel between fromAddress and toAddress. Creates the payment channel if it doesn't already exist.
-   list                           List all locally registered payment channels
-   voucher                        Interact with payment channel vouchers
-   settle                         Settle a payment channel
-   status                         Show the status of an outbound payment channel
-   status-by-from-to              Show the status of an active outbound payment channel by from/to addresses
-   collect                        Collect funds for a payment channel
-   help, h                        Shows a list of commands or help for one command
+   add-funds          Add funds to the payment channel between fromAddress and toAddress. Creates the payment channel if it doesn't already exist.
+   list               List all locally registered payment channels
+   voucher            Interact with payment channel vouchers
+   settle             Settle a payment channel
+   status             Show the status of an outbound payment channel
+   status-by-from-to  Show the status of an active outbound payment channel by from/to addresses
+   collect            Collect funds for a payment channel
+   help, h            Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus paych add-funds
@@ -897,9 +914,8 @@ USAGE:
    lotus paych add-funds [command options] [fromAddress toAddress amount]
 
 OPTIONS:
-   --reserve                      mark funds as reserved (default: "false")
-   --help, -h                     show help (default: "false")
-
+   --reserve   mark funds as reserved (default: false)
+   --help, -h  show help
 ```
 
 ### lotus paych list
@@ -911,6 +927,8 @@ NAME:
 USAGE:
    lotus paych list [command options] [arguments...]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus paych voucher
@@ -923,13 +941,16 @@ USAGE:
    lotus paych voucher command [command options] [arguments...]
 
 COMMANDS:
-   create                         Create a signed payment channel voucher
-   check                          Check validity of payment channel voucher
-   add                            Add payment channel voucher to local datastore
-   list                           List stored vouchers for a given payment channel
-   best-spendable                 Print vouchers with highest value that is currently spendable for each lane
-   submit                         Submit voucher to chain to update payment channel state
-   help, h                        Shows a list of commands or help for one command
+   create          Create a signed payment channel voucher
+   check           Check validity of payment channel voucher
+   add             Add payment channel voucher to local datastore
+   list            List stored vouchers for a given payment channel
+   best-spendable  Print vouchers with highest value that is currently spendable for each lane
+   submit          Submit voucher to chain to update payment channel state
+   help, h         Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help
 ```
 
 #### lotus paych voucher create
@@ -942,9 +963,8 @@ USAGE:
    lotus paych voucher create [command options] [channelAddress amount]
 
 OPTIONS:
-   --lane                         specify payment channel lane to use (default: "0")
-   --help, -h                     show help (default: "false")
-
+   --lane value  specify payment channel lane to use (default: 0)
+   --help, -h    show help
 ```
 
 #### lotus paych voucher check
@@ -956,6 +976,8 @@ NAME:
 USAGE:
    lotus paych voucher check [command options] [channelAddress voucher]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 #### lotus paych voucher add
@@ -967,6 +989,8 @@ NAME:
 USAGE:
    lotus paych voucher add [command options] [channelAddress voucher]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 #### lotus paych voucher list
@@ -979,9 +1003,8 @@ USAGE:
    lotus paych voucher list [command options] [channelAddress]
 
 OPTIONS:
-   --export                       Print voucher as serialized string (default: "false")
-   --help, -h                     show help (default: "false")
-
+   --export    Print voucher as serialized string (default: false)
+   --help, -h  show help
 ```
 
 #### lotus paych voucher best-spendable
@@ -994,9 +1017,8 @@ USAGE:
    lotus paych voucher best-spendable [command options] [channelAddress]
 
 OPTIONS:
-   --export                       Print voucher as serialized string (default: "false")
-   --help, -h                     show help (default: "false")
-
+   --export    Print voucher as serialized string (default: false)
+   --help, -h  show help
 ```
 
 #### lotus paych voucher submit
@@ -1008,6 +1030,8 @@ NAME:
 USAGE:
    lotus paych voucher submit [command options] [channelAddress voucher]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus paych settle
@@ -1019,6 +1043,8 @@ NAME:
 USAGE:
    lotus paych settle [command options] [channelAddress]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus paych status
@@ -1030,6 +1056,8 @@ NAME:
 USAGE:
    lotus paych status [command options] [channelAddress]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus paych status-by-from-to
@@ -1041,6 +1069,8 @@ NAME:
 USAGE:
    lotus paych status-by-from-to [command options] [fromAddress toAddress]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus paych collect
@@ -1052,51 +1082,54 @@ NAME:
 USAGE:
    lotus paych collect [command options] [channelAddress]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ## lotus auth
 
 ```
 NAME:
-   lotus auth - Manage RPC permissions
+   lotus-miner lotus auth - Manage RPC permissions
 
 USAGE:
-   lotus auth command [command options] [arguments...]
+   lotus-miner lotus auth command [command options] [arguments...]
 
 COMMANDS:
-   create-token                   Create token
-   api-info                       Get token with API info required to connect to this node
-   help, h                        Shows a list of commands or help for one command
+   create-token  Create token
+   api-info      Get token with API info required to connect to this node
+   help, h       Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus auth create-token
 
 ```
 NAME:
-   lotus auth create-token - Create token
+   lotus-miner lotus auth create-token - Create token
 
 USAGE:
-   lotus auth create-token [command options] [arguments...]
+   lotus-miner lotus auth create-token [command options] [arguments...]
 
 OPTIONS:
-   --perm                         permission to assign to the token, one of: read, write, sign, admin (default: "")
-   --help, -h                     show help (default: "false")
-
+   --perm value  permission to assign to the token, one of: read, write, sign, admin
+   --help, -h    show help
 ```
 
 ### lotus auth api-info
 
 ```
 NAME:
-   lotus auth api-info - Get token with API info required to connect to this node
+   lotus-miner lotus auth api-info - Get token with API info required to connect to this node
 
 USAGE:
-   lotus auth api-info [command options] [arguments...]
+   lotus-miner lotus auth api-info [command options] [arguments...]
 
 OPTIONS:
-   --perm                         permission to assign to the token, one of: read, write, sign, admin (default: "")
-   --help, -h                     show help (default: "false")
-
+   --perm value  permission to assign to the token, one of: read, write, sign, admin
+   --help, -h    show help
 ```
 
 ## lotus mpool
@@ -1109,16 +1142,18 @@ USAGE:
    lotus mpool command [command options] [arguments...]
 
 COMMANDS:
-   pending                        Get pending messages
-   clear                          Clear all pending messages from the mpool (USE WITH CARE) (DEPRECATED)
-   sub                            Subscribe to mpool changes
-   stat                           print mempool stats
-   replace                        replace a message in the mempool
-   find                           find a message in the mempool
-   config                         get or set current mpool configuration
-   gas-perf                       Check gas performance of messages in mempool
-   manage                         
-   help, h                        Shows a list of commands or help for one command
+   pending   Get pending messages
+   sub       Subscribe to mpool changes
+   stat      print mempool stats
+   replace   replace a message in the mempool
+   find      find a message in the mempool
+   config    get or set current mpool configuration
+   gas-perf  Check gas performance of messages in mempool
+   manage    
+   help, h   Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus mpool pending
@@ -1131,12 +1166,11 @@ USAGE:
    lotus mpool pending [command options] [arguments...]
 
 OPTIONS:
-   --local                        print pending messages for addresses in local wallet only (default: "false")
-   --cids                         only print cids of messages in output (default: "false")
-   --to                           return messages to a given address (default: "")
-   --from                         return messages from a given address (default: "")
-   --help, -h                     show help (default: "false")
-
+   --local       print pending messages for addresses in local wallet only (default: false)
+   --cids        only print cids of messages in output (default: false)
+   --to value    return messages to a given address
+   --from value  return messages from a given address
+   --help, -h    show help
 ```
 
 ### lotus mpool clear
@@ -1149,10 +1183,9 @@ USAGE:
    lotus mpool clear [command options] [arguments...]
 
 OPTIONS:
-   --local                        also clear local messages (default: "false")
-   --really-do-it                 must be specified for the action to take effect (default: "false")
-   --help, -h                     show help (default: "false")
-
+   --local         also clear local messages (default: false)
+   --really-do-it  must be specified for the action to take effect (default: false)
+   --help, -h      show help
 ```
 
 ### lotus mpool sub
@@ -1164,6 +1197,8 @@ NAME:
 USAGE:
    lotus mpool sub [command options] [arguments...]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus mpool stat
@@ -1176,10 +1211,9 @@ USAGE:
    lotus mpool stat [command options] [arguments...]
 
 OPTIONS:
-   --local                        print stats for addresses in local wallet only (default: "false")
-   --basefee-lookback             number of blocks to look back for minimum basefee (default: "60")
-   --help, -h                     show help (default: "false")
-
+   --local                   print stats for addresses in local wallet only (default: false)
+   --basefee-lookback value  number of blocks to look back for minimum basefee (default: 60)
+   --help, -h                show help
 ```
 
 ### lotus mpool replace
@@ -1192,13 +1226,12 @@ USAGE:
    lotus mpool replace [command options] <from> <nonce> | <message-cid>
 
 OPTIONS:
-   --gas-feecap                   gas feecap for new message (burn and pay to miner, attoFIL/GasUnit) (default: "")
-   --gas-premium                  gas price for new message (pay to miner, attoFIL/GasUnit) (default: "")
-   --gas-limit                    --gas-limit value	gas limit for new message (GasUnit) (default: 0)
-   --auto                         automatically reprice the specified message (default: "false")
-   --fee-limit                    Spend up to X FIL for this message in units of FIL. Previously when flag was `max-fee` units were in attoFIL. Applicable for auto mode (default: "")
-   --help, -h                     show help (default: "false")
-
+   --gas-feecap value   gas feecap for new message (burn and pay to miner, attoFIL/GasUnit)
+   --gas-premium value  gas price for new message (pay to miner, attoFIL/GasUnit)
+   --gas-limit value    gas limit for new message (GasUnit) (default: 0)
+   --auto               automatically reprice the specified message (default: false)
+   --fee-limit max-fee  Spend up to X FIL for this message in units of FIL. Previously when flag was max-fee units were in attoFIL. Applicable for auto mode
+   --help, -h           show help
 ```
 
 ### lotus mpool find
@@ -1211,11 +1244,10 @@ USAGE:
    lotus mpool find [command options] [arguments...]
 
 OPTIONS:
-   --from                         search for messages with given 'from' address (default: "")
-   --to                           search for messages with given 'to' address (default: "")
-   --method                       --method value	search for messages with given method (default: 0)
-   --help, -h                     show help (default: "false")
-
+   --from value    search for messages with given 'from' address
+   --to value      search for messages with given 'to' address
+   --method value  search for messages with given method (default: 0)
+   --help, -h      show help
 ```
 
 ### lotus mpool config
@@ -1227,6 +1259,8 @@ NAME:
 USAGE:
    lotus mpool config [command options] [new-config]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus mpool gas-perf
@@ -1239,20 +1273,21 @@ USAGE:
    lotus mpool gas-perf [command options] [arguments...]
 
 OPTIONS:
-   --all                          print gas performance for all mempool messages (default only prints for local) (default: "false")
-   --help, -h                     show help (default: "false")
-
+   --all       print gas performance for all mempool messages (default only prints for local) (default: false)
+   --help, -h  show help
 ```
 
 ### lotus mpool manage
 
 ```
 NAME:
-   lotus mpool manage - 
+   lotus mpool manage
 
 USAGE:
    lotus mpool manage [command options] [arguments...]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ## lotus state
@@ -1264,36 +1299,36 @@ NAME:
 USAGE:
    lotus state command [command options] [arguments...]
 
-OPTIONS:
-   --tipset                       specify tipset to call method on (pass comma separated array of cids) (default: "")
-   --help, -h                     show help (default: "false")
-
 COMMANDS:
-   power                          Query network or miner power
-   sectors                        Query the sector set of a miner
-   active-sectors                 Query the active sector set of a miner
-   list-actors                    list all actors in the network
-   list-miners                    list all miners in the network
-   circulating-supply             Get the exact current circulating supply of Filecoin
-   sector, sector-info            Get miner sector info
-   get-actor                      Print actor information
-   lookup                         Find corresponding ID address
-   replay                         Replay a particular message
-   sector-size                    Look up miners sector size
-   read-state                     View a json representation of an actors state
-   list-messages                  list messages on chain matching given criteria
-   compute-state                  Perform state computations
-   call                           Invoke a method on an actor locally
-   get-deal                       View on-chain deal info
-   wait-msg, wait-message         Wait for a message to appear on chain
-   search-msg, search-message     Search to see whether a message has appeared on chain
-   miner-info                     Retrieve miner information
-   market                         Inspect the storage market actor
-   exec-trace                     Get the execution trace of a given message
-   network-version                Returns the network version
-   miner-proving-deadline         Retrieve information about a given miner's proving deadline
-   actor-cids                     Returns the built-in actor bundle manifest ID & system actor cids
-   help, h                        Shows a list of commands or help for one command
+   power                       Query network or miner power
+   sectors                     Query the sector set of a miner
+   active-sectors              Query the active sector set of a miner
+   list-actors                 list all actors in the network
+   list-miners                 list all miners in the network
+   circulating-supply          Get the exact current circulating supply of Filecoin
+   sector, sector-info         Get miner sector info
+   get-actor                   Print actor information
+   lookup                      Find corresponding ID address
+   replay                      Replay a particular message
+   sector-size                 Look up miners sector size
+   read-state                  View a json representation of an actors state
+   list-messages               list messages on chain matching given criteria
+   compute-state               Perform state computations
+   call                        Invoke a method on an actor locally
+   get-deal                    View on-chain deal info
+   wait-msg, wait-message      Wait for a message to appear on chain
+   search-msg, search-message  Search to see whether a message has appeared on chain
+   miner-info                  Retrieve miner information
+   market                      Inspect the storage market actor
+   exec-trace                  Get the execution trace of a given message
+   network-version             Returns the network version
+   miner-proving-deadline      Retrieve information about a given miner's proving deadline
+   actor-cids                  Returns the built-in actor bundle manifest ID & system actor cids
+   help, h                     Shows a list of commands or help for one command
+
+OPTIONS:
+   --tipset value  specify tipset to call method on (pass comma separated array of cids)
+   --help, -h      show help
 ```
 
 ### lotus state power
@@ -1305,6 +1340,8 @@ NAME:
 USAGE:
    lotus state power [command options] [<minerAddress> (optional)]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus state sectors
@@ -1316,6 +1353,8 @@ NAME:
 USAGE:
    lotus state sectors [command options] [minerAddress]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus state active-sectors
@@ -1327,6 +1366,8 @@ NAME:
 USAGE:
    lotus state active-sectors [command options] [minerAddress]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus state list-actors
@@ -1338,6 +1379,8 @@ NAME:
 USAGE:
    lotus state list-actors [command options] [arguments...]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus state list-miners
@@ -1350,9 +1393,8 @@ USAGE:
    lotus state list-miners [command options] [arguments...]
 
 OPTIONS:
-   --sort-by                      criteria to sort miners by (none, num-deals) (default: "")
-   --help, -h                     show help (default: "false")
-
+   --sort-by value  criteria to sort miners by (none, num-deals)
+   --help, -h       show help
 ```
 
 ### lotus state circulating-supply
@@ -1365,9 +1407,8 @@ USAGE:
    lotus state circulating-supply [command options] [arguments...]
 
 OPTIONS:
-   --vm-supply                    calculates the approximation of the circulating supply used internally by the VM (instead of the exact amount) (default: "false")
-   --help, -h                     show help (default: "false")
-
+   --vm-supply  calculates the approximation of the circulating supply used internally by the VM (instead of the exact amount) (default: false)
+   --help, -h   show help
 ```
 
 ### lotus state sector
@@ -1379,6 +1420,8 @@ NAME:
 USAGE:
    lotus state sector [command options] [minerAddress] [sectorNumber]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus state get-actor
@@ -1390,6 +1433,8 @@ NAME:
 USAGE:
    lotus state get-actor [command options] [actorAddress]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus state lookup
@@ -1402,9 +1447,8 @@ USAGE:
    lotus state lookup [command options] [address]
 
 OPTIONS:
-   --reverse, -r                  Perform reverse lookup (default: "false")
-   --help, -h                     show help (default: "false")
-
+   --reverse, -r  Perform reverse lookup (default: false)
+   --help, -h     show help
 ```
 
 ### lotus state replay
@@ -1417,10 +1461,9 @@ USAGE:
    lotus state replay [command options] <messageCid>
 
 OPTIONS:
-   --show-trace                   print out full execution trace for given message (default: "false")
-   --detailed-gas                 print out detailed gas costs for given message (default: "false")
-   --help, -h                     show help (default: "false")
-
+   --show-trace    print out full execution trace for given message (default: false)
+   --detailed-gas  print out detailed gas costs for given message (default: false)
+   --help, -h      show help
 ```
 
 ### lotus state sector-size
@@ -1432,6 +1475,8 @@ NAME:
 USAGE:
    lotus state sector-size [command options] [minerAddress]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus state read-state
@@ -1443,6 +1488,8 @@ NAME:
 USAGE:
    lotus state read-state [command options] [actorAddress]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus state list-messages
@@ -1455,12 +1502,11 @@ USAGE:
    lotus state list-messages [command options] [arguments...]
 
 OPTIONS:
-   --to                           return messages to a given address (default: "")
-   --from                         return messages from a given address (default: "")
-   --toheight                     --toheight value	don't look before given block height (default: 0)
-   --cids                         print message CIDs instead of messages (default: "false")
-   --help, -h                     show help (default: "false")
-
+   --to value        return messages to a given address
+   --from value      return messages from a given address
+   --toheight value  don't look before given block height (default: 0)
+   --cids            print message CIDs instead of messages (default: false)
+   --help, -h        show help
 ```
 
 ### lotus state compute-state
@@ -1473,15 +1519,14 @@ USAGE:
    lotus state compute-state [command options] [arguments...]
 
 OPTIONS:
-   --vm-height                    --vm-height value	set the height that the vm will see (default: 0)
-   --apply-mpool-messages         apply messages from the mempool to the computed state (default: "false")
-   --show-trace                   print out full execution trace for given tipset (default: "false")
-   --html                         generate html report (default: "false")
-   --json                         generate json output (default: "false")
-   --compute-state-output         a json file containing pre-existing compute-state output, to generate html reports without rerunning state changes (default: "")
-   --no-timing                    don't show timing information in html traces (default: "false")
-   --help, -h                     show help (default: "false")
-
+   --vm-height value             set the height that the vm will see (default: 0)
+   --apply-mpool-messages        apply messages from the mempool to the computed state (default: false)
+   --show-trace                  print out full execution trace for given tipset (default: false)
+   --html                        generate html report (default: false)
+   --json                        generate json output (default: false)
+   --compute-state-output value  a json file containing pre-existing compute-state output, to generate html reports without rerunning state changes
+   --no-timing                   don't show timing information in html traces (default: false)
+   --help, -h                    show help
 ```
 
 ### lotus state call
@@ -1494,12 +1539,11 @@ USAGE:
    lotus state call [command options] [toAddress methodId params (optional)]
 
 OPTIONS:
-   --from                          (default: "f00")
-   --value                        specify value field for invocation (default: "0")
-   --ret                          specify how to parse output (raw, decoded, base64, hex) (default: "decoded")
-   --encoding                     specify params encoding to parse (base64, hex) (default: "base64")
-   --help, -h                     show help (default: "false")
-
+   --from value      (default: "f00")
+   --value value     specify value field for invocation (default: "0")
+   --ret value       specify how to parse output (raw, decoded, base64, hex) (default: "decoded")
+   --encoding value  specify params encoding to parse (base64, hex) (default: "base64")
+   --help, -h        show help
 ```
 
 ### lotus state get-deal
@@ -1511,6 +1555,8 @@ NAME:
 USAGE:
    lotus state get-deal [command options] [dealId]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus state wait-msg
@@ -1523,9 +1569,8 @@ USAGE:
    lotus state wait-msg [command options] [messageCid]
 
 OPTIONS:
-   --timeout                       (default: "10m")
-   --help, -h                     show help (default: "false")
-
+   --timeout value  (default: "10m")
+   --help, -h       show help
 ```
 
 ### lotus state search-msg
@@ -1537,6 +1582,8 @@ NAME:
 USAGE:
    lotus state search-msg [command options] [messageCid]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus state miner-info
@@ -1548,6 +1595,8 @@ NAME:
 USAGE:
    lotus state miner-info [command options] [minerAddress]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus state market
@@ -1577,9 +1626,12 @@ NAME:
 USAGE:
    lotus state market balance [command options] [address]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 #### lotus state market proposal-pending
+
 ```
 NAME:
    lotus state market proposal-pending - check if a given proposal CID is pending in the market actor
@@ -1600,6 +1652,8 @@ NAME:
 USAGE:
    lotus state exec-trace [command options] <messageCid>
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus state network-version
@@ -1611,6 +1665,8 @@ NAME:
 USAGE:
    lotus state network-version [command options] [arguments...]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus state miner-proving-deadline
@@ -1622,6 +1678,8 @@ NAME:
 USAGE:
    lotus state miner-proving-deadline [command options] [minerAddress]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus state actor-cids
@@ -1634,9 +1692,8 @@ USAGE:
    lotus state actor-cids [command options] [arguments...]
 
 OPTIONS:
-   --network-version              --network-version value	specify network version (default: 0)
-   --help, -h                     show help (default: "false")
-
+   --network-version value  specify network version (default: 0)
+   --help, -h               show help
 ```
 
 ## lotus chain
@@ -1649,26 +1706,29 @@ USAGE:
    lotus chain command [command options] [arguments...]
 
 COMMANDS:
-   head                           Print chain head
-   get-block, getblock            Get a block and print its details
-   read-obj                       Read the raw bytes of an object
-   delete-obj                     Delete an object from the chain blockstore
-   stat-obj                       Collect size and ipld link counts for objs
-   getmessage, get-message, get-msg Get and print a message by its cid
-   sethead, set-head              manually set the local nodes head tipset (Caution: normally only used for recovery)
-   list, love                     View a segment of the chain
-   get                            Get chain DAG node by path
-   bisect                         bisect chain for an event
-   export                         export chain to a car file
-   export-range                   export chain to a car file
-   slash-consensus                Report consensus fault
-   gas-price                      Estimate gas prices
-   inspect-usage                  Inspect block space usage of a given tipset
-   decode                         decode various types
-   encode                         encode various types
-   disputer                       interact with the window post disputer
-   prune                          splitstore gc
-   help, h                        Shows a list of commands or help for one command
+   head                              Print chain head
+   get-block, getblock               Get a block and print its details
+   read-obj                          Read the raw bytes of an object
+   delete-obj                        Delete an object from the chain blockstore
+   stat-obj                          Collect size and ipld link counts for objs
+   getmessage, get-message, get-msg  Get and print a message by its cid
+   sethead, set-head                 manually set the local nodes head tipset (Caution: normally only used for recovery)
+   list, love                        View a segment of the chain
+   get                               Get chain DAG node by path
+   bisect                            bisect chain for an event
+   export                            export chain to a car file
+   export-range                      export chain to a car file
+   slash-consensus                   Report consensus fault
+   gas-price                         Estimate gas prices
+   inspect-usage                     Inspect block space usage of a given tipset
+   decode                            decode various types
+   encode                            encode various types
+   disputer                          interact with the window post disputer
+   prune                             splitstore gc
+   help, h                           Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus chain head
@@ -1681,9 +1741,8 @@ USAGE:
    lotus chain head [command options] [arguments...]
 
 OPTIONS:
-   --height                       print just the epoch number of the chain head (default: "false")
-   --help, -h                     show help (default: "false")
-
+   --height    print just the epoch number of the chain head (default: false)
+   --help, -h  show help
 ```
 
 ### lotus chain get-block
@@ -1696,9 +1755,8 @@ USAGE:
    lotus chain get-block [command options] [blockCid]
 
 OPTIONS:
-   --raw                          print just the raw block header (default: "false")
-   --help, -h                     show help (default: "false")
-
+   --raw       print just the raw block header (default: false)
+   --help, -h  show help
 ```
 
 ### lotus chain read-obj
@@ -1710,6 +1768,8 @@ NAME:
 USAGE:
    lotus chain read-obj [command options] [objectCid]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus chain delete-obj
@@ -1725,9 +1785,8 @@ DESCRIPTION:
    WARNING: Removing wrong objects from the chain blockstore may lead to sync issues
 
 OPTIONS:
-   --really-do-it                  (default: "false")
-   --help, -h                     show help (default: "false")
-
+   --really-do-it  (default: false)
+   --help, -h      show help
 ```
 
 ### lotus chain stat-obj
@@ -1742,14 +1801,13 @@ USAGE:
 DESCRIPTION:
    Collect object size and ipld link count for an object.
 
-   When a base is provided it will be walked first, and all links visisted
-   will be ignored when the passed in object is walked.
+      When a base is provided it will be walked first, and all links visisted
+      will be ignored when the passed in object is walked.
 
 
 OPTIONS:
-   --base                         ignore links found in this obj (default: "")
-   --help, -h                     show help (default: "false")
-
+   --base value  ignore links found in this obj
+   --help, -h    show help
 ```
 
 ### lotus chain getmessage
@@ -1761,6 +1819,8 @@ NAME:
 USAGE:
    lotus chain getmessage [command options] [messageCid]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus chain sethead
@@ -1773,10 +1833,9 @@ USAGE:
    lotus chain sethead [command options] [tipsetkey]
 
 OPTIONS:
-   --genesis                      reset head to genesis (default: "false")
-   --epoch                        --epoch value	reset head to given epoch (default: 0)
-   --help, -h                     show help (default: "false")
-
+   --genesis      reset head to genesis (default: false)
+   --epoch value  reset head to given epoch (default: 0)
+   --help, -h     show help
 ```
 
 ### lotus chain list
@@ -1789,12 +1848,11 @@ USAGE:
    lotus chain list [command options] [arguments...]
 
 OPTIONS:
-   --height                       --height value	(default: current head)
-   --count                         (default: "30")
-   --format                       specify the format to print out tipsets (default: "<height>: (<time>) <blocks>")
-   --gas-stats                    view gas statistics for the chain (default: "false")
-   --help, -h                     show help (default: "false")
-
+   --height value  (default: current head)
+   --count value   (default: 30)
+   --format value  specify the format to print out tipsets (default: "<height>: (<time>) <blocks>")
+   --gas-stats     view gas statistics for the chain (default: false)
+   --help, -h      show help
 ```
 
 ### lotus chain get
@@ -1809,40 +1867,39 @@ USAGE:
 DESCRIPTION:
    Get ipld node under a specified path:
 
-   lotus chain get /ipfs/[cid]/some/path
+      lotus chain get /ipfs/[cid]/some/path
 
-   Path prefixes:
-   - /ipfs/[cid], /ipld/[cid] - traverse IPLD path
-   - /pstate - traverse from head.ParentStateRoot
+      Path prefixes:
+      - /ipfs/[cid], /ipld/[cid] - traverse IPLD path
+      - /pstate - traverse from head.ParentStateRoot
 
-   Note:
-   You can use special path elements to traverse through some data structures:
-   - /ipfs/[cid]/@H:elem - get 'elem' from hamt
-   - /ipfs/[cid]/@Hi:123 - get varint elem 123 from hamt
-   - /ipfs/[cid]/@Hu:123 - get uvarint elem 123 from hamt
-   - /ipfs/[cid]/@Ha:t01 - get element under Addr(t01).Bytes
-   - /ipfs/[cid]/@A:10   - get 10th amt element
-   - .../@Ha:t01/@state  - get pretty map-based actor state
+      Note:
+      You can use special path elements to traverse through some data structures:
+      - /ipfs/[cid]/@H:elem - get 'elem' from hamt
+      - /ipfs/[cid]/@Hi:123 - get varint elem 123 from hamt
+      - /ipfs/[cid]/@Hu:123 - get uvarint elem 123 from hamt
+      - /ipfs/[cid]/@Ha:t01 - get element under Addr(t01).Bytes
+      - /ipfs/[cid]/@A:10   - get 10th amt element
+      - .../@Ha:t01/@state  - get pretty map-based actor state
 
-   List of --as-type types:
-   - raw
-   - block
-   - message
-   - smessage, signedmessage
-   - actor
-   - amt
-   - hamt-epoch
-   - hamt-address
-   - cronevent
-   - account-state
+      List of --as-type types:
+      - raw
+      - block
+      - message
+      - smessage, signedmessage
+      - actor
+      - amt
+      - hamt-epoch
+      - hamt-address
+      - cronevent
+      - account-state
 
 
 OPTIONS:
-   --as-type                      specify type to interpret output as (default: "")
-   --verbose                       (default: "false")
-   --tipset                       specify tipset for /pstate (pass comma separated array of cids) (default: "")
-   --help, -h                     show help (default: "false")
-
+   --as-type value  specify type to interpret output as
+   --verbose        (default: false)
+   --tipset value   specify tipset for /pstate (pass comma separated array of cids)
+   --help, -h       show help
 ```
 
 ### lotus chain bisect
@@ -1857,18 +1914,20 @@ USAGE:
 DESCRIPTION:
    Bisect the chain state tree:
 
-   lotus chain bisect [min height] [max height] '1/2/3/state/path' 'shell command' 'args'
+      lotus chain bisect [min height] [max height] '1/2/3/state/path' 'shell command' 'args'
 
-   Returns the first tipset in which condition is true
-                  v
-   [start] FFFFFFFTTT [end]
+      Returns the first tipset in which condition is true
+                     v
+      [start] FFFFFFFTTT [end]
 
-   Example: find height at which deal ID 100 000 appeared
-    - lotus chain bisect 1 32000 '@Ha:t03/1' jq -e '.[2] > 100000'
+      Example: find height at which deal ID 100 000 appeared
+       - lotus chain bisect 1 32000 '@Ha:t03/1' jq -e '.[2] > 100000'
 
-   For special path elements see 'chain get' help
+      For special path elements see 'chain get' help
 
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus chain export
@@ -1881,11 +1940,10 @@ USAGE:
    lotus chain export [command options] [outputPath]
 
 OPTIONS:
-   --tipset                       specify tipset to start the export from (default: "@head")
-   --recent-stateroots            --recent-stateroots value	specify the number of recent state roots to include in the export (default: 0)
-   --skip-old-msgs                 (default: "false")
-   --help, -h                     show help (default: "false")
-
+   --tipset value             specify tipset to start the export from (default: "@head")
+   --recent-stateroots value  specify the number of recent state roots to include in the export (default: 0)
+   --skip-old-msgs            (default: false)
+   --help, -h                 show help
 ```
 
 ### lotus chain export-range
@@ -1898,16 +1956,14 @@ USAGE:
    lotus chain export-range [command options] [arguments...]
 
 OPTIONS:
-   --head                         specify tipset to start the export from (higher epoch) (default: "@head")
-   --tail                         specify tipset to end the export at (lower epoch) (default: "@tail")
-   --messages                     specify if messages should be include (default: "false")
-   --receipts                     specify if receipts should be include (default: "false")
-   --stateroots                   specify if stateroots should be include (default: "false")
-   --workers                      specify the number of workers (default: "1")
-   --write-buffer                 specify write buffer size (default: "1048576")
-   --internal                     write the file locally to disk (default: "true")
-   --help, -h                     show help (default: "false")
-
+   --head value          specify tipset to start the export from (higher epoch) (default: "@head")
+   --tail value          specify tipset to end the export at (lower epoch) (default: "@tail")
+   --messages            specify if messages should be include (default: false)
+   --receipts            specify if receipts should be include (default: false)
+   --stateroots          specify if stateroots should be include (default: false)
+   --workers value       specify the number of workers (default: 1)
+   --write-buffer value  specify write buffer size (default: 1048576)
+   --help, -h            show help
 ```
 
 ### lotus chain slash-consensus
@@ -1920,10 +1976,9 @@ USAGE:
    lotus chain slash-consensus [command options] [blockCid1 blockCid2]
 
 OPTIONS:
-   --from                         optionally specify the account to report consensus from (default: "")
-   --extra                        Extra block cid (default: "")
-   --help, -h                     show help (default: "false")
-
+   --from value   optionally specify the account to report consensus from
+   --extra value  Extra block cid
+   --help, -h     show help
 ```
 
 ### lotus chain gas-price
@@ -1935,6 +1990,8 @@ NAME:
 USAGE:
    lotus chain gas-price [command options] [arguments...]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus chain inspect-usage
@@ -1947,11 +2004,10 @@ USAGE:
    lotus chain inspect-usage [command options] [arguments...]
 
 OPTIONS:
-   --tipset                       specify tipset to view block space usage of (default: "@head")
-   --length                       length of chain to inspect block space usage for (default: "1")
-   --num-results                  number of results to print per category (default: "10")
-   --help, -h                     show help (default: "false")
-
+   --tipset value       specify tipset to view block space usage of (default: "@head")
+   --length value       length of chain to inspect block space usage for (default: 1)
+   --num-results value  number of results to print per category (default: 10)
+   --help, -h           show help
 ```
 
 ### lotus chain decode
@@ -1964,8 +2020,11 @@ USAGE:
    lotus chain decode command [command options] [arguments...]
 
 COMMANDS:
-   params                         Decode message params
-   help, h                        Shows a list of commands or help for one command
+   params   Decode message params
+   help, h  Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help
 ```
 
 #### lotus chain decode params
@@ -1978,10 +2037,9 @@ USAGE:
    lotus chain decode params [command options] [toAddr method params]
 
 OPTIONS:
-   --tipset                        (default: "")
-   --encoding                     specify input encoding to parse (default: "base64")
-   --help, -h                     show help (default: "false")
-
+   --tipset value    
+   --encoding value  specify input encoding to parse (default: "base64")
+   --help, -h        show help
 ```
 
 ### lotus chain encode
@@ -1994,8 +2052,11 @@ USAGE:
    lotus chain encode command [command options] [arguments...]
 
 COMMANDS:
-   params                         Encodes the given JSON params
-   help, h                        Shows a list of commands or help for one command
+   params   Encodes the given JSON params
+   help, h  Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help
 ```
 
 #### lotus chain encode params
@@ -2008,11 +2069,10 @@ USAGE:
    lotus chain encode params [command options] [dest method params]
 
 OPTIONS:
-   --tipset                        (default: "")
-   --encoding                     specify input encoding to parse (default: "base64")
-   --to-code                      interpret dest as code CID instead of as address (default: "false")
-   --help, -h                     show help (default: "false")
-
+   --tipset value    
+   --encoding value  specify input encoding to parse (default: "base64")
+   --to-code         interpret dest as code CID instead of as address (default: false)
+   --help, -h        show help
 ```
 
 ### lotus chain disputer
@@ -2024,15 +2084,15 @@ NAME:
 USAGE:
    lotus chain disputer command [command options] [arguments...]
 
-OPTIONS:
-   --max-fee                      Spend up to X FIL per DisputeWindowedPoSt message (default: "")
-   --from                         optionally specify the account to send messages from (default: "")
-   --help, -h                     show help (default: "false")
-
 COMMANDS:
-   start                          Start the window post disputer
-   dispute                        Send a specific DisputeWindowedPoSt message
-   help, h                        Shows a list of commands or help for one command
+   start    Start the window post disputer
+   dispute  Send a specific DisputeWindowedPoSt message
+   help, h  Shows a list of commands or help for one command
+
+OPTIONS:
+   --max-fee value  Spend up to X FIL per DisputeWindowedPoSt message
+   --from value     optionally specify the account to send messages from
+   --help, -h       show help
 ```
 
 #### lotus chain disputer start
@@ -2045,9 +2105,8 @@ USAGE:
    lotus chain disputer start [command options] [minerAddress]
 
 OPTIONS:
-   --start-epoch                  --start-epoch value	only start disputing PoSts after this epoch  (default: 0)
-   --help, -h                     show help (default: "false")
-
+   --start-epoch value  only start disputing PoSts after this epoch  (default: 0)
+   --help, -h           show help
 ```
 
 #### lotus chain disputer dispute
@@ -2059,6 +2118,8 @@ NAME:
 USAGE:
    lotus chain disputer dispute [command options] [minerAddress index postIndex]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus chain prune
@@ -2071,10 +2132,13 @@ USAGE:
    lotus chain prune command [command options] [arguments...]
 
 COMMANDS:
-   compact-cold                   force splitstore compaction on cold store state and run gc
-   hot                            run online (badger vlog) garbage collection on hotstore
-   hot-moving                     run moving gc on hotstore
-   help, h                        Shows a list of commands or help for one command
+   compact-cold  force splitstore compaction on cold store state and run gc
+   hot           run online (badger vlog) garbage collection on hotstore
+   hot-moving    run moving gc on hotstore
+   help, h       Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help
 ```
 
 #### lotus chain prune compact-cold
@@ -2087,11 +2151,10 @@ USAGE:
    lotus chain prune compact-cold [command options] [arguments...]
 
 OPTIONS:
-   --online-gc                    use online gc for garbage collecting the coldstore (default: "false")
-   --moving-gc                    use moving gc for garbage collecting the coldstore (default: "false")
-   --retention                    specify state retention policy (default: "-1")
-   --help, -h                     show help (default: "false")
-
+   --online-gc        use online gc for garbage collecting the coldstore (default: false)
+   --moving-gc        use moving gc for garbage collecting the coldstore (default: false)
+   --retention value  specify state retention policy (default: -1)
+   --help, -h         show help
 ```
 
 #### lotus chain prune hot
@@ -2104,10 +2167,9 @@ USAGE:
    lotus chain prune hot [command options] [arguments...]
 
 OPTIONS:
-   --threshold                    --threshold value	Threshold of vlog garbage for gc (default: 0.01)
-   --periodic                     Run periodic gc over multiple vlogs. Otherwise run gc once (default: "false")
-   --help, -h                     show help (default: "false")
-
+   --threshold value  Threshold of vlog garbage for gc (default: 0.01)
+   --periodic         Run periodic gc over multiple vlogs. Otherwise run gc once (default: false)
+   --help, -h         show help
 ```
 
 #### lotus chain prune hot-moving
@@ -2119,109 +2181,121 @@ NAME:
 USAGE:
    lotus chain prune hot-moving [command options] [arguments...]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ## lotus log
 
 ```
 NAME:
-   lotus log - Manage logging
+   lotus-miner lotus log - Manage logging
 
 USAGE:
-   lotus log command [command options] [arguments...]
+   lotus-miner lotus log command [command options] [arguments...]
 
 COMMANDS:
-   list                           List log systems
-   set-level                      Set log level
-   alerts                         Get alert states
-   help, h                        Shows a list of commands or help for one command
+   list       List log systems
+   set-level  Set log level
+   alerts     Get alert states
+   help, h    Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus log list
 
 ```
 NAME:
-   lotus log list - List log systems
+   lotus-miner lotus log list - List log systems
 
 USAGE:
-   lotus log list [command options] [arguments...]
+   lotus-miner lotus log list [command options] [arguments...]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus log set-level
 
 ```
 NAME:
-   lotus log set-level - Set log level
+   lotus-miner lotus log set-level - Set log level
 
 USAGE:
-   lotus log set-level [command options] [level]
+   lotus-miner lotus log set-level [command options] [level]
 
 DESCRIPTION:
    Set the log level for logging systems:
 
-   The system flag can be specified multiple times.
+      The system flag can be specified multiple times.
 
-   eg) log set-level --system chain --system chainxchg debug
+      eg) log set-level --system chain --system chainxchg debug
 
-   Available Levels:
-   debug
-   info
-   warn
-   error
+      Available Levels:
+      debug
+      info
+      warn
+      error
 
-   Environment Variables:
-   GOLOG_LOG_LEVEL - Default log level for all log systems
-   GOLOG_LOG_FMT   - Change output log format (json, nocolor)
-   GOLOG_FILE      - Write logs to file
-   GOLOG_OUTPUT    - Specify whether to output to file, stderr, stdout or a combination, i.e. file+stderr
+      Environment Variables:
+      GOLOG_LOG_LEVEL - Default log level for all log systems
+      GOLOG_LOG_FMT   - Change output log format (json, nocolor)
+      GOLOG_FILE      - Write logs to file
+      GOLOG_OUTPUT    - Specify whether to output to file, stderr, stdout or a combination, i.e. file+stderr
 
 
 OPTIONS:
-   --system                       --system value [ --system value ]	limit to log system
-   --help, -h                     show help (default: "false")
-
+   --system value [ --system value ]  limit to log system
+   --help, -h                         show help
 ```
 
 ### lotus log alerts
 
 ```
 NAME:
-   lotus log alerts - Get alert states
+   lotus-miner lotus log alerts - Get alert states
 
 USAGE:
-   lotus log alerts [command options] [arguments...]
+   lotus-miner lotus log alerts [command options] [arguments...]
 
 OPTIONS:
-   --all                          get all (active and inactive) alerts (default: "false")
-   --help, -h                     show help (default: "false")
-
+   --all       get all (active and inactive) alerts (default: false)
+   --help, -h  show help
 ```
 
 ## lotus wait-api
 
 ```
 NAME:
-   lotus wait-api - Wait for lotus api to come online
+   lotus-miner lotus wait-api - Wait for lotus api to come online
 
 USAGE:
-   lotus wait-api [command options] [arguments...]
+   lotus-miner lotus wait-api [command options] [arguments...]
+
+CATEGORY:
+   DEVELOPER
 
 OPTIONS:
-   --timeout                      --timeout value	duration to wait till fail (default: 0s)
-   --help, -h                     show help (default: "false")
-
+   --timeout value  duration to wait till fail (default: 30s)
+   --help, -h       show help
 ```
 
 ## lotus fetch-params
 
 ```
 NAME:
-   lotus fetch-params - Fetch proving parameters
+   lotus-miner lotus fetch-params - Fetch proving parameters
 
 USAGE:
-   lotus fetch-params [command options] [sectorSize]
+   lotus-miner lotus fetch-params [command options] [sectorSize]
 
+CATEGORY:
+   DEVELOPER
+
+OPTIONS:
+   --help, -h  show help
 ```
 
 ## lotus evm
@@ -2234,13 +2308,16 @@ USAGE:
    lotus evm command [command options] [arguments...]
 
 COMMANDS:
-   deploy                         Deploy an EVM smart contract and return its address
-   invoke                         Invoke an EVM smart contract using the specified CALLDATA
-   stat                           Print eth/filecoin addrs and code cid
-   call                           Simulate an eth contract call
-   contract-address               Generate contract address from smart contract code
-   bytecode                       Write the bytecode of a smart contract to a file
-   help, h                        Shows a list of commands or help for one command
+   deploy            Deploy an EVM smart contract and return its address
+   invoke            Invoke an EVM smart contract using the specified CALLDATA
+   stat              Print eth/filecoin addrs and code cid
+   call              Simulate an eth contract call
+   contract-address  Generate contract address from smart contract code
+   bytecode          Write the bytecode of a smart contract to a file
+   help, h           Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus evm deploy
@@ -2253,10 +2330,9 @@ USAGE:
    lotus evm deploy [command options] contract
 
 OPTIONS:
-   --from                         optionally specify the account to use for sending the creation message (default: "")
-   --hex                          use when input contract is in hex (default: "false")
-   --help, -h                     show help (default: "false")
-
+   --from value  optionally specify the account to use for sending the creation message
+   --hex         use when input contract is in hex (default: false)
+   --help, -h    show help
 ```
 
 ### lotus evm invoke
@@ -2269,10 +2345,9 @@ USAGE:
    lotus evm invoke [command options] address calldata
 
 OPTIONS:
-   --from                         optionally specify the account to use for sending the exec message (default: "")
-   --value                        optionally specify the value to be sent with the invocation message (default: "0")
-   --help, -h                     show help (default: "false")
-
+   --from value   optionally specify the account to use for sending the exec message
+   --value value  optionally specify the value to be sent with the invocation message (default: 0)
+   --help, -h     show help
 ```
 
 ### lotus evm stat
@@ -2284,6 +2359,8 @@ NAME:
 USAGE:
    lotus evm stat [command options] address
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus evm call
@@ -2295,6 +2372,8 @@ NAME:
 USAGE:
    lotus evm call [command options] [from] [to] [params]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus evm contract-address
@@ -2306,6 +2385,8 @@ NAME:
 USAGE:
    lotus evm contract-address [command options] [senderEthAddr] [salt] [contractHexPath]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus evm bytecode
@@ -2318,9 +2399,8 @@ USAGE:
    lotus evm bytecode [command options] [contract-address] [file-name]
 
 OPTIONS:
-   --bin                          write the bytecode as raw binary and don't hex-encode (default: "false")
-   --help, -h                     show help (default: "false")
-
+   --bin       write the bytecode as raw binary and don't hex-encode (default: false)
+   --help, -h  show help
 ```
 
 ## lotus index
@@ -2333,8 +2413,11 @@ USAGE:
    lotus index command [command options] [arguments...]
 
 COMMANDS:
-   validate-backfill              Validates and optionally backfills the chainindex for a range of epochs
-   help, h                        Shows a list of commands or help for one command
+   validate-backfill  Validates and optionally backfills the chainindex for a range of epochs
+   help, h            Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus index validate-backfill
@@ -2348,47 +2431,46 @@ USAGE:
 
 DESCRIPTION:
    
-lotus index validate-backfill --from <start_epoch> --to <end_epoch> [--backfill] [--log-good] [--quiet]
+   lotus index validate-backfill --from <start_epoch> --to <end_epoch> [--backfill] [--log-good] [--quiet]
 
-The command validates the chain index entries for each epoch in the specified range, checking for missing or
-inconsistent entries (i.e. the indexed data does not match the actual chain state). If '--backfill' is enabled
-(which it is by default), it will attempt to backfill any missing entries using the 'ChainValidateIndex' API.
+   The command validates the chain index entries for each epoch in the specified range, checking for missing or
+   inconsistent entries (i.e. the indexed data does not match the actual chain state). If '--backfill' is enabled
+   (which it is by default), it will attempt to backfill any missing entries using the 'ChainValidateIndex' API.
 
-Error conditions:
-  - If 'from' or 'to' are invalid (<=0 or 'to' > 'from'), an error is returned.
-  - If the 'ChainValidateIndex' API returns an error for an epoch, indicating an inconsistency between the index
-    and chain state, an error message is logged for that epoch.
+   Error conditions:
+     - If 'from' or 'to' are invalid (<=0 or 'to' > 'from'), an error is returned.
+     - If the 'ChainValidateIndex' API returns an error for an epoch, indicating an inconsistency between the index
+       and chain state, an error message is logged for that epoch.
 
-Logging:
-  - Progress is logged every 2880 epochs (1 day worth of epochs) processed during the validation process.
-  - If '--log-good' is enabled, details are also logged for each epoch that has no detected problems. This includes:
-    - Null rounds with no messages/events.
-    - Epochs with a valid indexed entry.
-  - If --quiet is enabled, only errors are logged, unless --log-good is also enabled, in which case good tipsets
-    are also logged.
+   Logging:
+     - Progress is logged every 2880 epochs (1 day worth of epochs) processed during the validation process.
+     - If '--log-good' is enabled, details are also logged for each epoch that has no detected problems. This includes:
+       - Null rounds with no messages/events.
+       - Epochs with a valid indexed entry.
+     - If --quiet is enabled, only errors are logged, unless --log-good is also enabled, in which case good tipsets
+       are also logged.
 
-Example usage:
+   Example usage:
 
-To validate and backfill the chain index for the last 5760 epochs (2 days) and log details for all epochs:
+   To validate and backfill the chain index for the last 5760 epochs (2 days) and log details for all epochs:
 
-lotus index validate-backfill --from 1000000 --to 994240 --log-good
+   lotus index validate-backfill --from 1000000 --to 994240 --log-good
 
-This command is useful for backfilling the chain index over a range of historical epochs during the migration to
-the new ChainIndexer. It can also be run periodically to validate the index's integrity using system schedulers
-like cron.
+   This command is useful for backfilling the chain index over a range of historical epochs during the migration to
+   the new ChainIndexer. It can also be run periodically to validate the index's integrity using system schedulers
+   like cron.
 
-If there are any errors during the validation process, the command will exit with a non-zero status and log the
-number of failed RPC calls. Otherwise, it will exit with a zero status.
-	
+   If there are any errors during the validation process, the command will exit with a non-zero status and log the
+   number of failed RPC calls. Otherwise, it will exit with a zero status.
+     
 
 OPTIONS:
-   --from                         from specifies the starting tipset epoch for validation (inclusive) (default: "0")
-   --to                           to specifies the ending tipset epoch for validation (inclusive) (default: "0")
-   --backfill                     backfill determines whether to backfill missing index entries during validation (default: true) (default: "true")
-   --log-good                     log tipsets that have no detected problems (default: "false")
-   --quiet                        suppress output except for errors (or good tipsets if log-good is enabled) (default: "false")
-   --help, -h                     show help (default: "false")
-
+   --from value  from specifies the starting tipset epoch for validation (inclusive) (default: 0)
+   --to value    to specifies the ending tipset epoch for validation (inclusive) (default: 0)
+   --backfill    backfill determines whether to backfill missing index entries during validation (default: true) (default: true)
+   --log-good    log tipsets that have no detected problems (default: false)
+   --quiet       suppress output except for errors (or good tipsets if log-good is enabled) (default: false)
+   --help, -h    show help
 ```
 
 ## lotus net
@@ -2401,23 +2483,26 @@ USAGE:
    lotus net command [command options] [arguments...]
 
 COMMANDS:
-   peers                          Print peers
-   ping                           Ping peers
-   connect                        Connect to a peer
-   disconnect                     Disconnect from a peer
-   listen                         List listen addresses
-   id                             Get node identity
-   find-peer, findpeer            Find the addresses of a given peerID
-   scores                         Print peers' pubsub scores
-   reachability                   Print information about reachability from the internet
-   bandwidth                      Print bandwidth usage information
-   block                          Manage network connection gating rules
-   stat                           Report resource usage for a scope
-   limit                          Get or set resource limits for a scope
-   protect                        Add one or more peer IDs to the list of protected peer connections
-   unprotect                      Remove one or more peer IDs from the list of protected peer connections.
-   list-protected                 List the peer IDs with protected connection.
-   help, h                        Shows a list of commands or help for one command
+   peers                Print peers
+   ping                 Ping peers
+   connect              Connect to a peer
+   disconnect           Disconnect from a peer
+   listen               List listen addresses
+   id                   Get node identity
+   find-peer, findpeer  Find the addresses of a given peerID
+   scores               Print peers' pubsub scores
+   reachability         Print information about reachability from the internet
+   bandwidth            Print bandwidth usage information
+   block                Manage network connection gating rules
+   stat                 Report resource usage for a scope
+   limit                Get or set resource limits for a scope
+   protect              Add one or more peer IDs to the list of protected peer connections
+   unprotect            Remove one or more peer IDs from the list of protected peer connections.
+   list-protected       List the peer IDs with protected connection.
+   help, h              Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus net peers
@@ -2430,10 +2515,9 @@ USAGE:
    lotus net peers [command options] [arguments...]
 
 OPTIONS:
-   --agent, -a                    Print agent name (default: "false")
-   --extended, -x                 Print extended peer information in json (default: "false")
-   --help, -h                     show help (default: "false")
-
+   --agent, -a     Print agent name (default: false)
+   --extended, -x  Print extended peer information in json (default: false)
+   --help, -h      show help
 ```
 
 ### lotus net ping
@@ -2446,10 +2530,9 @@ USAGE:
    lotus net ping [command options] [peerMultiaddr]
 
 OPTIONS:
-   --count, -c                    specify the number of times it should ping (default: "10")
-   --interval, -i                 --interval value, -i value	minimum time between pings (default: 0s)
-   --help, -h                     show help (default: "false")
-
+   --count value, -c value     specify the number of times it should ping (default: 10)
+   --interval value, -i value  minimum time between pings (default: 1s)
+   --help, -h                  show help
 ```
 
 ### lotus net connect
@@ -2461,6 +2544,8 @@ NAME:
 USAGE:
    lotus net connect [command options] [peerMultiaddr|minerActorAddress]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus net disconnect
@@ -2472,6 +2557,8 @@ NAME:
 USAGE:
    lotus net disconnect [command options] [peerID]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus net listen
@@ -2483,6 +2570,8 @@ NAME:
 USAGE:
    lotus net listen [command options] [arguments...]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus net id
@@ -2494,6 +2583,8 @@ NAME:
 USAGE:
    lotus net id [command options] [arguments...]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus net find-peer
@@ -2505,6 +2596,8 @@ NAME:
 USAGE:
    lotus net find-peer [command options] [peerId]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus net scores
@@ -2517,9 +2610,8 @@ USAGE:
    lotus net scores [command options] [arguments...]
 
 OPTIONS:
-   --extended, -x                 print extended peer scores in json (default: "false")
-   --help, -h                     show help (default: "false")
-
+   --extended, -x  print extended peer scores in json (default: false)
+   --help, -h      show help
 ```
 
 ### lotus net reachability
@@ -2531,6 +2623,8 @@ NAME:
 USAGE:
    lotus net reachability [command options] [arguments...]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus net bandwidth
@@ -2543,10 +2637,9 @@ USAGE:
    lotus net bandwidth [command options] [arguments...]
 
 OPTIONS:
-   --by-peer                      list bandwidth usage by peer (default: "false")
-   --by-protocol                  list bandwidth usage by protocol (default: "false")
-   --help, -h                     show help (default: "false")
-
+   --by-peer      list bandwidth usage by peer (default: false)
+   --by-protocol  list bandwidth usage by protocol (default: false)
+   --help, -h     show help
 ```
 
 ### lotus net block
@@ -2559,10 +2652,13 @@ USAGE:
    lotus net block command [command options] [arguments...]
 
 COMMANDS:
-   add                            Add connection gating rules
-   remove                         Remove connection gating rules
-   list                           list connection gating rules
-   help, h                        Shows a list of commands or help for one command
+   add      Add connection gating rules
+   remove   Remove connection gating rules
+   list     list connection gating rules
+   help, h  Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help
 ```
 
 #### lotus net block add
@@ -2575,10 +2671,13 @@ USAGE:
    lotus net block add command [command options] [arguments...]
 
 COMMANDS:
-   peer                           Block a peer
-   ip                             Block an IP address
-   subnet                         Block an IP subnet
-   help, h                        Shows a list of commands or help for one command
+   peer     Block a peer
+   ip       Block an IP address
+   subnet   Block an IP subnet
+   help, h  Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help
 ```
 
 ##### lotus net block add peer
@@ -2590,6 +2689,8 @@ NAME:
 USAGE:
    lotus net block add peer [command options] <Peer> ...
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ##### lotus net block add ip
@@ -2601,6 +2702,8 @@ NAME:
 USAGE:
    lotus net block add ip [command options] <IP> ...
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ##### lotus net block add subnet
@@ -2612,6 +2715,8 @@ NAME:
 USAGE:
    lotus net block add subnet [command options] <CIDR> ...
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 #### lotus net block remove
@@ -2624,10 +2729,13 @@ USAGE:
    lotus net block remove command [command options] [arguments...]
 
 COMMANDS:
-   peer                           Unblock a peer
-   ip                             Unblock an IP address
-   subnet                         Unblock an IP subnet
-   help, h                        Shows a list of commands or help for one command
+   peer     Unblock a peer
+   ip       Unblock an IP address
+   subnet   Unblock an IP subnet
+   help, h  Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help
 ```
 
 ##### lotus net block remove peer
@@ -2639,6 +2747,8 @@ NAME:
 USAGE:
    lotus net block remove peer [command options] <Peer> ...
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ##### lotus net block remove ip
@@ -2650,6 +2760,8 @@ NAME:
 USAGE:
    lotus net block remove ip [command options] <IP> ...
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ##### lotus net block remove subnet
@@ -2661,6 +2773,8 @@ NAME:
 USAGE:
    lotus net block remove subnet [command options] <CIDR> ...
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 #### lotus net block list
@@ -2672,6 +2786,8 @@ NAME:
 USAGE:
    lotus net block list [command options] [arguments...]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus net stat
@@ -2686,19 +2802,18 @@ USAGE:
 DESCRIPTION:
    Report resource usage for a scope.
 
-  The scope can be one of the following:
-  - system        -- reports the system aggregate resource usage.
-  - transient     -- reports the transient resource usage.
-  - svc:<service> -- reports the resource usage of a specific service.
-  - proto:<proto> -- reports the resource usage of a specific protocol.
-  - peer:<peer>   -- reports the resource usage of a specific peer.
-  - all           -- reports the resource usage for all currently active scopes.
+     The scope can be one of the following:
+     - system        -- reports the system aggregate resource usage.
+     - transient     -- reports the transient resource usage.
+     - svc:<service> -- reports the resource usage of a specific service.
+     - proto:<proto> -- reports the resource usage of a specific protocol.
+     - peer:<peer>   -- reports the resource usage of a specific peer.
+     - all           -- reports the resource usage for all currently active scopes.
 
 
 OPTIONS:
-   --json                          (default: "false")
-   --help, -h                     show help (default: "false")
-
+   --json      (default: false)
+   --help, -h  show help
 ```
 
 ### lotus net limit
@@ -2713,20 +2828,19 @@ USAGE:
 DESCRIPTION:
    Get or set resource limits for a scope.
 
-  The scope can be one of the following:
-  - system        -- reports the system aggregate resource usage.
-  - transient     -- reports the transient resource usage.
-  - svc:<service> -- reports the resource usage of a specific service.
-  - proto:<proto> -- reports the resource usage of a specific protocol.
-  - peer:<peer>   -- reports the resource usage of a specific peer.
+     The scope can be one of the following:
+     - system        -- reports the system aggregate resource usage.
+     - transient     -- reports the transient resource usage.
+     - svc:<service> -- reports the resource usage of a specific service.
+     - proto:<proto> -- reports the resource usage of a specific protocol.
+     - peer:<peer>   -- reports the resource usage of a specific peer.
 
- The limit is json-formatted, with the same structure as the limits file.
+    The limit is json-formatted, with the same structure as the limits file.
 
 
 OPTIONS:
-   --set                          set the limit for a scope (default: "false")
-   --help, -h                     show help (default: "false")
-
+   --set       set the limit for a scope (default: false)
+   --help, -h  show help
 ```
 
 ### lotus net protect
@@ -2738,6 +2852,8 @@ NAME:
 USAGE:
    lotus net protect [command options] <peer-id> [<peer-id>...]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus net unprotect
@@ -2749,6 +2865,8 @@ NAME:
 USAGE:
    lotus net unprotect [command options] <peer-id> [<peer-id>...]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus net list-protected
@@ -2760,6 +2878,8 @@ NAME:
 USAGE:
    lotus net list-protected [command options] [arguments...]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ## lotus sync
@@ -2772,13 +2892,16 @@ USAGE:
    lotus sync command [command options] [arguments...]
 
 COMMANDS:
-   status                         check sync status
-   wait                           Wait for sync to be complete
-   mark-bad                       Mark the given block as bad, will prevent syncing to a chain that contains it
-   unmark-bad                     Unmark the given block as bad, makes it possible to sync to a chain containing it
-   check-bad                      check if the given block was marked bad, and for what reason
-   checkpoint                     mark a certain tipset as checkpointed; the node will never fork away from this tipset
-   help, h                        Shows a list of commands or help for one command
+   status      check sync status
+   wait        Wait for sync to be complete
+   mark-bad    Mark the given block as bad, will prevent syncing to a chain that contains it
+   unmark-bad  Unmark the given block as bad, makes it possible to sync to a chain containing it
+   check-bad   check if the given block was marked bad, and for what reason
+   checkpoint  mark a certain tipset as checkpointed; the node will never fork away from this tipset
+   help, h     Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus sync status
@@ -2790,6 +2913,8 @@ NAME:
 USAGE:
    lotus sync status [command options] [arguments...]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus sync wait
@@ -2802,9 +2927,8 @@ USAGE:
    lotus sync wait [command options] [arguments...]
 
 OPTIONS:
-   --watch                        don't exit after node is synced (default: "false")
-   --help, -h                     show help (default: "false")
-
+   --watch     don't exit after node is synced (default: false)
+   --help, -h  show help
 ```
 
 ### lotus sync mark-bad
@@ -2816,6 +2940,8 @@ NAME:
 USAGE:
    lotus sync mark-bad [command options] [blockCid]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus sync unmark-bad
@@ -2828,9 +2954,8 @@ USAGE:
    lotus sync unmark-bad [command options] [blockCid]
 
 OPTIONS:
-   --all                          drop the entire bad block cache (default: "false")
-   --help, -h                     show help (default: "false")
-
+   --all       drop the entire bad block cache (default: false)
+   --help, -h  show help
 ```
 
 ### lotus sync check-bad
@@ -2842,6 +2967,8 @@ NAME:
 USAGE:
    lotus sync check-bad [command options] [blockCid]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus sync checkpoint
@@ -2854,9 +2981,8 @@ USAGE:
    lotus sync checkpoint [command options] [tipsetKey]
 
 OPTIONS:
-   --epoch                        --epoch value	checkpoint the tipset at the given epoch (default: 0)
-   --help, -h                     show help (default: "false")
-
+   --epoch value  checkpoint the tipset at the given epoch (default: 0)
+   --help, -h     show help
 ```
 
 ## lotus f3
@@ -2869,12 +2995,15 @@ USAGE:
    lotus f3 command [command options] [arguments...]
 
 COMMANDS:
-   list-miners, lm                Lists the miners that currently participate in F3 via this node.
-   powertable, pt                 
-   certs, c                       Manages interactions with F3 finality certificates.
-   manifest                       Gets the current manifest used by F3.
-   status                         Checks the F3 status.
-   help, h                        Shows a list of commands or help for one command
+   list-miners, lm  Lists the miners that currently participate in F3 via this node.
+   powertable, pt   
+   certs, c         Manages interactions with F3 finality certificates.
+   manifest         Gets the current manifest used by F3.
+   status           Checks the F3 status.
+   help, h          Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus f3 list-miners
@@ -2886,21 +3015,26 @@ NAME:
 USAGE:
    lotus f3 list-miners [command options] [arguments...]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus f3 powertable
 
 ```
 NAME:
-   lotus f3 powertable - 
+   lotus f3 powertable
 
 USAGE:
    lotus f3 powertable command [command options] [arguments...]
 
 COMMANDS:
-   get, g                         Get F3 power table at a specific instance ID or latest instance if none is specified.
-   get-proportion, gp             Gets the total proportion of power for a list of actors at a given instance.
-   help, h                        Shows a list of commands or help for one command
+   get, g              Get F3 power table at a specific instance ID or latest instance if none is specified.
+   get-proportion, gp  Gets the total proportion of power for a list of actors at a given instance.
+   help, h             Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help
 ```
 
 #### lotus f3 powertable get
@@ -2913,9 +3047,8 @@ USAGE:
    lotus f3 powertable get [command options] [instance]
 
 OPTIONS:
-   --ec                           Whether to get the power table from EC. (default: "false")
-   --help, -h                     show help (default: "false")
-
+   --ec        Whether to get the power table from EC. (default: false)
+   --help, -h  show help
 ```
 
 #### lotus f3 powertable get-proportion
@@ -2928,10 +3061,9 @@ USAGE:
    lotus f3 powertable get-proportion [command options] <actor-id> [actor-id] ...
 
 OPTIONS:
-   --ec                           Whether to get the power table from EC. (default: "false")
-   --instance, -i                 --instance value, -i value	The F3 instance ID. (default: Latest Instance)
-   --help, -h                     show help (default: "false")
-
+   --ec                        Whether to get the power table from EC. (default: false)
+   --instance value, -i value  The F3 instance ID. (default: Latest Instance)
+   --help, -h                  show help
 ```
 
 ### lotus f3 certs
@@ -2944,44 +3076,47 @@ USAGE:
    lotus f3 certs command [command options] [arguments...]
 
 COMMANDS:
-   get                            Gets an F3 finality certificate to a given instance ID, or the latest certificate if no instance is specified.
-   list                           Lists a range of F3 finality certificates.
+   get      Gets an F3 finality certificate to a given instance ID, or the latest certificate if no instance is specified.
+   list     Lists a range of F3 finality certificates.
 
-By default the certificates are listed in newest to oldest order,
-i.e. descending instance IDs. The order may be reversed using the
-'--reverse' flag.
+            By default the certificates are listed in newest to oldest order,
+            i.e. descending instance IDs. The order may be reversed using the
+            '--reverse' flag.
 
-A range may optionally be specified as the first argument to indicate 
-inclusive range of 'from' and 'to' instances in following notation:
-'<from>..<to>'. Either <from> or <to> may be omitted, but not both.
-An omitted <from> value is always interpreted as 0, and an omitted
-<to> value indicates the latest instance. If both are specified, <from>
-must never exceed <to>.
+            A range may optionally be specified as the first argument to indicate 
+            inclusive range of 'from' and 'to' instances in following notation:
+            '<from>..<to>'. Either <from> or <to> may be omitted, but not both.
+            An omitted <from> value is always interpreted as 0, and an omitted
+            <to> value indicates the latest instance. If both are specified, <from>
+            must never exceed <to>.
 
-If no range is specified, the latest 10 certificates are listed, i.e. 
-the range of '0..' with limit of 10. Otherwise, all certificates in
-the specified range are listed unless limit is explicitly specified.
+            If no range is specified, the latest 10 certificates are listed, i.e. 
+            the range of '0..' with limit of 10. Otherwise, all certificates in
+            the specified range are listed unless limit is explicitly specified.
 
-Examples:
-  * All certificates from newest to oldest:
-      $ lotus f3 certs list 0..
+            Examples:
+              * All certificates from newest to oldest:
+                  $ lotus f3 certs list 0..
 
-  * Three newest certificates:
-      $ lotus f3 certs list --limit 3 0..
+              * Three newest certificates:
+                  $ lotus f3 certs list --limit 3 0..
 
-  * Three oldest certificates:
-      $ lotus f3 certs list --limit 3 --reverse 0..
+              * Three oldest certificates:
+                  $ lotus f3 certs list --limit 3 --reverse 0..
 
-  * Up to three certificates starting from instance 1413 to the oldest:
-      $ lotus f3 certs list --limit 3 ..1413
+              * Up to three certificates starting from instance 1413 to the oldest:
+                  $ lotus f3 certs list --limit 3 ..1413
 
-  * Up to 3 certificates starting from instance 1413 to the newest:
-      $ lotus f3 certs list --limit 3 --reverse 1413..
+              * Up to 3 certificates starting from instance 1413 to the newest:
+                  $ lotus f3 certs list --limit 3 --reverse 1413..
 
-  * All certificates from instance 3 to 1413 in order of newest to oldest:
-      $ lotus f3 certs list 3..1413
+              * All certificates from instance 3 to 1413 in order of newest to oldest:
+                  $ lotus f3 certs list 3..1413
 
-   help, h                        Shows a list of commands or help for one command
+   help, h  Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help
 ```
 
 #### lotus f3 certs get
@@ -2994,9 +3129,8 @@ USAGE:
    lotus f3 certs get [command options] [instance]
 
 OPTIONS:
-   --output                       The output format. Supported formats: text, json (default: "text")
-   --help, -h                     show help (default: "false")
-
+   --output value  The output format. Supported formats: text, json (default: "text")
+   --help, -h      show help
 ```
 
 #### lotus f3 certs list
@@ -3005,50 +3139,49 @@ OPTIONS:
 NAME:
    lotus f3 certs list - Lists a range of F3 finality certificates.
 
-By default the certificates are listed in newest to oldest order,
-i.e. descending instance IDs. The order may be reversed using the
-'--reverse' flag.
+                         By default the certificates are listed in newest to oldest order,
+                         i.e. descending instance IDs. The order may be reversed using the
+                         '--reverse' flag.
 
-A range may optionally be specified as the first argument to indicate 
-inclusive range of 'from' and 'to' instances in following notation:
-'<from>..<to>'. Either <from> or <to> may be omitted, but not both.
-An omitted <from> value is always interpreted as 0, and an omitted
-<to> value indicates the latest instance. If both are specified, <from>
-must never exceed <to>.
+                         A range may optionally be specified as the first argument to indicate 
+                         inclusive range of 'from' and 'to' instances in following notation:
+                         '<from>..<to>'. Either <from> or <to> may be omitted, but not both.
+                         An omitted <from> value is always interpreted as 0, and an omitted
+                         <to> value indicates the latest instance. If both are specified, <from>
+                         must never exceed <to>.
 
-If no range is specified, the latest 10 certificates are listed, i.e. 
-the range of '0..' with limit of 10. Otherwise, all certificates in
-the specified range are listed unless limit is explicitly specified.
+                         If no range is specified, the latest 10 certificates are listed, i.e. 
+                         the range of '0..' with limit of 10. Otherwise, all certificates in
+                         the specified range are listed unless limit is explicitly specified.
 
-Examples:
-  * All certificates from newest to oldest:
-      $ lotus f3 certs list 0..
+                         Examples:
+                           * All certificates from newest to oldest:
+                               $ lotus f3 certs list 0..
 
-  * Three newest certificates:
-      $ lotus f3 certs list --limit 3 0..
+                           * Three newest certificates:
+                               $ lotus f3 certs list --limit 3 0..
 
-  * Three oldest certificates:
-      $ lotus f3 certs list --limit 3 --reverse 0..
+                           * Three oldest certificates:
+                               $ lotus f3 certs list --limit 3 --reverse 0..
 
-  * Up to three certificates starting from instance 1413 to the oldest:
-      $ lotus f3 certs list --limit 3 ..1413
+                           * Up to three certificates starting from instance 1413 to the oldest:
+                               $ lotus f3 certs list --limit 3 ..1413
 
-  * Up to 3 certificates starting from instance 1413 to the newest:
-      $ lotus f3 certs list --limit 3 --reverse 1413..
+                           * Up to 3 certificates starting from instance 1413 to the newest:
+                               $ lotus f3 certs list --limit 3 --reverse 1413..
 
-  * All certificates from instance 3 to 1413 in order of newest to oldest:
-      $ lotus f3 certs list 3..1413
+                           * All certificates from instance 3 to 1413 in order of newest to oldest:
+                               $ lotus f3 certs list 3..1413
 
 
 USAGE:
    lotus f3 certs list [command options] [range]
 
 OPTIONS:
-   --output                       The output format. Supported formats: text, json (default: "text")
-   --limit                        The maximum number of instances. A value less than 0 indicates no limit. (default: "-1")
-   --reverse                      Reverses the default order of output.  (default: "false")
-   --help, -h                     show help (default: "false")
-
+   --output value  The output format. Supported formats: text, json (default: "text")
+   --limit value   The maximum number of instances. A value less than 0 indicates no limit. (default: 10 when no range is specified. Otherwise, unlimited.)
+   --reverse       Reverses the default order of output.  (default: false)
+   --help, -h      show help
 ```
 
 ### lotus f3 manifest
@@ -3061,9 +3194,8 @@ USAGE:
    lotus f3 manifest [command options] [arguments...]
 
 OPTIONS:
-   --output                       The output format. Supported formats: text, json (default: "text")
-   --help, -h                     show help (default: "false")
-
+   --output value  The output format. Supported formats: text, json (default: "text")
+   --help, -h      show help
 ```
 
 ### lotus f3 status
@@ -3075,6 +3207,8 @@ NAME:
 USAGE:
    lotus f3 status [command options] [arguments...]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ## lotus status
@@ -3086,55 +3220,53 @@ NAME:
 USAGE:
    lotus status [command options] [arguments...]
 
-OPTIONS:
-   --chain                        include chain health status (default: "false")
-   --help, -h                     show help (default: "false")
+CATEGORY:
+   STATUS
 
+OPTIONS:
+   --chain     include chain health status (default: false)
+   --help, -h  show help
 ```
 
 ## lotus pprof
 
 ```
 NAME:
-   lotus pprof - 
+   lotus-miner lotus pprof
 
 USAGE:
-   lotus pprof command [command options] [arguments...]
+   lotus-miner lotus pprof command [command options] [arguments...]
 
 COMMANDS:
-   goroutines                     Get goroutine stacks
-   help, h                        Shows a list of commands or help for one command
+   goroutines  Get goroutine stacks
+   help, h     Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus pprof goroutines
 
 ```
 NAME:
-   lotus pprof goroutines - Get goroutine stacks
+   lotus-miner lotus pprof goroutines - Get goroutine stacks
 
 USAGE:
-   lotus pprof goroutines [command options] [arguments...]
+   lotus-miner lotus pprof goroutines [command options] [arguments...]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ## lotus version
 
 ```
 NAME:
-   lotus version - Print version
+   lotus-miner lotus version - Print version
 
 USAGE:
-   lotus version [command options] [arguments...]
+   lotus-miner lotus version [command options] [arguments...]
 
-```
-
-## lotus help
-
-```
-NAME:
-   lotus help - Shows a list of commands or help for one command
-
-USAGE:
-   lotus help [command options] [command]
-
+OPTIONS:
+   --help, -h  show help
 ```

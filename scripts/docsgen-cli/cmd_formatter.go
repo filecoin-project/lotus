@@ -40,7 +40,11 @@ func (cf *CommandFormatter) Format() string {
 			sb.WriteString(formatCommandSummary(subcmd))
 		}
 
-		sb.WriteString(helpCommandSummary())
+		sb.WriteString(fmt.Sprintf("%s\n", helpCommandSummary()))
+	}
+
+	if len(cf.cmd.Flags) > 0 {
+		sb.WriteString(cf.formatOptions())
 	}
 
 	sb.WriteString("```\n")
@@ -58,14 +62,14 @@ func (cf *CommandFormatter) formatDetails(cmdName string) string {
 		sb.WriteString(fmt.Sprintf("DESCRIPTION:\n   %s\n\n", cf.cmd.Description))
 	}
 
-	if len(cf.cmd.Flags) > 0 {
-		sb.WriteString("OPTIONS:\n")
-		for _, flag := range cf.cmd.Flags {
-			sb.WriteString(NewFlagFormatter(flag).Format())
-		}
-		// print help flag
-		sb.WriteString(NewFlagFormatter(cli.HelpFlag).Format())
-		sb.WriteString("\n")
+	return sb.String()
+}
+
+func (cf *CommandFormatter) formatOptions() string {
+	var sb strings.Builder
+	sb.WriteString("OPTIONS:\n")
+	for _, flag := range cf.cmd.Flags {
+		sb.WriteString(NewFlagFormatter(flag).Format())
 	}
 
 	return sb.String()

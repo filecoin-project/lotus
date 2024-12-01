@@ -22,12 +22,12 @@ COMMANDS:
    help, h                        Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
-   --worker-repo, --workerrepo    Specify worker repo path. flag workerrepo and env WORKER_PATH are DEPRECATION, will REMOVE SOON (default: "~/.lotusworker") [LOTUS_WORKER_PATH, WORKER_PATH]
-   --panic-reports                 (default: "~/.lotusworker") [LOTUS_PANIC_REPORT_PATH]
-   --miner-repo, --storagerepo    Specify miner repo path. flag storagerepo and env LOTUS_STORAGE_PATH are DEPRECATION, will REMOVE SOON (default: "~/.lotusminer") [LOTUS_MINER_PATH, LOTUS_STORAGE_PATH]
-   --enable-gpu-proving           enable use of GPU for mining operations (default: "true") [LOTUS_WORKER_ENABLE_GPU_PROVING]
-   --help, -h                     show help (default: "false")
-   --version, -v                  print the version (default: "false")
+   --worker-repo value, --workerrepo Specify worker repo path. flag workerrepo and env WORKER_PATH are DEPRECATION, will REMOVE SOON (default: "~/.lotusworker") [LOTUS_WORKER_PATH, WORKER_PATH]
+   --panic-reports value           (default: "~/.lotusworker") [LOTUS_PANIC_REPORT_PATH]
+   --miner-repo value, --storagerepo Specify miner repo path. flag storagerepo and env LOTUS_STORAGE_PATH are DEPRECATION, will REMOVE SOON (default: "~/.lotusminer") [LOTUS_MINER_PATH, LOTUS_STORAGE_PATH]
+   --enable-gpu-proving           enable use of GPU for mining operations (default: true) [LOTUS_WORKER_ENABLE_GPU_PROVING]
+   --help, -h                     show help (default: false)
+   --version, -v                  print the version (default: false)
 ```
 
 ## lotus-worker run
@@ -42,57 +42,55 @@ USAGE:
 DESCRIPTION:
    Run lotus-worker.
 
---external-pc2 can be used to compute the PreCommit2 inputs externally.
-The flag behaves similarly to the related lotus-worker flag, using it in
-lotus-bench may be useful for testing if the external PreCommit2 command is
-invoked correctly.
+   --external-pc2 can be used to compute the PreCommit2 inputs externally.
+   The flag behaves similarly to the related lotus-worker flag, using it in
+   lotus-bench may be useful for testing if the external PreCommit2 command is
+   invoked correctly.
 
-The command will be called with a number of environment variables set:
-* EXTSEAL_PC2_SECTOR_NUM: the sector number
-* EXTSEAL_PC2_SECTOR_MINER: the miner id
-* EXTSEAL_PC2_PROOF_TYPE: the proof type
-* EXTSEAL_PC2_SECTOR_SIZE: the sector size in bytes
-* EXTSEAL_PC2_CACHE: the path to the cache directory
-* EXTSEAL_PC2_SEALED: the path to the sealed sector file (initialized with unsealed data by the caller)
-* EXTSEAL_PC2_PC1OUT: output from rust-fil-proofs precommit1 phase (base64 encoded json)
+   The command will be called with a number of environment variables set:
+   * EXTSEAL_PC2_SECTOR_NUM: the sector number
+   * EXTSEAL_PC2_SECTOR_MINER: the miner id
+   * EXTSEAL_PC2_PROOF_TYPE: the proof type
+   * EXTSEAL_PC2_SECTOR_SIZE: the sector size in bytes
+   * EXTSEAL_PC2_CACHE: the path to the cache directory
+   * EXTSEAL_PC2_SEALED: the path to the sealed sector file (initialized with unsealed data by the caller)
+   * EXTSEAL_PC2_PC1OUT: output from rust-fil-proofs precommit1 phase (base64 encoded json)
 
-The command is expected to:
-* Create cache sc-02-data-tree-r* files
-* Create cache sc-02-data-tree-c* files
-* Create cache p_aux / t_aux files
-* Transform the sealed file in place
+   The command is expected to:
+   * Create cache sc-02-data-tree-r* files
+   * Create cache sc-02-data-tree-c* files
+   * Create cache p_aux / t_aux files
+   * Transform the sealed file in place
 
-Example invocation of lotus-bench as external executor:
-'./lotus-bench simple precommit2 --sector-size $EXTSEAL_PC2_SECTOR_SIZE $EXTSEAL_PC2_SEALED $EXTSEAL_PC2_CACHE $EXTSEAL_PC2_PC1OUT'
+   Example invocation of lotus-bench as external executor:
+   './lotus-bench simple precommit2 --sector-size $EXTSEAL_PC2_SECTOR_SIZE $EXTSEAL_PC2_SEALED $EXTSEAL_PC2_CACHE $EXTSEAL_PC2_PC1OUT'
 
 
 OPTIONS:
-   --listen                       host address and port the worker api will listen on (default: "0.0.0.0:3456") [LOTUS_WORKER_LISTEN]
-   --address                       (default: "")
-   --no-local-storage             don't use storageminer repo for sector storage (default: "false") [LOTUS_WORKER_NO_LOCAL_STORAGE]
-   --no-swap                      don't use swap (default: "false") [LOTUS_WORKER_NO_SWAP]
-   --name                         custom worker name (default: "") [LOTUS_WORKER_NAME]
-   --addpiece                     enable addpiece (default: "true") [LOTUS_WORKER_ADDPIECE]
-   --precommit1                   enable precommit1 (default: "true") [LOTUS_WORKER_PRECOMMIT1]
-   --unseal                       enable unsealing (default: "true") [LOTUS_WORKER_UNSEAL]
-   --precommit2                   enable precommit2 (default: "true") [LOTUS_WORKER_PRECOMMIT2]
-   --commit                       enable commit (default: "true") [LOTUS_WORKER_COMMIT]
-   --replica-update               enable replica update (default: "true") [LOTUS_WORKER_REPLICA_UPDATE]
-   --prove-replica-update2        enable prove replica update 2 (default: "true") [LOTUS_WORKER_PROVE_REPLICA_UPDATE2]
-   --regen-sector-key             enable regen sector key (default: "true") [LOTUS_WORKER_REGEN_SECTOR_KEY]
-   --sector-download              enable external sector data download (default: "false") [LOTUS_WORKER_SECTOR_DOWNLOAD]
-   --windowpost                   enable window post (default: "false") [LOTUS_WORKER_WINDOWPOST]
-   --winningpost                  enable winning post (default: "false") [LOTUS_WORKER_WINNINGPOST]
-   --no-default                   disable all default compute tasks, use the worker for storage/fetching only (default: "false") [LOTUS_WORKER_NO_DEFAULT]
-   --parallel-fetch-limit         maximum fetch operations to run in parallel (default: "5") [LOTUS_WORKER_PARALLEL_FETCH_LIMIT]
-   --post-parallel-reads          maximum number of parallel challenge reads (0 = no limit) (default: "32") [LOTUS_WORKER_POST_PARALLEL_READS]
-   --post-read-timeout            --post-read-timeout value	time limit for reading PoSt challenges (0 = no limit) (default: 0s) [$LOTUS_WORKER_POST_READ_TIMEOUT]
-   --timeout                      used when 'listen' is unspecified. must be a valid duration recognized by golang's time.ParseDuration function (default: "30m") [LOTUS_WORKER_TIMEOUT]
-   --http-server-timeout           (default: "30s")
-   --data-cid                     Run the data-cid task. true|false (default: "true")
-   --external-pc2                 command for computing PC2 externally (default: "")
-   --help, -h                     show help (default: "false")
-
+   --listen value                host address and port the worker api will listen on (default: "0.0.0.0:3456") [$LOTUS_WORKER_LISTEN]
+   --no-local-storage            don't use storageminer repo for sector storage (default: false) [$LOTUS_WORKER_NO_LOCAL_STORAGE]
+   --no-swap                     don't use swap (default: false) [$LOTUS_WORKER_NO_SWAP]
+   --name value                  custom worker name (default: hostname) [$LOTUS_WORKER_NAME]
+   --addpiece                    enable addpiece (default: true) [$LOTUS_WORKER_ADDPIECE]
+   --precommit1                  enable precommit1 (default: true) [$LOTUS_WORKER_PRECOMMIT1]
+   --unseal                      enable unsealing (default: true) [$LOTUS_WORKER_UNSEAL]
+   --precommit2                  enable precommit2 (default: true) [$LOTUS_WORKER_PRECOMMIT2]
+   --commit                      enable commit (default: true) [$LOTUS_WORKER_COMMIT]
+   --replica-update              enable replica update (default: true) [$LOTUS_WORKER_REPLICA_UPDATE]
+   --prove-replica-update2       enable prove replica update 2 (default: true) [$LOTUS_WORKER_PROVE_REPLICA_UPDATE2]
+   --regen-sector-key            enable regen sector key (default: true) [$LOTUS_WORKER_REGEN_SECTOR_KEY]
+   --sector-download             enable external sector data download (default: false) [$LOTUS_WORKER_SECTOR_DOWNLOAD]
+   --windowpost                  enable window post (default: false) [$LOTUS_WORKER_WINDOWPOST]
+   --winningpost                 enable winning post (default: false) [$LOTUS_WORKER_WINNINGPOST]
+   --no-default                  disable all default compute tasks, use the worker for storage/fetching only (default: false) [$LOTUS_WORKER_NO_DEFAULT]
+   --parallel-fetch-limit value  maximum fetch operations to run in parallel (default: 5) [$LOTUS_WORKER_PARALLEL_FETCH_LIMIT]
+   --post-parallel-reads value   maximum number of parallel challenge reads (0 = no limit) (default: 32) [$LOTUS_WORKER_POST_PARALLEL_READS]
+   --post-read-timeout value     time limit for reading PoSt challenges (0 = no limit) (default: 0s) [$LOTUS_WORKER_POST_READ_TIMEOUT]
+   --timeout value               used when 'listen' is unspecified. must be a valid duration recognized by golang's time.ParseDuration function (default: "30m") [$LOTUS_WORKER_TIMEOUT]
+   --http-server-timeout value   (default: "30s")
+   --data-cid                    Run the data-cid task. true|false (default: inherits --addpiece)
+   --external-pc2 value          command for computing PC2 externally
+   --help, -h                    show help
 ```
 
 ## lotus-worker stop
@@ -104,6 +102,8 @@ NAME:
 USAGE:
    lotus-worker stop [command options] [arguments...]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ## lotus-worker info
@@ -115,6 +115,8 @@ NAME:
 USAGE:
    lotus-worker info [command options] [arguments...]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ## lotus-worker storage
@@ -127,10 +129,13 @@ USAGE:
    lotus-worker storage command [command options] [arguments...]
 
 COMMANDS:
-   attach                         attach local storage path
-   detach                         detach local storage path
-   redeclare                      redeclare sectors in a local storage path
-   help, h                        Shows a list of commands or help for one command
+   attach     attach local storage path
+   detach     detach local storage path
+   redeclare  redeclare sectors in a local storage path
+   help, h    Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus-worker storage attach
@@ -143,15 +148,14 @@ USAGE:
    lotus-worker storage attach [command options] [arguments...]
 
 OPTIONS:
-   --init                         initialize the path first (default: "false")
-   --weight                       --weight value	(for init) path weight (default: 0)
-   --seal                         (for init) use path for sealing (default: "false")
-   --store                        (for init) use path for long-term storage (default: "false")
-   --max-storage                  (for init) limit storage space for sectors (expensive for very large paths!) (default: "")
-   --groups                       --groups value [ --groups value ]	path group names
-   --allow-to                     --allow-to value [ --allow-to value ]	path groups allowed to pull data from this path (allow all if not specified)
-   --help, -h                     show help (default: "false")
-
+   --init                                 initialize the path first (default: false)
+   --weight value                         (for init) path weight (default: 10)
+   --seal                                 (for init) use path for sealing (default: false)
+   --store                                (for init) use path for long-term storage (default: false)
+   --max-storage value                    (for init) limit storage space for sectors (expensive for very large paths!)
+   --groups value [ --groups value ]      path group names
+   --allow-to value [ --allow-to value ]  path groups allowed to pull data from this path (allow all if not specified)
+   --help, -h                             show help
 ```
 
 ### lotus-worker storage detach
@@ -164,9 +168,8 @@ USAGE:
    lotus-worker storage detach [command options] [path]
 
 OPTIONS:
-   --really-do-it                  (default: "false")
-   --help, -h                     show help (default: "false")
-
+   --really-do-it  (default: false)
+   --help, -h      show help
 ```
 
 ### lotus-worker storage redeclare
@@ -179,11 +182,10 @@ USAGE:
    lotus-worker storage redeclare [command options] [arguments...]
 
 OPTIONS:
-   --id                           storage path ID (default: "")
-   --all                          redeclare all storage paths (default: "false")
-   --drop-missing                 Drop index entries with missing files (default: "true")
-   --help, -h                     show help (default: "false")
-
+   --id value      storage path ID
+   --all           redeclare all storage paths (default: false)
+   --drop-missing  Drop index entries with missing files (default: true)
+   --help, -h      show help
 ```
 
 ## lotus-worker set
@@ -196,9 +198,8 @@ USAGE:
    lotus-worker set [command options] [arguments...]
 
 OPTIONS:
-   --enabled                      enable/disable new task processing (default: "true")
-   --help, -h                     show help (default: "false")
-
+   --enabled   enable/disable new task processing (default: true)
+   --help, -h  show help
 ```
 
 ## lotus-worker wait-quiet
@@ -210,6 +211,8 @@ NAME:
 USAGE:
    lotus-worker wait-quiet [command options] [arguments...]
 
+OPTIONS:
+   --help, -h  show help
 ```
 
 ## lotus-worker resources
@@ -222,10 +225,9 @@ USAGE:
    lotus-worker resources [command options] [arguments...]
 
 OPTIONS:
-   --all                          print all resource envvars (default: "false")
-   --default                      print default resource envvars (default: "false")
-   --help, -h                     show help (default: "false")
-
+   --all       print all resource envvars (default: false)
+   --default   print default resource envvars (default: false)
+   --help, -h  show help
 ```
 
 ## lotus-worker tasks
@@ -238,9 +240,12 @@ USAGE:
    lotus-worker tasks command [command options] [arguments...]
 
 COMMANDS:
-   enable                         Enable a task type
-   disable                        Disable a task type
-   help, h                        Shows a list of commands or help for one command
+   enable   Enable a task type
+   disable  Disable a task type
+   help, h  Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus-worker tasks enable
@@ -253,9 +258,8 @@ USAGE:
    lotus-worker tasks enable [command options] --all | [UNS|C2|PC2|PC1|PR2|RU|AP|DC|GSK]
 
 OPTIONS:
-   --all                          Enable all task types (default: "false")
-   --help, -h                     show help (default: "false")
-
+   --all       Enable all task types (default: false)
+   --help, -h  show help
 ```
 
 ### lotus-worker tasks disable
@@ -268,18 +272,6 @@ USAGE:
    lotus-worker tasks disable [command options] --all | [UNS|C2|PC2|PC1|PR2|RU|AP|DC|GSK]
 
 OPTIONS:
-   --all                          Disable all task types (default: "false")
-   --help, -h                     show help (default: "false")
-
-```
-
-## lotus-worker help
-
-```
-NAME:
-   lotus-worker help - Shows a list of commands or help for one command
-
-USAGE:
-   lotus-worker help [command options] [command]
-
+   --all       Disable all task types (default: false)
+   --help, -h  show help
 ```
