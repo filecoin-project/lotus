@@ -6,13 +6,11 @@
 
 - Improve eth filter performance for nodes serving many clients. ([filecoin-project/lotus#12603](https://github.com/filecoin-project/lotus/pull/12603))
 - Add Market PendingProposals API / CLI. ([filecoin-project/lotus#12724](https://github.com/filecoin-project/lotus/pull/12724))
-
-
+- Generate the cli docs directly from the code instead compiling and executing binaries' `help` output. ([filecoin-project/lotus#12717](https://github.com/filecoin-project/lotus/pull/12717))
 
 ## Improvements
 
 - The miner actor builtin `QAPowerForWeight` no longer accepts the unused "dealWeight" parameter, the function signature now only takes 3 arguments: sectorSize, sectorDuration, verifiedWeight. ([filecoin-project/lotus#12445](https://github.com/filecoin-project/lotus/pull/12445))
-- Generate the cli docs directly from the structs instead using binaries. ([filecoin-project/lotus#12717](https://github.com/filecoin-project/lotus/pull/12717))
 
 ## Bug Fixes
 
@@ -35,8 +33,8 @@ This is the final release of the MANDATORY Lotus v1.30.0 release, which delivers
 - If you are running the v1.28.x version of Lotus, please go through the Upgrade Warnings section for the v1.28.* releases and v1.29.*, before upgrading to this release.
 - This release requires a minimum Go version of v1.22.7 or higher.
 - The `releases` branch has been deprecated with the 202408 split of 'Lotus Node' and 'Lotus Miner'. See https://github.com/filecoin-project/lotus/blob/master/LOTUS_RELEASE_FLOW.md#why-is-the-releases-branch-deprecated-and-what-are-alternatives for more info and alternatives for getting the latest release for both the 'Lotus Node' and 'Lotus Miner' based on the Branch and Tag Strategy.
-   - To get the latest Lotus Node tag: git tag -l 'v*' | sort -V -r | head -n 1
-   - To get the latest Lotus Miner tag: git tag -l 'miner/v*' | sort -V -r | head -n 1
+  - To get the latest Lotus Node tag: git tag -l 'v*' | sort -V -r | head -n 1
+  - To get the latest Lotus Miner tag: git tag -l 'miner/v*' | sort -V -r | head -n 1
 
 ## 🏛️ Filecoin network version 24 FIPs
 
@@ -96,58 +94,58 @@ For the set of changes since the last stable release:
 
 ## 👨‍👩‍👧‍👦 Contributors
 
-| Contributor           | Commits | Lines ±      | Files Changed |
-| --------------------- | ------- | ------------ | ------------- |
-| Krishang              | 2       | +34106/-0    | 109           |
-| Rod Vagg              | 86      | +10643/-8291 | 456           |
-| Masih H. Derkani      | 59      | +7700/-4725  | 298           |
-| Steven Allen          | 55      | +6113/-3169  | 272           |
-| kamuik16              | 7       | +4618/-1333  | 285           |
-| Jakub Sztandera       | 10      | +3995/-1226  | 94            |
-| Peter Rabbitson       | 26      | +2313/-2718  | 275           |
-| Viraj Bhartiya        | 5       | +2624/-580   | 50            |
-| Phi                   | 7       | +1337/-1519  | 257           |
-| Mikers                | 1       | +1274/-455   | 23            |
-| Phi-rjan              | 29      | +736/-600    | 92            |
-| Andrew Jackson (Ajax) | 3       | +732/-504    | 75            |
-| LexLuthr              | 3       | +167/-996    | 8             |
-| Aarsh Shah            | 12      | +909/-177    | 47            |
-| web3-bot              | 40      | +445/-550    | 68            |
-| Piotr Galar           | 6       | +622/-372    | 15            |
-| aarshkshah1992        | 18      | +544/-299    | 40            |
-| Steve Loeppky         | 14      | +401/-196    | 22            |
-| Frrist                | 1       | +403/-22     | 5             |
-| Łukasz Magiera        | 4       | +266/-27     | 13            |
-| winniehere            | 1       | +146/-144    | 3             |
-| Jon                   | 1       | +209/-41     | 4             |
-| Aryan Tikarya         | 2       | +183/-8      | 7             |
-| adlrocha              | 2       | +123/-38     | 21            |
-| dependabot[bot]       | 11      | +87/-61      | 22            |
-| Jiaying Wang          | 8       | +61/-70      | 12            |
-| Ian Davis             | 2       | +60/-38      | 5             |
-| Aayush Rajasekaran    | 2       | +81/-3       | 3             |
-| hanabi1224            | 4       | +46/-4       | 5             |
-| Laurent Senta         | 1       | +44/-1       | 2             |
-| jennijuju             | 6       | +21/-20      | 17            |
-| parthshah1            | 1       | +23/-13      | 1             |
-| Brendan O'Brien       | 1       | +25/-10      | 2             |
-| Jennifer Wang         | 4       | +24/-8       | 6             |
-| Matthew Rothenberg    | 3       | +10/-18      | 6             |
-| riskrose              | 1       | +8/-8        | 7             |
-| linghuying            | 1       | +5/-5        | 5             |
-| fsgerse               | 2       | +3/-7        | 3             |
-| PolyMa                | 1       | +5/-5        | 5             |
-| zhangguanzhang        | 1       | +3/-3        | 2             |
-| luozexuan             | 1       | +3/-3        | 3             |
-| Po-Chun Chang         | 1       | +6/-0        | 2             |
-| Kevin Martin          | 1       | +4/-1        | 2             |
-| simlecode             | 1       | +2/-2        | 2             |
-| ZenGround0            | 1       | +2/-2        | 2             |
-| GFZRZK                | 1       | +2/-1        | 1             |
-| DemoYeti              | 1       | +2/-1        | 1             |
-| qwdsds                | 1       | +1/-1        | 1             |
-| Samuel Arogbonlo      | 1       | +2/-0        | 2             |
-| Elias Rad             | 1       | +1/-1        | 1             |
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Krishang | 2 | +34106/-0 | 109 |
+| Rod Vagg | 86 | +10643/-8291 | 456 |
+| Masih H. Derkani | 59 | +7700/-4725 | 298 |
+| Steven Allen | 55 | +6113/-3169 | 272 |
+| kamuik16 | 7 | +4618/-1333 | 285 |
+| Jakub Sztandera | 10 | +3995/-1226 | 94 |
+| Peter Rabbitson | 26 | +2313/-2718 | 275 |
+| Viraj Bhartiya | 5 | +2624/-580 | 50 |
+| Phi | 7 | +1337/-1519 | 257 |
+| Mikers | 1 | +1274/-455 | 23 |
+| Phi-rjan | 29 | +736/-600 | 92 |
+| Andrew Jackson (Ajax) | 3 | +732/-504 | 75 |
+| LexLuthr | 3 | +167/-996 | 8 |
+| Aarsh Shah | 12 | +909/-177 | 47 |
+| web3-bot | 40 | +445/-550 | 68 |
+| Piotr Galar | 6 | +622/-372 | 15 |
+| aarshkshah1992 | 18 | +544/-299 | 40 |
+| Steve Loeppky | 14 | +401/-196 | 22 |
+| Frrist | 1 | +403/-22 | 5 |
+| Łukasz Magiera | 4 | +266/-27 | 13 |
+| winniehere | 1 | +146/-144 | 3 |
+| Jon | 1 | +209/-41 | 4 |
+| Aryan Tikarya | 2 | +183/-8 | 7 |
+| adlrocha | 2 | +123/-38 | 21 |
+| dependabot[bot] | 11 | +87/-61 | 22 |
+| Jiaying Wang | 8 | +61/-70 | 12 |
+| Ian Davis | 2 | +60/-38 | 5 |
+| Aayush Rajasekaran | 2 | +81/-3 | 3 |
+| hanabi1224 | 4 | +46/-4 | 5 |
+| Laurent Senta | 1 | +44/-1 | 2 |
+| jennijuju | 6 | +21/-20 | 17 |
+| parthshah1 | 1 | +23/-13 | 1 |
+| Brendan O'Brien | 1 | +25/-10 | 2 |
+| Jennifer Wang | 4 | +24/-8 | 6 |
+| Matthew Rothenberg | 3 | +10/-18 | 6 |
+| riskrose | 1 | +8/-8 | 7 |
+| linghuying | 1 | +5/-5 | 5 |
+| fsgerse | 2 | +3/-7 | 3 |
+| PolyMa | 1 | +5/-5 | 5 |
+| zhangguanzhang | 1 | +3/-3 | 2 |
+| luozexuan | 1 | +3/-3 | 3 |
+| Po-Chun Chang | 1 | +6/-0 | 2 |
+| Kevin Martin | 1 | +4/-1 | 2 |
+| simlecode | 1 | +2/-2 | 2 |
+| ZenGround0 | 1 | +2/-2 | 2 |
+| GFZRZK | 1 | +2/-1 | 1 |
+| DemoYeti | 1 | +2/-1 | 1 |
+| qwdsds | 1 | +1/-1 | 1 |
+| Samuel Arogbonlo | 1 | +2/-0 | 2 |
+| Elias Rad | 1 | +1/-1 | 1 |
 
 # Node v1.29.2 / 2024-10-03
 
@@ -163,13 +161,13 @@ This is the stable release for Lotus node v1.29.2. Key updates in this release i
 
 ## 👨‍👩‍👧‍👦 Contributors
 
-| Contributor    | Commits | Lines ±    | Files Changed |
-| -------------- | ------- | ---------- | ------------- |
-| aarshkshah1992 | 2       | +1753/-662 | 12            |
-| Viraj Bhartiya | 1       | +770/-38   | 18            |
-| Rod Vagg       | 1       | +480/-83   | 14            |
-| Phi-rjan       | 2       | +20/-13    | 9             |
-| Phi            | 2       | +6/-25     | 7             |
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| aarshkshah1992 | 2 | +1753/-662 | 12 |
+| Viraj Bhartiya | 1 | +770/-38 | 18 |
+| Rod Vagg | 1 | +480/-83 | 14 |
+| Phi-rjan | 2 | +20/-13 | 9 |
+| Phi | 2 | +6/-25 | 7 |
 
 # Node v1.29.1 / 2024-09-16
 
@@ -214,7 +212,7 @@ This is a Lotus Node only release, which includes a variety of new features, imp
 
 ## 📝 Changelog
 
-See https://github.com/filecoin-project/lotus/compare/v1.28.2...release/v1.29.0 for the set of changes since the last release.  
+See https://github.com/filecoin-project/lotus/compare/v1.28.2...release/v1.29.0 for the set of changes since the last release.
 
 <details><summary>Organized Changelog</summary>
 
@@ -222,7 +220,7 @@ See https://github.com/filecoin-project/lotus/compare/v1.28.2...release/v1.29.0 
 
 - feat: Add trace filter API supporting RPC method `trace_filter` ([filecoin-project/lotus#12123](https://github.com/filecoin-project/lotus/pull/12123)). Configuring `EthTraceFilterMaxResults` sets a limit on how many results are returned in any individual `trace_filter` RPC API call.
 - feat: `FilecoinAddressToEthAddress` RPC can now return ETH addresses for all Filecoin address types ("f0"/"f1"/"f2"/"f3") based on client's re-org tolerance. This is a breaking change if you are using the API via the go-jsonrpc library or by using Lotus as a library, but is a non-breaking change when using the API via any other RPC method as it adds an optional second argument.
-([filecoin-project/lotus#12324](https://github.com/filecoin-project/lotus/pull/12324)).
+  ([filecoin-project/lotus#12324](https://github.com/filecoin-project/lotus/pull/12324)).
 - feat: Added `lotus-shed indexes inspect-events` health-check command ([filecoin-project/lotus#12346](https://github.com/filecoin-project/lotus/pull/12346)).
 - feat(libp2p): expose libp2p bandwidth metrics (#12402) ([filecoin-project/lotus#12402](https://github.com/filecoin-project/lotus/pull/12402))
 - feat: Lotus Send CLI: Lotus send should work with ETH address receipients (#12319)
@@ -301,7 +299,7 @@ From https://github.com/filecoin-project/lotus/compare/v1.28.2...release/v1.29.0
 - chore: cli: use `embed` pkg to split long template content to file (#12193) ([filecoin-project/lotus#12193](https://github.com/filecoin-project/lotus/pull/12193))
 - ci: provide additional input for the buildpulse-action (#12329) ([filecoin-project/lotus#12329](https://github.com/filecoin-project/lotus/pull/12329))
 - chore: docs: Update label to skip/changelog in the PR-template (#12201) ([filecoin-project/lotus#12201](https://github.com/filecoin-project/lotus/pull/12201))
-chore: all: fix comment (#12256) ([filecoin-project/lotus#12256](https://github.com/filecoin-project/lotus/pull/12256))
+  chore: all: fix comment (#12256) ([filecoin-project/lotus#12256](https://github.com/filecoin-project/lotus/pull/12256))
 - chore: ui: add a terminal check (#12256) ([filecoin-project/lotus#12256](https://github.com/filecoin-project/lotus/pull/12256))
 - chore: types: buildconstants split post-cleanup (#12246) ([filecoin-project/lotus#12246](https://github.com/filecoin-project/lotus/pull/12246))
 - chore: lint: enable method, function & type godoc linting (#12258) ([filecoin-project/lotus#12258](https://github.com/filecoin-project/lotus/pull/12258))
@@ -326,51 +324,51 @@ chore: all: fix comment (#12256) ([filecoin-project/lotus#12256](https://github.
 
 ## 👨‍👩‍👧‍👦 Contributors
 
-| Contributor           | Commits | Lines ±     | Files Changed |
-| --------------------- | ------- | ----------- | ------------- |
-| Rod Vagg              | 45      | +4839/-2634 | 217           |
-| Peter Rabbitson       | 18      | +2503/-2195 | 209           |
-| Jakub Sztandera       | 5       | +2695/-1074 | 61            |
-| Mikers                | 1       | +1274/-455  | 23            |
-| Masih H. Derkani      | 7       | +873/-682   | 37            |
-| Andrew Jackson (Ajax) | 3       | +732/-504   | 75            |
-| LexLuthr              | 3       | +167/-996   | 8             |
-| Piotr Galar           | 6       | +622/-372   | 15            |
-| Aarsh Shah            | 11      | +791/-177   | 44            |
-| Phi-rjan              | 15      | +476/-178   | 50            |
-| web3-bot              | 32      | +330/-319   | 39            |
-| Steven Allen          | 8       | +367/-165   | 41            |
-| aarshkshah1992        | 17      | +379/-87    | 32            |
-| Frrist                | 1       | +403/-22    | 5             |
-| Łukasz Magiera        | 4       | +266/-27    | 13            |
-| winniehere            | 1       | +146/-144   | 3             |
-| Steve Loeppky         | 5       | +162/-53    | 7             |
-| Aryan Tikarya         | 2       | +183/-8     | 7             |
-| adlrocha              | 2       | +123/-38    | 21            |
-| Jiaying Wang          | 7       | +52/-68     | 9             |
-| Ian Davis             | 2       | +60/-38     | 5             |
-| Aayush Rajasekaran    | 1       | +80/-2      | 2             |
-| hanabi1224            | 4       | +46/-4      | 5             |
-| Laurent Senta         | 1       | +44/-1      | 2             |
-| jennijuju             | 6       | +21/-20     | 17            |
-| Brendan O'Brien       | 1       | +25/-10     | 2             |
-| Jennifer Wang         | 4       | +24/-8      | 6             |
-| dependabot[bot]       | 4       | +15/-15     | 8             |
-| riskrose              | 1       | +8/-8       | 7             |
-| Phi                   | 1       | +6/-6       | 6             |
-| linghuying            | 1       | +5/-5       | 5             |
-| fsgerse               | 2       | +3/-7       | 3             |
-| PolyMa                | 1       | +5/-5       | 5             |
-| zhangguanzhang        | 1       | +3/-3       | 2             |
-| luozexuan             | 1       | +3/-3       | 3             |
-| Po-Chun Chang         | 1       | +6/-0       | 2             |
-| Kevin Martin          | 1       | +4/-1       | 2             |
-| simlecode             | 1       | +2/-2       | 2             |
-| ZenGround0            | 1       | +2/-2       | 2             |
-| GFZRZK                | 1       | +2/-1       | 1             |
-| zl                    | 1       | +1/-1       | 1             |
-| qwdsds                | 1       | +1/-1       | 1             |
-| Elias Rad             | 1       | +1/-1       | 1             |
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Rod Vagg | 45 | +4839/-2634 | 217 |
+| Peter Rabbitson | 18 | +2503/-2195 | 209 |
+| Jakub Sztandera | 5 | +2695/-1074 | 61 |
+| Mikers | 1 | +1274/-455 | 23 |
+| Masih H. Derkani | 7 | +873/-682 | 37 |
+| Andrew Jackson (Ajax) | 3 | +732/-504 | 75 |
+| LexLuthr | 3 | +167/-996 | 8 |
+| Piotr Galar | 6 | +622/-372 | 15 |
+| Aarsh Shah | 11 | +791/-177 | 44 |
+| Phi-rjan | 15 | +476/-178 | 50 |
+| web3-bot | 32 | +330/-319 | 39 |
+| Steven Allen | 8 | +367/-165 | 41 |
+| aarshkshah1992 | 17 | +379/-87 | 32 |
+| Frrist | 1 | +403/-22 | 5 |
+| Łukasz Magiera | 4 | +266/-27 | 13 |
+| winniehere | 1 | +146/-144 | 3 |
+| Steve Loeppky | 5 | +162/-53 | 7 |
+| Aryan Tikarya | 2 | +183/-8 | 7 |
+| adlrocha | 2 | +123/-38 | 21 |
+| Jiaying Wang | 7 | +52/-68 | 9 |
+| Ian Davis | 2 | +60/-38 | 5 |
+| Aayush Rajasekaran | 1 | +80/-2 | 2 |
+| hanabi1224 | 4 | +46/-4 | 5 |
+| Laurent Senta | 1 | +44/-1 | 2 |
+| jennijuju | 6 | +21/-20 | 17 |
+| Brendan O'Brien | 1 | +25/-10 | 2 |
+| Jennifer Wang | 4 | +24/-8 | 6 |
+| dependabot[bot] | 4 | +15/-15 | 8 |
+| riskrose | 1 | +8/-8 | 7 |
+| Phi | 1 | +6/-6 | 6 |
+| linghuying | 1 | +5/-5 | 5 |
+| fsgerse | 2 | +3/-7 | 3 |
+| PolyMa | 1 | +5/-5 | 5 |
+| zhangguanzhang | 1 | +3/-3 | 2 |
+| luozexuan | 1 | +3/-3 | 3 |
+| Po-Chun Chang | 1 | +6/-0 | 2 |
+| Kevin Martin | 1 | +4/-1 | 2 |
+| simlecode | 1 | +2/-2 | 2 |
+| ZenGround0 | 1 | +2/-2 | 2 |
+| GFZRZK | 1 | +2/-1 | 1 |
+| zl | 1 | +1/-1 | 1 |
+| qwdsds | 1 | +1/-1 | 1 |
+| Elias Rad | 1 | +1/-1 | 1 |
 
 # 1.28.2 / 2024-08-15
 
@@ -382,8 +380,8 @@ For storage providers, this patch release fixes pledge issues users have been en
 
 ## ☢️ Upgrade Warnings ☢️
 - The `releases` branch has been deprecated with the 202408 split of 'Lotus Node' and 'Lotus Miner'. See https://github.com/filecoin-project/lotus/blob/master/LOTUS_RELEASE_FLOW.md#why-is-the-releases-branch-deprecated-and-what-are-alternatives for more info and alternatives for getting the latest release for both the 'Lotus Node' and 'Lotus Miner' based on the [Branch and Tag Strategy](https://github.com/filecoin-project/lotus/blob/master/LOTUS_RELEASE_FLOW.md#branch-and-tag-strategy).
-   - To get the latest Lotus Node tag: `git tag -l 'v*' | sort -V -r | head -n 1`  
-   - To get the latest Lotus Miner tag: `git tag -l 'miner/v*' | sort -V -r | head -n 1`
+  - To get the latest Lotus Node tag: `git tag -l 'v*' | sort -V -r | head -n 1`
+  - To get the latest Lotus Miner tag: `git tag -l 'miner/v*' | sort -V -r | head -n 1`
 - Breaking change in Miner public APIs `storage/pipeline.NewPreCommitBatcher` and `storage/pipeline.New`. They now have an additional error return to deal with errors arising from fetching the sealing config.
 
 - https://github.com/filecoin-project/lotus/pull/12390: Update go-f3 to 0.2.0
@@ -528,14 +526,14 @@ This is the stable release of Lotus v1.27.2. This will be an OPTIONAL Lotus rele
 
 Contributors
 
-| Contributor     | Commits | Lines ±  | Files Changed |
-| --------------- | ------- | -------- | ------------- |
-| Aarsh Shah      | 2       | +424/-28 | 4             |
-| Steven Allen    | 1       | +137/-0  | 3             |
-| Mikers          | 1       | +63/-0   | 4             |
-| Phi-rjan        | 1       | +10/-10  | 2             |
-| Peter Rabbitson | 1       | +4/-8    | 1             |
-| Hubert          | 1       | +0/-1    | 1             |
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Aarsh Shah | 2 | +424/-28 | 4 |
+| Steven Allen | 1 | +137/-0 | 3 |
+| Mikers | 1 | +63/-0 | 4 |
+| Phi-rjan | 1 | +10/-10 | 2 |
+| Peter Rabbitson | 1 | +4/-8 | 1 |
+| Hubert | 1 | +0/-1 | 1 |
 
 # v1.27.1 / 2024-06-24
 
@@ -667,23 +665,23 @@ There is no change in the behaviour when a call returns an error, as the error o
 
 ## Contributors
 
-| Contributor           | Commits | Lines ±      | Files Changed |
-| --------------------- | ------- | ------------ | ------------- |
-| Aarsh Shah            | 9       | +5710/-35899 | 201           |
-| Łukasz Magiera        | 21      | +1891/-33776 | 335           |
-| LexLuthr              | 9       | +4916/-1637  | 107           |
-| Phi-rjan              | 9       | +3544/-187   | 92            |
-| Rod Vagg              | 15      | +2183/-479   | 164           |
-| Piotr Galar           | 6       | +130/-2386   | 30            |
-| Andrew Jackson (Ajax) | 6       | +1072/-533   | 63            |
-| ZenGround0            | 1       | +235/-13     | 3             |
-| Hubert Bugaj          | 3       | +57/-37      | 5             |
-| Steven Allen          | 3       | +25/-15      | 6             |
-| Peter Rabbitson       | 1       | +16/-8       | 4             |
-| tomfees               | 1       | +6/-6        | 5             |
-| imxyb                 | 1       | +6/-0        | 1             |
-| yumeiyin              | 1       | +2/-2        | 2             |
-| galargh               | 1       | +2/-2        | 1             |
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Aarsh Shah | 9 | +5710/-35899 | 201 |
+| Łukasz Magiera | 21 | +1891/-33776 | 335 |
+| LexLuthr | 9 | +4916/-1637 | 107 |
+| Phi-rjan | 9 | +3544/-187 | 92 |
+| Rod Vagg | 15 | +2183/-479 | 164 |
+| Piotr Galar | 6 | +130/-2386 | 30 |
+| Andrew Jackson (Ajax) | 6 | +1072/-533 | 63 |
+| ZenGround0 | 1 | +235/-13 | 3 |
+| Hubert Bugaj | 3 | +57/-37 | 5 |
+| Steven Allen | 3 | +25/-15 | 6 |
+| Peter Rabbitson | 1 | +16/-8 | 4 |
+| tomfees | 1 | +6/-6 | 5 |
+| imxyb | 1 | +6/-0 | 1 |
+| yumeiyin | 1 | +2/-2 | 2 |
+| galargh | 1 | +2/-2 | 1 |
 
 # v1.27.0 / 2024-05-27
 
@@ -853,43 +851,43 @@ Visit the Curio Official Website insert link
 
 ## Contributors
 
-| Contributor           | Commits | Lines ±      | Files Changed |
-| --------------------- | ------- | ------------ | ------------- |
-| Rod Vagg              | 20      | +55315/-204  | 58            |
-| Łukasz Magiera        | 201     | +16244/-6541 | 647           |
-| Andrew Jackson (Ajax) | 53      | +15293/-6764 | 394           |
-| Phi-rjan              | 6       | +12669/-4521 | 221           |
-| LexLuthr              | 20      | +5972/-2815  | 120           |
-| Steven Allen          | 22      | +1626/-1264  | 77            |
-| Piotr Galar           | 9       | +790/-412    | 33            |
-| Aayush Rajasekaran    | 4       | +642/-509    | 12            |
-| Lee                   | 1       | +601/-533    | 9             |
-| qwdsds                | 3       | +617/-510    | 11            |
-| Phi                   | 11      | +551/-83     | 32            |
-| Jiaying Wang          | 5       | +433/-20     | 13            |
-| Masih H. Derkani      | 4       | +350/-101    | 18            |
-| Aayush                | 4       | +143/-76     | 17            |
-| Aarsh Shah            | 3       | +63/-11      | 5             |
-| jennijuju             | 3       | +22/-22      | 12            |
-| hunjixin              | 1       | +21/-14      | 4             |
-| beck                  | 2       | +17/-17      | 2             |
-| tom123222             | 2       | +28/-4       | 2             |
-| Ian Norden            | 1       | +21/-1       | 1             |
-| ZenGround0            | 1       | +3/-15       | 1             |
-| shuangcui             | 1       | +7/-7        | 6             |
-| Vid Bregar            | 1       | +7/-4        | 2             |
-| writegr               | 1       | +5/-5        | 5             |
-| Nagaprasad V R        | 1       | +9/-0        | 1             |
-| forcedebug            | 1       | +4/-4        | 4             |
-| parthshah1            | 2       | +6/-1        | 2             |
-| fuyangpengqi          | 1       | +3/-3        | 3             |
-| Samuel Arogbonlo      | 1       | +6/-0        | 2             |
-| GlacierWalrus         | 1       | +0/-6        | 1             |
-| Aloxaf                | 1       | +6/-0        | 2             |
-| Rob Quist             | 2       | +2/-3        | 3             |
-| wersfeds              | 1       | +2/-2        | 1             |
-| Jon                   | 1       | +2/-0        | 1             |
-| 0x5459                | 1       | +1/-0        | 1             |
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Rod Vagg | 20 | +55315/-204 | 58 |
+| Łukasz Magiera | 201 | +16244/-6541 | 647 |
+| Andrew Jackson (Ajax) | 53 | +15293/-6764 | 394 |
+| Phi-rjan | 6 | +12669/-4521 | 221 |
+| LexLuthr | 20 | +5972/-2815 | 120 |
+| Steven Allen | 22 | +1626/-1264 | 77 |
+| Piotr Galar | 9 | +790/-412 | 33 |
+| Aayush Rajasekaran | 4 | +642/-509 | 12 |
+| Lee | 1 | +601/-533 | 9 |
+| qwdsds | 3 | +617/-510 | 11 |
+| Phi | 11 | +551/-83 | 32 |
+| Jiaying Wang | 5 | +433/-20 | 13 |
+| Masih H. Derkani | 4 | +350/-101 | 18 |
+| Aayush | 4 | +143/-76 | 17 |
+| Aarsh Shah | 3 | +63/-11 | 5 |
+| jennijuju | 3 | +22/-22 | 12 |
+| hunjixin | 1 | +21/-14 | 4 |
+| beck | 2 | +17/-17 | 2 |
+| tom123222 | 2 | +28/-4 | 2 |
+| Ian Norden | 1 | +21/-1 | 1 |
+| ZenGround0 | 1 | +3/-15 | 1 |
+| shuangcui | 1 | +7/-7 | 6 |
+| Vid Bregar | 1 | +7/-4 | 2 |
+| writegr | 1 | +5/-5 | 5 |
+| Nagaprasad V R | 1 | +9/-0 | 1 |
+| forcedebug | 1 | +4/-4 | 4 |
+| parthshah1 | 2 | +6/-1 | 2 |
+| fuyangpengqi | 1 | +3/-3 | 3 |
+| Samuel Arogbonlo | 1 | +6/-0 | 2 |
+| GlacierWalrus | 1 | +0/-6 | 1 |
+| Aloxaf | 1 | +6/-0 | 2 |
+| Rob Quist | 2 | +2/-3 | 3 |
+| wersfeds | 1 | +2/-2 | 1 |
+| Jon | 1 | +2/-0 | 1 |
+| 0x5459 | 1 | +1/-0 | 1 |
 
 # v1.26.3 / 2024-04-22
 
@@ -938,7 +936,7 @@ See the [v1.26.0](#v1260--2024-03-21) release notes below for inclusions and not
 
 The agreed-upon epoch between the Filecoin implementer team for the update is `1493854`, corresponding to `2024-04-03T11:00:00Z`. All Calibration network users need to upgrade to this patch release before that.
 
- **Lotus Mainnet Users**: For users on the Mainnet, the [Lotus v1.26.0](https://github.com/filecoin-project/lotus/releases/tag/v1.26.0) release already includes the aforementioned events in preparation for the Mainnet nv22 upgrade. Therefore, both v1.26.0 and v1.26.1 versions are suitable for use on the Mainnet for the coming network version 22 upgrade.
+**Lotus Mainnet Users**: For users on the Mainnet, the [Lotus v1.26.0](https://github.com/filecoin-project/lotus/releases/tag/v1.26.0) release already includes the aforementioned events in preparation for the Mainnet nv22 upgrade. Therefore, both v1.26.0 and v1.26.1 versions are suitable for use on the Mainnet for the coming network version 22 upgrade.
 
 # v1.26.0 / 2024-03-21
 
@@ -1098,7 +1096,7 @@ Additionally the methods `GetAllAllocations` and `GetAllClaims` has been added t
 ### Lotus CLI
 
 The `filplus` commands used for listing allocations and claims have been updated. If no argument is provided to the either command, they will list out all the allocations and claims in the verified registry actor.
-The output list columns have been modified to `AllocationID` and `ClaimID` instead of ID. 
+The output list columns have been modified to `AllocationID` and `ClaimID` instead of ID.
 
 ```shell
 lotus filplus list-allocations --help
@@ -1148,7 +1146,7 @@ OPTIONS:
 - chore: Add lotus-provider to build to match install ([filecoin-project/lotus#11616](https://github.com/filecoin-project/lotus/pull/11616))
 - new: add forest bootstrap nodes (#11636) ([filecoin-project/lotus#11636](https://github.com/filecoin-project/lotus/pull/11636))
 
-# v1.25.2 / 2024-01-11 
+# v1.25.2 / 2024-01-11
 
 This is an optional but **highly recommended feature release** of Lotus, as it includes fixes for synchronizations issues that users have experienced. The feature release also introduces `Lotus-Provider` in its alpha testing phase, as well as the ability to call external PC2-binaries during the sealing process.
 
@@ -1176,7 +1174,7 @@ So what is so exciting about Lotus-Provider:
 
 Read more about [`Lotus-Provider` in the documentation here](https://lotus.filecoin.io/storage-providers/lotus-provider/overview/). And check out the how you can migrate from [Lotus-Miner to Lotus-Provider here](https://lotus.filecoin.io/storage-providers/lotus-provider/setup/). **(Only recommended in testnets while its in Alpha)**
 
-### External PC2-binaries 
+### External PC2-binaries
 
 In this feature release, storage providers can call external PC2-binaries during the sealing process. This allows storage providers to leverage the SupraSeal PC2 binary, which has been shown to improve sealing speed in the PC2-phase. For instance, our current benchmarks show that an NVIDIA RTX A5000 card was able to complete PC2 in approximately 2.5 minutes.
 
@@ -1186,23 +1184,23 @@ For more information on how to use SupraSeal PC2 with your `lotus-worker`, as we
 
 ## New features
 - feat: sturdypost work branch ([filecoin-project/lotus#11405](https://github.com/filecoin-project/lotus/pull/11405))
-   - Adds the `Lotus-Provider` binary, and the HarmonyDB framework.
+  - Adds the `Lotus-Provider` binary, and the HarmonyDB framework.
 - feat: worker: Support delegating precommit2 to external binary ([filecoin-project/lotus#11185](https://github.com/filecoin-project/lotus/pull/11185))
-   - Allows for delegating PreCommit2 to an exteranl binary.
+  - Allows for delegating PreCommit2 to an exteranl binary.
 - feat: build: Add SupraSeal-PC2 binary script ([filecoin-project/lotus#11430](https://github.com/filecoin-project/lotus/pull/11430))
-   - Adds a script for building the SupraSeal-PC2 binary easily.
+  - Adds a script for building the SupraSeal-PC2 binary easily.
 - Feat: daemon: Auto remove existing chain if importing chain file or snapshot ([filecoin-project/lotus#11277](https://github.com/filecoin-project/lotus/pull/11277))
-   - Auto removes the existing chain when importing a snapshot. 
+  - Auto removes the existing chain when importing a snapshot.
 - feat: Add ETA to lotus sync wait (#11211) ([filecoin-project/lotus#11211](https://github.com/filecoin-project/lotus/pull/11211))
-   - Adds a ETA indicator to `lotus sync wait`, so you can get an estimate for how long until sync is completed.
+  - Adds a ETA indicator to `lotus sync wait`, so you can get an estimate for how long until sync is completed.
 - feat: mpool/wdpost: Maximize feecap config ([filecoin-project/lotus#9746](https://github.com/filecoin-project/lotus/pull/9746))
-   - Adds a Maximixe FeeCap Config
+  - Adds a Maximixe FeeCap Config
 - feat: Add lotus-bench cli option to stress test any binary ([filecoin-project/lotus#11270](https://github.com/filecoin-project/lotus/pull/11270))
-   - Enables the `Lotus-Bench` to run any binary and analyze their latency and histogram distribution, track most common errors, perform stress testing under different concurrency levels and see how it works under different QPS.
+  - Enables the `Lotus-Bench` to run any binary and analyze their latency and histogram distribution, track most common errors, perform stress testing under different concurrency levels and see how it works under different QPS.
 - feat: chain import: don't walk to genesis - 2-3x faster snapshot import (#11446) ([filecoin-project/lotus#11446](https://github.com/filecoin-project/lotus/pull/11446))
-   - Improves Snapshot import speed, by not walking back to genesis on import.
+  - Improves Snapshot import speed, by not walking back to genesis on import.
 - feat: metric: export Mpool message count ([filecoin-project/lotus#11361](https://github.com/filecoin-project/lotus/pull/11361))
-   - Adds the mpool count as a prometheus metric.
+  - Adds the mpool count as a prometheus metric.
 - feat: bench: flag to output GenerateWinningPoStWithVanilla params ([filecoin-project/lotus#11460](https://github.com/filecoin-project/lotus/pull/11460))
 
 ## Improvements
@@ -1297,39 +1295,39 @@ For more information on how to use SupraSeal PC2 with your `lotus-worker`, as we
 
 ## Contributors
 
-| Contributor            | Commits | Lines ±       | Files Changed |
-| ---------------------- | ------- | ------------- | ------------- |
-| Andrew Jackson (Ajax)  | 161     | +24328/-12464 | 4148          |
-| Łukasz Magiera         | 99      | +5238/-2690   | 260           |
-| Shrenuj Bansal         | 27      | +3402/-1265   | 76            |
-| Fridrik Asmundsson     | 15      | +1148/-307    | 58            |
-| Steven Allen           | 15      | +674/-337     | 35            |
-| Ian Norden             | 1       | +625/-3       | 4             |
-| Aarsh Shah             | 4       | +227/-167     | 14            |
-| Phi                    | 19      | +190/-183     | 32            |
-| Aayush Rajasekaran     | 3       | +291/-56      | 16            |
-| Mikers                 | 2       | +76/-262      | 19            |
-| Aayush                 | 14      | +111/-59      | 21            |
-| Friðrik Ásmundsson     | 1       | +101/-1       | 2             |
-| Alejandro Criado-Pérez | 1       | +36/-36       | 27            |
-| Jie Hou                | 5       | +36/-10       | 5             |
-| Florian RUEN           | 2       | +24/-19       | 5             |
-| Phi-rjan               | 3       | +20/-8        | 3             |
-| Icarus9913             | 1       | +11/-11       | 6             |
-| Jiaying Wang           | 3       | +8/-7         | 5             |
-| guangwu                | 1       | +3/-10        | 2             |
-| Marten Seemann         | 1       | +6/-6         | 2             |
-| simlecode              | 1       | +0/-6         | 2             |
-| GlacierWalrus          | 2       | +0/-5         | 2             |
-| Anton Evangelatov      | 1       | +2/-2         | 1             |
-| Ales Dumikau           | 3       | +2/-2         | 3             |
-| renran                 | 1       | +2/-1         | 1             |
-| Volker Mische          | 1       | +1/-1         | 1             |
-| Icarus Wu              | 1       | +1/-1         | 1             |
-| Hubert                 | 1       | +1/-1         | 1             |
-| Aloxaf                 | 1       | +1/-1         | 1             |
-| Alejandro              | 1       | +1/-1         | 1             |
-| lazavikmaria           | 1       | +1/-0         | 1             |
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Andrew Jackson (Ajax) | 161 | +24328/-12464 | 4148 |
+| Łukasz Magiera | 99 | +5238/-2690 | 260 |
+| Shrenuj Bansal | 27 | +3402/-1265 | 76 |
+| Fridrik Asmundsson | 15 | +1148/-307 | 58 |
+| Steven Allen | 15 | +674/-337 | 35 |
+| Ian Norden | 1 | +625/-3 | 4 |
+| Aarsh Shah | 4 | +227/-167 | 14 |
+| Phi | 19 | +190/-183 | 32 |
+| Aayush Rajasekaran | 3 | +291/-56 | 16 |
+| Mikers | 2 | +76/-262 | 19 |
+| Aayush | 14 | +111/-59 | 21 |
+| Friðrik Ásmundsson | 1 | +101/-1 | 2 |
+| Alejandro Criado-Pérez | 1 | +36/-36 | 27 |
+| Jie Hou | 5 | +36/-10 | 5 |
+| Florian RUEN | 2 | +24/-19 | 5 |
+| Phi-rjan | 3 | +20/-8 | 3 |
+| Icarus9913 | 1 | +11/-11 | 6 |
+| Jiaying Wang | 3 | +8/-7 | 5 |
+| guangwu | 1 | +3/-10 | 2 |
+| Marten Seemann | 1 | +6/-6 | 2 |
+| simlecode | 1 | +0/-6 | 2 |
+| GlacierWalrus | 2 | +0/-5 | 2 |
+| Anton Evangelatov | 1 | +2/-2 | 1 |
+| Ales Dumikau | 3 | +2/-2 | 3 |
+| renran | 1 | +2/-1 | 1 |
+| Volker Mische | 1 | +1/-1 | 1 |
+| Icarus Wu | 1 | +1/-1 | 1 |
+| Hubert | 1 | +1/-1 | 1 |
+| Aloxaf | 1 | +1/-1 | 1 |
+| Alejandro | 1 | +1/-1 | 1 |
+| lazavikmaria | 1 | +1/-0 | 1 |
 
 # v1.25.1 / 2023-12-09
 
@@ -1476,7 +1474,7 @@ The Filecoin network version 21 delivers the following FIPs:
 - [FIP0052: Increase Max Sector Commitment to 3.5 years](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0052.md)
 - [FIP0059: Synthetic PoRep](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0059.md)
 - [FIP0071: Deterministic State Access (IPLD Reachability)](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0071.md)
-- [FIP0072: Improved event syscall API](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0072.md) 
+- [FIP0072: Improved event syscall API](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0072.md)
 - [FIP0073: Remove beneficiary from the self_destruct syscall](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0073.md)
 - [FIP0075: Improvements to FVM randomness syscalls](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0075.md)
 
@@ -1540,11 +1538,11 @@ There is a new protocol limit on how many partition could be submited in one PoS
 
 ## New features
 - Implement and support [FIP0052: Increase Max Sector Commitment to 3.5 years](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0052.md)
-   - fix: docs: Update SectorLifetime to be in line with FIP-0052 ([filecoin-project/lotus#11314](https://github.com/filecoin-project/lotus/pull/11314))
+  - fix: docs: Update SectorLifetime to be in line with FIP-0052 ([filecoin-project/lotus#11314](https://github.com/filecoin-project/lotus/pull/11314))
 - Implement and support [FIP0059: Synthetic PoRep](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0059.md) - Check out the [Lotus documentation for Synthetic PoRep](https://lotus.filecoin.io/storage-providers/advanced-configurations/sealing/#synthetic-porep).
-   - feat: implement Synthetic PoRep ([filecoin-project/lotus#11258](https://github.com/filecoin-project/lotus/pull/11258))
-   - chore: config: Update todo in UseSyntheticPoRep ([filecoin-project/lotus#11297](https://github.com/filecoin-project/lotus/pull/11297))
-   
+  - feat: implement Synthetic PoRep ([filecoin-project/lotus#11258](https://github.com/filecoin-project/lotus/pull/11258))
+  - chore: config: Update todo in UseSyntheticPoRep ([filecoin-project/lotus#11297](https://github.com/filecoin-project/lotus/pull/11297))
+
 ## Improvements
 - Backport: feat: sealing: Switch to calling PreCommitSectorBatch2 ([filecoin-project/lotus#11215](https://github.com/filecoin-project/lotus/pull/11215))
 - updated the boostrap nodes
@@ -1581,95 +1579,95 @@ This feature release requires a **minimum Go version of v1.19.12 or higher to su
   - If unset, we default to caching 16 most recent execution traces. Storage Providers may want to set this to 0, while exchanges may want to crank it up.
 
 ## New features
-  - feat: miner cli: sectors list upgrade-bounds tool ([filecoin-project/lotus#10923](https://github.com/filecoin-project/lotus/pull/10923))
-  - Add new RPC stress testing tool (lotus-bench rpc) with rich reporting ([filecoin-project/lotus#10761](https://github.com/filecoin-project/lotus/pull/10761))
-  - feat: alert: Add FVM_CONCURRENCY alert ([filecoin-project/lotus#10933](https://github.com/filecoin-project/lotus/pull/10933))
-  - feat: Add eth_syncing RPC method ([filecoin-project/lotus#10719](https://github.com/filecoin-project/lotus/pull/10719))
-  - feat: sealing: flag to run data_cid untied from addpiece ([filecoin-project/lotus#10797](https://github.com/filecoin-project/lotus/pull/10797))
-  - feat: Lotus Gateway: add MpoolPending, ChainGetBlock and MinerGetBaseInfo ([filecoin-project/lotus#10929](https://github.com/filecoin-project/lotus/pull/10929))
+- feat: miner cli: sectors list upgrade-bounds tool ([filecoin-project/lotus#10923](https://github.com/filecoin-project/lotus/pull/10923))
+- Add new RPC stress testing tool (lotus-bench rpc) with rich reporting ([filecoin-project/lotus#10761](https://github.com/filecoin-project/lotus/pull/10761))
+- feat: alert: Add FVM_CONCURRENCY alert ([filecoin-project/lotus#10933](https://github.com/filecoin-project/lotus/pull/10933))
+- feat: Add eth_syncing RPC method ([filecoin-project/lotus#10719](https://github.com/filecoin-project/lotus/pull/10719))
+- feat: sealing: flag to run data_cid untied from addpiece ([filecoin-project/lotus#10797](https://github.com/filecoin-project/lotus/pull/10797))
+- feat: Lotus Gateway: add MpoolPending, ChainGetBlock and MinerGetBaseInfo ([filecoin-project/lotus#10929](https://github.com/filecoin-project/lotus/pull/10929))
 
 ## Improvements && Bug Fixes
-  - chore: update ffi & fvm ([filecoin-project/lotus#11040](https://github.com/filecoin-project/lotus/pull/11040))
-  - feat: Make sure we don't store duplidate actor events caused to reorgs in events.db ([filecoin-project/lotus#11015](https://github.com/filecoin-project/lotus/pull/11015))
-  - sealing: Use only non-assigned deals when selecting snap sectors ([filecoin-project/lotus#11002](https://github.com/filecoin-project/lotus/pull/11002))
-  - chore: not display privatekey ([filecoin-project/lotus#11006](https://github.com/filecoin-project/lotus/pull/11006))
-  - chore: shed: update actor version ([filecoin-project/lotus#11020](https://github.com/filecoin-project/lotus/pull/11020))
-  - chore: migrate to boxo ([filecoin-project/lotus#10921](https://github.com/filecoin-project/lotus/pull/10921))
-  - feat: deflake TestDealsWithFinalizeEarly ([filecoin-project/lotus#10978](https://github.com/filecoin-project/lotus/pull/10978))
-  - fix: pubsub: do not treat ErrExistingNonce as Reject ([filecoin-project/lotus#10973](https://github.com/filecoin-project/lotus/pull/10973))
-  - feat: deflake TestDMLevelPartialRetrieval (#10972) ([filecoin-project/lotus#10972](https://github.com/filecoin-project/lotus/pull/10972))
-  - fix: eth: ensure that the event topics are non-nil ([filecoin-project/lotus#10971](https://github.com/filecoin-project/lotus/pull/10971))
-  - Add comment stating msgIndex is an experimental feature ([filecoin-project/lotus#10968](https://github.com/filecoin-project/lotus/pull/10968))
-  - feat: cli(compute-state) default to the tipset at the given epoch ([filecoin-project/lotus#10965](https://github.com/filecoin-project/lotus/pull/10965))
-  - Upgrade urfave dependency which now supports DisableSliceFlagSeparato… ([filecoin-project/lotus#10950](https://github.com/filecoin-project/lotus/pull/10950))
-  - Add new lotus-shed command for computing eth hash for a given message cid (#10961) ([filecoin-project/lotus#10961](https://github.com/filecoin-project/lotus/pull/10961))
-  - Prefill GetTipsetByHeight skiplist cache on lotus startup ([filecoin-project/lotus#10955](https://github.com/filecoin-project/lotus/pull/10955))
-  - Add lotus-shed command for backfilling txhash.db ([filecoin-project/lotus#10932](https://github.com/filecoin-project/lotus/pull/10932))
-  - chore: deps: update to go-libp2p 0.27.5 ([filecoin-project/lotus#10948](https://github.com/filecoin-project/lotus/pull/10948))
-  - Small improvement to make gen output ([filecoin-project/lotus#10951](https://github.com/filecoin-project/lotus/pull/10951))
-  - fix: improve perf of msgindex backfill ([filecoin-project/lotus#10941](https://github.com/filecoin-project/lotus/pull/10941))
-  - deps: update libp2p ([filecoin-project/lotus#10936](https://github.com/filecoin-project/lotus/pull/10936))
-  - sealing: Improve upgrade sector selection ([filecoin-project/lotus#10915](https://github.com/filecoin-project/lotus/pull/10915))
-  - Add timing test for mpool select with a large mpool dump ([filecoin-project/lotus#10650](https://github.com/filecoin-project/lotus/pull/10650))
-  - feat: slashfilter: drop outdated near-upgrade check ([filecoin-project/lotus#10925](https://github.com/filecoin-project/lotus/pull/10925))
-  - opt: MinerInfo adds the PendingOwnerAddress field ([filecoin-project/lotus#10927](https://github.com/filecoin-project/lotus/pull/10927))
-  - feat: itest: force PoSt more aggressively around deadline closure ([filecoin-project/lotus#10926](https://github.com/filecoin-project/lotus/pull/10926))
-  - test: messagepool: gas rewards are negative if GasFeeCap too low ([filecoin-project/lotus#10649](https://github.com/filecoin-project/lotus/pull/10649))
-  - fix: types: error out on decoding BlockMsg with extraneous data ([filecoin-project/lotus#10863](https://github.com/filecoin-project/lotus/pull/10863))
-  - update interop upgrade schedule  ([filecoin-project/lotus#10879](https://github.com/filecoin-project/lotus/pull/10879))
-  - itests: Test PoSt V1_1 on workers ([filecoin-project/lotus#10732](https://github.com/filecoin-project/lotus/pull/10732))
-  - Update gas_balancing.md ([filecoin-project/lotus#10924](https://github.com/filecoin-project/lotus/pull/10924))
-  - feat: cli: Make compact partitions cmd better ([filecoin-project/lotus#9070](https://github.com/filecoin-project/lotus/pull/9070))
-  - fix: include extra messages in ComputeState InvocResult output ([filecoin-project/lotus#10628](https://github.com/filecoin-project/lotus/pull/10628))
-  - feat: pubsub: treat ErrGasFeeCapTooLow as ignore, not reject ([filecoin-project/lotus#10652](https://github.com/filecoin-project/lotus/pull/10652))
-  - feat: run lotus-shed commands in context that is cancelled on sigterm ([filecoin-project/lotus#10877](https://github.com/filecoin-project/lotus/pull/10877))
-  - fix:lotus-fountain:set default data-cap same as MinVerifiedDealSize ([filecoin-project/lotus#10920](https://github.com/filecoin-project/lotus/pull/10920))
-  - pass the right g-recaptcha data
-  - fix: not call RUnlock ([filecoin-project/lotus#10912](https://github.com/filecoin-project/lotus/pull/10912))
-  - opt: cli: If present, print Events Root ([filecoin-project/lotus#10893](https://github.com/filecoin-project/lotus/pull/10893))
-  - Calibration faucet UI improvements ([filecoin-project/lotus#10905](https://github.com/filecoin-project/lotus/pull/10905))
-  - chore: chain: replace storetheindex with go-libipni ([filecoin-project/lotus#10841](https://github.com/filecoin-project/lotus/pull/10841))
-  - Add alerts to `Lotus info` cmd ([filecoin-project/lotus#10894](https://github.com/filecoin-project/lotus/pull/10894))
-  - fix: cli: make redeclare cmd work properly ([filecoin-project/lotus#10860](https://github.com/filecoin-project/lotus/pull/10860))
-  - fix: shed remove datacap not working with ledger ([filecoin-project/lotus#10880](https://github.com/filecoin-project/lotus/pull/10880))
-  - Check if epoch is negative in GetTipsetByHeight ([filecoin-project/lotus#10878](https://github.com/filecoin-project/lotus/pull/10878))
-  - chore: update go-fil-markets ([filecoin-project/lotus#10867](https://github.com/filecoin-project/lotus/pull/10867))
-  - feat: alerts: Add lotus-miner legacy-markets alert ([filecoin-project/lotus#10868](https://github.com/filecoin-project/lotus/pull/10868))
-  - feat:fountain:add grant-datacap support ([filecoin-project/lotus#10856](https://github.com/filecoin-project/lotus/pull/10856))
-  - feat: itests: add logs to blockminer.go failure case ([filecoin-project/lotus#10861](https://github.com/filecoin-project/lotus/pull/10861))
-  - feat: eth: Add support for blockHash param in eth_getLogs ([filecoin-project/lotus#10782](https://github.com/filecoin-project/lotus/pull/10782))
-  - lotus-fountain: make compatible with 0x addresses #10560 ([filecoin-project/lotus#10784](https://github.com/filecoin-project/lotus/pull/10784))
-  - feat: deflake sector_import_simple ([filecoin-project/lotus#10858](https://github.com/filecoin-project/lotus/pull/10858))
-  - fix: splitstore: remove deadlock around waiting for sync ([filecoin-project/lotus#10857](https://github.com/filecoin-project/lotus/pull/10857))
-  - fix: sched: Address GET_32G_MAX_CONCURRENT regression (#10850) ([filecoin-project/lotus#10850](https://github.com/filecoin-project/lotus/pull/10850))
-  - feat: fix deadlock in splitstore-mpool interaction ([filecoin-project/lotus#10840](https://github.com/filecoin-project/lotus/pull/10840))
-  - chore: update go-libp2p to v0.27.3 ([filecoin-project/lotus#10671](https://github.com/filecoin-project/lotus/pull/10671))
-  - libp2p: add QUIC and WebTransport to default listen addresses ([filecoin-project/lotus#10848](https://github.com/filecoin-project/lotus/pull/10848))
-  - fix: ci: Debugging m1 build ([filecoin-project/lotus#10749](https://github.com/filecoin-project/lotus/pull/10749))
-  - Validate that FromBlock/ToBlock epoch is indeed a hex value (#10780) ([filecoin-project/lotus#10780](https://github.com/filecoin-project/lotus/pull/10780))
-  - fix: remove invalid field UpgradePriceListOopsHeight ([filecoin-project/lotus#10772](https://github.com/filecoin-project/lotus/pull/10772))
-  - feat: deflake eth_balance_test ([filecoin-project/lotus#10847](https://github.com/filecoin-project/lotus/pull/10847))
-  - fix: tests: Use mutex-wrapped datastore in storage tests ([filecoin-project/lotus#10846](https://github.com/filecoin-project/lotus/pull/10846))
-  - Make lotus-fountain UI slightly friendlier ([filecoin-project/lotus#10785](https://github.com/filecoin-project/lotus/pull/10785))
-  - Make (un)subscribe and filter RPC methods require only read perm ([filecoin-project/lotus#10825](https://github.com/filecoin-project/lotus/pull/10825))
-  - deps: Update go-jsonrpc to v0.3.1 ([filecoin-project/lotus#10845](https://github.com/filecoin-project/lotus/pull/10845))
-  - feat: deflake paych_api_test ([filecoin-project/lotus#10843](https://github.com/filecoin-project/lotus/pull/10843))
-  - fix: Eth RPC: do not occlude block param errors. ([filecoin-project/lotus#10534](https://github.com/filecoin-project/lotus/pull/10534))
-  - feat: cli: More ux-friendly batching cmds ([filecoin-project/lotus#10837](https://github.com/filecoin-project/lotus/pull/10837))
-  - fix: cli: Hide legacy markets cmds ([filecoin-project/lotus#10842](https://github.com/filecoin-project/lotus/pull/10842))
-  - feat: chainstore: exit early in MaybeTakeHeavierTipset ([filecoin-project/lotus#10839](https://github.com/filecoin-project/lotus/pull/10839))
-  - fix: itest: fix eth deploy test flake ([filecoin-project/lotus#10829](https://github.com/filecoin-project/lotus/pull/10829))
-  - style: mempool: chain errors using xerrors.Errorf ([filecoin-project/lotus#10836](https://github.com/filecoin-project/lotus/pull/10836))
-  - feat: deflake msgindex_test.go ([filecoin-project/lotus#10826](https://github.com/filecoin-project/lotus/pull/10826))
-  - feat: deflake TestEthFeeHistory ([filecoin-project/lotus#10816](https://github.com/filecoin-project/lotus/pull/10816))
-  - feat: make RunClientTest louder when deals fail ([filecoin-project/lotus#10817](https://github.com/filecoin-project/lotus/pull/10817))
-  - fix: cli: Change arg wording in change-beneficiary cmd ([filecoin-project/lotus#10823](https://github.com/filecoin-project/lotus/pull/10823))
-  - refactor: streamline error handling in CheckPendingMessages (#10818) ([filecoin-project/lotus#10818](https://github.com/filecoin-project/lotus/pull/10818))
-  - feat: Add tmp indices to events table while performing migration to V2
-  - fix: sync: iterate over returned messages directly #11373
-  - fix: api: compute the effective gas cost with the correct base-fee #11357
-  - fix: check invariants: v12 check #11371
-  - fix: api: compute gasUsedRatio based on max gas in the tipset #11354
+- chore: update ffi & fvm ([filecoin-project/lotus#11040](https://github.com/filecoin-project/lotus/pull/11040))
+- feat: Make sure we don't store duplidate actor events caused to reorgs in events.db ([filecoin-project/lotus#11015](https://github.com/filecoin-project/lotus/pull/11015))
+- sealing: Use only non-assigned deals when selecting snap sectors ([filecoin-project/lotus#11002](https://github.com/filecoin-project/lotus/pull/11002))
+- chore: not display privatekey ([filecoin-project/lotus#11006](https://github.com/filecoin-project/lotus/pull/11006))
+- chore: shed: update actor version ([filecoin-project/lotus#11020](https://github.com/filecoin-project/lotus/pull/11020))
+- chore: migrate to boxo ([filecoin-project/lotus#10921](https://github.com/filecoin-project/lotus/pull/10921))
+- feat: deflake TestDealsWithFinalizeEarly ([filecoin-project/lotus#10978](https://github.com/filecoin-project/lotus/pull/10978))
+- fix: pubsub: do not treat ErrExistingNonce as Reject ([filecoin-project/lotus#10973](https://github.com/filecoin-project/lotus/pull/10973))
+- feat: deflake TestDMLevelPartialRetrieval (#10972) ([filecoin-project/lotus#10972](https://github.com/filecoin-project/lotus/pull/10972))
+- fix: eth: ensure that the event topics are non-nil ([filecoin-project/lotus#10971](https://github.com/filecoin-project/lotus/pull/10971))
+- Add comment stating msgIndex is an experimental feature ([filecoin-project/lotus#10968](https://github.com/filecoin-project/lotus/pull/10968))
+- feat: cli(compute-state) default to the tipset at the given epoch ([filecoin-project/lotus#10965](https://github.com/filecoin-project/lotus/pull/10965))
+- Upgrade urfave dependency which now supports DisableSliceFlagSeparato… ([filecoin-project/lotus#10950](https://github.com/filecoin-project/lotus/pull/10950))
+- Add new lotus-shed command for computing eth hash for a given message cid (#10961) ([filecoin-project/lotus#10961](https://github.com/filecoin-project/lotus/pull/10961))
+- Prefill GetTipsetByHeight skiplist cache on lotus startup ([filecoin-project/lotus#10955](https://github.com/filecoin-project/lotus/pull/10955))
+- Add lotus-shed command for backfilling txhash.db ([filecoin-project/lotus#10932](https://github.com/filecoin-project/lotus/pull/10932))
+- chore: deps: update to go-libp2p 0.27.5 ([filecoin-project/lotus#10948](https://github.com/filecoin-project/lotus/pull/10948))
+- Small improvement to make gen output ([filecoin-project/lotus#10951](https://github.com/filecoin-project/lotus/pull/10951))
+- fix: improve perf of msgindex backfill ([filecoin-project/lotus#10941](https://github.com/filecoin-project/lotus/pull/10941))
+- deps: update libp2p ([filecoin-project/lotus#10936](https://github.com/filecoin-project/lotus/pull/10936))
+- sealing: Improve upgrade sector selection ([filecoin-project/lotus#10915](https://github.com/filecoin-project/lotus/pull/10915))
+- Add timing test for mpool select with a large mpool dump ([filecoin-project/lotus#10650](https://github.com/filecoin-project/lotus/pull/10650))
+- feat: slashfilter: drop outdated near-upgrade check ([filecoin-project/lotus#10925](https://github.com/filecoin-project/lotus/pull/10925))
+- opt: MinerInfo adds the PendingOwnerAddress field ([filecoin-project/lotus#10927](https://github.com/filecoin-project/lotus/pull/10927))
+- feat: itest: force PoSt more aggressively around deadline closure ([filecoin-project/lotus#10926](https://github.com/filecoin-project/lotus/pull/10926))
+- test: messagepool: gas rewards are negative if GasFeeCap too low ([filecoin-project/lotus#10649](https://github.com/filecoin-project/lotus/pull/10649))
+- fix: types: error out on decoding BlockMsg with extraneous data ([filecoin-project/lotus#10863](https://github.com/filecoin-project/lotus/pull/10863))
+- update interop upgrade schedule  ([filecoin-project/lotus#10879](https://github.com/filecoin-project/lotus/pull/10879))
+- itests: Test PoSt V1_1 on workers ([filecoin-project/lotus#10732](https://github.com/filecoin-project/lotus/pull/10732))
+- Update gas_balancing.md ([filecoin-project/lotus#10924](https://github.com/filecoin-project/lotus/pull/10924))
+- feat: cli: Make compact partitions cmd better ([filecoin-project/lotus#9070](https://github.com/filecoin-project/lotus/pull/9070))
+- fix: include extra messages in ComputeState InvocResult output ([filecoin-project/lotus#10628](https://github.com/filecoin-project/lotus/pull/10628))
+- feat: pubsub: treat ErrGasFeeCapTooLow as ignore, not reject ([filecoin-project/lotus#10652](https://github.com/filecoin-project/lotus/pull/10652))
+- feat: run lotus-shed commands in context that is cancelled on sigterm ([filecoin-project/lotus#10877](https://github.com/filecoin-project/lotus/pull/10877))
+- fix:lotus-fountain:set default data-cap same as MinVerifiedDealSize ([filecoin-project/lotus#10920](https://github.com/filecoin-project/lotus/pull/10920))
+- pass the right g-recaptcha data
+- fix: not call RUnlock ([filecoin-project/lotus#10912](https://github.com/filecoin-project/lotus/pull/10912))
+- opt: cli: If present, print Events Root ([filecoin-project/lotus#10893](https://github.com/filecoin-project/lotus/pull/10893))
+- Calibration faucet UI improvements ([filecoin-project/lotus#10905](https://github.com/filecoin-project/lotus/pull/10905))
+- chore: chain: replace storetheindex with go-libipni ([filecoin-project/lotus#10841](https://github.com/filecoin-project/lotus/pull/10841))
+- Add alerts to `Lotus info` cmd ([filecoin-project/lotus#10894](https://github.com/filecoin-project/lotus/pull/10894))
+- fix: cli: make redeclare cmd work properly ([filecoin-project/lotus#10860](https://github.com/filecoin-project/lotus/pull/10860))
+- fix: shed remove datacap not working with ledger ([filecoin-project/lotus#10880](https://github.com/filecoin-project/lotus/pull/10880))
+- Check if epoch is negative in GetTipsetByHeight ([filecoin-project/lotus#10878](https://github.com/filecoin-project/lotus/pull/10878))
+- chore: update go-fil-markets ([filecoin-project/lotus#10867](https://github.com/filecoin-project/lotus/pull/10867))
+- feat: alerts: Add lotus-miner legacy-markets alert ([filecoin-project/lotus#10868](https://github.com/filecoin-project/lotus/pull/10868))
+- feat:fountain:add grant-datacap support ([filecoin-project/lotus#10856](https://github.com/filecoin-project/lotus/pull/10856))
+- feat: itests: add logs to blockminer.go failure case ([filecoin-project/lotus#10861](https://github.com/filecoin-project/lotus/pull/10861))
+- feat: eth: Add support for blockHash param in eth_getLogs ([filecoin-project/lotus#10782](https://github.com/filecoin-project/lotus/pull/10782))
+- lotus-fountain: make compatible with 0x addresses #10560 ([filecoin-project/lotus#10784](https://github.com/filecoin-project/lotus/pull/10784))
+- feat: deflake sector_import_simple ([filecoin-project/lotus#10858](https://github.com/filecoin-project/lotus/pull/10858))
+- fix: splitstore: remove deadlock around waiting for sync ([filecoin-project/lotus#10857](https://github.com/filecoin-project/lotus/pull/10857))
+- fix: sched: Address GET_32G_MAX_CONCURRENT regression (#10850) ([filecoin-project/lotus#10850](https://github.com/filecoin-project/lotus/pull/10850))
+- feat: fix deadlock in splitstore-mpool interaction ([filecoin-project/lotus#10840](https://github.com/filecoin-project/lotus/pull/10840))
+- chore: update go-libp2p to v0.27.3 ([filecoin-project/lotus#10671](https://github.com/filecoin-project/lotus/pull/10671))
+- libp2p: add QUIC and WebTransport to default listen addresses ([filecoin-project/lotus#10848](https://github.com/filecoin-project/lotus/pull/10848))
+- fix: ci: Debugging m1 build ([filecoin-project/lotus#10749](https://github.com/filecoin-project/lotus/pull/10749))
+- Validate that FromBlock/ToBlock epoch is indeed a hex value (#10780) ([filecoin-project/lotus#10780](https://github.com/filecoin-project/lotus/pull/10780))
+- fix: remove invalid field UpgradePriceListOopsHeight ([filecoin-project/lotus#10772](https://github.com/filecoin-project/lotus/pull/10772))
+- feat: deflake eth_balance_test ([filecoin-project/lotus#10847](https://github.com/filecoin-project/lotus/pull/10847))
+- fix: tests: Use mutex-wrapped datastore in storage tests ([filecoin-project/lotus#10846](https://github.com/filecoin-project/lotus/pull/10846))
+- Make lotus-fountain UI slightly friendlier ([filecoin-project/lotus#10785](https://github.com/filecoin-project/lotus/pull/10785))
+- Make (un)subscribe and filter RPC methods require only read perm ([filecoin-project/lotus#10825](https://github.com/filecoin-project/lotus/pull/10825))
+- deps: Update go-jsonrpc to v0.3.1 ([filecoin-project/lotus#10845](https://github.com/filecoin-project/lotus/pull/10845))
+- feat: deflake paych_api_test ([filecoin-project/lotus#10843](https://github.com/filecoin-project/lotus/pull/10843))
+- fix: Eth RPC: do not occlude block param errors. ([filecoin-project/lotus#10534](https://github.com/filecoin-project/lotus/pull/10534))
+- feat: cli: More ux-friendly batching cmds ([filecoin-project/lotus#10837](https://github.com/filecoin-project/lotus/pull/10837))
+- fix: cli: Hide legacy markets cmds ([filecoin-project/lotus#10842](https://github.com/filecoin-project/lotus/pull/10842))
+- feat: chainstore: exit early in MaybeTakeHeavierTipset ([filecoin-project/lotus#10839](https://github.com/filecoin-project/lotus/pull/10839))
+- fix: itest: fix eth deploy test flake ([filecoin-project/lotus#10829](https://github.com/filecoin-project/lotus/pull/10829))
+- style: mempool: chain errors using xerrors.Errorf ([filecoin-project/lotus#10836](https://github.com/filecoin-project/lotus/pull/10836))
+- feat: deflake msgindex_test.go ([filecoin-project/lotus#10826](https://github.com/filecoin-project/lotus/pull/10826))
+- feat: deflake TestEthFeeHistory ([filecoin-project/lotus#10816](https://github.com/filecoin-project/lotus/pull/10816))
+- feat: make RunClientTest louder when deals fail ([filecoin-project/lotus#10817](https://github.com/filecoin-project/lotus/pull/10817))
+- fix: cli: Change arg wording in change-beneficiary cmd ([filecoin-project/lotus#10823](https://github.com/filecoin-project/lotus/pull/10823))
+- refactor: streamline error handling in CheckPendingMessages (#10818) ([filecoin-project/lotus#10818](https://github.com/filecoin-project/lotus/pull/10818))
+- feat: Add tmp indices to events table while performing migration to V2
+- fix: sync: iterate over returned messages directly #11373
+- fix: api: compute the effective gas cost with the correct base-fee #11357
+- fix: check invariants: v12 check #11371
+- fix: api: compute gasUsedRatio based on max gas in the tipset #11354
 
 # v1.23.2 / 2023-06-28
 
@@ -1698,7 +1696,7 @@ This feature release introduces VM Execution Lanes! Execution lanes efficiently 
 
 To take advantage of VM Execution Lanes, you need to set up two environment variables:
 - `LOTUS_FVM_CONCURRENCY` - read more about how this value should be set to [here](https://lotus.filecoin.io/lotus/configure/ethereum-rpc/#environment-variables)
-- `LOTUS_FVM_CONCURRENCY_RESERVED = 4` 
+- `LOTUS_FVM_CONCURRENCY_RESERVED = 4`
 
 **🧱 Aggregation / Batching fixes 🔨**
 
@@ -1714,38 +1712,38 @@ This feature release adds a dedicated `lotus-miner sectors unseal` command and A
 
 ## New features
 - feat: VM Execution Lanes ([filecoin-project/lotus#10551](https://github.com/filecoin-project/lotus/pull/10551))
-   - Adds VM exections lanes, efficiently dividing the workload between system processes and RPC-requests.
+  - Adds VM exections lanes, efficiently dividing the workload between system processes and RPC-requests.
 - Add API and CLI to unseal sector (#10626) ([filecoin-project/lotus#10626](https://github.com/filecoin-project/lotus/pull/10626))
-   - Adds `lotus-miner sectors unseal` cmd, and a API-method to unseal a sector.
+  - Adds `lotus-miner sectors unseal` cmd, and a API-method to unseal a sector.
 - feat: sealing: Split PCA/PCB batches if gas used exceeds block limit ([filecoin-project/lotus#10647](https://github.com/filecoin-project/lotus/pull/10647))
-   - Splits ProveCommitAggregate and PreCommitBatch messages into multiple messages if the message exceeds the block limit.
+  - Splits ProveCommitAggregate and PreCommitBatch messages into multiple messages if the message exceeds the block limit.
 - Add feature to stagger sector prove commit submission (#10543) ([filecoin-project/lotus#10543](https://github.com/filecoin-project/lotus/pull/10543))
-   - Staggers the amount of ProveCommit messages sent simultanously if a storage provider has been aggregating many message, but at the moment of publishing the BaseFee is below the threshold for aggregation to prevent unwanted SysErrorOutOfGas issues.
+  - Staggers the amount of ProveCommit messages sent simultanously if a storage provider has been aggregating many message, but at the moment of publishing the BaseFee is below the threshold for aggregation to prevent unwanted SysErrorOutOfGas issues.
 - Set default for MaxSectorProveCommitsSubmittedPerEpoch ([filecoin-project/lotus#10728](https://github.com/filecoin-project/lotus/pull/10728))
-   - Sets the default amount of ProveCommits submitted per epoch to 20.
+  - Sets the default amount of ProveCommits submitted per epoch to 20.
 - feat: worker: Ensure tempdir exists (#10433) ([filecoin-project/lotus#10433](https://github.com/filecoin-project/lotus/pull/10433))
-   - Ensures that a temporary directory exists on start of a lotus-worker with a custom TMPDIR set.
+  - Ensures that a temporary directory exists on start of a lotus-worker with a custom TMPDIR set.
 - feat: sync: harden chain sync (#10756) ([filecoin-project/lotus#10756](https://github.com/filecoin-project/lotus/pull/10756))
 - feat: populate the index on snapshot import ([filecoin-project/lotus#10556](https://github.com/filecoin-project/lotus/pull/10556))
 - feat:chain: Message Index (**HIGHLY EXPERIMENTAL**) ([filecoin-project/lotus#10452](https://github.com/filecoin-project/lotus/pull/10452))
-   - MVP of a message index that allows us to accelrate StateSearchMessage and related functionality, and eventually accelerate critical chain calls (follow up).
+  - MVP of a message index that allows us to accelrate StateSearchMessage and related functionality, and eventually accelerate critical chain calls (follow up).
 - feat: Add small cache to execution traces ([filecoin-project/lotus#10517](https://github.com/filecoin-project/lotus/pull/10517))
 - feat: shed: incoming block-sub chainwatch tool ([filecoin-project/lotus#10513](https://github.com/filecoin-project/lotus/pull/10513))
 
 ## Improvements
 - feat: daemon: Auto-resume interrupted snapshot imports ([filecoin-project/lotus#10636](https://github.com/filecoin-project/lotus/pull/10636))
-   - Auto-resumes interrupted snapshot imports when using an URL.
+  - Auto-resumes interrupted snapshot imports when using an URL.
 - fix: storage: Remove temp fetching files after failed fetch ([filecoin-project/lotus#10661](https://github.com/filecoin-project/lotus/pull/10661))
-   - Clean up partially fetched failed after a failed fetch on a lotus-worker.
+  - Clean up partially fetched failed after a failed fetch on a lotus-worker.
 - feat: chainstore: batch writes of tipsets ([filecoin-project/lotus#10800](https://github.com/filecoin-project/lotus/pull/10800))
-   - Reduces the time to persist all headers from 4-5 minutes, to < 15 seconds. 
+  - Reduces the time to persist all headers from 4-5 minutes, to < 15 seconds.
 - Check if epoch is negative in GetTipsetByHeight
 - fix: sched: Address GET_32G_MAX_CONCURRENT regression
 - fix: cli: Hide legacy markets cmds
-   - Hides the lotus-miner legacy markets commands from the lotus-miner CLI.
+  - Hides the lotus-miner legacy markets commands from the lotus-miner CLI.
 - fix: ci: Debugging m1 build
 - Disable lotus markets by default (#10809) ([filecoin-project/lotus#10809](https://github.com/filecoin-project/lotus/pull/10809))
-   - Disables lotus-miner legacy markets [EOL] by default.
+  - Disables lotus-miner legacy markets [EOL] by default.
 - perf: mempool: lower priority optimizations (#10693) ([filecoin-project/lotus#10693](https://github.com/filecoin-project/lotus/pull/10693))
 - perf: message pool: change locks to RWMutexes for performance ([filecoin-project/lotus#10561](https://github.com/filecoin-project/lotus/pull/10561))
 - perf: eth: gas estimate set applyTsMessages false (#10546) ([filecoin-project/lotus#10546](https://github.com/filecoin-project/lotus/pull/10546))
@@ -1818,32 +1816,32 @@ This feature release adds a dedicated `lotus-miner sectors unseal` command and A
 
 Contributors
 
-| Contributor         | Commits | Lines ±    | Files Changed |
-| ------------------- | ------- | ---------- | ------------- |
-| vyzo                | 70      | +1990/-429 | 135           |
-| Alfonso de la Rocha | 25      | +814/-299  | 56            |
-| Steven Allen        | 14      | +125/-539  | 28            |
-| Shrenuj Bansal      | 13      | +482/-138  | 52            |
-| Aayush              | 17      | +317/-301  | 90            |
-| Łukasz Magiera      | 13      | +564/-26   | 16            |
-| Jennifer Wang       | 7       | +401/-140  | 10            |
-| Fridrik Asmundsson  | 14      | +315/-84   | 20            |
-| Jorropo             | 2       | +139/-137  | 74            |
-| Mikers              | 6       | +114/-43   | 14            |
-| Hector Sanjuan      | 5       | +92/-44    | 5             |
-| Ales Dumikau        | 1       | +117/-0    | 10            |
-| Mike Seiler         | 4       | +51/-51    | 6             |
-| zenground0          | 6       | +33/-25    | 8             |
-| Phi                 | 8       | +32/-10    | 10            |
-| Aayush Rajasekaran  | 1       | +1/-32     | 2             |
-| Ian Davis           | 2       | +7/-10     | 3             |
-| Marcel Telka        | 1       | +5/-7      | 1             |
-| ychiao              | 1       | +8/-3      | 2             |
-| jennijuju           | 1       | +4/-4      | 8             |
-| adlrocha            | 2       | +2/-2      | 2             |
-| Jiaying Wang        | 1       | +0/-4      | 1             |
-| ZenGround0          | 1       | +2/-1      | 2             |
-| Zeng Li             | 1       | +1/-1      | 1             |
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| vyzo | 70 | +1990/-429 | 135 |
+| Alfonso de la Rocha | 25 | +814/-299 | 56 |
+| Steven Allen | 14 | +125/-539 | 28 |
+| Shrenuj Bansal | 13 | +482/-138 | 52 |
+| Aayush | 17 | +317/-301 | 90 |
+| Łukasz Magiera | 13 | +564/-26 | 16 |
+| Jennifer Wang | 7 | +401/-140 | 10 |
+| Fridrik Asmundsson | 14 | +315/-84 | 20 |
+| Jorropo | 2 | +139/-137 | 74 |
+| Mikers | 6 | +114/-43 | 14 |
+| Hector Sanjuan | 5 | +92/-44 | 5 |
+| Ales Dumikau | 1 | +117/-0 | 10 |
+| Mike Seiler | 4 | +51/-51 | 6 |
+| zenground0 | 6 | +33/-25 | 8 |
+| Phi | 8 | +32/-10 | 10 |
+| Aayush Rajasekaran | 1 | +1/-32 | 2 |
+| Ian Davis | 2 | +7/-10 | 3 |
+| Marcel Telka | 1 | +5/-7 | 1 |
+| ychiao | 1 | +8/-3 | 2 |
+| jennijuju | 1 | +4/-4 | 8 |
+| adlrocha | 2 | +2/-2 | 2 |
+| Jiaying Wang | 1 | +0/-4 | 1 |
+| ZenGround0 | 1 | +2/-1 | 2 |
+| Zeng Li | 1 | +1/-1 | 1 |
 
 # v1.23.0 / 2023-04-21
 
@@ -1868,7 +1866,7 @@ Please read carefully through the **upgrade warnings** section if you are upgrad
 Execution traces (returned from `lotus state exec-trace`, `lotus state replay`, etc.), has changed to account for changes introduced by the FVM. Specifically:
 
 - The `Msg` field no longer matches the Filecoin message format as many of the message fields didn't make sense in on-chain sub-calls. Instead, it now has the fields `To`, `From`, `Value`, `Method`, `Params`, and `ParamsCodec` where `ParamsCodec` is a new field indicating the IPLD codec of the parameters.
-    - Importantly, the `Msg.CID` field has been removed. This field is still present in top-level invocation results, just not inside the execution trace itself.
+  - Importantly, the `Msg.CID` field has been removed. This field is still present in top-level invocation results, just not inside the execution trace itself.
 - The `MsgRct` field no longer includes a `GasUsed` field and now has a `ReturnCodec` field to indicating the IPLD codec of the return value.
 - The `Error` and `Duration` fields have been removed as these are not set by the FVM. The top-level message "invocation result" retains the `Error` and `Duration` fields, they've only been removed from the trace itself.
 - Gas Charges no longer include "virtual" gas fields (those starting with `v...`) or source location information (`loc`) as neither field is set by the FVM.
@@ -2058,88 +2056,88 @@ The `lotus-miner sector list` is now running in parallel - which should speed up
 
 ## New features
 - feat: splitstore: Pause compaction when out of sync ([filecoin-project/lotus/#10641](https://github.com/filecoin-project/lotus/pull/10641))
-   - Pause the SplitStore compaction if the node is out of sync. Resumes the compation when its back in sync.
+  - Pause the SplitStore compaction if the node is out of sync. Resumes the compation when its back in sync.
 - feat: splitstore: limit moving gc threads (#10621) ([filecoin-project/lotus/#10621](https://github.com/filecoin-project/lotus/pull/10621))
-   - Makes moving gc less likely to cause node falling out of sync.
+  - Makes moving gc less likely to cause node falling out of sync.
 - feat: splitstore: Update config default value (#10605) ([filecoin-project/lotus/#10605](https://github.com/filecoin-project/lotus/pull/10605))
-   - Sets Splitstore HotStoreMaxSpaceTarget config to 650GB as default
+  - Sets Splitstore HotStoreMaxSpaceTarget config to 650GB as default
 - feat: splitstore: Splitstore enabled by default (#10429) ([filecoin-project/lotus#10429](https://github.com/filecoin-project/lotus/pull/10429))
-   - Enables SplitStore by default on new Lotus nodes. Existing Lotus users need to explicitly configure 
+  - Enables SplitStore by default on new Lotus nodes. Existing Lotus users need to explicitly configure
 - feat: splitstore: Configure max space used by hotstore and GC makes best effort to respect ([filecoin-project/lotus#10391](https://github.com/filecoin-project/lotus/pull/10391))
-   - Adds three new configs for setting the maximum allowed space the hotstore can take.
+  - Adds three new configs for setting the maximum allowed space the hotstore can take.
 - feat: splitstore: Badger GC of hotstore command ([filecoin-project/lotus#10387](https://github.com/filecoin-project/lotus/pull/10387))
-   - Adds a `lotus chain prune hot` command, to run the garbage collection of the hotstore in a user driven way.
+  - Adds a `lotus chain prune hot` command, to run the garbage collection of the hotstore in a user driven way.
 - feat: sched: Assigner experiments ([filecoin-project/lotus#10356](https://github.com/filecoin-project/lotus/pull/10356))
-   - Introduces experimental scheduler assigners that works better for setups that uses storage-only lotus-workers. 
+  - Introduces experimental scheduler assigners that works better for setups that uses storage-only lotus-workers.
 - fix: wdpost: disabled post worker handling ([filecoin-project/lotus#10394](https://github.com/filecoin-project/lotus/pull/10394))
-   - Improved scheduling logic for Proof-of-SpaceTime workers.
+  - Improved scheduling logic for Proof-of-SpaceTime workers.
 - feat: cli: list claims and remove expired claims ([filecoin-project/lotus#9875](https://github.com/filecoin-project/lotus/pull/9875))
-   - Adds a command to list claims made by a provider `lotus filplus list-claims`. And `lotus filplus remove-expired-claims` to remove expired claims.
+  - Adds a command to list claims made by a provider `lotus filplus list-claims`. And `lotus filplus remove-expired-claims` to remove expired claims.
 - feat: cli: make sectors list much faster ([filecoin-project/lotus#10202](https://github.com/filecoin-project/lotus/pull/10202))
-   - Makes `lotus-miner sector list` checks run in parallel.
+  - Makes `lotus-miner sector list` checks run in parallel.
 - feat: cli: Add an EVM command to fetch a contract's bytecode ([filecoin-project/lotus#10443](https://github.com/filecoin-project/lotus/pull/10443))
-   - Adds an `lotus evm bytecode` command to fetch a contract's bytecode.
+  - Adds an `lotus evm bytecode` command to fetch a contract's bytecode.
 - feat: mempool: Reduce minimum replace fee from 1.25x to 1.1x (#10416) ([filecoin-project/lotus#10416](https://github.com/filecoin-project/lotus/pull/10416))
-   - Reduces replacement message fee logic to help include update message replacements from developers using Ethereum tools like MetaMask.
+  - Reduces replacement message fee logic to help include update message replacements from developers using Ethereum tools like MetaMask.
 - feat: update renew-sectors with FIP-0045 logic ([filecoin-project/lotus#10328](https://github.com/filecoin-project/lotus/pull/10328))
-   - Updates the `lotus-miner sectors extend` with FIP-0045 logic to include the ability to drop claims and set the maximum number of messages contained in a message.
+  - Updates the `lotus-miner sectors extend` with FIP-0045 logic to include the ability to drop claims and set the maximum number of messages contained in a message.
 - feat: IPC: Abstract common consensus functions and consensus interface ([filecoin-project/lotus#9481](https://github.com/filecoin-project/lotus/pull/9481))
-   - Add eudico's consensus interface to Lotus and implement EC behind that interface. This abstraction is the stepping-stone for Mir's integration.
+  - Add eudico's consensus interface to Lotus and implement EC behind that interface. This abstraction is the stepping-stone for Mir's integration.
 - fix: worker: add all tasks flag ([filecoin-project/lotus#10232](https://github.com/filecoin-project/lotus/pull/10232))
-   - Adds an `all` flag for the `lotus-worker tasks enable/disable` cmds.
+  - Adds an `all` flag for the `lotus-worker tasks enable/disable` cmds.
 - feat:shed:add cid to cbor serialization command ([filecoin-project/lotus#10032](https://github.com/filecoin-project/lotus/pull/10032))
   - Adds two `lotus-shed` commands, `lotus-shed cid bytes` and `lotus-shed cid cbor` to serialize cid to cbor and cid to bytes.
 - feat: add toolshed commands to inspect statetree size ([filecoin-project/lotus#9982](https://github.com/filecoin-project/lotus/pull/9982))
   - Adds two commands, `lotus-shed stat-actor` and `lotus-shed stat-obj` that work with an offline lotus repo to report dag size stats.
 - feat: shed: encode address to bytes ([filecoin-project/lotus#10105](https://github.com/filecoin-project/lotus/pull/10105))
-   - Adds a `lotus-shed address encode` for encoding a filecoin address to hex bytes.
+  - Adds a `lotus-shed address encode` for encoding a filecoin address to hex bytes.
 - feat: chain: export-range ([filecoin-project/lotus#10145](https://github.com/filecoin-project/lotus/pull/10145))
-   - Adds a `lotus chain export-range` command that can create archival-grade ranged exports of the chain as quickly as possible.
+  - Adds a `lotus chain export-range` command that can create archival-grade ranged exports of the chain as quickly as possible.
 - feat: stmgr: cache migrated stateroots ([filecoin-project/lotus#10282](https://github.com/filecoin-project/lotus/pull/10282))
-   - Cache network migration results to avoid running migrations twice.
+  - Cache network migration results to avoid running migrations twice.
 - feat: shed: Add a tool to read data from sectors ([filecoin-project/lotus#10169](https://github.com/filecoin-project/lotus/pull/10169))
-   - Adds a lotus-shed sectors read command that extract data from sectors from a running lotus-miner deployment.
+  - Adds a lotus-shed sectors read command that extract data from sectors from a running lotus-miner deployment.
 - feat: cli: Refactor renew and remove extend ([filecoin-project/lotus#9920](https://github.com/filecoin-project/lotus/pull/9920))
-   - Refactors the `lotus-miner sectors extend` command to have the functionality of `lotus-miner sectors renew`. The `lotus-miner sectors renew` command has been deprecated.
+  - Refactors the `lotus-miner sectors extend` command to have the functionality of `lotus-miner sectors renew`. The `lotus-miner sectors renew` command has been deprecated.
 - feat: shed: Add beneficiary commands ([filecoin-project/lotus#10037](https://github.com/filecoin-project/lotus/pull/10037))
-   - Adds the beneficiary address command to `lotus-shed`. You can now use `lotus-shed actor propose-change-beneficiary` and `lotus-shed actor confirm-change-beneficiary` to change beneficiary addresses.
+  - Adds the beneficiary address command to `lotus-shed`. You can now use `lotus-shed actor propose-change-beneficiary` and `lotus-shed actor confirm-change-beneficiary` to change beneficiary addresses.
 
 ## Improvements
 
 - backport: fix: miner: correctly count sector extensions (10555) ([filecoin-project/lotus#10555](https://github.com/filecoin-project/lotus/pull/10555))
-   - Fixes the issue with sector extensions.
+  - Fixes the issue with sector extensions.
 - fix: proving: Initialize slice with with same length as partition (#10574) ([filecoin-project/lotus#10574])(https://github.com/filecoin-project/lotus/pull/10574)
-   - Fixes an issue where `lotus-miner proving compute window-post` paniced when trying to make skipped sectors human readable.
+  - Fixes an issue where `lotus-miner proving compute window-post` paniced when trying to make skipped sectors human readable.
 - feat: stmgr: speed up calculation of genesis circ supply (#10553) ([filecoin-project/lotus#10553])(https://github.com/filecoin-project/lotus/pull/10553)
 - perf: eth: gas estimate set applyTsMessages false (#10546) ([filecoin-project/lotus#10456](https://github.com/filecoin-project/lotus/pull/10546))
 - feat: config: Force existing users to opt into new defaults (#10488) ([filecoin-project/lotus#10488](https://github.com/filecoin-project/lotus/pull/10488))
-   - Force existing users to opt into the new SplitStore defaults.
+  - Force existing users to opt into the new SplitStore defaults.
 - fix: splitstore: Demote now common logs (#10516) ([filecoin-project/lotus#10516](https://github.com/filecoin-project/lotus/pull/10516))
 - fix: splitstore: Don't enforce walking receipt tree during compaction ([filecoin-project/lotus#10502](https://github.com/filecoin-project/lotus/pull/10502))
 - fix: splitstore: Fix the overzealous fix (#10366) ([filecoin-project/lotus#10366](https://github.com/filecoin-project/lotus/pull/10366))
 - fix: splitstore: Two fixes, better logging and comments (#10332) ([filecoin-project/lotus#10332](https://github.com/filecoin-project/lotus/pull/10332))
 - fix: fsm: shutdown removed sectors FSMs ([filecoin-project/lotus#10363](https://github.com/filecoin-project/lotus/pull/10363))
-   - Fixes an issue where removed sectors still got state machine events.
+  - Fixes an issue where removed sectors still got state machine events.
 - fix: rpcenc: Don't hang when source dies ([filecoin-project/lotus#10116](https://github.com/filecoin-project/lotus/pull/10116))
-   - Fixes an issue where AddPiece tasks could get stuck if the Boost process was abruptly lost.
+  - Fixes an issue where AddPiece tasks could get stuck if the Boost process was abruptly lost.
 - fix: make debugging windowPoSt-failures human readable ([filecoin-project/lotus#10390](https://github.com/filecoin-project/lotus/pull/10390))
-   - Makes the skipped sector list in `lotus-miner proving compute window-post` human readable.
+  - Makes the skipped sector list in `lotus-miner proving compute window-post` human readable.
 - fix: cli: Hide `lotus-worker set` command ([filecoin-project/lotus#10384](https://github.com/filecoin-project/lotus/pull/10384))
-   - Hides the `lotus-worker set` command. This command will be deprecated later.
+  - Hides the `lotus-worker set` command. This command will be deprecated later.
 - fix: worker: Hide `wait-quiet` cmd ([filecoin-project/lotus#10331](https://github.com/filecoin-project/lotus/pull/10331))
-   - Hides the `lotus-worker wait-quiet` command. This command will be deprecated later.
+  - Hides the `lotus-worker wait-quiet` command. This command will be deprecated later.
 - fix: post: Tune down default post-parallel-reads ([filecoin-project/lotus#10365](https://github.com/filecoin-project/lotus/pull/10365))
-   - Tuning down the default post-parallel-reads to a more conservative number to prevent sectors from being skipped due to network timeouts.
+  - Tuning down the default post-parallel-reads to a more conservative number to prevent sectors from being skipped due to network timeouts.
 - fix: cli: error if backup file already exists ([filecoin-project/lotus#10209](https://github.com/filecoin-project/lotus/pull/10209))
-   - Error out if a backup file with the same name already exists when using the `lotus-miner backup` or `lotus backup` command
+  - Error out if a backup file with the same name already exists when using the `lotus-miner backup` or `lotus backup` command
 - fix: cli: option to set-seal-delay in seconds ([filecoin-project/lotus#10208](https://github.com/filecoin-project/lotus/pull/10208))
-   - Adds the option to specify `lotus-miner sectors set-seal-delay` in seconds
+  - Adds the option to specify `lotus-miner sectors set-seal-delay` in seconds
 - fix: cli: extend cmd to get the right sector number ([filecoin-project/lotus#10182](https://github.com/filecoin-project/lotus/pull/10182))
-   - Making sure the `lotus-miner sectors extend` command gets the correct sector number.
+  - Making sure the `lotus-miner sectors extend` command gets the correct sector number.
 - feat: wdpost: Emit more detailed errors ([filecoin-project/lotus#10121](https://github.com/filecoin-project/lotus/pull/10121))
-   - Emits more detailed windowPoSt error messages, making it easier to debug PoSt issues.
+  - Emits more detailed windowPoSt error messages, making it easier to debug PoSt issues.
 - fix: Lotus Gateway: Add missing methods - master ([filecoin-project/lotus#10420](https://github.com/filecoin-project/lotus/pull/10420))
-   - Adds `StateNetworkName`, `MpoolGetNonce`, `StateCall` and `StateDecodeParams` methods to Lotus Gateway.
+  - Adds `StateNetworkName`, `MpoolGetNonce`, `StateCall` and `StateDecodeParams` methods to Lotus Gateway.
 - fix: stmgr: don't attempt to lookup genesis state (#10472) ([filecoin-project/lotus#10472](https://github.com/filecoin-project/lotus/pull/10472))
 - feat: gateway: export StateVerifierStatus ([filecoin-project/lotus#10477](https://github.com/filecoin-project/lotus/pull/10477))
 - fix: gateway: correctly apply the fee history lookback max ([filecoin-project/lotus#10464](https://github.com/filecoin-project/lotus/pull/10464))
@@ -2168,7 +2166,7 @@ The `lotus-miner sector list` is now running in parallel - which should speed up
 - feat: blockstore: Envvar can adjust badger compaction worker poolsize ([filecoin-project/lotus#9973](https://github.com/filecoin-project/lotus/pull/9973))
 - feat: stmgr: add env to disable premigrations ([filecoin-project/lotus#10283](https://github.com/filecoin-project/lotus/pull/10283))
 - chore: Remove legacy market info from lotus-miner info ([filecoin-project/lotus#10364](https://github.com/filecoin-project/lotus/pull/10364))
-   - Removes the legacy market info in the `Lotus-Miner info`. Speeds up the command significantly.
+  - Removes the legacy market info in the `Lotus-Miner info`. Speeds up the command significantly.
 - chore: blockstore: Plumb through a proper Flush() method on all blockstores ([filecoin-project/lotus#10465](https://github.com/filecoin-project/lotus/pull/10465))
 - fix: extend LOTUS_CHAIN_BADGERSTORE_DISABLE_FSYNC to the markset ([filecoin-project/lotus#10172](https://github.com/filecoin-project/lotus/pull/10172))
 - feat: vm: switch to the new exec trace format (#10372) ([filecoin-project/lotus#10372](https://github.com/filecoin-project/lotus/pull/10372))
@@ -2241,49 +2239,49 @@ The `lotus-miner sector list` is now running in parallel - which should speed up
 
 ## Contributors
 
-| Contributor         | Commits | Lines ±     | Files Changed |
-| ------------------- | ------- | ----------- | ------------- |
-| Hannah Howard       | 2       | +2909/-6026 | 84            |
-| Łukasz Magiera      | 42      | +2967/-1848 | 95            |
-| Steven Allen        | 20      | +1703/-1345 | 88            |
-| Alfonso de la Rocha | 17      | +823/-1808  | 86            |
-| Peter Rabbitson     | 9       | +1957/-219  | 34            |
-| Geoff Stuart        | 12      | +818/-848   | 29            |
-| hannahhoward        | 5       | +507/-718   | 36            |
-| Hector Sanjuan      | 6       | +443/-726   | 35            |
-| Kevin Li            | 1       | +1124/-14   | 22            |
-| zenground0          | 30      | +791/-269   | 88            |
-| frrist              | 1       | +992/-16    | 13            |
-| Travis Person       | 4       | +837/-53    | 24            |
-| Phi                 | 20      | +622/-254   | 34            |
-| Ian Davis           | 7       | +35/-729    | 20            |
-| Aayush              | 10      | +378/-177   | 40            |
-| Raúl Kripalani      | 15      | +207/-138   | 19            |
-| Arsenii Petrovich   | 7       | +248/-94    | 30            |
-| ZenGround0          | 5       | +238/-39    | 15            |
-| Neel Virdy          | 1       | +109/-107   | 58            |
-| ychiao              | 1       | +135/-39    | 3             |
-| Jorropo             | 2       | +87/-82     | 67            |
-| Marten Seemann      | 8       | +69/-64     | 17            |
-| Rod Vagg            | 1       | +55/-16     | 3             |
-| Masih H. Derkani    | 3       | +39/-27     | 12            |
-| raulk               | 2       | +30/-29     | 5             |
-| dependabot[bot]     | 4       | +37/-17     | 8             |
-| beck                | 2       | +38/-2      | 2             |
-| Jennifer Wang       | 4       | +20/-19     | 19            |
-| Richard Guan        | 3       | +28/-8      | 5             |
-| omahs               | 7       | +14/-14     | 7             |
-| dirkmc              | 2       | +19/-7      | 6             |
-| David Choi          | 2       | +16/-5      | 2             |
-| Mike Greenberg      | 1       | +18/-1      | 1             |
-| Adin Schmahmann     | 1       | +19/-0      | 2             |
-| Phi-rjan            | 5       | +12/-4      | 5             |
-| Dirk McCormick      | 2       | +6/-6       | 3             |
-| Aayush Rajasekaran  | 2       | +9/-3       | 2             |
-| Jiaying Wang        | 5       | +6/-4       | 5             |
-| Anjor Kanekar       | 1       | +5/-5       | 1             |
-| vyzo                | 1       | +3/-3       | 2             |
-| 0x5459              | 1       | +1/-1       | 1             |
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Hannah Howard | 2 | +2909/-6026 | 84 |
+| Łukasz Magiera | 42 | +2967/-1848 | 95 |
+| Steven Allen | 20 | +1703/-1345 | 88 |
+| Alfonso de la Rocha | 17 | +823/-1808 | 86 |
+| Peter Rabbitson | 9 | +1957/-219 | 34 |
+| Geoff Stuart | 12 | +818/-848 | 29 |
+| hannahhoward | 5 | +507/-718 | 36 |
+| Hector Sanjuan | 6 | +443/-726 | 35 |
+| Kevin Li | 1 | +1124/-14 | 22 |
+| zenground0 | 30 | +791/-269 | 88 |
+| frrist | 1 | +992/-16 | 13 |
+| Travis Person | 4 | +837/-53 | 24 |
+| Phi | 20 | +622/-254 | 34 |
+| Ian Davis | 7 | +35/-729 | 20 |
+| Aayush | 10 | +378/-177 | 40 |
+| Raúl Kripalani | 15 | +207/-138 | 19 |
+| Arsenii Petrovich | 7 | +248/-94 | 30 |
+| ZenGround0 | 5 | +238/-39 | 15 |
+| Neel Virdy | 1 | +109/-107 | 58 |
+| ychiao | 1 | +135/-39 | 3 |
+| Jorropo | 2 | +87/-82 | 67 |
+| Marten Seemann | 8 | +69/-64 | 17 |
+| Rod Vagg | 1 | +55/-16 | 3 |
+| Masih H. Derkani | 3 | +39/-27 | 12 |
+| raulk | 2 | +30/-29 | 5 |
+| dependabot[bot] | 4 | +37/-17 | 8 |
+| beck | 2 | +38/-2 | 2 |
+| Jennifer Wang | 4 | +20/-19 | 19 |
+| Richard Guan | 3 | +28/-8 | 5 |
+| omahs | 7 | +14/-14 | 7 |
+| dirkmc | 2 | +19/-7 | 6 |
+| David Choi | 2 | +16/-5 | 2 |
+| Mike Greenberg | 1 | +18/-1 | 1 |
+| Adin Schmahmann | 1 | +19/-0 | 2 |
+| Phi-rjan | 5 | +12/-4 | 5 |
+| Dirk McCormick | 2 | +6/-6 | 3 |
+| Aayush Rajasekaran | 2 | +9/-3 | 2 |
+| Jiaying Wang | 5 | +6/-4 | 5 |
+| Anjor Kanekar | 1 | +5/-5 | 1 |
+| vyzo | 1 | +3/-3 | 2 |
+| 0x5459 | 1 | +1/-1 | 1 |
 
 # v1.22.1 / 2023-04-23
 
@@ -2392,7 +2390,7 @@ With this expedited roll out we want to inform you of some **key changes and imp
 
 - Accelerate the nv19-upgrade on **mainnet** from May 11th to **April 27th**.
 - Derisk nv19 by descoping the sector info migration, activation epoch fixes and drop [[FIP0052 - Extend sector/deal max duration to 3.5 year.](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0052.md)](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0052.md)
-    - By descoping these changes we can greatly derisk the network upgrade itself by removing a heavy migration that could cause instability for storage providers and node operators during the network upgrade.
+  - By descoping these changes we can greatly derisk the network upgrade itself by removing a heavy migration that could cause instability for storage providers and node operators during the network upgrade.
 - Increase the rollover period for [[FIP0061](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0052.md)](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0052.md) from 1 week to 3 weeks on mainnet. The rollover period is the duration between nv19 and nv20 which both old proofs (v1) and the new proofs (v1_1) proofs will be accepted by the network.
 
 The Lighting and Thunder upgrade now implements the following Filecoin Improvement Proposals (FIPs), delivered by builtin-actors v11 (see actors [v11.0.0](https://github.com/filecoin-project/builtin-actors/releases/tag/v11.0.0)):
@@ -2438,35 +2436,35 @@ verifiedregistry  bafk2bzacedej3dnr62g2je2abmyjg3xqv4otvh6e26du5fcrhvw7zgcaaez3a
 - chore: deps: update to actors v11.0.0 [filecoin-project/lotus#10718](https://github.com/filecoin-project/lotus/pull/10718)
 - chore: deps: update to go-state-types v0.11.1 [filecoin-project/lotus#10720](https://github.com/filecoin-project/lotus/pull/10720)
 - feat: upgrade: expedite nv19 [filecoin-project/lotus#10681](https://github.com/filecoin-project/lotus/pull/10681)
-   - Update changelog build version (commit: [67d419e](https://github.com/filecoin-project/lotus/commit/67d419e1623e6b9f5b871d6157a3096378477c3b))
-   - Update actors v11 (commit: [5df4f75](https://github.com/filecoin-project/lotus/commit/5df4f75dc22318fd304313714d5c4f4cfeed22c9))
-   - Correct epoch to match specified date (commit: [a28fcea](https://github.com/filecoin-project/lotus/commit/a28fceaa559b6c7e1b5df09383af56a5c2f51caa))
-   - Fast butterfly migration to validate migration (commit: [37a0dca](https://github.com/filecoin-project/lotus/commit/37a0dca11ebfadebad3920a337b4f1b2fba08a7b))
-   - Make docsgen (commit: [daba4ff](https://github.com/filecoin-project/lotus/commit/daba4ff5f0e97ab6ed444a34f61499a64b92a220))
-   - Update go-state-types (commit: [244ca0b](https://github.com/filecoin-project/lotus/commit/244ca0b5f32a2af684f3f9586b92861a06bb8833))
-   - Revert FIP0052 (commit: [68ed494](https://github.com/filecoin-project/lotus/commit/68ed494a6e497ac556eb93b28b2536c881dc9a4c))
-   - Modify upgrade schedule and params (commit: [fa0dfdf](https://github.com/filecoin-project/lotus/commit/fa0dfdfd9f89fab8491f3e613909782ab9bb7cee))
-   - Update go-state-types (commit: [19ae05f](https://github.com/filecoin-project/lotus/commit/19ae05f3b3a589e28efe4690c5816dfc1c7866a6))
+  - Update changelog build version (commit: [67d419e](https://github.com/filecoin-project/lotus/commit/67d419e1623e6b9f5b871d6157a3096378477c3b))
+  - Update actors v11 (commit: [5df4f75](https://github.com/filecoin-project/lotus/commit/5df4f75dc22318fd304313714d5c4f4cfeed22c9))
+  - Correct epoch to match specified date (commit: [a28fcea](https://github.com/filecoin-project/lotus/commit/a28fceaa559b6c7e1b5df09383af56a5c2f51caa))
+  - Fast butterfly migration to validate migration (commit: [37a0dca](https://github.com/filecoin-project/lotus/commit/37a0dca11ebfadebad3920a337b4f1b2fba08a7b))
+  - Make docsgen (commit: [daba4ff](https://github.com/filecoin-project/lotus/commit/daba4ff5f0e97ab6ed444a34f61499a64b92a220))
+  - Update go-state-types (commit: [244ca0b](https://github.com/filecoin-project/lotus/commit/244ca0b5f32a2af684f3f9586b92861a06bb8833))
+  - Revert FIP0052 (commit: [68ed494](https://github.com/filecoin-project/lotus/commit/68ed494a6e497ac556eb93b28b2536c881dc9a4c))
+  - Modify upgrade schedule and params (commit: [fa0dfdf](https://github.com/filecoin-project/lotus/commit/fa0dfdfd9f89fab8491f3e613909782ab9bb7cee))
+  - Update go-state-types (commit: [19ae05f](https://github.com/filecoin-project/lotus/commit/19ae05f3b3a589e28efe4690c5816dfc1c7866a6))
 
 ### Dependencies
 github.com/filecoin-project/go-state-types (v0.11.0-rc1 -> v0.11.1):
 
 # v1.20.4 / 2023-03-17
 
-This is a patch release intended to alleviate performance issues reported by some users since the nv18 upgrade. 
+This is a patch release intended to alleviate performance issues reported by some users since the nv18 upgrade.
 The primary change is to update the FFI to allow for FVM parallelism of 4 by default, and make this user-configurable.
-through the `LOTUS_FVM_CONCURRENCY` env var. 
+through the `LOTUS_FVM_CONCURRENCY` env var.
 
 Users with higher memory specs can experiment with setting `LOTUS_FVM_CONCURRENCY` to higher values, up to 48, to allow for more concurrent FVM execution.
 
 ## Bug fixes
 
 - Splitstore: Don't enforce walking receipt tree during compaction #10505
-- fix: build: drop drand incentinet servers #10506 
+- fix: build: drop drand incentinet servers #10506
 
 ## Improvement
 
-- chore: update ffi to increase execution parallelism #10503 
+- chore: update ffi to increase execution parallelism #10503
 
 # v1.20.3 / 2023-03-09
 
@@ -2501,7 +2499,7 @@ This is a HIGHLY RECOMMENDED patch release for node operators/API service provid
 ## Improvement
 - feat: Lotus Gateway: Add missing methods - master #10420
 - feat: mempool: Reduce minimum replace fee from 1.25x to 1.1x #10416
- - We recommend storage providers to update your nodes to this patch, that will help improve developers who use Ethereum tooling's experience.
+- We recommend storage providers to update your nodes to this patch, that will help improve developers who use Ethereum tooling's experience.
 
 # v1.20.1 / 2023-03-06
 
@@ -2540,7 +2538,7 @@ The creation of EVM actors is managed by **the new** [Ethereum Address Manager a
 
 ### v10 Built-in actor bundles
 
-Bundles for all networks (mainnet, calibnet, etc.) are included in the lotus source tree (`build/actors/`) and embedded on build, for v10 actors you can find it [here](https://github.com/filecoin-project/lotus/blob/master/build/actors/v10.tar.zst). 
+Bundles for all networks (mainnet, calibnet, etc.) are included in the lotus source tree (`build/actors/`) and embedded on build, for v10 actors you can find it [here](https://github.com/filecoin-project/lotus/blob/master/build/actors/v10.tar.zst).
 Reminder: Lotus verifies that the bundle CIDs are the right ones upon build & upgrade against the values in `build/builtin_actors_gen.go`, according to the network you are building. You may also check the bundle manifest CID matches the bundle gen-ed values by running `lotus state actor-cids --network-version 18`.
 
 The manifest CID & full list of actor code CIDs for nv18 using [actor v10](https://github.com/filecoin-project/builtin-actors/releases/tag/v10.0.0) is:
@@ -2567,7 +2565,7 @@ The manifest CID & full list of actor code CIDs for nv18 using [actor v10](https
 
 FVM has been running in lotus since v1.16.0 and up, and the new FEVM does not increase any node hardware spec requirement.
 
-With FEVM on Filecoin, we aim to provide full compatibility with the existing EVM ecosystem and its tooling out of the box. 
+With FEVM on Filecoin, we aim to provide full compatibility with the existing EVM ecosystem and its tooling out of the box.
 Consequently, lotus now provides a full set of [Ethereum-styled APIs](https://github.com/filecoin-project/lotus/blob/release/v1.20.0/node/impl/full/eth.go) for developers and token holders to interact with the Filecoin network as well.
 For full documentation on this new tooling, please see the [Lotus docs website](https://lotus.filecoin.io/lotus/configure/ethereum-rpc/).
 
@@ -2593,12 +2591,12 @@ This is an optional feature release of Lotus. This feature release includes the 
 ### 🟢 SplitStore v2（Beta) 🟢
 
 Splitstore aims to reduce the node performance impact that's caused by the Filecoin's very large, and continuously growing chain datastore by having a hot and cold blockstore. You can find more about the Splitstore implementation [here](https://github.com/filecoin-project/lotus/blob/master/blockstore/splitstore/README.md).
-Splitstore has three basic modes for node operators to configure according to your needs: 
+Splitstore has three basic modes for node operators to configure according to your needs:
 - `discard`: hotstore only, automatically archive out-of-scope objects that are beyond 4 finalities(3600 epochs).
 - `universal`:  stores all chain data that's beyond 4 finalities into coldstore.
 - `messages`: only stores on-chain messages into coldstore.
 
-The `EnableColdStoreAutoPrune=` configuration is being deprecated in this release, as there is only ever one compaction running. We welcome all node operators to try the new feature and let us know [here](https://github.com/filecoin-project/lotus/discussions/9179) if you have any feedback! 
+The `EnableColdStoreAutoPrune=` configuration is being deprecated in this release, as there is only ever one compaction running. We welcome all node operators to try the new feature and let us know [here](https://github.com/filecoin-project/lotus/discussions/9179) if you have any feedback!
 There are more configuration one may set, you can read the full documentation about the SplitStoreV2 here: https://lotus.filecoin.io/lotus/configure/splitstore/.
 
 ### 🧪 Node Cluster (*EXPERIMENTAL.*) 🧪
@@ -2613,25 +2611,25 @@ Numerous SnapDeals related improvements and fixes made it into this release befo
 
 ## New features
 - feat:splitstore:single compaction that can handle prune aka two marksets one compaction (#9571) ([filecoin-project/lotus#9571](https://github.com/filecoin-project/lotus/pull/9571))
-   - Introduces a new SplitStore-mode, `messages`, which will only store on-chain messages. Fixes previously issues with regards to `AutoPrune` not compacting the coldstore. [Link to documentation](https://lotus.filecoin.io/lotus/configure/splitstore/)
+  - Introduces a new SplitStore-mode, `messages`, which will only store on-chain messages. Fixes previously issues with regards to `AutoPrune` not compacting the coldstore. [Link to documentation](https://lotus.filecoin.io/lotus/configure/splitstore/)
 - feat: Raft consensus for lotus nodes in a cluster ([filecoin-project/lotus#9294](https://github.com/filecoin-project/lotus/pull/9294))
-   - Adds the experimental node cluster feature.
+  - Adds the experimental node cluster feature.
 - feat: storage: Force exit GenerateSingleVanillaProof on cancelled context ([filecoin-project/lotus#9613](https://github.com/filecoin-project/lotus/pull/9613))
-   - `GenerateSingleVanillaProof` now respects context, which means that it will skip slow to read sectors :snail: and return a context error. Instead of being blocked forever if storage reads where blocked (e.g disconnected NFS).
+  - `GenerateSingleVanillaProof` now respects context, which means that it will skip slow to read sectors :snail: and return a context error. Instead of being blocked forever if storage reads where blocked (e.g disconnected NFS).
 - feat: wdpost: Configurable pre-check timeouts ([filecoin-project/lotus#9680](https://github.com/filecoin-project/lotus/pull/9680))
-   - Adds configuration knobs for setting custom amount of time a proving pre-check can take before a sector and partition will be skipped. [Link to documentation](https://lotus.filecoin.io/storage-providers/advanced-configurations/proving/#pre-check-sector-timeout)
+  - Adds configuration knobs for setting custom amount of time a proving pre-check can take before a sector and partition will be skipped. [Link to documentation](https://lotus.filecoin.io/storage-providers/advanced-configurations/proving/#pre-check-sector-timeout)
 - feat: chain: future proof the from & to address protocols ([filecoin-project/lotus#9515](https://github.com/filecoin-project/lotus/pull/9515))
-   - This lets us add new address protocols to go-address without implicitly accepting them in messages on the network.
+  - This lets us add new address protocols to go-address without implicitly accepting them in messages on the network.
 - feat: Retrieval into remote blockstores ([filecoin-project/lotus#9565](https://github.com/filecoin-project/lotus/pull/9565))
-   - Makes it possible to point retrievals at a network-backed blockstore.
+  - Makes it possible to point retrievals at a network-backed blockstore.
 - feat: Add node uptime rpc / output in info command ([filecoin-project/lotus#9436](https://github.com/filecoin-project/lotus/pull/9436))
-   - Adds node uptime stats to the `lotus-miner info` and `lotus info` commands
+  - Adds node uptime stats to the `lotus-miner info` and `lotus info` commands
 - feat: wdpost: Add ability to only have single partition per msg for partitions with… ([filecoin-project/lotus#9413](https://github.com/filecoin-project/lotus/pull/9413))
   - Adds a configuration option to have a single partition per PoSt Message for partitions containing recovering sectors.
 - feat: miner paramfetch: Don't fetch param files when not needed ([filecoin-project/lotus#9391](https://github.com/filecoin-project/lotus/pull/9391))
-   - A Lotus-Miner processes that has disabled local PoSt / C2 / PR2 does not need the param-files. This makes node startup much faster, reducing downtime by a lot when restarts are needed.
+  - A Lotus-Miner processes that has disabled local PoSt / C2 / PR2 does not need the param-files. This makes node startup much faster, reducing downtime by a lot when restarts are needed.
 - feat: client: Add retrieval deal ID and bytes transferred to retrieval output ([filecoin-project/lotus#9398](https://github.com/filecoin-project/lotus/pull/9398))
-   - Appends retrieval deal ID and bytes transferred to the retrieval output.
+  - Appends retrieval deal ID and bytes transferred to the retrieval output.
 - feat: dealpublisher: check for duplicate deals before adding ([filecoin-project/lotus#9365](https://github.com/filecoin-project/lotus/pull/9365))
 - feat: Drop active retrieval check (#764) ([filecoin-project/go-fil-markets#764](https://github.com/filecoin-project/go-fil-markets/pull/764))
 - feat(retrievalmarkets): expose GetDynamicAsk (#748) ([filecoin-project/go-fil-markets#748](https://github.com/filecoin-project/go-fil-markets/pull/748))
@@ -2640,20 +2638,20 @@ Numerous SnapDeals related improvements and fixes made it into this release befo
 
 ## Improvements
 - fix: miner-cli: Fix lotus-miner proving check ([filecoin-project/lotus#9643](https://github.com/filecoin-project/lotus/pull/9643))
-   - Fixes the issue where the `lotus-miner proving check` command always outputted `Error: rg is nil`
+  - Fixes the issue where the `lotus-miner proving check` command always outputted `Error: rg is nil`
 - fix: sealing pipeline: Clear CreationTime when starting sector upgrade ([filecoin-project/lotus#9642](https://github.com/filecoin-project/lotus/pull/9642))
-   - Fixes the issue where an aborted SnapDeal upgrade could no longer be retried with SnapDeals.
+  - Fixes the issue where an aborted SnapDeal upgrade could no longer be retried with SnapDeals.
 - fix:sealing-fsm:wait mutable fsm state for immutable sector upgrade error ([filecoin-project/lotus#9598](https://github.com/filecoin-project/lotus/pull/9598))
-   - Creating a new WaitMutable state - now if the deadline is open and the sectors are trying finalize they will wait on the worker until the deadline has closed. Important to note that they will not finalize as soon as the deadline closes, they will wait 1h before continuing. Fixes the previous issue where upgraded Snap-sectors for an open deadline cause a lot of `error-messages` and `p_aux` issues
+  - Creating a new WaitMutable state - now if the deadline is open and the sectors are trying finalize they will wait on the worker until the deadline has closed. Important to note that they will not finalize as soon as the deadline closes, they will wait 1h before continuing. Fixes the previous issue where upgraded Snap-sectors for an open deadline cause a lot of `error-messages` and `p_aux` issues
 - fix: cli: add beneficiary info to lotus-miner actor control list ([filecoin-project/lotus#9632](https://github.com/filecoin-project/lotus/pull/9632))
-   - Adds the beneficiary address to the `lotus-miner actor control list` output.
+  - Adds the beneficiary address to the `lotus-miner actor control list` output.
 - fix: sealing pipeine: Release assigned deals on snapdeals abort ([filecoin-project/lotus#9601](https://github.com/filecoin-project/lotus/pull/9601))
 - fix: docker: make compatible with arm platform ([filecoin-project/lotus#9363](https://github.com/filecoin-project/lotus/pull/9363))
-   - Makes the `Dockerfile.lotus` compatible with ARM-platforms (e.g Mac M1).
+  - Makes the `Dockerfile.lotus` compatible with ARM-platforms (e.g Mac M1).
 - fix: post worker sched: Don't check worker session in a busy loop ([filecoin-project/lotus#9495](https://github.com/filecoin-project/lotus/pull/9495))
-   - Fixes a looping pattern which could result in a flood of requests between `lotus-miner`<->`lotus-worker`, potentially exhausting resources needed to make http requests, that lead to all sorts of random RPC-related issues.
+  - Fixes a looping pattern which could result in a flood of requests between `lotus-miner`<->`lotus-worker`, potentially exhausting resources needed to make http requests, that lead to all sorts of random RPC-related issues.
 - fix: miner: init miner's with 32GiB sectors by default ([filecoin-project/lotus#9364](https://github.com/filecoin-project/lotus/pull/9364))
-   - Makes the `lotus-miner init` defualt to 32GiB sectors.
+  - Makes the `lotus-miner init` defualt to 32GiB sectors.
 - fix: store identity CIDs in CARs for online deals (#749) ([filecoin-project/go-fil-markets#749](https://github.com/filecoin-project/go-fil-markets/pull/749))
 - fix: cliutil: Fix URL-based API endpoint parsing
 
@@ -2716,7 +2714,7 @@ Numerous SnapDeals related improvements and fixes made it into this release befo
 - release: v1.24.0 ([filecoin-project/go-fil-markets#745](https://github.com/filecoin-project/go-fil-markets/pull/745))
 - github.com/filecoin-project/go-state-types (v0.9.8 -> v0.9.9):
 
-## lotus-market EOL notice 
+## lotus-market EOL notice
 
 As mentioned in [lotus v1.17.0 release notes](https://github.com/filecoin-project/lotus/releases/tag/v1.17.0), markets related features, enhancements and fixes is now lower priority for Lotus. We recommend our users to migrate to other deal making focused software, like [boost](https://boost.filecoin.io/) as soon as possible. That being said, the lotus maintainers will be:
 -  Lotus maintainers will stop supporting lotus-market subcomponent/**storage** deal making related issues or enhancements on Jan 31, 2023.
@@ -2726,30 +2724,30 @@ If you have any questions or concerns, please raise them in [Lotus discussion](h
 
 ## Contributors
 
-| Contributor        | Commits | Lines ±      | Files Changed |
-| ------------------ | ------- | ------------ | ------------- |
-| Geoff Stuart       | 69      | +4745/-19478 | 405           |
-| Shrenuj Bansal     | 39      | +5257/-2183  | 243           |
-| Łukasz Magiera     | 32      | +2763/-730   | 169           |
-| Aayush             | 47      | +1439/-1138  | 157           |
-| Ian Davis          | 21      | +556/-1065   | 41            |
-| Rod Vagg           | 5       | +657/-320    | 18            |
-| jennijuju          | 4       | +632/-317    | 6             |
-| Aayush Rajasekaran | 13      | +700/-135    | 18            |
-| Jennifer Wang      | 14      | +740/-54     | 25            |
-| ZenGround0         | 1       | +193/-195    | 14            |
-| Hannah Howard      | 4       | +138/-122    | 52            |
-| Steven Allen       | 4       | +105/-24     | 11            |
-| zenground0         | 9       | +109/-16     | 14            |
-| Peter Rabbitson    | 1       | +27/-23      | 3             |
-| hannahhoward       | 2       | +49/-0       | 2             |
-| Airenas Vaičiūnas  | 2       | +31/-16      | 2             |
-| simlecode          | 6       | +19/-10      | 12            |
-| Phi                | 5       | +16/-10      | 7             |
-| sectrgt            | 2       | +18/-0       | 2             |
-| Jiaying Wang       | 2       | +4/-4        | 3             |
-| Rob Quist          | 1       | +3/-1        | 1             |
-| Jakub Sztandera    | 1       | +1/-1        | 1             |
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Geoff Stuart | 69 | +4745/-19478 | 405 |
+| Shrenuj Bansal | 39 | +5257/-2183 | 243 |
+| Łukasz Magiera | 32 | +2763/-730 | 169 |
+| Aayush | 47 | +1439/-1138 | 157 |
+| Ian Davis | 21 | +556/-1065 | 41 |
+| Rod Vagg | 5 | +657/-320 | 18 |
+| jennijuju | 4 | +632/-317 | 6 |
+| Aayush Rajasekaran | 13 | +700/-135 | 18 |
+| Jennifer Wang | 14 | +740/-54 | 25 |
+| ZenGround0 | 1 | +193/-195 | 14 |
+| Hannah Howard | 4 | +138/-122 | 52 |
+| Steven Allen | 4 | +105/-24 | 11 |
+| zenground0 | 9 | +109/-16 | 14 |
+| Peter Rabbitson | 1 | +27/-23 | 3 |
+| hannahhoward | 2 | +49/-0 | 2 |
+| Airenas Vaičiūnas | 2 | +31/-16 | 2 |
+| simlecode | 6 | +19/-10 | 12 |
+| Phi | 5 | +16/-10 | 7 |
+| sectrgt | 2 | +18/-0 | 2 |
+| Jiaying Wang | 2 | +4/-4 | 3 |
+| Rob Quist | 1 | +3/-1 | 1 |
+| Jakub Sztandera | 1 | +1/-1 | 1 |
 
 # 1.18.2 / 2022-12-10
 
@@ -2758,7 +2756,7 @@ This is an OPTIONAL patch release that fixes a recently reported bug, where the 
 
 # 1.18.1 / 2022-11-28
 
-This is a small OPTIONAL patch release for the mandatory v1.18.0 release that supports the Filecoin nv17 Shark Upgrade. 
+This is a small OPTIONAL patch release for the mandatory v1.18.0 release that supports the Filecoin nv17 Shark Upgrade.
 We highly recommend you to read the full [v1.18.0 release note](https://github.com/filecoin-project/lotus/releases/tag/v1.18.0) if you haven't already.
 
 Note to SPs:
@@ -2797,24 +2795,24 @@ The Shark upgrade introduces the following FIPs, delivered in [actors v9](https:
     -  `Term` is introduced for defining how long the DataCap is assigned to a piece of data. Anyone who cares about that piece of data may extend the _term_, which incentives SPs to store the data longer on the network without a new deal/resealing.
     - There is no  more diluted verified deal QAP due to deal/sector space time for new sectors that contains verified deals after this upgrade.
     - SPs may enjoy 90 days of extra QAP than deal duration by default, given `term_max` is always `deal duration + 90 days`.
-❗ We highly recommend all lotus users, especially storage providers, developers and clients to read the FIPs in detail to understand the protocol changes and potential impact to network participants!
-      
+      ❗ We highly recommend all lotus users, especially storage providers, developers and clients to read the FIPs in detail to understand the protocol changes and potential impact to network participants!
+
 ## Snapshots
 
-The [#fil-infra](https://filecoinproject.slack.com/archives/C039RBG3RPC) team at PL has launched a brand new Lightweight Filecoin Chain Snapshots Service to support chain management needs for the node operators, check [here](https://www.notion.so/pl-strflt/Lightweight-Filecoin-Chain-Snapshots-17e4c386f35c44548f5863afb7b5e024) for the full detail. 
+The [#fil-infra](https://filecoinproject.slack.com/archives/C039RBG3RPC) team at PL has launched a brand new Lightweight Filecoin Chain Snapshots Service to support chain management needs for the node operators, check [here](https://www.notion.so/pl-strflt/Lightweight-Filecoin-Chain-Snapshots-17e4c386f35c44548f5863afb7b5e024) for the full detail.
 We are planning to switch [the snapshot service listed in lotus docs](https://lotus.filecoin.io/lotus/manage/chain-management/#lightweight-snapshot) to the new Lightweight Filecoin Chain Snapshots Service by EOY, and deprecate public support of the current snapshots production. We recommend all users to test and switch the new service ASAP, and if you run into any issue, please report them [here](https://github.com/filecoin-project/filecoin-chain-archiver/discussions/new?category=feedback) and the team would be happy to support you! For the main differences between the old & the new service, checkout the FAQ section [here](https://www.notion.so/pl-strflt/Lightweight-Filecoin-Chain-Snapshots-17e4c386f35c44548f5863afb7b5e024)
 
-## Migration 
+## Migration
 
 We are expecting a heavier than normal state migration for this upgrade due to the amount of the state changes introduced.
-All node operators, including storage providers, should be aware that two pre-migrations are being scheduled. The first pre-migration will begin at 2022-11-30T12:00:00Z (120 minutes before the real upgrade), the second pre-migration will begin at 2022-11-30T13:45:00Z (7.5 minutes before the real upgrade). 
-The first pre-migration will take up to 1.5hr, depending on the amount of the historical state in the node blockstore and the hardware specs the node is running on. During this time, expect slower block validation times, increased CPU and memory usage, and longer delays for API queries. 
+All node operators, including storage providers, should be aware that two pre-migrations are being scheduled. The first pre-migration will begin at 2022-11-30T12:00:00Z (120 minutes before the real upgrade), the second pre-migration will begin at 2022-11-30T13:45:00Z (7.5 minutes before the real upgrade).
+The first pre-migration will take up to 1.5hr, depending on the amount of the historical state in the node blockstore and the hardware specs the node is running on. During this time, expect slower block validation times, increased CPU and memory usage, and longer delays for API queries.
 We recommend node operators (who haven't enbabled splistore `universal` mode) that do not care about historical chain states, to prune the chain blockstore by syncing from a snapshot 1-2 days before the upgrade.
 Note to full archival node operators: you may expect a migration that takes up to 20 min upon the upgrade, during this period your node will fall out of sync and your chain service may have some disruption. However, you can expect the node to catch up soon after the migration completes.
 
 ### v9 Built-in actor bundles
 
-Bundles for all networks(mainnet, calibnet, and etc) are included in the lotus source tree (`build/actors/`) and embedded on build, for v9 actors you can find it [here](https://github.com/filecoin-project/lotus/blob/master/build/actors/v9.tar.zst). 
+Bundles for all networks(mainnet, calibnet, and etc) are included in the lotus source tree (`build/actors/`) and embedded on build, for v9 actors you can find it [here](https://github.com/filecoin-project/lotus/blob/master/build/actors/v9.tar.zst).
 Reminder: Lotus verifies that the bundle CIDs are the right ones upon build & upgrade against the values in `build/builtin_actors_gen.go`, according to the network you are building. You may also check the bundle manifest CID matches the bundle gen-ed values by running `lotus state actor-cids --network-version 17`.
 
 The manifest CID & full list of actor code CIDs for nv17 using [actor v9](https://github.com/filecoin-project/builtin-actors/releases/tag/v9.0.3) is:
@@ -2848,7 +2846,7 @@ The manifest CID & full list of actor code CIDs for nv17 using [actor v9](https:
 - Implement and support [FIP0029 Beneficiary Address for Storage Providers](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0029.md)
   - feat: api/cli: beneficiary withdraw api and cli #9296
   - feat: api/cli: change beneficiary propose and confirm for actors and multisigs. #9307
-  
+
 ## Improvements
 - feat: wdpost: Add ability to only have single partition per msg for partitions with recovery sectors ([filecoin-project/lotus#9427](https://github.com/filecoin-project/lotus/pull/9427))
 - feat: API:  support typed errors over RPC ([filecoin-project/lotus#9061](https://github.com/filecoin-project/lotus/pull/9061))
@@ -2871,35 +2869,35 @@ The manifest CID & full list of actor code CIDs for nv17 using [actor v9](https:
 - Delete lotus-pond (#9352) ([filecoin-project/lotus#9352](https://github.com/filecoin-project/lotus/pull/9352))
 - build: set version to v1.18.0-dev
 
-## lotus-market EOL notice 
+## lotus-market EOL notice
 
 As mentioned in [lotus v1.17.0 release notes](https://github.com/filecoin-project/lotus/releases/tag/v1.17.0), markets related features, enhancements and fixes is now lower priority for Lotus. We recommend our users to migrate to other deal making focused software, like [boost](https://boost.filecoin.io/) as soon as possible. That being said, the lotus maintainers will be:
 -  Lotus maintainers will stop supporting lotus-market subcomponent/**storage** deal making related issues or enhancements on Jan 31, 2023.
 - In Q2 2023, we will be deprecating/removing lotus-market related code from this repository.
-If you have any questions or concerns, please raise them in [Lotus discussion](https://github.com/filecoin-project/lotus/discussions/categories/market)!
+  If you have any questions or concerns, please raise them in [Lotus discussion](https://github.com/filecoin-project/lotus/discussions/categories/market)!
 
 
 ## Contributors
 
-| Contributor     | Commits | Lines ±       | Files Changed |
-| --------------- | ------- | ------------- | ------------- |
-| @geoff-vball    | 73      | +14533/-19712 | 509           |
-| @arajasek       | 16      | +2230/-303    | 49            |
-| @arajasek       | 29      | +701/-297     | 117           |
-| @magik6k        | 5       | +429/-135     | 45            |
-| @Frrist         | 1       | +246/-203     | 25            |
-| @stebalien      | 2       | +323/-2       | 6             |
-| @shrenujbansal  | 3       | +176/-61      | 10            |
-| @ZenGround0     | 2       | +78/-38       | 5             |
-| @jennijuju      | 8       | +97/-18       | 16            |
-| @simlecode      | 5       | +18/-9        | 11            |
-| Kevin Li        | 1       | +7/-0         | 1             |
-| @zenground0     | 2       | +3/-3         | 3             |
-| @jennijuju      | 1       | +3/-3         | 2             |
-| Rod Vagg        | 1       | +3/-2         | 2             |
-| @jennijuju      | 1       | +2/-2         | 2             |
-| Peter Rabbitson | 1       | +3/-0         | 1             |
-| Jakub Sztandera | 1       | +1/-1         | 1             |
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| @geoff-vball | 73 | +14533/-19712 | 509 |
+| @arajasek | 16 | +2230/-303 | 49 |
+| @arajasek | 29 | +701/-297 | 117 |
+| @magik6k | 5 | +429/-135 | 45 |
+| @Frrist | 1 | +246/-203 | 25 |
+| @stebalien | 2 | +323/-2 | 6 |
+| @shrenujbansal  | 3 | +176/-61 | 10 |
+| @ZenGround0 | 2 | +78/-38 | 5 |
+| @jennijuju | 8 | +97/-18 | 16 |
+| @simlecode | 5 | +18/-9 | 11 |
+| Kevin Li | 1 | +7/-0 | 1 |
+| @zenground0 | 2 | +3/-3 | 3 |
+| @jennijuju | 1 | +3/-3 | 2 |
+| Rod Vagg | 1 | +3/-2 | 2 |
+| @jennijuju | 1 | +2/-2 | 2 |
+| Peter Rabbitson | 1 | +3/-0 | 1 |
+| Jakub Sztandera | 1 | +1/-1 | 1 |
 
 # v1.17.2 / 2022-10-05
 
@@ -3013,31 +3011,31 @@ In v1.17.2 the default PropagationDelay has been raised from 6 seconds -> 10 sec
 
 Contributors
 
-| Contributor        | Commits | Lines ±      | Files Changed |
-| ------------------ | ------- | ------------ | ------------- |
-| Aayush Rajasekaran | 8       | +23010/-2122 | 109           |
-| Aayush             | 15      | +6168/-2679  | 360           |
-| Łukasz Magiera     | 69      | +6462/-2137  | 606           |
-| Geoff Stuart       | 19      | +3080/-1177  | 342           |
-| Marco Munizaga     | 16      | +543/-424    | 41            |
-| Shrenuj Bansal     | 30      | +485/-419    | 88            |
-| LexLuthr           | 3       | +498/-12     | 19            |
-| Phi                | 15      | +330/-70     | 17            |
-| Jennifer Wang      | 7       | +132/-12     | 11            |
-| TippyFlitsUK       | 1       | +43/-45      | 12            |
-| Steven Allen       | 1       | +18/-28      | 2             |
-| Frrist             | 1       | +19/-11      | 2             |
-| Eng Zer Jun        | 1       | +14/-11      | 6             |
-| Dirk McCormick     | 2       | +23/-1       | 3             |
-| Ian Davis          | 3       | +7/-9        | 3             |
-| Masih H. Derkani   | 1       | +11/-0       | 1             |
-| Anton Evangelatov  | 1       | +11/-0       | 1             |
-| Yu                 | 2       | +4/-4        | 5             |
-| Hannah Howard      | 1       | +4/-4        | 1             |
-| Phi-rjan           | 1       | +1/-2        | 1             |
-| Jiaying Wang       | 1       | +3/-0        | 1             |
-| nujz               | 1       | +1/-1        | 1             |
-| Rob Quist          | 1       | +1/-1        | 1             |
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Aayush Rajasekaran | 8 | +23010/-2122 | 109 |
+| Aayush | 15 | +6168/-2679 | 360 |
+| Łukasz Magiera | 69 | +6462/-2137 | 606 |
+| Geoff Stuart | 19 | +3080/-1177 | 342 |
+| Marco Munizaga | 16 | +543/-424 | 41 |
+| Shrenuj Bansal | 30 | +485/-419 | 88 |
+| LexLuthr | 3 | +498/-12 | 19 |
+| Phi | 15 | +330/-70 | 17 |
+| Jennifer Wang | 7 | +132/-12 | 11 |
+| TippyFlitsUK | 1 | +43/-45 | 12 |
+| Steven Allen | 1 | +18/-28 | 2 |
+| Frrist | 1 | +19/-11 | 2 |
+| Eng Zer Jun | 1 | +14/-11 | 6 |
+| Dirk McCormick | 2 | +23/-1 | 3 |
+| Ian Davis | 3 | +7/-9 | 3 |
+| Masih H. Derkani | 1 | +11/-0 | 1 |
+| Anton Evangelatov | 1 | +11/-0 | 1 |
+| Yu | 2 | +4/-4 | 5 |
+| Hannah Howard | 1 | +4/-4 | 1 |
+| Phi-rjan | 1 | +1/-2 | 1 |
+| Jiaying Wang | 1 | +3/-0 | 1 |
+| nujz | 1 | +1/-1 | 1 |
+| Rob Quist | 1 | +1/-1 | 1 |
 
 # v1.17.1 / 2022-09-06
 
@@ -3118,28 +3116,28 @@ This is an optional release of Lotus. This release introduces the [Splitstore v2
 
 Contributors
 
-| Contributor        | Commits | Lines ±    | Files Changed |
-| ------------------ | ------- | ---------- | ------------- |
-| Łukasz Magiera     | 34      | +2329/-317 | 163           |
-| ZenGround0         | 2       | +1527/-89  | 38            |
-| Ian Davis          | 14      | +751/-232  | 30            |
-| LexLuthr           | 17      | +480/-225  | 63            |
-| TheMenko           | 4       | +323/-61   | 5             |
-| Aayush             | 10      | +285/-92   | 30            |
-| beck               | 3       | +143/-93   | 3             |
-| Steven Allen       | 4       | +95/-75    | 9             |
-| zenground0         | 5       | +44/-116   | 9             |
-| Shrenuj Bansal     | 7       | +136/-7    | 16            |
-| Patrick Deuse      | 3       | +76/-57    | 3             |
-| Jennifer Wang      | 3       | +6/-52     | 11            |
-| zl                 | 2       | +20/-16    | 2             |
-| Aayush Rajasekaran | 2       | +6/-6      | 2             |
-| Clint Armstrong    | 1       | +7/-3      | 1             |
-| Cory Schwartz      | 2       | +9/-0      | 2             |
-| Jorropo            | 1       | +3/-2      | 2             |
-| Geoff Stuart       | 1       | +5/-0      | 1             |
-| Frank Y            | 1       | +2/-2      | 2             |
-| Aloxaf             | 1       | +2/-2      | 1             |
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Łukasz Magiera | 34 | +2329/-317 | 163 |
+| ZenGround0 | 2 | +1527/-89 | 38 |
+| Ian Davis | 14 | +751/-232 | 30 |
+| LexLuthr | 17 | +480/-225 | 63 |
+| TheMenko | 4 | +323/-61 | 5 |
+| Aayush | 10 | +285/-92 | 30 |
+| beck | 3 | +143/-93 | 3 |
+| Steven Allen | 4 | +95/-75 | 9 |
+| zenground0 | 5 | +44/-116 | 9 |
+| Shrenuj Bansal | 7 | +136/-7 | 16 |
+| Patrick Deuse | 3 | +76/-57 | 3 |
+| Jennifer Wang | 3 | +6/-52 | 11 |
+| zl | 2 | +20/-16 | 2 |
+| Aayush Rajasekaran | 2 | +6/-6 | 2 |
+| Clint Armstrong | 1 | +7/-3 | 1 |
+| Cory Schwartz | 2 | +9/-0 | 2 |
+| Jorropo | 1 | +3/-2 | 2 |
+| Geoff Stuart | 1 | +5/-0 | 1 |
+| Frank Y | 1 | +2/-2 | 2 |
+| Aloxaf | 1 | +2/-2 | 1 |
 
 
 # Lotus changelog
@@ -3158,7 +3156,7 @@ PSA: Markets related features, enhancements and fixes is now lower priority for 
   - Set the maximum number of tasks running it parallel on workers by exporting env-variables: `[short task type]_[sector size]_MAX_CONCURRENT=[limit]`. [Link to documentation](https://lotus.filecoin.io/storage-providers/seal-workers/seal-workers/#limit-tasks-run-in-parallel)
 - feat: sched: Finalize* move selectors ([filecoin-project/lotus#8710](https://github.com/filecoin-project/lotus/pull/8710))
   - Allows you to force all Finalize tasks to run on workers with local access to both long-term storage and the sealing path containing the sector.
-- feat: sched: Add scheduler interfaces, configurable assigner ([filecoin-project/lotus#8700](https://github.com/filecoin-project/lotus/pull/8700)) 
+- feat: sched: Add scheduler interfaces, configurable assigner ([filecoin-project/lotus#8700](https://github.com/filecoin-project/lotus/pull/8700))
   - Introduce a new simpler worker assigning logic which will attempt to assign tasks to as many workers as possible and ignore worker utilization. [Link to documentation](https://lotus.filecoin.io/storage-providers/advanced-configurations/sealing/#worker-assigning-logic)
 - feat: bench: simple sealing operations commands ([filecoin-project/lotus#8373](https://github.com/filecoin-project/lotus/pull/8373))
   - Allows you to only test the performance of a single task. [Read the documentation](https://lotus.filecoin.io/storage-providers/operate/benchmarks/#single-task-benchmark).
@@ -3177,7 +3175,7 @@ PSA: Markets related features, enhancements and fixes is now lower priority for 
 - feat: sealer: Config for disabling builtin PoSt / PoSt pre-checks ([filecoin-project/lotus#8959](https://github.com/filecoin-project/lotus/pull/8959))
   - Adds the ability to fully disable PoSt tasks on the `lotus-miner` and disabling windowPoSt pre-checks. [Link to documentation](https://lotus.filecoin.io/storage-providers/advanced-configurations/workers/#post-computations)
 - feat: add create ledger wallet address by account index command ([filecoin-project/lotus#8657](https://github.com/filecoin-project/lotus/pull/8657))
- 
+
 ## Improvements
 
 - feat: wdpost: Ignore faults in lotus-miner proving compute window-post ([filecoin-project/lotus#8737](https://github.com/filecoin-project/lotus/pull/8737))
@@ -3260,62 +3258,62 @@ PSA: Markets related features, enhancements and fixes is now lower priority for 
 - chore: bundle: remove wrongly committed bundle cars ([filecoin-project/lotus#8762](https://github.com/filecoin-project/lotus/pull/8762))
 - docs:sealing:fix default miner config comments ([filecoin-project/lotus#8689](https://github.com/filecoin-project/lotus/pull/8689))
 - ci: deps: Use testground-github-action from testground org ([filecoin-project/lotus#8490](https://github.com/filecoin-project/lotus/pull/8490))
- 
+
 Contributors
 
-| Contributor         | Commits | Lines ±       | Files Changed |
-| ------------------- | ------- | ------------- | ------------- |
-| Masih H. Derkani    | 153     | +15515/-16832 | 660           |
-| Łukasz Magiera      | 92      | +10429/-8024  | 1580          |
-| Andrew Gillis       | 43      | +4149/-1765   | 208           |
-| Jennifer Wang       | 10      | +1441/-1138   | 34            |
-| Geoff Stuart        | 18      | +1348/-859    | 113           |
-| dirkmc              | 11      | +1827/-210    | 70            |
-| Aayush              | 21      | +1134/-894    | 69            |
-| Steven Allen        | 9       | +743/-889     | 66            |
-| Marco Munizaga      | 15      | +990/-252     | 36            |
-| gammazero           | 47      | +681/-411     | 104           |
-| Will                | 4       | +514/-246     | 29            |
-| web3-bot            | 15      | +409/-348     | 20            |
-| Steven Fraser       | 1       | +671/-0       | 36            |
-| Cory Schwartz       | 27      | +520/-89      | 36            |
-| Hannah Howard       | 3       | +318/-105     | 8             |
-| Piotr Galar         | 2       | +337/-59      | 7             |
-| swift-mx            | 14      | +264/-131     | 17            |
-| vyzo                | 7       | +357/-15      | 16            |
-| Petar Maymounkov    | 6       | +221/-23      | 14            |
-| LexLuthr            | 7       | +182/-21      | 14            |
-| Aayush Rajasekaran  | 5       | +97/-70       | 33            |
-| Raúl Kripalani      | 5       | +87/-45       | 7             |
-| unknown             | 1       | +114/-0       | 8             |
-| sti-bot             | 44      | +54/-60       | 44            |
-| Aarsh Shah          | 2       | +61/-50       | 8             |
-| Lucas Molas         | 1       | +74/-27       | 3             |
-| zenground0          | 8       | +80/-18       | 14            |
-| Dirk McCormick      | 3       | +52/-33       | 8             |
-| frank               | 3       | +73/-7        | 3             |
-| Will Scott          | 4       | +45/-11       | 5             |
-| kaola526            | 5       | +44/-11       | 5             |
-| dependabot[bot]     | 3       | +16/-10       | 8             |
-| zl                  | 1       | +15/-4        | 4             |
-| Phi                 | 5       | +12/-6        | 6             |
-| Marcin Rataj        | 1       | +11/-7        | 1             |
-| github-actions[bot] | 7       | +8/-8         | 7             |
-| Anton Evangelatov   | 2       | +13/-0        | 4             |
-| Nicolas Gimenez     | 1       | +12/-0        | 1             |
-| Marten Seemann      | 2       | +5/-7         | 5             |
-| Chris Harden        | 1       | +10/-0        | 2             |
-| jennijuju           | 1       | +4/-4         | 7             |
-| Travis Person       | 2       | +2/-6         | 2             |
-| Rod Vagg            | 1       | +3/-3         | 2             |
-| Rob Quist           | 1       | +3/-3         | 1             |
-| Jiaying Wang        | 1       | +2/-3         | 2             |
-| zengroundumbass     | 1       | +3/-1         | 1             |
-| lifei               | 1       | +1/-1         | 1             |
-| Mike                | 1       | +2/-0         | 1             |
-| Hubert              | 1       | +1/-1         | 1             |
-| Daniel N            | 1       | +1/-1         | 1             |
-| BMZ                 | 1       | +1/-1         | 1             |
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Masih H. Derkani | 153 | +15515/-16832 | 660 |
+| Łukasz Magiera | 92 | +10429/-8024 | 1580 |
+| Andrew Gillis | 43 | +4149/-1765 | 208 |
+| Jennifer Wang | 10 | +1441/-1138 | 34 |
+| Geoff Stuart | 18 | +1348/-859 | 113 |
+| dirkmc | 11 | +1827/-210 | 70 |
+| Aayush | 21 | +1134/-894 | 69 |
+| Steven Allen | 9 | +743/-889 | 66 |
+| Marco Munizaga | 15 | +990/-252 | 36 |
+| gammazero | 47 | +681/-411 | 104 |
+| Will | 4 | +514/-246 | 29 |
+| web3-bot | 15 | +409/-348 | 20 |
+| Steven Fraser | 1 | +671/-0 | 36 |
+| Cory Schwartz | 27 | +520/-89 | 36 |
+| Hannah Howard | 3 | +318/-105 | 8 |
+| Piotr Galar | 2 | +337/-59 | 7 |
+| swift-mx | 14 | +264/-131 | 17 |
+| vyzo | 7 | +357/-15 | 16 |
+| Petar Maymounkov | 6 | +221/-23 | 14 |
+| LexLuthr | 7 | +182/-21 | 14 |
+| Aayush Rajasekaran | 5 | +97/-70 | 33 |
+| Raúl Kripalani | 5 | +87/-45 | 7 |
+| unknown | 1 | +114/-0 | 8 |
+| sti-bot | 44 | +54/-60 | 44 |
+| Aarsh Shah | 2 | +61/-50 | 8 |
+| Lucas Molas | 1 | +74/-27 | 3 |
+| zenground0 | 8 | +80/-18 | 14 |
+| Dirk McCormick | 3 | +52/-33 | 8 |
+| frank | 3 | +73/-7 | 3 |
+| Will Scott | 4 | +45/-11 | 5 |
+| kaola526 | 5 | +44/-11 | 5 |
+| dependabot[bot] | 3 | +16/-10 | 8 |
+| zl | 1 | +15/-4 | 4 |
+| Phi | 5 | +12/-6 | 6 |
+| Marcin Rataj | 1 | +11/-7 | 1 |
+| github-actions[bot] | 7 | +8/-8 | 7 |
+| Anton Evangelatov | 2 | +13/-0 | 4 |
+| Nicolas Gimenez | 1 | +12/-0 | 1 |
+| Marten Seemann | 2 | +5/-7 | 5 |
+| Chris Harden | 1 | +10/-0 | 2 |
+| jennijuju | 1 | +4/-4 | 7 |
+| Travis Person | 2 | +2/-6 | 2 |
+| Rod Vagg | 1 | +3/-3 | 2 |
+| Rob Quist | 1 | +3/-3 | 1 |
+| Jiaying Wang | 1 | +2/-3 | 2 |
+| zengroundumbass | 1 | +3/-1 | 1 |
+| lifei | 1 | +1/-1 | 1 |
+| Mike | 1 | +2/-0 | 1 |
+| Hubert | 1 | +1/-1 | 1 |
+| Daniel N | 1 | +1/-1 | 1 |
+| BMZ | 1 | +1/-1 | 1 |
 
 # 1.16.1 / 2022-07-07
 
@@ -3327,7 +3325,7 @@ This is an OPTIONAL PATCH releases for storage providers who have failed to publ
   - configure `MaxPartitionsPerRecoveryMessage` in miner configuration setting.
 - feat: wdpost: Config for maximum partition count per message (#8982 / #8986)
   - configure `MaxPartitionsPerPoStMessage` in miner configuration setting.
-  
+
 # 1.16.0 / 2022-06-24
 
 This is a MANDATORY release of Lotus that introduces [Filecoin network v16,
@@ -3410,30 +3408,30 @@ All deal proposals with non-utf8 string as the label in the metadata store will 
 
 ## Contributors
 
-| Contributor     | Commits | Lines ±      | Files Changed |
-| --------------- | ------- | ------------ | ------------- |
-| @geoff-vball    | 37      | +10565/-8454 | 150           |
-| @arajasek       | 33      | +7964/-6340  | 473           |
-| @arajasek       | 37      | +6220/-6976  | 457           |
-| @vyzo           | 135     | +7287/-5380  | 546           |
-| @ZenGround0     | 19      | +5958/-2920  | 226           |
-| @stebalien      | 18      | +1566/-1101  | 116           |
-| Alex            | 5       | +323/-2304   | 32            |
-| @zenground0     | 9       | +583/-358    | 56            |
-| @jennijuju      | 5       | +853/-27     | 19            |
-| @jennijuju      | 24      | +392/-201    | 60            |
-| Marco Munizaga  | 3       | +236/-83     | 5             |
-| @raulk          | 9       | +93/-15      | 15            |
-| @travisperson   | 3       | +37/-37      | 12            |
-| @Kubuxu         | 1       | +41/-5       | 1             |
-| @koalacxr       | 1       | +29/-13      | 3             |
-| @gammazero      | 2       | +18/-10      | 4             |
-| Peter Rabbitson | 1       | +5/-3        | 1             |
-| Steve Loeppky   | 1       | +6/-0        | 1             |
-| @masih          | 1       | +3/-3        | 2             |
-| @magik6k        | 1       | +4/-0        | 1             |
-| @jennijuju      | 1       | +2/-2        | 1             |
-| tian zhou       | 1       | +1/-1        | 1             |
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| @geoff-vball | 37 | +10565/-8454 | 150 |
+| @arajasek | 33 | +7964/-6340 | 473 |
+| @arajasek | 37 | +6220/-6976 | 457 |
+| @vyzo | 135 | +7287/-5380 | 546 |
+| @ZenGround0 | 19 | +5958/-2920 | 226 |
+| @stebalien | 18 | +1566/-1101 | 116 |
+| Alex | 5 | +323/-2304 | 32 |
+| @zenground0 | 9 | +583/-358 | 56 |
+| @jennijuju | 5 | +853/-27 | 19 |
+| @jennijuju | 24 | +392/-201 | 60 |
+| Marco Munizaga | 3 | +236/-83 | 5 |
+| @raulk| 9 | +93/-15 | 15 |
+| @travisperson | 3 | +37/-37 | 12 |
+| @Kubuxu | 1 | +41/-5 | 1 |
+| @koalacxr | 1 | +29/-13 | 3 |
+| @gammazero | 2 | +18/-10 | 4 |
+| Peter Rabbitson | 1 | +5/-3 | 1 |
+| Steve Loeppky | 1 | +6/-0 | 1 |
+| @masih | 1 | +3/-3 | 2 |
+| @magik6k | 1 | +4/-0 | 1 |
+| @jennijuju | 1 | +2/-2 | 1 |
+| tian zhou | 1 | +1/-1 | 1 |
 
 # 1.15.3 / 2022-05-31
 
@@ -3487,25 +3485,25 @@ This is an optional release of lotus that include new APIs, some improvements an
 - chore: bundle: remove wrongly committed bundle cars #8763
 ## Contributors
 
-| Contributor   | Commits | Lines ±   | Files Changed |
-| ------------- | ------- | --------- | ------------- |
-| @stebalien    | 4       | +607/-95  | 19            |
-| @magik6k      | 9       | +550/-37  | 43            |
-| @geoff-vball  | 5       | +279/-219 | 27            |
-| @simlecode    | 1       | +306/-39  | 20            |
-| @arajasek     | 1       | +256/-34  | 10            |
-| @zenground0   | 11      | +214/-66  | 31            |
-| @arajasek     | 2       | +149/-99  | 8             |
-| @vyzo         | 3       | +125/-81  | 4             |
-| @Masih        | 1       | +134/-15  | 7             |
-| @travisperson | 3       | +24/-32   | 6             |
-| @Rjan         | 6       | +16/-16   | 9             |
-| @jennijuju    | 3       | +9/-8     | 15            |
-| Rob Quist     | 3       | +12/-4    | 3             |
-| @Icarus9913   | 1       | +3/-3     | 3             |
-| @swift-mx     | 1       | +3/-0     | 1             |
-| @Phi-rjan     | 1       | +1/-1     | 1             |
-| @lifei        | 1       | +1/-0     | 1             |
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| @stebalien | 4 | +607/-95 | 19 |
+| @magik6k  | 9 | +550/-37 | 43 |
+| @geoff-vball | 5 | +279/-219 | 27 |
+| @simlecode | 1 | +306/-39 | 20 |
+| @arajasek | 1 | +256/-34 | 10 |
+| @zenground0 | 11 | +214/-66 | 31 |
+| @arajasek | 2 | +149/-99 | 8 |
+| @vyzo | 3 | +125/-81 | 4 |
+| @Masih| 1 | +134/-15 | 7 |
+| @travisperson | 3 | +24/-32 | 6 |
+| @Rjan | 6 | +16/-16 | 9 |
+| @jennijuju | 3 | +9/-8 | 15 |
+| Rob Quist | 3 | +12/-4 | 3 |
+| @Icarus9913 | 1 | +3/-3 | 3 |
+| @swift-mx | 1 | +3/-0 | 1 |
+| @Phi-rjan | 1 | +1/-1 | 1 |
+| @lifei | 1 | +1/-0 | 1 |
 
 
 # 1.15.2 / 2022-05-06
@@ -3625,39 +3623,39 @@ The Filecoin Network introduced Snap Deal with the network v15 OhSnap upgrade, a
 
 ## Contributors
 
-| Contributor     | Commits | Lines ±     | Files Changed |
-| --------------- | ------- | ----------- | ------------- |
-| @magik6k        | 95      | +5147/-2922 | 401           |
-| @mz-sirius      | 3       | +1789/-546  | 48            |
-| @nonsense       | 11      | +777/-567   | 121           |
-| @arajasek       | 11      | +336/-231   | 28            |
-| Darko Brdareski | 1       | +463/-13    | 95            |
-| @coryschwartz   | 11      | +147/-217   | 13            |
-| spark8899       | 2       | +300/-0     | 2             |
-| @zenground0     | 2       | +6/-193     | 7             |
-| Eng Zer Jun     | 1       | +31/-158    | 11            |
-| Kevin Li        | 2       | +174/-0     | 14            |
-| @arajasek       | 5       | +85/-86     | 18            |
-| @jennijuju      | 1       | +0/-119     | 3             |
-| @jennijuju      | 1       | +0/-98      | 6             |
-| @raulk          | 1       | +60/-1      | 1             |
-| @frrist         | 1       | +56/-0      | 2             |
-| @vyzo           | 3       | +18/-16     | 5             |
-| @Masih          | 3       | +29/-4      | 3             |
-| @jennijuju      | 4       | +18/-11     | 11            |
-| @hannahhoward   | 1       | +13/-10     | 2             |
-| @dirkmc         | 1       | +21/-1      | 1             |
-| koalacxr        | 1       | +10/-11     | 4             |
-| Aarsh Shah      | 1       | +19/-1      | 1             |
-| @Rjan           | 6       | +10/-8      | 7             |
-| @zl             | 1       | +7/-1       | 1             |
-| KAYUII          | 1       | +3/-2       | 1             |
-| @simlecode      | 1       | +4/-0       | 1             |
-| @dirkmc         | 1       | +1/-3       | 1             |
-| Jerry           | 1       | +3/-0       | 1             |
-| @steblian       | 1       | +1/-1       | 1             |
-| Geoff Stuart    | 1       | +1/-0       | 1             |
-| Florian Ruen    | 1       | +0/-1       | 1             |
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| @magik6k | 95 | +5147/-2922 | 401 |
+| @mz-sirius | 3 | +1789/-546 | 48 |
+| @nonsense  | 11 | +777/-567 | 121 |
+| @arajasek | 11 | +336/-231 | 28 |
+| Darko Brdareski | 1 | +463/-13 | 95 |
+| @coryschwartz | 11 | +147/-217 | 13 |
+| spark8899 | 2 | +300/-0 | 2 |
+| @zenground0 | 2 | +6/-193 | 7 |
+| Eng Zer Jun | 1 | +31/-158 | 11 |
+| Kevin Li | 2 | +174/-0 | 14 |
+| @arajasek | 5 | +85/-86 | 18 |
+| @jennijuju | 1 | +0/-119 | 3 |
+| @jennijuju | 1 | +0/-98 | 6 |
+| @raulk | 1 | +60/-1 | 1 |
+| @frrist | 1 | +56/-0 | 2 |
+| @vyzo | 3 | +18/-16 | 5 |
+| @Masih | 3 | +29/-4 | 3 |
+| @jennijuju | 4 | +18/-11 | 11 |
+| @hannahhoward | 1 | +13/-10 | 2 |
+| @dirkmc | 1 | +21/-1 | 1 |
+| koalacxr | 1 | +10/-11 | 4 |
+| Aarsh Shah | 1 | +19/-1 | 1 |
+| @Rjan | 6 | +10/-8 | 7 |
+| @zl | 1 | +7/-1 | 1 |
+| KAYUII | 1 | +3/-2 | 1 |
+| @simlecode | 1 | +4/-0 | 1 |
+| @dirkmc | 1 | +1/-3 | 1 |
+| Jerry | 1 | +3/-0 | 1 |
+| @steblian | 1 | +1/-1 | 1 |
+| Geoff Stuart | 1 | +1/-0 | 1 |
+| Florian Ruen | 1 | +0/-1 | 1 |
 
 # 1.15.1 / 2022-04-07
 
@@ -3868,38 +3866,38 @@ This is an optional release with retrieval improvements(client side), SP ux with
 - Disable appimage ([filecoin-project/lotus#7707](https://github.com/filecoin-project/lotus/pull/7707))
 
 ## Contributors
-| Contributor     | Commits | Lines ±     | Files Changed |
-| --------------- | ------- | ----------- | ------------- |
-| @arajasek       | 73      | +7232/-2778 | 386           |
-| @zenground0     | 27      | +5604/-1049 | 219           |
-| @vyzo           | 118     | +4356/-1470 | 253           |
-| @zl             | 1       | +3725/-309  | 8             |
-| @dirkmc         | 7       | +1392/-1110 | 61            |
-| arajasek        | 37      | +221/-1329  | 90            |
-| @magik6k        | 33      | +1138/-336  | 101           |
-| @whyrusleeping  | 2       | +483/-585   | 28            |
-| Darko Brdareski | 14      | +725/-276   | 154           |
-| @rvagg          | 2       | +43/-947    | 10            |
-| @hannahhoward   | 5       | +436/-335   | 31            |
-| @hannahhoward   | 12      | +507/-133   | 37            |
-| @jennijuju      | 27      | +333/-178   | 54            |
-| @TheMenko       | 8       | +237/-179   | 17            |
-| c r             | 2       | +227/-45    | 12            |
-| @dirkmck        | 12      | +188/-40    | 27            |
-| @ribasushi      | 3       | +128/-62    | 3             |
-| @raulk          | 6       | +128/-49    | 9             |
-| @Whyrusleeping  | 1       | +76/-70     | 8             |
-| @Stebalien      | 1       | +55/-37     | 1             |
-| @jennijuju      | 11      | +29/-16     | 11            |
-| @aarshkshah1992 | 1       | +23/-19     | 5             |
-| @travisperson   | 1       | +0/-18      | 2             |
-| @gstuart        | 3       | +12/-1      | 3             |
-| @coryschwartz   | 4       | +5/-6       | 4             |
-| @pefish         | 1       | +4/-3       | 1             |
-| @Kubuxu         | 1       | +5/-2       | 2             |
-| Colin Kennedy   | 1       | +4/-2       | 1             |
-| Rob Quist       | 1       | +2/-2       | 1             |
-| @shotcollin     | 1       | +1/-1       | 1             |
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| @arajasek | 73 | +7232/-2778 | 386 |
+| @zenground0 | 27 | +5604/-1049 | 219 |
+| @vyzo | 118 | +4356/-1470 | 253 |
+| @zl | 1 | +3725/-309 | 8 |
+| @dirkmc | 7 | +1392/-1110 | 61 |
+| arajasek | 37 | +221/-1329 | 90 |
+| @magik6k | 33 | +1138/-336 | 101 |
+| @whyrusleeping | 2 | +483/-585 | 28 |
+| Darko Brdareski | 14 | +725/-276 | 154 |
+| @rvagg | 2 | +43/-947 | 10 |
+| @hannahhoward | 5 | +436/-335 | 31 |
+| @hannahhoward | 12 | +507/-133 | 37 |
+| @jennijuju | 27 | +333/-178 | 54 |
+| @TheMenko | 8 | +237/-179 | 17 |
+| c r | 2 | +227/-45 | 12 |
+| @dirkmck | 12 | +188/-40 | 27 |
+| @ribasushi | 3 | +128/-62 | 3 |
+| @raulk | 6 | +128/-49 | 9 |
+| @Whyrusleeping | 1 | +76/-70 | 8 |
+| @Stebalien | 1 | +55/-37 | 1 |
+| @jennijuju | 11 | +29/-16 | 11 |
+| @aarshkshah1992 | 1 | +23/-19 | 5 |
+| @travisperson | 1 | +0/-18 | 2 |
+| @gstuart | 3 | +12/-1 | 3 |
+| @coryschwartz | 4 | +5/-6 | 4 |
+| @pefish | 1 | +4/-3 | 1 |
+| @Kubuxu | 1 | +5/-2 | 2 |
+| Colin Kennedy | 1 | +4/-2 | 1 |
+| Rob Quist | 1 | +2/-2 | 1 |
+| @shotcollin | 1 | +1/-1 | 1 |
 
 
 # 1.14.4 / 2022-03-03
@@ -3934,12 +3932,12 @@ Wanna know how to Snap your deal? Check [this](https://github.com/filecoin-proje
 ## Contributors
 
 | Contributor | Commits | Lines ± | Files Changed |
-| ----------- | ------- | ------- | ------------- |
-| @zenground0 | 2       | +73/-58 | 12            |
-| @eben.xie   | 1       | +7/-0   | 1             |
-| @jennijuju  | 1       | +4/-0   | 1             |
-| @jennijuju  | 1       | +2/-1   | 1             |
-| @ribasushi  | 1       | +2/-0   | 1             |
+|-------------|---------|---------|---------------|
+| @zenground0 | 2 | +73/-58 | 12 |
+| @eben.xie | 1 | +7/-0 | 1 |
+| @jennijuju | 1 | +4/-0 | 1 |
+| @jennijuju | 1 | +2/-1 | 1 |
+| @ribasushi | 1 | +2/-0 | 1 |
 
 # 1.14.1 / 2022-02-18
 
@@ -3996,22 +3994,22 @@ All node operators, including storage providers, should be aware that a pre-migr
 
 ## Contributors
 
-| Contributor        | Commits | Lines ±     | Files Changed |
-| ------------------ | ------- | ----------- | ------------- |
-| Aayush Rajasekaran | 41      | +5538/-1205 | 189           |
-| zenground0         | 11      | +3316/-524  | 124           |
-| Jennifer Wang      | 29      | +714/-599   | 68            |
-| ZenGround0         | 3       | +263/-25    | 11            |
-| c r                | 2       | +198/-30    | 6             |
-| vyzo               | 4       | +189/-7     | 7             |
-| Aayush             | 11      | +146/-48    | 49            |
-| web3-bot           | 10      | +99/-17     | 10            |
-| Steven Allen       | 1       | +55/-37     | 1             |
-| Jiaying Wang       | 5       | +30/-8      | 5             |
-| Jakub Sztandera    | 2       | +8/-3       | 3             |
-| Łukasz Magiera     | 1       | +3/-3       | 2             |
-| Travis Person      | 1       | +2/-2       | 2             |
-| Rod Vagg           | 1       | +2/-2       | 2             |
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Aayush Rajasekaran | 41 | +5538/-1205 | 189 |
+| zenground0 | 11 | +3316/-524 | 124 |
+| Jennifer Wang | 29 | +714/-599 | 68 |
+| ZenGround0 | 3 | +263/-25 | 11 |
+| c r | 2 | +198/-30 | 6 |
+| vyzo | 4 | +189/-7 | 7 |
+| Aayush | 11 | +146/-48 | 49 |
+| web3-bot | 10 | +99/-17 | 10 |
+| Steven Allen | 1 | +55/-37 | 1 |
+| Jiaying Wang | 5 | +30/-8 | 5 |
+| Jakub Sztandera | 2 | +8/-3 | 3 |
+| Łukasz Magiera | 1 | +3/-3 | 2 |
+| Travis Person | 1 | +2/-2 | 2 |
+| Rod Vagg | 1 | +2/-2 | 2 |
 
 # v1.13.2 /  2022-01-09
 
@@ -4095,23 +4093,23 @@ worker management, schedule enhancements and so on.
 
 ## Contributors
 
-| Contributor    | Commits | Lines ±     | Files Changed |
-| -------------- | ------- | ----------- | ------------- |
-| @magik6k       | 89      | +5200/-1818 | 232           |
-| Travis Person  | 5       | +1473/-953  | 38            |
-| @arajasek      | 6       | +550/-38    | 19            |
-| @clinta        | 4       | +393/-123   | 26            |
-| @ribasushi     | 3       | +334/-68    | 7             |
-| @jennijuju     | 13      | +197/-120   | 67            |
-| @Kubuxu        | 10      | +153/-30    | 10            |
-| @coryschwartz  | 6       | +18/-26     | 6             |
-| Marten Seemann | 2       | +6/-34      | 5             |
-| @vyzo          | 1       | +3/-3       | 2             |
-| @hannahhoward  | 1       | +3/-3       | 2             |
-| @zenground0    | 2       | +2/-2       | 2             |
-| @yaohcn        | 2       | +2/-2       | 2             |
-| @jennijuju     | 1       | +1/-1       | 1             |
-| @hunjixin      | 1       | +1/-0       | 1             |
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| @magik6k | 89 | +5200/-1818 | 232 |
+| Travis Person | 5 | +1473/-953 | 38 |
+| @arajasek | 6 | +550/-38 | 19 |
+| @clinta | 4 | +393/-123 | 26 |
+| @ribasushi | 3 | +334/-68 | 7 |
+| @jennijuju| 13 | +197/-120 | 67 |
+| @Kubuxu | 10 | +153/-30 | 10 |
+| @coryschwartz | 6 | +18/-26 | 6 |
+| Marten Seemann | 2 | +6/-34 | 5 |
+| @vyzo | 1 | +3/-3 | 2 |
+| @hannahhoward | 1 | +3/-3 | 2 |
+| @zenground0 | 2 | +2/-2 | 2 |
+| @yaohcn | 2 | +2/-2 | 2 |
+| @jennijuju | 1 | +1/-1 | 1 |
+| @hunjixin | 1 | +1/-0 | 1 |
 
 
 
@@ -4176,26 +4174,26 @@ This is an optional Lotus v1.13.1 release.
 
 Contributors
 
-| Contributor    | Commits | Lines ±    | Files Changed |
-| -------------- | ------- | ---------- | ------------- |
-| @magik6k       | 27      | +1285/-531 | 76            |
-| @ribasushi     | 7       | +265/-1635 | 21            |
-| @raulk         | 2       | +2/-737    | 13            |
-| @nonsens       | 4       | +391/-21   | 19            |
-| @arajasek      | 6       | +216/-23   | 14            |
-| @jennijuju     | 8       | +102/-37   | 29            |
-| Steven Allen   | 2       | +77/-29    | 6             |
-| @jennijuju     | 4       | +19/-18    | 11            |
-| @dirkmc        | 2       | +9/-9      | 4             |
-| @@coryschwartz | 1       | +16/-2     | 2             |
-| @frrist        | 1       | +12/-0     | 2             |
-| @Kubuxu        | 5       | +5/-5      | 5             |
-| @hunjixin      | 2       | +6/-3      | 2             |
-| @vyzo          | 1       | +3/-3      | 2             |
-| @@rvagg        | 1       | +3/-3      | 2             |
-| @hannahhoward  | 1       | +3/-2      | 2             |
-| Marten Seemann | 1       | +3/-0      | 1             |
-| @ZenGround0    | 1       | +1/-1      | 1             |
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| @magik6k | 27 | +1285/-531 | 76 |
+| @ribasushi | 7 | +265/-1635 | 21 |
+| @raulk | 2 | +2/-737 | 13 |
+| @nonsens | 4 | +391/-21 | 19 |
+| @arajasek | 6 | +216/-23 | 14 |
+| @jennijuju| 8 | +102/-37 | 29 |
+| Steven Allen | 2 | +77/-29 | 6 |
+| @jennijuju | 4 | +19/-18 | 11 |
+| @dirkmc | 2 | +9/-9 | 4 |
+| @@coryschwartz | 1 | +16/-2 | 2 |
+| @frrist | 1 | +12/-0 | 2 |
+| @Kubuxu | 5 | +5/-5 | 5 |
+| @hunjixin | 2 | +6/-3 | 2 |
+| @vyzo | 1 | +3/-3 | 2 |
+| @@rvagg | 1 | +3/-3 | 2 |
+| @hannahhoward | 1 | +3/-2 | 2 |
+| Marten Seemann | 1 | +3/-0 | 1 |
+| @ZenGround0 | 1 | +1/-1 | 1 |
 
 
 # v1.13.0 / 2021-10-18
@@ -4268,28 +4266,28 @@ This feature release includes the latest functionalities and improvements, like 
 
 ## Contributors
 
-| Contributor     | Commits | Lines ±   | Files Changed |
-| --------------- | ------- | --------- | ------------- |
-| @dirkmc         | 8       | +845/-375 | 55            |
-| @magik6k        | 10      | +1056/-60 | 26            |
-| @aarshkshah1992 | 6       | +813/-259 | 16            |
-| @arajasek       | 10      | +552/-251 | 43            |
-| @ribasushi      | 6       | +505/-78  | 22            |
-| @jennijuju      | 7       | +212/-323 | 34            |
-| @nonsense       | 10      | +335/-139 | 19            |
-| @dirkmc         | 8       | +149/-55  | 16            |
-| @hannahhoward   | 4       | +56/-32   | 17            |
-| @rvagg          | 4       | +61/-13   | 9             |
-| @jennijuju      | 2       | +0/-57    | 2             |
-| @hannahhoward   | 1       | +33/-18   | 7             |
-| @Kubuxu         | 8       | +27/-16   | 9             |
-| @coryschwartz   | 1       | +16/-2    | 2             |
-| @travisperson   | 1       | +14/-0    | 1             |
-| @frrist         | 1       | +12/-0    | 2             |
-| @ognots         | 1       | +0/-10    | 2             |
-| @lanzafame      | 1       | +3/-3     | 1             |
-| @jennijuju      | 1       | +2/-2     | 1             |
-| @swift-mx       | 1       | +1/-1     | 1             |
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| @dirkmc | 8 | +845/-375 | 55 |
+| @magik6k | 10 | +1056/-60 | 26 |
+| @aarshkshah1992 | 6 | +813/-259 | 16 |
+| @arajasek | 10 | +552/-251 | 43 |
+| @ribasushi | 6 | +505/-78 | 22 |
+| @jennijuju | 7 | +212/-323 | 34 |
+| @nonsense | 10 | +335/-139 | 19 |
+| @dirkmc | 8 | +149/-55 | 16 |
+| @hannahhoward | 4 | +56/-32 | 17 |
+| @rvagg | 4 | +61/-13 | 9 |
+| @jennijuju | 2 | +0/-57 | 2 |
+| @hannahhoward | 1 | +33/-18 | 7 |
+| @Kubuxu | 8 | +27/-16 | 9 |
+| @coryschwartz | 1 | +16/-2 | 2 |
+| @travisperson | 1 | +14/-0 | 1 |
+| @frrist | 1 | +12/-0 | 2 |
+| @ognots | 1 | +0/-10 | 2 |
+| @lanzafame  | 1 | +3/-3 | 1 |
+| @jennijuju | 1 | +2/-2 | 1 |
+| @swift-mx | 1 | +1/-1 | 1 |
 
 # v1.12.0 / 2021-10-12
 
@@ -4343,19 +4341,19 @@ Note that this release is built on top of lotus v1.11.3. Enterprising users like
 
 ## Contributors
 
-| Contributor   | Commits | Lines ±     | Files Changed |
-| ------------- | ------- | ----------- | ------------- |
-| @ZenGround0   | 12      | +4202/-2752 | 187           |
-| @arajasek     | 25      | +4567/-854  | 190           |
-| @laudiacay    | 4       | +1276/-435  | 37            |
-| @laudiacay    | 12      | +1350/-209  | 43            |
-| @magik6k      | 1       | +171/-13    | 8             |
-| @Stebalien    | 2       | +115/-12    | 6             |
-| @jennijuju    | 7       | +73/-34     | 26            |
-| @travisperson | 2       | +19/-19     | 7             |
-| @coryschwartz | 1       | +16/-2      | 2             |
-| @Kubuxu       | 5       | +5/-5       | 5             |
-| @ribasushi    | 1       | +5/-3       | 1             |
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| @ZenGround0 | 12 | +4202/-2752 | 187 |
+| @arajasek | 25 | +4567/-854 | 190 |
+| @laudiacay | 4 | +1276/-435 | 37 |
+| @laudiacay | 12 | +1350/-209 | 43 |
+| @magik6k |  1 | +171/-13 | 8 |
+| @Stebalien | 2 | +115/-12 | 6 |
+| @jennijuju | 7 | +73/-34 | 26 |
+| @travisperson | 2 | +19/-19 | 7 |
+| @coryschwartz | 1 | +16/-2 | 2 |
+| @Kubuxu | 5 | +5/-5 | 5 |
+| @ribasushi | 1 | +5/-3 | 1 |
 
 # v1.11.3 / 2021-09-29
 
@@ -4446,31 +4444,31 @@ improvements in different area, like deal making, sealing and so on.
 
 ## Contributors
 
-| Contributor     | Commits | Lines ±     | Files Changed |
-| --------------- | ------- | ----------- | ------------- |
-| @magik6k        | 39      | +3311/-1825 | 179           |
-| @Stebalien      | 23      | +1935/-1417 | 84            |
-| @dirkmc         | 12      | +921/-732   | 111           |
-| @dirkmc         | 12      | +663/-790   | 30            |
-| @hannahhoward   | 3       | +482/-275   | 46            |
-| @travisperson   | 1       | +317/-65    | 5             |
-| @jennijuju      | 11      | +223/-126   | 24            |
-| @hannahhoward   | 7       | +257/-55    | 16            |
-| @nonsense       | 9       | +258/-37    | 19            |
-| @raulk          | 4       | +127/-36    | 13            |
-| @raulk          | 1       | +43/-60     | 15            |
-| @arajasek       | 4       | +74/-8      | 10            |
-| @Frank          | 2       | +68/-8      | 3             |
-| @placer14       | 2       | +52/-1      | 4             |
-| @ldoublewood    | 2       | +15/-13     | 3             |
-| @lanzafame      | 1       | +16/-2      | 1             |
-| @aarshkshah1992 | 2       | +11/-6      | 2             |
-| @ZenGround0     | 2       | +7/-6       | 2             |
-| @ognots         | 1       | +0/-10      | 2             |
-| @KAYUII         | 2       | +4/-4       | 2             |
-| @lanzafame      | 1       | +6/-0       | 1             |
-| @jacobheun      | 1       | +3/-3       | 1             |
-| @frank          | 1       | +4/-0       | 1             |
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| @magik6k | 39 | +3311/-1825 | 179 |
+| @Stebalien | 23 | +1935/-1417 | 84 |
+| @dirkmc | 12 | +921/-732 | 111 |
+| @dirkmc | 12 | +663/-790 | 30 |
+| @hannahhoward | 3 | +482/-275 | 46 |
+| @travisperson | 1 | +317/-65 | 5 |
+| @jennijuju | 11 | +223/-126 | 24 |
+| @hannahhoward | 7 | +257/-55 | 16 |
+| @nonsense| 9 | +258/-37 | 19 |
+| @raulk | 4 | +127/-36 | 13 |
+| @raulk | 1 | +43/-60 | 15 |
+| @arajasek | 4 | +74/-8 | 10 |
+| @Frank | 2 | +68/-8 | 3 |
+| @placer14|  2 | +52/-1 | 4 |
+| @ldoublewood | 2 | +15/-13 | 3 |
+| @lanzafame | 1 | +16/-2 | 1 |
+| @aarshkshah1992 | 2 | +11/-6 | 2 |
+| @ZenGround0 | 2 | +7/-6 | 2 |
+| @ognots | 1 | +0/-10 | 2 |
+| @KAYUII | 2 | +4/-4 | 2 |
+| @lanzafame | 1 | +6/-0 | 1 |
+| @jacobheun | 1 | +3/-3 | 1 |
+| @frank | 1 | +4/-0 | 1 |
 
 
 # v1.11.2 / 2021-09-06
@@ -4593,34 +4591,34 @@ storage providers and clients.
 
 Contributors
 
-| Contributor     | Commits | Lines ±     | Files Changed |
-| --------------- | ------- | ----------- | ------------- |
-| @magik6k        | 23      | +5040/-8389 | 114           |
-| @aarshkshah1992 | 11      | +4859/-1078 | 101           |
-| @raulk          | 5       | +4170/-1662 | 104           |
-| @vyzo           | 30      | +1092/-702  | 49            |
-| @nonsense       | 6       | +630/-472   | 19            |
-| @ZenGround0     | 31      | +556/-274   | 74            |
-| @He Weidong     | 16      | +680/-128   | 16            |
-| @raulk          | 16      | +444/-277   | 49            |
-| @Stebalien      | 11      | +403/-259   | 48            |
-| @jennijuju      | 17      | +276/-281   | 42            |
-| @dirkmc         | 5       | +204/-138   | 20            |
-| @placer14       | 7       | +178/-77    | 17            |
-| @BlocksOnAChain | 1       | +138/-0     | 1             |
-| @Frrist         | 1       | +63/-56     | 2             |
-| @arajasek       | 7       | +74/-42     | 13            |
-| @frrist         | 2       | +67/-6      | 6             |
-| @hannahhoward   | 2       | +13/-11     | 3             |
-| @coryschwartz   | 1       | +16/-6      | 3             |
-| @whyrusleeping  | 1       | +7/-7       | 1             |
-| @hunjixin       | 1       | +8/-6       | 1             |
-| @aarshkshah1992 | 1       | +6/-6       | 2             |
-| @dirkmc         | 2       | +8/-0       | 2             |
-| @mx             | 2       | +6/-1       | 2             |
-| @travisperson   | 1       | +3/-2       | 1             |
-| @jennijuju      | 2       | +2/-2       | 2             |
-| @ribasushi      | 1       | +1/-2       | 2             |
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| @magik6k | 23 | +5040/-8389 | 114 |
+| @aarshkshah1992 | 11 | +4859/-1078 | 101 |
+| @raulk | 5 | +4170/-1662 | 104 |
+| @vyzo | 30 | +1092/-702 | 49 |
+| @nonsense | 6 | +630/-472 | 19 |
+| @ZenGround0 | 31 | +556/-274 | 74 |
+| @He Weidong | 16 | +680/-128 | 16 |
+| @raulk | 16 | +444/-277 | 49 |
+| @Stebalien | 11 | +403/-259 | 48 |
+| @jennijuju| 17 | +276/-281 | 42 |
+| @dirkmc | 5 | +204/-138 | 20 |
+| @placer14 | 7 | +178/-77 | 17 |
+| @BlocksOnAChain | 1 | +138/-0 | 1 |
+| @Frrist | 1 | +63/-56 | 2 |
+| @arajasek | 7 | +74/-42 | 13 |
+| @frrist | 2 | +67/-6 | 6 |
+| @hannahhoward | 2 | +13/-11 | 3 |
+| @coryschwartz | 1 | +16/-6 | 3 |
+| @whyrusleeping | 1 | +7/-7 | 1 |
+| @hunjixin | 1 | +8/-6 | 1 |
+| @aarshkshah1992 | 1 | +6/-6 | 2 |
+| @dirkmc | 2 | +8/-0 | 2 |
+| @mx | 2 | +6/-1 | 2 |
+| @travisperson | 1 | +3/-2 | 1 |
+| @jennijuju | 2 | +2/-2 | 2 |
+| @ribasushi | 1 | +1/-2 | 2 |
 
 # 1.11.1 / 2021-08-16
 
@@ -4752,50 +4750,50 @@ This is a  **highly recommended** but optional Lotus v1.11.1 release that introd
 
 ## Contributors
 
-| Contributor        | Commits | Lines ±     | Files Changed |
-| ------------------ | ------- | ----------- | ------------- |
-| @vyzo              | 313     | +8928/-6010 | 415           |
-| @nonsense          | 103     | +6041/-4041 | 304           |
-| @magik6k           | 37      | +3851/-1611 | 146           |
-| @ZenGround0        | 24      | +1693/-1394 | 95            |
-| @placer14          | 1       | +2310/-578  | 8             |
-| @dirkmc            | 7       | +1154/-726  | 29            |
-| @raulk             | 44      | +969/-616   | 141           |
-| @jennijuju         | 15      | +682/-354   | 47            |
-| @ribasushi         | 18      | +469/-273   | 64            |
-| @coryschwartz      | 5       | +576/-135   | 14            |
-| @hunjixin          | 7       | +404/-82    | 19            |
-| @dirkmc            | 17      | +348/-47    | 17            |
-| @tchardin          | 2       | +262/-34    | 5             |
-| @aarshkshah1992    | 9       | +233/-63    | 44            |
-| @Kubuxu            | 4       | +254/-16    | 4             |
-| @hannahhoward      | 6       | +163/-75    | 8             |
-| @whyrusleeping     | 4       | +157/-16    | 9             |
-| @Whyrusleeping     | 2       | +87/-66     | 10            |
-| @arajasek          | 10      | +81/-53     | 13            |
-| @zgfzgf            | 2       | +104/-4     | 2             |
-| @aarshkshah1992    | 6       | +85/-19     | 10            |
-| @llifezou          | 4       | +59/-20     | 4             |
-| @Stebalien         | 7       | +47/-17     | 9             |
-| @johnli-helloworld | 3       | +46/-15     | 5             |
-| @frrist            | 1       | +28/-23     | 2             |
-| @hannahhoward      | 4       | +46/-5      | 11            |
-| @Jennifer          | 4       | +31/-2      | 4             |
-| @wangchao          | 1       | +1/-27      | 1             |
-| @jennijuju         | 2       | +7/-21      | 2             |
-| @chadwick2143      | 1       | +15/-1      | 1             |
-| @Jerry             | 2       | +9/-4       | 2             |
-| Steve Loeppky      | 2       | +12/-0      | 2             |
-| David Dias         | 1       | +9/-0       | 1             |
-| dependabot[bot]    | 1       | +3/-3       | 1             |
-| zhoutian527        | 1       | +2/-2       | 1             |
-| xloem              | 1       | +4/-0       | 1             |
-|                    | 2       | +2/-2       | 3             |
-| Liviu Damian       | 2       | +2/-2       | 2             |
-| @jimpick           | 2       | +2/-2       | 2             |
-| Frank              | 1       | +3/-0       | 1             |
-| turuslan           | 1       | +1/-1       | 1             |
-| Kirk Baird         | 1       | +0/-0       | 1             |
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| @vyzo | 313 | +8928/-6010 | 415 |
+| @nonsense | 103 | +6041/-4041 | 304 |
+| @magik6k | 37 | +3851/-1611 | 146 |
+| @ZenGround0 | 24 | +1693/-1394 | 95 |
+| @placer14 | 1 | +2310/-578 | 8 |
+| @dirkmc | 7 | +1154/-726 | 29 |
+| @raulk | 44 | +969/-616 | 141 |
+| @jennijuju | 15 | +682/-354 | 47 |
+| @ribasushi | 18 | +469/-273 | 64 |
+| @coryschwartz | 5 | +576/-135 | 14 |
+| @hunjixin | 7 | +404/-82 | 19 |
+| @dirkmc | 17 | +348/-47 | 17 |
+| @tchardin | 2 | +262/-34 | 5 |
+| @aarshkshah1992 | 9 | +233/-63 | 44 |
+| @Kubuxu | 4 | +254/-16 | 4 |
+| @hannahhoward | 6 | +163/-75 | 8 |
+| @whyrusleeping | 4 | +157/-16 | 9 |
+| @Whyrusleeping | 2 | +87/-66 | 10 |
+| @arajasek | 10 | +81/-53 | 13 |
+| @zgfzgf | 2 | +104/-4 | 2 |
+| @aarshkshah1992 | 6 | +85/-19 | 10 |
+| @llifezou | 4 | +59/-20 | 4 |
+| @Stebalien | 7 | +47/-17 | 9 |
+| @johnli-helloworld | 3 | +46/-15 | 5 |
+| @frrist | 1 | +28/-23 | 2 |
+| @hannahhoward | 4 | +46/-5 | 11 |
+| @Jennifer | 4 | +31/-2 | 4 |
+| @wangchao | 1 | +1/-27 | 1 |
+| @jennijuju | 2 | +7/-21 | 2 |
+| @chadwick2143 | 1 | +15/-1 | 1 |
+| @Jerry | 2 | +9/-4 | 2 |
+| Steve Loeppky | 2 | +12/-0 | 2 |
+| David Dias | 1 | +9/-0 | 1 |
+| dependabot[bot] | 1 | +3/-3 | 1 |
+| zhoutian527 | 1 | +2/-2 | 1 |
+| xloem | 1 | +4/-0 | 1 |
+| | 2 | +2/-2 | 3 |
+| Liviu Damian | 2 | +2/-2 | 2 |
+| @jimpick | 2 | +2/-2 | 2 |
+| Frank | 1 | +3/-0 | 1 |
+| turuslan | 1 | +1/-1 | 1 |
+| Kirk Baird | 1 | +0/-0 | 1 |
 
 # 1.11.0 / 2021-07-22
 
@@ -4948,44 +4946,44 @@ This is a **highly recommended** release of Lotus that have many bug fixes, impr
 
 ## Contributors
 
-| Contributor     | Commits | Lines ±       | Files Changed |
-| --------------- | ------- | ------------- | ------------- |
-| @raulk          | 118     | +11972/-10860 | 472           |
-| @magik6k        | 65      | +10824/-4158  | 353           |
-| @aarshkshah1992 | 59      | +8057/-3355   | 224           |
-| @arajasek       | 41      | +8786/-1691   | 331           |
-| @Stebalien      | 106     | +7653/-2718   | 273           |
-| dirkmc          | 11      | +2580/-1371   | 77            |
-| @dirkmc         | 39      | +1865/-1194   | 79            |
-|                 | 19      | +1973/-485    | 81            |
-| @vyzo           | 4       | +1748/-330    | 50            |
-| @aarshkshah1992 | 5       | +1462/-213    | 27            |
-| @coryschwartz   | 35      | +568/-206     | 59            |
-| @chadwick2143   | 3       | +739/-1       | 4             |
-| @ribasushi      | 21      | +487/-164     | 36            |
-| @hannahhoward   | 5       | +544/-5       | 19            |
-| @jennijuju      | 9       | +241/-174     | 19            |
-| @frrist         | 1       | +137/-88      | 7             |
-| @travisperson   | 3       | +175/-6       | 7             |
-| @wadeAlexC      | 1       | +48/-129      | 1             |
-| @whyrusleeping  | 8       | +161/-13      | 11            |
-| lotus           | 1       | +114/-46      | 1             |
-| @nonsense       | 8       | +107/-53      | 20            |
-| @rjan90         | 4       | +115/-33      | 4             |
-| @ZenGround0     | 3       | +114/-1       | 4             |
-| @Aloxaf         | 1       | +43/-61       | 7             |
-| @yaohcn         | 4       | +89/-9        | 5             |
-| @mitchellsoo    | 1       | +51/-0        | 1             |
-| @placer14       | 3       | +28/-18       | 4             |
-| @jennijuju      | 6       | +9/-14        | 6             |
-| @Frank          | 2       | +11/-10       | 2             |
-| @wangchao       | 3       | +5/-4         | 4             |
-| @Steve Loeppky  | 1       | +7/-1         | 1             |
-| @Lion           | 1       | +4/-2         | 1             |
-| @Mimir          | 1       | +2/-2         | 1             |
-| @raulk          | 1       | +1/-1         | 1             |
-| @Jack Yao       | 1       | +1/-1         | 1             |
-| @IPFSUnion      | 1       | +1/-1         | 1             |
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| @raulk | 118 | +11972/-10860 | 472 |
+| @magik6k | 65 | +10824/-4158 | 353 |
+| @aarshkshah1992 | 59 | +8057/-3355 | 224 |
+| @arajasek | 41 | +8786/-1691 | 331 |
+| @Stebalien | 106 | +7653/-2718 | 273 |
+| dirkmc | 11 | +2580/-1371 | 77 |
+| @dirkmc | 39 | +1865/-1194 | 79 |
+|  | 19 | +1973/-485 | 81 |
+| @vyzo | 4 | +1748/-330 | 50 |
+| @aarshkshah1992 | 5 | +1462/-213 | 27 |
+| @coryschwartz | 35 | +568/-206 | 59 |
+| @chadwick2143 | 3 | +739/-1 | 4 |
+| @ribasushi | 21 | +487/-164 | 36 |
+| @hannahhoward | 5 | +544/-5 | 19 |
+| @jennijuju | 9 | +241/-174 | 19 |
+| @frrist | 1 | +137/-88 | 7 |
+| @travisperson | 3 | +175/-6 | 7 |
+| @wadeAlexC | 1 | +48/-129 | 1 |
+| @whyrusleeping | 8 | +161/-13 | 11 |
+| lotus | 1 | +114/-46 | 1 |
+| @nonsense | 8 | +107/-53 | 20 |
+| @rjan90 | 4 | +115/-33 | 4 |
+| @ZenGround0 | 3 | +114/-1 | 4 |
+| @Aloxaf | 1 | +43/-61 | 7 |
+| @yaohcn | 4 | +89/-9 | 5 |
+| @mitchellsoo | 1 | +51/-0 | 1 |
+| @placer14 | 3 | +28/-18 | 4 |
+| @jennijuju | 6 | +9/-14 | 6 |
+| @Frank | 2 | +11/-10 | 2 |
+| @wangchao | 3 | +5/-4 | 4 |
+| @Steve Loeppky | 1 | +7/-1 | 1 |
+| @Lion | 1 | +4/-2 | 1 |
+| @Mimir | 1 | +2/-2 | 1 |
+| @raulk | 1 | +1/-1 | 1 |
+| @Jack Yao | 1 | +1/-1 | 1 |
+| @IPFSUnion | 1 | +1/-1 | 1 |
 
 # 1.10.1 / 2021-07-05
 
@@ -5009,15 +5007,15 @@ This is an optional but **highly recommended** release of Lotus for lotus miners
 
 Contributors
 
-| Contributor        | Commits | Lines ±  | Files Changed |
-| ------------------ | ------- | -------- | ------------- |
-| @magik6k           | 7       | +151/-56 | 21            |
-| @llifezou          | 4       | +59/-20  | 4             |
-| @johnli-helloworld | 2       | +45/-14  | 4             |
-| @wangchao          | 1       | +1/-27   | 1             |
-| Jerry              | 2       | +9/-4    | 2             |
-| @zhoutian527       | 1       | +2/-2    | 1             |
-| @ribasushi         | 1       | +1/-1    | 1             |
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| @magik6k| 7 | +151/-56 | 21 |
+| @llifezou | 4 | +59/-20 | 4 |
+| @johnli-helloworld | 2 | +45/-14 | 4 |
+| @wangchao | 1 | +1/-27 | 1 |
+| Jerry | 2 | +9/-4 | 2 |
+| @zhoutian527 | 1 | +2/-2 | 1 |
+| @ribasushi| 1 | +1/-1 | 1 |
 
 # 1.10.1 / 2021-07-05
 
@@ -5041,15 +5039,15 @@ This is an optional but **highly recommended** release of Lotus for lotus miners
 
 Contributors
 
-| Contributor        | Commits | Lines ±  | Files Changed |
-| ------------------ | ------- | -------- | ------------- |
-| @magik6k           | 7       | +151/-56 | 21            |
-| @llifezou          | 4       | +59/-20  | 4             |
-| @johnli-helloworld | 2       | +45/-14  | 4             |
-| @wangchao          | 1       | +1/-27   | 1             |
-| Jerry              | 2       | +9/-4    | 2             |
-| @zhoutian527       | 1       | +2/-2    | 1             |
-| @ribasushi         | 1       | +1/-1    | 1             |
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| @magik6k| 7 | +151/-56 | 21 |
+| @llifezou | 4 | +59/-20 | 4 |
+| @johnli-helloworld | 2 | +45/-14 | 4 |
+| @wangchao | 1 | +1/-27 | 1 |
+| Jerry | 2 | +9/-4 | 2 |
+| @zhoutian527 | 1 | +2/-2 | 1 |
+| @ribasushi| 1 | +1/-1 | 1 |
 
 # 1.10.0 / 2021-06-23
 
@@ -5170,23 +5168,23 @@ Included in the HyperDrive upgrade is [FIP-0015](https://github.com/filecoin-pro
 
 💙Thank you to all the contributors!
 
-| Contributor   | Commits | Lines ±     | Files Changed |
-| ------------- | ------- | ----------- | ------------- |
-| @magik6k      | 81      | +9606/-1536 | 361           |
-| @arajasek     | 41      | +6543/-679  | 189           |
-| @ZenGround0   | 11      | +4074/-727  | 110           |
-| @anorth       | 10      | +2035/-1177 | 55            |
-| @iand         | 1       | +779/-12    | 5             |
-| @frrist       | 2       | +722/-6     | 6             |
-| @Stebalien    | 6       | +368/-24    | 15            |
-| @jennijuju    | 11      | +204/-111   | 19            |
-| @vyzo         | 6       | +155/-66    | 13            |
-| @coryschwartz | 10      | +171/-27    | 14            |
-| @Kubuxu       | 4       | +177/-13    | 7             |
+| Contributor        | Commits | Lines ±     | Files Changed |
+|--------------------|---------|-------------|---------------|
+| @magik6k    | 81      | +9606/-1536 | 361           |
+| @arajasek  | 41      | +6543/-679  | 189           |
+| @ZenGround0         | 11      | +4074/-727  | 110           |
+| @anorth                | 10      | +2035/-1177 | 55            |
+| @iand           | 1       | +779/-12    | 5             |
+| @frrist             | 2       | +722/-6     | 6             |
+| @Stebalien       | 6       | +368/-24    | 15            |
+| @jennijuju      | 11      | +204/-111   | 19            |
+| @vyzo               | 6       | +155/-66    | 13            |
+| @coryschwartz      | 10      | +171/-27    | 14            |
+| @Kubuxu    | 4       | +177/-13    | 7             |
 | @ribasushi    | 4       | +65/-42     | 5             |
-| @travisperson | 2       | +11/-11     | 4             |
-| @kirk-baird   | 1       | +1/-5       | 1             |
-| @wangchao     | 2       | +3/-2       | 2             |
+| @travisperson      | 2       | +11/-11     | 4             |
+| @kirk-baird | 1       | +1/-5       | 1             |
+| @wangchao           | 2       | +3/-2       | 2             |
 
 
 # 1.9.0 / 2021-05-17
@@ -6131,19 +6129,19 @@ This consensus-breaking release of Lotus upgrades the actors version to v2.0.0. 
 The following contributors had 5 or more commits go into this release.
 We are grateful for every contribution!
 
-| Contributor   | Commits | Lines ±     |
-| ------------- | ------- | ----------- |
-| Stebalien     | 84      | +3425/-2287 |
-| magik6k       | 41      | +2121/-506  |
-| arajasek      | 39      | +2467/-424  |
-| Kubuxu        | 25      | +2344/-775  |
-| raulk         | 21      | +287/-196   |
-| whyrusleeping | 13      | +727/-71    |
-| hsanjuan      | 13      | +5886/-7956 |
-| dirkmc        | 11      | +2634/-576  |
-| travisperson  | 8       | +923/-202   |
-| ribasushi     | 6       | +188/-128   |
-| zgfzgf        | 5       | +21/-17     |
+| Contributor        | Commits | Lines ±       |
+|--------------------|---------|---------------|
+| Stebalien          | 84       | +3425/-2287  |
+| magik6k            | 41       | +2121/-506   |
+| arajasek           | 39       | +2467/-424   |
+| Kubuxu             | 25       | +2344/-775   |
+| raulk              | 21       | +287/-196    |
+| whyrusleeping      | 13       | +727/-71     |
+| hsanjuan           | 13       | +5886/-7956  |
+| dirkmc             | 11       | +2634/-576   | 
+| travisperson       | 8        | +923/-202    |
+| ribasushi          | 6        | +188/-128    |
+| zgfzgf             | 5        | +21/-17      |
 
 # 0.8.1 / 2020-09-30
 
@@ -6253,20 +6251,20 @@ This release also updates go-fil-markets to fix an incompatibility issue between
 The following contributors had 5 or more commits go into this release.
 We are grateful for every contribution!
 
-| Contributor   | Commits | Lines ±     |
-| ------------- | ------- | ----------- |
-| arajasek      | 66      | +3140/-1261 |
-| Stebalien     | 64      | +3797/-3434 |
-| magik6k       | 48      | +1892/-976  |
-| raulk         | 40      | +2412/-1549 |
-| vyzo          | 22      | +287/-196   |
-| alanshaw      | 15      | +761/-146   |
-| whyrusleeping | 15      | +736/-52    |
-| hannahhoward  | 14      | +1237/-837  |
-| anton         | 6       | +32/-8      |
-| travisperson  | 5       | +502/-6     |
-| Frank         | 5       | +78/-39     |
-| Jennifer      | 5       | +148/-41    |
+| Contributor        | Commits | Lines ±       |
+|--------------------|---------|---------------|
+| arajasek           | 66       | +3140/-1261  |
+| Stebalien          | 64       | +3797/-3434  |
+| magik6k            | 48       | +1892/-976   |
+| raulk              | 40       | +2412/-1549  |
+| vyzo               | 22       | +287/-196    |
+| alanshaw           | 15       | +761/-146    |
+| whyrusleeping      | 15       | +736/-52     |
+| hannahhoward       | 14       | +1237/-837   | 
+| anton              | 6        | +32/-8       |
+| travisperson       | 5        | +502/-6      |
+| Frank              | 5        | +78/-39      |
+| Jennifer           | 5        | +148/-41     |
 
 # 0.7.2 / 2020-09-23
 
@@ -6366,21 +6364,21 @@ This consensus-breaking release of Lotus is designed to test a network upgrade o
 The following contributors had commits go into this release.
 We are grateful for every contribution!
 
-| Contributor   | Commits | Lines ±    |
-| ------------- | ------- | ---------- |
-| arajasek      | 28      | +1144/-239 |
-| Kubuxu        | 19      | +452/-261  |
-| whyrusleeping | 13      | +456/-87   |
-| vyzo          | 11      | +318/-20   |
-| raulk         | 10      | +1289/-350 |
-| magik6k       | 6       | +188/-55   |
-| dirkmc        | 3       | +31/-8     |
-| alanshaw      | 3       | +176/-37   |
-| Stebalien     | 2       | +9/-12     |
-| lanzafame     | 1       | +1/-1      |
-| frrist        | 1       | +1/-1      |
-| mishmosh      | 1       | +1/-1      |
-| nonsense      | 1       | +1/-0      |
+| Contributor        | Commits | Lines ±       |
+|--------------------|---------|---------------|
+| arajasek           | 28      | +1144/-239    |
+| Kubuxu             | 19      | +452/-261     |
+| whyrusleeping      | 13      | +456/-87      |
+| vyzo               | 11      | +318/-20      |
+| raulk              | 10      | +1289/-350    |
+| magik6k            | 6       | +188/-55      |
+| dirkmc             | 3       | +31/-8        |
+| alanshaw           | 3       | +176/-37      |
+| Stebalien          | 2       | +9/-12        |
+| lanzafame          | 1       | +1/-1         |
+| frrist             | 1       | +1/-1         |
+| mishmosh           | 1       | +1/-1         |
+| nonsense           | 1       | +1/-0         |
 
 # 0.6.2 / 2020-09-09
 
@@ -6751,27 +6749,27 @@ features can be found [here](https://github.com/filecoin-project/lotus/issues/23
 The following contributors had 10 or more commits go into this release.
 We are grateful for every contribution!
 
-| Contributor   | Commits | Lines ±       |
-| ------------- | ------- | ------------- |
-| magik6k       | 361     | +13197/-6136  |
-| Kubuxu        | 227     | +5670/-2587   |
-| arajasek      | 120     | +2916/-1264   |
-| whyrusleeping | 112     | +3979/-1089   |
-| vyzo          | 99      | +3343/-1305   |
-| dirkmc        | 68      | +8732/-3621   |
-| laser         | 45      | +1489/-501    |
-| hannahhoward  | 43      | +2654/-990    |
-| frrist        | 37      | +6630/-4338   |
-| schomatis     | 28      | +3016/-1368   |
-| placer14      | 27      | +824/-350     |
-| raulk         | 25      | +28718/-29849 |
-| mrsmkl        | 22      | +560/-368     |
-| travisperson  | 18      | +1354/-314    |
-| nonsense      | 16      | +2956/-2842   |
-| ingar         | 13      | +331/-123     |
-| daviddias     | 11      | +311/-11      |
-| Stebalien     | 11      | +1204/-980    |
-| RobQuistNL    | 10      | +69/-74       |
+| Contributor        | Commits | Lines ±       |
+|--------------------|---------|---------------|
+| magik6k            | 361     | +13197/-6136  |
+| Kubuxu             | 227     | +5670/-2587   |
+| arajasek           | 120     | +2916/-1264   |
+| whyrusleeping      | 112     | +3979/-1089   |
+| vyzo               | 99      | +3343/-1305   |
+| dirkmc             | 68      | +8732/-3621   |
+| laser              | 45      | +1489/-501    |
+| hannahhoward       | 43      | +2654/-990    |
+| frrist             | 37      | +6630/-4338   |
+| schomatis          | 28      | +3016/-1368   |
+| placer14           | 27      | +824/-350     |
+| raulk              | 25      | +28718/-29849 |
+| mrsmkl             | 22      | +560/-368     |
+| travisperson       | 18      | +1354/-314    |
+| nonsense           | 16      | +2956/-2842   |
+| ingar              | 13      | +331/-123     |
+| daviddias          | 11      | +311/-11      |
+| Stebalien          | 11      | +1204/-980    |
+| RobQuistNL         | 10      | +69/-74       |
 
 # 0.1.0 / 2019-12-11
 
