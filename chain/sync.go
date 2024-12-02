@@ -845,6 +845,14 @@ loop:
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load next local tipset: %w", err)
 	}
+
+	if chkpt := syncer.store.GetCheckpoint(); !ignoreCheckpoint && chkpt != nil {
+		// don't allow us to expand the tipset beyond the checkpoint
+		if known.Equals(chkpt) && base.IsChildOf(knownParent) {
+			return nil, xerrors.Errorf("tispet expanding fork: %w", ErrForkCheckpoint)
+		}
+	}
+
 	if base.IsChildOf(knownParent) {
 		// common case: receiving a block that's potentially part of the same tipset as our best block
 		return blockSet, nil

@@ -110,7 +110,7 @@ func prepSyncTest(t testing.TB, h int) *syncTestUtil {
 	//tu.checkHeight("source", source, h)
 
 	// separate logs
-	fmt.Println("\x1b[31m///////////////////////////////////////////////////\x1b[39b")
+	fmt.Println("///////////////////////////////////////////////////")
 
 	return tu
 }
@@ -175,7 +175,7 @@ func prepSyncTestWithV5Height(t testing.TB, h int, v5height abi.ChainEpoch) *syn
 	//tu.checkHeight("source", source, h)
 
 	// separate logs
-	fmt.Println("\x1b[31m///////////////////////////////////////////////////\x1b[39b")
+	fmt.Println("///////////////////////////////////////////////////")
 	return tu
 }
 
@@ -208,6 +208,7 @@ func (tu *syncTestUtil) pushFtsAndWait(to int, fts *store.FullTipSet, wait bool)
 			require.NoError(tu.t, err)
 
 			if time.Since(start) > time.Second*10 {
+				tu.t.Helper()
 				tu.t.Fatal("took too long waiting for block to be accepted")
 			}
 		}
@@ -219,7 +220,6 @@ func (tu *syncTestUtil) pushTsExpectErr(to int, fts *store.FullTipSet, experr bo
 	for _, fb := range fts.Blocks {
 		var b types.BlockMsg
 
-		// -1 to match block.Height
 		b.Header = fb.Header
 		for _, msg := range fb.SecpkMessages {
 			c, err := tu.nds[to].(*impl.FullNodeAPI).ChainAPI.Chain.PutMessage(ctx, msg)
@@ -1024,6 +1024,64 @@ func TestSyncCheckpointHead(t *testing.T) {
 	tu.checkpointTs(p1, b.TipSet().Key())
 	p1Head = tu.getHead(p1)
 	require.True(tu.t, p1Head.Equals(b.TipSet()))
+}
+
+func TestSyncCheckpointPartial(t *testing.T) {
+	H := 10
+	tu := prepSyncTest(t, H)
+
+	p1 := tu.addClientNode()
+	p2 := tu.addClientNode()
+
+	fmt.Println("GENESIS: ", tu.g.Genesis().Cid())
+	tu.loadChainToNode(p1)
+	tu.loadChainToNode(p2)
+
+	base := tu.g.CurTipset
+	fmt.Println("Mining base: ", base.TipSet().Cids(), base.TipSet().Height())
+
+	last := base
+	a := base
+	for {
+		a = tu.mineOnBlock(last, p1, []int{0, 1}, true, false, nil, 0, true)
+		if len(a.Blocks) == 2 {
+			// enfoce tipset of two blocks
+			break
+		}
+		tu.pushTsExpectErr(p2, a, false) // push these to p2 as well
+		last = a
+	}
+	var aPartial *store.FullTipSet
+	var aPartial2 *store.FullTipSet
+	for _, b := range a.Blocks {
+		if b.Header.Miner == tu.g.Miners[1] {
+			// need to have miner two block in the partial tipset
+			// as otherwise it will be a parent grinding fault
+			aPartial = store.NewFullTipSet([]*types.FullBlock{b})
+		} else {
+			aPartial2 = store.NewFullTipSet([]*types.FullBlock{b})
+		}
+	}
+	tu.waitUntilSyncTarget(p1, a.TipSet())
+
+	tu.pushFtsAndWait(p2, aPartial, true)
+	tu.checkpointTs(p2, aPartial.TipSet().Key())
+	t.Logf("p1 head: %v, p2 head: %v, a: %v", tu.getHead(p1), tu.getHead(p2), a.TipSet())
+	tu.pushTsExpectErr(p2, aPartial2, true)
+
+	b := tu.mineOnBlock(a, p1, []int{0}, true, false, nil, 0, true)
+	tu.pushTsExpectErr(p2, b, true)
+
+	require.NoError(t, tu.g.ResyncBankerNonce(b.TipSet())) // don't ask me why it has to be TS b
+	c := tu.mineOnBlock(aPartial, p2, []int{1}, true, false, nil, 0, true)
+
+	require.NoError(t, tu.mn.LinkAll())
+	tu.connect(p1, p2)
+
+	tu.pushFtsAndWait(p2, c, true)
+	tu.waitUntilNodeHasTs(p1, c.TipSet().Key())
+	tu.checkpointTs(p1, c.TipSet().Key())
+
 }
 
 func TestSyncCheckpointEarlierThanHead(t *testing.T) {
