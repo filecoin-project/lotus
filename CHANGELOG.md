@@ -2,7 +2,7 @@
 
 # UNRELEASED
 
-# Node and Miner v1.31.0 / 2024-11-28
+# Node and Miner v1.31.0 / 2024-12-02
 
 The Lotus v1.31.0 release introduces the new `ChainIndexer` subsystem, enhancing the indexing of Filecoin chain state for improved RPC performance. Several bug fixes in the block production loop are also included. Please review the upgrade warnings and documentation for any important changes affecting RPC providers, node operators and storage providers.
 
