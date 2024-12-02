@@ -2,9 +2,9 @@
 
 # UNRELEASED
 
-# Node and Miner v1.31.0-rc1 / 2024-11-12
+# Node and Miner v1.31.0 / 2024-12-02
 
-This Lotus release candidate introduces the new `ChainIndexer` subsystem, enhancing the indexing of Filecoin chain state for improved RPC performance. Several bug fixes in the block production loop are also included. Please review the upgrade warnings and documentation for any important changes affecting RPC providers, node operators and storage providers.
+The Lotus v1.31.0 release introduces the new `ChainIndexer` subsystem, enhancing the indexing of Filecoin chain state for improved RPC performance. Several bug fixes in the block production loop are also included. Please review the upgrade warnings and documentation for any important changes affecting RPC providers, node operators and storage providers.
 
 ## ☢️ Upgrade Warnings ☢️
 - The introduction of the new `ChainIndexer` subsystem replaces the existing `MsgIndex`, `EthTxHashLookup`, and `EventIndex` implementations. This change may affect RPC providers and node operators who use or expose Ethereum and/or events APIs. It is crucial to review the [ChainIndexer documentation for operators](./documentation/en/chain-indexer-overview-for-operators.md) to understand how to enable, configure, and use the new Indexer.
@@ -14,25 +14,24 @@ This Lotus release candidate introduces the new `ChainIndexer` subsystem, enhanc
 - `lotus chain head` now supports a `--height` flag to print just the epoch number of the current chain head ([filecoin-project/lotus#12609](https://github.com/filecoin-project/lotus/pull/12609))
 - Implement `EthGetTransactionByBlockNumberAndIndex` (`eth_getTransactionByBlockNumberAndIndex`) and `EthGetTransactionByBlockHashAndIndex` (`eth_getTransactionByBlockHashAndIndex`) methods. ([filecoin-project/lotus#12618](https://github.com/filecoin-project/lotus/pull/12618))
 - `lotus-shed indexes inspect-indexes` now performs a comprehensive comparison of the event index data for each message by comparing the AMT root CID from the message receipt with the root of a reconstructed AMT. Previously `inspect-indexes` simply compared event counts.  Comparing AMT roots instead confirms all the event data is byte-perfect. ([filecoin-project/lotus#12570](https://github.com/filecoin-project/lotus/pull/12570))
-- Reduce size of embedded genesis CAR files by removing WASM actor blocks and compressing with zstd. This reduces the `lotus` binary size by approximately 10 MiB. ([filecoin-project/lotus#12439](https://github.com/filecoin-project/lotus/pull/12439))
+- Return a "data" field on the "error" returned from RPC when `eth_call` and `eth_estimateGas` APIs encounter `execution reverted` errors. This is a standard expectation of Ethereum RPC tooling and may improve compatibility in some cases. ([filecoin-project/lotus#12553](https://github.com/filecoin-project/lotus/pull/12553))
 - Improve ETH-filter performance for nodes serving many clients. ([filecoin-project/lotus#12603](https://github.com/filecoin-project/lotus/pull/12603))
 - Implement F3 utility CLIs to list the power table for a given instance and sum the proportional power of a set of actors that participate in a given instance. ([filecoin-project/lotus#12698](https://github.com/filecoin-project/lotus/pull/12698))
 
+
 ## 🐛 Bug Fix Highlights
 - Add logic to check if the miner's owner address is delegated (f4 address). If it is delegated, the `lotus-shed sectors termination-estimate` command now sends the termination state call using the worker ID. This fix resolves the issue where termination-estimate did not function correctly for miners with delegated owner addresses. ([filecoin-project/lotus#12569](https://github.com/filecoin-project/lotus/pull/12569))
-- The mining loop will now correctly "stick" to the same upstream lotus node for all operations pertaining to mining a single block ([filecoin-project/lotus#12665](https://github.com/filecoin-project/lotus/pull/12665)).
-- The Lotus Miner will now always mine on the latest chain head returned by lotus, even if that head has less "weight" than the previously seen head. This is necessary because F3 may end up finalizing a tipset with a lower weight, although this situation should be rare on the Filecoin mainnet. ([filecoin-project/lotus#12659](https://github.com/filecoin-project/lotus/pull/12659))
+- The Lotus Miner will now always mine on the latest chain head returned by lotus, even if that head has less "weight" than the previously seen head. This is necessary because F3 may end up finalizing a tipset with a lower weight, although this situation should be rare on the Filecoin mainnet. ([filecoin-project/lotus#12659](https://github.com/filecoin-project/lotus/pull/12659)) and ([filecoin-project/lotus#12690](https://github.com/filecoin-project/lotus/pull/12690))
 - Make the ordering of event output for `eth_` APIs and `GetActorEventsRaw` consistent, sorting ascending on: epoch, message index, event index and original event entry order. ([filecoin-project/lotus#12623](https://github.com/filecoin-project/lotus/pull/12623))
-- Event APIs (Eth events and actor events) should only return reverted events if client queries by specific block hash / tipset. Eth and actor event subscription APIs should always return reverted events to enable accurate observation of real-time changes. ([filecoin-project/lotus#12585](https://github.com/filecoin-project/lotus/pull/12585))
-- Fix a bug in the `lotus-shed indexes backfill-events` command that may result in either duplicate events being backfilled where there are existing events (such an operation *should* be idempotent) or events erroneously having duplicate `logIndex` values when queried via ETH APIs. ([filecoin-project/lotus#12567](https://github.com/filecoin-project/lotus/pull/12567))
+- Return a consistent error when encountering null rounds in ETH RPC method calls. ([filecoin-project/lotus#12655](https://github.com/filecoin-project/lotus/pull/12655))
 - Correct erroneous sector QAP-calculation upon sector extension in lotus-miner cli. ([filecoin-project/lotus#12698](https://github.com/filecoin-project/lotus/pull/12720))
 
 ## 📝 Changelog
 
 For the full set of changes since the last stable release:
 
-* Node: https://github.com/filecoin-project/lotus/compare/v1.30.0...v1.31.0-rc1
-* Miner: https://github.com/filecoin-project/lotus/compare/v1.30.0...miner/v1.31.0-rc1
+* Node: https://github.com/filecoin-project/lotus/compare/v1.30.0...v1.31.0
+* Miner: https://github.com/filecoin-project/lotus/compare/v1.30.0...miner/v1.31.0
 
 ## 👨‍👩‍👧‍👦 Contributors
 
