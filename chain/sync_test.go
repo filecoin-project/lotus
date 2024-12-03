@@ -1064,7 +1064,7 @@ func TestSyncCheckpointPartial(t *testing.T) {
 	}
 	tu.waitUntilSyncTarget(p1, a.TipSet())
 
-	tu.pushFtsAndWait(p2, aPartial, true)
+	tu.pushFtsAndWait(p2, a, true)
 	tu.checkpointTs(p2, aPartial.TipSet().Key())
 	t.Logf("p1 head: %v, p2 head: %v, a: %v", tu.getHead(p1), tu.getHead(p2), a.TipSet())
 	tu.pushTsExpectErr(p2, aPartial2, true)
