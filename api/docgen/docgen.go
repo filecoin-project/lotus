@@ -105,6 +105,31 @@ func init() {
 	addExample(f3Lease)
 	addExample(&f3Lease)
 
+	f3Cert := certs.FinalityCertificate{
+		GPBFTInstance: 0,
+		ECChain: []gpbft.TipSet{
+			{
+				Epoch:      0,
+				Key:        tsk.Bytes(),
+				PowerTable: c,
+			},
+		},
+		SupplementalData: gpbft.SupplementalData{
+			PowerTable: c,
+		},
+		Signers:   bitfield.NewFromSet([]uint64{2, 3, 5, 7}),
+		Signature: []byte("UnDadaSeA"),
+		PowerTableDelta: []certs.PowerTableDelta{
+			{
+				ParticipantID: 0,
+				PowerDelta:    gpbft.StoragePower{},
+				SigningKey:    []byte("BaRrelEYe"),
+			},
+		},
+	}
+	addExample(f3Cert)
+	addExample(&f3Cert)
+
 	block := blocks.Block(&blocks.BasicBlock{})
 	ExampleValues[reflect.TypeOf(&block).Elem()] = block
 
@@ -429,7 +454,6 @@ func init() {
 		FromHeight: epochPtr(1010),
 		ToHeight:   epochPtr(1020),
 	})
-	addExample(&certs.FinalityCertificate{})
 	addExample(&manifest.Manifest{})
 	addExample(gpbft.NetworkName("filecoin"))
 	addExample(gpbft.ActorID(1000))
