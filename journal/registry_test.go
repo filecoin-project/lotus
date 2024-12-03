@@ -1,4 +1,3 @@
-// stm: #unit
 package journal
 
 import (
@@ -8,7 +7,6 @@ import (
 )
 
 func TestDisabledEvents(t *testing.T) {
-	//stm: @JOURNAL_REGISTRY_NEW_EVENT_TYPE_001, @JOURNAL_REGISTRY_PARSE_DISABLED_001
 	req := require.New(t)
 
 	test := func(dis DisabledEvents) func(*testing.T) {
@@ -46,7 +44,6 @@ func TestDisabledEvents(t *testing.T) {
 }
 
 func TestParseDisableEvents(t *testing.T) {
-	//stm: @JOURNAL_REGISTRY_PARSE_DISABLED_002
 	_, err := ParseDisabledEvents("system1:disabled1:failed,system1:disabled2")
 	require.Error(t, err)
 }

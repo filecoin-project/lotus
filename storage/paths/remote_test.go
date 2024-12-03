@@ -1,4 +1,3 @@
-// stm: #unit
 package paths_test
 
 import (
@@ -150,7 +149,6 @@ func TestMoveShared(t *testing.T) {
 }
 
 func TestReader(t *testing.T) {
-	//stm: @STORAGE_INFO_001
 	logging.SetAllLoggers(logging.LevelDebug)
 	bz := []byte("Hello World")
 
