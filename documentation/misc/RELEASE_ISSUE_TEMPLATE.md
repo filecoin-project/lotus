@@ -54,28 +54,28 @@
    - There likely aren't any changes at this point, but this can be opened with a small whitespace change so the PR is open and we can more easily hold the standard of making improvements incrementally since improvements are usually better done by collecting changes/notes along the way rather than just thinking about it at the end.
    - This will get merged in a `Post Release` step.
 <!--{{if eq .Level "patch"}})-->
-<!--  {{if contains .Type "Node"}}-->
+<!--  {{if contains "Node" .Type}}-->
 - [ ] Fork a new `release/v{{.Tag}}` branch from the last stable `release/vX.Y.x` and make any further release-related changes to this branch.
 <!--  {{end}}-->
-<!--  {{if contains .Type "Miner"}}-->
+<!--  {{if contains "Miner" .Type}}-->
 - [ ] Fork a new `release/miner/v{{.Tag}}` branch from the last stable `release/miner/vX.Y.x` and make any further release-related changes to this branch.
 <!--  {{end}}-->
 <!--{{end}}-->
 <!--{{if eq .Level "minor"}}-->
-<!--  {{if contains .Type "Node"}}-->
+<!--  {{if contains "Node" .Type}}-->
 - [ ] Fork a new `release/v{{.Tag}}` branch from `master` and make any further release-related changes to this branch.
 <!--  {{end}}-->
-<!--  {{if contains .Type "Miner"}}-->
+<!--  {{if contains "Miner" .Type}}-->
 - [ ] Fork a new `release/miner/v{{.Tag}}` branch from `master` and make any further release-related changes to this branch.
 <!--  {{end}}-->
 <!--{{end}}-->
 <!--{{if ne .Level "patch"}}-->
 - `master` branch Version string updates
    - [ ] bump the version(s) in `build/version.go` to `v{{.NextTag}}-dev`.
-<!--{{  if contains .Type "Node"}}-->
+<!--{{  if contains "Node" .Type}}-->
       - Ensure to update `NodeBuildVersion`
 <!--{{  end}}-->
-<!--{{  if contains .Type "Miner"}}-->
+<!--{{  if contains "Miner" .Type}}-->
       - Ensure to update `MinerBuildVersion`
 <!--{{  end}}-->
    - [ ] Run `make gen && make docsgen-cli` before committing changes.
