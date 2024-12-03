@@ -329,7 +329,7 @@ func main() {
 					if err != nil {
 						return fmt.Errorf("failed to read issue template: %w", err)
 					}
-					// Spring used for String contains and Lists
+					// Sprig used for String contains and Lists
 					tmpl, err := template.New("issue").Funcs(sprig.FuncMap()).Parse(string(issueTemplate))
 					if err != nil {
 						return fmt.Errorf("failed to parse issue template: %w", err)
@@ -347,6 +347,8 @@ func main() {
 					// Remove duplicate newlines before headers and list items since the templating leaves a lot extra newlines around.
 					// Extra newlines are present because go formatting control statements done within HTML comments rather than using {{- -}}.
 					// HTML comments are used instead so that the template file parses as clean markdown on its own.
+					// In addition, HTML comments were also required within "ranges" in the template.  
+					// Using HTML comments everywhere keeps things consistent.  
 					re := regexp.MustCompile(`\n\n+([^#*\[\|])`)
 					issueBody = re.ReplaceAllString(issueBody, "\n$1")
 
