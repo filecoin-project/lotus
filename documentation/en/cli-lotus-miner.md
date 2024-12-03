@@ -16,6 +16,10 @@ COMMANDS:
    stop          Stop a running lotus miner
    config        Manage node config
    backup        Create node metadata backup
+   auth          Manage RPC permissions
+   log           Manage logging
+   wait-api      Wait for lotus api to come online
+   fetch-params  Fetch proving parameters
    pprof         
    version       Print version
    help, h       Shows a list of commands or help for one command
@@ -27,11 +31,6 @@ COMMANDS:
      proving  View proving information
      storage  manage sector storage
      sealing  interact with sealing pipeline
-   DEVELOPER:
-     auth          Manage RPC permissions
-     log           Manage logging
-     wait-api      Wait for lotus api to come online
-     fetch-params  Fetch proving parameters
 
 GLOBAL OPTIONS:
    --actor value, -a              specify other actor to query / manipulate
@@ -1370,10 +1369,10 @@ OPTIONS:
 
 ```
 NAME:
-   lotus-miner lotus auth - Manage RPC permissions
+   lotus-miner auth - Manage RPC permissions
 
 USAGE:
-   lotus-miner lotus auth command [command options] [arguments...]
+   lotus-miner auth command [command options] [arguments...]
 
 COMMANDS:
    create-token  Create token
@@ -1388,10 +1387,10 @@ OPTIONS:
 
 ```
 NAME:
-   lotus-miner lotus auth create-token - Create token
+   lotus-miner auth create-token - Create token
 
 USAGE:
-   lotus-miner lotus auth create-token [command options] [arguments...]
+   lotus-miner auth create-token [command options] [arguments...]
 
 OPTIONS:
    --perm value  permission to assign to the token, one of: read, write, sign, admin
@@ -1402,10 +1401,10 @@ OPTIONS:
 
 ```
 NAME:
-   lotus-miner lotus auth api-info - Get token with API info required to connect to this node
+   lotus-miner auth api-info - Get token with API info required to connect to this node
 
 USAGE:
-   lotus-miner lotus auth api-info [command options] [arguments...]
+   lotus-miner auth api-info [command options] [arguments...]
 
 OPTIONS:
    --perm value  permission to assign to the token, one of: read, write, sign, admin
@@ -1416,10 +1415,10 @@ OPTIONS:
 
 ```
 NAME:
-   lotus-miner lotus log - Manage logging
+   lotus-miner log - Manage logging
 
 USAGE:
-   lotus-miner lotus log command [command options] [arguments...]
+   lotus-miner log command [command options] [arguments...]
 
 COMMANDS:
    list       List log systems
@@ -1435,10 +1434,10 @@ OPTIONS:
 
 ```
 NAME:
-   lotus-miner lotus log list - List log systems
+   lotus-miner log list - List log systems
 
 USAGE:
-   lotus-miner lotus log list [command options] [arguments...]
+   lotus-miner log list [command options] [arguments...]
 
 OPTIONS:
    --help, -h  show help
@@ -1448,10 +1447,10 @@ OPTIONS:
 
 ```
 NAME:
-   lotus-miner lotus log set-level - Set log level
+   lotus-miner log set-level - Set log level
 
 USAGE:
-   lotus-miner lotus log set-level [command options] [level]
+   lotus-miner log set-level [command options] [level]
 
 DESCRIPTION:
    Set the log level for logging systems:
@@ -1482,10 +1481,10 @@ OPTIONS:
 
 ```
 NAME:
-   lotus-miner lotus log alerts - Get alert states
+   lotus-miner log alerts - Get alert states
 
 USAGE:
-   lotus-miner lotus log alerts [command options] [arguments...]
+   lotus-miner log alerts [command options] [arguments...]
 
 OPTIONS:
    --all       get all (active and inactive) alerts (default: false)
@@ -1496,13 +1495,10 @@ OPTIONS:
 
 ```
 NAME:
-   lotus-miner lotus wait-api - Wait for lotus api to come online
+   lotus-miner wait-api - Wait for lotus api to come online
 
 USAGE:
-   lotus-miner lotus wait-api [command options] [arguments...]
-
-CATEGORY:
-   DEVELOPER
+   lotus-miner wait-api [command options] [arguments...]
 
 OPTIONS:
    --timeout value  duration to wait till fail (default: 30s)
@@ -1513,13 +1509,10 @@ OPTIONS:
 
 ```
 NAME:
-   lotus-miner lotus fetch-params - Fetch proving parameters
+   lotus-miner fetch-params - Fetch proving parameters
 
 USAGE:
-   lotus-miner lotus fetch-params [command options] [sectorSize]
-
-CATEGORY:
-   DEVELOPER
+   lotus-miner fetch-params [command options] [sectorSize]
 
 OPTIONS:
    --help, -h  show help
@@ -1529,10 +1522,10 @@ OPTIONS:
 
 ```
 NAME:
-   lotus-miner lotus pprof
+   lotus-miner pprof
 
 USAGE:
-   lotus-miner lotus pprof command [command options] [arguments...]
+   lotus-miner pprof command [command options] [arguments...]
 
 COMMANDS:
    goroutines  Get goroutine stacks
@@ -1546,10 +1539,10 @@ OPTIONS:
 
 ```
 NAME:
-   lotus-miner lotus pprof goroutines - Get goroutine stacks
+   lotus-miner pprof goroutines - Get goroutine stacks
 
 USAGE:
-   lotus-miner lotus pprof goroutines [command options] [arguments...]
+   lotus-miner pprof goroutines [command options] [arguments...]
 
 OPTIONS:
    --help, -h  show help
@@ -1559,10 +1552,10 @@ OPTIONS:
 
 ```
 NAME:
-   lotus-miner lotus version - Print version
+   lotus-miner version - Print version
 
 USAGE:
-   lotus-miner lotus version [command options] [arguments...]
+   lotus-miner version [command options] [arguments...]
 
 OPTIONS:
    --help, -h  show help

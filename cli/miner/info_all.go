@@ -35,7 +35,7 @@ var infoAllCmd = &cli.Command{
 		// Top-level info
 
 		fmt.Println("#: Version")
-		if err := lcli.VersionCmd.Action(cctx); err != nil {
+		if err := lcli.VersionCmd().Action(cctx); err != nil {
 			fmt.Println("ERROR: ", err)
 		}
 
@@ -194,7 +194,7 @@ var infoAllCmd = &cli.Command{
 
 		if !_test {
 			fmt.Println("\n#: Goroutines")
-			if err := lcli.PprofGoroutines.Action(cctx); err != nil {
+			if err := lcli.PprofGoroutinesCmd().Action(cctx); err != nil {
 				fmt.Println("ERROR: ", err)
 			}
 		}

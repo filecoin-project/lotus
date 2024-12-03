@@ -57,12 +57,12 @@ var GetStorageMinerAPI = cliutil.GetStorageMinerAPI
 var GetWorkerAPI = cliutil.GetWorkerAPI
 
 var CommonCommands = []*cli.Command{
-	AuthCmd,
-	LogCmd,
-	WaitApiCmd,
-	FetchParamCmd,
-	PprofCmd,
-	VersionCmd,
+	AuthCmd(),
+	LogCmd(),
+	WaitApiCmd(),
+	FetchParamCmd(),
+	PprofCmd(),
+	VersionCmd(),
 }
 
 func WithCategory(cat string, cmd *cli.Command) *cli.Command {

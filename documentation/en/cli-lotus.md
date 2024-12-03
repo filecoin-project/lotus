@@ -1095,10 +1095,10 @@ OPTIONS:
 
 ```
 NAME:
-   lotus-miner lotus auth - Manage RPC permissions
+   lotus auth - Manage RPC permissions
 
 USAGE:
-   lotus-miner lotus auth command [command options] [arguments...]
+   lotus auth command [command options] [arguments...]
 
 COMMANDS:
    create-token  Create token
@@ -1113,10 +1113,10 @@ OPTIONS:
 
 ```
 NAME:
-   lotus-miner lotus auth create-token - Create token
+   lotus auth create-token - Create token
 
 USAGE:
-   lotus-miner lotus auth create-token [command options] [arguments...]
+   lotus auth create-token [command options] [arguments...]
 
 OPTIONS:
    --perm value  permission to assign to the token, one of: read, write, sign, admin
@@ -1127,10 +1127,10 @@ OPTIONS:
 
 ```
 NAME:
-   lotus-miner lotus auth api-info - Get token with API info required to connect to this node
+   lotus auth api-info - Get token with API info required to connect to this node
 
 USAGE:
-   lotus-miner lotus auth api-info [command options] [arguments...]
+   lotus auth api-info [command options] [arguments...]
 
 OPTIONS:
    --perm value  permission to assign to the token, one of: read, write, sign, admin
@@ -2194,10 +2194,10 @@ OPTIONS:
 
 ```
 NAME:
-   lotus-miner lotus log - Manage logging
+   lotus log - Manage logging
 
 USAGE:
-   lotus-miner lotus log command [command options] [arguments...]
+   lotus log command [command options] [arguments...]
 
 COMMANDS:
    list       List log systems
@@ -2213,10 +2213,10 @@ OPTIONS:
 
 ```
 NAME:
-   lotus-miner lotus log list - List log systems
+   lotus log list - List log systems
 
 USAGE:
-   lotus-miner lotus log list [command options] [arguments...]
+   lotus log list [command options] [arguments...]
 
 OPTIONS:
    --help, -h  show help
@@ -2226,10 +2226,10 @@ OPTIONS:
 
 ```
 NAME:
-   lotus-miner lotus log set-level - Set log level
+   lotus log set-level - Set log level
 
 USAGE:
-   lotus-miner lotus log set-level [command options] [level]
+   lotus log set-level [command options] [level]
 
 DESCRIPTION:
    Set the log level for logging systems:
@@ -2260,10 +2260,10 @@ OPTIONS:
 
 ```
 NAME:
-   lotus-miner lotus log alerts - Get alert states
+   lotus log alerts - Get alert states
 
 USAGE:
-   lotus-miner lotus log alerts [command options] [arguments...]
+   lotus log alerts [command options] [arguments...]
 
 OPTIONS:
    --all       get all (active and inactive) alerts (default: false)
@@ -2274,10 +2274,10 @@ OPTIONS:
 
 ```
 NAME:
-   lotus-miner lotus wait-api - Wait for lotus api to come online
+   lotus wait-api - Wait for lotus api to come online
 
 USAGE:
-   lotus-miner lotus wait-api [command options] [arguments...]
+   lotus wait-api [command options] [arguments...]
 
 CATEGORY:
    DEVELOPER
@@ -2291,10 +2291,10 @@ OPTIONS:
 
 ```
 NAME:
-   lotus-miner lotus fetch-params - Fetch proving parameters
+   lotus fetch-params - Fetch proving parameters
 
 USAGE:
-   lotus-miner lotus fetch-params [command options] [sectorSize]
+   lotus fetch-params [command options] [sectorSize]
 
 CATEGORY:
    DEVELOPER
@@ -3237,10 +3237,10 @@ OPTIONS:
 
 ```
 NAME:
-   lotus-miner lotus pprof
+   lotus pprof
 
 USAGE:
-   lotus-miner lotus pprof command [command options] [arguments...]
+   lotus pprof command [command options] [arguments...]
 
 COMMANDS:
    goroutines  Get goroutine stacks
@@ -3254,10 +3254,10 @@ OPTIONS:
 
 ```
 NAME:
-   lotus-miner lotus pprof goroutines - Get goroutine stacks
+   lotus pprof goroutines - Get goroutine stacks
 
 USAGE:
-   lotus-miner lotus pprof goroutines [command options] [arguments...]
+   lotus pprof goroutines [command options] [arguments...]
 
 OPTIONS:
    --help, -h  show help
@@ -3267,10 +3267,10 @@ OPTIONS:
 
 ```
 NAME:
-   lotus-miner lotus version - Print version
+   lotus version - Print version
 
 USAGE:
-   lotus-miner lotus version [command options] [arguments...]
+   lotus version [command options] [arguments...]
 
 OPTIONS:
    --help, -h  show help

@@ -125,7 +125,7 @@ var rpcCmd = &cli.Command{
 		}
 
 		cctx.App.Metadata["repoType"] = repo.FullNode
-		if err := lcli.VersionCmd.Action(cctx); err != nil {
+		if err := lcli.VersionCmd().Action(cctx); err != nil {
 			return err
 		}
 		fmt.Println("Usage: > Method [Param1, Param2, ...]")
