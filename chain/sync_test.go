@@ -222,14 +222,14 @@ func (tu *syncTestUtil) pushTsExpectErr(to int, fts *store.FullTipSet, experr bo
 		// -1 to match block.Height
 		b.Header = fb.Header
 		for _, msg := range fb.SecpkMessages {
-			c, err := tu.nds[to].(*impl.FullNodeAPI).ChainAPI.Chain.PutMessage(ctx, msg)
+			c, err := tu.nds[to].(*impl.FullNodeAPIv1).ChainAPI.Chain.PutMessage(ctx, msg)
 			require.NoError(tu.t, err)
 
 			b.SecpkMessages = append(b.SecpkMessages, c)
 		}
 
 		for _, msg := range fb.BlsMessages {
-			c, err := tu.nds[to].(*impl.FullNodeAPI).ChainAPI.Chain.PutMessage(ctx, msg)
+			c, err := tu.nds[to].(*impl.FullNodeAPIv1).ChainAPI.Chain.PutMessage(ctx, msg)
 			require.NoError(tu.t, err)
 
 			b.BlsMessages = append(b.BlsMessages, c)
@@ -294,7 +294,7 @@ func (tu *syncTestUtil) addSourceNode(gen int) {
 	var out api.FullNode
 
 	stop, err := node.New(tu.ctx,
-		node.FullAPI(&out),
+		node.FullAPIv1(&out),
 		node.Base(),
 		node.Repo(sourceRepo),
 		node.MockHost(tu.mn),
@@ -307,7 +307,7 @@ func (tu *syncTestUtil) addSourceNode(gen int) {
 	tu.t.Cleanup(func() { _ = stop(context.Background()) })
 
 	lastTs := blocks[len(blocks)-1]
-	cs := out.(*impl.FullNodeAPI).ChainAPI.Chain
+	cs := out.(*impl.FullNodeAPIv1).ChainAPI.Chain
 	for _, lastB := range lastTs.Blocks {
 		require.NoError(tu.t, cs.AddToTipSetTracker(context.Background(), lastB.Header))
 	}
@@ -328,7 +328,7 @@ func (tu *syncTestUtil) addClientNode() int {
 
 	r := repo.NewMemory(nil)
 	stop, err := node.New(tu.ctx,
-		node.FullAPI(&out),
+		node.FullAPIv1(&out),
 		node.Base(),
 		node.Repo(r),
 		node.MockHost(tu.mn),
@@ -530,7 +530,7 @@ func TestSyncBadTimestamp(t *testing.T) {
 	tu.g.Timestamper = nil
 	require.NoError(t, tu.g.ResyncBankerNonce(a1.TipSet()))
 
-	tu.nds[0].(*impl.FullNodeAPI).SlashFilter = slashfilter.New(ds.NewMapDatastore())
+	tu.nds[0].(*impl.FullNodeAPIv1).SlashFilter = slashfilter.New(ds.NewMapDatastore())
 
 	fmt.Println("After mine bad block!")
 	tu.printHeads()
@@ -613,9 +613,9 @@ func TestSyncFork(t *testing.T) {
 		h2, err := tu.nds[2].ChainHead(tu.ctx)
 		require.NoError(tu.t, err)
 
-		w1, err := tu.nds[1].(*impl.FullNodeAPI).ChainAPI.Chain.Weight(tu.ctx, h1)
+		w1, err := tu.nds[1].(*impl.FullNodeAPIv1).ChainAPI.Chain.Weight(tu.ctx, h1)
 		require.NoError(tu.t, err)
-		w2, err := tu.nds[2].(*impl.FullNodeAPI).ChainAPI.Chain.Weight(tu.ctx, h2)
+		w2, err := tu.nds[2].(*impl.FullNodeAPIv1).ChainAPI.Chain.Weight(tu.ctx, h2)
 		require.NoError(tu.t, err)
 
 		fmt.Println("Node 1: ", h1.Cids(), h1.Parents(), h1.Height(), w1)
@@ -952,7 +952,7 @@ func TestSyncInputs(t *testing.T) {
 
 	p1 := tu.addClientNode()
 
-	fn := tu.nds[p1].(*impl.FullNodeAPI)
+	fn := tu.nds[p1].(*impl.FullNodeAPIv1)
 
 	s := fn.SyncAPI.Syncer
 

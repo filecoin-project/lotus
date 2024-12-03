@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-jsonrpc"
+	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -34,29 +35,27 @@ type FullNode interface {
 	// ChainGetMessagesInTipset returns message stores in current tipset. Takes
 	// a TipSetKey or an EpochSelector (either "latest" or "finalized") as an
 	// argument.
-	ChainGetMessagesInTipset(ctx context.Context, tskes types.TipSetKeyOrEpochSelector) ([]api.Message, error) //perm:read
+	ChainGetMessagesInTipset(ctx context.Context, tss types.TipSetSelector) ([]api.Message, error) //perm:read
 
 	// ChainGetTipSetByHeight looks back for a tipset at at the specified epoch
-	// or epoch selector (either "latest" or "finalized") and returns the tipset
-	// at that epoch.
+	// and returns the tipset at that epoch.
 	// If there are no blocks at the specified epoch because it was a null
 	// round, a tipset at an earlier epoch will be returned.
 	// The second argument is an optional TipSetKey or EpochSelector (either
 	// "latest" or "finalized") to specify the point in the chain to begin
 	// looking for the tipset.
-	ChainGetTipSetByHeight(ctx context.Context, hes types.HeightOrEpochSelector, tskes types.TipSetKeyOrEpochSelector) (*types.TipSet, error) //perm:read
+	ChainGetTipSetByHeight(ctx context.Context, epoch abi.ChainEpoch, tss types.TipSetSelector) (*types.TipSet, error) //perm:read
 
 	// ChainGetTipSetAfterHeight looks back for a tipset at the specified epoch
-	// or epoch selector (either "latest" or "finalized") and returns the tipset
-	// at that epoch.
+	// and returns the tipset at that epoch.
 	// If there are no blocks at the specified epoch because it was a null
 	// round, a tipset at a later epoch will be returned.
 	// The second argument is an optional TipSetKey or EpochSelector (either
 	// "latest" or "finalized") to specify the point in the chain to begin
 	// looking for the tipset.
-	ChainGetTipSetAfterHeight(ctx context.Context, hes types.HeightOrEpochSelector, tskes types.TipSetKeyOrEpochSelector) (*types.TipSet, error) //perm:read
+	ChainGetTipSetAfterHeight(ctx context.Context, epoch abi.ChainEpoch, tss types.TipSetSelector) (*types.TipSet, error) //perm:read
 
-	// TODO: consider these for tsk argument extension using TipSetKeyOrEpochSelector
+	// TODO: consider these for tsk argument extension using TipSetSelector
 	//
 	// ChainTipSetWeight
 	// ChainGetPath -- from [foo,bar] to "latest" would be neat, or from "finalized" to "latest"

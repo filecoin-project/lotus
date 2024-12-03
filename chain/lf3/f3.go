@@ -3,6 +3,7 @@ package lf3
 import (
 	"context"
 	"errors"
+	"fmt"
 	"path/filepath"
 
 	"github.com/ipfs/go-datastore"
@@ -18,9 +19,11 @@ import (
 	"github.com/filecoin-project/go-f3/certs"
 	"github.com/filecoin-project/go-f3/gpbft"
 	"github.com/filecoin-project/go-f3/manifest"
+	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -82,6 +85,7 @@ func New(mctx helpers.MetricsCtx, lc fx.Lifecycle, params F3Params) (*F3, error)
 	status := func() (*manifest.Manifest, gpbft.Instant) {
 		return module.Manifest(), module.Progress()
 	}
+
 	fff := &F3{
 		inner:  module,
 		ec:     ec,
@@ -227,4 +231,144 @@ func (fff *F3) ListParticipants() []api.F3Participant {
 		}
 	}
 	return participants
+}
+
+// ResolveTipSetKeySelector resolves a TipSetSelector into a concrete TipSetKey.
+//
+// For TipSetKey selectors, returns the key directly.
+// For epoch descriptors:
+//   - "latest" returns the current heaviest tipset
+//   - "finalized" returns the most recently finalized tipset, using either F3
+//     or EC finality depending on whether F3 is enabled and running.
+//
+// Returns:
+//   - TipSetKey: The resolved tipset key (this may be EmptyTSK if that was
+//     the selector)
+//   - error: On invalid selectors or resolution failures
+func ResolveTipSetKeySelector(ctx context.Context, fff *F3, chain *store.ChainStore, tss types.TipSetSelector) (types.TipSetKey, error) {
+	if tss.TipSetKey != nil {
+		return *tss.TipSetKey, nil
+	}
+	if tss.EpochDescriptor == nil {
+		return types.EmptyTSK, errors.New("invalid tipset selector")
+	}
+	switch *tss.EpochDescriptor {
+	case types.EpochLatest:
+		return chain.GetHeaviestTipSet().Key(), nil
+	case types.EpochFinalized:
+		if fff != nil { // F3 is enabled
+			cert, err := fff.inner.GetLatestCert(ctx)
+			if err == nil { // F3 is running
+				tsk, err := types.TipSetKeyFromBytes(cert.ECChain.Head().Key)
+				if err != nil {
+					return types.EmptyTSK, xerrors.Errorf("decoding tipset key reported by F3: %w", err)
+				}
+				return tsk, nil
+			}
+		}
+		// either F3 isn't enabled, or isn't running
+		head := chain.GetHeaviestTipSet()
+		finalizedHeight := head.Height() - policy.ChainFinality
+		ts, err := chain.GetTipsetByHeight(ctx, finalizedHeight, head, true)
+		if err != nil {
+			return types.EmptyTSK, xerrors.Errorf("getting tipset by height: %w", err)
+		}
+		return ts.Key(), nil
+	}
+	return types.EmptyTSK, fmt.Errorf("invalid epoch descriptor: %s", *tss.EpochDescriptor)
+}
+
+// ResolveTipSetSelector resolves a TipSetSelector into a concrete TipSet.
+//
+// For TipSetKey selectors, loads the tipset directly.
+// For epoch descriptors:
+//   - "latest" returns the current heaviest tipset
+//   - "finalized" returns the most recently finalized tipset, using either F3
+//     or EC finality depending on whether F3 is enabled and running.
+//
+// Returns:
+//   - TipSet: The resolved tipset
+//   - error: On invalid selectors or resolution failures
+func ResolveTipSetSelector(ctx context.Context, fff *F3, chain *store.ChainStore, tss types.TipSetSelector) (*types.TipSet, error) {
+	if tss.TipSetKey != nil {
+		ts, err := chain.GetTipSetFromKey(ctx, *tss.TipSetKey)
+		if err != nil {
+			return nil, xerrors.Errorf("loading tipset %s: %w", *tss.TipSetKey, err)
+		}
+		return ts, nil
+	}
+	if tss.EpochDescriptor == nil {
+		return nil, errors.New("invalid tipset selector")
+	}
+
+	return ResolveEpochDescriptorTipSet(ctx, fff, chain, *tss.EpochDescriptor)
+}
+
+// ResolveEpochSelector resolves an EpochSelector into a concrete ChainEpoch.
+//
+// For ChainEpoch selectors, returns the epoch directly.
+// For epoch descriptors:
+//   - "latest" returns the current epoch
+//   - "finalized" returns the most recently finalized epoch, using either F3
+//     or EC finality depending on whether F3 is enabled and running.
+//
+// Returns:
+//   - ChainEpoch: The resolved epoch
+//   - error: On invalid selectors or resolution failures
+func ResolveEpochSelector(ctx context.Context, fff *F3, chain *store.ChainStore, es types.EpochSelector) (abi.ChainEpoch, error) {
+	if es.ChainEpoch != nil {
+		return *es.ChainEpoch, nil
+	} else if es.EpochDescriptor == nil {
+		return 0, errors.New("invalid epoch selector")
+	}
+
+	if ts, err := ResolveEpochDescriptorTipSet(ctx, fff, chain, *es.EpochDescriptor); err != nil {
+		return 0, xerrors.Errorf("resolving epoch descriptor: %w", err)
+	} else {
+		return ts.Height(), nil
+	}
+}
+
+// ResolveEpochDescriptorTipSet resolves an EpochDescriptor into a concrete TipSet.
+//
+// For "latest", returns the current heaviest tipset.
+// For "finalized", returns the most recently finalized tipset, using either F3
+// or EC finality depending on whether F3 is enabled and running.
+//
+// Returns:
+//   - TipSet: The resolved tipset
+//   - error: On invalid descriptors or resolution failures
+func ResolveEpochDescriptorTipSet(ctx context.Context, fff *F3, chain *store.ChainStore, ed types.EpochDescriptor) (*types.TipSet, error) {
+	switch ed {
+	case types.EpochLatest:
+		return chain.GetHeaviestTipSet(), nil
+
+	case types.EpochFinalized:
+		if fff != nil { // F3 is enabled
+			cert, err := fff.inner.GetLatestCert(ctx)
+			if err == nil { // F3 is running
+				tsk, err := types.TipSetKeyFromBytes(cert.ECChain.Head().Key)
+				if err != nil {
+					return nil, xerrors.Errorf("decoding tipset key reported by F3: %w", err)
+				}
+				if ts, err := chain.LoadTipSet(ctx, tsk); err != nil {
+					return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+				} else {
+					return ts, nil
+				}
+			}
+		}
+
+		// either F3 isn't enabled, or isn't running
+		head := chain.GetHeaviestTipSet()
+		finalizedHeight := head.Height() - policy.ChainFinality
+		if ts, err := chain.GetTipsetByHeight(ctx, finalizedHeight, head, true); err != nil {
+			return nil, xerrors.Errorf("getting tipset by height: %w", err)
+		} else {
+			return ts, nil
+		}
+
+	default:
+		return nil, fmt.Errorf("invalid epoch descriptor: %s", ed)
+	}
 }

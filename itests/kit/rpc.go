@@ -44,7 +44,7 @@ func CreateRPCServer(t *testing.T, handler http.Handler, listener net.Listener) 
 }
 
 func fullRpc(t *testing.T, f *TestFullNode) (*TestFullNode, Closer) {
-	handler, err := node.FullNodeHandler(f.FullNode, false)
+	handler, err := node.FullNodeHandler(f.FullNode, nil, false)
 	require.NoError(t, err)
 
 	l, err := net.Listen("tcp", "127.0.0.1:0")

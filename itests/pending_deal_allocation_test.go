@@ -51,7 +51,7 @@ func TestGetAllocationForPendingDeal(t *testing.T) {
 
 	ens.InterconnectAll().BeginMining(250 * time.Millisecond)
 
-	api := node.FullNode.(*impl.FullNodeAPI)
+	api := node.FullNode.(*impl.FullNodeAPIv1)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

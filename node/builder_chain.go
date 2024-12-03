@@ -1,6 +1,7 @@
 package node
 
 import (
+	"fmt"
 	"os"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/filecoin-project/go-f3/manifest"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v2api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/beacon"
@@ -154,6 +156,7 @@ var ChainNode = Options(
 		Override(new(messagepool.Provider), messagepool.NewProvider),
 		Override(new(messagepool.MpoolNonceAPI), From(new(*messagepool.MessagePool))),
 		Override(new(full.ChainModuleAPI), From(new(full.ChainModule))),
+		Override(new(full.ChainModuleAPIv2), From(new(full.ChainModulev2))),
 		Override(new(full.GasModuleAPI), From(new(full.GasModule))),
 		Override(new(full.MpoolModuleAPI), From(new(full.MpoolModule))),
 		Override(new(full.StateModuleAPI), From(new(full.StateModule))),
@@ -317,7 +320,8 @@ func Lite(enable bool) FullOption {
 	}
 }
 
-func FullAPI(out *api.FullNode, fopts ...FullOption) Option {
+func FullAPIv1(out *api.FullNode, fopts ...FullOption) Option {
+	fmt.Println("FullAPIv1")
 	return Options(
 		func(s *Settings) error {
 			s.nodeType = repo.FullNode
@@ -326,10 +330,21 @@ func FullAPI(out *api.FullNode, fopts ...FullOption) Option {
 		},
 		Options(fopts...),
 		func(s *Settings) error {
-			resAPI := &impl.FullNodeAPI{}
+			resAPI := &impl.FullNodeAPIv1{}
 			s.invokes[ExtractApiKey] = fx.Populate(resAPI)
 			*out = resAPI
 			return nil
 		},
 	)
+}
+
+func FullAPIv2(out *v2api.FullNode) Option {
+	fmt.Println("FullAPIv2")
+	return func(s *Settings) error {
+		resAPI := &impl.FullNodeAPIv2{}
+		s.invokes[InitAPIv2Key] = fx.Populate(resAPI)
+		*out = resAPI
+		fmt.Printf("FullAPIv2 populated: %v\n", out)
+		return nil
+	}
 }

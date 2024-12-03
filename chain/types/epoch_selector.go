@@ -5,21 +5,24 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/lib/ptr"
 )
 
-// EpochSelector is a type that represents the different ways to select an epoch
-// with a string that describes the epoch's relationship to the chain head.
-type EpochSelector string
+// EpochDescriptor is a type that represents the different ways to select an
+// epoch with a string that describes the epoch's relationship to the chain
+// head.
+type EpochDescriptor string
 
 const (
-	EpochLatest    EpochSelector = "latest"
-	EpochFinalized EpochSelector = "finalized"
+	EpochLatest    EpochDescriptor = "latest"
+	EpochFinalized EpochDescriptor = "finalized"
 )
 
-func (es *EpochSelector) UnmarshalJSON(b []byte) error {
+func (es *EpochDescriptor) UnmarshalJSON(b []byte) error {
 	var selector string
 	err := json.Unmarshal(b, &selector)
 	if err != nil {
@@ -27,7 +30,7 @@ func (es *EpochSelector) UnmarshalJSON(b []byte) error {
 	}
 	switch selector {
 	case string(EpochLatest), string(EpochFinalized):
-		*es = EpochSelector(selector)
+		*es = EpochDescriptor(selector)
 	case "":
 		*es = EpochLatest
 	default:
@@ -36,52 +39,69 @@ func (es *EpochSelector) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// OptionalEpochSelectorArg is a type that represents an optional epoch
+// OptionalEpochDescriptorArg is a type that represents an optional epoch
 // selector argument that defaults to EpochLatest. Used for zero or one argument
-// jsonrpc methods that take an optional EpochSelector.
-type OptionalEpochSelectorArg EpochSelector
+// jsonrpc methods that take an optional EpochDescriptor.
+type OptionalEpochDescriptorArg EpochDescriptor
 
 var (
-	OptionalEpochSelectorArgLatest    = json.RawMessage(`["` + EpochLatest + `"]`)
-	OptionalEpochSelectorArgFinalized = json.RawMessage(`["` + EpochFinalized + `"]`)
+	OptionalEpochDescriptorArgLatest    = json.RawMessage(`["` + EpochLatest + `"]`)
+	OptionalEpochDescriptorArgFinalized = json.RawMessage(`["` + EpochFinalized + `"]`)
 )
 
-func (oes *OptionalEpochSelectorArg) UnmarshalJSON(b []byte) error {
-	var params []json.RawMessage
-	err := json.Unmarshal(b, &params)
-	if err != nil {
-		return err
+func DecodeOptionalEpochDescriptorArg(p jsonrpc.RawParams) (EpochDescriptor, error) {
+	if p == nil {
+		return EpochLatest, nil
 	}
+	if param, err := jsonrpc.DecodeParams[OptionalEpochDescriptorArg](p); err != nil {
+		return "", xerrors.Errorf("json decoding: %w", err)
+	} else {
+		return EpochDescriptor(param), nil
+	}
+}
+
+func (oes *OptionalEpochDescriptorArg) UnmarshalJSON(b []byte) error {
+	var params []json.RawMessage
+	if b != nil {
+		if err := json.Unmarshal(b, &params); err != nil {
+			return err
+		}
+	}
+
 	switch len(params) {
 	case 0:
-		*oes = OptionalEpochSelectorArg(EpochLatest)
+		*oes = OptionalEpochDescriptorArg(EpochLatest)
 	case 1:
-		var selector EpochSelector
+		var selector EpochDescriptor
 		err := json.Unmarshal(params[0], &selector)
 		if err != nil {
 			return err
 		}
-		*oes = OptionalEpochSelectorArg(selector)
+		*oes = OptionalEpochDescriptorArg(selector)
 	default:
 		return errors.New("json: too many parameters for epoch selector")
 	}
 	return nil
 }
 
-// TipSetKeyOrEpochSelector is a type that represents a union of TipSetKey and
-// EpochSelector. Used for jsonrpc methods that take either a TipSetKey or an
-// EpochSelector.
-type TipSetKeyOrEpochSelector struct {
+// TipSetSelector is a type that represents a union of TipSetKey and
+// EpochDescriptor. Used for API methods that take either a TipSetKey or an
+// EpochDescriptor.
+type TipSetSelector struct {
 	*TipSetKey
-	*EpochSelector
+	*EpochDescriptor
 }
 
 var (
-	TipSetKeyOrEpochSelectorLatest    = TipSetKeyOrEpochSelector{EpochSelector: ptr.PtrTo(EpochLatest)}
-	TipSetKeyOrEpochSelectorFinalized = TipSetKeyOrEpochSelector{EpochSelector: ptr.PtrTo(EpochFinalized)}
+	TipSetSelectorLatest    = TipSetSelector{EpochDescriptor: ptr.PtrTo(EpochLatest)}
+	TipSetSelectorFinalized = TipSetSelector{EpochDescriptor: ptr.PtrTo(EpochFinalized)}
 )
 
-func (tskes *TipSetKeyOrEpochSelector) UnmarshalJSON(b []byte) error {
+func NewTipSetSelector(tsk TipSetKey) TipSetSelector {
+	return TipSetSelector{TipSetKey: &tsk}
+}
+
+func (tskes *TipSetSelector) UnmarshalJSON(b []byte) error {
 	// if it starts with '[' it's a TipSetKey
 	if len(b) > 0 && b[0] == '[' {
 		var tsk TipSetKey
@@ -91,38 +111,42 @@ func (tskes *TipSetKeyOrEpochSelector) UnmarshalJSON(b []byte) error {
 		}
 		tskes.TipSetKey = &tsk
 	} else {
-		var selector EpochSelector
+		var selector EpochDescriptor
 		err := json.Unmarshal(b, &selector)
 		if err != nil {
 			return err
 		}
-		tskes.EpochSelector = &selector
+		tskes.EpochDescriptor = &selector
 	}
 	return nil
 }
 
-// HeightOrEpochSelector is a type that represents a union of abi.ChainEpoch and
-// EpochSelector. Used for jsonrpc methods that take either a abi.ChainEpoch or
-// an EpochSelector.
-type HeightOrEpochSelector struct {
+// EpochSelector is a type that represents a union of abi.ChainEpoch and
+// EpochDescriptor. Used for jsonrpc methods that take either a abi.ChainEpoch
+// or an EpochDescriptor.
+type EpochSelector struct {
 	*abi.ChainEpoch
-	*EpochSelector
+	*EpochDescriptor
 }
 
 var (
-	HeightOrEpochSelectorLatest    = HeightOrEpochSelector{EpochSelector: ptr.PtrTo(EpochLatest)}
-	HeightOrEpochSelectorFinalized = HeightOrEpochSelector{EpochSelector: ptr.PtrTo(EpochFinalized)}
+	EpochSelectorLatest    = EpochSelector{EpochDescriptor: ptr.PtrTo(EpochLatest)}
+	EpochSelectorFinalized = EpochSelector{EpochDescriptor: ptr.PtrTo(EpochFinalized)}
 )
 
-func (hes *HeightOrEpochSelector) UnmarshalJSON(b []byte) error {
-	// if it starts with '"' it's an EpochSelector
+func NewEpochSelector(epoch abi.ChainEpoch) EpochSelector {
+	return EpochSelector{ChainEpoch: ptr.PtrTo(epoch)}
+}
+
+func (hes *EpochSelector) UnmarshalJSON(b []byte) error {
+	// if it starts with '"' it's an EpochDescriptor
 	if len(b) > 0 && b[0] == '"' {
-		var selector EpochSelector
+		var selector EpochDescriptor
 		err := json.Unmarshal(b, &selector)
 		if err != nil {
 			return err
 		}
-		hes.EpochSelector = &selector
+		hes.EpochDescriptor = &selector
 	} else {
 		var height abi.ChainEpoch
 		err := json.Unmarshal(b, &height)

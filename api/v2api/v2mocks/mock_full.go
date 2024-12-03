@@ -11,6 +11,7 @@ import (
 	gomock "github.com/golang/mock/gomock"
 
 	jsonrpc "github.com/filecoin-project/go-jsonrpc"
+	abi "github.com/filecoin-project/go-state-types/abi"
 
 	api "github.com/filecoin-project/lotus/api"
 	types "github.com/filecoin-project/lotus/chain/types"
@@ -40,7 +41,7 @@ func (m *MockFullNode) EXPECT() *MockFullNodeMockRecorder {
 }
 
 // ChainGetMessagesInTipset mocks base method.
-func (m *MockFullNode) ChainGetMessagesInTipset(arg0 context.Context, arg1 types.TipSetKeyOrEpochSelector) ([]api.Message, error) {
+func (m *MockFullNode) ChainGetMessagesInTipset(arg0 context.Context, arg1 types.TipSetSelector) ([]api.Message, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ChainGetMessagesInTipset", arg0, arg1)
 	ret0, _ := ret[0].([]api.Message)
@@ -55,7 +56,7 @@ func (mr *MockFullNodeMockRecorder) ChainGetMessagesInTipset(arg0, arg1 interfac
 }
 
 // ChainGetTipSetAfterHeight mocks base method.
-func (m *MockFullNode) ChainGetTipSetAfterHeight(arg0 context.Context, arg1 types.HeightOrEpochSelector, arg2 types.TipSetKeyOrEpochSelector) (*types.TipSet, error) {
+func (m *MockFullNode) ChainGetTipSetAfterHeight(arg0 context.Context, arg1 abi.ChainEpoch, arg2 types.TipSetSelector) (*types.TipSet, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ChainGetTipSetAfterHeight", arg0, arg1, arg2)
 	ret0, _ := ret[0].(*types.TipSet)
@@ -70,7 +71,7 @@ func (mr *MockFullNodeMockRecorder) ChainGetTipSetAfterHeight(arg0, arg1, arg2 i
 }
 
 // ChainGetTipSetByHeight mocks base method.
-func (m *MockFullNode) ChainGetTipSetByHeight(arg0 context.Context, arg1 types.HeightOrEpochSelector, arg2 types.TipSetKeyOrEpochSelector) (*types.TipSet, error) {
+func (m *MockFullNode) ChainGetTipSetByHeight(arg0 context.Context, arg1 abi.ChainEpoch, arg2 types.TipSetSelector) (*types.TipSet, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ChainGetTipSetByHeight", arg0, arg1, arg2)
 	ret0, _ := ret[0].(*types.TipSet)

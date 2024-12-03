@@ -13,12 +13,14 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/build/buildconstants"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
 )
@@ -316,4 +318,58 @@ func (ts *apiSuite) testNonGenesisMiner(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, uint64(1002), tid) // ETH0 is 1001
+}
+
+func TestAPIV2(t *testing.T) {
+	req := require.New(t)
+
+	kit.QuietMiningLogs()
+	full, _, ens := kit.EnsembleMinimal(t)
+	ens.BeginMining(20 * time.Millisecond)
+
+	full.WaitTillChain(context.Background(), kit.HeightAtLeast(policy.ChainFinality+20))
+
+	ts, err := full.ChainGetTipSetByHeight(context.Background(), 15, types.EmptyTSK)
+	req.NoError(err)
+	req.NotNil(ts)
+	t.Logf("/v1/ChainGetTipSetByHeight(15, []): %d", ts.Height())
+
+	ts, err = full.V2.ChainGetTipSetByHeight(context.Background(), 15, types.NewTipSetSelector(types.EmptyTSK))
+	req.NoError(err)
+	req.NotNil(ts)
+	t.Logf(`/v2/ChainGetTipSetByHeight(15, []): %d`, ts.Height())
+
+	ts, err = full.V2.ChainGetTipSetByHeight(context.Background(), 15, types.TipSetSelectorLatest)
+	req.NoError(err)
+	req.NotNil(ts)
+	t.Logf(`/v2/ChainGetTipSetByHeight(15, "latest"): %d`, ts.Height())
+
+	ts, err = full.V2.ChainGetTipSetByHeight(context.Background(), 15, types.TipSetSelectorFinalized)
+	req.NoError(err)
+	req.NotNil(ts)
+	t.Logf(`/v2/ChainGetTipSetByHeight(15, "finalized"): %d`, ts.Height())
+
+	_, err = full.V2.ChainGetTipSetByHeight(context.Background(), 200, types.TipSetSelectorFinalized)
+	req.Error(err)
+	t.Logf(`/v2/ChainGetTipSetByHeight(15, "finalized"): %s`, err.Error())
+
+	ts, err = full.ChainHead(context.Background())
+	req.NoError(err)
+	req.NotNil(ts)
+	t.Logf("/v1/ChainHead(): %d", ts.Height())
+
+	ts, err = full.V2.ChainHead(context.Background(), nil)
+	req.NoError(err)
+	req.NotNil(ts)
+	t.Logf("/v2/ChainHead(null): %d", ts.Height())
+
+	ts, err = full.V2.ChainHead(context.Background(), jsonrpc.RawParams(`["latest"]`))
+	req.NoError(err)
+	req.NotNil(ts)
+	t.Logf(`/v2/ChainHead("latest"): %d`, ts.Height())
+
+	ts, err = full.V2.ChainHead(context.Background(), jsonrpc.RawParams(`["finalized"]`))
+	req.NoError(err)
+	req.NotNil(ts)
+	t.Logf(`/v2/ChainHead("finalized"): %d`, ts.Height())
 }

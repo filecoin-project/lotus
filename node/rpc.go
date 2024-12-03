@@ -22,6 +22,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/api/v1api"
+	"github.com/filecoin-project/lotus/api/v2api"
 	"github.com/filecoin-project/lotus/lib/rpcenc"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/metrics/proxy"
@@ -64,11 +65,22 @@ func ServeRPC(h http.Handler, id string, addr multiaddr.Multiaddr) (StopFunc, er
 }
 
 // FullNodeHandler returns a full node handler, to be mounted as-is on the server.
-func FullNodeHandler(a v1api.FullNode, permissioned bool, opts ...jsonrpc.ServerOption) (http.Handler, error) {
+func FullNodeHandler(
+	v1 v1api.FullNode,
+	v2 v2api.FullNode,
+	permissioned bool,
+	opts ...jsonrpc.ServerOption,
+) (http.Handler, error) {
 	m := mux.NewRouter()
 
 	serveRpc := func(path string, hnd interface{}) {
-		rpcServer := jsonrpc.NewServer(append(opts, jsonrpc.WithReverseClient[api.EthSubscriberMethods]("Filecoin"), jsonrpc.WithServerErrors(api.RPCErrors))...)
+		rpcServer := jsonrpc.NewServer(
+			append(
+				opts,
+				jsonrpc.WithReverseClient[api.EthSubscriberMethods]("Filecoin"),
+				jsonrpc.WithServerErrors(api.RPCErrors),
+			)...,
+		)
 		rpcServer.Register("Filecoin", hnd)
 		rpcServer.AliasMethod("rpc.discover", "Filecoin.Discover")
 
@@ -76,20 +88,26 @@ func FullNodeHandler(a v1api.FullNode, permissioned bool, opts ...jsonrpc.Server
 
 		var handler http.Handler = rpcServer
 		if permissioned {
-			handler = &auth.Handler{Verify: a.AuthVerify, Next: rpcServer.ServeHTTP}
+			handler = &auth.Handler{Verify: v1.AuthVerify, Next: rpcServer.ServeHTTP}
 		}
 
 		m.Handle(path, handler)
 	}
 
-	fnapi := proxy.MetricedFullAPI(a)
+	var v2Proxy v2api.FullNode = v2
+	// TODO: metrics for v2
 	if permissioned {
-		fnapi = api.PermissionedFullAPI(fnapi)
+		v2Proxy = v2api.PermissionedFullAPI(v2Proxy)
 	}
+	v1Proxy := proxy.MetricedFullAPI(v1)
+	if permissioned {
+		v1Proxy = api.PermissionedFullAPI(v1Proxy)
+	}
+	var v0Wrapper v0api.FullNode = &(struct{ v0api.FullNode }{&v0api.WrapperV1Full{FullNode: v1Proxy}})
 
-	var v0 v0api.FullNode = &(struct{ v0api.FullNode }{&v0api.WrapperV1Full{FullNode: fnapi}})
-	serveRpc("/rpc/v1", fnapi)
-	serveRpc("/rpc/v0", v0)
+	serveRpc("/rpc/v0", v0Wrapper)
+	serveRpc("/rpc/v1", v1Proxy)
+	serveRpc("/rpc/v2", v2Proxy)
 
 	// debugging
 	m.Handle("/debug/metrics", metrics.Exporter())
@@ -97,8 +115,8 @@ func FullNodeHandler(a v1api.FullNode, permissioned bool, opts ...jsonrpc.Server
 	m.Handle("/debug/pprof-set/mutex", handleFractionOpt("MutexProfileFraction", func(x int) {
 		runtime.SetMutexProfileFraction(x)
 	}))
-	m.Handle("/health/livez", NewLiveHandler(a))
-	m.Handle("/health/readyz", NewReadyHandler(a))
+	m.Handle("/health/livez", NewLiveHandler(v1))
+	m.Handle("/health/readyz", NewReadyHandler(v1))
 	m.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
 
 	return m, nil
