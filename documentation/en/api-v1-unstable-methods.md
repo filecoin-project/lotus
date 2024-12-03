@@ -2419,47 +2419,13 @@ Response:
   "GPBFTInstance": 0,
   "ECChain": null,
   "SupplementalData": {
-    "Commitments": [
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0
-    ],
+    "Commitments": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
     "PowerTable": null
   },
   "Signers": [
     0
   ],
-  "Signature": null,
-  "PowerTableDelta": null
+  "Signature": null
 }
 ```
 
@@ -2539,47 +2505,13 @@ Response:
   "GPBFTInstance": 0,
   "ECChain": null,
   "SupplementalData": {
-    "Commitments": [
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0
-    ],
+    "Commitments": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
     "PowerTable": null
   },
   "Signers": [
     0
   ],
-  "Signature": null,
-  "PowerTableDelta": null
+  "Signature": null
 }
 ```
 
