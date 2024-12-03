@@ -30,7 +30,6 @@ var (
 	Version, _     = tag.NewKey("version")
 	Commit, _      = tag.NewKey("commit")
 	NodeType, _    = tag.NewKey("node_type")
-	Network, _     = tag.NewKey("network")
 	PeerID, _      = tag.NewKey("peer_id")
 	MinerID, _     = tag.NewKey("miner_id")
 	FailureType, _ = tag.NewKey("failure_type")
@@ -193,7 +192,7 @@ var (
 		Description: "Lotus node information",
 		Measure:     LotusInfo,
 		Aggregation: view.LastValue(),
-		TagKeys:     []tag.Key{Version, Commit, NodeType, Network},
+		TagKeys:     []tag.Key{Version, Commit, NodeType},
 	}
 	ChainNodeHeightView = &view.View{
 		Measure:     ChainNodeHeight,
@@ -781,9 +780,4 @@ func Timer(ctx context.Context, m *stats.Float64Measure) func() time.Duration {
 		stats.Record(ctx, m.M(SinceInMilliseconds(start)))
 		return time.Since(start)
 	}
-}
-
-// Helper function to create context with network tag
-func CreateNetworkCtx(ctx context.Context, network string) (context.Context, error) {
-	return tag.New(ctx, tag.Insert(Network, network))
 }
