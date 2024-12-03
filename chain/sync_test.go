@@ -1084,6 +1084,42 @@ func TestSyncCheckpointPartial(t *testing.T) {
 
 }
 
+func TestSyncCheckpointSubmitOneOfTheBlocks(t *testing.T) {
+	H := 10
+	tu := prepSyncTest(t, H)
+
+	p1 := tu.addClientNode()
+	p2 := tu.addClientNode()
+
+	fmt.Println("GENESIS: ", tu.g.Genesis().Cid())
+	tu.loadChainToNode(p1)
+	tu.loadChainToNode(p2)
+
+	base := tu.g.CurTipset
+	fmt.Println("Mining base: ", base.TipSet().Cids(), base.TipSet().Height())
+
+	last := base
+	a := base
+	for {
+		a = tu.mineOnBlock(last, p1, []int{0, 1}, true, false, nil, 0, true)
+		if len(a.Blocks) == 2 {
+			// enfoce tipset of two blocks
+			break
+		}
+		last = a
+	}
+	aPartial := store.NewFullTipSet([]*types.FullBlock{a.Blocks[0]})
+	tu.waitUntilSyncTarget(p1, a.TipSet())
+
+	tu.checkpointTs(p1, a.TipSet().Key())
+	t.Logf("p1 head: %v, p2 head: %v, a: %v", tu.getHead(p1), tu.getHead(p2), a.TipSet())
+	tu.pushTsExpectErr(p1, aPartial, false)
+
+	tu.mineOnBlock(a, p1, []int{0, 1}, true, false, nil, 0, true)
+	tu.pushTsExpectErr(p1, aPartial, false) // check that pushing older partial tispet doesn't error
+
+}
+
 func TestSyncCheckpointEarlierThanHead(t *testing.T) {
 	//stm: @BLOCKCHAIN_BEACON_VALIDATE_BLOCK_VALUES_01, @CHAIN_SYNCER_LOAD_GENESIS_001, @CHAIN_SYNCER_FETCH_TIPSET_001, @CHAIN_SYNCER_START_001
 	//stm: @CHAIN_SYNCER_SYNC_001, @CHAIN_SYNCER_COLLECT_CHAIN_001, @CHAIN_SYNCER_COLLECT_HEADERS_001

@@ -520,12 +520,30 @@ func (syncer *Syncer) Sync(ctx context.Context, maybeHead *types.TipSet) error {
 
 	hts := syncer.store.GetHeaviestTipSet()
 
+	// noop pre-checks
 	if hts.ParentWeight().GreaterThan(maybeHead.ParentWeight()) {
 		return nil
 	}
 	if syncer.Genesis.Equals(maybeHead) || hts.Equals(maybeHead) {
 		return nil
 	}
+
+	if maybeHead.Height() == hts.Height() {
+		// check if maybeHead is fully contained in headTipSet
+		// if that is the case, there is nothing for us to do
+		// we need to exit out early, otherwise checkpoint-fork logic will reject it
+		fullyContained := true
+		for _, c := range maybeHead.Cids() {
+			if !hts.Contains(c) {
+				fullyContained = false
+				break
+			}
+		}
+		if fullyContained {
+			return nil
+		}
+	}
+	// end of noop prechecks
 
 	if err := syncer.collectChain(ctx, maybeHead, hts, false); err != nil {
 		span.AddAttributes(trace.StringAttribute("col_error", err.Error()))
@@ -846,10 +864,9 @@ loop:
 		return nil, xerrors.Errorf("failed to load next local tipset: %w", err)
 	}
 
-	if chkpt := syncer.store.GetCheckpoint(); !ignoreCheckpoint && chkpt != nil {
-		// don't allow us to expand the tipset beyond the checkpoint
-		if known.Equals(chkpt) && base.IsChildOf(knownParent) {
-			return nil, xerrors.Errorf("tispet expanding fork: %w", ErrForkCheckpoint)
+	if !ignoreCheckpoint {
+		if chkpt := syncer.store.GetCheckpoint(); chkpt != nil && base.Height() <= chkpt.Height() {
+			return nil, xerrors.Errorf("merge point affecting the checkpoing: %w", ErrForkCheckpoint)
 		}
 	}
 
