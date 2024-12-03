@@ -89,13 +89,6 @@ func TestTipSetKey(t *testing.T) {
 			`{"/":"bafy2bzacebxfyh2fzoxrt6kcgc5dkaodpcstgwxxdizrww225vrhsizsfcg4g"},`+
 			`{"/":"bafy2bzacedwviarjtjraqakob5pslltmuo5n3xev3nt5zylezofkbbv5jclyu"}`+
 			`]`, k3)
-
-		var tsk TipSetKey
-		require.NoError(t, json.Unmarshal([]byte(`"finalized"`), &tsk))
-		assert.Equal(t, tsk, FinalizedTSK)
-
-		require.NoError(t, json.Unmarshal([]byte(`"latest"`), &tsk))
-		assert.Equal(t, tsk, EmptyTSK)
 	})
 
 	t.Run("CBOR", func(t *testing.T) {

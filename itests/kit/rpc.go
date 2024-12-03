@@ -1,8 +1,10 @@
 package kit
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -44,7 +46,7 @@ func CreateRPCServer(t *testing.T, handler http.Handler, listener net.Listener) 
 }
 
 func fullRpc(t *testing.T, f *TestFullNode) (*TestFullNode, Closer) {
-	handler, err := node.FullNodeHandler(f.FullNode, nil, false)
+	handler, err := node.FullNodeHandler(f.FullNode, f.V2, false)
 	require.NoError(t, err)
 
 	l, err := net.Listen("tcp", "127.0.0.1:0")
@@ -104,4 +106,21 @@ func workerRpc(t *testing.T, m *TestWorker) *TestWorker {
 
 	m.ListenAddr, m.Worker = maddr, cl
 	return m
+}
+
+func (full *TestFullNode) HttpRpcRequest(version int, payload string) (int, string) {
+	full.t.Helper()
+	req := require.New(full.t)
+
+	req.NotEmpty(full.ListenURL, "not listening for rpc, turn on with `kit.ThroughRPC()`")
+	url := fmt.Sprintf("%s/rpc/v%d", full.ListenURL, version)
+	request, err := http.NewRequest("POST", url, bytes.NewBuffer([]byte(payload)))
+	req.NoError(err)
+	request.Header.Set("Content-Type", "application/json")
+	response, err := http.DefaultClient.Do(request)
+	req.NoError(err)
+	defer func() { _ = response.Body.Close() }()
+	body, err := io.ReadAll(response.Body)
+	req.NoError(err)
+	return response.StatusCode, string(body)
 }

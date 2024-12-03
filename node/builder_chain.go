@@ -1,7 +1,6 @@
 package node
 
 import (
-	"fmt"
 	"os"
 	"time"
 
@@ -321,7 +320,6 @@ func Lite(enable bool) FullOption {
 }
 
 func FullAPIv1(out *api.FullNode, fopts ...FullOption) Option {
-	fmt.Println("FullAPIv1")
 	return Options(
 		func(s *Settings) error {
 			s.nodeType = repo.FullNode
@@ -339,12 +337,10 @@ func FullAPIv1(out *api.FullNode, fopts ...FullOption) Option {
 }
 
 func FullAPIv2(out *v2api.FullNode) Option {
-	fmt.Println("FullAPIv2")
 	return func(s *Settings) error {
 		resAPI := &impl.FullNodeAPIv2{}
 		s.invokes[InitAPIv2Key] = fx.Populate(resAPI)
 		*out = resAPI
-		fmt.Printf("FullAPIv2 populated: %v\n", out)
 		return nil
 	}
 }

@@ -17,12 +17,6 @@ import (
 
 var EmptyTSK = TipSetKey{}
 
-// FinalizedTSK is a sentinel value, similar to EmptyTSK, but used to represent
-// the "finalized" tipset key as per F3 or EC.
-// The CID bafkqaclgnfxgc3djpjswi is a valid raw codec CID with an identity
-// multihash of "finalized".
-var FinalizedTSK = NewTipSetKey(cid.MustParse("bafkqaclgnfxgc3djpjswi"))
-
 // The length of a block header CID in bytes.
 var blockHeaderCIDLen int
 
@@ -98,18 +92,6 @@ func (k TipSetKey) MarshalJSON() ([]byte, error) {
 }
 
 func (k *TipSetKey) UnmarshalJSON(b []byte) error {
-	if len(b) > 0 && b[0] == '"' {
-		switch string(b) {
-		case `"finalized"`:
-			*k = FinalizedTSK
-			return nil
-		case `"latest"`:
-			*k = EmptyTSK
-			return nil
-		default:
-			return fmt.Errorf(`json: invalid tipset key ("%s")`, b)
-		}
-	}
 	var cids []cid.Cid
 	if err := json.Unmarshal(b, &cids); err != nil {
 		return err

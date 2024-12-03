@@ -5,9 +5,10 @@ import (
 	"errors"
 	"fmt"
 
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/lib/ptr"
 )

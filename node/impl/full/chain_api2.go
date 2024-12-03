@@ -49,11 +49,11 @@ func (cm *ChainModulev2) ChainHead(ctx context.Context, p jsonrpc.RawParams) (*t
 		return nil, xerrors.Errorf("decoding optional epoch descriptor parameter: %w", err)
 	}
 
-	switch types.EpochDescriptor(param) {
+	switch param {
 	case types.EpochLatest:
 		return cm.Chain.GetHeaviestTipSet(), nil
 	case types.EpochFinalized:
-		if ts, err := lf3.ResolveEpochDescriptorTipSet(ctx, cm.F3, cm.Chain, types.EpochDescriptor(param)); err != nil {
+		if ts, err := lf3.ResolveEpochDescriptorTipSet(ctx, cm.F3, cm.Chain, param); err != nil {
 			return nil, xerrors.Errorf("resolving epoch descriptor tipset: %w", err)
 		} else {
 			return ts, nil

@@ -4,16 +4,22 @@ package itests
 import (
 	"context"
 	"errors"
+	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/ipld/go-ipld-prime"
+	"github.com/ipld/go-ipld-prime/codec/dagjson"
+	"github.com/ipld/go-ipld-prime/traversal"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
 
@@ -23,6 +29,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
+	"github.com/filecoin-project/lotus/lib/must"
 )
 
 func TestAPI(t *testing.T) {
@@ -322,54 +329,239 @@ func (ts *apiSuite) testNonGenesisMiner(t *testing.T) {
 
 func TestAPIV2(t *testing.T) {
 	req := require.New(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
 
 	kit.QuietMiningLogs()
-	full, _, ens := kit.EnsembleMinimal(t)
-	ens.BeginMining(20 * time.Millisecond)
+	full, _, ens := kit.EnsembleMinimal(t, kit.ThroughRPC())
+	ens.BeginMining(10 * time.Millisecond)
 
 	full.WaitTillChain(context.Background(), kit.HeightAtLeast(policy.ChainFinality+20))
 
-	ts, err := full.ChainGetTipSetByHeight(context.Background(), 15, types.EmptyTSK)
-	req.NoError(err)
-	req.NotNil(ts)
-	t.Logf("/v1/ChainGetTipSetByHeight(15, []): %d", ts.Height())
+	callAndVerify := func(version int, method, params, responsePath string, expectValue any, verify func(req *require.Assertions, head *types.TipSet, node ipld.Node)) {
+		var response string
+		head, err := full.ChainHead(ctx)
+		for {
+			req.NoError(err)
+			var statusCode int
+			statusCode, response = full.HttpRpcRequest(version, fmt.Sprintf(`{"jsonrpc":"2.0","method":"%s","params":%s,"id":1}`, method, params))
+			req.Equal(200, statusCode)
+			afterHead, err := full.ChainHead(ctx)
+			req.NoError(err)
+			if head.Height() == afterHead.Height() {
+				// chain hasn't advanced while we were waiting for the response
+				break
+			}
+			head = afterHead
+		}
+		node, err := ipld.Decode([]byte(response), dagjson.Decode)
+		req.NoError(err, "failed to decode JSON response")
+		req.Equal(ipld.Kind_Map, node.Kind())
+		result, err := traversal.Get(node, ipld.ParsePath(responsePath))
+		req.NoError(err)
+		if verify != nil {
+			verify(req, head, result)
+		} else {
+			switch v := expectValue.(type) {
+			case int:
+				req.Equal(ipld.Kind_Int, result.Kind())
+				req.EqualValues(v, must.One(result.AsInt()))
+			default:
+				req.FailNowf("unexpected type", "%T, maybe add support for this?", expectValue)
+			}
+		}
+		t.Logf(`/rpc/v1 {"method":"%s","params":%s}: %s`, method, params, string(must.One(ipld.Encode(result, dagjson.Encode))))
+	}
 
-	ts, err = full.V2.ChainGetTipSetByHeight(context.Background(), 15, types.NewTipSetSelector(types.EmptyTSK))
-	req.NoError(err)
-	req.NotNil(ts)
-	t.Logf(`/v2/ChainGetTipSetByHeight(15, []): %d`, ts.Height())
+	testCases := []struct {
+		name           string
+		method         string
+		version        int // 1 or 2
+		apiArgs        []any
+		apiVerify      func(req *require.Assertions, head *types.TipSet, result any)     // nil to skip api call
+		rpcParams      string                                                            // empty to skip rpc call, otherwise JSON array
+		rpcVerifyPath  string                                                            // IPLD path to verify
+		rpcVerifyValue any                                                               // expected value at path
+		rpcVerify      func(req *require.Assertions, head *types.TipSet, node ipld.Node) // if not using rpcVerifyValue, use this
+	}{
+		{
+			name:    "v1/ChainGetTipSetByHeight/15/head",
+			method:  "ChainGetTipSetByHeight",
+			version: 1,
+			apiArgs: []any{abi.ChainEpoch(15), types.EmptyTSK},
+			apiVerify: func(req *require.Assertions, head *types.TipSet, result any) {
+				ts, ok := result.(*types.TipSet)
+				req.True(ok)
+				req.EqualValues(15, ts.Height())
+			},
+			rpcParams:      `[15,[]]`,
+			rpcVerifyPath:  "result/Height",
+			rpcVerifyValue: 15,
+		},
+		{
+			name:    "v2/ChainGetTipSetByHeight/15/head",
+			method:  "ChainGetTipSetByHeight",
+			version: 2,
+			apiArgs: []any{abi.ChainEpoch(15), types.NewTipSetSelector(types.EmptyTSK)},
+			apiVerify: func(req *require.Assertions, head *types.TipSet, result any) {
+				ts, ok := result.(*types.TipSet)
+				req.True(ok)
+				req.EqualValues(15, ts.Height())
+			},
+			rpcParams:      `[15,[]]`,
+			rpcVerifyPath:  "result/Height",
+			rpcVerifyValue: 15,
+		},
+		{
+			name:    "v2/ChainGetTipSetByHeight/15/latest",
+			method:  "ChainGetTipSetByHeight",
+			version: 2,
+			apiArgs: []any{abi.ChainEpoch(15), types.TipSetSelectorLatest},
+			apiVerify: func(req *require.Assertions, head *types.TipSet, result any) {
+				ts, ok := result.(*types.TipSet)
+				req.True(ok)
+				req.EqualValues(15, ts.Height())
+			},
+			rpcParams:      `[15,"latest"]`,
+			rpcVerifyPath:  "result/Height",
+			rpcVerifyValue: 15,
+		},
+		{
+			name:           "v2/ChainGetTipSetByHeight/15/-",
+			method:         "ChainGetTipSetByHeight",
+			version:        2,
+			rpcParams:      `[15,""]`,
+			rpcVerifyPath:  "result/Height",
+			rpcVerifyValue: 15,
+		},
+		{
+			name:    "v2/ChainGetTipSetByHeight/15/finalized",
+			method:  "ChainGetTipSetByHeight",
+			version: 2,
+			apiArgs: []any{abi.ChainEpoch(15), types.TipSetSelectorFinalized},
+			apiVerify: func(req *require.Assertions, head *types.TipSet, result any) {
+				ts, ok := result.(*types.TipSet)
+				req.True(ok)
+				req.EqualValues(15, ts.Height())
+			},
+			rpcParams:      `[15,"finalized"]`,
+			rpcVerifyPath:  "result/Height",
+			rpcVerifyValue: 15,
+		},
+		{
+			name:          "v1/ChainHead",
+			method:        "ChainHead",
+			version:       1,
+			rpcParams:     `[]`,
+			rpcVerifyPath: "result/Height",
+			rpcVerify: func(req *require.Assertions, head *types.TipSet, node ipld.Node) {
+				req.EqualValues(head.Height(), must.One(node.AsInt()))
+			},
+		},
+		{
+			name:    "v2/ChainHead",
+			method:  "ChainHead",
+			version: 2,
+			apiArgs: []any{(jsonrpc.RawParams)(nil)},
+			apiVerify: func(req *require.Assertions, head *types.TipSet, result any) {
+				ts, ok := result.(*types.TipSet)
+				req.True(ok)
+				req.EqualValues(head.Height(), ts.Height())
+			},
+			rpcParams:     `[]`,
+			rpcVerifyPath: "result/Height",
+			rpcVerify: func(req *require.Assertions, head *types.TipSet, node ipld.Node) {
+				req.EqualValues(head.Height(), must.One(node.AsInt()))
+			},
+		},
+		{
+			name:    "v2/ChainHead/latest",
+			method:  "ChainHead",
+			version: 2,
+			apiArgs: []any{jsonrpc.RawParams(`["latest"]`)},
+			apiVerify: func(req *require.Assertions, head *types.TipSet, result any) {
+				ts, ok := result.(*types.TipSet)
+				req.True(ok)
+				req.EqualValues(head.Height(), ts.Height())
+			},
+			rpcParams:     `["latest"]`,
+			rpcVerifyPath: "result/Height",
+			rpcVerify: func(req *require.Assertions, head *types.TipSet, node ipld.Node) {
+				req.EqualValues(head.Height(), must.One(node.AsInt()))
+			},
+		},
+		{
+			name:    "v2/ChainHead/-",
+			method:  "ChainHead",
+			version: 2,
+			apiArgs: []any{jsonrpc.RawParams(`[""]`)},
+			apiVerify: func(req *require.Assertions, head *types.TipSet, result any) {
+				ts, ok := result.(*types.TipSet)
+				req.True(ok)
+				req.EqualValues(head.Height(), ts.Height())
+			},
+			rpcParams:     `[""]`,
+			rpcVerifyPath: "result/Height",
+			rpcVerify: func(req *require.Assertions, head *types.TipSet, node ipld.Node) {
+				req.EqualValues(head.Height(), must.One(node.AsInt()))
+			},
+		},
+		{
+			name:    "v2/ChainHead/finalized",
+			method:  "ChainHead",
+			version: 2,
+			apiArgs: []any{jsonrpc.RawParams(`["finalized"]`)},
+			apiVerify: func(req *require.Assertions, head *types.TipSet, result any) {
+				ts, ok := result.(*types.TipSet)
+				req.True(ok)
+				req.EqualValues(head.Height()-policy.ChainFinality, ts.Height())
+			},
+			rpcParams:     `["finalized"]`,
+			rpcVerifyPath: "result/Height",
+			rpcVerify: func(req *require.Assertions, head *types.TipSet, node ipld.Node) {
+				req.EqualValues(head.Height()-policy.ChainFinality, must.One(node.AsInt()))
+			},
+		},
+	}
 
-	ts, err = full.V2.ChainGetTipSetByHeight(context.Background(), 15, types.TipSetSelectorLatest)
-	req.NoError(err)
-	req.NotNil(ts)
-	t.Logf(`/v2/ChainGetTipSetByHeight(15, "latest"): %d`, ts.Height())
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.apiVerify != nil {
+				args := []reflect.Value{reflect.ValueOf(ctx)}
+				for _, arg := range tc.apiArgs {
+					if arg == nil {
+						args = append(args, reflect.Zero(reflect.TypeOf(arg)))
+					} else {
+						args = append(args, reflect.ValueOf(arg))
+					}
+				}
+				api := reflect.ValueOf(full)
+				if tc.version == 2 {
+					api = reflect.ValueOf(full.V2)
+				}
+				method := api.MethodByName(tc.method)
+				head, err := full.ChainHead(ctx)
+				req.NoError(err)
+				var response any
+				for {
+					resp := method.Call(args)
+					req.Len(resp, 2)
+					req.Nil(resp[1].Interface(), "error in API call")
+					afterHead, err := full.ChainHead(ctx)
+					req.NoError(err)
+					if head.Height() == afterHead.Height() {
+						// chain hasn't advanced while we were waiting for the response
+						response = resp[0].Interface()
+						break
+					}
+					head = afterHead
+				}
+				tc.apiVerify(req, head, response)
+			}
 
-	ts, err = full.V2.ChainGetTipSetByHeight(context.Background(), 15, types.TipSetSelectorFinalized)
-	req.NoError(err)
-	req.NotNil(ts)
-	t.Logf(`/v2/ChainGetTipSetByHeight(15, "finalized"): %d`, ts.Height())
-
-	_, err = full.V2.ChainGetTipSetByHeight(context.Background(), 200, types.TipSetSelectorFinalized)
-	req.Error(err)
-	t.Logf(`/v2/ChainGetTipSetByHeight(15, "finalized"): %s`, err.Error())
-
-	ts, err = full.ChainHead(context.Background())
-	req.NoError(err)
-	req.NotNil(ts)
-	t.Logf("/v1/ChainHead(): %d", ts.Height())
-
-	ts, err = full.V2.ChainHead(context.Background(), nil)
-	req.NoError(err)
-	req.NotNil(ts)
-	t.Logf("/v2/ChainHead(null): %d", ts.Height())
-
-	ts, err = full.V2.ChainHead(context.Background(), jsonrpc.RawParams(`["latest"]`))
-	req.NoError(err)
-	req.NotNil(ts)
-	t.Logf(`/v2/ChainHead("latest"): %d`, ts.Height())
-
-	ts, err = full.V2.ChainHead(context.Background(), jsonrpc.RawParams(`["finalized"]`))
-	req.NoError(err)
-	req.NotNil(ts)
-	t.Logf(`/v2/ChainHead("finalized"): %d`, ts.Height())
+			if tc.rpcParams != "" {
+				callAndVerify(tc.version, "Filecoin."+tc.method, tc.rpcParams, tc.rpcVerifyPath, tc.rpcVerifyValue, tc.rpcVerify)
+			}
+		})
+	}
 }
