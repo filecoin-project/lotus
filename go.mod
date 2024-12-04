@@ -50,7 +50,7 @@ require (
 	github.com/filecoin-project/go-jsonrpc v0.7.0
 	github.com/filecoin-project/go-padreader v0.0.1
 	github.com/filecoin-project/go-paramfetch v0.0.4
-	github.com/filecoin-project/go-state-types v0.16.0-dev
+	github.com/filecoin-project/go-state-types v0.16.0-rc1
 	github.com/filecoin-project/go-statemachine v1.0.3
 	github.com/filecoin-project/go-statestore v0.2.0
 	github.com/filecoin-project/go-storedcounter v0.1.0
@@ -131,7 +131,7 @@ require (
 	github.com/raulk/go-watchdog v1.3.0
 	github.com/samber/lo v1.39.0
 	github.com/sirupsen/logrus v1.9.2
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 	github.com/triplewz/poseidon v0.0.2
 	github.com/urfave/cli/v2 v2.25.5
