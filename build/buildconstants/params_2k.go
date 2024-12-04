@@ -73,7 +73,7 @@ var UpgradeWaffleHeight = abi.ChainEpoch(-26)
 
 var UpgradeTuktukHeight = abi.ChainEpoch(-27)
 
-var UpgradeXxHeight = abi.ChainEpoch(200)
+var UpgradeTeepHeight = abi.ChainEpoch(200)
 
 // FIP-0081: for the power actor state for pledge calculations.
 // UpgradeTuktukPowerRampDurationEpochs ends up in the power actor state after
@@ -169,7 +169,7 @@ func init() {
 	UpgradeWaffleHeight = getUpgradeHeight("LOTUS_WAFFLE_HEIGHT", UpgradeWaffleHeight)
 	UpgradePhoenixHeight = getUpgradeHeight("LOTUS_PHOENIX_HEIGHT", UpgradePhoenixHeight)
 	UpgradeTuktukHeight = getUpgradeHeight("LOTUS_TUKTUK_HEIGHT", UpgradeTuktukHeight)
-	UpgradeXxHeight = getUpgradeHeight("LOTUS_XX_HEIGHT", UpgradeXxHeight)
+	UpgradeTeepHeight = getUpgradeHeight("LOTUS_XX_HEIGHT", UpgradeTeepHeight)
 
 	DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 		0: DrandQuicknet,
