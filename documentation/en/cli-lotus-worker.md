@@ -11,24 +11,20 @@ VERSION:
    1.31.1-dev
 
 COMMANDS:
-   run         Start lotus worker
-   stop        Stop a running lotus worker
-   info        Print worker info
-   storage     manage sector storage
-   set         Manage worker settings
-   wait-quiet  Block until all running tasks exit
-   resources   Manage resource table overrides
-   tasks       Manage task processing
-   help, h     Shows a list of commands or help for one command
+   run        Start lotus worker
+   stop       Stop a running lotus worker
+   info       Print worker info
+   storage    manage sector storage
+   resources  Manage resource table overrides
+   tasks      Manage task processing
+   help, h    Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
-   --worker-repo value, --workerrepo Specify worker repo path. flag workerrepo and env WORKER_PATH are DEPRECATION, will REMOVE SOON (default: "~/.lotusworker") [LOTUS_WORKER_PATH, WORKER_PATH]
-   --panic-reports value           (default: "~/.lotusworker") [LOTUS_PANIC_REPORT_PATH]
-   --miner-repo value, --storagerepo Specify miner repo path. flag storagerepo and env LOTUS_STORAGE_PATH are DEPRECATION, will REMOVE SOON (default: "~/.lotusminer") [LOTUS_MINER_PATH, LOTUS_STORAGE_PATH]
-   --enable-gpu-proving           enable use of GPU for mining operations (default: true) [LOTUS_WORKER_ENABLE_GPU_PROVING]
-   --help, -h                     show help
-   --version, -v                  print the version
-
+   --worker-repo value, --workerrepo value  Specify worker repo path. flag workerrepo and env WORKER_PATH are DEPRECATION, will REMOVE SOON [$LOTUS_WORKER_PATH, $WORKER_PATH]
+   --miner-repo value, --storagerepo value  Specify miner repo path. flag storagerepo and env LOTUS_STORAGE_PATH are DEPRECATION, will REMOVE SOON [$LOTUS_MINER_PATH, $LOTUS_STORAGE_PATH]
+   --enable-gpu-proving                     enable use of GPU for mining operations (default: false) [$LOTUS_WORKER_ENABLE_GPU_PROVING]
+   --help, -h                               show help
+   --version, -v                            print the version
 ```
 
 ## lotus-worker run

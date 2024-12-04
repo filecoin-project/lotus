@@ -11,12 +11,11 @@ VERSION:
    1.31.1-dev
 
 COMMANDS:
-   daemon        Start a lotus daemon process
-   backup        Create node metadata backup
-   config        Manage node config
-   pprof         
-   version       Print version
-   help, h       Shows a list of commands or help for one command
+   daemon   Start a lotus daemon process
+   backup   Create node metadata backup
+   config   Manage node config
+   version  Print version
+   help, h  Shows a list of commands or help for one command
    BASIC:
      send     Send funds between accounts
      wallet   Manage wallet
@@ -42,15 +41,12 @@ COMMANDS:
      status  Check node status
 
 GLOBAL OPTIONS:
-   --panic-reports value           (default: "~/.lotus") [LOTUS_PANIC_REPORT_PATH]
-   --color                        use color in display output (default: depends on output being a TTY)
-   --repo value                    (default: "~/.lotus") [LOTUS_PATH]
-   --interactive                  setting to false will disable interactive functionality of commands (default: true)
-   --force-send                   if true, will ignore pre-send checks (default: false)
-   --vv                           enables very verbose mode, useful for debugging the CLI (default: false)
-   --help, -h                     show help
-   --version, -v                  print the version
-
+   --color        use color in display output (default: depends on output being a TTY)
+   --interactive  setting to false will disable interactive functionality of commands (default: false)
+   --force-send   if true, will ignore pre-send checks (default: false)
+   --vv           enables very verbose mode, useful for debugging the CLI (default: false)
+   --help, -h     show help
+   --version, -v  print the version
 ```
 
 ## lotus daemon

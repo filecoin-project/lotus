@@ -20,7 +20,6 @@ COMMANDS:
    log           Manage logging
    wait-api      Wait for lotus api to come online
    fetch-params  Fetch proving parameters
-   pprof         
    version       Print version
    help, h       Shows a list of commands or help for one command
    CHAIN:
@@ -33,15 +32,12 @@ COMMANDS:
      sealing  interact with sealing pipeline
 
 GLOBAL OPTIONS:
-   --actor value, -a              specify other actor to query / manipulate
-   --color                        use color in display output (default: depends on output being a TTY)
-   --panic-reports value           (default: "~/.lotusminer") [LOTUS_PANIC_REPORT_PATH]
-   --repo value                    (default: "~/.lotus") [LOTUS_PATH]
-   --miner-repo value, --storagerepo Specify miner repo path. flag(storagerepo) and env(LOTUS_STORAGE_PATH) are DEPRECATION, will REMOVE SOON (default: "~/.lotusminer") [LOTUS_MINER_PATH, LOTUS_STORAGE_PATH]
-   --vv                           enables very verbose mode, useful for debugging the CLI (default: false)
-   --help, -h                     show help
-   --version, -v                  print the version
-
+   --actor value, -a value                  specify other actor to query / manipulate
+   --color                                  use color in display output (default: depends on output being a TTY)
+   --miner-repo value, --storagerepo value  Specify miner repo path. flag(storagerepo) and env(LOTUS_STORAGE_PATH) are DEPRECATION, will REMOVE SOON [$LOTUS_MINER_PATH, $LOTUS_STORAGE_PATH]
+   --vv                                     enables very verbose mode, useful for debugging the CLI (default: false)
+   --help, -h                               show help
+   --version, -v                            print the version
 ```
 
 ## lotus-miner init

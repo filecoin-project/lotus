@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"text/tabwriter"
 
 	"github.com/urfave/cli/v2"
 )
@@ -71,79 +70,21 @@ func (g *DocGenerator) generateDocs(name string) error {
 
 // writeAppHeader writes the application header documentation
 func (g *DocGenerator) writeAppHeader() error {
-	header := tabwriter.NewWriter(g.writer, 1, 8, 2, ' ', 0)
-	defer header.Flush() //nolint: errcheck
+	header := &strings.Builder{}
+	header.WriteString(fmt.Sprintf("# %s\n\n```\n", g.app.Name))
 
-	if _, err := header.Write([]byte(fmt.Sprintf("# %s\n\n```\n", g.app.Name))); err != nil {
-		return err
-	}
-
-	if err := g.writeBasicInfo(header); err != nil {
-		return err
-	}
-
-	if err := g.writeCommandsSection(header); err != nil {
-		return err
-	}
-
-	if err := g.writeGlobalOptions(header); err != nil {
-		return err
-	}
-
-	if _, err := header.Write([]byte("\n```\n")); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (g *DocGenerator) writeBasicInfo(w *tabwriter.Writer) error {
-	metadata := []struct {
-		section string
-		content string
-	}{
-		{"NAME", fmt.Sprintf("%s - %s", g.app.Name, g.app.Usage)},
-		{"USAGE", generateUsage(g.app.Name)},
-		{"VERSION", g.app.Version},
-	}
-
-	for _, m := range metadata {
-		if _, err := w.Write([]byte(fmt.Sprintf("%s:\n   %s\n\n", m.section, m.content))); err != nil {
-			return err
+	customAppData := func() map[string]interface{} {
+		return map[string]interface{}{
+			"ExtraInfo": g.app.ExtraInfo,
 		}
 	}
 
-	return nil
-}
+	cli.HelpPrinterCustom(header, cli.AppHelpTemplate, g.app, customAppData())
 
-func (g *DocGenerator) writeCommandsSection(w *tabwriter.Writer) error {
-	if len(g.app.Commands) == 0 {
-		return nil
-	}
+	header.WriteString("```\n")
+	_, err := g.writer.Write([]byte(header.String()))
 
-	if _, err := w.Write([]byte("COMMANDS:\n")); err != nil {
-		return err
-	}
-
-	return g.writeCategoryContent(w)
-}
-
-func (g *DocGenerator) writeGlobalOptions(w *tabwriter.Writer) error {
-	if len(g.app.Flags) == 0 {
-		return nil
-	}
-
-	if _, err := w.Write([]byte("\nGLOBAL OPTIONS:\n")); err != nil {
-		return err
-	}
-
-	for _, flag := range g.app.Flags {
-		if _, err := w.Write([]byte(NewFlagFormatter(flag).Format())); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return err
 }
 
 // writeCommandDocs writes documentation for all commands recursively
