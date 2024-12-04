@@ -9,11 +9,12 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"regexp"
 	"strconv"
 	"strings"
-	"time"
 
 	masterminds "github.com/Masterminds/semver/v3"
+	sprig "github.com/Masterminds/sprig/v3"
 	"github.com/google/go-github/v66/github"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
@@ -133,6 +134,8 @@ func getProject(name, version string) project {
 	}
 }
 
+const releaseDateStringPattern = `^(Week of )?\d{4}-\d{2}-\d{2}( \(estimate\))?$`
+
 func main() {
 	app := &cli.App{
 		Name:  "release",
@@ -176,26 +179,31 @@ func main() {
 				Name:  "create-issue",
 				Usage: "Create a new release issue from the template",
 				Flags: []cli.Flag{
+					&cli.BoolFlag{
+						Name:  "create-on-github",
+						Usage: "Whether to create the issue on github rather than print the issue content. $GITHUB_TOKEN must be set.",
+						Value: false,
+					},
 					&cli.StringFlag{
 						Name:     "type",
-						Usage:    "What's the type of the release? (node, miner, both)",
+						Usage:    "What's the type of the release? (Options: node, miner, both)",
 						Value:    "both",
 						Required: true,
 					},
 					&cli.StringFlag{
 						Name:     "tag",
-						Usage:    "What's the tag of the release? (e.g. 1.30.1)",
+						Usage:    "What's the tag of the release? (e.g., 1.30.1)",
 						Required: true,
 					},
 					&cli.StringFlag{
 						Name:     "level",
-						Usage:    "What's the level of the release? (major, minor, patch)",
+						Usage:    "What's the level of the release? (Options: major, minor, patch)",
 						Value:    "patch",
 						Required: true,
 					},
 					&cli.StringFlag{
 						Name:     "network-upgrade",
-						Usage:    "What's the version of the network upgrade this release is related to? (e.g. 23)",
+						Usage:    "What's the version of the network upgrade this release is related to? (e.g., 25)",
 						Required: false,
 					},
 					&cli.StringFlag{
@@ -210,61 +218,52 @@ func main() {
 					},
 					&cli.StringFlag{
 						Name:     "rc1-date",
-						Usage:    "What's the expected shipping date for RC1 (YYYY-MM-DD)?",
-						Required: false,
-					},
-					&cli.StringFlag{
-						Name:     "rc1-precision",
-						Usage:    "How precise is the RC1 date? (day, week)",
-						Required: false,
-					},
-					&cli.StringFlag{
-						Name:     "rc1-confidence",
-						Usage:    "How confident is the RC1 date? (estimated, confirmed)",
+						Usage:    fmt.Sprintf("What's the expected shipping date for RC1? (Pattern: '%s'))", releaseDateStringPattern),
+						Value:    "TBD",
 						Required: false,
 					},
 					&cli.StringFlag{
 						Name:     "stable-date",
-						Usage:    "What's the expected shipping date for the stable release (YYYY-MM-DD)?",
+						Usage:    fmt.Sprintf("What's the expected shipping date for the stable release? (Pattern: '%s'))", releaseDateStringPattern),
+						Value:    "TBD",
 						Required: false,
 					},
 					&cli.StringFlag{
-						Name:     "stable-precision",
-						Usage:    "How precise is the stable release date? (day, week)",
-						Required: false,
-					},
-					&cli.StringFlag{
-						Name:     "stable-confidence",
-						Usage:    "How confident is the stable release date? (estimated, confirmed)",
+						Name:     "repo",
+						Usage:    "Which full repository name (i.e., OWNER/REPOSITORY) to create the issue under.",
+						Value:    "filecoin-project/lotus",
 						Required: false,
 					},
 				},
 				Action: func(c *cli.Context) error {
-					// Read the flag values
-					releaseType := c.String("type")
-					releaseTag := c.String("tag")
-					releaseLevel := c.String("level")
-					networkUpgrade := c.String("network-upgrade")
-					discussionLink := c.String("discussion-link")
-					changelogLink := c.String("changelog-link")
-					rc1Date := c.String("rc1-date")
-					rc1Precision := c.String("rc1-precision")
-					rc1Confidence := c.String("rc1-confidence")
-					stableDate := c.String("stable-date")
-					stablePrecision := c.String("stable-precision")
-					stableConfidence := c.String("stable-confidence")
+					// Read and validate the flag values
+					createOnGitHub := c.Bool("create-on-github")
 
-					// Validate the flag values
-					if releaseType != "node" && releaseType != "miner" && releaseType != "both" {
+					releaseType := c.String("type")
+					// releaseType gets special formatting
+					if releaseType == "node" {
+						releaseType = "Node"
+					} else if releaseType == "miner" {
+						releaseType = "Miner"
+					} else if releaseType == "both" {
+						releaseType = "Node and Miner"
+					} else {
 						return fmt.Errorf("invalid value for the 'type' flag. Allowed values are 'node', 'miner', and 'both'")
 					}
+
+					releaseTag := c.String("tag")
 					releaseVersion, err := masterminds.StrictNewVersion(releaseTag)
 					if err != nil {
 						return fmt.Errorf("invalid value for the 'tag' flag. Must be a valid semantic version (e.g. 1.30.1)")
 					}
+
+					releaseLevel := c.String("level")
 					if releaseLevel != "major" && releaseLevel != "minor" && releaseLevel != "patch" {
 						return fmt.Errorf("invalid value for the 'level' flag. Allowed values are 'major', 'minor', and 'patch'")
 					}
+
+					networkUpgrade := c.String("network-upgrade")
+					discussionLink := c.String("discussion-link")
 					if networkUpgrade != "" {
 						_, err := strconv.ParseUint(networkUpgrade, 10, 64)
 						if err != nil {
@@ -276,48 +275,45 @@ func main() {
 								return fmt.Errorf("invalid value for the 'discussion-link' flag. Must be a valid URL")
 							}
 						}
-						if changelogLink != "" {
-							_, err := url.ParseRequestURI(changelogLink)
-							if err != nil {
-								return fmt.Errorf("invalid value for the 'changelog-link' flag. Must be a valid URL")
-							}
-						}
 					}
-					if rc1Date != "" {
-						_, err := time.Parse("2006-01-02", rc1Date)
+
+					changelogLink := c.String("changelog-link")
+					if changelogLink != "" {
+						_, err := url.ParseRequestURI(changelogLink)
 						if err != nil {
-							return fmt.Errorf("invalid value for the 'rc1-date' flag. Must be a valid date (YYYY-MM-DD)")
-						}
-						if rc1Precision != "" {
-							if rc1Precision != "day" && rc1Precision != "week" {
-								return fmt.Errorf("invalid value for the 'rc1-precision' flag. Allowed values are 'day' and 'week'")
-							}
-						}
-						if rc1Confidence != "" {
-							if rc1Confidence != "estimated" && rc1Confidence != "confirmed" {
-								return fmt.Errorf("invalid value for the 'rc1-confidence' flag. Allowed values are 'estimated' and 'confirmed'")
-							}
-						}
-					}
-					if stableDate != "" {
-						_, err := time.Parse("2006-01-02", stableDate)
-						if err != nil {
-							return fmt.Errorf("invalid value for the 'stable-date' flag. Must be a valid date (YYYY-MM-DD)")
-						}
-						if stablePrecision != "" {
-							if stablePrecision != "day" && stablePrecision != "week" {
-								return fmt.Errorf("invalid value for the 'stable-precision' flag. Allowed values are 'day' and 'week'")
-							}
-						}
-						if stableConfidence != "" {
-							if stableConfidence != "estimated" && stableConfidence != "confirmed" {
-								return fmt.Errorf("invalid value for the 'stable-confidence' flag. Allowed values are 'estimated' and 'confirmed'")
-							}
+							return fmt.Errorf("invalid value for the 'changelog-link' flag. Must be a valid URL")
 						}
 					}
 
+					rc1Date := c.String("rc1-date")
+					releaseDateStringRegexp := regexp.MustCompile(releaseDateStringPattern)
+					if rc1Date != "TBD" {
+						matches := releaseDateStringRegexp.FindStringSubmatch(rc1Date)
+						if matches == nil {
+							return fmt.Errorf("rc1-date must be of form %s", releaseDateStringPattern)
+						}
+					}
+
+					stableDate := c.String("stable-date")
+					if stableDate != "TBD" {
+						matches := releaseDateStringRegexp.FindStringSubmatch(stableDate)
+						if matches == nil {
+							return fmt.Errorf("stable-date must be of form %s", releaseDateStringPattern)
+						}
+					}
+
+					repoFullName := c.String("repo")
+					repoRegexp := regexp.MustCompile(`^([^/]+)/([^/]+)$`)
+					matches := repoRegexp.FindStringSubmatch(repoFullName)
+					if matches == nil {
+						return fmt.Errorf("invalid repository name format. Must be 'owner/repo'")
+					}
+					repoOwner := matches[1]
+					repoName := matches[2]
+
 					// Prepare template data
 					data := make(map[string]interface{})
+					data["CreateOnGitHub"] = createOnGitHub
 					data["Type"] = releaseType
 					data["Tag"] = releaseVersion.String()
 					data["NextTag"] = releaseVersion.IncPatch().String()
@@ -325,19 +321,16 @@ func main() {
 					data["NetworkUpgrade"] = networkUpgrade
 					data["NetworkUpgradeDiscussionLink"] = discussionLink
 					data["NetworkUpgradeChangelogEntryLink"] = changelogLink
-					data["ReleaseCandidateDate"] = rc1Date
-					data["ReleaseCandidatePrecision"] = rc1Precision
-					data["ReleaseCandidateConfidence"] = rc1Confidence
-					data["StableDate"] = stableDate
-					data["StablePrecision"] = stablePrecision
-					data["StableConfidence"] = stableConfidence
+					data["RC1DateString"] = rc1Date
+					data["StableDateString"] = stableDate
 
 					// Render the issue template
 					issueTemplate, err := os.ReadFile("documentation/misc/RELEASE_ISSUE_TEMPLATE.md")
 					if err != nil {
 						return fmt.Errorf("failed to read issue template: %w", err)
 					}
-					tmpl, err := template.New("issue").Parse(string(issueTemplate))
+					// Sprig used for String contains and Lists
+					tmpl, err := template.New("issue").Funcs(sprig.FuncMap()).Parse(string(issueTemplate))
 					if err != nil {
 						return fmt.Errorf("failed to parse issue template: %w", err)
 					}
@@ -351,30 +344,64 @@ func main() {
 					issueTitle := fmt.Sprintf("Lotus %s v%s Release", releaseType, releaseTag)
 					issueBody := issueBodyBuffer.String()
 
-					// Set up the GitHub client
-					client := github.NewClient(nil).WithAuthToken(os.Getenv("GITHUB_TOKEN"))
+					// Remove duplicate newlines before headers and list items since the templating leaves a lot extra newlines around.
+					// Extra newlines are present because go formatting control statements done within HTML comments rather than using {{- -}}.
+					// HTML comments are used instead so that the template file parses as clean markdown on its own.
+					// In addition, HTML comments were also required within "ranges" in the template.
+					// Using HTML comments everywhere keeps things consistent.
+					re := regexp.MustCompile(`\n\n+([^#*\[\|])`)
+					issueBody = re.ReplaceAllString(issueBody, "\n$1")
 
-					// Check if the issue already exists
-					issues, _, err := client.Search.Issues(context.Background(), issueTitle+" in:title state:open", &github.SearchOptions{})
-					if err != nil {
-						return fmt.Errorf("failed to list issues: %w", err)
-					}
-					if issues.GetTotal() > 0 {
-						return fmt.Errorf("issue already exists: %s", issues.Issues[0].GetHTMLURL())
-					}
+					if !createOnGitHub {
+						// Create the URL-encoded parameters
+						params := url.Values{}
+						params.Add("title", issueTitle)
+						params.Add("body", issueBody)
+						params.Add("labels", "tpm")
 
-					// Create the issue
-					issue, _, err := client.Issues.Create(context.Background(), "filecoin", "lotus", &github.IssueRequest{
-						Title: &issueTitle,
-						Body:  &issueBody,
-						Labels: &[]string{
-							"tpm",
-						},
-					})
-					if err != nil {
-						return fmt.Errorf("failed to create issue: %w", err)
+						// Construct the URL
+						issueURL := fmt.Sprintf("https://github.com/%s/issues/new?%s", repoFullName, params.Encode())
+
+						debugFormat := `
+Issue Details:
+=============
+Title: %s
+
+Body:
+-----
+%s
+
+URL to create issue:
+-------------------
+%s
+`
+						fmt.Printf(debugFormat, issueTitle, issueBody, issueURL)
+					} else {
+						// Set up the GitHub client
+						client := github.NewClient(nil).WithAuthToken(os.Getenv("GITHUB_TOKEN"))
+
+						// Check if the issue already exists
+						issues, _, err := client.Search.Issues(context.Background(), fmt.Sprintf("%s in:title state:open repo:%s is:issue", issueTitle, repoFullName), &github.SearchOptions{})
+						if err != nil {
+							return fmt.Errorf("failed to list issues: %w", err)
+						}
+						if issues.GetTotal() > 0 {
+							return fmt.Errorf("issue already exists: %s", issues.Issues[0].GetHTMLURL())
+						}
+
+						// Create the issue
+						issue, _, err := client.Issues.Create(context.Background(), repoOwner, repoName, &github.IssueRequest{
+							Title: &issueTitle,
+							Body:  &issueBody,
+							Labels: &[]string{
+								"tpm",
+							},
+						})
+						if err != nil {
+							return fmt.Errorf("failed to create issue: %w", err)
+						}
+						fmt.Println("Issue created: ", issue.GetHTMLURL())
 					}
-					fmt.Println("Issue created:", issue.GetHTMLURL())
 
 					return nil
 				},
