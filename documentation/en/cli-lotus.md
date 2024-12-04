@@ -42,7 +42,7 @@ COMMANDS:
 
 GLOBAL OPTIONS:
    --color        use color in display output (default: depends on output being a TTY)
-   --interactive  setting to false will disable interactive functionality of commands (default: false)
+   --interactive  setting to false will disable interactive functionality of commands (default: true)
    --force-send   if true, will ignore pre-send checks (default: false)
    --vv           enables very verbose mode, useful for debugging the CLI (default: false)
    --help, -h     show help
@@ -160,6 +160,19 @@ USAGE:
 OPTIONS:
    --no-comment  don't comment default values (default: false)
    --help, -h    show help
+```
+
+## lotus version
+
+```
+NAME:
+   lotus version - Print version
+
+USAGE:
+   lotus version [command options] [arguments...]
+
+OPTIONS:
+   --help, -h  show help
 ```
 
 ## lotus send
@@ -1172,21 +1185,6 @@ OPTIONS:
    --to value    return messages to a given address
    --from value  return messages from a given address
    --help, -h    show help
-```
-
-### lotus mpool clear
-
-```
-NAME:
-   lotus mpool clear - Clear all pending messages from the mpool (USE WITH CARE) (DEPRECATED)
-
-USAGE:
-   lotus mpool clear [command options] [arguments...]
-
-OPTIONS:
-   --local         also clear local messages (default: false)
-   --really-do-it  must be specified for the action to take effect (default: false)
-   --help, -h      show help
 ```
 
 ### lotus mpool sub
@@ -3226,48 +3224,5 @@ CATEGORY:
 
 OPTIONS:
    --chain     include chain health status (default: false)
-   --help, -h  show help
-```
-
-## lotus pprof
-
-```
-NAME:
-   lotus pprof
-
-USAGE:
-   lotus pprof command [command options] [arguments...]
-
-COMMANDS:
-   goroutines  Get goroutine stacks
-   help, h     Shows a list of commands or help for one command
-
-OPTIONS:
-   --help, -h  show help
-```
-
-### lotus pprof goroutines
-
-```
-NAME:
-   lotus pprof goroutines - Get goroutine stacks
-
-USAGE:
-   lotus pprof goroutines [command options] [arguments...]
-
-OPTIONS:
-   --help, -h  show help
-```
-
-## lotus version
-
-```
-NAME:
-   lotus version - Print version
-
-USAGE:
-   lotus version [command options] [arguments...]
-
-OPTIONS:
    --help, -h  show help
 ```

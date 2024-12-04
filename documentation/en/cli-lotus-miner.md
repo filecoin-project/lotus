@@ -34,7 +34,7 @@ COMMANDS:
 GLOBAL OPTIONS:
    --actor value, -a value                  specify other actor to query / manipulate
    --color                                  use color in display output (default: depends on output being a TTY)
-   --miner-repo value, --storagerepo value  Specify miner repo path. flag(storagerepo) and env(LOTUS_STORAGE_PATH) are DEPRECATION, will REMOVE SOON [$LOTUS_MINER_PATH, $LOTUS_STORAGE_PATH]
+   --miner-repo value, --storagerepo value  Specify miner repo path. flag(storagerepo) and env(LOTUS_STORAGE_PATH) are DEPRECATION, will REMOVE SOON (default: "~/.lotusminer") [$LOTUS_MINER_PATH, $LOTUS_STORAGE_PATH]
    --vv                                     enables very verbose mode, useful for debugging the CLI (default: false)
    --help, -h                               show help
    --version, -v                            print the version
@@ -181,6 +181,172 @@ DESCRIPTION:
 
 OPTIONS:
    --offline   create backup without the node running (default: false)
+   --help, -h  show help
+```
+
+## lotus-miner auth
+
+```
+NAME:
+   lotus-miner auth - Manage RPC permissions
+
+USAGE:
+   lotus-miner auth command [command options] [arguments...]
+
+COMMANDS:
+   create-token  Create token
+   api-info      Get token with API info required to connect to this node
+   help, h       Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help
+```
+
+### lotus-miner auth create-token
+
+```
+NAME:
+   lotus-miner auth create-token - Create token
+
+USAGE:
+   lotus-miner auth create-token [command options] [arguments...]
+
+OPTIONS:
+   --perm value  permission to assign to the token, one of: read, write, sign, admin
+   --help, -h    show help
+```
+
+### lotus-miner auth api-info
+
+```
+NAME:
+   lotus-miner auth api-info - Get token with API info required to connect to this node
+
+USAGE:
+   lotus-miner auth api-info [command options] [arguments...]
+
+OPTIONS:
+   --perm value  permission to assign to the token, one of: read, write, sign, admin
+   --help, -h    show help
+```
+
+## lotus-miner log
+
+```
+NAME:
+   lotus-miner log - Manage logging
+
+USAGE:
+   lotus-miner log command [command options] [arguments...]
+
+COMMANDS:
+   list       List log systems
+   set-level  Set log level
+   alerts     Get alert states
+   help, h    Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help
+```
+
+### lotus-miner log list
+
+```
+NAME:
+   lotus-miner log list - List log systems
+
+USAGE:
+   lotus-miner log list [command options] [arguments...]
+
+OPTIONS:
+   --help, -h  show help
+```
+
+### lotus-miner log set-level
+
+```
+NAME:
+   lotus-miner log set-level - Set log level
+
+USAGE:
+   lotus-miner log set-level [command options] [level]
+
+DESCRIPTION:
+   Set the log level for logging systems:
+
+      The system flag can be specified multiple times.
+
+      eg) log set-level --system chain --system chainxchg debug
+
+      Available Levels:
+      debug
+      info
+      warn
+      error
+
+      Environment Variables:
+      GOLOG_LOG_LEVEL - Default log level for all log systems
+      GOLOG_LOG_FMT   - Change output log format (json, nocolor)
+      GOLOG_FILE      - Write logs to file
+      GOLOG_OUTPUT    - Specify whether to output to file, stderr, stdout or a combination, i.e. file+stderr
+
+
+OPTIONS:
+   --system value [ --system value ]  limit to log system
+   --help, -h                         show help
+```
+
+### lotus-miner log alerts
+
+```
+NAME:
+   lotus-miner log alerts - Get alert states
+
+USAGE:
+   lotus-miner log alerts [command options] [arguments...]
+
+OPTIONS:
+   --all       get all (active and inactive) alerts (default: false)
+   --help, -h  show help
+```
+
+## lotus-miner wait-api
+
+```
+NAME:
+   lotus-miner wait-api - Wait for lotus api to come online
+
+USAGE:
+   lotus-miner wait-api [command options] [arguments...]
+
+OPTIONS:
+   --timeout value  duration to wait till fail (default: 30s)
+   --help, -h       show help
+```
+
+## lotus-miner fetch-params
+
+```
+NAME:
+   lotus-miner fetch-params - Fetch proving parameters
+
+USAGE:
+   lotus-miner fetch-params [command options] [sectorSize]
+
+OPTIONS:
+   --help, -h  show help
+```
+
+## lotus-miner version
+
+```
+NAME:
+   lotus-miner version - Print version
+
+USAGE:
+   lotus-miner version [command options] [arguments...]
+
+OPTIONS:
    --help, -h  show help
 ```
 
@@ -1359,200 +1525,4 @@ USAGE:
 OPTIONS:
    --file-size value  real file size (default: 0)
    --help, -h         show help
-```
-
-## lotus-miner auth
-
-```
-NAME:
-   lotus-miner auth - Manage RPC permissions
-
-USAGE:
-   lotus-miner auth command [command options] [arguments...]
-
-COMMANDS:
-   create-token  Create token
-   api-info      Get token with API info required to connect to this node
-   help, h       Shows a list of commands or help for one command
-
-OPTIONS:
-   --help, -h  show help
-```
-
-### lotus-miner auth create-token
-
-```
-NAME:
-   lotus-miner auth create-token - Create token
-
-USAGE:
-   lotus-miner auth create-token [command options] [arguments...]
-
-OPTIONS:
-   --perm value  permission to assign to the token, one of: read, write, sign, admin
-   --help, -h    show help
-```
-
-### lotus-miner auth api-info
-
-```
-NAME:
-   lotus-miner auth api-info - Get token with API info required to connect to this node
-
-USAGE:
-   lotus-miner auth api-info [command options] [arguments...]
-
-OPTIONS:
-   --perm value  permission to assign to the token, one of: read, write, sign, admin
-   --help, -h    show help
-```
-
-## lotus-miner log
-
-```
-NAME:
-   lotus-miner log - Manage logging
-
-USAGE:
-   lotus-miner log command [command options] [arguments...]
-
-COMMANDS:
-   list       List log systems
-   set-level  Set log level
-   alerts     Get alert states
-   help, h    Shows a list of commands or help for one command
-
-OPTIONS:
-   --help, -h  show help
-```
-
-### lotus-miner log list
-
-```
-NAME:
-   lotus-miner log list - List log systems
-
-USAGE:
-   lotus-miner log list [command options] [arguments...]
-
-OPTIONS:
-   --help, -h  show help
-```
-
-### lotus-miner log set-level
-
-```
-NAME:
-   lotus-miner log set-level - Set log level
-
-USAGE:
-   lotus-miner log set-level [command options] [level]
-
-DESCRIPTION:
-   Set the log level for logging systems:
-
-      The system flag can be specified multiple times.
-
-      eg) log set-level --system chain --system chainxchg debug
-
-      Available Levels:
-      debug
-      info
-      warn
-      error
-
-      Environment Variables:
-      GOLOG_LOG_LEVEL - Default log level for all log systems
-      GOLOG_LOG_FMT   - Change output log format (json, nocolor)
-      GOLOG_FILE      - Write logs to file
-      GOLOG_OUTPUT    - Specify whether to output to file, stderr, stdout or a combination, i.e. file+stderr
-
-
-OPTIONS:
-   --system value [ --system value ]  limit to log system
-   --help, -h                         show help
-```
-
-### lotus-miner log alerts
-
-```
-NAME:
-   lotus-miner log alerts - Get alert states
-
-USAGE:
-   lotus-miner log alerts [command options] [arguments...]
-
-OPTIONS:
-   --all       get all (active and inactive) alerts (default: false)
-   --help, -h  show help
-```
-
-## lotus-miner wait-api
-
-```
-NAME:
-   lotus-miner wait-api - Wait for lotus api to come online
-
-USAGE:
-   lotus-miner wait-api [command options] [arguments...]
-
-OPTIONS:
-   --timeout value  duration to wait till fail (default: 30s)
-   --help, -h       show help
-```
-
-## lotus-miner fetch-params
-
-```
-NAME:
-   lotus-miner fetch-params - Fetch proving parameters
-
-USAGE:
-   lotus-miner fetch-params [command options] [sectorSize]
-
-OPTIONS:
-   --help, -h  show help
-```
-
-## lotus-miner pprof
-
-```
-NAME:
-   lotus-miner pprof
-
-USAGE:
-   lotus-miner pprof command [command options] [arguments...]
-
-COMMANDS:
-   goroutines  Get goroutine stacks
-   help, h     Shows a list of commands or help for one command
-
-OPTIONS:
-   --help, -h  show help
-```
-
-### lotus-miner pprof goroutines
-
-```
-NAME:
-   lotus-miner pprof goroutines - Get goroutine stacks
-
-USAGE:
-   lotus-miner pprof goroutines [command options] [arguments...]
-
-OPTIONS:
-   --help, -h  show help
-```
-
-## lotus-miner version
-
-```
-NAME:
-   lotus-miner version - Print version
-
-USAGE:
-   lotus-miner version [command options] [arguments...]
-
-OPTIONS:
-   --help, -h  show help
 ```

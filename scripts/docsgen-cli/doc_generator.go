@@ -70,46 +70,73 @@ func (g *DocGenerator) generateDocs(name string) error {
 
 // writeAppHeader writes the application header documentation
 func (g *DocGenerator) writeAppHeader() error {
-	header := &strings.Builder{}
-	header.WriteString(fmt.Sprintf("# %s\n\n```\n", g.app.Name))
+	if _, err := g.writer.Write([]byte(fmt.Sprintf("# %s\n\n```\n", g.app.Name))); err != nil {
+		return err
+	}
 
-	customAppData := func() map[string]interface{} {
-		return map[string]interface{}{
-			"ExtraInfo": g.app.ExtraInfo,
+	if err := g.app.Run(getHelpArgs("", "")); err != nil {
+		return fmt.Errorf("failed to write command docs: %w", err)
+	}
+
+	if _, err := g.writer.Write([]byte("```\n")); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (g *DocGenerator) writeCommandDocs(commands cli.Commands, rootName string, depth int) error {
+	uncategorizedCmds, categorizedCmds := separateCommands(commands)
+
+	// Write uncategorized commands first
+	if err := g.writeCommands(uncategorizedCmds, rootName, depth); err != nil {
+		return fmt.Errorf("failed to write uncategorized commands: %w", err)
+	}
+
+	// Write categorized commands next
+	if err := g.writeCommands(categorizedCmds, rootName, depth); err != nil {
+		return fmt.Errorf("failed to write categorized commands: %w", err)
+	}
+
+	return nil
+}
+
+// separateCommands separates commands into uncategorized and categorized
+func separateCommands(commands []*cli.Command) (uncategorized cli.Commands, categorized cli.Commands) {
+	for _, cmd := range commands {
+		if cmd.Category == "" {
+			uncategorized = append(uncategorized, cmd)
+		} else {
+			categorized = append(categorized, cmd)
 		}
 	}
 
-	cli.HelpPrinterCustom(header, cli.AppHelpTemplate, g.app, customAppData())
-
-	header.WriteString("```\n")
-	_, err := g.writer.Write([]byte(header.String()))
-
-	return err
+	return uncategorized, categorized
 }
 
-// writeCommandDocs writes documentation for all commands recursively
-func (g *DocGenerator) writeCommandDocs(commands []*cli.Command, rootName string, depth int) error {
+// writeCommands writes documentation for all commands recursively
+func (g *DocGenerator) writeCommands(commands cli.Commands, rootName string, depth int) error {
 	for _, cmd := range commands {
-		if cmd.Name == "help" {
+		if cmd.Name == "help" || cmd.Hidden {
 			continue
 		}
 
 		cmdName := fmt.Sprintf("%s %s", rootName, cmd.Name)
 
 		if _, err := g.writer.Write([]byte(fmt.Sprintf("\n%s %s\n\n```\n", strings.Repeat("#", depth+2), cmdName))); err != nil {
-			return fmt.Errorf("failed to write command docs: %w", err)
+			return err
 		}
 
-		if err := g.app.Run(getArgs(rootName, cmd.Name)); err != nil {
+		if err := g.app.Run(getHelpArgs(rootName, cmd.Name)); err != nil {
 			return fmt.Errorf("failed to write command docs: %w", err)
 		}
 
 		if _, err := g.writer.Write([]byte("```\n")); err != nil {
-			return fmt.Errorf("failed to write command docs: %w", err)
+			return err
 		}
 
 		if len(cmd.Subcommands) > 0 {
-			if err := g.writeCommandDocs(cmd.Subcommands, rootName+" "+cmd.Name, depth+1); err != nil {
+			if err := g.writeCommands(cmd.Subcommands, rootName+" "+cmd.Name, depth+1); err != nil {
 				return err
 			}
 		}
@@ -117,7 +144,11 @@ func (g *DocGenerator) writeCommandDocs(commands []*cli.Command, rootName string
 	return nil
 }
 
-func getArgs(rootName string, cmdName string) []string {
+func getHelpArgs(rootName string, cmdName string) []string {
+	if rootName == "" && cmdName == "" {
+		return []string{"-h"}
+	}
+
 	args := strings.Split(rootName, " ")
 	args = append(args, cmdName)
 	args = append(args, "-h")

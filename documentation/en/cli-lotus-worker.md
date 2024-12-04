@@ -20,9 +20,9 @@ COMMANDS:
    help, h    Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
-   --worker-repo value, --workerrepo value  Specify worker repo path. flag workerrepo and env WORKER_PATH are DEPRECATION, will REMOVE SOON [$LOTUS_WORKER_PATH, $WORKER_PATH]
-   --miner-repo value, --storagerepo value  Specify miner repo path. flag storagerepo and env LOTUS_STORAGE_PATH are DEPRECATION, will REMOVE SOON [$LOTUS_MINER_PATH, $LOTUS_STORAGE_PATH]
-   --enable-gpu-proving                     enable use of GPU for mining operations (default: false) [$LOTUS_WORKER_ENABLE_GPU_PROVING]
+   --worker-repo value, --workerrepo value  Specify worker repo path. flag workerrepo and env WORKER_PATH are DEPRECATION, will REMOVE SOON (default: "~/.lotusworker") [$LOTUS_WORKER_PATH, $WORKER_PATH]
+   --miner-repo value, --storagerepo value  Specify miner repo path. flag storagerepo and env LOTUS_STORAGE_PATH are DEPRECATION, will REMOVE SOON (default: "~/.lotusminer") [$LOTUS_MINER_PATH, $LOTUS_STORAGE_PATH]
+   --enable-gpu-proving                     enable use of GPU for mining operations (default: true) [$LOTUS_WORKER_ENABLE_GPU_PROVING]
    --help, -h                               show help
    --version, -v                            print the version
 ```
@@ -183,33 +183,6 @@ OPTIONS:
    --all           redeclare all storage paths (default: false)
    --drop-missing  Drop index entries with missing files (default: true)
    --help, -h      show help
-```
-
-## lotus-worker set
-
-```
-NAME:
-   lotus-worker set - Manage worker settings
-
-USAGE:
-   lotus-worker set [command options] [arguments...]
-
-OPTIONS:
-   --enabled   enable/disable new task processing (default: true)
-   --help, -h  show help
-```
-
-## lotus-worker wait-quiet
-
-```
-NAME:
-   lotus-worker wait-quiet - Block until all running tasks exit
-
-USAGE:
-   lotus-worker wait-quiet [command options] [arguments...]
-
-OPTIONS:
-   --help, -h  show help
 ```
 
 ## lotus-worker resources
