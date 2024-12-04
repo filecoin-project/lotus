@@ -1752,3 +1752,40 @@ func TestEthNullRoundHandling(t *testing.T) {
 		})
 	}
 }
+
+func TestFEVMEamCreateTwiceFail(t *testing.T) {
+	// See https://github.com/filecoin-project/lotus/issues/12731
+	// EAM create errors were not being properly decoded for traces, we should be able to fail a
+	// transaction and get a trace with the error message.
+	// This test uses a contract that performs two create operations, the second one should fail with
+	// an ErrForbidden error because it derives the same address as the first one.
+
+	req := require.New(t)
+
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	filenameActor := "contracts/DuplicateCreate2Error.hex"
+	fromAddr, actorAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
+
+	_, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, actorAddr, "deployTwice()", nil)
+	req.Error(err)
+	req.Equal(exitcode.ExitCode(33), wait.Receipt.ExitCode)
+	req.NotContains(err.Error(), "fatal error")
+
+	t.Logf("Failed as expected: %s", err)
+
+	traces, err := client.EthTraceBlock(ctx, fmt.Sprintf("0x%x", int(wait.Height-1)))
+	req.NoError(err)
+
+	req.Len(traces, 3)
+	req.EqualValues(wait.Height-1, traces[0].BlockNumber)
+	req.Equal("call", traces[0].EthTrace.Type)
+	req.Contains("Reverted", traces[0].EthTrace.Error)
+	req.EqualValues(wait.Height-1, traces[1].BlockNumber)
+	req.Equal("create", traces[1].EthTrace.Type)
+	req.Equal("", traces[1].EthTrace.Error)
+	req.EqualValues(wait.Height-1, traces[2].BlockNumber)
+	req.Equal("create", traces[2].EthTrace.Type)
+	req.Contains(traces[2].EthTrace.Error, "ErrForbidden")
+}

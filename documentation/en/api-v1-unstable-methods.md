@@ -2417,49 +2417,45 @@ Response:
 ```json
 {
   "GPBFTInstance": 0,
-  "ECChain": null,
+  "ECChain": [
+    {
+      "Key": [
+        {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        },
+        {
+          "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+        }
+      ],
+      "Commitments": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+      "Epoch": 0,
+      "PowerTable": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
+    }
+  ],
   "SupplementalData": {
-    "Commitments": [
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0
-    ],
-    "PowerTable": null
+    "Commitments": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+    "PowerTable": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
   },
   "Signers": [
-    0
+    2,
+    2,
+    1,
+    1,
+    1,
+    1
   ],
-  "Signature": null,
-  "PowerTableDelta": null
+  "Signature": "VW5EYWRhU2VB",
+  "PowerTableDelta": [
+    {
+      "ParticipantID": 0,
+      "PowerDelta": "0",
+      "SigningKey": "QmFScmVsRVll"
+    }
+  ]
 }
 ```
 
@@ -2537,49 +2533,45 @@ Response:
 ```json
 {
   "GPBFTInstance": 0,
-  "ECChain": null,
+  "ECChain": [
+    {
+      "Key": [
+        {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        },
+        {
+          "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+        }
+      ],
+      "Commitments": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+      "Epoch": 0,
+      "PowerTable": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
+    }
+  ],
   "SupplementalData": {
-    "Commitments": [
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0
-    ],
-    "PowerTable": null
+    "Commitments": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+    "PowerTable": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
   },
   "Signers": [
-    0
+    2,
+    2,
+    1,
+    1,
+    1,
+    1
   ],
-  "Signature": null,
-  "PowerTableDelta": null
+  "Signature": "VW5EYWRhU2VB",
+  "PowerTableDelta": [
+    {
+      "ParticipantID": 0,
+      "PowerDelta": "0",
+      "SigningKey": "QmFScmVsRVll"
+    }
+  ]
 }
 ```
 

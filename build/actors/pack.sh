@@ -20,6 +20,15 @@ else
     RELEASE_OVERRIDES=("${@:3}")
 fi
 
+if [[ ! "$VERSION" =~ ^v?[0-9]+$ ]]; then
+    echo "Error: VERSION must be an integer (got: ${VERSION})" >&2
+    exit 1
+fi
+if [[ ! "$VERSION" =~ ^v ]]; then
+    VERSION="v${VERSION}"
+fi
+
+
 echo "Downloading bundles for actors version ${VERSION} release ${RELEASE}"
 echo "With release overrides ${RELEASE_OVERRIDES[*]}"
 
