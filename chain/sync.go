@@ -530,6 +530,7 @@ func (syncer *Syncer) Sync(ctx context.Context, maybeHead *types.TipSet) error {
 
 	if maybeHead.Height() == hts.Height() {
 		// check if maybeHead is fully contained in headTipSet
+		// meaning we already synced all the blocks that are a part of maybeHead
 		// if that is the case, there is nothing for us to do
 		// we need to exit out early, otherwise checkpoint-fork logic might wrongly reject it
 		fullyContained := true
