@@ -57,12 +57,11 @@ var runCmd = &cli.Command{
 			}
 		}
 
-		network := strings.Split(buildconstants.BuildTypeString(), "+")[1]
 		ctx, _ := tag.New(lcli.DaemonContext(cctx),
 			tag.Insert(metrics.Version, build.MinerBuildVersion),
 			tag.Insert(metrics.Commit, build.CurrentCommit),
 			tag.Insert(metrics.NodeType, "miner"),
-			tag.Insert(metrics.Network, network),
+			tag.Insert(metrics.Network, buildconstants.NetworkBundle),
 		)
 		// Register all metric views
 		if err := view.Register(
