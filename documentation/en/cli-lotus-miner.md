@@ -1,4 +1,5 @@
 # lotus-miner
+
 ```
 NAME:
    lotus-miner - Filecoin decentralized storage network miner
@@ -40,6 +41,7 @@ GLOBAL OPTIONS:
 ```
 
 ## lotus-miner init
+
 ```
 NAME:
    lotus-miner init - Initialize a lotus miner repo
@@ -69,6 +71,7 @@ OPTIONS:
 ```
 
 ### lotus-miner init restore
+
 ```
 NAME:
    lotus-miner init restore - Initialize a lotus miner repo from a backup
@@ -84,6 +87,7 @@ OPTIONS:
 ```
 
 ## lotus-miner run
+
 ```
 NAME:
    lotus-miner run - Start a lotus miner process
@@ -100,6 +104,7 @@ OPTIONS:
 ```
 
 ## lotus-miner stop
+
 ```
 NAME:
    lotus-miner stop - Stop a running lotus miner
@@ -112,6 +117,7 @@ OPTIONS:
 ```
 
 ## lotus-miner config
+
 ```
 NAME:
    lotus-miner config - Manage node config
@@ -129,6 +135,7 @@ OPTIONS:
 ```
 
 ### lotus-miner config default
+
 ```
 NAME:
    lotus-miner config default - Print default node config
@@ -142,6 +149,7 @@ OPTIONS:
 ```
 
 ### lotus-miner config updated
+
 ```
 NAME:
    lotus-miner config updated - Print updated node config
@@ -155,6 +163,7 @@ OPTIONS:
 ```
 
 ## lotus-miner backup
+
 ```
 NAME:
    lotus-miner backup - Create node metadata backup
@@ -176,6 +185,7 @@ OPTIONS:
 ```
 
 ## lotus-miner auth
+
 ```
 NAME:
    lotus-miner auth - Manage RPC permissions
@@ -193,6 +203,7 @@ OPTIONS:
 ```
 
 ### lotus-miner auth create-token
+
 ```
 NAME:
    lotus-miner auth create-token - Create token
@@ -206,6 +217,7 @@ OPTIONS:
 ```
 
 ### lotus-miner auth api-info
+
 ```
 NAME:
    lotus-miner auth api-info - Get token with API info required to connect to this node
@@ -219,6 +231,7 @@ OPTIONS:
 ```
 
 ## lotus-miner log
+
 ```
 NAME:
    lotus-miner log - Manage logging
@@ -237,6 +250,7 @@ OPTIONS:
 ```
 
 ### lotus-miner log list
+
 ```
 NAME:
    lotus-miner log list - List log systems
@@ -249,6 +263,7 @@ OPTIONS:
 ```
 
 ### lotus-miner log set-level
+
 ```
 NAME:
    lotus-miner log set-level - Set log level
@@ -282,6 +297,7 @@ OPTIONS:
 ```
 
 ### lotus-miner log alerts
+
 ```
 NAME:
    lotus-miner log alerts - Get alert states
@@ -295,6 +311,7 @@ OPTIONS:
 ```
 
 ## lotus-miner wait-api
+
 ```
 NAME:
    lotus-miner wait-api - Wait for lotus api to come online
@@ -308,6 +325,7 @@ OPTIONS:
 ```
 
 ## lotus-miner fetch-params
+
 ```
 NAME:
    lotus-miner fetch-params - Fetch proving parameters
@@ -320,6 +338,7 @@ OPTIONS:
 ```
 
 ## lotus-miner version
+
 ```
 NAME:
    lotus-miner version - Print version
@@ -332,6 +351,7 @@ OPTIONS:
 ```
 
 ## lotus-miner actor
+
 ```
 NAME:
    lotus-miner actor - manipulate the miner actor
@@ -359,6 +379,7 @@ OPTIONS:
 ```
 
 ### lotus-miner actor set-addresses
+
 ```
 NAME:
    lotus-miner actor set-addresses - set addresses that your miner can be publicly dialed on
@@ -374,6 +395,7 @@ OPTIONS:
 ```
 
 ### lotus-miner actor settle-deal
+
 ```
 NAME:
    lotus-miner actor settle-deal - Settle deals manually, if dealIds are not provided all deals will be settled
@@ -387,6 +409,7 @@ OPTIONS:
 ```
 
 ### lotus-miner actor withdraw
+
 ```
 NAME:
    lotus-miner actor withdraw - withdraw available balance to beneficiary
@@ -401,6 +424,7 @@ OPTIONS:
 ```
 
 ### lotus-miner actor repay-debt
+
 ```
 NAME:
    lotus-miner actor repay-debt - pay down a miner's debt
@@ -414,6 +438,7 @@ OPTIONS:
 ```
 
 ### lotus-miner actor set-peer-id
+
 ```
 NAME:
    lotus-miner actor set-peer-id - set the peer id of your miner
@@ -427,6 +452,7 @@ OPTIONS:
 ```
 
 ### lotus-miner actor set-owner
+
 ```
 NAME:
    lotus-miner actor set-owner - Set owner address (this command should be invoked twice, first with the old owner as the senderAddress, and then with the new owner)
@@ -440,6 +466,7 @@ OPTIONS:
 ```
 
 ### lotus-miner actor control
+
 ```
 NAME:
    lotus-miner actor control - Manage control addresses
@@ -457,6 +484,7 @@ OPTIONS:
 ```
 
 #### lotus-miner actor control list
+
 ```
 NAME:
    lotus-miner actor control list - Get currently set control addresses
@@ -470,6 +498,7 @@ OPTIONS:
 ```
 
 #### lotus-miner actor control set
+
 ```
 NAME:
    lotus-miner actor control set - Set control address(-es)
@@ -483,6 +512,7 @@ OPTIONS:
 ```
 
 ### lotus-miner actor propose-change-worker
+
 ```
 NAME:
    lotus-miner actor propose-change-worker - Propose a worker address change
@@ -496,6 +526,7 @@ OPTIONS:
 ```
 
 ### lotus-miner actor confirm-change-worker
+
 ```
 NAME:
    lotus-miner actor confirm-change-worker - Confirm a worker address change
@@ -509,6 +540,7 @@ OPTIONS:
 ```
 
 ### lotus-miner actor compact-allocated
+
 ```
 NAME:
    lotus-miner actor compact-allocated - compact allocated sectors bitfield
@@ -524,6 +556,7 @@ OPTIONS:
 ```
 
 ### lotus-miner actor propose-change-beneficiary
+
 ```
 NAME:
    lotus-miner actor propose-change-beneficiary - Propose a beneficiary address change
@@ -539,6 +572,7 @@ OPTIONS:
 ```
 
 ### lotus-miner actor confirm-change-beneficiary
+
 ```
 NAME:
    lotus-miner actor confirm-change-beneficiary - Confirm a beneficiary address change
@@ -554,6 +588,7 @@ OPTIONS:
 ```
 
 ## lotus-miner info
+
 ```
 NAME:
    lotus-miner info - Print miner info
@@ -572,6 +607,7 @@ OPTIONS:
 ```
 
 ### lotus-miner info all
+
 ```
 NAME:
    lotus-miner info all - dump all related miner info
@@ -584,6 +620,7 @@ OPTIONS:
 ```
 
 ## lotus-miner sectors
+
 ```
 NAME:
    lotus-miner sectors - interact with sector store
@@ -620,6 +657,7 @@ OPTIONS:
 ```
 
 ### lotus-miner sectors status
+
 ```
 NAME:
    lotus-miner sectors status - Get the seal status of a sector by its number
@@ -636,6 +674,7 @@ OPTIONS:
 ```
 
 ### lotus-miner sectors list
+
 ```
 NAME:
    lotus-miner sectors list - List sectors
@@ -660,6 +699,7 @@ OPTIONS:
 ```
 
 #### lotus-miner sectors list upgrade-bounds
+
 ```
 NAME:
    lotus-miner sectors list upgrade-bounds - Output upgrade bounds for available sectors
@@ -675,6 +715,7 @@ OPTIONS:
 ```
 
 ### lotus-miner sectors refs
+
 ```
 NAME:
    lotus-miner sectors refs - List References to sectors
@@ -687,6 +728,7 @@ OPTIONS:
 ```
 
 ### lotus-miner sectors update-state
+
 ```
 NAME:
    lotus-miner sectors update-state - ADVANCED: manually update the state of a sector, this may aid in error recovery
@@ -700,6 +742,7 @@ OPTIONS:
 ```
 
 ### lotus-miner sectors pledge
+
 ```
 NAME:
    lotus-miner sectors pledge - store random data in a sector
@@ -712,6 +755,7 @@ OPTIONS:
 ```
 
 ### lotus-miner sectors numbers
+
 ```
 NAME:
    lotus-miner sectors numbers - manage sector number assignments
@@ -731,6 +775,7 @@ OPTIONS:
 ```
 
 #### lotus-miner sectors numbers info
+
 ```
 NAME:
    lotus-miner sectors numbers info - view sector assigner state
@@ -743,6 +788,7 @@ OPTIONS:
 ```
 
 #### lotus-miner sectors numbers reservations
+
 ```
 NAME:
    lotus-miner sectors numbers reservations - list sector number reservations
@@ -755,6 +801,7 @@ OPTIONS:
 ```
 
 #### lotus-miner sectors numbers reserve
+
 ```
 NAME:
    lotus-miner sectors numbers reserve - create sector number reservations
@@ -768,6 +815,7 @@ OPTIONS:
 ```
 
 #### lotus-miner sectors numbers free
+
 ```
 NAME:
    lotus-miner sectors numbers free - remove sector number reservations
@@ -780,6 +828,7 @@ OPTIONS:
 ```
 
 ### lotus-miner sectors precommits
+
 ```
 NAME:
    lotus-miner sectors precommits - Print on-chain precommit info
@@ -792,6 +841,7 @@ OPTIONS:
 ```
 
 ### lotus-miner sectors check-expire
+
 ```
 NAME:
    lotus-miner sectors check-expire - Inspect expiring sectors
@@ -805,6 +855,7 @@ OPTIONS:
 ```
 
 ### lotus-miner sectors expired
+
 ```
 NAME:
    lotus-miner sectors expired - Get or cleanup expired sectors
@@ -820,6 +871,7 @@ OPTIONS:
 ```
 
 ### lotus-miner sectors extend
+
 ```
 NAME:
    lotus-miner sectors extend - Extend expiring sectors while not exceeding each sector's max life
@@ -844,6 +896,7 @@ OPTIONS:
 ```
 
 ### lotus-miner sectors terminate
+
 ```
 NAME:
    lotus-miner sectors terminate - Terminate sector on-chain then remove (WARNING: This means losing power and collateral for the removed sector)
@@ -862,6 +915,7 @@ OPTIONS:
 ```
 
 #### lotus-miner sectors terminate flush
+
 ```
 NAME:
    lotus-miner sectors terminate flush - Send a terminate message if there are sectors queued for termination
@@ -874,6 +928,7 @@ OPTIONS:
 ```
 
 #### lotus-miner sectors terminate pending
+
 ```
 NAME:
    lotus-miner sectors terminate pending - List sector numbers of sectors pending termination
@@ -886,6 +941,7 @@ OPTIONS:
 ```
 
 ### lotus-miner sectors remove
+
 ```
 NAME:
    lotus-miner sectors remove - Forcefully remove a sector (WARNING: This means losing power and collateral for the removed sector (use 'terminate' for lower penalty))
@@ -899,6 +955,7 @@ OPTIONS:
 ```
 
 ### lotus-miner sectors snap-up
+
 ```
 NAME:
    lotus-miner sectors snap-up - Mark a committed capacity sector to be filled with deals
@@ -911,6 +968,7 @@ OPTIONS:
 ```
 
 ### lotus-miner sectors abort-upgrade
+
 ```
 NAME:
    lotus-miner sectors abort-upgrade - Abort the attempted (SnapDeals) upgrade of a CC sector, reverting it to as before
@@ -924,6 +982,7 @@ OPTIONS:
 ```
 
 ### lotus-miner sectors seal
+
 ```
 NAME:
    lotus-miner sectors seal - Manually start sealing a sector (filling any unused space with junk)
@@ -936,6 +995,7 @@ OPTIONS:
 ```
 
 ### lotus-miner sectors set-seal-delay
+
 ```
 NAME:
    lotus-miner sectors set-seal-delay - Set the time (in minutes) that a new sector waits for deals before sealing starts
@@ -949,6 +1009,7 @@ OPTIONS:
 ```
 
 ### lotus-miner sectors get-cc-collateral
+
 ```
 NAME:
    lotus-miner sectors get-cc-collateral - Get the collateral required to pledge a committed capacity sector
@@ -962,6 +1023,7 @@ OPTIONS:
 ```
 
 ### lotus-miner sectors batching
+
 ```
 NAME:
    lotus-miner sectors batching - manage batch sector operations
@@ -979,6 +1041,7 @@ OPTIONS:
 ```
 
 #### lotus-miner sectors batching commit
+
 ```
 NAME:
    lotus-miner sectors batching commit - list sectors waiting in commit batch queue
@@ -992,6 +1055,7 @@ OPTIONS:
 ```
 
 #### lotus-miner sectors batching precommit
+
 ```
 NAME:
    lotus-miner sectors batching precommit - list sectors waiting in precommit batch queue
@@ -1005,6 +1069,7 @@ OPTIONS:
 ```
 
 ### lotus-miner sectors match-pending-pieces
+
 ```
 NAME:
    lotus-miner sectors match-pending-pieces - force a refreshed match of pending pieces to open sectors without manually waiting for more deals
@@ -1017,6 +1082,7 @@ OPTIONS:
 ```
 
 ### lotus-miner sectors compact-partitions
+
 ```
 NAME:
    lotus-miner sectors compact-partitions - removes dead sectors from partitions and reduces the number of partitions used if possible
@@ -1032,6 +1098,7 @@ OPTIONS:
 ```
 
 ### lotus-miner sectors unseal
+
 ```
 NAME:
    lotus-miner sectors unseal - unseal a sector
@@ -1044,6 +1111,7 @@ OPTIONS:
 ```
 
 ## lotus-miner proving
+
 ```
 NAME:
    lotus-miner proving - View proving information
@@ -1067,6 +1135,7 @@ OPTIONS:
 ```
 
 ### lotus-miner proving info
+
 ```
 NAME:
    lotus-miner proving info - View current state information
@@ -1079,6 +1148,7 @@ OPTIONS:
 ```
 
 ### lotus-miner proving deadlines
+
 ```
 NAME:
    lotus-miner proving deadlines - View the current proving period deadlines information
@@ -1092,6 +1162,7 @@ OPTIONS:
 ```
 
 ### lotus-miner proving deadline
+
 ```
 NAME:
    lotus-miner proving deadline - View the current proving period deadline information by its index
@@ -1106,6 +1177,7 @@ OPTIONS:
 ```
 
 ### lotus-miner proving faults
+
 ```
 NAME:
    lotus-miner proving faults - View the currently known proving faulty sectors information
@@ -1118,6 +1190,7 @@ OPTIONS:
 ```
 
 ### lotus-miner proving check
+
 ```
 NAME:
    lotus-miner proving check - Check sectors provable
@@ -1134,6 +1207,7 @@ OPTIONS:
 ```
 
 ### lotus-miner proving workers
+
 ```
 NAME:
    lotus-miner proving workers - list workers
@@ -1146,6 +1220,7 @@ OPTIONS:
 ```
 
 ### lotus-miner proving compute
+
 ```
 NAME:
    lotus-miner proving compute - Compute simulated proving tasks
@@ -1162,6 +1237,7 @@ OPTIONS:
 ```
 
 #### lotus-miner proving compute windowed-post
+
 ```
 NAME:
    lotus-miner proving compute windowed-post - Compute WindowPoSt for a specific deadline
@@ -1178,6 +1254,7 @@ OPTIONS:
 ```
 
 ### lotus-miner proving recover-faults
+
 ```
 NAME:
    lotus-miner proving recover-faults - Manually recovers faulty sectors on chain
@@ -1191,6 +1268,7 @@ OPTIONS:
 ```
 
 ## lotus-miner storage
+
 ```
 NAME:
    lotus-miner storage - manage sector storage
@@ -1219,6 +1297,7 @@ OPTIONS:
 ```
 
 ### lotus-miner storage attach
+
 ```
 NAME:
    lotus-miner storage attach - attach local storage path
@@ -1259,6 +1338,7 @@ OPTIONS:
 ```
 
 ### lotus-miner storage detach
+
 ```
 NAME:
    lotus-miner storage detach - detach local storage path
@@ -1272,6 +1352,7 @@ OPTIONS:
 ```
 
 ### lotus-miner storage redeclare
+
 ```
 NAME:
    lotus-miner storage redeclare - redeclare sectors in a local storage path
@@ -1287,6 +1368,7 @@ OPTIONS:
 ```
 
 ### lotus-miner storage list
+
 ```
 NAME:
    lotus-miner storage list - list local storage paths
@@ -1303,6 +1385,7 @@ OPTIONS:
 ```
 
 #### lotus-miner storage list sectors
+
 ```
 NAME:
    lotus-miner storage list sectors - get list of all sector files
@@ -1315,6 +1398,7 @@ OPTIONS:
 ```
 
 ### lotus-miner storage find
+
 ```
 NAME:
    lotus-miner storage find - find sector in the storage system
@@ -1327,6 +1411,7 @@ OPTIONS:
 ```
 
 ### lotus-miner storage cleanup
+
 ```
 NAME:
    lotus-miner storage cleanup - trigger cleanup actions
@@ -1340,6 +1425,7 @@ OPTIONS:
 ```
 
 ### lotus-miner storage locks
+
 ```
 NAME:
    lotus-miner storage locks - show active sector locks
@@ -1352,6 +1438,7 @@ OPTIONS:
 ```
 
 ## lotus-miner sealing
+
 ```
 NAME:
    lotus-miner sealing - interact with sealing pipeline
@@ -1372,6 +1459,7 @@ OPTIONS:
 ```
 
 ### lotus-miner sealing jobs
+
 ```
 NAME:
    lotus-miner sealing jobs - list running jobs
@@ -1385,6 +1473,7 @@ OPTIONS:
 ```
 
 ### lotus-miner sealing workers
+
 ```
 NAME:
    lotus-miner sealing workers - list workers
@@ -1397,6 +1486,7 @@ OPTIONS:
 ```
 
 ### lotus-miner sealing sched-diag
+
 ```
 NAME:
    lotus-miner sealing sched-diag - Dump internal scheduler state
@@ -1410,6 +1500,7 @@ OPTIONS:
 ```
 
 ### lotus-miner sealing abort
+
 ```
 NAME:
    lotus-miner sealing abort - Abort a running job
@@ -1423,6 +1514,7 @@ OPTIONS:
 ```
 
 ### lotus-miner sealing data-cid
+
 ```
 NAME:
    lotus-miner sealing data-cid - Compute data CID using workers

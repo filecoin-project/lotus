@@ -1,5 +1,5 @@
 // stm: #unit
-package main
+package miner
 
 import (
 	"bytes"

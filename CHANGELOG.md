@@ -4,6 +4,8 @@
 
 - Add Market PendingProposals API / CLI. ([filecoin-project/lotus#12724](https://github.com/filecoin-project/lotus/pull/12724))
 - Fix checkpointed tipsets being expanded #12747
+- Generate the cli docs directly from the code instead compiling and executing binaries' `help` output. ([filecoin-project/lotus#12717](https://github.com/filecoin-project/lotus/pull/12717))
+
 
 ## Improvements
 

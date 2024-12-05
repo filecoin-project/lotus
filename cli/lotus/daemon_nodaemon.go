@@ -1,7 +1,7 @@
 //go:build nodaemon
 // +build nodaemon
 
-package main
+package lotus
 
 import (
 	"errors"
