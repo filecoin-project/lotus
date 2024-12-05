@@ -4,16 +4,27 @@ on:
   workflow_dispatch:
     inputs:
       type:
-        description: 'What's the type of the release? (Options: node, miner, both)"'
+        description: "What's the type of the release?"
         required: true
+        type: choice
+        options:
+          - node
+          - miner
+          - both
       tag:
         description: "What's the tag of the release? (e.g., 1.30.1)"
         required: true
       level:
-        description: "What's the level of the release? (Options: major, minor, patch)"
+        description: "What's the level of the release?"
         required: true
+        default: 'warning'
+        type: choice
+        options:
+          - major
+          - minor
+          - patch
       network-upgrade:
-        description: "What's the version of the network upgrade this release is related to? (e.g., 25)"
+        description: "What's the version of the network upgrade this release is related to? (e.g. 25)"
         required: false
       discussion-link:
         description: "What's a link to the GitHub Discussions topic for the network upgrade?"
