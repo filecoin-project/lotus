@@ -312,17 +312,18 @@ func main() {
 					repoName := matches[2]
 
 					// Prepare template data
-					data := make(map[string]interface{})
-					data["CreateOnGitHub"] = createOnGitHub
-					data["Type"] = releaseType
-					data["Tag"] = releaseVersion.String()
-					data["NextTag"] = releaseVersion.IncPatch().String()
-					data["Level"] = releaseLevel
-					data["NetworkUpgrade"] = networkUpgrade
-					data["NetworkUpgradeDiscussionLink"] = discussionLink
-					data["NetworkUpgradeChangelogEntryLink"] = changelogLink
-					data["RC1DateString"] = rc1Date
-					data["StableDateString"] = stableDate
+data := map[string]any{
+	"CreateOnGitHub": createOnGitHub,
+	"Type": releaseType,
+	"Tag": releaseVersion.String(),
+	"NextTag": releaseVersion.IncPatch().String(),
+	"Level": releaseLevel,
+	"NetworkUpgrade": networkUpgrade,
+	"NetworkUpgradeDiscussionLink": discussionLink,
+	"NetworkUpgradeChangelogEntryLink": changelogLink,
+	"RC1DateString": rc1Date,
+	"StableDateString": stableDate,
+}
 
 					// Render the issue template
 					issueTemplate, err := os.ReadFile("documentation/misc/RELEASE_ISSUE_TEMPLATE.md")
