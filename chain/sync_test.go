@@ -86,7 +86,7 @@ type syncTestUtil struct {
 
 func prepSyncTest(t testing.TB, h int) *syncTestUtil {
 	_ = logging.SetLogLevel("*", "INFO")
-	logging.SetLogLevel("fil-consensus", "ERROR")
+	_ = logging.SetLogLevel("fil-consensus", "ERROR")
 
 	g, err := gen.NewGenerator()
 	if err != nil {
