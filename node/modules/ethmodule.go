@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
+	"github.com/filecoin-project/lotus/chain/tsresolver"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/impl/full"
@@ -21,11 +22,39 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
-func EthModuleAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRepo, fx.Lifecycle, *store.ChainStore, *stmgr.StateManager,
-	EventHelperAPI, *messagepool.MessagePool, full.StateAPI, full.ChainAPI, full.MpoolAPI, full.SyncAPI, *full.EthEventHandler, index.Indexer) (*full.EthModule, error) {
-	return func(mctx helpers.MetricsCtx, r repo.LockedRepo, lc fx.Lifecycle, cs *store.ChainStore, sm *stmgr.StateManager, evapi EventHelperAPI,
-		mp *messagepool.MessagePool, stateapi full.StateAPI, chainapi full.ChainAPI, mpoolapi full.MpoolAPI, syncapi full.SyncAPI,
-		ethEventHandler *full.EthEventHandler, chainIndexer index.Indexer) (*full.EthModule, error) {
+func EthModuleAPI(cfg config.FevmConfig) func(
+	helpers.MetricsCtx,
+	repo.LockedRepo,
+	fx.Lifecycle,
+	*store.ChainStore,
+	*stmgr.StateManager,
+	EventHelperAPI,
+	*messagepool.MessagePool,
+	full.StateAPI,
+	full.ChainAPI,
+	full.MpoolAPI,
+	full.SyncAPI,
+	*full.EthEventHandler,
+	index.Indexer,
+	tsresolver.TipSetResolver,
+) (*full.EthModule, error) {
+
+	return func(
+		mctx helpers.MetricsCtx,
+		r repo.LockedRepo,
+		lc fx.Lifecycle,
+		cs *store.ChainStore,
+		sm *stmgr.StateManager,
+		evapi EventHelperAPI,
+		mp *messagepool.MessagePool,
+		stateapi full.StateAPI,
+		chainapi full.ChainAPI,
+		mpoolapi full.MpoolAPI,
+		syncapi full.SyncAPI,
+		ethEventHandler *full.EthEventHandler,
+		chainIndexer index.Indexer,
+		tipsetResolver tsresolver.TipSetResolver,
+	) (*full.EthModule, error) {
 
 		// prefill the whole skiplist cache maintained internally by the GetTipsetByHeight
 		go func() {
@@ -69,7 +98,8 @@ func EthModuleAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRep
 			EthBlkCache:   blkCache,
 			EthBlkTxCache: blkTxCache,
 
-			ChainIndexer: chainIndexer,
+			ChainIndexer:   chainIndexer,
+			TipSetResolver: tipsetResolver,
 		}, nil
 	}
 }
