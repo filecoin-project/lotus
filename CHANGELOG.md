@@ -1,13 +1,52 @@
 # Lotus changelog
 
-# UNRELEASED
+# Node and Miner v1.32.0-rc1 / 2024-12-05
+
+This is the first release candidate of the upcoming MANDATORY Lotus v1.32.0 release, which will deliver the Filecoin network version 25, codenamed “Teep” 🦵.
+
+This release candidate sets the upgrade epoch for the calibration network to **Epoch 2235454 - 2024-12-16T23:00:00Z**. This should be the equivalent to:
+
+- 15:00 in Los Angeles
+- 23:00 in London
+- 07:00 in Beijing (NB: 2024-12-17 in CST)
+
+You can follow this release issue for keeping up with the other expected release dates, epochs, and updates: ([filecoin-project/lotus#12750](https://github.com/filecoin-project/lotus/issues/12750))
+
+> [!NOTE]
+> 
+> 1. This release candidate does NOT set the mainnet network upgrade epoch. It will be added in the final release (expected December 18th).
+
+## ☢️ Upgrade Warnings ☢️
+- If you have `EnableEthRPC` set to `true` in your config.toml, you need to ensure that `EnableIndexer` in the new ChainIndexer configuration section is also set to `true`. Failing to do so will result in an error during node initialization. You can read more about the new improved `ChainIndexer` feature in [the documentation for it here.](https://github.com/filecoin-project/lotus/blob/v1.31.0/documentation/en/chain-indexer-overview-for-operators.md#chainindexer-config)
+- If you are running the v1.30.x version of Lotus, please go through the Upgrade Warnings section for the [v1.30.* releases](https://github.com/filecoin-project/lotus/releases/tag/v1.31.0) and [v1.31.*](https://github.com/filecoin-project/lotus/releases/tag/v1.31.0) before upgrading to this release.
+
+## 🏛️ Filecoin network version 25 FIPs
+- FIP-0086: Fast Finality in Filecoin (F3)
+
+## 📦 v16 Builtin Actor Bundle
+
+This release candidate uses the [v16.0.0-rc1](https://github.com/filecoin-project/builtin-actors/releases/tag/v16.0.0-rc1)
+
+## 🚚 Migration
+
+All node operators, including storage providers, should be aware that ONE pre-migration is being scheduled 120 epochs before the network upgrade. The migration for the NV25 upgrade is expected to be light with no heavy pre-migrations:
+
+- Pre-Migration is expected to take less then 1 minute.
+- The migration on the upgrade epoch is expected to take less than 30 seconds on a node with a NVMe-drive and a newer CPU. For nodes running on slower disks/CPU, it is still expected to take less then 1 minute.
+
+We recommend node operators (who haven't enabled splitstore discard mode) that do not care about historical chain states, to prune the chain blockstore by syncing from a snapshot 1-2 days before the upgrade.
+
+For certain node operators, such as full archival nodes or systems that need to keep large amounts of state (RPC providers), we recommend skipping the pre-migration and run the non-cached migration (i.e., just running the migration at the network upgrade epoch), and schedule for some additional downtime. Operators of such nodes can read the [How to disable premigration in network upgrade tutorial](https://lotus.filecoin.io/kb/disable-premigration/).
+
+
+## New Features highlight
 
 - Add Market PendingProposals API / CLI. ([filecoin-project/lotus#12724](https://github.com/filecoin-project/lotus/pull/12724))
-- Fix checkpointed tipsets being expanded #12747
 
 ## Improvements
 
 - The miner actor builtin `QAPowerForWeight` no longer accepts the unused "dealWeight" parameter, the function signature now only takes 3 arguments: sectorSize, sectorDuration, verifiedWeight. ([filecoin-project/lotus#12445](https://github.com/filecoin-project/lotus/pull/12445))
+- Fix checkpointed tipsets being expanded ([filecoin-project/lotus#12747](https://github.com/filecoin-project/lotus/pull/12747))
 
 ## Bug Fixes
 
@@ -16,7 +55,32 @@
 - `ChainIndexer#GetMsgInfo` returns an `ErrNotFound` when there are no rows. ([filecoin-project/lotus#12680](https://github.com/filecoin-project/lotus/pull/12680))
 - Gracefully handle EAM CreateAccount failures in `EthTraceBlock` (`trace_block`) and `EthTraceTransaction` (`trace_transaction`) calls. ([filecoin-project/lotus#12730](https://github.com/filecoin-project/lotus/pull/12730))
 
-## New Features
+## 📝 Changelog
+
+For the set of changes since the last stable release:
+
+- Node: https://github.com/filecoin-project/lotus/compare/v1.31.0...v1.32.0-rc1
+- Miner: https://github.com/filecoin-project/lotus/compare/v1.31.0...miner/v1.31.0-rc1
+
+## 👨‍👩‍👧‍👦 Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Masih H. Derkani | 17 | +2480/-1075 | 47 |
+| Krishang Shah | 1 | +3214/-117 | 66 |
+| Steven Allen | 4 | +1317/-1632 | 22 |
+| Rod Vagg | 13 | +1164/-307 | 56 |
+| Łukasz Magiera | 1 | +945/-467 | 31 |
+| Phi-rjan | 7 | +328/-323 | 35 |
+| Jakub Sztandera | 3 | +308/-12 | 7 |
+| Aryan Tikarya | 1 | +281/-2 | 5 |
+| Viraj Bhartiya | 1 | +29/-14 | 3 |
+| Phi | 1 | +9/-9 | 8 |
+| huajin tong | 1 | +6/-6 | 6 |
+| ZenGround0 | 1 | +9/-1 | 2 |
+| chuangjinglu | 1 | +3/-3 | 3 |
+| pinglanlu | 1 | +1/-1 | 1 |
+| Piotr Galar | 1 | +1/-1 | 1 |
 
 # Node and Miner v1.31.0 / 2024-12-02
 
