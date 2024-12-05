@@ -240,14 +240,14 @@ func main() {
 					createOnGitHub := c.Bool("create-on-github")
 
 					releaseType := c.String("type")
-					// releaseType gets special formatting
-					if releaseType == "node" {
+					switch releaseType {
+					case "node":
 						releaseType = "Node"
-					} else if releaseType == "miner" {
+					case "miner":
 						releaseType = "Miner"
-					} else if releaseType == "both" {
+					case "both":
 						releaseType = "Node and Miner"
-					} else {
+					default:
 						return fmt.Errorf("invalid value for the 'type' flag. Allowed values are 'node', 'miner', and 'both'")
 					}
 
