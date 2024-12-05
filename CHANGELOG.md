@@ -2,6 +2,8 @@
 
 # UNRELEASED
 
+* **Ethereum APIs meet F3!** When F3 is enabled and running, Ethereum APIs that accept block descriptors `"finalized"` and `"safe"` will use F3 to determine the block to select instead of the default 30 block delay for `"safe"` and 900 block delay for `"finalized"`. ([filecoin-project/lotus#12762](https://github.com/filecoin-project/lotus/pull/12762))
+
 # UNRELEASED v1.32.0
 
 See https://github.com/filecoin-project/lotus/blob/release/v1.32.0/CHANGELOG.md

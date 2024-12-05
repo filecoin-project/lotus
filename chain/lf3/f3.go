@@ -29,6 +29,20 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
+type F3API interface {
+	GetOrRenewParticipationTicket(ctx context.Context, minerID uint64, previous api.F3ParticipationTicket, instances uint64) (api.F3ParticipationTicket, error)
+	Participate(ctx context.Context, ticket api.F3ParticipationTicket) (api.F3ParticipationLease, error)
+	GetCert(ctx context.Context, instance uint64) (*certs.FinalityCertificate, error)
+	GetLatestCert(ctx context.Context) (*certs.FinalityCertificate, error)
+	GetManifest(ctx context.Context) (*manifest.Manifest, error)
+	GetPowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error)
+	GetF3PowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error)
+	IsEnabled() bool
+	IsRunning() (bool, error)
+	Progress() (gpbft.Instant, error)
+	ListParticipants() ([]api.F3Participant, error)
+}
+
 type F3 struct {
 	inner *f3.F3
 	ec    *ecWrapper
@@ -36,6 +50,8 @@ type F3 struct {
 	signer gpbft.Signer
 	leaser *leaser
 }
+
+var _ F3API = (*F3)(nil)
 
 type F3Params struct {
 	fx.In
@@ -184,20 +200,20 @@ func (fff *F3) GetLatestCert(ctx context.Context) (*certs.FinalityCertificate, e
 	return fff.inner.GetLatestCert(ctx)
 }
 
-func (fff *F3) GetManifest(ctx context.Context) *manifest.Manifest {
+func (fff *F3) GetManifest(ctx context.Context) (*manifest.Manifest, error) {
 	m := fff.inner.Manifest()
 	if m.InitialPowerTable.Defined() {
-		return m
+		return m, nil
 	}
 	cert0, err := fff.inner.GetCert(ctx, 0)
 	if err != nil {
-		return m
+		return m, nil
 	}
 
 	var mCopy = *m
 	m = &mCopy
 	m.InitialPowerTable = cert0.ECChain.Base().PowerTable
-	return m
+	return m, nil
 }
 
 func (fff *F3) GetPowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) {
@@ -208,15 +224,19 @@ func (fff *F3) GetF3PowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.
 	return fff.inner.GetPowerTable(ctx, tsk.Bytes())
 }
 
-func (fff *F3) IsRunning() bool {
-	return fff.inner.IsRunning()
+func (fff *F3) IsEnabled() bool {
+	return true
 }
 
-func (fff *F3) Progress() gpbft.Instant {
-	return fff.inner.Progress()
+func (fff *F3) IsRunning() (bool, error) {
+	return fff.inner.IsRunning(), nil
 }
 
-func (fff *F3) ListParticipants() []api.F3Participant {
+func (fff *F3) Progress() (gpbft.Instant, error) {
+	return fff.inner.Progress(), nil
+}
+
+func (fff *F3) ListParticipants() ([]api.F3Participant, error) {
 	leases := fff.leaser.getValidLeases()
 	participants := make([]api.F3Participant, len(leases))
 	for i, lease := range leases {
@@ -226,5 +246,35 @@ func (fff *F3) ListParticipants() []api.F3Participant {
 			ValidityTerm: lease.ValidityTerm,
 		}
 	}
-	return participants
+	return participants, nil
 }
+
+type DisabledF3 struct{}
+
+var _ F3API = DisabledF3{}
+
+func (DisabledF3) GetOrRenewParticipationTicket(_ context.Context, _ uint64, _ api.F3ParticipationTicket, _ uint64) (api.F3ParticipationTicket, error) {
+	return api.F3ParticipationTicket{}, api.ErrF3Disabled
+}
+func (DisabledF3) Participate(_ context.Context, _ api.F3ParticipationTicket) (api.F3ParticipationLease, error) {
+	return api.F3ParticipationLease{}, api.ErrF3Disabled
+}
+func (DisabledF3) GetCert(_ context.Context, _ uint64) (*certs.FinalityCertificate, error) {
+	return nil, api.ErrF3Disabled
+}
+func (DisabledF3) GetLatestCert(_ context.Context) (*certs.FinalityCertificate, error) {
+	return nil, api.ErrF3Disabled
+}
+func (DisabledF3) GetManifest(_ context.Context) (*manifest.Manifest, error) {
+	return nil, api.ErrF3Disabled
+}
+func (DisabledF3) GetPowerTable(_ context.Context, _ types.TipSetKey) (gpbft.PowerEntries, error) {
+	return nil, api.ErrF3Disabled
+}
+func (DisabledF3) GetF3PowerTable(_ context.Context, _ types.TipSetKey) (gpbft.PowerEntries, error) {
+	return nil, api.ErrF3Disabled
+}
+func (DisabledF3) IsEnabled() bool                                { return false }
+func (DisabledF3) IsRunning() (bool, error)                       { return false, api.ErrF3Disabled }
+func (DisabledF3) Progress() (gpbft.Instant, error)               { return gpbft.Instant{}, api.ErrF3Disabled }
+func (DisabledF3) ListParticipants() ([]api.F3Participant, error) { return nil, api.ErrF3Disabled }
