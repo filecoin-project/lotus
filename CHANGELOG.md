@@ -6,7 +6,7 @@ This is the first release candidate of the upcoming MANDATORY Lotus v1.32.0 rele
 
 This release candidate sets the upgrade epoch for the calibration network to **Epoch 2235454 - 2024-12-16T23:00:00Z**. This should be the equivalent to:
 
-- 15:00 in Los-Angeles
+- 15:00 in Los Angeles
 - 23:00 in London
 - 07:00 in Beijing (NB: 2024-12-17 in CST)
 
