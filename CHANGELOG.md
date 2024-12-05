@@ -16,7 +16,6 @@
 
 # UNRELEASED v.1.32.0
 
-
 See https://github.com/filecoin-project/lotus/blob/release/v1.32.0/CHANGELOG.md
 
 # Node and Miner v1.31.0 / 2024-12-02

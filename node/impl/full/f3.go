@@ -19,11 +19,11 @@ import (
 type F3API struct {
 	fx.In
 
-	F3 *lf3.F3 `optional:"true"`
+	F3 lf3.F3API
 }
 
 func (f3api *F3API) F3GetOrRenewParticipationTicket(ctx context.Context, miner address.Address, previous api.F3ParticipationTicket, instances uint64) (api.F3ParticipationTicket, error) {
-	if f3api.F3 == nil {
+	if !f3api.F3.IsEnabled() {
 		log.Infof("F3GetParticipationTicket called for %v, F3 is disabled", miner)
 		return nil, api.ErrF3Disabled
 	}
@@ -35,8 +35,7 @@ func (f3api *F3API) F3GetOrRenewParticipationTicket(ctx context.Context, miner a
 }
 
 func (f3api *F3API) F3Participate(ctx context.Context, ticket api.F3ParticipationTicket) (api.F3ParticipationLease, error) {
-
-	if f3api.F3 == nil {
+	if !f3api.F3.IsEnabled() {
 		log.Infof("F3Participate called, F3 is disabled")
 		return api.F3ParticipationLease{}, api.ErrF3Disabled
 	}
@@ -44,57 +43,33 @@ func (f3api *F3API) F3Participate(ctx context.Context, ticket api.F3Participatio
 }
 
 func (f3api *F3API) F3GetCertificate(ctx context.Context, instance uint64) (*certs.FinalityCertificate, error) {
-	if f3api.F3 == nil {
-		return nil, api.ErrF3Disabled
-	}
 	return f3api.F3.GetCert(ctx, instance)
 }
 
 func (f3api *F3API) F3GetLatestCertificate(ctx context.Context) (*certs.FinalityCertificate, error) {
-	if f3api.F3 == nil {
-		return nil, api.ErrF3Disabled
-	}
 	return f3api.F3.GetLatestCert(ctx)
 }
 
 func (f3api *F3API) F3GetManifest(ctx context.Context) (*manifest.Manifest, error) {
-	if f3api.F3 == nil {
-		return nil, api.ErrF3Disabled
-	}
 	return f3api.F3.GetManifest(ctx)
 }
 
 func (f3api *F3API) F3IsRunning(context.Context) (bool, error) {
-	if f3api.F3 == nil {
-		return false, api.ErrF3Disabled
-	}
-	return f3api.F3.IsRunning(), nil
+	return f3api.F3.IsRunning()
 }
 
 func (f3api *F3API) F3GetECPowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) {
-	if f3api.F3 == nil {
-		return nil, api.ErrF3Disabled
-	}
 	return f3api.F3.GetPowerTable(ctx, tsk)
 }
 
 func (f3api *F3API) F3GetF3PowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) {
-	if f3api.F3 == nil {
-		return nil, api.ErrF3Disabled
-	}
 	return f3api.F3.GetF3PowerTable(ctx, tsk)
 }
 
 func (f3api *F3API) F3GetProgress(context.Context) (gpbft.Instant, error) {
-	if f3api.F3 == nil {
-		return gpbft.Instant{}, api.ErrF3Disabled
-	}
-	return f3api.F3.Progress(), nil
+	return f3api.F3.Progress()
 }
 
 func (f3api *F3API) F3ListParticipants(context.Context) ([]api.F3Participant, error) {
-	if f3api.F3 == nil {
-		return nil, api.ErrF3Disabled
-	}
-	return f3api.F3.ListParticipants(), nil
+	return f3api.F3.ListParticipants()
 }

@@ -37,6 +37,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
+	"github.com/filecoin-project/lotus/chain/tsresolver"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -138,6 +139,7 @@ type EthModule struct {
 	StateManager             *stmgr.StateManager
 	EthTraceFilterMaxResults uint64
 	EthEventHandler          *EthEventHandler
+	TipSetResolver           tsresolver.TipSetResolver
 
 	EthBlkCache   *arc.ARCCache[cid.Cid, *ethtypes.EthBlock] // caches blocks by their CID but blocks only have the transaction hashes
 	EthBlkTxCache *arc.ARCCache[cid.Cid, *ethtypes.EthBlock] // caches blocks along with full transaction payload by their CID
@@ -168,10 +170,11 @@ var _ EthEventAPI = (*EthEventHandler)(nil)
 type EthAPI struct {
 	fx.In
 
-	Chain        *store.ChainStore
-	StateManager *stmgr.StateManager
-	ChainIndexer index.Indexer
-	MpoolAPI     MpoolAPI
+	Chain          *store.ChainStore
+	StateManager   *stmgr.StateManager
+	ChainIndexer   index.Indexer
+	MpoolAPI       MpoolAPI
+	TipSetResolver tsresolver.TipSetResolver
 
 	EthModuleAPI
 	EthEventAPI
@@ -241,9 +244,9 @@ func (a *EthAPI) FilecoinAddressToEthAddress(ctx context.Context, p jsonrpc.RawP
 		blkParam = *params.BlkParam
 	}
 
-	ts, err := getTipsetByBlockNumber(ctx, a.Chain, blkParam, false)
+	ts, err := a.TipSetResolver.ResolveEthBlockSelector(ctx, blkParam, false)
 	if err != nil {
-		return ethtypes.EthAddress{}, err
+		return ethtypes.EthAddress{}, xerrors.Errorf("failed to resolve block param: %s: %w", blkParam, err)
 	}
 
 	// Lookup the ID address
@@ -339,10 +342,11 @@ func (a *EthModule) EthGetBlockByHash(ctx context.Context, blkHash ethtypes.EthH
 }
 
 func (a *EthModule) EthGetBlockByNumber(ctx context.Context, blkParam string, fullTxInfo bool) (ethtypes.EthBlock, error) {
-	ts, err := getTipsetByBlockNumber(ctx, a.Chain, blkParam, true)
+	ts, err := a.TipSetResolver.ResolveEthBlockSelector(ctx, blkParam, true)
 	if err != nil {
-		return ethtypes.EthBlock{}, err
+		return ethtypes.EthBlock{}, err // return err directly so ErrNullRound passes through RPC
 	}
+
 	return newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo, a.Chain, a.StateAPI)
 }
 
@@ -592,9 +596,9 @@ func (a *EthAPI) EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHa
 }
 
 func (a *EthAPI) EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkParam string, index ethtypes.EthUint64) (*ethtypes.EthTx, error) {
-	ts, err := getTipsetByBlockNumber(ctx, a.Chain, blkParam, true)
+	ts, err := a.TipSetResolver.ResolveEthBlockSelector(ctx, blkParam, true)
 	if err != nil {
-		return nil, err
+		return nil, err // return err directly so ErrNullRound passes through RPC
 	}
 
 	if ts == nil {
@@ -963,9 +967,9 @@ func (a *EthModule) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (eth
 		}
 	}
 
-	ts, err := getTipsetByBlockNumber(ctx, a.Chain, params.NewestBlkNum, false)
+	ts, err := a.TipSetResolver.ResolveEthBlockSelector(ctx, params.NewestBlkNum, false)
 	if err != nil {
-		return ethtypes.EthFeeHistory{}, err
+		return ethtypes.EthFeeHistory{}, xerrors.Errorf("failed to resolve newestBlock param: %w", err)
 	}
 
 	var (
@@ -1124,9 +1128,9 @@ func (a *EthModule) Web3ClientVersion(ctx context.Context) (string, error) {
 }
 
 func (a *EthModule) EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.EthTraceBlock, error) {
-	ts, err := getTipsetByBlockNumber(ctx, a.Chain, blkNum, true)
+	ts, err := a.TipSetResolver.ResolveEthBlockSelector(ctx, blkNum, true)
 	if err != nil {
-		return nil, err
+		return nil, err // return err directly so ErrNullRound passes through RPC
 	}
 
 	stRoot, trace, err := a.StateManager.ExecutionTrace(ctx, ts)
@@ -1195,9 +1199,9 @@ func (a *EthModule) EthTraceReplayBlockTransactions(ctx context.Context, blkNum 
 	if len(traceTypes) != 1 || traceTypes[0] != "trace" {
 		return nil, fmt.Errorf("only 'trace' is supported")
 	}
-	ts, err := getTipsetByBlockNumber(ctx, a.Chain, blkNum, true)
+	ts, err := a.TipSetResolver.ResolveEthBlockSelector(ctx, blkNum, true)
 	if err != nil {
-		return nil, err
+		return nil, err // return err directly so ErrNullRound passes through RPC
 	}
 
 	stRoot, trace, err := a.StateManager.ExecutionTrace(ctx, ts)

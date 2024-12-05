@@ -23,7 +23,6 @@ import (
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
-	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -40,57 +39,6 @@ func init() {
 	revertedEthAddress[0] = 0xff
 	for i := 20 - 8; i < 20; i++ {
 		revertedEthAddress[i] = 0xff
-	}
-}
-
-func getTipsetByBlockNumber(ctx context.Context, chain *store.ChainStore, blkParam string, strict bool) (*types.TipSet, error) {
-	if blkParam == "earliest" {
-		return nil, fmt.Errorf("block param \"earliest\" is not supported")
-	}
-
-	head := chain.GetHeaviestTipSet()
-	switch blkParam {
-	case "pending":
-		return head, nil
-	case "latest":
-		parent, err := chain.GetTipSetFromKey(ctx, head.Parents())
-		if err != nil {
-			return nil, fmt.Errorf("cannot get parent tipset")
-		}
-		return parent, nil
-	case "safe":
-		latestHeight := head.Height() - 1
-		safeHeight := latestHeight - ethtypes.SafeEpochDelay
-		ts, err := chain.GetTipsetByHeight(ctx, safeHeight, head, true)
-		if err != nil {
-			return nil, fmt.Errorf("cannot get tipset at height: %v", safeHeight)
-		}
-		return ts, nil
-	case "finalized":
-		latestHeight := head.Height() - 1
-		safeHeight := latestHeight - policy.ChainFinality
-		ts, err := chain.GetTipsetByHeight(ctx, safeHeight, head, true)
-		if err != nil {
-			return nil, fmt.Errorf("cannot get tipset at height: %v", safeHeight)
-		}
-		return ts, nil
-	default:
-		var num ethtypes.EthUint64
-		err := num.UnmarshalJSON([]byte(`"` + blkParam + `"`))
-		if err != nil {
-			return nil, fmt.Errorf("cannot parse block number: %v", err)
-		}
-		if abi.ChainEpoch(num) > head.Height()-1 {
-			return nil, fmt.Errorf("requested a future epoch (beyond 'latest')")
-		}
-		ts, err := chain.GetTipsetByHeight(ctx, abi.ChainEpoch(num), head, true)
-		if err != nil {
-			return nil, fmt.Errorf("cannot get tipset at height: %v", num)
-		}
-		if strict && ts.Height() != abi.ChainEpoch(num) {
-			return nil, api.NewErrNullRound(abi.ChainEpoch(num))
-		}
-		return ts, nil
 	}
 }
 
