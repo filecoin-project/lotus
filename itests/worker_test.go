@@ -556,7 +556,6 @@ func TestWindowPostV1P1NV20Worker(t *testing.T) {
 
 waitForProof:
 	for {
-		//stm: @CHAIN_STATE_GET_ACTOR_001
 		wact, err := client.StateGetActor(ctx, mi.Worker, types.EmptyTSK)
 		require.NoError(t, err)
 		if wact.Nonce > en {

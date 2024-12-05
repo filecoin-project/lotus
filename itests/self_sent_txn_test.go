@@ -1,4 +1,3 @@
-// stm: #integration
 package itests
 
 import (
@@ -21,7 +20,6 @@ import (
 // we reordered the checks to make sure that a transaction with too much money in it sent to yourself will fail instead of succeeding as a noop
 // more info in this PR! https://github.com/filecoin-project/lotus/pull/7637
 func TestSelfSentTxnV15(t *testing.T) {
-	//stm: @TOKEN_WALLET_SIGN_001, @CHAIN_MEMPOOL_PUSH_001
 	ctx := context.Background()
 
 	kit.QuietMiningLogs()
@@ -63,7 +61,6 @@ func TestSelfSentTxnV15(t *testing.T) {
 }
 
 func TestSelfSentTxnV14(t *testing.T) {
-	//stm: @TOKEN_WALLET_SIGN_001, @CHAIN_MEMPOOL_PUSH_001
 	ctx := context.Background()
 
 	kit.QuietMiningLogs()
