@@ -13,6 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-f3/certs"
+	"github.com/filecoin-project/go-f3/gpbft"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -22,6 +24,7 @@ import (
 
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
+	f3mock "github.com/filecoin-project/lotus/chain/lf3/mock"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/chain/wallet/key"
@@ -396,42 +399,102 @@ func TestNetVersion(t *testing.T) {
 func TestEthBlockNumberAliases(t *testing.T) {
 	blockTime := 2 * time.Millisecond
 	kit.QuietMiningLogs()
-	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
-	ens.InterconnectAll().BeginMining(blockTime)
-	ens.Start()
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	defer cancel()
-
-	client.WaitTillChain(ctx, kit.HeightAtLeast(policy.ChainFinality+100))
-
-	for _, tc := range []struct {
-		param       string
-		expectedLag abi.ChainEpoch
+	testCases := []struct {
+		name                   string
+		f3Enabled              bool
+		f3DelayEpochs          int
+		expectedSafeEpoch      int
+		expectedFinalizedEpoch int
 	}{
-		{"latest", 1},                           // head - 1
-		{"safe", 30 + 1},                        // "latest" - 30
-		{"finalized", policy.ChainFinality + 1}, // "latest" - 900
-	} {
-		t.Run(tc.param, func(t *testing.T) {
-			head, err := client.ChainHead(ctx)
-			require.NoError(t, err)
-			var blk ethtypes.EthBlock
-			for { // get a block while retaining a stable "head" reference
-				blk, err = client.EVM().EthGetBlockByNumber(ctx, tc.param, true)
-				require.NoError(t, err)
-				afterHead, err := client.ChainHead(ctx)
-				require.NoError(t, err)
-				if afterHead.Height() == head.Height() {
-					break
-				}
-				// else: whoops, we had a chain increment between getting head and getting "latest" so
-				// we won't be able to use head as a stable reference for comparison
-				head = afterHead
+		{
+			name:                   "f3 disabled",
+			f3Enabled:              false,
+			expectedSafeEpoch:      31,
+			expectedFinalizedEpoch: 901,
+		},
+		{
+			name:                   "f3 enabled, close to head",
+			f3Enabled:              true,
+			f3DelayEpochs:          5,
+			expectedSafeEpoch:      6,
+			expectedFinalizedEpoch: 6,
+		},
+		{
+			name:                   "f3 enabled, far from head",
+			f3Enabled:              true,
+			f3DelayEpochs:          1000,
+			expectedSafeEpoch:      31,
+			expectedFinalizedEpoch: 901,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := require.New(t)
+
+			opts := []any{kit.MockProofs(), kit.ThroughRPC()}
+			f3 := &f3mock.MockF3API{}
+			if tc.f3Enabled {
+				opts = append(opts, kit.WithF3API(f3))
+				f3.SetEnabled(true)
+				f3.SetRunning(true)
 			}
-			ts, err := client.ChainGetTipSetByHeight(ctx, head.Height()-tc.expectedLag, head.Key())
-			require.NoError(t, err)
-			require.EqualValues(t, ts.Height(), blk.Number)
+
+			client, _, ens := kit.EnsembleMinimal(t, opts...)
+			ens.InterconnectAll().BeginMining(blockTime)
+			ens.Start()
+
+			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+			defer cancel()
+
+			client.WaitTillChain(ctx, kit.HeightAtLeast(policy.ChainFinality+100))
+
+			for _, query := range []struct {
+				param       string
+				expectedLag abi.ChainEpoch
+			}{
+				{"latest", 1}, // head - 1
+				{"safe", abi.ChainEpoch(tc.expectedSafeEpoch)},
+				{"finalized", abi.ChainEpoch(tc.expectedFinalizedEpoch)},
+			} {
+				t.Run(query.param, func(t *testing.T) {
+					head, err := client.ChainHead(ctx)
+					req.NoError(err)
+
+					var blk ethtypes.EthBlock
+					for {
+						// loop here until we get all of the operations performed in a single epoch, if the
+						// operations span multiple epochs our numbers will be off
+
+						if tc.f3Enabled {
+							ts, err := client.ChainGetTipSetByHeight(ctx, head.Height()-abi.ChainEpoch(tc.f3DelayEpochs), head.Key())
+							req.NoError(err)
+							f3.SetLatestCert(&certs.FinalityCertificate{
+								ECChain: gpbft.ECChain{
+									gpbft.TipSet{Key: ts.Key().Bytes()},
+								},
+							})
+						}
+
+						blk, err = client.EVM().EthGetBlockByNumber(ctx, query.param, true)
+						req.NoError(err)
+						afterHead, err := client.ChainHead(ctx)
+						req.NoError(err)
+						if afterHead.Height() == head.Height() {
+							break
+						}
+
+						// else: whoops, we had a chain increment between getting head and getting "latest" so
+						// we won't be able to use head as a stable reference for comparison
+						head = afterHead
+					}
+
+					ts, err := client.ChainGetTipSetByHeight(ctx, head.Height()-query.expectedLag, head.Key())
+					req.NoError(err)
+					req.Equal(int(ts.Height()), int(blk.Number))
+				})
+			}
 		})
 	}
 }
