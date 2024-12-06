@@ -1731,11 +1731,12 @@ USAGE:
    lotus chain list [command options] [arguments...]
 
 OPTIONS:
-   --height value  (default: current head)
-   --count value   (default: 30)
-   --format value  specify the format to print out tipsets (default: "<height>: (<time>) <blocks>")
-   --gas-stats     view gas statistics for the chain (default: false)
-   --help, -h      show help
+   --epoch value, --height value  (default: current head)
+   --count value                  (default: 30)
+   --format value                 specify the format to print out tipsets using placeholders: <epoch>, <time>, <blocks>, <weight>, <tipset>, <json_tipset>
+       (default: "<epoch>: (<time>) <blocks>")
+   --gas-stats  view gas statistics for the chain (default: false)
+   --help, -h   show help
 ```
 
 ### lotus chain get

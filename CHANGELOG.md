@@ -2,7 +2,10 @@
 
 # UNRELEASED
 
-# UNRELEASED v1.32.0
+- Add json output of tipsets to `louts chain list`. ([filecoin-project/lotus#12691](https://github.com/filecoin-project/lotus/pull/12691))
+
+# UNRELEASED v.1.32.0
+
 
 See https://github.com/filecoin-project/lotus/blob/release/v1.32.0/CHANGELOG.md
 
