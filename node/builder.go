@@ -129,6 +129,7 @@ const (
 	StoreEventsKey
 
 	InitChainIndexerKey
+	InitAPIv2Key
 
 	_nInvokes // keep this last
 )
