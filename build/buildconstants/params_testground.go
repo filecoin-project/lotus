@@ -107,6 +107,7 @@ var (
 	UpgradeCalibrationDragonFixHeight abi.ChainEpoch = -28
 	UpgradeWaffleHeight               abi.ChainEpoch = -29
 	UpgradeTuktukHeight               abi.ChainEpoch = -30
+	UpgradeTeepHeight                 abi.ChainEpoch = -31
 
 	UpgradeTuktukPowerRampDurationEpochs uint64 = 0
 

@@ -520,12 +520,31 @@ func (syncer *Syncer) Sync(ctx context.Context, maybeHead *types.TipSet) error {
 
 	hts := syncer.store.GetHeaviestTipSet()
 
+	// noop pre-checks
 	if hts.ParentWeight().GreaterThan(maybeHead.ParentWeight()) {
 		return nil
 	}
 	if syncer.Genesis.Equals(maybeHead) || hts.Equals(maybeHead) {
 		return nil
 	}
+
+	if maybeHead.Height() == hts.Height() {
+		// check if maybeHead is fully contained in headTipSet
+		// meaning we already synced all the blocks that are a part of maybeHead
+		// if that is the case, there is nothing for us to do
+		// we need to exit out early, otherwise checkpoint-fork logic might wrongly reject it
+		fullyContained := true
+		for _, c := range maybeHead.Cids() {
+			if !hts.Contains(c) {
+				fullyContained = false
+				break
+			}
+		}
+		if fullyContained {
+			return nil
+		}
+	}
+	// end of noop prechecks
 
 	if err := syncer.collectChain(ctx, maybeHead, hts, false); err != nil {
 		span.AddAttributes(trace.StringAttribute("col_error", err.Error()))
@@ -845,6 +864,13 @@ loop:
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load next local tipset: %w", err)
 	}
+
+	if !ignoreCheckpoint {
+		if chkpt := syncer.store.GetCheckpoint(); chkpt != nil && base.Height() <= chkpt.Height() {
+			return nil, xerrors.Errorf("merge point affecting the checkpoing: %w", ErrForkCheckpoint)
+		}
+	}
+
 	if base.IsChildOf(knownParent) {
 		// common case: receiving a block that's potentially part of the same tipset as our best block
 		return blockSet, nil

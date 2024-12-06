@@ -13,6 +13,7 @@ import (
 	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/manifest"
 	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
 	adt7 "github.com/filecoin-project/specs-actors/v7/actors/util/adt"
@@ -104,6 +105,14 @@ func (s *state7) Proposals() (DealProposals, error) {
 	return &dealProposals7{proposalArray}, nil
 }
 
+func (s *state7) PendingProposals() (PendingProposals, error) {
+	proposalCidSet, err := adt7.AsSet(s.store, s.State.PendingProposals, builtin.DefaultHamtBitwidth)
+	if err != nil {
+		return nil, err
+	}
+	return &pendingProposals7{proposalCidSet}, nil
+}
+
 func (s *state7) EscrowTable() (BalanceTable, error) {
 	bt, err := adt7.AsBalanceTable(s.store, s.State.EscrowTable)
 	if err != nil {
@@ -122,9 +131,9 @@ func (s *state7) LockedTable() (BalanceTable, error) {
 
 func (s *state7) VerifyDealsForActivation(
 	minerAddr address.Address, deals []abi.DealID, currEpoch, sectorExpiry abi.ChainEpoch,
-) (weight, verifiedWeight abi.DealWeight, err error) {
-	w, vw, _, err := market7.ValidateDealsForActivation(&s.State, s.store, deals, minerAddr, sectorExpiry, currEpoch)
-	return w, vw, err
+) (verifiedWeight abi.DealWeight, err error) {
+	_, vw, _, err := market7.ValidateDealsForActivation(&s.State, s.store, deals, minerAddr, sectorExpiry, currEpoch)
+	return vw, err
 }
 
 func (s *state7) NextID() (abi.DealID, error) {
@@ -280,6 +289,14 @@ func (s *dealProposals7) decode(val *cbg.Deferred) (*DealProposal, error) {
 
 func (s *dealProposals7) array() adt.Array {
 	return s.Array
+}
+
+type pendingProposals7 struct {
+	*adt7.Set
+}
+
+func (s *pendingProposals7) Has(proposalCid cid.Cid) (bool, error) {
+	return s.Set.Has(abi.CidKey(proposalCid))
 }
 
 func fromV7DealProposal(v7 market7.DealProposal) (DealProposal, error) {

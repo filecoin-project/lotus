@@ -484,6 +484,8 @@ type FullNodeMethods struct {
 
 	StateMarketParticipants func(p0 context.Context, p1 types.TipSetKey) (map[string]MarketBalance, error) `perm:"read"`
 
+	StateMarketProposalPending func(p0 context.Context, p1 cid.Cid, p2 types.TipSetKey) (bool, error) `perm:"read"`
+
 	StateMarketStorageDeal func(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*MarketDeal, error) `perm:"read"`
 
 	StateMinerActiveSectors func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]*miner.SectorOnChainInfo, error) `perm:"read"`
@@ -3382,6 +3384,17 @@ func (s *FullNodeStruct) StateMarketParticipants(p0 context.Context, p1 types.Ti
 
 func (s *FullNodeStub) StateMarketParticipants(p0 context.Context, p1 types.TipSetKey) (map[string]MarketBalance, error) {
 	return *new(map[string]MarketBalance), ErrNotSupported
+}
+
+func (s *FullNodeStruct) StateMarketProposalPending(p0 context.Context, p1 cid.Cid, p2 types.TipSetKey) (bool, error) {
+	if s.Internal.StateMarketProposalPending == nil {
+		return false, ErrNotSupported
+	}
+	return s.Internal.StateMarketProposalPending(p0, p1, p2)
+}
+
+func (s *FullNodeStub) StateMarketProposalPending(p0 context.Context, p1 cid.Cid, p2 types.TipSetKey) (bool, error) {
+	return false, ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateMarketStorageDeal(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*MarketDeal, error) {

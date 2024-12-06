@@ -107,6 +107,14 @@ func (s *state2) Proposals() (DealProposals, error) {
 	return &dealProposals2{proposalArray}, nil
 }
 
+func (s *state2) PendingProposals() (PendingProposals, error) {
+	proposalCidSet, err := adt2.AsSet(s.store, s.State.PendingProposals)
+	if err != nil {
+		return nil, err
+	}
+	return &pendingProposals2{proposalCidSet}, nil
+}
+
 func (s *state2) EscrowTable() (BalanceTable, error) {
 	bt, err := adt2.AsBalanceTable(s.store, s.State.EscrowTable)
 	if err != nil {
@@ -125,9 +133,9 @@ func (s *state2) LockedTable() (BalanceTable, error) {
 
 func (s *state2) VerifyDealsForActivation(
 	minerAddr address.Address, deals []abi.DealID, currEpoch, sectorExpiry abi.ChainEpoch,
-) (weight, verifiedWeight abi.DealWeight, err error) {
-	w, vw, _, err := market2.ValidateDealsForActivation(&s.State, s.store, deals, minerAddr, sectorExpiry, currEpoch)
-	return w, vw, err
+) (verifiedWeight abi.DealWeight, err error) {
+	_, vw, _, err := market2.ValidateDealsForActivation(&s.State, s.store, deals, minerAddr, sectorExpiry, currEpoch)
+	return vw, err
 }
 
 func (s *state2) NextID() (abi.DealID, error) {
@@ -283,6 +291,14 @@ func (s *dealProposals2) decode(val *cbg.Deferred) (*DealProposal, error) {
 
 func (s *dealProposals2) array() adt.Array {
 	return s.Array
+}
+
+type pendingProposals2 struct {
+	*adt2.Set
+}
+
+func (s *pendingProposals2) Has(proposalCid cid.Cid) (bool, error) {
+	return s.Set.Has(abi.CidKey(proposalCid))
 }
 
 func fromV2DealProposal(v2 market2.DealProposal) (DealProposal, error) {

@@ -42,6 +42,6 @@ var Devnet = true
 /* inline-gen template
 const TestNetworkVersion = network.Version{{.latestNetworkVersion}}
 /* inline-gen start */
-const TestNetworkVersion = network.Version24
+const TestNetworkVersion = network.Version25
 
 /* inline-gen end */

@@ -15,7 +15,6 @@ func testCids() []cid.Cid {
 }
 
 func TestMsgListener(t *testing.T) {
-	//stm: @TOKEN_PAYCH_REG_ON_MSG_COMPLETE_001, @TOKEN_PAYCH_FIRE_ON_MSG_COMPLETE_001
 	ml := newMsgListeners()
 
 	done := false
@@ -34,7 +33,6 @@ func TestMsgListener(t *testing.T) {
 }
 
 func TestMsgListenerNilErr(t *testing.T) {
-	//stm: @TOKEN_PAYCH_REG_ON_MSG_COMPLETE_001, @TOKEN_PAYCH_FIRE_ON_MSG_COMPLETE_001
 	ml := newMsgListeners()
 
 	done := false
@@ -52,7 +50,6 @@ func TestMsgListenerNilErr(t *testing.T) {
 }
 
 func TestMsgListenerUnsub(t *testing.T) {
-	//stm: @TOKEN_PAYCH_REG_ON_MSG_COMPLETE_001, @TOKEN_PAYCH_FIRE_ON_MSG_COMPLETE_001
 	ml := newMsgListeners()
 
 	done := false
@@ -75,7 +72,6 @@ func TestMsgListenerUnsub(t *testing.T) {
 }
 
 func TestMsgListenerMulti(t *testing.T) {
-	//stm: @TOKEN_PAYCH_REG_ON_MSG_COMPLETE_001, @TOKEN_PAYCH_FIRE_ON_MSG_COMPLETE_001
 	ml := newMsgListeners()
 
 	count := 0

@@ -88,9 +88,10 @@ type State interface {
 	States() (DealStates, error)
 	ProposalsChanged(State) (bool, error)
 	Proposals() (DealProposals, error)
+	PendingProposals() (PendingProposals, error)
 	VerifyDealsForActivation(
 		minerAddr address.Address, deals []abi.DealID, currEpoch, sectorExpiry abi.ChainEpoch,
-	) (weight, verifiedWeight abi.DealWeight, err error)
+	) (verifiedWeight abi.DealWeight, err error)
 	NextID() (abi.DealID, error)
 	GetState() interface{}
 	GetAllocationIdForPendingDeal(dealId abi.DealID) (verifregtypes.AllocationId, error)
@@ -117,6 +118,9 @@ type DealProposals interface {
 	decode(*cbg.Deferred) (*markettypes.DealProposal, error)
 }
 
+type PendingProposals interface {
+    Has(proposalCid cid.Cid) (bool, error)
+}
 
 type PublishStorageDealsReturn interface {
     DealIDs() ([]abi.DealID, error)

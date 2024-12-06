@@ -5,8 +5,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
+	"os"
 	"path"
+	"path/filepath"
 	"reflect"
 	"sort"
 	"sync"
@@ -29,6 +30,8 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
+	badgerbs "github.com/filecoin-project/lotus/blockstore/badger"
+	"github.com/filecoin-project/lotus/blockstore/splitstore"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/consensus"
@@ -226,41 +229,70 @@ func loadChainStore(ctx context.Context, repoPath string) (*StoreHandle, error) 
 		return nil, xerrors.Errorf("lotus repo doesn't exist")
 	}
 
-	lr, err := r.Lock(repo.FullNode)
+	lkrepo, err := r.Lock(repo.FullNode)
 	if err != nil {
 		return nil, err
 	}
 
-	bs, err := lr.Blockstore(ctx, repo.UniversalBlockstore)
+	cold, err := lkrepo.Blockstore(ctx, repo.UniversalBlockstore)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open blockstore: %w", err)
+		return nil, xerrors.Errorf("failed to open universal blockstore %w", err)
 	}
+
+	path, err := lkrepo.SplitstorePath()
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get splitstore path: %w", err)
+	}
+
+	path = filepath.Join(path, "hot.badger")
+	if err := os.MkdirAll(path, 0755); err != nil {
+		return nil, xerrors.Errorf("failed to create hot.badger dir: %w", err)
+	}
+
+	opts, err := repo.BadgerBlockstoreOptions(repo.HotBlockstore, path, lkrepo.Readonly())
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get badger blockstore options: %w", err)
+	}
+
+	hot, err := badgerbs.Open(opts)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to open badger blockstore: %w", err)
+	}
+
+	mds, err := lkrepo.Datastore(context.Background(), "/metadata")
+	if err != nil {
+		return nil, xerrors.Errorf("failed to open metadata datastore: %w", err)
+	}
+
+	cfg := &splitstore.Config{
+		MarkSetType:       "map",
+		DiscardColdBlocks: true,
+	}
+	ss, err := splitstore.Open(path, mds, hot, cold, cfg)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to open splitstore: %w", err)
+	}
+
+	bs := ss
 
 	closer := func() {
-		if err := lr.Close(); err != nil {
+		if err := lkrepo.Close(); err != nil {
 			log.Warnf("failed to close locked repo: %s", err)
 		}
-		if c, ok := bs.(io.Closer); ok {
-			if err := c.Close(); err != nil {
-				log.Warnf("failed to close blockstore: %s", err)
-			}
+		if err := ss.Close(); err != nil {
+			log.Warnf("failed to close blockstore: %s", err)
 		}
 	}
 
-	mds, err := lr.Datastore(context.Background(), "/metadata")
-	if err != nil {
-		return nil, err
-	}
-
-	cs := store.NewChainStore(bs, bs, mds, nil, nil)
+	cs := store.NewChainStore(bs, bs, mds, filcns.Weight, nil)
 	if err := cs.Load(ctx); err != nil {
-		return nil, fmt.Errorf("failed to load chain store: %w", err)
+		return nil, xerrors.Errorf("failed to load chain store: %w", err)
 	}
 
 	tsExec := consensus.NewTipSetExecutor(filcns.RewardFunc)
 	sm, err := stmgr.NewStateManager(cs, tsExec, vm.Syscalls(proofsffi.ProofVerifier), filcns.DefaultUpgradeSchedule(), nil, mds, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open state manager: %w", err)
+		return nil, xerrors.Errorf("failed to open state manager: %w", err)
 	}
 	handle := StoreHandle{
 		bs:     bs,

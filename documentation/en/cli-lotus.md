@@ -7,7 +7,7 @@ USAGE:
    lotus [global options] command [command options] [arguments...]
 
 VERSION:
-   1.31.1-dev
+   1.32.1-dev
 
 COMMANDS:
    daemon   Start a lotus daemon process
@@ -1507,8 +1507,9 @@ USAGE:
    lotus state market command [command options] [arguments...]
 
 COMMANDS:
-   balance  Get the market balance (locked and escrowed) for a given account
-   help, h  Shows a list of commands or help for one command
+   balance           Get the market balance (locked and escrowed) for a given account
+   proposal-pending  check if a given proposal CID is pending in the market actor
+   help, h           Shows a list of commands or help for one command
 
 OPTIONS:
    --help, -h  show help
@@ -1521,6 +1522,18 @@ NAME:
 
 USAGE:
    lotus state market balance [command options] [address]
+
+OPTIONS:
+   --help, -h  show help
+```
+
+#### lotus state market proposal-pending
+```
+NAME:
+   lotus state market proposal-pending - check if a given proposal CID is pending in the market actor
+
+USAGE:
+   lotus state market proposal-pending [command options] [proposal CID]
 
 OPTIONS:
    --help, -h  show help
@@ -2800,6 +2813,7 @@ USAGE:
 
 COMMANDS:
    list-miners, lm  Lists the miners that currently participate in F3 via this node.
+   powertable, pt   
    certs, c         Manages interactions with F3 finality certificates.
    manifest         Gets the current manifest used by F3.
    status           Checks the F3 status.
@@ -2819,6 +2833,50 @@ USAGE:
 
 OPTIONS:
    --help, -h  show help
+```
+
+### lotus f3 powertable
+```
+NAME:
+   lotus f3 powertable
+
+USAGE:
+   lotus f3 powertable command [command options] [arguments...]
+
+COMMANDS:
+   get, g              Get F3 power table at a specific instance ID or latest instance if none is specified.
+   get-proportion, gp  Gets the total proportion of power for a list of actors at a given instance.
+   help, h             Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help
+```
+
+#### lotus f3 powertable get
+```
+NAME:
+   lotus f3 powertable get - Get F3 power table at a specific instance ID or latest instance if none is specified.
+
+USAGE:
+   lotus f3 powertable get [command options] [instance]
+
+OPTIONS:
+   --ec        Whether to get the power table from EC. (default: false)
+   --help, -h  show help
+```
+
+#### lotus f3 powertable get-proportion
+```
+NAME:
+   lotus f3 powertable get-proportion - Gets the total proportion of power for a list of actors at a given instance.
+
+USAGE:
+   lotus f3 powertable get-proportion [command options] <actor-id> [actor-id] ...
+
+OPTIONS:
+   --ec                        Whether to get the power table from EC. (default: false)
+   --instance value, -i value  The F3 instance ID. (default: Latest Instance)
+   --help, -h                  show help
 ```
 
 ### lotus f3 certs

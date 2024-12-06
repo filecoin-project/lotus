@@ -761,7 +761,7 @@ func TestTraceFilter(t *testing.T) {
 	blockTime := 100 * time.Millisecond
 	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
 
-	ens.InterconnectAll().BeginMining(blockTime)
+	bms := ens.InterconnectAll().BeginMining(blockTime)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
@@ -844,7 +844,7 @@ func TestTraceFilter(t *testing.T) {
 	require.NotNil(t, tracesAddressFilter)
 	require.NotEmpty(t, tracesAddressFilter)
 
-	//we should only get our contract deploy transaction
+	// we should only get our contract deploy transaction
 	require.Len(t, tracesAddressFilter, 1)
 	require.Equal(t, 1, tracesAddressFilter[0].TransactionPosition)
 	require.Equal(t, hash, tracesAddressFilter[0].TransactionHash)
@@ -864,8 +864,37 @@ func TestTraceFilter(t *testing.T) {
 	require.NotNil(t, traces)
 	require.NotEmpty(t, traces)
 
-	//we should only get the last two results from the first trace query
+	// we should only get the last two results from the first trace query
 	require.Len(t, tracesAfterCount, 2)
 	require.Equal(t, traces[1].TransactionHash, tracesAfterCount[0].TransactionHash)
 	require.Equal(t, traces[2].TransactionHash, tracesAfterCount[1].TransactionHash)
+
+	// make sure we have null rounds in the chain
+	bms[0].InjectNulls(2)
+	ch, err := client.ChainNotify(ctx)
+	require.NoError(t, err)
+	hc := <-ch // current
+	require.Equal(t, store.HCCurrent, hc[0].Type)
+	beforeNullHeight := hc[0].Val.Height()
+	var blocks int
+	for {
+		hc = <-ch // wait for next block
+		require.Equal(t, store.HCApply, hc[0].Type)
+		if hc[0].Val.Height() > beforeNullHeight {
+			blocks++
+			if blocks == 2 { // two blocks, so "latest" points to the block after nulls
+				break
+			}
+		}
+	}
+
+	// define filter criteria that spans a null round so it has to at lest consider it
+	toBlock = "latest"
+	filter = ethtypes.EthTraceFilterCriteria{
+		FromBlock: &fromBlock,
+		ToBlock:   &toBlock,
+	}
+	traces, err = client.EthTraceFilter(ctx, filter)
+	require.NoError(t, err)
+	require.Len(t, traces, 3) // still the same traces as before
 }

@@ -1,4 +1,3 @@
-// stm: #unit
 package rpcenc
 
 import (

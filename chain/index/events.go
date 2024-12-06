@@ -22,6 +22,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
+var ErrMaxResultsReached = fmt.Errorf("filter matches too many events, try a more restricted filter")
+
 const maxLookBackForWait = 120 // one hour of tipsets
 
 type executedMessage struct {
@@ -358,9 +360,9 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter)
 			if row.id != currentID {
 				// Unfortunately we can't easily incorporate the max results limit into the query due to the
 				// unpredictable number of rows caused by joins
-				// Break here to stop collecting rows
+				// Error here to inform the caller that we've hit the max results limit
 				if f.MaxResults > 0 && len(ces) >= f.MaxResults {
-					break
+					return nil, ErrMaxResultsReached
 				}
 
 				currentID = row.id
@@ -563,6 +565,9 @@ func makePrefillFilterQuery(f *EventFilter) ([]any, string, error) {
 				clauses = append(clauses, "("+strings.Join(subclauses, " OR ")+")")
 			}
 		}
+	} else if f.Codec != 0 { // if no keys are specified, we can use the codec filter
+		clauses = append(clauses, "ee.codec=?")
+		values = append(values, f.Codec)
 	}
 
 	s := `SELECT
