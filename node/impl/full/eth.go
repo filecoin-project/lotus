@@ -344,7 +344,7 @@ func (a *EthModule) EthGetBlockByHash(ctx context.Context, blkHash ethtypes.EthH
 func (a *EthModule) EthGetBlockByNumber(ctx context.Context, blkParam string, fullTxInfo bool) (ethtypes.EthBlock, error) {
 	ts, err := a.TipSetResolver.ResolveEthBlockSelector(ctx, blkParam, true)
 	if err != nil {
-		return ethtypes.EthBlock{}, xerrors.Errorf("failed to resolve block param: %s: %w", blkParam, err)
+		return ethtypes.EthBlock{}, err // return err directly so ErrNullRound passes through RPC
 	}
 
 	return newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo, a.Chain, a.StateAPI)
@@ -598,7 +598,7 @@ func (a *EthAPI) EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHa
 func (a *EthAPI) EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkParam string, index ethtypes.EthUint64) (*ethtypes.EthTx, error) {
 	ts, err := a.TipSetResolver.ResolveEthBlockSelector(ctx, blkParam, true)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to resolve block param: %s: %w", blkParam, err)
+		return nil, err // return err directly so ErrNullRound passes through RPC
 	}
 
 	if ts == nil {
@@ -1130,7 +1130,7 @@ func (a *EthModule) Web3ClientVersion(ctx context.Context) (string, error) {
 func (a *EthModule) EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.EthTraceBlock, error) {
 	ts, err := a.TipSetResolver.ResolveEthBlockSelector(ctx, blkNum, true)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to resolve block param: %w", err)
+		return nil, err // return err directly so ErrNullRound passes through RPC
 	}
 
 	stRoot, trace, err := a.StateManager.ExecutionTrace(ctx, ts)
@@ -1201,7 +1201,7 @@ func (a *EthModule) EthTraceReplayBlockTransactions(ctx context.Context, blkNum 
 	}
 	ts, err := a.TipSetResolver.ResolveEthBlockSelector(ctx, blkNum, true)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to resolve block param: %w", err)
+		return nil, err // return err directly so ErrNullRound passes through RPC
 	}
 
 	stRoot, trace, err := a.StateManager.ExecutionTrace(ctx, ts)
