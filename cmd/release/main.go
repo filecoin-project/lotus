@@ -14,7 +14,7 @@ import (
 	"strings"
 
 	masterminds "github.com/Masterminds/semver/v3"
-	sprig "github.com/Masterminds/sprig/v3"
+	"github.com/Masterminds/sprig/v3"
 	"github.com/google/go-github/v66/github"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
@@ -313,16 +313,16 @@ func main() {
 
 					// Prepare template data
 					data := map[string]any{
-						"CreateOnGitHub": createOnGitHub,
-						"Type": releaseType,
-						"Tag": releaseVersion.String(),
-						"NextTag": releaseVersion.IncPatch().String(),
-						"Level": releaseLevel,
-						"NetworkUpgrade": networkUpgrade,
-						"NetworkUpgradeDiscussionLink": discussionLink,
+						"CreateOnGitHub":                   createOnGitHub,
+						"Type":                             releaseType,
+						"Tag":                              releaseVersion.String(),
+						"NextTag":                          releaseVersion.IncPatch().String(),
+						"Level":                            releaseLevel,
+						"NetworkUpgrade":                   networkUpgrade,
+						"NetworkUpgradeDiscussionLink":     discussionLink,
 						"NetworkUpgradeChangelogEntryLink": changelogLink,
-						"RC1DateString": rc1Date,
-						"StableDateString": stableDate,
+						"RC1DateString":                    rc1Date,
+						"StableDateString":                 stableDate,
 					}
 
 					// Render the issue template
