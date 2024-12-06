@@ -54,11 +54,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/install-go
-      - run: go build -o release ./cmd/release
       - env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
-          ./release create-issue \
+          go run cmd/release/main.go create-issue \
             --create-on-github true \
             --type "${{ github.event.inputs.type }}" \
             --tag "${{ github.event.inputs.tag }}" \

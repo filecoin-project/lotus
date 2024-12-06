@@ -312,18 +312,18 @@ func main() {
 					repoName := matches[2]
 
 					// Prepare template data
-data := map[string]any{
-	"CreateOnGitHub": createOnGitHub,
-	"Type": releaseType,
-	"Tag": releaseVersion.String(),
-	"NextTag": releaseVersion.IncPatch().String(),
-	"Level": releaseLevel,
-	"NetworkUpgrade": networkUpgrade,
-	"NetworkUpgradeDiscussionLink": discussionLink,
-	"NetworkUpgradeChangelogEntryLink": changelogLink,
-	"RC1DateString": rc1Date,
-	"StableDateString": stableDate,
-}
+					data := map[string]any{
+						"CreateOnGitHub": createOnGitHub,
+						"Type": releaseType,
+						"Tag": releaseVersion.String(),
+						"NextTag": releaseVersion.IncPatch().String(),
+						"Level": releaseLevel,
+						"NetworkUpgrade": networkUpgrade,
+						"NetworkUpgradeDiscussionLink": discussionLink,
+						"NetworkUpgradeChangelogEntryLink": changelogLink,
+						"RC1DateString": rc1Date,
+						"StableDateString": stableDate,
+					}
 
 					// Render the issue template
 					issueTemplate, err := os.ReadFile("documentation/misc/RELEASE_ISSUE_TEMPLATE.md")
@@ -376,7 +376,7 @@ URL to create issue:
 -------------------
 %s
 `
-						fmt.Printf(debugFormat, issueTitle, issueBody, issueURL)
+						_, _ = fmt.Fprintf(c.App.Writer, debugFormat, issueTitle, issueBody, issueURL)
 					} else {
 						// Set up the GitHub client
 						client := github.NewClient(nil).WithAuthToken(os.Getenv("GITHUB_TOKEN"))
@@ -401,7 +401,7 @@ URL to create issue:
 						if err != nil {
 							return fmt.Errorf("failed to create issue: %w", err)
 						}
-						fmt.Println("Issue created: ", issue.GetHTMLURL())
+						_, _ = fmt.Fprintf(c.App.Writer, "Issue created: %s", issue.GetHTMLURL())
 					}
 
 					return nil
