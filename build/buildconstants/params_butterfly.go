@@ -18,7 +18,7 @@ var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandQuicknet,
 }
 
-const GenesisNetworkVersion = network.Version22
+const GenesisNetworkVersion = network.Version24
 
 var NetworkBundle = "butterflynet"
 var ActorDebugging = false
@@ -59,7 +59,7 @@ const UpgradeWaffleHeight = -27
 const UpgradeTuktukHeight = -28
 
 // ??????
-const UpgradeXxHeight = 999999999999999
+const UpgradeTeepHeight = 100
 
 // FIP-0081: for the power actor state for pledge calculations.
 // UpgradeTuktukPowerRampDurationEpochs ends up in the power actor state after

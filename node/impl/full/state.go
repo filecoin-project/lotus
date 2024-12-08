@@ -780,6 +780,25 @@ func (m *StateModule) StateMarketStorageDeal(ctx context.Context, dealId abi.Dea
 	return stmgr.GetStorageDeal(ctx, m.StateManager, dealId, ts)
 }
 
+func (a *StateAPI) StateMarketProposalPending(ctx context.Context, proposalCid cid.Cid, tsk types.TipSetKey) (bool, error) {
+	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
+	if err != nil {
+		return false, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	st, err := a.StateManager.GetMarketState(ctx, ts)
+	if err != nil {
+		return false, err
+	}
+
+	props, err := st.PendingProposals()
+	if err != nil {
+		return false, err
+	}
+
+	return props.Has(proposalCid)
+}
+
 func (a *StateAPI) StateGetAllocationIdForPendingDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (verifreg.AllocationId, error) {
 	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
@@ -2060,7 +2079,7 @@ func (a *StateAPI) StateGetNetworkParams(ctx context.Context) (*api.NetworkParam
 			UpgradePhoenixHeight:     buildconstants.UpgradePhoenixHeight,
 			UpgradeWaffleHeight:      buildconstants.UpgradeWaffleHeight,
 			UpgradeTuktukHeight:      buildconstants.UpgradeTuktukHeight,
-			UpgradeXxHeight:          buildconstants.UpgradeXxHeight,
+			UpgradeTeepHeight:        buildconstants.UpgradeTeepHeight,
 		},
 	}, nil
 }

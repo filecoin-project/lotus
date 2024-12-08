@@ -1,4 +1,3 @@
-// stm: ignore
 package stati
 
 import (

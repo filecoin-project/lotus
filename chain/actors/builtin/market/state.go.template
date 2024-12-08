@@ -30,7 +30,7 @@ import (
 	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	adt{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}util/adt"
 {{end}}
-{{if (ge .v 9)}}
+{{if (ge .v 3)}}
 	"github.com/filecoin-project/go-state-types/builtin"
 {{end}}
 )
@@ -126,6 +126,14 @@ func (s *state{{.v}}) Proposals() (DealProposals, error) {
 		return nil, err
 	}
 	return &dealProposals{{.v}}{proposalArray}, nil
+}
+
+func (s *state{{.v}}) PendingProposals() (PendingProposals, error) {
+	proposalCidSet, err := adt{{.v}}.AsSet(s.store, s.State.PendingProposals{{if (ge .v 3)}}, builtin.DefaultHamtBitwidth{{end}})
+	if err != nil {
+		return nil, err
+	}
+	return &pendingProposals{{.v}}{proposalCidSet}, nil
 }
 
 func (s *state{{.v}}) EscrowTable() (BalanceTable, error) {
@@ -306,6 +314,14 @@ func (s *dealProposals{{.v}}) decode(val *cbg.Deferred) (*DealProposal, error) {
 
 func (s *dealProposals{{.v}}) array() adt.Array {
 	return s.Array
+}
+
+type pendingProposals{{.v}} struct {
+    *adt{{.v}}.Set
+}
+
+func (s *pendingProposals{{.v}}) Has(proposalCid cid.Cid) (bool, error) {
+    return s.Set.Has(abi.CidKey(proposalCid))
 }
 
 func fromV{{.v}}DealProposal(v{{.v}} market{{.v}}.DealProposal) (DealProposal, error) {

@@ -876,12 +876,17 @@ func TestTraceFilter(t *testing.T) {
 	hc := <-ch // current
 	require.Equal(t, store.HCCurrent, hc[0].Type)
 	beforeNullHeight := hc[0].Val.Height()
-	hc = <-ch // wait for next block
-	require.Equal(t, store.HCApply, hc[0].Type)
-	afterNullHeight := hc[0].Val.Height()
-	require.Greater(t, afterNullHeight, beforeNullHeight+1)
-	hc = <-ch // one more, so "latest" points to the block after nulls
-	require.Equal(t, store.HCApply, hc[0].Type)
+	var blocks int
+	for {
+		hc = <-ch // wait for next block
+		require.Equal(t, store.HCApply, hc[0].Type)
+		if hc[0].Val.Height() > beforeNullHeight {
+			blocks++
+			if blocks == 2 { // two blocks, so "latest" points to the block after nulls
+				break
+			}
+		}
+	}
 
 	// define filter criteria that spans a null round so it has to at lest consider it
 	toBlock = "latest"

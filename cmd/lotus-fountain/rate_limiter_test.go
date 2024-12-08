@@ -1,4 +1,3 @@
-// stm: #unit
 package main
 
 import (
@@ -9,7 +8,6 @@ import (
 )
 
 func TestRateLimit(t *testing.T) {
-	//stm: @CMD_LIMITER_GET_IP_LIMITER_001, @CMD_LIMITER_GET_WALLET_LIMITER_001
 	limiter := NewLimiter(LimiterConfig{
 		TotalRate:   time.Second,
 		TotalBurst:  20,

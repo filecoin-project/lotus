@@ -1,4 +1,3 @@
-// stm: #unit
 package cli
 
 import (
@@ -46,7 +45,6 @@ func TestSyncStatus(t *testing.T) {
 
 	mockApi.EXPECT().SyncState(ctx).Return(state, nil)
 
-	//stm: @CLI_SYNC_STATUS_001
 	err := app.Run([]string{"sync", "status"})
 	assert.NoError(t, err)
 
@@ -72,7 +70,6 @@ func TestSyncMarkBad(t *testing.T) {
 
 	mockApi.EXPECT().SyncMarkBad(ctx, blk.Cid()).Return(nil)
 
-	//stm: @CLI_SYNC_MARK_BAD_001
 	err := app.Run([]string{"sync", "mark-bad", blk.Cid().String()})
 	assert.NoError(t, err)
 }
@@ -89,7 +86,6 @@ func TestSyncUnmarkBad(t *testing.T) {
 
 		mockApi.EXPECT().SyncUnmarkBad(ctx, blk.Cid()).Return(nil)
 
-		//stm: @CLI_SYNC_UNMARK_BAD_001
 		err := app.Run([]string{"sync", "unmark-bad", blk.Cid().String()})
 		assert.NoError(t, err)
 	})
@@ -103,7 +99,6 @@ func TestSyncUnmarkBad(t *testing.T) {
 
 		mockApi.EXPECT().SyncUnmarkAllBad(ctx).Return(nil)
 
-		//stm: @CLI_SYNC_UNMARK_BAD_002
 		err := app.Run([]string{"sync", "unmark-bad", "-all"})
 		assert.NoError(t, err)
 	})
@@ -121,7 +116,6 @@ func TestSyncCheckBad(t *testing.T) {
 
 		mockApi.EXPECT().SyncCheckBad(ctx, blk.Cid()).Return("", nil)
 
-		//stm: @CLI_SYNC_CHECK_BAD_002
 		err := app.Run([]string{"sync", "check-bad", blk.Cid().String()})
 		assert.NoError(t, err)
 
@@ -140,7 +134,6 @@ func TestSyncCheckBad(t *testing.T) {
 
 		mockApi.EXPECT().SyncCheckBad(ctx, blk.Cid()).Return(reason, nil)
 
-		//stm: @CLI_SYNC_CHECK_BAD_001
 		err := app.Run([]string{"sync", "check-bad", blk.Cid().String()})
 		assert.NoError(t, err)
 
@@ -164,7 +157,6 @@ func TestSyncCheckpoint(t *testing.T) {
 			mockApi.EXPECT().SyncCheckpoint(ctx, ts.Key()).Return(nil),
 		)
 
-		//stm: @CLI_SYNC_CHECKPOINT_001
 		err := app.Run([]string{"sync", "checkpoint", blk.Cid().String()})
 		assert.NoError(t, err)
 	})
@@ -185,7 +177,6 @@ func TestSyncCheckpoint(t *testing.T) {
 			mockApi.EXPECT().SyncCheckpoint(ctx, ts.Key()).Return(nil),
 		)
 
-		//stm: @CLI_SYNC_CHECKPOINT_002
 		err := app.Run([]string{"sync", "checkpoint", fmt.Sprintf("-epoch=%d", epoch)})
 		assert.NoError(t, err)
 	})

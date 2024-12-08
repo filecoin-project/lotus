@@ -1,0 +1,70 @@
+name: Create Release Issue
+
+on:
+  workflow_dispatch:
+    inputs:
+      type:
+        description: "What's the type of the release?"
+        required: true
+        type: choice
+        options:
+          - node
+          - miner
+          - both
+      tag:
+        description: "What's the tag of the release? (e.g., 1.30.1)"
+        required: true
+      level:
+        description: "What's the level of the release?"
+        required: true
+        default: 'warning'
+        type: choice
+        options:
+          - major
+          - minor
+          - patch
+      network-upgrade:
+        description: "What's the version of the network upgrade this release is related to? (e.g. 25)"
+        required: false
+      discussion-link:
+        description: "What's a link to the GitHub Discussions topic for the network upgrade?"
+        required: false
+      changelog-link:
+        description: "What's a link to the Lotus CHANGELOG entry for the network upgrade?"
+        required: false
+      rc1-date:
+        description: "What's the expected shipping date for RC1?"
+        required: false
+      stable-date:
+        description: "What's the expected shipping date for the stable release?"
+        required: false
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  create-issue:
+    name: Create Release Issue
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/install-go
+      - env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          go run cmd/release/main.go create-issue \
+            --create-on-github true \
+            --type "${{ github.event.inputs.type }}" \
+            --tag "${{ github.event.inputs.tag }}" \
+            --level "${{ github.event.inputs.level }}" \
+            --network-upgrade "${{ github.event.inputs.network-upgrade }}" \
+            --discussion-link "${{ github.event.inputs.discussion-link }}" \
+            --changelog-link "${{ github.event.inputs.changelog-link }}" \
+            --rc1-date "${{ github.event.inputs.rc1-date }}" \
+            --stable-date "${{ github.event.inputs.stable-date }}" \
+            --repo "filecoin-project/lotus"
