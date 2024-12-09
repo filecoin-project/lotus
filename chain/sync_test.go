@@ -86,6 +86,7 @@ type syncTestUtil struct {
 
 func prepSyncTest(t testing.TB, h int) *syncTestUtil {
 	_ = logging.SetLogLevel("*", "INFO")
+	_ = logging.SetLogLevel("fil-consensus", "ERROR")
 
 	g, err := gen.NewGenerator()
 	if err != nil {
@@ -956,7 +957,7 @@ func TestSyncCheckpointHead(t *testing.T) {
 	tu.loadChainToNode(p2)
 
 	base := tu.g.CurTipset
-	fmt.Println("Mining base: ", base.TipSet().Cids(), base.TipSet().Height())
+	t.Log("Mining base: ", base.TipSet().Cids(), base.TipSet().Height())
 
 	// The two nodes fork at this point into 'a' and 'b'
 	a1 := tu.mineOnBlock(base, p1, []int{0}, true, false, nil, 0, true)
@@ -973,14 +974,15 @@ func TestSyncCheckpointHead(t *testing.T) {
 	b = tu.mineOnBlock(b, p2, []int{1}, true, false, nil, 0, true)
 	b = tu.mineOnBlock(b, p2, []int{1}, true, false, nil, 0, true)
 
-	fmt.Println("A: ", a.Cids(), a.TipSet().Height())
-	fmt.Println("B: ", b.Cids(), b.TipSet().Height())
+	t.Log("A: ", a.Cids(), a.TipSet().Height())
+	t.Log("B: ", b.Cids(), b.TipSet().Height())
 
 	// Now for the fun part!! p1 should mark p2's head as BAD.
 
 	require.NoError(t, tu.mn.LinkAll())
 	tu.connect(p1, p2)
 	tu.waitUntilNodeHasTs(p1, b.TipSet().Key())
+
 	p1Head := tu.getHead(p1)
 	require.True(tu.t, p1Head.Equals(a.TipSet()))
 	tu.assertBad(p1, b.TipSet())
