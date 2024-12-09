@@ -2756,7 +2756,7 @@ func PreUpgradeActorsV16(ctx context.Context, sm *stmgr.StateManager, cache stmg
 
 	config := migration.Config{
 		MaxWorkers:        uint(workerCount),
-		ProgressLogPeriod: time.Minute * 5,
+		ProgressLogPeriod: time.Second * 2,
 	}
 
 	_, err = upgradeActorsV16Common(ctx, sm, cache, lbRoot, epoch, lbts, config)
@@ -2774,7 +2774,7 @@ func UpgradeActorsV16(ctx context.Context, sm *stmgr.StateManager, cache stmgr.M
 		MaxWorkers:        uint(workerCount),
 		JobQueueSize:      1000,
 		ResultQueueSize:   100,
-		ProgressLogPeriod: 10 * time.Second,
+		ProgressLogPeriod: time.Second * 2,
 	}
 	newRoot, err := upgradeActorsV16Common(ctx, sm, cache, root, epoch, ts, config)
 	if err != nil {
