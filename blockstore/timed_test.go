@@ -1,4 +1,3 @@
-// stm: #unit
 package blockstore
 
 import (
@@ -13,9 +12,6 @@ import (
 )
 
 func TestTimedCacheBlockstoreSimple(t *testing.T) {
-	//stm: @SPLITSTORE_TIMED_BLOCKSTORE_START_001
-	//stm: @SPLITSTORE_TIMED_BLOCKSTORE_PUT_001, @SPLITSTORE_TIMED_BLOCKSTORE_HAS_001, @SPLITSTORE_TIMED_BLOCKSTORE_GET_001
-	//stm: @SPLITSTORE_TIMED_BLOCKSTORE_ALL_KEYS_CHAN_001
 	tc := NewTimedCacheBlockstore(10 * time.Millisecond)
 	mClock := clock.NewMock()
 	mClock.Set(time.Now())

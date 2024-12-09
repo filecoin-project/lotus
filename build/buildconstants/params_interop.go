@@ -57,7 +57,7 @@ var UpgradePhoenixHeight = abi.ChainEpoch(-26)
 var UpgradeWaffleHeight = abi.ChainEpoch(-27)
 var UpgradeTuktukHeight = abi.ChainEpoch(-28)
 
-const UpgradeXxHeight = 50
+const UpgradeTeepHeight = 50
 
 // FIP-0081: for the power actor state for pledge calculations.
 // UpgradeTuktukPowerRampDurationEpochs ends up in the power actor state after

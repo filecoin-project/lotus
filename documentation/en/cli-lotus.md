@@ -7,7 +7,7 @@ USAGE:
    lotus [global options] command [command options] [arguments...]
 
 VERSION:
-   1.31.1-dev
+   1.32.1-dev
 
 COMMANDS:
    daemon   Start a lotus daemon process
@@ -1507,8 +1507,9 @@ USAGE:
    lotus state market command [command options] [arguments...]
 
 COMMANDS:
-   balance  Get the market balance (locked and escrowed) for a given account
-   help, h  Shows a list of commands or help for one command
+   balance           Get the market balance (locked and escrowed) for a given account
+   proposal-pending  check if a given proposal CID is pending in the market actor
+   help, h           Shows a list of commands or help for one command
 
 OPTIONS:
    --help, -h  show help
@@ -1521,6 +1522,18 @@ NAME:
 
 USAGE:
    lotus state market balance [command options] [address]
+
+OPTIONS:
+   --help, -h  show help
+```
+
+#### lotus state market proposal-pending
+```
+NAME:
+   lotus state market proposal-pending - check if a given proposal CID is pending in the market actor
+
+USAGE:
+   lotus state market proposal-pending [command options] [proposal CID]
 
 OPTIONS:
    --help, -h  show help
@@ -1718,11 +1731,12 @@ USAGE:
    lotus chain list [command options] [arguments...]
 
 OPTIONS:
-   --height value  (default: current head)
-   --count value   (default: 30)
-   --format value  specify the format to print out tipsets (default: "<height>: (<time>) <blocks>")
-   --gas-stats     view gas statistics for the chain (default: false)
-   --help, -h      show help
+   --epoch value, --height value  (default: current head)
+   --count value                  (default: 30)
+   --format value                 specify the format to print out tipsets using placeholders: <epoch>, <time>, <blocks>, <weight>, <tipset>, <json_tipset>
+       (default: "<epoch>: (<time>) <blocks>")
+   --gas-stats  view gas statistics for the chain (default: false)
+   --help, -h   show help
 ```
 
 ### lotus chain get

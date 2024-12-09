@@ -1,4 +1,3 @@
-// stm: #unit
 package repo
 
 import (

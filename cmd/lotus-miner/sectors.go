@@ -220,9 +220,11 @@ var sectorsListCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
+		powerBaseEpochs := make(map[abi.SectorNumber]abi.ChainEpoch, len(sset))
 		commitedIDs := make(map[abi.SectorNumber]struct{}, len(sset))
 		for _, info := range sset {
 			commitedIDs[info.SectorNumber] = struct{}{}
+			powerBaseEpochs[info.SectorNumber] = info.PowerBaseEpoch
 		}
 
 		sort.Slice(list, func(i, j int) bool {
@@ -290,7 +292,8 @@ var sectorsListCmd = &cli.Command{
 			estimate := (st.Expiration-st.Activation <= 0) || sealing.IsUpgradeState(sealing.SectorState(st.State))
 			if !estimate {
 				rdw := big.Add(st.DealWeight, st.VerifiedDealWeight)
-				dw = float64(big.Div(rdw, big.NewInt(int64(st.Expiration-st.Activation))).Uint64())
+				powerBaseEpoch := powerBaseEpochs[st.SectorID]
+				dw = float64(big.Div(rdw, big.NewInt(int64(st.Expiration-powerBaseEpoch))).Uint64())
 				vp = float64(big.Div(big.Mul(st.VerifiedDealWeight, big.NewInt(verifiedPowerGainMul)), big.NewInt(int64(st.Expiration-st.Activation))).Uint64())
 			} else {
 				for _, piece := range st.Pieces {
