@@ -15,87 +15,35 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: 'recursive'
-      - id: dependencies
-        env:
-          ALLOWED: |
-            [
-              {
-                "Path": "github.com/filecoin-project/go-data-transfer/v2",
-                "Version": "v2.0.0-rc7",
-                "Reason": "unknown"
-              },
-              {
-                "Path": "github.com/filecoin-project/go-state-types",
-                "Version": "v0.16.0-dev",
-                "Reason": "unknown"
-              },
-              {
-                "Path": "github.com/syndtr/goleveldb",
-                "Version": "v1.0.1-0.20210819022825-2ae1ddf74ef7",
-                "Reason": "unknown"
-              },
-              {
-                "Path": "github.com/xorcare/golden",
-                "Version": "v0.6.1-0.20191112154924-b87f686d7542",
-                "Reason": "unknown"
-              },
-              {
-                "Path": "github.com/xordataexchange/crypt",
-                "Version": "v0.0.3-0.20170626215501-b2862e3d0a77",
-                "Reason": "unknown"
-              },
-              {
-                "Path": "github.com/yugabyte/pgx/v5",
-                "Version": "v5.5.3-yb-2",
-                "Reason": "unknown"
-              },
-              {
-                "Path": "go.dedis.ch/kyber/v4",
-                "Version": "v4.0.0-pre2.0.20240924132404-4de33740016e",
-                "Reason": "unknown"
-              },
-              {
-                "Path": "gopkg.in/check.v1",
-                "Version": "v1.0.0-20201130134442-10cb98267c6c",
-                "Reason": "unknown"
-              },
-              {
-                "Path": "gopkg.in/tomb.v1",
-                "Version": "v1.0.0-20141024135613-dd632973f1e7",
-                "Reason": "unknown"
-              },
-              {
-                "Path": "honnef.co/go/tools",
-                "Version": "v0.0.1-2020.1.4",
-                "Reason": "unknown"
-              },
-              {
-                "Path": "github.com/quic-go/webtransport-go",
-                "Version": "v0.8.1-0.20241018022711-4ac2c9250e66",
-                "Reason": "unknown"
-              }
-            ]
+      - id: all
         run: |
-          echo "unreleased<<EOF" >> $GITHUB_OUTPUT
-          go list -m -json all |
-            jq -s '
-              (
-                map({Path: .Path, Version: .Version}) |
-                map(select(.Version | test("^v\\d+\\.\\d+\\.\\d+-")?)) |
-                map(select(.Version | test("^v0\\.0\\.0-")? | not))
-              ) - (
-                env.ALLOWED | fromjson |
-                map({Path: .Path, Version: .Version})
-              )
-            ' | tee -a $GITHUB_OUTPUT
+          echo "dependencies<<EOF" >> $GITHUB_OUTPUT
+          # Extract all dependencies from go.mod (include indirect dependencies and comments)
+          sed -n '/require (/,/)/{/require (/!{/)/!p;};}' go.mod | sed 's/^[[:space:]]*//' | tee -a $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
-      - if: steps.dependencies.outputs.unreleased != '[]'
+      - id: unreleased
+        env:
+          DEPENDENCIES: ${{ steps.all.outputs.dependencies }}
+        run: |
+          echo "dependencies<<EOF" >> $GITHUB_OUTPUT
+          # Find all dependencies that use prerelease versions (exclude v0.0.0 versions)
+          grep -Pv 'v0\.0\.0|v[0-9]+\.[0-9]+\.[0-9]+([^-]|$)' <<< "$DEPENDENCIES" | tee -a $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      - id: unexplained
+        env:
+          DEPENDENCIES: ${{ steps.unreleased.outputs.dependencies }}
+        run: |
+          echo "dependencies<<EOF" >> $GITHUB_OUTPUT
+          # Find all unreleased dependencies without a dependency-check-ignore comment
+          grep -Pv 'dependency-check-ignore:\s' <<< "$DEPENDENCIES" | tee -a $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      - if: steps.unexplained.outputs.dependencies != ''
         env:
           MESSAGE: |
             A new unreleased dependency was discovered in this PR. Please do one of the options in [dependency management conventions](https://github.com/filecoin-project/lotus/blob/master/CONTRIBUTING.md#dependency-management)
 
             Unreleased dependencies:
-            ${{steps.dependencies.outputs.unreleased}}
+            ${{steps.unexplained.outputs.dependencies}}
         run: |
           echo "::error::${MESSAGE//$'\n'/%0A}"
           exit 1

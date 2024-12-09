@@ -60,8 +60,8 @@ Note that this is enforced with https://github.com/filecoin-project/lotus/blob/m
 
 ## Dependency Management
 
-We enforce that each dependency on an unreleased version of a package, as long as said package has any released versions (i.e. it is not a `v0.0.0`), is explicitly documented in the `ALLOWED` list stored in [.github/workflows/dependency-check.yml](.github/workflows/dependency-check.yml).
-If you are adding such a dependency, please add it to the `ALLOWED` list.
+We enforce that each dependency on an unreleased version of a package, as long as said package has any released versions (i.e. it is not a `v0.0.0`), is explicitly documented in the `go.mod` file via an inline comment of the form `dependency-check-ignore: <reason>`.
+If you are adding such a dependency, please add a suitable comment to the `go.mod` file as well.
 Please note that this requirement applies both to direct and indirect dependencies.
 
 Note that this is enforced with https://github.com/filecoin-project/lotus/blob/master/.github/workflows/dependency-check.yml
