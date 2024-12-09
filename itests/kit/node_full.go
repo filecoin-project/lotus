@@ -20,6 +20,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
+	"github.com/filecoin-project/lotus/api/v2api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet/key"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
@@ -35,6 +36,7 @@ type Libp2p struct {
 // TestFullNode represents a full node enrolled in an Ensemble.
 type TestFullNode struct {
 	v1api.FullNode
+	V2 v2api.FullNode
 
 	t *testing.T
 
@@ -62,6 +64,7 @@ func MergeFullNodes(fullNodes []*TestFullNode) *TestFullNode {
 
 	cliutil.FullNodeProxy(fullNodes, &fns)
 
+	// wrappedFullNode.V2 = fullNodes[0].V2 // TODO: proxy this
 	wrappedFullNode.t = fullNodes[0].t
 	wrappedFullNode.ListenAddr = fullNodes[0].ListenAddr
 	wrappedFullNode.DefaultKey = fullNodes[0].DefaultKey

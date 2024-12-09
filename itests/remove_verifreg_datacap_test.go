@@ -54,7 +54,7 @@ func TestNoRemoveDatacapFromVerifreg(t *testing.T) {
 
 	ens.InterconnectAll().BeginMining(10 * time.Millisecond)
 
-	clientApi := testClient.FullNode.(*impl.FullNodeAPI)
+	clientApi := testClient.FullNode.(*impl.FullNodeAPIv1)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

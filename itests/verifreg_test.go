@@ -54,7 +54,7 @@ func TestVerifiedClientTopUp(t *testing.T) {
 
 			ens.InterconnectAll().BeginMining(blockTime)
 
-			api := node.FullNode.(*impl.FullNodeAPI)
+			api := node.FullNode.(*impl.FullNodeAPIv1)
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
@@ -176,7 +176,7 @@ func TestRemoveDataCap(t *testing.T) {
 
 	ens.InterconnectAll().BeginMining(blockTime)
 
-	api := node.FullNode.(*impl.FullNodeAPI)
+	api := node.FullNode.(*impl.FullNodeAPIv1)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -352,7 +352,7 @@ func TestVerifiedClientCanCreateAllocation(t *testing.T) {
 
 	ens.InterconnectAll().BeginMining(blockTime)
 
-	api := node.FullNode.(*impl.FullNodeAPI)
+	api := node.FullNode.(*impl.FullNodeAPIv1)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -457,7 +457,7 @@ func TestVerifiedClientCanCreateAllocation(t *testing.T) {
 	require.Equal(t, 1, len(allocations))
 }
 
-func makeVerifier(ctx context.Context, t *testing.T, api *impl.FullNodeAPI, rootAddr address.Address, addr address.Address) {
+func makeVerifier(ctx context.Context, t *testing.T, api *impl.FullNodeAPIv1, rootAddr address.Address, addr address.Address) {
 	allowance := big.NewInt(100000000000)
 	params, aerr := actors.SerializeParams(&verifregst.AddVerifierParams{Address: addr, Allowance: allowance})
 	require.NoError(t, aerr)
@@ -505,7 +505,7 @@ func TestVerifiedListAllAllocationsAndClaims(t *testing.T) {
 
 	ens.InterconnectAll().BeginMining(blockTime)
 
-	api := node.FullNode.(*impl.FullNodeAPI)
+	api := node.FullNode.(*impl.FullNodeAPIv1)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

@@ -31,6 +31,7 @@ import (
 	"github.com/filecoin-project/go-paramfetch"
 
 	lapi "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v2api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/beacon/drand"
@@ -392,9 +393,11 @@ var DaemonCmd = &cli.Command{
 			log.Warnf("unable to inject prometheus ipfs/go-metrics exporter; some metrics will be unavailable; err: %s", err)
 		}
 
-		var api lapi.FullNode
+		var apiv1 lapi.FullNode
+		var apiv2 v2api.FullNode
 		stop, err := node.New(ctx,
-			node.FullAPI(&api, node.Lite(isLite)),
+			node.FullAPIv1(&apiv1, node.Lite(isLite)),
+			node.FullAPIv2(&apiv2),
 
 			node.Base(),
 			node.Repo(r),
@@ -424,7 +427,7 @@ var DaemonCmd = &cli.Command{
 		}
 
 		if cctx.String("import-key") != "" {
-			if err := importKey(ctx, api, cctx.String("import-key")); err != nil {
+			if err := importKey(ctx, apiv1, cctx.String("import-key")); err != nil {
 				log.Errorf("importing key failed: %+v", err)
 			}
 		}
@@ -445,7 +448,7 @@ var DaemonCmd = &cli.Command{
 		}
 
 		// Instantiate the full node handler.
-		h, err := node.FullNodeHandler(api, true, serverOptions...)
+		h, err := node.FullNodeHandler(apiv1, apiv2, true, serverOptions...)
 		if err != nil {
 			return fmt.Errorf("failed to instantiate rpc handler: %s", err)
 		}
