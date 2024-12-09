@@ -35,8 +35,6 @@ type TipSetLoader interface {
 
 type F3 interface {
 	GetLatestCert(ctx context.Context) (*certs.FinalityCertificate, error)
-	IsEnabled() bool
-	IsRunning() (bool, error)
 }
 
 type TipSetResolver interface {
@@ -114,16 +112,16 @@ func (tsr *tipSetResolver) ResolveEthBlockSelector(ctx context.Context, selector
 }
 
 func (tsr *tipSetResolver) getF3FinalizedTipSet(ctx context.Context) (*types.TipSet, error) {
-	if !tsr.f3.IsEnabled() {
-		return nil, nil
-	}
-	if running, _ := tsr.f3.IsRunning(); !running {
+	cert, err := tsr.f3.GetLatestCert(ctx)
+	if err != nil {
+		if !errors.Is(err, api.ErrF3Disabled) {
+			log.Debugf("loading latest F3 certificate: %s", err)
+		}
 		return nil, nil
 	}
 
-	cert, err := tsr.f3.GetLatestCert(ctx)
-	if err != nil {
-		log.Debugf("loading latest F3 certificate: %s", err)
+	if len(cert.ECChain) == 0 || cert.ECChain.IsZero() {
+		// finality certs are supposed to have a guarantee of at least one tipset but we'll take a defensive stance
 		return nil, nil
 	}
 
