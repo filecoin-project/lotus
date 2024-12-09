@@ -1,0 +1,49 @@
+name: Dependency Check
+
+on:
+  pull_request:
+    paths:
+      - 'go.mod'
+      - 'go.sum'
+      - '.github/workflows/dependency-check.yml'
+
+jobs:
+  dependency-check:
+    runs-on: ubuntu-latest
+    name: Dependency Check
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: 'recursive'
+      - id: all
+        run: |
+          echo "dependencies<<EOF" >> $GITHUB_OUTPUT
+          # Extract all dependencies from go.mod (include indirect dependencies and comments)
+          sed -n '/require (/,/)/{/require (/!{/)/!p;};}' go.mod | sed 's/^[[:space:]]*//' | tee -a $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      - id: unreleased
+        env:
+          DEPENDENCIES: ${{ steps.all.outputs.dependencies }}
+        run: |
+          echo "dependencies<<EOF" >> $GITHUB_OUTPUT
+          # Find all dependencies that use prerelease versions (exclude v0.0.0 versions)
+          grep -Pv 'v0\.0\.0|v[0-9]+\.[0-9]+\.[0-9]+([^-]|$)' <<< "$DEPENDENCIES" | tee -a $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      - id: unexplained
+        env:
+          DEPENDENCIES: ${{ steps.unreleased.outputs.dependencies }}
+        run: |
+          echo "dependencies<<EOF" >> $GITHUB_OUTPUT
+          # Find all unreleased dependencies without a dependency-check-ignore comment
+          grep -Pv 'dependency-check-ignore:\s' <<< "$DEPENDENCIES" | tee -a $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      - if: steps.unexplained.outputs.dependencies != ''
+        env:
+          MESSAGE: |
+            A new unreleased dependency was discovered in this PR. Please do one of the options in [dependency management conventions](https://github.com/filecoin-project/lotus/blob/master/CONTRIBUTING.md#dependency-management)
+
+            Unreleased dependencies:
+            ${{steps.unexplained.outputs.dependencies}}
+        run: |
+          echo "::error::${MESSAGE//$'\n'/%0A}"
+          exit 1
