@@ -4,7 +4,6 @@ import (
 	"fmt"
 	_ "net/http/pprof"
 	"os"
-	"strings"
 
 	"github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli/v2"
