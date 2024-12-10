@@ -2753,10 +2753,19 @@ func PreUpgradeActorsV16(ctx context.Context, sm *stmgr.StateManager, cache stmg
 	if err != nil {
 		return xerrors.Errorf("error getting lookback ts for premigration: %w", err)
 	}
+	timeout := os.Getenv("LOTUS_MIGRATE_PROGRESS_LOG_SECONDS")
+	timeoutDuration, err := time.ParseDuration(timeout + "s")
+	if err != nil {
+		return xerrors.Errorf("error parsing LOTUS_MIGRATE_PROGRESS_LOG_SECONDS: %w", err)
+	}
+
+	if timeoutDuration == 0 {
+		timeoutDuration = time.Second * 2
+	}
 
 	config := migration.Config{
 		MaxWorkers:        uint(workerCount),
-		ProgressLogPeriod: time.Second * 2,
+		ProgressLogPeriod: timeoutDuration,
 	}
 
 	_, err = upgradeActorsV16Common(ctx, sm, cache, lbRoot, epoch, lbts, config)
@@ -2770,11 +2779,21 @@ func UpgradeActorsV16(ctx context.Context, sm *stmgr.StateManager, cache stmgr.M
 	if workerCount <= 0 {
 		workerCount = 1
 	}
+	timeout := os.Getenv("LOTUS_MIGRATE_PROGRESS_LOG_SECONDS")
+	timeoutDuration, err := time.ParseDuration(timeout + "s")
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("error parsing LOTUS_MIGRATE_PROGRESS_LOG_SECONDS: %w", err)
+	}
+
+	if timeoutDuration == 0 {
+		timeoutDuration = time.Second * 2
+	}
+
 	config := migration.Config{
 		MaxWorkers:        uint(workerCount),
 		JobQueueSize:      1000,
 		ResultQueueSize:   100,
-		ProgressLogPeriod: time.Second * 2,
+		ProgressLogPeriod: timeoutDuration,
 	}
 	newRoot, err := upgradeActorsV16Common(ctx, sm, cache, root, epoch, ts, config)
 	if err != nil {
