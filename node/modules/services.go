@@ -31,7 +31,6 @@ import (
 	"github.com/filecoin-project/lotus/journal/fsjournal"
 	"github.com/filecoin-project/lotus/lib/peermgr"
 	"github.com/filecoin-project/lotus/node/hello"
-	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -187,36 +186,6 @@ func HandleIncomingMessages(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub
 
 	// wait until we are synced within 10 epochs -- env var can override
 	waitForSync(stmgr, pubsubMsgsSyncEpochs, subscribe)
-}
-
-func RelayIndexerMessages(lc fx.Lifecycle, ps *pubsub.PubSub, nn dtypes.NetworkName, h host.Host, chainModule full.ChainModuleAPI, stateModule full.StateModuleAPI) error {
-	topicName := build.IndexerIngestTopic(nn)
-
-	v := sub.NewIndexerMessageValidator(h.ID(), chainModule, stateModule)
-
-	if err := ps.RegisterTopicValidator(topicName, v.Validate); err != nil {
-		return xerrors.Errorf("failed to register validator for topic %s, err: %w", topicName, err)
-	}
-
-	topicHandle, err := ps.Join(topicName)
-	if err != nil {
-		return xerrors.Errorf("failed to join pubsub topic %s: %w", topicName, err)
-	}
-	cancelFunc, err := topicHandle.Relay()
-	if err != nil {
-		return xerrors.Errorf("failed to relay to pubsub messages for topic %s: %w", topicName, err)
-	}
-
-	// Cancel message relay on shutdown.
-	lc.Append(fx.Hook{
-		OnStop: func(_ context.Context) error {
-			cancelFunc()
-			return nil
-		},
-	})
-
-	log.Infof("relaying messages for pubsub topic %s", topicName)
-	return nil
 }
 
 type RandomBeaconParams struct {
