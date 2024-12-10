@@ -47,6 +47,7 @@ For certain node operators, such as full archival nodes or systems that need to 
 
 - The miner actor builtin `QAPowerForWeight` no longer accepts the unused "dealWeight" parameter, the function signature now only takes 3 arguments: sectorSize, sectorDuration, verifiedWeight. ([filecoin-project/lotus#12445](https://github.com/filecoin-project/lotus/pull/12445))
 - Fix checkpointed tipsets being expanded ([filecoin-project/lotus#12747](https://github.com/filecoin-project/lotus/pull/12747))
+- Remove IPNI advertisement relay over pubsub via Lotus node as it now has been deprecated. ([filecoin-project/lotus#12768](https://github.com/filecoin-project/lotus/pull/12768)
 
 ## Bug Fixes
 
