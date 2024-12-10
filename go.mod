@@ -12,6 +12,8 @@ replace github.com/filecoin-project/test-vectors => ./extern/test-vectors // pro
 
 replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi // provided via a git submodule
 
+replace github.com/filecoin-project/go-state-types => ./extern/go-state-types // provided via a git submodule
+
 require (
 	contrib.go.opencensus.io/exporter/prometheus v0.4.2
 	github.com/BurntSushi/toml v1.3.2
@@ -131,7 +133,7 @@ require (
 	github.com/raulk/go-watchdog v1.3.0
 	github.com/samber/lo v1.39.0
 	github.com/sirupsen/logrus v1.9.2
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 	github.com/triplewz/poseidon v0.0.2
 	github.com/urfave/cli/v2 v2.25.5
