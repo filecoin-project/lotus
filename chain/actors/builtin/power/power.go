@@ -183,7 +183,7 @@ type State interface {
 	MinerPower(address.Address) (Claim, bool, error)
 	MinerNominalPowerMeetsConsensusMinimum(address.Address) (bool, error)
 	ListAllMiners() ([]address.Address, error)
-	ForEachClaim(func(miner address.Address, claim Claim) error) error
+	ForEachClaim(cb func(miner address.Address, claim Claim) error, onlyEligible bool) error
 	ClaimsChanged(State) (bool, error)
 
 	// Testing or genesis setup only
