@@ -91,7 +91,6 @@ func preparedStatementMapping(ps *preparedStatements) map[**sql.Stmt]string {
 		&ps.getMsgCidFromEthHashStmt:                  "SELECT message_cid FROM eth_tx_hash WHERE tx_hash = ? LIMIT 1",
 		&ps.insertEthTxHashStmt:                       "INSERT INTO eth_tx_hash (tx_hash, message_cid) VALUES (?, ?) ON CONFLICT (tx_hash) DO UPDATE SET inserted_at = CURRENT_TIMESTAMP",
 		&ps.insertTipsetMessageStmt:                   "INSERT INTO tipset_message (tipset_key_cid, height, reverted, message_cid, message_index) VALUES (?, ?, ?, ?, ?) ON CONFLICT (tipset_key_cid, message_cid) DO UPDATE SET reverted = 0",
-		&ps.hasTipsetStmt:                             "SELECT EXISTS(SELECT 1 FROM tipset_message WHERE tipset_key_cid = ?)",
 		&ps.updateTipsetToNonRevertedStmt:             "UPDATE tipset_message SET reverted = 0 WHERE tipset_key_cid = ?",
 		&ps.updateTipsetToRevertedStmt:                "UPDATE tipset_message SET reverted = 1 WHERE tipset_key_cid = ?",
 		&ps.removeTipsetsBeforeHeightStmt:             "DELETE FROM tipset_message WHERE height < ?",
