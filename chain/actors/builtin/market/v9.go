@@ -106,6 +106,14 @@ func (s *state9) Proposals() (DealProposals, error) {
 	return &dealProposals9{proposalArray}, nil
 }
 
+func (s *state9) PendingProposals() (PendingProposals, error) {
+	proposalCidSet, err := adt9.AsSet(s.store, s.State.PendingProposals, builtin.DefaultHamtBitwidth)
+	if err != nil {
+		return nil, err
+	}
+	return &pendingProposals9{proposalCidSet}, nil
+}
+
 func (s *state9) EscrowTable() (BalanceTable, error) {
 	bt, err := adt9.AsBalanceTable(s.store, s.State.EscrowTable)
 	if err != nil {
@@ -282,6 +290,14 @@ func (s *dealProposals9) decode(val *cbg.Deferred) (*DealProposal, error) {
 
 func (s *dealProposals9) array() adt.Array {
 	return s.Array
+}
+
+type pendingProposals9 struct {
+	*adt9.Set
+}
+
+func (s *pendingProposals9) Has(proposalCid cid.Cid) (bool, error) {
+	return s.Set.Has(abi.CidKey(proposalCid))
 }
 
 func fromV9DealProposal(v9 market9.DealProposal) (DealProposal, error) {

@@ -239,6 +239,7 @@
   * [StateMarketBalance](#StateMarketBalance)
   * [StateMarketDeals](#StateMarketDeals)
   * [StateMarketParticipants](#StateMarketParticipants)
+  * [StateMarketProposalPending](#StateMarketProposalPending)
   * [StateMarketStorageDeal](#StateMarketStorageDeal)
   * [StateMinerActiveSectors](#StateMinerActiveSectors)
   * [StateMinerAllocated](#StateMinerAllocated)
@@ -2416,49 +2417,45 @@ Response:
 ```json
 {
   "GPBFTInstance": 0,
-  "ECChain": null,
+  "ECChain": [
+    {
+      "Key": [
+        {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        },
+        {
+          "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+        }
+      ],
+      "Commitments": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+      "Epoch": 0,
+      "PowerTable": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
+    }
+  ],
   "SupplementalData": {
-    "Commitments": [
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0
-    ],
-    "PowerTable": null
+    "Commitments": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+    "PowerTable": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
   },
   "Signers": [
-    0
+    2,
+    2,
+    1,
+    1,
+    1,
+    1
   ],
-  "Signature": null,
-  "PowerTableDelta": null
+  "Signature": "VW5EYWRhU2VB",
+  "PowerTableDelta": [
+    {
+      "ParticipantID": 0,
+      "PowerDelta": "0",
+      "SigningKey": "QmFScmVsRVll"
+    }
+  ]
 }
 ```
 
@@ -2536,49 +2533,45 @@ Response:
 ```json
 {
   "GPBFTInstance": 0,
-  "ECChain": null,
+  "ECChain": [
+    {
+      "Key": [
+        {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        },
+        {
+          "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+        }
+      ],
+      "Commitments": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+      "Epoch": 0,
+      "PowerTable": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
+    }
+  ],
   "SupplementalData": {
-    "Commitments": [
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0
-    ],
-    "PowerTable": null
+    "Commitments": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+    "PowerTable": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
   },
   "Signers": [
-    0
+    2,
+    2,
+    1,
+    1,
+    1,
+    1
   ],
-  "Signature": null,
-  "PowerTableDelta": null
+  "Signature": "VW5EYWRhU2VB",
+  "PowerTableDelta": [
+    {
+      "ParticipantID": 0,
+      "PowerDelta": "0",
+      "SigningKey": "QmFScmVsRVll"
+    }
+  ]
 }
 ```
 
@@ -6803,7 +6796,7 @@ Response:
     "UpgradePhoenixHeight": 10101,
     "UpgradeWaffleHeight": 10101,
     "UpgradeTuktukHeight": 10101,
-    "UpgradeXxHeight": 10101
+    "UpgradeTeepHeight": 10101
   },
   "Eip155ChainID": 123
 }
@@ -6833,7 +6826,7 @@ Inputs:
 Response: `"Bw=="`
 
 ### StateGetRandomnessDigestFromTickets
-StateGetRandomnessDigestFromTickets. is used to sample the chain for randomness.
+StateGetRandomnessDigestFromTickets is used to sample the chain for randomness.
 
 
 Perms: read
@@ -7146,6 +7139,31 @@ Response:
   }
 }
 ```
+
+### StateMarketProposalPending
+StateMarketProposalPending returns whether a given proposal CID is marked as pending in the market actor
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `true`
 
 ### StateMarketStorageDeal
 StateMarketStorageDeal returns information about the indicated deal

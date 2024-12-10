@@ -19,6 +19,8 @@ require (
 	github.com/GeertJohan/go.rice v1.0.3
 	github.com/Gurpartap/async v0.0.0-20180927173644-4f7f499dd9ee
 	github.com/Kubuxu/imtui v0.0.0-20210401140320-41663d68d0fa
+	github.com/Masterminds/semver/v3 v3.3.1
+	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
 	github.com/alecthomas/jsonschema v0.0.0-20200530073317-71f438968921
 	github.com/cheggaaa/pb/v3 v3.1.5
@@ -44,13 +46,13 @@ require (
 	github.com/filecoin-project/go-cbor-util v0.0.1
 	github.com/filecoin-project/go-commp-utils/v2 v2.1.0
 	github.com/filecoin-project/go-crypto v0.1.0
-	github.com/filecoin-project/go-f3 v0.7.2
+	github.com/filecoin-project/go-f3 v0.7.3
 	github.com/filecoin-project/go-fil-commcid v0.2.0
 	github.com/filecoin-project/go-hamt-ipld/v3 v3.4.0
 	github.com/filecoin-project/go-jsonrpc v0.7.0
 	github.com/filecoin-project/go-padreader v0.0.1
 	github.com/filecoin-project/go-paramfetch v0.0.4
-	github.com/filecoin-project/go-state-types v0.16.0-dev
+	github.com/filecoin-project/go-state-types v0.16.0-rc1
 	github.com/filecoin-project/go-statemachine v1.0.3
 	github.com/filecoin-project/go-statestore v0.2.0
 	github.com/filecoin-project/go-storedcounter v0.1.0
@@ -70,6 +72,7 @@ require (
 	github.com/go-openapi/spec v0.19.11
 	github.com/golang/mock v1.6.0
 	github.com/google/go-cmp v0.6.0
+	github.com/google/go-github/v66 v66.0.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/websocket v1.5.3
@@ -131,7 +134,7 @@ require (
 	github.com/raulk/go-watchdog v1.3.0
 	github.com/samber/lo v1.39.0
 	github.com/sirupsen/logrus v1.9.2
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 	github.com/triplewz/poseidon v0.0.2
 	github.com/urfave/cli/v2 v2.25.5
@@ -167,8 +170,10 @@ require (
 )
 
 require (
+	dario.cat/mergo v1.0.1 // indirect
 	github.com/GeertJohan/go.incremental v1.0.0 // indirect
 	github.com/Jorropo/jsync v1.0.1 // indirect
+	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
 	github.com/StackExchange/wmi v1.2.1 // indirect
@@ -218,10 +223,12 @@ require (
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
+	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/gopacket v1.1.19 // indirect
 	github.com/google/pprof v0.0.0-20241017200806-017d972448fc // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/golang-lru v1.0.2 // indirect
+	github.com/huandu/xstrings v1.5.0 // indirect
 	github.com/huin/goupnp v1.3.0 // indirect
 	github.com/iancoleman/orderedmap v0.1.0 // indirect
 	github.com/ipfs/go-blockservice v0.5.2 // indirect
@@ -269,6 +276,8 @@ require (
 	github.com/mikioh/tcpopt v0.0.0-20190314235656-172688c1accc // indirect
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1 // indirect
 	github.com/minio/sha256-simd v1.0.1 // indirect
+	github.com/mitchellh/copystructure v1.2.0 // indirect
+	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/mmcloughlin/addchain v0.4.0 // indirect
 	github.com/mr-tron/base58 v1.2.0 // indirect
 	github.com/multiformats/go-base36 v0.2.0 // indirect
@@ -311,7 +320,9 @@ require (
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/shirou/gopsutil v2.18.12+incompatible // indirect
+	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
+	github.com/spf13/cast v1.7.0 // indirect
 	github.com/tidwall/gjson v1.14.4 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.0.1 // indirect

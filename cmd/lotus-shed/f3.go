@@ -170,6 +170,7 @@ var f3GenExplicitPower = &cli.Command{
 			for _, pe := range powerMap {
 				powerList = append(powerList, pe)
 			}
+			sort.Sort(powerList)
 			rng.Shuffle(len(powerList), powerList.Swap)
 
 			iteration := cctx.Int("iteration")
