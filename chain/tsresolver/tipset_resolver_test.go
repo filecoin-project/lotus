@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/go-f3/certs"
 	"github.com/filecoin-project/go-f3/gpbft"
+	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 
@@ -51,13 +52,18 @@ func TestResolveEthBlockSelector(t *testing.T) {
 		req.Nil(ts)
 	})
 
-	for _, f3Status := range []string{"disabled", "stopped"} {
+	for _, f3Status := range []string{"disabled", "stopped", "nonfinalizing"} {
 		t.Run("safe/finalized with F3 "+f3Status, func(t *testing.T) {
 			req := require.New(t)
 
 			head := makeTestTipSet(t, 1000, nil)
 			safe := makeTestTipSet(t, 969, nil) // head - 31
 			final := makeTestTipSet(t, 99, nil) // head - 901
+			// setup f3 such that if the checks for disabled/running/non-finalized slip through
+			// that it will return a tipset that `"finalized"` would return - we should never see
+			// this in these tests
+			f3finalzedParent := makeTestTipSet(t, 960, nil)
+			f3finalzed := makeTestTipSet(t, 961, f3finalzedParent.Cids())
 
 			loader := &mockTipSetLoader{
 				head: head,
@@ -65,11 +71,31 @@ func TestResolveEthBlockSelector(t *testing.T) {
 					969: safe,
 					99:  final,
 				},
+				tipsets: map[types.TipSetKey]*types.TipSet{
+					f3finalzedParent.Key(): f3finalzedParent,
+					f3finalzed.Key():       f3finalzed,
+				},
 			}
 
 			f3 := &f3mock.MockF3API{}
-			f3.SetEnabled(f3Status != "disabled")
-			f3.SetRunning(f3Status != "stopped")
+			// setup f3 as if it's operational, then selectively turn off what we are testing
+			f3.SetManifest(manifest.LocalDevnetManifest())
+			f3.SetLatestCert(&certs.FinalityCertificate{
+				ECChain: gpbft.ECChain{
+					gpbft.TipSet{Key: f3finalzed.Key().Bytes()},
+				},
+			})
+
+			switch f3Status {
+			case "disabled":
+				f3.SetEnabled(false)
+			case "stopped":
+				f3.SetLatestCert(nil) // no cert as a proxy for not running
+			case "nonfinalizing":
+				m := manifest.LocalDevnetManifest()
+				m.EC.Finalize = false
+				f3.SetManifest(m)
+			}
 
 			resolver := tsresolver.NewTipSetResolver(loader, f3)
 
@@ -103,6 +129,7 @@ func TestResolveEthBlockSelector(t *testing.T) {
 		f3 := &f3mock.MockF3API{}
 		f3.SetEnabled(true)
 		f3.SetRunning(true)
+		f3.SetManifest(manifest.LocalDevnetManifest())
 		f3.SetLatestCert(&certs.FinalityCertificate{
 			ECChain: gpbft.ECChain{
 				gpbft.TipSet{Key: finalzed.Key().Bytes()},
@@ -144,6 +171,7 @@ func TestResolveEthBlockSelector(t *testing.T) {
 		f3 := &f3mock.MockF3API{}
 		f3.SetEnabled(true)
 		f3.SetRunning(true)
+		f3.SetManifest(manifest.LocalDevnetManifest())
 		f3.SetLatestCert(&certs.FinalityCertificate{
 			ECChain: gpbft.ECChain{
 				gpbft.TipSet{Key: finalzed.Key().Bytes()},

@@ -3,12 +3,12 @@ package tsresolver
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-f3/certs"
+	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/api"
@@ -34,6 +34,7 @@ type TipSetLoader interface {
 }
 
 type F3 interface {
+	GetManifest(ctx context.Context) (*manifest.Manifest, error)
 	GetLatestCert(ctx context.Context) (*certs.FinalityCertificate, error)
 }
 
@@ -73,7 +74,7 @@ func NewTipSetResolver(loader TipSetLoader, f3 F3) TipSetResolver {
 func (tsr *tipSetResolver) ResolveEthBlockSelector(ctx context.Context, selector string, strict bool) (*types.TipSet, error) {
 	switch selector {
 	case EthBlockSelectorEarliest:
-		return nil, fmt.Errorf(`block param "%s" is not supported`, EthBlockSelectorEarliest)
+		return nil, xerrors.Errorf(`block param "%s" is not supported`, EthBlockSelectorEarliest)
 
 	case EthBlockSelectorPending:
 		return tsr.loader.GetHeaviestTipSet(), nil
@@ -119,9 +120,21 @@ func (tsr *tipSetResolver) getF3FinalizedTipSet(ctx context.Context) (*types.Tip
 		}
 		return nil, nil
 	}
+	if cert == nil {
+		return nil, nil
+	}
+
+	manifest, err := tsr.f3.GetManifest(ctx)
+	if err != nil {
+		return nil, xerrors.Errorf("loading F3 manifest: %w", err)
+	}
+	if !manifest.EC.Finalize {
+		// F3 is not finalizing tipsets on top of EC, ignore it
+		return nil, nil
+	}
 
 	if len(cert.ECChain) == 0 || cert.ECChain.IsZero() {
-		// finality certs are supposed to have a guarantee of at least one tipset but we'll take a defensive stance
+		// defensive; finality certs are supposed to have a guarantee of at least one tipset
 		return nil, nil
 	}
 
@@ -146,12 +159,12 @@ func (tsr *tipSetResolver) resolveEthBlockNumberSelector(ctx context.Context, se
 
 	head := tsr.loader.GetHeaviestTipSet()
 	if abi.ChainEpoch(num) > head.Height()-1 {
-		return nil, errors.New("requested a future epoch (beyond 'latest')")
+		return nil, xerrors.New("requested a future epoch (beyond 'latest')")
 	}
 
 	ts, err := tsr.loader.GetTipsetByHeight(ctx, abi.ChainEpoch(num), head, true)
 	if err != nil {
-		return nil, fmt.Errorf("cannot get tipset at height: %v", num)
+		return nil, xerrors.Errorf("cannot get tipset at height: %v", num)
 	}
 
 	if strict && ts.Height() != abi.ChainEpoch(num) {

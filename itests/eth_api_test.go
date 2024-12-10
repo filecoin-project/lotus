@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-f3/certs"
 	"github.com/filecoin-project/go-f3/gpbft"
+	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -431,8 +432,6 @@ func TestEthBlockNumberAliases(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			req := require.New(t)
-
 			opts := []any{kit.MockProofs(), kit.ThroughRPC()}
 			f3 := &f3mock.MockF3API{}
 			if tc.f3Enabled {
@@ -450,49 +449,65 @@ func TestEthBlockNumberAliases(t *testing.T) {
 
 			client.WaitTillChain(ctx, kit.HeightAtLeast(policy.ChainFinality+100))
 
-			for _, query := range []struct {
+			// f3SetLatest sets the latest tipset in the F3 API to be the head of the chain minus
+			// the f3DelayEpochs specified in the test case. This is used to simulate the F3 API
+			// being behind the chain head by that number of epochs.
+			f3SetLatest := func(t *testing.T, head *types.TipSet) {
+				ts, err := client.ChainGetTipSetByHeight(ctx, head.Height()-abi.ChainEpoch(tc.f3DelayEpochs), head.Key())
+				require.NoError(t, err)
+				f3.SetLatestCert(&certs.FinalityCertificate{
+					ECChain: gpbft.ECChain{gpbft.TipSet{Key: ts.Key().Bytes()}},
+				})
+				f3.SetManifest(manifest.LocalDevnetManifest())
+			}
+
+			// validateQuery checks that the block returned by the given query type is the expected
+			// number of epochs behind the chain head after we explicitly set F3 finalized epoch.
+			validateQuery := func(t *testing.T, param string, expectedLag abi.ChainEpoch) {
+				req := require.New(t)
+
+				head, err := client.ChainHead(ctx)
+				req.NoError(err)
+
+				var blk ethtypes.EthBlock
+				for {
+					// loop here until we get all of the operations performed in a single epoch, if the
+					// operations span multiple epochs our numbers will be off
+
+					if tc.f3Enabled {
+						f3SetLatest(t, head)
+					}
+
+					blk, err = client.EVM().EthGetBlockByNumber(ctx, param, true)
+					req.NoError(err)
+					afterHead, err := client.ChainHead(ctx)
+					req.NoError(err)
+					if afterHead.Height() == head.Height() {
+						break
+					}
+
+					// else: whoops, we had a chain increment between getting head and getting "latest" so
+					// we won't be able to use head as a stable reference for comparison
+					head = afterHead
+				}
+
+				ts, err := client.ChainGetTipSetByHeight(ctx, head.Height()-expectedLag, head.Key())
+				req.NoError(err)
+				req.Equal(int(ts.Height()), int(blk.Number))
+			}
+
+			queryTypes := []struct {
 				param       string
 				expectedLag abi.ChainEpoch
 			}{
 				{"latest", 1}, // head - 1
 				{"safe", abi.ChainEpoch(tc.expectedSafeEpoch)},
 				{"finalized", abi.ChainEpoch(tc.expectedFinalizedEpoch)},
-			} {
+			}
+
+			for _, query := range queryTypes {
 				t.Run(query.param, func(t *testing.T) {
-					head, err := client.ChainHead(ctx)
-					req.NoError(err)
-
-					var blk ethtypes.EthBlock
-					for {
-						// loop here until we get all of the operations performed in a single epoch, if the
-						// operations span multiple epochs our numbers will be off
-
-						if tc.f3Enabled {
-							ts, err := client.ChainGetTipSetByHeight(ctx, head.Height()-abi.ChainEpoch(tc.f3DelayEpochs), head.Key())
-							req.NoError(err)
-							f3.SetLatestCert(&certs.FinalityCertificate{
-								ECChain: gpbft.ECChain{
-									gpbft.TipSet{Key: ts.Key().Bytes()},
-								},
-							})
-						}
-
-						blk, err = client.EVM().EthGetBlockByNumber(ctx, query.param, true)
-						req.NoError(err)
-						afterHead, err := client.ChainHead(ctx)
-						req.NoError(err)
-						if afterHead.Height() == head.Height() {
-							break
-						}
-
-						// else: whoops, we had a chain increment between getting head and getting "latest" so
-						// we won't be able to use head as a stable reference for comparison
-						head = afterHead
-					}
-
-					ts, err := client.ChainGetTipSetByHeight(ctx, head.Height()-query.expectedLag, head.Key())
-					req.NoError(err)
-					req.Equal(int(ts.Height()), int(blk.Number))
+					validateQuery(t, query.param, query.expectedLag)
 				})
 			}
 		})
