@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 	"sort"
@@ -202,7 +203,7 @@ var msigInspectCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Args().Present() {
-			return ShowHelp(cctx, fmt.Errorf("must specify address of multisig to inspect"))
+			return ShowHelp(cctx, errors.New("must specify address of multisig to inspect"))
 		}
 
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -400,11 +401,11 @@ var msigProposeCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() < 3 {
-			return ShowHelp(cctx, fmt.Errorf("must pass at least multisig address, destination, and value"))
+			return ShowHelp(cctx, errors.New("must pass at least multisig address, destination, and value"))
 		}
 
 		if cctx.NArg() > 3 && cctx.NArg() != 5 {
-			return ShowHelp(cctx, fmt.Errorf("must either pass three or five arguments"))
+			return ShowHelp(cctx, errors.New("must either pass three or five arguments"))
 		}
 
 		srv, err := GetFullNodeServices(cctx)
@@ -522,15 +523,15 @@ var msigApproveCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() < 2 {
-			return ShowHelp(cctx, fmt.Errorf("must pass at least multisig address and message ID"))
+			return ShowHelp(cctx, errors.New("must pass at least multisig address and message ID"))
 		}
 
 		if cctx.NArg() > 2 && cctx.NArg() < 5 {
-			return ShowHelp(cctx, fmt.Errorf("usage: msig approve <msig addr> <message ID> <proposer address> <desination> <value>"))
+			return ShowHelp(cctx, errors.New("usage: msig approve <msig addr> <message ID> <proposer address> <destination> <value>"))
 		}
 
 		if cctx.NArg() > 5 && cctx.NArg() != 7 {
-			return ShowHelp(cctx, fmt.Errorf("usage: msig approve <msig addr> <message ID> <proposer address> <desination> <value> [ <method> <params> ]"))
+			return ShowHelp(cctx, errors.New("usage: msig approve <msig addr> <message ID> <proposer address> <destination> <value> [ <method> <params> ]"))
 		}
 
 		srv, err := GetFullNodeServices(cctx)
@@ -659,15 +660,15 @@ var msigCancelCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() < 2 {
-			return ShowHelp(cctx, fmt.Errorf("must pass at least multisig address and message ID"))
+			return ShowHelp(cctx, errors.New("must pass at least multisig address and message ID"))
 		}
 
 		if cctx.NArg() > 2 && cctx.NArg() < 4 {
-			return ShowHelp(cctx, fmt.Errorf("usage: msig cancel <msig addr> <message ID> <desination> <value>"))
+			return ShowHelp(cctx, errors.New("usage: msig cancel <msig addr> <message ID> <destination> <value>"))
 		}
 
 		if cctx.NArg() > 4 && cctx.NArg() != 6 {
-			return ShowHelp(cctx, fmt.Errorf("usage: msig cancel <msig addr> <message ID> <desination> <value> [ <method> <params> ]"))
+			return ShowHelp(cctx, errors.New("usage: msig cancel <msig addr> <message ID> <destination> <value> [ <method> <params> ]"))
 		}
 
 		srv, err := GetFullNodeServices(cctx)

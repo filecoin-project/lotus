@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -119,7 +120,7 @@ var SyncMarkBadCmd = &cli.Command{
 		ctx := ReqContext(cctx)
 
 		if !cctx.Args().Present() {
-			return fmt.Errorf("must specify block cid to mark")
+			return errors.New("must specify block cid to mark")
 		}
 
 		bcid, err := cid.Decode(cctx.Args().First())
@@ -154,7 +155,7 @@ var SyncUnmarkBadCmd = &cli.Command{
 		}
 
 		if !cctx.Args().Present() {
-			return fmt.Errorf("must specify block cid to unmark")
+			return errors.New("must specify block cid to unmark")
 		}
 
 		bcid, err := cid.Decode(cctx.Args().First())

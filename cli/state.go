@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"io"
@@ -374,7 +375,7 @@ var StateExecTraceCmd = &cli.Command{
 			}
 		}
 		if trace == nil {
-			return fmt.Errorf("failed to find message in tipset trace output")
+			return errors.New("failed to find message in tipset trace output")
 		}
 
 		out, err := json.MarshalIndent(trace, "", "  ")
@@ -537,7 +538,7 @@ var StateListMinersCmd = &cli.Command{
 			}
 			return nil
 		default:
-			return fmt.Errorf("unrecognized sorting order")
+			return errors.New("unrecognized sorting order")
 		case "", "none":
 		}
 

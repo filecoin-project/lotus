@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -104,7 +105,7 @@ var SendCmd = &cli.Command{
 			}
 			// ideally, this should never happen
 			if !(params.To.Protocol() == address.ID || params.To.Protocol() == address.Delegated) {
-				return ShowHelp(cctx, fmt.Errorf("ETH addresses can only map to a FIL addresses starting with f410f or f0"))
+				return ShowHelp(cctx, errors.New("ETH addresses can only map to a FIL addresses starting with f410f or f0"))
 			}
 		}
 
@@ -213,7 +214,7 @@ var SendCmd = &cli.Command{
 
 		if cctx.IsSet("params-json") {
 			if params.Params != nil {
-				return fmt.Errorf("can only specify one of 'params-json' and 'params-hex'")
+				return errors.New("can only specify one of 'params-json' and 'params-hex'")
 			}
 			decparams, err := srv.DecodeTypedParamsFromJSON(ctx, params.To, params.Method, cctx.String("params-json"))
 			if err != nil {

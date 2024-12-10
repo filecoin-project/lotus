@@ -92,7 +92,7 @@ var f3SubCmdPowerTable = &cli.Command{
 			Flags:     []cli.Flag{f3FlagPowerTableFromEC},
 			Before: func(cctx *cli.Context) error {
 				if cctx.Args().Len() > 1 {
-					return fmt.Errorf("too many arguments")
+					return errors.New("too many arguments")
 				}
 				return nil
 			},
@@ -186,7 +186,7 @@ var f3SubCmdPowerTable = &cli.Command{
 			},
 			Before: func(cctx *cli.Context) error {
 				if cctx.Args().Len() < 1 {
-					return fmt.Errorf("at least one actor ID must be specified")
+					return errors.New("at least one actor ID must be specified")
 				}
 				return nil
 			},
