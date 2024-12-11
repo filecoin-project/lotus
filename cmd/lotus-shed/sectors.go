@@ -729,7 +729,7 @@ var dumpSectorOnChainInfoCmd = &cli.Command{
 			}
 
 			return nil
-		})
+		}, false)
 
 		if err != nil {
 			return xerrors.Errorf("iterating over claims: %w", err)
