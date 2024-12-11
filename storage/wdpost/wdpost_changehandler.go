@@ -4,6 +4,8 @@ import (
 	"context"
 	"sync"
 
+	"go.opencensus.io/tag"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/dline"
@@ -12,7 +14,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/metrics"
-	"go.opencensus.io/tag"
 )
 
 const (
