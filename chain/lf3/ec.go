@@ -138,7 +138,7 @@ func (ec *ecWrapper) getPowerTableLotusTSK(ctx context.Context, tsk types.TipSet
 		return nil, xerrors.Errorf("loading power actor state: %w", err)
 	}
 
-	int all, withPower
+	var all, withPower = 0, 0
 	var claimedPowerEntries gpbft.PowerEntries
 	err = powerState.ForEachClaim(func(minerAddr address.Address, claim power.Claim) error {
 		all++
