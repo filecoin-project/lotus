@@ -138,14 +138,11 @@ func (ec *ecWrapper) getPowerTableLotusTSK(ctx context.Context, tsk types.TipSet
 		return nil, xerrors.Errorf("loading power actor state: %w", err)
 	}
 
-	var all, withPower = 0, 0
 	var claimedPowerEntries gpbft.PowerEntries
 	err = powerState.ForEachClaim(func(minerAddr address.Address, claim power.Claim) error {
-		all++
 		if claim.QualityAdjPower.Sign() <= 0 {
 			return nil
 		}
-		withPower++
 
 		id, err := address.IDFromAddress(minerAddr)
 		if err != nil {
@@ -158,8 +155,7 @@ func (ec *ecWrapper) getPowerTableLotusTSK(ctx context.Context, tsk types.TipSet
 		}
 		claimedPowerEntries = append(claimedPowerEntries, pe)
 		return nil
-	}, false)
-	log.Errorf("claims all: %d, withPower: %d, ratio: %0.2f%%", all, withPower, float64(all)/float64(withPower)*100)
+	}, true)
 	if err != nil {
 		return nil, xerrors.Errorf("collecting the power table: %w", err)
 	}
