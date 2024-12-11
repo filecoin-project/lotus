@@ -4,12 +4,16 @@ import (
 	"context"
 	"sync"
 
+	"go.opencensus.io/tag"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/dline"
 
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/metrics"
 )
 
 const (
@@ -51,6 +55,7 @@ func (ch *changeHandler) start() {
 }
 
 func (ch *changeHandler) update(ctx context.Context, revert *types.TipSet, advance *types.TipSet) error {
+	ctx = addNetworkTag(ctx)
 	// Get the current deadline period
 	di, err := ch.api.StateMinerProvingDeadline(ctx, ch.actor, advance.Key())
 	if err != nil {
@@ -210,6 +215,7 @@ func (p *proveHandler) run() {
 }
 
 func (p *proveHandler) processHeadChange(ctx context.Context, newTS *types.TipSet, di *dline.Info) {
+	ctx = addNetworkTag(ctx)
 	// If the post window has expired, abort the current proof
 	if p.current != nil && newTS.Height() >= p.current.di.Close {
 		// Cancel the context on the current proof
@@ -387,6 +393,7 @@ func (s *submitHandler) run() {
 
 // processHeadChange is called when the chain head changes
 func (s *submitHandler) processHeadChange(ctx context.Context, revert *types.TipSet, advance *types.TipSet, di *dline.Info) {
+	ctx = addNetworkTag(ctx)
 	s.currentCtx = ctx
 	s.currentTS = advance
 	s.currentDI = di
@@ -539,4 +546,9 @@ func NextDeadline(currentDeadline *dline.Info) *dline.Info {
 
 func NewDeadlineInfo(periodStart abi.ChainEpoch, deadlineIdx uint64, currEpoch abi.ChainEpoch) *dline.Info {
 	return dline.NewInfo(periodStart, deadlineIdx, currEpoch, miner.WPoStPeriodDeadlines, miner.WPoStProvingPeriod(), miner.WPoStChallengeWindow(), miner.WPoStChallengeLookback, miner.FaultDeclarationCutoff)
+}
+
+func addNetworkTag(ctx context.Context) context.Context {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Network, buildconstants.NetworkBundle))
+	return ctx
 }

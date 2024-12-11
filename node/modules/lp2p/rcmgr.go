@@ -22,6 +22,7 @@ import (
 	"go.opencensus.io/tag"
 	"go.uber.org/fx"
 
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -179,6 +180,7 @@ type rcmgrMetrics struct{}
 
 func (r rcmgrMetrics) AllowConn(dir network.Direction, usefd bool) {
 	ctx := context.Background()
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Network, buildconstants.NetworkBundle))
 	if dir == network.DirInbound {
 		ctx, _ = tag.New(ctx, tag.Upsert(metrics.Direction, "inbound"))
 	} else {
@@ -194,6 +196,7 @@ func (r rcmgrMetrics) AllowConn(dir network.Direction, usefd bool) {
 
 func (r rcmgrMetrics) BlockConn(dir network.Direction, usefd bool) {
 	ctx := context.Background()
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Network, buildconstants.NetworkBundle))
 	if dir == network.DirInbound {
 		ctx, _ = tag.New(ctx, tag.Upsert(metrics.Direction, "inbound"))
 	} else {
@@ -209,6 +212,7 @@ func (r rcmgrMetrics) BlockConn(dir network.Direction, usefd bool) {
 
 func (r rcmgrMetrics) AllowStream(p peer.ID, dir network.Direction) {
 	ctx := context.Background()
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Network, buildconstants.NetworkBundle))
 	if dir == network.DirInbound {
 		ctx, _ = tag.New(ctx, tag.Upsert(metrics.Direction, "inbound"))
 	} else {
@@ -219,6 +223,7 @@ func (r rcmgrMetrics) AllowStream(p peer.ID, dir network.Direction) {
 
 func (r rcmgrMetrics) BlockStream(p peer.ID, dir network.Direction) {
 	ctx := context.Background()
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Network, buildconstants.NetworkBundle))
 	if dir == network.DirInbound {
 		ctx, _ = tag.New(ctx, tag.Upsert(metrics.Direction, "inbound"))
 	} else {
@@ -229,46 +234,54 @@ func (r rcmgrMetrics) BlockStream(p peer.ID, dir network.Direction) {
 
 func (r rcmgrMetrics) AllowPeer(p peer.ID) {
 	ctx := context.Background()
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Network, buildconstants.NetworkBundle))
 	stats.Record(ctx, metrics.RcmgrAllowPeer.M(1))
 }
 
 func (r rcmgrMetrics) BlockPeer(p peer.ID) {
 	ctx := context.Background()
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Network, buildconstants.NetworkBundle))
 	stats.Record(ctx, metrics.RcmgrBlockPeer.M(1))
 }
 
 func (r rcmgrMetrics) AllowProtocol(proto protocol.ID) {
 	ctx := context.Background()
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Network, buildconstants.NetworkBundle))
 	ctx, _ = tag.New(ctx, tag.Upsert(metrics.ProtocolID, string(proto)))
 	stats.Record(ctx, metrics.RcmgrAllowProto.M(1))
 }
 
 func (r rcmgrMetrics) BlockProtocol(proto protocol.ID) {
 	ctx := context.Background()
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Network, buildconstants.NetworkBundle))
 	ctx, _ = tag.New(ctx, tag.Upsert(metrics.ProtocolID, string(proto)))
 	stats.Record(ctx, metrics.RcmgrBlockProto.M(1))
 }
 
 func (r rcmgrMetrics) BlockProtocolPeer(proto protocol.ID, p peer.ID) {
 	ctx := context.Background()
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Network, buildconstants.NetworkBundle))
 	ctx, _ = tag.New(ctx, tag.Upsert(metrics.ProtocolID, string(proto)))
 	stats.Record(ctx, metrics.RcmgrBlockProtoPeer.M(1))
 }
 
 func (r rcmgrMetrics) AllowService(svc string) {
 	ctx := context.Background()
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Network, buildconstants.NetworkBundle))
 	ctx, _ = tag.New(ctx, tag.Upsert(metrics.ServiceID, svc))
 	stats.Record(ctx, metrics.RcmgrAllowSvc.M(1))
 }
 
 func (r rcmgrMetrics) BlockService(svc string) {
 	ctx := context.Background()
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Network, buildconstants.NetworkBundle))
 	ctx, _ = tag.New(ctx, tag.Upsert(metrics.ServiceID, svc))
 	stats.Record(ctx, metrics.RcmgrBlockSvc.M(1))
 }
 
 func (r rcmgrMetrics) BlockServicePeer(svc string, p peer.ID) {
 	ctx := context.Background()
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Network, buildconstants.NetworkBundle))
 	ctx, _ = tag.New(ctx, tag.Upsert(metrics.ServiceID, svc))
 	stats.Record(ctx, metrics.RcmgrBlockSvcPeer.M(1))
 }
