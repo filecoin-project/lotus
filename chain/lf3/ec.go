@@ -138,7 +138,7 @@ func (ec *ecWrapper) getPowerTableLotusTSK(ctx context.Context, tsk types.TipSet
 		return nil, xerrors.Errorf("loading power actor state: %w", err)
 	}
 
-	var powerEntries gpbft.PowerEntries
+	var claimedPowerEntries gpbft.PowerEntries
 	err = powerState.ForEachClaim(func(minerAddr address.Address, claim power.Claim) error {
 		if claim.QualityAdjPower.Sign() <= 0 {
 			return nil
@@ -153,46 +153,53 @@ func (ec *ecWrapper) getPowerTableLotusTSK(ctx context.Context, tsk types.TipSet
 			ID:    gpbft.ActorID(id),
 			Power: claim.QualityAdjPower,
 		}
-
-		act, err := state.GetActor(minerAddr)
-		if err != nil {
-			return xerrors.Errorf("(get sset) failed to load miner actor: %w", err)
-		}
-		mstate, err := miner.Load(ec.ChainStore.ActorStore(ctx), act)
-		if err != nil {
-			return xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
-		}
-
-		info, err := mstate.Info()
-		if err != nil {
-			return xerrors.Errorf("failed to load actor info: %w", err)
-		}
-		// check fee debt
-		if debt, err := mstate.FeeDebt(); err != nil {
-			return err
-		} else if !debt.IsZero() {
-			// fee debt don't add the miner to power table
-			return nil
-		}
-		// check consensus faults
-		if ts.Height() <= info.ConsensusFaultElapsed {
-			return nil
-		}
-
-		waddr, err := vm.ResolveToDeterministicAddr(state, ec.ChainStore.ActorStore(ctx), info.Worker)
-		if err != nil {
-			return xerrors.Errorf("resolve miner worker address: %w", err)
-		}
-
-		if waddr.Protocol() != address.BLS {
-			return xerrors.Errorf("wrong type of worker address")
-		}
-		pe.PubKey = waddr.Payload()
-		powerEntries = append(powerEntries, pe)
+		claimedPowerEntries = append(claimedPowerEntries, pe)
 		return nil
 	}, true)
 	if err != nil {
 		return nil, xerrors.Errorf("collecting the power table: %w", err)
+	}
+
+	powerEntries := gpbft.PowerEntries(make([]gpbft.PowerEntry, 0, len(claimedPowerEntries)))
+
+	for _, pe := range claimedPowerEntries {
+		minerAddr, err := address.NewIDAddress(uint64(pe.ID))
+		act, err := state.GetActor(minerAddr)
+		if err != nil {
+			return nil, xerrors.Errorf("(get sset) failed to load miner actor: %w", err)
+		}
+		mstate, err := miner.Load(ec.ChainStore.ActorStore(ctx), act)
+		if err != nil {
+			return nil, xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
+		}
+
+		info, err := mstate.Info()
+		if err != nil {
+			return nil, xerrors.Errorf("failed to load actor info: %w", err)
+		}
+		// check fee debt
+		if debt, err := mstate.FeeDebt(); err != nil {
+			return nil, err
+		} else if !debt.IsZero() {
+			// fee debt don't add the miner to power table
+			continue
+		}
+		// check consensus faults
+		if ts.Height() <= info.ConsensusFaultElapsed {
+			continue
+		}
+
+		waddr, err := vm.ResolveToDeterministicAddr(state, ec.ChainStore.ActorStore(ctx), info.Worker)
+		if err != nil {
+			return nil, xerrors.Errorf("resolve miner worker address: %w", err)
+		}
+
+		if waddr.Protocol() != address.BLS {
+			return nil, xerrors.Errorf("wrong type of worker address")
+		}
+
+		pe.PubKey = waddr.Payload()
+		powerEntries = append(powerEntries, pe)
 	}
 
 	sort.Sort(powerEntries)
