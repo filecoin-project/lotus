@@ -2753,14 +2753,10 @@ func PreUpgradeActorsV16(ctx context.Context, sm *stmgr.StateManager, cache stmg
 	if err != nil {
 		return xerrors.Errorf("error getting lookback ts for premigration: %w", err)
 	}
-	timeout := os.Getenv("LOTUS_MIGRATE_PROGRESS_LOG_SECONDS")
-	timeoutDuration, err := time.ParseDuration(timeout + "s")
-	if err != nil {
-		return xerrors.Errorf("error parsing LOTUS_MIGRATE_PROGRESS_LOG_SECONDS: %w", err)
-	}
 
-	if timeoutDuration == 0 {
-		timeoutDuration = time.Second * 2
+	timeoutDuration, err := getMigrationProgressLogTimeout()
+	if err != nil {
+		return xerrors.Errorf("error getting progress log timeout: %w", err)
 	}
 
 	config := migration.Config{
@@ -2779,14 +2775,10 @@ func UpgradeActorsV16(ctx context.Context, sm *stmgr.StateManager, cache stmgr.M
 	if workerCount <= 0 {
 		workerCount = 1
 	}
-	timeout := os.Getenv("LOTUS_MIGRATE_PROGRESS_LOG_SECONDS")
-	timeoutDuration, err := time.ParseDuration(timeout + "s")
-	if err != nil {
-		return cid.Undef, xerrors.Errorf("error parsing LOTUS_MIGRATE_PROGRESS_LOG_SECONDS: %w", err)
-	}
 
-	if timeoutDuration == 0 {
-		timeoutDuration = time.Second * 2
+	timeoutDuration, err := getMigrationProgressLogTimeout()
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("error getting progress log timeout: %w", err)
 	}
 
 	config := migration.Config{
@@ -3023,4 +3015,20 @@ func (ml migrationLogger) Log(level rt.LogLevel, msg string, args ...interface{}
 	case rt.ERROR:
 		log.Errorf(msg, args...)
 	}
+}
+
+func getMigrationProgressLogTimeout() (time.Duration, error) {
+	timeoutDuration := time.Second * 2 // default timeout
+	timeout := os.Getenv("LOTUS_MIGRATE_PROGRESS_LOG_SECONDS")
+	if timeout != "" {
+		seconds, err := strconv.Atoi(timeout)
+		if err != nil {
+			return 0, xerrors.Errorf("LOTUS_MIGRATE_PROGRESS_LOG_SECONDS must be an integer: %w", err)
+		}
+		if seconds <= 0 {
+			return 0, xerrors.Errorf("LOTUS_MIGRATE_PROGRESS_LOG_SECONDS must be positive")
+		}
+		timeoutDuration = time.Duration(seconds) * time.Second
+	}
+	return timeoutDuration, nil
 }
