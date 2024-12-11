@@ -435,7 +435,8 @@ func (n *Ensemble) Start() *Ensemble {
 		require.NoError(n.t, err)
 
 		opts := []node.Option{
-			node.FullAPI(&full.FullNode, node.Lite(full.options.lite)),
+			node.FullAPIv1(&full.FullNode, node.Lite(full.options.lite)),
+			node.FullAPIv2(&full.V2),
 			node.Base(),
 			node.Repo(r),
 			node.If(full.options.disableLibp2p, node.MockHost(n.mn)),
@@ -482,7 +483,6 @@ func (n *Ensemble) Start() *Ensemble {
 		// Construct the full node.
 		stop, err := node.New(ctx, opts...)
 		full.Stop = stop
-
 		require.NoError(n.t, err)
 
 		addr, err := full.WalletImport(context.Background(), &full.DefaultKey.KeyInfo)

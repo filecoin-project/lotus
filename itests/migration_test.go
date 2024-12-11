@@ -91,7 +91,7 @@ func TestMigrationNV17(t *testing.T) {
 
 	ens.InterconnectAll().BeginMining(10 * time.Millisecond)
 
-	clientApi := testClient.FullNode.(*impl.FullNodeAPI)
+	clientApi := testClient.FullNode.(*impl.FullNodeAPIv1)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -551,7 +551,7 @@ func TestMigrationNV18(t *testing.T) {
 
 	ens.InterconnectAll().BeginMining(10 * time.Millisecond)
 
-	clientApi := testClient.FullNode.(*impl.FullNodeAPI)
+	clientApi := testClient.FullNode.(*impl.FullNodeAPIv1)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -626,7 +626,7 @@ func TestMigrationNV19(t *testing.T) {
 
 	ens.InterconnectAll().BeginMining(blockTime)
 
-	clientApi := testClient.FullNode.(*impl.FullNodeAPI)
+	clientApi := testClient.FullNode.(*impl.FullNodeAPIv1)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -782,7 +782,7 @@ func TestMigrationNV21(t *testing.T) {
 
 	ens.InterconnectAll().BeginMining(10 * time.Millisecond)
 
-	clientApi := testClient.FullNode.(*impl.FullNodeAPI)
+	clientApi := testClient.FullNode.(*impl.FullNodeAPIv1)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -848,7 +848,7 @@ func TestMigrationNV23(t *testing.T) {
 
 	ens.InterconnectAll().BeginMining(10 * time.Millisecond)
 
-	clientApi := testClient.FullNode.(*impl.FullNodeAPI)
+	clientApi := testClient.FullNode.(*impl.FullNodeAPIv1)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -947,7 +947,7 @@ func TestMigrationNV24(t *testing.T) {
 
 	ens.InterconnectAll().BeginMining(blockTime)
 
-	clientApi := testClient.FullNode.(*impl.FullNodeAPI)
+	clientApi := testClient.FullNode.(*impl.FullNodeAPIv1)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -1085,7 +1085,7 @@ func TestMigrationNV24(t *testing.T) {
 
 // preFip0081StateMinerInitialPledgeForSector is the same calculation as StateMinerInitialPledgeForSector
 // but uses miner14's version of the calculation without the FIP-0081 changes.
-func preFip0081StateMinerInitialPledgeForSector(ctx context.Context, t *testing.T, client *impl.FullNodeAPI, sectorDuration abi.ChainEpoch, sectorSize abi.SectorSize, verifiedSize uint64, tsk types.TipSetKey) types.BigInt {
+func preFip0081StateMinerInitialPledgeForSector(ctx context.Context, t *testing.T, client *impl.FullNodeAPIv1, sectorDuration abi.ChainEpoch, sectorSize abi.SectorSize, verifiedSize uint64, tsk types.TipSetKey) types.BigInt {
 	req := require.New(t)
 
 	bs := blockstore.NewAPIBlockstore(client)
