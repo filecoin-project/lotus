@@ -56,7 +56,7 @@ jobs:
       - if: steps.unexplained.outputs.dependencies != ''
         env:
           MESSAGE: |
-            A new unreleased dependency was discovered in this PR. Please do one of the options in [dependency management conventions](https://github.com/filecoin-project/lotus/blob/master/CONTRIBUTING.md#dependency-management)
+            A new unreleased and unexplained dependency was discovered in this PR. Please do one of the options in [dependency management conventions](https://github.com/filecoin-project/lotus/blob/master/CONTRIBUTING.md#dependency-management).
 
             Unreleased dependencies:
             ${{steps.unexplained.outputs.dependencies}}
