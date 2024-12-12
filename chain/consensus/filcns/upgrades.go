@@ -2754,9 +2754,14 @@ func PreUpgradeActorsV16(ctx context.Context, sm *stmgr.StateManager, cache stmg
 		return xerrors.Errorf("error getting lookback ts for premigration: %w", err)
 	}
 
+	logPeriod, err := getMigrationProgressLogPeriod()
+	if err != nil {
+		return xerrors.Errorf("error getting progress log period: %w", err)
+	}
+
 	config := migration.Config{
 		MaxWorkers:        uint(workerCount),
-		ProgressLogPeriod: time.Minute * 5,
+		ProgressLogPeriod: logPeriod,
 	}
 
 	_, err = upgradeActorsV16Common(ctx, sm, cache, lbRoot, epoch, lbts, config)
@@ -2770,11 +2775,17 @@ func UpgradeActorsV16(ctx context.Context, sm *stmgr.StateManager, cache stmgr.M
 	if workerCount <= 0 {
 		workerCount = 1
 	}
+
+	logPeriod, err := getMigrationProgressLogPeriod()
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("error getting progress log period: %w", err)
+	}
+
 	config := migration.Config{
 		MaxWorkers:        uint(workerCount),
 		JobQueueSize:      1000,
 		ResultQueueSize:   100,
-		ProgressLogPeriod: 10 * time.Second,
+		ProgressLogPeriod: logPeriod,
 	}
 	newRoot, err := upgradeActorsV16Common(ctx, sm, cache, root, epoch, ts, config)
 	if err != nil {
@@ -3004,4 +3015,20 @@ func (ml migrationLogger) Log(level rt.LogLevel, msg string, args ...interface{}
 	case rt.ERROR:
 		log.Errorf(msg, args...)
 	}
+}
+
+func getMigrationProgressLogPeriod() (time.Duration, error) {
+	logPeriod := time.Second * 2 // default period
+	period := os.Getenv("LOTUS_MIGRATE_PROGRESS_LOG_SECONDS")
+	if period != "" {
+		seconds, err := strconv.Atoi(period)
+		if err != nil {
+			return 0, xerrors.Errorf("LOTUS_MIGRATE_PROGRESS_LOG_SECONDS must be an integer: %w", err)
+		}
+		if seconds <= 0 {
+			return 0, xerrors.Errorf("LOTUS_MIGRATE_PROGRESS_LOG_SECONDS must be positive")
+		}
+		logPeriod = time.Duration(seconds) * time.Second
+	}
+	return logPeriod, nil
 }
