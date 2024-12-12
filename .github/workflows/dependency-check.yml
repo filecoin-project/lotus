@@ -22,7 +22,20 @@ jobs:
           # `go list` isn't used because:
           # 1. it lists ALL the transitive dependencies, even those that are unused and don't make it to the go.mod file
           # 2. It doesn't extract the inline `dependency-check-ignore` comments.
-          sed -n '/require (/,/)/{/require (/!{/)/!p;};}' go.mod | sed 's/^[[:space:]]*//' | tee -a $GITHUB_OUTPUT
+          # Extract the lines from 'require (' to the first ')' including those lines in the go.mod file.
+          sed -n '/require (/,/)/p' go.mod |
+
+          # Remove the 'require (' line.
+          sed '/require (/d' |
+
+          # Remove the ')' line.
+          sed '/^)/d' |
+
+          # Remove leading whitespace from each line.
+          sed 's/^[[:space:]]*//' |
+
+          # Append the result to the file specified by the GITHUB_OUTPUT environment variable.
+          tee -a $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
       - id: unreleased
         env:
