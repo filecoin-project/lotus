@@ -2754,9 +2754,9 @@ func PreUpgradeActorsV16(ctx context.Context, sm *stmgr.StateManager, cache stmg
 		return xerrors.Errorf("error getting lookback ts for premigration: %w", err)
 	}
 
-	timeoutDuration, err := getMigrationProgressLogTimeout()
+	timeoutDuration, err := getMigrationProgressLogPeriod()
 	if err != nil {
-		return xerrors.Errorf("error getting progress log timeout: %w", err)
+		return xerrors.Errorf("error getting progress log period: %w", err)
 	}
 
 	config := migration.Config{
@@ -2776,9 +2776,9 @@ func UpgradeActorsV16(ctx context.Context, sm *stmgr.StateManager, cache stmgr.M
 		workerCount = 1
 	}
 
-	timeoutDuration, err := getMigrationProgressLogTimeout()
+	timeoutDuration, err := getMigrationProgressLogPeriod()
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("error getting progress log timeout: %w", err)
+		return cid.Undef, xerrors.Errorf("error getting progress log period: %w", err)
 	}
 
 	config := migration.Config{
@@ -3017,7 +3017,7 @@ func (ml migrationLogger) Log(level rt.LogLevel, msg string, args ...interface{}
 	}
 }
 
-func getMigrationProgressLogTimeout() (time.Duration, error) {
+func getMigrationProgressLogPeriod() (time.Duration, error) {
 	timeoutDuration := time.Second * 2 // default timeout
 	timeout := os.Getenv("LOTUS_MIGRATE_PROGRESS_LOG_SECONDS")
 	if timeout != "" {

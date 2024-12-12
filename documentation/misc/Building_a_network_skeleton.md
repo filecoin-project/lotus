@@ -456,9 +456,9 @@ Typically it's safe to not upgrade filecoin-ffi's version of go-state-types.  Th
             return xerrors.Errorf("error getting lookback ts for premigration: %w", err)
         }
 
-        timeoutDuration, err := getMigrationProgressLogTimeout()
+        timeoutDuration, err := getMigrationProgressLogPeriod()
         if err != nil {
-            return xerrors.Errorf("error getting progress log timeout: %w", err)
+            return xerrors.Errorf("error getting progress log period: %w", err)
         }
 
         config := migration.Config{
@@ -478,9 +478,9 @@ Typically it's safe to not upgrade filecoin-ffi's version of go-state-types.  Th
             workerCount = 1
         }
 
-        timeoutDuration, err := getMigrationProgressLogTimeout()
+        timeoutDuration, err := getMigrationProgressLogPeriod()
         if err != nil {
-            return cid.Undef, xerrors.Errorf("error getting progress log timeout: %w", err)
+            return cid.Undef, xerrors.Errorf("error getting progress log period: %w", err)
         }
 
         config := migration.Config{
