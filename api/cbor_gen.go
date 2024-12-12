@@ -3,6 +3,7 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -112,7 +113,7 @@ func (t *PaymentInfo) UnmarshalCBOR(r io.Reader) (err error) {
 	}()
 
 	if maj != cbg.MajMap {
-		return fmt.Errorf("cbor input should be of type map")
+		return errors.New("cbor input should be of type map")
 	}
 
 	if extra > cbg.MaxLength {
@@ -157,7 +158,7 @@ func (t *PaymentInfo) UnmarshalCBOR(r io.Reader) (err error) {
 			}
 
 			if maj != cbg.MajArray {
-				return fmt.Errorf("expected cbor array")
+				return errors.New("expected cbor array")
 			}
 
 			if extra > 0 {
@@ -294,7 +295,7 @@ func (t *SealedRef) UnmarshalCBOR(r io.Reader) (err error) {
 	}()
 
 	if maj != cbg.MajMap {
-		return fmt.Errorf("cbor input should be of type map")
+		return errors.New("cbor input should be of type map")
 	}
 
 	if extra > cbg.MaxLength {
@@ -326,7 +327,7 @@ func (t *SealedRef) UnmarshalCBOR(r io.Reader) (err error) {
 					return err
 				}
 				if maj != cbg.MajUnsignedInt {
-					return fmt.Errorf("wrong type for uint64 field")
+					return errors.New("wrong type for uint64 field")
 				}
 				t.Size = abi.UnpaddedPieceSize(extra)
 
@@ -341,7 +342,7 @@ func (t *SealedRef) UnmarshalCBOR(r io.Reader) (err error) {
 					return err
 				}
 				if maj != cbg.MajUnsignedInt {
-					return fmt.Errorf("wrong type for uint64 field")
+					return errors.New("wrong type for uint64 field")
 				}
 				t.Offset = abi.PaddedPieceSize(extra)
 
@@ -356,7 +357,7 @@ func (t *SealedRef) UnmarshalCBOR(r io.Reader) (err error) {
 					return err
 				}
 				if maj != cbg.MajUnsignedInt {
-					return fmt.Errorf("wrong type for uint64 field")
+					return errors.New("wrong type for uint64 field")
 				}
 				t.SectorID = abi.SectorNumber(extra)
 
@@ -426,7 +427,7 @@ func (t *SealedRefs) UnmarshalCBOR(r io.Reader) (err error) {
 	}()
 
 	if maj != cbg.MajMap {
-		return fmt.Errorf("cbor input should be of type map")
+		return errors.New("cbor input should be of type map")
 	}
 
 	if extra > cbg.MaxLength {
@@ -461,7 +462,7 @@ func (t *SealedRefs) UnmarshalCBOR(r io.Reader) (err error) {
 			}
 
 			if maj != cbg.MajArray {
-				return fmt.Errorf("expected cbor array")
+				return errors.New("expected cbor array")
 			}
 
 			if extra > 0 {
@@ -573,7 +574,7 @@ func (t *SealTicket) UnmarshalCBOR(r io.Reader) (err error) {
 	}()
 
 	if maj != cbg.MajMap {
-		return fmt.Errorf("cbor input should be of type map")
+		return errors.New("cbor input should be of type map")
 	}
 
 	if extra > cbg.MaxLength {
@@ -607,12 +608,12 @@ func (t *SealTicket) UnmarshalCBOR(r io.Reader) (err error) {
 				case cbg.MajUnsignedInt:
 					extraI = int64(extra)
 					if extraI < 0 {
-						return fmt.Errorf("int64 positive overflow")
+						return errors.New("int64 positive overflow")
 					}
 				case cbg.MajNegativeInt:
 					extraI = int64(extra)
 					if extraI < 0 {
-						return fmt.Errorf("int64 negative overflow")
+						return errors.New("int64 negative overflow")
 					}
 					extraI = -1 - extraI
 				default:
@@ -633,7 +634,7 @@ func (t *SealTicket) UnmarshalCBOR(r io.Reader) (err error) {
 				return fmt.Errorf("t.Value: byte array too large (%d)", extra)
 			}
 			if maj != cbg.MajByteString {
-				return fmt.Errorf("expected byte array")
+				return errors.New("expected byte array")
 			}
 
 			if extra > 0 {
@@ -729,7 +730,7 @@ func (t *SealSeed) UnmarshalCBOR(r io.Reader) (err error) {
 	}()
 
 	if maj != cbg.MajMap {
-		return fmt.Errorf("cbor input should be of type map")
+		return errors.New("cbor input should be of type map")
 	}
 
 	if extra > cbg.MaxLength {
@@ -763,12 +764,12 @@ func (t *SealSeed) UnmarshalCBOR(r io.Reader) (err error) {
 				case cbg.MajUnsignedInt:
 					extraI = int64(extra)
 					if extraI < 0 {
-						return fmt.Errorf("int64 positive overflow")
+						return errors.New("int64 positive overflow")
 					}
 				case cbg.MajNegativeInt:
 					extraI = int64(extra)
 					if extraI < 0 {
-						return fmt.Errorf("int64 negative overflow")
+						return errors.New("int64 negative overflow")
 					}
 					extraI = -1 - extraI
 				default:
@@ -789,7 +790,7 @@ func (t *SealSeed) UnmarshalCBOR(r io.Reader) (err error) {
 				return fmt.Errorf("t.Value: byte array too large (%d)", extra)
 			}
 			if maj != cbg.MajByteString {
-				return fmt.Errorf("expected byte array")
+				return errors.New("expected byte array")
 			}
 
 			if extra > 0 {
@@ -870,7 +871,7 @@ func (t *SectorPiece) UnmarshalCBOR(r io.Reader) (err error) {
 	}()
 
 	if maj != cbg.MajMap {
-		return fmt.Errorf("cbor input should be of type map")
+		return errors.New("cbor input should be of type map")
 	}
 
 	if extra > cbg.MaxLength {
