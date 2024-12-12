@@ -18,7 +18,10 @@ jobs:
       - id: all
         run: |
           echo "dependencies<<EOF" >> $GITHUB_OUTPUT
-          # Extract all dependencies from go.mod (include indirect dependencies and comments)
+          # Extract all dependencies from go.mod (include indirect dependencies and comments).
+          # `go list` isn't used because:
+          # 1. it lists ALL the transitive dependencies, even those that are unused and don't make it to the go.mod file
+          # 2. It doesn't extract the inline `dependency-check-ignore` comments.
           sed -n '/require (/,/)/{/require (/!{/)/!p;};}' go.mod | sed 's/^[[:space:]]*//' | tee -a $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
       - id: unreleased
