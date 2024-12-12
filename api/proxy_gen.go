@@ -728,6 +728,10 @@ type GatewayMethods struct {
 
 	EthUnsubscribe func(p0 context.Context, p1 ethtypes.EthSubscriptionID) (bool, error) ``
 
+	F3GetCertificate func(p0 context.Context, p1 uint64) (*certs.FinalityCertificate, error) ``
+
+	F3GetLatestCertificate func(p0 context.Context) (*certs.FinalityCertificate, error) ``
+
 	FilecoinAddressToEthAddress func(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthAddress, error) ``
 
 	GasEstimateGasPremium func(p0 context.Context, p1 uint64, p2 address.Address, p3 int64, p4 types.TipSetKey) (types.BigInt, error) ``
@@ -4660,6 +4664,28 @@ func (s *GatewayStruct) EthUnsubscribe(p0 context.Context, p1 ethtypes.EthSubscr
 
 func (s *GatewayStub) EthUnsubscribe(p0 context.Context, p1 ethtypes.EthSubscriptionID) (bool, error) {
 	return false, ErrNotSupported
+}
+
+func (s *GatewayStruct) F3GetCertificate(p0 context.Context, p1 uint64) (*certs.FinalityCertificate, error) {
+	if s.Internal.F3GetCertificate == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.F3GetCertificate(p0, p1)
+}
+
+func (s *GatewayStub) F3GetCertificate(p0 context.Context, p1 uint64) (*certs.FinalityCertificate, error) {
+	return nil, ErrNotSupported
+}
+
+func (s *GatewayStruct) F3GetLatestCertificate(p0 context.Context) (*certs.FinalityCertificate, error) {
+	if s.Internal.F3GetLatestCertificate == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.F3GetLatestCertificate(p0)
+}
+
+func (s *GatewayStub) F3GetLatestCertificate(p0 context.Context) (*certs.FinalityCertificate, error) {
+	return nil, ErrNotSupported
 }
 
 func (s *GatewayStruct) FilecoinAddressToEthAddress(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthAddress, error) {

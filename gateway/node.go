@@ -13,6 +13,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
+	"github.com/filecoin-project/go-f3/certs"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
@@ -160,6 +161,8 @@ type TargetAPI interface {
 	GetActorEventsRaw(ctx context.Context, filter *types.ActorEventFilter) ([]*types.ActorEvent, error)
 	SubscribeActorEventsRaw(ctx context.Context, filter *types.ActorEventFilter) (<-chan *types.ActorEvent, error)
 	ChainGetEvents(ctx context.Context, eventsRoot cid.Cid) ([]types.Event, error)
+	F3GetCertificate(ctx context.Context, instance uint64) (*certs.FinalityCertificate, error)
+	F3GetLatestCertificate(ctx context.Context) (*certs.FinalityCertificate, error)
 }
 
 var _ TargetAPI = *new(api.FullNode) // gateway depends on latest
