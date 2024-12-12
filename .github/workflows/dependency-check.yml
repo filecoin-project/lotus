@@ -42,7 +42,7 @@ jobs:
           DEPENDENCIES: ${{ steps.all.outputs.dependencies }}
         run: |
           echo "dependencies<<EOF" >> $GITHUB_OUTPUT
-          # Find all dependencies that use prerelease versions (exclude v0.0.0 versions)
+          # Find all dependencies that use prerelease versions (i.e., exclude vX.Y.Z and v0.0.0 versions).
           grep -Pv 'v0\.0\.0|v[0-9]+\.[0-9]+\.[0-9]+([^-]|$)' <<< "$DEPENDENCIES" | tee -a $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
       - id: unexplained
