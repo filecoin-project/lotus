@@ -73,10 +73,6 @@ type Manager struct {
 
 func NewManager(ctx context.Context, shutdown func(), sm stmgr.StateManagerAPI, pchstore *Store, api PaychAPI) *Manager {
 	impl := &managerAPIImpl{StateManagerAPI: sm, PaychAPI: api}
-
-	// Add network tag to context
-	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Network, buildconstants.NetworkBundle))
-
 	return &Manager{
 		ctx:      ctx,
 		shutdown: shutdown,

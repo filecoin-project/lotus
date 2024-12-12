@@ -11,6 +11,7 @@ import (
 	rpcmetrics "github.com/filecoin-project/go-jsonrpc/metrics"
 
 	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 )
 
 // Distribution
@@ -850,4 +851,9 @@ func Timer(ctx context.Context, m *stats.Float64Measure) func() time.Duration {
 		stats.Record(ctx, m.M(SinceInMilliseconds(start)))
 		return time.Since(start)
 	}
+}
+
+func AddNetworkTag(ctx context.Context) context.Context {
+	ctx, _ = tag.New(ctx, tag.Upsert(Network, buildconstants.NetworkBundle))
+	return ctx
 }

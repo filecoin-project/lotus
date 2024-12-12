@@ -17,7 +17,6 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/journal/alerting"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/metrics"
@@ -45,12 +44,6 @@ func NewDBIndex(al *alerting.Alerting, db *harmonydb.DB) *DBIndex {
 		alerting:   al,
 		pathAlerts: map[storiface.ID]alerting.AlertType{},
 	}
-}
-
-// addNetworkTag adds the network tag to the context for metrics
-func addNetworkTag(ctx context.Context) context.Context {
-	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Network, buildconstants.NetworkBundle))
-	return ctx
 }
 
 func (dbi *DBIndex) StorageList(ctx context.Context) (map[storiface.ID][]storiface.Decl, error) {
@@ -127,7 +120,7 @@ func splitString(str string) []string {
 }
 
 func (dbi *DBIndex) StorageAttach(ctx context.Context, si storiface.StorageInfo, st fsutil.FsStat) error {
-	ctx = addNetworkTag(ctx)
+	ctx = metrics.AddNetworkTag(ctx)
 
 	var allow, deny = make([]string, 0, len(si.AllowTypes)), make([]string, 0, len(si.DenyTypes))
 
@@ -321,7 +314,7 @@ func (dbi *DBIndex) StorageDetach(ctx context.Context, id storiface.ID, url stri
 }
 
 func (dbi *DBIndex) StorageReportHealth(ctx context.Context, id storiface.ID, report storiface.HealthReport) error {
-	ctx = addNetworkTag(ctx)
+	ctx = metrics.AddNetworkTag(ctx)
 
 	retryWait := time.Millisecond * 20
 retryReportHealth:
@@ -389,7 +382,7 @@ func (dbi *DBIndex) checkFileType(fileType storiface.SectorFileType) bool {
 }
 
 func (dbi *DBIndex) StorageDeclareSector(ctx context.Context, storageID storiface.ID, s abi.SectorID, ft storiface.SectorFileType, primary bool) error {
-	ctx = addNetworkTag(ctx)
+	ctx = metrics.AddNetworkTag(ctx)
 
 	if !dbi.checkFileType(ft) {
 		return xerrors.Errorf("invalid filetype")
@@ -690,7 +683,7 @@ func (dbi *DBIndex) StorageInfo(ctx context.Context, id storiface.ID) (storiface
 }
 
 func (dbi *DBIndex) StorageBestAlloc(ctx context.Context, allocate storiface.SectorFileType, ssize abi.SectorSize, pathType storiface.PathType, miner abi.ActorID) ([]storiface.StorageInfo, error) {
-	ctx = addNetworkTag(ctx)
+	ctx = metrics.AddNetworkTag(ctx)
 
 	var err error
 	var spaceReq uint64

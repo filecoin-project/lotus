@@ -22,7 +22,6 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/api/v1api"
-	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/lib/rpcenc"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/metrics/proxy"
@@ -50,7 +49,7 @@ func ServeRPC(h http.Handler, id string, addr multiaddr.Multiaddr) (StopFunc, er
 		ReadHeaderTimeout: 30 * time.Second,
 		BaseContext: func(listener net.Listener) context.Context {
 			ctx := context.Background()
-			ctx, _ = tag.New(ctx, tag.Upsert(metrics.Network, buildconstants.NetworkBundle))
+			ctx = metrics.AddNetworkTag(ctx)
 			ctx, _ = tag.New(ctx, tag.Upsert(metrics.APIInterface, id))
 			return ctx
 		},
