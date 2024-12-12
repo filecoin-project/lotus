@@ -13,12 +13,13 @@ jobs:
     name: Dependency Check
     steps:
       - uses: actions/checkout@v3
+        name: Check out the repository
         with:
           submodules: 'recursive'
       - id: all
+        name: Extract all dependencies from go.mod (include indirect dependencies and comments)
         run: |
           echo "dependencies<<EOF" >> $GITHUB_OUTPUT
-          # Extract all dependencies from go.mod (include indirect dependencies and comments).
           # `go list` isn't used because:
           # 1. it lists ALL the transitive dependencies, even those that are unused and don't make it to the go.mod file
           # 2. It doesn't extract the inline `dependency-check-ignore` comments.
@@ -38,22 +39,23 @@ jobs:
           tee -a $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
       - id: unreleased
+        name: Find all dependencies that use prerelease versions (i.e., exclude vX.Y.Z and v0.0.0 versions)
         env:
           DEPENDENCIES: ${{ steps.all.outputs.dependencies }}
         run: |
           echo "dependencies<<EOF" >> $GITHUB_OUTPUT
-          # Find all dependencies that use prerelease versions (i.e., exclude vX.Y.Z and v0.0.0 versions).
           grep -Pv 'v0\.0\.0-[0-9]{14}-[0-9a-f]{7,}$|v[0-9]+\.[0-9]+\.[0-9]+(\+incompatible)?$' <<< "$DEPENDENCIES" | tee -a $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
       - id: unexplained
+        name: Find all unreleased dependencies without a dependency-check-ignore comment
         env:
           DEPENDENCIES: ${{ steps.unreleased.outputs.dependencies }}
         run: |
           echo "dependencies<<EOF" >> $GITHUB_OUTPUT
-          # Find all unreleased dependencies without a dependency-check-ignore comment
           grep -Pv 'dependency-check-ignore:\s' <<< "$DEPENDENCIES" | tee -a $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
       - if: steps.unexplained.outputs.dependencies != ''
+        name: Throw if any unreleased unexplained dependencies exist
         env:
           MESSAGE: |
             A new unreleased and unexplained dependency was discovered in this PR. Please do one of the options in [dependency management conventions](https://github.com/filecoin-project/lotus/blob/master/CONTRIBUTING.md#dependency-management).
