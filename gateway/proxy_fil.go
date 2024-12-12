@@ -107,13 +107,6 @@ func (gw *Node) ChainGetParentReceipts(ctx context.Context, c cid.Cid) ([]*types
 	return gw.target.ChainGetParentReceipts(ctx, c)
 }
 
-func (gw *Node) ChainGetMessagesInTipset(ctx context.Context, tsk types.TipSetKey) ([]api.Message, error) {
-	if err := gw.limit(ctx, chainRateLimitTokens); err != nil {
-		return nil, err
-	}
-	return gw.target.ChainGetMessagesInTipset(ctx, tsk)
-}
-
 func (gw *Node) ChainGetBlockMessages(ctx context.Context, c cid.Cid) (*api.BlockMessages, error) {
 	if err := gw.limit(ctx, chainRateLimitTokens); err != nil {
 		return nil, err
@@ -668,13 +661,6 @@ func (gw *Node) StateGetClaims(ctx context.Context, providerAddr address.Address
 		return nil, err
 	}
 	return gw.target.StateGetClaims(ctx, providerAddr, tsk)
-}
-
-func (gw *Node) StateGetNetworkParams(ctx context.Context) (*api.NetworkParams, error) {
-	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
-		return nil, err
-	}
-	return gw.target.StateGetNetworkParams(ctx)
 }
 
 func (gw *Node) F3GetCertificate(ctx context.Context, instance uint64) (*certs.FinalityCertificate, error) {
