@@ -3018,7 +3018,7 @@ func (ml migrationLogger) Log(level rt.LogLevel, msg string, args ...interface{}
 }
 
 func getMigrationProgressLogPeriod() (time.Duration, error) {
-	logPeriod := time.Second * 2 // default timeout
+	logPeriod := time.Second * 2 // default period
 	period := os.Getenv("LOTUS_MIGRATE_PROGRESS_LOG_SECONDS")
 	if period != "" {
 		seconds, err := strconv.Atoi(period)
