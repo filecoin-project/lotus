@@ -558,3 +558,35 @@ func TestStatefulCallHandling(t *testing.T) {
 		req.ErrorContains(err, "filter not found")
 	}
 }
+
+func TestGatewayF3(t *testing.T) {
+	// Test that disabled & not-running F3 calls properly error
+
+	kit.QuietMiningLogs()
+
+	t.Run("not running", func(t *testing.T) {
+		ctx := context.Background()
+		nodes := startNodes(ctx, t)
+
+		cert, err := nodes.lite.F3GetLatestCertificate(ctx)
+		require.ErrorContains(t, err, "F3 is not running")
+		require.Nil(t, cert)
+
+		cert, err = nodes.lite.F3GetCertificate(ctx, 2)
+		require.ErrorContains(t, err, "F3 is not running")
+		require.Nil(t, cert)
+	})
+
+	t.Run("disabled", func(t *testing.T) {
+		ctx := context.Background()
+		nodes := startNodes(ctx, t, withNodeOpts(kit.F3Enabled(nil)))
+
+		cert, err := nodes.lite.F3GetLatestCertificate(ctx)
+		require.ErrorIs(t, err, api.ErrF3Disabled)
+		require.Nil(t, cert)
+
+		cert, err = nodes.lite.F3GetCertificate(ctx, 2)
+		require.ErrorIs(t, err, api.ErrF3Disabled)
+		require.Nil(t, cert)
+	})
+}

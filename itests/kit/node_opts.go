@@ -247,7 +247,16 @@ func MutateSealingConfig(mut func(sc *config.SealingConfig)) NodeOpt {
 		})))
 }
 
+// F3Enabled enables the F3 feature in the node. If the provided config is nil,
+// the feature is disabled.
 func F3Enabled(cfg *lf3.Config) NodeOpt {
+	if cfg == nil {
+		return ConstructorOpts(
+			node.Unset(new(*lf3.Config)),
+			node.Unset(new(manifest.ManifestProvider)),
+			node.Unset(new(*lf3.F3)),
+		)
+	}
 	return ConstructorOpts(
 		node.Override(new(*lf3.Config), cfg),
 		node.Override(new(manifest.ManifestProvider), lf3.NewManifestProvider),
