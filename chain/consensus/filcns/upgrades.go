@@ -2754,14 +2754,14 @@ func PreUpgradeActorsV16(ctx context.Context, sm *stmgr.StateManager, cache stmg
 		return xerrors.Errorf("error getting lookback ts for premigration: %w", err)
 	}
 
-	timeoutDuration, err := getMigrationProgressLogPeriod()
+	logPeriod, err := getMigrationProgressLogPeriod()
 	if err != nil {
 		return xerrors.Errorf("error getting progress log period: %w", err)
 	}
 
 	config := migration.Config{
 		MaxWorkers:        uint(workerCount),
-		ProgressLogPeriod: timeoutDuration,
+		ProgressLogPeriod: logPeriod,
 	}
 
 	_, err = upgradeActorsV16Common(ctx, sm, cache, lbRoot, epoch, lbts, config)
@@ -2776,7 +2776,7 @@ func UpgradeActorsV16(ctx context.Context, sm *stmgr.StateManager, cache stmgr.M
 		workerCount = 1
 	}
 
-	timeoutDuration, err := getMigrationProgressLogPeriod()
+	logPeriod, err := getMigrationProgressLogPeriod()
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("error getting progress log period: %w", err)
 	}
@@ -2785,7 +2785,7 @@ func UpgradeActorsV16(ctx context.Context, sm *stmgr.StateManager, cache stmgr.M
 		MaxWorkers:        uint(workerCount),
 		JobQueueSize:      1000,
 		ResultQueueSize:   100,
-		ProgressLogPeriod: timeoutDuration,
+		ProgressLogPeriod: logPeriod,
 	}
 	newRoot, err := upgradeActorsV16Common(ctx, sm, cache, root, epoch, ts, config)
 	if err != nil {
@@ -3018,17 +3018,17 @@ func (ml migrationLogger) Log(level rt.LogLevel, msg string, args ...interface{}
 }
 
 func getMigrationProgressLogPeriod() (time.Duration, error) {
-	timeoutDuration := time.Second * 2 // default timeout
-	timeout := os.Getenv("LOTUS_MIGRATE_PROGRESS_LOG_SECONDS")
-	if timeout != "" {
-		seconds, err := strconv.Atoi(timeout)
+	logPeriod := time.Second * 2 // default timeout
+	period := os.Getenv("LOTUS_MIGRATE_PROGRESS_LOG_SECONDS")
+	if period != "" {
+		seconds, err := strconv.Atoi(period)
 		if err != nil {
 			return 0, xerrors.Errorf("LOTUS_MIGRATE_PROGRESS_LOG_SECONDS must be an integer: %w", err)
 		}
 		if seconds <= 0 {
 			return 0, xerrors.Errorf("LOTUS_MIGRATE_PROGRESS_LOG_SECONDS must be positive")
 		}
-		timeoutDuration = time.Duration(seconds) * time.Second
+		logPeriod = time.Duration(seconds) * time.Second
 	}
-	return timeoutDuration, nil
+	return logPeriod, nil
 }
