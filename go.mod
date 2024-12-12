@@ -78,7 +78,7 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/gregdhill/go-openrpc v0.0.0-20220114144539-ae6f44720487
 	github.com/hako/durafmt v0.0.0-20200710122514-c0fb7b4da026
-	github.com/hannahhoward/go-pubsub v0.0.0-20200423002714-8d62886cc36e
+	github.com/hannahhoward/go-pubsub v0.0.0-20200423002714-8d62886cc36e // dependency-check-ignore: TODO: needs upgrading to tagged version
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/golang-lru/arc/v2 v2.0.7
 	github.com/hashicorp/golang-lru/v2 v2.0.7
@@ -352,7 +352,7 @@ require (
 	gopkg.in/cheggaaa/pb.v1 v1.0.28 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	howett.net/plist v0.0.0-20181124034731-591f970eefbb // indirect
+	howett.net/plist v0.0.0-20181124034731-591f970eefbb // indirect; dependency-check-ignore: required by github.com/elastic/go-sysinfo
 	lukechampine.com/blake3 v1.3.0 // indirect
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
