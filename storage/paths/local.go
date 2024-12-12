@@ -12,13 +12,16 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
+	"go.opencensus.io/tag"
 	"golang.org/x/xerrors"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/proof"
 
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/lib/result"
+	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
@@ -238,7 +241,7 @@ func (st *Local) OpenPath(ctx context.Context, p string) error {
 	if err != nil {
 		return err
 	}
-
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Network, buildconstants.NetworkBundle))
 	err = st.index.StorageAttach(ctx, storiface.StorageInfo{
 		ID:          meta.ID,
 		URLs:        st.urls,
@@ -330,6 +333,8 @@ func (st *Local) Redeclare(ctx context.Context, filterId *storiface.ID, dropMiss
 		if filterId != nil && *filterId != id {
 			continue
 		}
+
+		ctx, _ = tag.New(ctx, tag.Upsert(metrics.Network, buildconstants.NetworkBundle))
 
 		err = st.index.StorageAttach(ctx, storiface.StorageInfo{
 			ID:          id,

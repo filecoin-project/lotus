@@ -120,7 +120,6 @@ func splitString(str string) []string {
 }
 
 func (dbi *DBIndex) StorageAttach(ctx context.Context, si storiface.StorageInfo, st fsutil.FsStat) error {
-	ctx = metrics.AddNetworkTag(ctx)
 
 	var allow, deny = make([]string, 0, len(si.AllowTypes)), make([]string, 0, len(si.DenyTypes))
 
