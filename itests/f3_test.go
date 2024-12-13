@@ -109,7 +109,8 @@ func TestF3_InactiveModes(t *testing.T) {
 				"F3Participate":                   api.F3ParticipationLease{},
 				"F3GetCertificate":                (*certs.FinalityCertificate)(nil),
 				"F3GetLatestCertificate":          (*certs.FinalityCertificate)(nil),
-				"F3GetECPowerTable":               (gpbft.PowerEntries)(nil),
+				"F3GetManifest":                   (*manifest.Manifest)(nil),
+				"F3GetF3PowerTable":               (gpbft.PowerEntries)(nil),
 				"F3IsRunning":                     false,
 			},
 			customValidateReturn: map[string]func(t *testing.T, ret []reflect.Value){
