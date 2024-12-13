@@ -353,7 +353,9 @@ func (e *testEnv) waitTillF3Instance(i uint64, timeout time.Duration) {
 func (e *testEnv) waitTillManifestChange(newManifest *manifest.Manifest, timeout time.Duration) {
 	e.waitFor(func(n *kit.TestFullNode) bool {
 		m, err := n.F3GetManifest(e.testCtx)
-		require.NoError(e.t, err)
+		if err != nil || m == nil {
+			return false
+		}
 		return newManifest.Equal(m)
 	}, timeout)
 }

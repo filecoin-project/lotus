@@ -194,7 +194,7 @@ func (fff *F3) GetManifest(ctx context.Context) (*manifest.Manifest, error) {
 	}
 	cert0, err := fff.inner.GetCert(ctx, 0)
 	if err != nil {
-		return m, xerrors.Errorf("getting certificate for instance 0: %w", err)
+		return m, nil // return manifest without power table
 	}
 
 	var mCopy = *m
