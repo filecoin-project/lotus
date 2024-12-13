@@ -104,6 +104,13 @@ const (
 	HandleIncomingMessagesKey
 	HandlePaymentChannelManagerKey
 
+	// Deprecated: RelayIndexerMessagesKey is no longer used, since IPNI has
+	// deprecated the use of GossipSub for propagating advertisements. Use IPNI Sync
+	// protocol instead.
+	//
+	// See:
+	//  - https://github.com/ipni/specs/blob/main/IPNI_HTTP_PROVIDER.md
+	//  - https://github.com/ipni/go-libipni/tree/main/dagsync/ipnisync
 	RelayIndexerMessagesKey
 
 	// miner
