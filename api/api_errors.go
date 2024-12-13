@@ -98,7 +98,7 @@ func (ErrActorNotFound) Error() string { return "actor not found" }
 
 type errF3Disabled struct{}
 
-func (errF3Disabled) Error() string { return "f3 is disabled" }
+func (errF3Disabled) Error() string { return "F3 is disabled" }
 
 type errF3ParticipationTicketInvalid struct{}
 
@@ -124,7 +124,7 @@ func (errF3ParticipationTicketStartBeforeExisting) Error() string {
 
 type errF3NotReady struct{}
 
-func (errF3NotReady) Error() string { return "f3 isn't yet ready to participate" }
+func (errF3NotReady) Error() string { return "F3 isn't yet ready to participate" }
 
 // ErrExecutionReverted is used to return execution reverted with a reason for a revert in the `data` field.
 type ErrExecutionReverted struct {
