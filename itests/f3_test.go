@@ -2,6 +2,7 @@ package itests
 
 import (
 	"context"
+	"reflect"
 	"sync"
 	"testing"
 	"time"
@@ -14,10 +15,12 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-f3/certs"
 	"github.com/filecoin-project/go-f3/gpbft"
 	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/api"
 	lotus_api "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/lf3"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -55,6 +58,129 @@ func TestF3_Enabled(t *testing.T) {
 	e.waitTillAllMinersParticipate(10 * time.Second)
 	e.waitTillF3Instance(lf3.ParticipationLeaseTerm+1, 40*time.Second)
 	e.requireAllMinersParticipate()
+}
+
+// TestF3_Disabled tests the return values and errors of the F3 API when F3 is
+// disabled or is not yet running.
+func TestF3_InactiveModes(t *testing.T) {
+	kit.QuietMiningLogs()
+
+	testCases := []struct {
+		mode                 string
+		expectedErrors       map[string]any
+		expectedValues       map[string]any
+		customValidateReturn map[string]func(t *testing.T, ret []reflect.Value)
+	}{
+		{
+			mode: "disabled",
+			expectedErrors: map[string]any{
+				"F3GetOrRenewParticipationTicket": lotus_api.ErrF3Disabled,
+				"F3Participate":                   lotus_api.ErrF3Disabled,
+				"F3GetCertificate":                lotus_api.ErrF3Disabled,
+				"F3GetLatestCertificate":          lotus_api.ErrF3Disabled,
+				"F3GetManifest":                   lotus_api.ErrF3Disabled,
+				"F3GetECPowerTable":               lotus_api.ErrF3Disabled,
+				"F3GetF3PowerTable":               lotus_api.ErrF3Disabled,
+				"F3IsRunning":                     lotus_api.ErrF3Disabled,
+			},
+			expectedValues: map[string]any{
+				"F3GetOrRenewParticipationTicket": (api.F3ParticipationTicket)(nil),
+				"F3Participate":                   api.F3ParticipationLease{},
+				"F3GetCertificate":                (*certs.FinalityCertificate)(nil),
+				"F3GetLatestCertificate":          (*certs.FinalityCertificate)(nil),
+				"F3GetManifest":                   (*manifest.Manifest)(nil),
+				"F3GetECPowerTable":               (gpbft.PowerEntries)(nil),
+				"F3GetF3PowerTable":               (gpbft.PowerEntries)(nil),
+				"F3IsRunning":                     false,
+			},
+		},
+		{
+			mode: "not running",
+			expectedErrors: map[string]any{
+				"F3GetOrRenewParticipationTicket": api.ErrF3NotReady,
+				"F3Participate":                   api.ErrF3NotReady,
+				"F3GetCertificate":                "F3 is not running",
+				"F3GetLatestCertificate":          "F3 is not running",
+				"F3GetManifest":                   "no known network manifest",
+				"F3GetF3PowerTable":               "no known network manifest",
+			},
+			expectedValues: map[string]any{
+				"F3GetOrRenewParticipationTicket": (api.F3ParticipationTicket)(nil),
+				"F3Participate":                   api.F3ParticipationLease{},
+				"F3GetCertificate":                (*certs.FinalityCertificate)(nil),
+				"F3GetLatestCertificate":          (*certs.FinalityCertificate)(nil),
+				"F3GetManifest":                   (*manifest.Manifest)(nil),
+				"F3GetF3PowerTable":               (gpbft.PowerEntries)(nil),
+				"F3IsRunning":                     false,
+			},
+			customValidateReturn: map[string]func(t *testing.T, ret []reflect.Value){
+				"F3GetECPowerTable": func(t *testing.T, ret []reflect.Value) {
+					// special case because it simply returns power table from EC which is not F3 dependent
+					require.NotNil(t, ret[0].Interface(), "unexpected return value")
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.mode, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+			defer cancel()
+
+			opts := []any{kit.MockProofs()}
+			if tc.mode == "disabled" {
+				opts = append(opts, kit.F3Enabled(nil))
+			}
+
+			client, miner, ens := kit.EnsembleMinimal(t, opts...)
+			ens.InterconnectAll().BeginMining(2 * time.Millisecond)
+			ens.Start()
+
+			head := client.WaitTillChain(ctx, kit.HeightAtLeast(10))
+
+			rctx := reflect.ValueOf(ctx)
+			rtsk := reflect.ValueOf(head.Key())
+			rminer := reflect.ValueOf(miner.ActorAddr)
+			rticket := reflect.ValueOf([]byte("fish"))
+			rone := reflect.ValueOf(uint64(1))
+
+			calls := map[string][]reflect.Value{
+				"F3GetOrRenewParticipationTicket": {rctx, rminer, rticket, rone},
+				"F3Participate":                   {rctx, rticket},
+				"F3GetCertificate":                {rctx, rone},
+				"F3GetLatestCertificate":          {rctx},
+				"F3GetManifest":                   {rctx},
+				"F3GetECPowerTable":               {rctx, rtsk},
+				"F3GetF3PowerTable":               {rctx, rtsk},
+				"F3IsRunning":                     {rctx},
+			}
+
+			for fn, args := range calls {
+				t.Run(fn, func(t *testing.T) {
+					ret := reflect.ValueOf(client).MethodByName(fn).Call(args)
+
+					if expectedValue, hasExpectedValue := tc.expectedValues[fn]; hasExpectedValue {
+						require.Equal(t, expectedValue, ret[0].Interface(), "unexpected return value")
+					}
+
+					if expectedError, hasExpectedError := tc.expectedErrors[fn]; hasExpectedError {
+						switch err := expectedError.(type) {
+						case error:
+							require.ErrorIs(t, ret[1].Interface().(error), err, "unexpected error")
+						case string:
+							require.ErrorContains(t, ret[1].Interface().(error), err, "unexpected error")
+						}
+					} else {
+						require.Nil(t, ret[1].Interface(), "unexpected error")
+					}
+
+					if validate, hasValidate := tc.customValidateReturn[fn]; hasValidate {
+						validate(t, ret)
+					}
+				})
+			}
+		})
+	}
 }
 
 // TestF3_Rebootstrap tests F3 can be rebootsrapped by changing the manifest
@@ -227,7 +353,9 @@ func (e *testEnv) waitTillF3Instance(i uint64, timeout time.Duration) {
 func (e *testEnv) waitTillManifestChange(newManifest *manifest.Manifest, timeout time.Duration) {
 	e.waitFor(func(n *kit.TestFullNode) bool {
 		m, err := n.F3GetManifest(e.testCtx)
-		require.NoError(e.t, err)
+		if err != nil || m == nil {
+			return false
+		}
 		return newManifest.Equal(m)
 	}, timeout)
 }
