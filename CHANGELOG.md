@@ -1,12 +1,12 @@
 # Lotus changelog
 
-# Node and Miner v1.32.0-rc1 / 2024-12-05
+# Node and Miner v1.32.0-rc2 / 2024-12-13
 
 This is the second release candidate of the upcoming MANDATORY Lotus v1.32.0 release, which will deliver the Filecoin network version 25, codenamed “Teep”🦵.
 
-This release candidate **cancels the upgrade epoch** for the Calibration network, orginially planned to happen on 2024-12-16T23:00:00Z. Please read the full announcement [here](https://github.com/filecoin-project/community/discussions/74?sort=new#discussioncomment-11549619).
+This release candidate **cancels the upgrade epoch** for the Calibration network, orginially planned to happen on `2024-12-16T23:00:00Z`. Please read the full announcement [here](https://github.com/filecoin-project/community/discussions/74?sort=new#discussioncomment-11549619).
 
-Calibration network node operators that has already upgraded to **Lotus v1.32.0-rc1**, need to update to the **Lotus v1.32.0-rc2** by 2024-12-16T23:00:00Z. Node. Calibration network node operators that has not upgraded to the Lotus v1.32.0-rc1, can stay on the release that they are already on.
+Calibration network node operators that has already upgraded to **Lotus v1.32.0-rc1**, need to update to the **Lotus v1.32.0-rc2** by `2024-12-16T23:00:00Z`. Node. Calibration network node operators that has not upgraded to the Lotus v1.32.0-rc1, can stay on the release that they are already on.
 
 
 > [!NOTE]
