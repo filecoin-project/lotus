@@ -2,8 +2,6 @@
 
 # Node and Miner v1.32.0-rc2 / 2024-12-13
 
-This is the second release candidate of the upcoming MANDATORY Lotus v1.32.0 release, which will deliver the Filecoin network version 25, codenamed “Teep”🦵.
-
 This release candidate **cancels the upgrade epoch** for the Calibration network, orginially planned to happen on `2024-12-16T23:00:00Z`. Please read the full announcement [here](https://github.com/filecoin-project/community/discussions/74?sort=new#discussioncomment-11549619).
 
 Calibration network node operators that has already upgraded to **Lotus v1.32.0-rc1**, need to update to the **Lotus v1.32.0-rc2** by `2024-12-16T23:00:00Z`. Node. Calibration network node operators that has not upgraded to the Lotus v1.32.0-rc1, can stay on the release that they are already on.
@@ -15,7 +13,6 @@ Calibration network node operators that has already upgraded to **Lotus v1.32.0-
 > 2. This release candidate does NOT set the mainnet network upgrade epoch. It will be added in the final release (expected December 18th).
 
 ## ☢️ Upgrade Warnings ☢️
-- Operators that are 
 - If you have `EnableEthRPC` set to `true` in your config.toml, you need to ensure that `EnableIndexer` in the new ChainIndexer configuration section is also set to `true`. Failing to do so will result in an error during node initialization. You can read more about the new improved `ChainIndexer` feature in [the documentation for it here.](https://github.com/filecoin-project/lotus/blob/v1.31.0/documentation/en/chain-indexer-overview-for-operators.md#chainindexer-config)
 - If you are running the v1.30.x version of Lotus, please go through the Upgrade Warnings section for the [v1.30.* releases](https://github.com/filecoin-project/lotus/releases/tag/v1.31.0) and [v1.31.*](https://github.com/filecoin-project/lotus/releases/tag/v1.31.0) before upgrading to this release.
 
