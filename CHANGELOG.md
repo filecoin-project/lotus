@@ -25,28 +25,24 @@
 - feat: expose `ChainGetMessagesInTipset` in the Lotus Gateway API ([filecoin-project/lotus#12947](https://github.com/filecoin-project/lotus/pull/12947))
 - feat: add `Agent` to the `Filecoin.Version` response ([#12904](https://github.com/filecoin-project/lotus/issues/12904)) that will be used to identify the node type.
 
-# Node and Miner v1.32.0-rc1 / 2024-12-05
+# Node and Miner v1.32.0-rc2 / 2024-12-13
 
-This is the first release candidate of the upcoming MANDATORY Lotus v1.32.0 release, which will deliver the Filecoin network version 25, codenamed “Teep” 🦵.
+This release candidate **cancels the upgrade epoch** for the Calibration network, orginially planned to happen on `2024-12-16T23:00:00Z`. Please read the full announcement [here](https://github.com/filecoin-project/community/discussions/74?sort=new#discussioncomment-11549619).
 
-This release candidate sets the upgrade epoch for the calibration network to **Epoch 2235454 - 2024-12-16T23:00:00Z**. This should be the equivalent to:
+Calibration network node operators that has already upgraded to **Lotus v1.32.0-rc1**, need to update to the **Lotus v1.32.0-rc2** by `2024-12-16T23:00:00Z`. Node. Calibration network node operators that has not upgraded to the Lotus v1.32.0-rc1, can stay on the release that they are already on.
 
-- 15:00 in Los Angeles
-- 23:00 in London
-- 07:00 in Beijing (NB: 2024-12-17 in CST)
-
-You can follow this release issue for keeping up with the other expected release dates, epochs, and updates: ([filecoin-project/lotus#12750](https://github.com/filecoin-project/lotus/issues/12750))
 
 > [!NOTE]
 > 
-> 1. This release candidate does NOT set the mainnet network upgrade epoch. It will be added in the final release (expected December 18th).
+> 1. This release candidate **unsets** the Calibration network upgrade epoch, originally planned to happen on 2024-12-16T23:00:00Z.
+> 2. This release candidate does NOT set the mainnet network upgrade epoch. It will be added in the final release (expected December 18th).
 
 ## ☢️ Upgrade Warnings ☢️
 - If you have `EnableEthRPC` set to `true` in your config.toml, you need to ensure that `EnableIndexer` in the new ChainIndexer configuration section is also set to `true`. Failing to do so will result in an error during node initialization. You can read more about the new improved `ChainIndexer` feature in [the documentation for it here.](https://github.com/filecoin-project/lotus/blob/v1.31.0/documentation/en/chain-indexer-overview-for-operators.md#chainindexer-config)
 - If you are running the v1.30.x version of Lotus, please go through the Upgrade Warnings section for the [v1.30.* releases](https://github.com/filecoin-project/lotus/releases/tag/v1.31.0) and [v1.31.*](https://github.com/filecoin-project/lotus/releases/tag/v1.31.0) before upgrading to this release.
 
 ## 🏛️ Filecoin network version 25 FIPs
-- FIP-0086: Fast Finality in Filecoin (F3)
+- TBD
 
 ## 📦 v16 Builtin Actor Bundle
 
@@ -74,6 +70,7 @@ For certain node operators, such as full archival nodes or systems that need to 
 - Remove IPNI advertisement relay over pubsub via Lotus node as it now has been deprecated. ([filecoin-project/lotus#12768](https://github.com/filecoin-project/lotus/pull/12768)
 - During a network upgrade, log migration progress every 2 seconds so they are more helpful and informative. The `LOTUS_MIGRATE_PROGRESS_LOG_SECONDS` environment variable can be used to change this if needed. ([filecoin-project/lotus#12732](https://github.com/filecoin-project/lotus/pull/12732))
 - Add F3GetCertificate & F3GetLatestCertificate to the gateway. ([filecoin-project/lotus#12778](https://github.com/filecoin-project/lotus/pull/12778))
+- Optimize ForEachClaim to return only eligible claims ([filecoin-project/lotus#12770](https://github.com/filecoin-project/lotus/pull/12770)
 
 ## Bug Fixes
 
@@ -81,13 +78,14 @@ For certain node operators, such as full archival nodes or systems that need to 
 - Event APIs (`GetActorEventsRaw`, `SubscribeActorEventsRaw`, `eth_getLogs`, `eth_newFilter`, etc.) will now return an error when a request matches more than `MaxFilterResults` (default: 10,000) rather than silently truncating the results. Also apply an internal event matcher for `eth_getLogs` (etc.) to avoid builtin actor events on database query so as not to include them in `MaxFilterResults` calculation. ([filecoin-project/lotus#12671](https://github.com/filecoin-project/lotus/pull/12671))
 - `ChainIndexer#GetMsgInfo` returns an `ErrNotFound` when there are no rows. ([filecoin-project/lotus#12680](https://github.com/filecoin-project/lotus/pull/12680))
 - Gracefully handle EAM CreateAccount failures in `EthTraceBlock` (`trace_block`) and `EthTraceTransaction` (`trace_transaction`) calls. ([filecoin-project/lotus#12730](https://github.com/filecoin-project/lotus/pull/12730))
+- Make f3 gen power command being non-deterministic ([filecoin-project/lotus#12764](https://github.com/filecoin-project/lotus/pull/12764))
 
 ## 📝 Changelog
 
 For the set of changes since the last stable release:
 
-- Node: https://github.com/filecoin-project/lotus/compare/v1.31.0...v1.32.0-rc1
-- Miner: https://github.com/filecoin-project/lotus/compare/v1.31.0...miner/v1.31.0-rc1
+- Node: https://github.com/filecoin-project/lotus/compare/v1.31.0...v1.32.0-rc2
+- Miner: https://github.com/filecoin-project/lotus/compare/v1.31.0...miner/v1.32.0-rc2
 
 ## 👨‍👩‍👧‍👦 Contributors
 
