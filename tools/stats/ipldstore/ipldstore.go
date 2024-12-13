@@ -84,7 +84,7 @@ func (ht *ApiIpldStore) Get(ctx context.Context, c cid.Cid, out interface{}) err
 		return nil
 	}
 
-	return fmt.Errorf("Object does not implement CBORUnmarshaler")
+	return fmt.Errorf("object does not implement CBORUnmarshaler")
 }
 
 func (ht *ApiIpldStore) Put(ctx context.Context, v interface{}) (cid.Cid, error) {
