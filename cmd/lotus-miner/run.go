@@ -16,7 +16,6 @@ import (
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/build/buildconstants"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/ulimit"
 	"github.com/filecoin-project/lotus/metrics"
@@ -60,8 +59,8 @@ var runCmd = &cli.Command{
 			tag.Insert(metrics.Version, build.MinerBuildVersion),
 			tag.Insert(metrics.Commit, build.CurrentCommit),
 			tag.Insert(metrics.NodeType, "miner"),
-			tag.Insert(metrics.Network, buildconstants.NetworkBundle),
 		)
+		ctx = metrics.AddNetworkTag(ctx)
 		// Register all metric views
 		if err := view.Register(
 			metrics.MinerNodeViews...,

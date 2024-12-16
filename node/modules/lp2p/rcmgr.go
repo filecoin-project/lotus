@@ -22,7 +22,6 @@ import (
 	"go.opencensus.io/tag"
 	"go.uber.org/fx"
 
-	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -180,7 +179,7 @@ type rcmgrMetrics struct{}
 
 func (r rcmgrMetrics) AllowConn(dir network.Direction, usefd bool) {
 	ctx := context.Background()
-	ctx, _ = tag.New(ctx, tag.Upsert(metrics.Network, buildconstants.NetworkBundle))
+	ctx = metrics.AddNetworkTag(ctx)
 	if dir == network.DirInbound {
 		ctx, _ = tag.New(ctx, tag.Upsert(metrics.Direction, "inbound"))
 	} else {

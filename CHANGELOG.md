@@ -39,7 +39,6 @@ The Lotus v1.31.0 release introduces the new `ChainIndexer` subsystem, enhancing
 - Return a consistent error when encountering null rounds in ETH RPC method calls. ([filecoin-project/lotus#12655](https://github.com/filecoin-project/lotus/pull/12655))
 - Correct erroneous sector QAP-calculation upon sector extension in lotus-miner cli. ([filecoin-project/lotus#12720](https://github.com/filecoin-project/lotus/pull/12720))
 
-
 ## 📝 Changelog
 
 For the full set of changes since the last stable release:

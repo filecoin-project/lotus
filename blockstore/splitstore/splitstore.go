@@ -14,14 +14,12 @@ import (
 	ipld "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/stats"
-	"go.opencensus.io/tag"
 	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
 
 	bstore "github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -270,10 +268,8 @@ func Open(path string, ds dstore.Datastore, hot, cold bstore.Blockstore, cfg *Co
 	ss.chainSyncCond.L = &ss.chainSyncMx
 
 	baseCtx := context.Background()
-	ctx, err := tag.New(baseCtx, tag.Insert(metrics.Network, buildconstants.NetworkBundle))
-	if err != nil {
-		return nil, xerrors.Errorf("failed to create context with network tag: %w", err)
-	}
+	ctx := metrics.AddNetworkTag(baseCtx)
+
 	ss.ctx, ss.cancel = context.WithCancel(ctx)
 
 	ss.reifyCond.L = &ss.reifyMx
