@@ -74,7 +74,7 @@ func BenchmarkGetRandomness(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	cs := store.NewChainStore(bs, bs, mds, filcns.Weight, nil)
+	cs := store.NewChainStore(context.Background(), bs, bs, mds, filcns.Weight, nil)
 	defer cs.Close() //nolint:errcheck
 
 	b.ResetTimer()
@@ -109,7 +109,7 @@ func TestChainExportImport(t *testing.T) {
 	}
 
 	nbs := blockstore.NewMemorySync()
-	cs := store.NewChainStore(nbs, nbs, datastore.NewMapDatastore(), filcns.Weight, nil)
+	cs := store.NewChainStore(context.Background(), nbs, nbs, datastore.NewMapDatastore(), filcns.Weight, nil)
 	defer cs.Close() //nolint:errcheck
 
 	root, _, err := cs.Import(context.TODO(), buf)
@@ -144,7 +144,7 @@ func TestChainImportTipsetKeyCid(t *testing.T) {
 	}
 
 	nbs := blockstore.NewMemorySync()
-	cs := store.NewChainStore(nbs, nbs, datastore.NewMapDatastore(), filcns.Weight, nil)
+	cs := store.NewChainStore(context.Background(), nbs, nbs, datastore.NewMapDatastore(), filcns.Weight, nil)
 	defer cs.Close() //nolint:errcheck
 
 	root, _, err := cs.Import(ctx, buf)
@@ -190,7 +190,7 @@ func TestChainExportImportFull(t *testing.T) {
 
 	nbs := blockstore.NewMemorySync()
 	ds := datastore.NewMapDatastore()
-	cs := store.NewChainStore(nbs, nbs, ds, filcns.Weight, nil)
+	cs := store.NewChainStore(context.Background(), nbs, nbs, ds, filcns.Weight, nil)
 	defer cs.Close() //nolint:errcheck
 
 	root, _, err := cs.Import(context.TODO(), buf)

@@ -224,7 +224,7 @@ var importBenchCmd = &cli.Command{
 		}
 
 		metadataDs := datastore.NewMapDatastore()
-		cs := store.NewChainStore(bs, bs, metadataDs, filcns.Weight, nil)
+		cs := store.NewChainStore(cctx.Context, bs, bs, metadataDs, filcns.Weight, nil)
 		defer cs.Close() //nolint:errcheck
 
 		// TODO: We need to supply the actual beacon after v14

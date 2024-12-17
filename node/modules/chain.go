@@ -83,7 +83,7 @@ func ChainStore(lc fx.Lifecycle,
 	us stmgr.UpgradeSchedule,
 	j journal.Journal) (*store.ChainStore, error) {
 
-	chain := store.NewChainStore(cbs, sbs, ds, weight, j)
+	chain := store.NewChainStore(mctx, cbs, sbs, ds, weight, j)
 
 	if err := chain.Load(helpers.LifecycleCtx(mctx, lc)); err != nil {
 		return nil, xerrors.Errorf("loading chain state from disk: %w", err)

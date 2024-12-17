@@ -60,6 +60,7 @@ var runCmd = &cli.Command{
 			tag.Insert(metrics.Commit, build.CurrentCommit),
 			tag.Insert(metrics.NodeType, "miner"),
 		)
+		ctx = metrics.AddNetworkTag(ctx)
 		// Register all metric views
 		if err := view.Register(
 			metrics.MinerNodeViews...,

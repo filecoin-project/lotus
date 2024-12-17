@@ -113,7 +113,7 @@ var exportChainCmd = &cli.Command{
 			return err
 		}
 
-		cs := store.NewChainStore(bs, bs, mds, nil, nil)
+		cs := store.NewChainStore(ctx, bs, bs, mds, nil, nil)
 		defer cs.Close() //nolint:errcheck
 
 		if err := cs.Load(context.Background()); err != nil {

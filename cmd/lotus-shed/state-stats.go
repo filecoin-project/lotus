@@ -284,7 +284,7 @@ func loadChainStore(ctx context.Context, repoPath string) (*StoreHandle, error) 
 		}
 	}
 
-	cs := store.NewChainStore(bs, bs, mds, filcns.Weight, nil)
+	cs := store.NewChainStore(ctx, bs, bs, mds, filcns.Weight, nil)
 	if err := cs.Load(ctx); err != nil {
 		return nil, xerrors.Errorf("failed to load chain store: %w", err)
 	}

@@ -207,12 +207,12 @@ var DaemonCmd = &cli.Command{
 		default:
 			return fmt.Errorf("unrecognized profile type: %q", profile)
 		}
-
 		ctx, _ := tag.New(context.Background(),
 			tag.Insert(metrics.Version, build.NodeBuildVersion),
 			tag.Insert(metrics.Commit, build.CurrentCommit),
 			tag.Insert(metrics.NodeType, "chain"),
 		)
+		ctx = metrics.AddNetworkTag(ctx)
 		// Register all metric views
 		if err = view.Register(
 			metrics.ChainNodeViews...,
@@ -561,7 +561,7 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 		return xerrors.Errorf("failed to open journal: %w", err)
 	}
 
-	cst := store.NewChainStore(bs, bs, mds, filcns.Weight, j)
+	cst := store.NewChainStore(ctx, bs, bs, mds, filcns.Weight, j)
 	defer cst.Close() //nolint:errcheck
 
 	log.Infof("importing chain from %s...", fname)

@@ -122,7 +122,7 @@ func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message,
 	if len(curTs.Blocks()) > 0 {
 		baseFee = curTs.Blocks()[0].ParentBaseFee
 	} else {
-		baseFee, err = mp.api.ChainComputeBaseFee(context.Background(), curTs)
+		baseFee, err = mp.api.ChainComputeBaseFee(ctx, curTs)
 		if err != nil {
 			return nil, xerrors.Errorf("error computing basefee: %w", err)
 		}

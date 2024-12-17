@@ -125,7 +125,7 @@ var invariantsCmd = &cli.Command{
 		}()
 		bs := ss
 
-		cs := store.NewChainStore(bs, bs, mds, filcns.Weight, nil)
+		cs := store.NewChainStore(ctx, bs, bs, mds, filcns.Weight, nil)
 		defer cs.Close() //nolint:errcheck
 
 		sm, err := stmgr.NewStateManager(cs, consensus.NewTipSetExecutor(filcns.RewardFunc), vm.Syscalls(proofsffi.ProofVerifier), filcns.DefaultUpgradeSchedule(), nil, mds, nil)

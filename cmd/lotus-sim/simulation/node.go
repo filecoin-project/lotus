@@ -62,7 +62,7 @@ func NewNode(ctx context.Context, r repo.Repo) (nd *Node, _err error) {
 	}
 	return &Node{
 		repo:       lr,
-		Chainstore: store.NewChainStore(bs, bs, ds, filcns.Weight, nil),
+		Chainstore: store.NewChainStore(ctx, bs, bs, ds, filcns.Weight, nil),
 		MetadataDS: ds,
 		Blockstore: bs,
 	}, err
