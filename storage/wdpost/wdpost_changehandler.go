@@ -10,7 +10,6 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/metrics"
 )
 
 const (
@@ -211,7 +210,6 @@ func (p *proveHandler) run() {
 }
 
 func (p *proveHandler) processHeadChange(ctx context.Context, newTS *types.TipSet, di *dline.Info) {
-	ctx = metrics.AddNetworkTag(ctx)
 	// If the post window has expired, abort the current proof
 	if p.current != nil && newTS.Height() >= p.current.di.Close {
 		// Cancel the context on the current proof
@@ -389,7 +387,6 @@ func (s *submitHandler) run() {
 
 // processHeadChange is called when the chain head changes
 func (s *submitHandler) processHeadChange(ctx context.Context, revert *types.TipSet, advance *types.TipSet, di *dline.Info) {
-	ctx = metrics.AddNetworkTag(ctx)
 	s.currentCtx = ctx
 	s.currentTS = advance
 	s.currentDI = di

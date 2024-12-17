@@ -312,7 +312,6 @@ func (dbi *DBIndex) StorageDetach(ctx context.Context, id storiface.ID, url stri
 }
 
 func (dbi *DBIndex) StorageReportHealth(ctx context.Context, id storiface.ID, report storiface.HealthReport) error {
-	ctx = metrics.AddNetworkTag(ctx)
 
 	retryWait := time.Millisecond * 20
 retryReportHealth:
@@ -380,7 +379,6 @@ func (dbi *DBIndex) checkFileType(fileType storiface.SectorFileType) bool {
 }
 
 func (dbi *DBIndex) StorageDeclareSector(ctx context.Context, storageID storiface.ID, s abi.SectorID, ft storiface.SectorFileType, primary bool) error {
-	ctx = metrics.AddNetworkTag(ctx)
 
 	if !dbi.checkFileType(ft) {
 		return xerrors.Errorf("invalid filetype")
@@ -681,7 +679,6 @@ func (dbi *DBIndex) StorageInfo(ctx context.Context, id storiface.ID) (storiface
 }
 
 func (dbi *DBIndex) StorageBestAlloc(ctx context.Context, allocate storiface.SectorFileType, ssize abi.SectorSize, pathType storiface.PathType, miner abi.ActorID) ([]storiface.StorageInfo, error) {
-	ctx = metrics.AddNetworkTag(ctx)
 
 	var err error
 	var spaceReq uint64

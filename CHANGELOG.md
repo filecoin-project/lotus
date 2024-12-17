@@ -10,6 +10,7 @@
 # UNRELEASED
 
 - Add json output of tipsets to `louts chain list`. ([filecoin-project/lotus#12691](https://github.com/filecoin-project/lotus/pull/12691))
+- Lotus now reports the network name in the metrics. ([filecoin-project/lotus#12733](https://github.com/filecoin-project/lotus/pull/12733))
 
 # UNRELEASED v.1.32.0
 
@@ -28,7 +29,6 @@ The Lotus v1.31.0 release introduces the new `ChainIndexer` subsystem, enhancing
 - Return a "data" field on the "error" returned from RPC when `eth_call` and `eth_estimateGas` APIs encounter `execution reverted` errors. This is a standard expectation of Ethereum RPC tooling and may improve compatibility in some cases. ([filecoin-project/lotus#12553](https://github.com/filecoin-project/lotus/pull/12553))
 - Improve ETH-filter performance for nodes serving many clients. ([filecoin-project/lotus#12603](https://github.com/filecoin-project/lotus/pull/12603))
 - Implement F3 utility CLIs to list the power table for a given instance and sum the proportional power of a set of actors that participate in a given instance. ([filecoin-project/lotus#12698](https://github.com/filecoin-project/lotus/pull/12698))
-- Lotus now reports the network name in the metrics. ([filecoin-project/lotus#12733](https://github.com/filecoin-project/lotus/pull/12733))
 
 ## Bug Fixes
 

@@ -19,7 +19,6 @@ import (
 	"github.com/filecoin-project/go-state-types/proof"
 
 	"github.com/filecoin-project/lotus/lib/result"
-	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
@@ -240,8 +239,6 @@ func (st *Local) OpenPath(ctx context.Context, p string) error {
 		return err
 	}
 
-	ctx = metrics.AddNetworkTag(ctx)
-
 	err = st.index.StorageAttach(ctx, storiface.StorageInfo{
 		ID:          meta.ID,
 		URLs:        st.urls,
@@ -333,8 +330,6 @@ func (st *Local) Redeclare(ctx context.Context, filterId *storiface.ID, dropMiss
 		if filterId != nil && *filterId != id {
 			continue
 		}
-
-		ctx = metrics.AddNetworkTag(ctx)
 
 		err = st.index.StorageAttach(ctx, storiface.StorageInfo{
 			ID:          id,
