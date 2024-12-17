@@ -103,7 +103,7 @@ var gasTraceCmd = &cli.Command{
 			return err
 		}
 
-		cs := store.NewChainStore(bs, bs, mds, filcns.Weight, nil)
+		cs := store.NewChainStore(ctx, bs, bs, mds, filcns.Weight, nil)
 		defer cs.Close() //nolint:errcheck
 
 		sm, err := stmgr.NewStateManager(cs, consensus.NewTipSetExecutor(filcns.RewardFunc), vm.Syscalls(proofsffi.ProofVerifier), filcns.DefaultUpgradeSchedule(),
@@ -200,7 +200,7 @@ var replayOfflineCmd = &cli.Command{
 			return err
 		}
 
-		cs := store.NewChainStore(bs, bs, mds, filcns.Weight, nil)
+		cs := store.NewChainStore(ctx, bs, bs, mds, filcns.Weight, nil)
 		defer cs.Close() //nolint:errcheck
 
 		sm, err := stmgr.NewStateManager(cs, consensus.NewTipSetExecutor(filcns.RewardFunc), vm.Syscalls(proofsffi.ProofVerifier), filcns.DefaultUpgradeSchedule(),

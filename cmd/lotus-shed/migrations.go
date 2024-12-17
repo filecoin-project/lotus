@@ -174,7 +174,7 @@ var migrationsCmd = &cli.Command{
 		}()
 		bs := ss
 
-		cs := store.NewChainStore(bs, bs, mds, filcns.Weight, nil)
+		cs := store.NewChainStore(ctx, bs, bs, mds, filcns.Weight, nil)
 		defer cs.Close() //nolint:errcheck
 
 		// Note: we use a map datastore for the metadata to avoid writing / using cached migration results in the metadata store

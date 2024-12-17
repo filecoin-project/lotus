@@ -41,7 +41,7 @@ func PopulateFromSnapshot(ctx context.Context, path string, cs ChainStore) error
 		}
 	}
 
-	si, err := NewSqliteIndexer(path, cs, 0, false, 0)
+	si, err := NewSqliteIndexer(ctx, path, cs, 0, false, 0)
 	if err != nil {
 		return xerrors.Errorf("failed to create sqlite indexer: %w", err)
 	}

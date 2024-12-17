@@ -1,6 +1,7 @@
 package index
 
 import (
+	"context"
 	"database/sql"
 	"testing"
 
@@ -16,7 +17,7 @@ const (
 )
 
 func TestHasRevertedEventsInTipsetStmt(t *testing.T) {
-	s, err := NewSqliteIndexer(":memory:", nil, 0, false, 0)
+	s, err := NewSqliteIndexer(context.Background(), ":memory:", nil, 0, false, 0)
 	require.NoError(t, err)
 
 	// running on empty DB should return false
@@ -71,7 +72,7 @@ func TestHasRevertedEventsInTipsetStmt(t *testing.T) {
 }
 
 func TestGetNonRevertedTipsetCountStmts(t *testing.T) {
-	s, err := NewSqliteIndexer(":memory:", nil, 0, false, 0)
+	s, err := NewSqliteIndexer(context.Background(), ":memory:", nil, 0, false, 0)
 	require.NoError(t, err)
 
 	// running on empty DB should return 0
@@ -145,7 +146,7 @@ func TestGetNonRevertedTipsetCountStmts(t *testing.T) {
 }
 
 func TestGetEventIdAndEmitterIdStmtAndGetEventEntriesStmt(t *testing.T) {
-	s, err := NewSqliteIndexer(":memory:", nil, 0, false, 0)
+	s, err := NewSqliteIndexer(context.Background(), ":memory:", nil, 0, false, 0)
 	require.NoError(t, err)
 
 	// Insert a tipset message
@@ -268,7 +269,7 @@ func TestGetEventIdAndEmitterIdStmtAndGetEventEntriesStmt(t *testing.T) {
 	require.Equal(t, []byte("value3"), entries[0].value)
 }
 func TestUpdateTipsetToNonRevertedStmt(t *testing.T) {
-	s, err := NewSqliteIndexer(":memory:", nil, 0, false, 0)
+	s, err := NewSqliteIndexer(context.Background(), ":memory:", nil, 0, false, 0)
 	require.NoError(t, err)
 
 	// insert a reverted tipset
@@ -296,7 +297,7 @@ func TestUpdateTipsetToNonRevertedStmt(t *testing.T) {
 }
 
 func TestHasNullRoundAtHeightStmt(t *testing.T) {
-	s, err := NewSqliteIndexer(":memory:", nil, 0, false, 0)
+	s, err := NewSqliteIndexer(context.Background(), ":memory:", nil, 0, false, 0)
 	require.NoError(t, err)
 
 	// running on empty DB should return true
@@ -317,7 +318,7 @@ func TestHasNullRoundAtHeightStmt(t *testing.T) {
 }
 
 func TestHasTipsetStmt(t *testing.T) {
-	s, err := NewSqliteIndexer(":memory:", nil, 0, false, 0)
+	s, err := NewSqliteIndexer(context.Background(), ":memory:", nil, 0, false, 0)
 	require.NoError(t, err)
 
 	// running on empty DB should return false
@@ -340,7 +341,7 @@ func TestHasTipsetStmt(t *testing.T) {
 }
 
 func TestUpdateEventsToRevertedStmt(t *testing.T) {
-	s, err := NewSqliteIndexer(":memory:", nil, 0, false, 0)
+	s, err := NewSqliteIndexer(context.Background(), ":memory:", nil, 0, false, 0)
 	require.NoError(t, err)
 
 	// Insert a non-reverted tipset
@@ -390,7 +391,7 @@ func TestUpdateEventsToRevertedStmt(t *testing.T) {
 }
 
 func TestCountTipsetsAtHeightStmt(t *testing.T) {
-	s, err := NewSqliteIndexer(":memory:", nil, 0, false, 0)
+	s, err := NewSqliteIndexer(context.Background(), ":memory:", nil, 0, false, 0)
 	require.NoError(t, err)
 
 	// Test empty DB
@@ -438,7 +439,7 @@ func TestCountTipsetsAtHeightStmt(t *testing.T) {
 }
 
 func TestNonRevertedTipsetAtHeightStmt(t *testing.T) {
-	s, err := NewSqliteIndexer(":memory:", nil, 0, false, 0)
+	s, err := NewSqliteIndexer(context.Background(), ":memory:", nil, 0, false, 0)
 	require.NoError(t, err)
 
 	// Test empty DB
@@ -498,7 +499,7 @@ func TestNonRevertedTipsetAtHeightStmt(t *testing.T) {
 }
 
 func TestMinNonRevertedHeightStmt(t *testing.T) {
-	s, err := NewSqliteIndexer(":memory:", nil, 0, false, 0)
+	s, err := NewSqliteIndexer(context.Background(), ":memory:", nil, 0, false, 0)
 	require.NoError(t, err)
 
 	// Test empty DB
@@ -557,7 +558,7 @@ func verifyMinNonRevertedHeightStmt(t *testing.T, s *SqliteIndexer, expectedMinH
 }
 
 func TestGetMsgIdForMsgCidAndTipsetStmt(t *testing.T) {
-	s, err := NewSqliteIndexer(":memory:", nil, 0, false, 0)
+	s, err := NewSqliteIndexer(context.Background(), ":memory:", nil, 0, false, 0)
 	require.NoError(t, err)
 
 	// Insert a non-reverted tipset
@@ -603,7 +604,7 @@ func TestGetMsgIdForMsgCidAndTipsetStmt(t *testing.T) {
 }
 
 func TestForeignKeyCascadeDelete(t *testing.T) {
-	s, err := NewSqliteIndexer(":memory:", nil, 0, false, 0)
+	s, err := NewSqliteIndexer(context.Background(), ":memory:", nil, 0, false, 0)
 	require.NoError(t, err)
 
 	// Insert a tipset
@@ -647,7 +648,7 @@ func TestForeignKeyCascadeDelete(t *testing.T) {
 }
 
 func TestInsertTipsetMessage(t *testing.T) {
-	s, err := NewSqliteIndexer(":memory:", nil, 0, false, 0)
+	s, err := NewSqliteIndexer(context.Background(), ":memory:", nil, 0, false, 0)
 	require.NoError(t, err)
 
 	ts := tipsetMessage{

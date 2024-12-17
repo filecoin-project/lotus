@@ -419,7 +419,7 @@ func New(ctx context.Context, api Provider, ds dtypes.MetadataDS, us stmgr.Upgra
 	// enable initial prunes
 	mp.pruneCooldown <- struct{}{}
 
-	ctx, cancel := context.WithCancel(context.TODO())
+	ctx, cancel := context.WithCancel(ctx)
 
 	// load the current tipset and subscribe to head changes _before_ loading local messages
 	mp.curTs = api.SubscribeHeadChanges(func(rev, app []*types.TipSet) error {
@@ -664,7 +664,7 @@ func (mp *MessagePool) verifyMsgBeforeAdd(ctx context.Context, m *types.SignedMe
 		baseFee = curTs.Blocks()[0].ParentBaseFee
 	} else {
 		var err error
-		baseFee, err = mp.api.ChainComputeBaseFee(context.TODO(), curTs)
+		baseFee, err = mp.api.ChainComputeBaseFee(ctx, curTs)
 		if err != nil {
 			return false, xerrors.Errorf("computing basefee: %w", err)
 		}

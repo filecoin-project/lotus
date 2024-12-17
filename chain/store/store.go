@@ -133,7 +133,7 @@ type ChainStore struct {
 	wg       sync.WaitGroup
 }
 
-func NewChainStore(chainBs bstore.Blockstore, stateBs bstore.Blockstore, ds dstore.Batching, weight WeightFunc, j journal.Journal) *ChainStore {
+func NewChainStore(ctx context.Context, chainBs bstore.Blockstore, stateBs bstore.Blockstore, ds dstore.Batching, weight WeightFunc, j journal.Journal) *ChainStore {
 	c, _ := arc.NewARC[cid.Cid, mmCids](DefaultMsgMetaCacheSize)
 	tsc, _ := arc.NewARC[types.TipSetKey, *types.TipSet](DefaultTipSetCacheSize)
 	if j == nil {
@@ -191,7 +191,7 @@ func NewChainStore(chainBs bstore.Blockstore, stateBs bstore.Blockstore, ds dsto
 
 	hcmetric := func(rev, app []*types.TipSet) error {
 		for _, r := range app {
-			stats.Record(context.Background(), metrics.ChainNodeHeight.M(int64(r.Height())))
+			stats.Record(ctx, metrics.ChainNodeHeight.M(int64(r.Height())))
 		}
 		return nil
 	}

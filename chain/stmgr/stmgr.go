@@ -269,9 +269,8 @@ func cidsToKey(cids []cid.Cid) string {
 // pre-migration functions to run ahead of network upgrades.
 //
 // This method is not safe to invoke from multiple threads or concurrently with Stop.
-func (sm *StateManager) Start(context.Context) error {
-	var ctx context.Context
-	ctx, sm.cancel = context.WithCancel(context.Background())
+func (sm *StateManager) Start(ctx context.Context) error {
+	ctx, sm.cancel = context.WithCancel(ctx)
 	sm.shutdown = make(chan struct{})
 	go sm.preMigrationWorker(ctx)
 	return nil

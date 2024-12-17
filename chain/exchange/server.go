@@ -15,6 +15,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/metrics"
 )
 
 // server implements exchange.Server. It services requests for the
@@ -35,7 +36,9 @@ func NewServer(cs *store.ChainStore) Server {
 
 // HandleStream implements Server.HandleStream. Refer to the godocs there.
 func (s *server) HandleStream(stream inet.Stream) {
-	ctx, span := trace.StartSpan(context.Background(), "chainxchg.HandleStream")
+	ctx := context.Background()
+	ctx = metrics.AddNetworkTag(ctx)
+	ctx, span := trace.StartSpan(ctx, "chainxchg.HandleStream")
 	defer span.End()
 
 	defer stream.Close() //nolint:errcheck

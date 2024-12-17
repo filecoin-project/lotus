@@ -107,7 +107,7 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, params 
 		tipset   = params.Tipset
 		syscalls = vm.Syscalls(proofsffi.ProofVerifier)
 
-		cs      = store.NewChainStore(bs, bs, ds, filcns.Weight, nil)
+		cs      = store.NewChainStore(context.TODO(), bs, bs, ds, filcns.Weight, nil)
 		tse     = consensus.NewTipSetExecutor(filcns.RewardFunc)
 		sm, err = stmgr.NewStateManager(cs, tse, syscalls, filcns.DefaultUpgradeSchedule(), nil, ds, nil)
 	)

@@ -89,7 +89,7 @@ type SqliteIndexer struct {
 	writerLk sync.Mutex
 }
 
-func NewSqliteIndexer(path string, cs ChainStore, gcRetentionEpochs int64, reconcileEmptyIndex bool,
+func NewSqliteIndexer(ctx context.Context, path string, cs ChainStore, gcRetentionEpochs int64, reconcileEmptyIndex bool,
 	maxReconcileTipsets uint64) (si *SqliteIndexer, err error) {
 
 	if gcRetentionEpochs != 0 && gcRetentionEpochs < builtin.EpochsInDay {
@@ -101,7 +101,7 @@ func NewSqliteIndexer(path string, cs ChainStore, gcRetentionEpochs int64, recon
 		return nil, xerrors.Errorf("failed to setup message index db: %w", err)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(ctx)
 
 	defer func() {
 		if err != nil {

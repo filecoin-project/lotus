@@ -163,7 +163,9 @@ func NewSyncer(ds dtypes.MetadataDS,
 }
 
 func (syncer *Syncer) Start() {
-	tickerCtx, tickerCtxCancel := context.WithCancel(context.Background())
+	ctx := context.Background()
+	ctx = metrics.AddNetworkTag(ctx)
+	tickerCtx, tickerCtxCancel := context.WithCancel(ctx)
 	syncer.syncmgr.Start()
 
 	syncer.tickerCtxCancel = tickerCtxCancel
@@ -205,6 +207,7 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) bool {
 	}()
 
 	ctx := context.Background()
+	ctx = metrics.AddNetworkTag(ctx)
 	if fts == nil {
 		log.Errorf("got nil tipset in InformNewHead")
 		return false
@@ -302,6 +305,7 @@ func (syncer *Syncer) ValidateMsgMeta(fblk *types.FullBlock) error {
 	blockstore := bstore.NewMemory()
 	cst := cbor.NewCborStore(blockstore)
 	ctx := context.Background()
+	ctx = metrics.AddNetworkTag(ctx)
 	var bcids, scids []cid.Cid
 
 	for _, m := range fblk.BlsMessages {

@@ -92,7 +92,7 @@ func setupWithHeadIndexed(t *testing.T, headHeight abi.ChainEpoch, rng *pseudo.R
 	d := newDummyChainStore()
 	d.SetHeaviestTipSet(head)
 
-	s, err := NewSqliteIndexer(":memory:", d, 0, false, 0)
+	s, err := NewSqliteIndexer(context.Background(), ":memory:", d, 0, false, 0)
 	require.NoError(t, err)
 	insertHead(t, s, head, headHeight)
 
