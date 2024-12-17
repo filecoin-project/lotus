@@ -190,6 +190,7 @@ func (s *WindowPoStScheduler) Run(ctx context.Context) {
 				}
 
 				ctx, span := trace.StartSpan(ctx, "WindowPoStScheduler.headChange")
+
 				s.update(ctx, nil, chg.Val)
 
 				span.End()
