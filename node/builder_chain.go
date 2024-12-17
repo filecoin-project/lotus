@@ -44,6 +44,7 @@ import (
 	"github.com/filecoin-project/lotus/node/impl/net"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/modules/lp2p"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/paychmgr"
@@ -93,7 +94,11 @@ var ChainNode = Options(
 
 	// We don't want the SyncManagerCtor to be used as an fx constructor, but rather as a value.
 	// It will be called implicitly by the Syncer constructor.
-	Override(new(chain.SyncManagerCtor), func() chain.SyncManagerCtor { return chain.NewSyncManager }),
+	Override(new(chain.SyncManagerCtor), func(mctx helpers.MetricsCtx) chain.SyncManagerCtor {
+		return func(syncFn chain.SyncFunc) chain.SyncManager {
+			return chain.NewSyncManager(mctx, syncFn)
+		}
+	}),
 	Override(new(*chain.Syncer), modules.NewSyncer),
 	Override(new(exchange.Client), exchange.NewClient),
 

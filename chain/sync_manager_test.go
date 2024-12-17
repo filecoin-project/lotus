@@ -25,7 +25,7 @@ type syncOp struct {
 
 func runSyncMgrTest(t *testing.T, tname string, thresh int, tf func(*testing.T, *syncManager, chan *syncOp)) {
 	syncTargets := make(chan *syncOp)
-	sm := NewSyncManager(func(ctx context.Context, ts *types.TipSet) error {
+	sm := NewSyncManager(context.Background(), func(ctx context.Context, ts *types.TipSet) error {
 		ch := make(chan struct{})
 		syncTargets <- &syncOp{
 			ts:   ts,
