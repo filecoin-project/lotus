@@ -76,7 +76,7 @@ var f3GenExplicitPower = &cli.Command{
 		},
 		&cli.IntFlag{
 			Name:  "n",
-			Usage: "generate N entries, exclusive with ratio",
+			Usage: "generate n entries, exclusive with ratio",
 		},
 		&cli.Float64Flag{
 			Name:  "ratio",
@@ -110,8 +110,8 @@ var f3GenExplicitPower = &cli.Command{
 		if err != nil {
 			return fmt.Errorf("getting chain head: %w", err)
 		}
-		if cctx.IsSet("N") && cctx.IsSet("ratio") {
-			return fmt.Errorf("N and ratio options are exclusive")
+		if cctx.IsSet("n") && cctx.IsSet("ratio") {
+			return fmt.Errorf("n and ratio options are exclusive")
 		}
 
 		allPowerEntries, err := api.F3GetECPowerTable(ctx, ts.Key())
@@ -161,7 +161,7 @@ var f3GenExplicitPower = &cli.Command{
 		}
 		rng := rand.New(rand.NewSource(seed))
 
-		endSize := cctx.Int("N")
+		endSize := cctx.Int("n")
 		if cctx.IsSet("ratio") {
 			endSize = int(float64(total) * cctx.Float64("ratio"))
 		}

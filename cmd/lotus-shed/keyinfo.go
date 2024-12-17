@@ -113,7 +113,7 @@ var keyinfoVerifyCmd = &cli.Command{
 			}
 
 			if len(list) != 1 {
-				return fmt.Errorf("Unexpected number of keys, expected 1, found %d", len(list))
+				return fmt.Errorf("unexpected number of keys, expected 1, found %d", len(list))
 			}
 
 			name, err := base32.RawStdEncoding.DecodeString(fileName)
@@ -127,7 +127,7 @@ var keyinfoVerifyCmd = &cli.Command{
 
 			break
 		default:
-			return fmt.Errorf("Unknown keytype %s", keyInfo.Type)
+			return fmt.Errorf("unknown keytype %s", keyInfo.Type)
 		}
 
 		return nil

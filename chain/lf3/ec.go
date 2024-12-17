@@ -144,15 +144,6 @@ func (ec *ecWrapper) getPowerTableLotusTSK(ctx context.Context, tsk types.TipSet
 			return nil
 		}
 
-		// TODO: optimize
-		ok, err := powerState.MinerNominalPowerMeetsConsensusMinimum(minerAddr)
-		if err != nil {
-			return xerrors.Errorf("checking consensus minimums: %w", err)
-		}
-		if !ok {
-			return nil
-		}
-
 		id, err := address.IDFromAddress(minerAddr)
 		if err != nil {
 			return xerrors.Errorf("transforming address to ID: %w", err)
@@ -199,7 +190,7 @@ func (ec *ecWrapper) getPowerTableLotusTSK(ctx context.Context, tsk types.TipSet
 		pe.PubKey = waddr.Payload()
 		powerEntries = append(powerEntries, pe)
 		return nil
-	})
+	}, true)
 	if err != nil {
 		return nil, xerrors.Errorf("collecting the power table: %w", err)
 	}

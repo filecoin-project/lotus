@@ -267,7 +267,7 @@ func (c *ChainPointCollector) collectStaterootPoints(ctx context.Context, pl *in
 		pl.AddPoint(p)
 
 		return nil
-	})
+	}, false)
 }
 
 type msgTag struct {

@@ -875,7 +875,7 @@ func (ht *apiIpldStore) Get(ctx context.Context, c cid.Cid, out interface{}) err
 		return nil
 	}
 
-	return fmt.Errorf("Object does not implement CBORUnmarshaler")
+	return fmt.Errorf("object does not implement CBORUnmarshaler")
 }
 
 func (ht *apiIpldStore) Put(ctx context.Context, v interface{}) (cid.Cid, error) {
@@ -1252,11 +1252,11 @@ var ChainExportRangeCmd = &cli.Command{
 		}
 
 		if head.Height() < tail.Height() {
-			return errors.New("Height of --head tipset must be greater or equal to the height of the --tail tipset")
+			return errors.New("height of --head tipset must be greater or equal to the height of the --tail tipset")
 		}
 
 		if !cctx.Bool("internal") {
-			return errors.New("Non-internal exports are not implemented")
+			return errors.New("non-internal exports are not implemented")
 		}
 
 		err = api.ChainExportRangeInternal(ctx, head.Key(), tail.Key(), lapi.ChainExportConfig{
