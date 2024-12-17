@@ -312,7 +312,6 @@ func (dbi *DBIndex) StorageDetach(ctx context.Context, id storiface.ID, url stri
 }
 
 func (dbi *DBIndex) StorageReportHealth(ctx context.Context, id storiface.ID, report storiface.HealthReport) error {
-
 	retryWait := time.Millisecond * 20
 retryReportHealth:
 	_, err := dbi.harmonyDB.Exec(ctx,
