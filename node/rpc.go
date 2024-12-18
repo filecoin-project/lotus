@@ -48,7 +48,9 @@ func ServeRPC(h http.Handler, id string, addr multiaddr.Multiaddr) (StopFunc, er
 		Handler:           h,
 		ReadHeaderTimeout: 30 * time.Second,
 		BaseContext: func(listener net.Listener) context.Context {
-			ctx, _ := tag.New(context.Background(), tag.Upsert(metrics.APIInterface, id))
+			ctx := context.Background()
+			ctx = metrics.AddNetworkTag(ctx)
+			ctx, _ = tag.New(ctx, tag.Upsert(metrics.APIInterface, id))
 			return ctx
 		},
 	}

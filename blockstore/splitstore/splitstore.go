@@ -266,7 +266,11 @@ func Open(path string, ds dstore.Datastore, hot, cold bstore.Blockstore, cfg *Co
 	ss.txnViewsCond.L = &ss.txnViewsMx
 	ss.txnSyncCond.L = &ss.txnSyncMx
 	ss.chainSyncCond.L = &ss.chainSyncMx
-	ss.ctx, ss.cancel = context.WithCancel(context.Background())
+
+	baseCtx := context.Background()
+	ctx := metrics.AddNetworkTag(baseCtx)
+
+	ss.ctx, ss.cancel = context.WithCancel(ctx)
 
 	ss.reifyCond.L = &ss.reifyMx
 	ss.reifyPend = make(map[cid.Cid]struct{})
