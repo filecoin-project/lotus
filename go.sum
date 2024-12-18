@@ -401,6 +401,7 @@ github.com/go-openapi/swag v0.19.8/go.mod h1:ao+8BpOPyKdpQz3AOJfbeEVpLmWAvlT1IfT
 github.com/go-openapi/swag v0.19.11 h1:RFTu/dlFySpyVvJDfp/7674JY4SDglYWKztbiIGFpmc=
 github.com/go-openapi/swag v0.19.11/go.mod h1:Uc0gKkdR+ojzsEpjh39QChyu92vPgIr72POcgHMAgSY=
 github.com/go-stack/stack v1.8.0/go.mod h1:v0f6uXyyMGvRgIKkXu+yp6POWl0qKG85gN/melR3HDY=
+github.com/go-task/slim-sprig v0.0.0-20230315185526-52ccab3ef572 h1:tfuBGBXKqDEevZMzYi5KSi8KkcZtzBcTgAUUtapy0OI=
 github.com/go-task/slim-sprig/v3 v3.0.0 h1:sUs3vkvUymDpBKi3qH1YSqBQk9+9D/8M2mN1vB6EwHI=
 github.com/go-task/slim-sprig/v3 v3.0.0/go.mod h1:W848ghGpv3Qj3dhTPRyJypKRiqCdHZiAzKg9hl15HA8=
 github.com/go-yaml/yaml v2.1.0+incompatible/go.mod h1:w2MrLa16VYP0jy6N7M5kHaCkaLENm+P+Tv+MfurjSw0=
@@ -827,6 +828,8 @@ github.com/libp2p/go-libp2p v0.1.0/go.mod h1:6D/2OBauqLUoqcADOJpn9WbKqvaM07tDw68
 github.com/libp2p/go-libp2p v0.1.1/go.mod h1:I00BRo1UuUSdpuc8Q2mN7yDF/oTUTRAX6JWpTiK9Rp8=
 github.com/libp2p/go-libp2p v0.38.0-alpha h1:x9XUhLrm9g9h3+Z8H+JLCEBWQuYzqomqRv0ymyRkF7Q=
 github.com/libp2p/go-libp2p v0.38.0-alpha/go.mod h1:QWV4zGL3O9nXKdHirIC59DoRcZ446dfkjbOJ55NEWFo=
+github.com/libp2p/go-libp2p v0.38.0-alpha.0.20241218051213-03776cdfdbed h1:oJ/mSqQvxhWgTIz9QwvkJ8wLLVZhlQqAwWg/dslkt3Q=
+github.com/libp2p/go-libp2p v0.38.0-alpha.0.20241218051213-03776cdfdbed/go.mod h1:QWV4zGL3O9nXKdHirIC59DoRcZ446dfkjbOJ55NEWFo=
 github.com/libp2p/go-libp2p-asn-util v0.4.1 h1:xqL7++IKD9TBFMgnLPZR6/6iYhawHKHl950SO9L6n94=
 github.com/libp2p/go-libp2p-asn-util v0.4.1/go.mod h1:d/NI6XZ9qxw67b4e+NgpQexCIiFYJjErASrYW4PFDN8=
 github.com/libp2p/go-libp2p-autonat v0.1.0/go.mod h1:1tLf2yXxiE/oKGtDwPYWTSYG3PtvYlJmg7NeVtPRqH8=
