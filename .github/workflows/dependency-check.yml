@@ -11,11 +11,18 @@ jobs:
   dependency-check:
     runs-on: ubuntu-latest
     name: Dependency Check
+    env:
+      V0_PATTERN: 'v0\.0\.0-[0-9]{14}-[0-9a-f]{7,}(\s*(\/\/.*)?)?$'
+      RELEASE_PATTERN: 'v[0-9]+\.[0-9]+\.[0-9]+(\+incompatible)?(\s*(\/\/.*)?)?$'
+      IGNORE_PATTERN: 'dependency-check-ignore:\s'
+
     steps:
       - uses: actions/checkout@v3
         name: Check out the repository
         with:
           submodules: 'recursive'
+      - uses: ./.github/actions/install-go
+
       - id: all
         name: Extract all dependencies from go.mod (include indirect dependencies and comments)
         run: |
@@ -38,30 +45,48 @@ jobs:
           # Append the result to the file specified by the GITHUB_OUTPUT environment variable.
           tee -a $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
+
       - id: unreleased
         name: Find all dependencies that use prerelease versions (i.e., exclude vX.Y.Z and v0.0.0 versions)
         env:
           DEPENDENCIES: ${{ steps.all.outputs.dependencies }}
         run: |
           echo "dependencies<<EOF" >> $GITHUB_OUTPUT
-          grep -Pv '(v0\.0\.0-[0-9]{14}-[0-9a-f]{7,}|v[0-9]+\.[0-9]+\.[0-9]+(\+incompatible)?)( |$)' <<< "$DEPENDENCIES" | tee -a $GITHUB_OUTPUT
+          grep -Pv "$V0_PATTERN|$RELEASE_PATTERN" <<< "$DEPENDENCIES" | tee -a $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
+
       - id: unexplained
         name: Find all unreleased dependencies without a dependency-check-ignore comment
         env:
           DEPENDENCIES: ${{ steps.unreleased.outputs.dependencies }}
         run: |
           echo "dependencies<<EOF" >> $GITHUB_OUTPUT
-          grep -Pv 'dependency-check-ignore:\s' <<< "$DEPENDENCIES" | tee -a $GITHUB_OUTPUT
+          grep -Pv "$IGNORE_PATTERN" <<< "$DEPENDENCIES" | tee -a $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
-      - if: steps.unexplained.outputs.dependencies != ''
-        name: Throw if any unreleased unexplained dependencies exist
+
+      - id: v0check
+        name: Check v0.0.0 dependencies for available tags
+        run: |
+          echo "tagged<<EOF" >> $GITHUB_OUTPUT
+          grep -P "$V0_PATTERN" go.mod | grep -Pv "$IGNORE_PATTERN" | while read -r line; do
+            dep=$(echo "$line" | cut -d' ' -f1)
+            if [ ! -z "$(go list -m -versions $dep 2>/dev/null | awk 'NF>1')" ]; then
+              echo "$dep"
+            fi
+          done | tee -a $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - if: steps.unexplained.outputs.dependencies != '' || steps.v0check.outputs.tagged != ''
+        name: Throw if any unexplained dependencies exist
         env:
           MESSAGE: |
-            A new unreleased and unexplained dependency was discovered in this PR. Please do one of the options in [dependency management conventions](https://github.com/filecoin-project/lotus/blob/master/CONTRIBUTING.md#dependency-management).
+            Dependencies requiring attention found in this PR. Please follow the [dependency management conventions](https://github.com/filecoin-project/lotus/blob/master/CONTRIBUTING.md#dependency-management).
 
-            Unexplained unreleased dependencies:
-            ${{steps.unexplained.outputs.dependencies}}
+            ${{ steps.unexplained.outputs.dependencies != '' && 'Unexplained unreleased dependencies:' || '' }}
+            ${{ steps.unexplained.outputs.dependencies }}
+
+            ${{ steps.v0check.outputs.tagged != '' && 'Unexplained v0.0.0 dependencies with available tags:' || '' }}
+            ${{ steps.v0check.outputs.tagged }}
         run: |
           echo "::error::${MESSAGE//$'\n'/%0A}"
           exit 1
