@@ -13,6 +13,7 @@
 - Remove IPNI advertisement relay over pubsub via Lotus node as it now has been deprecated. ([filecoin-project/lotus#12768](https://github.com/filecoin-project/lotus/pull/12768)
 - During a network upgrade, log migration progress every 2 seconds so they are more helpful and informative. The `LOTUS_MIGRATE_PROGRESS_LOG_SECONDS` environment variable can be used to change this if needed. ([filecoin-project/lotus#12732](https://github.com/filecoin-project/lotus/pull/12732))
 - Add F3GetCertificate & F3GetLatestCertificate to the gateway. ([filecoin-project/lotus#12778](https://github.com/filecoin-project/lotus/pull/12778))
+- Add Magik's bootstrap node. ([filecoin-project/lotus#12792](https://github.com/filecoin-project/lotus/pull/12792))
 - Lotus now reports the network name as a tag in most metrics. Some untagged metrics will be completed in a follow-up at a later date. ([filecoin-project/lotus#12733](https://github.com/filecoin-project/lotus/pull/12733))
 
 # UNRELEASED v.1.32.0
