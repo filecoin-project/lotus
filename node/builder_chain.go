@@ -31,6 +31,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	rpcstmgr "github.com/filecoin-project/lotus/chain/stmgr/rpc"
 	"github.com/filecoin-project/lotus/chain/store"
+	"github.com/filecoin-project/lotus/chain/tsresolver"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	ledgerwallet "github.com/filecoin-project/lotus/chain/wallet/ledger"
@@ -167,8 +168,15 @@ var ChainNode = Options(
 	If(build.IsF3Enabled(),
 		Override(new(*lf3.Config), lf3.NewConfig),
 		Override(new(manifest.ManifestProvider), lf3.NewManifestProvider),
-		Override(new(*lf3.F3), lf3.New),
+		Override(new(lf3.F3API), lf3.New),
 	),
+	If(!build.IsF3Enabled(),
+		Override(new(lf3.F3API), func() lf3.F3API { return lf3.DisabledF3{} }),
+	),
+
+	Override(new(tsresolver.F3), From(new(lf3.F3API))),
+	Override(new(tsresolver.TipSetLoader), From(new(*store.ChainStore))),
+	Override(new(tsresolver.TipSetResolver), tsresolver.NewTipSetResolver),
 )
 
 func ConfigFullNode(c interface{}) Option {

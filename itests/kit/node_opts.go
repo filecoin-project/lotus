@@ -264,6 +264,11 @@ func F3Enabled(cfg *lf3.Config) NodeOpt {
 	)
 }
 
+// WithF3API replaces the node's F3API with the provided one. Useful for mocking F3 behavior.
+func WithF3API(f3 lf3.F3API) NodeOpt {
+	return ConstructorOpts(node.Override(new(lf3.F3API), func() lf3.F3API { return f3 }))
+}
+
 // SectorSize sets the sector size for this miner. Start() will populate the
 // corresponding proof type depending on the network version (genesis network
 // version if the Ensemble is unstarted, or the current network version
