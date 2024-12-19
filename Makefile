@@ -348,8 +348,11 @@ snap: lotus lotus-miner lotus-worker
 	snapcraft
 	# snapcraft upload ./lotus_*.snap
 
-docsgen-cli:
+docsgen-cli:lotus lotus-miner lotus-worker
 	$(GOCC) run ./scripts/docsgen-cli
+	./lotus config default > documentation/en/default-lotus-config.toml
+	./lotus-miner config default > documentation/en/default-lotus-miner-config.toml
+
 .PHONY: docsgen-cli
 
 print-%:

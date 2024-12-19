@@ -9,51 +9,46 @@ import (
 	"golang.org/x/xerrors"
 )
 
-func LogCmd() *cli.Command {
-	return &cli.Command{
-		Name:  "log",
-		Usage: "Manage logging",
-		Subcommands: []*cli.Command{
-			LogListCmd(),
-			LogSetLevelCmd(),
-			LogAlertsCmd(),
-		},
-	}
+var LogCmd = &cli.Command{
+	Name:  "log",
+	Usage: "Manage logging",
+	Subcommands: []*cli.Command{
+		LogList,
+		LogSetLevel,
+		LogAlerts,
+	},
 }
 
-func LogListCmd() *cli.Command {
-	return &cli.Command{
-		Name:  "list",
-		Usage: "List log systems",
-		Action: func(cctx *cli.Context) error {
-			api, closer, err := GetAPI(cctx)
-			if err != nil {
-				return err
-			}
-			defer closer()
+var LogList = &cli.Command{
+	Name:  "list",
+	Usage: "List log systems",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
 
-			ctx := ReqContext(cctx)
+		ctx := ReqContext(cctx)
 
-			systems, err := api.LogList(ctx)
-			if err != nil {
-				return err
-			}
+		systems, err := api.LogList(ctx)
+		if err != nil {
+			return err
+		}
 
-			for _, system := range systems {
-				fmt.Println(system)
-			}
+		for _, system := range systems {
+			fmt.Println(system)
+		}
 
-			return nil
-		},
-	}
+		return nil
+	},
 }
 
-func LogSetLevelCmd() *cli.Command {
-	return &cli.Command{
-		Name:      "set-level",
-		Usage:     "Set log level",
-		ArgsUsage: "[level]",
-		Description: `Set the log level for logging systems:
+var LogSetLevel = &cli.Command{
+	Name:      "set-level",
+	Usage:     "Set log level",
+	ArgsUsage: "[level]",
+	Description: `Set the log level for logging systems:
 
    The system flag can be specified multiple times.
 
@@ -71,91 +66,88 @@ func LogSetLevelCmd() *cli.Command {
    GOLOG_FILE      - Write logs to file
    GOLOG_OUTPUT    - Specify whether to output to file, stderr, stdout or a combination, i.e. file+stderr
 `,
-		Flags: []cli.Flag{
-			&cli.StringSliceFlag{
-				Name:  "system",
-				Usage: "limit to log system",
-				Value: &cli.StringSlice{},
-			},
+	Flags: []cli.Flag{
+		&cli.StringSliceFlag{
+			Name:  "system",
+			Usage: "limit to log system",
+			Value: &cli.StringSlice{},
 		},
-		Action: func(cctx *cli.Context) error {
-			api, closer, err := GetAPI(cctx)
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		if !cctx.Args().Present() {
+			return fmt.Errorf("level is required")
+		}
+
+		systems := cctx.StringSlice("system")
+		if len(systems) == 0 {
+			var err error
+			systems, err = api.LogList(ctx)
 			if err != nil {
 				return err
 			}
-			defer closer()
-			ctx := ReqContext(cctx)
+		}
 
-			if !cctx.Args().Present() {
-				return fmt.Errorf("level is required")
+		for _, system := range systems {
+			if err := api.LogSetLevel(ctx, system, cctx.Args().First()); err != nil {
+				return xerrors.Errorf("setting log level on %s: %v", system, err)
 			}
+		}
 
-			systems := cctx.StringSlice("system")
-			if len(systems) == 0 {
-				var err error
-				systems, err = api.LogList(ctx)
-				if err != nil {
-					return err
-				}
-			}
-
-			for _, system := range systems {
-				if err := api.LogSetLevel(ctx, system, cctx.Args().First()); err != nil {
-					return xerrors.Errorf("setting log level on %s: %v", system, err)
-				}
-			}
-
-			return nil
-		},
-	}
+		return nil
+	},
 }
 
-func LogAlertsCmd() *cli.Command {
-	return &cli.Command{
-		Name:  "alerts",
-		Usage: "Get alert states",
-		Flags: []cli.Flag{
-			&cli.BoolFlag{
-				Name:  "all",
-				Usage: "get all (active and inactive) alerts",
-			},
+var LogAlerts = &cli.Command{
+	Name:  "alerts",
+	Usage: "Get alert states",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "all",
+			Usage: "get all (active and inactive) alerts",
 		},
-		Action: func(cctx *cli.Context) error {
-			api, closer, err := GetAPI(cctx)
-			if err != nil {
-				return err
-			}
-			defer closer()
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
 
-			ctx := ReqContext(cctx)
+		ctx := ReqContext(cctx)
 
-			alerts, err := api.LogAlerts(ctx)
-			if err != nil {
-				return xerrors.Errorf("getting alerts: %w", err)
-			}
+		alerts, err := api.LogAlerts(ctx)
+		if err != nil {
+			return xerrors.Errorf("getting alerts: %w", err)
+		}
 
-			all := cctx.Bool("all")
+		all := cctx.Bool("all")
 
-			for _, alert := range alerts {
-				if !all && !alert.Active {
-					continue
-				}
-
-				active := color.RedString("active  ")
-				if !alert.Active {
-					active = color.GreenString("inactive")
-				}
-
-				fmt.Printf("%s %s:%s\n", active, alert.Type.System, alert.Type.Subsystem)
-				if alert.LastResolved != nil {
-					fmt.Printf("         last resolved at %s; reason: %s\n", alert.LastResolved.Time.Truncate(time.Millisecond), alert.LastResolved.Message)
-				}
-				if alert.LastActive != nil {
-					fmt.Printf("         %s %s; reason: %s\n", color.YellowString("last raised at"), alert.LastActive.Time.Truncate(time.Millisecond), alert.LastActive.Message)
-				}
+		for _, alert := range alerts {
+			if !all && !alert.Active {
+				continue
 			}
 
-			return nil
-		},
-	}
+			active := color.RedString("active  ")
+			if !alert.Active {
+				active = color.GreenString("inactive")
+			}
+
+			fmt.Printf("%s %s:%s\n", active, alert.Type.System, alert.Type.Subsystem)
+			if alert.LastResolved != nil {
+				fmt.Printf("         last resolved at %s; reason: %s\n", alert.LastResolved.Time.Truncate(time.Millisecond), alert.LastResolved.Message)
+			}
+			if alert.LastActive != nil {
+				fmt.Printf("         %s %s; reason: %s\n", color.YellowString("last raised at"), alert.LastActive.Time.Truncate(time.Millisecond), alert.LastActive.Message)
+			}
+		}
+
+		return nil
+	},
 }

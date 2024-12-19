@@ -54,6 +54,10 @@ func main() {
 	}
 
 	for name, app := range cliApps {
+		for _, cmd := range app.Commands {
+			cmd.HelpName = fmt.Sprintf("%s %s", app.HelpName, cmd.Name)
+		}
+
 		generator := NewDocGenerator(outputDir, app)
 		if err := generator.Generate(name); err != nil {
 			fmt.Printf(" ❌ %s: %v\n", name, err)
