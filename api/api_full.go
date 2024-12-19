@@ -768,6 +768,32 @@ type FullNode interface {
 	// MethodGroup: Eth
 	// These methods are used for Ethereum-compatible JSON-RPC calls
 	//
+	// ### Execution model reconciliation
+	//
+	// Ethereum relies on an immediate block-based execution model. The block that includes
+	// a transaction is also the block that executes it. Each block specifies the state root
+	// resulting from executing all transactions within it (output state).
+	//
+	// In Filecoin, at every epoch there is an unknown number of round winners all of whom are
+	// entitled to publish a block. Blocks are collected into a tipset. A tipset is committed
+	// only when the subsequent tipset is built on it (i.e. it becomes a parent). Block producers
+	// execute the parent tipset and specify the resulting state root in the block being produced.
+	// In other words, contrary to Ethereum, each block specifies the input state root.
+	//
+	// Ethereum clients expect transactions returned via eth_getBlock* to have a receipt
+	// (due to immediate execution). For this reason:
+	//
+	//   - eth_blockNumber returns the latest executed epoch (head - 1)
+	//   - The 'latest' block refers to the latest executed epoch (head - 1)
+	//   - The 'pending' block refers to the current speculative tipset (head)
+	//   - eth_getTransactionByHash returns the inclusion tipset of a message, but
+	//     only after it has executed.
+	//   - eth_getTransactionReceipt ditto.
+	//
+	// "Latest executed epoch" refers to the tipset that this node currently
+	// accepts as the best parent tipset, based on the blocks it is accumulating
+	// within the HEAD tipset.
+
 	// EthAccounts will always return [] since we don't expect Lotus to manage private keys
 	EthAccounts(ctx context.Context) ([]ethtypes.EthAddress, error) //perm:read
 	// EthAddressToFilecoinAddress converts an EthAddress into an f410 Filecoin Address

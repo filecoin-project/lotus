@@ -8,7 +8,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/itests/kit"
-	"github.com/filecoin-project/lotus/node/impl/full"
+	"github.com/filecoin-project/lotus/node/impl/eth"
 )
 
 func TestEthFilterAPIDisabledViaConfig(t *testing.T) {
@@ -21,41 +21,41 @@ func TestEthFilterAPIDisabledViaConfig(t *testing.T) {
 
 	_, err := client.EthNewPendingTransactionFilter(ctx)
 	require.NotNil(t, err)
-	require.Equal(t, err.Error(), full.ErrModuleDisabled.Error())
+	require.Equal(t, err.Error(), eth.ErrModuleDisabled.Error())
 
 	_, err = client.EthGetLogs(ctx, &ethtypes.EthFilterSpec{})
 	require.NotNil(t, err)
-	require.Equal(t, err.Error(), full.ErrModuleDisabled.Error())
+	require.Equal(t, err.Error(), eth.ErrModuleDisabled.Error())
 
 	_, err = client.EthGetFilterChanges(ctx, ethtypes.EthFilterID{})
 	require.NotNil(t, err)
-	require.Equal(t, err.Error(), full.ErrModuleDisabled.Error())
+	require.Equal(t, err.Error(), eth.ErrModuleDisabled.Error())
 
 	_, err = client.EthGetFilterLogs(ctx, ethtypes.EthFilterID{})
 	require.NotNil(t, err)
-	require.Equal(t, err.Error(), full.ErrModuleDisabled.Error())
+	require.Equal(t, err.Error(), eth.ErrModuleDisabled.Error())
 
 	_, err = client.EthNewFilter(ctx, &ethtypes.EthFilterSpec{})
 	require.NotNil(t, err)
-	require.Equal(t, err.Error(), full.ErrModuleDisabled.Error())
+	require.Equal(t, err.Error(), eth.ErrModuleDisabled.Error())
 
 	_, err = client.EthNewBlockFilter(ctx)
 	require.NotNil(t, err)
-	require.Equal(t, err.Error(), full.ErrModuleDisabled.Error())
+	require.Equal(t, err.Error(), eth.ErrModuleDisabled.Error())
 
 	_, err = client.EthNewPendingTransactionFilter(ctx)
 	require.NotNil(t, err)
-	require.Equal(t, err.Error(), full.ErrModuleDisabled.Error())
+	require.Equal(t, err.Error(), eth.ErrModuleDisabled.Error())
 
 	_, err = client.EthUninstallFilter(ctx, ethtypes.EthFilterID{})
 	require.NotNil(t, err)
-	require.Equal(t, err.Error(), full.ErrModuleDisabled.Error())
+	require.Equal(t, err.Error(), eth.ErrModuleDisabled.Error())
 
 	_, err = client.EthSubscribe(ctx, []byte("{}"))
 	require.NotNil(t, err)
-	require.Equal(t, err.Error(), full.ErrModuleDisabled.Error())
+	require.Equal(t, err.Error(), eth.ErrModuleDisabled.Error())
 
 	_, err = client.EthUnsubscribe(ctx, ethtypes.EthSubscriptionID{})
 	require.NotNil(t, err)
-	require.Equal(t, err.Error(), full.ErrModuleDisabled.Error())
+	require.Equal(t, err.Error(), eth.ErrModuleDisabled.Error())
 }
