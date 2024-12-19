@@ -126,7 +126,7 @@ func (s *state9) ListAllMiners() ([]address.Address, error) {
 	return miners, nil
 }
 
-func (s *state9) ForEachClaim(cb func(miner address.Address, claim Claim) error) error {
+func (s *state9) ForEachClaim(cb func(miner address.Address, claim Claim) error, onlyEligible bool) error {
 	claims, err := s.claims()
 	if err != nil {
 		return err
@@ -138,10 +138,25 @@ func (s *state9) ForEachClaim(cb func(miner address.Address, claim Claim) error)
 		if err != nil {
 			return err
 		}
-		return cb(a, Claim{
-			RawBytePower:    claim.RawBytePower,
-			QualityAdjPower: claim.QualityAdjPower,
-		})
+		if !onlyEligible {
+			return cb(a, Claim{
+				RawBytePower:    claim.RawBytePower,
+				QualityAdjPower: claim.QualityAdjPower,
+			})
+		}
+
+		eligible, err := s.State.ClaimMeetsConsensusMinimums(&claim)
+
+		if err != nil {
+			return fmt.Errorf("checking consensus minimums: %w", err)
+		}
+		if eligible {
+			return cb(a, Claim{
+				RawBytePower:    claim.RawBytePower,
+				QualityAdjPower: claim.QualityAdjPower,
+			})
+		}
+		return nil
 	})
 }
 

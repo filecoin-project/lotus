@@ -49,7 +49,7 @@ Note that this is enforced with https://github.com/filecoin-project/lotus/blob/m
 
 ## CHANGELOG Management
 
-To expedite the release process, the CHANGELOG is built-up incrementally.  
+To expedite the release process, the CHANGELOG is built-up incrementally.
 We enforce that each PR updates CHANGELOG.md or signals that the change doesn't need it.
 If the PR affects users (e.g., new feature, bug fix, system requirements change), update the CHANGELOG.md and add details to the UNRELEASED section.
 If the change does not require a CHANGELOG.md entry, do one of the following:
@@ -57,6 +57,20 @@ If the change does not require a CHANGELOG.md entry, do one of the following:
 - Add the label `skip/changelog` to the PR
 
 Note that this is enforced with https://github.com/filecoin-project/lotus/blob/master/.github/workflows/changelog.yml
+
+## Dependency Management
+
+We strive to use release dependencies because:
+1. Security / reliability - While there's no guarantee that a released version doesn't have bugs or issues, it seems fair to assume that non-released versions have even more. For example, https://github.com/filecoin-project/lotus/issues/12467 was triggered because of a bug in non-released library that lotus was depending on when the latest released version didn't have the bug.
+2. Faster builds
+3. Makes Lotus a better citizen when it's imported by other projects.
+
+We enforce that each dependency on an unreleased version of a package is explicitly documented in the `go.mod` file via an inline comment of the form `dependency-check-ignore: <reason>`.
+* If you are adding such a dependency, please add a suitable comment to the `go.mod` file as well.
+* This requirement applies both to direct and indirect dependencies.
+* This requirement applies to packages that have released versions (i.e., is not a `v0.0.0`).
+* This is enforced with https://github.com/filecoin-project/lotus/blob/master/.github/workflows/dependency-check.yml
+* This enforcement was initially done per [#7131](https://github.com/filecoin-project/lotus/issues/7131).
 
 ## Markdown Conventions
 We optimize our markdown files for viewing on GitHub. That isn't to say other syntaxes can't be used, but that is the flavor we focus on and at the minimum don't want to break.

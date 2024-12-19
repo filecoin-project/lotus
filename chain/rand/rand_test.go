@@ -1,4 +1,3 @@
-// stm:#unit
 package rand_test
 
 import (
@@ -53,13 +52,11 @@ func TestNullRandomnessV1(t *testing.T) {
 
 	randEpoch := ts.TipSet.TipSet().Height() - 2
 
-	//stm: @BLOCKCHAIN_RAND_GET_BEACON_RANDOMNESS_V1_01, @BLOCKCHAIN_RAND_EXTRACT_BEACON_ENTRY_FOR_EPOCH_01, @BLOCKCHAIN_RAND_GET_BEACON_RANDOMNESS_TIPSET_02
 	rand1, err := cg.StateManager().GetRandomnessFromBeacon(ctx, pers, randEpoch, entropy, ts.TipSet.TipSet().Key())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	//stm: @BLOCKCHAIN_BEACON_GET_BEACON_FOR_EPOCH_01
 	bch := cg.BeaconSchedule().BeaconForEpoch(randEpoch).Entry(ctx, uint64(beforeNullHeight)+offset)
 
 	select {
@@ -68,7 +65,6 @@ func TestNullRandomnessV1(t *testing.T) {
 			t.Fatal(resp.Err)
 		}
 
-		//stm: @BLOCKCHAIN_RAND_DRAW_RANDOMNESS_01
 		rand2, err := rand.DrawRandomnessFromBase(resp.Entry.Data, pers, randEpoch, entropy)
 		if err != nil {
 			t.Fatal(err)
@@ -132,13 +128,11 @@ func TestNullRandomnessV2(t *testing.T) {
 
 	randEpoch := ts.TipSet.TipSet().Height() - 2
 
-	//stm: @BLOCKCHAIN_RAND_GET_BEACON_RANDOMNESS_V2_01
 	rand1, err := cg.StateManager().GetRandomnessFromBeacon(ctx, pers, randEpoch, entropy, ts.TipSet.TipSet().Key())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	//stm: @BLOCKCHAIN_BEACON_GET_BEACON_FOR_EPOCH_01
 	bch := cg.BeaconSchedule().BeaconForEpoch(randEpoch).Entry(ctx, uint64(ts.TipSet.TipSet().Height())+offset)
 
 	select {
@@ -147,7 +141,6 @@ func TestNullRandomnessV2(t *testing.T) {
 			t.Fatal(resp.Err)
 		}
 
-		//stm: @BLOCKCHAIN_RAND_DRAW_RANDOMNESS_01, @BLOCKCHAIN_RAND_EXTRACT_BEACON_ENTRY_FOR_EPOCH_01, @BLOCKCHAIN_RAND_GET_BEACON_RANDOMNESS_TIPSET_03
 		// note that the randEpoch passed to DrawRandomnessFromBase is still randEpoch (not the latest ts height)
 		rand2, err := rand.DrawRandomnessFromBase(resp.Entry.Data, pers, randEpoch, entropy)
 		if err != nil {
@@ -216,13 +209,11 @@ func TestNullRandomnessV3(t *testing.T) {
 
 	randEpoch := ts.TipSet.TipSet().Height() - 2
 
-	//stm: @BLOCKCHAIN_RAND_GET_BEACON_RANDOMNESS_V3_01, @BLOCKCHAIN_RAND_EXTRACT_BEACON_ENTRY_FOR_EPOCH_01
 	rand1, err := cg.StateManager().GetRandomnessFromBeacon(ctx, pers, randEpoch, entropy, ts.TipSet.TipSet().Key())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	//stm: @BLOCKCHAIN_BEACON_GET_BEACON_FOR_EPOCH_01
 	bch := cg.BeaconSchedule().BeaconForEpoch(randEpoch).Entry(ctx, uint64(randEpoch)+offset)
 
 	select {
@@ -231,7 +222,6 @@ func TestNullRandomnessV3(t *testing.T) {
 			t.Fatal(resp.Err)
 		}
 
-		//stm: @BLOCKCHAIN_RAND_DRAW_RANDOMNESS_01
 		rand2, err := rand.DrawRandomnessFromBase(resp.Entry.Data, pers, randEpoch, entropy)
 		if err != nil {
 			t.Fatal(err)

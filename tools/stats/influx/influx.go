@@ -115,11 +115,11 @@ func GetLastRecordedHeight(influx client.Client, database string) (int64, error)
 	}
 
 	if len(res.Results) == 0 {
-		return 0, fmt.Errorf("No results found for last recorded height")
+		return 0, fmt.Errorf("no results found for last recorded height")
 	}
 
 	if len(res.Results[0].Series) == 0 {
-		return 0, fmt.Errorf("No results found for last recorded height")
+		return 0, fmt.Errorf("no results found for last recorded height")
 	}
 
 	height, err := (res.Results[0].Series[0].Values[0][1].(json.Number)).Int64()

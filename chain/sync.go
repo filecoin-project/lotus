@@ -867,6 +867,9 @@ loop:
 
 	if !ignoreCheckpoint {
 		if chkpt := syncer.store.GetCheckpoint(); chkpt != nil && base.Height() <= chkpt.Height() {
+			for _, b := range incoming.Blocks() {
+				syncer.bad.Add(b.Cid(), NewBadBlockReason(incoming.Cids(), "diverges from checkpoint"))
+			}
 			return nil, xerrors.Errorf("merge point affecting the checkpoing: %w", ErrForkCheckpoint)
 		}
 	}

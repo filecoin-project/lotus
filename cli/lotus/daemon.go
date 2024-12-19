@@ -207,12 +207,12 @@ var DaemonCmd = &cli.Command{
 		default:
 			return fmt.Errorf("unrecognized profile type: %q", profile)
 		}
-
 		ctx, _ := tag.New(context.Background(),
 			tag.Insert(metrics.Version, build.NodeBuildVersion),
 			tag.Insert(metrics.Commit, build.CurrentCommit),
 			tag.Insert(metrics.NodeType, "chain"),
 		)
+		ctx = metrics.AddNetworkTag(ctx)
 		// Register all metric views
 		if err = view.Register(
 			metrics.ChainNodeViews...,

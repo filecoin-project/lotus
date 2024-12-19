@@ -313,7 +313,7 @@ func (stage *PreCommitStage) load(ctx context.Context, bb *blockbuilder.BlockBui
 			sealList = append(sealList, onboardingInfo{addr, uint64(sectorCount)})
 		}
 		return nil
-	})
+	}, false)
 	if err != nil {
 		return err
 	}

@@ -376,7 +376,7 @@ func (stage *ProveCommitStage) load(ctx context.Context, bb *blockbuilder.BlockB
 			return nil
 		}
 		return stage.loadMiner(ctx, bb, minerAddr)
-	})
+	}, false)
 	if err != nil {
 		return err
 	}

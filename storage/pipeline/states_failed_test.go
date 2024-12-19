@@ -1,4 +1,3 @@
-// stm: #unit
 package sealing_test
 
 import (
@@ -50,7 +49,6 @@ func TestStateRecoverDealIDs(t *testing.T) {
 		PieceCID: idCid("newPieceCID"),
 	}
 
-	//stm: @CHAIN_STATE_MARKET_STORAGE_DEAL_001, @CHAIN_STATE_NETWORK_VERSION_001
 	api.EXPECT().StateMarketStorageDeal(ctx, dealId, nil).Return(&api2.MarketDeal{Proposal: dealProposal}, nil)
 
 	pc := idCid("publishCID")

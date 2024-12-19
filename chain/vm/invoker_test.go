@@ -1,4 +1,3 @@
-// stm: #unit
 package vm
 
 import (
@@ -119,7 +118,6 @@ func (*basicRtMessage) ValueReceived() abi.TokenAmount {
 }
 
 func TestInvokerBasic(t *testing.T) {
-	//stm: @INVOKER_TRANSFORM_001
 	inv := ActorRegistry{}
 	registry := builtin.MakeRegistryLegacy([]rt.VMActor{basicContract{}})
 	code, err := inv.transform(registry[0])

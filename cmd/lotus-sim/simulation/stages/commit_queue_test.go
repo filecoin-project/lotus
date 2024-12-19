@@ -1,4 +1,3 @@
-// stm: #unit
 package stages
 
 import (
@@ -14,7 +13,6 @@ import (
 )
 
 func TestCommitQueue(t *testing.T) {
-	//stm: @CMD_COMMIT_Q_ENQUEUE_COMMIT_001
 	var q commitQueue
 	addr1, err := address.NewIDAddress(1000)
 	require.NoError(t, err)
@@ -48,7 +46,6 @@ func TestCommitQueue(t *testing.T) {
 		SectorNumber: 6,
 	}))
 
-	//stm: @CMD_COMMIT_Q_ADVANCE_EPOCH_001, @CMD_COMMIT_Q_NEXT_MINER_001
 	epoch := abi.ChainEpoch(0)
 	q.advanceEpoch(epoch)
 	_, _, ok := q.nextMiner()

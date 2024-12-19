@@ -1,4 +1,3 @@
-// stm: #integration
 package itests
 
 import (
@@ -28,12 +27,7 @@ import (
 )
 
 func TestWindowedPost(t *testing.T) {
-	//stm: @CHAIN_SYNCER_LOAD_GENESIS_001, @CHAIN_SYNCER_FETCH_TIPSET_001,
-	//stm: @CHAIN_SYNCER_START_001, @CHAIN_SYNCER_SYNC_001, @BLOCKCHAIN_BEACON_VALIDATE_BLOCK_VALUES_01
-	//stm: @CHAIN_SYNCER_COLLECT_CHAIN_001, @CHAIN_SYNCER_COLLECT_HEADERS_001, @CHAIN_SYNCER_VALIDATE_TIPSET_001
-	//stm: @CHAIN_SYNCER_NEW_PEER_HEAD_001, @CHAIN_SYNCER_VALIDATE_MESSAGE_META_001, @CHAIN_SYNCER_STOP_001
 
-	//stm: @CHAIN_INCOMING_HANDLE_INCOMING_BLOCKS_001, @CHAIN_INCOMING_VALIDATE_BLOCK_PUBSUB_001, @CHAIN_INCOMING_VALIDATE_MESSAGE_PUBSUB_001
 	kit.Expensive(t)
 
 	kit.QuietMiningLogs()
@@ -70,7 +64,6 @@ func testWindowPostUpgrade(t *testing.T, blocktime time.Duration, nSectors int, 
 	maddr, err := miner.ActorAddress(ctx)
 	require.NoError(t, err)
 
-	//stm: @CHAIN_STATE_MINER_CALCULATE_DEADLINE_001
 	di, err := client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
 
@@ -84,7 +77,6 @@ func testWindowPostUpgrade(t *testing.T, blocktime time.Duration, nSectors int, 
 	ts := client.WaitTillChain(ctx, kit.HeightAtLeast(waitUntil))
 	t.Logf("Now head.Height = %d", ts.Height())
 
-	//stm: @CHAIN_STATE_MINER_POWER_001
 	p, err := client.StateMinerPower(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
 
@@ -98,7 +90,6 @@ func testWindowPostUpgrade(t *testing.T, blocktime time.Duration, nSectors int, 
 
 	// Drop 2 sectors from deadline 2 partition 0 (full partition / deadline)
 	{
-		//stm: @CHAIN_STATE_MINER_GET_PARTITIONS_001
 		parts, err := client.StateMinerPartitions(ctx, maddr, 2, types.EmptyTSK)
 		require.NoError(t, err)
 		require.Greater(t, len(parts), 0)
@@ -124,7 +115,6 @@ func testWindowPostUpgrade(t *testing.T, blocktime time.Duration, nSectors int, 
 
 	// Drop 1 sectors from deadline 3 partition 0
 	{
-		//stm: @CHAIN_STATE_MINER_GET_PARTITIONS_001
 		parts, err := client.StateMinerPartitions(ctx, maddr, 3, types.EmptyTSK)
 		require.NoError(t, err)
 		require.Greater(t, len(parts), 0)
@@ -153,7 +143,6 @@ func testWindowPostUpgrade(t *testing.T, blocktime time.Duration, nSectors int, 
 		require.NoError(t, err)
 	}
 
-	//stm: @CHAIN_STATE_MINER_CALCULATE_DEADLINE_001
 	di, err = client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
 
@@ -164,7 +153,6 @@ func testWindowPostUpgrade(t *testing.T, blocktime time.Duration, nSectors int, 
 	ts = client.WaitTillChain(ctx, kit.HeightAtLeast(waitUntil))
 	t.Logf("Now head.Height = %d", ts.Height())
 
-	//stm: @CHAIN_STATE_MINER_POWER_001
 	p, err = client.StateMinerPower(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
 
@@ -178,7 +166,6 @@ func testWindowPostUpgrade(t *testing.T, blocktime time.Duration, nSectors int, 
 	err = miner.StorageMiner.(*impl.StorageMinerAPI).IStorageMgr.(*mock.SectorMgr).MarkFailed(s, false)
 	require.NoError(t, err)
 
-	//stm: @CHAIN_STATE_MINER_CALCULATE_DEADLINE_001
 	di, err = client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
 
@@ -188,7 +175,6 @@ func testWindowPostUpgrade(t *testing.T, blocktime time.Duration, nSectors int, 
 	ts = client.WaitTillChain(ctx, kit.HeightAtLeast(waitUntil))
 	t.Logf("Now head.Height = %d", ts.Height())
 
-	//stm: @CHAIN_STATE_MINER_POWER_001
 	p, err = client.StateMinerPower(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
 
@@ -203,7 +189,6 @@ func testWindowPostUpgrade(t *testing.T, blocktime time.Duration, nSectors int, 
 
 	{
 		// Wait until proven.
-		//stm: @CHAIN_STATE_MINER_CALCULATE_DEADLINE_001
 		di, err = client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
 		require.NoError(t, err)
 
@@ -214,7 +199,6 @@ func testWindowPostUpgrade(t *testing.T, blocktime time.Duration, nSectors int, 
 		t.Logf("Now head.Height = %d", ts.Height())
 	}
 
-	//stm: @CHAIN_STATE_MINER_POWER_001
 	p, err = client.StateMinerPower(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
 
@@ -225,12 +209,7 @@ func testWindowPostUpgrade(t *testing.T, blocktime time.Duration, nSectors int, 
 }
 
 func TestWindowPostBaseFeeBurn(t *testing.T) {
-	//stm: @CHAIN_SYNCER_LOAD_GENESIS_001, @CHAIN_SYNCER_FETCH_TIPSET_001,
-	//stm: @CHAIN_SYNCER_START_001, @CHAIN_SYNCER_SYNC_001, @BLOCKCHAIN_BEACON_VALIDATE_BLOCK_VALUES_01
-	//stm: @CHAIN_SYNCER_COLLECT_CHAIN_001, @CHAIN_SYNCER_COLLECT_HEADERS_001, @CHAIN_SYNCER_VALIDATE_TIPSET_001
-	//stm: @CHAIN_SYNCER_NEW_PEER_HEAD_001, @CHAIN_SYNCER_VALIDATE_MESSAGE_META_001, @CHAIN_SYNCER_STOP_001
 
-	//stm: @CHAIN_INCOMING_HANDLE_INCOMING_BLOCKS_001, @CHAIN_INCOMING_VALIDATE_BLOCK_PUBSUB_001, @CHAIN_INCOMING_VALIDATE_MESSAGE_PUBSUB_001
 	kit.Expensive(t)
 
 	kit.QuietMiningLogs()
@@ -246,12 +225,10 @@ func TestWindowPostBaseFeeBurn(t *testing.T) {
 	maddr, err := miner.ActorAddress(ctx)
 	require.NoError(t, err)
 
-	//stm: @CHAIN_STATE_MINER_INFO_001
 	mi, err := client.StateMinerInfo(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
 
 	miner.PledgeSectors(ctx, 10, 0, nil)
-	//stm: @CHAIN_STATE_GET_ACTOR_001
 	wact, err := client.StateGetActor(ctx, mi.Worker, types.EmptyTSK)
 	require.NoError(t, err)
 	en := wact.Nonce
@@ -260,7 +237,6 @@ func TestWindowPostBaseFeeBurn(t *testing.T) {
 
 waitForProof:
 	for {
-		//stm: @CHAIN_STATE_GET_ACTOR_001
 		wact, err := client.StateGetActor(ctx, mi.Worker, types.EmptyTSK)
 		require.NoError(t, err)
 		if wact.Nonce > en {
@@ -270,11 +246,9 @@ waitForProof:
 		build.Clock.Sleep(blocktime)
 	}
 
-	//stm: @CHAIN_STATE_LIST_MESSAGES_001
 	slm, err := client.StateListMessages(ctx, &api.MessageMatch{To: maddr}, types.EmptyTSK, 0)
 	require.NoError(t, err)
 
-	//stm: @CHAIN_STATE_REPLAY_001
 	pmr, err := client.StateReplay(ctx, types.EmptyTSK, slm[0])
 	require.NoError(t, err)
 
@@ -307,7 +281,6 @@ func TestWindowPostV1P1NV20(t *testing.T) {
 
 waitForProof:
 	for {
-		//stm: @CHAIN_STATE_GET_ACTOR_001
 		wact, err := client.StateGetActor(ctx, mi.Worker, types.EmptyTSK)
 		require.NoError(t, err)
 		if wact.Nonce > en {
@@ -352,7 +325,6 @@ waitForProof:
 	require.Contains(t, ret.Error, "expected proof of type StackedDRGWindow2KiBV1P1, got StackedDRGWindow2KiBV1")
 
 	for {
-		//stm: @CHAIN_STATE_MINER_CALCULATE_DEADLINE_001
 		di, err := client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
 		require.NoError(t, err)
 		// wait until the deadline finishes.

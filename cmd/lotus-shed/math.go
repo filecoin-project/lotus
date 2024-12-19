@@ -100,7 +100,7 @@ var mathSumCmd = &cli.Command{
 		case "raw":
 			fmt.Printf("%s\n", val)
 		default:
-			return fmt.Errorf("Unknown format")
+			return fmt.Errorf("unknown format")
 		}
 
 		return nil

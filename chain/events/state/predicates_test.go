@@ -1,4 +1,3 @@
-// stm: #unit
 package state
 
 import (
@@ -33,12 +32,7 @@ func init() {
 }
 
 func TestMarketPredicates(t *testing.T) {
-	//stm: @EVENTS_PREDICATES_ON_ACTOR_STATE_CHANGED_001, @EVENTS_PREDICATES_DEAL_STATE_CHANGED_001
-	//stm: @EVENTS_PREDICATES_DEAL_CHANGED_FOR_IDS
 
-	//stm: @EVENTS_PREDICATES_ON_BALANCE_CHANGED_001, @EVENTS_PREDICATES_BALANCE_CHANGED_FOR_ADDRESS_001
-	//stm: @EVENTS_PREDICATES_ON_DEAL_PROPOSAL_CHANGED_001, @EVENTS_PREDICATES_PROPOSAL_AMT_CHANGED_001
-	//stm: @EVENTS_PREDICATES_DEAL_STATE_CHANGED_001, @EVENTS_PREDICATES_DEAL_AMT_CHANGED_001
 	ctx := context.Background()
 	bs := bstore.NewMemorySync()
 	store := adt2.WrapStore(ctx, cbornode.NewCborStore(bs))
@@ -337,8 +331,6 @@ func TestMarketPredicates(t *testing.T) {
 }
 
 func TestMinerSectorChange(t *testing.T) {
-	//stm: @EVENTS_PREDICATES_ON_ACTOR_STATE_CHANGED_001, @EVENTS_PREDICATES_MINER_ACTOR_CHANGE_001
-	//stm: @EVENTS_PREDICATES_MINER_SECTOR_CHANGE_001
 	ctx := context.Background()
 	bs := bstore.NewMemorySync()
 	store := adt2.WrapStore(ctx, cbornode.NewCborStore(bs))

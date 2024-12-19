@@ -1,4 +1,3 @@
-// stm: #unit
 package adt
 
 import (
@@ -43,7 +42,6 @@ func TestDiffAdtArray(t *testing.T) {
 
 	changes := new(TestDiffArray)
 
-	//stm: @CHAIN_ADT_ARRAY_DIFF_001
 	assert.NoError(t, DiffAdtArray(arrA, arrB, changes))
 	assert.NotNil(t, changes)
 
@@ -98,7 +96,6 @@ func TestDiffAdtMap(t *testing.T) {
 
 	changes := new(TestDiffMap)
 
-	//stm: @CHAIN_ADT_MAP_DIFF_001
 	assert.NoError(t, DiffAdtMap(mapA, mapB, changes))
 	assert.NotNil(t, changes)
 

@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
+	"github.com/filecoin-project/go-f3/certs"
 	"github.com/filecoin-project/go-state-types/abi"
 	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -660,4 +661,18 @@ func (gw *Node) StateGetClaims(ctx context.Context, providerAddr address.Address
 		return nil, err
 	}
 	return gw.target.StateGetClaims(ctx, providerAddr, tsk)
+}
+
+func (gw *Node) F3GetCertificate(ctx context.Context, instance uint64) (*certs.FinalityCertificate, error) {
+	if err := gw.limit(ctx, basicRateLimitTokens); err != nil {
+		return nil, err
+	}
+	return gw.target.F3GetCertificate(ctx, instance)
+}
+
+func (gw *Node) F3GetLatestCertificate(ctx context.Context) (*certs.FinalityCertificate, error) {
+	if err := gw.limit(ctx, basicRateLimitTokens); err != nil {
+		return nil, err
+	}
+	return gw.target.F3GetLatestCertificate(ctx)
 }

@@ -1,4 +1,3 @@
-// stm: #unit
 package paychmgr
 
 import (
@@ -15,7 +14,6 @@ import (
 )
 
 func TestPaychSettle(t *testing.T) {
-	//stm: @TOKEN_PAYCH_WAIT_READY_001, @TOKEN_PAYCH_SETTLE_001, @TOKEN_PAYCH_LIST_CHANNELS_001
 	ctx := context.Background()
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
 

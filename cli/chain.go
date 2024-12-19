@@ -581,12 +581,12 @@ var ChainListCmd = &cli.Command{
 	Aliases: []string{"love"},
 	Usage:   "View a segment of the chain",
 	Flags: []cli.Flag{
-		&cli.Uint64Flag{Name: "height", DefaultText: "current head"},
+		&cli.Uint64Flag{Name: "epoch", Aliases: []string{"height"}, DefaultText: "current head"},
 		&cli.IntFlag{Name: "count", Value: 30},
 		&cli.StringFlag{
 			Name:  "format",
-			Usage: "specify the format to print out tipsets",
-			Value: "<height>: (<time>) <blocks>",
+			Usage: "specify the format to print out tipsets using placeholders: <epoch>, <time>, <blocks>, <weight>, <tipset>, <json_tipset>\n",
+			Value: "<epoch>: (<time>) <blocks>",
 		},
 		&cli.BoolFlag{
 			Name:  "gas-stats",
@@ -875,7 +875,7 @@ func (ht *apiIpldStore) Get(ctx context.Context, c cid.Cid, out interface{}) err
 		return nil
 	}
 
-	return fmt.Errorf("Object does not implement CBORUnmarshaler")
+	return fmt.Errorf("object does not implement CBORUnmarshaler")
 }
 
 func (ht *apiIpldStore) Put(ctx context.Context, v interface{}) (cid.Cid, error) {
@@ -932,7 +932,9 @@ func handleHamtAddress(ctx context.Context, api v0api.FullNode, r cid.Cid) error
 }
 
 func printTipSet(format string, ts *types.TipSet, afmt *AppFmt) {
-	format = strings.ReplaceAll(format, "<height>", fmt.Sprint(ts.Height()))
+	format = strings.ReplaceAll(format, "<epoch>", fmt.Sprint(ts.Height()))
+	format = strings.ReplaceAll(format, "<height>", fmt.Sprint(ts.Height())) // backwards compatibility
+
 	format = strings.ReplaceAll(format, "<time>", time.Unix(int64(ts.MinTimestamp()), 0).Format(time.Stamp))
 	blks := "[ "
 	for _, b := range ts.Blocks() {
@@ -948,6 +950,16 @@ func printTipSet(format string, ts *types.TipSet, afmt *AppFmt) {
 
 	format = strings.ReplaceAll(format, "<tipset>", strings.Join(sCids, ","))
 	format = strings.ReplaceAll(format, "<blocks>", blks)
+	if strings.Contains(format, "<json_tipset>") {
+		jsonTipset, err := json.Marshal(ts)
+		if err != nil {
+			// should not happen
+			afmt.Println("Error encoding tipset to JSON:", err)
+			return
+		}
+		format = strings.ReplaceAll(format, "<json_tipset>", string(jsonTipset))
+	}
+
 	format = strings.ReplaceAll(format, "<weight>", fmt.Sprint(ts.Blocks()[0].ParentWeight))
 
 	afmt.Println(format)
@@ -1240,11 +1252,11 @@ var ChainExportRangeCmd = &cli.Command{
 		}
 
 		if head.Height() < tail.Height() {
-			return errors.New("Height of --head tipset must be greater or equal to the height of the --tail tipset")
+			return errors.New("height of --head tipset must be greater or equal to the height of the --tail tipset")
 		}
 
 		if !cctx.Bool("internal") {
-			return errors.New("Non-internal exports are not implemented")
+			return errors.New("non-internal exports are not implemented")
 		}
 
 		err = api.ChainExportRangeInternal(ctx, head.Key(), tail.Key(), lapi.ChainExportConfig{

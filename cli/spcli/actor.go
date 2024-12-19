@@ -820,7 +820,7 @@ func ActorProposeChangeWorkerCmd(getActor ActorAddressGetter) *cli.Command {
 				return err
 			}
 			if mi.NewWorker != newAddr {
-				return fmt.Errorf("Proposed worker address change not reflected on chain: expected '%s', found '%s'", na, mi.NewWorker)
+				return fmt.Errorf("proposed worker address change not reflected on chain: expected '%s', found '%s'", na, mi.NewWorker)
 			}
 
 			_, _ = fmt.Fprintf(cctx.App.Writer, "Worker key change to %s successfully sent, change happens at height %d.\n", na, mi.WorkerChangeEpoch)
@@ -1058,7 +1058,7 @@ func ActorConfirmChangeWorkerCmd(getActor ActorAddressGetter) *cli.Command {
 				return err
 			}
 			if mi.Worker != newAddr {
-				return fmt.Errorf("Confirmed worker address change not reflected on chain: expected '%s', found '%s'", newAddr, mi.Worker)
+				return fmt.Errorf("confirmed worker address change not reflected on chain: expected '%s', found '%s'", newAddr, mi.Worker)
 			}
 
 			return nil

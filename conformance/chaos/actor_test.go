@@ -1,4 +1,3 @@
-// stm: #chaos
 package chaos
 
 import (
@@ -16,7 +15,6 @@ import (
 )
 
 func TestSingleton(t *testing.T) {
-	//stm: @CHAIN_ACTOR_CHAOS_BUILDER_001
 	receiver := atesting2.NewIDAddr(t, 100)
 	builder := mock.NewBuilder(context.Background(), receiver)
 
@@ -31,7 +29,6 @@ func TestSingleton(t *testing.T) {
 }
 
 func TestCallerValidationNone(t *testing.T) {
-	//stm: @CHAIN_ACTOR_CHAOS_CALLER_VALIDATION_001
 	receiver := atesting2.NewIDAddr(t, 100)
 	builder := mock.NewBuilder(context.Background(), receiver)
 
@@ -43,7 +40,6 @@ func TestCallerValidationNone(t *testing.T) {
 }
 
 func TestCallerValidationIs(t *testing.T) {
-	//stm: @CHAIN_ACTOR_CHAOS_CALLER_VALIDATION_001
 	caller := atesting2.NewIDAddr(t, 100)
 	receiver := atesting2.NewIDAddr(t, 101)
 	builder := mock.NewBuilder(context.Background(), receiver)
@@ -73,7 +69,6 @@ func TestCallerValidationIs(t *testing.T) {
 }
 
 func TestCallerValidationType(t *testing.T) {
-	//stm: @CHAIN_ACTOR_CHAOS_CALLER_VALIDATION_001
 	caller := atesting2.NewIDAddr(t, 100)
 	receiver := atesting2.NewIDAddr(t, 101)
 	builder := mock.NewBuilder(context.Background(), receiver)
@@ -100,7 +95,6 @@ func TestCallerValidationType(t *testing.T) {
 }
 
 func TestCallerValidationInvalidBranch(t *testing.T) {
-	//stm: @CHAIN_ACTOR_CHAOS_CALLER_VALIDATION_001
 	receiver := atesting2.NewIDAddr(t, 100)
 	builder := mock.NewBuilder(context.Background(), receiver)
 
@@ -114,7 +108,6 @@ func TestCallerValidationInvalidBranch(t *testing.T) {
 }
 
 func TestDeleteActor(t *testing.T) {
-	//stm: @CHAIN_ACTOR_CHAOS_CREATE_ACTOR_001
 	receiver := atesting2.NewIDAddr(t, 100)
 	beneficiary := atesting2.NewIDAddr(t, 101)
 	builder := mock.NewBuilder(context.Background(), receiver)
@@ -129,7 +122,6 @@ func TestDeleteActor(t *testing.T) {
 }
 
 func TestMutateStateInTransaction(t *testing.T) {
-	//stm: @CHAIN_ACTOR_CHAOS_CREATE_STATE_001, @CHAIN_ACTOR_CHAOS_MUTATE_STATE_001
 	receiver := atesting2.NewIDAddr(t, 100)
 	builder := mock.NewBuilder(context.Background(), receiver)
 
@@ -157,7 +149,6 @@ func TestMutateStateInTransaction(t *testing.T) {
 }
 
 func TestMutateStateAfterTransaction(t *testing.T) {
-	//stm: @CHAIN_ACTOR_CHAOS_CREATE_STATE_001, @CHAIN_ACTOR_CHAOS_MUTATE_STATE_001
 	receiver := atesting2.NewIDAddr(t, 100)
 	builder := mock.NewBuilder(context.Background(), receiver)
 
@@ -192,7 +183,6 @@ func TestMutateStateAfterTransaction(t *testing.T) {
 }
 
 func TestMutateStateReadonly(t *testing.T) {
-	//stm: @CHAIN_ACTOR_CHAOS_CREATE_STATE_001, @CHAIN_ACTOR_CHAOS_MUTATE_STATE_001
 	receiver := atesting2.NewIDAddr(t, 100)
 	builder := mock.NewBuilder(context.Background(), receiver)
 
@@ -227,7 +217,6 @@ func TestMutateStateReadonly(t *testing.T) {
 }
 
 func TestMutateStateInvalidBranch(t *testing.T) {
-	//stm: @CHAIN_ACTOR_CHAOS_MUTATE_STATE_001
 	receiver := atesting2.NewIDAddr(t, 100)
 	builder := mock.NewBuilder(context.Background(), receiver)
 
@@ -242,7 +231,6 @@ func TestMutateStateInvalidBranch(t *testing.T) {
 }
 
 func TestAbortWith(t *testing.T) {
-	//stm: @CHAIN_ACTOR_CHAOS_ABORT_WITH_001
 	receiver := atesting2.NewIDAddr(t, 100)
 	builder := mock.NewBuilder(context.Background(), receiver)
 
@@ -261,7 +249,6 @@ func TestAbortWith(t *testing.T) {
 }
 
 func TestAbortWithUncontrolled(t *testing.T) {
-	//stm: @CHAIN_ACTOR_CHAOS_ABORT_WITH_001
 	receiver := atesting2.NewIDAddr(t, 100)
 	builder := mock.NewBuilder(context.Background(), receiver)
 
@@ -279,7 +266,6 @@ func TestAbortWithUncontrolled(t *testing.T) {
 }
 
 func TestInspectRuntime(t *testing.T) {
-	//stm: @CHAIN_ACTOR_CHAOS_INSPECT_RUNTIME_001, @CHAIN_ACTOR_CHAOS_CREATE_STATE_001
 	caller := atesting2.NewIDAddr(t, 100)
 	receiver := atesting2.NewIDAddr(t, 101)
 	builder := mock.NewBuilder(context.Background(), receiver)

@@ -1,4 +1,3 @@
-// stm: #unit
 package cli
 
 import (
@@ -57,7 +56,6 @@ func TestStat(t *testing.T) {
 			mockApi.EXPECT().StateGetActor(ctx, senderAddr, head.Key()).Return(&actor, nil),
 		)
 
-		//stm: @CLI_MEMPOOL_STAT_002
 		err = app.Run([]string{"mpool", "stat", "--basefee-lookback", "1", "--local"})
 		assert.NoError(t, err)
 
@@ -97,7 +95,6 @@ func TestStat(t *testing.T) {
 			mockApi.EXPECT().StateGetActor(ctx, senderAddr, head.Key()).Return(&actor, nil),
 		)
 
-		//stm: @CLI_MEMPOOL_STAT_001
 		err = app.Run([]string{"mpool", "stat", "--basefee-lookback", "1"})
 		assert.NoError(t, err)
 
@@ -130,7 +127,6 @@ func TestPending(t *testing.T) {
 			mockApi.EXPECT().MpoolPending(ctx, types.EmptyTSK).Return([]*types.SignedMessage{sm}, nil),
 		)
 
-		//stm: @CLI_MEMPOOL_PENDING_001
 		err = app.Run([]string{"mpool", "pending", "--cids"})
 		assert.NoError(t, err)
 
@@ -162,7 +158,6 @@ func TestPending(t *testing.T) {
 			mockApi.EXPECT().MpoolPending(ctx, types.EmptyTSK).Return([]*types.SignedMessage{sm}, nil),
 		)
 
-		//stm: @CLI_MEMPOOL_PENDING_002
 		err = app.Run([]string{"mpool", "pending", "--local"})
 		assert.NoError(t, err)
 
@@ -193,7 +188,6 @@ func TestPending(t *testing.T) {
 			mockApi.EXPECT().MpoolPending(ctx, types.EmptyTSK).Return([]*types.SignedMessage{sm}, nil),
 		)
 
-		//stm: @CLI_MEMPOOL_PENDING_003
 		err = app.Run([]string{"mpool", "pending", "--to", sm.Message.To.String()})
 		assert.NoError(t, err)
 
@@ -224,7 +218,6 @@ func TestPending(t *testing.T) {
 			mockApi.EXPECT().MpoolPending(ctx, types.EmptyTSK).Return([]*types.SignedMessage{sm}, nil),
 		)
 
-		//stm: @CLI_MEMPOOL_PENDING_004
 		err = app.Run([]string{"mpool", "pending", "--from", sm.Message.From.String()})
 		assert.NoError(t, err)
 
@@ -261,7 +254,6 @@ func TestReplace(t *testing.T) {
 			mockApi.EXPECT().MpoolPush(ctx, sm).Return(sm.Cid(), nil),
 		)
 
-		//stm: @CLI_MEMPOOL_REPLACE_002
 		err = app.Run([]string{"mpool", "replace", "--gas-premium", "1", "--gas-feecap", "100", sm.Cid().String()})
 
 		assert.NoError(t, err)
@@ -307,7 +299,6 @@ func TestReplace(t *testing.T) {
 			mockApi.EXPECT().MpoolPush(ctx, sm).Return(sm.Cid(), nil),
 		)
 
-		//stm: @CLI_MEMPOOL_REPLACE_002
 		err = app.Run([]string{"mpool", "replace", "--auto", "--fee-limit", maxFee, sm.Cid().String()})
 
 		assert.NoError(t, err)
@@ -352,7 +343,6 @@ func TestReplace(t *testing.T) {
 			mockApi.EXPECT().MpoolPush(ctx, sm).Return(sm.Cid(), nil),
 		)
 
-		//stm: @CLI_MEMPOOL_REPLACE_001
 		err = app.Run([]string{"mpool", "replace", "--auto", "--fee-limit", maxFee, sm.Message.From.String(), fmt.Sprint(sm.Message.Nonce)})
 
 		assert.NoError(t, err)
@@ -384,7 +374,6 @@ func TestFindMsg(t *testing.T) {
 			mockApi.EXPECT().MpoolPending(ctx, types.EmptyTSK).Return([]*types.SignedMessage{sm}, nil),
 		)
 
-		//stm: @CLI_MEMPOOL_FIND_001
 		err = app.Run([]string{"mpool", "find", "--from", sm.Message.From.String()})
 
 		assert.NoError(t, err)
@@ -414,7 +403,6 @@ func TestFindMsg(t *testing.T) {
 			mockApi.EXPECT().MpoolPending(ctx, types.EmptyTSK).Return([]*types.SignedMessage{sm}, nil),
 		)
 
-		//stm: @CLI_MEMPOOL_FIND_002
 		err = app.Run([]string{"mpool", "find", "--to", sm.Message.To.String()})
 
 		assert.NoError(t, err)
@@ -444,7 +432,6 @@ func TestFindMsg(t *testing.T) {
 			mockApi.EXPECT().MpoolPending(ctx, types.EmptyTSK).Return([]*types.SignedMessage{sm}, nil),
 		)
 
-		//stm: @CLI_MEMPOOL_FIND_003
 		err = app.Run([]string{"mpool", "find", "--method", sm.Message.Method.String()})
 
 		assert.NoError(t, err)
@@ -481,7 +468,6 @@ func TestGasPerf(t *testing.T) {
 			mockApi.EXPECT().ChainHead(ctx).Return(head, nil),
 		)
 
-		//stm: @CLI_MEMPOOL_GAS_PERF_002
 		err = app.Run([]string{"mpool", "gas-perf", "--all", "true"})
 		assert.NoError(t, err)
 
@@ -518,7 +504,6 @@ func TestGasPerf(t *testing.T) {
 			mockApi.EXPECT().ChainHead(ctx).Return(head, nil),
 		)
 
-		//stm: @CLI_MEMPOOL_GAS_PERF_001
 		err = app.Run([]string{"mpool", "gas-perf"})
 		assert.NoError(t, err)
 
@@ -546,7 +531,6 @@ func TestConfig(t *testing.T) {
 			mockApi.EXPECT().MpoolGetConfig(ctx).Return(mpoolCfg, nil),
 		)
 
-		//stm: @CLI_MEMPOOL_CONFIG_001
 		err = app.Run([]string{"mpool", "config"})
 		assert.NoError(t, err)
 
@@ -579,7 +563,6 @@ func TestConfig(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		//stm: @CLI_MEMPOOL_CONFIG_002
 		err = app.Run([]string{"mpool", "config", string(bytes)})
 		assert.NoError(t, err)
 	})

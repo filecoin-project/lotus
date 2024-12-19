@@ -25,11 +25,11 @@ type F3API struct {
 func (f3api *F3API) F3GetOrRenewParticipationTicket(ctx context.Context, miner address.Address, previous api.F3ParticipationTicket, instances uint64) (api.F3ParticipationTicket, error) {
 	if f3api.F3 == nil {
 		log.Infof("F3GetParticipationTicket called for %v, F3 is disabled", miner)
-		return api.F3ParticipationTicket{}, api.ErrF3Disabled
+		return nil, api.ErrF3Disabled
 	}
 	minerID, err := address.IDFromAddress(miner)
 	if err != nil {
-		return api.F3ParticipationTicket{}, xerrors.Errorf("miner address is not of ID type: %v: %w", miner, err)
+		return nil, xerrors.Errorf("miner address is not of ID type: %v: %w", miner, err)
 	}
 	return f3api.F3.GetOrRenewParticipationTicket(ctx, minerID, previous, instances)
 }
@@ -61,7 +61,7 @@ func (f3api *F3API) F3GetManifest(ctx context.Context) (*manifest.Manifest, erro
 	if f3api.F3 == nil {
 		return nil, api.ErrF3Disabled
 	}
-	return f3api.F3.GetManifest(ctx), nil
+	return f3api.F3.GetManifest(ctx)
 }
 
 func (f3api *F3API) F3IsRunning(context.Context) (bool, error) {

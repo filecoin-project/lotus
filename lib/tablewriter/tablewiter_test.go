@@ -1,4 +1,3 @@
-// stm: #unit
 package tablewriter
 
 import (
@@ -9,7 +8,6 @@ import (
 )
 
 func TestTableWriter(t *testing.T) {
-	//stm: @OTHER_IMPLEMENTATION_TABLE_WRITE_001, @OTHER_IMPLEMENTATION_TABLE_FLUSH_001
 	tw := New(Col("C1"), Col("X"), Col("C333"), NewLineCol("Thing"))
 	tw.Write(map[string]interface{}{
 		"C1":   "234",

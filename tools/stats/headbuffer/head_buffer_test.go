@@ -1,4 +1,3 @@
-// stm: #unit
 package headbuffer
 
 import (
@@ -10,7 +9,6 @@ import (
 )
 
 func TestHeadBuffer(t *testing.T) {
-	//stm: @TOOLS_HEAD_BUFFER_PUSH_001, @TOOLS_HEAD_BUFFER_POP_001
 	t.Run("Straight Push through", func(t *testing.T) {
 		hb := NewHeadChangeStackBuffer(5)
 		require.Nil(t, hb.Push(&api.HeadChange{Type: "1"}))

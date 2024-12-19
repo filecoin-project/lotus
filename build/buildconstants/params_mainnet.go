@@ -114,7 +114,7 @@ const UpgradeWaffleHeight abi.ChainEpoch = 4154640
 var UpgradeTuktukHeight abi.ChainEpoch = 4461240
 
 // ??????
-var UpgradeXxHeight = abi.ChainEpoch(9999999999)
+var UpgradeTeepHeight = abi.ChainEpoch(9999999999)
 
 // FIP-0081: for the power actor state for pledge calculations.
 // UpgradeTuktukPowerRampDurationEpochs ends up in the power actor state after
@@ -149,8 +149,8 @@ func init() {
 	}
 	SetAddressNetwork(addrNetwork)
 
-	if os.Getenv("LOTUS_DISABLE_XX") == "1" {
-		UpgradeXxHeight = math.MaxInt64 - 1
+	if os.Getenv("LOTUS_DISABLE_TEEP") == "1" {
+		UpgradeTeepHeight = math.MaxInt64 - 1
 	}
 
 	// NOTE: DO NOT change this unless you REALLY know what you're doing. This is not consensus critical, however,

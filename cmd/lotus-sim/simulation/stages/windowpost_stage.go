@@ -264,7 +264,7 @@ func (stage *WindowPoStStage) load(ctx context.Context, bb *blockbuilder.BlockBu
 		stage.wpostPeriods[ppOffset] = append(stage.wpostPeriods[ppOffset], minerAddr)
 
 		return stage.queueMiner(ctx, bb, minerAddr, minerState, commitEpoch, commitRand)
-	})
+	}, false)
 }
 
 func (stage *WindowPoStStage) tick(ctx context.Context, bb *blockbuilder.BlockBuilder) error {
