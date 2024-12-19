@@ -184,20 +184,23 @@ func (fff *F3) GetLatestCert(ctx context.Context) (*certs.FinalityCertificate, e
 	return fff.inner.GetLatestCert(ctx)
 }
 
-func (fff *F3) GetManifest(ctx context.Context) *manifest.Manifest {
+func (fff *F3) GetManifest(ctx context.Context) (*manifest.Manifest, error) {
 	m := fff.inner.Manifest()
+	if m == nil {
+		return nil, xerrors.New("no known network manifest")
+	}
 	if m.InitialPowerTable.Defined() {
-		return m
+		return m, nil
 	}
 	cert0, err := fff.inner.GetCert(ctx, 0)
 	if err != nil {
-		return m
+		return m, nil // return manifest without power table
 	}
 
 	var mCopy = *m
 	m = &mCopy
 	m.InitialPowerTable = cert0.ECChain.Base().PowerTable
-	return m
+	return m, nil
 }
 
 func (fff *F3) GetPowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) {

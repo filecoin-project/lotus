@@ -237,7 +237,7 @@ Inputs:
 Response: `34359738368`
 
 ### ActorWithdrawBalance
-WithdrawBalance allows to withdraw balance from miner actor to owner address
+ActorWithdrawBalance allows to withdraw balance from miner actor to owner address
 Specify amount as "0" to withdraw full balance. This method returns a message CID
 and does not wait for message execution
 
@@ -400,7 +400,7 @@ Inputs:
   ],
   "Bw==",
   10101,
-  24
+  25
 ]
 ```
 
@@ -1167,7 +1167,7 @@ Inputs:
 Response: `{}`
 
 ### SealingRemoveRequest
-SealingSchedRemove removes a request from sealing pipeline
+SealingRemoveRequest removes a request from sealing pipeline
 
 
 Perms: admin

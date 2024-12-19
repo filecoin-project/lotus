@@ -1,4 +1,3 @@
-// stm: #unit
 package alerting
 
 import (
@@ -13,7 +12,6 @@ import (
 )
 
 func TestAlerting(t *testing.T) {
-	//stm: @JOURNAL_ALERTS_ADD_ALERT_TYPE_001, @JOURNAL_ALERTS_RAISE_001, @JOURNAL_ALERTS_GET_ALERTS_001
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	j := mockjournal.NewMockJournal(mockCtrl)

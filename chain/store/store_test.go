@@ -1,4 +1,3 @@
-// stm: #unit
 package store_test
 
 import (
@@ -19,7 +18,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/gen"
-	"github.com/filecoin-project/lotus/chain/index"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -33,8 +31,6 @@ func init() {
 }
 
 func BenchmarkGetRandomness(b *testing.B) {
-	//stm: @CHAIN_GEN_NEXT_TIPSET_001
-	//stm: @CHAIN_STATE_GET_RANDOMNESS_FROM_TICKETS_001
 	cg, err := gen.NewGenerator()
 	if err != nil {
 		b.Fatal(err)
@@ -92,8 +88,6 @@ func BenchmarkGetRandomness(b *testing.B) {
 }
 
 func TestChainExportImport(t *testing.T) {
-	//stm: @CHAIN_GEN_NEXT_TIPSET_001
-	//stm: @CHAIN_STORE_IMPORT_001
 	cg, err := gen.NewGenerator()
 	if err != nil {
 		t.Fatal(err)
@@ -174,9 +168,6 @@ func TestChainImportTipsetKeyCid(t *testing.T) {
 }
 
 func TestChainExportImportFull(t *testing.T) {
-	//stm: @CHAIN_GEN_NEXT_TIPSET_001
-	//stm: @CHAIN_STORE_IMPORT_001, @CHAIN_STORE_EXPORT_001, @CHAIN_STORE_SET_HEAD_001
-	//stm: @CHAIN_STORE_GET_TIPSET_BY_HEIGHT_001
 	cg, err := gen.NewGenerator()
 	if err != nil {
 		t.Fatal(err)
@@ -216,7 +207,7 @@ func TestChainExportImportFull(t *testing.T) {
 		t.Fatal("imported chain differed from exported chain")
 	}
 
-	sm, err := stmgr.NewStateManager(cs, consensus.NewTipSetExecutor(filcns.RewardFunc), nil, filcns.DefaultUpgradeSchedule(), cg.BeaconSchedule(), ds, index.DummyMsgIndex)
+	sm, err := stmgr.NewStateManager(cs, consensus.NewTipSetExecutor(filcns.RewardFunc), nil, filcns.DefaultUpgradeSchedule(), cg.BeaconSchedule(), ds, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

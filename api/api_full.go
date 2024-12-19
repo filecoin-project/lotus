@@ -63,6 +63,37 @@ type FullNode interface {
 	Common
 	Net
 
+	// MethodGroup: ChainIndexer
+	// The ChainIndexer method group contains methods for interacting with the chain indexer.
+
+	// ChainValidateIndex validates the integrity of and optionally backfills
+	// the chain index at a specific epoch.
+	//
+	// It can be used to:
+	//
+	// 1. Validate the chain index at a specific epoch:
+	//   - Ensures consistency between indexed data and actual chain state
+	//   - Reports any errors found during validation (i.e. the indexed data does not match the actual chain state, missing data, etc.)
+	//
+	// 2. Optionally backfill missing data:
+	//   - Backfills data if the index is missing information for the specified epoch
+	//   - Backfilling only occurs when the `backfill` parameter is set to `true`
+	//
+	// 3. Detect "holes" in the index:
+	//   - If `backfill` is `false` and the index lacks data for the specified epoch, the API returns an error indicating missing data
+	//
+	// Parameters:
+	//   - epoch: The specific chain epoch for which to validate/backfill the index.
+	//   - backfill: A boolean flag indicating whether to attempt backfilling of missing data if the index does not have data for the
+	//               specified epoch.
+	//
+	// Returns:
+	//   - *types.IndexValidation: A pointer to an IndexValidation struct containing the results of the validation/backfill.
+	//   - error: An error object if the validation/backfill fails. The error message will contain details about the index
+	//            corruption if the call fails because of an incosistency between indexed data and the actual chain state.
+	//            Note: The API returns an error if the index does not have data for the specified epoch and backfill is set to false.
+	ChainValidateIndex(ctx context.Context, epoch abi.ChainEpoch, backfill bool) (*types.IndexValidation, error) //perm:write
+
 	// MethodGroup: Chain
 	// The Chain method group contains methods for interacting with the
 	// blockchain, but that do not require any form of state computation.
@@ -490,6 +521,8 @@ type FullNode interface {
 	StateMarketDeals(context.Context, types.TipSetKey) (map[string]*MarketDeal, error) //perm:read
 	// StateMarketStorageDeal returns information about the indicated deal
 	StateMarketStorageDeal(context.Context, abi.DealID, types.TipSetKey) (*MarketDeal, error) //perm:read
+	// StateMarketProposalPending returns whether a given proposal CID is marked as pending in the market actor
+	StateMarketProposalPending(ctx context.Context, proposalCid cid.Cid, tsk types.TipSetKey) (bool, error) //perm:read
 	// StateGetAllocationForPendingDeal returns the allocation for a given deal ID of a pending deal. Returns nil if
 	// pending allocation is not found.
 	StateGetAllocationForPendingDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*verifreg.Allocation, error) //perm:read
@@ -587,7 +620,7 @@ type FullNode interface {
 	// StateGetRandomnessFromBeacon is used to sample the beacon for randomness.
 	StateGetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) //perm:read
 
-	// StateGetRandomnessDigestFromTickets. is used to sample the chain for randomness.
+	// StateGetRandomnessDigestFromTickets is used to sample the chain for randomness.
 	StateGetRandomnessDigestFromTickets(ctx context.Context, randEpoch abi.ChainEpoch, tsk types.TipSetKey) (abi.Randomness, error) //perm:read
 	// StateGetRandomnessDigestFromBeacon is used to sample the beacon for randomness.
 	StateGetRandomnessDigestFromBeacon(ctx context.Context, randEpoch abi.ChainEpoch, tsk types.TipSetKey) (abi.Randomness, error) //perm:read

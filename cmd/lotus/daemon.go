@@ -207,12 +207,12 @@ var DaemonCmd = &cli.Command{
 		default:
 			return fmt.Errorf("unrecognized profile type: %q", profile)
 		}
-
 		ctx, _ := tag.New(context.Background(),
 			tag.Insert(metrics.Version, build.NodeBuildVersion),
 			tag.Insert(metrics.Commit, build.CurrentCommit),
 			tag.Insert(metrics.NodeType, "chain"),
 		)
+		ctx = metrics.AddNetworkTag(ctx)
 		// Register all metric views
 		if err = view.Register(
 			metrics.ChainNodeViews...,
@@ -612,7 +612,8 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 			return xerrors.Errorf("failed to construct beacon schedule: %w", err)
 		}
 
-		stm, err := stmgr.NewStateManager(cst, consensus.NewTipSetExecutor(filcns.RewardFunc), vm.Syscalls(proofsffi.ProofVerifier), filcns.DefaultUpgradeSchedule(), shd, mds, index.DummyMsgIndex)
+		stm, err := stmgr.NewStateManager(cst, consensus.NewTipSetExecutor(filcns.RewardFunc),
+			vm.Syscalls(proofsffi.ProofVerifier), filcns.DefaultUpgradeSchedule(), shd, mds, nil)
 		if err != nil {
 			return err
 		}
@@ -628,8 +629,6 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 		return err
 	}
 
-	// populate the message index if user has EnableMsgIndex enabled
-	//
 	c, err := lr.Config()
 	if err != nil {
 		return err
@@ -638,17 +637,23 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 	if !ok {
 		return xerrors.Errorf("invalid config for repo, got: %T", c)
 	}
-	if cfg.Index.EnableMsgIndex {
-		log.Info("populating message index...")
-		basePath, err := lr.SqlitePath()
-		if err != nil {
-			return err
-		}
-		if err := index.PopulateAfterSnapshot(ctx, filepath.Join(basePath, index.DefaultDbFilename), cst); err != nil {
-			return err
-		}
-		log.Info("populating message index done")
+
+	if !cfg.ChainIndexer.EnableIndexer {
+		log.Info("chain indexer is disabled, not populating index from snapshot")
+		return nil
 	}
+
+	// populate the chain Index from the snapshot
+	basePath, err := lr.ChainIndexPath()
+	if err != nil {
+		return err
+	}
+
+	log.Info("populating chain index from snapshot...")
+	if err := index.PopulateFromSnapshot(ctx, filepath.Join(basePath, index.DefaultDbFilename), cst); err != nil {
+		return err
+	}
+	log.Info("populating chain index from snapshot done")
 
 	return nil
 }

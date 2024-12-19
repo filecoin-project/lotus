@@ -456,9 +456,14 @@ Typically it's safe to not upgrade filecoin-ffi's version of go-state-types.  Th
             return xerrors.Errorf("error getting lookback ts for premigration: %w", err)
         }
 
+        logPeriod, err := getMigrationProgressLogPeriod()
+        if err != nil {
+            return xerrors.Errorf("error getting progress log period: %w", err)
+        }
+
         config := migration.Config{
             MaxWorkers:        uint(workerCount),
-            ProgressLogPeriod: time.Minute * 5,
+            ProgressLogPeriod: logPeriod,
         }
 
         _, err = upgradeActorsV(XX+1)Common(ctx, sm, cache, lbRoot, epoch, lbts, config)
@@ -472,11 +477,17 @@ Typically it's safe to not upgrade filecoin-ffi's version of go-state-types.  Th
         if workerCount <= 0 {
             workerCount = 1
         }
+
+        logPeriod, err := getMigrationProgressLogPeriod()
+        if err != nil {
+            return cid.Undef, xerrors.Errorf("error getting progress log period: %w", err)
+        }
+
         config := migration.Config{
             MaxWorkers:        uint(workerCount),
             JobQueueSize:      1000,
             ResultQueueSize:   100,
-            ProgressLogPeriod: 10 * time.Second,
+            ProgressLogPeriod: logPeriod,
         }
         newRoot, err := upgradeActorsV(XX+1)Common(ctx, sm, cache, root, epoch, ts, config)
         if err != nil {

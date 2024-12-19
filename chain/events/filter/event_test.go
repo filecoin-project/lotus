@@ -19,6 +19,7 @@ import (
 
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/index"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -70,8 +71,8 @@ func TestEventFilterCollectEvents(t *testing.T) {
 	cid14000, err := events14000.msgTs.Key().Cid()
 	require.NoError(t, err, "tipset cid")
 
-	noCollectedEvents := []*CollectedEvent{}
-	oneCollectedEvent := []*CollectedEvent{
+	noCollectedEvents := []*index.CollectedEvent{}
+	oneCollectedEvent := []*index.CollectedEvent{
 		{
 			Entries:     ev1.Entries,
 			EmitterAddr: a1,
@@ -88,7 +89,7 @@ func TestEventFilterCollectEvents(t *testing.T) {
 		name   string
 		filter *eventFilter
 		te     *TipSetEvents
-		want   []*CollectedEvent
+		want   []*index.CollectedEvent
 	}{
 		{
 			name: "nomatch tipset min height",
@@ -440,7 +441,10 @@ func (a addressMap) add(actorID abi.ActorID, addr address.Address) {
 	a[actorID] = addr
 }
 
-func (a addressMap) ResolveAddress(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool) {
+func (a addressMap) ResolveAddress(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) address.Address {
 	ra, ok := a[emitter]
-	return ra, ok
+	if ok {
+		return ra
+	}
+	return address.Undef
 }

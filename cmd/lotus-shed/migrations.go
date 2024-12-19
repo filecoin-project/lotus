@@ -38,6 +38,7 @@ import (
 	adt13 "github.com/filecoin-project/go-state-types/builtin/v13/util/adt"
 	v14 "github.com/filecoin-project/go-state-types/builtin/v14"
 	v15 "github.com/filecoin-project/go-state-types/builtin/v15"
+	v16 "github.com/filecoin-project/go-state-types/builtin/v16"
 	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
 	adt8 "github.com/filecoin-project/go-state-types/builtin/v8/util/adt"
 	v9 "github.com/filecoin-project/go-state-types/builtin/v9"
@@ -62,7 +63,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
-	"github.com/filecoin-project/lotus/chain/index"
 	proofsffi "github.com/filecoin-project/lotus/chain/proofs/ffi"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -178,7 +178,8 @@ var migrationsCmd = &cli.Command{
 		defer cs.Close() //nolint:errcheck
 
 		// Note: we use a map datastore for the metadata to avoid writing / using cached migration results in the metadata store
-		sm, err := stmgr.NewStateManager(cs, consensus.NewTipSetExecutor(filcns.RewardFunc), vm.Syscalls(proofsffi.ProofVerifier), filcns.DefaultUpgradeSchedule(), nil, datastore.NewMapDatastore(), index.DummyMsgIndex)
+		sm, err := stmgr.NewStateManager(cs, consensus.NewTipSetExecutor(filcns.RewardFunc), vm.Syscalls(proofsffi.ProofVerifier), filcns.DefaultUpgradeSchedule(), nil,
+			datastore.NewMapDatastore(), nil)
 		if err != nil {
 			return err
 		}
@@ -297,6 +298,8 @@ func getMigrationFuncsForNetwork(nv network.Version) (UpgradeActorsFunc, PreUpgr
 		return filcns.UpgradeActorsV14, filcns.PreUpgradeActorsV14, checkNv23Invariants, nil
 	case network.Version24:
 		return filcns.UpgradeActorsV15, filcns.PreUpgradeActorsV15, checkNv24Invariants, nil
+	case network.Version25:
+		return filcns.UpgradeActorsV16, filcns.PreUpgradeActorsV16, checkNv25Invariants, nil
 	default:
 		return nil, nil, nil, xerrors.Errorf("migration not implemented for nv%d", nv)
 	}
@@ -621,6 +624,39 @@ func printMarketActorDiff(ctx context.Context, cst *cbornode.BasicIpldStore, nv 
 			}
 		}
 	}
+
+	return nil
+}
+
+func checkNv25Invariants(ctx context.Context, oldStateRootCid cid.Cid, newStateRootCid cid.Cid, bs blockstore.Blockstore, epoch abi.ChainEpoch) error {
+
+	actorStore := store.ActorStore(ctx, bs)
+	startTime := time.Now()
+
+	// Load the new state root.
+	var newStateRoot types.StateRoot
+	if err := actorStore.Get(ctx, newStateRootCid, &newStateRoot); err != nil {
+		return xerrors.Errorf("failed to decode state root: %w", err)
+	}
+
+	actorCodeCids, err := actors.GetActorCodeIDs(actorstypes.Version16)
+	if err != nil {
+		return err
+	}
+	newActorTree, err := builtin.LoadTree(actorStore, newStateRoot.Actors)
+	if err != nil {
+		return err
+	}
+	messages, err := v16.CheckStateInvariants(newActorTree, epoch, actorCodeCids)
+	if err != nil {
+		return xerrors.Errorf("checking state invariants: %w", err)
+	}
+
+	for _, message := range messages.Messages() {
+		fmt.Println("got the following error: ", message)
+	}
+
+	fmt.Println("completed invariant checks, took ", time.Since(startTime))
 
 	return nil
 }

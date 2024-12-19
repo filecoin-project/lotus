@@ -1,4 +1,3 @@
-//stm: ignore
 //go:build !windows
 // +build !windows
 

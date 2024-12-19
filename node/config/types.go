@@ -25,7 +25,7 @@ type FullNode struct {
 	Chainstore    Chainstore
 	Fevm          FevmConfig
 	Events        EventsConfig
-	Index         IndexConfig
+	ChainIndexer  ChainIndexerConfig
 	FaultReporter FaultReporterConfig
 }
 
@@ -538,18 +538,13 @@ type FeeConfig struct {
 }
 
 type FevmConfig struct {
-	// EnableEthRPC enables eth_ rpc, and enables storing a mapping of eth transaction hashes to filecoin message Cids.
-	// This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be disabled by config options above.
+	// EnableEthRPC enables eth_ RPC methods.
+	// Note: Setting this to true will also require that ChainIndexer is enabled, otherwise it will cause an error at startup.
+	// Set EnableIndexer in the ChainIndexer section of the config to true to enable the ChainIndexer.
 	EnableEthRPC bool
-
-	// EthTxHashMappingLifetimeDays the transaction hash lookup database will delete mappings that have been stored for more than x days
-	// Set to 0 to keep all mappings
-	EthTxHashMappingLifetimeDays int
 
 	// EthTraceFilterMaxResults sets the maximum results returned per request by trace_filter
 	EthTraceFilterMaxResults uint64
-
-	Events DeprecatedEvents `toml:"Events,omitempty"`
 
 	// EthBlkCacheSize specifies the size of the cache used for caching Ethereum blocks.
 	// This cache enhances the performance of the eth_getBlockByHash RPC call by minimizing the need to access chain state for
@@ -559,43 +554,11 @@ type FevmConfig struct {
 	EthBlkCacheSize int
 }
 
-type DeprecatedEvents struct {
-	// DisableRealTimeFilterAPI is DEPRECATED and will be removed in a future release. Use Events.DisableRealTimeFilterAPI instead.
-	DisableRealTimeFilterAPI bool `moved:"Events.DisableRealTimeFilterAPI" toml:"DisableRealTimeFilterAPI,omitempty"`
-
-	// DisableHistoricFilterAPI is DEPRECATED and will be removed in a future release. Use Events.DisableHistoricFilterAPI instead.
-	DisableHistoricFilterAPI bool `moved:"Events.DisableHistoricFilterAPI" toml:"DisableHistoricFilterAPI,omitempty"`
-
-	// FilterTTL is DEPRECATED and will be removed in a future release. Use Events.FilterTTL instead.
-	FilterTTL Duration `moved:"Events.FilterTTL" toml:"FilterTTL,omitzero"`
-
-	// MaxFilters is DEPRECATED and will be removed in a future release. Use Events.MaxFilters instead.
-	MaxFilters int `moved:"Events.MaxFilters" toml:"MaxFilters,omitzero"`
-
-	// MaxFilterResults is DEPRECATED and will be removed in a future release. Use Events.MaxFilterResults instead.
-	MaxFilterResults int `moved:"Events.MaxFilterResults" toml:"MaxFilterResults,omitzero"`
-
-	// MaxFilterHeightRange is DEPRECATED and will be removed in a future release. Use Events.MaxFilterHeightRange instead.
-	MaxFilterHeightRange uint64 `moved:"Events.MaxFilterHeightRange" toml:"MaxFilterHeightRange,omitzero"`
-
-	// DatabasePath is DEPRECATED and will be removed in a future release. Use Events.DatabasePath instead.
-	DatabasePath string `moved:"Events.DatabasePath" toml:"DatabasePath,omitempty"`
-}
-
 type EventsConfig struct {
-	// DisableRealTimeFilterAPI will disable the RealTimeFilterAPI that can create and query filters for actor events as they are emitted.
-	// The API is enabled when Fevm.EnableEthRPC or EnableActorEventsAPI is true, but can be disabled selectively with this flag.
-	DisableRealTimeFilterAPI bool
-
-	// DisableHistoricFilterAPI will disable the HistoricFilterAPI that can create and query filters for actor events
-	// that occurred in the past. HistoricFilterAPI maintains a queryable index of events.
-	// The API is enabled when Fevm.EnableEthRPC or EnableActorEventsAPI is true, but can be disabled selectively with this flag.
-	DisableHistoricFilterAPI bool
-
 	// EnableActorEventsAPI enables the Actor events API that enables clients to consume events
 	// emitted by (smart contracts + built-in Actors).
-	// This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be
-	// disabled by setting their respective Disable* options.
+	// Note: Setting this to true will also require that ChainIndexer is enabled, otherwise it will cause an error at startup.
+	// Set EnableIndexer in the ChainIndexer section of the config to true to enable the ChainIndexer.
 	EnableActorEventsAPI bool
 
 	// FilterTTL specifies the time to live for actor event filters. Filters that haven't been accessed longer than
@@ -615,23 +578,56 @@ type EventsConfig struct {
 	// MaxFilterHeightRange specifies the maximum range of heights that can be used in a filter (to avoid querying
 	// the entire chain)
 	MaxFilterHeightRange uint64
-
-	// DatabasePath is the full path to a sqlite database that will be used to index actor events to
-	// support the historic filter APIs. If the database does not exist it will be created. The directory containing
-	// the database must already exist and be writeable. If a relative path is provided here, sqlite treats it as
-	// relative to the CWD (current working directory).
-	DatabasePath string
-
-	// Others, not implemented yet:
-	// Set a limit on the number of active websocket subscriptions (may be zero)
-	// Set a timeout for subscription clients
-	// Set upper bound on index size
 }
 
-type IndexConfig struct {
-	// EXPERIMENTAL FEATURE. USE WITH CAUTION
-	// EnableMsgIndex enables indexing of messages on chain.
-	EnableMsgIndex bool
+type ChainIndexerConfig struct {
+	// EnableIndexer controls whether the chain indexer is active.
+	// The chain indexer is responsible for indexing tipsets, messages, and events from the chain state.
+	// It is a crucial component for optimizing Lotus RPC response times.
+	//
+	// Default: false (indexer is disabled)
+	//
+	// Setting this to true will enable the indexer, which will significantly improve RPC performance.
+	// It is strongly recommended to keep this set to true if you are an RPC provider.
+	//
+	// If EnableEthRPC or EnableActorEventsAPI are set to true, the ChainIndexer must be enabled using
+	// this option to avoid errors at startup.
+	EnableIndexer bool
+
+	// GCRetentionEpochs specifies the number of epochs for which data is retained in the Indexer.
+	// The garbage collection (GC) process removes data older than this retention period.
+	// Setting this to 0 disables GC, preserving all historical data indefinitely.
+	//
+	// If set, the minimum value must be greater than builtin.EpochsInDay (i.e. "2880" epochs for mainnet).
+	// This ensures a reasonable retention period for the indexed data.
+	//
+	// Default: 0 (GC disabled)
+	GCRetentionEpochs int64
+
+	// ReconcileEmptyIndex determines whether to reconcile the index with the chain state
+	// during startup when the index is empty.
+	//
+	// When set to true:
+	// - On startup, if the index is empty, the indexer will index the available
+	//   chain state on the node albeit within the MaxReconcileTipsets limit.
+	//
+	// When set to false:
+	// - The indexer will not automatically re-index the chain state on startup if the index is empty.
+	//
+	// Default: false
+	//
+	// Note: The number of tipsets reconciled (i.e. indexed) during this process can be
+	// controlled using the MaxReconcileTipsets option.
+	ReconcileEmptyIndex bool
+
+	// MaxReconcileTipsets limits the number of tipsets to reconcile with the chain during startup.
+	// It represents the maximum number of tipsets to index from the chain state that are absent in the index.
+	//
+	// Default: 3 * epochsPerDay (approximately 3 days of chain history)
+	//
+	// Note: Setting this value too low may result in incomplete indexing, while setting it too high
+	// may increase startup time.
+	MaxReconcileTipsets uint64
 }
 
 type HarmonyDB struct {

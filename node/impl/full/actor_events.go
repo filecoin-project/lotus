@@ -14,6 +14,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/events/filter"
+	"github.com/filecoin-project/lotus/chain/index"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -283,7 +284,7 @@ func (a *ActorEventHandler) SubscribeActorEventsRaw(ctx context.Context, evtFilt
 		nextBacklogHeightUpdate := a.clock.Now().Add(a.blockDelay)
 
 		collectEvent := func(ev interface{}) bool {
-			ce, ok := ev.(*filter.CollectedEvent)
+			ce, ok := ev.(*index.CollectedEvent)
 			if !ok {
 				log.Errorf("got unexpected value from event filter: %T", ev)
 				return false

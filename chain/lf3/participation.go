@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-f3/manifest"
 
 	"github.com/filecoin-project/lotus/api"
+	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
@@ -88,6 +89,11 @@ func (p *Participant) run(ctx context.Context) (_err error) {
 			log.Error(_err)
 		}
 	}()
+
+	// Try to make send all requests to the same node. If a request fails, we'll switch nodes.
+	// This interacts with the FullNodeProxy, which is how we support multi-node setups by
+	// default.
+	ctx = cliutil.OnSingleNode(ctx)
 
 	var ticket api.F3ParticipationTicket
 	for ctx.Err() == nil {
@@ -187,7 +193,7 @@ func (p *Participant) tryParticipate(ctx context.Context, ticket api.F3Participa
 			log.Debugw("Reattempting F3 participation with the same ticket.", "attempts", p.backoff.Attempt())
 			continue
 		case errors.Is(err, api.ErrF3NotReady):
-			log.Warnw("F3 is not ready. Retrying F3 participation after backoff.", "backoff", p.backoff.Duration(), "err", err)
+			log.Debugw("F3 is not ready. Retrying F3 participation after backoff.", "backoff", p.backoff.Duration(), "err", err)
 			p.backOff(ctx)
 			continue
 		case err != nil:

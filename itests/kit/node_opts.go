@@ -90,6 +90,7 @@ var DefaultNodeOpts = nodeOpts{
 			// test defaults
 
 			cfg.Fevm.EnableEthRPC = true
+			cfg.ChainIndexer.EnableIndexer = true
 			cfg.Events.MaxFilterHeightRange = math.MaxInt64
 			cfg.Events.EnableActorEventsAPI = true
 
@@ -103,6 +104,8 @@ var DefaultNodeOpts = nodeOpts{
 			cfg.Libp2p.ConnMgrLow = 1024
 			cfg.Libp2p.ConnMgrHigh = 2048
 			cfg.Libp2p.ConnMgrGrace = config.Duration(time.Hour)
+			cfg.ChainIndexer.ReconcileEmptyIndex = true
+			cfg.ChainIndexer.MaxReconcileTipsets = 10000
 			return nil
 		},
 	},
@@ -244,7 +247,16 @@ func MutateSealingConfig(mut func(sc *config.SealingConfig)) NodeOpt {
 		})))
 }
 
+// F3Enabled enables the F3 feature in the node. If the provided config is nil,
+// the feature is disabled.
 func F3Enabled(cfg *lf3.Config) NodeOpt {
+	if cfg == nil {
+		return ConstructorOpts(
+			node.Unset(new(*lf3.Config)),
+			node.Unset(new(manifest.ManifestProvider)),
+			node.Unset(new(*lf3.F3)),
+		)
+	}
 	return ConstructorOpts(
 		node.Override(new(*lf3.Config), cfg),
 		node.Override(new(manifest.ManifestProvider), lf3.NewManifestProvider),

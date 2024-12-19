@@ -25,7 +25,6 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/beacon"
-	"github.com/filecoin-project/lotus/chain/index"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/journal/alerting"
@@ -105,6 +104,13 @@ const (
 	HandleIncomingMessagesKey
 	HandlePaymentChannelManagerKey
 
+	// Deprecated: RelayIndexerMessagesKey is no longer used, since IPNI has
+	// deprecated the use of GossipSub for propagating advertisements. Use IPNI Sync
+	// protocol instead.
+	//
+	// See:
+	//  - https://github.com/ipni/specs/blob/main/IPNI_HTTP_PROVIDER.md
+	//  - https://github.com/ipni/go-libipni/tree/main/dagsync/ipnisync
 	RelayIndexerMessagesKey
 
 	// miner
@@ -128,6 +134,8 @@ const (
 	SetApiEndpointKey
 
 	StoreEventsKey
+
+	InitChainIndexerKey
 
 	_nInvokes // keep this last
 )
@@ -368,7 +376,6 @@ func Test() Option {
 		Unset(RunPeerMgrKey),
 		Unset(new(*peermgr.PeerMgr)),
 		Override(new(beacon.Schedule), testing.RandomBeacon),
-		Override(new(index.MsgIndex), modules.DummyMsgIndex),
 	)
 }
 

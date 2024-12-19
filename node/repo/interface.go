@@ -69,8 +69,8 @@ type LockedRepo interface {
 	// SplitstorePath returns the path for the SplitStore
 	SplitstorePath() (string, error)
 
-	// SqlitePath returns the path for the Sqlite database
-	SqlitePath() (string, error)
+	// ChainIndexPath returns the path for the chain index database
+	ChainIndexPath() (string, error)
 
 	// Returns config in this repo
 	Config() (interface{}, error)

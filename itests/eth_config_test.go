@@ -1,4 +1,3 @@
-// stm: #integration
 package itests
 
 import (
@@ -17,7 +16,7 @@ func TestEthFilterAPIDisabledViaConfig(t *testing.T) {
 
 	kit.QuietMiningLogs()
 
-	// pass kit.DisableEthRPC() so RealTimeFilterAPI will not be enabled
+	// pass kit.DisableEthRPC() to disable ETH RPC
 	client, _, _ := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.DisableEthRPC())
 
 	_, err := client.EthNewPendingTransactionFilter(ctx)

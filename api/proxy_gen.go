@@ -170,6 +170,8 @@ type FullNodeMethods struct {
 
 	ChainTipSetWeight func(p0 context.Context, p1 types.TipSetKey) (types.BigInt, error) `perm:"read"`
 
+	ChainValidateIndex func(p0 context.Context, p1 abi.ChainEpoch, p2 bool) (*types.IndexValidation, error) `perm:"write"`
+
 	CreateBackup func(p0 context.Context, p1 string) error `perm:"admin"`
 
 	EthAccounts func(p0 context.Context) ([]ethtypes.EthAddress, error) `perm:"read"`
@@ -482,6 +484,8 @@ type FullNodeMethods struct {
 
 	StateMarketParticipants func(p0 context.Context, p1 types.TipSetKey) (map[string]MarketBalance, error) `perm:"read"`
 
+	StateMarketProposalPending func(p0 context.Context, p1 cid.Cid, p2 types.TipSetKey) (bool, error) `perm:"read"`
+
 	StateMarketStorageDeal func(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*MarketDeal, error) `perm:"read"`
 
 	StateMinerActiveSectors func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]*miner.SectorOnChainInfo, error) `perm:"read"`
@@ -723,6 +727,10 @@ type GatewayMethods struct {
 	EthUninstallFilter func(p0 context.Context, p1 ethtypes.EthFilterID) (bool, error) ``
 
 	EthUnsubscribe func(p0 context.Context, p1 ethtypes.EthSubscriptionID) (bool, error) ``
+
+	F3GetCertificate func(p0 context.Context, p1 uint64) (*certs.FinalityCertificate, error) ``
+
+	F3GetLatestCertificate func(p0 context.Context) (*certs.FinalityCertificate, error) ``
 
 	FilecoinAddressToEthAddress func(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthAddress, error) ``
 
@@ -1653,6 +1661,17 @@ func (s *FullNodeStruct) ChainTipSetWeight(p0 context.Context, p1 types.TipSetKe
 
 func (s *FullNodeStub) ChainTipSetWeight(p0 context.Context, p1 types.TipSetKey) (types.BigInt, error) {
 	return *new(types.BigInt), ErrNotSupported
+}
+
+func (s *FullNodeStruct) ChainValidateIndex(p0 context.Context, p1 abi.ChainEpoch, p2 bool) (*types.IndexValidation, error) {
+	if s.Internal.ChainValidateIndex == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.ChainValidateIndex(p0, p1, p2)
+}
+
+func (s *FullNodeStub) ChainValidateIndex(p0 context.Context, p1 abi.ChainEpoch, p2 bool) (*types.IndexValidation, error) {
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) CreateBackup(p0 context.Context, p1 string) error {
@@ -3371,6 +3390,17 @@ func (s *FullNodeStub) StateMarketParticipants(p0 context.Context, p1 types.TipS
 	return *new(map[string]MarketBalance), ErrNotSupported
 }
 
+func (s *FullNodeStruct) StateMarketProposalPending(p0 context.Context, p1 cid.Cid, p2 types.TipSetKey) (bool, error) {
+	if s.Internal.StateMarketProposalPending == nil {
+		return false, ErrNotSupported
+	}
+	return s.Internal.StateMarketProposalPending(p0, p1, p2)
+}
+
+func (s *FullNodeStub) StateMarketProposalPending(p0 context.Context, p1 cid.Cid, p2 types.TipSetKey) (bool, error) {
+	return false, ErrNotSupported
+}
+
 func (s *FullNodeStruct) StateMarketStorageDeal(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*MarketDeal, error) {
 	if s.Internal.StateMarketStorageDeal == nil {
 		return nil, ErrNotSupported
@@ -4634,6 +4664,28 @@ func (s *GatewayStruct) EthUnsubscribe(p0 context.Context, p1 ethtypes.EthSubscr
 
 func (s *GatewayStub) EthUnsubscribe(p0 context.Context, p1 ethtypes.EthSubscriptionID) (bool, error) {
 	return false, ErrNotSupported
+}
+
+func (s *GatewayStruct) F3GetCertificate(p0 context.Context, p1 uint64) (*certs.FinalityCertificate, error) {
+	if s.Internal.F3GetCertificate == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.F3GetCertificate(p0, p1)
+}
+
+func (s *GatewayStub) F3GetCertificate(p0 context.Context, p1 uint64) (*certs.FinalityCertificate, error) {
+	return nil, ErrNotSupported
+}
+
+func (s *GatewayStruct) F3GetLatestCertificate(p0 context.Context) (*certs.FinalityCertificate, error) {
+	if s.Internal.F3GetLatestCertificate == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.F3GetLatestCertificate(p0)
+}
+
+func (s *GatewayStub) F3GetLatestCertificate(p0 context.Context) (*certs.FinalityCertificate, error) {
+	return nil, ErrNotSupported
 }
 
 func (s *GatewayStruct) FilecoinAddressToEthAddress(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthAddress, error) {

@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/go-f3/ec"
 	"github.com/filecoin-project/go-f3/manifest"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
@@ -35,7 +36,7 @@ func (hg *headGetter) GetHead(context.Context) (ec.TipSet, error) {
 var MaxDynamicManifestChangesAllowed = 1000
 
 func NewManifestProvider(mctx helpers.MetricsCtx, config *Config, cs *store.ChainStore, ps *pubsub.PubSub, mds dtypes.MetadataDS) (prov manifest.ManifestProvider, err error) {
-	if config.DynamicManifestProvider == "" {
+	if config.DynamicManifestProvider == "" || !build.IsF3PassiveTestingEnabled() {
 		if config.StaticManifest == nil {
 			return manifest.NoopManifestProvider{}, nil
 		}

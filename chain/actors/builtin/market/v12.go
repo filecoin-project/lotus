@@ -106,6 +106,14 @@ func (s *state12) Proposals() (DealProposals, error) {
 	return &dealProposals12{proposalArray}, nil
 }
 
+func (s *state12) PendingProposals() (PendingProposals, error) {
+	proposalCidSet, err := adt12.AsSet(s.store, s.State.PendingProposals, builtin.DefaultHamtBitwidth)
+	if err != nil {
+		return nil, err
+	}
+	return &pendingProposals12{proposalCidSet}, nil
+}
+
 func (s *state12) EscrowTable() (BalanceTable, error) {
 	bt, err := adt12.AsBalanceTable(s.store, s.State.EscrowTable)
 	if err != nil {
@@ -124,9 +132,9 @@ func (s *state12) LockedTable() (BalanceTable, error) {
 
 func (s *state12) VerifyDealsForActivation(
 	minerAddr address.Address, deals []abi.DealID, currEpoch, sectorExpiry abi.ChainEpoch,
-) (weight, verifiedWeight abi.DealWeight, err error) {
-	w, vw, _, err := market12.ValidateDealsForActivation(&s.State, s.store, deals, minerAddr, sectorExpiry, currEpoch)
-	return w, vw, err
+) (verifiedWeight abi.DealWeight, err error) {
+	_, vw, _, err := market12.ValidateDealsForActivation(&s.State, s.store, deals, minerAddr, sectorExpiry, currEpoch)
+	return vw, err
 }
 
 func (s *state12) NextID() (abi.DealID, error) {
@@ -282,6 +290,14 @@ func (s *dealProposals12) decode(val *cbg.Deferred) (*DealProposal, error) {
 
 func (s *dealProposals12) array() adt.Array {
 	return s.Array
+}
+
+type pendingProposals12 struct {
+	*adt12.Set
+}
+
+func (s *pendingProposals12) Has(proposalCid cid.Cid) (bool, error) {
+	return s.Set.Has(abi.CidKey(proposalCid))
 }
 
 func fromV12DealProposal(v12 market12.DealProposal) (DealProposal, error) {

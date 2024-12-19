@@ -21,6 +21,7 @@ import (
 	v13 "github.com/filecoin-project/go-state-types/builtin/v13"
 	v14 "github.com/filecoin-project/go-state-types/builtin/v14"
 	v15 "github.com/filecoin-project/go-state-types/builtin/v15"
+	v16 "github.com/filecoin-project/go-state-types/builtin/v16"
 	v8 "github.com/filecoin-project/go-state-types/builtin/v8"
 	v9 "github.com/filecoin-project/go-state-types/builtin/v9"
 
@@ -30,7 +31,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
-	"github.com/filecoin-project/lotus/chain/index"
 	proofsffi "github.com/filecoin-project/lotus/chain/proofs/ffi"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -128,7 +128,7 @@ var invariantsCmd = &cli.Command{
 		cs := store.NewChainStore(bs, bs, mds, filcns.Weight, nil)
 		defer cs.Close() //nolint:errcheck
 
-		sm, err := stmgr.NewStateManager(cs, consensus.NewTipSetExecutor(filcns.RewardFunc), vm.Syscalls(proofsffi.ProofVerifier), filcns.DefaultUpgradeSchedule(), nil, mds, index.DummyMsgIndex)
+		sm, err := stmgr.NewStateManager(cs, consensus.NewTipSetExecutor(filcns.RewardFunc), vm.Syscalls(proofsffi.ProofVerifier), filcns.DefaultUpgradeSchedule(), nil, mds, nil)
 		if err != nil {
 			return err
 		}
@@ -201,6 +201,11 @@ var invariantsCmd = &cli.Command{
 			}
 		case actorstypes.Version15:
 			messages, err = v15.CheckStateInvariants(actorTree, abi.ChainEpoch(epoch), actorCodeCids)
+			if err != nil {
+				return xerrors.Errorf("checking state invariants: %w", err)
+			}
+		case actorstypes.Version16:
+			messages, err = v16.CheckStateInvariants(actorTree, abi.ChainEpoch(epoch), actorCodeCids)
 			if err != nil {
 				return xerrors.Errorf("checking state invariants: %w", err)
 			}

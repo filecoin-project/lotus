@@ -526,11 +526,11 @@ var msigApproveCmd = &cli.Command{
 		}
 
 		if cctx.NArg() > 2 && cctx.NArg() < 5 {
-			return ShowHelp(cctx, fmt.Errorf("usage: msig approve <msig addr> <message ID> <proposer address> <desination> <value>"))
+			return ShowHelp(cctx, fmt.Errorf("usage: msig approve <msig addr> <message ID> <proposer address> <destination> <value>"))
 		}
 
 		if cctx.NArg() > 5 && cctx.NArg() != 7 {
-			return ShowHelp(cctx, fmt.Errorf("usage: msig approve <msig addr> <message ID> <proposer address> <desination> <value> [ <method> <params> ]"))
+			return ShowHelp(cctx, fmt.Errorf("usage: msig approve <msig addr> <message ID> <proposer address> <destination> <value> [ <method> <params> ]"))
 		}
 
 		srv, err := GetFullNodeServices(cctx)
@@ -663,11 +663,11 @@ var msigCancelCmd = &cli.Command{
 		}
 
 		if cctx.NArg() > 2 && cctx.NArg() < 4 {
-			return ShowHelp(cctx, fmt.Errorf("usage: msig cancel <msig addr> <message ID> <desination> <value>"))
+			return ShowHelp(cctx, fmt.Errorf("usage: msig cancel <msig addr> <message ID> <destination> <value>"))
 		}
 
 		if cctx.NArg() > 4 && cctx.NArg() != 6 {
-			return ShowHelp(cctx, fmt.Errorf("usage: msig cancel <msig addr> <message ID> <desination> <value> [ <method> <params> ]"))
+			return ShowHelp(cctx, fmt.Errorf("usage: msig cancel <msig addr> <message ID> <destination> <value> [ <method> <params> ]"))
 		}
 
 		srv, err := GetFullNodeServices(cctx)

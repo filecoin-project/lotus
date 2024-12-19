@@ -31,6 +31,7 @@ import (
 	nv22 "github.com/filecoin-project/go-state-types/builtin/v13/migration"
 	nv23 "github.com/filecoin-project/go-state-types/builtin/v14/migration"
 	nv24 "github.com/filecoin-project/go-state-types/builtin/v15/migration"
+	nv25 "github.com/filecoin-project/go-state-types/builtin/v16/migration"
 	nv17 "github.com/filecoin-project/go-state-types/builtin/v9/migration"
 	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/go-state-types/migration"
@@ -324,6 +325,17 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 		Migration: UpgradeActorsV15,
 		PreMigrations: []stmgr.PreMigration{{
 			PreMigration:    PreUpgradeActorsV15,
+			StartWithin:     120,
+			DontStartWithin: 15,
+			StopWithin:      10,
+		}},
+		Expensive: true,
+	}, {
+		Height:    buildconstants.UpgradeTeepHeight,
+		Network:   network.Version25,
+		Migration: UpgradeActorsV16,
+		PreMigrations: []stmgr.PreMigration{{
+			PreMigration:    PreUpgradeActorsV16,
 			StartWithin:     120,
 			DontStartWithin: 15,
 			StopWithin:      10,
@@ -2728,6 +2740,119 @@ func upgradeActorsV15Common(
 	return newRoot, nil
 }
 
+func PreUpgradeActorsV16(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) error {
+	// Use half the CPUs for pre-migration, but leave at least 3.
+	workerCount := MigrationMaxWorkerCount
+	if workerCount <= 4 {
+		workerCount = 1
+	} else {
+		workerCount /= 2
+	}
+
+	lbts, lbRoot, err := stmgr.GetLookbackTipSetForRound(ctx, sm, ts, epoch)
+	if err != nil {
+		return xerrors.Errorf("error getting lookback ts for premigration: %w", err)
+	}
+
+	logPeriod, err := getMigrationProgressLogPeriod()
+	if err != nil {
+		return xerrors.Errorf("error getting progress log period: %w", err)
+	}
+
+	config := migration.Config{
+		MaxWorkers:        uint(workerCount),
+		ProgressLogPeriod: logPeriod,
+	}
+
+	_, err = upgradeActorsV16Common(ctx, sm, cache, lbRoot, epoch, lbts, config)
+	return err
+}
+
+func UpgradeActorsV16(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, cb stmgr.ExecMonitor,
+	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+	// Use all the CPUs except 2.
+	workerCount := MigrationMaxWorkerCount - 3
+	if workerCount <= 0 {
+		workerCount = 1
+	}
+
+	logPeriod, err := getMigrationProgressLogPeriod()
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("error getting progress log period: %w", err)
+	}
+
+	config := migration.Config{
+		MaxWorkers:        uint(workerCount),
+		JobQueueSize:      1000,
+		ResultQueueSize:   100,
+		ProgressLogPeriod: logPeriod,
+	}
+	newRoot, err := upgradeActorsV16Common(ctx, sm, cache, root, epoch, ts, config)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("migrating actors vXX state: %w", err)
+	}
+	return newRoot, nil
+}
+
+func upgradeActorsV16Common(
+	ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache,
+	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet,
+	config migration.Config,
+) (cid.Cid, error) {
+	writeStore := blockstore.NewAutobatch(ctx, sm.ChainStore().StateBlockstore(), units.GiB/4)
+	adtStore := store.ActorStore(ctx, writeStore)
+	// ensure that the manifest is loaded in the blockstore
+	if err := bundle.LoadBundles(ctx, writeStore, actorstypes.Version16); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to load manifest bundle: %w", err)
+	}
+
+	// Load the state root.
+	var stateRoot types.StateRoot
+	if err := adtStore.Get(ctx, root, &stateRoot); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to decode state root: %w", err)
+	}
+
+	if stateRoot.Version != types.StateTreeVersion5 {
+		return cid.Undef, xerrors.Errorf(
+			"expected state root version 5 for actors vXX+1 upgrade, got %d",
+			stateRoot.Version,
+		)
+	}
+
+	manifest, ok := actors.GetManifest(actorstypes.Version16)
+	if !ok {
+		return cid.Undef, xerrors.Errorf("no manifest CID for vXX+1 upgrade")
+	}
+
+	// Perform the migration
+	newHamtRoot, err := nv25.MigrateStateTree(ctx, adtStore, manifest, stateRoot.Actors, epoch, config,
+		migrationLogger{}, cache)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("upgrading to actors vXX+1: %w", err)
+	}
+
+	// Persist the result.
+	newRoot, err := adtStore.Put(ctx, &types.StateRoot{
+		Version: types.StateTreeVersion5,
+		Actors:  newHamtRoot,
+		Info:    stateRoot.Info,
+	})
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to persist new state root: %w", err)
+	}
+
+	// Persists the new tree and shuts down the flush worker
+	if err := writeStore.Flush(ctx); err != nil {
+		return cid.Undef, xerrors.Errorf("writeStore flush failed: %w", err)
+	}
+
+	if err := writeStore.Shutdown(ctx); err != nil {
+		return cid.Undef, xerrors.Errorf("writeStore shutdown failed: %w", err)
+	}
+
+	return newRoot, nil
+}
+
 ////////////////////
 
 // Example upgrade function if upgrade requires only code changes
@@ -2890,4 +3015,20 @@ func (ml migrationLogger) Log(level rt.LogLevel, msg string, args ...interface{}
 	case rt.ERROR:
 		log.Errorf(msg, args...)
 	}
+}
+
+func getMigrationProgressLogPeriod() (time.Duration, error) {
+	logPeriod := time.Second * 2 // default period
+	period := os.Getenv("LOTUS_MIGRATE_PROGRESS_LOG_SECONDS")
+	if period != "" {
+		seconds, err := strconv.Atoi(period)
+		if err != nil {
+			return 0, xerrors.Errorf("LOTUS_MIGRATE_PROGRESS_LOG_SECONDS must be an integer: %w", err)
+		}
+		if seconds <= 0 {
+			return 0, xerrors.Errorf("LOTUS_MIGRATE_PROGRESS_LOG_SECONDS must be positive")
+		}
+		logPeriod = time.Duration(seconds) * time.Second
+	}
+	return logPeriod, nil
 }

@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"reflect"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -229,9 +230,12 @@ func GetFullNodeAPI(ctx *cli.Context) (v0api.FullNode, jsonrpc.ClientCloser, err
 
 type contextKey string
 
-// OnSingleNode is not thread safe
+// OnSingleNode returns a modified context that, when passed to a method on a FullNodeProxy, will
+// cause all calls to be directed at the same node when possible.
+//
+// Think "sticky sessions".
 func OnSingleNode(ctx context.Context) context.Context {
-	return context.WithValue(ctx, contextKey("retry-node"), new(*int))
+	return context.WithValue(ctx, contextKey("retry-node"), new(atomic.Int32))
 }
 
 func FullNodeProxy[T api.FullNode](ins []T, outstr *api.FullNodeStruct) {
@@ -262,27 +266,29 @@ func FullNodeProxy[T api.FullNode](ins []T, outstr *api.FullNodeStruct) {
 
 				ctx := args[0].Interface().(context.Context)
 
-				curr := -1
-
 				// for calls that need to be performed on the same node
 				// primarily for miner when calling create block and submit block subsequently
-				key := contextKey("retry-node")
-				if ctx.Value(key) != nil {
-					if (*ctx.Value(key).(**int)) == nil {
-						*ctx.Value(key).(**int) = &curr
-					} else {
-						curr = **ctx.Value(key).(**int) - 1
-					}
+				var curr *atomic.Int32
+				if v, ok := ctx.Value(contextKey("retry-node")).(*atomic.Int32); ok {
+					curr = v
+				} else {
+					curr = new(atomic.Int32)
 				}
 
-				total := len(rins)
+				total := int32(len(rins))
 				result, _ := retry.Retry(ctx, 5, initialBackoff, errorsToRetry, func() ([]reflect.Value, error) {
-					curr = (curr + 1) % total
-
-					result := fns[curr].Call(args)
+					idx := curr.Load()
+					result := fns[idx].Call(args)
 					if result[len(result)-1].IsNil() {
 						return result, nil
 					}
+					// On failure, switch to the next node.
+					//
+					// We CAS instead of incrementing because this might have
+					// already been incremented by a concurrent call if we have
+					// a shared `curr` (we're sticky to a single node).
+					curr.CompareAndSwap(idx, (idx+1)%total)
+
 					e := result[len(result)-1].Interface().(error)
 					return result, e
 				})

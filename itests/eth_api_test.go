@@ -20,7 +20,6 @@ import (
 	inittypes "github.com/filecoin-project/go-state-types/builtin/v8/init"
 	"github.com/filecoin-project/go-state-types/exitcode"
 
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -401,43 +400,38 @@ func TestEthBlockNumberAliases(t *testing.T) {
 	ens.InterconnectAll().BeginMining(blockTime)
 	ens.Start()
 
-	build.Clock.Sleep(time.Second)
-
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	head := client.WaitTillChain(ctx, kit.HeightAtLeast(policy.ChainFinality+100))
-	// latest should be head-1 (parents)
-	var latestEthBlk ethtypes.EthBlock
-	for {
-		var err error
-		latestEthBlk, err = client.EVM().EthGetBlockByNumber(ctx, "latest", true)
-		require.NoError(t, err)
-		afterHead, err := client.ChainHead(ctx)
-		require.NoError(t, err)
-		if afterHead.Height() == head.Height() {
-			break
-		}
-		// else: whoops, we had a chain increment between getting head and getting "latest" so they're
-		// clearly not going to match, try again
-		head = afterHead
+	client.WaitTillChain(ctx, kit.HeightAtLeast(policy.ChainFinality+100))
+
+	for _, tc := range []struct {
+		param       string
+		expectedLag abi.ChainEpoch
+	}{
+		{"latest", 1},                           // head - 1
+		{"safe", 30 + 1},                        // "latest" - 30
+		{"finalized", policy.ChainFinality + 1}, // "latest" - 900
+	} {
+		t.Run(tc.param, func(t *testing.T) {
+			head, err := client.ChainHead(ctx)
+			require.NoError(t, err)
+			var blk ethtypes.EthBlock
+			for { // get a block while retaining a stable "head" reference
+				blk, err = client.EVM().EthGetBlockByNumber(ctx, tc.param, true)
+				require.NoError(t, err)
+				afterHead, err := client.ChainHead(ctx)
+				require.NoError(t, err)
+				if afterHead.Height() == head.Height() {
+					break
+				}
+				// else: whoops, we had a chain increment between getting head and getting "latest" so
+				// we won't be able to use head as a stable reference for comparison
+				head = afterHead
+			}
+			ts, err := client.ChainGetTipSetByHeight(ctx, head.Height()-tc.expectedLag, head.Key())
+			require.NoError(t, err)
+			require.EqualValues(t, ts.Height(), blk.Number)
+		})
 	}
-
-	diff := int64(latestEthBlk.Number) - int64(head.Height()-1)
-	require.GreaterOrEqual(t, diff, int64(0))
-	require.LessOrEqual(t, diff, int64(2))
-
-	// safe should be latest-30
-	safeEthBlk, err := client.EVM().EthGetBlockByNumber(ctx, "safe", true)
-	require.NoError(t, err)
-	diff = int64(latestEthBlk.Number-30) - int64(safeEthBlk.Number)
-	require.GreaterOrEqual(t, diff, int64(0))
-	require.LessOrEqual(t, diff, int64(2))
-
-	// finalized should be Finality blocks behind latest
-	finalityEthBlk, err := client.EVM().EthGetBlockByNumber(ctx, "finalized", true)
-	require.NoError(t, err)
-	diff = int64(latestEthBlk.Number) - int64(policy.ChainFinality) - int64(finalityEthBlk.Number)
-	require.GreaterOrEqual(t, diff, int64(0))
-	require.LessOrEqual(t, diff, int64(2))
 }

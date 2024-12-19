@@ -102,6 +102,9 @@ const UpgradeWaffleHeight = 1779094
 // 2024-10-23T13:30:00Z
 const UpgradeTuktukHeight = 2078794
 
+// Canceled - See update in: https://github.com/filecoin-project/community/discussions/74#discussioncomment-11549619
+const UpgradeTeepHeight = 9999999999
+
 // FIP-0081: for the power actor state for pledge calculations.
 // UpgradeTuktukPowerRampDurationEpochs ends up in the power actor state after
 // Tuktuk migration. along with a RampStartEpoch matching the upgrade height.

@@ -29,6 +29,8 @@ import (
 
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/cli/spcli"
@@ -49,6 +51,7 @@ var sectorsCmd = &cli.Command{
 		terminateSectorPenaltyEstimationCmd,
 		visAllocatedSectorsCmd,
 		dumpRLESectorCmd,
+		dumpSectorOnChainInfoCmd,
 		sectorReadCmd,
 		sectorDeleteCmd,
 	},
@@ -647,6 +650,92 @@ var sectorDeleteCmd = &cli.Command{
 		if err != nil {
 			return xerrors.Errorf("removing sector: %w", err)
 		}
+
+		return nil
+	},
+}
+
+var dumpSectorOnChainInfoCmd = &cli.Command{
+	Name:  "dump-sectors",
+	Usage: "Dump SectorOnChainInfo in CSV format for all sectors for all miners that have claimed power",
+	Action: func(cctx *cli.Context) error {
+		ctx := lcli.ReqContext(cctx)
+
+		h, err := loadChainStore(ctx, cctx.String("repo"))
+		if err != nil {
+			return xerrors.Errorf("loading chainstore: %w", err)
+		}
+		defer h.closer()
+
+		ts, err := lcli.LoadTipSet(ctx, cctx, &ChainStoreTipSetResolver{Chain: h.cs})
+		if err != nil {
+			return xerrors.Errorf("loading tipset: %w", err)
+		}
+
+		powerActor, err := h.sm.LoadActor(ctx, power.Address, ts)
+		if err != nil {
+			return xerrors.Errorf("failed to load power actor: %w", err)
+		}
+
+		powerState, err := power.Load(h.cs.ActorStore(ctx), powerActor)
+		if err != nil {
+			return xerrors.Errorf("failed to load power actor state: %w", err)
+		}
+
+		_, _ = fmt.Fprintf(cctx.App.Writer,
+			"Miner,SectorNumber,SealProof,DealIDCount,Activation,Expiration,DealWeight,VerifiedDealWeight,"+
+				"InitialPledge,ExpectedDayReward,ExpectedStoragePledge,PowerBaseEpoch,Flags\n")
+
+		var count int
+		err = powerState.ForEachClaim(func(maddr address.Address, claim power.Claim) error {
+			act, err := h.sm.LoadActorTsk(ctx, maddr, ts.Key())
+			if err != nil {
+				return xerrors.Errorf("failed to load miner actor: %w", err)
+			}
+
+			mas, err := miner.Load(h.sm.ChainStore().ActorStore(ctx), act)
+			if err != nil {
+				return xerrors.Errorf("failed to load miner actor state: %w", err)
+			}
+
+			soci, err := mas.LoadSectors(nil)
+			if err != nil {
+				return xerrors.Errorf("load sectors: %w", err)
+			}
+
+			for _, sector := range soci {
+				_, _ = fmt.Fprintf(
+					cctx.App.Writer,
+					"%s,%d,%d,%d,%d,%d,%s,%s,%s,%s,%s,%d,%x\n",
+					maddr,
+					sector.SectorNumber,
+					sector.SealProof,
+					len(sector.DealIDs),
+					sector.Activation,
+					sector.Expiration,
+					sector.DealWeight,
+					sector.VerifiedDealWeight,
+					sector.InitialPledge,
+					sector.ExpectedDayReward,
+					sector.ExpectedStoragePledge,
+					sector.PowerBaseEpoch,
+					sector.Flags,
+				)
+			}
+
+			count++
+			if count%1000 == 0 {
+				_, _ = fmt.Fprintf(cctx.App.ErrWriter, "Processed %d miners.\n", count)
+			}
+
+			return nil
+		}, false)
+
+		if err != nil {
+			return xerrors.Errorf("iterating over claims: %w", err)
+		}
+
+		_, _ = fmt.Fprintf(cctx.App.ErrWriter, "Processed %d miners. Complete.\n", count)
 
 		return nil
 	},

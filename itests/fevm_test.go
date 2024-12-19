@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
@@ -1030,10 +1031,10 @@ func TestFEVMErrorParsing(t *testing.T) {
 	require.NoError(t, err)
 	customError := ethtypes.EthBytes(kit.CalcFuncSignature("CustomError()")).String()
 	for sig, expected := range map[string]string{
-		"failRevertEmpty()":  "none",
-		"failRevertReason()": "Error(my reason)",
-		"failAssert()":       "Assert()",
-		"failDivZero()":      "DivideByZero()",
+		"failRevertEmpty()":  "0x",
+		"failRevertReason()": fmt.Sprintf("%x", []byte("my reason")),
+		"failAssert()":       "0x4e487b710000000000000000000000000000000000000000000000000000000000000001", // Assert()
+		"failDivZero()":      "0x4e487b710000000000000000000000000000000000000000000000000000000000000012", // DivideByZero()
 		"failCustom()":       customError,
 	} {
 		sig := sig
@@ -1546,7 +1547,7 @@ func TestEthGetTransactionByBlockHashAndIndexAndNumber(t *testing.T) {
 		// 2. Invalid block number
 		_, err = client.EthGetTransactionByBlockNumberAndIndex(ctx, (blockNumber + 1000).Hex(), ethtypes.EthUint64(0))
 		require.Error(t, err)
-		require.ErrorContains(t, err, "failed to get tipset")
+		require.ErrorContains(t, err, "requested a future epoch")
 
 		// 3. Index out of range
 		_, err = client.EthGetTransactionByBlockHashAndIndex(ctx, blockHash, ethtypes.EthUint64(100))
@@ -1601,10 +1602,10 @@ func TestEthCall(t *testing.T) {
 
 		var dataErr *api.ErrExecutionReverted
 		require.ErrorAs(t, err, &dataErr, "Expected error to be ErrExecutionReverted")
-		require.Contains(t, dataErr.Message, "execution reverted", "Expected 'execution reverted' message")
+		require.Regexp(t, `message execution failed [\s\S]+\[DivideByZero\(\)\]`, dataErr.Message)
 
 		// Get the error data
-		require.Equal(t, dataErr.Data, "DivideByZero()", "Expected error data to contain 'DivideByZero()'")
+		require.Equal(t, dataErr.Data, "0x4e487b710000000000000000000000000000000000000000000000000000000000000012", "Expected error data to contain 'DivideByZero()'")
 	})
 }
 
@@ -1626,12 +1627,12 @@ func TestEthEstimateGas(t *testing.T) {
 		name           string
 		function       string
 		expectedError  string
-		expectedErrMsg string
+		expectedErrMsg interface{}
 	}{
-		{"DivideByZero", "failDivZero()", "DivideByZero()", "execution reverted"},
-		{"Assert", "failAssert()", "Assert()", "execution reverted"},
-		{"RevertWithReason", "failRevertReason()", "Error(my reason)", "execution reverted"},
-		{"RevertEmpty", "failRevertEmpty()", "", "execution reverted"},
+		{"DivideByZero", "failDivZero()", "0x4e487b710000000000000000000000000000000000000000000000000000000000000012", `message execution failed [\s\S]+\[DivideByZero\(\)\]`},
+		{"Assert", "failAssert()", "0x4e487b710000000000000000000000000000000000000000000000000000000000000001", `message execution failed [\s\S]+\[Assert\(\)\]`},
+		{"RevertWithReason", "failRevertReason()", fmt.Sprintf("%x", []byte("my reason")), `message execution failed [\s\S]+\[Error\(my reason\)\]`},
+		{"RevertEmpty", "failRevertEmpty()", "0x", `message execution failed [\s\S]+\[none\]`},
 	}
 
 	for _, tc := range testCases {
@@ -1653,9 +1654,138 @@ func TestEthEstimateGas(t *testing.T) {
 				require.Error(t, err)
 				var dataErr *api.ErrExecutionReverted
 				require.ErrorAs(t, err, &dataErr, "Expected error to be ErrExecutionReverted")
-				require.Equal(t, tc.expectedErrMsg, dataErr.Message)
-				require.Contains(t, tc.expectedError, dataErr.Data)
+				require.Regexp(t, tc.expectedErrMsg, dataErr.Message)
+				require.Contains(t, dataErr.Data, tc.expectedError)
 			}
 		})
 	}
+}
+
+func TestEthNullRoundHandling(t *testing.T) {
+	blockTime := 100 * time.Millisecond
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
+
+	bms := ens.InterconnectAll().BeginMining(blockTime)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	client.WaitTillChain(ctx, kit.HeightAtLeast(10))
+
+	bms[0].InjectNulls(10)
+
+	tctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	ch, err := client.ChainNotify(tctx)
+	require.NoError(t, err)
+	<-ch
+	hc := <-ch
+	require.Equal(t, store.HCApply, hc[0].Type)
+
+	afterNullHeight := hc[0].Val.Height()
+
+	nullHeight := afterNullHeight - 1
+	for nullHeight > 0 {
+		ts, err := client.ChainGetTipSetByHeight(ctx, nullHeight, types.EmptyTSK)
+		require.NoError(t, err)
+		if ts.Height() == nullHeight {
+			nullHeight--
+		} else {
+			break
+		}
+	}
+
+	nullBlockHex := fmt.Sprintf("0x%x", int(nullHeight))
+	client.WaitTillChain(ctx, kit.HeightAtLeast(nullHeight+2))
+	testCases := []struct {
+		name     string
+		testFunc func() error
+	}{
+		{
+			name: "EthGetBlockByNumber",
+			testFunc: func() error {
+				_, err := client.EthGetBlockByNumber(ctx, nullBlockHex, true)
+				return err
+			},
+		},
+		{
+			name: "EthFeeHistory",
+			testFunc: func() error {
+				_, err := client.EthFeeHistory(ctx, jsonrpc.RawParams([]byte(`[1,"`+nullBlockHex+`",[]]`)))
+				return err
+			},
+		},
+		{
+			name: "EthTraceBlock",
+			testFunc: func() error {
+				_, err := client.EthTraceBlock(ctx, nullBlockHex)
+				return err
+			},
+		},
+		{
+			name: "EthTraceReplayBlockTransactions",
+			testFunc: func() error {
+				_, err := client.EthTraceReplayBlockTransactions(ctx, nullBlockHex, []string{"trace"})
+				return err
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.testFunc()
+			if err == nil {
+				return
+			}
+			require.Error(t, err)
+
+			// Test errors.Is
+			require.ErrorIs(t, err, new(api.ErrNullRound), "error should be or wrap ErrNullRound")
+
+			// Test errors.As and verify message
+			var nullRoundErr *api.ErrNullRound
+			require.ErrorAs(t, err, &nullRoundErr, "error should be convertible to ErrNullRound")
+
+			expectedMsg := fmt.Sprintf("requested epoch was a null round (%d)", nullHeight)
+			require.Equal(t, expectedMsg, nullRoundErr.Error())
+			require.Equal(t, nullHeight, nullRoundErr.Epoch)
+		})
+	}
+}
+
+func TestFEVMEamCreateTwiceFail(t *testing.T) {
+	// See https://github.com/filecoin-project/lotus/issues/12731
+	// EAM create errors were not being properly decoded for traces, we should be able to fail a
+	// transaction and get a trace with the error message.
+	// This test uses a contract that performs two create operations, the second one should fail with
+	// an ErrForbidden error because it derives the same address as the first one.
+
+	req := require.New(t)
+
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	filenameActor := "contracts/DuplicateCreate2Error.hex"
+	fromAddr, actorAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
+
+	_, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, actorAddr, "deployTwice()", nil)
+	req.Error(err)
+	req.Equal(exitcode.ExitCode(33), wait.Receipt.ExitCode)
+	req.NotContains(err.Error(), "fatal error")
+
+	t.Logf("Failed as expected: %s", err)
+
+	traces, err := client.EthTraceBlock(ctx, fmt.Sprintf("0x%x", int(wait.Height-1)))
+	req.NoError(err)
+
+	req.Len(traces, 3)
+	req.EqualValues(wait.Height-1, traces[0].BlockNumber)
+	req.Equal("call", traces[0].EthTrace.Type)
+	req.Contains("Reverted", traces[0].EthTrace.Error)
+	req.EqualValues(wait.Height-1, traces[1].BlockNumber)
+	req.Equal("create", traces[1].EthTrace.Type)
+	req.Equal("", traces[1].EthTrace.Error)
+	req.EqualValues(wait.Height-1, traces[2].BlockNumber)
+	req.Equal("create", traces[2].EthTrace.Type)
+	req.Contains(traces[2].EthTrace.Error, "ErrForbidden")
 }

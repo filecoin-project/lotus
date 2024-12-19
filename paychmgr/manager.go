@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/metrics"
 )
 
 var log = logging.Logger("paych")
@@ -82,13 +83,16 @@ func NewManager(ctx context.Context, shutdown func(), sm stmgr.StateManagerAPI, 
 
 // newManager is used by the tests to supply mocks
 func newManager(pchstore *Store, pchapi managerAPI) (*Manager, error) {
+	ctx := context.Background()
+	ctx = metrics.AddNetworkTag(ctx)
+
 	pm := &Manager{
 		store:    pchstore,
 		sa:       &stateAccessor{sm: pchapi},
 		channels: make(map[string]*channelAccessor),
 		pchapi:   pchapi,
 	}
-	pm.ctx, pm.shutdown = context.WithCancel(context.Background())
+	pm.ctx, pm.shutdown = context.WithCancel(ctx)
 	return pm, pm.Start()
 }
 

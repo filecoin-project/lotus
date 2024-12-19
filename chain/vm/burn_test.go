@@ -1,4 +1,3 @@
-// stm: #unit
 package vm
 
 import (
@@ -11,7 +10,6 @@ import (
 )
 
 func TestGasBurn(t *testing.T) {
-	//stm: @BURN_ESTIMATE_GAS_OVERESTIMATION_BURN_001
 	tests := []struct {
 		used   int64
 		limit  int64
@@ -43,7 +41,6 @@ func TestGasBurn(t *testing.T) {
 }
 
 func TestGasOutputs(t *testing.T) {
-	//stm: @BURN_ESTIMATE_GAS_OUTPUTS_001
 	baseFee := types.NewInt(10)
 	tests := []struct {
 		used  int64

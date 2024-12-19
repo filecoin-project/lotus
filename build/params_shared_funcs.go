@@ -14,17 +14,6 @@ import (
 
 func BlocksTopic(netName dtypes.NetworkName) string   { return "/fil/blocks/" + string(netName) }
 func MessagesTopic(netName dtypes.NetworkName) string { return "/fil/msgs/" + string(netName) }
-func IndexerIngestTopic(netName dtypes.NetworkName) string {
-
-	nn := string(netName)
-	// The network name testnetnet is here for historical reasons.
-	// Going forward we aim to use the name `mainnet` where possible.
-	if nn == "testnetnet" {
-		nn = "mainnet"
-	}
-
-	return "/indexer/ingest/" + nn
-}
 func DhtProtocolName(netName dtypes.NetworkName) protocol.ID {
 	return protocol.ID("/fil/kad/" + string(netName))
 }
@@ -44,6 +33,27 @@ func IsF3Enabled() bool {
 	v, disableEnvVarSet := os.LookupEnv(F3DisableEnvKey)
 	if !disableEnvVarSet {
 		// Environment variable to disable F3 is not set.
+		return true
+	}
+	switch strings.TrimSpace(strings.ToLower(v)) {
+	case "", "0", "false", "no":
+		// Consider these values as "do not disable".
+		return true
+	default:
+		// Consider any other value as disable.
+		return false
+	}
+}
+
+func IsF3PassiveTestingEnabled() bool {
+	if !IsF3Enabled() {
+		return false
+	}
+	const F3DisablePassiveTesting = "LOTUS_DISABLE_F3_PASSIVE_TESTING"
+
+	v, disableEnvVarSet := os.LookupEnv(F3DisablePassiveTesting)
+	if !disableEnvVarSet {
+		// Environment variable to disable F3 passive testing is not set.
 		return true
 	}
 	switch strings.TrimSpace(strings.ToLower(v)) {

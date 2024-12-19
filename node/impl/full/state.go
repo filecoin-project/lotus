@@ -780,6 +780,25 @@ func (m *StateModule) StateMarketStorageDeal(ctx context.Context, dealId abi.Dea
 	return stmgr.GetStorageDeal(ctx, m.StateManager, dealId, ts)
 }
 
+func (a *StateAPI) StateMarketProposalPending(ctx context.Context, proposalCid cid.Cid, tsk types.TipSetKey) (bool, error) {
+	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
+	if err != nil {
+		return false, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	st, err := a.StateManager.GetMarketState(ctx, ts)
+	if err != nil {
+		return false, err
+	}
+
+	props, err := st.PendingProposals()
+	if err != nil {
+		return false, err
+	}
+
+	return props.Has(proposalCid)
+}
+
 func (a *StateAPI) StateGetAllocationIdForPendingDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (verifreg.AllocationId, error) {
 	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
@@ -1449,12 +1468,12 @@ func (a *StateAPI) calculateSectorWeight(ctx context.Context, maddr address.Addr
 		return types.EmptyInt, xerrors.Errorf("loading market actor: %w", err)
 	} else if s, err := market.Load(store, act); err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading market actor state: %w", err)
-	} else if w, vw, err := s.VerifyDealsForActivation(maddr, pci.DealIDs, height, pci.Expiration); err != nil {
+	} else if vw, err := s.VerifyDealsForActivation(maddr, pci.DealIDs, height, pci.Expiration); err != nil {
 		return types.EmptyInt, xerrors.Errorf("verifying deals for activation: %w", err)
 	} else {
 		// NB: not exactly accurate, but should always lead us to *over* estimate, not under
 		duration := pci.Expiration - height
-		sectorWeight = builtin.QAPowerForWeight(ssize, duration, w, vw)
+		sectorWeight = builtin.QAPowerForWeight(ssize, duration, vw)
 	}
 
 	return sectorWeight, nil
@@ -1640,7 +1659,7 @@ func (a *StateAPI) StateMinerInitialPledgeForSector(ctx context.Context, sectorD
 	}
 
 	verifiedWeight := big.Mul(big.NewIntUnsigned(verifiedSize), big.NewInt(int64(sectorDuration)))
-	sectorWeight := builtin.QAPowerForWeight(sectorSize, sectorDuration, big.Zero(), verifiedWeight)
+	sectorWeight := builtin.QAPowerForWeight(sectorSize, sectorDuration, verifiedWeight)
 
 	epochsSinceRampStart, rampDurationEpochs, err := a.getPledgeRampParams(ctx, ts.Height(), state)
 	if err != nil {
@@ -2060,6 +2079,7 @@ func (a *StateAPI) StateGetNetworkParams(ctx context.Context) (*api.NetworkParam
 			UpgradePhoenixHeight:     buildconstants.UpgradePhoenixHeight,
 			UpgradeWaffleHeight:      buildconstants.UpgradeWaffleHeight,
 			UpgradeTuktukHeight:      buildconstants.UpgradeTuktukHeight,
+			UpgradeTeepHeight:        buildconstants.UpgradeTeepHeight,
 		},
 	}, nil
 }
