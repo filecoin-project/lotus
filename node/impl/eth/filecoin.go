@@ -11,22 +11,19 @@ import (
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
-type EthFilecoin interface {
+type EthFilecoinAPI interface {
 	EthAddressToFilecoinAddress(ctx context.Context, ethAddress ethtypes.EthAddress) (address.Address, error)
 	FilecoinAddressToEthAddress(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthAddress, error)
 }
 
-var _ EthFilecoin = (*ethFilecoin)(nil)
+var _ EthFilecoinAPI = (*ethFilecoin)(nil)
 
 type ethFilecoin struct {
-	chainStore   ChainStoreAPI
-	stateManager StateManagerAPI
+	chainStore   ChainStore
+	stateManager StateManager
 }
 
-func NewEthFilecoin(
-	chainStore ChainStoreAPI,
-	stateManager StateManagerAPI,
-) EthFilecoin {
+func NewEthFilecoinAPI(chainStore ChainStore, stateManager StateManager) EthFilecoinAPI {
 	return &ethFilecoin{
 		chainStore:   chainStore,
 		stateManager: stateManager,

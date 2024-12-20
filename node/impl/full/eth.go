@@ -66,21 +66,21 @@ type EthEventAPI interface {
 var (
 	_ EthModuleAPI = *new(api.FullNode)
 	_ EthEventAPI  = *new(api.FullNode)
-	_ EthModuleAPI = *new(EthAPI)
-	_ EthEventAPI  = *new(EthAPI)
+	_ EthModuleAPI = *new(FullEthAPI)
+	_ EthEventAPI  = *new(FullEthAPI)
 	_ EthModuleAPI = *new(api.Gateway)
 	_ EthEventAPI  = *new(api.Gateway)
 )
 
-type EthAPI struct {
+type FullEthAPI struct {
 	fx.In
 
-	eth.EthFilecoin
-	eth.EthBasic
-	eth.EthTransaction
-	eth.EthLookup
-	eth.EthTrace
-	eth.EthGas
-	eth.EthEvents
-	eth.EthSend
+	eth.EthFilecoinAPI
+	eth.EthBasicAPI
+	eth.EthTransactionAPI
+	eth.EthLookupAPI
+	eth.EthTraceAPI
+	eth.EthGasAPI
+	eth.EthEventsAPI
+	eth.EthSendAPI
 }

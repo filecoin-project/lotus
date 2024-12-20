@@ -23,31 +23,30 @@ import (
 	"github.com/filecoin-project/lotus/node/impl/eth"
 	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
-	"github.com/filecoin-project/lotus/node/repo"
 )
 
 type EthTransactionParams struct {
 	fx.In
 
-	helpers.MetricsCtx
-	fx.Lifecycle
-	eth.ChainStoreAPI
-	eth.StateManagerAPI
-	eth.StateAPI
-	eth.MpoolAPI
-	eth.EthEventsExtended
-	index.Indexer
+	MetricsCtx        helpers.MetricsCtx
+	Lifecycle         fx.Lifecycle
+	ChainStore        eth.ChainStore
+	StateManager      eth.StateManager
+	StateAPI          eth.StateAPI
+	MpoolAPI          eth.MpoolAPI
+	EthEventsExtended eth.EthEventsInternal
+	Indexer           index.Indexer
 }
 
-func MakeEthTransaction(cfg config.FevmConfig) func(EthTransactionParams) (eth.EthTransaction, error) {
-	return func(params EthTransactionParams) (eth.EthTransaction, error) {
+func MakeEthTransaction(cfg config.FevmConfig) func(EthTransactionParams) (eth.EthTransactionAPI, error) {
+	return func(params EthTransactionParams) (eth.EthTransactionAPI, error) {
 		// Prime the tipset cache with the entire chain to make sure tx and block lookups are fast
 		params.Lifecycle.Append(fx.Hook{
 			OnStart: func(context.Context) error {
 				go func() {
 					start := time.Now()
 					log.Infoln("Start prefilling GetTipsetByHeight cache")
-					_, err := params.ChainStoreAPI.GetTipsetByHeight(params.MetricsCtx, abi.ChainEpoch(0), params.ChainStoreAPI.GetHeaviestTipSet(), false)
+					_, err := params.ChainStore.GetTipsetByHeight(params.MetricsCtx, abi.ChainEpoch(0), params.ChainStore.GetHeaviestTipSet(), false)
 					if err != nil {
 						log.Warnf("error when prefilling GetTipsetByHeight cache: %w", err)
 					}
@@ -57,9 +56,9 @@ func MakeEthTransaction(cfg config.FevmConfig) func(EthTransactionParams) (eth.E
 			},
 		})
 
-		return eth.NewEthTransaction(
-			params.ChainStoreAPI,
-			params.StateManagerAPI,
+		return eth.NewEthTransactionAPI(
+			params.ChainStore,
+			params.StateManager,
 			params.StateAPI,
 			params.MpoolAPI,
 			params.Indexer,
@@ -70,16 +69,16 @@ func MakeEthTransaction(cfg config.FevmConfig) func(EthTransactionParams) (eth.E
 }
 
 func MakeEthTrace(cfg config.FevmConfig) func(
-	chainStore eth.ChainStoreAPI,
-	stateManager eth.StateManagerAPI,
-	ethTransaction eth.EthTransaction,
-) eth.EthTrace {
+	chainStore eth.ChainStore,
+	stateManager eth.StateManager,
+	ethTransaction eth.EthTransactionAPI,
+) eth.EthTraceAPI {
 	return func(
-		chainStore eth.ChainStoreAPI,
-		stateManager eth.StateManagerAPI,
-		ethTransaction eth.EthTransaction,
-	) eth.EthTrace {
-		return eth.NewEthTrace(chainStore, stateManager, ethTransaction, cfg.EthTraceFilterMaxResults)
+		chainStore eth.ChainStore,
+		stateManager eth.StateManager,
+		ethTransaction eth.EthTransactionAPI,
+	) eth.EthTraceAPI {
+		return eth.NewEthTraceAPI(chainStore, stateManager, ethTransaction, cfg.EthTraceFilterMaxResults)
 	}
 }
 
@@ -95,27 +94,25 @@ var _ events.EventHelperAPI = &EventHelperAPI{}
 type EthEventsParams struct {
 	fx.In
 
-	helpers.MetricsCtx
-	repo.LockedRepo
-	fx.Lifecycle
-	*filter.EventFilterManager
-	*store.ChainStore
-	*stmgr.StateManager
-	EventHelperAPI
-	*messagepool.MessagePool
-	full.StateAPI
-	full.ChainAPI
+	MetricsCtx         helpers.MetricsCtx
+	Lifecycle          fx.Lifecycle
+	EventFilterManager *filter.EventFilterManager
+	ChainStore         *store.ChainStore
+	StateManager       *stmgr.StateManager
+	EventHelperAPI     EventHelperAPI
+	MessagePool        *messagepool.MessagePool
+	Indexer            index.Indexer
 }
 
-func MakeEthEventsExtended(cfg config.EventsConfig, enableEthRPC bool) func(EthEventsParams) (eth.EthEventsExtended, error) {
-	return func(params EthEventsParams) (eth.EthEventsExtended, error) {
-		ctx := helpers.LifecycleCtx(params.MetricsCtx, params.Lifecycle)
+func MakeEthEventsExtended(cfg config.EventsConfig, enableEthRPC bool) func(EthEventsParams) (eth.EthEventsInternal, error) {
+	return func(params EthEventsParams) (eth.EthEventsInternal, error) {
+		lctx := helpers.LifecycleCtx(params.MetricsCtx, params.Lifecycle)
 
 		var (
-			subscribtionCtx      context.Context     = ctx
-			chainStore           eth.ChainStoreAPI   = params.ChainStore
-			stateManager         eth.StateManagerAPI = params.StateManager
-			chainIndexer         index.Indexer       = params.ChainIndexer
+			subscribtionCtx      context.Context  = lctx
+			chainStore           eth.ChainStore   = params.ChainStore
+			stateManager         eth.StateManager = params.StateManager
+			chainIndexer         index.Indexer    = params.Indexer
 			eventFilterManager   *filter.EventFilterManager
 			tipSetFilterManager  *filter.TipSetFilterManager
 			memPoolFilterManager *filter.MemPoolFilterManager
@@ -127,7 +124,7 @@ func MakeEthEventsExtended(cfg config.EventsConfig, enableEthRPC bool) func(EthE
 		if !enableEthRPC {
 			// all event functionality is disabled
 			// the historic filter API relies on the real time one
-			return eth.NewEthEvents(
+			return eth.NewEthEventsAPI(
 				subscribtionCtx,
 				chainStore,
 				stateManager,
@@ -147,7 +144,7 @@ func MakeEthEventsExtended(cfg config.EventsConfig, enableEthRPC bool) func(EthE
 		memPoolFilterManager = &filter.MemPoolFilterManager{MaxFilterResults: cfg.MaxFilterResults}
 		eventFilterManager = params.EventFilterManager
 
-		ee := eth.NewEthEvents(
+		ee := eth.NewEthEventsAPI(
 			subscribtionCtx,
 			chainStore,
 			stateManager,
@@ -162,20 +159,20 @@ func MakeEthEventsExtended(cfg config.EventsConfig, enableEthRPC bool) func(EthE
 
 		params.Lifecycle.Append(fx.Hook{
 			OnStart: func(context.Context) error {
-				ev, err := events.NewEvents(ctx, &params.EventHelperAPI)
+				ev, err := events.NewEvents(lctx, &params.EventHelperAPI)
 				if err != nil {
 					return err
 				}
 				// ignore returned tipsets
 				_ = ev.Observe(tipSetFilterManager)
 
-				ch, err := params.MessagePool.Updates(ctx)
+				ch, err := params.MessagePool.Updates(lctx)
 				if err != nil {
 					return err
 				}
-				go memPoolFilterManager.WaitForMpoolUpdates(ctx, ch)
+				go memPoolFilterManager.WaitForMpoolUpdates(lctx, ch)
 
-				go ee.GC(ctx, time.Duration(cfg.FilterTTL))
+				go ee.GC(lctx, time.Duration(cfg.FilterTTL))
 
 				return nil
 			},
@@ -185,6 +182,9 @@ func MakeEthEventsExtended(cfg config.EventsConfig, enableEthRPC bool) func(EthE
 	}
 }
 
+// GatewayEthSend is a helper to provide the Gateway with the EthSendAPI but block the use of
+// EthSendRawTransactionUntrusted. The Gateway API doesn't expose this method, so this is a
+// precautionary measure.
 type GatewayEthSend struct {
 	fx.In
 	api.Gateway
@@ -197,19 +197,17 @@ func (*GatewayEthSend) EthSendRawTransactionUntrusted(ctx context.Context, rawTx
 type EventFilterManagerParams struct {
 	fx.In
 
-	helpers.MetricsCtx
-	repo.LockedRepo
-	fx.Lifecycle
-	*store.ChainStore
-	*stmgr.StateManager
-	EventHelperAPI
-	full.ChainAPI
-	index.Indexer
+	MetricsCtx     helpers.MetricsCtx
+	Lifecycle      fx.Lifecycle
+	ChainStore     *store.ChainStore
+	StateManager   *stmgr.StateManager
+	EventHelperAPI EventHelperAPI
+	Indexer        index.Indexer
 }
 
 func MakeEventFilterManager(cfg config.EventsConfig) func(EventFilterManagerParams) (*filter.EventFilterManager, error) {
 	return func(params EventFilterManagerParams) (*filter.EventFilterManager, error) {
-		ctx := helpers.LifecycleCtx(params.MetricsCtx, params.Lifecycle)
+		lctx := helpers.LifecycleCtx(params.MetricsCtx, params.Lifecycle)
 
 		// Enable indexing of actor events
 
@@ -235,7 +233,7 @@ func MakeEventFilterManager(cfg config.EventsConfig) func(EventFilterManagerPara
 
 		params.Lifecycle.Append(fx.Hook{
 			OnStart: func(context.Context) error {
-				ev, err := events.NewEvents(ctx, &params.EventHelperAPI)
+				ev, err := events.NewEvents(lctx, &params.EventHelperAPI)
 				if err != nil {
 					return err
 				}

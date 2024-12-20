@@ -33,7 +33,7 @@ type FullNodeAPI struct {
 	full.MsigAPI
 	full.WalletAPI
 	full.SyncAPI
-	full.EthAPI
+	full.FullEthAPI
 	full.ActorEventsAPI
 	full.F3API
 	full.ChainIndexAPI

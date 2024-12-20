@@ -18,7 +18,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
-type EthTransaction interface {
+type EthTransactionAPI interface {
 	EthBlockNumber(ctx context.Context) (ethtypes.EthUint64, error)
 
 	EthGetBlockTransactionCountByNumber(ctx context.Context, blkNum ethtypes.EthUint64) (ethtypes.EthUint64, error)
@@ -42,37 +42,37 @@ type EthTransaction interface {
 }
 
 var (
-	_ EthTransaction = (*ethTransaction)(nil)
-	_ EthTransaction = (*EthTransactionDisabled)(nil)
+	_ EthTransactionAPI = (*ethTransaction)(nil)
+	_ EthTransactionAPI = (*EthTransactionDisabled)(nil)
 )
 
 type ethTransaction struct {
-	chainStore   ChainStoreAPI
-	stateManager StateManagerAPI
-	state        StateAPI
-	mpool        MpoolAPI
+	chainStore   ChainStore
+	stateManager StateManager
+	stateApi     StateAPI
+	mpoolApi     MpoolAPI
 	chainIndexer index.Indexer
 
-	ethEvents EthEventsExtended
+	ethEvents EthEventsInternal
 
 	blockCache            *arc.ARCCache[cid.Cid, *ethtypes.EthBlock] // caches blocks by their CID but blocks only have the transaction hashes
 	blockTransactionCache *arc.ARCCache[cid.Cid, *ethtypes.EthBlock] // caches blocks along with full transaction payload by their CID
 }
 
-func NewEthTransaction(
-	chainStore ChainStoreAPI,
-	stateManager StateManagerAPI,
-	state StateAPI,
-	mpool MpoolAPI,
+func NewEthTransactionAPI(
+	chainStore ChainStore,
+	stateManager StateManager,
+	stateApi StateAPI,
+	mpoolApi MpoolAPI,
 	chainIndexer index.Indexer,
-	ethEvents EthEventsExtended,
+	ethEvents EthEventsInternal,
 	blockCacheSize int,
-) (EthTransaction, error) {
+) (EthTransactionAPI, error) {
 	t := &ethTransaction{
 		chainStore:            chainStore,
 		stateManager:          stateManager,
-		state:                 state,
-		mpool:                 mpool,
+		stateApi:              stateApi,
+		mpoolApi:              mpoolApi,
 		chainIndexer:          chainIndexer,
 		ethEvents:             ethEvents,
 		blockCache:            nil,
@@ -81,13 +81,10 @@ func NewEthTransaction(
 
 	if blockCacheSize > 0 {
 		var err error
-		t.blockCache, err = arc.NewARC[cid.Cid, *ethtypes.EthBlock](blockCacheSize)
-		if err != nil {
+		if t.blockCache, err = arc.NewARC[cid.Cid, *ethtypes.EthBlock](blockCacheSize); err != nil {
 			return nil, xerrors.Errorf("failed to create block cache: %w", err)
 		}
-
-		t.blockTransactionCache, err = arc.NewARC[cid.Cid, *ethtypes.EthBlock](blockCacheSize)
-		if err != nil {
+		if t.blockTransactionCache, err = arc.NewARC[cid.Cid, *ethtypes.EthBlock](blockCacheSize); err != nil {
 			return nil, xerrors.Errorf("failed to create block transaction cache: %w", err)
 		}
 	}
@@ -209,7 +206,7 @@ func (e *ethTransaction) EthGetTransactionByHashLimited(ctx context.Context, txH
 	}
 
 	// first, try to get the cid from mined transactions
-	msgLookup, err := e.state.StateSearchMsg(ctx, types.EmptyTSK, c, limit, true)
+	msgLookup, err := e.stateApi.StateSearchMsg(ctx, types.EmptyTSK, c, limit, true)
 	if err == nil && msgLookup != nil {
 		tx, err := newEthTxFromMessageLookup(ctx, msgLookup, -1, e.chainStore, e.stateManager)
 		if err == nil {
@@ -218,7 +215,7 @@ func (e *ethTransaction) EthGetTransactionByHashLimited(ctx context.Context, txH
 	}
 
 	// if not found, try to get it from the mempool
-	pending, err := e.mpool.MpoolPending(ctx, types.EmptyTSK)
+	pending, err := e.mpoolApi.MpoolPending(ctx, types.EmptyTSK)
 	if err != nil {
 		// inability to fetch mpool pending transactions is an internal node error
 		// that needs to be reported as-is
@@ -343,7 +340,7 @@ func (e *ethTransaction) EthGetTransactionCount(ctx context.Context, sender etht
 
 	// Handle "pending" block parameter separately
 	if blkParam.PredefinedBlock != nil && *blkParam.PredefinedBlock == "pending" {
-		nonce, err := e.mpool.MpoolGetNonce(ctx, addr)
+		nonce, err := e.mpoolApi.MpoolGetNonce(ctx, addr)
 		if err != nil {
 			return ethtypes.EthUint64(0), xerrors.Errorf("failed to get nonce from mpool: %w", err)
 		}
@@ -408,7 +405,7 @@ func (e *ethTransaction) EthGetTransactionReceiptLimited(ctx context.Context, tx
 		c = txHash.ToCid()
 	}
 
-	msgLookup, err := e.state.StateSearchMsg(ctx, types.EmptyTSK, c, limit, true)
+	msgLookup, err := e.stateApi.StateSearchMsg(ctx, types.EmptyTSK, c, limit, true)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to lookup Eth Txn %s as %s: %w", txHash, c, err)
 	}

@@ -28,7 +28,7 @@ const (
 	EthSubscribeEventTypePendingTransactions = "newPendingTransactions"
 )
 
-type EthEvents interface {
+type EthEventsAPI interface {
 	EthGetLogs(ctx context.Context, filter *ethtypes.EthFilterSpec) (*ethtypes.EthFilterResult, error)
 	EthNewBlockFilter(ctx context.Context) (ethtypes.EthFilterID, error)
 	EthNewPendingTransactionFilter(ctx context.Context) (ethtypes.EthFilterID, error)
@@ -40,10 +40,10 @@ type EthEvents interface {
 	EthUnsubscribe(ctx context.Context, id ethtypes.EthSubscriptionID) (bool, error)
 }
 
-// EthEventsExtended extends the EthEvents interface with additional methods that are not exposed
+// EthEventsInternal extends the EthEvents interface with additional methods that are not exposed
 // on the JSON-RPC API.
-type EthEventsExtended interface {
-	EthEvents
+type EthEventsInternal interface {
+	EthEventsAPI
 
 	// GetEthLogsForBlockAndTransaction returns the logs for a block and transaction, it is intended
 	// for internal use rather than being exposed via the JSON-RPC API.
@@ -54,9 +54,9 @@ type EthEventsExtended interface {
 }
 
 var (
-	_ EthEvents         = (*ethEvents)(nil)
-	_ EthEventsExtended = (*ethEvents)(nil)
-	_ EthEvents         = (*EthEventsDisabled)(nil)
+	_ EthEventsAPI      = (*ethEvents)(nil)
+	_ EthEventsInternal = (*ethEvents)(nil)
+	_ EthEventsAPI      = (*EthEventsDisabled)(nil)
 )
 
 type filterEventCollector interface {
@@ -72,9 +72,9 @@ type filterTipSetCollector interface {
 }
 
 type ethEvents struct {
-	subscribtionCtx      context.Context
-	chainStore           ChainStoreAPI
-	stateManager         StateManagerAPI
+	subscriptionCtx      context.Context
+	chainStore           ChainStore
+	stateManager         StateManager
 	chainIndexer         index.Indexer
 	eventFilterManager   *filter.EventFilterManager
 	tipSetFilterManager  *filter.TipSetFilterManager
@@ -84,10 +84,10 @@ type ethEvents struct {
 	maxFilterHeightRange abi.ChainEpoch
 }
 
-func NewEthEvents(
-	subscribtionCtx context.Context,
-	chainStore ChainStoreAPI,
-	stateManager StateManagerAPI,
+func NewEthEventsAPI(
+	subscriptionCtx context.Context,
+	chainStore ChainStore,
+	stateManager StateManager,
 	chainIndexer index.Indexer,
 	eventFilterManager *filter.EventFilterManager,
 	tipSetFilterManager *filter.TipSetFilterManager,
@@ -95,9 +95,9 @@ func NewEthEvents(
 	filterStore filter.FilterStore,
 	subscriptionManager *EthSubscriptionManager,
 	maxFilterHeightRange abi.ChainEpoch,
-) EthEventsExtended {
+) EthEventsInternal {
 	return &ethEvents{
-		subscribtionCtx:      subscribtionCtx,
+		subscriptionCtx:      subscriptionCtx,
 		chainStore:           chainStore,
 		stateManager:         stateManager,
 		chainIndexer:         chainIndexer,
@@ -266,7 +266,7 @@ func (e *ethEvents) EthSubscribe(ctx context.Context, p jsonrpc.RawParams) (etht
 		return ethtypes.EthSubscriptionID{}, xerrors.New("connection doesn't support callbacks")
 	}
 
-	sub, err := e.subscriptionManager.StartSubscription(e.subscribtionCtx, ethCb.EthSubscription, e.uninstallFilter)
+	sub, err := e.subscriptionManager.StartSubscription(e.subscriptionCtx, ethCb.EthSubscription, e.uninstallFilter)
 	if err != nil {
 		return ethtypes.EthSubscriptionID{}, err
 	}
@@ -279,7 +279,7 @@ func (e *ethEvents) EthSubscribe(ctx context.Context, p jsonrpc.RawParams) (etht
 			_, _ = e.EthUnsubscribe(ctx, sub.id)
 			return ethtypes.EthSubscriptionID{}, err
 		}
-		sub.addFilter(ctx, f)
+		sub.addFilter(f)
 
 	case EthSubscribeEventTypeLogs:
 		keys := map[string][][]byte{}
@@ -310,7 +310,7 @@ func (e *ethEvents) EthSubscribe(ctx context.Context, p jsonrpc.RawParams) (etht
 			_, _ = e.EthUnsubscribe(ctx, sub.id)
 			return ethtypes.EthSubscriptionID{}, err
 		}
-		sub.addFilter(ctx, f)
+		sub.addFilter(f)
 	case EthSubscribeEventTypePendingTransactions:
 		f, err := e.memPoolFilterManager.Install(ctx)
 		if err != nil {
@@ -319,7 +319,7 @@ func (e *ethEvents) EthSubscribe(ctx context.Context, p jsonrpc.RawParams) (etht
 			return ethtypes.EthSubscriptionID{}, err
 		}
 
-		sub.addFilter(ctx, f)
+		sub.addFilter(f)
 	default:
 		return ethtypes.EthSubscriptionID{}, xerrors.Errorf("unsupported event type: %s", params.EventType)
 	}
@@ -430,7 +430,7 @@ func (e *ethEvents) ethGetEventsForFilter(ctx context.Context, filterSpec *ethty
 	return ces, nil
 }
 
-func ethFilterResultFromEvents(ctx context.Context, evs []*index.CollectedEvent, cs ChainStoreAPI, sa StateManagerAPI) (*ethtypes.EthFilterResult, error) {
+func ethFilterResultFromEvents(ctx context.Context, evs []*index.CollectedEvent, cs ChainStore, sa StateManager) (*ethtypes.EthFilterResult, error) {
 	logs, err := ethFilterLogsFromEvents(ctx, evs, cs, sa)
 	if err != nil {
 		return nil, err
@@ -478,7 +478,7 @@ func ethFilterResultFromMessages(cs []*types.SignedMessage) (*ethtypes.EthFilter
 	return res, nil
 }
 
-func ethFilterLogsFromEvents(ctx context.Context, evs []*index.CollectedEvent, cs ChainStoreAPI, sa StateManagerAPI) ([]ethtypes.EthLog, error) {
+func ethFilterLogsFromEvents(ctx context.Context, evs []*index.CollectedEvent, cs ChainStore, sa StateManager) ([]ethtypes.EthLog, error) {
 	var logs []ethtypes.EthLog
 	for _, ev := range evs {
 		log := ethtypes.EthLog{
@@ -588,7 +588,7 @@ func ethLogFromEvent(entries []types.EventEntry) (data []byte, topics []ethtypes
 	return data, topics, true
 }
 
-func ethTxHashFromMessageCid(ctx context.Context, c cid.Cid, cs ChainStoreAPI) (ethtypes.EthHash, error) {
+func ethTxHashFromMessageCid(ctx context.Context, c cid.Cid, cs ChainStore) (ethtypes.EthHash, error) {
 	smsg, err := cs.GetSignedMessage(ctx, c)
 	if err == nil {
 		// This is an Eth Tx, Secp message, Or BLS message in the mpool

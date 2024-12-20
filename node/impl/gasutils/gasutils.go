@@ -26,7 +26,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-var log = logging.Logger("fullnode/gasutils")
+var log = logging.Logger("node/gasutils")
 
 const MinGasPremium = 100e3
 const MaxSpendOnFeeDenom = 100

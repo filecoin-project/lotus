@@ -23,15 +23,15 @@ var (
 	ErrModuleDisabled       = xerrors.New("module disabled, enable with Fevm.EnableEthRPC / LOTUS_FEVM_ENABLEETHRPC")
 )
 
-var log = logging.Logger("fullnode/eth")
+var log = logging.Logger("node/eth")
 
 // SyncAPI is a minimal version of full.SyncAPI
 type SyncAPI interface {
 	SyncState(ctx context.Context) (*api.SyncState, error)
 }
 
-// ChainStoreAPI is a minimal version of store.ChainStoreAPI just for tipsets
-type ChainStoreAPI interface {
+// ChainStore is a minimal version of store.ChainStore just for tipsets
+type ChainStore interface {
 	// TipSets
 	GetHeaviestTipSet() *types.TipSet
 	GetTipsetByHeight(ctx context.Context, h abi.ChainEpoch, ts *types.TipSet, prev bool) (*types.TipSet, error)
@@ -55,8 +55,8 @@ type StateAPI interface {
 	StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error)
 }
 
-// StateManagerAPI is a minimal version of stmgr.StateManagerAPI
-type StateManagerAPI interface {
+// StateManager is a minimal version of stmgr.StateManager
+type StateManager interface {
 	GetNetworkVersion(ctx context.Context, height abi.ChainEpoch) network.Version
 
 	TipSetState(ctx context.Context, ts *types.TipSet) (cid.Cid, cid.Cid, error)
@@ -76,7 +76,7 @@ type StateManagerAPI interface {
 	HasExpensiveForkBetween(parent, height abi.ChainEpoch) bool
 }
 
-// MpoolAPI is a minimal version of MpoolAPI
+// MpoolAPI is a minimal version of full.MpoolAPI
 type MpoolAPI interface {
 	MpoolPending(ctx context.Context, tsk types.TipSetKey) ([]*types.SignedMessage, error)
 	MpoolGetNonce(ctx context.Context, addr address.Address) (uint64, error)
@@ -84,8 +84,8 @@ type MpoolAPI interface {
 	MpoolPush(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error)
 }
 
-// MessagePoolAPI is a minimal version of messagepool.MessagePool
-type MessagePoolAPI interface {
+// MessagePool is a minimal version of messagepool.MessagePool
+type MessagePool interface {
 	PendingFor(ctx context.Context, a address.Address) ([]*types.SignedMessage, *types.TipSet)
 	GetConfig() *types.MpoolConfig
 }

@@ -27,7 +27,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
-type EthTrace interface {
+type EthTraceAPI interface {
 	EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.EthTraceBlock, error)
 	EthTraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error)
 	EthTraceTransaction(ctx context.Context, txHash string) ([]*ethtypes.EthTraceTransaction, error)
@@ -35,27 +35,27 @@ type EthTrace interface {
 }
 
 var (
-	_ EthTrace = (*ethTrace)(nil)
-	_ EthTrace = (*EthTraceDisabled)(nil)
+	_ EthTraceAPI = (*ethTrace)(nil)
+	_ EthTraceAPI = (*EthTraceDisabled)(nil)
 )
 
 type ethTrace struct {
-	chainStore            ChainStoreAPI
-	stateManager          StateManagerAPI
-	ethTransaction        EthTransaction
+	chainStore            ChainStore
+	stateManager          StateManager
+	ethTransactionApi     EthTransactionAPI
 	traceFilterMaxResults uint64
 }
 
-func NewEthTrace(
-	chainStore ChainStoreAPI,
-	stateManager StateManagerAPI,
-	ethTransaction EthTransaction,
+func NewEthTraceAPI(
+	chainStore ChainStore,
+	stateManager StateManager,
+	ethTransactionApi EthTransactionAPI,
 	ethTraceFilterMaxResults uint64,
-) EthTrace {
+) EthTraceAPI {
 	return &ethTrace{
 		chainStore:            chainStore,
 		stateManager:          stateManager,
-		ethTransaction:        ethTransaction,
+		ethTransactionApi:     ethTransactionApi,
 		traceFilterMaxResults: ethTraceFilterMaxResults,
 	}
 }
@@ -201,7 +201,7 @@ func (e *ethTrace) EthTraceTransaction(ctx context.Context, txHash string) ([]*e
 		return nil, xerrors.Errorf("cannot parse eth hash: %w", err)
 	}
 
-	tx, err := e.ethTransaction.EthGetTransactionByHash(ctx, &ethTxHash)
+	tx, err := e.ethTransactionApi.EthGetTransactionByHash(ctx, &ethTxHash)
 	if err != nil {
 		return nil, xerrors.Errorf("cannot get transaction by hash: %w", err)
 	}

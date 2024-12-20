@@ -12,7 +12,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
-type EthBasic interface {
+type EthBasicAPI interface {
 	Web3ClientVersion(ctx context.Context) (string, error)
 	EthChainId(ctx context.Context) (ethtypes.EthUint64, error)
 	NetVersion(ctx context.Context) (string, error)
@@ -23,24 +23,20 @@ type EthBasic interface {
 }
 
 var (
-	_ EthBasic = (*ethBasic)(nil)
-	_ EthBasic = (*EthBasicDisabled)(nil)
+	_ EthBasicAPI = (*ethBasic)(nil)
+	_ EthBasicAPI = (*EthBasicDisabled)(nil)
 )
 
 type ethBasic struct {
-	chainStore   ChainStoreAPI
-	syncAPI      SyncAPI
-	stateManager StateManagerAPI
+	chainStore   ChainStore
+	syncApi      SyncAPI
+	stateManager StateManager
 }
 
-func NewEthBasic(
-	chainStore ChainStoreAPI,
-	syncAPI SyncAPI,
-	stateManager StateManagerAPI,
-) EthBasic {
+func NewEthBasicAPI(chainStore ChainStore, syncApi SyncAPI, stateManager StateManager) EthBasicAPI {
 	return &ethBasic{
 		chainStore:   chainStore,
-		syncAPI:      syncAPI,
+		syncApi:      syncApi,
 		stateManager: stateManager,
 	}
 }
@@ -67,7 +63,7 @@ func (e *ethBasic) EthProtocolVersion(ctx context.Context) (ethtypes.EthUint64, 
 }
 
 func (e *ethBasic) EthSyncing(ctx context.Context) (ethtypes.EthSyncingResult, error) {
-	state, err := e.syncAPI.SyncState(ctx)
+	state, err := e.syncApi.SyncState(ctx)
 	if err != nil {
 		return ethtypes.EthSyncingResult{}, xerrors.Errorf("failed calling SyncState: %w", err)
 	}

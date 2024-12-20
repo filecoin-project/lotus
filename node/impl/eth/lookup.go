@@ -23,34 +23,34 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
-type EthLookup interface {
+type EthLookupAPI interface {
 	EthGetCode(ctx context.Context, address ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error)
 	EthGetStorageAt(ctx context.Context, ethAddr ethtypes.EthAddress, position ethtypes.EthBytes, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error)
 	EthGetBalance(ctx context.Context, address ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBigInt, error)
 }
 
 var (
-	_ EthLookup = (*ethLookup)(nil)
-	_ EthLookup = (*EthLookupDisabled)(nil)
+	_ EthLookupAPI = (*ethLookup)(nil)
+	_ EthLookupAPI = (*EthLookupDisabled)(nil)
 )
 
 type ethLookup struct {
-	chainStore      ChainStoreAPI
-	stateManager    StateManagerAPI
-	syncAPI         SyncAPI
+	chainStore      ChainStore
+	stateManager    StateManager
+	syncApi         SyncAPI
 	stateBlockstore dtypes.StateBlockstore
 }
 
-func NewEthLookup(
-	chainStore ChainStoreAPI,
-	stateManager StateManagerAPI,
-	syncAPI SyncAPI,
+func NewEthLookupAPI(
+	chainStore ChainStore,
+	stateManager StateManager,
+	syncApi SyncAPI,
 	stateBlockstore dtypes.StateBlockstore,
-) EthLookup {
+) EthLookupAPI {
 	return &ethLookup{
 		chainStore:      chainStore,
 		stateManager:    stateManager,
-		syncAPI:         syncAPI,
+		syncApi:         syncApi,
 		stateBlockstore: stateBlockstore,
 	}
 }
@@ -262,7 +262,7 @@ func (e *ethLookup) EthChainId(ctx context.Context) (ethtypes.EthUint64, error) 
 }
 
 func (e *ethLookup) EthSyncing(ctx context.Context) (ethtypes.EthSyncingResult, error) {
-	state, err := e.syncAPI.SyncState(ctx)
+	state, err := e.syncApi.SyncState(ctx)
 	if err != nil {
 		return ethtypes.EthSyncingResult{}, xerrors.Errorf("failed calling SyncState: %w", err)
 	}

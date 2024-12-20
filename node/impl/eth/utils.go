@@ -42,7 +42,7 @@ func init() {
 	}
 }
 
-func getTipsetByEthBlockNumberOrHash(ctx context.Context, cp ChainStoreAPI, blkParam ethtypes.EthBlockNumberOrHash) (*types.TipSet, error) {
+func getTipsetByEthBlockNumberOrHash(ctx context.Context, cp ChainStore, blkParam ethtypes.EthBlockNumberOrHash) (*types.TipSet, error) {
 	head := cp.GetHeaviestTipSet()
 
 	predefined := blkParam.PredefinedBlock
@@ -157,7 +157,7 @@ func ethCallToFilecoinMessage(ctx context.Context, tx ethtypes.EthCall) (*types.
 	}, nil
 }
 
-func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTxInfo bool, cp ChainStoreAPI, sp StateManagerAPI) (ethtypes.EthBlock, error) {
+func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTxInfo bool, cp ChainStore, sp StateManager) (ethtypes.EthBlock, error) {
 	parentKeyCid, err := ts.Parents().Cid()
 	if err != nil {
 		return ethtypes.EthBlock{}, err
@@ -235,7 +235,7 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 	return block, nil
 }
 
-func executeTipset(ctx context.Context, ts *types.TipSet, cp ChainStoreAPI, sp StateManagerAPI) (cid.Cid, []types.ChainMsg, []types.MessageReceipt, error) {
+func executeTipset(ctx context.Context, ts *types.TipSet, cp ChainStore, sp StateManager) (cid.Cid, []types.ChainMsg, []types.MessageReceipt, error) {
 	msgs, err := cp.MessagesForTipset(ctx, ts)
 	if err != nil {
 		return cid.Undef, nil, nil, xerrors.Errorf("error loading messages for tipset: %v: %w", ts, err)
@@ -385,7 +385,7 @@ func parseEthTopics(topics ethtypes.EthTopicSpec) (map[string][][]byte, error) {
 	return keys, nil
 }
 
-func getTransactionHashByCid(ctx context.Context, cp ChainStoreAPI, c cid.Cid) (ethtypes.EthHash, error) {
+func getTransactionHashByCid(ctx context.Context, cp ChainStore, c cid.Cid) (ethtypes.EthHash, error) {
 	smsg, err := cp.GetSignedMessage(ctx, c)
 	if err == nil {
 		// This is an Eth Tx, Secp message, Or BLS message in the mpool
@@ -525,7 +525,7 @@ func ethTxFromNativeMessage(msg *types.Message, st *state.StateTree) (ethtypes.E
 	return ethTx, nil
 }
 
-func getSignedMessage(ctx context.Context, cp ChainStoreAPI, msgCid cid.Cid) (*types.SignedMessage, error) {
+func getSignedMessage(ctx context.Context, cp ChainStore, msgCid cid.Cid) (*types.SignedMessage, error) {
 	smsg, err := cp.GetSignedMessage(ctx, msgCid)
 	if err != nil {
 		// We couldn't find the signed message, it might be a BLS message, so search for a regular message.
@@ -551,8 +551,8 @@ func newEthTxFromMessageLookup(
 	ctx context.Context,
 	msgLookup *api.MsgLookup,
 	txIdx int,
-	cp ChainStoreAPI,
-	sp StateManagerAPI,
+	cp ChainStore,
+	sp StateManager,
 ) (ethtypes.EthTx, error) {
 	ts, err := cp.LoadTipSet(ctx, msgLookup.TipSet)
 	if err != nil {
@@ -597,7 +597,7 @@ func newEthTxFromMessageLookup(
 
 func newEthTx(
 	ctx context.Context,
-	cp ChainStoreAPI,
+	cp ChainStore,
 	st *state.StateTree,
 	blockHeight abi.ChainEpoch,
 	msgTsCid cid.Cid,
@@ -631,7 +631,7 @@ func newEthTx(
 	return tx, nil
 }
 
-func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, baseFee big.Int, msgReceipt types.MessageReceipt, ev EthEventsExtended) (api.EthTxReceipt, error) {
+func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, baseFee big.Int, msgReceipt types.MessageReceipt, ev EthEventsInternal) (api.EthTxReceipt, error) {
 	var (
 		transactionIndex ethtypes.EthUint64
 		blockHash        ethtypes.EthHash
@@ -762,7 +762,7 @@ func encodeAsABIHelper(param1 uint64, param2 uint64, data []byte) []byte {
 	return buf
 }
 
-func getTipsetByBlockNumber(ctx context.Context, cp ChainStoreAPI, blkParam string, strict bool) (*types.TipSet, error) {
+func getTipsetByBlockNumber(ctx context.Context, cp ChainStore, blkParam string, strict bool) (*types.TipSet, error) {
 	if blkParam == "earliest" {
 		return nil, xerrors.New("block param \"earliest\" is not supported")
 	}

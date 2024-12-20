@@ -20,13 +20,13 @@ import (
 const maxSendQueue = 20000
 
 type EthSubscriptionManager struct {
-	chainStore   ChainStoreAPI
-	stateManager StateManagerAPI
+	chainStore   ChainStore
+	stateManager StateManager
 	mu           sync.Mutex
 	subs         map[ethtypes.EthSubscriptionID]*ethSubscription
 }
 
-func NewEthSubscriptionManager(chainStore ChainStoreAPI, stateManager StateManagerAPI) *EthSubscriptionManager {
+func NewEthSubscriptionManager(chainStore ChainStore, stateManager StateManager) *EthSubscriptionManager {
 	return &EthSubscriptionManager{
 		chainStore:   chainStore,
 		stateManager: stateManager,
@@ -84,8 +84,8 @@ func (e *EthSubscriptionManager) StopSubscription(ctx context.Context, id ethtyp
 }
 
 type ethSubscription struct {
-	chainStore      ChainStoreAPI
-	stateManager    StateManagerAPI
+	chainStore      ChainStore
+	stateManager    StateManager
 	uninstallFilter func(context.Context, filter.Filter) error
 	id              ethtypes.EthSubscriptionID
 	in              chan interface{}
@@ -105,7 +105,7 @@ type ethSubscription struct {
 
 type ethSubscriptionCallback func(context.Context, jsonrpc.RawParams) error
 
-func (e *ethSubscription) addFilter(ctx context.Context, f filter.Filter) {
+func (e *ethSubscription) addFilter(f filter.Filter) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 

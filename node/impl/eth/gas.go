@@ -27,7 +27,7 @@ import (
 
 const maxEthFeeHistoryRewardPercentiles = 100
 
-type EthGas interface {
+type EthGasAPI interface {
 	EthGasPrice(ctx context.Context) (ethtypes.EthBigInt, error)
 	EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthFeeHistory, error)
 	EthMaxPriorityFeePerGas(ctx context.Context) (ethtypes.EthBigInt, error)
@@ -36,20 +36,20 @@ type EthGas interface {
 }
 
 var (
-	_ EthGas = (*ethGas)(nil)
-	_ EthGas = (*EthGasDisabled)(nil)
+	_ EthGasAPI = (*ethGas)(nil)
+	_ EthGasAPI = (*EthGasDisabled)(nil)
 )
 
 var minGasPremium = ethtypes.EthBigInt(types.NewInt(gasutils.MinGasPremium))
 
 type ethGas struct {
-	chainStore   ChainStoreAPI
-	stateManager StateManagerAPI
-	messagePool  MessagePoolAPI
+	chainStore   ChainStore
+	stateManager StateManager
+	messagePool  MessagePool
 	gasApi       GasAPI
 }
 
-func NewEthGas(chainStore ChainStoreAPI, stateManager StateManagerAPI, messagePool MessagePoolAPI, gasApi GasAPI) EthGas {
+func NewEthGasAPI(chainStore ChainStore, stateManager StateManager, messagePool MessagePool, gasApi GasAPI) EthGasAPI {
 	return &ethGas{
 		chainStore:   chainStore,
 		stateManager: stateManager,
@@ -308,9 +308,9 @@ func (e *ethGas) applyMessage(ctx context.Context, msg *types.Message, tsk types
 // See gasSearch.
 func ethGasSearch(
 	ctx context.Context,
-	chainStore ChainStoreAPI,
-	stateManager StateManagerAPI,
-	messagePool MessagePoolAPI,
+	chainStore ChainStore,
+	stateManager StateManager,
+	messagePool MessagePool,
 	msgIn *types.Message,
 	ts *types.TipSet,
 ) (int64, error) {
@@ -359,7 +359,7 @@ func traceContainsExitCode(et types.ExecutionTrace, ex exitcode.ExitCode) bool {
 // search till it gets within a range of 1%
 func gasSearch(
 	ctx context.Context,
-	stateManager StateManagerAPI,
+	stateManager StateManager,
 	msgIn *types.Message,
 	priorMsgs []types.ChainMsg,
 	ts *types.TipSet,

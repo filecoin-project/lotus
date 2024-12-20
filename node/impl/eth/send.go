@@ -7,24 +7,24 @@ import (
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
-type EthSend interface {
+type EthSendAPI interface {
 	EthSendRawTransaction(ctx context.Context, rawTx ethtypes.EthBytes) (ethtypes.EthHash, error)
 	EthSendRawTransactionUntrusted(ctx context.Context, rawTx ethtypes.EthBytes) (ethtypes.EthHash, error)
 }
 
 var (
-	_ EthSend = (*ethSend)(nil)
-	_ EthSend = (*EthSendDisabled)(nil)
+	_ EthSendAPI = (*ethSend)(nil)
+	_ EthSendAPI = (*EthSendDisabled)(nil)
 )
 
 type ethSend struct {
-	mpool        MpoolAPI
+	mpoolApi     MpoolAPI
 	chainIndexer index.Indexer
 }
 
-func NewEthSend(mpool MpoolAPI, chainIndexer index.Indexer) EthSend {
+func NewEthSendAPI(mpoolApi MpoolAPI, chainIndexer index.Indexer) EthSendAPI {
 	return &ethSend{
-		mpool:        mpool,
+		mpoolApi:     mpoolApi,
 		chainIndexer: chainIndexer,
 	}
 }
@@ -54,11 +54,11 @@ func (e *ethSend) ethSendRawTransaction(ctx context.Context, rawTx ethtypes.EthB
 	}
 
 	if untrusted {
-		if _, err = e.mpool.MpoolPushUntrusted(ctx, smsg); err != nil {
+		if _, err = e.mpoolApi.MpoolPushUntrusted(ctx, smsg); err != nil {
 			return ethtypes.EmptyEthHash, err
 		}
 	} else {
-		if _, err = e.mpool.MpoolPush(ctx, smsg); err != nil {
+		if _, err = e.mpoolApi.MpoolPush(ctx, smsg); err != nil {
 			return ethtypes.EmptyEthHash, err
 		}
 	}
