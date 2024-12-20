@@ -1,8 +1,11 @@
-package full
+package eth
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/multiformats/go-multicodec"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -16,12 +19,388 @@ import (
 	init12 "github.com/filecoin-project/go-state-types/builtin/v12/init"
 	"github.com/filecoin-project/go-state-types/exitcode"
 
+	"github.com/filecoin-project/lotus/api"
 	builtinactors "github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/evm"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
+
+type EthTraceAPI interface {
+	EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.EthTraceBlock, error)
+	EthTraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error)
+	EthTraceTransaction(ctx context.Context, txHash string) ([]*ethtypes.EthTraceTransaction, error)
+	EthTraceFilter(ctx context.Context, filter ethtypes.EthTraceFilterCriteria) ([]*ethtypes.EthTraceFilterResult, error)
+}
+
+var (
+	_ EthTraceAPI = (*ethTrace)(nil)
+	_ EthTraceAPI = (*EthTraceDisabled)(nil)
+)
+
+type ethTrace struct {
+	chainStore            ChainStore
+	stateManager          StateManager
+	ethTransactionApi     EthTransactionAPI
+	traceFilterMaxResults uint64
+}
+
+func NewEthTraceAPI(
+	chainStore ChainStore,
+	stateManager StateManager,
+	ethTransactionApi EthTransactionAPI,
+	ethTraceFilterMaxResults uint64,
+) EthTraceAPI {
+	return &ethTrace{
+		chainStore:            chainStore,
+		stateManager:          stateManager,
+		ethTransactionApi:     ethTransactionApi,
+		traceFilterMaxResults: ethTraceFilterMaxResults,
+	}
+}
+
+func (e *ethTrace) EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.EthTraceBlock, error) {
+	ts, err := getTipsetByBlockNumber(ctx, e.chainStore, blkNum, true)
+	if err != nil {
+		return nil, err
+	}
+
+	stRoot, trace, err := e.stateManager.ExecutionTrace(ctx, ts)
+	if err != nil {
+		return nil, xerrors.Errorf("failed when calling ExecutionTrace: %w", err)
+	}
+
+	st, err := e.stateManager.StateTree(stRoot)
+	if err != nil {
+		return nil, xerrors.Errorf("failed load computed state-tree: %w", err)
+	}
+
+	cid, err := ts.Key().Cid()
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get tipset key cid: %w", err)
+	}
+
+	blkHash, err := ethtypes.EthHashFromCid(cid)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to parse eth hash from cid: %w", err)
+	}
+
+	allTraces := make([]*ethtypes.EthTraceBlock, 0, len(trace))
+	msgIdx := 0
+	for _, ir := range trace {
+		// ignore messages from system actor
+		if ir.Msg.From == builtinactors.SystemActorAddr {
+			continue
+		}
+
+		msgIdx++
+
+		txHash, err := getTransactionHashByCid(ctx, e.chainStore, ir.MsgCid)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to get transaction hash by cid: %w", err)
+		}
+		if txHash == ethtypes.EmptyEthHash {
+			return nil, xerrors.Errorf("cannot find transaction hash for cid %s", ir.MsgCid)
+		}
+
+		env, err := baseEnvironment(st, ir.Msg.From)
+		if err != nil {
+			return nil, xerrors.Errorf("when processing message %s: %w", ir.MsgCid, err)
+		}
+
+		err = buildTraces(env, []int{}, &ir.ExecutionTrace)
+		if err != nil {
+			return nil, xerrors.Errorf("failed building traces for msg %s: %w", ir.MsgCid, err)
+		}
+
+		for _, trace := range env.traces {
+			allTraces = append(allTraces, &ethtypes.EthTraceBlock{
+				EthTrace:            trace,
+				BlockHash:           blkHash,
+				BlockNumber:         int64(ts.Height()),
+				TransactionHash:     txHash,
+				TransactionPosition: msgIdx,
+			})
+		}
+	}
+
+	return allTraces, nil
+}
+
+func (e *ethTrace) EthTraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error) {
+	if len(traceTypes) != 1 || traceTypes[0] != "trace" {
+		return nil, xerrors.New("only 'trace' is supported")
+	}
+	ts, err := getTipsetByBlockNumber(ctx, e.chainStore, blkNum, true)
+	if err != nil {
+		return nil, err
+	}
+
+	stRoot, trace, err := e.stateManager.ExecutionTrace(ctx, ts)
+	if err != nil {
+		return nil, xerrors.Errorf("failed when calling ExecutionTrace: %w", err)
+	}
+
+	st, err := e.stateManager.StateTree(stRoot)
+	if err != nil {
+		return nil, xerrors.Errorf("failed load computed state-tree: %w", err)
+	}
+
+	allTraces := make([]*ethtypes.EthTraceReplayBlockTransaction, 0, len(trace))
+	for _, ir := range trace {
+		// ignore messages from system actor
+		if ir.Msg.From == builtinactors.SystemActorAddr {
+			continue
+		}
+
+		txHash, err := getTransactionHashByCid(ctx, e.chainStore, ir.MsgCid)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to get transaction hash by cid: %w", err)
+		}
+		if txHash == ethtypes.EmptyEthHash {
+			return nil, xerrors.Errorf("cannot find transaction hash for cid %s", ir.MsgCid)
+		}
+
+		env, err := baseEnvironment(st, ir.Msg.From)
+		if err != nil {
+			return nil, xerrors.Errorf("when processing message %s: %w", ir.MsgCid, err)
+		}
+
+		err = buildTraces(env, []int{}, &ir.ExecutionTrace)
+		if err != nil {
+			return nil, xerrors.Errorf("failed building traces for msg %s: %w", ir.MsgCid, err)
+		}
+
+		var output []byte
+		if len(env.traces) > 0 {
+			switch r := env.traces[0].Result.(type) {
+			case *ethtypes.EthCallTraceResult:
+				output = r.Output
+			case *ethtypes.EthCreateTraceResult:
+				output = r.Code
+			}
+		}
+
+		allTraces = append(allTraces, &ethtypes.EthTraceReplayBlockTransaction{
+			Output:          output,
+			TransactionHash: txHash,
+			Trace:           env.traces,
+			StateDiff:       nil,
+			VmTrace:         nil,
+		})
+	}
+
+	return allTraces, nil
+}
+
+func (e *ethTrace) EthTraceTransaction(ctx context.Context, txHash string) ([]*ethtypes.EthTraceTransaction, error) {
+	// convert from string to internal type
+	ethTxHash, err := ethtypes.ParseEthHash(txHash)
+	if err != nil {
+		return nil, xerrors.Errorf("cannot parse eth hash: %w", err)
+	}
+
+	tx, err := e.ethTransactionApi.EthGetTransactionByHash(ctx, &ethTxHash)
+	if err != nil {
+		return nil, xerrors.Errorf("cannot get transaction by hash: %w", err)
+	}
+
+	if tx == nil {
+		return nil, xerrors.New("transaction not found")
+	}
+
+	// tx.BlockNumber is nil when the transaction is still in the mpool/pending
+	if tx.BlockNumber == nil {
+		return nil, xerrors.New("no trace for pending transactions")
+	}
+
+	blockTraces, err := e.EthTraceBlock(ctx, strconv.FormatUint(uint64(*tx.BlockNumber), 10))
+	if err != nil {
+		return nil, xerrors.Errorf("cannot get trace for block: %w", err)
+	}
+
+	txTraces := make([]*ethtypes.EthTraceTransaction, 0, len(blockTraces))
+	for _, blockTrace := range blockTraces {
+		if blockTrace.TransactionHash == ethTxHash {
+			// Create a new EthTraceTransaction from the block trace
+			txTrace := ethtypes.EthTraceTransaction{
+				EthTrace:            blockTrace.EthTrace,
+				BlockHash:           blockTrace.BlockHash,
+				BlockNumber:         blockTrace.BlockNumber,
+				TransactionHash:     blockTrace.TransactionHash,
+				TransactionPosition: blockTrace.TransactionPosition,
+			}
+			txTraces = append(txTraces, &txTrace)
+		}
+	}
+
+	return txTraces, nil
+}
+
+func (e *ethTrace) EthTraceFilter(ctx context.Context, filter ethtypes.EthTraceFilterCriteria) ([]*ethtypes.EthTraceFilterResult, error) {
+	// Define EthBlockNumberFromString as a private function within EthTraceFilter
+	// TODO(rv): this all moves to TipSetProvider I think, then we get rid of TipSetProvider for this module
+	getEthBlockNumberFromString := func(ctx context.Context, block *string) (ethtypes.EthUint64, error) {
+		head := e.chainStore.GetHeaviestTipSet()
+
+		blockValue := "latest"
+		if block != nil {
+			blockValue = *block
+		}
+
+		switch blockValue {
+		case "earliest":
+			return 0, xerrors.New("block param \"earliest\" is not supported")
+		case "pending":
+			return ethtypes.EthUint64(head.Height()), nil
+		case "latest":
+			parent, err := e.chainStore.GetTipSetFromKey(ctx, head.Parents())
+			if err != nil {
+				return 0, xerrors.New("cannot get parent tipset")
+			}
+			return ethtypes.EthUint64(parent.Height()), nil
+		case "safe":
+			latestHeight := head.Height() - 1
+			safeHeight := latestHeight - ethtypes.SafeEpochDelay
+			return ethtypes.EthUint64(safeHeight), nil
+		default:
+			blockNum, err := ethtypes.EthUint64FromHex(blockValue)
+			if err != nil {
+				return 0, xerrors.Errorf("cannot parse fromBlock: %w", err)
+			}
+			return blockNum, err
+		}
+	}
+
+	fromBlock, err := getEthBlockNumberFromString(ctx, filter.FromBlock)
+	if err != nil {
+		return nil, xerrors.Errorf("cannot parse fromBlock: %w", err)
+	}
+
+	toBlock, err := getEthBlockNumberFromString(ctx, filter.ToBlock)
+	if err != nil {
+		return nil, xerrors.Errorf("cannot parse toBlock: %w", err)
+	}
+
+	var results []*ethtypes.EthTraceFilterResult
+
+	if filter.Count != nil {
+		// If filter.Count is specified and it is 0, return an empty result set immediately.
+		if *filter.Count == 0 {
+			return []*ethtypes.EthTraceFilterResult{}, nil
+		}
+
+		// If filter.Count is specified and is greater than the EthTraceFilterMaxResults config return error
+		if uint64(*filter.Count) > e.traceFilterMaxResults {
+			return nil, xerrors.Errorf("invalid response count, requested %d, maximum supported is %d", *filter.Count, e.traceFilterMaxResults)
+		}
+	}
+
+	traceCounter := ethtypes.EthUint64(0)
+	for blkNum := fromBlock; blkNum <= toBlock; blkNum++ {
+		blockTraces, err := e.EthTraceBlock(ctx, strconv.FormatUint(uint64(blkNum), 10))
+		if err != nil {
+			if errors.Is(err, &api.ErrNullRound{}) {
+				continue
+			}
+			return nil, xerrors.Errorf("cannot get trace for block %d: %w", blkNum, err)
+		}
+
+		for _, _blockTrace := range blockTraces {
+			// Create a copy of blockTrace to avoid pointer quirks
+			blockTrace := *_blockTrace
+			match, err := matchFilterCriteria(&blockTrace, filter.FromAddress, filter.ToAddress)
+			if err != nil {
+				return nil, xerrors.Errorf("cannot match filter for block %d: %w", blkNum, err)
+			}
+			if !match {
+				continue
+			}
+			traceCounter++
+			if filter.After != nil && traceCounter <= *filter.After {
+				continue
+			}
+
+			txTrace := ethtypes.EthTraceFilterResult(blockTrace)
+			results = append(results, &txTrace)
+
+			// If Count is specified, limit the results
+			if filter.Count != nil && ethtypes.EthUint64(len(results)) >= *filter.Count {
+				return results, nil
+			} else if filter.Count == nil && uint64(len(results)) > e.traceFilterMaxResults {
+				return nil, xerrors.Errorf("too many results, maximum supported is %d, try paginating requests with After and Count", e.traceFilterMaxResults)
+			}
+		}
+	}
+
+	return results, nil
+}
+
+// matchFilterCriteria checks if a trace matches the filter criteria.
+func matchFilterCriteria(trace *ethtypes.EthTraceBlock, fromDecodedAddresses []ethtypes.EthAddress, toDecodedAddresses []ethtypes.EthAddress) (bool, error) {
+	var traceTo ethtypes.EthAddress
+	var traceFrom ethtypes.EthAddress
+
+	switch trace.Type {
+	case "call":
+		action, ok := trace.Action.(*ethtypes.EthCallTraceAction)
+		if !ok {
+			return false, xerrors.New("invalid call trace action")
+		}
+		traceTo = action.To
+		traceFrom = action.From
+	case "create":
+		result, okResult := trace.Result.(*ethtypes.EthCreateTraceResult)
+		if !okResult {
+			return false, xerrors.New("invalid create trace result")
+		}
+
+		action, okAction := trace.Action.(*ethtypes.EthCreateTraceAction)
+		if !okAction {
+			return false, xerrors.New("invalid create trace action")
+		}
+
+		if result.Address == nil {
+			return false, xerrors.New("address is nil in create trace result")
+		}
+
+		traceTo = *result.Address
+		traceFrom = action.From
+	default:
+		return false, xerrors.Errorf("invalid trace type: %s", trace.Type)
+	}
+
+	// Match FromAddress
+	if len(fromDecodedAddresses) > 0 {
+		fromMatch := false
+		for _, ethAddr := range fromDecodedAddresses {
+			if traceFrom == ethAddr {
+				fromMatch = true
+				break
+			}
+		}
+		if !fromMatch {
+			return false, nil
+		}
+	}
+
+	// Match ToAddress
+	if len(toDecodedAddresses) > 0 {
+		toMatch := false
+		for _, ethAddr := range toDecodedAddresses {
+			if traceTo == ethAddr {
+				toMatch = true
+				break
+			}
+		}
+		if !toMatch {
+			return false, nil
+		}
+	}
+
+	return true, nil
+}
 
 // decodePayload is a utility function which decodes the payload using the given codec
 func decodePayload(payload []byte, codec uint64) (ethtypes.EthBytes, error) {
@@ -348,7 +727,7 @@ func traceNativeCreate(env *environment, addr []int, et *types.ExecutionTrace) (
 		// something, we have a bug in our tracing logic or a mismatch between our
 		// tracing logic and the actors.
 		if et.MsgRct.ExitCode.IsSuccess() {
-			return nil, nil, xerrors.Errorf("successful Exec/Exec4 call failed to call a constructor")
+			return nil, nil, xerrors.New("successful Exec/Exec4 call failed to call a constructor")
 		}
 		// Otherwise, this can happen if creation fails early (bad params,
 		// out of gas, contract already exists, etc.). The EVM wouldn't
@@ -367,7 +746,7 @@ func traceNativeCreate(env *environment, addr []int, et *types.ExecutionTrace) (
 	// actor. I'm catching this here because it likely means that there's a bug
 	// in our trace-conversion logic.
 	if et.Msg.Method == builtin.MethodsInit.Exec4 {
-		return nil, nil, xerrors.Errorf("direct call to Exec4 successfully called a constructor!")
+		return nil, nil, xerrors.New("direct call to Exec4 successfully called a constructor!")
 	}
 
 	var output ethtypes.EthBytes
@@ -481,7 +860,7 @@ func traceEthCreate(env *environment, addr []int, et *types.ExecutionTrace) (*et
 	// Same as the Init actor case above, see the comment there.
 	if subTrace == nil {
 		if et.MsgRct.ExitCode.IsSuccess() {
-			return nil, nil, xerrors.Errorf("successful Create/Create2 call failed to call a constructor")
+			return nil, nil, xerrors.New("successful Create/Create2 call failed to call a constructor")
 		}
 		return nil, nil, nil
 	}
@@ -567,7 +946,7 @@ func traceEVMPrivate(env *environment, addr []int, et *types.ExecutionTrace) (*e
 		//    (GetByteCode) and they are at the same level (same parent)
 		// 3) Treat this as a delegate call to actor A.
 		if env.lastByteCode == nil {
-			return nil, nil, xerrors.Errorf("unknown bytecode for delegate call")
+			return nil, nil, xerrors.New("unknown bytecode for delegate call")
 		}
 
 		if to := traceToAddress(et.InvokedActor); env.caller != to {
@@ -605,4 +984,19 @@ func traceEVMPrivate(env *environment, addr []int, et *types.ExecutionTrace) (*e
 	// We drop all other "private" calls from FEVM. We _forbid_ explicit calls between 0 and
 	// 1024 (exclusive), so any calls in this range must be implementation details.
 	return nil, nil, nil
+}
+
+type EthTraceDisabled struct{}
+
+func (EthTraceDisabled) EthTraceBlock(ctx context.Context, block string) ([]*ethtypes.EthTraceBlock, error) {
+	return nil, ErrModuleDisabled
+}
+func (EthTraceDisabled) EthTraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error) {
+	return nil, ErrModuleDisabled
+}
+func (EthTraceDisabled) EthTraceTransaction(ctx context.Context, ethTxHash string) ([]*ethtypes.EthTraceTransaction, error) {
+	return nil, ErrModuleDisabled
+}
+func (EthTraceDisabled) EthTraceFilter(ctx context.Context, filter ethtypes.EthTraceFilterCriteria) ([]*ethtypes.EthTraceFilterResult, error) {
+	return nil, ErrModuleDisabled
 }

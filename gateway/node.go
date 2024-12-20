@@ -185,6 +185,7 @@ var (
 	_ full.MpoolModuleAPI = (*Node)(nil)
 	_ full.StateModuleAPI = (*Node)(nil)
 	_ full.EthModuleAPI   = (*Node)(nil)
+	_ full.EthEventAPI    = (*Node)(nil)
 )
 
 type options struct {

@@ -2155,7 +2155,7 @@
         {
             "name": "Filecoin.EthAccounts",
             "description": "```go\nfunc (s *FullNodeStruct) EthAccounts(p0 context.Context) ([]ethtypes.EthAddress, error) {\n\tif s.Internal.EthAccounts == nil {\n\t\treturn *new([]ethtypes.EthAddress), ErrNotSupported\n\t}\n\treturn s.Internal.EthAccounts(p0)\n}\n```",
-            "summary": "There are not yet any comments for this method.",
+            "summary": "EthAccounts will always return [] since we don't expect Lotus to manage private keys\n",
             "paramStructure": "by-position",
             "params": [],
             "result": {

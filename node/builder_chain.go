@@ -40,7 +40,9 @@ import (
 	"github.com/filecoin-project/lotus/node/hello"
 	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/filecoin-project/lotus/node/impl/common"
+	"github.com/filecoin-project/lotus/node/impl/eth"
 	"github.com/filecoin-project/lotus/node/impl/full"
+	"github.com/filecoin-project/lotus/node/impl/gasutils"
 	"github.com/filecoin-project/lotus/node/impl/net"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -127,7 +129,7 @@ var ChainNode = Options(
 	// Markets (storage)
 	Override(new(*market.FundManager), market.NewFundManager),
 
-	Override(new(*full.GasPriceCache), full.NewGasPriceCache),
+	Override(new(*gasutils.GasPriceCache), gasutils.NewGasPriceCache),
 
 	// Lite node API
 	ApplyIf(isLiteNode,
@@ -138,9 +140,17 @@ var ChainNode = Options(
 		Override(new(full.MpoolModuleAPI), From(new(api.Gateway))),
 		Override(new(full.StateModuleAPI), From(new(api.Gateway))),
 		Override(new(stmgr.StateManagerAPI), rpcstmgr.NewRPCStateManager),
-		Override(new(full.EthModuleAPI), From(new(api.Gateway))),
-		Override(new(full.EthEventAPI), From(new(api.Gateway))),
 		Override(new(full.ActorEventAPI), From(new(api.Gateway))),
+		Override(new(eth.EthFilecoinAPI), From(new(api.Gateway))),
+		Override(new(eth.EthBasicAPI), From(new(api.Gateway))),
+		Override(new(eth.EthEventsAPI), From(new(api.Gateway))),
+		Override(new(eth.EthTransactionAPI), From(new(api.Gateway))),
+		Override(new(eth.EthLookupAPI), From(new(api.Gateway))),
+		Override(new(eth.EthTraceAPI), From(new(api.Gateway))),
+		Override(new(eth.EthGasAPI), From(new(api.Gateway))),
+		// EthSendAPI is a special case, we block the Untrusted method via GatewayEthSend even though it
+		// shouldn't be exposed on the Gateway API.
+		Override(new(eth.EthSendAPI), new(modules.GatewayEthSend)),
 
 		Override(new(index.Indexer), modules.ChainIndexer(config.ChainIndexerConfig{
 			EnableIndexer: false,
@@ -266,17 +276,37 @@ func ConfigFullNode(c interface{}) Option {
 			If(cfg.Fevm.EnableEthRPC || cfg.Events.EnableActorEventsAPI,
 				// Actor event filtering support, only needed for either Eth RPC and ActorEvents API
 				Override(new(events.EventHelperAPI), From(new(modules.EventHelperAPI))),
-				Override(new(*filter.EventFilterManager), modules.EventFilterManager(cfg.Events)),
+				Override(new(*filter.EventFilterManager), modules.MakeEventFilterManager(cfg.Events)),
 			),
 
+			Override(new(eth.ChainStore), From(new(*store.ChainStore))),
+			Override(new(eth.StateManager), From(new(*stmgr.StateManager))),
+			Override(new(eth.EthFilecoinAPI), eth.NewEthFilecoinAPI),
+
 			If(cfg.Fevm.EnableEthRPC,
-				Override(new(*full.EthEventHandler), modules.EthEventHandler(cfg.Events, cfg.Fevm.EnableEthRPC)),
-				Override(new(full.EthModuleAPI), modules.EthModuleAPI(cfg.Fevm)),
-				Override(new(full.EthEventAPI), From(new(*full.EthEventHandler))),
+				Override(new(eth.StateAPI), From(new(full.StateAPI))),
+				Override(new(eth.SyncAPI), From(new(full.SyncAPI))),
+				Override(new(eth.MpoolAPI), From(new(full.MpoolAPI))),
+				Override(new(eth.MessagePool), From(new(*messagepool.MessagePool))),
+				Override(new(eth.GasAPI), From(new(full.GasModule))),
+
+				Override(new(eth.EthBasicAPI), eth.NewEthBasicAPI),
+				Override(new(eth.EthEventsInternal), modules.MakeEthEventsExtended(cfg.Events, cfg.Fevm.EnableEthRPC)),
+				Override(new(eth.EthEventsAPI), From(new(eth.EthEventsInternal))),
+				Override(new(eth.EthTransactionAPI), modules.MakeEthTransaction(cfg.Fevm)),
+				Override(new(eth.EthLookupAPI), eth.NewEthLookupAPI),
+				Override(new(eth.EthTraceAPI), modules.MakeEthTrace(cfg.Fevm)),
+				Override(new(eth.EthGasAPI), eth.NewEthGasAPI),
+				Override(new(eth.EthSendAPI), eth.NewEthSendAPI),
 			),
 			If(!cfg.Fevm.EnableEthRPC,
-				Override(new(full.EthModuleAPI), &full.EthModuleDummy{}),
-				Override(new(full.EthEventAPI), &full.EthModuleDummy{}),
+				Override(new(eth.EthBasicAPI), &eth.EthBasicDisabled{}),
+				Override(new(eth.EthTransactionAPI), &eth.EthTransactionDisabled{}),
+				Override(new(eth.EthLookupAPI), &eth.EthLookupDisabled{}),
+				Override(new(eth.EthTraceAPI), &eth.EthTraceDisabled{}),
+				Override(new(eth.EthGasAPI), &eth.EthGasDisabled{}),
+				Override(new(eth.EthEventsAPI), &eth.EthEventsDisabled{}),
+				Override(new(eth.EthSendAPI), &eth.EthSendDisabled{}),
 			),
 
 			If(cfg.Events.EnableActorEventsAPI,
