@@ -11,8 +11,10 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
-var StatTimeout = 5 * time.Second
-var MaxDiskUsageDuration = time.Second
+var (
+	StatTimeout          = 5 * time.Second
+	MaxDiskUsageDuration = time.Second
+)
 
 type cachedLocalStorage struct {
 	base LocalStorage
@@ -61,7 +63,7 @@ func (c *cachedLocalStorage) Stat(path string) (fsutil.FsStat, error) {
 	c.statLk.Lock()
 	defer c.statLk.Unlock()
 
-	if v, ok := c.stats.Get(path); ok && time.Now().Sub(v.time) < StatTimeout {
+	if v, ok := c.stats.Get(path); ok && time.Since(v.time) < StatTimeout {
 		return v.stat, nil
 	}
 
@@ -87,7 +89,7 @@ func (c *cachedLocalStorage) DiskUsage(path string) (int64, error) {
 		entry = v
 
 		// if we have recent cached entry, use that
-		if time.Now().Sub(entry.last.time) < StatTimeout {
+		if time.Since(entry.last.time) < StatTimeout {
 			return entry.last.usage, nil
 		}
 	} else {
@@ -126,7 +128,7 @@ func (c *cachedLocalStorage) DiskUsage(path string) (int64, error) {
 		log.Warnw("getting usage is slow, falling back to previous usage",
 			"path", path,
 			"fallback", entry.last.usage,
-			"age", time.Now().Sub(entry.last.time))
+			"age", time.Since(entry.last.time))
 	}
 
 	return entry.last.usage, nil

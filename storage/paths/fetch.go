@@ -37,7 +37,7 @@ func fetch(ctx context.Context, url, outname string, header http.Header) (rerr e
 	start := time.Now()
 	var bytes int64
 	defer func() {
-		took := time.Now().Sub(start)
+		took := time.Since(start)
 		mibps := float64(bytes) / 1024 / 1024 * float64(time.Second) / float64(took)
 		log.Infow("Fetch done", "url", url, "out", outname, "took", took.Round(time.Millisecond), "bytes", bytes, "MiB/s", mibps, "err", rerr)
 	}()
