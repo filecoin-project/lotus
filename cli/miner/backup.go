@@ -1,4 +1,4 @@
-package main
+package miner
 
 import (
 	"github.com/urfave/cli/v2"

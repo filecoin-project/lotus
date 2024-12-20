@@ -1,4 +1,4 @@
-package main
+package lotus
 
 import (
 	"fmt"
@@ -29,9 +29,9 @@ var configDefaultCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		c := config.DefaultStorageMiner()
+		c := config.DefaultFullNode()
 
-		cb, err := config.ConfigUpdate(c, nil, config.Commented(!cctx.Bool("no-comment")))
+		cb, err := config.ConfigUpdate(c, nil, config.Commented(!cctx.Bool("no-comment")), config.DefaultKeepUncommented())
 		if err != nil {
 			return err
 		}
@@ -52,7 +52,7 @@ var configUpdateCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		r, err := repo.NewFS(cctx.String(FlagMinerRepo))
+		r, err := repo.NewFS(cctx.String("repo"))
 		if err != nil {
 			return err
 		}
@@ -66,7 +66,7 @@ var configUpdateCmd = &cli.Command{
 			return xerrors.Errorf("repo not initialized")
 		}
 
-		lr, err := r.LockRO(repo.StorageMiner)
+		lr, err := r.LockRO(repo.FullNode)
 		if err != nil {
 			return xerrors.Errorf("locking repo: %w", err)
 		}
@@ -81,9 +81,9 @@ var configUpdateCmd = &cli.Command{
 			return err
 		}
 
-		cfgDef := config.DefaultStorageMiner()
+		cfgDef := config.DefaultFullNode()
 
-		updated, err := config.ConfigUpdate(cfgNode, cfgDef, config.Commented(!cctx.Bool("no-comment")))
+		updated, err := config.ConfigUpdate(cfgNode, cfgDef, config.Commented(!cctx.Bool("no-comment")), config.DefaultKeepUncommented())
 		if err != nil {
 			return err
 		}

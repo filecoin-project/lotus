@@ -15,11 +15,11 @@ var PprofCmd = &cli.Command{
 	Name:   "pprof",
 	Hidden: true,
 	Subcommands: []*cli.Command{
-		PprofGoroutines,
+		PprofGoroutinesCmd,
 	},
 }
 
-var PprofGoroutines = &cli.Command{
+var PprofGoroutinesCmd = &cli.Command{
 	Name:  "goroutines",
 	Usage: "Get goroutine stacks",
 	Action: func(cctx *cli.Context) error {

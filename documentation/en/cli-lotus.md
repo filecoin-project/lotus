@@ -1,4 +1,5 @@
 # lotus
+
 ```
 NAME:
    lotus - Filecoin decentralized storage network client
@@ -41,7 +42,7 @@ COMMANDS:
 
 GLOBAL OPTIONS:
    --color        use color in display output (default: depends on output being a TTY)
-   --interactive  setting to false will disable interactive functionality of commands (default: false)
+   --interactive  setting to false will disable interactive functionality of commands (default: true)
    --force-send   if true, will ignore pre-send checks (default: false)
    --vv           enables very verbose mode, useful for debugging the CLI (default: false)
    --help, -h     show help
@@ -49,6 +50,7 @@ GLOBAL OPTIONS:
 ```
 
 ## lotus daemon
+
 ```
 NAME:
    lotus daemon - Start a lotus daemon process
@@ -80,6 +82,7 @@ OPTIONS:
 ```
 
 ### lotus daemon stop
+
 ```
 NAME:
    lotus daemon stop - Stop a running lotus daemon
@@ -92,6 +95,7 @@ OPTIONS:
 ```
 
 ## lotus backup
+
 ```
 NAME:
    lotus backup - Create node metadata backup
@@ -113,6 +117,7 @@ OPTIONS:
 ```
 
 ## lotus config
+
 ```
 NAME:
    lotus config - Manage node config
@@ -130,6 +135,7 @@ OPTIONS:
 ```
 
 ### lotus config default
+
 ```
 NAME:
    lotus config default - Print default node config
@@ -143,6 +149,7 @@ OPTIONS:
 ```
 
 ### lotus config updated
+
 ```
 NAME:
    lotus config updated - Print updated node config
@@ -156,6 +163,7 @@ OPTIONS:
 ```
 
 ## lotus version
+
 ```
 NAME:
    lotus version - Print version
@@ -168,6 +176,7 @@ OPTIONS:
 ```
 
 ## lotus send
+
 ```
 NAME:
    lotus send - Send funds between accounts
@@ -193,6 +202,7 @@ OPTIONS:
 ```
 
 ## lotus wallet
+
 ```
 NAME:
    lotus wallet - Manage wallet
@@ -219,6 +229,7 @@ OPTIONS:
 ```
 
 ### lotus wallet new
+
 ```
 NAME:
    lotus wallet new - Generate a new key of the given type
@@ -231,6 +242,7 @@ OPTIONS:
 ```
 
 ### lotus wallet list
+
 ```
 NAME:
    lotus wallet list - List wallet address
@@ -246,6 +258,7 @@ OPTIONS:
 ```
 
 ### lotus wallet balance
+
 ```
 NAME:
    lotus wallet balance - Get account balance
@@ -258,6 +271,7 @@ OPTIONS:
 ```
 
 ### lotus wallet export
+
 ```
 NAME:
    lotus wallet export - export keys
@@ -270,6 +284,7 @@ OPTIONS:
 ```
 
 ### lotus wallet import
+
 ```
 NAME:
    lotus wallet import - import keys
@@ -284,6 +299,7 @@ OPTIONS:
 ```
 
 ### lotus wallet default
+
 ```
 NAME:
    lotus wallet default - Get default wallet address
@@ -296,6 +312,7 @@ OPTIONS:
 ```
 
 ### lotus wallet set-default
+
 ```
 NAME:
    lotus wallet set-default - Set default wallet address
@@ -308,6 +325,7 @@ OPTIONS:
 ```
 
 ### lotus wallet sign
+
 ```
 NAME:
    lotus wallet sign - sign a message
@@ -320,6 +338,7 @@ OPTIONS:
 ```
 
 ### lotus wallet verify
+
 ```
 NAME:
    lotus wallet verify - verify the signature of a message
@@ -332,6 +351,7 @@ OPTIONS:
 ```
 
 ### lotus wallet delete
+
 ```
 NAME:
    lotus wallet delete - Soft delete an address from the wallet - hard deletion needed for permanent removal
@@ -344,6 +364,7 @@ OPTIONS:
 ```
 
 ### lotus wallet market
+
 ```
 NAME:
    lotus wallet market - Interact with market balances
@@ -361,6 +382,7 @@ OPTIONS:
 ```
 
 #### lotus wallet market withdraw
+
 ```
 NAME:
    lotus wallet market withdraw - Withdraw funds from the Storage Market Actor
@@ -376,6 +398,7 @@ OPTIONS:
 ```
 
 #### lotus wallet market add
+
 ```
 NAME:
    lotus wallet market add - Add funds to the Storage Market Actor
@@ -390,6 +413,7 @@ OPTIONS:
 ```
 
 ## lotus info
+
 ```
 NAME:
    lotus info - Print node info
@@ -405,6 +429,7 @@ OPTIONS:
 ```
 
 ## lotus msig
+
 ```
 NAME:
    lotus msig - Interact with a multisig wallet
@@ -438,6 +463,7 @@ OPTIONS:
 ```
 
 ### lotus msig create
+
 ```
 NAME:
    lotus msig create - Create a new multisig wallet
@@ -454,6 +480,7 @@ OPTIONS:
 ```
 
 ### lotus msig inspect
+
 ```
 NAME:
    lotus msig inspect - Inspect a multisig wallet
@@ -468,6 +495,7 @@ OPTIONS:
 ```
 
 ### lotus msig propose
+
 ```
 NAME:
    lotus msig propose - Propose a multisig transaction
@@ -481,6 +509,7 @@ OPTIONS:
 ```
 
 ### lotus msig propose-remove
+
 ```
 NAME:
    lotus msig propose-remove - Propose to remove a signer
@@ -495,6 +524,7 @@ OPTIONS:
 ```
 
 ### lotus msig approve
+
 ```
 NAME:
    lotus msig approve - Approve a multisig message
@@ -508,6 +538,7 @@ OPTIONS:
 ```
 
 ### lotus msig cancel
+
 ```
 NAME:
    lotus msig cancel - Cancel a multisig message
@@ -521,6 +552,7 @@ OPTIONS:
 ```
 
 ### lotus msig add-propose
+
 ```
 NAME:
    lotus msig add-propose - Propose to add a signer
@@ -535,6 +567,7 @@ OPTIONS:
 ```
 
 ### lotus msig add-approve
+
 ```
 NAME:
    lotus msig add-approve - Approve a message to add a signer
@@ -548,6 +581,7 @@ OPTIONS:
 ```
 
 ### lotus msig add-cancel
+
 ```
 NAME:
    lotus msig add-cancel - Cancel a message to add a signer
@@ -561,6 +595,7 @@ OPTIONS:
 ```
 
 ### lotus msig swap-propose
+
 ```
 NAME:
    lotus msig swap-propose - Propose to swap signers
@@ -574,6 +609,7 @@ OPTIONS:
 ```
 
 ### lotus msig swap-approve
+
 ```
 NAME:
    lotus msig swap-approve - Approve a message to swap signers
@@ -587,6 +623,7 @@ OPTIONS:
 ```
 
 ### lotus msig swap-cancel
+
 ```
 NAME:
    lotus msig swap-cancel - Cancel a message to swap signers
@@ -600,6 +637,7 @@ OPTIONS:
 ```
 
 ### lotus msig lock-propose
+
 ```
 NAME:
    lotus msig lock-propose - Propose to lock up some balance
@@ -613,6 +651,7 @@ OPTIONS:
 ```
 
 ### lotus msig lock-approve
+
 ```
 NAME:
    lotus msig lock-approve - Approve a message to lock up some balance
@@ -626,6 +665,7 @@ OPTIONS:
 ```
 
 ### lotus msig lock-cancel
+
 ```
 NAME:
    lotus msig lock-cancel - Cancel a message to lock up some balance
@@ -639,6 +679,7 @@ OPTIONS:
 ```
 
 ### lotus msig vested
+
 ```
 NAME:
    lotus msig vested - Gets the amount vested in an msig between two epochs
@@ -653,6 +694,7 @@ OPTIONS:
 ```
 
 ### lotus msig propose-threshold
+
 ```
 NAME:
    lotus msig propose-threshold - Propose setting a different signing threshold on the account
@@ -666,6 +708,7 @@ OPTIONS:
 ```
 
 ## lotus filplus
+
 ```
 NAME:
    lotus filplus - Interact with the verified registry actor used by Filplus
@@ -692,6 +735,7 @@ OPTIONS:
 ```
 
 ### lotus filplus grant-datacap
+
 ```
 NAME:
    lotus filplus grant-datacap - give allowance to the specified verified client address
@@ -705,6 +749,7 @@ OPTIONS:
 ```
 
 ### lotus filplus list-notaries
+
 ```
 NAME:
    lotus filplus list-notaries - list all notaries
@@ -717,6 +762,7 @@ OPTIONS:
 ```
 
 ### lotus filplus list-clients
+
 ```
 NAME:
    lotus filplus list-clients - list all verified clients
@@ -729,6 +775,7 @@ OPTIONS:
 ```
 
 ### lotus filplus check-client-datacap
+
 ```
 NAME:
    lotus filplus check-client-datacap - check verified client remaining bytes
@@ -741,6 +788,7 @@ OPTIONS:
 ```
 
 ### lotus filplus check-notary-datacap
+
 ```
 NAME:
    lotus filplus check-notary-datacap - check a notary's remaining bytes
@@ -753,6 +801,7 @@ OPTIONS:
 ```
 
 ### lotus filplus sign-remove-data-cap-proposal
+
 ```
 NAME:
    lotus filplus sign-remove-data-cap-proposal - allows a notary to sign a Remove Data Cap Proposal
@@ -766,6 +815,7 @@ OPTIONS:
 ```
 
 ### lotus filplus list-allocations
+
 ```
 NAME:
    lotus filplus list-allocations - List allocations available in verified registry actor or made by a client if specified
@@ -780,6 +830,7 @@ OPTIONS:
 ```
 
 ### lotus filplus list-claims
+
 ```
 NAME:
    lotus filplus list-claims - List claims available in verified registry actor or made by provider if specified
@@ -794,6 +845,7 @@ OPTIONS:
 ```
 
 ### lotus filplus remove-expired-allocations
+
 ```
 NAME:
    lotus filplus remove-expired-allocations - remove expired allocations (if no allocations are specified all eligible allocations are removed)
@@ -807,6 +859,7 @@ OPTIONS:
 ```
 
 ### lotus filplus remove-expired-claims
+
 ```
 NAME:
    lotus filplus remove-expired-claims - remove expired claims (if no claims are specified all eligible claims are removed)
@@ -820,6 +873,7 @@ OPTIONS:
 ```
 
 ### lotus filplus extend-claim
+
 ```
 NAME:
    lotus filplus extend-claim - extends claim expiration (TermMax)
@@ -842,6 +896,7 @@ OPTIONS:
 ```
 
 ## lotus paych
+
 ```
 NAME:
    lotus paych - Manage payment channels
@@ -864,6 +919,7 @@ OPTIONS:
 ```
 
 ### lotus paych add-funds
+
 ```
 NAME:
    lotus paych add-funds - Add funds to the payment channel between fromAddress and toAddress. Creates the payment channel if it doesn't already exist.
@@ -877,6 +933,7 @@ OPTIONS:
 ```
 
 ### lotus paych list
+
 ```
 NAME:
    lotus paych list - List all locally registered payment channels
@@ -889,6 +946,7 @@ OPTIONS:
 ```
 
 ### lotus paych voucher
+
 ```
 NAME:
    lotus paych voucher - Interact with payment channel vouchers
@@ -910,6 +968,7 @@ OPTIONS:
 ```
 
 #### lotus paych voucher create
+
 ```
 NAME:
    lotus paych voucher create - Create a signed payment channel voucher
@@ -923,6 +982,7 @@ OPTIONS:
 ```
 
 #### lotus paych voucher check
+
 ```
 NAME:
    lotus paych voucher check - Check validity of payment channel voucher
@@ -935,6 +995,7 @@ OPTIONS:
 ```
 
 #### lotus paych voucher add
+
 ```
 NAME:
    lotus paych voucher add - Add payment channel voucher to local datastore
@@ -947,6 +1008,7 @@ OPTIONS:
 ```
 
 #### lotus paych voucher list
+
 ```
 NAME:
    lotus paych voucher list - List stored vouchers for a given payment channel
@@ -960,6 +1022,7 @@ OPTIONS:
 ```
 
 #### lotus paych voucher best-spendable
+
 ```
 NAME:
    lotus paych voucher best-spendable - Print vouchers with highest value that is currently spendable for each lane
@@ -973,6 +1036,7 @@ OPTIONS:
 ```
 
 #### lotus paych voucher submit
+
 ```
 NAME:
    lotus paych voucher submit - Submit voucher to chain to update payment channel state
@@ -985,6 +1049,7 @@ OPTIONS:
 ```
 
 ### lotus paych settle
+
 ```
 NAME:
    lotus paych settle - Settle a payment channel
@@ -997,6 +1062,7 @@ OPTIONS:
 ```
 
 ### lotus paych status
+
 ```
 NAME:
    lotus paych status - Show the status of an outbound payment channel
@@ -1009,6 +1075,7 @@ OPTIONS:
 ```
 
 ### lotus paych status-by-from-to
+
 ```
 NAME:
    lotus paych status-by-from-to - Show the status of an active outbound payment channel by from/to addresses
@@ -1021,6 +1088,7 @@ OPTIONS:
 ```
 
 ### lotus paych collect
+
 ```
 NAME:
    lotus paych collect - Collect funds for a payment channel
@@ -1033,6 +1101,7 @@ OPTIONS:
 ```
 
 ## lotus auth
+
 ```
 NAME:
    lotus auth - Manage RPC permissions
@@ -1050,6 +1119,7 @@ OPTIONS:
 ```
 
 ### lotus auth create-token
+
 ```
 NAME:
    lotus auth create-token - Create token
@@ -1063,6 +1133,7 @@ OPTIONS:
 ```
 
 ### lotus auth api-info
+
 ```
 NAME:
    lotus auth api-info - Get token with API info required to connect to this node
@@ -1076,6 +1147,7 @@ OPTIONS:
 ```
 
 ## lotus mpool
+
 ```
 NAME:
    lotus mpool - Manage message pool
@@ -1099,6 +1171,7 @@ OPTIONS:
 ```
 
 ### lotus mpool pending
+
 ```
 NAME:
    lotus mpool pending - Get pending messages
@@ -1115,6 +1188,7 @@ OPTIONS:
 ```
 
 ### lotus mpool sub
+
 ```
 NAME:
    lotus mpool sub - Subscribe to mpool changes
@@ -1127,6 +1201,7 @@ OPTIONS:
 ```
 
 ### lotus mpool stat
+
 ```
 NAME:
    lotus mpool stat - print mempool stats
@@ -1141,6 +1216,7 @@ OPTIONS:
 ```
 
 ### lotus mpool replace
+
 ```
 NAME:
    lotus mpool replace - replace a message in the mempool
@@ -1158,6 +1234,7 @@ OPTIONS:
 ```
 
 ### lotus mpool find
+
 ```
 NAME:
    lotus mpool find - find a message in the mempool
@@ -1173,6 +1250,7 @@ OPTIONS:
 ```
 
 ### lotus mpool config
+
 ```
 NAME:
    lotus mpool config - get or set current mpool configuration
@@ -1185,6 +1263,7 @@ OPTIONS:
 ```
 
 ### lotus mpool gas-perf
+
 ```
 NAME:
    lotus mpool gas-perf - Check gas performance of messages in mempool
@@ -1198,6 +1277,7 @@ OPTIONS:
 ```
 
 ### lotus mpool manage
+
 ```
 NAME:
    lotus mpool manage
@@ -1210,6 +1290,7 @@ OPTIONS:
 ```
 
 ## lotus state
+
 ```
 NAME:
    lotus state - Interact with and query filecoin chain state
@@ -1250,6 +1331,7 @@ OPTIONS:
 ```
 
 ### lotus state power
+
 ```
 NAME:
    lotus state power - Query network or miner power
@@ -1262,6 +1344,7 @@ OPTIONS:
 ```
 
 ### lotus state sectors
+
 ```
 NAME:
    lotus state sectors - Query the sector set of a miner
@@ -1274,6 +1357,7 @@ OPTIONS:
 ```
 
 ### lotus state active-sectors
+
 ```
 NAME:
    lotus state active-sectors - Query the active sector set of a miner
@@ -1286,6 +1370,7 @@ OPTIONS:
 ```
 
 ### lotus state list-actors
+
 ```
 NAME:
    lotus state list-actors - list all actors in the network
@@ -1298,6 +1383,7 @@ OPTIONS:
 ```
 
 ### lotus state list-miners
+
 ```
 NAME:
    lotus state list-miners - list all miners in the network
@@ -1311,6 +1397,7 @@ OPTIONS:
 ```
 
 ### lotus state circulating-supply
+
 ```
 NAME:
    lotus state circulating-supply - Get the exact current circulating supply of Filecoin
@@ -1324,6 +1411,7 @@ OPTIONS:
 ```
 
 ### lotus state sector
+
 ```
 NAME:
    lotus state sector - Get miner sector info
@@ -1336,6 +1424,7 @@ OPTIONS:
 ```
 
 ### lotus state get-actor
+
 ```
 NAME:
    lotus state get-actor - Print actor information
@@ -1348,6 +1437,7 @@ OPTIONS:
 ```
 
 ### lotus state lookup
+
 ```
 NAME:
    lotus state lookup - Find corresponding ID address
@@ -1361,6 +1451,7 @@ OPTIONS:
 ```
 
 ### lotus state replay
+
 ```
 NAME:
    lotus state replay - Replay a particular message
@@ -1375,6 +1466,7 @@ OPTIONS:
 ```
 
 ### lotus state sector-size
+
 ```
 NAME:
    lotus state sector-size - Look up miners sector size
@@ -1387,6 +1479,7 @@ OPTIONS:
 ```
 
 ### lotus state read-state
+
 ```
 NAME:
    lotus state read-state - View a json representation of an actors state
@@ -1399,6 +1492,7 @@ OPTIONS:
 ```
 
 ### lotus state list-messages
+
 ```
 NAME:
    lotus state list-messages - list messages on chain matching given criteria
@@ -1415,6 +1509,7 @@ OPTIONS:
 ```
 
 ### lotus state compute-state
+
 ```
 NAME:
    lotus state compute-state - Perform state computations
@@ -1434,6 +1529,7 @@ OPTIONS:
 ```
 
 ### lotus state call
+
 ```
 NAME:
    lotus state call - Invoke a method on an actor locally
@@ -1450,6 +1546,7 @@ OPTIONS:
 ```
 
 ### lotus state get-deal
+
 ```
 NAME:
    lotus state get-deal - View on-chain deal info
@@ -1462,6 +1559,7 @@ OPTIONS:
 ```
 
 ### lotus state wait-msg
+
 ```
 NAME:
    lotus state wait-msg - Wait for a message to appear on chain
@@ -1475,6 +1573,7 @@ OPTIONS:
 ```
 
 ### lotus state search-msg
+
 ```
 NAME:
    lotus state search-msg - Search to see whether a message has appeared on chain
@@ -1487,6 +1586,7 @@ OPTIONS:
 ```
 
 ### lotus state miner-info
+
 ```
 NAME:
    lotus state miner-info - Retrieve miner information
@@ -1499,6 +1599,7 @@ OPTIONS:
 ```
 
 ### lotus state market
+
 ```
 NAME:
    lotus state market - Inspect the storage market actor
@@ -1516,6 +1617,7 @@ OPTIONS:
 ```
 
 #### lotus state market balance
+
 ```
 NAME:
    lotus state market balance - Get the market balance (locked and escrowed) for a given account
@@ -1528,6 +1630,7 @@ OPTIONS:
 ```
 
 #### lotus state market proposal-pending
+
 ```
 NAME:
    lotus state market proposal-pending - check if a given proposal CID is pending in the market actor
@@ -1540,6 +1643,7 @@ OPTIONS:
 ```
 
 ### lotus state exec-trace
+
 ```
 NAME:
    lotus state exec-trace - Get the execution trace of a given message
@@ -1552,6 +1656,7 @@ OPTIONS:
 ```
 
 ### lotus state network-version
+
 ```
 NAME:
    lotus state network-version - Returns the network version
@@ -1564,6 +1669,7 @@ OPTIONS:
 ```
 
 ### lotus state miner-proving-deadline
+
 ```
 NAME:
    lotus state miner-proving-deadline - Retrieve information about a given miner's proving deadline
@@ -1576,6 +1682,7 @@ OPTIONS:
 ```
 
 ### lotus state actor-cids
+
 ```
 NAME:
    lotus state actor-cids - Returns the built-in actor bundle manifest ID & system actor cids
@@ -1589,6 +1696,7 @@ OPTIONS:
 ```
 
 ## lotus chain
+
 ```
 NAME:
    lotus chain - Interact with filecoin blockchain
@@ -1623,6 +1731,7 @@ OPTIONS:
 ```
 
 ### lotus chain head
+
 ```
 NAME:
    lotus chain head - Print chain head
@@ -1636,6 +1745,7 @@ OPTIONS:
 ```
 
 ### lotus chain get-block
+
 ```
 NAME:
    lotus chain get-block - Get a block and print its details
@@ -1649,6 +1759,7 @@ OPTIONS:
 ```
 
 ### lotus chain read-obj
+
 ```
 NAME:
    lotus chain read-obj - Read the raw bytes of an object
@@ -1661,6 +1772,7 @@ OPTIONS:
 ```
 
 ### lotus chain delete-obj
+
 ```
 NAME:
    lotus chain delete-obj - Delete an object from the chain blockstore
@@ -1677,6 +1789,7 @@ OPTIONS:
 ```
 
 ### lotus chain stat-obj
+
 ```
 NAME:
    lotus chain stat-obj - Collect size and ipld link counts for objs
@@ -1697,6 +1810,7 @@ OPTIONS:
 ```
 
 ### lotus chain getmessage
+
 ```
 NAME:
    lotus chain getmessage - Get and print a message by its cid
@@ -1709,6 +1823,7 @@ OPTIONS:
 ```
 
 ### lotus chain sethead
+
 ```
 NAME:
    lotus chain sethead - manually set the local nodes head tipset (Caution: normally only used for recovery)
@@ -1723,6 +1838,7 @@ OPTIONS:
 ```
 
 ### lotus chain list
+
 ```
 NAME:
    lotus chain list - View a segment of the chain
@@ -1740,6 +1856,7 @@ OPTIONS:
 ```
 
 ### lotus chain get
+
 ```
 NAME:
    lotus chain get - Get chain DAG node by path
@@ -1786,6 +1903,7 @@ OPTIONS:
 ```
 
 ### lotus chain bisect
+
 ```
 NAME:
    lotus chain bisect - bisect chain for an event
@@ -1813,6 +1931,7 @@ OPTIONS:
 ```
 
 ### lotus chain export
+
 ```
 NAME:
    lotus chain export - export chain to a car file
@@ -1828,6 +1947,7 @@ OPTIONS:
 ```
 
 ### lotus chain export-range
+
 ```
 NAME:
    lotus chain export-range - export chain to a car file
@@ -1847,6 +1967,7 @@ OPTIONS:
 ```
 
 ### lotus chain slash-consensus
+
 ```
 NAME:
    lotus chain slash-consensus - Report consensus fault
@@ -1861,6 +1982,7 @@ OPTIONS:
 ```
 
 ### lotus chain gas-price
+
 ```
 NAME:
    lotus chain gas-price - Estimate gas prices
@@ -1873,6 +1995,7 @@ OPTIONS:
 ```
 
 ### lotus chain inspect-usage
+
 ```
 NAME:
    lotus chain inspect-usage - Inspect block space usage of a given tipset
@@ -1888,6 +2011,7 @@ OPTIONS:
 ```
 
 ### lotus chain decode
+
 ```
 NAME:
    lotus chain decode - decode various types
@@ -1904,6 +2028,7 @@ OPTIONS:
 ```
 
 #### lotus chain decode params
+
 ```
 NAME:
    lotus chain decode params - Decode message params
@@ -1918,6 +2043,7 @@ OPTIONS:
 ```
 
 ### lotus chain encode
+
 ```
 NAME:
    lotus chain encode - encode various types
@@ -1934,6 +2060,7 @@ OPTIONS:
 ```
 
 #### lotus chain encode params
+
 ```
 NAME:
    lotus chain encode params - Encodes the given JSON params
@@ -1949,6 +2076,7 @@ OPTIONS:
 ```
 
 ### lotus chain disputer
+
 ```
 NAME:
    lotus chain disputer - interact with the window post disputer
@@ -1968,6 +2096,7 @@ OPTIONS:
 ```
 
 #### lotus chain disputer start
+
 ```
 NAME:
    lotus chain disputer start - Start the window post disputer
@@ -1981,6 +2110,7 @@ OPTIONS:
 ```
 
 #### lotus chain disputer dispute
+
 ```
 NAME:
    lotus chain disputer dispute - Send a specific DisputeWindowedPoSt message
@@ -1993,6 +2123,7 @@ OPTIONS:
 ```
 
 ### lotus chain prune
+
 ```
 NAME:
    lotus chain prune - splitstore gc
@@ -2011,6 +2142,7 @@ OPTIONS:
 ```
 
 #### lotus chain prune compact-cold
+
 ```
 NAME:
    lotus chain prune compact-cold - force splitstore compaction on cold store state and run gc
@@ -2026,6 +2158,7 @@ OPTIONS:
 ```
 
 #### lotus chain prune hot
+
 ```
 NAME:
    lotus chain prune hot - run online (badger vlog) garbage collection on hotstore
@@ -2040,6 +2173,7 @@ OPTIONS:
 ```
 
 #### lotus chain prune hot-moving
+
 ```
 NAME:
    lotus chain prune hot-moving - run moving gc on hotstore
@@ -2052,6 +2186,7 @@ OPTIONS:
 ```
 
 ## lotus log
+
 ```
 NAME:
    lotus log - Manage logging
@@ -2070,6 +2205,7 @@ OPTIONS:
 ```
 
 ### lotus log list
+
 ```
 NAME:
    lotus log list - List log systems
@@ -2082,6 +2218,7 @@ OPTIONS:
 ```
 
 ### lotus log set-level
+
 ```
 NAME:
    lotus log set-level - Set log level
@@ -2115,6 +2252,7 @@ OPTIONS:
 ```
 
 ### lotus log alerts
+
 ```
 NAME:
    lotus log alerts - Get alert states
@@ -2128,6 +2266,7 @@ OPTIONS:
 ```
 
 ## lotus wait-api
+
 ```
 NAME:
    lotus wait-api - Wait for lotus api to come online
@@ -2144,6 +2283,7 @@ OPTIONS:
 ```
 
 ## lotus fetch-params
+
 ```
 NAME:
    lotus fetch-params - Fetch proving parameters
@@ -2159,6 +2299,7 @@ OPTIONS:
 ```
 
 ## lotus evm
+
 ```
 NAME:
    lotus evm - Commands related to the Filecoin EVM runtime
@@ -2180,6 +2321,7 @@ OPTIONS:
 ```
 
 ### lotus evm deploy
+
 ```
 NAME:
    lotus evm deploy - Deploy an EVM smart contract and return its address
@@ -2194,6 +2336,7 @@ OPTIONS:
 ```
 
 ### lotus evm invoke
+
 ```
 NAME:
    lotus evm invoke - Invoke an EVM smart contract using the specified CALLDATA
@@ -2208,6 +2351,7 @@ OPTIONS:
 ```
 
 ### lotus evm stat
+
 ```
 NAME:
    lotus evm stat - Print eth/filecoin addrs and code cid
@@ -2220,6 +2364,7 @@ OPTIONS:
 ```
 
 ### lotus evm call
+
 ```
 NAME:
    lotus evm call - Simulate an eth contract call
@@ -2232,6 +2377,7 @@ OPTIONS:
 ```
 
 ### lotus evm contract-address
+
 ```
 NAME:
    lotus evm contract-address - Generate contract address from smart contract code
@@ -2244,6 +2390,7 @@ OPTIONS:
 ```
 
 ### lotus evm bytecode
+
 ```
 NAME:
    lotus evm bytecode - Write the bytecode of a smart contract to a file
@@ -2257,6 +2404,7 @@ OPTIONS:
 ```
 
 ## lotus index
+
 ```
 NAME:
    lotus index - Commands related to managing the chainindex
@@ -2273,6 +2421,7 @@ OPTIONS:
 ```
 
 ### lotus index validate-backfill
+
 ```
 NAME:
    lotus index validate-backfill - Validates and optionally backfills the chainindex for a range of epochs
@@ -2325,6 +2474,7 @@ OPTIONS:
 ```
 
 ## lotus net
+
 ```
 NAME:
    lotus net - Manage P2P Network
@@ -2356,6 +2506,7 @@ OPTIONS:
 ```
 
 ### lotus net peers
+
 ```
 NAME:
    lotus net peers - Print peers
@@ -2370,6 +2521,7 @@ OPTIONS:
 ```
 
 ### lotus net ping
+
 ```
 NAME:
    lotus net ping - Ping peers
@@ -2384,6 +2536,7 @@ OPTIONS:
 ```
 
 ### lotus net connect
+
 ```
 NAME:
    lotus net connect - Connect to a peer
@@ -2396,6 +2549,7 @@ OPTIONS:
 ```
 
 ### lotus net disconnect
+
 ```
 NAME:
    lotus net disconnect - Disconnect from a peer
@@ -2408,6 +2562,7 @@ OPTIONS:
 ```
 
 ### lotus net listen
+
 ```
 NAME:
    lotus net listen - List listen addresses
@@ -2420,6 +2575,7 @@ OPTIONS:
 ```
 
 ### lotus net id
+
 ```
 NAME:
    lotus net id - Get node identity
@@ -2432,6 +2588,7 @@ OPTIONS:
 ```
 
 ### lotus net find-peer
+
 ```
 NAME:
    lotus net find-peer - Find the addresses of a given peerID
@@ -2444,6 +2601,7 @@ OPTIONS:
 ```
 
 ### lotus net scores
+
 ```
 NAME:
    lotus net scores - Print peers' pubsub scores
@@ -2457,6 +2615,7 @@ OPTIONS:
 ```
 
 ### lotus net reachability
+
 ```
 NAME:
    lotus net reachability - Print information about reachability from the internet
@@ -2469,6 +2628,7 @@ OPTIONS:
 ```
 
 ### lotus net bandwidth
+
 ```
 NAME:
    lotus net bandwidth - Print bandwidth usage information
@@ -2483,6 +2643,7 @@ OPTIONS:
 ```
 
 ### lotus net block
+
 ```
 NAME:
    lotus net block - Manage network connection gating rules
@@ -2501,6 +2662,7 @@ OPTIONS:
 ```
 
 #### lotus net block add
+
 ```
 NAME:
    lotus net block add - Add connection gating rules
@@ -2519,6 +2681,7 @@ OPTIONS:
 ```
 
 ##### lotus net block add peer
+
 ```
 NAME:
    lotus net block add peer - Block a peer
@@ -2531,6 +2694,7 @@ OPTIONS:
 ```
 
 ##### lotus net block add ip
+
 ```
 NAME:
    lotus net block add ip - Block an IP address
@@ -2543,6 +2707,7 @@ OPTIONS:
 ```
 
 ##### lotus net block add subnet
+
 ```
 NAME:
    lotus net block add subnet - Block an IP subnet
@@ -2555,6 +2720,7 @@ OPTIONS:
 ```
 
 #### lotus net block remove
+
 ```
 NAME:
    lotus net block remove - Remove connection gating rules
@@ -2573,6 +2739,7 @@ OPTIONS:
 ```
 
 ##### lotus net block remove peer
+
 ```
 NAME:
    lotus net block remove peer - Unblock a peer
@@ -2585,6 +2752,7 @@ OPTIONS:
 ```
 
 ##### lotus net block remove ip
+
 ```
 NAME:
    lotus net block remove ip - Unblock an IP address
@@ -2597,6 +2765,7 @@ OPTIONS:
 ```
 
 ##### lotus net block remove subnet
+
 ```
 NAME:
    lotus net block remove subnet - Unblock an IP subnet
@@ -2609,6 +2778,7 @@ OPTIONS:
 ```
 
 #### lotus net block list
+
 ```
 NAME:
    lotus net block list - list connection gating rules
@@ -2621,6 +2791,7 @@ OPTIONS:
 ```
 
 ### lotus net stat
+
 ```
 NAME:
    lotus net stat - Report resource usage for a scope
@@ -2646,6 +2817,7 @@ OPTIONS:
 ```
 
 ### lotus net limit
+
 ```
 NAME:
    lotus net limit - Get or set resource limits for a scope
@@ -2672,6 +2844,7 @@ OPTIONS:
 ```
 
 ### lotus net protect
+
 ```
 NAME:
    lotus net protect - Add one or more peer IDs to the list of protected peer connections
@@ -2684,6 +2857,7 @@ OPTIONS:
 ```
 
 ### lotus net unprotect
+
 ```
 NAME:
    lotus net unprotect - Remove one or more peer IDs from the list of protected peer connections.
@@ -2696,6 +2870,7 @@ OPTIONS:
 ```
 
 ### lotus net list-protected
+
 ```
 NAME:
    lotus net list-protected - List the peer IDs with protected connection.
@@ -2708,6 +2883,7 @@ OPTIONS:
 ```
 
 ## lotus sync
+
 ```
 NAME:
    lotus sync - Inspect or interact with the chain syncer
@@ -2729,6 +2905,7 @@ OPTIONS:
 ```
 
 ### lotus sync status
+
 ```
 NAME:
    lotus sync status - check sync status
@@ -2741,6 +2918,7 @@ OPTIONS:
 ```
 
 ### lotus sync wait
+
 ```
 NAME:
    lotus sync wait - Wait for sync to be complete
@@ -2754,6 +2932,7 @@ OPTIONS:
 ```
 
 ### lotus sync mark-bad
+
 ```
 NAME:
    lotus sync mark-bad - Mark the given block as bad, will prevent syncing to a chain that contains it
@@ -2766,6 +2945,7 @@ OPTIONS:
 ```
 
 ### lotus sync unmark-bad
+
 ```
 NAME:
    lotus sync unmark-bad - Unmark the given block as bad, makes it possible to sync to a chain containing it
@@ -2779,6 +2959,7 @@ OPTIONS:
 ```
 
 ### lotus sync check-bad
+
 ```
 NAME:
    lotus sync check-bad - check if the given block was marked bad, and for what reason
@@ -2791,6 +2972,7 @@ OPTIONS:
 ```
 
 ### lotus sync checkpoint
+
 ```
 NAME:
    lotus sync checkpoint - mark a certain tipset as checkpointed; the node will never fork away from this tipset
@@ -2804,6 +2986,7 @@ OPTIONS:
 ```
 
 ## lotus f3
+
 ```
 NAME:
    lotus f3 - Manages Filecoin Fast Finality (F3) interactions
@@ -2824,6 +3007,7 @@ OPTIONS:
 ```
 
 ### lotus f3 list-miners
+
 ```
 NAME:
    lotus f3 list-miners - Lists the miners that currently participate in F3 via this node.
@@ -2836,6 +3020,7 @@ OPTIONS:
 ```
 
 ### lotus f3 powertable
+
 ```
 NAME:
    lotus f3 powertable
@@ -2853,6 +3038,7 @@ OPTIONS:
 ```
 
 #### lotus f3 powertable get
+
 ```
 NAME:
    lotus f3 powertable get - Get F3 power table at a specific instance ID or latest instance if none is specified.
@@ -2866,6 +3052,7 @@ OPTIONS:
 ```
 
 #### lotus f3 powertable get-proportion
+
 ```
 NAME:
    lotus f3 powertable get-proportion - Gets the total proportion of power for a list of actors at a given instance.
@@ -2880,6 +3067,7 @@ OPTIONS:
 ```
 
 ### lotus f3 certs
+
 ```
 NAME:
    lotus f3 certs - Manages interactions with F3 finality certificates.
@@ -2932,6 +3120,7 @@ OPTIONS:
 ```
 
 #### lotus f3 certs get
+
 ```
 NAME:
    lotus f3 certs get - Gets an F3 finality certificate to a given instance ID, or the latest certificate if no instance is specified.
@@ -2945,6 +3134,7 @@ OPTIONS:
 ```
 
 #### lotus f3 certs list
+
 ```
 NAME:
    lotus f3 certs list - Lists a range of F3 finality certificates.
@@ -2995,6 +3185,7 @@ OPTIONS:
 ```
 
 ### lotus f3 manifest
+
 ```
 NAME:
    lotus f3 manifest - Gets the current manifest used by F3.
@@ -3008,6 +3199,7 @@ OPTIONS:
 ```
 
 ### lotus f3 status
+
 ```
 NAME:
    lotus f3 status - Checks the F3 status.
@@ -3020,6 +3212,7 @@ OPTIONS:
 ```
 
 ## lotus status
+
 ```
 NAME:
    lotus status - Check node status
