@@ -15,6 +15,7 @@
 - Add F3GetCertificate & F3GetLatestCertificate to the gateway. ([filecoin-project/lotus#12778](https://github.com/filecoin-project/lotus/pull/12778))
 - Add Magik's bootstrap node. ([filecoin-project/lotus#12792](https://github.com/filecoin-project/lotus/pull/12792))
 - Lotus now reports the network name as a tag in most metrics. Some untagged metrics will be completed in a follow-up at a later date. ([filecoin-project/lotus#12733](https://github.com/filecoin-project/lotus/pull/12733))
+- Refactored Ethereum API implementation into smaller, more manageable modules in a new `github.com/filecoin-project/lotus/node/impl/eth` package. ([filecoin-project/lotus#12796](https://github.com/filecoin-project/lotus/pull/12796))
 
 # UNRELEASED v.1.32.0
 
