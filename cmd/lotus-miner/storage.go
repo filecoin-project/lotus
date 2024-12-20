@@ -126,7 +126,7 @@ over time
 		}
 
 		if cctx.Bool("init") {
-			if err := os.MkdirAll(p, 0o755); err != nil {
+			if err := os.MkdirAll(p, 0755); err != nil {
 				if !os.IsExist(err) {
 					return err
 				}
