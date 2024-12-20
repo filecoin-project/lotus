@@ -286,7 +286,7 @@ var sealingJobsCmd = &cli.Command{
 			}
 			dur := "n/a"
 			if !l.Start.IsZero() {
-				dur = time.Now().Sub(l.Start).Truncate(time.Millisecond * 100).String()
+				dur = time.Since(l.Start).Truncate(time.Millisecond * 100).String()
 			}
 
 			hostname, ok := workerHostnames[l.wid]

@@ -84,7 +84,7 @@ out:
 		return xerrors.Errorf("failed to compute proof: %w", err)
 	}
 
-	log.Infow("winning PoSt warmup successful", "took", time.Now().Sub(start))
+	log.Infow("winning PoSt warmup successful", "took", time.Since(start))
 	return nil
 }
 

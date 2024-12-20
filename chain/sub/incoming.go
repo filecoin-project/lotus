@@ -30,8 +30,10 @@ import (
 	"github.com/filecoin-project/lotus/metrics"
 )
 
-var log = logging.Logger("sub")
-var DefaultHashFunction = uint64(mh.BLAKE2B_MIN + 31)
+var (
+	log                 = logging.Logger("sub")
+	DefaultHashFunction = uint64(mh.BLAKE2B_MIN + 31)
+)
 
 var msgCidPrefix = cid.Prefix{
 	Version:  1,
@@ -169,7 +171,6 @@ func fetchCids(
 	cids []cid.Cid,
 	cb func(int, blocks.Block) error,
 ) error {
-
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -327,7 +328,7 @@ func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubs
 
 	start := time.Now()
 	defer func() {
-		ms := time.Now().Sub(start).Microseconds()
+		ms := time.Since(start).Microseconds()
 		stats.Record(ctx, metrics.MessageValidationDuration.M(float64(ms)/1000))
 	}()
 
@@ -394,7 +395,7 @@ func (mv *MessageValidator) validateLocalMessage(ctx context.Context, msg *pubsu
 
 	start := time.Now()
 	defer func() {
-		ms := time.Now().Sub(start).Microseconds()
+		ms := time.Since(start).Microseconds()
 		stats.Record(ctx, metrics.MessageValidationDuration.M(float64(ms)/1000))
 	}()
 

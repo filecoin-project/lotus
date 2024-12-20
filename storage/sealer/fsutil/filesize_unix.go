@@ -39,8 +39,8 @@ func FileSize(path string) (SizeInfo, error) {
 		return err
 	})
 
-	if time.Now().Sub(start) >= 3*time.Second {
-		log.Warnw("very slow file size check", "took", time.Now().Sub(start), "path", path)
+	if took := time.Since(start); took >= 3*time.Second {
+		log.Warnw("very slow file size check", "took", took, "path", path)
 	}
 
 	if err != nil {

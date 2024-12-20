@@ -144,7 +144,7 @@ func (p *path) stat(ls LocalStorage, newReserve ...statExistingSectorForReservat
 	}
 
 	if stat.Reserved < 0 {
-		//log.Warnf("negative reserved storage: p.reserved=%d, reserved: %d", p.reserved, stat.Reserved)
+		// log.Warnf("negative reserved storage: p.reserved=%d, reserved: %d", p.reserved, stat.Reserved)
 		var jsonReservations []map[string]interface{}
 		for id, res := range p.reservations {
 			jsonReservations = append(jsonReservations, map[string]interface{}{
@@ -182,8 +182,8 @@ func (p *path) stat(ls LocalStorage, newReserve ...statExistingSectorForReservat
 		}
 	}
 
-	if time.Now().Sub(start) > 5*time.Second {
-		log.Warnw("slow storage stat", "took", time.Now().Sub(start), "reservations", len(p.reservations))
+	if took := time.Since(start); took > 5*time.Second {
+		log.Warnw("slow storage stat", "took", took, "reservations", len(p.reservations))
 	}
 
 	return stat, newReserveOnDisk, err
@@ -463,7 +463,8 @@ func (st *Local) reportStorage(ctx context.Context) {
 }
 
 func (st *Local) Reserve(ctx context.Context, sid storiface.SectorRef, ft storiface.SectorFileType,
-	storageIDs storiface.SectorPaths, overheadTab map[storiface.SectorFileType]int, minFreePercentage float64) (func(), error) {
+	storageIDs storiface.SectorPaths, overheadTab map[storiface.SectorFileType]int, minFreePercentage float64,
+) (func(), error) {
 	ssize, err := sid.ProofType.SectorSize()
 	if err != nil {
 		return nil, err
@@ -661,7 +662,6 @@ func (st *Local) AcquireSector(ctx context.Context, sid storiface.SectorRef, exi
 			}
 
 			alloc, err := allocPathOk(si.CanSeal, si.CanStore, si.AllowTypes, si.DenyTypes, si.AllowMiners, si.DenyMiners, fileType, sid.ID.Miner)
-
 			if err != nil {
 				log.Debug(err)
 				continue
@@ -950,7 +950,7 @@ func (st *Local) GenerateSingleVanillaProof(ctx context.Context, minerID abi.Act
 	case r := <-resCh:
 		return r.Unwrap()
 	case <-ctx.Done():
-		log.Errorw("failed to generate valilla PoSt proof before context cancellation", "err", ctx.Err(), "duration", time.Now().Sub(start), "cache-id", cacheID, "sealed-id", sealedID, "cache", cache, "sealed", sealed)
+		log.Errorw("failed to generate valilla PoSt proof before context cancellation", "err", ctx.Err(), "duration", time.Since(start), "cache-id", cacheID, "sealed-id", sealedID, "cache", cache, "sealed", sealed)
 
 		// this will leave the GenerateSingleVanillaProof goroutine hanging, but that's still less bad than failing PoSt
 		return nil, xerrors.Errorf("failed to generate vanilla proof before context cancellation: %w", ctx.Err())

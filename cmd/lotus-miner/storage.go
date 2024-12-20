@@ -351,7 +351,7 @@ var storageListCmd = &cli.Command{
 				fmt.Printf("\t%s: %s:\n", color.RedString("Error"), err)
 				continue
 			}
-			ping := time.Now().Sub(pingStart)
+			ping := time.Since(pingStart)
 
 			safeRepeat := func(s string, count int) string {
 				if count < 0 {
@@ -360,7 +360,7 @@ var storageListCmd = &cli.Command{
 				return strings.Repeat(s, count)
 			}
 
-			var barCols = int64(50)
+			barCols := int64(50)
 
 			// filesystem use bar
 			{
@@ -738,7 +738,6 @@ var storageListSectorsCmd = &cli.Command{
 				}
 
 				for _, info := range si {
-
 					list = append(list, entry{
 						id:      sector,
 						storage: info.ID,

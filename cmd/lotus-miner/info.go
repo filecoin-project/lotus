@@ -81,7 +81,7 @@ func infoCmdAct(cctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("StartTime: %s (started at %s)\n", time.Now().Sub(start).Truncate(time.Second), start.Truncate(time.Second))
+	fmt.Printf("StartTime: %s (started at %s)\n", time.Since(start).Truncate(time.Second), start.Truncate(time.Second))
 
 	fmt.Print("Chain: ")
 
@@ -135,7 +135,6 @@ func handleMiningInfo(ctx context.Context, cctx *cli.Context, fullapi v1api.Full
 
 	// Sector size
 	mi, err := fullapi.StateMinerInfo(ctx, maddr, types.EmptyTSK)
-
 	if err != nil {
 		return err
 	}
@@ -166,7 +165,6 @@ func handleMiningInfo(ctx context.Context, cctx *cli.Context, fullapi v1api.Full
 		),
 	)
 	secCounts, err := fullapi.StateMinerSectorCount(ctx, maddr, types.EmptyTSK)
-
 	if err != nil {
 		return err
 	}
@@ -267,7 +265,6 @@ func handleMiningInfo(ctx context.Context, cctx *cli.Context, fullapi v1api.Full
 	colorTokenAmount("      Available:  %s\n", availBalance)
 
 	mb, err := fullapi.StateMarketBalance(ctx, maddr, types.EmptyTSK)
-
 	if err != nil {
 		return xerrors.Errorf("getting market balance: %w", err)
 	}
@@ -278,7 +275,6 @@ func handleMiningInfo(ctx context.Context, cctx *cli.Context, fullapi v1api.Full
 	colorTokenAmount("       Available: %s\n", big.Sub(mb.Escrow, mb.Locked))
 
 	wb, err := fullapi.WalletBalance(ctx, mi.Worker)
-
 	if err != nil {
 		return xerrors.Errorf("getting worker balance: %w", err)
 	}

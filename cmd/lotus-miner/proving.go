@@ -239,12 +239,12 @@ It will not send any messages to the chain.`,
 
 		start := time.Now()
 		res, err := minerApi.ComputeWindowPoSt(ctx, dlIdx, types.EmptyTSK)
-		fmt.Printf("Took %s\n", time.Now().Sub(start))
+		fmt.Printf("Took %s\n", time.Since(start))
 		if err != nil {
 			return err
 		}
 
-		//convert sector information into easily readable information
+		// convert sector information into easily readable information
 		type PoStPartition struct {
 			Index   uint64
 			Skipped []uint64

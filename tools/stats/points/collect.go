@@ -81,7 +81,7 @@ func (c *ChainPointCollector) Collect(ctx context.Context, tipset *types.TipSet)
 	start := time.Now()
 	done := metrics.Timer(ctx, metrics.TipsetCollectionDuration)
 	defer func() {
-		log.Infow("record tipset", "elapsed", time.Now().Sub(start).Seconds())
+		log.Infow("record tipset", "elapsed", time.Since(start).Seconds())
 		done()
 	}()
 
@@ -126,7 +126,7 @@ func (c *ChainPointCollector) collectBlockheaderPoints(ctx context.Context, pl *
 	start := time.Now()
 	done := metrics.Timer(ctx, metrics.TipsetCollectionBlockHeaderDuration)
 	defer func() {
-		log.Infow("collect blockheader points", "elapsed", time.Now().Sub(start).Seconds())
+		log.Infow("collect blockheader points", "elapsed", time.Since(start).Seconds())
 		done()
 	}()
 
@@ -218,7 +218,7 @@ func (c *ChainPointCollector) collectStaterootPoints(ctx context.Context, pl *in
 	start := time.Now()
 	done := metrics.Timer(ctx, metrics.TipsetCollectionStaterootDuration)
 	defer func() {
-		log.Infow("collect stateroot points", "elapsed", time.Now().Sub(start).Seconds())
+		log.Infow("collect stateroot points", "elapsed", time.Since(start).Seconds())
 		done()
 	}()
 
@@ -280,7 +280,7 @@ func (c *ChainPointCollector) collectMessagePoints(ctx context.Context, pl *infl
 	start := time.Now()
 	done := metrics.Timer(ctx, metrics.TipsetCollectionMessageDuration)
 	defer func() {
-		log.Infow("collect message points", "elapsed", time.Now().Sub(start).Seconds())
+		log.Infow("collect message points", "elapsed", time.Since(start).Seconds())
 		done()
 	}()
 
