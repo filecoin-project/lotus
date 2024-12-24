@@ -13,7 +13,7 @@ FILES_TO_SEND=(
 	./lotus
 	./lotus-miner
 	scripts/lotus-daemon.service
-	scripts/louts-miner.service
+	scripts/lotus-miner.service
 )
 
 rsync -P "${FILES_TO_SEND[@]}" "$HOST:~/lotus-stage/"
