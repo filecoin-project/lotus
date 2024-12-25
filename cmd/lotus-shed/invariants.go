@@ -79,7 +79,7 @@ var invariantsCmd = &cli.Command{
 
 		defer lkrepo.Close() //nolint:errcheck
 
-		cold, err := lkrepo.Blockstore(ctx, repo.UniversalBlockstore)
+		cold, _, err := lkrepo.Blockstore(ctx, repo.UniversalBlockstore)
 		if err != nil {
 			return fmt.Errorf("failed to open universal blockstore %w", err)
 		}

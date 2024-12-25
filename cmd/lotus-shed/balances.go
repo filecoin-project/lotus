@@ -497,7 +497,7 @@ var chainBalanceStateCmd = &cli.Command{
 
 		defer lkrepo.Close() //nolint:errcheck
 
-		bs, err := lkrepo.Blockstore(ctx, repo.UniversalBlockstore)
+		bs, _, err := lkrepo.Blockstore(ctx, repo.UniversalBlockstore)
 		if err != nil {
 			return fmt.Errorf("failed to open blockstore: %w", err)
 		}
@@ -721,7 +721,7 @@ var chainPledgeCmd = &cli.Command{
 
 		defer lkrepo.Close() //nolint:errcheck
 
-		bs, err := lkrepo.Blockstore(ctx, repo.UniversalBlockstore)
+		bs, _, err := lkrepo.Blockstore(ctx, repo.UniversalBlockstore)
 		if err != nil {
 			return xerrors.Errorf("failed to open blockstore: %w", err)
 		}

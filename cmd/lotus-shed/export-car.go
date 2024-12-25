@@ -70,7 +70,7 @@ var exportCarCmd = &cli.Command{
 
 		lr, err := r.Lock(repo.FullNode)
 		if err == nil {
-			bs, err = lr.Blockstore(ctx, repo.UniversalBlockstore)
+			bs, _, err = lr.Blockstore(ctx, repo.UniversalBlockstore)
 			if err != nil {
 				return fmt.Errorf("failed to open blockstore: %w", err)
 			}
