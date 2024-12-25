@@ -369,12 +369,15 @@ type fsLockedRepo struct {
 	dsErr  error
 	dsOnce sync.Once
 
-	bs     blockstore.Blockstore
-	bsErr  error
-	bsOnce sync.Once
-	ssPath string
-	ssErr  error
-	ssOnce sync.Once
+	bs        blockstore.Blockstore
+	bsOnce    sync.Once
+	bsErr     error
+	bsHot     blockstore.Blockstore
+	bsHotOnce sync.Once
+	bsHotErr  error
+	ssPath    string
+	ssErr     error
+	ssOnce    sync.Once
 
 	chainIndexPath string
 	chainIndexErr  error
@@ -424,38 +427,64 @@ func (fsr *fsLockedRepo) Close() error {
 
 // Blockstore returns a blockstore for the provided data domain.
 func (fsr *fsLockedRepo) Blockstore(ctx context.Context, domain BlockstoreDomain) (blockstore.Blockstore, error) {
-	if domain != UniversalBlockstore {
+	if domain != UniversalBlockstore && domain != HotBlockstore {
 		return nil, ErrInvalidBlockstoreDomain
 	}
+	if domain == UniversalBlockstore {
+		fsr.bsOnce.Do(func() {
+			path := fsr.join(filepath.Join(fsDatastore, "chain"))
+			readonly := fsr.readonly
 
-	fsr.bsOnce.Do(func() {
-		path := fsr.join(filepath.Join(fsDatastore, "chain"))
-		readonly := fsr.readonly
+			if err := os.MkdirAll(path, 0755); err != nil {
+				fsr.bsErr = err
+				return
+			}
 
-		if err := os.MkdirAll(path, 0755); err != nil {
-			fsr.bsErr = err
-			return
-		}
+			opts, err := BadgerBlockstoreOptions(domain, path, readonly)
+			if err != nil {
+				fsr.bsErr = err
+				return
+			}
 
-		opts, err := BadgerBlockstoreOptions(domain, path, readonly)
+			if system.BadgerFsyncDisable {
+				opts.SyncWrites = false
+			}
+
+			bs, err := badgerbs.Open(opts)
+			if err != nil {
+				fsr.bsErr = err
+				return
+			}
+			fsr.bs = blockstore.WrapIDStore(bs)
+		})
+		return fsr.bs, fsr.bsErr
+	}
+	// else domain == HotBlockstore {
+	fsr.bsHotOnce.Do(func() {
+		path, err := fsr.SplitstorePath()
 		if err != nil {
-			fsr.bsErr = err
+			fsr.bsHotErr = err
 			return
 		}
-
-		if system.BadgerFsyncDisable {
-			opts.SyncWrites = false
+		path = filepath.Join(path, "hot.badger")
+		if err := os.MkdirAll(path, 0755); err != nil {
+			fsr.bsHotErr = err
+			return
 		}
-
+		readonly := fsr.readonly
+		opts, err := BadgerBlockstoreOptions(HotBlockstore, path, readonly)
+		if err != nil {
+			fsr.bsHotErr = err
+			return
+		}
 		bs, err := badgerbs.Open(opts)
 		if err != nil {
-			fsr.bsErr = err
+			fsr.bsHotErr = err
 			return
 		}
-		fsr.bs = blockstore.WrapIDStore(bs)
+		fsr.bsHot = bs
 	})
-
-	return fsr.bs, fsr.bsErr
+	return fsr.bsHot, fsr.bsHotErr
 }
 
 func (fsr *fsLockedRepo) SplitstorePath() (string, error) {
