@@ -254,7 +254,7 @@ func (lmem *lockedMemRepo) Datastore(_ context.Context, ns string) (datastore.Ba
 }
 
 func (lmem *lockedMemRepo) Blockstore(ctx context.Context, domain BlockstoreDomain) (blockstore.Blockstore, func() error, error) {
-	if domain != UniversalBlockstore {
+	if domain != UniversalBlockstore && domain != HotBlockstore {
 		return nil, nil, ErrInvalidBlockstoreDomain
 	}
 	return lmem.mem.blockstore, func() error { return nil }, nil
