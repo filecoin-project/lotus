@@ -2,16 +2,12 @@ package modules
 
 import (
 	"context"
-	"io"
-	"os"
-	"path/filepath"
 
 	bstore "github.com/ipfs/boxo/blockstore"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/blockstore"
-	badgerbs "github.com/filecoin-project/lotus/blockstore/badger"
 	"github.com/filecoin-project/lotus/blockstore/splitstore"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -23,17 +19,16 @@ import (
 // chain data and state data. It can be backed by a blockstore directly
 // (e.g. Badger), or by a Splitstore.
 func UniversalBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRepo) (dtypes.UniversalBlockstore, error) {
-	bs, _, err := r.Blockstore(helpers.LifecycleCtx(mctx, lc), repo.UniversalBlockstore)
+	bs, closer, err := r.Blockstore(helpers.LifecycleCtx(mctx, lc), repo.UniversalBlockstore)
 	if err != nil {
 		return nil, err
 	}
-	if c, ok := bs.(io.Closer); ok {
-		lc.Append(fx.Hook{
-			OnStop: func(_ context.Context) error {
-				return c.Close()
-			},
-		})
-	}
+	lc.Append(fx.Hook{
+		OnStop: func(_ context.Context) error {
+			return closer()
+		},
+	})
+
 	return bs, err
 }
 
@@ -45,32 +40,16 @@ func DiscardColdBlockstore(lc fx.Lifecycle, bs dtypes.UniversalBlockstore) (dtyp
 	return blockstore.NewDiscardStore(bs), nil
 }
 
-func BadgerHotBlockstore(lc fx.Lifecycle, r repo.LockedRepo) (dtypes.HotBlockstore, error) {
-	path, err := r.SplitstorePath()
+func BadgerHotBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRepo) (dtypes.HotBlockstore, error) {
+	bs, closer, err := r.Blockstore(helpers.LifecycleCtx(mctx, lc), repo.HotBlockstore)
 	if err != nil {
 		return nil, err
 	}
-
-	path = filepath.Join(path, "hot.badger")
-	if err := os.MkdirAll(path, 0755); err != nil {
-		return nil, err
-	}
-
-	opts, err := repo.BadgerBlockstoreOptions(repo.HotBlockstore, path, r.Readonly())
-	if err != nil {
-		return nil, err
-	}
-
-	bs, err := badgerbs.Open(opts)
-	if err != nil {
-		return nil, err
-	}
-
 	lc.Append(fx.Hook{
 		OnStop: func(_ context.Context) error {
-			return bs.Close()
-		}})
-
+			return closer()
+		},
+	})
 	return bs, nil
 }
 
