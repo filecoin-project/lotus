@@ -433,6 +433,7 @@ func (fsr *fsLockedRepo) Close() error {
 // Blockstore returns a blockstore for the provided data domain.
 func (fsr *fsLockedRepo) Blockstore(ctx context.Context, domain BlockstoreDomain) (blockstore.Blockstore, func() error, error) {
 	if domain != UniversalBlockstore && domain != HotBlockstore {
+		log.Error("invalid blockstore domain", domain)
 		return nil, nil, ErrInvalidBlockstoreDomain
 	}
 	var bs *badgerbs.Blockstore
