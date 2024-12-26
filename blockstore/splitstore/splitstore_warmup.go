@@ -59,10 +59,7 @@ func (s *SplitStore) doWarmup2(curTs *types.TipSet) error {
 	log.Infow("warmup starting")
 
 	epoch := curTs.Height()
-	count := new(int64)
-	// Empirically taken from December 2024
-	*count = MarkSetEstimate
-	s.markSetSize = *count + *count>>2 // overestimate a bit
+	s.markSetSize = MarkSetEstimate
 	err := s.ds.Put(s.ctx, markSetSizeKey, int64ToBytes(s.markSetSize))
 	if err != nil {
 		log.Warnf("error saving mark set size: %s", err)

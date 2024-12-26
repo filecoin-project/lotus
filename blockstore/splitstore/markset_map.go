@@ -42,6 +42,11 @@ func NewMapMarkSetEnv(path string) (*MapMarkSetEnv, error) {
 
 func (e *MapMarkSetEnv) New(name string, sizeHint int64) (MarkSet, error) {
 	path := filepath.Join(e.path, name)
+	// Limit map size to 1k if sizeHint exceeds this value
+	// This prevents accidental hanging when sizeHint is too large
+	if sizeHint > 1000 {
+		sizeHint = 1000
+	}
 	return &MapMarkSet{
 		set:  make(map[string]struct{}, sizeHint),
 		path: path,
