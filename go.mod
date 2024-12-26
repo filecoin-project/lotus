@@ -357,17 +357,7 @@ require (
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
 
-require github.com/ethereum/go-ethereum v1.14.12
-
 require (
-	github.com/crate-crypto/go-ipa v0.0.0-20240223125850-b1e8a79f509c // indirect
-	github.com/crate-crypto/go-kzg-4844 v1.0.0 // indirect
-	github.com/deckarep/golang-set/v2 v2.6.0 // indirect
-	github.com/ethereum/c-kzg-4844 v1.0.0 // indirect
-	github.com/ethereum/go-verkle v0.1.1-0.20240829091221-dffa7562dbe9 // indirect
-	github.com/fsnotify/fsnotify v1.6.0 // indirect
-	github.com/holiman/uint256 v1.3.1 // indirect
-	github.com/supranational/blst v0.3.13 // indirect
 	github.com/tklauser/go-sysconf v0.3.14 // indirect
 	github.com/tklauser/numcpus v0.8.0 // indirect
 )
