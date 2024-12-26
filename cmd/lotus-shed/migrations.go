@@ -128,10 +128,11 @@ var migrationsCmd = &cli.Command{
 
 		defer lkrepo.Close() //nolint:errcheck
 
-		cold, err := lkrepo.Blockstore(ctx, repo.UniversalBlockstore)
+		cold, closer, err := lkrepo.Blockstore(ctx, repo.UniversalBlockstore)
 		if err != nil {
 			return fmt.Errorf("failed to open universal blockstore %w", err)
 		}
+		defer closer()
 
 		path, err := lkrepo.SplitstorePath()
 		if err != nil {
