@@ -83,9 +83,11 @@ func SplitBlockstore(cfg *config.Chainstore) func(lc fx.Lifecycle, r repo.Locked
 		}
 
 		cfg := &splitstore.Config{
-			MarkSetType:                  cfg.Splitstore.MarkSetType,
-			DiscardColdBlocks:            cfg.Splitstore.ColdStoreType == "discard",
-			UniversalColdBlocks:          cfg.Splitstore.ColdStoreType == "universal",
+			MarkSetType:         cfg.Splitstore.MarkSetType,
+			DiscardColdBlocks:   cfg.Splitstore.ColdStoreType == "discard",
+			UniversalColdBlocks: cfg.Splitstore.ColdStoreType == "universal",
+			FullWarmup:          cfg.Splitstore.FullWarmup,
+
 			HotStoreMessageRetention:     cfg.Splitstore.HotStoreMessageRetention,
 			HotStoreFullGCFrequency:      cfg.Splitstore.HotStoreFullGCFrequency,
 			HotstoreMaxSpaceTarget:       cfg.Splitstore.HotStoreMaxSpaceTarget,

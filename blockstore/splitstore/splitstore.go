@@ -102,6 +102,10 @@ type Config struct {
 	// from the hotstore should be written to the cold store
 	UniversalColdBlocks bool
 
+	// FullWarmup indicates to do a chain traversal upon splitstore init to copy
+	// from cold store to hot store
+	FullWarmup bool
+
 	// HotstoreMessageRetention indicates the hotstore retention policy for messages.
 	// It has the following semantics:
 	// - a value of 0 will only retain messages within the compaction boundary (4 finalities)

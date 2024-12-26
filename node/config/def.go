@@ -75,6 +75,7 @@ func DefaultFullNode() *FullNode {
 				ColdStoreType: "discard",
 				HotStoreType:  "badger",
 				MarkSetType:   "badger",
+				FullWarmup:    false,
 
 				HotStoreFullGCFrequency:      20,
 				HotStoreMaxSpaceTarget:       650_000_000_000,

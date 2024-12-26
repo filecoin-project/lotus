@@ -523,6 +523,12 @@ type Splitstore struct {
 	// is set.  Moving GC will not occur when total moving size exceeds
 	// HotstoreMaxSpaceTarget - HotstoreMaxSpaceSafetyBuffer
 	HotstoreMaxSpaceSafetyBuffer uint64
+
+	// Perform a full warmup from the coldstore to the hotstore upon splitstore startup.
+	// This is useful in the case you are migrating from a non-splitstore setup to splitstore.
+	// This should be false in the common case where a node is initialized from a snapshot
+	// since snapshots are loaded directly to the hotstore.
+	FullWarmup bool
 }
 
 // Full Node
