@@ -436,8 +436,9 @@ func (fsr *fsLockedRepo) Blockstore(ctx context.Context, domain BlockstoreDomain
 		log.Error("invalid blockstore domain", domain)
 		return nil, nil, ErrInvalidBlockstoreDomain
 	}
-	var bs *badgerbs.Blockstore
+	var bs blockstore.Blockstore
 	var err error
+	var close func() error
 	if domain == UniversalBlockstore {
 		fsr.bsOnce.Do(func() {
 			path := fsr.join(filepath.Join(fsDatastore, "chain"))
@@ -458,12 +459,14 @@ func (fsr *fsLockedRepo) Blockstore(ctx context.Context, domain BlockstoreDomain
 				opts.SyncWrites = false
 			}
 
-			bs, err = badgerbs.Open(opts)
+			bbs, err := badgerbs.Open(opts)
 			if err != nil {
 				fsr.bsErr = err
 				return
 			}
-			fsr.bs = blockstore.WrapIDStore(bs)
+			close = bbs.Close
+			fsr.bs = blockstore.WrapIDStore(bbs)
+			bs = fsr.bs
 		})
 		err = fsr.bsErr
 	} else {
@@ -485,17 +488,19 @@ func (fsr *fsLockedRepo) Blockstore(ctx context.Context, domain BlockstoreDomain
 				fsr.bsHotErr = err
 				return
 			}
-			bs, err = badgerbs.Open(opts)
+			bbs, err := badgerbs.Open(opts)
 			if err != nil {
 				fsr.bsHotErr = err
 				return
 			}
-			fsr.bsHot = bs
+			fsr.bsHot = bbs
+			close = bbs.Close
+			bs = fsr.bsHot
 		})
 		err = fsr.bsHotErr
 	}
 
-	return bs, bs.Close, err
+	return bs, close, err
 }
 
 func (fsr *fsLockedRepo) SplitstorePath() (string, error) {
