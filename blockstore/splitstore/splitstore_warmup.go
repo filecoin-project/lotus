@@ -19,8 +19,6 @@ import (
 var (
 	// WarmupBoundary is the number of epochs to load state during warmup.
 	WarmupBoundary = policy.ChainFinality
-	// Empirically taken from December 2024
-	MarkSetEstimate int64 = 10_000_000_000
 )
 
 // warmup acquires the compaction lock and spawns a goroutine to warm up the hotstore;
@@ -37,12 +35,8 @@ func (s *SplitStore) warmup(curTs *types.TipSet) error {
 		log.Info("warming up hotstore")
 		start := time.Now()
 
-		var err error
-		if s.cfg.FullWarmup {
-			err = s.doWarmup(curTs)
-		} else {
-			err = s.doWarmup2(curTs)
-		}
+		err := s.doWarmup(curTs)
+
 		if err != nil {
 			log.Errorf("error warming up hotstore: %s", err)
 			return
@@ -54,36 +48,11 @@ func (s *SplitStore) warmup(curTs *types.TipSet) error {
 	return nil
 }
 
-// Warmup2
-func (s *SplitStore) doWarmup2(curTs *types.TipSet) error {
-	log.Infow("warmup starting")
-
-	epoch := curTs.Height()
-	s.markSetSize = MarkSetEstimate
-	err := s.ds.Put(s.ctx, markSetSizeKey, int64ToBytes(s.markSetSize))
-	if err != nil {
-		log.Warnf("error saving mark set size: %s", err)
-	}
-
-	// save the warmup epoch
-	err = s.ds.Put(s.ctx, warmupEpochKey, epochToBytes(epoch))
-	if err != nil {
-		return xerrors.Errorf("error saving warm up epoch: %w", err)
-	}
-	s.warmupEpoch.Store(int64(epoch))
-
-	// also save the compactionIndex, as this is used as an indicator of warmup for upgraded nodes
-	err = s.ds.Put(s.ctx, compactionIndexKey, int64ToBytes(s.compactionIndex))
-	if err != nil {
-		return xerrors.Errorf("error saving compaction index: %w", err)
-	}
-	return nil
-}
-
 // the full warmup procedure
-// this was standard warmup before we wrote snapshots directly to the hotstore
-// now this is used only if explicitly configured.  A good use case for this is
-// when starting splitstore off of an unpruned full node.
+// Most of this is unnecessary in the common case where we are starting from a snapshot
+// since snapshots are now loaded directly to the hotstore.  However this is safe and robust,
+// handling all cases where we are transition from a universal setup to a splitstore setup.
+// And warmup costs are only paid on init so it is not
 func (s *SplitStore) doWarmup(curTs *types.TipSet) error {
 	var boundaryEpoch abi.ChainEpoch
 	epoch := curTs.Height()
