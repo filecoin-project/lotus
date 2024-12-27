@@ -438,7 +438,7 @@ func (fsr *fsLockedRepo) Blockstore(ctx context.Context, domain BlockstoreDomain
 	}
 	var bs blockstore.Blockstore
 	var err error
-	var close func() error
+	var closer func() error
 	if domain == UniversalBlockstore {
 		fsr.bsOnce.Do(func() {
 			path := fsr.join(filepath.Join(fsDatastore, "chain"))
@@ -464,7 +464,7 @@ func (fsr *fsLockedRepo) Blockstore(ctx context.Context, domain BlockstoreDomain
 				fsr.bsErr = err
 				return
 			}
-			close = bbs.Close
+			closer = bbs.Close
 			fsr.bs = blockstore.WrapIDStore(bbs)
 			bs = fsr.bs
 		})
@@ -494,13 +494,13 @@ func (fsr *fsLockedRepo) Blockstore(ctx context.Context, domain BlockstoreDomain
 				return
 			}
 			fsr.bsHot = bbs
-			close = bbs.Close
+			closer = bbs.Close
 			bs = fsr.bsHot
 		})
 		err = fsr.bsHotErr
 	}
 
-	return bs, close, err
+	return bs, closer, err
 }
 
 func (fsr *fsLockedRepo) SplitstorePath() (string, error) {
