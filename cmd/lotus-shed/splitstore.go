@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/binary"
 	"fmt"
 	"io"
 	"os"
@@ -31,6 +32,7 @@ var splitstoreCmd = &cli.Command{
 		splitstoreClearCmd,
 		splitstoreCheckCmd,
 		splitstoreInfoCmd,
+		splitstoreRepoInfoCmd,
 	},
 }
 
@@ -353,6 +355,40 @@ func deleteSplitstoreKeys(lr repo.LockedRepo) error {
 	return nil
 }
 
+func printSplitstoreKeys(lr repo.LockedRepo) error {
+	ds, err := lr.Datastore(context.TODO(), "/metadata")
+	if err != nil {
+		return xerrors.Errorf("error opening datastore: %w", err)
+	}
+	if closer, ok := ds.(io.Closer); ok {
+		defer closer.Close() //nolint
+	}
+
+	res, err := ds.Query(context.Background(), query.Query{Prefix: "/splitstore"})
+	if err != nil {
+		return xerrors.Errorf("error querying datastore for splitstore keys: %w", err)
+	}
+
+	fmt.Println("Splitstore keys and values:")
+	for r := range res.Next() {
+		if r.Error != nil {
+			return xerrors.Errorf("datastore query error: %w", r.Error)
+		}
+
+		// Get the value for this key
+		value, err := ds.Get(context.Background(), datastore.NewKey(r.Key))
+		if err != nil {
+			return xerrors.Errorf("error getting value for key %s: %w", r.Key, err)
+		}
+
+		// Decode the value as a uvarint
+		decoded, _ := binary.Uvarint(value)
+		fmt.Printf("  %s: %d\n", r.Key, decoded)
+	}
+
+	return nil
+}
+
 // badger logging through go-log
 type badgerLogger struct {
 	*zap.SugaredLogger
@@ -375,6 +411,39 @@ var splitstoreCheckCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 		return api.ChainCheckBlockstore(ctx)
+	},
+}
+
+var splitstoreRepoInfoCmd = &cli.Command{
+	Name:  "splitstore-info",
+	Usage: "Display splitstore metadata information",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "repo",
+			Value: "~/.lotus",
+			Usage: "lotus repo path",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		r, err := repo.NewFS(cctx.String("repo"))
+		if err != nil {
+			return xerrors.Errorf("error opening fs repo: %w", err)
+		}
+
+		exists, err := r.Exists()
+		if err != nil {
+			return err
+		}
+		if !exists {
+			return xerrors.Errorf("lotus repo doesn't exist")
+		}
+
+		lr, err := r.Lock(repo.FullNode)
+		if err != nil {
+			return xerrors.Errorf("error locking repo: %w", err)
+		}
+
+		return printSplitstoreKeys(lr)
 	},
 }
 

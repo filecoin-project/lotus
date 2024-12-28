@@ -64,7 +64,7 @@ type LockedRepo interface {
 	// The supplied context must only be used to initialize the blockstore.
 	// The implementation should not retain the context for usage throughout
 	// the lifecycle.
-	Blockstore(ctx context.Context, domain BlockstoreDomain) (blockstore.Blockstore, error)
+	Blockstore(ctx context.Context, domain BlockstoreDomain) (blockstore.Blockstore, func() error, error)
 
 	// SplitstorePath returns the path for the SplitStore
 	SplitstorePath() (string, error)

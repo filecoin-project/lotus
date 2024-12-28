@@ -234,7 +234,7 @@ func loadChainStore(ctx context.Context, repoPath string) (*StoreHandle, error) 
 		return nil, err
 	}
 
-	cold, err := lkrepo.Blockstore(ctx, repo.UniversalBlockstore)
+	cold, _, err := lkrepo.Blockstore(ctx, repo.UniversalBlockstore)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to open universal blockstore %w", err)
 	}

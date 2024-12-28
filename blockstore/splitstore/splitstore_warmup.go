@@ -36,6 +36,7 @@ func (s *SplitStore) warmup(curTs *types.TipSet) error {
 		start := time.Now()
 
 		err := s.doWarmup(curTs)
+
 		if err != nil {
 			log.Errorf("error warming up hotstore: %s", err)
 			return
@@ -47,9 +48,11 @@ func (s *SplitStore) warmup(curTs *types.TipSet) error {
 	return nil
 }
 
-// the actual warmup procedure; it walks the chain loading all state roots at the boundary
-// and headers all the way up to genesis.
-// objects are written in batches so as to minimize overhead.
+// the full warmup procedure
+// Most of this is unnecessary in the common case where we are starting from a snapshot
+// since snapshots are now loaded directly to the hotstore.  However this is safe and robust,
+// handling all cases where we are transition from a universal setup to a splitstore setup.
+// And warmup costs are only paid on init so it is not
 func (s *SplitStore) doWarmup(curTs *types.TipSet) error {
 	var boundaryEpoch abi.ChainEpoch
 	epoch := curTs.Height()

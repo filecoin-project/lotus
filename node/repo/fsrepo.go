@@ -369,12 +369,15 @@ type fsLockedRepo struct {
 	dsErr  error
 	dsOnce sync.Once
 
-	bs     blockstore.Blockstore
-	bsErr  error
-	bsOnce sync.Once
-	ssPath string
-	ssErr  error
-	ssOnce sync.Once
+	bs        blockstore.Blockstore
+	bsOnce    sync.Once
+	bsErr     error
+	bsHot     blockstore.Blockstore
+	bsHotOnce sync.Once
+	bsHotErr  error
+	ssPath    string
+	ssErr     error
+	ssOnce    sync.Once
 
 	chainIndexPath string
 	chainIndexErr  error
@@ -416,6 +419,11 @@ func (fsr *fsLockedRepo) Close() error {
 			return xerrors.Errorf("could not close blockstore: %w", err)
 		}
 	}
+	if c, ok := fsr.bsHot.(io.Closer); ok && c != nil {
+		if err := c.Close(); err != nil {
+			return xerrors.Errorf("could not close blockstore: %w", err)
+		}
+	}
 
 	err = fsr.closer.Close()
 	fsr.closer = nil
@@ -423,39 +431,76 @@ func (fsr *fsLockedRepo) Close() error {
 }
 
 // Blockstore returns a blockstore for the provided data domain.
-func (fsr *fsLockedRepo) Blockstore(ctx context.Context, domain BlockstoreDomain) (blockstore.Blockstore, error) {
-	if domain != UniversalBlockstore {
-		return nil, ErrInvalidBlockstoreDomain
+func (fsr *fsLockedRepo) Blockstore(ctx context.Context, domain BlockstoreDomain) (blockstore.Blockstore, func() error, error) {
+	if domain != UniversalBlockstore && domain != HotBlockstore {
+		log.Error("invalid blockstore domain", domain)
+		return nil, nil, ErrInvalidBlockstoreDomain
+	}
+	var bs blockstore.Blockstore
+	var err error
+	var closer func() error
+	if domain == UniversalBlockstore {
+		fsr.bsOnce.Do(func() {
+			path := fsr.join(filepath.Join(fsDatastore, "chain"))
+			readonly := fsr.readonly
+
+			if err = os.MkdirAll(path, 0755); err != nil {
+				fsr.bsErr = err
+				return
+			}
+
+			opts, err := BadgerBlockstoreOptions(domain, path, readonly)
+			if err != nil {
+				fsr.bsErr = err
+				return
+			}
+
+			if system.BadgerFsyncDisable {
+				opts.SyncWrites = false
+			}
+
+			bbs, err := badgerbs.Open(opts)
+			if err != nil {
+				fsr.bsErr = err
+				return
+			}
+			closer = bbs.Close
+			fsr.bs = blockstore.WrapIDStore(bbs)
+			bs = fsr.bs
+		})
+		err = fsr.bsErr
+	} else {
+		// else domain == HotBlockstore {
+		fsr.bsHotOnce.Do(func() {
+			path, err := fsr.SplitstorePath()
+			if err != nil {
+				fsr.bsHotErr = err
+				return
+			}
+			path = filepath.Join(path, "hot.badger")
+			if err := os.MkdirAll(path, 0755); err != nil {
+				fsr.bsHotErr = err
+				return
+			}
+			readonly := fsr.readonly
+			opts, err := BadgerBlockstoreOptions(HotBlockstore, path, readonly)
+			if err != nil {
+				fsr.bsHotErr = err
+				return
+			}
+			bbs, err := badgerbs.Open(opts)
+			if err != nil {
+				fsr.bsHotErr = err
+				return
+			}
+			fsr.bsHot = bbs
+			closer = bbs.Close
+			bs = fsr.bsHot
+		})
+		err = fsr.bsHotErr
 	}
 
-	fsr.bsOnce.Do(func() {
-		path := fsr.join(filepath.Join(fsDatastore, "chain"))
-		readonly := fsr.readonly
-
-		if err := os.MkdirAll(path, 0755); err != nil {
-			fsr.bsErr = err
-			return
-		}
-
-		opts, err := BadgerBlockstoreOptions(domain, path, readonly)
-		if err != nil {
-			fsr.bsErr = err
-			return
-		}
-
-		if system.BadgerFsyncDisable {
-			opts.SyncWrites = false
-		}
-
-		bs, err := badgerbs.Open(opts)
-		if err != nil {
-			fsr.bsErr = err
-			return
-		}
-		fsr.bs = blockstore.WrapIDStore(bs)
-	})
-
-	return fsr.bs, fsr.bsErr
+	return bs, closer, err
 }
 
 func (fsr *fsLockedRepo) SplitstorePath() (string, error) {

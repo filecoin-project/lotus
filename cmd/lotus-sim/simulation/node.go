@@ -51,7 +51,7 @@ func NewNode(ctx context.Context, r repo.Repo) (nd *Node, _err error) {
 		}
 	}()
 
-	bs, err := lr.Blockstore(ctx, repo.UniversalBlockstore)
+	bs, _, err := lr.Blockstore(ctx, repo.UniversalBlockstore)
 	if err != nil {
 		return nil, err
 	}

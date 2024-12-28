@@ -163,11 +163,11 @@ func testSplitStore(t *testing.T, cfg *Config) {
 	hotCnt := countBlocks(hot)
 
 	if coldCnt != 2 {
-		t.Errorf("expected %d blocks, but got %d", 2, coldCnt)
+		t.Fatalf("expected %d blocks, but got %d", 2, coldCnt)
 	}
 
 	if hotCnt != 12 {
-		t.Errorf("expected %d blocks, but got %d", 12, hotCnt)
+		t.Fatalf("expected %d blocks, but got %d", 12, hotCnt)
 	}
 
 	// trigger a compaction

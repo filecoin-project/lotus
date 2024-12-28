@@ -107,3 +107,12 @@ func (m MemBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) 
 func (m MemBlockstore) HashOnRead(enabled bool) {
 	// no-op
 }
+
+func (m MemBlockstore) ForEachKey(f func(c cid.Cid) error) error {
+	for _, b := range m {
+		if err := f(b.Cid()); err != nil {
+			return err
+		}
+	}
+	return nil
+}

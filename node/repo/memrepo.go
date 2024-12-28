@@ -253,11 +253,11 @@ func (lmem *lockedMemRepo) Datastore(_ context.Context, ns string) (datastore.Ba
 	return namespace.Wrap(lmem.mem.datastore, datastore.NewKey(ns)), nil
 }
 
-func (lmem *lockedMemRepo) Blockstore(ctx context.Context, domain BlockstoreDomain) (blockstore.Blockstore, error) {
-	if domain != UniversalBlockstore {
-		return nil, ErrInvalidBlockstoreDomain
+func (lmem *lockedMemRepo) Blockstore(ctx context.Context, domain BlockstoreDomain) (blockstore.Blockstore, func() error, error) {
+	if domain != UniversalBlockstore && domain != HotBlockstore {
+		return nil, nil, ErrInvalidBlockstoreDomain
 	}
-	return lmem.mem.blockstore, nil
+	return lmem.mem.blockstore, func() error { return nil }, nil
 }
 
 func (lmem *lockedMemRepo) SplitstorePath() (string, error) {

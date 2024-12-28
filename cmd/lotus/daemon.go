@@ -31,6 +31,7 @@ import (
 	"github.com/filecoin-project/go-paramfetch"
 
 	lapi "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/beacon/drand"
@@ -546,9 +547,26 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 	}
 	defer lr.Close() //nolint:errcheck
 
-	bs, err := lr.Blockstore(ctx, repo.UniversalBlockstore)
+	c, err := lr.Config()
 	if err != nil {
-		return xerrors.Errorf("failed to open blockstore: %w", err)
+		return err
+	}
+	cfg, ok := c.(*config.FullNode)
+	if !ok {
+		return xerrors.Errorf("invalid config for repo, got: %T", c)
+	}
+
+	var bs blockstore.Blockstore
+	if cfg.Chainstore.EnableSplitstore {
+		bs, _, err = lr.Blockstore(ctx, repo.HotBlockstore)
+		if err != nil {
+			return xerrors.Errorf("failed to open hot blockstore: %w", err)
+		}
+	} else {
+		bs, _, err = lr.Blockstore(ctx, repo.UniversalBlockstore)
+		if err != nil {
+			return xerrors.Errorf("failed to open universalblockstore: %w", err)
+		}
 	}
 
 	mds, err := lr.Datastore(ctx, "/metadata")
@@ -627,15 +645,6 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 	log.Infof("accepting %s as new head", ts.Cids())
 	if err := cst.ForceHeadSilent(ctx, ts); err != nil {
 		return err
-	}
-
-	c, err := lr.Config()
-	if err != nil {
-		return err
-	}
-	cfg, ok := c.(*config.FullNode)
-	if !ok {
-		return xerrors.Errorf("invalid config for repo, got: %T", c)
 	}
 
 	if !cfg.ChainIndexer.EnableIndexer {

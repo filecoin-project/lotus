@@ -81,3 +81,9 @@ func (m *SyncBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error
 func (m *SyncBlockstore) HashOnRead(enabled bool) {
 	// noop
 }
+
+func (m *SyncBlockstore) ForEachKey(f func(c cid.Cid) error) error {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.bs.ForEachKey(f)
+}
