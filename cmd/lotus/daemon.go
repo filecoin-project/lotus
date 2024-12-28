@@ -545,6 +545,7 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 	if err != nil {
 		return err
 	}
+	defer lr.Close() //nolint:errcheck
 
 	c, err := lr.Config()
 	if err != nil {
