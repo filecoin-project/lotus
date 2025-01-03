@@ -83,7 +83,7 @@ This is a consensus-breaking hotfix that addresses an issue in specs-actors v2.0
 - sync unmark-bad --all (https://github.com/filecoin-project/lotus/pull/4296)
 - decode parameters for multisig transactions in inspect (https://github.com/filecoin-project/lotus/pull/4312)
 - Chain is love (https://github.com/filecoin-project/lotus/pull/4321)
-- lotus-stats: optmize getting miner power (https://github.com/filecoin-project/lotus/pull/4315)
+- lotus-stats: optimize getting miner power (https://github.com/filecoin-project/lotus/pull/4315)
 - implement tape upgrade (https://github.com/filecoin-project/lotus/pull/4322)
 
 # 0.9.1 / 2020-10-10
@@ -453,7 +453,7 @@ This release introduces some critical fixes to message selection and gas estimat
 
 #### Core Lotus
 
-- Don't use latency as initital estimate for blocksync (https://github.com/filecoin-project/lotus/pull/3648)
+- Don't use latency as initial estimate for blocksync (https://github.com/filecoin-project/lotus/pull/3648)
 - Add niceSleep 1 second when drand errors (https://github.com/filecoin-project/lotus/pull/3664)
 - Fix isChainNearSync check in block validator (https://github.com/filecoin-project/lotus/pull/3650)
 - Add peer to peer manager before fetching the tipset (https://github.com/filecoin-project/lotus/pull/3667)
@@ -761,7 +761,7 @@ fit into the sector capacity. This should increase the packing efficiency of min
 
 ### Renamed features
 
-To improve the user experience, we updated several names to mainatin
+To improve the user experience, we updated several names to maintain
 standard prefixing, and to better reflect the meaning of the features being referenced.
 
 In particular, the Lotus miner binary is now called `lotus-miner`, the default
