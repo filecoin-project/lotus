@@ -519,7 +519,7 @@ func (s *SplitStore) applyProtectors() error {
 // - We collect cold objects by iterating through the hotstore and checking the mark set; if an object is not marked, then it is candidate for purge.
 // - When running with a coldstore, we next copy all cold objects to the coldstore.
 // - At this point we are ready to begin purging:
-//   - We sort cold objects heaviest first, so as to never delete the consituents of a DAG before the DAG itself (which would leave dangling references)
+//   - We sort cold objects heaviest first, so as to never delete the constituents of a DAG before the DAG itself (which would leave dangling references)
 //   - We delete in small batches taking a lock; each batch is checked again for marks, from the concurrent transactional mark, so as to never delete anything live
 //
 // - We then end the transaction and compact/gc the hotstore.
