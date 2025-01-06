@@ -1397,10 +1397,10 @@ OPTIONS:
 
 ```
 NAME:
-   lotus auth create-token - Create token
+   lotus-miner auth create-token - Create token
 
 USAGE:
-   lotus auth create-token [command options] [arguments...]
+   lotus-miner auth create-token [command options] [arguments...]
 
 OPTIONS:
    --perm value  permission to assign to the token, one of: read, write, sign, admin
@@ -1411,10 +1411,10 @@ OPTIONS:
 
 ```
 NAME:
-   lotus auth api-info - Get token with API info required to connect to this node
+   lotus-miner auth api-info - Get token with API info required to connect to this node
 
 USAGE:
-   lotus auth api-info [command options] [arguments...]
+   lotus-miner auth api-info [command options] [arguments...]
 
 OPTIONS:
    --perm value  permission to assign to the token, one of: read, write, sign, admin
@@ -1444,10 +1444,10 @@ OPTIONS:
 
 ```
 NAME:
-   lotus log list - List log systems
+   lotus-miner log list - List log systems
 
 USAGE:
-   lotus log list [command options] [arguments...]
+   lotus-miner log list [command options] [arguments...]
 
 OPTIONS:
    --help, -h  show help
@@ -1457,10 +1457,10 @@ OPTIONS:
 
 ```
 NAME:
-   lotus log set-level - Set log level
+   lotus-miner log set-level - Set log level
 
 USAGE:
-   lotus log set-level [command options] [level]
+   lotus-miner log set-level [command options] [level]
 
 DESCRIPTION:
    Set the log level for logging systems:
@@ -1491,10 +1491,10 @@ OPTIONS:
 
 ```
 NAME:
-   lotus log alerts - Get alert states
+   lotus-miner log alerts - Get alert states
 
 USAGE:
-   lotus log alerts [command options] [arguments...]
+   lotus-miner log alerts [command options] [arguments...]
 
 OPTIONS:
    --all       get all (active and inactive) alerts (default: false)
