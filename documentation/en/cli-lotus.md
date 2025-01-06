@@ -42,7 +42,7 @@ COMMANDS:
 
 GLOBAL OPTIONS:
    --color        use color in display output (default: depends on output being a TTY)
-   --interactive  setting to false will disable interactive functionality of commands (default: true)
+   --interactive  setting to false will disable interactive functionality of commands (default: false)
    --force-send   if true, will ignore pre-send checks (default: false)
    --vv           enables very verbose mode, useful for debugging the CLI (default: false)
    --help, -h     show help
