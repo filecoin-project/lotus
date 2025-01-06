@@ -339,7 +339,7 @@ fiximports:
 
 gen: actors-code-gen type-gen cfgdoc-gen docsgen api-gen
 	$(GOCC) run ./scripts/fiximports
-	@echo ">>> IF YOU'VE MODIFIED THE CLI OR CONFIG, REMEMBER TO ALSO RUN 'make docsgen-cli'"
+	@echo ">>> IF YOU'VE MODIFIED THE CLI OR CONFIG, REMEMBER TO ALSO RUN 'make docsgen-cli' and/or 'make docsgen-config'"
 .PHONY: gen
 
 jen: gen
@@ -348,11 +348,15 @@ snap: lotus lotus-miner lotus-worker
 	snapcraft
 	# snapcraft upload ./lotus_*.snap
 
-docsgen-cli: lotus lotus-miner lotus-worker
+docsgen-cli:
 	$(GOCC) run ./scripts/docsgen-cli
+.PHONY: docsgen-cli
+
+# Compiled lotus and lotus-miner are required to generate the default config files
+docsgen-config: lotus lotus-miner
 	./lotus config default > documentation/en/default-lotus-config.toml
 	./lotus-miner config default > documentation/en/default-lotus-miner-config.toml
-.PHONY: docsgen-cli
+.PHONY: docsgen-config
 
 print-%:
 	@echo $*=$($*)

@@ -45,13 +45,23 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Println("Generating CLI documentation...")
+	// Some help output is generated based on whether the output is a terminal or not. To make stable
+	// output text, we set Stdout to not be a terminal while we load the CLI apps and reset it
+	// before generating the documentation.
+	_, w, _ := os.Pipe()
+	stdout := os.Stdout
+	os.Stdout = w
 
 	cliApps := map[string]*cli.App{
 		"lotus":        lotus.App(),
 		"lotus-worker": worker.App(),
 		"lotus-miner":  miner.App(),
 	}
+
+	w.Close()
+	os.Stdout = stdout
+
+	fmt.Println("Generating CLI documentation...")
 
 	for name, app := range cliApps {
 		for _, cmd := range app.Commands {
