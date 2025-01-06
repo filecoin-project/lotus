@@ -22,12 +22,24 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
+const maxLookBackForWait = 120 // one hour of tipsets
+
 var (
 	ErrMaxResultsReached = xerrors.New("filter matches too many events, try a more restricted filter")
-	ErrRangeInFuture     = xerrors.New("range end is in the future")
 )
 
-const maxLookBackForWait = 120 // one hour of tipsets
+type ErrRangeInFuture struct {
+	HighestEpoch int
+}
+
+func (e *ErrRangeInFuture) Error() string {
+	return fmt.Sprintf("range end is in the future, highest epoch: %d", e.HighestEpoch)
+}
+
+func (e *ErrRangeInFuture) Is(target error) bool {
+	_, ok := target.(*ErrRangeInFuture)
+	return ok
+}
 
 type executedMessage struct {
 	msg types.ChainMsg
@@ -287,7 +299,7 @@ func (si *SqliteIndexer) checkFilterTipsetsIndexed(ctx context.Context, f *Event
 func (si *SqliteIndexer) checkRangeIndexedStatus(ctx context.Context, minHeight abi.ChainEpoch, maxHeight abi.ChainEpoch) error {
 	head := si.cs.GetHeaviestTipSet()
 	if minHeight > head.Height() || maxHeight > head.Height() {
-		return ErrRangeInFuture
+		return &ErrRangeInFuture{HighestEpoch: int(head.Height())}
 	}
 
 	// Find the first non-null round in the range
@@ -305,7 +317,7 @@ func (si *SqliteIndexer) checkRangeIndexedStatus(ctx context.Context, minHeight 
 	if err != nil {
 		return xerrors.Errorf("failed to find last non-null round: %w", err)
 	}
-	// If all rounds are null, consider the range valid
+	// We should have already rulled out all rounds being null in the startCid check
 	if endCid == nil {
 		return xerrors.Errorf("unexpected error finding last non-null round: all rounds are null but start round is not (%d to %d)", minHeight, maxHeight)
 	}
@@ -344,8 +356,7 @@ func (si *SqliteIndexer) findFirstNonNullRound(ctx context.Context, minHeight ab
 			// else null round, keep searching
 			continue
 		}
-		minHeight = height // Update the minHeight to the found height
-		return cid, minHeight, nil
+		return cid, height, nil
 	}
 	// All rounds are null
 	return nil, 0, nil
@@ -356,14 +367,13 @@ func (si *SqliteIndexer) findLastNonNullRound(ctx context.Context, maxHeight abi
 	for height := maxHeight; height >= minHeight; height-- {
 		cid, err := si.getTipsetKeyCidByHeight(ctx, height)
 		if err == nil {
-			maxHeight = height // Update the maxHeight to the found height
-			return cid, maxHeight, nil
+			return cid, height, nil
 		}
 		if !errors.Is(err, ErrNotFound) {
 			return nil, 0, xerrors.Errorf("failed to get tipset key cid for height %d: %w", height, err)
 		}
 	}
-
+	// All rounds are null
 	return nil, 0, nil
 }
 
