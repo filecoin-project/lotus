@@ -30,12 +30,13 @@ func TestGetEventsForFilterNoEvents(t *testing.T) {
 	si, _, cs := setupWithHeadIndexed(t, headHeight, rng)
 	t.Cleanup(func() { _ = si.Close() })
 
-	// Create a fake tipset at height 1
-	fakeTipSet1 := fakeTipSet(t, rng, 1, nil)
-
-	// Set the dummy chainstore to return this tipset for height 1
-	cs.SetTipsetByHeightAndKey(1, fakeTipSet1.Key(), fakeTipSet1) // empty DB
-	cs.SetTipSetByCid(t, fakeTipSet1)
+	// Create a fake tipset at various heights used in the test
+	fakeTipsets := make(map[abi.ChainEpoch]*types.TipSet)
+	for _, ts := range []abi.ChainEpoch{1, 10, 20} {
+		fakeTipsets[ts] = fakeTipSet(t, rng, ts, nil)
+		cs.SetTipsetByHeightAndKey(ts, fakeTipsets[ts].Key(), fakeTipsets[ts])
+		cs.SetTipSetByCid(t, fakeTipsets[ts])
+	}
 
 	// tipset is not indexed
 	f := &EventFilter{
@@ -46,7 +47,7 @@ func TestGetEventsForFilterNoEvents(t *testing.T) {
 	require.True(t, errors.Is(err, ErrNotFound))
 	require.Equal(t, 0, len(ces))
 
-	tsCid, err := fakeTipSet1.Key().Cid()
+	tsCid, err := fakeTipsets[1].Key().Cid()
 	require.NoError(t, err)
 	f = &EventFilter{
 		TipsetCid: tsCid,
@@ -58,7 +59,7 @@ func TestGetEventsForFilterNoEvents(t *testing.T) {
 
 	// tipset is indexed but has no events
 	err = withTx(ctx, si.db, func(tx *sql.Tx) error {
-		return si.indexTipset(ctx, tx, fakeTipSet1)
+		return si.indexTipset(ctx, tx, fakeTipsets[1])
 	})
 	require.NoError(t, err)
 
@@ -73,13 +74,31 @@ func TestGetEventsForFilterNoEvents(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 0, len(ces))
 
-	// search for a range that is absent
+	// search for a range that is not indexed
+	f = &EventFilter{
+		MinHeight: 10,
+		MaxHeight: 20,
+	}
+	ces, err = si.GetEventsForFilter(ctx, f)
+	require.ErrorIs(t, err, ErrNotFound)
+	require.Equal(t, 0, len(ces))
+
+	// search for a range (end) that is in the future
+	f = &EventFilter{
+		MinHeight: 10,
+		MaxHeight: 200,
+	}
+	ces, err = si.GetEventsForFilter(ctx, f)
+	require.ErrorIs(t, err, ErrRangeInFuture)
+	require.Equal(t, 0, len(ces))
+
+	// search for a range (start too) that is in the future
 	f = &EventFilter{
 		MinHeight: 100,
 		MaxHeight: 200,
 	}
 	ces, err = si.GetEventsForFilter(ctx, f)
-	require.NoError(t, err)
+	require.ErrorIs(t, err, ErrRangeInFuture)
 	require.Equal(t, 0, len(ces))
 }
 
