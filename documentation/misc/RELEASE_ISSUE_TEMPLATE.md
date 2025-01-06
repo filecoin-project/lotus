@@ -78,7 +78,7 @@
 <!--{{  if contains "Miner" .Type}}-->
       - Ensure to update `MinerBuildVersion`
 <!--{{  end}}-->
-   - [ ] Run `make gen && make docsgen-cli docsgen-config` before committing changes.
+   - [ ] Run `make gen && make docsgen-cli` before committing changes.
    - [ ] Update the CHANGELOG
      - [ ] Change the `UNRELEASED` section header to `UNRELEASED v{{.Tag}}`
      - [ ] Set the `UNRELEASED v{{.Tag}}` section's content to be "_See https://github.com/filecoin-project/lotus/blob/release/v{{.Tag}}/CHANGELOG.md_"
@@ -118,7 +118,7 @@
 <!--  {{if contains "Miner" $.Type}}-->
     - Ensure to update `MinerBuildVersion`
 <!--  {{end}}-->
-- [ ] Run `make gen && make docsgen-cli docsgen-config` to generate documentation
+- [ ] Run `make gen && make docsgen-cli` to generate documentation
 - [ ] Create a draft PR with title `build: release Lotus {{$.Type}} v{{$.Tag}}{{$tagSuffix}}`
    - Link to PR:
    - Opening a PR will trigger a CI run that will build assets, create a draft GitHub release, and attach the assets.

@@ -35,8 +35,6 @@ jobs:
       - run: git diff --exit-code
       - run: make docsgen-cli
       - run: git diff --exit-code
-      - run: make docsgen-config
-      - run: git diff --exit-code
   check-lint:
     name: Check (lint-all)
     runs-on: ubuntu-latest

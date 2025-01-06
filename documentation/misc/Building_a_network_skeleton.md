@@ -248,7 +248,7 @@ Note: one only needs to update `filecion-ffi`'s dependency on `go-state-types` w
 
 11. Run `make gen`.
 
-12. Run `make docsgen-cli docsgen-config`.
+12. Run `make docsgen-cli`.
 
 And you're done! These are all the steps necessary to create a network upgrade skeleton that you will be able to run in a local devnet, and creates a basis where you can start testing new FIPs. When running a local developer network from this Lotus branch, bringing in all it dependencies, you should be able to:
 
