@@ -410,7 +410,7 @@ var sealingDataCidCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.NArg() < 1 || cctx.NArg() > 2 {
+		if cctx.NArg() != 1 || cctx.NArg() > 2 {
 			return lcli.ShowHelp(cctx, xerrors.Errorf("expected 1 or 2 arguments"))
 		}
 
