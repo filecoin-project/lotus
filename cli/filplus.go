@@ -545,7 +545,7 @@ var filplusRemoveExpiredAllocationsCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.NArg() < 1 {
+		if cctx.NArg() != 1 {
 			return IncorrectNumArgs(cctx)
 		}
 
@@ -638,7 +638,7 @@ var filplusRemoveExpiredClaimsCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.NArg() < 1 {
+		if cctx.NArg() != 1 {
 			return IncorrectNumArgs(cctx)
 		}
 
