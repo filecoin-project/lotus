@@ -37,7 +37,7 @@ func init() {
 type TipSetKey struct {
 	// The internal representation is a concatenation of the bytes of the CIDs, which are
 	// self-describing, wrapped as a string.
-	// These gymnastics make the a TipSetKey usable as a map key.
+	// These gymnastics make a TipSetKey usable as a map key.
 	// The empty key has value "".
 	value string
 }

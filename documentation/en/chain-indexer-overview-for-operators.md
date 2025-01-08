@@ -212,7 +212,7 @@ There is no automated migration from [pre-ChainIndexer indices](#previous-indexi
 
 ### Backfill Timing
 
-Backfilling the new `ChainIndexer` was [benchmarked to take approximately ~12 hours per month of epochs on a sample archival node doing no other work](https://github.com/filecoin-project/lotus/issues/12453#issuecomment-2405306468). Your results will vary depending on hardware, network, and competing processes.  This means if one is upgrading a FEVM archival node, they should plan on the node being out of production service for ~10 days.  Additional nodes to update don't need to go throuh the same time-intensive process though.  They can get a `${LOTUS_PATH}/chainindex/chainindex.db` copied from a trusted node per the [upgrade steps](#upgrade).  
+Backfilling the new `ChainIndexer` was [benchmarked to take approximately ~12 hours per month of epochs on a sample archival node doing no other work](https://github.com/filecoin-project/lotus/issues/12453#issuecomment-2405306468). Your results will vary depending on hardware, network, and competing processes.  This means if one is upgrading a FEVM archival node, they should plan on the node being out of production service for ~10 days.  Additional nodes to update don't need to go through the same time-intensive process though.  They can get a `${LOTUS_PATH}/chainindex/chainindex.db` copied from a trusted node per the [upgrade steps](#upgrade).  
 
 ### Backfill Disk Space Requirements
 
@@ -318,7 +318,7 @@ In case you need to downgrade to the [previous indexing system](#previous-indexi
 
 The decision to not invest here ultimately comes down to the development-time cost vs. benefit ratio.
 
-For achival nodes, we don't have the confidence that the [previous indexing system](#previous-indexing-system) has the correct data to bootstrap from. In 2024, Lotus maintainers have fixed multiple bugs in the [previous indexing system](#previous-indexing-system), but they still see reports of missing data, mismatched event index counts, etc.  Investing here in a migration isn't guaranteed to yield a correct index. As a result, one would still need to perform the [backfill steps](#backfill) to validate and correct the data anyway.  While this should be faster having partially correct data than no data, it would still require an archival node to take an outage on the order of days which isn't good enough.
+For archival nodes, we don't have the confidence that the [previous indexing system](#previous-indexing-system) has the correct data to bootstrap from. In 2024, Lotus maintainers have fixed multiple bugs in the [previous indexing system](#previous-indexing-system), but they still see reports of missing data, mismatched event index counts, etc.  Investing here in a migration isn't guaranteed to yield a correct index. As a result, one would still need to perform the [backfill steps](#backfill) to validate and correct the data anyway.  While this should be faster having partially correct data than no data, it would still require an archival node to take an outage on the order of days which isn't good enough.
 
 The schemas of [the old fragmented Indices](#previous-indexing-system) don't naturally map to the schema of the [ChainIndexer](#chainindexer-indexing-system). There would be additional data wrangling work to ultimately get this right.
 
