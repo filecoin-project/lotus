@@ -112,7 +112,7 @@ func BackupCmd(repoFlag string, rt repo.RepoType, getApi BackupApiFn) *cli.Comma
 		Description: `The backup command writes a copy of node metadata under the specified path
 
 Online backups:
-For security reasons, the daemon must be have LOTUS_BACKUP_BASE_PATH env var set
+For security reasons, the daemon must have LOTUS_BACKUP_BASE_PATH env var set
 to a path where backup files are supposed to be saved, and the path specified in
 this command must be within this base path`,
 		Flags: []cli.Flag{
