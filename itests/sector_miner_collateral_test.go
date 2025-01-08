@@ -326,7 +326,7 @@ func TestPledgeCalculations(t *testing.T) {
 		return markettypes.ClientDealProposal{Proposal: dp, ClientSignature: *sig}
 	}
 
-	// make a deal of a given size that may or may not be be verified (and require an allocation)
+	// make a deal of a given size that may or may not be verified (and require an allocation)
 	makeDealOfSize := func(paddedSize int, verified bool) (abi.PieceInfo, abi.DealID) {
 		marketPieceSize := abi.PaddedPieceSize(paddedSize)
 		pieceData := make([]byte, marketPieceSize)
