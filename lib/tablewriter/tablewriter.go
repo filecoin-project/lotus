@@ -13,6 +13,31 @@ type Column struct {
 	Name         string
 	SeparateLine bool
 	Lines        int
+	RightAlign   bool
+}
+
+type tableCfg struct {
+	borders bool
+}
+
+type TableOption func(*tableCfg)
+
+func WithBorders() TableOption {
+	return func(c *tableCfg) {
+		c.borders = true
+	}
+}
+
+type columnCfg struct {
+	rightAlign bool
+}
+
+type ColumnOption func(*columnCfg)
+
+func RightAlign() ColumnOption {
+	return func(c *columnCfg) {
+		c.rightAlign = true
+	}
 }
 
 type TableWriter struct {
@@ -20,10 +45,15 @@ type TableWriter struct {
 	rows []map[int]string
 }
 
-func Col(name string) Column {
+func Col(name string, opts ...ColumnOption) Column {
+	cfg := &columnCfg{}
+	for _, o := range opts {
+		o(cfg)
+	}
 	return Column{
 		Name:         name,
 		SeparateLine: false,
+		RightAlign:   cfg.rightAlign,
 	}
 }
 
@@ -69,7 +99,12 @@ cloop:
 	w.rows = append(w.rows, byColID)
 }
 
-func (w *TableWriter) Flush(out io.Writer) error {
+func (w *TableWriter) Flush(out io.Writer, opts ...TableOption) error {
+	cfg := &tableCfg{}
+	for _, o := range opts {
+		o(cfg)
+	}
+
 	colLengths := make([]int, len(w.cols))
 
 	header := map[int]string{}
@@ -99,20 +134,61 @@ func (w *TableWriter) Flush(out io.Writer) error {
 		}
 	}
 
-	for _, row := range w.rows {
+	if cfg.borders {
+		// top line
+		if _, err := fmt.Fprint(out, "┌"); err != nil {
+			return err
+		}
+		for ci, col := range w.cols {
+			if col.Lines == 0 {
+				continue
+			}
+			if _, err := fmt.Fprint(out, strings.Repeat("─", colLengths[ci]+2)); err != nil {
+				return err
+			}
+			if ci != len(w.cols)-1 {
+				if _, err := fmt.Fprint(out, "┬"); err != nil {
+					return err
+				}
+			}
+		}
+		if _, err := fmt.Fprintln(out, "┐"); err != nil {
+			return err
+		}
+	}
+
+	for lineNumber, row := range w.rows {
 		cols := make([]string, len(w.cols))
+
+		if cfg.borders {
+			if _, err := fmt.Fprint(out, "│ "); err != nil {
+				return err
+			}
+		}
 
 		for ci, col := range w.cols {
 			if col.Lines == 0 {
 				continue
 			}
 
-			e, _ := row[ci]
+			e := row[ci]
 			pad := colLengths[ci] - cliStringLength(e) + 2
+			if cfg.borders {
+				pad--
+			}
 			if !col.SeparateLine && col.Lines > 0 {
-				e = e + strings.Repeat(" ", pad)
+				if col.RightAlign {
+					e = strings.Repeat(" ", pad-1) + e + " "
+				} else {
+					e = e + strings.Repeat(" ", pad)
+				}
 				if _, err := fmt.Fprint(out, e); err != nil {
 					return err
+				}
+				if cfg.borders {
+					if _, err := fmt.Fprint(out, "│ "); err != nil {
+						return err
+					}
 				}
 			}
 
@@ -131,6 +207,53 @@ func (w *TableWriter) Flush(out io.Writer) error {
 			if _, err := fmt.Fprintf(out, "  %s: %s\n", col.Name, cols[ci]); err != nil {
 				return err
 			}
+		}
+
+		if lineNumber == 0 && cfg.borders {
+			// print bottom of header
+			if _, err := fmt.Fprint(out, "├"); err != nil {
+				return err
+			}
+			for ci, col := range w.cols {
+				if col.Lines == 0 {
+					continue
+				}
+
+				if _, err := fmt.Fprint(out, strings.Repeat("─", colLengths[ci]+2)); err != nil {
+					return err
+				}
+				if ci != len(w.cols)-1 {
+					if _, err := fmt.Fprint(out, "┼"); err != nil {
+						return err
+					}
+				}
+			}
+			if _, err := fmt.Fprintln(out, "┤"); err != nil {
+				return err
+			}
+		}
+	}
+
+	if cfg.borders {
+		// bottom line
+		if _, err := fmt.Fprint(out, "└"); err != nil {
+			return err
+		}
+		for ci, col := range w.cols {
+			if col.Lines == 0 {
+				continue
+			}
+			if _, err := fmt.Fprint(out, strings.Repeat("─", colLengths[ci]+2)); err != nil {
+				return err
+			}
+			if ci != len(w.cols)-1 {
+				if _, err := fmt.Fprint(out, "┴"); err != nil {
+					return err
+				}
+			}
+		}
+		if _, err := fmt.Fprintln(out, "┘"); err != nil {
+			return err
 		}
 	}
 
