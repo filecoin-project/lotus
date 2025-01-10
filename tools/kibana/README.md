@@ -6,7 +6,7 @@ throughout Filecoin network.
 ### Importing index template
 
 Index template needs to be imported into Elasticsearch for score weights and to
-prevent Elasticsearch from infering wrong field type.
+prevent Elasticsearch from inferring wrong field type.
 
 The [template](./index-template.json) is loaded via [Kibana Index Management](https://www.elastic.co/guide/en/elasticsearch/reference/current/index-mgmt.html) and pasted
 into newly created Index Template.
