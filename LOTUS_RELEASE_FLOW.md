@@ -96,7 +96,7 @@ The specific steps executed for Lotus software releases are captured in the [Rel
 ## Release Candidates (RCs)
 
 - For regular (i.e., no critical security patch) releases with no accompanying network upgrade, the RC period is typically around 1 week.
-- For releases accompanying network upgrades, the release candiadte period is a lot longer to allow for more extensive testing, usually around 5 to 6 weeks.
+- For releases accompanying network upgrades, the release candidate period is a lot longer to allow for more extensive testing, usually around 5 to 6 weeks.
 - Releases rushing out a critical security patch will likely have an RC period on the order of hours or days, or may even forgo the RC phase. To compensate for the release speed, these releases will include the minimum delta necessary, meaning they'll be a patch on top of an existing release rather than taking the latest changes in the `master` branch.
 
 ## Security Fix Policy

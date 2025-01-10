@@ -3,11 +3,14 @@ package main
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strings"
 
-	"golang.org/x/sync/errgroup"
+	"github.com/urfave/cli/v2"
+
+	"github.com/filecoin-project/lotus/cli/lotus"
+	"github.com/filecoin-project/lotus/cli/miner"
+	"github.com/filecoin-project/lotus/cli/worker"
+	"github.com/filecoin-project/lotus/node/config"
 )
 
 const (
@@ -44,90 +47,93 @@ func main() {
 		os.Exit(1)
 	}
 
+	cliApps := loadCLIApps()
+
 	fmt.Println("Generating CLI documentation...")
-	var eg errgroup.Group
-	for _, cmd := range []string{"lotus", "lotus-miner", "lotus-worker"} {
-		eg.Go(func() error {
-			err := generateMarkdownForCLI(cmd)
-			if err != nil {
-				fmt.Printf(" ❌ %s: %v\n", cmd, err)
-			} else {
-				fmt.Printf(" ✅ %s\n", cmd)
-			}
-			return err
-		})
-	}
-	if err := eg.Wait(); err != nil {
-		fmt.Printf("Failed to generate CLI documentation: %v\n", err)
+	failed := generateCLIDocumentation(cliApps)
+
+	fmt.Println("Generating default config files...")
+	failed = generateDefaultConfigs() || failed
+
+	if failed {
+		fmt.Println("Documentation generation failed.")
 		os.Exit(1)
 	}
 	fmt.Println("Documentation generation complete.")
 }
 
-func generateMarkdownForCLI(cli string) error {
-	md := filepath.Join(outputDir, fmt.Sprintf("cli-%s.md", cli))
-	out, err := os.Create(md)
-	if err != nil {
-		return err
+func loadCLIApps() map[string]*cli.App {
+	// Some help output is generated based on whether the output is a terminal or not. To make stable
+	// output text, we set Stdout to not be a terminal while we load the CLI apps and reset it
+	// before generating the documentation.
+	_, w, _ := os.Pipe()
+	stdout := os.Stdout
+	os.Stdout = w
+
+	cliApps := map[string]*cli.App{
+		"lotus":        lotus.App(),
+		"lotus-worker": worker.App(),
+		"lotus-miner":  miner.App(),
 	}
-	defer func() { _ = out.Close() }()
-	return writeCommandDocs(out, cli, 0)
+
+	_ = w.Close()
+	os.Stdout = stdout
+
+	return cliApps
 }
 
-func writeCommandDocs(file *os.File, command string, depth int) error {
-	// For sanity, fail fast if depth exceeds some arbitrarily large number. In which
-	// case, chances are there is a bug in this script.
-	if depth > depthRecursionLimit {
-		return fmt.Errorf("recursion exceeded limit of %d", depthRecursionLimit)
+func generateCLIDocumentation(cliApps map[string]*cli.App) bool {
+	var failed bool
+	for name, app := range cliApps {
+		resetCommandHelpName(app)
+
+		generator := NewDocGenerator(outputDir, app)
+		if err := generator.Generate(name); err != nil {
+			fmt.Printf(" ❌ %s: %v\n", name, err)
+			failed = true
+			continue
+		}
+		fmt.Printf(" ✅ %s\n", name)
+	}
+	return failed
+}
+
+// resetCommandHelpName resets the HelpName of all commands to include the parent command names.
+// This is needed for the case where Commands are shared between apps.
+func resetCommandHelpName(app *cli.App) {
+	var fix func(cmds []*cli.Command, helpName string)
+	fix = func(cmds []*cli.Command, helpName string) {
+		for _, cmd := range cmds {
+			cmd.HelpName = fmt.Sprintf("%s %s", helpName, cmd.Name)
+			fix(cmd.Subcommands, cmd.HelpName)
+		}
+	}
+	fix(app.Commands, app.HelpName)
+}
+
+func generateDefaultConfigs() bool {
+	var failed bool
+	if err := generateDefaultConfig(config.DefaultFullNode(), "default-lotus-config.toml"); err != nil {
+		fmt.Printf(" ❌ %s: %v\n", "lotus", err)
+		failed = true
+	} else {
+		fmt.Printf(" ✅ %s\n", "lotus")
 	}
 
-	// Get usage from the command.
-	usage, err := exec.Command("sh", "-c", "./"+command+" -h").Output()
+	if err := generateDefaultConfig(config.DefaultStorageMiner(), "default-lotus-miner-config.toml"); err != nil {
+		fmt.Printf(" ❌ %s: %v\n", "lotus-miner", err)
+		failed = true
+	} else {
+		fmt.Printf(" ✅ %s\n", "lotus-miner")
+	}
+	return failed
+}
+
+func generateDefaultConfig(c interface{}, file string) error {
+	cb, err := config.ConfigUpdate(c, nil, config.Commented(true), config.DefaultKeepUncommented())
 	if err != nil {
-		return fmt.Errorf("failed to run '%s': %v", command, err)
-	}
-
-	// Skip the first new line since the docs do not start with a newline at the very
-	// top.
-	if depth != 0 {
-		if _, err := file.WriteString("\n"); err != nil {
-			return err
-		}
-	}
-
-	// Write out command header and usage.
-	header := fmt.Sprintf("%s# %s\n", strings.Repeat("#", depth), command)
-	if _, err := file.WriteString(header); err != nil {
-		return err
-	} else if _, err := file.WriteString("```\n"); err != nil {
-		return err
-	} else if _, err := file.Write(usage); err != nil {
-		return err
-	} else if _, err := file.WriteString("```\n"); err != nil {
 		return err
 	}
-
-	// Recurse sub-commands.
-	commands := false
-	lines := strings.Split(string(usage), "\n")
-	for _, line := range lines {
-		switch line = strings.TrimSpace(line); {
-		case line == "":
-			commands = false
-		case line == "COMMANDS:":
-			commands = true
-		case strings.HasPrefix(line, "help, h"):
-			// Skip usage command.
-		case commands:
-			// Find the sub command and trim any potential comma in case of alias.
-			subCommand := strings.TrimSuffix(strings.Fields(line)[0], ",")
-			// Skip sections in usage that have no command.
-			if !strings.Contains(subCommand, ":") {
-				if err := writeCommandDocs(file, command+" "+subCommand, depth+1); err != nil {
-					return err
-				}
-			}
-		}
-	}
-	return nil
+	output := filepath.Join(outputDir, file)
+	return os.WriteFile(output, cb, 0644)
 }

@@ -236,10 +236,10 @@ func (si *SqliteIndexer) backfillIndex(ctx context.Context, tx *sql.Tx, head *ty
 			log.Infof("reached stop height %d; backfilled %d tipsets", stopAfter, totalApplied)
 			return nil
 		}
-
+		height := currTs.Height()
 		currTs, err = si.cs.GetTipSetFromKey(ctx, currTs.Parents())
 		if err != nil {
-			return xerrors.Errorf("failed to walk chain at height %d: %w", currTs.Height(), err)
+			return xerrors.Errorf("failed to walk chain beyond height %d: %w", height, err)
 		}
 	}
 

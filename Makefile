@@ -351,8 +351,6 @@ snap: lotus lotus-miner lotus-worker  ## Build snap package
 # separate from gen because it needs binaries
 docsgen-cli: lotus lotus-miner lotus-worker  ## Generate CLI documentation
 	$(GOCC) run ./scripts/docsgen-cli
-	./lotus config default > documentation/en/default-lotus-config.toml
-	./lotus-miner config default > documentation/en/default-lotus-miner-config.toml
 .PHONY: docsgen-cli
 
 print-%:  ## Print variable value

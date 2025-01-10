@@ -32,7 +32,7 @@ There are two possible additions to this flow:
 
 💡 **The builtin market actor should not be used as single a source of truth regarding data onboarding activities.** The builtin market actor is only a source of truth for data onboarding mediated by the builtin market actor.
 
-💡 **The builtin market actor should not be used as a source of truth regarding verified claims and metrics related to FIL+ usage (size, clients, profiders).** The `VerifiedClaim` property of `DealState` has been removed from the builtin market actor. Instead, the verified registry should be used as the only source of truth regarding both allocations and claims.
+💡 **The builtin market actor should not be used as a source of truth regarding verified claims and metrics related to FIL+ usage (size, clients, providers).** The `VerifiedClaim` property of `DealState` has been removed from the builtin market actor. Instead, the verified registry should be used as the only source of truth regarding both allocations and claims.
 
 💡 **Sector data commitments and their constituent pieces are only stored on chain in the verified registry claims in the case of verified data (pieces) onboarded in any mechanism (DDO and/or builtin market actor).** Piece information for data onboarded that is not verified ("sparkling data") and not mediated through the builtin market actor will only appear in messages and actor events. Messages and actor events may be used as a source of truth for data sector commitments.
 

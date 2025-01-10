@@ -101,7 +101,7 @@ There is a network skeleton in Lotus, which bubbles up all the other dependencie
 
 You can take a look at [this Ref-FVM PR as a reference](https://github.com/filecoin-project/ref-fvm/pull/2029), which added the skeleton for network version 24. You can also check out the [releasing primary FVM crates checklist here](https://github.com/filecoin-project/ref-fvm/blob/master/CONTRIBUTING.md#primary-fvm-crates)
 
-2. In a seperate PR bump the Ref-FVM version:
+2. In a separate PR bump the Ref-FVM version:
 
     - Bump the version in the root Cargo.toml file.
     - Bump the fvm, fvm_shared and fvm_sdk versions in the `workspace` section in `ref-fvm/cargo.toml`
@@ -179,7 +179,7 @@ You can take a look at [this PR as a reference](https://github.com/filecoin-proj
 
     👉 You can take a look at this [Filecoin-FFI PR as a reference](https://github.com/filecoin-project/filecoin-ffi/pull/481), which was for network version 24.
 
-Note: one only needs to update `filecion-ffi`'s dependency on `go-state-types` when a network upgrade is introducing new types in `go-state-types`  (see [below](#new-types-in-go-state-types)).  Otherwise, `filecion-ffi`'s dependency on `go-state-types` is just updated when doing fiinal releases before the network upgrade.
+Note: one only needs to update `filecion-ffi`'s dependency on `go-state-types` when a network upgrade is introducing new types in `go-state-types`  (see [below](#new-types-in-go-state-types)).  Otherwise, `filecion-ffi`'s dependency on `go-state-types` is just updated when doing final releases before the network upgrade.
 
 ## Lotus Checklist
 
