@@ -57,9 +57,15 @@ jobs:
       - env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
+          # Debug raw input
+          echo "Raw tag input: ${{ github.event.inputs.tag }}"
+          
           # Remove any 'v' prefix from the tag
           TAG="${{ github.event.inputs.tag }}"
+          echo "After first assignment: $TAG"
+          
           TAG="${TAG#v}"
+          echo "After v prefix removal: $TAG"
           
           echo "Debug values:"
           echo "Type: ${{ github.event.inputs.type }}"
