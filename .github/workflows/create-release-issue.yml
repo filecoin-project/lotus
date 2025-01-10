@@ -59,12 +59,12 @@ jobs:
         run: |
           go run cmd/release/main.go create-issue \
             --create-on-github true \
-            --type "${{ github.event.inputs.type }}" \
-            --tag "${{ github.event.inputs.tag }}" \
-            --level "${{ github.event.inputs.level }}" \
-            --network-upgrade "${{ github.event.inputs.network-upgrade }}" \
-            --discussion-link "${{ github.event.inputs.discussion-link }}" \
-            --changelog-link "${{ github.event.inputs.changelog-link }}" \
-            --rc1-date "${{ github.event.inputs.rc1-date }}" \
-            --stable-date "${{ github.event.inputs.stable-date }}" \
-            --repo "filecoin-project/lotus"
+            --type ${{ github.event.inputs.type }} \
+            --tag ${{ github.event.inputs.tag }} \
+            --level ${{ github.event.inputs.level }} \
+            --network-upgrade ${{ github.event.inputs.network-upgrade }} \
+            --discussion-link ${{ github.event.inputs.discussion-link }} \
+            --changelog-link ${{ github.event.inputs.changelog-link }} \
+            --rc1-date ${{ github.event.inputs.rc1-date }} \
+            --stable-date ${{ github.event.inputs.stable-date }} \
+            --repo filecoin-project/lotus
