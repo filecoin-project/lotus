@@ -57,15 +57,19 @@ jobs:
       - env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
+          # Remove any 'v' prefix from the tag
+          TAG="${{ github.event.inputs.tag }}"
+          TAG="${TAG#v}"
+          
           echo "Debug values:"
           echo "Type: ${{ github.event.inputs.type }}"
-          echo "Tag: ${{ github.event.inputs.tag }}"
+          echo "Tag: $TAG"
           echo "Level: ${{ github.event.inputs.level }}"
           
           go run cmd/release/main.go create-issue \
             --create-on-github true \
             --type "${{ github.event.inputs.type }}" \
-            --tag "${{ github.event.inputs.tag }}" \
+            --tag "$TAG" \
             --level "${{ github.event.inputs.level }}" \
             --network-upgrade "${{ github.event.inputs.network-upgrade }}" \
             --discussion-link "${{ github.event.inputs.discussion-link }}" \
@@ -73,3 +77,4 @@ jobs:
             --rc1-date "${{ github.event.inputs.rc1-date }}" \
             --stable-date "${{ github.event.inputs.stable-date }}" \
             --repo "filecoin-project/lotus"
+            
