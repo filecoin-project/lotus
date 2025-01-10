@@ -57,6 +57,11 @@ jobs:
       - env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
+          echo "Debug values:"
+          echo "Type: ${{ github.event.inputs.type }}"
+          echo "Tag: ${{ github.event.inputs.tag }}"
+          echo "Level: ${{ github.event.inputs.level }}"
+          
           go run cmd/release/main.go create-issue \
             --create-on-github true \
             --type "${{ github.event.inputs.type }}" \
