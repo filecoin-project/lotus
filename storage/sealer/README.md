@@ -5,7 +5,7 @@
 
 > a concrete implementation of the [specs-storage](https://github.com/filecoin-project/specs-storage) interface
 
-The sector-storage project provides a implementation-nonspecific reference implementation of the [specs-storage](https://github.com/filecoin-project/specs-storage) interface.
+The sector-storage project provides an implementation-nonspecific reference implementation of the [specs-storage](https://github.com/filecoin-project/specs-storage) interface.
 
 ## Disclaimer
 
