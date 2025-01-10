@@ -22,7 +22,10 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-var ErrMaxResultsReached = fmt.Errorf("filter matches too many events, try a more restricted filter")
+var (
+	ErrMaxResultsReached = xerrors.New("filter matches too many events, try a more restricted filter")
+	ErrRangeInFuture     = xerrors.New("range end is in the future")
+)
 
 const maxLookBackForWait = 120 // one hour of tipsets
 
@@ -236,13 +239,18 @@ func loadExecutedMessages(ctx context.Context, cs ChainStore, recomputeTipSetSta
 	return ems, nil
 }
 
-// checkTipsetIndexedStatus verifies if a specific tipset is indexed based on the EventFilter.
-// It returns nil if the tipset is indexed, ErrNotFound if it's not indexed or not specified,
-func (si *SqliteIndexer) checkTipsetIndexedStatus(ctx context.Context, f *EventFilter) error {
+// checkFilterTipsetsIndexed verifies if a tipset, or a range of tipsets, specified by a given
+// filter is indexed. It checks for the existence of non-null rounds at the range boundaries.
+func (si *SqliteIndexer) checkFilterTipsetsIndexed(ctx context.Context, f *EventFilter) error {
+	// Three cases to consider:
+	// 1. Specific tipset is provided
+	// 2. Single tipset is specified by the height range (min=max)
+	// 3. Range of tipsets is specified by the height range (min!=max)
+	// We'll handle the first two cases here and the third case in checkRangeIndexedStatus
+
 	var tipsetKeyCid []byte
 	var err error
 
-	// Determine the tipset to check based on the filter
 	switch {
 	case f.TipsetCid != cid.Undef:
 		tipsetKeyCid = f.TipsetCid.Bytes()
@@ -253,16 +261,10 @@ func (si *SqliteIndexer) checkTipsetIndexedStatus(ctx context.Context, f *EventF
 				// this means that this is a null round and there exist no events for this epoch
 				return nil
 			}
-
 			return xerrors.Errorf("failed to get tipset key cid by height: %w", err)
 		}
 	default:
-		// This function distinguishes between two scenarios:
-		// 1. Missing events: The requested tipset is not present in the Index (an error condition).
-		// 2. Valid case: The tipset exists but contains no events (a normal situation).
-		// Currently, this distinction is only made for the common use case where a user requests events for a single tipset.
-		// TODO: Implement this functionality for a range of tipsets. This is expensive and not a common use case so it's deferred for now.
-		return nil
+		return si.checkRangeIndexedStatus(ctx, f.MinHeight, f.MaxHeight)
 	}
 
 	// If we couldn't determine a specific tipset, return ErrNotFound
@@ -280,7 +282,92 @@ func (si *SqliteIndexer) checkTipsetIndexedStatus(ctx context.Context, f *EventF
 	return ErrNotFound // Tipset is not indexed
 }
 
-// getTipsetKeyCidByHeight retrieves the tipset key CID for a given height.
+// checkRangeIndexedStatus verifies if a range of tipsets specified by the given height range is
+// indexed. It checks for the existence of non-null rounds at the range boundaries.
+func (si *SqliteIndexer) checkRangeIndexedStatus(ctx context.Context, minHeight abi.ChainEpoch, maxHeight abi.ChainEpoch) error {
+	head := si.cs.GetHeaviestTipSet()
+	if minHeight > head.Height() || maxHeight > head.Height() {
+		return ErrRangeInFuture
+	}
+
+	// Find the first non-null round in the range
+	startCid, startHeight, err := si.findFirstNonNullRound(ctx, minHeight, maxHeight)
+	if err != nil {
+		return xerrors.Errorf("failed to find first non-null round: %w", err)
+	}
+	// If all rounds are null, consider the range valid
+	if startCid == nil {
+		return nil
+	}
+
+	// Find the last non-null round in the range
+	endCid, endHeight, err := si.findLastNonNullRound(ctx, maxHeight, minHeight)
+	if err != nil {
+		return xerrors.Errorf("failed to find last non-null round: %w", err)
+	}
+	// If all rounds are null, consider the range valid
+	if endCid == nil {
+		return xerrors.Errorf("unexpected error finding last non-null round: all rounds are null but start round is not (%d to %d)", minHeight, maxHeight)
+	}
+
+	// Check indexing status for start and end tipsets
+	if err := si.checkTipsetIndexedStatus(ctx, startCid, startHeight); err != nil {
+		return err
+	}
+	if err := si.checkTipsetIndexedStatus(ctx, endCid, endHeight); err != nil {
+		return err
+	}
+	// Assume (not necessarily correctly, but likely) that all tipsets within the range are indexed
+
+	return nil
+}
+
+func (si *SqliteIndexer) checkTipsetIndexedStatus(ctx context.Context, tipsetKeyCid []byte, height abi.ChainEpoch) error {
+	exists, err := si.isTipsetIndexed(ctx, tipsetKeyCid)
+	if err != nil {
+		return xerrors.Errorf("failed to check if tipset at epoch %d is indexed: %w", height, err)
+	} else if exists {
+		return nil // has been indexed
+	}
+	return ErrNotFound
+}
+
+// findFirstNonNullRound finds the first non-null round starting from minHeight up to maxHeight.
+// It updates the minHeight to the found height and returns the tipset key CID.
+func (si *SqliteIndexer) findFirstNonNullRound(ctx context.Context, minHeight abi.ChainEpoch, maxHeight abi.ChainEpoch) ([]byte, abi.ChainEpoch, error) {
+	for height := minHeight; height <= maxHeight; height++ {
+		cid, err := si.getTipsetKeyCidByHeight(ctx, height)
+		if err != nil {
+			if !errors.Is(err, ErrNotFound) {
+				return nil, 0, xerrors.Errorf("failed to get tipset key cid for height %d: %w", height, err)
+			}
+			// else null round, keep searching
+			continue
+		}
+		minHeight = height // Update the minHeight to the found height
+		return cid, minHeight, nil
+	}
+	// All rounds are null
+	return nil, 0, nil
+}
+
+// findLastNonNullRound finds the last non-null round starting from maxHeight down to minHeight
+func (si *SqliteIndexer) findLastNonNullRound(ctx context.Context, maxHeight abi.ChainEpoch, minHeight abi.ChainEpoch) ([]byte, abi.ChainEpoch, error) {
+	for height := maxHeight; height >= minHeight; height-- {
+		cid, err := si.getTipsetKeyCidByHeight(ctx, height)
+		if err == nil {
+			maxHeight = height // Update the maxHeight to the found height
+			return cid, maxHeight, nil
+		}
+		if !errors.Is(err, ErrNotFound) {
+			return nil, 0, xerrors.Errorf("failed to get tipset key cid for height %d: %w", height, err)
+		}
+	}
+
+	return nil, 0, nil
+}
+
+// getTipsetKeyCidByHeight retrieves the tipset key CID for a given height from the ChainStore
 func (si *SqliteIndexer) getTipsetKeyCidByHeight(ctx context.Context, height abi.ChainEpoch) ([]byte, error) {
 	ts, err := si.cs.GetTipsetByHeight(ctx, height, nil, false)
 	if err != nil {
@@ -452,7 +539,7 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter)
 		if height > 0 {
 			head := si.cs.GetHeaviestTipSet()
 			if head == nil {
-				return nil, errors.New("failed to get head: head is nil")
+				return nil, xerrors.New("failed to get head: head is nil")
 			}
 			headHeight := head.Height()
 			maxLookBackHeight := headHeight - maxLookBackForWait
@@ -460,7 +547,7 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter)
 			// if the height is old enough, we'll assume the index is caught up to it and not bother
 			// waiting for it to be indexed
 			if height <= maxLookBackHeight {
-				return nil, si.checkTipsetIndexedStatus(ctx, f)
+				return nil, si.checkFilterTipsetsIndexed(ctx, f)
 			}
 		}
 
@@ -474,7 +561,7 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter)
 		}
 
 		if len(ces) == 0 {
-			return nil, si.checkTipsetIndexedStatus(ctx, f)
+			return nil, si.checkFilterTipsetsIndexed(ctx, f)
 		}
 	}
 
