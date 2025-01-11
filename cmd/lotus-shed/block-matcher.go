@@ -19,8 +19,8 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-amt-ipld/v4"
-	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-hamt-ipld/v3"
+	"github.com/filecoin-project/go-state-types/abi"
 	gstbuiltin "github.com/filecoin-project/go-state-types/builtin"
 	datacap16 "github.com/filecoin-project/go-state-types/builtin/v16/datacap"
 	market16 "github.com/filecoin-project/go-state-types/builtin/v16/market"
@@ -120,6 +120,10 @@ func matchAmtValues(values datamodel.Node) (string, error) {
 			} else if match != m {
 				return "", xerrors.Errorf("inconsistent types in AMT values")
 			}
+			// To debug unknown AMT types, uncomment this block:
+			// } else {
+			// 	enc, _ := ipld.Encode(v, dagjson.Encode)
+			// 	return "", xerrors.Errorf("unknown type in AMT values: %s", enc)
 		}
 	}
 	if match != "" {
@@ -162,8 +166,12 @@ func matchHamtValues(hamtNode datamodel.Node) (string, error) {
 					if match == "" {
 						match = m
 					} else if match != m {
-						return "", xerrors.Errorf("inconsistent types in HAMT values")
+						return "", xerrors.Errorf("inconsistent types in HAMT values: %s != %s", match, m)
 					}
+					// To debug unknown HAMT types, uncomment this block:
+					// } else {
+					// 	enc, _ := ipld.Encode(bval, dagjson.Encode)
+					// 	return "", xerrors.Errorf("unknown type in HAMT values: %s", enc)
 				}
 			}
 		}
@@ -202,10 +210,11 @@ func matchKnownBlockTypeFromBytes(b []byte) (string, error) {
 	if m, _ := matchWellKnownBlockType(b); m != "" {
 		return m, nil
 	}
-
 	if _, err := cbg.ReadCid(bytes.NewReader(b)); err == nil {
 		return "Cid", nil
 	}
+	ci := cbg.CborInt(1)
+	cb := cbg.CborBool(true)
 	known := map[string]cbg.CBORUnmarshaler{
 		// Fill this out with known types when you see them missing and can identify them
 		"BlockHeader":                        &types.BlockHeader{},
@@ -220,9 +229,16 @@ func matchKnownBlockTypeFromBytes(b []byte) (string, error) {
 		"miner16.SectorPreCommitOnChainInfo": &miner16.SectorPreCommitOnChainInfo{},
 		"power16.State":                      &power16.State{},
 		"market16.State":                     &market16.State{},
+		"market16.DealProposal":              &market16.DealProposal{},
+		"market16.DealState":                 &market16.DealState{},
 		"verifreg16.State":                   &verifreg16.State{},
+		"verifreg16.Allocation":              &verifreg16.Allocation{},
+		"verifreg16.Claim":                   &verifreg16.Claim{},
 		"datacap16.State":                    &datacap16.State{},
-		"Bitfield":                           &bitfield.BitField{},
+		"[Int]":                              &market16.SectorDealIDs{}, // verifreg16.RmDcProposalID is one of these too, as are probably others, we can't be certain, it would be context dependent
+		"Int":                                &ci,
+		"Bool":                               &cb,
+		"Bytes":                              &abi.CborBytes{}, // could be TokenAmount, BigInt, etc
 	}
 	for name, v := range known {
 		if err := v.UnmarshalCBOR(bytes.NewReader(b)); err == nil {
