@@ -22,6 +22,7 @@ import (
 	"github.com/filecoin-project/specs-actors/v8/actors/migration/nv16"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	_init "github.com/filecoin-project/lotus/chain/actors/builtin/init"
@@ -119,7 +120,7 @@ func (m *migrationResultCache) Delete(ctx context.Context, root cid.Cid) {
 
 type Executor interface {
 	NewActorRegistry() *vm.ActorRegistry
-	ExecuteTipSet(ctx context.Context, sm *StateManager, ts *types.TipSet, em ExecMonitor, vmTracing bool) (stateroot cid.Cid, rectsroot cid.Cid, err error)
+	ExecuteTipSet(ctx context.Context, sm *StateManager, ts *types.TipSet, em ExecMonitor, vmTracing bool, cacheStore blockstore.Blockstore) (stateroot cid.Cid, rectsroot cid.Cid, err error)
 }
 
 type StateManager struct {

@@ -5,12 +5,17 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"os"
+	"path"
 	"sort"
 
 	"github.com/fatih/color"
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	carbstore "github.com/ipld/go-car/v2/blockstore"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
@@ -79,6 +84,23 @@ var msgCmd = &cli.Command{
 				return xerrors.Errorf("replay call failed: %w", err)
 			}
 
+			/*
+				var fixSealPrice func(trace types.ExecutionTrace)
+				fixSealPrice = func(trace types.ExecutionTrace) {
+					for i := range trace.GasCharges {
+						if trace.GasCharges[i].Name == "OnVerifySeal" && trace.GasCharges[i].ComputeGas == 2000 {
+							// should be 42M
+							trace.GasCharges[i].ComputeGas = 42_000_000
+							trace.GasCharges[i].TotalGas += 42_000_000 - 2000
+						}
+					}
+					for i := range trace.Subcalls {
+						fixSealPrice(trace.Subcalls[i])
+					}
+				}
+				fixSealPrice(res.ExecutionTrace)
+			*/
+
 			if cctx.Bool("exec-trace") {
 				// Print the execution trace
 				color.Green("Execution trace:")
@@ -88,6 +110,31 @@ var msgCmd = &cli.Command{
 				}
 				fmt.Println(string(trace))
 				fmt.Println()
+
+				if res.CachedBlocks != nil {
+					cachedBlocksFile := path.Join(os.TempDir(), msg.Cid().String()+".car")
+					if _, err := os.Stat(cachedBlocksFile); !errors.Is(err, os.ErrNotExist) {
+						return xerrors.Errorf("cached blocks file %s already exists: %w", cachedBlocksFile, err)
+					}
+					bs, err := carbstore.OpenReadWrite(cachedBlocksFile, nil, carbstore.WriteAsCarV1(true))
+					if err != nil {
+						return xerrors.Errorf("opening cached blocks file: %w", err)
+					}
+					for _, b := range res.CachedBlocks {
+						bc, err := blocks.NewBlockWithCid(b.Data, b.Cid)
+						if err != nil {
+							return xerrors.Errorf("creating cached block: %w", err)
+						}
+						if err := bs.Put(ctx, bc); err != nil {
+							return xerrors.Errorf("writing cached block: %w", err)
+						}
+					}
+					if err := bs.Close(); err != nil {
+						return xerrors.Errorf("closing cached blocks file: %w", err)
+					}
+					color.Green("Cached blocks written to %s", cachedBlocksFile)
+					fmt.Println()
+				}
 
 				color.Green("Receipt:")
 				fmt.Printf("Exit code: %d\n", res.MsgRct.ExitCode)

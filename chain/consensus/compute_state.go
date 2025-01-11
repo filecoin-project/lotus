@@ -79,7 +79,8 @@ type FilecoinBlockMessages struct {
 	WinCount int64
 }
 
-func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
+func (t *TipSetExecutor) ApplyBlocks(
+	ctx context.Context,
 	sm *stmgr.StateManager,
 	parentEpoch abi.ChainEpoch,
 	pstate cid.Cid,
@@ -88,8 +89,10 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 	r rand.Rand,
 	em stmgr.ExecMonitor,
 	vmTracing bool,
+	cacheStore blockstore.Blockstore,
 	baseFee abi.TokenAmount,
-	ts *types.TipSet) (cid.Cid, cid.Cid, error) {
+	ts *types.TipSet,
+) (cid.Cid, cid.Cid, error) {
 	done := metrics.Timer(ctx, metrics.VMApplyBlocksTotal)
 	defer done()
 
@@ -240,6 +243,13 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 
 			if em != nil {
 				if err := em.MessageApplied(ctx, ts, cm.Cid(), m, r, false); err != nil {
+					log.Debugw("ApplyBlocks ExecMonitor#MessageApplied callback failed", "error", err)
+					if cacheStore != nil {
+						log.Debug("Dumping vm cache blocks to provided cacheStore")
+						if err := vmi.DumpCache(cacheStore); err != nil {
+							return cid.Undef, cid.Undef, xerrors.Errorf("dumping vm cache: %w", err)
+						}
+					}
 					return cid.Undef, cid.Undef, err
 				}
 			}
@@ -296,6 +306,13 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 		}
 	}
 
+	if cacheStore != nil {
+		log.Debug("Dumping vm cache blocks to provided cacheStore")
+		if err := vmi.DumpCache(cacheStore); err != nil {
+			return cid.Undef, cid.Undef, xerrors.Errorf("dumping vm cache: %w", err)
+		}
+	}
+
 	st, err := vmi.Flush(ctx)
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("vm flush failed: %w", err)
@@ -316,7 +333,9 @@ func (t *TipSetExecutor) ExecuteTipSet(ctx context.Context,
 	sm *stmgr.StateManager,
 	ts *types.TipSet,
 	em stmgr.ExecMonitor,
-	vmTracing bool) (stateroot cid.Cid, rectsroot cid.Cid, err error) {
+	vmTracing bool,
+	cacheStore blockstore.Blockstore,
+) (stateroot cid.Cid, rectsroot cid.Cid, err error) {
 	ctx, span := trace.StartSpan(ctx, "computeTipSetState")
 	defer span.End()
 
@@ -364,7 +383,7 @@ func (t *TipSetExecutor) ExecuteTipSet(ctx context.Context,
 	}
 	baseFee := blks[0].ParentBaseFee
 
-	return t.ApplyBlocks(ctx, sm, parentEpoch, pstate, fbmsgs, blks[0].Height, r, em, vmTracing, baseFee, ts)
+	return t.ApplyBlocks(ctx, sm, parentEpoch, pstate, fbmsgs, blks[0].Height, r, em, vmTracing, cacheStore, baseFee, ts)
 }
 
 func (t *TipSetExecutor) StoreEventsAMT(ctx context.Context, cs *store.ChainStore, events []types.Event) (cid.Cid, error) {

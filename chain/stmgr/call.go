@@ -292,12 +292,12 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 
 var errHaltExecution = fmt.Errorf("halt")
 
-func (sm *StateManager) Replay(ctx context.Context, ts *types.TipSet, mcid cid.Cid) (*types.Message, *vm.ApplyRet, error) {
+func (sm *StateManager) Replay(ctx context.Context, ts *types.TipSet, mcid cid.Cid, cacheStore blockstore.Blockstore) (*types.Message, *vm.ApplyRet, error) {
 	var finder messageFinder
 	// message to find
 	finder.mcid = mcid
 
-	_, _, err := sm.tsExec.ExecuteTipSet(ctx, sm, ts, &finder, true)
+	_, _, err := sm.tsExec.ExecuteTipSet(ctx, sm, ts, &finder, true, cacheStore)
 	if err != nil && !errors.Is(err, errHaltExecution) {
 		return nil, nil, xerrors.Errorf("unexpected error during execution: %w", err)
 	}
