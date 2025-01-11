@@ -1262,6 +1262,12 @@ type InvocResult struct {
 	ExecutionTrace types.ExecutionTrace
 	Error          string
 	Duration       time.Duration
+	CachedBlocks   []Block `json:",omitempty"`
+}
+
+type Block struct {
+	Cid  cid.Cid
+	Data []byte
 }
 
 type IpldObject struct {

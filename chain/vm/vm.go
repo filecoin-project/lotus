@@ -686,6 +686,10 @@ func (vm *LegacyVM) Flush(ctx context.Context) (cid.Cid, error) {
 	return root, nil
 }
 
+func (vm *LegacyVM) DumpCache(_ blockstore.Blockstore) error {
+	return fmt.Errorf("not supported")
+}
+
 // ActorStore gets the buffered blockstore associated with the LegacyVM. This includes any temporary
 // blocks produced during this LegacyVM's execution.
 func (vm *LegacyVM) ActorStore(ctx context.Context) adt.Store {

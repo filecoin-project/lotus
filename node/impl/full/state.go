@@ -7,7 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"os"
 	"strconv"
+	"strings"
 
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -29,6 +31,7 @@ import (
 	market5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/market"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
@@ -104,6 +107,10 @@ type StateAPI struct {
 	Consensus     consensus.Consensus
 	TsExec        stmgr.Executor
 }
+
+const ReplayDumpCachedBlocksKey = "LOTUS_REPLAY_DUMP_CACHED_BLOCKS"
+
+var replayDumpCachedBlocks bool
 
 func (a *StateAPI) StateNetworkName(ctx context.Context) (dtypes.NetworkName, error) {
 	return stmgr.GetNetworkName(ctx, a.StateManager, a.Chain.GetHeaviestTipSet().ParentState())
@@ -451,7 +458,11 @@ func (a *StateAPI) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.
 		}
 	}
 
-	m, r, err := a.StateManager.Replay(ctx, ts, msgToReplay)
+	var cacheStore blockstore.Blockstore
+	if replayDumpCachedBlocks {
+		cacheStore = blockstore.NewMemory()
+	}
+	m, r, err := a.StateManager.Replay(ctx, ts, msgToReplay, cacheStore)
 	if err != nil {
 		return nil, err
 	}
@@ -461,7 +472,7 @@ func (a *StateAPI) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.
 		errstr = r.ActorErr.Error()
 	}
 
-	return &api.InvocResult{
+	result := &api.InvocResult{
 		MsgCid:         msgToReplay,
 		Msg:            m,
 		MsgRct:         &r.MessageReceipt,
@@ -469,7 +480,18 @@ func (a *StateAPI) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.
 		ExecutionTrace: r.ExecutionTrace,
 		Error:          errstr,
 		Duration:       r.Duration,
-	}, nil
+	}
+	if replayDumpCachedBlocks {
+		bs := cacheStore.(blockstore.MemBlockstore)
+		result.CachedBlocks = make([]api.Block, 0, len(bs))
+		for _, blk := range bs {
+			result.CachedBlocks = append(result.CachedBlocks, api.Block{
+				Cid:  blk.Cid(),
+				Data: blk.RawData(),
+			})
+		}
+	}
+	return result, nil
 }
 
 func (m *StateModule) StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (a *types.Actor, err error) {
@@ -2082,4 +2104,16 @@ func (a *StateAPI) StateGetNetworkParams(ctx context.Context) (*api.NetworkParam
 			UpgradeTeepHeight:        buildconstants.UpgradeTeepHeight,
 		},
 	}, nil
+}
+
+func init() {
+	replayDumpCachedBlocks = (func() bool {
+		v, _ := os.LookupEnv(ReplayDumpCachedBlocksKey)
+		switch strings.TrimSpace(strings.ToLower(v)) {
+		case "", "0", "false", "no": // Consider these values as "do not enable".
+			return false
+		default:
+			return true
+		}
+	})()
 }
