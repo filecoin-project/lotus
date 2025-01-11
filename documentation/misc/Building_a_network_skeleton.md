@@ -71,7 +71,7 @@ The table below gives an overview of how Lotus and its critical dependencies rel
 There is a network skeleton in Lotus, which bubbles up all the other dependencies, and allows one to run a 2k-network and see that it switches network version from nv(XX-1) --> nvXX
 
 ## Notes
-1. This is the overarching tracking issue for the network skeleton update, but thare are tasks that needed to be completed in other repos as well.  All PRs for this effort can reference this issue.
+1. This is the overarching tracking issue for the network skeleton update, but there are tasks that need to be completed in other repos as well.  All PRs for this effort can reference this issue.
 2. How to create a skeleton in Lotus is documented here: https://github.com/filecoin-project/lotus/blob/master/documentation/misc/Building_a_network_skeleton.md
 
 ```[tasklist]
