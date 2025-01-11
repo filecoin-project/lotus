@@ -2,15 +2,16 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path"
 	"sort"
+	"strings"
 
 	"github.com/fatih/color"
 	blocks "github.com/ipfs/go-block-format"
@@ -23,6 +24,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -112,28 +114,9 @@ var msgCmd = &cli.Command{
 				fmt.Println()
 
 				if res.CachedBlocks != nil {
-					cachedBlocksFile := path.Join(os.TempDir(), msg.Cid().String()+".car")
-					if _, err := os.Stat(cachedBlocksFile); !errors.Is(err, os.ErrNotExist) {
-						return xerrors.Errorf("cached blocks file %s already exists: %w", cachedBlocksFile, err)
+					if err := saveAndInspectBlocks(ctx, res, cctx.App.Writer); err != nil {
+						return err
 					}
-					bs, err := carbstore.OpenReadWrite(cachedBlocksFile, nil, carbstore.WriteAsCarV1(true))
-					if err != nil {
-						return xerrors.Errorf("opening cached blocks file: %w", err)
-					}
-					for _, b := range res.CachedBlocks {
-						bc, err := blocks.NewBlockWithCid(b.Data, b.Cid)
-						if err != nil {
-							return xerrors.Errorf("creating cached block: %w", err)
-						}
-						if err := bs.Put(ctx, bc); err != nil {
-							return xerrors.Errorf("writing cached block: %w", err)
-						}
-					}
-					if err := bs.Close(); err != nil {
-						return xerrors.Errorf("closing cached blocks file: %w", err)
-					}
-					color.Green("Cached blocks written to %s", cachedBlocksFile)
-					fmt.Println()
 				}
 
 				color.Green("Receipt:")
@@ -540,4 +523,115 @@ func gasTracesPerCall(inTrace types.ExecutionTrace) types.ExecutionTrace {
 	}
 	accum(inTrace.Msg.To.String(), inTrace)
 	return outTrace
+}
+
+func saveAndInspectBlocks(ctx context.Context, res *api.InvocResult, out io.Writer) (err error) {
+	cachedBlocksFile := path.Join(os.TempDir(), res.MsgCid.String()+".car")
+	bs, err := carbstore.OpenReadWrite(cachedBlocksFile, nil, carbstore.WriteAsCarV1(true))
+	if err != nil {
+		return xerrors.Errorf("opening cached blocks file: %w", err)
+	}
+
+	defer func() {
+		if cerr := bs.Close(); cerr != nil {
+			err = xerrors.Errorf("closing cached blocks file: %w", cerr)
+		}
+	}()
+
+	for _, b := range res.CachedBlocks {
+		bc, err := blocks.NewBlockWithCid(b.Data, b.Cid)
+		if err != nil {
+			return xerrors.Errorf("creating cached block: %w", err)
+		}
+		if err := bs.Put(ctx, bc); err != nil {
+			return xerrors.Errorf("writing cached block: %w", err)
+		}
+	}
+	color.Green("Cached blocks written to %s", cachedBlocksFile)
+
+	type blkStat struct {
+		cid          cid.Cid
+		knownType    string
+		size         int
+		estimatedGas int
+	}
+
+	var explainBlocks func(descPfx string, trace types.ExecutionTrace) error
+	explainBlocks = func(descPfx string, trace types.ExecutionTrace) error {
+		typ := "Message"
+		if descPfx != "" {
+			typ = "Subcall"
+		}
+
+		blkStats := make([]blkStat, 0, len(res.CachedBlocks))
+		var totalBytes, totalGas int
+
+		for _, ll := range trace.Logs {
+			if strings.HasPrefix(ll, "block_link(") {
+				c, err := cid.Parse(strings.TrimSuffix(strings.TrimPrefix(ll, "block_link("), ")"))
+				if err != nil {
+					return xerrors.Errorf("parsing block cid: %w", err)
+				}
+				blk, err := bs.Get(ctx, c)
+				if err != nil {
+					return xerrors.Errorf("getting block (%s) from cached blocks: %w", c, err)
+				}
+				m, err := matchKnownBlockType(ctx, blk)
+				if err != nil {
+					return xerrors.Errorf("matching block type: %w", err)
+				}
+				size := len(blk.RawData())
+				gas := 172000 + 334000 + 3340*size
+				blkStats = append(blkStats, blkStat{cid: c, knownType: m, size: size, estimatedGas: gas})
+				totalBytes += size
+				totalGas += gas
+			}
+		}
+
+		if len(blkStats) == 0 {
+			return nil
+		}
+
+		_, _ = fmt.Fprintln(out, color.New(color.Bold).Sprint(fmt.Sprintf("%s (%s%s) block writes:", typ, descPfx, trace.Msg.To)))
+		tw := tablewriter.New(
+			tablewriter.Col("CID"),
+			tablewriter.Col("Known Type"),
+			tablewriter.Col("Size", tablewriter.RightAlign()),
+			tablewriter.Col("S%", tablewriter.RightAlign()),
+			tablewriter.Col("Estimated Gas", tablewriter.RightAlign()),
+			tablewriter.Col("G%", tablewriter.RightAlign()),
+		)
+		for _, bs := range blkStats {
+			tw.Write(map[string]interface{}{
+				"CID":           bs.cid,
+				"Known Type":    bs.knownType,
+				"Size":          bs.size,
+				"S%":            fmt.Sprintf("%.2f", float64(bs.size)/float64(totalBytes)*100),
+				"Estimated Gas": bs.estimatedGas,
+				"G%":            fmt.Sprintf("%.2f", float64(bs.estimatedGas)/float64(totalGas)*100),
+			})
+		}
+		tw.Write(map[string]interface{}{
+			"CID":           "Total",
+			"Known Type":    "",
+			"Size":          totalBytes,
+			"S%":            "100.00",
+			"Estimated Gas": totalGas,
+			"G%":            "100.00",
+		})
+		if err := tw.Flush(out, tablewriter.WithBorders()); err != nil {
+			return xerrors.Errorf("flushing table: %w", err)
+		}
+
+		for _, subtrace := range trace.Subcalls {
+			if err := explainBlocks(descPfx+trace.Msg.To.String()+"➜", subtrace); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	if err := explainBlocks("", res.ExecutionTrace); err != nil {
+		return xerrors.Errorf("explaining blocks: %w", err)
+	}
+	return
 }
