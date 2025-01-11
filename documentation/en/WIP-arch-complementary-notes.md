@@ -86,7 +86,7 @@ These edited extracts from the `BlockHeader` show how it's treated as an IPFS bl
 
 This duality permeates the code (and the Filecoin spec for that matter) but it is usually clear within the context to which block we are referring to. Normally the unqualified *block* is reserved for the Filecoin block and we won't usually refer to the IPFS one but only implicitly through the concept of its CID. With enough understanding of both stack's architecture the two definitions can coexist without much confusion as we will abstract away the IPFS layer and just use the CID as an identifier that we know is unique for two sequences of different *raw* byte strings.
 
-(FIXME: We use to do this presentation when talking about `gossipsub` topics and incoming blocks, and had to deal with, besides the block ambiguity, a similar confusion with the *message* term, used in libp2p to name anything that comes through the network, needing to present the extremely confusing hierarchy of a libp2p message containing a Filecoin block, identified by a IPFS block CID, containing Filecoin messages.)
+(FIXME: We use to do this presentation when talking about `gossipsub` topics and incoming blocks, and had to deal with, besides the block ambiguity, a similar confusion with the *message* term, used in libp2p to name anything that comes through the network, needing to present the extremely confusing hierarchy of a libp2p message containing a Filecoin block, identified by an IPFS block CID, containing Filecoin messages.)
 
 FIXME: Move the following tipset definition to sync or wherever is most needed, to avoid making this more confusing.
 
@@ -124,7 +124,7 @@ nc -v -z 127.0.0.1 1234
 # Start daemon and turn off the logs to not clutter the command line.
 bash -c "lotus daemon &" &&
   lotus wait-api &&
-  lotus log set-level error # Or a env.var in the daemon command.
+  lotus log set-level error # Or an env.var in the daemon command.
 
 nc -v -z 127.0.0.1 1234
 # Connection to 127.0.0.1 1234 port [tcp/*] succeeded!
