@@ -8483,16 +8483,49 @@
                                                 "tt": 60000000000
                                             }
                                         ],
-                                        "Subcalls": null
+                                        "Subcalls": null,
+                                        "Logs": [
+                                            "string value"
+                                        ]
                                     }
+                                ],
+                                "Logs": [
+                                    "string value"
                                 ]
                             },
                             "Error": "string value",
-                            "Duration": 60000000000
+                            "Duration": 60000000000,
+                            "CachedBlocks": [
+                                {
+                                    "Cid": {
+                                        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+                                    },
+                                    "Data": "Ynl0ZSBhcnJheQ=="
+                                }
+                            ]
                         }
                     ],
                     "additionalProperties": false,
                     "properties": {
+                        "CachedBlocks": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "Cid": {
+                                        "title": "Content Identifier",
+                                        "type": "string"
+                                    },
+                                    "Data": {
+                                        "media": {
+                                            "binaryEncoding": "base64"
+                                        },
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            },
+                            "type": "array"
+                        },
                         "Duration": {
                             "title": "number",
                             "type": "number"
@@ -8566,6 +8599,12 @@
                                         }
                                     },
                                     "type": "object"
+                                },
+                                "Logs": {
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "type": "array"
                                 },
                                 "Msg": {
                                     "additionalProperties": false,
@@ -11197,16 +11236,49 @@
                                                 "tt": 60000000000
                                             }
                                         ],
-                                        "Subcalls": null
+                                        "Subcalls": null,
+                                        "Logs": [
+                                            "string value"
+                                        ]
                                     }
+                                ],
+                                "Logs": [
+                                    "string value"
                                 ]
                             },
                             "Error": "string value",
-                            "Duration": 60000000000
+                            "Duration": 60000000000,
+                            "CachedBlocks": [
+                                {
+                                    "Cid": {
+                                        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+                                    },
+                                    "Data": "Ynl0ZSBhcnJheQ=="
+                                }
+                            ]
                         }
                     ],
                     "additionalProperties": false,
                     "properties": {
+                        "CachedBlocks": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "Cid": {
+                                        "title": "Content Identifier",
+                                        "type": "string"
+                                    },
+                                    "Data": {
+                                        "media": {
+                                            "binaryEncoding": "base64"
+                                        },
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            },
+                            "type": "array"
+                        },
                         "Duration": {
                             "title": "number",
                             "type": "number"
@@ -11280,6 +11352,12 @@
                                         }
                                     },
                                     "type": "object"
+                                },
+                                "Logs": {
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "type": "array"
                                 },
                                 "Msg": {
                                     "additionalProperties": false,

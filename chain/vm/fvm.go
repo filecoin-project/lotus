@@ -538,6 +538,10 @@ func (vm *FVM) Flush(ctx context.Context) (cid.Cid, error) {
 	return vm.fvm.Flush()
 }
 
+func (vm *FVM) DumpCache(cacheStore blockstore.Blockstore) error {
+	return vm.fvm.DumpCache(cacheStore)
+}
+
 type dualExecutionFVM struct {
 	main  *FVM
 	debug *FVM
@@ -606,6 +610,10 @@ func (vm *dualExecutionFVM) ApplyImplicitMessage(ctx context.Context, msg *types
 
 func (vm *dualExecutionFVM) Flush(ctx context.Context) (cid.Cid, error) {
 	return vm.main.Flush(ctx)
+}
+
+func (vm *dualExecutionFVM) DumpCache(cacheStore blockstore.Blockstore) error {
+	return vm.main.DumpCache(cacheStore)
 }
 
 // Passing this as a pointer of structs has proven to be an enormous PiTA; hence this code.
