@@ -285,8 +285,9 @@ func main() {
 						}
 					}
 
-					rc1Date := c.String("rc1-date")
 					releaseDateStringRegexp := regexp.MustCompile(releaseDateStringPattern)
+
+					rc1Date := c.String("rc1-date")
 					if rc1Date != "TBD" {
 						matches := releaseDateStringRegexp.FindStringSubmatch(rc1Date)
 						if matches == nil {

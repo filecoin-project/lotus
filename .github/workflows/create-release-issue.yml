@@ -35,9 +35,11 @@ on:
       rc1-date:
         description: "What's the expected shipping date for RC1?"
         required: false
+        default: "TBD"
       stable-date:
         description: "What's the expected shipping date for the stable release?"
         required: false
+        default: "TBD"
 
 defaults:
   run:
@@ -58,7 +60,7 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           go run cmd/release/main.go create-issue \
-            --create-on-github true \
+            --create-on-github=true \
             --type "${{ github.event.inputs.type }}" \
             --tag "${{ github.event.inputs.tag }}" \
             --level "${{ github.event.inputs.level }}" \
