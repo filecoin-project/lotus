@@ -311,7 +311,7 @@ var cronQueueCountCmd = &cli.Command{
 			}
 			var event power.CronEvent
 			if err := events.ForEach(&event, func(epoch int64) error {
-				fmt.Printf("Epoch: %s, Miner: %s, Method: %s\n", epoch, event.MinerAddr)
+				fmt.Printf("Epoch: %s, Miner: %s\n", epochStr, event.MinerAddr)
 				return nil
 			}); err != nil {
 				return xerrors.Errorf("failed to iterate cron events: %w", err)
