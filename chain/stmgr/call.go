@@ -39,6 +39,14 @@ var ErrExpensiveFork = errors.New("refusing explicit call due to state fork at e
 // tipset's parent. In the presence of null blocks, the height at which the message is invoked may
 // be less than the specified tipset.
 func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*api.InvocResult, error) {
+	buffStore := blockstore.NewTieredBstore(sm.cs.StateBlockstore(), blockstore.NewMemorySync())
+	return sm.CallWithStore(ctx, msg, ts, buffStore)
+}
+
+// CallWithStore applies the given message to the given tipset's parent state, at the epoch following the
+// tipset's parent. In the presence of null blocks, the height at which the message is invoked may
+// be less than the specified tipset.
+func (sm *StateManager) CallWithStore(ctx context.Context, msg *types.Message, ts *types.TipSet, bstore blockstore.Blockstore) (*api.InvocResult, error) {
 	// Copy the message as we modify it below.
 	msgCopy := *msg
 	msg = &msgCopy
@@ -55,13 +63,13 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 	if msg.Value == types.EmptyInt {
 		msg.Value = types.NewInt(0)
 	}
-
-	return sm.callInternal(ctx, msg, nil, ts, cid.Undef, sm.GetNetworkVersion, false, execSameSenderMessages)
+	return sm.callInternal(ctx, msg, nil, ts, cid.Undef, sm.GetNetworkVersion, false, execSameSenderMessages, bstore)
 }
 
 // ApplyOnStateWithGas applies the given message on top of the given state root with gas tracing enabled
 func (sm *StateManager) ApplyOnStateWithGas(ctx context.Context, stateCid cid.Cid, msg *types.Message, ts *types.TipSet) (*api.InvocResult, error) {
-	return sm.callInternal(ctx, msg, nil, ts, stateCid, sm.GetNetworkVersion, true, execNoMessages)
+	buffStore := blockstore.NewTieredBstore(sm.cs.StateBlockstore(), blockstore.NewMemorySync())
+	return sm.callInternal(ctx, msg, nil, ts, stateCid, sm.GetNetworkVersion, true, execNoMessages, buffStore)
 }
 
 // CallWithGas calculates the state for a given tipset, and then applies the given message on top of that state.
@@ -72,8 +80,8 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 	} else {
 		strategy = execSameSenderMessages
 	}
-
-	return sm.callInternal(ctx, msg, priorMsgs, ts, cid.Undef, sm.GetNetworkVersion, true, strategy)
+	buffStore := blockstore.NewTieredBstore(sm.cs.StateBlockstore(), blockstore.NewMemorySync())
+	return sm.callInternal(ctx, msg, priorMsgs, ts, cid.Undef, sm.GetNetworkVersion, true, strategy, buffStore)
 }
 
 // CallAtStateAndVersion allows you to specify a message to execute on the given stateCid and network version.
@@ -84,14 +92,24 @@ func (sm *StateManager) CallAtStateAndVersion(ctx context.Context, msg *types.Me
 	nvGetter := func(context.Context, abi.ChainEpoch) network.Version {
 		return v
 	}
-	return sm.callInternal(ctx, msg, nil, nil, stateCid, nvGetter, true, execSameSenderMessages)
+	buffStore := blockstore.NewTieredBstore(sm.cs.StateBlockstore(), blockstore.NewMemorySync())
+	return sm.callInternal(ctx, msg, nil, nil, stateCid, nvGetter, true, execSameSenderMessages, buffStore)
 }
 
 //   - If no tipset is specified, the first tipset without an expensive migration or one in its parent is used.
 //   - If executing a message at a given tipset or its parent would trigger an expensive migration, the call will
 //     fail with ErrExpensiveFork.
-func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet, stateCid cid.Cid,
-	nvGetter rand.NetworkVersionGetter, checkGas bool, strategy execMessageStrategy) (*api.InvocResult, error) {
+func (sm *StateManager) callInternal(
+	ctx context.Context,
+	msg *types.Message,
+	priorMsgs []types.ChainMsg,
+	ts *types.TipSet,
+	stateCid cid.Cid,
+	nvGetter rand.NetworkVersionGetter,
+	checkGas bool,
+	strategy execMessageStrategy,
+	bstore blockstore.Blockstore,
+) (*api.InvocResult, error) {
 	ctx, span := trace.StartSpan(ctx, "statemanager.callInternal")
 	defer span.End()
 
@@ -151,13 +169,12 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 		)
 	}
 
-	buffStore := blockstore.NewTieredBstore(sm.cs.StateBlockstore(), blockstore.NewMemorySync())
 	vmopt := &vm.VMOpts{
 		StateBase:      stateCid,
 		Epoch:          ts.Height(),
 		Timestamp:      ts.MinTimestamp(),
 		Rand:           rand.NewStateRand(sm.cs, ts.Cids(), sm.beacon, nvGetter),
-		Bstore:         buffStore,
+		Bstore:         bstore,
 		Actors:         sm.tsExec.NewActorRegistry(),
 		Syscalls:       sm.Syscalls,
 		CircSupplyCalc: sm.GetVMCirculatingSupply,
@@ -207,7 +224,7 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 		}
 	}
 
-	stTree, err := state.LoadStateTree(cbor.NewCborStore(buffStore), stateCid)
+	stTree, err := state.LoadStateTree(cbor.NewCborStore(bstore), stateCid)
 	if err != nil {
 		return nil, xerrors.Errorf("loading state tree: %w", err)
 	}
