@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -8,13 +10,16 @@ import (
 	"github.com/ipfs/go-cid"
 	ipldcbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/urfave/cli/v2"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/builtin"
 	miner11 "github.com/filecoin-project/go-state-types/builtin/v11/miner"
 	"github.com/filecoin-project/go-state-types/builtin/v11/util/adt"
+	power "github.com/filecoin-project/go-state-types/builtin/v15/power"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build/buildconstants"
@@ -28,6 +33,7 @@ var cronWcCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		minerDeadlineCronCountCmd,
 		minerDeadlinePartitionMeasurementCmd,
+		cronQueueCountCmd,
 	},
 }
 
@@ -266,6 +272,64 @@ var minerDeadlinePartitionMeasurementCmd = &cli.Command{
 			return err
 		}
 		return nil
+	},
+}
+
+var cronQueueCountCmd = &cli.Command{
+	Name:        "queue",
+	Description: "list all entries in the cron queue",
+	Action: func(c *cli.Context) error {
+		n, acloser, err := lcli.GetFullNodeAPI(c)
+		if err != nil {
+			return err
+		}
+		defer acloser()
+		ctx := lcli.ReqContext(c)
+
+		bs := ReadOnlyAPIBlockstore{n}
+		adtStore := adt.WrapStore(ctx, ipldcbor.NewCborStore(&bs))
+
+		// Get power actor state
+		powerActor, err := n.StateGetActor(ctx, builtin.StoragePowerActorAddr, types.EmptyTSK)
+		if err != nil {
+			return xerrors.Errorf("failed to get power actor: %w", err)
+		}
+
+		var powerState power.State
+		if err := adtStore.Get(ctx, powerActor.Head, &powerState); err != nil {
+			return xerrors.Errorf("failed to load power state: %w", err)
+		}
+
+		// Load cron queue
+		q, err := adt.AsMap(adtStore, powerState.CronEventQueue, power.CronQueueHamtBitwidth)
+		if err != nil {
+			return xerrors.Errorf("failed to load cron queue hamt: %w", err)
+		}
+		amtRoot := cbg.CborCid{}
+		if err := q.ForEach(&amtRoot, func(epoch string) error {
+			epochInt, err := binary.ReadVarint(bytes.NewReader([]byte(epoch)))
+			if err != nil {
+				return xerrors.Errorf("failed to parse epoch: %w", err)
+			}
+			events, err := adt.AsArray(adtStore, cid.Cid(amtRoot), power.CronQueueAmtBitwidth)
+			if err != nil {
+				return xerrors.Errorf("failed to load cron queue amt: %w", err)
+			}
+			var event power.CronEvent
+			if err := events.ForEach(&event, func(i int64) error {
+				fmt.Printf("Epoch: %d, Miner: %s\n", epochInt, event.MinerAddr)
+				return nil
+			}); err != nil {
+				return xerrors.Errorf("failed to iterate cron events: %w", err)
+			}
+
+			return nil
+
+		}); err != nil {
+			return xerrors.Errorf("failed to iterate cron events: %w", err)
+		}
+		return nil
+
 	},
 }
 
