@@ -307,7 +307,7 @@ var cronQueueCountCmd = &cli.Command{
 		}
 		amtRoot := cbg.CborCid{}
 		if err := q.ForEach(&amtRoot, func(epoch string) error {
-			epochInt, err := binary.ReadUvarint(bytes.NewReader([]byte(epoch)))
+			epochInt, err := binary.ReadVarint(bytes.NewReader([]byte(epoch)))
 			if err != nil {
 				return xerrors.Errorf("failed to parse epoch: %w", err)
 			}
