@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -304,14 +306,18 @@ var cronQueueCountCmd = &cli.Command{
 			return xerrors.Errorf("failed to load cron queue hamt: %w", err)
 		}
 		amtRoot := cbg.CborCid{}
-		if err := q.ForEach(&amtRoot, func(epochStr string) error {
+		if err := q.ForEach(&amtRoot, func(epoch string) error {
+			epochInt, err := binary.ReadUvarint(bytes.NewReader([]byte(epoch)))
+			if err != nil {
+				return xerrors.Errorf("failed to parse epoch: %w", err)
+			}
 			events, err := adt.AsArray(adtStore, cid.Cid(amtRoot), power.CronQueueAmtBitwidth)
 			if err != nil {
 				return xerrors.Errorf("failed to load cron queue amt: %w", err)
 			}
 			var event power.CronEvent
-			if err := events.ForEach(&event, func(epoch int64) error {
-				fmt.Printf("Epoch: %s, Miner: %s\n", epochStr, event.MinerAddr)
+			if err := events.ForEach(&event, func(i int64) error {
+				fmt.Printf("Epoch: %d, Miner: %s\n", epochInt, event.MinerAddr)
 				return nil
 			}); err != nil {
 				return xerrors.Errorf("failed to iterate cron events: %w", err)
