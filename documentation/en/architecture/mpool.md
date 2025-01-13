@@ -70,7 +70,7 @@ This should be used with extreme care and only in the case of errors during head
 would leave the mpool in an inconsistent state.
 
 
-## Command Line Interfae
+## Command Line Interface
 
 The lotus command line interface defines an `mpool` command which
 allows a user to interact with the mpool.
@@ -111,7 +111,7 @@ Gets or sets the current mpool configuration.
 Unconditionally clears pending messages from the mpool.
 If the `--local` flag is passed, then local messages are also cleared; otherwise local messages are retained.
 
-*Warning*: this command should only be used in the case of head change errors leaving the mpool in an  state.
+*Warning*: this command should only be used in the case of head change errors leaving the mpool in a state.
 
 ## Configuration
 
@@ -172,5 +172,5 @@ selection algorithm is used instead that simply picks dependent chains of
 maximum reward.  Note that pending message chains from priority addresses
 are always selected, regardless of their profitability.
 
-For algorithm details, please prefer to the implementation in
+For algorithm details, please refer to the implementation in
 `chain/messagepool/selection.go`.
