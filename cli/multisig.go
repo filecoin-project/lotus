@@ -89,7 +89,7 @@ var msigCreateCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.NArg() < 1 {
+		if cctx.NArg() != 1 {
 			return IncorrectNumArgs(cctx)
 		}
 
@@ -399,7 +399,7 @@ var msigProposeCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.NArg() < 3 {
+		if cctx.NArg() != 3 {
 			return ShowHelp(cctx, fmt.Errorf("must pass at least multisig address, destination, and value"))
 		}
 
@@ -521,7 +521,7 @@ var msigApproveCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.NArg() < 2 {
+		if cctx.NArg() != 2 {
 			return ShowHelp(cctx, fmt.Errorf("must pass at least multisig address and message ID"))
 		}
 
@@ -658,7 +658,7 @@ var msigCancelCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.NArg() < 2 {
+		if cctx.NArg() != 2 {
 			return ShowHelp(cctx, fmt.Errorf("must pass at least multisig address and message ID"))
 		}
 
