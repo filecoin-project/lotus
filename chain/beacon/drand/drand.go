@@ -100,7 +100,6 @@ func NewDrandBeacon(genesisTs, interval uint64, ps *pubsub.PubSub, config dtypes
 		}
 		hc.(DrandHTTPClient).SetUserAgent("drand-client-lotus/" + build.NodeBuildVersion)
 		clients = append(clients, hc)
-
 	}
 
 	opts := []dclient.Option{
@@ -113,6 +112,18 @@ func NewDrandBeacon(genesisTs, interval uint64, ps *pubsub.PubSub, config dtypes
 		opts = append(opts, gclient.WithPubsub(ps))
 	} else {
 		log.Info("drand beacon without pubsub")
+		if len(clients) == 0 {
+			// This hack is necessary to convince a drand beacon to start without any clients. For
+			// historical becaons we need them to be able to verify old entries but we don't need to fetch
+			// new ones. With pubsub enabled, it acts as a client so drand is happy, but if we don't have
+			// pubsub then drand will complain about old beacons withotu clients. So we make one that
+			// it'll think is a valid client and that it won't speed test (hence the need to mark it as
+			// as "watcher").
+			historicalClient := &historicalBeaconClient{}
+			opts = append(opts, dclient.WithWatcher(func(chainInfo *dchain.Info, cache dclient.Cache) (dclient.Watcher, error) {
+				return historicalClient, nil
+			}))
+		}
 	}
 
 	client, err := dclient.Wrap(clients, opts...)
@@ -239,13 +250,41 @@ var _ beacon.RandomBeacon = (*DrandBeacon)(nil)
 
 func BeaconScheduleFromDrandSchedule(dcs dtypes.DrandSchedule, genesisTime uint64, ps *pubsub.PubSub) (beacon.Schedule, error) {
 	shd := beacon.Schedule{}
-	for _, dc := range dcs {
+	for i, dc := range dcs {
 		bc, err := NewDrandBeacon(genesisTime, buildconstants.BlockDelaySecs, ps, dc.Config)
 		if err != nil {
-			return nil, xerrors.Errorf("creating drand beacon: %w", err)
+			return nil, xerrors.Errorf("%d creating drand beacon: %w", i, err)
 		}
 		shd = append(shd, beacon.BeaconPoint{Start: dc.Start, Beacon: bc})
 	}
 
 	return shd, nil
+}
+
+var _ dclient.Client = historicalBeaconClient{}
+
+// historicalBeaconClient is a drand client that doesn't actually do anything. It's used when
+// we don't have a drand network to connect to but still need to provide a beacon client.
+// We don't expect calls through to the client to be made since we should only be verifying old
+// randomness, not fetching it.
+type historicalBeaconClient struct{}
+
+func (h historicalBeaconClient) Get(ctx context.Context, round uint64) (dclient.Result, error) {
+	return nil, xerrors.Errorf("no historical randomness available")
+}
+
+func (h historicalBeaconClient) Watch(ctx context.Context) <-chan dclient.Result {
+	return nil
+}
+
+func (h historicalBeaconClient) Info(ctx context.Context) (*dchain.Info, error) {
+	return nil, xerrors.Errorf("no historical randomness available")
+}
+
+func (h historicalBeaconClient) RoundAt(time.Time) uint64 {
+	return 0
+}
+
+func (h historicalBeaconClient) Close() error {
+	return nil
 }
