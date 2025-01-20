@@ -29,7 +29,6 @@ This Lotus release candidate introduces several new features and improvements, i
 - Add a new utility to the `lotus-shed msg` tool which pretty-prints gas summaries to tables, broken down into compute and storage gas totals and percentages ([filecoin-project/lotus#12817](https://github.com/filecoin-project/lotus/pull/12817))
 - Generate the cli docs directly from the code instead compiling and executing binaries' `help` output. ([filecoin-project/lotus#12717](https://github.com/filecoin-project/lotus/pull/12717))
 - Refactored Ethereum API implementation into smaller, more manageable modules in a new `github.com/filecoin-project/lotus/node/impl/eth` package. ([filecoin-project/lotus#12796](https://github.com/filecoin-project/lotus/pull/12796))
-- Add `lotus-shed msg --gas-stats` to show summarised gas stats for a given message. ([filecoin-project/lotus#12817](https://github.com/filecoin-project/lotus/pull/12817))
 - Add F3GetCertificate & F3GetLatestCertificate to the gateway. ([filecoin-project/lotus#12778](https://github.com/filecoin-project/lotus/pull/12778))
 
 ## 🐛 Bug Fix Highlights
@@ -40,8 +39,6 @@ This Lotus release candidate introduces several new features and improvements, i
 - Gracefully handle EAM CreateAccount failures in `EthTraceBlock` (`trace_block`) and `EthTraceTransaction` (`trace_transaction`) calls. ([filecoin-project/lotus#12730](https://github.com/filecoin-project/lotus/pull/12730))
 - Make f3 gen power command being non-deterministic ([filecoin-project/lotus#12764](https://github.com/filecoin-project/lotus/pull/12764))
 - Resolve a bug in sync by preventing checkpoint expansion ([filecoin-project/lotus#12747](https://github.com/filecoin-project/lotus/pull/12747))
-- Don't decode return value in EAM create error case ([filecoin-project/lotus#12730](https://github.com/filecoin-project/lotus/pull/12730))
-- GetMsgInfo returns an ErrNotFound when there are no rows ([filecoin-project/lotus#12680](https://github.com/filecoin-project/lotus/pull/12680))
 - Fix issue in backfillIndex where error handling could lead to a potential panic ([filecoin-project/lotus#12813](https://github.com/filecoin-project/lotus/pull/12813))
 
 ## 📝 Changelog
