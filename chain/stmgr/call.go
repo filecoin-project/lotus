@@ -28,7 +28,7 @@ import (
 type execMessageStrategy int
 
 const (
-	execNoMessages         execMessageStrategy = iota // apply no prior or current tipset messages
+	execNoMessages         execMessageStrategy = iota // apply no prior or current tipset messages unless supplied
 	execAllMessages                                   // apply all prior and current tipset messages
 	execSameSenderMessages                            // apply all prior messages and any current tipset messages from the same sender
 )
@@ -60,8 +60,8 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 }
 
 // ApplyOnStateWithGas applies the given message on top of the given state root with gas tracing enabled
-func (sm *StateManager) ApplyOnStateWithGas(ctx context.Context, stateCid cid.Cid, msg *types.Message, ts *types.TipSet) (*api.InvocResult, error) {
-	return sm.callInternal(ctx, msg, nil, ts, stateCid, sm.GetNetworkVersion, true, execNoMessages)
+func (sm *StateManager) ApplyOnStateWithGas(ctx context.Context, stateCid cid.Cid, msg *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet) (*api.InvocResult, error) {
+	return sm.callInternal(ctx, msg, priorMsgs, ts, stateCid, sm.GetNetworkVersion, true, execNoMessages)
 }
 
 // CallWithGas calculates the state for a given tipset, and then applies the given message on top of that state.
@@ -174,7 +174,7 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 
 	switch strategy {
 	case execNoMessages:
-		// Do nothing
+		// Do nothing, unless we have prior messages to apply
 	case execAllMessages, execSameSenderMessages:
 		tsMsgs, err := sm.cs.MessagesForTipset(ctx, ts)
 		if err != nil {
@@ -190,13 +190,19 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 					filteredTsMsgs = append(filteredTsMsgs, tsMsg)
 				}
 			}
+			log.Debugf("applying %d additional messages from same sender", len(filteredTsMsgs))
 			priorMsgs = append(filteredTsMsgs, priorMsgs...)
 		}
+	}
+
+	if len(priorMsgs) > 0 {
 		for i, m := range priorMsgs {
-			_, err = vmi.ApplyMessage(ctx, m)
+			ret, err := vmi.ApplyMessage(ctx, m)
 			if err != nil {
 				return nil, xerrors.Errorf("applying prior message (%d, %s): %w", i, m.Cid(), err)
 			}
+			// TODO: return this information to the caller
+			log.Debugf("applied prior message %s: %d [%x]: %s", m.Cid(), ret.MessageReceipt.ExitCode, ret.MessageReceipt.Return, ret.ActorErr)
 		}
 
 		// We flush to get the VM's view of the state tree after applying the above messages

@@ -14,7 +14,9 @@ import (
 )
 
 func init() {
-	_ = logging.SetLogLevel("*", "INFO")
+	if _, set := os.LookupEnv("GOLOG_LOG_LEVEL"); !set {
+		_ = logging.SetLogLevel("*", "INFO")
+	}
 
 	// These values mimic the values set in the builtin-actors when configured to use the "testing" network. Specifically:
 	// - All proof types.

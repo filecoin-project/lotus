@@ -16,10 +16,12 @@ import (
 var log = logging.Logger("lotus-shed")
 
 func main() {
-	_ = logging.SetLogLevel("*", "INFO")
-	_ = logging.SetLogLevelRegex("badger*", "ERROR")
-	_ = logging.SetLogLevel("drand", "ERROR")
-	_ = logging.SetLogLevel("chainstore", "ERROR")
+	if _, set := os.LookupEnv("GOLOG_LOG_LEVEL"); !set {
+		_ = logging.SetLogLevel("*", "INFO")
+		_ = logging.SetLogLevelRegex("badger*", "ERROR")
+		_ = logging.SetLogLevel("drand", "ERROR")
+		_ = logging.SetLogLevel("chainstore", "ERROR")
+	}
 
 	local := []*cli.Command{
 		addressCmd,
@@ -91,6 +93,7 @@ func main() {
 		blockCmd,
 		adlCmd,
 		f3Cmd,
+		gasSimCmd,
 	}
 
 	app := &cli.App{
