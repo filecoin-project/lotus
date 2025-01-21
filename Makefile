@@ -348,8 +348,7 @@ snap: lotus lotus-miner lotus-worker  ## Build snap package
 	snapcraft
 	# snapcraft upload ./lotus_*.snap
 
-# separate from gen because it needs binaries
-docsgen-cli: lotus lotus-miner lotus-worker  ## Generate CLI documentation
+docsgen-cli:  ## Generate CLI documentation
 	$(GOCC) run ./scripts/docsgen-cli
 .PHONY: docsgen-cli
 
