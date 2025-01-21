@@ -18,7 +18,7 @@ See https://github.com/filecoin-project/lotus/blob/release/v1.32.0/CHANGELOG.md
 This Lotus release candidate introduces several new features and improvements, including JSON output for tipsets in `lotus chain list` cmd, enhanced logging during network upgrade migrations, and additional Bootstrap nodes. It also includes a refactored Ethereum API implementation into smaller, more manageable modules in a new `github.com/filecoin-project/lotus/node/impl/eth` package, as well as adding network name as a tag in most metrics - making it easier to create Graphana Dashboards for multiple networks. Please review the upgrade warnings and documentation for any important changes affecting RPC providers, node operators, and storage providers.
 
 ## ☢️ Upgrade Warnings ☢️
-- If you are running the v1.30.x version of Lotus, please go through the Upgrade Warnings section for the [v1.30.* releases](https://github.com/filecoin-project/lotus/releases/tag/v1.31.0) and [v1.31.*](https://github.com/filecoin-project/lotus/releases/tag/v1.31.0) before upgrading to this release.
+- If you are running the v1.30.x version of Lotus, please go through the Upgrade Warnings section for the [v1.30.* releases](https://github.com/filecoin-project/lotus/releases/tag/v1.30.0) and [v1.31.*](https://github.com/filecoin-project/lotus/releases/tag/v1.31.0) before upgrading to this release.
 
 ## ⭐ Feature/Improvement Highlights:
 - Add json output of tipsets to `lotus chain list`. ([filecoin-project/lotus#12691](https://github.com/filecoin-project/lotus/pull/12691))
@@ -30,6 +30,7 @@ This Lotus release candidate introduces several new features and improvements, i
 - Generate the cli docs directly from the code instead compiling and executing binaries' `help` output. ([filecoin-project/lotus#12717](https://github.com/filecoin-project/lotus/pull/12717))
 - Refactored Ethereum API implementation into smaller, more manageable modules in a new `github.com/filecoin-project/lotus/node/impl/eth` package. ([filecoin-project/lotus#12796](https://github.com/filecoin-project/lotus/pull/12796))
 - Add F3GetCertificate & F3GetLatestCertificate to the gateway. ([filecoin-project/lotus#12778](https://github.com/filecoin-project/lotus/pull/12778))
+- Add `StateMarketProposalPending` API / `lotus state market proposal-pending` CLI. ([filecoin-project/lotus#12724](https://github.com/filecoin-project/lotus/pull/12724))
 
 ## 🐛 Bug Fix Highlights
 - Remove IPNI advertisement relay over pubsub via Lotus node as it now has been deprecated. ([filecoin-project/lotus#12768](https://github.com/filecoin-project/lotus/pull/12768)
