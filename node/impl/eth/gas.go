@@ -282,7 +282,7 @@ func (e *ethGas) applyMessage(ctx context.Context, msg *types.Message, tsk types
 	if err != nil {
 		return nil, xerrors.Errorf("cannot get tipset state: %w", err)
 	}
-	res, err = e.stateManager.ApplyOnStateWithGas(ctx, st, msg, ts)
+	res, err = e.stateManager.ApplyOnStateWithGas(ctx, st, msg, nil, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("ApplyWithGasOnState failed: %w", err)
 	}

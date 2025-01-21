@@ -96,39 +96,8 @@ var msgCmd = &cli.Command{
 			}
 
 			if cctx.Bool("gas-stats") {
-				var printTrace func(descPfx string, trace types.ExecutionTrace) error
-				printTrace = func(descPfx string, trace types.ExecutionTrace) error {
-					typ := "Message"
-					if descPfx != "" {
-						typ = "Subcall"
-					}
-					_, _ = fmt.Fprintln(cctx.App.Writer, color.New(color.Bold).Sprint(fmt.Sprintf("%s (%s%s) gas charges:", typ, descPfx, trace.Msg.To)))
-					if err := statsTable(cctx.App.Writer, trace, false); err != nil {
-						return err
-					}
-					for _, subtrace := range trace.Subcalls {
-						_, _ = fmt.Fprintln(cctx.App.Writer)
-						if err := printTrace(descPfx+trace.Msg.To.String()+"➜", subtrace); err != nil {
-							return err
-						}
-					}
-					return nil
-				}
-				if err := printTrace("", res.ExecutionTrace); err != nil {
+				if err := printGasStats(cctx.App.Writer, res.ExecutionTrace); err != nil {
 					return err
-				}
-				if len(res.ExecutionTrace.Subcalls) > 0 {
-					_, _ = fmt.Fprintln(cctx.App.Writer)
-					_, _ = fmt.Fprintln(cctx.App.Writer, color.New(color.Bold).Sprint("Total gas charges:"))
-					if err := statsTable(cctx.App.Writer, res.ExecutionTrace, true); err != nil {
-						return err
-					}
-					perCallTrace := gasTracesPerCall(res.ExecutionTrace)
-					_, _ = fmt.Fprintln(cctx.App.Writer)
-					_, _ = fmt.Fprintln(cctx.App.Writer, color.New(color.Bold).Sprint("Gas charges per call:"))
-					if err := statsTable(cctx.App.Writer, perCallTrace, false); err != nil {
-						return err
-					}
 				}
 			}
 		}
@@ -229,6 +198,7 @@ func printMessage(cctx *cli.Context, msg *types.Message) error {
 
 	fmt.Println("---")
 	color.Green("Message Details:")
+	fmt.Println("Version:", msg.Version)
 	fmt.Println("Value:", types.FIL(msg.Value))
 	fmt.Println("Max Fees:", types.FIL(msg.RequiredFunds()))
 	fmt.Println("Max Total Cost:", types.FIL(big.Add(msg.RequiredFunds(), msg.Value)))
@@ -396,7 +366,12 @@ func messageFromCID(cctx *cli.Context, c cid.Cid) (types.ChainMsg, error) {
 type gasTally struct {
 	storageGas int64
 	computeGas int64
+	totalGas   int64 // not necessarily C+S, for some reason?
 	count      int
+}
+
+func (g gasTally) Equal(other gasTally) bool {
+	return g.storageGas == other.storageGas && g.computeGas == other.computeGas && g.totalGas == other.totalGas && g.count == other.count
 }
 
 func accumGasTallies(charges map[string]*gasTally, totals *gasTally, trace types.ExecutionTrace, recurse bool) {
@@ -407,9 +382,11 @@ func accumGasTallies(charges map[string]*gasTally, totals *gasTally, trace types
 		}
 		charges[name].computeGas += charge.ComputeGas
 		charges[name].storageGas += charge.StorageGas
+		charges[name].totalGas += charge.TotalGas
 		charges[name].count++
 		totals.computeGas += charge.ComputeGas
 		totals.storageGas += charge.StorageGas
+		totals.totalGas += charge.TotalGas
 		totals.count++
 	}
 	if recurse {
@@ -420,6 +397,13 @@ func accumGasTallies(charges map[string]*gasTally, totals *gasTally, trace types
 }
 
 func statsTable(out io.Writer, trace types.ExecutionTrace, recurse bool) error {
+	totals := &gasTally{}
+	charges := make(map[string]*gasTally)
+	accumGasTallies(charges, totals, trace, recurse)
+	return statsTableForCharges(out, charges, totals)
+}
+
+func statsTableForCharges(out io.Writer, charges map[string]*gasTally, totals *gasTally) error {
 	tw := tablewriter.New(
 		tablewriter.Col("Type"),
 		tablewriter.Col("Count", tablewriter.RightAlign()),
@@ -430,10 +414,6 @@ func statsTable(out io.Writer, trace types.ExecutionTrace, recurse bool) error {
 		tablewriter.Col("Total Gas", tablewriter.RightAlign()),
 		tablewriter.Col("T%", tablewriter.RightAlign()),
 	)
-
-	totals := &gasTally{}
-	charges := make(map[string]*gasTally)
-	accumGasTallies(charges, totals, trace, recurse)
 
 	// Sort by name
 	names := make([]string, 0, len(charges))
@@ -451,8 +431,8 @@ func statsTable(out io.Writer, trace types.ExecutionTrace, recurse bool) error {
 			"S%":          fmt.Sprintf("%.2f", float64(charge.storageGas)/float64(totals.storageGas)*100),
 			"Compute Gas": charge.computeGas,
 			"C%":          fmt.Sprintf("%.2f", float64(charge.computeGas)/float64(totals.computeGas)*100),
-			"Total Gas":   charge.storageGas + charge.computeGas,
-			"T%":          fmt.Sprintf("%.2f", float64(charge.storageGas+charge.computeGas)/float64(totals.storageGas+totals.computeGas)*100),
+			"Total Gas":   charge.totalGas,
+			"T%":          fmt.Sprintf("%.2f", float64(charge.totalGas)/float64(totals.totalGas)*100),
 		})
 	}
 	tw.Write(map[string]interface{}{
@@ -462,7 +442,7 @@ func statsTable(out io.Writer, trace types.ExecutionTrace, recurse bool) error {
 		"S%":          "100.00",
 		"Compute Gas": totals.computeGas,
 		"C%":          "100.00",
-		"Total Gas":   totals.storageGas + totals.computeGas,
+		"Total Gas":   totals.totalGas,
 		"T%":          "100.00",
 	})
 	return tw.Flush(out, tablewriter.WithBorders())
@@ -485,12 +465,72 @@ func gasTracesPerCall(inTrace types.ExecutionTrace) types.ExecutionTrace {
 			Name:       fmt.Sprintf("#%d %s", count, name),
 			ComputeGas: totals.computeGas,
 			StorageGas: totals.storageGas,
+			TotalGas:   totals.totalGas,
 		})
 		count++
 		for _, subtrace := range trace.Subcalls {
-			accum(name+"➜"+subtrace.Msg.To.String(), subtrace)
+			accum(fmt.Sprintf("%s➜%s:%d", name, truncateString(subtrace.Msg.To.String(), 12), subtrace.Msg.Method), subtrace)
 		}
 	}
-	accum(inTrace.Msg.To.String(), inTrace)
+	accum(truncateString(inTrace.Msg.To.String(), 12), inTrace)
 	return outTrace
+}
+
+func printGasStats(out io.Writer, trace types.ExecutionTrace) error {
+	if err := printItemisedGasChargesPerCall(out, trace); err != nil {
+		return err
+	}
+	if len(trace.Subcalls) > 0 {
+		if err := printTotalItemisedGasCharges(out, trace); err != nil {
+			return err
+		}
+		if err := printTotalGasChargesPerCall(out, trace); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func printItemisedGasChargesPerCall(out io.Writer, trace types.ExecutionTrace) error {
+	var printTrace func(descPfx string, trace types.ExecutionTrace) error
+	printTrace = func(descPfx string, trace types.ExecutionTrace) error {
+		typ := "Message"
+		if descPfx != "" {
+			typ = "Subcall"
+		}
+		_, _ = fmt.Fprintln(out, color.New(color.Bold).Sprint(
+			fmt.Sprintf("%s (%s%s:%d) gas charges:", typ, descPfx, truncateString(trace.Msg.To.String(), 12), trace.Msg.Method)),
+		)
+		if err := statsTable(out, trace, false); err != nil {
+			return err
+		}
+		for _, subtrace := range trace.Subcalls {
+			_, _ = fmt.Fprintln(out)
+			if err := printTrace(descPfx+truncateString(trace.Msg.To.String(), 12)+"➜", subtrace); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	return printTrace("", trace)
+}
+
+func printTotalItemisedGasCharges(out io.Writer, trace types.ExecutionTrace) error {
+	_, _ = fmt.Fprintln(out)
+	_, _ = fmt.Fprintln(out, color.New(color.Bold).Sprint("Total gas charges:"))
+	return statsTable(out, trace, true)
+}
+
+func printTotalGasChargesPerCall(out io.Writer, trace types.ExecutionTrace) error {
+	perCallTrace := gasTracesPerCall(trace)
+	_, _ = fmt.Fprintln(out)
+	_, _ = fmt.Fprintln(out, color.New(color.Bold).Sprint("Gas charges per call:"))
+	return statsTable(out, perCallTrace, false)
+}
+
+func truncateString(str string, length int) string {
+	if len(str) <= length {
+		return str
+	}
+	return str[:length] + "…"
 }
