@@ -15,6 +15,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-f3"
 	"github.com/filecoin-project/go-f3/certs"
 	"github.com/filecoin-project/go-f3/gpbft"
 	"github.com/filecoin-project/go-f3/manifest"
@@ -99,10 +100,10 @@ func TestF3_InactiveModes(t *testing.T) {
 			expectedErrors: map[string]any{
 				"F3GetOrRenewParticipationTicket": api.ErrF3NotReady,
 				"F3Participate":                   api.ErrF3NotReady,
-				"F3GetCertificate":                "F3 is not running",
-				"F3GetLatestCertificate":          "F3 is not running",
-				"F3GetManifest":                   "no known network manifest",
-				"F3GetF3PowerTable":               "no known network manifest",
+				"F3GetCertificate":                f3.ErrF3NotRunning.Error(),
+				"F3GetLatestCertificate":          f3.ErrF3NotRunning.Error(),
+				"F3GetManifest":                   manifest.ErrNoManifest.Error(),
+				"F3GetF3PowerTable":               manifest.ErrNoManifest.Error(),
 			},
 			expectedValues: map[string]any{
 				"F3GetOrRenewParticipationTicket": (api.F3ParticipationTicket)(nil),
@@ -343,7 +344,7 @@ func (e *testEnv) waitTillF3Instance(i uint64, timeout time.Duration) {
 	e.waitFor(func(n *kit.TestFullNode) bool {
 		c, err := n.F3GetLatestCertificate(e.testCtx)
 		if err != nil {
-			require.ErrorContains(e.t, err, "F3 is not running")
+			require.ErrorContains(e.t, err, f3.ErrF3NotRunning.Error())
 			return false
 		}
 		return c != nil && c.GPBFTInstance >= i
@@ -451,7 +452,9 @@ func newTestManifest(networkName gpbft.NetworkName, bootstrapEpoch int64, blockt
 			// Use smaller time intervals for more responsive test progress/assertion.
 			Delta:                      250 * time.Millisecond,
 			DeltaBackOffExponent:       1.3,
+			QualityDeltaMultiplier:     manifest.DefaultGpbftConfig.QualityDeltaMultiplier,
 			MaxLookaheadRounds:         5,
+			ChainProposedLength:        manifest.DefaultGpbftConfig.ChainProposedLength,
 			RebroadcastBackoffBase:     500 * time.Millisecond,
 			RebroadcastBackoffSpread:   0.1,
 			RebroadcastBackoffExponent: 1.3,
@@ -471,6 +474,8 @@ func newTestManifest(networkName gpbft.NetworkName, bootstrapEpoch int64, blockt
 			MinimumPollInterval:  blocktime,
 			MaximumPollInterval:  4 * blocktime,
 		},
+		PubSub:        manifest.DefaultPubSubConfig,
+		ChainExchange: manifest.DefaultChainExchangeConfig,
 	}
 }
 
