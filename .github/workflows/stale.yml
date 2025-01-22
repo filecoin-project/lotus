@@ -1,8 +1,9 @@
-name: Close and mark stale issue
+name: Mark and close stale items
 
 on:
   schedule:
   - cron: '0 12 * * *'
+  workflow_dispatch: 
 
 permissions:
   contents: read
@@ -28,5 +29,8 @@ jobs:
         days-before-issue-close: 3
         days-before-pr-stale: 5
         days-before-pr-close: 3
+        draft-days-before-stale: 365     # Mark draft PRs as stale after 1 year
+        draft-days-before-close: 30      # Close stale draft PRs after 30 days
         remove-stale-when-updated: true
         enable-statistics: true
+      
