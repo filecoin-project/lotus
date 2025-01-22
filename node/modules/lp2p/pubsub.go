@@ -369,14 +369,18 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 
 	if in.F3Config != nil {
 		if in.F3Config.StaticManifest != nil {
-			f3TopicName := manifest.PubSubTopicFromNetworkName(in.F3Config.StaticManifest.NetworkName)
-			allowTopics = append(allowTopics, f3TopicName)
+			gpbftTopic := manifest.PubSubTopicFromNetworkName(in.F3Config.StaticManifest.NetworkName)
+			chainexTopic := manifest.ChainExchangeTopicFromNetworkName(in.F3Config.StaticManifest.NetworkName)
+			allowTopics = append(allowTopics, gpbftTopic, chainexTopic)
 		}
 		if in.F3Config.DynamicManifestProvider != "" {
-			f3BaseTopicName := manifest.PubSubTopicFromNetworkName(in.F3Config.BaseNetworkName)
+			gpbftTopicPrefix := manifest.PubSubTopicFromNetworkName(in.F3Config.BaseNetworkName)
+			chainexTopicPrefix := manifest.ChainExchangeTopicFromNetworkName(in.F3Config.BaseNetworkName)
 			allowTopics = append(allowTopics, manifest.ManifestPubSubTopicName)
-			for i := 0; i < lf3.MaxDynamicManifestChangesAllowed; i++ {
-				allowTopics = append(allowTopics, fmt.Sprintf("%s/%d", f3BaseTopicName, i))
+			for i := range lf3.MaxDynamicManifestChangesAllowed {
+				gpbftTopic := fmt.Sprintf("%s/%d", gpbftTopicPrefix, i)
+				chainexTopic := fmt.Sprintf("%s/%d", chainexTopicPrefix, i)
+				allowTopics = append(allowTopics, gpbftTopic, chainexTopic)
 			}
 		}
 	}
