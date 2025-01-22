@@ -228,6 +228,7 @@ var f3SubCmdPowerTable = &cli.Command{
 					}
 					ScaledSum  int64
 					Proportion float64
+					NotFound   []gpbft.ActorID
 				}{
 					Instance: instance,
 					FromEC:   cctx.Bool(f3FlagPowerTableFromEC.Name),
@@ -287,7 +288,8 @@ var f3SubCmdPowerTable = &cli.Command{
 					seenIDs[actorID] = struct{}{}
 					scaled, key := pt.Get(actorID)
 					if key == nil {
-						return fmt.Errorf("actor ID %d not found in power table", actorID)
+						result.NotFound = append(result.NotFound, actorID)
+						continue
 					}
 					result.ScaledSum += scaled
 				}
