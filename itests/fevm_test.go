@@ -1794,18 +1794,14 @@ func TestTstore(t *testing.T) {
 	nv25epoch := abi.ChainEpoch(100)
 	upgradeSchedule := kit.UpgradeSchedule(
 		stmgr.Upgrade{
-			Network: network.Version24,
+			Network: network.Version25,
 			Height:  -1,
 		},
-		/*
-			TODO 1 of 5: uncomment the following code block to allow the network to upgrade to NV25
-
-					stmgr.Upgrade{
-						Network:   network.Version25,
-						Height:    nv25epoch,
-						Migration: filcns.UpgradeActorsV16,
-					},
-		*/
+		stmgr.Upgrade{
+			Network:   network.Version25,
+			Height:    nv25epoch,
+			Migration: filcns.UpgradeActorsV16,
+		},
 	)
 
 	ctx, cancel, client := kit.SetupFEVMTest(t, upgradeSchedule)
@@ -1820,7 +1816,7 @@ func TestTstore(t *testing.T) {
 
 	inputData := make([]byte, 0)
 	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "runTests()", inputData)
-	// We expect an error here due to MCOPY not being available in this network version
+	// We expect an error here due to TSTORE not being available in this network version
 	require.ErrorContains(t, err, "undefined instruction (35)")
 
 	client.WaitTillChain(ctx, kit.HeightAtLeast(nv25epoch+5))
@@ -1830,33 +1826,20 @@ func TestTstore(t *testing.T) {
 	//Step 1 initial reentry test
 	// should be able to deploy and call the contract now
 	_, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "runTests()", inputData)
-
-	//TODO 2 of 5: remove ErrorContains and uncomment NoError
-	//require.NoError(t, err)
-	require.ErrorContains(t, err, "undefined instruction (35)")
+	require.NoError(t, err)
 
 	//Step 2 subsequent transaction to confirm the transient data was reset
 	_, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "testLifecycleValidationSubsequentTransaction()", inputData)
-
-	//TODO 3 of 5: remove ErrorContains and uncomment NoError
-	//require.NoError(t, err)
-	require.ErrorContains(t, err, "undefined instruction (35)")
+	require.NoError(t, err)
 
 	fromAddr, contractAddr2 := client.EVM().DeployContractFromFilename(ctx, filenameActor)
 	inputDataContract := inputDataFromFrom(ctx, t, client, contractAddr2)
 
 	//Step 3 test reentry from multiple contracts in a transaction
 	_, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "testReentry(address)", inputDataContract)
-
-	//TODO 4 of 5: remove ErrorContains and uncomment NoError
-	//require.NoError(t, err)
-	require.ErrorContains(t, err, "undefined instruction (35)")
+	require.NoError(t, err)
 
 	//Step 4 test tranisent data from nested contract calls
 	_, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "testNestedContracts(address)", inputDataContract)
-
-	//TODO 5 of 5: remove ErrorContains and uncomment NoError
-	//require.NoError(t, err)
-	require.ErrorContains(t, err, "undefined instruction (35)")
-
+	require.NoError(t, err)
 }
