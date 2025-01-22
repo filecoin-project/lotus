@@ -1164,7 +1164,7 @@ type ChannelAvailableFunds struct {
 	// QueuedAmt is the amount that is queued up behind a pending request
 	QueuedAmt types.BigInt
 
-	// VoucherRedeemedAmt is the amount that is redeemed by vouchers on-chain
+	// VoucherReedeemedAmt is the amount that is redeemed by vouchers on-chain
 	// and in the local datastore
 	VoucherReedeemedAmt types.BigInt
 }

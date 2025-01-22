@@ -11,7 +11,7 @@ import (
 	"github.com/filecoin-project/lotus/api/mocks"
 )
 
-// newMockAppWithFullAPI returns a gomock-ed CLI app used for unit tests
+// NewMockAppWithFullAPI returns a gomock-ed CLI app used for unit tests
 // see cli/util/api.go:GetFullNodeAPI for mock API injection
 func NewMockAppWithFullAPI(t *testing.T, cmd *ucli.Command) (*ucli.App, *mocks.MockFullNode, *bytes.Buffer, func()) {
 	app := ucli.NewApp()

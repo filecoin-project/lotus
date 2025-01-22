@@ -847,7 +847,7 @@ func planOne(ts ...func() (mut mutator, next func(*SectorInfo) (more bool, err e
 	}
 }
 
-// planOne but ignores unhandled states without erroring, this prevents the need to handle all possible events creating
+// planOneOrIgnore but ignores unhandled states without erroring, this prevents the need to handle all possible events creating
 // error during forced override
 func planOneOrIgnore(ts ...func() (mut mutator, next func(*SectorInfo) (more bool, err error))) func(events []statemachine.Event, state *SectorInfo) (uint64, error) {
 	f := planOne(ts...)
