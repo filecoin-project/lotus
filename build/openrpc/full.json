@@ -7588,7 +7588,9 @@
                             "Gpbft": {
                                 "Delta": 0,
                                 "DeltaBackOffExponent": 0,
+                                "QualityDeltaMultiplier": 0,
                                 "MaxLookaheadRounds": 0,
+                                "ChainProposedLength": 0,
                                 "RebroadcastBackoffBase": 0,
                                 "RebroadcastBackoffExponent": 0,
                                 "RebroadcastBackoffSpread": 0,
@@ -7607,6 +7609,16 @@
                                 "ServerRequestTimeout": 0,
                                 "MinimumPollInterval": 0,
                                 "MaximumPollInterval": 0
+                            },
+                            "PubSub": {
+                                "CompressionEnabled": false
+                            },
+                            "ChainExchange": {
+                                "SubscriptionBufferSize": 0,
+                                "MaxChainLength": 0,
+                                "MaxInstanceLookahead": 0,
+                                "MaxDiscoveredChainsPerInstance": 0,
+                                "MaxWantedChainsPerInstance": 0
                             }
                         }
                     ],
@@ -7636,6 +7648,32 @@
                                     "type": "number"
                                 },
                                 "ServerRequestTimeout": {
+                                    "title": "number",
+                                    "type": "number"
+                                }
+                            },
+                            "type": "object"
+                        },
+                        "ChainExchange": {
+                            "additionalProperties": false,
+                            "properties": {
+                                "MaxChainLength": {
+                                    "title": "number",
+                                    "type": "number"
+                                },
+                                "MaxDiscoveredChainsPerInstance": {
+                                    "title": "number",
+                                    "type": "number"
+                                },
+                                "MaxInstanceLookahead": {
+                                    "title": "number",
+                                    "type": "number"
+                                },
+                                "MaxWantedChainsPerInstance": {
+                                    "title": "number",
+                                    "type": "number"
+                                },
+                                "SubscriptionBufferSize": {
                                     "title": "number",
                                     "type": "number"
                                 }
@@ -7704,6 +7742,10 @@
                         "Gpbft": {
                             "additionalProperties": false,
                             "properties": {
+                                "ChainProposedLength": {
+                                    "title": "number",
+                                    "type": "number"
+                                },
                                 "Delta": {
                                     "title": "number",
                                     "type": "number"
@@ -7713,6 +7755,9 @@
                                 },
                                 "MaxLookaheadRounds": {
                                     "title": "number",
+                                    "type": "number"
+                                },
+                                "QualityDeltaMultiplier": {
                                     "type": "number"
                                 },
                                 "RebroadcastBackoffBase": {
@@ -7752,6 +7797,15 @@
                         "ProtocolVersion": {
                             "title": "number",
                             "type": "number"
+                        },
+                        "PubSub": {
+                            "additionalProperties": false,
+                            "properties": {
+                                "CompressionEnabled": {
+                                    "type": "boolean"
+                                }
+                            },
+                            "type": "object"
                         }
                     },
                     "type": [
