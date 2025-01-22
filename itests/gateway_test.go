@@ -18,6 +18,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-f3"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
@@ -576,11 +577,11 @@ func TestGatewayF3(t *testing.T) {
 		nodes := startNodes(ctx, t)
 
 		cert, err := nodes.lite.F3GetLatestCertificate(ctx)
-		require.ErrorContains(t, err, "F3 is not running")
+		require.ErrorContains(t, err, f3.ErrF3NotRunning.Error())
 		require.Nil(t, cert)
 
 		cert, err = nodes.lite.F3GetCertificate(ctx, 2)
-		require.ErrorContains(t, err, "F3 is not running")
+		require.ErrorContains(t, err, f3.ErrF3NotRunning.Error())
 		require.Nil(t, cert)
 	})
 

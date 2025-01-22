@@ -187,7 +187,7 @@ func (fff *F3) GetLatestCert(ctx context.Context) (*certs.FinalityCertificate, e
 func (fff *F3) GetManifest(ctx context.Context) (*manifest.Manifest, error) {
 	m := fff.inner.Manifest()
 	if m == nil {
-		return nil, xerrors.New("no known network manifest")
+		return nil, manifest.ErrNoManifest
 	}
 	if m.InitialPowerTable.Defined() {
 		return m, nil
