@@ -18,6 +18,7 @@
 - Refactored Ethereum API implementation into smaller, more manageable modules in a new `github.com/filecoin-project/lotus/node/impl/eth` package. ([filecoin-project/lotus#12796](https://github.com/filecoin-project/lotus/pull/12796))
 - Generate the cli docs directly from the code instead compiling and executing binaries' `help` output. ([filecoin-project/lotus#12717](https://github.com/filecoin-project/lotus/pull/12717))
 - Add `lotus-shed msg --gas-stats` to show summarised gas stats for a given message. ([filecoin-project/lotus#12817](https://github.com/filecoin-project/lotus/pull/12817))
+- `lotus state sectors` now outputs CSV format and supports an optional `--show-partitions` to list sector deadlines and partitions. ([filecoin-project/lotus#12834](https://github.com/filecoin-project/lotus/pull/12834))
 
 # UNRELEASED v.1.32.0
 
