@@ -1794,7 +1794,7 @@ func TestTstore(t *testing.T) {
 	nv25epoch := abi.ChainEpoch(100)
 	upgradeSchedule := kit.UpgradeSchedule(
 		stmgr.Upgrade{
-			Network: network.Version25,
+			Network: network.Version24,
 			Height:  -1,
 		},
 		stmgr.Upgrade{
