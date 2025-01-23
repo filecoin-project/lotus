@@ -275,6 +275,10 @@ var NetDisconnect = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
+		}
+
 		ids := cctx.Args().Slice()
 		for _, id := range ids {
 			pid, err := peer.Decode(id)
@@ -415,6 +419,10 @@ var NetFindPeer = &cli.Command{
 		defer closer()
 
 		ctx := ReqContext(cctx)
+
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
+		}
 
 		addrs, err := api.NetFindPeer(ctx, pid)
 
@@ -592,6 +600,10 @@ var NetBlockAddPeer = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
+		if cctx.NArg() < 1 {
+			return IncorrectNumArgs(cctx)
+		}
+
 		var peers []peer.ID
 		for _, s := range cctx.Args().Slice() {
 			p, err := peer.Decode(s)
@@ -618,6 +630,10 @@ var NetBlockAddIP = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
+		if cctx.NArg() < 1 {
+			return IncorrectNumArgs(cctx)
+		}
+
 		return api.NetBlockAdd(ctx, atypes.NetBlockList{IPAddrs: cctx.Args().Slice()})
 	},
 }
@@ -633,6 +649,10 @@ var NetBlockAddSubnet = &cli.Command{
 		}
 		defer closer()
 		ctx := ReqContext(cctx)
+
+		if cctx.NArg() < 1 {
+			return IncorrectNumArgs(cctx)
+		}
 
 		return api.NetBlockAdd(ctx, atypes.NetBlockList{IPSubnets: cctx.Args().Slice()})
 	},
@@ -660,6 +680,10 @@ var NetBlockRemovePeer = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
+		if cctx.NArg() < 1 {
+			return IncorrectNumArgs(cctx)
+		}
+
 		var peers []peer.ID
 		for _, s := range cctx.Args().Slice() {
 			p, err := peer.Decode(s)
@@ -686,6 +710,10 @@ var NetBlockRemoveIP = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
+		if cctx.NArg() < 1 {
+			return IncorrectNumArgs(cctx)
+		}
+
 		return api.NetBlockRemove(ctx, atypes.NetBlockList{IPAddrs: cctx.Args().Slice()})
 	},
 }
@@ -701,6 +729,10 @@ var NetBlockRemoveSubnet = &cli.Command{
 		}
 		defer closer()
 		ctx := ReqContext(cctx)
+
+		if cctx.NArg() < 1 {
+			return IncorrectNumArgs(cctx)
+		}
 
 		return api.NetBlockRemove(ctx, atypes.NetBlockList{IPSubnets: cctx.Args().Slice()})
 	},
@@ -958,6 +990,10 @@ var NetProtectAdd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
+		if cctx.NArg() < 1 {
+			return IncorrectNumArgs(cctx)
+		}
+
 		pids, err := decodePeerIDsFromArgs(cctx)
 		if err != nil {
 			return err
@@ -987,6 +1023,10 @@ var NetProtectRemove = &cli.Command{
 		}
 		defer closer()
 		ctx := ReqContext(cctx)
+
+		if cctx.NArg() < 1 {
+			return IncorrectNumArgs(cctx)
+		}
 
 		pids, err := decodePeerIDsFromArgs(cctx)
 		if err != nil {

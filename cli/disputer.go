@@ -63,6 +63,10 @@ var disputerMsgCmd = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
+		if cctx.NArg() != 3 {
+			return IncorrectNumArgs(cctx)
+		}
+
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -149,6 +153,10 @@ var disputerStartCmd = &cli.Command{
 		defer closer()
 
 		ctx := ReqContext(cctx)
+
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
+		}
 
 		fromAddr, err := getSender(ctx, api, cctx.String("from"))
 		if err != nil {

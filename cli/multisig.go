@@ -89,7 +89,7 @@ var msigCreateCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.NArg() != 1 {
+		if cctx.NArg() < 1 {
 			return IncorrectNumArgs(cctx)
 		}
 
@@ -213,6 +213,10 @@ var msigInspectCmd = &cli.Command{
 		ctx := ReqContext(cctx)
 
 		store := adt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewAPIBlockstore(api)))
+
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
+		}
 
 		maddr, err := address.NewFromString(cctx.Args().First())
 		if err != nil {

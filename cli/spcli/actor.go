@@ -265,6 +265,10 @@ func ActorSetAddrsCmd(getActor ActorAddressGetter) *cli.Command {
 
 			ctx := lcli.ReqContext(cctx)
 
+			if cctx.NArg() != 1 {
+				return lcli.IncorrectNumArgs(cctx)
+			}
+
 			var addrs []abi.Multiaddrs
 			for _, a := range args {
 				maddr, err := ma.NewMultiaddr(a)
@@ -746,6 +750,10 @@ func ActorProposeChangeWorkerCmd(getActor ActorAddressGetter) *cli.Command {
 
 			ctx := lcli.ReqContext(cctx)
 
+			if cctx.NArg() != 1 {
+				return lcli.IncorrectNumArgs(cctx)
+			}
+
 			na, err := address.NewFromString(cctx.Args().First())
 			if err != nil {
 				return err
@@ -991,6 +999,10 @@ func ActorConfirmChangeWorkerCmd(getActor ActorAddressGetter) *cli.Command {
 			defer acloser()
 
 			ctx := lcli.ReqContext(cctx)
+
+			if cctx.NArg() != 1 {
+				return lcli.IncorrectNumArgs(cctx)
+			}
 
 			na, err := address.NewFromString(cctx.Args().First())
 			if err != nil {

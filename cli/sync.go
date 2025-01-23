@@ -118,6 +118,10 @@ var SyncMarkBadCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
+		}
+
 		if !cctx.Args().Present() {
 			return fmt.Errorf("must specify block cid to mark")
 		}
@@ -149,6 +153,10 @@ var SyncUnmarkBadCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
+		}
+
 		if cctx.Bool("all") {
 			return napi.SyncUnmarkAllBad(ctx)
 		}
@@ -179,6 +187,10 @@ var SyncCheckBadCmd = &cli.Command{
 		}
 		defer closer()
 		ctx := ReqContext(cctx)
+
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
+		}
 
 		if !cctx.Args().Present() {
 			return fmt.Errorf("must specify block cid to check")
@@ -221,6 +233,10 @@ var SyncCheckpointCmd = &cli.Command{
 		}
 		defer closer()
 		ctx := ReqContext(cctx)
+
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
+		}
 
 		var ts *types.TipSet
 
