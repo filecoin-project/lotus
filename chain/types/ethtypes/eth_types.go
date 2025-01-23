@@ -23,7 +23,10 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/build/buildconstants"
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/must"
 )
 
@@ -245,6 +248,64 @@ type EthCall struct {
 	GasPrice EthBigInt   `json:"gasPrice"`
 	Value    EthBigInt   `json:"value"`
 	Data     EthBytes    `json:"data"`
+}
+
+func (c *EthCall) ToFilecoinMessage() (*types.Message, error) {
+	var from address.Address
+	if c.From == nil || *c.From == (EthAddress{}) {
+		// Send from the filecoin "system" address.
+		var err error
+		from, err = (EthAddress{}).ToFilecoinAddress()
+		if err != nil {
+			return nil, fmt.Errorf("failed to construct the ethereum system address: %w", err)
+		}
+	} else {
+		// The from address must be translatable to an f4 address.
+		var err error
+		from, err = c.From.ToFilecoinAddress()
+		if err != nil {
+			return nil, fmt.Errorf("failed to translate sender address (%s): %w", c.From.String(), err)
+		}
+		if p := from.Protocol(); p != address.Delegated {
+			return nil, fmt.Errorf("expected a class 4 address, got: %d: %w", p, err)
+		}
+	}
+
+	var params []byte
+	if len(c.Data) > 0 {
+		initcode := abi.CborBytes(c.Data)
+		params2, err := actors.SerializeParams(&initcode)
+		if err != nil {
+			return nil, fmt.Errorf("failed to serialize params: %w", err)
+		}
+		params = params2
+	}
+
+	var to address.Address
+	var method abi.MethodNum
+	if c.To == nil {
+		// this is a contract creation
+		to = builtintypes.EthereumAddressManagerActorAddr
+		method = builtintypes.MethodsEAM.CreateExternal
+	} else {
+		addr, err := c.To.ToFilecoinAddress()
+		if err != nil {
+			return nil, xerrors.Errorf("cannot get Filecoin address: %w", err)
+		}
+		to = addr
+		method = builtintypes.MethodsEVM.InvokeContract
+	}
+
+	return &types.Message{
+		From:       from,
+		To:         to,
+		Value:      big.Int(c.Value),
+		Method:     method,
+		Params:     params,
+		GasLimit:   build.BlockGasLimit,
+		GasFeeCap:  big.Zero(),
+		GasPremium: big.Zero(),
+	}, nil
 }
 
 func (c *EthCall) UnmarshalJSON(b []byte) error {
