@@ -386,7 +386,7 @@ func NewGarbager(ctx context.Context, t *testing.T, n *kit.TestFullNode) *Garbag
 	return g
 }
 
-// drop returns the cid referencing the dropped garbage and the chain epoch of the drop
+// Drop returns the cid referencing the dropped garbage and the chain epoch of the drop
 func (g *Garbager) Drop(ctx context.Context) (cid.Cid, abi.ChainEpoch) {
 	// record existing with mInfoCidAtEpoch
 	c := g.mInfoCid(ctx)
@@ -397,13 +397,13 @@ func (g *Garbager) Drop(ctx context.Context) (cid.Cid, abi.ChainEpoch) {
 	return c, g.newPeerID(ctx)
 }
 
-// message returns the cid referencing a message and the chain epoch it went on chain
+// Message returns the cid referencing a message and the chain epoch it went on chain
 func (g *Garbager) Message(ctx context.Context) (cid.Cid, abi.ChainEpoch) {
 	mw := g.createMiner(ctx)
 	return mw.Message, mw.Height
 }
 
-// exists checks whether the cid is reachable through the node
+// Exists checks whether the cid is reachable through the node
 func (g *Garbager) Exists(ctx context.Context, c cid.Cid) bool {
 	// check chain get / blockstore get
 	_, err := g.node.ChainReadObj(ctx, c)
