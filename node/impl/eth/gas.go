@@ -186,7 +186,7 @@ func (e *ethGas) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (ethty
 		return ethtypes.EthUint64(0), xerrors.Errorf("decoding params: %w", err)
 	}
 
-	msg, err := ethCallToFilecoinMessage(ctx, params.Tx)
+	msg, err := params.Tx.ToFilecoinMessage()
 	if err != nil {
 		return ethtypes.EthUint64(0), err
 	}
@@ -237,7 +237,7 @@ func (e *ethGas) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (ethty
 }
 
 func (e *ethGas) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {
-	msg, err := ethCallToFilecoinMessage(ctx, tx)
+	msg, err := tx.ToFilecoinMessage()
 	if err != nil {
 		return nil, xerrors.Errorf("failed to convert ethcall to filecoin message: %w", err)
 	}

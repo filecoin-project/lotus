@@ -9,6 +9,7 @@
 
 # UNRELEASED
 
+- refactor(eth): attach ToFilecoinMessage converter to EthCall method for improved package/module import structure. This change also exports the converter as a public method, enhancing usability for developers utilizing Lotus as a library. ([filecoin-project/lotus#12844](https://github.com/filecoin-project/lotus/pull/12844))
 - Add json output of tipsets to `lotus chain list`. ([filecoin-project/lotus#12691](https://github.com/filecoin-project/lotus/pull/12691))
 - Remove IPNI advertisement relay over pubsub via Lotus node as it now has been deprecated. ([filecoin-project/lotus#12768](https://github.com/filecoin-project/lotus/pull/12768)
 - During a network upgrade, log migration progress every 2 seconds so they are more helpful and informative. The `LOTUS_MIGRATE_PROGRESS_LOG_SECONDS` environment variable can be used to change this if needed. ([filecoin-project/lotus#12732](https://github.com/filecoin-project/lotus/pull/12732))
