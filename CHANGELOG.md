@@ -13,12 +13,12 @@
 
 See https://github.com/filecoin-project/lotus/blob/release/v1.32.0/CHANGELOG.md
 
-# Node v1.31.1-rc1 / 2025-01-20
+# Node v1.31.1 / 2025-01-27
 
-This Lotus release candidate introduces several new features and improvements, including JSON output for tipsets in `lotus chain list` cmd, enhanced logging during network upgrade migrations, and additional Bootstrap nodes. It also includes a refactored Ethereum API implementation into smaller, more manageable modules in a new `github.com/filecoin-project/lotus/node/impl/eth` package, as well as adding network name as a tag in most metrics - making it easier to create Graphana Dashboards for multiple networks. Please review the upgrade warnings and documentation for any important changes affecting RPC providers, node operators, and storage providers.
+This Lotus release introduces several new features and improvements, including JSON output for tipsets in `lotus chain list` cmd, enhanced logging during network upgrade migrations, and additional Bootstrap nodes. It also includes a refactored Ethereum API implementation into smaller, more manageable modules in a new `github.com/filecoin-project/lotus/node/impl/eth` package, as well as adding network name as a tag in most metrics - making it easier to create Graphana Dashboards for multiple networks. Please review the upgrade warnings and documentation for any important changes affecting RPC providers, node operators, and storage providers.
 
 ## ☢️ Upgrade Warnings ☢️
-- If you are running the v1.30.x version of Lotus, please go through the Upgrade Warnings section for the [v1.30.* releases](https://github.com/filecoin-project/lotus/releases/tag/v1.30.0) and [v1.31.*](https://github.com/filecoin-project/lotus/releases/tag/v1.31.0) before upgrading to this release.
+- If you are running the v1.30.x version of Lotus, please go through the Upgrade Warnings section for the [v1.31.0](https://github.com/filecoin-project/lotus/releases/tag/v1.31.0) before upgrading to this release.
 
 ## ⭐ Feature/Improvement Highlights:
 - Add json output of tipsets to `lotus chain list`. ([filecoin-project/lotus#12691](https://github.com/filecoin-project/lotus/pull/12691))
@@ -47,6 +47,37 @@ This Lotus release candidate introduces several new features and improvements, i
 For the full set of changes since the last stable node release:
 
 https://github.com/filecoin-project/lotus/compare/v1.31.0...v1.31.1
+
+## 👨‍👩‍👧‍👦 Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Rod Vagg | 26 | +13687/-11008 | 146 |
+| Masih H. Derkani | 19 | +2492/-1506 | 59 |
+| Aryan Tikarya | 2 | +2120/-1407 | 45 |
+| Krishang Shah | 1 | +3214/-117 | 66 |
+| Steven Allen | 4 | +1317/-1632 | 22 |
+| Jakub Sztandera | 10 | +935/-1203 | 176 |
+| Łukasz Magiera | 2 | +949/-467 | 33 |
+| Phi-rjan | 9 | +369/-339 | 43 |
+| Piotr Galar | 4 | +586/-106 | 12 |
+| Viraj Bhartiya | 3 | +219/-63 | 16 |
+| caseylove | 1 | +71/-67 | 1 |
+| asamuj | 2 | +39/-43 | 14 |
+| ZenGround0 | 2 | +73/-1 | 3 |
+| XiaoBei | 2 | +15/-15 | 7 |
+| wmjae | 2 | +9/-9 | 7 |
+| taozui472 | 1 | +9/-9 | 6 |
+| dependabot[bot] | 2 | +9/-9 | 4 |
+| huajin tong | 1 | +6/-6 | 6 |
+| Phi | 1 | +6/-6 | 6 |
+| Andi | 1 | +6/-6 | 2 |
+| root | 1 | +5/-5 | 4 |
+| chuangjinglu | 1 | +3/-3 | 3 |
+| wgyt | 1 | +2/-2 | 1 |
+| parthshah1 | 1 | +2/-2 | 1 |
+| leo | 1 | +2/-2 | 2 |
+| pinglanlu | 1 | +1/-1 | 1 |
 
 # Node and Miner v1.31.0 / 2024-12-02
 
