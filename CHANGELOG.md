@@ -13,7 +13,7 @@
 
 See https://github.com/filecoin-project/lotus/blob/release/v1.32.0/CHANGELOG.md
 
-# Node v1.31.1 / 2025-01-28
+# Node v1.31.1 / 2025-01-27
 
 This Lotus release introduces several new features and improvements, including JSON output for tipsets in `lotus chain list` cmd, enhanced logging during network upgrade migrations, and additional Bootstrap nodes. It also includes a refactored Ethereum API implementation into smaller, more manageable modules in a new `github.com/filecoin-project/lotus/node/impl/eth` package, as well as adding network name as a tag in most metrics - making it easier to create Graphana Dashboards for multiple networks. Please review the upgrade warnings and documentation for any important changes affecting RPC providers, node operators, and storage providers.
 
