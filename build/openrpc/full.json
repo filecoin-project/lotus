@@ -7618,7 +7618,9 @@
                                 "MaxChainLength": 0,
                                 "MaxInstanceLookahead": 0,
                                 "MaxDiscoveredChainsPerInstance": 0,
-                                "MaxWantedChainsPerInstance": 0
+                                "MaxWantedChainsPerInstance": 0,
+                                "RebroadcastInterval": 0,
+                                "MaxTimestampAge": 0
                             }
                         }
                     ],
@@ -7669,7 +7671,15 @@
                                     "title": "number",
                                     "type": "number"
                                 },
+                                "MaxTimestampAge": {
+                                    "title": "number",
+                                    "type": "number"
+                                },
                                 "MaxWantedChainsPerInstance": {
+                                    "title": "number",
+                                    "type": "number"
+                                },
+                                "RebroadcastInterval": {
                                     "title": "number",
                                     "type": "number"
                                 },

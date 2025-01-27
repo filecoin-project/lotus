@@ -2654,7 +2654,9 @@ Response:
     "MaxChainLength": 0,
     "MaxInstanceLookahead": 0,
     "MaxDiscoveredChainsPerInstance": 0,
-    "MaxWantedChainsPerInstance": 0
+    "MaxWantedChainsPerInstance": 0,
+    "RebroadcastInterval": 0,
+    "MaxTimestampAge": 0
   }
 }
 ```
