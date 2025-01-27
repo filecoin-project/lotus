@@ -45,7 +45,7 @@
 # ✅ Release Checklist
 
 ## ⬅️  Before RC1
-<details>
+<details one>
   <summary>Section</summary>
 
 <!--{{if ne .NetworkUpgrade ""}}-->
