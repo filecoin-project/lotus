@@ -29,8 +29,24 @@ jobs:
         days-before-issue-close: 3
         days-before-pr-stale: 5
         days-before-pr-close: 3
-        draft-days-before-stale: 365     # Mark draft PRs as stale after 1 year
-        draft-days-before-close: 30      # Close stale draft PRs after 30 days
         remove-stale-when-updated: true
         enable-statistics: true
-      
+  label-stale-draft-prs:
+    permissions:
+      pull-requests: write
+    runs-on: ubuntu-latest
+    steps:
+    - name: Mark stale draft PRs
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        # Calculate cutoff date for last update (365 days ago)
+        cutoff_date=$(date -d "365 days ago" +%Y-%m-%d)
+        prs=$(gh pr list --repo $GITHUB_REPOSITORY --state open \
+          --json number,updatedAt,isDraft \
+          --jq ".[] | select(.isDraft) | select(.updatedAt < \"$cutoff_date\") | .number")
+          
+        for pr in $prs; do
+          echo "Marking PR #$pr as stale"
+          gh pr edit $pr --add-label "kind/stale"
+        done
