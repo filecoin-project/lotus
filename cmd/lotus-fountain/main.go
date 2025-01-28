@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	rice "github.com/GeertJohan/go.rice"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -132,11 +131,10 @@ var runCmd = &cli.Command{
 			recapThreshold: cctx.Float64("captcha-threshold"),
 		}
 
-		box := rice.MustFindBox("site")
-		http.Handle("/", http.FileServer(box.HTTPBox()))
-		http.HandleFunc("/funds.html", prepFundsHtml(box))
+		http.Handle("/", http.FileServer(http.Dir("site")))
+		http.HandleFunc("/funds.html", prepFundsHtml())
 		http.Handle("/send", h)
-		http.HandleFunc("/datacap.html", prepDataCapHtml(box))
+		http.HandleFunc("/datacap.html", prepDataCapHtml())
 		http.Handle("/datacap", h)
 		fmt.Printf("Open http://%s\n", cctx.String("front"))
 
@@ -159,10 +157,17 @@ var runCmd = &cli.Command{
 	},
 }
 
-func prepFundsHtml(box *rice.Box) http.HandlerFunc {
-	tmpl := template.Must(template.New("funds").Parse(box.MustString("funds.html")))
+func prepFundsHtml() http.HandlerFunc {
+	fundsTemplate, err := template.ParseFiles("site/funds.html")
+	if err != nil {
+		log.Errorf("failed to parse funds template: %s", err)
+		return func(w http.ResponseWriter, r *http.Request) {
+			http.Error(w, "template error", http.StatusInternalServerError)
+		}
+	}
+
 	return func(w http.ResponseWriter, r *http.Request) {
-		err := tmpl.Execute(w, os.Getenv("RECAPTCHA_SITE_KEY"))
+		err := fundsTemplate.Execute(w, os.Getenv("RECAPTCHA_SITE_KEY"))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadGateway)
 			return
@@ -170,10 +175,17 @@ func prepFundsHtml(box *rice.Box) http.HandlerFunc {
 	}
 }
 
-func prepDataCapHtml(box *rice.Box) http.HandlerFunc {
-	tmpl := template.Must(template.New("datacaps").Parse(box.MustString("datacap.html")))
+func prepDataCapHtml() http.HandlerFunc {
+	datacapTemplate, err := template.ParseFiles("site/datacap.html")
+	if err != nil {
+		log.Errorf("failed to parse datacap template: %s", err)
+		return func(w http.ResponseWriter, r *http.Request) {
+			http.Error(w, "template error", http.StatusInternalServerError)
+		}
+	}
+
 	return func(w http.ResponseWriter, r *http.Request) {
-		err := tmpl.Execute(w, os.Getenv("RECAPTCHA_SITE_KEY"))
+		err := datacapTemplate.Execute(w, os.Getenv("RECAPTCHA_SITE_KEY"))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadGateway)
 			return

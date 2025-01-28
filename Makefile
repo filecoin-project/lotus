@@ -167,7 +167,6 @@ benchmarks:  ## Run benchmarks and submit results
 lotus-fountain:  ## Build the Lotus fountain tool
 	rm -f lotus-fountain
 	$(GOCC) build $(GOFLAGS) -o lotus-fountain ./cmd/lotus-fountain
-	$(GOCC) run github.com/GeertJohan/go.rice/rice append --exec lotus-fountain -i ./cmd/lotus-fountain -i ./build
 .PHONY: lotus-fountain
 BINS+=lotus-fountain
 
