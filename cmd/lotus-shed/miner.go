@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -26,8 +27,10 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/builtin/v11/util/adt"
+	miner15 "github.com/filecoin-project/go-state-types/builtin/v15/miner"
 	miner8 "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/manifest"
 	power7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 
@@ -36,6 +39,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
+	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 )
@@ -50,6 +54,8 @@ var minerCmd = &cli.Command{
 		sendInvalidWindowPoStCmd,
 		generateAndSendConsensusFaultCmd,
 		sectorInfoCmd,
+		minerLockedVestedCmd,
+		minerListVestingCmd,
 	},
 }
 
@@ -685,6 +691,179 @@ var generateAndSendConsensusFaultCmd = &cli.Command{
 			return err
 		}
 
+		return nil
+	},
+}
+
+// TODO: LoadVestingFunds isn't exposed on the miner wrappers in Lotus so we have to go decoding the
+// miner state manually. This command will continue to work as long as the hard-coded go-state-types
+// miner version matches the schema of the current miner actor. It will need to be updated if the
+// miner actor schema changes; or we could expose LoadVestingFunds.
+var minerLockedVestedCmd = &cli.Command{
+	Name:  "locked-vested",
+	Usage: "Search through all miners for VestingFunds that are still locked even though the epoch has passed",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "details",
+			Usage: "orint details of locked funds; which miners and how much",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		n, acloser, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer acloser()
+		ctx := lcli.ReqContext(cctx)
+
+		bs := ReadOnlyAPIBlockstore{n}
+		adtStore := adt.WrapStore(ctx, ipldcbor.NewCborStore(&bs))
+
+		head, err := n.ChainHead(ctx)
+		if err != nil {
+			return err
+		}
+
+		tree, err := state.LoadStateTree(adtStore, head.ParentState())
+		if err != nil {
+			return err
+		}
+		nv, err := n.StateNetworkVersion(ctx, head.Key())
+		if err != nil {
+			return err
+		}
+		actorCodeCids, err := n.StateActorCodeCIDs(ctx, nv)
+		if err != nil {
+			return err
+		}
+		minerCode := actorCodeCids[manifest.MinerKey]
+
+		// The epoch at which we _expect_ that vested funds to have been unlocked by (the delay
+		// is due to cron offsets). The protocol dictates that funds should be unlocked automatically
+		// by cron, so anything we find that's not unlocked is a bug.
+		staleEpoch := head.Height() - abi.ChainEpoch((uint64(miner15.WPoStProvingPeriod) / miner15.WPoStPeriodDeadlines))
+
+		var totalCount int
+		miners := make(map[address.Address]abi.TokenAmount)
+		var lockedCount int
+		var lockedFunds abi.TokenAmount = big.Zero()
+		_, _ = fmt.Fprintf(cctx.App.ErrWriter, "Scanning actors at epoch %d", head.Height())
+		err = tree.ForEach(func(addr address.Address, act *types.Actor) error {
+			totalCount++
+			if totalCount%10000 == 0 {
+				_, _ = fmt.Fprintf(cctx.App.ErrWriter, ".")
+			}
+			if act.Code == minerCode {
+				m15 := miner15.State{}
+				if err := adtStore.Get(ctx, act.Head, &m15); err != nil {
+					return xerrors.Errorf("failed to load miner state (using miner15, try a newer version?): %w", err)
+				}
+				vf, err := m15.LoadVestingFunds(adtStore)
+				if err != nil {
+					return err
+				}
+				var locked bool
+				for _, f := range vf.Funds {
+					if f.Epoch < staleEpoch {
+						if _, ok := miners[addr]; !ok {
+							miners[addr] = f.Amount
+						} else {
+							miners[addr] = big.Add(miners[addr], f.Amount)
+						}
+						lockedFunds = big.Add(lockedFunds, f.Amount)
+						locked = true
+					}
+				}
+				if locked {
+					lockedCount++
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			return xerrors.Errorf("failed to loop over actors: %w", err)
+		}
+
+		fmt.Println()
+		_, _ = fmt.Fprintf(cctx.App.Writer, "Total actors: %d\n", totalCount)
+		_, _ = fmt.Fprintf(cctx.App.Writer, "Total miners: %d\n", len(miners))
+		_, _ = fmt.Fprintf(cctx.App.Writer, "Miners with locked vested funds: %d\n", lockedCount)
+		if cctx.Bool("details") {
+			for addr, amt := range miners {
+				_, _ = fmt.Fprintf(cctx.App.Writer, "  %s: %s\n", addr, types.FIL(amt))
+			}
+		}
+		_, _ = fmt.Fprintf(cctx.App.Writer, "Total locked vested funds: %s\n", types.FIL(lockedFunds))
+
+		return nil
+	},
+}
+
+var minerListVestingCmd = &cli.Command{
+	Name:      "list-vesting",
+	Usage:     "List the vesting schedule for a miner",
+	ArgsUsage: "[minerAddress]",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "json",
+			Usage: "output in json format (also don't convert from attoFIL to FIL)",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() != 1 {
+			return fmt.Errorf("must pass miner address")
+		}
+
+		maddr, err := address.NewFromString(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		n, acloser, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer acloser()
+		ctx := lcli.ReqContext(cctx)
+
+		bs := ReadOnlyAPIBlockstore{n}
+		adtStore := adt.WrapStore(ctx, ipldcbor.NewCborStore(&bs))
+
+		head, err := n.ChainHead(ctx)
+		if err != nil {
+			return err
+		}
+
+		tree, err := state.LoadStateTree(adtStore, head.ParentState())
+		if err != nil {
+			return err
+		}
+
+		act, err := tree.GetActor(maddr)
+		if err != nil {
+			return xerrors.Errorf("failed to load actor: %w", err)
+		}
+
+		m15 := miner15.State{}
+		if err := adtStore.Get(ctx, act.Head, &m15); err != nil {
+			return xerrors.Errorf("failed to load miner state (using miner15, try a newer version?): %w", err)
+		}
+		vf, err := m15.LoadVestingFunds(adtStore)
+		if err != nil {
+			return err
+		}
+
+		if cctx.Bool("json") {
+			jb, err := json.Marshal(vf)
+			if err != nil {
+				return xerrors.Errorf("failed to marshal vesting funds: %w", err)
+			}
+			_, _ = fmt.Fprintln(cctx.App.Writer, string(jb))
+		} else {
+			for _, f := range vf.Funds {
+				_, _ = fmt.Fprintf(cctx.App.Writer, "Epoch %d: %s\n", f.Epoch, types.FIL(f.Amount))
+			}
+		}
 		return nil
 	},
 }
