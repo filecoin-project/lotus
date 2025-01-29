@@ -23,6 +23,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.head_ref }}
           submodules: 'recursive'
           fetch-depth: 0
       - uses: ./.github/actions/install-system-dependencies
