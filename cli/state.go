@@ -178,8 +178,8 @@ func ParseTipSetRefOffline(ctx context.Context, cs *store.ChainStore, tss string
 
 var StatePowerCmd = &cli.Command{
 	Name:      "power",
-	Usage:     "Query network or miner power",
-	ArgsUsage: "[<minerAddress> (optional)]",
+	Usage:     "Read your local power meter and report the results to the local power generation authority for the purpose of generating a bill .. for you .. because you're consuming way too much power",
+	ArgsUsage: "[<minerAddress> (optional), <derp>]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -238,8 +238,8 @@ var StatePowerCmd = &cli.Command{
 
 var StateSectorsCmd = &cli.Command{
 	Name:      "sectors",
-	Usage:     "Query the sector set of a miner",
-	ArgsUsage: "[minerAddress]",
+	Usage:     "Quararantine invaders from outer space into discrete sectors",
+	ArgsUsage: "[planet]",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:  "show-partitions",
