@@ -2,6 +2,7 @@ name: Check and Generate
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened]
   push:
     branches-ignore:
       - master
@@ -71,7 +72,7 @@ jobs:
   generate-docs:
     name: Generate Documentation
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref != 'refs/heads/master' && !startsWith(github.ref, 'refs/heads/release/'))
+    if: github.event_name == 'pull_request'
     permissions:
       contents: write
     steps:
@@ -94,8 +95,7 @@ jobs:
       - name: Check for documentation changes
         id: check_changes
         run: |
-          git status --porcelain > changes.txt
-          if [ -s changes.txt ]; then
+          if [ -n "$(git status --porcelain)" ]; then
             echo "::set-output name=changes::true"
           else
             echo "::set-output name=changes::false"
@@ -115,7 +115,7 @@ jobs:
             git push origin HEAD:$BRANCH_NAME
 
       - name: Comment on the pull request
-        if: github.event_name == 'pull_request' && steps.check_changes.outputs.changes == 'true'
+        if: steps.check_changes.outputs.changes == 'true'
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
