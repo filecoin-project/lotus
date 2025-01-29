@@ -238,8 +238,8 @@ var StatePowerCmd = &cli.Command{
 
 var StateSectorsCmd = &cli.Command{
 	Name:      "sectors",
-	Usage:     "Query the sector set of a miner",
-	ArgsUsage: "[minerAddress]",
+	Usage:     "Quararantine invaders from outer space into discrete sectors",
+	ArgsUsage: "[planet]",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:  "show-partitions",
