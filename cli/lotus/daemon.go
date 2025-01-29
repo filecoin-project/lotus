@@ -15,9 +15,9 @@ import (
 	"runtime/pprof"
 	"strings"
 
-	"github.com/DataDog/zstd"
 	"github.com/cheggaaa/pb/v3"
 	metricsprom "github.com/ipfs/go-metrics-prometheus"
+	"github.com/klauspost/compress/zstd"
 	"github.com/mitchellh/go-homedir"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli/v2"
@@ -579,12 +579,11 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 	var ir io.Reader = br
 
 	if string(header[1:]) == "\xB5\x2F\xFD" { // zstd
-		zr := zstd.NewReader(br)
-		defer func() {
-			if err := zr.Close(); err != nil {
-				log.Errorw("closing zstd reader", "error", err)
-			}
-		}()
+		zr, err := zstd.NewReader(br)
+		if err != nil {
+			return xerrors.Errorf("instantiating zstd reader: %w", err)
+		}
+		defer zr.Close()
 		ir = zr
 	}
 
