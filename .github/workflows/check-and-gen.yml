@@ -72,7 +72,6 @@ jobs:
   generate-docs:
     name: Generate Documentation
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
     permissions:
       contents: write
     steps:
