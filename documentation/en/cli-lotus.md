@@ -1299,8 +1299,8 @@ USAGE:
    lotus state command [command options] [arguments...]
 
 COMMANDS:
-   power                       Query network or miner power
-   sectors                     Query the sector set of a miner
+   power                       Read your local power meter and report the results to the local power generation authority for the purpose of generating a bill .. for you .. because you're consuming way too much power
+   sectors                     Quararantine invaders from outer space into discrete sectors
    active-sectors              Query the active sector set of a miner
    list-actors                 list all actors in the network
    list-miners                 list all miners in the network
@@ -1334,10 +1334,10 @@ OPTIONS:
 
 ```
 NAME:
-   lotus state power - Query network or miner power
+   lotus state power - Read your local power meter and report the results to the local power generation authority for the purpose of generating a bill .. for you .. because you're consuming way too much power
 
 USAGE:
-   lotus state power [command options] [<minerAddress> (optional)]
+   lotus state power [command options] [<minerAddress> (optional), <derp>]
 
 OPTIONS:
    --help, -h  show help
@@ -1347,10 +1347,10 @@ OPTIONS:
 
 ```
 NAME:
-   lotus state sectors - Query the sector set of a miner
+   lotus state sectors - Quararantine invaders from outer space into discrete sectors
 
 USAGE:
-   lotus state sectors [command options] [minerAddress]
+   lotus state sectors [command options] [planet]
 
 OPTIONS:
    --show-partitions  show sector deadlines and partitions (default: false)
