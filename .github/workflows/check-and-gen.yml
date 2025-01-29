@@ -3,7 +3,7 @@ name: Check and Generate
 on:
   pull_request:
   push:
-    branches:
+    branches-ignore:
       - master
       - release/*
   workflow_dispatch:
@@ -71,7 +71,7 @@ jobs:
   generate-docs:
     name: Generate Documentation
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref != 'refs/heads/master' && github.ref != 'refs/heads/releases' && !startsWith(github.ref, 'refs/heads/release/'))
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref != 'refs/heads/master' && !startsWith(github.ref, 'refs/heads/release/'))
     permissions:
       contents: write
     steps:
@@ -92,14 +92,17 @@ jobs:
           }
 
       - name: Commit and push if documentation changed
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [ -n "$(git status --porcelain)" ]; then
-           # Bot email is configured from: https://github.com/orgs/community/discussions/26560
+            # Bot email is configured from: https://github.com/orgs/community/discussions/26560
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add .
             git commit -m "docs: update API documentation via docsgen-cli"
-            git push
+            BRANCH_NAME=$(echo $GITHUB_REF | sed 's/refs\/heads\///')
+            git push origin HEAD:$BRANCH_NAME
           else
             echo "No documentation changes to commit"
           fi
