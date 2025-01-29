@@ -91,11 +91,21 @@ jobs:
             exit 1
           }
 
+      - name: Check for documentation changes
+        id: check_changes
+        run: |
+          git status --porcelain > changes.txt
+          if [ -s changes.txt ]; then
+            echo "::set-output name=changes::true"
+          else
+            echo "::set-output name=changes::false"
+          fi
+
       - name: Commit and push if documentation changed
+        if: steps.check_changes.outputs.changes == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [ -n "$(git status --porcelain)" ]; then
             # Bot email is configured from: https://github.com/orgs/community/discussions/26560
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -103,6 +113,18 @@ jobs:
             git commit -m "docs: update API documentation via docsgen-cli"
             BRANCH_NAME=$(echo $GITHUB_REF | sed 's/refs\/heads\///')
             git push origin HEAD:$BRANCH_NAME
-          else
-            echo "No documentation changes to commit"
-          fi
+
+      - name: Comment on the pull request
+        if: github.event_name == 'pull_request' && steps.check_changes.outputs.changes == 'true'
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { context } = require('@actions/github');
+            const prNumber = context.payload.pull_request.number;
+            const comment = 'CLI documentation has been generated and pushed to the branch.';
+            await github.issues.createComment({
+              ...context.repo,
+              issue_number: prNumber,
+              body: comment
+            });
