@@ -90,7 +90,7 @@ contract TransientStorageTest {
         }
 
         // Call nested contract to write its own transient storage
-        nested.writeTransientData(4, 123);
+        nested.writeTransientData(slot, 123);
 
         // Verify this contract's data is unchanged
         uint256 retrievedValue;
