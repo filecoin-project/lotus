@@ -20,5 +20,5 @@ jobs:
         repo-token: '${{ secrets.GITHUB_TOKEN }}'
         days-before-stale: 180
         days-before-delete: 360
-        branches-filter-regex: ''^(?!release/miner)'
+        branches-filter-regex: ''^(?!release)'
         dry-run: false
