@@ -45,7 +45,7 @@ require (
 	github.com/filecoin-project/go-cbor-util v0.0.1
 	github.com/filecoin-project/go-commp-utils/v2 v2.1.0
 	github.com/filecoin-project/go-crypto v0.1.0
-	github.com/filecoin-project/go-f3 v0.7.4-0.20250129120616-cfbbd79fa867
+	github.com/filecoin-project/go-f3 v0.7.4-0.20250129175446-891713e7ce13
 	github.com/filecoin-project/go-fil-commcid v0.2.0
 	github.com/filecoin-project/go-hamt-ipld/v3 v3.4.0
 	github.com/filecoin-project/go-jsonrpc v0.7.0
