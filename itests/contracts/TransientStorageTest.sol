@@ -100,7 +100,7 @@ contract TransientStorageTest {
         require(retrievedValue == value, "Nested contract interfered with this contract's storage");
 
         // Verify nested contract's data independently
-        uint256 nestedValue = nested.readTransientData(4);
+        uint256 nestedValue = nested.readTransientData(slot);
         require(nestedValue == 123, "Nested contract data incorrect");
         return true;
     }
