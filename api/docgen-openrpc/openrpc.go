@@ -98,7 +98,7 @@ func OpenRPCSchemaTypeMapper(ty reflect.Type) *jsonschema.Type {
 	// specific to our services.
 	switch ty.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		// Return all integer types as the hex representation integer schemea.
+		// Return all integer types as the hex representation integer schema.
 		ret := unmarshalJSONToJSONSchemaType(integerD)
 		return ret
 	case reflect.Uintptr:

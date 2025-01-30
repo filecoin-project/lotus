@@ -29,7 +29,7 @@ func main() {
 	// Use os.Args to handle a somewhat hacky flag for the gzip option.
 	// Could use flags package to handle this more cleanly, but that requires changes elsewhere
 	// the scope of which just isn't warranted by this one use case which will usually be run
-	// programmatically anyways.
+	// programmatically anyway.
 	var (
 		apiFile = os.Args[1]
 		iface   = os.Args[2]
