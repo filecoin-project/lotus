@@ -139,7 +139,10 @@ func getRunners(name string) [][]string {
 		"itest-sector_import_full":   {{"self-hosted", "linux", "x64", "2xlarge"}},
 		"itest-sector_import_simple": {{"self-hosted", "linux", "x64", "2xlarge"}},
 		"itest-wdpost":               {{"self-hosted", "linux", "x64", "2xlarge"}},
-		"unit-storage":               {{"self-hosted", "linux", "x64", "2xlarge"}},
+		"unit-storage":               {
+			{"self-hosted", "linux", "x64", "2xlarge"},
+			{"self-hosted", "linux", "arm64", "2xlarge"},
+		},
 
 		"itest-cli":                      {{"self-hosted", "linux", "x64", "xlarge"}},
 		"itest-deals_invalid_utf8_label": {{"self-hosted", "linux", "x64", "xlarge"}},
@@ -175,7 +178,19 @@ func getRunners(name string) [][]string {
 		"itest-self_sent_txn":            {{"self-hosted", "linux", "x64", "xlarge"}},
 		"itest-verifreg":                 {{"self-hosted", "linux", "x64", "xlarge"}},
 		"multicore-sdr":                  {{"self-hosted", "linux", "x64", "xlarge"}},
-		"unit-node":                      {{"self-hosted", "linux", "x64", "xlarge"}},
+		"unit-node":                      {
+			{"self-hosted", "linux", "x64", "xlarge"},
+			{"self-hosted", "linux", "arm64", "xlarge"},
+		},
+
+		"unit-cli": {
+			{"ubuntu-latest"},
+			{"ubuntu-24.04-arm"},
+		},
+		"unit-rest": {
+			{"ubuntu-latest"},
+			{"ubuntu-24.04-arm"},
+		},
 	}
 
 	if runners, ok := namesToRunners[name]; ok {
