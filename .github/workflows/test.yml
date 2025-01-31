@@ -113,13 +113,13 @@ jobs:
         with:
           submodules: 'recursive'
           fetch-depth: 0
+      - uses: ./.github/actions/install-system-dependencies
+      - uses: ./.github/actions/install-go
       - id: group
         run: |
           echo "metadata<<EOF" >> $GITHUB_OUTPUT
           go run ./cmd/ci/main.go --json get-test-group-metadata --name "${{ matrix.name }}" | jq -r '.msg' | tee -a $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
-      - uses: ./.github/actions/install-system-dependencies
-      - uses: ./.github/actions/install-go
       - name: Install gotestsum
         run: go install gotest.tools/gotestsum@latest
       - name: Restore cached make deps outputs
