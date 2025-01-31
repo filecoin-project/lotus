@@ -35,35 +35,35 @@ func contains(slice []string, item string) bool {
 
 func getPackages(name string) []string {
 	namesToPackages := map[string][]string{
-		"multicore-sdr": {strings.Join([]string{"storage", "sealer", "ffiwrapper"}, string(os.PathSeparator))},
-		"conformance":   {strings.Join([]string{"conformance"}, string(os.PathSeparator))},
+		"multicore-sdr": {strings.Join([]string{".", "storage", "sealer", "ffiwrapper"}, string(os.PathSeparator))},
+		"conformance":   {strings.Join([]string{".", "conformance"}, string(os.PathSeparator))},
 		"unit-cli": {
-			strings.Join([]string{"cli", "..."}, string(os.PathSeparator)),
-			strings.Join([]string{"cmd", "..."}, string(os.PathSeparator)),
-			strings.Join([]string{"api", "..."}, string(os.PathSeparator)),
+			strings.Join([]string{".", "cli", "..."}, string(os.PathSeparator)),
+			strings.Join([]string{".", "cmd", "..."}, string(os.PathSeparator)),
+			strings.Join([]string{".", "api", "..."}, string(os.PathSeparator)),
 		},
 		"unit-storage": {
-			strings.Join([]string{"storage", "..."}, string(os.PathSeparator)),
-			strings.Join([]string{"extern", "..."}, string(os.PathSeparator)),
+			strings.Join([]string{".", "storage", "..."}, string(os.PathSeparator)),
+			strings.Join([]string{".", "extern", "..."}, string(os.PathSeparator)),
 		},
 		"unit-node": {
-			strings.Join([]string{"node", "..."}, string(os.PathSeparator)),
+			strings.Join([]string{".", "node", "..."}, string(os.PathSeparator)),
 		},
 		"unit-rest": {
-			strings.Join([]string{"blockstore", "..."}, string(os.PathSeparator)),
-			strings.Join([]string{"build", "..."}, string(os.PathSeparator)),
-			strings.Join([]string{"chain", "..."}, string(os.PathSeparator)),
-			strings.Join([]string{"conformance", "..."}, string(os.PathSeparator)),
-			strings.Join([]string{"gateway", "..."}, string(os.PathSeparator)),
-			strings.Join([]string{"journal", "..."}, string(os.PathSeparator)),
-			strings.Join([]string{"lib", "..."}, string(os.PathSeparator)),
-			strings.Join([]string{"paychmgr", "..."}, string(os.PathSeparator)),
-			strings.Join([]string{"tools", "..."}, string(os.PathSeparator)),
+			strings.Join([]string{".", "blockstore", "..."}, string(os.PathSeparator)),
+			strings.Join([]string{".", "build", "..."}, string(os.PathSeparator)),
+			strings.Join([]string{".", "chain", "..."}, string(os.PathSeparator)),
+			strings.Join([]string{".", "conformance", "..."}, string(os.PathSeparator)),
+			strings.Join([]string{".", "gateway", "..."}, string(os.PathSeparator)),
+			strings.Join([]string{".", "journal", "..."}, string(os.PathSeparator)),
+			strings.Join([]string{".", "lib", "..."}, string(os.PathSeparator)),
+			strings.Join([]string{".", "paychmgr", "..."}, string(os.PathSeparator)),
+			strings.Join([]string{".", "tools", "..."}, string(os.PathSeparator)),
 		},
 	}
 
 	if strings.HasPrefix(name, "itest-") {
-		return []string{strings.Join([]string{"itests", strings.Join([]string{strings.TrimPrefix(name, "itest-"), "test.go"}, "_")}, string(os.PathSeparator))}
+		return []string{strings.Join([]string{".", "itests", strings.Join([]string{strings.TrimPrefix(name, "itest-"), "test.go"}, "_")}, string(os.PathSeparator))}
 	}
 
 	return namesToPackages[name]
@@ -139,7 +139,7 @@ func getRunners(name string) [][]string {
 		"itest-sector_import_full":   {{"self-hosted", "linux", "x64", "2xlarge"}},
 		"itest-sector_import_simple": {{"self-hosted", "linux", "x64", "2xlarge"}},
 		"itest-wdpost":               {{"self-hosted", "linux", "x64", "2xlarge"}},
-		"unit-storage":               {
+		"unit-storage": {
 			{"self-hosted", "linux", "x64", "2xlarge"},
 			{"self-hosted", "linux", "arm64", "2xlarge"},
 		},
@@ -178,7 +178,7 @@ func getRunners(name string) [][]string {
 		"itest-self_sent_txn":            {{"self-hosted", "linux", "x64", "xlarge"}},
 		"itest-verifreg":                 {{"self-hosted", "linux", "x64", "xlarge"}},
 		"multicore-sdr":                  {{"self-hosted", "linux", "x64", "xlarge"}},
-		"unit-node":                      {
+		"unit-node": {
 			{"self-hosted", "linux", "x64", "xlarge"},
 			{"self-hosted", "linux", "arm64", "xlarge"},
 		},
