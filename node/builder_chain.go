@@ -174,11 +174,11 @@ var ChainNode = Options(
 		Override(HandleIncomingBlocksKey, modules.HandleIncomingBlocks),
 	),
 
-	If(build.IsF3Enabled(),
+	ApplyIf(isFullNode, If(build.IsF3Enabled(),
 		Override(new(*lf3.Config), lf3.NewConfig),
 		Override(new(manifest.ManifestProvider), lf3.NewManifestProvider),
 		Override(new(*lf3.F3), lf3.New),
-	),
+	)),
 )
 
 func ConfigFullNode(c interface{}) Option {
