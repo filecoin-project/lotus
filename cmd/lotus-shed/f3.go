@@ -2,9 +2,14 @@ package main
 
 import (
 	"bufio"
+	"bytes"
+	"compress/flate"
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"io"
+	"math"
 	"math/rand"
 	"os"
 	"sort"
@@ -17,9 +22,14 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-f3/gpbft"
+	"github.com/filecoin-project/go-f3/manifest"
+	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	lcli "github.com/filecoin-project/lotus/cli"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
+	"github.com/filecoin-project/lotus/lib/must"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -29,6 +39,7 @@ var f3Cmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		f3ClearStateCmd,
 		f3GenExplicitPower,
+		f3CheckActivation,
 	},
 }
 
@@ -59,6 +70,103 @@ func loadF3IDList(path string) ([]gpbft.ActorID, error) {
 	}
 
 	return ids, nil
+}
+
+var f3CheckActivation = &cli.Command{
+	Name: "check-activation",
+
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name: "contract",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		address, err := ethtypes.ParseEthAddress(cctx.String("contract"))
+		if err != nil {
+			return fmt.Errorf("trying to parse contract address: %s: %w", cctx.String("contract"), err)
+		}
+
+		ethCall := ethtypes.EthCall{
+			To:   &address,
+			Data: must.One(ethtypes.DecodeHexString("0x2587660d")), // method ID of activationInformation()
+		}
+		fMessage, err := ethCall.ToFilecoinMessage()
+		if err != nil {
+			return fmt.Errorf("converting to filecoin message: %w", err)
+		}
+
+		ctx := cliutil.ReqContext(cctx)
+		api, closer, err := cliutil.GetFullNodeAPIV1(cctx)
+		if err != nil {
+			return fmt.Errorf("getting api: %w", err)
+		}
+		defer closer()
+
+		msgRes, err := api.StateCall(ctx, fMessage, types.EmptyTSK)
+		if err != nil {
+			return fmt.Errorf("state call error: %w", err)
+		}
+		if msgRes.MsgRct.ExitCode != 0 {
+			return fmt.Errorf("message returned exit code: %v", msgRes.MsgRct.ExitCode)
+		}
+
+		var ethReturn abi.CborBytes
+		err = ethReturn.UnmarshalCBOR(bytes.NewReader(msgRes.MsgRct.Return))
+		if err != nil {
+			return fmt.Errorf("could not decode return value: %w", err)
+		}
+		slot, retBytes := []byte{}, []byte(ethReturn)
+		// 3*32 because there should be 3 slots minimum
+		if len(retBytes) < 3*32 {
+			return fmt.Errorf("no activation infromation")
+		}
+
+		// split off first slot
+		slot, retBytes = retBytes[:32], retBytes[32:]
+		// it is uint64 so we want the last 8 bytes
+		slot = slot[24:32]
+		activationEpoch := binary.BigEndian.Uint64(slot)
+		_ = activationEpoch
+
+		slot, retBytes = retBytes[:32], retBytes[32:]
+		for i := 0; i < 31; i++ {
+			if slot[i] != 0 {
+				return fmt.Errorf("wrong value for offest (padding): slot[%d] = 0x%x != 0x00", i, slot[i])
+			}
+		}
+		if slot[31] != 0x40 {
+			return fmt.Errorf("wrong value for offest : slot[31] = 0x%x != 0x40", slot[31])
+		}
+		slot, retBytes = retBytes[:32], retBytes[32:]
+		slot = slot[24:32]
+		pLen := binary.BigEndian.Uint64(slot)
+		if pLen > 4<<10 {
+			return fmt.Errorf("too long declared payload: %d > %d", pLen, 4<<10)
+		}
+		payloadLength := int(pLen)
+
+		if payloadLength > len(retBytes) {
+			return fmt.Errorf("not enough remaining bytes: %d > %d", payloadLength, retBytes)
+		}
+
+		if activationEpoch == math.MaxUint64 || payloadLength == 0 {
+			fmt.Printf("no active activation")
+		} else {
+			compressedManifest := retBytes[:payloadLength]
+			reader := io.LimitReader(flate.NewReader(bytes.NewReader(compressedManifest)), 1<<20)
+			var m manifest.Manifest
+			err = json.NewDecoder(reader).Decode(&m)
+			if err != nil {
+				return fmt.Errorf("got error while decoding manifest: %w", err)
+			}
+
+			if m.BootstrapEpoch < 0 || uint64(m.BootstrapEpoch) != activationEpoch {
+				return fmt.Errorf("bootstrap epoch does not match: %d != %d", m.BootstrapEpoch, activationEpoch)
+			}
+			fmt.Printf("%+v\n", m)
+		}
+		return nil
+	},
 }
 
 var f3GenExplicitPower = &cli.Command{
