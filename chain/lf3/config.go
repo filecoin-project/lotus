@@ -46,7 +46,6 @@ func NewManifest(
 ) *manifest.Manifest {
 	return &manifest.Manifest{
 		ProtocolVersion:   manifest.VersionCapability,
-		InitialInstance:   0,
 		BootstrapEpoch:    int64(bootstrapEpoch),
 		NetworkName:       nn,
 		InitialPowerTable: initialPowerTable,
