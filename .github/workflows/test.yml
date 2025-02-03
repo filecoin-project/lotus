@@ -37,12 +37,10 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
   cache:
     name: Cache Dependencies
-    runs-on: ubuntu-latest
-    outputs:
-      fetch_params_key: ${{ steps.fetch_params.outputs.key }}
-      fetch_params_path: ${{ steps.fetch_params.outputs.path }}
-      make_deps_key: ${{ steps.make_deps.outputs.key }}
-      make_deps_path: ${{ steps.make_deps.outputs.path }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        runner: [ubuntu-latest, ubuntu-24.04-arm]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -100,6 +98,23 @@ jobs:
         with:
           key: ${{ steps.make_deps.outputs.key }}
           path: ${{ steps.make_deps.outputs.path }}
+      - env:
+          fetch_params_key: ${{ steps.fetch_params.outputs.key }}
+          fetch_params_path: ${{ steps.fetch_params.outputs.path }}
+          make_deps_key: ${{ steps.make_deps.outputs.key }}
+          make_deps_path: ${{ steps.make_deps.outputs.path }}
+          file: jobs.cache.${{ runner.os }}.${{ runner.arch }}.outputs.json
+        run: |
+          jq -n '{
+            "fetch_params_key": env.fetch_params_key,
+            "fetch_params_path": env.fetch_params_path,
+            "make_deps_key": env.make_deps_key,
+            "make_deps_path": env.make_deps_path
+          }' | tee -a "$file"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jobs.cache.${{ runner.os }}.${{ runner.arch }}.outputs
+          path: jobs.cache.${{ runner.os }}.${{ runner.arch }}.outputs.json
   test:
     needs: [discover, cache]
     name: Test (${{ matrix.name }}) ${{ toJson(matrix.runner) }}
@@ -122,18 +137,37 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
       - name: Install gotestsum
         run: go install gotest.tools/gotestsum@latest
+      - id: artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: jobs.cache.${{ runner.os }}.${{ runner.arch }}.outputs
+      - id: cache
+        env:
+          file: jobs.cache.${{ runner.os }}.${{ runner.arch }}.outputs.json
+        run: |
+          echo "make_deps_key=$(jq -r .make_deps_key "$file")" | tee -a $GITHUB_OUTPUT
+          echo "make_deps_path<<EOF" | tee -a $GITHUB_OUTPUT
+          jq -r .make_deps_path "$file" | tee -a $GITHUB_OUTPUT
+          echo "EOF" | tee -a $GITHUB_OUTPUT
+
+          echo "fetch_params_key=$(jq -r .fetch_params_key "$file")" | tee -a $GITHUB_OUTPUT
+          echo "fetch_params_path<<EOF" | tee -a $GITHUB_OUTPUT
+          jq -r .fetch_params_path "$file" | tee -a $GITHUB_OUTPUT
+          echo "EOF" | tee -a $GITHUB_OUTPUT
+
+          rm "$file"
       - name: Restore cached make deps outputs
         uses: actions/cache/restore@v4
         with:
-          key: ${{ needs.cache.outputs.make_deps_key }}
-          path: ${{ needs.cache.outputs.make_deps_path }}
+          key: ${{ steps.cache.outputs.make_deps_key }}
+          path: ${{ steps.cache.outputs.make_deps_path }}
           fail-on-cache-miss: true
       - if: ${{ fromJson(steps.group.outputs.metadata).needs_parameters }}
         name: Restore cached fetch params outputs
         uses: actions/cache/restore@v4
         with:
-          key: ${{ needs.cache.outputs.fetch_params_key }}
-          path: ${{ needs.cache.outputs.fetch_params_path }}
+          key: ${{ steps.cache.outputs.fetch_params_key }}
+          path: ${{ steps.cache.outputs.fetch_params_path }}
           fail-on-cache-miss: true
       # TODO: Install statediff (used to be used for conformance)
       - name: Create temporary directory for reports
@@ -145,8 +179,8 @@ jobs:
           NAME: ${{ matrix.name }}
           LOTUS_SRC_DIR: ${{ github.workspace }}
           REPORTS_PATH: ${{ steps.reports.outputs.path }}
-          SKIP_CONFORMANCE: ${{ fromJson(steps.group.outputs.metadata).skip_conformance || '1' }}
-          TEST_RUSTPROOFS_LOGS: ${{ fromJson(steps.group.outputs.metadata).test_rustproofs_logs || '0' }}
+          SKIP_CONFORMANCE: ${{ fromJson(steps.group.outputs.metadata).skip_conformance && '1' || '0' }}
+          TEST_RUSTPROOFS_LOGS: ${{ fromJson(steps.group.outputs.metadata).test_rustproofs_logs && '1' || '0' }}
           FORMAT: ${{ fromJson(steps.group.outputs.metadata).format || 'standard-verbose' }}
           PACKAGES: ${{ join(fromJson(steps.group.outputs.metadata).packages, ' ') }}
         run: |
