@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"runtime/pprof"
@@ -120,6 +122,10 @@ func main() {
 				Name:  "pprof",
 				Usage: "specify name of file for writing cpu profile to",
 			},
+			&cli.IntFlag{
+				Name:  "pprofport",
+				Usage: "specify port to run pprof server on",
+			},
 		},
 		Before: func(cctx *cli.Context) error {
 			if prof := cctx.String("pprof"); prof != "" {
@@ -131,6 +137,15 @@ func main() {
 				if err := pprof.StartCPUProfile(profile); err != nil {
 					return err
 				}
+			}
+
+			if port := cctx.Int("pprofport"); port != 0 {
+				go func() {
+					log.Warnf("Starting pprof server on port %d", port)
+					if err := http.ListenAndServe(fmt.Sprintf("localhost:%d", port), nil); err != nil {
+						log.Errorf("Failed to start pprof server: %s", err)
+					}
+				}()
 			}
 
 			return logging.SetLogLevel("lotus-shed", cctx.String("log-level"))
