@@ -201,8 +201,8 @@ var msigInspectCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if !cctx.Args().Present() {
-			return ShowHelp(cctx, fmt.Errorf("must specify address of multisig to inspect"))
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgsWithHint(cctx, "specify address of multisig")
 		}
 
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -213,10 +213,6 @@ var msigInspectCmd = &cli.Command{
 		ctx := ReqContext(cctx)
 
 		store := adt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewAPIBlockstore(api)))
-
-		if cctx.NArg() != 1 {
-			return IncorrectNumArgs(cctx)
-		}
 
 		maddr, err := address.NewFromString(cctx.Args().First())
 		if err != nil {
@@ -403,7 +399,7 @@ var msigProposeCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.NArg() != 3 {
+		if cctx.NArg() < 3 {
 			return ShowHelp(cctx, fmt.Errorf("must pass at least multisig address, destination, and value"))
 		}
 
@@ -525,7 +521,7 @@ var msigApproveCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.NArg() != 2 {
+		if cctx.NArg() < 2 {
 			return ShowHelp(cctx, fmt.Errorf("must pass at least multisig address and message ID"))
 		}
 
@@ -662,7 +658,7 @@ var msigCancelCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.NArg() != 2 {
+		if cctx.NArg() < 2 {
 			return ShowHelp(cctx, fmt.Errorf("must pass at least multisig address and message ID"))
 		}
 

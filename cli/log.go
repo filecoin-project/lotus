@@ -82,11 +82,7 @@ var LogSetLevel = &cli.Command{
 		ctx := ReqContext(cctx)
 
 		if cctx.NArg() != 1 {
-			return IncorrectNumArgs(cctx)
-		}
-
-		if !cctx.Args().Present() {
-			return fmt.Errorf("level is required")
+			return IncorrectNumArgsWithHint(cctx, "level required")
 		}
 
 		systems := cctx.StringSlice("system")

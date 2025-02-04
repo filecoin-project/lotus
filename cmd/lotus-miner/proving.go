@@ -304,7 +304,7 @@ var provingRecoverFaultsCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.NArg() != 1 {
+		if cctx.NArg() < 1 {
 			return lcli.ShowHelp(cctx, xerrors.Errorf("must pass at least 1 sector number"))
 		}
 

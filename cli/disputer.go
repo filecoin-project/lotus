@@ -55,7 +55,16 @@ var disputerMsgCmd = &cli.Command{
 	Name:      "dispute",
 	Usage:     "Send a specific DisputeWindowedPoSt message",
 	ArgsUsage: "[minerAddress index postIndex]",
-	Flags:     []cli.Flag{},
+	Flags: []cli.Flag{
+		&cli.Uint64Flag{
+			Name:  "max-fee",
+			Usage: "maximum fees to spend on a dispute message",
+		},
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "the address to send dispute messages from if not the default wallet address",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 3 {
 			return IncorrectNumArgs(cctx)
@@ -141,8 +150,16 @@ var disputerStartCmd = &cli.Command{
 	ArgsUsage: "[minerAddress]",
 	Flags: []cli.Flag{
 		&cli.Uint64Flag{
-			Name:  "start-epoch",
-			Usage: "only start disputing PoSts after this epoch ",
+			Name:  "height",
+			Usage: "only start disputing PoSts after this height ",
+		},
+		&cli.Uint64Flag{
+			Name:  "max-fee",
+			Usage: "maximum fees to spend on a dispute message",
+		},
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "the address to send dispute messages from if not the default wallet address",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -154,7 +171,7 @@ var disputerStartCmd = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
-		if cctx.NArg() != 1 {
+		if cctx.NArg() != 0 {
 			return IncorrectNumArgs(cctx)
 		}
 

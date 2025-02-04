@@ -316,8 +316,8 @@ var f3SubCmdCerts = &cli.Command{
 				f3FlagOutput,
 			},
 			Before: func(cctx *cli.Context) error {
-				if cctx.NArg() != 1 {
-					return IncorrectNumArgs(cctx)
+				if cctx.NArg() > 1 {
+					return IncorrectNumArgsWithHint(cctx, "expected 1 at most")
 				}
 				return nil
 			},
@@ -398,7 +398,7 @@ Examples:
 			},
 			Before: func(cctx *cli.Context) error {
 				if cctx.NArg() > 1 {
-					return IncorrectNumArgs(cctx)
+					return IncorrectNumArgsWithHint(cctx, "expected 1 at most")
 				}
 				return nil
 			},

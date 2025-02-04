@@ -111,20 +111,16 @@ var SyncMarkBadCmd = &cli.Command{
 	Usage:     "Mark the given block as bad, will prevent syncing to a chain that contains it",
 	ArgsUsage: "[blockCid]",
 	Action: func(cctx *cli.Context) error {
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgsWithHint(cctx, "must specify block cid to mark")
+		}
+
 		napi, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 		ctx := ReqContext(cctx)
-
-		if cctx.NArg() != 1 {
-			return IncorrectNumArgs(cctx)
-		}
-
-		if !cctx.Args().Present() {
-			return fmt.Errorf("must specify block cid to mark")
-		}
 
 		bcid, err := cid.Decode(cctx.Args().First())
 		if err != nil {
@@ -146,6 +142,10 @@ var SyncUnmarkBadCmd = &cli.Command{
 	},
 	ArgsUsage: "[blockCid]",
 	Action: func(cctx *cli.Context) error {
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgsWithHint(cctx, "must specify block cid to unmark")
+		}
+
 		napi, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -153,16 +153,8 @@ var SyncUnmarkBadCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		if cctx.NArg() != 1 {
-			return IncorrectNumArgs(cctx)
-		}
-
 		if cctx.Bool("all") {
 			return napi.SyncUnmarkAllBad(ctx)
-		}
-
-		if !cctx.Args().Present() {
-			return fmt.Errorf("must specify block cid to unmark")
 		}
 
 		bcid, err := cid.Decode(cctx.Args().First())
@@ -179,6 +171,10 @@ var SyncCheckBadCmd = &cli.Command{
 	Usage:     "check if the given block was marked bad, and for what reason",
 	ArgsUsage: "[blockCid]",
 	Action: func(cctx *cli.Context) error {
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgsWithHint(cctx, "must specify block cid to check")
+		}
+
 		afmt := NewAppFmt(cctx.App)
 
 		napi, closer, err := GetFullNodeAPI(cctx)
@@ -187,14 +183,6 @@ var SyncCheckBadCmd = &cli.Command{
 		}
 		defer closer()
 		ctx := ReqContext(cctx)
-
-		if cctx.NArg() != 1 {
-			return IncorrectNumArgs(cctx)
-		}
-
-		if !cctx.Args().Present() {
-			return fmt.Errorf("must specify block cid to check")
-		}
 
 		bcid, err := cid.Decode(cctx.Args().First())
 		if err != nil {
@@ -233,10 +221,6 @@ var SyncCheckpointCmd = &cli.Command{
 		}
 		defer closer()
 		ctx := ReqContext(cctx)
-
-		if cctx.NArg() != 1 {
-			return IncorrectNumArgs(cctx)
-		}
 
 		var ts *types.TipSet
 

@@ -265,10 +265,6 @@ func ActorSetAddrsCmd(getActor ActorAddressGetter) *cli.Command {
 
 			ctx := lcli.ReqContext(cctx)
 
-			if cctx.NArg() != 1 {
-				return lcli.IncorrectNumArgs(cctx)
-			}
-
 			var addrs []abi.Multiaddrs
 			for _, a := range args {
 				maddr, err := ma.NewMultiaddr(a)
@@ -738,8 +734,8 @@ func ActorProposeChangeWorkerCmd(getActor ActorAddressGetter) *cli.Command {
 			},
 		},
 		Action: func(cctx *cli.Context) error {
-			if !cctx.Args().Present() {
-				return fmt.Errorf("must pass address of new worker address")
+			if cctx.NArg() != 1 {
+				return lcli.IncorrectNumArgsWithHint(cctx, "must pass address of the new worker address")
 			}
 
 			api, acloser, err := lcli.GetFullNodeAPI(cctx)
@@ -749,10 +745,6 @@ func ActorProposeChangeWorkerCmd(getActor ActorAddressGetter) *cli.Command {
 			defer acloser()
 
 			ctx := lcli.ReqContext(cctx)
-
-			if cctx.NArg() != 1 {
-				return lcli.IncorrectNumArgs(cctx)
-			}
 
 			na, err := address.NewFromString(cctx.Args().First())
 			if err != nil {
@@ -988,8 +980,8 @@ func ActorConfirmChangeWorkerCmd(getActor ActorAddressGetter) *cli.Command {
 			},
 		},
 		Action: func(cctx *cli.Context) error {
-			if !cctx.Args().Present() {
-				return fmt.Errorf("must pass address of new worker address")
+			if cctx.NArg() != 1 {
+				return lcli.IncorrectNumArgsWithHint(cctx, "must pass address of new worker address")
 			}
 
 			api, acloser, err := lcli.GetFullNodeAPI(cctx)
@@ -999,10 +991,6 @@ func ActorConfirmChangeWorkerCmd(getActor ActorAddressGetter) *cli.Command {
 			defer acloser()
 
 			ctx := lcli.ReqContext(cctx)
-
-			if cctx.NArg() != 1 {
-				return lcli.IncorrectNumArgs(cctx)
-			}
 
 			na, err := address.NewFromString(cctx.Args().First())
 			if err != nil {

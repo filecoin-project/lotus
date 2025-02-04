@@ -218,7 +218,7 @@ var EvmDeployCmd = &cli.Command{
 		ctx := ReqContext(cctx)
 
 		if cctx.NArg() != 1 {
-			return IncorrectNumArgs(cctx)
+			return IncorrectNumArgsWithHint(cctx, "contract init code required")
 		}
 
 		contract, err := os.ReadFile(cctx.Args().First())
@@ -339,7 +339,7 @@ var EvmInvokeCmd = &cli.Command{
 		ctx := ReqContext(cctx)
 
 		if cctx.NArg() != 2 {
-			return IncorrectNumArgs(cctx)
+			return IncorrectNumArgsWithHint(cctx, "address and calldata requried")
 		}
 
 		addr, err := address.NewFromString(cctx.Args().Get(0))
