@@ -22,13 +22,6 @@ import (
 
 var log = logging.Logger("lotus-miner")
 
-const (
-	FlagMinerRepo = "miner-repo"
-)
-
-// TODO remove after deprecation period
-const FlagMinerRepoDeprecation = "storagerepo"
-
 func App() *cli.App {
 	api.RunningNodeType = api.NodeMiner
 
@@ -113,7 +106,19 @@ func App() *cli.App {
 				Value:   "~/.lotusminer", // TODO: Consider XDG_DATA_HOME
 				Usage:   fmt.Sprintf("Specify miner repo path. flag(%s) and env(LOTUS_STORAGE_PATH) are DEPRECATION, will REMOVE SOON", FlagMinerRepoDeprecation),
 			},
+			&cli.StringFlag{
+				Name:  "output",
+				Usage: "output format (json or text)",
+				Value: "text",
+				Hidden: true,
+				Category: "Output",
+			},
 			cliutil.FlagVeryVerbose,
+			&cli.StringFlag{
+				Name:  "output",
+				Usage: "output format (json or text)",
+				Value: "text",
+			},
 		},
 		Commands: append(local, lcli.CommonCommands...),
 		After: func(c *cli.Context) error {
@@ -125,44 +130,15 @@ func App() *cli.App {
 			return nil
 		},
 	}
-	app.Setup()
-	app.Metadata["repoType"] = repo.StorageMiner
+
 	return app
 }
 
-func getActorAddress(ctx context.Context, cctx *cli.Context) (maddr address.Address, err error) {
-	if cctx.IsSet("actor") {
-		maddr, err = address.NewFromString(cctx.String("actor"))
-		if err != nil {
-			return maddr, err
-		}
-		return
-	}
+const (
+	FlagMinerRepo = "miner-repo"
+)
 
-	minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
-	if err != nil {
-		return address.Undef, err
-	}
-	defer closer()
+// TODO remove after deprecation period
+const FlagMinerRepoDeprecation = "stor
 
-	maddr, err = minerApi.ActorAddress(ctx)
-	if err != nil {
-		return maddr, xerrors.Errorf("getting actor address: %w", err)
-	}
-
-	return maddr, nil
-}
-
-func LMActorOrEnvGetter(cctx *cli.Context) (address.Address, error) {
-	return getActorAddress(cctx.Context, cctx)
-}
-
-func LMActorGetter(cctx *cli.Context) (address.Address, error) {
-	minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
-	if err != nil {
-		return address.Undef, err
-	}
-	defer closer()
-
-	return minerApi.ActorAddress(cctx.Context)
-}
+// Standardise a top level output format for all lotus CLIs

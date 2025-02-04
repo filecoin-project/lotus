@@ -18,14 +18,50 @@ var Commands = []*cli.Command{
 	lcli.WithCategory("developer", StateCmd),
 	lcli.WithCategory("developer", lcli.ChainCmd),
 	lcli.WithCategory("developer", lcli.LogCmd),
-	lcli.WithCategory("developer", lcli.WaitApiCmd),
-	lcli.WithCategory("developer", lcli.FetchParamCmd),
-	lcli.WithCategory("developer", lcli.EvmCmd),
-	lcli.WithCategory("developer", lcli.IndexCmd),
-	lcli.WithCategory("network", lcli.NetCmd),
-	lcli.WithCategory("network", lcli.SyncCmd),
-	lcli.WithCategory("network", lcli.F3Cmd),
-	lcli.WithCategory("status", lcli.StatusCmd),
-	lcli.PprofCmd,
-	lcli.VersionCmd,
+	{
+		Name:  "index",
+		Usage: "Commands related to managing the chainindex",
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:  "output",
+				Usage: "output format (json or text)",
+				Value: "text",
+			},
+			&cli.IntFlag{
+				Name:     "from",
+				Usage:    "from specifies the starting tipset epoch for validation (inclusive)",
+				Required: true,
+			},
+			&cli.IntFlag{
+				Name:     "to",
+				Usage:    "to specifies the ending tipset epoch for validation (inclusive)",
+				Required: true,
+			},
+			&cli.BoolFlag{
+				Name:  "backfill",
+				Usage: "backfill determines whether to backfill missing index entries during validation (default: true)",
+				Value: true,
+			},
+			&cli.BoolFlag{
+				Name:  "log-good",
+				Usage: "log tipsets that have no detected problems",
+				Value: false,
+			},
+			&cli.BoolFlag{
+				Name:  "quiet",
+				Usage: "suppress output except for errors (or good tipsets if log-good is enabled)",
+			},
+		},
+	},
+	{
+		Name:  "miner",
+		Usage: "Commands related to managing the miner",
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:  "output",
+				Usage: "output format (json or text)",
+				Value: "text",
+			},
+		},
+	}, // Standardise a top level output format for all lotus CLIs
 }
