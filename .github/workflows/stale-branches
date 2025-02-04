@@ -1,0 +1,33 @@
+# .github/workflows/stale-branches.yml
+
+name: Stale Branches
+
+on:
+  schedule:
+    - cron: '0 12 * * *'
+    
+permissions:
+  issues: write
+  contents: write
+
+jobs:
+  stale_branches:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Stale Branches
+      uses: crs-k/stale-branches@c6e09a3de1046d68b21eccdca23321d0ec277964 # v7.0.0
+      with:
+        repo-token: '${{ secrets.GITHUB_TOKEN }}'
+        days-before-stale: 180 #Number of days a branch has been inactive before it is considered stale and a 'stale branch 🗑️' issue is opened.
+        days-before-delete: 360 #Number of days a branch has been inactive before it is deleted.
+        comment-updates: false #comment with updated information will be added to existing issues each workflow run.
+        max-issues: 20 #the number of 'stale branch 🗑️' issues that can exist. Also, max number of branches that can be deleted per run.
+        tag-committer: true #when an issue is opened, the last committer will be tagged in the comments.
+        stale-branch-label: 'stale branch 🗑️' #Label applied to issues created for stale branches. Must be unique to this workflow.
+        compare-branches: 'info' #compares each branch to the repo's default branch. When set to info, additional output describes if the current branch is ahead, behind, diverged, or identical to the default branch.
+        branches-filter-regex: ''^(?!release)' #Optional Regex that will be used to filter branches from this action
+        include-protected-branches: false #If this is enabled, the action will include protected branches in the process.
+        rate-limit: true #If this is enabled, the action will stop if it exceeds 95% of the GitHub API rate limit.
+        pr-check: false #If this is enabled, the action will first check for incoming/outgoing PRs associated with the branch.
+        dry-run: true #when enabled, the action will not delete or tag any branches. If a branch has an active pr, it will be ignored.
+        ignore-issue-interaction: false #If this is enabled, the action will not interact with Github issues.
