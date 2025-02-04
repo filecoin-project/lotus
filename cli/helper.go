@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	logging "github.com/ipfs/go-log/v2"
 	ufcli "github.com/urfave/cli/v2"
 )
 
@@ -46,11 +47,13 @@ func RunApp(app *ufcli.App) {
 	}()
 
 	if err := app.Run(os.Args); err != nil {
-		if os.Getenv("LOTUS_DEV") != "" {
-			log.Warnf("%+v", err)
-		} else {
-			fmt.Fprintf(os.Stderr, "ERROR: %s\n\n", err) // nolint:errcheck
+		if cfg := logging.GetConfig(); !(cfg.Stdout || cfg.Stderr) {
+			// To avoid printing the error twice while making sure that log file contains the
+			// error, check the config and only print it if the output isn't stderr or
+			// stdout.
+			log.Errorw("Failed to start application", "err", err)
 		}
+		_, _ = fmt.Fprintf(os.Stderr, "ERROR: %s\n\n", err)
 		var phe *PrintHelpErr
 		if errors.As(err, &phe) {
 			_ = ufcli.ShowCommandHelp(phe.Ctx, phe.Ctx.Command.Name)
