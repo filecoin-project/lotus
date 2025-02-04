@@ -7,8 +7,8 @@ import (
 	"os"
 	"testing"
 
-	dchain "github.com/drand/drand/chain"
-	hclient "github.com/drand/drand/client/http"
+	dchain "github.com/drand/drand/v2/common/chain"
+	hclient "github.com/drand/go-clients/client/http"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/filecoin-project/go-state-types/network"
@@ -22,13 +22,10 @@ func TestPrintGroupInfo(t *testing.T) {
 
 	drandChain, err := dchain.InfoFromJSON(bytes.NewReader([]byte(chainInfo)))
 	assert.NoError(t, err)
-	c, err := hclient.NewWithInfo(server, drandChain, nil)
+	c, err := hclient.NewWithInfo(&logger{&log.SugaredLogger}, server, drandChain, nil)
 
 	assert.NoError(t, err)
-	cg := c.(interface {
-		FetchChainInfo(ctx context.Context, groupHash []byte) (*dchain.Info, error)
-	})
-	chain, err := cg.FetchChainInfo(context.Background(), nil)
+	chain, err := c.FetchChainInfo(context.Background(), nil)
 	assert.NoError(t, err)
 	err = chain.ToJSON(os.Stdout, nil)
 	assert.NoError(t, err)
