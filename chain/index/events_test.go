@@ -89,7 +89,7 @@ func TestGetEventsForFilterNoEvents(t *testing.T) {
 		MaxHeight: 200,
 	}
 	ces, err = si.GetEventsForFilter(ctx, f)
-	require.ErrorIs(t, err, ErrRangeInFuture)
+	require.ErrorIs(t, err, &ErrRangeInFuture{})
 	require.Equal(t, 0, len(ces))
 
 	// search for a range (start too) that is in the future
@@ -98,7 +98,7 @@ func TestGetEventsForFilterNoEvents(t *testing.T) {
 		MaxHeight: 200,
 	}
 	ces, err = si.GetEventsForFilter(ctx, f)
-	require.ErrorIs(t, err, ErrRangeInFuture)
+	require.ErrorIs(t, err, &ErrRangeInFuture{})
 	require.Equal(t, 0, len(ces))
 }
 
