@@ -2,13 +2,18 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"runtime/pprof"
+	"time"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/build"
 )
@@ -120,6 +125,16 @@ func main() {
 				Name:  "pprof",
 				Usage: "specify name of file for writing cpu profile to",
 			},
+			&cli.UintFlag{
+				Name:  "pprof-port",
+				Usage: "specify port to run pprof server on",
+				Action: func(_ *cli.Context, port uint) error {
+					if port > 65535 {
+						return xerrors.New("invalid port number")
+					}
+					return nil
+				},
+			},
 		},
 		Before: func(cctx *cli.Context) error {
 			if prof := cctx.String("pprof"); prof != "" {
@@ -131,6 +146,19 @@ func main() {
 				if err := pprof.StartCPUProfile(profile); err != nil {
 					return err
 				}
+			}
+
+			if port := cctx.Int("pprof-port"); port != 0 {
+				go func() {
+					log.Infow("Starting pprof server", "port", port)
+					server := &http.Server{
+						Addr:              fmt.Sprintf("localhost:%d", port),
+						ReadHeaderTimeout: 5 * time.Second,
+					}
+					if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+						log.Errorw("pprof server stopped unexpectedly", "err", err)
+					}
+				}()
 			}
 
 			return logging.SetLogLevel("lotus-shed", cctx.String("log-level"))
