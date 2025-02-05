@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime/pprof"
+	"time"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
@@ -150,7 +151,11 @@ func main() {
 			if port := cctx.Int("pprof-port"); port != 0 {
 				go func() {
 					log.Infow("Starting pprof server", "port", port)
-					if err := http.ListenAndServe(fmt.Sprintf("localhost:%d", port), nil); !errors.Is(err, http.ErrServerClosed) {
+					server := &http.Server{
+						Addr:              fmt.Sprintf("localhost:%d", port),
+						ReadHeaderTimeout: 5 * time.Second,
+					}
+					if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 						log.Errorw("pprof server stopped unexpectedly", "err", err)
 					}
 				}()
