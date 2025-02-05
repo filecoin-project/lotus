@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
@@ -11,6 +12,7 @@ import (
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/build"
 )
@@ -122,9 +124,15 @@ func main() {
 				Name:  "pprof",
 				Usage: "specify name of file for writing cpu profile to",
 			},
-			&cli.IntFlag{
-				Name:  "pprofport",
+			&cli.UintFlag{
+				Name:  "pprof-port",
 				Usage: "specify port to run pprof server on",
+				Action: func(_ *cli.Context, port uint) error {
+					if port > 65535 {
+						return xerrors.New("invalid port number")
+					}
+					return nil
+				},
 			},
 		},
 		Before: func(cctx *cli.Context) error {
@@ -139,11 +147,11 @@ func main() {
 				}
 			}
 
-			if port := cctx.Int("pprofport"); port != 0 {
+			if port := cctx.Int("pprof-port"); port != 0 {
 				go func() {
-					log.Warnf("Starting pprof server on port %d", port)
-					if err := http.ListenAndServe(fmt.Sprintf("localhost:%d", port), nil); err != nil {
-						log.Errorf("Failed to start pprof server: %s", err)
+					log.Infow("Starting pprof server", "port", port)
+					if err := http.ListenAndServe(fmt.Sprintf("localhost:%d", port), nil); !errors.Is(err, http.ErrServerClosed) {
+						log.Errorw("pprof server stopped unexpectedly", "err", err)
 					}
 				}()
 			}
