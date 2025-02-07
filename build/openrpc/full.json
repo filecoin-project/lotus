@@ -19873,9 +19873,6 @@
                             "NetworkName": "lotus",
                             "BlockDelaySecs": 42,
                             "ConsensusMinerMinPower": "0",
-                            "SupportedProofTypes": [
-                                8
-                            ],
                             "PreCommitChallengeDelay": 10101,
                             "ForkUpgradeParams": {
                                 "UpgradeSmokeHeight": 10101,
@@ -20058,14 +20055,6 @@
                         "PreCommitChallengeDelay": {
                             "title": "number",
                             "type": "number"
-                        },
-                        "SupportedProofTypes": {
-                            "items": {
-                                "description": "Number is a number",
-                                "title": "number",
-                                "type": "number"
-                            },
-                            "type": "array"
                         }
                     },
                     "type": [

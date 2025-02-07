@@ -66,7 +66,6 @@ var UpgradeWatermelonFix2Height = buildconstants.UpgradeWatermelonFix2Height // 
 // This fix upgrade only ran on calibrationnet
 var UpgradeCalibrationDragonFixHeight = buildconstants.UpgradeCalibrationDragonFixHeight // Deprecated: Use buildconstants.UpgradeCalibrationDragonFixHeight instead
 
-var SupportedProofTypes = buildconstants.SupportedProofTypes         // Deprecated: Use buildconstants.SupportedProofTypes instead
 var ConsensusMinerMinPower = buildconstants.ConsensusMinerMinPower   // Deprecated: Use buildconstants.ConsensusMinerMinPower instead
 var PreCommitChallengeDelay = buildconstants.PreCommitChallengeDelay // Deprecated: Use buildconstants.PreCommitChallengeDelay instead
 

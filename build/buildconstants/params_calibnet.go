@@ -113,10 +113,6 @@ const UpgradeTeepHeight = 9999999999
 // ramp behavior before mainnet upgrade.
 var UpgradeTuktukPowerRampDurationEpochs = uint64(builtin.EpochsInDay * 3)
 
-var SupportedProofTypes = []abi.RegisteredSealProof{
-	abi.RegisteredSealProof_StackedDrg32GiBV1,
-	abi.RegisteredSealProof_StackedDrg64GiBV1,
-}
 var ConsensusMinerMinPower = abi.NewStoragePower(32 << 30)
 var PreCommitChallengeDelay = abi.ChainEpoch(150)
 
