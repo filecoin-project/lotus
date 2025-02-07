@@ -19,6 +19,6 @@ func FormatOutput(cctx *cli.Context, data interface{}) error {
         fmt.Println(data)
     default:
         return fmt.Errorf("unsupported output format: %s", format)
-    } // for the ouput function issue
+    }
     return nil
 }
