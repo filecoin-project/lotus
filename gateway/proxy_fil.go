@@ -663,6 +663,13 @@ func (gw *Node) StateGetClaims(ctx context.Context, providerAddr address.Address
 	return gw.target.StateGetClaims(ctx, providerAddr, tsk)
 }
 
+func (gw *Node) StateGetNetworkParams(ctx context.Context) (*api.NetworkParams, error) {
+	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
+		return nil, err
+	}
+	return gw.target.StateGetNetworkParams(ctx)
+}
+
 func (gw *Node) F3GetCertificate(ctx context.Context, instance uint64) (*certs.FinalityCertificate, error) {
 	if err := gw.limit(ctx, basicRateLimitTokens); err != nil {
 		return nil, err
