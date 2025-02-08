@@ -33,37 +33,41 @@ func contains(slice []string, item string) bool {
 	return false
 }
 
+func createPackagePath(pathParts ...string) string {
+	return strings.Join(append([]string{"."}, pathParts...), string(os.PathSeparator))
+}
+
 func getPackages(testGroupName string) []string {
 	testGroupNamesToPackages := map[string][]string{
-		"multicore-sdr": {strings.Join([]string{".", "storage", "sealer", "ffiwrapper"}, string(os.PathSeparator))},
-		"conformance":   {strings.Join([]string{".", "conformance"}, string(os.PathSeparator))},
+		"multicore-sdr": {createPackagePath("storage", "sealer", "ffiwrapper")},
+		"conformance":   {createPackagePath("conformance")},
 		"unit-cli": {
-			strings.Join([]string{".", "cli", "..."}, string(os.PathSeparator)),
-			strings.Join([]string{".", "cmd", "..."}, string(os.PathSeparator)),
-			strings.Join([]string{".", "api", "..."}, string(os.PathSeparator)),
+			createPackagePath("cli", "..."),
+			createPackagePath("cmd", "..."),
+			createPackagePath("api", "..."),
 		},
 		"unit-storage": {
-			strings.Join([]string{".", "storage", "..."}, string(os.PathSeparator)),
-			strings.Join([]string{".", "extern", "..."}, string(os.PathSeparator)),
+			createPackagePath("storage", "..."),
+			createPackagePath("extern", "..."),
 		},
 		"unit-node": {
-			strings.Join([]string{".", "node", "..."}, string(os.PathSeparator)),
+			createPackagePath("node", "..."),
 		},
 		"unit-rest": {
-			strings.Join([]string{".", "blockstore", "..."}, string(os.PathSeparator)),
-			strings.Join([]string{".", "build", "..."}, string(os.PathSeparator)),
-			strings.Join([]string{".", "chain", "..."}, string(os.PathSeparator)),
-			strings.Join([]string{".", "conformance", "..."}, string(os.PathSeparator)),
-			strings.Join([]string{".", "gateway", "..."}, string(os.PathSeparator)),
-			strings.Join([]string{".", "journal", "..."}, string(os.PathSeparator)),
-			strings.Join([]string{".", "lib", "..."}, string(os.PathSeparator)),
-			strings.Join([]string{".", "paychmgr", "..."}, string(os.PathSeparator)),
-			strings.Join([]string{".", "tools", "..."}, string(os.PathSeparator)),
+			createPackagePath("blockstore", "..."),
+			createPackagePath("build", "..."),
+			createPackagePath("chain", "..."),
+			createPackagePath("conformance", "..."),
+			createPackagePath("gateway", "..."),
+			createPackagePath("journal", "..."),
+			createPackagePath("lib", "..."),
+			createPackagePath("paychmgr", "..."),
+			createPackagePath("tools", "..."),
 		},
 	}
 
 	if strings.HasPrefix(testGroupName, "itest-") {
-		return []string{strings.Join([]string{".", "itests", strings.Join([]string{strings.TrimPrefix(testGroupName, "itest-"), "test.go"}, "_")}, string(os.PathSeparator))}
+		return []string{createPackagePath("itests", strings.Join([]string{strings.TrimPrefix(testGroupName, "itest-"), "test.go"}, "_"))}
 	}
 
 	return testGroupNamesToPackages[testGroupName]
