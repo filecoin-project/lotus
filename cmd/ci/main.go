@@ -33,8 +33,8 @@ func contains(slice []string, item string) bool {
 	return false
 }
 
-func getPackages(name string) []string {
-	namesToPackages := map[string][]string{
+func getPackages(testGroupName string) []string {
+	testGroupNamesToPackages := map[string][]string{
 		"multicore-sdr": {strings.Join([]string{".", "storage", "sealer", "ffiwrapper"}, string(os.PathSeparator))},
 		"conformance":   {strings.Join([]string{".", "conformance"}, string(os.PathSeparator))},
 		"unit-cli": {
@@ -62,15 +62,15 @@ func getPackages(name string) []string {
 		},
 	}
 
-	if strings.HasPrefix(name, "itest-") {
-		return []string{strings.Join([]string{".", "itests", strings.Join([]string{strings.TrimPrefix(name, "itest-"), "test.go"}, "_")}, string(os.PathSeparator))}
+	if strings.HasPrefix(testGroupName, "itest-") {
+		return []string{strings.Join([]string{".", "itests", strings.Join([]string{strings.TrimPrefix(testGroupName, "itest-"), "test.go"}, "_")}, string(os.PathSeparator))}
 	}
 
-	return namesToPackages[name]
+	return testGroupNamesToPackages[testGroupName]
 }
 
-func getNeedsParameters(name string) bool {
-	names := []string{
+func getNeedsParameters(testGroupName string) bool {
+	testGroupNames := []string{
 		"conformance",
 		"itest-api",
 		"itest-direct_data_onboard_verified",
@@ -92,44 +92,44 @@ func getNeedsParameters(name string) bool {
 		"unit-cli",
 		"unit-storage",
 	}
-	return contains(names, name)
+	return contains(testGroupNames, testGroupName)
 }
 
-func getSkipConformance(name string) bool {
-	names := []string{
+func getSkipConformance(testGroupName string) bool {
+	testGroupNames := []string{
 		"conformance",
 	}
-	return !contains(names, name)
+	return !contains(testGroupNames, testGroupName)
 }
 
-func getTestRustProofLogs(name string) bool {
-	names := []string{
+func getTestRustProofLogs(testGroupName string) bool {
+	testGroupNames := []string{
 		"multicore-sdr",
 	}
-	return contains(names, name)
+	return contains(testGroupNames, testGroupName)
 }
 
 func getFormat() string {
 	return "standard-verbose"
 }
 
-func getGoTestFlags(name string) string {
-	namesToFlags := map[string]string{
+func getGoTestFlags(testGroupName string) string {
+	testGroupNamesToFlags := map[string]string{
 		"multicore-sdr": "-run=TestMulticoreSDR",
 		"conformance":   "-run=TestConformance",
 	}
-	if flag, ok := namesToFlags[name]; ok {
+	if flag, ok := testGroupNamesToFlags[testGroupName]; ok {
 		return flag
 	}
 	return ""
 }
 
-func getRunners(name string) [][]string {
+func getRunners(testGroupName string) [][]string {
 	if os.Getenv("GITHUB_REPOSITORY_OWNER") != "filecoin-project" {
 		return [][]string{{"ubuntu-latest"}}
 	}
 
-	namesToRunners := map[string][][]string{
+	testGroupNamesToRunners := map[string][][]string{
 		"itest-niporep_manual":    {{"self-hosted", "linux", "x64", "4xlarge"}},
 		"itest-sector_pledge":     {{"self-hosted", "linux", "x64", "4xlarge"}},
 		"itest-worker":            {{"self-hosted", "linux", "x64", "4xlarge"}},
@@ -193,21 +193,21 @@ func getRunners(name string) [][]string {
 		},
 	}
 
-	if runners, ok := namesToRunners[name]; ok {
+	if runners, ok := testGroupNamesToRunners[testGroupName]; ok {
 		return runners
 	}
 
 	return [][]string{{"ubuntu-latest"}}
 }
 
-func getTestGroups(name string) []TestGroup {
-	runners := getRunners(name)
+func getTestGroups(testGroupName string) []TestGroup {
+	runners := getRunners(testGroupName)
 
 	groups := []TestGroup{}
 
 	for _, runner := range runners {
 		groups = append(groups, TestGroup{
-			Name:   name,
+			Name:   testGroupName,
 			Runner: runner,
 		})
 	}
@@ -215,13 +215,13 @@ func getTestGroups(name string) []TestGroup {
 	return groups
 }
 
-func getTestGroupMetadata(name string) TestGroupMetadata {
-	packages := getPackages(name)
-	needsParameters := getNeedsParameters(name)
-	skipConformance := getSkipConformance(name)
-	testRustProofLogs := getTestRustProofLogs(name)
+func getTestGroupMetadata(testGroupName string) TestGroupMetadata {
+	packages := getPackages(testGroupName)
+	needsParameters := getNeedsParameters(testGroupName)
+	skipConformance := getSkipConformance(testGroupName)
+	testRustProofLogs := getTestRustProofLogs(testGroupName)
 	format := getFormat()
-	goTestFlags := getGoTestFlags(name)
+	goTestFlags := getGoTestFlags(testGroupName)
 
 	return TestGroupMetadata{
 		Packages:          packages,
@@ -243,8 +243,8 @@ func findIntegrationTestGroups() ([]TestGroup, error) {
 
 		if !info.IsDir() && strings.HasSuffix(info.Name(), "_test.go") {
 			parts := strings.Split(path, string(os.PathSeparator))
-			name := strings.Join([]string{"itest", strings.TrimSuffix(parts[1], "_test.go")}, "-")
-			groups = append(groups, getTestGroups(name)...)
+			testGroupName := strings.Join([]string{"itest", strings.TrimSuffix(parts[1], "_test.go")}, "-")
+			groups = append(groups, getTestGroups(testGroupName)...)
 		}
 		return nil
 	})
@@ -335,8 +335,8 @@ func main() {
 					},
 				},
 				Action: func(c *cli.Context) error {
-					name := c.String("name")
-					metadata := getTestGroupMetadata(name)
+					testGroupName := c.String("name")
+					metadata := getTestGroupMetadata(testGroupName)
 					b, err := json.MarshalIndent(metadata, "", "  ")
 					if err != nil {
 						log.Fatal(err)
