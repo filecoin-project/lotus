@@ -234,7 +234,7 @@ func getTestGroupMetadata(testGroupName string) TestGroupMetadata {
 	}
 }
 
-func findIntegrationTestGroups() ([]TestGroup, error) {
+func getIntegrationTestGroups() ([]TestGroup, error) {
 	groups := []TestGroup{}
 
 	err := filepath.Walk("itests", func(path string, info os.FileInfo, err error) error {
@@ -310,7 +310,7 @@ func main() {
 				Name:  "list-test-groups",
 				Usage: "List all test groups",
 				Action: func(c *cli.Context) error {
-					integrationTestGroups, err := findIntegrationTestGroups()
+					integrationTestGroups, err := getIntegrationTestGroups()
 					if err != nil {
 						return err
 					}
