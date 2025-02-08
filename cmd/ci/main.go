@@ -10,21 +10,21 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-type TestGroup struct {
-	Name   string   `json:"name"`
+type TestGroupExecutionContext struct {
+	Name   string `json:"name"`
 	Runner Runner `json:"runner"`
 }
 
 type Runner []string
 
 var (
-	linux_x64_4xlarge = []string{"self-hosted", "linux", "x64", "4xlarge"}
-	linux_x64_2xlarge = []string{"self-hosted", "linux", "x64", "2xlarge"}
-	linux_x64_xlarge = []string{"self-hosted", "linux", "x64", "xlarge"}
+	linux_x64_4xlarge   = []string{"self-hosted", "linux", "x64", "4xlarge"}
+	linux_x64_2xlarge   = []string{"self-hosted", "linux", "x64", "2xlarge"}
+	linux_x64_xlarge    = []string{"self-hosted", "linux", "x64", "xlarge"}
 	linux_arm64_2xlarge = []string{"self-hosted", "linux", "arm64", "2xlarge"}
-	linux_arm64_xlarge = []string{"self-hosted", "linux", "arm64", "xlarge"}
-	linux_x64 = []string{"self-hosted", "linux", "x64"}
-	linux_arm64 = []string{"self-hosted", "linux", "arm64"}
+	linux_arm64_xlarge  = []string{"self-hosted", "linux", "arm64", "xlarge"}
+	linux_x64           = []string{"self-hosted", "linux", "x64"}
+	linux_arm64         = []string{"self-hosted", "linux", "arm64"}
 )
 
 type TestGroupMetadata struct {
@@ -60,8 +60,8 @@ func main() {
 		},
 		Commands: []*cli.Command{
 			{
-				Name:  "list-test-groups",
-				Usage: "List all test groups",
+				Name:  "list-test-group-execution-contexts",
+				Usage: "List all test group execution contexts",
 				Action: func(c *cli.Context) error {
 					integrationTestGroups, err := getIntegrationTestGroups()
 					if err != nil {
@@ -107,8 +107,8 @@ func main() {
 	}
 }
 
-func getIntegrationTestGroups() ([]TestGroup, error) {
-	groups := []TestGroup{}
+func getIntegrationTestGroups() ([]TestGroupExecutionContext, error) {
+	groups := []TestGroupExecutionContext{}
 
 	err := filepath.Walk("itests", func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -130,33 +130,33 @@ func getIntegrationTestGroups() ([]TestGroup, error) {
 	return groups, nil
 }
 
-func getUnitTestGroups() []TestGroup {
-	groups := []TestGroup{}
+func getUnitTestGroups() []TestGroupExecutionContext {
+	groups := []TestGroupExecutionContext{}
 
 	for _, value := range []string{"cli", "node", "rest", "storage"} {
-		groups = append(groups, getTestGroups("unit-" + value)...)
+		groups = append(groups, getTestGroups("unit-"+value)...)
 	}
 
 	return groups
 }
 
-func getOtherTestGroups() []TestGroup {
-	groups := []TestGroup{}
+func getOtherTestGroups() []TestGroupExecutionContext {
+	groups := []TestGroupExecutionContext{}
 
 	for _, value := range []string{"conformance", "multicore-sdr"} {
 		groups = append(groups, getTestGroups(value)...)
-}
+	}
 
 	return groups
 }
 
-func getTestGroups(testGroupName string) []TestGroup {
+func getTestGroups(testGroupName string) []TestGroupExecutionContext {
 	runners := getRunners(testGroupName)
 
-	groups := []TestGroup{}
+	groups := []TestGroupExecutionContext{}
 
 	for _, runner := range runners {
-		groups = append(groups, TestGroup{
+		groups = append(groups, TestGroupExecutionContext{
 			Name:   testGroupName,
 			Runner: runner,
 		})
@@ -187,36 +187,36 @@ func getRunners(testGroupName string) []Runner {
 		"itest-fevm_address":             {linux_x64_xlarge},
 		"itest-fevm_events":              {linux_x64_xlarge},
 		"itest-gas_estimation":           {linux_x64_xlarge},
-		"itest-gateway":              		{linux_x64_2xlarge},
+		"itest-gateway":                  {linux_x64_2xlarge},
 		"itest-get_messages_in_ts":       {linux_x64_xlarge},
 		"itest-lite_migration":           {linux_x64_xlarge},
 		"itest-lookup_robust_address":    {linux_x64_xlarge},
-		"itest-manual_onboarding": 				{linux_x64_4xlarge},
+		"itest-manual_onboarding":        {linux_x64_4xlarge},
 		"itest-mempool":                  {linux_x64_xlarge},
 		"itest-mpool_msg_uuid":           {linux_x64_xlarge},
 		"itest-mpool_push_with_uuid":     {linux_x64_xlarge},
 		"itest-msgindex":                 {linux_x64_xlarge},
 		"itest-multisig":                 {linux_x64_xlarge},
 		"itest-net":                      {linux_x64_xlarge},
-		"itest-niporep_manual":    				{linux_x64_4xlarge},
+		"itest-niporep_manual":           {linux_x64_4xlarge},
 		"itest-nonce":                    {linux_x64_xlarge},
 		"itest-path_detach_redeclare":    {linux_x64_xlarge},
 		"itest-pending_deal_allocation":  {linux_x64_xlarge},
 		"itest-remove_verifreg_datacap":  {linux_x64_xlarge},
-		"itest-sector_import_full":   		{linux_x64_2xlarge},
-		"itest-sector_import_simple": 		{linux_x64_2xlarge},
+		"itest-sector_import_full":       {linux_x64_2xlarge},
+		"itest-sector_import_simple":     {linux_x64_2xlarge},
 		"itest-sector_miner_collateral":  {linux_x64_xlarge},
 		"itest-sector_numassign":         {linux_x64_xlarge},
-		"itest-sector_pledge":     				{linux_x64_4xlarge},
+		"itest-sector_pledge":            {linux_x64_4xlarge},
 		"itest-self_sent_txn":            {linux_x64_xlarge},
 		"itest-verifreg":                 {linux_x64_xlarge},
-		"itest-wdpost":               		{linux_x64_2xlarge},
-		"itest-worker":            				{linux_x64_4xlarge},
+		"itest-wdpost":                   {linux_x64_2xlarge},
+		"itest-worker":                   {linux_x64_4xlarge},
 		"multicore-sdr":                  {linux_x64_xlarge},
-		"unit-cli": 											{linux_x64,linux_arm64},
-		"unit-node": 											{linux_x64,linux_arm64},
-		"unit-rest": 											{linux_x64,linux_arm64},
-		"unit-storage": 									{linux_x64,linux_arm64},
+		"unit-cli":                       {linux_x64, linux_arm64},
+		"unit-node":                      {linux_x64, linux_arm64},
+		"unit-rest":                      {linux_x64, linux_arm64},
+		"unit-storage":                   {linux_x64, linux_arm64},
 	}
 
 	if runners, ok := testGroupNamesToRunners[testGroupName]; ok {

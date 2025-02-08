@@ -24,16 +24,16 @@ jobs:
     name: Discover Test Groups
     runs-on: ubuntu-latest
     outputs:
-      groups: ${{ steps.test.outputs.groups }}
+      test_group_execution_contexts: ${{ steps.list_test_group_execution_contexts.outputs.test_group_execution_contexts }}
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
           fetch-depth: 0
-      - id: test
+      - id: list_test_group_execution_contexts
         run: |
-          echo "groups<<EOF" >> $GITHUB_OUTPUT
-          go run ./cmd/ci/main.go --json list-test-groups | jq -r '.msg' | tee -a $GITHUB_OUTPUT
+          echo "test_group_execution_contexts<<EOF" >> $GITHUB_OUTPUT
+          go run ./cmd/ci/main.go --json list-test-group-execution-contexts | jq -r '.msg' | tee -a $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
   cache:
     name: Cache Dependencies
@@ -122,7 +122,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJson(needs.discover.outputs.groups) }}
+        include: ${{ fromJson(needs.discover.outputs.test_group_execution_contexts) }}
     steps:
       - uses: actions/checkout@v4
         with:

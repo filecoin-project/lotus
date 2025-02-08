@@ -4,7 +4,7 @@ The Lotus CI Tool is a CLI (Command Line Interface) utility designed to facilita
 
 ## Features
 
-- List all test groups.
+- List all test group execution contexts.
 - Get the metadata for a test group.
 
 ## Installation
@@ -22,9 +22,9 @@ The `ci` tool provides several commands and options to interact with.
 
 ### Commands
 
-- **List Test Groups**: List all test groups.
+- **List Test Group Execution Contexts**: List all test group execution contexts.
     ```sh
-    ./ci list-test-groups
+    ./ci list-test-group-execution-contexts
     ```
 - **Get Test Group Metadata**: Get the metadata for a test group.
     ```sh
@@ -40,9 +40,9 @@ The `ci` tool provides several commands and options to interact with.
 
 ## Examples
 
-List all test groups with JSON formatted output:
+List all test group execution contexts with JSON formatted output:
 ```sh
-./ci --json list-test-groups
+./ci --json list-test-group-execution-contexts
 ```
 
 Get the metadata for a test group with JSON formatted output:
