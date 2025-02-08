@@ -404,6 +404,8 @@ var walletImport = &cli.Command{
 				ki.Type = types.KTSecp256k1
 			case 2:
 				ki.Type = types.KTBLS
+			case 3:
+				ki.Type = types.KTDelegated
 			default:
 				return fmt.Errorf("unrecognized key type: %d", gk.SigType)
 			}
