@@ -36,17 +36,212 @@ type TestGroupMetadata struct {
 	GoTestFlags       string   `json:"go_test_flags"`
 }
 
-func contains(slice []string, item string) bool {
-	for _, s := range slice {
-		if s == item {
-			return true
-		}
+func main() {
+	app := &cli.App{
+		Name:  "ci",
+		Usage: "Lotus CI tool",
+		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:  "json",
+				Usage: "Format output as JSON",
+			},
+		},
+		Before: func(c *cli.Context) error {
+			if c.Bool("json") {
+				log.SetFormatter(&log.JSONFormatter{})
+			} else {
+				log.SetFormatter(&log.TextFormatter{
+					TimestampFormat: "2006-01-02 15:04:05",
+					FullTimestamp:   true,
+				})
+			}
+			log.SetOutput(os.Stdout)
+			return nil
+		},
+		Commands: []*cli.Command{
+			{
+				Name:  "list-test-groups",
+				Usage: "List all test groups",
+				Action: func(c *cli.Context) error {
+					integrationTestGroups, err := getIntegrationTestGroups()
+					if err != nil {
+						return err
+					}
+					unitTestGroups := getUnitTestGroups()
+					otherTestGroups := getOtherTestGroups()
+					groups := append(append(integrationTestGroups, unitTestGroups...), otherTestGroups...)
+					b, err := json.MarshalIndent(groups, "", "  ")
+					if err != nil {
+						log.Fatal(err)
+					}
+					log.Info(string(b))
+					return nil
+				},
+			},
+			{
+				Name:  "get-test-group-metadata",
+				Usage: "Get the metadata for a test group",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "name",
+						Usage:    "Name of the test group",
+						Required: true,
+					},
+				},
+				Action: func(c *cli.Context) error {
+					testGroupName := c.String("name")
+					metadata := getTestGroupMetadata(testGroupName)
+					b, err := json.MarshalIndent(metadata, "", "  ")
+					if err != nil {
+						log.Fatal(err)
+					}
+					log.Info(string(b))
+					return nil
+				},
+			},
+		},
 	}
-	return false
+
+	if err := app.Run(os.Args); err != nil {
+		log.Fatal(err)
+	}
 }
 
-func createPackagePath(pathParts ...string) string {
-	return strings.Join(append([]string{"."}, pathParts...), string(os.PathSeparator))
+func getIntegrationTestGroups() ([]TestGroup, error) {
+	groups := []TestGroup{}
+
+	err := filepath.Walk("itests", func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if !info.IsDir() && strings.HasSuffix(info.Name(), "_test.go") {
+			parts := strings.Split(path, string(os.PathSeparator))
+			testGroupName := strings.Join([]string{"itest", strings.TrimSuffix(parts[1], "_test.go")}, "-")
+			groups = append(groups, getTestGroups(testGroupName)...)
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return groups, nil
+}
+
+func getUnitTestGroups() []TestGroup {
+	groups := []TestGroup{}
+
+	for _, value := range []string{"cli", "node", "rest", "storage"} {
+		groups = append(groups, getTestGroups("unit-" + value)...)
+	}
+
+	return groups
+}
+
+func getOtherTestGroups() []TestGroup {
+	groups := []TestGroup{}
+
+	for _, value := range []string{"conformance", "multicore-sdr"} {
+		groups = append(groups, getTestGroups(value)...)
+}
+
+	return groups
+}
+
+func getTestGroups(testGroupName string) []TestGroup {
+	runners := getRunners(testGroupName)
+
+	groups := []TestGroup{}
+
+	for _, runner := range runners {
+		groups = append(groups, TestGroup{
+			Name:   testGroupName,
+			Runner: runner,
+		})
+	}
+
+	return groups
+}
+
+func getRunners(testGroupName string) []Runner {
+	if os.Getenv("GITHUB_REPOSITORY_OWNER") != "filecoin-project" {
+		return []Runner{linux_x64}
+	}
+
+	testGroupNamesToRunners := map[string][]Runner{
+		"itest-cli":                      {linux_x64_xlarge},
+		"itest-deals_invalid_utf8_label": {linux_x64_xlarge},
+		"itest-decode_params":            {linux_x64_xlarge},
+		"itest-dup_mpool_messages":       {linux_x64_xlarge},
+		"itest-eth_account_abstraction":  {linux_x64_xlarge},
+		"itest-eth_api":                  {linux_x64_xlarge},
+		"itest-eth_balance":              {linux_x64_xlarge},
+		"itest-eth_bytecode":             {linux_x64_xlarge},
+		"itest-eth_config":               {linux_x64_xlarge},
+		"itest-eth_conformance":          {linux_x64_xlarge},
+		"itest-eth_deploy":               {linux_x64_xlarge},
+		"itest-eth_fee_history":          {linux_x64_xlarge},
+		"itest-eth_transactions":         {linux_x64_xlarge},
+		"itest-fevm_address":             {linux_x64_xlarge},
+		"itest-fevm_events":              {linux_x64_xlarge},
+		"itest-gas_estimation":           {linux_x64_xlarge},
+		"itest-gateway":              		{linux_x64_2xlarge},
+		"itest-get_messages_in_ts":       {linux_x64_xlarge},
+		"itest-lite_migration":           {linux_x64_xlarge},
+		"itest-lookup_robust_address":    {linux_x64_xlarge},
+		"itest-manual_onboarding": 				{linux_x64_4xlarge},
+		"itest-mempool":                  {linux_x64_xlarge},
+		"itest-mpool_msg_uuid":           {linux_x64_xlarge},
+		"itest-mpool_push_with_uuid":     {linux_x64_xlarge},
+		"itest-msgindex":                 {linux_x64_xlarge},
+		"itest-multisig":                 {linux_x64_xlarge},
+		"itest-net":                      {linux_x64_xlarge},
+		"itest-niporep_manual":    				{linux_x64_4xlarge},
+		"itest-nonce":                    {linux_x64_xlarge},
+		"itest-path_detach_redeclare":    {linux_x64_xlarge},
+		"itest-pending_deal_allocation":  {linux_x64_xlarge},
+		"itest-remove_verifreg_datacap":  {linux_x64_xlarge},
+		"itest-sector_import_full":   		{linux_x64_2xlarge},
+		"itest-sector_import_simple": 		{linux_x64_2xlarge},
+		"itest-sector_miner_collateral":  {linux_x64_xlarge},
+		"itest-sector_numassign":         {linux_x64_xlarge},
+		"itest-sector_pledge":     				{linux_x64_4xlarge},
+		"itest-self_sent_txn":            {linux_x64_xlarge},
+		"itest-verifreg":                 {linux_x64_xlarge},
+		"itest-wdpost":               		{linux_x64_2xlarge},
+		"itest-worker":            				{linux_x64_4xlarge},
+		"multicore-sdr":                  {linux_x64_xlarge},
+		"unit-cli": 											{linux_x64,linux_arm64},
+		"unit-node": 											{linux_x64,linux_arm64},
+		"unit-rest": 											{linux_x64,linux_arm64},
+		"unit-storage": 									{linux_x64,linux_arm64},
+	}
+
+	if runners, ok := testGroupNamesToRunners[testGroupName]; ok {
+		return runners
+	}
+
+	return []Runner{linux_x64}
+}
+
+func getTestGroupMetadata(testGroupName string) TestGroupMetadata {
+	packages := getPackages(testGroupName)
+	needsParameters := getNeedsParameters(testGroupName)
+	skipConformance := getSkipConformance(testGroupName)
+	testRustProofLogs := getTestRustProofLogs(testGroupName)
+	format := getFormat()
+	goTestFlags := getGoTestFlags(testGroupName)
+
+	return TestGroupMetadata{
+		Packages:          packages,
+		NeedsParameters:   needsParameters,
+		SkipConformance:   skipConformance,
+		TestRustProofLogs: testRustProofLogs,
+		Format:            format,
+		GoTestFlags:       goTestFlags,
+	}
 }
 
 func getPackages(testGroupName string) []string {
@@ -140,210 +335,15 @@ func getGoTestFlags(testGroupName string) string {
 	return ""
 }
 
-func getRunners(testGroupName string) []Runner {
-	if os.Getenv("GITHUB_REPOSITORY_OWNER") != "filecoin-project" {
-		return []Runner{linux_x64}
-	}
-
-	testGroupNamesToRunners := map[string][]Runner{
-		"itest-cli":                      {linux_x64_xlarge},
-		"itest-deals_invalid_utf8_label": {linux_x64_xlarge},
-		"itest-decode_params":            {linux_x64_xlarge},
-		"itest-dup_mpool_messages":       {linux_x64_xlarge},
-		"itest-eth_account_abstraction":  {linux_x64_xlarge},
-		"itest-eth_api":                  {linux_x64_xlarge},
-		"itest-eth_balance":              {linux_x64_xlarge},
-		"itest-eth_bytecode":             {linux_x64_xlarge},
-		"itest-eth_config":               {linux_x64_xlarge},
-		"itest-eth_conformance":          {linux_x64_xlarge},
-		"itest-eth_deploy":               {linux_x64_xlarge},
-		"itest-eth_fee_history":          {linux_x64_xlarge},
-		"itest-eth_transactions":         {linux_x64_xlarge},
-		"itest-fevm_address":             {linux_x64_xlarge},
-		"itest-fevm_events":              {linux_x64_xlarge},
-		"itest-gas_estimation":           {linux_x64_xlarge},
-		"itest-gateway":              		{linux_x64_2xlarge},
-		"itest-get_messages_in_ts":       {linux_x64_xlarge},
-		"itest-lite_migration":           {linux_x64_xlarge},
-		"itest-lookup_robust_address":    {linux_x64_xlarge},
-		"itest-manual_onboarding": 				{linux_x64_4xlarge},
-		"itest-mempool":                  {linux_x64_xlarge},
-		"itest-mpool_msg_uuid":           {linux_x64_xlarge},
-		"itest-mpool_push_with_uuid":     {linux_x64_xlarge},
-		"itest-msgindex":                 {linux_x64_xlarge},
-		"itest-multisig":                 {linux_x64_xlarge},
-		"itest-net":                      {linux_x64_xlarge},
-		"itest-niporep_manual":    				{linux_x64_4xlarge},
-		"itest-nonce":                    {linux_x64_xlarge},
-		"itest-path_detach_redeclare":    {linux_x64_xlarge},
-		"itest-pending_deal_allocation":  {linux_x64_xlarge},
-		"itest-remove_verifreg_datacap":  {linux_x64_xlarge},
-		"itest-sector_import_full":   		{linux_x64_2xlarge},
-		"itest-sector_import_simple": 		{linux_x64_2xlarge},
-		"itest-sector_miner_collateral":  {linux_x64_xlarge},
-		"itest-sector_numassign":         {linux_x64_xlarge},
-		"itest-sector_pledge":     				{linux_x64_4xlarge},
-		"itest-self_sent_txn":            {linux_x64_xlarge},
-		"itest-verifreg":                 {linux_x64_xlarge},
-		"itest-wdpost":               		{linux_x64_2xlarge},
-		"itest-worker":            				{linux_x64_4xlarge},
-		"multicore-sdr":                  {linux_x64_xlarge},
-		"unit-cli": 											{linux_x64,linux_arm64},
-		"unit-node": 											{linux_x64,linux_arm64},
-		"unit-rest": 											{linux_x64,linux_arm64},
-		"unit-storage": 									{linux_x64,linux_arm64},
-	}
-
-	if runners, ok := testGroupNamesToRunners[testGroupName]; ok {
-		return runners
-	}
-
-	return []Runner{linux_x64}
+func createPackagePath(pathParts ...string) string {
+	return strings.Join(append([]string{"."}, pathParts...), string(os.PathSeparator))
 }
 
-func getTestGroups(testGroupName string) []TestGroup {
-	runners := getRunners(testGroupName)
-
-	groups := []TestGroup{}
-
-	for _, runner := range runners {
-		groups = append(groups, TestGroup{
-			Name:   testGroupName,
-			Runner: runner,
-		})
-	}
-
-	return groups
-}
-
-func getTestGroupMetadata(testGroupName string) TestGroupMetadata {
-	packages := getPackages(testGroupName)
-	needsParameters := getNeedsParameters(testGroupName)
-	skipConformance := getSkipConformance(testGroupName)
-	testRustProofLogs := getTestRustProofLogs(testGroupName)
-	format := getFormat()
-	goTestFlags := getGoTestFlags(testGroupName)
-
-	return TestGroupMetadata{
-		Packages:          packages,
-		NeedsParameters:   needsParameters,
-		SkipConformance:   skipConformance,
-		TestRustProofLogs: testRustProofLogs,
-		Format:            format,
-		GoTestFlags:       goTestFlags,
-	}
-}
-
-func getIntegrationTestGroups() ([]TestGroup, error) {
-	groups := []TestGroup{}
-
-	err := filepath.Walk("itests", func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
+func contains(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
 		}
-
-		if !info.IsDir() && strings.HasSuffix(info.Name(), "_test.go") {
-			parts := strings.Split(path, string(os.PathSeparator))
-			testGroupName := strings.Join([]string{"itest", strings.TrimSuffix(parts[1], "_test.go")}, "-")
-			groups = append(groups, getTestGroups(testGroupName)...)
-		}
-		return nil
-	})
-
-	if err != nil {
-		return nil, err
 	}
-
-	return groups, nil
-}
-
-func getUnitTestGroups() []TestGroup {
-	groups := []TestGroup{}
-
-	for _, value := range []string{"cli", "node", "rest", "storage"} {
-		groups = append(groups, getTestGroups("unit-" + value)...)
-	}
-
-	return groups
-}
-
-func getOtherTestGroups() []TestGroup {
-	groups := []TestGroup{}
-
-	for _, value := range []string{"conformance", "multicore-sdr"} {
-		groups = append(groups, getTestGroups(value)...)
-}
-
-	return groups
-}
-
-func main() {
-	app := &cli.App{
-		Name:  "ci",
-		Usage: "Lotus CI tool",
-		Flags: []cli.Flag{
-			&cli.BoolFlag{
-				Name:  "json",
-				Usage: "Format output as JSON",
-			},
-		},
-		Before: func(c *cli.Context) error {
-			if c.Bool("json") {
-				log.SetFormatter(&log.JSONFormatter{})
-			} else {
-				log.SetFormatter(&log.TextFormatter{
-					TimestampFormat: "2006-01-02 15:04:05",
-					FullTimestamp:   true,
-				})
-			}
-			log.SetOutput(os.Stdout)
-			return nil
-		},
-		Commands: []*cli.Command{
-			{
-				Name:  "list-test-groups",
-				Usage: "List all test groups",
-				Action: func(c *cli.Context) error {
-					integrationTestGroups, err := getIntegrationTestGroups()
-					if err != nil {
-						return err
-					}
-					unitTestGroups := getUnitTestGroups()
-					otherTestGroups := getOtherTestGroups()
-					groups := append(append(integrationTestGroups, unitTestGroups...), otherTestGroups...)
-					b, err := json.MarshalIndent(groups, "", "  ")
-					if err != nil {
-						log.Fatal(err)
-					}
-					log.Info(string(b))
-					return nil
-				},
-			},
-			{
-				Name:  "get-test-group-metadata",
-				Usage: "Get the metadata for a test group",
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:     "name",
-						Usage:    "Name of the test group",
-						Required: true,
-					},
-				},
-				Action: func(c *cli.Context) error {
-					testGroupName := c.String("name")
-					metadata := getTestGroupMetadata(testGroupName)
-					b, err := json.MarshalIndent(metadata, "", "  ")
-					if err != nil {
-						log.Fatal(err)
-					}
-					log.Info(string(b))
-					return nil
-				},
-			},
-		},
-	}
-
-	if err := app.Run(os.Args); err != nil {
-		log.Fatal(err)
-	}
+	return false
 }
