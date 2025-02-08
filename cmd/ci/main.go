@@ -146,20 +146,6 @@ func getRunners(testGroupName string) []Runner {
 	}
 
 	testGroupNamesToRunners := map[string][]Runner{
-		"itest-niporep_manual":    {linux_x64_4xlarge},
-		"itest-sector_pledge":     {linux_x64_4xlarge},
-		"itest-worker":            {linux_x64_4xlarge},
-		"itest-manual_onboarding": {linux_x64_4xlarge},
-
-		"itest-gateway":              {linux_x64_2xlarge},
-		"itest-sector_import_full":   {linux_x64_2xlarge},
-		"itest-sector_import_simple": {linux_x64_2xlarge},
-		"itest-wdpost":               {linux_x64_2xlarge},
-		"unit-storage": {
-			linux_x64_2xlarge,
-			linux_arm64_2xlarge,
-		},
-
 		"itest-cli":                      {linux_x64_xlarge},
 		"itest-deals_invalid_utf8_label": {linux_x64_xlarge},
 		"itest-decode_params":            {linux_x64_xlarge},
@@ -176,37 +162,36 @@ func getRunners(testGroupName string) []Runner {
 		"itest-fevm_address":             {linux_x64_xlarge},
 		"itest-fevm_events":              {linux_x64_xlarge},
 		"itest-gas_estimation":           {linux_x64_xlarge},
+		"itest-gateway":              		{linux_x64_2xlarge},
 		"itest-get_messages_in_ts":       {linux_x64_xlarge},
 		"itest-lite_migration":           {linux_x64_xlarge},
 		"itest-lookup_robust_address":    {linux_x64_xlarge},
+		"itest-manual_onboarding": 				{linux_x64_4xlarge},
 		"itest-mempool":                  {linux_x64_xlarge},
 		"itest-mpool_msg_uuid":           {linux_x64_xlarge},
 		"itest-mpool_push_with_uuid":     {linux_x64_xlarge},
 		"itest-msgindex":                 {linux_x64_xlarge},
 		"itest-multisig":                 {linux_x64_xlarge},
 		"itest-net":                      {linux_x64_xlarge},
+		"itest-niporep_manual":    				{linux_x64_4xlarge},
 		"itest-nonce":                    {linux_x64_xlarge},
 		"itest-path_detach_redeclare":    {linux_x64_xlarge},
 		"itest-pending_deal_allocation":  {linux_x64_xlarge},
 		"itest-remove_verifreg_datacap":  {linux_x64_xlarge},
+		"itest-sector_import_full":   		{linux_x64_2xlarge},
+		"itest-sector_import_simple": 		{linux_x64_2xlarge},
 		"itest-sector_miner_collateral":  {linux_x64_xlarge},
 		"itest-sector_numassign":         {linux_x64_xlarge},
+		"itest-sector_pledge":     				{linux_x64_4xlarge},
 		"itest-self_sent_txn":            {linux_x64_xlarge},
 		"itest-verifreg":                 {linux_x64_xlarge},
+		"itest-wdpost":               		{linux_x64_2xlarge},
+		"itest-worker":            				{linux_x64_4xlarge},
 		"multicore-sdr":                  {linux_x64_xlarge},
-		"unit-node": {
-			linux_x64_xlarge,
-			linux_arm64_xlarge,
-		},
-
-		"unit-cli": {
-			linux_x64,
-			linux_arm64,
-		},
-		"unit-rest": {
-			linux_x64,
-			linux_arm64,
-		},
+		"unit-cli": 											{linux_x64,linux_arm64},
+		"unit-node": 											{linux_x64,linux_arm64},
+		"unit-rest": 											{linux_x64,linux_arm64},
+		"unit-storage": 									{linux_x64,linux_arm64},
 	}
 
 	if runners, ok := testGroupNamesToRunners[testGroupName]; ok {
