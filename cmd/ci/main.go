@@ -260,10 +260,9 @@ func getIntegrationTestGroups() ([]TestGroup, error) {
 func getUnitTestGroups() []TestGroup {
 	groups := []TestGroup{}
 
-	groups = append(groups, getTestGroups("unit-cli")...)
-	groups = append(groups, getTestGroups("unit-storage")...)
-	groups = append(groups, getTestGroups("unit-node")...)
-	groups = append(groups, getTestGroups("unit-rest")...)
+	for _, value := range []string{"cli", "node", "rest", "storage"} {
+		groups = append(groups, getTestGroups("unit-" + value)...)
+	}
 
 	return groups
 }
@@ -271,14 +270,9 @@ func getUnitTestGroups() []TestGroup {
 func getOtherTestGroups() []TestGroup {
 	groups := []TestGroup{}
 
-	groups = append(
-		groups,
-		getTestGroups("multicore-sdr")...,
-	)
-	groups = append(
-		groups,
-		getTestGroups("conformance")...,
-	)
+	for _, value := range []string{"conformance", "multicore-sdr"} {
+		groups = append(groups, getTestGroups(value)...)
+}
 
 	return groups
 }
