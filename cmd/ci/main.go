@@ -12,8 +12,20 @@ import (
 
 type TestGroup struct {
 	Name   string   `json:"name"`
-	Runner []string `json:"runner"`
+	Runner Runner `json:"runner"`
 }
+
+type Runner []string
+
+var (
+	linux_x64_4xlarge = []string{"self-hosted", "linux", "x64", "4xlarge"}
+	linux_x64_2xlarge = []string{"self-hosted", "linux", "x64", "2xlarge"}
+	linux_x64_xlarge = []string{"self-hosted", "linux", "x64", "xlarge"}
+	linux_arm64_2xlarge = []string{"self-hosted", "linux", "arm64", "2xlarge"}
+	linux_arm64_xlarge = []string{"self-hosted", "linux", "arm64", "xlarge"}
+	linux_x64 = []string{"self-hosted", "linux", "x64"}
+	linux_arm64 = []string{"self-hosted", "linux", "arm64"}
+)
 
 type TestGroupMetadata struct {
 	Packages          []string `json:"packages"`
@@ -128,72 +140,72 @@ func getGoTestFlags(testGroupName string) string {
 	return ""
 }
 
-func getRunners(testGroupName string) [][]string {
+func getRunners(testGroupName string) []Runner {
 	if os.Getenv("GITHUB_REPOSITORY_OWNER") != "filecoin-project" {
-		return [][]string{{"ubuntu-latest"}}
+		return []Runner{linux_x64}
 	}
 
-	testGroupNamesToRunners := map[string][][]string{
-		"itest-niporep_manual":    {{"self-hosted", "linux", "x64", "4xlarge"}},
-		"itest-sector_pledge":     {{"self-hosted", "linux", "x64", "4xlarge"}},
-		"itest-worker":            {{"self-hosted", "linux", "x64", "4xlarge"}},
-		"itest-manual_onboarding": {{"self-hosted", "linux", "x64", "4xlarge"}},
+	testGroupNamesToRunners := map[string][]Runner{
+		"itest-niporep_manual":    {linux_x64_4xlarge},
+		"itest-sector_pledge":     {linux_x64_4xlarge},
+		"itest-worker":            {linux_x64_4xlarge},
+		"itest-manual_onboarding": {linux_x64_4xlarge},
 
-		"itest-gateway":              {{"self-hosted", "linux", "x64", "2xlarge"}},
-		"itest-sector_import_full":   {{"self-hosted", "linux", "x64", "2xlarge"}},
-		"itest-sector_import_simple": {{"self-hosted", "linux", "x64", "2xlarge"}},
-		"itest-wdpost":               {{"self-hosted", "linux", "x64", "2xlarge"}},
+		"itest-gateway":              {linux_x64_2xlarge},
+		"itest-sector_import_full":   {linux_x64_2xlarge},
+		"itest-sector_import_simple": {linux_x64_2xlarge},
+		"itest-wdpost":               {linux_x64_2xlarge},
 		"unit-storage": {
-			{"self-hosted", "linux", "x64", "2xlarge"},
-			{"self-hosted", "linux", "arm64", "2xlarge"},
+			linux_x64_2xlarge,
+			linux_arm64_2xlarge,
 		},
 
-		"itest-cli":                      {{"self-hosted", "linux", "x64", "xlarge"}},
-		"itest-deals_invalid_utf8_label": {{"self-hosted", "linux", "x64", "xlarge"}},
-		"itest-decode_params":            {{"self-hosted", "linux", "x64", "xlarge"}},
-		"itest-dup_mpool_messages":       {{"self-hosted", "linux", "x64", "xlarge"}},
-		"itest-eth_account_abstraction":  {{"self-hosted", "linux", "x64", "xlarge"}},
-		"itest-eth_api":                  {{"self-hosted", "linux", "x64", "xlarge"}},
-		"itest-eth_balance":              {{"self-hosted", "linux", "x64", "xlarge"}},
-		"itest-eth_bytecode":             {{"self-hosted", "linux", "x64", "xlarge"}},
-		"itest-eth_config":               {{"self-hosted", "linux", "x64", "xlarge"}},
-		"itest-eth_conformance":          {{"self-hosted", "linux", "x64", "xlarge"}},
-		"itest-eth_deploy":               {{"self-hosted", "linux", "x64", "xlarge"}},
-		"itest-eth_fee_history":          {{"self-hosted", "linux", "x64", "xlarge"}},
-		"itest-eth_transactions":         {{"self-hosted", "linux", "x64", "xlarge"}},
-		"itest-fevm_address":             {{"self-hosted", "linux", "x64", "xlarge"}},
-		"itest-fevm_events":              {{"self-hosted", "linux", "x64", "xlarge"}},
-		"itest-gas_estimation":           {{"self-hosted", "linux", "x64", "xlarge"}},
-		"itest-get_messages_in_ts":       {{"self-hosted", "linux", "x64", "xlarge"}},
-		"itest-lite_migration":           {{"self-hosted", "linux", "x64", "xlarge"}},
-		"itest-lookup_robust_address":    {{"self-hosted", "linux", "x64", "xlarge"}},
-		"itest-mempool":                  {{"self-hosted", "linux", "x64", "xlarge"}},
-		"itest-mpool_msg_uuid":           {{"self-hosted", "linux", "x64", "xlarge"}},
-		"itest-mpool_push_with_uuid":     {{"self-hosted", "linux", "x64", "xlarge"}},
-		"itest-msgindex":                 {{"self-hosted", "linux", "x64", "xlarge"}},
-		"itest-multisig":                 {{"self-hosted", "linux", "x64", "xlarge"}},
-		"itest-net":                      {{"self-hosted", "linux", "x64", "xlarge"}},
-		"itest-nonce":                    {{"self-hosted", "linux", "x64", "xlarge"}},
-		"itest-path_detach_redeclare":    {{"self-hosted", "linux", "x64", "xlarge"}},
-		"itest-pending_deal_allocation":  {{"self-hosted", "linux", "x64", "xlarge"}},
-		"itest-remove_verifreg_datacap":  {{"self-hosted", "linux", "x64", "xlarge"}},
-		"itest-sector_miner_collateral":  {{"self-hosted", "linux", "x64", "xlarge"}},
-		"itest-sector_numassign":         {{"self-hosted", "linux", "x64", "xlarge"}},
-		"itest-self_sent_txn":            {{"self-hosted", "linux", "x64", "xlarge"}},
-		"itest-verifreg":                 {{"self-hosted", "linux", "x64", "xlarge"}},
-		"multicore-sdr":                  {{"self-hosted", "linux", "x64", "xlarge"}},
+		"itest-cli":                      {linux_x64_xlarge},
+		"itest-deals_invalid_utf8_label": {linux_x64_xlarge},
+		"itest-decode_params":            {linux_x64_xlarge},
+		"itest-dup_mpool_messages":       {linux_x64_xlarge},
+		"itest-eth_account_abstraction":  {linux_x64_xlarge},
+		"itest-eth_api":                  {linux_x64_xlarge},
+		"itest-eth_balance":              {linux_x64_xlarge},
+		"itest-eth_bytecode":             {linux_x64_xlarge},
+		"itest-eth_config":               {linux_x64_xlarge},
+		"itest-eth_conformance":          {linux_x64_xlarge},
+		"itest-eth_deploy":               {linux_x64_xlarge},
+		"itest-eth_fee_history":          {linux_x64_xlarge},
+		"itest-eth_transactions":         {linux_x64_xlarge},
+		"itest-fevm_address":             {linux_x64_xlarge},
+		"itest-fevm_events":              {linux_x64_xlarge},
+		"itest-gas_estimation":           {linux_x64_xlarge},
+		"itest-get_messages_in_ts":       {linux_x64_xlarge},
+		"itest-lite_migration":           {linux_x64_xlarge},
+		"itest-lookup_robust_address":    {linux_x64_xlarge},
+		"itest-mempool":                  {linux_x64_xlarge},
+		"itest-mpool_msg_uuid":           {linux_x64_xlarge},
+		"itest-mpool_push_with_uuid":     {linux_x64_xlarge},
+		"itest-msgindex":                 {linux_x64_xlarge},
+		"itest-multisig":                 {linux_x64_xlarge},
+		"itest-net":                      {linux_x64_xlarge},
+		"itest-nonce":                    {linux_x64_xlarge},
+		"itest-path_detach_redeclare":    {linux_x64_xlarge},
+		"itest-pending_deal_allocation":  {linux_x64_xlarge},
+		"itest-remove_verifreg_datacap":  {linux_x64_xlarge},
+		"itest-sector_miner_collateral":  {linux_x64_xlarge},
+		"itest-sector_numassign":         {linux_x64_xlarge},
+		"itest-self_sent_txn":            {linux_x64_xlarge},
+		"itest-verifreg":                 {linux_x64_xlarge},
+		"multicore-sdr":                  {linux_x64_xlarge},
 		"unit-node": {
-			{"self-hosted", "linux", "x64", "xlarge"},
-			{"self-hosted", "linux", "arm64", "xlarge"},
+			linux_x64_xlarge,
+			linux_arm64_xlarge,
 		},
 
 		"unit-cli": {
-			{"ubuntu-latest"},
-			{"ubuntu-24.04-arm"},
+			linux_x64,
+			linux_arm64,
 		},
 		"unit-rest": {
-			{"ubuntu-latest"},
-			{"ubuntu-24.04-arm"},
+			linux_x64,
+			linux_arm64,
 		},
 	}
 
@@ -201,7 +213,7 @@ func getRunners(testGroupName string) [][]string {
 		return runners
 	}
 
-	return [][]string{{"ubuntu-latest"}}
+	return []Runner{linux_x64}
 }
 
 func getTestGroups(testGroupName string) []TestGroup {
