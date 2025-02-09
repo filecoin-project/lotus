@@ -214,9 +214,9 @@ func getRunners(testGroupName string) []Runner {
 		"itest-worker":                   {linux_x64_4xlarge},
 		"multicore-sdr":                  {linux_x64_xlarge},
 		"unit-cli":                       {linux_x64, linux_arm64},
-		"unit-node":                      {linux_x64, linux_arm64},
+		"unit-node":                      {linux_x64_xlarge, linux_arm64_xlarge},
 		"unit-rest":                      {linux_x64, linux_arm64},
-		"unit-storage":                   {linux_x64, linux_arm64},
+		"unit-storage":                   {linux_x64_2xlarge, linux_arm64_2xlarge},
 	}
 
 	if runners, ok := testGroupNamesToRunners[testGroupName]; ok {
