@@ -456,6 +456,10 @@ func (e *ethTransaction) EthGetBlockReceiptsLimited(ctx context.Context, blockPa
 		return nil, xerrors.Errorf("failed to get tipset: %w", err)
 	}
 
+	if limit > api.LookbackNoLimit && ts.Height() < e.chainStore.GetHeaviestTipSet().Height()-abi.ChainEpoch(limit) {
+		return nil, xerrors.Errorf("tipset %s is too old to fetch receipts for", ts.Key())
+	}
+
 	tsCid, err := ts.Key().Cid()
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get tipset key cid: %w", err)
