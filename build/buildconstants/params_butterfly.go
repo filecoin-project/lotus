@@ -75,11 +75,6 @@ const UpgradeWatermelonFix2Height = -101
 // This fix upgrade only ran on calibrationnet
 const UpgradeCalibrationDragonFixHeight = -102
 
-var SupportedProofTypes = []abi.RegisteredSealProof{
-	abi.RegisteredSealProof_StackedDrg512MiBV1,
-	abi.RegisteredSealProof_StackedDrg32GiBV1,
-	abi.RegisteredSealProof_StackedDrg64GiBV1,
-}
 var ConsensusMinerMinPower = abi.NewStoragePower(2 << 30)
 var PreCommitChallengeDelay = abi.ChainEpoch(150)
 

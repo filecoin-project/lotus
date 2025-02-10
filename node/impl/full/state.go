@@ -2046,7 +2046,6 @@ func (a *StateAPI) StateGetNetworkParams(ctx context.Context) (*api.NetworkParam
 		NetworkName:             networkName,
 		BlockDelaySecs:          buildconstants.BlockDelaySecs,
 		ConsensusMinerMinPower:  buildconstants.ConsensusMinerMinPower,
-		SupportedProofTypes:     buildconstants.SupportedProofTypes,
 		PreCommitChallengeDelay: buildconstants.PreCommitChallengeDelay,
 		Eip155ChainID:           buildconstants.Eip155ChainId,
 		ForkUpgradeParams: api.ForkUpgradeParams{

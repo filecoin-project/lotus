@@ -780,6 +780,8 @@ type GatewayMethods struct {
 
 	StateGetClaims func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (map[verifregtypes.ClaimId]verifregtypes.Claim, error) ``
 
+	StateGetNetworkParams func(p0 context.Context) (*NetworkParams, error) ``
+
 	StateListMiners func(p0 context.Context, p1 types.TipSetKey) ([]address.Address, error) ``
 
 	StateLookupID func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) ``
@@ -4950,6 +4952,17 @@ func (s *GatewayStruct) StateGetClaims(p0 context.Context, p1 address.Address, p
 
 func (s *GatewayStub) StateGetClaims(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (map[verifregtypes.ClaimId]verifregtypes.Claim, error) {
 	return *new(map[verifregtypes.ClaimId]verifregtypes.Claim), ErrNotSupported
+}
+
+func (s *GatewayStruct) StateGetNetworkParams(p0 context.Context) (*NetworkParams, error) {
+	if s.Internal.StateGetNetworkParams == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.StateGetNetworkParams(p0)
+}
+
+func (s *GatewayStub) StateGetNetworkParams(p0 context.Context) (*NetworkParams, error) {
+	return nil, ErrNotSupported
 }
 
 func (s *GatewayStruct) StateListMiners(p0 context.Context, p1 types.TipSetKey) ([]address.Address, error) {

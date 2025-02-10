@@ -20,20 +20,16 @@ import (
 )
 
 var (
-	BlocksPerEpoch        = uint64(builtin2.ExpectedLeadersPerEpoch)
-	BlockMessageLimit     = 512
-	BlockGasLimit         = int64(100_000_000_000)
-	BlockGasTarget        = int64(BlockGasLimit / 2)
-	BaseFeeMaxChangeDenom = int64(8) // 12.5%
-	InitialBaseFee        = int64(100e6)
-	MinimumBaseFee        = int64(100)
-	BlockDelaySecs        = uint64(builtin2.EpochDurationSeconds)
-	PropagationDelaySecs  = uint64(6)
-	EquivocationDelaySecs = uint64(2)
-	SupportedProofTypes   = []abi.RegisteredSealProof{
-		abi.RegisteredSealProof_StackedDrg32GiBV1,
-		abi.RegisteredSealProof_StackedDrg64GiBV1,
-	}
+	BlocksPerEpoch          = uint64(builtin2.ExpectedLeadersPerEpoch)
+	BlockMessageLimit       = 512
+	BlockGasLimit           = int64(100_000_000_000)
+	BlockGasTarget          = int64(BlockGasLimit / 2)
+	BaseFeeMaxChangeDenom   = int64(8) // 12.5%
+	InitialBaseFee          = int64(100e6)
+	MinimumBaseFee          = int64(100)
+	BlockDelaySecs          = uint64(builtin2.EpochDurationSeconds)
+	PropagationDelaySecs    = uint64(6)
+	EquivocationDelaySecs   = uint64(2)
 	ConsensusMinerMinPower  = abi.NewStoragePower(10 << 40)
 	PreCommitChallengeDelay = abi.ChainEpoch(150)
 

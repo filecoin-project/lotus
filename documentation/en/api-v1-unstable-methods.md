@@ -6787,9 +6787,6 @@ Response:
   "NetworkName": "lotus",
   "BlockDelaySecs": 42,
   "ConsensusMinerMinPower": "0",
-  "SupportedProofTypes": [
-    8
-  ],
   "PreCommitChallengeDelay": 10101,
   "ForkUpgradeParams": {
     "UpgradeSmokeHeight": 10101,

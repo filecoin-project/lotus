@@ -157,7 +157,6 @@ type NetworkParams struct {
 	NetworkName             dtypes.NetworkName
 	BlockDelaySecs          uint64
 	ConsensusMinerMinPower  abi.StoragePower
-	SupportedProofTypes     []abi.RegisteredSealProof
 	PreCommitChallengeDelay abi.ChainEpoch
 	ForkUpgradeParams       ForkUpgradeParams
 	Eip155ChainID           int
