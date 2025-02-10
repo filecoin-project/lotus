@@ -107,7 +107,7 @@ var DaemonCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:  "genesis",
-			Usage: "genesis file to use for first node run",
+			Usage: "genesis file to use for first node run, which may be a zstd compressed CAR or an uncompressed CAR file.",
 		},
 		&cli.BoolFlag{
 			Name:  "bootstrap",
@@ -253,9 +253,9 @@ var DaemonCmd = &cli.Command{
 		}
 
 		var genBytes []byte
-		if cctx.String("genesis") != "" {
-			genBytes, err = os.ReadFile(cctx.String("genesis"))
-			if err != nil {
+		genesisPath := cctx.String("genesis")
+		if genesisPath != "" {
+			if genBytes, err = readGenesis(genesisPath); err != nil {
 				return xerrors.Errorf("reading genesis: %w", err)
 			}
 		} else {
@@ -468,6 +468,23 @@ var DaemonCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		daemonStopCmd,
 	},
+}
+
+// readGenesis detects if the path points to a zstd compressed file and if so
+// automatically decompress it. Otherwise, defaults to reading the path as is.
+func readGenesis(path string) ([]byte, error) {
+	genesisFile, err := os.Open(filepath.Clean(path))
+	if err != nil {
+		return nil, xerrors.Errorf("opening genesis file: %w", err)
+	}
+	defer func() { _ = genesisFile.Close() }()
+
+	if compressed, err := build.IsZstdCompressed(genesisFile); err != nil {
+		return nil, xerrors.Errorf("checking genesis header: %w", err)
+	} else if compressed {
+		return build.DecompressAsZstd(genesisFile)
+	}
+	return io.ReadAll(genesisFile)
 }
 
 func importKey(ctx context.Context, api lapi.FullNode, f string) error {

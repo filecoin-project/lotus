@@ -15,6 +15,8 @@
 
 - chore: switch to pure-go zstd decoder for snapshot imports.  ([filecoin-project/lotus#12857](https://github.com/filecoin-project/lotus/pull/12857))
 
+- feat: automatically detect if the genesis is zstd compressed. ([filecoin-project/lotus#12885](https://github.com/filecoin-project/lotus/pull/12885)
+
 # UNRELEASED v.1.32.0
 
 See https://github.com/filecoin-project/lotus/blob/release/v1.32.0/CHANGELOG.md
