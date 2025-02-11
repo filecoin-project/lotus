@@ -16,6 +16,8 @@ $(warning Your Golang version is go$(shell expr $(GOVERSION) / 1000000).$(shell 
 $(error Update Golang to version to at least $(shell cat GO_VERSION_MIN))
 endif
 
+GOLANGCI_LINT_VERSION=v1.59.0
+
 # git modules that need to be loaded
 MODULES:=
 
@@ -282,6 +284,20 @@ install-completions:  ## Install shell completions
 unittests:  ## Run unit tests
 	@$(GOCC) test $(shell go list ./... | grep -v /lotus/itests)
 .PHONY: unittests
+
+install-linter:
+	@if ! command -v golangci-lint >/dev/null 2>&1; then \
+		echo "Installing golangci-lint $(GOLANGCI_LINT_VERSION)" && \
+		go install github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION); \
+	elif ! golangci-lint --version | grep -q "$(GOLANGCI_LINT_VERSION) "; then \
+		echo "Updating golangci-lint to $(GOLANGCI_LINT_VERSION)" && \
+		go install github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION); \
+	fi
+.PHONY: install-linter
+
+lint: install-linter
+	golangci-lint run --timeout 10m --concurrency 4
+.PHONY: lint
 
 clean:  ## Clean build artifacts
 	rm -rf $(CLEAN) $(BINS)
