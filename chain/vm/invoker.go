@@ -193,7 +193,6 @@ func (*ActorRegistry) transform(instance invokee) (nativeCode, error) {
 	exports := instance.Exports()
 	runtimeType := reflect.TypeOf((*vmr.Runtime)(nil)).Elem()
 	for i, e := range exports {
-		i := i
 		m := e.Method
 		newErr := func(format string, args ...interface{}) error {
 			str := fmt.Sprintf(format, args...)

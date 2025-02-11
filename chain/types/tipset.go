@@ -223,15 +223,15 @@ func (ts *TipSet) MinTimestamp() uint64 {
 func (ts *TipSet) MinTicketBlock() *BlockHeader {
 	blks := ts.Blocks()
 
-	min := blks[0]
+	minBlk := blks[0]
 
 	for _, b := range blks[1:] {
-		if b.LastTicket().Less(min.LastTicket()) {
-			min = b
+		if b.LastTicket().Less(minBlk.LastTicket()) {
+			minBlk = b
 		}
 	}
 
-	return min
+	return minBlk
 }
 
 func (ts *TipSet) ParentMessageReceipts() cid.Cid {

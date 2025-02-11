@@ -231,13 +231,11 @@ func (s *WindowPoStScheduler) asyncFaultRecover(di dline.Info, ts *types.TipSet)
 		if len(recoveries) == len(sigmsgs) {
 			for i, recovery := range recoveries {
 				// clone for function literal
-				recovery := recovery
-				msgCID := optionalCid(sigmsgs[i])
 				s.journal.RecordEvent(s.evtTypes[evtTypeWdPoStRecoveries], func() interface{} {
 					j := WdPoStRecoveriesProcessedEvt{
 						evtCommon:    s.getEvtCommon(err),
 						Declarations: recovery,
-						MessageCID:   msgCID,
+						MessageCID:   optionalCid(sigmsgs[i]),
 					}
 					j.Error = err
 					return j

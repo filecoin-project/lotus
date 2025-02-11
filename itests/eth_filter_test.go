@@ -109,7 +109,7 @@ func TestEthNewPendingTransactionFilter(t *testing.T) {
 	select {
 	case <-waitAllCh:
 	case <-ctx.Done():
-		t.Errorf("timeout waiting to pack messages")
+		t.Error("timeout waiting to pack messages")
 	}
 
 	expected := make(map[string]bool)
@@ -257,7 +257,7 @@ func TestEthNewPendingTransactionSub(t *testing.T) {
 	select {
 	case <-waitAllCh:
 	case <-ctx.Done():
-		t.Errorf("timeout waiting to pack messages")
+		t.Error("timeout waiting to pack messages")
 	}
 
 	expected := make(map[string]bool)
@@ -353,7 +353,7 @@ func TestEthNewBlockFilter(t *testing.T) {
 	select {
 	case <-waitAllCh:
 	case <-ctx.Done():
-		t.Errorf("timeout waiting to pack messages")
+		t.Error("timeout waiting to pack messages")
 	}
 
 	expected := make(map[string]bool)
@@ -831,7 +831,6 @@ func TestEthGetLogs(t *testing.T) {
 	messages := invokeAndWaitUntilAllOnChain(t, client, invocations)
 
 	for _, tc := range testCases {
-		tc := tc // appease the lint despot
 		t.Run(tc.name, func(t *testing.T) {
 			res, err := client.EthGetLogs(ctx, tc.spec)
 			require.NoError(err)
@@ -887,7 +886,6 @@ func TestEthGetFilterChanges(t *testing.T) {
 	messages := invokeAndWaitUntilAllOnChain(t, client, invocations)
 
 	for _, tc := range testCases {
-		tc := tc // appease the lint despot
 		t.Run(tc.name, func(t *testing.T) {
 			filterID, ok := testFilters[tc.name]
 			require.True(ok)
@@ -955,7 +953,6 @@ func TestEthSubscribeLogs(t *testing.T) {
 	time.Sleep(blockTime * 6)
 
 	for _, tc := range testCases {
-		tc := tc // appease the lint despot
 		t.Run(tc.name, func(t *testing.T) {
 			responseCh, ok := testResponses[tc.name]
 			require.True(ok)
@@ -1008,7 +1005,6 @@ func TestEthGetFilterLogs(t *testing.T) {
 	messages := invokeAndWaitUntilAllOnChain(t, client, invocations)
 
 	for _, tc := range testCases {
-		tc := tc // appease the lint despot
 		t.Run(tc.name, func(t *testing.T) {
 			filterID, ok := testFilters[tc.name]
 			require.True(ok)
@@ -1226,7 +1222,6 @@ func TestEthGetLogsWithBlockRanges(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc // appease the lint despot
 		t.Run(tc.name, func(t *testing.T) {
 			res, err := client.EthGetLogs(ctx, tc.spec)
 			require.NoError(err)
@@ -2344,7 +2339,7 @@ func AssertEthLogs(t *testing.T, actual []*ethtypes.EthLog, expected []ExpectedE
 				}
 			}
 
-			t.Errorf(buf.String())
+			t.Error(buf.String())
 		}
 	}
 
@@ -2355,7 +2350,7 @@ func AssertEthLogs(t *testing.T, actual []*ethtypes.EthLog, expected []ExpectedE
 			buf.WriteString(fmt.Sprintf("  address: %s\n", expected[i].Address))
 			buf.WriteString(fmt.Sprintf("  topics: %s\n", formatTopics(expected[i].Topics)))
 			buf.WriteString(fmt.Sprintf("  data: %x\n", expected[i].Data))
-			t.Errorf(buf.String())
+			t.Error(buf.String())
 		}
 	}
 }

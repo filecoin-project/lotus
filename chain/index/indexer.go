@@ -295,21 +295,18 @@ func (si *SqliteIndexer) indexTipset(ctx context.Context, tx *sql.Tx, ts *types.
 
 	for i, msg := range msgs {
 		insertTipsetMsgStmt := tx.Stmt(si.stmts.insertTipsetMessageStmt)
-		msg := msg
 		if _, err := insertTipsetMsgStmt.ExecContext(ctx, tsKeyCidBytes, height, 0, msg.Cid().Bytes(), i); err != nil {
 			return xerrors.Errorf("failed to insert tipset message: %w", err)
 		}
 	}
 
 	for _, blk := range ts.Blocks() {
-		blk := blk
 		_, smsgs, err := si.cs.MessagesForBlock(ctx, blk)
 		if err != nil {
 			return xerrors.Errorf("failed to get messages for block: %w", err)
 		}
 
 		for _, smsg := range smsgs {
-			smsg := smsg
 			if smsg.Signature.Type != crypto.SigTypeDelegated {
 				continue
 			}

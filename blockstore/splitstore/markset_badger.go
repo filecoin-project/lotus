@@ -377,9 +377,9 @@ func (s *BadgerMarkSet) Close() error {
 	return closeBadgerDB(db, s.path, s.persist)
 }
 
-func openBadgerDB(path string, recover bool) (*badger.DB, error) {
+func openBadgerDB(path string, doRecover bool) (*badger.DB, error) {
 	// if it is not a recovery, clean up first
-	if !recover {
+	if !doRecover {
 		err := os.RemoveAll(path)
 		if err != nil {
 			return nil, xerrors.Errorf("error clearing markset directory: %w", err)

@@ -289,7 +289,7 @@ func (rt *Runtime) CreateActor(codeID cid.Cid, addr address.Address) {
 	}
 	act, aerr := rt.vm.areg.Create(codeID, rt)
 	if aerr != nil {
-		rt.Abortf(aerr.RetCode(), aerr.Error())
+		rt.Abort(aerr.RetCode(), aerr.Error())
 	}
 
 	_, err := rt.state.GetActor(addr)
@@ -368,18 +368,23 @@ func (rt *Runtime) Context() context.Context {
 
 func (rt *Runtime) Abortf(code exitcode.ExitCode, msg string, args ...interface{}) {
 	log.Warnf("Abortf: " + fmt.Sprintf(msg, args...))
-	panic(aerrors.NewfSkip(2, code, msg, args...))
+	panic(aerrors.NewSkipf(2, code, msg, args...))
+}
+
+func (rt *Runtime) Abort(code exitcode.ExitCode, msg string) {
+	log.Warnf("Abortf: " + msg)
+	panic(aerrors.NewSkip(2, code, msg))
 }
 
 func (rt *Runtime) AbortStateMsg(msg string) {
-	panic(aerrors.NewfSkip(3, 101, msg))
+	panic(aerrors.NewSkip(3, 101, msg))
 }
 
 func (rt *Runtime) ValidateImmediateCallerType(ts ...cid.Cid) {
 	rt.abortIfAlreadyValidated()
 	callerCid, ok := rt.GetActorCodeCID(rt.Caller())
 	if !ok {
-		panic(aerrors.Fatalf("failed to lookup code cid for caller"))
+		panic(aerrors.Fatal("failed to lookup code cid for caller"))
 	}
 	for _, t := range ts {
 		if t == callerCid {

@@ -50,9 +50,7 @@ func Newf(retCode exitcode.ExitCode, format string, args ...interface{}) ActorEr
 	}
 }
 
-// todo: bit hacky
-
-func NewfSkip(skip int, retCode exitcode.ExitCode, format string, args ...interface{}) ActorError {
+func NewSkipf(skip int, retCode exitcode.ExitCode, format string, args ...interface{}) ActorError {
 	if retCode == 0 {
 		return &actorError{
 			fatal:   true,
@@ -67,6 +65,25 @@ func NewfSkip(skip int, retCode exitcode.ExitCode, format string, args ...interf
 		retCode: retCode,
 
 		msg:   fmt.Sprintf(format, args...),
+		frame: xerrors.Caller(skip),
+	}
+}
+
+func NewSkip(skip int, retCode exitcode.ExitCode, reason string) ActorError {
+	if retCode == 0 {
+		return &actorError{
+			fatal:   true,
+			retCode: 0,
+
+			msg:   "tried creating an error and setting RetCode to 0",
+			frame: xerrors.Caller(skip),
+			err:   errors.New(reason),
+		}
+	}
+	return &actorError{
+		retCode: retCode,
+
+		msg:   reason,
 		frame: xerrors.Caller(skip),
 	}
 }

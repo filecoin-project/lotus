@@ -161,9 +161,9 @@ func (e *ErrExecutionReverted) ToJSONRPCError() (jsonrpc.JSONRPCError, error) {
 }
 
 // NewErrExecutionReverted creates a new ErrExecutionReverted with the given reason.
-func NewErrExecutionReverted(exitCode exitcode.ExitCode, error, reason string, data []byte) *ErrExecutionReverted {
+func NewErrExecutionReverted(exitCode exitcode.ExitCode, errMsg, reason string, data []byte) *ErrExecutionReverted {
 	return &ErrExecutionReverted{
-		Message: fmt.Sprintf("message execution failed (exit=[%s], revert reason=[%s], vm error=[%s])", exitCode, reason, error),
+		Message: fmt.Sprintf("message execution failed (exit=[%s], revert reason=[%s], vm error=[%s])", exitCode, reason, errMsg),
 		Data:    fmt.Sprintf("0x%x", data),
 	}
 }

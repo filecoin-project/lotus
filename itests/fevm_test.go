@@ -76,7 +76,6 @@ func TestFEVMRecursive(t *testing.T) {
 
 	// Successful calls
 	for _, callCount := range callCounts {
-		callCount := callCount // linter unhappy unless callCount is local to loop
 		t.Run(fmt.Sprintf("TestFEVMRecursive%d", callCount), func(t *testing.T) {
 			_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", buildInputFromUint64(callCount))
 			require.NoError(t, err)
@@ -94,7 +93,6 @@ func TestFEVMRecursiveFail(t *testing.T) {
 	// Unsuccessful calls
 	failCallCounts := []uint64{340, 400, 600, 850, 1000}
 	for _, failCallCount := range failCallCounts {
-		failCallCount := failCallCount // linter unhappy unless callCount is local to loop
 		t.Run(fmt.Sprintf("TestFEVMRecursiveFail%d", failCallCount), func(t *testing.T) {
 			_, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", buildInputFromUint64(failCallCount))
 			require.Error(t, err)
@@ -1037,8 +1035,6 @@ func TestFEVMErrorParsing(t *testing.T) {
 		"failDivZero()":      "0x4e487b710000000000000000000000000000000000000000000000000000000000000012", // DivideByZero()
 		"failCustom()":       customError,
 	} {
-		sig := sig
-		expected := expected
 		t.Run(sig, func(t *testing.T) {
 			entryPoint := kit.CalcFuncSignature(sig)
 			t.Run("EthCall", func(t *testing.T) {

@@ -717,7 +717,6 @@ func (m *Sealing) processPieces(ctx context.Context, sector SectorInfo) ([]miner
 	pams := make([]miner.PieceActivationManifest, 0, len(sector.Pieces))
 
 	for _, piece := range sector.Pieces {
-		piece := piece
 		if piece.HasDealInfo() {
 			info := piece.DealInfo()
 			// If we have a dealID then covert to PAM

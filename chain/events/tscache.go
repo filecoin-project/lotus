@@ -31,10 +31,10 @@ type tipSetCache struct {
 	storage tsCacheAPI
 }
 
-func newTSCache(storage tsCacheAPI, cap abi.ChainEpoch) *tipSetCache {
+func newTSCache(storage tsCacheAPI, capacity abi.ChainEpoch) *tipSetCache {
 	return &tipSetCache{
-		byKey:    make(map[types.TipSetKey]*types.TipSet, cap),
-		byHeight: make([]*types.TipSet, cap),
+		byKey:    make(map[types.TipSetKey]*types.TipSet, capacity),
+		byHeight: make([]*types.TipSet, capacity),
 		start:    0,
 		len:      0,
 

@@ -477,7 +477,7 @@ func DealProviderCollateralBounds(
 	size abi.PaddedPieceSize, verified bool,
 	rawBytePower, qaPower, baselinePower abi.StoragePower,
 	circulatingFil abi.TokenAmount, nwVer network.Version,
-) (min, max abi.TokenAmount, err error) {
+) (abi.TokenAmount, abi.TokenAmount, error) {
 	v, err := actorstypes.VersionForNetwork(nwVer)
 	if err != nil {
 		return big.Zero(), big.Zero(), err

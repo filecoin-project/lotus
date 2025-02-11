@@ -183,7 +183,7 @@ func execVectorsStdin() error {
 	}
 }
 
-func execVectorFile(r conformance.Reporter, path string) (diffs []string, error error) {
+func execVectorFile(r conformance.Reporter, path string) ([]string, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open test vector: %w", err)
