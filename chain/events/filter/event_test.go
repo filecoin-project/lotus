@@ -275,7 +275,6 @@ func TestEventFilterCollectEvents(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc // appease lint
 		t.Run(tc.name, func(t *testing.T) {
 			if err := tc.filter.CollectEvents(context.Background(), tc.te, false, addrMap.ResolveAddress); err != nil {
 				require.NoError(t, err, "collect events")

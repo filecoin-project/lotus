@@ -10,7 +10,7 @@ linters:
     - gosec
     - unconvert
     - staticcheck
-    - exportloopref
+    - copyloopvar
     - unused
 
 # We don't want to skip builtin/

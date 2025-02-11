@@ -132,7 +132,6 @@ func TestConformance(t *testing.T) {
 			}
 
 			for _, variant := range vector.Pre.Variants {
-				variant := variant
 				t.Run(variant.ID, func(t *testing.T) {
 					_, _ = invokee(t, &vector, &variant) //nolint:errcheck
 				})

@@ -19,10 +19,10 @@ type BadBlockReason struct {
 	OriginalReason *BadBlockReason
 }
 
-func NewBadBlockReason(cid []cid.Cid, format string, i ...interface{}) BadBlockReason {
+func NewBadBlockReason(cid []cid.Cid, reason string) BadBlockReason {
 	return BadBlockReason{
 		TipSet: cid,
-		Reason: fmt.Sprintf(format, i...),
+		Reason: reason,
 	}
 }
 

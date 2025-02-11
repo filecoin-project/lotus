@@ -210,7 +210,7 @@ func (ps *Store) findChan(ctx context.Context, filter func(ci *ChannelInfo) bool
 
 // findChans loops over all channels, only including those that pass the filter.
 // max is the maximum number of channels to return. Set to zero to return unlimited channels.
-func (ps *Store) findChans(ctx context.Context, filter func(*ChannelInfo) bool, max int) ([]ChannelInfo, error) {
+func (ps *Store) findChans(ctx context.Context, filter func(*ChannelInfo) bool, maxMatches int) ([]ChannelInfo, error) {
 	res, err := ps.ds.Query(ctx, dsq.Query{Prefix: dsKeyChannelInfo})
 	if err != nil {
 		return nil, err
@@ -244,7 +244,7 @@ func (ps *Store) findChans(ctx context.Context, filter func(*ChannelInfo) bool, 
 		// If we've reached the maximum number of matches, return.
 		// Note that if max is zero we return an unlimited number of matches
 		// because len(matches) will always be at least 1.
-		if len(matches) == max {
+		if len(matches) == maxMatches {
 			return matches, nil
 		}
 	}

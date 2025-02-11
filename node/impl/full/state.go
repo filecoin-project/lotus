@@ -1111,15 +1111,15 @@ func (a *StateAPI) stateComputeDataCIDv3(ctx context.Context, maddr address.Addr
 	return *ucid, nil
 }
 
-func (a *StateAPI) StateChangedActors(ctx context.Context, old cid.Cid, new cid.Cid) (map[string]types.Actor, error) {
+func (a *StateAPI) StateChangedActors(ctx context.Context, oldc cid.Cid, newc cid.Cid) (map[string]types.Actor, error) {
 	store := a.Chain.ActorStore(ctx)
 
-	oldTree, err := state.LoadStateTree(store, old)
+	oldTree, err := state.LoadStateTree(store, oldc)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load old state tree: %w", err)
 	}
 
-	newTree, err := state.LoadStateTree(store, new)
+	newTree, err := state.LoadStateTree(store, newc)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load new state tree: %w", err)
 	}

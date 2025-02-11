@@ -192,7 +192,6 @@ func (a *AssignerCommon) TrySched(sh *Scheduler) {
 
 		scheduledWindows[wnd] = struct{}{}
 
-		window := window // copy
 		select {
 		case sh.OpenWindows[wnd].Done <- &window:
 		default:

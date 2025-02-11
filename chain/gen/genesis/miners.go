@@ -137,9 +137,6 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 	rawPow, qaPow := big.NewInt(0), big.NewInt(0)
 	for i, m := range miners {
 		// Create miner through power actor
-		i := i
-		m := m
-
 		variant := miner.SealProofVariant_Standard
 		if synthetic {
 			variant = miner.SealProofVariant_Synthetic

@@ -185,7 +185,6 @@ func ExecuteTipsetVector(r Reporter, vector *schema.TestVector, variant *schema.
 	var receiptsIdx int
 	var prevEpoch = baseEpoch
 	for i, ts := range vector.ApplyTipsets {
-		ts := ts // capture
 		execEpoch := baseEpoch + abi.ChainEpoch(ts.EpochOffset)
 		params := ExecuteTipsetParams{
 			Preroot:     root,

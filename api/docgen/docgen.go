@@ -666,7 +666,6 @@ func Generate(out io.Writer, iface, pkg string, ainfo ApiASTInfo) error {
 	}
 
 	for _, g := range groupslice {
-		g := g
 		if _, err := fmt.Fprintf(out, "## %s\n", g.GroupName); err != nil {
 			return err
 		}

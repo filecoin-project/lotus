@@ -31,7 +31,6 @@ func TestGasBurn(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		test := test
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
 			refund, toBurn := ComputeGasOverestimationBurn(test.used, test.limit)
 			assert.Equal(t, test.refund, refund, "refund")
@@ -62,7 +61,6 @@ func TestGasOutputs(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		test := test
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
 			output := ComputeGasOutputs(test.used, test.limit, baseFee, types.NewInt(test.feeCap), types.NewInt(test.premium), true)
 			i2s := func(i uint64) string {

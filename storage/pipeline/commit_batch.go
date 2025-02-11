@@ -641,7 +641,6 @@ func (b *CommitBatcher) aggregateProofType(nv network.Version) (abi.RegisteredAg
 
 func (b *CommitBatcher) allocationCheck(Pieces []miner.PieceActivationManifest, precomitInfo *miner.SectorPreCommitOnChainInfo, miner abi.ActorID, ts *types.TipSet) error {
 	for _, p := range Pieces {
-		p := p
 		// skip pieces not claiming an allocation
 		if p.VerifiedAllocationKey == nil {
 			continue

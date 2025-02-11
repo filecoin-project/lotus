@@ -115,14 +115,14 @@ func workersCmd(sealing bool) *cli.Command {
 					}
 
 					str := fmt.Sprint(c)
-					if max := stat.Info.Resources.ResourceSpec(stt.RegisteredSealProof, stt.TaskType).MaxConcurrent; max > 0 {
+					if maxConcurrent := stat.Info.Resources.ResourceSpec(stt.RegisteredSealProof, stt.TaskType).MaxConcurrent; maxConcurrent > 0 {
 						switch {
-						case c < max:
+						case c < maxConcurrent:
 							str = color.GreenString(str)
-						case c >= max:
+						case c >= maxConcurrent:
 							str = color.YellowString(str)
 						}
-						str = fmt.Sprintf("%s/%d", str, max)
+						str = fmt.Sprintf("%s/%d", str, maxConcurrent)
 					} else {
 						str = color.CyanString(str)
 					}

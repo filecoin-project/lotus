@@ -29,7 +29,6 @@ func (e *EthSubHandler) AddSub(ctx context.Context, id ethtypes.EthSubscriptionI
 	defer e.lk.Unlock()
 
 	for _, p := range e.queued[id] {
-		p := p // copy
 		if err := sink(ctx, &p); err != nil {
 			return err
 		}

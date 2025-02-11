@@ -237,9 +237,9 @@ func (a *MsigAPI) msigApproveOrCancelTxnHash(ctx context.Context, operation api.
 	}, nil
 }
 
-func serializeAddParams(new address.Address, inc bool) ([]byte, error) {
+func serializeAddParams(newa address.Address, inc bool) ([]byte, error) {
 	enc, actErr := actors.SerializeParams(&multisig2.AddSignerParams{
-		Signer:   new,
+		Signer:   newa,
 		Increase: inc,
 	})
 	if actErr != nil {
@@ -249,10 +249,10 @@ func serializeAddParams(new address.Address, inc bool) ([]byte, error) {
 	return enc, nil
 }
 
-func serializeSwapParams(old address.Address, new address.Address) ([]byte, error) {
+func serializeSwapParams(olda address.Address, newa address.Address) ([]byte, error) {
 	enc, actErr := actors.SerializeParams(&multisig2.SwapSignerParams{
-		From: old,
-		To:   new,
+		From: olda,
+		To:   newa,
 	})
 	if actErr != nil {
 		return nil, actErr

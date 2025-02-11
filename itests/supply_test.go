@@ -117,23 +117,23 @@ func TestCirciulationSupplyUpgrade(t *testing.T) {
 	// This allows us to normalize against fluctuations in circulating supply based on the underlying
 	// dynamics irrelevant to this change
 
-	max := height0
+	maxHeight := height0
 	if height0 < height1 {
-		max = height1
+		maxHeight = height1
 	}
-	max = max + 1 // Measure supply at height after the deal locking funds was published
+	maxHeight = maxHeight + 1 // Measure supply at height after the deal locking funds was published
 
 	// Let both chains catch up
 	fullNode0.WaitTillChain(ctx, func(ts *types.TipSet) bool {
-		return ts.Height() >= max
+		return ts.Height() >= maxHeight
 	})
 	fullNode1.WaitTillChain(ctx, func(ts *types.TipSet) bool {
-		return ts.Height() >= max
+		return ts.Height() >= maxHeight
 	})
 
-	ts0, err := fullNode0.ChainGetTipSetByHeight(ctx, max, types.EmptyTSK)
+	ts0, err := fullNode0.ChainGetTipSetByHeight(ctx, maxHeight, types.EmptyTSK)
 	require.NoError(t, err)
-	ts1, err := fullNode1.ChainGetTipSetByHeight(ctx, max, types.EmptyTSK)
+	ts1, err := fullNode1.ChainGetTipSetByHeight(ctx, maxHeight, types.EmptyTSK)
 	require.NoError(t, err)
 
 	nv22Supply, err := fullNode0.StateVMCirculatingSupplyInternal(ctx, ts0.Key())

@@ -401,14 +401,13 @@ func TestEthOpenRPCConformance(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		name := tc.method
 		if tc.variant != "" {
 			name += "_" + tc.variant
 		}
 		t.Run(name, func(t *testing.T) {
 			if tc.skipReason != "" {
-				t.Skipf(tc.skipReason)
+				t.Skip(tc.skipReason)
 			}
 
 			schema, ok := schemas[tc.method]

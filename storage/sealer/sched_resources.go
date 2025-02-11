@@ -203,18 +203,18 @@ func (a *ActiveResources) CanHandleRequest(schedID uuid.UUID, tt sealtasks.SealT
 
 // utilization returns a number in 0..1 range indicating fraction of used resources
 func (a *ActiveResources) utilization(wr storiface.WorkerResources) float64 { // todo task type
-	var max float64
+	var maxutil float64
 
 	cpu := float64(a.cpuUse) / float64(wr.CPUs)
-	max = cpu
+	maxutil = cpu
 
 	memUsed := a.memUsedMin
 	if memUsed < wr.MemUsed {
 		memUsed = wr.MemUsed
 	}
 	memMin := float64(memUsed) / float64(wr.MemPhysical)
-	if memMin > max {
-		max = memMin
+	if memMin > maxutil {
+		maxutil = memMin
 	}
 
 	vmemUsed := a.memUsedMax
@@ -223,18 +223,18 @@ func (a *ActiveResources) utilization(wr storiface.WorkerResources) float64 { //
 	}
 	memMax := float64(vmemUsed) / float64(wr.MemPhysical+wr.MemSwap)
 
-	if memMax > max {
-		max = memMax
+	if memMax > maxutil {
+		maxutil = memMax
 	}
 
 	if len(wr.GPUs) > 0 {
 		gpuMax := a.gpuUsed / float64(len(wr.GPUs))
-		if gpuMax > max {
-			max = gpuMax
+		if gpuMax > maxutil {
+			maxutil = gpuMax
 		}
 	}
 
-	return max
+	return maxutil
 }
 
 func (a *ActiveResources) taskCount(tt *sealtasks.SealTaskType) int {
