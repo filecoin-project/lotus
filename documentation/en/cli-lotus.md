@@ -64,7 +64,7 @@ COMMANDS:
 
 OPTIONS:
    --api value               (default: "1234")
-   --genesis value           genesis file to use for first node run
+   --genesis value           genesis file to use for first node run, which may be a zstd compressed CAR or an uncompressed CAR file.
    --bootstrap               (default: true)
    --import-chain value      on first run, load chain from given file or url and validate
    --import-snapshot value   import chain state from a given chain export file or url
