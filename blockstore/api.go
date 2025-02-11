@@ -24,9 +24,9 @@ type apiBlockstore struct {
 var _ BasicBlockstore = (*apiBlockstore)(nil)
 
 func NewAPIBlockstore(cio ChainIO) Blockstore {
-	lc, err := lru.New[cid.Cid, []byte](1024)
+	lc, err := lru.New[cid.Cid, []byte](1024) // we mostly come here for short-lived CLI applications so 1024 is a compromise size
 	if err != nil {
-		panic(err)
+		panic(err) // should never happen, only errors if size is <= 0
 	}
 	bs := &apiBlockstore{
 		api:   cio,
@@ -54,19 +54,19 @@ func (a *apiBlockstore) Get(ctx context.Context, c cid.Cid) (blocks.Block, error
 	if err != nil {
 		return nil, err
 	}
-	a.cache.Add(c, bb)
+	a.cache.ContainsOrAdd(c, bb)
 	return blocks.NewBlockWithCid(bb, c)
 }
 
 func (a *apiBlockstore) GetSize(ctx context.Context, c cid.Cid) (int, error) {
-	if bb, ok := a.cache.Get(c); ok {
+	if bb, ok := a.cache.Peek(c); ok {
 		return len(bb), nil
 	}
 	bb, err := a.api.ChainReadObj(ctx, c)
 	if err != nil {
 		return 0, err
 	}
-	a.cache.Add(c, bb)
+	a.cache.ContainsOrAdd(c, bb)
 	return len(bb), nil
 }
 
@@ -90,4 +90,4 @@ func (a *apiBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error)
 	return nil, xerrors.New("not supported")
 }
 
-func (a *apiBlockstore) HashOnRead(enabled bool) {}
+func (a *apiBlockstore) HashOnRead(bool) {}
