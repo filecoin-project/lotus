@@ -357,6 +357,7 @@ func TestGatewayRateLimits(t *testing.T) {
 	// 	Max difference between 2025-02-10 12:05:34.63725116 +0000 UTC m=+30.240446844 and 2025-02-10 12:05:33.519935593 +0000 UTC m=+29.123131278 allowed is 800ms, but difference was 1.117315566s
 	// There may be additional calls going through the API that only show up at random and these
 	// aren't accounted for. See note below about paymentChannelSettler, which is one such call.
+	// Tracking issue: https://github.com/filecoin-project/lotus/issues/12566
 
 	req := require.New(t)
 
