@@ -285,18 +285,10 @@ unittests:  ## Run unit tests
 	@$(GOCC) test $(shell go list ./... | grep -v /lotus/itests)
 .PHONY: unittests
 
-install-linter:
-	@if ! command -v golangci-lint >/dev/null 2>&1; then \
-		echo "Installing golangci-lint $(GOLANGCI_LINT_VERSION)" && \
-		go install github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION); \
-	elif ! golangci-lint --version | grep -q "$(GOLANGCI_LINT_VERSION) "; then \
-		echo "Updating golangci-lint to $(GOLANGCI_LINT_VERSION)" && \
-		go install github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION); \
-	fi
-.PHONY: install-linter
-
-lint: install-linter
-	golangci-lint run --timeout 10m --concurrency 4
+lint:
+	go mod tidy
+	go vet ./...
+	go run github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION) run --timeout 10m --concurrency 4
 .PHONY: lint
 
 clean:  ## Clean build artifacts
