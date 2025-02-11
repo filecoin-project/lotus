@@ -37,6 +37,29 @@ func TestUnpadReader(t *testing.T) {
 	require.Equal(t, raw, readered)
 }
 
+func TestUnpadReaderBufWithSmallWorkBuf(t *testing.T) {
+	ps := abi.PaddedPieceSize(64 << 20).Unpadded()
+
+	raw := bytes.Repeat([]byte{0x77}, int(ps))
+
+	padOut := make([]byte, ps.Padded())
+	fr32.Pad(raw, padOut)
+
+	buf := make([]byte, abi.PaddedPieceSize(uint64(128)))
+	r, err := fr32.NewUnpadReaderBuf(bytes.NewReader(padOut), ps.Padded(), buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// using bufio reader to make sure reads are big enough for the padreader - it can't handle small reads right now
+	readered, err := io.ReadAll(bufio.NewReaderSize(r, 512))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	require.Equal(t, raw, readered)
+}
+
 func TestPadWriterUnpadReader(t *testing.T) {
 	testCases := []struct {
 		name      string
