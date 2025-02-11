@@ -75,7 +75,7 @@ COPY scripts/docker-lotus-entrypoint.sh /
 
 ARG DOCKER_LOTUS_IMPORT_SNAPSHOT=https://forest-archive.chainsafe.dev/latest/mainnet/
 ENV DOCKER_LOTUS_IMPORT_SNAPSHOT ${DOCKER_LOTUS_IMPORT_SNAPSHOT}
-ENV FILECOIN_PARAMETER_CACHE /var/tmp/filecoin-proof-parameters
+ENV FIL_PROOFS_PARAMETER_CACHE /var/tmp/filecoin-proof-parameters
 ENV LOTUS_PATH /var/lib/lotus
 ENV DOCKER_LOTUS_IMPORT_WALLET ""
 
@@ -96,7 +96,7 @@ CMD ["-help"]
 #####################################
 FROM lotus-base AS lotus-all-in-one
 
-ENV FILECOIN_PARAMETER_CACHE /var/tmp/filecoin-proof-parameters
+ENV FIL_PROOFS_PARAMETER_CACHE /var/tmp/filecoin-proof-parameters
 ENV LOTUS_MINER_PATH /var/lib/lotus-miner
 ENV LOTUS_PATH /var/lib/lotus
 ENV LOTUS_WORKER_PATH /var/lib/lotus-worker
