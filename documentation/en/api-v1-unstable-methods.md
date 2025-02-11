@@ -2624,7 +2624,9 @@ Response:
   "Gpbft": {
     "Delta": 0,
     "DeltaBackOffExponent": 0,
+    "QualityDeltaMultiplier": 0,
     "MaxLookaheadRounds": 0,
+    "ChainProposedLength": 0,
     "RebroadcastBackoffBase": 0,
     "RebroadcastBackoffExponent": 0,
     "RebroadcastBackoffSpread": 0,
@@ -2643,6 +2645,18 @@ Response:
     "ServerRequestTimeout": 0,
     "MinimumPollInterval": 0,
     "MaximumPollInterval": 0
+  },
+  "PubSub": {
+    "CompressionEnabled": false
+  },
+  "ChainExchange": {
+    "SubscriptionBufferSize": 0,
+    "MaxChainLength": 0,
+    "MaxInstanceLookahead": 0,
+    "MaxDiscoveredChainsPerInstance": 0,
+    "MaxWantedChainsPerInstance": 0,
+    "RebroadcastInterval": 0,
+    "MaxTimestampAge": 0
   }
 }
 ```

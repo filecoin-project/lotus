@@ -66,6 +66,18 @@ func NewManifest(
 			MinimumPollInterval:  ecPeriod,
 			MaximumPollInterval:  4 * ecPeriod,
 		},
+		PubSub: manifest.PubSubConfig{
+			CompressionEnabled: true,
+		},
+		ChainExchange: manifest.ChainExchangeConfig{
+			SubscriptionBufferSize:         32,
+			MaxChainLength:                 gpbft.ChainDefaultLen,
+			MaxInstanceLookahead:           manifest.DefaultCommitteeLookback,
+			MaxDiscoveredChainsPerInstance: 1_000,
+			MaxWantedChainsPerInstance:     1_000,
+			RebroadcastInterval:            2 * time.Second,
+			MaxTimestampAge:                8 * time.Second,
+		},
 	}
 }
 

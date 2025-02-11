@@ -107,11 +107,13 @@ func init() {
 
 	f3Cert := certs.FinalityCertificate{
 		GPBFTInstance: 0,
-		ECChain: []gpbft.TipSet{
-			{
-				Epoch:      0,
-				Key:        tsk.Bytes(),
-				PowerTable: c,
+		ECChain: &gpbft.ECChain{
+			TipSets: []*gpbft.TipSet{
+				{
+					Epoch:      0,
+					Key:        tsk.Bytes(),
+					PowerTable: c,
+				},
 			},
 		},
 		SupplementalData: gpbft.SupplementalData{
