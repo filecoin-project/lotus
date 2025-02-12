@@ -110,6 +110,7 @@ type StateCaller interface {
 
 type ContractManifestProvider struct {
 	address     string
+	networkName gpbft.BaseNetworkName
 	stateCaller StateCaller
 	CheckPeriod time.Duration
 
@@ -126,6 +127,7 @@ func NewContractManifestProvider(mctx helpers.MetricsCtx, config *Config, stateC
 	return &ContractManifestProvider{
 		stateCaller: stateCaller,
 		address:     config.ParameterContractAddress,
+		networkName: config.BaseNetworkName,
 		CheckPeriod: 15 * time.Minute,
 
 		manifestChanges: make(chan *manifest.Manifest, 1),
@@ -166,7 +168,7 @@ func (cmp *ContractManifestProvider) Start(context.Context) error {
 				} else {
 					log.Info("new manifest from contract", "enable", false)
 				}
-				cmp.manifestChanges < -m
+				cmp.manifestChanges <- m
 				knownManifest = m
 			case <-cmp.runningCtx.Done():
 			}
@@ -203,7 +205,14 @@ func (cmp *ContractManifestProvider) fetchActivationInfo(ctx context.Context) (*
 		return nil, fmt.Errorf("bootstrap epoch does not match: %d != %d", m.BootstrapEpoch, activationEpoch)
 	}
 
-	// TODO: consider addtional checks
+	if err := m.Validate(); err != nil {
+		return nil, fmt.Errorf("manifest does not validate: %w", err)
+	}
+
+	if m.NetworkName != cmp.networkName {
+		return nil, fmt.Errorf("network name does not match, expected: %s, got: %s",
+			cmp.networkName, m.NetworkName)
+	}
 
 	return &m, nil
 }
