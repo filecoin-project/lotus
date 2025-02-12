@@ -12,10 +12,9 @@
 - Exposed `StateGetNetworkParams` in the Lotus Gateway API ([filecoin-project/lotus#12881](https://github.com/filecoin-project/lotus/pull/12881))
 - **BREAKING**: Removed `SupportedProofTypes` from `StateGetNetworkParams` response as it was unreliable and didn't match FVM's actual supported proofs ([filecoin-project/lotus#12881](https://github.com/filecoin-project/lotus/pull/12881))
 - refactor(eth): attach ToFilecoinMessage converter to EthCall method for improved package/module import structure. This change also exports the converter as a public method, enhancing usability for developers utilizing Lotus as a library. ([filecoin-project/lotus#12844](https://github.com/filecoin-project/lotus/pull/12844))
-
 - chore: switch to pure-go zstd decoder for snapshot imports.  ([filecoin-project/lotus#12857](https://github.com/filecoin-project/lotus/pull/12857))
-
 - feat: automatically detect if the genesis is zstd compressed. ([filecoin-project/lotus#12885](https://github.com/filecoin-project/lotus/pull/12885)
+- `lotus send` now supports `--csv` option for sending multiple transactions. ([filecoin-project/lotus#12892](https://github.com/filecoin-project/lotus/pull/12892))
 
 # UNRELEASED v.1.32.0
 
