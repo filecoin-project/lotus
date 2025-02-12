@@ -13,6 +13,8 @@ import (
 	"github.com/ipfs/go-cid"
 	meta_schema "github.com/open-rpc/meta-schema"
 
+	"github.com/filecoin-project/go-f3/gpbft"
+
 	"github.com/filecoin-project/lotus/api/docgen"
 	"github.com/filecoin-project/lotus/build"
 )
@@ -28,6 +30,40 @@ const integerD = `{
           "type": "number",
           "description": "Number is a number"
         }`
+
+const f3ECChain = `{
+"items": {
+    "additionalProperties": false,
+    "properties": {
+        "Commitments": {
+            "items": {
+                "description": "Number is a number",
+                "title": "number",
+                "type": "number"
+            },
+            "maxItems": 32,
+            "minItems": 32,
+            "type": "array"
+        },
+        "Epoch": {
+            "title": "number",
+            "type": "number"
+        },
+        "Key": {
+            "media": {
+                "binaryEncoding": "base64"
+            },
+            "type": "string"
+        },
+        "PowerTable": {
+            "title": "Content Identifier",
+            "type": "string"
+        }
+    },
+    "type": "object"
+},
+"type": "array"
+}`
 
 const cidCidD = `{"title": "Content Identifier", "type": "string", "description": "Cid represents a self-describing content addressed identifier. It is formed by a Version, a Codec (which indicates a multicodec-packed content type) and a Multihash."}`
 
@@ -84,6 +120,7 @@ func OpenRPCSchemaTypeMapper(ty reflect.Type) *jsonschema.Type {
 	// Use a slice instead of a map because it preserves order, as a logic safeguard/fallback.
 	dict := []schemaDictEntry{
 		{cid.Cid{}, cidCidD},
+		{gpbft.ECChain{}, f3ECChain},
 	}
 
 	for _, d := range dict {

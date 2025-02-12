@@ -17,6 +17,9 @@
 
 - feat: automatically detect if the genesis is zstd compressed. ([filecoin-project/lotus#12885](https://github.com/filecoin-project/lotus/pull/12885)
 
+- chore: upgrade to the latest go-f3 and allow F3 chain exchange topics ([filecoin-project/lotus#12893](https://github.com/filecoin-project/lotus/pull/12893)
+
+
 # UNRELEASED v.1.32.0
 
 See https://github.com/filecoin-project/lotus/blob/release/v1.32.0/CHANGELOG.md

@@ -11,7 +11,9 @@ Manifest:
 
   GPBFT Delta:                        {{.Gpbft.Delta}}
   GPBFT Delta BackOff Exponent:       {{.Gpbft.DeltaBackOffExponent}}
+  GPBFT Quality Delta Multiplier:     {{.Gpbft.QualityDeltaMultiplier}}
   GPBFT Max Lookahead Rounds:         {{.Gpbft.MaxLookaheadRounds}}
+  GPBFT Chain Proposed Length:        {{.Gpbft.ChainProposedLength}}
   GPBFT Rebroadcast Backoff Base:     {{.Gpbft.RebroadcastBackoffBase}}
   GPBFT Rebroadcast Backoff Exponent: {{.Gpbft.RebroadcastBackoffExponent}}
   GPBFT Rebroadcast Backoff Spread:   {{.Gpbft.RebroadcastBackoffSpread}}
@@ -27,3 +29,13 @@ Manifest:
   Certificate Exchange Server Timeout:    {{.CertificateExchange.ServerRequestTimeout}}
   Certificate Exchange Min Poll Interval: {{.CertificateExchange.MinimumPollInterval}}
   Certificate Exchange Max Poll Interval: {{.CertificateExchange.MaximumPollInterval}}
+
+  PubSub Compression Enabled:  {{.PubSub.CompressionEnabled}}
+
+  Chain Exchange Subscription Buffer Size:           {{.ChainExchange.SubscriptionBufferSize}}
+  Chain Exchange Max Chain Length:                   {{.ChainExchange.MaxChainLength}}
+  Chain Exchange Max Instance Lookahead:             {{.ChainExchange.MaxInstanceLookahead}}
+  Chain Exchange Max Discovered Chains Per Instance: {{.ChainExchange.MaxDiscoveredChainsPerInstance}}
+  Chain Exchange Max Wanted Chains Per Instance:     {{.ChainExchange.MaxWantedChainsPerInstance}}
+  Chain Exchange Rebroadcast Interval:               {{.ChainExchange.RebroadcastInterval}}
+  Chain Exchange Max Timestamp Age:                  {{.ChainExchange.MaxTimestampAge}}

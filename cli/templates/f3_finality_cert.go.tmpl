@@ -3,12 +3,12 @@ Power Table:
   Next:       {{.SupplementalData.PowerTable}}
   Delta:      {{ptDiffToString .PowerTableDelta}}
 Finalized Chain:
-  Length:     {{ $chainLength := len .ECChain -}}{{ $chainLength }}
+  Length:     {{ $chainLength := len .ECChain.TipSets -}}{{ $chainLength }}
   Epochs:     {{ .ECChain.Base.Epoch -}}-{{ .ECChain.Head.Epoch }}
   Chain:
 {{- $maxTipSets := 10 -}}
 {{- $maxTipSetKeys := 2 -}}
-{{- range $i, $tipset := .ECChain -}}
+{{- range $i, $tipset := .ECChain.TipSets -}}
     {{- if lt $i $maxTipSets -}}
         {{- if lt (add $i 1) $chainLength }}
     ├──
