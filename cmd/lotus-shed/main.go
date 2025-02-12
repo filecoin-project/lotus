@@ -86,7 +86,6 @@ func main() {
 		terminationsCmd,
 		migrationsCmd,
 		diffCmd,
-		itestdCmd,
 		msigCmd,
 		invariantsCmd,
 		gasTraceCmd,
