@@ -302,6 +302,7 @@ func handleCSVSend(cctx *cli.Context, csvFile string) error {
 
 	// Validate header
 	if len(records) == 0 ||
+		len(records[0]) != 4 ||
 		strings.TrimSpace(records[0][0]) != "Recipient" ||
 		strings.TrimSpace(records[0][1]) != "FIL" ||
 		strings.TrimSpace(records[0][2]) != "Method" ||
