@@ -46,8 +46,7 @@ jobs:
       - uses: ./.github/actions/install-system-dependencies
       - uses: ./.github/actions/install-go
       - uses: ./.github/actions/make-deps
-      - run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.59.0
-      - run: golangci-lint run -v --timeout 10m --concurrency 4
+      - run: make lint
   check-fmt:
     name: Check (gofmt)
     runs-on: ubuntu-latest
