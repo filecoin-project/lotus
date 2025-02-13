@@ -310,13 +310,20 @@ func handleCSVSend(cctx *cli.Context, csvFile string) error {
 		return xerrors.Errorf("expected header row to be \"Recipient,FIL,Method,Params\"")
 	}
 
-	for i, e := range records[1:] {
-		var params SendParams
+	// First pass: validate and build params
+	var sendParams []SendParams
+	totalAmount := abi.NewTokenAmount(0)
 
-		// Set the from address
+	for i, e := range records[1:] {
+		if len(e) != 4 {
+			return xerrors.Errorf("row %d has %d fields, expected 4", i, len(e))
+		}
+
+		var params SendParams
 		params.From = fromAddr
 
 		// Parse recipient
+		var err error
 		params.To, err = address.NewFromString(e[0])
 		if err != nil {
 			return xerrors.Errorf("failed to parse address in row %d: %w", i, err)
@@ -328,6 +335,7 @@ func handleCSVSend(cctx *cli.Context, csvFile string) error {
 			return xerrors.Errorf("failed to parse amount in row %d: %w", i, err)
 		}
 		params.Val = abi.TokenAmount(val)
+		totalAmount = types.BigAdd(totalAmount, params.Val)
 
 		// Parse method
 		method, err := strconv.Atoi(strings.TrimSpace(e[2]))
@@ -344,7 +352,22 @@ func handleCSVSend(cctx *cli.Context, csvFile string) error {
 			}
 		}
 
-		// Use existing send logic
+		sendParams = append(sendParams, params)
+	}
+
+	// Check sender balance
+	senderBalance, err := srv.FullNodeAPI().WalletBalance(ctx, fromAddr)
+	if err != nil {
+		return xerrors.Errorf("failed to get sender balance: %w", err)
+	}
+
+	if senderBalance.LessThan(totalAmount) {
+		return xerrors.Errorf("insufficient funds: need %s FIL, have %s FIL",
+			types.FIL(totalAmount), types.FIL(senderBalance))
+	}
+
+	// Second pass: perform sends
+	for i, params := range sendParams {
 		proto, err := srv.MessageForSend(ctx, params)
 		if err != nil {
 			return xerrors.Errorf("creating message prototype for row %d: %w", i, err)
