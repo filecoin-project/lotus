@@ -19,6 +19,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-f3/ec"
+	"github.com/filecoin-project/go-f3/gpbft"
 	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/filecoin-project/go-state-types/abi"
 
@@ -48,24 +49,28 @@ func (hg *headGetter) GetHead(context.Context) (ec.TipSet, error) {
 // message topic will be filtered
 var MaxDynamicManifestChangesAllowed = 1000
 
-func NewManifestProvider(mctx helpers.MetricsCtx, config *Config, cs *store.ChainStore, ps *pubsub.PubSub, mds dtypes.MetadataDS) (prov manifest.ManifestProvider, err error) {
+func NewManifestProvider(mctx helpers.MetricsCtx, config *Config, cs *store.ChainStore, ps *pubsub.PubSub, mds dtypes.MetadataDS, stateCaller StateCaller) (prov manifest.ManifestProvider, err error) {
+	var primaryManifest manifest.ManifestProvider
+	if config.StaticManifest != nil {
+		primaryManifest, err = manifest.NewStaticManifestProvider(config.StaticManifest)
+	} else if config.ParameterContractAddress != "" {
+		primaryManifest, err = NewContractManifestProvider(mctx, config, stateCaller)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("creating primary manifest: %w", err)
+	}
+
 	if config.DynamicManifestProvider == "" || !build.IsF3PassiveTestingEnabled() {
-		if config.StaticManifest == nil {
+		if config.StaticManifest == nil && config.ParameterContractAddress == "" {
 			return manifest.NoopManifestProvider{}, nil
 		}
-		return manifest.NewStaticManifestProvider(config.StaticManifest)
+		return primaryManifest, nil
 	}
 
 	opts := []manifest.DynamicManifestProviderOption{
 		manifest.DynamicManifestProviderWithDatastore(
 			namespace.Wrap(mds, datastore.NewKey("/f3-dynamic-manifest")),
 		),
-	}
-
-	if config.StaticManifest != nil {
-		opts = append(opts,
-			manifest.DynamicManifestProviderWithInitialManifest(config.StaticManifest),
-		)
 	}
 
 	if config.AllowDynamicFinalize {
@@ -97,9 +102,9 @@ func NewManifestProvider(mctx helpers.MetricsCtx, config *Config, cs *store.Chai
 	if err != nil {
 		return nil, err
 	}
-	if config.PrioritizeStaticManifest && config.StaticManifest != nil {
+	if config.PrioritizeStaticManifest && primaryManifest != nil {
 		prov, err = manifest.NewFusingManifestProvider(mctx,
-			(*headGetter)(cs), prov, config.StaticManifest)
+			(*headGetter)(cs), prov, primaryManifest)
 	}
 	return prov, err
 }
@@ -110,7 +115,7 @@ type StateCaller interface {
 
 type ContractManifestProvider struct {
 	address     string
-	networkName gpbft.BaseNetworkName
+	networkName gpbft.NetworkName
 	stateCaller StateCaller
 	CheckPeriod time.Duration
 
@@ -141,8 +146,16 @@ func NewContractManifestProvider(mctx helpers.MetricsCtx, config *Config, stateC
 func (cmp *ContractManifestProvider) Start(context.Context) error {
 	// no address, nothing to do
 	if len(cmp.address) == 0 {
+		// close the channel so fusing provider knows we have nothing
+		close(cmp.manifestChanges)
 		return nil
 	}
+
+	m, err := cmp.fetchActivationInfo(cmp.runningCtx)
+	if err != nil {
+		log.Warnw("got error while fetching manifest from contract", "error", err)
+	}
+	cmp.manifestChanges <- m
 
 	cmp.errgrp.Go(func() error {
 		t := time.NewTicker(cmp.CheckPeriod)
@@ -164,9 +177,9 @@ func (cmp *ContractManifestProvider) Start(context.Context) error {
 				}
 
 				if m != nil {
-					log.Infow("new manifest from contract", "enable", true, "bootstrapEpoch", m.BootstrapEpoch)
+					log.Infow("new manifest from contract", "enabled", true, "bootstrapEpoch", m.BootstrapEpoch)
 				} else {
-					log.Info("new manifest from contract", "enable", false)
+					log.Info("new manifest from contract", "enabled", false)
 				}
 				cmp.manifestChanges <- m
 				knownManifest = m
