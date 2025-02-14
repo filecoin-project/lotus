@@ -265,7 +265,6 @@ func handleCSVSend(cctx *cli.Context, csvFile string) error {
 
 	ctx := ReqContext(cctx)
 
-	// Add logic to handle --from address
 	var fromAddr address.Address
 	if from := cctx.String("from"); from != "" {
 		addr, err := address.NewFromString(from)
