@@ -4,6 +4,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestContractManifest_ParseEthData(t *testing.T) {
@@ -69,31 +71,19 @@ func TestContractManifest_ParseEthData(t *testing.T) {
 `
 
 	decodedHex, err := hex.DecodeString(hexReturn)
-	if err != nil {
-		t.Fatalf("failed to decode hex string: %v", err)
-	}
+	assert.NoError(t, err, "failed to decode hex string")
 
 	activationEpoch, compressedManifest, err := parseContractReturn(decodedHex)
-	if err != nil {
-		t.Fatalf("parseContractReturn failed: %v", err)
-	}
+	assert.NoError(t, err, "parseContractReturn failed")
 
-	if activationEpoch != 5000000 {
-		t.Errorf("expected activationEpoch 5000000, got %d", activationEpoch)
-	}
+	assert.Equal(t, uint64(5000000), activationEpoch, "activationEpoch mismatch")
 
 	manifest, err := decompressManifest(compressedManifest)
-	if err != nil {
-		t.Fatalf("decompressManifest failed: %v", err)
-	}
+	assert.NoError(t, err, "decompressManifest failed")
 
 	manifestJSON, err := json.MarshalIndent(manifest, "", "  ")
-	if err != nil {
-		t.Fatalf("failed to marshal manifest: %v", err)
-	}
+	assert.NoError(t, err, "failed to marshal manifest")
 
-	if string(manifestJSON) != resultManifest {
-		t.Errorf("expected manifest %s, got %s", resultManifest, string(manifestJSON))
-	}
+	assert.JSONEq(t, resultManifest, string(manifestJSON), "manifest JSON mismatch")
 
 }
