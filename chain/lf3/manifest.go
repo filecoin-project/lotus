@@ -43,6 +43,16 @@ func (hg *headGetter) GetHead(context.Context) (ec.TipSet, error) {
 	return &f3TipSet{TipSet: head}, nil
 }
 
+func decompressManifest(compressedManifest []byte) (*manifest.Manifest, error) {
+	reader := io.LimitReader(flate.NewReader(bytes.NewReader(compressedManifest)), 1<<20)
+	var m manifest.Manifest
+	err := json.NewDecoder(reader).Decode(&m)
+	if err != nil {
+		return nil, err
+	}
+	return &m, nil
+}
+
 // Determines the max. number of configuration changes
 // that are allowed for the dynamic manifest.
 // If the manifest changes more than this number, the F3
@@ -207,9 +217,7 @@ func (cmp *ContractManifestProvider) fetchActivationInfo(ctx context.Context) (*
 		return nil, nil
 	}
 
-	reader := io.LimitReader(flate.NewReader(bytes.NewReader(compressedManifest)), 1<<20)
-	var m manifest.Manifest
-	err = json.NewDecoder(reader).Decode(&m)
+	m, err := decompressManifest(compressedManifest)
 	if err != nil {
 		return nil, fmt.Errorf("got error while decoding manifest: %w", err)
 	}
