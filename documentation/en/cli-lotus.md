@@ -198,6 +198,7 @@ OPTIONS:
    --params-json value    specify invocation parameters in json
    --params-hex value     specify invocation parameters in hex
    --force                Deprecated: use global 'force-send' (default: false)
+   --csv value            send multiple transactions from a CSV file (format: Recipient,FIL,Method,Params)
    --help, -h             show help
 ```
 

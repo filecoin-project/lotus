@@ -82,7 +82,6 @@ func main() {
 		fr32Cmd,
 		chainCmd,
 		balancerCmd,
-		sendCsvCmd,
 		terminationsCmd,
 		migrationsCmd,
 		diffCmd,
