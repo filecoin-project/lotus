@@ -64,6 +64,27 @@ func TestContractManifest_ParseEthData(t *testing.T) {
 }
 `
 
-	//TODO: use above to test parseContractReturn and decompressManifest
+	activationEpoch, compressedManifest, err := parseContractReturn(must.One(ethtypes.DecodeHexString(hexReturn)))
+	if err != nil {
+		t.Fatalf("parseContractReturn failed: %v", err)
+	}
+
+	if activationEpoch != 5000000 {
+		t.Errorf("expected activationEpoch 5000000, got %d", activationEpoch)
+	}
+
+	manifest, err := decompressManifest(compressedManifest)
+	if err != nil {
+		t.Fatalf("decompressManifest failed: %v", err)
+	}
+
+	manifestJSON, err := json.MarshalIndent(manifest, "", "  ")
+	if err != nil {
+		t.Fatalf("failed to marshal manifest: %v", err)
+	}
+
+	if string(manifestJSON) != resultManifest {
+		t.Errorf("expected manifest %s, got %s", resultManifest, string(manifestJSON))
+	}
 
 }
