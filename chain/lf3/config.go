@@ -35,8 +35,9 @@ type Config struct {
 	// THIS IN PRODUCTION!
 	AllowDynamicFinalize bool
 
-	// ParameterContractAddress specifies the address of the contract carring F3 parameters
-	ParameterContractAddress string
+	// ContractAddress specifies the address of the contract carring F3 parameters
+	ContractAddress      string
+	ContractPollInterval time.Duration
 }
 
 // NewManifest constructs a sane F3 manifest based on the passed parameters. This function does not
@@ -87,6 +88,7 @@ func NewConfig(nn dtypes.NetworkName) *Config {
 		PrioritizeStaticManifest: true,
 		DynamicManifestProvider:  buildconstants.F3ManifestServerID,
 		AllowDynamicFinalize:     false,
+		ContractPollInterval:     15 * time.Minute,
 	}
 	if buildconstants.F3BootstrapEpoch >= 0 {
 		c.StaticManifest = NewManifest(

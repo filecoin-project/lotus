@@ -25,6 +25,7 @@ import (
 	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/chain/lf3"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -40,6 +41,7 @@ var f3Cmd = &cli.Command{
 		f3ClearStateCmd,
 		f3GenExplicitPower,
 		f3CheckActivation,
+		f3CheckActivationRaw,
 	},
 }
 
@@ -81,6 +83,49 @@ var f3CheckActivation = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		config := lf3.Config{
+			BaseNetworkName:      "filecoin",
+			ContractAddress:      cctx.String("contract"),
+			ContractPollInterval: 15 * time.Second,
+		}
+		api, closer, err := cliutil.GetFullNodeAPIV1(cctx)
+		if err != nil {
+			return fmt.Errorf("getting api: %w", err)
+		}
+		defer closer()
+		ctx := cliutil.ReqContext(cctx)
+		prov, err := lf3.NewManifestProvider(ctx, &config, nil, nil, nil, api)
+		if err != nil {
+			return fmt.Errorf("creating manifest proivder: %w", err)
+		}
+
+		err = prov.Start(ctx)
+		if err != nil {
+			return fmt.Errorf("starting manifest provider: %w", err)
+		}
+		defer prov.Stop(context.Background())
+		for {
+			select {
+			case m := <-prov.ManifestUpdates():
+				log.Infof("new manifest: %+v\n", m)
+			case <-ctx.Done():
+				return nil
+			}
+		}
+
+		return nil
+	},
+}
+
+var f3CheckActivationRaw = &cli.Command{
+	Name: "check-activation-raw",
+
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name: "contract",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
 		address, err := ethtypes.ParseEthAddress(cctx.String("contract"))
 		if err != nil {
 			return fmt.Errorf("trying to parse contract address: %s: %w", cctx.String("contract"), err)
@@ -115,6 +160,7 @@ var f3CheckActivation = &cli.Command{
 		if err != nil {
 			return fmt.Errorf("could not decode return value: %w", err)
 		}
+		fmt.Printf("Raw data: %X\n", ethReturn)
 		slot, retBytes := []byte{}, []byte(ethReturn)
 		// 3*32 because there should be 3 slots minimum
 		if len(retBytes) < 3*32 {
@@ -163,7 +209,8 @@ var f3CheckActivation = &cli.Command{
 			if m.BootstrapEpoch < 0 || uint64(m.BootstrapEpoch) != activationEpoch {
 				return fmt.Errorf("bootstrap epoch does not match: %d != %d", m.BootstrapEpoch, activationEpoch)
 			}
-			fmt.Printf("%+v\n", m)
+			io.Copy(os.Stdout, flate.NewReader(bytes.NewReader(compressedManifest)))
+			fmt.Printf("\n")
 		}
 		return nil
 	},

@@ -43,16 +43,6 @@ func (hg *headGetter) GetHead(context.Context) (ec.TipSet, error) {
 	return &f3TipSet{TipSet: head}, nil
 }
 
-func decompressManifest(compressedManifest []byte) (*manifest.Manifest, error) {
-	reader := io.LimitReader(flate.NewReader(bytes.NewReader(compressedManifest)), 1<<20)
-	var m manifest.Manifest
-	err := json.NewDecoder(reader).Decode(&m)
-	if err != nil {
-		return nil, err
-	}
-	return &m, nil
-}
-
 // Determines the max. number of configuration changes
 // that are allowed for the dynamic manifest.
 // If the manifest changes more than this number, the F3
@@ -63,7 +53,7 @@ func NewManifestProvider(mctx helpers.MetricsCtx, config *Config, cs *store.Chai
 	var primaryManifest manifest.ManifestProvider
 	if config.StaticManifest != nil {
 		primaryManifest, err = manifest.NewStaticManifestProvider(config.StaticManifest)
-	} else if config.ParameterContractAddress != "" {
+	} else if config.ContractAddress != "" {
 		primaryManifest, err = NewContractManifestProvider(mctx, config, stateCaller)
 	}
 	if err != nil {
@@ -71,7 +61,7 @@ func NewManifestProvider(mctx helpers.MetricsCtx, config *Config, cs *store.Chai
 	}
 
 	if config.DynamicManifestProvider == "" || !build.IsF3PassiveTestingEnabled() {
-		if config.StaticManifest == nil && config.ParameterContractAddress == "" {
+		if config.StaticManifest == nil && config.ContractAddress == "" {
 			return manifest.NoopManifestProvider{}, nil
 		}
 		return primaryManifest, nil
@@ -124,10 +114,10 @@ type StateCaller interface {
 }
 
 type ContractManifestProvider struct {
-	address     string
-	networkName gpbft.NetworkName
-	stateCaller StateCaller
-	CheckPeriod time.Duration
+	address      string
+	networkName  gpbft.NetworkName
+	stateCaller  StateCaller
+	PollInterval time.Duration
 
 	manifestChanges chan *manifest.Manifest
 
@@ -140,10 +130,10 @@ func NewContractManifestProvider(mctx helpers.MetricsCtx, config *Config, stateC
 	ctx, cancel := context.WithCancel(context.WithoutCancel(mctx))
 	errgrp, ctx := errgroup.WithContext(ctx)
 	return &ContractManifestProvider{
-		stateCaller: stateCaller,
-		address:     config.ParameterContractAddress,
-		networkName: config.BaseNetworkName,
-		CheckPeriod: 15 * time.Minute,
+		stateCaller:  stateCaller,
+		address:      config.ContractAddress,
+		networkName:  config.BaseNetworkName,
+		PollInterval: config.ContractPollInterval,
 
 		manifestChanges: make(chan *manifest.Manifest, 1),
 
@@ -161,17 +151,17 @@ func (cmp *ContractManifestProvider) Start(context.Context) error {
 		return nil
 	}
 
-	m, err := cmp.fetchActivationInfo(cmp.runningCtx)
+	var knownManifest *manifest.Manifest
+	knownManifest, err := cmp.fetchActivationInfo(cmp.runningCtx)
 	if err != nil {
 		log.Warnw("got error while fetching manifest from contract", "error", err)
 	}
-	cmp.manifestChanges <- m
+	cmp.manifestChanges <- knownManifest
 
 	cmp.errgrp.Go(func() error {
-		t := time.NewTicker(cmp.CheckPeriod)
+		t := time.NewTicker(cmp.PollInterval)
 		defer t.Stop()
 
-		var knownManifest *manifest.Manifest
 	loop:
 		for cmp.runningCtx.Err() == nil {
 			select {
@@ -202,75 +192,17 @@ func (cmp *ContractManifestProvider) Start(context.Context) error {
 	return nil
 }
 
-func (cmp *ContractManifestProvider) fetchActivationInfo(ctx context.Context) (*manifest.Manifest, error) {
-	ethReturn, err := cmp.callContract(ctx)
+func decompressManifest(compressedManifest []byte) (*manifest.Manifest, error) {
+	reader := io.LimitReader(flate.NewReader(bytes.NewReader(compressedManifest)), 1<<20)
+	var m manifest.Manifest
+	err := json.NewDecoder(reader).Decode(&m)
 	if err != nil {
-		return nil, fmt.Errorf("calling contract at %s: %w", cmp.address, err)
+		return nil, err
 	}
-	if len(ethReturn) == 0 {
-		return nil, nil
-	}
-
-	activationEpoch, compressedManifest, err := cmp.parseContractReturn(ethReturn)
-
-	if activationEpoch == math.MaxUint64 || len(compressedManifest) == 0 {
-		return nil, nil
-	}
-
-	m, err := decompressManifest(compressedManifest)
-	if err != nil {
-		return nil, fmt.Errorf("got error while decoding manifest: %w", err)
-	}
-
-	if m.BootstrapEpoch < 0 || uint64(m.BootstrapEpoch) != activationEpoch {
-		return nil, fmt.Errorf("bootstrap epoch does not match: %d != %d", m.BootstrapEpoch, activationEpoch)
-	}
-
-	if err := m.Validate(); err != nil {
-		return nil, fmt.Errorf("manifest does not validate: %w", err)
-	}
-
-	if m.NetworkName != cmp.networkName {
-		return nil, fmt.Errorf("network name does not match, expected: %s, got: %s",
-			cmp.networkName, m.NetworkName)
-	}
-
 	return &m, nil
 }
 
-func (cmp *ContractManifestProvider) callContract(ctx context.Context) ([]byte, error) {
-	address, err := ethtypes.ParseEthAddress(cmp.address)
-	if err != nil {
-		return nil, fmt.Errorf("trying to parse contract address: %s: %w", cmp.address, err)
-	}
-
-	ethCall := ethtypes.EthCall{
-		To:   &address,
-		Data: must.One(ethtypes.DecodeHexString("0x2587660d")), // method ID of activationInformation()
-	}
-
-	fMessage, err := ethCall.ToFilecoinMessage()
-	if err != nil {
-		return nil, fmt.Errorf("converting to filecoin message: %w", err)
-	}
-
-	msgRes, err := cmp.stateCaller.StateCall(ctx, fMessage, types.EmptyTSK)
-	if err != nil {
-		return nil, fmt.Errorf("state call error: %w", err)
-	}
-	if msgRes.MsgRct.ExitCode != 0 {
-		return nil, fmt.Errorf("message returned exit code %v: %v", msgRes.MsgRct.ExitCode, msgRes.Error)
-	}
-
-	var ethReturn abi.CborBytes
-	err = ethReturn.UnmarshalCBOR(bytes.NewReader(msgRes.MsgRct.Return))
-	if err != nil {
-		return nil, fmt.Errorf("could not decode return value: %w", err)
-	}
-	return []byte(ethReturn), nil
-}
-
-func (cmp *ContractManifestProvider) parseContractReturn(retBytes []byte) (uint64, []byte, error) {
+func parseContractReturn(retBytes []byte) (uint64, []byte, error) {
 	// 3*32 because there should be 3 slots minimum
 	if len(retBytes) < 3*32 {
 		return 0, nil, fmt.Errorf("no activation infromation")
@@ -309,6 +241,74 @@ func (cmp *ContractManifestProvider) parseContractReturn(retBytes []byte) (uint6
 	}
 
 	return activationEpoch, retBytes[:payloadLength], nil
+}
+
+func (cmp *ContractManifestProvider) fetchActivationInfo(ctx context.Context) (*manifest.Manifest, error) {
+	ethReturn, err := cmp.callContract(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("calling contract at %s: %w", cmp.address, err)
+	}
+	if len(ethReturn) == 0 {
+		return nil, nil
+	}
+
+	activationEpoch, compressedManifest, err := parseContractReturn(ethReturn)
+
+	if activationEpoch == math.MaxUint64 || len(compressedManifest) == 0 {
+		return nil, nil
+	}
+
+	m, err := decompressManifest(compressedManifest)
+	if err != nil {
+		return nil, fmt.Errorf("got error while decoding manifest: %w", err)
+	}
+
+	if m.BootstrapEpoch < 0 || uint64(m.BootstrapEpoch) != activationEpoch {
+		return nil, fmt.Errorf("bootstrap epoch does not match: %d != %d", m.BootstrapEpoch, activationEpoch)
+	}
+
+	if err := m.Validate(); err != nil {
+		return nil, fmt.Errorf("manifest does not validate: %w", err)
+	}
+
+	if m.NetworkName != cmp.networkName {
+		return nil, fmt.Errorf("network name does not match, expected: %s, got: %s",
+			cmp.networkName, m.NetworkName)
+	}
+
+	return m, nil
+}
+
+func (cmp *ContractManifestProvider) callContract(ctx context.Context) ([]byte, error) {
+	address, err := ethtypes.ParseEthAddress(cmp.address)
+	if err != nil {
+		return nil, fmt.Errorf("trying to parse contract address: %s: %w", cmp.address, err)
+	}
+
+	ethCall := ethtypes.EthCall{
+		To:   &address,
+		Data: must.One(ethtypes.DecodeHexString("0x2587660d")), // method ID of activationInformation()
+	}
+
+	fMessage, err := ethCall.ToFilecoinMessage()
+	if err != nil {
+		return nil, fmt.Errorf("converting to filecoin message: %w", err)
+	}
+
+	msgRes, err := cmp.stateCaller.StateCall(ctx, fMessage, types.EmptyTSK)
+	if err != nil {
+		return nil, fmt.Errorf("state call error: %w", err)
+	}
+	if msgRes.MsgRct.ExitCode != 0 {
+		return nil, fmt.Errorf("message returned exit code %v: %v", msgRes.MsgRct.ExitCode, msgRes.Error)
+	}
+
+	var ethReturn abi.CborBytes
+	err = ethReturn.UnmarshalCBOR(bytes.NewReader(msgRes.MsgRct.Return))
+	if err != nil {
+		return nil, fmt.Errorf("could not decode return value: %w", err)
+	}
+	return []byte(ethReturn), nil
 }
 
 func (cmp *ContractManifestProvider) Stop(context.Context) error {
