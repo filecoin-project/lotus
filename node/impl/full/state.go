@@ -71,6 +71,7 @@ type StateModuleAPI interface {
 	StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error)
 	StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error)
 	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error)
+	StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (res *api.InvocResult, err error)
 }
 
 var _ StateModuleAPI = *new(api.FullNode)
@@ -140,6 +141,24 @@ func (a *StateAPI) StateMinerActiveSectors(ctx context.Context, maddr address.Ad
 	}
 
 	return mas.LoadSectors(&activeSectors)
+}
+
+func (a *StateModule) StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (res *api.InvocResult, err error) {
+	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+	for {
+		res, err = a.StateManager.Call(ctx, msg, ts)
+		if err != stmgr.ErrExpensiveFork {
+			break
+		}
+		ts, err = a.Chain.GetTipSetFromKey(ctx, ts.Parents())
+		if err != nil {
+			return nil, xerrors.Errorf("getting parent tipset: %w", err)
+		}
+	}
+	return res, err
 }
 
 func (m *StateModule) StateMinerInfo(ctx context.Context, actor address.Address, tsk types.TipSetKey) (api.MinerInfo, error) {
@@ -400,24 +419,6 @@ func (m *StateModule) StateMinerPower(ctx context.Context, addr address.Address,
 		TotalPower:  net,
 		HasMinPower: hmp,
 	}, nil
-}
-
-func (a *StateAPI) StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (res *api.InvocResult, err error) {
-	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
-	if err != nil {
-		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
-	}
-	for {
-		res, err = a.StateManager.Call(ctx, msg, ts)
-		if err != stmgr.ErrExpensiveFork {
-			break
-		}
-		ts, err = a.Chain.GetTipSetFromKey(ctx, ts.Parents())
-		if err != nil {
-			return nil, xerrors.Errorf("getting parent tipset: %w", err)
-		}
-	}
-	return res, err
 }
 
 func (a *StateAPI) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.Cid) (*api.InvocResult, error) {
