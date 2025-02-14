@@ -112,8 +112,6 @@ var f3CheckActivation = &cli.Command{
 				return nil
 			}
 		}
-
-		return nil
 	},
 }
 
