@@ -290,6 +290,8 @@ func TestF3_JsonRPCErrorsPassThrough(t *testing.T) {
 	e := setup(t, blocktime, kit.ThroughRPC())
 	n := e.nodes[0].FullNode
 
+	e.waitTillF3Runs(5 * time.Second)
+
 	lease, err := n.F3Participate(e.testCtx, []byte("fish"))
 	require.ErrorIs(t, err, lotus_api.ErrF3ParticipationTicketInvalid)
 	require.Zero(t, lease)

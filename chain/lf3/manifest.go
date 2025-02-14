@@ -152,7 +152,7 @@ func (cmp *ContractManifestProvider) Start(context.Context) error {
 	}
 
 	var knownManifest *manifest.Manifest
-	knownManifest, err := cmp.fetchActivationInfo(cmp.runningCtx)
+	knownManifest, err := cmp.fetchManifest(cmp.runningCtx)
 	if err != nil {
 		log.Warnw("got error while fetching manifest from contract", "error", err)
 	}
@@ -166,7 +166,7 @@ func (cmp *ContractManifestProvider) Start(context.Context) error {
 		for cmp.runningCtx.Err() == nil {
 			select {
 			case <-t.C:
-				m, err := cmp.fetchActivationInfo(cmp.runningCtx)
+				m, err := cmp.fetchManifest(cmp.runningCtx)
 				if err != nil {
 					log.Warnw("got error while fetching manifest from contract", "error", err)
 					continue loop
@@ -243,7 +243,7 @@ func parseContractReturn(retBytes []byte) (uint64, []byte, error) {
 	return activationEpoch, retBytes[:payloadLength], nil
 }
 
-func (cmp *ContractManifestProvider) fetchActivationInfo(ctx context.Context) (*manifest.Manifest, error) {
+func (cmp *ContractManifestProvider) fetchManifest(ctx context.Context) (*manifest.Manifest, error) {
 	ethReturn, err := cmp.callContract(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("calling contract at %s: %w", cmp.address, err)
