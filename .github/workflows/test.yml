@@ -40,6 +40,7 @@ jobs:
     runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
+        # We need to cache for each architecture we support: x86_64 and arm64
         runner: [ubuntu-latest, ubuntu-24.04-arm]
     steps:
       - uses: actions/checkout@v4

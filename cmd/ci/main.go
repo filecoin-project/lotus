@@ -15,6 +15,7 @@ type TestGroupExecutionContext struct {
 	Runner Runner `json:"runner"`
 }
 
+// Runner is a list because it is a list of labels associated with a single runner.
 type Runner []string
 
 var (
@@ -170,7 +171,7 @@ func getRunners(testGroupName string) []Runner {
 		return []Runner{linux_x64}
 	}
 
-	testGroupNamesToRunners := map[string][]Runner{
+	testGroupNameToRunners := map[string][]Runner{
 		"itest-cli":                      {linux_x64_xlarge},
 		"itest-deals_invalid_utf8_label": {linux_x64_xlarge},
 		"itest-decode_params":            {linux_x64_xlarge},
@@ -219,7 +220,7 @@ func getRunners(testGroupName string) []Runner {
 		"unit-storage":                   {linux_x64_2xlarge, linux_arm64_2xlarge},
 	}
 
-	if runners, ok := testGroupNamesToRunners[testGroupName]; ok {
+	if runners, ok := testGroupNameToRunners[testGroupName]; ok {
 		return runners
 	}
 
@@ -245,7 +246,11 @@ func getTestGroupMetadata(testGroupName string) TestGroupMetadata {
 }
 
 func getPackages(testGroupName string) []string {
-	testGroupNamesToPackages := map[string][]string{
+	if strings.HasPrefix(testGroupName, "itest-") {
+		return []string{createPackagePath("itests", strings.Join([]string{strings.TrimPrefix(testGroupName, "itest-"), "test.go"}, "_"))}
+	}
+
+	testGroupNameToPackages := map[string][]string{
 		"multicore-sdr": {createPackagePath("storage", "sealer", "ffiwrapper")},
 		"conformance":   {createPackagePath("conformance")},
 		"unit-cli": {
@@ -273,11 +278,7 @@ func getPackages(testGroupName string) []string {
 		},
 	}
 
-	if strings.HasPrefix(testGroupName, "itest-") {
-		return []string{createPackagePath("itests", strings.Join([]string{strings.TrimPrefix(testGroupName, "itest-"), "test.go"}, "_"))}
-	}
-
-	return testGroupNamesToPackages[testGroupName]
+	return testGroupNameToPackages[testGroupName]
 }
 
 func getNeedsParameters(testGroupName string) bool {
@@ -325,11 +326,11 @@ func getFormat() string {
 }
 
 func getGoTestFlags(testGroupName string) string {
-	testGroupNamesToFlags := map[string]string{
+	testGroupNameToFlags := map[string]string{
 		"multicore-sdr": "-run=TestMulticoreSDR",
 		"conformance":   "-run=TestConformance",
 	}
-	if flag, ok := testGroupNamesToFlags[testGroupName]; ok {
+	if flag, ok := testGroupNameToFlags[testGroupName]; ok {
 		return flag
 	}
 	return ""
