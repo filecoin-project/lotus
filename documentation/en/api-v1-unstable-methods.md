@@ -1268,7 +1268,7 @@ Parameters:
 Returns:
   - *types.IndexValidation: A pointer to an IndexValidation struct containing the results of the validation/backfill.
   - error: An error object if the validation/backfill fails. The error message will contain details about the index
-           corruption if the call fails because of an incosistency between indexed data and the actual chain state.
+           corruption if the call fails because of an inconsistency between indexed data and the actual chain state.
            Note: The API returns an error if the index does not have data for the specified epoch and backfill is set to false.
 
 

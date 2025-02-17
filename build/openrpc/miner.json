@@ -748,7 +748,7 @@
         {
             "name": "Filecoin.CreateBackup",
             "description": "```go\nfunc (s *StorageMinerStruct) CreateBackup(p0 context.Context, p1 string) error {\n\tif s.Internal.CreateBackup == nil {\n\t\treturn ErrNotSupported\n\t}\n\treturn s.Internal.CreateBackup(p0, p1)\n}\n```",
-            "summary": "CreateBackup creates node backup onder the specified file name. The\nmethod requires that the lotus-miner is running with the\nLOTUS_BACKUP_BASE_PATH environment variable set to some path, and that\nthe path specified when calling CreateBackup is within the base path\n",
+            "summary": "CreateBackup creates node backup under the specified file name. The\nmethod requires that the lotus-miner is running with the\nLOTUS_BACKUP_BASE_PATH environment variable set to some path, and that\nthe path specified when calling CreateBackup is within the base path\n",
             "paramStructure": "by-position",
             "params": [
                 {
