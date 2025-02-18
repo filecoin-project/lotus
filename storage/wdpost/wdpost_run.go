@@ -544,15 +544,6 @@ func (s *WindowPoStScheduler) BatchPartitions(partitions []api.Partition, nv net
 		return nil, xerrors.Errorf("getting sectors per partition: %w", err)
 	}
 
-	// Also respect the AddressedPartitionsMax (which is the same as DeclarationsMax (which is all really just MaxPartitionsPerDeadline))
-	declMax, err := policy.GetDeclarationsMax(nv)
-	if err != nil {
-		return nil, xerrors.Errorf("getting max declarations: %w", err)
-	}
-	if partitionsPerMsg > declMax {
-		partitionsPerMsg = declMax
-	}
-
 	// respect user config if set
 	if s.maxPartitionsPerPostMessage > 0 {
 		if partitionsPerMsg > s.maxPartitionsPerPostMessage {
