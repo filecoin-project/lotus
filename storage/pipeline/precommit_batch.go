@@ -196,14 +196,8 @@ func (b *PreCommitBatcher) maybeStartBatch(notif bool) ([]sealiface.PreCommitBat
 		return nil, err
 	}
 
-	curBasefeeLow := false
-	if !cfg.BatchPreCommitAboveBaseFee.Equals(big.Zero()) && ts.MinTicketBlock().ParentBaseFee.LessThan(cfg.BatchPreCommitAboveBaseFee) {
-		curBasefeeLow = true
-	}
-
-	// if this wasn't an user-forced batch, and we're not at/above the max batch size,
-	// and we're not above the basefee threshold, don't batch yet
-	if notif && total < cfg.MaxPreCommitBatch && !curBasefeeLow {
+	// if this wasn't an user-forced batch, and we're not at/above the max batch size, don't batch yet
+	if notif {
 		return nil, nil
 	}
 

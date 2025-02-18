@@ -42,7 +42,6 @@ type Config struct {
 	AvailableBalanceBuffer     abi.TokenAmount
 	DisableCollateralFallback  bool
 
-	MaxPreCommitBatch   int
 	PreCommitBatchWait  time.Duration
 	PreCommitBatchSlack time.Duration
 
@@ -51,9 +50,6 @@ type Config struct {
 	MaxCommitBatch   int
 	CommitBatchWait  time.Duration
 	CommitBatchSlack time.Duration
-
-	AggregateAboveBaseFee      abi.TokenAmount
-	BatchPreCommitAboveBaseFee abi.TokenAmount
 
 	MaxSectorProveCommitsSubmittedPerEpoch uint64
 
