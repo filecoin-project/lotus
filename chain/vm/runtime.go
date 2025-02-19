@@ -289,7 +289,7 @@ func (rt *Runtime) CreateActor(codeID cid.Cid, addr address.Address) {
 	}
 	act, aerr := rt.vm.areg.Create(codeID, rt)
 	if aerr != nil {
-		rt.Abortf(aerr.RetCode(), aerr.Error())
+		rt.Abortf(aerr.RetCode(), "%s", aerr.Error())
 	}
 
 	_, err := rt.state.GetActor(addr)
@@ -372,7 +372,7 @@ func (rt *Runtime) Abortf(code exitcode.ExitCode, msg string, args ...interface{
 }
 
 func (rt *Runtime) AbortStateMsg(msg string) {
-	panic(aerrors.NewfSkip(3, 101, msg))
+	panic(aerrors.NewfSkip(3, 101, "%s", msg))
 }
 
 func (rt *Runtime) ValidateImmediateCallerType(ts ...cid.Cid) {

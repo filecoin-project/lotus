@@ -600,7 +600,7 @@ func (syncer *Syncer) ValidateTipSet(ctx context.Context, fts *store.FullTipSet,
 		futures = append(futures, async.Err(func() error {
 			if err := syncer.ValidateBlock(ctx, b, useCache); err != nil {
 				if isPermanent(err) {
-					syncer.bad.Add(b.Cid(), NewBadBlockReason([]cid.Cid{b.Cid()}, err.Error()))
+					syncer.bad.Add(b.Cid(), NewBadBlockReason([]cid.Cid{b.Cid()}, "%s", err.Error()))
 				}
 				return xerrors.Errorf("validating block %s: %w", b.Cid(), err)
 			}
