@@ -1802,7 +1802,7 @@ USAGE:
 DESCRIPTION:
    Collect object size and ipld link count for an object.
 
-      When a base is provided it will be walked first, and all links visisted
+      When a base is provided it will be walked first, and all links visited
       will be ignored when the passed in object is walked.
 
 
