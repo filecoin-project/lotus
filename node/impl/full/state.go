@@ -143,17 +143,17 @@ func (a *StateAPI) StateMinerActiveSectors(ctx context.Context, maddr address.Ad
 	return mas.LoadSectors(&activeSectors)
 }
 
-func (a *StateModule) StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (res *api.InvocResult, err error) {
-	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
+func (m *StateModule) StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (res *api.InvocResult, err error) {
+	ts, err := m.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 	for {
-		res, err = a.StateManager.Call(ctx, msg, ts)
+		res, err = m.StateManager.Call(ctx, msg, ts)
 		if err != stmgr.ErrExpensiveFork {
 			break
 		}
-		ts, err = a.Chain.GetTipSetFromKey(ctx, ts.Parents())
+		ts, err = m.Chain.GetTipSetFromKey(ctx, ts.Parents())
 		if err != nil {
 			return nil, xerrors.Errorf("getting parent tipset: %w", err)
 		}

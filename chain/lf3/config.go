@@ -1,6 +1,7 @@
 package lf3
 
 import (
+	"os"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -83,12 +84,22 @@ func NewConfig(nn dtypes.NetworkName) *Config {
 	if nn == "testnetnet" {
 		nn = "filecoin"
 	}
+	pollInterval := 15 * time.Minute
+	if envVar := os.Getenv("LOTUS_F3_POLL_INTERVAL"); len(envVar) != 0 {
+		d, err := time.ParseDuration(envVar)
+		if err != nil {
+			log.Errorf("invalid duration in LOTUS_F3_POLL_INTERVAL, defaulting to %v", pollInterval)
+		} else {
+			pollInterval = d
+		}
+
+	}
 	c := &Config{
 		BaseNetworkName:          gpbft.NetworkName(nn),
 		PrioritizeStaticManifest: true,
 		DynamicManifestProvider:  buildconstants.F3ManifestServerID,
 		AllowDynamicFinalize:     false,
-		ContractPollInterval:     15 * time.Minute,
+		ContractPollInterval:     pollInterval,
 	}
 	if buildconstants.F3BootstrapEpoch >= 0 {
 		c.StaticManifest = NewManifest(

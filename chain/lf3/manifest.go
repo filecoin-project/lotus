@@ -52,8 +52,10 @@ var MaxDynamicManifestChangesAllowed = 1000
 func NewManifestProvider(mctx helpers.MetricsCtx, config *Config, cs *store.ChainStore, ps *pubsub.PubSub, mds dtypes.MetadataDS, stateCaller StateCaller) (prov manifest.ManifestProvider, err error) {
 	var primaryManifest manifest.ManifestProvider
 	if config.StaticManifest != nil {
+		log.Infof("using static maniest as primary")
 		primaryManifest, err = manifest.NewStaticManifestProvider(config.StaticManifest)
 	} else if config.ContractAddress != "" {
+		log.Infow("using contract maniest as primary", "address", config.ContractAddress)
 		primaryManifest, err = NewContractManifestProvider(mctx, config, stateCaller)
 	}
 	if err != nil {
@@ -117,7 +119,7 @@ type ContractManifestProvider struct {
 	address      string
 	networkName  gpbft.NetworkName
 	stateCaller  StateCaller
-	PollInterval time.Duration
+	pollInterval time.Duration
 
 	manifestChanges chan *manifest.Manifest
 
@@ -133,7 +135,7 @@ func NewContractManifestProvider(mctx helpers.MetricsCtx, config *Config, stateC
 		stateCaller:  stateCaller,
 		address:      config.ContractAddress,
 		networkName:  config.BaseNetworkName,
-		PollInterval: config.ContractPollInterval,
+		pollInterval: config.ContractPollInterval,
 
 		manifestChanges: make(chan *manifest.Manifest, 1),
 
@@ -146,8 +148,9 @@ func NewContractManifestProvider(mctx helpers.MetricsCtx, config *Config, stateC
 func (cmp *ContractManifestProvider) Start(context.Context) error {
 	// no address, nothing to do
 	if len(cmp.address) == 0 {
-		// close the channel so fusing provider knows we have nothing
-		close(cmp.manifestChanges)
+		// send nil so fusing knows we have nothing
+		log.Infof("contract manifest provider, address unknown, exiting")
+		cmp.manifestChanges <- nil
 		return nil
 	}
 
@@ -159,7 +162,7 @@ func (cmp *ContractManifestProvider) Start(context.Context) error {
 	cmp.manifestChanges <- knownManifest
 
 	cmp.errgrp.Go(func() error {
-		t := time.NewTicker(cmp.PollInterval)
+		t := time.NewTicker(cmp.pollInterval)
 		defer t.Stop()
 
 	loop:
@@ -176,8 +179,15 @@ func (cmp *ContractManifestProvider) Start(context.Context) error {
 					continue loop
 				}
 
+				c, err := m.Cid()
+				if err != nil {
+					log.Errorf("got error while computing manifest CID")
+				}
+
 				if m != nil {
-					log.Infow("new manifest from contract", "enabled", true, "bootstrapEpoch", m.BootstrapEpoch)
+					log.Infow("new manifest from contract", "enabled", true,
+						"bootstrapEpoch", m.BootstrapEpoch,
+						"manifestCID", c)
 				} else {
 					log.Info("new manifest from contract", "enabled", false)
 				}
@@ -205,7 +215,7 @@ func decompressManifest(compressedManifest []byte) (*manifest.Manifest, error) {
 func parseContractReturn(retBytes []byte) (uint64, []byte, error) {
 	// 3*32 because there should be 3 slots minimum
 	if len(retBytes) < 3*32 {
-		return 0, nil, fmt.Errorf("no activation infromation")
+		return 0, nil, fmt.Errorf("no activation information")
 	}
 
 	var slot []byte
@@ -228,6 +238,7 @@ func parseContractReturn(retBytes []byte) (uint64, []byte, error) {
 	}
 
 	// finally after that there are manifest bytes
+	// starts with length in a full slot, slot no 3
 	slot, retBytes = retBytes[:32], retBytes[32:]
 	slot = slot[24:32]
 	pLen := binary.BigEndian.Uint64(slot)
@@ -253,6 +264,9 @@ func (cmp *ContractManifestProvider) fetchManifest(ctx context.Context) (*manife
 	}
 
 	activationEpoch, compressedManifest, err := parseContractReturn(ethReturn)
+	if err != nil {
+		return nil, fmt.Errorf("parsing contract information: %w", err)
+	}
 
 	if activationEpoch == math.MaxUint64 || len(compressedManifest) == 0 {
 		return nil, nil

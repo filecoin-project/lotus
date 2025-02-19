@@ -75,11 +75,13 @@ func loadF3IDList(path string) ([]gpbft.ActorID, error) {
 }
 
 var f3CheckActivation = &cli.Command{
-	Name: "check-activation",
+	Name:  "check-activation",
+	Usage: "queries f3 parameters contract using chain module",
 
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name: "contract",
+			Name:  "contract",
+			Usage: "address contract to query",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -116,11 +118,13 @@ var f3CheckActivation = &cli.Command{
 }
 
 var f3CheckActivationRaw = &cli.Command{
-	Name: "check-activation-raw",
+	Name:  "check-activation-raw",
+	Usage: "queries f3 parameters contract using raw logic",
 
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name: "contract",
+			Name:  "contract",
+			Usage: "address contract to query",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -160,6 +164,7 @@ var f3CheckActivationRaw = &cli.Command{
 		}
 		fmt.Printf("Raw data: %X\n", ethReturn)
 		slot, retBytes := []byte{}, []byte(ethReturn)
+		_ = slot
 		// 3*32 because there should be 3 slots minimum
 		if len(retBytes) < 3*32 {
 			return fmt.Errorf("no activation infromation")
@@ -207,8 +212,8 @@ var f3CheckActivationRaw = &cli.Command{
 			if m.BootstrapEpoch < 0 || uint64(m.BootstrapEpoch) != activationEpoch {
 				return fmt.Errorf("bootstrap epoch does not match: %d != %d", m.BootstrapEpoch, activationEpoch)
 			}
-			io.Copy(os.Stdout, flate.NewReader(bytes.NewReader(compressedManifest)))
-			fmt.Printf("\n")
+			_, _ = io.Copy(os.Stdout, flate.NewReader(bytes.NewReader(compressedManifest)))
+			fmt.Println()
 		}
 		return nil
 	},
