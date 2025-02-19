@@ -5,7 +5,7 @@ NAME:
    lotus-worker - Remote miner worker
 
 USAGE:
-   lotus-worker [global options] command [command options] [arguments...]
+   lotus-worker [global options] command [command options]
 
 VERSION:
    1.32.1-dev
@@ -34,7 +34,7 @@ NAME:
    lotus-worker run - Start lotus worker
 
 USAGE:
-   lotus-worker run [command options] [arguments...]
+   lotus-worker run [command options]
 
 DESCRIPTION:
    Run lotus-worker.
@@ -97,7 +97,7 @@ NAME:
    lotus-worker stop - Stop a running lotus worker
 
 USAGE:
-   lotus-worker stop [command options] [arguments...]
+   lotus-worker stop [command options]
 
 OPTIONS:
    --help, -h  show help
@@ -110,7 +110,7 @@ NAME:
    lotus-worker info - Print worker info
 
 USAGE:
-   lotus-worker info [command options] [arguments...]
+   lotus-worker info [command options]
 
 OPTIONS:
    --help, -h  show help
@@ -123,7 +123,7 @@ NAME:
    lotus-worker storage - manage sector storage
 
 USAGE:
-   lotus-worker storage command [command options] [arguments...]
+   lotus-worker storage command [command options]
 
 COMMANDS:
    attach     attach local storage path
@@ -142,7 +142,7 @@ NAME:
    lotus-worker storage attach - attach local storage path
 
 USAGE:
-   lotus-worker storage attach [command options] [arguments...]
+   lotus-worker storage attach [command options]
 
 OPTIONS:
    --init                                 initialize the path first (default: false)
@@ -176,7 +176,7 @@ NAME:
    lotus-worker storage redeclare - redeclare sectors in a local storage path
 
 USAGE:
-   lotus-worker storage redeclare [command options] [arguments...]
+   lotus-worker storage redeclare [command options]
 
 OPTIONS:
    --id value      storage path ID
@@ -192,7 +192,7 @@ NAME:
    lotus-worker resources - Manage resource table overrides
 
 USAGE:
-   lotus-worker resources [command options] [arguments...]
+   lotus-worker resources [command options]
 
 OPTIONS:
    --all       print all resource envvars (default: false)
@@ -207,7 +207,7 @@ NAME:
    lotus-worker tasks - Manage task processing
 
 USAGE:
-   lotus-worker tasks command [command options] [arguments...]
+   lotus-worker tasks command [command options]
 
 COMMANDS:
    enable   Enable a task type

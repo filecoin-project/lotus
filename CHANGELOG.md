@@ -18,6 +18,8 @@
 
 - chore: upgrade to the latest go-f3 and allow F3 chain exchange topics ([filecoin-project/lotus#12893](https://github.com/filecoin-project/lotus/pull/12893)
 
+- chore: upgrade drand client, this increases the Go minimum version to v1.22.10.
+
 
 # UNRELEASED v.1.32.0
 
