@@ -105,12 +105,12 @@ var f3CheckActivation = &cli.Command{
 		if err != nil {
 			return fmt.Errorf("starting manifest provider: %w", err)
 		}
-		defer prov.Stop(context.Background())
 		for {
 			select {
 			case m := <-prov.ManifestUpdates():
 				log.Infof("new manifest: %+v\n", m)
 			case <-ctx.Done():
+				_ = prov.Stop(context.Background())
 				return nil
 			}
 		}
@@ -128,6 +128,8 @@ var f3CheckActivationRaw = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		// this code is raw logic for cross-checking
+		// the cleaner code is in chain/lf3/manifest.go
 		address, err := ethtypes.ParseEthAddress(cctx.String("contract"))
 		if err != nil {
 			return fmt.Errorf("trying to parse contract address: %s: %w", cctx.String("contract"), err)
@@ -167,7 +169,7 @@ var f3CheckActivationRaw = &cli.Command{
 		_ = slot
 		// 3*32 because there should be 3 slots minimum
 		if len(retBytes) < 3*32 {
-			return fmt.Errorf("no activation infromation")
+			return fmt.Errorf("no activation information")
 		}
 
 		// split off first slot
