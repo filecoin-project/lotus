@@ -212,6 +212,45 @@ func decompressManifest(compressedManifest []byte) (*manifest.Manifest, error) {
 	return &m, nil
 }
 
+func (cmp *ContractManifestProvider) fetchManifest(ctx context.Context) (*manifest.Manifest, error) {
+	ethReturn, err := cmp.callContract(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("calling contract at %s: %w", cmp.address, err)
+	}
+	if len(ethReturn) == 0 {
+		return nil, nil
+	}
+
+	activationEpoch, compressedManifest, err := parseContractReturn(ethReturn)
+	if err != nil {
+		return nil, fmt.Errorf("parsing contract information: %w", err)
+	}
+
+	if activationEpoch == math.MaxUint64 || len(compressedManifest) == 0 {
+		return nil, nil
+	}
+
+	m, err := decompressManifest(compressedManifest)
+	if err != nil {
+		return nil, fmt.Errorf("got error while decoding manifest: %w", err)
+	}
+
+	if m.BootstrapEpoch < 0 || uint64(m.BootstrapEpoch) != activationEpoch {
+		return nil, fmt.Errorf("bootstrap epoch does not match: %d != %d", m.BootstrapEpoch, activationEpoch)
+	}
+
+	if err := m.Validate(); err != nil {
+		return nil, fmt.Errorf("manifest does not validate: %w", err)
+	}
+
+	if m.NetworkName != cmp.networkName {
+		return nil, fmt.Errorf("network name does not match, expected: %s, got: %s",
+			cmp.networkName, m.NetworkName)
+	}
+
+	return m, nil
+}
+
 func parseContractReturn(retBytes []byte) (uint64, []byte, error) {
 	// 3*32 because there should be 3 slots minimum
 	if len(retBytes) < 3*32 {
@@ -252,45 +291,6 @@ func parseContractReturn(retBytes []byte) (uint64, []byte, error) {
 	}
 
 	return activationEpoch, retBytes[:payloadLength], nil
-}
-
-func (cmp *ContractManifestProvider) fetchManifest(ctx context.Context) (*manifest.Manifest, error) {
-	ethReturn, err := cmp.callContract(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("calling contract at %s: %w", cmp.address, err)
-	}
-	if len(ethReturn) == 0 {
-		return nil, nil
-	}
-
-	activationEpoch, compressedManifest, err := parseContractReturn(ethReturn)
-	if err != nil {
-		return nil, fmt.Errorf("parsing contract information: %w", err)
-	}
-
-	if activationEpoch == math.MaxUint64 || len(compressedManifest) == 0 {
-		return nil, nil
-	}
-
-	m, err := decompressManifest(compressedManifest)
-	if err != nil {
-		return nil, fmt.Errorf("got error while decoding manifest: %w", err)
-	}
-
-	if m.BootstrapEpoch < 0 || uint64(m.BootstrapEpoch) != activationEpoch {
-		return nil, fmt.Errorf("bootstrap epoch does not match: %d != %d", m.BootstrapEpoch, activationEpoch)
-	}
-
-	if err := m.Validate(); err != nil {
-		return nil, fmt.Errorf("manifest does not validate: %w", err)
-	}
-
-	if m.NetworkName != cmp.networkName {
-		return nil, fmt.Errorf("network name does not match, expected: %s, got: %s",
-			cmp.networkName, m.NetworkName)
-	}
-
-	return m, nil
 }
 
 func (cmp *ContractManifestProvider) callContract(ctx context.Context) ([]byte, error) {
