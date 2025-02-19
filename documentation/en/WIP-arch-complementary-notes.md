@@ -6,7 +6,7 @@ Explain where we load the genesis block, the CAR entries, and we set the root of
 
 `SetGenesis` block with name 0. `(ChainStore).SetGenesis()` stores it there.
 
-`MakeInitialStateTree` (`chain/gen/genesis/genesis.go`, used to construct the genesis block (`MakeGenesisBlock()`), constructs the state tree (`NewStateTree`) which is just a "pointer" (root node in the HAMT) to the different actors. It will be continuously used in `(*StateTree).SetActor()` an `types.Actor` structure under a certain `Address` (in the HAMT). (How does the `stateSnaps` work? It has no comments.)
+`MakeInitialStateTree` (`chain/gen/genesis/genesis.go`, used to construct the genesis block (`MakeGenesisBlock()`), constructs the state tree (`NewStateTree`) which is just a "pointer" (root node in the HAMT) to the different actors. It will be continuously used in `(*StateTree).SetActor()` and `types.Actor` structure under a certain `Address` (in the HAMT). (How does the `stateSnaps` work? It has no comments.)
 
 From this point we can follow different setup functions like:
 
@@ -40,13 +40,13 @@ List what are the main directories we should be looking at (e.g., `chain/`) and 
 
 # Tests
 
-Run a few messages and observe state changes. What is the easiest test that also lets us "interact" with it (modify something and observe the difference).
+Run a few messages and observe state changes. What is the easiest test that also lets us "interact" with it (modify something and observe the difference)?
 
 ### Filecoin blocks vs IPFS blocks
 
 The term *block* has different meanings depending on the context, many times both meanings coexist at once in the code and it is important to distinguish them. (FIXME: link to IPFS blocks and related doc throughout this explanation). In terms of the lower IPFS layer, in charge of storing and retrieving data, both present at the repo or accessible through the network (e.g., through the BitSwap protocol discussed later), a block is a string of raw bytes identified by its hash, embedded and fully qualified in a CID identifier. IPFS blocks are the "building blocks" of almost any other piece of (chain) data described in the Filecoin protocol.
 
-In contrast, in the higher Filecoin (application) layer, a block is roughly (FIXME: link to spec definition, if we have any) a set of zero or more messages grouped together by a single miner which is itself grouped with other blocks (from other miners) in the same round to form a tipset. The Filecoin blockchain is a series of "chained" tipsets, each referencing its parent by its header's *CID*, that is, its header as seen as a single IPFS block, this is where both layers interact.
+In contrast, in the higher Filecoin (application) layer, a block is roughly (FIXME: link to spec definition, if we have any) a set of zero or more messages grouped together by a single miner which is itself grouped with other blocks (from other miners) in the same round to form a tipset. The Filecoin blockchain is a series of "chained" tipsets, each referencing its parent by its header's *CID*, that is, its header is seen as a single IPFS block, and this is where both layers interact.
 
 Using now the full Go package qualifiers to avoid any ambiguity, the Filecoin block, `github.com/filecoin-project/lotus/chain/types.FullBlock`, is defined as,
 
@@ -129,7 +129,7 @@ bash -c "lotus daemon &" &&
 nc -v -z 127.0.0.1 1234
 # Connection to 127.0.0.1 1234 port [tcp/*] succeeded!
 
-killall lotus
+kill all lotus
 # FIXME: We need a lotus stop command:
 #  https://github.com/filecoin-project/lotus/issues/1827
 ```
@@ -142,7 +142,7 @@ The JSON-RPC server exposes the node API, the `FullNode` interface (defined in `
 
 FIXME: Link to (and create) documentation about API fulfillment.
 
-Because we rely heavily on reflection for this part of the code the call chain is not easily visible by just following the references through the symbolic analysis of the IDE. If we start by the `lotus sync` command definition (in `cli/sync.go`), we eventually end up in the method interface `SyncState`, and when we look for its implementation we will find two functions:
+Because we rely heavily on reflection for this part of the code the call chain is not easily visible by just following the references through the symbolic analysis of the IDE. If we start with the `lotus sync` command definition (in `cli/sync.go`), we eventually end up in the method interface `SyncState`, and when we look for its implementation we will find two functions:
 
 * `(*SyncAPI).SyncState()` (in `node/impl/full/sync.go`): this is the actual implementation of the API function that shows what the node (here acting as the RPC server) will execute when it receives the RPC request issued from the CLI acting as the client.
 
