@@ -117,7 +117,7 @@ The `Fevm.Events` options were marked as deprecated in Lotus 1.26, having been m
 * `Fevm.Events.DatabasePath` (no replacement available)
 * `Fevm.Events.DisableRealTimeFilterAPI` (no replacement available)
 * `Fevm.Events.DisableHistoricFilterAPI` (no replacement available)
-* `Fevm.Events.FilterTTL` (use `Events.FilterTTL` intead)
+* `Fevm.Events.FilterTTL` (use `Events.FilterTTL` instead)
 * `Fevm.Events.MaxFilters` (use `Events.MaxFilters` instead)
 * `Fevm.Events.MaxFilterResults` (use `Events.MaxFilterResults` instead)
 * `Fevm.Events.MaxFilterHeightRange` (use `Events.MaxFilterHeightRange` instead)

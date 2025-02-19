@@ -139,7 +139,7 @@ The meaning of these fields is as follows:
   Default is empty.
 - `SizeLimitHigh` -- this is the maximum number of pending messages before triggering a
   prune in the message pool. Note that messages from priority addresses are never pruned.
-  Defafult is 30000.
+  Default is 30000.
 - `SizeLimitLow` -- this is the number of pending messages that should be kept after a prune.
   Default is 20000.
 - `ReplaceByFeeRatio` -- this is the gas fee ratio for replacing messages in the mpool.
