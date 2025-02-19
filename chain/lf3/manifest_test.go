@@ -7,8 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-f3/manifest"
 )
 
 //go:embed testdata/contract_manifest_golden.json
