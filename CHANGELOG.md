@@ -15,9 +15,8 @@
 - chore: switch to pure-go zstd decoder for snapshot imports.  ([filecoin-project/lotus#12857](https://github.com/filecoin-project/lotus/pull/12857))
 - feat: automatically detect if the genesis is zstd compressed. ([filecoin-project/lotus#12885](https://github.com/filecoin-project/lotus/pull/12885)
 - `lotus send` now supports `--csv` option for sending multiple transactions. ([filecoin-project/lotus#12892](https://github.com/filecoin-project/lotus/pull/12892))
-
 - chore: upgrade to the latest go-f3 and allow F3 chain exchange topics ([filecoin-project/lotus#12893](https://github.com/filecoin-project/lotus/pull/12893)
-
+- chore: upgrade to a minimum Golang version of `1.23.6` ([filecoin-project/lotus#12910](https://github.com/filecoin-project/lotus/pull/12910)
 
 # UNRELEASED v.1.32.0
 
