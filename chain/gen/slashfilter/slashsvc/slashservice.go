@@ -6,6 +6,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 	levelds "github.com/ipfs/go-ds-leveldb"
+	format "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log/v2"
 	ldbopts "github.com/syndtr/goleveldb/leveldb/opt"
 	"golang.org/x/xerrors"
@@ -69,7 +70,11 @@ func SlashConsensus(ctx context.Context, a ConsensusSlasherApi, p string, from s
 		for block := range blocks {
 			otherBlock, extraBlock, fault, err := slashFilterMinedBlock(ctx, sf, a, block)
 			if err != nil {
-				log.Errorf("slash detector errored: %s", err)
+				if format.IsNotFound(err) {
+					log.Debugf("block not found in chain: %s", err)
+				} else {
+					log.Errorf("slash detector errored: %s", err)
+				}
 				continue
 			}
 			if fault {
