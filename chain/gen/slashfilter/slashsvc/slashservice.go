@@ -6,6 +6,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 	levelds "github.com/ipfs/go-ds-leveldb"
+	format "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log/v2"
 	ldbopts "github.com/syndtr/goleveldb/leveldb/opt"
 	"golang.org/x/xerrors"
@@ -19,7 +20,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/types"
-	format "github.com/ipfs/go-ipld-format"
 )
 
 var log = logging.Logger("slashsvc")
