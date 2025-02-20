@@ -41,6 +41,7 @@ jobs:
           - butterflynet
           - calibnet
           - debug
+          - 2k
         include:
           - image: lotus
             network: mainnet
