@@ -2,7 +2,6 @@ package slashsvc
 
 import (
 	"context"
-	"strings"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -20,6 +19,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/types"
+	format "github.com/ipfs/go-ipld-format"
 )
 
 var log = logging.Logger("slashsvc")
@@ -70,7 +70,7 @@ func SlashConsensus(ctx context.Context, a ConsensusSlasherApi, p string, from s
 		for block := range blocks {
 			otherBlock, extraBlock, fault, err := slashFilterMinedBlock(ctx, sf, a, block)
 			if err != nil {
-				if strings.Contains(err.Error(), "could not find") {
+				if format.IsNotFound(err) {
 					log.Debugf("block not found in chain: %s", err)
 				} else {
 					log.Errorf("slash detector errored: %s", err)
