@@ -412,7 +412,8 @@ func (e *ethTransaction) EthGetTransactionReceiptLimited(ctx context.Context, tx
 	if msgLookup == nil {
 		// This is the best we can do. In theory, we could have just not indexed this
 		// transaction, but there's no way to check that here.
-		return nil, nil
+		return nil, xerrors.Errorf("transaction receipt is too old (limit: %d epochs)", limit)
+
 	}
 
 	tx, err := newEthTxFromMessageLookup(ctx, msgLookup, -1, e.chainStore, e.stateManager)
