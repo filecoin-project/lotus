@@ -1185,6 +1185,17 @@ func TestEthGetBlockReceipts(t *testing.T) {
 	gethBlockReceipts, err := client.EthGetBlockReceipts(ctx, req)
 	require.NoError(t, err)
 	require.Len(t, gethBlockReceipts, 3)
+
+	t.Run("EthGetBlockReceiptsLimited", func(t *testing.T) {
+		// just to be sure we're far enough in the chain for the limit to work
+		client.WaitTillChain(ctx, kit.HeightAtLeast(10))
+		// request epoch 2
+		bn := ethtypes.EthUint64(5)
+		// limit to 5 epochs lookback
+		blockReceipts, err := client.EthGetBlockReceiptsLimited(ctx, ethtypes.EthBlockNumberOrHash{BlockNumber: &bn}, 5)
+		require.ErrorContains(t, err, "older than the allowed")
+		require.Nil(t, blockReceipts, "should not return any receipts")
+	})
 }
 
 func deployContractWithEth(ctx context.Context, t *testing.T, client *kit.TestFullNode, ethAddr ethtypes.EthAddress,
