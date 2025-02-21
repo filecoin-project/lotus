@@ -79,6 +79,7 @@ func TestReturnTypes(t *testing.T) {
 						seen[typ] = struct{}{}
 
 						if typ.Kind() == reflect.Interface && typ != bareIface && !typ.Implements(jmarsh) {
+							t.Logf("Type is %v", typ)
 							t.Error("methods can't return interfaces or struct types not implementing json.Marshaller", m.Name)
 						}
 
@@ -95,6 +96,10 @@ func TestReturnTypes(t *testing.T) {
 							todo = append(todo, typ.Elem())
 							todo = append(todo, typ.Key())
 						case reflect.Struct:
+							if typ.Implements(jmarsh) {
+								// The struct implements json.Marshaller, so we don't have to inspect the fields
+								break
+							}
 							for i := 0; i < typ.NumField(); i++ {
 								todo = append(todo, typ.Field(i).Type)
 							}
