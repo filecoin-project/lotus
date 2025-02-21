@@ -9,6 +9,6 @@ import (
 
 type APIAlg jwt.HMACSHA
 
-type APIEndpoint multiaddr.Multiaddr
+type APIEndpoint = multiaddr.Multiaddr
 
 type NodeStartTime time.Time
