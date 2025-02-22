@@ -107,7 +107,7 @@ require (
 	github.com/klauspost/compress v1.17.11
 	github.com/koalacxr/quantile v0.0.1
 	github.com/libp2p/go-buffer-pool v0.1.0
-	github.com/libp2p/go-libp2p v0.40.1-0.20250221225126-de6c69553d49
+	github.com/libp2p/go-libp2p v0.40.1-0.20250222025449-f7079146d841
 	github.com/libp2p/go-libp2p-kad-dht v0.25.3-0.20250221014016-f9bd8a040d2a
 	github.com/libp2p/go-libp2p-pubsub v0.11.0
 	github.com/libp2p/go-libp2p-record v0.2.0
@@ -119,7 +119,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.16
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-base32 v0.1.0
-	github.com/multiformats/go-multiaddr v0.14.1-0.20250221223610-b38aa8c96e9e
+	github.com/multiformats/go-multiaddr v0.14.1-0.20250222024214-3d78370b4a00
 	github.com/multiformats/go-multiaddr-dns v0.4.1
 	github.com/multiformats/go-multicodec v0.9.0
 	github.com/multiformats/go-multihash v0.2.3
