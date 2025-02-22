@@ -52,7 +52,7 @@ Use `MpoolPushMessage` instead.
 ### MpoolSub
 
 Returns a channel to receive notifications about updates to the message pool.
-Note that the context *must* be cancelled when the caller is done with the subscription.
+Note that the context *must* be canceled when the caller is done with the subscription.
 
 ### MpoolGetConfig
 
@@ -115,7 +115,7 @@ If the `--local` flag is passed, then local messages are also cleared; otherwise
 
 ## Configuration
 
-The mpool a few parameters that can be configured by the user, either through the API
+The mpool has a few parameters that can be configured by the user, either through the API
 or the command line interface.
 
 The config struct is defined as follows:
