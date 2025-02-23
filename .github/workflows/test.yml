@@ -24,155 +24,24 @@ jobs:
     name: Discover Test Groups
     runs-on: ubuntu-latest
     outputs:
-      groups: ${{ steps.test.outputs.groups }}
+      test_group_execution_contexts: ${{ steps.list_test_group_execution_contexts.outputs.test_group_execution_contexts }}
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
           fetch-depth: 0
-      - id: test
-        env:
-          # Unit test groups other than unit-rest
-          utests: |
-            [
-              {"name": "unit-cli", "packages": ["./cli/...", "./cmd/...", "./api/..."]},
-              {"name": "unit-storage", "packages": ["./storage/...", "./extern/..."]},
-              {"name": "unit-node", "packages": ["./node/..."]}
-            ]
-          # Other tests that require special configuration
-          otests: |
-            [
-              {
-                "name": "multicore-sdr",
-                "packages": ["./storage/sealer/ffiwrapper"],
-                "go_test_flags": "-run=TestMulticoreSDR",
-                "test_rustproofs_logs": "1"
-              }, {
-                "name": "conformance",
-                "packages": ["./conformance"],
-                "go_test_flags": "-run=TestConformance",
-                "skip_conformance": "0"
-              }
-            ]
-          # Mapping from test group names to custom runner labels
-          # The jobs default to running on the default hosted runners (4 CPU, 16 RAM).
-          # We use self-hosted xlarge (4 CPU, 8 RAM; and large - 2 CPU, 4 RAM) runners
-          #   to extend the available runner capacity (60 default hosted runners).
-          # We use self-hosted 4xlarge (16 CPU, 32 RAM; and 2xlarge - 8 CPU, 16 RAM) self-hosted
-          #   to support resource intensive jobs.
-          runners: |
-            {
-              "itest-niporep_manual": ["self-hosted", "linux", "x64", "4xlarge"],
-              "itest-sector_pledge": ["self-hosted", "linux", "x64", "4xlarge"],
-              "itest-worker": ["self-hosted", "linux", "x64", "4xlarge"],
-              "itest-manual_onboarding": ["self-hosted", "linux", "x64", "4xlarge"],
-
-              "itest-gateway": ["self-hosted", "linux", "x64", "2xlarge"],
-              "itest-sector_import_full": ["self-hosted", "linux", "x64", "2xlarge"],
-              "itest-sector_import_simple": ["self-hosted", "linux", "x64", "2xlarge"],
-              "itest-wdpost": ["self-hosted", "linux", "x64", "2xlarge"],
-              "unit-storage": ["self-hosted", "linux", "x64", "2xlarge"],
-
-              "itest-cli": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-deals_invalid_utf8_label": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-decode_params": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-dup_mpool_messages": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-eth_account_abstraction": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-eth_api": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-eth_balance": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-eth_bytecode": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-eth_config": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-eth_conformance": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-eth_deploy": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-eth_fee_history": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-eth_transactions": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-fevm_address": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-fevm_events": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-gas_estimation": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-get_messages_in_ts": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-lite_migration": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-lookup_robust_address": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-mempool": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-mpool_msg_uuid": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-mpool_push_with_uuid": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-msgindex": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-multisig": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-net": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-nonce": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-path_detach_redeclare": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-pending_deal_allocation": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-remove_verifreg_datacap": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-sector_miner_collateral": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-sector_numassign": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-self_sent_txn": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-verifreg": ["self-hosted", "linux", "x64", "xlarge"],
-              "multicore-sdr": ["self-hosted", "linux", "x64", "xlarge"],
-              "unit-node": ["self-hosted", "linux", "x64", "xlarge"]
-            }
-          # A list of test groups that require Proof Parameters to be fetched
-          parameters: |
-            [
-              "conformance",
-              "itest-api",
-              "itest-direct_data_onboard_verified",
-              "itest-direct_data_onboard",
-              "itest-manual_onboarding",
-              "itest-niporep_manual",
-              "itest-net",
-              "itest-path_detach_redeclare",
-              "itest-sealing_resources",
-              "itest-sector_import_full",
-              "itest-sector_import_simple",
-              "itest-sector_pledge",
-              "itest-sector_unseal",
-              "itest-wdpost_no_miner_storage",
-              "itest-wdpost_worker_config",
-              "itest-wdpost",
-              "itest-worker",
-              "multicore-sdr",
-              "unit-cli",
-              "unit-storage"
-            ]
+      - id: list_test_group_execution_contexts
         run: |
-          # Create a list of integration test groups
-          itests="$(
-            find ./itests -name "*_test.go" | \
-              jq -R '{
-                "name": "itest-\(. | split("/") | .[2] | sub("_test.go$";""))",
-                "packages": [.]
-              }' | jq -s
-            )"
-
-          # Create a list of packages that are covered by the integration and unit tests
-          packages="$(jq -n --argjson utests "$utests" '$utests | map(.packages) | flatten | . + ["./itests/..."]')"
-
-          # Create a new group for the unit tests that are not yet covered
-          rest="$(
-            find . -name "*_test.go" | cut -d/ -f2 | sort | uniq | \
-              jq -R '"./\(.)/..."' | \
-              jq -s --argjson p "$packages" '{"name": "unit-rest", "packages": (. - $p)}'
-          )"
-
-          # Combine the groups for integration tests, unit tests, the new unit-rest group, and the other tests
-          groups="$(jq -n --argjson i "$itests" --argjson u "$utests" --argjson r "$rest" --argjson o "$otests" '$i + $u + [$r] + $o')"
-
-          # Apply custom runner labels to the groups
-          groups="$(jq -n --argjson g "$groups" --argjson r "$runners" '$g | map(. + {"runner": (.name as $n | $r | .[$n]) })')"
-
-          # Apply the needs_parameters flag to the groups
-          groups="$(jq -n --argjson g "$groups" --argjson p "$parameters" '$g | map(. + {"needs_parameters": ([.name] | inside($p)) })')"
-
-          # Output the groups
-          echo "groups=$groups"
-          echo "groups=$(jq -nc --argjson g "$groups" '$g')" >> $GITHUB_OUTPUT
+          echo "test_group_execution_contexts<<EOF" >> $GITHUB_OUTPUT
+          go run ./cmd/ci/main.go --json list-test-group-execution-contexts | jq -r '.msg' | tee -a $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
   cache:
     name: Cache Dependencies
-    runs-on: ubuntu-latest
-    outputs:
-      fetch_params_key: ${{ steps.fetch_params.outputs.key }}
-      fetch_params_path: ${{ steps.fetch_params.outputs.path }}
-      make_deps_key: ${{ steps.make_deps.outputs.key }}
-      make_deps_path: ${{ steps.make_deps.outputs.path }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        # We need to cache for each architecture we support: x86_64 and arm64
+        runner: [ubuntu-latest, ubuntu-24.04-arm]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -230,14 +99,31 @@ jobs:
         with:
           key: ${{ steps.make_deps.outputs.key }}
           path: ${{ steps.make_deps.outputs.path }}
+      - env:
+          fetch_params_key: ${{ steps.fetch_params.outputs.key }}
+          fetch_params_path: ${{ steps.fetch_params.outputs.path }}
+          make_deps_key: ${{ steps.make_deps.outputs.key }}
+          make_deps_path: ${{ steps.make_deps.outputs.path }}
+          file: jobs.cache.${{ runner.os }}.${{ runner.arch }}.outputs.json
+        run: |
+          jq -n '{
+            "fetch_params_key": env.fetch_params_key,
+            "fetch_params_path": env.fetch_params_path,
+            "make_deps_key": env.make_deps_key,
+            "make_deps_path": env.make_deps_path
+          }' | tee -a "$file"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jobs.cache.${{ runner.os }}.${{ runner.arch }}.outputs
+          path: jobs.cache.${{ runner.os }}.${{ runner.arch }}.outputs.json
   test:
     needs: [discover, cache]
-    name: Test (${{ matrix.name }})
-    runs-on: ${{ github.repository_owner == 'filecoin-project' && matrix.runner || 'ubuntu-latest' }}
+    name: Test (${{ matrix.name }}) ${{ toJson(matrix.runner) }}
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJson(needs.discover.outputs.groups) }}
+        include: ${{ fromJson(needs.discover.outputs.test_group_execution_contexts) }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -245,20 +131,44 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/install-system-dependencies
       - uses: ./.github/actions/install-go
+      - id: group
+        run: |
+          echo "metadata<<EOF" >> $GITHUB_OUTPUT
+          go run ./cmd/ci/main.go --json get-test-group-metadata --name "${{ matrix.name }}" | jq -r '.msg' | tee -a $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
       - name: Install gotestsum
         run: go install gotest.tools/gotestsum@latest
+      - id: artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: jobs.cache.${{ runner.os }}.${{ runner.arch }}.outputs
+      - id: cache
+        env:
+          file: jobs.cache.${{ runner.os }}.${{ runner.arch }}.outputs.json
+        run: |
+          echo "make_deps_key=$(jq -r .make_deps_key "$file")" | tee -a $GITHUB_OUTPUT
+          echo "make_deps_path<<EOF" | tee -a $GITHUB_OUTPUT
+          jq -r .make_deps_path "$file" | tee -a $GITHUB_OUTPUT
+          echo "EOF" | tee -a $GITHUB_OUTPUT
+
+          echo "fetch_params_key=$(jq -r .fetch_params_key "$file")" | tee -a $GITHUB_OUTPUT
+          echo "fetch_params_path<<EOF" | tee -a $GITHUB_OUTPUT
+          jq -r .fetch_params_path "$file" | tee -a $GITHUB_OUTPUT
+          echo "EOF" | tee -a $GITHUB_OUTPUT
+
+          rm "$file"
       - name: Restore cached make deps outputs
         uses: actions/cache/restore@v4
         with:
-          key: ${{ needs.cache.outputs.make_deps_key }}
-          path: ${{ needs.cache.outputs.make_deps_path }}
+          key: ${{ steps.cache.outputs.make_deps_key }}
+          path: ${{ steps.cache.outputs.make_deps_path }}
           fail-on-cache-miss: true
-      - if: ${{ matrix.needs_parameters }}
+      - if: ${{ fromJson(steps.group.outputs.metadata).needs_parameters }}
         name: Restore cached fetch params outputs
         uses: actions/cache/restore@v4
         with:
-          key: ${{ needs.cache.outputs.fetch_params_key }}
-          path: ${{ needs.cache.outputs.fetch_params_path }}
+          key: ${{ steps.cache.outputs.fetch_params_key }}
+          path: ${{ steps.cache.outputs.fetch_params_path }}
           fail-on-cache-miss: true
       # TODO: Install statediff (used to be used for conformance)
       - name: Create temporary directory for reports
@@ -270,22 +180,22 @@ jobs:
           NAME: ${{ matrix.name }}
           LOTUS_SRC_DIR: ${{ github.workspace }}
           REPORTS_PATH: ${{ steps.reports.outputs.path }}
-          SKIP_CONFORMANCE: ${{ matrix.skip_conformance || '1' }}
-          TEST_RUSTPROOFS_LOGS: ${{ matrix.test_rustproofs_logs || '0' }}
-          FORMAT: ${{ matrix.format || 'standard-verbose' }}
-          PACKAGES: ${{ join(matrix.packages, ' ') }}
+          SKIP_CONFORMANCE: ${{ fromJson(steps.group.outputs.metadata).skip_conformance && '1' || '0' }}
+          TEST_RUSTPROOFS_LOGS: ${{ fromJson(steps.group.outputs.metadata).test_rustproofs_logs && '1' || '0' }}
+          FORMAT: ${{ fromJson(steps.group.outputs.metadata).format || 'standard-verbose' }}
+          PACKAGES: ${{ join(fromJson(steps.group.outputs.metadata).packages, ' ') }}
         run: |
           gotestsum \
             --format "$FORMAT" \
             --junitfile "$REPORTS_PATH/$NAME.xml" \
             --jsonfile "$REPORTS_PATH/$NAME.json" \
             --packages="$PACKAGES" \
-            -- ${{ matrix.go_test_flags || '' }}
+            -- ${{ fromJson(steps.group.outputs.metadata).go_test_flags || '' }}
       - name: Modify junit.xml for BuildPulse
         env:
           NAME: ${{ matrix.name }}
           REPORTS_PATH: ${{ steps.reports.outputs.path }}
-          PACKAGES: ${{ join(matrix.packages, ' ') }}
+          PACKAGES: ${{ join(fromJson(steps.group.outputs.metadata).packages, ' ') }}
         if: always()
         run: |
           # Modify test suite name and classname attributes in JUnit XML for better grouping
@@ -303,7 +213,7 @@ jobs:
       - if: success() || failure()
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.name }}
+          name: ${{ matrix.name }}-${{ runner.os }}-${{ runner.arch }}
           path: |
             ${{ steps.reports.outputs.path }}/${{ matrix.name }}.xml
             ${{ steps.reports.outputs.path }}/${{ matrix.name }}.json
