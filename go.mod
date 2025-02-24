@@ -107,7 +107,7 @@ require (
 	github.com/klauspost/compress v1.17.11
 	github.com/koalacxr/quantile v0.0.1
 	github.com/libp2p/go-buffer-pool v0.1.0
-	github.com/libp2p/go-libp2p v0.40.1-0.20250224202341-9d1e3894c756
+	github.com/libp2p/go-libp2p v0.40.1-0.20250224202805-551c6037aceb
 	github.com/libp2p/go-libp2p-kad-dht v0.25.3-0.20250221014016-f9bd8a040d2a
 	github.com/libp2p/go-libp2p-pubsub v0.11.0
 	github.com/libp2p/go-libp2p-record v0.2.0
