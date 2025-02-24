@@ -90,7 +90,12 @@ var genesisNewCmd = &cli.Command{
 var genesisAddMinerCmd = &cli.Command{
 	Name:        "add-miner",
 	Description: "add genesis miner",
-	Flags:       []cli.Flag{},
+	Flags: []cli.Flag{
+		&cli.Int64Flag{
+			Name:  "balance",
+			Value: 50_000_000,
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 2 {
 			return xerrors.New("seed genesis add-miner [genesis.json] [preseal.json]")
@@ -124,6 +129,7 @@ var genesisAddMinerCmd = &cli.Command{
 			return xerrors.Errorf("unmarshal miner info: %w", err)
 		}
 
+		balance := cctx.Int64("balance")
 		for mn, miner := range miners {
 			log.Infof("Adding miner %s to genesis template", mn)
 			{
@@ -145,7 +151,7 @@ var genesisAddMinerCmd = &cli.Command{
 			log.Infof("Giving %s some initial balance", miner.Owner)
 			template.Accounts = append(template.Accounts, genesis.Actor{
 				Type:    genesis.TAccount,
-				Balance: big.Mul(big.NewInt(50_000_000), big.NewInt(int64(buildconstants.FilecoinPrecision))),
+				Balance: big.Mul(big.NewInt(balance), big.NewInt(int64(buildconstants.FilecoinPrecision))),
 				Meta:    (&genesis.AccountMeta{Owner: miner.Owner}).ActorMeta(),
 			})
 		}
