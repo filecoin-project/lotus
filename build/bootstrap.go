@@ -24,7 +24,7 @@ func BuiltinBootstrap() ([]peer.AddrInfo, error) {
 	if DisableBuiltinAssets {
 		return nil, nil
 	}
-	if bootstrappers, found := os.LookupEnv(BootstrappersOverrideEnvVarKey); found {
+	if bootstrappers := os.Getenv(BootstrappersOverrideEnvVarKey); bootstrappers != "" {
 		log.Infof("Using bootstrap nodes overridden by environment variable %s", BootstrappersOverrideEnvVarKey)
 		return addrutil.ParseAddresses(context.TODO(), strings.Split(strings.TrimSpace(bootstrappers), ","))
 	}
