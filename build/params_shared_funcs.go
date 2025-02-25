@@ -2,6 +2,7 @@ package build
 
 import (
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/libp2p/go-libp2p/core/protocol"
@@ -64,4 +65,48 @@ func IsF3PassiveTestingEnabled() bool {
 		// Consider any other value as disable.
 		return false
 	}
+}
+
+// IsF3ActivationDisabledFor checks if F3 activation is disabled for the given contract address
+// or epoch number based on environment variable configuration.
+func IsF3ActivationDisabledFor(contractAddr string, epoch int64) bool {
+	if !IsF3Enabled() {
+		// If F3 is disabled entirely, then activation is also disabled
+		return true
+	}
+
+	const F3DisableActivation = "LOTUS_DISABLE_F3_ACTIVATION"
+
+	v, envVarSet := os.LookupEnv(F3DisableActivation)
+	if !envVarSet || strings.TrimSpace(v) == "" {
+		// Environment variable is not set or empty, activation is not disabled
+		return false
+	}
+
+	// Parse the variable which can be in format "contract:addrs" or "epoch:epochnumber" or both
+	parts := strings.Split(v, ",")
+	for _, part := range parts {
+		kv := strings.SplitN(part, ":", 2)
+		if len(kv) != 2 {
+			continue
+		}
+
+		key := strings.TrimSpace(strings.ToLower(kv[0]))
+		value := strings.TrimSpace(kv[1])
+
+		switch key {
+		case "contract":
+			// If contract address matches, disable activation
+			if value != "" && value == contractAddr {
+				return true
+			}
+		case "epoch":
+			parsedEpoch, err := strconv.ParseInt(value, 10, 64)
+			// If epoch matches, disable activation
+			if err == nil && parsedEpoch == epoch {
+				return true
+			}
+		}
+	}
+	return false
 }
