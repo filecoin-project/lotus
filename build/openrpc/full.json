@@ -18656,7 +18656,7 @@
         {
             "name": "Filecoin.StateDealProviderCollateralBounds",
             "description": "```go\nfunc (s *FullNodeStruct) StateDealProviderCollateralBounds(p0 context.Context, p1 abi.PaddedPieceSize, p2 bool, p3 types.TipSetKey) (DealCollateralBounds, error) {\n\tif s.Internal.StateDealProviderCollateralBounds == nil {\n\t\treturn *new(DealCollateralBounds), ErrNotSupported\n\t}\n\treturn s.Internal.StateDealProviderCollateralBounds(p0, p1, p2, p3)\n}\n```",
-            "summary": "StateDealProviderCollateralBounds returns the min and max collateral a storage provider\ncan issue. It takes the deal size and verified status as parameters.\n",
+            "summary": "StateDealProviderCollateralBounds returns the min and max collateral a storage provider\ncan issue. It takes the deal size and verified status as parameters.\nNote: The min value returned is overestimated by 10% (multiplied by 110/100).\nSee: node/impl/full/state.go StateDealProviderCollateralBounds implementation.\n",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -22086,7 +22086,7 @@
         {
             "name": "Filecoin.StateMinerInitialPledgeCollateral",
             "description": "```go\nfunc (s *FullNodeStruct) StateMinerInitialPledgeCollateral(p0 context.Context, p1 address.Address, p2 miner.SectorPreCommitInfo, p3 types.TipSetKey) (types.BigInt, error) {\n\tif s.Internal.StateMinerInitialPledgeCollateral == nil {\n\t\treturn *new(types.BigInt), ErrNotSupported\n\t}\n\treturn s.Internal.StateMinerInitialPledgeCollateral(p0, p1, p2, p3)\n}\n```",
-            "summary": "StateMinerInitialPledgeCollateral attempts to calculate the initial pledge collateral based on a SectorPreCommitInfo.\nThis method uses the DealIDs field in SectorPreCommitInfo to determine the amount of verified\ndeal space in the sector in order to perform a QAP calculation. Since network version 22 and\nthe introduction of DDO, the DealIDs field can no longer be used to reliably determine verified\ndeal space; therefore, this method is deprecated. Use StateMinerInitialPledgeForSector instead\nand pass in the verified deal space directly.\n\nDeprecated: Use StateMinerInitialPledgeForSector instead.\n",
+            "summary": "StateMinerInitialPledgeCollateral attempts to calculate the initial pledge collateral based on a SectorPreCommitInfo.\nThis method uses the DealIDs field in SectorPreCommitInfo to determine the amount of verified\ndeal space in the sector in order to perform a QAP calculation. Since network version 22 and\nthe introduction of DDO, the DealIDs field can no longer be used to reliably determine verified\ndeal space; therefore, this method is deprecated. Use StateMinerInitialPledgeForSector instead\nand pass in the verified deal space directly.\nNote: The value returned is overestimated by 10% (multiplied by 110/100).\nSee: node/impl/full/state.go StateMinerInitialPledgeCollateral implementation.\n\nDeprecated: Use StateMinerInitialPledgeForSector instead.\n",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -22218,7 +22218,7 @@
         {
             "name": "Filecoin.StateMinerInitialPledgeForSector",
             "description": "```go\nfunc (s *FullNodeStruct) StateMinerInitialPledgeForSector(p0 context.Context, p1 abi.ChainEpoch, p2 abi.SectorSize, p3 uint64, p4 types.TipSetKey) (types.BigInt, error) {\n\tif s.Internal.StateMinerInitialPledgeForSector == nil {\n\t\treturn *new(types.BigInt), ErrNotSupported\n\t}\n\treturn s.Internal.StateMinerInitialPledgeForSector(p0, p1, p2, p3, p4)\n}\n```",
-            "summary": "StateMinerInitialPledgeForSector returns the initial pledge collateral for a given sector\nduration, size, and combined size of any verified pieces within the sector. This calculation\ndepends on current network conditions (total power, total pledge and current rewards) at the\ngiven tipset.\n",
+            "summary": "StateMinerInitialPledgeForSector returns the initial pledge collateral for a given sector\nduration, size, and combined size of any verified pieces within the sector. This calculation\ndepends on current network conditions (total power, total pledge and current rewards) at the\ngiven tipset.\nNote: The value returned is overestimated by 10% (multiplied by 110/100).\nSee: node/impl/full/state.go StateMinerInitialPledgeForSector implementation.\n",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -22569,7 +22569,7 @@
         {
             "name": "Filecoin.StateMinerPreCommitDepositForPower",
             "description": "```go\nfunc (s *FullNodeStruct) StateMinerPreCommitDepositForPower(p0 context.Context, p1 address.Address, p2 miner.SectorPreCommitInfo, p3 types.TipSetKey) (types.BigInt, error) {\n\tif s.Internal.StateMinerPreCommitDepositForPower == nil {\n\t\treturn *new(types.BigInt), ErrNotSupported\n\t}\n\treturn s.Internal.StateMinerPreCommitDepositForPower(p0, p1, p2, p3)\n}\n```",
-            "summary": "StateMinerPreCommitDepositForPower returns the precommit deposit for the specified miner's sector\n",
+            "summary": "StateMinerPreCommitDepositForPower returns the precommit deposit for the specified miner's sector\nNote: The value returned is overestimated by 10% (multiplied by 110/100).\nSee: node/impl/full/state.go StateMinerPreCommitDepositForPower implementation.\n",
             "paramStructure": "by-position",
             "params": [
                 {
