@@ -26,7 +26,7 @@ var SetAddressNetwork = buildconstants.SetAddressNetwork
 var MustParseAddress = buildconstants.MustParseAddress
 
 func IsF3Enabled() bool {
-	const F3DisableEnvKey = "LOTUS_DISABLE_F3"
+	const F3DisableEnvKey = "LOTUS_DISABLE_F3_SUBSYSTEM"
 	if !buildconstants.F3Enabled {
 		// Build constant takes precedence over environment variable.
 		return false
