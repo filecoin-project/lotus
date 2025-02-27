@@ -45,6 +45,7 @@ type ExecutionTrace struct {
 	InvokedActor *ActorTrace      `json:",omitempty"`
 	GasCharges   []*GasTrace      `cborgen:"maxlen=1000000000"`
 	Subcalls     []ExecutionTrace `cborgen:"maxlen=1000000000"`
+	Logs         []string         `cborgen:"maxlen=1000000000" json:",omitempty"`
 }
 
 func (et ExecutionTrace) SumGas() GasTrace {
