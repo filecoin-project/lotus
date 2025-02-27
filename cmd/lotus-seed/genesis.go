@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/mitchellh/go-homedir"
@@ -52,6 +53,12 @@ var genesisNewCmd = &cli.Command{
 		&cli.StringFlag{
 			Name: "network-name",
 		},
+		&cli.TimestampFlag{
+			Name:        "timestamp",
+			Usage:       "The genesis timestamp specified as a RFC3339 formatted string. Example: 2025-02-27T15:04:05Z",
+			DefaultText: "No timestamp",
+			Layout:      time.RFC3339,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Args().Present() {
@@ -67,6 +74,9 @@ var genesisNewCmd = &cli.Command{
 		}
 		if out.NetworkName == "" {
 			out.NetworkName = "localnet-" + uuid.New().String()
+		}
+		if cctx.IsSet("timestamp") {
+			out.Timestamp = uint64(cctx.Timestamp("timestamp").Unix())
 		}
 
 		genb, err := json.MarshalIndent(&out, "", "  ")
