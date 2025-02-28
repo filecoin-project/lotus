@@ -2043,13 +2043,10 @@ func (a *StateAPI) StateGetNetworkParams(ctx context.Context) (*api.NetworkParam
 		return nil, err
 	}
 
-	genBlock, err := a.Chain.GetGenesis(ctx)
-	if err != nil {
+	var genesisTimestamp uint64
+	if genBlock, err := a.Chain.GetGenesis(ctx); err != nil {
 		return nil, xerrors.Errorf("getting genesis: %w", err)
-	}
-
-	genesisTimestamp := uint64(0)
-	if genBlock != nil {
+	} else if genBlock != nil {
 		genesisTimestamp = genBlock.Timestamp
 	}
 
