@@ -2043,12 +2043,23 @@ func (a *StateAPI) StateGetNetworkParams(ctx context.Context) (*api.NetworkParam
 		return nil, err
 	}
 
+	genBlock, err := a.Chain.GetGenesis(ctx)
+	if err != nil {
+		return nil, xerrors.Errorf("getting genesis: %w", err)
+	}
+
+	genesisTimestamp := uint64(0)
+	if genBlock != nil {
+		genesisTimestamp = genBlock.Timestamp
+	}
+
 	return &api.NetworkParams{
 		NetworkName:             networkName,
 		BlockDelaySecs:          buildconstants.BlockDelaySecs,
 		ConsensusMinerMinPower:  buildconstants.ConsensusMinerMinPower,
 		PreCommitChallengeDelay: buildconstants.PreCommitChallengeDelay,
 		Eip155ChainID:           buildconstants.Eip155ChainId,
+		GenesisTimestamp:        genesisTimestamp,
 		ForkUpgradeParams: api.ForkUpgradeParams{
 			UpgradeSmokeHeight:       buildconstants.UpgradeSmokeHeight,
 			UpgradeBreezeHeight:      buildconstants.UpgradeBreezeHeight,
