@@ -344,7 +344,7 @@ var keyinfoNewCmd = &cli.Command{
    string value, and a base64 encoded private key.
 
    Both the bls and secp256k1 keyfiles can be imported into a running lotus daemon using
-   the 'lotus wallet import' command. Or imported to a non-running / unitialized repo using
+   the 'lotus wallet import' command. Or imported to a non-running / uninitialized repo using
    the 'lotus-shed keyinfo import' command. Libp2p host keys can only be imported using lotus-shed
    as lotus itself does not provide this functionality at the moment.`,
 	Flags: []cli.Flag{
