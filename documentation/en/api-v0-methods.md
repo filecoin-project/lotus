@@ -4484,7 +4484,8 @@ Response:
     "UpgradeTuktukHeight": 10101,
     "UpgradeTeepHeight": 10101
   },
-  "Eip155ChainID": 123
+  "Eip155ChainID": 123,
+  "GenesisTimestamp": 42
 }
 ```
 

@@ -9584,7 +9584,8 @@
                                 "UpgradeTuktukHeight": 10101,
                                 "UpgradeTeepHeight": 10101
                             },
-                            "Eip155ChainID": 123
+                            "Eip155ChainID": 123,
+                            "GenesisTimestamp": 42
                         }
                     ],
                     "additionalProperties": false,
@@ -9726,6 +9727,10 @@
                                 }
                             },
                             "type": "object"
+                        },
+                        "GenesisTimestamp": {
+                            "title": "number",
+                            "type": "number"
                         },
                         "NetworkName": {
                             "type": "string"

@@ -6430,6 +6430,8 @@ Response:
 ### StateDealProviderCollateralBounds
 StateDealProviderCollateralBounds returns the min and max collateral a storage provider
 can issue. It takes the deal size and verified status as parameters.
+Note: The min value returned is overestimated by 10% (multiplied by 110/100).
+See: node/impl/full/state.go StateDealProviderCollateralBounds implementation.
 
 
 Perms: read
@@ -6834,7 +6836,8 @@ Response:
     "UpgradeTuktukHeight": 10101,
     "UpgradeTeepHeight": 10101
   },
-  "Eip155ChainID": 123
+  "Eip155ChainID": 123,
+  "GenesisTimestamp": 42
 }
 ```
 
@@ -7476,6 +7479,8 @@ deal space in the sector in order to perform a QAP calculation. Since network ve
 the introduction of DDO, the DealIDs field can no longer be used to reliably determine verified
 deal space; therefore, this method is deprecated. Use StateMinerInitialPledgeForSector instead
 and pass in the verified deal space directly.
+Note: The value returned is overestimated by 10% (multiplied by 110/100).
+See: node/impl/full/state.go StateMinerInitialPledgeCollateral implementation.
 
 Deprecated: Use StateMinerInitialPledgeForSector instead.
 
@@ -7519,6 +7524,8 @@ StateMinerInitialPledgeForSector returns the initial pledge collateral for a giv
 duration, size, and combined size of any verified pieces within the sector. This calculation
 depends on current network conditions (total power, total pledge and current rewards) at the
 given tipset.
+Note: The value returned is overestimated by 10% (multiplied by 110/100).
+See: node/impl/full/state.go StateMinerInitialPledgeForSector implementation.
 
 
 Perms: read
@@ -7630,6 +7637,8 @@ Response:
 
 ### StateMinerPreCommitDepositForPower
 StateMinerPreCommitDepositForPower returns the precommit deposit for the specified miner's sector
+Note: The value returned is overestimated by 10% (multiplied by 110/100).
+See: node/impl/full/state.go StateMinerPreCommitDepositForPower implementation.
 
 
 Perms: read
