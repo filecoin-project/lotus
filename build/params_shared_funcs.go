@@ -67,20 +67,13 @@ func IsF3PassiveTestingEnabled() bool {
 	}
 }
 
-// IsF3ActivationDisabledFor checks if F3 activation is disabled for the given contract address
-// or epoch number based on environment variable configuration.
-func IsF3ActivationDisabledFor(contractAddr string, epoch int64) bool {
-	if !IsF3Enabled() {
-		// If F3 is disabled entirely, then activation is also disabled
-		return true
-	}
-
+func parseF3DisableActivationEnv() (contractAddrs []string, epochs []int64) {
 	const F3DisableActivation = "LOTUS_DISABLE_F3_ACTIVATION"
 
 	v, envVarSet := os.LookupEnv(F3DisableActivation)
 	if !envVarSet || strings.TrimSpace(v) == "" {
 		// Environment variable is not set or empty, activation is not disabled
-		return false
+		return
 	}
 
 	// Parse the variable which can be in format "contract:addrs" or "epoch:epochnumber" or both
@@ -97,15 +90,38 @@ func IsF3ActivationDisabledFor(contractAddr string, epoch int64) bool {
 		switch key {
 		case "contract":
 			// If contract address matches, disable activation
-			if value != "" && value == contractAddr {
-				return true
-			}
+			contractAddrs = append(contractAddrs, value)
 		case "epoch":
 			parsedEpoch, err := strconv.ParseInt(value, 10, 64)
-			// If epoch matches, disable activation
-			if err == nil && parsedEpoch == epoch {
-				return true
+			if err == nil {
+				epochs = append(epochs, parsedEpoch)
+			} else {
+				log.Warnf("error parsing %s env variable, cannot parse epoch", F3DisableActivation)
 			}
+		}
+	}
+	return contractAddrs, epochs
+}
+
+// IsF3EpochActivationDisabledForEpoch checks if F3 activation is disabled for the given
+// epoch number based on environment variable configuration.
+func IsF3EpochActivationDisabled(epoch int64) bool {
+	_, epochs := parseF3DisableActivationEnv()
+	for _, e := range epochs {
+		if e == epoch {
+			return true
+		}
+	}
+	return false
+}
+
+// IsF3EpochActivationDisabledForContract checks if F3 activation is disabled for the given contract address
+// based on environment variable configuration.
+func IsF3ContractActivationDisabled(contract string) bool {
+	contracts, _ := parseF3DisableActivationEnv()
+	for _, c := range contracts {
+		if c == contract {
+			return true
 		}
 	}
 	return false

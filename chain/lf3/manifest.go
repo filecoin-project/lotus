@@ -54,14 +54,14 @@ func NewManifestProvider(mctx helpers.MetricsCtx, config *Config, cs *store.Chai
 
 	// Check if static manifest activation is disabled
 	staticDisabled := false
-	if config.StaticManifest != nil && build.IsF3ActivationDisabledFor("", config.StaticManifest.BootstrapEpoch) {
+	if config.StaticManifest != nil && build.IsF3EpochActivationDisabled(config.StaticManifest.BootstrapEpoch) {
 		log.Warnf("F3 activation disabled by environment configuration for bootstrap epoch %d", config.StaticManifest.BootstrapEpoch)
 		staticDisabled = true
 	}
 
 	// Check if contract manifest activation is disabled
 	contractDisabled := false
-	if config.ContractAddress != "" && build.IsF3ActivationDisabledFor(config.ContractAddress, 0) {
+	if config.ContractAddress != "" && build.IsF3ContractActivationDisabled(config.ContractAddress) {
 		log.Warnf("F3 activation disabled by environment configuration for contract %s", config.ContractAddress)
 		contractDisabled = true
 	}
