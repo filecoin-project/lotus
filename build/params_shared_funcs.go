@@ -103,7 +103,7 @@ func parseF3DisableActivationEnv() (contractAddrs []string, epochs []int64) {
 	return contractAddrs, epochs
 }
 
-// IsF3EpochActivationDisabledForEpoch checks if F3 activation is disabled for the given
+// IsF3EpochActivationDisabled checks if F3 activation is disabled for the given
 // epoch number based on environment variable configuration.
 func IsF3EpochActivationDisabled(epoch int64) bool {
 	_, epochs := parseF3DisableActivationEnv()
@@ -115,7 +115,7 @@ func IsF3EpochActivationDisabled(epoch int64) bool {
 	return false
 }
 
-// IsF3EpochActivationDisabledForContract checks if F3 activation is disabled for the given contract address
+// IsF3ContractActivationDisabled checks if F3 activation is disabled for the given contract address
 // based on environment variable configuration.
 func IsF3ContractActivationDisabled(contract string) bool {
 	contracts, _ := parseF3DisableActivationEnv()
