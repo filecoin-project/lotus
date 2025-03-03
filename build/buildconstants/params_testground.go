@@ -128,6 +128,7 @@ var (
 	F3ManifestServerID     peer.ID        = ""
 	F3BootstrapEpoch       abi.ChainEpoch = -1
 	F3InitialPowerTableCID                = cid.Undef
+	F3ParamsAddress                       = ""
 )
 
 func init() {

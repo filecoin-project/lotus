@@ -163,3 +163,5 @@ var F3InitialPowerTableCID cid.Cid = cid.MustParse("bafy2bzaceab236vmmb3n4q4tkvu
 
 // Calibnet F3 activation epoch is 2024-10-24T13:30:00Z - Epoch 2081674
 const F3BootstrapEpoch abi.ChainEpoch = UpgradeTuktukHeight + 2880
+
+var F3ParamsAddress = ""
