@@ -40,7 +40,7 @@
   # env var: LOTUS_LIBP2P_LISTENADDRESSES
   #ListenAddresses = ["/ip4/0.0.0.0/tcp/0", "/ip6/::/tcp/0", "/ip4/0.0.0.0/udp/0/quic-v1", "/ip6/::/udp/0/quic-v1", "/ip4/0.0.0.0/udp/0/quic-v1/webtransport", "/ip6/::/udp/0/quic-v1/webtransport"]
 
-  # Addresses to explicitally announce to other peers. If not specified,
+  # Addresses to explicitly announce to other peers. If not specified,
   # all interface addresses are announced
   # Format: multiaddress
   #

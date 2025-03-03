@@ -98,7 +98,7 @@ var f3CheckActivation = &cli.Command{
 		ctx := cliutil.ReqContext(cctx)
 		prov, err := lf3.NewManifestProvider(ctx, &config, nil, nil, nil, api)
 		if err != nil {
-			return fmt.Errorf("creating manifest proivder: %w", err)
+			return fmt.Errorf("creating manifest provider: %w", err)
 		}
 
 		err = prov.Start(ctx)
