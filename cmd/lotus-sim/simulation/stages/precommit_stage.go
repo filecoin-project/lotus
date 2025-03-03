@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin"
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/network"
-	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
@@ -25,10 +24,7 @@ import (
 	"github.com/filecoin-project/lotus/cmd/lotus-sim/simulation/mock"
 )
 
-const (
-	minPreCommitBatchSize = 1
-	maxPreCommitBatchSize = miner5.PreCommitSectorBatchMaxSize
-)
+const minPreCommitBatchSize = 1
 
 type PreCommitStage struct {
 	funding   Funding
@@ -196,7 +192,7 @@ func (stage *PreCommitStage) packMiner(
 	// Commit the pre-commits.
 	added := 0
 	if nv >= network.Version13 {
-		targetBatchSize := maxPreCommitBatchSize
+		targetBatchSize := len(infos)
 		for targetBatchSize >= minPreCommitBatchSize && len(infos) >= minPreCommitBatchSize {
 			batch := infos
 			if len(batch) > targetBatchSize {

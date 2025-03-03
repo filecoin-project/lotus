@@ -71,14 +71,11 @@ func TestMinerBalanceCollateral(t *testing.T) {
 					sc.CommitBatchWait = time.Hour
 
 					sc.MinCommitBatch = nSectors
-					sc.MaxPreCommitBatch = nSectors
 					sc.MaxCommitBatch = nSectors
 
 					sc.CollateralFromMinerBalance = enabled
 					sc.AvailableBalanceBuffer = big.Zero()
 					sc.DisableCollateralFallback = false
-					sc.AggregateAboveBaseFee = big.Zero()
-					sc.BatchPreCommitAboveBaseFee = big.Zero()
 
 					return sc, nil
 				}, nil
