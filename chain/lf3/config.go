@@ -110,5 +110,8 @@ func NewConfig(nn dtypes.NetworkName) *Config {
 			buildconstants.F3InitialPowerTableCID,
 		)
 	}
+	if buildconstants.F3ParamsAddress != "" {
+		c.ContractAddress = buildconstants.F3ParamsAddress
+	}
 	return c
 }
