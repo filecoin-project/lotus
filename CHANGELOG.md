@@ -18,6 +18,7 @@
 - `lotus send` now supports `--csv` option for sending multiple transactions. ([filecoin-project/lotus#12892](https://github.com/filecoin-project/lotus/pull/12892))
 - chore: upgrade to the latest go-f3 and allow F3 chain exchange topics ([filecoin-project/lotus#12893](https://github.com/filecoin-project/lotus/pull/12893)
 - chore: upgrade to a minimum Golang version of `1.23.6` ([filecoin-project/lotus#12910](https://github.com/filecoin-project/lotus/pull/12910)
+- feat: add a  `LOTUS_DISABLE_F3_ACTIVATION` enviroment variable allowing disabling F3 activation for a specific contract address or epoch ([filecoin-project/lotus#12920](https://github.com/filecoin-project/lotus/pull/12920)). The `LOTUS_DISABLE_F3` env-var has been renamed to `LOTUS_DISABLE_F3_SUBSYSTEM` to distinguish it from the other F3-related environment variables: `LOTUS_DISABLE_F3_PASSIVE_TESTING` and `LOTUS_DISABLE_F3_ACTIVATION`.
 - feat: add `GenesisTimestamp` field to `StateGetNetworkParams` response ([filecoin-project/lotus#12925](https://github.com/filecoin-project/lotus/pull/12925))
 
 # UNRELEASED v.1.32.0
