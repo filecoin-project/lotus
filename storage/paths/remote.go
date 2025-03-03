@@ -16,8 +16,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hashicorp/go-multierror"
-	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -388,7 +386,7 @@ func (r *Remote) deleteFromRemote(ctx context.Context, url string, keepIn storif
 	}
 	defer resp.Body.Close() // nolint
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		return xerrors.Errorf("non-200 code: %d", resp.StatusCode)
 	}
 
@@ -448,7 +446,7 @@ func (r *Remote) StatUrl(ctx context.Context, urlStr string, id storiface.ID) (f
 		return fsutil.FsStat{}, xerrors.Errorf("do request: %w", err)
 	}
 
-	if resp.StatusCode == 200 {
+	if resp.StatusCode == http.StatusOK {
 		var out fsutil.FsStat
 		if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
 			_ = resp.Body.Close()

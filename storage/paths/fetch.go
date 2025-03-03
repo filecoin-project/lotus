@@ -8,7 +8,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/hashicorp/go-multierror"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/storage/sealer/tarutil"
@@ -30,7 +29,7 @@ func fetch(ctx context.Context, url, outname string, header http.Header) (rerr e
 	}
 	defer resp.Body.Close() // nolint
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		return xerrors.Errorf("non-200 code: %d", resp.StatusCode)
 	}
 
