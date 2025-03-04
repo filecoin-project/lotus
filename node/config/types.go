@@ -640,6 +640,8 @@ type ChainIndexerConfig struct {
 	// - This ensures that the index is always in a consistent state with the chain before the node starts.
 	//
 	// Default: false
+	// // WARNING: Only set to true if you are okay with an index that may be out of sync with the chain.
+	// This can lead to inaccurate or missing data in RPC responses that depend on the indexer.
 	AllowIndexReconciliationFailure bool
 }
 
