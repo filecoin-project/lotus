@@ -51,60 +51,66 @@ func ChainIndexer(cfg config.ChainIndexerConfig) func(lc fx.Lifecycle, mctx help
 	}
 }
 
-func InitChainIndexer(lc fx.Lifecycle, mctx helpers.MetricsCtx, indexer index.Indexer,
+func InitChainIndexer(cfg config.ChainIndexerConfig) func(lc fx.Lifecycle, mctx helpers.MetricsCtx, indexer index.Indexer,
 	evapi EventHelperAPI, mp *messagepool.MessagePool, sm *stmgr.StateManager) {
-	ctx := helpers.LifecycleCtx(mctx, lc)
+	return func(lc fx.Lifecycle, mctx helpers.MetricsCtx, indexer index.Indexer,
+		evapi EventHelperAPI, mp *messagepool.MessagePool, sm *stmgr.StateManager) {
+		ctx := helpers.LifecycleCtx(mctx, lc)
 
-	lc.Append(fx.Hook{
-		OnStart: func(_ context.Context) error {
-			indexer.SetActorToDelegatedAddresFunc(func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool) {
-				idAddr, err := address.NewIDAddress(uint64(emitter))
+		lc.Append(fx.Hook{
+			OnStart: func(_ context.Context) error {
+				indexer.SetActorToDelegatedAddresFunc(func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool) {
+					idAddr, err := address.NewIDAddress(uint64(emitter))
+					if err != nil {
+						return address.Undef, false
+					}
+
+					actor, err := sm.LoadActor(ctx, idAddr, ts)
+					if err != nil || actor.DelegatedAddress == nil {
+						return idAddr, true
+					}
+
+					return *actor.DelegatedAddress, true
+				})
+
+				indexer.SetRecomputeTipSetStateFunc(func(ctx context.Context, ts *types.TipSet) error {
+					_, _, err := sm.RecomputeTipSetState(ctx, ts)
+					return err
+				})
+
+				ch, err := mp.Updates(ctx)
 				if err != nil {
-					return address.Undef, false
+					return err
+				}
+				go WaitForMpoolUpdates(ctx, ch, indexer)
+
+				ev, err := events.NewEvents(ctx, &evapi)
+				if err != nil {
+					return err
 				}
 
-				actor, err := sm.LoadActor(ctx, idAddr, ts)
-				if err != nil || actor.DelegatedAddress == nil {
-					return idAddr, true
+				// Tipset listener
+
+				// `ObserveAndBlock` returns the current head and guarantees that it will call the observer with all future tipsets
+				head, unlockObserver, err := ev.ObserveAndBlock(indexer)
+				if err != nil {
+					return xerrors.Errorf("error while observing tipsets: %w", err)
 				}
-
-				return *actor.DelegatedAddress, true
-			})
-
-			indexer.SetRecomputeTipSetStateFunc(func(ctx context.Context, ts *types.TipSet) error {
-				_, _, err := sm.RecomputeTipSetState(ctx, ts)
-				return err
-			})
-
-			ch, err := mp.Updates(ctx)
-			if err != nil {
-				return err
-			}
-			go WaitForMpoolUpdates(ctx, ch, indexer)
-
-			ev, err := events.NewEvents(ctx, &evapi)
-			if err != nil {
-				return err
-			}
-
-			// Tipset listener
-
-			// `ObserveAndBlock` returns the current head and guarantees that it will call the observer with all future tipsets
-			head, unlockObserver, err := ev.ObserveAndBlock(indexer)
-			if err != nil {
-				return xerrors.Errorf("error while observing tipsets: %w", err)
-			}
-			if err := indexer.ReconcileWithChain(ctx, head); err != nil {
+				if err := indexer.ReconcileWithChain(ctx, head); err != nil {
+					unlockObserver()
+					if !cfg.AllowIndexReconciliationFailure {
+						return xerrors.Errorf("error while reconciling chain index with chain state: %w", err)
+					}
+					log.Warnf("error while reconciling chain index with chain state: %s", err)
+				}
 				unlockObserver()
-				return xerrors.Errorf("error while reconciling chain index with chain state: %w", err)
-			}
-			unlockObserver()
 
-			indexer.Start()
+				indexer.Start()
 
-			return nil
-		},
-	})
+				return nil
+			},
+		})
+	}
 }
 
 func ChainIndexHandler(cfg config.ChainIndexerConfig) func(helpers.MetricsCtx, repo.LockedRepo, fx.Lifecycle, index.Indexer) (*full.ChainIndexHandler, error) {
