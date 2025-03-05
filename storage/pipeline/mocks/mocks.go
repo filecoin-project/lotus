@@ -16,7 +16,7 @@ import (
 	bitfield "github.com/filecoin-project/go-bitfield"
 	abi "github.com/filecoin-project/go-state-types/abi"
 	big "github.com/filecoin-project/go-state-types/big"
-	miner "github.com/filecoin-project/go-state-types/builtin/v13/miner"
+	miner "github.com/filecoin-project/go-state-types/builtin/v16/miner"
 	miner0 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	verifreg "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	crypto "github.com/filecoin-project/go-state-types/crypto"

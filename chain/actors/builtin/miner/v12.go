@@ -13,6 +13,7 @@ import (
 	rle "github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/big"
 	builtin12 "github.com/filecoin-project/go-state-types/builtin"
 	miner12 "github.com/filecoin-project/go-state-types/builtin/v12/miner"
 	adt12 "github.com/filecoin-project/go-state-types/builtin/v12/util/adt"
@@ -535,7 +536,7 @@ func fromV12SectorOnChainInfo(v12 miner12.SectorOnChainInfo) SectorOnChainInfo {
 		SectorNumber:          v12.SectorNumber,
 		SealProof:             v12.SealProof,
 		SealedCID:             v12.SealedCID,
-		DealIDs:               v12.DealIDs,
+		DeprecatedDealIDs:     v12.DealIDs,
 		Activation:            v12.Activation,
 		Expiration:            v12.Expiration,
 		DealWeight:            v12.DealWeight,
@@ -543,12 +544,11 @@ func fromV12SectorOnChainInfo(v12 miner12.SectorOnChainInfo) SectorOnChainInfo {
 		InitialPledge:         v12.InitialPledge,
 		ExpectedDayReward:     v12.ExpectedDayReward,
 		ExpectedStoragePledge: v12.ExpectedStoragePledge,
-
-		SectorKeyCID: v12.SectorKeyCID,
-
-		PowerBaseEpoch:    v12.PowerBaseEpoch,
-		ReplacedDayReward: v12.ReplacedDayReward,
-		Flags:             SectorOnChainInfoFlags(v12.Flags),
+		SectorKeyCID:          v12.SectorKeyCID,
+		PowerBaseEpoch:        v12.PowerBaseEpoch,
+		ReplacedDayReward:     v12.ReplacedDayReward,
+		Flags:                 SectorOnChainInfoFlags(v12.Flags),
+		DailyFee:              big.Zero(),
 	}
 	return info
 }

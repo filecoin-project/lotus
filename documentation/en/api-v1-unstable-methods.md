@@ -7283,7 +7283,7 @@ Response:
     "SealedCID": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
-    "DealIDs": [
+    "DeprecatedDealIDs": [
       5432
     ],
     "Activation": 10101,
@@ -7298,7 +7298,8 @@ Response:
     "SectorKeyCID": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
-    "Flags": 0
+    "Flags": 0,
+    "DailyFee": "0"
   }
 ]
 ```
@@ -7832,7 +7833,7 @@ Response:
     "SealedCID": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
-    "DealIDs": [
+    "DeprecatedDealIDs": [
       5432
     ],
     "Activation": 10101,
@@ -7847,7 +7848,8 @@ Response:
     "SectorKeyCID": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
-    "Flags": 0
+    "Flags": 0,
+    "DailyFee": "0"
   }
 ]
 ```
@@ -8213,7 +8215,7 @@ Response:
   "SealedCID": {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
-  "DealIDs": [
+  "DeprecatedDealIDs": [
     5432
   ],
   "Activation": 10101,
@@ -8228,7 +8230,8 @@ Response:
   "SectorKeyCID": {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
-  "Flags": 0
+  "Flags": 0,
+  "DailyFee": "0"
 }
 ```
 

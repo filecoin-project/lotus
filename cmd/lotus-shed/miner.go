@@ -763,7 +763,7 @@ var minerLockedVestedCmd = &cli.Command{
 					return err
 				}
 				var locked bool
-				for _, f := range vf.Funds {
+				for _, f := range vf {
 					if f.Epoch < staleEpoch {
 						if _, ok := miners[addr]; !ok {
 							miners[addr] = f.Amount
@@ -860,7 +860,7 @@ var minerListVestingCmd = &cli.Command{
 			}
 			_, _ = fmt.Fprintln(cctx.App.Writer, string(jb))
 		} else {
-			for _, f := range vf.Funds {
+			for _, f := range vf {
 				_, _ = fmt.Fprintf(cctx.App.Writer, "Epoch %d: %s\n", f.Epoch, types.FIL(f.Amount))
 			}
 		}
