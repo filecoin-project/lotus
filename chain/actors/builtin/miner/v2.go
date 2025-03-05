@@ -13,6 +13,7 @@ import (
 	rle "github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/manifest"
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
@@ -532,7 +533,7 @@ func fromV2SectorOnChainInfo(v2 miner2.SectorOnChainInfo) SectorOnChainInfo {
 		SectorNumber:          v2.SectorNumber,
 		SealProof:             v2.SealProof,
 		SealedCID:             v2.SealedCID,
-		DealIDs:               v2.DealIDs,
+		DeprecatedDealIDs:     v2.DealIDs,
 		Activation:            v2.Activation,
 		Expiration:            v2.Expiration,
 		DealWeight:            v2.DealWeight,
@@ -540,6 +541,7 @@ func fromV2SectorOnChainInfo(v2 miner2.SectorOnChainInfo) SectorOnChainInfo {
 		InitialPledge:         v2.InitialPledge,
 		ExpectedDayReward:     v2.ExpectedDayReward,
 		ExpectedStoragePledge: v2.ExpectedStoragePledge,
+		DailyFee:              big.Zero(),
 	}
 	return info
 }
