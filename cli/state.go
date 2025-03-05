@@ -1505,7 +1505,7 @@ var StateSectorCmd = &cli.Command{
 		if si.SectorKeyCID != nil {
 			fmt.Println("SectorKeyCID: ", si.SectorKeyCID)
 		}
-		fmt.Println("DealIDs: ", si.DealIDs)
+		fmt.Println("DealIDs (deprecated): ", si.DeprecatedDealIDs)
 		fmt.Println()
 		fmt.Println("Activation: ", cliutil.EpochTimeTs(ts.Height(), si.Activation, ts))
 		fmt.Println("Expiration: ", cliutil.EpochTimeTs(ts.Height(), si.Expiration, ts))
