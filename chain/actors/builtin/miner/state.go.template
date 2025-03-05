@@ -4,12 +4,12 @@ import (
     "fmt"
 	"bytes"
 	"errors"
-{{if (le .v 1)}}
-	"github.com/filecoin-project/go-state-types/big"
-{{end}}
 	"github.com/filecoin-project/go-bitfield"
 	rle "github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/go-state-types/abi"
+{{- if (le .v 15)}}
+	"github.com/filecoin-project/go-state-types/big"
+{{- end}}
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -573,7 +573,7 @@ func fromV{{.v}}SectorOnChainInfo(v{{.v}} miner{{.v}}.SectorOnChainInfo) SectorO
 		SectorNumber:          v{{.v}}.SectorNumber,
 		SealProof:             v{{.v}}.SealProof,
 		SealedCID:             v{{.v}}.SealedCID,
-		DealIDs:               v{{.v}}.DealIDs,
+		DeprecatedDealIDs:     v{{.v}}.{{if (ge .v 16)}}Deprecated{{end}}DealIDs,
 		Activation:            v{{.v}}.Activation,
 		Expiration:            v{{.v}}.Expiration,
 		DealWeight:            v{{.v}}.DealWeight,
@@ -581,14 +581,19 @@ func fromV{{.v}}SectorOnChainInfo(v{{.v}} miner{{.v}}.SectorOnChainInfo) SectorO
 		InitialPledge:         v{{.v}}.InitialPledge,
 		ExpectedDayReward:     v{{.v}}.ExpectedDayReward,
 		ExpectedStoragePledge: v{{.v}}.ExpectedStoragePledge,
-		{{if (ge .v 7)}}
+		{{- if (ge .v 7)}}
 		SectorKeyCID: v{{.v}}.SectorKeyCID,
-                {{end}}
-		{{if (ge .v 12)}}
+		{{- end}}
+		{{- if (ge .v 12)}}
 		PowerBaseEpoch:        v{{.v}}.PowerBaseEpoch,
 		ReplacedDayReward:     v{{.v}}.ReplacedDayReward,
 		Flags:                 SectorOnChainInfoFlags(v{{.v}}.Flags),
-                {{end}}
+		{{- end}}
+		{{- if (ge .v 16)}}
+		DailyFee:              v{{.v}}.DailyFee,
+		{{- else}}
+		DailyFee:              big.Zero(),
+		{{- end}}
 	}
 	return info
 }
