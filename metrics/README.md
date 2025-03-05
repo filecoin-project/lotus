@@ -97,6 +97,13 @@ You can confirm everything is setup correctly by visiting:
 5. Select the Prometheus datasource you created earlier
 6. Click "Import"
 
+### Available Dashboards
+
+The repository includes several pre-configured dashboards that can be imported:
+
+- **F3Dashboard.json**: A comprehensive dashboard for monitoring F3 metrics, including GPBFT instance completion rates, error counts by type, phase transitions, and encoding performance. This is ideal for monitoring the health and performance of your F3 system.
+- **MessageExecution.json**: Provides insights into message execution metrics, with a focus on ApplyBlocks timing data.
+
 # Collect system metrics using node_exporter
 
 Although Lotus includes many useful metrics it does not include system metrics, such as information about cpu, memory, disk, network, etc. If you are investigating an issue and have Lotus metrics available, its often very useful to correlate certain events or behaviour with general system metrics.
