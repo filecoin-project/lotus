@@ -516,7 +516,7 @@ func createSectorsAMT(ctx context.Context, t *testing.T, store adt2.Store, secto
 			SectorNumber:          sector.SectorNumber,
 			SealProof:             sector.SealProof,
 			SealedCID:             sector.SealedCID,
-			DealIDs:               sector.DealIDs,
+			DealIDs:               sector.DeprecatedDealIDs,
 			Activation:            sector.Activation,
 			Expiration:            sector.Expiration,
 			DealWeight:            sector.DealWeight,
@@ -539,11 +539,11 @@ func createSectorsAMT(ctx context.Context, t *testing.T, store adt2.Store, secto
 func newSectorOnChainInfo(sectorNo abi.SectorNumber, sealed cid.Cid, weight big.Int, activation, expiration abi.ChainEpoch) miner.SectorOnChainInfo {
 	info := newSectorPreCommitInfo(sectorNo, sealed, expiration)
 	return miner.SectorOnChainInfo{
-		SectorNumber: info.SectorNumber,
-		SealProof:    info.SealProof,
-		SealedCID:    info.SealedCID,
-		DealIDs:      info.DealIDs,
-		Expiration:   info.Expiration,
+		SectorNumber:      info.SectorNumber,
+		SealProof:         info.SealProof,
+		SealedCID:         info.SealedCID,
+		DeprecatedDealIDs: info.DealIDs,
+		Expiration:        info.Expiration,
 
 		Activation:            activation,
 		DealWeight:            weight,
@@ -551,6 +551,7 @@ func newSectorOnChainInfo(sectorNo abi.SectorNumber, sealed cid.Cid, weight big.
 		InitialPledge:         big.Zero(),
 		ExpectedDayReward:     big.Zero(),
 		ExpectedStoragePledge: big.Zero(),
+		DailyFee:              big.Zero(),
 	}
 }
 

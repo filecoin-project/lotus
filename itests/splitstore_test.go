@@ -16,7 +16,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
-	miner8 "github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	miner16 "github.com/filecoin-project/go-state-types/builtin/v16/miner"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 	power6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/power"
@@ -447,7 +447,7 @@ func (g *Garbager) mInfoCid(ctx context.Context) cid.Cid {
 	require.NoError(g.t, err)
 	raw, err := g.node.ChainReadObj(ctx, act.Head)
 	require.NoError(g.t, err)
-	var mSt miner8.State
+	var mSt miner16.State
 	require.NoError(g.t, mSt.UnmarshalCBOR(bytes.NewReader(raw)))
 
 	//	return infoCid
