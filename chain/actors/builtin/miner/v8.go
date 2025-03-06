@@ -531,7 +531,7 @@ func fromV8SectorOnChainInfo(v8 miner8.SectorOnChainInfo) SectorOnChainInfo {
 		SectorNumber:          v8.SectorNumber,
 		SealProof:             v8.SealProof,
 		SealedCID:             v8.SealedCID,
-		DealIDs:               v8.DealIDs,
+		DeprecatedDealIDs:     v8.DealIDs,
 		Activation:            v8.Activation,
 		Expiration:            v8.Expiration,
 		DealWeight:            v8.DealWeight,

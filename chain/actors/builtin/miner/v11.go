@@ -535,7 +535,7 @@ func fromV11SectorOnChainInfo(v11 miner11.SectorOnChainInfo) SectorOnChainInfo {
 		SectorNumber:          v11.SectorNumber,
 		SealProof:             v11.SealProof,
 		SealedCID:             v11.SealedCID,
-		DealIDs:               v11.DealIDs,
+		DeprecatedDealIDs:     v11.DealIDs,
 		Activation:            v11.Activation,
 		Expiration:            v11.Expiration,
 		DealWeight:            v11.DealWeight,
