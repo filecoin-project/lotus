@@ -1,5 +1,11 @@
 on:
   workflow_call:
+    inputs:
+      run_very_expensive_tests:
+        description: 'Run very expensive tests'
+        required: false
+        default: false
+        type: boolean
 
 defaults:
   run:
@@ -172,7 +178,7 @@ jobs:
           SKIP_CONFORMANCE: ${{ fromJson(steps.group.outputs.metadata).skip_conformance && '1' || '0' }}
           TEST_RUSTPROOFS_LOGS: ${{ fromJson(steps.group.outputs.metadata).test_rust_proofs_logs && '1' || '0' }}
           LOTUS_RUN_EXPENSIVE_TESTS: 1
-          LOTUS_RUN_VERY_EXPENSIVE_TESTS: 0
+          LOTUS_RUN_VERY_EXPENSIVE_TESTS: ${{ inputs.run_very_expensive_tests && '1' || '0' }}
           FORMAT: ${{ fromJson(steps.group.outputs.metadata).format || 'standard-verbose' }}
           PACKAGES: ${{ join(fromJson(steps.group.outputs.metadata).packages, ' ') }}
         run: |

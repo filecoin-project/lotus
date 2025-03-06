@@ -1,0 +1,53 @@
+name: Very Expensive Test
+
+on:
+  pull_request:
+    types:
+      - labeled
+  schedule:
+    - cron: '0 0 * * *' # Runs nightly at 0AM UTC
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  test:
+    if: github.event.label.name == 'need/very-expensive-tests'
+    uses: ./.github/workflows/reusable-test.yml
+    with:
+      run_very_expensive_tests: true
+  label:
+    if: always() && github.event.label.name == 'need/very-expensive-tests'
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Remove label
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            github.rest.issues.removeLabel({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: context.event.label.name
+            })
+  issue:
+    if: always() && github.event_name == 'schedule' && needs.test.result != 'success'
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create issue
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Very expensive test run failed',
+              body: 'The very expensive test run failed. See [the workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.',
+              labels: ['area/very-expensive-tests']
+            })
