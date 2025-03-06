@@ -177,6 +177,12 @@ func NewEnsemble(t *testing.T, opts ...EnsembleOpt) *Ensemble {
 
 	buildconstants.EquivocationDelaySecs = 0
 
+	// See FIP-0100; we manually set these to the 2k network settings for itests not run with -tags 2k
+	buildconstants.UpgradeAssemblyHeight = -1   // for GetVMCirculatingSupplyDetailed() to adjust FilReserved
+	cs, err := types.ParseFIL("1300000000 FIL") // brings us to a CS of ~600M
+	require.NoError(t, err)
+	buildconstants.UpgradeTeepInitialFilReserved = cs.Int
+
 	return n
 }
 
