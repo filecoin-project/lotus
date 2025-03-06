@@ -17,4 +17,5 @@ permissions:
 
 jobs:
   test:
+    name: Test
     uses: ./.github/workflows/reusable-test.yml

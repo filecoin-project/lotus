@@ -244,7 +244,7 @@ func getRunners(testGroupName string) []Runner {
 
 func getHasVeryExpensiveTests(testGroupName string) bool {
 	testGroupNames := []string{
-		"niporep-manual",
+		"itest-niporep_manual",
 	}
 	return contains(testGroupNames, testGroupName)
 }
