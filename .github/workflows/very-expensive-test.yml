@@ -22,7 +22,6 @@ jobs:
   label:
     name: Label
     if: github.event.label.name == 'need/very-expensive-tests'
-    needs: test
     runs-on: ubuntu-latest
     steps:
       - name: Remove label
