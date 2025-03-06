@@ -34,6 +34,7 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
   cache:
     name: Cache Dependencies
+    if: (!inputs.run_very_expensive_tests)
     runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
