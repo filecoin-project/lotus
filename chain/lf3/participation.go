@@ -130,9 +130,8 @@ func (p *Participant) tryGetF3ParticipationTicket(ctx context.Context, previousT
 			log.Errorw("Cannot participate in F3 as it is disabled.", "err", err)
 			return api.F3ParticipationTicket{}, xerrors.Errorf("acquiring F3 participation ticket: %w", err)
 		case err != nil:
-			log.Errorw("Failed to acquire F3 participation ticket; retrying after backoff", "backoff", p.backoff.Duration(), "err", err)
+			log.Debugw("Failed to acquire F3 participation ticket; retrying after backoff", "backoff", p.backoff.Duration(), "attempts", p.backoff.Attempt(), "err", err)
 			p.backOff(ctx)
-			log.Debugw("Reattempting to acquire F3 participation ticket.", "attempts", p.backoff.Attempt())
 			continue
 		default:
 			log.Debug("Successfully acquired F3 participation ticket")
