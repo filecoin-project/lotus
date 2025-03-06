@@ -1776,8 +1776,7 @@
                         "mode": "absolute",
                         "steps": [
                             {
-                                "color": "green",
-                                "value": null
+                                "color": "green"
                             },
                             {
                                 "color": "red",
@@ -2203,6 +2202,127 @@
                 }
             ],
             "title": "RPC Rate",
+            "type": "timeseries"
+        },
+        {
+            "collapsed": false,
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 92
+            },
+            "id": 109,
+            "panels": [],
+            "title": "Validation",
+            "type": "row"
+        },
+        {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+            },
+            "description": "Time spent on validating messages",
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisBorderShow": false,
+                        "axisCenteredZero": false,
+                        "axisColorMode": "text",
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "barAlignment": 0,
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "insertNulls": false,
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "auto",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green"
+                            },
+                            {
+                                "color": "red",
+                                "value": 80
+                            }
+                        ]
+                    },
+                    "unit": "s"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 8,
+                "w": 12,
+                "x": 0,
+                "y": 93
+            },
+            "id": 110,
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": true
+                },
+                "tooltip": {
+                    "mode": "single",
+                    "sort": "none"
+                }
+            },
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "${DS_PROMETHEUS}"
+                    },
+                    "editorMode": "code",
+                    "expr": "histogram_quantile(0.99, sum(rate(f3_validation_time_seconds_bucket{otel_scope_name=\"f3\",result=\"accepted\"}[$__rate_interval])) by (le))",
+                    "instant": false,
+                    "legendFormat": "p99",
+                    "range": true,
+                    "refId": "A"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "${DS_PROMETHEUS}"
+                    },
+                    "editorMode": "code",
+                    "expr": "histogram_quantile(0.50, sum(rate(f3_validation_time_seconds_bucket{otel_scope_name=\"f3\",result=\"accepted\"}[$__rate_interval])) by (le))",
+                    "instant": false,
+                    "legendFormat": "p50",
+                    "range": true,
+                    "refId": "B"
+                }
+            ],
+            "title": "Validation Time per accepted message",
             "type": "timeseries"
         }
     ],
