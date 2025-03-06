@@ -26,9 +26,11 @@ jobs:
           submodules: 'recursive'
           fetch-depth: 0
       - id: list_test_group_execution_contexts
+        env:
+          VERY_EXPENSIVE_TESTS_RUN: ${{ inputs.run_very_expensive_tests }}
         run: |
           echo "test_group_execution_contexts<<EOF" >> $GITHUB_OUTPUT
-          go run ./cmd/ci/main.go --json list-test-group-execution-contexts | jq -r '.msg' | tee -a $GITHUB_OUTPUT
+          go run ./cmd/ci/main.go --json --very-expensive-tests-run=$VERY_EXPENSIVE_TESTS_RUN list-test-group-execution-contexts | jq -r '.msg' | tee -a $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
   cache:
     name: Cache Dependencies

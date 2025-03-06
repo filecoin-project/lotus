@@ -63,6 +63,12 @@ func main() {
 			{
 				Name:  "list-test-group-execution-contexts",
 				Usage: "List all test group execution contexts",
+				Flags: []cli.Flag{
+					&cli.BoolFlag{
+						Name:  "very-expensive-tests-run",
+						Usage: "Whether the groups not containing any very expensive tests should be filtered out",
+					},
+				},
 				Action: func(c *cli.Context) error {
 					integrationTestGroups, err := getIntegrationTestGroups()
 					if err != nil {
@@ -71,6 +77,15 @@ func main() {
 					unitTestGroups := getUnitTestGroups()
 					otherTestGroups := getOtherTestGroups()
 					groups := append(append(integrationTestGroups, unitTestGroups...), otherTestGroups...)
+					if c.Bool("very-expensive-tests-run") {
+						var filteredGroups []TestGroupExecutionContext
+						for _, group := range groups {
+							if getHasVeryExpensiveTests(group.Name) {
+								filteredGroups = append(filteredGroups, group)
+							}
+						}
+						groups = filteredGroups
+					}
 					b, err := json.MarshalIndent(groups, "", "  ")
 					if err != nil {
 						log.Fatal(err)
@@ -225,6 +240,13 @@ func getRunners(testGroupName string) []Runner {
 	}
 
 	return []Runner{linux_x64}
+}
+
+func getHasVeryExpensiveTests(testGroupName string) bool {
+	testGroupNames := []string{
+		"niporep-manual",
+	}
+	return contains(testGroupNames, testGroupName)
 }
 
 func getTestGroupMetadata(testGroupName string) TestGroupMetadata {
