@@ -1,6 +1,6 @@
 # Lotus changelog
 
-> **Historical Note**  
+> **Historical Note**
 > Previous changelog entries are archived in:
 > * [CHANGELOG_0.x.md](./documentation/changelog/CHANGELOG_0.x.md) - v0.1.0 to v0.9.1
 > * [CHANGELOG_1.0x.md](./documentation/changelog/CHANGELOG_1.0x.md) - v1.0.0 to v1.9.0
@@ -8,7 +8,7 @@
 > * [CHANGELOG_1.2x.md](./documentation/changelog/CHANGELOG_1.2x.md) - v1.20.0 to v1.29.2
 
 # UNRELEASED
-
+- Allow users to start node even if Index Reconciliation fails (https://github.com/filecoin-project/lotus/pull/12930)
 - Exposed `StateGetNetworkParams` in the Lotus Gateway API ([filecoin-project/lotus#12881](https://github.com/filecoin-project/lotus/pull/12881))
 - **BREAKING**: Removed `SupportedProofTypes` from `StateGetNetworkParams` response as it was unreliable and didn't match FVM's actual supported proofs ([filecoin-project/lotus#12881](https://github.com/filecoin-project/lotus/pull/12881))
 - refactor(eth): attach ToFilecoinMessage converter to EthCall method for improved package/module import structure. This change also exports the converter as a public method, enhancing usability for developers utilizing Lotus as a library. ([filecoin-project/lotus#12844](https://github.com/filecoin-project/lotus/pull/12844))
@@ -171,7 +171,7 @@ Network Version: 24
 Actor Version: 15
 Manifest CID: bafy2bzaceakwje2hyinucrhgtsfo44p54iw4g6otbv5ghov65vajhxgntr53u
 
-Actor             CID  
+Actor             CID
 account           bafk2bzacecia5zacqt4gvd4z7275lnkhgraq75shy63cphakphhw6crf4joii
 cron              bafk2bzacecbyx7utt3tkvhqnfk64kgtlt5jlvv56o2liwczikgzfowk2cvqvk
 datacap           bafk2bzacecrypcpyzidphfl3sf3vhrjbiwzu7w3hoole45wsk2bqpverw4tni

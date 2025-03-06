@@ -628,6 +628,21 @@ type ChainIndexerConfig struct {
 	// Note: Setting this value too low may result in incomplete indexing, while setting it too high
 	// may increase startup time.
 	MaxReconcileTipsets uint64
+
+	// AllowIndexReconciliationFailure determines whether node startup should continue
+	// if the index reconciliation with the chain state fails.
+	//
+	// When set to true:
+	// - If index reconciliation fails during startup, the node will log a warning but continue to start.
+	//
+	// When set to false (default):
+	// - If index reconciliation fails during startup, the node will fail to start.
+	// - This ensures that the index is always in a consistent state with the chain before the node starts.
+	//
+	// Default: false
+	// // WARNING: Only set to true if you are okay with an index that may be out of sync with the chain.
+	// This can lead to inaccurate or missing data in RPC responses that depend on the indexer.
+	AllowIndexReconciliationFailure bool
 }
 
 type HarmonyDB struct {
