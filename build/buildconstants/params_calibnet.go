@@ -102,9 +102,6 @@ const UpgradeWaffleHeight = 1779094
 // 2024-10-23T13:30:00Z
 const UpgradeTuktukHeight = 2078794
 
-// 2025-03-25T23:00:00Z
-const UpgradeTeepHeight = 2520574
-
 // FIP-0081: for the power actor state for pledge calculations.
 // UpgradeTuktukPowerRampDurationEpochs ends up in the power actor state after
 // Tuktuk migration. along with a RampStartEpoch matching the upgrade height.
@@ -112,6 +109,11 @@ const UpgradeTeepHeight = 2520574
 // For calibrationnet, we set this to 3 days so we can observe and confirm the
 // ramp behavior before mainnet upgrade.
 var UpgradeTuktukPowerRampDurationEpochs = uint64(builtin.EpochsInDay * 3)
+
+// 2025-03-25T23:00:00Z
+const UpgradeTeepHeight = 2520574
+
+var UpgradeTeepInitialFilReserved = wholeFIL(1_200_000_000) // FIP-0100: 300M -> 1.2B FIL
 
 var ConsensusMinerMinPower = abi.NewStoragePower(32 << 30)
 var PreCommitChallengeDelay = abi.ChainEpoch(150)

@@ -34,11 +34,9 @@ var ZeroAddress = buildconstants.ZeroAddress // Deprecated: Use buildconstants.Z
 
 var Devnet = buildconstants.Devnet // Deprecated: Use buildconstants.Devnet instead
 
-var FilBase = buildconstants.FilBase                             // Deprecated: Use buildconstants.FilBase instead
-var FilAllocStorageMining = buildconstants.FilAllocStorageMining // Deprecated: Use buildconstants.FilAllocStorageMining instead
+var FilBase = buildconstants.FilBase // Deprecated: Use buildconstants.FilBase instead
 
 var FilecoinPrecision = buildconstants.FilecoinPrecision // Deprecated: Use buildconstants.FilecoinPrecision instead
-var FilReserved = buildconstants.FilReserved             // Deprecated: Use buildconstants.FilReserved instead
 
 var InitialRewardBalance = buildconstants.InitialRewardBalance // Deprecated: Use buildconstants.InitialRewardBalance instead
 var InitialFilReserved = buildconstants.InitialFilReserved     // Deprecated: Use buildconstants.InitialFilReserved instead
