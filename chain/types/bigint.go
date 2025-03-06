@@ -31,46 +31,51 @@ func BigFromBytes(b []byte) BigInt {
 }
 
 func BigFromString(s string) (BigInt, error) {
-	v, ok := big.NewInt(0).SetString(s, 10)
-	if !ok {
-		return BigInt{}, fmt.Errorf("failed to parse string as a big int")
-	}
-
-	return BigInt{Int: v}, nil
+	return big2.FromString(s)
 }
 
 func BigMul(a, b BigInt) BigInt {
-	return BigInt{Int: big.NewInt(0).Mul(a.Int, b.Int)}
+	return big2.Mul(a, b)
 }
 
 func BigDiv(a, b BigInt) BigInt {
-	return BigInt{Int: big.NewInt(0).Div(a.Int, b.Int)}
+	return big2.Div(a, b)
 }
 
 func BigDivFloat(num, den BigInt) float64 {
+	if den.NilOrZero() {
+		panic("divide by zero")
+	}
+	if num.NilOrZero() {
+		return 0
+	}
 	res, _ := new(big.Rat).SetFrac(num.Int, den.Int).Float64()
 	return res
 }
 
 func BigMod(a, b BigInt) BigInt {
-	return BigInt{Int: big.NewInt(0).Mod(a.Int, b.Int)}
+	return big2.Mod(a, b)
 }
 
 func BigAdd(a, b BigInt) BigInt {
-	return BigInt{Int: big.NewInt(0).Add(a.Int, b.Int)}
+	return big2.Add(a, b)
 }
 
 func BigSub(a, b BigInt) BigInt {
-	return BigInt{Int: big.NewInt(0).Sub(a.Int, b.Int)}
+	return big2.Sub(a, b)
 }
 
 func BigCmp(a, b BigInt) int {
-	return a.Int.Cmp(b.Int)
+	return big2.Cmp(a, b)
 }
 
 var byteSizeUnits = []string{"B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB"}
 
 func SizeStr(bi BigInt) string {
+	if bi.NilOrZero() {
+		return "0 B"
+	}
+
 	r := new(big.Rat).SetInt(bi.Int)
 	den := big.NewRat(1, 1024)
 
@@ -87,6 +92,10 @@ func SizeStr(bi BigInt) string {
 var deciUnits = []string{"", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"}
 
 func DeciStr(bi BigInt) string {
+	if bi.NilOrZero() {
+		return "0 B"
+	}
+
 	r := new(big.Rat).SetInt(bi.Int)
 	den := big.NewRat(1, 1024)
 
