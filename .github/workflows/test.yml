@@ -181,7 +181,9 @@ jobs:
           LOTUS_SRC_DIR: ${{ github.workspace }}
           REPORTS_PATH: ${{ steps.reports.outputs.path }}
           SKIP_CONFORMANCE: ${{ fromJson(steps.group.outputs.metadata).skip_conformance && '1' || '0' }}
-          TEST_RUSTPROOFS_LOGS: ${{ fromJson(steps.group.outputs.metadata).test_rustproofs_logs && '1' || '0' }}
+          TEST_RUSTPROOFS_LOGS: ${{ fromJson(steps.group.outputs.metadata).test_rust_proofs_logs && '1' || '0' }}
+          LOTUS_RUN_EXPENSIVE_TESTS: 1
+          LOTUS_RUN_VERY_EXPENSIVE_TESTS: 0
           FORMAT: ${{ fromJson(steps.group.outputs.metadata).format || 'standard-verbose' }}
           PACKAGES: ${{ join(fromJson(steps.group.outputs.metadata).packages, ' ') }}
         run: |
