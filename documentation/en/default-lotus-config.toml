@@ -348,6 +348,24 @@
   # env var: LOTUS_CHAININDEXER_MAXRECONCILETIPSETS
   #MaxReconcileTipsets = 8640
 
+  # AllowIndexReconciliationFailure determines whether node startup should continue
+  # if the index reconciliation with the chain state fails.
+  # 
+  # When set to true:
+  # - If index reconciliation fails during startup, the node will log a warning but continue to start.
+  # 
+  # When set to false (default):
+  # - If index reconciliation fails during startup, the node will fail to start.
+  # - This ensures that the index is always in a consistent state with the chain before the node starts.
+  # 
+  # Default: false
+  # // WARNING: Only set to true if you are okay with an index that may be out of sync with the chain.
+  # This can lead to inaccurate or missing data in RPC responses that depend on the indexer.
+  #
+  # type: bool
+  # env var: LOTUS_CHAININDEXER_ALLOWINDEXRECONCILIATIONFAILURE
+  #AllowIndexReconciliationFailure = false
+
 
 [FaultReporter]
   # EnableConsensusFaultReporter controls whether the node will monitor and
