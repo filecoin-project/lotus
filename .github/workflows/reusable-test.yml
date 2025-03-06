@@ -116,6 +116,7 @@ jobs:
           path: jobs.cache.${{ runner.os }}.${{ runner.arch }}.outputs.json
   test:
     needs: [discover, cache]
+    if: (!cancelled()) && needs.discover.result == 'success'
     name: Test (${{ matrix.name }}) ${{ toJson(matrix.runner) }}
     runs-on: ${{ matrix.runner }}
     strategy:
