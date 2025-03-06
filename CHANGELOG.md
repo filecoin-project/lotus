@@ -20,8 +20,9 @@
 - chore: upgrade to a minimum Golang version of `1.23.6` ([filecoin-project/lotus#12910](https://github.com/filecoin-project/lotus/pull/12910)
 - feat: add a  `LOTUS_DISABLE_F3_ACTIVATION` enviroment variable allowing disabling F3 activation for a specific contract address or epoch ([filecoin-project/lotus#12920](https://github.com/filecoin-project/lotus/pull/12920)). The `LOTUS_DISABLE_F3` env-var has been renamed to `LOTUS_DISABLE_F3_SUBSYSTEM` to distinguish it from the other F3-related environment variables: `LOTUS_DISABLE_F3_PASSIVE_TESTING` and `LOTUS_DISABLE_F3_ACTIVATION`.
 - feat: add `GenesisTimestamp` field to `StateGetNetworkParams` response ([filecoin-project/lotus#12925](https://github.com/filecoin-project/lotus/pull/12925))
-- chore: upgrade drand client
+- chore: upgrade drand client. ([filecoin-project/lotus#12830](https://github.com/filecoin-project/lotus/pull/12830))
 - chore: upgrade go-state-types with big.Int{} change that means an empty big.Int is now treated as zero for all operations ([filecoin-project/lotus#12936](https://github.com/filecoin-project/lotus/pull/12936))
+- fix!: change circulating supply calculation for calibnet, butterflynet and 2k for nv25 upgrade. ([filecoin-project/lotus#12938](https://github.com/filecoin-project/lotus/pull/12938))
 
 # UNRELEASED v.1.32.0
 

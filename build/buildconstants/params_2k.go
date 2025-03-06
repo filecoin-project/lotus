@@ -65,7 +65,16 @@ var UpgradeThunderHeight = abi.ChainEpoch(-23)
 
 var UpgradeWatermelonHeight = abi.ChainEpoch(-24)
 
+// This fix upgrade only ran on calibrationnet
+const UpgradeWatermelonFixHeight = -100
+
+// This fix upgrade only ran on calibrationnet
+const UpgradeWatermelonFix2Height = -101
+
 var UpgradeDragonHeight = abi.ChainEpoch(-24)
+
+// This fix upgrade only ran on calibrationnet
+const UpgradeCalibrationDragonFixHeight = -102
 
 var UpgradePhoenixHeight = abi.ChainEpoch(-25)
 
@@ -73,21 +82,14 @@ var UpgradeWaffleHeight = abi.ChainEpoch(-26)
 
 var UpgradeTuktukHeight = abi.ChainEpoch(-27)
 
-var UpgradeTeepHeight = abi.ChainEpoch(200)
-
 // FIP-0081: for the power actor state for pledge calculations.
 // UpgradeTuktukPowerRampDurationEpochs ends up in the power actor state after
 // Tuktuk migration. along with a RampStartEpoch matching the upgrade height.
 var UpgradeTuktukPowerRampDurationEpochs uint64 = 200
 
-// This fix upgrade only ran on calibrationnet
-const UpgradeWatermelonFixHeight = -100
+var UpgradeTeepHeight = abi.ChainEpoch(200)
 
-// This fix upgrade only ran on calibrationnet
-const UpgradeWatermelonFix2Height = -101
-
-// This fix upgrade only ran on calibrationnet
-const UpgradeCalibrationDragonFixHeight = -102
+var UpgradeTeepInitialFilReserved = wholeFIL(1_400_000_000) // FIP-0100: 300M -> 1.4B FIL
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandQuicknet,
