@@ -1,6 +1,8 @@
 package buildconstants
 
 import (
+	"math/big"
+
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/peer"
 
@@ -39,4 +41,9 @@ func MustParseID(id string) peer.ID {
 		panic(err)
 	}
 	return p
+}
+
+func wholeFIL(whole uint64) *big.Int {
+	bigWhole := big.NewInt(int64(whole))
+	return bigWhole.Mul(bigWhole, big.NewInt(int64(FilecoinPrecision)))
 }
