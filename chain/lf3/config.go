@@ -71,8 +71,9 @@ func NewManifest(
 			MinimumPollInterval:  ecPeriod,
 			MaximumPollInterval:  4 * ecPeriod,
 		},
-		PubSub:        manifest.DefaultPubSubConfig,
-		ChainExchange: manifest.DefaultChainExchangeConfig,
+		PubSub:                manifest.DefaultPubSubConfig,
+		ChainExchange:         manifest.DefaultChainExchangeConfig,
+		PartialMessageManager: manifest.DefaultPartialMessageManagerConfig,
 	}
 }
 

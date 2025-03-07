@@ -15,7 +15,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 )
 
-type f3Status = func() (*manifest.Manifest, gpbft.Instant)
+type f3Status = func() (*manifest.Manifest, gpbft.InstanceProgress)
 
 type leaser struct {
 	mutex                sync.Mutex
