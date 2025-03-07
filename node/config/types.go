@@ -276,8 +276,6 @@ type SealingConfig struct {
 	// Don't send collateral with messages even if there is no available balance in the miner actor
 	DisableCollateralFallback bool
 
-	// maximum precommit batch size - batches will be sent immediately above this size
-	MaxPreCommitBatch int
 	// how long to wait before submitting a batch after crossing the minimum batch size
 	PreCommitBatchWait Duration
 	// time buffer for forceful batch submission before sectors/deal in batch would start expiring
@@ -293,15 +291,6 @@ type SealingConfig struct {
 	CommitBatchWait Duration
 	// time buffer for forceful batch submission before sectors/deals in batch would start expiring
 	CommitBatchSlack Duration
-
-	// network BaseFee below which to stop doing precommit batching, instead
-	// sending precommit messages to the chain individually. When the basefee is
-	// below this threshold, precommit messages will get sent out immediately.
-	BatchPreCommitAboveBaseFee types.FIL
-
-	// network BaseFee below which to stop doing commit aggregation, instead
-	// submitting proofs to the chain individually
-	AggregateAboveBaseFee types.FIL
 
 	// When submitting several sector prove commit messages simultaneously, this option allows you to
 	// stagger the number of prove commits submitted per epoch

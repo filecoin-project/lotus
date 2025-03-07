@@ -233,12 +233,6 @@ func (b *CommitBatcher) maybeStartBatch(notif bool) ([]sealiface.CommitBatchRes,
 
 	individual := (total < cfg.MinCommitBatch) || (total < miner.MinAggregatedSectors) || blackedOut() || !cfg.AggregateCommits
 
-	if !individual && !cfg.AggregateAboveBaseFee.Equals(big.Zero()) {
-		if ts.MinTicketBlock().ParentBaseFee.LessThan(cfg.AggregateAboveBaseFee) {
-			individual = true
-		}
-	}
-
 	// After nv21, we have a new ProveCommitSectors2 method, which supports
 	// batching without aggregation, but it doesn't support onboarding
 	// sectors which were precommitted with DealIDs in the precommit message.

@@ -1032,12 +1032,6 @@ This is useful for forcing all deals to be assigned as snap deals to sectors mar
 			Comment: `Don't send collateral with messages even if there is no available balance in the miner actor`,
 		},
 		{
-			Name: "MaxPreCommitBatch",
-			Type: "int",
-
-			Comment: `maximum precommit batch size - batches will be sent immediately above this size`,
-		},
-		{
 			Name: "PreCommitBatchWait",
 			Type: "Duration",
 
@@ -1078,21 +1072,6 @@ This is useful for forcing all deals to be assigned as snap deals to sectors mar
 			Type: "Duration",
 
 			Comment: `time buffer for forceful batch submission before sectors/deals in batch would start expiring`,
-		},
-		{
-			Name: "BatchPreCommitAboveBaseFee",
-			Type: "types.FIL",
-
-			Comment: `network BaseFee below which to stop doing precommit batching, instead
-sending precommit messages to the chain individually. When the basefee is
-below this threshold, precommit messages will get sent out immediately.`,
-		},
-		{
-			Name: "AggregateAboveBaseFee",
-			Type: "types.FIL",
-
-			Comment: `network BaseFee below which to stop doing commit aggregation, instead
-submitting proofs to the chain individually`,
 		},
 		{
 			Name: "MaxSectorProveCommitsSubmittedPerEpoch",

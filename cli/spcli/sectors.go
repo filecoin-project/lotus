@@ -863,11 +863,6 @@ func SectorsExtendCmd(getActorAddress ActorAddressGetter) *cli.Command {
 				return err
 			}
 
-			declMax, err := policy.GetDeclarationsMax(nv)
-			if err != nil {
-				return err
-			}
-
 			addrSectors := sectorsMax
 			if cctx.Int("max-sectors") != 0 {
 				addrSectors = cctx.Int("max-sectors")
@@ -953,7 +948,7 @@ func SectorsExtendCmd(getActorAddress ActorAddressGetter) *cli.Command {
 					sectorsInDecl := int(sectorsWithoutClaimsCount) + len(sectorsWithClaims)
 					scount += sectorsInDecl
 
-					if scount > addrSectors || len(p.Extensions) >= declMax {
+					if scount > addrSectors {
 						params = append(params, p)
 						p = miner.ExtendSectorExpiration2Params{}
 						scount = sectorsInDecl
