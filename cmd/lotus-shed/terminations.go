@@ -164,7 +164,7 @@ var terminationsCmd = &cli.Command{
 					}
 
 					for _, sector := range sectors {
-						for _, deal := range sector.DealIDs {
+						for _, deal := range sector.DeprecatedDealIDs {
 							prop, find, err := proposals.Get(deal)
 							if err != nil {
 								return err

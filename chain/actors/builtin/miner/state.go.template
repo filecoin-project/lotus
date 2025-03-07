@@ -573,7 +573,7 @@ func fromV{{.v}}SectorOnChainInfo(v{{.v}} miner{{.v}}.SectorOnChainInfo) SectorO
 		SectorNumber:          v{{.v}}.SectorNumber,
 		SealProof:             v{{.v}}.SealProof,
 		SealedCID:             v{{.v}}.SealedCID,
-		DealIDs:               v{{.v}}.DealIDs,
+		DeprecatedDealIDs:     v{{.v}}.{{if (ge .v 16)}}Deprecated{{end}}DealIDs,
 		Activation:            v{{.v}}.Activation,
 		Expiration:            v{{.v}}.Expiration,
 		DealWeight:            v{{.v}}.DealWeight,
