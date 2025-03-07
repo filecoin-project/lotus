@@ -105,7 +105,7 @@ var (
 	UpgradeTuktukHeight                  abi.ChainEpoch = -30
 	UpgradeTuktukPowerRampDurationEpochs uint64         = 0
 	UpgradeTeepHeight                    abi.ChainEpoch = -31
-	UpgradeTeepInitialFilReserved        *big.Int       = wholeToNano(300_000_000)
+	UpgradeTeepInitialFilReserved        *big.Int       = wholeFIL(300_000_000)
 
 	DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 		0:                    DrandMainnet,

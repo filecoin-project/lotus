@@ -60,8 +60,8 @@ var ZeroAddress = MustParseAddress("f3yaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 const FilBase = uint64(2_000_000_000)
 const FilecoinPrecision = uint64(1_000_000_000_000_000_000)
 
-var InitialRewardBalance = wholeToNano(1_100_000_000)
-var InitialFilReserved = wholeToNano(300_000_000)
+var InitialRewardBalance = wholeFIL(1_100_000_000)
+var InitialFilReserved = wholeFIL(300_000_000)
 
 func init() {
 	if os.Getenv("LOTUS_ADDRESS_TYPE") == AddressMainnetEnvVar {

@@ -43,7 +43,7 @@ func MustParseID(id string) peer.ID {
 	return p
 }
 
-func wholeToNano(whole uint64) *big.Int {
+func wholeFIL(whole uint64) *big.Int {
 	bigWhole := big.NewInt(int64(whole))
 	return bigWhole.Mul(bigWhole, big.NewInt(int64(FilecoinPrecision)))
 }

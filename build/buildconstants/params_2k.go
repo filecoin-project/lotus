@@ -89,7 +89,7 @@ var UpgradeTuktukPowerRampDurationEpochs uint64 = 200
 
 var UpgradeTeepHeight = abi.ChainEpoch(200)
 
-var UpgradeTeepInitialFilReserved = wholeToNano(1_300_000_000) // FIP-0100: 300M -> 1.3B FIL
+var UpgradeTeepInitialFilReserved = wholeFIL(1_400_000_000) // FIP-0100: 300M -> 1.4B FIL
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandQuicknet,

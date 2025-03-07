@@ -75,7 +75,7 @@ var UpgradeTuktukPowerRampDurationEpochs = uint64(builtin.EpochsInYear)
 
 const UpgradeTeepHeight = 50
 
-var UpgradeTeepInitialFilReserved = wholeToNano(300_000_000) // FIP-0100: no change for interop
+var UpgradeTeepInitialFilReserved = InitialFilReserved // FIP-0100: no change for interop
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandQuicknet,

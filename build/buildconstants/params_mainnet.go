@@ -130,7 +130,7 @@ var UpgradeTuktukPowerRampDurationEpochs = uint64(builtin.EpochsInYear)
 // ??????
 var UpgradeTeepHeight = abi.ChainEpoch(9999999999)
 
-var UpgradeTeepInitialFilReserved = wholeToNano(300_000_000) // FIP-0100: no change for mainnet
+var UpgradeTeepInitialFilReserved = InitialFilReserved // FIP-0100: no change for mainnet
 
 var ConsensusMinerMinPower = abi.NewStoragePower(10 << 40)
 var PreCommitChallengeDelay = abi.ChainEpoch(150)

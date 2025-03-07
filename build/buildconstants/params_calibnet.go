@@ -113,7 +113,7 @@ var UpgradeTuktukPowerRampDurationEpochs = uint64(builtin.EpochsInDay * 3)
 // Canceled - See update in: https://github.com/filecoin-project/community/discussions/74#discussioncomment-11549619
 const UpgradeTeepHeight = 9999999999
 
-var UpgradeTeepInitialFilReserved = wholeToNano(1_100_000_000) // FIP-0100: 300M -> 1.1B FIL
+var UpgradeTeepInitialFilReserved = wholeFIL(1_200_000_000) // FIP-0100: 300M -> 1.2B FIL
 
 var ConsensusMinerMinPower = abi.NewStoragePower(32 << 30)
 var PreCommitChallengeDelay = abi.ChainEpoch(150)

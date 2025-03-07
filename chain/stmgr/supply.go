@@ -259,7 +259,8 @@ func GetFilReserveDisbursed(ctx context.Context, st *state.StateTree, nv network
 	}
 
 	initial := buildconstants.InitialFilReserved
-	if nv >= network.Version25 { // See FIP-0100
+	if nv >= network.Version25 {
+		// See FIP-0100 and https://github.com/filecoin-project/lotus/pull/12938 for why this exists
 		initial = buildconstants.UpgradeTeepInitialFilReserved
 	}
 	// If money enters the reserve actor, this could lead to a negative term
