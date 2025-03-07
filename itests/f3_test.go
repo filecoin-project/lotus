@@ -476,8 +476,9 @@ func newTestManifest(networkName gpbft.NetworkName, bootstrapEpoch int64, blockt
 			MinimumPollInterval:  blocktime,
 			MaximumPollInterval:  4 * blocktime,
 		},
-		PubSub:        manifest.DefaultPubSubConfig,
-		ChainExchange: manifest.DefaultChainExchangeConfig,
+		PubSub:                manifest.DefaultPubSubConfig,
+		ChainExchange:         manifest.DefaultChainExchangeConfig,
+		PartialMessageManager: manifest.DefaultPartialMessageManagerConfig,
 	}
 }
 
