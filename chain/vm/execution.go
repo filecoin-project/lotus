@@ -10,6 +10,7 @@ import (
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
 
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/metrics"
 )
@@ -56,6 +57,10 @@ func (e *vmExecutor) ApplyImplicitMessage(ctx context.Context, msg *types.Messag
 
 func (e *vmExecutor) Flush(ctx context.Context) (cid.Cid, error) {
 	return e.vmi.Flush(ctx)
+}
+
+func (e *vmExecutor) DumpCache(bs blockstore.Blockstore) error {
+	return e.vmi.DumpCache(bs)
 }
 
 type executionToken struct {

@@ -2823,7 +2823,7 @@ func (t *ReturnTrace) UnmarshalCBOR(r io.Reader) (err error) {
 	return nil
 }
 
-var lengthBufExecutionTrace = []byte{133}
+var lengthBufExecutionTrace = []byte{134}
 
 func (t *ExecutionTrace) MarshalCBOR(w io.Writer) error {
 	if t == nil {
@@ -2881,6 +2881,28 @@ func (t *ExecutionTrace) MarshalCBOR(w io.Writer) error {
 		}
 
 	}
+
+	// t.Logs ([]string) (slice)
+	if len(t.Logs) > 1000000000 {
+		return xerrors.Errorf("Slice value in field t.Logs was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajArray, uint64(len(t.Logs))); err != nil {
+		return err
+	}
+	for _, v := range t.Logs {
+		if len(v) > 8192 {
+			return xerrors.Errorf("Value in field v was too long")
+		}
+
+		if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(v))); err != nil {
+			return err
+		}
+		if _, err := cw.WriteString(string(v)); err != nil {
+			return err
+		}
+
+	}
 	return nil
 }
 
@@ -2903,7 +2925,7 @@ func (t *ExecutionTrace) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 5 {
+	if extra != 6 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -3026,6 +3048,45 @@ func (t *ExecutionTrace) UnmarshalCBOR(r io.Reader) (err error) {
 					return xerrors.Errorf("unmarshaling t.Subcalls[i]: %w", err)
 				}
 
+			}
+
+		}
+	}
+	// t.Logs ([]string) (slice)
+
+	maj, extra, err = cr.ReadHeader()
+	if err != nil {
+		return err
+	}
+
+	if extra > 1000000000 {
+		return fmt.Errorf("t.Logs: array too large (%d)", extra)
+	}
+
+	if maj != cbg.MajArray {
+		return fmt.Errorf("expected cbor array")
+	}
+
+	if extra > 0 {
+		t.Logs = make([]string, extra)
+	}
+
+	for i := 0; i < int(extra); i++ {
+		{
+			var maj byte
+			var extra uint64
+			var err error
+			_ = maj
+			_ = extra
+			_ = err
+
+			{
+				sval, err := cbg.ReadStringWithMax(cr, 8192)
+				if err != nil {
+					return err
+				}
+
+				t.Logs[i] = string(sval)
 			}
 
 		}

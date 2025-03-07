@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/network"
 
+	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -35,6 +36,9 @@ type Interface interface {
 	ApplyImplicitMessage(ctx context.Context, msg *types.Message) (*ApplyRet, error)
 	// Flush all buffered objects into the state store provided to the VM at construction.
 	Flush(ctx context.Context) (cid.Cid, error)
+	// Dump the contents of the caching blockstore to the provided blockstore. This will include the
+	// final state tree as well as any intermediate objects created during messagae execution.
+	DumpCache(bs bstore.Blockstore) error
 }
 
 // WARNING: You will not affect your node's execution by misusing this feature, but you will confuse yourself thoroughly!
