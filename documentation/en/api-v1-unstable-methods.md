@@ -2647,7 +2647,10 @@ Response:
     "MaximumPollInterval": 0
   },
   "PubSub": {
-    "CompressionEnabled": false
+    "CompressionEnabled": false,
+    "ChainCompressionEnabled": false,
+    "GMessageSubscriptionBufferSize": 0,
+    "ValidatedMessageBufferSize": 0
   },
   "ChainExchange": {
     "SubscriptionBufferSize": 0,
@@ -2657,6 +2660,15 @@ Response:
     "MaxWantedChainsPerInstance": 0,
     "RebroadcastInterval": 0,
     "MaxTimestampAge": 0
+  },
+  "PartialMessageManager": {
+    "PendingDiscoveredChainsBufferSize": 0,
+    "PendingPartialMessagesBufferSize": 0,
+    "PendingChainBroadcastsBufferSize": 0,
+    "PendingInstanceRemovalBufferSize": 0,
+    "CompletedMessagesBufferSize": 0,
+    "MaxBufferedMessagesPerInstance": 0,
+    "MaxCachedValidatedMessagesPerInstance": 0
   }
 }
 ```
@@ -2707,9 +2719,26 @@ Inputs: `null`
 Response:
 ```json
 {
-  "ID": 42,
-  "Round": 42,
-  "Phase": 0
+  "ID": 1413,
+  "Round": 1,
+  "Phase": 4,
+  "Input": [
+    {
+      "Key": [
+        {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        },
+        {
+          "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+        }
+      ],
+      "Commitments": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+      "Epoch": 0,
+      "PowerTable": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
+    }
+  ]
 }
 ```
 
