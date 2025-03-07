@@ -52,17 +52,6 @@ var UpgradeHyggeHeight = abi.ChainEpoch(-21)
 var UpgradeLightningHeight = abi.ChainEpoch(-22)
 var UpgradeThunderHeight = abi.ChainEpoch(-23)
 var UpgradeWatermelonHeight = abi.ChainEpoch(-24)
-var UpgradeDragonHeight = abi.ChainEpoch(-25)
-var UpgradePhoenixHeight = abi.ChainEpoch(-26)
-var UpgradeWaffleHeight = abi.ChainEpoch(-27)
-var UpgradeTuktukHeight = abi.ChainEpoch(-28)
-
-const UpgradeTeepHeight = 50
-
-// FIP-0081: for the power actor state for pledge calculations.
-// UpgradeTuktukPowerRampDurationEpochs ends up in the power actor state after
-// Tuktuk migration. along with a RampStartEpoch matching the upgrade height.
-var UpgradeTuktukPowerRampDurationEpochs = uint64(builtin.EpochsInYear)
 
 // This fix upgrade only ran on calibrationnet
 const UpgradeWatermelonFixHeight = -1
@@ -70,8 +59,23 @@ const UpgradeWatermelonFixHeight = -1
 // This fix upgrade only ran on calibrationnet
 const UpgradeWatermelonFix2Height = -2
 
+var UpgradeDragonHeight = abi.ChainEpoch(-25)
+
 // This fix upgrade only ran on calibrationnet
 const UpgradeCalibrationDragonFixHeight = -3
+
+var UpgradePhoenixHeight = abi.ChainEpoch(-26)
+var UpgradeWaffleHeight = abi.ChainEpoch(-27)
+var UpgradeTuktukHeight = abi.ChainEpoch(-28)
+
+// FIP-0081: for the power actor state for pledge calculations.
+// UpgradeTuktukPowerRampDurationEpochs ends up in the power actor state after
+// Tuktuk migration. along with a RampStartEpoch matching the upgrade height.
+var UpgradeTuktukPowerRampDurationEpochs = uint64(builtin.EpochsInYear)
+
+const UpgradeTeepHeight = 50
+
+var UpgradeTeepInitialFilReserved = InitialFilReserved // FIP-0100: no change for interop
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandQuicknet,
