@@ -30,7 +30,10 @@ Manifest:
   Certificate Exchange Min Poll Interval: {{.CertificateExchange.MinimumPollInterval}}
   Certificate Exchange Max Poll Interval: {{.CertificateExchange.MaximumPollInterval}}
 
-  PubSub Compression Enabled:  {{.PubSub.CompressionEnabled}}
+  PubSub Compression Enabled:               {{.PubSub.CompressionEnabled}}
+  PubSub Chain Compression Enabled:         {{.PubSub.ChainCompressionEnabled}}
+  PubSub GMessage Subscription Buffer Size: {{.PubSub.GMessageSubscriptionBufferSize}}
+  PubSub Validated Message Buffer Size:     {{.PubSub.ValidatedMessageBufferSize}}
 
   Chain Exchange Subscription Buffer Size:           {{.ChainExchange.SubscriptionBufferSize}}
   Chain Exchange Max Chain Length:                   {{.ChainExchange.MaxChainLength}}
@@ -39,3 +42,11 @@ Manifest:
   Chain Exchange Max Wanted Chains Per Instance:     {{.ChainExchange.MaxWantedChainsPerInstance}}
   Chain Exchange Rebroadcast Interval:               {{.ChainExchange.RebroadcastInterval}}
   Chain Exchange Max Timestamp Age:                  {{.ChainExchange.MaxTimestampAge}}
+
+  Partial Message Pending Discovered Chains Buffer Size:      {{.PartialMessageManager.PendingDiscoveredChainsBufferSize}}
+  Partial Message Pending Partial Messages Buffer Size:       {{.PartialMessageManager.PendingPartialMessagesBufferSize}}
+  Partial Message Pending Chain Broadcasts Buffer Size:       {{.PartialMessageManager.PendingChainBroadcastsBufferSize}}
+  Partial Message Pending Instance Removal Buffer Size:       {{.PartialMessageManager.PendingInstanceRemovalBufferSize}}
+  Partial Message Completed Messages Buffer Size:             {{.PartialMessageManager.CompletedMessagesBufferSize}}
+  Partial Message Max Buffered Messages Per Instance:         {{.PartialMessageManager.MaxBufferedMessagesPerInstance}}
+  Partial Message Max Cached Validated Messages Per Instance: {{.PartialMessageManager.MaxCachedValidatedMessagesPerInstance}}

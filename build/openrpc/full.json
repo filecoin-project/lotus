@@ -7611,7 +7611,10 @@
                                 "MaximumPollInterval": 0
                             },
                             "PubSub": {
-                                "CompressionEnabled": false
+                                "CompressionEnabled": false,
+                                "ChainCompressionEnabled": false,
+                                "GMessageSubscriptionBufferSize": 0,
+                                "ValidatedMessageBufferSize": 0
                             },
                             "ChainExchange": {
                                 "SubscriptionBufferSize": 0,
@@ -7621,6 +7624,15 @@
                                 "MaxWantedChainsPerInstance": 0,
                                 "RebroadcastInterval": 0,
                                 "MaxTimestampAge": 0
+                            },
+                            "PartialMessageManager": {
+                                "PendingDiscoveredChainsBufferSize": 0,
+                                "PendingPartialMessagesBufferSize": 0,
+                                "PendingChainBroadcastsBufferSize": 0,
+                                "PendingInstanceRemovalBufferSize": 0,
+                                "CompletedMessagesBufferSize": 0,
+                                "MaxBufferedMessagesPerInstance": 0,
+                                "MaxCachedValidatedMessagesPerInstance": 0
                             }
                         }
                     ],
@@ -7801,6 +7813,40 @@
                         "NetworkName": {
                             "type": "string"
                         },
+                        "PartialMessageManager": {
+                            "additionalProperties": false,
+                            "properties": {
+                                "CompletedMessagesBufferSize": {
+                                    "title": "number",
+                                    "type": "number"
+                                },
+                                "MaxBufferedMessagesPerInstance": {
+                                    "title": "number",
+                                    "type": "number"
+                                },
+                                "MaxCachedValidatedMessagesPerInstance": {
+                                    "title": "number",
+                                    "type": "number"
+                                },
+                                "PendingChainBroadcastsBufferSize": {
+                                    "title": "number",
+                                    "type": "number"
+                                },
+                                "PendingDiscoveredChainsBufferSize": {
+                                    "title": "number",
+                                    "type": "number"
+                                },
+                                "PendingInstanceRemovalBufferSize": {
+                                    "title": "number",
+                                    "type": "number"
+                                },
+                                "PendingPartialMessagesBufferSize": {
+                                    "title": "number",
+                                    "type": "number"
+                                }
+                            },
+                            "type": "object"
+                        },
                         "Pause": {
                             "type": "boolean"
                         },
@@ -7811,8 +7857,19 @@
                         "PubSub": {
                             "additionalProperties": false,
                             "properties": {
+                                "ChainCompressionEnabled": {
+                                    "type": "boolean"
+                                },
                                 "CompressionEnabled": {
                                     "type": "boolean"
+                                },
+                                "GMessageSubscriptionBufferSize": {
+                                    "title": "number",
+                                    "type": "number"
+                                },
+                                "ValidatedMessageBufferSize": {
+                                    "title": "number",
+                                    "type": "number"
                                 }
                             },
                             "type": "object"
@@ -7927,20 +7984,37 @@
         },
         {
             "name": "Filecoin.F3GetProgress",
-            "description": "```go\nfunc (s *FullNodeStruct) F3GetProgress(p0 context.Context) (gpbft.Instant, error) {\n\tif s.Internal.F3GetProgress == nil {\n\t\treturn *new(gpbft.Instant), ErrNotSupported\n\t}\n\treturn s.Internal.F3GetProgress(p0)\n}\n```",
+            "description": "```go\nfunc (s *FullNodeStruct) F3GetProgress(p0 context.Context) (gpbft.InstanceProgress, error) {\n\tif s.Internal.F3GetProgress == nil {\n\t\treturn *new(gpbft.InstanceProgress), ErrNotSupported\n\t}\n\treturn s.Internal.F3GetProgress(p0)\n}\n```",
             "summary": "F3GetProgress returns the progress of the current F3 instance in terms of instance ID, round and phase.\n",
             "paramStructure": "by-position",
             "params": [],
             "result": {
-                "name": "gpbft.Instant",
-                "description": "gpbft.Instant",
+                "name": "gpbft.InstanceProgress",
+                "description": "gpbft.InstanceProgress",
                 "summary": "",
                 "schema": {
                     "examples": [
                         {
-                            "ID": 42,
-                            "Round": 42,
-                            "Phase": 0
+                            "ID": 1413,
+                            "Round": 1,
+                            "Phase": 4,
+                            "Input": [
+                                {
+                                    "Key": [
+                                        {
+                                            "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+                                        },
+                                        {
+                                            "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+                                        }
+                                    ],
+                                    "Commitments": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+                                    "Epoch": 0,
+                                    "PowerTable": {
+                                        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+                                    }
+                                }
+                            ]
                         }
                     ],
                     "additionalProperties": false,
@@ -7948,6 +8022,39 @@
                         "ID": {
                             "title": "number",
                             "type": "number"
+                        },
+                        "Input": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "Commitments": {
+                                        "items": {
+                                            "description": "Number is a number",
+                                            "title": "number",
+                                            "type": "number"
+                                        },
+                                        "maxItems": 32,
+                                        "minItems": 32,
+                                        "type": "array"
+                                    },
+                                    "Epoch": {
+                                        "title": "number",
+                                        "type": "number"
+                                    },
+                                    "Key": {
+                                        "media": {
+                                            "binaryEncoding": "base64"
+                                        },
+                                        "type": "string"
+                                    },
+                                    "PowerTable": {
+                                        "title": "Content Identifier",
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            },
+                            "type": "array"
                         },
                         "Phase": {
                             "title": "number",
