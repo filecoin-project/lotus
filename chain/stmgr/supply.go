@@ -252,14 +252,19 @@ func (sm *StateManager) GetFilVested(ctx context.Context, height abi.ChainEpoch)
 	return vf, nil
 }
 
-func GetFilReserveDisbursed(ctx context.Context, st *state.StateTree) (abi.TokenAmount, error) {
+func GetFilReserveDisbursed(ctx context.Context, st *state.StateTree, nv network.Version) (abi.TokenAmount, error) {
 	ract, err := st.GetActor(builtin.ReserveAddress)
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("failed to get reserve actor: %w", err)
 	}
 
+	initial := buildconstants.InitialFilReserved
+	if nv >= network.Version25 {
+		// See FIP-0100 and https://github.com/filecoin-project/lotus/pull/12938 for why this exists
+		initial = buildconstants.UpgradeTeepInitialFilReserved
+	}
 	// If money enters the reserve actor, this could lead to a negative term
-	return big.Sub(big.NewFromGo(buildconstants.InitialFilReserved), ract.Balance), nil
+	return big.Sub(big.NewFromGo(initial), ract.Balance), nil
 }
 
 func GetFilMined(ctx context.Context, st *state.StateTree) (abi.TokenAmount, error) {
@@ -349,7 +354,7 @@ func (sm *StateManager) GetVMCirculatingSupplyDetailed(ctx context.Context, heig
 
 	filReserveDisbursed := big.Zero()
 	if height > buildconstants.UpgradeAssemblyHeight {
-		filReserveDisbursed, err = GetFilReserveDisbursed(ctx, st)
+		filReserveDisbursed, err = GetFilReserveDisbursed(ctx, st, nv)
 		if err != nil {
 			return api.CirculatingSupply{}, xerrors.Errorf("failed to calculate filReserveDisbursed: %w", err)
 		}

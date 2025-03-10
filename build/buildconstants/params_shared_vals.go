@@ -4,7 +4,6 @@
 package buildconstants
 
 import (
-	"math/big"
 	"os"
 
 	"github.com/ipfs/go-cid"
@@ -59,21 +58,12 @@ const AddressMainnetEnvVar = "_mainnet_"
 var ZeroAddress = MustParseAddress("f3yaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaby2smx7a")
 
 const FilBase = uint64(2_000_000_000)
-const FilAllocStorageMining = uint64(1_100_000_000)
-
 const FilecoinPrecision = uint64(1_000_000_000_000_000_000)
-const FilReserved = uint64(300_000_000)
 
-var InitialRewardBalance *big.Int
-var InitialFilReserved *big.Int
+var InitialRewardBalance = wholeFIL(1_100_000_000)
+var InitialFilReserved = wholeFIL(300_000_000)
 
 func init() {
-	InitialRewardBalance = big.NewInt(int64(FilAllocStorageMining))
-	InitialRewardBalance = InitialRewardBalance.Mul(InitialRewardBalance, big.NewInt(int64(FilecoinPrecision)))
-
-	InitialFilReserved = big.NewInt(int64(FilReserved))
-	InitialFilReserved = InitialFilReserved.Mul(InitialFilReserved, big.NewInt(int64(FilecoinPrecision)))
-
 	if os.Getenv("LOTUS_ADDRESS_TYPE") == AddressMainnetEnvVar {
 		SetAddressNetwork(address.Mainnet)
 	}
