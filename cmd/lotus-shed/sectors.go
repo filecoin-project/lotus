@@ -710,7 +710,7 @@ var dumpSectorOnChainInfoCmd = &cli.Command{
 					maddr,
 					sector.SectorNumber,
 					sector.SealProof,
-					len(sector.DealIDs),
+					len(sector.DeprecatedDealIDs),
 					sector.Activation,
 					sector.Expiration,
 					sector.DealWeight,
