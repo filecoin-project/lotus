@@ -368,9 +368,9 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 	allowTopics = append(allowTopics, drandTopics...)
 
 	if in.F3Config != nil {
-		if in.F3Config.StaticManifest != nil {
-			gpbftTopic := manifest.PubSubTopicFromNetworkName(in.F3Config.StaticManifest.NetworkName)
-			chainexTopic := manifest.ChainExchangeTopicFromNetworkName(in.F3Config.StaticManifest.NetworkName)
+		if in.F3Config.StaticManifest != nil || in.F3Config.ContractAddress != "" {
+			gpbftTopic := manifest.PubSubTopicFromNetworkName(in.F3Config.BaseNetworkName)
+			chainexTopic := manifest.ChainExchangeTopicFromNetworkName(in.F3Config.BaseNetworkName)
 			allowTopics = append(allowTopics, gpbftTopic, chainexTopic)
 		}
 		if in.F3Config.DynamicManifestProvider != "" {
