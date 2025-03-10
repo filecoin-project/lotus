@@ -244,6 +244,7 @@ func (a *StateAPI) StateMinerDeadlines(ctx context.Context, m address.Address, t
 		out[i] = api.Deadline{
 			PostSubmissions:      ps,
 			DisputableProofCount: l,
+			DailyFee:             dl.DailyFee(),
 		}
 		return nil
 	}); err != nil {

@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/go-commp-utils/v2"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	miner16 "github.com/filecoin-project/go-state-types/builtin/v16/miner"
 	market2 "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
@@ -252,8 +253,15 @@ func TestOnboardMixedMarketDDO(t *testing.T) {
 
 	ds, err := client.StateMarketStorageDeal(ctx, dealID, types.EmptyTSK)
 	require.NoError(t, err)
-
 	require.NotEqual(t, -1, ds.State.SectorStartEpoch)
+
+	// verify that the daily fee was set up correctly
+	soci, err := client.StateSectorGetInfo(ctx, miner.ActorAddr, si.SectorID, types.EmptyTSK)
+	require.NoError(t, err)
+	cs, err := client.StateVMCirculatingSupplyInternal(ctx, types.EmptyTSK)
+	require.NoError(t, err)
+	expectedDailyFee := miner16.DailyProofFee(cs.FilCirculating, abi.NewStoragePower(2048))
+	require.Equal(t, expectedDailyFee, soci.DailyFee)
 
 	{
 		deals, err := client.StateMarketDeals(ctx, types.EmptyTSK)

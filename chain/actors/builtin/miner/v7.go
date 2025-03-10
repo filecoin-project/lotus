@@ -511,6 +511,10 @@ func (d *deadline7) DisputableProofCount() (uint64, error) {
 
 }
 
+func (d *deadline7) DailyFee() abi.TokenAmount {
+	return big.Zero()
+}
+
 func (p *partition7) AllSectors() (bitfield.BitField, error) {
 	return p.Partition.Sectors, nil
 }

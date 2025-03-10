@@ -263,21 +263,22 @@ func TestManualNISectorOnboarding(t *testing.T) {
 
 			for i, tcMiner := range tc.miners {
 				miner := miners[i]
+				sm := make([]kit.SectorManifest, len(tcMiner.sectorsToOnboard))
 				var expectSuccesses int
-				for _, ec := range tcMiner.sectorsToOnboard {
+				for i, ec := range tcMiner.sectorsToOnboard {
 					if ec.IsSuccess() {
 						expectSuccesses++
 					}
+					sm[i] = kit.SectorManifest{}
 				}
 
 				head, err = client.ChainHead(ctx)
 				req.NoError(err)
 
 				// Onboard CC sectors to this test miner using NI-PoRep
-				sectors[i] = miner.OnboardSectors(
+				sectors[i], _ = miner.OnboardSectors(
 					sealProofType,
-					false,
-					len(tcMiner.sectorsToOnboard),
+					sm,
 					kit.WithExpectedExitCodes(tcMiner.sectorsToOnboard),
 					kit.WithRequireActivationSuccess(tcMiner.allOrNothing),
 					kit.WithModifyNIActivationsBeforeSubmit(func(activations []miner14.SectorNIActivationInfo) []miner14.SectorNIActivationInfo {
@@ -337,7 +338,7 @@ func TestManualNISectorOnboarding(t *testing.T) {
 				req.NoError(err)
 
 				// Snap a deal into the first of the successfully onboarded CC sectors for this miner
-				snapPieces := miner.SnapDeal(sectors[i][0])
+				snapPieces, _ := miner.SnapDeal(sectors[i][0], kit.SectorWithRandPiece())
 
 				// Check "sector-updated" event happned after snap
 				{
@@ -390,7 +391,7 @@ func TestNISectorFailureCases(t *testing.T) {
 	build.Clock.Sleep(time.Second)
 
 	// We have to onboard a sector first to get the miner enrolled in cron; although we don't need to wait for it to prove
-	_ = miner.OnboardSectors(sealProofType, false, 1)
+	_, _ = miner.OnboardSectors(sealProofType, []kit.SectorManifest{{}})
 
 	// Utility functions and variables for our failure cases
 
