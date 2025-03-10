@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -21,7 +22,10 @@ import (
 	account14 "github.com/filecoin-project/go-state-types/builtin/v14/account"
 	miner14 "github.com/filecoin-project/go-state-types/builtin/v14/miner"
 	smoothing14 "github.com/filecoin-project/go-state-types/builtin/v14/util/smoothing"
+	verifreg14 "github.com/filecoin-project/go-state-types/builtin/v14/verifreg"
 	miner15 "github.com/filecoin-project/go-state-types/builtin/v15/miner"
+	miner16 "github.com/filecoin-project/go-state-types/builtin/v16/miner"
+	"github.com/filecoin-project/go-state-types/builtin/v8/util/adt"
 	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	migration "github.com/filecoin-project/go-state-types/builtin/v9/migration/test"
 	miner9 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
@@ -52,6 +56,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/itests/kit"
+	"github.com/filecoin-project/lotus/lib/must"
 	"github.com/filecoin-project/lotus/node/impl"
 )
 
@@ -1145,4 +1150,185 @@ func preFip0081StateMinerInitialPledgeForSector(ctx context.Context, t *testing.
 	var initialPledgeDen = types.NewInt(100)
 
 	return types.BigDiv(types.BigMul(initialPledge, initialPledgeNum), initialPledgeDen)
+}
+
+func TestMigrationNV25(t *testing.T) {
+	req := require.New(t)
+
+	kit.QuietMiningLogs()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	const defaultSectorSize = abi.SectorSize(2 << 10) // 2KiB
+	var (
+		blocktime = 2 * time.Millisecond
+		client    kit.TestFullNode
+		genminer  kit.TestMiner
+		// don't upgrade until our original sectors are fully proven and power updated, to keep the test simple
+		nv25epoch abi.ChainEpoch = builtin.EpochsInDay + 200
+	)
+
+	initialBigBalance := types.MustParseFIL("100fil").Int64()
+	sealProofType := must.One(miner.SealProofTypeFromSectorSize(defaultSectorSize, network.Version23, miner.SealProofVariant_Standard))
+	rootKey := must.One(key.GenerateKey(types.KTSecp256k1))
+	verifierKey := must.One(key.GenerateKey(types.KTSecp256k1))
+	verifiedClientKey := must.One(key.GenerateKey(types.KTBLS))
+	unverifiedClient := must.One(key.GenerateKey(types.KTBLS))
+
+	// Setup and begin mining with a single miner (A)
+	// Miner A will only be a genesis Miner with power allocated in the genesis block and will not onboard any sectors from here on
+	ens := kit.NewEnsemble(t,
+		kit.MockProofs(true),
+		kit.RootVerifier(rootKey, abi.NewTokenAmount(initialBigBalance)),
+		kit.Account(verifierKey, abi.NewTokenAmount(initialBigBalance)),
+		kit.Account(verifiedClientKey, abi.NewTokenAmount(initialBigBalance)),
+		kit.Account(unverifiedClient, abi.NewTokenAmount(initialBigBalance)),
+		kit.UpgradeSchedule(stmgr.Upgrade{
+			Network: network.Version24,
+			Height:  -1,
+		}, stmgr.Upgrade{
+			Network:   network.Version25,
+			Height:    nv25epoch,
+			Migration: filcns.UpgradeActorsV16,
+		},
+		)).
+		FullNode(&client, kit.SectorSize(defaultSectorSize)).
+		Miner(&genminer, &client, kit.PresealSectors(5), kit.SectorSize(defaultSectorSize), kit.WithAllSubsystems()).
+		Start().
+		InterconnectAll()
+
+	store := gstStore.WrapBlockStore(ctx, blockstore.NewAPIBlockstore(client))
+
+	blockMiners := ens.BeginMiningMustPost(blocktime)
+	req.Len(blockMiners, 1)
+	blockMiner := blockMiners[0]
+
+	nodeOpts := []kit.NodeOpt{kit.SectorSize(defaultSectorSize), kit.OwnerAddr(client.DefaultKey)}
+	mminer, ens := ens.UnmanagedMiner(ctx, &client, nodeOpts...)
+	defer mminer.Stop()
+
+	ens.Start()
+
+	// Onboard some sectors before the network upgrade
+
+	_, verifiedClientAddresses := kit.SetupVerifiedClients(ctx, t, &client, rootKey, verifierKey, []*key.Key{verifiedClientKey})
+	verifiedClientAddr := verifiedClientAddresses[0]
+	minerId := must.One(address.IDFromAddress(mminer.ActorAddr))
+
+	piece := abi.PieceInfo{
+		Size:     abi.PaddedPieceSize(defaultSectorSize),
+		PieceCID: cid.MustParse("baga6ea4seaqlhznlutptgfwhffupyer6txswamerq5fc2jlwf2lys2mm5jtiaeq"),
+	}
+	clientId, allocationId := kit.SetupAllocation(ctx, t, &client, minerId, piece, verifiedClientAddr, 0, 0)
+
+	var allSectors []abi.SectorNumber
+	ccSectors := mminer.OnboardSectors(sealProofType, []kit.SectorManifest{{}, {}}) // 2 CC sectors
+	allSectors = append(allSectors, ccSectors...)
+	dealSector := mminer.OnboardSectors(sealProofType, []kit.SectorManifest{kit.SectorWithRandPiece()})
+	allSectors = append(allSectors, dealSector...)
+	verifiedSector := mminer.OnboardSectors(sealProofType, []kit.SectorManifest{
+		{Piece: piece.PieceCID, Verified: &miner14.VerifiedAllocationKey{Client: clientId, ID: verifreg14.AllocationId(allocationId)}}})
+	allSectors = append(allSectors, verifiedSector...)
+
+	blockMiner.WatchMinerForPost(mminer.ActorAddr)
+
+	expectedRaw := uint64(defaultSectorSize * 4)  // 4 sectors onboarded
+	expectedQap := uint64(defaultSectorSize * 13) // 3 sectors + 1 verified sector
+	mminer.WaitTillActivatedAndAssertPower(allSectors, expectedRaw, expectedQap)
+
+	checkDailyFee := func(sn abi.SectorNumber) (bool, abi.TokenAmount) {
+		head, err := client.ChainHead(ctx)
+		req.NoError(err)
+
+		st, err := state.LoadStateTree(store, head.ParentState())
+		require.NoError(t, err)
+
+		act, err := st.GetActor(mminer.ActorAddr)
+		require.NoError(t, err)
+
+		var sectorsArr *adt.Array
+		{
+			nv, err := client.StateNetworkVersion(ctx, head.Key())
+			require.NoError(t, err)
+			switch nv {
+			case network.Version24:
+				var miner miner15.State
+				err = store.Get(ctx, act.Head, &miner)
+				require.NoError(t, err)
+				sectorsArr, err = adt.AsArray(store, miner.Sectors, miner15.SectorsAmtBitwidth)
+				require.NoError(t, err)
+			case network.Version25:
+				var miner miner16.State
+				err = store.Get(ctx, act.Head, &miner)
+				require.NoError(t, err)
+				sectorsArr, err = adt.AsArray(store, miner.Sectors, miner16.SectorsAmtBitwidth)
+				require.NoError(t, err)
+			default:
+				t.Fatalf("unexpected network version: %d", nv)
+			}
+		}
+
+		// SectorOnChainInfo has a lazy migration for v16, it could take either a 15 field format or a
+		// 16 field format with a DailyFee field on the end. We want to determine whether its a 15 or a
+		// 16 field version by first trying to decode it as a 15 field version.
+
+		var soci15 miner15.SectorOnChainInfo
+		ok, err := sectorsArr.Get(uint64(sn), &soci15)
+		if err == nil {
+			require.True(t, ok)
+			return false, abi.NewTokenAmount(0)
+		}
+
+		// try for v16 sector format, the unmarshaller can also handle the 15 field variety so we do
+		// this second
+		var soci16 miner16.SectorOnChainInfo
+		ok, err = sectorsArr.Get(uint64(sn), &soci16)
+		require.NoError(t, err)
+		require.True(t, ok)
+		return true, soci16.DailyFee
+	}
+
+	// No fees, no fee information at all in these sectors (sanity check)
+	for _, sn := range allSectors {
+		has, fee := checkDailyFee(sn)
+		require.False(t, has) // v15
+		require.Equal(t, abi.NewTokenAmount(0), fee)
+	}
+
+	// Move past the upgrade
+	client.WaitTillChain(ctx, kit.HeightAtLeast(nv25epoch+5))
+
+	// Still no fees, sectors shouldn't have been touched
+	for _, sn := range allSectors {
+		has, fee := checkDailyFee(sn)
+		require.False(t, has) // v15
+		require.Equal(t, abi.NewTokenAmount(0), fee)
+	}
+
+	// Snap both CC sectors, one with an unverified piece, one with a verified piece, capture the
+	// CS value at each snap so we can accurately predict the expected daily fee
+	_, snap0Ts := mminer.SnapDeal(ccSectors[0], kit.SectorManifest{Piece: piece.PieceCID})
+	snap0CS, err := client.StateVMCirculatingSupplyInternal(ctx, snap0Ts)
+	require.NoError(t, err)
+	clientId, allocationId = kit.SetupAllocation(ctx, t, &client, minerId, piece, verifiedClientAddr, 0, 0)
+	_, snap1Ts := mminer.SnapDeal(ccSectors[1], kit.SectorManifest{Piece: piece.PieceCID, Verified: &miner14.VerifiedAllocationKey{Client: clientId, ID: verifreg14.AllocationId(allocationId)}})
+	snap1CS, err := client.StateVMCirculatingSupplyInternal(ctx, snap1Ts)
+	require.NoError(t, err)
+
+	// No fees on untouched sectors, but because we expect all our sectors to be stored in the root
+	// of the HAMT together and we've modified at least one of them, they would have all been
+	// rewritten in the new v16 format, so we shouldn't see v15's here anymore.
+	for _, sn := range append(append([]abi.SectorNumber{}, dealSector...), verifiedSector...) {
+		has, fee := checkDailyFee(sn)
+		require.True(t, has) // v16
+		require.Equal(t, abi.NewTokenAmount(0), fee)
+	}
+
+	// fees on snapped sectors, first our non-verified sector, then our verified sector, with 10x qap
+	has, fee := checkDailyFee(ccSectors[0])
+	require.True(t, has)
+	require.Equal(t, miner16.DailyProofFee(snap0CS.FilCirculating, abi.NewStoragePower(int64(defaultSectorSize))), fee)
+	has, fee = checkDailyFee(ccSectors[1])
+	require.True(t, has)
+	require.Equal(t, miner16.DailyProofFee(snap1CS.FilCirculating, abi.NewStoragePower(int64(defaultSectorSize*10))), fee)
 }
