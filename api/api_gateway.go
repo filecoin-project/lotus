@@ -46,6 +46,7 @@ type Gateway interface {
 	ChainHead(ctx context.Context) (*types.TipSet, error)
 	ChainGetParentMessages(context.Context, cid.Cid) ([]Message, error)
 	ChainGetParentReceipts(context.Context, cid.Cid) ([]*types.MessageReceipt, error)
+	ChainGetMessagesInTipset(context.Context, types.TipSetKey) ([]Message, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) (*BlockMessages, error)
 	ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error)
 	ChainGetPath(ctx context.Context, from, to types.TipSetKey) ([]*HeadChange, error)

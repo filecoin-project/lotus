@@ -618,6 +618,8 @@ type GatewayMethods struct {
 
 	ChainGetMessage func(p0 context.Context, p1 cid.Cid) (*types.Message, error) ``
 
+	ChainGetMessagesInTipset func(p0 context.Context, p1 types.TipSetKey) ([]Message, error) ``
+
 	ChainGetParentMessages func(p0 context.Context, p1 cid.Cid) ([]Message, error) ``
 
 	ChainGetParentReceipts func(p0 context.Context, p1 cid.Cid) ([]*types.MessageReceipt, error) ``
@@ -4061,6 +4063,17 @@ func (s *GatewayStruct) ChainGetMessage(p0 context.Context, p1 cid.Cid) (*types.
 
 func (s *GatewayStub) ChainGetMessage(p0 context.Context, p1 cid.Cid) (*types.Message, error) {
 	return nil, ErrNotSupported
+}
+
+func (s *GatewayStruct) ChainGetMessagesInTipset(p0 context.Context, p1 types.TipSetKey) ([]Message, error) {
+	if s.Internal.ChainGetMessagesInTipset == nil {
+		return *new([]Message), ErrNotSupported
+	}
+	return s.Internal.ChainGetMessagesInTipset(p0, p1)
+}
+
+func (s *GatewayStub) ChainGetMessagesInTipset(p0 context.Context, p1 types.TipSetKey) ([]Message, error) {
+	return *new([]Message), ErrNotSupported
 }
 
 func (s *GatewayStruct) ChainGetParentMessages(p0 context.Context, p1 cid.Cid) ([]Message, error) {
