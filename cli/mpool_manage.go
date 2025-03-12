@@ -327,7 +327,12 @@ func (mm *mmUI) messageDetail(mi msgInfo) func(*imtui.Tui) error {
 		display("Press N to replace this message with no-operation message")
 		row++
 
-		t.FlexTable(row, 0, 0, &sel, &scroll, issues, issuesFlex, false)
+		// Only show the table if there are issues to display
+		if len(issues) > 0 {
+			t.FlexTable(row, 0, 0, &sel, &scroll, issues, issuesFlex, false)
+		} else {
+			display("No issues detected with this message")
+		}
 
 		return nil
 	}
