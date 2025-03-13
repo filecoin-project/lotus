@@ -25,6 +25,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
@@ -253,6 +254,10 @@ func (cmp *ContractManifestProvider) fetchManifest(ctx context.Context) (*manife
 
 	if m.BootstrapEpoch < 0 || uint64(m.BootstrapEpoch) != activationEpoch {
 		return nil, fmt.Errorf("bootstrap epoch does not match: %d != %d", m.BootstrapEpoch, activationEpoch)
+	}
+
+	if !m.InitialPowerTable.Defined() && buildconstants.F3InitialPowerTableCID.Defined() {
+		m.InitialPowerTable = buildconstants.F3InitialPowerTableCID
 	}
 
 	if err := m.Validate(); err != nil {
