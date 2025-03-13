@@ -239,6 +239,11 @@ func OnSingleNode(ctx context.Context) context.Context {
 }
 
 func FullNodeProxy[T api.FullNode](ins []T, outstr *api.FullNodeStruct) {
+	if len(ins) == 0 {
+		log.Errorf("FullNodeProxy called with empty node list")
+		return
+	}
+
 	outs := api.GetInternalStructs(outstr)
 
 	var rins []reflect.Value
