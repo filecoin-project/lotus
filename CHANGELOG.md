@@ -24,6 +24,7 @@
 - chore: upgrade go-state-types with big.Int{} change that means an empty big.Int is now treated as zero for all operations ([filecoin-project/lotus#12936](https://github.com/filecoin-project/lotus/pull/12936))
 - feat: expose `ChainGetMessagesInTipset` in the Lotus Gateway API ([filecoin-project/lotus#12947](https://github.com/filecoin-project/lotus/pull/12947))
 - fix!: change circulating supply calculation for calibnet, butterflynet and 2k for nv25 upgrade. ([filecoin-project/lotus#12938](https://github.com/filecoin-project/lotus/pull/12938))
+- feat: add DailyFee integration tests ([filecoin-project/lotus#12942](https://github.com/filecoin-project/lotus/pull/12942))
 
 # UNRELEASED v.1.32.0
 

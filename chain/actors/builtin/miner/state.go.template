@@ -552,6 +552,15 @@ func (d *deadline{{.v}}) DisputableProofCount() (uint64, error) {
 {{end}}
 }
 
+func (d *deadline{{.v}}) DailyFee() (abi.TokenAmount, error) {
+{{- if (ge .v 16)}}
+	if d.Deadline.DailyFee.Int != nil {
+		return d.Deadline.DailyFee, nil
+	}
+{{- end}}
+	return big.Zero(), nil
+}
+
 func (p *partition{{.v}}) AllSectors() (bitfield.BitField, error) {
 	return p.Partition.Sectors, nil
 }
@@ -569,6 +578,12 @@ func (p *partition{{.v}}) UnprovenSectors() (bitfield.BitField, error) {
 }
 
 func fromV{{.v}}SectorOnChainInfo(v{{.v}} miner{{.v}}.SectorOnChainInfo) SectorOnChainInfo {
+{{- if (ge .v 16)}}
+	dailyFee := v{{.v}}.DailyFee
+	if dailyFee.Int == nil {
+		dailyFee = big.Zero()
+	}
+{{- end}}
 	info := SectorOnChainInfo{
 		SectorNumber:          v{{.v}}.SectorNumber,
 		SealProof:             v{{.v}}.SealProof,
@@ -590,7 +605,7 @@ func fromV{{.v}}SectorOnChainInfo(v{{.v}} miner{{.v}}.SectorOnChainInfo) SectorO
 		Flags:                 SectorOnChainInfoFlags(v{{.v}}.Flags),
 		{{- end}}
 		{{- if (ge .v 16)}}
-		DailyFee:              v{{.v}}.DailyFee,
+		DailyFee:              dailyFee,
 		{{- else}}
 		DailyFee:              big.Zero(),
 		{{- end}}

@@ -21786,7 +21786,8 @@
                                     5,
                                     1
                                 ],
-                                "DisputableProofCount": 42
+                                "DisputableProofCount": 42,
+                                "DailyFee": "0"
                             }
                         ]
                     ],
@@ -21794,6 +21795,10 @@
                         {
                             "additionalProperties": false,
                             "properties": {
+                                "DailyFee": {
+                                    "additionalProperties": false,
+                                    "type": "object"
+                                },
                                 "DisputableProofCount": {
                                     "title": "number",
                                     "type": "number"
