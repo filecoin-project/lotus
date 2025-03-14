@@ -221,7 +221,7 @@ func TestDailyFees(t *testing.T) {
 			t,
 			expectBurn.Int64(),
 			big.Sub(totalSend, minerBalance).Int64(),
-			"expected miner to have burned %s, but it's burned %s", expectBurn, big.Sub(minerBalance, totalSend),
+			"expected miner to have burned %s, but it's burned %s", expectBurn, big.Sub(totalSend, minerBalance),
 		)
 	}
 
@@ -335,10 +335,19 @@ func TestDailyFees(t *testing.T) {
 	clientId, allocationId := kit.SetupAllocation(ctx, t, &client, minerId, piece, verifiedClientAddr, 0, 0)
 
 	var allSectors []abi.SectorNumber
-	ccSectors24, _ := mminer.OnboardSectors(sealProofType, kit.NewSectorBatch().AddEmptySectors(2)) // 2 CC sectors
+
+	// 4 CC sectors, 2 with shorter expirations so we can mess with extensions
+	var shortDuration abi.ChainEpoch = miner16.MinSectorExpiration + 100
+	ccSectors24Manifest := kit.NewSectorBatch().
+		AddEmptySectors(2).
+		AddSector(kit.SectorManifest{Duration: shortDuration}).
+		AddSector(kit.SectorManifest{Duration: shortDuration})
+	ccSectors24, _ := mminer.OnboardSectors(sealProofType, ccSectors24Manifest)
 	allSectors = append(allSectors, ccSectors24...)
+
 	dealSector24, _ := mminer.OnboardSectors(sealProofType, kit.NewSectorBatch().AddSectorsWithRandomPieces(1))
 	allSectors = append(allSectors, dealSector24...)
+
 	verifiedSector24, _ := mminer.OnboardSectors(
 		sealProofType,
 		kit.NewSectorBatch().AddSector(
@@ -360,8 +369,8 @@ func TestDailyFees(t *testing.T) {
 
 	t.Log("*** Waiting for PoST for sectors onboarded before the network upgrade")
 
-	expectedRaw := uint64(defaultSectorSize * 4)  // 4 sectors onboarded
-	expectedQap := uint64(defaultSectorSize * 13) // 3 sectors + 1 verified sector
+	expectedRaw := uint64(defaultSectorSize * 6)  // 6 sectors onboarded
+	expectedQap := uint64(defaultSectorSize * 15) // 5 sectors + 1 verified sector
 	mminer.WaitTillActivatedAndAssertPower(allSectors, expectedRaw, expectedQap)
 
 	t.Log("*** Checking daily fees on sectors onboarded before the network upgrade, after their first PoST")
@@ -374,6 +383,8 @@ func TestDailyFees(t *testing.T) {
 	}
 	expectMinerBurn(abi.NewTokenAmount(0))
 	checkFeeRecords(abi.NewTokenAmount(0))
+
+	t.Log("*** Upgrading the network to v25")
 
 	// Move past the upgrade
 	client.WaitTillChain(ctx, kit.HeightAtLeast(nv25epoch+5))
@@ -393,7 +404,7 @@ func TestDailyFees(t *testing.T) {
 
 	t.Log("*** Snapping deals into sectors after the network upgrade")
 
-	// Snap both CC sectors, one with an unverified piece, one with a verified piece, capture the
+	// Snap the first two CC sectors, one with an unverified piece, one with a verified piece, capture the
 	// CS value at each snap so we can accurately predict the expected daily fee
 	_, snap0Tsk := mminer.SnapDeal(ccSectors24[0], kit.SectorManifest{Piece: piece.PieceCID})
 	ccSectors240ExpectedFee := miner16.DailyProofFee(circulatingSupplyBefore(snap0Tsk), abi.NewStoragePower(int64(defaultSectorSize)))
@@ -401,9 +412,10 @@ func TestDailyFees(t *testing.T) {
 	_, snap1Tsk := mminer.SnapDeal(ccSectors24[1], kit.SectorManifest{Piece: piece.PieceCID, Verified: &miner14.VerifiedAllocationKey{Client: clientId, ID: verifreg14.AllocationId(allocationId)}})
 	ccSectors241ExpectedFee := miner16.DailyProofFee(circulatingSupplyBefore(snap1Tsk), abi.NewStoragePower(int64(defaultSectorSize*10)))
 
+	cc24PostCount := mminer.GetPostCount(ccSectors24[0]) // should be 1, but just in case
 	feePostWg.Add(1)
 	go func() {
-		mminer.WaitTillPost(ccSectors24[0]) // both onboarded together, so they should post together
+		mminer.WaitTillPostCount(ccSectors24[0], cc24PostCount+1)
 		feePostWg.Done()
 	}()
 
@@ -441,7 +453,7 @@ func TestDailyFees(t *testing.T) {
 	ccSectors25ExpectedFee := miner16.DailyProofFee(circulatingSupplyBefore(ccTsk), abi.NewStoragePower(int64(defaultSectorSize)))
 	feePostWg.Add(1)
 	go func() {
-		mminer.WaitTillPost(ccSectors25[0]) // both onboarded together, so they should post together
+		mminer.WaitTillPostCount(ccSectors25[0], 1) // both onboarded together, so they should post together
 		feePostWg.Done()
 	}()
 
@@ -450,7 +462,7 @@ func TestDailyFees(t *testing.T) {
 	dealSector25ExpectedFee := miner16.DailyProofFee(circulatingSupplyBefore(dealTsk), abi.NewStoragePower(int64(defaultSectorSize)))
 	feePostWg.Add(1)
 	go func() {
-		mminer.WaitTillPost(dealSector25[0])
+		mminer.WaitTillPostCount(dealSector25[0], 1)
 		feePostWg.Done()
 	}()
 
@@ -462,7 +474,7 @@ func TestDailyFees(t *testing.T) {
 	verified25ExpectedFee := miner16.DailyProofFee(circulatingSupplyBefore(verifiedTsk), abi.NewStoragePower(int64(defaultSectorSize*10)))
 	feePostWg.Add(1)
 	go func() {
-		mminer.WaitTillPost(verifiedSector25[0])
+		mminer.WaitTillPostCount(verifiedSector25[0], 1)
 		feePostWg.Done()
 	}()
 
@@ -505,8 +517,8 @@ func TestDailyFees(t *testing.T) {
 
 	t.Log("*** Waiting for PoST for sectors onboarded after the network upgrade")
 
-	expectedRaw = uint64(defaultSectorSize * 8)  // 8 sectors onboarded
-	expectedQap = uint64(defaultSectorSize * 35) // 5 sectors + 3 (incl 1 snap) verified sectors
+	expectedRaw = uint64(defaultSectorSize * 10) // 10 sectors onboarded
+	expectedQap = uint64(defaultSectorSize * 37) // 7 sectors + 3 (incl 1 snap) verified sectors
 	mminer.WaitTillActivatedAndAssertPower(allSectors, expectedRaw, expectedQap)
 
 	checkAllFees() // after PoST
@@ -522,7 +534,7 @@ func TestDailyFees(t *testing.T) {
 	// NOTE: we are crossing our fingers a little here, it is possible that our snapped sectors end
 	// up hitting two proving deadlines if we didn't compress our nv25 onboarding enough and get
 	// allocated to nicely aligned deadlines.
-	client.WaitTillChain(ctx, kit.HeightAtLeast(head.Height()+miner.WPoStChallengeWindow()))
+	client.WaitTillChain(ctx, kit.HeightAtLeast(head.Height()+miner.WPoStChallengeWindow()+10))
 
 	var expectTotalBurn abi.TokenAmount
 	for _, fee := range []abi.TokenAmount{
@@ -535,6 +547,7 @@ func TestDailyFees(t *testing.T) {
 	} {
 		expectTotalBurn = big.Add(expectTotalBurn, fee)
 	}
+
 	// we've passed our first deadline where fees were payable, both for the snapped nv24 sectors
 	// and the nv25 sectors
 	expectMinerBurn(expectTotalBurn)
