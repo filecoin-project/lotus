@@ -105,17 +105,18 @@ func init() {
 	addExample(f3Lease)
 	addExample(&f3Lease)
 
-	f3Cert := certs.FinalityCertificate{
-		GPBFTInstance: 0,
-		ECChain: &gpbft.ECChain{
-			TipSets: []*gpbft.TipSet{
-				{
-					Epoch:      0,
-					Key:        tsk.Bytes(),
-					PowerTable: c,
-				},
+	ecchain := &gpbft.ECChain{
+		TipSets: []*gpbft.TipSet{
+			{
+				Epoch:      0,
+				Key:        tsk.Bytes(),
+				PowerTable: c,
 			},
 		},
+	}
+	f3Cert := certs.FinalityCertificate{
+		GPBFTInstance: 0,
+		ECChain:       ecchain,
 		SupplementalData: gpbft.SupplementalData{
 			PowerTable: c,
 		},
@@ -459,6 +460,14 @@ func init() {
 	addExample(&manifest.Manifest{})
 	addExample(gpbft.NetworkName("filecoin"))
 	addExample(gpbft.ActorID(1000))
+	addExample(gpbft.InstanceProgress{
+		Instant: gpbft.Instant{
+			ID:    1413,
+			Round: 1,
+			Phase: gpbft.COMMIT_PHASE,
+		},
+		Input: ecchain,
+	})
 }
 
 func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []reflect.Type) {

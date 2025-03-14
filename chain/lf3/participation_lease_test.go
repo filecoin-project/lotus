@@ -198,10 +198,12 @@ var testManifest = NewManifest("fakenet", 30, 30, 30*time.Second, cid.Undef)
 
 type mockProgress struct{ currentInstance uint64 }
 
-func (m *mockProgress) Progress() (*manifest.Manifest, gpbft.Instant) {
-	return testManifest, gpbft.Instant{
-		ID:    m.currentInstance,
-		Round: 0,
-		Phase: gpbft.INITIAL_PHASE,
+func (m *mockProgress) Progress() (*manifest.Manifest, gpbft.InstanceProgress) {
+	return testManifest, gpbft.InstanceProgress{
+		Instant: gpbft.Instant{
+			ID:    m.currentInstance,
+			Round: 0,
+			Phase: gpbft.INITIAL_PHASE,
+		},
 	}
 }
