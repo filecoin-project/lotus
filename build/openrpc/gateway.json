@@ -10282,7 +10282,8 @@
                                     5,
                                     1
                                 ],
-                                "DisputableProofCount": 42
+                                "DisputableProofCount": 42,
+                                "DailyFee": "0"
                             }
                         ]
                     ],
@@ -10290,6 +10291,10 @@
                         {
                             "additionalProperties": false,
                             "properties": {
+                                "DailyFee": {
+                                    "additionalProperties": false,
+                                    "type": "object"
+                                },
                                 "DisputableProofCount": {
                                     "title": "number",
                                     "type": "number"
@@ -11707,7 +11712,7 @@
                             "SealedCID": {
                                 "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
                             },
-                            "DealIDs": [
+                            "DeprecatedDealIDs": [
                                 5432
                             ],
                             "Activation": 10101,
@@ -11722,7 +11727,8 @@
                             "SectorKeyCID": {
                                 "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
                             },
-                            "Flags": 0
+                            "Flags": 0,
+                            "DailyFee": "0"
                         }
                     ],
                     "additionalProperties": false,
@@ -11731,17 +11737,21 @@
                             "title": "number",
                             "type": "number"
                         },
-                        "DealIDs": {
+                        "DailyFee": {
+                            "additionalProperties": false,
+                            "type": "object"
+                        },
+                        "DealWeight": {
+                            "additionalProperties": false,
+                            "type": "object"
+                        },
+                        "DeprecatedDealIDs": {
                             "items": {
                                 "description": "Number is a number",
                                 "title": "number",
                                 "type": "number"
                             },
                             "type": "array"
-                        },
-                        "DealWeight": {
-                            "additionalProperties": false,
-                            "type": "object"
                         },
                         "ExpectedDayReward": {
                             "additionalProperties": false,

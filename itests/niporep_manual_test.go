@@ -274,10 +274,9 @@ func TestManualNISectorOnboarding(t *testing.T) {
 				req.NoError(err)
 
 				// Onboard CC sectors to this test miner using NI-PoRep
-				sectors[i] = miner.OnboardSectors(
+				sectors[i], _ = miner.OnboardSectors(
 					sealProofType,
-					false,
-					len(tcMiner.sectorsToOnboard),
+					kit.NewSectorBatch().AddEmptySectors(len(tcMiner.sectorsToOnboard)),
 					kit.WithExpectedExitCodes(tcMiner.sectorsToOnboard),
 					kit.WithRequireActivationSuccess(tcMiner.allOrNothing),
 					kit.WithModifyNIActivationsBeforeSubmit(func(activations []miner14.SectorNIActivationInfo) []miner14.SectorNIActivationInfo {
@@ -337,7 +336,7 @@ func TestManualNISectorOnboarding(t *testing.T) {
 				req.NoError(err)
 
 				// Snap a deal into the first of the successfully onboarded CC sectors for this miner
-				snapPieces := miner.SnapDeal(sectors[i][0])
+				snapPieces, _ := miner.SnapDeal(sectors[i][0], kit.SectorWithPiece(kit.BogusPieceCid2))
 
 				// Check "sector-updated" event happned after snap
 				{
@@ -390,7 +389,7 @@ func TestNISectorFailureCases(t *testing.T) {
 	build.Clock.Sleep(time.Second)
 
 	// We have to onboard a sector first to get the miner enrolled in cron; although we don't need to wait for it to prove
-	_ = miner.OnboardSectors(sealProofType, false, 1)
+	_, _ = miner.OnboardSectors(sealProofType, kit.NewSectorBatch().AddEmptySectors(1))
 
 	// Utility functions and variables for our failure cases
 
@@ -482,7 +481,7 @@ func TestNISectorFailureCases(t *testing.T) {
 
 	t.Run("bad SealedCID", func(t *testing.T) {
 		params := mkParams()
-		params.Sectors[1].SealedCID = cid.MustParse("baga6ea4seaqjtovkwk4myyzj56eztkh5pzsk5upksan6f5outesy62bsvl4dsha")
+		params.Sectors[1].SealedCID = kit.BogusPieceCid1
 		submitAndFail(&params, "invalid NI commit 1 while requiring activation success", 16)
 	})
 

@@ -768,7 +768,7 @@ func SectorsExtendCmd(getActorAddress ActorAddressGetter) *cli.Command {
 				if !found {
 					return xerrors.Errorf("sector %d is not active", id)
 				}
-				if len(si.DealIDs) > 0 && cctx.Bool("only-cc") {
+				if len(si.DeprecatedDealIDs) > 0 && cctx.Bool("only-cc") {
 					continue
 				}
 

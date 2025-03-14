@@ -43,7 +43,7 @@ const UpgradeSmokeHeight abi.ChainEpoch = 51000
 const UpgradeIgnitionHeight abi.ChainEpoch = 94000
 const UpgradeRefuelHeight abi.ChainEpoch = 130800
 
-const UpgradeAssemblyHeight abi.ChainEpoch = 138720
+var UpgradeAssemblyHeight abi.ChainEpoch = 138720
 
 const UpgradeTapeHeight abi.ChainEpoch = 140760
 
@@ -99,8 +99,17 @@ const UpgradeThunderHeight abi.ChainEpoch = UpgradeLightningHeight + 2880*21
 // 2023-12-12T13:30:00Z
 const UpgradeWatermelonHeight abi.ChainEpoch = 3469380
 
+// This fix upgrade only ran on calibrationnet
+const UpgradeWatermelonFixHeight abi.ChainEpoch = -1
+
+// This fix upgrade only ran on calibrationnet
+const UpgradeWatermelonFix2Height abi.ChainEpoch = -2
+
 // 2024-04-24T14:00:00Z
 const UpgradeDragonHeight abi.ChainEpoch = 3855360
+
+// This fix upgrade only ran on calibrationnet
+const UpgradeCalibrationDragonFixHeight abi.ChainEpoch = -3
 
 // This epoch, 120 epochs after the "rest" of the nv22 upgrade, is when we switch to Drand quicknet
 // 2024-04-11T15:00:00Z
@@ -113,22 +122,15 @@ const UpgradeWaffleHeight abi.ChainEpoch = 4154640
 // var because of TestMigrationNV24 in itests/migration_test.go to test the FIP-0081 pledge ramp
 var UpgradeTuktukHeight abi.ChainEpoch = 4461240
 
-// ??????
-var UpgradeTeepHeight = abi.ChainEpoch(9999999999)
-
 // FIP-0081: for the power actor state for pledge calculations.
 // UpgradeTuktukPowerRampDurationEpochs ends up in the power actor state after
 // Tuktuk migration. along with a RampStartEpoch matching the upgrade height.
 var UpgradeTuktukPowerRampDurationEpochs = uint64(builtin.EpochsInYear)
 
-// This fix upgrade only ran on calibrationnet
-const UpgradeWatermelonFixHeight abi.ChainEpoch = -1
+// ??????
+var UpgradeTeepHeight = abi.ChainEpoch(9999999999)
 
-// This fix upgrade only ran on calibrationnet
-const UpgradeWatermelonFix2Height abi.ChainEpoch = -2
-
-// This fix upgrade only ran on calibrationnet
-const UpgradeCalibrationDragonFixHeight abi.ChainEpoch = -3
+var UpgradeTeepInitialFilReserved = InitialFilReserved // FIP-0100: no change for mainnet
 
 var ConsensusMinerMinPower = abi.NewStoragePower(10 << 40)
 var PreCommitChallengeDelay = abi.ChainEpoch(150)
