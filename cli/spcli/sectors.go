@@ -864,6 +864,7 @@ func SectorsExtendCmd(getActorAddress ActorAddressGetter) *cli.Command {
 				return err
 			}
 
+			// TODO: remove after nv25 (FIP 0100)
 			declMax, err := policy.GetDeclarationsMax(nv)
 			if err != nil {
 				return err
