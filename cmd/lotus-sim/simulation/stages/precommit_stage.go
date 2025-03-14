@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin"
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/network"
-	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
@@ -27,7 +26,7 @@ import (
 
 const (
 	minPreCommitBatchSize = 1
-	maxPreCommitBatchSize = miner5.PreCommitSectorBatchMaxSize
+	maxPreCommitBatchSize = 256
 )
 
 type PreCommitStage struct {
