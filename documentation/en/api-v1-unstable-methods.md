@@ -7384,7 +7384,8 @@ Response:
       5,
       1
     ],
-    "DisputableProofCount": 42
+    "DisputableProofCount": 42,
+    "DailyFee": "0"
   }
 ]
 ```

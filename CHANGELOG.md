@@ -25,6 +25,7 @@
 - feat: expose `ChainGetMessagesInTipset` in the Lotus Gateway API ([filecoin-project/lotus#12947](https://github.com/filecoin-project/lotus/pull/12947))
 - feat: add `Agent` to the `Filecoin.Version` response ([#12904](https://github.com/filecoin-project/lotus/issues/12904)) that will be used to identify the node type.
 - fix!: change circulating supply calculation for calibnet, butterflynet and 2k for nv25 upgrade. ([filecoin-project/lotus#12938](https://github.com/filecoin-project/lotus/pull/12938))
+- feat: add DailyFee integration tests ([filecoin-project/lotus#12942](https://github.com/filecoin-project/lotus/pull/12942))
 
 # UNRELEASED v.1.32.0
 

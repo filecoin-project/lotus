@@ -211,6 +211,7 @@ type Deadline interface {
 
 	PartitionsChanged(Deadline) (bool, error)
 	DisputableProofCount() (uint64, error)
+	DailyFee() (abi.TokenAmount, error)
 }
 
 type Partition interface {
