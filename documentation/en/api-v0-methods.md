@@ -4483,7 +4483,8 @@ Response:
     "UpgradePhoenixHeight": 10101,
     "UpgradeWaffleHeight": 10101,
     "UpgradeTuktukHeight": 10101,
-    "UpgradeTeepHeight": 10101
+    "UpgradeTeepHeight": 10101,
+    "UpgradeTockHeight": 10101
   },
   "Eip155ChainID": 123,
   "GenesisTimestamp": 42

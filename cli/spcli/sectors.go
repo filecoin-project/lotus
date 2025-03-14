@@ -607,8 +607,8 @@ func SectorsExtendCmd(getActorAddress ActorAddressGetter) *cli.Command {
 				Usage: "try to extend selected sectors to this epoch, ignoring extension",
 			},
 			&cli.BoolFlag{
-				Name:  "only-cc",
-				Usage: "only extend CC sectors (useful for making sector ready for snap upgrade)",
+				Name:   "only-cc",
+				Hidden: true,
 			},
 			&cli.BoolFlag{
 				Name:  "drop-claims",
@@ -634,6 +634,10 @@ func SectorsExtendCmd(getActorAddress ActorAddressGetter) *cli.Command {
 			},
 		},
 		Action: func(cctx *cli.Context) error {
+			if cctx.IsSet("only-cc") {
+				return xerrors.Errorf("only-cc flag has been removed, use --exclude flag instead")
+			}
+
 			mf, err := types.ParseFIL(cctx.String("max-fee"))
 			if err != nil {
 				return err
@@ -767,9 +771,6 @@ func SectorsExtendCmd(getActorAddress ActorAddressGetter) *cli.Command {
 				si, found := activeSectorsInfo[id]
 				if !found {
 					return xerrors.Errorf("sector %d is not active", id)
-				}
-				if len(si.DeprecatedDealIDs) > 0 && cctx.Bool("only-cc") {
-					continue
 				}
 
 				sis = append(sis, si)
