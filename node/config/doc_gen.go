@@ -1083,7 +1083,8 @@ This is useful for forcing all deals to be assigned as snap deals to sectors mar
 			Name: "BatchPreCommitAboveBaseFee",
 			Type: "types.FIL",
 
-			Comment: `network BaseFee below which to stop doing precommit batching, instead
+			Comment: `DEPRECATED: remove after nv25 (FIP 0100)
+network BaseFee below which to stop doing precommit batching, instead
 sending precommit messages to the chain individually. When the basefee is
 below this threshold, precommit messages will get sent out immediately.`,
 		},
@@ -1091,7 +1092,8 @@ below this threshold, precommit messages will get sent out immediately.`,
 			Name: "AggregateAboveBaseFee",
 			Type: "types.FIL",
 
-			Comment: `network BaseFee below which to stop doing commit aggregation, instead
+			Comment: `DEPRECATED: remove after nv25 (FIP 0100)
+network BaseFee below which to stop doing commit aggregation, instead
 submitting proofs to the chain individually`,
 		},
 		{
