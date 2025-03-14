@@ -87,7 +87,7 @@ func TestManualSectorOnboarding(t *testing.T) {
 			minerC.AssertNoPower()
 
 			// ---- Miner B onboards a CC sector
-			bSectors := minerB.OnboardSectors(sealProofType, false, 1)
+			bSectors, _ := minerB.OnboardSectors(sealProofType, kit.NewSectorBatch().AddEmptySectors(1))
 			req.Len(bSectors, 1)
 			// Miner B should still not have power as power can only be gained after sector is activated i.e. the first WindowPost is submitted for it
 			minerB.AssertNoPower()
@@ -95,7 +95,7 @@ func TestManualSectorOnboarding(t *testing.T) {
 			blockMiner.WatchMinerForPost(minerB.ActorAddr)
 
 			// --- Miner C onboards sector with data/pieces
-			cSectors := minerC.OnboardSectors(sealProofType, true, 1)
+			cSectors, _ := minerC.OnboardSectors(sealProofType, kit.NewSectorBatch().AddSectorsWithRandomPieces(1))
 			// Miner C should still not have power as power can only be gained after sector is activated i.e. the first WindowPost is submitted for it
 			minerC.AssertNoPower()
 			// Ensure that the block miner checks for and waits for posts during the appropriate proving window from our new miner with a sector
@@ -106,7 +106,7 @@ func TestManualSectorOnboarding(t *testing.T) {
 			minerC.WaitTillActivatedAndAssertPower(cSectors, uint64(defaultSectorSize), uint64(defaultSectorSize))
 
 			// Miner B has activated the CC sector -> upgrade it with snapdeals
-			_ = minerB.SnapDeal(bSectors[0])
+			_, _ = minerB.SnapDeal(bSectors[0], kit.SectorManifest{Piece: kit.BogusPieceCid2})
 		})
 	}
 }

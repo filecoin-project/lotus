@@ -38,8 +38,11 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet/key"
 )
 
-// TODO: this shouldn't be fixed, we should make a new one for each sector/piece
-var fixedPieceCid = cid.MustParse("baga6ea4seaqjtovkwk4myyzj56eztkh5pzsk5upksan6f5outesy62bsvl4dsha")
+// TODO: make a randomiser for this
+var (
+	BogusPieceCid1 = cid.MustParse("baga6ea4seaqjtovkwk4myyzj56eztkh5pzsk5upksan6f5outesy62bsvl4dsha")
+	BogusPieceCid2 = cid.MustParse("baga6ea4seaqlhznlutptgfwhffupyer6txswamerq5fc2jlwf2lys2mm5jtiaeq")
+)
 
 // 32 bytes of 1's: this value essentially ignored in NI-PoRep proofs, but all zeros is not recommended.
 // Regardless of what we submit to the chain, actors will replace it with 32 1's anyway but we are
@@ -88,9 +91,20 @@ type sectorInfo struct {
 	sealedCid           cid.Cid
 	unsealedCid         cid.Cid
 	sectorProof         []byte
-	pieces              []abi.PieceInfo
+	pieces              []miner14.PieceActivationManifest
 	sealTickets         abi.SealRandomness
 	sealRandomnessEpoch abi.ChainEpoch
+}
+
+func (si sectorInfo) piecesToPieceInfos() []abi.PieceInfo {
+	pcPieces := make([]abi.PieceInfo, len(si.pieces))
+	for i, piece := range si.pieces {
+		pcPieces[i] = abi.PieceInfo{
+			Size:     piece.Size,
+			PieceCID: piece.CID,
+		}
+	}
+	return pcPieces
 }
 
 type windowPost struct {
@@ -188,6 +202,66 @@ func WithExpectedExitCodes(exitCodes []exitcode.ExitCode) OnboardOpt {
 	}
 }
 
+// SectorManifest is (currently) a simplified SectorAllocationManifest, allowing zero or one pieces
+// to be built into a sector, where that one piece may be verified. Leave blank to onboard a CC
+// sector.
+type SectorManifest struct {
+	Piece    cid.Cid
+	Verified *miner14.VerifiedAllocationKey
+}
+
+// SectorBatch is a builder for creating sector manifests
+type SectorBatch struct {
+	manifests []SectorManifest
+}
+
+// NewSectorBatch creates an empty sector batch
+func NewSectorBatch() *SectorBatch {
+	return &SectorBatch{manifests: []SectorManifest{}}
+}
+
+// AddEmptySectors adds the specified number of CC sectors to the batch
+func (sb *SectorBatch) AddEmptySectors(count int) *SectorBatch {
+	for i := 0; i < count; i++ {
+		sb.manifests = append(sb.manifests, EmptySector())
+	}
+	return sb
+}
+
+// AddSectorsWithRandomPieces adds sectors with random pieces
+func (sb *SectorBatch) AddSectorsWithRandomPieces(count int) *SectorBatch {
+	for i := 0; i < count; i++ {
+		sb.manifests = append(sb.manifests, SectorWithPiece(BogusPieceCid1))
+	}
+	return sb
+}
+
+// AddSector adds a custom sector manifest
+func (sb *SectorBatch) AddSector(manifest SectorManifest) *SectorBatch {
+	sb.manifests = append(sb.manifests, manifest)
+	return sb
+}
+
+// EmptySector creates an empty (CC) sector with no pieces
+func EmptySector() SectorManifest {
+	return SectorManifest{}
+}
+
+// SectorWithPiece creates a sector with the specified piece CID
+func SectorWithPiece(piece cid.Cid) SectorManifest {
+	return SectorManifest{
+		Piece: piece,
+	}
+}
+
+// SectorWithVerifiedPiece creates a sector with a verified allocation
+func SectorWithVerifiedPiece(piece cid.Cid, key *miner14.VerifiedAllocationKey) SectorManifest {
+	return SectorManifest{
+		Piece:    piece,
+		Verified: key,
+	}
+}
+
 // OnboardSectors onboards the specified number of sectors to the miner using the specified proof
 // type. If `withPieces` is true and the proof type supports it, the sectors will be onboarded with
 // pieces, otherwise they will be CC.
@@ -196,10 +270,9 @@ func WithExpectedExitCodes(exitCodes []exitcode.ExitCode) OnboardOpt {
 // process with real proofs.
 func (tm *TestUnmanagedMiner) OnboardSectors(
 	proofType abi.RegisteredSealProof,
-	withPieces bool,
-	count int,
+	sectorBatch *SectorBatch,
 	opts ...OnboardOpt,
-) []abi.SectorNumber {
+) ([]abi.SectorNumber, types.TipSetKey) {
 
 	req := require.New(tm.t)
 
@@ -208,7 +281,7 @@ func (tm *TestUnmanagedMiner) OnboardSectors(
 		req.NoError(o(&options))
 	}
 
-	sectors := make([]sectorInfo, count)
+	sectors := make([]sectorInfo, len(sectorBatch.manifests))
 
 	// Wait for the seal randomness to be available (we can only draw seal randomness from
 	// tipsets that have already achieved finality)
@@ -219,8 +292,7 @@ func (tm *TestUnmanagedMiner) OnboardSectors(
 
 	// For each sector, run PC1, PC2, C1 an C2, preparing for ProveCommit. If the proof needs it we
 	// will also submit a precommit for the sector.
-	for i := 0; i < count; i++ {
-		idx := i
+	for idx, sm := range sectorBatch.manifests {
 
 		// We hold on to `sector`, adding new properties to it as we go along until we're finished with
 		// this phase, then add it to `sectors`
@@ -228,12 +300,13 @@ func (tm *TestUnmanagedMiner) OnboardSectors(
 		sector.sealRandomnessEpoch = sealRandEpoch
 
 		eg.Go(func() error {
-			if withPieces {
+			if sm.Piece.Defined() {
 				// Build a sector with non-zero pieces to onboard
 				if tm.mockProofs {
-					sector.pieces = []abi.PieceInfo{{
-						Size:     abi.PaddedPieceSize(tm.options.sectorSize),
-						PieceCID: fixedPieceCid,
+					sector.pieces = []miner14.PieceActivationManifest{{
+						Size:                  abi.PaddedPieceSize(tm.options.sectorSize),
+						CID:                   sm.Piece,
+						VerifiedAllocationKey: sm.Verified,
 					}}
 				} else {
 					var err error
@@ -282,7 +355,7 @@ func (tm *TestUnmanagedMiner) OnboardSectors(
 	}
 
 	// Submit ProveCommit for all sectors
-	exitCodes := tm.submitProveCommit(proofType, sectors, options.requireActivationSuccess, options.modifyNIActivationsBeforeSubmit)
+	exitCodes, tsk := tm.submitProveCommit(proofType, sectors, options.requireActivationSuccess, options.modifyNIActivationsBeforeSubmit)
 
 	// ProveCommit may have succeeded overall, but some sectors may have failed if RequireActivationSuccess
 	// was set to false. We need to return the exit codes for each sector so the caller can determine
@@ -305,12 +378,13 @@ func (tm *TestUnmanagedMiner) OnboardSectors(
 
 	tm.wdPostLoop()
 
-	return onboarded
+	return onboarded, tsk
 }
 
 // SnapDeal snaps a deal into a sector, generating a new sealed sector and updating the sector's state.
 // WindowPoSt should continue to operate after this operation if required.
-func (tm *TestUnmanagedMiner) SnapDeal(sectorNumber abi.SectorNumber) []abi.PieceInfo {
+// The SectorManifest argument (currently) only impacts mock proofs, and is ignored otherwise.
+func (tm *TestUnmanagedMiner) SnapDeal(sectorNumber abi.SectorNumber, sm SectorManifest) ([]abi.PieceInfo, types.TipSetKey) {
 	req := require.New(tm.t)
 
 	tm.log("Snapping a deal into sector %d ...", sectorNumber)
@@ -355,7 +429,7 @@ func (tm *TestUnmanagedMiner) SnapDeal(sectorNumber abi.SectorNumber) []abi.Piec
 	} else {
 		pieces = []abi.PieceInfo{{
 			Size:     abi.PaddedPieceSize(tm.options.sectorSize),
-			PieceCID: cid.MustParse("baga6ea4seaqlhznlutptgfwhffupyer6txswamerq5fc2jlwf2lys2mm5jtiaeq"),
+			PieceCID: sm.Piece,
 		}}
 		snapProof = []byte{0xde, 0xad, 0xbe, 0xef}
 		newSealedCid = cid.MustParse("bagboea4b5abcatlxechwbp7kjpjguna6r6q7ejrhe6mdp3lf34pmswn27pkkieka")
@@ -365,10 +439,14 @@ func (tm *TestUnmanagedMiner) SnapDeal(sectorNumber abi.SectorNumber) []abi.Piec
 
 	var manifest []miner14.PieceActivationManifest
 	for _, piece := range pieces {
-		manifest = append(manifest, miner14.PieceActivationManifest{
+		pm := miner14.PieceActivationManifest{
 			CID:  piece.PieceCID,
 			Size: piece.Size,
-		})
+		}
+		if tm.mockProofs {
+			pm.VerifiedAllocationKey = sm.Verified
+		}
+		manifest = append(manifest, pm)
 	}
 
 	head, err := tm.FullNode.ChainHead(tm.ctx)
@@ -398,12 +476,12 @@ func (tm *TestUnmanagedMiner) SnapDeal(sectorNumber abi.SectorNumber) []abi.Piec
 	req.NoError(err)
 	req.True(r.Receipt.ExitCode.IsSuccess())
 
-	si.pieces = pieces
+	si.pieces = manifest
 	si.sealedCid = newSealedCid
 	si.unsealedCid = newUnsealedCid
 	tm.setCommittedSector(si)
 
-	return pieces
+	return pieces, r.TipSet
 }
 
 func (tm *TestUnmanagedMiner) log(msg string, args ...interface{}) {
@@ -487,9 +565,9 @@ func (tm *TestUnmanagedMiner) mkAndSavePiecesToOnboard(sector sectorInfo) (secto
 	}
 
 	// Create a struct for the piece info
-	sector.pieces = []abi.PieceInfo{{
-		Size:     paddedPieceSize,
-		PieceCID: pieceCIDA,
+	sector.pieces = []miner14.PieceActivationManifest{{
+		Size: paddedPieceSize,
+		CID:  pieceCIDA,
 	}}
 
 	// Create a temporary file for the sealed sector
@@ -679,7 +757,7 @@ func (tm *TestUnmanagedMiner) submitProveCommit(
 	sectors []sectorInfo,
 	requireActivationSuccess bool,
 	modifyNIActivationsBeforeSubmit func([]miner14.SectorNIActivationInfo) []miner14.SectorNIActivationInfo,
-) []exitcode.ExitCode {
+) ([]exitcode.ExitCode, types.TipSetKey) {
 
 	req := require.New(tm.t)
 
@@ -767,13 +845,7 @@ func (tm *TestUnmanagedMiner) submitProveCommit(
 		for i, sector := range sectors {
 			activations[i] = miner14.SectorActivationManifest{SectorNumber: sector.sectorNumber}
 			if len(sector.pieces) > 0 {
-				activations[i].Pieces = make([]miner14.PieceActivationManifest, len(sector.pieces))
-				for j, piece := range sector.pieces {
-					activations[i].Pieces[j] = miner14.PieceActivationManifest{
-						CID:  piece.PieceCID,
-						Size: piece.Size,
-					}
-				}
+				activations[i].Pieces = sector.pieces
 			}
 		}
 
@@ -819,7 +891,7 @@ func (tm *TestUnmanagedMiner) submitProveCommit(
 		}
 	}
 
-	return exitCodes
+	return exitCodes, msgReturn.TipSet
 }
 
 func (tm *TestUnmanagedMiner) wdPostLoop() {
@@ -1229,8 +1301,12 @@ func (tm *TestUnmanagedMiner) waitPreCommitSealRandomness(proofType abi.Register
 func (tm *TestUnmanagedMiner) generatePreCommit(sector sectorInfo, sealRandEpoch abi.ChainEpoch) (sectorInfo, error) {
 	if tm.mockProofs {
 		sector.sealedCid = cid.MustParse("bagboea4b5abcatlxechwbp7kjpjguna6r6q7ejrhe6mdp3lf34pmswn27pkkiekz")
-		if len(sector.pieces) > 0 {
-			sector.unsealedCid = fixedPieceCid
+		switch len(sector.pieces) {
+		case 0:
+		case 1:
+			sector.unsealedCid = sector.pieces[0].CID
+		default:
+			require.FailNow(tm.t, "generatePreCommit: multiple pieces not supported") // yet
 		}
 		return sector, nil
 	}
@@ -1269,7 +1345,7 @@ func (tm *TestUnmanagedMiner) generatePreCommit(sector sectorInfo, sealRandEpoch
 		sector.sectorNumber,
 		actorId,
 		sealTickets,
-		sector.pieces,
+		sector.piecesToPieceInfos(),
 	)
 	if err != nil {
 		return sectorInfo{}, fmt.Errorf("failed to run SealPreCommitPhase1 for sector %d: %w", sector.sectorNumber, err)
@@ -1362,7 +1438,7 @@ func (tm *TestUnmanagedMiner) generateSectorProof(sector sectorInfo) ([]byte, er
 		actorId,
 		sector.sealTickets,
 		interactiveRandomness,
-		sector.pieces,
+		sector.piecesToPieceInfos(),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to run SealCommitPhase1 for sector %d: %w", sector.sectorNumber, err)
