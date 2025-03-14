@@ -94,6 +94,7 @@ type sectorInfo struct {
 	pieces              []miner14.PieceActivationManifest
 	sealTickets         abi.SealRandomness
 	sealRandomnessEpoch abi.ChainEpoch
+	duration            abi.ChainEpoch
 }
 
 func (si sectorInfo) piecesToPieceInfos() []abi.PieceInfo {
@@ -203,11 +204,12 @@ func WithExpectedExitCodes(exitCodes []exitcode.ExitCode) OnboardOpt {
 }
 
 // SectorManifest is (currently) a simplified SectorAllocationManifest, allowing zero or one pieces
-// to be built into a sector, where that one piece may be verified. Leave blank to onboard a CC
-// sector.
+// to be built into a sector, where that one piece may be verified. Undefined Piece and nil Verified
+// onboards a CC sector. Duration changes the default sector expiration of 300 days past the minimum.
 type SectorManifest struct {
 	Piece    cid.Cid
 	Verified *miner14.VerifiedAllocationKey
+	Duration abi.ChainEpoch
 }
 
 // SectorBatch is a builder for creating sector manifests
@@ -298,6 +300,10 @@ func (tm *TestUnmanagedMiner) OnboardSectors(
 		// this phase, then add it to `sectors`
 		sector := tm.nextSector(proofType)
 		sector.sealRandomnessEpoch = sealRandEpoch
+		sector.duration = sm.Duration
+		if sector.duration == 0 {
+			sector.duration = builtin.EpochsInDay * 300
+		}
 
 		eg.Go(func() error {
 			if sm.Piece.Defined() {
@@ -732,8 +738,10 @@ func (tm *TestUnmanagedMiner) preCommitSectors(
 		unsealedCid := sector.unsealedCid
 		uc = &unsealedCid
 	}
+	head, err := tm.FullNode.ChainHead(tm.ctx)
+	require.NoError(tm.t, err)
 	spci := []miner14.SectorPreCommitInfo{{
-		Expiration:    2880 * 300,
+		Expiration:    head.Height() + (30*builtin.EpochsInDay + 10 /* pre_commit_challenge_delay - short */) + sector.duration,
 		SectorNumber:  sector.sectorNumber,
 		SealProof:     proofType,
 		SealedCID:     sealedCid,
@@ -780,6 +788,9 @@ func (tm *TestUnmanagedMiner) submitProveCommit(
 		req.NoError(err)
 		actorId := abi.ActorID(actorIdNum)
 
+		head, err := tm.FullNode.ChainHead(tm.ctx)
+		req.NoError(err)
+
 		infos := make([]proof.AggregateSealVerifyInfo, len(sectors))
 		activations := make([]miner14.SectorNIActivationInfo, len(sectors))
 		for i, sector := range sectors {
@@ -799,7 +810,7 @@ func (tm *TestUnmanagedMiner) submitProveCommit(
 				SealedCID:     sector.sealedCid,
 				SectorNumber:  sector.sectorNumber,
 				SealRandEpoch: sector.sealRandomnessEpoch,
-				Expiration:    2880 * 300,
+				Expiration:    head.Height() + sector.duration,
 			}
 		}
 
@@ -1558,7 +1569,7 @@ func (tm *TestUnmanagedMiner) WaitTillActivatedAndAssertPower(sectors []abi.Sect
 
 	// wait till sectors are activated
 	for _, sectorNumber := range sectors {
-		tm.WaitTillPost(sectorNumber)
+		tm.WaitTillPostCount(sectorNumber, 1)
 
 		if !tm.mockProofs { // else it would pass, which we don't want
 			// if the sector is in the current or previous deadline, we can't dispute the PoSt
@@ -1588,24 +1599,32 @@ func (tm *TestUnmanagedMiner) AssertNoWindowPostError() {
 	}
 }
 
-func (tm *TestUnmanagedMiner) WaitTillPost(sectorNumber abi.SectorNumber) {
+func (tm *TestUnmanagedMiner) GetPostCount(sectorNumber abi.SectorNumber) int {
+	tm.postsLk.Lock()
+	defer tm.postsLk.Unlock()
+
+	var postCount int
+	for _, post := range tm.posts {
+		require.NoError(tm.t, post.Error, "expected no error in window post but found one at epoch %d", post.Epoch)
+		if post.Error == nil {
+			for _, sn := range post.Posted {
+				if sn == sectorNumber {
+					postCount++
+				}
+			}
+		}
+	}
+	return postCount
+}
+
+func (tm *TestUnmanagedMiner) WaitTillPostCount(sectorNumber abi.SectorNumber, count int) {
 	for i := 0; tm.ctx.Err() == nil; i++ {
 		if i%10 == 0 {
 			tm.log("Waiting for sector %d to be posted", sectorNumber)
 		}
-		tm.postsLk.Lock()
-		for _, post := range tm.posts {
-			require.NoError(tm.t, post.Error, "expected no error in window post but found one at epoch %d", post.Epoch)
-			if post.Error == nil {
-				for _, sn := range post.Posted {
-					if sn == sectorNumber {
-						tm.postsLk.Unlock()
-						return
-					}
-				}
-			}
+		if tm.GetPostCount(sectorNumber) >= count {
+			return
 		}
-		tm.postsLk.Unlock()
 		select {
 		case <-tm.ctx.Done():
 			return

@@ -341,6 +341,10 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 			StopWithin:      10,
 		}},
 		Expensive: true,
+	}, {
+		Height:    buildconstants.UpgradeTeepHeight,
+		Network:   network.Version26,
+		Migration: nil,
 	},
 	}
 

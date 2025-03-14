@@ -130,6 +130,10 @@ var UpgradeTuktukPowerRampDurationEpochs = uint64(builtin.EpochsInYear)
 // ??????
 var UpgradeTeepHeight = abi.ChainEpoch(9999999999)
 
+// This epoch, 90 days after Teep is the completion of FIP-0100 where actors will start applying
+// the new daily fee to pre-Teep sectors being extended.
+var UpgradeTockHeight = UpgradeTeepHeight + builtin.EpochsInDay*90
+
 var UpgradeTeepInitialFilReserved = InitialFilReserved // FIP-0100: no change for mainnet
 
 var ConsensusMinerMinPower = abi.NewStoragePower(10 << 40)
