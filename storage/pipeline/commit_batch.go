@@ -233,7 +233,8 @@ func (b *CommitBatcher) maybeStartBatch(notif bool) ([]sealiface.CommitBatchRes,
 
 	individual := (total < cfg.MinCommitBatch) || (total < miner.MinAggregatedSectors) || blackedOut() || !cfg.AggregateCommits
 
-	if !individual && !cfg.AggregateAboveBaseFee.Equals(big.Zero()) {
+	// TODO: remove after nv25 (FIP 0100)
+	if !individual && !cfg.AggregateAboveBaseFee.Equals(big.Zero()) && nv < network.Version25 {
 		if ts.MinTicketBlock().ParentBaseFee.LessThan(cfg.AggregateAboveBaseFee) {
 			individual = true
 		}

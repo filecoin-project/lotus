@@ -1,6 +1,8 @@
 package policy
 
 import (
+	"math"
+
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -842,6 +844,9 @@ func GetAddressedSectorsMax(nwVer network.Version) (int, error) {
 	}
 }
 
+// GetDeclarationsMax is deprecated
+//
+// DEPRECATED: remove after nv25 (FIP 0100)
 func GetDeclarationsMax(nwVer network.Version) (int, error) {
 	v, err := actorstypes.VersionForNetwork(nwVer)
 	if err != nil {
@@ -912,7 +917,7 @@ func GetDeclarationsMax(nwVer network.Version) (int, error) {
 
 	case actorstypes.Version16:
 
-		return miner16.DeclarationsMax, nil
+		return math.MaxInt, nil
 
 	default:
 		return 0, xerrors.Errorf("unsupported network version")
