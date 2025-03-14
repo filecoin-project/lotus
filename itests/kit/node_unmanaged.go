@@ -21,6 +21,7 @@ import (
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-commp-utils/v2"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/batch"
@@ -94,6 +95,7 @@ type sectorInfo struct {
 	pieces              []miner14.PieceActivationManifest
 	sealTickets         abi.SealRandomness
 	sealRandomnessEpoch abi.ChainEpoch
+	duration            abi.ChainEpoch
 }
 
 func (si sectorInfo) piecesToPieceInfos() []abi.PieceInfo {
@@ -203,11 +205,12 @@ func WithExpectedExitCodes(exitCodes []exitcode.ExitCode) OnboardOpt {
 }
 
 // SectorManifest is (currently) a simplified SectorAllocationManifest, allowing zero or one pieces
-// to be built into a sector, where that one piece may be verified. Leave blank to onboard a CC
-// sector.
+// to be built into a sector, where that one piece may be verified. Undefined Piece and nil Verified
+// onboards a CC sector. Duration changes the default sector expiration of 300 days past the minimum.
 type SectorManifest struct {
 	Piece    cid.Cid
 	Verified *miner14.VerifiedAllocationKey
+	Duration abi.ChainEpoch
 }
 
 // SectorBatch is a builder for creating sector manifests
@@ -298,6 +301,10 @@ func (tm *TestUnmanagedMiner) OnboardSectors(
 		// this phase, then add it to `sectors`
 		sector := tm.nextSector(proofType)
 		sector.sealRandomnessEpoch = sealRandEpoch
+		sector.duration = sm.Duration
+		if sector.duration == 0 {
+			sector.duration = builtin.EpochsInDay * 300
+		}
 
 		eg.Go(func() error {
 			if sm.Piece.Defined() {
@@ -482,6 +489,29 @@ func (tm *TestUnmanagedMiner) SnapDeal(sectorNumber abi.SectorNumber, sm SectorM
 	tm.setCommittedSector(si)
 
 	return pieces, r.TipSet
+}
+
+func (tm *TestUnmanagedMiner) ExtendSectorExpiration(sectorNumber abi.SectorNumber, expiration abi.ChainEpoch) types.TipSetKey {
+	req := require.New(tm.t)
+
+	sl, err := tm.FullNode.StateSectorPartition(tm.ctx, tm.ActorAddr, sectorNumber, types.EmptyTSK)
+	req.NoError(err)
+
+	params := &miner14.ExtendSectorExpiration2Params{
+		Extensions: []miner14.ExpirationExtension2{
+			{
+				Deadline:      sl.Deadline,
+				Partition:     sl.Partition,
+				Sectors:       bitfield.NewFromSet([]uint64{uint64(sectorNumber)}),
+				NewExpiration: expiration,
+			},
+		},
+	}
+	r, err := tm.SubmitMessage(params, 1, builtin.MethodsMiner.ExtendSectorExpiration2)
+	req.NoError(err)
+	req.True(r.Receipt.ExitCode.IsSuccess())
+
+	return r.TipSet
 }
 
 func (tm *TestUnmanagedMiner) log(msg string, args ...interface{}) {
@@ -732,8 +762,10 @@ func (tm *TestUnmanagedMiner) preCommitSectors(
 		unsealedCid := sector.unsealedCid
 		uc = &unsealedCid
 	}
+	head, err := tm.FullNode.ChainHead(tm.ctx)
+	require.NoError(tm.t, err)
 	spci := []miner14.SectorPreCommitInfo{{
-		Expiration:    2880 * 300,
+		Expiration:    head.Height() + (30*builtin.EpochsInDay + 10 /* pre_commit_challenge_delay - short */) + sector.duration,
 		SectorNumber:  sector.sectorNumber,
 		SealProof:     proofType,
 		SealedCID:     sealedCid,
@@ -780,6 +812,9 @@ func (tm *TestUnmanagedMiner) submitProveCommit(
 		req.NoError(err)
 		actorId := abi.ActorID(actorIdNum)
 
+		head, err := tm.FullNode.ChainHead(tm.ctx)
+		req.NoError(err)
+
 		infos := make([]proof.AggregateSealVerifyInfo, len(sectors))
 		activations := make([]miner14.SectorNIActivationInfo, len(sectors))
 		for i, sector := range sectors {
@@ -799,7 +834,7 @@ func (tm *TestUnmanagedMiner) submitProveCommit(
 				SealedCID:     sector.sealedCid,
 				SectorNumber:  sector.sectorNumber,
 				SealRandEpoch: sector.sealRandomnessEpoch,
-				Expiration:    2880 * 300,
+				Expiration:    head.Height() + sector.duration,
 			}
 		}
 
@@ -1558,7 +1593,7 @@ func (tm *TestUnmanagedMiner) WaitTillActivatedAndAssertPower(sectors []abi.Sect
 
 	// wait till sectors are activated
 	for _, sectorNumber := range sectors {
-		tm.WaitTillPost(sectorNumber)
+		tm.WaitTillPostCount(sectorNumber, 1)
 
 		if !tm.mockProofs { // else it would pass, which we don't want
 			// if the sector is in the current or previous deadline, we can't dispute the PoSt
@@ -1588,24 +1623,36 @@ func (tm *TestUnmanagedMiner) AssertNoWindowPostError() {
 	}
 }
 
-func (tm *TestUnmanagedMiner) WaitTillPost(sectorNumber abi.SectorNumber) {
+func (tm *TestUnmanagedMiner) GetPostCount(sectorNumber abi.SectorNumber) int {
+	return tm.GetPostCountSince(0, sectorNumber)
+}
+
+func (tm *TestUnmanagedMiner) GetPostCountSince(epoch abi.ChainEpoch, sectorNumber abi.SectorNumber) int {
+	tm.postsLk.Lock()
+	defer tm.postsLk.Unlock()
+
+	var postCount int
+	for _, post := range tm.posts {
+		require.NoError(tm.t, post.Error, "expected no error in window post but found one at epoch %d", post.Epoch)
+		if post.Error == nil {
+			for _, sn := range post.Posted {
+				if post.Epoch >= epoch && sn == sectorNumber {
+					postCount++
+				}
+			}
+		}
+	}
+	return postCount
+}
+
+func (tm *TestUnmanagedMiner) WaitTillPostCount(sectorNumber abi.SectorNumber, count int) {
 	for i := 0; tm.ctx.Err() == nil; i++ {
 		if i%10 == 0 {
 			tm.log("Waiting for sector %d to be posted", sectorNumber)
 		}
-		tm.postsLk.Lock()
-		for _, post := range tm.posts {
-			require.NoError(tm.t, post.Error, "expected no error in window post but found one at epoch %d", post.Epoch)
-			if post.Error == nil {
-				for _, sn := range post.Posted {
-					if sn == sectorNumber {
-						tm.postsLk.Unlock()
-						return
-					}
-				}
-			}
+		if tm.GetPostCount(sectorNumber) >= count {
+			return
 		}
-		tm.postsLk.Unlock()
 		select {
 		case <-tm.ctx.Done():
 			return
