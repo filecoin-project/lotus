@@ -73,6 +73,9 @@ type APIVersion struct {
 
 	// Seconds
 	BlockDelay uint64
+
+	// Agent type, as reported to other nodes, e.g. "lotus"
+	Agent string
 }
 
 func (v APIVersion) String() string {
