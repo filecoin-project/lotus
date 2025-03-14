@@ -24,7 +24,12 @@
 - chore: upgrade go-state-types with big.Int{} change that means an empty big.Int is now treated as zero for all operations ([filecoin-project/lotus#12936](https://github.com/filecoin-project/lotus/pull/12936))
 - feat: expose `ChainGetMessagesInTipset` in the Lotus Gateway API ([filecoin-project/lotus#12947](https://github.com/filecoin-project/lotus/pull/12947))
 - feat: add `Agent` to the `Filecoin.Version` response ([#12904](https://github.com/filecoin-project/lotus/issues/12904)) that will be used to identify the node type.
-- fix!: change circulating supply calculation for calibnet, butterflynet and 2k for nv25 upgrade. ([filecoin-project/lotus#12938](https://github.com/filecoin-project/lotus/pull/12938))
+- feat!: [FIP-0100](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0100.md) and [FIP-0098](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0098.md) implementation ([filecoin-project/lotus#12942](https://github.com/filecoin-project/lotus/pull/12942))
+  - Adds a scheduled nv26 "Tock" upgrade exactly 90 days after nv25 to signal the end of the sector extensions grace period for FIP-0100
+  - Deadlines on the public API now have a `DailyFee` field
+  - `DealIDs` has now been removed from the public API's `SectorOnChainInfo` (was deprecated in FIP-0079)
+  - Removed `--only-cc` from `spcli sectors extend` command
+  - Change circulating supply calculation for calibnet, butterflynet and 2k for nv25 upgrade; see ([filecoin-project/lotus#12938](https://github.com/filecoin-project/lotus/pull/12938)) for more information
 
 # UNRELEASED v.1.32.0
 

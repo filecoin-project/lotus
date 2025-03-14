@@ -1398,6 +1398,7 @@ const (
 type Deadline struct {
 	PostSubmissions      bitfield.BitField
 	DisputableProofCount uint64
+	DailyFee             abi.TokenAmount
 }
 
 type Partition struct {
