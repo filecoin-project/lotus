@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -88,7 +87,7 @@ func TestManualSectorOnboarding(t *testing.T) {
 			minerC.AssertNoPower()
 
 			// ---- Miner B onboards a CC sector
-			bSectors, _ := minerB.OnboardSectors(sealProofType, []kit.SectorManifest{{}})
+			bSectors, _ := minerB.OnboardSectors(sealProofType, kit.NewSectorBatch().AddEmptySectors(1))
 			req.Len(bSectors, 1)
 			// Miner B should still not have power as power can only be gained after sector is activated i.e. the first WindowPost is submitted for it
 			minerB.AssertNoPower()
@@ -96,7 +95,7 @@ func TestManualSectorOnboarding(t *testing.T) {
 			blockMiner.WatchMinerForPost(minerB.ActorAddr)
 
 			// --- Miner C onboards sector with data/pieces
-			cSectors, _ := minerC.OnboardSectors(sealProofType, []kit.SectorManifest{kit.SectorWithRandPiece()})
+			cSectors, _ := minerC.OnboardSectors(sealProofType, kit.NewSectorBatch().AddSectorsWithRandomPieces(1))
 			// Miner C should still not have power as power can only be gained after sector is activated i.e. the first WindowPost is submitted for it
 			minerC.AssertNoPower()
 			// Ensure that the block miner checks for and waits for posts during the appropriate proving window from our new miner with a sector
@@ -107,7 +106,7 @@ func TestManualSectorOnboarding(t *testing.T) {
 			minerC.WaitTillActivatedAndAssertPower(cSectors, uint64(defaultSectorSize), uint64(defaultSectorSize))
 
 			// Miner B has activated the CC sector -> upgrade it with snapdeals
-			_, _ = minerB.SnapDeal(bSectors[0], kit.SectorManifest{Piece: cid.MustParse("baga6ea4seaqlhznlutptgfwhffupyer6txswamerq5fc2jlwf2lys2mm5jtiaeq")})
+			_, _ = minerB.SnapDeal(bSectors[0], kit.SectorManifest{Piece: kit.BogusPieceCid2})
 		})
 	}
 }

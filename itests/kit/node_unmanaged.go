@@ -39,7 +39,10 @@ import (
 )
 
 // TODO: make a randomiser for this
-var rndPieceCid = cid.MustParse("baga6ea4seaqjtovkwk4myyzj56eztkh5pzsk5upksan6f5outesy62bsvl4dsha")
+var (
+	BogusPieceCid1 = cid.MustParse("baga6ea4seaqjtovkwk4myyzj56eztkh5pzsk5upksan6f5outesy62bsvl4dsha")
+	BogusPieceCid2 = cid.MustParse("baga6ea4seaqlhznlutptgfwhffupyer6txswamerq5fc2jlwf2lys2mm5jtiaeq")
+)
 
 // 32 bytes of 1's: this value essentially ignored in NI-PoRep proofs, but all zeros is not recommended.
 // Regardless of what we submit to the chain, actors will replace it with 32 1's anyway but we are
@@ -207,9 +210,55 @@ type SectorManifest struct {
 	Verified *miner14.VerifiedAllocationKey
 }
 
-func SectorWithRandPiece() SectorManifest {
+// SectorBatch is a builder for creating sector manifests
+type SectorBatch struct {
+	manifests []SectorManifest
+}
+
+// NewSectorBatch creates an empty sector batch
+func NewSectorBatch() *SectorBatch {
+	return &SectorBatch{manifests: []SectorManifest{}}
+}
+
+// AddEmptySectors adds the specified number of CC sectors to the batch
+func (sb *SectorBatch) AddEmptySectors(count int) *SectorBatch {
+	for i := 0; i < count; i++ {
+		sb.manifests = append(sb.manifests, EmptySector())
+	}
+	return sb
+}
+
+// AddSectorsWithRandomPieces adds sectors with random pieces
+func (sb *SectorBatch) AddSectorsWithRandomPieces(count int) *SectorBatch {
+	for i := 0; i < count; i++ {
+		sb.manifests = append(sb.manifests, SectorWithPiece(BogusPieceCid1))
+	}
+	return sb
+}
+
+// AddSector adds a custom sector manifest
+func (sb *SectorBatch) AddSector(manifest SectorManifest) *SectorBatch {
+	sb.manifests = append(sb.manifests, manifest)
+	return sb
+}
+
+// EmptySector creates an empty (CC) sector with no pieces
+func EmptySector() SectorManifest {
+	return SectorManifest{}
+}
+
+// SectorWithPiece creates a sector with the specified piece CID
+func SectorWithPiece(piece cid.Cid) SectorManifest {
 	return SectorManifest{
-		Piece: rndPieceCid,
+		Piece: piece,
+	}
+}
+
+// SectorWithVerifiedPiece creates a sector with a verified allocation
+func SectorWithVerifiedPiece(piece cid.Cid, key *miner14.VerifiedAllocationKey) SectorManifest {
+	return SectorManifest{
+		Piece:    piece,
+		Verified: key,
 	}
 }
 
@@ -221,7 +270,7 @@ func SectorWithRandPiece() SectorManifest {
 // process with real proofs.
 func (tm *TestUnmanagedMiner) OnboardSectors(
 	proofType abi.RegisteredSealProof,
-	manifest []SectorManifest,
+	sectorBatch *SectorBatch,
 	opts ...OnboardOpt,
 ) ([]abi.SectorNumber, types.TipSetKey) {
 
@@ -232,7 +281,7 @@ func (tm *TestUnmanagedMiner) OnboardSectors(
 		req.NoError(o(&options))
 	}
 
-	sectors := make([]sectorInfo, len(manifest))
+	sectors := make([]sectorInfo, len(sectorBatch.manifests))
 
 	// Wait for the seal randomness to be available (we can only draw seal randomness from
 	// tipsets that have already achieved finality)
@@ -243,7 +292,7 @@ func (tm *TestUnmanagedMiner) OnboardSectors(
 
 	// For each sector, run PC1, PC2, C1 an C2, preparing for ProveCommit. If the proof needs it we
 	// will also submit a precommit for the sector.
-	for idx, sm := range manifest {
+	for idx, sm := range sectorBatch.manifests {
 
 		// We hold on to `sector`, adding new properties to it as we go along until we're finished with
 		// this phase, then add it to `sectors`
@@ -1252,8 +1301,12 @@ func (tm *TestUnmanagedMiner) waitPreCommitSealRandomness(proofType abi.Register
 func (tm *TestUnmanagedMiner) generatePreCommit(sector sectorInfo, sealRandEpoch abi.ChainEpoch) (sectorInfo, error) {
 	if tm.mockProofs {
 		sector.sealedCid = cid.MustParse("bagboea4b5abcatlxechwbp7kjpjguna6r6q7ejrhe6mdp3lf34pmswn27pkkiekz")
-		if len(sector.pieces) > 0 {
-			sector.unsealedCid = sector.pieces[0].CID // TODO: handle multiple pieces?
+		switch len(sector.pieces) {
+		case 0:
+		case 1:
+			sector.unsealedCid = sector.pieces[0].CID
+		default:
+			require.FailNow(tm.t, "generatePreCommit: multiple pieces not supported") // yet
 		}
 		return sector, nil
 	}

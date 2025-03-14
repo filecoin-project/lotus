@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
@@ -100,6 +99,15 @@ func TestDailyFees(t *testing.T) {
 		cs, err := client.StateVMCirculatingSupplyInternal(ctx, ts.Parents())
 		req.NoError(err)
 		return cs.FilCirculating
+	}
+
+	checkMiner16Invariants := func() {
+		act, err := client.StateGetActor(ctx, mminer.ActorAddr, types.EmptyTSK)
+		req.NoError(err)
+		var st miner16.State
+		req.NoError(store.Get(ctx, act.Head, &st))
+		_, msgs := miner16.CheckStateInvariants(&st, store, act.Balance)
+		req.Len(msgs.Messages(), 0)
 	}
 
 	// checkDailyFee checks the daily fee for a sector, returning true if the sector is in the v16
@@ -322,17 +330,19 @@ func TestDailyFees(t *testing.T) {
 
 	piece := abi.PieceInfo{
 		Size:     abi.PaddedPieceSize(defaultSectorSize),
-		PieceCID: cid.MustParse("baga6ea4seaqlhznlutptgfwhffupyer6txswamerq5fc2jlwf2lys2mm5jtiaeq"),
+		PieceCID: kit.BogusPieceCid2,
 	}
 	clientId, allocationId := kit.SetupAllocation(ctx, t, &client, minerId, piece, verifiedClientAddr, 0, 0)
 
 	var allSectors []abi.SectorNumber
-	ccSectors24, _ := mminer.OnboardSectors(sealProofType, []kit.SectorManifest{{}, {}}) // 2 CC sectors
+	ccSectors24, _ := mminer.OnboardSectors(sealProofType, kit.NewSectorBatch().AddEmptySectors(2)) // 2 CC sectors
 	allSectors = append(allSectors, ccSectors24...)
-	dealSector24, _ := mminer.OnboardSectors(sealProofType, []kit.SectorManifest{kit.SectorWithRandPiece()})
+	dealSector24, _ := mminer.OnboardSectors(sealProofType, kit.NewSectorBatch().AddSectorsWithRandomPieces(1))
 	allSectors = append(allSectors, dealSector24...)
-	verifiedSector24, _ := mminer.OnboardSectors(sealProofType, []kit.SectorManifest{
-		{Piece: piece.PieceCID, Verified: &miner14.VerifiedAllocationKey{Client: clientId, ID: verifreg14.AllocationId(allocationId)}}})
+	verifiedSector24, _ := mminer.OnboardSectors(
+		sealProofType,
+		kit.NewSectorBatch().AddSector(
+			kit.SectorWithVerifiedPiece(piece.PieceCID, &miner14.VerifiedAllocationKey{Client: clientId, ID: verifreg14.AllocationId(allocationId)})))
 	allSectors = append(allSectors, verifiedSector24...)
 
 	blockMiner.WatchMinerForPost(mminer.ActorAddr)
@@ -368,6 +378,8 @@ func TestDailyFees(t *testing.T) {
 	// Move past the upgrade
 	client.WaitTillChain(ctx, kit.HeightAtLeast(nv25epoch+5))
 
+	checkMiner16Invariants()
+
 	t.Log("*** Re-checking daily fees on sectors onboarded before the network upgrade")
 
 	// Still no fees, sectors shouldn't have been touched
@@ -394,6 +406,8 @@ func TestDailyFees(t *testing.T) {
 		mminer.WaitTillPost(ccSectors24[0]) // both onboarded together, so they should post together
 		feePostWg.Done()
 	}()
+
+	checkMiner16Invariants()
 
 	t.Log("*** Checking daily fees on old and snapped sectors")
 
@@ -422,7 +436,7 @@ func TestDailyFees(t *testing.T) {
 
 	clientId, allocationId = kit.SetupAllocation(ctx, t, &client, minerId, piece, verifiedClientAddr, 0, 0)
 
-	ccSectors25, ccTsk := mminer.OnboardSectors(sealProofType, []kit.SectorManifest{{}, {}}) // 2 CC sectors
+	ccSectors25, ccTsk := mminer.OnboardSectors(sealProofType, kit.NewSectorBatch().AddEmptySectors(2)) // 2 CC sectors
 	allSectors = append(allSectors, ccSectors25...)
 	ccSectors25ExpectedFee := miner16.DailyProofFee(circulatingSupplyBefore(ccTsk), abi.NewStoragePower(int64(defaultSectorSize)))
 	feePostWg.Add(1)
@@ -431,7 +445,7 @@ func TestDailyFees(t *testing.T) {
 		feePostWg.Done()
 	}()
 
-	dealSector25, dealTsk := mminer.OnboardSectors(sealProofType, []kit.SectorManifest{kit.SectorWithRandPiece()})
+	dealSector25, dealTsk := mminer.OnboardSectors(sealProofType, kit.NewSectorBatch().AddSectorsWithRandomPieces(1))
 	allSectors = append(allSectors, dealSector25...)
 	dealSector25ExpectedFee := miner16.DailyProofFee(circulatingSupplyBefore(dealTsk), abi.NewStoragePower(int64(defaultSectorSize)))
 	feePostWg.Add(1)
@@ -440,8 +454,10 @@ func TestDailyFees(t *testing.T) {
 		feePostWg.Done()
 	}()
 
-	verifiedSector25, verifiedTsk := mminer.OnboardSectors(sealProofType, []kit.SectorManifest{
-		{Piece: piece.PieceCID, Verified: &miner14.VerifiedAllocationKey{Client: clientId, ID: verifreg14.AllocationId(allocationId)}}})
+	verifiedSector25, verifiedTsk := mminer.OnboardSectors(
+		sealProofType,
+		kit.NewSectorBatch().AddSector(
+			kit.SectorWithVerifiedPiece(piece.PieceCID, &miner14.VerifiedAllocationKey{Client: clientId, ID: verifreg14.AllocationId(allocationId)})))
 	allSectors = append(allSectors, verifiedSector25...)
 	verified25ExpectedFee := miner16.DailyProofFee(circulatingSupplyBefore(verifiedTsk), abi.NewStoragePower(int64(defaultSectorSize*10)))
 	feePostWg.Add(1)
@@ -485,6 +501,7 @@ func TestDailyFees(t *testing.T) {
 	}
 
 	checkAllFees() // before PoST
+	checkMiner16Invariants()
 
 	t.Log("*** Waiting for PoST for sectors onboarded after the network upgrade")
 
@@ -493,6 +510,7 @@ func TestDailyFees(t *testing.T) {
 	mminer.WaitTillActivatedAndAssertPower(allSectors, expectedRaw, expectedQap)
 
 	checkAllFees() // after PoST
+	checkMiner16Invariants()
 
 	// wait for all fees to be paid—we need each one to have reached its first deadline and they are
 	// likely spread out over multiple deadlines
@@ -522,4 +540,5 @@ func TestDailyFees(t *testing.T) {
 	expectMinerBurn(expectTotalBurn)
 	// with only one fee payment so far for all sectors, the total in the records should be the same as the burn
 	checkFeeRecords(expectTotalBurn)
+	checkMiner16Invariants()
 }

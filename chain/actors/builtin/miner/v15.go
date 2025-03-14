@@ -515,8 +515,8 @@ func (d *deadline15) DisputableProofCount() (uint64, error) {
 
 }
 
-func (d *deadline15) DailyFee() abi.TokenAmount {
-	return big.Zero()
+func (d *deadline15) DailyFee() (abi.TokenAmount, error) {
+	return big.Zero(), nil
 }
 
 func (p *partition15) AllSectors() (bitfield.BitField, error) {
