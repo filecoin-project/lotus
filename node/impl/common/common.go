@@ -70,6 +70,7 @@ func (a *CommonAPI) Version(context.Context) (api.APIVersion, error) {
 		APIVersion: v,
 
 		BlockDelay: buildconstants.BlockDelaySecs,
+		Agent:      buildconstants.UserAgent,
 	}, nil
 }
 

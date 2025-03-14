@@ -19,6 +19,7 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 )
@@ -51,7 +52,7 @@ func Host(mctx helpers.MetricsCtx, buildVersion build.BuildVersion, lc fx.Lifecy
 		libp2p.Peerstore(params.Peerstore),
 		libp2p.NoListenAddrs,
 		libp2p.Ping(true),
-		libp2p.UserAgent("lotus-" + string(buildVersion)),
+		libp2p.UserAgent(buildconstants.UserAgent + "-" + string(buildVersion)),
 	}
 	for _, o := range params.Opts {
 		opts = append(opts, o...)

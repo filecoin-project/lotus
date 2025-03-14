@@ -12117,7 +12117,8 @@
                         {
                             "Version": "string value",
                             "APIVersion": 131840,
-                            "BlockDelay": 42
+                            "BlockDelay": 42,
+                            "Agent": "string value"
                         }
                     ],
                     "additionalProperties": false,
@@ -12125,6 +12126,9 @@
                         "APIVersion": {
                             "title": "number",
                             "type": "number"
+                        },
+                        "Agent": {
+                            "type": "string"
                         },
                         "BlockDelay": {
                             "title": "number",
