@@ -1,6 +1,6 @@
 {
   "Pause": false,
-  "ProtocolVersion": 5,
+  "ProtocolVersion": 7,
   "InitialInstance": 0,
   "BootstrapEpoch": 5000000,
   "NetworkName": "filecoin",
@@ -44,7 +44,10 @@
     "MaximumPollInterval": 120000000000
   },
   "PubSub": {
-    "CompressionEnabled": false
+    "CompressionEnabled": true,
+    "ChainCompressionEnabled": true,
+    "GMessageSubscriptionBufferSize": 128,
+    "ValidatedMessageBufferSize": 128
   },
   "ChainExchange": {
     "SubscriptionBufferSize": 32,
@@ -54,5 +57,14 @@
     "MaxWantedChainsPerInstance": 1000,
     "RebroadcastInterval": 2000000000,
     "MaxTimestampAge": 8000000000
+  },
+  "PartialMessageManager": {
+    "PendingDiscoveredChainsBufferSize": 100,
+    "PendingPartialMessagesBufferSize": 100,
+    "PendingChainBroadcastsBufferSize": 100,
+    "PendingInstanceRemovalBufferSize": 10,
+    "CompletedMessagesBufferSize": 100,
+    "MaxBufferedMessagesPerInstance": 25000,
+    "MaxCachedValidatedMessagesPerInstance": 25000
   }
 }

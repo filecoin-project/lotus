@@ -1321,10 +1321,10 @@ func (mr *MockFullNodeMockRecorder) F3GetOrRenewParticipationTicket(arg0, arg1, 
 }
 
 // F3GetProgress mocks base method.
-func (m *MockFullNode) F3GetProgress(arg0 context.Context) (gpbft.Instant, error) {
+func (m *MockFullNode) F3GetProgress(arg0 context.Context) (gpbft.InstanceProgress, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "F3GetProgress", arg0)
-	ret0, _ := ret[0].(gpbft.Instant)
+	ret0, _ := ret[0].(gpbft.InstanceProgress)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
