@@ -544,6 +544,7 @@ func TestDailyFees(t *testing.T) {
 	client.WaitTillChain(ctx, kit.HeightAtLeast(nv26epoch+5))
 
 	var ccSectors242ExpectedFee, ccSectors243ExpectedFee abi.TokenAmount
+	var ccSectors242ExtensionEpoch, ccSectors243ExtensionEpoch abi.ChainEpoch
 	{
 		t.Log("*** Extending the expiration of CC sectors after the Tock (v26) upgrade so they attract fees")
 
@@ -552,12 +553,18 @@ func TestDailyFees(t *testing.T) {
 		req.NoError(err)
 		extensionTsk := mminer.ExtendSectorExpiration(ccSectors24[2], soci.Expiration+30*builtin.EpochsInDay)
 		ccSectors242ExpectedFee = miner16.DailyProofFee(circulatingSupplyBefore(extensionTsk), abi.NewStoragePower(int64(defaultSectorSize)))
+		ts, err := client.ChainGetTipSet(ctx, extensionTsk)
+		req.NoError(err)
+		ccSectors242ExtensionEpoch = ts.Height()
 
 		// Extend the one that hasn't been extended
 		soci, err = client.StateSectorGetInfo(ctx, mminer.ActorAddr, ccSectors24[3], types.EmptyTSK)
 		req.NoError(err)
 		extensionTsk = mminer.ExtendSectorExpiration(ccSectors24[3], soci.Expiration+30*builtin.EpochsInDay)
 		ccSectors243ExpectedFee = miner16.DailyProofFee(circulatingSupplyBefore(extensionTsk), abi.NewStoragePower(int64(defaultSectorSize)))
+		ts, err = client.ChainGetTipSet(ctx, extensionTsk)
+		req.NoError(err)
+		ccSectors243ExtensionEpoch = ts.Height()
 
 		// Remove the two extended sectors from the list of sectors we expect to not have fees
 		noFeeSectors = append(append([]abi.SectorNumber{}, dealSector24...), verifiedSector24...)
@@ -616,8 +623,9 @@ func TestDailyFees(t *testing.T) {
 	}
 
 	// Add the payments for the two pre-nv25 sectors that were extended in nv26
-	paymentsPast := mminer.GetPostCountSince(nv26epoch, ccSectors24[2]) // 2 & 3 should be in the same deadline
+	paymentsPast := mminer.GetPostCountSince(ccSectors242ExtensionEpoch, ccSectors24[2])
 	expectTotalBurn = big.Add(expectTotalBurn, big.Mul(big.NewInt(int64(paymentsPast)), ccSectors242ExpectedFee))
+	paymentsPast = mminer.GetPostCountSince(ccSectors243ExtensionEpoch, ccSectors24[3])
 	expectTotalBurn = big.Add(expectTotalBurn, big.Mul(big.NewInt(int64(paymentsPast)), ccSectors243ExpectedFee))
 
 	// we've passed our first deadline where fees were payable, both for the snapped nv24 sectors
