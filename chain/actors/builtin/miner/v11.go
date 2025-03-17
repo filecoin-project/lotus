@@ -546,8 +546,8 @@ func fromV11SectorOnChainInfo(v11 miner11.SectorOnChainInfo) SectorOnChainInfo {
 		DealWeight:            v11.DealWeight,
 		VerifiedDealWeight:    v11.VerifiedDealWeight,
 		InitialPledge:         v11.InitialPledge,
-		ExpectedDayReward:     v11.ExpectedDayReward,
-		ExpectedStoragePledge: v11.ExpectedStoragePledge,
+		ExpectedDayReward:     &v11.ExpectedDayReward,
+		ExpectedStoragePledge: &v11.ExpectedStoragePledge,
 		SectorKeyCID:          v11.SectorKeyCID,
 		DailyFee:              big.Zero(),
 	}
