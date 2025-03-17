@@ -1513,8 +1513,16 @@ var StateSectorCmd = &cli.Command{
 		fmt.Println("DealWeight: ", si.DealWeight)
 		fmt.Println("VerifiedDealWeight: ", si.VerifiedDealWeight)
 		fmt.Println("InitialPledge: ", types.FIL(si.InitialPledge))
-		fmt.Println("ExpectedDayReward: ", types.FIL(si.ExpectedDayReward))
-		fmt.Println("ExpectedStoragePledge: ", types.FIL(si.ExpectedStoragePledge))
+		edr := big.Zero()
+		if si.ExpectedDayReward != nil {
+			edr = *si.ExpectedDayReward
+		}
+		fmt.Println("ExpectedDayReward: ", types.FIL(edr))
+		esp := big.Zero()
+		if si.ExpectedStoragePledge != nil {
+			esp = *si.ExpectedStoragePledge
+		}
+		fmt.Println("ExpectedStoragePledge: ", types.FIL(esp))
 		fmt.Println()
 
 		sp, err := api.StateSectorPartition(ctx, maddr, abi.SectorNumber(sid), ts.Key())

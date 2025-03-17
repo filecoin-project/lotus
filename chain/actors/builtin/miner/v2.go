@@ -543,8 +543,8 @@ func fromV2SectorOnChainInfo(v2 miner2.SectorOnChainInfo) SectorOnChainInfo {
 		DealWeight:            v2.DealWeight,
 		VerifiedDealWeight:    v2.VerifiedDealWeight,
 		InitialPledge:         v2.InitialPledge,
-		ExpectedDayReward:     v2.ExpectedDayReward,
-		ExpectedStoragePledge: v2.ExpectedStoragePledge,
+		ExpectedDayReward:     &v2.ExpectedDayReward,
+		ExpectedStoragePledge: &v2.ExpectedStoragePledge,
 		DailyFee:              big.Zero(),
 	}
 	return info

@@ -7,9 +7,7 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	rle "github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/go-state-types/abi"
-{{- if (le .v 15)}}
 	"github.com/filecoin-project/go-state-types/big"
-{{- end}}
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -594,14 +592,14 @@ func fromV{{.v}}SectorOnChainInfo(v{{.v}} miner{{.v}}.SectorOnChainInfo) SectorO
 		DealWeight:            v{{.v}}.DealWeight,
 		VerifiedDealWeight:    v{{.v}}.VerifiedDealWeight,
 		InitialPledge:         v{{.v}}.InitialPledge,
-		ExpectedDayReward:     v{{.v}}.ExpectedDayReward,
-		ExpectedStoragePledge: v{{.v}}.ExpectedStoragePledge,
+		ExpectedDayReward:     {{ if (lt .v 16)}}&{{end}}v{{.v}}.ExpectedDayReward,
+		ExpectedStoragePledge: {{ if (lt .v 16)}}&{{end}}v{{.v}}.ExpectedStoragePledge,
 		{{- if (ge .v 7)}}
 		SectorKeyCID: v{{.v}}.SectorKeyCID,
 		{{- end}}
 		{{- if (ge .v 12)}}
 		PowerBaseEpoch:        v{{.v}}.PowerBaseEpoch,
-		ReplacedDayReward:     v{{.v}}.ReplacedDayReward,
+		ReplacedDayReward:     {{ if (lt .v 16)}}&{{end}}v{{.v}}.ReplacedDayReward,
 		Flags:                 SectorOnChainInfoFlags(v{{.v}}.Flags),
 		{{- end}}
 		{{- if (ge .v 16)}}
