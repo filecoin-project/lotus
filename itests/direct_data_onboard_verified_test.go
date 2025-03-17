@@ -24,8 +24,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
-	verifregtypes13 "github.com/filecoin-project/go-state-types/builtin/v13/verifreg"
 	miner16 "github.com/filecoin-project/go-state-types/builtin/v16/miner"
+	verifregtypes16 "github.com/filecoin-project/go-state-types/builtin/v16/verifreg"
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
@@ -428,7 +428,7 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 	// speed than the ActorEventHandler is aware of.
 }
 
-func ddoVerifiedOnboardPiece(ctx context.Context, t *testing.T, miner *kit.TestMiner, clientId abi.ActorID, allocationId verifregtypes13.AllocationId, dc abi.PieceInfo, pieceData []byte) (lapi.SectorOffset, lapi.SectorInfo) {
+func ddoVerifiedOnboardPiece(ctx context.Context, t *testing.T, miner *kit.TestMiner, clientId abi.ActorID, allocationId verifregtypes16.AllocationId, dc abi.PieceInfo, pieceData []byte) (lapi.SectorOffset, lapi.SectorInfo) {
 	head, err := miner.FullNode.ChainHead(ctx)
 	require.NoError(t, err)
 
@@ -676,8 +676,8 @@ func TestVerifiedDDOExtendClaim(t *testing.T) {
 		ID:   abi.ActorID(minerId),
 	}
 
-	pcm := make(map[verifregtypes13.ClaimId]cli.ProvInfo)
-	pcm[verifregtypes13.ClaimId(allocationId)] = prov
+	pcm := make(map[verifregtypes16.ClaimId]cli.ProvInfo)
+	pcm[verifregtypes16.ClaimId(allocationId)] = prov
 
 	// Extend claim with same client
 	msgs, err := cli.CreateExtendClaimMsg(ctx, client.FullNode, pcm, []string{}, verifiedClientAddr1, (builtin.EpochsInYear*3)+3000, false, true, 100)

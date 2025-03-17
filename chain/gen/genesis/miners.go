@@ -22,8 +22,8 @@ import (
 	miner15 "github.com/filecoin-project/go-state-types/builtin/v15/miner"
 	power15 "github.com/filecoin-project/go-state-types/builtin/v15/power"
 	smoothing15 "github.com/filecoin-project/go-state-types/builtin/v15/util/smoothing"
+	markettypes "github.com/filecoin-project/go-state-types/builtin/v16/market"
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
-	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
@@ -293,7 +293,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 				}
 
 				rawPow = big.Add(rawPow, big.NewInt(int64(m.SectorSize)))
-				sectorWeight := builtin.QAPowerForWeight(m.SectorSize, minerInfos[i].presealExp, markettypes.DealWeight(&preseal.Deal))
+				sectorWeight := builtin.QAPowerForWeight(m.SectorSize, minerInfos[i].presealExp, markettypes.DealWeight(&preseal.Deal, preseal.Deal.EndEpoch, preseal.Deal.StartEpoch))
 				minerInfos[i].sectorWeight = append(minerInfos[i].sectorWeight, sectorWeight)
 				qaPow = big.Add(qaPow, sectorWeight)
 			}

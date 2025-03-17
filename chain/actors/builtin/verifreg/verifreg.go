@@ -8,8 +8,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	builtin16 "github.com/filecoin-project/go-state-types/builtin"
-	verifregtypes12 "github.com/filecoin-project/go-state-types/builtin/v12/verifreg"
-	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
+	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v16/verifreg"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/manifest"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
@@ -200,16 +199,16 @@ type (
 	AllocationId                   = verifregtypes.AllocationId
 	Claim                          = verifregtypes.Claim
 	ClaimId                        = verifregtypes.ClaimId
-	AllocationRequest              = verifregtypes12.AllocationRequest
-	AllocationRequests             = verifregtypes12.AllocationRequests
-	RemoveExpiredAllocationsParams = verifregtypes12.RemoveExpiredAllocationsParams
-	AddVerifierParams              = verifregtypes12.AddVerifierParams
-	AddVerifiedClientParams        = verifregtypes12.AddVerifiedClientParams
+	AllocationRequest              = verifregtypes.AllocationRequest
+	AllocationRequests             = verifregtypes.AllocationRequests
+	RemoveExpiredAllocationsParams = verifregtypes.RemoveExpiredAllocationsParams
+	AddVerifierParams              = verifregtypes.AddVerifierParams
+	AddVerifiedClientParams        = verifregtypes.AddVerifiedClientParams
 )
 
 const (
 	NoAllocationID                      = verifregtypes.NoAllocationID
-	MinimumVerifiedAllocationTerm       = verifregtypes12.MinimumVerifiedAllocationTerm
-	MaximumVerifiedAllocationTerm       = verifregtypes12.MaximumVerifiedAllocationTerm
-	MaximumVerifiedAllocationExpiration = verifregtypes12.MaximumVerifiedAllocationExpiration
+	MinimumVerifiedAllocationTerm       = verifregtypes.MinimumVerifiedAllocationTerm
+	MaximumVerifiedAllocationTerm       = verifregtypes.MaximumVerifiedAllocationTerm
+	MaximumVerifiedAllocationExpiration = verifregtypes.MaximumVerifiedAllocationExpiration
 )

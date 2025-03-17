@@ -11,7 +11,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
-	verifregtypes13 "github.com/filecoin-project/go-state-types/builtin/v13/verifreg"
+	verifregtypes16 "github.com/filecoin-project/go-state-types/builtin/v16/verifreg"
 	datacap2 "github.com/filecoin-project/go-state-types/builtin/v9/datacap"
 
 	"github.com/filecoin-project/lotus/api"
@@ -125,7 +125,7 @@ func SetupAllocation(
 	verifiedClientAddr address.Address,
 	expiration abi.ChainEpoch, // set to zero if we want to use maximum
 	termMax abi.ChainEpoch, // set to zero if we want to use maximum
-) (clientID abi.ActorID, allocationID verifregtypes13.AllocationId) {
+) (clientID abi.ActorID, allocationID verifregtypes16.AllocationId) {
 	if termMax == 0 {
 		termMax = verifreg.MaximumVerifiedAllocationTerm
 	}
@@ -179,9 +179,9 @@ func SetupAllocation(
 	require.NoError(t, err)
 
 	for key, value := range allocations {
-		vkey := verifregtypes13.AllocationId(key)
+		vkey := verifregtypes16.AllocationId(key)
 		if dc.PieceCID.Equals(value.Data) && vkey >= allocationID {
-			allocationID = verifregtypes13.AllocationId(key)
+			allocationID = verifregtypes16.AllocationId(key)
 			clientID = value.Client
 		}
 	}

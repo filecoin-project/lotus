@@ -21,10 +21,9 @@ import (
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
-	verifregtypes13 "github.com/filecoin-project/go-state-types/builtin/v13/verifreg"
+	verifregtypes16 "github.com/filecoin-project/go-state-types/builtin/v16/verifreg"
 	verifregtypes8 "github.com/filecoin-project/go-state-types/builtin/v8/verifreg"
 	datacap2 "github.com/filecoin-project/go-state-types/builtin/v9/datacap"
-	verifregtypes9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/api"
@@ -115,7 +114,7 @@ var filplusVerifyClientCmd = &cli.Command{
 		}
 
 		// TODO: This should be abstracted over actor versions
-		params, err := actors.SerializeParams(&verifregtypes9.AddVerifiedClientParams{Address: target, Allowance: allowance})
+		params, err := actors.SerializeParams(&verifregtypes16.AddVerifiedClientParams{Address: target, Allowance: allowance})
 		if err != nil {
 			return err
 		}
@@ -583,16 +582,16 @@ var filplusRemoveExpiredAllocationsCmd = &cli.Command{
 			fromAddr = addr
 		}
 
-		allocationIDs := make([]verifregtypes9.AllocationId, len(args)-1)
+		allocationIDs := make([]verifregtypes16.AllocationId, len(args)-1)
 		for i, allocationString := range args[1:] {
 			id, err := strconv.ParseUint(allocationString, 10, 64)
 			if err != nil {
 				return err
 			}
-			allocationIDs[i] = verifregtypes9.AllocationId(id)
+			allocationIDs[i] = verifregtypes16.AllocationId(id)
 		}
 
-		params, err := actors.SerializeParams(&verifregtypes9.RemoveExpiredAllocationsParams{
+		params, err := actors.SerializeParams(&verifregtypes16.RemoveExpiredAllocationsParams{
 			Client:        abi.ActorID(clientId),
 			AllocationIds: allocationIDs,
 		})
@@ -676,16 +675,16 @@ var filplusRemoveExpiredClaimsCmd = &cli.Command{
 			fromAddr = addr
 		}
 
-		claimIDs := make([]verifregtypes9.ClaimId, len(args)-1)
+		claimIDs := make([]verifregtypes16.ClaimId, len(args)-1)
 		for i, claimStr := range args[1:] {
 			id, err := strconv.ParseUint(claimStr, 10, 64)
 			if err != nil {
 				return err
 			}
-			claimIDs[i] = verifregtypes9.ClaimId(id)
+			claimIDs[i] = verifregtypes16.ClaimId(id)
 		}
 
-		params, err := actors.SerializeParams(&verifregtypes9.RemoveExpiredClaimsParams{
+		params, err := actors.SerializeParams(&verifregtypes16.RemoveExpiredClaimsParams{
 			Provider: abi.ActorID(providerId),
 			ClaimIds: claimIDs,
 		})
@@ -902,7 +901,7 @@ var filplusSignRemoveDataCapProposal = &cli.Command{
 		}
 
 		paramBuf := new(bytes.Buffer)
-		paramBuf.WriteString(verifregtypes9.SignatureDomainSeparation_RemoveDataCap)
+		paramBuf.WriteString(verifregtypes16.SignatureDomainSeparation_RemoveDataCap)
 		if nv <= network.Version16 {
 			params := verifregtypes8.RemoveDataCapProposal{
 				RemovalProposalID: id,
@@ -912,8 +911,8 @@ var filplusSignRemoveDataCapProposal = &cli.Command{
 
 			err = params.MarshalCBOR(paramBuf)
 		} else {
-			params := verifregtypes9.RemoveDataCapProposal{
-				RemovalProposalID: verifregtypes9.RmDcProposalID{ProposalID: id},
+			params := verifregtypes16.RemoveDataCapProposal{
+				RemovalProposalID: verifregtypes16.RmDcProposalID{ProposalID: id},
 				DataCapAmount:     allowanceToRemove,
 				VerifiedClient:    clientIdAddr,
 			}
@@ -949,7 +948,7 @@ If the client id different then claim can be extended up to maximum 5 years from
 			Name:    "term-max",
 			Usage:   "The maximum period for which a provider can earn quality-adjusted power for the piece (epochs). Default is 5 years.",
 			Aliases: []string{"tmax"},
-			Value:   verifregtypes13.MaximumVerifiedAllocationTerm,
+			Value:   verifregtypes16.MaximumVerifiedAllocationTerm,
 		},
 		&cli.StringFlag{
 			Name:     "client",
@@ -1010,8 +1009,8 @@ If the client id different then claim can be extended up to maximum 5 years from
 		}
 
 		// Tmax can't be more than policy max
-		if tmax > verifregtypes13.MaximumVerifiedAllocationTerm {
-			return xerrors.Errorf("specified term-max %d is larger than %d maximum allowed by verified regirty actor policy", tmax, verifregtypes13.MaximumVerifiedAllocationTerm)
+		if tmax > verifregtypes16.MaximumVerifiedAllocationTerm {
+			return xerrors.Errorf("specified term-max %d is larger than %d maximum allowed by verified regirty actor policy", tmax, verifregtypes16.MaximumVerifiedAllocationTerm)
 		}
 
 		api, closer, err := GetFullNodeAPIV1(cctx)
@@ -1026,7 +1025,7 @@ If the client id different then claim can be extended up to maximum 5 years from
 			return err
 		}
 
-		claimMap := make(map[verifregtypes13.ClaimId]ProvInfo)
+		claimMap := make(map[verifregtypes16.ClaimId]ProvInfo)
 
 		// If no miners and arguments are present
 		if len(miners) == 0 && cctx.Args().Len() > 0 {
@@ -1062,7 +1061,7 @@ If the client id different then claim can be extended up to maximum 5 years from
 					ID:   abi.ActorID(mid),
 				}
 
-				claimMap[verifregtypes13.ClaimId(n)] = pi
+				claimMap[verifregtypes16.ClaimId(n)] = pi
 			}
 		}
 
@@ -1079,7 +1078,7 @@ If the client id different then claim can be extended up to maximum 5 years from
 					return xerrors.Errorf("failed to parse the claim ID for %s for argument %s: %s", detail[0], detail, err)
 				}
 
-				claimMap[verifregtypes13.ClaimId(n)] = ProvInfo{}
+				claimMap[verifregtypes16.ClaimId(n)] = ProvInfo{}
 			}
 		}
 
@@ -1136,7 +1135,7 @@ type ProvInfo struct {
 // 6. Extend all claims for multiple miner IDs with different client address (2 messages)
 // 7. Extend specified claims for a miner ID with different client address (2 messages)
 // 8. Extend specific claims for specific miner ID with different client address (2 messages)
-func CreateExtendClaimMsg(ctx context.Context, api api.FullNode, pcm map[verifregtypes13.ClaimId]ProvInfo, miners []string, wallet address.Address, tmax abi.ChainEpoch, all, assumeYes bool, batchSize int) ([]*types.Message, error) {
+func CreateExtendClaimMsg(ctx context.Context, api api.FullNode, pcm map[verifregtypes16.ClaimId]ProvInfo, miners []string, wallet address.Address, tmax abi.ChainEpoch, all, assumeYes bool, batchSize int) ([]*types.Message, error) {
 
 	ac, err := api.StateLookupID(ctx, wallet, types.EmptyTSK)
 	if err != nil {
@@ -1154,8 +1153,8 @@ func CreateExtendClaimMsg(ctx context.Context, api api.FullNode, pcm map[verifre
 		return nil, err
 	}
 
-	var terms []verifregtypes13.ClaimTerm
-	newClaims := make(map[verifregtypes13.ClaimExtensionRequest]big.Int)
+	var terms []verifregtypes16.ClaimTerm
+	newClaims := make(map[verifregtypes16.ClaimExtensionRequest]big.Int)
 	rDataCap := big.NewInt(0)
 
 	// If --all is set
@@ -1180,8 +1179,8 @@ func CreateExtendClaimMsg(ctx context.Context, api api.FullNode, pcm map[verifre
 				if claim.Client != wid {
 					// The new duration should be greater than the original deal duration and claim should not already be expired
 					if head.Height()+tmax-claim.TermStart > claim.TermMax-claim.TermStart && claim.TermStart+claim.TermMax > head.Height() {
-						req := verifregtypes13.ClaimExtensionRequest{
-							Claim:    verifregtypes13.ClaimId(claimID),
+						req := verifregtypes16.ClaimExtensionRequest{
+							Claim:    verifregtypes16.ClaimId(claimID),
 							Provider: abi.ActorID(mid),
 							TermMax:  head.Height() + tmax - claim.TermStart,
 						}
@@ -1193,8 +1192,8 @@ func CreateExtendClaimMsg(ctx context.Context, api api.FullNode, pcm map[verifre
 				}
 				// For original client, compare duration(TermMax) and claim should not already be expired
 				if claim.TermMax < tmax && claim.TermStart+claim.TermMax > head.Height() {
-					terms = append(terms, verifregtypes13.ClaimTerm{
-						ClaimId:  verifregtypes13.ClaimId(claimID),
+					terms = append(terms, verifregtypes16.ClaimTerm{
+						ClaimId:  verifregtypes16.ClaimId(claimID),
 						TermMax:  tmax,
 						Provider: abi.ActorID(mid),
 					})
@@ -1220,7 +1219,7 @@ func CreateExtendClaimMsg(ctx context.Context, api api.FullNode, pcm map[verifre
 
 		for claimID := range pcm {
 			claimID := claimID
-			claim, ok := claims[verifregtypes9.ClaimId(claimID)]
+			claim, ok := claims[verifregtypes16.ClaimId(claimID)]
 			if !ok {
 				return nil, xerrors.Errorf("claim %d not found for provider %s", claimID, miners[0])
 			}
@@ -1228,7 +1227,7 @@ func CreateExtendClaimMsg(ctx context.Context, api api.FullNode, pcm map[verifre
 			if claim.Client != wid {
 				// The new duration should be greater than the original deal duration and claim should not already be expired
 				if head.Height()+tmax-claim.TermStart > claim.TermMax-claim.TermStart && claim.TermStart+claim.TermMax > head.Height() {
-					req := verifregtypes13.ClaimExtensionRequest{
+					req := verifregtypes16.ClaimExtensionRequest{
 						Claim:    claimID,
 						Provider: abi.ActorID(mid),
 						TermMax:  head.Height() + tmax - claim.TermStart,
@@ -1241,7 +1240,7 @@ func CreateExtendClaimMsg(ctx context.Context, api api.FullNode, pcm map[verifre
 			}
 			// For original client, compare duration(TermMax) and claim should not already be expired
 			if claim.TermMax < tmax && claim.TermStart+claim.TermMax > head.Height() {
-				terms = append(terms, verifregtypes13.ClaimTerm{
+				terms = append(terms, verifregtypes16.ClaimTerm{
 					ClaimId:  claimID,
 					TermMax:  tmax,
 					Provider: abi.ActorID(mid),
@@ -1254,7 +1253,7 @@ func CreateExtendClaimMsg(ctx context.Context, api api.FullNode, pcm map[verifre
 		for claimID, prov := range pcm {
 			prov := prov
 			claimID := claimID
-			claim, err := api.StateGetClaim(ctx, prov.Addr, verifregtypes9.ClaimId(claimID), types.EmptyTSK)
+			claim, err := api.StateGetClaim(ctx, prov.Addr, verifregtypes16.ClaimId(claimID), types.EmptyTSK)
 			if err != nil {
 				return nil, xerrors.Errorf("could not load the claim %d: %s", claimID, err)
 			}
@@ -1265,7 +1264,7 @@ func CreateExtendClaimMsg(ctx context.Context, api api.FullNode, pcm map[verifre
 			if claim.Client != wid {
 				// The new duration should be greater than the original deal duration and claim should not already be expired
 				if head.Height()+tmax-claim.TermStart > claim.TermMax-claim.TermStart && claim.TermStart+claim.TermMax > head.Height() {
-					req := verifregtypes13.ClaimExtensionRequest{
+					req := verifregtypes16.ClaimExtensionRequest{
 						Claim:    claimID,
 						Provider: prov.ID,
 						TermMax:  head.Height() + tmax - claim.TermStart,
@@ -1278,7 +1277,7 @@ func CreateExtendClaimMsg(ctx context.Context, api api.FullNode, pcm map[verifre
 			}
 			// For original client, compare duration(TermMax) and claim should not already be expired
 			if claim.TermMax < tmax && claim.TermStart+claim.TermMax > head.Height() {
-				terms = append(terms, verifregtypes13.ClaimTerm{
+				terms = append(terms, verifregtypes16.ClaimTerm{
 					ClaimId:  claimID,
 					TermMax:  tmax,
 					Provider: prov.ID,
@@ -1299,7 +1298,7 @@ func CreateExtendClaimMsg(ctx context.Context, api api.FullNode, pcm map[verifre
 
 			batch := terms[i:batchEnd]
 
-			params, err := actors.SerializeParams(&verifregtypes13.ExtendClaimTermsParams{
+			params, err := actors.SerializeParams(&verifregtypes16.ExtendClaimTermsParams{
 				Terms: batch,
 			})
 			if err != nil {
@@ -1367,7 +1366,7 @@ func CreateExtendClaimMsg(ctx context.Context, api api.FullNode, pcm map[verifre
 		}
 
 		// Create a map of just keys, so we can easily batch based on the numeric keys
-		keys := make([]verifregtypes13.ClaimExtensionRequest, 0, len(newClaims))
+		keys := make([]verifregtypes16.ClaimExtensionRequest, 0, len(newClaims))
 		for k := range newClaims {
 			keys = append(keys, k)
 		}
@@ -1388,7 +1387,7 @@ func CreateExtendClaimMsg(ctx context.Context, api api.FullNode, pcm map[verifre
 				dcap.Add(dcap.Int, dc.Int)
 			}
 
-			ncparams, err := actors.SerializeParams(&verifregtypes13.AllocationRequests{
+			ncparams, err := actors.SerializeParams(&verifregtypes16.AllocationRequests{
 				Extensions: batch,
 			})
 			if err != nil {
