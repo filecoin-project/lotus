@@ -487,7 +487,7 @@ func TestFEVMSendGasLimit(t *testing.T) {
 
 }
 
-// TestFEVMDelegateCall deploys the two contracts in TestFEVMDelegateCall but instead of A calling B, A calls A which should cause A to cause A in an infinite loop and should give a reasonable error
+// TestFEVMDelegateCallRecursiveFail deploys the two contracts in TestFEVMDelegateCall but instead of A calling B, A calls A which should cause A to cause A in an infinite loop and should give a reasonable error
 func TestFEVMDelegateCallRecursiveFail(t *testing.T) {
 	// TODO change the gas limit of this invocation and confirm that the number of errors is
 	// different
@@ -513,7 +513,7 @@ func TestFEVMDelegateCallRecursiveFail(t *testing.T) {
 	require.NotContains(t, err.Error(), errorAny)
 }
 
-// TestFEVMTestSendValueThroughContracts creates A and B contract and exchanges value
+// TestFEVMTestSendValueThroughContractsAndDestroy creates A and B contract and exchanges value
 // and self destructs and accounts for value sent
 func TestFEVMTestSendValueThroughContractsAndDestroy(t *testing.T) {
 
@@ -733,7 +733,7 @@ func TestFEVMRecursiveActorCallEstimate(t *testing.T) {
 	t.Run("n=100", testN(100))
 }
 
-// TestFEVM deploys a contract while sending value to it
+// TestFEVMDeployWithValue deploys a contract while sending value to it
 func TestFEVMDeployWithValue(t *testing.T) {
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
