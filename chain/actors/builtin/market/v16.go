@@ -15,8 +15,8 @@ import (
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/builtin"
 	market16 "github.com/filecoin-project/go-state-types/builtin/v16/market"
+	markettypes "github.com/filecoin-project/go-state-types/builtin/v16/market"
 	adt16 "github.com/filecoin-project/go-state-types/builtin/v16/util/adt"
-	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/go-state-types/manifest"
 
 	"github.com/filecoin-project/lotus/chain/actors"

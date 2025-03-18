@@ -9,7 +9,7 @@ import (
 
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-state-types/abi"
-	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
+	markettypes "github.com/filecoin-project/go-state-types/builtin/v16/market"
 	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
 
 	"github.com/filecoin-project/lotus/api"

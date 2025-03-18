@@ -13,8 +13,8 @@ import (
 	xerrors "golang.org/x/xerrors"
 
 	abi "github.com/filecoin-project/go-state-types/abi"
-	miner "github.com/filecoin-project/go-state-types/builtin/v13/miner"
-	market "github.com/filecoin-project/go-state-types/builtin/v9/market"
+	market "github.com/filecoin-project/go-state-types/builtin/v16/market"
+	miner "github.com/filecoin-project/go-state-types/builtin/v16/miner"
 )
 
 var _ = xerrors.Errorf

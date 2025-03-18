@@ -16,7 +16,7 @@ import (
 	"github.com/filecoin-project/go-f3/certs"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
-	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
+	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v16/verifreg"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
 

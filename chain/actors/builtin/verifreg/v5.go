@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
-	verifreg9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
+	verifreg16 "github.com/filecoin-project/go-state-types/builtin/v16/verifreg"
 	"github.com/filecoin-project/go-state-types/manifest"
 	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
 	verifreg5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/verifreg"
@@ -95,7 +95,7 @@ func (s *state5) GetState() interface{} {
 	return &s.State
 }
 
-func (s *state5) GetAllocation(clientIdAddr address.Address, allocationId verifreg9.AllocationId) (*Allocation, bool, error) {
+func (s *state5) GetAllocation(clientIdAddr address.Address, allocationId verifreg16.AllocationId) (*Allocation, bool, error) {
 
 	return nil, false, xerrors.Errorf("unsupported in actors v5")
 
@@ -113,7 +113,7 @@ func (s *state5) GetAllAllocations() (map[AllocationId]Allocation, error) {
 
 }
 
-func (s *state5) GetClaim(providerIdAddr address.Address, claimId verifreg9.ClaimId) (*Claim, bool, error) {
+func (s *state5) GetClaim(providerIdAddr address.Address, claimId verifreg16.ClaimId) (*Claim, bool, error) {
 
 	return nil, false, xerrors.Errorf("unsupported in actors v5")
 

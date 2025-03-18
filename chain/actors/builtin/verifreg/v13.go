@@ -13,7 +13,7 @@ import (
 	builtin13 "github.com/filecoin-project/go-state-types/builtin"
 	adt13 "github.com/filecoin-project/go-state-types/builtin/v13/util/adt"
 	verifreg13 "github.com/filecoin-project/go-state-types/builtin/v13/verifreg"
-	verifreg9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
+	verifreg16 "github.com/filecoin-project/go-state-types/builtin/v16/verifreg"
 	"github.com/filecoin-project/go-state-types/manifest"
 
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -95,7 +95,7 @@ func (s *state13) GetState() interface{} {
 	return &s.State
 }
 
-func (s *state13) GetAllocation(clientIdAddr address.Address, allocationId verifreg9.AllocationId) (*Allocation, bool, error) {
+func (s *state13) GetAllocation(clientIdAddr address.Address, allocationId verifreg16.AllocationId) (*Allocation, bool, error) {
 
 	alloc, ok, err := s.FindAllocation(s.store, clientIdAddr, verifreg13.AllocationId(allocationId))
 	return (*Allocation)(alloc), ok, err
@@ -127,7 +127,7 @@ func (s *state13) GetAllAllocations() (map[AllocationId]Allocation, error) {
 
 }
 
-func (s *state13) GetClaim(providerIdAddr address.Address, claimId verifreg9.ClaimId) (*Claim, bool, error) {
+func (s *state13) GetClaim(providerIdAddr address.Address, claimId verifreg16.ClaimId) (*Claim, bool, error) {
 
 	claim, ok, err := s.FindClaim(s.store, providerIdAddr, verifreg13.ClaimId(claimId))
 	return (*Claim)(claim), ok, err

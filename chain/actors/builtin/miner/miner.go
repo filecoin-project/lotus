@@ -9,9 +9,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
-	minertypes13 "github.com/filecoin-project/go-state-types/builtin/v13/miner"
 	minertypes16 "github.com/filecoin-project/go-state-types/builtin/v16/miner"
-	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/manifest"
@@ -311,52 +309,52 @@ func WinningPoStProofTypeFromWindowPoStProofType(nver network.Version, proof abi
 	}
 }
 
-type MinerInfo = minertypes.MinerInfo
-type BeneficiaryTerm = minertypes.BeneficiaryTerm
-type PendingBeneficiaryChange = minertypes.PendingBeneficiaryChange
-type WorkerKeyChange = minertypes.WorkerKeyChange
-type SectorPreCommitOnChainInfo = minertypes.SectorPreCommitOnChainInfo
-type SectorPreCommitInfo = minertypes.SectorPreCommitInfo
-type SubmitWindowedPoStParams = minertypes.SubmitWindowedPoStParams
-type PoStPartition = minertypes.PoStPartition
-type RecoveryDeclaration = minertypes.RecoveryDeclaration
-type FaultDeclaration = minertypes.FaultDeclaration
-type DeclareFaultsRecoveredParams = minertypes.DeclareFaultsRecoveredParams
-type DeclareFaultsParams = minertypes.DeclareFaultsParams
-type ProveCommitAggregateParams = minertypes.ProveCommitAggregateParams
-type ProveCommitSectorParams = minertypes.ProveCommitSectorParams
-type ProveReplicaUpdatesParams = minertypes.ProveReplicaUpdatesParams
-type ProveReplicaUpdatesParams2 = minertypes.ProveReplicaUpdatesParams2
-type ReplicaUpdate = minertypes.ReplicaUpdate
-type ReplicaUpdate2 = minertypes.ReplicaUpdate2
-type PreCommitSectorBatchParams = minertypes.PreCommitSectorBatchParams
-type PreCommitSectorBatchParams2 = minertypes.PreCommitSectorBatchParams2
-type ExtendSectorExpiration2Params = minertypes.ExtendSectorExpiration2Params
-type SectorClaim = minertypes.SectorClaim
-type ExpirationExtension2 = minertypes.ExpirationExtension2
-type CompactPartitionsParams = minertypes.CompactPartitionsParams
-type WithdrawBalanceParams = minertypes.WithdrawBalanceParams
+type MinerInfo = minertypes16.MinerInfo
+type BeneficiaryTerm = minertypes16.BeneficiaryTerm
+type PendingBeneficiaryChange = minertypes16.PendingBeneficiaryChange
+type WorkerKeyChange = minertypes16.WorkerKeyChange
+type SectorPreCommitOnChainInfo = minertypes16.SectorPreCommitOnChainInfo
+type SectorPreCommitInfo = minertypes16.SectorPreCommitInfo
+type SubmitWindowedPoStParams = minertypes16.SubmitWindowedPoStParams
+type PoStPartition = minertypes16.PoStPartition
+type RecoveryDeclaration = minertypes16.RecoveryDeclaration
+type FaultDeclaration = minertypes16.FaultDeclaration
+type DeclareFaultsRecoveredParams = minertypes16.DeclareFaultsRecoveredParams
+type DeclareFaultsParams = minertypes16.DeclareFaultsParams
+type ProveCommitAggregateParams = minertypes16.ProveCommitAggregateParams
+type ProveCommitSectorParams = minertypes16.ProveCommitSectorParams
+type ProveReplicaUpdatesParams = minertypes16.ProveReplicaUpdatesParams
+type ProveReplicaUpdatesParams2 = minertypes16.ProveReplicaUpdatesParams2
+type ReplicaUpdate = minertypes16.ReplicaUpdate
+type ReplicaUpdate2 = minertypes16.ReplicaUpdate2
+type PreCommitSectorBatchParams = minertypes16.PreCommitSectorBatchParams
+type PreCommitSectorBatchParams2 = minertypes16.PreCommitSectorBatchParams2
+type ExtendSectorExpiration2Params = minertypes16.ExtendSectorExpiration2Params
+type SectorClaim = minertypes16.SectorClaim
+type ExpirationExtension2 = minertypes16.ExpirationExtension2
+type CompactPartitionsParams = minertypes16.CompactPartitionsParams
+type WithdrawBalanceParams = minertypes16.WithdrawBalanceParams
 
-type PieceActivationManifest = minertypes13.PieceActivationManifest
-type ProveCommitSectors3Params = minertypes13.ProveCommitSectors3Params
-type SectorActivationManifest = minertypes13.SectorActivationManifest
-type ProveReplicaUpdates3Params = minertypes13.ProveReplicaUpdates3Params
-type SectorUpdateManifest = minertypes13.SectorUpdateManifest
+type PieceActivationManifest = minertypes16.PieceActivationManifest
+type ProveCommitSectors3Params = minertypes16.ProveCommitSectors3Params
+type SectorActivationManifest = minertypes16.SectorActivationManifest
+type ProveReplicaUpdates3Params = minertypes16.ProveReplicaUpdates3Params
+type SectorUpdateManifest = minertypes16.SectorUpdateManifest
 type SectorOnChainInfoFlags = minertypes16.SectorOnChainInfoFlags
-type VerifiedAllocationKey = minertypes13.VerifiedAllocationKey
+type VerifiedAllocationKey = minertypes16.VerifiedAllocationKey
 
-var QAPowerMax = minertypes.QAPowerMax
+var QAPowerMax = minertypes16.QAPowerMax
 
 type WindowPostVerifyInfo = proof.WindowPoStVerifyInfo
 
-var WPoStProvingPeriod = func() abi.ChainEpoch { return minertypes.WPoStProvingPeriod }
-var WPoStChallengeWindow = func() abi.ChainEpoch { return minertypes.WPoStChallengeWindow }
+var WPoStProvingPeriod = func() abi.ChainEpoch { return minertypes16.WPoStProvingPeriod }
+var WPoStChallengeWindow = func() abi.ChainEpoch { return minertypes16.WPoStChallengeWindow }
 
-const WPoStPeriodDeadlines = minertypes.WPoStPeriodDeadlines
-const WPoStChallengeLookback = minertypes.WPoStChallengeLookback
-const FaultDeclarationCutoff = minertypes.FaultDeclarationCutoff
-const MinAggregatedSectors = minertypes.MinAggregatedSectors
-const MinSectorExpiration = minertypes.MinSectorExpiration
+const WPoStPeriodDeadlines = minertypes16.WPoStPeriodDeadlines
+const WPoStChallengeLookback = minertypes16.WPoStChallengeLookback
+const FaultDeclarationCutoff = minertypes16.FaultDeclarationCutoff
+const MinAggregatedSectors = minertypes16.MinAggregatedSectors
+const MinSectorExpiration = minertypes16.MinSectorExpiration
 
 type SectorExpiration struct {
 	OnTime abi.ChainEpoch

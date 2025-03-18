@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
-	verifreg9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
+	verifreg16 "github.com/filecoin-project/go-state-types/builtin/v16/verifreg"
 	"github.com/filecoin-project/go-state-types/manifest"
 	verifreg0 "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
@@ -94,7 +94,7 @@ func (s *state0) GetState() interface{} {
 	return &s.State
 }
 
-func (s *state0) GetAllocation(clientIdAddr address.Address, allocationId verifreg9.AllocationId) (*Allocation, bool, error) {
+func (s *state0) GetAllocation(clientIdAddr address.Address, allocationId verifreg16.AllocationId) (*Allocation, bool, error) {
 
 	return nil, false, xerrors.Errorf("unsupported in actors v0")
 
@@ -112,7 +112,7 @@ func (s *state0) GetAllAllocations() (map[AllocationId]Allocation, error) {
 
 }
 
-func (s *state0) GetClaim(providerIdAddr address.Address, claimId verifreg9.ClaimId) (*Claim, bool, error) {
+func (s *state0) GetClaim(providerIdAddr address.Address, claimId verifreg16.ClaimId) (*Claim, bool, error) {
 
 	return nil, false, xerrors.Errorf("unsupported in actors v0")
 

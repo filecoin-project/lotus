@@ -18,9 +18,9 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
-	miner2 "github.com/filecoin-project/go-state-types/builtin/v13/miner"
-	verifreg13 "github.com/filecoin-project/go-state-types/builtin/v13/verifreg"
-	"github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v16/miner"
+	"github.com/filecoin-project/go-state-types/builtin/v16/verifreg"
+	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v16/verifreg"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
@@ -736,11 +736,11 @@ func (m *Sealing) processPieces(ctx context.Context, sector SectorInfo) ([]miner
 					return nil, xerrors.Errorf("getting client address for deal %d: %w", info.Impl().DealID, err)
 				}
 
-				var vac *miner2.VerifiedAllocationKey
+				var vac *minertypes.VerifiedAllocationKey
 				if alloc != verifreg.NoAllocationID {
-					vac = &miner2.VerifiedAllocationKey{
+					vac = &minertypes.VerifiedAllocationKey{
 						Client: abi.ActorID(clientId),
-						ID:     verifreg13.AllocationId(alloc),
+						ID:     verifregtypes.AllocationId(alloc),
 					}
 				}
 
@@ -753,7 +753,7 @@ func (m *Sealing) processPieces(ctx context.Context, sector SectorInfo) ([]miner
 					CID:                   piece.Piece().PieceCID,
 					Size:                  piece.Piece().Size,
 					VerifiedAllocationKey: vac,
-					Notify: []miner2.DataActivationNotification{
+					Notify: []minertypes.DataActivationNotification{
 						{
 							Address: market.Address,
 							Payload: payload,
@@ -791,7 +791,7 @@ func (m *Sealing) handleSubmitCommitAggregate(ctx statemachine.Context, sector S
 		Proof: sector.Proof,
 		Spt:   sector.SectorType,
 
-		ActivationManifest: miner2.SectorActivationManifest{
+		ActivationManifest: minertypes.SectorActivationManifest{
 			SectorNumber: sector.SectorNumber,
 			Pieces:       pams,
 		},

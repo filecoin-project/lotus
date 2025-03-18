@@ -10,9 +10,9 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	builtin8 "github.com/filecoin-project/go-state-types/builtin"
+	verifreg16 "github.com/filecoin-project/go-state-types/builtin/v16/verifreg"
 	adt8 "github.com/filecoin-project/go-state-types/builtin/v8/util/adt"
 	verifreg8 "github.com/filecoin-project/go-state-types/builtin/v8/verifreg"
-	verifreg9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/manifest"
 
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -94,7 +94,7 @@ func (s *state8) GetState() interface{} {
 	return &s.State
 }
 
-func (s *state8) GetAllocation(clientIdAddr address.Address, allocationId verifreg9.AllocationId) (*Allocation, bool, error) {
+func (s *state8) GetAllocation(clientIdAddr address.Address, allocationId verifreg16.AllocationId) (*Allocation, bool, error) {
 
 	return nil, false, xerrors.Errorf("unsupported in actors v8")
 
@@ -112,7 +112,7 @@ func (s *state8) GetAllAllocations() (map[AllocationId]Allocation, error) {
 
 }
 
-func (s *state8) GetClaim(providerIdAddr address.Address, claimId verifreg9.ClaimId) (*Claim, bool, error) {
+func (s *state8) GetClaim(providerIdAddr address.Address, claimId verifreg16.ClaimId) (*Claim, bool, error) {
 
 	return nil, false, xerrors.Errorf("unsupported in actors v8")
 

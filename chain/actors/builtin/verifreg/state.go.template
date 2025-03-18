@@ -26,10 +26,10 @@ import (
 {{if (ge .v 9)}}
 	"github.com/filecoin-project/go-state-types/big"
 {{if (gt .v 9)}}
-    verifreg9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
+    verifreg16 "github.com/filecoin-project/go-state-types/builtin/v16/verifreg"
 {{end}}
 {{else}}
-    verifreg9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
+    verifreg16 "github.com/filecoin-project/go-state-types/builtin/v16/verifreg"
 {{end}}
 )
 
@@ -122,7 +122,7 @@ func (s *state{{.v}}) GetState() interface{} {
 	return &s.State
 }
 
-func (s *state{{.v}}) GetAllocation(clientIdAddr address.Address, allocationId verifreg9.AllocationId) (*Allocation, bool, error) {
+func (s *state{{.v}}) GetAllocation(clientIdAddr address.Address, allocationId verifreg16.AllocationId) (*Allocation, bool, error) {
 {{if (le .v 8)}}
     return nil, false, xerrors.Errorf("unsupported in actors v{{.v}}")
 {{else}}
@@ -160,7 +160,7 @@ func (s *state{{.v}}) GetAllAllocations() (map[AllocationId]Allocation, error) {
 {{end}}
 }
 
-func (s *state{{.v}}) GetClaim(providerIdAddr address.Address, claimId verifreg9.ClaimId) (*Claim, bool, error) {
+func (s *state{{.v}}) GetClaim(providerIdAddr address.Address, claimId verifreg16.ClaimId) (*Claim, bool, error) {
 {{if (le .v 8)}}
     return nil, false, xerrors.Errorf("unsupported in actors v{{.v}}")
 {{else}}
