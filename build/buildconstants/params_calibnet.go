@@ -115,9 +115,9 @@ const UpgradeTeepHeight abi.ChainEpoch = 2520574
 
 var UpgradeTeepInitialFilReserved = wholeFIL(1_200_000_000) // FIP-0100: 300M -> 1.2B FIL
 
-// This epoch, 90 days after Teep is the completion of FIP-0100 where actors will start applying
-// the new daily fee to pre-Teep sectors being extended.
-var UpgradeTockHeight abi.ChainEpoch = UpgradeTeepHeight + builtin.EpochsInDay*90
+// This epoch, 7 days after Teep is the completion of FIP-0100 where actors will start applying
+// the new daily fee to pre-Teep sectors being extended. This is 90 days on mainnet.
+var UpgradeTockHeight abi.ChainEpoch = UpgradeTeepHeight + builtin.EpochsInDay*7
 
 var ConsensusMinerMinPower = abi.NewStoragePower(32 << 30)
 var PreCommitChallengeDelay = abi.ChainEpoch(150)
