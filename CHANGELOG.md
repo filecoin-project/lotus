@@ -91,6 +91,46 @@ For the set of changes since the last stable release:
 
 ## 👨‍👩‍👧‍👦 Contributors
 
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Rod Vagg | 46 | +16240/-12784 | 286 |
+| Masih H. Derkani | 76 | +5697/-2175 | 290 |
+| Jakub Sztandera | 38 | +2048/-1652 | 244 |
+| Aryan Tikarya | 2 | +1931/-1444 | 43 |
+| Phi-rjan | 19 | +1777/-1251 | 69 |
+| Piotr Galar | 4 | +1052/-261 | 14 |
+| Mikers | 2 | +664/-149 | 12 |
+| Steven Allen | 8 | +325/-148 | 31 |
+| dependabot[bot] | 15 | +190/-208 | 30 |
+| Phi | 4 | +214/-156 | 12 |
+| Viraj Bhartiya | 2 | +190/-49 | 13 |
+| Aarsh Shah | 1 | +104/-47 | 6 |
+| caseylove | 1 | +71/-67 | 1 |
+| asamuj | 2 | +39/-43 | 14 |
+| ZenGround0 | 1 | +64/-0 | 1 |
+| Krishang Shah | 1 | +30/-30 | 2 |
+| tediou5 | 1 | +38/-15 | 14 |
+| dockercui | 1 | +19/-19 | 19 |
+| XiaoBei | 2 | +15/-15 | 7 |
+| Hubert | 1 | +21/-5 | 9 |
+| wmjae | 2 | +9/-9 | 7 |
+| taozui472 | 1 | +9/-9 | 6 |
+| Yash Jagtap | 1 | +7/-7 | 5 |
+| Peter Cover | 1 | +6/-6 | 4 |
+| Andi | 1 | +6/-6 | 2 |
+| root | 1 | +5/-5 | 4 |
+| growfrow | 1 | +3/-3 | 1 |
+| Łukasz Magiera | 1 | +4/-0 | 2 |
+| wgyt | 1 | +2/-2 | 1 |
+| web3-bot | 2 | +2/-2 | 2 |
+| parthshah1 | 1 | +2/-2 | 1 |
+| leo | 1 | +2/-2 | 2 |
+| futreall | 1 | +2/-2 | 2 |
+| Pranav Konde | 1 | +2/-2 | 1 |
+| Steve Loeppky | 1 | +2/-0 | 1 |
+| LexLuthr | 1 | +2/-0 | 1 |
+
 # Node v1.31.1 / 2025-01-27
 
 This Lotus release introduces several new features and improvements, including JSON output for tipsets in `lotus chain list` cmd, enhanced logging during network upgrade migrations, and additional Bootstrap nodes. It also includes a refactored Ethereum API implementation into smaller, more manageable modules in a new `github.com/filecoin-project/lotus/node/impl/eth` package, as well as adding network name as a tag in most metrics - making it easier to create Graphana Dashboards for multiple networks. Please review the upgrade warnings and documentation for any important changes affecting RPC providers, node operators, and storage providers.
