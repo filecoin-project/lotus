@@ -909,6 +909,10 @@ func TestMigrationNV24(t *testing.T) {
 	)
 	buildconstants.UpgradeTuktukPowerRampDurationEpochs = powerRampDurationEpochs
 	buildconstants.UpgradeTuktukHeight = nv24epoch
+	// Pretend that the reserve account started with 1B FIL, so that when calculating the
+	// circulating supply we find that the reserve account only has ~300M FIL so there must be ~700M
+	// FIL in circulation, which is close to current mainnet supply.
+	buildconstants.InitialFilReserved = types.MustParseFIL("1000000000 FIL").Int
 
 	// InitialPledgeMaxPerByte is a little too low for an itest environment so gets in the way of
 	// testing the underlying calculation, so we bump it up here so it doesn't interfere.

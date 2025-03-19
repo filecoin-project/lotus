@@ -54,6 +54,7 @@ import (
 	"github.com/filecoin-project/lotus/cmd/lotus-worker/sealworker"
 	"github.com/filecoin-project/lotus/gateway"
 	"github.com/filecoin-project/lotus/genesis"
+	"github.com/filecoin-project/lotus/lib/must"
 	lotusminer "github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/config"
@@ -158,6 +159,7 @@ func NewEnsemble(t *testing.T, opts ...EnsembleOpt) *Ensemble {
 		}
 	}
 
+	usedBalance := big.Zero()
 	// add accounts from ensemble options to genesis.
 	for _, acc := range options.accounts {
 		n.genesis.accounts = append(n.genesis.accounts, genesis.Actor{
@@ -165,7 +167,15 @@ func NewEnsemble(t *testing.T, opts ...EnsembleOpt) *Ensemble {
 			Balance: acc.initialBalance,
 			Meta:    (&genesis.AccountMeta{Owner: acc.key.Address}).ActorMeta(),
 		})
+		usedBalance = big.Add(usedBalance, acc.initialBalance)
 	}
+	// Soak up some balance from FilBase so that we leave FilReserved at 300M to match mainnet.
+	// See https://github.com/filecoin-project/lotus/pull/12932 for context on this.
+	n.genesis.accounts = append(n.genesis.accounts, genesis.Actor{
+		Type:    genesis.TAccount,
+		Balance: big.Sub(big.Int(types.MustParseFIL("400000000 FIL")), usedBalance),
+		Meta:    (&genesis.AccountMeta{Owner: must.One(key.GenerateKey(types.KTSecp256k1)).Address}).ActorMeta(),
+	})
 
 	// Ensure we're using the right actors. This really shouldn't be some global thing, but it's
 	// the best we can do for now.
@@ -176,15 +186,7 @@ func NewEnsemble(t *testing.T, opts ...EnsembleOpt) *Ensemble {
 	}
 
 	buildconstants.EquivocationDelaySecs = 0
-
-	// See FIP-0100; we manually set these to the 2k network settings for itests not run with -tags 2k
 	buildconstants.UpgradeAssemblyHeight = -1 // so GetVMCirculatingSupplyDetailed() properly calculates FilReserved
-	// 700M FIL is the correct value for test networks, with UpgradeAssemblyHeight in the past, this
-	// value is used in supply.go to calculate the mining reserve in circulation which is added to
-	// circulating supply.
-	buildconstants.InitialFilReserved = types.MustParseFIL("700000000 FIL").Int
-	// Bump it at Teep upgrade to simulate FIP-0100 and get CS close to ~700M FIL like in mainnet.
-	buildconstants.UpgradeTeepInitialFilReserved = types.MustParseFIL("1400000000 FIL").Int
 
 	return n
 }

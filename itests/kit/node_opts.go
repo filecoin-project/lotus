@@ -81,7 +81,7 @@ var _ connmgr.ConnectionGater = (*loopbackConnGater)(nil)
 
 // DefaultNodeOpts are the default options that will be applied to test nodes.
 var DefaultNodeOpts = nodeOpts{
-	balance:    big.Mul(big.NewInt(100000000), types.NewInt(buildconstants.FilecoinPrecision)),
+	balance:    big.Mul(big.NewInt(10_000_000), types.NewInt(buildconstants.FilecoinPrecision)),
 	sectors:    DefaultPresealsPerBootstrapMiner,
 	sectorSize: abi.SectorSize(2 << 10), // 2KiB.
 

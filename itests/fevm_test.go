@@ -427,7 +427,7 @@ func TestFEVMTestSendToContract(t *testing.T) {
 	_, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "destroy()", []byte{})
 	require.NoError(t, err)
 
-	finalBalanceMinimum := types.FromFil(uint64(99_999_999)) // 100 million FIL - 1 FIL for gas upper bounds
+	finalBalanceMinimum := types.FromFil(uint64(9_999_999)) // 10 million FIL - 1 FIL for gas upper bounds
 	finalBal, err := client.WalletBalance(ctx, client.DefaultKey.Address)
 	require.NoError(t, err)
 	require.Equal(t, true, finalBal.GreaterThan(finalBalanceMinimum))
