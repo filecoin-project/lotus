@@ -110,8 +110,8 @@ const UpgradeTuktukHeight abi.ChainEpoch = 2078794
 // ramp behavior before mainnet upgrade.
 var UpgradeTuktukPowerRampDurationEpochs = uint64(builtin.EpochsInDay * 3)
 
-// 2025-03-25T23:00:00Z
-const UpgradeTeepHeight abi.ChainEpoch = 2520574
+// 2025-03-26T23:00:00Z
+const UpgradeTeepHeight abi.ChainEpoch = 2523454
 
 var UpgradeTeepInitialFilReserved = wholeFIL(1_200_000_000) // FIP-0100: 300M -> 1.2B FIL
 
