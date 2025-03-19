@@ -28,7 +28,7 @@ func TestCirciulationSupplyUpgrade(t *testing.T) {
 	ctx := context.Background()
 
 	// Choosing something divisible by epochs per day to remove error with simple deal duration
-	lockedClientBalance := big.Mul(abi.NewTokenAmount(11_520_000), abi.NewTokenAmount(1e18))
+	lockedClientBalance := big.Mul(abi.NewTokenAmount(8_640_000), abi.NewTokenAmount(1e18))
 	lockedProviderBalance := big.Mul(abi.NewTokenAmount(1_000_000), abi.NewTokenAmount(1e18))
 	var height0 abi.ChainEpoch
 	var height1 abi.ChainEpoch

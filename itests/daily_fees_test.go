@@ -21,6 +21,7 @@ import (
 	gstStore "github.com/filecoin-project/go-state-types/store"
 
 	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/state"
@@ -44,6 +45,15 @@ func TestDailyFees(t *testing.T) {
 		nv26epoch abi.ChainEpoch = nv25epoch + builtin.EpochsInDay/2 // Tock
 		feePostWg sync.WaitGroup
 	)
+	// itests start off with a FilReserved of 300M FIL, leading to a circulating supply of 0 initially,
+	// but we'll also simulate the calibnet bump of the InitialFilReserved to get the circulating
+	// supply calculation up to ~700M FIL. It has ~300M in it, we need to pretend 700M has been used,
+	// so 1B - 300M = 700M.
+	originalUpgradeTeepInitialFilReserved := buildconstants.UpgradeTeepInitialFilReserved
+	buildconstants.UpgradeTeepInitialFilReserved = types.MustParseFIL("1000000000 FIL").Int
+	t.Cleanup(func() {
+		buildconstants.UpgradeTeepInitialFilReserved = originalUpgradeTeepInitialFilReserved
+	})
 
 	type sectorInfo struct {
 		sn          abi.SectorNumber
