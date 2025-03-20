@@ -1,6 +1,10 @@
 [//]: # (Below are non-visible steps intended for the issue creator)
+<!--{{if .ContentGeneratedWithLotusReleaseCli}}-->
+[//]: # (This content was generated using `{{.LotusReleaseCliString}}`.)
+[//]: # (Learn more at https://github.com/filecoin-project/lotus/tree/master/cmd/release#readme.)
+<!--{{end}}-->
 [//]: # (❗️ Complete the steps below as part of creating a release issue and mark them complete with an X or ✅ when done.)
-<!--{{if not .CreateOnGitHub}}-->
+<!--{{if not .ContentGeneratedWithLotusReleaseCli}}-->
 [//]: # ([ ] Start an issue with title "Lotus {{.Type}} v{{.Tag}} Release" and adjust the title for whether it's a Node or Miner release.)
 [//]: # ([ ] Copy in the content of https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md)
 [//]: # ([ ] Find all the "go templating" "control" logic that is in \{\{ \}\} blocks and mimic the logic manually.)
@@ -8,7 +12,7 @@
 [//]: # ([ ] Apply the `tpm` label to the issue)
 [//]: # ([ ] Create the issue)
 <!--{{end}}-->
-<!-- At least as of 2024-12-02, it isn't possible to programmatically pin issues. -->
+<!-- At least as of 2025-03-20, it isn't possible to programmatically pin issues. -->
 [//]: # ([ ] Pin the issue on GitHub)
 
 # 😶‍🌫 Meta
