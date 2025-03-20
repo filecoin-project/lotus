@@ -81,6 +81,7 @@ debug: build-devnets  ## Build with debug tags
 
 calibnet: GOFLAGS+=-tags=calibnet
 calibnet: build-devnets  ## Build for calibnet network
+	@touch .calibnet-mode
 
 butterflynet: GOFLAGS+=-tags=butterflynet
 butterflynet: build-devnets  ## Build for butterflynet network
@@ -115,7 +116,13 @@ BINS+=lotus-shed
 
 lotus-gateway: $(BUILD_DEPS)  ## Build the Lotus gateway
 	rm -f lotus-gateway
-	$(GOCC) build $(GOFLAGS) -o lotus-gateway ./cmd/lotus-gateway
+	@if [ -f .calibnet-mode ]; then \
+		echo "Building lotus-gateway with calibnet tags"; \
+		$(GOCC) build -tags=calibnet $(GOFLAGS) -o lotus-gateway ./cmd/lotus-gateway; \
+	else \
+		echo "Building lotus-gateway for mainnet"; \
+		$(GOCC) build $(GOFLAGS) -o lotus-gateway ./cmd/lotus-gateway; \
+	fi
 .PHONY: lotus-gateway
 BINS+=lotus-gateway
 
@@ -292,7 +299,7 @@ lint:
 .PHONY: lint
 
 clean:  ## Clean build artifacts
-	rm -rf $(CLEAN) $(BINS)
+	rm -rf $(CLEAN) $(BINS) .calibnet-mode
 	-$(MAKE) -C $(FFI_PATH) clean
 .PHONY: clean
 
