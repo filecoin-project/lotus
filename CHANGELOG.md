@@ -8,6 +8,7 @@
 > * [CHANGELOG_1.2x.md](./documentation/changelog/CHANGELOG_1.2x.md) - v1.20.0 to v1.29.2
 
 # UNRELEASED
+- feat: improve `lotus-gateway` build for network selection ([filecoin-project/lotus#12969](https://github.com/filecoin-project/lotus/pull/12969))
 - Allow users to start node even if Index Reconciliation fails (https://github.com/filecoin-project/lotus/pull/12930)
 - Exposed `StateGetNetworkParams` in the Lotus Gateway API ([filecoin-project/lotus#12881](https://github.com/filecoin-project/lotus/pull/12881))
 - **BREAKING**: Removed `SupportedProofTypes` from `StateGetNetworkParams` response as it was unreliable and didn't match FVM's actual supported proofs ([filecoin-project/lotus#12881](https://github.com/filecoin-project/lotus/pull/12881))
