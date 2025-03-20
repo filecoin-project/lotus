@@ -22,7 +22,8 @@ import (
 	    builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"
     {{end}}
 {{end}}
-    builtin{{.latestVersion}} "github.com/filecoin-project/go-state-types/builtin"
+	builtin{{.latestVersion}} "github.com/filecoin-project/go-state-types/builtin"
+	powertypes{{.latestVersion}} "github.com/filecoin-project/go-state-types/builtin/v{{.latestVersion}}/power"
 )
 
 var (
@@ -137,3 +138,8 @@ func AllCodes() []cid.Cid {
     {{- end}}
     }
 }
+
+type (
+	MinerPowerParams = powertypes{{.latestVersion}}.MinerPowerParams
+	MinerPowerReturn = powertypes{{.latestVersion}}.MinerPowerReturn
+)

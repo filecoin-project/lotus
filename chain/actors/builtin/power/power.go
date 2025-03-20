@@ -10,6 +10,7 @@ import (
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	builtin16 "github.com/filecoin-project/go-state-types/builtin"
+	powertypes16 "github.com/filecoin-project/go-state-types/builtin/v16/power"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/manifest"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
@@ -235,3 +236,8 @@ func AllCodes() []cid.Cid {
 		(&state16{}).Code(),
 	}
 }
+
+type (
+	MinerPowerParams = powertypes16.MinerPowerParams
+	MinerPowerReturn = powertypes16.MinerPowerReturn
+)
