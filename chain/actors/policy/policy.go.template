@@ -315,16 +315,18 @@ func AggregateProveCommitNetworkFee(nwVer network.Version, aggregateSize int, ba
 		return big.Zero(), err
 	}
 	switch v {
-	    {{range .versions}}
+	    {{- range .versions}}
 	    case actorstypes.Version{{.}}:
-            {{if (ge . 6)}}
-                return miner{{.}}.AggregateProveCommitNetworkFee(aggregateSize, baseFee), nil
-            {{else if (eq . 5)}}
-                return miner{{.}}.AggregateNetworkFee(aggregateSize, baseFee), nil
-            {{else}}
+            {{- if (ge . 16)}}
                 return big.Zero(), nil
-            {{end}}
-        {{end}}
+            {{- else if (ge . 6)}}
+                return miner{{.}}.AggregateProveCommitNetworkFee(aggregateSize, baseFee), nil
+            {{- else if (eq . 5)}}
+                return miner{{.}}.AggregateNetworkFee(aggregateSize, baseFee), nil
+            {{- else}}
+                return big.Zero(), nil
+            {{- end -}}
+      {{- end}}
 	default:
 		return big.Zero(), xerrors.Errorf("unsupported network version")
 	}
@@ -336,14 +338,16 @@ func AggregatePreCommitNetworkFee(nwVer network.Version, aggregateSize int, base
 		return big.Zero(), err
 	}
 	switch v {
-	    {{range .versions}}
+	    {{- range .versions}}
 	    case actorstypes.Version{{.}}:
-            {{if (ge . 6)}}
-                return miner{{.}}.AggregatePreCommitNetworkFee(aggregateSize, baseFee), nil
-            {{else}}
+            {{- if (ge . 16)}}
                 return big.Zero(), nil
-            {{end}}
-        {{end}}
+            {{- else if (ge . 6)}}
+                return miner{{.}}.AggregatePreCommitNetworkFee(aggregateSize, baseFee), nil
+            {{- else}}
+                return big.Zero(), nil
+            {{- end -}}
+      {{end}}
 	default:
 		return big.Zero(), xerrors.Errorf("unsupported network version")
 	}
