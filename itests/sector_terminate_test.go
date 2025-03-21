@@ -6,15 +6,26 @@ import (
 	"testing"
 	"time"
 
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/dagcbor"
 	"github.com/ipld/go-ipld-prime/node/basicnode"
 	"github.com/multiformats/go-multicodec"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 
+	lapi "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	minertypes "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/lib/must"
@@ -22,9 +33,6 @@ import (
 )
 
 func TestTerminate(t *testing.T) {
-
-	kit.Expensive(t)
-
 	kit.QuietMiningLogs()
 
 	var (
@@ -72,12 +80,153 @@ func TestTerminate(t *testing.T) {
 	require.Equal(t, p.MinerPower, p.TotalPower)
 	require.Equal(t, types.NewInt(uint64(ssz)*uint64(nSectors)), p.MinerPower.RawBytePower)
 
-	t.Log("Terminate a sector")
-
 	toTerminate := abi.SectorNumber(3)
 
-	err = miner.SectorTerminate(ctx, toTerminate)
+	// Testing FIP-0098 additions
+
+	t.Log("Check MaxTerminationFee method")
+
+	sector, err := client.StateSectorGetInfo(ctx, maddr, toTerminate, types.EmptyTSK)
 	require.NoError(t, err)
+
+	qaPower := big.NewInt(int64(ssz * 10)) // full verified sector
+
+	maxTermFeeCases := []struct {
+		power         abi.StoragePower
+		expectedFeeAt func(tsk types.TipSetKey) abi.TokenAmount
+	}{
+		{
+			// low power resulting in low fault fee => termination fee should be pledge multiple * initial pledge
+			power: big.Zero(),
+			expectedFeeAt: func(tsk types.TipSetKey) abi.TokenAmount {
+				return big.Div(big.Mul(sector.InitialPledge, minertypes.TermFeePledgeMultiple.Numerator), minertypes.TermFeePledgeMultiple.Denominator)
+			},
+		},
+		{
+			// high power resulting in high fault fee => termination fee should be fault fee * max fault fee multiple
+			power: qaPower,
+			expectedFeeAt: func(tsk types.TipSetKey) abi.TokenAmount {
+				var faultFee abi.TokenAmount
+				rewardActor, err := client.StateGetActor(ctx, reward.Address, tsk)
+				require.NoError(t, err)
+				rewardState, err := reward.Load(adt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewAPIBlockstore(client))), rewardActor)
+				require.NoError(t, err)
+				epochRewardSmooth, err := rewardState.ThisEpochRewardSmoothed()
+				require.NoError(t, err)
+				powerActor, err := client.StateGetActor(ctx, power.Address, tsk)
+				require.NoError(t, err)
+				powerState, err := power.Load(adt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewAPIBlockstore(client))), powerActor)
+				require.NoError(t, err)
+				epochQaPowerSmoothed, err := powerState.TotalPowerSmoothed()
+				require.NoError(t, err)
+				nv, err := client.StateNetworkVersion(ctx, tsk)
+				require.NoError(t, err)
+				faultFee, err = minertypes.PledgePenaltyForContinuedFault(
+					nv,
+					builtin.FilterEstimate{
+						PositionEstimate: epochRewardSmooth.PositionEstimate,
+						VelocityEstimate: epochRewardSmooth.VelocityEstimate,
+					},
+					builtin.FilterEstimate{
+						PositionEstimate: epochQaPowerSmoothed.PositionEstimate,
+						VelocityEstimate: epochQaPowerSmoothed.VelocityEstimate,
+					},
+					qaPower,
+				)
+				require.NoError(t, err)
+				expectedPenalty := big.Div(big.Mul(faultFee, minertypes.TermFeeMaxFaultFeeMultiple.Numerator), minertypes.TermFeeMaxFaultFeeMultiple.Denominator)
+
+				// compare against go-state-types implementation
+				calculatedPenalty, err := minertypes.PledgePenaltyForTermination(nv, sector.InitialPledge, sector.Expiration-sector.Activation, faultFee)
+				require.NoError(t, err)
+				require.Equal(t, calculatedPenalty, expectedPenalty)
+				return expectedPenalty
+			},
+		},
+	}
+	for _, tc := range maxTermFeeCases {
+		t.Logf("Testing MaxTerminationFeeExported method with %s", tc.power)
+
+		params, aerr := actors.SerializeParams(&minertypes.MaxTerminationFeeParams{
+			Power:         tc.power,
+			InitialPledge: sector.InitialPledge,
+		})
+		require.NoError(t, aerr)
+		sm, err := client.MpoolPushMessage(ctx, &types.Message{
+			To:     miner.ActorAddr,
+			From:   client.DefaultKey.Address,
+			Method: minertypes.Methods.MaxTerminationFeeExported,
+			Params: params,
+			Value:  big.Zero(),
+		}, nil)
+		require.NoError(t, err)
+
+		res, err := client.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
+		require.NoError(t, err)
+		require.EqualValues(t, 0, res.Receipt.ExitCode)
+		var retval minertypes.MaxTerminationFeeReturn
+		require.NoError(t, retval.UnmarshalCBOR(bytes.NewReader(res.Receipt.Return)))
+		ts, err := client.ChainGetTipSet(ctx, res.TipSet)
+		require.NoError(t, err)
+		expectedFee := tc.expectedFeeAt(ts.Parents())
+		require.Equal(t, expectedFee, retval)
+	}
+
+	{
+		t.Log("Testing InitialPledgeExported method")
+		sm, err := client.MpoolPushMessage(ctx, &types.Message{
+			To:     miner.ActorAddr,
+			From:   client.DefaultKey.Address,
+			Method: minertypes.Methods.InitialPledgeExported,
+			Params: nil,
+			Value:  big.Zero(),
+		}, nil)
+		require.NoError(t, err)
+		res, err := client.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
+		require.NoError(t, err)
+		require.EqualValues(t, 0, res.Receipt.ExitCode)
+		var retval minertypes.InitialPledgeReturn
+		require.NoError(t, retval.UnmarshalCBOR(bytes.NewReader(res.Receipt.Return)))
+		ts, err := client.ChainGetTipSet(ctx, res.TipSet)
+		require.NoError(t, err)
+		actor, err := client.StateGetActor(ctx, miner.ActorAddr, ts.Parents())
+		require.NoError(t, err)
+		actorState, err := minertypes.Load(adt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewAPIBlockstore(client))), actor)
+		require.NoError(t, err)
+		require.Equal(t, must.One(actorState.InitialPledge()), retval)
+	}
+
+	{
+		t.Log("Testing MinerPowerExported method")
+		// This is not strictly related to terminations but it's exposed for contracts to use to
+		// calculate termination fees so we'll test the export here.
+		actorId := power.MinerPowerParams(must.One(address.IDFromAddress(miner.ActorAddr)))
+		params, aerr := actors.SerializeParams(&actorId)
+		require.NoError(t, aerr)
+		sm, err := client.MpoolPushMessage(ctx, &types.Message{
+			To:     power.Address,
+			From:   client.DefaultKey.Address,
+			Method: power.Methods.MinerPowerExported,
+			Params: params,
+			Value:  big.Zero(),
+		}, nil)
+		require.NoError(t, err)
+		res, err := client.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
+		require.NoError(t, err)
+		require.EqualValues(t, 0, res.Receipt.ExitCode)
+		var retval power.MinerPowerReturn
+		require.NoError(t, retval.UnmarshalCBOR(bytes.NewReader(res.Receipt.Return)))
+		ts, err := client.ChainGetTipSet(ctx, res.TipSet)
+		require.NoError(t, err)
+		minerPower, err := client.StateMinerPower(ctx, miner.ActorAddr, ts.Parents())
+		require.NoError(t, err)
+		require.Equal(t, minerPower.MinerPower.RawBytePower, retval.RawBytePower)
+		require.Equal(t, minerPower.MinerPower.QualityAdjPower, retval.QualityAdjPower)
+	}
+
+	t.Log("Terminate a sector")
+
+	require.NoError(t, miner.SectorTerminate(ctx, toTerminate))
 
 	msgTriggerred := false
 loop:
