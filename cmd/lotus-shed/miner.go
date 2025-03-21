@@ -27,7 +27,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/builtin/v11/util/adt"
-	miner15 "github.com/filecoin-project/go-state-types/builtin/v15/miner"
+	miner16 "github.com/filecoin-project/go-state-types/builtin/v16/miner"
 	miner8 "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/manifest"
@@ -741,7 +741,7 @@ var minerLockedVestedCmd = &cli.Command{
 		// The epoch at which we _expect_ that vested funds to have been unlocked by (the delay
 		// is due to cron offsets). The protocol dictates that funds should be unlocked automatically
 		// by cron, so anything we find that's not unlocked is a bug.
-		staleEpoch := head.Height() - abi.ChainEpoch((uint64(miner15.WPoStProvingPeriod) / miner15.WPoStPeriodDeadlines))
+		staleEpoch := head.Height() - abi.ChainEpoch((uint64(miner16.WPoStProvingPeriod) / miner16.WPoStPeriodDeadlines))
 
 		var totalCount int
 		miners := make(map[address.Address]abi.TokenAmount)
@@ -754,11 +754,11 @@ var minerLockedVestedCmd = &cli.Command{
 				_, _ = fmt.Fprintf(cctx.App.ErrWriter, ".")
 			}
 			if act.Code == minerCode {
-				m15 := miner15.State{}
-				if err := adtStore.Get(ctx, act.Head, &m15); err != nil {
-					return xerrors.Errorf("failed to load miner state (using miner15, try a newer version?): %w", err)
+				m16 := miner16.State{}
+				if err := adtStore.Get(ctx, act.Head, &m16); err != nil {
+					return xerrors.Errorf("failed to load miner state (using miner16, try a newer version?): %w", err)
 				}
-				vf, err := m15.LoadVestingFunds(adtStore)
+				vf, err := m16.LoadVestingFunds(adtStore)
 				if err != nil {
 					return err
 				}
@@ -844,11 +844,11 @@ var minerListVestingCmd = &cli.Command{
 			return xerrors.Errorf("failed to load actor: %w", err)
 		}
 
-		m15 := miner15.State{}
-		if err := adtStore.Get(ctx, act.Head, &m15); err != nil {
-			return xerrors.Errorf("failed to load miner state (using miner15, try a newer version?): %w", err)
+		m16 := miner16.State{}
+		if err := adtStore.Get(ctx, act.Head, &m16); err != nil {
+			return xerrors.Errorf("failed to load miner state (using miner16, try a newer version?): %w", err)
 		}
-		vf, err := m15.LoadVestingFunds(adtStore)
+		vf, err := m16.LoadVestingFunds(adtStore)
 		if err != nil {
 			return err
 		}
