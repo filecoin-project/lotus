@@ -613,15 +613,15 @@ func TestDailyFees(t *testing.T) {
 	// Wait for all fees to be paid—we need each one to have reached its first deadline and they are
 	// likely spread out over multiple deadlines
 	feePostWg.Wait()
-	head, err := client.ChainHead(ctx)
-	req.NoError(err)
 	// Wait one exta deadline to make sure we get to the end of the current deadline where we've done
 	// a PoST
+	head, err := client.ChainHead(ctx)
+	req.NoError(err)
 	client.WaitTillChain(ctx, kit.HeightAtLeast(head.Height()+miner.WPoStChallengeWindow()+10))
 
 	var expectTotalBurn abi.TokenAmount
 	for _, sector := range allSectors {
-		paymentsPast := provingWindowsSince(sector.sn, nv25epoch)
+		paymentsPast := provingWindowsSince(sector.sn, sector.feeEpoch)
 		expectTotalBurn = big.Add(expectTotalBurn, big.Mul(big.NewInt(int64(paymentsPast)), sector.expectedFee))
 	}
 
