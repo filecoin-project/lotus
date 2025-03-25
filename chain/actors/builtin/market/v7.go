@@ -393,3 +393,9 @@ func (s *state7) Code() cid.Cid {
 
 	return code
 }
+
+func (s *state7) ProviderSectors() (ProviderSectors, error) {
+
+	return nil, xerrors.Errorf("unsupported before actors v13")
+
+}
