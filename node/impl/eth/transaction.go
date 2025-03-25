@@ -132,28 +132,41 @@ func (e *ethTransaction) EthGetBlockTransactionCountByHash(ctx context.Context, 
 }
 
 func (e *ethTransaction) EthGetBlockByHash(ctx context.Context, blkHash ethtypes.EthHash, fullTxInfo bool) (ethtypes.EthBlock, error) {
+	ts, err := e.chainStore.GetTipSetByCid(ctx, blkHash.ToCid())
+	if err != nil {
+		return ethtypes.EthBlock{}, xerrors.Errorf("failed to get tipset by cid: %w", err)
+	}
+	return e.getBlockByTipset(ctx, ts, fullTxInfo, "EthGetBlockByHash:"+blkHash.String())
+}
+
+func (e *ethTransaction) EthGetBlockByNumber(ctx context.Context, blkParam string, fullTxInfo bool) (ethtypes.EthBlock, error) {
+	ts, err := getTipsetByBlockNumber(ctx, e.chainStore, blkParam, true)
+	if err != nil {
+		return ethtypes.EthBlock{}, err
+	}
+	return e.getBlockByTipset(ctx, ts, fullTxInfo, "EthGetBlockByNumber:"+blkParam)
+}
+
+func (e *ethTransaction) getBlockByTipset(ctx context.Context, ts *types.TipSet, fullTxInfo bool, req string) (ethtypes.EthBlock, error) {
 	cache := e.blockCache
 	if fullTxInfo {
 		cache = e.blockTransactionCache
 	}
 
 	// Attempt to retrieve the Ethereum block from cache
-	cid := blkHash.ToCid()
+	cid, err := ts.Key().Cid()
+	if err != nil {
+		return ethtypes.EthBlock{}, xerrors.Errorf("failed to get tipset key cid: %w", err)
+	}
 	if cache != nil {
 		if ethBlock, found := cache.Get(cid); found {
 			if ethBlock != nil {
 				return *ethBlock, nil
 			}
 			// Log and remove the nil entry from cache
-			log.Errorw("nil value in eth block cache", "hash", blkHash.String())
+			log.Errorw("nil value in eth block cache", "cid", cid, "requested as", req)
 			cache.Remove(cid)
 		}
-	}
-
-	// Fetch the tipset using the block hash
-	ts, err := e.chainStore.GetTipSetByCid(ctx, cid)
-	if err != nil {
-		return ethtypes.EthBlock{}, xerrors.Errorf("failed to load tipset by CID %s: %w", cid, err)
 	}
 
 	// Generate an Ethereum block from the Filecoin tipset
@@ -167,14 +180,6 @@ func (e *ethTransaction) EthGetBlockByHash(ctx context.Context, blkHash ethtypes
 		cache.Add(cid, &blk)
 	}
 	return blk, nil
-}
-
-func (e *ethTransaction) EthGetBlockByNumber(ctx context.Context, blkParam string, fullTxInfo bool) (ethtypes.EthBlock, error) {
-	ts, err := getTipsetByBlockNumber(ctx, e.chainStore, blkParam, true)
-	if err != nil {
-		return ethtypes.EthBlock{}, err
-	}
-	return newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo, e.chainStore, e.stateManager)
 }
 
 func (e *ethTransaction) EthGetTransactionByHash(ctx context.Context, txHash *ethtypes.EthHash) (*ethtypes.EthTx, error) {
