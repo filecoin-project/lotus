@@ -75,7 +75,6 @@ func main() {
 		blockmsgidCmd,
 		signaturesCmd,
 		actorCmd,
-		minerFeesCmd,
 		minerTypesCmd,
 		minerPeeridCmd,
 		minerMultisigsCmd,

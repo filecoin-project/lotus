@@ -56,6 +56,7 @@ var minerCmd = &cli.Command{
 		sectorInfoCmd,
 		minerLockedVestedCmd,
 		minerListVestingCmd,
+		minerFeesCmd,
 	},
 }
 
@@ -745,6 +746,7 @@ var minerLockedVestedCmd = &cli.Command{
 
 		var totalCount int
 		miners := make(map[address.Address]abi.TokenAmount)
+		var minerCount int
 		var lockedCount int
 		var lockedFunds abi.TokenAmount = big.Zero()
 		_, _ = fmt.Fprintf(cctx.App.ErrWriter, "Scanning actors at epoch %d", head.Height())
@@ -754,6 +756,7 @@ var minerLockedVestedCmd = &cli.Command{
 				_, _ = fmt.Fprintf(cctx.App.ErrWriter, ".")
 			}
 			if act.Code == minerCode {
+				minerCount++
 				m16 := miner16.State{}
 				if err := adtStore.Get(ctx, act.Head, &m16); err != nil {
 					return xerrors.Errorf("failed to load miner state (using miner16, try a newer version?): %w", err)
@@ -786,7 +789,7 @@ var minerLockedVestedCmd = &cli.Command{
 
 		fmt.Println()
 		_, _ = fmt.Fprintf(cctx.App.Writer, "Total actors: %d\n", totalCount)
-		_, _ = fmt.Fprintf(cctx.App.Writer, "Total miners: %d\n", len(miners))
+		_, _ = fmt.Fprintf(cctx.App.Writer, "Total miners: %d\n", minerCount)
 		_, _ = fmt.Fprintf(cctx.App.Writer, "Miners with locked vested funds: %d\n", lockedCount)
 		if cctx.Bool("details") {
 			for addr, amt := range miners {
