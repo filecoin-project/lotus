@@ -77,6 +77,7 @@ For certain node operators, such as full archival nodes or systems that need to 
 - feat: add a `LOTUS_DISABLE_F3_ACTIVATION` enviroment variable allowing disabling F3 activation for a specific contract address or epoch ([filecoin-project/lotus#12920](https://github.com/filecoin-project/lotus/pull/12920)).
 - chore: switch to pure-go zstd decoder for snapshot imports.  ([filecoin-project/lotus#12857](https://github.com/filecoin-project/lotus/pull/12857))
 - chore: upgrade go-state-types with big.Int{} change that means an empty big.Int is now treated as zero for all operations ([filecoin-project/lotus#12936](https://github.com/filecoin-project/lotus/pull/12936))
+- chore(eth): make `EthGetBlockByNumber` & `EthGetBlockByHash` share the same cache and be impacted by `EthBlkCacheSize` config settings ([filecoin-project/lotus#12979](https://github.com/filecoin-project/lotus/pull/12979))
 
 ## Bug Fixes
 - fix(eth): minor improvements to event range checking ([filecoin-project/lotus#12867](https://github.com/filecoin-project/lotus/pull/12867))
