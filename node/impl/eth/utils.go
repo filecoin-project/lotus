@@ -41,8 +41,8 @@ func init() {
 	}
 }
 
-func getTipsetByEthBlockNumberOrHash(ctx context.Context, cp ChainStore, blkParam ethtypes.EthBlockNumberOrHash) (*types.TipSet, error) {
-	head := cp.GetHeaviestTipSet()
+func getTipsetByEthBlockNumberOrHash(ctx context.Context, cs ChainStore, blkParam ethtypes.EthBlockNumberOrHash) (*types.TipSet, error) {
+	head := cs.GetHeaviestTipSet()
 
 	predefined := blkParam.PredefinedBlock
 	if predefined != nil {
@@ -51,7 +51,7 @@ func getTipsetByEthBlockNumberOrHash(ctx context.Context, cp ChainStore, blkPara
 		} else if *predefined == "pending" {
 			return head, nil
 		} else if *predefined == "latest" {
-			parent, err := cp.GetTipSetFromKey(ctx, head.Parents())
+			parent, err := cs.GetTipSetFromKey(ctx, head.Parents())
 			if err != nil {
 				return nil, xerrors.New("cannot get parent tipset")
 			}
@@ -65,7 +65,7 @@ func getTipsetByEthBlockNumberOrHash(ctx context.Context, cp ChainStore, blkPara
 		if height > head.Height()-1 {
 			return nil, xerrors.New("requested a future epoch (beyond 'latest')")
 		}
-		ts, err := cp.GetTipsetByHeight(ctx, height, head, true)
+		ts, err := cs.GetTipsetByHeight(ctx, height, head, true)
 		if err != nil {
 			return nil, xerrors.Errorf("cannot get tipset at height: %v", height)
 		}
@@ -73,7 +73,7 @@ func getTipsetByEthBlockNumberOrHash(ctx context.Context, cp ChainStore, blkPara
 	}
 
 	if blkParam.BlockHash != nil {
-		ts, err := cp.GetTipSetByCid(ctx, blkParam.BlockHash.ToCid())
+		ts, err := cs.GetTipSetByCid(ctx, blkParam.BlockHash.ToCid())
 		if err != nil {
 			return nil, xerrors.Errorf("cannot get tipset by hash: %v", err)
 		}
@@ -81,7 +81,7 @@ func getTipsetByEthBlockNumberOrHash(ctx context.Context, cp ChainStore, blkPara
 		// verify that the tipset is in the canonical chain
 		if blkParam.RequireCanonical {
 			// walk up the current chain (our head) until we reach ts.Height()
-			walkTs, err := cp.GetTipsetByHeight(ctx, ts.Height(), head, true)
+			walkTs, err := cs.GetTipsetByHeight(ctx, ts.Height(), head, true)
 			if err != nil {
 				return nil, xerrors.Errorf("cannot get tipset at height: %v", ts.Height())
 			}
@@ -98,7 +98,7 @@ func getTipsetByEthBlockNumberOrHash(ctx context.Context, cp ChainStore, blkPara
 	return nil, xerrors.New("invalid block param")
 }
 
-func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTxInfo bool, cp ChainStore, sp StateManager) (ethtypes.EthBlock, error) {
+func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTxInfo bool, cs ChainStore, sm StateManager) (ethtypes.EthBlock, error) {
 	parentKeyCid, err := ts.Parents().Cid()
 	if err != nil {
 		return ethtypes.EthBlock{}, err
@@ -120,12 +120,12 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 		return ethtypes.EthBlock{}, err
 	}
 
-	stRoot, msgs, rcpts, err := executeTipset(ctx, ts, cp, sp)
+	stRoot, msgs, rcpts, err := executeTipset(ctx, ts, cs, sm)
 	if err != nil {
 		return ethtypes.EthBlock{}, xerrors.Errorf("failed to retrieve messages and receipts: %w", err)
 	}
 
-	st, err := sp.StateTree(stRoot)
+	st, err := sm.StateTree(stRoot)
 	if err != nil {
 		return ethtypes.EthBlock{}, xerrors.Errorf("failed to load state-tree root %q: %w", stRoot, err)
 	}
@@ -176,18 +176,18 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 	return block, nil
 }
 
-func executeTipset(ctx context.Context, ts *types.TipSet, cp ChainStore, sp StateManager) (cid.Cid, []types.ChainMsg, []types.MessageReceipt, error) {
-	msgs, err := cp.MessagesForTipset(ctx, ts)
+func executeTipset(ctx context.Context, ts *types.TipSet, cs ChainStore, sm StateManager) (cid.Cid, []types.ChainMsg, []types.MessageReceipt, error) {
+	msgs, err := cs.MessagesForTipset(ctx, ts)
 	if err != nil {
 		return cid.Undef, nil, nil, xerrors.Errorf("error loading messages for tipset: %v: %w", ts, err)
 	}
 
-	stRoot, rcptRoot, err := sp.TipSetState(ctx, ts)
+	stRoot, rcptRoot, err := sm.TipSetState(ctx, ts)
 	if err != nil {
 		return cid.Undef, nil, nil, xerrors.Errorf("failed to compute tipset state: %w", err)
 	}
 
-	rcpts, err := cp.ReadReceipts(ctx, rcptRoot)
+	rcpts, err := cs.ReadReceipts(ctx, rcptRoot)
 	if err != nil {
 		return cid.Undef, nil, nil, xerrors.Errorf("error loading receipts for tipset: %v: %w", ts, err)
 	}
@@ -326,14 +326,14 @@ func parseEthTopics(topics ethtypes.EthTopicSpec) (map[string][][]byte, error) {
 	return keys, nil
 }
 
-func getTransactionHashByCid(ctx context.Context, cp ChainStore, c cid.Cid) (ethtypes.EthHash, error) {
-	smsg, err := cp.GetSignedMessage(ctx, c)
+func getTransactionHashByCid(ctx context.Context, cs ChainStore, c cid.Cid) (ethtypes.EthHash, error) {
+	smsg, err := cs.GetSignedMessage(ctx, c)
 	if err == nil {
 		// This is an Eth Tx, Secp message, Or BLS message in the mpool
 		return ethTxHashFromSignedMessage(smsg)
 	}
 
-	_, err = cp.GetMessage(ctx, c)
+	_, err = cs.GetMessage(ctx, c)
 	if err == nil {
 		// This is a BLS message
 		return ethtypes.EthHashFromCid(c)
@@ -466,11 +466,11 @@ func ethTxFromNativeMessage(msg *types.Message, st *state.StateTree) (ethtypes.E
 	return ethTx, nil
 }
 
-func getSignedMessage(ctx context.Context, cp ChainStore, msgCid cid.Cid) (*types.SignedMessage, error) {
-	smsg, err := cp.GetSignedMessage(ctx, msgCid)
+func getSignedMessage(ctx context.Context, cs ChainStore, msgCid cid.Cid) (*types.SignedMessage, error) {
+	smsg, err := cs.GetSignedMessage(ctx, msgCid)
 	if err != nil {
 		// We couldn't find the signed message, it might be a BLS message, so search for a regular message.
-		msg, err := cp.GetMessage(ctx, msgCid)
+		msg, err := cs.GetMessage(ctx, msgCid)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to find msg %s: %w", msgCid, err)
 		}
@@ -492,16 +492,16 @@ func newEthTxFromMessageLookup(
 	ctx context.Context,
 	msgLookup *api.MsgLookup,
 	txIdx int,
-	cp ChainStore,
-	sp StateManager,
+	cs ChainStore,
+	sm StateManager,
 ) (ethtypes.EthTx, error) {
-	ts, err := cp.LoadTipSet(ctx, msgLookup.TipSet)
+	ts, err := cs.LoadTipSet(ctx, msgLookup.TipSet)
 	if err != nil {
 		return ethtypes.EthTx{}, err
 	}
 
 	// This tx is located in the parent tipset
-	parentTs, err := cp.LoadTipSet(ctx, ts.Parents())
+	parentTs, err := cs.LoadTipSet(ctx, ts.Parents())
 	if err != nil {
 		return ethtypes.EthTx{}, err
 	}
@@ -513,7 +513,7 @@ func newEthTxFromMessageLookup(
 
 	// lookup the transactionIndex
 	if txIdx < 0 {
-		msgs, err := cp.MessagesForTipset(ctx, parentTs)
+		msgs, err := cs.MessagesForTipset(ctx, parentTs)
 		if err != nil {
 			return ethtypes.EthTx{}, err
 		}
@@ -528,24 +528,24 @@ func newEthTxFromMessageLookup(
 		}
 	}
 
-	st, err := sp.StateTree(ts.ParentState())
+	st, err := sm.StateTree(ts.ParentState())
 	if err != nil {
 		return ethtypes.EthTx{}, xerrors.Errorf("failed to load message state tree: %w", err)
 	}
 
-	return newEthTx(ctx, cp, st, parentTs.Height(), parentTsCid, msgLookup.Message, txIdx)
+	return newEthTx(ctx, cs, st, parentTs.Height(), parentTsCid, msgLookup.Message, txIdx)
 }
 
 func newEthTx(
 	ctx context.Context,
-	cp ChainStore,
+	cs ChainStore,
 	st *state.StateTree,
 	blockHeight abi.ChainEpoch,
 	msgTsCid cid.Cid,
 	msgCid cid.Cid,
 	txIdx int,
 ) (ethtypes.EthTx, error) {
-	smsg, err := getSignedMessage(ctx, cp, msgCid)
+	smsg, err := getSignedMessage(ctx, cs, msgCid)
 	if err != nil {
 		return ethtypes.EthTx{}, xerrors.Errorf("failed to get signed msg: %w", err)
 	}
@@ -703,17 +703,17 @@ func encodeAsABIHelper(param1 uint64, param2 uint64, data []byte) []byte {
 	return buf
 }
 
-func getTipsetByBlockNumber(ctx context.Context, cp ChainStore, blkParam string, strict bool) (*types.TipSet, error) {
+func getTipsetByBlockNumber(ctx context.Context, cs ChainStore, blkParam string, strict bool) (*types.TipSet, error) {
 	if blkParam == "earliest" {
 		return nil, xerrors.New("block param \"earliest\" is not supported")
 	}
 
-	head := cp.GetHeaviestTipSet()
+	head := cs.GetHeaviestTipSet()
 	switch blkParam {
 	case "pending":
 		return head, nil
 	case "latest":
-		parent, err := cp.GetTipSetFromKey(ctx, head.Parents())
+		parent, err := cs.GetTipSetFromKey(ctx, head.Parents())
 		if err != nil {
 			return nil, xerrors.New("cannot get parent tipset")
 		}
@@ -721,7 +721,7 @@ func getTipsetByBlockNumber(ctx context.Context, cp ChainStore, blkParam string,
 	case "safe":
 		latestHeight := head.Height() - 1
 		safeHeight := latestHeight - ethtypes.SafeEpochDelay
-		ts, err := cp.GetTipsetByHeight(ctx, safeHeight, head, true)
+		ts, err := cs.GetTipsetByHeight(ctx, safeHeight, head, true)
 		if err != nil {
 			return nil, xerrors.Errorf("cannot get tipset at height: %v", safeHeight)
 		}
@@ -729,7 +729,7 @@ func getTipsetByBlockNumber(ctx context.Context, cp ChainStore, blkParam string,
 	case "finalized":
 		latestHeight := head.Height() - 1
 		safeHeight := latestHeight - policy.ChainFinality
-		ts, err := cp.GetTipsetByHeight(ctx, safeHeight, head, true)
+		ts, err := cs.GetTipsetByHeight(ctx, safeHeight, head, true)
 		if err != nil {
 			return nil, xerrors.Errorf("cannot get tipset at height: %v", safeHeight)
 		}
@@ -743,7 +743,7 @@ func getTipsetByBlockNumber(ctx context.Context, cp ChainStore, blkParam string,
 		if abi.ChainEpoch(num) > head.Height()-1 {
 			return nil, xerrors.New("requested a future epoch (beyond 'latest')")
 		}
-		ts, err := cp.GetTipsetByHeight(ctx, abi.ChainEpoch(num), head, true)
+		ts, err := cs.GetTipsetByHeight(ctx, abi.ChainEpoch(num), head, true)
 		if err != nil {
 			return nil, xerrors.Errorf("cannot get tipset at height: %v", num)
 		}
