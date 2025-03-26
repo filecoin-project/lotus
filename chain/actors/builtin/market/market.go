@@ -178,6 +178,7 @@ type State interface {
 	NextID() (abi.DealID, error)
 	GetState() interface{}
 	GetAllocationIdForPendingDeal(dealId abi.DealID) (verifregtypes.AllocationId, error)
+	ProviderSectors() (ProviderSectors, error)
 }
 
 type BalanceTable interface {
@@ -281,6 +282,15 @@ type DealState interface {
 	SlashEpoch() abi.ChainEpoch       // -1 if deal never slashed
 
 	Equals(other DealState) bool
+}
+
+type ProviderSectors interface {
+	Get(actorId abi.ActorID) (SectorDealIDs, bool, error)
+}
+
+type SectorDealIDs interface {
+	ForEach(cb func(abi.SectorNumber, []abi.DealID) error) error
+	Get(sectorNumber abi.SectorNumber) ([]abi.DealID, bool, error)
 }
 
 func DealStatesEqual(a, b DealState) bool {
