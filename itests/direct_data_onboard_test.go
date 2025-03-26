@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/dagcbor"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
@@ -27,6 +28,8 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	minertypes "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
@@ -270,11 +273,34 @@ func TestOnboardMixedMarketDDO(t *testing.T) {
 			fmt.Println("Deal", id, deal.Proposal.PieceCID, deal.Proposal.PieceSize, deal.Proposal.Client, deal.Proposal.Provider)
 		}
 
-		// check actor events, verify deal-published is as expected
 		minerIdAddr, err := client.StateLookupID(ctx, maddr, types.EmptyTSK)
 		require.NoError(t, err)
 		minerId, err := address.IDFromAddress(minerIdAddr)
 		require.NoError(t, err)
+
+		mact, err := client.StateGetActor(ctx, market.Address, types.EmptyTSK)
+		require.NoError(t, err)
+		marketActor, err := market.Load(adt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewAPIBlockstore(client))), mact)
+		require.NoError(t, err)
+		providerSectors, err := marketActor.ProviderSectors()
+		require.NoError(t, err)
+		sectorDealIds, has, err := providerSectors.Get(abi.ActorID(minerId))
+		require.NoError(t, err)
+		require.True(t, has)
+		actualSectorDeals := make(map[abi.SectorNumber][]abi.DealID)
+		err = sectorDealIds.ForEach(func(sector abi.SectorNumber, dealIds []abi.DealID) error {
+			actualSectorDeals[sector] = dealIds
+			return nil
+		})
+		require.NoError(t, err)
+		expectedDealIds := map[abi.SectorNumber][]abi.DealID{
+			0: {abi.DealID(0)},                // preseal, full-sector deal
+			1: {abi.DealID(1)},                // market deal, full-sector deal
+			2: {abi.DealID(rawSector.Sector)}, // the one we manually added, half-sector deal
+		}
+		require.Equal(t, expectedDealIds, actualSectorDeals)
+
+		// check actor events, verify deal-published is as expected
 		caddr, err := client.WalletDefaultAddress(context.Background())
 		require.NoError(t, err)
 		clientIdAddr, err := client.StateLookupID(ctx, caddr, types.EmptyTSK)
