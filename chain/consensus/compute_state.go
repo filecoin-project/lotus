@@ -245,10 +245,12 @@ func (t *TipSetExecutor) ApplyBlocks(
 				if err := em.MessageApplied(ctx, ts, cm.Cid(), m, r, false); err != nil {
 					log.Debugw("ApplyBlocks ExecMonitor#MessageApplied callback failed", "error", err)
 					if cacheStore != nil {
+						/* TODO:
 						log.Debug("Dumping vm cache blocks to provided cacheStore")
 						if err := vmi.DumpCache(cacheStore); err != nil {
 							return cid.Undef, cid.Undef, xerrors.Errorf("dumping vm cache: %w", err)
 						}
+						*/
 					}
 					return cid.Undef, cid.Undef, err
 				}
@@ -307,10 +309,12 @@ func (t *TipSetExecutor) ApplyBlocks(
 	}
 
 	if cacheStore != nil {
+		/* TODO:
 		log.Debug("Dumping vm cache blocks to provided cacheStore")
 		if err := vmi.DumpCache(cacheStore); err != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("dumping vm cache: %w", err)
 		}
+		*/
 	}
 
 	st, err := vmi.Flush(ctx)

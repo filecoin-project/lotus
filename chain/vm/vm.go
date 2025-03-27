@@ -249,6 +249,11 @@ type VMOpts struct {
 	LookbackState  LookbackStateGetter
 	TipSetGetter   TipSetGetter
 	Tracing        bool
+	// FlushAllBlocks is used to control whether the VM should flush all blocks
+	// created during execution to the blockstore. This is used for testing
+	// purposes, where we want to inspect all blocks created during execution, not
+	// just those connected to the final state root.
+	FlushAllBlocks bool
 	// ReturnEvents decodes and returns emitted events.
 	ReturnEvents bool
 	// ExecutionLane specifies the execution priority of the created vm
