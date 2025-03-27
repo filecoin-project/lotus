@@ -38,15 +38,15 @@ var ErrExpensiveFork = errors.New("refusing explicit call due to state fork at e
 // Call applies the given message to the given tipset's parent state, at the epoch following the
 // tipset's parent. In the presence of null blocks, the height at which the message is invoked may
 // be less than the specified tipset.
-func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*api.InvocResult, error) {
+func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.TipSet, flushAllBlocks bool) (*api.InvocResult, error) {
 	buffStore := blockstore.NewTieredBstore(sm.cs.StateBlockstore(), blockstore.NewMemorySync())
-	return sm.CallWithStore(ctx, msg, ts, buffStore)
+	return sm.CallWithStore(ctx, msg, ts, buffStore, flushAllBlocks)
 }
 
 // CallWithStore applies the given message to the given tipset's parent state, at the epoch following the
 // tipset's parent. In the presence of null blocks, the height at which the message is invoked may
 // be less than the specified tipset.
-func (sm *StateManager) CallWithStore(ctx context.Context, msg *types.Message, ts *types.TipSet, bstore blockstore.Blockstore) (*api.InvocResult, error) {
+func (sm *StateManager) CallWithStore(ctx context.Context, msg *types.Message, ts *types.TipSet, bstore blockstore.Blockstore, flushAllBlocks bool) (*api.InvocResult, error) {
 	// Copy the message as we modify it below.
 	msgCopy := *msg
 	msg = &msgCopy
@@ -63,13 +63,13 @@ func (sm *StateManager) CallWithStore(ctx context.Context, msg *types.Message, t
 	if msg.Value == types.EmptyInt {
 		msg.Value = types.NewInt(0)
 	}
-	return sm.callInternal(ctx, msg, nil, ts, cid.Undef, sm.GetNetworkVersion, false, execSameSenderMessages, bstore)
+	return sm.callInternal(ctx, msg, nil, ts, cid.Undef, sm.GetNetworkVersion, false, execSameSenderMessages, bstore, flushAllBlocks)
 }
 
 // ApplyOnStateWithGas applies the given message on top of the given state root with gas tracing enabled
 func (sm *StateManager) ApplyOnStateWithGas(ctx context.Context, stateCid cid.Cid, msg *types.Message, ts *types.TipSet) (*api.InvocResult, error) {
 	buffStore := blockstore.NewTieredBstore(sm.cs.StateBlockstore(), blockstore.NewMemorySync())
-	return sm.callInternal(ctx, msg, nil, ts, stateCid, sm.GetNetworkVersion, true, execNoMessages, buffStore)
+	return sm.callInternal(ctx, msg, nil, ts, stateCid, sm.GetNetworkVersion, true, execNoMessages, buffStore, false)
 }
 
 // CallWithGas calculates the state for a given tipset, and then applies the given message on top of that state.
@@ -81,7 +81,7 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 		strategy = execSameSenderMessages
 	}
 	buffStore := blockstore.NewTieredBstore(sm.cs.StateBlockstore(), blockstore.NewMemorySync())
-	return sm.callInternal(ctx, msg, priorMsgs, ts, cid.Undef, sm.GetNetworkVersion, true, strategy, buffStore)
+	return sm.callInternal(ctx, msg, priorMsgs, ts, cid.Undef, sm.GetNetworkVersion, true, strategy, buffStore, false)
 }
 
 // CallAtStateAndVersion allows you to specify a message to execute on the given stateCid and network version.
@@ -93,7 +93,7 @@ func (sm *StateManager) CallAtStateAndVersion(ctx context.Context, msg *types.Me
 		return v
 	}
 	buffStore := blockstore.NewTieredBstore(sm.cs.StateBlockstore(), blockstore.NewMemorySync())
-	return sm.callInternal(ctx, msg, nil, nil, stateCid, nvGetter, true, execSameSenderMessages, buffStore)
+	return sm.callInternal(ctx, msg, nil, nil, stateCid, nvGetter, true, execSameSenderMessages, buffStore, false)
 }
 
 //   - If no tipset is specified, the first tipset without an expensive migration or one in its parent is used.
@@ -109,6 +109,7 @@ func (sm *StateManager) callInternal(
 	checkGas bool,
 	strategy execMessageStrategy,
 	bstore blockstore.Blockstore,
+	flushAllBlocks bool,
 ) (*api.InvocResult, error) {
 	ctx, span := trace.StartSpan(ctx, "statemanager.callInternal")
 	defer span.End()
@@ -183,6 +184,7 @@ func (sm *StateManager) callInternal(
 		LookbackState:  LookbackStateGetterForTipset(sm, ts),
 		TipSetGetter:   TipSetGetterForTipset(sm.cs, ts),
 		Tracing:        true,
+		FlushAllBlocks: flushAllBlocks,
 	}
 	vmi, err := sm.newVM(ctx, vmopt)
 	if err != nil {

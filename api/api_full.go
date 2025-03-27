@@ -8,6 +8,7 @@ import (
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
@@ -385,7 +386,7 @@ type FullNode interface {
 	// StateCall applies the message to the tipset's parent state. The
 	// message is not applied on-top-of the messages in the passed-in
 	// tipset.
-	StateCall(context.Context, *types.Message, types.TipSetKey) (*InvocResult, error) //perm:read
+	StateCall(ctx context.Context, p StateCallParams) (*InvocResult, error) //perm:read
 	// StateReplay replays a given message, assuming it was included in a block in the specified tipset.
 	//
 	// If a tipset key is provided, and a replacing message is not found on chain,
@@ -1270,7 +1271,12 @@ type InvocResult struct {
 	ExecutionTrace types.ExecutionTrace
 	Error          string
 	Duration       time.Duration
-	CachedBlocks   []Block `json:",omitempty"`
+	Blocks         *InvocBlocks `json:",omitempty"`
+}
+
+type InvocBlocks struct {
+	Root   cid.Cid
+	Blocks []Block
 }
 
 type Block struct {
@@ -1474,4 +1480,63 @@ type EthTxReceipt struct {
 	LogsBloom         ethtypes.EthBytes    `json:"logsBloom"`
 	Logs              []ethtypes.EthLog    `json:"logs"`
 	Type              ethtypes.EthUint64   `json:"type"`
+}
+
+type StateCallParams struct {
+	Message       *types.Message  `json:"message"`
+	TipSetKey     types.TipSetKey `json:"tipsetKey"`
+	IncludeBlocks bool            `json:"includeBlocks,omitempty"`
+}
+
+func (e *StateCallParams) ToArg() jsonrpc.RawParams {
+	b, err := json.Marshal(e)
+	if err != nil {
+		return nil
+	}
+	return jsonrpc.RawParams(b)
+}
+
+func (e *StateCallParams) UnmarshalJSON(b []byte) error {
+	if len(b) == 0 {
+		return xerrors.New("empty input")
+	}
+
+	// If input is an object, decode it directly into a temporary struct
+	if b[0] == '{' {
+		type stateCallParamsAlias StateCallParams
+		var alias stateCallParamsAlias
+		if err := json.Unmarshal(b, &alias); err != nil {
+			return err
+		}
+		*e = StateCallParams(alias)
+		return nil
+	}
+
+	// If input is an array, expect exactly two elements: Message and TipSetKey
+	if b[0] == '[' {
+		var params []json.RawMessage
+		if err := json.Unmarshal(b, &params); err != nil {
+			return err
+		}
+		if len(params) != 2 {
+			return xerrors.Errorf("expected two parameters, got %d", len(params))
+		}
+		if err := json.Unmarshal(params[0], &e.Message); err != nil {
+			return xerrors.Errorf("failed to unmarshal message: %w", err)
+		}
+		if err := json.Unmarshal(params[1], &e.TipSetKey); err != nil {
+			return xerrors.Errorf("failed to unmarshal tipset key: %w", err)
+		}
+		return nil
+	}
+
+	return xerrors.Errorf("unexpected JSON input: expected object or array, got %q", string(b[0]))
+}
+
+func (e *StateCallParams) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"message":       e.Message,
+		"tipsetKey":     e.TipSetKey,
+		"includeBlocks": e.IncludeBlocks,
+	})
 }
