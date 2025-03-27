@@ -127,8 +127,8 @@ var UpgradeTuktukHeight abi.ChainEpoch = 4461240
 // Tuktuk migration. along with a RampStartEpoch matching the upgrade height.
 var UpgradeTuktukPowerRampDurationEpochs = uint64(builtin.EpochsInYear)
 
-// ??????
-var UpgradeTeepHeight = abi.ChainEpoch(9999999999)
+// 2025-04-10T23:00:00Z
+var UpgradeTeepHeight = abi.ChainEpoch(4867320)
 
 // This epoch, 90 days after Teep is the completion of FIP-0100 where actors will start applying
 // the new daily fee to pre-Teep sectors being extended.
