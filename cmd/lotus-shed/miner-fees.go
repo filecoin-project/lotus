@@ -10,18 +10,21 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	miner15 "github.com/filecoin-project/go-state-types/builtin/v15/miner"
 	miner16 "github.com/filecoin-project/go-state-types/builtin/v16/miner"
+	"github.com/filecoin-project/specs-actors/v7/actors/builtin"
 
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 )
 
 var minerFeesCmd = &cli.Command{
-	Name:  "miner-fees",
+	Name:  "fees",
 	Usage: "[miner address] [--tipset <tipset>]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
@@ -29,9 +32,14 @@ var minerFeesCmd = &cli.Command{
 			Usage: "tipset or height (@X or @head for latest)",
 			Value: "@head",
 		},
+		&cli.IntFlag{
+			Name:  "proving-periods",
+			Usage: "number of proving periods to check",
+			Value: 1,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		api, closer, err := lcli.GetFullNodeAPIV1(cctx)
 		if err != nil {
 			return err
 		}
@@ -45,6 +53,11 @@ var minerFeesCmd = &cli.Command{
 		minerAddr, err := address.NewFromString(cctx.Args().Get(0))
 		if err != nil {
 			return xerrors.Errorf("parsing miner address: %w", err)
+		}
+
+		burnAddr, err := address.NewFromString("f099")
+		if err != nil {
+			return xerrors.Errorf("parsing burn address: %w", err)
 		}
 
 		ts, err := lcli.LoadTipSet(ctx, cctx, api)
@@ -73,6 +86,11 @@ var minerFeesCmd = &cli.Command{
 			return xerrors.Errorf("loading deadlines: %w", err)
 		}
 
+		dlinfo, err := api.StateMinerProvingDeadline(ctx, minerAddr, ts.Key())
+		if err != nil {
+			return xerrors.Errorf("getting miner proving deadline: %w", err)
+		}
+
 		var discrepancies bool
 		totalMinerFee := big.NewInt(0)
 
@@ -81,6 +99,8 @@ var minerFeesCmd = &cli.Command{
 
 			totalSectorsFee := big.NewInt(0)
 			totalFeeDeduction := big.NewInt(0)
+
+			/** Iterate over partitions **/
 
 			partitions, err := dl.PartitionsArray(adtStore)
 			if err != nil {
@@ -123,6 +143,8 @@ var minerFeesCmd = &cli.Command{
 					return xerrors.Errorf("iterating sectors: %w", err)
 				}
 
+				/** Iterate over expiration queue within each partition **/
+
 				if expQ, err := miner16.LoadExpirationQueue(adtStore, partition.ExpirationsEpochs, minerState.QuantSpecForDeadline(dlIdx), miner16.PartitionExpirationAmtBitwidth); err != nil {
 					return xerrors.Errorf("loading expiration queue: %w", err)
 				} else {
@@ -148,9 +170,176 @@ var minerFeesCmd = &cli.Command{
 				correct = "✗"
 				discrepancies = true
 			}
-			_, _ = fmt.Fprintf(cctx.App.Writer, "\t%s Deadline daily fee: %s (sector fee sum: %s, expiration fee deduction sum: %s)\n", correct, dl.DailyFee, totalSectorsFee, totalFeeDeduction)
+			_, _ = fmt.Fprintf(cctx.App.Writer, "\t%s Deadline daily fee: %s, power: %s (sector fee sum: %s, expiration fee deduction sum: %s)\n", correct, dl.DailyFee, dl.LivePower.QA, totalSectorsFee, totalFeeDeduction)
 
-			totalMinerFee = big.Add(totalMinerFee, dl.DailyFee)
+			if !dl.DailyFee.IsZero() {
+
+				// run back through the last proving-period days
+				for day := int64(0); day < cctx.Int64("proving-periods"); day++ {
+
+					/** Look for evidence of fee payment **/
+
+					totalMinerFee = big.Add(totalMinerFee, dl.DailyFee)
+
+					// Epoch at which the deadline ends and we expect to find cron execution
+					dlEndEpoch := dlinfo.PeriodStart + abi.ChainEpoch(dlIdx+1)*dlinfo.WPoStChallengeWindow - 1 - miner16.WPoStProvingPeriod*abi.ChainEpoch(day)
+					if dlEndEpoch > dlinfo.CurrentEpoch {
+						dlEndEpoch -= dlinfo.WPoStProvingPeriod
+					}
+					// If there is a null epoch involved we don't want to go backward, so we go AfterHeight
+					dlEndTs, err := api.ChainGetTipSetAfterHeight(ctx, dlEndEpoch, types.EmptyTSK)
+					if err != nil {
+						return xerrors.Errorf("getting tipset at deadline end epoch: %w", err)
+					}
+					// StateCompute at the height we arived at, which may not be dlEndEpoch if nulls were involved
+					compute, err := api.StateCompute(ctx, dlEndTs.Height(), nil, dlEndTs.Key())
+					if err != nil {
+						return xerrors.Errorf("computing tipset at deadline end epoch: %w", err)
+					}
+
+					_, _ = fmt.Fprintf(cctx.App.Writer, "\tInspecting last deadline cron @ %d:\n", dlEndTs.Height())
+
+					var burnValue *big.Int
+					var cronParams *miner16.DeferredCronEventParams
+
+					// Sort through traces to find relevant ones
+					for _, invoc := range compute.Trace {
+						var printExec func(depth int, trace types.ExecutionTrace) (string, bool, error)
+						printExec = func(depth int, trace types.ExecutionTrace) (string, bool, error) {
+							ec := ""
+							if trace.MsgRct.ExitCode != 0 {
+								ec = fmt.Sprintf("(!%d)", trace.MsgRct.ExitCode)
+							}
+							params := ""
+							var has bool
+
+							if trace.Msg.From == minerAddr || trace.Msg.To == minerAddr {
+								has = true // involves our miner
+
+								if trace.Msg.From == power.Address && trace.Msg.Method == 12 {
+									// cron call to miner
+									if cronParams != nil {
+										return "", false, xerrors.New("multiple cron calls to miner in one message")
+									}
+									var p miner16.DeferredCronEventParams
+									if err := p.UnmarshalCBOR(bytes.NewReader(trace.Msg.Params)); err != nil {
+										return "", false, xerrors.Errorf("unmarshalling cron params: %w", err)
+									}
+									cronParams = &p
+								} else if trace.Msg.From == minerAddr && trace.Msg.To == burnAddr {
+									// miner paying fee debt
+									if burnValue != nil {
+										return "", false, xerrors.New("unexpected multiple miner burns in one message")
+									}
+									burnValue = &trace.Msg.Value
+								}
+							}
+
+							s := fmt.Sprintf(" %s->%s[%d]:%v%s%s", trace.Msg.From, trace.Msg.To, trace.Msg.Method, trace.Msg.Value, ec, params)
+
+							for _, st := range trace.Subcalls {
+								if ss, shas, err := printExec(depth+1, st); err != nil {
+									return "", false, err
+								} else {
+									if !has && shas {
+										has = true
+									}
+									s += ss
+								}
+							}
+
+							if depth == 0 {
+								s += ";"
+							}
+
+							return s, has, nil
+						}
+						if pr, has, err := printExec(0, invoc.ExecutionTrace); err != nil {
+							return xerrors.Errorf("printing execution trace: %w", err)
+						} else if has {
+							_, _ = fmt.Fprintf(cctx.App.Writer, "\t\tTrace involving %s:%s\n", minerAddr, pr)
+						}
+					}
+
+					expectedFee := dl.DailyFee
+
+					rewardPercent := "<cron call not found>"
+					feeCapDesc := "fee not capped"
+					if cronParams != nil {
+						rew := miner16.ExpectedRewardForPower(cronParams.RewardSmoothed, cronParams.QualityAdjPowerSmoothed, dl.LivePower.QA, builtin.EpochsInDay)
+						// 50% daily reward is our cap on dl.DailyFee
+						rewardPercent = fmt.Sprintf("%s%%", big.Div(big.Mul(rew, big.NewInt(100)), dl.DailyFee))
+						feeCap := big.Div(rew, big.NewInt(2))
+						if feeCap.LessThan(dl.DailyFee) {
+							feeCapDesc = fmt.Sprintf("fee capped @ %s", feeCap)
+							expectedFee = feeCap
+						}
+					}
+					_, _ = fmt.Fprintf(cctx.App.Writer, "\t\tEstimated deadline daily reward: %s of fee (%s)\n", rewardPercent, feeCapDesc)
+
+					burnValueStr := "<burn not found>"
+					burnStatus := "✗"
+					burnExtra := ""
+					if burnValue != nil {
+						burnValueStr = burnValue.String()
+						if burnValue.Equals(expectedFee) {
+							burnStatus = "✓"
+						} else if burnValue.LessThan(expectedFee) {
+							discrepancies = true
+							burnExtra = " (discrepancy found, burn too low)"
+						} else {
+							burnExtra = " (higher burn than expected, possible fault fee)"
+						}
+					} else {
+						if expectedFee.IsZero() {
+							burnStatus = "✓" // we don't expect to find a burn in this special case
+						} else {
+							discrepancies = true
+						}
+					}
+					_, _ = fmt.Fprintf(cctx.App.Writer, "\t\t%s Burn value: %s%s\n", burnStatus, burnValueStr, burnExtra)
+
+					/** Print various balances **/
+
+					actBefore, err := api.StateGetActor(ctx, minerAddr, dlEndTs.Key())
+					if err != nil {
+						return xerrors.Errorf("getting miner actor before: %w", err)
+					}
+					var stateBefore miner16.State
+					if err := adtStore.Get(ctx, actBefore.Head, &stateBefore); err != nil {
+						return xerrors.Errorf("getting miner state: %w", err)
+					}
+					dlNextTs, err := api.ChainGetTipSetAfterHeight(ctx, dlEndTs.Height()+1, types.EmptyTSK)
+					if err != nil {
+						return xerrors.Errorf("getting tipset after deadline end: %w", err)
+					}
+					actAfter, err := api.StateGetActor(ctx, minerAddr, dlNextTs.Key())
+					if err != nil {
+						return xerrors.Errorf("getting miner actor before: %w", err)
+					}
+					var stateAfter miner16.State
+					if err := adtStore.Get(ctx, actAfter.Head, &stateAfter); err != nil {
+						return xerrors.Errorf("getting miner state: %w", err)
+					}
+
+					balanceDelta := big.Sub(actAfter.Balance, actBefore.Balance)
+					balanceStatus := "✓"
+					if !balanceDelta.Neg().Equals(expectedFee) {
+						// We found a balance change, but it doesn't match the fee
+						balanceStatus = "✗"
+						discrepancies = true
+					}
+
+					_, _ = fmt.Fprintf(
+						cctx.App.Writer,
+						"\t\t%s Balance Δ: %s, LockedFunds Δ: %s, FeeDebt: %s, \n",
+						balanceStatus,
+						balanceDelta,
+						big.Sub(stateAfter.LockedFunds, stateBefore.LockedFunds),
+						stateAfter.FeeDebt,
+					)
+				}
+			}
 			return nil
 		}); err != nil {
 			return xerrors.Errorf("iterating deadlines: %w", err)
