@@ -128,7 +128,9 @@ func processFilesParallel(fileContents []*fileContent, numWorkers int) {
 
 	// Fill a queue with file indices that we can consume in parallel
 	for i := range fileContents {
-		filesChan <- i
+		if fileContents[i] != nil { // shouldn't be nil, but just in case
+			filesChan <- i
+		}
 	}
 	close(filesChan)
 
