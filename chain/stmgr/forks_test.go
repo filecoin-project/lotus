@@ -344,7 +344,7 @@ func testForkRefuseCall(t *testing.T, nullsBefore, nullsAfter int) {
 		}
 
 		// Call always applies the message to the "next block" after the tipset's parent state.
-		ret, err = sm.Call(ctx, m, ts.TipSet.TipSet())
+		ret, err = sm.Call(ctx, m, ts.TipSet.TipSet(), false)
 		if parentHeight <= testForkHeight && currentHeight >= testForkHeight {
 			require.Equal(t, ErrExpensiveFork, err)
 		} else {
@@ -359,7 +359,7 @@ func testForkRefuseCall(t *testing.T, nullsBefore, nullsAfter int) {
 		require.NoError(t, err)
 		require.True(t, ret.MsgRct.ExitCode.IsSuccess())
 
-		ret, err = sm.Call(ctx, m, nil)
+		ret, err = sm.Call(ctx, m, nil, false)
 		require.NoError(t, err)
 		require.True(t, ret.MsgRct.ExitCode.IsSuccess())
 	}

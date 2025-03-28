@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
+	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
@@ -308,7 +309,7 @@ type FullNode interface {
 	// StateCall applies the message to the tipset's parent state. The
 	// message is not applied on-top-of the messages in the passed-in
 	// tipset.
-	StateCall(context.Context, *types.Message, types.TipSetKey) (*api.InvocResult, error) //perm:read
+	StateCall(context.Context, jsonrpc.RawParams) (*api.InvocResult, error) //perm:read
 	// StateReplay replays a given message, assuming it was included in a block in the specified tipset.
 	//
 	// If a tipset key is provided, and a replacing message is not found on chain,

@@ -2868,9 +2868,9 @@ func (mr *MockFullNodeMockRecorder) StateAllMinerFaults(arg0, arg1, arg2 interfa
 }
 
 // StateCall mocks base method.
-func (m *MockFullNode) StateCall(arg0 context.Context, arg1 *types.Message, arg2 types.TipSetKey) (*api.InvocResult, error) {
+func (m *MockFullNode) StateCall(arg0 context.Context, arg1 jsonrpc.RawParams) (*api.InvocResult, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StateCall", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "StateCall", arg0, arg1)
 	ret0, _ := ret[0].(*api.InvocResult)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1

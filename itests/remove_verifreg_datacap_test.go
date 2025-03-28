@@ -263,13 +263,13 @@ func TestNoRemoveDatacapFromVerifreg(t *testing.T) {
 	params, aerr := actors.SerializeParams(&removeDataCapParams)
 	require.NoError(t, aerr)
 
-	callResult, err := clientApi.StateCall(ctx, &types.Message{
+	callResult, err := clientApi.StateCall(ctx, api.NewStateCallParams(&types.Message{
 		From:   rootAddr,
 		To:     verifreg.Address,
 		Method: verifreg.Methods.RemoveVerifiedClientDataCap,
 		Params: params,
 		Value:  big.Zero(),
-	}, types.EmptyTSK)
+	}, types.EmptyTSK).ToRaw())
 	require.NoError(t, err)
 	require.False(t, callResult.MsgRct.ExitCode.IsSuccess())
 

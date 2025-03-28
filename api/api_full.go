@@ -386,7 +386,7 @@ type FullNode interface {
 	// StateCall applies the message to the tipset's parent state. The
 	// message is not applied on-top-of the messages in the passed-in
 	// tipset.
-	StateCall(ctx context.Context, p StateCallParams) (*InvocResult, error) //perm:read
+	StateCall(ctx context.Context, p jsonrpc.RawParams) (*InvocResult, error) //perm:read
 	// StateReplay replays a given message, assuming it was included in a block in the specified tipset.
 	//
 	// If a tipset key is provided, and a replacing message is not found on chain,
@@ -1271,12 +1271,7 @@ type InvocResult struct {
 	ExecutionTrace types.ExecutionTrace
 	Error          string
 	Duration       time.Duration
-	Blocks         *InvocBlocks `json:",omitempty"`
-}
-
-type InvocBlocks struct {
-	Root   cid.Cid
-	Blocks []Block
+	Blocks         []Block `json:",omitempty"`
 }
 
 type Block struct {
@@ -1482,18 +1477,53 @@ type EthTxReceipt struct {
 	Type              ethtypes.EthUint64   `json:"type"`
 }
 
+// StateCallParams is the parameters for the StateCall method.
 type StateCallParams struct {
 	Message       *types.Message  `json:"message"`
 	TipSetKey     types.TipSetKey `json:"tipsetKey"`
 	IncludeBlocks bool            `json:"includeBlocks,omitempty"`
 }
 
-func (e *StateCallParams) ToArg() jsonrpc.RawParams {
+// NewStateCallParams creates a new StateCallParams instance with the given message and tipset key.
+func NewStateCallParams(msg *types.Message, tsk types.TipSetKey) StateCallParams {
+	return StateCallParams{
+		Message:       msg,
+		TipSetKey:     tsk,
+		IncludeBlocks: false,
+	}
+}
+
+// StateCallParamsFromRaw converts raw jsonrpc parameters to StateCallParams.
+func StateCallParamsFromRaw(raw jsonrpc.RawParams) (StateCallParams, error) {
+	return jsonrpc.DecodeParams[StateCallParams](raw)
+}
+
+// ToRaw converts the StateCallParams to a jsonrpc.RawParams format for use with the StateCall
+// method.
+func (e StateCallParams) ToRaw() jsonrpc.RawParams {
+	if !e.IncludeBlocks {
+		// if we have 2 arguments, encode using the array format for backward compatibility with the
+		// old API, if a new client uses this to call an old server, it will be interpreted correctly
+		// as just 2 arguments
+		if b, err := json.Marshal([]any{e.Message, e.TipSetKey}); err == nil {
+			return jsonrpc.RawParams(b)
+		} // else fall through to the object format, maybe it'll work
+	}
+	// IncludeBlocks forces us to use the object format, so we can't be compatible with the old API
 	b, err := json.Marshal(e)
 	if err != nil {
 		return nil
 	}
 	return jsonrpc.RawParams(b)
+}
+
+// WithIncludeBlocks returns a new StateCallParams with IncludeBlocks set to true.
+func (e StateCallParams) WithIncludeBlocks() StateCallParams {
+	return StateCallParams{
+		Message:       e.Message,
+		TipSetKey:     e.TipSetKey,
+		IncludeBlocks: true,
+	}
 }
 
 func (e *StateCallParams) UnmarshalJSON(b []byte) error {
@@ -1509,11 +1539,8 @@ func (e *StateCallParams) UnmarshalJSON(b []byte) error {
 			return err
 		}
 		*e = StateCallParams(alias)
-		return nil
-	}
-
-	// If input is an array, expect exactly two elements: Message and TipSetKey
-	if b[0] == '[' {
+		// If input is an array, expect exactly two elements: Message and TipSetKey
+	} else if b[0] == '[' {
 		var params []json.RawMessage
 		if err := json.Unmarshal(b, &params); err != nil {
 			return err
@@ -1527,10 +1554,15 @@ func (e *StateCallParams) UnmarshalJSON(b []byte) error {
 		if err := json.Unmarshal(params[1], &e.TipSetKey); err != nil {
 			return xerrors.Errorf("failed to unmarshal tipset key: %w", err)
 		}
-		return nil
+	} else {
+		return xerrors.Errorf("unexpected JSON input: expected object or array, got %q", string(b[0]))
 	}
 
-	return xerrors.Errorf("unexpected JSON input: expected object or array, got %q", string(b[0]))
+	if e.Message == nil {
+		return xerrors.New("message required")
+	}
+
+	return nil
 }
 
 func (e *StateCallParams) MarshalJSON() ([]byte, error) {

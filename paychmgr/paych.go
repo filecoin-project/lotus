@@ -324,7 +324,7 @@ func (ca *channelAccessor) checkVoucherSpendable(ctx context.Context, ch address
 		return false, err
 	}
 
-	ret, err := ca.api.Call(ctx, mes, nil)
+	ret, err := ca.api.Call(ctx, mes, nil, false)
 	if err != nil {
 		return false, err
 	}

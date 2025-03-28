@@ -100,7 +100,7 @@ func (e *ethLookup) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress,
 	// Try calling until we find a height with no migration.
 	var res *api.InvocResult
 	for {
-		res, err = e.stateManager.Call(ctx, msg, ts)
+		res, err = e.stateManager.Call(ctx, msg, ts, false)
 		if err != stmgr.ErrExpensiveFork {
 			break
 		}
@@ -198,7 +198,7 @@ func (e *ethLookup) EthGetStorageAt(ctx context.Context, ethAddr ethtypes.EthAdd
 	// Try calling until we find a height with no migration.
 	var res *api.InvocResult
 	for {
-		res, err = e.stateManager.Call(ctx, msg, ts)
+		res, err = e.stateManager.Call(ctx, msg, ts, false)
 		if err != stmgr.ErrExpensiveFork {
 			break
 		}

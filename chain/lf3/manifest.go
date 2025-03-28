@@ -21,13 +21,13 @@ import (
 	"github.com/filecoin-project/go-f3/ec"
 	"github.com/filecoin-project/go-f3/gpbft"
 	"github.com/filecoin-project/go-f3/manifest"
+	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/store"
-	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/lib/must"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -129,7 +129,7 @@ func NewManifestProvider(mctx helpers.MetricsCtx, config *Config, cs *store.Chai
 }
 
 type StateCaller interface {
-	StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (res *api.InvocResult, err error)
+	StateCall(ctx context.Context, p jsonrpc.RawParams) (res *api.InvocResult, err error)
 }
 
 type ContractManifestProvider struct {
@@ -330,7 +330,7 @@ func (cmp *ContractManifestProvider) callContract(ctx context.Context) ([]byte, 
 		return nil, fmt.Errorf("converting to filecoin message: %w", err)
 	}
 
-	msgRes, err := cmp.stateCaller.StateCall(ctx, fMessage, types.EmptyTSK)
+	msgRes, err := cmp.stateCaller.StateCall(ctx, api.StateCallParams{Message: fMessage}.ToRaw())
 	if err != nil {
 		return nil, fmt.Errorf("state call error: %w", err)
 	}

@@ -422,7 +422,7 @@ type FullNodeMethods struct {
 
 	StateAllMinerFaults func(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) ([]*Fault, error) `perm:"read"`
 
-	StateCall func(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (*InvocResult, error) `perm:"read"`
+	StateCall func(p0 context.Context, p1 jsonrpc.RawParams) (*InvocResult, error) `perm:"read"`
 
 	StateChangedActors func(p0 context.Context, p1 cid.Cid, p2 cid.Cid) (map[string]types.Actor, error) `perm:"read"`
 
@@ -764,7 +764,7 @@ type GatewayMethods struct {
 
 	StateAccountKey func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) ``
 
-	StateCall func(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (*InvocResult, error) ``
+	StateCall func(p0 context.Context, p1 jsonrpc.RawParams) (*InvocResult, error) ``
 
 	StateDealProviderCollateralBounds func(p0 context.Context, p1 abi.PaddedPieceSize, p2 bool, p3 types.TipSetKey) (DealCollateralBounds, error) ``
 
@@ -3053,14 +3053,14 @@ func (s *FullNodeStub) StateAllMinerFaults(p0 context.Context, p1 abi.ChainEpoch
 	return *new([]*Fault), ErrNotSupported
 }
 
-func (s *FullNodeStruct) StateCall(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (*InvocResult, error) {
+func (s *FullNodeStruct) StateCall(p0 context.Context, p1 jsonrpc.RawParams) (*InvocResult, error) {
 	if s.Internal.StateCall == nil {
 		return nil, ErrNotSupported
 	}
-	return s.Internal.StateCall(p0, p1, p2)
+	return s.Internal.StateCall(p0, p1)
 }
 
-func (s *FullNodeStub) StateCall(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (*InvocResult, error) {
+func (s *FullNodeStub) StateCall(p0 context.Context, p1 jsonrpc.RawParams) (*InvocResult, error) {
 	return nil, ErrNotSupported
 }
 
@@ -4868,14 +4868,14 @@ func (s *GatewayStub) StateAccountKey(p0 context.Context, p1 address.Address, p2
 	return *new(address.Address), ErrNotSupported
 }
 
-func (s *GatewayStruct) StateCall(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (*InvocResult, error) {
+func (s *GatewayStruct) StateCall(p0 context.Context, p1 jsonrpc.RawParams) (*InvocResult, error) {
 	if s.Internal.StateCall == nil {
 		return nil, ErrNotSupported
 	}
-	return s.Internal.StateCall(p0, p1, p2)
+	return s.Internal.StateCall(p0, p1)
 }
 
-func (s *GatewayStub) StateCall(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (*InvocResult, error) {
+func (s *GatewayStub) StateCall(p0 context.Context, p1 jsonrpc.RawParams) (*InvocResult, error) {
 	return nil, ErrNotSupported
 }
 
