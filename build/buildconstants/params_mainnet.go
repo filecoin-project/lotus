@@ -196,4 +196,4 @@ var F3InitialPowerTableCID = cid.Undef
 const F3Enabled = true
 const F3BootstrapEpoch abi.ChainEpoch = -1
 
-var F3ParamsAddress = ""
+var F3ParamsAddress = "0xA19080A1Bcb82Bb61bcb9691EC94653Eb5315716"
