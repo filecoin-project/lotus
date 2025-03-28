@@ -38,15 +38,11 @@ var ErrExpensiveFork = errors.New("refusing explicit call due to state fork at e
 // Call applies the given message to the given tipset's parent state, at the epoch following the
 // tipset's parent. In the presence of null blocks, the height at which the message is invoked may
 // be less than the specified tipset.
+//
+// If flushAllBlocks is set, the blocks written during the execution of the message will be returned
+// in the result's Blocks field. This includes all blocks, including intermediate state that may not
+// be part of the final state root.
 func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.TipSet, flushAllBlocks bool) (*api.InvocResult, error) {
-	buffStore := blockstore.NewTieredBstore(sm.cs.StateBlockstore(), blockstore.NewMemorySync())
-	return sm.CallWithStore(ctx, msg, ts, buffStore, flushAllBlocks)
-}
-
-// CallWithStore applies the given message to the given tipset's parent state, at the epoch following the
-// tipset's parent. In the presence of null blocks, the height at which the message is invoked may
-// be less than the specified tipset.
-func (sm *StateManager) CallWithStore(ctx context.Context, msg *types.Message, ts *types.TipSet, bstore blockstore.Blockstore, flushAllBlocks bool) (*api.InvocResult, error) {
 	// Copy the message as we modify it below.
 	msgCopy := *msg
 	msg = &msgCopy
@@ -63,6 +59,9 @@ func (sm *StateManager) CallWithStore(ctx context.Context, msg *types.Message, t
 	if msg.Value == types.EmptyInt {
 		msg.Value = types.NewInt(0)
 	}
+
+	bstore := blockstore.NewTieredBstore(sm.cs.StateBlockstore(), blockstore.NewMemorySync())
+
 	return sm.callInternal(ctx, msg, nil, ts, cid.Undef, sm.GetNetworkVersion, false, execSameSenderMessages, bstore, flushAllBlocks)
 }
 
@@ -99,6 +98,7 @@ func (sm *StateManager) CallAtStateAndVersion(ctx context.Context, msg *types.Me
 //   - If no tipset is specified, the first tipset without an expensive migration or one in its parent is used.
 //   - If executing a message at a given tipset or its parent would trigger an expensive migration, the call will
 //     fail with ErrExpensiveFork.
+//   - If flushAllBlocks is true, written blocks will be tracked and added to the result's Blocks field.
 func (sm *StateManager) callInternal(
 	ctx context.Context,
 	msg *types.Message,
@@ -111,6 +111,7 @@ func (sm *StateManager) callInternal(
 	bstore blockstore.Blockstore,
 	flushAllBlocks bool,
 ) (*api.InvocResult, error) {
+
 	ctx, span := trace.StartSpan(ctx, "statemanager.callInternal")
 	defer span.End()
 
@@ -184,7 +185,7 @@ func (sm *StateManager) callInternal(
 		LookbackState:  LookbackStateGetterForTipset(sm, ts),
 		TipSetGetter:   TipSetGetterForTipset(sm.cs, ts),
 		Tracing:        true,
-		FlushAllBlocks: flushAllBlocks,
+		FlushAllBlocks: false,
 	}
 	vmi, err := sm.newVM(ctx, vmopt)
 	if err != nil {
@@ -202,14 +203,17 @@ func (sm *StateManager) callInternal(
 		if strategy == execAllMessages {
 			priorMsgs = append(tsMsgs, priorMsgs...)
 		} else if strategy == execSameSenderMessages {
-			var filteredTsMsgs []types.ChainMsg
 			for _, tsMsg := range tsMsgs {
+				if tsMsg.VMMessage().Cid() == msg.VMMessage().Cid() {
+					// The message we've been asked to execute is in here, we don't need to add it to priorMsgs
+					// and we don't need the messages after it
+					break
+				}
 				//TODO we should technically be normalizing the filecoin address of from when we compare here
 				if tsMsg.VMMessage().From == msg.VMMessage().From {
-					filteredTsMsgs = append(filteredTsMsgs, tsMsg)
+					priorMsgs = append(priorMsgs, tsMsg)
 				}
 			}
-			priorMsgs = append(filteredTsMsgs, priorMsgs...)
 		}
 		for i, m := range priorMsgs {
 			_, err = vmi.ApplyMessage(ctx, m)
@@ -238,10 +242,19 @@ func (sm *StateManager) callInternal(
 
 	msg.Nonce = fromActor.Nonce
 
-	// If the fee cap is set to zero, make gas free.
-	if msg.GasFeeCap.NilOrZero() {
-		// Now estimate with a new VM with no base fee.
-		vmopt.BaseFee = big.Zero()
+	if msg.GasFeeCap.IsZero() || flushAllBlocks {
+		// If the fee cap is set to zero, make gas free.
+		if msg.GasFeeCap.IsZero() {
+			vmopt.BaseFee = big.Zero()
+		}
+
+		// If we're flushing all blocks, we only want to flush for the message we're
+		// applying, not the prior messages.
+		if flushAllBlocks {
+			vmopt.FlushAllBlocks = true
+			vmopt.Bstore = blockstore.NewAccumulator(vmopt.Bstore)
+		}
+
 		vmopt.StateBase = stateCid
 
 		vmi, err = sm.newVM(ctx, vmopt)
@@ -298,7 +311,7 @@ func (sm *StateManager) callInternal(
 		errs = ret.ActorErr.Error()
 	}
 
-	return &api.InvocResult{
+	res := &api.InvocResult{
 		MsgCid:         msg.Cid(),
 		Msg:            msg,
 		MsgRct:         &ret.MessageReceipt,
@@ -306,17 +319,37 @@ func (sm *StateManager) callInternal(
 		ExecutionTrace: ret.ExecutionTrace,
 		Error:          errs,
 		Duration:       ret.Duration,
-	}, err
+	}
+
+	if flushAllBlocks {
+		acc, ok := vmopt.Bstore.(*blockstore.Accumulator)
+		if !ok {
+			return nil, xerrors.Errorf("expected accumulator blockstore, got %T", vmopt.Bstore)
+		}
+		blocks, err := acc.GetBlocks(ctx)
+		if err != nil {
+			return nil, xerrors.Errorf("getting blocks from accumulator: %w", err)
+		}
+		res.Blocks = make([]api.Block, len(blocks))
+		for i, b := range blocks {
+			res.Blocks[i] = api.Block{
+				Cid:  b.Cid(),
+				Data: b.RawData(),
+			}
+		}
+	}
+
+	return res, nil
 }
 
 var errHaltExecution = fmt.Errorf("halt")
 
-func (sm *StateManager) Replay(ctx context.Context, ts *types.TipSet, mcid cid.Cid, cacheStore blockstore.Blockstore) (*types.Message, *vm.ApplyRet, error) {
+func (sm *StateManager) Replay(ctx context.Context, ts *types.TipSet, mcid cid.Cid) (*types.Message, *vm.ApplyRet, error) {
 	var finder messageFinder
 	// message to find
 	finder.mcid = mcid
 
-	_, _, err := sm.tsExec.ExecuteTipSet(ctx, sm, ts, &finder, true, cacheStore)
+	_, _, err := sm.tsExec.ExecuteTipSet(ctx, sm, ts, &finder, true)
 	if err != nil && !errors.Is(err, errHaltExecution) {
 		return nil, nil, xerrors.Errorf("unexpected error during execution: %w", err)
 	}

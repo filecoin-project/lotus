@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-f3/certs"
+	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -319,14 +320,18 @@ func (gw *Node) StateAccountKey(ctx context.Context, addr address.Address, tsk t
 	return gw.target.StateAccountKey(ctx, addr, tsk)
 }
 
-func (gw *Node) StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (*api.InvocResult, error) {
+func (gw *Node) StateCall(ctx context.Context, p jsonrpc.RawParams) (*api.InvocResult, error) {
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
 		return nil, err
 	}
-	if err := gw.checkTipsetKey(ctx, tsk); err != nil {
+	params, err := api.StateCallParamsFromRaw(p)
+	if err != nil {
 		return nil, err
 	}
-	return gw.target.StateCall(ctx, msg, tsk)
+	if err := gw.checkTipsetKey(ctx, params.TipSetKey); err != nil {
+		return nil, err
+	}
+	return gw.target.StateCall(ctx, p)
 }
 
 func (gw *Node) StateDealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, verified bool, tsk types.TipSetKey) (api.DealCollateralBounds, error) {

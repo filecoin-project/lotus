@@ -7,9 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"os"
 	"strconv"
-	"strings"
 
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -19,6 +17,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
+	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
@@ -31,7 +30,6 @@ import (
 	market5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/market"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
@@ -74,7 +72,7 @@ type StateModuleAPI interface {
 	StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error)
 	StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error)
 	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error)
-	StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (res *api.InvocResult, err error)
+	StateCall(ctx context.Context, p jsonrpc.RawParams) (res *api.InvocResult, err error)
 }
 
 var _ StateModuleAPI = *new(api.FullNode)
@@ -108,10 +106,6 @@ type StateAPI struct {
 	Consensus     consensus.Consensus
 	TsExec        stmgr.Executor
 }
-
-const ReplayDumpCachedBlocksKey = "LOTUS_REPLAY_DUMP_CACHED_BLOCKS"
-
-var replayDumpCachedBlocks bool
 
 func (a *StateAPI) StateNetworkName(ctx context.Context) (dtypes.NetworkName, error) {
 	return stmgr.GetNetworkName(ctx, a.StateManager, a.Chain.GetHeaviestTipSet().ParentState())
@@ -150,13 +144,17 @@ func (a *StateAPI) StateMinerActiveSectors(ctx context.Context, maddr address.Ad
 	return mas.LoadSectors(&activeSectors)
 }
 
-func (m *StateModule) StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (res *api.InvocResult, err error) {
-	ts, err := m.Chain.GetTipSetFromKey(ctx, tsk)
+func (m *StateModule) StateCall(ctx context.Context, p jsonrpc.RawParams) (res *api.InvocResult, err error) {
+	params, err := api.StateCallParamsFromRaw(p)
 	if err != nil {
-		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+		return nil, xerrors.Errorf("decoding params: %w", err)
+	}
+	ts, err := m.Chain.GetTipSetFromKey(ctx, params.TipSetKey)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset %s: %w", params.TipSetKey, err)
 	}
 	for {
-		res, err = m.StateManager.Call(ctx, msg, ts)
+		res, err = m.StateManager.Call(ctx, params.Message, ts, params.IncludeBlocks)
 		if err != stmgr.ErrExpensiveFork {
 			break
 		}
@@ -464,11 +462,7 @@ func (a *StateAPI) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.
 		}
 	}
 
-	var cacheStore blockstore.Blockstore
-	if replayDumpCachedBlocks {
-		cacheStore = blockstore.NewMemory()
-	}
-	m, r, err := a.StateManager.Replay(ctx, ts, msgToReplay, cacheStore)
+	m, r, err := a.StateManager.Replay(ctx, ts, msgToReplay)
 	if err != nil {
 		return nil, err
 	}
@@ -487,16 +481,7 @@ func (a *StateAPI) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.
 		Error:          errstr,
 		Duration:       r.Duration,
 	}
-	if replayDumpCachedBlocks {
-		bs := cacheStore.(blockstore.MemBlockstore)
-		result.CachedBlocks = make([]api.Block, 0, len(bs))
-		for _, blk := range bs {
-			result.CachedBlocks = append(result.CachedBlocks, api.Block{
-				Cid:  blk.Cid(),
-				Data: blk.RawData(),
-			})
-		}
-	}
+
 	return result, nil
 }
 
@@ -1035,7 +1020,7 @@ func (a *StateAPI) stateComputeDataCIDv1(ctx context.Context, maddr address.Addr
 		Method: 8,
 		Params: ccparams,
 	}
-	r, err := a.StateCall(ctx, ccmt, tsk)
+	r, err := a.StateCall(ctx, api.NewStateCallParams(ccmt, tsk).ToRaw())
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("calling ComputeDataCommitment: %w", err)
 	}
@@ -1073,7 +1058,7 @@ func (a *StateAPI) stateComputeDataCIDv2(ctx context.Context, maddr address.Addr
 		Method: 8,
 		Params: ccparams,
 	}
-	r, err := a.StateCall(ctx, ccmt, tsk)
+	r, err := a.StateCall(ctx, api.NewStateCallParams(ccmt, tsk).ToRaw())
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("calling ComputeDataCommitment: %w", err)
 	}
@@ -1117,7 +1102,7 @@ func (a *StateAPI) stateComputeDataCIDv3(ctx context.Context, maddr address.Addr
 		Method: market.Methods.VerifyDealsForActivation,
 		Params: ccparams,
 	}
-	r, err := a.StateCall(ctx, ccmt, tsk)
+	r, err := a.StateCall(ctx, api.NewStateCallParams(ccmt, tsk).ToRaw())
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("calling VerifyDealsForActivation: %w", err)
 	}
@@ -2118,16 +2103,4 @@ func (a *StateAPI) StateGetNetworkParams(ctx context.Context) (*api.NetworkParam
 			UpgradeTockHeight:        buildconstants.UpgradeTockHeight,
 		},
 	}, nil
-}
-
-func init() {
-	replayDumpCachedBlocks = (func() bool {
-		v, _ := os.LookupEnv(ReplayDumpCachedBlocksKey)
-		switch strings.TrimSpace(strings.ToLower(v)) {
-		case "", "0", "false", "no": // Consider these values as "do not enable".
-			return false
-		default:
-			return true
-		}
-	})()
 }

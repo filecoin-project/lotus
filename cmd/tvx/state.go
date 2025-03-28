@@ -107,7 +107,7 @@ func (sg *StateSurgeon) GetAccessedActors(ctx context.Context, a v1api.FullNode,
 		return nil, err
 	}
 
-	trace, err := a.StateCall(ctx, msgObj, ts.Parents())
+	trace, err := a.StateCall(ctx, api.NewStateCallParams(msgObj, ts.Parents()).ToRaw())
 	if err != nil {
 		return nil, fmt.Errorf("could not replay msg: %w", err)
 	}

@@ -106,7 +106,7 @@ var disputerMsgCmd = &cli.Command{
 			Params: dpp,
 		}
 
-		rslt, err := api.StateCall(ctx, dmsg, types.EmptyTSK)
+		rslt, err := api.StateCall(ctx, lapi.NewStateCallParams(dmsg, types.EmptyTSK).ToRaw())
 		if err != nil {
 			return xerrors.Errorf("failed to simulate dispute: %w", err)
 		}
@@ -391,7 +391,7 @@ func makeDisputeWindowedPosts(ctx context.Context, api v0api.FullNode, dl minerD
 			Params: dpp,
 		}
 
-		rslt, err := api.StateCall(ctx, dispute, types.EmptyTSK)
+		rslt, err := api.StateCall(ctx, lapi.NewStateCallParams(dispute, types.EmptyTSK).ToRaw())
 		if err == nil && rslt.MsgRct.ExitCode == 0 {
 			disputes = append(disputes, dispute)
 		}

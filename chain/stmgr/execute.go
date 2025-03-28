@@ -82,7 +82,7 @@ func (sm *StateManager) tipSetState(ctx context.Context, ts *types.TipSet, recom
 		}
 	}
 
-	st, rec, err = sm.tsExec.ExecuteTipSet(ctx, sm, ts, sm.tsExecMonitor, false, nil)
+	st, rec, err = sm.tsExec.ExecuteTipSet(ctx, sm, ts, sm.tsExecMonitor, false)
 	if err != nil {
 		return cid.Undef, cid.Undef, err
 	}
@@ -136,7 +136,7 @@ func tryLookupTipsetState(ctx context.Context, cs *store.ChainStore, ts *types.T
 }
 
 func (sm *StateManager) ExecutionTraceWithMonitor(ctx context.Context, ts *types.TipSet, em ExecMonitor) (cid.Cid, error) {
-	st, _, err := sm.tsExec.ExecuteTipSet(ctx, sm, ts, em, true, nil)
+	st, _, err := sm.tsExec.ExecuteTipSet(ctx, sm, ts, em, true)
 	return st, err
 }
 

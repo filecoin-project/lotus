@@ -97,7 +97,7 @@ func (sm *mockStateManager) getLastCall() *types.Message {
 	return sm.lastCall
 }
 
-func (sm *mockStateManager) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*api.InvocResult, error) {
+func (sm *mockStateManager) Call(ctx context.Context, msg *types.Message, ts *types.TipSet, flushAllBlocks bool) (*api.InvocResult, error) {
 	sm.lk.Lock()
 	defer sm.lk.Unlock()
 

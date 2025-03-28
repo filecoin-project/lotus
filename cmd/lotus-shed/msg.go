@@ -25,6 +25,7 @@ import (
 	"github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
 
 	"github.com/filecoin-project/lotus/api"
+	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -49,6 +50,10 @@ var msgCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name:  "gas-stats",
 			Usage: "Print a summary of gas charges",
+		},
+		&cli.BoolFlag{
+			Name:  "block-analysis",
+			Usage: "Perform and print an analysis of the blocks written during message execution",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -80,28 +85,19 @@ var msgCmd = &cli.Command{
 		if lookup == nil {
 			fmt.Println("Message not found on-chain. Continuing...")
 		} else {
-			// Replay the message to get the execution trace
-			res, err := api.StateReplay(ctx, types.EmptyTSK, mcid)
-			if err != nil {
-				return xerrors.Errorf("replay call failed: %w", err)
-			}
+			var res *lapi.InvocResult
 
-			/*
-				var fixSealPrice func(trace types.ExecutionTrace)
-				fixSealPrice = func(trace types.ExecutionTrace) {
-					for i := range trace.GasCharges {
-						if trace.GasCharges[i].Name == "OnVerifySeal" && trace.GasCharges[i].ComputeGas == 2000 {
-							// should be 42M
-							trace.GasCharges[i].ComputeGas = 42_000_000
-							trace.GasCharges[i].TotalGas += 42_000_000 - 2000
-						}
-					}
-					for i := range trace.Subcalls {
-						fixSealPrice(trace.Subcalls[i])
-					}
+			if cctx.Bool("exec-trace") || cctx.Bool("gas-stats") || cctx.Bool("block-analysis") {
+				// Re-execute the message to get the trace
+				executionTs, err := api.ChainGetTipSet(ctx, lookup.TipSet)
+				if err != nil {
+					return xerrors.Errorf("getting tipset: %w", err)
 				}
-				fixSealPrice(res.ExecutionTrace)
-			*/
+				res, err = api.StateCall(ctx, lapi.NewStateCallParams(msg.VMMessage(), executionTs.Parents()).WithIncludeBlocks().ToRaw())
+				if err != nil {
+					return xerrors.Errorf("calling message: %w", err)
+				}
+			}
 
 			if cctx.Bool("exec-trace") {
 				// Print the execution trace
@@ -113,16 +109,19 @@ var msgCmd = &cli.Command{
 				fmt.Println(string(trace))
 				fmt.Println()
 
-				if res.CachedBlocks != nil {
-					if err := saveAndInspectBlocks(ctx, res, cctx.App.Writer); err != nil {
-						return err
-					}
-				}
-
 				color.Green("Receipt:")
 				fmt.Printf("Exit code: %d\n", res.MsgRct.ExitCode)
 				fmt.Printf("Return: %x\n", res.MsgRct.Return)
 				fmt.Printf("Gas Used: %d\n", res.MsgRct.GasUsed)
+			}
+
+			if cctx.Bool("block-analysis") {
+				if res.Blocks == nil {
+					return xerrors.New("no blocks found in execution trace")
+				}
+				if err := saveAndInspectBlocks(ctx, res, cctx.App.Writer); err != nil {
+					return err
+				}
 			}
 
 			if cctx.Bool("gas-stats") {
@@ -538,7 +537,7 @@ func saveAndInspectBlocks(ctx context.Context, res *api.InvocResult, out io.Writ
 		}
 	}()
 
-	for _, b := range res.CachedBlocks {
+	for _, b := range res.Blocks {
 		bc, err := blocks.NewBlockWithCid(b.Data, b.Cid)
 		if err != nil {
 			return xerrors.Errorf("creating cached block: %w", err)
@@ -563,7 +562,7 @@ func saveAndInspectBlocks(ctx context.Context, res *api.InvocResult, out io.Writ
 			typ = "Subcall"
 		}
 
-		blkStats := make([]blkStat, 0, len(res.CachedBlocks))
+		blkStats := make([]blkStat, 0, len(res.Blocks))
 		var totalBytes, totalGas int
 
 		for _, ll := range trace.Logs {
