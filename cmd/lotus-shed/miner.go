@@ -42,6 +42,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/lib/must"
 )
 
 var minerCmd = &cli.Command{
@@ -57,6 +58,7 @@ var minerCmd = &cli.Command{
 		minerLockedVestedCmd,
 		minerListVestingCmd,
 		minerFeesCmd,
+		minerListBalancesCmd,
 	},
 }
 
@@ -866,6 +868,61 @@ var minerListVestingCmd = &cli.Command{
 			for _, f := range vf {
 				_, _ = fmt.Fprintf(cctx.App.Writer, "Epoch %d: %s\n", f.Epoch, types.FIL(f.Amount))
 			}
+		}
+		return nil
+	},
+}
+
+var minerListBalancesCmd = &cli.Command{
+	Name:  "list-balances",
+	Usage: "List the balances of all miners with power",
+	Action: func(cctx *cli.Context) error {
+		n, acloser, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer acloser()
+		ctx := lcli.ReqContext(cctx)
+
+		bs := ReadOnlyAPIBlockstore{n}
+		adtStore := adt.WrapStore(ctx, ipldcbor.NewCborStore(&bs))
+
+		head, err := n.ChainHead(ctx)
+		if err != nil {
+			return err
+		}
+
+		powerActor, err := n.StateGetActor(ctx, power.Address, head.Key())
+		if err != nil {
+			return err
+		}
+		powerState, err := power.Load(adtStore, powerActor)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Miner Address,QAP (bytes),Available Balance (FIL)\n")
+		var lowest *big.Int
+		err = powerState.ForEachClaim(func(minerAddr address.Address, claim power.Claim) error {
+			actor, err := n.StateGetActor(ctx, minerAddr, head.Key())
+			if err != nil {
+				return err
+			}
+			minerState, err := miner.Load(adtStore, actor)
+			if err != nil {
+				return err
+			}
+			balance := must.One(minerState.AvailableBalance(actor.Balance))
+			if lowest == nil || balance.LessThan(*lowest) {
+				lowest = &balance
+			}
+			fmt.Printf("%s,%s,%s\n", minerAddr, claim.QualityAdjPower, strings.Replace(types.FIL(balance).String(), " FIL", "", 1))
+			return nil
+		}, true)
+		if err != nil {
+			return err
+		}
+		if lowest != nil {
+			_, _ = fmt.Fprintf(cctx.App.ErrWriter, "Lowest balance: %s\n", types.FIL(*lowest))
 		}
 		return nil
 	},
