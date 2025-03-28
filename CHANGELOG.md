@@ -9,6 +9,8 @@
 
 # UNRELEASED
 
+- Set the F3 contract address on mainnet ([filecoin-project/lotus#12994](https://github.com/filecoin-project/lotus/pull/12994))
+
 # Node and Miner v1.32.0 / 2025-03-27
 
 This is the stable release of the **upcoming MANDATORY Lotus v1.32.0 release**, which will deliver the Filecoin network version 25, codenamed “Teep” 🦵. This release candidate sets the upgrade epoch for the Mainnet to **Epoch 4867320 - 2025-04-10T23:00:00Z**. This is equivalent to:
