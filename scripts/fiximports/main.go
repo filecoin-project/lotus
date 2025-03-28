@@ -9,10 +9,10 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
-	"sync"
-	"sync/atomic"
 
+	"golang.org/x/sync/errgroup"
 	"golang.org/x/tools/imports"
+	"golang.org/x/xerrors"
 )
 
 var (
@@ -60,144 +60,104 @@ func main() {
 	}
 
 	// Read all file contents in parallel
-	fileContents := readFilesParallel(files, numWorkers)
+	fileContents, err := readFilesParallel(files, numWorkers)
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "Error reading files: %v\n", err)
+		os.Exit(1)
+	}
 
 	// Because we have multiple ways of separating imports, we have to imports.Process for each one
 	// but imports.LocalPrefix is a global, so we have to set it for each group and process files
 	// in parallel.
 	for _, prefix := range groupByPrefixes {
 		imports.LocalPrefix = prefix
-		processFilesParallel(fileContents, numWorkers)
+		if err := processFilesParallel(fileContents, numWorkers); err != nil {
+			_, _ = fmt.Fprintf(os.Stderr, "Error processing files with prefix %s: %v\n", prefix, err)
+			os.Exit(1)
+		}
 	}
 
 	// Write modified files in parallel
-	writeFilesParallel(fileContents, numWorkers)
+	if err := writeFilesParallel(fileContents, numWorkers); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "Error writing files: %v\n", err)
+		os.Exit(1)
+	}
 }
 
-func readFilesParallel(files []string, numWorkers int) []*fileContent {
-	var readErrors int64
-	var wg sync.WaitGroup
+func readFilesParallel(files []string, numWorkers int) ([]*fileContent, error) {
 	fileContents := make([]*fileContent, len(files))
-	filesChan := make(chan int, len(files))
 
-	// Fill a queue with file indices that we can consume in parallel
-	for i := range files {
-		filesChan <- i
-	}
-	close(filesChan)
+	var g errgroup.Group
+	g.SetLimit(numWorkers)
 
-	for w := 0; w < numWorkers; w++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for i := range filesChan {
-				path := files[i]
-				content, err := os.ReadFile(path)
-				if err != nil {
-					_, _ = fmt.Fprintf(os.Stderr, "Error reading file %s: %v\n", path, err)
-					atomic.AddInt64(&readErrors, 1)
-					continue
-				}
-
-				// Collapse is a cheap operation to do here
-				collapsed := collapseImportNewlines(content)
-				fileContents[i] = &fileContent{
-					path:     path,
-					original: content,
-					current:  collapsed,
-					changed:  !bytes.Equal(content, collapsed),
-				}
+	for i, path := range files {
+		g.Go(func() error {
+			content, err := os.ReadFile(path)
+			if err != nil {
+				return xerrors.Errorf("reading %s: %w", path, err)
 			}
-		}()
+
+			// Collapse is a cheap operation to do here
+			collapsed := collapseImportNewlines(content)
+			fileContents[i] = &fileContent{
+				path:     path,
+				original: content,
+				current:  collapsed,
+				changed:  !bytes.Equal(content, collapsed),
+			}
+			return nil
+		})
 	}
 
-	wg.Wait()
-
-	if readErrors > 0 {
-		_, _ = fmt.Fprintf(os.Stderr, "Failed to read %d files\n", readErrors)
-		os.Exit(1)
+	if err := g.Wait(); err != nil {
+		return nil, err
 	}
 
-	return fileContents
+	return fileContents, nil
 }
 
-func processFilesParallel(fileContents []*fileContent, numWorkers int) {
-	var processErrors int64
-	var wg sync.WaitGroup
-	filesChan := make(chan int, len(fileContents))
+func processFilesParallel(fileContents []*fileContent, numWorkers int) error {
+	var g errgroup.Group
+	g.SetLimit(numWorkers)
 
-	// Fill a queue with file indices that we can consume in parallel
-	for i := range fileContents {
-		if fileContents[i] != nil { // shouldn't be nil, but just in case
-			filesChan <- i
-		}
-	}
-	close(filesChan)
-
-	for w := 0; w < numWorkers; w++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for i := range filesChan {
-				file := fileContents[i]
-				formatted, err := imports.Process(file.path, file.current, nil)
-				if err != nil {
-					atomic.AddInt64(&processErrors, 1)
-					_, _ = fmt.Fprintf(os.Stderr, "Error processing %s: %v", file.path, err)
-					continue
-				}
-
-				if !bytes.Equal(file.current, formatted) {
-					file.current = formatted
-					file.changed = true
-				}
-			}
-		}()
-	}
-
-	wg.Wait()
-
-	if processErrors > 0 {
-		_, _ = fmt.Fprintf(os.Stderr, "Failed to process %d files\n", processErrors)
-		os.Exit(1)
-	}
-}
-
-func writeFilesParallel(fileContents []*fileContent, numWorkers int) {
-	var writeErrors int64
-	var wg sync.WaitGroup
-
-	// Only process changed files
-	changedFiles := make(chan *fileContent, len(fileContents))
 	for _, file := range fileContents {
-		if file != nil && file.changed {
-			changedFiles <- file
+		if file == nil {
+			continue
 		}
-	}
-	close(changedFiles)
-
-	for w := 0; w < numWorkers; w++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for file := range changedFiles {
-				// Only write if content has actually changed from original
-				if !bytes.Equal(file.original, file.current) {
-					if err := os.WriteFile(file.path, file.current, 0666); err != nil {
-						atomic.AddInt64(&writeErrors, 1)
-						_, _ = fmt.Fprintf(os.Stderr, "Error writing file %s: %v\n", file.path, err)
-					}
-				}
+		g.Go(func() error {
+			formatted, err := imports.Process(file.path, file.current, nil)
+			if err != nil {
+				return xerrors.Errorf("processing %s: %w", file.path, err)
 			}
-		}()
+
+			if !bytes.Equal(file.current, formatted) {
+				file.current = formatted
+				file.changed = true
+			}
+			return nil
+		})
 	}
 
-	wg.Wait()
+	return g.Wait()
+}
 
-	if writeErrors > 0 {
-		_, _ = fmt.Fprintf(os.Stderr, "Failed to write %d files\n", writeErrors)
-		os.Exit(1)
+func writeFilesParallel(fileContents []*fileContent, numWorkers int) error {
+	var g errgroup.Group
+	g.SetLimit(numWorkers)
+
+	for _, file := range fileContents {
+		if file == nil || !file.changed {
+			continue
+		}
+		g.Go(func() error {
+			if err := os.WriteFile(file.path, file.current, 0666); err != nil {
+				return xerrors.Errorf("writing %s: %w", file.path, err)
+			}
+			return nil
+		})
 	}
+
+	return g.Wait()
 }
 
 func collapseImportNewlines(content []byte) []byte {
