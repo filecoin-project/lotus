@@ -1026,10 +1026,3 @@ func GetSealProofFromPoStProof(postProof abi.RegisteredPoStProof) (abi.Registere
 	}
 	return sealProof, nil
 }
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
