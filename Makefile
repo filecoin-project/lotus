@@ -70,23 +70,58 @@ CLEAN+=build/.update-modules
 deps: $(BUILD_DEPS)  ## Install build dependencies
 .PHONY: deps
 
-build-devnets: build lotus-seed lotus-shed  ## Build binaries for development networks
+# Network-specific flags
+DEBUG_FLAGS=-tags=debug
+TWOK_FLAGS=-tags=2k
+CALIBNET_FLAGS=-tags=calibnet
+BUTTERFLYNET_FLAGS=-tags=butterflynet
+INTEROPNET_FLAGS=-tags=interopnet
+
+# Network-specific pattern rules
+debug-%:
+	$(MAKE) $* GOFLAGS="$(GOFLAGS) $(DEBUG_FLAGS)"
+2k-%:
+	$(MAKE) $* GOFLAGS="$(GOFLAGS) $(TWOK_FLAGS)"
+calibnet-%:
+	$(MAKE) $* GOFLAGS="$(GOFLAGS) $(CALIBNET_FLAGS)"
+butterflynet-%:
+	$(MAKE) $* GOFLAGS="$(GOFLAGS) $(BUTTERFLYNET_FLAGS)"
+interopnet-%:
+	$(MAKE) $* GOFLAGS="$(GOFLAGS) $(INTEROPNET_FLAGS)"
+
+build-devnets: build lotus-seed lotus-shed
 .PHONY: build-devnets
 
-debug: GOFLAGS+=-tags=debug
-debug: build-devnets  ## Build with debug tags
+# For backward compatibility
+debug:
+	@printf "\033[33m'make debug' builds all devnet binaries. Use 'make debug-<binary>' targets for individual binaries.\033[0m\n"
+	@printf "Example: make debug-lotus debug-lotus-miner\n\n"
+	$(MAKE) debug-lotus debug-lotus-miner debug-lotus-worker debug-lotus-seed debug-lotus-shed
+.PHONY: debug
 
-2k: GOFLAGS+=-tags=2k
-2k: build-devnets  ## Build for 2k network
+2k:
+	@printf "\033[33m'make 2k' builds all devnet binaries. Use 'make 2k-<binary>' targets for individual binaries.\033[0m\n"
+	@printf "Example: make 2k-lotus 2k-lotus-miner\n\n"
+	$(MAKE) 2k-lotus 2k-lotus-miner 2k-lotus-worker 2k-lotus-seed 2k-lotus-shed
+.PHONY: 2k
 
-calibnet: GOFLAGS+=-tags=calibnet
-calibnet: build-devnets  ## Build for calibnet network
+calibnet:
+	@printf "\033[33m'make calibnet' builds all devnet binaries. Use 'make calibnet-<binary>' targets for individual binaries.\033[0m\n"
+	@printf "Example: make calibnet-lotus calibnet-lotus-miner\n\n"
+	$(MAKE) calibnet-lotus calibnet-lotus-miner calibnet-lotus-worker calibnet-lotus-seed calibnet-lotus-shed
+.PHONY: calibnet
 
-butterflynet: GOFLAGS+=-tags=butterflynet
-butterflynet: build-devnets  ## Build for butterflynet network
+butterflynet:
+	@printf "\033[33m'make butterflynet' builds all devnet binaries. Use 'make butterflynet-<binary>' targets for individual binaries.\033[0m\n"
+	@printf "Example: make butterflynet-lotus butterflynet-lotus-miner\n\n"
+	$(MAKE) butterflynet-lotus butterflynet-lotus-miner butterflynet-lotus-worker butterflynet-lotus-seed butterflynet-lotus-shed
+.PHONY: butterflynet
 
-interopnet: GOFLAGS+=-tags=interopnet
-interopnet: build-devnets  ## Build for interopnet network
+interopnet:
+	@printf "\033[33m'make interopnet' builds all devnet binaries. Use 'make interopnet-<binary>' targets for individual binaries.\033[0m\n"
+	@printf "Example: make interopnet-lotus interopnet-lotus-miner\n\n"
+	$(MAKE) interopnet-lotus interopnet-lotus-miner interopnet-lotus-worker interopnet-lotus-seed interopnet-lotus-shed
+.PHONY: interopnet
 
 lotus: $(BUILD_DEPS)  ## Build the main Lotus binary
 	rm -f lotus
@@ -366,3 +401,15 @@ print-%:  ## Print variable value
 help:  ## Display this help message
 	@echo "Available targets:"
 	@awk 'BEGIN {FS = ":.*?## "}; /^[a-zA-Z_-]+:.*?## / {printf "  \033[36m%-30s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST) | sort
+	@echo
+	@printf "Network-specific builds:\n"
+	@printf "  \033[36mcalibnet-<binary>\033[0m         Build <binary> with Calibration network support\n"
+	@printf "  \033[36mbutterflynet-<binary>\033[0m     Build <binary> with Butterfly network support\n"
+	@printf "  \033[36minteropnet-<binary>\033[0m       Build <binary> with Interop network support\n"
+	@printf "  \033[36m2k-<binary>\033[0m               Build <binary> with 2k network support\n"
+	@printf "  \033[36mdebug-<binary>\033[0m            Build <binary> with Debug tags\n"
+	@echo
+	@printf "Examples:\n"
+	@printf "  \033[36mmake calibnet-lotus\033[0m              Build the Lotus daemon for Calibnet\n"
+	@printf "  \033[36mmake calibnet-lotus-miner\033[0m        Build the Lotus miner for Calibnet\n"
+	@printf "  \033[36mmake butterflynet-lotus-gateway\033[0m  Build the Lotus gateway for Butterflynet\n"
