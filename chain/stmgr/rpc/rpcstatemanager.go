@@ -52,7 +52,7 @@ func (s *RPCStateManager) ResolveToDeterministicAddress(ctx context.Context, add
 	return s.gapi.StateAccountKey(ctx, addr, ts.Key())
 }
 
-func (s *RPCStateManager) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*api.InvocResult, error) {
+func (s *RPCStateManager) Call(ctx context.Context, msg *types.Message, ts *types.TipSet, flushAllBlocks bool) (*api.InvocResult, error) {
 	return nil, xerrors.Errorf("RPCStateManager does not implement StateManager.Call")
 }
 

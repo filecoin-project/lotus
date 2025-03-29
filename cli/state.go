@@ -1365,13 +1365,13 @@ var StateCallCmd = &cli.Command{
 			}
 		}
 
-		ret, err := api.StateCall(ctx, &types.Message{
+		ret, err := api.StateCall(ctx, lapi.NewStateCallParams(&types.Message{
 			From:   froma,
 			To:     toa,
 			Value:  types.BigInt(value),
 			Method: abi.MethodNum(method),
 			Params: params,
-		}, ts.Key())
+		}, ts.Key()).ToRaw())
 		if err != nil {
 			return fmt.Errorf("state call failed: %w", err)
 		}

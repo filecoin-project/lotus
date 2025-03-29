@@ -17,6 +17,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
+	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
@@ -71,7 +72,7 @@ type StateModuleAPI interface {
 	StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error)
 	StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error)
 	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error)
-	StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (res *api.InvocResult, err error)
+	StateCall(ctx context.Context, p jsonrpc.RawParams) (res *api.InvocResult, err error)
 }
 
 var _ StateModuleAPI = *new(api.FullNode)
@@ -143,13 +144,17 @@ func (a *StateAPI) StateMinerActiveSectors(ctx context.Context, maddr address.Ad
 	return mas.LoadSectors(&activeSectors)
 }
 
-func (m *StateModule) StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (res *api.InvocResult, err error) {
-	ts, err := m.Chain.GetTipSetFromKey(ctx, tsk)
+func (m *StateModule) StateCall(ctx context.Context, p jsonrpc.RawParams) (res *api.InvocResult, err error) {
+	params, err := api.StateCallParamsFromRaw(p)
 	if err != nil {
-		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+		return nil, xerrors.Errorf("decoding params: %w", err)
+	}
+	ts, err := m.Chain.GetTipSetFromKey(ctx, params.TipSetKey)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset %s: %w", params.TipSetKey, err)
 	}
 	for {
-		res, err = m.StateManager.Call(ctx, msg, ts)
+		res, err = m.StateManager.Call(ctx, params.Message, ts, params.IncludeBlocks)
 		if err != stmgr.ErrExpensiveFork {
 			break
 		}
@@ -467,7 +472,7 @@ func (a *StateAPI) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.
 		errstr = r.ActorErr.Error()
 	}
 
-	return &api.InvocResult{
+	result := &api.InvocResult{
 		MsgCid:         msgToReplay,
 		Msg:            m,
 		MsgRct:         &r.MessageReceipt,
@@ -475,7 +480,9 @@ func (a *StateAPI) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.
 		ExecutionTrace: r.ExecutionTrace,
 		Error:          errstr,
 		Duration:       r.Duration,
-	}, nil
+	}
+
+	return result, nil
 }
 
 func (m *StateModule) StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (a *types.Actor, err error) {
@@ -1013,7 +1020,7 @@ func (a *StateAPI) stateComputeDataCIDv1(ctx context.Context, maddr address.Addr
 		Method: 8,
 		Params: ccparams,
 	}
-	r, err := a.StateCall(ctx, ccmt, tsk)
+	r, err := a.StateCall(ctx, api.NewStateCallParams(ccmt, tsk).ToRaw())
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("calling ComputeDataCommitment: %w", err)
 	}
@@ -1051,7 +1058,7 @@ func (a *StateAPI) stateComputeDataCIDv2(ctx context.Context, maddr address.Addr
 		Method: 8,
 		Params: ccparams,
 	}
-	r, err := a.StateCall(ctx, ccmt, tsk)
+	r, err := a.StateCall(ctx, api.NewStateCallParams(ccmt, tsk).ToRaw())
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("calling ComputeDataCommitment: %w", err)
 	}
@@ -1095,7 +1102,7 @@ func (a *StateAPI) stateComputeDataCIDv3(ctx context.Context, maddr address.Addr
 		Method: market.Methods.VerifyDealsForActivation,
 		Params: ccparams,
 	}
-	r, err := a.StateCall(ctx, ccmt, tsk)
+	r, err := a.StateCall(ctx, api.NewStateCallParams(ccmt, tsk).ToRaw())
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("calling VerifyDealsForActivation: %w", err)
 	}

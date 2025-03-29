@@ -6152,12 +6152,26 @@ Response:
             "tt": 60000000000
           }
         ],
-        "Subcalls": null
+        "Subcalls": null,
+        "Logs": [
+          "string value"
+        ]
       }
+    ],
+    "Logs": [
+      "string value"
     ]
   },
   "Error": "string value",
-  "Duration": 60000000000
+  "Duration": 60000000000,
+  "CachedBlocks": [
+    {
+      "Cid": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      "Data": "Ynl0ZSBhcnJheQ=="
+    }
+  ]
 }
 ```
 
@@ -6414,12 +6428,26 @@ Response:
                 "tt": 60000000000
               }
             ],
-            "Subcalls": null
+            "Subcalls": null,
+            "Logs": [
+              "string value"
+            ]
           }
+        ],
+        "Logs": [
+          "string value"
         ]
       },
       "Error": "string value",
-      "Duration": 60000000000
+      "Duration": 60000000000,
+      "CachedBlocks": [
+        {
+          "Cid": {
+            "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+          },
+          "Data": "Ynl0ZSBhcnJheQ=="
+        }
+      ]
     }
   ]
 }
@@ -8102,12 +8130,26 @@ Response:
             "tt": 60000000000
           }
         ],
-        "Subcalls": null
+        "Subcalls": null,
+        "Logs": [
+          "string value"
+        ]
       }
+    ],
+    "Logs": [
+      "string value"
     ]
   },
   "Error": "string value",
-  "Duration": 60000000000
+  "Duration": 60000000000,
+  "CachedBlocks": [
+    {
+      "Cid": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      "Data": "Ynl0ZSBhcnJheQ=="
+    }
+  ]
 }
 ```
 

@@ -2,15 +2,21 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
+	"path"
 	"sort"
+	"strings"
 
 	"github.com/fatih/color"
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	carbstore "github.com/ipld/go-car/v2/blockstore"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
@@ -18,6 +24,8 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
 
+	"github.com/filecoin-project/lotus/api"
+	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -42,6 +50,10 @@ var msgCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name:  "gas-stats",
 			Usage: "Print a summary of gas charges",
+		},
+		&cli.BoolFlag{
+			Name:  "block-analysis",
+			Usage: "Perform and print an analysis of the blocks written during message execution",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -73,10 +85,18 @@ var msgCmd = &cli.Command{
 		if lookup == nil {
 			fmt.Println("Message not found on-chain. Continuing...")
 		} else {
-			// Replay the message to get the execution trace
-			res, err := api.StateReplay(ctx, types.EmptyTSK, mcid)
-			if err != nil {
-				return xerrors.Errorf("replay call failed: %w", err)
+			var res *lapi.InvocResult
+
+			if cctx.Bool("exec-trace") || cctx.Bool("gas-stats") || cctx.Bool("block-analysis") {
+				// Re-execute the message to get the trace
+				executionTs, err := api.ChainGetTipSet(ctx, lookup.TipSet)
+				if err != nil {
+					return xerrors.Errorf("getting tipset: %w", err)
+				}
+				res, err = api.StateCall(ctx, lapi.NewStateCallParams(msg.VMMessage(), executionTs.Parents()).WithIncludeBlocks().ToRaw())
+				if err != nil {
+					return xerrors.Errorf("calling message: %w", err)
+				}
 			}
 
 			if cctx.Bool("exec-trace") {
@@ -93,6 +113,15 @@ var msgCmd = &cli.Command{
 				fmt.Printf("Exit code: %d\n", res.MsgRct.ExitCode)
 				fmt.Printf("Return: %x\n", res.MsgRct.Return)
 				fmt.Printf("Gas Used: %d\n", res.MsgRct.GasUsed)
+			}
+
+			if cctx.Bool("block-analysis") {
+				if res.Blocks == nil {
+					return xerrors.New("no blocks found in execution trace")
+				}
+				if err := saveAndInspectBlocks(ctx, res, cctx.App.Writer); err != nil {
+					return err
+				}
 			}
 
 			if cctx.Bool("gas-stats") {
@@ -493,4 +522,115 @@ func gasTracesPerCall(inTrace types.ExecutionTrace) types.ExecutionTrace {
 	}
 	accum(inTrace.Msg.To.String(), inTrace)
 	return outTrace
+}
+
+func saveAndInspectBlocks(ctx context.Context, res *api.InvocResult, out io.Writer) (err error) {
+	cachedBlocksFile := path.Join(os.TempDir(), res.MsgCid.String()+".car")
+	bs, err := carbstore.OpenReadWrite(cachedBlocksFile, nil, carbstore.WriteAsCarV1(true))
+	if err != nil {
+		return xerrors.Errorf("opening cached blocks file: %w", err)
+	}
+
+	defer func() {
+		if cerr := bs.Close(); cerr != nil {
+			err = xerrors.Errorf("closing cached blocks file: %w", cerr)
+		}
+	}()
+
+	for _, b := range res.Blocks {
+		bc, err := blocks.NewBlockWithCid(b.Data, b.Cid)
+		if err != nil {
+			return xerrors.Errorf("creating cached block: %w", err)
+		}
+		if err := bs.Put(ctx, bc); err != nil {
+			return xerrors.Errorf("writing cached block: %w", err)
+		}
+	}
+	color.Green("Cached blocks written to %s", cachedBlocksFile)
+
+	type blkStat struct {
+		cid          cid.Cid
+		knownType    string
+		size         int
+		estimatedGas int
+	}
+
+	var explainBlocks func(descPfx string, trace types.ExecutionTrace) error
+	explainBlocks = func(descPfx string, trace types.ExecutionTrace) error {
+		typ := "Message"
+		if descPfx != "" {
+			typ = "Subcall"
+		}
+
+		blkStats := make([]blkStat, 0, len(res.Blocks))
+		var totalBytes, totalGas int
+
+		for _, ll := range trace.Logs {
+			if strings.HasPrefix(ll, "block_link(") {
+				c, err := cid.Parse(strings.TrimSuffix(strings.TrimPrefix(ll, "block_link("), ")"))
+				if err != nil {
+					return xerrors.Errorf("parsing block cid: %w", err)
+				}
+				blk, err := bs.Get(ctx, c)
+				if err != nil {
+					return xerrors.Errorf("getting block (%s) from cached blocks: %w", c, err)
+				}
+				m, err := matchKnownBlockType(ctx, blk)
+				if err != nil {
+					return xerrors.Errorf("matching block type: %w", err)
+				}
+				size := len(blk.RawData())
+				gas := 172000 + 334000 + 3340*size
+				blkStats = append(blkStats, blkStat{cid: c, knownType: m, size: size, estimatedGas: gas})
+				totalBytes += size
+				totalGas += gas
+			}
+		}
+
+		if len(blkStats) == 0 {
+			return nil
+		}
+
+		_, _ = fmt.Fprintln(out, color.New(color.Bold).Sprint(fmt.Sprintf("%s (%s%s) block writes:", typ, descPfx, trace.Msg.To)))
+		tw := tablewriter.New(
+			tablewriter.Col("CID"),
+			tablewriter.Col("Known Type"),
+			tablewriter.Col("Size", tablewriter.RightAlign()),
+			tablewriter.Col("S%", tablewriter.RightAlign()),
+			tablewriter.Col("Estimated Gas", tablewriter.RightAlign()),
+			tablewriter.Col("G%", tablewriter.RightAlign()),
+		)
+		for _, bs := range blkStats {
+			tw.Write(map[string]interface{}{
+				"CID":           bs.cid,
+				"Known Type":    bs.knownType,
+				"Size":          bs.size,
+				"S%":            fmt.Sprintf("%.2f", float64(bs.size)/float64(totalBytes)*100),
+				"Estimated Gas": bs.estimatedGas,
+				"G%":            fmt.Sprintf("%.2f", float64(bs.estimatedGas)/float64(totalGas)*100),
+			})
+		}
+		tw.Write(map[string]interface{}{
+			"CID":           "Total",
+			"Known Type":    "",
+			"Size":          totalBytes,
+			"S%":            "100.00",
+			"Estimated Gas": totalGas,
+			"G%":            "100.00",
+		})
+		if err := tw.Flush(out, tablewriter.WithBorders()); err != nil {
+			return xerrors.Errorf("flushing table: %w", err)
+		}
+
+		for _, subtrace := range trace.Subcalls {
+			if err := explainBlocks(descPfx+trace.Msg.To.String()+"➜", subtrace); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	if err := explainBlocks("", res.ExecutionTrace); err != nil {
+		return xerrors.Errorf("explaining blocks: %w", err)
+	}
+	return
 }

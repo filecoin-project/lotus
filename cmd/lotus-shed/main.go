@@ -93,6 +93,7 @@ func main() {
 		blockCmd,
 		adlCmd,
 		f3Cmd,
+		findMsgCmd,
 	}
 
 	app := &cli.App{
