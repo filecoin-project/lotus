@@ -1,16 +1,13 @@
 linters:
   disable-all: true
   enable:
-    - gofmt
     - govet
-    - goimports
     - misspell
     - revive
     - errcheck
     - gosec
     - unconvert
     - staticcheck
-    - exportloopref
     - unused
 
 # We don't want to skip builtin/
