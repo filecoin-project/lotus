@@ -66,7 +66,7 @@ func main() {
 				Flags: []cli.Flag{
 					&cli.BoolFlag{
 						Name:  "very-expensive-tests-run",
-						Usage: "Whether the groups not containing any very expensive tests should be filtered out",
+						Usage: "Whether to only include the groups with very expensive tests",
 					},
 				},
 				Action: func(c *cli.Context) error {
