@@ -34,6 +34,7 @@
 - feat(miner): remove batch balancer-related functionality ([filecoin-project/lotus#12919](https://github.com/filecoin-project/lotus/pull/12919))
 - chore(eth): make `EthGetBlockByNumber` & `EthGetBlockByHash` share the same cache and be impacted by `EthBlkCacheSize` config settings ([filecoin-project/lotus#12979](https://github.com/filecoin-project/lotus/pull/12979))
 - feat(market): expose access to ProviderSectors on the market actor abstraction ([filecoin-project/lotus#12978](https://github.com/filecoin-project/lotus/pull/12978))
+- fix(eth): always return nil for eth transactions not found ([filecoin-project/lotus#12999](https://github.com/filecoin-project/lotus/pull/12999))
 
 # UNRELEASED v.1.32.0
 
