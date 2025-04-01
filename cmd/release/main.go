@@ -236,6 +236,8 @@ func main() {
 					},
 				},
 				Action: func(c *cli.Context) error {
+					lotusReleaseCliString := strings.Join(os.Args, " ")
+
 					// Read and validate the flag values
 					createOnGitHub := c.Bool("create-on-github")
 
@@ -314,16 +316,17 @@ func main() {
 
 					// Prepare template data
 					data := map[string]any{
-						"CreateOnGitHub":                   createOnGitHub,
-						"Type":                             releaseType,
-						"Tag":                              releaseVersion.String(),
-						"NextTag":                          releaseVersion.IncPatch().String(),
-						"Level":                            releaseLevel,
-						"NetworkUpgrade":                   networkUpgrade,
-						"NetworkUpgradeDiscussionLink":     discussionLink,
-						"NetworkUpgradeChangelogEntryLink": changelogLink,
-						"RC1DateString":                    rc1Date,
-						"StableDateString":                 stableDate,
+						"ContentGeneratedWithLotusReleaseCli": true,
+						"LotusReleaseCliString":               lotusReleaseCliString,
+						"Type":                                releaseType,
+						"Tag":                                 releaseVersion.String(),
+						"NextTag":                             releaseVersion.IncPatch().String(),
+						"Level":                               releaseLevel,
+						"NetworkUpgrade":                      networkUpgrade,
+						"NetworkUpgradeDiscussionLink":        discussionLink,
+						"NetworkUpgradeChangelogEntryLink":    changelogLink,
+						"RC1DateString":                       rc1Date,
+						"StableDateString":                    stableDate,
 					}
 
 					// Render the issue template
@@ -380,6 +383,9 @@ URL to create issue:
 						_, _ = fmt.Fprintf(c.App.Writer, debugFormat, issueTitle, issueBody, issueURL)
 					} else {
 						// Set up the GitHub client
+						if os.Getenv("GITHUB_TOKEN") == "" {
+							return fmt.Errorf("GITHUB_TOKEN environment variable must be set when using --create-on-github")
+						}
 						client := github.NewClient(nil).WithAuthToken(os.Getenv("GITHUB_TOKEN"))
 
 						// Check if the issue already exists

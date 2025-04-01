@@ -1,6 +1,10 @@
 [//]: # (Below are non-visible steps intended for the issue creator)
+<!--{{if .ContentGeneratedWithLotusReleaseCli}}-->
+[//]: # (This content was generated using `{{.LotusReleaseCliString}}`.)
+[//]: # (Learn more at https://github.com/filecoin-project/lotus/tree/master/cmd/release#readme.)
+<!--{{end}}-->
 [//]: # (❗️ Complete the steps below as part of creating a release issue and mark them complete with an X or ✅ when done.)
-<!--{{if not .CreateOnGitHub}}-->
+<!--{{if not .ContentGeneratedWithLotusReleaseCli}}-->
 [//]: # ([ ] Start an issue with title "Lotus {{.Type}} v{{.Tag}} Release" and adjust the title for whether it's a Node or Miner release.)
 [//]: # ([ ] Copy in the content of https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md)
 [//]: # ([ ] Find all the "go templating" "control" logic that is in \{\{ \}\} blocks and mimic the logic manually.)
@@ -8,7 +12,7 @@
 [//]: # ([ ] Apply the `tpm` label to the issue)
 [//]: # ([ ] Create the issue)
 <!--{{end}}-->
-<!-- At least as of 2024-12-02, it isn't possible to programmatically pin issues. -->
+<!-- At least as of 2025-03-20, it isn't possible to programmatically pin issues. -->
 [//]: # ([ ] Pin the issue on GitHub)
 
 # 😶‍🌫 Meta
@@ -170,6 +174,7 @@
    - Assuming we followed [the process of merging changes into `master` first before backporting to the release branch](https://github.com/filecoin-project/lotus/blob/master/LOTUS_RELEASE_FLOW.md#branch-and-tag-strategy), the only changes should be CHANGELOG updates.
 - [ ] Finish updating/merging the [RELEASE_ISSUE_TEMPLATE.md](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md) PR from `Before RC1` with any improvements determined from this latest release iteration.
 - [ ] Review and approve the auto-generated PR in [lotus-docs](https://github.com/filecoin-project/lotus-docs/pulls) that updates the latest Lotus version information.
+- [ ] Stage any security advisories for future publishing per [policy](https://github.com/filecoin-project/lotus/blob/master/LOTUS_RELEASE_FLOW.md#security-fix-policy).
 </details>
 
 # ❤️ Contributors
