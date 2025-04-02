@@ -137,6 +137,7 @@ var ChainNode = Options(
 		Override(new(messagepool.Provider), messagepool.NewProviderLite),
 		Override(new(messagepool.MpoolNonceAPI), From(new(modules.MpoolNonceAPI))),
 		Override(new(full.ChainModuleAPI), From(new(api.Gateway))),
+		Override(new(full.ChainModuleAPIv2), From(new(full.ChainModuleV2))),
 		Override(new(full.GasModuleAPI), From(new(api.Gateway))),
 		Override(new(full.MpoolModuleAPI), From(new(api.Gateway))),
 		Override(new(full.StateModuleAPI), From(new(api.Gateway))),
