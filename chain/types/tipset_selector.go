@@ -39,8 +39,8 @@ type TipSetSelector = jsonrpc.RawParams
 //   - Height: the tipset height with an optional fallback to non-null parent, see TipSetHeight.
 //   - Tag: the tipset tag, either "latest" or "finalized", see TipSetTags.
 //
-// At most, only one such criterion can be specified at a time. Otherwise, the
-// criterion is considered. See Validate.
+// At most, one such criterion can be specified at a time. Otherwise, the
+// criterion is considered to be invalid. See Validate.
 type TipSetCriterion struct {
 	Key    *TipSetKey    `json:"key,omitempty"`
 	Height *TipSetHeight `json:"height,omitempty"`
