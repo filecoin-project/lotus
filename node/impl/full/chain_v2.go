@@ -23,7 +23,7 @@ type ChainModuleAPIv2 interface {
 
 type ChainModuleV2 struct {
 	Chain *store.ChainStore
-	F3    lf3.F3Backend
+	F3    lf3.F3Backend `optional:"true"`
 
 	fx.In
 }
