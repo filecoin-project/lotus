@@ -49,8 +49,11 @@ func (cm *ChainModuleV2) ChainGetTipSet(ctx context.Context, selector types.TipS
 
 	// Get tipset by height.
 	if criterion.Height != nil {
-		head := cm.Chain.GetHeaviestTipSet()
-		return cm.Chain.GetTipsetByHeight(ctx, criterion.Height.At, head, criterion.Height.Previous)
+		anchor, err := cm.getTipSetByAnchor(ctx, criterion.Height.Anchor)
+		if err != nil {
+			return nil, xerrors.Errorf("getting anchor from tipset: %w", err)
+		}
+		return cm.Chain.GetTipsetByHeight(ctx, criterion.Height.At, anchor, criterion.Height.Previous)
 	}
 
 	// Get tipset by tag, either latest or finalized.
@@ -94,6 +97,24 @@ func (cm *ChainModuleV2) getTipSetByTag(ctx context.Context, tag types.TipSetTag
 		return nil, xerrors.Errorf("loading latest f3 cert tipset %s: %w", tsk, err)
 	}
 	return ts, nil
+}
+
+func (cm *ChainModuleV2) getTipSetByAnchor(ctx context.Context, anchor *types.TipSetAnchor) (*types.TipSet, error) {
+	switch {
+	case anchor == nil:
+		// No anchor specified. Fall back to heaviest tipset.
+		return cm.Chain.GetHeaviestTipSet(), nil
+	case anchor.Key == nil && anchor.Tag == nil:
+		// Anchor is zero-valued. Fall back to heaviest tipset.
+		return cm.Chain.GetHeaviestTipSet(), nil
+	case anchor.Key != nil:
+		// Get tipset at the specified key.
+		return cm.Chain.GetTipSetFromKey(ctx, *anchor.Key)
+	case anchor.Tag != nil:
+		return cm.getTipSetByTag(ctx, *anchor.Tag)
+	default:
+		return nil, xerrors.Errorf("invalid anchor: %v", anchor)
+	}
 }
 
 func (cm *ChainModuleV2) getECFinalized(ctx context.Context) (*types.TipSet, error) {

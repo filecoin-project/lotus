@@ -178,6 +178,16 @@ func TestAPIV2_GetTipSetThroughRPC(t *testing.T) {
 			request:    `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":{"height":{"at":456}},"id":1}`,
 			wantTipSet: tipSetAtHeight(456),
 		},
+		{
+			name: "height with anchor to finalized",
+			when: func(t *testing.T) {
+				mockF3.running = true
+				mockF3.latestCert = plausibleCert(t)
+				mockF3.latestCertErr = nil
+			},
+			request:    `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":{"height":{"at":111,"anchor":{"tag":"finalized"}}},"id":1}`,
+			wantTipSet: tipSetAtHeight(111),
+		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			if test.when != nil {

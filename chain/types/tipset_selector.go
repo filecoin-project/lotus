@@ -2,7 +2,6 @@ package types
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"golang.org/x/xerrors"
 
@@ -69,7 +68,7 @@ func NewTipSetSelector[T TipSetCriteria](t T) (TipSetSelector, error) {
 		// Dear Golang, this should be impossible because of the type constraint being
 		// evaluated at compile time; yet, here we are. I would panic, but then we are
 		// friends and this function returns errors anyhow.
-		return nil, fmt.Errorf("unknown tipset slection criterion: %T", criterion)
+		return nil, xerrors.Errorf("unknown tipset slection criterion: %T", criterion)
 	}
 }
 
@@ -110,6 +109,9 @@ func (tss *TipSetCriterion) Validate() error {
 	}
 	if tss.Height != nil {
 		criteria++
+		if err := tss.Height.Validate(); err != nil {
+			return xerrors.Errorf("validating tipset height: %w", err)
+		}
 	}
 	if criteria > 1 {
 		return xerrors.Errorf("only one tipset selection criteria must be specified, found: %v", criteria)
@@ -117,12 +119,72 @@ func (tss *TipSetCriterion) Validate() error {
 	return nil
 }
 
-// TipSetHeight is a criterion that selects a tipset At given height.
+// TipSetHeight is a criterion that selects a tipset At given height anchored to
+// a given parent tipset.
 //
 // In a case where the tipset at given height is null, and Previous is true,
 // it'll select the previous non-null tipset instead. Otherwise, it returns the
 // null tipset at the given height.
+//
+// The Anchor may optionally be specified as TipSetTag, or TipSetKey. If
+// specified, the selected tipset is guaranteed to be a child of the tipset
+// specified by the anchor at the given height. Otherwise, the "latest" TipSetTag
+// is used as the Anchor.
 type TipSetHeight struct {
 	At       abi.ChainEpoch `json:"at,omitempty"`
 	Previous bool           `json:"previous,omitempty"`
+	Anchor   *TipSetAnchor  `json:"anchor,omitempty"`
+}
+
+// Validate ensures that the TipSetHeight is valid. It checks that the height is
+// not negative and the Anchor is valid.
+//
+// A nil or a zero-valued height is considered to be valid.
+func (tsh *TipSetHeight) Validate() error {
+	if tsh == nil {
+		// An unspecified height is valid, because it's an optional field in TipSetCriterion.
+		return nil
+	}
+	if tsh.At < 0 {
+		return xerrors.New("invalid tipset height: epoch cannot be less than zero")
+	}
+	return tsh.Anchor.Validate()
+}
+
+// TipSetAnchor represents a tipset in the chain that can be used as an anchor
+// for selecting a tipset. The anchor may be specified as a TipSetTag or a
+// TipSetKey but not both. Defaults to TipSetTag "latest" if neither are
+// specified.
+//
+// See TipSetHeight.
+type TipSetAnchor struct {
+
+	// TODO: We might want to rename the term "anchor" to "parent" if they're
+	//       conceptually interchangeable. Because, it is easier to reuse a term that
+	//       already exist compared to teaching people a new one. For now we'll keep it as
+	//       "anchor" to keep consistent with the internal API design discussions. We will
+	//       revisit the terminology here as the new API groups are added, namely
+	//       StateSearchMsg.
+
+	Key *TipSetKey `json:"key,omitempty"`
+	Tag *TipSetTag `json:"tag,omitempty"`
+}
+
+// Validate ensures that the TipSetAnchor is valid. It checks that at most one
+// of TipSetKey or TipSetTag is specified. Otherwise, it returns an error.
+//
+// Note that a nil or a zero-valued anchor is valid, and is considered to be
+// equivalent to the default anchor, which is the tipset tagged as "latest".
+func (tsa *TipSetAnchor) Validate() error {
+	if tsa == nil {
+		// An unspecified Anchor is valid, because it's an optional field, and falls back
+		// to whatever the API decides the default to be.
+		return nil
+	}
+	if tsa.Key != nil && tsa.Tag != nil {
+		return xerrors.New("invalid tipset anchor: at most one of key or tag must be specified")
+	}
+	// Zero-valued anchor is valid, and considered to be an equivalent to whatever
+	// the API decides the default to be.
+	return nil
 }

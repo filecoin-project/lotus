@@ -5,6 +5,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-jsonrpc"
+
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -35,6 +37,58 @@ func TestTipSetSelector_Marshalling(t *testing.T) {
 				return selector
 			},
 			wantJson: `{"height":{"at":123,"previous":true}}`,
+		},
+		{
+			name: "height anchored to finalized",
+			subject: func(t *testing.T) types.TipSetSelector {
+				selector, err := types.NewTipSetSelector(
+					types.TipSetHeight{
+						At:       123,
+						Previous: true,
+						Anchor: &types.TipSetAnchor{
+							Tag: &types.TipSetTags.Finalized,
+						},
+					})
+				require.NoError(t, err)
+				return selector
+			},
+			wantJson: `{"height":{"at":123,"previous":true,"anchor":{"tag":"finalized"}}}`,
+		},
+		{
+			name: "invalid height anchor",
+			subject: func(t *testing.T) types.TipSetSelector {
+				selector, err := types.NewTipSetSelector(
+					types.TipSetHeight{
+						At:       123,
+						Previous: true,
+						Anchor: &types.TipSetAnchor{
+							Tag: &types.TipSetTags.Finalized,
+							Key: &types.TipSetKey{},
+						},
+					})
+				require.NoError(t, err)
+				return selector
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid height epoch",
+			subject: func(t *testing.T) types.TipSetSelector {
+				selector, err := types.NewTipSetSelector(
+					types.TipSetHeight{
+						At: -7,
+					})
+				require.NoError(t, err)
+				return selector
+			},
+			wantErr: true,
+		},
+		{
+			name: "nil height",
+			subject: func(t *testing.T) types.TipSetSelector {
+				return jsonrpc.RawParams(`{"height":null}`)
+			},
+			wantJson: `{}`,
 		},
 		{
 			name: "key",
