@@ -2877,9 +2877,9 @@ func (m *MockFullNode) StateCall(arg0 context.Context, arg1 jsonrpc.RawParams) (
 }
 
 // StateCall indicates an expected call of StateCall.
-func (mr *MockFullNodeMockRecorder) StateCall(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockFullNodeMockRecorder) StateCall(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateCall", reflect.TypeOf((*MockFullNode)(nil).StateCall), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateCall", reflect.TypeOf((*MockFullNode)(nil).StateCall), arg0, arg1)
 }
 
 // StateChangedActors mocks base method.

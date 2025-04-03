@@ -282,6 +282,7 @@ func defaultFVMOpts(ctx context.Context, opts *VMOpts) (*ffi.FVMOpts, error) {
 		StateBase:      opts.StateBase,
 		Tracing:        opts.Tracing || EnableDetailedTracing,
 		Debug:          buildconstants.ActorDebugging,
+		FlushAllBlocks: opts.FlushAllBlocks,
 	}, nil
 
 }

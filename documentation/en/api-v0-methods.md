@@ -3726,29 +3726,7 @@ Perms: read
 Inputs:
 ```json
 [
-  {
-    "Version": 42,
-    "To": "f01234",
-    "From": "f01234",
-    "Nonce": 42,
-    "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
-    "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ==",
-    "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-    }
-  },
-  [
-    {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    {
-      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
-    }
-  ]
+  "Bw=="
 ]
 ```
 
@@ -3875,16 +3853,34 @@ Response:
         "Subcalls": null,
         "Logs": [
           "string value"
+        ],
+        "IpldOps": [
+          {
+            "Op": "Get",
+            "Cid": {
+              "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+            },
+            "Size": 42
+          }
         ]
       }
     ],
     "Logs": [
       "string value"
+    ],
+    "IpldOps": [
+      {
+        "Op": "Get",
+        "Cid": {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        },
+        "Size": 42
+      }
     ]
   },
   "Error": "string value",
   "Duration": 60000000000,
-  "CachedBlocks": [
+  "Blocks": [
     {
       "Cid": {
         "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
@@ -4151,16 +4147,34 @@ Response:
             "Subcalls": null,
             "Logs": [
               "string value"
+            ],
+            "IpldOps": [
+              {
+                "Op": "Get",
+                "Cid": {
+                  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+                },
+                "Size": 42
+              }
             ]
           }
         ],
         "Logs": [
           "string value"
+        ],
+        "IpldOps": [
+          {
+            "Op": "Get",
+            "Cid": {
+              "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+            },
+            "Size": 42
+          }
         ]
       },
       "Error": "string value",
       "Duration": 60000000000,
-      "CachedBlocks": [
+      "Blocks": [
         {
           "Cid": {
             "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
@@ -5632,16 +5646,34 @@ Response:
         "Subcalls": null,
         "Logs": [
           "string value"
+        ],
+        "IpldOps": [
+          {
+            "Op": "Get",
+            "Cid": {
+              "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+            },
+            "Size": 42
+          }
         ]
       }
     ],
     "Logs": [
       "string value"
+    ],
+    "IpldOps": [
+      {
+        "Op": "Get",
+        "Cid": {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        },
+        "Size": 42
+      }
     ]
   },
   "Error": "string value",
   "Duration": 60000000000,
-  "CachedBlocks": [
+  "Blocks": [
     {
       "Cid": {
         "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"

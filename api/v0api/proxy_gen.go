@@ -415,7 +415,7 @@ type GatewayMethods struct {
 
 	StateAccountKey func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) ``
 
-	StateCall func(p0 context.Context, p jsonrpc.RawParams) (*api.InvocResult, error) ``
+	StateCall func(p0 context.Context, p1 jsonrpc.RawParams) (*api.InvocResult, error) ``
 
 	StateDealProviderCollateralBounds func(p0 context.Context, p1 abi.PaddedPieceSize, p2 bool, p3 types.TipSetKey) (api.DealCollateralBounds, error) ``
 

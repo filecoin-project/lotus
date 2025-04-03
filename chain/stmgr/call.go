@@ -322,6 +322,9 @@ func (sm *StateManager) callInternal(
 	}
 
 	if flushAllBlocks {
+		if _, err := vmi.Flush(ctx); err != nil {
+			return nil, xerrors.Errorf("flushing vm: %w", err)
+		}
 		acc, ok := vmopt.Bstore.(*blockstore.Accumulator)
 		if !ok {
 			return nil, xerrors.Errorf("expected accumulator blockstore, got %T", vmopt.Bstore)

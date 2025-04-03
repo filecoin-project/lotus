@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"slices"
+	"strings"
 
 	blocks "github.com/ipfs/go-block-format"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -22,6 +24,7 @@ import (
 	"github.com/filecoin-project/go-hamt-ipld/v3"
 	"github.com/filecoin-project/go-state-types/abi"
 	gstbuiltin "github.com/filecoin-project/go-state-types/builtin"
+	miner15 "github.com/filecoin-project/go-state-types/builtin/v15/miner"
 	datacap16 "github.com/filecoin-project/go-state-types/builtin/v16/datacap"
 	market16 "github.com/filecoin-project/go-state-types/builtin/v16/market"
 	miner16 "github.com/filecoin-project/go-state-types/builtin/v16/miner"
@@ -103,7 +106,7 @@ func matchKnownBlockType(ctx context.Context, nd blocks.Block) (string, error) {
 // given a datamodel.Node form of the Values array within an AMT node, attempt to determine the
 // type of the values by iterating through them all and checking from their bytes.
 func matchAmtValues(values datamodel.Node) (string, error) {
-	var match string
+	var match []string
 	itr := values.ListIterator()
 	for !itr.Done() {
 		_, v, err := itr.Next()
@@ -115,10 +118,10 @@ func matchAmtValues(values datamodel.Node) (string, error) {
 			return "", err
 		}
 		if m, _ := matchKnownBlockTypeFromBytes(enc); m != "" {
-			if match == "" {
-				match = m
-			} else if match != m {
-				return "", xerrors.Errorf("inconsistent types in AMT values")
+			if len(match) == 0 {
+				match = append(match, m)
+			} else if !slices.Contains(match, m) {
+				match = append(match, m)
 			}
 			// To debug unknown AMT types, uncomment this block:
 			// } else {
@@ -126,8 +129,8 @@ func matchAmtValues(values datamodel.Node) (string, error) {
 			// 	return "", xerrors.Errorf("unknown type in AMT values: %s", enc)
 		}
 	}
-	if match != "" {
-		return "[" + match + "]", nil
+	if len(match) > 0 {
+		return "[" + strings.Join(match, " | ") + "]", nil
 	}
 	return "", nil
 }
@@ -218,14 +221,17 @@ func matchKnownBlockTypeFromBytes(b []byte) (string, error) {
 	known := map[string]cbg.CBORUnmarshaler{
 		// Fill this out with known types when you see them missing and can identify them
 		"BlockHeader":                        &types.BlockHeader{},
+		"miner15.State":                      &miner15.State{},
 		"miner16.State":                      &miner16.State{},
 		"miner16.MinerInfo":                  &miner16.MinerInfo{},
 		"miner16.Deadlines":                  &miner16.Deadlines{},
+		"miner15.Deadline":                   &miner15.Deadline{},
 		"miner16.Deadline":                   &miner16.Deadline{},
 		"miner16.Partition":                  &miner16.Partition{},
+		"miner15.ExpirationSet":              &miner15.ExpirationSet{},
 		"miner16.ExpirationSet":              &miner16.ExpirationSet{},
 		"miner16.WindowedPoSt":               &miner16.WindowedPoSt{},
-		"miner16.SectorOnChainInfo":          &miner16.SectorOnChainInfo{},
+		"miner16.SectorOnChainInfo":          &miner16.SectorOnChainInfo{}, // 16 will also match 15
 		"miner16.SectorPreCommitOnChainInfo": &miner16.SectorPreCommitOnChainInfo{},
 		"power16.State":                      &power16.State{},
 		"market16.State":                     &market16.State{},
