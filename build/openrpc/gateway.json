@@ -8257,102 +8257,29 @@
         },
         {
             "name": "Filecoin.StateCall",
-            "description": "```go\nfunc (s *GatewayStruct) StateCall(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (*InvocResult, error) {\n\tif s.Internal.StateCall == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.StateCall(p0, p1, p2)\n}\n```",
+            "description": "```go\nfunc (s *GatewayStruct) StateCall(p0 context.Context, p1 jsonrpc.RawParams) (*InvocResult, error) {\n\tif s.Internal.StateCall == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.StateCall(p0, p1)\n}\n```",
             "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
                     "name": "p1",
-                    "description": "*types.Message",
+                    "description": "jsonrpc.RawParams",
                     "summary": "",
                     "schema": {
                         "examples": [
+                            "Bw=="
+                        ],
+                        "items": [
                             {
-                                "Version": 42,
-                                "To": "f01234",
-                                "From": "f01234",
-                                "Nonce": 42,
-                                "Value": "0",
-                                "GasLimit": 9,
-                                "GasFeeCap": "0",
-                                "GasPremium": "0",
-                                "Method": 1,
-                                "Params": "Ynl0ZSBhcnJheQ==",
-                                "CID": {
-                                    "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-                                }
+                                "title": "number",
+                                "description": "Number is a number",
+                                "type": [
+                                    "number"
+                                ]
                             }
                         ],
-                        "additionalProperties": false,
-                        "properties": {
-                            "From": {
-                                "additionalProperties": false,
-                                "type": "object"
-                            },
-                            "GasFeeCap": {
-                                "additionalProperties": false,
-                                "type": "object"
-                            },
-                            "GasLimit": {
-                                "title": "number",
-                                "type": "number"
-                            },
-                            "GasPremium": {
-                                "additionalProperties": false,
-                                "type": "object"
-                            },
-                            "Method": {
-                                "title": "number",
-                                "type": "number"
-                            },
-                            "Nonce": {
-                                "title": "number",
-                                "type": "number"
-                            },
-                            "Params": {
-                                "media": {
-                                    "binaryEncoding": "base64"
-                                },
-                                "type": "string"
-                            },
-                            "To": {
-                                "additionalProperties": false,
-                                "type": "object"
-                            },
-                            "Value": {
-                                "additionalProperties": false,
-                                "type": "object"
-                            },
-                            "Version": {
-                                "title": "number",
-                                "type": "number"
-                            }
-                        },
                         "type": [
-                            "object"
-                        ]
-                    },
-                    "required": true,
-                    "deprecated": false
-                },
-                {
-                    "name": "p2",
-                    "description": "types.TipSetKey",
-                    "summary": "",
-                    "schema": {
-                        "examples": [
-                            [
-                                {
-                                    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-                                },
-                                {
-                                    "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
-                                }
-                            ]
-                        ],
-                        "additionalProperties": false,
-                        "type": [
-                            "object"
+                            "array"
                         ]
                     },
                     "required": true,
@@ -8483,16 +8410,67 @@
                                                 "tt": 60000000000
                                             }
                                         ],
-                                        "Subcalls": null
+                                        "Subcalls": null,
+                                        "Logs": [
+                                            "string value"
+                                        ],
+                                        "IpldOps": [
+                                            {
+                                                "Op": "Get",
+                                                "Cid": {
+                                                    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+                                                },
+                                                "Size": 42
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "Logs": [
+                                    "string value"
+                                ],
+                                "IpldOps": [
+                                    {
+                                        "Op": "Get",
+                                        "Cid": {
+                                            "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+                                        },
+                                        "Size": 42
                                     }
                                 ]
                             },
                             "Error": "string value",
-                            "Duration": 60000000000
+                            "Duration": 60000000000,
+                            "Blocks": [
+                                {
+                                    "Cid": {
+                                        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+                                    },
+                                    "Data": "Ynl0ZSBhcnJheQ=="
+                                }
+                            ]
                         }
                     ],
                     "additionalProperties": false,
                     "properties": {
+                        "Blocks": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "Cid": {
+                                        "title": "Content Identifier",
+                                        "type": "string"
+                                    },
+                                    "Data": {
+                                        "media": {
+                                            "binaryEncoding": "base64"
+                                        },
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            },
+                            "type": "array"
+                        },
                         "Duration": {
                             "title": "number",
                             "type": "number"
@@ -8566,6 +8544,33 @@
                                         }
                                     },
                                     "type": "object"
+                                },
+                                "IpldOps": {
+                                    "items": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "Cid": {
+                                                "title": "Content Identifier",
+                                                "type": "string"
+                                            },
+                                            "Op": {
+                                                "title": "number",
+                                                "type": "number"
+                                            },
+                                            "Size": {
+                                                "title": "number",
+                                                "type": "number"
+                                            }
+                                        },
+                                        "type": "object"
+                                    },
+                                    "type": "array"
+                                },
+                                "Logs": {
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "type": "array"
                                 },
                                 "Msg": {
                                     "additionalProperties": false,
@@ -11197,16 +11202,67 @@
                                                 "tt": 60000000000
                                             }
                                         ],
-                                        "Subcalls": null
+                                        "Subcalls": null,
+                                        "Logs": [
+                                            "string value"
+                                        ],
+                                        "IpldOps": [
+                                            {
+                                                "Op": "Get",
+                                                "Cid": {
+                                                    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+                                                },
+                                                "Size": 42
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "Logs": [
+                                    "string value"
+                                ],
+                                "IpldOps": [
+                                    {
+                                        "Op": "Get",
+                                        "Cid": {
+                                            "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+                                        },
+                                        "Size": 42
                                     }
                                 ]
                             },
                             "Error": "string value",
-                            "Duration": 60000000000
+                            "Duration": 60000000000,
+                            "Blocks": [
+                                {
+                                    "Cid": {
+                                        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+                                    },
+                                    "Data": "Ynl0ZSBhcnJheQ=="
+                                }
+                            ]
                         }
                     ],
                     "additionalProperties": false,
                     "properties": {
+                        "Blocks": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "Cid": {
+                                        "title": "Content Identifier",
+                                        "type": "string"
+                                    },
+                                    "Data": {
+                                        "media": {
+                                            "binaryEncoding": "base64"
+                                        },
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            },
+                            "type": "array"
+                        },
                         "Duration": {
                             "title": "number",
                             "type": "number"
@@ -11280,6 +11336,33 @@
                                         }
                                     },
                                     "type": "object"
+                                },
+                                "IpldOps": {
+                                    "items": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "Cid": {
+                                                "title": "Content Identifier",
+                                                "type": "string"
+                                            },
+                                            "Op": {
+                                                "title": "number",
+                                                "type": "number"
+                                            },
+                                            "Size": {
+                                                "title": "number",
+                                                "type": "number"
+                                            }
+                                        },
+                                        "type": "object"
+                                    },
+                                    "type": "array"
+                                },
+                                "Logs": {
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "type": "array"
                                 },
                                 "Msg": {
                                     "additionalProperties": false,

@@ -81,7 +81,15 @@ var computeEthHashCmd = &cli.Command{
 			return lcli.IncorrectNumArgs(cctx)
 		}
 
-		msg, err := messageFromString(cctx, cctx.Args().First())
+		api, closer, err := lcli.GetFullNodeAPIV1(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := lcli.ReqContext(cctx)
+
+		msg, err := messageFromString(ctx, api, cctx.Args().First())
 		if err != nil {
 			return err
 		}

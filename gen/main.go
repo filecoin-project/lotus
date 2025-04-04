@@ -175,5 +175,6 @@ func generateChainTypes() error {
 		types.MessageTrace{},
 		types.ReturnTrace{},
 		types.ExecutionTrace{},
+		types.TraceIpld{},
 	)
 }

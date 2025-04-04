@@ -320,7 +320,7 @@ waitForProof:
 	slmsg.Params = v1PostParams.Bytes()
 
 	// Simulate call on inclTs's parents, so that the partition isn't already proven
-	ret, err := client.StateCall(ctx, slmsg, inclTs.Parents())
+	ret, err := client.StateCall(ctx, api.NewStateCallParams(slmsg, inclTs.Parents()).ToRaw())
 	require.NoError(t, err)
 	require.Contains(t, ret.Error, "expected proof of type StackedDRGWindow2KiBV1P1, got StackedDRGWindow2KiBV1")
 

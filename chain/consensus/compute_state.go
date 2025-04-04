@@ -79,7 +79,8 @@ type FilecoinBlockMessages struct {
 	WinCount int64
 }
 
-func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
+func (t *TipSetExecutor) ApplyBlocks(
+	ctx context.Context,
 	sm *stmgr.StateManager,
 	parentEpoch abi.ChainEpoch,
 	pstate cid.Cid,
@@ -89,7 +90,8 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 	em stmgr.ExecMonitor,
 	vmTracing bool,
 	baseFee abi.TokenAmount,
-	ts *types.TipSet) (cid.Cid, cid.Cid, error) {
+	ts *types.TipSet,
+) (cid.Cid, cid.Cid, error) {
 	done := metrics.Timer(ctx, metrics.VMApplyBlocksTotal)
 	defer done()
 
@@ -240,6 +242,7 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 
 			if em != nil {
 				if err := em.MessageApplied(ctx, ts, cm.Cid(), m, r, false); err != nil {
+					log.Debugw("ApplyBlocks ExecMonitor#MessageApplied callback failed", "error", err)
 					return cid.Undef, cid.Undef, err
 				}
 			}
@@ -316,7 +319,8 @@ func (t *TipSetExecutor) ExecuteTipSet(ctx context.Context,
 	sm *stmgr.StateManager,
 	ts *types.TipSet,
 	em stmgr.ExecMonitor,
-	vmTracing bool) (stateroot cid.Cid, rectsroot cid.Cid, err error) {
+	vmTracing bool,
+) (stateroot cid.Cid, rectsroot cid.Cid, err error) {
 	ctx, span := trace.StartSpan(ctx, "computeTipSetState")
 	defer span.End()
 

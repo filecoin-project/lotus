@@ -25,6 +25,7 @@ import (
 	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/lf3"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
@@ -95,13 +96,13 @@ var f3CheckActivation = &cli.Command{
 			ContractAddress:      cctx.String("contract"),
 			ContractPollInterval: 15 * time.Second,
 		}
-		api, closer, err := cliutil.GetFullNodeAPIV1(cctx)
+		lapi, closer, err := cliutil.GetFullNodeAPIV1(cctx)
 		if err != nil {
 			return fmt.Errorf("getting api: %w", err)
 		}
 		defer closer()
 		ctx := cliutil.ReqContext(cctx)
-		prov, err := lf3.NewManifestProvider(ctx, &config, nil, nil, nil, api)
+		prov, err := lf3.NewManifestProvider(ctx, &config, nil, nil, nil, lapi)
 		if err != nil {
 			return fmt.Errorf("creating manifest proivder: %w", err)
 		}
@@ -150,13 +151,13 @@ var f3CheckActivationRaw = &cli.Command{
 		}
 
 		ctx := cliutil.ReqContext(cctx)
-		api, closer, err := cliutil.GetFullNodeAPIV1(cctx)
+		lapi, closer, err := cliutil.GetFullNodeAPIV1(cctx)
 		if err != nil {
 			return fmt.Errorf("getting api: %w", err)
 		}
 		defer closer()
 
-		msgRes, err := api.StateCall(ctx, fMessage, types.EmptyTSK)
+		msgRes, err := lapi.StateCall(ctx, api.NewStateCallParams(fMessage, types.EmptyTSK).ToRaw())
 		if err != nil {
 			return fmt.Errorf("state call error: %w", err)
 		}
@@ -265,13 +266,13 @@ var f3GenExplicitPower = &cli.Command{
 
 	Action: func(cctx *cli.Context) error {
 		ctx := cliutil.ReqContext(cctx)
-		api, closer, err := cliutil.GetFullNodeAPIV1(cctx)
+		lapi, closer, err := cliutil.GetFullNodeAPIV1(cctx)
 		if err != nil {
 			return fmt.Errorf("getting api: %w", err)
 		}
 		defer closer()
 
-		ts, err := lcli.LoadTipSet(ctx, cctx, api)
+		ts, err := lcli.LoadTipSet(ctx, cctx, lapi)
 		if err != nil {
 			return fmt.Errorf("getting chain head: %w", err)
 		}
@@ -279,7 +280,7 @@ var f3GenExplicitPower = &cli.Command{
 			return fmt.Errorf("n and ratio options are exclusive")
 		}
 
-		allPowerEntries, err := api.F3GetECPowerTable(ctx, ts.Key())
+		allPowerEntries, err := lapi.F3GetECPowerTable(ctx, ts.Key())
 		if err != nil {
 			return fmt.Errorf("getting power entries: %w", err)
 		}

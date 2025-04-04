@@ -27,6 +27,7 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin"
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -184,7 +185,7 @@ var terminateSectorPenaltyEstimationCmd = &cli.Command{
 
 		//TODO: 4667 add an option to give a more precise estimation with pending termination penalty excluded
 
-		invocResult, err := nodeApi.StateCall(ctx, msg, types.EmptyTSK)
+		invocResult, err := nodeApi.StateCall(ctx, api.NewStateCallParams(msg, types.EmptyTSK).ToRaw())
 		if err != nil {
 			return xerrors.Errorf("fail to state call: %w", err)
 		}

@@ -38,7 +38,11 @@ var ErrExpensiveFork = errors.New("refusing explicit call due to state fork at e
 // Call applies the given message to the given tipset's parent state, at the epoch following the
 // tipset's parent. In the presence of null blocks, the height at which the message is invoked may
 // be less than the specified tipset.
-func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*api.InvocResult, error) {
+//
+// If flushAllBlocks is set, the blocks written during the execution of the message will be returned
+// in the result's Blocks field. This includes all blocks, including intermediate state that may not
+// be part of the final state root.
+func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.TipSet, flushAllBlocks bool) (*api.InvocResult, error) {
 	// Copy the message as we modify it below.
 	msgCopy := *msg
 	msg = &msgCopy
@@ -56,12 +60,15 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 		msg.Value = types.NewInt(0)
 	}
 
-	return sm.callInternal(ctx, msg, nil, ts, cid.Undef, sm.GetNetworkVersion, false, execSameSenderMessages)
+	bstore := blockstore.NewTieredBstore(sm.cs.StateBlockstore(), blockstore.NewMemorySync())
+
+	return sm.callInternal(ctx, msg, nil, ts, cid.Undef, sm.GetNetworkVersion, false, execSameSenderMessages, bstore, flushAllBlocks)
 }
 
 // ApplyOnStateWithGas applies the given message on top of the given state root with gas tracing enabled
 func (sm *StateManager) ApplyOnStateWithGas(ctx context.Context, stateCid cid.Cid, msg *types.Message, ts *types.TipSet) (*api.InvocResult, error) {
-	return sm.callInternal(ctx, msg, nil, ts, stateCid, sm.GetNetworkVersion, true, execNoMessages)
+	buffStore := blockstore.NewTieredBstore(sm.cs.StateBlockstore(), blockstore.NewMemorySync())
+	return sm.callInternal(ctx, msg, nil, ts, stateCid, sm.GetNetworkVersion, true, execNoMessages, buffStore, false)
 }
 
 // CallWithGas calculates the state for a given tipset, and then applies the given message on top of that state.
@@ -72,8 +79,8 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 	} else {
 		strategy = execSameSenderMessages
 	}
-
-	return sm.callInternal(ctx, msg, priorMsgs, ts, cid.Undef, sm.GetNetworkVersion, true, strategy)
+	buffStore := blockstore.NewTieredBstore(sm.cs.StateBlockstore(), blockstore.NewMemorySync())
+	return sm.callInternal(ctx, msg, priorMsgs, ts, cid.Undef, sm.GetNetworkVersion, true, strategy, buffStore, false)
 }
 
 // CallAtStateAndVersion allows you to specify a message to execute on the given stateCid and network version.
@@ -84,14 +91,27 @@ func (sm *StateManager) CallAtStateAndVersion(ctx context.Context, msg *types.Me
 	nvGetter := func(context.Context, abi.ChainEpoch) network.Version {
 		return v
 	}
-	return sm.callInternal(ctx, msg, nil, nil, stateCid, nvGetter, true, execSameSenderMessages)
+	buffStore := blockstore.NewTieredBstore(sm.cs.StateBlockstore(), blockstore.NewMemorySync())
+	return sm.callInternal(ctx, msg, nil, nil, stateCid, nvGetter, true, execSameSenderMessages, buffStore, false)
 }
 
 //   - If no tipset is specified, the first tipset without an expensive migration or one in its parent is used.
 //   - If executing a message at a given tipset or its parent would trigger an expensive migration, the call will
 //     fail with ErrExpensiveFork.
-func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet, stateCid cid.Cid,
-	nvGetter rand.NetworkVersionGetter, checkGas bool, strategy execMessageStrategy) (*api.InvocResult, error) {
+//   - If flushAllBlocks is true, written blocks will be tracked and added to the result's Blocks field.
+func (sm *StateManager) callInternal(
+	ctx context.Context,
+	msg *types.Message,
+	priorMsgs []types.ChainMsg,
+	ts *types.TipSet,
+	stateCid cid.Cid,
+	nvGetter rand.NetworkVersionGetter,
+	checkGas bool,
+	strategy execMessageStrategy,
+	bstore blockstore.Blockstore,
+	flushAllBlocks bool,
+) (*api.InvocResult, error) {
+
 	ctx, span := trace.StartSpan(ctx, "statemanager.callInternal")
 	defer span.End()
 
@@ -151,13 +171,12 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 		)
 	}
 
-	buffStore := blockstore.NewTieredBstore(sm.cs.StateBlockstore(), blockstore.NewMemorySync())
 	vmopt := &vm.VMOpts{
 		StateBase:      stateCid,
 		Epoch:          ts.Height(),
 		Timestamp:      ts.MinTimestamp(),
 		Rand:           rand.NewStateRand(sm.cs, ts.Cids(), sm.beacon, nvGetter),
-		Bstore:         buffStore,
+		Bstore:         bstore,
 		Actors:         sm.tsExec.NewActorRegistry(),
 		Syscalls:       sm.Syscalls,
 		CircSupplyCalc: sm.GetVMCirculatingSupply,
@@ -166,6 +185,7 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 		LookbackState:  LookbackStateGetterForTipset(sm, ts),
 		TipSetGetter:   TipSetGetterForTipset(sm.cs, ts),
 		Tracing:        true,
+		FlushAllBlocks: false,
 	}
 	vmi, err := sm.newVM(ctx, vmopt)
 	if err != nil {
@@ -183,14 +203,17 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 		if strategy == execAllMessages {
 			priorMsgs = append(tsMsgs, priorMsgs...)
 		} else if strategy == execSameSenderMessages {
-			var filteredTsMsgs []types.ChainMsg
 			for _, tsMsg := range tsMsgs {
+				if tsMsg.VMMessage().Cid() == msg.VMMessage().Cid() {
+					// The message we've been asked to execute is in here, we don't need to add it to priorMsgs
+					// and we don't need the messages after it
+					break
+				}
 				//TODO we should technically be normalizing the filecoin address of from when we compare here
 				if tsMsg.VMMessage().From == msg.VMMessage().From {
-					filteredTsMsgs = append(filteredTsMsgs, tsMsg)
+					priorMsgs = append(priorMsgs, tsMsg)
 				}
 			}
-			priorMsgs = append(filteredTsMsgs, priorMsgs...)
 		}
 		for i, m := range priorMsgs {
 			_, err = vmi.ApplyMessage(ctx, m)
@@ -207,7 +230,7 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 		}
 	}
 
-	stTree, err := state.LoadStateTree(cbor.NewCborStore(buffStore), stateCid)
+	stTree, err := state.LoadStateTree(cbor.NewCborStore(bstore), stateCid)
 	if err != nil {
 		return nil, xerrors.Errorf("loading state tree: %w", err)
 	}
@@ -219,10 +242,19 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 
 	msg.Nonce = fromActor.Nonce
 
-	// If the fee cap is set to zero, make gas free.
-	if msg.GasFeeCap.NilOrZero() {
-		// Now estimate with a new VM with no base fee.
-		vmopt.BaseFee = big.Zero()
+	if msg.GasFeeCap.IsZero() || flushAllBlocks {
+		// If the fee cap is set to zero, make gas free.
+		if msg.GasFeeCap.IsZero() {
+			vmopt.BaseFee = big.Zero()
+		}
+
+		// If we're flushing all blocks, we only want to flush for the message we're
+		// applying, not the prior messages.
+		if flushAllBlocks {
+			vmopt.FlushAllBlocks = true
+			vmopt.Bstore = blockstore.NewAccumulator(vmopt.Bstore)
+		}
+
 		vmopt.StateBase = stateCid
 
 		vmi, err = sm.newVM(ctx, vmopt)
@@ -279,7 +311,7 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 		errs = ret.ActorErr.Error()
 	}
 
-	return &api.InvocResult{
+	res := &api.InvocResult{
 		MsgCid:         msg.Cid(),
 		Msg:            msg,
 		MsgRct:         &ret.MessageReceipt,
@@ -287,7 +319,30 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 		ExecutionTrace: ret.ExecutionTrace,
 		Error:          errs,
 		Duration:       ret.Duration,
-	}, err
+	}
+
+	if flushAllBlocks {
+		if _, err := vmi.Flush(ctx); err != nil {
+			return nil, xerrors.Errorf("flushing vm: %w", err)
+		}
+		acc, ok := vmopt.Bstore.(*blockstore.Accumulator)
+		if !ok {
+			return nil, xerrors.Errorf("expected accumulator blockstore, got %T", vmopt.Bstore)
+		}
+		blocks, err := acc.GetBlocks(ctx)
+		if err != nil {
+			return nil, xerrors.Errorf("getting blocks from accumulator: %w", err)
+		}
+		res.Blocks = make([]api.Block, len(blocks))
+		for i, b := range blocks {
+			res.Blocks[i] = api.Block{
+				Cid:  b.Cid(),
+				Data: b.RawData(),
+			}
+		}
+	}
+
+	return res, nil
 }
 
 var errHaltExecution = fmt.Errorf("halt")
