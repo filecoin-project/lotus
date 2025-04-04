@@ -22,7 +22,9 @@ var EmbeddedBuiltinActorsMetadata = []*BuiltinActorsMetadata{
 {{- range . }} {
 	Network: {{printf "%q" .Network}},
 	Version: {{.Version}},
-	{{if .BundleGitTag}} BundleGitTag: {{printf "%q" .BundleGitTag}}, {{end}}
+	{{- if .BundleGitTag }}
+		BundleGitTag: {{printf "%q" .BundleGitTag}},
+	{{- end }}
 	ManifestCid: cid.MustParse({{printf "%q" .ManifestCid}}),
 	Actors: map[string]cid.Cid {
 	{{- range $name, $cid := .Actors }}
@@ -73,7 +75,12 @@ func main() {
 					m.BundleGitTag = gitTag
 				}
 			} else {
-				m.BundleGitTag = getOldGitTagFromEmbeddedMetadata(m)
+				for _, v := range build.EmbeddedBuiltinActorsMetadata {
+					// if we agree on the manifestCid for the previously embedded metadata, use the previously set tag
+					if m.Version == v.Version && m.Network == v.Network && m.ManifestCid == v.ManifestCid {
+						m.BundleGitTag = v.BundleGitTag
+					}
+				}
 			}
 		}
 	}
@@ -88,15 +95,4 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-}
-
-func getOldGitTagFromEmbeddedMetadata(m *build.BuiltinActorsMetadata) string {
-	for _, v := range build.EmbeddedBuiltinActorsMetadata {
-		// if we agree on the manifestCid for the previously embedded metadata, use the previously set tag
-		if m.Version == v.Version && m.Network == v.Network && m.ManifestCid == v.ManifestCid {
-			return m.BundleGitTag
-		}
-	}
-
-	return ""
 }
