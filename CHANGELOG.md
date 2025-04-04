@@ -9,7 +9,7 @@
 
 # UNRELEASED
 
-- feat: implement ChainGetTipSet in Lotus v2 APIs
+- feat: add experimental v2 APIs that are "F3 aware."  (TODO: expand this section significantly to cover where someone learns about the new APIs, how they enable them, and what expectations they should have around them—i.e., they may change)
 
 # Node and Miner v1.32.1 / 2025-03-28
 
