@@ -19,7 +19,7 @@ import (
 type F3API struct {
 	fx.In
 
-	F3 *lf3.F3 `optional:"true"`
+	F3 lf3.F3Backend `optional:"true"`
 }
 
 func (f3api *F3API) F3GetOrRenewParticipationTicket(ctx context.Context, miner address.Address, previous api.F3ParticipationTicket, instances uint64) (api.F3ParticipationTicket, error) {

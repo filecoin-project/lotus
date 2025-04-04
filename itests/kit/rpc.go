@@ -1,8 +1,10 @@
 package kit
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -44,7 +46,7 @@ func CreateRPCServer(t *testing.T, handler http.Handler, listener net.Listener) 
 }
 
 func fullRpc(t *testing.T, f *TestFullNode) (*TestFullNode, Closer) {
-	handler, err := node.FullNodeHandler(f.FullNode, false)
+	handler, err := node.FullNodeHandler(f.FullNode, f.V2, false)
 	require.NoError(t, err)
 
 	l, err := net.Listen("tcp", "127.0.0.1:0")
@@ -104,4 +106,20 @@ func workerRpc(t *testing.T, m *TestWorker) *TestWorker {
 
 	m.ListenAddr, m.Worker = maddr, cl
 	return m
+}
+
+func (full *TestFullNode) DoRawRPCRequest(t *testing.T, version int, body string) (int, []byte) {
+	t.Helper()
+	require.NotEmpty(t, full.ListenURL, "not listening for rpc, turn on with `kit.ThroughRPC()`")
+
+	endpoint := fmt.Sprintf("%s/rpc/v%d", full.ListenURL, version)
+	request, err := http.NewRequest("POST", endpoint, bytes.NewReader([]byte(body)))
+	require.NoError(t, err)
+	request.Header.Set("Content-Type", "application/json")
+	response, err := http.DefaultClient.Do(request)
+	require.NoError(t, err)
+	defer func() { require.NoError(t, response.Body.Close()) }()
+	respBody, err := io.ReadAll(response.Body)
+	require.NoError(t, err)
+	return response.StatusCode, respBody
 }

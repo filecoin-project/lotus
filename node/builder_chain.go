@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-f3/manifest"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v2api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/beacon"
@@ -136,6 +137,7 @@ var ChainNode = Options(
 		Override(new(messagepool.Provider), messagepool.NewProviderLite),
 		Override(new(messagepool.MpoolNonceAPI), From(new(modules.MpoolNonceAPI))),
 		Override(new(full.ChainModuleAPI), From(new(api.Gateway))),
+		Override(new(full.ChainModuleAPIv2), From(new(full.ChainModuleV2))),
 		Override(new(full.GasModuleAPI), From(new(api.Gateway))),
 		Override(new(full.MpoolModuleAPI), From(new(api.Gateway))),
 		Override(new(full.StateModuleAPI), From(new(api.Gateway))),
@@ -162,6 +164,7 @@ var ChainNode = Options(
 		Override(new(messagepool.Provider), messagepool.NewProvider),
 		Override(new(messagepool.MpoolNonceAPI), From(new(*messagepool.MessagePool))),
 		Override(new(full.ChainModuleAPI), From(new(full.ChainModule))),
+		Override(new(full.ChainModuleAPIv2), From(new(full.ChainModuleV2))),
 		Override(new(full.GasModuleAPI), From(new(full.GasModule))),
 		Override(new(full.MpoolModuleAPI), From(new(full.MpoolModule))),
 		Override(new(full.StateModuleAPI), From(new(full.StateModule))),
@@ -179,7 +182,7 @@ var ChainNode = Options(
 		Override(new(*lf3.ContractManifestProvider), lf3.NewContractManifestProvider),
 		Override(new(lf3.StateCaller), From(new(full.StateModule))),
 		Override(new(manifest.ManifestProvider), lf3.NewManifestProvider),
-		Override(new(*lf3.F3), lf3.New),
+		Override(new(lf3.F3Backend), lf3.New),
 	),
 )
 
@@ -362,4 +365,13 @@ func FullAPI(out *api.FullNode, fopts ...FullOption) Option {
 			return nil
 		},
 	)
+}
+
+func FullAPIv2(out *v2api.FullNode) Option {
+	return func(s *Settings) error {
+		resAPI := &impl.FullNodeAPIv2{}
+		s.invokes[InitApiV2Key] = fx.Populate(resAPI)
+		*out = resAPI
+		return nil
+	}
 }

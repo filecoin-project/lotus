@@ -247,20 +247,28 @@ func MutateSealingConfig(mut func(sc *config.SealingConfig)) NodeOpt {
 		})))
 }
 
-// F3Enabled enables the F3 feature in the node. If the provided config is nil,
-// the feature is disabled.
-func F3Enabled(cfg *lf3.Config) NodeOpt {
-	if cfg == nil {
-		return ConstructorOpts(
-			node.Unset(new(*lf3.Config)),
-			node.Unset(new(manifest.ManifestProvider)),
-			node.Unset(new(*lf3.F3)),
-		)
-	}
+// F3Config sets the F3 configuration to be used by test node.
+func F3Config(cfg *lf3.Config) NodeOpt {
 	return ConstructorOpts(
 		node.Override(new(*lf3.Config), cfg),
-		node.Override(new(manifest.ManifestProvider), lf3.NewManifestProvider),
-		node.Override(new(*lf3.F3), lf3.New),
+	)
+}
+
+// F3Backend overrides the F3 backend implementation used by test node.
+func F3Backend(backend lf3.F3Backend) NodeOpt {
+	return ConstructorOpts(
+		node.Override(new(lf3.F3Backend), backend),
+	)
+}
+
+// F3Disabled disables the F3 subsystem for this node.
+func F3Disabled() NodeOpt {
+	return ConstructorOpts(
+		node.Unset(new(*lf3.Config)),
+		node.Unset(new(*lf3.ContractManifestProvider)),
+		node.Unset(new(lf3.StateCaller)),
+		node.Unset(new(manifest.ManifestProvider)),
+		node.Unset(new(lf3.F3Backend)),
 	)
 }
 

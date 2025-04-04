@@ -447,6 +447,7 @@ func (n *Ensemble) Start() *Ensemble {
 
 		opts := []node.Option{
 			node.FullAPI(&full.FullNode, node.Lite(full.options.lite)),
+			node.FullAPIv2(&full.V2),
 			node.Base(),
 			node.Repo(r),
 			node.If(full.options.disableLibp2p, node.MockHost(n.mn)),

@@ -130,7 +130,7 @@ func TestF3_InactiveModes(t *testing.T) {
 
 			opts := []any{kit.MockProofs()}
 			if tc.mode == "disabled" {
-				opts = append(opts, kit.F3Enabled(nil))
+				opts = append(opts, kit.F3Disabled())
 			}
 
 			client, miner, ens := kit.EnsembleMinimal(t, opts...)
@@ -505,7 +505,7 @@ func setupWithStaticManifest(t *testing.T, manif *manifest.Manifest, testBootstr
 		AllowDynamicFinalize:     !testBootstrap,
 	}
 
-	nodeOpts := []kit.NodeOpt{kit.WithAllSubsystems(), kit.F3Enabled(cfg)}
+	nodeOpts := []kit.NodeOpt{kit.WithAllSubsystems(), kit.F3Config(cfg)}
 	nodeOpts = append(nodeOpts, extraOpts...)
 	minerOpts := []kit.NodeOpt{kit.WithAllSubsystems(), kit.ConstructorOpts(node.Override(node.F3Participation, modules.F3Participation))}
 	minerOpts = append(minerOpts, extraOpts...)
