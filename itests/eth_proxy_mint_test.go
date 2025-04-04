@@ -21,6 +21,12 @@ import (
 
 // TestMintContract tests deploying an implementation contract and a proxy contract
 // that delegates to it, then mints tokens via the proxy contract.
+// The hex files contain compiled copies of https://github.com/recallnet at git hash 06ec52342ffe6cd29cb9c06ebf5a785f4a057c0e
+//
+// - Proxy contract: 0xf0438cd20Fa4855997297A9C1299469CA10b58bf
+// - Implementation contract: 0x1835374384AA51B169c0705DA26A84bB760F2B37
+//
+// We're using these to reproduce https://github.com/recallnet/contracts/issues/98
 func TestMintContract(t *testing.T) {
 	blockTime := 100 * time.Millisecond
 	client, _, ens := kit.EnsembleMinimal(
