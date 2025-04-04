@@ -1,6 +1,7 @@
 package types_test
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -57,7 +58,7 @@ func TestTipSetSelector_Marshalling(t *testing.T) {
 		{
 			name: "invalid height anchor",
 			subject: func(t *testing.T) types.TipSetSelector {
-				selector, err := types.NewTipSetSelector(
+				selector, err := json.Marshal(
 					types.TipSetHeight{
 						At:       123,
 						Previous: true,
@@ -74,10 +75,9 @@ func TestTipSetSelector_Marshalling(t *testing.T) {
 		{
 			name: "invalid height epoch",
 			subject: func(t *testing.T) types.TipSetSelector {
-				selector, err := types.NewTipSetSelector(
-					types.TipSetHeight{
-						At: -7,
-					})
+				selector, err := json.Marshal(types.TipSetHeight{
+					At: -7,
+				})
 				require.NoError(t, err)
 				return selector
 			},
@@ -88,7 +88,7 @@ func TestTipSetSelector_Marshalling(t *testing.T) {
 			subject: func(t *testing.T) types.TipSetSelector {
 				return jsonrpc.RawParams(`{"height":null}`)
 			},
-			wantJson: `{}`,
+			wantErr: true,
 		},
 		{
 			name: "key",
@@ -129,7 +129,7 @@ func TestTipSetSelector_Marshalling(t *testing.T) {
 			subject: func(t *testing.T) types.TipSetSelector {
 				return []byte(`{"colour":"fishy"}`)
 			},
-			wantJson: `{}`, // non-nil criterion with no fields set.
+			wantErr: true,
 		},
 		{
 			name: "valid json but invalid criterion",
@@ -168,6 +168,7 @@ func TestTipSetCriterion_Validate(t *testing.T) {
 		{
 			name:    "zero",
 			subject: &types.TipSetCriterion{},
+			wantErr: true,
 		},
 		{
 			name: "only key",
