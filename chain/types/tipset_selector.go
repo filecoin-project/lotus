@@ -6,23 +6,55 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 )
 
+var (
+	// TipSetTags represents the predefined set of tags for tipsets. The supported
+	// tags are:
+	//   - Latest: the most recent tipset in the chain with the heaviest weight.
+	//   - Finalized: the most recent tipset considered final by the node.
+	//
+	// See TipSetTag.
+	TipSetTags = struct {
+		Latest    TipSetTag
+		Finalized TipSetTag
+	}{
+		Latest:    TipSetTag("latest"),
+		Finalized: TipSetTag("finalized"),
+	}
+
+	// TipSetSelectors represents the predefined set of selectors for tipsets.
+	//
+	// See TipSetSelector.
+	TipSetSelectors = struct {
+		Latest    TipSetSelector
+		Finalized TipSetSelector
+		Height    func(abi.ChainEpoch, bool, *TipSetAnchor) TipSetSelector
+		Key       func(TipSetKey) TipSetSelector
+	}{
+		Latest:    TipSetSelector{Tag: &TipSetTags.Latest},
+		Finalized: TipSetSelector{Tag: &TipSetTags.Finalized},
+		Height: func(height abi.ChainEpoch, previous bool, anchor *TipSetAnchor) TipSetSelector {
+			return TipSetSelector{Height: &TipSetHeight{At: height, Previous: previous, Anchor: anchor}}
+		},
+		Key: func(key TipSetKey) TipSetSelector { return TipSetSelector{Key: &key} },
+	}
+
+	// TipSetAnchors represents the predefined set of anchors for tipsets.
+	//
+	// See TipSetAnchor.
+	TipSetAnchors = struct {
+		Latest    *TipSetAnchor
+		Finalized *TipSetAnchor
+		Key       func(TipSetKey) *TipSetAnchor
+	}{
+		Latest:    &TipSetAnchor{Tag: &TipSetTags.Latest},
+		Finalized: &TipSetAnchor{Tag: &TipSetTags.Finalized},
+		Key:       func(key TipSetKey) *TipSetAnchor { return &TipSetAnchor{Key: &key} },
+	}
+)
+
 // TipSetTag is a string that represents a pointer to a tipset.
 // See TipSetSelector.
 type TipSetTag string
-
-// TipSetTags represents the predefined set of tags for tipsets. The supported
-// tags are:
-//   - Latest: the most recent tipset in the chain with the heaviest weight.
-//   - Finalized: the most recent tipset considered final by the node.
-//
-// See TipSetTag.
-var TipSetTags = struct {
-	Latest    TipSetTag
-	Finalized TipSetTag
-}{
-	Latest:    TipSetTag("latest"),
-	Finalized: TipSetTag("finalized"),
-}
 
 // TipSetSelector captures the selection criteria for a tipset.
 //

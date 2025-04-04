@@ -21,70 +21,41 @@ func TestTipSetSelector_Marshalling(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "height",
-			subject: types.TipSetSelector{
-				Height: &types.TipSetHeight{
-					At:       123,
-					Previous: true,
-				},
-			},
+			name:     "height",
+			subject:  types.TipSetSelectors.Height(123, true, nil),
 			wantJson: `{"height":{"at":123,"previous":true}}`,
 		},
 		{
-			name: "height anchored to finalized",
-			subject: types.TipSetSelector{
-				Height: &types.TipSetHeight{
-					At:       123,
-					Previous: true,
-					Anchor: &types.TipSetAnchor{
-						Tag: &types.TipSetTags.Finalized,
-					},
-				},
-			},
+			name:     "height anchored to finalized",
+			subject:  types.TipSetSelectors.Height(123, true, types.TipSetAnchors.Finalized),
 			wantJson: `{"height":{"at":123,"previous":true,"anchor":{"tag":"finalized"}}}`,
 		},
 		{
 			name: "invalid height anchor",
-			subject: types.TipSetSelector{
-				Height: &types.TipSetHeight{
-					At:       123,
-					Previous: true,
-					Anchor: &types.TipSetAnchor{
-						Tag: &types.TipSetTags.Finalized,
-						Key: &types.TipSetKey{},
-					},
-				},
-			},
-			wantErr: true,
-		},
-		{
-			name: "invalid height epoch",
-			subject: types.TipSetSelector{
-				Height: &types.TipSetHeight{
-					At: -7,
-				},
-			},
-			wantErr: true,
-		},
-		{
-			name: "key",
-			subject: types.TipSetSelector{
+			subject: types.TipSetSelectors.Height(123, true, &types.TipSetAnchor{
+				Tag: &types.TipSetTags.Finalized,
 				Key: &types.TipSetKey{},
-			},
+			}),
+			wantErr: true,
+		},
+		{
+			name:    "invalid height epoch",
+			subject: types.TipSetSelectors.Height(-1, false, nil),
+			wantErr: true,
+		},
+		{
+			name:     "key",
+			subject:  types.TipSetSelectors.Key(types.TipSetKey{}),
 			wantJson: `{"key":[]}`,
 		},
 		{
-			name: "tag finalized",
-			subject: types.TipSetSelector{
-				Tag: &types.TipSetTags.Finalized,
-			},
+			name:     "tag finalized",
+			subject:  types.TipSetSelectors.Finalized,
 			wantJson: `{"tag":"finalized"}`,
 		},
 		{
-			name: "tag latest",
-			subject: types.TipSetSelector{
-				Tag: &types.TipSetTags.Latest,
-			},
+			name:     "tag latest",
+			subject:  types.TipSetSelectors.Latest,
 			wantJson: `{"tag":"latest"}`,
 		},
 	} {
