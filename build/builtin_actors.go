@@ -225,6 +225,16 @@ func readEmbeddedBuiltinActorsMetadata(bundle string) ([]*BuiltinActorsMetadata,
 			root == cid.MustParse("bafy2bzacea4firkyvt2zzdwqjrws5pyeluaesh6uaid246tommayr4337xpmi") {
 			continue
 		}
+		// Check our buggy manifests and exclude this one if it's listed there.
+		var isBuggyManifest bool
+		for _, m := range buggyBuiltinActorsMetadata {
+			if root == m.ManifestCid {
+				isBuggyManifest = true
+			}
+		}
+		if isBuggyManifest {
+			continue
+		}
 		bundles = append(bundles, &BuiltinActorsMetadata{
 			Network:     name,
 			Version:     actorstypes.Version(version),
