@@ -93,6 +93,8 @@ var UpgradeTeepInitialFilReserved = wholeFIL(1_400_000_000) // FIP-0100: 300M ->
 
 var UpgradeTockHeight = abi.ChainEpoch(300)
 
+var UpgradeTockFixHeight = abi.ChainEpoch(-28)
+
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandQuicknet,
 }

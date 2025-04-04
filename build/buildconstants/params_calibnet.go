@@ -111,6 +111,8 @@ const UpgradeTuktukHeight abi.ChainEpoch = 2078794
 var UpgradeTuktukPowerRampDurationEpochs = uint64(builtin.EpochsInDay * 3)
 
 // 2025-03-26T23:00:00Z
+// Calibnet was upgraded at this height but a fix needed to be applied, this was
+// done at UpgradeTockFixHeight.
 const UpgradeTeepHeight abi.ChainEpoch = 2523454
 
 var UpgradeTeepInitialFilReserved = wholeFIL(1_200_000_000) // FIP-0100: 300M -> 1.2B FIL
@@ -118,6 +120,9 @@ var UpgradeTeepInitialFilReserved = wholeFIL(1_200_000_000) // FIP-0100: 300M ->
 // This epoch, 7 days after Teep is the completion of FIP-0100 where actors will start applying
 // the new daily fee to pre-Teep sectors being extended. This is 90 days on mainnet.
 var UpgradeTockHeight abi.ChainEpoch = UpgradeTeepHeight + builtin.EpochsInDay*7
+
+// 2025-04-07T23:00:00Z
+const UpgradeTockFixHeight abi.ChainEpoch = 2558014
 
 var ConsensusMinerMinPower = abi.NewStoragePower(32 << 30)
 var PreCommitChallengeDelay = abi.ChainEpoch(150)

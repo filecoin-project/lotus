@@ -182,7 +182,7 @@ func NewEnsemble(t *testing.T, opts ...EnsembleOpt) *Ensemble {
 	if n.options.mockProofs {
 		require.NoError(t, build.UseNetworkBundle("testing-fake-proofs"))
 	} else {
-		require.NoError(t, build.UseNetworkBundle("testing"))
+		require.NoError(t, build.UseNetworkBundle(n.options.networkName))
 	}
 
 	buildconstants.EquivocationDelaySecs = 0
@@ -1110,7 +1110,7 @@ func (n *Ensemble) generateGenesis() *genesis.Template {
 		NetworkVersion:   n.genesis.version,
 		Accounts:         n.genesis.accounts,
 		Miners:           n.genesis.miners,
-		NetworkName:      "test",
+		NetworkName:      n.options.networkName,
 		Timestamp:        uint64(time.Now().Unix() - int64(n.options.pastOffset.Seconds())),
 		VerifregRootKey:  verifRoot,
 		RemainderAccount: gen.DefaultRemainderAccountActor,
