@@ -8,7 +8,7 @@
 > * [CHANGELOG_1.2x.md](./documentation/changelog/CHANGELOG_1.2x.md) - v1.20.0 to v1.29.2
 
 # UNRELEASED
-
+- test!: add test for proxy contract minting ([filecoin-project/lotus#13010](https://github.com/filecoin-project/lotus/pull/13010))
 - feat!: actors bundle v16.0.1 & special handling for calibnet ([filecoin-project/lotus#13006](https://github.com/filecoin-project/lotus/pull/13006))
 
 # Node and Miner v1.32.1 / 2025-03-28
