@@ -173,7 +173,7 @@ func init() {
 	UpgradeTuktukHeight = getUpgradeHeight("LOTUS_TUKTUK_HEIGHT", UpgradeTuktukHeight)
 	UpgradeTeepHeight = getUpgradeHeight("LOTUS_TEEP_HEIGHT", UpgradeTeepHeight)
 	UpgradeTockHeight = getUpgradeHeight("LOTUS_TOCK_HEIGHT", UpgradeTockHeight)
-  UpgradeTockFixHeight = getUpgradeHeight("LOTUS_TOCK_FIX_HEIGHT", UpgradeTockFixHeight)
+	UpgradeTockFixHeight = getUpgradeHeight("LOTUS_TOCK_FIX_HEIGHT", UpgradeTockFixHeight)
 
 	DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 		0: DrandQuicknet,
