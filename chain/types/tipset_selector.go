@@ -57,19 +57,24 @@ type TipSetCriteria interface {
 //
 // See TipSetCriteria type constraint.
 func NewTipSetSelector[T TipSetCriteria](t T) (TipSetSelector, error) {
-	switch criterion := any(t).(type) {
+	var criterion TipSetCriterion
+	switch criteria := any(t).(type) {
 	case TipSetTag:
-		return json.Marshal(TipSetCriterion{Tag: &criterion})
+		criterion.Tag = &criteria
 	case TipSetHeight:
-		return json.Marshal(TipSetCriterion{Height: &criterion})
+		criterion.Height = &criteria
 	case TipSetKey:
-		return json.Marshal(TipSetCriterion{Key: &criterion})
+		criterion.Key = &criteria
 	default:
 		// Dear Golang, this should be impossible because of the type constraint being
 		// evaluated at compile time; yet, here we are. I would panic, but then we are
 		// friends and this function returns errors anyhow.
 		return nil, xerrors.Errorf("unknown tipset slection criterion: %T", criterion)
 	}
+	if err := criterion.Validate(); err != nil {
+		return nil, xerrors.Errorf("validating tipset selector: %w", err)
+	}
+	return json.Marshal(criterion)
 }
 
 // DecodeTipSetCriterion extracts a TipSetCriterion from the given
@@ -113,8 +118,8 @@ func (tss *TipSetCriterion) Validate() error {
 			return xerrors.Errorf("validating tipset height: %w", err)
 		}
 	}
-	if criteria > 1 {
-		return xerrors.Errorf("only one tipset selection criteria must be specified, found: %v", criteria)
+	if criteria != 1 {
+		return xerrors.Errorf("exactly one tipset selection criteria must be specified, found: %v", criteria)
 	}
 	return nil
 }
@@ -140,11 +145,7 @@ type TipSetHeight struct {
 // not negative and the Anchor is valid.
 //
 // A nil or a zero-valued height is considered to be valid.
-func (tsh *TipSetHeight) Validate() error {
-	if tsh == nil {
-		// An unspecified height is valid, because it's an optional field in TipSetCriterion.
-		return nil
-	}
+func (tsh TipSetHeight) Validate() error {
 	if tsh.At < 0 {
 		return xerrors.New("invalid tipset height: epoch cannot be less than zero")
 	}

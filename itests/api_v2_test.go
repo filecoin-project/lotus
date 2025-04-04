@@ -93,9 +93,9 @@ func TestAPIV2_GetTipSetThroughRPC(t *testing.T) {
 		wantErr    string
 	}{
 		{
-			name:       "no selector",
-			request:    `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","id":1}`,
-			wantTipSet: heaviest,
+			name:    "no selector",
+			request: `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","id":1}`,
+			wantErr: "selector must be specified",
 		},
 		{
 			name:       "latest tag",

@@ -35,11 +35,10 @@ func (cm *ChainModuleV2) ChainGetTipSet(ctx context.Context, selector types.TipS
 	if err != nil {
 		return nil, xerrors.Errorf("getting selector criterion: %w", err)
 	}
+
+	// Require explicit selector.
 	if criterion == nil {
-		// Fall back to default selector, latest, if no selector is provided.
-		criterion = &types.TipSetCriterion{
-			Tag: &types.TipSetTags.Latest,
-		}
+		return nil, xerrors.Errorf("selector must be specified")
 	}
 
 	// Get tipset by key.
