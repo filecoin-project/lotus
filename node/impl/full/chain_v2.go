@@ -79,6 +79,10 @@ func (cm *ChainModuleV2) getTipSetByTag(ctx context.Context, tag types.TipSetTag
 		}
 		return nil, err
 	}
+	if cert == nil {
+		// No latest certificate. Fall back to EC finality.
+		return cm.getECFinalized(ctx)
+	}
 
 	// Extract the finalized tipeset from the certificate.
 	tsk, err := types.TipSetKeyFromBytes(cert.ECChain.Head().Key)
@@ -95,8 +99,8 @@ func (cm *ChainModuleV2) getTipSetByTag(ctx context.Context, tag types.TipSetTag
 func (cm *ChainModuleV2) getTipSetByAnchor(ctx context.Context, anchor *types.TipSetAnchor) (*types.TipSet, error) {
 	switch {
 	case anchor == nil:
-		// No anchor specified. Fall back to heaviest tipset.
-		return cm.Chain.GetHeaviestTipSet(), nil
+		// No anchor specified. Fall back to finalized tipset.
+		return cm.getTipSetByTag(ctx, types.TipSetTags.Finalized)
 	case anchor.Key == nil && anchor.Tag == nil:
 		// Anchor is zero-valued. Fall back to heaviest tipset.
 		return cm.Chain.GetHeaviestTipSet(), nil

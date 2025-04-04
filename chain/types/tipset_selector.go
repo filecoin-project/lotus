@@ -72,7 +72,7 @@ func (tss TipSetSelector) Validate() error {
 //
 // The Anchor may optionally be specified as TipSetTag, or TipSetKey. If
 // specified, the selected tipset is guaranteed to be a child of the tipset
-// specified by the anchor at the given height. Otherwise, the "latest" TipSetTag
+// specified by the anchor at the given height. Otherwise, the "finalized" TipSetTag
 // is used as the Anchor.
 type TipSetHeight struct {
 	At       abi.ChainEpoch `json:"at,omitempty"`
@@ -93,7 +93,7 @@ func (tsh TipSetHeight) Validate() error {
 
 // TipSetAnchor represents a tipset in the chain that can be used as an anchor
 // for selecting a tipset. The anchor may be specified as a TipSetTag or a
-// TipSetKey but not both. Defaults to TipSetTag "latest" if neither are
+// TipSetKey but not both. Defaults to TipSetTag "finalized" if neither are
 // specified.
 //
 // See TipSetHeight.
@@ -114,7 +114,7 @@ type TipSetAnchor struct {
 // of TipSetKey or TipSetTag is specified. Otherwise, it returns an error.
 //
 // Note that a nil or a zero-valued anchor is valid, and is considered to be
-// equivalent to the default anchor, which is the tipset tagged as "latest".
+// equivalent to the default anchor, which is the tipset tagged as "finalized".
 func (tsa *TipSetAnchor) Validate() error {
 	if tsa == nil {
 		// An unspecified Anchor is valid, because it's an optional field, and falls back

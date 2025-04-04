@@ -94,19 +94,19 @@ func TestAPIV2_GetTipSetThroughRPC(t *testing.T) {
 		wantResponseStatus int
 	}{
 		{
-			name:               "no selector",
+			name:               "no selector is error",
 			request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet"],"id":1}`,
 			wantErr:            "Parse error",
 			wantResponseStatus: http.StatusInternalServerError,
 		},
 		{
-			name:               "latest tag",
+			name:               "latest tag is ok",
 			request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"tag":"latest"}],"id":1}`,
 			wantTipSet:         heaviest,
 			wantResponseStatus: http.StatusOK,
 		},
 		{
-			name: "finalized tag when f3 disabled",
+			name: "finalized tag when f3 disabled falls back to ec",
 			when: func(t *testing.T) {
 				mockF3.running = false
 			},
@@ -115,7 +115,7 @@ func TestAPIV2_GetTipSetThroughRPC(t *testing.T) {
 			wantResponseStatus: http.StatusOK,
 		},
 		{
-			name: "finalized tag",
+			name: "finalized tag is ok",
 			when: func(t *testing.T) {
 				mockF3.running = true
 				mockF3.latestCertErr = nil
@@ -126,7 +126,7 @@ func TestAPIV2_GetTipSetThroughRPC(t *testing.T) {
 			wantResponseStatus: http.StatusOK,
 		},
 		{
-			name: "finalized tag when f3 not ready",
+			name: "finalized tag when f3 not ready falls back to ec",
 			when: func(t *testing.T) {
 				mockF3.running = true
 				mockF3.latestCert = nil
@@ -137,7 +137,7 @@ func TestAPIV2_GetTipSetThroughRPC(t *testing.T) {
 			wantResponseStatus: http.StatusOK,
 		},
 		{
-			name: "finalized tag when f3 fails",
+			name: "finalized tag when f3 fails is error",
 			when: func(t *testing.T) {
 				mockF3.running = true
 				mockF3.latestCert = nil
@@ -148,7 +148,7 @@ func TestAPIV2_GetTipSetThroughRPC(t *testing.T) {
 			wantResponseStatus: http.StatusOK,
 		},
 		{
-			name: "latest tag when f3 fails",
+			name: "latest tag when f3 fails is ok",
 			when: func(t *testing.T) {
 				mockF3.running = true
 				mockF3.latestCert = nil
@@ -170,34 +170,69 @@ func TestAPIV2_GetTipSetThroughRPC(t *testing.T) {
 			wantResponseStatus: http.StatusOK,
 		},
 		{
-			name: "height without f3",
+			name: "height with no anchor without f3 falling back to ec is ok",
 			when: func(t *testing.T) {
 				mockF3.running = false
+				mockF3.latestCert = nil
+				mockF3.latestCertErr = nil
 			},
-			request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"height":{"at":321}}],"id":1}`,
-			wantTipSet:         tipSetAtHeight(321),
+			request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"height":{"at":20}}],"id":1}`,
+			wantTipSet:         tipSetAtHeight(20),
 			wantResponseStatus: http.StatusOK,
 		},
 		{
-			name: "height when f3 fails",
+			name: "height with no anchor before finalized epoch is ok",
+			when: func(t *testing.T) {
+				mockF3.running = true
+				mockF3.latestCert = plausibleCert(t)
+				mockF3.latestCertErr = nil
+			},
+			request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"height":{"at":111}}],"id":1}`,
+			wantTipSet:         tipSetAtHeight(111),
+			wantResponseStatus: http.StatusOK,
+		},
+		{
+			name: "height with no anchor after finalized epoch is error",
+			when: func(t *testing.T) {
+				mockF3.running = true
+				mockF3.latestCert = plausibleCert(t)
+				mockF3.latestCertErr = nil
+			},
+			request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"height":{"at":145}}],"id":1}`,
+			wantErr:            "looking for tipset with height greater than start point",
+			wantResponseStatus: http.StatusOK,
+		},
+		{
+			name: "height with no anchor when f3 fails is error",
 			when: func(t *testing.T) {
 				mockF3.running = true
 				mockF3.latestCert = nil
 				mockF3.latestCertErr = internalF3Error
 			},
 			request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"height":{"at":456}}],"id":1}`,
-			wantTipSet:         tipSetAtHeight(456),
+			wantErr:            internalF3Error.Error(),
 			wantResponseStatus: http.StatusOK,
 		},
 		{
-			name: "height with anchor to finalized",
+			name: "height with no anchor and nil f3 cert falling back to ec fails",
+			when: func(t *testing.T) {
+				mockF3.running = true
+				mockF3.latestCert = nil
+				mockF3.latestCertErr = nil
+			},
+			request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"height":{"at":111}}],"id":1}`,
+			wantErr:            "looking for tipset with height greater than start point",
+			wantResponseStatus: http.StatusOK,
+		},
+		{
+			name: "height with anchor to latest",
 			when: func(t *testing.T) {
 				mockF3.running = true
 				mockF3.latestCert = plausibleCert(t)
 				mockF3.latestCertErr = nil
 			},
-			request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"height":{"at":111,"anchor":{"tag":"finalized"}}}],"id":1}`,
-			wantTipSet:         tipSetAtHeight(111),
+			request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"height":{"at":890,"anchor":{"tag":"latest"}}}],"id":1}`,
+			wantTipSet:         tipSetAtHeight(890),
 			wantResponseStatus: http.StatusOK,
 		},
 	} {
