@@ -23,6 +23,7 @@ type ensembleOpts struct {
 	verifiedRoot genesisAccount
 	accounts     []genesisAccount
 	mockProofs   bool
+	networkName  string
 
 	upgradeSchedule stmgr.UpgradeSchedule
 }
@@ -33,6 +34,7 @@ var DefaultEnsembleOpts = ensembleOpts{
 		Height:  -1,
 		Network: buildconstants.TestNetworkVersion,
 	}},
+	networkName: "testing", // to match the network bundle
 }
 
 // MockProofs activates mock proofs for the entire ensemble.
@@ -58,6 +60,14 @@ func RootVerifier(key *key.Key, balance abi.TokenAmount) EnsembleOpt {
 	return func(opts *ensembleOpts) error {
 		opts.verifiedRoot.key = key
 		opts.verifiedRoot.initialBalance = balance
+		return nil
+	}
+}
+
+// NetworkName sets the network name for the ensemble in the genesis template.
+func NetworkName(name string) EnsembleOpt {
+	return func(opts *ensembleOpts) error {
+		opts.networkName = name
 		return nil
 	}
 }
