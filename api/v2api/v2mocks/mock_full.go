@@ -10,8 +10,6 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 
-	jsonrpc "github.com/filecoin-project/go-jsonrpc"
-
 	types "github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -39,7 +37,7 @@ func (m *MockFullNode) EXPECT() *MockFullNodeMockRecorder {
 }
 
 // ChainGetTipSet mocks base method.
-func (m *MockFullNode) ChainGetTipSet(arg0 context.Context, arg1 jsonrpc.RawParams) (*types.TipSet, error) {
+func (m *MockFullNode) ChainGetTipSet(arg0 context.Context, arg1 types.TipSetSelector) (*types.TipSet, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ChainGetTipSet", arg0, arg1)
 	ret0, _ := ret[0].(*types.TipSet)
