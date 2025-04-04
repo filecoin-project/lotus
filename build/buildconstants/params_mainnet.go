@@ -127,12 +127,15 @@ var UpgradeTuktukHeight abi.ChainEpoch = 4461240
 // Tuktuk migration. along with a RampStartEpoch matching the upgrade height.
 var UpgradeTuktukPowerRampDurationEpochs = uint64(builtin.EpochsInYear)
 
-// 2025-04-10T23:00:00Z
-var UpgradeTeepHeight = abi.ChainEpoch(4867320)
+// 2025-04-14T23:00:00Z
+var UpgradeTeepHeight = abi.ChainEpoch(4878840)
 
 // This epoch, 90 days after Teep is the completion of FIP-0100 where actors will start applying
 // the new daily fee to pre-Teep sectors being extended.
 var UpgradeTockHeight = UpgradeTeepHeight + builtin.EpochsInDay*90
+
+// Only applied to calibnet which was already upgraded to Teep&Tock
+var UpgradeTockFixHeight = abi.ChainEpoch(-1)
 
 var UpgradeTeepInitialFilReserved = InitialFilReserved // FIP-0100: no change for mainnet
 

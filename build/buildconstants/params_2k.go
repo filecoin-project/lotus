@@ -93,6 +93,8 @@ var UpgradeTeepInitialFilReserved = wholeFIL(1_400_000_000) // FIP-0100: 300M ->
 
 var UpgradeTockHeight = abi.ChainEpoch(300)
 
+var UpgradeTockFixHeight = abi.ChainEpoch(-28)
+
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandQuicknet,
 }
@@ -171,6 +173,7 @@ func init() {
 	UpgradeTuktukHeight = getUpgradeHeight("LOTUS_TUKTUK_HEIGHT", UpgradeTuktukHeight)
 	UpgradeTeepHeight = getUpgradeHeight("LOTUS_TEEP_HEIGHT", UpgradeTeepHeight)
 	UpgradeTockHeight = getUpgradeHeight("LOTUS_TOCK_HEIGHT", UpgradeTockHeight)
+	UpgradeTockFixHeight = getUpgradeHeight("LOTUS_TOCK_FIX_HEIGHT", UpgradeTockFixHeight)
 
 	DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 		0: DrandQuicknet,

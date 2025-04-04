@@ -79,6 +79,8 @@ var UpgradeTeepInitialFilReserved = InitialFilReserved // FIP-0100: no change fo
 
 const UpgradeTockHeight abi.ChainEpoch = 100
 
+const UpgradeTockFixHeight abi.ChainEpoch = -29
+
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandQuicknet,
 }

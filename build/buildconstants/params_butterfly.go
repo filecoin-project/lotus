@@ -79,6 +79,7 @@ var UpgradeTeepInitialFilReserved = wholeFIL(1_600_000_000) // FIP-0100: 300M ->
 
 // ??????
 const UpgradeTockHeight = UpgradeTeepHeight + builtin.EpochsInDay*2
+const UpgradeTockFixHeight = -29
 
 var ConsensusMinerMinPower = abi.NewStoragePower(2 << 30)
 var PreCommitChallengeDelay = abi.ChainEpoch(150)
