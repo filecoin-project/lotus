@@ -39,11 +39,7 @@ type Chain interface {
 	//
 	// Example usage:
 	//
-	//	selector, err := types.NewTipSetSelector(types.TipsetTags.Latest)
-	//	if err != nil {
-	//		fmt.Println("Error creating tipset selector:", err)
-	//		return
-	//	}
+	//	selector := types.TipSetSelector{Tag: types.TipsetTags.Latest}
 	//	tipSet, err := node.ChainGetTipSet(context.Background(), selector)
 	//	if err != nil {
 	//		fmt.Println("Error retrieving tipset:", err)

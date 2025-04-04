@@ -1,16 +1,13 @@
 package types
 
 import (
-	"encoding/json"
-
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 )
 
 // TipSetTag is a string that represents a pointer to a tipset.
-// See TipSetCriterion.
+// See TipSetSelector.
 type TipSetTag string
 
 // TipSetTags represents the predefined set of tags for tipsets. The supported
@@ -27,11 +24,7 @@ var TipSetTags = struct {
 	Finalized: TipSetTag("finalized"),
 }
 
-// TipSetSelector is a JSON-RPC parameter type that can be used to select a tipset.
-// See NewTipSetSelector, TipSetCriterion.
-type TipSetSelector = jsonrpc.RawParams
-
-// TipSetCriterion captures the selection criteria for a tipset.
+// TipSetSelector captures the selection criteria for a tipset.
 //
 // The supported criterion for selection is one of the following:
 //   - Key: the tipset key, see TipSetKey.
@@ -40,71 +33,17 @@ type TipSetSelector = jsonrpc.RawParams
 //
 // At most, one such criterion can be specified at a time. Otherwise, the
 // criterion is considered to be invalid. See Validate.
-type TipSetCriterion struct {
+type TipSetSelector struct {
 	Key    *TipSetKey    `json:"key,omitempty"`
 	Height *TipSetHeight `json:"height,omitempty"`
 	Tag    *TipSetTag    `json:"tag,omitempty"`
 }
 
-// TipSetCriteria is a union of all possible criteria for selecting a tipset.
-type TipSetCriteria interface {
-	TipSetTag | TipSetHeight | TipSetKey
-}
-
-// NewTipSetSelector creates a new TipSetSelector from the given criterion. The
-// criterion must conform to one of the supported types: TipSetTag, TipSetHeight,
-// or TipSetKey.
-//
-// See TipSetCriteria type constraint.
-func NewTipSetSelector[T TipSetCriteria](t T) (TipSetSelector, error) {
-	var criterion TipSetCriterion
-	switch criteria := any(t).(type) {
-	case TipSetTag:
-		criterion.Tag = &criteria
-	case TipSetHeight:
-		criterion.Height = &criteria
-	case TipSetKey:
-		criterion.Key = &criteria
-	default:
-		// Dear Golang, this should be impossible because of the type constraint being
-		// evaluated at compile time; yet, here we are. I would panic, but then we are
-		// friends and this function returns errors anyhow.
-		return nil, xerrors.Errorf("unknown tipset slection criterion: %T", criterion)
-	}
-	if err := criterion.Validate(); err != nil {
-		return nil, xerrors.Errorf("validating tipset selector: %w", err)
-	}
-	return json.Marshal(criterion)
-}
-
-// DecodeTipSetCriterion extracts a TipSetCriterion from the given
-// TipSetSelector. The returned criterion is validated before returning. If the
-// selector is empty, a nil criterion is returned.
-func DecodeTipSetCriterion(tss TipSetSelector) (*TipSetCriterion, error) {
-	if len(tss) == 0 || string(tss) == "null" {
-		return nil, nil
-	}
-
-	var criterion TipSetCriterion
-	if err := json.Unmarshal(tss, &criterion); err != nil {
-		return nil, xerrors.Errorf("decoding tipset selector: %w", err)
-	}
-	if err := criterion.Validate(); err != nil {
-		return nil, xerrors.Errorf("validating tipset criterion: %w", err)
-	}
-	return &criterion, nil
-}
-
-// Validate ensures that the TipSetCriterion is valid. It checks that only one of
+// Validate ensures that the TipSetSelector is valid. It checks that only one of
 // the selection criteria is specified. If no criteria are specified, it returns
 // nil, indicating that the default selection criteria should be used as defined
 // by the Lotus API Specification.
-func (tss *TipSetCriterion) Validate() error {
-	if tss == nil {
-		// Empty TipSetSelector is valid and implies whatever the default is dictated to
-		// be by the API, which happens to be the tipset tagged as "latest".
-		return nil
-	}
+func (tss TipSetSelector) Validate() error {
 	var criteria int
 	if tss.Key != nil {
 		criteria++

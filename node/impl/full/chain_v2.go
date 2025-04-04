@@ -31,33 +31,27 @@ type ChainModuleV2 struct {
 var _ ChainModuleAPIv2 = (*ChainModuleV2)(nil)
 
 func (cm *ChainModuleV2) ChainGetTipSet(ctx context.Context, selector types.TipSetSelector) (*types.TipSet, error) {
-	criterion, err := types.DecodeTipSetCriterion(selector)
-	if err != nil {
-		return nil, xerrors.Errorf("getting selector criterion: %w", err)
-	}
-
-	// Require explicit selector.
-	if criterion == nil {
-		return nil, xerrors.Errorf("selector must be specified")
+	if err := selector.Validate(); err != nil {
+		return nil, xerrors.Errorf("validating selector: %w", err)
 	}
 
 	// Get tipset by key.
-	if criterion.Key != nil {
-		return cm.Chain.GetTipSetFromKey(ctx, *criterion.Key)
+	if selector.Key != nil {
+		return cm.Chain.GetTipSetFromKey(ctx, *selector.Key)
 	}
 
 	// Get tipset by height.
-	if criterion.Height != nil {
-		anchor, err := cm.getTipSetByAnchor(ctx, criterion.Height.Anchor)
+	if selector.Height != nil {
+		anchor, err := cm.getTipSetByAnchor(ctx, selector.Height.Anchor)
 		if err != nil {
 			return nil, xerrors.Errorf("getting anchor from tipset: %w", err)
 		}
-		return cm.Chain.GetTipsetByHeight(ctx, criterion.Height.At, anchor, criterion.Height.Previous)
+		return cm.Chain.GetTipsetByHeight(ctx, selector.Height.At, anchor, selector.Height.Previous)
 	}
 
 	// Get tipset by tag, either latest or finalized.
-	if criterion.Tag != nil {
-		return cm.getTipSetByTag(ctx, *criterion.Tag)
+	if selector.Tag != nil {
+		return cm.getTipSetByTag(ctx, *selector.Tag)
 	}
 
 	return nil, xerrors.Errorf("no tipset found for selector")

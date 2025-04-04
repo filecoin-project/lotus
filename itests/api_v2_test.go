@@ -86,29 +86,33 @@ func TestAPIV2_GetTipSetThroughRPC(t *testing.T) {
 	// through RPC, and showcase what the raw request on the wire would look like at
 	// Layer 7 of ISO model.
 	for _, test := range []struct {
-		name       string
-		when       func(t *testing.T)
-		request    string
-		wantTipSet func(t *testing.T) *types.TipSet
-		wantErr    string
+		name               string
+		when               func(t *testing.T)
+		request            string
+		wantTipSet         func(t *testing.T) *types.TipSet
+		wantErr            string
+		wantResponseStatus int
 	}{
 		{
-			name:    "no selector",
-			request: `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","id":1}`,
-			wantErr: "selector must be specified",
+			name:               "no selector",
+			request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet"],"id":1}`,
+			wantErr:            "Parse error",
+			wantResponseStatus: http.StatusInternalServerError,
 		},
 		{
-			name:       "latest tag",
-			request:    `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":{"tag":"latest"},"id":1}`,
-			wantTipSet: heaviest,
+			name:               "latest tag",
+			request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"tag":"latest"}],"id":1}`,
+			wantTipSet:         heaviest,
+			wantResponseStatus: http.StatusOK,
 		},
 		{
 			name: "finalized tag when f3 disabled",
 			when: func(t *testing.T) {
 				mockF3.running = false
 			},
-			request:    `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":{"tag":"finalized"},"id":1}`,
-			wantTipSet: ecFinalized,
+			request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"tag":"finalized"}],"id":1}`,
+			wantTipSet:         ecFinalized,
+			wantResponseStatus: http.StatusOK,
 		},
 		{
 			name: "finalized tag",
@@ -117,8 +121,9 @@ func TestAPIV2_GetTipSetThroughRPC(t *testing.T) {
 				mockF3.latestCertErr = nil
 				mockF3.latestCert = plausibleCert(t)
 			},
-			request:    `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":{"tag":"finalized"},"id":1}`,
-			wantTipSet: tipSetAtHeight(f3FinalizedEpoch),
+			request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"tag":"finalized"}],"id":1}`,
+			wantTipSet:         tipSetAtHeight(f3FinalizedEpoch),
+			wantResponseStatus: http.StatusOK,
 		},
 		{
 			name: "finalized tag when f3 not ready",
@@ -127,8 +132,9 @@ func TestAPIV2_GetTipSetThroughRPC(t *testing.T) {
 				mockF3.latestCert = nil
 				mockF3.latestCertErr = api.ErrF3NotReady
 			},
-			request:    `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":{"tag":"finalized"},"id":1}`,
-			wantTipSet: ecFinalized,
+			request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"tag":"finalized"}],"id":1}`,
+			wantTipSet:         ecFinalized,
+			wantResponseStatus: http.StatusOK,
 		},
 		{
 			name: "finalized tag when f3 fails",
@@ -137,8 +143,9 @@ func TestAPIV2_GetTipSetThroughRPC(t *testing.T) {
 				mockF3.latestCert = nil
 				mockF3.latestCertErr = internalF3Error
 			},
-			request: `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":{"tag":"finalized"},"id":1}`,
-			wantErr: internalF3Error.Error(),
+			request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"tag":"finalized"}],"id":1}`,
+			wantErr:            internalF3Error.Error(),
+			wantResponseStatus: http.StatusOK,
 		},
 		{
 			name: "latest tag when f3 fails",
@@ -147,8 +154,9 @@ func TestAPIV2_GetTipSetThroughRPC(t *testing.T) {
 				mockF3.latestCert = nil
 				mockF3.latestCertErr = internalF3Error
 			},
-			request:    `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":{"tag":"latest"},"id":1}`,
-			wantTipSet: heaviest,
+			request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"tag":"latest"}],"id":1}`,
+			wantTipSet:         heaviest,
+			wantResponseStatus: http.StatusOK,
 		},
 		{
 			name: "finalized tag when f3 is broken",
@@ -157,16 +165,18 @@ func TestAPIV2_GetTipSetThroughRPC(t *testing.T) {
 				mockF3.latestCert = implausibleCert
 				mockF3.latestCertErr = nil
 			},
-			request: `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":{"tag":"finalized"},"id":1}`,
-			wantErr: "decoding latest f3 cert tipset key",
+			request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"tag":"finalized"}],"id":1}`,
+			wantErr:            "decoding latest f3 cert tipset key",
+			wantResponseStatus: http.StatusOK,
 		},
 		{
 			name: "height without f3",
 			when: func(t *testing.T) {
 				mockF3.running = false
 			},
-			request:    `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":{"height":{"at":321}},"id":1}`,
-			wantTipSet: tipSetAtHeight(321),
+			request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"height":{"at":321}}],"id":1}`,
+			wantTipSet:         tipSetAtHeight(321),
+			wantResponseStatus: http.StatusOK,
 		},
 		{
 			name: "height when f3 fails",
@@ -175,8 +185,9 @@ func TestAPIV2_GetTipSetThroughRPC(t *testing.T) {
 				mockF3.latestCert = nil
 				mockF3.latestCertErr = internalF3Error
 			},
-			request:    `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":{"height":{"at":456}},"id":1}`,
-			wantTipSet: tipSetAtHeight(456),
+			request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"height":{"at":456}}],"id":1}`,
+			wantTipSet:         tipSetAtHeight(456),
+			wantResponseStatus: http.StatusOK,
 		},
 		{
 			name: "height with anchor to finalized",
@@ -185,8 +196,9 @@ func TestAPIV2_GetTipSetThroughRPC(t *testing.T) {
 				mockF3.latestCert = plausibleCert(t)
 				mockF3.latestCertErr = nil
 			},
-			request:    `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":{"height":{"at":111,"anchor":{"tag":"finalized"}}},"id":1}`,
-			wantTipSet: tipSetAtHeight(111),
+			request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"height":{"at":111,"anchor":{"tag":"finalized"}}}],"id":1}`,
+			wantTipSet:         tipSetAtHeight(111),
+			wantResponseStatus: http.StatusOK,
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -194,7 +206,7 @@ func TestAPIV2_GetTipSetThroughRPC(t *testing.T) {
 				test.when(t)
 			}
 			gotResponseCode, gotResponseBody := subject.DoRawRPCRequest(t, 2, test.request)
-			require.Equal(t, http.StatusOK, gotResponseCode, string(gotResponseBody))
+			require.Equal(t, test.wantResponseStatus, gotResponseCode, string(gotResponseBody))
 			var resultOrError struct {
 				Result *types.TipSet `json:"result,omitempty"`
 				Error  *struct {
