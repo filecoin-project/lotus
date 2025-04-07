@@ -12,40 +12,26 @@ import (
 
 var ErrNotSupported = xerrors.New("method not supported")
 
-type ChainStruct struct {
-	Internal ChainMethods
-}
-
-type ChainMethods struct {
-	ChainGetTipSet func(p0 context.Context, p1 types.TipSetSelector) (*types.TipSet, error) `perm:"read"`
-}
-
-type ChainStub struct {
-}
-
 type FullNodeStruct struct {
-	ChainStruct
-
 	Internal FullNodeMethods
 }
 
 type FullNodeMethods struct {
+	ChainGetTipSet func(p0 context.Context, p1 types.TipSetSelector) (*types.TipSet, error) `perm:"read"`
 }
 
 type FullNodeStub struct {
-	ChainStub
 }
 
-func (s *ChainStruct) ChainGetTipSet(p0 context.Context, p1 types.TipSetSelector) (*types.TipSet, error) {
+func (s *FullNodeStruct) ChainGetTipSet(p0 context.Context, p1 types.TipSetSelector) (*types.TipSet, error) {
 	if s.Internal.ChainGetTipSet == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.ChainGetTipSet(p0, p1)
 }
 
-func (s *ChainStub) ChainGetTipSet(p0 context.Context, p1 types.TipSetSelector) (*types.TipSet, error) {
+func (s *FullNodeStub) ChainGetTipSet(p0 context.Context, p1 types.TipSetSelector) (*types.TipSet, error) {
 	return nil, ErrNotSupported
 }
 
-var _ Chain = new(ChainStruct)
 var _ FullNode = new(FullNodeStruct)

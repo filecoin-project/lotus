@@ -15,12 +15,7 @@ type FullNode interface {
 	// MethodGroup: Chain
 	// The Chain method group contains methods for interacting with
 	// the blockchain.
-	Chain
-}
 
-// Chain defines a component of the FullNode interface that focuses on
-// functionalities related to blockchain tipsets.
-type Chain interface {
 	// ChainGetTipSet retrieves a tipset that corresponds to the specified selector
 	// criteria. The criteria can be provided in the form of a tipset key, a
 	// blockchain height including an optional fallback to previous non-null tipset,
@@ -39,7 +34,7 @@ type Chain interface {
 	//
 	// Example usage:
 	//
-	//	selector := types.TipSetSelector{Tag: types.TipsetTags.Latest}
+	//	selector := types.TipSetSelectors.Latest
 	//	tipSet, err := node.ChainGetTipSet(context.Background(), selector)
 	//	if err != nil {
 	//		fmt.Println("Error retrieving tipset:", err)

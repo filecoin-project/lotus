@@ -10,7 +10,6 @@ import (
 	"github.com/filecoin-project/go-f3"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/api/v2api"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/lf3"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -18,7 +17,7 @@ import (
 )
 
 type ChainModuleAPIv2 interface {
-	v2api.Chain
+	ChainGetTipSet(context.Context, types.TipSetSelector) (*types.TipSet, error)
 }
 
 type ChainModuleV2 struct {

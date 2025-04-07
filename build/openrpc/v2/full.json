@@ -1,0 +1,95 @@
+{
+    "openrpc": "1.2.6",
+    "info": {
+        "title": "Lotus RPC API",
+        "version": "1.32.2-dev"
+    },
+    "methods": [
+        {
+            "name": "Filecoin.ChainGetTipSet",
+            "description": "```go\nfunc (s *FullNodeStruct) ChainGetTipSet(p0 context.Context, p1 types.TipSetSelector) (*types.TipSet, error) {\n\tif s.Internal.ChainGetTipSet == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.ChainGetTipSet(p0, p1)\n}\n```",
+            "summary": "ChainGetTipSet retrieves a tipset that corresponds to the specified selector\ncriteria. The criteria can be provided in the form of a tipset key, a\nblockchain height including an optional fallback to previous non-null tipset,\nor a designated tag such as \"latest\" or \"finalized\".\n\nThe \"Finalized\" tag returns the tipset that is considered finalized based on\nthe consensus protocol of the current node, either Filecoin EC Finality or\nFilecoin Fast Finality (F3). The finalized tipset selection gracefully falls\nback to EC finality in cases where F3 isn't ready or not running.\n\nIn a case where no selector is provided, the method defaults to return the\ntipset tagged with \"latest\".\n\nFor more details, refer to the types.TipSetSelector and\ntypes.NewTipSetSelector.\n\nExample usage:\n\n\tselector := types.TipSetSelectors.Latest\n\ttipSet, err := node.ChainGetTipSet(context.Background(), selector)\n\tif err != nil {\n\t\tfmt.Println(\"Error retrieving tipset:\", err)\n\t\treturn\n\t}\n\tfmt.Printf(\"Latest TipSet: %v\\n\", tipSet)\n",
+            "paramStructure": "by-position",
+            "params": [
+                {
+                    "name": "p1",
+                    "description": "types.TipSetSelector",
+                    "summary": "",
+                    "schema": {
+                        "examples": [
+                            {
+                                "tag": "finalized"
+                            }
+                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                            "height": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "anchor": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "key": {
+                                                "additionalProperties": false,
+                                                "type": "object"
+                                            },
+                                            "tag": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "type": "object"
+                                    },
+                                    "at": {
+                                        "title": "number",
+                                        "type": "number"
+                                    },
+                                    "previous": {
+                                        "type": "boolean"
+                                    }
+                                },
+                                "type": "object"
+                            },
+                            "key": {
+                                "additionalProperties": false,
+                                "type": "object"
+                            },
+                            "tag": {
+                                "type": "string"
+                            }
+                        },
+                        "type": [
+                            "object"
+                        ]
+                    },
+                    "required": true,
+                    "deprecated": false
+                }
+            ],
+            "result": {
+                "name": "*types.TipSet",
+                "description": "*types.TipSet",
+                "summary": "",
+                "schema": {
+                    "examples": [
+                        {
+                            "Cids": null,
+                            "Blocks": null,
+                            "Height": 0
+                        }
+                    ],
+                    "additionalProperties": false,
+                    "type": [
+                        "object"
+                    ]
+                },
+                "required": true,
+                "deprecated": false
+            },
+            "deprecated": false,
+            "externalDocs": {
+                "description": "Github remote link",
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L26"
+            }
+        }
+    ]
+}

@@ -15,6 +15,7 @@ func main() {
 	lets.SetLimit(1) // TODO: Investigate why this can't run in parallel.
 	lets.Go(generateApiFull)
 	lets.Go(generateApiV0Methods)
+	lets.Go(generateApiV2Methods)
 	lets.Go(generateStorage)
 	lets.Go(generateWorker)
 	lets.Go(generateOpenRpcGateway)
@@ -50,6 +51,16 @@ func generateApiV0Methods() error {
 		return err
 	} else {
 		return generateMarkdown("documentation/en/api-v0-methods.md", "FullNode", "v0api", ainfo)
+	}
+}
+
+func generateApiV2Methods() error {
+	if ainfo, err := docgen.ParseApiASTInfo("api/v2api/full.go", "FullNode", "v2api", "./api/v2api"); err != nil {
+		return err
+	} else if err := generateMarkdown("documentation/en/api-v2-unstable-methods.md", "FullNode", "v2api", ainfo); err != nil {
+		return err
+	} else {
+		return generateOpenRpc("build/openrpc/v2/full.json", "FullNode", "v2api", ainfo)
 	}
 }
 
