@@ -14,11 +14,11 @@ func TestTipSetSelector_Marshalling(t *testing.T) {
 		name     string
 		subject  types.TipSetSelector
 		wantJson string
-		wantErr  bool
+		wantErr  string
 	}{
 		{
 			name:    "zero-valued",
-			wantErr: true,
+			wantErr: "exactly one tipset selection criteria must be specified, found: 0",
 		},
 		{
 			name:     "height",
@@ -36,12 +36,19 @@ func TestTipSetSelector_Marshalling(t *testing.T) {
 				Tag: &types.TipSetTags.Finalized,
 				Key: &types.TipSetKey{},
 			}),
-			wantErr: true,
+			wantErr: "at most one of key or tag",
+		},
+		{
+			name: "height with no epoch",
+			subject: types.TipSetSelector{
+				Height: &types.TipSetHeight{},
+			},
+			wantErr: "epoch must be specified",
 		},
 		{
 			name:    "invalid height epoch",
 			subject: types.TipSetSelectors.Height(-1, false, nil),
-			wantErr: true,
+			wantErr: "epoch cannot be less than zero",
 		},
 		{
 			name:     "key",
@@ -61,8 +68,8 @@ func TestTipSetSelector_Marshalling(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			err := test.subject.Validate()
-			if test.wantErr {
-				require.Error(t, err)
+			if test.wantErr != "" {
+				require.ErrorContains(t, err, test.wantErr)
 			} else {
 				require.NoError(t, err)
 				gotMarshalled, err := json.Marshal(test.subject)

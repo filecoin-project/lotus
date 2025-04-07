@@ -33,7 +33,7 @@ var (
 		Latest:    TipSetSelector{Tag: &TipSetTags.Latest},
 		Finalized: TipSetSelector{Tag: &TipSetTags.Finalized},
 		Height: func(height abi.ChainEpoch, previous bool, anchor *TipSetAnchor) TipSetSelector {
-			return TipSetSelector{Height: &TipSetHeight{At: height, Previous: previous, Anchor: anchor}}
+			return TipSetSelector{Height: &TipSetHeight{At: &height, Previous: previous, Anchor: anchor}}
 		},
 		Key: func(key TipSetKey) TipSetSelector { return TipSetSelector{Key: &key} },
 	}
@@ -107,9 +107,9 @@ func (tss TipSetSelector) Validate() error {
 // specified by the anchor at the given height. Otherwise, the "finalized" TipSetTag
 // is used as the Anchor.
 type TipSetHeight struct {
-	At       abi.ChainEpoch `json:"at,omitempty"`
-	Previous bool           `json:"previous,omitempty"`
-	Anchor   *TipSetAnchor  `json:"anchor,omitempty"`
+	At       *abi.ChainEpoch `json:"at,omitempty"`
+	Previous bool            `json:"previous,omitempty"`
+	Anchor   *TipSetAnchor   `json:"anchor,omitempty"`
 }
 
 // Validate ensures that the TipSetHeight is valid. It checks that the height is
@@ -117,7 +117,10 @@ type TipSetHeight struct {
 //
 // A nil or a zero-valued height is considered to be valid.
 func (tsh TipSetHeight) Validate() error {
-	if tsh.At < 0 {
+	if tsh.At == nil {
+		return xerrors.New("invalid tipset height: at epoch must be specified")
+	}
+	if *tsh.At < 0 {
 		return xerrors.New("invalid tipset height: epoch cannot be less than zero")
 	}
 	return tsh.Anchor.Validate()

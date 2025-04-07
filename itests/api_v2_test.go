@@ -181,6 +181,12 @@ func TestAPIV2_GetTipSetThroughRPC(t *testing.T) {
 			wantResponseStatus: http.StatusOK,
 		},
 		{
+			name:               "height with no epoch",
+			request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"height":{}}],"id":1}`,
+			wantErr:            "epoch must be specified",
+			wantResponseStatus: http.StatusOK,
+		},
+		{
 			name: "height with no anchor before finalized epoch is ok",
 			when: func(t *testing.T) {
 				mockF3.running = true

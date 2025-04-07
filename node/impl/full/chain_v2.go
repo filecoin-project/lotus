@@ -46,7 +46,7 @@ func (cm *ChainModuleV2) ChainGetTipSet(ctx context.Context, selector types.TipS
 		if err != nil {
 			return nil, xerrors.Errorf("getting anchor from tipset: %w", err)
 		}
-		return cm.Chain.GetTipsetByHeight(ctx, selector.Height.At, anchor, selector.Height.Previous)
+		return cm.Chain.GetTipsetByHeight(ctx, *selector.Height.At, anchor, selector.Height.Previous)
 	}
 
 	// Get tipset by tag, either latest or finalized.
