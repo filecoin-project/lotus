@@ -17,8 +17,8 @@ the consensus protocol of the current node, either Filecoin EC Finality or
 Filecoin Fast Finality (F3). The finalized tipset selection gracefully falls
 back to EC finality in cases where F3 isn't ready or not running.
 
-In a case where no selector is provided, the method defaults to return the
-tipset tagged with "latest".
+In a case where no selector is provided, an error is returned. The selector
+must be explicitly specified.
 
 For more details, refer to the types.TipSetSelector and
 types.NewTipSetSelector.
