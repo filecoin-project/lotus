@@ -77,7 +77,7 @@ import (
 var migrationsCmd = &cli.Command{
 	Name:        "migrate-state",
 	Description: "Run a network upgrade migration",
-	ArgsUsage:   "[new network version, block to look back from]",
+	ArgsUsage:   `<network version or fix specifier (e.g. "tock-fix")> <CID of block to look back from>`,
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "repo",
@@ -101,14 +101,25 @@ var migrationsCmd = &cli.Command{
 			return lcli.IncorrectNumArgs(cctx)
 		}
 
-		nv, err := strconv.ParseUint(cctx.Args().Get(0), 10, 32)
-		if err != nil {
-			return fmt.Errorf("failed to parse network version: %w", err)
-		}
+		var (
+			nv                   network.Version
+			upgradeActorsFunc    UpgradeActorsFunc
+			preUpgradeActorsFunc PreUpgradeActorsFunc
+			checkInvariantsFunc  CheckInvariantsFunc
+		)
 
-		upgradeActorsFunc, preUpgradeActorsFunc, checkInvariantsFunc, err := getMigrationFuncsForNetwork(network.Version(nv))
-		if err != nil {
-			return err
+		if nvi, err := strconv.ParseUint(cctx.Args().Get(0), 10, 32); err != nil {
+			// not a specific network version number, treat it as a string and check predefined strings
+			nv, upgradeActorsFunc, preUpgradeActorsFunc, checkInvariantsFunc, err = getMigrationFuncsForString(cctx.Args().Get(0))
+			if err != nil {
+				return fmt.Errorf("failed to parse network version or string: %w", err)
+			}
+		} else {
+			nv = network.Version(nvi)
+			upgradeActorsFunc, preUpgradeActorsFunc, checkInvariantsFunc, err = getMigrationFuncsForNetwork(nv)
+			if err != nil {
+				return err
+			}
 		}
 
 		blkCid, err := cid.Decode(cctx.Args().Get(1))
@@ -123,7 +134,7 @@ var migrationsCmd = &cli.Command{
 
 		lkrepo, err := fsrepo.Lock(repo.FullNode)
 		if err != nil {
-			return err
+			return xerrors.Errorf("failed to lock repo: %w", err)
 		}
 
 		defer lkrepo.Close() //nolint:errcheck
@@ -208,7 +219,7 @@ var migrationsCmd = &cli.Command{
 		fmt.Println("new cid ", newCid2)
 		fmt.Println("completed round actual (without cache), took ", uncachedMigrationTime)
 
-		if !cctx.IsSet("skip-pre-migration") {
+		if !cctx.IsSet("skip-pre-migration") && preUpgradeActorsFunc != nil {
 			cache := mutil.NewMemMigrationCache()
 
 			ts1, err := cs.GetTipsetByHeight(ctx, blk.Height-60, migrationTs, false)
@@ -237,7 +248,7 @@ var migrationsCmd = &cli.Command{
 
 			if newCid1 != newCid2 {
 				{
-					if err := printStateDiff(ctx, network.Version(nv), newCid2, newCid1, bs); err != nil {
+					if err := printStateDiff(ctx, nv, newCid2, newCid1, bs); err != nil {
 						fmt.Println("failed to print state diff: ", err)
 					}
 				}
@@ -266,6 +277,8 @@ var migrationsCmd = &cli.Command{
 			}
 
 			fmt.Println("completed round actual (with cache), took ", cachedMigrationTime)
+		} else if !cctx.IsSet("skip-pre-migration") {
+			fmt.Println("skipping pre-migration, no pre-migration function")
 		}
 
 		if cctx.Bool("check-invariants") {
@@ -302,6 +315,15 @@ func getMigrationFuncsForNetwork(nv network.Version) (UpgradeActorsFunc, PreUpgr
 		return filcns.UpgradeActorsV16, filcns.PreUpgradeActorsV16, checkNv25Invariants, nil
 	default:
 		return nil, nil, nil, xerrors.Errorf("migration not implemented for nv%d", nv)
+	}
+}
+
+func getMigrationFuncsForString(input string) (network.Version, UpgradeActorsFunc, PreUpgradeActorsFunc, CheckInvariantsFunc, error) {
+	switch input {
+	case "tock-fix":
+		return network.Version27, filcns.UpgradeActorsV16Fix, nil, checkNv25Invariants, nil
+	default:
+		return 0, nil, nil, nil, xerrors.Errorf("migration not implemented for string: %s", input)
 	}
 }
 

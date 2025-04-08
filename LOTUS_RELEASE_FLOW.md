@@ -91,7 +91,7 @@ These releases are not mandatory but are highly recommended, as they may contain
 * Lotus Miner: releases ship on an as-needed basis with no specified cadence. (See [Why isn't Lotus Miner released more frequently?](#why-isnt-lotus-miner-released-more-frequently))
 
 ## Release Process
-The specific steps executed for Lotus software releases are captured in the [Release Issue template](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md).
+The specific steps executed for Lotus software releases are captured in the [Release Issue template](./documentation/misc/RELEASE_ISSUE_TEMPLATE.md).  `[cmd/release](./cmd/release/README.md) is used to help populate the template.
 
 ## Release Candidates (RCs)
 

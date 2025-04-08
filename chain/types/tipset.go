@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"slices"
 	"sort"
 
 	"github.com/ipfs/go-cid"
@@ -172,17 +173,7 @@ func (ts *TipSet) Equals(ots *TipSet) bool {
 		return false
 	}
 
-	if len(ts.cids) != len(ots.cids) {
-		return false
-	}
-
-	for i, cid := range ts.cids {
-		if cid != ots.cids[i] {
-			return false
-		}
-	}
-
-	return true
+	return slices.Equal(ts.cids, ots.cids)
 }
 
 func (t *Ticket) Less(o *Ticket) bool {
