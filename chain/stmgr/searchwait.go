@@ -3,7 +3,6 @@ package stmgr
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
@@ -15,6 +14,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
+var ErrFailedToLoadMessage = errors.New("failed to load message")
+
 // WaitForMessage blocks until a message appears on chain. It looks backwards in the chain to see if this has already
 // happened, with an optional limit to how many epochs it will search. It guarantees that the message has been on
 // chain for at least confidence epochs without being reverted before returning.
@@ -25,22 +26,22 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid, confid
 
 	msg, err := sm.cs.GetCMessage(ctx, mcid)
 	if err != nil {
-		return nil, nil, cid.Undef, fmt.Errorf("failed to load message: %w", err)
+		return nil, nil, cid.Undef, xerrors.Errorf("%w: %w", ErrFailedToLoadMessage, err)
 	}
 
 	tsub := sm.cs.SubHeadChanges(ctx)
 
 	head, ok := <-tsub
 	if !ok {
-		return nil, nil, cid.Undef, fmt.Errorf("SubHeadChanges stream was invalid")
+		return nil, nil, cid.Undef, xerrors.Errorf("SubHeadChanges stream was invalid")
 	}
 
 	if len(head) != 1 {
-		return nil, nil, cid.Undef, fmt.Errorf("SubHeadChanges first entry should have been one item")
+		return nil, nil, cid.Undef, xerrors.Errorf("SubHeadChanges first entry should have been one item")
 	}
 
 	if head[0].Type != store.HCCurrent {
-		return nil, nil, cid.Undef, fmt.Errorf("expected current head on SHC stream (got %s)", head[0].Type)
+		return nil, nil, cid.Undef, xerrors.Errorf("expected current head on SHC stream (got %s)", head[0].Type)
 	}
 
 	r, foundMsg, err := sm.tipsetExecutedMessage(ctx, head[0].Val, mcid, msg.VMMessage(), allowReplaced)
@@ -140,7 +141,7 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid, confid
 func (sm *StateManager) SearchForMessage(ctx context.Context, head *types.TipSet, mcid cid.Cid, lookbackLimit abi.ChainEpoch, allowReplaced bool) (*types.TipSet, *types.MessageReceipt, cid.Cid, error) {
 	msg, err := sm.cs.GetCMessage(ctx, mcid)
 	if err != nil {
-		return nil, nil, cid.Undef, fmt.Errorf("failed to load message: %w", err)
+		return nil, nil, cid.Undef, xerrors.Errorf("%w: %w", ErrFailedToLoadMessage, err)
 	}
 
 	r, foundMsg, err := sm.tipsetExecutedMessage(ctx, head, mcid, msg.VMMessage(), allowReplaced)
