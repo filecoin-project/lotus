@@ -10,6 +10,7 @@
 # UNRELEASED
 
 - feat!: actors bundle v16.0.1 & special handling for calibnet ([filecoin-project/lotus#13006](https://github.com/filecoin-project/lotus/pull/13006))
+- fix(eth): always return nil for eth transactions not found ([filecoin-project/lotus#12999](https://github.com/filecoin-project/lotus/pull/12999))
 
 # Node and Miner v1.32.1 / 2025-03-28
 
