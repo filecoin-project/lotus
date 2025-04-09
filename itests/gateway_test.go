@@ -587,7 +587,7 @@ func TestGatewayF3(t *testing.T) {
 
 	t.Run("disabled", func(t *testing.T) {
 		ctx := context.Background()
-		nodes := startNodes(ctx, t, withNodeOpts(kit.F3Enabled(nil)))
+		nodes := startNodes(ctx, t, withNodeOpts(kit.F3Disabled()))
 
 		cert, err := nodes.lite.F3GetLatestCertificate(ctx)
 		require.ErrorIs(t, err, api.ErrF3Disabled)

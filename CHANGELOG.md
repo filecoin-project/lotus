@@ -10,6 +10,7 @@
 # UNRELEASED
 
 - fix(eth): always return nil for eth transactions not found ([filecoin-project/lotus#12999](https://github.com/filecoin-project/lotus/pull/12999))
+- feat: add experimental v2 APIs that are "F3 aware."  (TODO: expand this section significantly to cover where someone learns about the new APIs, how they enable them, and what expectations they should have around them—i.e., they may change)
 
 # Node and Miner v1.32.2 / 2025-04-04
 
