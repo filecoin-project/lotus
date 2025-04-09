@@ -6,7 +6,7 @@ on:
       - opened
       - synchronize
       - reopened
-      # WARN: Doing so will run very expensive test every time ANY label is added
+      # WARN: This will run very expensive test every time ANY label is added
       - labeled
   schedule:
     - cron: '0 0 * * *' # Runs nightly at 0AM UTC
