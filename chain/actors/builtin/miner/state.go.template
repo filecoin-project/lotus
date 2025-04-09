@@ -4,12 +4,10 @@ import (
     "fmt"
 	"bytes"
 	"errors"
-{{if (le .v 1)}}
-	"github.com/filecoin-project/go-state-types/big"
-{{end}}
 	"github.com/filecoin-project/go-bitfield"
 	rle "github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -552,6 +550,15 @@ func (d *deadline{{.v}}) DisputableProofCount() (uint64, error) {
 {{end}}
 }
 
+func (d *deadline{{.v}}) DailyFee() (abi.TokenAmount, error) {
+{{- if (ge .v 16)}}
+	if d.Deadline.DailyFee.Int != nil {
+		return d.Deadline.DailyFee, nil
+	}
+{{- end}}
+	return big.Zero(), nil
+}
+
 func (p *partition{{.v}}) AllSectors() (bitfield.BitField, error) {
 	return p.Partition.Sectors, nil
 }
@@ -569,26 +576,37 @@ func (p *partition{{.v}}) UnprovenSectors() (bitfield.BitField, error) {
 }
 
 func fromV{{.v}}SectorOnChainInfo(v{{.v}} miner{{.v}}.SectorOnChainInfo) SectorOnChainInfo {
+{{- if (ge .v 16)}}
+	dailyFee := v{{.v}}.DailyFee
+	if dailyFee.Int == nil {
+		dailyFee = big.Zero()
+	}
+{{- end}}
 	info := SectorOnChainInfo{
 		SectorNumber:          v{{.v}}.SectorNumber,
 		SealProof:             v{{.v}}.SealProof,
 		SealedCID:             v{{.v}}.SealedCID,
-		DealIDs:               v{{.v}}.DealIDs,
+		DeprecatedDealIDs:     v{{.v}}.{{if (ge .v 16)}}Deprecated{{end}}DealIDs,
 		Activation:            v{{.v}}.Activation,
 		Expiration:            v{{.v}}.Expiration,
 		DealWeight:            v{{.v}}.DealWeight,
 		VerifiedDealWeight:    v{{.v}}.VerifiedDealWeight,
 		InitialPledge:         v{{.v}}.InitialPledge,
-		ExpectedDayReward:     v{{.v}}.ExpectedDayReward,
-		ExpectedStoragePledge: v{{.v}}.ExpectedStoragePledge,
-		{{if (ge .v 7)}}
+		ExpectedDayReward:     {{ if (lt .v 16)}}&{{end}}v{{.v}}.ExpectedDayReward,
+		ExpectedStoragePledge: {{ if (lt .v 16)}}&{{end}}v{{.v}}.ExpectedStoragePledge,
+		{{- if (ge .v 7)}}
 		SectorKeyCID: v{{.v}}.SectorKeyCID,
-                {{end}}
-		{{if (ge .v 12)}}
+		{{- end}}
+		{{- if (ge .v 12)}}
 		PowerBaseEpoch:        v{{.v}}.PowerBaseEpoch,
-		ReplacedDayReward:     v{{.v}}.ReplacedDayReward,
+		ReplacedDayReward:     {{ if (lt .v 16)}}&{{end}}v{{.v}}.ReplacedDayReward,
 		Flags:                 SectorOnChainInfoFlags(v{{.v}}.Flags),
-                {{end}}
+		{{- end}}
+		{{- if (ge .v 16)}}
+		DailyFee:              dailyFee,
+		{{- else}}
+		DailyFee:              big.Zero(),
+		{{- end}}
 	}
 	return info
 }

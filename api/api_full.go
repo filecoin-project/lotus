@@ -1031,7 +1031,7 @@ type FullNode interface {
 	// it's enabled, and an error when disabled entirely.
 	F3IsRunning(ctx context.Context) (bool, error) //perm:read
 	// F3GetProgress returns the progress of the current F3 instance in terms of instance ID, round and phase.
-	F3GetProgress(ctx context.Context) (gpbft.Instant, error) //perm:read
+	F3GetProgress(ctx context.Context) (gpbft.InstanceProgress, error) //perm:read
 	// F3ListParticipants returns the list of miners that are currently participating in F3 via this node.
 	F3ListParticipants(ctx context.Context) ([]F3Participant, error) //perm:read
 }
@@ -1398,6 +1398,7 @@ const (
 type Deadline struct {
 	PostSubmissions      bitfield.BitField
 	DisputableProofCount uint64
+	DailyFee             abi.TokenAmount
 }
 
 type Partition struct {

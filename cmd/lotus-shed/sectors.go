@@ -683,7 +683,7 @@ var dumpSectorOnChainInfoCmd = &cli.Command{
 		}
 
 		_, _ = fmt.Fprintf(cctx.App.Writer,
-			"Miner,SectorNumber,SealProof,DealIDCount,Activation,Expiration,DealWeight,VerifiedDealWeight,"+
+			"Miner,SectorNumber,SealProof,Activation,Expiration,DealWeight,VerifiedDealWeight,"+
 				"InitialPledge,ExpectedDayReward,ExpectedStoragePledge,PowerBaseEpoch,Flags\n")
 
 		var count int
@@ -706,11 +706,10 @@ var dumpSectorOnChainInfoCmd = &cli.Command{
 			for _, sector := range soci {
 				_, _ = fmt.Fprintf(
 					cctx.App.Writer,
-					"%s,%d,%d,%d,%d,%d,%s,%s,%s,%s,%s,%d,%x\n",
+					"%s,%d,%d,%d,%d,%s,%s,%s,%s,%s,%d,%x\n",
 					maddr,
 					sector.SectorNumber,
 					sector.SealProof,
-					len(sector.DealIDs),
 					sector.Activation,
 					sector.Expiration,
 					sector.DealWeight,

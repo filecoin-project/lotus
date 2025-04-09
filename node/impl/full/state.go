@@ -240,10 +240,15 @@ func (a *StateAPI) StateMinerDeadlines(ctx context.Context, m address.Address, t
 		if err != nil {
 			return err
 		}
+		dailyFee, err := dl.DailyFee()
+		if err != nil {
+			return err
+		}
 
 		out[i] = api.Deadline{
 			PostSubmissions:      ps,
 			DisputableProofCount: l,
+			DailyFee:             dailyFee,
 		}
 		return nil
 	}); err != nil {
@@ -2088,6 +2093,7 @@ func (a *StateAPI) StateGetNetworkParams(ctx context.Context) (*api.NetworkParam
 			UpgradeWaffleHeight:      buildconstants.UpgradeWaffleHeight,
 			UpgradeTuktukHeight:      buildconstants.UpgradeTuktukHeight,
 			UpgradeTeepHeight:        buildconstants.UpgradeTeepHeight,
+			UpgradeTockHeight:        buildconstants.UpgradeTockHeight,
 		},
 	}, nil
 }

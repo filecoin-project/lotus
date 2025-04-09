@@ -85,7 +85,6 @@ func LoadBundles(ctx context.Context, bs blockstore.Blockstore, versions ...acto
 		if root != manifestCid {
 			return xerrors.Errorf("expected manifest for actors version %d does not match actual: %s != %s", av, manifestCid, root)
 		}
-
 	}
 
 	return nil

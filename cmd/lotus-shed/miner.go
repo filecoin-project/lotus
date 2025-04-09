@@ -27,7 +27,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/builtin/v11/util/adt"
-	miner15 "github.com/filecoin-project/go-state-types/builtin/v15/miner"
+	miner16 "github.com/filecoin-project/go-state-types/builtin/v16/miner"
 	miner8 "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/manifest"
@@ -42,6 +42,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/lib/must"
 )
 
 var minerCmd = &cli.Command{
@@ -56,6 +57,8 @@ var minerCmd = &cli.Command{
 		sectorInfoCmd,
 		minerLockedVestedCmd,
 		minerListVestingCmd,
+		minerFeesCmd,
+		minerListBalancesCmd,
 	},
 }
 
@@ -741,10 +744,11 @@ var minerLockedVestedCmd = &cli.Command{
 		// The epoch at which we _expect_ that vested funds to have been unlocked by (the delay
 		// is due to cron offsets). The protocol dictates that funds should be unlocked automatically
 		// by cron, so anything we find that's not unlocked is a bug.
-		staleEpoch := head.Height() - abi.ChainEpoch((uint64(miner15.WPoStProvingPeriod) / miner15.WPoStPeriodDeadlines))
+		staleEpoch := head.Height() - abi.ChainEpoch((uint64(miner16.WPoStProvingPeriod) / miner16.WPoStPeriodDeadlines))
 
 		var totalCount int
 		miners := make(map[address.Address]abi.TokenAmount)
+		var minerCount int
 		var lockedCount int
 		var lockedFunds abi.TokenAmount = big.Zero()
 		_, _ = fmt.Fprintf(cctx.App.ErrWriter, "Scanning actors at epoch %d", head.Height())
@@ -754,16 +758,17 @@ var minerLockedVestedCmd = &cli.Command{
 				_, _ = fmt.Fprintf(cctx.App.ErrWriter, ".")
 			}
 			if act.Code == minerCode {
-				m15 := miner15.State{}
-				if err := adtStore.Get(ctx, act.Head, &m15); err != nil {
-					return xerrors.Errorf("failed to load miner state (using miner15, try a newer version?): %w", err)
+				minerCount++
+				m16 := miner16.State{}
+				if err := adtStore.Get(ctx, act.Head, &m16); err != nil {
+					return xerrors.Errorf("failed to load miner state (using miner16, try a newer version?): %w", err)
 				}
-				vf, err := m15.LoadVestingFunds(adtStore)
+				vf, err := m16.LoadVestingFunds(adtStore)
 				if err != nil {
 					return err
 				}
 				var locked bool
-				for _, f := range vf.Funds {
+				for _, f := range vf {
 					if f.Epoch < staleEpoch {
 						if _, ok := miners[addr]; !ok {
 							miners[addr] = f.Amount
@@ -786,7 +791,7 @@ var minerLockedVestedCmd = &cli.Command{
 
 		fmt.Println()
 		_, _ = fmt.Fprintf(cctx.App.Writer, "Total actors: %d\n", totalCount)
-		_, _ = fmt.Fprintf(cctx.App.Writer, "Total miners: %d\n", len(miners))
+		_, _ = fmt.Fprintf(cctx.App.Writer, "Total miners: %d\n", minerCount)
 		_, _ = fmt.Fprintf(cctx.App.Writer, "Miners with locked vested funds: %d\n", lockedCount)
 		if cctx.Bool("details") {
 			for addr, amt := range miners {
@@ -844,11 +849,11 @@ var minerListVestingCmd = &cli.Command{
 			return xerrors.Errorf("failed to load actor: %w", err)
 		}
 
-		m15 := miner15.State{}
-		if err := adtStore.Get(ctx, act.Head, &m15); err != nil {
-			return xerrors.Errorf("failed to load miner state (using miner15, try a newer version?): %w", err)
+		m16 := miner16.State{}
+		if err := adtStore.Get(ctx, act.Head, &m16); err != nil {
+			return xerrors.Errorf("failed to load miner state (using miner16, try a newer version?): %w", err)
 		}
-		vf, err := m15.LoadVestingFunds(adtStore)
+		vf, err := m16.LoadVestingFunds(adtStore)
 		if err != nil {
 			return err
 		}
@@ -860,9 +865,64 @@ var minerListVestingCmd = &cli.Command{
 			}
 			_, _ = fmt.Fprintln(cctx.App.Writer, string(jb))
 		} else {
-			for _, f := range vf.Funds {
+			for _, f := range vf {
 				_, _ = fmt.Fprintf(cctx.App.Writer, "Epoch %d: %s\n", f.Epoch, types.FIL(f.Amount))
 			}
+		}
+		return nil
+	},
+}
+
+var minerListBalancesCmd = &cli.Command{
+	Name:  "list-balances",
+	Usage: "List the balances of all miners with power",
+	Action: func(cctx *cli.Context) error {
+		n, acloser, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer acloser()
+		ctx := lcli.ReqContext(cctx)
+
+		bs := ReadOnlyAPIBlockstore{n}
+		adtStore := adt.WrapStore(ctx, ipldcbor.NewCborStore(&bs))
+
+		head, err := n.ChainHead(ctx)
+		if err != nil {
+			return err
+		}
+
+		powerActor, err := n.StateGetActor(ctx, power.Address, head.Key())
+		if err != nil {
+			return err
+		}
+		powerState, err := power.Load(adtStore, powerActor)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Miner Address,QAP (bytes),Available Balance (FIL)\n")
+		var lowest *big.Int
+		err = powerState.ForEachClaim(func(minerAddr address.Address, claim power.Claim) error {
+			actor, err := n.StateGetActor(ctx, minerAddr, head.Key())
+			if err != nil {
+				return err
+			}
+			minerState, err := miner.Load(adtStore, actor)
+			if err != nil {
+				return err
+			}
+			balance := must.One(minerState.AvailableBalance(actor.Balance))
+			if lowest == nil || balance.LessThan(*lowest) {
+				lowest = &balance
+			}
+			fmt.Printf("%s,%s,%s\n", minerAddr, claim.QualityAdjPower, strings.Replace(types.FIL(balance).String(), " FIL", "", 1))
+			return nil
+		}, true)
+		if err != nil {
+			return err
+		}
+		if lowest != nil {
+			_, _ = fmt.Fprintf(cctx.App.ErrWriter, "Lowest balance: %s\n", types.FIL(*lowest))
 		}
 		return nil
 	},

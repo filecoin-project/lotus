@@ -196,8 +196,14 @@ func (b *PreCommitBatcher) maybeStartBatch(notif bool) ([]sealiface.PreCommitBat
 		return nil, err
 	}
 
+	nv, err := b.api.StateNetworkVersion(b.mctx, ts.Key())
+	if err != nil {
+		return nil, xerrors.Errorf("couldn't get network version: %w", err)
+	}
+
+	// TODO: remove after nv25 (FIP 0100)
 	curBasefeeLow := false
-	if !cfg.BatchPreCommitAboveBaseFee.Equals(big.Zero()) && ts.MinTicketBlock().ParentBaseFee.LessThan(cfg.BatchPreCommitAboveBaseFee) {
+	if !cfg.BatchPreCommitAboveBaseFee.Equals(big.Zero()) && ts.MinTicketBlock().ParentBaseFee.LessThan(cfg.BatchPreCommitAboveBaseFee) && nv < network.Version25 {
 		curBasefeeLow = true
 	}
 
@@ -205,11 +211,6 @@ func (b *PreCommitBatcher) maybeStartBatch(notif bool) ([]sealiface.PreCommitBat
 	// and we're not above the basefee threshold, don't batch yet
 	if notif && total < cfg.MaxPreCommitBatch && !curBasefeeLow {
 		return nil, nil
-	}
-
-	nv, err := b.api.StateNetworkVersion(b.mctx, ts.Key())
-	if err != nil {
-		return nil, xerrors.Errorf("couldn't get network version: %w", err)
 	}
 
 	// For precommits the only method to precommit sectors after nv21(22?) is to use the new precommit_batch2 method

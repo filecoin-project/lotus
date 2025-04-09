@@ -512,18 +512,26 @@ func createEmptyMinerState(ctx context.Context, t *testing.T, store adt2.Store, 
 func createSectorsAMT(ctx context.Context, t *testing.T, store adt2.Store, sectors []miner.SectorOnChainInfo) cid.Cid {
 	root := adt2.MakeEmptyArray(store)
 	for _, sector := range sectors {
+		edr := big.Zero()
+		esp := big.Zero()
+		if sector.ExpectedDayReward != nil {
+			edr = *sector.ExpectedDayReward
+		}
+		if sector.ExpectedStoragePledge != nil {
+			esp = *sector.ExpectedStoragePledge
+		}
 		sector := miner2.SectorOnChainInfo{
 			SectorNumber:          sector.SectorNumber,
 			SealProof:             sector.SealProof,
 			SealedCID:             sector.SealedCID,
-			DealIDs:               sector.DealIDs,
+			DealIDs:               sector.DeprecatedDealIDs,
 			Activation:            sector.Activation,
 			Expiration:            sector.Expiration,
 			DealWeight:            sector.DealWeight,
 			VerifiedDealWeight:    sector.VerifiedDealWeight,
 			InitialPledge:         sector.InitialPledge,
-			ExpectedDayReward:     sector.ExpectedDayReward,
-			ExpectedStoragePledge: sector.ExpectedStoragePledge,
+			ExpectedDayReward:     edr,
+			ExpectedStoragePledge: esp,
 			ReplacedSectorAge:     0,
 			ReplacedDayReward:     big.NewInt(0),
 		}
@@ -538,19 +546,21 @@ func createSectorsAMT(ctx context.Context, t *testing.T, store adt2.Store, secto
 // returns a unique SectorOnChainInfo with each invocation with SectorNumber set to `sectorNo`.
 func newSectorOnChainInfo(sectorNo abi.SectorNumber, sealed cid.Cid, weight big.Int, activation, expiration abi.ChainEpoch) miner.SectorOnChainInfo {
 	info := newSectorPreCommitInfo(sectorNo, sealed, expiration)
+	bz := big.Zero()
 	return miner.SectorOnChainInfo{
-		SectorNumber: info.SectorNumber,
-		SealProof:    info.SealProof,
-		SealedCID:    info.SealedCID,
-		DealIDs:      info.DealIDs,
-		Expiration:   info.Expiration,
+		SectorNumber:      info.SectorNumber,
+		SealProof:         info.SealProof,
+		SealedCID:         info.SealedCID,
+		DeprecatedDealIDs: info.DealIDs,
+		Expiration:        info.Expiration,
 
 		Activation:            activation,
 		DealWeight:            weight,
 		VerifiedDealWeight:    weight,
 		InitialPledge:         big.Zero(),
-		ExpectedDayReward:     big.Zero(),
-		ExpectedStoragePledge: big.Zero(),
+		ExpectedDayReward:     &bz,
+		ExpectedStoragePledge: &bz,
+		DailyFee:              big.Zero(),
 	}
 }
 

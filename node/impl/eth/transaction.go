@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/golang-lru/arc/v2"
 	"github.com/ipfs/go-cid"
+	ipld "github.com/ipfs/go-ipld-format"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -14,6 +15,7 @@ import (
 	builtinactors "github.com/filecoin-project/lotus/chain/actors/builtin"
 	builtinevm "github.com/filecoin-project/lotus/chain/actors/builtin/evm"
 	"github.com/filecoin-project/lotus/chain/index"
+	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
@@ -132,28 +134,41 @@ func (e *ethTransaction) EthGetBlockTransactionCountByHash(ctx context.Context, 
 }
 
 func (e *ethTransaction) EthGetBlockByHash(ctx context.Context, blkHash ethtypes.EthHash, fullTxInfo bool) (ethtypes.EthBlock, error) {
+	ts, err := e.chainStore.GetTipSetByCid(ctx, blkHash.ToCid())
+	if err != nil {
+		return ethtypes.EthBlock{}, xerrors.Errorf("failed to get tipset by cid: %w", err)
+	}
+	return e.getBlockByTipset(ctx, ts, fullTxInfo, "EthGetBlockByHash:"+blkHash.String())
+}
+
+func (e *ethTransaction) EthGetBlockByNumber(ctx context.Context, blkParam string, fullTxInfo bool) (ethtypes.EthBlock, error) {
+	ts, err := getTipsetByBlockNumber(ctx, e.chainStore, blkParam, true)
+	if err != nil {
+		return ethtypes.EthBlock{}, err
+	}
+	return e.getBlockByTipset(ctx, ts, fullTxInfo, "EthGetBlockByNumber:"+blkParam)
+}
+
+func (e *ethTransaction) getBlockByTipset(ctx context.Context, ts *types.TipSet, fullTxInfo bool, req string) (ethtypes.EthBlock, error) {
 	cache := e.blockCache
 	if fullTxInfo {
 		cache = e.blockTransactionCache
 	}
 
 	// Attempt to retrieve the Ethereum block from cache
-	cid := blkHash.ToCid()
+	cid, err := ts.Key().Cid()
+	if err != nil {
+		return ethtypes.EthBlock{}, xerrors.Errorf("failed to get tipset key cid: %w", err)
+	}
 	if cache != nil {
 		if ethBlock, found := cache.Get(cid); found {
 			if ethBlock != nil {
 				return *ethBlock, nil
 			}
 			// Log and remove the nil entry from cache
-			log.Errorw("nil value in eth block cache", "hash", blkHash.String())
+			log.Errorw("nil value in eth block cache", "cid", cid, "requested as", req)
 			cache.Remove(cid)
 		}
-	}
-
-	// Fetch the tipset using the block hash
-	ts, err := e.chainStore.GetTipSetByCid(ctx, cid)
-	if err != nil {
-		return ethtypes.EthBlock{}, xerrors.Errorf("failed to load tipset by CID %s: %w", cid, err)
 	}
 
 	// Generate an Ethereum block from the Filecoin tipset
@@ -169,16 +184,29 @@ func (e *ethTransaction) EthGetBlockByHash(ctx context.Context, blkHash ethtypes
 	return blk, nil
 }
 
-func (e *ethTransaction) EthGetBlockByNumber(ctx context.Context, blkParam string, fullTxInfo bool) (ethtypes.EthBlock, error) {
-	ts, err := getTipsetByBlockNumber(ctx, e.chainStore, blkParam, true)
-	if err != nil {
-		return ethtypes.EthBlock{}, err
-	}
-	return newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo, e.chainStore, e.stateManager)
-}
-
 func (e *ethTransaction) EthGetTransactionByHash(ctx context.Context, txHash *ethtypes.EthHash) (*ethtypes.EthTx, error) {
 	return e.EthGetTransactionByHashLimited(ctx, txHash, api.LookbackNoLimit)
+}
+
+func (e *ethTransaction) getCidForTransaction(ctx context.Context, txHash *ethtypes.EthHash) (cid.Cid, error) {
+	if e.chainIndexer == nil {
+		return cid.Undef, ErrChainIndexerDisabled
+	}
+
+	c, err := e.chainIndexer.GetCidFromHash(ctx, *txHash)
+	if err != nil {
+		if errors.Is(err, index.ErrNotFound) {
+			log.Debug("could not find transaction hash %s in chain indexer", txHash.String())
+		} else {
+			log.Errorf("failed to lookup transaction hash %s in chain indexer: %s", txHash.String(), err)
+			return cid.Undef, xerrors.Errorf("failed to lookup transaction hash %s in chain indexer: %w", txHash.String(), err)
+		}
+	}
+	if c == cid.Undef {
+		// This isn't an eth transaction we have the mapping for, so let's look it up as a filecoin message
+		return txHash.ToCid(), nil
+	}
+	return c, nil
 }
 
 func (e *ethTransaction) EthGetTransactionByHashLimited(ctx context.Context, txHash *ethtypes.EthHash, limit abi.ChainEpoch) (*ethtypes.EthTx, error) {
@@ -186,23 +214,10 @@ func (e *ethTransaction) EthGetTransactionByHashLimited(ctx context.Context, txH
 	if txHash == nil {
 		return nil, nil
 	}
-	if e.chainIndexer == nil {
-		return nil, ErrChainIndexerDisabled
-	}
 
-	var c cid.Cid
-	var err error
-	c, err = e.chainIndexer.GetCidFromHash(ctx, *txHash)
-	if err != nil && errors.Is(err, index.ErrNotFound) {
-		log.Debug("could not find transaction hash %s in chain indexer", txHash.String())
-	} else if err != nil {
-		log.Errorf("failed to lookup transaction hash %s in chain indexer: %s", txHash.String(), err)
-		return nil, xerrors.Errorf("failed to lookup transaction hash %s in chain indexer: %w", txHash.String(), err)
-	}
-
-	// This isn't an eth transaction we have the mapping for, so let's look it up as a filecoin message
-	if c == cid.Undef {
-		c = txHash.ToCid()
+	c, err := e.getCidForTransaction(ctx, txHash)
+	if err != nil {
+		return nil, err
 	}
 
 	// first, try to get the cid from mined transactions
@@ -280,29 +295,10 @@ func (e *ethTransaction) EthGetMessageCidByTransactionHash(ctx context.Context, 
 	if txHash == nil {
 		return nil, nil
 	}
-	if e.chainIndexer == nil {
-		return nil, ErrChainIndexerDisabled
-	}
 
-	var c cid.Cid
-	var err error
-	c, err = e.chainIndexer.GetCidFromHash(ctx, *txHash)
-	if err != nil && errors.Is(err, index.ErrNotFound) {
-		log.Debug("could not find transaction hash %s in chain indexer", txHash.String())
-	} else if err != nil {
-		log.Errorf("failed to lookup transaction hash %s in chain indexer: %s", txHash.String(), err)
-		return nil, xerrors.Errorf("failed to lookup transaction hash %s in chain indexer: %w", txHash.String(), err)
-	}
-
-	if errors.Is(err, index.ErrNotFound) {
-		log.Debug("could not find transaction hash %s in lookup table", txHash.String())
-	} else if e.chainIndexer != nil {
-		return &c, nil
-	}
-
-	// This isn't an eth transaction we have the mapping for, so let's try looking it up as a filecoin message
-	if c == cid.Undef {
-		c = txHash.ToCid()
+	c, err := e.getCidForTransaction(ctx, txHash)
+	if err != nil {
+		return nil, err
 	}
 
 	_, err = e.chainStore.GetSignedMessage(ctx, c)
@@ -386,30 +382,19 @@ func (e *ethTransaction) EthGetTransactionReceipt(ctx context.Context, txHash et
 }
 
 func (e *ethTransaction) EthGetTransactionReceiptLimited(ctx context.Context, txHash ethtypes.EthHash, limit abi.ChainEpoch) (*api.EthTxReceipt, error) {
-	var c cid.Cid
-	var err error
-	if e.chainIndexer == nil {
-		return nil, ErrChainIndexerDisabled
-	}
-
-	c, err = e.chainIndexer.GetCidFromHash(ctx, txHash)
-	if err != nil && errors.Is(err, index.ErrNotFound) {
-		log.Debug("could not find transaction hash %s in chain indexer", txHash.String())
-	} else if err != nil {
-		log.Errorf("failed to lookup transaction hash %s in chain indexer: %s", txHash.String(), err)
-		return nil, xerrors.Errorf("failed to lookup transaction hash %s in chain indexer: %w", txHash.String(), err)
-	}
-
-	// This isn't an eth transaction we have the mapping for, so let's look it up as a filecoin message
-	if c == cid.Undef {
-		c = txHash.ToCid()
+	c, err := e.getCidForTransaction(ctx, &txHash)
+	if err != nil {
+		return nil, err
 	}
 
 	msgLookup, err := e.stateApi.StateSearchMsg(ctx, types.EmptyTSK, c, limit, true)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to lookup Eth Txn %s as %s: %w", txHash, c, err)
-	}
-	if msgLookup == nil {
+		if ipld.IsNotFound(err) || errors.Is(err, stmgr.ErrFailedToLoadMessage) {
+			// error came from not being able to turn the cid into something we can find in the chainstore
+			return nil, nil
+		}
+		return nil, xerrors.Errorf("could not find transaction %s: %w", txHash, err)
+	} else if msgLookup == nil {
 		// This is the best we can do. In theory, we could have just not indexed this
 		// transaction, but there's no way to check that here.
 		return nil, nil

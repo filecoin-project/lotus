@@ -19,14 +19,14 @@ type TestGroupExecutionContext struct {
 type Runner []string
 
 var (
-	linux_x64_4xlarge_network_optimized = []string{"self-hosted", "linux", "x64", "4xlarge-network-optimized"}
-	linux_x64_4xlarge                   = []string{"self-hosted", "linux", "x64", "4xlarge"}
-	linux_x64_2xlarge                   = []string{"self-hosted", "linux", "x64", "2xlarge"}
-	linux_x64_xlarge                    = []string{"self-hosted", "linux", "x64", "xlarge"}
-	linux_arm64_2xlarge                 = []string{"self-hosted", "linux", "arm64", "2xlarge"}
-	linux_arm64_xlarge                  = []string{"self-hosted", "linux", "arm64", "xlarge"}
-	linux_x64                           = []string{"self-hosted", "linux", "x64"}
-	linux_arm64                         = []string{"self-hosted", "linux", "arm64"}
+	linux_x64_5xlarge   = []string{"self-hosted", "linux", "x64", "5xlarge"}
+	linux_x64_4xlarge   = []string{"self-hosted", "linux", "x64", "4xlarge"}
+	linux_x64_2xlarge   = []string{"self-hosted", "linux", "x64", "2xlarge"}
+	linux_x64_xlarge    = []string{"self-hosted", "linux", "x64", "xlarge"}
+	linux_arm64_2xlarge = []string{"self-hosted", "linux", "arm64", "2xlarge"}
+	linux_arm64_xlarge  = []string{"self-hosted", "linux", "arm64", "xlarge"}
+	linux_x64           = []string{"ubuntu-latest"}
+	linux_arm64         = []string{"ubuntu-24.04-arm"}
 )
 
 type TestGroupMetadata struct {
@@ -215,7 +215,7 @@ func getRunners(testGroupName string) []Runner {
 		"itest-msgindex":                 {linux_x64_xlarge},
 		"itest-multisig":                 {linux_x64_xlarge},
 		"itest-net":                      {linux_x64_xlarge},
-		"itest-niporep_manual":           {linux_x64_4xlarge_network_optimized},
+		"itest-niporep_manual":           {linux_x64_5xlarge},
 		"itest-nonce":                    {linux_x64_xlarge},
 		"itest-path_detach_redeclare":    {linux_x64_xlarge},
 		"itest-pending_deal_allocation":  {linux_x64_xlarge},

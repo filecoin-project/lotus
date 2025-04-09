@@ -427,7 +427,7 @@ func TestFEVMTestSendToContract(t *testing.T) {
 	_, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "destroy()", []byte{})
 	require.NoError(t, err)
 
-	finalBalanceMinimum := types.FromFil(uint64(99_999_999)) // 100 million FIL - 1 FIL for gas upper bounds
+	finalBalanceMinimum := types.FromFil(uint64(9_999_999)) // 10 million FIL - 1 FIL for gas upper bounds
 	finalBal, err := client.WalletBalance(ctx, client.DefaultKey.Address)
 	require.NoError(t, err)
 	require.Equal(t, true, finalBal.GreaterThan(finalBalanceMinimum))
@@ -487,7 +487,7 @@ func TestFEVMSendGasLimit(t *testing.T) {
 
 }
 
-// TestFEVMDelegateCall deploys the two contracts in TestFEVMDelegateCall but instead of A calling B, A calls A which should cause A to cause A in an infinite loop and should give a reasonable error
+// TestFEVMDelegateCallRecursiveFail deploys the two contracts in TestFEVMDelegateCall but instead of A calling B, A calls A which should cause A to cause A in an infinite loop and should give a reasonable error
 func TestFEVMDelegateCallRecursiveFail(t *testing.T) {
 	// TODO change the gas limit of this invocation and confirm that the number of errors is
 	// different
@@ -513,7 +513,7 @@ func TestFEVMDelegateCallRecursiveFail(t *testing.T) {
 	require.NotContains(t, err.Error(), errorAny)
 }
 
-// TestFEVMTestSendValueThroughContracts creates A and B contract and exchanges value
+// TestFEVMTestSendValueThroughContractsAndDestroy creates A and B contract and exchanges value
 // and self destructs and accounts for value sent
 func TestFEVMTestSendValueThroughContractsAndDestroy(t *testing.T) {
 
@@ -733,7 +733,7 @@ func TestFEVMRecursiveActorCallEstimate(t *testing.T) {
 	t.Run("n=100", testN(100))
 }
 
-// TestFEVM deploys a contract while sending value to it
+// TestFEVMDeployWithValue deploys a contract while sending value to it
 func TestFEVMDeployWithValue(t *testing.T) {
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()

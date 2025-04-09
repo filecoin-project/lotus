@@ -30,80 +30,77 @@ var ActorDebugging = false
 const BootstrappersFile = "calibnet.pi"
 const GenesisFile = "calibnet.car.zst"
 
-const UpgradeBreezeHeight = -1
+const UpgradeBreezeHeight abi.ChainEpoch = -1
 const BreezeGasTampingDuration = 120
 
-const UpgradeSmokeHeight = -2
+const UpgradeSmokeHeight abi.ChainEpoch = -2
 
-const UpgradeIgnitionHeight = -3
-const UpgradeRefuelHeight = -4
+const UpgradeIgnitionHeight abi.ChainEpoch = -3
+const UpgradeRefuelHeight abi.ChainEpoch = -4
 
 var UpgradeAssemblyHeight = abi.ChainEpoch(30)
 
-const UpgradeTapeHeight = 60
+const UpgradeTapeHeight abi.ChainEpoch = 60
 
-const UpgradeLiftoffHeight = -5
+const UpgradeLiftoffHeight abi.ChainEpoch = -5
 
-const UpgradeKumquatHeight = 90
+const UpgradeKumquatHeight abi.ChainEpoch = 90
 
-const UpgradeCalicoHeight = 120
-const UpgradePersianHeight = UpgradeCalicoHeight + (builtin2.EpochsInHour * 1)
+const UpgradeCalicoHeight abi.ChainEpoch = 120
+const UpgradePersianHeight abi.ChainEpoch = UpgradeCalicoHeight + (builtin2.EpochsInHour * 1)
 
-const UpgradeClausHeight = 270
+const UpgradeClausHeight abi.ChainEpoch = 270
 
-const UpgradeOrangeHeight = 300
+const UpgradeOrangeHeight abi.ChainEpoch = 300
 
-const UpgradeTrustHeight = 330
+const UpgradeTrustHeight abi.ChainEpoch = 330
 
-const UpgradeNorwegianHeight = 360
+const UpgradeNorwegianHeight abi.ChainEpoch = 360
 
-const UpgradeTurboHeight = 390
+const UpgradeTurboHeight abi.ChainEpoch = 390
 
-const UpgradeHyperdriveHeight = 420
+const UpgradeHyperdriveHeight abi.ChainEpoch = 420
 
-const UpgradeChocolateHeight = 450
+const UpgradeChocolateHeight abi.ChainEpoch = 450
 
-const UpgradeOhSnapHeight = 480
+const UpgradeOhSnapHeight abi.ChainEpoch = 480
 
-const UpgradeSkyrHeight = 510
+const UpgradeSkyrHeight abi.ChainEpoch = 510
 
-const UpgradeSharkHeight = 16800 // 6 days after genesis
+const UpgradeSharkHeight abi.ChainEpoch = 16800 // 6 days after genesis
 
 // 2023-02-21T16:30:00Z
-const UpgradeHyggeHeight = 322354
+const UpgradeHyggeHeight abi.ChainEpoch = 322354
 
 // 2023-04-20T14:00:00Z
-const UpgradeLightningHeight = 489094
+const UpgradeLightningHeight abi.ChainEpoch = 489094
 
 // 2023-04-21T16:00:00Z
-const UpgradeThunderHeight = UpgradeLightningHeight + 3120
+const UpgradeThunderHeight abi.ChainEpoch = UpgradeLightningHeight + 3120
 
 // 2023-10-19T13:00:00Z
-const UpgradeWatermelonHeight = 1013134
+const UpgradeWatermelonHeight abi.ChainEpoch = 1013134
 
 // 2023-11-07T13:00:00Z
-const UpgradeWatermelonFixHeight = 1070494
+const UpgradeWatermelonFixHeight abi.ChainEpoch = 1070494
 
 // 2023-11-21T13:00:00Z
-const UpgradeWatermelonFix2Height = 1108174
+const UpgradeWatermelonFix2Height abi.ChainEpoch = 1108174
 
 // 2024-03-11T14:00:00Z
-const UpgradeDragonHeight = 1427974
+const UpgradeDragonHeight abi.ChainEpoch = 1427974
 
 // This epoch, 120 epochs after the "rest" of the nv22 upgrade, is when we switch to Drand quicknet
-const UpgradePhoenixHeight = UpgradeDragonHeight + 120
+const UpgradePhoenixHeight abi.ChainEpoch = UpgradeDragonHeight + 120
 
 // 2024-04-03T11:00:00Z
-const UpgradeCalibrationDragonFixHeight = 1493854
+const UpgradeCalibrationDragonFixHeight abi.ChainEpoch = 1493854
 
 // 2024-07-11T12:00:00Z
-const UpgradeWaffleHeight = 1779094
+const UpgradeWaffleHeight abi.ChainEpoch = 1779094
 
 // 2024-10-23T13:30:00Z
-const UpgradeTuktukHeight = 2078794
-
-// Canceled - See update in: https://github.com/filecoin-project/community/discussions/74#discussioncomment-11549619
-const UpgradeTeepHeight = 9999999999
+const UpgradeTuktukHeight abi.ChainEpoch = 2078794
 
 // FIP-0081: for the power actor state for pledge calculations.
 // UpgradeTuktukPowerRampDurationEpochs ends up in the power actor state after
@@ -112,6 +109,20 @@ const UpgradeTeepHeight = 9999999999
 // For calibrationnet, we set this to 3 days so we can observe and confirm the
 // ramp behavior before mainnet upgrade.
 var UpgradeTuktukPowerRampDurationEpochs = uint64(builtin.EpochsInDay * 3)
+
+// 2025-03-26T23:00:00Z
+// Calibnet was upgraded at this height but a fix needed to be applied, this was
+// done at UpgradeTockFixHeight.
+const UpgradeTeepHeight abi.ChainEpoch = 2523454
+
+var UpgradeTeepInitialFilReserved = wholeFIL(1_200_000_000) // FIP-0100: 300M -> 1.2B FIL
+
+// This epoch, 7 days after Teep is the completion of FIP-0100 where actors will start applying
+// the new daily fee to pre-Teep sectors being extended. This is 90 days on mainnet.
+var UpgradeTockHeight abi.ChainEpoch = UpgradeTeepHeight + builtin.EpochsInDay*7
+
+// 2025-04-07T23:00:00Z
+const UpgradeTockFixHeight abi.ChainEpoch = 2558014
 
 var ConsensusMinerMinPower = abi.NewStoragePower(32 << 30)
 var PreCommitChallengeDelay = abi.ChainEpoch(150)

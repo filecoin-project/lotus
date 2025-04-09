@@ -82,9 +82,6 @@ type SqliteIndexer struct {
 
 	started bool
 
-	closeLk sync.RWMutex
-	closed  bool
-
 	// ensures writes are serialized so backfilling does not race with index updates
 	writerLk sync.Mutex
 }
@@ -157,19 +154,10 @@ func (si *SqliteIndexer) buildExecutedMessagesLoader(rf RecomputeTipSetStateFunc
 }
 
 func (si *SqliteIndexer) Close() error {
-	si.closeLk.Lock()
-	defer si.closeLk.Unlock()
-	if si.closed {
-		return nil
-	}
-	si.closed = true
-
-	if si.db == nil {
-		return nil
-	}
 	si.cancel()
 	si.wg.Wait()
 
+	// Close is idempotent, it doesn't hurt to call it multiple times.
 	if err := si.db.Close(); err != nil {
 		return xerrors.Errorf("failed to close db: %w", err)
 	}
@@ -409,9 +397,7 @@ func (si *SqliteIndexer) Revert(ctx context.Context, from, to *types.TipSet) err
 }
 
 func (si *SqliteIndexer) isClosed() bool {
-	si.closeLk.RLock()
-	defer si.closeLk.RUnlock()
-	return si.closed
+	return si.ctx.Err() != nil
 }
 
 func (si *SqliteIndexer) setExecutedMessagesLoaderFunc(f emsLoaderFunc) {

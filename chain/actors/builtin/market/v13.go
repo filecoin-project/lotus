@@ -424,3 +424,59 @@ func (s *state13) Code() cid.Cid {
 
 	return code
 }
+
+func (s *state13) ProviderSectors() (ProviderSectors, error) {
+
+	proverSectors, err := adt13.AsMap(s.store, s.State.ProviderSectors, builtin.DefaultHamtBitwidth)
+	if err != nil {
+		return nil, err
+	}
+	return &providerSectors13{proverSectors, s.store}, nil
+
+}
+
+type providerSectors13 struct {
+	*adt13.Map
+	adt13.Store
+}
+
+type sectorDealIDs13 struct {
+	*adt13.Map
+}
+
+func (s *providerSectors13) Get(actorId abi.ActorID) (SectorDealIDs, bool, error) {
+	var sectorDealIdsCID cbg.CborCid
+	if ok, err := s.Map.Get(abi.UIntKey(uint64(actorId)), &sectorDealIdsCID); err != nil {
+		return nil, false, xerrors.Errorf("failed to load sector deal ids for actor %d: %w", actorId, err)
+	} else if !ok {
+		return nil, false, nil
+	}
+	sectorDealIds, err := adt13.AsMap(s.Store, cid.Cid(sectorDealIdsCID), builtin.DefaultHamtBitwidth)
+	if err != nil {
+		return nil, false, xerrors.Errorf("failed to load sector deal ids for actor %d: %w", actorId, err)
+	}
+	return &sectorDealIDs13{sectorDealIds}, true, nil
+}
+
+func (s *sectorDealIDs13) ForEach(cb func(abi.SectorNumber, []abi.DealID) error) error {
+	var dealIds abi.DealIDList
+	return s.Map.ForEach(&dealIds, func(key string) error {
+		uk, err := abi.ParseUIntKey(key)
+		if err != nil {
+			return xerrors.Errorf("failed to parse sector number from key %s: %w", key, err)
+		}
+		return cb(abi.SectorNumber(uk), dealIds)
+	})
+}
+
+func (s *sectorDealIDs13) Get(sectorNumber abi.SectorNumber) ([]abi.DealID, bool, error) {
+	var dealIds abi.DealIDList
+	found, err := s.Map.Get(abi.UIntKey(uint64(sectorNumber)), &dealIds)
+	if err != nil {
+		return nil, false, xerrors.Errorf("failed to load sector deal ids for sector %d: %w", sectorNumber, err)
+	}
+	if !found {
+		return nil, false, nil
+	}
+	return dealIds, true, nil
+}

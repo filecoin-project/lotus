@@ -79,6 +79,7 @@ const (
 	SealRandomnessLookback         = ChainFinality
 	PaychSettleDelay               = paych16.SettleDelay
 	MaxPreCommitRandomnessLookback = builtin16.EpochsInDay + SealRandomnessLookback
+	DeclarationsMax                = 3000
 )
 
 var (
@@ -842,6 +843,9 @@ func GetAddressedSectorsMax(nwVer network.Version) (int, error) {
 	}
 }
 
+// GetDeclarationsMax is deprecated
+//
+// DEPRECATED: remove after nv25 (FIP 0100)
 func GetDeclarationsMax(nwVer network.Version) (int, error) {
 	v, err := actorstypes.VersionForNetwork(nwVer)
 	if err != nil {
@@ -912,7 +916,7 @@ func GetDeclarationsMax(nwVer network.Version) (int, error) {
 
 	case actorstypes.Version16:
 
-		return miner16.DeclarationsMax, nil
+		return DeclarationsMax, nil
 
 	default:
 		return 0, xerrors.Errorf("unsupported network version")
@@ -925,71 +929,38 @@ func AggregateProveCommitNetworkFee(nwVer network.Version, aggregateSize int, ba
 		return big.Zero(), err
 	}
 	switch v {
-
 	case actorstypes.Version0:
-
 		return big.Zero(), nil
-
 	case actorstypes.Version2:
-
 		return big.Zero(), nil
-
 	case actorstypes.Version3:
-
 		return big.Zero(), nil
-
 	case actorstypes.Version4:
-
 		return big.Zero(), nil
-
 	case actorstypes.Version5:
-
 		return miner5.AggregateNetworkFee(aggregateSize, baseFee), nil
-
 	case actorstypes.Version6:
-
 		return miner6.AggregateProveCommitNetworkFee(aggregateSize, baseFee), nil
-
 	case actorstypes.Version7:
-
 		return miner7.AggregateProveCommitNetworkFee(aggregateSize, baseFee), nil
-
 	case actorstypes.Version8:
-
 		return miner8.AggregateProveCommitNetworkFee(aggregateSize, baseFee), nil
-
 	case actorstypes.Version9:
-
 		return miner9.AggregateProveCommitNetworkFee(aggregateSize, baseFee), nil
-
 	case actorstypes.Version10:
-
 		return miner10.AggregateProveCommitNetworkFee(aggregateSize, baseFee), nil
-
 	case actorstypes.Version11:
-
 		return miner11.AggregateProveCommitNetworkFee(aggregateSize, baseFee), nil
-
 	case actorstypes.Version12:
-
 		return miner12.AggregateProveCommitNetworkFee(aggregateSize, baseFee), nil
-
 	case actorstypes.Version13:
-
 		return miner13.AggregateProveCommitNetworkFee(aggregateSize, baseFee), nil
-
 	case actorstypes.Version14:
-
 		return miner14.AggregateProveCommitNetworkFee(aggregateSize, baseFee), nil
-
 	case actorstypes.Version15:
-
 		return miner15.AggregateProveCommitNetworkFee(aggregateSize, baseFee), nil
-
 	case actorstypes.Version16:
-
-		return miner16.AggregateProveCommitNetworkFee(aggregateSize, baseFee), nil
-
+		return big.Zero(), nil
 	default:
 		return big.Zero(), xerrors.Errorf("unsupported network version")
 	}
@@ -1001,71 +972,38 @@ func AggregatePreCommitNetworkFee(nwVer network.Version, aggregateSize int, base
 		return big.Zero(), err
 	}
 	switch v {
-
 	case actorstypes.Version0:
-
 		return big.Zero(), nil
-
 	case actorstypes.Version2:
-
 		return big.Zero(), nil
-
 	case actorstypes.Version3:
-
 		return big.Zero(), nil
-
 	case actorstypes.Version4:
-
 		return big.Zero(), nil
-
 	case actorstypes.Version5:
-
 		return big.Zero(), nil
-
 	case actorstypes.Version6:
-
 		return miner6.AggregatePreCommitNetworkFee(aggregateSize, baseFee), nil
-
 	case actorstypes.Version7:
-
 		return miner7.AggregatePreCommitNetworkFee(aggregateSize, baseFee), nil
-
 	case actorstypes.Version8:
-
 		return miner8.AggregatePreCommitNetworkFee(aggregateSize, baseFee), nil
-
 	case actorstypes.Version9:
-
 		return miner9.AggregatePreCommitNetworkFee(aggregateSize, baseFee), nil
-
 	case actorstypes.Version10:
-
 		return miner10.AggregatePreCommitNetworkFee(aggregateSize, baseFee), nil
-
 	case actorstypes.Version11:
-
 		return miner11.AggregatePreCommitNetworkFee(aggregateSize, baseFee), nil
-
 	case actorstypes.Version12:
-
 		return miner12.AggregatePreCommitNetworkFee(aggregateSize, baseFee), nil
-
 	case actorstypes.Version13:
-
 		return miner13.AggregatePreCommitNetworkFee(aggregateSize, baseFee), nil
-
 	case actorstypes.Version14:
-
 		return miner14.AggregatePreCommitNetworkFee(aggregateSize, baseFee), nil
-
 	case actorstypes.Version15:
-
 		return miner15.AggregatePreCommitNetworkFee(aggregateSize, baseFee), nil
-
 	case actorstypes.Version16:
-
-		return miner16.AggregatePreCommitNetworkFee(aggregateSize, baseFee), nil
-
+		return big.Zero(), nil
 	default:
 		return big.Zero(), xerrors.Errorf("unsupported network version")
 	}
@@ -1087,11 +1025,4 @@ func GetSealProofFromPoStProof(postProof abi.RegisteredPoStProof) (abi.Registere
 		return 0, xerrors.New("no corresponding RegisteredSealProof for the given RegisteredPoStProof")
 	}
 	return sealProof, nil
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }

@@ -37,6 +37,7 @@ const (
 	SealRandomnessLookback         = ChainFinality
 	PaychSettleDelay               = paych{{.latestVersion}}.SettleDelay
 	MaxPreCommitRandomnessLookback = builtin{{.latestVersion}}.EpochsInDay + SealRandomnessLookback
+	DeclarationsMax                = 3000
 )
 
 var (
@@ -283,6 +284,9 @@ func GetAddressedSectorsMax(nwVer network.Version) (int, error) {
 	}
 }
 
+// GetDeclarationsMax is deprecated
+// 
+// DEPRECATED: remove after nv25 (FIP 0100)
 func GetDeclarationsMax(nwVer network.Version) (int, error) {
 	v, err := actorstypes.VersionForNetwork(nwVer)
 	if err != nil {
@@ -294,6 +298,8 @@ func GetDeclarationsMax(nwVer network.Version) (int, error) {
 			{{if (eq . 0)}}
 				// TODO: Should we instead error here since the concept doesn't exist yet?
 				return miner{{.}}.AddressedPartitionsMax, nil
+			{{else if (ge . 16)}}
+				return DeclarationsMax, nil	
 			{{else}}
 				return miner{{.}}.DeclarationsMax, nil
 			{{end}}
@@ -309,16 +315,18 @@ func AggregateProveCommitNetworkFee(nwVer network.Version, aggregateSize int, ba
 		return big.Zero(), err
 	}
 	switch v {
-	    {{range .versions}}
+	    {{- range .versions}}
 	    case actorstypes.Version{{.}}:
-            {{if (ge . 6)}}
-                return miner{{.}}.AggregateProveCommitNetworkFee(aggregateSize, baseFee), nil
-            {{else if (eq . 5)}}
-                return miner{{.}}.AggregateNetworkFee(aggregateSize, baseFee), nil
-            {{else}}
+            {{- if (ge . 16)}}
                 return big.Zero(), nil
-            {{end}}
-        {{end}}
+            {{- else if (ge . 6)}}
+                return miner{{.}}.AggregateProveCommitNetworkFee(aggregateSize, baseFee), nil
+            {{- else if (eq . 5)}}
+                return miner{{.}}.AggregateNetworkFee(aggregateSize, baseFee), nil
+            {{- else}}
+                return big.Zero(), nil
+            {{- end -}}
+      {{- end}}
 	default:
 		return big.Zero(), xerrors.Errorf("unsupported network version")
 	}
@@ -330,14 +338,16 @@ func AggregatePreCommitNetworkFee(nwVer network.Version, aggregateSize int, base
 		return big.Zero(), err
 	}
 	switch v {
-	    {{range .versions}}
+	    {{- range .versions}}
 	    case actorstypes.Version{{.}}:
-            {{if (ge . 6)}}
-                return miner{{.}}.AggregatePreCommitNetworkFee(aggregateSize, baseFee), nil
-            {{else}}
+            {{- if (ge . 16)}}
                 return big.Zero(), nil
-            {{end}}
-        {{end}}
+            {{- else if (ge . 6)}}
+                return miner{{.}}.AggregatePreCommitNetworkFee(aggregateSize, baseFee), nil
+            {{- else}}
+                return big.Zero(), nil
+            {{- end -}}
+      {{end}}
 	default:
 		return big.Zero(), xerrors.Errorf("unsupported network version")
 	}
@@ -358,11 +368,4 @@ func GetSealProofFromPoStProof(postProof abi.RegisteredPoStProof) (abi.Registere
 		return 0, xerrors.New("no corresponding RegisteredSealProof for the given RegisteredPoStProof")
 	}
 	return sealProof, nil
-}
-
-func min(a, b int) int {
-    if a < b {
-        return a
-    }
-    return b
 }

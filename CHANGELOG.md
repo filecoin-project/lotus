@@ -8,23 +8,292 @@
 > * [CHANGELOG_1.2x.md](./documentation/changelog/CHANGELOG_1.2x.md) - v1.20.0 to v1.29.2
 
 # UNRELEASED
-- Allow users to start node even if Index Reconciliation fails (https://github.com/filecoin-project/lotus/pull/12930)
-- Exposed `StateGetNetworkParams` in the Lotus Gateway API ([filecoin-project/lotus#12881](https://github.com/filecoin-project/lotus/pull/12881))
-- **BREAKING**: Removed `SupportedProofTypes` from `StateGetNetworkParams` response as it was unreliable and didn't match FVM's actual supported proofs ([filecoin-project/lotus#12881](https://github.com/filecoin-project/lotus/pull/12881))
-- refactor(eth): attach ToFilecoinMessage converter to EthCall method for improved package/module import structure. This change also exports the converter as a public method, enhancing usability for developers utilizing Lotus as a library. ([filecoin-project/lotus#12844](https://github.com/filecoin-project/lotus/pull/12844))
+
+- fix(eth): always return nil for eth transactions not found ([filecoin-project/lotus#12999](https://github.com/filecoin-project/lotus/pull/12999))
+- feat: add experimental v2 APIs that are "F3 aware."  (TODO: expand this section significantly to cover where someone learns about the new APIs, how they enable them, and what expectations they should have around them—i.e., they may change)
+
+# Node and Miner v1.32.2 / 2025-04-04
+
+This Lotus v1.32.2 release is a **MANDATORY patch release**. After the Calibration network upgraded to nv25, a bug was discovered in the ref-fvm KAMT library affecting ERC-20 token minting operations. You can read the the full techincal breakdown of the issue [here](https://github.com/filecoin-project/builtin-actors/pull/1667).
+
+This patch release includes the following updates:
+- Schedules a mandatory Calibration upgrade, happening on `2025-04-07T23:00:00Z`, to fix the ERC-20 token minting bug on the Calibration network.
+- Postpones the mandatory Mainnet nv25 upgrade by 4 days, to `2025-04-14T23:00:00Z`
+
+## ☢️ Upgrade Warnings ☢️
+- All Lotus node and Storage Provider (SP) operators must upgrade to this patch release before the specified dates for the Calibration and Mainnet networks.
+- Please check the upgrade warning section for the [v1.32.1 release](https://github.com/filecoin-project/lotus/releases/tag/v1.32.1) for more upgrade warnings if you are upgrading from a version prior to v1.32.0.
+
+## 🏛️ Filecoin network version 25 FIPs
+
+- [FIP-0097: Add Support for EIP-1153 (Transient Storage) in the FEVM](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0097.md)
+- [FIP-0098: Simplify termination fee calculation to a fixed percentage of initial pledge](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0098.md)
+- [FIP-0100: Removing Batch Balancer, Replacing It With a Per-sector Fee and Removing Gas-limited Constraints](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0100.md)
+- [F3 Mainnet Activation](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0086.md)
+
+## 📦 v16 Builtin Actor Bundle
+
+This release candidate uses the [v16.0.1](https://github.com/filecoin-project/builtin-actors/releases/tag/v16.0.1)
+
+## 🚚 Migration
+All node operators, including storage providers, should be aware that ONE pre-migration is being scheduled 120 epochs before the network upgrade. The migration for the NV25 upgrade is expected to be medium with a bit longer pre-migration compared to the two previous network upgrade.
+
+Pre-Migration is expected to take between 4 to 8 minutes on a SplitStore node. The migration on the upgrade epoch is expected to take 30 seconds on a node with a NVMe-drive and a newer CPU. For nodes running on slower disks/CPU, it is still expected to take around 1 minute. We recommend node operators (who haven't enabled splitstore discard mode) that do not care about historical chain states, to prune the chain blockstore by syncing from a snapshot 1-2 days before the upgrade.
+
+For certain node operators, such as full archival nodes or systems that need to keep large amounts of state (RPC providers), we recommend skipping the pre-migration and run the non-cached migration (i.e., just running the migration at the network upgrade epoch), and schedule for some additional downtime. Operators of such nodes can read the [How to disable premigration in network upgrade tutorial](https://lotus.filecoin.io/kb/disable-premigration/).
+
+## Bug Fixes and Chores
+- feat!: actors bundle v16.0.1 & special handling for calibnet ([filecoin-project/lotus#13006](https://github.com/filecoin-project/lotus/pull/13006)).
+- chore: update new Mainnet nv25 date to 2025-04-14T23:00:00Z ([filecoin-project/lotus#13007](https://github.com/filecoin-project/lotus/pull/13007)).
+- chore: make TockFix epoch for 2k network configurable ([filecoin-project/lotus#13008](https://github.com/filecoin-project/lotus/pull/13008)).
+- chore(deps): update filecoin-ffi ([filecoin-project/lotus#13011](https://github.com/filecoin-project/lotus/pull/13011)).
+
+## 📝 Changelog
+
+For the set of changes since the last stable release:
+
+- Node: https://github.com/filecoin-project/lotus/compare/v1.31.1...v1.32.2
+- Miner: https://github.com/filecoin-project/lotus/compare/v1.31.1...miner/v1.32.2
+
+# Node and Miner v1.32.1 / 2025-03-28
+
+The Lotus v1.32.1 release is a **MANDATORY patch release**, which will deliver the Filecoin network version 25, codenamed “Teep” 🦵. This release sets the upgrade epoch for the Mainnet to **Epoch 4867320 - 2025-04-10T23:00:00Z**, and correctly sets the F3 activationcontract address to `0xA19080A1Bcb82Bb61bcb9691EC94653Eb5315716`. You can find more details about how the F3 activation on Mainnet will be executed in the [F3 Activation Procedure](https://github.com/filecoin-project/go-f3/issues/920#issuecomment-2761448485).
+
+## ☢️ Upgrade Warnings ☢️
+- The Lotus v1.32.0 release had an issue where the F3 activation contract address was not set correctly. This release corrects that issue.
+- If you are running the v1.30.0 version of Lotus, please go through the Upgrade Warnings section for the [v1.31.0 releases](https://github.com/filecoin-project/lotus/releases/tag/v1.31.0) and [v1.31.1](https://github.com/filecoin-project/lotus/releases/tag/v1.31.1) before upgrading to this release.
+- The minimum supported Golang version is now `1.23.6` ([filecoin-project/lotus#12910](https://github.com/filecoin-project/lotus/pull/12910)).
+- The `SupportedProofTypes` field has been removed from the `Filecoin.StateGetNetworkParams` method because it was frequently overlooked during proof type updates and did not accurately reflect the FVM's supported proofs ([filecoin-project/lotus#12881](https://github.com/filecoin-project/lotus/pull/12881)).
+- Introduced `Agent` field to the `Filecoin.Version` response. Note that this change may be breaking, depending on the clients deserialization capabilities. ([filecoin-project/lotus#12904](https://github.com/filecoin-project/lotus/pull/12904)).
+- The `--only-cc` option has been removed from the `lotus-miner sectors extend` command. 
+
+## 🏛️ Filecoin network version 25 FIPs
+
+- [FIP-0097: Add Support for EIP-1153 (Transient Storage) in the FEVM](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0097.md)
+- [FIP-0098: Simplify termination fee calculation to a fixed percentage of initial pledge](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0098.md)
+- [FIP-0100: Removing Batch Balancer, Replacing It With a Per-sector Fee and Removing Gas-limited Constraints](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0100.md)
+- [F3 Mainnet Activation](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0086.md)
+
+## 📦 v16 Builtin Actor Bundle
+
+This release candidate uses the [v16.0.0](https://github.com/filecoin-project/builtin-actors/releases/tag/v16.0.0)
+
+## 🚚 Migration
+All node operators, including storage providers, should be aware that ONE pre-migration is being scheduled 120 epochs before the network upgrade. The migration for the NV25 upgrade is expected to be medium with a bit longer pre-migration compared to the two previous network upgrade.
+
+Pre-Migration is expected to take between 4 to 8 minutes on a SplitStore node. The migration on the upgrade epoch is expected to take 30 seconds on a node with a NVMe-drive and a newer CPU. For nodes running on slower disks/CPU, it is still expected to take around 1 minute. We recommend node operators (who haven't enabled splitstore discard mode) that do not care about historical chain states, to prune the chain blockstore by syncing from a snapshot 1-2 days before the upgrade.
+
+For certain node operators, such as full archival nodes or systems that need to keep large amounts of state (RPC providers), we recommend skipping the pre-migration and run the non-cached migration (i.e., just running the migration at the network upgrade epoch), and schedule for some additional downtime. Operators of such nodes can read the [How to disable premigration in network upgrade tutorial](https://lotus.filecoin.io/kb/disable-premigration/).
+
+## New Features highlight
+- feat!: [FIP-0100](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0100.md) and [FIP-0098](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0098.md) implementation.
+  - Adds a scheduled nv26 "Tock" upgrade exactly 90 days after nv25 to signal the end of the sector extensions grace period for FIP-0100. This grace period is 7 days for calibnet.
+  - Deadlines on the public API now have a `DailyFee` field
+  - `DealIDs` has now been removed from the public API's `SectorOnChainInfo` (was deprecated in FIP-0079)
+  - Removed `--only-cc` from `spcli sectors extend` command
+  - Change circulating supply calculation for calibnet, butterflynet and 2k for nv25 upgrade; see ([filecoin-project/lotus#12938](https://github.com/filecoin-project/lotus/pull/12938)) for more information.
+- feat: integrate & test FIP-0098 additions ([filecoin-project/lotus#12968](https://github.com/filecoin-project/lotus/pull/12968))
+- feat(cli): the `lotus state sectors` command now supports the `--show-partitions` flag and printing CSV output. ([filecoin-project/lotus#12834](https://github.com/filecoin-project/lotus/pull/12834)).
+- feat: handle non-existing actors gracefully in F3 power proportion CLI. ([filecoin-project/lotus#12840](https://github.com/filecoin-project/lotus/pull/12840))
+- feat: check ETH events indexed in range ([filecoin-project/lotus#12728](https://github.com/filecoin-project/lotus/pull/12728))
+- feat: exposed `StateGetNetworkParams` in the Lotus Gateway API ([filecoin-project/lotus#12881](https://github.com/filecoin-project/lotus/pull/12881))
+- feat: add `--csv` option to the `lotus send` command ([filecoin-project/lotus#12892](https://github.com/filecoin-project/lotus/pull/12892))
+- feat: add `GenesisTimestamp` to `StateGetNetworkParams` response ([filecoin-project/lotus#12925](https://github.com/filecoin-project/lotus/pull/12925))
+- feat: add `ChainGetMessagesInTipset` to Lotus Gateway API ([filecoin-project/lotus#12947](https://github.com/filecoin-project/lotus/pull/12947))
 - feat(f3): Implement contract based parameter setting as for FRC-0099 ([filecoin-project/lotus#12861](https://github.com/filecoin-project/lotus/pull/12861))
+- feat(miner): remove batch balancer-related functionality ([filecoin-project/lotus#12919](https://github.com/filecoin-project/lotus/pull/12919))
+- feat(market): expose access to ProviderSectors on the market actor abstraction ([filecoin-project/lotus#12978](https://github.com/filecoin-project/lotus/pull/12978))
+- feat: expose market ProviderSectors access on state-types abstraction ([filecoin-project/lotus#12978](https://github.com/filecoin-project/lotus/pull/12978))
+- feat(shed): lotus-shed miner-fees - to inspect FIP-0100 fees for a miner ([filecoin-project/lotus#12980](https://github.com/filecoin-project/lotus/pull/12980))
+- Set the F3 contract address on mainnet ([filecoin-project/lotus#12994](https://github.com/filecoin-project/lotus/pull/12994))
+
+## Improvements
+- refactor(eth): attach ToFilecoinMessage converter to EthCall ([filecoin-project/lotus#12844](https://github.com/filecoin-project/lotus/pull/12844))
+- feat: automatically detect if genesis CAR is compressed when using the `--genesis` flag in the `lotus daemon` command ([filecoin-project/lotus#12885](https://github.com/filecoin-project/lotus/pull/12885))
+- fix: In addition to existing network, also publish 2k docker images ([filecoin-project/lotus#12911](https://github.com/filecoin-project/lotus/pull/12911))
+- docs(api): document 10% overestimation in collateral/pledge APIs ([filecoin-project/lotus#12922](https://github.com/filecoin-project/lotus/pull/12922))
+- fix(drand): add null HistoricalBeaconClient for old beacons ([filecoin-project/lotus#12830](https://github.com/filecoin-project/lotus/pull/12830))
+- chore: reduce participation log verbosity when F3 isn't read ([filecoin-project/lotus#12937](https://github.com/filecoin-project/lotus/pull/12937))
+- fix: allow users to optionally configure node startup even if index reconciliation fails ([filecoin-project/lotus#12930](https://github.com/filecoin-project/lotus/pull/12930))
+- feat: add a `LOTUS_DISABLE_F3_ACTIVATION` enviroment variable allowing disabling F3 activation for a specific contract address or epoch ([filecoin-project/lotus#12920](https://github.com/filecoin-project/lotus/pull/12920)).
 - chore: switch to pure-go zstd decoder for snapshot imports.  ([filecoin-project/lotus#12857](https://github.com/filecoin-project/lotus/pull/12857))
-- feat: automatically detect if the genesis is zstd compressed. ([filecoin-project/lotus#12885](https://github.com/filecoin-project/lotus/pull/12885)
-- `lotus send` now supports `--csv` option for sending multiple transactions. ([filecoin-project/lotus#12892](https://github.com/filecoin-project/lotus/pull/12892))
-- chore: upgrade to the latest go-f3 and allow F3 chain exchange topics ([filecoin-project/lotus#12893](https://github.com/filecoin-project/lotus/pull/12893)
-- chore: upgrade to a minimum Golang version of `1.23.6` ([filecoin-project/lotus#12910](https://github.com/filecoin-project/lotus/pull/12910)
-- feat: add a  `LOTUS_DISABLE_F3_ACTIVATION` enviroment variable allowing disabling F3 activation for a specific contract address or epoch ([filecoin-project/lotus#12920](https://github.com/filecoin-project/lotus/pull/12920)). The `LOTUS_DISABLE_F3` env-var has been renamed to `LOTUS_DISABLE_F3_SUBSYSTEM` to distinguish it from the other F3-related environment variables: `LOTUS_DISABLE_F3_PASSIVE_TESTING` and `LOTUS_DISABLE_F3_ACTIVATION`.
-- feat: add `GenesisTimestamp` field to `StateGetNetworkParams` response ([filecoin-project/lotus#12925](https://github.com/filecoin-project/lotus/pull/12925))
-- chore: upgrade drand client
+- chore: upgrade go-state-types with big.Int{} change that means an empty big.Int is now treated as zero for all operations ([filecoin-project/lotus#12936](https://github.com/filecoin-project/lotus/pull/12936))
+- chore(eth): make `EthGetBlockByNumber` & `EthGetBlockByHash` share the same cache and be impacted by `EthBlkCacheSize` config settings ([filecoin-project/lotus#12979](https://github.com/filecoin-project/lotus/pull/12979))
+- chore(deps): bump go-state-types to v0.16.0-rc8 ([filecoin-project/lotus#12973](https://github.com/filecoin-project/lotus/pull/12973))  
+- chore: set Mainnet nv25 upgrade epoch and update deps ([filecoin-project/lotus#12986](https://github.com/filecoin-project/lotus/pull/12986))
+- chore(eth): make EthGetBlockByNumber & EthGetBlockByHash share cache code ([filecoin-project/lotus#12979](https://github.com/filecoin-project/lotus/pull/12979))
 
-# UNRELEASED v.1.32.0
+## Bug Fixes
+- fix(eth): minor improvements to event range checking ([filecoin-project/lotus#12867](https://github.com/filecoin-project/lotus/pull/12867))
+- fix(wallet): allow delegated wallet import ([filecoin-project/lotus#12876](https://github.com/filecoin-project/lotus/pull/12876))
+- fix: use the correct environment variable (`FIL_PROOFS_PARAMETER_CACHE`) for proof params path ([filecoin-project/lotus#12891](https://github.com/filecoin-project/lotus/pull/12891))
 
-See https://github.com/filecoin-project/lotus/blob/release/v1.32.0/CHANGELOG.md
+## 📝 Changelog
+
+For the set of changes since the last stable release:
+
+- Node: https://github.com/filecoin-project/lotus/compare/v1.31.1...v1.32.1
+- Miner: https://github.com/filecoin-project/lotus/compare/v1.31.1...miner/v1.32.1
+
+## 👨‍👩‍👧‍👦 Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Rod Vagg | 46 | +16240/-12784 | 286 |
+| Masih H. Derkani | 76 | +5697/-2175 | 290 |
+| Jakub Sztandera | 38 | +2048/-1652 | 244 |
+| Aryan Tikarya | 2 | +1931/-1444 | 43 |
+| Phi-rjan | 19 | +1777/-1251 | 69 |
+| Piotr Galar | 4 | +1052/-261 | 14 |
+| Mikers | 2 | +664/-149 | 12 |
+| Steven Allen | 8 | +325/-148 | 31 |
+| dependabot[bot] | 15 | +190/-208 | 30 |
+| Phi | 4 | +214/-156 | 12 |
+| Viraj Bhartiya | 2 | +190/-49 | 13 |
+| Aarsh Shah | 1 | +104/-47 | 6 |
+| caseylove | 1 | +71/-67 | 1 |
+| asamuj | 2 | +39/-43 | 14 |
+| ZenGround0 | 1 | +64/-0 | 1 |
+| Krishang Shah | 1 | +30/-30 | 2 |
+| tediou5 | 1 | +38/-15 | 14 |
+| dockercui | 1 | +19/-19 | 19 |
+| XiaoBei | 2 | +15/-15 | 7 |
+| Hubert | 1 | +21/-5 | 9 |
+| wmjae | 2 | +9/-9 | 7 |
+| taozui472 | 1 | +9/-9 | 6 |
+| Yash Jagtap | 1 | +7/-7 | 5 |
+| Peter Cover | 1 | +6/-6 | 4 |
+| Andi | 1 | +6/-6 | 2 |
+| root | 1 | +5/-5 | 4 |
+| growfrow | 1 | +3/-3 | 1 |
+| Łukasz Magiera | 1 | +4/-0 | 2 |
+| wgyt | 1 | +2/-2 | 1 |
+| web3-bot | 2 | +2/-2 | 2 |
+| parthshah1 | 1 | +2/-2 | 1 |
+| leo | 1 | +2/-2 | 2 |
+| futreall | 1 | +2/-2 | 2 |
+| Pranav Konde | 1 | +2/-2 | 1 |
+| Steve Loeppky | 1 | +2/-0 | 1 |
+| LexLuthr | 1 | +2/-0 | 1 |
+
+# Node and Miner v1.32.0 / 2025-03-27
+
+This is the stable release of the **upcoming MANDATORY Lotus v1.32.0 release**, which will deliver the Filecoin network version 25, codenamed “Teep” 🦵. This release candidate sets the upgrade epoch for the Mainnet to **Epoch 4867320 - 2025-04-10T23:00:00Z**.
+
+## ☢️ Upgrade Warnings ☢️
+- If you are running the v1.30.0 version of Lotus, please go through the Upgrade Warnings section for the [v1.31.0 releases](https://github.com/filecoin-project/lotus/releases/tag/v1.31.0) and [v1.31.1](https://github.com/filecoin-project/lotus/releases/tag/v1.31.1) before upgrading to this release.
+- The minimum supported Golang version is now `1.23.6` ([filecoin-project/lotus#12910](https://github.com/filecoin-project/lotus/pull/12910)).
+- The `SupportedProofTypes` field has been removed from the `Filecoin.StateGetNetworkParams` method because it was frequently overlooked during proof type updates and did not accurately reflect the FVM's supported proofs ([filecoin-project/lotus#12881](https://github.com/filecoin-project/lotus/pull/12881)).
+- Introduced `Agent` field to the `Filecoin.Version` response. Note that this change may be breaking, depending on the clients deserialization capabilities. ([filecoin-project/lotus#12904](https://github.com/filecoin-project/lotus/pull/12904)).
+- The `--only-cc` option has been removed from the `lotus-miner sectors extend` command. 
+
+## 🏛️ Filecoin network version 25 FIPs
+
+- [FIP-0097: Add Support for EIP-1153 (Transient Storage) in the FEVM](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0097.md)
+- [FIP-0098: Simplify termination fee calculation to a fixed percentage of initial pledge](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0098.md)
+- [FIP-0100: Removing Batch Balancer, Replacing It With a Per-sector Fee and Removing Gas-limited Constraints](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0100.md)
+- [F3 Mainnet Activation](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0086.md)
+
+## 📦 v16 Builtin Actor Bundle
+
+This release candidate uses the [v16.0.0](https://github.com/filecoin-project/builtin-actors/releases/tag/v16.0.0)
+
+## 🚚 Migration
+All node operators, including storage providers, should be aware that ONE pre-migration is being scheduled 120 epochs before the network upgrade. The migration for the NV25 upgrade is expected to be medium with a bit longer pre-migration compared to the two previous network upgrade.
+
+Pre-Migration is expected to take between 4 to 8 minutes on a SplitStore node. The migration on the upgrade epoch is expected to take 30 seconds on a node with a NVMe-drive and a newer CPU. For nodes running on slower disks/CPU, it is still expected to take around 1 minute. We recommend node operators (who haven't enabled splitstore discard mode) that do not care about historical chain states, to prune the chain blockstore by syncing from a snapshot 1-2 days before the upgrade.
+
+For certain node operators, such as full archival nodes or systems that need to keep large amounts of state (RPC providers), we recommend skipping the pre-migration and run the non-cached migration (i.e., just running the migration at the network upgrade epoch), and schedule for some additional downtime. Operators of such nodes can read the [How to disable premigration in network upgrade tutorial](https://lotus.filecoin.io/kb/disable-premigration/).
+
+## New Features highlight
+- feat!: [FIP-0100](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0100.md) and [FIP-0098](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0098.md) implementation.
+  - Adds a scheduled nv26 "Tock" upgrade exactly 90 days after nv25 to signal the end of the sector extensions grace period for FIP-0100. This grace period is 7 days for calibnet.
+  - Deadlines on the public API now have a `DailyFee` field
+  - `DealIDs` has now been removed from the public API's `SectorOnChainInfo` (was deprecated in FIP-0079)
+  - Removed `--only-cc` from `spcli sectors extend` command
+  - Change circulating supply calculation for calibnet, butterflynet and 2k for nv25 upgrade; see ([filecoin-project/lotus#12938](https://github.com/filecoin-project/lotus/pull/12938)) for more information.
+- feat: integrate & test FIP-0098 additions ([filecoin-project/lotus#12968](https://github.com/filecoin-project/lotus/pull/12968))
+- feat(cli): the `lotus state sectors` command now supports the `--show-partitions` flag and printing CSV output. ([filecoin-project/lotus#12834](https://github.com/filecoin-project/lotus/pull/12834)).
+- feat: handle non-existing actors gracefully in F3 power proportion CLI. ([filecoin-project/lotus#12840](https://github.com/filecoin-project/lotus/pull/12840))
+- feat: check ETH events indexed in range ([filecoin-project/lotus#12728](https://github.com/filecoin-project/lotus/pull/12728))
+- feat: exposed `StateGetNetworkParams` in the Lotus Gateway API ([filecoin-project/lotus#12881](https://github.com/filecoin-project/lotus/pull/12881))
+- feat: add `--csv` option to the `lotus send` command ([filecoin-project/lotus#12892](https://github.com/filecoin-project/lotus/pull/12892))
+- feat: add `GenesisTimestamp` to `StateGetNetworkParams` response ([filecoin-project/lotus#12925](https://github.com/filecoin-project/lotus/pull/12925))
+- feat: add `ChainGetMessagesInTipset` to Lotus Gateway API ([filecoin-project/lotus#12947](https://github.com/filecoin-project/lotus/pull/12947))
+- feat(f3): Implement contract based parameter setting as for FRC-0099 ([filecoin-project/lotus#12861](https://github.com/filecoin-project/lotus/pull/12861))
+- feat(miner): remove batch balancer-related functionality ([filecoin-project/lotus#12919](https://github.com/filecoin-project/lotus/pull/12919))
+- feat(market): expose access to ProviderSectors on the market actor abstraction ([filecoin-project/lotus#12978](https://github.com/filecoin-project/lotus/pull/12978))
+- feat: expose market ProviderSectors access on state-types abstraction ([filecoin-project/lotus#12978](https://github.com/filecoin-project/lotus/pull/12978))
+- feat(shed): lotus-shed miner-fees - to inspect FIP-0100 fees for a miner ([filecoin-project/lotus#12980](https://github.com/filecoin-project/lotus/pull/12980))
+
+## Improvements
+- refactor(eth): attach ToFilecoinMessage converter to EthCall ([filecoin-project/lotus#12844](https://github.com/filecoin-project/lotus/pull/12844))
+- feat: automatically detect if genesis CAR is compressed when using the `--genesis` flag in the `lotus daemon` command ([filecoin-project/lotus#12885](https://github.com/filecoin-project/lotus/pull/12885))
+- fix: In addition to existing network, also publish 2k docker images ([filecoin-project/lotus#12911](https://github.com/filecoin-project/lotus/pull/12911))
+- docs(api): document 10% overestimation in collateral/pledge APIs ([filecoin-project/lotus#12922](https://github.com/filecoin-project/lotus/pull/12922))
+- fix(drand): add null HistoricalBeaconClient for old beacons ([filecoin-project/lotus#12830](https://github.com/filecoin-project/lotus/pull/12830))
+- chore: reduce participation log verbosity when F3 isn't read ([filecoin-project/lotus#12937](https://github.com/filecoin-project/lotus/pull/12937))
+- fix: allow users to optionally configure node startup even if index reconciliation fails ([filecoin-project/lotus#12930](https://github.com/filecoin-project/lotus/pull/12930))
+- feat: add a `LOTUS_DISABLE_F3_ACTIVATION` enviroment variable allowing disabling F3 activation for a specific contract address or epoch ([filecoin-project/lotus#12920](https://github.com/filecoin-project/lotus/pull/12920)).
+- chore: switch to pure-go zstd decoder for snapshot imports.  ([filecoin-project/lotus#12857](https://github.com/filecoin-project/lotus/pull/12857))
+- chore: upgrade go-state-types with big.Int{} change that means an empty big.Int is now treated as zero for all operations ([filecoin-project/lotus#12936](https://github.com/filecoin-project/lotus/pull/12936))
+- chore(eth): make `EthGetBlockByNumber` & `EthGetBlockByHash` share the same cache and be impacted by `EthBlkCacheSize` config settings ([filecoin-project/lotus#12979](https://github.com/filecoin-project/lotus/pull/12979))
+- chore(deps): bump go-state-types to v0.16.0-rc8 ([filecoin-project/lotus#12973](https://github.com/filecoin-project/lotus/pull/12973))  
+- chore: set Mainnet nv25 upgrade epoch and update deps ([filecoin-project/lotus#12986](https://github.com/filecoin-project/lotus/pull/12986))
+- chore(eth): make EthGetBlockByNumber & EthGetBlockByHash share cache code ([filecoin-project/lotus#12979](https://github.com/filecoin-project/lotus/pull/12979))
+
+## Bug Fixes
+- fix(eth): minor improvements to event range checking ([filecoin-project/lotus#12867](https://github.com/filecoin-project/lotus/pull/12867))
+- fix(wallet): allow delegated wallet import ([filecoin-project/lotus#12876](https://github.com/filecoin-project/lotus/pull/12876))
+- fix: use the correct environment variable (`FIL_PROOFS_PARAMETER_CACHE`) for proof params path ([filecoin-project/lotus#12891](https://github.com/filecoin-project/lotus/pull/12891))
+
+## 📝 Changelog
+
+For the set of changes since the last stable release:
+
+- Node: https://github.com/filecoin-project/lotus/compare/v1.31.1...v1.32.1
+- Miner: https://github.com/filecoin-project/lotus/compare/v1.31.1...miner/v1.32.1
+
+## 👨‍👩‍👧‍👦 Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Rod Vagg | 46 | +16240/-12784 | 286 |
+| Masih H. Derkani | 76 | +5697/-2175 | 290 |
+| Jakub Sztandera | 38 | +2048/-1652 | 244 |
+| Aryan Tikarya | 2 | +1931/-1444 | 43 |
+| Phi-rjan | 19 | +1777/-1251 | 69 |
+| Piotr Galar | 4 | +1052/-261 | 14 |
+| Mikers | 2 | +664/-149 | 12 |
+| Steven Allen | 8 | +325/-148 | 31 |
+| dependabot[bot] | 15 | +190/-208 | 30 |
+| Phi | 4 | +214/-156 | 12 |
+| Viraj Bhartiya | 2 | +190/-49 | 13 |
+| Aarsh Shah | 1 | +104/-47 | 6 |
+| caseylove | 1 | +71/-67 | 1 |
+| asamuj | 2 | +39/-43 | 14 |
+| ZenGround0 | 1 | +64/-0 | 1 |
+| Krishang Shah | 1 | +30/-30 | 2 |
+| tediou5 | 1 | +38/-15 | 14 |
+| dockercui | 1 | +19/-19 | 19 |
+| XiaoBei | 2 | +15/-15 | 7 |
+| Hubert | 1 | +21/-5 | 9 |
+| wmjae | 2 | +9/-9 | 7 |
+| taozui472 | 1 | +9/-9 | 6 |
+| Yash Jagtap | 1 | +7/-7 | 5 |
+| Peter Cover | 1 | +6/-6 | 4 |
+| Andi | 1 | +6/-6 | 2 |
+| root | 1 | +5/-5 | 4 |
+| growfrow | 1 | +3/-3 | 1 |
+| Łukasz Magiera | 1 | +4/-0 | 2 |
+| wgyt | 1 | +2/-2 | 1 |
+| web3-bot | 2 | +2/-2 | 2 |
+| parthshah1 | 1 | +2/-2 | 1 |
+| leo | 1 | +2/-2 | 2 |
+| futreall | 1 | +2/-2 | 2 |
+| Pranav Konde | 1 | +2/-2 | 1 |
+| Steve Loeppky | 1 | +2/-0 | 1 |
+| LexLuthr | 1 | +2/-0 | 1 |
 
 # Node v1.31.1 / 2025-01-27
 

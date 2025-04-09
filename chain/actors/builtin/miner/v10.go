@@ -13,6 +13,7 @@ import (
 	rle "github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/big"
 	builtin10 "github.com/filecoin-project/go-state-types/builtin"
 	miner10 "github.com/filecoin-project/go-state-types/builtin/v10/miner"
 	adt10 "github.com/filecoin-project/go-state-types/builtin/v10/util/adt"
@@ -514,6 +515,10 @@ func (d *deadline10) DisputableProofCount() (uint64, error) {
 
 }
 
+func (d *deadline10) DailyFee() (abi.TokenAmount, error) {
+	return big.Zero(), nil
+}
+
 func (p *partition10) AllSectors() (bitfield.BitField, error) {
 	return p.Partition.Sectors, nil
 }
@@ -535,16 +540,16 @@ func fromV10SectorOnChainInfo(v10 miner10.SectorOnChainInfo) SectorOnChainInfo {
 		SectorNumber:          v10.SectorNumber,
 		SealProof:             v10.SealProof,
 		SealedCID:             v10.SealedCID,
-		DealIDs:               v10.DealIDs,
+		DeprecatedDealIDs:     v10.DealIDs,
 		Activation:            v10.Activation,
 		Expiration:            v10.Expiration,
 		DealWeight:            v10.DealWeight,
 		VerifiedDealWeight:    v10.VerifiedDealWeight,
 		InitialPledge:         v10.InitialPledge,
-		ExpectedDayReward:     v10.ExpectedDayReward,
-		ExpectedStoragePledge: v10.ExpectedStoragePledge,
-
-		SectorKeyCID: v10.SectorKeyCID,
+		ExpectedDayReward:     &v10.ExpectedDayReward,
+		ExpectedStoragePledge: &v10.ExpectedStoragePledge,
+		SectorKeyCID:          v10.SectorKeyCID,
+		DailyFee:              big.Zero(),
 	}
 	return info
 }

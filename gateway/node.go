@@ -61,6 +61,7 @@ type TargetAPI interface {
 	Version(context.Context) (api.APIVersion, error)
 	ChainGetParentMessages(context.Context, cid.Cid) ([]api.Message, error)
 	ChainGetParentReceipts(context.Context, cid.Cid) ([]*types.MessageReceipt, error)
+	ChainGetMessagesInTipset(context.Context, types.TipSetKey) ([]api.Message, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) (*api.BlockMessages, error)
 	ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error)
 	ChainGetNode(ctx context.Context, p string) (*api.IpldObject, error)

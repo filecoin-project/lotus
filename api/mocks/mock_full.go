@@ -28,7 +28,7 @@ import (
 	auth "github.com/filecoin-project/go-jsonrpc/auth"
 	abi "github.com/filecoin-project/go-state-types/abi"
 	big "github.com/filecoin-project/go-state-types/big"
-	miner "github.com/filecoin-project/go-state-types/builtin/v13/miner"
+	miner "github.com/filecoin-project/go-state-types/builtin/v16/miner"
 	paych "github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	miner0 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	verifreg "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
@@ -1321,10 +1321,10 @@ func (mr *MockFullNodeMockRecorder) F3GetOrRenewParticipationTicket(arg0, arg1, 
 }
 
 // F3GetProgress mocks base method.
-func (m *MockFullNode) F3GetProgress(arg0 context.Context) (gpbft.Instant, error) {
+func (m *MockFullNode) F3GetProgress(arg0 context.Context) (gpbft.InstanceProgress, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "F3GetProgress", arg0)
-	ret0, _ := ret[0].(gpbft.Instant)
+	ret0, _ := ret[0].(gpbft.InstanceProgress)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

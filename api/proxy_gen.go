@@ -274,7 +274,7 @@ type FullNodeMethods struct {
 
 	F3GetOrRenewParticipationTicket func(p0 context.Context, p1 address.Address, p2 F3ParticipationTicket, p3 uint64) (F3ParticipationTicket, error) `perm:"sign"`
 
-	F3GetProgress func(p0 context.Context) (gpbft.Instant, error) `perm:"read"`
+	F3GetProgress func(p0 context.Context) (gpbft.InstanceProgress, error) `perm:"read"`
 
 	F3IsRunning func(p0 context.Context) (bool, error) `perm:"read"`
 
@@ -617,6 +617,8 @@ type GatewayMethods struct {
 	ChainGetGenesis func(p0 context.Context) (*types.TipSet, error) ``
 
 	ChainGetMessage func(p0 context.Context, p1 cid.Cid) (*types.Message, error) ``
+
+	ChainGetMessagesInTipset func(p0 context.Context, p1 types.TipSetKey) ([]Message, error) ``
 
 	ChainGetParentMessages func(p0 context.Context, p1 cid.Cid) ([]Message, error) ``
 
@@ -2237,15 +2239,15 @@ func (s *FullNodeStub) F3GetOrRenewParticipationTicket(p0 context.Context, p1 ad
 	return *new(F3ParticipationTicket), ErrNotSupported
 }
 
-func (s *FullNodeStruct) F3GetProgress(p0 context.Context) (gpbft.Instant, error) {
+func (s *FullNodeStruct) F3GetProgress(p0 context.Context) (gpbft.InstanceProgress, error) {
 	if s.Internal.F3GetProgress == nil {
-		return *new(gpbft.Instant), ErrNotSupported
+		return *new(gpbft.InstanceProgress), ErrNotSupported
 	}
 	return s.Internal.F3GetProgress(p0)
 }
 
-func (s *FullNodeStub) F3GetProgress(p0 context.Context) (gpbft.Instant, error) {
-	return *new(gpbft.Instant), ErrNotSupported
+func (s *FullNodeStub) F3GetProgress(p0 context.Context) (gpbft.InstanceProgress, error) {
+	return *new(gpbft.InstanceProgress), ErrNotSupported
 }
 
 func (s *FullNodeStruct) F3IsRunning(p0 context.Context) (bool, error) {
@@ -4061,6 +4063,17 @@ func (s *GatewayStruct) ChainGetMessage(p0 context.Context, p1 cid.Cid) (*types.
 
 func (s *GatewayStub) ChainGetMessage(p0 context.Context, p1 cid.Cid) (*types.Message, error) {
 	return nil, ErrNotSupported
+}
+
+func (s *GatewayStruct) ChainGetMessagesInTipset(p0 context.Context, p1 types.TipSetKey) ([]Message, error) {
+	if s.Internal.ChainGetMessagesInTipset == nil {
+		return *new([]Message), ErrNotSupported
+	}
+	return s.Internal.ChainGetMessagesInTipset(p0, p1)
+}
+
+func (s *GatewayStub) ChainGetMessagesInTipset(p0 context.Context, p1 types.TipSetKey) ([]Message, error) {
+	return *new([]Message), ErrNotSupported
 }
 
 func (s *GatewayStruct) ChainGetParentMessages(p0 context.Context, p1 cid.Cid) ([]Message, error) {

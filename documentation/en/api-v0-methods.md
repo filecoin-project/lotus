@@ -276,7 +276,8 @@ Response:
 {
   "Version": "string value",
   "APIVersion": 131840,
-  "BlockDelay": 42
+  "BlockDelay": 42,
+  "Agent": "string value"
 }
 ```
 
@@ -4482,7 +4483,8 @@ Response:
     "UpgradePhoenixHeight": 10101,
     "UpgradeWaffleHeight": 10101,
     "UpgradeTuktukHeight": 10101,
-    "UpgradeTeepHeight": 10101
+    "UpgradeTeepHeight": 10101,
+    "UpgradeTockHeight": 10101
   },
   "Eip155ChainID": 123,
   "GenesisTimestamp": 42
@@ -4879,9 +4881,6 @@ Response:
     "SealedCID": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
-    "DealIDs": [
-      5432
-    ],
     "Activation": 10101,
     "Expiration": 10101,
     "DealWeight": "0",
@@ -4894,7 +4893,8 @@ Response:
     "SectorKeyCID": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
-    "Flags": 0
+    "Flags": 0,
+    "DailyFee": "0"
   }
 ]
 ```
@@ -4951,7 +4951,8 @@ Response:
       5,
       1
     ],
-    "DisputableProofCount": 42
+    "DisputableProofCount": 42,
+    "DailyFee": "0"
   }
 ]
 ```
@@ -5359,9 +5360,6 @@ Response:
     "SealedCID": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
-    "DealIDs": [
-      5432
-    ],
     "Activation": 10101,
     "Expiration": 10101,
     "DealWeight": "0",
@@ -5374,7 +5372,8 @@ Response:
     "SectorKeyCID": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
-    "Flags": 0
+    "Flags": 0,
+    "DailyFee": "0"
   }
 ]
 ```
@@ -5786,9 +5785,6 @@ Response:
   "SealedCID": {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
-  "DealIDs": [
-    5432
-  ],
   "Activation": 10101,
   "Expiration": 10101,
   "DealWeight": "0",
@@ -5801,7 +5797,8 @@ Response:
   "SectorKeyCID": {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
-  "Flags": 0
+  "Flags": 0,
+  "DailyFee": "0"
 }
 ```
 

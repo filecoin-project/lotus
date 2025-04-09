@@ -83,6 +83,7 @@ var f3SbCmdListMiners = &cli.Command{
 var f3SubCmdPowerTable = &cli.Command{
 	Name:    "powertable",
 	Aliases: []string{"pt"},
+	Usage:   "Manages interactions with F3 power tables.",
 	Subcommands: []*cli.Command{
 		{
 			Name:      "get",

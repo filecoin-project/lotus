@@ -83,10 +83,15 @@ var f3CheckActivation = &cli.Command{
 			Name:  "contract",
 			Usage: "address contract to query",
 		},
+		&cli.StringFlag{
+			Name:  "networkname",
+			Usage: "name of the network to be used",
+			Value: "filecoin",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		config := lf3.Config{
-			BaseNetworkName:      "filecoin",
+			BaseNetworkName:      gpbft.NetworkName(cctx.String("networkname")),
 			ContractAddress:      cctx.String("contract"),
 			ContractPollInterval: 15 * time.Second,
 		}

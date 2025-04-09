@@ -13,6 +13,7 @@ import (
 	rle "github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/big"
 	builtin16 "github.com/filecoin-project/go-state-types/builtin"
 	miner16 "github.com/filecoin-project/go-state-types/builtin/v16/miner"
 	adt16 "github.com/filecoin-project/go-state-types/builtin/v16/util/adt"
@@ -514,6 +515,13 @@ func (d *deadline16) DisputableProofCount() (uint64, error) {
 
 }
 
+func (d *deadline16) DailyFee() (abi.TokenAmount, error) {
+	if d.Deadline.DailyFee.Int != nil {
+		return d.Deadline.DailyFee, nil
+	}
+	return big.Zero(), nil
+}
+
 func (p *partition16) AllSectors() (bitfield.BitField, error) {
 	return p.Partition.Sectors, nil
 }
@@ -531,11 +539,15 @@ func (p *partition16) UnprovenSectors() (bitfield.BitField, error) {
 }
 
 func fromV16SectorOnChainInfo(v16 miner16.SectorOnChainInfo) SectorOnChainInfo {
+	dailyFee := v16.DailyFee
+	if dailyFee.Int == nil {
+		dailyFee = big.Zero()
+	}
 	info := SectorOnChainInfo{
 		SectorNumber:          v16.SectorNumber,
 		SealProof:             v16.SealProof,
 		SealedCID:             v16.SealedCID,
-		DealIDs:               v16.DealIDs,
+		DeprecatedDealIDs:     v16.DeprecatedDealIDs,
 		Activation:            v16.Activation,
 		Expiration:            v16.Expiration,
 		DealWeight:            v16.DealWeight,
@@ -543,12 +555,11 @@ func fromV16SectorOnChainInfo(v16 miner16.SectorOnChainInfo) SectorOnChainInfo {
 		InitialPledge:         v16.InitialPledge,
 		ExpectedDayReward:     v16.ExpectedDayReward,
 		ExpectedStoragePledge: v16.ExpectedStoragePledge,
-
-		SectorKeyCID: v16.SectorKeyCID,
-
-		PowerBaseEpoch:    v16.PowerBaseEpoch,
-		ReplacedDayReward: v16.ReplacedDayReward,
-		Flags:             SectorOnChainInfoFlags(v16.Flags),
+		SectorKeyCID:          v16.SectorKeyCID,
+		PowerBaseEpoch:        v16.PowerBaseEpoch,
+		ReplacedDayReward:     v16.ReplacedDayReward,
+		Flags:                 SectorOnChainInfoFlags(v16.Flags),
+		DailyFee:              dailyFee,
 	}
 	return info
 }

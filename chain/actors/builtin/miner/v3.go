@@ -13,6 +13,7 @@ import (
 	rle "github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/manifest"
 	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
@@ -511,6 +512,10 @@ func (d *deadline3) DisputableProofCount() (uint64, error) {
 
 }
 
+func (d *deadline3) DailyFee() (abi.TokenAmount, error) {
+	return big.Zero(), nil
+}
+
 func (p *partition3) AllSectors() (bitfield.BitField, error) {
 	return p.Partition.Sectors, nil
 }
@@ -532,14 +537,15 @@ func fromV3SectorOnChainInfo(v3 miner3.SectorOnChainInfo) SectorOnChainInfo {
 		SectorNumber:          v3.SectorNumber,
 		SealProof:             v3.SealProof,
 		SealedCID:             v3.SealedCID,
-		DealIDs:               v3.DealIDs,
+		DeprecatedDealIDs:     v3.DealIDs,
 		Activation:            v3.Activation,
 		Expiration:            v3.Expiration,
 		DealWeight:            v3.DealWeight,
 		VerifiedDealWeight:    v3.VerifiedDealWeight,
 		InitialPledge:         v3.InitialPledge,
-		ExpectedDayReward:     v3.ExpectedDayReward,
-		ExpectedStoragePledge: v3.ExpectedStoragePledge,
+		ExpectedDayReward:     &v3.ExpectedDayReward,
+		ExpectedStoragePledge: &v3.ExpectedStoragePledge,
+		DailyFee:              big.Zero(),
 	}
 	return info
 }

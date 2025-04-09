@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -909,6 +910,10 @@ func TestMigrationNV24(t *testing.T) {
 	)
 	buildconstants.UpgradeTuktukPowerRampDurationEpochs = powerRampDurationEpochs
 	buildconstants.UpgradeTuktukHeight = nv24epoch
+	// Pretend that the reserve account started with 1B FIL, so that when calculating the
+	// circulating supply we find that the reserve account only has ~300M FIL so there must be ~700M
+	// FIL in circulation, which is close to current mainnet supply.
+	buildconstants.InitialFilReserved = types.MustParseFIL("1000000000 FIL").Int
 
 	// InitialPledgeMaxPerByte is a little too low for an itest environment so gets in the way of
 	// testing the underlying calculation, so we bump it up here so it doesn't interfere.
@@ -1145,4 +1150,103 @@ func preFip0081StateMinerInitialPledgeForSector(ctx context.Context, t *testing.
 	var initialPledgeDen = types.NewInt(100)
 
 	return types.BigDiv(types.BigMul(initialPledge, initialPledgeNum), initialPledgeDen)
+}
+
+func TestMigrationTeepTockFix(t *testing.T) {
+	req := require.New(t)
+
+	kit.QuietMiningLogs()
+
+	var (
+		nv25Epoch    abi.ChainEpoch = 100
+		nv26Epoch    abi.ChainEpoch = nv25Epoch + 100
+		teepFixEpoch abi.ChainEpoch = nv26Epoch + 100
+	)
+	const networkName = "testing-fake-proofs"
+	buildconstants.UpgradeTockFixHeight = teepFixEpoch // needed to be set for migration to run
+
+	// this is normally done in build/init() but we start (on an untagged compile) as "mainnet",
+	// so we need to set it to "testing-fake-proofs" here to make actors.GetActorMetaByCode() return
+	// the right thing for our buggy actor codd CIDs.
+	buggyMetadata := build.BuggyBuiltinActorsMetadataForNetwork(networkName, actorstypes.Version16)
+	for name, c := range buggyMetadata.Actors {
+		t.Logf("adding buggy actor @ v%d for %s: %s", actorstypes.Version16, name, c)
+		actors.AddActorMeta(name, c, actorstypes.Version16)
+	}
+
+	testClient, _, ens := kit.EnsembleMinimal(t,
+		kit.MockProofs(),
+		kit.NetworkName(networkName),
+		kit.UpgradeSchedule(stmgr.Upgrade{
+			Network: network.Version24,
+			Height:  -1,
+		}, stmgr.Upgrade{
+			Height:    nv25Epoch,
+			Network:   network.Version25,
+			Migration: filcns.UpgradeActorsV16,
+			Expensive: true,
+		}, stmgr.Upgrade{
+			Height:    nv26Epoch,
+			Network:   network.Version26,
+			Migration: nil,
+		}, stmgr.Upgrade{
+			Height:    teepFixEpoch,
+			Network:   network.Version26,
+			Migration: filcns.UpgradeActorsV16Fix,
+		},
+		))
+
+	ens.InterconnectAll().BeginMining(2 * time.Millisecond)
+
+	clientApi := testClient.FullNode.(*impl.FullNodeAPI)
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+	defer cancel()
+
+	bs := blockstore.NewAPIBlockstore(testClient)
+	ctxStore := gstStore.WrapBlockStore(ctx, bs)
+
+	getManifestForVersion := func(av actorstypes.Version) cid.Cid {
+		manifestCid, ok := actors.GetManifest(av)
+		req.True(ok)
+		return manifestCid
+	}
+
+	for upgIdx, upgrade := range []struct {
+		epoch       abi.ChainEpoch
+		av          actorstypes.Version
+		getManifest func(actorstypes.Version) cid.Cid
+	}{
+		{0, actorstypes.Version15, getManifestForVersion},
+		{nv25Epoch, actorstypes.Version16, func(actorstypes.Version) cid.Cid { return buggyMetadata.ManifestCid }},
+		{nv26Epoch, actorstypes.Version16, func(actorstypes.Version) cid.Cid { return buggyMetadata.ManifestCid }},
+		{teepFixEpoch, actorstypes.Version16, getManifestForVersion},
+	} {
+		t.Run(fmt.Sprintf("upgrade-%d-at-%d", upgIdx, upgrade.epoch), func(t *testing.T) {
+			head := testClient.WaitTillChain(ctx, kit.HeightAtLeast(upgrade.epoch+5))
+			t.Logf("Testing at height: %d", head.Height())
+
+			currTs, err := clientApi.ChainHead(ctx)
+			req.NoError(err)
+
+			newStateTree, err := state.LoadStateTree(ctxStore, currTs.Blocks()[0].ParentStateRoot)
+			req.NoError(err)
+			req.Equal(types.StateTreeVersion5, newStateTree.Version())
+
+			systemAct, err := newStateTree.GetActor(builtin.SystemActorAddr)
+			req.NoError(err)
+
+			systemSt, err := system.Load(ctxStore, systemAct)
+			req.NoError(err)
+
+			manifestCid := upgrade.getManifest(upgrade.av)
+
+			manifestData, err := actors.LoadManifest(ctx, manifestCid, ctxStore)
+			req.NoError(err)
+			req.Equal(manifestData.Data, systemSt.GetBuiltinActors())
+
+			systemCode, ok := manifestData.Get(manifest.SystemKey)
+			req.True(ok)
+			req.Equal(systemCode, systemAct.Code)
+		})
+	}
 }

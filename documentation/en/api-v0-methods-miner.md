@@ -179,7 +179,8 @@ Response:
 {
   "Version": "string value",
   "APIVersion": 131840,
-  "BlockDelay": 42
+  "BlockDelay": 42,
+  "Agent": "string value"
 }
 ```
 

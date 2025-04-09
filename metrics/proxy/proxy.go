@@ -9,6 +9,7 @@ import (
 	"go.opencensus.io/tag"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v2api"
 	"github.com/filecoin-project/lotus/metrics"
 )
 
@@ -26,6 +27,12 @@ func MetricedStorMinerAPI(a api.StorageMiner) api.StorageMiner {
 
 func MetricedFullAPI(a api.FullNode) api.FullNode {
 	var out api.FullNodeStruct
+	proxy(a, &out)
+	return &out
+}
+
+func MetricedFullV2API(a v2api.FullNode) v2api.FullNode {
+	var out v2api.FullNodeStruct
 	proxy(a, &out)
 	return &out
 }
