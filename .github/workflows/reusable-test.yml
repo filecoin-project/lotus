@@ -193,7 +193,10 @@ jobs:
           MONITOR_FREE_MEMORY: ${{ inputs.run_very_expensive_tests && '1' || runner.debug }}
         run: |
           if [[ "$MONITOR_FREE_MEMORY" == "1" ]]; then
-            watch -n 5 free -m &
+            while true; do
+              free -m
+              sleep 5
+            done &
           fi
           gotestsum \
             --format "$FORMAT" \
