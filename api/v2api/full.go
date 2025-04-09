@@ -15,6 +15,12 @@ type FullNode interface {
 	// MethodGroup: Chain
 	// The Chain method group contains methods for interacting with
 	// the blockchain.
+	//
+	// <b>Note: This API is experimental and may change in the future.<b/>
+	//
+	// Please see Filecoin V2 API design documentation for more details:
+	//   - https://www.notion.so/filecoindev/Lotus-F3-aware-APIs-1cfdc41950c180ae97fef580e79427d5
+	//   - https://www.notion.so/filecoindev/Filecoin-V2-APIs-1d0dc41950c1808b914de5966d501658
 
 	// ChainGetTipSet retrieves a tipset that corresponds to the specified selector
 	// criteria. The criteria can be provided in the form of a tipset key, a
