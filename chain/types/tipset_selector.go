@@ -65,6 +65,8 @@ type TipSetTag string
 //
 // At most, one such criterion can be specified at a time. Otherwise, the
 // criterion is considered to be invalid. See Validate.
+//
+// Experimental: This API is experimental and may change without notice.
 type TipSetSelector struct {
 	Key    *TipSetKey    `json:"key,omitempty"`
 	Height *TipSetHeight `json:"height,omitempty"`
@@ -106,6 +108,8 @@ func (tss TipSetSelector) Validate() error {
 // specified, the selected tipset is guaranteed to be a child of the tipset
 // specified by the anchor at the given height. Otherwise, the "finalized" TipSetTag
 // is used as the Anchor.
+//
+// Experimental: This API is experimental and may change without notice.
 type TipSetHeight struct {
 	At       *abi.ChainEpoch `json:"at,omitempty"`
 	Previous bool            `json:"previous,omitempty"`
@@ -132,6 +136,8 @@ func (tsh TipSetHeight) Validate() error {
 // specified.
 //
 // See TipSetHeight.
+//
+// Experimental: This API is experimental and may change without notice.
 type TipSetAnchor struct {
 
 	// TODO: We might want to rename the term "anchor" to "parent" if they're
