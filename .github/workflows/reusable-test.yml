@@ -190,7 +190,11 @@ jobs:
           FORMAT: ${{ fromJson(steps.group.outputs.metadata).format || 'standard-verbose' }}
           PACKAGES: ${{ join(fromJson(steps.group.outputs.metadata).packages, ' ') }}
           TIMEOUT: ${{ inputs.run_very_expensive_tests && '60m' || '10m' }}
+          MONITOR_FREE_MEMORY: ${{ inputs.run_very_expensive_tests && '1' || runner.debug }}
         run: |
+          if [[ "$MONITOR_FREE_MEMORY" == "1" ]]; then
+            watch -n 5 free -m &
+          fi
           gotestsum \
             --format "$FORMAT" \
             --junitfile "$REPORTS_PATH/$NAME.xml" \
