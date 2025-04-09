@@ -387,6 +387,14 @@ func (e *ethTransaction) EthGetTransactionReceiptLimited(ctx context.Context, tx
 		return nil, err
 	}
 
+	if limit == 0 {
+		return nil, nil
+	}
+
+	if limit > api.LookbackNoLimit {
+		return nil, xerrors.Errorf("limit exceeded", limit)
+	}
+
 	msgLookup, err := e.stateApi.StateSearchMsg(ctx, types.EmptyTSK, c, limit, true)
 	if err != nil {
 		if ipld.IsNotFound(err) || errors.Is(err, stmgr.ErrFailedToLoadMessage) {
