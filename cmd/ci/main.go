@@ -24,8 +24,8 @@ var (
 	linux_x64_xlarge    = []string{"self-hosted", "linux", "x64", "xlarge"}
 	linux_arm64_2xlarge = []string{"self-hosted", "linux", "arm64", "2xlarge"}
 	linux_arm64_xlarge  = []string{"self-hosted", "linux", "arm64", "xlarge"}
-	linux_x64           = []string{"self-hosted", "linux", "x64"}
-	linux_arm64         = []string{"self-hosted", "linux", "arm64"}
+	linux_x64           = []string{"ubuntu-latest"}
+	linux_arm64         = []string{"ubuntu-24.04-arm"}
 )
 
 type TestGroupMetadata struct {
