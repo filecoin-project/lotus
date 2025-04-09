@@ -8,7 +8,7 @@ USAGE:
    lotus [global options] command [command options]
 
 VERSION:
-   1.32.2-dev
+   1.32.3-dev
 
 COMMANDS:
    daemon   Start a lotus daemon process
@@ -2998,7 +2998,7 @@ USAGE:
 
 COMMANDS:
    list-miners, lm  Lists the miners that currently participate in F3 via this node.
-   powertable, pt   
+   powertable, pt   Manages interactions with F3 power tables.
    certs, c         Manages interactions with F3 finality certificates.
    manifest         Gets the current manifest used by F3.
    status           Checks the F3 status.
@@ -3025,7 +3025,7 @@ OPTIONS:
 
 ```
 NAME:
-   lotus f3 powertable
+   lotus f3 powertable - Manages interactions with F3 power tables.
 
 USAGE:
    lotus f3 powertable command [command options]
