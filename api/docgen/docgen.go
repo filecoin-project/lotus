@@ -1,6 +1,7 @@
 package docgen
 
 import (
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"go/ast"
@@ -87,6 +88,13 @@ func init() {
 
 	ExampleValues[reflect.TypeOf(addr)] = addr
 	ExampleValues[reflect.TypeOf(&addr)] = &addr
+
+	var ts types.TipSet
+	err = json.Unmarshal(tipsetSampleJson, &ts)
+	if err != nil {
+		panic(err)
+	}
+	addExample(&ts)
 
 	pid, err := peer.Decode("12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf")
 	if err != nil {
@@ -817,3 +825,6 @@ func MethodGroupFromName(mn string) string {
 	}
 	return mn[:i+1]
 }
+
+//go:embed tipset.json
+var tipsetSampleJson []byte
