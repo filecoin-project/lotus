@@ -9,7 +9,51 @@
 
 # UNRELEASED
 
-- feat!: actors bundle v16.0.1 & special handling for calibnet ([filecoin-project/lotus#13006](https://github.com/filecoin-project/lotus/pull/13006))
+- fix(eth): always return nil for eth transactions not found ([filecoin-project/lotus#12999](https://github.com/filecoin-project/lotus/pull/12999))
+- feat: add experimental v2 APIs that are "F3 aware."  (TODO: expand this section significantly to cover where someone learns about the new APIs, how they enable them, and what expectations they should have around them—i.e., they may change)
+
+# Node and Miner v1.32.2 / 2025-04-04
+
+This Lotus v1.32.2 release is a **MANDATORY patch release**. After the Calibration network upgraded to nv25, a bug was discovered in the ref-fvm KAMT library affecting ERC-20 token minting operations. You can read the the full techincal breakdown of the issue [here](https://github.com/filecoin-project/builtin-actors/pull/1667).
+
+This patch release includes the following updates:
+- Schedules a mandatory Calibration upgrade, happening on `2025-04-07T23:00:00Z`, to fix the ERC-20 token minting bug on the Calibration network.
+- Postpones the mandatory Mainnet nv25 upgrade by 4 days, to `2025-04-14T23:00:00Z`
+
+## ☢️ Upgrade Warnings ☢️
+- All Lotus node and Storage Provider (SP) operators must upgrade to this patch release before the specified dates for the Calibration and Mainnet networks.
+- Please check the upgrade warning section for the [v1.32.1 release](https://github.com/filecoin-project/lotus/releases/tag/v1.32.1) for more upgrade warnings if you are upgrading from a version prior to v1.32.0.
+
+## 🏛️ Filecoin network version 25 FIPs
+
+- [FIP-0097: Add Support for EIP-1153 (Transient Storage) in the FEVM](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0097.md)
+- [FIP-0098: Simplify termination fee calculation to a fixed percentage of initial pledge](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0098.md)
+- [FIP-0100: Removing Batch Balancer, Replacing It With a Per-sector Fee and Removing Gas-limited Constraints](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0100.md)
+- [F3 Mainnet Activation](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0086.md)
+
+## 📦 v16 Builtin Actor Bundle
+
+This release candidate uses the [v16.0.1](https://github.com/filecoin-project/builtin-actors/releases/tag/v16.0.1)
+
+## 🚚 Migration
+All node operators, including storage providers, should be aware that ONE pre-migration is being scheduled 120 epochs before the network upgrade. The migration for the NV25 upgrade is expected to be medium with a bit longer pre-migration compared to the two previous network upgrade.
+
+Pre-Migration is expected to take between 4 to 8 minutes on a SplitStore node. The migration on the upgrade epoch is expected to take 30 seconds on a node with a NVMe-drive and a newer CPU. For nodes running on slower disks/CPU, it is still expected to take around 1 minute. We recommend node operators (who haven't enabled splitstore discard mode) that do not care about historical chain states, to prune the chain blockstore by syncing from a snapshot 1-2 days before the upgrade.
+
+For certain node operators, such as full archival nodes or systems that need to keep large amounts of state (RPC providers), we recommend skipping the pre-migration and run the non-cached migration (i.e., just running the migration at the network upgrade epoch), and schedule for some additional downtime. Operators of such nodes can read the [How to disable premigration in network upgrade tutorial](https://lotus.filecoin.io/kb/disable-premigration/).
+
+## Bug Fixes and Chores
+- feat!: actors bundle v16.0.1 & special handling for calibnet ([filecoin-project/lotus#13006](https://github.com/filecoin-project/lotus/pull/13006)).
+- chore: update new Mainnet nv25 date to 2025-04-14T23:00:00Z ([filecoin-project/lotus#13007](https://github.com/filecoin-project/lotus/pull/13007)).
+- chore: make TockFix epoch for 2k network configurable ([filecoin-project/lotus#13008](https://github.com/filecoin-project/lotus/pull/13008)).
+- chore(deps): update filecoin-ffi ([filecoin-project/lotus#13011](https://github.com/filecoin-project/lotus/pull/13011)).
+
+## 📝 Changelog
+
+For the set of changes since the last stable release:
+
+- Node: https://github.com/filecoin-project/lotus/compare/v1.31.1...v1.32.2
+- Miner: https://github.com/filecoin-project/lotus/compare/v1.31.1...miner/v1.32.2
 
 # Node and Miner v1.32.1 / 2025-03-28
 

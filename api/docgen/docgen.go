@@ -38,6 +38,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/api/v0api"
+	"github.com/filecoin-project/lotus/api/v2api"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
@@ -468,6 +469,7 @@ func init() {
 		},
 		Input: ecchain,
 	})
+	addExample(types.TipSetSelectors.Finalized)
 }
 
 func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []reflect.Type) {
@@ -505,6 +507,15 @@ func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []r
 			permStruct = append(permStruct, reflect.TypeOf(v0api.FullNodeStruct{}.Internal))
 			permStruct = append(permStruct, reflect.TypeOf(v0api.CommonStruct{}.Internal))
 			permStruct = append(permStruct, reflect.TypeOf(v0api.NetStruct{}.Internal))
+		default:
+			panic("unknown type")
+		}
+	case "v2api":
+		switch name {
+		case "FullNode":
+			i = &v2api.FullNodeStruct{}
+			t = reflect.TypeOf(new(struct{ v2api.FullNode })).Elem()
+			permStruct = append(permStruct, reflect.TypeOf(v2api.FullNodeStruct{}.Internal))
 		default:
 			panic("unknown type")
 		}

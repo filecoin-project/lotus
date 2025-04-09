@@ -28,6 +28,7 @@ type Visitor struct {
 func main() {
 	var lets errgroup.Group
 	lets.Go(generateApi)
+	lets.Go(generateApiV2)
 	lets.Go(generateApiV0)
 	if err := lets.Wait(); err != nil {
 		fmt.Println("Error:", err)
@@ -42,6 +43,10 @@ func generateApiV0() error {
 
 func generateApi() error {
 	return generate("./api", "api", "api", "./api/proxy_gen.go")
+}
+
+func generateApiV2() error {
+	return generate("./api/v2api", "v2api", "v2api", "./api/v2api/proxy_gen.go")
 }
 
 func (v *Visitor) Visit(node ast.Node) ast.Visitor {
