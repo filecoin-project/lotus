@@ -28,7 +28,7 @@ type FullNodeMethods struct {
 
 	StateGetID func(p0 context.Context, p1 address.Address, p2 types.TipSetSelector) (*address.Address, error) `perm:"read"`
 
-	StateSimulate func(p0 context.Context, p1 []*types.Message, p2 types.TipSetSelector, p3 types.TipSetLimit) (*api.ComputeStateOutput, error) ``
+	StateSimulate func(p0 context.Context, p1 []*types.Message, p2 types.TipSetSelector, p3 types.TipSetLimit) (*api.ComputeStateOutput, error) `perm:"read"`
 }
 
 type FullNodeStub struct {
