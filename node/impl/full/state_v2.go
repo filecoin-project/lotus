@@ -53,16 +53,16 @@ func (s *StateModuleV2) StateGetID(ctx context.Context, addr address.Address, se
 	return &id, nil
 }
 
-func (a *StateModuleV2) StateCompute(ctx context.Context, msgs []*types.Message, selector types.TipSetSelector) (*api.ComputeStateOutput, error) {
-	ts, err := a.Chain.ChainGetTipSet(ctx, selector)
+func (s *StateModuleV2) StateCompute(ctx context.Context, msgs []*types.Message, selector types.TipSetSelector) (*api.ComputeStateOutput, error) {
+	ts, err := s.Chain.ChainGetTipSet(ctx, selector)
 	if err != nil {
 		return nil, xerrors.Errorf("selecting tipset: %w", err)
 	}
 
-	return a.State.StateCompute(ctx, ts.Height(), msgs, ts.Key())
+	return s.State.StateCompute(ctx, ts.Height(), msgs, ts.Key())
 }
 
-func (a *StateModuleV2) StateSimulate(ctx context.Context, msgs []*types.Message, selector types.TipSetSelector, limit types.TipSetLimit) (*api.ComputeStateOutput, error) {
+func (s *StateModuleV2) StateSimulate(ctx context.Context, msgs []*types.Message, selector types.TipSetSelector, limit types.TipSetLimit) (*api.ComputeStateOutput, error) {
 	if err := limit.Validate(); err != nil {
 		return nil, xerrors.Errorf("validating tipset limit: %w", err)
 	}
@@ -72,7 +72,7 @@ func (a *StateModuleV2) StateSimulate(ctx context.Context, msgs []*types.Message
 	}
 	// TODO: Add upper-bound limit to how far of simulation is acceptable?
 
-	ts, err := a.Chain.ChainGetTipSet(ctx, selector)
+	ts, err := s.Chain.ChainGetTipSet(ctx, selector)
 	if err != nil {
 		return nil, xerrors.Errorf("selecting tipset: %w", err)
 	}
@@ -80,5 +80,5 @@ func (a *StateModuleV2) StateSimulate(ctx context.Context, msgs []*types.Message
 	if ts.Height() > targetHeight {
 		return nil, xerrors.Errorf("tipset height %d is less than requested height at: %d", ts.Height(), limit)
 	}
-	return a.State.StateCompute(ctx, targetHeight, msgs, ts.Key())
+	return s.State.StateCompute(ctx, targetHeight, msgs, ts.Key())
 }
