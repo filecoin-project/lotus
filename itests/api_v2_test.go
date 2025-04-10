@@ -2,7 +2,6 @@ package itests
 
 import (
 	"context"
-	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -12,16 +11,13 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-f3"
 	"github.com/filecoin-project/go-f3/certs"
 	"github.com/filecoin-project/go-f3/gpbft"
-	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
-	"github.com/filecoin-project/lotus/chain/lf3"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
 )
@@ -37,7 +33,7 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 	t.Cleanup(cancel)
 	kit.QuietMiningLogs()
 
-	mockF3 := newMockF3Backend()
+	mockF3 := kit.NewMockF3Backend()
 	subject, miner, network := kit.EnsembleMinimal(t, kit.ThroughRPC(), kit.F3Backend(mockF3))
 	network.BeginMining(blockTime)
 	subject.WaitTillChain(ctx, kit.HeightAtLeast(targetHeight))
@@ -58,7 +54,7 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 		safe = func(t *testing.T) *types.TipSet {
 			head, err := subject.ChainHead(ctx)
 			require.NoError(t, err)
-			safe, err := subject.ChainGetTipSetByHeight(ctx, head.Height()-build.SafeHeightDistance, head.Key())
+			safe, err := subject.ChainGetTipSetByHeight(ctx, head.Height()-buildconstants.SafeHeightDistance, head.Key())
 			require.NoError(t, err)
 			return safe
 		}
@@ -119,7 +115,7 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 			{
 				name: "finalized tag when f3 disabled falls back to ec",
 				when: func(t *testing.T) {
-					mockF3.running = false
+					mockF3.Running = false
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"tag":"finalized"}],"id":1}`,
 				wantTipSet:         ecFinalized,
@@ -128,9 +124,10 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 			{
 				name: "finalized tag is ok",
 				when: func(t *testing.T) {
-					mockF3.running = true
-					mockF3.latestCertErr = nil
-					mockF3.latestCert = plausibleCertAt(t, f3FinalizedEpoch)
+					mockF3.Running = true
+					mockF3.Finalizing = true
+					mockF3.LatestCertErr = nil
+					mockF3.LatestCert = plausibleCertAt(t, f3FinalizedEpoch)
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"tag":"finalized"}],"id":1}`,
 				wantTipSet:         tipSetAtHeight(f3FinalizedEpoch),
@@ -139,9 +136,10 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 			{
 				name: "safe tag is ec safe distance when more recent than f3 finalized",
 				when: func(t *testing.T) {
-					mockF3.running = true
-					mockF3.latestCertErr = nil
-					mockF3.latestCert = plausibleCertAt(t, f3FinalizedEpoch)
+					mockF3.Running = true
+					mockF3.Finalizing = true
+					mockF3.LatestCertErr = nil
+					mockF3.LatestCert = plausibleCertAt(t, f3FinalizedEpoch)
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"tag":"safe"}],"id":1}`,
 				wantTipSet:         safe,
@@ -150,9 +148,10 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 			{
 				name: "safe tag is f3 finalized when ec minus safe distance is too old",
 				when: func(t *testing.T) {
-					mockF3.running = true
-					mockF3.latestCertErr = nil
-					mockF3.latestCert = plausibleCertAt(t, 890)
+					mockF3.Running = true
+					mockF3.Finalizing = true
+					mockF3.LatestCertErr = nil
+					mockF3.LatestCert = plausibleCertAt(t, 890)
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"tag":"safe"}],"id":1}`,
 				wantTipSet:         tipSetAtHeight(890),
@@ -161,9 +160,10 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 			{
 				name: "finalized tag when f3 not ready falls back to ec",
 				when: func(t *testing.T) {
-					mockF3.running = true
-					mockF3.latestCert = nil
-					mockF3.latestCertErr = api.ErrF3NotReady
+					mockF3.Running = true
+					mockF3.Finalizing = true
+					mockF3.LatestCert = nil
+					mockF3.LatestCertErr = api.ErrF3NotReady
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"tag":"finalized"}],"id":1}`,
 				wantTipSet:         ecFinalized,
@@ -172,9 +172,10 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 			{
 				name: "finalized tag when f3 fails is error",
 				when: func(t *testing.T) {
-					mockF3.running = true
-					mockF3.latestCert = nil
-					mockF3.latestCertErr = internalF3Error
+					mockF3.Running = true
+					mockF3.Finalizing = true
+					mockF3.LatestCert = nil
+					mockF3.LatestCertErr = internalF3Error
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"tag":"finalized"}],"id":1}`,
 				wantErr:            internalF3Error.Error(),
@@ -183,9 +184,10 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 			{
 				name: "latest tag when f3 fails is ok",
 				when: func(t *testing.T) {
-					mockF3.running = true
-					mockF3.latestCert = nil
-					mockF3.latestCertErr = internalF3Error
+					mockF3.Running = true
+					mockF3.Finalizing = true
+					mockF3.LatestCert = nil
+					mockF3.LatestCertErr = internalF3Error
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"tag":"latest"}],"id":1}`,
 				wantTipSet:         heaviest,
@@ -194,9 +196,10 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 			{
 				name: "finalized tag when f3 is broken",
 				when: func(t *testing.T) {
-					mockF3.running = true
-					mockF3.latestCert = implausibleCert
-					mockF3.latestCertErr = nil
+					mockF3.Running = true
+					mockF3.Finalizing = true
+					mockF3.LatestCert = implausibleCert
+					mockF3.LatestCertErr = nil
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"tag":"finalized"}],"id":1}`,
 				wantErr:            "decoding latest f3 cert tipset key",
@@ -205,9 +208,9 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 			{
 				name: "height with no anchor without f3 falling back to ec is ok",
 				when: func(t *testing.T) {
-					mockF3.running = false
-					mockF3.latestCert = nil
-					mockF3.latestCertErr = nil
+					mockF3.Running = false
+					mockF3.LatestCert = nil
+					mockF3.LatestCertErr = nil
 				},
 				// Lookup a height that is sufficiently behind the epoch at WaitTillChain + a
 				// little bit further back to avoid race conditions of WaitTillChain
@@ -225,9 +228,10 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 			{
 				name: "height with no anchor before finalized epoch is ok",
 				when: func(t *testing.T) {
-					mockF3.running = true
-					mockF3.latestCert = plausibleCertAt(t, f3FinalizedEpoch)
-					mockF3.latestCertErr = nil
+					mockF3.Running = true
+					mockF3.Finalizing = true
+					mockF3.LatestCert = plausibleCertAt(t, f3FinalizedEpoch)
+					mockF3.LatestCertErr = nil
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"height":{"at":111}}],"id":1}`,
 				wantTipSet:         tipSetAtHeight(111),
@@ -236,9 +240,10 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 			{
 				name: "height with no anchor after finalized epoch is error",
 				when: func(t *testing.T) {
-					mockF3.running = true
-					mockF3.latestCert = plausibleCertAt(t, f3FinalizedEpoch)
-					mockF3.latestCertErr = nil
+					mockF3.Running = true
+					mockF3.Finalizing = true
+					mockF3.LatestCert = plausibleCertAt(t, f3FinalizedEpoch)
+					mockF3.LatestCertErr = nil
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"height":{"at":145}}],"id":1}`,
 				wantErr:            "looking for tipset with height greater than start point",
@@ -247,9 +252,10 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 			{
 				name: "height with no anchor when f3 fails is error",
 				when: func(t *testing.T) {
-					mockF3.running = true
-					mockF3.latestCert = nil
-					mockF3.latestCertErr = internalF3Error
+					mockF3.Running = true
+					mockF3.Finalizing = true
+					mockF3.LatestCert = nil
+					mockF3.LatestCertErr = internalF3Error
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"height":{"at":456}}],"id":1}`,
 				wantErr:            internalF3Error.Error(),
@@ -258,9 +264,10 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 			{
 				name: "height with no anchor and nil f3 cert falling back to ec fails",
 				when: func(t *testing.T) {
-					mockF3.running = true
-					mockF3.latestCert = nil
-					mockF3.latestCertErr = nil
+					mockF3.Running = true
+					mockF3.Finalizing = true
+					mockF3.LatestCert = nil
+					mockF3.LatestCertErr = nil
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"height":{"at":111}}],"id":1}`,
 				wantErr:            "looking for tipset with height greater than start point",
@@ -269,9 +276,10 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 			{
 				name: "height with anchor to latest",
 				when: func(t *testing.T) {
-					mockF3.running = true
-					mockF3.latestCert = plausibleCertAt(t, f3FinalizedEpoch)
-					mockF3.latestCertErr = nil
+					mockF3.Running = true
+					mockF3.Finalizing = true
+					mockF3.LatestCert = plausibleCertAt(t, f3FinalizedEpoch)
+					mockF3.LatestCertErr = nil
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"height":{"at":890,"anchor":{"tag":"latest"}}}],"id":1}`,
 				wantTipSet:         tipSetAtHeight(890),
@@ -334,7 +342,7 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 			{
 				name: "finalized tag when f3 disabled falls back to ec",
 				when: func(t *testing.T) {
-					mockF3.running = false
+					mockF3.Running = false
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.StateGetActor","params":["f01000",{"tag":"finalized"}],"id":1}`,
 				wantResponseStatus: http.StatusOK,
@@ -343,9 +351,10 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 			{
 				name: "finalized tag is ok",
 				when: func(t *testing.T) {
-					mockF3.running = true
-					mockF3.latestCertErr = nil
-					mockF3.latestCert = plausibleCertAt(t, f3FinalizedEpoch)
+					mockF3.Running = true
+					mockF3.Finalizing = true
+					mockF3.LatestCertErr = nil
+					mockF3.LatestCert = plausibleCertAt(t, f3FinalizedEpoch)
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.StateGetActor","params":["f01000",{"tag":"finalized"}],"id":1}`,
 				wantResponseStatus: http.StatusOK,
@@ -354,9 +363,10 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 			{
 				name: "height with anchor to latest",
 				when: func(t *testing.T) {
-					mockF3.running = true
-					mockF3.latestCert = plausibleCertAt(t, f3FinalizedEpoch)
-					mockF3.latestCertErr = nil
+					mockF3.Running = true
+					mockF3.Finalizing = true
+					mockF3.LatestCert = plausibleCertAt(t, f3FinalizedEpoch)
+					mockF3.LatestCertErr = nil
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.StateGetActor","params":["f01000",{"height":{"at":15,"anchor":{"tag":"latest"}}}],"id":1}`,
 				wantResponseStatus: http.StatusOK,
@@ -418,7 +428,7 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 			{
 				name: "finalized tag when f3 disabled falls back to ec",
 				when: func(t *testing.T) {
-					mockF3.running = false
+					mockF3.Running = false
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.StateGetID","params":["f01000",{"tag":"finalized"}],"id":1}`,
 				wantResponseStatus: http.StatusOK,
@@ -454,79 +464,3 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 		}
 	})
 }
-
-var _ lf3.F3Backend = (*mockF3Backend)(nil)
-
-type mockF3Backend struct {
-	progress      gpbft.InstanceProgress
-	latestCert    *certs.FinalityCertificate
-	latestCertErr error
-	certs         map[uint64]*certs.FinalityCertificate
-	participants  map[uint64]struct{}
-	manifest      *manifest.Manifest
-	running       bool
-}
-
-func newMockF3Backend() *mockF3Backend {
-	return &mockF3Backend{
-		certs:        make(map[uint64]*certs.FinalityCertificate),
-		participants: make(map[uint64]struct{}),
-	}
-}
-
-func (t *mockF3Backend) GetOrRenewParticipationTicket(_ context.Context, minerID uint64, _ api.F3ParticipationTicket, _ uint64) (api.F3ParticipationTicket, error) {
-	if !t.running {
-		return nil, f3.ErrF3NotRunning
-	}
-	return binary.BigEndian.AppendUint64(nil, minerID), nil
-}
-
-func (t *mockF3Backend) Participate(_ context.Context, ticket api.F3ParticipationTicket) (api.F3ParticipationLease, error) {
-	if !t.running {
-		return api.F3ParticipationLease{}, f3.ErrF3NotRunning
-	}
-	mid := binary.BigEndian.Uint64(ticket)
-	if _, ok := t.participants[mid]; !ok {
-		return api.F3ParticipationLease{}, api.ErrF3ParticipationTicketInvalid
-	}
-	return api.F3ParticipationLease{
-		Network:      "fish",
-		Issuer:       "fishmonger",
-		MinerID:      mid,
-		FromInstance: t.progress.ID,
-		ValidityTerm: 5,
-	}, nil
-}
-
-func (t *mockF3Backend) GetManifest(context.Context) (*manifest.Manifest, error) {
-	if !t.running {
-		return nil, f3.ErrF3NotRunning
-	}
-	return t.manifest, nil
-}
-
-func (t *mockF3Backend) GetCert(_ context.Context, instance uint64) (*certs.FinalityCertificate, error) {
-	if !t.running {
-		return nil, f3.ErrF3NotRunning
-	}
-	return t.certs[instance], nil
-}
-
-func (t *mockF3Backend) GetLatestCert(context.Context) (*certs.FinalityCertificate, error) {
-	if !t.running {
-		return nil, f3.ErrF3NotRunning
-	}
-	return t.latestCert, t.latestCertErr
-}
-
-func (t *mockF3Backend) GetPowerTable(context.Context, types.TipSetKey) (gpbft.PowerEntries, error) {
-	return nil, nil
-}
-
-func (t *mockF3Backend) GetF3PowerTable(context.Context, types.TipSetKey) (gpbft.PowerEntries, error) {
-	return nil, nil
-}
-
-func (t *mockF3Backend) ListParticipants() []api.F3Participant { return nil }
-func (t *mockF3Backend) IsRunning() bool                       { return t.running }
-func (t *mockF3Backend) Progress() gpbft.InstanceProgress      { return t.progress }

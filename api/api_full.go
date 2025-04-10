@@ -841,23 +841,23 @@ type FullNode interface {
 	// EthBlockNumber returns the height of the latest (heaviest) TipSet
 	EthBlockNumber(ctx context.Context) (ethtypes.EthUint64, error) //perm:read
 	// EthGetBlockTransactionCountByNumber returns the number of messages in the TipSet
-	EthGetBlockTransactionCountByNumber(ctx context.Context, blkNum ethtypes.EthUint64) (ethtypes.EthUint64, error) //perm:read
+	EthGetBlockTransactionCountByNumber(ctx context.Context, blkNum string) (ethtypes.EthUint64, error) //perm:read
 	// EthGetBlockTransactionCountByHash returns the number of messages in the TipSet
 	EthGetBlockTransactionCountByHash(ctx context.Context, blkHash ethtypes.EthHash) (ethtypes.EthUint64, error) //perm:read
 
-	EthGetBlockByHash(ctx context.Context, blkHash ethtypes.EthHash, fullTxInfo bool) (ethtypes.EthBlock, error)                                //perm:read
-	EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (ethtypes.EthBlock, error)                                         //perm:read
-	EthGetTransactionByHash(ctx context.Context, txHash *ethtypes.EthHash) (*ethtypes.EthTx, error)                                             //perm:read
-	EthGetTransactionByHashLimited(ctx context.Context, txHash *ethtypes.EthHash, limit abi.ChainEpoch) (*ethtypes.EthTx, error)                //perm:read
-	EthGetTransactionHashByCid(ctx context.Context, cid cid.Cid) (*ethtypes.EthHash, error)                                                     //perm:read
-	EthGetMessageCidByTransactionHash(ctx context.Context, txHash *ethtypes.EthHash) (*cid.Cid, error)                                          //perm:read
-	EthGetTransactionCount(ctx context.Context, sender ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthUint64, error) //perm:read
-	EthGetTransactionReceipt(ctx context.Context, txHash ethtypes.EthHash) (*EthTxReceipt, error)                                               //perm:read
-	EthGetBlockReceipts(ctx context.Context, blkParam ethtypes.EthBlockNumberOrHash) ([]*EthTxReceipt, error)                                   //perm:read
-	EthGetBlockReceiptsLimited(ctx context.Context, blkParam ethtypes.EthBlockNumberOrHash, limit abi.ChainEpoch) ([]*EthTxReceipt, error)      //perm:read
-	EthGetTransactionReceiptLimited(ctx context.Context, txHash ethtypes.EthHash, limit abi.ChainEpoch) (*EthTxReceipt, error)                  //perm:read
-	EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash ethtypes.EthHash, txIndex ethtypes.EthUint64) (*ethtypes.EthTx, error)    //perm:read
-	EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum string, txIndex ethtypes.EthUint64) (*ethtypes.EthTx, error)             //perm:read
+	EthGetBlockByHash(ctx context.Context, blkHash ethtypes.EthHash, fullTxInfo bool) (ethtypes.EthBlock, error)                                    //perm:read
+	EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (ethtypes.EthBlock, error)                                             //perm:read
+	EthGetTransactionByHash(ctx context.Context, txHash *ethtypes.EthHash) (*ethtypes.EthTx, error)                                                 //perm:read
+	EthGetTransactionByHashLimited(ctx context.Context, txHash *ethtypes.EthHash, limit abi.ChainEpoch) (*ethtypes.EthTx, error)                    //perm:read
+	EthGetTransactionHashByCid(ctx context.Context, cid cid.Cid) (*ethtypes.EthHash, error)                                                         //perm:read
+	EthGetMessageCidByTransactionHash(ctx context.Context, txHash *ethtypes.EthHash) (*cid.Cid, error)                                              //perm:read
+	EthGetTransactionCount(ctx context.Context, sender ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthUint64, error)     //perm:read
+	EthGetTransactionReceipt(ctx context.Context, txHash ethtypes.EthHash) (*ethtypes.EthTxReceipt, error)                                          //perm:read
+	EthGetBlockReceipts(ctx context.Context, blkParam ethtypes.EthBlockNumberOrHash) ([]*ethtypes.EthTxReceipt, error)                              //perm:read
+	EthGetBlockReceiptsLimited(ctx context.Context, blkParam ethtypes.EthBlockNumberOrHash, limit abi.ChainEpoch) ([]*ethtypes.EthTxReceipt, error) //perm:read
+	EthGetTransactionReceiptLimited(ctx context.Context, txHash ethtypes.EthHash, limit abi.ChainEpoch) (*ethtypes.EthTxReceipt, error)             //perm:read
+	EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash ethtypes.EthHash, txIndex ethtypes.EthUint64) (*ethtypes.EthTx, error)        //perm:read
+	EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum string, txIndex ethtypes.EthUint64) (*ethtypes.EthTx, error)                 //perm:read
 
 	EthGetCode(ctx context.Context, address ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error)                                  //perm:read
 	EthGetStorageAt(ctx context.Context, address ethtypes.EthAddress, position ethtypes.EthBytes, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) //perm:read
@@ -1456,20 +1456,4 @@ type HotGCOpts struct {
 	Moving    bool
 }
 
-type EthTxReceipt struct {
-	TransactionHash   ethtypes.EthHash     `json:"transactionHash"`
-	TransactionIndex  ethtypes.EthUint64   `json:"transactionIndex"`
-	BlockHash         ethtypes.EthHash     `json:"blockHash"`
-	BlockNumber       ethtypes.EthUint64   `json:"blockNumber"`
-	From              ethtypes.EthAddress  `json:"from"`
-	To                *ethtypes.EthAddress `json:"to"`
-	StateRoot         ethtypes.EthHash     `json:"root"`
-	Status            ethtypes.EthUint64   `json:"status"`
-	ContractAddress   *ethtypes.EthAddress `json:"contractAddress"`
-	CumulativeGasUsed ethtypes.EthUint64   `json:"cumulativeGasUsed"`
-	GasUsed           ethtypes.EthUint64   `json:"gasUsed"`
-	EffectiveGasPrice ethtypes.EthBigInt   `json:"effectiveGasPrice"`
-	LogsBloom         ethtypes.EthBytes    `json:"logsBloom"`
-	Logs              []ethtypes.EthLog    `json:"logs"`
-	Type              ethtypes.EthUint64   `json:"type"`
-}
+type EthTxReceipt = ethtypes.EthTxReceipt // Deprecated: use ethtypes.EthTxReceipt instead

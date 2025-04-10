@@ -13,13 +13,35 @@
 - fix(deps): fix Ledger hardware wallet support ([filecoin-project/lotus#13048](https://github.com/filecoin-project/lotus/pull/13048))
 - fix(eth): always return nil for eth transactions not found ([filecoin-project/lotus#12999](https://github.com/filecoin-project/lotus/pull/12999))
 - feat: add gas to application metric reporting `vm/applyblocks_early_gas`, `vm/applyblocks_messages_gas`, `vm/applyblocks_cron_gas` ([filecoin-project/lotus#13030](https://github.com/filecoin-project/lotus/pull/13030))
-- feat: add Lotus v2 experimental APIs with F3 awareness
-  The Lotus V2 APIs introduce a powerful new TipSet selection mechanism that significantly enhances how applications interact with the Filecoin blockchain. The design reduces API footprint, seamlessly handles both traditional Expected Consensus and the new F3 protocol, and provides graceful fallbacks. See [Filecoin v2 APIs](https://filoznotebook.notion.site/Filecoin-V2-APIs-1d0dc41950c1808b914de5966d501658) for an
-  in-depth overview.
-  Pull requests:
-    - https://github.com/filecoin-project/lotus/pull/13003
-    - https://github.com/filecoin-project/lotus/pull/13027
-    - https://github.com/filecoin-project/lotus/pull/13034
+
+### Experimental v2 APIs with F3 awareness
+
+The Lotus V2 APIs introduce a powerful new TipSet selection mechanism that significantly enhances how applications interact with the Filecoin blockchain. The design reduces API footprint, seamlessly handles both traditional Expected Consensus (EC) and the new F3 protocol, and provides graceful fallbacks.
+
+> [!NOTE]
+> V2 APIs are highly experimental and subject to change without notice.
+
+> [!IMPORTANT]
+> The `/v2` APIs rely on F3 data even if F3 is not yet finalizing the chain (i.e., `EC.Finalize` is `false` in the live F3 manifest used by all participants). To determine if F3 is actively finalizing, call the `F3GetManifest` API and check if `Manifest.EC.Finalize` is `true`. Only when `EC.Finalize` is `true` will the `/v2` `"finalized"` and `"safe"` tags accurately reflect the chain's finality according to F3. This also applies to Ethereum APIs discussed below.
+
+See [Filecoin v2 APIs](https://filoznotebook.notion.site/Filecoin-V2-APIs-1d0dc41950c1808b914de5966d501658) for an in-depth overview. ([filecoin-project/lotus#13003](https://github.com/filecoin-project/lotus/pull/13003)), ([filecoin-project/lotus#13027](https://github.com/filecoin-project/lotus/pull/13027)), ([filecoin-project/lotus#13034](https://github.com/filecoin-project/lotus/pull/13034))
+
+**F3-aware Ethereum APIs via `/v2` endpoint and improvements to existing `/v1` APIs** ([filecoin-project/lotus#13026](https://github.com/filecoin-project/lotus/pull/13026))
+
+Lotus now offers two versions of its Ethereum-compatible APIs (`eth_*`, `trace_*`, `net_*`, `web3_*` and associated `Filecoin.*` APIs including Filecoin-specific functions such as `Filecoin.EthAddressToFilecoinAddress` and `Filecoin.FilecoinAddressToEthAddress`) with different finality handling:
+* **`/v2` APIs (New & Experimental):** These APIs consult the F3 subsystem (if enabled) for finality information.
+  * `"finalized"` tag maps to the F3 finalized epoch.
+  * `"safe"` tag maps to the F3 finalized epoch or 200 epochs behind head, whichever is more recent.
+* **`/v1` APIs (Existing & Recommended):** These maintain behavior closer to pre-F3 Lotus (EC finality) for compatibility.
+  * `"finalized"` tag continues to use a fixed 900-epoch delay from the head (EC finality).
+  * `"safe"` tag uses a 30-epoch delay from the head.
+  * _One or both of these tags may be adjusted in a future upgrade to take advantage of F3 finality._
+* **Note:** Previously, `"finalized"` and `"safe"` tags referred to epochs `N-1`. This `-1` offset has been removed in both V1 and V2.
+* Additional improvements affecting **both `/v1` and `/v2`** Ethereum APIs:
+  * `eth_getBlockTransactionCountByNumber` now accepts standard Ethereum block specifiers (hex numbers _or_ tags like `"latest"`, `"safe"`, `"finalized"`).
+  * Methods accepting `BlockNumberOrHash` now support all standard tags (`"pending"`, `"latest"`, `"safe"`, `"finalized"`). This includes `eth_estimateGas`, `eth_call`, `eth_getCode`, `eth_getStorageAt`, `eth_getBalance`, `eth_getTransactionCount`, and `eth_getBlockReceipts`.
+  * Removed internal `Eth*Limited` methods (e.g., `EthGetTransactionByHashLimited`) from the supported gateway API surface.
+  * Improved error handling: block selection endpoints now consistently return `ErrNullRound` (and corresponding JSONRPC errors) for null tipsets.
 
 # Node and Miner v1.32.2 / 2025-04-04
 

@@ -10,7 +10,7 @@ import (
 	"github.com/filecoin-project/go-f3"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/lf3"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -79,7 +79,7 @@ func (cm *ChainModuleV2) getLatestSafeTipSet(ctx context.Context) (*types.TipSet
 	if heaviest == nil {
 		return nil, xerrors.Errorf("no known heaviest tipset")
 	}
-	safeHeight := max(0, heaviest.Height()-build.SafeHeightDistance)
+	safeHeight := max(0, heaviest.Height()-buildconstants.SafeHeightDistance)
 	if finalized != nil && finalized.Height() >= safeHeight {
 		return finalized, nil
 	}

@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/api/v1api"
+	"github.com/filecoin-project/lotus/api/v2api"
 	"github.com/filecoin-project/lotus/lib/rpcenc"
 )
 
@@ -24,7 +25,7 @@ func NewCommonRPCV0(ctx context.Context, addr string, requestHeader http.Header)
 	return &res, closer, err
 }
 
-// NewFullNodeRPCV0 creates a new http jsonrpc client.
+// NewFullNodeRPCV0 creates a new http jsonrpc client for the /v0 API.
 func NewFullNodeRPCV0(ctx context.Context, addr string, requestHeader http.Header) (v0api.FullNode, jsonrpc.ClientCloser, error) {
 	var res v0api.FullNodeStruct
 
@@ -34,9 +35,18 @@ func NewFullNodeRPCV0(ctx context.Context, addr string, requestHeader http.Heade
 	return &res, closer, err
 }
 
-// NewFullNodeRPCV1 creates a new http jsonrpc client.
+// NewFullNodeRPCV1 creates a new http jsonrpc client for the /v1 API.
 func NewFullNodeRPCV1(ctx context.Context, addr string, requestHeader http.Header, opts ...jsonrpc.Option) (api.FullNode, jsonrpc.ClientCloser, error) {
 	var res v1api.FullNodeStruct
+	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin",
+		api.GetInternalStructs(&res), requestHeader, append([]jsonrpc.Option{jsonrpc.WithErrors(api.RPCErrors)}, opts...)...)
+
+	return &res, closer, err
+}
+
+// NewFullNodeRPCV2 creates a new http jsonrpc client for the /v2 API.
+func NewFullNodeRPCV2(ctx context.Context, addr string, requestHeader http.Header, opts ...jsonrpc.Option) (v2api.FullNode, jsonrpc.ClientCloser, error) {
+	var res v2api.FullNodeStruct
 	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin",
 		api.GetInternalStructs(&res), requestHeader, append([]jsonrpc.Option{jsonrpc.WithErrors(api.RPCErrors)}, opts...)...)
 
