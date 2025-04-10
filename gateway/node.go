@@ -119,7 +119,7 @@ type TargetAPI interface {
 	EthAddressToFilecoinAddress(ctx context.Context, ethAddress ethtypes.EthAddress) (address.Address, error)
 	FilecoinAddressToEthAddress(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthAddress, error)
 	EthBlockNumber(ctx context.Context) (ethtypes.EthUint64, error)
-	EthGetBlockTransactionCountByNumber(ctx context.Context, blkNum ethtypes.EthUint64) (ethtypes.EthUint64, error)
+	EthGetBlockTransactionCountByNumber(ctx context.Context, blkNum string) (ethtypes.EthUint64, error)
 	EthGetBlockTransactionCountByHash(ctx context.Context, blkHash ethtypes.EthHash) (ethtypes.EthUint64, error)
 	EthGetBlockByHash(ctx context.Context, blkHash ethtypes.EthHash, fullTxInfo bool) (ethtypes.EthBlock, error)
 	EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (ethtypes.EthBlock, error)
@@ -186,8 +186,6 @@ var (
 	_ full.GasModuleAPI   = (*Node)(nil)
 	_ full.MpoolModuleAPI = (*Node)(nil)
 	_ full.StateModuleAPI = (*Node)(nil)
-	_ full.EthModuleAPI   = (*Node)(nil)
-	_ full.EthEventAPI    = (*Node)(nil)
 )
 
 type options struct {

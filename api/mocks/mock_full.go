@@ -781,7 +781,7 @@ func (mr *MockFullNodeMockRecorder) EthGetBlockTransactionCountByHash(arg0, arg1
 }
 
 // EthGetBlockTransactionCountByNumber mocks base method.
-func (m *MockFullNode) EthGetBlockTransactionCountByNumber(arg0 context.Context, arg1 ethtypes.EthUint64) (ethtypes.EthUint64, error) {
+func (m *MockFullNode) EthGetBlockTransactionCountByNumber(arg0 context.Context, arg1 string) (ethtypes.EthUint64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetBlockTransactionCountByNumber", arg0, arg1)
 	ret0, _ := ret[0].(ethtypes.EthUint64)

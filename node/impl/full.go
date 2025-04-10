@@ -35,7 +35,7 @@ type FullNodeAPI struct {
 	full.MsigAPI
 	full.WalletAPI
 	full.SyncAPI
-	full.FullEthAPI
+	full.FullEthAPIV1
 	full.ActorEventsAPI
 	full.F3API
 	full.ChainIndexAPI
@@ -128,6 +128,7 @@ type FullNodeAPIv2 struct {
 	fx.In
 
 	full.ChainModuleAPIv2
+	full.FullEthAPIV2
 }
 
 var _ v2api.FullNode = &FullNodeAPIv2{}
