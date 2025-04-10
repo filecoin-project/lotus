@@ -128,6 +128,7 @@ type FullNodeAPIv2 struct {
 	fx.In
 
 	full.ChainModuleAPIv2
+	full.StateModuleAPIv2
 }
 
 var _ v2api.FullNode = &FullNodeAPIv2{}
