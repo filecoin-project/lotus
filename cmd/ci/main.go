@@ -19,6 +19,7 @@ type TestGroupExecutionContext struct {
 type Runner []string
 
 var (
+	linux_x64_5xlarge   = []string{"self-hosted", "linux", "x64", "5xlarge"}
 	linux_x64_4xlarge   = []string{"self-hosted", "linux", "x64", "4xlarge"}
 	linux_x64_2xlarge   = []string{"self-hosted", "linux", "x64", "2xlarge"}
 	linux_x64_xlarge    = []string{"self-hosted", "linux", "x64", "xlarge"}
@@ -63,6 +64,12 @@ func main() {
 			{
 				Name:  "list-test-group-execution-contexts",
 				Usage: "List all test group execution contexts",
+				Flags: []cli.Flag{
+					&cli.BoolFlag{
+						Name:  "very-expensive-tests-run",
+						Usage: "Whether to only include the groups with very expensive tests",
+					},
+				},
 				Action: func(c *cli.Context) error {
 					integrationTestGroups, err := getIntegrationTestGroups()
 					if err != nil {
@@ -71,6 +78,15 @@ func main() {
 					unitTestGroups := getUnitTestGroups()
 					otherTestGroups := getOtherTestGroups()
 					groups := append(append(integrationTestGroups, unitTestGroups...), otherTestGroups...)
+					if c.Bool("very-expensive-tests-run") {
+						var filteredGroups []TestGroupExecutionContext
+						for _, group := range groups {
+							if getHasVeryExpensiveTests(group.Name) {
+								filteredGroups = append(filteredGroups, group)
+							}
+						}
+						groups = filteredGroups
+					}
 					b, err := json.MarshalIndent(groups, "", "  ")
 					if err != nil {
 						log.Fatal(err)
@@ -199,7 +215,7 @@ func getRunners(testGroupName string) []Runner {
 		"itest-msgindex":                 {linux_x64_xlarge},
 		"itest-multisig":                 {linux_x64_xlarge},
 		"itest-net":                      {linux_x64_xlarge},
-		"itest-niporep_manual":           {linux_x64_4xlarge},
+		"itest-niporep_manual":           {linux_x64_5xlarge},
 		"itest-nonce":                    {linux_x64_xlarge},
 		"itest-path_detach_redeclare":    {linux_x64_xlarge},
 		"itest-pending_deal_allocation":  {linux_x64_xlarge},
@@ -225,6 +241,13 @@ func getRunners(testGroupName string) []Runner {
 	}
 
 	return []Runner{linux_x64}
+}
+
+func getHasVeryExpensiveTests(testGroupName string) bool {
+	testGroupNames := []string{
+		"itest-niporep_manual",
+	}
+	return contains(testGroupNames, testGroupName)
 }
 
 func getTestGroupMetadata(testGroupName string) TestGroupMetadata {
