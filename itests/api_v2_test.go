@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/lf3"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -54,6 +55,13 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 			require.NoError(t, err)
 			return ecFinalized
 		}
+		safe = func(t *testing.T) *types.TipSet {
+			head, err := subject.ChainHead(ctx)
+			require.NoError(t, err)
+			safe, err := subject.ChainGetTipSetByHeight(ctx, head.Height()-build.SafeHeightDistance, head.Key())
+			require.NoError(t, err)
+			return safe
+		}
 		tipSetAtHeight = func(height abi.ChainEpoch) func(t *testing.T) *types.TipSet {
 			return func(t *testing.T) *types.TipSet {
 				ts, err := subject.ChainGetTipSetByHeight(ctx, height, types.EmptyTSK)
@@ -62,8 +70,8 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 			}
 		}
 		internalF3Error = errors.New("lost hearing in left eye")
-		plausibleCert   = func(t *testing.T) *certs.FinalityCertificate {
-			f3FinalisedTipSet := tipSetAtHeight(f3FinalizedEpoch)(t)
+		plausibleCertAt = func(t *testing.T, epoch abi.ChainEpoch) *certs.FinalityCertificate {
+			f3FinalisedTipSet := tipSetAtHeight(epoch)(t)
 			return &certs.FinalityCertificate{
 				ECChain: &gpbft.ECChain{
 					TipSets: []*gpbft.TipSet{{
@@ -122,10 +130,32 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 				when: func(t *testing.T) {
 					mockF3.running = true
 					mockF3.latestCertErr = nil
-					mockF3.latestCert = plausibleCert(t)
+					mockF3.latestCert = plausibleCertAt(t, f3FinalizedEpoch)
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"tag":"finalized"}],"id":1}`,
 				wantTipSet:         tipSetAtHeight(f3FinalizedEpoch),
+				wantResponseStatus: http.StatusOK,
+			},
+			{
+				name: "safe tag is ec safe distance when more recent than f3 finalized",
+				when: func(t *testing.T) {
+					mockF3.running = true
+					mockF3.latestCertErr = nil
+					mockF3.latestCert = plausibleCertAt(t, f3FinalizedEpoch)
+				},
+				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"tag":"safe"}],"id":1}`,
+				wantTipSet:         safe,
+				wantResponseStatus: http.StatusOK,
+			},
+			{
+				name: "safe tag is f3 finalized when ec minus safe distance is too old",
+				when: func(t *testing.T) {
+					mockF3.running = true
+					mockF3.latestCertErr = nil
+					mockF3.latestCert = plausibleCertAt(t, 890)
+				},
+				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"tag":"safe"}],"id":1}`,
+				wantTipSet:         tipSetAtHeight(890),
 				wantResponseStatus: http.StatusOK,
 			},
 			{
@@ -196,7 +226,7 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 				name: "height with no anchor before finalized epoch is ok",
 				when: func(t *testing.T) {
 					mockF3.running = true
-					mockF3.latestCert = plausibleCert(t)
+					mockF3.latestCert = plausibleCertAt(t, f3FinalizedEpoch)
 					mockF3.latestCertErr = nil
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"height":{"at":111}}],"id":1}`,
@@ -207,7 +237,7 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 				name: "height with no anchor after finalized epoch is error",
 				when: func(t *testing.T) {
 					mockF3.running = true
-					mockF3.latestCert = plausibleCert(t)
+					mockF3.latestCert = plausibleCertAt(t, f3FinalizedEpoch)
 					mockF3.latestCertErr = nil
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"height":{"at":145}}],"id":1}`,
@@ -240,7 +270,7 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 				name: "height with anchor to latest",
 				when: func(t *testing.T) {
 					mockF3.running = true
-					mockF3.latestCert = plausibleCert(t)
+					mockF3.latestCert = plausibleCertAt(t, f3FinalizedEpoch)
 					mockF3.latestCertErr = nil
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"height":{"at":890,"anchor":{"tag":"latest"}}}],"id":1}`,
@@ -315,7 +345,7 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 				when: func(t *testing.T) {
 					mockF3.running = true
 					mockF3.latestCertErr = nil
-					mockF3.latestCert = plausibleCert(t)
+					mockF3.latestCert = plausibleCertAt(t, f3FinalizedEpoch)
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.StateGetActor","params":["f01000",{"tag":"finalized"}],"id":1}`,
 				wantResponseStatus: http.StatusOK,
@@ -325,7 +355,7 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 				name: "height with anchor to latest",
 				when: func(t *testing.T) {
 					mockF3.running = true
-					mockF3.latestCert = plausibleCert(t)
+					mockF3.latestCert = plausibleCertAt(t, f3FinalizedEpoch)
 					mockF3.latestCertErr = nil
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.StateGetActor","params":["f01000",{"height":{"at":15,"anchor":{"tag":"latest"}}}],"id":1}`,
