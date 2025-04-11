@@ -18040,7 +18040,31 @@
                                                 "tt": 60000000000
                                             }
                                         ],
-                                        "Subcalls": null
+                                        "Subcalls": null,
+                                        "Logs": [
+                                            "string value"
+                                        ],
+                                        "IpldOps": [
+                                            {
+                                                "Op": "Get",
+                                                "Cid": {
+                                                    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+                                                },
+                                                "Size": 42
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "Logs": [
+                                    "string value"
+                                ],
+                                "IpldOps": [
+                                    {
+                                        "Op": "Get",
+                                        "Cid": {
+                                            "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+                                        },
+                                        "Size": 42
                                     }
                                 ]
                             },
@@ -18123,6 +18147,33 @@
                                         }
                                     },
                                     "type": "object"
+                                },
+                                "IpldOps": {
+                                    "items": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "Cid": {
+                                                "title": "Content Identifier",
+                                                "type": "string"
+                                            },
+                                            "Op": {
+                                                "title": "number",
+                                                "type": "number"
+                                            },
+                                            "Size": {
+                                                "title": "number",
+                                                "type": "number"
+                                            }
+                                        },
+                                        "type": "object"
+                                    },
+                                    "type": "array"
+                                },
+                                "Logs": {
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "type": "array"
                                 },
                                 "Msg": {
                                     "additionalProperties": false,
@@ -18735,7 +18786,31 @@
                                                         "tt": 60000000000
                                                     }
                                                 ],
-                                                "Subcalls": null
+                                                "Subcalls": null,
+                                                "Logs": [
+                                                    "string value"
+                                                ],
+                                                "IpldOps": [
+                                                    {
+                                                        "Op": "Get",
+                                                        "Cid": {
+                                                            "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+                                                        },
+                                                        "Size": 42
+                                                    }
+                                                ]
+                                            }
+                                        ],
+                                        "Logs": [
+                                            "string value"
+                                        ],
+                                        "IpldOps": [
+                                            {
+                                                "Op": "Get",
+                                                "Cid": {
+                                                    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+                                                },
+                                                "Size": 42
                                             }
                                         ]
                                     },
@@ -18828,6 +18903,33 @@
                                                     }
                                                 },
                                                 "type": "object"
+                                            },
+                                            "IpldOps": {
+                                                "items": {
+                                                    "additionalProperties": false,
+                                                    "properties": {
+                                                        "Cid": {
+                                                            "title": "Content Identifier",
+                                                            "type": "string"
+                                                        },
+                                                        "Op": {
+                                                            "title": "number",
+                                                            "type": "number"
+                                                        },
+                                                        "Size": {
+                                                            "title": "number",
+                                                            "type": "number"
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                },
+                                                "type": "array"
+                                            },
+                                            "Logs": {
+                                                "items": {
+                                                    "type": "string"
+                                                },
+                                                "type": "array"
                                             },
                                             "Msg": {
                                                 "additionalProperties": false,
@@ -24086,7 +24188,31 @@
                                                 "tt": 60000000000
                                             }
                                         ],
-                                        "Subcalls": null
+                                        "Subcalls": null,
+                                        "Logs": [
+                                            "string value"
+                                        ],
+                                        "IpldOps": [
+                                            {
+                                                "Op": "Get",
+                                                "Cid": {
+                                                    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+                                                },
+                                                "Size": 42
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "Logs": [
+                                    "string value"
+                                ],
+                                "IpldOps": [
+                                    {
+                                        "Op": "Get",
+                                        "Cid": {
+                                            "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+                                        },
+                                        "Size": 42
                                     }
                                 ]
                             },
@@ -24169,6 +24295,33 @@
                                         }
                                     },
                                     "type": "object"
+                                },
+                                "IpldOps": {
+                                    "items": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "Cid": {
+                                                "title": "Content Identifier",
+                                                "type": "string"
+                                            },
+                                            "Op": {
+                                                "title": "number",
+                                                "type": "number"
+                                            },
+                                            "Size": {
+                                                "title": "number",
+                                                "type": "number"
+                                            }
+                                        },
+                                        "type": "object"
+                                    },
+                                    "type": "array"
+                                },
+                                "Logs": {
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "type": "array"
                                 },
                                 "Msg": {
                                     "additionalProperties": false,

@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/exitcode"
@@ -39,12 +42,78 @@ type ReturnTrace struct {
 	ReturnCodec uint64
 }
 
+type Op uint64
+
+const (
+	IpldOpGet Op = iota
+	IpldOpPut
+)
+
+type TraceIpld struct {
+	Op   Op
+	Cid  cid.Cid
+	Size uint64
+}
+
+func (t TraceIpld) MarshalJSON() ([]byte, error) {
+	type TraceIpldJSON struct {
+		Op   string
+		Cid  cid.Cid
+		Size uint64
+	}
+
+	var opStr string
+	switch t.Op {
+	case IpldOpGet:
+		opStr = "Get"
+	case IpldOpPut:
+		opStr = "Put"
+	default:
+		opStr = "Unknown"
+	}
+
+	return json.Marshal(TraceIpldJSON{
+		Op:   opStr,
+		Cid:  t.Cid,
+		Size: t.Size,
+	})
+}
+
+func (t *TraceIpld) UnmarshalJSON(data []byte) error {
+	type TraceIpldJSON struct {
+		Op   string
+		Cid  cid.Cid
+		Size uint64
+	}
+
+	var tj TraceIpldJSON
+	if err := json.Unmarshal(data, &tj); err != nil {
+		return err
+	}
+
+	t.Cid = tj.Cid
+	t.Size = tj.Size
+
+	switch tj.Op {
+	case "Get":
+		t.Op = IpldOpGet
+	case "Put":
+		t.Op = IpldOpPut
+	default:
+		return xerrors.Errorf("unknown operation: %s", tj.Op)
+	}
+
+	return nil
+}
+
 type ExecutionTrace struct {
 	Msg          MessageTrace
 	MsgRct       ReturnTrace
 	InvokedActor *ActorTrace      `json:",omitempty"`
 	GasCharges   []*GasTrace      `cborgen:"maxlen=1000000000"`
 	Subcalls     []ExecutionTrace `cborgen:"maxlen=1000000000"`
+	Logs         []string         `cborgen:"maxlen=1000000000" json:",omitempty"`
+	IpldOps      []TraceIpld      `cborgen:"maxlen=1000000000" json:",omitempty"`
 }
 
 func (et ExecutionTrace) SumGas() GasTrace {
