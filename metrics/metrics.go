@@ -123,6 +123,7 @@ var (
 	VMApplyEarly                        = stats.Float64("vm/applyblocks_early", "Time spent in early apply-blocks (null cron, upgrades)", stats.UnitMilliseconds)
 	VMApplyCron                         = stats.Float64("vm/applyblocks_cron", "Time spent in cron", stats.UnitMilliseconds)
 	VMApplyFlush                        = stats.Float64("vm/applyblocks_flush", "Time spent flushing vm state", stats.UnitMilliseconds)
+	VMApplyBlocksTotalGas               = stats.Int64("vm/applyblocks_total_gas", "Total gas of messages and cron", stats.UnitDimensionless)
 	VMApplyMessagesGas                  = stats.Int64("vm/applyblocks_messages_gas", "Total gas of block messages", stats.UnitDimensionless)
 	VMApplyEarlyGas                     = stats.Int64("vm/applyblocks_early_gas", "Total gas of early apply-blocks (null cron, upgrades)", stats.UnitDimensionless)
 	VMApplyCronGas                      = stats.Int64("vm/applyblocks_cron_gas", "Total gas of cron", stats.UnitDimensionless)
@@ -409,6 +410,11 @@ var (
 	VMApplyFlushView = &view.View{
 		Measure:     VMApplyFlush,
 		Aggregation: defaultMillisecondsDistribution,
+		TagKeys:     []tag.Key{Network},
+	}
+	VMApplyBlocksTotalGasView = &view.View{
+		Measure:     VMApplyBlocksTotalGas,
+		Aggregation: view.LastValue(),
 		TagKeys:     []tag.Key{Network},
 	}
 	VMApplyEarlyGasView = &view.View{
@@ -815,6 +821,7 @@ var ChainNodeViews = append([]*view.View{
 	VMApplyEarlyView,
 	VMApplyCronView,
 	VMApplyFlushView,
+	VMApplyBlocksTotalGasView,
 	VMApplyEarlyGasView,
 	VMApplyMessagesGasView,
 	VMApplyCronGasView,
