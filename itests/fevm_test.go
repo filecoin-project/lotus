@@ -1190,7 +1190,7 @@ func TestEthGetBlockReceipts(t *testing.T) {
 		// just to be sure we're far enough in the chain for the limit to work
 		client.WaitTillChain(ctx, kit.HeightAtLeast(10))
 		// request epoch 2
-		bn := ethtypes.EthUint64(5)
+		bn := ethtypes.EthUint64(2)
 		// limit to 5 epochs lookback
 		blockReceipts, err := client.EthGetBlockReceiptsLimited(ctx, ethtypes.EthBlockNumberOrHash{BlockNumber: &bn}, 5)
 		require.ErrorContains(t, err, "older than the allowed")
