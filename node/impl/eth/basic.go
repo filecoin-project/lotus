@@ -12,16 +12,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
-type EthBasicAPI interface {
-	Web3ClientVersion(ctx context.Context) (string, error)
-	EthChainId(ctx context.Context) (ethtypes.EthUint64, error)
-	NetVersion(ctx context.Context) (string, error)
-	NetListening(ctx context.Context) (bool, error)
-	EthProtocolVersion(ctx context.Context) (ethtypes.EthUint64, error)
-	EthSyncing(ctx context.Context) (ethtypes.EthSyncingResult, error)
-	EthAccounts(ctx context.Context) ([]ethtypes.EthAddress, error)
-}
-
 var (
 	_ EthBasicAPI = (*ethBasic)(nil)
 	_ EthBasicAPI = (*EthBasicDisabled)(nil)
@@ -111,7 +101,9 @@ func (EthBasicDisabled) Web3ClientVersion(ctx context.Context) (string, error) {
 func (EthBasicDisabled) EthChainId(ctx context.Context) (ethtypes.EthUint64, error) {
 	return 0, ErrModuleDisabled
 }
-func (EthBasicDisabled) NetVersion(ctx context.Context) (string, error) { return "", ErrModuleDisabled }
+func (EthBasicDisabled) NetVersion(ctx context.Context) (string, error) {
+	return "", ErrModuleDisabled
+}
 func (EthBasicDisabled) NetListening(ctx context.Context) (bool, error) {
 	return false, ErrModuleDisabled
 }

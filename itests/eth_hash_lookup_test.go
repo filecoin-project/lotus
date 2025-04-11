@@ -89,7 +89,7 @@ func TestTransactionHashLookup(t *testing.T) {
 	require.Equal(t, hash, mpoolTx.Hash)
 
 	// Wait for message to land on chain
-	var receipt *api.EthTxReceipt
+	var receipt *ethtypes.EthTxReceipt
 	for i := 0; i < 20; i++ {
 		receipt, err = client.EthGetTransactionReceipt(ctx, hash)
 		if err != nil || receipt == nil {
@@ -165,7 +165,7 @@ func TestTransactionHashLookupBlsFilecoinMessage(t *testing.T) {
 	ens.InterconnectAll().BeginMining(blocktime)
 
 	// Wait for message to land on chain
-	var receipt *api.EthTxReceipt
+	var receipt *ethtypes.EthTxReceipt
 	for i := 0; i < 20; i++ {
 		receipt, err = client.EthGetTransactionReceipt(ctx, hash)
 		if err != nil || receipt == nil {
@@ -423,7 +423,7 @@ func TestEthGetMessageCidByTransactionHashEthTx(t *testing.T) {
 	require.Equal(t, *unsignedMessage, *mpoolTx)
 
 	// Wait for message to land on chain
-	var receipt *api.EthTxReceipt
+	var receipt *ethtypes.EthTxReceipt
 	for i := 0; i < 20; i++ {
 		receipt, err = client.EthGetTransactionReceipt(ctx, hash)
 		if err != nil || receipt == nil {

@@ -7,11 +7,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
-type EthSendAPI interface {
-	EthSendRawTransaction(ctx context.Context, rawTx ethtypes.EthBytes) (ethtypes.EthHash, error)
-	EthSendRawTransactionUntrusted(ctx context.Context, rawTx ethtypes.EthBytes) (ethtypes.EthHash, error)
-}
-
 var (
 	_ EthSendAPI = (*ethSend)(nil)
 	_ EthSendAPI = (*EthSendDisabled)(nil)

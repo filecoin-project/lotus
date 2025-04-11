@@ -9,6 +9,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multicodec"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -22,7 +23,6 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
-	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
@@ -39,63 +39,6 @@ func init() {
 	for i := 20 - 8; i < 20; i++ {
 		revertedEthAddress[i] = 0xff
 	}
-}
-
-func getTipsetByEthBlockNumberOrHash(ctx context.Context, cs ChainStore, blkParam ethtypes.EthBlockNumberOrHash) (*types.TipSet, error) {
-	head := cs.GetHeaviestTipSet()
-
-	predefined := blkParam.PredefinedBlock
-	if predefined != nil {
-		if *predefined == "earliest" {
-			return nil, xerrors.New("block param \"earliest\" is not supported")
-		} else if *predefined == "pending" {
-			return head, nil
-		} else if *predefined == "latest" {
-			parent, err := cs.GetTipSetFromKey(ctx, head.Parents())
-			if err != nil {
-				return nil, xerrors.New("cannot get parent tipset")
-			}
-			return parent, nil
-		}
-		return nil, xerrors.Errorf("unknown predefined block %s", *predefined)
-	}
-
-	if blkParam.BlockNumber != nil {
-		height := abi.ChainEpoch(*blkParam.BlockNumber)
-		if height > head.Height()-1 {
-			return nil, xerrors.New("requested a future epoch (beyond 'latest')")
-		}
-		ts, err := cs.GetTipsetByHeight(ctx, height, head, true)
-		if err != nil {
-			return nil, xerrors.Errorf("cannot get tipset at height: %v", height)
-		}
-		return ts, nil
-	}
-
-	if blkParam.BlockHash != nil {
-		ts, err := cs.GetTipSetByCid(ctx, blkParam.BlockHash.ToCid())
-		if err != nil {
-			return nil, xerrors.Errorf("cannot get tipset by hash: %v", err)
-		}
-
-		// verify that the tipset is in the canonical chain
-		if blkParam.RequireCanonical {
-			// walk up the current chain (our head) until we reach ts.Height()
-			walkTs, err := cs.GetTipsetByHeight(ctx, ts.Height(), head, true)
-			if err != nil {
-				return nil, xerrors.Errorf("cannot get tipset at height: %v", ts.Height())
-			}
-
-			// verify that it equals the expected tipset
-			if !walkTs.Equals(ts) {
-				return nil, xerrors.New("tipset is not canonical")
-			}
-		}
-
-		return ts, nil
-	}
-
-	return nil, xerrors.New("invalid block param")
 }
 
 func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTxInfo bool, cs ChainStore, sm StateManager) (ethtypes.EthBlock, error) {
@@ -572,7 +515,7 @@ func newEthTx(
 	return tx, nil
 }
 
-func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, baseFee big.Int, msgReceipt types.MessageReceipt, ev EthEventsInternal) (api.EthTxReceipt, error) {
+func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, baseFee big.Int, msgReceipt types.MessageReceipt, ev EthEventsInternal) (ethtypes.EthTxReceipt, error) {
 	var (
 		transactionIndex ethtypes.EthUint64
 		blockHash        ethtypes.EthHash
@@ -589,7 +532,7 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, baseFee big.Int, ms
 		blockNumber = *tx.BlockNumber
 	}
 
-	txReceipt := api.EthTxReceipt{
+	txReceipt := ethtypes.EthTxReceipt{
 		TransactionHash:  tx.Hash,
 		From:             tx.From,
 		To:               tx.To,
@@ -614,11 +557,11 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, baseFee big.Int, ms
 
 	gasFeeCap, err := tx.GasFeeCap()
 	if err != nil {
-		return api.EthTxReceipt{}, xerrors.Errorf("failed to get gas fee cap: %w", err)
+		return ethtypes.EthTxReceipt{}, xerrors.Errorf("failed to get gas fee cap: %w", err)
 	}
 	gasPremium, err := tx.GasPremium()
 	if err != nil {
-		return api.EthTxReceipt{}, xerrors.Errorf("failed to get gas premium: %w", err)
+		return ethtypes.EthTxReceipt{}, xerrors.Errorf("failed to get gas premium: %w", err)
 	}
 
 	gasOutputs := vm.ComputeGasOutputs(msgReceipt.GasUsed, int64(tx.Gas), baseFee, big.Int(gasFeeCap),
@@ -635,7 +578,7 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, baseFee big.Int, ms
 		// Create and Create2 return the same things.
 		var ret eam.CreateExternalReturn
 		if err := ret.UnmarshalCBOR(bytes.NewReader(msgReceipt.Return)); err != nil {
-			return api.EthTxReceipt{}, xerrors.Errorf("failed to parse contract creation result: %w", err)
+			return ethtypes.EthTxReceipt{}, xerrors.Errorf("failed to parse contract creation result: %w", err)
 		}
 		addr := ethtypes.EthAddress(ret.EthAddress)
 		txReceipt.ContractAddress = &addr
@@ -644,7 +587,7 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, baseFee big.Int, ms
 	if rct := msgReceipt; rct.EventsRoot != nil {
 		logs, err := ev.GetEthLogsForBlockAndTransaction(ctx, &blockHash, tx.Hash)
 		if err != nil {
-			return api.EthTxReceipt{}, xerrors.Errorf("failed to get eth logs for block and transaction: %w", err)
+			return ethtypes.EthTxReceipt{}, xerrors.Errorf("failed to get eth logs for block and transaction: %w", err)
 		}
 		if len(logs) > 0 {
 			txReceipt.Logs = logs
@@ -703,53 +646,65 @@ func encodeAsABIHelper(param1 uint64, param2 uint64, data []byte) []byte {
 	return buf
 }
 
-func getTipsetByBlockNumber(ctx context.Context, cs ChainStore, blkParam string, strict bool) (*types.TipSet, error) {
-	if blkParam == "earliest" {
-		return nil, xerrors.New("block param \"earliest\" is not supported")
+// decodePayload is a utility function which decodes the payload using the given codec
+func decodePayload(payload []byte, codec uint64) (ethtypes.EthBytes, error) {
+	switch multicodec.Code(codec) {
+	case multicodec.Identity:
+		return nil, nil
+	case multicodec.DagCbor, multicodec.Cbor:
+		buf, err := cbg.ReadByteArray(bytes.NewReader(payload), uint64(len(payload)))
+		if err != nil {
+			return nil, xerrors.Errorf("decodePayload: failed to decode cbor payload: %w", err)
+		}
+		return buf, nil
+	case multicodec.Raw:
+		return ethtypes.EthBytes(payload), nil
 	}
 
-	head := cs.GetHeaviestTipSet()
-	switch blkParam {
-	case "pending":
-		return head, nil
-	case "latest":
-		parent, err := cs.GetTipSetFromKey(ctx, head.Parents())
-		if err != nil {
-			return nil, xerrors.New("cannot get parent tipset")
-		}
-		return parent, nil
-	case "safe":
-		latestHeight := head.Height() - 1
-		safeHeight := latestHeight - ethtypes.SafeEpochDelay
-		ts, err := cs.GetTipsetByHeight(ctx, safeHeight, head, true)
-		if err != nil {
-			return nil, xerrors.Errorf("cannot get tipset at height: %v", safeHeight)
-		}
-		return ts, nil
-	case "finalized":
-		latestHeight := head.Height() - 1
-		safeHeight := latestHeight - policy.ChainFinality
-		ts, err := cs.GetTipsetByHeight(ctx, safeHeight, head, true)
-		if err != nil {
-			return nil, xerrors.Errorf("cannot get tipset at height: %v", safeHeight)
-		}
-		return ts, nil
+	return nil, xerrors.Errorf("decodePayload: unsupported codec: %d", codec)
+}
+
+func decodeParams[P any, T interface {
+	*P
+	cbg.CBORUnmarshaler
+}](msg *types.MessageTrace) (T, error) {
+	var params T = new(P)
+	switch msg.ParamsCodec {
+	case uint64(multicodec.DagCbor), uint64(multicodec.Cbor):
 	default:
-		var num ethtypes.EthUint64
-		err := num.UnmarshalJSON([]byte(`"` + blkParam + `"`))
-		if err != nil {
-			return nil, xerrors.Errorf("cannot parse block number: %v", err)
-		}
-		if abi.ChainEpoch(num) > head.Height()-1 {
-			return nil, xerrors.New("requested a future epoch (beyond 'latest')")
-		}
-		ts, err := cs.GetTipsetByHeight(ctx, abi.ChainEpoch(num), head, true)
-		if err != nil {
-			return nil, xerrors.Errorf("cannot get tipset at height: %v", num)
-		}
-		if strict && ts.Height() != abi.ChainEpoch(num) {
-			return nil, api.NewErrNullRound(abi.ChainEpoch(num))
-		}
-		return ts, nil
+		return nil, xerrors.Errorf("Method called with unexpected codec %d", msg.ParamsCodec)
 	}
+
+	if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
+		return nil, xerrors.Errorf("failed to decode params: %w", err)
+	}
+
+	return params, nil
+}
+
+func decodeReturn[R any, T interface {
+	*R
+	cbg.CBORUnmarshaler
+}](ret *types.ReturnTrace) (T, error) {
+	var retval T = new(R)
+	switch ret.ReturnCodec {
+	case uint64(multicodec.DagCbor), uint64(multicodec.Cbor):
+	default:
+		return nil, xerrors.Errorf("Method returned an unexpected codec %d", ret.ReturnCodec)
+	}
+
+	if err := retval.UnmarshalCBOR(bytes.NewReader(ret.Return)); err != nil {
+		return nil, xerrors.Errorf("failed to decode return value: %w", err)
+	}
+
+	return retval, nil
+}
+
+func find[T any](values []T, cb func(t *T) *T) *T {
+	for i := range values {
+		if o := cb(&values[i]); o != nil {
+			return o
+		}
+	}
+	return nil
 }

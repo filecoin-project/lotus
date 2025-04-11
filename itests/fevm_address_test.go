@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -40,7 +39,7 @@ func effectiveEthAddressForCreate(t *testing.T, sender address.Address) ethtypes
 	panic("unreachable")
 }
 
-func createAndDeploy(ctx context.Context, t *testing.T, client *kit.TestFullNode, fromAddr address.Address, contract []byte) *api.EthTxReceipt {
+func createAndDeploy(ctx context.Context, t *testing.T, client *kit.TestFullNode, fromAddr address.Address, contract []byte) *ethtypes.EthTxReceipt {
 	// Create and deploy evm actor
 
 	method := builtintypes.MethodsEAM.CreateExternal
