@@ -397,6 +397,9 @@ func (e *ethTransaction) EthGetTransactionReceiptLimited(ctx context.Context, tx
 	} else if msgLookup == nil {
 		// This is the best we can do. In theory, we could have just not indexed this
 		// transaction, but there's no way to check that here.
+		if limit > api.LookbackNoLimit {
+			return nil, xerrors.Errorf("transaction receipt not found or may be too old (limit: %d epochs)", limit)
+		}
 		return nil, nil
 	}
 
@@ -434,6 +437,10 @@ func (e *ethTransaction) EthGetBlockReceiptsLimited(ctx context.Context, blockPa
 	ts, err := getTipsetByEthBlockNumberOrHash(ctx, e.chainStore, blockParam)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get tipset: %w", err)
+	}
+
+	if limit > api.LookbackNoLimit && ts.Height() < e.chainStore.GetHeaviestTipSet().Height()-limit {
+		return nil, xerrors.Errorf("tipset %s is too old to fetch receipts for", ts.Key())
 	}
 
 	tsCid, err := ts.Key().Cid()
