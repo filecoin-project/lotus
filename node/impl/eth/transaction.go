@@ -398,7 +398,7 @@ func (e *ethTransaction) EthGetTransactionReceiptLimited(ctx context.Context, tx
 		// This is the best we can do. In theory, we could have just not indexed this
 		// transaction, but there's no way to check that here.
 		if limit > api.LookbackNoLimit {
-			return nil, xerrors.Errorf("transaction receipt is too old (limit: %d epochs)", limit)
+			return nil, xerrors.Errorf("transaction receipt not found or may be too old (limit: %d epochs)", limit)
 		}
 		return nil, nil
 	}
