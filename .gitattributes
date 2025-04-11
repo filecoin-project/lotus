@@ -1,2 +1,6 @@
 chain/actors/builtin/*/v* linguist-generated=true
 chain/actors/builtin/*/message* linguist-generated=true
+build/openrpc/** linguist-generated=true
+documentation/en/api-*.md linguist-generated=true
+documentation/en/cli-*.md linguist-generated=true
+
