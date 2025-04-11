@@ -73,10 +73,10 @@ type EthTransactionAPI interface {
 	EthGetTransactionHashByCid(ctx context.Context, cid cid.Cid) (*ethtypes.EthHash, error)
 	EthGetTransactionCount(ctx context.Context, sender ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthUint64, error)
 
-	EthGetTransactionReceipt(ctx context.Context, txHash ethtypes.EthHash) (*api.EthTxReceipt, error)
-	EthGetTransactionReceiptLimited(ctx context.Context, txHash ethtypes.EthHash, limit abi.ChainEpoch) (*api.EthTxReceipt, error)
-	EthGetBlockReceipts(ctx context.Context, blkParam ethtypes.EthBlockNumberOrHash) ([]*api.EthTxReceipt, error)
-	EthGetBlockReceiptsLimited(ctx context.Context, blkParam ethtypes.EthBlockNumberOrHash, limit abi.ChainEpoch) ([]*api.EthTxReceipt, error)
+	EthGetTransactionReceipt(ctx context.Context, txHash ethtypes.EthHash) (*ethtypes.EthTxReceipt, error)
+	EthGetTransactionReceiptLimited(ctx context.Context, txHash ethtypes.EthHash, limit abi.ChainEpoch) (*ethtypes.EthTxReceipt, error)
+	EthGetBlockReceipts(ctx context.Context, blkParam ethtypes.EthBlockNumberOrHash) ([]*ethtypes.EthTxReceipt, error)
+	EthGetBlockReceiptsLimited(ctx context.Context, blkParam ethtypes.EthBlockNumberOrHash, limit abi.ChainEpoch) ([]*ethtypes.EthTxReceipt, error)
 }
 
 // EthLookup ---------------------------------------------------------------------------------------
@@ -139,8 +139,26 @@ type EthEventsInternal interface {
 	GC(ctx context.Context, ttl time.Duration)
 }
 
+// Complete APIs -----------------------------------------------------------------------------------
+
+type EthModuleAPI interface {
+	EthFilecoinAPI
+	EthBasicAPI
+	EthSendAPI
+	EthTransactionAPI
+	EthLookupAPI
+	EthTraceAPI
+	EthGasAPI
+	EthEventsAPI
+}
+
 // Required Dependencies ---------------------------------------------------------------------------
 
+// TipSetResolver is responsible for translating Ethereum API input to tipsets. It may use static
+// rules or F3 to resolve "latest" and "safe" tags as appropriate.
+//
+// In most cases, errors from TipSetResolver should be returned as-is if they are within the
+// top-level of a JSONRPC method so ErrNullRound is properly wrapped when encountered.
 type TipSetResolver interface {
 	GetTipSetByHash(ctx context.Context, blkParam ethtypes.EthHash) (*types.TipSet, error)
 	GetTipsetByBlockNumber(ctx context.Context, blkParam string, strict bool) (*types.TipSet, error)

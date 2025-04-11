@@ -202,7 +202,7 @@ func (e *ethGas) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (ethty
 	} else {
 		ts, err = e.tipsetResolver.GetTipsetByBlockNumberOrHash(ctx, *params.BlkParam)
 		if err != nil {
-			return ethtypes.EthUint64(0), xerrors.Errorf("failed to process block param: %v; %w", params.BlkParam, err)
+			return ethtypes.EthUint64(0), err
 		}
 	}
 
@@ -245,7 +245,7 @@ func (e *ethGas) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam etht
 
 	ts, err := e.tipsetResolver.GetTipsetByBlockNumberOrHash(ctx, blkParam)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to process block param: %v; %w", blkParam, err)
+		return nil, err
 	}
 
 	invokeResult, err := e.applyMessage(ctx, msg, ts.Key())

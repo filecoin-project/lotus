@@ -2939,7 +2939,7 @@
         },
         {
             "name": "Filecoin.EthGetBlockReceipts",
-            "description": "```go\nfunc (s *GatewayStruct) EthGetBlockReceipts(p0 context.Context, p1 ethtypes.EthBlockNumberOrHash) ([]*EthTxReceipt, error) {\n\tif s.Internal.EthGetBlockReceipts == nil {\n\t\treturn *new([]*EthTxReceipt), ErrNotSupported\n\t}\n\treturn s.Internal.EthGetBlockReceipts(p0, p1)\n}\n```",
+            "description": "```go\nfunc (s *GatewayStruct) EthGetBlockReceipts(p0 context.Context, p1 ethtypes.EthBlockNumberOrHash) ([]*ethtypes.EthTxReceipt, error) {\n\tif s.Internal.EthGetBlockReceipts == nil {\n\t\treturn *new([]*ethtypes.EthTxReceipt), ErrNotSupported\n\t}\n\treturn s.Internal.EthGetBlockReceipts(p0, p1)\n}\n```",
             "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
@@ -2980,8 +2980,8 @@
                 }
             ],
             "result": {
-                "name": "[]*EthTxReceipt",
-                "description": "[]*EthTxReceipt",
+                "name": "[]*ethtypes.EthTxReceipt",
+                "description": "[]*ethtypes.EthTxReceipt",
                 "summary": "",
                 "schema": {
                     "examples": [
@@ -4583,7 +4583,7 @@
         },
         {
             "name": "Filecoin.EthGetTransactionReceipt",
-            "description": "```go\nfunc (s *GatewayStruct) EthGetTransactionReceipt(p0 context.Context, p1 ethtypes.EthHash) (*EthTxReceipt, error) {\n\tif s.Internal.EthGetTransactionReceipt == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.EthGetTransactionReceipt(p0, p1)\n}\n```",
+            "description": "```go\nfunc (s *GatewayStruct) EthGetTransactionReceipt(p0 context.Context, p1 ethtypes.EthHash) (*ethtypes.EthTxReceipt, error) {\n\tif s.Internal.EthGetTransactionReceipt == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.EthGetTransactionReceipt(p0, p1)\n}\n```",
             "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
@@ -4615,8 +4615,8 @@
                 }
             ],
             "result": {
-                "name": "*EthTxReceipt",
-                "description": "*EthTxReceipt",
+                "name": "*ethtypes.EthTxReceipt",
+                "description": "*ethtypes.EthTxReceipt",
                 "summary": "",
                 "schema": {
                     "examples": [

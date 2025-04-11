@@ -723,7 +723,7 @@ func TestMultipleEvents(t *testing.T) {
 
 	paramsArray := [][]byte{params4Events, params3Events, params3Events}
 
-	var receipts []*api.EthTxReceipt
+	var receipts []*ethtypes.EthTxReceipt
 	var hashes []ethtypes.EthHash
 
 	nonce := 1

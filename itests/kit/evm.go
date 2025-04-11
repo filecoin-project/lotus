@@ -331,7 +331,7 @@ func (e *EVM) InvokeContractByFuncNameExpectExit(ctx context.Context, fromAddr a
 	require.Equal(e.t, exit, wait.Receipt.ExitCode)
 }
 
-func (e *EVM) WaitTransaction(ctx context.Context, hash ethtypes.EthHash) (*api.EthTxReceipt, error) {
+func (e *EVM) WaitTransaction(ctx context.Context, hash ethtypes.EthHash) (*ethtypes.EthTxReceipt, error) {
 	retries := 3
 	var mcid *cid.Cid
 	var err error

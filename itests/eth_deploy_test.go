@@ -145,7 +145,7 @@ func TestDeployment(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, receipts)
 	require.Greater(t, len(receipts), 0)
-	var matchingReceipt *api.EthTxReceipt
+	var matchingReceipt *ethtypes.EthTxReceipt
 	for _, r := range receipts {
 		if r.TransactionHash == receipt.TransactionHash {
 			require.Nil(t, matchingReceipt, "Multiple matching receipts found")

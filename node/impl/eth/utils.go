@@ -515,7 +515,7 @@ func newEthTx(
 	return tx, nil
 }
 
-func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, baseFee big.Int, msgReceipt types.MessageReceipt, ev EthEventsInternal) (api.EthTxReceipt, error) {
+func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, baseFee big.Int, msgReceipt types.MessageReceipt, ev EthEventsInternal) (ethtypes.EthTxReceipt, error) {
 	var (
 		transactionIndex ethtypes.EthUint64
 		blockHash        ethtypes.EthHash
@@ -532,7 +532,7 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, baseFee big.Int, ms
 		blockNumber = *tx.BlockNumber
 	}
 
-	txReceipt := api.EthTxReceipt{
+	txReceipt := ethtypes.EthTxReceipt{
 		TransactionHash:  tx.Hash,
 		From:             tx.From,
 		To:               tx.To,
@@ -557,11 +557,11 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, baseFee big.Int, ms
 
 	gasFeeCap, err := tx.GasFeeCap()
 	if err != nil {
-		return api.EthTxReceipt{}, xerrors.Errorf("failed to get gas fee cap: %w", err)
+		return ethtypes.EthTxReceipt{}, xerrors.Errorf("failed to get gas fee cap: %w", err)
 	}
 	gasPremium, err := tx.GasPremium()
 	if err != nil {
-		return api.EthTxReceipt{}, xerrors.Errorf("failed to get gas premium: %w", err)
+		return ethtypes.EthTxReceipt{}, xerrors.Errorf("failed to get gas premium: %w", err)
 	}
 
 	gasOutputs := vm.ComputeGasOutputs(msgReceipt.GasUsed, int64(tx.Gas), baseFee, big.Int(gasFeeCap),
@@ -578,7 +578,7 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, baseFee big.Int, ms
 		// Create and Create2 return the same things.
 		var ret eam.CreateExternalReturn
 		if err := ret.UnmarshalCBOR(bytes.NewReader(msgReceipt.Return)); err != nil {
-			return api.EthTxReceipt{}, xerrors.Errorf("failed to parse contract creation result: %w", err)
+			return ethtypes.EthTxReceipt{}, xerrors.Errorf("failed to parse contract creation result: %w", err)
 		}
 		addr := ethtypes.EthAddress(ret.EthAddress)
 		txReceipt.ContractAddress = &addr
@@ -587,7 +587,7 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, baseFee big.Int, ms
 	if rct := msgReceipt; rct.EventsRoot != nil {
 		logs, err := ev.GetEthLogsForBlockAndTransaction(ctx, &blockHash, tx.Hash)
 		if err != nil {
-			return api.EthTxReceipt{}, xerrors.Errorf("failed to get eth logs for block and transaction: %w", err)
+			return ethtypes.EthTxReceipt{}, xerrors.Errorf("failed to get eth logs for block and transaction: %w", err)
 		}
 		if len(logs) > 0 {
 			txReceipt.Logs = logs

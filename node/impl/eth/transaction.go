@@ -97,7 +97,7 @@ func (e *ethTransaction) EthBlockNumber(ctx context.Context) (ethtypes.EthUint64
 func (e *ethTransaction) EthGetBlockTransactionCountByNumber(ctx context.Context, blkParam string) (ethtypes.EthUint64, error) {
 	ts, err := e.tipsetResolver.GetTipsetByBlockNumber(ctx, blkParam, true)
 	if err != nil {
-		return ethtypes.EthUint64(0), xerrors.Errorf("failed to get tipset by number: %w", err)
+		return ethtypes.EthUint64(0), err
 	}
 	count, err := e.countTipsetMsgs(ctx, ts)
 	return ethtypes.EthUint64(count), err
@@ -106,7 +106,7 @@ func (e *ethTransaction) EthGetBlockTransactionCountByNumber(ctx context.Context
 func (e *ethTransaction) EthGetBlockTransactionCountByHash(ctx context.Context, blkHash ethtypes.EthHash) (ethtypes.EthUint64, error) {
 	ts, err := e.tipsetResolver.GetTipSetByHash(ctx, blkHash)
 	if err != nil {
-		return ethtypes.EthUint64(0), xerrors.Errorf("failed to get tipset by hash: %w", err)
+		return ethtypes.EthUint64(0), err
 	}
 	count, err := e.countTipsetMsgs(ctx, ts)
 	return ethtypes.EthUint64(count), err
@@ -115,7 +115,7 @@ func (e *ethTransaction) EthGetBlockTransactionCountByHash(ctx context.Context, 
 func (e *ethTransaction) EthGetBlockByHash(ctx context.Context, blkHash ethtypes.EthHash, fullTxInfo bool) (ethtypes.EthBlock, error) {
 	ts, err := e.tipsetResolver.GetTipSetByHash(ctx, blkHash)
 	if err != nil {
-		return ethtypes.EthBlock{}, xerrors.Errorf("failed to get tipset by hash: %w", err)
+		return ethtypes.EthBlock{}, err
 	}
 	return e.getBlockByTipset(ctx, ts, fullTxInfo, "EthGetBlockByHash:"+blkHash.String())
 }
@@ -123,7 +123,7 @@ func (e *ethTransaction) EthGetBlockByHash(ctx context.Context, blkHash ethtypes
 func (e *ethTransaction) EthGetBlockByNumber(ctx context.Context, blkParam string, fullTxInfo bool) (ethtypes.EthBlock, error) {
 	ts, err := e.tipsetResolver.GetTipsetByBlockNumber(ctx, blkParam, true)
 	if err != nil {
-		return ethtypes.EthBlock{}, xerrors.Errorf("failed to get tipset by number: %w", err)
+		return ethtypes.EthBlock{}, err
 	}
 	return e.getBlockByTipset(ctx, ts, fullTxInfo, "EthGetBlockByNumber:"+blkParam)
 }
@@ -189,7 +189,7 @@ func (e *ethTransaction) EthGetTransactionByHashLimited(ctx context.Context, txH
 func (e *ethTransaction) EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash ethtypes.EthHash, index ethtypes.EthUint64) (*ethtypes.EthTx, error) {
 	ts, err := e.tipsetResolver.GetTipSetByHash(ctx, blkHash)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get tipset by hash: %w", err)
+		return nil, err
 	}
 	return e.getTransactionByTipsetAndIndex(ctx, ts, index)
 }
@@ -197,7 +197,7 @@ func (e *ethTransaction) EthGetTransactionByBlockHashAndIndex(ctx context.Contex
 func (e *ethTransaction) EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkParam string, index ethtypes.EthUint64) (*ethtypes.EthTx, error) {
 	ts, err := e.tipsetResolver.GetTipsetByBlockNumber(ctx, blkParam, true)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get tipset by number: %w", err)
+		return nil, err
 	}
 	return e.getTransactionByTipsetAndIndex(ctx, ts, index)
 }
@@ -258,7 +258,7 @@ func (e *ethTransaction) EthGetTransactionCount(ctx context.Context, sender etht
 	// For all other cases, get the tipset based on the block parameter
 	ts, err := e.tipsetResolver.GetTipsetByBlockNumberOrHash(ctx, blkParam)
 	if err != nil {
-		return ethtypes.EthUint64(0), xerrors.Errorf("failed to process block param: %v; %w", blkParam, err)
+		return ethtypes.EthUint64(0), err
 	}
 
 	// Get the actor state at the specified tipset
@@ -289,11 +289,11 @@ func (e *ethTransaction) EthGetTransactionCount(ctx context.Context, sender etht
 	return ethtypes.EthUint64(actor.Nonce), nil
 }
 
-func (e *ethTransaction) EthGetTransactionReceipt(ctx context.Context, txHash ethtypes.EthHash) (*api.EthTxReceipt, error) {
+func (e *ethTransaction) EthGetTransactionReceipt(ctx context.Context, txHash ethtypes.EthHash) (*ethtypes.EthTxReceipt, error) {
 	return e.EthGetTransactionReceiptLimited(ctx, txHash, api.LookbackNoLimit)
 }
 
-func (e *ethTransaction) EthGetTransactionReceiptLimited(ctx context.Context, txHash ethtypes.EthHash, limit abi.ChainEpoch) (*api.EthTxReceipt, error) {
+func (e *ethTransaction) EthGetTransactionReceiptLimited(ctx context.Context, txHash ethtypes.EthHash, limit abi.ChainEpoch) (*ethtypes.EthTxReceipt, error) {
 	c, err := e.getCidForTransaction(ctx, &txHash)
 	if err != nil {
 		return nil, err
@@ -338,14 +338,14 @@ func (e *ethTransaction) EthGetTransactionReceiptLimited(ctx context.Context, tx
 	return &receipt, nil
 }
 
-func (e *ethTransaction) EthGetBlockReceipts(ctx context.Context, blockParam ethtypes.EthBlockNumberOrHash) ([]*api.EthTxReceipt, error) {
+func (e *ethTransaction) EthGetBlockReceipts(ctx context.Context, blockParam ethtypes.EthBlockNumberOrHash) ([]*ethtypes.EthTxReceipt, error) {
 	return e.EthGetBlockReceiptsLimited(ctx, blockParam, api.LookbackNoLimit)
 }
 
-func (e *ethTransaction) EthGetBlockReceiptsLimited(ctx context.Context, blockParam ethtypes.EthBlockNumberOrHash, limit abi.ChainEpoch) ([]*api.EthTxReceipt, error) {
+func (e *ethTransaction) EthGetBlockReceiptsLimited(ctx context.Context, blockParam ethtypes.EthBlockNumberOrHash, limit abi.ChainEpoch) ([]*ethtypes.EthTxReceipt, error) {
 	ts, err := e.tipsetResolver.GetTipsetByBlockNumberOrHash(ctx, blockParam)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get tipset: %w", err)
+		return nil, err
 	}
 	tsCid, err := ts.Key().Cid()
 	if err != nil {
@@ -371,7 +371,7 @@ func (e *ethTransaction) EthGetBlockReceiptsLimited(ctx context.Context, blockPa
 
 	baseFee := ts.Blocks()[0].ParentBaseFee
 
-	ethReceipts := make([]*api.EthTxReceipt, 0, len(msgs))
+	ethReceipts := make([]*ethtypes.EthTxReceipt, 0, len(msgs))
 	for i, msg := range msgs {
 		msg := msg
 
@@ -533,15 +533,15 @@ func (EthTransactionDisabled) EthGetTransactionHashByCid(ctx context.Context, ci
 func (EthTransactionDisabled) EthGetTransactionCount(ctx context.Context, sender ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthUint64, error) {
 	return 0, ErrModuleDisabled
 }
-func (EthTransactionDisabled) EthGetTransactionReceipt(ctx context.Context, txHash ethtypes.EthHash) (*api.EthTxReceipt, error) {
+func (EthTransactionDisabled) EthGetTransactionReceipt(ctx context.Context, txHash ethtypes.EthHash) (*ethtypes.EthTxReceipt, error) {
 	return nil, ErrModuleDisabled
 }
-func (EthTransactionDisabled) EthGetTransactionReceiptLimited(ctx context.Context, txHash ethtypes.EthHash, limit abi.ChainEpoch) (*api.EthTxReceipt, error) {
+func (EthTransactionDisabled) EthGetTransactionReceiptLimited(ctx context.Context, txHash ethtypes.EthHash, limit abi.ChainEpoch) (*ethtypes.EthTxReceipt, error) {
 	return nil, ErrModuleDisabled
 }
-func (EthTransactionDisabled) EthGetBlockReceipts(ctx context.Context, blockParam ethtypes.EthBlockNumberOrHash) ([]*api.EthTxReceipt, error) {
+func (EthTransactionDisabled) EthGetBlockReceipts(ctx context.Context, blockParam ethtypes.EthBlockNumberOrHash) ([]*ethtypes.EthTxReceipt, error) {
 	return nil, ErrModuleDisabled
 }
-func (EthTransactionDisabled) EthGetBlockReceiptsLimited(ctx context.Context, blockParam ethtypes.EthBlockNumberOrHash, limit abi.ChainEpoch) ([]*api.EthTxReceipt, error) {
+func (EthTransactionDisabled) EthGetBlockReceiptsLimited(ctx context.Context, blockParam ethtypes.EthBlockNumberOrHash, limit abi.ChainEpoch) ([]*ethtypes.EthTxReceipt, error) {
 	return nil, ErrModuleDisabled
 }

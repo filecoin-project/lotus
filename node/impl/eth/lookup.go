@@ -62,7 +62,7 @@ func (e *ethLookup) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress,
 
 	ts, err := e.tipsetResolver.GetTipsetByBlockNumberOrHash(ctx, blkParam)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to process block param: %v; %w", blkParam, err)
+		return nil, err
 	}
 
 	// StateManager.Call will panic if there is no parent
@@ -141,7 +141,7 @@ func (e *ethLookup) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress,
 func (e *ethLookup) EthGetStorageAt(ctx context.Context, ethAddr ethtypes.EthAddress, position ethtypes.EthBytes, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {
 	ts, err := e.tipsetResolver.GetTipsetByBlockNumberOrHash(ctx, blkParam)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to process block param: %v; %w", blkParam, err)
+		return nil, err
 	}
 
 	pl := len(position)
@@ -237,7 +237,7 @@ func (e *ethLookup) EthGetBalance(ctx context.Context, address ethtypes.EthAddre
 
 	ts, err := e.tipsetResolver.GetTipsetByBlockNumberOrHash(ctx, blkParam)
 	if err != nil {
-		return ethtypes.EthBigInt{}, xerrors.Errorf("failed to process block param: %v; %w", blkParam, err)
+		return ethtypes.EthBigInt{}, err
 	}
 
 	st, _, err := e.stateManager.TipSetState(ctx, ts)

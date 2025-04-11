@@ -77,10 +77,10 @@ func (tsr *tipSetResolver) getECTipSetByTag(ctx context.Context, tag string) (*t
 func (tsr *tipSetResolver) GetTipSetByHash(ctx context.Context, blkParam ethtypes.EthHash) (*types.TipSet, error) {
 	ts, err := tsr.cs.GetTipSetByCid(ctx, blkParam.ToCid())
 	if err != nil {
-		return nil, xerrors.Errorf("cannot get tipset by hash: %v", err)
+		return nil, xerrors.Errorf("failed to get tipset by hash: %v", err)
 	}
 	if ts == nil {
-		return nil, xerrors.Errorf("cannot find tipset for block hash %s", blkParam)
+		return nil, xerrors.Errorf("failed to find tipset for block hash %s", blkParam)
 	}
 	return ts, nil
 }
@@ -97,7 +97,7 @@ func (tsr *tipSetResolver) GetTipsetByBlockNumber(ctx context.Context, blkParam 
 	case "latest":
 		parent, err := tsr.cs.GetTipSetFromKey(ctx, head.Parents())
 		if err != nil {
-			return nil, xerrors.New("cannot get parent tipset")
+			return nil, xerrors.New("failed to get parent tipset")
 		}
 		return parent, nil
 	case "safe":
@@ -114,14 +114,14 @@ func (tsr *tipSetResolver) GetTipsetByBlockNumber(ctx context.Context, blkParam 
 		var num ethtypes.EthUint64
 		err := num.UnmarshalJSON([]byte(`"` + blkParam + `"`))
 		if err != nil {
-			return nil, xerrors.Errorf("cannot parse block number: %v", err)
+			return nil, xerrors.Errorf("failed to parse block number: %v", err)
 		}
 		if abi.ChainEpoch(num) > head.Height()-1 {
 			return nil, xerrors.New("requested a future epoch (beyond 'latest')")
 		}
 		ts, err := tsr.cs.GetTipsetByHeight(ctx, abi.ChainEpoch(num), head, true)
 		if err != nil {
-			return nil, xerrors.Errorf("cannot get tipset at height: %v", num)
+			return nil, xerrors.Errorf("failed to get tipset at height: %v", num)
 		}
 		if strict && ts.Height() != abi.ChainEpoch(num) {
 			return nil, api.NewErrNullRound(abi.ChainEpoch(num))
@@ -142,7 +142,7 @@ func (tsr *tipSetResolver) GetTipsetByBlockNumberOrHash(ctx context.Context, blk
 		} else if *predefined == "latest" {
 			parent, err := tsr.cs.GetTipSetFromKey(ctx, head.Parents())
 			if err != nil {
-				return nil, xerrors.New("cannot get parent tipset")
+				return nil, xerrors.New("failed get parent tipset")
 			}
 			return parent, nil
 		}
@@ -157,7 +157,7 @@ func (tsr *tipSetResolver) GetTipsetByBlockNumberOrHash(ctx context.Context, blk
 		}
 		ts, err := tsr.cs.GetTipsetByHeight(ctx, height, head, true)
 		if err != nil {
-			return nil, xerrors.Errorf("cannot get tipset at height: %v", height)
+			return nil, xerrors.Errorf("failed to get tipset at height: %v", height)
 		}
 		return ts, nil
 	}
@@ -165,7 +165,7 @@ func (tsr *tipSetResolver) GetTipsetByBlockNumberOrHash(ctx context.Context, blk
 	if blkParam.BlockHash != nil {
 		ts, err := tsr.cs.GetTipSetByCid(ctx, blkParam.BlockHash.ToCid())
 		if err != nil {
-			return nil, xerrors.Errorf("cannot get tipset by hash: %v", err)
+			return nil, xerrors.Errorf("failed to get tipset by hash: %v", err)
 		}
 
 		// verify that the tipset is in the canonical chain
@@ -173,7 +173,7 @@ func (tsr *tipSetResolver) GetTipsetByBlockNumberOrHash(ctx context.Context, blk
 			// walk up the current chain (our head) until we reach ts.Height()
 			walkTs, err := tsr.cs.GetTipsetByHeight(ctx, ts.Height(), head, true)
 			if err != nil {
-				return nil, xerrors.Errorf("cannot get tipset at height: %v", ts.Height())
+				return nil, xerrors.Errorf("failed to get tipset at height: %v", ts.Height())
 			}
 
 			// verify that it equals the expected tipset

@@ -144,15 +144,22 @@ var ChainNode = Options(
 		Override(new(stmgr.StateManagerAPI), rpcstmgr.NewRPCStateManager),
 		Override(new(full.ActorEventAPI), From(new(api.Gateway))),
 		Override(new(full.EthFilecoinAPIV1), From(new(api.Gateway))),
+		Override(new(full.EthFilecoinAPIV2), From(new(api.Gateway))),
 		Override(new(eth.EthBasicAPI), From(new(api.Gateway))),
 		Override(new(eth.EthEventsAPI), From(new(api.Gateway))),
-		Override(new(full.EthTransactionAPIV1), From(new(api.Gateway))),
 		Override(new(full.EthLookupAPIV1), From(new(api.Gateway))),
+		Override(new(full.EthLookupAPIV2), From(new(api.Gateway))),
 		Override(new(full.EthTraceAPIV1), From(new(api.Gateway))),
+		Override(new(full.EthTraceAPIV2), From(new(api.Gateway))),
 		Override(new(full.EthGasAPIV1), From(new(api.Gateway))),
+		Override(new(full.EthGasAPIV2), From(new(api.Gateway))),
 		// EthSendAPI is a special case, we block the Untrusted method via GatewayEthSend even though it
 		// shouldn't be exposed on the Gateway API.
 		Override(new(eth.EthSendAPI), new(modules.GatewayEthSend)),
+		// EthTransactionAPIV1 is a special case, we block the Limited methods via
+		// GatewayEthTransaction even though it shouldn't be exposed on the Gateway API.
+		Override(new(full.EthTransactionAPIV1), new(modules.GatewayEthTransaction)),
+		Override(new(full.EthTransactionAPIV2), new(modules.GatewayEthTransaction)),
 
 		Override(new(index.Indexer), modules.ChainIndexer(config.ChainIndexerConfig{
 			EnableIndexer: false,
@@ -287,7 +294,7 @@ func ConfigFullNode(c interface{}) Option {
 			Override(new(eth.ChainStore), From(new(*store.ChainStore))),
 			Override(new(eth.StateManager), From(new(*stmgr.StateManager))),
 			Override(new(full.EthTipSetResolverV1), eth.NewV1TipSetResolver),
-			Override(new(full.EthTipSetResolverV2), eth.NewV2TipSetResolver),
+			Override(new(full.EthTipSetResolverV2), modules.MakeV2TipSetResolver),
 			Override(new(full.EthFilecoinAPIV1), modules.MakeEthFilecoinV1),
 			Override(new(full.EthFilecoinAPIV2), modules.MakeEthFilecoinV2),
 
@@ -316,6 +323,7 @@ func ConfigFullNode(c interface{}) Option {
 			If(!cfg.Fevm.EnableEthRPC,
 				Override(new(eth.EthBasicAPI), &eth.EthBasicDisabled{}),
 				Override(new(eth.EthSendAPI), &eth.EthSendDisabled{}),
+				Override(new(eth.EthEventsAPI), &eth.EthEventsDisabled{}),
 
 				Override(new(full.EthTransactionAPIV1), &eth.EthTransactionDisabled{}),
 				Override(new(full.EthLookupAPIV1), &eth.EthLookupDisabled{}),
@@ -326,12 +334,6 @@ func ConfigFullNode(c interface{}) Option {
 				Override(new(full.EthLookupAPIV2), &eth.EthLookupDisabled{}),
 				Override(new(full.EthTraceAPIV2), &eth.EthTraceDisabled{}),
 				Override(new(full.EthGasAPIV2), &eth.EthGasDisabled{}),
-
-				Override(new(full.EthTransactionAPIV2), &eth.EthTransactionDisabled{}),
-				Override(new(full.EthLookupAPIV2), &eth.EthLookupDisabled{}),
-				Override(new(full.EthTraceAPIV2), &eth.EthTraceDisabled{}),
-				Override(new(full.EthGasAPIV2), &eth.EthGasDisabled{}),
-				Override(new(eth.EthEventsAPI), &eth.EthEventsDisabled{}),
 			),
 
 			If(cfg.Events.EnableActorEventsAPI,
