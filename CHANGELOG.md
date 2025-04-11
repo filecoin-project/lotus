@@ -11,6 +11,7 @@
 
 - fix(eth): always return nil for eth transactions not found ([filecoin-project/lotus#12999](https://github.com/filecoin-project/lotus/pull/12999))
 - feat: add experimental v2 APIs that are "F3 aware."  (TODO: expand this section significantly to cover where someone learns about the new APIs, how they enable them, and what expectations they should have around them—i.e., they may change)
+- feat: add gas to application metric reporting `vm/applyblocks_early_gas`, `vm/applyblocks_messages_gas`, `vm/applyblocks_cron_gas` ([filecoin-project/lotus#13030](https://github.com/filecoin-project/lotus/pull/13030))
 
 # Node and Miner v1.32.2 / 2025-04-04
 

@@ -306,8 +306,13 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 
 	log.Infow("ApplyBlocks stats", "early", vmEarly, "earlyCronGas", earlyCronGas, "vmMsg", vmMsg, "msgGas", msgGas, "vmCron", vmCron, "cronGas", cronGas, "vmFlush", vmFlush, "epoch", epoch, "tsk", ts.Key())
 
-	stats.Record(ctx, metrics.VMSends.M(int64(atomic.LoadUint64(&vm.StatSends))),
-		metrics.VMApplied.M(int64(atomic.LoadUint64(&vm.StatApplied))))
+	stats.Record(ctx,
+		metrics.VMSends.M(int64(atomic.LoadUint64(&vm.StatSends))),
+		metrics.VMApplied.M(int64(atomic.LoadUint64(&vm.StatApplied))),
+		metrics.VMApplyEarlyGas.M(earlyCronGas),
+		metrics.VMApplyMessagesGas.M(msgGas),
+		metrics.VMApplyCronGas.M(cronGas),
+	)
 
 	return st, rectroot, nil
 }
