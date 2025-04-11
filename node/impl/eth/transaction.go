@@ -401,7 +401,6 @@ func (e *ethTransaction) EthGetTransactionReceiptLimited(ctx context.Context, tx
 			return nil, xerrors.Errorf("transaction receipt is too old (limit: %d epochs)", limit)
 		}
 		return nil, nil
-
 	}
 
 	tx, err := newEthTxFromMessageLookup(ctx, msgLookup, -1, e.chainStore, e.stateManager)
