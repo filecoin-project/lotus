@@ -14,8 +14,17 @@ import (
 	"github.com/filecoin-project/lotus/build/buildconstants"
 )
 
-// Distribution
-var defaultMillisecondsDistribution = view.Distribution(0.01, 0.05, 0.1, 0.3, 0.6, 0.8, 1, 2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 25, 30, 40, 50, 65, 80, 100, 130, 160, 200, 250, 300, 400, 500, 650, 800, 1000, 2000, 3000, 4000, 5000, 7500, 10000, 20000, 50000, 100_000, 250_000, 500_000, 1000_000)
+// Distributions
+var defaultMillisecondsDistribution = view.Distribution(
+	0.01, 0.05, 0.1, 0.3, 0.6, 0.8, 1, 2, 3, 4, 5, 6, 8, // Very short intervals for fast operations
+	10, 20, 30, 40, 50, 60, 70, 80, 90, 100, // 10 ms intervals up to 100 ms
+	150, 200, 250, 300, 350, 400, 450, 500, // 50 ms intervals from 100 to 500 ms
+	600, 700, 800, 900, 1000, // 100 ms intervals from 500 to 1000 ms
+	1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 2000, // 100 ms intervals from 1000 to 2000 ms
+	3000, 4000, 5000, 6000, 8000, 10000, 13000, 16000, 20000, 25000, 30000, 40000, 50000, 65000, 80000, 100000,
+	130_000, 160_000, 200_000, 250_000, 300_000, 400_000, 500_000, 650_000, 800_000, 1000_000, // Larger, less frequent buckets
+)
+
 var workMillisecondsDistribution = view.Distribution(
 	250, 500, 1000, 2000, 5000, 10_000, 30_000, 60_000, 2*60_000, 5*60_000, 10*60_000, 15*60_000, 30*60_000, // short sealing tasks
 	40*60_000, 45*60_000, 50*60_000, 55*60_000, 60*60_000, 65*60_000, 70*60_000, 75*60_000, 80*60_000, 85*60_000, 100*60_000, 120*60_000, // PC2 / C2 range
@@ -114,6 +123,9 @@ var (
 	VMApplyEarly                        = stats.Float64("vm/applyblocks_early", "Time spent in early apply-blocks (null cron, upgrades)", stats.UnitMilliseconds)
 	VMApplyCron                         = stats.Float64("vm/applyblocks_cron", "Time spent in cron", stats.UnitMilliseconds)
 	VMApplyFlush                        = stats.Float64("vm/applyblocks_flush", "Time spent flushing vm state", stats.UnitMilliseconds)
+	VMApplyMessagesGas                  = stats.Int64("vm/applyblocks_messages_gas", "Total gas of block messages", stats.UnitDimensionless)
+	VMApplyEarlyGas                     = stats.Int64("vm/applyblocks_early_gas", "Total gas of early apply-blocks (null cron, upgrades)", stats.UnitDimensionless)
+	VMApplyCronGas                      = stats.Int64("vm/applyblocks_cron_gas", "Total gas of cron", stats.UnitDimensionless)
 	VMSends                             = stats.Int64("vm/sends", "Counter for sends processed by the VM", stats.UnitDimensionless)
 	VMApplied                           = stats.Int64("vm/applied", "Counter for messages (including internal messages) processed by the VM", stats.UnitDimensionless)
 	VMExecutionWaiting                  = stats.Int64("vm/execution_waiting", "Counter for VM executions waiting to be assigned to a lane", stats.UnitDimensionless)
@@ -397,6 +409,21 @@ var (
 	VMApplyFlushView = &view.View{
 		Measure:     VMApplyFlush,
 		Aggregation: defaultMillisecondsDistribution,
+		TagKeys:     []tag.Key{Network},
+	}
+	VMApplyEarlyGasView = &view.View{
+		Measure:     VMApplyEarlyGas,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{Network},
+	}
+	VMApplyMessagesGasView = &view.View{
+		Measure:     VMApplyMessagesGas,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{Network},
+	}
+	VMApplyCronGasView = &view.View{
+		Measure:     VMApplyCronGas,
+		Aggregation: view.LastValue(),
 		TagKeys:     []tag.Key{Network},
 	}
 	VMSendsView = &view.View{
@@ -788,6 +815,9 @@ var ChainNodeViews = append([]*view.View{
 	VMApplyEarlyView,
 	VMApplyCronView,
 	VMApplyFlushView,
+	VMApplyEarlyGasView,
+	VMApplyMessagesGasView,
+	VMApplyCronGasView,
 	VMSendsView,
 	VMAppliedView,
 	VMExecutionWaitingView,
