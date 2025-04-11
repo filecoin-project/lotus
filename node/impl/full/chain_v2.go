@@ -76,17 +76,14 @@ func (cm *ChainModuleV2) getLatestSafeTipSet(ctx context.Context) (*types.TipSet
 		return nil, xerrors.Errorf("getting latest finalized tipset: %w", err)
 	}
 	heaviest := cm.Chain.GetHeaviestTipSet()
-	switch {
-	case finalized == nil:
-		return heaviest, nil
-	case heaviest == nil:
-		return finalized, nil
-	case finalized.Height() >= heaviest.Height()-build.SafeHeightDistance:
-		return finalized, nil
-	default:
-		safeAt := max(0, heaviest.Height()-build.SafeHeightDistance)
-		return cm.Chain.GetTipsetByHeight(ctx, safeAt, heaviest, true)
+	if heaviest == nil {
+		return nil, xerrors.Errorf("no known heaviest tipset")
 	}
+	safeHeight := max(0, heaviest.Height()-build.SafeHeightDistance)
+	if finalized != nil && finalized.Height() >= safeHeight {
+		return finalized, nil
+	}
+	return cm.Chain.GetTipsetByHeight(ctx, safeHeight, heaviest, true)
 }
 
 func (cm *ChainModuleV2) getLatestFinalizedTipset(ctx context.Context) (*types.TipSet, error) {
