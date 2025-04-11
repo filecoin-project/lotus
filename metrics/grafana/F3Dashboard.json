@@ -280,6 +280,7 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
+      "description": "Head divergence is a metric of how many times we found ourselves in inconsistent states between EC and F3 and reconsolidated.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -769,6 +770,7 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
+      "description": "Active Polling Peers is the number of peers we check for certificates when we think we are due for another F3 certificate.",
       "fieldConfig": {
         "defaults": {
           "color": {
