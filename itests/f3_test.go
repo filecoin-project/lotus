@@ -61,8 +61,9 @@ func TestF3_Enabled(t *testing.T) {
 	e.requireAllMinersParticipate()
 }
 
-// TestF3_Disabled tests the return values and errors of the F3 API when F3 is
-// disabled or is not yet running.
+// TestF3_InactiveModes tests F3 API behaviors under different inactive states:
+// 1. Completely disabled mode (F3 functionality turned off)
+// 2. Not-yet-ready state (F3 enabled but not yet operational)
 func TestF3_InactiveModes(t *testing.T) {
 	kit.QuietMiningLogs()
 
