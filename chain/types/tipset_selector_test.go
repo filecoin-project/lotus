@@ -65,6 +65,11 @@ func TestTipSetSelector_Marshalling(t *testing.T) {
 			subject:  types.TipSetSelectors.Latest,
 			wantJson: `{"tag":"latest"}`,
 		},
+		{
+			name:     "tag safe",
+			subject:  types.TipSetSelectors.Safe,
+			wantJson: `{"tag":"safe"}`,
+		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			err := test.subject.Validate()

@@ -19,12 +19,18 @@ Please see Filecoin V2 API design documentation for more details:
 ChainGetTipSet retrieves a tipset that corresponds to the specified selector
 criteria. The criteria can be provided in the form of a tipset key, a
 blockchain height including an optional fallback to previous non-null tipset,
-or a designated tag such as "latest" or "finalized".
+or a designated tag such as "latest", "finalized", or "safe".
 
 The "Finalized" tag returns the tipset that is considered finalized based on
 the consensus protocol of the current node, either Filecoin EC Finality or
 Filecoin Fast Finality (F3). The finalized tipset selection gracefully falls
 back to EC finality in cases where F3 isn't ready or not running.
+
+The "Safe" tag returns the tipset between the "finalized" tipset and
+"latest - build.SafeHeightDistance". This provides a balance between
+finality confidence and recency. If the tipset at the safe height is null,
+the first non-nil parent tipset is returned, similar to the behavior of
+selecting by height with the 'previous' option set to true.
 
 In a case where no selector is provided, an error is returned. The selector
 must be explicitly specified.
@@ -34,13 +40,13 @@ types.NewTipSetSelector.
 
 Example usage:
 
-	selector := types.TipSetSelectors.Latest
-	tipSet, err := node.ChainGetTipSet(context.Background(), selector)
-	if err != nil {
-		fmt.Println("Error retrieving tipset:", err)
-		return
-	}
-	fmt.Printf("Latest TipSet: %v\n", tipSet)
+ selector := types.TipSetSelectors.Latest
+ tipSet, err := node.ChainGetTipSet(context.Background(), selector)
+ if err != nil {
+    fmt.Println("Error retrieving tipset:", err)
+    return
+ }
+ fmt.Printf("Latest TipSet: %v\n", tipSet)
 
 
 Perms: read

@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-f3"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/lf3"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -57,13 +58,38 @@ func (cm *ChainModuleV2) ChainGetTipSet(ctx context.Context, selector types.TipS
 }
 
 func (cm *ChainModuleV2) getTipSetByTag(ctx context.Context, tag types.TipSetTag) (*types.TipSet, error) {
-	if tag == types.TipSetTags.Latest {
+	switch tag {
+	case types.TipSetTags.Latest:
 		return cm.Chain.GetHeaviestTipSet(), nil
-	}
-	if tag != types.TipSetTags.Finalized {
+	case types.TipSetTags.Finalized:
+		return cm.getLatestFinalizedTipset(ctx)
+	case types.TipSetTags.Safe:
+		return cm.getLatestSafeTipSet(ctx)
+	default:
 		return nil, xerrors.Errorf("unknown tipset tag: %s", tag)
 	}
+}
 
+func (cm *ChainModuleV2) getLatestSafeTipSet(ctx context.Context) (*types.TipSet, error) {
+	finalized, err := cm.getLatestFinalizedTipset(ctx)
+	if err != nil {
+		return nil, xerrors.Errorf("getting latest finalized tipset: %w", err)
+	}
+	heaviest := cm.Chain.GetHeaviestTipSet()
+	switch {
+	case finalized == nil:
+		return heaviest, nil
+	case heaviest == nil:
+		return finalized, nil
+	case finalized.Height() >= heaviest.Height()-build.SafeHeightDistance:
+		return finalized, nil
+	default:
+		safeAt := max(0, heaviest.Height()-build.SafeHeightDistance)
+		return cm.Chain.GetTipsetByHeight(ctx, safeAt, heaviest, true)
+	}
+}
+
+func (cm *ChainModuleV2) getLatestFinalizedTipset(ctx context.Context) (*types.TipSet, error) {
 	if cm.F3 == nil {
 		// F3 is disabled; fall back to EC finality.
 		return cm.getECFinalized(ctx)

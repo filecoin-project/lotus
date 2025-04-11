@@ -11,14 +11,18 @@ var (
 	// tags are:
 	//   - Latest: the most recent tipset in the chain with the heaviest weight.
 	//   - Finalized: the most recent tipset considered final by the node.
+	//   - Safe: the most recent tipset between Finalized and Latest - build.SafeHeightDistance.
+	//          If the tipset at the safe height is null, the first non-nil parent tipset is returned.
 	//
 	// See TipSetTag.
 	TipSetTags = struct {
 		Latest    TipSetTag
 		Finalized TipSetTag
+		Safe      TipSetTag
 	}{
 		Latest:    TipSetTag("latest"),
 		Finalized: TipSetTag("finalized"),
+		Safe:      TipSetTag("safe"),
 	}
 
 	// TipSetSelectors represents the predefined set of selectors for tipsets.
@@ -27,11 +31,13 @@ var (
 	TipSetSelectors = struct {
 		Latest    TipSetSelector
 		Finalized TipSetSelector
+		Safe      TipSetSelector
 		Height    func(abi.ChainEpoch, bool, *TipSetAnchor) TipSetSelector
 		Key       func(TipSetKey) TipSetSelector
 	}{
 		Latest:    TipSetSelector{Tag: &TipSetTags.Latest},
 		Finalized: TipSetSelector{Tag: &TipSetTags.Finalized},
+		Safe:      TipSetSelector{Tag: &TipSetTags.Safe},
 		Height: func(height abi.ChainEpoch, previous bool, anchor *TipSetAnchor) TipSetSelector {
 			return TipSetSelector{Height: &TipSetHeight{At: &height, Previous: previous, Anchor: anchor}}
 		},
@@ -44,10 +50,12 @@ var (
 	TipSetAnchors = struct {
 		Latest    *TipSetAnchor
 		Finalized *TipSetAnchor
+		Safe      *TipSetAnchor
 		Key       func(TipSetKey) *TipSetAnchor
 	}{
 		Latest:    &TipSetAnchor{Tag: &TipSetTags.Latest},
 		Finalized: &TipSetAnchor{Tag: &TipSetTags.Finalized},
+		Safe:      &TipSetAnchor{Tag: &TipSetTags.Safe},
 		Key:       func(key TipSetKey) *TipSetAnchor { return &TipSetAnchor{Key: &key} },
 	}
 )
