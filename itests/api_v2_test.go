@@ -179,8 +179,11 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 					mockF3.latestCert = nil
 					mockF3.latestCertErr = nil
 				},
-				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"height":{"at":20}}],"id":1}`,
-				wantTipSet:         tipSetAtHeight(20),
+				// Lookup a height that is sufficiently behind the epoch at WaitTillChain + a
+				// little bit further back to avoid race conditions of WaitTillChain
+				// implementation which can cause flaky tests.
+				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"height":{"at":15}}],"id":1}`,
+				wantTipSet:         tipSetAtHeight(15),
 				wantResponseStatus: http.StatusOK,
 			},
 			{
