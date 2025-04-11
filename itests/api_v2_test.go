@@ -85,7 +85,7 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 
 	// The tests here use the raw JSON request form for testing to both test the API
 	// through RPC, and showcase what the raw request on the wire would look like at
-	// Layer 7 of ISO model.
+	// Layer 7 of the ISO model.
 
 	t.Run("ChainGetTipSet", func(t *testing.T) {
 		for _, test := range []struct {
@@ -356,7 +356,6 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 			})
 		}
 	})
-
 	t.Run("StateGetID", func(t *testing.T) {
 		for _, test := range []struct {
 			name               string
@@ -417,177 +416,6 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 				if test.wantErr != "" {
 					require.Nil(t, resultOrError.Result)
 					require.Contains(t, resultOrError.Error.Message, test.wantErr)
-				}
-			})
-		}
-	})
-
-	t.Run("StateCompute", func(t *testing.T) {
-		for _, test := range []struct {
-			name               string
-			when               func(t *testing.T)
-			request            string
-			wantResponseStatus int
-			wantErr            string
-		}{
-			{
-				name:               "no selector is error",
-				request:            `{"jsonrpc":"2.0","method":"Filecoin.StateCompute","params":[[]],"id":1}`,
-				wantErr:            "wrong param count",
-				wantResponseStatus: http.StatusInternalServerError,
-			},
-			{
-				name:    "latest tag is ok",
-				request: `{"jsonrpc":"2.0","method":"Filecoin.StateCompute","params":[[],{"tag":"latest"}],"id":1}`,
-				when: func(t *testing.T) {
-					mockF3.running = false
-					mockF3.latestCert = nil
-					mockF3.latestCertErr = nil
-				},
-				wantResponseStatus: http.StatusOK,
-			},
-			{
-				name:    "finalized tag is ok",
-				request: `{"jsonrpc":"2.0","method":"Filecoin.StateCompute","params":[[],{"tag":"finalized"}],"id":1}`,
-				when: func(t *testing.T) {
-					mockF3.running = true
-					mockF3.latestCert = plausibleCert(t)
-					mockF3.latestCertErr = nil
-				},
-				wantResponseStatus: http.StatusOK,
-			},
-			{
-				name: "finalized tag when f3 disabled falls back to ec",
-				when: func(t *testing.T) {
-					mockF3.running = false
-					mockF3.latestCert = nil
-					mockF3.latestCertErr = nil
-				},
-				request:            `{"jsonrpc":"2.0","method":"Filecoin.StateCompute","params":[[],{"tag":"finalized"}],"id":1}`,
-				wantResponseStatus: http.StatusOK,
-			},
-			{
-				name: "height is ok",
-				when: func(t *testing.T) {
-					// F3 running because height with no anchor falls back to using the latest f3
-					// finalized tipset.
-					mockF3.running = true
-					mockF3.latestCert = plausibleCert(t)
-					mockF3.latestCertErr = nil
-				},
-				request:            `{"jsonrpc":"2.0","method":"Filecoin.StateCompute","params":[[],{"height":{"at":111}}],"id":1}`,
-				wantResponseStatus: http.StatusOK,
-			},
-		} {
-			t.Run(test.name, func(t *testing.T) {
-				if test.when != nil {
-					test.when(t)
-				}
-				gotResponseCode, gotResponseBody := subject.DoRawRPCRequest(t, 2, test.request)
-				require.Equal(t, test.wantResponseStatus, gotResponseCode, string(gotResponseBody))
-
-				var resultOrError struct {
-					Result *api.ComputeStateOutput `json:"result,omitempty"`
-					Error  *struct {
-						Code    int    `json:"code,omitempty"`
-						Message string `json:"message,omitempty"`
-					} `json:"error,omitempty"`
-				}
-				require.NoError(t, json.Unmarshal(gotResponseBody, &resultOrError))
-
-				if test.wantErr != "" {
-					require.Nil(t, resultOrError.Result)
-					require.Contains(t, resultOrError.Error.Message, test.wantErr)
-				} else {
-					require.Nil(t, resultOrError.Error, resultOrError.Error)
-				}
-			})
-		}
-	})
-
-	t.Run("StateSimulate", func(t *testing.T) {
-		for _, test := range []struct {
-			name               string
-			when               func(t *testing.T)
-			request            string
-			wantResponseStatus int
-			wantErr            string
-		}{
-			{
-				name:               "no selector or limit is error",
-				request:            `{"jsonrpc":"2.0","method":"Filecoin.StateSimulate","params":[[]],"id":1}`,
-				wantErr:            "wrong param count",
-				wantResponseStatus: http.StatusInternalServerError,
-			},
-			{
-				name:               "latest tag with height limit is ok",
-				request:            `{"jsonrpc":"2.0","method":"Filecoin.StateSimulate","params":[[],{"tag":"latest"},{"height":950}],"id":1}`,
-				wantResponseStatus: http.StatusOK,
-			},
-			{
-				name:               "latest tag with distance limit is ok",
-				request:            `{"jsonrpc":"2.0","method":"Filecoin.StateSimulate","params":[[],{"tag":"latest"},{"distance":10}],"id":1}`,
-				wantResponseStatus: http.StatusOK,
-			},
-			{
-				name:               "both height and distance set is error",
-				request:            `{"jsonrpc":"2.0","method":"Filecoin.StateSimulate","params":[[],{"tag":"latest"},{"height":30,"distance":10}],"id":1}`,
-				wantErr:            "either distance or height must be set, but not both",
-				wantResponseStatus: http.StatusOK,
-			},
-			{
-				name:               "unlimited limit set is error",
-				request:            `{"jsonrpc":"2.0","method":"Filecoin.StateSimulate","params":[[],{"tag":"latest"},{}],"id":1}`,
-				wantErr:            "tipset limit cannot be unlimited",
-				wantResponseStatus: http.StatusOK,
-			},
-			{
-				name:               "limit with negative height is error",
-				request:            `{"jsonrpc":"2.0","method":"Filecoin.StateSimulate","params":[[],{"tag":"latest"},{"height":-5}],"id":1}`,
-				wantErr:            "height must be greater than or equal to zero",
-				wantResponseStatus: http.StatusOK,
-			},
-			{
-				name: "finalized tag when f3 disabled falls back to ec",
-				when: func(t *testing.T) {
-					mockF3.running = false
-				},
-				request:            `{"jsonrpc":"2.0","method":"Filecoin.StateSimulate","params":[[],{"tag":"finalized"},{"height":30}],"id":1}`,
-				wantResponseStatus: http.StatusOK,
-			},
-			{
-				name: "nil limit is error",
-				when: func(t *testing.T) {
-					mockF3.running = true
-					mockF3.latestCert = plausibleCert(t)
-					mockF3.latestCertErr = nil
-				},
-				request:            `{"jsonrpc":"2.0","method":"Filecoin.StateSimulate","params":[[],{"tag":"latest"},null],"id":1}`,
-				wantErr:            "tipset limit cannot be unlimited",
-				wantResponseStatus: http.StatusOK,
-			},
-		} {
-			t.Run(test.name, func(t *testing.T) {
-				if test.when != nil {
-					test.when(t)
-				}
-				gotResponseCode, gotResponseBody := subject.DoRawRPCRequest(t, 2, test.request)
-				require.Equal(t, test.wantResponseStatus, gotResponseCode, string(gotResponseBody))
-
-				var resultOrError struct {
-					Result *api.ComputeStateOutput `json:"result,omitempty"`
-					Error  *struct {
-						Code    int    `json:"code,omitempty"`
-						Message string `json:"message,omitempty"`
-					} `json:"error,omitempty"`
-				}
-				require.NoError(t, json.Unmarshal(gotResponseBody, &resultOrError))
-
-				if test.wantErr != "" {
-					require.Nil(t, resultOrError.Result)
-					require.Contains(t, resultOrError.Error.Message, test.wantErr)
-				} else {
-					require.Nil(t, resultOrError.Error)
 				}
 			})
 		}

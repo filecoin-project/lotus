@@ -5,7 +5,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -99,61 +98,4 @@ type FullNode interface {
 	//
 	// Experimental: This API is experimental and may change without notice.
 	StateGetID(context.Context, address.Address, types.TipSetSelector) (*address.Address, error) //perm:read
-
-	// StateCompute computes the state at the specified tipset and applies the provided messages.
-	//
-	// This function:
-	// - Loads the tipset identified by the TipSetSelector
-	// - Calculates the complete state by applying all chain messages within that tipset
-	// - Applies the user-provided messages on top of that state
-	// - Uses the network version of the selected tipset for message execution
-	//
-	// The function applies messages with the correct network parameters corresponding
-	// to the tipset's epoch, making it suitable for testing messages against the
-	// current network version.
-	//
-	// Messages must have the correct nonces and gas values set.
-	//
-	// The TipSetSelector parameter provides flexible options for selecting the base tipset:
-	//   - TipSetSelectors.Latest: the most recent tipset with the heaviest weight
-	//   - TipSetSelectors.Finalized: the most recent finalized tipset
-	//   - TipSetSelectors.Height(epoch, previous, anchor): tipset at the specified height
-	//   - TipSetSelectors.Key(key): tipset with the specified key
-	//
-	// See types.TipSetSelector documentation for additional details.
-	//
-	// Experimental: This API is experimental and may change without notice.
-	StateCompute(context.Context, []*types.Message, types.TipSetSelector) (*api.ComputeStateOutput, error) //perm:read
-
-	// StateSimulate computes the state at the specified tipset and applies the provided messages
-	// using the network version determined by a TipSetLimit.
-	//
-	// This function:
-	// - Loads the tipset identified by the TipSetSelector
-	// - Calculates the complete state by applying all chain messages within that tipset
-	// - Applies any pending state upgrades up to the epoch determined by TipSetLimit
-	// - Applies the user-provided messages on top of that state using the network version
-	//   corresponding to the target epoch
-	//
-	// This function is particularly useful for testing how messages would behave in
-	// future network versions or for simulating execution at specific protocol versions.
-	//
-	// The TipSetLimit parameter controls the simulation target and must specify exactly
-	// one of the following:
-	// - Height: an absolute chain epoch at which to simulate execution
-	// - Distance: a relative number of epochs ahead of the selected tipset
-	//
-	// For example, to simulate at exactly epoch 1000, use Height=1000. To simulate
-	// 120 epochs ahead of the selected tipset, use Distance=120.
-	//
-	// If the target epoch determined by TipSetLimit is lower than the tipset's epoch,
-	// an error will be returned as backward simulation is not supported.
-	//
-	// Messages must have the correct nonces and gas values set.
-	//
-	// The TipSetSelector parameter provides flexible options for selecting the base tipset.
-	// See StateCompute and TipSetSelector documentation for details on selection options.
-	//
-	// Experimental: This API is experimental and may change without notice.
-	StateSimulate(context.Context, []*types.Message, types.TipSetSelector, types.TipSetLimit) (*api.ComputeStateOutput, error) //perm:read
 }

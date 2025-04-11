@@ -12,7 +12,6 @@ import (
 
 	address "github.com/filecoin-project/go-address"
 
-	api "github.com/filecoin-project/lotus/api"
 	types "github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -54,21 +53,6 @@ func (mr *MockFullNodeMockRecorder) ChainGetTipSet(arg0, arg1 interface{}) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainGetTipSet", reflect.TypeOf((*MockFullNode)(nil).ChainGetTipSet), arg0, arg1)
 }
 
-// StateCompute mocks base method.
-func (m *MockFullNode) StateCompute(arg0 context.Context, arg1 []*types.Message, arg2 types.TipSetSelector) (*api.ComputeStateOutput, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StateCompute", arg0, arg1, arg2)
-	ret0, _ := ret[0].(*api.ComputeStateOutput)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// StateCompute indicates an expected call of StateCompute.
-func (mr *MockFullNodeMockRecorder) StateCompute(arg0, arg1, arg2 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateCompute", reflect.TypeOf((*MockFullNode)(nil).StateCompute), arg0, arg1, arg2)
-}
-
 // StateGetActor mocks base method.
 func (m *MockFullNode) StateGetActor(arg0 context.Context, arg1 address.Address, arg2 types.TipSetSelector) (*types.ActorV5, error) {
 	m.ctrl.T.Helper()
@@ -97,19 +81,4 @@ func (m *MockFullNode) StateGetID(arg0 context.Context, arg1 address.Address, ar
 func (mr *MockFullNodeMockRecorder) StateGetID(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetID", reflect.TypeOf((*MockFullNode)(nil).StateGetID), arg0, arg1, arg2)
-}
-
-// StateSimulate mocks base method.
-func (m *MockFullNode) StateSimulate(arg0 context.Context, arg1 []*types.Message, arg2 types.TipSetSelector, arg3 types.TipSetLimit) (*api.ComputeStateOutput, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StateSimulate", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(*api.ComputeStateOutput)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// StateSimulate indicates an expected call of StateSimulate.
-func (mr *MockFullNodeMockRecorder) StateSimulate(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateSimulate", reflect.TypeOf((*MockFullNode)(nil).StateSimulate), arg0, arg1, arg2, arg3)
 }

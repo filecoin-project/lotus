@@ -8,7 +8,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -17,8 +16,6 @@ var _ StateModuleAPIv2 = (*StateModuleV2)(nil)
 type StateModuleAPIv2 interface {
 	StateGetActor(context.Context, address.Address, types.TipSetSelector) (*types.Actor, error)
 	StateGetID(context.Context, address.Address, types.TipSetSelector) (*address.Address, error)
-	StateCompute(context.Context, []*types.Message, types.TipSetSelector) (*api.ComputeStateOutput, error)
-	StateSimulate(context.Context, []*types.Message, types.TipSetSelector, types.TipSetLimit) (*api.ComputeStateOutput, error)
 }
 
 type StateModuleV2 struct {
@@ -51,34 +48,4 @@ func (s *StateModuleV2) StateGetID(ctx context.Context, addr address.Address, se
 		return nil, xerrors.Errorf("looking up ID: %w", err)
 	}
 	return &id, nil
-}
-
-func (s *StateModuleV2) StateCompute(ctx context.Context, msgs []*types.Message, selector types.TipSetSelector) (*api.ComputeStateOutput, error) {
-	ts, err := s.Chain.ChainGetTipSet(ctx, selector)
-	if err != nil {
-		return nil, xerrors.Errorf("selecting tipset: %w", err)
-	}
-
-	return s.State.StateCompute(ctx, ts.Height(), msgs, ts.Key())
-}
-
-func (s *StateModuleV2) StateSimulate(ctx context.Context, msgs []*types.Message, selector types.TipSetSelector, limit types.TipSetLimit) (*api.ComputeStateOutput, error) {
-	if err := limit.Validate(); err != nil {
-		return nil, xerrors.Errorf("validating tipset limit: %w", err)
-	}
-
-	if limit == types.TipSetLimits.Unlimited {
-		return nil, xerrors.Errorf("simluating state: tipset limit cannot be unlimited")
-	}
-	// TODO: Add upper-bound limit to how far of simulation is acceptable?
-
-	ts, err := s.Chain.ChainGetTipSet(ctx, selector)
-	if err != nil {
-		return nil, xerrors.Errorf("selecting tipset: %w", err)
-	}
-	targetHeight := limit.HeightRelativeTo(ts.Height())
-	if ts.Height() > targetHeight {
-		return nil, xerrors.Errorf("tipset height %d is less than requested height at: %d", ts.Height(), limit)
-	}
-	return s.State.StateCompute(ctx, targetHeight, msgs, ts.Key())
 }

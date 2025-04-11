@@ -50,35 +50,6 @@ var (
 		Finalized: &TipSetAnchor{Tag: &TipSetTags.Finalized},
 		Key:       func(key TipSetKey) *TipSetAnchor { return &TipSetAnchor{Key: &key} },
 	}
-
-	// TipSetLimits provides convenient constructor functions for creating different types
-	// of TipSetLimit instances.
-	//
-	// It contains:
-	//   - Unlimited: A pre-initialized TipSetLimit with no effective height limit
-	//   - Height: A function to create a TipSetLimit with an absolute height
-	//   - Distance: A function to create a TipSetLimit with a relative distance
-	TipSetLimits = struct {
-		// Unlimited is a pre-initialized TipSetLimit representing an unbounded height limit.
-		// This is represented internally using a negative value that would otherwise be invalid.
-		Unlimited TipSetLimit
-
-		// Height returns a TipSetLimit constrained to a specific absolute chain epoch.
-		//
-		// Parameters:
-		//   - at: The absolute chain epoch to limit to
-		Height func(abi.ChainEpoch) TipSetLimit
-
-		// Distance returns a TipSetLimit constrained to a relative distance from a reference point.
-		// The actual height will be calculated when HeightRelativeTo is called.
-		//
-		// Parameters:
-		//   - distance: The number of epochs relative to some reference point
-		Distance func(uint64) TipSetLimit
-	}{
-		Height:   func(at abi.ChainEpoch) TipSetLimit { return TipSetLimit{Height: &at} },
-		Distance: func(distance uint64) TipSetLimit { return TipSetLimit{Distance: &distance} },
-	}
 )
 
 // TipSetTag is a string that represents a pointer to a tipset.
@@ -197,58 +168,4 @@ func (tsa *TipSetAnchor) Validate() error {
 	// Zero-valued anchor is valid, and considered to be an equivalent to whatever
 	// the API decides the default to be.
 	return nil
-}
-
-// TipSetLimit represents a limit on tipsets, either by absolute height or
-// by relative distance from a reference point.
-//
-// Either Height or Distance must be set, but not both. If Height is set,
-// it specifies an absolute chain epoch. If Distance is set, it specifies
-// a relative distance from a reference point. A special unlimited value
-// is available through TipSetLimits.Unlimited.
-type TipSetLimit struct {
-	// Height represents an absolute chain epoch height.
-	// When set, Distance must be nil.
-	Height *abi.ChainEpoch `json:"height,omitempty"`
-
-	// Distance represents a relative distance from a reference point in epochs.
-	// When set, Height must be nil.
-	Distance *uint64 `json:"distance,omitempty"`
-}
-
-// Validate checks if the TipSetLimit is properly configured.
-//
-// Returns an error if both Height and Distance are set,
-// or if Height is set to a negative value. Note that the special unlimited
-// value TipSetLimits.Unlimited bypasses the negative value check as it uses
-// a negative height internally.
-func (tsl TipSetLimit) Validate() error {
-	heightSet := tsl.Height != nil
-	distanceSet := tsl.Distance != nil
-	if distanceSet && heightSet {
-		return xerrors.New("either distance or height must be set, but not both")
-	}
-	if heightSet && *tsl.Height < 0 {
-		return xerrors.New("height must be greater than or equal to zero")
-	}
-	return nil
-}
-
-// HeightRelativeTo calculates the absolute chain epoch based on the TipSetLimit
-// configuration and a reference epoch.
-//
-// If Height is set, it returns the absolute height regardless of the reference
-// epoch. If Distance is set, it returns the reference epoch plus the distance.
-// If neither is set, it returns -1.
-//
-// Note that this function does not validate the TipSetLimit configuration.
-func (tsl TipSetLimit) HeightRelativeTo(relative abi.ChainEpoch) abi.ChainEpoch {
-	if tsl.Height != nil {
-		// Ignore relative height, and return the absolute height specified in limit.
-		return *tsl.Height
-	}
-	if tsl.Distance != nil {
-		return relative + abi.ChainEpoch(*tsl.Distance)
-	}
-	return -1
 }

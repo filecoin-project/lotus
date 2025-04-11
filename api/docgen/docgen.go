@@ -478,7 +478,6 @@ func init() {
 		Input: ecchain,
 	})
 	addExample(types.TipSetSelectors.Finalized)
-	addExample(types.TipSetLimits.Height(1413))
 }
 
 func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []reflect.Type) {

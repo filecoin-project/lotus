@@ -9,7 +9,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -22,13 +21,9 @@ type FullNodeStruct struct {
 type FullNodeMethods struct {
 	ChainGetTipSet func(p0 context.Context, p1 types.TipSetSelector) (*types.TipSet, error) `perm:"read"`
 
-	StateCompute func(p0 context.Context, p1 []*types.Message, p2 types.TipSetSelector) (*api.ComputeStateOutput, error) `perm:"read"`
-
 	StateGetActor func(p0 context.Context, p1 address.Address, p2 types.TipSetSelector) (*types.Actor, error) `perm:"read"`
 
 	StateGetID func(p0 context.Context, p1 address.Address, p2 types.TipSetSelector) (*address.Address, error) `perm:"read"`
-
-	StateSimulate func(p0 context.Context, p1 []*types.Message, p2 types.TipSetSelector, p3 types.TipSetLimit) (*api.ComputeStateOutput, error) `perm:"read"`
 }
 
 type FullNodeStub struct {
@@ -42,17 +37,6 @@ func (s *FullNodeStruct) ChainGetTipSet(p0 context.Context, p1 types.TipSetSelec
 }
 
 func (s *FullNodeStub) ChainGetTipSet(p0 context.Context, p1 types.TipSetSelector) (*types.TipSet, error) {
-	return nil, ErrNotSupported
-}
-
-func (s *FullNodeStruct) StateCompute(p0 context.Context, p1 []*types.Message, p2 types.TipSetSelector) (*api.ComputeStateOutput, error) {
-	if s.Internal.StateCompute == nil {
-		return nil, ErrNotSupported
-	}
-	return s.Internal.StateCompute(p0, p1, p2)
-}
-
-func (s *FullNodeStub) StateCompute(p0 context.Context, p1 []*types.Message, p2 types.TipSetSelector) (*api.ComputeStateOutput, error) {
 	return nil, ErrNotSupported
 }
 
@@ -75,17 +59,6 @@ func (s *FullNodeStruct) StateGetID(p0 context.Context, p1 address.Address, p2 t
 }
 
 func (s *FullNodeStub) StateGetID(p0 context.Context, p1 address.Address, p2 types.TipSetSelector) (*address.Address, error) {
-	return nil, ErrNotSupported
-}
-
-func (s *FullNodeStruct) StateSimulate(p0 context.Context, p1 []*types.Message, p2 types.TipSetSelector, p3 types.TipSetLimit) (*api.ComputeStateOutput, error) {
-	if s.Internal.StateSimulate == nil {
-		return nil, ErrNotSupported
-	}
-	return s.Internal.StateSimulate(p0, p1, p2, p3)
-}
-
-func (s *FullNodeStub) StateSimulate(p0 context.Context, p1 []*types.Message, p2 types.TipSetSelector, p3 types.TipSetLimit) (*api.ComputeStateOutput, error) {
 	return nil, ErrNotSupported
 }
 
