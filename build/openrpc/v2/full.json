@@ -152,7 +152,235 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L26"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L32"
+            }
+        },
+        {
+            "name": "Filecoin.StateGetActor",
+            "description": "```go\nfunc (s *FullNodeStruct) StateGetActor(p0 context.Context, p1 address.Address, p2 types.TipSetSelector) (*types.Actor, error) {\n\tif s.Internal.StateGetActor == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.StateGetActor(p0, p1, p2)\n}\n```",
+            "summary": "StateGetActor retrieves the actor information for the specified address at the\nselected tipset.\n\nThis function returns the on-chain Actor object including:\n  - Code CID (determines the actor's type)\n  - State root CID\n  - Balance in attoFIL\n  - Nonce (for account actors)\n\nThe TipSetSelector parameter provides flexible options for selecting the tipset:\n  - TipSetSelectors.Latest: the most recent tipset with the heaviest weight\n  - TipSetSelectors.Finalized: the most recent finalized tipset\n  - TipSetSelectors.Height(epoch, previous, anchor): tipset at the specified height\n  - TipSetSelectors.Key(key): tipset with the specified key\n\nSee types.TipSetSelector documentation for additional details.\n\nIf the actor does not exist at the specified tipset, this function returns nil.\n\nExperimental: This API is experimental and may change without notice.\n",
+            "paramStructure": "by-position",
+            "params": [
+                {
+                    "name": "p1",
+                    "description": "address.Address",
+                    "summary": "",
+                    "schema": {
+                        "examples": [
+                            "f01234"
+                        ],
+                        "additionalProperties": false,
+                        "type": [
+                            "object"
+                        ]
+                    },
+                    "required": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "p2",
+                    "description": "types.TipSetSelector",
+                    "summary": "",
+                    "schema": {
+                        "examples": [
+                            {
+                                "tag": "finalized"
+                            }
+                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                            "height": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "anchor": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "key": {
+                                                "additionalProperties": false,
+                                                "type": "object"
+                                            },
+                                            "tag": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "type": "object"
+                                    },
+                                    "at": {
+                                        "title": "number",
+                                        "type": "number"
+                                    },
+                                    "previous": {
+                                        "type": "boolean"
+                                    }
+                                },
+                                "type": "object"
+                            },
+                            "key": {
+                                "additionalProperties": false,
+                                "type": "object"
+                            },
+                            "tag": {
+                                "type": "string"
+                            }
+                        },
+                        "type": [
+                            "object"
+                        ]
+                    },
+                    "required": true,
+                    "deprecated": false
+                }
+            ],
+            "result": {
+                "name": "*types.Actor",
+                "description": "*types.Actor",
+                "summary": "",
+                "schema": {
+                    "examples": [
+                        {
+                            "Code": {
+                                "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+                            },
+                            "Head": {
+                                "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+                            },
+                            "Nonce": 42,
+                            "Balance": "0",
+                            "DelegatedAddress": "f01234"
+                        }
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                        "Balance": {
+                            "additionalProperties": false,
+                            "type": "object"
+                        },
+                        "Code": {
+                            "title": "Content Identifier",
+                            "type": "string"
+                        },
+                        "DelegatedAddress": {
+                            "additionalProperties": false,
+                            "type": "object"
+                        },
+                        "Head": {
+                            "title": "Content Identifier",
+                            "type": "string"
+                        },
+                        "Nonce": {
+                            "title": "number",
+                            "type": "number"
+                        }
+                    },
+                    "type": [
+                        "object"
+                    ]
+                },
+                "required": true,
+                "deprecated": false
+            },
+            "deprecated": false,
+            "externalDocs": {
+                "description": "Github remote link",
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L43"
+            }
+        },
+        {
+            "name": "Filecoin.StateGetID",
+            "description": "```go\nfunc (s *FullNodeStruct) StateGetID(p0 context.Context, p1 address.Address, p2 types.TipSetSelector) (*address.Address, error) {\n\tif s.Internal.StateGetID == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.StateGetID(p0, p1, p2)\n}\n```",
+            "summary": "StateGetID retrieves the ID address for the specified address at the selected tipset.\n\nEvery actor on the Filecoin network has a unique ID address (format: f0123).\nThis function resolves any address type (ID, robust, or delegated) to its canonical\nID address representation at the specified tipset.\n\nThe function is particularly useful for:\n  - Normalizing different address formats to a consistent representation\n  - Following address changes across state transitions\n  - Verifying that an address corresponds to an existing actor\n\nThe TipSetSelector parameter provides flexible options for selecting the tipset.\nSee StateGetActor documentation for details on selection options.\n\nIf the address cannot be resolved at the specified tipset, this function returns nil.\n\nExperimental: This API is experimental and may change without notice.\n",
+            "paramStructure": "by-position",
+            "params": [
+                {
+                    "name": "p1",
+                    "description": "address.Address",
+                    "summary": "",
+                    "schema": {
+                        "examples": [
+                            "f01234"
+                        ],
+                        "additionalProperties": false,
+                        "type": [
+                            "object"
+                        ]
+                    },
+                    "required": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "p2",
+                    "description": "types.TipSetSelector",
+                    "summary": "",
+                    "schema": {
+                        "examples": [
+                            {
+                                "tag": "finalized"
+                            }
+                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                            "height": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "anchor": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "key": {
+                                                "additionalProperties": false,
+                                                "type": "object"
+                                            },
+                                            "tag": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "type": "object"
+                                    },
+                                    "at": {
+                                        "title": "number",
+                                        "type": "number"
+                                    },
+                                    "previous": {
+                                        "type": "boolean"
+                                    }
+                                },
+                                "type": "object"
+                            },
+                            "key": {
+                                "additionalProperties": false,
+                                "type": "object"
+                            },
+                            "tag": {
+                                "type": "string"
+                            }
+                        },
+                        "type": [
+                            "object"
+                        ]
+                    },
+                    "required": true,
+                    "deprecated": false
+                }
+            ],
+            "result": {
+                "name": "*address.Address",
+                "description": "*address.Address",
+                "summary": "",
+                "schema": {
+                    "examples": [
+                        "f01234"
+                    ],
+                    "additionalProperties": false,
+                    "type": [
+                        "object"
+                    ]
+                },
+                "required": true,
+                "deprecated": false
+            },
+            "deprecated": false,
+            "externalDocs": {
+                "description": "Github remote link",
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L54"
             }
         }
     ]

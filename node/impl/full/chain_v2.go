@@ -16,6 +16,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
+var _ ChainModuleAPIv2 = (*ChainModuleV2)(nil)
+
 type ChainModuleAPIv2 interface {
 	ChainGetTipSet(context.Context, types.TipSetSelector) (*types.TipSet, error)
 }
@@ -26,8 +28,6 @@ type ChainModuleV2 struct {
 
 	fx.In
 }
-
-var _ ChainModuleAPIv2 = (*ChainModuleV2)(nil)
 
 func (cm *ChainModuleV2) ChainGetTipSet(ctx context.Context, selector types.TipSetSelector) (*types.TipSet, error) {
 	if err := selector.Validate(); err != nil {

@@ -7,6 +7,8 @@ import (
 
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
+
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -18,6 +20,10 @@ type FullNodeStruct struct {
 
 type FullNodeMethods struct {
 	ChainGetTipSet func(p0 context.Context, p1 types.TipSetSelector) (*types.TipSet, error) `perm:"read"`
+
+	StateGetActor func(p0 context.Context, p1 address.Address, p2 types.TipSetSelector) (*types.Actor, error) `perm:"read"`
+
+	StateGetID func(p0 context.Context, p1 address.Address, p2 types.TipSetSelector) (*address.Address, error) `perm:"read"`
 }
 
 type FullNodeStub struct {
@@ -31,6 +37,28 @@ func (s *FullNodeStruct) ChainGetTipSet(p0 context.Context, p1 types.TipSetSelec
 }
 
 func (s *FullNodeStub) ChainGetTipSet(p0 context.Context, p1 types.TipSetSelector) (*types.TipSet, error) {
+	return nil, ErrNotSupported
+}
+
+func (s *FullNodeStruct) StateGetActor(p0 context.Context, p1 address.Address, p2 types.TipSetSelector) (*types.Actor, error) {
+	if s.Internal.StateGetActor == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.StateGetActor(p0, p1, p2)
+}
+
+func (s *FullNodeStub) StateGetActor(p0 context.Context, p1 address.Address, p2 types.TipSetSelector) (*types.Actor, error) {
+	return nil, ErrNotSupported
+}
+
+func (s *FullNodeStruct) StateGetID(p0 context.Context, p1 address.Address, p2 types.TipSetSelector) (*address.Address, error) {
+	if s.Internal.StateGetID == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.StateGetID(p0, p1, p2)
+}
+
+func (s *FullNodeStub) StateGetID(p0 context.Context, p1 address.Address, p2 types.TipSetSelector) (*address.Address, error) {
 	return nil, ErrNotSupported
 }
 

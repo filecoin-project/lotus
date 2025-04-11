@@ -1,6 +1,9 @@
 # Groups
 * [Chain](#Chain)
   * [ChainGetTipSet](#ChainGetTipSet)
+* [State](#State)
+  * [StateGetActor](#StateGetActor)
+  * [StateGetID](#StateGetID)
 ## Chain
 The Chain method group contains methods for interacting with
 the blockchain.
@@ -123,4 +126,95 @@ Response:
   "Height": 4863283
 }
 ```
+
+## State
+The State method group contains methods for interacting with the Filecoin
+blockchain state, including actor information, addresses, and chain data.
+These methods allow querying the blockchain state at any point in its history
+using flexible TipSet selection mechanisms.
+
+
+### StateGetActor
+StateGetActor retrieves the actor information for the specified address at the
+selected tipset.
+
+This function returns the on-chain Actor object including:
+  - Code CID (determines the actor's type)
+  - State root CID
+  - Balance in attoFIL
+  - Nonce (for account actors)
+
+The TipSetSelector parameter provides flexible options for selecting the tipset:
+  - TipSetSelectors.Latest: the most recent tipset with the heaviest weight
+  - TipSetSelectors.Finalized: the most recent finalized tipset
+  - TipSetSelectors.Height(epoch, previous, anchor): tipset at the specified height
+  - TipSetSelectors.Key(key): tipset with the specified key
+
+See types.TipSetSelector documentation for additional details.
+
+If the actor does not exist at the specified tipset, this function returns nil.
+
+Experimental: This API is experimental and may change without notice.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234",
+  {
+    "tag": "finalized"
+  }
+]
+```
+
+Response:
+```json
+{
+  "Code": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "Head": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "Nonce": 42,
+  "Balance": "0",
+  "DelegatedAddress": "f01234"
+}
+```
+
+### StateGetID
+StateGetID retrieves the ID address for the specified address at the selected tipset.
+
+Every actor on the Filecoin network has a unique ID address (format: f0123).
+This function resolves any address type (ID, robust, or delegated) to its canonical
+ID address representation at the specified tipset.
+
+The function is particularly useful for:
+  - Normalizing different address formats to a consistent representation
+  - Following address changes across state transitions
+  - Verifying that an address corresponds to an existing actor
+
+The TipSetSelector parameter provides flexible options for selecting the tipset.
+See StateGetActor documentation for details on selection options.
+
+If the address cannot be resolved at the specified tipset, this function returns nil.
+
+Experimental: This API is experimental and may change without notice.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234",
+  {
+    "tag": "finalized"
+  }
+]
+```
+
+Response: `"f01234"`
 
