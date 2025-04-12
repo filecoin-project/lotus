@@ -395,11 +395,10 @@ func (e *ethTransaction) EthGetTransactionReceiptLimited(ctx context.Context, tx
 		}
 		return nil, xerrors.Errorf("could not find transaction %s: %w", txHash, err)
 	} else if msgLookup == nil {
-		// This is the best we can do. In theory, we could have just not indexed this
-		// transaction, but there's no way to check that here.
-		if limit > api.LookbackNoLimit {
-			return nil, xerrors.Errorf("transaction receipt not found or may be too old (limit: %d epochs)", limit)
-		}
+		// This is the best we can do. We may just not have indexed this transaction, or we may have a
+		// limit applied and not searched far back enough, but we don't have a way to go. Because
+		// Ethereum tooling expects an empty response for transaction-not-found, we don't have a way of
+		// differentiating between "can't find" and "doesn't exist".
 		return nil, nil
 	}
 
