@@ -439,7 +439,7 @@ func (e *ethTransaction) EthGetBlockReceiptsLimited(ctx context.Context, blockPa
 	}
 
 	if limit > api.LookbackNoLimit && ts.Height() < e.chainStore.GetHeaviestTipSet().Height()-limit {
-		return nil, xerrors.Errorf("tipset %s is too old to fetch receipts for", ts.Key())
+		return nil, xerrors.Errorf("tipset %s is older than the allowed lookback limit", ts.Key())
 	}
 
 	tsCid, err := ts.Key().Cid()
