@@ -141,6 +141,7 @@ var ChainNode = Options(
 		Override(new(full.GasModuleAPI), From(new(api.Gateway))),
 		Override(new(full.MpoolModuleAPI), From(new(api.Gateway))),
 		Override(new(full.StateModuleAPI), From(new(api.Gateway))),
+		Override(new(full.StateModuleAPIv2), From(new(full.StateModuleV2))),
 		Override(new(stmgr.StateManagerAPI), rpcstmgr.NewRPCStateManager),
 		Override(new(full.ActorEventAPI), From(new(api.Gateway))),
 		Override(new(eth.EthFilecoinAPI), From(new(api.Gateway))),
@@ -168,6 +169,7 @@ var ChainNode = Options(
 		Override(new(full.GasModuleAPI), From(new(full.GasModule))),
 		Override(new(full.MpoolModuleAPI), From(new(full.MpoolModule))),
 		Override(new(full.StateModuleAPI), From(new(full.StateModule))),
+		Override(new(full.StateModuleAPIv2), From(new(full.StateModuleV2))),
 		Override(new(stmgr.StateManagerAPI), From(new(*stmgr.StateManager))),
 
 		Override(RunHelloKey, modules.RunHello),
