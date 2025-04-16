@@ -17,6 +17,7 @@
   Pull requests:
     - https://github.com/filecoin-project/lotus/pull/13003
     - https://github.com/filecoin-project/lotus/pull/13027
+    - https://github.com/filecoin-project/lotus/pull/13034
 
 # Node and Miner v1.32.2 / 2025-04-04
 
