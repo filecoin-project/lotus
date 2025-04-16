@@ -1,20 +1,15 @@
-name: Test
-
 on:
-  pull_request:
-  push:
-    branches:
-      - master
-      - release/*
-  workflow_dispatch:
+  workflow_call:
+    inputs:
+      run_very_expensive_tests:
+        description: 'Run very expensive tests'
+        required: false
+        default: false
+        type: boolean
 
 defaults:
   run:
     shell: bash
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -31,9 +26,11 @@ jobs:
           submodules: 'recursive'
           fetch-depth: 0
       - id: list_test_group_execution_contexts
+        env:
+          VERY_EXPENSIVE_TESTS_RUN: ${{ inputs.run_very_expensive_tests }}
         run: |
           echo "test_group_execution_contexts<<EOF" >> $GITHUB_OUTPUT
-          go run ./cmd/ci/main.go --json list-test-group-execution-contexts | jq -r '.msg' | tee -a $GITHUB_OUTPUT
+          go run ./cmd/ci/main.go --json list-test-group-execution-contexts --very-expensive-tests-run=$VERY_EXPENSIVE_TESTS_RUN | jq -r '.msg' | tee -a $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
   cache:
     name: Cache Dependencies
@@ -170,33 +167,49 @@ jobs:
           key: ${{ steps.cache.outputs.fetch_params_key }}
           path: ${{ steps.cache.outputs.fetch_params_path }}
           fail-on-cache-miss: true
+      # https://github.com/quic-go/quic-go/wiki/UDP-Buffer-Sizes
+      - name: Increase UDP buffer sizes
+        run: |
+          sudo sysctl -w net.core.rmem_max=7500000
+          sudo sysctl -w net.core.wmem_max=7500000
       # TODO: Install statediff (used to be used for conformance)
       - name: Create temporary directory for reports
         id: reports
         run: mktemp -d | xargs -0 -I{} echo "path={}" | tee -a $GITHUB_OUTPUT
       # TODO: Track coverage (used to be tracked for conformance)
       - name: Run tests
+        id: tests
         env:
           NAME: ${{ matrix.name }}
           LOTUS_SRC_DIR: ${{ github.workspace }}
           REPORTS_PATH: ${{ steps.reports.outputs.path }}
           SKIP_CONFORMANCE: ${{ fromJson(steps.group.outputs.metadata).skip_conformance && '1' || '0' }}
-          TEST_RUSTPROOFS_LOGS: ${{ fromJson(steps.group.outputs.metadata).test_rustproofs_logs && '1' || '0' }}
+          TEST_RUSTPROOFS_LOGS: ${{ fromJson(steps.group.outputs.metadata).test_rust_proofs_logs && '1' || '0' }}
+          LOTUS_RUN_EXPENSIVE_TESTS: 1
+          LOTUS_RUN_VERY_EXPENSIVE_TESTS: ${{ inputs.run_very_expensive_tests && '1' || '0' }}
           FORMAT: ${{ fromJson(steps.group.outputs.metadata).format || 'standard-verbose' }}
           PACKAGES: ${{ join(fromJson(steps.group.outputs.metadata).packages, ' ') }}
+          TIMEOUT: ${{ inputs.run_very_expensive_tests && '60m' || '10m' }}
+          MONITOR_FREE_MEMORY: ${{ runner.debug }}
         run: |
+          if [[ "$MONITOR_FREE_MEMORY" == "1" ]]; then
+            while true; do
+              free -m
+              sleep 5
+            done &
+          fi
           gotestsum \
             --format "$FORMAT" \
             --junitfile "$REPORTS_PATH/$NAME.xml" \
             --jsonfile "$REPORTS_PATH/$NAME.json" \
             --packages="$PACKAGES" \
-            -- ${{ fromJson(steps.group.outputs.metadata).go_test_flags || '' }}
+            -- -timeout "$TIMEOUT" ${{ fromJson(steps.group.outputs.metadata).go_test_flags || '' }}
       - name: Modify junit.xml for BuildPulse
         env:
           NAME: ${{ matrix.name }}
           REPORTS_PATH: ${{ steps.reports.outputs.path }}
           PACKAGES: ${{ join(fromJson(steps.group.outputs.metadata).packages, ' ') }}
-        if: always()
+        if: (!cancelled())
         run: |
           # Modify test suite name and classname attributes in JUnit XML for better grouping
           # in BuildPulse. itests are run with go test ./itests/file_test.go and therefore Go
@@ -210,7 +223,7 @@ jobs:
             sed -i 's# name="github.com/filecoin-project/lotus/\(.*\)"# name="'${{ matrix.name }}':\1"#g' "$REPORTS_PATH/$NAME.xml"
           fi
           cat "$REPORTS_PATH/$NAME.xml"
-      - if: success() || failure()
+      - if: (!cancelled())
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.name }}-${{ runner.os }}-${{ runner.arch }}
