@@ -21,7 +21,7 @@
 
 # Node and Miner v1.32.2 / 2025-04-04
 
-This Lotus v1.32.2 release is a **MANDATORY patch release**. After the Calibration network upgraded to nv25, a bug was discovered in the ref-fvm KAMT library affecting ERC-20 token minting operations. You can read the the full techincal breakdown of the issue [here](https://github.com/filecoin-project/builtin-actors/pull/1667).
+This Lotus v1.32.2 release is a **MANDATORY patch release**. After the Calibration network upgraded to nv25, a bug was discovered in the ref-fvm KAMT library affecting ERC-20 token minting operations. You can read the full techincal breakdown of the issue [here](https://github.com/filecoin-project/builtin-actors/pull/1667).
 
 This patch release includes the following updates:
 - Schedules a mandatory Calibration upgrade, happening on `2025-04-07T23:00:00Z`, to fix the ERC-20 token minting bug on the Calibration network.
