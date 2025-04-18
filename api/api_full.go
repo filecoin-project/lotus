@@ -460,7 +460,11 @@ type FullNode interface {
 	// Note: The value returned is overestimated by 10% (multiplied by 110/100).
 	// See: node/impl/full/state.go StateMinerInitialPledgeForSector implementation.
 	StateMinerInitialPledgeForSector(ctx context.Context, sectorDuration abi.ChainEpoch, sectorSize abi.SectorSize, verifiedSize uint64, tsk types.TipSetKey) (types.BigInt, error) //perm:read
-	// StateMinerAvailableBalance returns the portion of a miner's balance that can be withdrawn or spent
+	// StateMinerAvailableBalance returns the portion of a miner's balance that can be withdrawn or
+	// spent. It is calculated by subtracting the following from the miner actor's balance:
+	// * Locked vesting funds (accounting for vesting funds that should already be unlocked)
+	// * PreCommit deposits
+	// * Initial pledge collateral
 	StateMinerAvailableBalance(context.Context, address.Address, types.TipSetKey) (types.BigInt, error) //perm:read
 	// StateMinerSectorAllocated checks if a sector number is marked as allocated.
 	StateMinerSectorAllocated(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (bool, error) //perm:read

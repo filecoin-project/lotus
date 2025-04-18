@@ -7808,7 +7808,11 @@ Response:
 ```
 
 ### StateMinerAvailableBalance
-StateMinerAvailableBalance returns the portion of a miner's balance that can be withdrawn or spent
+StateMinerAvailableBalance returns the portion of a miner's balance that can be withdrawn or
+spent. It is calculated by subtracting the following from the miner actor's balance:
+* Locked vesting funds (accounting for vesting funds that should already be unlocked)
+* PreCommit deposits
+* Initial pledge collateral
 
 
 Perms: read
