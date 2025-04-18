@@ -22148,7 +22148,7 @@
         {
             "name": "Filecoin.StateMinerAvailableBalance",
             "description": "```go\nfunc (s *FullNodeStruct) StateMinerAvailableBalance(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.BigInt, error) {\n\tif s.Internal.StateMinerAvailableBalance == nil {\n\t\treturn *new(types.BigInt), ErrNotSupported\n\t}\n\treturn s.Internal.StateMinerAvailableBalance(p0, p1, p2)\n}\n```",
-            "summary": "StateMinerAvailableBalance returns the portion of a miner's balance that can be withdrawn or spent\n",
+            "summary": "StateMinerAvailableBalance returns the portion of a miner's balance that can be withdrawn or\nspent. It is calculated by subtracting the following from the miner actor's balance:\n* Locked vesting funds (accounting for vesting funds that should already be unlocked)\n* PreCommit deposits\n* Initial pledge collateral\n",
             "paramStructure": "by-position",
             "params": [
                 {
