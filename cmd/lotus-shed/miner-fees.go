@@ -98,7 +98,15 @@ var minerFeesCmd = &cli.Command{
 			_, _ = fmt.Fprintf(cctx.App.Writer, "Deadline %d:\n", dlIdx)
 
 			totalSectorsFee := big.NewInt(0)
+			totalProvenSectorsFee := big.NewInt(0)
 			totalFeeDeduction := big.NewInt(0)
+
+			// Epoch at which sectors that are within this deadline would have last been proven, so we
+			// can look for new sectors that have (probably) not been proven yet
+			dlLastProvenEpoch := dlinfo.PeriodStart + abi.ChainEpoch(dlIdx+1)*dlinfo.WPoStChallengeWindow
+			if dlLastProvenEpoch > dlinfo.CurrentEpoch {
+				dlLastProvenEpoch -= dlinfo.WPoStProvingPeriod
+			}
 
 			/** Iterate over partitions **/
 
@@ -135,6 +143,9 @@ var minerFeesCmd = &cli.Command{
 							_, _ = fmt.Fprintf(cctx.App.Writer, "%s\n", soci16.DailyFee)
 						}
 						totalSectorsFee = big.Add(totalSectorsFee, soci16.DailyFee)
+						if soci16.Activation < dlLastProvenEpoch {
+							totalProvenSectorsFee = big.Add(totalProvenSectorsFee, soci16.DailyFee)
+						} // else the sector is too new, hasn't been proven and won't have paid a fee yet
 					} else {
 						_, _ = fmt.Fprintf(cctx.App.Writer, "<legacy, not migrated>\n")
 					}
@@ -170,7 +181,7 @@ var minerFeesCmd = &cli.Command{
 				correct = "✗"
 				discrepancies = true
 			}
-			_, _ = fmt.Fprintf(cctx.App.Writer, "\t%s Deadline daily fee: %s, power: %s (sector fee sum: %s, expiration fee deduction sum: %s)\n", correct, dl.DailyFee, dl.LivePower.QA, totalSectorsFee, totalFeeDeduction)
+			_, _ = fmt.Fprintf(cctx.App.Writer, "\t%s Deadline daily fee: %s, power: %s (proven sector fee sum: %s, total sector fee sum: %s, expiration fee deduction sum: %s)\n", correct, dl.DailyFee, dl.LivePower.QA, totalProvenSectorsFee, totalSectorsFee, totalFeeDeduction)
 
 			if !dl.DailyFee.IsZero() {
 
@@ -261,7 +272,7 @@ var minerFeesCmd = &cli.Command{
 						}
 					}
 
-					expectedFee := dl.DailyFee
+					expectedFee := totalProvenSectorsFee
 
 					rewardPercent := "<cron call not found>"
 					feeCapDesc := "fee not capped"
