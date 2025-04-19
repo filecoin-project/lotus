@@ -1,6 +1,6 @@
 # Why does Filecoin mining work best on AMD?
 Currently, Filecoin's Proof of Replication (PoRep) prefers to be run on AMD
-processors.  More accurately, it runs much much slower on Intel CPUs (it runs
+processors.  More accurately, it runs much slower on Intel CPUs (it runs
 competitively fast on some ARM processors, like the ones in newer Samsung
 phones, but they lack the RAM to seal the larger sector sizes). The main reason
 that we see this benefit on AMD processors is due to their implementation of
