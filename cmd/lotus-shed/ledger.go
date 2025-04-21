@@ -70,7 +70,7 @@ var ledgerListAddressesCmd = &cli.Command{
 			}
 
 			p := []uint32{hdHard | 44, hdHard | 461, hdHard, 0, uint32(i)}
-			pubk, err := fl.GetPublicKeySECP256K1(p)
+			pubk, err := fl.GetPublicKey(p, ledgerfil.SECP256K1)
 			if err != nil {
 				return err
 			}
@@ -178,7 +178,7 @@ var ledgerKeyInfoCmd = &cli.Command{
 			return err
 		}
 
-		pubk, _, addr, err := fl.GetAddressPubKeySECP256K1(p)
+		pubk, _, addr, err := fl.GetAddressPubKey(p, ledgerfil.SECP256K1)
 		if err != nil {
 			return err
 		}
@@ -250,7 +250,7 @@ var ledgerSignTestCmd = &cli.Command{
 		}
 		fmt.Printf("Message: %x\n", b.RawData())
 
-		sig, err := fl.SignSECP256K1(p, b.RawData())
+		sig, err := fl.Sign(p, b.RawData(), ledgerfil.SECP256K1)
 		if err != nil {
 			return err
 		}
@@ -282,7 +282,7 @@ var ledgerShowCmd = &cli.Command{
 			return err
 		}
 
-		_, _, a, err := fl.ShowAddressPubKeySECP256K1(p)
+		_, _, a, err := fl.ShowAddressPubKey(p, ledgerfil.SECP256K1)
 		if err != nil {
 			return err
 		}
@@ -325,7 +325,7 @@ var ledgerNewAddressesCmd = &cli.Command{
 		}
 
 		p := []uint32{hdHard | 44, hdHard | 461, hdHard, 0, uint32(index)}
-		pubk, err := fl.GetPublicKeySECP256K1(p)
+		pubk, err := fl.GetPublicKey(p, ledgerfil.SECP256K1)
 		if err != nil {
 			return err
 		}

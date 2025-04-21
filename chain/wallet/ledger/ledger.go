@@ -69,7 +69,7 @@ func (lw LedgerWallet) WalletSign(ctx context.Context, signer address.Address, t
 		}
 	}
 
-	sig, err := fl.SignSECP256K1(ki.Path, meta.Extra)
+	sig, err := fl.Sign(ki.Path, meta.Extra, ledgerfil.SECP256K1)
 	if err != nil {
 		return nil, err
 	}
@@ -204,13 +204,13 @@ func (lw LedgerWallet) WalletNew(ctx context.Context, t types.KeyType) (address.
 	defer fl.Close() // nolint:errcheck
 
 	path := append(append([]uint32(nil), filHDBasePath...), uint32(maxi+1))
-	_, _, addr, err := fl.GetAddressPubKeySECP256K1(path)
+	_, _, addr, err := fl.GetAddressPubKey(path, ledgerfil.SECP256K1)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("getting public key from ledger: %w", err)
 	}
 
 	log.Warnf("creating key: %s, accept the key in ledger device", addr)
-	_, _, addr, err = fl.ShowAddressPubKeySECP256K1(path)
+	_, _, addr, err = fl.ShowAddressPubKey(path, ledgerfil.SECP256K1)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("verifying public key with ledger: %w", err)
 	}
