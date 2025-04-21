@@ -86,7 +86,7 @@ func (stage *WindowPoStStage) PackMessages(ctx context.Context, bb *blockbuilder
 	return nil
 }
 
-// stepWindowPoStsMiner enqueues all missing window posts for the current epoch for the given miner.
+// queueMiner enqueues all missing window posts for the current epoch for the given miner.
 func (stage *WindowPoStStage) queueMiner(
 	ctx context.Context, bb *blockbuilder.BlockBuilder,
 	addr address.Address, minerState miner.State,
