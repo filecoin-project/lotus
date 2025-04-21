@@ -637,7 +637,7 @@
       },
       "id": 109,
       "panels": [],
-      "title": "Validation",
+      "title": "Validation (Applicable Only When SP is Connected)",
       "type": "row"
     },
     {
