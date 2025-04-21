@@ -196,7 +196,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(1.0, sum(f3_gpbft_round_histogram_bucket) by (le))\n",
+          "expr": "histogram_quantile(1.0, sum(f3_gpbft_round_histogram_bucket) by (le))",
           "instant": false,
           "legendFormat": "__auto",
           "range": true,
@@ -936,7 +936,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.90, sum(rate(f3_certexchange_total_response_time_seconds_bucket{status=\"success\"}[$__rate_interval])) by (le))\n",
+          "expr": "histogram_quantile(0.90, sum(rate(f3_certexchange_total_response_time_seconds_bucket{status=\"success\"}[$__rate_interval])) by (le))",
           "hide": false,
           "instant": false,
           "legendFormat": "90th",
@@ -949,7 +949,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.99, sum(rate(f3_certexchange_total_response_time_seconds_bucket{status=\"success\"}[$__rate_interval])) by (le))\n",
+          "expr": "histogram_quantile(0.99, sum(rate(f3_certexchange_total_response_time_seconds_bucket{status=\"success\"}[$__rate_interval])) by (le))",
           "hide": false,
           "instant": false,
           "legendFormat": "99th",
@@ -962,7 +962,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "sum(rate(f3_certexchange_total_response_time_seconds_sum[$__rate_interval])) / sum(rate(f3_certexchange_total_response_time_seconds_count{status=\"success\"}[$__rate_interval]))\r\n",
+          "expr": "sum(rate(f3_certexchange_total_response_time_seconds_sum[$__rate_interval])) / sum(rate(f3_certexchange_total_response_time_seconds_count{status=\"success\"}[$__rate_interval]))",
           "hide": false,
           "instant": false,
           "legendFormat": "Average",
