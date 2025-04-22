@@ -9,8 +9,11 @@ This directory contains the experimental user-facing documentation for Filecoin'
 
 ## Workflow
 1. Copy updates from Notion into this repository
-2. Submit changes for team review via pull request
-3. After approval, publish updated content back to Notion
+2. Regenerate the table of contents if you've added or modified sections
+3. Submit changes for team review via pull request
+4. After approval, publish updated content back to Notion
+
+**Important**: Always regenerate the table of contents before committing changes to ensure it accurately reflects the document structure. The table of contents is comprehensive and includes all sections of the document, helping readers navigate the content.  It also helps give an overview in the diff of what content is being added/changed and where in the document.
 
 ## Key Files
 - `api-v2-experimental.md`: The main documentation file copied from Notion
@@ -19,7 +22,17 @@ This directory contains the experimental user-facing documentation for Filecoin'
 - Generated docs: `documentation/en/api-v2-unstable-methods.md`
 
 ## Commands
+
+### Regenerating the Table of Contents
+To regenerate the table of contents:
+1. Extract all headers from the document using grep:
+```bash
+grep -n '^#\|^##\|^###\|^####' api-v2-experimental.md
+```
+2. Use this information to update the Table of Contents section, ensuring all headers are properly nested according to their level and linked.
+
+### Updating Documentation
 To update the documentation after modifying the API code:
 ```bash
-# TODO: Add appropriate commands for regenerating/updating docs
+# TODO: Add appropriate commands for regenerating/updating docs from API code
 ```
