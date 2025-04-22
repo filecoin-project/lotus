@@ -2,6 +2,7 @@
 
 # Status
 
+- 2025-04-09: This document has been updated to account for the minimum initial set of non-ETH /v2 API groups as specified in [issue #12991](https://github.com/filecoin-project/lotus/issues/12991).
 - 2025-04-09: This document is still actively a Work In Progress. It has a draft discussing `ChainGetTipSet`. Additional APIs and API Groups will be added as part of working on [issue #12987](https://github.com/filecoin-project/lotus/issues/12987).
 
 # Table of Contents
