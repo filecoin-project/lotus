@@ -32,15 +32,21 @@
   - [Understanding `finalized` TipSets](#understanding-finalized-tipsets)
     - [Node Configuration Impact](#node-configuration-impact)
     - [Graceful Fallback Mechanism](#graceful-fallback-mechanism)
+    - [Example: Retrieving `finalized` TipSet](#example-retrieving-finalized-tipset)
+  - [Understanding `safe` TipSets](#understanding-safe-tipsets)
+    - [Implementation and Calculation](#implementation-and-calculation)
+    - [Conservative Safety Margin](#conservative-safety-margin)
+    - [Example: Retrieving `safe` TipSet](#example-retrieving-safe-tipset)
   - [Anchors and Default Behaviour](#anchors-and-default-behaviour)
   - [Benefits for Application Development](#benefits-for-application-development)
 - [Appendix](#appendix)
   - [JSON-RPC Examples](#json-rpc-examples)
     - [1. Get Latest TipSet](#1-get-latest-tipset)
     - [2. Get Finalized TipSet](#2-get-finalized-tipset)
-    - [3. Get TipSet at Specific Height](#3-get-tipset-at-specific-height)
-    - [4. Get TipSet by Key](#4-get-tipset-by-key)
-    - [5. Error Response Example (Invalid Selector)](#5-error-response-example-invalid-selector)
+    - [3. Get Safe TipSet](#3-get-safe-tipset)
+    - [4. Get TipSet at Specific Height](#4-get-tipset-at-specific-height)
+    - [5. Get TipSet by Key](#5-get-tipset-by-key)
+    - [6. Error Response Example (Invalid Selector)](#6-error-response-example-invalid-selector)
   - [Advanced Usage Examples](#advanced-usage-examples)
     - [Working with TipSet Anchors and Dealing with Null Epochs](#working-with-tipset-anchors-and-dealing-with-null-epochs)
     - [JSON-RPC Examples Combining Anchors and Previous Flag](#json-rpc-examples-combining-anchors-and-previous-flag)
@@ -65,7 +71,7 @@
     - [Actor Information Retrieval](#actor-information-retrieval)
     - [Address Resolution](#address-resolution)
   - [Design decisions](#design-decisions)
-    - [Why aren't named parameters used?](#why-arent-named-parameters-used)
+    - [Why aren’t named parameters used?](#why-arent-named-parameters-used)
   - [Future API Groups](#future-api-groups)
     - [State API Group](#state-api-group)
     - [Mpool API Group](#mpool-api-group)
@@ -149,6 +155,14 @@ or
 }
 ```
 
+or
+
+```json
+{
+  "tag": "safe"
+}
+```
+
 **JSON-RPC Request Example:**
 
 ```json
@@ -167,6 +181,7 @@ or
 Where:
 - `"latest"` - Returns the most recent tipset in the chain with the heaviest weight
 - `"finalized"` - Returns the most recent tipset considered final by the node based on the consensus protocol
+- `"safe"` - Returns a tipset that balances recency with stability, located between the "finalized" tipset and 200 epochs behind the latest tipset (Latest - 200). If the tipset at the calculated safe height is null, the first non-nil parent tipset is returned
 
 ### 2. By Height
 
@@ -486,7 +501,7 @@ flowchart TD
 
 This graceful fallback ensures that the `finalized` tag always returns a meaningful result regardless of the node's configuration or the state of the F3 subsystem.
 
-**Example: Retrieving `finalized` TipSet**
+### Example: Retrieving `finalized` TipSet
 
 ```json
 {
@@ -506,6 +521,47 @@ With this request:
 
 - If F3 is enabled and ready: you'll get the F3-finalised tipset (minutes old)
 - If F3 is disabled or not ready: you'll get the EC-finalised tipset (hours old)
+
+## Understanding `safe` TipSets
+
+The `safe` tag provides a balance between the most recent data (`latest`) and the most secure, finalized data (`finalized`). It returns a tipset that is potentially more recent than the finalized tipset but still has some level of stability compared to the very latest blocks.
+
+### Implementation and Calculation
+
+The `safe` tag is calculated as follows:
+
+1. The system calculates a "safe height" which is the latest (heaviest) tipset height minus 200 epochs
+2. This height is guaranteed to be at least as recent as the finalized tipset but potentially much more recent
+3. If the tipset at the calculated safe height is null (no blocks at that exact height), the system returns the first non-null parent tipset, similar to using a height selector with the `previous` flag set to true
+
+### Conservative Safety Margin
+
+The current implementation uses a conservative value of 200 epochs (approximately 100 minutes) behind the chain head. This value:
+
+- Was chosen as a conservative placeholder that balances recency with stability
+- May be adjusted in future versions based on network characteristics and user feedback
+- Provides stronger guarantees than the latest tipset while being more up-to-date than the finalized tipset
+
+### Example: Retrieving `safe` TipSet
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "Filecoin.ChainGetTipSet",
+  "params": [
+    {
+      "tag": "safe"
+    }
+  ],
+  "id": 1
+}
+
+```
+
+With this request you'll get a tipset that:
+- Is no more than 200 epochs behind the latest tipset
+- Is at least as recent as the finalized tipset
+- Represents a pragmatic balance between stability and recency
 
 ### Anchors and Default Behaviour
 
@@ -533,12 +589,13 @@ This behaviour ensures that by default, height-based queries follow the finalise
 
 ### Benefits for Application Development
 
-The `finalized` tag provides several advantages:
+The flexible tag system provides several advantages:
 
 1. **Abstraction from Finality Mechanisms**: Applications don't need to know whether a node uses F3 or EC finality
 2. **Consistent Behaviour**: API behaves predictably regardless of underlying network configuration
-3. **Future-Proof**: As Filecoin evolves with new consensus algorithms, the `finalized` concept remains stable
-4. **Performance Options**: Applications can choose between faster queries with `latest` or more confirmed data with `finalized`
+3. **Future-Proof**: As Filecoin evolves with new consensus algorithms, the tag concepts remain stable
+4. **Performance Options**: Applications can choose between faster queries with `latest`, more confirmed data with `finalized`, or a balanced approach with `safe`
+5. **Appropriate Tradeoffs**: Different workloads can select the most appropriate tag based on their specific needs for recency vs. stability
 
 # Appendix
 
@@ -578,7 +635,24 @@ The `finalized` tag provides several advantages:
 }
 ```
 
-### 3. Get TipSet at Specific Height
+### 3. Get Safe TipSet
+
+**Request:**
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "Filecoin.ChainGetTipSet",
+  "params": [
+    {
+      "tag": "safe"
+    }
+  ],
+  "id": 1
+}
+```
+
+### 4. Get TipSet at Specific Height
 
 **Request:**
 
@@ -601,7 +675,7 @@ The `finalized` tag provides several advantages:
 }
 ```
 
-### 4. Get TipSet by Key
+### 5. Get TipSet by Key
 
 **Request:**
 
@@ -620,7 +694,7 @@ The `finalized` tag provides several advantages:
 }
 ```
 
-### 5. Error Response Example (Invalid Selector)
+### 6. Error Response Example (Invalid Selector)
 
 **Request:**
 
@@ -839,6 +913,7 @@ The Go SDK provides convenient predefined constants and factory functions to cre
 // Using predefined tag selectors
 latest := types.TipSetSelectors.Latest      // Get the latest tipset
 finalized := types.TipSetSelectors.Finalized // Get the finalized tipset
+safe := types.TipSetSelectors.Safe          // Get the safe tipset
 
 // Creating height-based selectors with the factory function
 heightSelector := types.TipSetSelectors.Height(123, true, nil)  // Height 123, with previous fallback
@@ -850,6 +925,7 @@ keySelector := types.TipSetSelectors.Key(someTipSetKey)  // Select by specific T
 // Anchor constants for height-based selectors
 latestAnchor := types.TipSetAnchors.Latest     // Anchor to latest tipset
 finalizedAnchor := types.TipSetAnchors.Finalized // Anchor to finalized tipset
+safeAnchor := types.TipSetAnchors.Safe         // Anchor to safe tipset
 keyAnchor := types.TipSetAnchors.Key(someTipSetKey) // Anchor to specific key
 ```
 
