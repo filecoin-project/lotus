@@ -6,6 +6,9 @@
 
 # Table of Contents
 
+- [Filecoin V2 APIs](#filecoin-v2-apis)
+- [Status](#status)
+- [Table of Contents](#table-of-contents)
 - [Introduction](#introduction)
 - [The Selector Pattern](#the-selector-pattern)
 - [Overview](#overview)
@@ -18,7 +21,6 @@
     - [3. By Key](#3-by-key)
     - [Response](#response)
     - [Error Handling](#error-handling)
-  - [Predefined Selectors in the Go SDK](#predefined-selectors-in-the-go-sdk)
 - [State](#state)
   - [StateGetActor](#stategetactor)
     - [Parameters](#parameters)
@@ -37,8 +39,8 @@
     - [Implementation and Calculation](#implementation-and-calculation)
     - [Conservative Safety Margin](#conservative-safety-margin)
     - [Example: Retrieving `safe` TipSet](#example-retrieving-safe-tipset)
-  - [Anchors and Default Behaviour](#anchors-and-default-behaviour)
-  - [Benefits for Application Development](#benefits-for-application-development)
+    - [Anchors and Default Behaviour](#anchors-and-default-behaviour)
+    - [Benefits for Application Development](#benefits-for-application-development)
 - [Appendix](#appendix)
   - [JSON-RPC Examples](#json-rpc-examples)
     - [1. Get Latest TipSet](#1-get-latest-tipset)
@@ -50,19 +52,19 @@
   - [Advanced Usage Examples](#advanced-usage-examples)
     - [Working with TipSet Anchors and Dealing with Null Epochs](#working-with-tipset-anchors-and-dealing-with-null-epochs)
     - [JSON-RPC Examples Combining Anchors and Previous Flag](#json-rpc-examples-combining-anchors-and-previous-flag)
-      - [Example 1: Get a tipset at a specific height, with previous fallback, anchored to finalised chain](#example-1-get-a-tipset-at-a-specific-height-with-previous-fallback-anchored-to-finalised-chain)
-      - [Example 2: Get exactly the tipset at a specific height (no fallback), anchored to latest chain](#example-2-get-exactly-the-tipset-at-a-specific-height-no-fallback-anchored-to-latest-chain)
+      - [Example 1: Get a tipset at a specific height, with previous fallback, anchored to finalized chain](#example-1-get-a-tipset-at-a-specific-height-with-previous-fallback-anchored-to-finalized-chain)
+      - [Example 2: Get *exactly* the tipset at a specific height (no fallback), anchored to latest chain](#example-2-get-exactly-the-tipset-at-a-specific-height-no-fallback-anchored-to-latest-chain)
       - [Example 3: Get a tipset with previous fallback, anchored to a specific TipSet key](#example-3-get-a-tipset-with-previous-fallback-anchored-to-a-specific-tipset-key)
     - [Common Use Cases](#common-use-cases)
       - [Walking Backwards Through a Chain](#walking-backwards-through-a-chain)
       - [Handling Network Instability Periods](#handling-network-instability-periods)
       - [Checking for Reorganisation with Exact Height Comparison](#checking-for-reorganisation-with-exact-height-comparison)
   - [Go SDK Example Usage](#go-sdk-example-usage)
-    - [Predefined Selectors in the Go SDK](#predefined-selectors-in-the-go-sdk-1)
+    - [Predefined Selectors and Anchors in the Go SDK](#predefined-selectors-and-anchors-in-the-go-sdk)
   - [Consistency Across Selector Usage](#consistency-across-selector-usage)
     - [Avoiding Inconsistent State Views](#avoiding-inconsistent-state-views)
-    - [Risk of Double Counting](#risk-of-double-counting)
-    - [For Financial Applications](#for-financial-applications)
+    - [Risk of Double Counting or Missing State Changes](#risk-of-double-counting-or-missing-state-changes)
+    - [Recommendations for Financial Applications](#recommendations-for-financial-applications)
   - [Practical Applications](#practical-applications)
     - [Chain Synchronisation](#chain-synchronisation)
     - [Transaction Confirmation](#transaction-confirmation)
@@ -95,7 +97,7 @@ The Filecoin V2 APIs represent a significant redesign of Filecoin’s RPC interf
 
 At the core of the V2 APIs design is the concept of “Selectors” - flexible constructs that let you specify exactly what blockchain data you want. Rather than having different methods for different selection criteria, a single method accepts various selector types to retrieve data in different ways.
 
-This documentation focuses on the `TipSetSelector` as implemented in the `ChainGetTipSet` method, which is just one part of the Chain API group in the larger V2 APIs initiative. Additional API groups are under development, including:
+This documentation focuses on the `TipSetSelector` as implemented in the `ChainGetTipSet`, `StateGetActor`, and `StateGetID` methods. Additional API groups are under development, including:
 
 - **State API Group**: Will provide enhanced state query capabilities with similar selector patterns
 - **Mpool API Group**: Will offer improved message pool interaction
@@ -135,11 +137,13 @@ Filecoin.ChainGetTipSet
 
 The API introduces a flexible way to select tipsets using different criteria:
 
-1. **By Tag** - Using predefined references like `latest` or “`finalized`”
-2. **By Height** - Selecting a tipset at a specific blockchain height
-3. **By Key** - Directly specifying a tipset by its cryptographic key
+1. **By Tag** - Using predefined references like `latest`, `safe`, or `finalized`.
+2. **By Height** - Selecting a tipset at a specific blockchain height, optionally anchored to a reference point.
+3. **By Key** - Directly specifying a tipset by its cryptographic key (an array of block CIDs).
 
 ### 1. By Tag
+
+Tags provide convenient shortcuts to commonly desired tipsets:
 
 ```json
 {
@@ -179,11 +183,13 @@ or
 ```
 
 Where:
-- `"latest"` - Returns the most recent tipset in the chain with the heaviest weight
-- `"finalized"` - Returns the most recent tipset considered final by the node based on the consensus protocol
-- `"safe"` - Returns a tipset that balances recency with stability, located between the "finalized" tipset and 200 epochs behind the latest tipset (Latest - 200). If the tipset at the calculated safe height is null, the first non-nil parent tipset is returned
+- `"latest"` - Returns the most recent tipset in the chain with the heaviest weight. This gives the most up-to-date view but has the lowest finality guarantee.
+- `"finalized"` - Returns the most recent tipset considered final by the node based on its consensus protocol (F3 or EC fallback). This provides the strongest finality guarantee but is the least recent. See [Consensus Protocol Notes](#understanding-finalized-tipsets) for details.
+- `"safe"` - Returns a tipset balancing recency and finality, calculated based on `max(finalized_height, latest_height - SafeHeightDistance)`, where `SafeHeightDistance` is currently 200 epochs. It's guaranteed to be *at least* as recent as the `finalized` tipset. If the calculated height corresponds to a null tipset (an epoch without blocks), the API returns the first non-null parent tipset. See [Consensus Protocol Notes](#understanding-safe-tipsets) for more details.
 
 ### 2. By Height
+
+Selects a tipset at a specific blockchain height (epoch):
 
 ```json
 {
@@ -219,11 +225,13 @@ Where:
 ```
 
 Where:
-- `at` - The chain epoch to retrieve
-- `previous` (optional) - If true and the tipset at the specified height is null, returns the previous non-null tipset. Otherwise, it returns the tipset as is at specified height, which may be `null`. By default the `previous` is set to `false`.
-- `anchor` (optional) - Specifies a reference point; the selected tipset is guaranteed to be a child of this anchor at the given height. Defaults to `finalized` tipset if unspecified.
+- `at` (integer) - The chain epoch to retrieve. Must be non-negative.
+- `previous` (boolean, optional) - If `true` and the tipset at the specified `at` height is null, returns the first non-null parent tipset (at height `< at`). If `false` or omitted, it returns the tipset exactly at the specified `at` height; this might be `null` if no blocks were mined at that epoch. Default is `false`.
+- `anchor` (TipSetSelector, optional) - Specifies a reference point (using a `tag` like `latest`, `safe`, `finalized`, or a specific `key`) for the chain history to search within. The selected tipset is guaranteed to be a descendant of this anchor. Defaults to the `finalized` tipset if unspecified, ensuring queries follow the finalized chain by default.
 
 ### 3. By Key
+
+Selects a tipset using its unique cryptographic key (an array of block CIDs):
 
 ```json
 {
@@ -250,9 +258,11 @@ Where:
 }
 ```
 
+Where `key` is an array containing the CIDs that uniquely identify the desired tipset.
+
 ### Response
 
-The method returns a TipSet object.
+The method returns a TipSet object if found.
 
 **JSON-RPC Response Example:**
 
@@ -288,38 +298,17 @@ The method returns a TipSet object.
 }
 ```
 
+If a tipset cannot be found matching the criteria (e.g., using `height` with `previous: false` for a null epoch, or an invalid key), the result might be `null` or an error, depending on the specific case.
+
 ### Error Handling
 
 The API will return an error in the following cases:
 
-- No selector is provided (selector must be explicitly specified)
-- Multiple selection criteria are specified (only one should be provided)
-- Invalid height values (must be non-negative)
-- Other validation errors with the selector specification
-
-## Predefined Selectors in the Go SDK
-
-The Go SDK provides convenient predefined constants and factory functions to create selectors easily, without needing to construct the selector structures manually:
-
-```go
-
-// Get latest tipset
-latestTipSet, err := node.ChainGetTipSet(context.Background(), types.TipSetSelectors.Latest)
-
-// Get finalized tipset
-finalizedTipSet, err := node.ChainGetTipSet(context.Background(), types.TipSetSelectors.Finalized)
-
-// Get tipset at specific height
-heightSelector := types.TipSetSelectors.Height(123456, true, types.TipSetAnchors.Finalized)
-heightTipSet, err := node.ChainGetTipSet(context.Background(), heightSelector)
-
-// Get tipset by key
-keySelector := types.TipSetSelectors.Key(someTipSetKey)
-keyTipSet, err := node.ChainGetTipSet(context.Background(), keySelector)
-
-```
-
-These predefined selectors and factory functions handle all the internal complexity of creating properly structured selectors, making your code cleaner and less error-prone.
+- No selector is provided (selector must be explicitly specified).
+- Multiple top-level selection criteria are specified (e.g., both `tag` and `height`). Note: `anchor` *within* `height` is allowed.
+- Invalid height values (e.g., negative `at` value).
+- Invalid key format or non-existent key.
+- Other validation errors with the selector specification.
 
 # State
 
@@ -331,14 +320,14 @@ The State method group contains methods for interacting with the Filecoin blockc
 Filecoin.StateGetActor
 ```
 
-**Description**: Retrieves the actor information for the specified address at the selected tipset.
+**Description**: Retrieves the actor information (like balance, nonce, code CID) for the specified address at the state defined by the selected tipset.
 
 **Permissions**: read
 
 ### Parameters
 
-1. `address` - The Filecoin address to look up
-2. `tipsetSelector` - A selector specifying which tipset to query the state from
+1. `address` (string) - The Filecoin address (e.g., "f01234", "f2...") to look up.
+2. `tipsetSelector` (TipSetSelector) - A selector specifying which tipset's state to query (e.g., `{"tag": "safe"}`, `{"height": {"at": 123456}}`).
 
 ### Request Example
 
@@ -354,7 +343,6 @@ Filecoin.StateGetActor
   ],
   "id": 1
 }
-
 ```
 
 This example retrieves the actor information for address `f01234` at the finalized tipset.
@@ -363,10 +351,11 @@ This example retrieves the actor information for address `f01234` at the finaliz
 
 The method returns an Actor object containing:
 
-- Code CID (determines the actor's type)
-- State root CID
-- Balance in attoFIL
-- Nonce (for account actors)
+- `Code` (CID) - Determines the actor's type (e.g., account, miner, multisig).
+- `Head` (CID) - The root CID of the actor's state.
+- `Nonce` (uint64) - The transaction count for account actors.
+- `Balance` (string) - The actor's balance in attoFIL.
+- `DelegatedAddress` (string, optional) - If the actor has a delegated address (like f4 addresses), it will be present here.
 
 **JSON-RPC Response Example:**
 
@@ -375,20 +364,20 @@ The method returns an Actor object containing:
   "jsonrpc": "2.0",
   "result": {
     "Code": {
-      "/": "bafk2bzacebp3lhba2jem4ze27hvzkao3r5z5zpeiq4qmx6b3waqoqpqzpoky2"
+      "/": "bafk2bzacebp3lhba2jem4ze27hvzkao3r5z5zpeiq4qmx6b3waqoqpqzpoky2" // Example Account Actor Code CID
     },
     "Head": {
-      "/": "bafy2bzaceahypovebb3jbnp2zhrtwgetb7afsbefp2yrsedcnmv4bwhzotkwy"
+      "/": "bafy2bzaceahypovebb3jbnp2zhrtwgetb7afsbefp2yrsedcnmv4bwhzotkwy" // Example Actor State CID
     },
     "Nonce": 42,
-    "Balance": "1000000000000000000"
+    "Balance": "1000000000000000000" // 1 FIL
   },
   "id": 1
 }
 
 ```
 
-If the actor does not exist at the specified tipset, an error is returned.
+If the actor does not exist at the specified tipset state, an error is returned (e.g., "actor not found").
 
 ## StateGetID
 
@@ -396,14 +385,14 @@ If the actor does not exist at the specified tipset, an error is returned.
 Filecoin.StateGetID
 ```
 
-**Description**: Retrieves the ID address for the specified address at the selected tipset.
+**Description**: Retrieves the canonical ID address (e.g., "f01234") for the specified address at the state defined by the selected tipset.
 
 **Permissions**: read
 
 ### Parameters
 
-1. `address` - The Filecoin address to resolve to an ID address
-2. `tipsetSelector` - A selector specifying which tipset to query the state from
+1. `address` (string) - The Filecoin address (ID, robust, or delegated) to resolve.
+2. `tipsetSelector` (TipSetSelector) - A selector specifying which tipset's state to query.
 
 ### Request Example
 
@@ -412,34 +401,32 @@ Filecoin.StateGetID
   "jsonrpc": "2.0",
   "method": "Filecoin.StateGetID",
   "params": [
-    "f2kc5mnx4pvgdpm5lzgutbfuzcnmkedlgd5wvyky",
+    "f2kc5mnx4pvgdpm5lzgutbfuzcnmkedlgd5wvyky", // A robust address
     {
-      "tag": "latest"
+      "tag": "latest" // Resolve based on the latest chain state
     }
   ],
   "id": 1
 }
-
 ```
 
 This example resolves the given robust address to its ID address at the latest tipset.
 
 ### Response
 
-The method returns the ID address for the given address.
+The method returns the ID address (string) corresponding to the input address at the specified tipset.
 
 **JSON-RPC Response Example:**
 
 ```json
 {
   "jsonrpc": "2.0",
-  "result": "f01234",
+  "result": "f01234", // The resolved ID address
   "id": 1
 }
-
 ```
 
-If the address cannot be resolved at the specified tipset, an error is returned.
+If the address cannot be resolved to an ID address at the specified tipset state (e.g., it never existed or was created after that tipset), an error is returned.
 
 # Consensus Protocol Notes
 
@@ -450,48 +437,48 @@ This approach ensures that applications can be built today that will seamlessly 
 
 ## Understanding `finalized` TipSets
 
-The `finalized` tag is a powerful concept in the V2 APIs that returns the tipset considered finalised by the node's consensus protocol. This enables applications to work with confirmed blockchain data without needing to understand the underlying finality mechanism.
+The `finalized` tag is a powerful concept in the V2 APIs that returns the tipset considered finalized by the node's consensus protocol. This enables applications to work with confirmed blockchain data without needing to understand the underlying finality mechanism.
 
 ### Node Configuration Impact
 
 How the `finalized` tag behaves depends on the node's configuration:
 
 1. **When F3 is Enabled and Ready**:
-    - The API returns the tipset identified by the latest F3 certificate
-    - This provides faster finality guarantees (typically within minutes)
-    - The finalised tipset comes directly from the consensus certificates
+    - The API returns the tipset identified by the latest F3 certificate.
+    - This provides faster finality guarantees (typically within minutes).
+    - The finalized tipset comes directly from the consensus certificates.
 2. **When F3 is Disabled or Not Ready**:
-    - The API automatically falls back to EC finality
-    - EC finality is based on chain depth  (900 epochs, or 7.5 hours)
-    - The finalised tipset is calculated as: `heaviestTipSet.Height - policy.ChainFinality`
+    - The API automatically falls back to EC finality.
+    - EC finality is based on chain depth (currently 900 epochs, or ~7.5 hours).
+    - The finalized tipset is calculated as: `heaviestTipSet.Height - policy.ChainFinality`.
 
 ### Graceful Fallback Mechanism
 
 The implementation includes several fallback scenarios to ensure robust operation:
 
-```
+```mermaid
 flowchart TD
     A[Request for Finalized TipSet] --> B{Is F3 Enabled?}
     B -->|Yes| C[Try to get latest F3 certificate]
     B -->|No| H[Use EC Finality]
-    
+
     C --> D{Certificate Available?}
     D -->|Yes| E[Return TipSet from F3 Certificate]
     D -->|No| H
-    
+
     C --> F{F3 Error?}
     F -->|Not running or not ready| H
     F -->|Other error| G[Return Error]
-    
-    H --> I[Calculate: HeaviestTipSet.Height - ChainFinality]
+
+    H --> I[Calculate: HeaviestTipSet.Height - ChainFinality (900 epochs)]
     I --> J[Return EC Finalized TipSet]
-    
+
     classDef success fill:#bfb,stroke:#393,stroke-width:2px;
     classDef fallback fill:#ffd,stroke:#b90,stroke-width:2px;
     classDef error fill:#fbb,stroke:#933,stroke-width:2px;
     classDef process fill:#e8f7ff,stroke:#45a2ff,stroke-width:2px;
     classDef decision fill:#f2f2f2,stroke:#333,stroke-width:2px;
-    
+
     class E success;
     class H,J fallback;
     class G error;
@@ -514,33 +501,40 @@ This graceful fallback ensures that the `finalized` tag always returns a meaning
   ],
   "id": 1
 }
-
 ```
 
 With this request:
 
-- If F3 is enabled and ready: you'll get the F3-finalised tipset (minutes old)
-- If F3 is disabled or not ready: you'll get the EC-finalised tipset (hours old)
+- If F3 is enabled and ready: you'll get the F3-finalized tipset (potentially minutes old).
+- If F3 is disabled or not ready: you'll get the EC-finalized tipset (typically hours old).
 
 ## Understanding `safe` TipSets
 
-The `safe` tag provides a balance between the most recent data (`latest`) and the most secure, finalized data (`finalized`). It returns a tipset that is potentially more recent than the finalized tipset but still has some level of stability compared to the very latest blocks.
+The `safe` tag provides a balance between the most recent data (`latest`) and the most secure, finalized data (`finalized`). It returns a tipset that is potentially more recent than the finalized tipset but still offers a reasonable level of stability against minor chain reorganizations.
 
 ### Implementation and Calculation
 
-The `safe` tag is calculated as follows:
+The `safe` tag effectively selects a tipset at a height calculated as:
 
-1. The system calculates a "safe height" which is the latest (heaviest) tipset height minus 200 epochs
-2. This height is guaranteed to be at least as recent as the finalized tipset but potentially much more recent
-3. If the tipset at the calculated safe height is null (no blocks at that exact height), the system returns the first non-null parent tipset, similar to using a height selector with the `previous` flag set to true
+`max(finalized_tipset_height, latest_tipset_height - SafeHeightDistance)`
+
+Where:
+
+1. `finalized_tipset_height` is the height of the tipset returned by the `finalized` selector.
+2. `latest_tipset_height` is the height of the tipset returned by the `latest` selector.
+3. `SafeHeightDistance` is a safety buffer defined in the node's build configuration (currently **200 epochs**, approx. 100 minutes).
+
+This calculation guarantees that the `safe` tipset is **never older than the `finalized` tipset** and is very likely more recent.
+
+If the calculated safe height corresponds to a null tipset (an epoch without blocks), the system returns the **first non-null parent tipset**, similar to using a height selector with `previous: true`.
 
 ### Conservative Safety Margin
 
-The current implementation uses a conservative value of 200 epochs (approximately 100 minutes) behind the chain head. This value:
+The current `SafeHeightDistance` of 200 epochs is a conservative value chosen to balance recency with stability during the initial rollout. This value:
 
-- Was chosen as a conservative placeholder that balances recency with stability
-- May be adjusted in future versions based on network characteristics and user feedback
-- Provides stronger guarantees than the latest tipset while being more up-to-date than the finalized tipset
+- Provides stronger guarantees against near-tip reorganizations than `latest`.
+- Can be more up-to-date than `finalized` if F3 is behind or disabled. 
+- May be adjusted in future versions based on network analysis and consensus evolution.
 
 ### Example: Retrieving `safe` TipSet
 
@@ -555,7 +549,6 @@ The current implementation uses a conservative value of 200 epochs (approximatel
   ],
   "id": 1
 }
-
 ```
 
 With this request you'll get a tipset that:
@@ -565,7 +558,7 @@ With this request you'll get a tipset that:
 
 ### Anchors and Default Behaviour
 
-When using height-based selectors with no explicit anchor, the API defaults to using the `finalized` tag as the anchor:
+When using height-based selectors (`{"height": {...}}`) with no explicit `anchor` specified, the API defaults to using the `finalized` tag as the anchor.
 
 ```json
 {
@@ -576,26 +569,28 @@ When using height-based selectors with no explicit anchor, the API defaults to u
       "height": {
         "at": 123456,
         "previous": true
-// No anchor specified - defaults to "finalized"
+        // No anchor specified - defaults to using "finalized" as the anchor
       }
     }
   ],
   "id": 1
 }
-
 ```
 
-This behaviour ensures that by default, height-based queries follow the finalised chain, which provides the strongest consistency guarantees for applications.
+This default ensures that height-based queries follow the most stable, finalized chain history unless explicitly overridden. You can explicitly set the `anchor` to use `latest`, `safe`, or a specific TipSet `key` if you need to query relative to a different point in the chain's history.
 
 ### Benefits for Application Development
 
-The flexible tag system provides several advantages:
+The flexible tag system (`latest`, `safe`, `finalized`) provides several advantages:
 
-1. **Abstraction from Finality Mechanisms**: Applications don't need to know whether a node uses F3 or EC finality
-2. **Consistent Behaviour**: API behaves predictably regardless of underlying network configuration
-3. **Future-Proof**: As Filecoin evolves with new consensus algorithms, the tag concepts remain stable
-4. **Performance Options**: Applications can choose between faster queries with `latest`, more confirmed data with `finalized`, or a balanced approach with `safe`
-5. **Appropriate Tradeoffs**: Different workloads can select the most appropriate tag based on their specific needs for recency vs. stability
+1. **Clear Intent**: Easily express whether you need the absolute newest (`latest`), a recent-but-safer point (`safe`), or full confirmation (`finalized`).
+2. **Abstraction from Finality Mechanisms**: Applications don't need detailed knowledge of F3 or EC when using `finalized` or `safe`.
+3. **Consistent Behaviour**: API behaves predictably regardless of underlying network consensus configuration.
+4. **Future-Proof**: As Filecoin evolves, these core concepts remain stable.
+5. **Performance/Confidence Trade-offs**: Applications can easily choose the right balance:
+    - `latest`: Fastest access, lowest stability.
+    - `safe`: Good balance of recency and stability.
+    - `finalized`: Highest stability, potentially highest latency.
 
 # Appendix
 
@@ -664,8 +659,8 @@ The flexible tag system provides several advantages:
     {
       "height": {
         "at": 123456,
-        "previous": true,
-        "anchor": {
+        "previous": true, // Get previous non-null if 123456 is null
+        "anchor": {       // Search within the finalized chain history
           "tag": "finalized"
         }
       }
@@ -720,7 +715,7 @@ The flexible tag system provides several advantages:
 {
   "jsonrpc": "2.0",
   "error": {
-    "code": -32602,
+    "code": -32602, // Invalid params
     "message": "invalid tipset height: epoch cannot be less than zero"
   },
   "id": 5
@@ -731,25 +726,25 @@ The flexible tag system provides several advantages:
 
 ### Working with TipSet Anchors and Dealing with Null Epochs
 
-When retrieving TipSets from the Filecoin blockchain, there are two powerful options to ensure you get the data you need: anchors and the previous flag.
+When retrieving TipSets from the Filecoin blockchain, the `anchor` and `previous` options within the `height` selector provide powerful control:
 
-Anchors allow you to specify which chain branch to follow when retrieving a TipSet at a particular height. This is essential in blockchain systems where forks can occur, ensuring your query returns a TipSet from the correct chain branch.
+**Anchors** (`anchor`) allow you to specify which chain history to follow when retrieving a TipSet at a particular height (`at`). This is crucial because forks can occur. Anchoring ensures your query returns a TipSet that is a descendant of your chosen reference point. Compared to V1 APIs, anchors often reduce the number of API calls needed. You can specify either a `tag` (`latest`, `safe`, `finalized`) or a specific TipSet `key` as your anchor. If omitted, it defaults to `finalized`.
 
-Compared to V1 APIs, anchors reduce the number of API calls required to get TipSets from the correct chain. You can specify either a tag (`latest` or `finalized`) or a specific TipSet key as your anchor.
+The **Previous Flag** (`previous`) addresses the challenge of null epochs – heights where no blocks were mined.
 
-The `previous` flag addresses another common challenge: handling null TipSets. In the Filecoin blockchain, not every height has a TipSet (some heights might be "null" rounds with no blocks).
+- When `previous: true`:
+    - If a TipSet exists *at* the requested `at` height (on the anchored chain), it's returned.
+    - If no TipSet exists at the `at` height, the API automatically finds and returns the first non-null parent TipSet *before* that height (i.e., at height `< at`), following the specified anchor's chain history.
+- When `previous: false` (or omitted):
+    - The API attempts to retrieve the TipSet *exactly* at the `at` height (on the anchored chain).
+    - If that height contains blocks, the TipSet is returned.
+    - If that height is a null epoch, the API will likely return `null` or an error indicating the tipset was not found at that exact height.
 
-When you set `previous: true`:
-
-- If a TipSet exists at exactly the requested height, it is returned.
-    - This is the case regardless of whether `previous` is true or false.
-- If no TipSet exists at the requested height, the API automatically finds and returns the most recent non-null TipSet at a height less than the requested height
-
-This behaviour eliminates the need for additional queries to handle null rounds, making the interaction more streamlined.
+Using `previous: true` simplifies walking backwards through the chain, automatically skipping null epochs. Using `previous: false` is useful when you need to know specifically if a given height contained blocks or was null.
 
 ### JSON-RPC Examples Combining Anchors and Previous Flag
 
-### Example 1: Get a tipset at a specific height, with previous fallback, anchored to finalised chain
+#### Example 1: Get a tipset at a specific height, with previous fallback, anchored to finalized chain
 
 ```json
 {
@@ -759,8 +754,8 @@ This behaviour eliminates the need for additional queries to handle null rounds,
     {
       "height": {
         "at": 123456,
-        "previous": true,
-        "anchor": {
+        "previous": true,       // Fallback enabled
+        "anchor": {             // Relative to finalized chain history
           "tag": "finalized"
         }
       }
@@ -768,12 +763,11 @@ This behaviour eliminates the need for additional queries to handle null rounds,
   ],
   "id": 1
 }
-
 ```
 
-This request says: "Give me the TipSet at height 123456 on the finalised chain. If there's no TipSet at exactly that height, give me the most recent non-null TipSet before it."
+*Meaning*: "Give me the TipSet at height 123456 on the finalized chain. If height 123456 is null, give me the first non-null TipSet *before* it on that same chain."
 
-### Example 2: Get exactly the tipset at a specific height (no fallback), anchored to latest chain
+#### Example 2: Get *exactly* the tipset at a specific height (no fallback), anchored to latest chain
 
 ```json
 {
@@ -783,21 +777,20 @@ This request says: "Give me the TipSet at height 123456 on the finalised chain. 
     {
       "height": {
         "at": 123456,
-        "previous": false,
-        "anchor": {
+        "previous": false,      // No fallback
+        "anchor": {             // Relative to latest (heaviest) chain history
           "tag": "latest"
         }
       }
     }
   ],
-  "id": 1
+  "id": 2
 }
-
 ```
 
-This request says: "Give me the TipSet at exactly height 123456 on the latest (heaviest) chain. If that height is null, return a null TipSet."
+*Meaning*: "Give me whatever is at exactly height 123456 on the latest (heaviest) chain. If that height is null, return a null result or error."
 
-### Example 3: Get a tipset with previous fallback, anchored to a specific TipSet key
+#### Example 3: Get a tipset with previous fallback, anchored to a specific TipSet key
 
 ```json
 {
@@ -807,8 +800,8 @@ This request says: "Give me the TipSet at exactly height 123456 on the latest (h
     {
       "height": {
         "at": 123456,
-        "previous": true,
-        "anchor": {
+        "previous": true,       // Fallback enabled
+        "anchor": {             // Relative to the chain containing this specific tipset
           "key": [{
             "/": "bafy2bzacecmargpnize7vt4vfj7ownecbkue6q23eucrn3kvg4rdd54ym77cy"
           }]
@@ -818,16 +811,15 @@ This request says: "Give me the TipSet at exactly height 123456 on the latest (h
   ],
   "id": 1
 }
-
 ```
 
-This request says: "Give me the TipSet at height 123456 on the chain that contains the TipSet with the specified key. If there's no TipSet at exactly that height, give me the most recent non-null TipSet before it."
+*Meaning*: "Find the chain containing the tipset identified by the given key. On that chain, give me the TipSet at height 123456. If that height is null on that chain, give me the first non-null TipSet *before* it."
 
 ### Common Use Cases
 
 #### Walking Backwards Through a Chain
 
-To efficiently walk backward through a chain, even through null rounds:
+Use `previous: true` with a decreasing `at` height and a fixed `anchor` (like a specific starting TipSet `key` or `"finalized"`) to efficiently traverse history, automatically skipping null epochs.
 
 ```json
 {
@@ -848,13 +840,11 @@ To efficiently walk backward through a chain, even through null rounds:
   ],
   "id": 1
 }
-
 ```
 
 #### Handling Network Instability Periods
 
-During periods of network instability, there might be consecutive null rounds. To robustly get the most recent TipSet before a problematic period:
-
+If you suspect recent instability near the chain head, using `"safe"` or `"finalized"` as a tag or anchor provides more stable reference points than `"latest"`. To get the last known good state *before* a certain point known to be problematic:
 ```json
 {
   "jsonrpc": "2.0",
@@ -872,13 +862,11 @@ During periods of network instability, there might be consecutive null rounds. T
   ],
   "id": 1
 }
-
 ```
 
 #### Checking for Reorganisation with Exact Height Comparison
 
-If you need to detect chain reorganisations at a specific exact height (not falling back to previous):
-
+To detect if the block(s) at a *specific* height have changed (indicating a reorg affecting that height), query with `previous: false` anchored to `"latest"` at two different times and compare the resulting TipSet keys.
 ```json
 {
   "jsonrpc": "2.0",
@@ -896,48 +884,102 @@ If you need to detect chain reorganisations at a specific exact height (not fall
   ],
   "id": 1
 }
-
 ```
-
-Then later check again to see if the TipSet at that exact height has changed.
 
 ## Go SDK Example Usage
 
 The Filecoin V2 APIs provide a well-structured Go SDK that makes it easy to interact with the TipSet selectors.
 
-### Predefined Selectors in the Go SDK
+### Predefined Selectors and Anchors in the Go SDK
 
-The Go SDK provides convenient predefined constants and factory functions to create selectors easily, without needing to construct the selector structures manually:
+The Go SDK (`github.com/filecoin-project/lotus/chain/types`) provides convenient predefined constants and factory functions to create selectors easily:
 
 ```go
-// Using predefined tag selectors
-latest := types.TipSetSelectors.Latest      // Get the latest tipset
-finalized := types.TipSetSelectors.Finalized // Get the finalized tipset
-safe := types.TipSetSelectors.Safe          // Get the safe tipset
+import (
+	"context"
+	"fmt"
 
-// Creating height-based selectors with the factory function
-heightSelector := types.TipSetSelectors.Height(123, true, nil)  // Height 123, with previous fallback
-anchoredHeight := types.TipSetSelectors.Height(123, true, types.TipSetAnchors.Finalized)  // Anchored to finalized tipset
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/types"
+	// cid "github.com/ipfs/go-cid" // Example for key
+	// Must create a valid types.TipSetKey from CIDs for Key examples
+)
 
-// Creating key-based selectors with the factory function
-keySelector := types.TipSetSelectors.Key(someTipSetKey)  // Select by specific TipSetKey
+func exampleSdkUsage(node api.FullNode /*, someTipSetKey types.TipSetKey */ ) {
+	ctx := context.Background()
+	var err error // Declare err for examples
 
-// Anchor constants for height-based selectors
-latestAnchor := types.TipSetAnchors.Latest     // Anchor to latest tipset
-finalizedAnchor := types.TipSetAnchors.Finalized // Anchor to finalized tipset
-safeAnchor := types.TipSetAnchors.Safe         // Anchor to safe tipset
-keyAnchor := types.TipSetAnchors.Key(someTipSetKey) // Anchor to specific key
+	// --- Using predefined Tag Selectors ---
+	latestSelector := types.TipSetSelectors.Latest      // Select the latest tipset
+	safeSelector := types.TipSetSelectors.Safe         // Select the safe tipset
+	finalizedSelector := types.TipSetSelectors.Finalized // Select the finalized tipset
+
+	_, err = node.ChainGetTipSet(ctx, latestSelector)
+	if err != nil {
+		fmt.Println("Error getting latest tipset:", err)
+	}
+	_, err = node.ChainGetTipSet(ctx, safeSelector)
+	if err != nil {
+		fmt.Println("Error getting safe tipset:", err)
+	}
+	_, err = node.ChainGetTipSet(ctx, finalizedSelector)
+	if err != nil {
+		fmt.Println("Error getting finalized tipset:", err)
+	}
+
+
+	// --- Creating Height-based Selectors ---
+
+	// Anchor constants for height-based selectors
+	latestAnchor := types.TipSetAnchors.Latest     // Anchor to latest tipset
+	safeAnchor := types.TipSetAnchors.Safe         // Anchor to safe tipset
+	finalizedAnchor := types.TipSetAnchors.Finalized // Anchor to finalized tipset
+	// keyAnchor := types.TipSetAnchors.Key(someTipSetKey) // Anchor to specific key
+
+
+	// Height 123, fallback enabled, default anchor (finalized)
+	heightSelectorDefaultAnchor := types.TipSetSelectors.Height(123, true, nil)
+	// Height 123, fallback enabled, explicitly anchored to finalized tipset
+	anchoredHeightFinalized := types.TipSetSelectors.Height(123, true, finalizedAnchor)
+	// Height 123, no fallback, anchored to latest tipset
+	anchoredHeightLatestExact := types.TipSetSelectors.Height(123, false, latestAnchor)
+	// Height 123, fallback enabled, anchored to safe tipset
+	anchoredHeightSafe := types.TipSetSelectors.Height(123, true, safeAnchor)
+	// Height 123, fallback enabled, anchored to a specific tipset key
+	// anchoredHeightKey := types.TipSetSelectors.Height(123, true, keyAnchor)
+
+	_, err = node.ChainGetTipSet(ctx, heightSelectorDefaultAnchor)
+	_, err = node.ChainGetTipSet(ctx, anchoredHeightFinalized)
+	_, err = node.ChainGetTipSet(ctx, anchoredHeightLatestExact)
+	_, err = node.ChainGetTipSet(ctx, anchoredHeightSafe)
+	// _, err = node.ChainGetTipSet(ctx, anchoredHeightKey)
+
+
+	// --- Creating Key-based Selectors ---
+	// keySelector := types.TipSetSelectors.Key(someTipSetKey)  // Select by specific TipSetKey
+	// _, err = node.ChainGetTipSet(ctx, keySelector)
+
+	// --- Using selectors with State methods ---
+	actorInfoFinalized, err := node.StateGetActor(ctx, "f01000", finalizedSelector) // Query actor at finalized state
+	if err != nil { fmt.Println("Error getting actor info:", err) } else { fmt.Println("Actor Balance (Finalized):", actorInfoFinalized.Balance) }
+
+	actorInfoSafe, err := node.StateGetActor(ctx, "f01000", safeSelector) // Query actor at safe state
+	if err != nil { fmt.Println("Error getting actor info:", err) } else { fmt.Println("Actor Balance (Safe):", actorInfoSafe.Balance) }
+
+	idAddr, err := node.StateGetID(ctx, "f01000", latestSelector) // Resolve ID at latest state
+	if err != nil { fmt.Println("Error getting ID addr:", err) } else { fmt.Println("Resolved ID Address:", idAddr) }
+}
 ```
 
-These predefined selectors and factory functions handle all the internal complexity of creating properly structured selectors, making your code cleaner and less error-prone.
+These predefined selectors, anchors, and factory functions handle the internal complexity, making your Go code cleaner and less error-prone when interacting with the V2 APIs.
 
 ## Consistency Across Selector Usage
 
 ### Avoiding Inconsistent State Views
 
-When working with blockchain data, particularly for financial operations or balance tracking, it's crucial to maintain consistency in how you select tipsets across related queries. Using different selectors or accessing state at different moments can lead to incorrect conclusions about the chain state.
+When working with blockchain data, particularly for operations involving multiple state reads (like checking balances across accounts or calculating totals), it's crucial to maintain consistency in how you select the reference tipset. Using different selectors (`latest` vs `safe` vs `finalized`) or querying at different points in time for related data can lead to inconsistent views of the state and incorrect results.
 
-### Risk of Double Counting
+### Risk of Double Counting or Missing State Changes
 
 Consider this scenario where inconsistent selector usage leads to double counting of funds:
 
@@ -955,34 +997,37 @@ Consider this scenario where inconsistent selector usage leads to double countin
 
 To avoid such inconsistencies:
 
-1. **Query at a Specific Height**:
-    - Select a specific blockchain height
-    - Use that same height for all related queries
-    - This ensures all queries see the same blockchain state
-2. **Lock to a Specific TipSet Key**:
-    - First get a specific tipset (usually finalized)
-    - Extract its key
-    - Use that same key for all related state queries
-    - This provides the strongest consistency guarantee
-3. **Atomicity in Critical Operations**:
-    - For operations requiring consistency across multiple accounts or state objects, ensure all queries are made against the same tipset
+1. **Lock to a Specific TipSet Key (Recommended for High Consistency):**
+    - First, retrieve a specific TipSet using a chosen selector (e.g., `finalized`, `safe`, or a specific `height`).
+    - Extract its `TipSetKey` (the array of CIDs).
+    - Use *that same key* via `TipSetSelectors.Key(retrievedKey)` for *all* related state queries (e.g., `StateGetActor`, `StateGetID`) within that logical operation.
+    - This ensures all queries operate on the exact same snapshot of the blockchain state.
 
-### For Financial Applications
+2. **Use the Same Tag Consistently:**
+    - If absolute consistency isn't required but related data should be viewed from the *same level of finality*, consistently use the *same tag* (e.g., always use `safe` or always use `finalized`) for all related queries within an operation.
+    - *Caution*: Even using the same tag across multiple sequential calls might hit slightly different tipsets if the chain advances between calls. Locking to a key is stricter.
 
-Financial applications should take special care:
+3. **Query at a Specific Height (Use with Care):**
+    - Choose a specific height.
+    - Use `TipSetSelectors.Height(chosenHeight, previous, anchor)` consistently for all related queries.
+    - *Caution*: Ensure the `anchor` and `previous` flag are also used consistently. Using `previous: true` might result in slightly different tipsets if the exact height is null. Using `previous: false` provides a stricter height match but might fail if the height is null.
 
-1. First query for a specific finalised tipset
-2. Use that tipset's key for all subsequent balance and state queries
-3. Complete all related queries before moving to a newer tipset
+### Recommendations for Financial Applications
+
+Financial applications, or any application requiring strong consistency guarantees across multiple state reads, should **always lock to a specific TipSet Key** for related operations:
+
+1. Query `ChainGetTipSet` once with your desired stability level (e.g., `finalized` or `safe`).
+2. Store the returned `TipSetKey`.
+3. Perform all subsequent state reads (`StateGetActor`, etc.) for that logical operation using a selector created with `types.TipSetSelectors.Key(storedKey)`.
+4. Complete the entire logical operation based on the state at that single TipSet Key before potentially fetching a newer TipSet Key for subsequent operations.
 
 ## Practical Applications
 
 ### Chain Synchronisation
 
-Use the TipSet API to track blockchain progress by periodically querying the latest tipset.
+Track blockchain progress by periodically querying the `latest` tipset and comparing its height.
 
 **JSON-RPC Request:**
-
 ```json
 {
   "jsonrpc": "2.0",
@@ -998,10 +1043,9 @@ Use the TipSet API to track blockchain progress by periodically querying the lat
 
 ### Transaction Confirmation
 
-Wait for a transaction to be included in a finalised tipset to ensure it won’t be reverted.
+Wait for a transaction's effects to be reflected in the state queried at a `finalized` tipset to ensure it's practically irreversible.
 
 **JSON-RPC Request:**
-
 ```json
 {
   "jsonrpc": "2.0",
@@ -1014,22 +1058,27 @@ Wait for a transaction to be included in a finalised tipset to ensure it won’t
   "id": 1
 }
 ```
+(Then search messages/receipts or query actor state using this tipset key).
+
 
 ### Historical Data Analysis
 
-Retrieve tipsets at specific heights to analyze historical blockchain data.
+Retrieve tipsets or query state at specific heights to analyze historical blockchain data, using an appropriate `anchor` (often `finalized` or a specific key) and `previous` flag.
 
 **JSON-RPC Request:**
-
 ```json
 {
   "jsonrpc": "2.0",
-  "method": "Filecoin.ChainGetTipSet",
+  "method": "Filecoin.StateGetActor",
   "params": [
+    "f0123", // Example address
     {
       "height": {
         "at": 100000,
-        "previous": false
+        "previous": true,
+        "anchor": {
+          "tag": "finalized"
+        }
       }
     }
   ],
@@ -1039,10 +1088,9 @@ Retrieve tipsets at specific heights to analyze historical blockchain data.
 
 ### Chain Reorganisation Detection
 
-Compare tipsets at the same height over time to detect and handle chain reorganizations.
+Compare the TipSet keys returned by querying the *same height* anchored to `latest` at different times. If the key changes, a reorg has affected that height.
 
-**JSON-RPC Request 1 (Initial Check):**
-
+**JSON-RPC Request (repeated over time):**
 ```json
 {
   "jsonrpc": "2.0",
@@ -1058,28 +1106,7 @@ Compare tipsets at the same height over time to detect and handle chain reorgani
       }
     }
   ],
-  "id": 1
-}
-```
-
-**JSON-RPC Request 2 (Later Check):**
-
-```json
-{
-  "jsonrpc": "2.0",
-  "method": "Filecoin.ChainGetTipSet",
-  "params": [
-    {
-      "height": {
-        "at": 123456,
-        "previous": false,
-        "anchor": {
-          "tag": "latest"
-        }
-      }
-    }
-  ],
-  "id": 2
+  "id": 1 // Use different IDs for subsequent requests
 }
 ```
 
@@ -1101,21 +1128,19 @@ Retrieve actor information to check balance, nonce, or actor type:
   ],
   "id": 1
 }
-
 ```
 
 ### Address Resolution
 
-Resolve any address type to its canonical ID representation:
+Resolve an address (e.g., robust `f2...` or delegated `f4...`) to its canonical ID (`f0...`).
 
 **JSON-RPC Request:**
-
 ```json
 {
   "jsonrpc": "2.0",
   "method": "Filecoin.StateGetID",
   "params": [
-    "f2kc5mnx4pvgdpm5lzgutbfuzcnmkedlgd5wvyky",
+    "f2kc5mnx4pvgdpm5lzgutbfuzcnmkedlgd5wvyky", // Example robust address
     {
       "height": {
         "at": 123456,
@@ -1128,48 +1153,49 @@ Resolve any address type to its canonical ID representation:
   ],
   "id": 1
 }
-
 ```
 
 ## Design decisions
 
-The design for these `/v2` APIs happened as a result of https://github.com/filecoin-project/lotus/issues/12987 and the resulting subtasks and their linked PRs (in particular https://github.com/filecoin-project/lotus/issues/12990).  Some of the larger design decisions and their rationale are extracted here.
+The design for these `/v2` APIs happened as a result of [issue #12987](https://github.com/filecoin-project/lotus/issues/12987) and the resulting subtasks and their linked PRs (in particular [issue #12990](https://github.com/filecoin-project/lotus/issues/12990)). Some of the larger design decisions and their rationale are extracted here.
 
 ### Why aren’t named parameters used?
 
-These comments are lifted directly from PR feedbacks:
+JSON-RPC allows named parameters (using a JSON object instead of an array for `params`), but positional parameters (using a JSON array) were chosen for the Filecoin V2 APIs. These comments are lifted directly from PR feedback discussions:
 
-- *I haven't seen the named parameters from JSON-RPC spec used anywhere.*
-- *They are allowed by not that popular.*
-- *most of our tooling (e.g., our JSON RPC lib, lotus-shed rpc, other languages JSON-RPC bindings) assumes positional parameters. IMO not worth the hassle for something that can be trivial abstracted out in the client if someone wants it.*
+- *Usage*: Named parameters are not widely used in practice across various JSON-RPC implementations.
+- *Tooling Compatibility*: Most existing tooling (Lotus' internal JSON-RPC library, `lotus-shed rpc`, client libraries in other languages) primarily expects and works best with positional parameters.
+- *Simplicity*: While named parameters can sometimes improve readability for complex calls, positional parameters are simpler to implement and parse consistently. Client-side abstractions can easily map more readable function calls to positional parameters if desired.
 
 ## Future API Groups
 
-The Filecoin V2 APIs initiative will expand beyond the Chain API group demonstrated in this document. Each API group will follow the same principles of using selectors for expressive queries while maintaining a minimal API surface.
+The Filecoin V2 APIs initiative will expand beyond the Chain and State API groups demonstrated in this document. Each API group will follow the same principles of using selectors for expressive queries while maintaining a minimal API surface.
 
 ### State API Group
 
+*(Planned - example methods)*
 The State API group will provide methods for querying the Filecoin state tree with powerful selector mechanisms:
 
-- **StateGetActor**: Retrieve actor state using flexible actor selectors
-- **StateGetState**: Get detailed state objects with customisable state selectors
-- **StateSearchMsg**: Search for messages with expressive message selectors
+- **StateGetState**: Get detailed state objects with customisable state selectors (e.g., querying specific fields within an actor's state HAMT).
+- **StateSearchMsg**: Search for messages with expressive message selectors (e.g., by `From`, `To`, `Method`, within a height range anchored to a tipset).
 
 ### Mpool API Group
 
+*(Planned - example methods)*
 The Mpool API group will offer improved message pool interaction with:
 
-- **MpoolSelect**: Query message pool with configurable filters and priorities
-- **MpoolTrack**: Monitor message pool changes with subscription-based selectors
+- **MpoolSelect**: Query message pool with configurable filters and priorities (e.g., select top N messages by gas premium for a specific sender).
+- **MpoolTrack**: Monitor message pool changes with subscription-based selectors (e.g., notify when a message matching specific criteria appears).
 
 ### Wallet API Group
 
+*(Planned - example methods)*
 The Wallet API group will provide enhanced wallet operations:
 
-- **WalletSelect**: Find wallet addresses using flexible criteria
-- **WalletTransact**: Create transactions with comprehensive parameter selectors
+- **WalletSelect**: Find wallet addresses using flexible criteria (e.g., find all addresses with balance > X).
+- **WalletTransact**: Create transactions with comprehensive parameter selectors (e.g., construct a multisig transaction proposal).
 
-Like the TipSet API demonstrated in this document, each API group will support the “selector pattern” to provide powerful, expressive, and future-proof interfaces to the Filecoin network while being fully F3-aware.
+Like the TipSet API demonstrated in this document, each planned API group will support the “selector pattern” to provide powerful, expressive, and future-proof interfaces to the Filecoin network while being fully F3-aware.
 
 ## Resources and References
 
@@ -1180,10 +1206,11 @@ Like the TipSet API demonstrated in this document, each API group will support t
 
 ### GitHub Links
 
-- [Filecoin V2 APIs Issue Discussion](https://github.com/filecoin-project/lotus/issues/12990)
-- [TipSet Selector Implementation PR](https://github.com/filecoin-project/lotus/pull/13003#pullrequestreview-2751023746)
-- [Initial State APIs Implementation PR](https://github.com/filecoin-project/lotus/pull/13027)
-- [State API Group Implementation Issue](https://github.com/filecoin-project/lotus/issues/12987)
+- [Filecoin V2 APIs Umbrella Issue (#12987)](https://github.com/filecoin-project/lotus/issues/12987)
+- [Filecoin V2 APIs TipSet Selector Issue (#12990)](https://github.com/filecoin-project/lotus/issues/12990)
+- [TipSet Selector Implementation PR (#13003)](https://github.com/filecoin-project/lotus/pull/13003)
+- [Initial State APIs Implementation PR (#13027)](https://github.com/filecoin-project/lotus/pull/13027)
+- [`safe` Tag Implementation PR (#13034)](https://github.com/filecoin-project/lotus/pull/13034)
 
 ### Community
 
