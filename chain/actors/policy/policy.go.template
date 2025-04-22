@@ -284,31 +284,6 @@ func GetAddressedSectorsMax(nwVer network.Version) (int, error) {
 	}
 }
 
-// GetDeclarationsMax is deprecated
-// 
-// DEPRECATED: remove after nv25 (FIP 0100)
-func GetDeclarationsMax(nwVer network.Version) (int, error) {
-	v, err := actorstypes.VersionForNetwork(nwVer)
-	if err != nil {
-		return 0, err
-	}
-	switch v {
-		{{range .versions}}
-		case actorstypes.Version{{.}}:
-			{{if (eq . 0)}}
-				// TODO: Should we instead error here since the concept doesn't exist yet?
-				return miner{{.}}.AddressedPartitionsMax, nil
-			{{else if (ge . 16)}}
-				return DeclarationsMax, nil	
-			{{else}}
-				return miner{{.}}.DeclarationsMax, nil
-			{{end}}
-		{{end}}
-	default:
-		return 0, xerrors.Errorf("unsupported network version")
-	}
-}
-
 func AggregateProveCommitNetworkFee(nwVer network.Version, aggregateSize int, baseFee abi.TokenAmount) (abi.TokenAmount, error) {
    v, err := actorstypes.VersionForNetwork(nwVer)
 	if err != nil {
