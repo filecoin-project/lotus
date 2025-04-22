@@ -107,4 +107,6 @@ const PackingEfficiencyDenom int64 = 5
 // SafeHeightDistance is the distance from the current head that we call "safe" for the purpose of
 // assuming finality when relying on EC. It's not a substitute for ChainFinality, but a compromise
 // where it's acceptable to have a nonzero margin of error in the finality assumption.
+// Discussion on this value and a tracking item to document the probabilistic impact of various values is in
+// https://github.com/filecoin-project/go-f3/issues/944
 const SafeHeightDistance abi.ChainEpoch = 200

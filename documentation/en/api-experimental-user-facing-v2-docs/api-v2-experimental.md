@@ -534,8 +534,8 @@ If the calculated safe height corresponds to a null tipset (an epoch without blo
 The current `SafeHeightDistance` of 200 epochs is a conservative value chosen to balance recency with stability during the initial rollout. This value:
 
 - Provides stronger guarantees against near-tip reorganizations than `latest`.
-- Can be more up-to-date than `finalized` if F3 is behind or disabled. 
-- May be adjusted in future versions based on network analysis and consensus evolution.
+- May be adjusted in future versions based on network analysis and consensus evolution.  
+- A tracking item for documenting the probability of finality at different heights behind head is [go-f3#944](https://github.com/filecoin-project/go-f3/issues/944).
 
 ### Example: Retrieving `safe` TipSet
 
