@@ -2,7 +2,7 @@
 
 # Status
 
-- 2025-04-09: This document is still actively a Work In Progress.  It has a draft discussing [ChainGetTipSet](https://www.notion.so/ChainGetTipSet-1d0dc41950c181cba489f82d6879357d?pvs=21).  Additional APIs and API Groups will be added as part of working on https://github.com/filecoin-project/lotus/issues/12987.
+- 2025-04-09: This document is still actively a Work In Progress. It has a draft discussing `ChainGetTipSet`. Additional APIs and API Groups will be added as part of working on [issue #12987](https://github.com/filecoin-project/lotus/issues/12987).
 
 # Introduction
 
@@ -257,9 +257,6 @@ Filecoin.StateGetActor
 ### Request Example
 
 ```json
-json
-[ ]
-
 {
   "jsonrpc": "2.0",
   "method": "Filecoin.StateGetActor",
@@ -288,9 +285,6 @@ The method returns an Actor object containing:
 **JSON-RPC Response Example:**
 
 ```json
-json
-[ ]
-
 {
   "jsonrpc": "2.0",
   "result": {
@@ -328,9 +322,6 @@ Filecoin.StateGetID
 ### Request Example
 
 ```json
-json
-[ ]
-
 {
   "jsonrpc": "2.0",
   "method": "Filecoin.StateGetID",
@@ -354,9 +345,6 @@ The method returns the ID address for the given address.
 **JSON-RPC Response Example:**
 
 ```json
-json
-[ ]
-
 {
   "jsonrpc": "2.0",
   "result": "f01234",
@@ -395,7 +383,7 @@ How the `finalized` tag behaves depends on the node's configuration:
 
 The implementation includes several fallback scenarios to ensure robust operation:
 
-```mermaid
+```
 flowchart TD
     A[Request for Finalized TipSet] --> B{Is F3 Enabled?}
     B -->|Yes| C[Try to get latest F3 certificate]
@@ -692,7 +680,7 @@ This request says: "Give me the TipSet at height 123456 on the chain that contai
 
 ### Common Use Cases
 
-1. **Walking Backwards Through a Chain**
+#### Walking Backwards Through a Chain
 
 To efficiently walk backward through a chain, even through null rounds:
 
@@ -718,7 +706,7 @@ To efficiently walk backward through a chain, even through null rounds:
 
 ```
 
-1. **Handling Network Instability Periods**
+#### Handling Network Instability Periods
 
 During periods of network instability, there might be consecutive null rounds. To robustly get the most recent TipSet before a problematic period:
 
@@ -742,7 +730,7 @@ During periods of network instability, there might be consecutive null rounds. T
 
 ```
 
-1. **Checking for Reorganisation with Exact Height Comparison**
+#### Checking for Reorganisation with Exact Height Comparison
 
 If you need to detect chain reorganisations at a specific exact height (not falling back to previous):
 
