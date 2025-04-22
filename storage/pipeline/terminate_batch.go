@@ -197,7 +197,6 @@ func (b *TerminateBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 			break
 		}
 
-		// TODO: remove after nv25 (FIP 0100)
 		if len(params.Terminations) >= miner.DeclarationsMax {
 			break
 		}

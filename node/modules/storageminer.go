@@ -449,13 +449,11 @@ func NewSetSealConfigFunc(r repo.LockedRepo) (dtypes.SetSealingConfigFunc, error
 				PreCommitBatchWait:  config.Duration(cfg.PreCommitBatchWait),
 				PreCommitBatchSlack: config.Duration(cfg.PreCommitBatchSlack),
 
-				AggregateCommits:           cfg.AggregateCommits,
-				MinCommitBatch:             cfg.MinCommitBatch,
-				MaxCommitBatch:             cfg.MaxCommitBatch,
-				CommitBatchWait:            config.Duration(cfg.CommitBatchWait),
-				CommitBatchSlack:           config.Duration(cfg.CommitBatchSlack),
-				AggregateAboveBaseFee:      types.FIL(cfg.AggregateAboveBaseFee),
-				BatchPreCommitAboveBaseFee: types.FIL(cfg.BatchPreCommitAboveBaseFee),
+				AggregateCommits: cfg.AggregateCommits,
+				MinCommitBatch:   cfg.MinCommitBatch,
+				MaxCommitBatch:   cfg.MaxCommitBatch,
+				CommitBatchWait:  config.Duration(cfg.CommitBatchWait),
+				CommitBatchSlack: config.Duration(cfg.CommitBatchSlack),
 
 				TerminateBatchMax:                      cfg.TerminateBatchMax,
 				TerminateBatchMin:                      cfg.TerminateBatchMin,
@@ -504,8 +502,6 @@ func ToSealingConfig(dealmakingCfg config.DealmakingConfig, sealingCfg config.Se
 		MaxCommitBatch:                         sealingCfg.MaxCommitBatch,
 		CommitBatchWait:                        time.Duration(sealingCfg.CommitBatchWait),
 		CommitBatchSlack:                       time.Duration(sealingCfg.CommitBatchSlack),
-		AggregateAboveBaseFee:                  types.BigInt(sealingCfg.AggregateAboveBaseFee),
-		BatchPreCommitAboveBaseFee:             types.BigInt(sealingCfg.BatchPreCommitAboveBaseFee),
 		MaxSectorProveCommitsSubmittedPerEpoch: sealingCfg.MaxSectorProveCommitsSubmittedPerEpoch,
 
 		TerminateBatchMax:  sealingCfg.TerminateBatchMax,
