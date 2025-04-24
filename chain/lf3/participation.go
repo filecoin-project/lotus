@@ -115,7 +115,7 @@ func (p *Participant) run(ctx context.Context) (_err error) {
 				return ctx.Err()
 			}
 		}
-		log.Info("Renewing F3 participation")
+		log.Debug("Renewing F3 participation")
 	}
 	return ctx.Err()
 }
@@ -212,7 +212,7 @@ func (p *Participant) tryParticipate(ctx context.Context, ticket api.F3Participa
 
 		// Log the first time we give out the lease.
 		if !haveLease {
-			log.Infow("Successfully acquired F3 participation lease.",
+			log.Debugw("Successfully acquired F3 participation lease.",
 				"issuer", lease.Issuer,
 				"not-before", lease.FromInstance,
 				"not-after", lease.ToInstance(),
