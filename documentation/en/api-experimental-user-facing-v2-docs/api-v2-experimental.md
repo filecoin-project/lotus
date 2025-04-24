@@ -1,11 +1,17 @@
+> [!NOTE]
+> This is a staging area for these docs so they can be made under source control with review.
+> The current published home is https://filoznotebook.notion.site/Filecoin-V2-APIs-1d0dc41950c1808b914de5966d501658
+> Changes to this doc should be propagated back there to allow for easier discover and user commenting.
+
 # Filecoin V2 APIs
 
-# Status
+# Meta
+## Status
 
 - 2025-04-09: This document has been updated to account for the minimum initial set of non-ETH /v2 API groups as specified in [issue #12991](https://github.com/filecoin-project/lotus/issues/12991).
 - 2025-04-09: This document is still actively a Work In Progress. It has a draft discussing `ChainGetTipSet`. Additional APIs and API Groups will be added as part of working on [issue #12987](https://github.com/filecoin-project/lotus/issues/12987).
 
-# Table of Contents
+## Table of Contents
 
 - [Filecoin V2 APIs](#filecoin-v2-apis)
 - [Status](#status)
@@ -471,7 +477,7 @@ flowchart TD
     F -->|Not running or not ready| H
     F -->|Other error| G[Return Error]
 
-    H --> I[Calculate: HeaviestTipSet.Height - ChainFinality (900 epochs)]
+    H --> I[Calculate: HeaviestTipSet.Height - ChainFinality]
     I --> J[Return EC Finalized TipSet]
 
     classDef success fill:#bfb,stroke:#393,stroke-width:2px;
@@ -896,80 +902,25 @@ The Filecoin V2 APIs provide a well-structured Go SDK that makes it easy to inte
 The Go SDK (`github.com/filecoin-project/lotus/chain/types`) provides convenient predefined constants and factory functions to create selectors easily:
 
 ```go
-import (
-	"context"
-	"fmt"
+// Using predefined tag selectors
+latestSelector := types.TipSetSelectors.Latest       // Get the latest tipset
+safeSelector := types.TipSetSelectors.Safe           // Get the save tipset
+finalizedSelector := types.TipSetSelectors.Finalized // Get the finalized tipset
 
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/types"
-	// cid "github.com/ipfs/go-cid" // Example for key
-	// Must create a valid types.TipSetKey from CIDs for Key examples
-)
+// Creating height-based selectors with the factory function
+heightSelector := types.TipSetSelectors.Height(123, true, nil)  // Height 123, with previous fallback
+anchoredHeight := types.TipSetSelectors.Height(123, true, types.TipSetAnchors.Finalized)  // Anchored to finalized tipset
 
-func exampleSdkUsage(node api.FullNode /*, someTipSetKey types.TipSetKey */ ) {
-	ctx := context.Background()
-	var err error // Declare err for examples
+// Creating key-based selectors with the factory function
+keySelector := types.TipSetSelectors.Key(someTipSetKey)  // Select by specific TipSetKey
 
-	// --- Using predefined Tag Selectors ---
-	latestSelector := types.TipSetSelectors.Latest      // Select the latest tipset
-	safeSelector := types.TipSetSelectors.Safe         // Select the safe tipset
-	finalizedSelector := types.TipSetSelectors.Finalized // Select the finalized tipset
+// Anchor constants for height-based selectors
+latestAnchor := types.TipSetAnchors.Latest     // Anchor to latest tipset
+safeAnchor := types.TipSetAnchors.Safe         // Anchor to safe tipset
+finalizedAnchor := types.TipSetAnchors.Finalized // Anchor to finalized tipset
+keyAnchor := types.TipSetAnchors.Key(someTipSetKey) // Anchor to specific key
 
-	_, err = node.ChainGetTipSet(ctx, latestSelector)
-	if err != nil {
-		fmt.Println("Error getting latest tipset:", err)
-	}
-	_, err = node.ChainGetTipSet(ctx, safeSelector)
-	if err != nil {
-		fmt.Println("Error getting safe tipset:", err)
-	}
-	_, err = node.ChainGetTipSet(ctx, finalizedSelector)
-	if err != nil {
-		fmt.Println("Error getting finalized tipset:", err)
-	}
-
-
-	// --- Creating Height-based Selectors ---
-
-	// Anchor constants for height-based selectors
-	latestAnchor := types.TipSetAnchors.Latest     // Anchor to latest tipset
-	safeAnchor := types.TipSetAnchors.Safe         // Anchor to safe tipset
-	finalizedAnchor := types.TipSetAnchors.Finalized // Anchor to finalized tipset
-	// keyAnchor := types.TipSetAnchors.Key(someTipSetKey) // Anchor to specific key
-
-
-	// Height 123, fallback enabled, default anchor (finalized)
-	heightSelectorDefaultAnchor := types.TipSetSelectors.Height(123, true, nil)
-	// Height 123, fallback enabled, explicitly anchored to finalized tipset
-	anchoredHeightFinalized := types.TipSetSelectors.Height(123, true, finalizedAnchor)
-	// Height 123, no fallback, anchored to latest tipset
-	anchoredHeightLatestExact := types.TipSetSelectors.Height(123, false, latestAnchor)
-	// Height 123, fallback enabled, anchored to safe tipset
-	anchoredHeightSafe := types.TipSetSelectors.Height(123, true, safeAnchor)
-	// Height 123, fallback enabled, anchored to a specific tipset key
-	// anchoredHeightKey := types.TipSetSelectors.Height(123, true, keyAnchor)
-
-	_, err = node.ChainGetTipSet(ctx, heightSelectorDefaultAnchor)
-	_, err = node.ChainGetTipSet(ctx, anchoredHeightFinalized)
-	_, err = node.ChainGetTipSet(ctx, anchoredHeightLatestExact)
-	_, err = node.ChainGetTipSet(ctx, anchoredHeightSafe)
-	// _, err = node.ChainGetTipSet(ctx, anchoredHeightKey)
-
-
-	// --- Creating Key-based Selectors ---
-	// keySelector := types.TipSetSelectors.Key(someTipSetKey)  // Select by specific TipSetKey
-	// _, err = node.ChainGetTipSet(ctx, keySelector)
-
-	// --- Using selectors with State methods ---
-	actorInfoFinalized, err := node.StateGetActor(ctx, "f01000", finalizedSelector) // Query actor at finalized state
-	if err != nil { fmt.Println("Error getting actor info:", err) } else { fmt.Println("Actor Balance (Finalized):", actorInfoFinalized.Balance) }
-
-	actorInfoSafe, err := node.StateGetActor(ctx, "f01000", safeSelector) // Query actor at safe state
-	if err != nil { fmt.Println("Error getting actor info:", err) } else { fmt.Println("Actor Balance (Safe):", actorInfoSafe.Balance) }
-
-	idAddr, err := node.StateGetID(ctx, "f01000", latestSelector) // Resolve ID at latest state
-	if err != nil { fmt.Println("Error getting ID addr:", err) } else { fmt.Println("Resolved ID Address:", idAddr) }
-}
+_, err = node.ChainGetTipSet(ctx, someSelector)
 ```
 
 These predefined selectors, anchors, and factory functions handle the internal complexity, making your Go code cleaner and less error-prone when interacting with the V2 APIs.
@@ -978,7 +929,7 @@ These predefined selectors, anchors, and factory functions handle the internal c
 
 ### Avoiding Inconsistent State Views
 
-When working with blockchain data, particularly for operations involving multiple state reads (like checking balances across accounts or calculating totals), it's crucial to maintain consistency in how you select the reference tipset. Using different selectors (`latest` vs `safe` vs `finalized`) or querying at different points in time for related data can lead to inconsistent views of the state and incorrect results.
+When working with blockchain data, particularly for operations involving multiple state reads (like checking balances across accounts or calculating totals), it's crucial to maintain consistency in how you select the reference tipset. Using selectors (`latest` vs `safe` vs `finalized`) or querying at different points in time for related data can lead to inconsistent views of the state and incorrect results.
 
 ### Risk of Double Counting or Missing State Changes
 
@@ -996,31 +947,11 @@ Consider this scenario where inconsistent selector usage leads to double countin
     - This returns 5 FIL (because now the transfer is finalised)
 7. If the application adds these balances, it would incorrectly conclude the user has 10 FIL total, when they actually have 5 FIL
 
-To avoid such inconsistencies:
-
-1. **Lock to a Specific TipSet Key (Recommended for High Consistency):**
-    - First, retrieve a specific TipSet using a chosen selector (e.g., `finalized`, `safe`, or a specific `height`).
-    - Extract its `TipSetKey` (the array of CIDs).
-    - Use *that same key* via `TipSetSelectors.Key(retrievedKey)` for *all* related state queries (e.g., `StateGetActor`, `StateGetID`) within that logical operation.
-    - This ensures all queries operate on the exact same snapshot of the blockchain state.
-
-2. **Use the Same Tag Consistently:**
-    - If absolute consistency isn't required but related data should be viewed from the *same level of finality*, consistently use the *same tag* (e.g., always use `safe` or always use `finalized`) for all related queries within an operation.
-    - *Caution*: Even using the same tag across multiple sequential calls might hit slightly different tipsets if the chain advances between calls. Locking to a key is stricter.
-
-3. **Query at a Specific Height (Use with Care):**
-    - Choose a specific height.
-    - Use `TipSetSelectors.Height(chosenHeight, previous, anchor)` consistently for all related queries.
-    - *Caution*: Ensure the `anchor` and `previous` flag are also used consistently. Using `previous: true` might result in slightly different tipsets if the exact height is null. Using `previous: false` provides a stricter height match but might fail if the height is null.
-
-### Recommendations for Financial Applications
-
-Financial applications, or any application requiring strong consistency guarantees across multiple state reads, should **always lock to a specific TipSet Key** for related operations:
-
-1. Query `ChainGetTipSet` once with your desired stability level (e.g., `finalized` or `safe`).
-2. Store the returned `TipSetKey`.
-3. Perform all subsequent state reads (`StateGetActor`, etc.) for that logical operation using a selector created with `types.TipSetSelectors.Key(storedKey)`.
-4. Complete the entire logical operation based on the state at that single TipSet Key before potentially fetching a newer TipSet Key for subsequent operations.
+To avoid such inconsistencies, whether in financial applications or any application requiring strong consistency guarantees across multiple state reads, **lock to a specific TipSetKey** by:  
+1. Retrieve a specific TipSet using a chosen selector (e.g., `finalized`, `safe`, or a specific `height`).
+2. Extract its `TipSetKey` (the array of CIDs).
+3. Use *that same key* via `TipSetSelectors.Key(retrievedKey)` for *all* related state queries (e.g., `StateGetActor`, `StateGetID`) within that logical operation.
+This ensures all queries operate on the exact same snapshot of the blockchain state.
 
 ## Practical Applications
 
