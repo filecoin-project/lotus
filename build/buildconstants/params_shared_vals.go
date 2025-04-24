@@ -103,3 +103,8 @@ const InitialBaseFee int64 = 100e6
 const MinimumBaseFee int64 = 100
 const PackingEfficiencyNum int64 = 4
 const PackingEfficiencyDenom int64 = 5
+
+// SafeHeightDistance is the distance from the current head that we call "safe" for the purpose of
+// assuming finality when relying on EC. It's not a substitute for ChainFinality, but a compromise
+// where it's acceptable to have a nonzero margin of error in the finality assumption.
+const SafeHeightDistance abi.ChainEpoch = 200

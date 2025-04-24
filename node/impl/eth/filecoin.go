@@ -11,22 +11,18 @@ import (
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
-type EthFilecoinAPI interface {
-	EthAddressToFilecoinAddress(ctx context.Context, ethAddress ethtypes.EthAddress) (address.Address, error)
-	FilecoinAddressToEthAddress(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthAddress, error)
-}
-
 var _ EthFilecoinAPI = (*ethFilecoin)(nil)
 
 type ethFilecoin struct {
-	chainStore   ChainStore
 	stateManager StateManager
+
+	tipsetResolver TipSetResolver
 }
 
-func NewEthFilecoinAPI(chainStore ChainStore, stateManager StateManager) EthFilecoinAPI {
+func NewEthFilecoinAPI(stateManager StateManager, tipsetResolver TipSetResolver) EthFilecoinAPI {
 	return &ethFilecoin{
-		chainStore:   chainStore,
-		stateManager: stateManager,
+		stateManager:   stateManager,
+		tipsetResolver: tipsetResolver,
 	}
 }
 
@@ -65,9 +61,9 @@ func (e *ethFilecoin) FilecoinAddressToEthAddress(ctx context.Context, p jsonrpc
 		blkParam = *params.BlkParam
 	}
 
-	ts, err := getTipsetByBlockNumber(ctx, e.chainStore, blkParam, false)
+	ts, err := e.tipsetResolver.GetTipsetByBlockNumber(ctx, blkParam, false)
 	if err != nil {
-		return ethtypes.EthAddress{}, err
+		return ethtypes.EthAddress{}, err // don't wrap, to preserve ErrNullRound
 	}
 
 	// Lookup the ID address

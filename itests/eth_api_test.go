@@ -409,9 +409,9 @@ func TestEthBlockNumberAliases(t *testing.T) {
 		param       string
 		expectedLag abi.ChainEpoch
 	}{
-		{"latest", 1},                           // head - 1
-		{"safe", 30 + 1},                        // "latest" - 30
-		{"finalized", policy.ChainFinality + 1}, // "latest" - 900
+		{"latest", 1},                       // head - 1
+		{"safe", 30},                        // "latest" - 30
+		{"finalized", policy.ChainFinality}, // "latest" - 900
 	} {
 		t.Run(tc.param, func(t *testing.T) {
 			head, err := client.ChainHead(ctx)

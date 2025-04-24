@@ -1,14 +1,11 @@
 package eth
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"strconv"
 
-	"github.com/multiformats/go-multicodec"
-	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -27,22 +24,18 @@ import (
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
-type EthTraceAPI interface {
-	EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.EthTraceBlock, error)
-	EthTraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error)
-	EthTraceTransaction(ctx context.Context, txHash string) ([]*ethtypes.EthTraceTransaction, error)
-	EthTraceFilter(ctx context.Context, filter ethtypes.EthTraceFilterCriteria) ([]*ethtypes.EthTraceFilterResult, error)
-}
-
 var (
 	_ EthTraceAPI = (*ethTrace)(nil)
 	_ EthTraceAPI = (*EthTraceDisabled)(nil)
 )
 
 type ethTrace struct {
-	chainStore            ChainStore
-	stateManager          StateManager
-	ethTransactionApi     EthTransactionAPI
+	chainStore   ChainStore
+	stateManager StateManager
+
+	ethTransactionApi EthTransactionAPI
+	tipsetResolver    TipSetResolver
+
 	traceFilterMaxResults uint64
 }
 
@@ -50,20 +43,22 @@ func NewEthTraceAPI(
 	chainStore ChainStore,
 	stateManager StateManager,
 	ethTransactionApi EthTransactionAPI,
+	tipsetResolver TipSetResolver,
 	ethTraceFilterMaxResults uint64,
 ) EthTraceAPI {
 	return &ethTrace{
 		chainStore:            chainStore,
 		stateManager:          stateManager,
 		ethTransactionApi:     ethTransactionApi,
+		tipsetResolver:        tipsetResolver,
 		traceFilterMaxResults: ethTraceFilterMaxResults,
 	}
 }
 
 func (e *ethTrace) EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.EthTraceBlock, error) {
-	ts, err := getTipsetByBlockNumber(ctx, e.chainStore, blkNum, true)
+	ts, err := e.tipsetResolver.GetTipsetByBlockNumber(ctx, blkNum, true)
 	if err != nil {
-		return nil, err
+		return nil, err // don't wrap, to preserve ErrNullRound
 	}
 
 	stRoot, trace, err := e.stateManager.ExecutionTrace(ctx, ts)
@@ -132,9 +127,9 @@ func (e *ethTrace) EthTraceReplayBlockTransactions(ctx context.Context, blkNum s
 	if len(traceTypes) != 1 || traceTypes[0] != "trace" {
 		return nil, xerrors.New("only 'trace' is supported")
 	}
-	ts, err := getTipsetByBlockNumber(ctx, e.chainStore, blkNum, true)
+	ts, err := e.tipsetResolver.GetTipsetByBlockNumber(ctx, blkNum, true)
 	if err != nil {
-		return nil, err
+		return nil, err // don't wrap, to preserve ErrNullRound
 	}
 
 	stRoot, trace, err := e.stateManager.ExecutionTrace(ctx, ts)
@@ -400,69 +395,6 @@ func matchFilterCriteria(trace *ethtypes.EthTraceBlock, fromDecodedAddresses []e
 	}
 
 	return true, nil
-}
-
-// decodePayload is a utility function which decodes the payload using the given codec
-func decodePayload(payload []byte, codec uint64) (ethtypes.EthBytes, error) {
-	switch multicodec.Code(codec) {
-	case multicodec.Identity:
-		return nil, nil
-	case multicodec.DagCbor, multicodec.Cbor:
-		buf, err := cbg.ReadByteArray(bytes.NewReader(payload), uint64(len(payload)))
-		if err != nil {
-			return nil, xerrors.Errorf("decodePayload: failed to decode cbor payload: %w", err)
-		}
-		return buf, nil
-	case multicodec.Raw:
-		return ethtypes.EthBytes(payload), nil
-	}
-
-	return nil, xerrors.Errorf("decodePayload: unsupported codec: %d", codec)
-}
-
-func decodeParams[P any, T interface {
-	*P
-	cbg.CBORUnmarshaler
-}](msg *types.MessageTrace) (T, error) {
-	var params T = new(P)
-	switch msg.ParamsCodec {
-	case uint64(multicodec.DagCbor), uint64(multicodec.Cbor):
-	default:
-		return nil, xerrors.Errorf("Method called with unexpected codec %d", msg.ParamsCodec)
-	}
-
-	if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
-		return nil, xerrors.Errorf("failed to decode params: %w", err)
-	}
-
-	return params, nil
-}
-
-func decodeReturn[R any, T interface {
-	*R
-	cbg.CBORUnmarshaler
-}](ret *types.ReturnTrace) (T, error) {
-	var retval T = new(R)
-	switch ret.ReturnCodec {
-	case uint64(multicodec.DagCbor), uint64(multicodec.Cbor):
-	default:
-		return nil, xerrors.Errorf("Method returned an unexpected codec %d", ret.ReturnCodec)
-	}
-
-	if err := retval.UnmarshalCBOR(bytes.NewReader(ret.Return)); err != nil {
-		return nil, xerrors.Errorf("failed to decode return value: %w", err)
-	}
-
-	return retval, nil
-}
-
-func find[T any](values []T, cb func(t *T) *T) *T {
-	for i := range values {
-		if o := cb(&values[i]); o != nil {
-			return o
-		}
-	}
-	return nil
 }
 
 type environment struct {

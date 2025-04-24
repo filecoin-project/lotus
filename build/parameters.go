@@ -82,5 +82,3 @@ const Eip155ChainId = buildconstants.Eip155ChainId // Deprecated: Use buildconst
 var WhitelistedBlock = buildconstants.WhitelistedBlock // Deprecated: Use buildconstants.WhitelistedBlock instead
 
 const Finality = policy.ChainFinality // Deprecated: Use policy.ChainFinality instead
-
-const SafeHeightDistance = 200

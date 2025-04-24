@@ -22,37 +22,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
-const (
-	EthSubscribeEventTypeHeads               = "newHeads"
-	EthSubscribeEventTypeLogs                = "logs"
-	EthSubscribeEventTypePendingTransactions = "newPendingTransactions"
-)
-
-type EthEventsAPI interface {
-	EthGetLogs(ctx context.Context, filter *ethtypes.EthFilterSpec) (*ethtypes.EthFilterResult, error)
-	EthNewBlockFilter(ctx context.Context) (ethtypes.EthFilterID, error)
-	EthNewPendingTransactionFilter(ctx context.Context) (ethtypes.EthFilterID, error)
-	EthNewFilter(ctx context.Context, filter *ethtypes.EthFilterSpec) (ethtypes.EthFilterID, error)
-	EthUninstallFilter(ctx context.Context, id ethtypes.EthFilterID) (bool, error)
-	EthGetFilterChanges(ctx context.Context, id ethtypes.EthFilterID) (*ethtypes.EthFilterResult, error)
-	EthGetFilterLogs(ctx context.Context, id ethtypes.EthFilterID) (*ethtypes.EthFilterResult, error)
-	EthSubscribe(ctx context.Context, params jsonrpc.RawParams) (ethtypes.EthSubscriptionID, error)
-	EthUnsubscribe(ctx context.Context, id ethtypes.EthSubscriptionID) (bool, error)
-}
-
-// EthEventsInternal extends the EthEvents interface with additional methods that are not exposed
-// on the JSON-RPC API.
-type EthEventsInternal interface {
-	EthEventsAPI
-
-	// GetEthLogsForBlockAndTransaction returns the logs for a block and transaction, it is intended
-	// for internal use rather than being exposed via the JSON-RPC API.
-	GetEthLogsForBlockAndTransaction(ctx context.Context, blockHash *ethtypes.EthHash, txHash ethtypes.EthHash) ([]ethtypes.EthLog, error)
-	// GC runs a garbage collection loop, deleting filters that have not been used within the ttl
-	// window, it is intended for internal use rather than being exposed via the JSON-RPC API.
-	GC(ctx context.Context, ttl time.Duration)
-}
-
 var (
 	_ EthEventsAPI      = (*ethEvents)(nil)
 	_ EthEventsInternal = (*ethEvents)(nil)
@@ -609,6 +578,10 @@ func ethTxHashFromMessageCid(ctx context.Context, c cid.Cid, cs ChainStore) (eth
 // * "block" instead of "height"
 // * strings that can have "latest" and "earliest" and nil
 // * hex strings for actual heights
+//
+// Note: Ethereum supports more than "latest" and "earliest" (e.g. "finalized" and "safe"), but
+// currently we do not. The use-case isn't as clear for this but it's possible to add in the future
+// if needed.
 func parseBlockRange(heaviest abi.ChainEpoch, fromBlock, toBlock *string, maxRange abi.ChainEpoch) (minHeight abi.ChainEpoch, maxHeight abi.ChainEpoch, err error) {
 	if fromBlock == nil || *fromBlock == "latest" || len(*fromBlock) == 0 {
 		minHeight = heaviest

@@ -172,7 +172,7 @@ func GasEstimateGasLimit(
 
 	ret := res.MsgRct.GasUsed
 
-	log.Debugw("GasEstimateMessageGas CallWithGas Result", "GasUsed", ret, "ExitCode", res.MsgRct.ExitCode)
+	log.Debugw("GasEstimateGasLimit CallWithGas Result", "GasUsed", ret, "ExitCode", res.MsgRct.ExitCode)
 
 	transitionalMulti := 1.0
 	// Overestimate gas around the upgrade

@@ -56,16 +56,12 @@ func (gw *Node) EthBlockNumber(ctx context.Context) (ethtypes.EthUint64, error) 
 	return gw.target.EthBlockNumber(ctx)
 }
 
-func (gw *Node) EthGetBlockTransactionCountByNumber(ctx context.Context, blkNum ethtypes.EthUint64) (ethtypes.EthUint64, error) {
+func (gw *Node) EthGetBlockTransactionCountByNumber(ctx context.Context, blkNum string) (ethtypes.EthUint64, error) {
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
 		return 0, err
 	}
 
-	head, err := gw.target.ChainHead(ctx)
-	if err != nil {
-		return 0, err
-	}
-	if err := gw.checkTipsetHeight(head, abi.ChainEpoch(blkNum)); err != nil {
+	if err := gw.checkBlkParam(ctx, blkNum, 0); err != nil {
 		return 0, err
 	}
 
@@ -155,6 +151,10 @@ func (gw *Node) checkBlkParam(ctx context.Context, blkParam string, lookback eth
 			break
 		}
 		num = ethtypes.EthUint64(head.Height()) - lookback
+
+	// "safe" and "finalized" resolved `num` will not accurate for v2 APIs with F3 active; we would
+	// need to query the F3 APIs to get the correct value, but for now we'll go with worst-case and
+	// if the lookback limit is very short (2880 by default) then these will fail
 	case "safe":
 		num = ethtypes.EthUint64(head.Height()) - lookback - ethtypes.EthUint64(ethtypes.SafeEpochDelay)
 	case "finalized":
@@ -225,21 +225,10 @@ func (gw *Node) EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkN
 }
 
 func (gw *Node) EthGetTransactionByHash(ctx context.Context, txHash *ethtypes.EthHash) (*ethtypes.EthTx, error) {
-	return gw.target.EthGetTransactionByHashLimited(ctx, txHash, api.LookbackNoLimit)
-}
-
-func (gw *Node) EthGetTransactionByHashLimited(ctx context.Context, txHash *ethtypes.EthHash, limit abi.ChainEpoch) (*ethtypes.EthTx, error) {
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
 		return nil, err
 	}
-	if limit == api.LookbackNoLimit {
-		limit = gw.maxMessageLookbackEpochs
-	}
-	if gw.maxMessageLookbackEpochs != api.LookbackNoLimit && limit > gw.maxMessageLookbackEpochs {
-		limit = gw.maxMessageLookbackEpochs
-	}
-
-	return gw.target.EthGetTransactionByHashLimited(ctx, txHash, limit)
+	return gw.target.EthGetTransactionByHashLimited(ctx, txHash, gw.maxMessageLookbackEpochs)
 }
 
 func (gw *Node) EthGetTransactionHashByCid(ctx context.Context, cid cid.Cid) (*ethtypes.EthHash, error) {
@@ -270,22 +259,11 @@ func (gw *Node) EthGetTransactionCount(ctx context.Context, sender ethtypes.EthA
 	return gw.target.EthGetTransactionCount(ctx, sender, blkParam)
 }
 
-func (gw *Node) EthGetTransactionReceipt(ctx context.Context, txHash ethtypes.EthHash) (*api.EthTxReceipt, error) {
-	return gw.EthGetTransactionReceiptLimited(ctx, txHash, api.LookbackNoLimit)
-}
-
-func (gw *Node) EthGetTransactionReceiptLimited(ctx context.Context, txHash ethtypes.EthHash, limit abi.ChainEpoch) (*api.EthTxReceipt, error) {
+func (gw *Node) EthGetTransactionReceipt(ctx context.Context, txHash ethtypes.EthHash) (*ethtypes.EthTxReceipt, error) {
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
 		return nil, err
 	}
-	if limit == api.LookbackNoLimit {
-		limit = gw.maxMessageLookbackEpochs
-	}
-	if gw.maxMessageLookbackEpochs != api.LookbackNoLimit && limit > gw.maxMessageLookbackEpochs {
-		limit = gw.maxMessageLookbackEpochs
-	}
-
-	return gw.target.EthGetTransactionReceiptLimited(ctx, txHash, limit)
+	return gw.target.EthGetTransactionReceiptLimited(ctx, txHash, gw.maxMessageLookbackEpochs)
 }
 
 func (gw *Node) EthGetCode(ctx context.Context, address ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {
@@ -707,24 +685,11 @@ func (gw *Node) EthTraceFilter(ctx context.Context, filter ethtypes.EthTraceFilt
 	return gw.target.EthTraceFilter(ctx, filter)
 }
 
-func (gw *Node) EthGetBlockReceipts(ctx context.Context, blkParam ethtypes.EthBlockNumberOrHash) ([]*api.EthTxReceipt, error) {
-	return gw.EthGetBlockReceiptsLimited(ctx, blkParam, api.LookbackNoLimit)
-}
-
-func (gw *Node) EthGetBlockReceiptsLimited(ctx context.Context, blkParam ethtypes.EthBlockNumberOrHash, limit abi.ChainEpoch) ([]*api.EthTxReceipt, error) {
+func (gw *Node) EthGetBlockReceipts(ctx context.Context, blkParam ethtypes.EthBlockNumberOrHash) ([]*ethtypes.EthTxReceipt, error) {
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
 		return nil, err
 	}
-
-	if limit == api.LookbackNoLimit {
-		limit = gw.maxMessageLookbackEpochs
-	}
-
-	if gw.maxMessageLookbackEpochs != api.LookbackNoLimit && limit > gw.maxMessageLookbackEpochs {
-		limit = gw.maxMessageLookbackEpochs
-	}
-
-	return gw.target.EthGetBlockReceiptsLimited(ctx, blkParam, limit)
+	return gw.target.EthGetBlockReceiptsLimited(ctx, blkParam, gw.maxMessageLookbackEpochs)
 }
 
 func (gw *Node) addUserFilterLimited(

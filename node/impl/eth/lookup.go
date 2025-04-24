@@ -23,12 +23,6 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
-type EthLookupAPI interface {
-	EthGetCode(ctx context.Context, address ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error)
-	EthGetStorageAt(ctx context.Context, ethAddr ethtypes.EthAddress, position ethtypes.EthBytes, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error)
-	EthGetBalance(ctx context.Context, address ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBigInt, error)
-}
-
 var (
 	_ EthLookupAPI = (*ethLookup)(nil)
 	_ EthLookupAPI = (*EthLookupDisabled)(nil)
@@ -39,6 +33,8 @@ type ethLookup struct {
 	stateManager    StateManager
 	syncApi         SyncAPI
 	stateBlockstore dtypes.StateBlockstore
+
+	tipsetResolver TipSetResolver
 }
 
 func NewEthLookupAPI(
@@ -46,12 +42,14 @@ func NewEthLookupAPI(
 	stateManager StateManager,
 	syncApi SyncAPI,
 	stateBlockstore dtypes.StateBlockstore,
+	tipsetResolver TipSetResolver,
 ) EthLookupAPI {
 	return &ethLookup{
 		chainStore:      chainStore,
 		stateManager:    stateManager,
 		syncApi:         syncApi,
 		stateBlockstore: stateBlockstore,
+		tipsetResolver:  tipsetResolver,
 	}
 }
 
@@ -62,9 +60,9 @@ func (e *ethLookup) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress,
 		return nil, xerrors.Errorf("cannot get Filecoin address: %w", err)
 	}
 
-	ts, err := getTipsetByEthBlockNumberOrHash(ctx, e.chainStore, blkParam)
+	ts, err := e.tipsetResolver.GetTipsetByBlockNumberOrHash(ctx, blkParam)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to process block param: %v; %w", blkParam, err)
+		return nil, err // don't wrap, to preserve ErrNullRound
 	}
 
 	// StateManager.Call will panic if there is no parent
@@ -141,9 +139,9 @@ func (e *ethLookup) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress,
 }
 
 func (e *ethLookup) EthGetStorageAt(ctx context.Context, ethAddr ethtypes.EthAddress, position ethtypes.EthBytes, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {
-	ts, err := getTipsetByEthBlockNumberOrHash(ctx, e.chainStore, blkParam)
+	ts, err := e.tipsetResolver.GetTipsetByBlockNumberOrHash(ctx, blkParam)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to process block param: %v; %w", blkParam, err)
+		return nil, err // don't wrap, to preserve ErrNullRound
 	}
 
 	pl := len(position)
@@ -237,9 +235,9 @@ func (e *ethLookup) EthGetBalance(ctx context.Context, address ethtypes.EthAddre
 		return ethtypes.EthBigInt{}, err
 	}
 
-	ts, err := getTipsetByEthBlockNumberOrHash(ctx, e.chainStore, blkParam)
+	ts, err := e.tipsetResolver.GetTipsetByBlockNumberOrHash(ctx, blkParam)
 	if err != nil {
-		return ethtypes.EthBigInt{}, xerrors.Errorf("failed to process block param: %v; %w", blkParam, err)
+		return ethtypes.EthBigInt{}, err // don't wrap, to preserve ErrNullRound
 	}
 
 	st, _, err := e.stateManager.TipSetState(ctx, ts)

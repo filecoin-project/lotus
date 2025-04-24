@@ -45,7 +45,6 @@ func inputDataFromArray(input []byte) []byte {
 func inputDataFromFrom(ctx context.Context, t *testing.T, client *kit.TestFullNode, from address.Address) []byte {
 	fromId, err := client.StateLookupID(ctx, from, types.EmptyTSK)
 	require.NoError(t, err)
-
 	senderEthAddr, err := ethtypes.EthAddressFromFilecoinAddress(fromId)
 	require.NoError(t, err)
 	inputData := make([]byte, 32)
@@ -858,7 +857,7 @@ func TestFEVMBareTransferTriggersSmartContractLogic(t *testing.T) {
 
 	hash := client.EVM().SubmitTransaction(ctx, &tx)
 
-	var receipt *api.EthTxReceipt
+	var receipt *ethtypes.EthTxReceipt
 	for i := 0; i < 1000; i++ {
 		receipt, err = client.EthGetTransactionReceipt(ctx, hash)
 		require.NoError(t, err)
@@ -1144,7 +1143,7 @@ func TestEthGetBlockReceipts(t *testing.T) {
 	}
 
 	// Wait for the transactions to be mined
-	var lastReceipt *api.EthTxReceipt
+	var lastReceipt *ethtypes.EthTxReceipt
 	for _, hash := range hashes {
 		receipt, err := client.EVM().WaitTransaction(ctx, hash)
 		require.NoError(t, err)
@@ -1462,7 +1461,7 @@ func TestEthGetTransactionByBlockHashAndIndexAndNumber(t *testing.T) {
 	kit.SendFunds(ctx, t, client, ethFilAddr, types.FromFil(10))
 
 	var txHashes []ethtypes.EthHash
-	var receipts []*api.EthTxReceipt
+	var receipts []*ethtypes.EthTxReceipt
 	numTx := 3
 
 	contractHex, err := os.ReadFile("./contracts/MultipleEvents.hex")
@@ -1553,7 +1552,7 @@ func TestEthGetTransactionByBlockHashAndIndexAndNumber(t *testing.T) {
 		invalidBlockHash := ethtypes.EthHash{1}
 		_, err = client.EthGetTransactionByBlockHashAndIndex(ctx, invalidBlockHash, ethtypes.EthUint64(0))
 		require.Error(t, err)
-		require.ErrorContains(t, err, "failed to get tipset by cid")
+		require.ErrorContains(t, err, "failed to get tipset by hash")
 
 		// 2. Invalid block number
 		_, err = client.EthGetTransactionByBlockNumberAndIndex(ctx, (blockNumber + 1000).Hex(), ethtypes.EthUint64(0))
