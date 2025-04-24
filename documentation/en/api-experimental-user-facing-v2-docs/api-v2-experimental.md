@@ -3,19 +3,25 @@
 > The current published home is https://filoznotebook.notion.site/Filecoin-V2-APIs-1d0dc41950c1808b914de5966d501658
 > Changes to this doc should be propagated back there to allow for easier discover and user commenting.
 
-# Filecoin V2 APIs
+# Filecoin V2 APIs <!-- omit from toc -->
 
 # Meta
 ## Status
 
-- 2025-04-09: This document has been updated to account for the minimum initial set of non-ETH /v2 API groups as specified in [issue #12991](https://github.com/filecoin-project/lotus/issues/12991).
+- 2025-04-23: This document has been updated to account for the minimum initial set of non-ETH /v2 API groups as specified in [issue #12991](https://github.com/filecoin-project/lotus/issues/12991).
 - 2025-04-09: This document is still actively a Work In Progress. It has a draft discussing `ChainGetTipSet`. Additional APIs and API Groups will be added as part of working on [issue #12987](https://github.com/filecoin-project/lotus/issues/12987).
 
 ## Table of Contents
 
-- [Filecoin V2 APIs](#filecoin-v2-apis)
-- [Status](#status)
-- [Table of Contents](#table-of-contents)
+<!-- 
+This table of contents is present to make it easier to see structural changes in diffs (assuming a new change also updates the ToC).
+When copying this to Notion, the table of contents can be removed, and a Notion ToC can be inserted instead.
+This ToC was generated using [Markdown All in One](https://marketplace.visualstudio.com/items?itemName=yzhang.markdown-all-in-one)
+-->
+
+- [Meta](#meta)
+  - [Status](#status)
+  - [Table of Contents](#table-of-contents)
 - [Introduction](#introduction)
 - [The Selector Pattern](#the-selector-pattern)
 - [Overview](#overview)
@@ -71,7 +77,6 @@
   - [Consistency Across Selector Usage](#consistency-across-selector-usage)
     - [Avoiding Inconsistent State Views](#avoiding-inconsistent-state-views)
     - [Risk of Double Counting or Missing State Changes](#risk-of-double-counting-or-missing-state-changes)
-    - [Recommendations for Financial Applications](#recommendations-for-financial-applications)
   - [Practical Applications](#practical-applications)
     - [Chain Synchronisation](#chain-synchronisation)
     - [Transaction Confirmation](#transaction-confirmation)
@@ -89,6 +94,7 @@
     - [Official Documentation](#official-documentation)
     - [GitHub Links](#github-links)
     - [Community](#community)
+
 
 # Introduction
 

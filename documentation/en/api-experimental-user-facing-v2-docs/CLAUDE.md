@@ -14,7 +14,7 @@ This directory contains the experimental user-facing documentation for Filecoin'
 3. Submit changes for team review via pull request
 4. After approval, publish updated content back to Notion
 
-**Important**: Always regenerate the table of contents before committing changes to ensure it accurately reflects the document structure. The table of contents is comprehensive and includes all sections of the document, helping readers navigate the content.  It also helps give an overview in the diff of what content is being added/changed and where in the document.
+**Important**: Always regenerate the table of contents before committing changes to ensure it accurately reflects the document structure. The table of contents is comprehensive and includes all sections of the document, helping readers navigate the content.  It also helps give an overview in the diff of what content is being added/changed and where in the document.  
 
 ## Key Files
 - `api-v2-experimental.md`: The main user facing documentation file that is copied to Notion.
@@ -25,15 +25,11 @@ This directory contains the experimental user-facing documentation for Filecoin'
 ## Commands
 
 ### Regenerating the Table of Contents
-To regenerate the table of contents:
+For Claude to regenerate the table of contents:
 1. Extract all headers from the document using grep:
 ```bash
 grep -n '^#\|^##\|^###\|^####' api-v2-experimental.md
 ```
 2. Use this information to update the Table of Contents section, ensuring all headers are properly nested according to their level and linked.
 
-### Updating Documentation
-To update the documentation after modifying the API code:
-```bash
-# TODO: Add appropriate commands for regenerating/updating docs from API code
-```
+Humans in their IDE can use [Markdown All in One](https://marketplace.visualstudio.com/items?itemName=yzhang.markdown-all-in-one).
