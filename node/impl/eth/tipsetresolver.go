@@ -91,6 +91,18 @@ func (tsr *tipSetResolver) getFinalizedF3TipSet(ctx context.Context) (*types.Tip
 		// F3 is disabled or not ready; fall back to EC finality.
 		return tsr.getFinalizedECTipSet(ctx)
 	}
+	// Check F3 finalized tipset against the heaviest tipset, and if it is too far
+	// behind fall back to EC.
+	head := tsr.cs.GetHeaviestTipSet()
+	if head == nil {
+		return nil, xerrors.Errorf("no known heaviest tipset")
+	}
+	f3FinalizedHeight := abi.ChainEpoch(cert.ECChain.Head().Epoch)
+	if head.Height()-f3FinalizedHeight > policy.ChainFinality {
+		log.Debugw("Falling back to EC finalized tipset as the latest F3 finalized tipset is too far behind", "headHeight", head.Height(), "f3FinalizedHeight", f3FinalizedHeight)
+		return tsr.getFinalizedECTipSet(ctx)
+	}
+	// F3 is finalizing a higher height than EC safe; return F3 tipset
 	return tsr.getFinalizedF3TipSetFromCert(ctx, cert)
 }
 
