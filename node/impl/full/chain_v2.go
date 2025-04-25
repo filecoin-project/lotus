@@ -8,6 +8,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-f3"
+	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build/buildconstants"
@@ -107,7 +108,21 @@ func (cm *ChainModuleV2) getLatestFinalizedTipset(ctx context.Context) (*types.T
 	}
 
 	// Extract the finalized tipeset from the certificate.
-	tsk, err := types.TipSetKeyFromBytes(cert.ECChain.Head().Key)
+	latestF3FinalizedTipSet := cert.ECChain.Head()
+
+	// Fall back to EC finality if the latest F3 finalized tipset is older than EC finality.
+	latestF3FinalizedEpoch := abi.ChainEpoch(latestF3FinalizedTipSet.Epoch)
+	head := cm.Chain.GetHeaviestTipSet()
+	if head == nil {
+		return nil, xerrors.New("no known heaviest tipset")
+	}
+	if head.Height()-latestF3FinalizedEpoch > policy.ChainFinality {
+		log.Debugw("Latest F3 finalized tipset is older than EC finality, falling back to EC finality", "headEpoch", head.Height(), "latestF3FinalizedEpoch", latestF3FinalizedEpoch)
+		return cm.getECFinalized(ctx)
+	}
+
+	// All good, load the latest F3 finalized tipset.
+	tsk, err := types.TipSetKeyFromBytes(latestF3FinalizedTipSet.Key)
 	if err != nil {
 		return nil, xerrors.Errorf("decoding latest f3 cert tipset key: %w", err)
 	}
