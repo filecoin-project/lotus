@@ -134,6 +134,18 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 				wantResponseStatus: http.StatusOK,
 			},
 			{
+				name: "old f3 finalized falls back to ec",
+				when: func(t *testing.T) {
+					mockF3.Running = true
+					mockF3.Finalizing = true
+					mockF3.LatestCertErr = nil
+					mockF3.LatestCert = plausibleCertAt(t, targetHeight-policy.ChainFinality-5)
+				},
+				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"tag":"finalized"}],"id":1}`,
+				wantTipSet:         tipSetAtHeight(targetHeight - policy.ChainFinality),
+				wantResponseStatus: http.StatusOK,
+			},
+			{
 				name: "safe tag is ec safe distance when more recent than f3 finalized",
 				when: func(t *testing.T) {
 					mockF3.Running = true
