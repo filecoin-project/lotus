@@ -2,6 +2,7 @@ package ethtypes
 
 import (
 	"bytes"
+	"encoding"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
@@ -55,6 +56,34 @@ const (
 
 type EthUint64 uint64
 
+var _ encoding.TextUnmarshaler = (*EthUint64)(nil)
+var _ encoding.TextMarshaler = (*EthUint64)(nil)
+
+// UnmarshalText should be able to parse these types of input:
+// 1. a string containing a hex-encoded uint64 starting with 0x
+// 2. a string containing an uint64 in decimal
+func (e *EthUint64) UnmarshalText(text []byte) error {
+	s := string(text)
+	base := 10
+	if strings.HasPrefix(s, "0x") {
+		base = 16
+		s = s[2:]
+	}
+	parsedInt, err := strconv.ParseUint(s, base, 64)
+	if err != nil {
+		return xerrors.Errorf("cannot parse uint64: %w", err)
+	}
+	eint := EthUint64(parsedInt)
+	*e = eint
+	return nil
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (e *EthUint64) MarshalText() ([]byte, error) {
+	return []byte(e.Hex()), nil
+}
+
+// MarshalJSON implements json.Marshaler.
 func (e EthUint64) MarshalJSON() ([]byte, error) {
 	return json.Marshal(e.Hex())
 }
@@ -62,27 +91,17 @@ func (e EthUint64) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON should be able to parse these types of input:
 // 1. a JSON string containing a hex-encoded uint64 starting with 0x
 // 2. a JSON string containing an uint64 in decimal
-// 3. a string containing an uint64 in decimal
+// 3. a numeral literal containing an uint64 in decimal
 func (e *EthUint64) UnmarshalJSON(b []byte) error {
-	var s string
-	if err := json.Unmarshal(b, &s); err == nil {
-		base := 10
-		if strings.HasPrefix(s, "0x") {
-			base = 16
-			s = s[2:]
-		}
-		parsedInt, err := strconv.ParseUint(s, base, 64)
-		if err != nil {
-			return err
-		}
-		eint := EthUint64(parsedInt)
-		*e = eint
-		return nil
-	} else if eint, err := strconv.ParseUint(string(b), 10, 64); err == nil {
-		*e = EthUint64(eint)
-		return nil
+	// if string literal, remove quotes
+	if b[0] == '"' && b[len(b)-1] == '"' {
+		b = b[1 : len(b)-1]
+		return e.UnmarshalText(b)
 	}
-	return xerrors.Errorf("cannot interpret %s as a hex-encoded uint64, or a number", string(b))
+	if bytes.HasPrefix(b, []byte("0x")) {
+		return xerrors.New("cannot parse uint64: 0x prefix is not allowed in integer literals")
+	}
+	return e.UnmarshalText(b)
 }
 
 func EthUint64FromHex(s string) (EthUint64, error) {
@@ -96,7 +115,7 @@ func EthUint64FromHex(s string) (EthUint64, error) {
 // EthUint64FromString parses a uint64 from a string. It accepts both decimal and hex strings.
 func EthUint64FromString(s string) (EthUint64, error) {
 	var parsedInt EthUint64
-	err := parsedInt.UnmarshalJSON([]byte(`"` + s + `"`))
+	err := parsedInt.UnmarshalText([]byte(s))
 	if err != nil {
 		return 0, err
 	}

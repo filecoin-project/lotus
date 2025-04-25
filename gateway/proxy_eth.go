@@ -160,7 +160,7 @@ func (gw *Node) checkBlkParam(ctx context.Context, blkParam string, lookback eth
 	case "finalized":
 		num = ethtypes.EthUint64(head.Height()) - lookback - ethtypes.EthUint64(policy.ChainFinality)
 	default:
-		if err := num.UnmarshalJSON([]byte(`"` + blkParam + `"`)); err != nil {
+		if err := num.UnmarshalText([]byte(blkParam)); err != nil {
 			return fmt.Errorf("cannot parse block number: %v", err)
 		}
 
