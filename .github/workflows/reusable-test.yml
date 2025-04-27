@@ -1,0 +1,233 @@
+on:
+  workflow_call:
+    inputs:
+      run_very_expensive_tests:
+        description: 'Run very expensive tests'
+        required: false
+        default: false
+        type: boolean
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    name: Discover Test Groups
+    runs-on: ubuntu-latest
+    outputs:
+      test_group_execution_contexts: ${{ steps.list_test_group_execution_contexts.outputs.test_group_execution_contexts }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+          fetch-depth: 0
+      - id: list_test_group_execution_contexts
+        env:
+          VERY_EXPENSIVE_TESTS_RUN: ${{ inputs.run_very_expensive_tests }}
+        run: |
+          echo "test_group_execution_contexts<<EOF" >> $GITHUB_OUTPUT
+          go run ./cmd/ci/main.go --json list-test-group-execution-contexts --very-expensive-tests-run=$VERY_EXPENSIVE_TESTS_RUN | jq -r '.msg' | tee -a $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+  cache:
+    name: Cache Dependencies
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        # We need to cache for each architecture we support: x86_64 and arm64
+        runner: [ubuntu-latest, ubuntu-24.04-arm]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+          fetch-depth: 0
+      - id: fetch_params
+        env:
+          CACHE_KEY: fetch-params-${{ hashFiles('./extern/filecoin-ffi/parameters.json') }}
+          CACHE_PATH: |
+            /var/tmp/filecoin-proof-parameters/
+        run: |
+          echo -e "key=$CACHE_KEY" | tee -a $GITHUB_OUTPUT
+          echo -e "path<<EOF\n$CACHE_PATH\nEOF" | tee -a $GITHUB_OUTPUT
+      - id: make_deps
+        env:
+          CACHE_KEY: ${{ runner.os }}-${{ runner.arch }}-make-deps-${{ hashFiles('./.git/modules/extern/filecoin-ffi/HEAD') }}-p
+          CACHE_PATH: |
+            ./extern/filecoin-ffi/filcrypto.h
+            ./extern/filecoin-ffi/libfilcrypto.a
+            ./extern/filecoin-ffi/filcrypto.pc
+        run: |
+          echo -e "key=$CACHE_KEY" | tee -a $GITHUB_OUTPUT
+          echo -e "path<<EOF\n$CACHE_PATH\nEOF" | tee -a $GITHUB_OUTPUT
+      - id: restore_fetch_params
+        uses: actions/cache/restore@v4
+        with:
+          key: ${{ steps.fetch_params.outputs.key }}
+          path: ${{ steps.fetch_params.outputs.path }}
+          lookup-only: true
+      - id: restore_make_deps
+        uses: actions/cache/restore@v4
+        with:
+          key: ${{ steps.make_deps.outputs.key }}
+          path: ${{ steps.make_deps.outputs.path }}
+          lookup-only: true
+      - if: steps.restore_fetch_params.outputs.cache-hit != 'true' || steps.restore_make_deps.outputs.cache-hit != 'true'
+        uses: ./.github/actions/install-system-dependencies
+      - if: steps.restore_fetch_params.outputs.cache-hit != 'true' || steps.restore_make_deps.outputs.cache-hit != 'true'
+        uses: ./.github/actions/install-go
+      - if: steps.restore_fetch_params.outputs.cache-hit != 'true' || steps.restore_make_deps.outputs.cache-hit != 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: FFI_PORTABLE=1 make deps
+      - if: steps.restore_fetch_params.outputs.cache-hit != 'true'
+        run: make lotus
+      - if: steps.restore_fetch_params.outputs.cache-hit != 'true'
+        run: ./lotus fetch-params 2048
+      - if: steps.restore_fetch_params.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          key: ${{ steps.fetch_params.outputs.key }}
+          path: ${{ steps.fetch_params.outputs.path }}
+      - if: steps.restore_make_deps.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          key: ${{ steps.make_deps.outputs.key }}
+          path: ${{ steps.make_deps.outputs.path }}
+      - env:
+          fetch_params_key: ${{ steps.fetch_params.outputs.key }}
+          fetch_params_path: ${{ steps.fetch_params.outputs.path }}
+          make_deps_key: ${{ steps.make_deps.outputs.key }}
+          make_deps_path: ${{ steps.make_deps.outputs.path }}
+          file: jobs.cache.${{ runner.os }}.${{ runner.arch }}.outputs.json
+        run: |
+          jq -n '{
+            "fetch_params_key": env.fetch_params_key,
+            "fetch_params_path": env.fetch_params_path,
+            "make_deps_key": env.make_deps_key,
+            "make_deps_path": env.make_deps_path
+          }' | tee -a "$file"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jobs.cache.${{ runner.os }}.${{ runner.arch }}.outputs
+          path: jobs.cache.${{ runner.os }}.${{ runner.arch }}.outputs.json
+  test:
+    needs: [discover, cache]
+    name: Test (${{ matrix.name }}) ${{ toJson(matrix.runner) }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.discover.outputs.test_group_execution_contexts) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+          fetch-depth: 0
+      - uses: ./.github/actions/install-system-dependencies
+      - uses: ./.github/actions/install-go
+      - id: group
+        run: |
+          echo "metadata<<EOF" >> $GITHUB_OUTPUT
+          go run ./cmd/ci/main.go --json get-test-group-metadata --name "${{ matrix.name }}" | jq -r '.msg' | tee -a $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      - name: Install gotestsum
+        run: go install gotest.tools/gotestsum@latest
+      - id: artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: jobs.cache.${{ runner.os }}.${{ runner.arch }}.outputs
+      - id: cache
+        env:
+          file: jobs.cache.${{ runner.os }}.${{ runner.arch }}.outputs.json
+        run: |
+          echo "make_deps_key=$(jq -r .make_deps_key "$file")" | tee -a $GITHUB_OUTPUT
+          echo "make_deps_path<<EOF" | tee -a $GITHUB_OUTPUT
+          jq -r .make_deps_path "$file" | tee -a $GITHUB_OUTPUT
+          echo "EOF" | tee -a $GITHUB_OUTPUT
+
+          echo "fetch_params_key=$(jq -r .fetch_params_key "$file")" | tee -a $GITHUB_OUTPUT
+          echo "fetch_params_path<<EOF" | tee -a $GITHUB_OUTPUT
+          jq -r .fetch_params_path "$file" | tee -a $GITHUB_OUTPUT
+          echo "EOF" | tee -a $GITHUB_OUTPUT
+
+          rm "$file"
+      - name: Restore cached make deps outputs
+        uses: actions/cache/restore@v4
+        with:
+          key: ${{ steps.cache.outputs.make_deps_key }}
+          path: ${{ steps.cache.outputs.make_deps_path }}
+          fail-on-cache-miss: true
+      - if: ${{ fromJson(steps.group.outputs.metadata).needs_parameters }}
+        name: Restore cached fetch params outputs
+        uses: actions/cache/restore@v4
+        with:
+          key: ${{ steps.cache.outputs.fetch_params_key }}
+          path: ${{ steps.cache.outputs.fetch_params_path }}
+          fail-on-cache-miss: true
+      # https://github.com/quic-go/quic-go/wiki/UDP-Buffer-Sizes
+      - name: Increase UDP buffer sizes
+        run: |
+          sudo sysctl -w net.core.rmem_max=7500000
+          sudo sysctl -w net.core.wmem_max=7500000
+      # TODO: Install statediff (used to be used for conformance)
+      - name: Create temporary directory for reports
+        id: reports
+        run: mktemp -d | xargs -0 -I{} echo "path={}" | tee -a $GITHUB_OUTPUT
+      # TODO: Track coverage (used to be tracked for conformance)
+      - name: Run tests
+        id: tests
+        env:
+          NAME: ${{ matrix.name }}
+          LOTUS_SRC_DIR: ${{ github.workspace }}
+          REPORTS_PATH: ${{ steps.reports.outputs.path }}
+          SKIP_CONFORMANCE: ${{ fromJson(steps.group.outputs.metadata).skip_conformance && '1' || '0' }}
+          TEST_RUSTPROOFS_LOGS: ${{ fromJson(steps.group.outputs.metadata).test_rust_proofs_logs && '1' || '0' }}
+          LOTUS_RUN_EXPENSIVE_TESTS: 1
+          LOTUS_RUN_VERY_EXPENSIVE_TESTS: ${{ inputs.run_very_expensive_tests && '1' || '0' }}
+          FORMAT: ${{ fromJson(steps.group.outputs.metadata).format || 'standard-verbose' }}
+          PACKAGES: ${{ join(fromJson(steps.group.outputs.metadata).packages, ' ') }}
+          TIMEOUT: ${{ inputs.run_very_expensive_tests && '60m' || '10m' }}
+          MONITOR_FREE_MEMORY: ${{ runner.debug }}
+        run: |
+          if [[ "$MONITOR_FREE_MEMORY" == "1" ]]; then
+            while true; do
+              free -m
+              sleep 5
+            done &
+          fi
+          gotestsum \
+            --format "$FORMAT" \
+            --junitfile "$REPORTS_PATH/$NAME.xml" \
+            --jsonfile "$REPORTS_PATH/$NAME.json" \
+            --packages="$PACKAGES" \
+            -- -timeout "$TIMEOUT" ${{ fromJson(steps.group.outputs.metadata).go_test_flags || '' }}
+      - name: Modify junit.xml for BuildPulse
+        env:
+          NAME: ${{ matrix.name }}
+          REPORTS_PATH: ${{ steps.reports.outputs.path }}
+          PACKAGES: ${{ join(fromJson(steps.group.outputs.metadata).packages, ' ') }}
+        if: (!cancelled())
+        run: |
+          # Modify test suite name and classname attributes in JUnit XML for better grouping
+          # in BuildPulse. itests are run with go test ./itests/file_test.go and therefore Go
+          # assigns the name and classname attributes to "command-line-arguments". Others get the
+          # package name for both.
+          if [[ "${{ matrix.name }}" == itest-* ]]; then
+            PACKAGE_NAME=$(basename "$PACKAGES" .go)
+            sed -i 's/ name="command-line-arguments"/ name="itests"/g' "$REPORTS_PATH/$NAME.xml"
+            sed -i 's/classname="command-line-arguments"/classname="'"$PACKAGE_NAME"'"/g' "$REPORTS_PATH/$NAME.xml"
+          else
+            sed -i 's# name="github.com/filecoin-project/lotus/\(.*\)"# name="'${{ matrix.name }}':\1"#g' "$REPORTS_PATH/$NAME.xml"
+          fi
+          cat "$REPORTS_PATH/$NAME.xml"
+      - if: (!cancelled())
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}-${{ runner.os }}-${{ runner.arch }}
+          path: |
+            ${{ steps.reports.outputs.path }}/${{ matrix.name }}.xml
+            ${{ steps.reports.outputs.path }}/${{ matrix.name }}.json
+        continue-on-error: true
