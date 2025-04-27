@@ -1,0 +1,97 @@
+name: FEVM Contract Tests
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      # WARN: This will run very expensive test every time ANY label is added
+      - labeled
+  schedule:
+    - cron: '0 0 * * *' # Runs nightly at 0AM UTC
+  workflow_dispatch:
+    inputs:
+      lotus-version:
+        description: Lotus version to test against
+        required: false
+        default:
+      fevm-contract-tests-version:
+        description: fevm-contract-tests version to test against
+        required: false
+        default: main
+  push: # TODO: Remove this
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  test:
+    name: Test
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'need/fevm-contract-tests')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout actions
+        uses: actions/checkout@v4
+        with:
+          path: actions
+      - name: Checkout lotus
+        uses: actions/checkout@v4
+        with:
+          path: lotus
+          submodules: 'recursive'
+          ref: e9393dfe8c429c4afb32a0b1e3f71a65dbae926a # TODO: Replace this with: ${{ inputs.lotus-version || github.ref }}
+      - name: Checkout fevm-contract-tests
+        uses: actions/checkout@v4
+        with:
+          repository: filecoin-project/fevm-contract-tests
+          path: fevm-contract-tests
+          submodules: 'recursive'
+          ref: ${{ inputs.fevm-contract-tests-version || 'main' }}
+      - uses: ./actions/.github/actions/install-system-dependencies
+      - id: go
+        uses: ./actions/.github/actions/install-go
+        with:
+          working-directory: lotus
+      - uses: ./actions/.github/actions/make-deps
+        with:
+          working-directory: lotus
+      - name: Build the local lotus-runner
+        env:
+          GO_VERSION: ${{ steps.go.outputs.version }}
+        run: |
+          rm go.mod go.sum
+          echo "module github.com/filecoin-project/fevm-contract-tests/node" > go.mod
+          echo "replace github.com/filecoin-project/lotus => ${GITHUB_WORKSPACE}/lotus" >> go.mod
+          echo "replace github.com/filecoin-project/filecoin-ffi => ${GITHUB_WORKSPACE}/lotus/extern/filecoin-ffi" >> go.mod
+          go mod tidy
+          go build -o bin/node ./main.go
+        working-directory: fevm-contract-tests/node
+      - name: Install the dependencies
+        run: make install
+        working-directory: fevm-contract-tests
+      - name: Run each test project
+        run: |
+          make start-lotus-runner &
+          make test
+        working-directory: fevm-contract-tests
+  issue:
+    name: Issue
+    if: failure() && github.event_name == 'schedule'
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create issue
+        uses: ipdxco/create-or-update-issue@v1
+        with:
+          GITHUB_TOKEN: ${{ github.token }}
+          title: FEVM Contract Tests run failed
+          body: |
+            The FEVM Contract Tests run failed. See [the workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.
+          label: area/fevm-contract-tests

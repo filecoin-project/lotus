@@ -8,33 +8,43 @@ inputs:
   github-token:
     description: Specifies the token to use when calling GitHub APIs while building FFI.
     required: false
+    default: ${{ github.token }}
 
 runs:
   using: composite
   steps:
+    - id: inputs
+      env:
+        WORKING_DIRECTORY: ${{ inputs.working-directory || '.' }}
+        FILECOIN_FFI_HEAD_HASH: ${{ hashFiles(format('{0}/.git/modules/extern/filecoin-ffi/HEAD', inputs.working-directory || github.workspace)) }}
+      run: |
+        if [[ "$WORKING_DIRECTORY" == '.' ]]; then
+          echo "key=${RUNNER_OS}-${RUNNER_ARCH}-ffi-${FILECOIN_FFI_HEAD_HASH}" | tee -a $GITHUB_OUTPUT
+        else
+          echo "key=${RUNNER_OS}-${RUNNER_ARCH}-ffi-${WORKING_DIRECTORY//\//-}-${FILECOIN_FFI_HEAD_HASH}" | tee -a $GITHUB_OUTPUT
+        fi
+        echo "path<<EOF" | tee -a $GITHUB_OUTPUT
+        echo "${WORKING_DIRECTORY}/extern/filecoin-ffi/filcrypto.h" | tee -a $GITHUB_OUTPUT
+        echo "${WORKING_DIRECTORY}/extern/filecoin-ffi/libfilcrypto.a" | tee -a $GITHUB_OUTPUT
+        echo "${WORKING_DIRECTORY}/extern/filecoin-ffi/filcrypto.pc" | tee -a $GITHUB_OUTPUT
+        echo "${WORKING_DIRECTORY}/extern/build/.filecoin-install" | tee -a $GITHUB_OUTPUT
+        echo "${WORKING_DIRECTORY}/extern/build/.update-modules" | tee -a $GITHUB_OUTPUT
+        echo "EOF" | tee -a $GITHUB_OUTPUT
+      shell: bash
     - id: cache-ffi
       uses: actions/cache/restore@v4
       with:
-        key: ${{ runner.os }}-${{ runner.arch }}-ffi-${{ hashFiles('./.git/modules/extern/filecoin-ffi/HEAD') }}
-        path: |
-          ./extern/filecoin-ffi/filcrypto.h
-          ./extern/filecoin-ffi/libfilcrypto.a
-          ./extern/filecoin-ffi/filcrypto.pc
-          ./build/.filecoin-install
-          ./build/.update-modules
+        key: ${{ steps.inputs.outputs.key }}
+        path: ${{ steps.inputs.outputs.path }}
     - if: steps.cache-ffi.outputs.cache-hit != 'true'
       shell: bash
       working-directory: ${{ inputs.working-directory || github.workspace }}
       env:
-        GITHUB_TOKEN: ${{ inputs.github-token || github.token }}
-      run: FFI_PORTABLE=1 make deps
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      run: |
+        FFI_PORTABLE=1 make deps
     - if: steps.cache-ffi.outputs.cache-hit != 'true'
       uses: actions/cache/save@v4
       with:
-        key: ${{ runner.os }}-${{ runner.arch }}-ffi-${{ hashFiles('./.git/modules/extern/filecoin-ffi/HEAD') }}
-        path: |
-          ./extern/filecoin-ffi/filcrypto.h
-          ./extern/filecoin-ffi/libfilcrypto.a
-          ./extern/filecoin-ffi/filcrypto.pc
-          ./build/.filecoin-install
-          ./build/.update-modules
+        key: ${{ steps.inputs.outputs.key }}
+        path: ${{ steps.inputs.outputs.path }}
