@@ -390,8 +390,9 @@ var DaemonCmd = &cli.Command{
 			}
 			defer closerV2()
 
-			liteModeDeps = node.Override(new(lapi.Gateway), gapiv1)
-			liteModeDeps = node.Override(new(v2api.Gateway), gapiv2)
+			liteModeDeps = node.Options(
+				node.Override(new(lapi.Gateway), gapiv1),
+				node.Override(new(v2api.Gateway), gapiv2))
 		}
 
 		// some libraries like ipfs/go-ds-measure and ipfs/go-ipfs-blockstore
