@@ -181,7 +181,6 @@ func init() {
 	}
 
 	F3Enabled = getBoolean("LOTUS_F3_ENABLED", F3Enabled)
-	F3BootstrapEpoch = getUpgradeHeight("LOTUS_F3_BOOTSTRAP_EPOCH", F3BootstrapEpoch)
 
 	BuildType |= Build2k
 

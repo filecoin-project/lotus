@@ -114,5 +114,4 @@ var F3ManifestServerID = MustParseID("12D3KooWJr9jy4ngtJNR7JC1xgLFra3DjEtyxskRYW
 // The initial F3 power table CID.
 var F3InitialPowerTableCID cid.Cid = cid.Undef
 
-const F3BootstrapEpoch abi.ChainEpoch = -1
 const F3ParamsAddress = "0x9fd3B2D38EE4C920c9954DA752eDF810887501c1"
