@@ -9,9 +9,11 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"os"
 	"strings"
 	"time"
 
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -25,7 +27,6 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
@@ -256,8 +257,14 @@ func (cmp *ContractManifestProvider) fetchManifest(ctx context.Context) (*manife
 		return nil, fmt.Errorf("bootstrap epoch does not match: %d != %d", m.BootstrapEpoch, activationEpoch)
 	}
 
-	if !m.InitialPowerTable.Defined() && buildconstants.F3InitialPowerTableCID.Defined() {
-		m.InitialPowerTable = buildconstants.F3InitialPowerTableCID
+	if !m.InitialPowerTable.Defined() {
+		if ptCid := os.Getenv("F3_INITIAL_POWERTABLE_CID"); ptCid != "" {
+			if k, err := cid.Parse(ptCid); err != nil {
+				log.Errorf("failed to parse F3_INITIAL_POWERTABLE_CID %q: %s", ptCid, err)
+			} else {
+				m.InitialPowerTable = k
+			}
+		}
 	}
 
 	if err := m.Validate(); err != nil {

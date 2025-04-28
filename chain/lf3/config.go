@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/build/buildconstants"
-	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
@@ -102,15 +101,24 @@ func NewConfig(nn dtypes.NetworkName) *Config {
 		AllowDynamicFinalize:     false,
 		ContractPollInterval:     pollInterval,
 	}
-	if buildconstants.F3BootstrapEpoch >= 0 {
-		c.StaticManifest = NewManifest(
-			c.BaseNetworkName,
-			policy.ChainFinality,
-			buildconstants.F3BootstrapEpoch,
-			time.Duration(buildconstants.BlockDelaySecs)*time.Second,
-			buildconstants.F3InitialPowerTableCID,
-		)
+	c.StaticManifest = buildconstants.F3Manifest()
+	if c.StaticManifest == nil {
+		if ptCid := os.Getenv("F3_INITIAL_POWERTABLE_CID"); ptCid != "" {
+			if k, err := cid.Parse(ptCid); err != nil {
+				log.Errorf("failed to parse F3_INITIAL_POWERTABLE_CID %q: %s", ptCid, err)
+			} else if c.StaticManifest.InitialPowerTable.Defined() && k != c.StaticManifest.InitialPowerTable {
+				log.Errorf("ignoring F3_INITIAL_POWERTABLE_CID as lotus has a hard-coded initial F3 power table")
+			} else {
+				c.StaticManifest.InitialPowerTable = k
+			}
+		}
+
+		// EC Period sanity check
+		if c.StaticManifest.EC.Period != time.Duration(buildconstants.BlockDelaySecs)*time.Second {
+			log.Panicf("static manifest EC period is %v, expected %v", c.StaticManifest.EC.Period, time.Duration(buildconstants.BlockDelaySecs)*time.Second)
+		}
 	}
+
 	if buildconstants.F3ParamsAddress != "" {
 		c.ContractAddress = buildconstants.F3ParamsAddress
 	}

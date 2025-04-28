@@ -4,6 +4,7 @@
 package buildconstants
 
 import (
+	_ "embed"
 	"math"
 	"os"
 	"strconv"
@@ -193,10 +194,9 @@ var WhitelistedBlock = cid.MustParse("bafy2bzaceapyg2uyzk7vueh3xccxkuwbz3nxewjyg
 // The F3 manifest server ID, if any.
 var F3ManifestServerID = MustParseID("12D3KooWENMwUF9YxvQxar7uBWJtZkA6amvK4xWmKXfSiHUo2Qq7")
 
-// The initial F3 power table CID.
-var F3InitialPowerTableCID = cid.MustParse("bafy2bzacecklgxd2eksmodvhgurqvorkg3wamgqkrunir3al2gchv2cikgmbu")
-
 const F3Enabled = true
-const F3BootstrapEpoch abi.ChainEpoch = -1
+
+//go:embed f3manifest_mainnet.json
+var F3ManifestBytes []byte
 
 var F3ParamsAddress = "0xA19080A1Bcb82Bb61bcb9691EC94653Eb5315716"

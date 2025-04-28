@@ -8,6 +8,7 @@
 package buildconstants
 
 import (
+	_ "embed"
 	"math/big"
 
 	"github.com/ipfs/go-cid"
@@ -125,14 +126,13 @@ var (
 
 	ZeroAddress = MustParseAddress("f3yaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaby2smx7a")
 
-	WhitelistedBlock                      = cid.Undef
-	BootstrappersFile                     = ""
-	GenesisFile                           = ""
-	F3Enabled                             = false
-	F3ManifestServerID     peer.ID        = ""
-	F3BootstrapEpoch       abi.ChainEpoch = -1
-	F3InitialPowerTableCID                = cid.Undef
-	F3ParamsAddress                       = ""
+	WhitelistedBlock           = cid.Undef
+	BootstrappersFile          = ""
+	GenesisFile                = ""
+	F3Enabled                  = false
+	F3ManifestServerID peer.ID = ""
+	F3ParamsAddress            = ""
+	F3ManifestBytes    []byte
 )
 
 func init() {

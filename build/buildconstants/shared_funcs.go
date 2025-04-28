@@ -1,12 +1,14 @@
 package buildconstants
 
 import (
+	"encoding/json"
 	"math/big"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/chain/actors/policy"
@@ -46,4 +48,16 @@ func MustParseID(id string) peer.ID {
 func wholeFIL(whole uint64) *big.Int {
 	bigWhole := big.NewInt(int64(whole))
 	return bigWhole.Mul(bigWhole, big.NewInt(int64(FilecoinPrecision)))
+}
+
+func F3Manifest() *manifest.Manifest {
+	if F3ManifestBytes == nil {
+		return nil
+	}
+	var res manifest.Manifest
+	if err := json.Unmarshal(F3ManifestBytes, &res); err != nil {
+		log.Errorf("failed to unmarshal F3 manifest: %s", err)
+		return nil
+	}
+	return &res
 }
