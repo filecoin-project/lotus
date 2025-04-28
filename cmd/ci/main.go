@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -247,7 +248,7 @@ func getHasVeryExpensiveTests(testGroupName string) bool {
 	testGroupNames := []string{
 		"itest-niporep_manual",
 	}
-	return contains(testGroupNames, testGroupName)
+	return slices.Contains(testGroupNames, testGroupName)
 }
 
 func getTestGroupMetadata(testGroupName string) TestGroupMetadata {
@@ -327,21 +328,21 @@ func getNeedsParameters(testGroupName string) bool {
 		"unit-cli",
 		"unit-storage",
 	}
-	return contains(testGroupNames, testGroupName)
+	return slices.Contains(testGroupNames, testGroupName)
 }
 
 func getSkipConformance(testGroupName string) bool {
 	testGroupNames := []string{
 		"conformance",
 	}
-	return !contains(testGroupNames, testGroupName)
+	return !slices.Contains(testGroupNames, testGroupName)
 }
 
 func getTestRustProofLogs(testGroupName string) bool {
 	testGroupNames := []string{
 		"multicore-sdr",
 	}
-	return contains(testGroupNames, testGroupName)
+	return slices.Contains(testGroupNames, testGroupName)
 }
 
 func getFormat() string {
@@ -361,13 +362,4 @@ func getGoTestFlags(testGroupName string) string {
 
 func createPackagePath(pathParts ...string) string {
 	return strings.Join(append([]string{"."}, pathParts...), string(os.PathSeparator))
-}
-
-func contains(slice []string, item string) bool {
-	for _, s := range slice {
-		if s == item {
-			return true
-		}
-	}
-	return false
 }

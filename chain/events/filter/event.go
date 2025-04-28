@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"math"
+	"slices"
 	"sync"
 	"time"
 
@@ -184,12 +185,7 @@ func (f *eventFilter) matchAddress(o address.Address) bool {
 
 	// Assume short lists of addresses
 	// TODO: binary search for longer lists or restrict list length
-	for _, a := range f.addresses {
-		if a == o {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(f.addresses, o)
 }
 
 func (f *eventFilter) matchKeys(ees []types.EventEntry) bool {

@@ -238,12 +238,7 @@ func (ts *TipSet) ParentWeight() BigInt {
 }
 
 func (ts *TipSet) Contains(oc cid.Cid) bool {
-	for _, c := range ts.cids {
-		if c == oc {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(ts.cids, oc)
 }
 
 func (ts *TipSet) IsChildOf(parent *TipSet) bool {
