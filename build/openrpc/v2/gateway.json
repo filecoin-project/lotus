@@ -7,8 +7,8 @@
     "methods": [
         {
             "name": "Filecoin.ChainGetTipSet",
-            "description": "```go\nfunc (s *FullNodeStruct) ChainGetTipSet(p0 context.Context, p1 types.TipSetSelector) (*types.TipSet, error) {\n\tif s.Internal.ChainGetTipSet == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.ChainGetTipSet(p0, p1)\n}\n```",
-            "summary": "ChainGetTipSet retrieves a tipset that corresponds to the specified selector\ncriteria. The criteria can be provided in the form of a tipset key, a\nblockchain height including an optional fallback to previous non-null tipset,\nor a designated tag such as \"latest\", \"finalized\", or \"safe\".\n\nThe \"Finalized\" tag returns the tipset that is considered finalized based on\nthe consensus protocol of the current node, either Filecoin EC Finality or\nFilecoin Fast Finality (F3). The finalized tipset selection gracefully falls\nback to EC finality in cases where F3 isn't ready or not running.\n\nThe \"Safe\" tag returns the tipset between the \"Finalized\" tipset and\n\"Latest - build.SafeHeightDistance\". This provides a balance between\nfinality confidence and recency. If the tipset at the safe height is null,\nthe first non-nil parent tipset is returned, similar to the behavior of\nselecting by height with the 'previous' option set to true.\n\nIn a case where no selector is provided, an error is returned. The selector\nmust be explicitly specified.\n\nFor more details, refer to the types.TipSetSelector.\n\nExample usage:\n\n selector := types.TipSetSelectors.Latest\n tipSet, err := node.ChainGetTipSet(context.Background(), selector)\n if err != nil {\n    fmt.Println(\"Error retrieving tipset:\", err)\n    return\n }\n fmt.Printf(\"Latest TipSet: %v\\n\", tipSet)\n",
+            "description": "```go\nfunc (s *GatewayStruct) ChainGetTipSet(p0 context.Context, p1 types.TipSetSelector) (*types.TipSet, error) {\n\tif s.Internal.ChainGetTipSet == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.ChainGetTipSet(p0, p1)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -152,13 +152,53 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L246"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L807"
+            }
+        },
+        {
+            "name": "Filecoin.Discover",
+            "description": "```go\nfunc (s *GatewayStruct) Discover(p0 context.Context) (apitypes.OpenRPCDocument, error) {\n\tif s.Internal.Discover == nil {\n\t\treturn *new(apitypes.OpenRPCDocument), ErrNotSupported\n\t}\n\treturn s.Internal.Discover(p0)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
+            "paramStructure": "by-position",
+            "params": [],
+            "result": {
+                "name": "apitypes.OpenRPCDocument",
+                "description": "apitypes.OpenRPCDocument",
+                "summary": "",
+                "schema": {
+                    "examples": [
+                        {
+                            "info": {
+                                "title": "Lotus RPC API",
+                                "version": "1.2.1/generated=2020-11-22T08:22:42-06:00"
+                            },
+                            "methods": [],
+                            "openrpc": "1.2.6"
+                        }
+                    ],
+                    "patternProperties": {
+                        ".*": {
+                            "additionalProperties": true,
+                            "type": "object"
+                        }
+                    },
+                    "type": [
+                        "object"
+                    ]
+                },
+                "required": true,
+                "deprecated": false
+            },
+            "deprecated": false,
+            "externalDocs": {
+                "description": "Github remote link",
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L818"
             }
         },
         {
             "name": "Filecoin.EthAccounts",
-            "description": "```go\nfunc (s *FullNodeStruct) EthAccounts(p0 context.Context) ([]ethtypes.EthAddress, error) {\n\tif s.Internal.EthAccounts == nil {\n\t\treturn *new([]ethtypes.EthAddress), ErrNotSupported\n\t}\n\treturn s.Internal.EthAccounts(p0)\n}\n```",
-            "summary": "EthAccounts returns a list of Ethereum accounts managed by the node.\nMaps to JSON-RPC method: \"eth_accounts\".\nLotus does not manage private keys, so this will always return an empty array.\n",
+            "description": "```go\nfunc (s *GatewayStruct) EthAccounts(p0 context.Context) ([]ethtypes.EthAddress, error) {\n\tif s.Internal.EthAccounts == nil {\n\t\treturn *new([]ethtypes.EthAddress), ErrNotSupported\n\t}\n\treturn s.Internal.EthAccounts(p0)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [],
             "result": {
@@ -199,13 +239,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L257"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L829"
             }
         },
         {
             "name": "Filecoin.EthAddressToFilecoinAddress",
-            "description": "```go\nfunc (s *FullNodeStruct) EthAddressToFilecoinAddress(p0 context.Context, p1 ethtypes.EthAddress) (address.Address, error) {\n\tif s.Internal.EthAddressToFilecoinAddress == nil {\n\t\treturn *new(address.Address), ErrNotSupported\n\t}\n\treturn s.Internal.EthAddressToFilecoinAddress(p0, p1)\n}\n```",
-            "summary": "EthAddressToFilecoinAddress converts an Ethereum address to a Filecoin f410 address.\n",
+            "description": "```go\nfunc (s *GatewayStruct) EthAddressToFilecoinAddress(p0 context.Context, p1 ethtypes.EthAddress) (address.Address, error) {\n\tif s.Internal.EthAddressToFilecoinAddress == nil {\n\t\treturn *new(address.Address), ErrNotSupported\n\t}\n\treturn s.Internal.EthAddressToFilecoinAddress(p0, p1)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -254,13 +294,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L268"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L840"
             }
         },
         {
             "name": "Filecoin.EthBlockNumber",
-            "description": "```go\nfunc (s *FullNodeStruct) EthBlockNumber(p0 context.Context) (ethtypes.EthUint64, error) {\n\tif s.Internal.EthBlockNumber == nil {\n\t\treturn *new(ethtypes.EthUint64), ErrNotSupported\n\t}\n\treturn s.Internal.EthBlockNumber(p0)\n}\n```",
-            "summary": "EthBlockNumber returns the number of the latest executed block (head - 1).\nMaps to JSON-RPC method: \"eth_blockNumber\".\n",
+            "description": "```go\nfunc (s *GatewayStruct) EthBlockNumber(p0 context.Context) (ethtypes.EthUint64, error) {\n\tif s.Internal.EthBlockNumber == nil {\n\t\treturn *new(ethtypes.EthUint64), ErrNotSupported\n\t}\n\treturn s.Internal.EthBlockNumber(p0)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [],
             "result": {
@@ -283,13 +323,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L279"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L851"
             }
         },
         {
             "name": "Filecoin.EthCall",
-            "description": "```go\nfunc (s *FullNodeStruct) EthCall(p0 context.Context, p1 ethtypes.EthCall, p2 ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {\n\tif s.Internal.EthCall == nil {\n\t\treturn *new(ethtypes.EthBytes), ErrNotSupported\n\t}\n\treturn s.Internal.EthCall(p0, p1, p2)\n}\n```",
-            "summary": "EthCall executes a read-only call to a contract at a specific block state, identified by\nits number, hash, or a special tag like \"latest\" or \"finalized\".\nMaps to JSON-RPC method: \"eth_call\".\n",
+            "description": "```go\nfunc (s *GatewayStruct) EthCall(p0 context.Context, p1 ethtypes.EthCall, p2 ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {\n\tif s.Internal.EthCall == nil {\n\t\treturn *new(ethtypes.EthBytes), ErrNotSupported\n\t}\n\treturn s.Internal.EthCall(p0, p1, p2)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -420,13 +460,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L290"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L862"
             }
         },
         {
             "name": "Filecoin.EthChainId",
-            "description": "```go\nfunc (s *FullNodeStruct) EthChainId(p0 context.Context) (ethtypes.EthUint64, error) {\n\tif s.Internal.EthChainId == nil {\n\t\treturn *new(ethtypes.EthUint64), ErrNotSupported\n\t}\n\treturn s.Internal.EthChainId(p0)\n}\n```",
-            "summary": "EthChainId retrieves the chain ID of the Ethereum-compatible network.\nMaps to JSON-RPC method: \"eth_chainId\".\n",
+            "description": "```go\nfunc (s *GatewayStruct) EthChainId(p0 context.Context) (ethtypes.EthUint64, error) {\n\tif s.Internal.EthChainId == nil {\n\t\treturn *new(ethtypes.EthUint64), ErrNotSupported\n\t}\n\treturn s.Internal.EthChainId(p0)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [],
             "result": {
@@ -449,13 +489,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L301"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L873"
             }
         },
         {
             "name": "Filecoin.EthEstimateGas",
-            "description": "```go\nfunc (s *FullNodeStruct) EthEstimateGas(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthUint64, error) {\n\tif s.Internal.EthEstimateGas == nil {\n\t\treturn *new(ethtypes.EthUint64), ErrNotSupported\n\t}\n\treturn s.Internal.EthEstimateGas(p0, p1)\n}\n```",
-            "summary": "EthEstimateGas estimates the gas required to execute a transaction.\nMaps to JSON-RPC method: \"eth_estimateGas\".\n",
+            "description": "```go\nfunc (s *GatewayStruct) EthEstimateGas(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthUint64, error) {\n\tif s.Internal.EthEstimateGas == nil {\n\t\treturn *new(ethtypes.EthUint64), ErrNotSupported\n\t}\n\treturn s.Internal.EthEstimateGas(p0, p1)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -503,13 +543,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L312"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L884"
             }
         },
         {
             "name": "Filecoin.EthFeeHistory",
-            "description": "```go\nfunc (s *FullNodeStruct) EthFeeHistory(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthFeeHistory, error) {\n\tif s.Internal.EthFeeHistory == nil {\n\t\treturn *new(ethtypes.EthFeeHistory), ErrNotSupported\n\t}\n\treturn s.Internal.EthFeeHistory(p0, p1)\n}\n```",
-            "summary": "EthFeeHistory retrieves historical gas fee data for a range of blocks.\nMaps to JSON-RPC method: \"eth_feeHistory\".\n",
+            "description": "```go\nfunc (s *GatewayStruct) EthFeeHistory(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthFeeHistory, error) {\n\tif s.Internal.EthFeeHistory == nil {\n\t\treturn *new(ethtypes.EthFeeHistory), ErrNotSupported\n\t}\n\treturn s.Internal.EthFeeHistory(p0, p1)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -594,13 +634,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L323"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L895"
             }
         },
         {
             "name": "Filecoin.EthGasPrice",
-            "description": "```go\nfunc (s *FullNodeStruct) EthGasPrice(p0 context.Context) (ethtypes.EthBigInt, error) {\n\tif s.Internal.EthGasPrice == nil {\n\t\treturn *new(ethtypes.EthBigInt), ErrNotSupported\n\t}\n\treturn s.Internal.EthGasPrice(p0)\n}\n```",
-            "summary": "EthGasPrice retrieves the current gas price in the network.\nMaps to JSON-RPC method: \"eth_gasPrice\".\n",
+            "description": "```go\nfunc (s *GatewayStruct) EthGasPrice(p0 context.Context) (ethtypes.EthBigInt, error) {\n\tif s.Internal.EthGasPrice == nil {\n\t\treturn *new(ethtypes.EthBigInt), ErrNotSupported\n\t}\n\treturn s.Internal.EthGasPrice(p0)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [],
             "result": {
@@ -622,13 +662,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L334"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L906"
             }
         },
         {
             "name": "Filecoin.EthGetBalance",
-            "description": "```go\nfunc (s *FullNodeStruct) EthGetBalance(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBlockNumberOrHash) (ethtypes.EthBigInt, error) {\n\tif s.Internal.EthGetBalance == nil {\n\t\treturn *new(ethtypes.EthBigInt), ErrNotSupported\n\t}\n\treturn s.Internal.EthGetBalance(p0, p1, p2)\n}\n```",
-            "summary": "EthGetBalance retrieves the balance of an Ethereum address at a specific block state,\nidentified by its number, hash, or a special tag like \"latest\" or \"finalized\".\nMaps to JSON-RPC method: \"eth_getBalance\".\n",
+            "description": "```go\nfunc (s *GatewayStruct) EthGetBalance(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBlockNumberOrHash) (ethtypes.EthBigInt, error) {\n\tif s.Internal.EthGetBalance == nil {\n\t\treturn *new(ethtypes.EthBigInt), ErrNotSupported\n\t}\n\treturn s.Internal.EthGetBalance(p0, p1, p2)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -712,13 +752,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L345"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L917"
             }
         },
         {
             "name": "Filecoin.EthGetBlockByHash",
-            "description": "```go\nfunc (s *FullNodeStruct) EthGetBlockByHash(p0 context.Context, p1 ethtypes.EthHash, p2 bool) (ethtypes.EthBlock, error) {\n\tif s.Internal.EthGetBlockByHash == nil {\n\t\treturn *new(ethtypes.EthBlock), ErrNotSupported\n\t}\n\treturn s.Internal.EthGetBlockByHash(p0, p1, p2)\n}\n```",
-            "summary": "EthGetBlockByHash retrieves a block by its hash. If fullTxInfo is true, it includes full\ntransaction objects; otherwise, it includes only transaction hashes.\nMaps to JSON-RPC method: \"eth_getBlockByHash\".\n",
+            "description": "```go\nfunc (s *GatewayStruct) EthGetBlockByHash(p0 context.Context, p1 ethtypes.EthHash, p2 bool) (ethtypes.EthBlock, error) {\n\tif s.Internal.EthGetBlockByHash == nil {\n\t\treturn *new(ethtypes.EthBlock), ErrNotSupported\n\t}\n\treturn s.Internal.EthGetBlockByHash(p0, p1, p2)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -968,13 +1008,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L356"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L928"
             }
         },
         {
             "name": "Filecoin.EthGetBlockByNumber",
-            "description": "```go\nfunc (s *FullNodeStruct) EthGetBlockByNumber(p0 context.Context, p1 string, p2 bool) (ethtypes.EthBlock, error) {\n\tif s.Internal.EthGetBlockByNumber == nil {\n\t\treturn *new(ethtypes.EthBlock), ErrNotSupported\n\t}\n\treturn s.Internal.EthGetBlockByNumber(p0, p1, p2)\n}\n```",
-            "summary": "EthGetBlockByNumber retrieves a block by its number or a special tag like \"latest\" or\n\"finalized\". If fullTxInfo is true, it includes full transaction objects; otherwise, it\nincludes only transaction hashes.\nMaps to JSON-RPC method: \"eth_getBlockByNumber\".\n",
+            "description": "```go\nfunc (s *GatewayStruct) EthGetBlockByNumber(p0 context.Context, p1 string, p2 bool) (ethtypes.EthBlock, error) {\n\tif s.Internal.EthGetBlockByNumber == nil {\n\t\treturn *new(ethtypes.EthBlock), ErrNotSupported\n\t}\n\treturn s.Internal.EthGetBlockByNumber(p0, p1, p2)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -1213,13 +1253,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L367"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L939"
             }
         },
         {
             "name": "Filecoin.EthGetBlockReceipts",
-            "description": "```go\nfunc (s *FullNodeStruct) EthGetBlockReceipts(p0 context.Context, p1 ethtypes.EthBlockNumberOrHash) ([]*ethtypes.EthTxReceipt, error) {\n\tif s.Internal.EthGetBlockReceipts == nil {\n\t\treturn *new([]*ethtypes.EthTxReceipt), ErrNotSupported\n\t}\n\treturn s.Internal.EthGetBlockReceipts(p0, p1)\n}\n```",
-            "summary": "EthGetBlockReceipts retrieves all transaction receipts for a block identified by its number,\nhash or a special tag like \"latest\" or \"finalized\".\nMaps to JSON-RPC method: \"eth_getBlockReceipts\".\n",
+            "description": "```go\nfunc (s *GatewayStruct) EthGetBlockReceipts(p0 context.Context, p1 ethtypes.EthBlockNumberOrHash) ([]*ethtypes.EthTxReceipt, error) {\n\tif s.Internal.EthGetBlockReceipts == nil {\n\t\treturn *new([]*ethtypes.EthTxReceipt), ErrNotSupported\n\t}\n\treturn s.Internal.EthGetBlockReceipts(p0, p1)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -1489,13 +1529,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L378"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L950"
             }
         },
         {
             "name": "Filecoin.EthGetBlockReceiptsLimited",
-            "description": "```go\nfunc (s *FullNodeStruct) EthGetBlockReceiptsLimited(p0 context.Context, p1 ethtypes.EthBlockNumberOrHash, p2 abi.ChainEpoch) ([]*ethtypes.EthTxReceipt, error) {\n\tif s.Internal.EthGetBlockReceiptsLimited == nil {\n\t\treturn *new([]*ethtypes.EthTxReceipt), ErrNotSupported\n\t}\n\treturn s.Internal.EthGetBlockReceiptsLimited(p0, p1, p2)\n}\n```",
-            "summary": "EthGetBlockReceiptsLimited retrieves all transaction receipts for a block identified by its\nnumber, hash or a special tag like \"latest\" or \"finalized\", along with an optional limit on the\nchain epoch for state resolution.\n",
+            "description": "```go\nfunc (s *GatewayStruct) EthGetBlockReceiptsLimited(p0 context.Context, p1 ethtypes.EthBlockNumberOrHash, p2 abi.ChainEpoch) ([]*ethtypes.EthTxReceipt, error) {\n\tif s.Internal.EthGetBlockReceiptsLimited == nil {\n\t\treturn *new([]*ethtypes.EthTxReceipt), ErrNotSupported\n\t}\n\treturn s.Internal.EthGetBlockReceiptsLimited(p0, p1, p2)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -1782,13 +1822,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L389"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L961"
             }
         },
         {
             "name": "Filecoin.EthGetBlockTransactionCountByHash",
-            "description": "```go\nfunc (s *FullNodeStruct) EthGetBlockTransactionCountByHash(p0 context.Context, p1 ethtypes.EthHash) (ethtypes.EthUint64, error) {\n\tif s.Internal.EthGetBlockTransactionCountByHash == nil {\n\t\treturn *new(ethtypes.EthUint64), ErrNotSupported\n\t}\n\treturn s.Internal.EthGetBlockTransactionCountByHash(p0, p1)\n}\n```",
-            "summary": "EthGetBlockTransactionCountByHash returns the number of transactions in a block identified by\nits block hash.\nMaps to JSON-RPC method: \"eth_getBlockTransactionCountByHash\".\n",
+            "description": "```go\nfunc (s *GatewayStruct) EthGetBlockTransactionCountByHash(p0 context.Context, p1 ethtypes.EthHash) (ethtypes.EthUint64, error) {\n\tif s.Internal.EthGetBlockTransactionCountByHash == nil {\n\t\treturn *new(ethtypes.EthUint64), ErrNotSupported\n\t}\n\treturn s.Internal.EthGetBlockTransactionCountByHash(p0, p1)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -1838,13 +1878,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L400"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L972"
             }
         },
         {
             "name": "Filecoin.EthGetBlockTransactionCountByNumber",
-            "description": "```go\nfunc (s *FullNodeStruct) EthGetBlockTransactionCountByNumber(p0 context.Context, p1 string) (ethtypes.EthUint64, error) {\n\tif s.Internal.EthGetBlockTransactionCountByNumber == nil {\n\t\treturn *new(ethtypes.EthUint64), ErrNotSupported\n\t}\n\treturn s.Internal.EthGetBlockTransactionCountByNumber(p0, p1)\n}\n```",
-            "summary": "EthGetBlockTransactionCountByNumber returns the number of transactions in a block identified by\nits block number or a special tag like \"latest\" or \"finalized\".\nMaps to JSON-RPC method: \"eth_getBlockTransactionCountByNumber\".\n",
+            "description": "```go\nfunc (s *GatewayStruct) EthGetBlockTransactionCountByNumber(p0 context.Context, p1 string) (ethtypes.EthUint64, error) {\n\tif s.Internal.EthGetBlockTransactionCountByNumber == nil {\n\t\treturn *new(ethtypes.EthUint64), ErrNotSupported\n\t}\n\treturn s.Internal.EthGetBlockTransactionCountByNumber(p0, p1)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -1883,13 +1923,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L411"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L983"
             }
         },
         {
             "name": "Filecoin.EthGetCode",
-            "description": "```go\nfunc (s *FullNodeStruct) EthGetCode(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {\n\tif s.Internal.EthGetCode == nil {\n\t\treturn *new(ethtypes.EthBytes), ErrNotSupported\n\t}\n\treturn s.Internal.EthGetCode(p0, p1, p2)\n}\n```",
-            "summary": "EthGetCode retrieves the contract code at a specific address and block state, identified by\nits number, hash, or a special tag like \"latest\" or \"finalized\".\nMaps to JSON-RPC method: \"eth_getCode\".\n",
+            "description": "```go\nfunc (s *GatewayStruct) EthGetCode(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {\n\tif s.Internal.EthGetCode == nil {\n\t\treturn *new(ethtypes.EthBytes), ErrNotSupported\n\t}\n\treturn s.Internal.EthGetCode(p0, p1, p2)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -1981,13 +2021,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L422"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L994"
             }
         },
         {
             "name": "Filecoin.EthGetFilterChanges",
-            "description": "```go\nfunc (s *FullNodeStruct) EthGetFilterChanges(p0 context.Context, p1 ethtypes.EthFilterID) (*ethtypes.EthFilterResult, error) {\n\tif s.Internal.EthGetFilterChanges == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.EthGetFilterChanges(p0, p1)\n}\n```",
-            "summary": "EthGetFilterChanges retrieves event logs that occurred since the last poll for a filter.\nMaps to JSON-RPC method: \"eth_getFilterChanges\".\n",
+            "description": "```go\nfunc (s *GatewayStruct) EthGetFilterChanges(p0 context.Context, p1 ethtypes.EthFilterID) (*ethtypes.EthFilterResult, error) {\n\tif s.Internal.EthGetFilterChanges == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.EthGetFilterChanges(p0, p1)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -2047,13 +2087,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L433"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L1005"
             }
         },
         {
             "name": "Filecoin.EthGetFilterLogs",
-            "description": "```go\nfunc (s *FullNodeStruct) EthGetFilterLogs(p0 context.Context, p1 ethtypes.EthFilterID) (*ethtypes.EthFilterResult, error) {\n\tif s.Internal.EthGetFilterLogs == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.EthGetFilterLogs(p0, p1)\n}\n```",
-            "summary": "EthGetFilterLogs retrieves event logs matching filter with given id.\nMaps to JSON-RPC method: \"eth_getFilterLogs\".\n",
+            "description": "```go\nfunc (s *GatewayStruct) EthGetFilterLogs(p0 context.Context, p1 ethtypes.EthFilterID) (*ethtypes.EthFilterResult, error) {\n\tif s.Internal.EthGetFilterLogs == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.EthGetFilterLogs(p0, p1)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -2113,13 +2153,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L444"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L1016"
             }
         },
         {
             "name": "Filecoin.EthGetLogs",
-            "description": "```go\nfunc (s *FullNodeStruct) EthGetLogs(p0 context.Context, p1 *ethtypes.EthFilterSpec) (*ethtypes.EthFilterResult, error) {\n\tif s.Internal.EthGetLogs == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.EthGetLogs(p0, p1)\n}\n```",
-            "summary": "EthGetLogs retrieves event logs matching given filter specification.\nMaps to JSON-RPC method: \"eth_getLogs\".\n",
+            "description": "```go\nfunc (s *GatewayStruct) EthGetLogs(p0 context.Context, p1 *ethtypes.EthFilterSpec) (*ethtypes.EthFilterResult, error) {\n\tif s.Internal.EthGetLogs == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.EthGetLogs(p0, p1)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -2222,13 +2262,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L455"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L1027"
             }
         },
         {
             "name": "Filecoin.EthGetMessageCidByTransactionHash",
-            "description": "```go\nfunc (s *FullNodeStruct) EthGetMessageCidByTransactionHash(p0 context.Context, p1 *ethtypes.EthHash) (*cid.Cid, error) {\n\tif s.Internal.EthGetMessageCidByTransactionHash == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.EthGetMessageCidByTransactionHash(p0, p1)\n}\n```",
-            "summary": "EthGetMessageCidByTransactionHash retrieves the Filecoin CID corresponding to an Ethereum\ntransaction hash.\nMaps to JSON-RPC method: \"eth_getMessageCidByTransactionHash\".\n",
+            "description": "```go\nfunc (s *GatewayStruct) EthGetMessageCidByTransactionHash(p0 context.Context, p1 *ethtypes.EthHash) (*cid.Cid, error) {\n\tif s.Internal.EthGetMessageCidByTransactionHash == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.EthGetMessageCidByTransactionHash(p0, p1)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -2280,13 +2320,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L466"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L1038"
             }
         },
         {
             "name": "Filecoin.EthGetStorageAt",
-            "description": "```go\nfunc (s *FullNodeStruct) EthGetStorageAt(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBytes, p3 ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {\n\tif s.Internal.EthGetStorageAt == nil {\n\t\treturn *new(ethtypes.EthBytes), ErrNotSupported\n\t}\n\treturn s.Internal.EthGetStorageAt(p0, p1, p2, p3)\n}\n```",
-            "summary": "EthGetStorageAt retrieves the storage value at a specific position for a contract\nat a given block state, identified by its number, hash, or a special tag like \"latest\" or\n\"finalized\".\nMaps to JSON-RPC method: \"eth_getStorageAt\".\n",
+            "description": "```go\nfunc (s *GatewayStruct) EthGetStorageAt(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBytes, p3 ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {\n\tif s.Internal.EthGetStorageAt == nil {\n\t\treturn *new(ethtypes.EthBytes), ErrNotSupported\n\t}\n\treturn s.Internal.EthGetStorageAt(p0, p1, p2, p3)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -2402,13 +2442,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L477"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L1049"
             }
         },
         {
             "name": "Filecoin.EthGetTransactionByBlockHashAndIndex",
-            "description": "```go\nfunc (s *FullNodeStruct) EthGetTransactionByBlockHashAndIndex(p0 context.Context, p1 ethtypes.EthHash, p2 ethtypes.EthUint64) (*ethtypes.EthTx, error) {\n\tif s.Internal.EthGetTransactionByBlockHashAndIndex == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.EthGetTransactionByBlockHashAndIndex(p0, p1, p2)\n}\n```",
-            "summary": "EthGetTransactionByBlockHashAndIndex retrieves a transaction by its block hash and index.\nMaps to JSON-RPC method: \"eth_getTransactionByBlockHashAndIndex\".\n",
+            "description": "```go\nfunc (s *GatewayStruct) EthGetTransactionByBlockHashAndIndex(p0 context.Context, p1 ethtypes.EthHash, p2 ethtypes.EthUint64) (*ethtypes.EthTx, error) {\n\tif s.Internal.EthGetTransactionByBlockHashAndIndex == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.EthGetTransactionByBlockHashAndIndex(p0, p1, p2)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -2611,13 +2651,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L488"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L1060"
             }
         },
         {
             "name": "Filecoin.EthGetTransactionByBlockNumberAndIndex",
-            "description": "```go\nfunc (s *FullNodeStruct) EthGetTransactionByBlockNumberAndIndex(p0 context.Context, p1 string, p2 ethtypes.EthUint64) (*ethtypes.EthTx, error) {\n\tif s.Internal.EthGetTransactionByBlockNumberAndIndex == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.EthGetTransactionByBlockNumberAndIndex(p0, p1, p2)\n}\n```",
-            "summary": "EthGetTransactionByBlockNumberAndIndex retrieves a transaction by its block number and index.\nMaps to JSON-RPC method: \"eth_getTransactionByBlockNumberAndIndex\".\n",
+            "description": "```go\nfunc (s *GatewayStruct) EthGetTransactionByBlockNumberAndIndex(p0 context.Context, p1 string, p2 ethtypes.EthUint64) (*ethtypes.EthTx, error) {\n\tif s.Internal.EthGetTransactionByBlockNumberAndIndex == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.EthGetTransactionByBlockNumberAndIndex(p0, p1, p2)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -2809,13 +2849,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L499"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L1071"
             }
         },
         {
             "name": "Filecoin.EthGetTransactionByHash",
-            "description": "```go\nfunc (s *FullNodeStruct) EthGetTransactionByHash(p0 context.Context, p1 *ethtypes.EthHash) (*ethtypes.EthTx, error) {\n\tif s.Internal.EthGetTransactionByHash == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.EthGetTransactionByHash(p0, p1)\n}\n```",
-            "summary": "EthGetTransactionByHash retrieves a transaction by its hash.\nMaps to JSON-RPC method: \"eth_getTransactionByHash\".\n",
+            "description": "```go\nfunc (s *GatewayStruct) EthGetTransactionByHash(p0 context.Context, p1 *ethtypes.EthHash) (*ethtypes.EthTx, error) {\n\tif s.Internal.EthGetTransactionByHash == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.EthGetTransactionByHash(p0, p1)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -3001,13 +3041,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L510"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L1082"
             }
         },
         {
             "name": "Filecoin.EthGetTransactionByHashLimited",
-            "description": "```go\nfunc (s *FullNodeStruct) EthGetTransactionByHashLimited(p0 context.Context, p1 *ethtypes.EthHash, p2 abi.ChainEpoch) (*ethtypes.EthTx, error) {\n\tif s.Internal.EthGetTransactionByHashLimited == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.EthGetTransactionByHashLimited(p0, p1, p2)\n}\n```",
-            "summary": "EthGetTransactionByHashLimited retrieves a transaction by its hash, with an optional limit on\nthe chain epoch for state resolution.\n",
+            "description": "```go\nfunc (s *GatewayStruct) EthGetTransactionByHashLimited(p0 context.Context, p1 *ethtypes.EthHash, p2 abi.ChainEpoch) (*ethtypes.EthTx, error) {\n\tif s.Internal.EthGetTransactionByHashLimited == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.EthGetTransactionByHashLimited(p0, p1, p2)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -3210,13 +3250,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L521"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L1093"
             }
         },
         {
             "name": "Filecoin.EthGetTransactionCount",
-            "description": "```go\nfunc (s *FullNodeStruct) EthGetTransactionCount(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBlockNumberOrHash) (ethtypes.EthUint64, error) {\n\tif s.Internal.EthGetTransactionCount == nil {\n\t\treturn *new(ethtypes.EthUint64), ErrNotSupported\n\t}\n\treturn s.Internal.EthGetTransactionCount(p0, p1, p2)\n}\n```",
-            "summary": "EthGetTransactionCount retrieves the number of transactions sent from an address at a specific\nblock, identified by its number, hash, or a special tag like \"latest\" or \"finalized\".\nMaps to JSON-RPC method: \"eth_getTransactionCount\".\n",
+            "description": "```go\nfunc (s *GatewayStruct) EthGetTransactionCount(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBlockNumberOrHash) (ethtypes.EthUint64, error) {\n\tif s.Internal.EthGetTransactionCount == nil {\n\t\treturn *new(ethtypes.EthUint64), ErrNotSupported\n\t}\n\treturn s.Internal.EthGetTransactionCount(p0, p1, p2)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -3301,13 +3341,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L532"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L1104"
             }
         },
         {
             "name": "Filecoin.EthGetTransactionHashByCid",
-            "description": "```go\nfunc (s *FullNodeStruct) EthGetTransactionHashByCid(p0 context.Context, p1 cid.Cid) (*ethtypes.EthHash, error) {\n\tif s.Internal.EthGetTransactionHashByCid == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.EthGetTransactionHashByCid(p0, p1)\n}\n```",
-            "summary": "EthGetTransactionHashByCid retrieves the Ethereum transaction hash corresponding to a Filecoin\nCID.\nMaps to JSON-RPC method: \"eth_getTransactionHashByCid\".\n",
+            "description": "```go\nfunc (s *GatewayStruct) EthGetTransactionHashByCid(p0 context.Context, p1 cid.Cid) (*ethtypes.EthHash, error) {\n\tif s.Internal.EthGetTransactionHashByCid == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.EthGetTransactionHashByCid(p0, p1)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -3359,13 +3399,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L543"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L1115"
             }
         },
         {
             "name": "Filecoin.EthGetTransactionReceipt",
-            "description": "```go\nfunc (s *FullNodeStruct) EthGetTransactionReceipt(p0 context.Context, p1 ethtypes.EthHash) (*ethtypes.EthTxReceipt, error) {\n\tif s.Internal.EthGetTransactionReceipt == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.EthGetTransactionReceipt(p0, p1)\n}\n```",
-            "summary": "EthGetTransactionReceipt retrieves the receipt of a transaction by its hash.\nMaps to JSON-RPC method: \"eth_getTransactionReceipt\".\n",
+            "description": "```go\nfunc (s *GatewayStruct) EthGetTransactionReceipt(p0 context.Context, p1 ethtypes.EthHash) (*ethtypes.EthTxReceipt, error) {\n\tif s.Internal.EthGetTransactionReceipt == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.EthGetTransactionReceipt(p0, p1)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -3617,13 +3657,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L554"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L1126"
             }
         },
         {
             "name": "Filecoin.EthGetTransactionReceiptLimited",
-            "description": "```go\nfunc (s *FullNodeStruct) EthGetTransactionReceiptLimited(p0 context.Context, p1 ethtypes.EthHash, p2 abi.ChainEpoch) (*ethtypes.EthTxReceipt, error) {\n\tif s.Internal.EthGetTransactionReceiptLimited == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.EthGetTransactionReceiptLimited(p0, p1, p2)\n}\n```",
-            "summary": "EthGetTransactionReceiptLimited retrieves the receipt of a transaction by its hash, with an\noptional limit on the chain epoch for state resolution.\n",
+            "description": "```go\nfunc (s *GatewayStruct) EthGetTransactionReceiptLimited(p0 context.Context, p1 ethtypes.EthHash, p2 abi.ChainEpoch) (*ethtypes.EthTxReceipt, error) {\n\tif s.Internal.EthGetTransactionReceiptLimited == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.EthGetTransactionReceiptLimited(p0, p1, p2)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -3892,13 +3932,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L565"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L1137"
             }
         },
         {
             "name": "Filecoin.EthMaxPriorityFeePerGas",
-            "description": "```go\nfunc (s *FullNodeStruct) EthMaxPriorityFeePerGas(p0 context.Context) (ethtypes.EthBigInt, error) {\n\tif s.Internal.EthMaxPriorityFeePerGas == nil {\n\t\treturn *new(ethtypes.EthBigInt), ErrNotSupported\n\t}\n\treturn s.Internal.EthMaxPriorityFeePerGas(p0)\n}\n```",
-            "summary": "EthMaxPriorityFeePerGas retrieves the maximum priority fee per gas in the network.\nMaps to JSON-RPC method: \"eth_maxPriorityFeePerGas\".\n",
+            "description": "```go\nfunc (s *GatewayStruct) EthMaxPriorityFeePerGas(p0 context.Context) (ethtypes.EthBigInt, error) {\n\tif s.Internal.EthMaxPriorityFeePerGas == nil {\n\t\treturn *new(ethtypes.EthBigInt), ErrNotSupported\n\t}\n\treturn s.Internal.EthMaxPriorityFeePerGas(p0)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [],
             "result": {
@@ -3920,13 +3960,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L576"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L1148"
             }
         },
         {
             "name": "Filecoin.EthNewBlockFilter",
-            "description": "```go\nfunc (s *FullNodeStruct) EthNewBlockFilter(p0 context.Context) (ethtypes.EthFilterID, error) {\n\tif s.Internal.EthNewBlockFilter == nil {\n\t\treturn *new(ethtypes.EthFilterID), ErrNotSupported\n\t}\n\treturn s.Internal.EthNewBlockFilter(p0)\n}\n```",
-            "summary": "EthNewBlockFilter installs a persistent filter to notify when a new block arrives.\nMaps to JSON-RPC method: \"eth_newBlockFilter\".\n",
+            "description": "```go\nfunc (s *GatewayStruct) EthNewBlockFilter(p0 context.Context) (ethtypes.EthFilterID, error) {\n\tif s.Internal.EthNewBlockFilter == nil {\n\t\treturn *new(ethtypes.EthFilterID), ErrNotSupported\n\t}\n\treturn s.Internal.EthNewBlockFilter(p0)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [],
             "result": {
@@ -3958,13 +3998,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L587"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L1159"
             }
         },
         {
             "name": "Filecoin.EthNewFilter",
-            "description": "```go\nfunc (s *FullNodeStruct) EthNewFilter(p0 context.Context, p1 *ethtypes.EthFilterSpec) (ethtypes.EthFilterID, error) {\n\tif s.Internal.EthNewFilter == nil {\n\t\treturn *new(ethtypes.EthFilterID), ErrNotSupported\n\t}\n\treturn s.Internal.EthNewFilter(p0, p1)\n}\n```",
-            "summary": "EthNewFilter installs a persistent filter based on given filter specification.\nMaps to JSON-RPC method: \"eth_newFilter\".\n",
+            "description": "```go\nfunc (s *GatewayStruct) EthNewFilter(p0 context.Context, p1 *ethtypes.EthFilterSpec) (ethtypes.EthFilterID, error) {\n\tif s.Internal.EthNewFilter == nil {\n\t\treturn *new(ethtypes.EthFilterID), ErrNotSupported\n\t}\n\treturn s.Internal.EthNewFilter(p0, p1)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -4066,13 +4106,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L598"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L1170"
             }
         },
         {
             "name": "Filecoin.EthNewPendingTransactionFilter",
-            "description": "```go\nfunc (s *FullNodeStruct) EthNewPendingTransactionFilter(p0 context.Context) (ethtypes.EthFilterID, error) {\n\tif s.Internal.EthNewPendingTransactionFilter == nil {\n\t\treturn *new(ethtypes.EthFilterID), ErrNotSupported\n\t}\n\treturn s.Internal.EthNewPendingTransactionFilter(p0)\n}\n```",
-            "summary": "EthNewPendingTransactionFilter installs a persistent filter to notify when new messages arrive\nin the message pool.\nMaps to JSON-RPC method: \"eth_newPendingTransactionFilter\".\n",
+            "description": "```go\nfunc (s *GatewayStruct) EthNewPendingTransactionFilter(p0 context.Context) (ethtypes.EthFilterID, error) {\n\tif s.Internal.EthNewPendingTransactionFilter == nil {\n\t\treturn *new(ethtypes.EthFilterID), ErrNotSupported\n\t}\n\treturn s.Internal.EthNewPendingTransactionFilter(p0)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [],
             "result": {
@@ -4104,13 +4144,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L609"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L1181"
             }
         },
         {
             "name": "Filecoin.EthProtocolVersion",
-            "description": "```go\nfunc (s *FullNodeStruct) EthProtocolVersion(p0 context.Context) (ethtypes.EthUint64, error) {\n\tif s.Internal.EthProtocolVersion == nil {\n\t\treturn *new(ethtypes.EthUint64), ErrNotSupported\n\t}\n\treturn s.Internal.EthProtocolVersion(p0)\n}\n```",
-            "summary": "EthProtocolVersion retrieves the Ethereum protocol version supported by the node.\nMaps to JSON-RPC method: \"eth_protocolVersion\".\n",
+            "description": "```go\nfunc (s *GatewayStruct) EthProtocolVersion(p0 context.Context) (ethtypes.EthUint64, error) {\n\tif s.Internal.EthProtocolVersion == nil {\n\t\treturn *new(ethtypes.EthUint64), ErrNotSupported\n\t}\n\treturn s.Internal.EthProtocolVersion(p0)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [],
             "result": {
@@ -4133,13 +4173,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L620"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L1192"
             }
         },
         {
             "name": "Filecoin.EthSendRawTransaction",
-            "description": "```go\nfunc (s *FullNodeStruct) EthSendRawTransaction(p0 context.Context, p1 ethtypes.EthBytes) (ethtypes.EthHash, error) {\n\tif s.Internal.EthSendRawTransaction == nil {\n\t\treturn *new(ethtypes.EthHash), ErrNotSupported\n\t}\n\treturn s.Internal.EthSendRawTransaction(p0, p1)\n}\n```",
-            "summary": "EthSendRawTransaction submits a raw Ethereum transaction to the network.\nMaps to JSON-RPC method: \"eth_sendRawTransaction\".\n",
+            "description": "```go\nfunc (s *GatewayStruct) EthSendRawTransaction(p0 context.Context, p1 ethtypes.EthBytes) (ethtypes.EthHash, error) {\n\tif s.Internal.EthSendRawTransaction == nil {\n\t\treturn *new(ethtypes.EthHash), ErrNotSupported\n\t}\n\treturn s.Internal.EthSendRawTransaction(p0, p1)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -4196,13 +4236,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L631"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L1203"
             }
         },
         {
             "name": "Filecoin.EthSendRawTransactionUntrusted",
-            "description": "```go\nfunc (s *FullNodeStruct) EthSendRawTransactionUntrusted(p0 context.Context, p1 ethtypes.EthBytes) (ethtypes.EthHash, error) {\n\tif s.Internal.EthSendRawTransactionUntrusted == nil {\n\t\treturn *new(ethtypes.EthHash), ErrNotSupported\n\t}\n\treturn s.Internal.EthSendRawTransactionUntrusted(p0, p1)\n}\n```",
-            "summary": "EthSendRawTransactionUntrusted submits a raw Ethereum transaction from an untrusted source.\n",
+            "description": "```go\nfunc (s *GatewayStruct) EthSendRawTransactionUntrusted(p0 context.Context, p1 ethtypes.EthBytes) (ethtypes.EthHash, error) {\n\tif s.Internal.EthSendRawTransactionUntrusted == nil {\n\t\treturn *new(ethtypes.EthHash), ErrNotSupported\n\t}\n\treturn s.Internal.EthSendRawTransactionUntrusted(p0, p1)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -4259,13 +4299,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L642"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L1214"
             }
         },
         {
             "name": "Filecoin.EthSubscribe",
-            "description": "```go\nfunc (s *FullNodeStruct) EthSubscribe(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthSubscriptionID, error) {\n\tif s.Internal.EthSubscribe == nil {\n\t\treturn *new(ethtypes.EthSubscriptionID), ErrNotSupported\n\t}\n\treturn s.Internal.EthSubscribe(p0, p1)\n}\n```",
-            "summary": "EthSubscribe subscribes to different event types using websockets.\nMaps to JSON-RPC method: \"eth_subscribe\".\n\neventTypes is one or more of:\n - newHeads: notify when new blocks arrive.\n - pendingTransactions: notify when new messages arrive in the message pool.\n - logs: notify new event logs that match a criteria\n\nparams contains additional parameters used with the log event type\nThe client will receive a stream of EthSubscriptionResponse values until EthUnsubscribe is called.\n",
+            "description": "```go\nfunc (s *GatewayStruct) EthSubscribe(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthSubscriptionID, error) {\n\tif s.Internal.EthSubscribe == nil {\n\t\treturn *new(ethtypes.EthSubscriptionID), ErrNotSupported\n\t}\n\treturn s.Internal.EthSubscribe(p0, p1)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -4322,13 +4362,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L653"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L1225"
             }
         },
         {
             "name": "Filecoin.EthSyncing",
-            "description": "```go\nfunc (s *FullNodeStruct) EthSyncing(p0 context.Context) (ethtypes.EthSyncingResult, error) {\n\tif s.Internal.EthSyncing == nil {\n\t\treturn *new(ethtypes.EthSyncingResult), ErrNotSupported\n\t}\n\treturn s.Internal.EthSyncing(p0)\n}\n```",
-            "summary": "EthSyncing checks if the node is currently syncing and returns the sync status.\nMaps to JSON-RPC method: \"eth_syncing\".\n",
+            "description": "```go\nfunc (s *GatewayStruct) EthSyncing(p0 context.Context) (ethtypes.EthSyncingResult, error) {\n\tif s.Internal.EthSyncing == nil {\n\t\treturn *new(ethtypes.EthSyncingResult), ErrNotSupported\n\t}\n\treturn s.Internal.EthSyncing(p0)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [],
             "result": {
@@ -4367,13 +4407,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L664"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L1236"
             }
         },
         {
             "name": "Filecoin.EthTraceBlock",
-            "description": "```go\nfunc (s *FullNodeStruct) EthTraceBlock(p0 context.Context, p1 string) ([]*ethtypes.EthTraceBlock, error) {\n\tif s.Internal.EthTraceBlock == nil {\n\t\treturn *new([]*ethtypes.EthTraceBlock), ErrNotSupported\n\t}\n\treturn s.Internal.EthTraceBlock(p0, p1)\n}\n```",
-            "summary": "EthTraceBlock returns an OpenEthereum-compatible trace of the given block.\nMaps to JSON-RPC method: \"trace_block\".\n\nTranslates Filecoin semantics into Ethereum semantics and traces both EVM and FVM calls.\n\nFeatures:\n\n- FVM actor create events, calls, etc. show up as if they were EVM smart contract events.\n- Native FVM call inputs are ABI-encoded (Solidity ABI) as if they were calls to a\n  `handle_filecoin_method(uint64 method, uint64 codec, bytes params)` function\n  (where `codec` is the IPLD codec of `params`).\n- Native FVM call outputs (return values) are ABI-encoded as `(uint32 exit_code, uint64\n  codec, bytes output)` where `codec` is the IPLD codec of `output`.\n\nLimitations (for now):\n\n1. Block rewards are not included in the trace.\n2. SELFDESTRUCT operations are not included in the trace.\n3. EVM smart contract \"create\" events always specify `0xfe` as the \"code\" for newly created EVM\n   smart contracts.\n",
+            "description": "```go\nfunc (s *GatewayStruct) EthTraceBlock(p0 context.Context, p1 string) ([]*ethtypes.EthTraceBlock, error) {\n\tif s.Internal.EthTraceBlock == nil {\n\t\treturn *new([]*ethtypes.EthTraceBlock), ErrNotSupported\n\t}\n\treturn s.Internal.EthTraceBlock(p0, p1)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -4489,13 +4529,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L675"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L1247"
             }
         },
         {
             "name": "Filecoin.EthTraceFilter",
-            "description": "```go\nfunc (s *FullNodeStruct) EthTraceFilter(p0 context.Context, p1 ethtypes.EthTraceFilterCriteria) ([]*ethtypes.EthTraceFilterResult, error) {\n\tif s.Internal.EthTraceFilter == nil {\n\t\treturn *new([]*ethtypes.EthTraceFilterResult), ErrNotSupported\n\t}\n\treturn s.Internal.EthTraceFilter(p0, p1)\n}\n```",
-            "summary": "EthTraceFilter returns traces matching the given filter criteria.\nMaps to JSON-RPC method: \"trace_filter\".\n",
+            "description": "```go\nfunc (s *GatewayStruct) EthTraceFilter(p0 context.Context, p1 ethtypes.EthTraceFilterCriteria) ([]*ethtypes.EthTraceFilterResult, error) {\n\tif s.Internal.EthTraceFilter == nil {\n\t\treturn *new([]*ethtypes.EthTraceFilterResult), ErrNotSupported\n\t}\n\treturn s.Internal.EthTraceFilter(p0, p1)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -4665,13 +4705,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L686"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L1258"
             }
         },
         {
             "name": "Filecoin.EthTraceReplayBlockTransactions",
-            "description": "```go\nfunc (s *FullNodeStruct) EthTraceReplayBlockTransactions(p0 context.Context, p1 string, p2 []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error) {\n\tif s.Internal.EthTraceReplayBlockTransactions == nil {\n\t\treturn *new([]*ethtypes.EthTraceReplayBlockTransaction), ErrNotSupported\n\t}\n\treturn s.Internal.EthTraceReplayBlockTransactions(p0, p1, p2)\n}\n```",
-            "summary": "EthTraceReplayBlockTransactions replays all transactions in a block returning the requested\ntraces for each transaction.\nMaps to JSON-RPC method: \"trace_replayBlockTransactions\".\n\nThe block can be identified by its number, hash or a special tag like \"latest\" or \"finalized\".\nThe `traceTypes` parameter allows filtering the traces based on their types.\n",
+            "description": "```go\nfunc (s *GatewayStruct) EthTraceReplayBlockTransactions(p0 context.Context, p1 string, p2 []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error) {\n\tif s.Internal.EthTraceReplayBlockTransactions == nil {\n\t\treturn *new([]*ethtypes.EthTraceReplayBlockTransaction), ErrNotSupported\n\t}\n\treturn s.Internal.EthTraceReplayBlockTransactions(p0, p1, p2)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -4820,13 +4860,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L697"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L1269"
             }
         },
         {
             "name": "Filecoin.EthTraceTransaction",
-            "description": "```go\nfunc (s *FullNodeStruct) EthTraceTransaction(p0 context.Context, p1 string) ([]*ethtypes.EthTraceTransaction, error) {\n\tif s.Internal.EthTraceTransaction == nil {\n\t\treturn *new([]*ethtypes.EthTraceTransaction), ErrNotSupported\n\t}\n\treturn s.Internal.EthTraceTransaction(p0, p1)\n}\n```",
-            "summary": "EthTraceTransaction returns an OpenEthereum-compatible trace of a specific transaction.\nMaps to JSON-RPC method: \"trace_transaction\".\n",
+            "description": "```go\nfunc (s *GatewayStruct) EthTraceTransaction(p0 context.Context, p1 string) ([]*ethtypes.EthTraceTransaction, error) {\n\tif s.Internal.EthTraceTransaction == nil {\n\t\treturn *new([]*ethtypes.EthTraceTransaction), ErrNotSupported\n\t}\n\treturn s.Internal.EthTraceTransaction(p0, p1)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -4942,13 +4982,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L708"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L1280"
             }
         },
         {
             "name": "Filecoin.EthUninstallFilter",
-            "description": "```go\nfunc (s *FullNodeStruct) EthUninstallFilter(p0 context.Context, p1 ethtypes.EthFilterID) (bool, error) {\n\tif s.Internal.EthUninstallFilter == nil {\n\t\treturn false, ErrNotSupported\n\t}\n\treturn s.Internal.EthUninstallFilter(p0, p1)\n}\n```",
-            "summary": "EthUninstallFilter uninstalls a filter with given id.\nMaps to JSON-RPC method: \"eth_uninstallFilter\".\n",
+            "description": "```go\nfunc (s *GatewayStruct) EthUninstallFilter(p0 context.Context, p1 ethtypes.EthFilterID) (bool, error) {\n\tif s.Internal.EthUninstallFilter == nil {\n\t\treturn false, ErrNotSupported\n\t}\n\treturn s.Internal.EthUninstallFilter(p0, p1)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -4996,13 +5036,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L719"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L1291"
             }
         },
         {
             "name": "Filecoin.EthUnsubscribe",
-            "description": "```go\nfunc (s *FullNodeStruct) EthUnsubscribe(p0 context.Context, p1 ethtypes.EthSubscriptionID) (bool, error) {\n\tif s.Internal.EthUnsubscribe == nil {\n\t\treturn false, ErrNotSupported\n\t}\n\treturn s.Internal.EthUnsubscribe(p0, p1)\n}\n```",
-            "summary": "EthUnsubscribe unsubscribes from a websocket subscription.\nMaps to JSON-RPC method: \"eth_unsubscribe\".\n",
+            "description": "```go\nfunc (s *GatewayStruct) EthUnsubscribe(p0 context.Context, p1 ethtypes.EthSubscriptionID) (bool, error) {\n\tif s.Internal.EthUnsubscribe == nil {\n\t\treturn false, ErrNotSupported\n\t}\n\treturn s.Internal.EthUnsubscribe(p0, p1)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -5050,13 +5090,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L730"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L1302"
             }
         },
         {
             "name": "Filecoin.FilecoinAddressToEthAddress",
-            "description": "```go\nfunc (s *FullNodeStruct) FilecoinAddressToEthAddress(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthAddress, error) {\n\tif s.Internal.FilecoinAddressToEthAddress == nil {\n\t\treturn *new(ethtypes.EthAddress), ErrNotSupported\n\t}\n\treturn s.Internal.FilecoinAddressToEthAddress(p0, p1)\n}\n```",
-            "summary": "FilecoinAddressToEthAddress converts any Filecoin address to an EthAddress.\n\nThis method supports all Filecoin address types:\n- \"f0\" and \"f4\" addresses: Converted directly.\n- \"f1\", \"f2\", and \"f3\" addresses: First converted to their corresponding \"f0\" ID address, then to an EthAddress.\n\nRequirements:\n- For \"f1\", \"f2\", and \"f3\" addresses, they must be instantiated on-chain, as \"f0\" ID addresses are only assigned to actors when they are created on-chain.\nThe simplest way to instantiate an address on chain is to send a transaction to the address.\n\nNote on chain reorganizations:\n\"f0\" ID addresses are not permanent and can be affected by chain reorganizations. To account for this,\nthe API includes a `blkNum` parameter, which specifies the block number that is used to determine the tipset state to use for converting an\n\"f1\"/\"f2\"/\"f3\" address to an \"f0\" address. This parameter functions similarly to the `blkNum` parameter in the existing `EthGetBlockByNumber` API.\nSee https://docs.alchemy.com/reference/eth-getblockbynumber for more details.\n\nParameters:\n- ctx: The context for the API call.\n- filecoinAddress: The Filecoin address to convert.\n- blkNum: The block number or state for the conversion. Defaults to \"finalized\" for maximum safety.\n  Possible values: \"pending\", \"latest\", \"finalized\", \"safe\", or a specific block number represented as hex.\n\nReturns:\n- The corresponding EthAddress.\n- An error if the conversion fails.\n",
+            "description": "```go\nfunc (s *GatewayStruct) FilecoinAddressToEthAddress(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthAddress, error) {\n\tif s.Internal.FilecoinAddressToEthAddress == nil {\n\t\treturn *new(ethtypes.EthAddress), ErrNotSupported\n\t}\n\treturn s.Internal.FilecoinAddressToEthAddress(p0, p1)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -5113,13 +5153,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L741"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L1313"
             }
         },
         {
             "name": "Filecoin.NetListening",
-            "description": "```go\nfunc (s *FullNodeStruct) NetListening(p0 context.Context) (bool, error) {\n\tif s.Internal.NetListening == nil {\n\t\treturn false, ErrNotSupported\n\t}\n\treturn s.Internal.NetListening(p0)\n}\n```",
-            "summary": "NetListening checks if the node is actively listening for network connections.\nMaps to JSON-RPC method: \"net_listening\".\n",
+            "description": "```go\nfunc (s *GatewayStruct) NetListening(p0 context.Context) (bool, error) {\n\tif s.Internal.NetListening == nil {\n\t\treturn false, ErrNotSupported\n\t}\n\treturn s.Internal.NetListening(p0)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [],
             "result": {
@@ -5140,13 +5180,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L752"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L1324"
             }
         },
         {
             "name": "Filecoin.NetVersion",
-            "description": "```go\nfunc (s *FullNodeStruct) NetVersion(p0 context.Context) (string, error) {\n\tif s.Internal.NetVersion == nil {\n\t\treturn \"\", ErrNotSupported\n\t}\n\treturn s.Internal.NetVersion(p0)\n}\n```",
-            "summary": "NetVersion retrieves the current network ID.\nMaps to JSON-RPC method: \"net_version\".\n",
+            "description": "```go\nfunc (s *GatewayStruct) NetVersion(p0 context.Context) (string, error) {\n\tif s.Internal.NetVersion == nil {\n\t\treturn \"\", ErrNotSupported\n\t}\n\treturn s.Internal.NetVersion(p0)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [],
             "result": {
@@ -5167,13 +5207,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L763"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L1335"
             }
         },
         {
             "name": "Filecoin.StateGetActor",
-            "description": "```go\nfunc (s *FullNodeStruct) StateGetActor(p0 context.Context, p1 address.Address, p2 types.TipSetSelector) (*types.Actor, error) {\n\tif s.Internal.StateGetActor == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.StateGetActor(p0, p1, p2)\n}\n```",
-            "summary": "StateGetActor retrieves the actor information for the specified address at the\nselected tipset.\n\nThis function returns the on-chain Actor object including:\n  - Code CID (determines the actor's type)\n  - State root CID\n  - Balance in attoFIL\n  - Nonce (for account actors)\n\nThe TipSetSelector parameter provides flexible options for selecting the tipset:\n  - TipSetSelectors.Latest: the most recent tipset with the heaviest weight\n  - TipSetSelectors.Finalized: the most recent finalized tipset\n  - TipSetSelectors.Height(epoch, previous, anchor): tipset at the specified height\n  - TipSetSelectors.Key(key): tipset with the specified key\n\nSee types.TipSetSelector documentation for additional details.\n\nIf the actor does not exist at the specified tipset, this function returns nil.\n\nExperimental: This API is experimental and may change without notice.\n",
+            "description": "```go\nfunc (s *GatewayStruct) StateGetActor(p0 context.Context, p1 address.Address, p2 types.TipSetSelector) (*types.Actor, error) {\n\tif s.Internal.StateGetActor == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.StateGetActor(p0, p1, p2)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -5297,13 +5337,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L774"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L1346"
             }
         },
         {
             "name": "Filecoin.StateGetID",
-            "description": "```go\nfunc (s *FullNodeStruct) StateGetID(p0 context.Context, p1 address.Address, p2 types.TipSetSelector) (*address.Address, error) {\n\tif s.Internal.StateGetID == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.StateGetID(p0, p1, p2)\n}\n```",
-            "summary": "StateGetID retrieves the ID address for the specified address at the selected tipset.\n\nEvery actor on the Filecoin network has a unique ID address (format: f0123).\nThis function resolves any address type (ID, robust, or delegated) to its canonical\nID address representation at the specified tipset.\n\nThe function is particularly useful for:\n  - Normalizing different address formats to a consistent representation\n  - Following address changes across state transitions\n  - Verifying that an address corresponds to an existing actor\n\nThe TipSetSelector parameter provides flexible options for selecting the tipset.\nSee StateGetActor documentation for details on selection options.\n\nIf the address cannot be resolved at the specified tipset, this function returns nil.\n\nExperimental: This API is experimental and may change without notice.\n",
+            "description": "```go\nfunc (s *GatewayStruct) StateGetID(p0 context.Context, p1 address.Address, p2 types.TipSetSelector) (*address.Address, error) {\n\tif s.Internal.StateGetID == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.StateGetID(p0, p1, p2)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -5395,13 +5435,13 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L785"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L1357"
             }
         },
         {
             "name": "Filecoin.Web3ClientVersion",
-            "description": "```go\nfunc (s *FullNodeStruct) Web3ClientVersion(p0 context.Context) (string, error) {\n\tif s.Internal.Web3ClientVersion == nil {\n\t\treturn \"\", ErrNotSupported\n\t}\n\treturn s.Internal.Web3ClientVersion(p0)\n}\n```",
-            "summary": "Web3ClientVersion returns the client version.\nMaps to JSON-RPC method: \"web3_clientVersion\".\n",
+            "description": "```go\nfunc (s *GatewayStruct) Web3ClientVersion(p0 context.Context) (string, error) {\n\tif s.Internal.Web3ClientVersion == nil {\n\t\treturn \"\", ErrNotSupported\n\t}\n\treturn s.Internal.Web3ClientVersion(p0)\n}\n```",
+            "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [],
             "result": {
@@ -5422,7 +5462,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L796"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L1368"
             }
         }
     ]
