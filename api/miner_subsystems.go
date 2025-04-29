@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"slices"
 )
 
 // MinerSubsystem represents a miner subsystem. Int and string values are not
@@ -57,12 +58,7 @@ func (ms *MinerSubsystem) UnmarshalJSON(b []byte) error {
 type MinerSubsystems []MinerSubsystem
 
 func (ms MinerSubsystems) Has(entry MinerSubsystem) bool {
-	for _, v := range ms {
-		if v == entry {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(ms, entry)
 }
 
 func (ms MinerSubsystem) String() string {

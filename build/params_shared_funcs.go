@@ -2,6 +2,7 @@ package build
 
 import (
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -107,22 +108,12 @@ func parseF3DisableActivationEnv() (contractAddrs []string, epochs []int64) {
 // epoch number based on environment variable configuration.
 func IsF3EpochActivationDisabled(epoch int64) bool {
 	_, epochs := parseF3DisableActivationEnv()
-	for _, e := range epochs {
-		if e == epoch {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(epochs, epoch)
 }
 
 // IsF3ContractActivationDisabled checks if F3 activation is disabled for the given contract address
 // based on environment variable configuration.
 func IsF3ContractActivationDisabled(contract string) bool {
 	contracts, _ := parseF3DisableActivationEnv()
-	for _, c := range contracts {
-		if c == contract {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(contracts, contract)
 }
