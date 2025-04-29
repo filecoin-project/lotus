@@ -16,7 +16,6 @@
 - feat: fall back to EC if F3 finalized tipeset is older than 900 epochs ([filecoin-project/lotus#13066](https://github.com/filecoin-project/lotus/pull/13066))
 - feat: fall back to EC finalized tipset if F3 is too far behind in eth APIs ([filecoin-project/lotus#13070](https://github.com/filecoin-project/lotus/pull/13070))
 - feat: expose `/v2` APIs through Lotus Gateway ([filecoin-project/lotus#13075](https://github.com/filecoin-project/lotus/pull/13075))
-- feat: set F3 initial power table for mainnet ([filecoin-project/lotus#13077](https://github.com/filecoin-project/lotus/pull/13077))
 
 ### Experimental v2 APIs with F3 awareness
 
@@ -46,6 +45,21 @@ Lotus now offers two versions of its Ethereum-compatible APIs (`eth_*`, `trace_*
   * Methods accepting `BlockNumberOrHash` now support all standard tags (`"pending"`, `"latest"`, `"safe"`, `"finalized"`). This includes `eth_estimateGas`, `eth_call`, `eth_getCode`, `eth_getStorageAt`, `eth_getBalance`, `eth_getTransactionCount`, and `eth_getBlockReceipts`.
   * Removed internal `Eth*Limited` methods (e.g., `EthGetTransactionByHashLimited`) from the supported gateway API surface.
   * Improved error handling: block selection endpoints now consistently return `ErrNullRound` (and corresponding JSONRPC errors) for null tipsets.
+
+# Node v1.32.3 / 2025-04-29
+
+This Node v1.32.3 patch release contains a critical update for all node operators. This release ensures that the F3 initial power table CID is correctly set in your Lotus node now that F3 is enabled on Mainnet. All node operators must upgrade to this release before their next node restart to ensure proper F3 functionality.
+
+## ☢️ Upgrade Warnings ☢️
+- All node operators must upgrade to this release before their next node restart to ensure proper F3 functionality. Storage providers only needs to upgrade their Lotus chain node to this release.
+
+## 📝 Changelog
+
+- feat: set F3 initial power table for mainnet ([filecoin-project/lotus#13077](https://github.com/filecoin-project/lotus/pull/13077))
+
+For the set of changes since the last stable release:
+
+- Node: https://github.com/filecoin-project/lotus/compare/v1.31.2...v1.32.3
 
 # Node and Miner v1.32.2 / 2025-04-04
 
