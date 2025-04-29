@@ -9,7 +9,20 @@
 
 # UNRELEASED
 
+# Node v1.32.3 / 2025-04-29
+
+This Node v1.32.3 patch release contains a critical update for all node operators. This release ensures that the F3 initial power table CID is correctly set in your Lotus node now that F3 is enabled on Mainnet. All node operators must upgrade to this release before their next node restart to ensure proper F3 functionality.
+
+## ☢️ Upgrade Warnings ☢️
+- All node operators must upgrade to this release before their next node restart to ensure proper F3 functionality. Storage providers only needs to upgrade their Lotus chain node to this release.
+
+## 📝 Changelog
+
 - feat: set F3 initial power table for mainnet ([filecoin-project/lotus#13077](https://github.com/filecoin-project/lotus/pull/13077))
+
+For the set of changes since the last stable release:
+
+- Node: https://github.com/filecoin-project/lotus/compare/v1.31.2...v1.32.3
 
 # Node and Miner v1.32.2 / 2025-04-04
 
