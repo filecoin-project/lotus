@@ -535,7 +535,7 @@ var f3FlagOutput = &cli.StringFlag{
 	Value: "text",
 	Action: func(cctx *cli.Context, output string) error {
 		switch output {
-		case "text", "json":
+		case "text", "json", "signers":
 			return nil
 		default:
 			return fmt.Errorf("unknown output format: %s", output)
