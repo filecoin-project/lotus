@@ -49,7 +49,7 @@
 # ✅ Release Checklist
 
 ## ⬅️  Before RC1
-<details one>
+<details open>
   <summary>Section</summary>
 
 <!--{{if ne .NetworkUpgrade ""}}-->
@@ -123,7 +123,6 @@
 <!--  {{end}}-->
 
 #### Release PR for {{$rc}}
-
 - [ ] Update the version string(s) in `build/version.go` to one {{if contains "rc" $rc}}ending with '-{{$rc}}'{{else}}**NOT* ending with 'rcX'{{end}}.
 <!--  {{if contains "Node" $.Type}}-->
     - Ensure to update `NodeBuildVersion`
@@ -168,7 +167,7 @@
 
 ## ➡ Post-Release
 <details>
-  <summary open>Section</summary>
+  <summary>Section</summary>
 
 - [ ] Open a PR against `master` cherry-picking the CHANGELOG commits from the `release/v{{.Tag}}` branch. Title it `chore(release): cherry-pick v{{.Tag}} changelog back to master`
    - Link to PR:
