@@ -194,7 +194,7 @@ var WhitelistedBlock = cid.MustParse("bafy2bzaceapyg2uyzk7vueh3xccxkuwbz3nxewjyg
 var F3ManifestServerID = MustParseID("12D3KooWENMwUF9YxvQxar7uBWJtZkA6amvK4xWmKXfSiHUo2Qq7")
 
 // The initial F3 power table CID.
-var F3InitialPowerTableCID = cid.Undef
+var F3InitialPowerTableCID = cid.MustParse("bafy2bzacecklgxd2eksmodvhgurqvorkg3wamgqkrunir3al2gchv2cikgmbu")
 
 const F3Enabled = true
 const F3BootstrapEpoch abi.ChainEpoch = -1
