@@ -352,7 +352,7 @@ var f3SubCmdCerts = &cli.Command{
 					return nil
 				}
 
-				return outputFinalityCertificate(cctx, cert)
+				return outputFinalityCertificate(cctx, api, cert)
 			},
 		},
 		{
@@ -363,14 +363,14 @@ By default the certificates are listed in newest to oldest order,
 i.e. descending instance IDs. The order may be reversed using the
 '--reverse' flag.
 
-A range may optionally be specified as the first argument to indicate 
+A range may optionally be specified as the first argument to indicate
 inclusive range of 'from' and 'to' instances in following notation:
 '<from>..<to>'. Either <from> or <to> may be omitted, but not both.
 An omitted <from> value is always interpreted as 0, and an omitted
 <to> value indicates the latest instance. If both are specified, <from>
 must never exceed <to>.
 
-If no range is specified, the latest 10 certificates are listed, i.e. 
+If no range is specified, the latest 10 certificates are listed, i.e.
 the range of '0..' with limit of 10. Otherwise, all certificates in
 the specified range are listed unless limit is explicitly specified.
 
@@ -451,7 +451,7 @@ Examples:
 						// certstore should to have all the certs. Error out.
 						return fmt.Errorf("nil finality certificate for instance %d", next)
 					}
-					if err := outputFinalityCertificate(cctx, cert); err != nil {
+					if err := outputFinalityCertificate(cctx, api, cert); err != nil {
 						return err
 					}
 					_, _ = fmt.Fprintln(cctx.App.Writer)
@@ -605,7 +605,7 @@ func f3GetPowerTableTSKByInstance(ctx context.Context, api v1api.FullNode, insta
 	return ltsk, previous.SupplementalData.PowerTable, nil
 }
 
-func outputFinalityCertificate(cctx *cli.Context, cert *certs.FinalityCertificate) error {
+func outputFinalityCertificate(cctx *cli.Context, api v1api.FullNode, cert *certs.FinalityCertificate) error {
 
 	switch output := cctx.String(f3FlagOutput.Name); strings.ToLower(output) {
 	case "text":
@@ -614,6 +614,42 @@ func outputFinalityCertificate(cctx *cli.Context, cert *certs.FinalityCertificat
 		encoder := json.NewEncoder(cctx.App.Writer)
 		encoder.SetIndent("", "  ")
 		return encoder.Encode(cert)
+	case "signers":
+		instance := cert.GPBFTInstance
+		ltsk, expectedPowerTableCID, err := f3GetPowerTableTSKByInstance(cctx.Context, api, instance)
+		if err != nil {
+			return fmt.Errorf("getting power table tsk for instance %d: %w", instance, err)
+		}
+		powerEntries, err := api.F3GetF3PowerTable(cctx.Context, ltsk)
+
+		if err != nil {
+			return fmt.Errorf("getting f3 power table at instance %d: %w", instance, err)
+		}
+		actualPowerTableCID, err := certs.MakePowerTableCID(powerEntries)
+		if err != nil {
+			return fmt.Errorf("gettingh power table CID at instance %d: %w", instance, err)
+		}
+		if !cid.Undef.Equals(expectedPowerTableCID) && !expectedPowerTableCID.Equals(actualPowerTableCID) {
+			return fmt.Errorf("expected power table CID %s at instance %d, got: %s", expectedPowerTableCID, instance, actualPowerTableCID)
+		}
+
+		var participants []address.Address
+		err = cert.Signers.ForEach(func(idx uint64) error {
+			if idx >= uint64(len(powerEntries)) {
+				return fmt.Errorf("signer index %d out of range for power entries", idx)
+			}
+			pe := powerEntries[int(idx)]
+			addr, err := address.NewIDAddress(uint64(pe.ID))
+			if err != nil {
+				return fmt.Errorf("converting actor ID to address: %w", err)
+			}
+			participants = append(participants, addr)
+			return nil
+		})
+		for _, addr := range participants {
+			_, _ = fmt.Fprintf(cctx.App.Writer, "%s\n", addr)
+		}
+		return nil
 	default:
 		return fmt.Errorf("unknown output format: %s", output)
 	}
