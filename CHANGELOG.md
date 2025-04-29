@@ -9,6 +9,8 @@
 
 # UNRELEASED
 
+- feat: set F3 initial power table for mainnet ([filecoin-project/lotus#13077](https://github.com/filecoin-project/lotus/pull/13077))
+
 # Node and Miner v1.32.2 / 2025-04-04
 
 This Lotus v1.32.2 release is a **MANDATORY patch release**. After the Calibration network upgraded to nv25, a bug was discovered in the ref-fvm KAMT library affecting ERC-20 token minting operations. You can read the the full techincal breakdown of the issue [here](https://github.com/filecoin-project/builtin-actors/pull/1667).
@@ -63,7 +65,7 @@ The Lotus v1.32.1 release is a **MANDATORY patch release**, which will deliver t
 - The minimum supported Golang version is now `1.23.6` ([filecoin-project/lotus#12910](https://github.com/filecoin-project/lotus/pull/12910)).
 - The `SupportedProofTypes` field has been removed from the `Filecoin.StateGetNetworkParams` method because it was frequently overlooked during proof type updates and did not accurately reflect the FVM's supported proofs ([filecoin-project/lotus#12881](https://github.com/filecoin-project/lotus/pull/12881)).
 - Introduced `Agent` field to the `Filecoin.Version` response. Note that this change may be breaking, depending on the clients deserialization capabilities. ([filecoin-project/lotus#12904](https://github.com/filecoin-project/lotus/pull/12904)).
-- The `--only-cc` option has been removed from the `lotus-miner sectors extend` command. 
+- The `--only-cc` option has been removed from the `lotus-miner sectors extend` command.
 
 ## 🏛️ Filecoin network version 25 FIPs
 
@@ -117,7 +119,7 @@ For certain node operators, such as full archival nodes or systems that need to 
 - chore: switch to pure-go zstd decoder for snapshot imports.  ([filecoin-project/lotus#12857](https://github.com/filecoin-project/lotus/pull/12857))
 - chore: upgrade go-state-types with big.Int{} change that means an empty big.Int is now treated as zero for all operations ([filecoin-project/lotus#12936](https://github.com/filecoin-project/lotus/pull/12936))
 - chore(eth): make `EthGetBlockByNumber` & `EthGetBlockByHash` share the same cache and be impacted by `EthBlkCacheSize` config settings ([filecoin-project/lotus#12979](https://github.com/filecoin-project/lotus/pull/12979))
-- chore(deps): bump go-state-types to v0.16.0-rc8 ([filecoin-project/lotus#12973](https://github.com/filecoin-project/lotus/pull/12973))  
+- chore(deps): bump go-state-types to v0.16.0-rc8 ([filecoin-project/lotus#12973](https://github.com/filecoin-project/lotus/pull/12973))
 - chore: set Mainnet nv25 upgrade epoch and update deps ([filecoin-project/lotus#12986](https://github.com/filecoin-project/lotus/pull/12986))
 - chore(eth): make EthGetBlockByNumber & EthGetBlockByHash share cache code ([filecoin-project/lotus#12979](https://github.com/filecoin-project/lotus/pull/12979))
 
@@ -185,7 +187,7 @@ This is the stable release of the **upcoming MANDATORY Lotus v1.32.0 release**, 
 - The minimum supported Golang version is now `1.23.6` ([filecoin-project/lotus#12910](https://github.com/filecoin-project/lotus/pull/12910)).
 - The `SupportedProofTypes` field has been removed from the `Filecoin.StateGetNetworkParams` method because it was frequently overlooked during proof type updates and did not accurately reflect the FVM's supported proofs ([filecoin-project/lotus#12881](https://github.com/filecoin-project/lotus/pull/12881)).
 - Introduced `Agent` field to the `Filecoin.Version` response. Note that this change may be breaking, depending on the clients deserialization capabilities. ([filecoin-project/lotus#12904](https://github.com/filecoin-project/lotus/pull/12904)).
-- The `--only-cc` option has been removed from the `lotus-miner sectors extend` command. 
+- The `--only-cc` option has been removed from the `lotus-miner sectors extend` command.
 
 ## 🏛️ Filecoin network version 25 FIPs
 
@@ -238,7 +240,7 @@ For certain node operators, such as full archival nodes or systems that need to 
 - chore: switch to pure-go zstd decoder for snapshot imports.  ([filecoin-project/lotus#12857](https://github.com/filecoin-project/lotus/pull/12857))
 - chore: upgrade go-state-types with big.Int{} change that means an empty big.Int is now treated as zero for all operations ([filecoin-project/lotus#12936](https://github.com/filecoin-project/lotus/pull/12936))
 - chore(eth): make `EthGetBlockByNumber` & `EthGetBlockByHash` share the same cache and be impacted by `EthBlkCacheSize` config settings ([filecoin-project/lotus#12979](https://github.com/filecoin-project/lotus/pull/12979))
-- chore(deps): bump go-state-types to v0.16.0-rc8 ([filecoin-project/lotus#12973](https://github.com/filecoin-project/lotus/pull/12973))  
+- chore(deps): bump go-state-types to v0.16.0-rc8 ([filecoin-project/lotus#12973](https://github.com/filecoin-project/lotus/pull/12973))
 - chore: set Mainnet nv25 upgrade epoch and update deps ([filecoin-project/lotus#12986](https://github.com/filecoin-project/lotus/pull/12986))
 - chore(eth): make EthGetBlockByNumber & EthGetBlockByHash share cache code ([filecoin-project/lotus#12979](https://github.com/filecoin-project/lotus/pull/12979))
 
