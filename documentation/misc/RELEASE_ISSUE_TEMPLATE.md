@@ -159,11 +159,12 @@
     - Link to issue comment:
 
 #### Testing for {{$rc}}
+
 > [!NOTE]
 > Link to any special steps for testing releases beyond ensuring CI is green.  Steps can be inlined here or tracked elsewhere.
 
-<!--{{end}}-->
 </details>
+<!--{{end}}-->
 
 ## ➡ Post-Release
 <details>
