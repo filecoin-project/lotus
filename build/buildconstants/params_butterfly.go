@@ -4,6 +4,8 @@
 package buildconstants
 
 import (
+	_ "embed"
+
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
@@ -108,6 +110,9 @@ const Eip155ChainId = 3141592
 var WhitelistedBlock = cid.Undef
 
 const F3Enabled = true
+
+//go:embed f3manifest_2k.json
+var F3ManifestBytes []byte
 
 var F3ManifestServerID = MustParseID("12D3KooWJr9jy4ngtJNR7JC1xgLFra3DjEtyxskRYWvBK9TC3Yn6")
 
