@@ -647,7 +647,7 @@ func outputFinalityCertificate(cctx *cli.Context, api v1api.FullNode, cert *cert
 			return nil
 		})
 		for _, addr := range participants {
-			_, _ = fmt.Fprintf(cctx.App.Writer, "%s\n", addr)
+			_, _ = fmt.Fprintf(cctx.App.Writer, "%d, %s\n", cert.GPBFTInstance, addr)
 		}
 		return nil
 	default:
