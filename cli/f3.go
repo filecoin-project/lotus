@@ -651,6 +651,7 @@ func outputFinalityCertificate(cctx *cli.Context, api v1api.FullNode, cert *cert
 		}
 		return nil
 	default:
+		fmt.Printf("unknown output format: '%s'\n", output)
 		return fmt.Errorf("unknown output format: %s", output)
 	}
 }
