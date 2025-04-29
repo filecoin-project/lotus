@@ -20,7 +20,26 @@ This directory contains the experimental user-facing documentation for Filecoin'
 - `api-v2-experimental.md`: The main user facing documentation file that is copied to Notion.
 - Related code: `api/v2api/full.go` (API implementation)
 - Related code: `chain/types/tipset_selector.go` (Key types)
+- Related code: `node/impl/eth/api.go` (ETH V2 API implementation)
+- Related code: `node/impl/eth/tipsetresolver.go` (ETH block specifier to tipset conversion)
+- Related code: `node/impl/eth/filecoin.go` (Filecoin-specific ETH methods)
 - Generated docs: `documentation/en/api-v2-unstable-methods.md`
+
+## ETH V2 APIs Key Implementation Details
+
+The ETH V2 APIs implementation in PR #13026 introduces important changes to how block specifiers like "safe" and "finalized" work:
+
+1. **TipSet Resolution**: The file `node/impl/eth/tipsetresolver.go` contains the key logic for converting Ethereum block specifiers to Filecoin tipsets. The V2 implementation:
+   - Connects directly to the F3 subsystem for finality information
+   - Implements a more responsive definition of "safe" and "finalized" blocks
+   - Falls back gracefully to EC finality when F3 is not available
+
+2. **Block Handling**: In V2 ETH APIs, there's no longer a `-1` offset that was present in V1. This means:
+   - "latest" truly refers to the latest tipset (head)
+   - "safe" refers to either F3 finalized or head-200, whichever is more recent
+   - "finalized" directly maps to F3 finality when available
+
+3. **Request Path**: Requests to `/v2` ETH endpoints are processed through dedicated handlers that use the F3-aware tipset resolution logic, offering faster confirmation times.
 
 ## Commands
 
