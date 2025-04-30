@@ -26,6 +26,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
+	"github.com/filecoin-project/lotus/api/v2api"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
@@ -262,16 +263,18 @@ func startNodes(ctx context.Context, t *testing.T, opts ...startOption) *testNod
 	api.RunningNodeType = api.NodeFull
 
 	// Create a gateway server in front of the full node
-	ethSubHandler := gateway.NewEthSubHandler()
+	v1EthSubHandler := gateway.NewEthSubHandler()
+	v2EthSubHandler := gateway.NewEthSubHandler()
 	gwapi := gateway.NewNode(
 		full,
-		gateway.WithEthSubHandler(ethSubHandler),
+		full.V2,
+		gateway.WithV1EthSubHandler(v1EthSubHandler),
+		gateway.WithV2EthSubHandler(v2EthSubHandler),
 		gateway.WithMaxLookbackDuration(options.lookbackCap),
 		gateway.WithMaxMessageLookbackEpochs(options.maxMessageLookbackEpochs),
 	)
 	handler, err := gateway.Handler(
 		gwapi,
-		full,
 		gateway.WithPerConnectionAPIRateLimit(options.perConnectionAPIRateLimit),
 		gateway.WithPerHostConnectionsPerMinute(options.perHostConnectionsPerMinute),
 	)
@@ -284,22 +287,31 @@ func startNodes(ctx context.Context, t *testing.T, opts ...startOption) *testNod
 	srv, _, _ := kit.CreateRPCServer(t, handler, l)
 
 	// Create a gateway client API that connects to the gateway server
-	var gapi api.Gateway
-	var rpcCloser jsonrpc.ClientCloser
-	gapi, rpcCloser, err = client.NewGatewayRPCV1(ctx, "ws://"+srv.Listener.Addr().String()+"/rpc/v1", nil,
-		jsonrpc.WithClientHandler("Filecoin", ethSubHandler),
+	gapiv1, v1RpcCloser, err := client.NewGatewayRPCV1(ctx, "ws://"+srv.Listener.Addr().String()+"/rpc/v1", nil,
+		jsonrpc.WithClientHandler("Filecoin", v1EthSubHandler),
+		jsonrpc.WithClientHandlerAlias("eth_subscription", "Filecoin.EthSubscription"),
+	)
+	require.NoError(t, err)
+	gapiv2, v2RpcCloser, err := client.NewGatewayRPCV2(ctx, "ws://"+srv.Listener.Addr().String()+"/rpc/v2", nil,
+		jsonrpc.WithClientHandler("Filecoin", v2EthSubHandler),
 		jsonrpc.WithClientHandlerAlias("eth_subscription", "Filecoin.EthSubscription"),
 	)
 	require.NoError(t, err)
 	var closeOnce sync.Once
-	closer := func() { closeOnce.Do(rpcCloser) }
+	closer := func() {
+		closeOnce.Do(func() {
+			v1RpcCloser()
+			v2RpcCloser()
+		})
+	}
 	t.Cleanup(closer)
 
 	nodeOpts := append([]kit.NodeOpt{
 		kit.LiteNode(),
 		kit.ThroughRPC(),
 		kit.ConstructorOpts(
-			node.Override(new(api.Gateway), gapi),
+			node.Override(new(api.Gateway), gapiv1),
+			node.Override(new(v2api.Gateway), gapiv2),
 		),
 	}, options.nodeOpts...)
 	ens.FullNode(&lite, nodeOpts...).Start().InterconnectAll()
@@ -396,7 +408,7 @@ func TestGatewayRateLimits(t *testing.T) {
 	jsonPayload := []byte(`{"method":"Filecoin.ChainHead","params":[],"id":1,"jsonrpc":"2.0"}`)
 	var failed bool
 	for i := 0; i < requestsPerMinute*2 && !failed; i++ {
-		status, body := makeManualRpcCall(t, client, nodes.gatewayAddr, string(jsonPayload))
+		status, body := makeManualRpcCall(t, 1, client, nodes.gatewayAddr, string(jsonPayload))
 		if http.StatusOK == status {
 			result := map[string]interface{}{}
 			req.NoError(json.Unmarshal([]byte(body), &result))
@@ -413,9 +425,9 @@ func TestGatewayRateLimits(t *testing.T) {
 	req.True(failed, "expected requests to fail due to rate limiting")
 }
 
-func makeManualRpcCall(t *testing.T, client *http.Client, gatewayAddr, payload string) (int, string) {
+func makeManualRpcCall(t *testing.T, version int, client *http.Client, gatewayAddr, payload string) (int, string) {
 	// not available over plain http
-	url := fmt.Sprintf("http://%s/rpc/v1", gatewayAddr)
+	url := fmt.Sprintf("http://%s/rpc/v%d", gatewayAddr, version)
 	request, err := http.NewRequest("POST", url, bytes.NewBuffer([]byte(payload)))
 	require.NoError(t, err)
 	request.Header.Set("Content-Type", "application/json")
@@ -435,43 +447,46 @@ func TestStatefulCallHandling(t *testing.T) {
 	nodes := startNodes(ctx, t)
 
 	t.Logf("Testing stateful call handling rejection via plain http")
-	for _, typ := range []string{
-		"EthNewBlockFilter",
-		"EthNewPendingTransactionFilter",
-		"EthNewFilter",
-		"EthGetFilterChanges",
-		"EthGetFilterLogs",
-		"EthUninstallFilter",
-		"EthSubscribe",
-		"EthUnsubscribe",
-	} {
-		params := ""
-		expErr := typ + " not supported: stateful methods are only available on websocket connections"
+	for version := range 3 {
+		for _, typ := range []string{
+			"EthNewBlockFilter",
+			"EthNewPendingTransactionFilter",
+			"EthNewFilter",
+			"EthGetFilterChanges",
+			"EthGetFilterLogs",
+			"EthUninstallFilter",
+			"EthSubscribe",
+			"EthUnsubscribe",
+		} {
+			params := ""
+			expErr := typ + " not supported: stateful methods are only available on websocket connections"
 
-		switch typ {
-		case "EthNewFilter":
-			params = "{}"
-		case "EthGetFilterChanges", "EthGetFilterLogs", "EthUninstallFilter", "EthUnsubscribe":
-			params = `"0x0000000000000000000000000000000000000000000000000000000000000000"`
-		case "EthSubscribe":
-			params = `"newHeads"`
-			expErr = "EthSubscribe not supported: connection doesn't support callbacks"
+			switch typ {
+			case "EthNewFilter":
+				params = "{}"
+			case "EthGetFilterChanges", "EthGetFilterLogs", "EthUninstallFilter", "EthUnsubscribe":
+				params = `"0x0000000000000000000000000000000000000000000000000000000000000000"`
+			case "EthSubscribe":
+				params = `"newHeads"`
+				expErr = "EthSubscribe not supported: connection doesn't support callbacks"
+			}
+
+			status, body := makeManualRpcCall(
+				t,
+				version,
+				&http.Client{},
+				nodes.gatewayAddr,
+				`{"method":"Filecoin.`+typ+`","params":[`+params+`],"id":1,"jsonrpc":"2.0"}`,
+			)
+
+			req.Equal(http.StatusOK, status, "not ok for "+typ)
+			req.Contains(body, `{"error":{"code":1,"message":"`+expErr+`"},"id":1,"jsonrpc":"2.0"}`, "unexpected response for "+typ)
 		}
-
-		status, body := makeManualRpcCall(
-			t,
-			&http.Client{},
-			nodes.gatewayAddr,
-			`{"method":"Filecoin.`+typ+`","params":[`+params+`],"id":1,"jsonrpc":"2.0"}`,
-		)
-
-		req.Equal(http.StatusOK, status, "not ok for "+typ)
-		req.Contains(body, `{"error":{"code":1,"message":"`+expErr+`"},"id":1,"jsonrpc":"2.0"}`, "unexpected response for "+typ)
 	}
 
 	t.Logf("Testing subscriptions")
 	// subscribe twice, so we can unsub one over ws to check unsub works, then unsub after ws close to
-	// check that auto-cleanup happned
+	// check that auto-cleanup happened
 	subId1, err := nodes.lite.EthSubscribe(ctx, res.Wrap[jsonrpc.RawParams](json.Marshal(ethtypes.EthSubscribeParams{EventType: "newHeads"})).Assert(req.NoError))
 	req.NoError(err)
 	err = nodes.lite.EthSubRouter.AddSub(ctx, subId1, func(ctx context.Context, resp *ethtypes.EthSubscriptionResponse) error {

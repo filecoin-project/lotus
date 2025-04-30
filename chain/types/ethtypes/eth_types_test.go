@@ -52,6 +52,10 @@ func TestEthIntUnmarshalJSON(t *testing.T) {
 		err := i.UnmarshalJSON(tc.Input.([]byte))
 		require.Nil(t, err)
 		require.Equal(t, tc.Output, i)
+
+		i, err = EthUint64FromString(strings.Replace(string(tc.Input.([]byte)), `"`, "", -1))
+		require.Nil(t, err)
+		require.Equal(t, tc.Output, i)
 	}
 }
 

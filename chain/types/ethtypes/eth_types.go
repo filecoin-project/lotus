@@ -45,6 +45,14 @@ var ErrInvalidAddress = errors.New("invalid Filecoin Eth address")
 // See https://github.com/filecoin-project/FIPs/blob/master/FRCs/frc-0089.md
 const SafeEpochDelay = abi.ChainEpoch(30)
 
+const (
+	BlockTagEarliest  = "earliest"
+	BlockTagPending   = "pending"
+	BlockTagLatest    = "latest"
+	BlockTagFinalized = "finalized"
+	BlockTagSafe      = "safe"
+)
+
 type EthUint64 uint64
 
 func (e EthUint64) MarshalJSON() ([]byte, error) {
@@ -61,8 +69,9 @@ func (e *EthUint64) UnmarshalJSON(b []byte) error {
 		base := 10
 		if strings.HasPrefix(s, "0x") {
 			base = 16
+			s = s[2:]
 		}
-		parsedInt, err := strconv.ParseUint(strings.Replace(s, "0x", "", -1), base, 64)
+		parsedInt, err := strconv.ParseUint(s, base, 64)
 		if err != nil {
 			return err
 		}
@@ -73,7 +82,7 @@ func (e *EthUint64) UnmarshalJSON(b []byte) error {
 		*e = EthUint64(eint)
 		return nil
 	}
-	return fmt.Errorf("cannot interpret %s as a hex-encoded uint64, or a number", string(b))
+	return xerrors.Errorf("cannot interpret %s as a hex-encoded uint64, or a number", string(b))
 }
 
 func EthUint64FromHex(s string) (EthUint64, error) {
@@ -82,6 +91,16 @@ func EthUint64FromHex(s string) (EthUint64, error) {
 		return EthUint64(0), err
 	}
 	return EthUint64(parsedInt), nil
+}
+
+// EthUint64FromString parses a uint64 from a string. It accepts both decimal and hex strings.
+func EthUint64FromString(s string) (EthUint64, error) {
+	var parsedInt EthUint64
+	err := parsedInt.UnmarshalJSON([]byte(`"` + s + `"`))
+	if err != nil {
+		return 0, err
+	}
+	return parsedInt, nil
 }
 
 // EthUint64FromBytes parses a uint64 from big-endian encoded bytes.
@@ -257,17 +276,17 @@ func (c *EthCall) ToFilecoinMessage() (*types.Message, error) {
 		var err error
 		from, err = (EthAddress{}).ToFilecoinAddress()
 		if err != nil {
-			return nil, fmt.Errorf("failed to construct the ethereum system address: %w", err)
+			return nil, xerrors.Errorf("failed to construct the ethereum system address: %w", err)
 		}
 	} else {
 		// The from address must be translatable to an f4 address.
 		var err error
 		from, err = c.From.ToFilecoinAddress()
 		if err != nil {
-			return nil, fmt.Errorf("failed to translate sender address (%s): %w", c.From.String(), err)
+			return nil, xerrors.Errorf("failed to translate sender address (%s): %w", c.From.String(), err)
 		}
 		if p := from.Protocol(); p != address.Delegated {
-			return nil, fmt.Errorf("expected a class 4 address, got: %d: %w", p, err)
+			return nil, xerrors.Errorf("expected a class 4 address, got: %d", p)
 		}
 	}
 
@@ -276,7 +295,7 @@ func (c *EthCall) ToFilecoinMessage() (*types.Message, error) {
 		initcode := abi.CborBytes(c.Data)
 		params2, err := actors.SerializeParams(&initcode)
 		if err != nil {
-			return nil, fmt.Errorf("failed to serialize params: %w", err)
+			return nil, xerrors.Errorf("failed to serialize params: %w", err)
 		}
 		params = params2
 	}
@@ -398,10 +417,10 @@ func EthAddressFromPubKey(pubk []byte) ([]byte, error) {
 	// but putting this check here for defensiveness), strip the prefix
 	const pubKeyLen = 65
 	if len(pubk) != pubKeyLen {
-		return nil, fmt.Errorf("public key should have %d in length, but got %d", pubKeyLen, len(pubk))
+		return nil, xerrors.Errorf("public key should have %d in length, but got %d", pubKeyLen, len(pubk))
 	}
 	if pubk[0] != 0x04 {
-		return nil, fmt.Errorf("expected first byte of secp256k1 to be 0x04 (uncompressed)")
+		return nil, xerrors.Errorf("expected first byte of secp256k1 to be 0x04 (uncompressed)")
 	}
 	pubk = pubk[1:]
 
@@ -523,7 +542,7 @@ func (ea EthAddress) ToFilecoinAddress() (address.Address, error) {
 	// Ethereum Address Manager.
 	addr, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, ea[:])
 	if err != nil {
-		return address.Undef, fmt.Errorf("failed to translate supplied address (%s) into a "+
+		return address.Undef, xerrors.Errorf("failed to translate supplied address (%s) into a "+
 			"Filecoin f4 address: %w", hex.EncodeToString(ea[:]), err)
 	}
 	return addr, nil
@@ -600,12 +619,12 @@ func handleHexStringPrefix(s string) string {
 func EthHashFromCid(c cid.Cid) (EthHash, error) {
 	hash, found := bytes.CutPrefix(c.Bytes(), expectedHashPrefix)
 	if !found {
-		return EthHash{}, fmt.Errorf("CID does not have the expected prefix")
+		return EthHash{}, xerrors.Errorf("CID does not have the expected prefix")
 	}
 
 	if len(hash) != EthHashLength {
 		// this shouldn't be possible since the prefix has the length, but just in case
-		return EthHash{}, fmt.Errorf("CID hash length is not 32 bytes")
+		return EthHash{}, xerrors.Errorf("CID hash length is not 32 bytes")
 	}
 
 	var h EthHash
@@ -1101,7 +1120,9 @@ func (e *EthBlockNumberOrHash) UnmarshalJSON(b []byte) error {
 	if err != nil {
 		return err
 	}
-	if str == "earliest" || str == "pending" || str == "latest" {
+
+	switch str {
+	case BlockTagEarliest, BlockTagPending, BlockTagLatest, BlockTagFinalized, BlockTagSafe:
 		e.PredefinedBlock = &str
 		return nil
 	}
@@ -1225,4 +1246,22 @@ type EthCreateTraceResult struct {
 	Address *EthAddress `json:"address,omitempty"`
 	GasUsed EthUint64   `json:"gasUsed"`
 	Code    EthBytes    `json:"code"`
+}
+
+type EthTxReceipt struct {
+	TransactionHash   EthHash     `json:"transactionHash"`
+	TransactionIndex  EthUint64   `json:"transactionIndex"`
+	BlockHash         EthHash     `json:"blockHash"`
+	BlockNumber       EthUint64   `json:"blockNumber"`
+	From              EthAddress  `json:"from"`
+	To                *EthAddress `json:"to"`
+	StateRoot         EthHash     `json:"root"`
+	Status            EthUint64   `json:"status"`
+	ContractAddress   *EthAddress `json:"contractAddress"`
+	CumulativeGasUsed EthUint64   `json:"cumulativeGasUsed"`
+	GasUsed           EthUint64   `json:"gasUsed"`
+	EffectiveGasPrice EthBigInt   `json:"effectiveGasPrice"`
+	LogsBloom         EthBytes    `json:"logsBloom"`
+	Logs              []EthLog    `json:"logs"`
+	Type              EthUint64   `json:"type"`
 }

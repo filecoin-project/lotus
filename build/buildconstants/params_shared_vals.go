@@ -103,3 +103,18 @@ const InitialBaseFee int64 = 100e6
 const MinimumBaseFee int64 = 100
 const PackingEfficiencyNum int64 = 4
 const PackingEfficiencyDenom int64 = 5
+
+// SafeHeightDistance is the distance from the latest tipset, i.e. heaviest, that
+// is considered to be safe from re-orgs at an increasingly diminishing
+// probability.
+//
+// This is used to determine the safe tipset when using the "safe" tag in
+// TipSetSelector or via Eth JSON-RPC APIs. Note that "safe" doesn't guarantee
+// finality, but rather a high probability of not being reverted. For guaranteed
+// finality, use the "finalized" tag.
+//
+// This constant is experimental and may change in the future.
+// Discussion on this current value and a tracking item to document the
+// probabilistic impact of various values is in
+// https://github.com/filecoin-project/go-f3/issues/944
+const SafeHeightDistance abi.ChainEpoch = 200

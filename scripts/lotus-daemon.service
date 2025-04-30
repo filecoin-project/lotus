@@ -10,6 +10,9 @@ ExecStart=/usr/local/bin/lotus daemon
 Restart=always
 RestartSec=10
 
+StartLimitIntervalSec=60s
+StartLimitBurst=4
+
 # If running a node in a shared, memory constrained environment, enable MemoryAccounting to put
 # pressure on allocations. This will slow the process down but keep it approximately within the
 # limit specified.
@@ -17,7 +20,7 @@ RestartSec=10
 #MemoryHigh=64G
 #MemoryMax=96G
 
-LimitNOFILE=8192:10240
+LimitNOFILE=8192:16384
 
 [Install]
 WantedBy=multi-user.target

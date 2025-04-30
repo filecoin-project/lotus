@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -26,7 +27,8 @@ type filterTrackerKeyType string
 
 const (
 	perConnectionAPIRateLimiterKey   perConnectionAPIRateLimiterKeyType = "limiter"
-	statefulCallTrackerKey           filterTrackerKeyType               = "statefulCallTracker"
+	statefulCallTrackerKeyV1         filterTrackerKeyType               = "statefulCallTrackerV1"
+	statefulCallTrackerKeyV2         filterTrackerKeyType               = "statefulCallTrackerV2"
 	connectionLimiterCleanupInterval                                    = 30 * time.Second
 )
 
@@ -82,7 +84,7 @@ func WithJsonrpcServerOptions(options ...jsonrpc.ServerOption) HandlerOption {
 // Handler returns a gateway http.Handler, to be mounted as-is on the server. The handler is
 // returned as a ShutdownHandler which allows for graceful shutdown of the handler via its
 // Shutdown method.
-func Handler(gwapi lapi.Gateway, api lapi.FullNode, options ...HandlerOption) (ShutdownHandler, error) {
+func Handler(gateway *Node, options ...HandlerOption) (ShutdownHandler, error) {
 	opts := &handlerOptions{}
 	for _, option := range options {
 		option(opts)
@@ -101,10 +103,12 @@ func Handler(gwapi lapi.Gateway, api lapi.FullNode, options ...HandlerOption) (S
 		m.Handle(path, rpcServer)
 	}
 
-	ma := proxy.MetricedGatewayAPI(gwapi)
-
-	serveRpc("/rpc/v1", ma)
-	serveRpc("/rpc/v0", lapi.Wrap(new(v1api.FullNodeStruct), new(v0api.WrapperV1Full), ma))
+	v2Gateway := proxy.MetricedGatewayV2API(gateway.V2ReverseProxy())
+	v1Gateway := proxy.MetricedGatewayAPI(gateway.V1ReverseProxy())
+	v0Gateway := lapi.Wrap(new(v1api.FullNodeStruct), new(v0api.WrapperV1Full), v1Gateway)
+	serveRpc("/rpc/v2", v2Gateway)
+	serveRpc("/rpc/v1", v1Gateway)
+	serveRpc("/rpc/v0", v0Gateway)
 
 	registry := promclient.DefaultRegisterer.(*promclient.Registry)
 	exporter, err := prometheus.NewExporter(prometheus.Options{
@@ -115,8 +119,8 @@ func Handler(gwapi lapi.Gateway, api lapi.FullNode, options ...HandlerOption) (S
 		return nil, err
 	}
 	m.Handle("/debug/metrics", exporter)
-	m.Handle("/health/livez", node.NewLiveHandler(api))
-	m.Handle("/health/readyz", node.NewReadyHandler(api))
+	m.Handle("/health/livez", node.NewLiveHandler(gateway.v1Proxy.server))
+	m.Handle("/health/readyz", node.NewReadyHandler(gateway.v1Proxy.server))
 	m.PathPrefix("/").Handler(http.DefaultServeMux)
 
 	handler := &statefulCallHandler{m}
@@ -140,7 +144,13 @@ func (h statefulCallHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		go tracker.cleanup()
 	}()
-	r = r.WithContext(context.WithValue(r.Context(), statefulCallTrackerKey, tracker))
+	if strings.HasPrefix(r.URL.Path, "/rpc/v2") {
+		// Scope v2 handling of stateful calls separately to avoid any accidental
+		// cross-contamination in request handling between the two.
+		r = r.WithContext(context.WithValue(r.Context(), statefulCallTrackerKeyV2, tracker))
+	} else {
+		r = r.WithContext(context.WithValue(r.Context(), statefulCallTrackerKeyV1, tracker))
+	}
 	h.next.ServeHTTP(w, r)
 }
 

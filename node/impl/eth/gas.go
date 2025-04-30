@@ -27,14 +27,6 @@ import (
 
 const maxEthFeeHistoryRewardPercentiles = 100
 
-type EthGasAPI interface {
-	EthGasPrice(ctx context.Context) (ethtypes.EthBigInt, error)
-	EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthFeeHistory, error)
-	EthMaxPriorityFeePerGas(ctx context.Context) (ethtypes.EthBigInt, error)
-	EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthUint64, error)
-	EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error)
-}
-
 var (
 	_ EthGasAPI = (*ethGas)(nil)
 	_ EthGasAPI = (*EthGasDisabled)(nil)
@@ -47,14 +39,23 @@ type ethGas struct {
 	stateManager StateManager
 	messagePool  MessagePool
 	gasApi       GasAPI
+
+	tipsetResolver TipSetResolver
 }
 
-func NewEthGasAPI(chainStore ChainStore, stateManager StateManager, messagePool MessagePool, gasApi GasAPI) EthGasAPI {
+func NewEthGasAPI(
+	chainStore ChainStore,
+	stateManager StateManager,
+	messagePool MessagePool,
+	gasApi GasAPI,
+	tipsetResolver TipSetResolver,
+) EthGasAPI {
 	return &ethGas{
-		chainStore:   chainStore,
-		stateManager: stateManager,
-		messagePool:  messagePool,
-		gasApi:       gasApi,
+		chainStore:     chainStore,
+		stateManager:   stateManager,
+		messagePool:    messagePool,
+		gasApi:         gasApi,
+		tipsetResolver: tipsetResolver,
 	}
 }
 
@@ -98,9 +99,9 @@ func (e *ethGas) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (ethtyp
 		}
 	}
 
-	ts, err := getTipsetByBlockNumber(ctx, e.chainStore, params.NewestBlkNum, false)
+	ts, err := e.tipsetResolver.GetTipsetByBlockNumber(ctx, params.NewestBlkNum, false)
 	if err != nil {
-		return ethtypes.EthFeeHistory{}, err
+		return ethtypes.EthFeeHistory{}, err // don't wrap, to preserve ErrNullRound
 	}
 
 	var (
@@ -199,9 +200,9 @@ func (e *ethGas) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (ethty
 	if params.BlkParam == nil {
 		ts = e.chainStore.GetHeaviestTipSet()
 	} else {
-		ts, err = getTipsetByEthBlockNumberOrHash(ctx, e.chainStore, *params.BlkParam)
+		ts, err = e.tipsetResolver.GetTipsetByBlockNumberOrHash(ctx, *params.BlkParam)
 		if err != nil {
-			return ethtypes.EthUint64(0), xerrors.Errorf("failed to process block param: %v; %w", params.BlkParam, err)
+			return ethtypes.EthUint64(0), err
 		}
 	}
 
@@ -242,9 +243,9 @@ func (e *ethGas) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam etht
 		return nil, xerrors.Errorf("failed to convert ethcall to filecoin message: %w", err)
 	}
 
-	ts, err := getTipsetByEthBlockNumberOrHash(ctx, e.chainStore, blkParam)
+	ts, err := e.tipsetResolver.GetTipsetByBlockNumberOrHash(ctx, blkParam)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to process block param: %v; %w", blkParam, err)
+		return nil, err // don't wrap, to preserve ErrNullRound
 	}
 
 	invokeResult, err := e.applyMessage(ctx, msg, ts.Key())

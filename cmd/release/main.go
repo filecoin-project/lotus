@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -94,12 +95,7 @@ func getBinaries(name string) []string {
 
 func isReleased(tag string) bool {
 	tags := getTags()
-	for _, t := range tags {
-		if t == tag {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(tags, tag)
 }
 
 func getPrefix(name string) string {

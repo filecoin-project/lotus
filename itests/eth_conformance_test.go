@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -99,6 +100,7 @@ func TestEthOpenRPCConformance(t *testing.T) {
 	require.NoError(t, err)
 
 	senderKey, senderEthAddr, senderFilAddr := client.EVM().NewAccount()
+	var senderEthNonce int
 	_, receiverEthAddr, _ := client.EVM().NewAccount()
 	kit.SendFunds(ctx, t, client, senderFilAddr, types.FromFil(1000))
 
@@ -119,8 +121,6 @@ func TestEthOpenRPCConformance(t *testing.T) {
 	uninstallableFilterID, err := client.EthNewFilter(ctx, filterAllLogs)
 	require.NoError(t, err)
 
-	rawSignedEthTx := createRawSignedEthTx(ctx, t, client, senderEthAddr, receiverEthAddr, senderKey, contractBin)
-
 	result := client.EVM().DeployContract(ctx, deployerAddr, contractBin)
 	contractAddr, err := address.NewIDAddress(result.ActorID)
 	require.NoError(t, err)
@@ -130,15 +130,17 @@ func TestEthOpenRPCConformance(t *testing.T) {
 	messageWithEvents, blockHashWithMessage, blockNumberWithMessage := waitForMessageWithEvents(ctx, t, client, deployerAddr, contractAddr)
 
 	// create a json-rpc client that returns raw json responses
-	var ethapi ethAPIRaw
+	var ethapi1, ethapi2 ethAPIRaw
 
 	netAddr, err := manet.ToNetAddr(client.ListenAddr)
 	require.NoError(t, err)
-	rpcAddr := "ws://" + netAddr.String() + "/rpc/v1"
-
-	closer, err := jsonrpc.NewClient(ctx, rpcAddr, "Filecoin", &ethapi, nil)
+	rpcAddr := "ws://" + netAddr.String() + "/rpc/v"
+	closer1, err := jsonrpc.NewClient(ctx, rpcAddr+"1", "Filecoin", &ethapi1, nil)
 	require.NoError(t, err)
-	defer closer()
+	defer closer1()
+	closer2, err := jsonrpc.NewClient(ctx, rpcAddr+"2", "Filecoin", &ethapi2, nil)
+	require.NoError(t, err)
+	defer closer2()
 
 	testCases := []struct {
 		method     string
@@ -151,14 +153,14 @@ func TestEthOpenRPCConformance(t *testing.T) {
 		{
 			method: "eth_accounts",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthAccounts(context.Background())
+				return a.EthAccounts(context.Background())
 			},
 		},
 
 		{
 			method: "eth_blockNumber",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthBlockNumber(context.Background())
+				return a.EthBlockNumber(context.Background())
 			},
 		},
 
@@ -166,7 +168,7 @@ func TestEthOpenRPCConformance(t *testing.T) {
 			method:  "eth_call",
 			variant: "latest",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthCall(context.Background(), ethtypes.EthCall{
+				return a.EthCall(context.Background(), ethtypes.EthCall{
 					From: &senderEthAddr,
 					Data: contractBin,
 				}, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
@@ -176,7 +178,7 @@ func TestEthOpenRPCConformance(t *testing.T) {
 		{
 			method: "eth_chainId",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthChainId(context.Background())
+				return a.EthChainId(context.Background())
 			},
 		},
 
@@ -189,21 +191,21 @@ func TestEthOpenRPCConformance(t *testing.T) {
 				}})
 				require.NoError(t, err)
 
-				return ethapi.EthEstimateGas(ctx, gasParams)
+				return a.EthEstimateGas(ctx, gasParams)
 			},
 		},
 
 		{
 			method: "eth_feeHistory",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthFeeHistory(context.Background(), ethtypes.EthUint64(2), "latest", nil)
+				return a.EthFeeHistory(context.Background(), ethtypes.EthUint64(2), "latest", nil)
 			},
 		},
 
 		{
 			method: "eth_gasPrice",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthGasPrice(context.Background())
+				return a.EthGasPrice(context.Background())
 			},
 		},
 
@@ -212,7 +214,7 @@ func TestEthOpenRPCConformance(t *testing.T) {
 			variant: "blocknumber",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
 				blockParam, _ := ethtypes.NewEthBlockNumberOrHashFromHexString("0x0")
-				return ethapi.EthGetBalance(context.Background(), contractEthAddr, blockParam)
+				return a.EthGetBalance(context.Background(), contractEthAddr, blockParam)
 			},
 		},
 
@@ -220,7 +222,7 @@ func TestEthOpenRPCConformance(t *testing.T) {
 			method:  "eth_getBlockByHash",
 			variant: "txhashes",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthGetBlockByHash(context.Background(), blockHashWithMessage, false)
+				return a.EthGetBlockByHash(context.Background(), blockHashWithMessage, false)
 			},
 		},
 
@@ -228,7 +230,7 @@ func TestEthOpenRPCConformance(t *testing.T) {
 			method:  "eth_getBlockByHash",
 			variant: "txfull",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthGetBlockByHash(context.Background(), blockHashWithMessage, true)
+				return a.EthGetBlockByHash(context.Background(), blockHashWithMessage, true)
 			},
 		},
 
@@ -236,7 +238,7 @@ func TestEthOpenRPCConformance(t *testing.T) {
 			method:  "eth_getBlockByNumber",
 			variant: "earliest",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthGetBlockByNumber(context.Background(), "earliest", true)
+				return a.EthGetBlockByNumber(context.Background(), "earliest", true)
 			},
 			skipReason: "earliest block is not supported",
 		},
@@ -244,21 +246,21 @@ func TestEthOpenRPCConformance(t *testing.T) {
 		{
 			method: "eth_getBlockByNumber",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthGetBlockByNumber(context.Background(), blockNumberWithMessage.Hex(), true)
+				return a.EthGetBlockByNumber(context.Background(), blockNumberWithMessage.Hex(), true)
 			},
 		},
 
 		{
 			method: "eth_getBlockTransactionCountByHash",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthGetBlockTransactionCountByHash(context.Background(), blockHashWithMessage)
+				return a.EthGetBlockTransactionCountByHash(context.Background(), blockHashWithMessage)
 			},
 		},
 
 		{
 			method: "eth_getBlockTransactionCountByNumber",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthGetBlockTransactionCountByNumber(context.Background(), blockNumberWithMessage)
+				return a.EthGetBlockTransactionCountByNumber(context.Background(), blockNumberWithMessage)
 			},
 		},
 
@@ -266,7 +268,7 @@ func TestEthOpenRPCConformance(t *testing.T) {
 			method:  "eth_getCode",
 			variant: "blocknumber",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthGetCode(context.Background(), contractEthAddr, ethtypes.NewEthBlockNumberOrHashFromNumber(blockNumberWithMessage))
+				return a.EthGetCode(context.Background(), contractEthAddr, ethtypes.NewEthBlockNumberOrHashFromNumber(blockNumberWithMessage))
 			},
 		},
 
@@ -304,7 +306,7 @@ func TestEthOpenRPCConformance(t *testing.T) {
 		{
 			method: "eth_getLogs",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthGetLogs(context.Background(), filterAllLogs)
+				return a.EthGetLogs(context.Background(), filterAllLogs)
 			},
 		},
 
@@ -313,28 +315,28 @@ func TestEthOpenRPCConformance(t *testing.T) {
 			variant: "blocknumber",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
 				blockParam, _ := ethtypes.NewEthBlockNumberOrHashFromHexString("0x0")
-				return ethapi.EthGetStorageAt(context.Background(), contractEthAddr, ethtypes.EthBytes{0}, blockParam)
+				return a.EthGetStorageAt(context.Background(), contractEthAddr, ethtypes.EthBytes{0}, blockParam)
 			},
 		},
 
 		{
 			method: "eth_getTransactionByBlockHashAndIndex",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthGetTransactionByBlockHashAndIndex(context.Background(), blockHashWithMessage, ethtypes.EthUint64(0))
+				return a.EthGetTransactionByBlockHashAndIndex(context.Background(), blockHashWithMessage, ethtypes.EthUint64(0))
 			},
 		},
 
 		{
 			method: "eth_getTransactionByBlockNumberAndIndex",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthGetTransactionByBlockNumberAndIndex(context.Background(), blockNumberWithMessage.Hex(), ethtypes.EthUint64(0))
+				return a.EthGetTransactionByBlockNumberAndIndex(context.Background(), blockNumberWithMessage.Hex(), ethtypes.EthUint64(0))
 			},
 		},
 
 		{
 			method: "eth_getTransactionByHash",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthGetTransactionByHash(context.Background(), &messageWithEvents)
+				return a.EthGetTransactionByHash(context.Background(), &messageWithEvents)
 			},
 		},
 
@@ -342,54 +344,56 @@ func TestEthOpenRPCConformance(t *testing.T) {
 			method:  "eth_getTransactionCount",
 			variant: "blocknumber",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthGetTransactionCount(context.Background(), senderEthAddr, ethtypes.NewEthBlockNumberOrHashFromNumber(blockNumberWithMessage))
+				return a.EthGetTransactionCount(context.Background(), senderEthAddr, ethtypes.NewEthBlockNumberOrHashFromNumber(blockNumberWithMessage))
 			},
 		},
 
 		{
 			method: "eth_getTransactionReceipt",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthGetTransactionReceipt(context.Background(), messageWithEvents)
+				return a.EthGetTransactionReceipt(context.Background(), messageWithEvents)
 			},
 		},
 		{
 			method: "eth_getBlockReceipts",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthGetBlockReceipts(context.Background(), ethtypes.NewEthBlockNumberOrHashFromNumber(blockNumberWithMessage))
+				return a.EthGetBlockReceipts(context.Background(), ethtypes.NewEthBlockNumberOrHashFromNumber(blockNumberWithMessage))
 			},
 		},
 		{
 			method: "eth_maxPriorityFeePerGas",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthMaxPriorityFeePerGas(context.Background())
+				return a.EthMaxPriorityFeePerGas(context.Background())
 			},
 		},
 
 		{
 			method: "eth_newBlockFilter",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthNewBlockFilter(context.Background())
+				return a.EthNewBlockFilter(context.Background())
 			},
 		},
 
 		{
 			method: "eth_newFilter",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthNewFilter(context.Background(), filterAllLogs)
+				return a.EthNewFilter(context.Background(), filterAllLogs)
 			},
 		},
 
 		{
 			method: "eth_newPendingTransactionFilter",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthNewPendingTransactionFilter(context.Background())
+				return a.EthNewPendingTransactionFilter(context.Background())
 			},
 		},
 
 		{
 			method: "eth_sendRawTransaction",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthSendRawTransaction(context.Background(), rawSignedEthTx)
+				rawSignedEthTx := createRawSignedEthTx(ctx, t, client, senderEthAddr, receiverEthAddr, senderKey, senderEthNonce, contractBin)
+				senderEthNonce++
+				return a.EthSendRawTransaction(context.Background(), rawSignedEthTx)
 			},
 		},
 		{
@@ -401,7 +405,6 @@ func TestEthOpenRPCConformance(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		name := tc.method
 		if tc.variant != "" {
 			name += "_" + tc.variant
@@ -414,47 +417,60 @@ func TestEthOpenRPCConformance(t *testing.T) {
 			schema, ok := schemas[tc.method]
 			require.True(t, ok, "method not found in openrpc spec")
 
-			resp, err := tc.call(&ethapi)
-			require.NoError(t, err)
+			for i, ethapi := range []*ethAPIRaw{&ethapi1, &ethapi2} {
+				t.Run(fmt.Sprintf("v%d", i+1), func(t *testing.T) {
+					resp, err := tc.call(ethapi)
+					require.NoError(t, err)
 
-			respJson, err := json.Marshal(resp)
-			require.NoError(t, err)
+					respJson, err := json.Marshal(resp)
+					require.NoError(t, err)
 
-			loader := gojsonschema.NewGoLoader(schema)
-			resploader := gojsonschema.NewBytesLoader(respJson)
-			result, err := gojsonschema.Validate(loader, resploader)
-			require.NoError(t, err)
+					loader := gojsonschema.NewGoLoader(schema)
+					resploader := gojsonschema.NewBytesLoader(respJson)
+					result, err := gojsonschema.Validate(loader, resploader)
+					require.NoError(t, err)
 
-			if !result.Valid() {
-				if len(result.Errors()) == 1 && strings.Contains(result.Errors()[0].String(), "Must validate one and only one schema (oneOf)") {
-					// Ignore this error, since it seems the openrpc spec can't handle it
-					// New transaction and block filters have the same schema: an array of 32 byte hashes
-					return
-				}
+					if !result.Valid() {
+						if len(result.Errors()) == 1 && strings.Contains(result.Errors()[0].String(), "Must validate one and only one schema (oneOf)") {
+							// Ignore this error, since it seems the openrpc spec can't handle it
+							// New transaction and block filters have the same schema: an array of 32 byte hashes
+							return
+						}
 
-				niceRespJson, err := json.MarshalIndent(resp, "", "  ")
-				if err == nil {
-					t.Logf("response was %s", niceRespJson)
-				}
+						niceRespJson, err := json.MarshalIndent(resp, "", "  ")
+						if err == nil {
+							t.Logf("response was %s", niceRespJson)
+						}
 
-				schemaJson, err := json.MarshalIndent(schema, "", "  ")
-				if err == nil {
-					t.Logf("schema was %s", schemaJson)
-				}
+						schemaJson, err := json.MarshalIndent(schema, "", "  ")
+						if err == nil {
+							t.Logf("schema was %s", schemaJson)
+						}
 
-				// check against https://www.jsonschemavalidator.net/
+						// check against https://www.jsonschemavalidator.net/
 
-				for _, desc := range result.Errors() {
-					t.Logf("- %s\n", desc)
-				}
+						for _, desc := range result.Errors() {
+							t.Logf("- %s\n", desc)
+						}
 
-				t.Errorf("response did not validate")
+						t.Errorf("response did not validate")
+					}
+				})
 			}
 		})
 	}
 }
 
-func createRawSignedEthTx(ctx context.Context, t *testing.T, client *kit.TestFullNode, senderEthAddr ethtypes.EthAddress, receiverEthAddr ethtypes.EthAddress, senderKey *key.Key, contractBin []byte) []byte {
+func createRawSignedEthTx(
+	ctx context.Context,
+	t *testing.T,
+	client *kit.TestFullNode,
+	senderEthAddr ethtypes.EthAddress,
+	receiverEthAddr ethtypes.EthAddress,
+	senderKey *key.Key,
+	nonce int,
+	contractBin []byte,
+) []byte {
 	gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
 		From: &senderEthAddr,
 		Data: contractBin,
@@ -470,7 +486,7 @@ func createRawSignedEthTx(ctx context.Context, t *testing.T, client *kit.TestFul
 	tx := ethtypes.Eth1559TxArgs{
 		ChainID:              buildconstants.Eip155ChainId,
 		Value:                big.NewInt(100),
-		Nonce:                0,
+		Nonce:                nonce,
 		To:                   &receiverEthAddr,
 		MaxFeePerGas:         types.NanoFil,
 		MaxPriorityFeePerGas: big.Int(maxPriorityFeePerGas),

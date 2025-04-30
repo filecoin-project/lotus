@@ -10,10 +10,10 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/events/filter"
 	"github.com/filecoin-project/lotus/chain/index"
+	"github.com/filecoin-project/lotus/chain/lf3"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -22,8 +22,71 @@ import (
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/impl/eth"
 	"github.com/filecoin-project/lotus/node/impl/full"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 )
+
+type TipSetResolverParams struct {
+	fx.In
+	ChainStore eth.ChainStore
+	F3         lf3.F3Backend `optional:"true"`
+}
+
+func MakeV1TipSetResolver(params TipSetResolverParams) full.EthTipSetResolverV2 {
+	return eth.NewTipSetResolver(params.ChainStore, nil, false)
+}
+
+func MakeV2TipSetResolver(params TipSetResolverParams) full.EthTipSetResolverV2 {
+	return eth.NewTipSetResolver(params.ChainStore, params.F3, true)
+}
+
+func MakeEthFilecoinV1(stateManager eth.StateManager, tipsetResolver full.EthTipSetResolverV1) full.EthFilecoinAPIV1 {
+	return eth.NewEthFilecoinAPI(stateManager, tipsetResolver)
+}
+
+func MakeEthFilecoinV2(stateManager eth.StateManager, tipsetResolver full.EthTipSetResolverV2) full.EthFilecoinAPIV1 {
+	return eth.NewEthFilecoinAPI(stateManager, tipsetResolver)
+}
+
+func MakeEthLookupV1(
+	chainStore eth.ChainStore,
+	stateManager eth.StateManager,
+	syncApi eth.SyncAPI,
+	stateBlockstore dtypes.StateBlockstore,
+	tipsetResolver full.EthTipSetResolverV1,
+) full.EthLookupAPIV1 {
+	return eth.NewEthLookupAPI(chainStore, stateManager, syncApi, stateBlockstore, tipsetResolver)
+}
+
+func MakeEthLookupV2(
+	chainStore eth.ChainStore,
+	stateManager eth.StateManager,
+	syncApi eth.SyncAPI,
+	stateBlockstore dtypes.StateBlockstore,
+	tipsetResolver full.EthTipSetResolverV2,
+) full.EthLookupAPIV2 {
+	return eth.NewEthLookupAPI(chainStore, stateManager, syncApi, stateBlockstore, tipsetResolver)
+}
+
+func MakeEthGasV1(
+	chainStore eth.ChainStore,
+	stateManager eth.StateManager,
+	messagePool eth.MessagePool,
+	gasApi eth.GasAPI,
+	tipsetResolver full.EthTipSetResolverV1,
+) full.EthGasAPIV1 {
+	return eth.NewEthGasAPI(chainStore, stateManager, messagePool, gasApi, tipsetResolver)
+}
+
+func MakeEthGasV2(
+	chainStore eth.ChainStore,
+	stateManager eth.StateManager,
+	messagePool eth.MessagePool,
+	gasApi eth.GasAPI,
+	tipsetResolver full.EthTipSetResolverV2,
+) full.EthGasAPIV2 {
+	return eth.NewEthGasAPI(chainStore, stateManager, messagePool, gasApi, tipsetResolver)
+}
 
 type EthTransactionParams struct {
 	fx.In
@@ -38,47 +101,77 @@ type EthTransactionParams struct {
 	Indexer           index.Indexer
 }
 
-func MakeEthTransaction(cfg config.FevmConfig) func(EthTransactionParams) (eth.EthTransactionAPI, error) {
-	return func(params EthTransactionParams) (eth.EthTransactionAPI, error) {
-		// Prime the tipset cache with the entire chain to make sure tx and block lookups are fast
-		params.Lifecycle.Append(fx.Hook{
-			OnStart: func(context.Context) error {
-				go func() {
-					start := time.Now()
-					log.Infoln("Start prefilling GetTipsetByHeight cache")
-					_, err := params.ChainStore.GetTipsetByHeight(params.MetricsCtx, abi.ChainEpoch(0), params.ChainStore.GetHeaviestTipSet(), false)
-					if err != nil {
-						log.Warnf("error when prefilling GetTipsetByHeight cache: %w", err)
-					}
-					log.Infof("Prefilling GetTipsetByHeight done in %s", time.Since(start))
-				}()
-				return nil
-			},
-		})
-
-		return eth.NewEthTransactionAPI(
-			params.ChainStore,
-			params.StateManager,
-			params.StateAPI,
-			params.MpoolAPI,
-			params.Indexer,
-			params.EthEventsExtended,
-			cfg.EthBlkCacheSize,
-		)
+func MakeEthTransactionV1(cfg config.FevmConfig) func(EthTransactionParams, full.EthTipSetResolverV1) (full.EthTransactionAPIV1, error) {
+	return func(params EthTransactionParams, tipSetResolver full.EthTipSetResolverV1) (full.EthTransactionAPIV1, error) {
+		return makeEthTransaction(params, tipSetResolver, cfg.EthBlkCacheSize)
 	}
 }
 
-func MakeEthTrace(cfg config.FevmConfig) func(
+func MakeEthTransactionV2(cfg config.FevmConfig) func(EthTransactionParams, full.EthTipSetResolverV2) (full.EthTransactionAPIV2, error) {
+	return func(params EthTransactionParams, tipSetResolver full.EthTipSetResolverV2) (full.EthTransactionAPIV2, error) {
+		return makeEthTransaction(params, tipSetResolver, cfg.EthBlkCacheSize)
+	}
+}
+
+func makeEthTransaction(params EthTransactionParams, tipSetResolver eth.TipSetResolver, ethBlkCacheSize int) (full.EthTransactionAPIV1, error) {
+	// Prime the tipset cache with the entire chain to make sure tx and block lookups are fast
+	ctx := helpers.LifecycleCtx(params.MetricsCtx, params.Lifecycle) // cancelled OnStop
+	params.Lifecycle.Append(fx.Hook{
+		OnStart: func(_ context.Context) error {
+			go func() {
+				start := time.Now()
+				log.Infoln("Start prefilling GetTipsetByHeight cache")
+				_, err := params.ChainStore.GetTipsetByHeight(ctx, abi.ChainEpoch(0), params.ChainStore.GetHeaviestTipSet(), false)
+				if err != nil {
+					log.Warnf("error when prefilling GetTipsetByHeight cache: %w", err)
+				}
+				log.Infof("Prefilling GetTipsetByHeight done in %s", time.Since(start))
+			}()
+			return nil
+		},
+	})
+
+	return eth.NewEthTransactionAPI(
+		params.ChainStore,
+		params.StateManager,
+		params.StateAPI,
+		params.MpoolAPI,
+		params.Indexer,
+		params.EthEventsExtended,
+		tipSetResolver,
+		ethBlkCacheSize,
+	)
+}
+
+func MakeEthTraceV1(cfg config.FevmConfig) func(
 	chainStore eth.ChainStore,
 	stateManager eth.StateManager,
-	ethTransaction eth.EthTransactionAPI,
-) eth.EthTraceAPI {
+	ethTransaction full.EthTransactionAPIV1,
+	tipsetResolver full.EthTipSetResolverV1,
+) full.EthTraceAPIV1 {
 	return func(
 		chainStore eth.ChainStore,
 		stateManager eth.StateManager,
-		ethTransaction eth.EthTransactionAPI,
-	) eth.EthTraceAPI {
-		return eth.NewEthTraceAPI(chainStore, stateManager, ethTransaction, cfg.EthTraceFilterMaxResults)
+		ethTransaction full.EthTransactionAPIV1,
+		tipsetResolver full.EthTipSetResolverV1,
+	) full.EthTraceAPIV1 {
+		return eth.NewEthTraceAPI(chainStore, stateManager, ethTransaction, tipsetResolver, cfg.EthTraceFilterMaxResults)
+	}
+}
+
+func MakeEthTraceV2(cfg config.FevmConfig) func(
+	chainStore eth.ChainStore,
+	stateManager eth.StateManager,
+	ethTransaction full.EthTransactionAPIV2,
+	tipsetResolver full.EthTipSetResolverV2,
+) full.EthTraceAPIV2 {
+	return func(
+		chainStore eth.ChainStore,
+		stateManager eth.StateManager,
+		ethTransaction full.EthTransactionAPIV2,
+		tipsetResolver full.EthTipSetResolverV2,
+	) full.EthTraceAPIV2 {
+		return eth.NewEthTraceAPI(chainStore, stateManager, ethTransaction, tipsetResolver, cfg.EthTraceFilterMaxResults)
 	}
 }
 
@@ -187,11 +280,30 @@ func MakeEthEventsExtended(cfg config.EventsConfig, enableEthRPC bool) func(EthE
 // precautionary measure.
 type GatewayEthSend struct {
 	fx.In
-	api.Gateway
+	eth.EthSendAPI
 }
 
 func (*GatewayEthSend) EthSendRawTransactionUntrusted(ctx context.Context, rawTx ethtypes.EthBytes) (ethtypes.EthHash, error) {
 	return ethtypes.EthHash{}, xerrors.New("EthSendRawTransactionUntrusted is not supported in gateway mode")
+}
+
+// GatewayEthTransaction is a helper to provide the Gateway with the EthTransactionAPI but block the
+// use of EthGetTransactionByHashLimited, EthGetTransactionReceiptLimited and
+// EthGetBlockReceiptsLimited. The Gateway API doesn't expose these methods, so this is a
+// precautionary measure.
+type GatewayEthTransaction struct {
+	fx.In
+	eth.EthTransactionAPI
+}
+
+func (*GatewayEthTransaction) EthGetTransactionByHashLimited(ctx context.Context, txHash *ethtypes.EthHash, limit abi.ChainEpoch) (*ethtypes.EthTx, error) {
+	return nil, xerrors.New("EthGetTransactionByHashLimited is not supported in gateway mode")
+}
+func (*GatewayEthTransaction) EthGetTransactionReceiptLimited(ctx context.Context, txHash ethtypes.EthHash, limit abi.ChainEpoch) (*ethtypes.EthTxReceipt, error) {
+	return nil, xerrors.New("EthGetTransactionByHashLimited is not supported in gateway mode")
+}
+func (*GatewayEthTransaction) EthGetBlockReceiptsLimited(ctx context.Context, blkParam ethtypes.EthBlockNumberOrHash, limit abi.ChainEpoch) ([]*ethtypes.EthTxReceipt, error) {
+	return nil, xerrors.New("EthGetTransactionByHashLimited is not supported in gateway mode")
 }
 
 type EventFilterManagerParams struct {
