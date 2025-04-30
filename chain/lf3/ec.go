@@ -143,7 +143,7 @@ func (ec *ecWrapper) getPowerTableLotusTSK(ctx context.Context, tsk types.TipSet
 		if ok {
 			return pe, nil
 		}
-		// take the sempahore
+		// take the semaphore
 		select {
 		case ec.powerTableComputeSemaphore <- struct{}{}:
 		case <-ctx.Done():
