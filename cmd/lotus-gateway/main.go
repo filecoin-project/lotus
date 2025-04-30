@@ -176,12 +176,12 @@ var runCmd = &cli.Command{
 		v1SubHnd := gateway.NewEthSubHandler()
 		v2SubHnd := gateway.NewEthSubHandler()
 
-		v1, closerV1, err := lcli.GetFullNodeAPIV1(cctx, cliutil.FullNodeWithEthSubscribtionHandler(v1SubHnd))
+		v1, closerV1, err := lcli.GetFullNodeAPIV1(cctx, cliutil.FullNodeWithEthSubscriptionHandler(v1SubHnd))
 		if err != nil {
 			return err
 		}
 		defer closerV1()
-		v2, closerV2, err := lcli.GetFullNodeAPIV2(cctx, cliutil.FullNodeWithEthSubscribtionHandler(v2SubHnd))
+		v2, closerV2, err := lcli.GetFullNodeAPIV2(cctx, cliutil.FullNodeWithEthSubscriptionHandler(v2SubHnd))
 		if err != nil {
 			return err
 		}

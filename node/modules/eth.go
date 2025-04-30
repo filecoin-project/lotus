@@ -202,7 +202,7 @@ func MakeEthEventsExtended(cfg config.EventsConfig, enableEthRPC bool) func(EthE
 		lctx := helpers.LifecycleCtx(params.MetricsCtx, params.Lifecycle)
 
 		var (
-			subscribtionCtx      context.Context  = lctx
+			subscriptionCtx                       = lctx
 			chainStore           eth.ChainStore   = params.ChainStore
 			stateManager         eth.StateManager = params.StateManager
 			chainIndexer         index.Indexer    = params.Indexer
@@ -211,14 +211,14 @@ func MakeEthEventsExtended(cfg config.EventsConfig, enableEthRPC bool) func(EthE
 			memPoolFilterManager *filter.MemPoolFilterManager
 			filterStore          filter.FilterStore
 			subscriptionManager  *eth.EthSubscriptionManager
-			maxFilterHeightRange abi.ChainEpoch = abi.ChainEpoch(cfg.MaxFilterHeightRange)
+			maxFilterHeightRange = abi.ChainEpoch(cfg.MaxFilterHeightRange)
 		)
 
 		if !enableEthRPC {
 			// all event functionality is disabled
 			// the historic filter API relies on the real time one
 			return eth.NewEthEventsAPI(
-				subscribtionCtx,
+				subscriptionCtx,
 				chainStore,
 				stateManager,
 				chainIndexer,
@@ -238,7 +238,7 @@ func MakeEthEventsExtended(cfg config.EventsConfig, enableEthRPC bool) func(EthE
 		eventFilterManager = params.EventFilterManager
 
 		ee := eth.NewEthEventsAPI(
-			subscribtionCtx,
+			subscriptionCtx,
 			chainStore,
 			stateManager,
 			chainIndexer,
