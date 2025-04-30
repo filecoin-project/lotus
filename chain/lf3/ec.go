@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-f3/ec"
 	"github.com/filecoin-project/go-f3/gpbft"
 	"github.com/filecoin-project/go-state-types/abi"
+	lru "github.com/hashicorp/golang-lru/v2"
 
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -30,6 +31,20 @@ type ecWrapper struct {
 	ChainStore   *store.ChainStore
 	Syncer       *chain.Syncer
 	StateManager *stmgr.StateManager
+	cache        *lru.Cache[types.TipSetKey, gpbft.PowerEntries]
+}
+
+func newEcWrapper(chainStore *store.ChainStore, syncer *chain.Syncer, stateManager *stmgr.StateManager) *ecWrapper {
+	cache, err := lru.New[types.TipSetKey, gpbft.PowerEntries](100)
+	if err != nil {
+		panic(err)
+	}
+	return &ecWrapper{
+		ChainStore:   chainStore,
+		Syncer:       syncer,
+		StateManager: stateManager,
+		cache:        cache,
+	}
 }
 
 type f3TipSet struct {
@@ -119,6 +134,12 @@ func (ec *ecWrapper) GetPowerTable(ctx context.Context, tskF3 gpbft.TipSetKey) (
 }
 
 func (ec *ecWrapper) getPowerTableLotusTSK(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) {
+	{
+		pe, ok := ec.cache.Get(tsk)
+		if ok {
+			return pe, nil
+		}
+	}
 	ts, err := ec.ChainStore.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("getting tipset by key for get parent: %w", err)
@@ -196,6 +217,8 @@ func (ec *ecWrapper) getPowerTableLotusTSK(ctx context.Context, tsk types.TipSet
 	}
 
 	sort.Sort(powerEntries)
+	ec.cache.Add(tsk, powerEntries)
+
 	return powerEntries, nil
 }
 
