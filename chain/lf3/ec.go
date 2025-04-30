@@ -31,11 +31,11 @@ type ecWrapper struct {
 	ChainStore   *store.ChainStore
 	Syncer       *chain.Syncer
 	StateManager *stmgr.StateManager
-	cache        *lru.Cache[types.TipSetKey, gpbft.PowerEntries]
+	cache        *lru.TwoQueueCache[types.TipSetKey, gpbft.PowerEntries]
 }
 
 func newEcWrapper(chainStore *store.ChainStore, syncer *chain.Syncer, stateManager *stmgr.StateManager) *ecWrapper {
-	cache, err := lru.New[types.TipSetKey, gpbft.PowerEntries](100)
+	cache, err := lru.New2Q[types.TipSetKey, gpbft.PowerEntries](128)
 	if err != nil {
 		panic(err)
 	}
