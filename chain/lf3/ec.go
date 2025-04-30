@@ -29,9 +29,9 @@ var (
 )
 
 type ecWrapper struct {
-	ChainStore                 *store.ChainStore
-	Syncer                     *chain.Syncer
-	StateManager               *stmgr.StateManager
+	chainStore                 *store.ChainStore
+	syncer                     *chain.Syncer
+	stateManager               *stmgr.StateManager
 	cache                      *lru.TwoQueueCache[types.TipSetKey, gpbft.PowerEntries]
 	powerTableComputeSemaphore chan struct{}
 }
@@ -42,9 +42,9 @@ func newEcWrapper(chainStore *store.ChainStore, syncer *chain.Syncer, stateManag
 		panic(err)
 	}
 	return &ecWrapper{
-		ChainStore:                 chainStore,
-		Syncer:                     syncer,
-		StateManager:               stateManager,
+		chainStore:                 chainStore,
+		syncer:                     syncer,
+		stateManager:               stateManager,
 		cache:                      cache,
 		powerTableComputeSemaphore: make(chan struct{}, min(4, runtime.NumCPU()/2)),
 	}
@@ -92,7 +92,7 @@ func (ts *f3TipSet) Timestamp() time.Time {
 // GetTipsetByEpoch should return a tipset before the one requested if the requested
 // tipset does not exist due to null epochs
 func (ec *ecWrapper) GetTipsetByEpoch(ctx context.Context, epoch int64) (ec.TipSet, error) {
-	ts, err := ec.ChainStore.GetTipsetByHeight(ctx, abi.ChainEpoch(epoch), nil, true)
+	ts, err := ec.chainStore.GetTipsetByHeight(ctx, abi.ChainEpoch(epoch), nil, true)
 	if err != nil {
 		return nil, xerrors.Errorf("getting tipset by height: %w", err)
 	}
@@ -109,7 +109,7 @@ func (ec *ecWrapper) GetTipset(ctx context.Context, tsk gpbft.TipSetKey) (ec.Tip
 }
 
 func (ec *ecWrapper) GetHead(context.Context) (ec.TipSet, error) {
-	head := ec.ChainStore.GetHeaviestTipSet()
+	head := ec.chainStore.GetHeaviestTipSet()
 	if head == nil {
 		return nil, xerrors.New("no heaviest tipset")
 	}
@@ -121,7 +121,7 @@ func (ec *ecWrapper) GetParent(ctx context.Context, tsF3 ec.TipSet) (ec.TipSet, 
 	if err != nil {
 		return nil, err
 	}
-	parentTs, err := ec.ChainStore.GetTipSetFromKey(ctx, ts.Parents())
+	parentTs, err := ec.chainStore.GetTipSetFromKey(ctx, ts.Parents())
 	if err != nil {
 		return nil, xerrors.Errorf("getting parent tipset: %w", err)
 	}
@@ -157,12 +157,12 @@ func (ec *ecWrapper) getPowerTableLotusTSK(ctx context.Context, tsk types.TipSet
 			return pe, nil
 		}
 	}
-	ts, err := ec.ChainStore.GetTipSetFromKey(ctx, tsk)
+	ts, err := ec.chainStore.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("getting tipset by key for get parent: %w", err)
 	}
 
-	state, err := ec.StateManager.ParentState(ts)
+	state, err := ec.stateManager.ParentState(ts)
 	if err != nil {
 		return nil, xerrors.Errorf("loading the state tree: %w", err)
 	}
@@ -171,7 +171,7 @@ func (ec *ecWrapper) getPowerTableLotusTSK(ctx context.Context, tsk types.TipSet
 		return nil, xerrors.Errorf("getting the power actor: %w", err)
 	}
 
-	powerState, err := power.Load(ec.ChainStore.ActorStore(ctx), powerAct)
+	powerState, err := power.Load(ec.chainStore.ActorStore(ctx), powerAct)
 	if err != nil {
 		return nil, xerrors.Errorf("loading power actor state: %w", err)
 	}
@@ -196,7 +196,7 @@ func (ec *ecWrapper) getPowerTableLotusTSK(ctx context.Context, tsk types.TipSet
 		if err != nil {
 			return xerrors.Errorf("(get sset) failed to load miner actor: %w", err)
 		}
-		mstate, err := miner.Load(ec.ChainStore.ActorStore(ctx), act)
+		mstate, err := miner.Load(ec.chainStore.ActorStore(ctx), act)
 		if err != nil {
 			return xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
 		}
@@ -217,7 +217,7 @@ func (ec *ecWrapper) getPowerTableLotusTSK(ctx context.Context, tsk types.TipSet
 			return nil
 		}
 
-		waddr, err := vm.ResolveToDeterministicAddr(state, ec.ChainStore.ActorStore(ctx), info.Worker)
+		waddr, err := vm.ResolveToDeterministicAddr(state, ec.chainStore.ActorStore(ctx), info.Worker)
 		if err != nil {
 			return xerrors.Errorf("resolve miner worker address: %w", err)
 		}
@@ -244,7 +244,7 @@ func (ec *ecWrapper) Finalize(ctx context.Context, key gpbft.TipSetKey) error {
 	if err != nil {
 		return err
 	}
-	if err = ec.Syncer.SyncCheckpoint(ctx, tsk); err != nil {
+	if err = ec.syncer.SyncCheckpoint(ctx, tsk); err != nil {
 		return xerrors.Errorf("checkpointing finalized tipset: %w", err)
 	}
 	return nil
@@ -265,7 +265,7 @@ func (ec *ecWrapper) getTipSetFromF3TSK(ctx context.Context, key gpbft.TipSetKey
 	if err != nil {
 		return nil, err
 	}
-	ts, err := ec.ChainStore.GetTipSetFromKey(ctx, tsk)
+	ts, err := ec.chainStore.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("getting tipset from key: %w", err)
 	}
