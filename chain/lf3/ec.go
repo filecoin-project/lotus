@@ -2,6 +2,7 @@ package lf3
 
 import (
 	"context"
+	"runtime"
 	"sort"
 	"time"
 
@@ -28,10 +29,11 @@ var (
 )
 
 type ecWrapper struct {
-	ChainStore   *store.ChainStore
-	Syncer       *chain.Syncer
-	StateManager *stmgr.StateManager
-	cache        *lru.TwoQueueCache[types.TipSetKey, gpbft.PowerEntries]
+	ChainStore                 *store.ChainStore
+	Syncer                     *chain.Syncer
+	StateManager               *stmgr.StateManager
+	cache                      *lru.TwoQueueCache[types.TipSetKey, gpbft.PowerEntries]
+	powerTableComputeSemaphore chan struct{}
 }
 
 func newEcWrapper(chainStore *store.ChainStore, syncer *chain.Syncer, stateManager *stmgr.StateManager) *ecWrapper {
@@ -40,10 +42,11 @@ func newEcWrapper(chainStore *store.ChainStore, syncer *chain.Syncer, stateManag
 		panic(err)
 	}
 	return &ecWrapper{
-		ChainStore:   chainStore,
-		Syncer:       syncer,
-		StateManager: stateManager,
-		cache:        cache,
+		ChainStore:                 chainStore,
+		Syncer:                     syncer,
+		StateManager:               stateManager,
+		cache:                      cache,
+		powerTableComputeSemaphore: make(chan struct{}, min(4, runtime.NumCPU()/2)),
 	}
 }
 
@@ -135,7 +138,21 @@ func (ec *ecWrapper) GetPowerTable(ctx context.Context, tskF3 gpbft.TipSetKey) (
 
 func (ec *ecWrapper) getPowerTableLotusTSK(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) {
 	{
+		// check the cache
 		pe, ok := ec.cache.Get(tsk)
+		if ok {
+			return pe, nil
+		}
+		// take the sempahore
+		select {
+		case ec.powerTableComputeSemaphore <- struct{}{}:
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+		defer func() { <-ec.powerTableComputeSemaphore }()
+
+		// check the cache again
+		pe, ok = ec.cache.Get(tsk)
 		if ok {
 			return pe, nil
 		}
