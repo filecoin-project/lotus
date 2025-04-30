@@ -409,7 +409,7 @@ type GetFullNodeOptions struct {
 
 type GetFullNodeOption func(*GetFullNodeOptions)
 
-func FullNodeWithEthSubscribtionHandler(sh api.EthSubscriber) GetFullNodeOption {
+func FullNodeWithEthSubscriptionHandler(sh api.EthSubscriber) GetFullNodeOption {
 	return func(opts *GetFullNodeOptions) {
 		opts.EthSubHandler = sh
 	}
