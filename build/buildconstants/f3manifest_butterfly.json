@@ -3,7 +3,7 @@
   "ProtocolVersion": 7,
   "InitialInstance": 0,
   "BootstrapEpoch": 1000,
-  "NetworkName": "calibrationnet",
+  "NetworkName": "butterflynet",
   "ExplicitPower": null,
   "IgnoreECPower": false,
   "InitialPowerTable": null,
