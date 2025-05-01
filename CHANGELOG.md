@@ -65,7 +65,7 @@ Lotus now offers two versions of its Ethereum-compatible APIs (`eth_*`, `trace_*
 
 For the full set of changes since the last stable release:
 
-- Node: https://github.com/filecoin-project/lotus/compare/v1.32.3...v1.33.0-rc1
+- Node: https://github.com/filecoin-project/lotus/compare/release/v1.32.3...release/v1.33.0
 
 ## 👨‍👩‍👧‍👦 Contributors
 
