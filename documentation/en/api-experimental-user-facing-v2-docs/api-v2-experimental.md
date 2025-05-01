@@ -8,6 +8,7 @@
 # Meta
 ## Status
 
+- 2025-05-01: Updated to make clear the impact on the APIs if F3 isn't finalizing.  This was reviewed in [PR #13088](https://github.com/filecoin-project/lotus/pull/13088).
 - 2025-04-24: This document has been updated to include information about Eth APIs in `/v2`.  This was reviewed in [PR #13068](https://github.com/filecoin-project/lotus/pull/13068).
 - 2025-04-23: This document has been updated to account for the minimum initial set of non-Eth /v2 API groups as specified in [issue #12991](https://github.com/filecoin-project/lotus/issues/12991).  This was reviewed in [PR #13051](https://github.com/filecoin-project/lotus/pull/13051)
 - 2025-04-09: This document is still actively a Work In Progress. It has a draft discussing `ChainGetTipSet`. Additional APIs and API Groups will be added as part of working on [issue #12987](https://github.com/filecoin-project/lotus/issues/12987).
@@ -86,7 +87,8 @@ This ToC was generated using [Markdown All in One](https://marketplace.visualstu
     - [Actor Information Retrieval](#actor-information-retrieval)
     - [Address Resolution](#address-resolution)
   - [Design decisions](#design-decisions)
-    - [Why aren’t named parameters used?](#why-arent-named-parameters-used)
+    - [Why aren't named parameters used?](#why-arent-named-parameters-used)
+    - [What happens if F3 is not finalizing the chain?](#what-happens-if-f3-is-not-finalizing-the-chain)
   - [Future API Groups](#future-api-groups)
     - [State API Group](#state-api-group)
     - [Mpool API Group](#mpool-api-group)
@@ -1121,13 +1123,16 @@ Resolve an address (e.g., robust `f2...` or delegated `f4...`) to its canonical 
 
 The design for these `/v2` APIs happened as a result of [issue #12987](https://github.com/filecoin-project/lotus/issues/12987) and the resulting subtasks and their linked PRs (in particular [issue #12990](https://github.com/filecoin-project/lotus/issues/12990)). Some of the larger design decisions and their rationale are extracted here.
 
-### Why aren’t named parameters used?
+### Why aren't named parameters used?
 
 JSON-RPC allows named parameters (using a JSON object instead of an array for `params`), but positional parameters (using a JSON array) were chosen for the Filecoin V2 APIs. These comments are lifted directly from PR feedback discussions:
 
 - *Usage*: Named parameters are not widely used in practice across various JSON-RPC implementations.
 - *Tooling Compatibility*: Most existing tooling (Lotus' internal JSON-RPC library, `lotus-shed rpc`, client libraries in other languages) primarily expects and works best with positional parameters.
 - *Simplicity*: While named parameters can sometimes improve readability for complex calls, positional parameters are simpler to implement and parse consistently. Client-side abstractions can easily map more readable function calls to positional parameters if desired.
+
+### What happens if F3 is not finalizing the chain?
+The `/v2` APIs rely on F3 data even if F3 is not yet finalizing the chain (i.e., `EC.Finalize` is `false` in the live F3 manifest used by all participants). To determine if F3 is actively finalizing, call the `F3GetManifest` API and check if `Manifest.EC.Finalize` is `true`. Only when `EC.Finalize` is `true` will the `/v2` `"finalized"` and `"safe"` tags accurately reflect the chain's finality according to F3. That said, as of epoch 4919580 on mainnet (2025-04-29T10:00:00Z), F3 is being finalized and this shouldn't be a concern.
 
 ## Future API Groups
 
