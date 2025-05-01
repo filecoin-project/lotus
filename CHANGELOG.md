@@ -8,7 +8,7 @@
 > * [CHANGELOG_1.2x.md](./documentation/changelog/CHANGELOG_1.2x.md) - v1.20.0 to v1.29.2
 
 # Node v1.33.0-rc1 / 2025-05-01
-The Lotus v1.33.0-rc1 release introduces experimental v2 APIs with F3 awareness, featuring a new TipSet selection mechanism that significantly enhances how applications interact with the Filecoin blockchain. This release candidate also adds F3-aware Ethereum APIs via the /v2 endpoint while improving existing /v1 APIs and implements intelligent fallback mechanisms between F3 and Expected Consensus.
+The Lotus v1.33.0-rc1 release introduces experimental v2 APIs with F3 awareness, featuring a new TipSet selection mechanism that significantly enhances how applications interact with the Filecoin blockchain. This release candidate also adds F3-aware Ethereum APIs via the /v2 endpoint while improving existing /v1 APIs and implements intelligent fallback mechanisms between F3 and Expected Consensus. These /v2 APIs are also exposed through the Lotus Gateway
 
 Please review the detailed documentation for these experimental APIs, as they are subject to change and have important operational considerations for node operators and API providers.
 
