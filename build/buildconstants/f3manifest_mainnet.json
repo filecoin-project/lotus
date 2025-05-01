@@ -2,19 +2,21 @@
   "Pause": false,
   "ProtocolVersion": 7,
   "InitialInstance": 0,
-  "BootstrapEpoch": 5000000,
+  "BootstrapEpoch": 4920480,
   "NetworkName": "filecoin",
   "ExplicitPower": null,
   "IgnoreECPower": false,
-  "InitialPowerTable": null,
+  "InitialPowerTable": {
+    "/": "bafy2bzacecklgxd2eksmodvhgurqvorkg3wamgqkrunir3al2gchv2cikgmbu"
+  },
   "CommitteeLookback": 10,
   "CatchUpAlignment": 15000000000,
   "Gpbft": {
     "Delta": 6000000000,
     "DeltaBackOffExponent": 2,
-    "QualityDeltaMultiplier": 1,
+    "QualityDeltaMultiplier": 8,
     "MaxLookaheadRounds": 5,
-    "ChainProposedLength": 100,
+    "ChainProposedLength": 20,
     "RebroadcastBackoffBase": 6000000000,
     "RebroadcastBackoffExponent": 1.3,
     "RebroadcastBackoffSpread": 0.1,
@@ -24,17 +26,8 @@
     "Period": 30000000000,
     "Finality": 900,
     "DelayMultiplier": 2,
-    "BaseDecisionBackoffTable": [
-      1.3,
-      1.69,
-      2.2,
-      2.86,
-      3.71,
-      4.83,
-      6.27,
-      7.5
-    ],
-    "HeadLookback": 0,
+    "BaseDecisionBackoffTable": [1.3, 1.69, 2.2, 2.86, 3.71, 4.83, 6.27, 7.5],
+    "HeadLookback": 4,
     "Finalize": true
   },
   "CertificateExchange": {
@@ -46,17 +39,17 @@
   "PubSub": {
     "CompressionEnabled": true,
     "ChainCompressionEnabled": true,
-    "GMessageSubscriptionBufferSize": 128,
-    "ValidatedMessageBufferSize": 128
+    "GMessageSubscriptionBufferSize": 768,
+    "ValidatedMessageBufferSize": 1024
   },
   "ChainExchange": {
-    "SubscriptionBufferSize": 32,
-    "MaxChainLength": 100,
+    "SubscriptionBufferSize": 64,
+    "MaxChainLength": 20,
     "MaxInstanceLookahead": 10,
     "MaxDiscoveredChainsPerInstance": 1000,
     "MaxWantedChainsPerInstance": 1000,
     "RebroadcastInterval": 2000000000,
-    "MaxTimestampAge": 8000000000
+    "MaxTimestampAge": 16000000000
   },
   "PartialMessageManager": {
     "PendingDiscoveredChainsBufferSize": 100,
