@@ -211,9 +211,5 @@ var WhitelistedBlock = cid.Undef
 
 var F3Enabled = true
 
-var F3ManifestServerID = MustParseID("12D3KooWHcNBkqXEBrsjoveQvj6zDF3vK5S9tAfqyYaQF1LGSJwG")
-
 //go:embed f3manifest_2k.json
 var F3ManifestBytes []byte
-
-var F3ParamsAddress = ""

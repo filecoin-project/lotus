@@ -147,11 +147,7 @@ const Eip155ChainId = 3141592
 
 var WhitelistedBlock = cid.Undef
 
-var F3ManifestServerID = MustParseID("12D3KooWQJ2rdVnG4okDUB6yHQhAjNutGNemcM7XzqC9Eo4z9Jce")
-
 const F3Enabled = true
 
 //go:embed f3manifest_interop.json
 var F3ManifestBytes []byte
-
-var F3ParamsAddress = ""

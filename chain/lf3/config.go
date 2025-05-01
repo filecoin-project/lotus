@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/filecoin-project/go-f3/gpbft"
 	"github.com/filecoin-project/go-f3/manifest"
@@ -23,21 +22,6 @@ type Config struct {
 	// StaticManifest this instance's default manifest absent any dynamic manifests. Also see
 	// PrioritizeStaticManifest.
 	StaticManifest *manifest.Manifest
-	// DynamicManifestProvider is the peer ID of the peer authorized to send us dynamic manifest
-	// updates. Dynamic manifest updates can be used for testing but will not be used to affect
-	// finality.
-	DynamicManifestProvider peer.ID
-	// PrioritizeStaticManifest means that, once we get within one finality of the static
-	// manifest's bootstrap epoch we'll switch to it and ignore any further dynamic manifest
-	// updates. This exists to enable bootstrapping F3.
-	PrioritizeStaticManifest bool
-	// TESTINGAllowDynamicFinalize allow dynamic manifests to finalize tipsets. DO NOT ENABLE
-	// THIS IN PRODUCTION!
-	AllowDynamicFinalize bool
-
-	// ContractAddress specifies the address of the contract carring F3 parameters
-	ContractAddress      string
-	ContractPollInterval time.Duration
 }
 
 // NewManifest constructs a sane F3 manifest based on the passed parameters. This function does not
@@ -95,14 +79,11 @@ func NewConfig(nn dtypes.NetworkName) *Config {
 
 	}
 	c := &Config{
-		BaseNetworkName:          gpbft.NetworkName(nn),
-		PrioritizeStaticManifest: true,
-		DynamicManifestProvider:  buildconstants.F3ManifestServerID,
-		AllowDynamicFinalize:     false,
-		ContractPollInterval:     pollInterval,
+		BaseNetworkName: gpbft.NetworkName(nn),
+		StaticManifest:  buildconstants.F3Manifest(),
 	}
 	c.StaticManifest = buildconstants.F3Manifest()
-	if c.StaticManifest == nil {
+	if c.StaticManifest != nil {
 		if ptCid := os.Getenv("F3_INITIAL_POWERTABLE_CID"); ptCid != "" {
 			if k, err := cid.Parse(ptCid); err != nil {
 				log.Errorf("failed to parse F3_INITIAL_POWERTABLE_CID %q: %s", ptCid, err)
@@ -119,8 +100,5 @@ func NewConfig(nn dtypes.NetworkName) *Config {
 		}
 	}
 
-	if buildconstants.F3ParamsAddress != "" {
-		c.ContractAddress = buildconstants.F3ParamsAddress
-	}
 	return c
 }

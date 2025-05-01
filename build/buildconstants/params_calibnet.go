@@ -170,7 +170,3 @@ const F3Enabled = true
 
 //go:embed f3manifest_calibnet.json
 var F3ManifestBytes []byte
-
-var F3ManifestServerID = MustParseID("12D3KooWS9vD9uwm8u2uPyJV32QBAhKAmPYwmziAgr3Xzk2FU1Mr")
-
-var F3ParamsAddress = ""

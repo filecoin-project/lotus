@@ -12,7 +12,6 @@ import (
 	"math/big"
 
 	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -126,13 +125,12 @@ var (
 
 	ZeroAddress = MustParseAddress("f3yaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaby2smx7a")
 
-	WhitelistedBlock           = cid.Undef
-	BootstrappersFile          = ""
-	GenesisFile                = ""
-	F3Enabled                  = false
-	F3ManifestServerID peer.ID = ""
-	F3ParamsAddress            = ""
-	F3ManifestBytes    []byte
+	WhitelistedBlock  = cid.Undef
+	BootstrappersFile = ""
+	GenesisFile       = ""
+
+	F3Enabled       = false
+	F3ManifestBytes []byte
 )
 
 func init() {
