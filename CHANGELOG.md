@@ -25,6 +25,7 @@ Please review the detailed documentation for these experimental APIs, as they ar
 - fix(f3): limit the concurrency of F3 power table calculation ([filecoin-project/lotus#13085](https://github.com/filecoin-project/lotus/pull/13085))
 - feat(f3): remove dynnamic manifest functionality and use static manifest ([filecoin-project/lotus#13074](https://github.com/filecoin-project/lotus/pull/13074))
 - docs: add ETH API information to V2 API documentation ([filecoin-project/lotus#13068](https://github.com/filecoin-project/lotus/pull/13068))
+- feat(metrics): capture total gas metric from ApplyBlocks ([filecoin-project/lotus#13037](https://github.com/filecoin-project/lotus/pull/13037))
 
 ### Experimental v2 APIs with F3 awareness
 
