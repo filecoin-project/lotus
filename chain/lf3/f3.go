@@ -73,11 +73,7 @@ var log = logging.Logger("f3")
 
 func New(mctx helpers.MetricsCtx, lc fx.Lifecycle, params F3Params) (*F3, error) {
 	ds := namespace.Wrap(params.Datastore, datastore.NewKey("/f3"))
-	ec := &ecWrapper{
-		ChainStore:   params.ChainStore,
-		StateManager: params.StateManager,
-		Syncer:       params.Syncer,
-	}
+	ec := newEcWrapper(params.ChainStore, params.Syncer, params.StateManager)
 	verif := blssig.VerifierWithKeyOnG1()
 
 	f3FsPath := filepath.Join(params.LockedRepo.Path(), "f3")
