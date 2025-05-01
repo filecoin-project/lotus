@@ -67,6 +67,34 @@ For the full set of changes since the last stable release:
 
 - Node: https://github.com/filecoin-project/lotus/compare/v1.32.3...v1.33.0-rc1
 
+## 👨‍👩‍👧‍👦 Contributors
+
+Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Rod Vagg | 19 | +13805/-3639 | 129 |
+| Masih H. Derkani | 19 | +11910/-2369 | 119 |
+| Jakub Sztandera | 14 | +2528/-202 | 32 |
+| Phi-rjan | 12 | +1707/-79 | 42 |
+| Steve Loeppky | 3 | +1287/-32 | 8 |
+| Piotr Galar | 2 | +298/-3 | 4 |
+| Barbara Peric | 3 | +182/-73 | 5 |
+| ZenGround0 | 1 | +191/-0 | 4 |
+| CoolCu | 1 | +15/-49 | 6 |
+| Volker Mische | 1 | +18/-31 | 5 |
+| Phi | 3 | +32/-14 | 10 |
+| dependabot[bot] | 1 | +15/-15 | 2 |
+| Amit Gaikwad | 1 | +19/-2 | 2 |
+| tom | 1 | +0/-14 | 2 |
+| xixishidibei | 1 | +2/-11 | 1 |
+| Tomass | 1 | +4/-4 | 2 |
+| tsinghuacoder | 1 | +3/-2 | 1 |
+| dropbigfish | 1 | +1/-1 | 1 |
+| James Niken | 1 | +1/-1 | 1 |
+| Hubert | 1 | +1/-0 | 1 |
+| Steven Allen | 1 | +0/-0 | 2 |
+
 # Node v1.32.3 / 2025-04-29
 
 This Node v1.32.3 patch release contains a critical update for all node operators. This release ensures that the F3 initial power table CID is correctly set in your Lotus node now that F3 is enabled on Mainnet. All node operators must upgrade to this release before their next node restart to ensure proper F3 functionality.
