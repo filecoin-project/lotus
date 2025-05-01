@@ -20,6 +20,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	lotus_api "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/lf3"
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/node"
@@ -60,6 +61,9 @@ func TestF3_Enabled(t *testing.T) {
 // 2. Not-yet-ready state (F3 enabled but not yet operational)
 func TestF3_InactiveModes(t *testing.T) {
 	kit.QuietMiningLogs()
+	oldMani := buildconstants.F3ManifestBytes
+	defer func() { buildconstants.F3ManifestBytes = oldMani }()
+	buildconstants.F3ManifestBytes = nil
 
 	testCases := []struct {
 		mode                 string
@@ -323,7 +327,7 @@ func (e *testEnv) waitFor(f func(n *kit.TestFullNode) bool, timeout time.Duratio
 // and the second full-node is an observer that is not directly connected to
 // a miner. The last return value is the manifest sender for the network.
 func setup(t *testing.T, blocktime time.Duration, opts ...kit.NodeOpt) *testEnv {
-	return setupWithStaticManifest(t, newTestManifest(BaseNetworkName+"/1", DefaultBootstrapEpoch, blocktime), false, opts...)
+	return setupWithStaticManifest(t, newTestManifest(BaseNetworkName, DefaultBootstrapEpoch, blocktime), false, opts...)
 }
 
 func newTestManifest(networkName gpbft.NetworkName, bootstrapEpoch int64, blocktime time.Duration) *manifest.Manifest {

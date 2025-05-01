@@ -10,6 +10,9 @@ import (
 )
 
 func NewManifestProvider(mctx helpers.MetricsCtx, config *Config) (prov manifest.ManifestProvider, err error) {
+	if config.StaticManifest == nil {
+		return manifest.NoopManifestProvider{}, nil
+	}
 	if config.StaticManifest != nil && build.IsF3EpochActivationDisabled(config.StaticManifest.BootstrapEpoch) {
 		log.Warnf("F3 activation disabled by environment configuration for bootstrap epoch %d", config.StaticManifest.BootstrapEpoch)
 		return manifest.NoopManifestProvider{}, nil
