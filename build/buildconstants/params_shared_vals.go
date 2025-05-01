@@ -6,8 +6,6 @@ package buildconstants
 import (
 	"os"
 
-	"github.com/ipfs/go-cid"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
@@ -66,16 +64,6 @@ var InitialFilReserved = wholeFIL(300_000_000)
 func init() {
 	if os.Getenv("LOTUS_ADDRESS_TYPE") == AddressMainnetEnvVar {
 		SetAddressNetwork(address.Mainnet)
-	}
-
-	if ptCid := os.Getenv("F3_INITIAL_POWERTABLE_CID"); ptCid != "" {
-		if k, err := cid.Parse(ptCid); err != nil {
-			log.Errorf("failed to parse F3_INITIAL_POWERTABLE_CID %q: %s", ptCid, err)
-		} else if F3InitialPowerTableCID.Defined() && k != F3InitialPowerTableCID {
-			log.Errorf("ignoring F3_INITIAL_POWERTABLE_CID as lotus has a hard-coded initial F3 power table")
-		} else {
-			F3InitialPowerTableCID = k
-		}
 	}
 }
 

@@ -3,7 +3,6 @@ package lp2p
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net"
 	"time"
 
@@ -368,20 +367,10 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 	allowTopics = append(allowTopics, drandTopics...)
 
 	if in.F3Config != nil {
-		if in.F3Config.StaticManifest != nil || in.F3Config.ContractAddress != "" {
+		if in.F3Config.StaticManifest != nil {
 			gpbftTopic := manifest.PubSubTopicFromNetworkName(in.F3Config.BaseNetworkName)
 			chainexTopic := manifest.ChainExchangeTopicFromNetworkName(in.F3Config.BaseNetworkName)
 			allowTopics = append(allowTopics, gpbftTopic, chainexTopic)
-		}
-		if in.F3Config.DynamicManifestProvider != "" {
-			gpbftTopicPrefix := manifest.PubSubTopicFromNetworkName(in.F3Config.BaseNetworkName)
-			chainexTopicPrefix := manifest.ChainExchangeTopicFromNetworkName(in.F3Config.BaseNetworkName)
-			allowTopics = append(allowTopics, manifest.ManifestPubSubTopicName)
-			for i := range lf3.MaxDynamicManifestChangesAllowed {
-				gpbftTopic := fmt.Sprintf("%s/%d", gpbftTopicPrefix, i)
-				chainexTopic := fmt.Sprintf("%s/%d", chainexTopicPrefix, i)
-				allowTopics = append(allowTopics, gpbftTopic, chainexTopic)
-			}
 		}
 	}
 
