@@ -17,16 +17,6 @@ Please review the detailed documentation for these experimental APIs, as they ar
 
 ## ⭐ Feature/Improvement Highlights:
 
-- feat: add gas to application metric reporting `vm/applyblocks_early_gas`, `vm/applyblocks_messages_gas`, `vm/applyblocks_cron_gas` ([filecoin-project/lotus#13030](https://github.com/filecoin-project/lotus/pull/13030))
-- feat: add F3 Grafana Dashboard Template ([filecoin-project/lotus#12934](https://github.com/filecoin-project/lotus/pull/12934))
-- feat: expose /v2 APIs through Lotus Gateway ([filecoin-project/lotus#13075](https://github.com/filecoin-project/lotus/pull/13075))
-- feat: fall back to EC if F3 finalized tipeset is older than 900 epochs ([filecoin-project/lotus#13066](https://github.com/filecoin-project/lotus/pull/13066))
-- feat: fall back to EC finalized tipset if F3 is too far behind in eth APIs ([filecoin-project/lotus#13070](https://github.com/filecoin-project/lotus/pull/13070))
-- fix(f3): limit the concurrency of F3 power table calculation ([filecoin-project/lotus#13085](https://github.com/filecoin-project/lotus/pull/13085))
-- feat(f3): remove dynnamic manifest functionality and use static manifest ([filecoin-project/lotus#13074](https://github.com/filecoin-project/lotus/pull/13074))
-- docs: add ETH API information to V2 API documentation ([filecoin-project/lotus#13068](https://github.com/filecoin-project/lotus/pull/13068))
-- feat(metrics): capture total gas metric from ApplyBlocks ([filecoin-project/lotus#13037](https://github.com/filecoin-project/lotus/pull/13037))
-
 ### Experimental v2 APIs with F3 awareness
 
 The Lotus V2 APIs introduce a powerful new TipSet selection mechanism that significantly enhances how applications interact with the Filecoin blockchain. The design reduces API footprint, seamlessly handles both traditional Expected Consensus (EC) and the new F3 protocol, and provides graceful fallbacks.
@@ -34,12 +24,11 @@ The Lotus V2 APIs introduce a powerful new TipSet selection mechanism that signi
 > [!NOTE]
 > V2 APIs are highly experimental and subject to change without notice.
 
-> [!IMPORTANT]
-> The `/v2` APIs rely on F3 data even if F3 is not yet finalizing the chain (i.e., `EC.Finalize` is `false` in the live F3 manifest used by all participants). To determine if F3 is actively finalizing, call the `F3GetManifest` API and check if `Manifest.EC.Finalize` is `true`. Only when `EC.Finalize` is `true` will the `/v2` `"finalized"` and `"safe"` tags accurately reflect the chain's finality according to F3. This also applies to Ethereum APIs discussed below.
+See [Filecoin v2 APIs docs](https://filoznotebook.notion.site/Filecoin-V2-APIs-1d0dc41950c1808b914de5966d501658) for an in-depth overview. /v2 APIs are exosed through Lotus Gateway. 
 
-See [Filecoin v2 APIs](https://filoznotebook.notion.site/Filecoin-V2-APIs-1d0dc41950c1808b914de5966d501658) for an in-depth overview. ([filecoin-project/lotus#13003](https://github.com/filecoin-project/lotus/pull/13003)), ([filecoin-project/lotus#13027](https://github.com/filecoin-project/lotus/pull/13027)), ([filecoin-project/lotus#13034](https://github.com/filecoin-project/lotus/pull/13034))
+This work was primarily done in ([filecoin-project/lotus#13003](https://github.com/filecoin-project/lotus/pull/13003)), ([filecoin-project/lotus#13027](https://github.com/filecoin-project/lotus/pull/13027)), ([filecoin-project/lotus#13034](https://github.com/filecoin-project/lotus/pull/13034)), ([filecoin-project/lotus#13075](https://github.com/filecoin-project/lotus/pull/13075)), ([filecoin-project/lotus#13066](https://github.com/filecoin-project/lotus/pull/13066))
 
-**F3-aware Ethereum APIs via `/v2` endpoint and improvements to existing `/v1` APIs** ([filecoin-project/lotus#13026](https://github.com/filecoin-project/lotus/pull/13026))
+### F3-aware Ethereum APIs via `/v2` endpoint and improvements to existing `/v1` APIs
 
 Lotus now offers two versions of its Ethereum-compatible APIs (`eth_*`, `trace_*`, `net_*`, `web3_*` and associated `Filecoin.*` APIs including Filecoin-specific functions such as `Filecoin.EthAddressToFilecoinAddress` and `Filecoin.FilecoinAddressToEthAddress`) with different finality handling:
 * **`/v2` APIs (New & Experimental):** These APIs consult the F3 subsystem (if enabled) for finality information.
@@ -55,6 +44,15 @@ Lotus now offers two versions of its Ethereum-compatible APIs (`eth_*`, `trace_*
   * Methods accepting `BlockNumberOrHash` now support all standard tags (`"pending"`, `"latest"`, `"safe"`, `"finalized"`). This includes `eth_estimateGas`, `eth_call`, `eth_getCode`, `eth_getStorageAt`, `eth_getBalance`, `eth_getTransactionCount`, and `eth_getBlockReceipts`.
   * Removed internal `Eth*Limited` methods (e.g., `EthGetTransactionByHashLimited`) from the supported gateway API surface.
   * Improved error handling: block selection endpoints now consistently return `ErrNullRound` (and corresponding JSONRPC errors) for null tipsets.
+
+This work was done in ([filecoin-project/lotus#13026](https://github.com/filecoin-project/lotus/pull/13026)), ([filecoin-project/lotus#13070](https://github.com/filecoin-project/lotus/pull/13070)).
+
+### Others
+- feat: add gas to application metric reporting `vm/applyblocks_early_gas`, `vm/applyblocks_messages_gas`, `vm/applyblocks_cron_gas` ([filecoin-project/lotus#13030](https://github.com/filecoin-project/lotus/pull/13030))
+- feat(metrics): capture total gas metric from ApplyBlocks ([filecoin-project/lotus#13037](https://github.com/filecoin-project/lotus/pull/13037))
+- feat: add F3 Grafana Dashboard Template ([filecoin-project/lotus#12934](https://github.com/filecoin-project/lotus/pull/12934))
+- fix(f3): limit the concurrency of F3 power table calculation ([filecoin-project/lotus#13085](https://github.com/filecoin-project/lotus/pull/13085))
+- feat(f3): remove dynnamic manifest functionality and use static manifest ([filecoin-project/lotus#13074](https://github.com/filecoin-project/lotus/pull/13074))
 
 ## 🐛 Bug Fix Highlights
 - fix(eth): apply limit in EthGetBlockReceiptsLimited ([filecoin-project/lotus#12883](https://github.com/filecoin-project/lotus/pull/12883))
