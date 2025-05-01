@@ -3,7 +3,10 @@ package buildconstants
 import (
 	"encoding/json"
 	"math/big"
+	"os"
+	"time"
 
+	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/peer"
 
@@ -54,10 +57,31 @@ func F3Manifest() *manifest.Manifest {
 	if F3ManifestBytes == nil {
 		return nil
 	}
-	var res manifest.Manifest
-	if err := json.Unmarshal(F3ManifestBytes, &res); err != nil {
-		log.Errorf("failed to unmarshal F3 manifest: %s", err)
-		return nil
+	var manif manifest.Manifest
+
+	if err := json.Unmarshal(F3ManifestBytes, &manif); err != nil {
+		log.Panicf("failed to unmarshal F3 manifest: %s", err)
 	}
-	return &res
+	if err := manif.Validate(); err != nil {
+		log.Panicf("invalid F3 manifest: %s", err)
+	}
+
+	if ptCid := os.Getenv("F3_INITIAL_POWERTABLE_CID"); ptCid != "" {
+		if k, err := cid.Parse(ptCid); err != nil {
+			log.Errorf("failed to parse F3_INITIAL_POWERTABLE_CID %q: %s", ptCid, err)
+		} else if manif.InitialPowerTable.Defined() && k != manif.InitialPowerTable {
+			log.Errorf("ignoring F3_INITIAL_POWERTABLE_CID as lotus has a hard-coded initial F3 power table")
+		} else {
+			manif.InitialPowerTable = k
+		}
+	}
+	if !manif.InitialPowerTable.Defined() {
+		log.Warn("initial power table is not specified, it will be populated automatically assuming this is testing network")
+	}
+
+	// EC Period sanity check
+	if manif.EC.Period != time.Duration(BlockDelaySecs)*time.Second {
+		log.Panicf("static manifest EC period is %v, expected %v", manif.EC.Period, time.Duration(BlockDelaySecs)*time.Second)
+	}
+	return &manif
 }

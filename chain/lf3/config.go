@@ -1,7 +1,6 @@
 package lf3
 
 import (
-	"os"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -71,23 +70,6 @@ func NewConfig(nn dtypes.NetworkName) *Config {
 	c := &Config{
 		BaseNetworkName: gpbft.NetworkName(nn),
 		StaticManifest:  buildconstants.F3Manifest(),
-	}
-	c.StaticManifest = buildconstants.F3Manifest()
-	if c.StaticManifest != nil {
-		if ptCid := os.Getenv("F3_INITIAL_POWERTABLE_CID"); ptCid != "" {
-			if k, err := cid.Parse(ptCid); err != nil {
-				log.Errorf("failed to parse F3_INITIAL_POWERTABLE_CID %q: %s", ptCid, err)
-			} else if c.StaticManifest.InitialPowerTable.Defined() && k != c.StaticManifest.InitialPowerTable {
-				log.Errorf("ignoring F3_INITIAL_POWERTABLE_CID as lotus has a hard-coded initial F3 power table")
-			} else {
-				c.StaticManifest.InitialPowerTable = k
-			}
-		}
-
-		// EC Period sanity check
-		if c.StaticManifest.EC.Period != time.Duration(buildconstants.BlockDelaySecs)*time.Second {
-			log.Panicf("static manifest EC period is %v, expected %v", c.StaticManifest.EC.Period, time.Duration(buildconstants.BlockDelaySecs)*time.Second)
-		}
 	}
 
 	return c

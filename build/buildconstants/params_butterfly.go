@@ -111,5 +111,5 @@ var WhitelistedBlock = cid.Undef
 
 const F3Enabled = true
 
-//go:embed f3manifest_2k.json
+//go:embed f3manifest_butterfly.json
 var F3ManifestBytes []byte
