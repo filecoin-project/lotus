@@ -68,16 +68,6 @@ func NewConfig(nn dtypes.NetworkName) *Config {
 	if nn == "testnetnet" {
 		nn = "filecoin"
 	}
-	pollInterval := 15 * time.Minute
-	if envVar := os.Getenv("LOTUS_F3_POLL_INTERVAL"); len(envVar) != 0 {
-		d, err := time.ParseDuration(envVar)
-		if err != nil {
-			log.Errorf("invalid duration in LOTUS_F3_POLL_INTERVAL, defaulting to %v", pollInterval)
-		} else {
-			pollInterval = d
-		}
-
-	}
 	c := &Config{
 		BaseNetworkName: gpbft.NetworkName(nn),
 		StaticManifest:  buildconstants.F3Manifest(),

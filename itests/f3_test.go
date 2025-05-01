@@ -21,7 +21,6 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	lotus_api "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/lf3"
-	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/modules"
@@ -217,36 +216,6 @@ func TestF3_JsonRPCErrorsPassThrough(t *testing.T) {
 	ticket, err := n.F3GetOrRenewParticipationTicket(e.testCtx, addr, nil, 100)
 	require.ErrorIs(t, err, lotus_api.ErrF3ParticipationTooManyInstances)
 	require.Zero(t, ticket)
-}
-
-func (e *testEnv) waitTillF3Rebootstrap(timeout time.Duration) {
-	e.waitFor(func(n *kit.TestFullNode) bool {
-		// the prev epoch yet, check if we already bootstrapped and from
-		// the right epoch
-		cert, err := n.F3GetCertificate(e.testCtx, 0)
-		if err != nil || cert == nil {
-			return false
-		}
-		m, err := n.F3GetManifest(e.testCtx)
-		require.NoError(e.t, err)
-
-		// Find the first non-null block at or before the target height, that's the bootstrap block.
-		targetEpoch := m.BootstrapEpoch - m.EC.Finality
-		ts, err := n.ChainGetTipSetByHeight(e.testCtx, abi.ChainEpoch(targetEpoch), types.EmptyTSK)
-		if err != nil {
-			return false
-		}
-
-		return cert.ECChain.Base().Epoch == int64(ts.Height())
-	}, timeout)
-}
-
-func (e *testEnv) waitTillF3Pauses(timeout time.Duration) {
-	e.waitFor(func(n *kit.TestFullNode) bool {
-		r, err := n.F3IsRunning(e.testCtx)
-		require.NoError(e.t, err)
-		return !r
-	}, timeout)
 }
 
 func (e *testEnv) waitTillF3Runs(timeout time.Duration) {
