@@ -265,8 +265,6 @@ func F3Backend(backend lf3.F3Backend) NodeOpt {
 func F3Disabled() NodeOpt {
 	return ConstructorOpts(
 		node.Unset(new(*lf3.Config)),
-		node.Unset(new(*lf3.ContractManifestProvider)),
-		node.Unset(new(lf3.StateCaller)),
 		node.Unset(new(manifest.ManifestProvider)),
 		node.Unset(new(lf3.F3Backend)),
 	)
