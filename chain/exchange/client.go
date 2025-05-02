@@ -515,10 +515,7 @@ func (c *client) getShuffledPeers() []peer.ID {
 }
 
 func shufflePrefix(peers []peer.ID) {
-	prefix := ShufflePeersPrefix
-	if len(peers) < prefix {
-		prefix = len(peers)
-	}
+	prefix := min(len(peers), ShufflePeersPrefix)
 
 	buf := make([]peer.ID, prefix)
 	perm := rand.Perm(prefix)

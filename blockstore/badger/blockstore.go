@@ -479,10 +479,7 @@ func (b *Blockstore) onlineGC(ctx context.Context, threshold float64, checkFreq 
 	defer b.unlockDB()
 
 	// compact first to gather the necessary statistics for GC
-	nworkers := runtime.NumCPU() / 2
-	if nworkers < 2 {
-		nworkers = 2
-	}
+	nworkers := max(runtime.NumCPU()/2, 2)
 	if nworkers > 7 { // max out at 1 goroutine per badger level
 		nworkers = 7
 	}
@@ -536,10 +533,8 @@ func (b *Blockstore) CollectGarbage(ctx context.Context, opts ...blockstore.Bloc
 	if threshold == 0 {
 		threshold = defaultGCThreshold
 	}
-	checkFreq := options.CheckFreq
-	if checkFreq < 30*time.Second { // disallow checking more frequently than block time
-		checkFreq = 30 * time.Second
-	}
+	// disallow checking more frequently than block time
+	checkFreq := max(options.CheckFreq, 30*time.Second)
 	check := options.Check
 	if check == nil {
 		check = func() error {

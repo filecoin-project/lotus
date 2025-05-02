@@ -109,10 +109,7 @@ func (c *HeadChangeCoalescer) background(minDelay, maxDelay, mergeInterval time.
 			if sinceLast < mergeInterval && sinceFirst < maxDelay {
 				// coalesce some more
 				maxWait := maxDelay - sinceFirst
-				wait := minDelay
-				if maxWait < wait {
-					wait = maxWait
-				}
+				wait := min(maxWait, minDelay)
 
 				timerC = time.After(wait)
 			} else {

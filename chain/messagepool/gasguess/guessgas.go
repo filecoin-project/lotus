@@ -59,10 +59,7 @@ var Costs = map[CostKey]int64{
 }
 
 func failedGuess(msg *types.SignedMessage) int64 {
-	guess := int64(float64(msg.Message.GasLimit) * failedGasGuessRatio)
-	if guess > failedGasGuessMax {
-		guess = failedGasGuessMax
-	}
+	guess := min(int64(float64(msg.Message.GasLimit)*failedGasGuessRatio), failedGasGuessMax)
 	return guess
 }
 

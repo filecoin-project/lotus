@@ -60,10 +60,7 @@ func (sr *stateRand) GetBeaconRandomnessTipset(ctx context.Context, round abi.Ch
 		return nil, xerrors.Errorf("cannot draw randomness from the future")
 	}
 
-	searchHeight := round
-	if searchHeight < 0 {
-		searchHeight = 0
-	}
+	searchHeight := max(round, 0)
 
 	randTs, err := sr.cs.GetTipsetByHeight(ctx, searchHeight, ts, lookback)
 	if err != nil {
@@ -87,10 +84,7 @@ func (sr *stateRand) getChainRandomness(ctx context.Context, round abi.ChainEpoc
 		return [32]byte{}, xerrors.Errorf("cannot draw randomness from the future")
 	}
 
-	searchHeight := round
-	if searchHeight < 0 {
-		searchHeight = 0
-	}
+	searchHeight := max(round, 0)
 
 	randTs, err := sr.cs.GetTipsetByHeight(ctx, searchHeight, ts, lookback)
 	if err != nil {

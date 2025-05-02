@@ -1089,10 +1089,7 @@ func (cs *ChainStore) persistBlockHeaders(ctx context.Context, b ...*types.Block
 	var err error
 	for i := 0; i <= calls; i++ {
 		start := batchSize * i
-		end := start + batchSize
-		if end > len(b) {
-			end = len(b)
-		}
+		end := min(start+batchSize, len(b))
 
 		err = multierr.Append(err, cs.chainLocalBlockstore.PutMany(ctx, sbs[start:end]))
 	}
@@ -1332,10 +1329,7 @@ func (cs *ChainStore) IsStoringEvents() bool {
 
 // true if ts1 wins according to the filecoin tie-break rule
 func breakWeightTie(ts1, ts2 *types.TipSet) bool {
-	s := len(ts1.Blocks())
-	if s > len(ts2.Blocks()) {
-		s = len(ts2.Blocks())
-	}
+	s := min(len(ts1.Blocks()), len(ts2.Blocks()))
 
 	// blocks are already sorted by ticket
 	for i := 0; i < s; i++ {
