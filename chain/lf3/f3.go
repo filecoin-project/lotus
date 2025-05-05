@@ -132,7 +132,7 @@ func (fff *F3) runSigningLoop(ctx context.Context) {
 		signatureBuilder, err := mb.PrepareSigningInputs(gpbft.ActorID(minerID))
 		if errors.Is(err, gpbft.ErrNoPower) {
 			// we don't have any power in F3, continue
-			log.Debug("no power to participate in F3: %+v", err)
+			log.Debugf("no power to participate in F3: %+v", err)
 			return nil
 		}
 		if err != nil {
