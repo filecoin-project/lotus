@@ -1,0 +1,76 @@
+
+.Index {
+    width: 100vw;
+    height: 100vh;
+    background-color: #f0f0f0;
+    color: #333;
+    font-family: 'Helvetica Neue', sans-serif;
+
+    display: grid;
+    grid-template-columns: auto 40vw auto;
+    grid-template-rows: auto auto auto 3em;
+    grid-template-areas:
+    ". . . ."
+    ". main main ."
+    ". . . ."
+    "footer footer footer footer";
+}
+
+.Index-footer {
+    background-color: #333;
+    grid-area: footer;
+}
+
+.Index-footer > div {
+    padding-left: 0.7em;
+    padding-top: 0.7em;
+}
+
+.Index-nodes {
+    grid-area: main;
+}
+
+.Index-node {
+    margin: 5px;
+    padding: 15px;
+    background-color: #fff;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+}
+
+span {
+    display: block;
+    margin-bottom: 5px;
+}
+
+input[type="text"] {
+    width: 100%;
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    margin-bottom: 10px;
+}
+
+button {
+    background-color: #4c9aff;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    padding: 10px 20px;
+    font-size: 1.2em;
+}
+
+button:hover {
+    background-color: #4c7eff;
+}
+
+a:link {
+    color: #333;
+}
+
+a:visited {
+    color: #333;
+}
+
+a:hover {
+    color: #555;
+}
