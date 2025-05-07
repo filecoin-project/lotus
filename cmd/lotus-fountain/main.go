@@ -249,7 +249,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Limit based on wallet address
 	limiter := h.limiter.GetWalletLimiter(filecoinAddress.String())
 	if !limiter.Allow() {
-		http.Error(w, http.StatusText(http.StatusTooManyRequests)+": wallet limit", http.StatusTooManyRequests)
+		http.Error(w, http.StatusText(http.StatusTooManyRequests)+": wallet limit\nYou can request tFIL and DataCap every 2 hours.", http.StatusTooManyRequests)
 		return
 	}
 
