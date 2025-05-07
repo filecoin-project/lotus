@@ -185,7 +185,7 @@ func (o *observer) headChange(ctx context.Context, rev, app []*types.TipSet) err
 			// If we have more reverts, the next revert is the next head.
 			to = rev[i+1]
 		} else {
-			// At the end of the revert sequenece, we need to lookup the joint tipset
+			// At the end of the revert sequence, we need to lookup the joint tipset
 			// between the revert sequence and the apply sequence.
 			var err error
 			to, err = o.api.ChainGetTipSet(ctx, from.Parents())
