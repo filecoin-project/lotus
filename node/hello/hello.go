@@ -128,7 +128,7 @@ func (hs *Service) HandleStream(s inet.Stream) {
 	ctx := network.WithNoDial(context.Background(), "fetching filecoin hello tipset")
 	ts, err := hs.syncer.FetchTipSet(ctx, s.Conn().RemotePeer(), types.NewTipSetKey(hmsg.HeaviestTipSet...))
 	if err != nil {
-		log.Errorf("failed to fetch tipset from peer during hello: %+v", err)
+		log.Debugf("failed to fetch tipset from peer during hello: %+v", err)
 		return
 	}
 
