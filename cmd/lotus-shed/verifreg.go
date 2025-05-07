@@ -80,7 +80,20 @@ var verifRegAddVerifierFromMsigCmd = &cli.Command{
 		api := srv.FullNodeAPI()
 		ctx := lcli.ReqContext(cctx)
 
-		vrk, err := api.StateVerifiedRegistryRootKey(ctx, types.EmptyTSK)
+		vact, err := api.StateGetActor(ctx, verifreg.Address, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		apibs := blockstore.NewAPIBlockstore(api)
+		store := adt.WrapStore(ctx, cbor.NewCborStore(apibs))
+
+		vst, err := verifreg.Load(store, vact)
+		if err != nil {
+			return err
+		}
+
+		vrk, err := vst.RootKey()
 		if err != nil {
 			return err
 		}
@@ -460,7 +473,20 @@ var verifRegRemoveVerifiedClientDataCapCmd = &cli.Command{
 			return err
 		}
 
-		vrk, err := api.StateVerifiedRegistryRootKey(ctx, types.EmptyTSK)
+		vact, err := api.StateGetActor(ctx, verifreg.Address, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		apibs := blockstore.NewAPIBlockstore(api)
+		store := adt.WrapStore(ctx, cbor.NewCborStore(apibs))
+
+		vst, err := verifreg.Load(store, vact)
+		if err != nil {
+			return err
+		}
+
+		vrk, err := vst.RootKey()
 		if err != nil {
 			return err
 		}
@@ -469,9 +495,6 @@ var verifRegRemoveVerifiedClientDataCapCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-
-		apibs := blockstore.NewAPIBlockstore(api)
-		store := adt.WrapStore(ctx, cbor.NewCborStore(apibs))
 
 		st, err := multisig.Load(store, vrkState)
 		if err != nil {
