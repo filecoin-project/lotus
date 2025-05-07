@@ -106,20 +106,38 @@ func New(mctx helpers.MetricsCtx, lc fx.Lifecycle, params F3Params) (*F3, error)
 		OnStop:  fff.inner.Stop,
 	})
 
-	// Start signing F3 messages.
 	lCtx, cancel := context.WithCancel(mctx)
-	doneCh := make(chan struct{})
+
+	// start EC wrapper power-table prefetch logic.
+	donePrefetchingCh := make(chan struct{})
 	lc.Append(fx.Hook{
 		OnStart: func(context.Context) error {
 			go func() {
-				defer close(doneCh)
+				defer close(donePrefetchingCh)
+				ec.runPrefetcher(lCtx)
+			}()
+			return nil
+		},
+		OnStop: func(context.Context) error {
+			cancel()
+			<-donePrefetchingCh
+			return nil
+		},
+	})
+
+	// Start signing F3 messages.
+	doneSigningCh := make(chan struct{})
+	lc.Append(fx.Hook{
+		OnStart: func(context.Context) error {
+			go func() {
+				defer close(doneSigningCh)
 				fff.runSigningLoop(lCtx)
 			}()
 			return nil
 		},
 		OnStop: func(context.Context) error {
 			cancel()
-			<-doneCh
+			<-doneSigningCh
 			return nil
 		},
 	})

@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-f3/gpbft"
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
@@ -93,6 +94,29 @@ func (ts *f3TipSet) Timestamp() time.Time {
 		return time.Unix(int64(header.Timestamp), 0)
 	}
 	return time.Time{}
+}
+
+func (ec *ecWrapper) runPrefetcher(ctx context.Context) {
+	// We have a loop here because we'll be automatically unsubscribed if we're too slow.
+	for {
+		headChanges := ec.chainStore.SubHeadChanges(ctx)
+		for changes := range headChanges {
+			for _, head := range changes {
+				if head.Type == store.HCRevert {
+					continue
+				}
+				// We do one job at a time because we're just pre-fetching here. If,
+				// e.g., we end up in "catch up" mode, we'll be unsubscribed (too
+				// slow) then we'll try again after we wait for one block.
+				_, _ = ec.getPowerTableLotusTSK(ctx, head.Val.Parents())
+			}
+		}
+		select {
+		case <-time.After(time.Duration(buildconstants.BlockDelaySecs) * time.Second):
+		case <-ctx.Done():
+			return
+		}
+	}
 }
 
 // GetTipsetByEpoch should return a tipset before the one requested if the requested
