@@ -2,6 +2,7 @@ package lf3
 
 import (
 	"context"
+	"runtime"
 	"sort"
 	"sync"
 	"time"
@@ -36,6 +37,7 @@ type ecWrapper struct {
 
 	powerTableComputeLock sync.Mutex
 	powerTableComputeJobs map[types.TipSetKey]chan struct{}
+	powerTableComputeSema chan struct{}
 }
 
 func newEcWrapper(chainStore *store.ChainStore, syncer *chain.Syncer, stateManager *stmgr.StateManager) *ecWrapper {
@@ -50,6 +52,7 @@ func newEcWrapper(chainStore *store.ChainStore, syncer *chain.Syncer, stateManag
 		cache:        cache,
 
 		powerTableComputeJobs: make(map[types.TipSetKey]chan struct{}),
+		powerTableComputeSema: make(chan struct{}, min(4, runtime.NumCPU()/2)),
 	}
 }
 
@@ -140,6 +143,7 @@ func (ec *ecWrapper) GetPowerTable(ctx context.Context, tskF3 gpbft.TipSetKey) (
 }
 
 func (ec *ecWrapper) getPowerTableLotusTSK(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) {
+	// Either wait for someone else to compute the power table, or claim the job.
 	for {
 		// check the cache
 		pe, ok := ec.cache.Get(tsk)
@@ -160,10 +164,13 @@ func (ec *ecWrapper) getPowerTableLotusTSK(ctx context.Context, tsk types.TipSet
 		}
 	}
 
+	// Ok, we have the lock and nobody else has claimed the job. Claim it.
 	myWaitCh := make(chan struct{})
 	ec.powerTableComputeJobs[tsk] = myWaitCh
 	ec.powerTableComputeLock.Unlock()
 
+	// Make sure to "unlock" the job when we're done, even if we don't complete it. Someone else
+	// will complete it in that case.
 	defer func() {
 		ec.powerTableComputeLock.Lock()
 		delete(ec.powerTableComputeJobs, tsk)
@@ -172,6 +179,17 @@ func (ec *ecWrapper) getPowerTableLotusTSK(ctx context.Context, tsk types.TipSet
 		close(myWaitCh)
 	}()
 
+	// Then wait in line. We only allow 4 jobs at once.
+	select {
+	case ec.powerTableComputeSema <- struct{}{}:
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+	defer func() {
+		<-ec.powerTableComputeSema
+	}()
+
+	// Finally, do the actual compute.
 	ts, err := ec.chainStore.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("getting tipset by key for get parent: %w", err)
