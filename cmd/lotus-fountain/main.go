@@ -306,5 +306,18 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Render the success HTML template
+	if r.RequestURI == "/send" {
+		tmplPath := "site/send_success.html"
+		tmpl, err := template.ParseFiles(tmplPath)
+		if err != nil {
+			http.Error(w, "Template error: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html")
+		tmpl.Execute(w, map[string]string{"CID": smsg.Cid().String()})
+		return
+	}
+
 	_, _ = w.Write([]byte(smsg.Cid().String()))
 }

@@ -80,3 +80,11 @@ a:visited {
 a:hover {
     color: #555;
 }
+
+.container {
+    margin: 2em;
+
+    a {
+        color: #4c7eff;
+    }
+}
