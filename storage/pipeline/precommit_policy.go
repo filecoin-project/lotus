@@ -132,11 +132,11 @@ func (p *BasicPreCommitPolicy) getCCSectorLifetime(nv network.Version) (abi.Chai
 	}
 
 	if minExpiration := policy.GetMinSectorExpiration(); ccLifetimeEpochs < minExpiration {
-		log.Warnf("value for CommittedCapacitySectorLiftime is too short, using default minimum (%d epochs)", minExpiration)
+		log.Warnf("value for CommittedCapacitySectorLifetime is too short, using default minimum (%d epochs)", minExpiration)
 		return minExpiration, nil
 	}
 	if ccLifetimeEpochs > maxCommitment {
-		log.Warnf("value for CommittedCapacitySectorLiftime is too long, using default maximum (%d epochs)", maxCommitment)
+		log.Warnf("value for CommittedCapacitySectorLifetime is too long, using default maximum (%d epochs)", maxCommitment)
 		return maxCommitment, nil
 	}
 

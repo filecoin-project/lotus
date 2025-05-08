@@ -177,7 +177,7 @@ func (s *SplitStore) doPrune(curTs *types.TipSet, retainStateP func(int64) bool,
 	}
 
 	// 1. mark reachable objects by walking the chain from the current epoch; we keep all messages
-	//    and chain headers; state and reciepts are retained only if it is within retention policy scope
+	//    and chain headers; state and receipts are retained only if it is within retention policy scope
 	log.Info("marking reachable objects")
 	startMark := time.Now()
 
@@ -402,7 +402,7 @@ func (s *SplitStore) completePrune() error {
 	return nil
 }
 
-// like walkChain but peforms a deep walk, using parallel walking with walkObjectLax,
+// like walkChain but performs a deep walk, using parallel walking with walkObjectLax,
 // whereby all extant messages are retained and state roots are retained if they satisfy
 // the given predicate.
 // missing references are ignored, as we expect to have plenty for snapshot syncs.
