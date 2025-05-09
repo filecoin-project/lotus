@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -87,13 +88,9 @@ func (ss *stateSnaps) mergeLastLayer() {
 	last := ss.layers[len(ss.layers)-1]
 	nextLast := ss.layers[len(ss.layers)-2]
 
-	for k, v := range last.actors {
-		nextLast.actors[k] = v
-	}
+	maps.Copy(nextLast.actors, last.actors)
 
-	for k, v := range last.resolveCache {
-		nextLast.resolveCache[k] = v
-	}
+	maps.Copy(nextLast.resolveCache, last.resolveCache)
 
 	ss.dropLayer()
 }
