@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"sort"
 
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/urfave/cli/v2"
@@ -14,13 +15,15 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	miner15 "github.com/filecoin-project/go-state-types/builtin/v15/miner"
 	miner16 "github.com/filecoin-project/go-state-types/builtin/v16/miner"
-	"github.com/filecoin-project/specs-actors/v7/actors/builtin"
 
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	minertypes "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/lib/must"
 )
 
 var minerFeesCmd = &cli.Command{
@@ -280,7 +283,7 @@ var minerFeesCmd = &cli.Command{
 						rew := miner16.ExpectedRewardForPower(cronParams.RewardSmoothed, cronParams.QualityAdjPowerSmoothed, dl.LivePower.QA, builtin.EpochsInDay)
 						// 50% daily reward is our cap on dl.DailyFee
 						rewardPercent = fmt.Sprintf("%s%%", big.Div(big.Mul(rew, big.NewInt(100)), dl.DailyFee))
-						feeCap := big.Div(rew, big.NewInt(2))
+						feeCap := big.Div(rew, big.NewInt(miner16.DailyFeeBlockRewardCapDenom))
 						if feeCap.LessThan(dl.DailyFee) {
 							feeCapDesc = fmt.Sprintf("fee capped @ %s", feeCap)
 							expectedFee = feeCap
@@ -363,6 +366,244 @@ var minerFeesCmd = &cli.Command{
 			_, _ = fmt.Fprintf(cctx.App.Writer, "✓ no discrepancies found)\n")
 		}
 
+		return nil
+	},
+}
+
+var minerFeesInspect = &cli.Command{
+	Name:      "fees-inspect",
+	UsageText: "lotus-shed miner fees-inspect [--tipset <tipset>] [--count <count>]",
+	Description: "Inspect miner fees in the given tipset and its parents. The output is a CSV with the following columns:\n" +
+		"Epoch, Burn, Fees, Penalties, Expected, Miners ...\n" +
+		"Where:\n" +
+		"  - Epoch: the epoch of the tipset\n" +
+		"  - Burn: the total amount of attoFIL burned by miners in this tipset\n" +
+		"  - Fees: the total amount of expected proof fees paid by miners in this tipset\n" +
+		"  - Penalties: the total amount of penalties expected to be paid by miners in this tipset\n" +
+		"  - Expected: whether the sum of fees and penalties equals the burn amount (✓ or ✗)\n" +
+		"    A discrepancy here likely results from burnt precommit deposits or miners who can't pay fees,\n" +
+		"    neither of which are currently calculated by this tool\n" +
+		"  - Miners: the list of miners that burned or were expected to burn in this tipset",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "tipset",
+			Usage: "tipset or height (@X or @head for latest)",
+			Value: "@head",
+		},
+		&cli.IntFlag{
+			Name:  "count",
+			Usage: "number of tipsets to inspect, working backwards from the --tipset",
+			Value: 1,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := lcli.GetFullNodeAPIV1(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := lcli.ReqContext(cctx)
+
+		burnAddr, err := address.NewFromString("f099")
+		if err != nil {
+			return xerrors.Errorf("parsing burn address: %w", err)
+		}
+
+		bstore := blockstore.NewAPIBlockstore(api)
+		adtStore := adt.WrapStore(ctx, cbor.NewCborStore(bstore))
+
+		inspectTipset := func(ts *types.TipSet) error {
+			compute, err := api.StateCompute(ctx, ts.Height(), nil, ts.Key())
+			if err != nil {
+				return xerrors.Errorf("computing tipset at deadline end epoch: %w", err)
+			}
+
+			// We expect this to be non-nil when we need it because we only dig into details once we
+			// know we are inside a cron call. We use the params from cron to avoid having to go and
+			// fetch RewardSmoothed and QualityAdjPowerSmoothed for the current epoch from the reward
+			// and power actors (but we could).
+			var cronParams *miner16.DeferredCronEventParams
+
+			type minerBurn struct {
+				addr    address.Address
+				burn    big.Int
+				fee     big.Int
+				penalty big.Int
+			}
+
+			// Calculate the expected penalty for a given power amount. This is unfortunately complicated
+			// by the need to fetch total network reward and power for the current tipset.
+			faultFeeForPower := func(qaPower abi.StoragePower) (abi.TokenAmount, error) {
+				nv, err := api.StateNetworkVersion(ctx, ts.Key())
+				if err != nil {
+					return big.Zero(), err
+				}
+
+				return minertypes.PledgePenaltyForContinuedFault(
+					nv,
+					builtin.FilterEstimate{
+						PositionEstimate: cronParams.RewardSmoothed.PositionEstimate,
+						VelocityEstimate: cronParams.RewardSmoothed.VelocityEstimate,
+					},
+					builtin.FilterEstimate{
+						PositionEstimate: cronParams.QualityAdjPowerSmoothed.PositionEstimate,
+						VelocityEstimate: cronParams.QualityAdjPowerSmoothed.VelocityEstimate,
+					},
+					qaPower,
+				)
+			}
+
+			// Inspect a miner actor for the current tipset and calculate the expected fee and penalty
+			// amounts for the deadline it is in.
+			inspectMiner := func(minerAddr address.Address) (big.Int, big.Int, error) {
+				minerActor, err := api.StateGetActor(ctx, minerAddr, ts.Key())
+				if err != nil {
+					return big.Zero(), big.Zero(), xerrors.Errorf("getting miner actor: %w", err)
+				}
+				var minerState miner16.State
+				if err := adtStore.Get(ctx, minerActor.Head, &minerState); err != nil {
+					return big.Zero(), big.Zero(), xerrors.Errorf("getting miner state: %w", err)
+				}
+
+				dlinfo, err := api.StateMinerProvingDeadline(ctx, minerAddr, ts.Key())
+				if err != nil {
+					return big.Zero(), big.Zero(), xerrors.Errorf("getting miner proving deadline: %w", err)
+				}
+
+				deadlines, err := minerState.LoadDeadlines(adtStore)
+				if err != nil {
+					return big.Zero(), big.Zero(), xerrors.Errorf("loading deadlines: %w", err)
+				}
+
+				deadline, err := deadlines.LoadDeadline(adtStore, dlinfo.Index)
+				if err != nil {
+					return big.Zero(), big.Zero(), xerrors.Errorf("loading deadline: %w", err)
+				}
+
+				faultFee := big.Zero()
+				if !deadline.FaultyPower.QA.IsZero() {
+					faultFee, err = faultFeeForPower(deadline.FaultyPower.QA)
+					if err != nil {
+						return big.Zero(), big.Zero(), xerrors.Errorf("getting fault fee: %w", err)
+					}
+				}
+
+				expectedFee := deadline.DailyFee
+				// Check if the fees should be capped to 50% of expected daily reward; this is an unlikely
+				// case and we could ignore it and still be correct almost all of the time.
+				rew := miner16.ExpectedRewardForPower(cronParams.RewardSmoothed, cronParams.QualityAdjPowerSmoothed, deadline.LivePower.QA, builtin.EpochsInDay)
+				feeCap := big.Div(rew, big.NewInt(miner16.DailyFeeBlockRewardCapDenom))
+				if feeCap.LessThan(expectedFee) {
+					expectedFee = feeCap
+				}
+
+				return expectedFee, faultFee, nil
+			}
+
+			// Dig into a call and its subcalls to find (1) cron calls to a miner, and subsequent to that
+			// in the same trace, (2) miner calls to the burn address. We then have the total burn for
+			// an individual miner so we proceed to collect the expected fee and penalty amounts for that
+			// miner in their current deadline (which we expect we are processing the end of in this cron
+			// call).
+			burns := make([]*minerBurn, 0)
+			cronMinerCalls := make(map[address.Address]struct{})
+			var traceBurns func(depth int, trace types.ExecutionTrace, thisExecCronMiner *minerBurn) error
+			traceBurns = func(depth int, trace types.ExecutionTrace, thisExecCronMiner *minerBurn) error {
+				if trace.Msg.From == power.Address && trace.Msg.Method == 12 {
+					// cron call to miner
+					if thisExecCronMiner != nil {
+						if _, ok := cronMinerCalls[thisExecCronMiner.addr]; ok {
+							return xerrors.Errorf("multiple cron calls to same miner in one message: %s", *thisExecCronMiner)
+						}
+					}
+
+					var p miner16.DeferredCronEventParams
+					if err := p.UnmarshalCBOR(bytes.NewReader(trace.Msg.Params)); err != nil {
+						return xerrors.Errorf("unmarshalling cron params: %w", err)
+					}
+					cronParams = &p
+
+					fee, penalty, err := inspectMiner(trace.Msg.To)
+					if err != nil {
+						return xerrors.Errorf("inspecting miner: %w", err)
+					}
+					thisExecCronMiner = &minerBurn{
+						addr:    trace.Msg.To,
+						burn:    big.Zero(),
+						fee:     fee,
+						penalty: penalty,
+					}
+					burns = append(burns, thisExecCronMiner)
+					cronMinerCalls[trace.Msg.To] = struct{}{}
+				} else if thisExecCronMiner != nil && trace.Msg.From == thisExecCronMiner.addr && trace.Msg.To == burnAddr {
+					// TODO: handle multiple burn? Shouldn't happen but maybe it should be checked?
+					thisExecCronMiner.burn = trace.Msg.Value
+				}
+
+				for _, st := range trace.Subcalls {
+					if err := traceBurns(depth+1, st, thisExecCronMiner); err != nil {
+						return err
+					}
+				}
+
+				return nil
+			}
+
+			// For each execution in this tipset, find the ones that are cron calls to miners and have
+			// burn.
+			for _, invoc := range compute.Trace {
+				if err := traceBurns(0, invoc.ExecutionTrace, nil); err != nil {
+					return xerrors.Errorf("printing execution trace: %w", err)
+				}
+			}
+
+			totalBurn := big.Zero()
+			totalFees := big.Zero()
+			totalPenalties := big.Zero()
+			miners := make([]address.Address, 0)
+			for _, b := range burns {
+				totalBurn = big.Add(totalBurn, b.burn)
+				totalFees = big.Add(totalFees, b.fee)
+				totalPenalties = big.Add(totalPenalties, b.penalty)
+				if !b.burn.IsZero() || !b.fee.IsZero() || !b.penalty.IsZero() {
+					miners = append(miners, b.addr)
+				}
+			}
+			expected := "✓"
+			if !big.Add(totalFees, totalPenalties).Equals(totalBurn) {
+				// This is likely because we are not including the precommit deposits that are burnt or
+				// checking miner balances to see if they can pay or not. For correctness we could try and
+				// calculate that for each miner.
+				expected = "✗"
+			}
+			_, _ = fmt.Fprintf(cctx.App.Writer, "%d, %v, %v, %v, %s", ts.Height(), totalBurn, totalFees, totalPenalties, expected)
+			sort.Slice(miners, func(i, j int) bool {
+				return must.One(address.IDFromAddress(miners[i])) < must.One(address.IDFromAddress(miners[j]))
+			})
+			for _, maddr := range miners {
+				_, _ = fmt.Fprintf(cctx.App.Writer, ", %v", maddr)
+			}
+			_, _ = fmt.Fprintf(cctx.App.Writer, "\n")
+
+			return nil
+		}
+
+		ts, err := lcli.LoadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+
+		count := cctx.Int("count")
+		_, _ = fmt.Fprintln(cctx.App.Writer, "Epoch, Burn, Fees, Penalties, Expected, Miners ...")
+		for i := 0; i < count; i++ {
+			if err := inspectTipset(ts); err != nil {
+				return xerrors.Errorf("inspecting tipset %d: %w", ts.Height(), err)
+			}
+			if ts, err = api.ChainGetTipSet(ctx, ts.Parents()); err != nil {
+				return xerrors.Errorf("getting parent tipset: %w", err)
+			}
+		}
 		return nil
 	},
 }
