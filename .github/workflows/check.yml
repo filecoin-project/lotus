@@ -26,6 +26,10 @@ jobs:
     outputs:
       only_docs: ${{ steps.check.outputs.only_markdown_changes }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+          fetch-depth: 0
       - name: Check for markdown-only changes
         id: check
         uses: ./.github/actions/only-markdown
