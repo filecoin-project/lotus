@@ -803,7 +803,7 @@ func (tm *TestUnmanagedMiner) submitProveCommit(
 
 	// Step 6: Submit the ProveCommit to the network
 	if proofType.IsNonInteractive() {
-		if tm.IsImmutableDeadline(provingDeadline) {
+		if tm.MaybeImmutableDeadline(provingDeadline) {
 			// avoid immutable deadlines
 			provingDeadline = 5
 		}
@@ -1701,12 +1701,17 @@ func (tm *TestUnmanagedMiner) AssertDisputeFails(sector abi.SectorNumber) {
 	req.Contains(err.Error(), "(RetCode=16)")
 }
 
-func (tm *TestUnmanagedMiner) IsImmutableDeadline(deadlineIndex uint64) bool {
+// MaybeImmutableDeadline checks if the deadline index is immutable. Immutable deadlines are defined
+// as being the current deadline for the miner or their next deadline. But we also include the
+// deadline after the next deadline in our check here to be conservative to avoid race conditions of
+// the chain progressing before messages land.
+func (tm *TestUnmanagedMiner) MaybeImmutableDeadline(deadlineIndex uint64) bool {
 	req := require.New(tm.t)
 	di, err := tm.FullNode.StateMinerProvingDeadline(tm.ctx, tm.ActorAddr, types.EmptyTSK)
 	req.NoError(err)
 	currentDeadlineIdx := CurrentDeadlineIndex(di)
-	return currentDeadlineIdx == deadlineIndex || currentDeadlineIdx == deadlineIndex-1
+	// Check if deadlineIndex is the current, next, or the one after next.
+	return deadlineIndex >= currentDeadlineIdx && deadlineIndex <= currentDeadlineIdx+2
 }
 
 // CurrentDeadlineIndex manually calculates the current deadline index. This may be useful in
