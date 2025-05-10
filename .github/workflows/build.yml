@@ -20,9 +20,24 @@ permissions:
   contents: read
 
 jobs:
+  planner:
+    name: Detect docs-only changes
+    runs-on: ubuntu-latest
+    outputs:
+      only_docs: ${{ steps.check.outputs.only_markdown_changes }}
+    steps:
+      - name: Check for markdown-only changes
+        id: check
+        uses: ./.github/actions/only-markdown
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
   build:
     name: Build
+    needs: planner
+    if: ${{ needs.planner.outputs.only_docs != 'true' }}
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
         with:
