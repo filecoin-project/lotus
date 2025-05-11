@@ -16,8 +16,6 @@ import (
 	"strings"
 
 	"github.com/cheggaaa/pb/v3"
-	"github.com/filecoin-project/go-f3/manifest"
-	"github.com/filecoin-project/lotus/chain/lf3"
 	metricsprom "github.com/ipfs/go-metrics-prometheus"
 	"github.com/klauspost/compress/zstd"
 	"github.com/mitchellh/go-homedir"
@@ -29,6 +27,7 @@ import (
 	"go.opencensus.io/tag"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-paramfetch"
 
@@ -41,6 +40,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/index"
+	"github.com/filecoin-project/lotus/chain/lf3"
 	proofsffi "github.com/filecoin-project/lotus/chain/proofs/ffi"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
