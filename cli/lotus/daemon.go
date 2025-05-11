@@ -16,6 +16,8 @@ import (
 	"strings"
 
 	"github.com/cheggaaa/pb/v3"
+	"github.com/filecoin-project/go-f3/manifest"
+	"github.com/filecoin-project/lotus/chain/lf3"
 	metricsprom "github.com/ipfs/go-metrics-prometheus"
 	"github.com/klauspost/compress/zstd"
 	"github.com/mitchellh/go-homedir"
@@ -393,7 +395,13 @@ var DaemonCmd = &cli.Command{
 			}
 			liteModeDeps = node.Options(
 				node.Override(new(lapi.Gateway), gapiv1),
-				node.Override(new(v2api.Gateway), gapiv2))
+				node.Override(new(v2api.Gateway), gapiv2),
+
+				// Disable attempts of F3 participation via gateway.
+				node.Unset(new(*lf3.Config)),
+				node.Unset(new(manifest.ManifestProvider)),
+				node.Unset(new(lf3.F3Backend)),
+			)
 		}
 
 		// some libraries like ipfs/go-ds-measure and ipfs/go-ipfs-blockstore
