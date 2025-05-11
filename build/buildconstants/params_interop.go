@@ -73,13 +73,16 @@ var UpgradeTuktukHeight = abi.ChainEpoch(-28)
 // Tuktuk migration. along with a RampStartEpoch matching the upgrade height.
 var UpgradeTuktukPowerRampDurationEpochs = uint64(builtin.EpochsInYear)
 
-const UpgradeTeepHeight abi.ChainEpoch = 50
+var UpgradeTeepHeight = abi.ChainEpoch(-29)
 
 var UpgradeTeepInitialFilReserved = InitialFilReserved // FIP-0100: no change for interop
 
-const UpgradeTockHeight abi.ChainEpoch = 100
+var UpgradeTockHeight = abi.ChainEpoch(-30)
 
-const UpgradeTockFixHeight abi.ChainEpoch = -29
+// This fix upgrade only ran on calibrationnet
+const UpgradeTockFixHeight abi.ChainEpoch = -4
+
+const UpgradeXxHeight = 50
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandQuicknet,

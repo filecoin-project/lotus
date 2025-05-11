@@ -18,6 +18,8 @@ import (
 	smoothing15 "github.com/filecoin-project/go-state-types/builtin/v15/util/smoothing"
 	minertypes16 "github.com/filecoin-project/go-state-types/builtin/v16/miner"
 	smoothing16 "github.com/filecoin-project/go-state-types/builtin/v16/util/smoothing"
+	minertypes17 "github.com/filecoin-project/go-state-types/builtin/v17/miner"
+	smoothing17 "github.com/filecoin-project/go-state-types/builtin/v17/util/smoothing"
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/dline"
@@ -74,6 +76,9 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 		case actorstypes.Version16:
 			return load16(store, act.Head)
+
+		case actorstypes.Version17:
+			return load17(store, act.Head)
 
 		}
 	}
@@ -156,6 +161,9 @@ func MakeState(store adt.Store, av actors.Version) (State, error) {
 
 	case actors.Version16:
 		return make16(store)
+
+	case actors.Version17:
+		return make17(store)
 
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
@@ -250,7 +258,7 @@ type Partition interface {
 	UnprovenSectors() (bitfield.BitField, error)
 }
 
-type SectorOnChainInfo = minertypes16.SectorOnChainInfo
+type SectorOnChainInfo = minertypes17.SectorOnChainInfo
 
 func PreferredSealProofTypeFromWindowPoStType(nver network.Version, proof abi.RegisteredPoStProof, configWantSynthetic bool) (abi.RegisteredSealProof, error) {
 	// We added support for the new proofs in network version 7, and removed support for the old
@@ -347,16 +355,16 @@ type SectorClaim = minertypes.SectorClaim
 type ExpirationExtension2 = minertypes.ExpirationExtension2
 type CompactPartitionsParams = minertypes.CompactPartitionsParams
 type WithdrawBalanceParams = minertypes.WithdrawBalanceParams
-type MaxTerminationFeeParams = minertypes16.MaxTerminationFeeParams
-type MaxTerminationFeeReturn = minertypes16.MaxTerminationFeeReturn
-type InitialPledgeReturn = minertypes16.InitialPledgeReturn
+type MaxTerminationFeeParams = minertypes17.MaxTerminationFeeParams
+type MaxTerminationFeeReturn = minertypes17.MaxTerminationFeeReturn
+type InitialPledgeReturn = minertypes17.InitialPledgeReturn
 
 type PieceActivationManifest = minertypes13.PieceActivationManifest
 type ProveCommitSectors3Params = minertypes13.ProveCommitSectors3Params
 type SectorActivationManifest = minertypes13.SectorActivationManifest
 type ProveReplicaUpdates3Params = minertypes13.ProveReplicaUpdates3Params
 type SectorUpdateManifest = minertypes13.SectorUpdateManifest
-type SectorOnChainInfoFlags = minertypes16.SectorOnChainInfoFlags
+type SectorOnChainInfoFlags = minertypes17.SectorOnChainInfoFlags
 type VerifiedAllocationKey = minertypes13.VerifiedAllocationKey
 
 var QAPowerMax = minertypes.QAPowerMax
@@ -372,8 +380,8 @@ const FaultDeclarationCutoff = minertypes.FaultDeclarationCutoff
 const MinAggregatedSectors = minertypes.MinAggregatedSectors
 const MinSectorExpiration = minertypes.MinSectorExpiration
 
-var TermFeePledgeMultiple = minertypes16.TermFeePledgeMultiple
-var TermFeeMaxFaultFeeMultiple = minertypes16.TermFeeMaxFaultFeeMultiple
+var TermFeePledgeMultiple = minertypes17.TermFeePledgeMultiple
+var TermFeeMaxFaultFeeMultiple = minertypes17.TermFeeMaxFaultFeeMultiple
 
 type SectorExpiration struct {
 	OnTime abi.ChainEpoch
@@ -432,6 +440,7 @@ func AllCodes() []cid.Cid {
 		(&state14{}).Code(),
 		(&state15{}).Code(),
 		(&state16{}).Code(),
+		(&state17{}).Code(),
 	}
 }
 
@@ -461,6 +470,18 @@ func PledgePenaltyForContinuedFault(
 	}
 
 	switch v {
+	case actorstypes.Version17:
+		return minertypes17.PledgePenaltyForContinuedFault(
+			smoothing17.FilterEstimate{
+				PositionEstimate: rewardEstimate.PositionEstimate,
+				VelocityEstimate: rewardEstimate.VelocityEstimate,
+			},
+			smoothing17.FilterEstimate{
+				PositionEstimate: networkQaPowerEstimate.PositionEstimate,
+				VelocityEstimate: networkQaPowerEstimate.VelocityEstimate,
+			},
+			qaSectorPower,
+		), nil
 	default:
 		return big.Zero(), xerrors.Errorf("unsupported network version: %d", nwVer)
 	}
@@ -480,6 +501,8 @@ func PledgePenaltyForTermination(
 	switch v {
 	case actorstypes.Version16:
 		return minertypes16.PledgePenaltyForTermination(initialPledge, sectorAge, faultFee), nil
+	case actorstypes.Version17:
+		return minertypes17.PledgePenaltyForTermination(initialPledge, sectorAge, faultFee), nil
 	default:
 		return big.Zero(), xerrors.Errorf("unsupported network version: %d", nwVer)
 	}
@@ -543,6 +566,19 @@ func ExpectedRewardForPower(
 				VelocityEstimate: rewardEstimate.VelocityEstimate,
 			},
 			smoothing16.FilterEstimate{
+				PositionEstimate: networkQAPowerEstimate.PositionEstimate,
+				VelocityEstimate: networkQAPowerEstimate.VelocityEstimate,
+			},
+			qaSectorPower,
+			projectionDuration,
+		), nil
+	case actorstypes.Version17:
+		return minertypes17.ExpectedRewardForPower(
+			smoothing17.FilterEstimate{
+				PositionEstimate: rewardEstimate.PositionEstimate,
+				VelocityEstimate: rewardEstimate.VelocityEstimate,
+			},
+			smoothing17.FilterEstimate{
 				PositionEstimate: networkQAPowerEstimate.PositionEstimate,
 				VelocityEstimate: networkQAPowerEstimate.VelocityEstimate,
 			},
