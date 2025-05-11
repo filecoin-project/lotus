@@ -386,7 +386,7 @@ var DaemonCmd = &cli.Command{
 
 			gapiv2, closerV2, err := lcli.GetGatewayAPIV2(cctx)
 			if err != nil {
-				log.Warnf("Unable to connect to v2 API. Using method not supported for /rpc/v2 in gateway", "err", err)
+				log.Warnw("Unable to connect to v2 API. Using method not supported for /rpc/v2 in gateway", "err", err)
 				gapiv2 = &v2api.GatewayStruct{ /* Returns "method not supported" for everything */ }
 			} else {
 				defer closerV2()
