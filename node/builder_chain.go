@@ -185,8 +185,9 @@ var ChainNode = Options(
 		Override(HandleIncomingMessagesKey, modules.HandleIncomingMessages),
 		Override(HandleIncomingBlocksKey, modules.HandleIncomingBlocks),
 	),
-
-	If(build.IsF3Enabled(),
+	ApplyIf(func(s *Settings) bool {
+		return build.IsF3Enabled() && !isLiteNode(s)
+	},
 		Override(new(*lf3.Config), lf3.NewConfig),
 		Override(new(manifest.ManifestProvider), lf3.NewManifestProvider),
 		Override(new(lf3.F3Backend), lf3.New),

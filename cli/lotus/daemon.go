@@ -27,7 +27,6 @@ import (
 	"go.opencensus.io/tag"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-paramfetch"
 
@@ -40,7 +39,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/index"
-	"github.com/filecoin-project/lotus/chain/lf3"
 	proofsffi "github.com/filecoin-project/lotus/chain/proofs/ffi"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -395,13 +393,7 @@ var DaemonCmd = &cli.Command{
 			}
 			liteModeDeps = node.Options(
 				node.Override(new(lapi.Gateway), gapiv1),
-				node.Override(new(v2api.Gateway), gapiv2),
-
-				// Disable attempts of F3 participation via gateway.
-				node.Unset(new(*lf3.Config)),
-				node.Unset(new(manifest.ManifestProvider)),
-				node.Unset(new(lf3.F3Backend)),
-			)
+				node.Override(new(v2api.Gateway), gapiv2))
 		}
 
 		// some libraries like ipfs/go-ds-measure and ipfs/go-ipfs-blockstore
