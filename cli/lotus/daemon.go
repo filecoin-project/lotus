@@ -386,10 +386,11 @@ var DaemonCmd = &cli.Command{
 
 			gapiv2, closerV2, err := lcli.GetGatewayAPIV2(cctx)
 			if err != nil {
-				return err
+				log.Warnw("Unable to connect to v2 API. Using method not supported for /rpc/v2 in gateway", "err", err)
+				gapiv2 = &v2api.GatewayStruct{ /* Returns "method not supported" for everything */ }
+			} else {
+				defer closerV2()
 			}
-			defer closerV2()
-
 			liteModeDeps = node.Options(
 				node.Override(new(lapi.Gateway), gapiv1),
 				node.Override(new(v2api.Gateway), gapiv2))
