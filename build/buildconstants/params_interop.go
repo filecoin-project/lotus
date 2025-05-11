@@ -81,6 +81,8 @@ const UpgradeTockHeight abi.ChainEpoch = 100
 
 const UpgradeTockFixHeight abi.ChainEpoch = -29
 
+const UpgradeXxHeight = 50
+
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandQuicknet,
 }

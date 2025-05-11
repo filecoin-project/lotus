@@ -7,7 +7,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
-	builtin16 "github.com/filecoin-project/go-state-types/builtin"
+	builtin17 "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/manifest"
 
@@ -17,8 +17,8 @@ import (
 )
 
 var (
-	Address = builtin16.DatacapActorAddr
-	Methods = builtin16.MethodsDatacap
+	Address = builtin17.DatacapActorAddr
+	Methods = builtin17.MethodsDatacap
 )
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
@@ -53,6 +53,9 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 		case actorstypes.Version16:
 			return load16(store, act.Head)
 
+		case actorstypes.Version17:
+			return load17(store, act.Head)
+
 		}
 	}
 
@@ -86,6 +89,9 @@ func MakeState(store adt.Store, av actorstypes.Version, governor address.Address
 	case actorstypes.Version16:
 		return make16(store, governor, bitwidth)
 
+	case actorstypes.Version17:
+		return make17(store, governor, bitwidth)
+
 	default:
 		return nil, xerrors.Errorf("datacap actor only valid for actors v9 and above, got %d", av)
 	}
@@ -114,5 +120,6 @@ func AllCodes() []cid.Cid {
 		(&state14{}).Code(),
 		(&state15{}).Code(),
 		(&state16{}).Code(),
+		(&state17{}).Code(),
 	}
 }
