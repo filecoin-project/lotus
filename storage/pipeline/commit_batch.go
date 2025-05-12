@@ -377,17 +377,6 @@ func (b *CommitBatcher) processBatchV2(cfg sealiface.Config, sectors []abi.Secto
 			res.Error = err.Error()
 			return []sealiface.CommitBatchRes{res}, xerrors.Errorf("aggregating proofs: %w", err)
 		}
-
-		aggFeeRaw, err := policy.AggregateProveCommitNetworkFee(nv, len(infos), ts.MinTicketBlock().ParentBaseFee)
-		if err != nil {
-			res.Error = err.Error()
-			log.Errorf("getting aggregate commit network fee: %s", err)
-			return []sealiface.CommitBatchRes{res}, xerrors.Errorf("getting aggregate commit network fee: %s", err)
-		}
-
-		aggFee := big.Div(big.Mul(aggFeeRaw, aggFeeNum), aggFeeDen)
-
-		needFunds = big.Add(collateral, aggFee)
 	}
 
 	needFunds, err = collateralSendAmount(b.mctx, b.api, b.maddr, cfg, needFunds)
