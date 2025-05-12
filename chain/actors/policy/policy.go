@@ -843,49 +843,6 @@ func GetAddressedSectorsMax(nwVer network.Version) (int, error) {
 	}
 }
 
-func AggregateProveCommitNetworkFee(nwVer network.Version, aggregateSize int, baseFee abi.TokenAmount) (abi.TokenAmount, error) {
-	v, err := actorstypes.VersionForNetwork(nwVer)
-	if err != nil {
-		return big.Zero(), err
-	}
-	switch v {
-	case actorstypes.Version0:
-		return big.Zero(), nil
-	case actorstypes.Version2:
-		return big.Zero(), nil
-	case actorstypes.Version3:
-		return big.Zero(), nil
-	case actorstypes.Version4:
-		return big.Zero(), nil
-	case actorstypes.Version5:
-		return miner5.AggregateNetworkFee(aggregateSize, baseFee), nil
-	case actorstypes.Version6:
-		return miner6.AggregateProveCommitNetworkFee(aggregateSize, baseFee), nil
-	case actorstypes.Version7:
-		return miner7.AggregateProveCommitNetworkFee(aggregateSize, baseFee), nil
-	case actorstypes.Version8:
-		return miner8.AggregateProveCommitNetworkFee(aggregateSize, baseFee), nil
-	case actorstypes.Version9:
-		return miner9.AggregateProveCommitNetworkFee(aggregateSize, baseFee), nil
-	case actorstypes.Version10:
-		return miner10.AggregateProveCommitNetworkFee(aggregateSize, baseFee), nil
-	case actorstypes.Version11:
-		return miner11.AggregateProveCommitNetworkFee(aggregateSize, baseFee), nil
-	case actorstypes.Version12:
-		return miner12.AggregateProveCommitNetworkFee(aggregateSize, baseFee), nil
-	case actorstypes.Version13:
-		return miner13.AggregateProveCommitNetworkFee(aggregateSize, baseFee), nil
-	case actorstypes.Version14:
-		return miner14.AggregateProveCommitNetworkFee(aggregateSize, baseFee), nil
-	case actorstypes.Version15:
-		return miner15.AggregateProveCommitNetworkFee(aggregateSize, baseFee), nil
-	case actorstypes.Version16:
-		return big.Zero(), nil
-	default:
-		return big.Zero(), xerrors.Errorf("unsupported network version")
-	}
-}
-
 func AggregatePreCommitNetworkFee(nwVer network.Version, aggregateSize int, baseFee abi.TokenAmount) (abi.TokenAmount, error) {
 	v, err := actorstypes.VersionForNetwork(nwVer)
 	if err != nil {

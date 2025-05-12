@@ -284,29 +284,6 @@ func GetAddressedSectorsMax(nwVer network.Version) (int, error) {
 	}
 }
 
-func AggregateProveCommitNetworkFee(nwVer network.Version, aggregateSize int, baseFee abi.TokenAmount) (abi.TokenAmount, error) {
-   v, err := actorstypes.VersionForNetwork(nwVer)
-	if err != nil {
-		return big.Zero(), err
-	}
-	switch v {
-	    {{- range .versions}}
-	    case actorstypes.Version{{.}}:
-            {{- if (ge . 16)}}
-                return big.Zero(), nil
-            {{- else if (ge . 6)}}
-                return miner{{.}}.AggregateProveCommitNetworkFee(aggregateSize, baseFee), nil
-            {{- else if (eq . 5)}}
-                return miner{{.}}.AggregateNetworkFee(aggregateSize, baseFee), nil
-            {{- else}}
-                return big.Zero(), nil
-            {{- end -}}
-      {{- end}}
-	default:
-		return big.Zero(), xerrors.Errorf("unsupported network version")
-	}
-}
-
 func AggregatePreCommitNetworkFee(nwVer network.Version, aggregateSize int, baseFee abi.TokenAmount) (abi.TokenAmount, error) {
    v, err := actorstypes.VersionForNetwork(nwVer)
 	if err != nil {
