@@ -351,12 +351,6 @@
   # env var: LOTUS_SEALING_PRECOMMITBATCHSLACK
   #PreCommitBatchSlack = "3h0m0s"
 
-  # enable / disable commit aggregation (takes effect after nv13)
-  #
-  # type: bool
-  # env var: LOTUS_SEALING_AGGREGATECOMMITS
-  #AggregateCommits = true
-
   # minimum batched commit size - batches above this size will eventually be sent on a timeout
   #
   # type: int

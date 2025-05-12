@@ -207,7 +207,7 @@ func (b *CommitBatcher) maybeStartBatch(notif bool) ([]sealiface.CommitBatchRes,
 		return nil, xerrors.Errorf("getting config: %w", err)
 	}
 
-	if notif && total < cfg.MaxCommitBatch && cfg.AggregateCommits {
+	if notif && total < cfg.MaxCommitBatch {
 		return nil, nil
 	}
 
@@ -223,15 +223,7 @@ func (b *CommitBatcher) maybeStartBatch(notif bool) ([]sealiface.CommitBatchRes,
 		return nil, xerrors.Errorf("getting network version: %s", err)
 	}
 
-	blackedOut := func() bool {
-		const nv16BlackoutWindow = abi.ChainEpoch(20) // a magik number
-		if ts.Height() <= buildconstants.UpgradeSkyrHeight && buildconstants.UpgradeSkyrHeight-ts.Height() < nv16BlackoutWindow {
-			return true
-		}
-		return false
-	}
-
-	individual := (total < cfg.MinCommitBatch) || (total < miner.MinAggregatedSectors) || blackedOut() || !cfg.AggregateCommits
+	individual := (total < cfg.MinCommitBatch) || (total < miner.MinAggregatedSectors)
 
 	// After nv21, we have a new ProveCommitSectors2 method, which supports
 	// batching without aggregation, but it doesn't support onboarding

@@ -1050,12 +1050,6 @@ This is useful for forcing all deals to be assigned as snap deals to sectors mar
 			Comment: `time buffer for forceful batch submission before sectors/deal in batch would start expiring`,
 		},
 		{
-			Name: "AggregateCommits",
-			Type: "bool",
-
-			Comment: `enable / disable commit aggregation (takes effect after nv13)`,
-		},
-		{
 			Name: "MinCommitBatch",
 			Type: "int",
 
