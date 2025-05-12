@@ -283,8 +283,6 @@ type SealingConfig struct {
 	// time buffer for forceful batch submission before sectors/deal in batch would start expiring
 	PreCommitBatchSlack Duration
 
-	// enable / disable commit aggregation (takes effect after nv13)
-	AggregateCommits bool
 	// minimum batched commit size - batches above this size will eventually be sent on a timeout
 	MinCommitBatch int
 	// maximum batched commit size - batches will be sent immediately above this size

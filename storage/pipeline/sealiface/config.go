@@ -46,7 +46,6 @@ type Config struct {
 	PreCommitBatchWait  time.Duration
 	PreCommitBatchSlack time.Duration
 
-	AggregateCommits bool
 	MinCommitBatch   int
 	MaxCommitBatch   int
 	CommitBatchWait  time.Duration

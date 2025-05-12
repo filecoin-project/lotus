@@ -129,7 +129,6 @@ func DefaultStorageMiner() *StorageMiner {
 
 			CommittedCapacitySectorLifetime: Duration(builtin.EpochDurationSeconds * uint64(maxSectorExtentsion) * uint64(time.Second)),
 
-			AggregateCommits: true,
 			MinCommitBatch:   miner5.MinAggregatedSectors, // per FIP13, we must have at least four proofs to aggregate, where 4 is the cross over point where aggregation wins out on single provecommit gas costs
 			MaxCommitBatch:   miner5.MaxAggregatedSectors, // maximum 819 sectors, this is the maximum aggregation per FIP13
 			CommitBatchWait:  Duration(24 * time.Hour),    // this can be up to 30 days
