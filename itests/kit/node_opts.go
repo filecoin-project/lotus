@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -267,6 +268,7 @@ func F3Disabled() NodeOpt {
 		node.Unset(new(*lf3.Config)),
 		node.Unset(new(manifest.ManifestProvider)),
 		node.Unset(new(lf3.F3Backend)),
+		node.Unset(new(full.F3CertificateProvider)),
 	)
 }
 

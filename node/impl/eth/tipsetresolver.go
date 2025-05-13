@@ -13,20 +13,23 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
-	"github.com/filecoin-project/lotus/chain/lf3"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
 var _ TipSetResolver = (*tipSetResolver)(nil)
 
-type tipSetResolver struct {
-	cs               ChainStore
-	f3               lf3.F3Backend // can be nil if disabled
-	useF3ForFinality bool          // if true, attempt to use F3 to determine "finalized" tipset
+type F3CertificateProvider interface {
+	F3GetLatestCertificate(ctx context.Context) (*certs.FinalityCertificate, error)
 }
 
-func NewTipSetResolver(cs ChainStore, f3 lf3.F3Backend, useF3ForFinality bool) TipSetResolver {
+type tipSetResolver struct {
+	cs               ChainStore
+	f3               F3CertificateProvider // can be nil if disabled
+	useF3ForFinality bool                  // if true, attempt to use F3 to determine "finalized" tipset
+}
+
+func NewTipSetResolver(cs ChainStore, f3 F3CertificateProvider, useF3ForFinality bool) TipSetResolver {
 	return &tipSetResolver{cs: cs, f3: f3, useF3ForFinality: useF3ForFinality}
 }
 
@@ -34,7 +37,7 @@ func (tsr *tipSetResolver) getLatestF3Cert(ctx context.Context) (*certs.Finality
 	if tsr.f3 == nil {
 		return nil, nil
 	}
-	cert, err := tsr.f3.GetLatestCert(ctx)
+	cert, err := tsr.f3.F3GetLatestCertificate(ctx)
 	if err != nil {
 		if errors.Is(err, f3.ErrF3NotRunning) || errors.Is(err, api.ErrF3NotReady) {
 			// Only fall back to EC finality if F3 isn't running or not ready.
