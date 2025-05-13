@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/events/filter"
 	"github.com/filecoin-project/lotus/chain/index"
-	"github.com/filecoin-project/lotus/chain/lf3"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -29,7 +28,7 @@ import (
 type TipSetResolverParams struct {
 	fx.In
 	ChainStore eth.ChainStore
-	F3         lf3.F3Backend `optional:"true"`
+	F3         full.F3CertificateProvider `optional:"true"`
 }
 
 func MakeV1TipSetResolver(params TipSetResolverParams) full.EthTipSetResolverV2 {

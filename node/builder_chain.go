@@ -154,6 +154,7 @@ var ChainNode = Options(
 		Override(new(full.EthTraceAPIV2), From(new(v2api.Gateway))),
 		Override(new(full.EthGasAPIV1), From(new(api.Gateway))),
 		Override(new(full.EthGasAPIV2), From(new(v2api.Gateway))),
+		If(build.IsF3Enabled(), Override(new(full.F3CertificateProvider), From(new(api.Gateway)))),
 		// EthSendAPI is a special case, we block the Untrusted method via GatewayEthSend even though it
 		// shouldn't be exposed on the Gateway API.
 		Override(new(eth.EthSendAPI), new(modules.GatewayEthSend)),
@@ -185,8 +186,9 @@ var ChainNode = Options(
 		Override(HandleIncomingMessagesKey, modules.HandleIncomingMessages),
 		Override(HandleIncomingBlocksKey, modules.HandleIncomingBlocks),
 	),
-
-	If(build.IsF3Enabled(),
+	ApplyIf(func(s *Settings) bool {
+		return build.IsF3Enabled() && !isLiteNode(s)
+	},
 		Override(new(*lf3.Config), lf3.NewConfig),
 		Override(new(manifest.ManifestProvider), lf3.NewManifestProvider),
 		Override(new(lf3.F3Backend), lf3.New),
