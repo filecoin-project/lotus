@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y ca-certificates build-essential clang o
 
 ENV XDG_CACHE_HOME="/tmp"
 
-### taken from https://github.com/rust-lang/docker-rust/blob/master/1.63.0/buster/Dockerfile
+### taken from https://github.com/filecoin-project/lotus/blob/master/Dockerfile#L63
 ENV RUSTUP_HOME=/usr/local/rustup \
     CARGO_HOME=/usr/local/cargo \
     PATH=/usr/local/cargo/bin:$PATH \
