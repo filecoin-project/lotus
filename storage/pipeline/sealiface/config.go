@@ -46,16 +46,10 @@ type Config struct {
 	PreCommitBatchWait  time.Duration
 	PreCommitBatchSlack time.Duration
 
-	AggregateCommits bool
 	MinCommitBatch   int
 	MaxCommitBatch   int
 	CommitBatchWait  time.Duration
 	CommitBatchSlack time.Duration
-
-	// DEPRECATED: remove after nv25 (FIP 0100)
-	AggregateAboveBaseFee abi.TokenAmount
-	// DEPRECATED: remove after nv25 (FIP 0100)
-	BatchPreCommitAboveBaseFee abi.TokenAmount
 
 	MaxSectorProveCommitsSubmittedPerEpoch uint64
 
