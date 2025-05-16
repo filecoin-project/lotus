@@ -125,6 +125,9 @@ var UpgradeTockHeight abi.ChainEpoch = UpgradeTeepHeight + builtin.EpochsInDay*7
 // 2025-04-07T23:00:00Z
 const UpgradeTockFixHeight abi.ChainEpoch = 2558014
 
+// ??????
+const UpgradeXxHeight = 999999999999999
+
 var ConsensusMinerMinPower = abi.NewStoragePower(32 << 30)
 var PreCommitChallengeDelay = abi.ChainEpoch(150)
 
