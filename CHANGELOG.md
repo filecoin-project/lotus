@@ -21,7 +21,9 @@
 - fix(f3): limit the concurrency of F3 power table calculation ([filecoin-project/lotus#13085](https://github.com/filecoin-project/lotus/pull/13085))
 - feat(f3): remove dynnamic manifest functionality and use static manifest ([filecoin-project/lotus#13074](https://github.com/filecoin-project/lotus/pull/13074))
 - chore(deps): bump filecoin-ffi for fvm@v4.7 which adds Logs and IpldOps to debug FVM execution traces ([filecoin-project/lotus#13029](https://github.com/filecoin-project/lotus/pull/13029))
-- chore: return `method not supported` via Gateway when /v2 isn't supported by the backend ([filecoin-project/lotus#13121](https://github.com/filecoin-project/lotus/pull/13121)
+- chore: return `method not supported` via Gateway when /v2 isn't supported by the backend ([filecoin-project/lotus#13121](https://github.com/filecoin-project/lotus/pull/13121))
+- chore: disable F3 participation via gateway ([filecoin-project/lotus#13123](https://github.com/filecoin-project/lotus/pull/13123)
+- chore: increase the F3 GMessage buffer size to 1024 ([filecoin-project/lotus#13126](https://github.com/filecoin-project/lotus/pull/13126))
 
 See https://github.com/filecoin-project/lotus/blob/release/v1.33.0/CHANGELOG.md
 
@@ -42,7 +44,7 @@ For the set of changes since the last stable release:
 
 # Node and Miner v1.32.2 / 2025-04-04
 
-This Lotus v1.32.2 release is a **MANDATORY patch release**. After the Calibration network upgraded to nv25, a bug was discovered in the ref-fvm KAMT library affecting ERC-20 token minting operations. You can read the full techincal breakdown of the issue [here](https://github.com/filecoin-project/builtin-actors/pull/1667).
+This Lotus v1.32.2 release is a **MANDATORY patch release**. After the Calibration network upgraded to nv25, a bug was discovered in the ref-fvm KAMT library affecting ERC-20 token minting operations. You can read the full technical breakdown of the issue [here](https://github.com/filecoin-project/builtin-actors/pull/1667).
 
 This patch release includes the following updates:
 - Schedules a mandatory Calibration upgrade, happening on `2025-04-07T23:00:00Z`, to fix the ERC-20 token minting bug on the Calibration network.

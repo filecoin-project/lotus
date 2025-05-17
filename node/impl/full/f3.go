@@ -16,10 +16,16 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
+type F3CertificateProvider interface {
+	F3GetCertificate(ctx context.Context, instance uint64) (*certs.FinalityCertificate, error)
+	F3GetLatestCertificate(ctx context.Context) (*certs.FinalityCertificate, error)
+}
+
 type F3API struct {
 	fx.In
 
-	F3 lf3.F3Backend `optional:"true"`
+	F3      lf3.F3Backend         `optional:"true"`
+	F3Certs F3CertificateProvider `optional:"true"`
 }
 
 func (f3api *F3API) F3GetOrRenewParticipationTicket(ctx context.Context, miner address.Address, previous api.F3ParticipationTicket, instances uint64) (api.F3ParticipationTicket, error) {
@@ -44,17 +50,24 @@ func (f3api *F3API) F3Participate(ctx context.Context, ticket api.F3Participatio
 }
 
 func (f3api *F3API) F3GetCertificate(ctx context.Context, instance uint64) (*certs.FinalityCertificate, error) {
-	if f3api.F3 == nil {
-		return nil, api.ErrF3Disabled
+	if f3api.F3 != nil {
+		return f3api.F3.GetCert(ctx, instance)
 	}
-	return f3api.F3.GetCert(ctx, instance)
+	if f3api.F3Certs != nil {
+		return f3api.F3Certs.F3GetCertificate(ctx, instance)
+	}
+
+	return nil, api.ErrF3Disabled
 }
 
 func (f3api *F3API) F3GetLatestCertificate(ctx context.Context) (*certs.FinalityCertificate, error) {
-	if f3api.F3 == nil {
-		return nil, api.ErrF3Disabled
+	if f3api.F3 != nil {
+		return f3api.F3.GetLatestCert(ctx)
 	}
-	return f3api.F3.GetLatestCert(ctx)
+	if f3api.F3Certs != nil {
+		return f3api.F3Certs.F3GetLatestCertificate(ctx)
+	}
+	return nil, api.ErrF3Disabled
 }
 
 func (f3api *F3API) F3GetManifest(ctx context.Context) (*manifest.Manifest, error) {
