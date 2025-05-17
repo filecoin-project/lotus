@@ -12,12 +12,8 @@ jobs:
     name: Detect docs-only changes
     runs-on: ubuntu-latest
     outputs:
-      only_docs: ${{ steps.check.outputs.only_markdown_changes }}
+      continue: ${{ steps.check.outputs.only_markdown_changes != 'true' }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: 'recursive'
-          fetch-depth: 0
       - name: Check for markdown-only changes
         id: check
         uses: ./.github/actions/only-markdown
@@ -29,7 +25,7 @@ jobs:
       issues: write
       pull-requests: write
     needs: planner
-    if: ${{ needs.planner.outputs.only_docs != 'true' }}
+    if: ${{ needs.planner.outputs.continue }}
     runs-on: ubuntu-latest
     steps:
     - uses: actions/stale@v9
