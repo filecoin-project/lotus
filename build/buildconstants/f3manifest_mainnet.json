@@ -39,7 +39,7 @@
   "PubSub": {
     "CompressionEnabled": true,
     "ChainCompressionEnabled": true,
-    "GMessageSubscriptionBufferSize": 768,
+    "GMessageSubscriptionBufferSize": 1024,
     "ValidatedMessageBufferSize": 1024
   },
   "ChainExchange": {
