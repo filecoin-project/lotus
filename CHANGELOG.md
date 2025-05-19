@@ -8,24 +8,96 @@
 > * [CHANGELOG_1.2x.md](./documentation/changelog/CHANGELOG_1.2x.md) - v1.20.0 to v1.29.2
 
 # UNRELEASED
-
-# UNRELEASED v1.33.0
-- test!: add test for proxy contract minting ([filecoin-project/lotus#13010](https://github.com/
-- fix(deps): fix Ledger hardware wallet support ([filecoin-project/lotus#13048](https://github.com/filecoin-project/lotus/pull/13048))
-- fix(eth): always return nil for eth transactions not found ([filecoin-project/lotus#12999](https://github.com/filecoin-project/lotus/pull/12999))
-- feat: add gas to application metric reporting `vm/applyblocks_early_gas`, `vm/applyblocks_messages_gas`, `vm/applyblocks_cron_gas` ([filecoin-project/lotus#13030](https://github.com/filecoin-project/lotus/pull/13030))
-- feat: fall back to EC if F3 finalized tipeset is older than 900 epochs ([filecoin-project/lotus#13066](https://github.com/filecoin-project/lotus/pull/13066))
-- feat: fall back to EC finalized tipset if F3 is too far behind in eth APIs ([filecoin-project/lotus#13070](https://github.com/filecoin-project/lotus/pull/13070))
-- feat: expose `/v2` APIs through Lotus Gateway ([filecoin-project/lotus#13075](https://github.com/filecoin-project/lotus/pull/13075))
-- chore: upgrade to go-f3 `v0.8.4` ([filecoin-project/lotus#13084](https://github.com/filecoin-project/lotus/pull/13084))
-- fix(f3): limit the concurrency of F3 power table calculation ([filecoin-project/lotus#13085](https://github.com/filecoin-project/lotus/pull/13085))
-- feat(f3): remove dynnamic manifest functionality and use static manifest ([filecoin-project/lotus#13074](https://github.com/filecoin-project/lotus/pull/13074))
 - chore(deps): bump filecoin-ffi for fvm@v4.7 which adds Logs and IpldOps to debug FVM execution traces ([filecoin-project/lotus#13029](https://github.com/filecoin-project/lotus/pull/13029))
 - chore: return `method not supported` via Gateway when /v2 isn't supported by the backend ([filecoin-project/lotus#13121](https://github.com/filecoin-project/lotus/pull/13121))
 - chore: disable F3 participation via gateway ([filecoin-project/lotus#13123](https://github.com/filecoin-project/lotus/pull/13123)
 - chore: increase the F3 GMessage buffer size to 1024 ([filecoin-project/lotus#13126](https://github.com/filecoin-project/lotus/pull/13126))
 
-See https://github.com/filecoin-project/lotus/blob/release/v1.33.0/CHANGELOG.md
+# Node v1.33.0 / 2025-05-08
+The Lotus v1.33.0 release introduces experimental v2 APIs with F3 awareness, featuring a new TipSet selection mechanism that significantly enhances how applications interact with the Filecoin blockchain. This release candidate also adds F3-aware Ethereum APIs via the /v2 endpoint.  All of the /v2 APIs implement intelligent fallback mechanisms between F3 and Expected Consensus and are exposed through the Lotus Gateway.
+
+Please review the detailed documentation for these experimental APIs, as they are subject to change and have important operational considerations for node operators and API providers.
+
+## ☢️ Upgrade Warnings ☢️
+- There are no upgrade warnings for this release candidate.
+
+## ⭐ Feature/Improvement Highlights:
+
+### Experimental v2 APIs with F3 awareness
+
+The Lotus V2 APIs introduce a powerful new TipSet selection mechanism that significantly enhances how applications interact with the Filecoin blockchain. The design reduces API footprint, seamlessly handles both traditional Expected Consensus (EC) and the new F3 protocol, and provides graceful fallbacks.
+
+> [!NOTE]
+> V2 APIs are highly experimental and subject to change without notice.
+
+See [Filecoin v2 APIs docs](https://filoznotebook.notion.site/Filecoin-V2-APIs-1d0dc41950c1808b914de5966d501658) for an in-depth overview. /v2 APIs are exposed through Lotus Gateway. 
+
+This work was primarily done in ([filecoin-project/lotus#13003](https://github.com/filecoin-project/lotus/pull/13003)), ([filecoin-project/lotus#13027](https://github.com/filecoin-project/lotus/pull/13027)), ([filecoin-project/lotus#13034](https://github.com/filecoin-project/lotus/pull/13034)), ([filecoin-project/lotus#13075](https://github.com/filecoin-project/lotus/pull/13075)), ([filecoin-project/lotus#13066](https://github.com/filecoin-project/lotus/pull/13066))
+
+### F3-aware Ethereum APIs via `/v2` endpoint and improvements to existing `/v1` APIs
+
+Lotus now offers two versions of its Ethereum-compatible APIs (`eth_*`, `trace_*`, `net_*`, `web3_*` and associated `Filecoin.*` APIs including Filecoin-specific functions such as `Filecoin.EthAddressToFilecoinAddress` and `Filecoin.FilecoinAddressToEthAddress`) with different finality handling:
+* **`/v2` APIs (New & Experimental):** These APIs consult the F3 subsystem (if enabled) for finality information.
+  * `"finalized"` tag maps to the F3 finalized epoch.
+  * `"safe"` tag maps to the F3 finalized epoch or 200 epochs behind head, whichever is more recent.
+* **`/v1` APIs (Existing & Recommended):** These maintain behavior closer to pre-F3 Lotus (EC finality) for compatibility.
+  * `"finalized"` tag continues to use a fixed 900-epoch delay from the head (EC finality).
+  * `"safe"` tag uses a 30-epoch delay from the head.
+  * _One or both of these tags may be adjusted in a future upgrade to take advantage of F3 finality._
+* **Note:** Previously, `"finalized"` and `"safe"` tags referred to epochs `N-1`. This `-1` offset has been removed in both V1 and V2.
+* Additional improvements affecting **both `/v1` and `/v2`** Ethereum APIs:
+  * `eth_getBlockTransactionCountByNumber` now accepts standard Ethereum block specifiers (hex numbers _or_ tags like `"latest"`, `"safe"`, `"finalized"`).
+  * Methods accepting `BlockNumberOrHash` now support all standard tags (`"pending"`, `"latest"`, `"safe"`, `"finalized"`). This includes `eth_estimateGas`, `eth_call`, `eth_getCode`, `eth_getStorageAt`, `eth_getBalance`, `eth_getTransactionCount`, and `eth_getBlockReceipts`.
+  * Removed internal `Eth*Limited` methods (e.g., `EthGetTransactionByHashLimited`) from the supported gateway API surface.
+  * Improved error handling: block selection endpoints now consistently return `ErrNullRound` (and corresponding JSONRPC errors) for null tipsets.
+
+This work was done in ([filecoin-project/lotus#13026](https://github.com/filecoin-project/lotus/pull/13026)), ([filecoin-project/lotus#13070](https://github.com/filecoin-project/lotus/pull/13070)).
+
+### Others
+- feat: add gas to application metric reporting `vm/applyblocks_early_gas`, `vm/applyblocks_messages_gas`, `vm/applyblocks_cron_gas` ([filecoin-project/lotus#13030](https://github.com/filecoin-project/lotus/pull/13030))
+- feat(metrics): capture total gas metric from ApplyBlocks ([filecoin-project/lotus#13037](https://github.com/filecoin-project/lotus/pull/13037))
+- feat: add F3 Grafana Dashboard Template ([filecoin-project/lotus#12934](https://github.com/filecoin-project/lotus/pull/12934))
+- fix(f3): limit the concurrency of F3 power table calculation ([filecoin-project/lotus#13085](https://github.com/filecoin-project/lotus/pull/13085))
+- feat(f3): remove dynnamic manifest functionality and use static manifest ([filecoin-project/lotus#13074](https://github.com/filecoin-project/lotus/pull/13074))
+
+## 🐛 Bug Fix Highlights
+- fix(eth): apply limit in EthGetBlockReceiptsLimited ([filecoin-project/lotus#12883](https://github.com/filecoin-project/lotus/pull/12883))
+- fix(eth): always return nil for eth transactions not found ([filecoin-project/lotus#12999](https://github.com/filecoin-project/lotus/pull/12999))
+- fix(deps): fix Ledger hardware wallet support ([filecoin-project/lotus#13048](https://github.com/filecoin-project/lotus/pull/13048))
+
+## 📝 Changelog
+
+For the full set of changes since the last stable release:
+
+- Node: https://github.com/filecoin-project/lotus/compare/release/v1.32.3...release/v1.33.0
+
+## 👨‍👩‍👧‍👦 Contributors
+
+Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Rod Vagg | 19 | +13805/-3639 | 129 |
+| Masih H. Derkani | 19 | +11910/-2369 | 119 |
+| Jakub Sztandera | 14 | +2528/-202 | 32 |
+| Phi-rjan | 12 | +1707/-79 | 42 |
+| Steve Loeppky | 3 | +1287/-32 | 8 |
+| Piotr Galar | 2 | +298/-3 | 4 |
+| Barbara Peric | 3 | +182/-73 | 5 |
+| ZenGround0 | 1 | +191/-0 | 4 |
+| CoolCu | 1 | +15/-49 | 6 |
+| Volker Mische | 1 | +18/-31 | 5 |
+| Phi | 3 | +32/-14 | 10 |
+| dependabot[bot] | 1 | +15/-15 | 2 |
+| Amit Gaikwad | 1 | +19/-2 | 2 |
+| tom | 1 | +0/-14 | 2 |
+| xixishidibei | 1 | +2/-11 | 1 |
+| Tomass | 1 | +4/-4 | 2 |
+| tsinghuacoder | 1 | +3/-2 | 1 |
+| dropbigfish | 1 | +1/-1 | 1 |
+| James Niken | 1 | +1/-1 | 1 |
+| Hubert | 1 | +1/-0 | 1 |
+| Steven Allen | 1 | +0/-0 | 2 |
 
 # Node v1.32.3 / 2025-04-29
 
