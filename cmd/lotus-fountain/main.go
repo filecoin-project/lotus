@@ -314,12 +314,13 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Template error: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
-		w.Header().Set("Content-Type", "text/html")
+
 		w.Header().Set("Content-Type", "text/html")
 		if err := tmpl.Execute(w, map[string]string{"CID": smsg.Cid().String()}); err != nil {
 			http.Error(w, "Template execution error: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
-
-	_, _ = w.Write([]byte(smsg.Cid().String()))
+	} else {
+		_, _ = w.Write([]byte(smsg.Cid().String()))
+	}
 }
