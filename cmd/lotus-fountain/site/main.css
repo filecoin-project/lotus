@@ -119,6 +119,14 @@ header p {
     flex-grow: 1;
 }
 
+.container {
+    margin: 2em;
+
+    a {
+        color: #4c7eff;
+    }
+}
+
 .button:hover {
     background-color: var(--color-primary-dark);
     color: var(--color-white);
@@ -149,4 +157,3 @@ footer {
         width: 100%;
     }
 }
-
