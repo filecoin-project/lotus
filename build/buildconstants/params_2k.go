@@ -4,6 +4,7 @@
 package buildconstants
 
 import (
+	_ "embed"
 	"os"
 	"strconv"
 	"strings"
@@ -180,7 +181,6 @@ func init() {
 	}
 
 	F3Enabled = getBoolean("LOTUS_F3_ENABLED", F3Enabled)
-	F3BootstrapEpoch = getUpgradeHeight("LOTUS_F3_BOOTSTRAP_EPOCH", F3BootstrapEpoch)
 
 	BuildType |= Build2k
 
@@ -211,11 +211,5 @@ var WhitelistedBlock = cid.Undef
 
 var F3Enabled = true
 
-var F3ManifestServerID = MustParseID("12D3KooWHcNBkqXEBrsjoveQvj6zDF3vK5S9tAfqyYaQF1LGSJwG")
-
-// The initial F3 power table CID.
-var F3InitialPowerTableCID cid.Cid = cid.Undef
-
-var F3BootstrapEpoch abi.ChainEpoch = 1000
-
-var F3ParamsAddress = ""
+//go:embed f3manifest_2k.json
+var F3ManifestBytes []byte

@@ -55,6 +55,12 @@ func MetricedGatewayAPI(a api.Gateway) api.Gateway {
 	return &out
 }
 
+func MetricedGatewayV2API(a v2api.Gateway) v2api.Gateway {
+	var out v2api.GatewayStruct
+	proxy(a, &out)
+	return &out
+}
+
 func proxy(in interface{}, outstr interface{}) {
 	outs := api.GetInternalStructs(outstr)
 	for _, out := range outs {

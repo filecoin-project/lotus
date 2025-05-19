@@ -292,7 +292,7 @@ func LoadStateTree(cst cbor.IpldStore, c cid.Cid) (*StateTree, error) {
 		return nil, xerrors.Errorf("unsupported state tree version: %d", root.Version)
 	}
 	if err != nil {
-		log.Errorf("failed to load state tree: %s", err)
+		log.Debugf("failed to load state tree: %s", err)
 		return nil, xerrors.Errorf("failed to load state tree %s: %w", c, err)
 	}
 

@@ -190,6 +190,12 @@ func init() {
 	addExample(map[string]types.Actor{
 		"t01236": ExampleValue("init", reflect.TypeOf(types.Actor{}), nil).(types.Actor),
 	})
+	addExample(types.IpldOpGet)
+	addExample(&types.TraceIpld{
+		Op:   types.IpldOpGet,
+		Cid:  c,
+		Size: 123,
+	})
 	addExample(&types.ExecutionTrace{
 		Msg:    ExampleValue("init", reflect.TypeOf(types.MessageTrace{}), nil).(types.MessageTrace),
 		MsgRct: ExampleValue("init", reflect.TypeOf(types.ReturnTrace{}), nil).(types.ReturnTrace),
@@ -524,6 +530,10 @@ func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []r
 			i = &v2api.FullNodeStruct{}
 			t = reflect.TypeOf(new(struct{ v2api.FullNode })).Elem()
 			permStruct = append(permStruct, reflect.TypeOf(v2api.FullNodeStruct{}.Internal))
+		case "Gateway":
+			i = &v2api.GatewayStruct{}
+			t = reflect.TypeOf(new(struct{ v2api.Gateway })).Elem()
+			permStruct = append(permStruct, reflect.TypeOf(v2api.GatewayStruct{}.Internal))
 		default:
 			panic("unknown type")
 		}

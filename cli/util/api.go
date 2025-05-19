@@ -24,6 +24,7 @@ import (
 	"github.com/filecoin-project/lotus/api/client"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/api/v1api"
+	"github.com/filecoin-project/lotus/api/v2api"
 	"github.com/filecoin-project/lotus/lib/retry"
 	"github.com/filecoin-project/lotus/node/repo"
 )
@@ -303,6 +304,76 @@ func FullNodeProxy[T api.FullNode](ins []T, outstr *api.FullNodeStruct) {
 	}
 }
 
+func FullNodeProxyV2[T v2api.FullNode](ins []T, outstr *v2api.FullNodeStruct) {
+
+	// This kind of load balancing in conjunction with JSONRPC go type abstractions is
+	// just plain awful and needs a re-think. For now, the code below forks the code
+	// preceding v1 logic to keep the wheels turning.
+
+	if len(ins) == 0 {
+		log.Errorf("FullNodeProxy called with empty node list")
+		return
+	}
+
+	outs := api.GetInternalStructs(outstr)
+
+	var rins []reflect.Value
+	for _, in := range ins {
+		rins = append(rins, reflect.ValueOf(in))
+	}
+
+	for _, out := range outs {
+		rProxyInternal := reflect.ValueOf(out).Elem()
+
+		for f := 0; f < rProxyInternal.NumField(); f++ {
+			field := rProxyInternal.Type().Field(f)
+
+			var fns []reflect.Value
+			for _, rin := range rins {
+				fns = append(fns, rin.MethodByName(field.Name))
+			}
+
+			rProxyInternal.Field(f).Set(reflect.MakeFunc(field.Type, func(args []reflect.Value) (results []reflect.Value) {
+				errorsToRetry := []error{&jsonrpc.RPCConnectionError{}, &jsonrpc.ErrClient{}}
+				initialBackoff, err := time.ParseDuration("1s")
+				if err != nil {
+					return nil
+				}
+
+				ctx := args[0].Interface().(context.Context)
+
+				// for calls that need to be performed on the same node
+				// primarily for miner when calling create block and submit block subsequently
+				var curr *atomic.Int32
+				if v, ok := ctx.Value(contextKey("retry-node")).(*atomic.Int32); ok {
+					curr = v
+				} else {
+					curr = new(atomic.Int32)
+				}
+
+				total := int32(len(rins))
+				result, _ := retry.Retry(ctx, 5, initialBackoff, errorsToRetry, func() ([]reflect.Value, error) {
+					idx := curr.Load()
+					result := fns[idx].Call(args)
+					if result[len(result)-1].IsNil() {
+						return result, nil
+					}
+					// On failure, switch to the next node.
+					//
+					// We CAS instead of incrementing because this might have
+					// already been incremented by a concurrent call if we have
+					// a shared `curr` (we're sticky to a single node).
+					curr.CompareAndSwap(idx, (idx+1)%total)
+
+					e := result[len(result)-1].Interface().(error)
+					return result, e
+				})
+				return result
+			}))
+		}
+	}
+}
+
 func GetFullNodeAPIV1Single(ctx *cli.Context) (v1api.FullNode, jsonrpc.ClientCloser, error) {
 	if tn, ok := ctx.App.Metadata["testnode-full"]; ok {
 		return tn.(v1api.FullNode), func() {}, nil
@@ -338,7 +409,7 @@ type GetFullNodeOptions struct {
 
 type GetFullNodeOption func(*GetFullNodeOptions)
 
-func FullNodeWithEthSubscribtionHandler(sh api.EthSubscriber) GetFullNodeOption {
+func FullNodeWithEthSubscriptionHandler(sh api.EthSubscriber) GetFullNodeOption {
 	return func(opts *GetFullNodeOptions) {
 		opts.EthSubHandler = sh
 	}
@@ -374,7 +445,7 @@ func GetFullNodeAPIV1(ctx *cli.Context, opts ...GetFullNodeOption) (v1api.FullNo
 	for _, head := range heads {
 		v1api, closer, err := client.NewFullNodeRPCV1(ctx.Context, head.addr, head.header, rpcOpts...)
 		if err != nil {
-			log.Warnf("Not able to establish connection to node with addr: ", head.addr)
+			log.Warnf("Not able to establish connection to node with addr: %s", head.addr)
 			continue
 		}
 		fullNodes = append(fullNodes, v1api)
@@ -404,6 +475,62 @@ func GetFullNodeAPIV1(ctx *cli.Context, opts ...GetFullNodeOption) (v1api.FullNo
 		return nil, nil, xerrors.Errorf("Remote API version didn't match (expected %s, remote %s)", api.FullAPIVersion1, v.APIVersion)
 	}
 	return &v1API, finalCloser, nil
+}
+
+func GetFullNodeAPIV2(ctx *cli.Context, opts ...GetFullNodeOption) (v2api.FullNode, jsonrpc.ClientCloser, error) {
+	if tn, ok := ctx.App.Metadata["testnode-full"]; ok {
+		return tn.(v2api.FullNode), func() {}, nil
+	}
+
+	var options GetFullNodeOptions
+	for _, opt := range opts {
+		opt(&options)
+	}
+
+	var rpcOpts []jsonrpc.Option
+	if options.EthSubHandler != nil {
+		rpcOpts = append(rpcOpts, jsonrpc.WithClientHandler("Filecoin", options.EthSubHandler), jsonrpc.WithClientHandlerAlias("eth_subscription", "Filecoin.EthSubscription"))
+	}
+
+	heads, err := GetRawAPIMulti(ctx, repo.FullNode, "v2")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if IsVeryVerbose {
+		_, _ = fmt.Fprintln(ctx.App.Writer, "using full node API v2 endpoint:", heads[0].addr)
+	}
+
+	var fullNodes []v2api.FullNode
+	var closers []jsonrpc.ClientCloser
+
+	for _, head := range heads {
+		v2, closer, err := client.NewFullNodeRPCV2(ctx.Context, head.addr, head.header, rpcOpts...)
+		if err != nil {
+			log.Warnf("Not able to establish connection to node with addr: %s", head.addr)
+			continue
+		}
+		fullNodes = append(fullNodes, v2)
+		closers = append(closers, closer)
+	}
+
+	// When running in cluster mode and trying to establish connections to multiple nodes, fail
+	// if less than 2 lotus nodes are actually running
+	if len(heads) > 1 && len(fullNodes) < 2 {
+		return nil, nil, xerrors.Errorf("Not able to establish connection to more than a single node")
+	}
+
+	finalCloser := func() {
+		for _, c := range closers {
+			c()
+		}
+	}
+
+	var v2API v2api.FullNodeStruct
+	FullNodeProxyV2(fullNodes, &v2API)
+
+	// TODO check major version of v2 API similar to v1 once there is a Version API in v2
+	return &v2API, finalCloser, nil
 }
 
 type GetStorageMinerOptions struct {
@@ -467,7 +594,7 @@ func GetWorkerAPI(ctx *cli.Context) (api.Worker, jsonrpc.ClientCloser, error) {
 	return client.NewWorkerRPCV0(ctx.Context, addr, headers)
 }
 
-func GetGatewayAPI(ctx *cli.Context) (api.Gateway, jsonrpc.ClientCloser, error) {
+func GetGatewayAPIV1(ctx *cli.Context) (api.Gateway, jsonrpc.ClientCloser, error) {
 	addr, headers, err := GetRawAPI(ctx, repo.FullNode, "v1")
 	if err != nil {
 		return nil, nil, err
@@ -478,6 +605,19 @@ func GetGatewayAPI(ctx *cli.Context) (api.Gateway, jsonrpc.ClientCloser, error) 
 	}
 
 	return client.NewGatewayRPCV1(ctx.Context, addr, headers)
+}
+
+func GetGatewayAPIV2(ctx *cli.Context) (v2api.Gateway, jsonrpc.ClientCloser, error) {
+	addr, headers, err := GetRawAPI(ctx, repo.FullNode, "v2")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if IsVeryVerbose {
+		_, _ = fmt.Fprintln(ctx.App.Writer, "using gateway API v2 endpoint:", addr)
+	}
+
+	return client.NewGatewayRPCV2(ctx.Context, addr, headers)
 }
 
 func GetGatewayAPIV0(ctx *cli.Context) (v0api.Gateway, jsonrpc.ClientCloser, error) {

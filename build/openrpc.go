@@ -51,3 +51,11 @@ func OpenRPCDiscoverJSON_Gateway() apitypes.OpenRPCDocument {
 	}
 	return mustReadOpenRPCDocument(data)
 }
+
+func OpenRPCDiscoverJSON_GatewayV2() apitypes.OpenRPCDocument {
+	data, err := openrpcfs.ReadFile("openrpc/v2/gateway.json")
+	if err != nil {
+		panic(err)
+	}
+	return mustReadOpenRPCDocument(data)
+}

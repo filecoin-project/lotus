@@ -2,9 +2,12 @@ package lf3
 
 import (
 	"context"
+	"runtime"
 	"sort"
+	"sync"
 	"time"
 
+	lru "github.com/hashicorp/golang-lru/v2"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -27,9 +30,30 @@ var (
 )
 
 type ecWrapper struct {
-	ChainStore   *store.ChainStore
-	Syncer       *chain.Syncer
-	StateManager *stmgr.StateManager
+	chainStore   *store.ChainStore
+	syncer       *chain.Syncer
+	stateManager *stmgr.StateManager
+	cache        *lru.TwoQueueCache[types.TipSetKey, gpbft.PowerEntries]
+
+	powerTableComputeLock sync.Mutex
+	powerTableComputeJobs map[types.TipSetKey]chan struct{}
+	powerTableComputeSema chan struct{}
+}
+
+func newEcWrapper(chainStore *store.ChainStore, syncer *chain.Syncer, stateManager *stmgr.StateManager) *ecWrapper {
+	cache, err := lru.New2Q[types.TipSetKey, gpbft.PowerEntries](128)
+	if err != nil {
+		panic(err)
+	}
+	return &ecWrapper{
+		chainStore:   chainStore,
+		syncer:       syncer,
+		stateManager: stateManager,
+		cache:        cache,
+
+		powerTableComputeJobs: make(map[types.TipSetKey]chan struct{}),
+		powerTableComputeSema: make(chan struct{}, min(4, runtime.NumCPU()/2)),
+	}
 }
 
 type f3TipSet struct {
@@ -74,7 +98,7 @@ func (ts *f3TipSet) Timestamp() time.Time {
 // GetTipsetByEpoch should return a tipset before the one requested if the requested
 // tipset does not exist due to null epochs
 func (ec *ecWrapper) GetTipsetByEpoch(ctx context.Context, epoch int64) (ec.TipSet, error) {
-	ts, err := ec.ChainStore.GetTipsetByHeight(ctx, abi.ChainEpoch(epoch), nil, true)
+	ts, err := ec.chainStore.GetTipsetByHeight(ctx, abi.ChainEpoch(epoch), nil, true)
 	if err != nil {
 		return nil, xerrors.Errorf("getting tipset by height: %w", err)
 	}
@@ -91,7 +115,7 @@ func (ec *ecWrapper) GetTipset(ctx context.Context, tsk gpbft.TipSetKey) (ec.Tip
 }
 
 func (ec *ecWrapper) GetHead(context.Context) (ec.TipSet, error) {
-	head := ec.ChainStore.GetHeaviestTipSet()
+	head := ec.chainStore.GetHeaviestTipSet()
 	if head == nil {
 		return nil, xerrors.New("no heaviest tipset")
 	}
@@ -103,7 +127,7 @@ func (ec *ecWrapper) GetParent(ctx context.Context, tsF3 ec.TipSet) (ec.TipSet, 
 	if err != nil {
 		return nil, err
 	}
-	parentTs, err := ec.ChainStore.GetTipSetFromKey(ctx, ts.Parents())
+	parentTs, err := ec.chainStore.GetTipSetFromKey(ctx, ts.Parents())
 	if err != nil {
 		return nil, xerrors.Errorf("getting parent tipset: %w", err)
 	}
@@ -119,12 +143,59 @@ func (ec *ecWrapper) GetPowerTable(ctx context.Context, tskF3 gpbft.TipSetKey) (
 }
 
 func (ec *ecWrapper) getPowerTableLotusTSK(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) {
-	ts, err := ec.ChainStore.GetTipSetFromKey(ctx, tsk)
+	// Either wait for someone else to compute the power table, or claim the job.
+	for {
+		// check the cache
+		pe, ok := ec.cache.Get(tsk)
+		if ok {
+			return pe, nil
+		}
+		ec.powerTableComputeLock.Lock()
+		waitCh, ok := ec.powerTableComputeJobs[tsk]
+		if !ok {
+			break
+		}
+		ec.powerTableComputeLock.Unlock()
+		select {
+		case <-waitCh:
+			continue
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+
+	// Ok, we have the lock and nobody else has claimed the job. Claim it.
+	myWaitCh := make(chan struct{})
+	ec.powerTableComputeJobs[tsk] = myWaitCh
+	ec.powerTableComputeLock.Unlock()
+
+	// Make sure to "unlock" the job when we're done, even if we don't complete it. Someone else
+	// will complete it in that case.
+	defer func() {
+		ec.powerTableComputeLock.Lock()
+		delete(ec.powerTableComputeJobs, tsk)
+		ec.powerTableComputeLock.Unlock()
+
+		close(myWaitCh)
+	}()
+
+	// Then wait in line. We only allow 4 jobs at once.
+	select {
+	case ec.powerTableComputeSema <- struct{}{}:
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+	defer func() {
+		<-ec.powerTableComputeSema
+	}()
+
+	// Finally, do the actual compute.
+	ts, err := ec.chainStore.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("getting tipset by key for get parent: %w", err)
 	}
 
-	state, err := ec.StateManager.ParentState(ts)
+	state, err := ec.stateManager.ParentState(ts)
 	if err != nil {
 		return nil, xerrors.Errorf("loading the state tree: %w", err)
 	}
@@ -133,7 +204,7 @@ func (ec *ecWrapper) getPowerTableLotusTSK(ctx context.Context, tsk types.TipSet
 		return nil, xerrors.Errorf("getting the power actor: %w", err)
 	}
 
-	powerState, err := power.Load(ec.ChainStore.ActorStore(ctx), powerAct)
+	powerState, err := power.Load(ec.chainStore.ActorStore(ctx), powerAct)
 	if err != nil {
 		return nil, xerrors.Errorf("loading power actor state: %w", err)
 	}
@@ -158,7 +229,7 @@ func (ec *ecWrapper) getPowerTableLotusTSK(ctx context.Context, tsk types.TipSet
 		if err != nil {
 			return xerrors.Errorf("(get sset) failed to load miner actor: %w", err)
 		}
-		mstate, err := miner.Load(ec.ChainStore.ActorStore(ctx), act)
+		mstate, err := miner.Load(ec.chainStore.ActorStore(ctx), act)
 		if err != nil {
 			return xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
 		}
@@ -179,7 +250,7 @@ func (ec *ecWrapper) getPowerTableLotusTSK(ctx context.Context, tsk types.TipSet
 			return nil
 		}
 
-		waddr, err := vm.ResolveToDeterministicAddr(state, ec.ChainStore.ActorStore(ctx), info.Worker)
+		waddr, err := vm.ResolveToDeterministicAddr(state, ec.chainStore.ActorStore(ctx), info.Worker)
 		if err != nil {
 			return xerrors.Errorf("resolve miner worker address: %w", err)
 		}
@@ -196,6 +267,8 @@ func (ec *ecWrapper) getPowerTableLotusTSK(ctx context.Context, tsk types.TipSet
 	}
 
 	sort.Sort(powerEntries)
+	ec.cache.Add(tsk, powerEntries)
+
 	return powerEntries, nil
 }
 
@@ -204,7 +277,7 @@ func (ec *ecWrapper) Finalize(ctx context.Context, key gpbft.TipSetKey) error {
 	if err != nil {
 		return err
 	}
-	if err = ec.Syncer.SyncCheckpoint(ctx, tsk); err != nil {
+	if err = ec.syncer.SyncCheckpoint(ctx, tsk); err != nil {
 		return xerrors.Errorf("checkpointing finalized tipset: %w", err)
 	}
 	return nil
@@ -225,7 +298,7 @@ func (ec *ecWrapper) getTipSetFromF3TSK(ctx context.Context, key gpbft.TipSetKey
 	if err != nil {
 		return nil, err
 	}
-	ts, err := ec.ChainStore.GetTipSetFromKey(ctx, tsk)
+	ts, err := ec.chainStore.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("getting tipset from key: %w", err)
 	}

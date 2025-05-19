@@ -49,7 +49,7 @@
 # ✅ Release Checklist
 
 ## ⬅️  Before RC1
-<details one>
+<details open>
   <summary>Section</summary>
 
 <!--{{if ne .NetworkUpgrade ""}}-->
@@ -123,7 +123,6 @@
 <!--  {{end}}-->
 
 #### Release PR for {{$rc}}
-
 - [ ] Update the version string(s) in `build/version.go` to one {{if contains "rc" $rc}}ending with '-{{$rc}}'{{else}}**NOT* ending with 'rcX'{{end}}.
 <!--  {{if contains "Node" $.Type}}-->
     - Ensure to update `NodeBuildVersion`
@@ -159,21 +158,23 @@
     - Link to issue comment:
 
 #### Testing for {{$rc}}
+
 > [!NOTE]
 > Link to any special steps for testing releases beyond ensuring CI is green.  Steps can be inlined here or tracked elsewhere.
 
-<!--{{end}}-->
 </details>
+<!--{{end}}-->
 
 ## ➡ Post-Release
 <details>
-  <summary open>Section</summary>
+  <summary>Section</summary>
 
 - [ ] Open a PR against `master` cherry-picking the CHANGELOG commits from the `release/v{{.Tag}}` branch. Title it `chore(release): cherry-pick v{{.Tag}} changelog back to master`
    - Link to PR:
    - Assuming we followed [the process of merging changes into `master` first before backporting to the release branch](https://github.com/filecoin-project/lotus/blob/master/LOTUS_RELEASE_FLOW.md#branch-and-tag-strategy), the only changes should be CHANGELOG updates.
 - [ ] Finish updating/merging the [RELEASE_ISSUE_TEMPLATE.md](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md) PR from `Before RC1` with any improvements determined from this latest release iteration.
 - [ ] Review and approve the auto-generated PR in [lotus-docs](https://github.com/filecoin-project/lotus-docs/pulls) that updates the latest Lotus version information.
+- [ ] Review and approve the auto-generated PR in [homebrew-lotus](https://github.com/filecoin-project/homebrew-lotus/pulls) that updates the homebrew to the latest Lotus version.
 - [ ] Stage any security advisories for future publishing per [policy](https://github.com/filecoin-project/lotus/blob/master/LOTUS_RELEASE_FLOW.md#security-fix-policy).
 </details>
 

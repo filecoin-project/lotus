@@ -331,6 +331,18 @@ func TestEthAPIWithF3(t *testing.T) {
 			wantErrV2:    internalF3Error.Error(),
 		},
 		{
+			name:     "finalize tag when f3 is too far behind falls back to ec",
+			blkParam: "finalized",
+			setup: func(t *testing.T) {
+				mockF3.Running = true
+				mockF3.Finalizing = true
+				mockF3.LatestCert = plausibleCertAt(t, targetHeight-policy.ChainFinality-5)
+				mockF3.LatestCertErr = nil
+			},
+			wantTipSetV1: ecFinalized,
+			wantTipSetV2: ecFinalized,
+		},
+		{
 			name:     "latest tag when f3 fails is ok",
 			blkParam: "latest",
 			setup: func(t *testing.T) {

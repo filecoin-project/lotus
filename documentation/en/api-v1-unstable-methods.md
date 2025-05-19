@@ -6600,7 +6600,31 @@ Response:
             "tt": 60000000000
           }
         ],
-        "Subcalls": null
+        "Subcalls": null,
+        "Logs": [
+          "string value"
+        ],
+        "IpldOps": [
+          {
+            "Op": "Get",
+            "Cid": {
+              "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+            },
+            "Size": 42
+          }
+        ]
+      }
+    ],
+    "Logs": [
+      "string value"
+    ],
+    "IpldOps": [
+      {
+        "Op": "Get",
+        "Cid": {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        },
+        "Size": 42
       }
     ]
   },
@@ -6862,7 +6886,31 @@ Response:
                 "tt": 60000000000
               }
             ],
-            "Subcalls": null
+            "Subcalls": null,
+            "Logs": [
+              "string value"
+            ],
+            "IpldOps": [
+              {
+                "Op": "Get",
+                "Cid": {
+                  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+                },
+                "Size": 42
+              }
+            ]
+          }
+        ],
+        "Logs": [
+          "string value"
+        ],
+        "IpldOps": [
+          {
+            "Op": "Get",
+            "Cid": {
+              "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+            },
+            "Size": 42
           }
         ]
       },
@@ -8554,7 +8602,31 @@ Response:
             "tt": 60000000000
           }
         ],
-        "Subcalls": null
+        "Subcalls": null,
+        "Logs": [
+          "string value"
+        ],
+        "IpldOps": [
+          {
+            "Op": "Get",
+            "Cid": {
+              "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+            },
+            "Size": 42
+          }
+        ]
+      }
+    ],
+    "Logs": [
+      "string value"
+    ],
+    "IpldOps": [
+      {
+        "Op": "Get",
+        "Cid": {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        },
+        "Size": 42
       }
     ]
   },

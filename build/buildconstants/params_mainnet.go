@@ -4,6 +4,7 @@
 package buildconstants
 
 import (
+	_ "embed"
 	"math"
 	"os"
 	"strconv"
@@ -190,13 +191,7 @@ const Eip155ChainId = 314
 // WhitelistedBlock skips checks on message validity in this block to sidestep the zero-bls signature
 var WhitelistedBlock = cid.MustParse("bafy2bzaceapyg2uyzk7vueh3xccxkuwbz3nxewjyguoxvhx77malc2lzn2ybi")
 
-// The F3 manifest server ID, if any.
-var F3ManifestServerID = MustParseID("12D3KooWENMwUF9YxvQxar7uBWJtZkA6amvK4xWmKXfSiHUo2Qq7")
-
-// The initial F3 power table CID.
-var F3InitialPowerTableCID = cid.Undef
-
 const F3Enabled = true
-const F3BootstrapEpoch abi.ChainEpoch = -1
 
-var F3ParamsAddress = "0xA19080A1Bcb82Bb61bcb9691EC94653Eb5315716"
+//go:embed f3manifest_mainnet.json
+var F3ManifestBytes []byte

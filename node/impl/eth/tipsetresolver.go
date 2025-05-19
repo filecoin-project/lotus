@@ -13,20 +13,23 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
-	"github.com/filecoin-project/lotus/chain/lf3"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
 var _ TipSetResolver = (*tipSetResolver)(nil)
 
-type tipSetResolver struct {
-	cs               ChainStore
-	f3               lf3.F3Backend // can be nil if disabled
-	useF3ForFinality bool          // if true, attempt to use F3 to determine "finalized" tipset
+type F3CertificateProvider interface {
+	F3GetLatestCertificate(ctx context.Context) (*certs.FinalityCertificate, error)
 }
 
-func NewTipSetResolver(cs ChainStore, f3 lf3.F3Backend, useF3ForFinality bool) TipSetResolver {
+type tipSetResolver struct {
+	cs               ChainStore
+	f3               F3CertificateProvider // can be nil if disabled
+	useF3ForFinality bool                  // if true, attempt to use F3 to determine "finalized" tipset
+}
+
+func NewTipSetResolver(cs ChainStore, f3 F3CertificateProvider, useF3ForFinality bool) TipSetResolver {
 	return &tipSetResolver{cs: cs, f3: f3, useF3ForFinality: useF3ForFinality}
 }
 
@@ -34,7 +37,7 @@ func (tsr *tipSetResolver) getLatestF3Cert(ctx context.Context) (*certs.Finality
 	if tsr.f3 == nil {
 		return nil, nil
 	}
-	cert, err := tsr.f3.GetLatestCert(ctx)
+	cert, err := tsr.f3.F3GetLatestCertificate(ctx)
 	if err != nil {
 		if errors.Is(err, f3.ErrF3NotRunning) || errors.Is(err, api.ErrF3NotReady) {
 			// Only fall back to EC finality if F3 isn't running or not ready.
@@ -91,6 +94,18 @@ func (tsr *tipSetResolver) getFinalizedF3TipSet(ctx context.Context) (*types.Tip
 		// F3 is disabled or not ready; fall back to EC finality.
 		return tsr.getFinalizedECTipSet(ctx)
 	}
+	// Check F3 finalized tipset against the heaviest tipset, and if it is too far
+	// behind fall back to EC.
+	head := tsr.cs.GetHeaviestTipSet()
+	if head == nil {
+		return nil, xerrors.Errorf("no known heaviest tipset")
+	}
+	f3FinalizedHeight := abi.ChainEpoch(cert.ECChain.Head().Epoch)
+	if head.Height()-f3FinalizedHeight > policy.ChainFinality {
+		log.Debugw("Falling back to EC finalized tipset as the latest F3 finalized tipset is too far behind", "headHeight", head.Height(), "f3FinalizedHeight", f3FinalizedHeight)
+		return tsr.getFinalizedECTipSet(ctx)
+	}
+	// F3 is finalizing a higher height than EC safe; return F3 tipset
 	return tsr.getFinalizedF3TipSetFromCert(ctx, cert)
 }
 

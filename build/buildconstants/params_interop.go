@@ -149,11 +149,5 @@ var WhitelistedBlock = cid.Undef
 
 const F3Enabled = true
 
-var F3ManifestServerID = MustParseID("12D3KooWQJ2rdVnG4okDUB6yHQhAjNutGNemcM7XzqC9Eo4z9Jce")
-
-// The initial F3 power table CID.
-var F3InitialPowerTableCID cid.Cid = cid.Undef
-
-const F3BootstrapEpoch abi.ChainEpoch = 1000
-
-var F3ParamsAddress = ""
+//go:embed f3manifest_interop.json
+var F3ManifestBytes []byte

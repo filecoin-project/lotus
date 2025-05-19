@@ -1,0 +1,72 @@
+{
+  "Pause": false,
+  "ProtocolVersion": 7,
+  "InitialInstance": 0,
+  "BootstrapEpoch": 2081674,
+  "NetworkName": "calibrationnet",
+  "ExplicitPower": null,
+  "IgnoreECPower": false,
+  "InitialPowerTable": {
+    "/": "bafy2bzaceab236vmmb3n4q4tkvua2n4dphcbzzxerxuey3mot4g3cov5j3r2c"
+  },
+  "CommitteeLookback": 10,
+  "CatchUpAlignment": 15000000000,
+  "Gpbft": {
+    "Delta": 6000000000,
+    "DeltaBackOffExponent": 2,
+    "QualityDeltaMultiplier": 1,
+    "MaxLookaheadRounds": 5,
+    "ChainProposedLength": 100,
+    "RebroadcastBackoffBase": 6000000000,
+    "RebroadcastBackoffExponent": 1.3,
+    "RebroadcastBackoffSpread": 0.1,
+    "RebroadcastBackoffMax": 60000000000
+  },
+  "EC": {
+    "Period": 30000000000,
+    "Finality": 900,
+    "DelayMultiplier": 2,
+    "BaseDecisionBackoffTable": [
+      1.3,
+      1.69,
+      2.2,
+      2.86,
+      3.71,
+      4.83,
+      6.27,
+      7.5
+    ],
+    "HeadLookback": 4,
+    "Finalize": true
+  },
+  "CertificateExchange": {
+    "ClientRequestTimeout": 10000000000,
+    "ServerRequestTimeout": 60000000000,
+    "MinimumPollInterval": 30000000000,
+    "MaximumPollInterval": 120000000000
+  },
+  "PubSub": {
+    "CompressionEnabled": true,
+    "ChainCompressionEnabled": true,
+    "GMessageSubscriptionBufferSize": 128,
+    "ValidatedMessageBufferSize": 128
+  },
+  "ChainExchange": {
+    "SubscriptionBufferSize": 32,
+    "MaxChainLength": 100,
+    "MaxInstanceLookahead": 10,
+    "MaxDiscoveredChainsPerInstance": 1000,
+    "MaxWantedChainsPerInstance": 1000,
+    "RebroadcastInterval": 2000000000,
+    "MaxTimestampAge": 8000000000
+  },
+  "PartialMessageManager": {
+    "PendingDiscoveredChainsBufferSize": 100,
+    "PendingPartialMessagesBufferSize": 100,
+    "PendingChainBroadcastsBufferSize": 100,
+    "PendingInstanceRemovalBufferSize": 10,
+    "CompletedMessagesBufferSize": 100,
+    "MaxBufferedMessagesPerInstance": 25000,
+    "MaxCachedValidatedMessagesPerInstance": 25000
+  }
+}

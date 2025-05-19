@@ -10,7 +10,6 @@ linters:
     - gosec
     - unconvert
     - staticcheck
-    - exportloopref
     - unused
 
 # We don't want to skip builtin/
@@ -51,7 +50,6 @@ issues:
 
   exclude-use-default: false
   exclude-rules:
-
     - path: .*_test.go
       linters:
         - gosec
