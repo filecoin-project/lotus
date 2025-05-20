@@ -1,21 +1,50 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Sending Funds - Lotus Fountain</title>
+    <title>Send Testnet FIL - Filecoin Calibration Faucet</title>
     <link rel="stylesheet" type="text/css" href="faucet-components.css">
+    <meta charset="UTF-8">
 	<script src="https://www.google.com/recaptcha/api.js"></script>
 	<script>
    		function onSubmit(token) {
      	document.getElementById("funds-form").submit();
    	}
 	</script>
-
+    <script type="application/ld+json">
+        [
+            {
+                "@context": "https://schema.org",
+                "@type": "Organization",
+                "name": "Filecoin Calibration Faucet",
+                "url": "https://faucet.calibnet.chainsafe-fil.io/",
+                "logo": "https://filecoin.io/images/filecoin-logo.svg",
+                "description": "Official Filecoin Calibration testnet faucet providing testnet FIL and DataCap for developers building on the Filecoin network.",
+                "sameAs": [
+                    "https://github.com/ChainSafe",
+                    "https://chainsafe.io/",
+                    "https://filecoin.io/",
+                    "https://filecoin.io/slack"
+                ]
+            },
+            {
+                "@context": "https://schema.org",
+                "@type": "WebPage",
+                "name": "Send Testnet FIL - Filecoin Calibration Faucet",
+                "description": "Request 100 tFIL tokens for the Filecoin Calibration Testnet. Enter your address to receive test FIL (tFIL) for development and testing purposes.",
+                "url": "https://faucet.calibnet.chainsafe-fil.io/funds",
+                "isPartOf": {
+                    "@type": "Organization",
+                    "name": "Filecoin Calibration Faucet"
+                }
+            }
+        ]
+    </script>
 </head>
 <body>
 <div class="Index">
     <div class="Index-nodes">
         <div class="Index-node">
-            <h3>Send funds</h3>
+            <h3>Send Testnet FIL</h3>
             <p>Please input your address to receive test FIL (tFIL) on the Calibration Testnet. This faucet dispenses 100 tFIL.</p>
         </div>
         <div class="Index-node">

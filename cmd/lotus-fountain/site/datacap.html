@@ -1,21 +1,50 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Grant DataCap - Lotus Fountain</title>
+    <title>Grant DataCap - Filecoin Calibration Faucet</title>
     <link rel="stylesheet" type="text/css" href="faucet-components.css">
+    <meta charset="UTF-8">
 	<script src="https://www.google.com/recaptcha/api.js"></script>
 	<script>
    		function onSubmit(token) {
      	document.getElementById("datacap-form").submit();
    	}
 	</script>
-
+    <script type="application/ld+json">
+        [
+            {
+                "@context": "https://schema.org",
+                "@type": "Organization",
+                "name": "Filecoin Calibration Faucet",
+                "url": "https://faucet.calibnet.chainsafe-fil.io/",
+                "logo": "https://filecoin.io/images/filecoin-logo.svg",
+                "description": "Official Filecoin Calibration testnet faucet providing testnet FIL and DataCap for developers building on the Filecoin network.",
+                "sameAs": [
+                    "https://github.com/ChainSafe",
+                    "https://chainsafe.io/",
+                    "https://filecoin.io/",
+                    "https://filecoin.io/slack"
+                ]
+            },
+            {
+                "@context": "https://schema.org",
+                "@type": "WebPage",
+                "name": "Grant DataCap - Filecoin Calibration Faucet",
+                "description": "Request DataCap allocation for the Filecoin Calibration Testnet. Enter your address to receive DataCap for testing Filecoin Plus (Fil+) workflows and verified deals.",
+                "url": "https://faucet.calibnet.chainsafe-fil.io/datacap",
+                "isPartOf": {
+                    "@type": "Organization",
+                    "name": "Filecoin Calibration Faucet"
+                }
+            }
+        ]
+    </script>
 </head>
 <body>
 <div class="Index">
     <div class="Index-nodes">
         <div class="Index-node">
-            <h3>Grant datacap</h3>
+            <h3>Grant DataCap</h3>
             <p>Please input your address to receive a data cap on the Calibration Testnet.</p>
         </div>
         <div class="Index-node">
