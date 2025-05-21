@@ -11,7 +11,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
-	msig16 "github.com/filecoin-project/go-state-types/builtin/v16/multisig"
+	msig17 "github.com/filecoin-project/go-state-types/builtin/v17/multisig"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/manifest"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
@@ -61,6 +61,9 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 		case actorstypes.Version16:
 			return load16(store, act.Head)
+
+		case actorstypes.Version17:
+			return load17(store, act.Head)
 
 		}
 	}
@@ -144,6 +147,9 @@ func MakeState(store adt.Store, av actorstypes.Version, signers []address.Addres
 	case actorstypes.Version16:
 		return make16(store, signers, threshold, startEpoch, unlockDuration, initialBalance)
 
+	case actorstypes.Version17:
+		return make17(store, signers, threshold, startEpoch, unlockDuration, initialBalance)
+
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
@@ -170,7 +176,7 @@ type State interface {
 	GetState() interface{}
 }
 
-type Transaction = msig16.Transaction
+type Transaction = msig17.Transaction
 
 var Methods = builtintypes.MethodsMultisig
 
@@ -224,6 +230,9 @@ func Message(version actorstypes.Version, from address.Address) MessageBuilder {
 
 	case actorstypes.Version16:
 		return message16{message0{from}}
+
+	case actorstypes.Version17:
+		return message17{message0{from}}
 	default:
 		panic(fmt.Sprintf("unsupported actors version: %d", version))
 	}
@@ -247,10 +256,10 @@ type MessageBuilder interface {
 }
 
 // this type is the same between v0 and v2
-type ProposalHashData = msig16.ProposalHashData
-type ProposeReturn = msig16.ProposeReturn
-type ProposeParams = msig16.ProposeParams
-type ApproveReturn = msig16.ApproveReturn
+type ProposalHashData = msig17.ProposalHashData
+type ProposeReturn = msig17.ProposeReturn
+type ProposeParams = msig17.ProposeParams
+type ApproveReturn = msig17.ApproveReturn
 
 func AllCodes() []cid.Cid {
 	return []cid.Cid{
@@ -270,5 +279,6 @@ func AllCodes() []cid.Cid {
 		(&state14{}).Code(),
 		(&state15{}).Code(),
 		(&state16{}).Code(),
+		(&state17{}).Code(),
 	}
 }

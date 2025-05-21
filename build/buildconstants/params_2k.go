@@ -22,7 +22,7 @@ const GenesisFile = ""
 var NetworkBundle = "devnet"
 var ActorDebugging = true
 
-var GenesisNetworkVersion = network.Version24
+var GenesisNetworkVersion = network.Version26
 
 var UpgradeBreezeHeight = abi.ChainEpoch(-1)
 
@@ -72,29 +72,31 @@ const UpgradeWatermelonFixHeight = -100
 // This fix upgrade only ran on calibrationnet
 const UpgradeWatermelonFix2Height = -101
 
-var UpgradeDragonHeight = abi.ChainEpoch(-24)
+var UpgradeDragonHeight = abi.ChainEpoch(-25)
 
 // This fix upgrade only ran on calibrationnet
 const UpgradeCalibrationDragonFixHeight = -102
 
-var UpgradePhoenixHeight = abi.ChainEpoch(-25)
+var UpgradePhoenixHeight = abi.ChainEpoch(-26)
 
-var UpgradeWaffleHeight = abi.ChainEpoch(-26)
+var UpgradeWaffleHeight = abi.ChainEpoch(-27)
 
-var UpgradeTuktukHeight = abi.ChainEpoch(-27)
+var UpgradeTuktukHeight = abi.ChainEpoch(-28)
 
 // FIP-0081: for the power actor state for pledge calculations.
 // UpgradeTuktukPowerRampDurationEpochs ends up in the power actor state after
 // Tuktuk migration. along with a RampStartEpoch matching the upgrade height.
 var UpgradeTuktukPowerRampDurationEpochs uint64 = 200
 
-var UpgradeTeepHeight = abi.ChainEpoch(200)
+var UpgradeTeepHeight = abi.ChainEpoch(-29)
 
 var UpgradeTeepInitialFilReserved = wholeFIL(1_400_000_000) // FIP-0100: 300M -> 1.4B FIL
 
-var UpgradeTockHeight = abi.ChainEpoch(300)
+var UpgradeTockHeight = abi.ChainEpoch(-30)
 
-var UpgradeTockFixHeight = abi.ChainEpoch(-28)
+const UpgradeTockFixHeight = -103
+
+var UpgradeXxHeight = abi.ChainEpoch(200)
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandQuicknet,
@@ -174,7 +176,8 @@ func init() {
 	UpgradeTuktukHeight = getUpgradeHeight("LOTUS_TUKTUK_HEIGHT", UpgradeTuktukHeight)
 	UpgradeTeepHeight = getUpgradeHeight("LOTUS_TEEP_HEIGHT", UpgradeTeepHeight)
 	UpgradeTockHeight = getUpgradeHeight("LOTUS_TOCK_HEIGHT", UpgradeTockHeight)
-	UpgradeTockFixHeight = getUpgradeHeight("LOTUS_TOCK_FIX_HEIGHT", UpgradeTockFixHeight)
+	//	UpgradeTockFixHeight = getUpgradeHeight("LOTUS_TOCK_FIX_HEIGHT", UpgradeTockFixHeight)
+	UpgradeXxHeight = getUpgradeHeight("LOTUS_XX_HEIGHT", UpgradeXxHeight)
 
 	DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 		0: DrandQuicknet,
