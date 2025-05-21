@@ -189,6 +189,7 @@ type State interface {
 	// before returning the actor.
 	ForEachClaim(cb func(miner address.Address, claim Claim) error, onlyEligible bool) error
 	ClaimsChanged(State) (bool, error)
+	CollectEligibleClaims(cacheInOut *builtin16.MapReduceCache) ([]builtin16.OwnedClaim, error)
 
 	// Testing or genesis setup only
 	SetTotalQualityAdjPower(abi.StoragePower) error

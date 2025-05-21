@@ -212,9 +212,7 @@ func (ec *ecWrapper) getPowerTableLotusTSK(ctx context.Context, tsk types.TipSet
 		return nil, xerrors.Errorf("loading power actor state: %w", err)
 	}
 
-	claims, err := powerState.(interface {
-		CollectValidClaims(*builtin.MapReduceCache) ([]builtin.OwnedClaim, error)
-	}).CollectValidClaims(&ec.mapReduceCache)
+	claims, err := powerState.CollectEligibleClaims(&ec.mapReduceCache)
 	if err != nil {
 		return nil, xerrors.Errorf("collecting valid claims: %w", err)
 	}
