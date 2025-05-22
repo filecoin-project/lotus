@@ -126,6 +126,12 @@ func (s *state16) ListAllMiners() ([]address.Address, error) {
 	return miners, nil
 }
 
+func (s *state16) CollectEligibleClaims(cacheInOut *builtin16.MapReduceCache) ([]builtin16.OwnedClaim, error) {
+
+	return s.State.CollectEligibleClaims(s.store, cacheInOut)
+
+}
+
 func (s *state16) ForEachClaim(cb func(miner address.Address, claim Claim) error, onlyEligible bool) error {
 	claims, err := s.claims()
 	if err != nil {

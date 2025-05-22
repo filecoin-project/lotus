@@ -12,6 +12,7 @@
 - chore: return `method not supported` via Gateway when /v2 isn't supported by the backend ([filecoin-project/lotus#13121](https://github.com/filecoin-project/lotus/pull/13121))
 - chore: disable F3 participation via gateway ([filecoin-project/lotus#13123](https://github.com/filecoin-project/lotus/pull/13123)
 - chore: increase the F3 GMessage buffer size to 1024 ([filecoin-project/lotus#13126](https://github.com/filecoin-project/lotus/pull/13126))
+- feat(f3): integrate cached MapReduce from go-hamt-ipld, which improves performance of F3 power table calculation by 6-10x ([filecoin-project/lotus#13134](https://github.com/filecoin-project/lotus/pull/13134))
 
 # Node v1.33.0 / 2025-05-08
 The Lotus v1.33.0 release introduces experimental v2 APIs with F3 awareness, featuring a new TipSet selection mechanism that significantly enhances how applications interact with the Filecoin blockchain. This release candidate also adds F3-aware Ethereum APIs via the /v2 endpoint.  All of the /v2 APIs implement intelligent fallback mechanisms between F3 and Expected Consensus and are exposed through the Lotus Gateway.
@@ -30,7 +31,7 @@ The Lotus V2 APIs introduce a powerful new TipSet selection mechanism that signi
 > [!NOTE]
 > V2 APIs are highly experimental and subject to change without notice.
 
-See [Filecoin v2 APIs docs](https://filoznotebook.notion.site/Filecoin-V2-APIs-1d0dc41950c1808b914de5966d501658) for an in-depth overview. /v2 APIs are exposed through Lotus Gateway. 
+See [Filecoin v2 APIs docs](https://filoznotebook.notion.site/Filecoin-V2-APIs-1d0dc41950c1808b914de5966d501658) for an in-depth overview. /v2 APIs are exposed through Lotus Gateway.
 
 This work was primarily done in ([filecoin-project/lotus#13003](https://github.com/filecoin-project/lotus/pull/13003)), ([filecoin-project/lotus#13027](https://github.com/filecoin-project/lotus/pull/13027)), ([filecoin-project/lotus#13034](https://github.com/filecoin-project/lotus/pull/13034)), ([filecoin-project/lotus#13075](https://github.com/filecoin-project/lotus/pull/13075)), ([filecoin-project/lotus#13066](https://github.com/filecoin-project/lotus/pull/13066))
 
