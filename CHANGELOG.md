@@ -30,6 +30,7 @@
   - default to PreCommit batching
   - default to ProveCommit aggregation
   - remove config options: AggregateCommits, AggregateAboveBaseFee, BatchPreCommitAboveBaseFee
+- feat(paych): add EnablePaymentChannelManager config option to disable payment channel manager by default ([filecoin-project/lotus#13139](https://github.com/filecoin-project/lotus/pull/13139))
 
 # Node v1.33.0 / 2025-05-08
 The Lotus v1.33.0 release introduces experimental v2 APIs with F3 awareness, featuring a new TipSet selection mechanism that significantly enhances how applications interact with the Filecoin blockchain. This release candidate also adds F3-aware Ethereum APIs via the /v2 endpoint.  All of the /v2 APIs implement intelligent fallback mechanisms between F3 and Expected Consensus and are exposed through the Lotus Gateway.

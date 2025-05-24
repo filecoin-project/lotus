@@ -118,13 +118,6 @@ var ChainNode = Options(
 	Override(new(wallet.Default), From(new(*wallet.LocalWallet))),
 	Override(new(api.Wallet), From(new(wallet.MultiWallet))),
 
-	// Service: Payment channels
-	Override(new(paychmgr.PaychAPI), From(new(modules.PaychAPI))),
-	Override(new(*paychmgr.Store), modules.NewPaychStore),
-	Override(new(*paychmgr.Manager), modules.NewManager),
-	Override(HandlePaymentChannelManagerKey, modules.HandlePaychManager),
-	Override(SettlePaymentChannelsKey, settler.SettlePaymentChannels),
-
 	// Markets (storage)
 	Override(new(*market.FundManager), market.NewFundManager),
 
@@ -360,6 +353,14 @@ func ConfigFullNode(c interface{}) Option {
 			If(cfg.ChainIndexer.EnableIndexer,
 				Override(InitChainIndexerKey, modules.InitChainIndexer(cfg.ChainIndexer)),
 			),
+		),
+
+		If(cfg.EnablePaymentChannelManager,
+			Override(new(paychmgr.PaychAPI), From(new(modules.PaychAPI))),
+			Override(new(*paychmgr.Store), modules.NewPaychStore),
+			Override(new(*paychmgr.Manager), modules.NewManager),
+			Override(HandlePaymentChannelManagerKey, modules.HandlePaychManager),
+			Override(SettlePaymentChannelsKey, settler.SettlePaymentChannels),
 		),
 	)
 }

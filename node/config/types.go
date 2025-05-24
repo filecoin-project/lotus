@@ -18,15 +18,19 @@ type Common struct {
 // FullNode is a full node config
 type FullNode struct {
 	Common
-	Libp2p        Libp2p
-	Pubsub        Pubsub
-	Wallet        Wallet
-	Fees          FeeConfig
-	Chainstore    Chainstore
-	Fevm          FevmConfig
-	Events        EventsConfig
-	ChainIndexer  ChainIndexerConfig
-	FaultReporter FaultReporterConfig
+	Libp2p     Libp2p
+	Pubsub     Pubsub
+	Wallet     Wallet
+	Fees       FeeConfig
+	Chainstore Chainstore
+	// EnablePaymentChannelManager controls whether the payment channel manager is started.
+	// Default: false (disabled) - payment channels get minimal use on mainnet.
+	// Set to true to enable payment channel functionality if needed.
+	EnablePaymentChannelManager bool
+	Fevm                        FevmConfig
+	Events                      EventsConfig
+	ChainIndexer                ChainIndexerConfig
+	FaultReporter               FaultReporterConfig
 }
 
 // // Common
