@@ -27,6 +27,10 @@ type FullNode struct {
 	Events        EventsConfig
 	ChainIndexer  ChainIndexerConfig
 	FaultReporter FaultReporterConfig
+	// EnablePaymentChannelManager controls whether the payment channel manager is started.
+	// Default: false (disabled) - payment channels get minimal use on mainnet.
+	// Set to true to enable payment channel functionality if needed.
+	EnablePaymentChannelManager bool
 }
 
 // // Common
