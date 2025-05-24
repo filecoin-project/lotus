@@ -8,6 +8,7 @@
 > * [CHANGELOG_1.2x.md](./documentation/changelog/CHANGELOG_1.2x.md) - v1.20.0 to v1.29.2
 
 # UNRELEASED
+- feat(paych): add EnablePaymentChannelManager config option to disable payment channel manager by default ([filecoin-project/lotus#PR_NUMBER](https://github.com/filecoin-project/lotus/pull/13139))
 - chore(deps): bump filecoin-ffi for fvm@v4.7 which adds Logs and IpldOps to debug FVM execution traces ([filecoin-project/lotus#13029](https://github.com/filecoin-project/lotus/pull/13029))
 - chore: return `method not supported` via Gateway when /v2 isn't supported by the backend ([filecoin-project/lotus#13121](https://github.com/filecoin-project/lotus/pull/13121))
 - chore: disable F3 participation via gateway ([filecoin-project/lotus#13123](https://github.com/filecoin-project/lotus/pull/13123)
@@ -160,7 +161,7 @@ For the set of changes since the last stable release:
 
 # Node and Miner v1.32.1 / 2025-03-28
 
-The Lotus v1.32.1 release is a **MANDATORY patch release**, which will deliver the Filecoin network version 25, codenamed “Teep” 🦵. This release sets the upgrade epoch for the Mainnet to **Epoch 4867320 - 2025-04-10T23:00:00Z**, and correctly sets the F3 activationcontract address to `0xA19080A1Bcb82Bb61bcb9691EC94653Eb5315716`. You can find more details about how the F3 activation on Mainnet will be executed in the [F3 Activation Procedure](https://github.com/filecoin-project/go-f3/issues/920#issuecomment-2761448485).
+The Lotus v1.32.1 release is a **MANDATORY patch release**, which will deliver the Filecoin network version 25, codenamed "Teep" 🦵. This release sets the upgrade epoch for the Mainnet to **Epoch 4867320 - 2025-04-10T23:00:00Z**, and correctly sets the F3 activationcontract address to `0xA19080A1Bcb82Bb61bcb9691EC94653Eb5315716`. You can find more details about how the F3 activation on Mainnet will be executed in the [F3 Activation Procedure](https://github.com/filecoin-project/go-f3/issues/920#issuecomment-2761448485).
 
 ## ☢️ Upgrade Warnings ☢️
 - The Lotus v1.32.0 release had an issue where the F3 activation contract address was not set correctly. This release corrects that issue.
@@ -281,7 +282,7 @@ For the set of changes since the last stable release:
 
 # Node and Miner v1.32.0 / 2025-03-27
 
-This is the stable release of the **upcoming MANDATORY Lotus v1.32.0 release**, which will deliver the Filecoin network version 25, codenamed “Teep” 🦵. This release candidate sets the upgrade epoch for the Mainnet to **Epoch 4867320 - 2025-04-10T23:00:00Z**.
+This is the stable release of the **upcoming MANDATORY Lotus v1.32.0 release**, which will deliver the Filecoin network version 25, codenamed "Teep" 🦵. This release candidate sets the upgrade epoch for the Mainnet to **Epoch 4867320 - 2025-04-10T23:00:00Z**.
 
 ## ☢️ Upgrade Warnings ☢️
 - If you are running the v1.30.0 version of Lotus, please go through the Upgrade Warnings section for the [v1.31.0 releases](https://github.com/filecoin-project/lotus/releases/tag/v1.31.0) and [v1.31.1](https://github.com/filecoin-project/lotus/releases/tag/v1.31.1) before upgrading to this release.
@@ -438,7 +439,7 @@ https://github.com/filecoin-project/lotus/compare/v1.31.0...v1.31.1
 | Contributor | Commits | Lines ± | Files Changed |
 |-------------|---------|---------|---------------|
 | Rod Vagg | 26 | +13687/-11008 | 146 |
-| Masih H. Derkani | 19 | +2492/-1506 | 59 |
+| Masih H. Derkani | 19 | +2492/-867 | 59 |
 | Aryan Tikarya | 2 | +2120/-1407 | 45 |
 | Krishang Shah | 1 | +3214/-117 | 66 |
 | Steven Allen | 4 | +1317/-1632 | 22 |
