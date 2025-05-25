@@ -1748,13 +1748,48 @@ var StateSysActorCIDsCmd = &cli.Command{
 	},
 }
 
+// getMarketDealIDs retrieves deal IDs for a sector from the market actor's ProviderSectors HAMT
 func getMarketDealIDs(ctx context.Context, api v0api.FullNode, maddr address.Address, sid abi.SectorNumber, tsKey types.TipSetKey) ([]abi.DealID, error) {
-	// Convert miner address to ID address to get the actor ID
-	minerID, err := api.StateLookupID(ctx, maddr, tsKey)
+	// Convert miner address to actor ID
+	actorID, err := getMinerActorID(ctx, api, maddr, tsKey)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to lookup miner ID: %w", err)
+		return nil, err
 	}
 
+	// Load market state
+	marketState, err := loadMarketState(ctx, api, tsKey)
+	if err != nil {
+		return nil, err
+	}
+
+	// Extract deal IDs from ProviderSectors HAMT
+	dealIDs, err := extractSectorDealIDs(marketState, actorID, sid)
+	if err != nil {
+		return nil, err
+	}
+
+	return dealIDs, nil
+}
+
+// getMinerActorID converts a miner address to its actor ID
+func getMinerActorID(ctx context.Context, api v0api.FullNode, maddr address.Address, tsKey types.TipSetKey) (abi.ActorID, error) {
+	// Convert miner address to ID address
+	minerID, err := api.StateLookupID(ctx, maddr, tsKey)
+	if err != nil {
+		return 0, xerrors.Errorf("failed to lookup miner ID: %w", err)
+	}
+
+	// Extract the actor ID from the ID address
+	id, err := address.IDFromAddress(minerID)
+	if err != nil {
+		return 0, xerrors.Errorf("failed to extract actor ID from address: %w", err)
+	}
+
+	return abi.ActorID(id), nil
+}
+
+// loadMarketState loads the market actor state
+func loadMarketState(ctx context.Context, api v0api.FullNode, tsKey types.TipSetKey) (market.State, error) {
 	// Get the market actor
 	marketActor, err := api.StateGetActor(ctx, market.Address, tsKey)
 	if err != nil {
@@ -1768,23 +1803,21 @@ func getMarketDealIDs(ctx context.Context, api v0api.FullNode, maddr address.Add
 		return nil, xerrors.Errorf("failed to load market state: %w", err)
 	}
 
+	return marketState, nil
+}
+
+// extractSectorDealIDs extracts deal IDs for a specific sector from the ProviderSectors HAMT
+func extractSectorDealIDs(marketState market.State, actorID abi.ActorID, sid abi.SectorNumber) ([]abi.DealID, error) {
 	// Get the ProviderSectors interface
 	providerSectors, err := marketState.ProviderSectors()
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get provider sectors: %w", err)
 	}
 
-	// Extract the actor ID from the ID address
-	id, err := address.IDFromAddress(minerID)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to extract actor ID from address: %w", err)
-	}
-	actorID := abi.ActorID(id)
-
 	// Get the sector deal IDs for this miner
 	sectorDealIDs, found, err := providerSectors.Get(actorID)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get sector deal IDs for miner %s: %w", maddr, err)
+		return nil, xerrors.Errorf("failed to get sector deal IDs for actor %d: %w", actorID, err)
 	}
 	if !found {
 		return []abi.DealID{}, nil
