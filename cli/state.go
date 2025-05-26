@@ -1533,8 +1533,8 @@ var StateSectorCmd = &cli.Command{
 		dealIDs := si.DeprecatedDealIDs
 		fmt.Printf("DealIDs (deprecated): %v\n", dealIDs)
 
-		// For actors v13+, try to get deal IDs from market actor's ProviderSectors HAMT
-		if nv >= network.Version13 {
+		// Deals were moved into market actor's ProviderSectors in NV22 / Actors v13
+		if nv >= network.Version22 {
 			marketDealIDs, err := getMarketDealIDs(ctx, api, maddr, abi.SectorNumber(sid), ts.Key())
 			if err != nil {
 				fmt.Printf("DealIDs (market): error retrieving from market actor: %v\n", err)
@@ -1824,13 +1824,9 @@ func extractSectorDealIDs(marketState market.State, actorID abi.ActorID, sid abi
 	}
 
 	// Get the deal IDs for the specific sector
-	dealIDs, found, err := sectorDealIDs.Get(sid)
+	dealIDs, _, err := sectorDealIDs.Get(sid)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get deal IDs for sector %d: %w", sid, err)
 	}
-	if !found {
-		return []abi.DealID{}, nil
-	}
-
 	return dealIDs, nil
 }
