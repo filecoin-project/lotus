@@ -55,16 +55,15 @@ type F3 struct {
 type F3Params struct {
 	fx.In
 
-	ManifestProvider manifest.ManifestProvider
-	PubSub           *pubsub.PubSub
-	Host             host.Host
-	ChainStore       *store.ChainStore
-	Syncer           *chain.Syncer
-	StateManager     *stmgr.StateManager
-	Datastore        dtypes.MetadataDS
-	Wallet           api.Wallet
-	Config           *Config
-	LockedRepo       repo.LockedRepo
+	PubSub       *pubsub.PubSub
+	Host         host.Host
+	ChainStore   *store.ChainStore
+	Syncer       *chain.Syncer
+	StateManager *stmgr.StateManager
+	Datastore    dtypes.MetadataDS
+	Wallet       api.Wallet
+	Config       *Config
+	LockedRepo   repo.LockedRepo
 
 	Net api.Net
 }
@@ -72,12 +71,16 @@ type F3Params struct {
 var log = logging.Logger("f3")
 
 func New(mctx helpers.MetricsCtx, lc fx.Lifecycle, params F3Params) (*F3, error) {
+
+	if params.Config.StaticManifest == nil {
+		return nil, nil
+	}
 	ds := namespace.Wrap(params.Datastore, datastore.NewKey("/f3"))
 	ec := newEcWrapper(params.ChainStore, params.Syncer, params.StateManager)
 	verif := blssig.VerifierWithKeyOnG1()
 
 	f3FsPath := filepath.Join(params.LockedRepo.Path(), "f3")
-	module, err := f3.New(mctx, params.ManifestProvider, ds,
+	module, err := f3.New(mctx, *params.Config.StaticManifest, ds,
 		params.Host, params.PubSub, verif, ec, f3FsPath)
 	if err != nil {
 		return nil, xerrors.Errorf("creating F3: %w", err)
@@ -90,7 +93,7 @@ func New(mctx helpers.MetricsCtx, lc fx.Lifecycle, params F3Params) (*F3, error)
 	// maxLeasableInstances is the maximum number of leased F3 instances this node
 	// would give out.
 	const maxLeasableInstances = 5
-	status := func() (*manifest.Manifest, gpbft.InstanceProgress) {
+	status := func() (manifest.Manifest, gpbft.InstanceProgress) {
 		return module.Manifest(), module.Progress()
 	}
 	fff := &F3{
@@ -197,21 +200,16 @@ func (fff *F3) GetLatestCert(ctx context.Context) (*certs.FinalityCertificate, e
 
 func (fff *F3) GetManifest(ctx context.Context) (*manifest.Manifest, error) {
 	m := fff.inner.Manifest()
-	if m == nil {
-		return nil, manifest.ErrNoManifest
-	}
 	if m.InitialPowerTable.Defined() {
-		return m, nil
+		return &m, nil
 	}
 	cert0, err := fff.inner.GetCert(ctx, 0)
 	if err != nil {
-		return m, nil // return manifest without power table
+		return &m, nil // return manifest without power table
 	}
 
-	var mCopy = *m
-	m = &mCopy
 	m.InitialPowerTable = cert0.ECChain.Base().PowerTable
-	return m, nil
+	return &m, nil
 }
 
 func (fff *F3) GetPowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) {

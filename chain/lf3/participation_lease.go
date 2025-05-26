@@ -15,7 +15,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 )
 
-type f3Status = func() (*manifest.Manifest, gpbft.InstanceProgress)
+type f3Status = func() (manifest.Manifest, gpbft.InstanceProgress)
 
 type leaser struct {
 	mutex                sync.Mutex
@@ -48,9 +48,6 @@ func (l *leaser) getOrRenewParticipationTicket(participant uint64, previous api.
 	}
 
 	manifest, instant := l.status()
-	if manifest == nil {
-		return nil, api.ErrF3NotReady
-	}
 	currentInstance := instant.ID
 	if len(previous) != 0 {
 		// A previous ticket is present. To avoid overlapping lease across multiple
@@ -91,9 +88,6 @@ func (l *leaser) getOrRenewParticipationTicket(participant uint64, previous api.
 
 func (l *leaser) participate(ticket api.F3ParticipationTicket) (api.F3ParticipationLease, error) {
 	manifest, instant := l.status()
-	if manifest == nil {
-		return api.F3ParticipationLease{}, api.ErrF3NotReady
-	}
 	newLease, err := l.validateTicket(manifest.NetworkName, instant.ID, ticket)
 	if err != nil {
 		return api.F3ParticipationLease{}, err
