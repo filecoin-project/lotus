@@ -9,7 +9,6 @@ import (
 	multiaddr "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
 
-	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 
@@ -266,7 +265,6 @@ func F3Backend(backend lf3.F3Backend) NodeOpt {
 func F3Disabled() NodeOpt {
 	return ConstructorOpts(
 		node.Unset(new(*lf3.Config)),
-		node.Unset(new(manifest.ManifestProvider)),
 		node.Unset(new(lf3.F3Backend)),
 		node.Unset(new(full.F3CertificateProvider)),
 	)

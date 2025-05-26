@@ -7957,13 +7957,10 @@
                 "schema": {
                     "examples": [
                         {
-                            "Pause": false,
                             "ProtocolVersion": 0,
                             "InitialInstance": 0,
                             "BootstrapEpoch": 0,
                             "NetworkName": "",
-                            "ExplicitPower": null,
-                            "IgnoreECPower": false,
                             "InitialPowerTable": null,
                             "CommitteeLookback": 0,
                             "CatchUpAlignment": 0,
@@ -8118,31 +8115,6 @@
                             },
                             "type": "object"
                         },
-                        "ExplicitPower": {
-                            "items": {
-                                "additionalProperties": false,
-                                "properties": {
-                                    "ID": {
-                                        "title": "number",
-                                        "type": "number"
-                                    },
-                                    "Power": {
-                                        "additionalProperties": false,
-                                        "type": "object"
-                                    },
-                                    "PubKey": {
-                                        "items": {
-                                            "description": "Number is a number",
-                                            "title": "number",
-                                            "type": "number"
-                                        },
-                                        "type": "array"
-                                    }
-                                },
-                                "type": "object"
-                            },
-                            "type": "array"
-                        },
                         "Gpbft": {
                             "additionalProperties": false,
                             "properties": {
@@ -8180,9 +8152,6 @@
                                 }
                             },
                             "type": "object"
-                        },
-                        "IgnoreECPower": {
-                            "type": "boolean"
                         },
                         "InitialInstance": {
                             "title": "number",
@@ -8228,9 +8197,6 @@
                                 }
                             },
                             "type": "object"
-                        },
-                        "Pause": {
-                            "type": "boolean"
                         },
                         "ProtocolVersion": {
                             "title": "number",

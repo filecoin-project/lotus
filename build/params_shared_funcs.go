@@ -47,27 +47,6 @@ func IsF3Enabled() bool {
 	}
 }
 
-func IsF3PassiveTestingEnabled() bool {
-	if !IsF3Enabled() {
-		return false
-	}
-	const F3DisablePassiveTesting = "LOTUS_DISABLE_F3_PASSIVE_TESTING"
-
-	v, disableEnvVarSet := os.LookupEnv(F3DisablePassiveTesting)
-	if !disableEnvVarSet {
-		// Environment variable to disable F3 passive testing is not set.
-		return true
-	}
-	switch strings.TrimSpace(strings.ToLower(v)) {
-	case "", "0", "false", "no":
-		// Consider these values as "do not disable".
-		return true
-	default:
-		// Consider any other value as disable.
-		return false
-	}
-}
-
 func parseF3DisableActivationEnv() (contractAddrs []string, epochs []int64) {
 	const F3DisableActivation = "LOTUS_DISABLE_F3_ACTIVATION"
 
@@ -109,11 +88,4 @@ func parseF3DisableActivationEnv() (contractAddrs []string, epochs []int64) {
 func IsF3EpochActivationDisabled(epoch int64) bool {
 	_, epochs := parseF3DisableActivationEnv()
 	return slices.Contains(epochs, epoch)
-}
-
-// IsF3ContractActivationDisabled checks if F3 activation is disabled for the given contract address
-// based on environment variable configuration.
-func IsF3ContractActivationDisabled(contract string) bool {
-	contracts, _ := parseF3DisableActivationEnv()
-	return slices.Contains(contracts, contract)
 }

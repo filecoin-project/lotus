@@ -3060,13 +3060,10 @@ Inputs: `null`
 Response:
 ```json
 {
-  "Pause": false,
   "ProtocolVersion": 0,
   "InitialInstance": 0,
   "BootstrapEpoch": 0,
   "NetworkName": "",
-  "ExplicitPower": null,
-  "IgnoreECPower": false,
   "InitialPowerTable": null,
   "CommitteeLookback": 0,
   "CatchUpAlignment": 0,
