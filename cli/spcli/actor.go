@@ -95,7 +95,7 @@ func ActorDealSettlementCmd(getActor ActorAddressGetter) *cli.Command {
 			}
 
 			smsg, err := api.MpoolPushMessage(ctx, &types.Message{
-				To:     maddr,
+				To:     marketactor.Address,
 				From:   mi.Owner,
 				Value:  types.NewInt(0),
 				Method: marketactor.Methods.SettleDealPaymentsExported,
