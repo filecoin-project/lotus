@@ -94,6 +94,8 @@ func main() {
 		adlCmd,
 		f3Cmd,
 		findMsgCmd,
+		authServerStartCmd,
+		authClientRunCmd,
 	}
 
 	app := &cli.App{
