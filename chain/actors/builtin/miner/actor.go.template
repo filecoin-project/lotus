@@ -12,7 +12,7 @@ import (
 	gstbuiltin "github.com/filecoin-project/go-state-types/builtin"
 	minertypes13 "github.com/filecoin-project/go-state-types/builtin/v13/miner"
 {{- range .versions}}
-	{{- if (ge . 16)}}
+	{{- if (ge . 13)}}
 		minertypes{{.}} "github.com/filecoin-project/go-state-types/builtin/v{{.}}/miner"
 		smoothing{{.}} "github.com/filecoin-project/go-state-types/builtin/v{{.}}/util/smoothing"
 	{{- end -}}
@@ -403,4 +403,38 @@ func PledgePenaltyForTermination(
     default:
         return big.Zero(), xerrors.Errorf("unsupported network version: %d", nwVer)
     }
+}
+
+func ExpectedRewardForPower(
+	nwVer network.Version,
+	rewardEstimate, networkQAPowerEstimate builtin.FilterEstimate,
+	qaSectorPower abi.StoragePower,
+	projectionDuration abi.ChainEpoch,
+) (abi.TokenAmount, error) {
+	v, err := actorstypes.VersionForNetwork(nwVer)
+	if err != nil {
+		return big.Zero(), err
+	}
+
+	switch v {
+	{{- range .versions}}
+		{{- if (ge . 13)}}
+	case actorstypes.Version{{.}}:
+		return minertypes{{.}}.ExpectedRewardForPower(
+			smoothing{{.}}.FilterEstimate{
+				PositionEstimate: rewardEstimate.PositionEstimate,
+				VelocityEstimate: rewardEstimate.VelocityEstimate,
+			},
+			smoothing{{.}}.FilterEstimate{
+				PositionEstimate: networkQAPowerEstimate.PositionEstimate,
+				VelocityEstimate: networkQAPowerEstimate.VelocityEstimate,
+			},
+			qaSectorPower,
+			projectionDuration,
+		), nil
+		{{- end}}
+	{{- end}}
+	default:
+		return big.Zero(), xerrors.Errorf("unsupported network version: %d", nwVer)
+	}
 }

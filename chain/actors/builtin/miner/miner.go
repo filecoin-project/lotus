@@ -11,6 +11,11 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	gstbuiltin "github.com/filecoin-project/go-state-types/builtin"
 	minertypes13 "github.com/filecoin-project/go-state-types/builtin/v13/miner"
+	smoothing13 "github.com/filecoin-project/go-state-types/builtin/v13/util/smoothing"
+	minertypes14 "github.com/filecoin-project/go-state-types/builtin/v14/miner"
+	smoothing14 "github.com/filecoin-project/go-state-types/builtin/v14/util/smoothing"
+	minertypes15 "github.com/filecoin-project/go-state-types/builtin/v15/miner"
+	smoothing15 "github.com/filecoin-project/go-state-types/builtin/v15/util/smoothing"
 	minertypes16 "github.com/filecoin-project/go-state-types/builtin/v16/miner"
 	smoothing16 "github.com/filecoin-project/go-state-types/builtin/v16/util/smoothing"
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
@@ -475,6 +480,75 @@ func PledgePenaltyForTermination(
 	switch v {
 	case actorstypes.Version16:
 		return minertypes16.PledgePenaltyForTermination(initialPledge, sectorAge, faultFee), nil
+	default:
+		return big.Zero(), xerrors.Errorf("unsupported network version: %d", nwVer)
+	}
+}
+
+func ExpectedRewardForPower(
+	nwVer network.Version,
+	rewardEstimate, networkQAPowerEstimate builtin.FilterEstimate,
+	qaSectorPower abi.StoragePower,
+	projectionDuration abi.ChainEpoch,
+) (abi.TokenAmount, error) {
+	v, err := actorstypes.VersionForNetwork(nwVer)
+	if err != nil {
+		return big.Zero(), err
+	}
+
+	switch v {
+	case actorstypes.Version13:
+		return minertypes13.ExpectedRewardForPower(
+			smoothing13.FilterEstimate{
+				PositionEstimate: rewardEstimate.PositionEstimate,
+				VelocityEstimate: rewardEstimate.VelocityEstimate,
+			},
+			smoothing13.FilterEstimate{
+				PositionEstimate: networkQAPowerEstimate.PositionEstimate,
+				VelocityEstimate: networkQAPowerEstimate.VelocityEstimate,
+			},
+			qaSectorPower,
+			projectionDuration,
+		), nil
+	case actorstypes.Version14:
+		return minertypes14.ExpectedRewardForPower(
+			smoothing14.FilterEstimate{
+				PositionEstimate: rewardEstimate.PositionEstimate,
+				VelocityEstimate: rewardEstimate.VelocityEstimate,
+			},
+			smoothing14.FilterEstimate{
+				PositionEstimate: networkQAPowerEstimate.PositionEstimate,
+				VelocityEstimate: networkQAPowerEstimate.VelocityEstimate,
+			},
+			qaSectorPower,
+			projectionDuration,
+		), nil
+	case actorstypes.Version15:
+		return minertypes15.ExpectedRewardForPower(
+			smoothing15.FilterEstimate{
+				PositionEstimate: rewardEstimate.PositionEstimate,
+				VelocityEstimate: rewardEstimate.VelocityEstimate,
+			},
+			smoothing15.FilterEstimate{
+				PositionEstimate: networkQAPowerEstimate.PositionEstimate,
+				VelocityEstimate: networkQAPowerEstimate.VelocityEstimate,
+			},
+			qaSectorPower,
+			projectionDuration,
+		), nil
+	case actorstypes.Version16:
+		return minertypes16.ExpectedRewardForPower(
+			smoothing16.FilterEstimate{
+				PositionEstimate: rewardEstimate.PositionEstimate,
+				VelocityEstimate: rewardEstimate.VelocityEstimate,
+			},
+			smoothing16.FilterEstimate{
+				PositionEstimate: networkQAPowerEstimate.PositionEstimate,
+				VelocityEstimate: networkQAPowerEstimate.VelocityEstimate,
+			},
+			qaSectorPower,
+			projectionDuration,
+		), nil
 	default:
 		return big.Zero(), xerrors.Errorf("unsupported network version: %d", nwVer)
 	}
