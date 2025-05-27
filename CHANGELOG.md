@@ -13,6 +13,7 @@
 - chore: disable F3 participation via gateway ([filecoin-project/lotus#13123](https://github.com/filecoin-project/lotus/pull/13123)
 - chore: increase the F3 GMessage buffer size to 1024 ([filecoin-project/lotus#13126](https://github.com/filecoin-project/lotus/pull/13126))
 - feat(f3): integrate cached MapReduce from go-hamt-ipld, which improves performance of F3 power table calculation by 6-10x ([filecoin-project/lotus#13134](https://github.com/filecoin-project/lotus/pull/13134))
+- fix(spcli): send SettleDealPayments msg to f05 for `lotus-miner actor settle-deal` ([filecoin-project/lotus#13142](https://github.com/filecoin-project/lotus/pull/13142))
 
 # Node v1.33.0 / 2025-05-08
 The Lotus v1.33.0 release introduces experimental v2 APIs with F3 awareness, featuring a new TipSet selection mechanism that significantly enhances how applications interact with the Filecoin blockchain. This release candidate also adds F3-aware Ethereum APIs via the /v2 endpoint.  All of the /v2 APIs implement intelligent fallback mechanisms between F3 and Expected Consensus and are exposed through the Lotus Gateway.
