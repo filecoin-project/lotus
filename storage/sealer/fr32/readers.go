@@ -92,6 +92,7 @@ func (r *unpadReader) readInner(out []byte) (int, error) {
 		return 0, xerrors.Errorf("output must be of valid padded piece size: %w", err)
 	}
 
+	// Clamp `todo` to the length of the work buffer to prevent buffer overflows
 	todo := min(abi.PaddedPieceSize(outTwoPow), abi.PaddedPieceSize(len(r.work)))
 	if r.left < uint64(todo) {
 		todo = abi.PaddedPieceSize(1 << (63 - bits.LeadingZeros64(r.left)))
