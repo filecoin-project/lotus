@@ -38,36 +38,58 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 	network.BeginMining(blockTime)
 	subject.WaitTillChain(ctx, kit.HeightAtLeast(targetHeight))
 
+	// mkStableExecute creates a stable execution wrapper that ensures the chain doesn't
+	// advance during test execution to avoid flaky tests due to chain reorgs
+	mkStableExecute := func(getTipSet func() (*types.TipSet, error)) func(fn func() (interface{}, error)) (interface{}, *types.TipSet, error) {
+		return func(fn func() (interface{}, error)) (interface{}, *types.TipSet, error) {
+			for {
+				beforeTs, err := getTipSet()
+				if err != nil {
+					return nil, nil, err
+				}
+				result, execErr := fn()
+				afterTs, err := getTipSet()
+				if err != nil {
+					return nil, nil, err
+				}
+				if beforeTs != nil && afterTs != nil && beforeTs.Equals(afterTs) {
+					// Chain hasn't changed during execution, safe to return
+					return result, beforeTs, execErr
+				}
+				// Chain changed, retry
+			}
+		}
+	}
+
 	var (
-		heaviest = func(t *testing.T) *types.TipSet {
-			head, err := subject.ChainHead(ctx)
-			require.NoError(t, err)
-			return head
+		heaviest = func() (*types.TipSet, error) {
+			return subject.ChainHead(ctx)
 		}
-		ecFinalized = func(t *testing.T) *types.TipSet {
+		ecFinalized = func() (*types.TipSet, error) {
 			head, err := subject.ChainHead(ctx)
-			require.NoError(t, err)
-			ecFinalized, err := subject.ChainGetTipSetByHeight(ctx, head.Height()-policy.ChainFinality, head.Key())
-			require.NoError(t, err)
-			return ecFinalized
+			if err != nil {
+				return nil, err
+			}
+			return subject.ChainGetTipSetByHeight(ctx, head.Height()-policy.ChainFinality, head.Key())
 		}
-		safe = func(t *testing.T) *types.TipSet {
+		safe = func() (*types.TipSet, error) {
 			head, err := subject.ChainHead(ctx)
-			require.NoError(t, err)
-			safe, err := subject.ChainGetTipSetByHeight(ctx, head.Height()-buildconstants.SafeHeightDistance, head.Key())
-			require.NoError(t, err)
-			return safe
+			if err != nil {
+				return nil, err
+			}
+			return subject.ChainGetTipSetByHeight(ctx, head.Height()-buildconstants.SafeHeightDistance, head.Key())
 		}
-		tipSetAtHeight = func(height abi.ChainEpoch) func(t *testing.T) *types.TipSet {
-			return func(t *testing.T) *types.TipSet {
-				ts, err := subject.ChainGetTipSetByHeight(ctx, height, types.EmptyTSK)
-				require.NoError(t, err)
-				return ts
+		tipSetAtHeight = func(height abi.ChainEpoch) func() (*types.TipSet, error) {
+			return func() (*types.TipSet, error) {
+				return subject.ChainGetTipSetByHeight(ctx, height, types.EmptyTSK)
 			}
 		}
 		internalF3Error = errors.New("lost hearing in left eye")
-		plausibleCertAt = func(t *testing.T, epoch abi.ChainEpoch) *certs.FinalityCertificate {
-			f3FinalisedTipSet := tipSetAtHeight(epoch)(t)
+		plausibleCertAt = func(epoch abi.ChainEpoch) (*certs.FinalityCertificate, error) {
+			f3FinalisedTipSet, err := tipSetAtHeight(epoch)()
+			if err != nil {
+				return nil, err
+			}
 			return &certs.FinalityCertificate{
 				ECChain: &gpbft.ECChain{
 					TipSets: []*gpbft.TipSet{{
@@ -75,7 +97,7 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 						Key:   f3FinalisedTipSet.Key().Bytes(),
 					}},
 				},
-			}
+			}, nil
 		}
 		implausibleCert = &certs.FinalityCertificate{
 			ECChain: &gpbft.ECChain{
@@ -96,7 +118,7 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 			name               string
 			when               func(t *testing.T)
 			request            string
-			wantTipSet         func(t *testing.T) *types.TipSet
+			wantTipSet         func() (*types.TipSet, error)
 			wantErr            string
 			wantResponseStatus int
 		}{
@@ -127,7 +149,9 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 					mockF3.Running = true
 					mockF3.Finalizing = true
 					mockF3.LatestCertErr = nil
-					mockF3.LatestCert = plausibleCertAt(t, f3FinalizedEpoch)
+					cert, err := plausibleCertAt(f3FinalizedEpoch)
+					require.NoError(t, err)
+					mockF3.LatestCert = cert
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"tag":"finalized"}],"id":1}`,
 				wantTipSet:         tipSetAtHeight(f3FinalizedEpoch),
@@ -139,7 +163,9 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 					mockF3.Running = true
 					mockF3.Finalizing = true
 					mockF3.LatestCertErr = nil
-					mockF3.LatestCert = plausibleCertAt(t, targetHeight-policy.ChainFinality-5)
+					cert, err := plausibleCertAt(targetHeight - policy.ChainFinality - 5)
+					require.NoError(t, err)
+					mockF3.LatestCert = cert
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"tag":"finalized"}],"id":1}`,
 				wantTipSet:         tipSetAtHeight(targetHeight - policy.ChainFinality),
@@ -151,7 +177,9 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 					mockF3.Running = true
 					mockF3.Finalizing = true
 					mockF3.LatestCertErr = nil
-					mockF3.LatestCert = plausibleCertAt(t, f3FinalizedEpoch)
+					cert, err := plausibleCertAt(f3FinalizedEpoch)
+					require.NoError(t, err)
+					mockF3.LatestCert = cert
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"tag":"safe"}],"id":1}`,
 				wantTipSet:         safe,
@@ -163,7 +191,9 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 					mockF3.Running = true
 					mockF3.Finalizing = true
 					mockF3.LatestCertErr = nil
-					mockF3.LatestCert = plausibleCertAt(t, 890)
+					cert, err := plausibleCertAt(890)
+					require.NoError(t, err)
+					mockF3.LatestCert = cert
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"tag":"safe"}],"id":1}`,
 				wantTipSet:         tipSetAtHeight(890),
@@ -242,7 +272,9 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 				when: func(t *testing.T) {
 					mockF3.Running = true
 					mockF3.Finalizing = true
-					mockF3.LatestCert = plausibleCertAt(t, f3FinalizedEpoch)
+					cert, err := plausibleCertAt(f3FinalizedEpoch)
+					require.NoError(t, err)
+					mockF3.LatestCert = cert
 					mockF3.LatestCertErr = nil
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"height":{"at":111}}],"id":1}`,
@@ -254,7 +286,9 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 				when: func(t *testing.T) {
 					mockF3.Running = true
 					mockF3.Finalizing = true
-					mockF3.LatestCert = plausibleCertAt(t, f3FinalizedEpoch)
+					cert, err := plausibleCertAt(f3FinalizedEpoch)
+					require.NoError(t, err)
+					mockF3.LatestCert = cert
 					mockF3.LatestCertErr = nil
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"height":{"at":145}}],"id":1}`,
@@ -290,7 +324,9 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 				when: func(t *testing.T) {
 					mockF3.Running = true
 					mockF3.Finalizing = true
-					mockF3.LatestCert = plausibleCertAt(t, f3FinalizedEpoch)
+					cert, err := plausibleCertAt(f3FinalizedEpoch)
+					require.NoError(t, err)
+					mockF3.LatestCert = cert
 					mockF3.LatestCertErr = nil
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"height":{"at":890,"anchor":{"tag":"latest"}}}],"id":1}`,
@@ -302,32 +338,66 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 				if test.when != nil {
 					test.when(t)
 				}
-				gotResponseCode, gotResponseBody := subject.DoRawRPCRequest(t, 2, test.request)
-				require.Equal(t, test.wantResponseStatus, gotResponseCode, string(gotResponseBody))
-				var resultOrError struct {
+
+				// Use stable execute to ensure the test doesn't straddle tipsets
+				stableExecute := mkStableExecute(test.wantTipSet)
+				if test.wantTipSet == nil {
+					stableExecute = mkStableExecute(heaviest)
+				}
+
+				result, stableTipSet, err := stableExecute(func() (interface{}, error) {
+					gotResponseCode, gotResponseBody := subject.DoRawRPCRequest(t, 2, test.request)
+					if gotResponseCode != test.wantResponseStatus {
+						return nil, nil
+					}
+
+					var resultOrError struct {
+						Result *types.TipSet `json:"result,omitempty"`
+						Error  *struct {
+							Code    int    `json:"code,omitempty"`
+							Message string `json:"message,omitempty"`
+						} `json:"error,omitempty"`
+					}
+					if err := json.Unmarshal(gotResponseBody, &resultOrError); err != nil {
+						return nil, err
+					}
+
+					return map[string]interface{}{
+						"responseCode": gotResponseCode,
+						"responseBody": gotResponseBody,
+						"parsed":       resultOrError,
+					}, nil
+				})
+
+				require.NoError(t, err)
+				response := result.(map[string]interface{})
+				gotResponseCode := response["responseCode"].(int)
+				gotResponseBody := response["responseBody"].([]byte)
+				resultOrError := response["parsed"].(struct {
 					Result *types.TipSet `json:"result,omitempty"`
 					Error  *struct {
 						Code    int    `json:"code,omitempty"`
 						Message string `json:"message,omitempty"`
 					} `json:"error,omitempty"`
-				}
-				require.NoError(t, json.Unmarshal(gotResponseBody, &resultOrError))
+				})
+
+				require.Equal(t, test.wantResponseStatus, gotResponseCode, string(gotResponseBody))
 				if test.wantErr != "" {
 					require.Nil(t, resultOrError.Result)
 					require.Contains(t, resultOrError.Error.Message, test.wantErr)
 				} else {
 					require.Nil(t, resultOrError.Error)
-					require.Equal(t, test.wantTipSet(t), resultOrError.Result)
+					if test.wantTipSet != nil {
+						require.Equal(t, stableTipSet, resultOrError.Result)
+					}
 				}
 			})
 		}
 	})
 	t.Run("StateGetActor", func(t *testing.T) {
-		v1StateGetActor := func(t *testing.T, ts func(*testing.T) *types.TipSet) func(*testing.T) *types.Actor {
-			return func(t *testing.T) *types.Actor {
-				wantActor, err := subject.StateGetActor(ctx, miner.ActorAddr, ts(t).Key())
-				require.NoError(t, err)
-				return wantActor
+		v1StateGetActor := func(ts *types.TipSet) func() (*types.Actor, error) {
+			return func() (*types.Actor, error) {
+				return subject.StateGetActor(ctx, miner.ActorAddr, ts.Key())
 			}
 		}
 
@@ -336,7 +406,7 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 			when               func(t *testing.T)
 			request            string
 			wantResponseStatus int
-			wantActor          func(t *testing.T) *types.Actor
+			wantTipSet         func() (*types.TipSet, error)
 			wantErr            string
 		}{
 			{
@@ -349,7 +419,7 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 				name:               "latest tag is ok",
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.StateGetActor","params":["f01000",{"tag":"latest"}],"id":1}`,
 				wantResponseStatus: http.StatusOK,
-				wantActor:          v1StateGetActor(t, heaviest),
+				wantTipSet:         heaviest,
 			},
 			{
 				name: "finalized tag when f3 disabled falls back to ec",
@@ -358,7 +428,7 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.StateGetActor","params":["f01000",{"tag":"finalized"}],"id":1}`,
 				wantResponseStatus: http.StatusOK,
-				wantActor:          v1StateGetActor(t, ecFinalized),
+				wantTipSet:         ecFinalized,
 			},
 			{
 				name: "finalized tag is ok",
@@ -366,47 +436,87 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 					mockF3.Running = true
 					mockF3.Finalizing = true
 					mockF3.LatestCertErr = nil
-					mockF3.LatestCert = plausibleCertAt(t, f3FinalizedEpoch)
+					cert, err := plausibleCertAt(f3FinalizedEpoch)
+					require.NoError(t, err)
+					mockF3.LatestCert = cert
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.StateGetActor","params":["f01000",{"tag":"finalized"}],"id":1}`,
 				wantResponseStatus: http.StatusOK,
-				wantActor:          v1StateGetActor(t, tipSetAtHeight(f3FinalizedEpoch)),
+				wantTipSet:         tipSetAtHeight(f3FinalizedEpoch),
 			},
 			{
 				name: "height with anchor to latest",
 				when: func(t *testing.T) {
 					mockF3.Running = true
 					mockF3.Finalizing = true
-					mockF3.LatestCert = plausibleCertAt(t, f3FinalizedEpoch)
+					cert, err := plausibleCertAt(f3FinalizedEpoch)
+					require.NoError(t, err)
+					mockF3.LatestCert = cert
 					mockF3.LatestCertErr = nil
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.StateGetActor","params":["f01000",{"height":{"at":15,"anchor":{"tag":"latest"}}}],"id":1}`,
 				wantResponseStatus: http.StatusOK,
-				wantActor:          v1StateGetActor(t, tipSetAtHeight(15)),
+				wantTipSet:         tipSetAtHeight(15),
 			},
 		} {
 			t.Run(test.name, func(t *testing.T) {
 				if test.when != nil {
 					test.when(t)
 				}
-				gotResponseCode, gotResponseBody := subject.DoRawRPCRequest(t, 2, test.request)
-				require.Equal(t, test.wantResponseStatus, gotResponseCode, string(gotResponseBody))
 
-				var resultOrError struct {
+				// Use stable execute to ensure the test doesn't straddle tipsets
+				stableExecute := mkStableExecute(test.wantTipSet)
+				if test.wantTipSet == nil {
+					stableExecute = mkStableExecute(heaviest)
+				}
+
+				result, stableTipSet, err := stableExecute(func() (interface{}, error) {
+					gotResponseCode, gotResponseBody := subject.DoRawRPCRequest(t, 2, test.request)
+					if gotResponseCode != test.wantResponseStatus {
+						return nil, nil
+					}
+
+					var resultOrError struct {
+						Result *types.Actor `json:"result,omitempty"`
+						Error  *struct {
+							Code    int    `json:"code,omitempty"`
+							Message string `json:"message,omitempty"`
+						} `json:"error,omitempty"`
+					}
+					if err := json.Unmarshal(gotResponseBody, &resultOrError); err != nil {
+						return nil, err
+					}
+
+					return map[string]interface{}{
+						"responseCode": gotResponseCode,
+						"responseBody": gotResponseBody,
+						"parsed":       resultOrError,
+					}, nil
+				})
+
+				require.NoError(t, err)
+				response := result.(map[string]interface{})
+				gotResponseCode := response["responseCode"].(int)
+				gotResponseBody := response["responseBody"].([]byte)
+				resultOrError := response["parsed"].(struct {
 					Result *types.Actor `json:"result,omitempty"`
 					Error  *struct {
 						Code    int    `json:"code,omitempty"`
 						Message string `json:"message,omitempty"`
 					} `json:"error,omitempty"`
-				}
-				require.NoError(t, json.Unmarshal(gotResponseBody, &resultOrError))
+				})
+
+				require.Equal(t, test.wantResponseStatus, gotResponseCode, string(gotResponseBody))
 
 				if test.wantErr != "" {
 					require.Nil(t, resultOrError.Result)
 					require.Contains(t, resultOrError.Error.Message, test.wantErr)
 				} else {
-					wantActor := test.wantActor(t)
-					require.Equal(t, wantActor, resultOrError.Result)
+					if test.wantTipSet != nil && stableTipSet != nil {
+						wantActor, err := v1StateGetActor(stableTipSet)()
+						require.NoError(t, err)
+						require.Equal(t, wantActor, resultOrError.Result)
+					}
 				}
 			})
 		}
@@ -417,7 +527,7 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 			when               func(t *testing.T)
 			request            string
 			wantResponseStatus int
-			wantID             func(*testing.T) *address.Address
+			wantTipSet         func() (*types.TipSet, error)
 			wantErr            string
 		}{
 			{
@@ -430,12 +540,7 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 				name:               "latest tag is ok",
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.StateGetID","params":["f01000",{"tag":"latest"}],"id":1}`,
 				wantResponseStatus: http.StatusOK,
-				wantID: func(t *testing.T) *address.Address {
-					tsk := heaviest(t).Key()
-					wantID, err := subject.StateLookupID(ctx, miner.ActorAddr, tsk)
-					require.NoError(t, err)
-					return &wantID
-				},
+				wantTipSet:         heaviest,
 			},
 			{
 				name: "finalized tag when f3 disabled falls back to ec",
@@ -444,29 +549,57 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.StateGetID","params":["f01000",{"tag":"finalized"}],"id":1}`,
 				wantResponseStatus: http.StatusOK,
-				wantID: func(t *testing.T) *address.Address {
-					tsk := tipSetAtHeight(f3FinalizedEpoch)(t).Key()
-					wantID, err := subject.StateLookupID(ctx, miner.ActorAddr, tsk)
-					require.NoError(t, err)
-					return &wantID
-				},
+				wantTipSet:         tipSetAtHeight(f3FinalizedEpoch),
 			},
 		} {
 			t.Run(test.name, func(t *testing.T) {
 				if test.when != nil {
 					test.when(t)
 				}
-				gotResponseCode, gotResponseBody := subject.DoRawRPCRequest(t, 2, test.request)
-				require.Equal(t, test.wantResponseStatus, gotResponseCode, string(gotResponseBody))
 
-				var resultOrError struct {
+				// Use stable execute to ensure the test doesn't straddle tipsets
+				stableExecute := mkStableExecute(test.wantTipSet)
+				if test.wantTipSet == nil {
+					stableExecute = mkStableExecute(heaviest)
+				}
+
+				result, _, err := stableExecute(func() (interface{}, error) {
+					gotResponseCode, gotResponseBody := subject.DoRawRPCRequest(t, 2, test.request)
+					if gotResponseCode != test.wantResponseStatus {
+						return nil, nil
+					}
+
+					var resultOrError struct {
+						Result *address.Address `json:"result,omitempty"`
+						Error  *struct {
+							Code    int    `json:"code,omitempty"`
+							Message string `json:"message,omitempty"`
+						} `json:"error,omitempty"`
+					}
+					if err := json.Unmarshal(gotResponseBody, &resultOrError); err != nil {
+						return nil, err
+					}
+
+					return map[string]interface{}{
+						"responseCode": gotResponseCode,
+						"responseBody": gotResponseBody,
+						"parsed":       resultOrError,
+					}, nil
+				})
+
+				require.NoError(t, err)
+				response := result.(map[string]interface{})
+				gotResponseCode := response["responseCode"].(int)
+				gotResponseBody := response["responseBody"].([]byte)
+				resultOrError := response["parsed"].(struct {
 					Result *address.Address `json:"result,omitempty"`
 					Error  *struct {
 						Code    int    `json:"code,omitempty"`
 						Message string `json:"message,omitempty"`
 					} `json:"error,omitempty"`
-				}
-				require.NoError(t, json.Unmarshal(gotResponseBody, &resultOrError))
+				})
+
+				require.Equal(t, test.wantResponseStatus, gotResponseCode, string(gotResponseBody))
 
 				if test.wantErr != "" {
 					require.Nil(t, resultOrError.Result)
