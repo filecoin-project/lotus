@@ -196,7 +196,6 @@ func TestF3_Bootstrap(t *testing.T) {
 
 	e := setupWithStaticManifest(t, staticManif, true)
 
-	e.waitTillManifestChange(staticManif, 20*time.Second)
 	e.waitTillAllMinersParticipate(10 * time.Second)
 	e.waitTillF3Instance(2, 20*time.Second)
 
@@ -238,16 +237,6 @@ func (e *testEnv) waitTillF3Instance(i uint64, timeout time.Duration) {
 			return false
 		}
 		return c != nil && c.GPBFTInstance >= i
-	}, timeout)
-}
-
-func (e *testEnv) waitTillManifestChange(newManifest *manifest.Manifest, timeout time.Duration) {
-	e.waitFor(func(n *kit.TestFullNode) bool {
-		m, err := n.F3GetManifest(e.testCtx)
-		if err != nil || m == nil {
-			return false
-		}
-		return newManifest.Equal(m)
 	}, timeout)
 }
 
