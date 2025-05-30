@@ -201,15 +201,9 @@ func (b *PreCommitBatcher) maybeStartBatch(notif bool) ([]sealiface.PreCommitBat
 		return nil, xerrors.Errorf("couldn't get network version: %w", err)
 	}
 
-	// TODO: remove after nv25 (FIP 0100)
-	curBasefeeLow := false
-	if !cfg.BatchPreCommitAboveBaseFee.Equals(big.Zero()) && ts.MinTicketBlock().ParentBaseFee.LessThan(cfg.BatchPreCommitAboveBaseFee) && nv < network.Version25 {
-		curBasefeeLow = true
-	}
-
 	// if this wasn't an user-forced batch, and we're not at/above the max batch size,
 	// and we're not above the basefee threshold, don't batch yet
-	if notif && total < cfg.MaxPreCommitBatch && !curBasefeeLow {
+	if notif && total < cfg.MaxPreCommitBatch {
 		return nil, nil
 	}
 
