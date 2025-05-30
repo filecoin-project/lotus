@@ -56,13 +56,13 @@ func (pv1 *reverseProxyV1) EthBlockNumber(ctx context.Context) (ethtypes.EthUint
 	return pv1.server.EthBlockNumber(ctx)
 }
 
-func (pv1 *reverseProxyV1) EthGetBlockTransactionCountByNumber(ctx context.Context, blkNum string) (ethtypes.EthUint64, error) {
+func (pv1 *reverseProxyV1) EthGetBlockTransactionCountByNumber(ctx context.Context, blkNum string) (*ethtypes.EthUint64, error) {
 	if err := pv1.gateway.limit(ctx, stateRateLimitTokens); err != nil {
-		return 0, err
+		return nil, err
 	}
 
 	if err := pv1.checkBlkParam(ctx, blkNum, 0); err != nil {
-		return 0, err
+		return nil, err
 	}
 
 	return pv1.server.EthGetBlockTransactionCountByNumber(ctx, blkNum)
@@ -168,33 +168,33 @@ func (pv1 *reverseProxyV1) checkBlkParam(ctx context.Context, blkParam string, l
 	return pv1.gateway.checkTipSetHeight(head, abi.ChainEpoch(num))
 }
 
-func (pv1 *reverseProxyV1) EthGetBlockTransactionCountByHash(ctx context.Context, blkHash ethtypes.EthHash) (ethtypes.EthUint64, error) {
-	if err := pv1.gateway.limit(ctx, chainRateLimitTokens); err != nil {
-		return 0, err
+func (pv1 *reverseProxyV1) EthGetBlockTransactionCountByHash(ctx context.Context, blkHash ethtypes.EthHash) (*ethtypes.EthUint64, error) {
+	if err := pv1.gateway.limit(ctx, stateRateLimitTokens); err != nil {
+		return nil, err
+	}
+
+	tsk, err := pv1.tskByEthHash(ctx, blkHash)
+	if err != nil {
+		return nil, err
+	}
+	if err := pv1.gateway.checkTipSetKey(ctx, tsk); err != nil {
+		return nil, err
 	}
 
 	return pv1.server.EthGetBlockTransactionCountByHash(ctx, blkHash)
 }
 
-func (pv1 *reverseProxyV1) EthGetBlockByHash(ctx context.Context, blkHash ethtypes.EthHash, fullTxInfo bool) (ethtypes.EthBlock, error) {
+func (pv1 *reverseProxyV1) EthGetBlockByHash(ctx context.Context, blkHash ethtypes.EthHash, fullTxInfo bool) (*ethtypes.EthBlock, error) {
 	if err := pv1.gateway.limit(ctx, stateRateLimitTokens); err != nil {
-		return ethtypes.EthBlock{}, err
-	}
-
-	if err := pv1.checkBlkHash(ctx, blkHash); err != nil {
-		return ethtypes.EthBlock{}, err
+		return nil, err
 	}
 
 	return pv1.server.EthGetBlockByHash(ctx, blkHash, fullTxInfo)
 }
 
-func (pv1 *reverseProxyV1) EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (ethtypes.EthBlock, error) {
+func (pv1 *reverseProxyV1) EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (*ethtypes.EthBlock, error) {
 	if err := pv1.gateway.limit(ctx, stateRateLimitTokens); err != nil {
-		return ethtypes.EthBlock{}, err
-	}
-
-	if err := pv1.checkBlkParam(ctx, blkNum, 0); err != nil {
-		return ethtypes.EthBlock{}, err
+		return nil, err
 	}
 
 	return pv1.server.EthGetBlockByNumber(ctx, blkNum, fullTxInfo)
@@ -247,13 +247,13 @@ func (pv1 *reverseProxyV1) EthGetMessageCidByTransactionHash(ctx context.Context
 	return pv1.server.EthGetMessageCidByTransactionHash(ctx, txHash)
 }
 
-func (pv1 *reverseProxyV1) EthGetTransactionCount(ctx context.Context, sender ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthUint64, error) {
+func (pv1 *reverseProxyV1) EthGetTransactionCount(ctx context.Context, sender ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (*ethtypes.EthUint64, error) {
 	if err := pv1.gateway.limit(ctx, stateRateLimitTokens); err != nil {
-		return 0, err
+		return nil, err
 	}
 
 	if err := pv1.checkEthBlockParam(ctx, blkParam, 0); err != nil {
-		return 0, err
+		return nil, err
 	}
 
 	return pv1.server.EthGetTransactionCount(ctx, sender, blkParam)
@@ -290,13 +290,13 @@ func (pv1 *reverseProxyV1) EthGetStorageAt(ctx context.Context, address ethtypes
 	return pv1.server.EthGetStorageAt(ctx, address, position, blkParam)
 }
 
-func (pv1 *reverseProxyV1) EthGetBalance(ctx context.Context, address ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBigInt, error) {
+func (pv1 *reverseProxyV1) EthGetBalance(ctx context.Context, address ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (*ethtypes.EthBigInt, error) {
 	if err := pv1.gateway.limit(ctx, stateRateLimitTokens); err != nil {
-		return ethtypes.EthBigInt(big.Zero()), err
+		return nil, err
 	}
 
 	if err := pv1.checkEthBlockParam(ctx, blkParam, 0); err != nil {
-		return ethtypes.EthBigInt(big.Zero()), err
+		return nil, err
 	}
 
 	return pv1.server.EthGetBalance(ctx, address, blkParam)
@@ -352,22 +352,22 @@ func (pv1 *reverseProxyV1) EthGasPrice(ctx context.Context) (ethtypes.EthBigInt,
 
 var EthFeeHistoryMaxBlockCount = 128 // this seems to be expensive; todo: figure out what is a good number that works with everything
 
-func (pv1 *reverseProxyV1) EthFeeHistory(ctx context.Context, jparams jsonrpc.RawParams) (ethtypes.EthFeeHistory, error) {
+func (pv1 *reverseProxyV1) EthFeeHistory(ctx context.Context, jparams jsonrpc.RawParams) (*ethtypes.EthFeeHistory, error) {
 	params, err := jsonrpc.DecodeParams[ethtypes.EthFeeHistoryParams](jparams)
 	if err != nil {
-		return ethtypes.EthFeeHistory{}, xerrors.Errorf("decoding params: %w", err)
+		return nil, xerrors.Errorf("decoding params: %w", err)
 	}
 
 	if err := pv1.gateway.limit(ctx, stateRateLimitTokens); err != nil {
-		return ethtypes.EthFeeHistory{}, err
+		return nil, err
 	}
 
 	if err := pv1.checkBlkParam(ctx, params.NewestBlkNum, params.BlkCount); err != nil {
-		return ethtypes.EthFeeHistory{}, err
+		return nil, err
 	}
 
 	if params.BlkCount > ethtypes.EthUint64(EthFeeHistoryMaxBlockCount) {
-		return ethtypes.EthFeeHistory{}, xerrors.New("block count too high")
+		return nil, xerrors.New("block count too high")
 	}
 
 	return pv1.server.EthFeeHistory(ctx, jparams)

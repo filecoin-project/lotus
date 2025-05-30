@@ -30,16 +30,16 @@ type ethApi interface {
 	FilecoinAddressToEthAddress(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthAddress, error)
 	EthGetCode(ctx context.Context, address ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error)
 	EthGetStorageAt(ctx context.Context, address ethtypes.EthAddress, position ethtypes.EthBytes, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error)
-	EthGetBalance(ctx context.Context, address ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBigInt, error)
+	EthGetBalance(ctx context.Context, address ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (*ethtypes.EthBigInt, error)
 	EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.EthTraceBlock, error)
 	EthTraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error)
-	EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthFeeHistory, error)
+	EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (*ethtypes.EthFeeHistory, error)
 	EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthUint64, error)
 	EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error)
-	EthGetBlockTransactionCountByNumber(ctx context.Context, blkNum string) (ethtypes.EthUint64, error)
-	EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (ethtypes.EthBlock, error)
+	EthGetBlockTransactionCountByNumber(ctx context.Context, blkNum string) (*ethtypes.EthUint64, error)
+	EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (*ethtypes.EthBlock, error)
 	EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum string, txIndex ethtypes.EthUint64) (*ethtypes.EthTx, error)
-	EthGetTransactionCount(ctx context.Context, sender ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthUint64, error)
+	EthGetTransactionCount(ctx context.Context, sender ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (*ethtypes.EthUint64, error)
 	EthGetBlockReceipts(ctx context.Context, blkParam ethtypes.EthBlockNumberOrHash) ([]*ethtypes.EthTxReceipt, error)
 }
 
@@ -525,7 +525,7 @@ func TestEthAPIWithF3(t *testing.T) {
 				var param ethtypes.EthBlockNumberOrHash
 				req.NoError(param.UnmarshalJSON([]byte(`"` + blkParam + `"`)))
 
-				var balance ethtypes.EthBigInt
+				var balance *ethtypes.EthBigInt
 				var err error
 				expect := stableExecute(func() {
 					balance, err = subject.EthGetBalance(ctx, filecoinSecpEthAddr, param)
@@ -533,13 +533,14 @@ func TestEthAPIWithF3(t *testing.T) {
 
 				if expectErr != "" {
 					req.ErrorContains(err, expectErr)
-					req.Equal(balance.String(), "0x0")
+					req.True(balance == nil || balance.String() == "0x0")
 				} else if expect.Height() < preF3FinalizedEpoch {
 					// no error, but a zero balance
 					req.NoError(err)
-					req.Equal(balance.String(), "0x0")
+					req.True(balance == nil || balance.String() == "0x0")
 				} else {
 					req.NoError(err)
+					req.NotNil(balance)
 					req.Equal(int64(1), balance.Int64())
 				}
 			},
@@ -603,7 +604,7 @@ func TestEthAPIWithF3(t *testing.T) {
 			execute: func(req *require.Assertions, subject ethApi, blkParam string, stableExecute func(func()) *types.TipSet, expectErr string) {
 				blkCount := 5
 
-				var feeHistory ethtypes.EthFeeHistory
+				var feeHistory *ethtypes.EthFeeHistory
 				var err error
 				expect := stableExecute(func() {
 					feeHistory, err = subject.EthFeeHistory(ctx, result.Wrap[jsonrpc.RawParams](
@@ -613,9 +614,10 @@ func TestEthAPIWithF3(t *testing.T) {
 
 				if expectErr != "" {
 					req.ErrorContains(err, expectErr)
-					req.Equal(ethtypes.EthFeeHistory{}, feeHistory)
+					req.Nil(feeHistory)
 				} else {
 					req.NoError(err)
+					req.NotNil(feeHistory)
 					oldest := expect
 					for range blkCount - 1 {
 						// iterate through Parents() because we'll likely have null rounds in here so we can't
@@ -696,7 +698,7 @@ func TestEthAPIWithF3(t *testing.T) {
 		{
 			name: "EthGetBlockTransactionCountByNumber",
 			execute: func(req *require.Assertions, subject ethApi, blkParam string, stableExecute func(func()) *types.TipSet, expectErr string) {
-				var ret ethtypes.EthUint64
+				var ret *ethtypes.EthUint64
 				var err error
 				expect := stableExecute(func() {
 					ret, err = subject.EthGetBlockTransactionCountByNumber(ctx, blkParam)
@@ -706,9 +708,10 @@ func TestEthAPIWithF3(t *testing.T) {
 					req.ErrorContains(err, expectErr)
 				} else {
 					req.NoError(err)
+					req.NotNil(ret)
 					msgs, err := client.ChainGetMessagesInTipset(ctx, expect.Parents())
 					req.NoError(err)
-					req.Equal(int(ret), len(msgs))
+					req.Equal(int(*ret), len(msgs))
 				}
 			},
 		},
@@ -716,7 +719,7 @@ func TestEthAPIWithF3(t *testing.T) {
 		{
 			name: "EthGetBlockByNumber",
 			execute: func(req *require.Assertions, subject ethApi, blkParam string, stableExecute func(func()) *types.TipSet, expectErr string) {
-				var ret ethtypes.EthBlock
+				var ret *ethtypes.EthBlock
 				var err error
 				expect := stableExecute(func() {
 					ret, err = subject.EthGetBlockByNumber(ctx, blkParam, false)
@@ -726,6 +729,7 @@ func TestEthAPIWithF3(t *testing.T) {
 					req.ErrorContains(err, expectErr)
 				} else {
 					req.NoError(err)
+					req.NotNil(ret)
 					req.Equal(int(ret.Number), int(expect.Height()))
 				}
 			},
@@ -765,7 +769,7 @@ func TestEthAPIWithF3(t *testing.T) {
 				var param ethtypes.EthBlockNumberOrHash
 				req.NoError(param.UnmarshalJSON([]byte(`"` + blkParam + `"`)))
 
-				var ret ethtypes.EthUint64
+				var ret *ethtypes.EthUint64
 				expect := stableExecute(func() {
 					ret, err = subject.EthGetTransactionCount(ctx, ethAddr, param)
 				})
@@ -774,6 +778,7 @@ func TestEthAPIWithF3(t *testing.T) {
 					req.ErrorContains(err, expectErr)
 				} else {
 					req.NoError(err)
+					req.NotNil(ret)
 					msgs, err := client.ChainGetMessagesInTipset(ctx, expect.Parents())
 					req.NoError(err)
 					var cnt int
@@ -784,7 +789,7 @@ func TestEthAPIWithF3(t *testing.T) {
 							}
 						}
 					}
-					req.Equal(int(ret), cnt)
+					req.Equal(int(*ret), cnt)
 				}
 			},
 		},

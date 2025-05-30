@@ -38,23 +38,23 @@ type FullNodeMethods struct {
 
 	EthEstimateGas func(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthUint64, error) `perm:"read"`
 
-	EthFeeHistory func(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthFeeHistory, error) `perm:"read"`
+	EthFeeHistory func(p0 context.Context, p1 jsonrpc.RawParams) (*ethtypes.EthFeeHistory, error) `perm:"read"`
 
 	EthGasPrice func(p0 context.Context) (ethtypes.EthBigInt, error) `perm:"read"`
 
-	EthGetBalance func(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBlockNumberOrHash) (ethtypes.EthBigInt, error) `perm:"read"`
+	EthGetBalance func(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBlockNumberOrHash) (*ethtypes.EthBigInt, error) `perm:"read"`
 
-	EthGetBlockByHash func(p0 context.Context, p1 ethtypes.EthHash, p2 bool) (ethtypes.EthBlock, error) `perm:"read"`
+	EthGetBlockByHash func(p0 context.Context, p1 ethtypes.EthHash, p2 bool) (*ethtypes.EthBlock, error) `perm:"read"`
 
-	EthGetBlockByNumber func(p0 context.Context, p1 string, p2 bool) (ethtypes.EthBlock, error) `perm:"read"`
+	EthGetBlockByNumber func(p0 context.Context, p1 string, p2 bool) (*ethtypes.EthBlock, error) `perm:"read"`
 
 	EthGetBlockReceipts func(p0 context.Context, p1 ethtypes.EthBlockNumberOrHash) ([]*ethtypes.EthTxReceipt, error) `perm:"read"`
 
 	EthGetBlockReceiptsLimited func(p0 context.Context, p1 ethtypes.EthBlockNumberOrHash, p2 abi.ChainEpoch) ([]*ethtypes.EthTxReceipt, error) `perm:"read"`
 
-	EthGetBlockTransactionCountByHash func(p0 context.Context, p1 ethtypes.EthHash) (ethtypes.EthUint64, error) `perm:"read"`
+	EthGetBlockTransactionCountByHash func(p0 context.Context, p1 ethtypes.EthHash) (*ethtypes.EthUint64, error) `perm:"read"`
 
-	EthGetBlockTransactionCountByNumber func(p0 context.Context, p1 string) (ethtypes.EthUint64, error) `perm:"read"`
+	EthGetBlockTransactionCountByNumber func(p0 context.Context, p1 string) (*ethtypes.EthUint64, error) `perm:"read"`
 
 	EthGetCode func(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) `perm:"read"`
 
@@ -76,7 +76,7 @@ type FullNodeMethods struct {
 
 	EthGetTransactionByHashLimited func(p0 context.Context, p1 *ethtypes.EthHash, p2 abi.ChainEpoch) (*ethtypes.EthTx, error) `perm:"read"`
 
-	EthGetTransactionCount func(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBlockNumberOrHash) (ethtypes.EthUint64, error) `perm:"read"`
+	EthGetTransactionCount func(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBlockNumberOrHash) (*ethtypes.EthUint64, error) `perm:"read"`
 
 	EthGetTransactionHashByCid func(p0 context.Context, p1 cid.Cid) (*ethtypes.EthHash, error) `perm:"read"`
 
@@ -151,23 +151,23 @@ type GatewayMethods struct {
 
 	EthEstimateGas func(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthUint64, error) ``
 
-	EthFeeHistory func(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthFeeHistory, error) ``
+	EthFeeHistory func(p0 context.Context, p1 jsonrpc.RawParams) (*ethtypes.EthFeeHistory, error) ``
 
 	EthGasPrice func(p0 context.Context) (ethtypes.EthBigInt, error) ``
 
-	EthGetBalance func(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBlockNumberOrHash) (ethtypes.EthBigInt, error) ``
+	EthGetBalance func(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBlockNumberOrHash) (*ethtypes.EthBigInt, error) ``
 
-	EthGetBlockByHash func(p0 context.Context, p1 ethtypes.EthHash, p2 bool) (ethtypes.EthBlock, error) ``
+	EthGetBlockByHash func(p0 context.Context, p1 ethtypes.EthHash, p2 bool) (*ethtypes.EthBlock, error) ``
 
-	EthGetBlockByNumber func(p0 context.Context, p1 string, p2 bool) (ethtypes.EthBlock, error) ``
+	EthGetBlockByNumber func(p0 context.Context, p1 string, p2 bool) (*ethtypes.EthBlock, error) ``
 
 	EthGetBlockReceipts func(p0 context.Context, p1 ethtypes.EthBlockNumberOrHash) ([]*ethtypes.EthTxReceipt, error) ``
 
 	EthGetBlockReceiptsLimited func(p0 context.Context, p1 ethtypes.EthBlockNumberOrHash, p2 abi.ChainEpoch) ([]*ethtypes.EthTxReceipt, error) ``
 
-	EthGetBlockTransactionCountByHash func(p0 context.Context, p1 ethtypes.EthHash) (ethtypes.EthUint64, error) ``
+	EthGetBlockTransactionCountByHash func(p0 context.Context, p1 ethtypes.EthHash) (*ethtypes.EthUint64, error) ``
 
-	EthGetBlockTransactionCountByNumber func(p0 context.Context, p1 string) (ethtypes.EthUint64, error) ``
+	EthGetBlockTransactionCountByNumber func(p0 context.Context, p1 string) (*ethtypes.EthUint64, error) ``
 
 	EthGetCode func(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) ``
 
@@ -189,7 +189,7 @@ type GatewayMethods struct {
 
 	EthGetTransactionByHashLimited func(p0 context.Context, p1 *ethtypes.EthHash, p2 abi.ChainEpoch) (*ethtypes.EthTx, error) ``
 
-	EthGetTransactionCount func(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBlockNumberOrHash) (ethtypes.EthUint64, error) ``
+	EthGetTransactionCount func(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBlockNumberOrHash) (*ethtypes.EthUint64, error) ``
 
 	EthGetTransactionHashByCid func(p0 context.Context, p1 cid.Cid) (*ethtypes.EthHash, error) ``
 
@@ -320,15 +320,15 @@ func (s *FullNodeStub) EthEstimateGas(p0 context.Context, p1 jsonrpc.RawParams) 
 	return *new(ethtypes.EthUint64), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthFeeHistory(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthFeeHistory, error) {
+func (s *FullNodeStruct) EthFeeHistory(p0 context.Context, p1 jsonrpc.RawParams) (*ethtypes.EthFeeHistory, error) {
 	if s.Internal.EthFeeHistory == nil {
-		return *new(ethtypes.EthFeeHistory), ErrNotSupported
+		return nil, ErrNotSupported
 	}
 	return s.Internal.EthFeeHistory(p0, p1)
 }
 
-func (s *FullNodeStub) EthFeeHistory(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthFeeHistory, error) {
-	return *new(ethtypes.EthFeeHistory), ErrNotSupported
+func (s *FullNodeStub) EthFeeHistory(p0 context.Context, p1 jsonrpc.RawParams) (*ethtypes.EthFeeHistory, error) {
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) EthGasPrice(p0 context.Context) (ethtypes.EthBigInt, error) {
@@ -342,37 +342,37 @@ func (s *FullNodeStub) EthGasPrice(p0 context.Context) (ethtypes.EthBigInt, erro
 	return *new(ethtypes.EthBigInt), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthGetBalance(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBlockNumberOrHash) (ethtypes.EthBigInt, error) {
+func (s *FullNodeStruct) EthGetBalance(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBlockNumberOrHash) (*ethtypes.EthBigInt, error) {
 	if s.Internal.EthGetBalance == nil {
-		return *new(ethtypes.EthBigInt), ErrNotSupported
+		return nil, ErrNotSupported
 	}
 	return s.Internal.EthGetBalance(p0, p1, p2)
 }
 
-func (s *FullNodeStub) EthGetBalance(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBlockNumberOrHash) (ethtypes.EthBigInt, error) {
-	return *new(ethtypes.EthBigInt), ErrNotSupported
+func (s *FullNodeStub) EthGetBalance(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBlockNumberOrHash) (*ethtypes.EthBigInt, error) {
+	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthGetBlockByHash(p0 context.Context, p1 ethtypes.EthHash, p2 bool) (ethtypes.EthBlock, error) {
+func (s *FullNodeStruct) EthGetBlockByHash(p0 context.Context, p1 ethtypes.EthHash, p2 bool) (*ethtypes.EthBlock, error) {
 	if s.Internal.EthGetBlockByHash == nil {
-		return *new(ethtypes.EthBlock), ErrNotSupported
+		return nil, ErrNotSupported
 	}
 	return s.Internal.EthGetBlockByHash(p0, p1, p2)
 }
 
-func (s *FullNodeStub) EthGetBlockByHash(p0 context.Context, p1 ethtypes.EthHash, p2 bool) (ethtypes.EthBlock, error) {
-	return *new(ethtypes.EthBlock), ErrNotSupported
+func (s *FullNodeStub) EthGetBlockByHash(p0 context.Context, p1 ethtypes.EthHash, p2 bool) (*ethtypes.EthBlock, error) {
+	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthGetBlockByNumber(p0 context.Context, p1 string, p2 bool) (ethtypes.EthBlock, error) {
+func (s *FullNodeStruct) EthGetBlockByNumber(p0 context.Context, p1 string, p2 bool) (*ethtypes.EthBlock, error) {
 	if s.Internal.EthGetBlockByNumber == nil {
-		return *new(ethtypes.EthBlock), ErrNotSupported
+		return nil, ErrNotSupported
 	}
 	return s.Internal.EthGetBlockByNumber(p0, p1, p2)
 }
 
-func (s *FullNodeStub) EthGetBlockByNumber(p0 context.Context, p1 string, p2 bool) (ethtypes.EthBlock, error) {
-	return *new(ethtypes.EthBlock), ErrNotSupported
+func (s *FullNodeStub) EthGetBlockByNumber(p0 context.Context, p1 string, p2 bool) (*ethtypes.EthBlock, error) {
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) EthGetBlockReceipts(p0 context.Context, p1 ethtypes.EthBlockNumberOrHash) ([]*ethtypes.EthTxReceipt, error) {
@@ -397,26 +397,26 @@ func (s *FullNodeStub) EthGetBlockReceiptsLimited(p0 context.Context, p1 ethtype
 	return *new([]*ethtypes.EthTxReceipt), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthGetBlockTransactionCountByHash(p0 context.Context, p1 ethtypes.EthHash) (ethtypes.EthUint64, error) {
+func (s *FullNodeStruct) EthGetBlockTransactionCountByHash(p0 context.Context, p1 ethtypes.EthHash) (*ethtypes.EthUint64, error) {
 	if s.Internal.EthGetBlockTransactionCountByHash == nil {
-		return *new(ethtypes.EthUint64), ErrNotSupported
+		return nil, ErrNotSupported
 	}
 	return s.Internal.EthGetBlockTransactionCountByHash(p0, p1)
 }
 
-func (s *FullNodeStub) EthGetBlockTransactionCountByHash(p0 context.Context, p1 ethtypes.EthHash) (ethtypes.EthUint64, error) {
-	return *new(ethtypes.EthUint64), ErrNotSupported
+func (s *FullNodeStub) EthGetBlockTransactionCountByHash(p0 context.Context, p1 ethtypes.EthHash) (*ethtypes.EthUint64, error) {
+	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthGetBlockTransactionCountByNumber(p0 context.Context, p1 string) (ethtypes.EthUint64, error) {
+func (s *FullNodeStruct) EthGetBlockTransactionCountByNumber(p0 context.Context, p1 string) (*ethtypes.EthUint64, error) {
 	if s.Internal.EthGetBlockTransactionCountByNumber == nil {
-		return *new(ethtypes.EthUint64), ErrNotSupported
+		return nil, ErrNotSupported
 	}
 	return s.Internal.EthGetBlockTransactionCountByNumber(p0, p1)
 }
 
-func (s *FullNodeStub) EthGetBlockTransactionCountByNumber(p0 context.Context, p1 string) (ethtypes.EthUint64, error) {
-	return *new(ethtypes.EthUint64), ErrNotSupported
+func (s *FullNodeStub) EthGetBlockTransactionCountByNumber(p0 context.Context, p1 string) (*ethtypes.EthUint64, error) {
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) EthGetCode(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {
@@ -529,15 +529,15 @@ func (s *FullNodeStub) EthGetTransactionByHashLimited(p0 context.Context, p1 *et
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthGetTransactionCount(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBlockNumberOrHash) (ethtypes.EthUint64, error) {
+func (s *FullNodeStruct) EthGetTransactionCount(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBlockNumberOrHash) (*ethtypes.EthUint64, error) {
 	if s.Internal.EthGetTransactionCount == nil {
-		return *new(ethtypes.EthUint64), ErrNotSupported
+		return nil, ErrNotSupported
 	}
 	return s.Internal.EthGetTransactionCount(p0, p1, p2)
 }
 
-func (s *FullNodeStub) EthGetTransactionCount(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBlockNumberOrHash) (ethtypes.EthUint64, error) {
-	return *new(ethtypes.EthUint64), ErrNotSupported
+func (s *FullNodeStub) EthGetTransactionCount(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBlockNumberOrHash) (*ethtypes.EthUint64, error) {
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) EthGetTransactionHashByCid(p0 context.Context, p1 cid.Cid) (*ethtypes.EthHash, error) {
@@ -892,15 +892,15 @@ func (s *GatewayStub) EthEstimateGas(p0 context.Context, p1 jsonrpc.RawParams) (
 	return *new(ethtypes.EthUint64), ErrNotSupported
 }
 
-func (s *GatewayStruct) EthFeeHistory(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthFeeHistory, error) {
+func (s *GatewayStruct) EthFeeHistory(p0 context.Context, p1 jsonrpc.RawParams) (*ethtypes.EthFeeHistory, error) {
 	if s.Internal.EthFeeHistory == nil {
-		return *new(ethtypes.EthFeeHistory), ErrNotSupported
+		return nil, ErrNotSupported
 	}
 	return s.Internal.EthFeeHistory(p0, p1)
 }
 
-func (s *GatewayStub) EthFeeHistory(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthFeeHistory, error) {
-	return *new(ethtypes.EthFeeHistory), ErrNotSupported
+func (s *GatewayStub) EthFeeHistory(p0 context.Context, p1 jsonrpc.RawParams) (*ethtypes.EthFeeHistory, error) {
+	return nil, ErrNotSupported
 }
 
 func (s *GatewayStruct) EthGasPrice(p0 context.Context) (ethtypes.EthBigInt, error) {
@@ -914,37 +914,37 @@ func (s *GatewayStub) EthGasPrice(p0 context.Context) (ethtypes.EthBigInt, error
 	return *new(ethtypes.EthBigInt), ErrNotSupported
 }
 
-func (s *GatewayStruct) EthGetBalance(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBlockNumberOrHash) (ethtypes.EthBigInt, error) {
+func (s *GatewayStruct) EthGetBalance(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBlockNumberOrHash) (*ethtypes.EthBigInt, error) {
 	if s.Internal.EthGetBalance == nil {
-		return *new(ethtypes.EthBigInt), ErrNotSupported
+		return nil, ErrNotSupported
 	}
 	return s.Internal.EthGetBalance(p0, p1, p2)
 }
 
-func (s *GatewayStub) EthGetBalance(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBlockNumberOrHash) (ethtypes.EthBigInt, error) {
-	return *new(ethtypes.EthBigInt), ErrNotSupported
+func (s *GatewayStub) EthGetBalance(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBlockNumberOrHash) (*ethtypes.EthBigInt, error) {
+	return nil, ErrNotSupported
 }
 
-func (s *GatewayStruct) EthGetBlockByHash(p0 context.Context, p1 ethtypes.EthHash, p2 bool) (ethtypes.EthBlock, error) {
+func (s *GatewayStruct) EthGetBlockByHash(p0 context.Context, p1 ethtypes.EthHash, p2 bool) (*ethtypes.EthBlock, error) {
 	if s.Internal.EthGetBlockByHash == nil {
-		return *new(ethtypes.EthBlock), ErrNotSupported
+		return nil, ErrNotSupported
 	}
 	return s.Internal.EthGetBlockByHash(p0, p1, p2)
 }
 
-func (s *GatewayStub) EthGetBlockByHash(p0 context.Context, p1 ethtypes.EthHash, p2 bool) (ethtypes.EthBlock, error) {
-	return *new(ethtypes.EthBlock), ErrNotSupported
+func (s *GatewayStub) EthGetBlockByHash(p0 context.Context, p1 ethtypes.EthHash, p2 bool) (*ethtypes.EthBlock, error) {
+	return nil, ErrNotSupported
 }
 
-func (s *GatewayStruct) EthGetBlockByNumber(p0 context.Context, p1 string, p2 bool) (ethtypes.EthBlock, error) {
+func (s *GatewayStruct) EthGetBlockByNumber(p0 context.Context, p1 string, p2 bool) (*ethtypes.EthBlock, error) {
 	if s.Internal.EthGetBlockByNumber == nil {
-		return *new(ethtypes.EthBlock), ErrNotSupported
+		return nil, ErrNotSupported
 	}
 	return s.Internal.EthGetBlockByNumber(p0, p1, p2)
 }
 
-func (s *GatewayStub) EthGetBlockByNumber(p0 context.Context, p1 string, p2 bool) (ethtypes.EthBlock, error) {
-	return *new(ethtypes.EthBlock), ErrNotSupported
+func (s *GatewayStub) EthGetBlockByNumber(p0 context.Context, p1 string, p2 bool) (*ethtypes.EthBlock, error) {
+	return nil, ErrNotSupported
 }
 
 func (s *GatewayStruct) EthGetBlockReceipts(p0 context.Context, p1 ethtypes.EthBlockNumberOrHash) ([]*ethtypes.EthTxReceipt, error) {
@@ -969,26 +969,26 @@ func (s *GatewayStub) EthGetBlockReceiptsLimited(p0 context.Context, p1 ethtypes
 	return *new([]*ethtypes.EthTxReceipt), ErrNotSupported
 }
 
-func (s *GatewayStruct) EthGetBlockTransactionCountByHash(p0 context.Context, p1 ethtypes.EthHash) (ethtypes.EthUint64, error) {
+func (s *GatewayStruct) EthGetBlockTransactionCountByHash(p0 context.Context, p1 ethtypes.EthHash) (*ethtypes.EthUint64, error) {
 	if s.Internal.EthGetBlockTransactionCountByHash == nil {
-		return *new(ethtypes.EthUint64), ErrNotSupported
+		return nil, ErrNotSupported
 	}
 	return s.Internal.EthGetBlockTransactionCountByHash(p0, p1)
 }
 
-func (s *GatewayStub) EthGetBlockTransactionCountByHash(p0 context.Context, p1 ethtypes.EthHash) (ethtypes.EthUint64, error) {
-	return *new(ethtypes.EthUint64), ErrNotSupported
+func (s *GatewayStub) EthGetBlockTransactionCountByHash(p0 context.Context, p1 ethtypes.EthHash) (*ethtypes.EthUint64, error) {
+	return nil, ErrNotSupported
 }
 
-func (s *GatewayStruct) EthGetBlockTransactionCountByNumber(p0 context.Context, p1 string) (ethtypes.EthUint64, error) {
+func (s *GatewayStruct) EthGetBlockTransactionCountByNumber(p0 context.Context, p1 string) (*ethtypes.EthUint64, error) {
 	if s.Internal.EthGetBlockTransactionCountByNumber == nil {
-		return *new(ethtypes.EthUint64), ErrNotSupported
+		return nil, ErrNotSupported
 	}
 	return s.Internal.EthGetBlockTransactionCountByNumber(p0, p1)
 }
 
-func (s *GatewayStub) EthGetBlockTransactionCountByNumber(p0 context.Context, p1 string) (ethtypes.EthUint64, error) {
-	return *new(ethtypes.EthUint64), ErrNotSupported
+func (s *GatewayStub) EthGetBlockTransactionCountByNumber(p0 context.Context, p1 string) (*ethtypes.EthUint64, error) {
+	return nil, ErrNotSupported
 }
 
 func (s *GatewayStruct) EthGetCode(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {
@@ -1101,15 +1101,15 @@ func (s *GatewayStub) EthGetTransactionByHashLimited(p0 context.Context, p1 *eth
 	return nil, ErrNotSupported
 }
 
-func (s *GatewayStruct) EthGetTransactionCount(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBlockNumberOrHash) (ethtypes.EthUint64, error) {
+func (s *GatewayStruct) EthGetTransactionCount(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBlockNumberOrHash) (*ethtypes.EthUint64, error) {
 	if s.Internal.EthGetTransactionCount == nil {
-		return *new(ethtypes.EthUint64), ErrNotSupported
+		return nil, ErrNotSupported
 	}
 	return s.Internal.EthGetTransactionCount(p0, p1, p2)
 }
 
-func (s *GatewayStub) EthGetTransactionCount(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBlockNumberOrHash) (ethtypes.EthUint64, error) {
-	return *new(ethtypes.EthUint64), ErrNotSupported
+func (s *GatewayStub) EthGetTransactionCount(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBlockNumberOrHash) (*ethtypes.EthUint64, error) {
+	return nil, ErrNotSupported
 }
 
 func (s *GatewayStruct) EthGetTransactionHashByCid(p0 context.Context, p1 cid.Cid) (*ethtypes.EthHash, error) {

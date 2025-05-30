@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 
+	ipld "github.com/ipfs/go-ipld-format"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -229,30 +230,37 @@ func (e *ethLookup) EthGetStorageAt(ctx context.Context, ethAddr ethtypes.EthAdd
 	return ethtypes.EthBytes(ret), nil
 }
 
-func (e *ethLookup) EthGetBalance(ctx context.Context, address ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBigInt, error) {
+func (e *ethLookup) EthGetBalance(ctx context.Context, address ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (*ethtypes.EthBigInt, error) {
 	filAddr, err := address.ToFilecoinAddress()
 	if err != nil {
-		return ethtypes.EthBigInt{}, err
+		return nil, err
 	}
 
 	ts, err := e.tipsetResolver.GetTipsetByBlockNumberOrHash(ctx, blkParam)
 	if err != nil {
-		return ethtypes.EthBigInt{}, err // don't wrap, to preserve ErrNullRound
+		// According to go-ethereum patterns, "not found" errors should lead to (nil, nil).
+		// Other errors should result in (nil, err).
+		if errors.Is(err, &api.ErrNullRound{}) || ipld.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
 	}
 
 	st, _, err := e.stateManager.TipSetState(ctx, ts)
 	if err != nil {
-		return ethtypes.EthBigInt{}, xerrors.Errorf("failed to compute tipset state: %w", err)
+		return nil, xerrors.Errorf("failed to compute tipset state: %w", err)
 	}
 
 	actor, err := e.stateManager.LoadActorRaw(ctx, filAddr, st)
 	if errors.Is(err, types.ErrActorNotFound) {
-		return ethtypes.EthBigIntZero, nil
+		result := ethtypes.EthBigIntZero
+		return &result, nil
 	} else if err != nil {
-		return ethtypes.EthBigInt{}, err
+		return nil, err
 	}
 
-	return ethtypes.EthBigInt{Int: actor.Balance.Int}, nil
+	result := ethtypes.EthBigInt{Int: actor.Balance.Int}
+	return &result, nil
 }
 
 func (e *ethLookup) EthChainId(ctx context.Context) (ethtypes.EthUint64, error) {
@@ -303,8 +311,8 @@ func (EthLookupDisabled) EthGetCode(ctx context.Context, address ethtypes.EthAdd
 func (EthLookupDisabled) EthGetStorageAt(ctx context.Context, ethAddr ethtypes.EthAddress, position ethtypes.EthBytes, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {
 	return nil, ErrModuleDisabled
 }
-func (EthLookupDisabled) EthGetBalance(ctx context.Context, address ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBigInt, error) {
-	return ethtypes.EthBigInt{}, ErrModuleDisabled
+func (EthLookupDisabled) EthGetBalance(ctx context.Context, address ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (*ethtypes.EthBigInt, error) {
+	return nil, ErrModuleDisabled
 }
 func (EthLookupDisabled) EthChainId(ctx context.Context) (ethtypes.EthUint64, error) {
 	return ethtypes.EthUint64(0), ErrModuleDisabled
