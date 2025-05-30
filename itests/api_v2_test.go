@@ -43,17 +43,17 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 	mkStableExecute := func(getTipSet func(t *testing.T) *types.TipSet) func(fn func()) *types.TipSet {
 		return func(fn func()) *types.TipSet {
 			// Create a stable execute function that takes the test context
-			return func(testT *testing.T) *types.TipSet {
-				beforeTs := getTipSet(testT)
+			return func(t *testing.T) *types.TipSet {
+				beforeTs := getTipSet(t)
 				for {
 					select {
 					case <-ctx.Done():
-						testT.Fatalf("context cancelled during stable execution: %v", ctx.Err())
+						t.Fatalf("context cancelled during stable execution: %v", ctx.Err())
 					default:
 					}
 
 					fn()
-					afterTs := getTipSet(testT)
+					afterTs := getTipSet(t)
 					if beforeTs.Equals(afterTs) {
 						// Chain hasn't changed during execution, safe to return
 						return beforeTs
@@ -348,7 +348,7 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 				stableTipSet := stableExecute(func() {
 					gotResponseCode, gotResponseBody = subject.DoRawRPCRequest(t, 2, test.request)
 					if gotResponseCode == test.wantResponseStatus {
-						json.Unmarshal(gotResponseBody, &resultOrError)
+						require.NoError(t, json.Unmarshal(gotResponseBody, &resultOrError))
 					}
 				})
 				require.Equal(t, test.wantResponseStatus, gotResponseCode, string(gotResponseBody))
@@ -452,7 +452,7 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 				stableTipSet := stableExecute(func() {
 					gotResponseCode, gotResponseBody = subject.DoRawRPCRequest(t, 2, test.request)
 					if gotResponseCode == test.wantResponseStatus {
-						json.Unmarshal(gotResponseBody, &resultOrError)
+						require.NoError(t, json.Unmarshal(gotResponseBody, &resultOrError))
 					}
 				})
 				require.Equal(t, test.wantResponseStatus, gotResponseCode, string(gotResponseBody))
@@ -527,7 +527,7 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 				_ = stableExecute(func() {
 					gotResponseCode, gotResponseBody = subject.DoRawRPCRequest(t, 2, test.request)
 					if gotResponseCode == test.wantResponseStatus {
-						json.Unmarshal(gotResponseBody, &resultOrError)
+						require.NoError(t, json.Unmarshal(gotResponseBody, &resultOrError))
 					}
 				})
 				require.Equal(t, test.wantResponseStatus, gotResponseCode, string(gotResponseBody))
