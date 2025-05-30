@@ -28,7 +28,7 @@ import (
 type TipSetResolverParams struct {
 	fx.In
 	ChainStore eth.ChainStore
-	F3         full.F3CertificateProvider `optional:"true"`
+	F3         full.F3ModuleAPI `optional:"true"`
 }
 
 func MakeV1TipSetResolver(params TipSetResolverParams) full.EthTipSetResolverV2 {
