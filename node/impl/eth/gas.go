@@ -7,6 +7,7 @@ import (
 	"os"
 	"sort"
 
+	ipld "github.com/ipfs/go-ipld-format"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
@@ -75,33 +76,38 @@ func (e *ethGas) EthGasPrice(ctx context.Context) (ethtypes.EthBigInt, error) {
 	return ethtypes.EthBigInt(gasPrice), nil
 }
 
-func (e *ethGas) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthFeeHistory, error) {
+func (e *ethGas) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (*ethtypes.EthFeeHistory, error) {
 	params, err := jsonrpc.DecodeParams[ethtypes.EthFeeHistoryParams](p)
 	if err != nil {
-		return ethtypes.EthFeeHistory{}, xerrors.Errorf("decoding params: %w", err)
+		return nil, xerrors.Errorf("decoding params: %w", err)
 	}
 	if params.BlkCount > 1024 {
-		return ethtypes.EthFeeHistory{}, xerrors.New("block count should be smaller than 1024")
+		return nil, xerrors.New("block count should be smaller than 1024")
 	}
 	rewardPercentiles := make([]float64, 0)
 	if params.RewardPercentiles != nil {
 		if len(*params.RewardPercentiles) > maxEthFeeHistoryRewardPercentiles {
-			return ethtypes.EthFeeHistory{}, xerrors.New("length of the reward percentile array cannot be greater than 100")
+			return nil, xerrors.New("length of the reward percentile array cannot be greater than 100")
 		}
 		rewardPercentiles = append(rewardPercentiles, *params.RewardPercentiles...)
 	}
 	for i, rp := range rewardPercentiles {
 		if rp < 0 || rp > 100 {
-			return ethtypes.EthFeeHistory{}, xerrors.Errorf("invalid reward percentile: %f should be between 0 and 100", rp)
+			return nil, xerrors.Errorf("invalid reward percentile: %f should be between 0 and 100", rp)
 		}
 		if i > 0 && rp < rewardPercentiles[i-1] {
-			return ethtypes.EthFeeHistory{}, xerrors.Errorf("invalid reward percentile: %f should be larger than %f", rp, rewardPercentiles[i-1])
+			return nil, xerrors.Errorf("invalid reward percentile: %f should be larger than %f", rp, rewardPercentiles[i-1])
 		}
 	}
 
 	ts, err := e.tipsetResolver.GetTipsetByBlockNumber(ctx, params.NewestBlkNum, false)
 	if err != nil {
-		return ethtypes.EthFeeHistory{}, err // don't wrap, to preserve ErrNullRound
+		// According to go-ethereum patterns, "not found" errors should lead to (nil, nil).
+		// Other errors should result in (nil, err).
+		if errors.Is(err, &api.ErrNullRound{}) || ipld.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
 	}
 
 	var (
@@ -122,7 +128,7 @@ func (e *ethGas) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (ethtyp
 		basefee = ts.Blocks()[0].ParentBaseFee
 		_, msgs, rcpts, err := executeTipset(ctx, ts, e.chainStore, e.stateManager)
 		if err != nil {
-			return ethtypes.EthFeeHistory{}, xerrors.Errorf("failed to retrieve messages and receipts for height %d: %w", ts.Height(), err)
+			return nil, xerrors.Errorf("failed to retrieve messages and receipts for height %d: %w", ts.Height(), err)
 		}
 
 		txGasRewards := gasRewardSorter{}
@@ -147,7 +153,7 @@ func (e *ethGas) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (ethtyp
 		parentTsKey := ts.Parents()
 		ts, err = e.chainStore.LoadTipSet(ctx, parentTsKey)
 		if err != nil {
-			return ethtypes.EthFeeHistory{}, xerrors.Errorf("cannot load tipset key: %v", parentTsKey)
+			return nil, xerrors.Errorf("cannot load tipset key: %v", parentTsKey)
 		}
 	}
 
@@ -170,7 +176,7 @@ func (e *ethGas) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (ethtyp
 	if params.RewardPercentiles != nil {
 		ret.Reward = &rewardsArray
 	}
-	return ret, nil
+	return &ret, nil
 }
 
 func (e *ethGas) EthMaxPriorityFeePerGas(ctx context.Context) (ethtypes.EthBigInt, error) {
@@ -480,8 +486,8 @@ type EthGasDisabled struct{}
 func (EthGasDisabled) EthGasPrice(ctx context.Context) (ethtypes.EthBigInt, error) {
 	return ethtypes.EthBigInt{}, ErrModuleDisabled
 }
-func (EthGasDisabled) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthFeeHistory, error) {
-	return ethtypes.EthFeeHistory{}, ErrModuleDisabled
+func (EthGasDisabled) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (*ethtypes.EthFeeHistory, error) {
+	return nil, ErrModuleDisabled
 }
 func (EthGasDisabled) EthMaxPriorityFeePerGas(ctx context.Context) (ethtypes.EthBigInt, error) {
 	return ethtypes.EthBigInt{}, ErrModuleDisabled

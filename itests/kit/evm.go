@@ -246,7 +246,7 @@ func (e *EVM) AssertAddressBalanceConsistent(ctx context.Context, addr address.A
 	ebal, err := e.EthGetBalance(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 	require.NoError(e.t, err)
 
-	require.Equal(e.t, fbal, types.BigInt(ebal))
+	require.Equal(e.t, fbal, types.BigInt(*ebal))
 	return fbal
 }
 
@@ -304,7 +304,7 @@ func (e *EVM) GetEthBlockFromWait(ctx context.Context, wait *api.MsgLookup) etht
 	ethBlock, err := e.EthGetBlockByHash(ctx, ethBlockParent.ParentHash, true)
 	require.NoError(e.t, err)
 
-	return ethBlock
+	return *ethBlock
 }
 
 func (e *EVM) InvokeContractByFuncName(ctx context.Context, fromAddr address.Address, idAddr address.Address, funcSignature string, inputData []byte) ([]byte, *api.MsgLookup, error) {

@@ -94,38 +94,86 @@ func (e *ethTransaction) EthBlockNumber(ctx context.Context) (ethtypes.EthUint64
 	return ethtypes.EthUint64(parent.Height()), nil
 }
 
-func (e *ethTransaction) EthGetBlockTransactionCountByNumber(ctx context.Context, blkParam string) (ethtypes.EthUint64, error) {
+func (e *ethTransaction) EthGetBlockTransactionCountByNumber(ctx context.Context, blkParam string) (*ethtypes.EthUint64, error) {
 	ts, err := e.tipsetResolver.GetTipsetByBlockNumber(ctx, blkParam, true)
 	if err != nil {
-		return ethtypes.EthUint64(0), err // don't wrap, to preserve ErrNullRound
+		// According to go-ethereum patterns, "not found" errors should lead to (nil, nil).
+		// Other errors should result in (nil, err).
+		if errors.Is(err, &api.ErrNullRound{}) || ipld.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
 	}
+	// At this point, ts should be non-nil because err is nil.
+
 	count, err := e.countTipsetMsgs(ctx, ts)
-	return ethtypes.EthUint64(count), err
+	if err != nil {
+		return nil, err // Error during message counting
+	}
+
+	result := ethtypes.EthUint64(count)
+	return &result, nil
 }
 
-func (e *ethTransaction) EthGetBlockTransactionCountByHash(ctx context.Context, blkHash ethtypes.EthHash) (ethtypes.EthUint64, error) {
+func (e *ethTransaction) EthGetBlockTransactionCountByHash(ctx context.Context, blkHash ethtypes.EthHash) (*ethtypes.EthUint64, error) {
 	ts, err := e.tipsetResolver.GetTipSetByHash(ctx, blkHash)
 	if err != nil {
-		return ethtypes.EthUint64(0), err // don't wrap, to preserve ErrNullRound
+		// According to go-ethereum patterns, "not found" errors should lead to (nil, nil).
+		// Other errors should result in (nil, err).
+		if errors.Is(err, &api.ErrNullRound{}) || ipld.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
 	}
+	// At this point, ts should be non-nil because err is nil.
+
 	count, err := e.countTipsetMsgs(ctx, ts)
-	return ethtypes.EthUint64(count), err
+	if err != nil {
+		return nil, err // Error during message counting
+	}
+
+	result := ethtypes.EthUint64(count)
+	return &result, nil
 }
 
-func (e *ethTransaction) EthGetBlockByHash(ctx context.Context, blkHash ethtypes.EthHash, fullTxInfo bool) (ethtypes.EthBlock, error) {
+func (e *ethTransaction) EthGetBlockByHash(ctx context.Context, blkHash ethtypes.EthHash, fullTxInfo bool) (*ethtypes.EthBlock, error) {
 	ts, err := e.tipsetResolver.GetTipSetByHash(ctx, blkHash)
 	if err != nil {
-		return ethtypes.EthBlock{}, err // don't wrap, to preserve ErrNullRound
+		// According to go-ethereum patterns, "not found" errors should lead to (nil, nil).
+		// Other errors should result in (nil, err).
+		if errors.Is(err, &api.ErrNullRound{}) || ipld.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
 	}
-	return e.getBlockByTipset(ctx, ts, fullTxInfo, "EthGetBlockByHash:"+blkHash.String())
+	// At this point, ts should be non-nil because err is nil.
+
+	blk, err := e.getBlockByTipset(ctx, ts, fullTxInfo, "EthGetBlockByHash:"+blkHash.String())
+	if err != nil {
+		return nil, err
+	}
+
+	return &blk, nil
 }
 
-func (e *ethTransaction) EthGetBlockByNumber(ctx context.Context, blkParam string, fullTxInfo bool) (ethtypes.EthBlock, error) {
+func (e *ethTransaction) EthGetBlockByNumber(ctx context.Context, blkParam string, fullTxInfo bool) (*ethtypes.EthBlock, error) {
 	ts, err := e.tipsetResolver.GetTipsetByBlockNumber(ctx, blkParam, true)
 	if err != nil {
-		return ethtypes.EthBlock{}, err // don't wrap, to preserve ErrNullRound
+		// According to go-ethereum patterns, "not found" errors should lead to (nil, nil).
+		// Other errors should result in (nil, err).
+		if errors.Is(err, &api.ErrNullRound{}) || ipld.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
 	}
-	return e.getBlockByTipset(ctx, ts, fullTxInfo, "EthGetBlockByNumber:"+blkParam)
+	// At this point, ts should be non-nil because err is nil.
+
+	blk, err := e.getBlockByTipset(ctx, ts, fullTxInfo, "EthGetBlockByNumber:"+blkParam)
+	if err != nil {
+		return nil, err
+	}
+
+	return &blk, nil
 }
 
 func (e *ethTransaction) EthGetTransactionByHash(ctx context.Context, txHash *ethtypes.EthHash) (*ethtypes.EthTx, error) {
@@ -240,53 +288,66 @@ func (e *ethTransaction) EthGetTransactionHashByCid(ctx context.Context, cid cid
 	}
 }
 
-func (e *ethTransaction) EthGetTransactionCount(ctx context.Context, sender ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthUint64, error) {
+func (e *ethTransaction) EthGetTransactionCount(ctx context.Context, sender ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (*ethtypes.EthUint64, error) {
 	addr, err := sender.ToFilecoinAddress()
 	if err != nil {
-		return ethtypes.EthUint64(0), xerrors.Errorf("invalid address: %w", err)
+		return nil, xerrors.Errorf("invalid address: %w", err)
 	}
 
 	// Handle "pending" block parameter separately
 	if blkParam.PredefinedBlock != nil && *blkParam.PredefinedBlock == "pending" {
 		nonce, err := e.mpoolApi.MpoolGetNonce(ctx, addr)
 		if err != nil {
-			return ethtypes.EthUint64(0), xerrors.Errorf("failed to get nonce from mpool: %w", err)
+			return nil, xerrors.Errorf("failed to get nonce from mpool: %w", err)
 		}
-		return ethtypes.EthUint64(nonce), nil
+		result := ethtypes.EthUint64(nonce)
+		return &result, nil
 	}
 
 	// For all other cases, get the tipset based on the block parameter
 	ts, err := e.tipsetResolver.GetTipsetByBlockNumberOrHash(ctx, blkParam)
 	if err != nil {
-		return ethtypes.EthUint64(0), err // don't wrap, to preserve ErrNullRound
+		// According to go-ethereum patterns, "not found" errors should lead to (nil, nil).
+		// Other errors should result in (nil, err).
+		if errors.Is(err, &api.ErrNullRound{}) || ipld.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
 	}
 
 	// Get the actor state at the specified tipset
 	actor, err := e.stateManager.LoadActor(ctx, addr, ts)
 	if err != nil {
 		if errors.Is(err, types.ErrActorNotFound) {
-			return 0, nil
+			result := ethtypes.EthUint64(0)
+			return &result, nil
 		}
-		return 0, xerrors.Errorf("failed to lookup actor %s: %w", sender, err)
+		return nil, xerrors.Errorf("failed to lookup actor %s: %w", sender, err)
 	}
 
 	// Handle EVM actor case
 	if builtinactors.IsEvmActor(actor.Code) {
 		evmState, err := builtinevm.Load(e.chainStore.ActorStore(ctx), actor)
 		if err != nil {
-			return 0, xerrors.Errorf("failed to load evm state: %w", err)
+			return nil, xerrors.Errorf("failed to load evm state: %w", err)
 		}
 		if alive, err := evmState.IsAlive(); err != nil {
-			return 0, err
+			return nil, err
 		} else if !alive {
-			return 0, nil
+			result := ethtypes.EthUint64(0)
+			return &result, nil
 		}
 		nonce, err := evmState.Nonce()
-		return ethtypes.EthUint64(nonce), err
+		if err != nil {
+			return nil, err
+		}
+		result := ethtypes.EthUint64(nonce)
+		return &result, nil
 	}
 
 	// For non-EVM actors, get the nonce from the actor state
-	return ethtypes.EthUint64(actor.Nonce), nil
+	result := ethtypes.EthUint64(actor.Nonce)
+	return &result, nil
 }
 
 func (e *ethTransaction) EthGetTransactionReceipt(ctx context.Context, txHash ethtypes.EthHash) (*ethtypes.EthTxReceipt, error) {
@@ -507,17 +568,17 @@ type EthTransactionDisabled struct{}
 func (EthTransactionDisabled) EthBlockNumber(ctx context.Context) (ethtypes.EthUint64, error) {
 	return 0, ErrModuleDisabled
 }
-func (EthTransactionDisabled) EthGetBlockTransactionCountByNumber(ctx context.Context, blkNum string) (ethtypes.EthUint64, error) {
-	return 0, ErrModuleDisabled
+func (EthTransactionDisabled) EthGetBlockTransactionCountByNumber(ctx context.Context, blkNum string) (*ethtypes.EthUint64, error) {
+	return nil, ErrModuleDisabled
 }
-func (EthTransactionDisabled) EthGetBlockTransactionCountByHash(ctx context.Context, blkHash ethtypes.EthHash) (ethtypes.EthUint64, error) {
-	return 0, ErrModuleDisabled
+func (EthTransactionDisabled) EthGetBlockTransactionCountByHash(ctx context.Context, blkHash ethtypes.EthHash) (*ethtypes.EthUint64, error) {
+	return nil, ErrModuleDisabled
 }
-func (EthTransactionDisabled) EthGetBlockByHash(ctx context.Context, blkHash ethtypes.EthHash, fullTxInfo bool) (ethtypes.EthBlock, error) {
-	return ethtypes.EthBlock{}, ErrModuleDisabled
+func (EthTransactionDisabled) EthGetBlockByHash(ctx context.Context, blkHash ethtypes.EthHash, fullTxInfo bool) (*ethtypes.EthBlock, error) {
+	return nil, ErrModuleDisabled
 }
-func (EthTransactionDisabled) EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (ethtypes.EthBlock, error) {
-	return ethtypes.EthBlock{}, ErrModuleDisabled
+func (EthTransactionDisabled) EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (*ethtypes.EthBlock, error) {
+	return nil, ErrModuleDisabled
 }
 func (EthTransactionDisabled) EthGetTransactionByHash(ctx context.Context, txHash *ethtypes.EthHash) (*ethtypes.EthTx, error) {
 	return nil, ErrModuleDisabled
@@ -537,8 +598,8 @@ func (EthTransactionDisabled) EthGetMessageCidByTransactionHash(ctx context.Cont
 func (EthTransactionDisabled) EthGetTransactionHashByCid(ctx context.Context, cid cid.Cid) (*ethtypes.EthHash, error) {
 	return nil, ErrModuleDisabled
 }
-func (EthTransactionDisabled) EthGetTransactionCount(ctx context.Context, sender ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthUint64, error) {
-	return 0, ErrModuleDisabled
+func (EthTransactionDisabled) EthGetTransactionCount(ctx context.Context, sender ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (*ethtypes.EthUint64, error) {
+	return nil, ErrModuleDisabled
 }
 func (EthTransactionDisabled) EthGetTransactionReceipt(ctx context.Context, txHash ethtypes.EthHash) (*ethtypes.EthTxReceipt, error) {
 	return nil, ErrModuleDisabled

@@ -219,23 +219,23 @@ type FullNode interface {
 	// EthGetBlockTransactionCountByNumber returns the number of transactions in a block identified by
 	// its block number or a special tag like "latest" or "finalized".
 	// Maps to JSON-RPC method: "eth_getBlockTransactionCountByNumber".
-	EthGetBlockTransactionCountByNumber(ctx context.Context, blkNum string) (ethtypes.EthUint64, error) //perm:read
+	EthGetBlockTransactionCountByNumber(ctx context.Context, blkNum string) (*ethtypes.EthUint64, error) //perm:read
 
 	// EthGetBlockTransactionCountByHash returns the number of transactions in a block identified by
 	// its block hash.
 	// Maps to JSON-RPC method: "eth_getBlockTransactionCountByHash".
-	EthGetBlockTransactionCountByHash(ctx context.Context, blkHash ethtypes.EthHash) (ethtypes.EthUint64, error) //perm:read
+	EthGetBlockTransactionCountByHash(ctx context.Context, blkHash ethtypes.EthHash) (*ethtypes.EthUint64, error) //perm:read
 
 	// EthGetBlockByHash retrieves a block by its hash. If fullTxInfo is true, it includes full
 	// transaction objects; otherwise, it includes only transaction hashes.
 	// Maps to JSON-RPC method: "eth_getBlockByHash".
-	EthGetBlockByHash(ctx context.Context, blkHash ethtypes.EthHash, fullTxInfo bool) (ethtypes.EthBlock, error) //perm:read
+	EthGetBlockByHash(ctx context.Context, blkHash ethtypes.EthHash, fullTxInfo bool) (*ethtypes.EthBlock, error) //perm:read
 
 	// EthGetBlockByNumber retrieves a block by its number or a special tag like "latest" or
 	// "finalized". If fullTxInfo is true, it includes full transaction objects; otherwise, it
 	// includes only transaction hashes.
 	// Maps to JSON-RPC method: "eth_getBlockByNumber".
-	EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (ethtypes.EthBlock, error) //perm:read
+	EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (*ethtypes.EthBlock, error) //perm:read
 
 	// EthGetTransactionByHash retrieves a transaction by its hash.
 	// Maps to JSON-RPC method: "eth_getTransactionByHash".
@@ -266,7 +266,7 @@ type FullNode interface {
 	// EthGetTransactionCount retrieves the number of transactions sent from an address at a specific
 	// block, identified by its number, hash, or a special tag like "latest" or "finalized".
 	// Maps to JSON-RPC method: "eth_getTransactionCount".
-	EthGetTransactionCount(ctx context.Context, sender ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthUint64, error) //perm:read
+	EthGetTransactionCount(ctx context.Context, sender ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (*ethtypes.EthUint64, error) //perm:read
 
 	// EthGetTransactionReceipt retrieves the receipt of a transaction by its hash.
 	// Maps to JSON-RPC method: "eth_getTransactionReceipt".
@@ -302,7 +302,7 @@ type FullNode interface {
 	// EthGetBalance retrieves the balance of an Ethereum address at a specific block state,
 	// identified by its number, hash, or a special tag like "latest" or "finalized".
 	// Maps to JSON-RPC method: "eth_getBalance".
-	EthGetBalance(ctx context.Context, address ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBigInt, error) //perm:read
+	EthGetBalance(ctx context.Context, address ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (*ethtypes.EthBigInt, error) //perm:read
 
 	// EthTraceAPI methods
 
@@ -352,7 +352,7 @@ type FullNode interface {
 
 	// EthFeeHistory retrieves historical gas fee data for a range of blocks.
 	// Maps to JSON-RPC method: "eth_feeHistory".
-	EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthFeeHistory, error) //perm:read
+	EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (*ethtypes.EthFeeHistory, error) //perm:read
 
 	// EthMaxPriorityFeePerGas retrieves the maximum priority fee per gas in the network.
 	// Maps to JSON-RPC method: "eth_maxPriorityFeePerGas".
