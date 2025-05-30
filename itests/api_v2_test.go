@@ -40,62 +40,60 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 
 	// mkStableExecute creates a stable execution wrapper that ensures the chain doesn't
 	// advance during test execution to avoid flaky tests due to chain reorgs
-	mkStableExecute := func(getTipSet func() (*types.TipSet, error)) func(fn func()) (*types.TipSet, error) {
-		return func(fn func()) (*types.TipSet, error) {
-			for {
-				select {
-				case <-ctx.Done():
-					return nil, ctx.Err()
-				default:
-				}
+	mkStableExecute := func(getTipSet func(t *testing.T) *types.TipSet) func(fn func()) *types.TipSet {
+		return func(fn func()) *types.TipSet {
+			// Create a stable execute function that takes the test context
+			return func(testT *testing.T) *types.TipSet {
+				beforeTs := getTipSet(testT)
+				for {
+					select {
+					case <-ctx.Done():
+						testT.Fatalf("context cancelled during stable execution: %v", ctx.Err())
+					default:
+					}
 
-				beforeTs, err := getTipSet()
-				if err != nil {
-					return nil, err
+					fn()
+					afterTs := getTipSet(testT)
+					if beforeTs.Equals(afterTs) {
+						// Chain hasn't changed during execution, safe to return
+						return beforeTs
+					}
+					beforeTs = afterTs
 				}
-				fn()
-				afterTs, err := getTipSet()
-				if err != nil {
-					return nil, err
-				}
-				if beforeTs != nil && afterTs != nil && beforeTs.Equals(afterTs) {
-					// Chain hasn't changed during execution, safe to return
-					return beforeTs, nil
-				}
-				// Chain changed, retry
-			}
+			}(t) // Pass the current test context
 		}
 	}
 
 	var (
-		heaviest = func() (*types.TipSet, error) {
-			return subject.ChainHead(ctx)
-		}
-		ecFinalized = func() (*types.TipSet, error) {
+		heaviest = func(t *testing.T) *types.TipSet {
 			head, err := subject.ChainHead(ctx)
-			if err != nil {
-				return nil, err
-			}
-			return subject.ChainGetTipSetByHeight(ctx, head.Height()-policy.ChainFinality, head.Key())
+			require.NoError(t, err)
+			return head
 		}
-		safe = func() (*types.TipSet, error) {
+		ecFinalized = func(t *testing.T) *types.TipSet {
 			head, err := subject.ChainHead(ctx)
-			if err != nil {
-				return nil, err
-			}
-			return subject.ChainGetTipSetByHeight(ctx, head.Height()-buildconstants.SafeHeightDistance, head.Key())
+			require.NoError(t, err)
+			ecFinalized, err := subject.ChainGetTipSetByHeight(ctx, head.Height()-policy.ChainFinality, head.Key())
+			require.NoError(t, err)
+			return ecFinalized
 		}
-		tipSetAtHeight = func(height abi.ChainEpoch) func() (*types.TipSet, error) {
-			return func() (*types.TipSet, error) {
-				return subject.ChainGetTipSetByHeight(ctx, height, types.EmptyTSK)
+		safe = func(t *testing.T) *types.TipSet {
+			head, err := subject.ChainHead(ctx)
+			require.NoError(t, err)
+			safe, err := subject.ChainGetTipSetByHeight(ctx, head.Height()-buildconstants.SafeHeightDistance, head.Key())
+			require.NoError(t, err)
+			return safe
+		}
+		tipSetAtHeight = func(height abi.ChainEpoch) func(t *testing.T) *types.TipSet {
+			return func(t *testing.T) *types.TipSet {
+				ts, err := subject.ChainGetTipSetByHeight(ctx, height, types.EmptyTSK)
+				require.NoError(t, err)
+				return ts
 			}
 		}
 		internalF3Error = errors.New("lost hearing in left eye")
-		plausibleCertAt = func(epoch abi.ChainEpoch) (*certs.FinalityCertificate, error) {
-			f3FinalisedTipSet, err := tipSetAtHeight(epoch)()
-			if err != nil {
-				return nil, err
-			}
+		plausibleCertAt = func(t *testing.T, epoch abi.ChainEpoch) *certs.FinalityCertificate {
+			f3FinalisedTipSet := tipSetAtHeight(epoch)(t)
 			return &certs.FinalityCertificate{
 				ECChain: &gpbft.ECChain{
 					TipSets: []*gpbft.TipSet{{
@@ -103,7 +101,7 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 						Key:   f3FinalisedTipSet.Key().Bytes(),
 					}},
 				},
-			}, nil
+			}
 		}
 		implausibleCert = &certs.FinalityCertificate{
 			ECChain: &gpbft.ECChain{
@@ -124,7 +122,7 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 			name               string
 			when               func(t *testing.T)
 			request            string
-			wantTipSet         func() (*types.TipSet, error)
+			wantTipSet         func(t *testing.T) *types.TipSet
 			wantErr            string
 			wantResponseStatus int
 		}{
@@ -155,9 +153,7 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 					mockF3.Running = true
 					mockF3.Finalizing = true
 					mockF3.LatestCertErr = nil
-					cert, err := plausibleCertAt(f3FinalizedEpoch)
-					require.NoError(t, err)
-					mockF3.LatestCert = cert
+					mockF3.LatestCert = plausibleCertAt(t, f3FinalizedEpoch)
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"tag":"finalized"}],"id":1}`,
 				wantTipSet:         tipSetAtHeight(f3FinalizedEpoch),
@@ -169,9 +165,7 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 					mockF3.Running = true
 					mockF3.Finalizing = true
 					mockF3.LatestCertErr = nil
-					cert, err := plausibleCertAt(targetHeight - policy.ChainFinality - 5)
-					require.NoError(t, err)
-					mockF3.LatestCert = cert
+					mockF3.LatestCert = plausibleCertAt(t, targetHeight-policy.ChainFinality-5)
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"tag":"finalized"}],"id":1}`,
 				wantTipSet:         tipSetAtHeight(targetHeight - policy.ChainFinality),
@@ -183,9 +177,7 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 					mockF3.Running = true
 					mockF3.Finalizing = true
 					mockF3.LatestCertErr = nil
-					cert, err := plausibleCertAt(f3FinalizedEpoch)
-					require.NoError(t, err)
-					mockF3.LatestCert = cert
+					mockF3.LatestCert = plausibleCertAt(t, f3FinalizedEpoch)
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"tag":"safe"}],"id":1}`,
 				wantTipSet:         safe,
@@ -197,9 +189,7 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 					mockF3.Running = true
 					mockF3.Finalizing = true
 					mockF3.LatestCertErr = nil
-					cert, err := plausibleCertAt(890)
-					require.NoError(t, err)
-					mockF3.LatestCert = cert
+					mockF3.LatestCert = plausibleCertAt(t, 890)
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"tag":"safe"}],"id":1}`,
 				wantTipSet:         tipSetAtHeight(890),
@@ -278,9 +268,7 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 				when: func(t *testing.T) {
 					mockF3.Running = true
 					mockF3.Finalizing = true
-					cert, err := plausibleCertAt(f3FinalizedEpoch)
-					require.NoError(t, err)
-					mockF3.LatestCert = cert
+					mockF3.LatestCert = plausibleCertAt(t, f3FinalizedEpoch)
 					mockF3.LatestCertErr = nil
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"height":{"at":111}}],"id":1}`,
@@ -292,9 +280,7 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 				when: func(t *testing.T) {
 					mockF3.Running = true
 					mockF3.Finalizing = true
-					cert, err := plausibleCertAt(f3FinalizedEpoch)
-					require.NoError(t, err)
-					mockF3.LatestCert = cert
+					mockF3.LatestCert = plausibleCertAt(t, f3FinalizedEpoch)
 					mockF3.LatestCertErr = nil
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"height":{"at":145}}],"id":1}`,
@@ -330,9 +316,7 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 				when: func(t *testing.T) {
 					mockF3.Running = true
 					mockF3.Finalizing = true
-					cert, err := plausibleCertAt(f3FinalizedEpoch)
-					require.NoError(t, err)
-					mockF3.LatestCert = cert
+					mockF3.LatestCert = plausibleCertAt(t, f3FinalizedEpoch)
 					mockF3.LatestCertErr = nil
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"height":{"at":890,"anchor":{"tag":"latest"}}}],"id":1}`,
@@ -361,14 +345,12 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 					} `json:"error,omitempty"`
 				}
 
-				stableTipSet, err := stableExecute(func() {
+				stableTipSet := stableExecute(func() {
 					gotResponseCode, gotResponseBody = subject.DoRawRPCRequest(t, 2, test.request)
 					if gotResponseCode == test.wantResponseStatus {
 						json.Unmarshal(gotResponseBody, &resultOrError)
 					}
 				})
-
-				require.NoError(t, err)
 				require.Equal(t, test.wantResponseStatus, gotResponseCode, string(gotResponseBody))
 
 				if test.wantErr != "" {
@@ -397,7 +379,7 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 			when               func(t *testing.T)
 			request            string
 			wantResponseStatus int
-			wantTipSet         func() (*types.TipSet, error)
+			wantTipSet         func(t *testing.T) *types.TipSet
 			wantErr            string
 		}{
 			{
@@ -427,9 +409,7 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 					mockF3.Running = true
 					mockF3.Finalizing = true
 					mockF3.LatestCertErr = nil
-					cert, err := plausibleCertAt(f3FinalizedEpoch)
-					require.NoError(t, err)
-					mockF3.LatestCert = cert
+					mockF3.LatestCert = plausibleCertAt(t, f3FinalizedEpoch)
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.StateGetActor","params":["f01000",{"tag":"finalized"}],"id":1}`,
 				wantResponseStatus: http.StatusOK,
@@ -440,9 +420,7 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 				when: func(t *testing.T) {
 					mockF3.Running = true
 					mockF3.Finalizing = true
-					cert, err := plausibleCertAt(f3FinalizedEpoch)
-					require.NoError(t, err)
-					mockF3.LatestCert = cert
+					mockF3.LatestCert = plausibleCertAt(t, f3FinalizedEpoch)
 					mockF3.LatestCertErr = nil
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.StateGetActor","params":["f01000",{"height":{"at":15,"anchor":{"tag":"latest"}}}],"id":1}`,
@@ -471,14 +449,12 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 					} `json:"error,omitempty"`
 				}
 
-				stableTipSet, err := stableExecute(func() {
+				stableTipSet := stableExecute(func() {
 					gotResponseCode, gotResponseBody = subject.DoRawRPCRequest(t, 2, test.request)
 					if gotResponseCode == test.wantResponseStatus {
 						json.Unmarshal(gotResponseBody, &resultOrError)
 					}
 				})
-
-				require.NoError(t, err)
 				require.Equal(t, test.wantResponseStatus, gotResponseCode, string(gotResponseBody))
 
 				if test.wantErr != "" {
@@ -502,7 +478,7 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 			when               func(t *testing.T)
 			request            string
 			wantResponseStatus int
-			wantTipSet         func() (*types.TipSet, error)
+			wantTipSet         func(t *testing.T) *types.TipSet
 			wantErr            string
 		}{
 			{
@@ -548,14 +524,12 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 					} `json:"error,omitempty"`
 				}
 
-				_, err := stableExecute(func() {
+				_ = stableExecute(func() {
 					gotResponseCode, gotResponseBody = subject.DoRawRPCRequest(t, 2, test.request)
 					if gotResponseCode == test.wantResponseStatus {
 						json.Unmarshal(gotResponseBody, &resultOrError)
 					}
 				})
-
-				require.NoError(t, err)
 				require.Equal(t, test.wantResponseStatus, gotResponseCode, string(gotResponseBody))
 
 				if test.wantErr != "" {
