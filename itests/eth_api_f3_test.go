@@ -836,6 +836,12 @@ func TestEthAPIWithF3(t *testing.T) {
 						return func(fn func()) *types.TipSet {
 							beforeTs := wantTipSet(t)
 							for {
+								select {
+								case <-ctx.Done():
+									t.Fatalf("context cancelled during stable execution: %v", ctx.Err())
+								default:
+								}
+
 								fn()
 								afterTs := wantTipSet(t)
 								if beforeTs.Equals(afterTs) {
