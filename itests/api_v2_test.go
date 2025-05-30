@@ -43,6 +43,13 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 	mkStableExecute := func(getTipSet func() (*types.TipSet, error)) func(fn func() (interface{}, error)) (interface{}, *types.TipSet, error) {
 		return func(fn func() (interface{}, error)) (interface{}, *types.TipSet, error) {
 			for {
+				// Check if context is cancelled to avoid infinite loops
+				select {
+				case <-ctx.Done():
+					return nil, nil, ctx.Err()
+				default:
+				}
+
 				beforeTs, err := getTipSet()
 				if err != nil {
 					return nil, nil, err
@@ -112,6 +119,71 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 	// The tests here use the raw JSON request form for testing to both test the API
 	// through RPC, and showcase what the raw request on the wire would look like at
 	// Layer 7 of the ISO model.
+
+	// executeRPCRequest is a helper that executes an RPC request, unmarshals the response,
+	// and returns the parsed result in a structured format
+	executeRPCRequest := func(t *testing.T, request string, wantResponseStatus int, resultType interface{}) (interface{}, error) {
+		gotResponseCode, gotResponseBody := subject.DoRawRPCRequest(t, 2, request)
+		if gotResponseCode != wantResponseStatus {
+			return nil, nil
+		}
+
+		switch resultType.(type) {
+		case *types.TipSet:
+			var resultOrError struct {
+				Result *types.TipSet `json:"result,omitempty"`
+				Error  *struct {
+					Code    int    `json:"code,omitempty"`
+					Message string `json:"message,omitempty"`
+				} `json:"error,omitempty"`
+			}
+			if err := json.Unmarshal(gotResponseBody, &resultOrError); err != nil {
+				return nil, err
+			}
+			return map[string]interface{}{
+				"responseCode": gotResponseCode,
+				"responseBody": gotResponseBody,
+				"result":       resultOrError.Result,
+				"error":        resultOrError.Error,
+			}, nil
+		case *types.Actor:
+			var resultOrError struct {
+				Result *types.Actor `json:"result,omitempty"`
+				Error  *struct {
+					Code    int    `json:"code,omitempty"`
+					Message string `json:"message,omitempty"`
+				} `json:"error,omitempty"`
+			}
+			if err := json.Unmarshal(gotResponseBody, &resultOrError); err != nil {
+				return nil, err
+			}
+			return map[string]interface{}{
+				"responseCode": gotResponseCode,
+				"responseBody": gotResponseBody,
+				"result":       resultOrError.Result,
+				"error":        resultOrError.Error,
+			}, nil
+		case *address.Address:
+			var resultOrError struct {
+				Result *address.Address `json:"result,omitempty"`
+				Error  *struct {
+					Code    int    `json:"code,omitempty"`
+					Message string `json:"message,omitempty"`
+				} `json:"error,omitempty"`
+			}
+			if err := json.Unmarshal(gotResponseBody, &resultOrError); err != nil {
+				return nil, err
+			}
+			return map[string]interface{}{
+				"responseCode": gotResponseCode,
+				"responseBody": gotResponseBody,
+				"result":       resultOrError.Result,
+				"error":        resultOrError.Error,
+			}, nil
+		default:
+			return nil, errors.New("unsupported result type")
+		}
+	}
 
 	t.Run("ChainGetTipSet", func(t *testing.T) {
 		for _, test := range []struct {
@@ -346,49 +418,32 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 				}
 
 				result, stableTipSet, err := stableExecute(func() (interface{}, error) {
-					gotResponseCode, gotResponseBody := subject.DoRawRPCRequest(t, 2, test.request)
-					if gotResponseCode != test.wantResponseStatus {
-						return nil, nil
-					}
-
-					var resultOrError struct {
-						Result *types.TipSet `json:"result,omitempty"`
-						Error  *struct {
-							Code    int    `json:"code,omitempty"`
-							Message string `json:"message,omitempty"`
-						} `json:"error,omitempty"`
-					}
-					if err := json.Unmarshal(gotResponseBody, &resultOrError); err != nil {
-						return nil, err
-					}
-
-					return map[string]interface{}{
-						"responseCode": gotResponseCode,
-						"responseBody": gotResponseBody,
-						"parsed":       resultOrError,
-					}, nil
+					return executeRPCRequest(t, test.request, test.wantResponseStatus, (*types.TipSet)(nil))
 				})
 
 				require.NoError(t, err)
-				response := result.(map[string]interface{})
-				gotResponseCode := response["responseCode"].(int)
-				gotResponseBody := response["responseBody"].([]byte)
-				resultOrError := response["parsed"].(struct {
-					Result *types.TipSet `json:"result,omitempty"`
-					Error  *struct {
-						Code    int    `json:"code,omitempty"`
-						Message string `json:"message,omitempty"`
-					} `json:"error,omitempty"`
-				})
+				if result != nil {
+					response := result.(map[string]interface{})
+					gotResponseCode := response["responseCode"].(int)
+					gotResponseBody := response["responseBody"].([]byte)
+					resultValue := response["result"].(*types.TipSet)
+					errorValue := response["error"]
 
-				require.Equal(t, test.wantResponseStatus, gotResponseCode, string(gotResponseBody))
-				if test.wantErr != "" {
-					require.Nil(t, resultOrError.Result)
-					require.Contains(t, resultOrError.Error.Message, test.wantErr)
-				} else {
-					require.Nil(t, resultOrError.Error)
-					if test.wantTipSet != nil {
-						require.Equal(t, stableTipSet, resultOrError.Result)
+					require.Equal(t, test.wantResponseStatus, gotResponseCode, string(gotResponseBody))
+					if test.wantErr != "" {
+						require.Nil(t, resultValue)
+						if errorValue != nil {
+							errorObj := errorValue.(*struct {
+								Code    int    `json:"code,omitempty"`
+								Message string `json:"message,omitempty"`
+							})
+							require.Contains(t, errorObj.Message, test.wantErr)
+						}
+					} else {
+						require.Nil(t, errorValue)
+						if test.wantTipSet != nil {
+							require.Equal(t, stableTipSet, resultValue)
+						}
 					}
 				}
 			})
@@ -471,51 +526,34 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 				}
 
 				result, stableTipSet, err := stableExecute(func() (interface{}, error) {
-					gotResponseCode, gotResponseBody := subject.DoRawRPCRequest(t, 2, test.request)
-					if gotResponseCode != test.wantResponseStatus {
-						return nil, nil
-					}
-
-					var resultOrError struct {
-						Result *types.Actor `json:"result,omitempty"`
-						Error  *struct {
-							Code    int    `json:"code,omitempty"`
-							Message string `json:"message,omitempty"`
-						} `json:"error,omitempty"`
-					}
-					if err := json.Unmarshal(gotResponseBody, &resultOrError); err != nil {
-						return nil, err
-					}
-
-					return map[string]interface{}{
-						"responseCode": gotResponseCode,
-						"responseBody": gotResponseBody,
-						"parsed":       resultOrError,
-					}, nil
+					return executeRPCRequest(t, test.request, test.wantResponseStatus, (*types.Actor)(nil))
 				})
 
 				require.NoError(t, err)
-				response := result.(map[string]interface{})
-				gotResponseCode := response["responseCode"].(int)
-				gotResponseBody := response["responseBody"].([]byte)
-				resultOrError := response["parsed"].(struct {
-					Result *types.Actor `json:"result,omitempty"`
-					Error  *struct {
-						Code    int    `json:"code,omitempty"`
-						Message string `json:"message,omitempty"`
-					} `json:"error,omitempty"`
-				})
+				if result != nil {
+					response := result.(map[string]interface{})
+					gotResponseCode := response["responseCode"].(int)
+					gotResponseBody := response["responseBody"].([]byte)
+					resultValue := response["result"].(*types.Actor)
+					errorValue := response["error"]
 
-				require.Equal(t, test.wantResponseStatus, gotResponseCode, string(gotResponseBody))
+					require.Equal(t, test.wantResponseStatus, gotResponseCode, string(gotResponseBody))
 
-				if test.wantErr != "" {
-					require.Nil(t, resultOrError.Result)
-					require.Contains(t, resultOrError.Error.Message, test.wantErr)
-				} else {
-					if test.wantTipSet != nil && stableTipSet != nil {
-						wantActor, err := v1StateGetActor(stableTipSet)()
-						require.NoError(t, err)
-						require.Equal(t, wantActor, resultOrError.Result)
+					if test.wantErr != "" {
+						require.Nil(t, resultValue)
+						if errorValue != nil {
+							errorObj := errorValue.(*struct {
+								Code    int    `json:"code,omitempty"`
+								Message string `json:"message,omitempty"`
+							})
+							require.Contains(t, errorObj.Message, test.wantErr)
+						}
+					} else {
+						if test.wantTipSet != nil && stableTipSet != nil {
+							wantActor, err := v1StateGetActor(stableTipSet)()
+							require.NoError(t, err)
+							require.Equal(t, wantActor, resultValue)
+						}
 					}
 				}
 			})
@@ -564,46 +602,29 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 				}
 
 				result, _, err := stableExecute(func() (interface{}, error) {
-					gotResponseCode, gotResponseBody := subject.DoRawRPCRequest(t, 2, test.request)
-					if gotResponseCode != test.wantResponseStatus {
-						return nil, nil
-					}
-
-					var resultOrError struct {
-						Result *address.Address `json:"result,omitempty"`
-						Error  *struct {
-							Code    int    `json:"code,omitempty"`
-							Message string `json:"message,omitempty"`
-						} `json:"error,omitempty"`
-					}
-					if err := json.Unmarshal(gotResponseBody, &resultOrError); err != nil {
-						return nil, err
-					}
-
-					return map[string]interface{}{
-						"responseCode": gotResponseCode,
-						"responseBody": gotResponseBody,
-						"parsed":       resultOrError,
-					}, nil
+					return executeRPCRequest(t, test.request, test.wantResponseStatus, (*address.Address)(nil))
 				})
 
 				require.NoError(t, err)
-				response := result.(map[string]interface{})
-				gotResponseCode := response["responseCode"].(int)
-				gotResponseBody := response["responseBody"].([]byte)
-				resultOrError := response["parsed"].(struct {
-					Result *address.Address `json:"result,omitempty"`
-					Error  *struct {
-						Code    int    `json:"code,omitempty"`
-						Message string `json:"message,omitempty"`
-					} `json:"error,omitempty"`
-				})
+				if result != nil {
+					response := result.(map[string]interface{})
+					gotResponseCode := response["responseCode"].(int)
+					gotResponseBody := response["responseBody"].([]byte)
+					resultValue := response["result"].(*address.Address)
+					errorValue := response["error"]
 
-				require.Equal(t, test.wantResponseStatus, gotResponseCode, string(gotResponseBody))
+					require.Equal(t, test.wantResponseStatus, gotResponseCode, string(gotResponseBody))
 
-				if test.wantErr != "" {
-					require.Nil(t, resultOrError.Result)
-					require.Contains(t, resultOrError.Error.Message, test.wantErr)
+					if test.wantErr != "" {
+						require.Nil(t, resultValue)
+						if errorValue != nil {
+							errorObj := errorValue.(*struct {
+								Code    int    `json:"code,omitempty"`
+								Message string `json:"message,omitempty"`
+							})
+							require.Contains(t, errorObj.Message, test.wantErr)
+						}
+					}
 				}
 			})
 		}
