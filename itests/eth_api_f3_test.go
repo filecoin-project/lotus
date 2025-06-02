@@ -34,7 +34,7 @@ type ethApi interface {
 	EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.EthTraceBlock, error)
 	EthTraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error)
 	EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (*ethtypes.EthFeeHistory, error)
-	EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthUint64, error)
+	EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (*ethtypes.EthUint64, error)
 	EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error)
 	EthGetBlockTransactionCountByNumber(ctx context.Context, blkNum string) (*ethtypes.EthUint64, error)
 	EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (*ethtypes.EthBlock, error)
@@ -646,7 +646,7 @@ func TestEthAPIWithF3(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				var egaslimit ethtypes.EthUint64
+				var egaslimit *ethtypes.EthUint64
 				expect := stableExecute(func() {
 					egaslimit, err = subject.EthEstimateGas(ctx, gasParams)
 				})
@@ -660,7 +660,7 @@ func TestEthAPIWithF3(t *testing.T) {
 					gaslimit, err := client.GasEstimateGasLimit(ctx, msg, expect.Key())
 					require.NoError(t, err)
 					gasLimitOverestimation := 1.25 // default messagepool config value
-					req.Equal(int64(float64(gaslimit)*gasLimitOverestimation), int64(egaslimit))
+					req.Equal(int64(float64(gaslimit)*gasLimitOverestimation), int64(*egaslimit))
 				}
 			},
 		},

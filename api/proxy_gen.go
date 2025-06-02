@@ -184,7 +184,7 @@ type FullNodeMethods struct {
 
 	EthChainId func(p0 context.Context) (ethtypes.EthUint64, error) `perm:"read"`
 
-	EthEstimateGas func(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthUint64, error) `perm:"read"`
+	EthEstimateGas func(p0 context.Context, p1 jsonrpc.RawParams) (*ethtypes.EthUint64, error) `perm:"read"`
 
 	EthFeeHistory func(p0 context.Context, p1 jsonrpc.RawParams) (*ethtypes.EthFeeHistory, error) `perm:"read"`
 
@@ -654,7 +654,7 @@ type GatewayMethods struct {
 
 	EthChainId func(p0 context.Context) (ethtypes.EthUint64, error) ``
 
-	EthEstimateGas func(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthUint64, error) ``
+	EthEstimateGas func(p0 context.Context, p1 jsonrpc.RawParams) (*ethtypes.EthUint64, error) ``
 
 	EthFeeHistory func(p0 context.Context, p1 jsonrpc.RawParams) (*ethtypes.EthFeeHistory, error) ``
 
@@ -1738,15 +1738,15 @@ func (s *FullNodeStub) EthChainId(p0 context.Context) (ethtypes.EthUint64, error
 	return *new(ethtypes.EthUint64), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthEstimateGas(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthUint64, error) {
+func (s *FullNodeStruct) EthEstimateGas(p0 context.Context, p1 jsonrpc.RawParams) (*ethtypes.EthUint64, error) {
 	if s.Internal.EthEstimateGas == nil {
-		return *new(ethtypes.EthUint64), ErrNotSupported
+		return nil, ErrNotSupported
 	}
 	return s.Internal.EthEstimateGas(p0, p1)
 }
 
-func (s *FullNodeStub) EthEstimateGas(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthUint64, error) {
-	return *new(ethtypes.EthUint64), ErrNotSupported
+func (s *FullNodeStub) EthEstimateGas(p0 context.Context, p1 jsonrpc.RawParams) (*ethtypes.EthUint64, error) {
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) EthFeeHistory(p0 context.Context, p1 jsonrpc.RawParams) (*ethtypes.EthFeeHistory, error) {
@@ -4257,15 +4257,15 @@ func (s *GatewayStub) EthChainId(p0 context.Context) (ethtypes.EthUint64, error)
 	return *new(ethtypes.EthUint64), ErrNotSupported
 }
 
-func (s *GatewayStruct) EthEstimateGas(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthUint64, error) {
+func (s *GatewayStruct) EthEstimateGas(p0 context.Context, p1 jsonrpc.RawParams) (*ethtypes.EthUint64, error) {
 	if s.Internal.EthEstimateGas == nil {
-		return *new(ethtypes.EthUint64), ErrNotSupported
+		return nil, ErrNotSupported
 	}
 	return s.Internal.EthEstimateGas(p0, p1)
 }
 
-func (s *GatewayStub) EthEstimateGas(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthUint64, error) {
-	return *new(ethtypes.EthUint64), ErrNotSupported
+func (s *GatewayStub) EthEstimateGas(p0 context.Context, p1 jsonrpc.RawParams) (*ethtypes.EthUint64, error) {
+	return nil, ErrNotSupported
 }
 
 func (s *GatewayStruct) EthFeeHistory(p0 context.Context, p1 jsonrpc.RawParams) (*ethtypes.EthFeeHistory, error) {

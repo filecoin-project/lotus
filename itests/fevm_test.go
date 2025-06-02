@@ -674,7 +674,7 @@ func TestFEVMRecursiveActorCallEstimate(t *testing.T) {
 
 			gaslimit, err := client.EthEstimateGas(ctx, gasParams)
 			require.NoError(t, err)
-			require.LessOrEqual(t, int64(gaslimit), buildconstants.BlockGasLimit)
+			require.LessOrEqual(t, int64(*gaslimit), buildconstants.BlockGasLimit)
 
 			t.Logf("EthEstimateGas GasLimit=%d", gaslimit)
 
@@ -691,7 +691,7 @@ func TestFEVMRecursiveActorCallEstimate(t *testing.T) {
 				Nonce:                int(nonce),
 				MaxFeePerGas:         types.NanoFil,
 				MaxPriorityFeePerGas: big.Int(maxPriorityFeePerGas),
-				GasLimit:             int(gaslimit),
+				GasLimit:             int(*gaslimit),
 				Input:                params,
 				V:                    big.Zero(),
 				R:                    big.Zero(),
@@ -712,8 +712,8 @@ func TestFEVMRecursiveActorCallEstimate(t *testing.T) {
 			require.NotNil(t, receipt)
 
 			t.Logf("Receipt GasUsed=%d", receipt.GasUsed)
-			t.Logf("Ratio %0.2f", float64(receipt.GasUsed)/float64(gaslimit))
-			t.Logf("Overestimate %0.2f", ((float64(gaslimit)/float64(receipt.GasUsed))-1)*100)
+			t.Logf("Ratio %0.2f", float64(receipt.GasUsed)/float64(*gaslimit))
+			t.Logf("Overestimate %0.2f", ((float64(*gaslimit)/float64(receipt.GasUsed))-1)*100)
 
 			require.EqualValues(t, ethtypes.EthUint64(1), receipt.Status)
 		}
@@ -847,7 +847,7 @@ func TestFEVMBareTransferTriggersSmartContractLogic(t *testing.T) {
 		To:                   &contractEth,
 		MaxFeePerGas:         types.NanoFil,
 		MaxPriorityFeePerGas: big.Int(maxPriorityFeePerGas),
-		GasLimit:             int(gaslimit),
+		GasLimit:             int(*gaslimit),
 		V:                    big.Zero(),
 		R:                    big.Zero(),
 		S:                    big.Zero(),
@@ -1129,7 +1129,7 @@ func TestEthGetBlockReceipts(t *testing.T) {
 			Nonce:                nonce,
 			MaxFeePerGas:         types.NanoFil,
 			MaxPriorityFeePerGas: big.Int(maxPriorityFeePerGas),
-			GasLimit:             int(gaslimit),
+			GasLimit:             int(*gaslimit),
 			Input:                params,
 			V:                    big.Zero(),
 			R:                    big.Zero(),
@@ -1225,7 +1225,7 @@ func deployContractWithEth(ctx context.Context, t *testing.T, client *kit.TestFu
 		Nonce:                0,
 		MaxFeePerGas:         types.NanoFil,
 		MaxPriorityFeePerGas: big.Int(maxPriorityFeePerGas),
-		GasLimit:             int(gaslimit),
+		GasLimit:             int(*gaslimit),
 		Input:                contract,
 		V:                    big.Zero(),
 		R:                    big.Zero(),
@@ -1277,7 +1277,7 @@ func TestEthGetTransactionCount(t *testing.T) {
 			Nonce:                i,
 			MaxFeePerGas:         types.NanoFil,
 			MaxPriorityFeePerGas: types.NanoFil,
-			GasLimit:             int(gaslimit),
+			GasLimit:             int(*gaslimit),
 		}
 		client.EVM().SignTransaction(tx, key.PrivateKey)
 		lastHash = client.EVM().SubmitTransaction(ctx, tx)
@@ -1494,7 +1494,7 @@ func TestEthGetTransactionByBlockHashAndIndexAndNumber(t *testing.T) {
 				Nonce:                int(nonce) + i,
 				MaxFeePerGas:         types.NanoFil,
 				MaxPriorityFeePerGas: big.Int(maxPriorityFeePerGas),
-				GasLimit:             int(gaslimit),
+				GasLimit:             int(*gaslimit),
 				Input:                contract,
 				V:                    big.Zero(),
 				R:                    big.Zero(),

@@ -490,7 +490,7 @@ func createRawSignedEthTx(
 		To:                   &receiverEthAddr,
 		MaxFeePerGas:         types.NanoFil,
 		MaxPriorityFeePerGas: big.Int(maxPriorityFeePerGas),
-		GasLimit:             int(gaslimit),
+		GasLimit:             int(*gaslimit),
 		V:                    big.Zero(),
 		R:                    big.Zero(),
 		S:                    big.Zero(),

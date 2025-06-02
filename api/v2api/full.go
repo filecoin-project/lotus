@@ -360,7 +360,7 @@ type FullNode interface {
 
 	// EthEstimateGas estimates the gas required to execute a transaction.
 	// Maps to JSON-RPC method: "eth_estimateGas".
-	EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthUint64, error) //perm:read
+	EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (*ethtypes.EthUint64, error) //perm:read
 
 	// EthCall executes a read-only call to a contract at a specific block state, identified by
 	// its number, hash, or a special tag like "latest" or "finalized".

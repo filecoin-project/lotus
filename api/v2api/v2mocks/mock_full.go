@@ -8,15 +8,13 @@ import (
 	context "context"
 	reflect "reflect"
 
-	gomock "github.com/golang/mock/gomock"
-	cid "github.com/ipfs/go-cid"
-
 	address "github.com/filecoin-project/go-address"
 	jsonrpc "github.com/filecoin-project/go-jsonrpc"
 	abi "github.com/filecoin-project/go-state-types/abi"
-
 	types "github.com/filecoin-project/lotus/chain/types"
 	ethtypes "github.com/filecoin-project/lotus/chain/types/ethtypes"
+	gomock "github.com/golang/mock/gomock"
+	cid "github.com/ipfs/go-cid"
 )
 
 // MockFullNode is a mock of FullNode interface.
@@ -133,10 +131,10 @@ func (mr *MockFullNodeMockRecorder) EthChainId(arg0 interface{}) *gomock.Call {
 }
 
 // EthEstimateGas mocks base method.
-func (m *MockFullNode) EthEstimateGas(arg0 context.Context, arg1 jsonrpc.RawParams) (ethtypes.EthUint64, error) {
+func (m *MockFullNode) EthEstimateGas(arg0 context.Context, arg1 jsonrpc.RawParams) (*ethtypes.EthUint64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthEstimateGas", arg0, arg1)
-	ret0, _ := ret[0].(ethtypes.EthUint64)
+	ret0, _ := ret[0].(*ethtypes.EthUint64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

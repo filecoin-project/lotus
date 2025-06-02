@@ -187,15 +187,15 @@ func (e *ethGas) EthMaxPriorityFeePerGas(ctx context.Context) (ethtypes.EthBigIn
 	return ethtypes.EthBigInt(gasPremium), nil
 }
 
-func (e *ethGas) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthUint64, error) {
+func (e *ethGas) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (*ethtypes.EthUint64, error) {
 	params, err := jsonrpc.DecodeParams[ethtypes.EthEstimateGasParams](p)
 	if err != nil {
-		return ethtypes.EthUint64(0), xerrors.Errorf("decoding params: %w", err)
+		return nil, xerrors.Errorf("decoding params: %w", err)
 	}
 
 	msg, err := params.Tx.ToFilecoinMessage()
 	if err != nil {
-		return ethtypes.EthUint64(0), err
+		return nil, err
 	}
 
 	// Set the gas limit to the zero sentinel value, which makes
@@ -208,7 +208,12 @@ func (e *ethGas) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (ethty
 	} else {
 		ts, err = e.tipsetResolver.GetTipsetByBlockNumberOrHash(ctx, *params.BlkParam)
 		if err != nil {
-			return ethtypes.EthUint64(0), err
+			// According to go-ethereum patterns, "not found" errors should lead to (nil, nil).
+			// Other errors should result in (nil, err).
+			if errors.Is(err, &api.ErrNullRound{}) || ipld.IsNotFound(err) {
+				return nil, nil
+			}
+			return nil, err
 		}
 	}
 
@@ -225,22 +230,23 @@ func (e *ethGas) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (ethty
 			// If err2 is an ExecutionRevertedError, return it
 			var ed *api.ErrExecutionReverted
 			if errors.As(err2, &ed) {
-				return ethtypes.EthUint64(0), err2
+				return nil, err2
 			}
 
 			// Otherwise, return the error from applyMessage with failed to estimate gas
 			err = err2
 		}
 
-		return ethtypes.EthUint64(0), xerrors.Errorf("failed to estimate gas: %w", err)
+		return nil, xerrors.Errorf("failed to estimate gas: %w", err)
 	}
 
 	expectedGas, err := ethGasSearch(ctx, e.chainStore, e.stateManager, e.messagePool, gassedMsg, ts)
 	if err != nil {
-		return 0, xerrors.Errorf("gas search failed: %w", err)
+		return nil, xerrors.Errorf("gas search failed: %w", err)
 	}
 
-	return ethtypes.EthUint64(expectedGas), nil
+	result := ethtypes.EthUint64(expectedGas)
+	return &result, nil
 }
 
 func (e *ethGas) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {
@@ -492,8 +498,8 @@ func (EthGasDisabled) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (*
 func (EthGasDisabled) EthMaxPriorityFeePerGas(ctx context.Context) (ethtypes.EthBigInt, error) {
 	return ethtypes.EthBigInt{}, ErrModuleDisabled
 }
-func (EthGasDisabled) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthUint64, error) {
-	return ethtypes.EthUint64(0), ErrModuleDisabled
+func (EthGasDisabled) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (*ethtypes.EthUint64, error) {
+	return nil, ErrModuleDisabled
 }
 func (EthGasDisabled) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {
 	return nil, ErrModuleDisabled
