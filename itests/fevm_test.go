@@ -1243,7 +1243,8 @@ func TestEthGetTransactionCount(t *testing.T) {
 	// Test initial state (should be zero)
 	initialCount, err := client.EVM().EthGetTransactionCount(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 	require.NoError(t, err)
-	require.Zero(t, initialCount)
+	require.NotNil(t, initialCount)
+	require.Zero(t, *initialCount)
 
 	// Send some funds to the new account (this shouldn't change the nonce)
 	kit.SendFunds(ctx, t, client, filAddr, types.FromFil(10))
@@ -1251,7 +1252,8 @@ func TestEthGetTransactionCount(t *testing.T) {
 	// Check nonce again (should still be zero)
 	count, err := client.EVM().EthGetTransactionCount(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 	require.NoError(t, err)
-	require.Zero(t, count)
+	require.NotNil(t, count)
+	require.Zero(t, *count)
 
 	// Prepare and send multiple transactions
 	numTx := 5
@@ -1288,7 +1290,7 @@ func TestEthGetTransactionCount(t *testing.T) {
 
 		latestCount, err := client.EVM().EthGetTransactionCount(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 		require.NoError(t, err)
-		require.Equal(t, ethtypes.EthUint64(i), latestCount, "Latest transaction count should be equal to the number of mined transactions")
+		require.Equal(t, ethtypes.EthUint64(i), *latestCount, "Latest transaction count should be equal to the number of mined transactions")
 
 		pendingCount, err := client.EVM().EthGetTransactionCount(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("pending"))
 		require.NoError(t, err)
@@ -1307,11 +1309,11 @@ func TestEthGetTransactionCount(t *testing.T) {
 
 	finalLatestCount, err := client.EVM().EthGetTransactionCount(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 	require.NoError(t, err)
-	require.Equal(t, ethtypes.EthUint64(numTx), finalLatestCount, "Final latest transaction count should equal the number of transactions sent")
+	require.Equal(t, ethtypes.EthUint64(numTx), *finalLatestCount, "Final latest transaction count should equal the number of transactions sent")
 
 	finalPendingCount, err := client.EVM().EthGetTransactionCount(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("pending"))
 	require.NoError(t, err)
-	require.Equal(t, ethtypes.EthUint64(numTx), finalPendingCount, "Final pending transaction count should equal the number of transactions sent")
+	require.Equal(t, ethtypes.EthUint64(numTx), *finalPendingCount, "Final pending transaction count should equal the number of transactions sent")
 
 	// Test with a contract
 	createReturn := client.EVM().DeployContract(ctx, client.DefaultKey.Address, contract)
@@ -1321,7 +1323,7 @@ func TestEthGetTransactionCount(t *testing.T) {
 	// Check contract nonce (should be 1 after deployment)
 	contractNonce, err := client.EVM().EthGetTransactionCount(ctx, contractAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 	require.NoError(t, err)
-	require.Equal(t, ethtypes.EthUint64(1), contractNonce)
+	require.Equal(t, ethtypes.EthUint64(1), *contractNonce)
 
 	// Destroy the contract
 	_, _, err = client.EVM().InvokeContractByFuncName(ctx, client.DefaultKey.Address, contractFilAddr, "destroy()", nil)
@@ -1330,7 +1332,8 @@ func TestEthGetTransactionCount(t *testing.T) {
 	// Check contract nonce after destruction (should be 0)
 	contractNonceAfterDestroy, err := client.EVM().EthGetTransactionCount(ctx, contractAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 	require.NoError(t, err)
-	require.Zero(t, contractNonceAfterDestroy)
+	require.NotNil(t, contractNonceAfterDestroy)
+	require.Zero(t, *contractNonceAfterDestroy)
 }
 
 func TestMcopy(t *testing.T) {
@@ -1438,8 +1441,9 @@ func TestEthGetBlockByNumber(t *testing.T) {
 	}
 
 	// Test getting a block for a null round
-	_, err = client.EthGetBlockByNumber(ctx, (ethtypes.EthUint64(nullHeight)).Hex(), true)
-	require.ErrorContains(t, err, "requested epoch was a null round")
+	nullBlock, err := client.EthGetBlockByNumber(ctx, (ethtypes.EthUint64(nullHeight)).Hex(), true)
+	require.NoError(t, err)
+	require.Nil(t, nullBlock, "null rounds should return nil block to match go-ethereum behavior")
 
 	// Test getting balance on a null round
 	bal, err := client.EthGetBalance(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromNumber(ethtypes.EthUint64(nullHeight)))
