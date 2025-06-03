@@ -37,7 +37,9 @@ import (
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -1548,6 +1550,22 @@ var StateSectorCmd = &cli.Command{
 		}
 		fmt.Println()
 
+		// Display DealIDs - try both deprecated field and new ProviderSectors method
+		dealIDs := si.DeprecatedDealIDs
+		fmt.Printf("DealIDs (deprecated): %v\n", dealIDs)
+
+		// Deals were moved into market actor's ProviderSectors in NV22 / Actors v13
+		if nv >= network.Version22 {
+			marketDealIDs, err := getMarketDealIDs(ctx, api, maddr, abi.SectorNumber(sid), ts.Key())
+			if err != nil {
+				fmt.Printf("DealIDs (market): error retrieving from market actor: %v\n", err)
+			} else if len(marketDealIDs) > 0 {
+				fmt.Printf("DealIDs (market): %v\n", marketDealIDs)
+			} else {
+				fmt.Printf("DealIDs (market): []\n")
+			}
+		}
+
 		sp, err := api.StateSectorPartition(ctx, maddr, abi.SectorNumber(sid), ts.Key())
 		if err != nil {
 			return err
@@ -1749,4 +1767,87 @@ var StateSysActorCIDsCmd = &cli.Command{
 		}
 		return tw.Flush()
 	},
+}
+
+// getMarketDealIDs retrieves deal IDs for a sector from the market actor's ProviderSectors HAMT
+func getMarketDealIDs(ctx context.Context, api v0api.FullNode, maddr address.Address, sid abi.SectorNumber, tsKey types.TipSetKey) ([]abi.DealID, error) {
+	// Convert miner address to actor ID
+	actorID, err := getMinerActorID(ctx, api, maddr, tsKey)
+	if err != nil {
+		return nil, err
+	}
+
+	// Load market state
+	marketState, err := loadMarketState(ctx, api, tsKey)
+	if err != nil {
+		return nil, err
+	}
+
+	// Extract deal IDs from ProviderSectors HAMT
+	dealIDs, err := extractSectorDealIDs(marketState, actorID, sid)
+	if err != nil {
+		return nil, err
+	}
+
+	return dealIDs, nil
+}
+
+// getMinerActorID converts a miner address to its actor ID
+func getMinerActorID(ctx context.Context, api v0api.FullNode, maddr address.Address, tsKey types.TipSetKey) (abi.ActorID, error) {
+	// Convert miner address to ID address
+	minerID, err := api.StateLookupID(ctx, maddr, tsKey)
+	if err != nil {
+		return 0, xerrors.Errorf("failed to lookup miner ID: %w", err)
+	}
+
+	// Extract the actor ID from the ID address
+	id, err := address.IDFromAddress(minerID)
+	if err != nil {
+		return 0, xerrors.Errorf("failed to extract actor ID from address: %w", err)
+	}
+
+	return abi.ActorID(id), nil
+}
+
+// loadMarketState loads the market actor state
+func loadMarketState(ctx context.Context, api v0api.FullNode, tsKey types.TipSetKey) (market.State, error) {
+	// Get the market actor
+	marketActor, err := api.StateGetActor(ctx, market.Address, tsKey)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get market actor: %w", err)
+	}
+
+	// Load the market state
+	store := adt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewAPIBlockstore(api)))
+	marketState, err := market.Load(store, marketActor)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load market state: %w", err)
+	}
+
+	return marketState, nil
+}
+
+// extractSectorDealIDs extracts deal IDs for a specific sector from the ProviderSectors HAMT
+func extractSectorDealIDs(marketState market.State, actorID abi.ActorID, sid abi.SectorNumber) ([]abi.DealID, error) {
+	// Get the ProviderSectors interface
+	providerSectors, err := marketState.ProviderSectors()
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get provider sectors: %w", err)
+	}
+
+	// Get the sector deal IDs for this miner
+	sectorDealIDs, found, err := providerSectors.Get(actorID)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get sector deal IDs for actor %d: %w", actorID, err)
+	}
+	if !found {
+		return []abi.DealID{}, nil
+	}
+
+	// Get the deal IDs for the specific sector
+	dealIDs, _, err := sectorDealIDs.Get(sid)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get deal IDs for sector %d: %w", sid, err)
+	}
+	return dealIDs, nil
 }
