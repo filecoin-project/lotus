@@ -1368,7 +1368,8 @@ USAGE:
    lotus state active-sectors [command options] [minerAddress]
 
 OPTIONS:
-   --help, -h  show help
+   --show-partitions  show sector deadlines and partitions (default: false)
+   --help, -h         show help
 ```
 
 ### lotus state list-actors
