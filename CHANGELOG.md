@@ -225,6 +225,7 @@ For certain node operators, such as full archival nodes or systems that need to 
 - chore(deps): bump go-state-types to v0.16.0-rc8 ([filecoin-project/lotus#12973](https://github.com/filecoin-project/lotus/pull/12973))
 - chore: set Mainnet nv25 upgrade epoch and update deps ([filecoin-project/lotus#12986](https://github.com/filecoin-project/lotus/pull/12986))
 - chore(eth): make EthGetBlockByNumber & EthGetBlockByHash share cache code ([filecoin-project/lotus#12979](https://github.com/filecoin-project/lotus/pull/12979))
+- feat(eth): update Ethereum API methods to return pointers for consistent nil handling ([filecoin-project/lotus#13150](https://github.com/filecoin-project/lotus/pull/13150))
 
 ## Bug Fixes
 - fix(eth): minor improvements to event range checking ([filecoin-project/lotus#12867](https://github.com/filecoin-project/lotus/pull/12867))
