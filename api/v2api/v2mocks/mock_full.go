@@ -8,13 +8,15 @@ import (
 	context "context"
 	reflect "reflect"
 
+	gomock "github.com/golang/mock/gomock"
+	cid "github.com/ipfs/go-cid"
+
 	address "github.com/filecoin-project/go-address"
 	jsonrpc "github.com/filecoin-project/go-jsonrpc"
 	abi "github.com/filecoin-project/go-state-types/abi"
+
 	types "github.com/filecoin-project/lotus/chain/types"
 	ethtypes "github.com/filecoin-project/lotus/chain/types/ethtypes"
-	gomock "github.com/golang/mock/gomock"
-	cid "github.com/ipfs/go-cid"
 )
 
 // MockFullNode is a mock of FullNode interface.

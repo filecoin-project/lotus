@@ -2175,7 +2175,7 @@
         },
         {
             "name": "Filecoin.EthEstimateGas",
-            "description": "```go\nfunc (s *GatewayStruct) EthEstimateGas(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthUint64, error) {\n\tif s.Internal.EthEstimateGas == nil {\n\t\treturn *new(ethtypes.EthUint64), ErrNotSupported\n\t}\n\treturn s.Internal.EthEstimateGas(p0, p1)\n}\n```",
+            "description": "```go\nfunc (s *GatewayStruct) EthEstimateGas(p0 context.Context, p1 jsonrpc.RawParams) (*ethtypes.EthUint64, error) {\n\tif s.Internal.EthEstimateGas == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.EthEstimateGas(p0, p1)\n}\n```",
             "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
@@ -2205,8 +2205,8 @@
                 }
             ],
             "result": {
-                "name": "ethtypes.EthUint64",
-                "description": "ethtypes.EthUint64",
+                "name": "*ethtypes.EthUint64",
+                "description": "*ethtypes.EthUint64",
                 "summary": "",
                 "schema": {
                     "title": "number",
