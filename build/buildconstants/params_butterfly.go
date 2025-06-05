@@ -75,7 +75,7 @@ const UpgradeTuktukHeight = -28
 var UpgradeTuktukPowerRampDurationEpochs = uint64(builtin.EpochsInYear)
 
 // ??????
-const UpgradeTeepHeight = 4320
+const UpgradeTeepHeight = 100
 
 var UpgradeTeepInitialFilReserved = wholeFIL(1_600_000_000) // FIP-0100: 300M -> 1.6B FIL
 
