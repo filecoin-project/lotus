@@ -175,17 +175,17 @@ func TestEthFeeHistory(t *testing.T) {
 		}
 	}
 
-	history, err = client.EthFeeHistory(ctx, result.Wrap[jsonrpc.RawParams](
+	_, err = client.EthFeeHistory(ctx, result.Wrap[jsonrpc.RawParams](
 		json.Marshal([]interface{}{1025, "10", &[]float64{25, 50, 75}}),
 	).Assert(require.NoError))
 	require.Error(err)
 
-	history, err = client.EthFeeHistory(ctx, result.Wrap[jsonrpc.RawParams](
+	_, err = client.EthFeeHistory(ctx, result.Wrap[jsonrpc.RawParams](
 		json.Marshal([]interface{}{5, "10", &[]float64{75, 50}}),
 	).Assert(require.NoError))
 	require.Error(err)
 
-	history, err = client.EthFeeHistory(ctx, result.Wrap[jsonrpc.RawParams](
+	_, err = client.EthFeeHistory(ctx, result.Wrap[jsonrpc.RawParams](
 		json.Marshal([]interface{}{5, "10", &[]float64{}}),
 	).Assert(require.NoError))
 	require.NoError(err)
