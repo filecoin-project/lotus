@@ -502,7 +502,7 @@ flowchart TD
     B -->|No| H[Use EC Finality]
 
     C --> D{Certificate Available?}
-    D -->|Yes| K{Calcuated EC-finalized Tipset}
+    D -->|Yes| K{Calculated EC-finalized Tipset}
     K --> L{Is F3-finalized Tipset more recent than EC-finalized Tipset?}
     L -->|Yes|E[Return TipSet from F3 Certificate]
     L -->|No|J
