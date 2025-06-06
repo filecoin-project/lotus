@@ -544,14 +544,9 @@ func (s *WindowPoStScheduler) BatchPartitions(partitions []api.Partition, nv net
 		return nil, xerrors.Errorf("getting sectors per partition: %w", err)
 	}
 
-	// TODO: remove after nv25 (FIP 0100)
 	// Also respect the AddressedPartitionsMax (which is the same as DeclarationsMax (which is all really just MaxPartitionsPerDeadline))
-	declMax, err := policy.GetDeclarationsMax(nv)
-	if err != nil {
-		return nil, xerrors.Errorf("getting max declarations: %w", err)
-	}
-	if partitionsPerMsg > declMax {
-		partitionsPerMsg = declMax
+	if partitionsPerMsg > policy.DeclarationsMax {
+		partitionsPerMsg = policy.DeclarationsMax
 	}
 
 	// respect user config if set

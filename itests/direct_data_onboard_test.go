@@ -368,7 +368,6 @@ func TestOnboardRawPieceSnap(t *testing.T) {
 		sc.PreferNewSectorsForDeals = false
 		sc.MakeNewSectorForDeals = false
 		sc.MakeCCSectorsAvailable = true
-		sc.AggregateCommits = false
 	}))
 	ens.InterconnectAll().BeginMiningMustPost(blocktime)
 
