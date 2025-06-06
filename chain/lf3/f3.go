@@ -3,6 +3,7 @@ package lf3
 import (
 	"context"
 	"errors"
+	"fmt"
 	"path/filepath"
 
 	"github.com/ipfs/go-datastore"
@@ -73,7 +74,7 @@ var log = logging.Logger("f3")
 func New(mctx helpers.MetricsCtx, lc fx.Lifecycle, params F3Params) (*F3, error) {
 
 	if params.Config.StaticManifest == nil {
-		return nil, nil
+		return nil, fmt.Errorf("configuration invalid, nil StaticManifest in the Config")
 	}
 	ds := namespace.Wrap(params.Datastore, datastore.NewKey("/f3"))
 	ec := newEcWrapper(params.ChainStore, params.Syncer, params.StateManager)

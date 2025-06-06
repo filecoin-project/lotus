@@ -51,6 +51,7 @@ func TestF3_Enabled(t *testing.T) {
 
 	const blocktime = 100 * time.Millisecond
 	e := setup(t, blocktime)
+	e.waitTillF3Runs(10 * time.Second)
 	e.waitTillAllMinersParticipate(10 * time.Second)
 	e.waitTillF3Instance(lf3.ParticipationLeaseTerm+1, 40*time.Second)
 	e.requireAllMinersParticipate()
@@ -92,32 +93,6 @@ func TestF3_InactiveModes(t *testing.T) {
 				"F3GetECPowerTable":               (gpbft.PowerEntries)(nil),
 				"F3GetF3PowerTable":               (gpbft.PowerEntries)(nil),
 				"F3IsRunning":                     false,
-			},
-		},
-		{
-			mode: "not running",
-			expectedErrors: map[string]any{
-				"F3GetOrRenewParticipationTicket": api.ErrF3NotReady,
-				"F3Participate":                   api.ErrF3NotReady,
-				"F3GetCertificate":                f3.ErrF3NotRunning.Error(),
-				"F3GetLatestCertificate":          f3.ErrF3NotRunning.Error(),
-				"F3GetManifest":                   manifest.ErrNoManifest.Error(),
-				"F3GetF3PowerTable":               manifest.ErrNoManifest.Error(),
-			},
-			expectedValues: map[string]any{
-				"F3GetOrRenewParticipationTicket": (api.F3ParticipationTicket)(nil),
-				"F3Participate":                   api.F3ParticipationLease{},
-				"F3GetCertificate":                (*certs.FinalityCertificate)(nil),
-				"F3GetLatestCertificate":          (*certs.FinalityCertificate)(nil),
-				"F3GetManifest":                   (*manifest.Manifest)(nil),
-				"F3GetF3PowerTable":               (gpbft.PowerEntries)(nil),
-				"F3IsRunning":                     false,
-			},
-			customValidateReturn: map[string]func(t *testing.T, ret []reflect.Value){
-				"F3GetECPowerTable": func(t *testing.T, ret []reflect.Value) {
-					// special case because it simply returns power table from EC which is not F3 dependent
-					require.NotNil(t, ret[0].Interface(), "unexpected return value")
-				},
 			},
 		},
 	}
@@ -230,7 +205,9 @@ func (e *testEnv) waitTillF3Runs(timeout time.Duration) {
 }
 
 func (e *testEnv) waitTillF3Instance(i uint64, timeout time.Duration) {
+	e.t.Helper()
 	e.waitFor(func(n *kit.TestFullNode) bool {
+		e.t.Helper()
 		c, err := n.F3GetLatestCertificate(e.testCtx)
 		if err != nil {
 			require.ErrorContains(e.t, err, f3.ErrF3NotRunning.Error())

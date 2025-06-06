@@ -1271,7 +1271,7 @@ func (cs *ChainStore) GetTipsetByHeight(ctx context.Context, h abi.ChainEpoch, t
 	}
 
 	if h > ts.Height() {
-		return nil, xerrors.Errorf("looking for tipset with height greater than start point")
+		return nil, xerrors.Errorf("looking for tipset with height greater than start point, req: %v, head: %d", h, ts.Height())
 	}
 
 	if h == ts.Height() {
