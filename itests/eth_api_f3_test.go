@@ -304,7 +304,7 @@ func TestEthAPIWithF3(t *testing.T) {
 				mockF3.LatestCertErr = internalF3Error
 			},
 			wantTipSetV1: ecFinalized,
-			wantErrV2:    internalF3Error.Error(),
+			wantTipSetV2: ecFinalized,
 		},
 		{
 			name:     "safe tag when f3 fails, but f3 is not activated",
@@ -316,7 +316,7 @@ func TestEthAPIWithF3(t *testing.T) {
 				mockF3.LatestCertErr = internalF3Error
 			},
 			wantTipSetV1: ecSafeV1,
-			wantErrV2:    internalF3Error.Error(),
+			wantTipSetV2: ecSafeV2,
 		},
 		{
 			name:     "safe tag when f3 fails",
@@ -328,7 +328,7 @@ func TestEthAPIWithF3(t *testing.T) {
 				mockF3.LatestCertErr = internalF3Error
 			},
 			wantTipSetV1: ecSafeV1,
-			wantErrV2:    internalF3Error.Error(),
+			wantTipSetV2: ecSafeV2,
 		},
 		{
 			name:     "finalize tag when f3 is too far behind falls back to ec",
@@ -364,7 +364,7 @@ func TestEthAPIWithF3(t *testing.T) {
 				mockF3.LatestCertErr = nil
 			},
 			wantTipSetV1: ecFinalized,
-			wantErrV2:    "decoding latest f3 cert tipset key",
+			wantTipSetV2: ecFinalized,
 		},
 		{
 			name:     "safe tag when f3 is broken, but f3 is not activated",
@@ -376,7 +376,7 @@ func TestEthAPIWithF3(t *testing.T) {
 				mockF3.LatestCertErr = nil
 			},
 			wantTipSetV1: ecSafeV1,
-			wantErrV2:    "decoding latest f3 cert tipset key",
+			wantTipSetV2: ecSafeV2,
 		},
 		{
 			name:     "safe tag when f3 is broken",
@@ -388,7 +388,7 @@ func TestEthAPIWithF3(t *testing.T) {
 				mockF3.LatestCertErr = nil
 			},
 			wantTipSetV1: ecSafeV1,
-			wantErrV2:    "decoding latest f3 cert tipset key",
+			wantTipSetV2: ecSafeV2,
 		},
 		{
 			name:     "height before ec finalized epoch is ok",
@@ -439,6 +439,7 @@ func TestEthAPIWithF3(t *testing.T) {
 			wantTipSetV2: tipSetAtHeight(f3FinalizedEpoch + 2),
 		},
 	}
+
 	testCases := []struct {
 		name    string
 		execute func(req *require.Assertions, subject ethApi, blkParam string, stableExecute func(func()) *types.TipSet, expectErr string)
