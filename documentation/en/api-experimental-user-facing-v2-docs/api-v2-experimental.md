@@ -484,7 +484,7 @@ How the `finalized` tag behaves depends on the node's configuration:
     - The API returns whichever tipset is most recent between:
        - The tipset identified by the latest F3 certificate OR
        - The latest EC-finalized tipset 
-    - In practice this almost always means the tipset identified by the latest F3 certificate since F3 provides provides much faster finality guarantees (typically within minutes).
+    - In practice this almost always means the tipset identified by the latest F3 certificate since F3 provides much faster finality guarantees (typically within minutes).
     - The exception of falling back to an EC-finalized tipset would occur if there is a larger network issue and F3 has stalled for ~7.5 hours ([example](https://github.com/filecoin-project/lotus/issues/13094)).
 2. **When F3 is Disabled or Not Ready**:
     - The API automatically falls back to EC finality.
