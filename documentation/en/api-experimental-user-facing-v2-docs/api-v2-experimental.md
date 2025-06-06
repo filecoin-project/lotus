@@ -7,7 +7,7 @@
 
 # Meta
 ## Status
-- 2025-06-06: Updated to make clear the impact on the APIs if F3 isn't finalizing or if last finalized tipset is more than EC-finalized tipsets in the past. This was reviewed in PR #XXX.
+- 2025-06-06: Updated to make clear the impact on the APIs if F3 isn't finalizing or if last finalized tipset is more than EC-finalized tipsets in the past. This was reviewed in [PR #13161](https://github.com/filecoin-project/lotus/pull/13161).
 - 2025-04-24: This document has been updated to include information about Eth APIs in `/v2`.  This was reviewed in [PR #13068](https://github.com/filecoin-project/lotus/pull/13068).
 - 2025-04-23: This document has been updated to account for the minimum initial set of non-Eth /v2 API groups as specified in [issue #12991](https://github.com/filecoin-project/lotus/issues/12991).  This was reviewed in [PR #13051](https://github.com/filecoin-project/lotus/pull/13051)
 - 2025-04-09: This document is still actively a Work In Progress. It has a draft discussing `ChainGetTipSet`. Additional APIs and API Groups will be added as part of working on [issue #12987](https://github.com/filecoin-project/lotus/issues/12987).
@@ -483,9 +483,9 @@ How the `finalized` tag behaves depends on the node's configuration:
 1. **When F3 is Enabled and Ready**:
     - The API returns whichever tipset is most recent between:
        - The tipset identified by the latest F3 certificate OR
-       - The EC-finalized tipset 
-    - In practice this almost means the tipset identified by the latest F3 certificate since F3 provides provides much faster finality guarantees (typically within minutes).
-    - The exception for falling back to an EC-finalized tips would be if there is a larger network and F3 has stalled for ~7.5 hours ([example](https://github.com/filecoin-project/lotus/issues/13094)).
+       - The latest EC-finalized tipset 
+    - In practice this almost always means the tipset identified by the latest F3 certificate since F3 provides provides much faster finality guarantees (typically within minutes).
+    - The exception of falling back to an EC-finalized tipset would occur if there is a larger network issue and F3 has stalled for ~7.5 hours ([example](https://github.com/filecoin-project/lotus/issues/13094)).
 2. **When F3 is Disabled or Not Ready**:
     - The API automatically falls back to EC finality.
     - EC finality is based on chain depth (currently 900 epochs, or ~7.5 hours).
