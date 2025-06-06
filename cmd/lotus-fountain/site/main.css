@@ -37,6 +37,18 @@ a:hover {
     color: var(--color-primary-dark);
 }
 
+/* List reset */
+ul, ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+li {
+    margin: 0;
+    padding: 0;
+}
+
 /* Layout */
 .page-wrapper {
     container-type: inline-size;
@@ -138,8 +150,66 @@ header p {
 }
 
 /* Footer */
-footer {
+
+.footer-content {
+    display: flex;
+    flex-direction: column;
+    gap: 3rem;
+}
+
+.footer-main {
     text-align: center;
+}
+
+.footer-resources {
+    margin-top: 2rem;
+}
+
+.resource-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 2rem;
+    margin: 0 auto;
+    max-width: 1200px;
+    text-align: center;
+}
+
+.resource-card {
+    display: flex;
+    flex-direction: column;
+}
+
+.resource-card h3 {
+    color: var(--color-primary-darker);
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+}
+
+.resource-card ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.resource-card li {
+    margin-bottom: 0.75rem;
+}
+
+.resource-card a {
+    color: var(--color-text);
+    text-decoration: none;
+    transition: color 0.2s;
+    display: inline-block;
+}
+
+.resource-card a:hover {
+    color: var(--color-primary);
+}
+
+@media (max-width: 768px) {
+    .resource-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 /* Responsive styles */
