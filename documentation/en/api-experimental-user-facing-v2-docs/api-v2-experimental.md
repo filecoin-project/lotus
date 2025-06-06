@@ -7,7 +7,7 @@
 
 # Meta
 ## Status
-- 2025-06-06: Updated to make clear the impact on the APIs if F3 isn't finalizing or if last finalized tipset is more than EC-finalized tipsets in the past. This was reviewed in [PR #13161](https://github.com/filecoin-project/lotus/pull/13161).
+- 2025-06-06: Updated to make clear the impact on the APIs if F3 isn't finalizing or if the latest F3-finalized tipset is older than the latest EC-finalized tipset. This was reviewed in [PR #13161](https://github.com/filecoin-project/lotus/pull/13161).
 - 2025-04-24: This document has been updated to include information about Eth APIs in `/v2`.  This was reviewed in [PR #13068](https://github.com/filecoin-project/lotus/pull/13068).
 - 2025-04-23: This document has been updated to account for the minimum initial set of non-Eth /v2 API groups as specified in [issue #12991](https://github.com/filecoin-project/lotus/issues/12991).  This was reviewed in [PR #13051](https://github.com/filecoin-project/lotus/pull/13051)
 - 2025-04-09: This document is still actively a Work In Progress. It has a draft discussing `ChainGetTipSet`. Additional APIs and API Groups will be added as part of working on [issue #12987](https://github.com/filecoin-project/lotus/issues/12987).
