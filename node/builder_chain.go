@@ -9,8 +9,6 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-f3/manifest"
-
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v2api"
 	"github.com/filecoin-project/lotus/build"
@@ -190,7 +188,6 @@ var ChainNode = Options(
 		return build.IsF3Enabled() && !isLiteNode(s)
 	},
 		Override(new(*lf3.Config), lf3.NewConfig),
-		Override(new(manifest.ManifestProvider), lf3.NewManifestProvider),
 		Override(new(lf3.F3Backend), lf3.New),
 		Override(new(full.F3ModuleAPI), From(new(full.F3API))),
 	),
