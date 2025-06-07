@@ -1,8 +1,9 @@
-name: Close and mark stale issue
+name: Mark and close stale items
 
 on:
   schedule:
   - cron: '0 12 * * *'
+  workflow_dispatch: 
 
 permissions:
   contents: read
@@ -48,3 +49,22 @@ jobs:
         days-before-pr-close: 3
         remove-stale-when-updated: true
         enable-statistics: true
+  label-stale-draft-prs:
+    permissions:
+      pull-requests: write
+    runs-on: ubuntu-latest
+    steps:
+    - name: Mark stale draft PRs
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        # Calculate cutoff date for last update (365 days ago)
+        cutoff_date=$(date -d "365 days ago" +%Y-%m-%d)
+        prs=$(gh pr list --repo $GITHUB_REPOSITORY --state open \
+          --json number,updatedAt,isDraft \
+          --jq ".[] | select(.isDraft) | select(.updatedAt < \"$cutoff_date\") | .number")
+          
+        for pr in $prs; do
+          echo "Marking PR #$pr as stale"
+          gh pr edit $pr --add-label "kind/stale"
+        done
