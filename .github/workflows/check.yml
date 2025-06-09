@@ -20,26 +20,23 @@ permissions:
   contents: read
 
 jobs:
-  planner:
-    name: Detect docs-only changes
+  pre-check:
+    name: Check (precheck)
     runs-on: ubuntu-latest
     outputs:
-      continue: ${{ steps.check.outputs.only_markdown_changes != 'true' }}
+      check: ${{ steps.filter.outputs.files == 'true' }}
     steps:
       - uses: actions/checkout@v4
+      - id: filter
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
         with:
-          submodules: 'recursive'
-          fetch-depth: 0
-      - name: Check for markdown-only changes
-        id: check
-        uses: ./.github/actions/only-markdown
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-
+          filters: |
+            files:
+              - '!**/*.md'
   check-gen:
     name: Check (gen-check)
-    needs: planner
-    if: ${{ needs.planner.outputs.continue }}
+    needs: [pre-check]
+    if: ${{ needs.pre-check.outputs.check == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -55,8 +52,8 @@ jobs:
       - run: git diff --exit-code
   check-lint:
     name: Check (lint-all)
-    needs: planner
-    if: ${{ needs.planner.outputs.continue }}
+    needs: [pre-check]
+    if: ${{ needs.pre-check.outputs.check == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -69,8 +66,8 @@ jobs:
       - run: make lint
   check-fmt:
     name: Check (gofmt)
-    needs: planner
-    if: ${{ needs.planner.outputs.continue }}
+    needs: [pre-check]
+    if: ${{ needs.pre-check.outputs.check == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -82,8 +79,8 @@ jobs:
       - run: git diff --exit-code
   check-mod-tidy:
     name: Check (mod-tidy-check)
-    needs: planner
-    if: ${{ needs.planner.outputs.continue }}
+    needs: [pre-check]
+    if: ${{ needs.pre-check.outputs.check == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -93,3 +90,17 @@ jobs:
       - uses: ./.github/actions/install-go
       - run: go mod tidy -v
       - run: git diff --exit-code
+  post-check:
+    name: Check (postcheck)
+    needs: [check-gen, check-lint, check-fmt, check-mod-tidy]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          result: ${{ needs.check-gen.result == 'failure' || needs.check-lint.result == 'failure' || needs.check-fmt.result == 'failure' || needs.check-mod-tidy.result == 'failure' }}
+        run: |
+          if [[ "$result" != "true" ]]; then
+            echo "Some checks failed, see the workflow results for more information."
+            exit 1
+          fi
+        shell: bash
