@@ -20,8 +20,21 @@ permissions:
   contents: read
 
 jobs:
+  pre-check:
+    name: Check (precheck)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: filter
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+        with:
+          filters: |
+            files:
+              - '!**/*.md'
   check-gen:
     name: Check (gen-check)
+    needs: [pre-check]
+    if: ${{ needs.pre-check.outputs.files == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -37,6 +50,8 @@ jobs:
       - run: git diff --exit-code
   check-lint:
     name: Check (lint-all)
+    needs: [pre-check]
+    if: ${{ needs.pre-check.outputs.files == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -49,6 +64,8 @@ jobs:
       - run: make lint
   check-fmt:
     name: Check (gofmt)
+    needs: [pre-check]
+    if: ${{ needs.pre-check.outputs.files == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -60,6 +77,8 @@ jobs:
       - run: git diff --exit-code
   check-mod-tidy:
     name: Check (mod-tidy-check)
+    needs: [pre-check]
+    if: ${{ needs.pre-check.outputs.files == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -69,3 +88,17 @@ jobs:
       - uses: ./.github/actions/install-go
       - run: go mod tidy -v
       - run: git diff --exit-code
+  post-check:
+    name: Check (postcheck)
+    needs: [check-gen, check-lint, check-fmt, check-mod-tidy]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          result: ${{ needs.check-gen.result == 'success' && needs.check-lint.result == 'success' && needs.check-fmt.result == 'success' && needs.check-mod-tidy.result == 'success' }}
+        run: |
+          if [[ "$result" != "true" ]]; then
+            echo "Some checks failed, see the workflow results for more information."
+            exit 1
+          fi
+        shell: bash
