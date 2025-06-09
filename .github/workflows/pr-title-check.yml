@@ -23,9 +23,12 @@ jobs:
           github-token: ${{secrets.GITHUB_TOKEN}}
           script: |
             const title = context.payload.pull_request.title;
-            // This should match https://github.com/filecoin-project/lotus/blob/master/README.md#pr-title-conventions
-            // 202408: Beyond Conventional Commit conventions, we also optionally suport the "scope" outside of paranenthesis for a transitionary period from legacy conventions per https://github.com/filecoin-project/lotus/pull/12340 
-            const pattern = /^(\[skip changelog\]\s)?(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([\w.]+\))?!?:?\s(\w+:)?\s?["'`a-z].+$/;
+            // This should match https://github.com/filecoin-project/lotus/blob/master/CONTRIBUTING.md#pr-title-conventions
+            // 202408: Beyond Conventional Commit conventions, we also optionally support the "scope" outside of parenthesis for a transitionary period from legacy conventions per https://github.com/filecoin-project/lotus/pull/12340 
+            const conventionalPattern = /^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([\w.]+\))?!?:?\s(\w+:)?\s?["'`a-z].+$/;
+            // Also accept "Revert ..." titles from GitHub's revert functionality
+            const revertPattern = /^Revert\s".+"$/;
+            const pattern = new RegExp(`(${conventionalPattern.source})|(${revertPattern.source})`);
             
             if (!pattern.test(title)) {
               await github.rest.pulls.createReview({
