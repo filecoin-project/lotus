@@ -37,13 +37,13 @@ For doing FIP development that involves a change in [builtin-actors](https://git
 
 ## PR Title Conventions
 
-PR titles should follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) standard.
-This means the PR title should be in the form of `<type>(<scope>): <description>`
+PR titles should follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) standard or be a GitHub revert title.
+This means the PR title should be in the form of `<type>(<scope>): <description>` or `Revert "<original title>"`
   - example: `fix(mempool): introduce a cache for valid signatures`
+  - example: `Revert "feat: add new feature"`
   - `type`: MUST be one of _build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test_
   - `scope`: OPTIONAL arbitrary string that is usually one of _api, chain, deps, mempool, multisig, networking, paych, proving, sealing, state, wallet_
   - Breaking changes must add a `!`
-  - Optionally the PR title can be prefixed with `[skip changelog]` if no changelog edits should be made for this change.
 
 Note that this is enforced with https://github.com/filecoin-project/lotus/blob/master/.github/workflows/pr-title-check.yml
 
@@ -55,7 +55,7 @@ To expedite the release process, the CHANGELOG is built-up incrementally.
 We enforce that each PR updates CHANGELOG.md or signals that the change doesn't need it.
 If the PR affects users (e.g., new feature, bug fix, system requirements change), update the CHANGELOG.md and add details to the UNRELEASED section.
 If the change does not require a CHANGELOG.md entry, do one of the following:
-- Add `[skip changelog]` to the PR title
+- Add `[skip changelog]` to the PR description
 - Add the label `skip/changelog` to the PR
 
 Note that this is enforced with https://github.com/filecoin-project/lotus/blob/master/.github/workflows/changelog.yml
