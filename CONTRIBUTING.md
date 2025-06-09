@@ -41,12 +41,12 @@ For doing FIP development that involves a change in [builtin-actors](https://git
 PR titles should follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) standard.
 This means the PR title should be in the form of `<type>(<scope>): <description>`
   - example: `fix(mempool): introduce a cache for valid signatures`
-  - example: `Revert "feat: add new feature"`
   - `type`: MUST be one of _build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test_
   - `scope`: OPTIONAL arbitrary string that is usually one of _api, chain, deps, mempool, multisig, networking, paych, proving, sealing, state, wallet_
   - Breaking changes must add a `!`
 
 Alternatively, titles can match a GitHub revert title: `Revert "<original title>"`
+ - example: `Revert "feat: add new feature"`
 
 Note that this is enforced with https://github.com/filecoin-project/lotus/blob/master/.github/workflows/pr-title-check.yml
 
