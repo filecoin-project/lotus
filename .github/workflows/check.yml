@@ -23,6 +23,8 @@ jobs:
   pre-check:
     name: Check (precheck)
     runs-on: ubuntu-latest
+    outputs:
+      check: ${{ steps.filter.outputs.files == 'true' }}
     steps:
       - uses: actions/checkout@v4
       - id: filter
@@ -34,7 +36,7 @@ jobs:
   check-gen:
     name: Check (gen-check)
     needs: [pre-check]
-    if: ${{ needs.pre-check.outputs.files == 'true' }}
+    if: ${{ needs.pre-check.outputs.check == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -51,7 +53,7 @@ jobs:
   check-lint:
     name: Check (lint-all)
     needs: [pre-check]
-    if: ${{ needs.pre-check.outputs.files == 'true' }}
+    if: ${{ needs.pre-check.outputs.check == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -65,7 +67,7 @@ jobs:
   check-fmt:
     name: Check (gofmt)
     needs: [pre-check]
-    if: ${{ needs.pre-check.outputs.files == 'true' }}
+    if: ${{ needs.pre-check.outputs.check == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -78,7 +80,7 @@ jobs:
   check-mod-tidy:
     name: Check (mod-tidy-check)
     needs: [pre-check]
-    if: ${{ needs.pre-check.outputs.files == 'true' }}
+    if: ${{ needs.pre-check.outputs.check == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -95,7 +97,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - env:
-          result: ${{ needs.check-gen.result == 'success' && needs.check-lint.result == 'success' && needs.check-fmt.result == 'success' && needs.check-mod-tidy.result == 'success' }}
+          result: ${{ needs.check-gen.result == 'failure' || needs.check-lint.result == 'failure' || needs.check-fmt.result == 'failure' || needs.check-mod-tidy.result == 'failure' }}
         run: |
           if [[ "$result" != "true" ]]; then
             echo "Some checks failed, see the workflow results for more information."
