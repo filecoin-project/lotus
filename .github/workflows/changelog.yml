@@ -17,7 +17,7 @@ on:
 
 jobs:
   changelog:
-    if: contains(github.event.pull_request.title, '[skip changelog]') == false &&
+    if: contains(github.event.pull_request.body, '[skip changelog]') == false &&
         contains(github.event.pull_request.labels.*.name, 'skip/changelog') == false &&
         github.event.pull_request.draft == false
     runs-on: ubuntu-latest

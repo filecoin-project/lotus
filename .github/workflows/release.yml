@@ -321,11 +321,11 @@ jobs:
       - name: Publish release
         if: github.event.inputs.publish == 'true' || github.event_name == 'push'
         env:
-          release_id: ${{ fromJSON(steps.after.outputs.release).id }}
+          endpoint: ${{ format('/repos/{0}/releases/{1}', github.repository, fromJSON(steps.after.outputs.release).id) }}
           make_latest: ${{ matrix.project == 'node' && fromJSON(steps.project.outputs.config).latest || false }}
           GITHUB_TOKEN: ${{ secrets.TAG_CREATE_GITHUB_TOKEN || github.token }}
         run: |
-          gh api -X PATCH /repos/$GITHUB_REPOSITORY/releases/$release_id \
+          gh api -X PATCH "$endpoint" \
             --field draft=false \
             --raw-field make_latest="$make_latest" |
             jq -r '.'

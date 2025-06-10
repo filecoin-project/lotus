@@ -521,6 +521,10 @@ func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []r
 			permStruct = append(permStruct, reflect.TypeOf(v0api.FullNodeStruct{}.Internal))
 			permStruct = append(permStruct, reflect.TypeOf(v0api.CommonStruct{}.Internal))
 			permStruct = append(permStruct, reflect.TypeOf(v0api.NetStruct{}.Internal))
+		case "Gateway":
+			i = &v0api.GatewayStruct{}
+			t = reflect.TypeOf(new(struct{ v0api.Gateway })).Elem()
+			permStruct = append(permStruct, reflect.TypeOf(v0api.GatewayStruct{}.Internal))
 		default:
 			panic("unknown type")
 		}

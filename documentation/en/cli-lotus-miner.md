@@ -209,7 +209,7 @@ USAGE:
 
 COMMANDS:
    set-addresses, set-addrs    set addresses that your miner can be publicly dialed on
-   settle-deal                 Settle deals manually, if dealIds are not provided all deals will be settled
+   settle-deal                 Settle deals manually, if dealIds are not provided all deals will be settled. Deal IDs can be specified as individual numbers or ranges (e.g., '123 124 125-200 220')
    withdraw                    withdraw available balance to beneficiary
    repay-debt                  pay down a miner's debt
    set-peer-id                 set the peer id of your miner
@@ -246,7 +246,7 @@ OPTIONS:
 
 ```
 NAME:
-   lotus-miner actor settle-deal - Settle deals manually, if dealIds are not provided all deals will be settled
+   lotus-miner actor settle-deal - Settle deals manually, if dealIds are not provided all deals will be settled. Deal IDs can be specified as individual numbers or ranges (e.g., '123 124 125-200 220')
 
 USAGE:
    lotus-miner actor settle-deal [command options] [...dealIds]

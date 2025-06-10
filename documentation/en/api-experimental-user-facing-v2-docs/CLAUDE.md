@@ -18,8 +18,10 @@ This directory contains the experimental user-facing documentation for Filecoin'
 
 ## Key Files
 - `api-v2-experimental.md`: The main user facing documentation file that is copied to Notion.
-- Related code: `api/v2api/full.go` (API implementation)
+- Related code: `api/v2api/full.go` (API definition)
 - Related code: `chain/types/tipset_selector.go` (Key types)
+- Related code: `node/impl/full/chain_v2.go` (API implementation)
+- Related code: `node/impl/full/state_v2.go` (API implementation)
 - Related code: `node/impl/eth/api.go` (ETH V2 API implementation)
 - Related code: `node/impl/eth/tipsetresolver.go` (ETH block specifier to tipset conversion)
 - Related code: `node/impl/eth/filecoin.go` (Filecoin-specific ETH methods)

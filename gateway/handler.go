@@ -41,12 +41,14 @@ type ShutdownHandler interface {
 
 var _ ShutdownHandler = (*statefulCallHandler)(nil)
 var _ ShutdownHandler = (*RateLimitHandler)(nil)
+var _ ShutdownHandler = (*CORSHandler)(nil)
 
 // handlerOptions holds the options for the Handler function.
 type handlerOptions struct {
 	perConnectionAPIRateLimit   int
 	perHostConnectionsPerMinute int
 	jsonrpcServerOptions        []jsonrpc.ServerOption
+	enableCORS                  bool
 }
 
 // HandlerOption is a functional option for configuring the Handler.
@@ -78,6 +80,13 @@ func WithPerHostConnectionsPerMinute(limit int) HandlerOption {
 func WithJsonrpcServerOptions(options ...jsonrpc.ServerOption) HandlerOption {
 	return func(opts *handlerOptions) {
 		opts.jsonrpcServerOptions = options
+	}
+}
+
+// WithCORS sets whether to enable CORS headers to allow cross-origin requests from web browsers.
+func WithCORS(enable bool) HandlerOption {
+	return func(opts *handlerOptions) {
+		opts.enableCORS = enable
 	}
 }
 
@@ -123,16 +132,24 @@ func Handler(gateway *Node, options ...HandlerOption) (ShutdownHandler, error) {
 	m.Handle("/health/readyz", node.NewReadyHandler(gateway.v1Proxy.server))
 	m.PathPrefix("/").Handler(http.DefaultServeMux)
 
-	handler := &statefulCallHandler{m}
+	var handler http.Handler = &statefulCallHandler{m}
+
+	// Apply CORS wrapper if enabled
+	if opts.enableCORS {
+		handler = NewCORSHandler(handler)
+	}
+
+	// Apply rate limiting wrapper if enabled
 	if opts.perConnectionAPIRateLimit > 0 || opts.perHostConnectionsPerMinute > 0 {
-		return NewRateLimitHandler(
+		handler = NewRateLimitHandler(
 			handler,
 			opts.perConnectionAPIRateLimit,
 			opts.perHostConnectionsPerMinute,
 			connectionLimiterCleanupInterval,
-		), nil
+		)
 	}
-	return handler, nil
+
+	return handler.(ShutdownHandler), nil
 }
 
 type statefulCallHandler struct {
@@ -284,6 +301,37 @@ func (h *RateLimitHandler) cleanupExpiredLimiters(ctx context.Context) {
 
 func (h *RateLimitHandler) Shutdown(ctx context.Context) error {
 	h.cancelFunc()
+	return shutdown(ctx, h.next)
+}
+
+// CORSHandler handles CORS headers for cross-origin requests.
+type CORSHandler struct {
+	next http.Handler
+}
+
+// NewCORSHandler creates a new CORSHandler that wraps the provided handler
+// and adds appropriate CORS headers to allow cross-origin requests from web browsers.
+func NewCORSHandler(next http.Handler) *CORSHandler {
+	return &CORSHandler{next: next}
+}
+
+func (h *CORSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Set CORS headers
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, Authorization, X-Requested-With")
+	w.Header().Set("Access-Control-Max-Age", "86400") // 24 hours
+
+	// Handle preflight OPTIONS requests
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	h.next.ServeHTTP(w, r)
+}
+
+func (h *CORSHandler) Shutdown(ctx context.Context) error {
 	return shutdown(ctx, h.next)
 }
 

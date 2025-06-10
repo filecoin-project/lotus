@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	minertypes "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/must"
@@ -604,6 +605,87 @@ var minerFeesInspect = &cli.Command{
 				return xerrors.Errorf("getting parent tipset: %w", err)
 			}
 		}
+		return nil
+	},
+}
+
+var minerExpectedRewardCmd = &cli.Command{
+	Name: "expected-reward",
+	Usage: "Calculate the expected block reward for a miner over a specified projection period " +
+		"(e.g. lotus-shed miner expected-reward --tipset @head --projection-period 1025280 --qapower 69793218560)",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "tipset",
+			Usage: "tipset or height (@X or @head for latest)",
+			Value: "@head",
+		},
+		&cli.Int64Flag{
+			Name:  "projection-period",
+			Usage: "number of epochs to project reward for",
+			Value: builtin.EpochsInDay,
+		},
+		&cli.Int64Flag{
+			Name:  "qapower",
+			Usage: "Quality Adjusted Power in bytes",
+			Value: 32 * 1024 * 1024 * 1024, // 32 GiB
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := lcli.GetFullNodeAPIV1(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := lcli.ReqContext(cctx)
+		bstore := blockstore.NewAPIBlockstore(api)
+		adtStore := adt.WrapStore(ctx, cbor.NewCborStore(bstore))
+
+		ts, err := lcli.LoadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+
+		projectionPeriod := abi.ChainEpoch(cctx.Int64("projection-period"))
+		qapower := abi.NewStoragePower(cctx.Int64("qapower"))
+
+		// Get the reward value for the current tipset from the reward actor
+		var rewardSmoothed builtin.FilterEstimate
+		if act, err := api.StateGetActor(ctx, reward.Address, ts.Key()); err != nil {
+			return xerrors.Errorf("loading reward actor: %w", err)
+		} else if s, err := reward.Load(adtStore, act); err != nil {
+			return xerrors.Errorf("loading reward actor state: %w", err)
+		} else if rewardSmoothed, err = s.ThisEpochRewardSmoothed(); err != nil {
+			return xerrors.Errorf("failed to determine smoothed reward: %w", err)
+		}
+
+		// Get the network power value for the current tipset from the power actor
+		var powerSmoothed builtin.FilterEstimate
+		if act, err := api.StateGetActor(ctx, power.Address, ts.Key()); err != nil {
+			return xerrors.Errorf("loading power actor: %w", err)
+		} else if s, err := power.Load(adtStore, act); err != nil {
+			return xerrors.Errorf("loading power actor state: %w", err)
+		} else if powerSmoothed, err = s.TotalPowerSmoothed(); err != nil {
+			return xerrors.Errorf("failed to determine total power: %w", err)
+		}
+
+		nv, err := api.StateNetworkVersion(ctx, ts.Key())
+		if err != nil {
+			return xerrors.Errorf("getting network version: %w", err)
+		}
+
+		rew, err := minertypes.ExpectedRewardForPower(nv, rewardSmoothed, powerSmoothed, qapower, projectionPeriod)
+		if err != nil {
+			return xerrors.Errorf("calculating expected reward: %w", err)
+		}
+		_, _ = fmt.Fprintf(
+			cctx.App.Writer,
+			"Expected reward for %s bytes of QA power @ epoch %d for %d epochs: %s attoFIL\n",
+			qapower,
+			ts.Height(),
+			projectionPeriod,
+			rew,
+		)
 		return nil
 	},
 }
