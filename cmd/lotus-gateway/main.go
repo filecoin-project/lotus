@@ -162,6 +162,11 @@ var runCmd = &cli.Command{
 			Usage: "The maximum number of filters plus subscriptions that a single websocket connection can maintain",
 			Value: gateway.DefaultEthMaxFiltersPerConn,
 		},
+		&cli.BoolFlag{
+			Name:  "cors",
+			Usage: "Enable CORS headers to allow cross-origin requests from web browsers",
+			Value: false,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		log.Info("Starting lotus gateway")
@@ -196,6 +201,7 @@ var runCmd = &cli.Command{
 			rateLimitTimeout            = cctx.Duration("rate-limit-timeout")
 			perHostConnectionsPerMinute = cctx.Int("conn-per-minute")
 			maxFiltersPerConn           = cctx.Int("eth-max-filters-per-conn")
+			enableCORS                  = cctx.Bool("cors")
 		)
 
 		serverOptions := make([]jsonrpc.ServerOption, 0)
@@ -230,6 +236,7 @@ var runCmd = &cli.Command{
 			gateway.WithPerConnectionAPIRateLimit(perConnectionRateLimit),
 			gateway.WithPerHostConnectionsPerMinute(perHostConnectionsPerMinute),
 			gateway.WithJsonrpcServerOptions(serverOptions...),
+			gateway.WithCORS(enableCORS),
 		)
 		if err != nil {
 			return xerrors.Errorf("failed to set up gateway HTTP handler")

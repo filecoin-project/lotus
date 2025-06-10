@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/docker/go-units"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -39,7 +40,7 @@ import (
 func ActorDealSettlementCmd(getActor ActorAddressGetter) *cli.Command {
 	return &cli.Command{
 		Name:      "settle-deal",
-		Usage:     "Settle deals manually, if dealIds are not provided all deals will be settled",
+		Usage:     "Settle deals manually, if dealIds are not provided all deals will be settled. Deal IDs can be specified as individual numbers or ranges (e.g., '123 124 125-200 220')",
 		ArgsUsage: "[...dealIds]",
 		Flags: []cli.Flag{
 			&cli.IntFlag{
@@ -70,12 +71,40 @@ func ActorDealSettlementCmd(getActor ActorAddressGetter) *cli.Command {
 			// if no deal ids are provided, get all the deals for the miner
 			if dealsIdArgs := cctx.Args().Slice(); len(dealsIdArgs) != 0 {
 				for _, d := range dealsIdArgs {
-					dealId, err = strconv.ParseUint(d, 10, 64)
-					if err != nil {
-						return xerrors.Errorf("Error parsing deal id: %w", err)
-					}
+					// Check if it's a range (e.g., "125-200")
+					if strings.Contains(d, "-") {
+						parts := strings.Split(d, "-")
+						if len(parts) != 2 {
+							return xerrors.Errorf("Invalid range format: %s (expected format: start-end)", d)
+						}
 
-					dealIDs = append(dealIDs, dealId)
+						start, err := strconv.ParseUint(strings.TrimSpace(parts[0]), 10, 64)
+						if err != nil {
+							return xerrors.Errorf("Error parsing start of range %s: %w", d, err)
+						}
+
+						end, err := strconv.ParseUint(strings.TrimSpace(parts[1]), 10, 64)
+						if err != nil {
+							return xerrors.Errorf("Error parsing end of range %s: %w", d, err)
+						}
+
+						if start > end {
+							return xerrors.Errorf("Invalid range %s: start must be less than or equal to end", d)
+						}
+
+						// Add all deal IDs in the range (inclusive)
+						for id := start; id <= end; id++ {
+							dealIDs = append(dealIDs, id)
+						}
+					} else {
+						// Parse as a single deal ID
+						dealId, err = strconv.ParseUint(d, 10, 64)
+						if err != nil {
+							return xerrors.Errorf("Error parsing deal id: %w", err)
+						}
+
+						dealIDs = append(dealIDs, dealId)
+					}
 				}
 			} else {
 				if dealIDs, err = GetMinerAllDeals(ctx, api, maddr, types.EmptyTSK); err != nil {
@@ -95,7 +124,7 @@ func ActorDealSettlementCmd(getActor ActorAddressGetter) *cli.Command {
 			}
 
 			smsg, err := api.MpoolPushMessage(ctx, &types.Message{
-				To:     maddr,
+				To:     marketactor.Address,
 				From:   mi.Owner,
 				Value:  types.NewInt(0),
 				Method: marketactor.Methods.SettleDealPaymentsExported,

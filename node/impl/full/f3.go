@@ -21,12 +21,27 @@ type F3CertificateProvider interface {
 	F3GetLatestCertificate(ctx context.Context) (*certs.FinalityCertificate, error)
 }
 
+type F3ModuleAPI interface {
+	F3CertificateProvider
+
+	F3GetOrRenewParticipationTicket(ctx context.Context, minerID address.Address, previous api.F3ParticipationTicket, instances uint64) (api.F3ParticipationTicket, error)
+	F3Participate(ctx context.Context, ticket api.F3ParticipationTicket) (api.F3ParticipationLease, error)
+	F3GetManifest(ctx context.Context) (*manifest.Manifest, error)
+	F3GetECPowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error)
+	F3GetF3PowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error)
+	F3IsRunning(ctx context.Context) (bool, error)
+	F3GetProgress(ctx context.Context) (gpbft.InstanceProgress, error)
+	F3ListParticipants(ctx context.Context) ([]api.F3Participant, error)
+}
+
 type F3API struct {
 	fx.In
 
 	F3      lf3.F3Backend         `optional:"true"`
 	F3Certs F3CertificateProvider `optional:"true"`
 }
+
+var _ F3ModuleAPI = (*F3API)(nil)
 
 func (f3api *F3API) F3GetOrRenewParticipationTicket(ctx context.Context, miner address.Address, previous api.F3ParticipationTicket, instances uint64) (api.F3ParticipationTicket, error) {
 	if f3api.F3 == nil {

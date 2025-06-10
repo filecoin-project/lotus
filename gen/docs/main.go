@@ -18,7 +18,8 @@ func main() {
 	lets.Go(generateApiV2Methods)
 	lets.Go(generateStorage)
 	lets.Go(generateWorker)
-	lets.Go(generateOpenRpcGateway)
+	lets.Go(generateOpenRpcGatewayV0)
+	lets.Go(generateOpenRpcGatewayV1)
 	lets.Go(generateOpenRpcGatewayV2)
 	if err := lets.Wait(); err != nil {
 		fmt.Println("Error:", err)
@@ -75,7 +76,15 @@ func generateApiFull() error {
 	}
 }
 
-func generateOpenRpcGateway() error {
+func generateOpenRpcGatewayV0() error {
+	if ainfo, err := docgen.ParseApiASTInfo("api/v0api/gateway.go", "Gateway", "v0api", "./api/v0api"); err != nil {
+		return err
+	} else {
+		return generateOpenRpc("build/openrpc/v0/gateway.json", "Gateway", "v0api", ainfo)
+	}
+}
+
+func generateOpenRpcGatewayV1() error {
 	if ainfo, err := docgen.ParseApiASTInfo("api/api_gateway.go", "Gateway", "api", "./api"); err != nil {
 		return err
 	} else {
