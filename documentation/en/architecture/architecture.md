@@ -256,7 +256,7 @@ wraps all of this into an `ApplyRet`, which is returned.
 # Building a Lotus node
 
 When we launch a Lotus node with the command `./lotus daemon`
-(see [here](https://github.com/filecoin-project/lotus/blob/master/cmd/lotus/daemon.go) for more),
+(see [here](https://github.com/filecoin-project/lotus/blob/master/cli/lotus/daemon.go) for more),
 the node is created through [dependency injection](https://godoc.org/go.uber.org/fx).
 This relies on reflection, which makes some of the references hard to follow.
 The node sets up all of the subsystems it needs to run, such as the repository, the network connections, the chain sync
