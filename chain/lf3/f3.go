@@ -81,7 +81,7 @@ var migrationKey = datastore.NewKey("/migration")
 func checkMigrationComplete(ctx context.Context, source datastore.Batching, target datastore.Batching) (bool, error) {
 	valSource, err := source.Get(ctx, migrationKey)
 	if errors.Is(err, datastore.ErrNotFound) {
-		log.Info("migration not complete, no migration flag in source datastore")
+		log.Debug("migration not complete, no migration flag in source datastore")
 		return false, nil
 	}
 	if err != nil {
@@ -89,13 +89,13 @@ func checkMigrationComplete(ctx context.Context, source datastore.Batching, targ
 	}
 	valTarget, err := target.Get(ctx, migrationKey)
 	if errors.Is(err, datastore.ErrNotFound) {
-		log.Info("migration not complete, no migration flag in target datastore")
+		log.Debug("migration not complete, no migration flag in target datastore")
 		return false, nil
 	}
 	if err != nil {
 		return false, err
 	}
-	log.Infow("migration flags", "source", string(valSource), "target", string(valTarget))
+	log.Debugw("migration flags", "source", string(valSource), "target", string(valTarget))
 
 	// if the values are equal, the migration is complete
 	return bytes.Equal(valSource, valTarget), nil
@@ -114,6 +114,10 @@ func migrateDatastore(ctx context.Context, source datastore.Batching, target dat
 
 	if err := target.Put(ctx, migrationKey, []byte(migrationVal)); err != nil {
 		return xerrors.Errorf("putting migration flag in target datastore: %w", err)
+	}
+	// make sure the migration flag is not set in the source datastore
+	if err := source.Delete(ctx, migrationKey); err != nil {
+		return xerrors.Errorf("deleting migration flag in source datastore: %w", err)
 	}
 
 	log.Infow("starting migration of f3 datastore", "tag", migrationVal)
