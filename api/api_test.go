@@ -95,8 +95,12 @@ func TestReturnTypes(t *testing.T) {
 							todo = append(todo, typ.Elem())
 							todo = append(todo, typ.Key())
 						case reflect.Struct:
-							for i := 0; i < typ.NumField(); i++ {
-								todo = append(todo, typ.Field(i).Type)
+							// If the struct implements json.Marshaler, it handles its own marshaling
+							// so we don't need to check its fields
+							if !typ.Implements(jmarsh) {
+								for i := 0; i < typ.NumField(); i++ {
+									todo = append(todo, typ.Field(i).Type)
+								}
 							}
 						}
 					}
