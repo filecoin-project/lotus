@@ -12,6 +12,9 @@ import (
 // main repo datastore.
 type MetadataDS datastore.Batching
 
+// F3DS stores F3 data. By default it's namespaced under /f3 in main repo datastore.
+type F3DS datastore.Batching
+
 type (
 	// UniversalBlockstore is the universal blockstore backend.
 	UniversalBlockstore blockstore.Blockstore
