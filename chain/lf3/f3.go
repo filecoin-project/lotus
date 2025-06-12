@@ -1,13 +1,17 @@
 package lf3
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"path/filepath"
+	"time"
 
 	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/autobatch"
 	"github.com/ipfs/go-datastore/namespace"
+	"github.com/ipfs/go-datastore/query"
 	logging "github.com/ipfs/go-log/v2"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -56,32 +60,119 @@ type F3 struct {
 type F3Params struct {
 	fx.In
 
-	PubSub       *pubsub.PubSub
-	Host         host.Host
-	ChainStore   *store.ChainStore
-	Syncer       *chain.Syncer
-	StateManager *stmgr.StateManager
-	Datastore    dtypes.MetadataDS
-	Wallet       api.Wallet
-	Config       *Config
-	LockedRepo   repo.LockedRepo
+	PubSub        *pubsub.PubSub
+	Host          host.Host
+	ChainStore    *store.ChainStore
+	Syncer        *chain.Syncer
+	StateManager  *stmgr.StateManager
+	MetaDatastore dtypes.MetadataDS
+	F3Datastore   dtypes.F3DS
+	Wallet        api.Wallet
+	Config        *Config
+	LockedRepo    repo.LockedRepo
 
 	Net api.Net
 }
 
 var log = logging.Logger("f3")
 
+var migrationKey = datastore.NewKey("/migration")
+
+func checkMigrationComplete(ctx context.Context, source datastore.Batching, target datastore.Batching) (bool, error) {
+	valSource, err := source.Get(ctx, migrationKey)
+	if errors.Is(err, datastore.ErrNotFound) {
+		log.Debug("migration not complete, no migration flag in source datastore")
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	valTarget, err := target.Get(ctx, migrationKey)
+	if errors.Is(err, datastore.ErrNotFound) {
+		log.Debug("migration not complete, no migration flag in target datastore")
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	log.Debugw("migration flags", "source", string(valSource), "target", string(valTarget))
+
+	// if the values are equal, the migration is complete
+	return bytes.Equal(valSource, valTarget), nil
+}
+
+// migrateDatastore can be removed once at least one network upgade passes
+func migrateDatastore(ctx context.Context, source datastore.Batching, target datastore.Batching) error {
+	if complete, err := checkMigrationComplete(ctx, source, target); err != nil {
+		return xerrors.Errorf("checking if migration complete: %w", err)
+	} else if complete {
+		return nil
+	}
+
+	startDate := time.Now()
+	migrationVal := startDate.Format(time.RFC3339Nano)
+
+	if err := target.Put(ctx, migrationKey, []byte(migrationVal)); err != nil {
+		return xerrors.Errorf("putting migration flag in target datastore: %w", err)
+	}
+	// make sure the migration flag is not set in the source datastore
+	if err := source.Delete(ctx, migrationKey); err != nil && !errors.Is(err, datastore.ErrNotFound) {
+		return xerrors.Errorf("deleting migration flag in source datastore: %w", err)
+	}
+
+	log.Infow("starting migration of f3 datastore", "tag", migrationVal)
+	qr, err := source.Query(ctx, query.Query{})
+	if err != nil {
+		return xerrors.Errorf("starting source wildcard query: %w", err)
+	}
+
+	// batch size of 2000, at the time of writing, F3 datastore has 150,000 keys taking ~170MiB
+	// meaning that a batch of 2000keys would be ~2MiB of memory
+	batch := autobatch.NewAutoBatching(target, 2000)
+	var numMigrated int
+	for {
+		res, ok := qr.NextSync()
+		if !ok {
+			break
+		}
+		if err := batch.Put(ctx, datastore.NewKey(res.Key), res.Value); err != nil {
+			_ = qr.Close()
+			return xerrors.Errorf("putting key %s in target datastore: %w", res.Key, err)
+		}
+		numMigrated++
+	}
+	if err := batch.Flush(ctx); err != nil {
+		return xerrors.Errorf("flushing batch: %w", err)
+	}
+	if err := qr.Close(); err != nil {
+		return xerrors.Errorf("closing query: %w", err)
+	}
+
+	// set migration flag in the source datastore to signify that the migration is complete
+	if err := source.Put(ctx, migrationKey, []byte(migrationVal)); err != nil {
+		return xerrors.Errorf("putting migration flag in source datastore: %w", err)
+	}
+	took := time.Since(startDate)
+	log.Infow("completed migration of f3 datastore", "tag", migrationVal, "tookSeconds", took.Seconds(), "numMigrated", numMigrated)
+
+	return nil
+}
+
 func New(mctx helpers.MetricsCtx, lc fx.Lifecycle, params F3Params) (*F3, error) {
 
 	if params.Config.StaticManifest == nil {
 		return nil, fmt.Errorf("configuration invalid, nil StaticManifest in the Config")
 	}
-	ds := namespace.Wrap(params.Datastore, datastore.NewKey("/f3"))
+	metaDs := namespace.Wrap(params.MetaDatastore, datastore.NewKey("/f3"))
+	err := migrateDatastore(mctx, metaDs, params.F3Datastore)
+	if err != nil {
+		return nil, xerrors.Errorf("migrating datastore: %w", err)
+	}
 	ec := newEcWrapper(params.ChainStore, params.Syncer, params.StateManager)
 	verif := blssig.VerifierWithKeyOnG1()
 
 	f3FsPath := filepath.Join(params.LockedRepo.Path(), "f3")
-	module, err := f3.New(mctx, *params.Config.StaticManifest, ds,
+	module, err := f3.New(mctx, *params.Config.StaticManifest, params.F3Datastore,
 		params.Host, params.PubSub, verif, ec, f3FsPath)
 	if err != nil {
 		return nil, xerrors.Errorf("creating F3: %w", err)
