@@ -252,6 +252,12 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 		// Gossipsubv1.1 configuration
 		pubsub.WithFloodPublish(true),
 		pubsub.WithMessageIdFn(HashMsgId),
+		// Bump the validation queue to accommodate the increase in gossipsub message
+		// exchange rate as a result of f3. The size of 4096 should offer enough headroom
+		// for slower F3 validation while avoiding: 1) avoid excessive memory usage, 2)
+		// dropped consensus related messages and 3) cascading effect among other topics
+		// since this config isn't topic-specific.
+		pubsub.WithValidateQueueSize(4096),
 		pubsub.WithPeerScore(
 			&pubsub.PeerScoreParams{
 				AppSpecificScore: func(p peer.ID) float64 {
