@@ -16,6 +16,7 @@ type dsCtor func(path string, readonly bool) (datastore.Batching, error)
 
 var fsDatastores = map[string]dsCtor{
 	"metadata": levelDs,
+	"f3":       levelDs,
 }
 
 // Helper badgerDs() and its imports are unused
