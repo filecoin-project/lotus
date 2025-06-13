@@ -138,7 +138,11 @@ var runCmd = &cli.Command{
 
 			node.ApplyIf(func(s *node.Settings) bool { return cctx.IsSet("miner-api") },
 				node.Override(new(dtypes.APIEndpoint), func() (dtypes.APIEndpoint, error) {
-					return multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/" + cctx.String("miner-api"))
+					ma, err := multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/" + cctx.String("miner-api"))
+					if err != nil {
+						return nil, err
+					}
+					return dtypes.APIEndpoint(ma), nil
 				})),
 			node.Override(new(v1api.RawFullNodeAPI), nodeApi),
 		)
