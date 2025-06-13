@@ -116,7 +116,7 @@ func migrateDatastore(ctx context.Context, source datastore.Batching, target dat
 		return xerrors.Errorf("putting migration flag in target datastore: %w", err)
 	}
 	// make sure the migration flag is not set in the source datastore
-	if err := source.Delete(ctx, migrationKey); err != nil {
+	if err := source.Delete(ctx, migrationKey); err != nil && !errors.Is(err, datastore.ErrNotFound) {
 		return xerrors.Errorf("deleting migration flag in source datastore: %w", err)
 	}
 
