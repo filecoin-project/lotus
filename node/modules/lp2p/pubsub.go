@@ -252,6 +252,15 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 		// Gossipsubv1.1 configuration
 		pubsub.WithFloodPublish(true),
 		pubsub.WithMessageIdFn(HashMsgId),
+		// Bump the validation queue to accommodate the increase in gossipsub message
+		// exchange rate as a result of f3. The size of 256 should offer enough headroom
+		// for slower F3 validation while avoiding: 1) avoid excessive memory usage, 2)
+		// dropped consensus related messages and 3) cascading effect among other topics
+		// since this config isn't topic-specific.
+		//
+		// Note that the worst case memory footprint is 256 MiB based on the default
+		// message size of 1 MiB, which isn't overridden in Lotus.
+		pubsub.WithValidateQueueSize(256),
 		pubsub.WithPeerScore(
 			&pubsub.PeerScoreParams{
 				AppSpecificScore: func(p peer.ID) float64 {
