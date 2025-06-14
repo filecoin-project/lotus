@@ -167,6 +167,11 @@ var runCmd = &cli.Command{
 			Usage: "Enable CORS headers to allow cross-origin requests from web browsers",
 			Value: false,
 		},
+		&cli.BoolFlag{
+			Name:  "request-logging",
+			Usage: "Enable logging of incoming API requests. Note: This will log POST request bodies which may impact performance due to body buffering and may expose sensitive data in logs",
+			Value: false,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		log.Info("Starting lotus gateway")
@@ -202,6 +207,7 @@ var runCmd = &cli.Command{
 			perHostConnectionsPerMinute = cctx.Int("conn-per-minute")
 			maxFiltersPerConn           = cctx.Int("eth-max-filters-per-conn")
 			enableCORS                  = cctx.Bool("cors")
+			enableRequestLogging        = cctx.Bool("request-logging")
 		)
 
 		serverOptions := make([]jsonrpc.ServerOption, 0)
@@ -237,6 +243,7 @@ var runCmd = &cli.Command{
 			gateway.WithPerHostConnectionsPerMinute(perHostConnectionsPerMinute),
 			gateway.WithJsonrpcServerOptions(serverOptions...),
 			gateway.WithCORS(enableCORS),
+			gateway.WithRequestLogging(enableRequestLogging),
 		)
 		if err != nil {
 			return xerrors.Errorf("failed to set up gateway HTTP handler")
