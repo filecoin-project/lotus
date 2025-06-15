@@ -274,7 +274,7 @@ var disputerStartCmd = &cli.Command{
 				if err != nil {
 					disputeLog.Errorw("failed to dispute post message", "err", err.Error(), "miner", dpmsg.To)
 				} else {
-					disputeLog.Infow("submited dispute", "mcid", m.Cid(), "miner", dpmsg.To)
+					disputeLog.Infow("submitted dispute", "mcid", m.Cid(), "miner", dpmsg.To)
 				}
 			}
 

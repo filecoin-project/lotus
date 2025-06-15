@@ -312,7 +312,7 @@ func (rpc *RPCMethod) startWorker(client *http.Client, qpsTicker *time.Ticker) {
 		} else {
 			statusCode = &resp.StatusCode
 
-			// there was not a HTTP error but we need to still check the json response for errrors
+			// there was not a HTTP error but we need to still check the json response for errors
 			var data []byte
 			data, err = io.ReadAll(resp.Body)
 			if err != nil {
