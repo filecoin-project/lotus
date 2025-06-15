@@ -20,8 +20,24 @@ permissions:
   contents: read
 
 jobs:
+  pre-check:
+    name: Check (precheck)
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    outputs:
+      skip_checks: ${{ steps.changes.outputs.nonMarkdownFiles == 'false' }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: changes
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+        with:
+          filters: |
+            nonMarkdownFiles:
+              - '!**/*.md'
   check-gen:
     name: Check (gen-check)
+    needs: [pre-check]
+    if: ${{ needs.pre-check.outputs.skip_checks != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -37,6 +53,8 @@ jobs:
       - run: git diff --exit-code
   check-lint:
     name: Check (lint-all)
+    needs: [pre-check]
+    if: ${{ needs.pre-check.outputs.skip_checks != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -49,6 +67,8 @@ jobs:
       - run: make lint
   check-fmt:
     name: Check (gofmt)
+    needs: [pre-check]
+    if: ${{ needs.pre-check.outputs.skip_checks != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -60,6 +80,8 @@ jobs:
       - run: git diff --exit-code
   check-mod-tidy:
     name: Check (mod-tidy-check)
+    needs: [pre-check]
+    if: ${{ needs.pre-check.outputs.skip_checks != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -69,3 +91,17 @@ jobs:
       - uses: ./.github/actions/install-go
       - run: go mod tidy -v
       - run: git diff --exit-code
+  post-check:
+    name: Check (postcheck)
+    needs: [check-gen, check-lint, check-fmt, check-mod-tidy]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          failure: ${{ needs.check-gen.result == 'failure' || needs.check-lint.result == 'failure' || needs.check-fmt.result == 'failure' || needs.check-mod-tidy.result == 'failure' }}
+        run: |
+          if [[ "$failure" == "true" ]]; then
+            echo "Some checks failed, see the workflow results for more information."
+            exit 1
+          fi
+        shell: bash
