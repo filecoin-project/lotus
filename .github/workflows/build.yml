@@ -8,8 +8,6 @@ on:
     branches:
       - master
       - release/*
-    paths-ignore:
-      - '**/*.md'
   workflow_dispatch:
 
 defaults:

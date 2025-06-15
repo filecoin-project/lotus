@@ -22,21 +22,22 @@ permissions:
 jobs:
   pre-check:
     name: Check (precheck)
+    if: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
     outputs:
-      check: ${{ steps.filter.outputs.files == 'true' }}
+      skip_checks: ${{ steps.changes.outputs.nonMarkdownFiles == 'false' }}
     steps:
       - uses: actions/checkout@v4
-      - id: filter
+      - id: changes
         uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
         with:
           filters: |
-            files:
+            nonMarkdownFiles:
               - '!**/*.md'
   check-gen:
     name: Check (gen-check)
     needs: [pre-check]
-    if: ${{ needs.pre-check.outputs.check == 'true' }}
+    if: ${{ needs.pre-check.outputs.skip_checks != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -53,7 +54,7 @@ jobs:
   check-lint:
     name: Check (lint-all)
     needs: [pre-check]
-    if: ${{ needs.pre-check.outputs.check == 'true' }}
+    if: ${{ needs.pre-check.outputs.skip_checks != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -67,7 +68,7 @@ jobs:
   check-fmt:
     name: Check (gofmt)
     needs: [pre-check]
-    if: ${{ needs.pre-check.outputs.check == 'true' }}
+    if: ${{ needs.pre-check.outputs.skip_checks != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -97,9 +98,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - env:
-          result: ${{ needs.check-gen.result == 'failure' || needs.check-lint.result == 'failure' || needs.check-fmt.result == 'failure' || needs.check-mod-tidy.result == 'failure' }}
+          failure: ${{ needs.check-gen.result == 'failure' || needs.check-lint.result == 'failure' || needs.check-fmt.result == 'failure' || needs.check-mod-tidy.result == 'failure' }}
         run: |
-          if [[ "$result" != "true" ]]; then
+          if [[ "$failure" == "true" ]]; then
             echo "Some checks failed, see the workflow results for more information."
             exit 1
           fi
