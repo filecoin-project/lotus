@@ -81,7 +81,7 @@ jobs:
   check-mod-tidy:
     name: Check (mod-tidy-check)
     needs: [pre-check]
-    if: ${{ needs.pre-check.outputs.check == 'true' }}
+    if: ${{ needs.pre-check.outputs.skip_checks != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
