@@ -329,6 +329,14 @@ Note: Setting this value to 0 disables the cache.`,
 			Comment: ``,
 		},
 		{
+			Name: "EnablePaymentChannelManager",
+			Type: "bool",
+
+			Comment: `EnablePaymentChannelManager controls whether the payment channel manager is started.
+Default: false (disabled) - payment channels get minimal use on mainnet.
+Set to true to enable payment channel functionality if needed.`,
+		},
+		{
 			Name: "Fevm",
 			Type: "FevmConfig",
 
@@ -351,14 +359,6 @@ Note: Setting this value to 0 disables the cache.`,
 			Type: "FaultReporterConfig",
 
 			Comment: ``,
-		},
-		{
-			Name: "EnablePaymentChannelManager",
-			Type: "bool",
-
-			Comment: `EnablePaymentChannelManager controls whether the payment channel manager is started.
-Default: false (disabled) - payment channels get minimal use on mainnet.
-Set to true to enable payment channel functionality if needed.`,
 		},
 	},
 	"HarmonyDB": {
