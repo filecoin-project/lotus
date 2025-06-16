@@ -390,7 +390,7 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 		transports = append(transports, jsonTransport)
 	}
 
-	tps := make([]string, 0) // range of topics that will be submited to the traces
+	tps := make([]string, 0) // range of topics that will be submitted to the traces
 	addTopicToList := func(topicList []string, newTopic string) []string {
 		// check if the topic is already in the list
 		for _, tp := range topicList {
