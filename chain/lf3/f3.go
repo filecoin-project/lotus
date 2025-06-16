@@ -76,7 +76,7 @@ type F3Params struct {
 
 var log = logging.Logger("f3")
 
-var migrationKey = datastore.NewKey("/migration")
+var migrationKey = datastore.NewKey("/f3-migration/1")
 
 func checkMigrationComplete(ctx context.Context, source datastore.Batching, target datastore.Batching) (bool, error) {
 	valSource, err := source.Get(ctx, migrationKey)
@@ -127,10 +127,10 @@ func migrateDatastore(ctx context.Context, source datastore.Batching, target dat
 	}
 
 	// batch size of 2000, at the time of writing, F3 datastore has 150,000 keys taking ~170MiB
-	// meaning that a batch of 2000keys would be ~2MiB of memory
+	// meaning that a batch of 2000 keys would be ~2MiB of memory
 	batch := autobatch.NewAutoBatching(target, 2000)
 	var numMigrated int
-	for {
+	for ctx.Err() == nil {
 		res, ok := qr.NextSync()
 		if !ok {
 			break
@@ -140,6 +140,9 @@ func migrateDatastore(ctx context.Context, source datastore.Batching, target dat
 			return xerrors.Errorf("putting key %s in target datastore: %w", res.Key, err)
 		}
 		numMigrated++
+	}
+	if ctx.Err() != nil {
+		return ctx.Err()
 	}
 	if err := batch.Flush(ctx); err != nil {
 		return xerrors.Errorf("flushing batch: %w", err)
