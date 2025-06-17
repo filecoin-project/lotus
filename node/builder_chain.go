@@ -187,6 +187,7 @@ var ChainNode = Options(
 	ApplyIf(func(s *Settings) bool {
 		return build.IsF3Enabled() && !isLiteNode(s)
 	},
+		Override(new(dtypes.F3DS), modules.F3Datastore),
 		Override(new(*lf3.Config), lf3.NewConfig),
 		Override(new(lf3.F3Backend), lf3.New),
 		Override(new(full.F3ModuleAPI), From(new(full.F3API))),
