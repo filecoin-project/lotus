@@ -369,19 +369,22 @@ func (h *LoggingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		"url", r.URL.String(),
 	}
 
-	// For POST requests, try to read and log the body
-	if r.Method == "POST" {
-		body, err := io.ReadAll(r.Body)
+	// For POST requests, try to read and log up to maxLogBodyBytes of the body
+	const maxLogBodyBytes = 1024
+	if r.Method == http.MethodPost {
+		limited := &io.LimitedReader{R: r.Body, N: maxLogBodyBytes + 1}
+		buf, err := io.ReadAll(limited)
 		if err == nil {
-			// Restore the body for downstream handlers
-			r.Body = io.NopCloser(bytes.NewReader(body))
-
-			// Log the body content (assuming JSONRPC)
-			bodyStr := string(body)
-			if len(bodyStr) > 1000 {
-				bodyStr = bodyStr[:1000] + "...[truncated]"
+			var bodyStr string
+			if int64(len(buf)) > maxLogBodyBytes {
+				bodyStr = string(buf[:maxLogBodyBytes]) + "...[truncated]"
+			} else {
+				bodyStr = string(buf)
 			}
 			logFields = append(logFields, "body", bodyStr)
+			// Reconstruct the body for downstream handlers: combine what we read and the rest
+			rest := io.MultiReader(bytes.NewReader(buf), r.Body)
+			r.Body = io.NopCloser(rest)
 		}
 	}
 
