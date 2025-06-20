@@ -153,6 +153,6 @@ func (cm *ChainModuleV2) getTipSetByAnchor(ctx context.Context, anchor *types.Ti
 
 func (cm *ChainModuleV2) getECFinalized(ctx context.Context) (*types.TipSet, error) {
 	head := cm.Chain.GetHeaviestTipSet()
-	finalizedHeight := head.Height() - policy.ChainFinality
+	finalizedHeight := max(0, head.Height()-policy.ChainFinality)
 	return cm.Chain.GetTipsetByHeight(ctx, finalizedHeight, head, true)
 }
