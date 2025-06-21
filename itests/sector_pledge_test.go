@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
 	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/api"
@@ -65,11 +64,7 @@ func TestPledgeBatching(t *testing.T) {
 
 		kit.QuietMiningLogs()
 
-		client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(!aggregate), kit.MutateSealingConfig(func(sc *config.SealingConfig) {
-			if aggregate {
-				sc.AggregateAboveBaseFee = types.FIL(big.Zero())
-			}
-		}))
+		client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(!aggregate))
 		ens.InterconnectAll().BeginMiningMustPost(blockTime)
 
 		client.WaitTillChain(ctx, kit.HeightAtLeast(10))
