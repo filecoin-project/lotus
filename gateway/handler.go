@@ -1,7 +1,9 @@
 package gateway
 
 import (
+	"bytes"
 	"context"
+	"io"
 	"net"
 	"net/http"
 	"strings"
@@ -42,6 +44,7 @@ type ShutdownHandler interface {
 var _ ShutdownHandler = (*statefulCallHandler)(nil)
 var _ ShutdownHandler = (*RateLimitHandler)(nil)
 var _ ShutdownHandler = (*CORSHandler)(nil)
+var _ ShutdownHandler = (*LoggingHandler)(nil)
 
 // handlerOptions holds the options for the Handler function.
 type handlerOptions struct {
@@ -49,6 +52,7 @@ type handlerOptions struct {
 	perHostConnectionsPerMinute int
 	jsonrpcServerOptions        []jsonrpc.ServerOption
 	enableCORS                  bool
+	enableRequestLogging        bool
 }
 
 // HandlerOption is a functional option for configuring the Handler.
@@ -87,6 +91,13 @@ func WithJsonrpcServerOptions(options ...jsonrpc.ServerOption) HandlerOption {
 func WithCORS(enable bool) HandlerOption {
 	return func(opts *handlerOptions) {
 		opts.enableCORS = enable
+	}
+}
+
+// WithRequestLogging sets whether to enable request logging.
+func WithRequestLogging(enable bool) HandlerOption {
+	return func(opts *handlerOptions) {
+		opts.enableRequestLogging = enable
 	}
 }
 
@@ -133,6 +144,11 @@ func Handler(gateway *Node, options ...HandlerOption) (ShutdownHandler, error) {
 	m.PathPrefix("/").Handler(http.DefaultServeMux)
 
 	var handler http.Handler = &statefulCallHandler{m}
+
+	// Apply logging middleware if enabled
+	if opts.enableRequestLogging {
+		handler = NewLoggingHandler(handler)
+	}
 
 	// Apply CORS wrapper if enabled
 	if opts.enableCORS {
@@ -333,6 +349,61 @@ func (h *CORSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (h *CORSHandler) Shutdown(ctx context.Context) error {
 	return shutdown(ctx, h.next)
+}
+
+// LoggingHandler logs incoming HTTP requests with details
+type LoggingHandler struct {
+	next http.Handler
+}
+
+// NewLoggingHandler creates a new LoggingHandler that logs request details
+func NewLoggingHandler(next http.Handler) *LoggingHandler {
+	return &LoggingHandler{next: next}
+}
+
+func (h *LoggingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Prepare log fields
+	logFields := []interface{}{
+		"remote_ip", getRemoteIP(r),
+		"method", r.Method,
+		"url", r.URL.String(),
+	}
+
+	// For POST requests, try to read and log up to maxLogBodyBytes of the body
+	const maxLogBodyBytes = 1024
+	if r.Method == http.MethodPost {
+		limited := &io.LimitedReader{R: r.Body, N: maxLogBodyBytes + 1}
+		buf, err := io.ReadAll(limited)
+		if err == nil {
+			var bodyStr string
+			if int64(len(buf)) > maxLogBodyBytes {
+				bodyStr = string(buf[:maxLogBodyBytes]) + "...[truncated]"
+			} else {
+				bodyStr = string(buf)
+			}
+			logFields = append(logFields, "body", bodyStr)
+			// Reconstruct the body for downstream handlers: combine what we read and the rest
+			rest := io.MultiReader(bytes.NewReader(buf), r.Body)
+			r.Body = io.NopCloser(rest)
+		}
+	}
+
+	log.Infow("request", logFields...)
+
+	h.next.ServeHTTP(w, r)
+}
+
+func (h *LoggingHandler) Shutdown(ctx context.Context) error {
+	return shutdown(ctx, h.next)
+}
+
+// getRemoteIP returns the remote IP address from the request.
+func getRemoteIP(r *http.Request) string {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return host
 }
 
 func shutdown(ctx context.Context, handler http.Handler) error {
