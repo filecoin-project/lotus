@@ -648,7 +648,7 @@ func (fsr *fsLockedRepo) List() ([]string, error) {
 	return keys, nil
 }
 
-// Get gets a key out of keystore and returns types.KeyInfo coresponding to named key
+// Get gets a key out of keystore and returns types.KeyInfo corresponding to named key
 func (fsr *fsLockedRepo) Get(name string) (types.KeyInfo, error) {
 	if err := fsr.stillValid(); err != nil {
 		return types.KeyInfo{}, err
