@@ -250,15 +250,18 @@ Note: one only needs to update `filecoin-ffi`'s dependency on `go-state-types` w
 
 12. Run `make docsgen-cli`.
 
-And you're done! These are all the steps necessary to create a network upgrade skeleton that you will be able to run in a local devnet, and creates a basis where you can start testing new FIPs. When running a local developer network from this Lotus branch, bringing in all it dependencies, you should be able to:
+13. Validate the network skeleton on a devnet by:
+  - Have a local developer network that starts at the current network version.  See docs at https://docs.filecoin.io/networks/local-testnet .  
+  - Be able to see the Actor CIDs/Actor version for the mock Actor-bundle through `lotus state actor-cids --network-version XX+1`
+  - Have a successful pre-migration.
+  - Complete the migration at upgrade epoch, with a successful upgrade.
+  - Sync the new network version with the mock actor bundle, and be able to see that you are on a new network version with `lotus state network-version`
 
-- Have a local developer network that starts at the current network version.
-- Be able to see the Actor CIDs/Actor version for the mock Actor-bundle through `lotus state actor-cids --network-version XX+1`
-- Have a successful pre-migration.
-- Complete the migration at upgrade epoch, with a successful upgrade.
-- Sync the new network version with the mock actor bundle, and be able to see that you are on a new network version with `lotus state network-version`
+14. Post a PR with the changes and include the local devnet output.
+   - [nv24 example](https://github.com/filecoin-project/lotus/pull/12455)
+   - [nv27 example](https://github.com/filecoin-project/lotus/pull/13125)
 
-You can take a look at this [Lotus PR as a reference](https://github.com/filecoin-project/lotus/pull/12419) and [this](https://github.com/filecoin-project/lotus/pull/12455), which added the skeleton for network version 24.
+And you're done! This creates a basis where you can start testing new FIPs. 
 
 ## Special Cases
 
