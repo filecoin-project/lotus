@@ -37,6 +37,29 @@ func TestUnpadReader(t *testing.T) {
 	require.Equal(t, raw, readered)
 }
 
+func TestUnpadReaderBufWithSmallWorkBuf(t *testing.T) {
+	ps := abi.PaddedPieceSize(64 << 20).Unpadded()
+
+	raw := bytes.Repeat([]byte{0x77}, int(ps))
+
+	padOut := make([]byte, ps.Padded())
+	fr32.Pad(raw, padOut)
+
+	buf := make([]byte, abi.PaddedPieceSize(uint64(128)))
+	r, err := fr32.NewUnpadReaderBuf(bytes.NewReader(padOut), ps.Padded(), buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// using bufio reader to make sure reads are big enough for the padreader - it can't handle small reads right now
+	readered, err := io.ReadAll(bufio.NewReaderSize(r, 512))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	require.Equal(t, raw, readered)
+}
+
 func TestPadWriterUnpadReader(t *testing.T) {
 	testCases := []struct {
 		name      string
@@ -69,7 +92,9 @@ func TestPadWriterUnpadReader(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Generate random unpadded data
 			unpadded := make([]byte, tc.unpadSize)
-			rand.Read(unpadded)
+			n, err := rand.Read(unpadded)
+			require.NoError(t, err)
+			require.Equal(t, int(tc.unpadSize), n)
 
 			// Create a buffer to store padded data
 			paddedBuf := new(bytes.Buffer)
@@ -111,11 +136,13 @@ func TestPadWriterUnpadReader(t *testing.T) {
 func TestUnpadReaderSmallReads(t *testing.T) {
 	unpadSize := abi.UnpaddedPieceSize(127 * 1024) // 128KB unpadded
 	unpadded := make([]byte, unpadSize)
-	rand.Read(unpadded)
+	n, err := rand.Read(unpadded)
+	require.NoError(t, err)
+	require.Equal(t, int(unpadSize), n)
 
 	paddedBuf := new(bytes.Buffer)
 	padWriter := fr32.NewPadWriter(paddedBuf)
-	_, err := padWriter.Write(unpadded)
+	_, err = padWriter.Write(unpadded)
 	require.NoError(t, err)
 	require.NoError(t, padWriter.Close())
 
@@ -141,11 +168,13 @@ func TestUnpadReaderSmallReads(t *testing.T) {
 func TestUnpadReaderLargeReads(t *testing.T) {
 	unpadSize := abi.UnpaddedPieceSize(127 * 1024 * 1024) // 128MB unpadded
 	unpadded := make([]byte, unpadSize)
-	rand.Read(unpadded)
+	n, err := rand.Read(unpadded)
+	require.NoError(t, err)
+	require.Equal(t, int(unpadSize), n)
 
 	paddedBuf := new(bytes.Buffer)
 	padWriter := fr32.NewPadWriter(paddedBuf)
-	_, err := padWriter.Write(unpadded)
+	_, err = padWriter.Write(unpadded)
 	require.NoError(t, err)
 	require.NoError(t, padWriter.Close())
 
