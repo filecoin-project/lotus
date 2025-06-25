@@ -9,7 +9,7 @@ This directory contains the experimental user-facing documentation for Filecoin'
 
 ## Workflow
 1. (If this hasn't already been don) Copy updates from Notion into this repository
-2. Make changes, likely using Claude Code by pointing to to local changes or changes in a PR.
+2. Make changes, likely using Claude Code by pointing to local changes or changes in a PR.
 2. Regenerate the table of contents if you've added or modified sections
 3. Submit changes for team review via pull request
 4. After approval, publish updated content back to Notion
