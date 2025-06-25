@@ -675,8 +675,8 @@ type FaultReporterConfig struct {
 
 type PaymentChannelsConfig struct {
 	// EnablePaymentChannelManager controls whether the payment channel manager is started.
-	// Default: false (disabled) - payment channels are currently have minimal use on mainnet,
-	// although they remain a Filecoin protocol feature.
+	// Default: false (disabled) - payment channels currently have minimal use on mainnet, although
+	// they remain a Filecoin protocol feature.
 	// Set to true to enable payment channel functionality if needed.
 	EnablePaymentChannelManager bool
 }

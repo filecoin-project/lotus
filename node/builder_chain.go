@@ -357,7 +357,7 @@ func ConfigFullNode(c interface{}) Option {
 		),
 
 		If(cfg.PaymentChannels.EnablePaymentChannelManager,
-			Override(new(paychmgr.PaychAPI), From(new(modules.PaychAPI))),
+			Override(new(paychmgr.ManagerNodeAPI), From(new(modules.PaychManagerNodeAPI))),
 			Override(new(*paychmgr.Store), modules.NewPaychStore),
 			Override(new(*paychmgr.Manager), modules.NewManager),
 			Override(HandlePaymentChannelManagerKey, modules.HandlePaychManager),
