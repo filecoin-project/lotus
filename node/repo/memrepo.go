@@ -361,7 +361,7 @@ func (lmem *lockedMemRepo) List() ([]string, error) {
 	return res, nil
 }
 
-// Get gets a key out of keystore and returns types.KeyInfo coresponding to named key
+// Get gets a key out of keystore and returns types.KeyInfo corresponding to named key
 func (lmem *lockedMemRepo) Get(name string) (types.KeyInfo, error) {
 	if err := lmem.checkToken(); err != nil {
 		return types.KeyInfo{}, err
