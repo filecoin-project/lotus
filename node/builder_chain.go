@@ -43,6 +43,7 @@ import (
 	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/impl/gasutils"
 	"github.com/filecoin-project/lotus/node/impl/net"
+	"github.com/filecoin-project/lotus/node/impl/paych"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/lp2p"
@@ -117,13 +118,6 @@ var ChainNode = Options(
 	Override(new(*wallet.LocalWallet), wallet.NewWallet),
 	Override(new(wallet.Default), From(new(*wallet.LocalWallet))),
 	Override(new(api.Wallet), From(new(wallet.MultiWallet))),
-
-	// Service: Payment channels
-	Override(new(paychmgr.PaychAPI), From(new(modules.PaychAPI))),
-	Override(new(*paychmgr.Store), modules.NewPaychStore),
-	Override(new(*paychmgr.Manager), modules.NewManager),
-	Override(HandlePaymentChannelManagerKey, modules.HandlePaychManager),
-	Override(SettlePaymentChannelsKey, settler.SettlePaymentChannels),
 
 	// Markets (storage)
 	Override(new(*market.FundManager), market.NewFundManager),
@@ -360,6 +354,18 @@ func ConfigFullNode(c interface{}) Option {
 			If(cfg.ChainIndexer.EnableIndexer,
 				Override(InitChainIndexerKey, modules.InitChainIndexer(cfg.ChainIndexer)),
 			),
+		),
+
+		If(cfg.PaymentChannels.EnablePaymentChannelManager,
+			Override(new(paychmgr.ManagerNodeAPI), From(new(modules.PaychManagerNodeAPI))),
+			Override(new(*paychmgr.Store), modules.NewPaychStore),
+			Override(new(*paychmgr.Manager), modules.NewManager),
+			Override(HandlePaymentChannelManagerKey, modules.HandlePaychManager),
+			Override(SettlePaymentChannelsKey, settler.SettlePaymentChannels),
+			Override(new(paych.PaychAPI), From(new(paych.PaychImpl))),
+		),
+		If(!cfg.PaymentChannels.EnablePaymentChannelManager,
+			Override(new(paych.PaychAPI), new(paych.DisabledPaych)),
 		),
 	)
 }

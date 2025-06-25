@@ -100,6 +100,9 @@ func DefaultFullNode() *FullNode {
 			ReconcileEmptyIndex: false,
 			MaxReconcileTipsets: 3 * builtin.EpochsInDay,
 		},
+		PaymentChannels: PaymentChannelsConfig{
+			EnablePaymentChannelManager: false,
+		},
 	}
 }
 

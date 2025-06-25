@@ -18,15 +18,16 @@ type Common struct {
 // FullNode is a full node config
 type FullNode struct {
 	Common
-	Libp2p        Libp2p
-	Pubsub        Pubsub
-	Wallet        Wallet
-	Fees          FeeConfig
-	Chainstore    Chainstore
-	Fevm          FevmConfig
-	Events        EventsConfig
-	ChainIndexer  ChainIndexerConfig
-	FaultReporter FaultReporterConfig
+	Libp2p          Libp2p
+	Pubsub          Pubsub
+	Wallet          Wallet
+	Fees            FeeConfig
+	Chainstore      Chainstore
+	Fevm            FevmConfig
+	Events          EventsConfig
+	ChainIndexer    ChainIndexerConfig
+	FaultReporter   FaultReporterConfig
+	PaymentChannels PaymentChannelsConfig
 }
 
 // // Common
@@ -670,4 +671,12 @@ type FaultReporterConfig struct {
 	// ReportConsensusFault messages. It will pay for gas fees, and receive any
 	// rewards. This address should have adequate funds to cover gas fees.
 	ConsensusFaultReporterAddress string
+}
+
+type PaymentChannelsConfig struct {
+	// EnablePaymentChannelManager controls whether the payment channel manager is started.
+	// Default: false (disabled) - payment channels currently have minimal use on mainnet, although
+	// they remain a Filecoin protocol feature.
+	// Set to true to enable payment channel functionality if needed.
+	EnablePaymentChannelManager bool
 }

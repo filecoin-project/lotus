@@ -352,6 +352,12 @@ Note: Setting this value to 0 disables the cache.`,
 
 			Comment: ``,
 		},
+		{
+			Name: "PaymentChannels",
+			Type: "PaymentChannelsConfig",
+
+			Comment: ``,
+		},
 	},
 	"HarmonyDB": {
 		{
@@ -630,6 +636,17 @@ blocks. This should only be set when there's an external process mining
 blocks on behalf of the miner.
 When disabled and no external block producers are configured, all potential
 block rewards will be missed!`,
+		},
+	},
+	"PaymentChannelsConfig": {
+		{
+			Name: "EnablePaymentChannelManager",
+			Type: "bool",
+
+			Comment: `EnablePaymentChannelManager controls whether the payment channel manager is started.
+Default: false (disabled) - payment channels currently have minimal use on mainnet, although
+they remain a Filecoin protocol feature.
+Set to true to enable payment channel functionality if needed.`,
 		},
 	},
 	"ProvingConfig": {
