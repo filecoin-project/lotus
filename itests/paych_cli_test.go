@@ -26,6 +26,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/cli/clicommands"
 	"github.com/filecoin-project/lotus/itests/kit"
+	"github.com/filecoin-project/lotus/node/config"
 )
 
 // TestPaymentChannelsBasic does a basic test to exercise the payment channel CLI
@@ -430,10 +431,15 @@ func getPaychState(ctx context.Context, t *testing.T, node kit.TestFullNode, chA
 
 func startPaychCreatorReceiverMiner(ctx context.Context, t *testing.T, paymentCreator *kit.TestFullNode, paymentReceiver *kit.TestFullNode, blocktime time.Duration) (address.Address, address.Address) {
 	var miner kit.TestMiner
-	opts := kit.ThroughRPC()
+	enablePaychOpt := kit.WithCfgOpt(func(cfg *config.FullNode) error {
+		cfg.PaymentChannels = config.PaymentChannelsConfig{
+			EnablePaymentChannelManager: true,
+		}
+		return nil
+	})
 	kit.NewEnsemble(t, kit.MockProofs()).
-		FullNode(paymentCreator, opts).
-		FullNode(paymentReceiver, opts).
+		FullNode(paymentCreator, kit.ThroughRPC(), enablePaychOpt).
+		FullNode(paymentReceiver, kit.ThroughRPC(), enablePaychOpt).
 		Miner(&miner, paymentCreator, kit.WithAllSubsystems()).
 		Start().
 		InterconnectAll().

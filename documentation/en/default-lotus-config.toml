@@ -1,12 +1,3 @@
-# EnablePaymentChannelManager controls whether the payment channel manager is started.
-# Default: false (disabled) - payment channels get minimal use on mainnet.
-# Set to true to enable payment channel functionality if needed.
-#
-# type: bool
-# env var: LOTUS__ENABLEPAYMENTCHANNELMANAGER
-#EnablePaymentChannelManager = false
-
-
 [API]
   # Binding address for the Lotus API
   #
@@ -403,4 +394,15 @@
   # type: string
   # env var: LOTUS_FAULTREPORTER_CONSENSUSFAULTREPORTERADDRESS
   #ConsensusFaultReporterAddress = ""
+
+
+[PaymentChannels]
+  # EnablePaymentChannelManager controls whether the payment channel manager is started.
+  # Default: false (disabled) - payment channels are currently have minimal use on mainnet,
+  # although they remain a Filecoin protocol feature.
+  # Set to true to enable payment channel functionality if needed.
+  #
+  # type: bool
+  # env var: LOTUS_PAYMENTCHANNELS_ENABLEPAYMENTCHANNELMANAGER
+  #EnablePaymentChannelManager = false
 

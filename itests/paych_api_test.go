@@ -9,6 +9,7 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	paychtypes "github.com/filecoin-project/go-state-types/builtin/v8/paych"
@@ -23,6 +24,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/events/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
+	"github.com/filecoin-project/lotus/node/config"
 )
 
 func TestPaymentChannelsAPI(t *testing.T) {
@@ -38,9 +40,15 @@ func TestPaymentChannelsAPI(t *testing.T) {
 		miner           kit.TestMiner
 	)
 
+	enablePaychOpt := kit.WithCfgOpt(func(cfg *config.FullNode) error {
+		cfg.PaymentChannels = config.PaymentChannelsConfig{
+			EnablePaymentChannelManager: true,
+		}
+		return nil
+	})
 	ens := kit.NewEnsemble(t, kit.MockProofs()).
-		FullNode(&paymentCreator).
-		FullNode(&paymentReceiver).
+		FullNode(&paymentCreator, enablePaychOpt).
+		FullNode(&paymentReceiver, enablePaychOpt).
 		Miner(&miner, &paymentCreator, kit.WithAllSubsystems()).
 		Start().
 		InterconnectAll()
@@ -232,4 +240,46 @@ func waitForMessage(ctx context.Context, t *testing.T, paymentCreator kit.TestFu
 
 	t.Log("Confirmed", desc)
 	return res
+}
+
+func TestPaymentChannelsAPIDisabled(t *testing.T) {
+	ctx := context.Background()
+	kit.QuietMiningLogs()
+	full, _, _ := kit.EnsembleMinimal(t, kit.MockProofs())
+
+	// Call APIs to confirm they are not available
+	_, err := full.PaychGet(ctx, address.TestAddress, address.TestAddress2, abi.NewTokenAmount(0), api.PaychGetOpts{})
+	require.ErrorContains(t, err, "payment channel manager is disabled")
+	_, err = full.PaychFund(ctx, address.TestAddress, address.TestAddress2, abi.NewTokenAmount(0))
+	require.ErrorContains(t, err, "payment channel manager is disabled")
+	_, err = full.PaychAvailableFunds(ctx, address.TestAddress)
+	require.ErrorContains(t, err, "payment channel manager is disabled")
+	_, err = full.PaychAvailableFundsByFromTo(ctx, address.TestAddress, address.TestAddress2)
+	require.ErrorContains(t, err, "payment channel manager is disabled")
+	_, err = full.PaychGetWaitReady(ctx, cid.Undef)
+	require.ErrorContains(t, err, "payment channel manager is disabled")
+	_, err = full.PaychAllocateLane(ctx, address.TestAddress)
+	require.ErrorContains(t, err, "payment channel manager is disabled")
+	_, err = full.PaychNewPayment(ctx, address.TestAddress, address.TestAddress2, nil)
+	require.ErrorContains(t, err, "payment channel manager is disabled")
+	_, err = full.PaychList(ctx)
+	require.ErrorContains(t, err, "payment channel manager is disabled")
+	_, err = full.PaychStatus(ctx, address.TestAddress)
+	require.ErrorContains(t, err, "payment channel manager is disabled")
+	_, err = full.PaychSettle(ctx, address.TestAddress)
+	require.ErrorContains(t, err, "payment channel manager is disabled")
+	_, err = full.PaychCollect(ctx, address.TestAddress)
+	require.ErrorContains(t, err, "payment channel manager is disabled")
+	err = full.PaychVoucherCheckValid(ctx, address.TestAddress, &paychtypes.SignedVoucher{})
+	require.ErrorContains(t, err, "payment channel manager is disabled")
+	_, err = full.PaychVoucherCheckSpendable(ctx, address.TestAddress, &paychtypes.SignedVoucher{}, nil, nil)
+	require.ErrorContains(t, err, "payment channel manager is disabled")
+	_, err = full.PaychVoucherAdd(ctx, address.TestAddress, &paychtypes.SignedVoucher{}, nil, abi.NewTokenAmount(0))
+	require.ErrorContains(t, err, "payment channel manager is disabled")
+	_, err = full.PaychVoucherCreate(ctx, address.TestAddress, abi.NewTokenAmount(0), 0)
+	require.ErrorContains(t, err, "payment channel manager is disabled")
+	_, err = full.PaychVoucherList(ctx, address.TestAddress)
+	require.ErrorContains(t, err, "payment channel manager is disabled")
+	_, err = full.PaychVoucherSubmit(ctx, address.TestAddress, &paychtypes.SignedVoucher{}, nil, nil)
+	require.ErrorContains(t, err, "payment channel manager is disabled")
 }

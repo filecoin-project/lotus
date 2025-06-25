@@ -43,6 +43,7 @@ import (
 	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/impl/gasutils"
 	"github.com/filecoin-project/lotus/node/impl/net"
+	"github.com/filecoin-project/lotus/node/impl/paych"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/lp2p"
@@ -355,12 +356,16 @@ func ConfigFullNode(c interface{}) Option {
 			),
 		),
 
-		If(cfg.EnablePaymentChannelManager,
+		If(cfg.PaymentChannels.EnablePaymentChannelManager,
 			Override(new(paychmgr.PaychAPI), From(new(modules.PaychAPI))),
 			Override(new(*paychmgr.Store), modules.NewPaychStore),
 			Override(new(*paychmgr.Manager), modules.NewManager),
 			Override(HandlePaymentChannelManagerKey, modules.HandlePaychManager),
 			Override(SettlePaymentChannelsKey, settler.SettlePaymentChannels),
+			Override(new(paych.PaychAPI), From(new(paych.PaychImpl))),
+		),
+		If(!cfg.PaymentChannels.EnablePaymentChannelManager,
+			Override(new(paych.PaychAPI), new(paych.DisabledPaych)),
 		),
 	)
 }

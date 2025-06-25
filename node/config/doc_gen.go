@@ -329,14 +329,6 @@ Note: Setting this value to 0 disables the cache.`,
 			Comment: ``,
 		},
 		{
-			Name: "EnablePaymentChannelManager",
-			Type: "bool",
-
-			Comment: `EnablePaymentChannelManager controls whether the payment channel manager is started.
-Default: false (disabled) - payment channels get minimal use on mainnet.
-Set to true to enable payment channel functionality if needed.`,
-		},
-		{
 			Name: "Fevm",
 			Type: "FevmConfig",
 
@@ -357,6 +349,12 @@ Set to true to enable payment channel functionality if needed.`,
 		{
 			Name: "FaultReporter",
 			Type: "FaultReporterConfig",
+
+			Comment: ``,
+		},
+		{
+			Name: "PaymentChannels",
+			Type: "PaychConfig",
 
 			Comment: ``,
 		},
@@ -638,6 +636,17 @@ blocks. This should only be set when there's an external process mining
 blocks on behalf of the miner.
 When disabled and no external block producers are configured, all potential
 block rewards will be missed!`,
+		},
+	},
+	"PaychConfig": {
+		{
+			Name: "EnablePaymentChannelManager",
+			Type: "bool",
+
+			Comment: `EnablePaymentChannelManager controls whether the payment channel manager is started.
+Default: false (disabled) - payment channels are currently have minimal use on mainnet,
+although they remain a Filecoin protocol feature.
+Set to true to enable payment channel functionality if needed.`,
 		},
 	},
 	"ProvingConfig": {
