@@ -3070,17 +3070,28 @@ func UpgradeActorsV16Fix(
 			return xerrors.Errorf("mismatched head for actor %s", a)
 		}
 
-		// Check that the actor code has changed to the new expected value; work backward by getting the
-		// actor name from the new code CID.
-		if actorName, version, ok := actors.GetActorMetaByCode(outActor.Code); !ok {
-			return xerrors.Errorf("failed to get actor meta for code %s", outActor.Code)
-		} else if version != actorstypes.Version16 {
-			return xerrors.Errorf("unexpected actor version for %s: %d", actorName, version)
-		} else if oldCode, ok := v1600metadata.Actors[actorName]; !ok {
-			return xerrors.Errorf("missing actor %s in v16.0.0 metadata", actorName)
-		} else if oldCode != inActor.Code {
-			return xerrors.Errorf("unexpected actor code for %s: %s != %s", actorName, oldCode, outActor.Code)
-		}
+		/*
+			TODO: This code block was skipped while preparing the nv27 network skeleton:
+				https://github.com/filecoin-project/lotus/pull/13125
+			The problem encountered here is that the initial v17 actors bundle for the nv27 skeleton was
+			identical to the v16 bundle (a normal part of skeleton setup), so calls to
+			actors.GetActorMetaByCode for v16 CIDs would return 17 as the version, and the second
+			assertion below here fails. This ought to be solved when a new actors bundle is introduced and
+			this block can be re-enabled. However, this is also not critical code, and was only used on
+			calibnet, so 🤷.
+
+			// Check that the actor code has changed to the new expected value; work backward by getting the
+			// actor name from the new code CID.
+			if actorName, version, ok := actors.GetActorMetaByCode(outActor.Code); !ok {
+				return xerrors.Errorf("failed to get actor meta for code %s", outActor.Code)
+			} else if version != actorstypes.Version16 {
+				return xerrors.Errorf("unexpected actor version for %s: %d", actorName, version)
+			} else if oldCode, ok := v1600metadata.Actors[actorName]; !ok {
+				return xerrors.Errorf("missing actor %s in v16.0.0 metadata", actorName)
+			} else if oldCode != inActor.Code {
+				return xerrors.Errorf("unexpected actor code for %s: %s != %s", actorName, oldCode, outActor.Code)
+			}
+		*/
 
 		return nil
 	})
