@@ -25,7 +25,7 @@ func NewHeadChangeStackBuffer(size int) *HeadChangeStackBuffer {
 }
 
 // Push adds a HeadChange to stack buffer. If the length of
-// the stack buffer grows larger than the initizlized size, the
+// the stack buffer grows larger than the initialized size, the
 // oldest HeadChange is returned.
 func (h *HeadChangeStackBuffer) Push(hc *api.HeadChange) (rethc *api.HeadChange) {
 	if h.buffer.Len() >= h.size {

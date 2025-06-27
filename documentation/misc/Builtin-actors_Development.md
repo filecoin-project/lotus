@@ -65,7 +65,7 @@ By default, the itests framework will use the current latest network version. Ed
 
 This means that once the latest bundle is installed and `build/builtin_actors_gen.go` has an entry with the actors `Version` you want to test, you can proceed to write an itest using the same format as the existing itests without needing to provide additional options.
 
-Sometimes, testing the upgrade boundary, or before and after upgrades, is desireable. For example, wanting to test that a feature works one way (or doesn't exist) before an upgrade, and another way after the upgrade, your itest will need an "upgrade schedule" which matches what is currently found in [`chain/consensus/filcns/upgrades.go`](../../chain/consensus/filcns/upgrades.go). The `kit.UpgradeSchedule` function in the itests framework can be used to set this up.
+Sometimes, testing the upgrade boundary, or before and after upgrades, is desirable. For example, wanting to test that a feature works one way (or doesn't exist) before an upgrade, and another way after the upgrade, your itest will need an "upgrade schedule" which matches what is currently found in [`chain/consensus/filcns/upgrades.go`](../../chain/consensus/filcns/upgrades.go). The `kit.UpgradeSchedule` function in the itests framework can be used to set this up.
 
 For example, to test a feature that is only available after the network upgrade to version 24, you would instantiate the itest ensemble with the following option to dictate that the network starts on NV23 (using `-1` as the `Height`) but will perform an upgrade at height 100 to NV24:
 
