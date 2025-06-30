@@ -26,6 +26,7 @@ extern/filecoin-ffi/rust/target
 **/*.pc
 /**/*/.DS_STORE
 .DS_STORE
+.go-version
 build/.*
 build/paramfetch.sh
 /vendor
