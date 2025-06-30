@@ -126,21 +126,24 @@ When updating the Go version (either patch or minor), the following files must b
 #### Step-by-Step Process
 
 1. **Update Core Files**:
+   Follow these steps to update the core files:
+   - Update `go.mod`: Change the Go version directive from `go 1.23.7` to `go 1.23.10`.
+   - Update `GO_VERSION_MIN`: Set the minimum version enforced by the Makefile to `1.23.10`.
+   - Update `README.md`: Update the Go badge and installation instructions to reflect the new version (`1.23.10`).
+   - Update `Dockerfile`: Change the base image version from `golang:1.23.7-bullseye` to `golang:1.23.10-bullseye`.
+   
    ```bash
    # Update go.mod
-   # Change: go 1.23.7
-   # To:     go 1.23.10
+   sed -i 's/go 1.23.7/go 1.23.10/' go.mod
    
    # Update GO_VERSION_MIN
    echo "1.23.10" > GO_VERSION_MIN
    
    # Update README.md badge and documentation
-   # Change golang badge from 1.23.7 to 1.23.10
-   # Update installation instructions
+   sed -i 's/1.23.7/1.23.10/' README.md
    
    # Update Dockerfile
-   # Change: FROM golang:1.23.7-bullseye
-   # To:     FROM golang:1.23.10-bullseye
+   sed -i 's/FROM golang:1.23.7-bullseye/FROM golang:1.23.10-bullseye/' Dockerfile
    ```
 
 2. **Run Cleanup**:
