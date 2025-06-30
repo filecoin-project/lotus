@@ -118,70 +118,37 @@ These patch updates happen more frequently and are generally lower risk.
 
 When updating the Go version (either patch or minor), the following files must be updated consistently:
 
-1. **`go.mod`** - The Go language version directive
-2. **`GO_VERSION_MIN`** - Minimum version enforced by the Makefile
-3. **`README.md`** - Documentation and badge (2 locations)
-4. **`Dockerfile`** - Docker base image version
+1. **`go.mod`** - The Go language version directive.  This specifies the Go language version for module compilation.
+2. **`GO_VERSION_MIN`** - Minimum version enforced by the Makefile.
+3. **`README.md`** - Documentation and badge (2 locations).  This documents requirements for contributors and users.
+4. **`Dockerfile`** - Docker base image version.  This ensures container builds use the correct Go version.
 
 #### Step-by-Step Process
+   
+```bash
+# Update go.mod
+sed -i 's/go 1.23.7/go 1.23.10/' go.mod
+   
+# Update GO_VERSION_MIN
+echo "1.23.10" > GO_VERSION_MIN
+   
+# Update README.md badge and documentation
+sed -i 's/1.23.7/1.23.10/' README.md
+   
+# Update Dockerfile
+sed -i 's/FROM golang:1.23.7-bullseye/FROM golang:1.23.10-bullseye/' Dockerfile
 
-1. **Update Core Files**:
-   Follow these steps to update the core files:
-   - Update `go.mod`: Change the Go version directive from `go 1.23.7` to `go 1.23.10`.
-   - Update `GO_VERSION_MIN`: Set the minimum version enforced by the Makefile to `1.23.10`.
-   - Update `README.md`: Update the Go badge and installation instructions to reflect the new version (`1.23.10`).
-   - Update `Dockerfile`: Change the base image version from `golang:1.23.7-bullseye` to `golang:1.23.10-bullseye`.
-   
-   ```bash
-   # Update go.mod
-   sed -i 's/go 1.23.7/go 1.23.10/' go.mod
-   
-   # Update GO_VERSION_MIN
-   echo "1.23.10" > GO_VERSION_MIN
-   
-   # Update README.md badge and documentation
-   sed -i 's/1.23.7/1.23.10/' README.md
-   
-   # Update Dockerfile
-   sed -i 's/FROM golang:1.23.7-bullseye/FROM golang:1.23.10-bullseye/' Dockerfile
-   ```
+# Add a changelog entry
 
-2. **Run Cleanup**:
-   ```bash
-   go mod tidy
-   ```
+go mod tidy
+make build
+make unittests
+```
 
-3. **Test Locally**:
-   ```bash
-   # Verify build works
-   make build
-   
-   # Run unit tests
-   make unittests
-   ```
-
-4. **Commit Changes**:
-   ```bash
-   git add go.mod GO_VERSION_MIN README.md Dockerfile go.sum
-   git commit -m "chore: update Go version to 1.23.10
-   
-   Updates all Go version references for consistency across the codebase.
-   Includes go.mod, GO_VERSION_MIN, README.md, and Dockerfile."
-   ```
-
-5. **Update CHANGELOG.md**: Add entry documenting the Go version change.
 
 #### Example Reference
 
-For a complete example of a Go patch version update, see [PR #13190](https://github.com/filecoin-project/lotus/pull/13190) which updated from Go 1.23.8 to 1.23.10.
-
-### File Purposes
-
-- **`go.mod`**: Specifies the Go language version for module compilation
-- **`GO_VERSION_MIN`**: Enforces minimum version during build (checked by Makefile)
-- **`README.md`**: Documents requirements for contributors and users
-- **`Dockerfile`**: Ensures container builds use the correct Go version
-- **`.go-version`**: *(Developer-local only, gitignored)* Used by Go version managers (gvm, g)
+For an example of a Go patch version update, see [PR #13190](https://github.com/filecoin-project/lotus/pull/13190) which updated from Go 1.23.7 to 1.23.10.
 
 ### Developer Notes
 
