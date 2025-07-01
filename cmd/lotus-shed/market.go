@@ -12,21 +12,27 @@ import (
 	levelds "github.com/ipfs/go-ds-leveldb"
 	ipldcbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/samber/lo"
 	ldbopts "github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/urfave/cli/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
 	market14 "github.com/filecoin-project/go-state-types/builtin/v14/market"
 	"github.com/filecoin-project/go-state-types/builtin/v14/util/adt"
 
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
+	marketactor "github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/cli/spcli"
 	"github.com/filecoin-project/lotus/lib/backupds"
 	"github.com/filecoin-project/lotus/node/repo"
 )
@@ -41,6 +47,7 @@ var marketCmd = &cli.Command{
 		marketImportDatastoreCmd,
 		marketDealsTotalStorageCmd,
 		marketCronStateCmd,
+		marketDealSettlementCmd,
 	},
 }
 
@@ -425,4 +432,113 @@ func openLockedRepo(path string) (repo.LockedRepo, error) {
 	}
 
 	return lr, nil
+}
+
+var marketDealSettlementCmd = &cli.Command{
+	Name:  "settle-deal",
+	Usage: "automatically and quickly settle all deals",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "miner",
+			Usage:    "specify the miner address",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "specify where to send the message from (any address)",
+		},
+		&cli.IntFlag{
+			Name:  "concurrent",
+			Usage: "specify the number of concurrent messages to send",
+			Value: 1,
+		},
+		&cli.IntFlag{
+			Name:  "max-deals",
+			Usage: "the maximum number of deals contained in each message",
+			Value: 500,
+		},
+		&cli.BoolFlag{
+			Name:  "really-do-it",
+			Usage: "Actually send transaction performing the action",
+		},
+	},
+
+	Action: func(cctx *cli.Context) error {
+		api, acloser, err := lcli.GetFullNodeAPIV1(cctx)
+		if err != nil {
+			return err
+		}
+		defer acloser()
+
+		ctx := lcli.ReqContext(cctx)
+
+		var fromAddr address.Address
+		maddr, err := address.NewFromString(cctx.String("miner"))
+		if err != nil {
+			return err
+		}
+		mi, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			return xerrors.Errorf("Error getting miner info: %w", err)
+		}
+		fromAddr = mi.Worker
+
+		if addr := cctx.String("from"); addr != "" {
+			fromAddr, err = address.NewFromString(addr)
+			if err != nil {
+				return err
+			}
+		}
+
+		dealIDs, err := spcli.GetMinerAllDeals(ctx, api, maddr, types.EmptyTSK)
+		if err != nil {
+			return xerrors.Errorf("Error getting all deals for miner: %w", err)
+		}
+
+		fmt.Printf("There are a total of %v deals, and about %v messages will be sent out quickly.\n", len(dealIDs), len(dealIDs)/cctx.Int("concurrent"))
+
+		if !cctx.Bool("really-do-it") {
+			return fmt.Errorf("pass --really-do-it to confirm this action")
+		}
+
+		dealChucks := lo.Chunk(dealIDs, cctx.Int("max-deals"))
+		g, ctx := errgroup.WithContext(ctx)
+		g.SetLimit(cctx.Int("concurrent"))
+
+		for _, deals := range dealChucks {
+			deals := deals
+			g.Go(func() error {
+				dealParams := bitfield.NewFromSet(deals)
+				var err error
+				params, err := actors.SerializeParams(&dealParams)
+				if err != nil {
+					return err
+				}
+
+				smsg, err := api.MpoolPushMessage(ctx, &types.Message{
+					To:     marketactor.Address,
+					From:   fromAddr,
+					Value:  types.NewInt(0),
+					Method: marketactor.Methods.SettleDealPaymentsExported,
+					Params: params,
+				}, nil)
+				if err != nil {
+					return err
+				}
+
+				res := smsg.Cid()
+
+				fmt.Printf("Requested deal settlement in message: %s\n", res)
+				// I don't want to wait for the message to be packed here.
+				return nil
+			})
+
+		}
+		err = g.Wait()
+		if err != nil {
+			return err
+		}
+
+		return nil
+	},
 }
