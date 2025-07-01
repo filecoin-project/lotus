@@ -80,8 +80,8 @@ func Open(path string) (*sql.DB, error) {
 
 // InitDb initializes the database by checking whether it needs to be created or upgraded.
 // The ddls are the DDL statements to create the tables in the database and their initial required
-// content. The schemaVersion will be set inside the databse if it is newly created. Otherwise, the
-// version is read from the databse and returned. This value should be checked against the expected
+// content. The schemaVersion will be set inside the database if it is newly created. Otherwise, the
+// version is read from the database and returned. This value should be checked against the expected
 // version to determine if the database needs to be upgraded.
 // It is up to the caller to close the database if an error is returned by this function.
 func InitDb(

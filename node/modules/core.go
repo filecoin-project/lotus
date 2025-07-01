@@ -196,7 +196,7 @@ func DrandBootstrap(ds dtypes.DrandSchedule) (dtypes.DrandBootstrap, error) {
 	for _, d := range ds {
 		addrs, err := addrutil.ParseAddresses(context.TODO(), d.Config.Relays)
 		if err != nil {
-			log.Errorf("reoslving drand relays addresses: %+v", err)
+			log.Errorf("resolving drand relays addresses: %+v", err)
 			continue
 		}
 		res = append(res, addrs...)
