@@ -737,7 +737,7 @@ OPTIONS:
    --drop-claims           drop claims for sectors that can be extended, but only by dropping some of their verified power claims (default: false)
    --tolerance value       don't try to extend sectors by fewer than this number of epochs, defaults to 7 days (default: 20160)
    --max-fee value         use up to this amount of FIL for one message. pass this flag to avoid message congestion. (default: "0")
-   --max-sectors value     the maximum number of sectors contained in each message (default: 0)
+   --max-sectors value     the maximum number of sectors contained in each message (default: 500)
    --really-do-it          pass this flag to really extend sectors, otherwise will only print out json representation of parameters (default: false)
    --help, -h              show help
 ```
