@@ -840,23 +840,37 @@ func TestEthAPIWithF3(t *testing.T) {
 						// Unfortunately it doesn't remove the problem entirely as we could have multiple reorgs
 						// off the tipset we observe and then back to it, but it should be extremely rare.
 						return func(fn func()) *types.TipSet {
-							beforeTs := wantTipSet(t)
-							for {
+							const maxRetries = 20 // Prevent infinite loops during frequent reorgs
+							var beforeTs *types.TipSet
+
+							for attempt := 0; attempt < maxRetries; attempt++ {
 								select {
 								case <-ctx.Done():
 									t.Fatalf("context cancelled during stable execution: %v", ctx.Err())
 								default:
 								}
 
+								beforeTs = wantTipSet(t)
 								fn()
 								afterTs := wantTipSet(t)
-								if beforeTs.Equals(afterTs) {
+
+								if beforeTs != nil && afterTs != nil && beforeTs.Equals(afterTs) {
 									// it seems that the chain hasn't changed while executing, so it ought to be safe to
 									// tell the test function that this is the tipset against which they executed
 									return beforeTs
 								}
-								beforeTs = afterTs
+
+								// Add small delay between retries to reduce CPU spinning
+								time.Sleep(10 * time.Millisecond)
 							}
+
+							// If we've exhausted retries, just return the last tipset and let the test proceed
+							// This prevents infinite hangs while still providing reasonable stability
+							t.Logf("stableExecute: reached max retries (%d), proceeding with last tipset", maxRetries)
+							if beforeTs != nil {
+								return beforeTs
+							}
+							return wantTipSet(t)
 						}
 					}
 
