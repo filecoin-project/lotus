@@ -630,11 +630,11 @@ func (l *LocalWorker) GenerateWinningPoSt(ctx context.Context, ppt abi.Registere
 
 			vanilla, err := l.storage.GenerateSingleVanillaProof(ctx, mid, s, ppt)
 			if err != nil {
-				rerr = multierror.Append(rerr, xerrors.Errorf("get winning sector:%d,vanila failed: %w", s.SectorNumber, err))
+				rerr = multierror.Append(rerr, xerrors.Errorf("get winning sector:%d,vanilla failed: %w", s.SectorNumber, err))
 				return
 			}
 			if vanilla == nil {
-				rerr = multierror.Append(rerr, xerrors.Errorf("get winning sector:%d,vanila is nil", s.SectorNumber))
+				rerr = multierror.Append(rerr, xerrors.Errorf("get winning sector:%d,vanilla is nil", s.SectorNumber))
 			}
 			vproofs[i] = vanilla
 		}(i, s)
