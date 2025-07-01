@@ -4,11 +4,11 @@ import (
 	"context"
 	"testing"
 
+	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-jsonrpc"
-	ipld "github.com/ipfs/go-ipld-format"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
