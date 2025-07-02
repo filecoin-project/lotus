@@ -215,6 +215,13 @@ func (e *ethGas) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (*etht
 			}
 			return nil, err
 		}
+
+		if params.BlkParam.BlockNumber != nil {
+			requestedHeight := abi.ChainEpoch(*params.BlkParam.BlockNumber)
+			if ts.Height() != requestedHeight {
+				return nil, nil
+			}
+		}
 	}
 
 	gassedMsg, err := e.gasApi.GasEstimateMessageGas(ctx, msg, nil, ts.Key())
@@ -258,6 +265,13 @@ func (e *ethGas) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam etht
 	ts, err := e.tipsetResolver.GetTipsetByBlockNumberOrHash(ctx, blkParam)
 	if err != nil {
 		return nil, err // don't wrap, to preserve ErrNullRound
+	}
+
+	if blkParam.BlockNumber != nil {
+		requestedHeight := abi.ChainEpoch(*blkParam.BlockNumber)
+		if ts.Height() != requestedHeight {
+			return nil, api.NewErrNullRound(requestedHeight)
+		}
 	}
 
 	invokeResult, err := e.applyMessage(ctx, msg, ts.Key())
