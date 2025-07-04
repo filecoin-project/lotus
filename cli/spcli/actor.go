@@ -763,8 +763,8 @@ func ActorProposeChangeWorkerCmd(getActor ActorAddressGetter) *cli.Command {
 			},
 		},
 		Action: func(cctx *cli.Context) error {
-			if !cctx.Args().Present() {
-				return fmt.Errorf("must pass address of new worker address")
+			if cctx.NArg() != 1 {
+				return lcli.IncorrectNumArgsWithHint(cctx, "must pass address of the new worker address")
 			}
 
 			api, acloser, err := lcli.GetFullNodeAPI(cctx)
@@ -1009,8 +1009,8 @@ func ActorConfirmChangeWorkerCmd(getActor ActorAddressGetter) *cli.Command {
 			},
 		},
 		Action: func(cctx *cli.Context) error {
-			if !cctx.Args().Present() {
-				return fmt.Errorf("must pass address of new worker address")
+			if cctx.NArg() != 1 {
+				return lcli.IncorrectNumArgsWithHint(cctx, "must pass address of new worker address")
 			}
 
 			api, acloser, err := lcli.GetFullNodeAPI(cctx)
