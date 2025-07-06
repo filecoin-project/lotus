@@ -76,6 +76,7 @@ TWOK_FLAGS=-tags=2k
 CALIBNET_FLAGS=-tags=calibnet
 BUTTERFLYNET_FLAGS=-tags=butterflynet
 INTEROPNET_FLAGS=-tags=interopnet
+W3MLOTUS512_FLAGS=-tags=w3mlotus512
 
 # Network-specific pattern rules
 debug-%:
@@ -88,6 +89,8 @@ butterflynet-%:
 	$(MAKE) $* GOFLAGS="$(GOFLAGS) $(BUTTERFLYNET_FLAGS)"
 interopnet-%:
 	$(MAKE) $* GOFLAGS="$(GOFLAGS) $(INTEROPNET_FLAGS)"
+w3mlotus512-%:
+	$(MAKE) $* GOFLAGS="$(GOFLAGS) $(W3MLOTUS512_FLAGS)"
 
 build-devnets: build lotus-seed lotus-shed
 .PHONY: build-devnets
@@ -122,6 +125,12 @@ interopnet:
 	@printf "Example: make interopnet-lotus interopnet-lotus-miner\n\n"
 	$(MAKE) interopnet-lotus interopnet-lotus-miner interopnet-lotus-worker interopnet-lotus-seed interopnet-lotus-shed
 .PHONY: interopnet
+
+w3mlotus512:
+	@printf "\033[33m'make w3mlotus512' builds all W3M 512MiB test network binaries. Use 'make w3mlotus512-<binary>' targets for individual binaries.\033[0m\n"
+	@printf "Example: make w3mlotus512-lotus w3mlotus512-lotus-miner\n\n"
+	$(MAKE) w3mlotus512-lotus w3mlotus512-lotus-miner w3mlotus512-lotus-worker w3mlotus512-lotus-seed w3mlotus512-lotus-shed
+.PHONY: w3mlotus512
 
 lotus: $(BUILD_DEPS)  ## Build the main Lotus binary
 	rm -f lotus
