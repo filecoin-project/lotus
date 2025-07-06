@@ -1,0 +1,132 @@
+name: Build W3M Lotus 512
+
+on:
+  push:
+    branches:
+      - master
+      - main
+      - 'feat/*w3m*'
+      - 'release/*'
+  pull_request:
+    branches:
+      - master
+      - main
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build W3M Lotus 512 (Linux X64)
+    runs-on: [self-hosted, high-clock]
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+          fetch-depth: 0
+
+      - name: Install system dependencies
+        uses: ./.github/actions/install-system-dependencies
+
+      - name: Install Go
+        uses: ./.github/actions/install-go
+
+      - name: Install dependencies
+        run: make deps
+
+      - name: Build W3M Lotus 512 binaries
+        run: |
+          set -e
+          echo "Building w3mlotus512 binaries for Linux X64..."
+          make w3mlotus512-lotus
+          make w3mlotus512-lotus-miner
+          make w3mlotus512-lotus-worker
+          make w3mlotus512-lotus-seed
+          make w3mlotus512-lotus-shed
+
+      - name: Verify binaries exist
+        run: |
+          set -e
+          echo "Verifying built binaries..."
+          for binary in lotus lotus-miner lotus-worker lotus-seed lotus-shed; do
+            if [[ ! -f "$binary" ]]; then
+              echo "Error: $binary not found!"
+              exit 1
+            fi
+            echo "✓ $binary built successfully"
+            ls -la "$binary"
+          done
+
+      - name: Package binaries
+        run: |
+          set -e
+          PACKAGE_NAME="w3m-lotus-512-linux-x64"
+          mkdir -p "$PACKAGE_NAME"
+          
+          # Copy binaries
+          cp lotus lotus-miner lotus-worker lotus-seed lotus-shed "$PACKAGE_NAME/"
+          
+          # Copy documentation and config
+          cp README-W3M-LOTUS-512.md "$PACKAGE_NAME/" || echo "README not found, skipping"
+          cp build/bootstrap/w3m-lotus-512.pi "$PACKAGE_NAME/" || echo "Bootstrap file not found, skipping"
+          
+          # Create archive
+          tar -czf "${PACKAGE_NAME}.tar.gz" "$PACKAGE_NAME"
+          echo "Package created: ${PACKAGE_NAME}.tar.gz"
+          ls -la "${PACKAGE_NAME}.tar.gz"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: w3m-lotus-512-linux-x64
+          path: w3m-lotus-512-linux-x64.tar.gz
+          retention-days: 90
+
+  release-summary:
+    name: Build Summary
+    needs: build
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+        continue-on-error: true
+
+      - name: Create summary
+        run: |
+          echo "# W3M Lotus 512 Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [[ -d artifacts ]]; then
+            echo "## Built Artifacts" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            for artifact in artifacts/*/*.tar.gz; do
+              if [[ -f "$artifact" ]]; then
+                basename=$(basename "$artifact")
+                size=$(du -h "$artifact" | cut -f1)
+                echo "- **$basename** ($size)" >> $GITHUB_STEP_SUMMARY
+              fi
+            done
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Package Contents" >> $GITHUB_STEP_SUMMARY
+            echo "- lotus (daemon)" >> $GITHUB_STEP_SUMMARY
+            echo "- lotus-miner" >> $GITHUB_STEP_SUMMARY
+            echo "- lotus-worker" >> $GITHUB_STEP_SUMMARY
+            echo "- lotus-seed" >> $GITHUB_STEP_SUMMARY
+            echo "- lotus-shed" >> $GITHUB_STEP_SUMMARY
+            echo "- README-W3M-LOTUS-512.md" >> $GITHUB_STEP_SUMMARY
+            echo "- w3m-lotus-512.pi (bootstrap configuration)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ No artifacts were built" >> $GITHUB_STEP_SUMMARY
+          fi
