@@ -142,14 +142,19 @@ func infoCmdAct(cctx *cli.Context) error {
 
 	chs, err := fullapi.PaychList(ctx)
 	if err != nil {
-		return err
-	}
-
-	switch {
-	case len(chs) <= 1:
-		fmt.Printf("Payment Channels: %v channel\n", len(chs))
-	case len(chs) > 1:
-		fmt.Printf("Payment Channels: %v channels\n", len(chs))
+		// Check if the error is because payment channel manager is disabled
+		if strings.Contains(err.Error(), "payment channel manager is disabled") {
+			fmt.Printf("Payment Channels: disabled (EnablePaymentChannelManager is set to false)\n")
+		} else {
+			return err
+		}
+	} else {
+		switch {
+		case len(chs) <= 1:
+			fmt.Printf("Payment Channels: %v channel\n", len(chs))
+		case len(chs) > 1:
+			fmt.Printf("Payment Channels: %v channels\n", len(chs))
+		}
 	}
 	fmt.Println()
 	tw := tabwriter.NewWriter(os.Stdout, 6, 6, 2, ' ', 0)
