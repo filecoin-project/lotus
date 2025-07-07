@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	DefaultBootstrapEpoch                   = 5
+	DefaultBootstrapEpoch                   = 20
 	DefaultFinality                         = 5
 	BaseNetworkName       gpbft.NetworkName = "test"
 )
@@ -195,7 +195,7 @@ func TestF3_Bootstrap(t *testing.T) {
 	kit.QuietMiningLogs()
 
 	const (
-		bootstrapEpoch = 5
+		bootstrapEpoch = 50
 		blocktime      = 100 * time.Millisecond
 	)
 
