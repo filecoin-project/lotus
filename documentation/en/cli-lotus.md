@@ -3050,8 +3050,9 @@ USAGE:
    lotus f3 powertable get [command options] [instance]
 
 OPTIONS:
-   --ec        Whether to get the power table from EC. (default: false)
-   --help, -h  show help
+   --ec         Whether to get the power table from EC. (default: false)
+   --by-tipset  Gets power table by translating instance into tipset. (default: false)
+   --help, -h   show help
 ```
 
 #### lotus f3 powertable get-proportion
@@ -3086,14 +3087,14 @@ COMMANDS:
             i.e. descending instance IDs. The order may be reversed using the
             '--reverse' flag.
 
-            A range may optionally be specified as the first argument to indicate 
+            A range may optionally be specified as the first argument to indicate
             inclusive range of 'from' and 'to' instances in following notation:
             '<from>..<to>'. Either <from> or <to> may be omitted, but not both.
             An omitted <from> value is always interpreted as 0, and an omitted
             <to> value indicates the latest instance. If both are specified, <from>
             must never exceed <to>.
 
-            If no range is specified, the latest 10 certificates are listed, i.e. 
+            If no range is specified, the latest 10 certificates are listed, i.e.
             the range of '0..' with limit of 10. Otherwise, all certificates in
             the specified range are listed unless limit is explicitly specified.
 
@@ -3146,14 +3147,14 @@ NAME:
                          i.e. descending instance IDs. The order may be reversed using the
                          '--reverse' flag.
 
-                         A range may optionally be specified as the first argument to indicate 
+                         A range may optionally be specified as the first argument to indicate
                          inclusive range of 'from' and 'to' instances in following notation:
                          '<from>..<to>'. Either <from> or <to> may be omitted, but not both.
                          An omitted <from> value is always interpreted as 0, and an omitted
                          <to> value indicates the latest instance. If both are specified, <from>
                          must never exceed <to>.
 
-                         If no range is specified, the latest 10 certificates are listed, i.e. 
+                         If no range is specified, the latest 10 certificates are listed, i.e.
                          the range of '0..' with limit of 10. Otherwise, all certificates in
                          the specified range are listed unless limit is explicitly specified.
 
