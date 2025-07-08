@@ -4812,7 +4812,7 @@ Response:
 ```
 
 ### MsigCancelTxnHash
-MsigCancel cancels a previously-proposed multisig message
+MsigCancelTxnHash cancels a previously-proposed multisig message
 It takes the following params: <multisig address>, <proposed transaction ID>, <recipient address>, <value to transfer>,
 <sender address of the cancel msg>, <method to call in the proposed message>, <params to include in the proposed message>
 

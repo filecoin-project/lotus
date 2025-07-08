@@ -13557,7 +13557,7 @@
         {
             "name": "Filecoin.MsigCancelTxnHash",
             "description": "```go\nfunc (s *FullNodeStruct) MsigCancelTxnHash(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 types.BigInt, p5 address.Address, p6 uint64, p7 []byte) (*MessagePrototype, error) {\n\tif s.Internal.MsigCancelTxnHash == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.MsigCancelTxnHash(p0, p1, p2, p3, p4, p5, p6, p7)\n}\n```",
-            "summary": "MsigCancel cancels a previously-proposed multisig message\nIt takes the following params: \u003cmultisig address\u003e, \u003cproposed transaction ID\u003e, \u003crecipient address\u003e, \u003cvalue to transfer\u003e,\n\u003csender address of the cancel msg\u003e, \u003cmethod to call in the proposed message\u003e, \u003cparams to include in the proposed message\u003e\n",
+            "summary": "MsigCancelTxnHash cancels a previously-proposed multisig message\nIt takes the following params: \u003cmultisig address\u003e, \u003cproposed transaction ID\u003e, \u003crecipient address\u003e, \u003cvalue to transfer\u003e,\n\u003csender address of the cancel msg\u003e, \u003cmethod to call in the proposed message\u003e, \u003cparams to include in the proposed message\u003e\n",
             "paramStructure": "by-position",
             "params": [
                 {
