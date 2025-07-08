@@ -228,6 +228,34 @@ var minerFeesCmd = &cli.Command{
 							params := ""
 							var has bool
 
+							// Implement top-down filtering based on expected cron execution flow
+							validTrace := false
+							switch depth {
+							case 0:
+								// At depth 0: SystemActorAddr (f00) -> CronActorAddr (f03) method 2 (EpochTick)
+								if trace.Msg.From == builtin.SystemActorAddr && trace.Msg.To == builtin.CronActorAddr && trace.Msg.Method == 2 {
+									validTrace = true
+								}
+							case 1:
+								// At depth 1: CronActorAddr (f03) -> StoragePowerActorAddr (f04) method 5 (OnEpochTickEnd)
+								if trace.Msg.From == builtin.CronActorAddr && trace.Msg.To == power.Address && trace.Msg.Method == 5 {
+									validTrace = true
+								}
+							default:
+								// At depth 2+: StoragePowerActorAddr (f04) -> miner actors method 12 (OnDeferredCronEvent)
+								// or miners calling other actors (like burn address)
+								if trace.Msg.From == power.Address && trace.Msg.Method == 12 {
+									validTrace = true
+								} else if trace.Msg.From == minerAddr || trace.Msg.To == minerAddr {
+									validTrace = true
+								}
+							}
+
+							// Skip tracing if not in valid execution path (unless it involves our miner at deeper levels)
+							if !validTrace && depth < 2 {
+								return "", false, nil
+							}
+
 							if trace.Msg.From == minerAddr || trace.Msg.To == minerAddr {
 								has = true // involves our miner
 
@@ -511,6 +539,34 @@ var minerFeesInspect = &cli.Command{
 			cronMinerCalls := make(map[address.Address]struct{})
 			var traceBurns func(depth int, trace types.ExecutionTrace, thisExecCronMiner *minerBurn) error
 			traceBurns = func(depth int, trace types.ExecutionTrace, thisExecCronMiner *minerBurn) error {
+				// Implement top-down filtering based on expected cron execution flow
+				validTrace := false
+				switch depth {
+				case 0:
+					// At depth 0: SystemActorAddr (f00) -> CronActorAddr (f03) method 2 (EpochTick)
+					if trace.Msg.From == builtin.SystemActorAddr && trace.Msg.To == builtin.CronActorAddr && trace.Msg.Method == 2 {
+						validTrace = true
+					}
+				case 1:
+					// At depth 1: CronActorAddr (f03) -> StoragePowerActorAddr (f04) method 5 (OnEpochTickEnd)
+					if trace.Msg.From == builtin.CronActorAddr && trace.Msg.To == power.Address && trace.Msg.Method == 5 {
+						validTrace = true
+					}
+				default:
+					// At depth 2+: StoragePowerActorAddr (f04) -> miner actors method 12 (OnDeferredCronEvent)
+					// or miners calling other actors (like burn address)
+					if trace.Msg.From == power.Address && trace.Msg.Method == 12 {
+						validTrace = true
+					} else if thisExecCronMiner != nil && (trace.Msg.From == thisExecCronMiner.addr || trace.Msg.To == thisExecCronMiner.addr) {
+						validTrace = true
+					}
+				}
+
+				// Skip tracing if not in valid execution path
+				if !validTrace && depth < 2 {
+					return nil
+				}
+
 				if trace.Msg.From == power.Address && trace.Msg.Method == 12 {
 					// cron call to miner
 					if thisExecCronMiner != nil {
