@@ -3,7 +3,6 @@ package lp2p
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net"
 	"time"
 
@@ -253,6 +252,15 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 		// Gossipsubv1.1 configuration
 		pubsub.WithFloodPublish(true),
 		pubsub.WithMessageIdFn(HashMsgId),
+		// Bump the validation queue to accommodate the increase in gossipsub message
+		// exchange rate as a result of f3. The size of 256 should offer enough headroom
+		// for slower F3 validation while avoiding: 1) avoid excessive memory usage, 2)
+		// dropped consensus related messages and 3) cascading effect among other topics
+		// since this config isn't topic-specific.
+		//
+		// Note that the worst case memory footprint is 256 MiB based on the default
+		// message size of 1 MiB, which isn't overridden in Lotus.
+		pubsub.WithValidateQueueSize(256),
 		pubsub.WithPeerScore(
 			&pubsub.PeerScoreParams{
 				AppSpecificScore: func(p peer.ID) float64 {
@@ -368,20 +376,10 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 	allowTopics = append(allowTopics, drandTopics...)
 
 	if in.F3Config != nil {
-		if in.F3Config.StaticManifest != nil || in.F3Config.ContractAddress != "" {
+		if in.F3Config.StaticManifest != nil {
 			gpbftTopic := manifest.PubSubTopicFromNetworkName(in.F3Config.BaseNetworkName)
 			chainexTopic := manifest.ChainExchangeTopicFromNetworkName(in.F3Config.BaseNetworkName)
 			allowTopics = append(allowTopics, gpbftTopic, chainexTopic)
-		}
-		if in.F3Config.DynamicManifestProvider != "" {
-			gpbftTopicPrefix := manifest.PubSubTopicFromNetworkName(in.F3Config.BaseNetworkName)
-			chainexTopicPrefix := manifest.ChainExchangeTopicFromNetworkName(in.F3Config.BaseNetworkName)
-			allowTopics = append(allowTopics, manifest.ManifestPubSubTopicName)
-			for i := range lf3.MaxDynamicManifestChangesAllowed {
-				gpbftTopic := fmt.Sprintf("%s/%d", gpbftTopicPrefix, i)
-				chainexTopic := fmt.Sprintf("%s/%d", chainexTopicPrefix, i)
-				allowTopics = append(allowTopics, gpbftTopic, chainexTopic)
-			}
 		}
 	}
 
@@ -401,7 +399,7 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 		transports = append(transports, jsonTransport)
 	}
 
-	tps := make([]string, 0) // range of topics that will be submited to the traces
+	tps := make([]string, 0) // range of topics that will be submitted to the traces
 	addTopicToList := func(topicList []string, newTopic string) []string {
 		// check if the topic is already in the list
 		for _, tp := range topicList {

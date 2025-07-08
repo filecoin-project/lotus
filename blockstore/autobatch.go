@@ -52,7 +52,7 @@ func NewAutobatch(ctx context.Context, backingBs Blockstore, bufferCapacity int)
 		bufferCapacity: bufferCapacity,
 		flushCh:        make(chan struct{}, 1),
 		doneCh:         make(chan struct{}),
-		// could be made configable
+		// could be made configurable
 		flushRetryDelay: time.Millisecond * 100,
 		shutdown:        cancel,
 	}

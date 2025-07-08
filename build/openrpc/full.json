@@ -2,7 +2,7 @@
     "openrpc": "1.2.6",
     "info": {
         "title": "Lotus RPC API",
-        "version": "1.32.3-dev"
+        "version": "1.33.1-dev"
     },
     "methods": [
         {
@@ -7957,13 +7957,10 @@
                 "schema": {
                     "examples": [
                         {
-                            "Pause": false,
                             "ProtocolVersion": 0,
                             "InitialInstance": 0,
                             "BootstrapEpoch": 0,
                             "NetworkName": "",
-                            "ExplicitPower": null,
-                            "IgnoreECPower": false,
                             "InitialPowerTable": null,
                             "CommitteeLookback": 0,
                             "CatchUpAlignment": 0,
@@ -8118,31 +8115,6 @@
                             },
                             "type": "object"
                         },
-                        "ExplicitPower": {
-                            "items": {
-                                "additionalProperties": false,
-                                "properties": {
-                                    "ID": {
-                                        "title": "number",
-                                        "type": "number"
-                                    },
-                                    "Power": {
-                                        "additionalProperties": false,
-                                        "type": "object"
-                                    },
-                                    "PubKey": {
-                                        "items": {
-                                            "description": "Number is a number",
-                                            "title": "number",
-                                            "type": "number"
-                                        },
-                                        "type": "array"
-                                    }
-                                },
-                                "type": "object"
-                            },
-                            "type": "array"
-                        },
                         "Gpbft": {
                             "additionalProperties": false,
                             "properties": {
@@ -8180,9 +8152,6 @@
                                 }
                             },
                             "type": "object"
-                        },
-                        "IgnoreECPower": {
-                            "type": "boolean"
                         },
                         "InitialInstance": {
                             "title": "number",
@@ -8228,9 +8197,6 @@
                                 }
                             },
                             "type": "object"
-                        },
-                        "Pause": {
-                            "type": "boolean"
                         },
                         "ProtocolVersion": {
                             "title": "number",
@@ -13591,7 +13557,7 @@
         {
             "name": "Filecoin.MsigCancelTxnHash",
             "description": "```go\nfunc (s *FullNodeStruct) MsigCancelTxnHash(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 types.BigInt, p5 address.Address, p6 uint64, p7 []byte) (*MessagePrototype, error) {\n\tif s.Internal.MsigCancelTxnHash == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.MsigCancelTxnHash(p0, p1, p2, p3, p4, p5, p6, p7)\n}\n```",
-            "summary": "MsigCancel cancels a previously-proposed multisig message\nIt takes the following params: \u003cmultisig address\u003e, \u003cproposed transaction ID\u003e, \u003crecipient address\u003e, \u003cvalue to transfer\u003e,\n\u003csender address of the cancel msg\u003e, \u003cmethod to call in the proposed message\u003e, \u003cparams to include in the proposed message\u003e\n",
+            "summary": "MsigCancelTxnHash cancels a previously-proposed multisig message\nIt takes the following params: \u003cmultisig address\u003e, \u003cproposed transaction ID\u003e, \u003crecipient address\u003e, \u003cvalue to transfer\u003e,\n\u003csender address of the cancel msg\u003e, \u003cmethod to call in the proposed message\u003e, \u003cparams to include in the proposed message\u003e\n",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -17634,7 +17600,7 @@
                         "title": "number",
                         "description": "Number is a number",
                         "examples": [
-                            25
+                            27
                         ],
                         "type": [
                             "number"
@@ -17686,7 +17652,7 @@
                         "title": "number",
                         "description": "Number is a number",
                         "examples": [
-                            25
+                            27
                         ],
                         "type": [
                             "number"
@@ -18040,7 +18006,31 @@
                                                 "tt": 60000000000
                                             }
                                         ],
-                                        "Subcalls": null
+                                        "Subcalls": null,
+                                        "Logs": [
+                                            "string value"
+                                        ],
+                                        "IpldOps": [
+                                            {
+                                                "Op": "Get",
+                                                "Cid": {
+                                                    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+                                                },
+                                                "Size": 42
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "Logs": [
+                                    "string value"
+                                ],
+                                "IpldOps": [
+                                    {
+                                        "Op": "Get",
+                                        "Cid": {
+                                            "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+                                        },
+                                        "Size": 42
                                     }
                                 ]
                             },
@@ -18123,6 +18113,33 @@
                                         }
                                     },
                                     "type": "object"
+                                },
+                                "IpldOps": {
+                                    "items": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "Cid": {
+                                                "title": "Content Identifier",
+                                                "type": "string"
+                                            },
+                                            "Op": {
+                                                "title": "number",
+                                                "type": "number"
+                                            },
+                                            "Size": {
+                                                "title": "number",
+                                                "type": "number"
+                                            }
+                                        },
+                                        "type": "object"
+                                    },
+                                    "type": "array"
+                                },
+                                "Logs": {
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "type": "array"
                                 },
                                 "Msg": {
                                     "additionalProperties": false,
@@ -18735,7 +18752,31 @@
                                                         "tt": 60000000000
                                                     }
                                                 ],
-                                                "Subcalls": null
+                                                "Subcalls": null,
+                                                "Logs": [
+                                                    "string value"
+                                                ],
+                                                "IpldOps": [
+                                                    {
+                                                        "Op": "Get",
+                                                        "Cid": {
+                                                            "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+                                                        },
+                                                        "Size": 42
+                                                    }
+                                                ]
+                                            }
+                                        ],
+                                        "Logs": [
+                                            "string value"
+                                        ],
+                                        "IpldOps": [
+                                            {
+                                                "Op": "Get",
+                                                "Cid": {
+                                                    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+                                                },
+                                                "Size": 42
                                             }
                                         ]
                                     },
@@ -18828,6 +18869,33 @@
                                                     }
                                                 },
                                                 "type": "object"
+                                            },
+                                            "IpldOps": {
+                                                "items": {
+                                                    "additionalProperties": false,
+                                                    "properties": {
+                                                        "Cid": {
+                                                            "title": "Content Identifier",
+                                                            "type": "string"
+                                                        },
+                                                        "Op": {
+                                                            "title": "number",
+                                                            "type": "number"
+                                                        },
+                                                        "Size": {
+                                                            "title": "number",
+                                                            "type": "number"
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                },
+                                                "type": "array"
+                                            },
+                                            "Logs": {
+                                                "items": {
+                                                    "type": "string"
+                                                },
+                                                "type": "array"
                                             },
                                             "Msg": {
                                                 "additionalProperties": false,
@@ -20458,7 +20526,8 @@
                                 "UpgradeWaffleHeight": 10101,
                                 "UpgradeTuktukHeight": 10101,
                                 "UpgradeTeepHeight": 10101,
-                                "UpgradeTockHeight": 10101
+                                "UpgradeTockHeight": 10101,
+                                "UpgradeXxHeight": 10101
                             },
                             "Eip155ChainID": 123,
                             "GenesisTimestamp": 42
@@ -20602,6 +20671,10 @@
                                     "type": "number"
                                 },
                                 "UpgradeWatermelonHeight": {
+                                    "title": "number",
+                                    "type": "number"
+                                },
+                                "UpgradeXxHeight": {
                                     "title": "number",
                                     "type": "number"
                                 }
@@ -23810,7 +23883,7 @@
                     "title": "number",
                     "description": "Number is a number",
                     "examples": [
-                        25
+                        27
                     ],
                     "type": [
                         "number"
@@ -24086,7 +24159,31 @@
                                                 "tt": 60000000000
                                             }
                                         ],
-                                        "Subcalls": null
+                                        "Subcalls": null,
+                                        "Logs": [
+                                            "string value"
+                                        ],
+                                        "IpldOps": [
+                                            {
+                                                "Op": "Get",
+                                                "Cid": {
+                                                    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+                                                },
+                                                "Size": 42
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "Logs": [
+                                    "string value"
+                                ],
+                                "IpldOps": [
+                                    {
+                                        "Op": "Get",
+                                        "Cid": {
+                                            "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+                                        },
+                                        "Size": 42
                                     }
                                 ]
                             },
@@ -24169,6 +24266,33 @@
                                         }
                                     },
                                     "type": "object"
+                                },
+                                "IpldOps": {
+                                    "items": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "Cid": {
+                                                "title": "Content Identifier",
+                                                "type": "string"
+                                            },
+                                            "Op": {
+                                                "title": "number",
+                                                "type": "number"
+                                            },
+                                            "Size": {
+                                                "title": "number",
+                                                "type": "number"
+                                            }
+                                        },
+                                        "type": "object"
+                                    },
+                                    "type": "array"
+                                },
+                                "Logs": {
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "type": "array"
                                 },
                                 "Msg": {
                                     "additionalProperties": false,

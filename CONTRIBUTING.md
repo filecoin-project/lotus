@@ -8,6 +8,8 @@ Lotus is a universally open project and welcomes contributions of all kinds: cod
 - [Working with builtin-actors](#working-with-builtin-actors)
 - [PR Title Conventions](#pr-title-conventions)
 - [CHANGELOG Management](#changelog-management)
+- [Dependency Management](#dependency-management)
+- [Go Version Management](#go-version-management)
 - [Markdown Conventions](#markdown-conventions)
   - [Table Of Contents](#table-of-contents)
 - [Getting Help](#getting-help)
@@ -43,7 +45,9 @@ This means the PR title should be in the form of `<type>(<scope>): <description>
   - `type`: MUST be one of _build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test_
   - `scope`: OPTIONAL arbitrary string that is usually one of _api, chain, deps, mempool, multisig, networking, paych, proving, sealing, state, wallet_
   - Breaking changes must add a `!`
-  - Optionally the PR title can be prefixed with `[skip changelog]` if no changelog edits should be made for this change.
+
+Alternatively, titles can match a GitHub revert title: `Revert "<original title>"`
+ - example: `Revert "feat: add new feature"`
 
 Note that this is enforced with https://github.com/filecoin-project/lotus/blob/master/.github/workflows/pr-title-check.yml
 
@@ -55,7 +59,7 @@ To expedite the release process, the CHANGELOG is built-up incrementally.
 We enforce that each PR updates CHANGELOG.md or signals that the change doesn't need it.
 If the PR affects users (e.g., new feature, bug fix, system requirements change), update the CHANGELOG.md and add details to the UNRELEASED section.
 If the change does not require a CHANGELOG.md entry, do one of the following:
-- Add `[skip changelog]` to the PR title
+- Add `[skip changelog]` to the PR description
 - Add the label `skip/changelog` to the PR
 
 Note that this is enforced with https://github.com/filecoin-project/lotus/blob/master/.github/workflows/changelog.yml
@@ -73,6 +77,85 @@ We enforce that each dependency on an unreleased version of a package is explici
 * This requirement applies to packages that have released versions (i.e., is not a `v0.0.0`).
 * This is enforced with https://github.com/filecoin-project/lotus/blob/master/.github/workflows/dependency-check.yml
 * This enforcement was initially done per [#7131](https://github.com/filecoin-project/lotus/issues/7131).
+
+## Go Version Management
+
+### Philosophy
+
+Lotus follows a conservative Go version strategy to balance stability with access to new features:
+
+- **Stay One Minor Version Behind**: We typically use the Go version that is one minor version behind the latest stable release
+- **Gradual Adoption**: When a new Go minor version is released, we continue using the previous version for approximately one month before upgrading
+
+This approach provides:
+- **Stability**: Allows time for the Go community to identify and fix issues in new releases
+- **Ecosystem Compatibility**: Ensures our dependencies have time to test and adapt to new Go versions
+- **Predictable Upgrades**: Contributors and downstream users can anticipate Go version requirements
+
+### Example Timeline
+
+Here's how our Go version policy works in practice:
+
+```
+Time t: Latest Go minor version is 1.24.x. We use 1.23.x.
+
+Time t': Go 1.25.x is released. We continue using 1.23.x 
+         (transition period of ~1 month).
+
+Time t'+1 month: Latest Go minor version is 1.25.x. We upgrade to 1.24.x.
+```
+
+### Patch Version Updates
+
+Between minor version upgrades, we periodically update to newer patch releases (e.g., 1.23.7 → 1.23.10) to incorporate:
+- Security fixes
+- Bug fixes
+- Performance improvements
+
+These patch updates happen more frequently and are generally lower risk.
+
+### Go Version Update Process
+
+When updating the Go version (either patch or minor), the following files must be updated consistently:
+
+1. **`go.mod`** - The Go language version directive.  This specifies the Go language version for module compilation.
+2. **`GO_VERSION_MIN`** - Minimum version enforced by the Makefile.
+3. **`README.md`** - Documentation and badge (2 locations).  This documents requirements for contributors and users.
+4. **`Dockerfile`** - Docker base image version.  This ensures container builds use the correct Go version.
+
+#### Step-by-Step Process
+   
+```bash
+# Update go.mod
+sed -i 's/go 1.23.7/go 1.23.10/' go.mod
+   
+# Update GO_VERSION_MIN
+echo "1.23.10" > GO_VERSION_MIN
+   
+# Update README.md badge and documentation
+sed -i 's/1.23.7/1.23.10/' README.md
+   
+# Update Dockerfile
+sed -i 's/FROM golang:1.23.7-bullseye/FROM golang:1.23.10-bullseye/' Dockerfile
+
+# Add a changelog entry
+
+go mod tidy
+make build
+make unittests
+```
+
+
+#### Example Reference
+
+For an example of a Go patch version update, see [PR #13190](https://github.com/filecoin-project/lotus/pull/13190) which updated from Go 1.23.7 to 1.23.10.
+
+### Developer Notes
+
+- **`.go-version`** files are gitignored and developer-specific
+- Developers can create local `.go-version` files for their preferred Go version managers
+- The formal Go version requirements are documented in the tracked files listed above
+- Go version updates should be coordinated changes affecting all relevant files
 
 ## Markdown Conventions
 We optimize our markdown files for viewing on GitHub. That isn't to say other syntaxes can't be used, but that is the flavor we focus on and at the minimum don't want to break.

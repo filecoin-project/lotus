@@ -130,7 +130,7 @@ func (c *client) doRequest(
 		// Process and validate response.
 		validRes, err := c.processResponse(req, res, tipsets)
 		if err != nil {
-			log.Warnf("processing peer %s response failed: %s",
+			log.Debugf("processing peer %s response failed: %s",
 				peer.String(), err)
 			continue
 		}

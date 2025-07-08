@@ -18,15 +18,16 @@ type Common struct {
 // FullNode is a full node config
 type FullNode struct {
 	Common
-	Libp2p        Libp2p
-	Pubsub        Pubsub
-	Wallet        Wallet
-	Fees          FeeConfig
-	Chainstore    Chainstore
-	Fevm          FevmConfig
-	Events        EventsConfig
-	ChainIndexer  ChainIndexerConfig
-	FaultReporter FaultReporterConfig
+	Libp2p          Libp2p
+	Pubsub          Pubsub
+	Wallet          Wallet
+	Fees            FeeConfig
+	Chainstore      Chainstore
+	Fevm            FevmConfig
+	Events          EventsConfig
+	ChainIndexer    ChainIndexerConfig
+	FaultReporter   FaultReporterConfig
+	PaymentChannels PaymentChannelsConfig
 }
 
 // // Common
@@ -283,8 +284,6 @@ type SealingConfig struct {
 	// time buffer for forceful batch submission before sectors/deal in batch would start expiring
 	PreCommitBatchSlack Duration
 
-	// enable / disable commit aggregation (takes effect after nv13)
-	AggregateCommits bool
 	// minimum batched commit size - batches above this size will eventually be sent on a timeout
 	MinCommitBatch int
 	// maximum batched commit size - batches will be sent immediately above this size
@@ -293,17 +292,6 @@ type SealingConfig struct {
 	CommitBatchWait Duration
 	// time buffer for forceful batch submission before sectors/deals in batch would start expiring
 	CommitBatchSlack Duration
-
-	// DEPRECATED: remove after nv25 (FIP 0100)
-	// network BaseFee below which to stop doing precommit batching, instead
-	// sending precommit messages to the chain individually. When the basefee is
-	// below this threshold, precommit messages will get sent out immediately.
-	BatchPreCommitAboveBaseFee types.FIL
-
-	// DEPRECATED: remove after nv25 (FIP 0100)
-	// network BaseFee below which to stop doing commit aggregation, instead
-	// submitting proofs to the chain individually
-	AggregateAboveBaseFee types.FIL
 
 	// When submitting several sector prove commit messages simultaneously, this option allows you to
 	// stagger the number of prove commits submitted per epoch
@@ -683,4 +671,12 @@ type FaultReporterConfig struct {
 	// ReportConsensusFault messages. It will pay for gas fees, and receive any
 	// rewards. This address should have adequate funds to cover gas fees.
 	ConsensusFaultReporterAddress string
+}
+
+type PaymentChannelsConfig struct {
+	// EnablePaymentChannelManager controls whether the payment channel manager is started.
+	// Default: false (disabled) - payment channels currently have minimal use on mainnet, although
+	// they remain a Filecoin protocol feature.
+	// Set to true to enable payment channel functionality if needed.
+	EnablePaymentChannelManager bool
 }

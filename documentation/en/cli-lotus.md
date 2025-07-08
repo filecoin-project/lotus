@@ -8,7 +8,7 @@ USAGE:
    lotus [global options] command [command options]
 
 VERSION:
-   1.32.3-dev
+   1.33.1-dev
 
 COMMANDS:
    daemon   Start a lotus daemon process
@@ -1368,7 +1368,8 @@ USAGE:
    lotus state active-sectors [command options] [minerAddress]
 
 OPTIONS:
-   --help, -h  show help
+   --show-partitions  show sector deadlines and partitions (default: false)
+   --help, -h         show help
 ```
 
 ### lotus state list-actors

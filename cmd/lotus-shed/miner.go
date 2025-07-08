@@ -58,7 +58,9 @@ var minerCmd = &cli.Command{
 		minerLockedVestedCmd,
 		minerListVestingCmd,
 		minerFeesCmd,
+		minerFeesInspect,
 		minerListBalancesCmd,
+		minerExpectedRewardCmd,
 	},
 }
 

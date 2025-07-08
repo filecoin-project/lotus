@@ -9,7 +9,6 @@ import (
 	multiaddr "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
 
-	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 
@@ -19,6 +18,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -265,10 +265,8 @@ func F3Backend(backend lf3.F3Backend) NodeOpt {
 func F3Disabled() NodeOpt {
 	return ConstructorOpts(
 		node.Unset(new(*lf3.Config)),
-		node.Unset(new(*lf3.ContractManifestProvider)),
-		node.Unset(new(lf3.StateCaller)),
-		node.Unset(new(manifest.ManifestProvider)),
 		node.Unset(new(lf3.F3Backend)),
+		node.Unset(new(full.F3CertificateProvider)),
 	)
 }
 

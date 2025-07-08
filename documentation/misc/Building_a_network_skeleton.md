@@ -186,12 +186,12 @@ Note: one only needs to update `filecoin-ffi`'s dependency on `go-state-types` w
 1. To integrate the network skeleton into Lotus, ensure that the relevant releases for ref-fvm, go-state-types, and filecoin-ffi are bubbled up to Lotus.
     - Refer to the [Update Dependencies Lotus tutorial](Update_Dependencies_Lotus.md) for detailed instructions on updating these dependencies in Lotus.
 
-1. Import new actors:
+2. Import new actors:
 
     - Create a mock actor-bundle for the new network version.
     - In `/build/actors` run `./pack.sh vXX+1 vXX.0.0` where XX is the current actor bundle version.
 
-2. Define upgrade heights in `build/params_`:
+3. Define upgrade heights in `build/params_`:
 
     - Update the following files:
         - `params_2k.go`
@@ -217,7 +217,7 @@ Note: one only needs to update `filecoin-ffi`'s dependency on `go-state-types` w
         - `params_testground.go`
             - Add `UpgradeXxHeight     abi.ChainEpoch = (-xx-1)`
 
-3. Generate adapters:
+4. Generate adapters:
 
     - Update `gen/inlinegen-data.json`.
         - Add `XX+1` to "actorVersions" and set "latestActorsVersion" to `XX+1`.
@@ -225,40 +225,43 @@ Note: one only needs to update `filecoin-ffi`'s dependency on `go-state-types` w
 
     - Run `make actors-gen`. This generates the `/chain/actors/builtin/*` code, `/chain/actors/policy/policy.go` code, `/chain/actors/version.go`, and `/itest/kit/ensemble_opts_nv.go`.
 
-4. Update `chain/consensus/filcns/upgrades.go`.
+5. Update `chain/consensus/filcns/upgrades.go`.
     - Import `nv(XX+1) "github.com/filecoin-project/go-state-types/builtin/v(XX+1)/migration`.
     - Add Schedule. [^3]
     - Add Migration. [^4]
 
-5. Add actorstype to the NewActorRegistry in `/chain/consensus/computestate.go`.
+6. Add actorstype to the NewActorRegistry in `/chain/consensus/computestate.go`.
     - Add `inv.Register(actorstypes.Version(XX+1), vm.ActorsVersionPredicate(actorstypes.Version(XX+1)), builtin.MakeRegistry(actorstypes.Version(XX+1))`.
 
-6. Add upgrade field to `api/types.go/ForkUpgradeParams`.
+7. Add upgrade field to `api/types.go/ForkUpgradeParams`.
     - Add `UpgradeXxHeight      abi.ChainEpoch` to `ForkUpgradeParams` struct.
 
-7. Add upgrade to `node/impl/full/state.go`.
+8. Add upgrade to `node/impl/full/state.go`.
     - Add `UpgradeXxHeight:      build.UpgradeXxHeight,`.
 
-8. Add network version to `chain/state/statetree.go`.
+9. Add network version to `chain/state/statetree.go`.
     - Add `network.VersionXX+1` to `VersionForNetwork` function.
 
-9. Copy the latest version case block in `cmd/lotus-shed/invariants.go`, paste it below and increment the network version number.
+10. Copy the latest version case block in `cmd/lotus-shed/invariants.go`, paste it below and increment the network version number.
 
-10. In the [getMigrationFuncsForNetwork](https://github.com/filecoin-project/lotus/blob/4f63a0860542140e1efd7045ca49cab3463f6761/cmd/lotus-shed/migrations.go#L283-L301) function, add a new case for the latest network version, and create the corresponding `checkNvXXInvariants` function.
+11. In the [getMigrationFuncsForNetwork](https://github.com/filecoin-project/lotus/blob/4f63a0860542140e1efd7045ca49cab3463f6761/cmd/lotus-shed/migrations.go#L283-L301) function, add a new case for the latest network version, and create the corresponding `checkNvXXInvariants` function.
 
-11. Run `make gen`.
+12. Run `make gen`.
 
-12. Run `make docsgen-cli`.
+13. Run `make docsgen-cli`.
 
-And you're done! These are all the steps necessary to create a network upgrade skeleton that you will be able to run in a local devnet, and creates a basis where you can start testing new FIPs. When running a local developer network from this Lotus branch, bringing in all it dependencies, you should be able to:
+14. Validate the network skeleton on a devnet by:
+  - Have a local developer network that starts at the current network version.  See docs at https://docs.filecoin.io/networks/local-testnet .  
+  - Be able to see the Actor CIDs/Actor version for the mock Actor-bundle through `lotus state actor-cids --network-version XX+1`
+  - Have a successful pre-migration.
+  - Complete the migration at upgrade epoch, with a successful upgrade.
+  - Sync the new network version with the mock actor bundle, and be able to see that you are on a new network version with `lotus state network-version`
 
-- Have a local developer network that starts at the current network version.
-- Be able to see the Actor CIDs/Actor version for the mock Actor-bundle through `lotus state actor-cids --network-version XX+1`
-- Have a successful pre-migration.
-- Complete the migration at upgrade epoch, with a successful upgrade.
-- Sync the new network version with the mock actor bundle, and be able to see that you are on a new network version with `lotus state network-version`
+15. Post a PR with the changes and include the local devnet output.
+   - [nv24 example](https://github.com/filecoin-project/lotus/pull/12455)
+   - [nv27 example](https://github.com/filecoin-project/lotus/pull/13125)
 
-You can take a look at this [Lotus PR as a reference](https://github.com/filecoin-project/lotus/pull/12419) and [this](https://github.com/filecoin-project/lotus/pull/12455), which added the skeleton for network version 24.
+And you're done 🎉! This creates a basis where you can start testing new FIPs. 
 
 ## Special Cases
 

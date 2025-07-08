@@ -4,6 +4,8 @@
 package buildconstants
 
 import (
+	_ "embed"
+
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
@@ -72,14 +74,17 @@ const UpgradeTuktukHeight = -28
 // Tuktuk migration. along with a RampStartEpoch matching the upgrade height.
 var UpgradeTuktukPowerRampDurationEpochs = uint64(builtin.EpochsInYear)
 
-// ??????
-const UpgradeTeepHeight = 4320
+const UpgradeTeepHeight = -29
 
 var UpgradeTeepInitialFilReserved = wholeFIL(1_600_000_000) // FIP-0100: 300M -> 1.6B FIL
 
+const UpgradeTockHeight = -30
+
+// This fix upgrade only ran on calibrationnet
+const UpgradeTockFixHeight = -103
+
 // ??????
-const UpgradeTockHeight = UpgradeTeepHeight + builtin.EpochsInDay*2
-const UpgradeTockFixHeight = -29
+const UpgradeXxHeight = 999999999999999
 
 var ConsensusMinerMinPower = abi.NewStoragePower(2 << 30)
 var PreCommitChallengeDelay = abi.ChainEpoch(150)
@@ -109,10 +114,5 @@ var WhitelistedBlock = cid.Undef
 
 const F3Enabled = true
 
-var F3ManifestServerID = MustParseID("12D3KooWJr9jy4ngtJNR7JC1xgLFra3DjEtyxskRYWvBK9TC3Yn6")
-
-// The initial F3 power table CID.
-var F3InitialPowerTableCID cid.Cid = cid.Undef
-
-const F3BootstrapEpoch abi.ChainEpoch = -1
-const F3ParamsAddress = "0x9fd3B2D38EE4C920c9954DA752eDF810887501c1"
+//go:embed f3manifest_butterfly.json
+var F3ManifestBytes []byte

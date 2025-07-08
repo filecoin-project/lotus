@@ -174,6 +174,7 @@ func generateChainTypes() error {
 		types.ActorTrace{},
 		types.MessageTrace{},
 		types.ReturnTrace{},
+		types.TraceIpld{},
 		types.ExecutionTrace{},
 	)
 }

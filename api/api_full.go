@@ -689,7 +689,7 @@ type FullNode interface {
 	// It takes the following params: <multisig address>, <proposed transaction ID> <signer address>
 	MsigCancel(context.Context, address.Address, uint64, address.Address) (*MessagePrototype, error) //perm:sign
 
-	// MsigCancel cancels a previously-proposed multisig message
+	// MsigCancelTxnHash cancels a previously-proposed multisig message
 	// It takes the following params: <multisig address>, <proposed transaction ID>, <recipient address>, <value to transfer>,
 	// <sender address of the cancel msg>, <method to call in the proposed message>, <params to include in the proposed message>
 	MsigCancelTxnHash(context.Context, address.Address, uint64, address.Address, types.BigInt, address.Address, uint64, []byte) (*MessagePrototype, error) //perm:sign

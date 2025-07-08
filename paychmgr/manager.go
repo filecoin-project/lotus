@@ -34,26 +34,26 @@ type stateManagerAPI interface {
 	Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*api.InvocResult, error)
 }
 
-// PaychAPI defines the API methods needed by the payment channel manager
-type PaychAPI interface {
+// ManagerNodeAPI defines the API methods needed by the payment channel manager
+type ManagerNodeAPI interface {
 	StateAccountKey(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error)
+	StateNetworkVersion(context.Context, types.TipSetKey) (network.Version, error)
 	MpoolPushMessage(ctx context.Context, msg *types.Message, maxFee *api.MessageSendSpec) (*types.SignedMessage, error)
 	WalletHas(ctx context.Context, addr address.Address) (bool, error)
 	WalletSign(ctx context.Context, k address.Address, msg []byte) (*crypto.Signature, error)
-	StateNetworkVersion(context.Context, types.TipSetKey) (network.Version, error)
 }
 
 // managerAPI defines all methods needed by the manager
 type managerAPI interface {
 	stateManagerAPI
-	PaychAPI
+	ManagerNodeAPI
 }
 
 // managerAPIImpl is used to create a composite that implements managerAPI
 type managerAPIImpl struct {
 	stmgr.StateManagerAPI
-	PaychAPI
+	ManagerNodeAPI
 }
 
 type Manager struct {
@@ -69,8 +69,8 @@ type Manager struct {
 	channels map[string]*channelAccessor
 }
 
-func NewManager(ctx context.Context, shutdown func(), sm stmgr.StateManagerAPI, pchstore *Store, api PaychAPI) *Manager {
-	impl := &managerAPIImpl{StateManagerAPI: sm, PaychAPI: api}
+func NewManager(ctx context.Context, shutdown func(), sm stmgr.StateManagerAPI, pchstore *Store, api ManagerNodeAPI) *Manager {
+	impl := &managerAPIImpl{StateManagerAPI: sm, ManagerNodeAPI: api}
 	return &Manager{
 		ctx:      ctx,
 		shutdown: shutdown,

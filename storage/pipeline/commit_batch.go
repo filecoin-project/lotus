@@ -207,7 +207,7 @@ func (b *CommitBatcher) maybeStartBatch(notif bool) ([]sealiface.CommitBatchRes,
 		return nil, xerrors.Errorf("getting config: %w", err)
 	}
 
-	if notif && total < cfg.MaxCommitBatch && cfg.AggregateCommits {
+	if notif && total < cfg.MaxCommitBatch {
 		return nil, nil
 	}
 
@@ -223,22 +223,7 @@ func (b *CommitBatcher) maybeStartBatch(notif bool) ([]sealiface.CommitBatchRes,
 		return nil, xerrors.Errorf("getting network version: %s", err)
 	}
 
-	blackedOut := func() bool {
-		const nv16BlackoutWindow = abi.ChainEpoch(20) // a magik number
-		if ts.Height() <= buildconstants.UpgradeSkyrHeight && buildconstants.UpgradeSkyrHeight-ts.Height() < nv16BlackoutWindow {
-			return true
-		}
-		return false
-	}
-
-	individual := (total < cfg.MinCommitBatch) || (total < miner.MinAggregatedSectors) || blackedOut() || !cfg.AggregateCommits
-
-	// TODO: remove after nv25 (FIP 0100)
-	if !individual && !cfg.AggregateAboveBaseFee.Equals(big.Zero()) && nv < network.Version25 {
-		if ts.MinTicketBlock().ParentBaseFee.LessThan(cfg.AggregateAboveBaseFee) {
-			individual = true
-		}
-	}
+	individual := (total < cfg.MinCommitBatch) || (total < miner.MinAggregatedSectors)
 
 	// After nv21, we have a new ProveCommitSectors2 method, which supports
 	// batching without aggregation, but it doesn't support onboarding
@@ -384,17 +369,6 @@ func (b *CommitBatcher) processBatchV2(cfg sealiface.Config, sectors []abi.Secto
 			res.Error = err.Error()
 			return []sealiface.CommitBatchRes{res}, xerrors.Errorf("aggregating proofs: %w", err)
 		}
-
-		aggFeeRaw, err := policy.AggregateProveCommitNetworkFee(nv, len(infos), ts.MinTicketBlock().ParentBaseFee)
-		if err != nil {
-			res.Error = err.Error()
-			log.Errorf("getting aggregate commit network fee: %s", err)
-			return []sealiface.CommitBatchRes{res}, xerrors.Errorf("getting aggregate commit network fee: %s", err)
-		}
-
-		aggFee := big.Div(big.Mul(aggFeeRaw, aggFeeNum), aggFeeDen)
-
-		needFunds = big.Add(collateral, aggFee)
 	}
 
 	needFunds, err = collateralSendAmount(b.mctx, b.api, b.maddr, cfg, needFunds)

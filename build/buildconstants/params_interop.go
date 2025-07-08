@@ -73,13 +73,16 @@ var UpgradeTuktukHeight = abi.ChainEpoch(-28)
 // Tuktuk migration. along with a RampStartEpoch matching the upgrade height.
 var UpgradeTuktukPowerRampDurationEpochs = uint64(builtin.EpochsInYear)
 
-const UpgradeTeepHeight abi.ChainEpoch = 50
+var UpgradeTeepHeight = abi.ChainEpoch(-29)
 
 var UpgradeTeepInitialFilReserved = InitialFilReserved // FIP-0100: no change for interop
 
-const UpgradeTockHeight abi.ChainEpoch = 100
+var UpgradeTockHeight = abi.ChainEpoch(-30)
 
-const UpgradeTockFixHeight abi.ChainEpoch = -29
+// This fix upgrade only ran on calibrationnet
+const UpgradeTockFixHeight abi.ChainEpoch = -4
+
+const UpgradeXxHeight = 50
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandQuicknet,
@@ -149,11 +152,5 @@ var WhitelistedBlock = cid.Undef
 
 const F3Enabled = true
 
-var F3ManifestServerID = MustParseID("12D3KooWQJ2rdVnG4okDUB6yHQhAjNutGNemcM7XzqC9Eo4z9Jce")
-
-// The initial F3 power table CID.
-var F3InitialPowerTableCID cid.Cid = cid.Undef
-
-const F3BootstrapEpoch abi.ChainEpoch = 1000
-
-var F3ParamsAddress = ""
+//go:embed f3manifest_interop.json
+var F3ManifestBytes []byte

@@ -124,6 +124,6 @@ func basicTest(t *testing.T, repo Repo) {
 
 	err = kstr.Delete("k2")
 	if assert.Error(t, err) {
-		assert.True(t, errors.Is(err, types.ErrKeyInfoNotFound), "returned errror is ErrKeyNotFound")
+		assert.True(t, errors.Is(err, types.ErrKeyInfoNotFound), "returned error is ErrKeyNotFound")
 	}
 }

@@ -162,6 +162,16 @@ var runCmd = &cli.Command{
 			Usage: "The maximum number of filters plus subscriptions that a single websocket connection can maintain",
 			Value: gateway.DefaultEthMaxFiltersPerConn,
 		},
+		&cli.BoolFlag{
+			Name:  "cors",
+			Usage: "Enable CORS headers to allow cross-origin requests from web browsers",
+			Value: false,
+		},
+		&cli.BoolFlag{
+			Name:  "request-logging",
+			Usage: "Enable logging of incoming API requests. Note: This will log POST request bodies which may impact performance due to body buffering and may expose sensitive data in logs",
+			Value: false,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		log.Info("Starting lotus gateway")
@@ -173,13 +183,19 @@ var runCmd = &cli.Command{
 			log.Fatalf("Cannot register the view: %v", err)
 		}
 
-		subHnd := gateway.NewEthSubHandler()
+		v1SubHnd := gateway.NewEthSubHandler()
+		v2SubHnd := gateway.NewEthSubHandler()
 
-		api, closer, err := lcli.GetFullNodeAPIV1(cctx, cliutil.FullNodeWithEthSubscribtionHandler(subHnd))
+		v1, closerV1, err := lcli.GetFullNodeAPIV1(cctx, cliutil.FullNodeWithEthSubscriptionHandler(v1SubHnd))
 		if err != nil {
 			return err
 		}
-		defer closer()
+		defer closerV1()
+		v2, closerV2, err := lcli.GetFullNodeAPIV2(cctx, cliutil.FullNodeWithEthSubscriptionHandler(v2SubHnd))
+		if err != nil {
+			return err
+		}
+		defer closerV2()
 
 		var (
 			lookbackCap                 = cctx.Duration("api-max-lookback")
@@ -190,6 +206,8 @@ var runCmd = &cli.Command{
 			rateLimitTimeout            = cctx.Duration("rate-limit-timeout")
 			perHostConnectionsPerMinute = cctx.Int("conn-per-minute")
 			maxFiltersPerConn           = cctx.Int("eth-max-filters-per-conn")
+			enableCORS                  = cctx.Bool("cors")
+			enableRequestLogging        = cctx.Bool("request-logging")
 		)
 
 		serverOptions := make([]jsonrpc.ServerOption, 0)
@@ -210,8 +228,9 @@ var runCmd = &cli.Command{
 		}
 
 		gwapi := gateway.NewNode(
-			api,
-			gateway.WithEthSubHandler(subHnd),
+			v1, v2,
+			gateway.WithV1EthSubHandler(v1SubHnd),
+			gateway.WithV2EthSubHandler(v2SubHnd),
 			gateway.WithMaxLookbackDuration(lookbackCap),
 			gateway.WithMaxMessageLookbackEpochs(waitLookback),
 			gateway.WithRateLimit(globalRateLimit),
@@ -220,10 +239,11 @@ var runCmd = &cli.Command{
 		)
 		handler, err := gateway.Handler(
 			gwapi,
-			api,
 			gateway.WithPerConnectionAPIRateLimit(perConnectionRateLimit),
 			gateway.WithPerHostConnectionsPerMinute(perHostConnectionsPerMinute),
 			gateway.WithJsonrpcServerOptions(serverOptions...),
+			gateway.WithCORS(enableCORS),
+			gateway.WithRequestLogging(enableRequestLogging),
 		)
 		if err != nil {
 			return xerrors.Errorf("failed to set up gateway HTTP handler")

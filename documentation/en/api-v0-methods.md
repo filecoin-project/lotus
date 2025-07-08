@@ -4040,7 +4040,7 @@ Perms: read
 Inputs:
 ```json
 [
-  25
+  27
 ]
 ```
 
@@ -4055,7 +4055,7 @@ Perms: read
 Inputs:
 ```json
 [
-  25
+  27
 ]
 ```
 
@@ -4256,7 +4256,31 @@ Response:
             "tt": 60000000000
           }
         ],
-        "Subcalls": null
+        "Subcalls": null,
+        "Logs": [
+          "string value"
+        ],
+        "IpldOps": [
+          {
+            "Op": "Get",
+            "Cid": {
+              "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+            },
+            "Size": 42
+          }
+        ]
+      }
+    ],
+    "Logs": [
+      "string value"
+    ],
+    "IpldOps": [
+      {
+        "Op": "Get",
+        "Cid": {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        },
+        "Size": 42
       }
     ]
   },
@@ -4518,7 +4542,31 @@ Response:
                 "tt": 60000000000
               }
             ],
-            "Subcalls": null
+            "Subcalls": null,
+            "Logs": [
+              "string value"
+            ],
+            "IpldOps": [
+              {
+                "Op": "Get",
+                "Cid": {
+                  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+                },
+                "Size": 42
+              }
+            ]
+          }
+        ],
+        "Logs": [
+          "string value"
+        ],
+        "IpldOps": [
+          {
+            "Op": "Get",
+            "Cid": {
+              "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+            },
+            "Size": 42
           }
         ]
       },
@@ -4868,7 +4916,8 @@ Response:
     "UpgradeWaffleHeight": 10101,
     "UpgradeTuktukHeight": 10101,
     "UpgradeTeepHeight": 10101,
-    "UpgradeTockHeight": 10101
+    "UpgradeTockHeight": 10101,
+    "UpgradeXxHeight": 10101
   },
   "Eip155ChainID": 123,
   "GenesisTimestamp": 42
@@ -5792,7 +5841,7 @@ Inputs:
 ]
 ```
 
-Response: `25`
+Response: `27`
 
 ### StateReadState
 StateReadState returns the indicated actor's state.
@@ -5985,7 +6034,31 @@ Response:
             "tt": 60000000000
           }
         ],
-        "Subcalls": null
+        "Subcalls": null,
+        "Logs": [
+          "string value"
+        ],
+        "IpldOps": [
+          {
+            "Op": "Get",
+            "Cid": {
+              "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+            },
+            "Size": 42
+          }
+        ]
+      }
+    ],
+    "Logs": [
+      "string value"
+    ],
+    "IpldOps": [
+      {
+        "Op": "Get",
+        "Cid": {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        },
+        "Size": 42
       }
     ]
   },

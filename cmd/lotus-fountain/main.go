@@ -249,7 +249,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Limit based on wallet address
 	limiter := h.limiter.GetWalletLimiter(filecoinAddress.String())
 	if !limiter.Allow() {
-		http.Error(w, http.StatusText(http.StatusTooManyRequests)+": wallet limit", http.StatusTooManyRequests)
+		http.Error(w, http.StatusText(http.StatusTooManyRequests)+": wallet limit\nYou can request tFIL and DataCap every 2 hours.", http.StatusTooManyRequests)
 		return
 	}
 
@@ -306,5 +306,21 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, _ = w.Write([]byte(smsg.Cid().String()))
+	// Render the success HTML template
+	if r.RequestURI == "/send" {
+		tmplPath := "site/send_success.html"
+		tmpl, err := template.ParseFiles(tmplPath)
+		if err != nil {
+			http.Error(w, "Template error: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "text/html")
+		if err := tmpl.Execute(w, map[string]string{"CID": smsg.Cid().String()}); err != nil {
+			http.Error(w, "Template execution error: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+	} else {
+		_, _ = w.Write([]byte(smsg.Cid().String()))
+	}
 }

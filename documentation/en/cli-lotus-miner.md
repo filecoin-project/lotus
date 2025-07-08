@@ -8,7 +8,7 @@ USAGE:
    lotus-miner [global options] command [command options]
 
 VERSION:
-   1.32.3-dev
+   1.33.1-dev
 
 COMMANDS:
    init     Initialize a lotus miner repo
@@ -209,7 +209,7 @@ USAGE:
 
 COMMANDS:
    set-addresses, set-addrs    set addresses that your miner can be publicly dialed on
-   settle-deal                 Settle deals manually, if dealIds are not provided all deals will be settled
+   settle-deal                 Settle deals manually, if dealIds are not provided all deals will be settled. Deal IDs can be specified as individual numbers or ranges (e.g., '123 124 125-200 220')
    withdraw                    withdraw available balance to beneficiary
    repay-debt                  pay down a miner's debt
    set-peer-id                 set the peer id of your miner
@@ -246,7 +246,7 @@ OPTIONS:
 
 ```
 NAME:
-   lotus-miner actor settle-deal - Settle deals manually, if dealIds are not provided all deals will be settled
+   lotus-miner actor settle-deal - Settle deals manually, if dealIds are not provided all deals will be settled. Deal IDs can be specified as individual numbers or ranges (e.g., '123 124 125-200 220')
 
 USAGE:
    lotus-miner actor settle-deal [command options] [...dealIds]
@@ -737,7 +737,7 @@ OPTIONS:
    --drop-claims           drop claims for sectors that can be extended, but only by dropping some of their verified power claims (default: false)
    --tolerance value       don't try to extend sectors by fewer than this number of epochs, defaults to 7 days (default: 20160)
    --max-fee value         use up to this amount of FIL for one message. pass this flag to avoid message congestion. (default: "0")
-   --max-sectors value     the maximum number of sectors contained in each message (default: 0)
+   --max-sectors value     the maximum number of sectors contained in each message (default: 500)
    --really-do-it          pass this flag to really extend sectors, otherwise will only print out json representation of parameters (default: false)
    --help, -h              show help
 ```

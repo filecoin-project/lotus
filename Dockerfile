@@ -1,16 +1,15 @@
 #####################################
-FROM golang:1.23.7-bullseye AS lotus-builder
+FROM golang:1.23.10-bullseye AS lotus-builder
 MAINTAINER Lotus Development Team
 
 RUN apt-get update && apt-get install -y ca-certificates build-essential clang ocl-icd-opencl-dev ocl-icd-libopencl1 jq libhwloc-dev
 
 ENV XDG_CACHE_HOME="/tmp"
 
-### taken from https://github.com/rust-lang/docker-rust/blob/master/1.63.0/buster/Dockerfile
 ENV RUSTUP_HOME=/usr/local/rustup \
     CARGO_HOME=/usr/local/cargo \
     PATH=/usr/local/cargo/bin:$PATH \
-    RUST_VERSION=1.63.0
+    RUST_VERSION=1.86.0
 
 RUN set -eux; \
     dpkgArch="$(dpkg --print-architecture)"; \

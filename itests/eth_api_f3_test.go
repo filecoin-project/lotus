@@ -59,7 +59,7 @@ func TestEthAPIWithF3(t *testing.T) {
 	kit.QuietMiningLogs()
 
 	mockF3 := kit.NewMockF3Backend()
-	client, miner, network := kit.EnsembleMinimal(t, kit.F3Backend(mockF3))
+	client, miner, network := kit.EnsembleMinimal(t, kit.F3Backend(mockF3), kit.MockProofs())
 	network.BeginMining(blockTime)
 
 	_, fundedEthAddr, fundedFilAddr := client.EVM().NewAccount()
@@ -836,6 +836,12 @@ func TestEthAPIWithF3(t *testing.T) {
 						return func(fn func()) *types.TipSet {
 							beforeTs := wantTipSet(t)
 							for {
+								select {
+								case <-ctx.Done():
+									t.Fatalf("context cancelled during stable execution: %v", ctx.Err())
+								default:
+								}
+
 								fn()
 								afterTs := wantTipSet(t)
 								if beforeTs.Equals(afterTs) {

@@ -1,14 +1,15 @@
 > [!NOTE]
 > This is a staging area for these docs so they can be made under source control with review.
 > The current published home is https://filoznotebook.notion.site/Filecoin-V2-APIs-1d0dc41950c1808b914de5966d501658
-> Changes to this doc should be propagated back there to allow for easier discover and user commenting.
+> Changes to this doc should be propagated back there to allow for easier discovery and user commenting.
 
 # Filecoin V2 APIs <!-- omit from toc -->
 
 # Meta
 ## Status
-
-- 2025-04-23: This document has been updated to account for the minimum initial set of non-ETH /v2 API groups as specified in [issue #12991](https://github.com/filecoin-project/lotus/issues/12991).
+- 2025-06-06: Updated to make clear the impact on the APIs if F3 isn't finalizing or if the latest F3-finalized tipset is older than the latest EC-finalized tipset. This was reviewed in [PR #13161](https://github.com/filecoin-project/lotus/pull/13161).
+- 2025-04-24: This document has been updated to include information about Eth APIs in `/v2`.  This was reviewed in [PR #13068](https://github.com/filecoin-project/lotus/pull/13068).
+- 2025-04-23: This document has been updated to account for the minimum initial set of non-Eth /v2 API groups as specified in [issue #12991](https://github.com/filecoin-project/lotus/issues/12991).  This was reviewed in [PR #13051](https://github.com/filecoin-project/lotus/pull/13051)
 - 2025-04-09: This document is still actively a Work In Progress. It has a draft discussing `ChainGetTipSet`. Additional APIs and API Groups will be added as part of working on [issue #12987](https://github.com/filecoin-project/lotus/issues/12987).
 
 ## Table of Contents
@@ -24,8 +25,6 @@ This ToC was generated using [Markdown All in One](https://marketplace.visualstu
   - [Table of Contents](#table-of-contents)
 - [Introduction](#introduction)
 - [The Selector Pattern](#the-selector-pattern)
-- [Overview](#overview)
-  - [Groups](#groups)
 - [Chain](#chain)
   - [ChainGetTipSet](#chaingettipset)
     - [Selector Types](#selector-types)
@@ -43,6 +42,8 @@ This ToC was generated using [Markdown All in One](https://marketplace.visualstu
     - [Parameters](#parameters-1)
     - [Request Example](#request-example-1)
     - [Response](#response-2)
+  - [Ethereum (Eth)](#ethereum-eth)
+    - [Examples](#examples)
 - [Consensus Protocol Notes](#consensus-protocol-notes)
   - [Understanding `finalized` TipSets](#understanding-finalized-tipsets)
     - [Node Configuration Impact](#node-configuration-impact)
@@ -85,7 +86,9 @@ This ToC was generated using [Markdown All in One](https://marketplace.visualstu
     - [Actor Information Retrieval](#actor-information-retrieval)
     - [Address Resolution](#address-resolution)
   - [Design decisions](#design-decisions)
-    - [Why aren’t named parameters used?](#why-arent-named-parameters-used)
+    - [Why aren't named parameters used?](#why-arent-named-parameters-used)
+    - [What happens if F3 is not finalizing the chain?](#what-happens-if-f3-is-not-finalizing-the-chain)
+    - [What happens if the latest F3-finalized tipset is behind the latest EC-finalized tipset?](#what-happens-if-the-latest-f3-finalized-tipset-is-behind-the-latest-ec-finalized-tipset)
   - [Future API Groups](#future-api-groups)
     - [State API Group](#state-api-group)
     - [Mpool API Group](#mpool-api-group)
@@ -98,17 +101,17 @@ This ToC was generated using [Markdown All in One](https://marketplace.visualstu
 
 # Introduction
 
-The Filecoin V2 APIs represent a significant redesign of Filecoin’s RPC interface with several important goals in mind:
+The Filecoin V2 APIs represent a significant redesign of Filecoin's RPC interface with several important goals in mind:
 
 1. **User-Friendly Interface**: The APIs provide intuitive ways to interact with the Filecoin network without requiring deep technical knowledge of its internals.
 2. **Expressive Selection Mechanisms**: Through the Selector pattern, users can clearly express what data they want using criteria that make sense for their use case.
-3. **Smaller API Footprint**: By using flexible selectors, we’ve reduced the number of distinct API methods needed, consolidating functionality into fewer, more powerful endpoints.
-4. **F3 Awareness**: The APIs are fully aware of Filecoin Fast Finality (F3) and can automatically adapt to provide the appropriate finality guarantees based on the node’s consensus protocol.
+3. **Smaller API Footprint**: By using flexible selectors, we've reduced the number of distinct API methods needed, consolidating functionality into fewer, more powerful endpoints.
+4. **F3 Awareness**: The APIs are fully aware of Filecoin Fast Finality (F3) and can automatically adapt to provide the appropriate finality guarantees based on the node's consensus protocol.
 5. **Future Extensibility**: The design allows for extending selection criteria without breaking existing functionality or requiring new API methods.
 
 # The Selector Pattern
 
-At the core of the V2 APIs design is the concept of “Selectors” - flexible constructs that let you specify exactly what blockchain data you want. Rather than having different methods for different selection criteria, a single method accepts various selector types to retrieve data in different ways.
+At the core of the V2 APIs design is the concept of "Selectors" - flexible constructs that let you specify exactly what blockchain data you want. Rather than having different methods for different selection criteria, a single method accepts various selector types to retrieve data in different ways.
 
 This documentation focuses on the `TipSetSelector` as implemented in the `ChainGetTipSet`, `StateGetActor`, and `StateGetID` methods. Additional API groups are under development, including:
 
@@ -117,20 +120,6 @@ This documentation focuses on the `TipSetSelector` as implemented in the `ChainG
 - **Wallet API Group**: Will introduce more powerful wallet operations
 
 Each API group follows the same design principles of extensibility, expressiveness, and F3 awareness while minimising the API surface area.
-
-The remainder of this documentation explores the `TipSetSelector` in detail, showing how to use it with the `ChainGetTipSet` method through various examples and use cases.
-
-# Overview
-
-This documentation covers the TipSet selection mechanisms in the Filecoin V2 APIs, focusing on the flexible selection patterns introduced for retrieving tipsets from the Filecoin blockchain.
-
-## Groups
-
-- Chain
-    - `ChainGetTipSet`
-- State
-    - `StateGetActor`
-    - `StateGetID`
 
 # Chain
 
@@ -441,6 +430,41 @@ The method returns the ID address (string) corresponding to the input address at
 
 If the address cannot be resolved to an ID address at the specified tipset state (e.g., it never existed or was created after that tipset), an error is returned.
 
+## Ethereum (Eth)
+
+The V2 API namespace includes all the Ethereum (Eth) APIs that `/v1` supports, but the `finalized` and `safe` tags have been updated to consult the F3 subsystem (if enabled) for finality information.  `finalized` and `safe` for the "Eth" APIs has the same meaning and fallback outlined in  [Consensus Protocol Notes](#consensus-protocol-notes).  In addition, in V2, `safe` will look back a maximum 30 epochs, whereas V1 looks back 30.
+
+For a complete list of available Eth methods in V2, refer to the [V2 autogenerated documentation](https://github.com/filecoin-project/lotus/blob/master/documentation/en/api-v2-unstable-methods.md#eth).
+
+### Examples
+**Example: getting an Eth block by number using the `finalized` tag:**
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "Eth.GetBlockByNumber",
+  "params": [
+    "finalized",
+    true
+  ],
+  "id": 1
+}
+```
+
+**Example: retrieving account balance at a `safe` block:**
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "Eth.GetBalance",
+  "params": [
+    "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+    "safe"
+  ],
+  "id": 1
+}
+```
+
 # Consensus Protocol Notes
 
 The Filecoin network is currently in the process of testing and activating Filecoin Fast Finality (F3), a new consensus mechanism that provides faster finality guarantees. During this transition period, the network will contain a mix of nodes - some with F3 enabled and others still using only the traditional Expected Consensus (EC) finality mechanism.
@@ -457,9 +481,11 @@ The `finalized` tag is a powerful concept in the V2 APIs that returns the tipset
 How the `finalized` tag behaves depends on the node's configuration:
 
 1. **When F3 is Enabled and Ready**:
-    - The API returns the tipset identified by the latest F3 certificate.
-    - This provides faster finality guarantees (typically within minutes).
-    - The finalized tipset comes directly from the consensus certificates.
+    - The API returns whichever tipset is most recent between:
+       - The tipset identified by the latest F3 certificate OR
+       - The latest EC-finalized tipset 
+    - In practice this almost always means the tipset identified by the latest F3 certificate since F3 provides much faster finality guarantees (typically within minutes).
+    - The exception of falling back to an EC-finalized tipset would occur if there is a larger network issue and F3 has stalled for ~7.5 hours ([example](https://github.com/filecoin-project/lotus/issues/13094)).
 2. **When F3 is Disabled or Not Ready**:
     - The API automatically falls back to EC finality.
     - EC finality is based on chain depth (currently 900 epochs, or ~7.5 hours).
@@ -476,15 +502,19 @@ flowchart TD
     B -->|No| H[Use EC Finality]
 
     C --> D{Certificate Available?}
-    D -->|Yes| E[Return TipSet from F3 Certificate]
+    D -->|Yes| K{Calculated EC-finalized Tipset}
+    K --> L{Is F3-finalized Tipset more recent than EC-finalized Tipset?}
+    L -->|Yes|E[Return TipSet from F3 Certificate]
+    L -->|No|J
+
     D -->|No| H
+
+    H --> I[Calculate: HeaviestTipSet.Height - ChainFinality]
+    I --> J[Return EC Finalized TipSet]
 
     C --> F{F3 Error?}
     F -->|Not running or not ready| H
     F -->|Other error| G[Return Error]
-
-    H --> I[Calculate: HeaviestTipSet.Height - ChainFinality]
-    I --> J[Return EC Finalized TipSet]
 
     classDef success fill:#bfb,stroke:#393,stroke-width:2px;
     classDef fallback fill:#ffd,stroke:#b90,stroke-width:2px;
@@ -495,8 +525,8 @@ flowchart TD
     class E success;
     class H,J fallback;
     class G error;
-    class A,C,I process;
-    class B,D,F decision;
+    class A,C,I,K process;
+    class B,D,F,L decision;
 ```
 
 This graceful fallback ensures that the `finalized` tag always returns a meaningful result regardless of the node's configuration or the state of the F3 subsystem.
@@ -1097,7 +1127,7 @@ Resolve an address (e.g., robust `f2...` or delegated `f4...`) to its canonical 
 
 The design for these `/v2` APIs happened as a result of [issue #12987](https://github.com/filecoin-project/lotus/issues/12987) and the resulting subtasks and their linked PRs (in particular [issue #12990](https://github.com/filecoin-project/lotus/issues/12990)). Some of the larger design decisions and their rationale are extracted here.
 
-### Why aren’t named parameters used?
+### Why aren't named parameters used?
 
 JSON-RPC allows named parameters (using a JSON object instead of an array for `params`), but positional parameters (using a JSON array) were chosen for the Filecoin V2 APIs. These comments are lifted directly from PR feedback discussions:
 
@@ -1105,9 +1135,16 @@ JSON-RPC allows named parameters (using a JSON object instead of an array for `p
 - *Tooling Compatibility*: Most existing tooling (Lotus' internal JSON-RPC library, `lotus-shed rpc`, client libraries in other languages) primarily expects and works best with positional parameters.
 - *Simplicity*: While named parameters can sometimes improve readability for complex calls, positional parameters are simpler to implement and parse consistently. Client-side abstractions can easily map more readable function calls to positional parameters if desired.
 
+### What happens if F3 is not finalizing the chain?
+The `/v2` APIs rely on F3 data even if F3 is not yet finalizing the chain (i.e., `EC.Finalize` is `false` in the live F3 manifest used by all participants). To determine if F3 is actively finalizing, call the `F3GetManifest` API and check if `Manifest.EC.Finalize` is `true`. Only when `EC.Finalize` is `true` will the `/v2` `"finalized"` and `"safe"` tags accurately reflect the chain's finality according to F3. That said, as of epoch 4919580 on mainnet, F3 is finalized and this shouldn't be a concern.
+
+### What happens if the latest F3-finalized tipset is behind the latest EC-finalized tipset?
+Per [understanding Finalized TipSets](#understanding-finalized-tipsets), the most most recent finalized TipSet will be returned.  When F3 is enabled, we almost always expect this to be a tipset to be finalized.  But in nthe event that F3 is stalled for enough time, we could fallback to returning a TipSet finalized by EC.
+
+
 ## Future API Groups
 
-The Filecoin V2 APIs initiative will expand beyond the Chain and State API groups demonstrated in this document. Each API group will follow the same principles of using selectors for expressive queries while maintaining a minimal API surface.
+The Filecoin V2 APIs initiative will expand beyond the Chain, State, and Eth API groups demonstrated in this document. Each API group will follow the same principles of using selectors for expressive queries while maintaining a minimal API surface.
 
 ### State API Group
 
@@ -1133,7 +1170,7 @@ The Wallet API group will provide enhanced wallet operations:
 - **WalletSelect**: Find wallet addresses using flexible criteria (e.g., find all addresses with balance > X).
 - **WalletTransact**: Create transactions with comprehensive parameter selectors (e.g., construct a multisig transaction proposal).
 
-Like the TipSet API demonstrated in this document, each planned API group will support the “selector pattern” to provide powerful, expressive, and future-proof interfaces to the Filecoin network while being fully F3-aware.
+Like the TipSet API demonstrated in this document, each planned API group will support the "selector pattern" to provide powerful, expressive, and future-proof interfaces to the Filecoin network while being fully F3-aware.
 
 ## Resources and References
 

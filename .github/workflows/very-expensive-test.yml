@@ -1,0 +1,39 @@
+name: Very Expensive Test
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      # WARN: This will run very expensive test every time ANY label is added
+      - labeled
+  schedule:
+    - cron: '0 0 * * *' # Runs nightly at 0AM UTC
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  test:
+    name: Test
+    if: github.event_name == 'schedule' || contains(github.event.pull_request.labels.*.name, 'need/very-expensive-tests')
+    uses: ./.github/workflows/reusable-test.yml
+    with:
+      run_very_expensive_tests: true
+  issue:
+    name: Issue
+    if: failure() && github.event_name == 'schedule'
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create issue
+        uses: ipdxco/create-or-update-issue@v1
+        with:
+          GITHUB_TOKEN: ${{ github.token }}
+          title: Very expensive test run failed
+          body: |
+            The very expensive test run failed. See [the workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.
+          label: area/very-expensive-tests

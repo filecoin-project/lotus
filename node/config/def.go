@@ -100,6 +100,9 @@ func DefaultFullNode() *FullNode {
 			ReconcileEmptyIndex: false,
 			MaxReconcileTipsets: 3 * builtin.EpochsInDay,
 		},
+		PaymentChannels: PaymentChannelsConfig{
+			EnablePaymentChannelManager: false,
+		},
 	}
 }
 
@@ -129,14 +132,10 @@ func DefaultStorageMiner() *StorageMiner {
 
 			CommittedCapacitySectorLifetime: Duration(builtin.EpochDurationSeconds * uint64(maxSectorExtentsion) * uint64(time.Second)),
 
-			AggregateCommits: true,
 			MinCommitBatch:   miner5.MinAggregatedSectors, // per FIP13, we must have at least four proofs to aggregate, where 4 is the cross over point where aggregation wins out on single provecommit gas costs
 			MaxCommitBatch:   miner5.MaxAggregatedSectors, // maximum 819 sectors, this is the maximum aggregation per FIP13
 			CommitBatchWait:  Duration(24 * time.Hour),    // this can be up to 30 days
 			CommitBatchSlack: Duration(1 * time.Hour),     // time buffer for forceful batch submission before sectors/deals in batch would start expiring, higher value will lower the chances for message fail due to expiration
-
-			BatchPreCommitAboveBaseFee: types.FIL(types.BigMul(types.PicoFil, types.NewInt(320))), // 0.32 nFIL
-			AggregateAboveBaseFee:      types.FIL(types.BigMul(types.PicoFil, types.NewInt(320))), // 0.32 nFIL
 
 			TerminateBatchMin:                      1,
 			TerminateBatchMax:                      100,

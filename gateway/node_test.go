@@ -2,18 +2,17 @@ package gateway
 
 import (
 	"context"
-	"sync"
 	"testing"
 	"time"
 
-	"github.com/ipfs/go-cid"
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/api"
+	v1mocks "github.com/filecoin-project/lotus/api/mocks"
+	"github.com/filecoin-project/lotus/api/v2api/v2mocks"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/mock"
@@ -87,13 +86,34 @@ func TestGatewayAPIChainGetTipSetByHeight(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			mock := &mockGatewayDepsAPI{}
-			a := NewNode(mock)
+			ctrl := gomock.NewController(t)
+			mockV1 := v1mocks.NewMockFullNode(ctrl)
+			mockV2 := v2mocks.NewMockFullNode(ctrl)
+			defer ctrl.Finish()
+
+			a := NewNode(mockV1, mockV2)
 
 			// Create tipsets from genesis up to tskh and return the highest
-			ts := mock.createTipSets(tt.args.tskh, tt.args.genesisTS)
-
-			got, err := a.ChainGetTipSetByHeight(ctx, tt.args.h, ts.Key())
+			tss := generateTipSets(tt.args.tskh, tt.args.genesisTS)
+			key := tss[len(tss)-1].Key()
+			gomock.InAnyOrder(
+				mockV1.EXPECT().ChainGetTipSetByHeight(gomock.AssignableToTypeOf(ctx), tt.args.h, key).DoAndReturn(
+					func(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) {
+						return tss[h], nil
+					}).AnyTimes(),
+			)
+			gomock.InAnyOrder(
+				mockV1.EXPECT().ChainGetTipSet(gomock.AssignableToTypeOf(ctx), key).DoAndReturn(
+					func(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error) {
+						for _, ts := range tss {
+							if ts.Key() == tsk {
+								return ts, nil
+							}
+						}
+						return nil, nil
+					}).AnyTimes(),
+			)
+			got, err := a.v1Proxy.ChainGetTipSetByHeight(ctx, tt.args.h, key)
 			if tt.expErr {
 				require.Error(t, err)
 			} else {
@@ -104,76 +124,9 @@ func TestGatewayAPIChainGetTipSetByHeight(t *testing.T) {
 	}
 }
 
-type mockGatewayDepsAPI struct {
-	lk      sync.RWMutex
-	tipsets []*types.TipSet
-
-	TargetAPI // satisfies all interface requirements but will panic if
-	// methods are called. easier than filling out with panic stubs IMO
-}
-
-func (m *mockGatewayDepsAPI) ChainHasObj(context.Context, cid.Cid) (bool, error) {
-	panic("implement me")
-}
-
-func (m *mockGatewayDepsAPI) ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error) {
-	panic("implement me")
-}
-
-func (m *mockGatewayDepsAPI) ChainReadObj(ctx context.Context, c cid.Cid) ([]byte, error) {
-	panic("implement me")
-}
-
-func (m *mockGatewayDepsAPI) StateDealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, verified bool, tsk types.TipSetKey) (api.DealCollateralBounds, error) {
-	panic("implement me")
-}
-
-func (m *mockGatewayDepsAPI) StateListMiners(ctx context.Context, tsk types.TipSetKey) ([]address.Address, error) {
-	panic("implement me")
-}
-
-func (m *mockGatewayDepsAPI) StateMarketBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (api.MarketBalance, error) {
-	panic("implement me")
-}
-
-func (m *mockGatewayDepsAPI) StateMarketStorageDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*api.MarketDeal, error) {
-	panic("implement me")
-}
-
-func (m *mockGatewayDepsAPI) StateMinerInfo(ctx context.Context, actor address.Address, tsk types.TipSetKey) (api.MinerInfo, error) {
-	panic("implement me")
-}
-
-func (m *mockGatewayDepsAPI) StateNetworkVersion(ctx context.Context, key types.TipSetKey) (network.Version, error) {
-	panic("implement me")
-}
-
-func (m *mockGatewayDepsAPI) ChainHead(ctx context.Context) (*types.TipSet, error) {
-	m.lk.RLock()
-	defer m.lk.RUnlock()
-
-	return m.tipsets[len(m.tipsets)-1], nil
-}
-
-func (m *mockGatewayDepsAPI) ChainGetTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error) {
-	m.lk.RLock()
-	defer m.lk.RUnlock()
-
-	for _, ts := range m.tipsets {
-		if ts.Key() == tsk {
-			return ts, nil
-		}
-	}
-
-	return nil, nil
-}
-
-// createTipSets creates tipsets from genesis up to tskh and returns the highest
-func (m *mockGatewayDepsAPI) createTipSets(h abi.ChainEpoch, genesisTimestamp uint64) *types.TipSet {
-	m.lk.Lock()
-	defer m.lk.Unlock()
-
+func generateTipSets(h abi.ChainEpoch, genesisTimestamp uint64) []*types.TipSet {
 	targeth := h + 1 // add one for genesis block
+	tipsets := make([]*types.TipSet, 0, targeth)
 	if genesisTimestamp == 0 {
 		genesisTimestamp = uint64(time.Now().Unix()) - buildconstants.BlockDelaySecs*uint64(targeth)
 	}
@@ -184,86 +137,49 @@ func (m *mockGatewayDepsAPI) createTipSets(h abi.ChainEpoch, genesisTimestamp ui
 			blks.Timestamp = genesisTimestamp
 		}
 		currts = mock.TipSet(blks)
-		m.tipsets = append(m.tipsets, currts)
+		tipsets = append(tipsets, currts)
 	}
-
-	return m.tipsets[len(m.tipsets)-1]
-}
-
-func (m *mockGatewayDepsAPI) ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) {
-	m.lk.Lock()
-	defer m.lk.Unlock()
-
-	return m.tipsets[h], nil
-}
-
-func (m *mockGatewayDepsAPI) GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, tsk types.TipSetKey) (*types.Message, error) {
-	panic("implement me")
-}
-
-func (m *mockGatewayDepsAPI) MpoolPushUntrusted(ctx context.Context, sm *types.SignedMessage) (cid.Cid, error) {
-	panic("implement me")
-}
-
-func (m *mockGatewayDepsAPI) MsigGetAvailableBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.BigInt, error) {
-	panic("implement me")
-}
-
-func (m *mockGatewayDepsAPI) MsigGetVested(ctx context.Context, addr address.Address, start types.TipSetKey, end types.TipSetKey) (types.BigInt, error) {
-	panic("implement me")
-}
-
-func (m *mockGatewayDepsAPI) StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
-	panic("implement me")
-}
-
-func (m *mockGatewayDepsAPI) StateGetActor(ctx context.Context, actor address.Address, ts types.TipSetKey) (*types.Actor, error) {
-	panic("implement me")
-}
-
-func (m *mockGatewayDepsAPI) StateLookupID(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
-	panic("implement me")
-}
-
-func (m *mockGatewayDepsAPI) StateWaitMsgLimited(ctx context.Context, msg cid.Cid, confidence uint64, h abi.ChainEpoch) (*api.MsgLookup, error) {
-	panic("implement me")
-}
-
-func (m *mockGatewayDepsAPI) StateReadState(ctx context.Context, act address.Address, ts types.TipSetKey) (*api.ActorState, error) {
-	panic("implement me")
-}
-
-func (m *mockGatewayDepsAPI) Version(context.Context) (api.APIVersion, error) {
-	return api.APIVersion{
-		APIVersion: api.FullAPIVersion1,
-	}, nil
+	return tipsets
 }
 
 func TestGatewayVersion(t *testing.T) {
 	ctx := context.Background()
-	mock := &mockGatewayDepsAPI{}
-	a := NewNode(mock)
+	ctrl := gomock.NewController(t)
+	mockV1 := v1mocks.NewMockFullNode(ctrl)
+	mockV2 := v2mocks.NewMockFullNode(ctrl)
+	defer ctrl.Finish()
+	a := NewNode(mockV1, mockV2)
 
-	v, err := a.Version(ctx)
+	mockV1.EXPECT().Version(gomock.AssignableToTypeOf(ctx)).Return(api.APIVersion{
+		APIVersion: api.FullAPIVersion1,
+	}, nil)
+
+	v, err := a.v1Proxy.Version(ctx)
 	require.NoError(t, err)
 	require.Equal(t, api.FullAPIVersion1, v.APIVersion)
 }
 
 func TestGatewayLimitTokensAvailable(t *testing.T) {
 	ctx := context.Background()
-	mock := &mockGatewayDepsAPI{}
+	ctrl := gomock.NewController(t)
+	mockV1 := v1mocks.NewMockFullNode(ctrl)
+	mockV2 := v2mocks.NewMockFullNode(ctrl)
+	defer ctrl.Finish()
 	tokens := 3
-	a := NewNode(mock, WithRateLimit(tokens))
+	a := NewNode(mockV1, mockV2, WithRateLimit(tokens))
 	require.NoError(t, a.limit(ctx, tokens), "requests should not be limited when there are enough tokens available")
 }
 
 func TestGatewayLimitTokensRate(t *testing.T) {
 	ctx := context.Background()
-	mock := &mockGatewayDepsAPI{}
+	ctrl := gomock.NewController(t)
+	mockV1 := v1mocks.NewMockFullNode(ctrl)
+	mockV2 := v2mocks.NewMockFullNode(ctrl)
+	defer ctrl.Finish()
 	tokens := 3
 	rateLimit := 200
 	rateLimitTimeout := time.Second / time.Duration(rateLimit/3) // large enough to not be hit
-	a := NewNode(mock, WithRateLimit(rateLimit), WithRateLimitTimeout(rateLimitTimeout))
+	a := NewNode(mockV1, mockV2, WithRateLimit(rateLimit), WithRateLimitTimeout(rateLimitTimeout))
 
 	start := time.Now()
 	calls := 10
@@ -282,7 +198,7 @@ func TestGatewayLimitTokensRate(t *testing.T) {
 	// In this case our timeout is too short to allow for the rate limit, so we should hit the
 	// hard rate limit.
 	rateLimitTimeout = time.Second / time.Duration(rateLimit)
-	a = NewNode(mock, WithRateLimit(rateLimit), WithRateLimitTimeout(rateLimitTimeout))
+	a = NewNode(mockV1, mockV2, WithRateLimit(rateLimit), WithRateLimitTimeout(rateLimitTimeout))
 	require.NoError(t, a.limit(ctx, tokens))
 	require.ErrorContains(t, a.limit(ctx, tokens), "server busy", "API calls should be hard rate limited when they hit limits")
 }

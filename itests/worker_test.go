@@ -480,7 +480,7 @@ func TestSchedulerRemoveRequest(t *testing.T) {
 	err = miner.SealingRemoveRequest(ctx, b.SchedInfo.Requests[0].SchedId)
 	require.NoError(t, err)
 
-	// Dump the schduler again and compare the UUID if a request is present
+	// Dump the scheduler again and compare the UUID if a request is present
 	// If no request present then pass the test
 	a := miner.SchedInfo(ctx)
 

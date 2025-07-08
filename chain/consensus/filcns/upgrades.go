@@ -32,6 +32,7 @@ import (
 	nv23 "github.com/filecoin-project/go-state-types/builtin/v14/migration"
 	nv24 "github.com/filecoin-project/go-state-types/builtin/v15/migration"
 	nv25 "github.com/filecoin-project/go-state-types/builtin/v16/migration"
+	nv27 "github.com/filecoin-project/go-state-types/builtin/v17/migration"
 	nv17 "github.com/filecoin-project/go-state-types/builtin/v9/migration"
 	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/go-state-types/migration"
@@ -349,6 +350,17 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 		Height:    buildconstants.UpgradeTockFixHeight,
 		Network:   network.Version26,
 		Migration: UpgradeActorsV16Fix,
+	}, {
+		Height:    buildconstants.UpgradeXxHeight,
+		Network:   network.Version27,
+		Migration: UpgradeActorsV17,
+		PreMigrations: []stmgr.PreMigration{{
+			PreMigration:    PreUpgradeActorsV17,
+			StartWithin:     120,
+			DontStartWithin: 15,
+			StopWithin:      10,
+		}},
+		Expensive: true,
 	},
 	}
 
@@ -3058,17 +3070,28 @@ func UpgradeActorsV16Fix(
 			return xerrors.Errorf("mismatched head for actor %s", a)
 		}
 
-		// Check that the actor code has changed to the new expected value; work backward by getting the
-		// actor name from the new code CID.
-		if actorName, version, ok := actors.GetActorMetaByCode(outActor.Code); !ok {
-			return xerrors.Errorf("failed to get actor meta for code %s", outActor.Code)
-		} else if version != actorstypes.Version16 {
-			return xerrors.Errorf("unexpected actor version for %s: %d", actorName, version)
-		} else if oldCode, ok := v1600metadata.Actors[actorName]; !ok {
-			return xerrors.Errorf("missing actor %s in v16.0.0 metadata", actorName)
-		} else if oldCode != inActor.Code {
-			return xerrors.Errorf("unexpected actor code for %s: %s != %s", actorName, oldCode, outActor.Code)
-		}
+		/*
+			TODO: This code block was skipped while preparing the nv27 network skeleton:
+				https://github.com/filecoin-project/lotus/pull/13125
+			The problem encountered here is that the initial v17 actors bundle for the nv27 skeleton was
+			identical to the v16 bundle (a normal part of skeleton setup), so calls to
+			actors.GetActorMetaByCode for v16 CIDs would return 17 as the version, and the second
+			assertion below here fails. This ought to be solved when a new actors bundle is introduced and
+			this block can be re-enabled. However, this is also not critical code, and was only used on
+			calibnet, so 🤷.
+
+			// Check that the actor code has changed to the new expected value; work backward by getting the
+			// actor name from the new code CID.
+			if actorName, version, ok := actors.GetActorMetaByCode(outActor.Code); !ok {
+				return xerrors.Errorf("failed to get actor meta for code %s", outActor.Code)
+			} else if version != actorstypes.Version16 {
+				return xerrors.Errorf("unexpected actor version for %s: %d", actorName, version)
+			} else if oldCode, ok := v1600metadata.Actors[actorName]; !ok {
+				return xerrors.Errorf("missing actor %s in v16.0.0 metadata", actorName)
+			} else if oldCode != inActor.Code {
+				return xerrors.Errorf("unexpected actor code for %s: %s != %s", actorName, oldCode, outActor.Code)
+			}
+		*/
 
 		return nil
 	})
@@ -3080,6 +3103,119 @@ func UpgradeActorsV16Fix(
 	newRoot, err := actorsOut.Flush(ctx)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to persist new state root: %w", err)
+	}
+
+	return newRoot, nil
+}
+
+func PreUpgradeActorsV17(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) error {
+	// Use half the CPUs for pre-migration, but leave at least 3.
+	workerCount := MigrationMaxWorkerCount
+	if workerCount <= 4 {
+		workerCount = 1
+	} else {
+		workerCount /= 2
+	}
+
+	lbts, lbRoot, err := stmgr.GetLookbackTipSetForRound(ctx, sm, ts, epoch)
+	if err != nil {
+		return xerrors.Errorf("error getting lookback ts for premigration: %w", err)
+	}
+
+	logPeriod, err := getMigrationProgressLogPeriod()
+	if err != nil {
+		return xerrors.Errorf("error getting progress log period: %w", err)
+	}
+
+	config := migration.Config{
+		MaxWorkers:        uint(workerCount),
+		ProgressLogPeriod: logPeriod,
+	}
+
+	_, err = upgradeActorsV17Common(ctx, sm, cache, lbRoot, epoch, lbts, config)
+	return err
+}
+
+func UpgradeActorsV17(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, cb stmgr.ExecMonitor,
+	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+	// Use all the CPUs except 2.
+	workerCount := MigrationMaxWorkerCount - 3
+	if workerCount <= 0 {
+		workerCount = 1
+	}
+
+	logPeriod, err := getMigrationProgressLogPeriod()
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("error getting progress log period: %w", err)
+	}
+
+	config := migration.Config{
+		MaxWorkers:        uint(workerCount),
+		JobQueueSize:      1000,
+		ResultQueueSize:   100,
+		ProgressLogPeriod: logPeriod,
+	}
+	newRoot, err := upgradeActorsV17Common(ctx, sm, cache, root, epoch, ts, config)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("migrating actors v17 state: %w", err)
+	}
+	return newRoot, nil
+}
+
+func upgradeActorsV17Common(
+	ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache,
+	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet,
+	config migration.Config,
+) (cid.Cid, error) {
+	writeStore := blockstore.NewAutobatch(ctx, sm.ChainStore().StateBlockstore(), units.GiB/4)
+	adtStore := store.ActorStore(ctx, writeStore)
+	// ensure that the manifest is loaded in the blockstore
+	if err := bundle.LoadBundles(ctx, writeStore, actorstypes.Version17); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to load manifest bundle: %w", err)
+	}
+
+	// Load the state root.
+	var stateRoot types.StateRoot
+	if err := adtStore.Get(ctx, root, &stateRoot); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to decode state root: %w", err)
+	}
+
+	if stateRoot.Version != types.StateTreeVersion5 {
+		return cid.Undef, xerrors.Errorf(
+			"expected state root version 5 for actors v17 upgrade, got %d",
+			stateRoot.Version,
+		)
+	}
+
+	manifest, ok := actors.GetManifest(actorstypes.Version17)
+	if !ok {
+		return cid.Undef, xerrors.Errorf("no manifest CID for v17 upgrade")
+	}
+
+	// Perform the migration
+	newHamtRoot, err := nv27.MigrateStateTree(ctx, adtStore, manifest, stateRoot.Actors, epoch, config,
+		migrationLogger{}, cache)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("upgrading to actors v17: %w", err)
+	}
+
+	// Persist the result.
+	newRoot, err := adtStore.Put(ctx, &types.StateRoot{
+		Version: types.StateTreeVersion5,
+		Actors:  newHamtRoot,
+		Info:    stateRoot.Info,
+	})
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to persist new state root: %w", err)
+	}
+
+	// Persists the new tree and shuts down the flush worker
+	if err := writeStore.Flush(ctx); err != nil {
+		return cid.Undef, xerrors.Errorf("writeStore flush failed: %w", err)
+	}
+
+	if err := writeStore.Shutdown(ctx); err != nil {
+		return cid.Undef, xerrors.Errorf("writeStore shutdown failed: %w", err)
 	}
 
 	return newRoot, nil

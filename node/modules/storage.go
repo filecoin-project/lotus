@@ -57,3 +57,19 @@ func Datastore(disableLog bool) func(lc fx.Lifecycle, mctx helpers.MetricsCtx, r
 		return bds, nil
 	}
 }
+
+func F3Datastore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRepo) (dtypes.F3DS, error) {
+	ctx := helpers.LifecycleCtx(mctx, lc)
+	mds, err := r.Datastore(ctx, "/f3")
+	if err != nil {
+		return nil, err
+	}
+
+	lc.Append(fx.Hook{
+		OnStop: func(_ context.Context) error {
+			return mds.Close()
+		},
+	})
+
+	return mds, nil
+}

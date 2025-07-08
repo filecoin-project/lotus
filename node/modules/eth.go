@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/events/filter"
 	"github.com/filecoin-project/lotus/chain/index"
-	"github.com/filecoin-project/lotus/chain/lf3"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -29,7 +28,7 @@ import (
 type TipSetResolverParams struct {
 	fx.In
 	ChainStore eth.ChainStore
-	F3         lf3.F3Backend `optional:"true"`
+	F3         full.F3ModuleAPI `optional:"true"`
 }
 
 func MakeV1TipSetResolver(params TipSetResolverParams) full.EthTipSetResolverV2 {
@@ -202,7 +201,7 @@ func MakeEthEventsExtended(cfg config.EventsConfig, enableEthRPC bool) func(EthE
 		lctx := helpers.LifecycleCtx(params.MetricsCtx, params.Lifecycle)
 
 		var (
-			subscribtionCtx      context.Context  = lctx
+			subscriptionCtx                       = lctx
 			chainStore           eth.ChainStore   = params.ChainStore
 			stateManager         eth.StateManager = params.StateManager
 			chainIndexer         index.Indexer    = params.Indexer
@@ -211,14 +210,14 @@ func MakeEthEventsExtended(cfg config.EventsConfig, enableEthRPC bool) func(EthE
 			memPoolFilterManager *filter.MemPoolFilterManager
 			filterStore          filter.FilterStore
 			subscriptionManager  *eth.EthSubscriptionManager
-			maxFilterHeightRange abi.ChainEpoch = abi.ChainEpoch(cfg.MaxFilterHeightRange)
+			maxFilterHeightRange = abi.ChainEpoch(cfg.MaxFilterHeightRange)
 		)
 
 		if !enableEthRPC {
 			// all event functionality is disabled
 			// the historic filter API relies on the real time one
 			return eth.NewEthEventsAPI(
-				subscribtionCtx,
+				subscriptionCtx,
 				chainStore,
 				stateManager,
 				chainIndexer,
@@ -238,7 +237,7 @@ func MakeEthEventsExtended(cfg config.EventsConfig, enableEthRPC bool) func(EthE
 		eventFilterManager = params.EventFilterManager
 
 		ee := eth.NewEthEventsAPI(
-			subscribtionCtx,
+			subscriptionCtx,
 			chainStore,
 			stateManager,
 			chainIndexer,
