@@ -730,6 +730,8 @@ type GatewayMethods struct {
 
 	F3GetLatestCertificate func(p0 context.Context) (*certs.FinalityCertificate, error) ``
 
+	F3GetPowerTableByInstance func(p0 context.Context, p1 uint64) (gpbft.PowerEntries, error) ``
+
 	FilecoinAddressToEthAddress func(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthAddress, error) ``
 
 	GasEstimateGasPremium func(p0 context.Context, p1 uint64, p2 address.Address, p3 int64, p4 types.TipSetKey) (types.BigInt, error) ``
@@ -4675,6 +4677,17 @@ func (s *GatewayStruct) F3GetLatestCertificate(p0 context.Context) (*certs.Final
 
 func (s *GatewayStub) F3GetLatestCertificate(p0 context.Context) (*certs.FinalityCertificate, error) {
 	return nil, ErrNotSupported
+}
+
+func (s *GatewayStruct) F3GetPowerTableByInstance(p0 context.Context, p1 uint64) (gpbft.PowerEntries, error) {
+	if s.Internal.F3GetPowerTableByInstance == nil {
+		return *new(gpbft.PowerEntries), ErrNotSupported
+	}
+	return s.Internal.F3GetPowerTableByInstance(p0, p1)
+}
+
+func (s *GatewayStub) F3GetPowerTableByInstance(p0 context.Context, p1 uint64) (gpbft.PowerEntries, error) {
+	return *new(gpbft.PowerEntries), ErrNotSupported
 }
 
 func (s *GatewayStruct) FilecoinAddressToEthAddress(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthAddress, error) {
