@@ -150,9 +150,9 @@ func infoCmdAct(cctx *cli.Context) error {
 		}
 	} else {
 		switch {
-		case len(chs) <= 1:
+		case len(chs) == 1:
 			fmt.Printf("Payment Channels: %v channel\n", len(chs))
-		case len(chs) > 1:
+		default:
 			fmt.Printf("Payment Channels: %v channels\n", len(chs))
 		}
 	}
