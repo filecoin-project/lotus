@@ -46,7 +46,7 @@ jobs:
         with:
           path: lotus
           submodules: 'recursive'
-          ref: e9393dfe8c429c4afb32a0b1e3f71a65dbae926a # TODO: Replace this with: ${{ inputs.lotus-version || github.ref }}
+          ref: ${{ inputs.lotus-version || github.ref }}
       - name: Checkout fevm-contract-tests
         uses: actions/checkout@v4
         with:
