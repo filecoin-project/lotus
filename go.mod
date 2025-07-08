@@ -97,7 +97,7 @@ require (
 	github.com/ipfs/go-ipld-format v0.6.2
 	github.com/ipfs/go-log/v2 v2.6.0
 	github.com/ipfs/go-metrics-interface v0.3.0
-	github.com/ipfs/go-metrics-prometheus v0.0.2
+	github.com/ipfs/go-metrics-prometheus v0.1.0
 	github.com/ipld/go-car v0.6.2
 	github.com/ipld/go-car/v2 v2.14.3
 	github.com/ipld/go-ipld-prime v0.21.0
