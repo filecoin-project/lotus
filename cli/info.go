@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -18,6 +19,7 @@ import (
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/journal/alerting"
+	"github.com/filecoin-project/lotus/node/impl/paych"
 )
 
 var InfoCmd = &cli.Command{
@@ -142,14 +144,19 @@ func infoCmdAct(cctx *cli.Context) error {
 
 	chs, err := fullapi.PaychList(ctx)
 	if err != nil {
-		return err
-	}
-
-	switch {
-	case len(chs) <= 1:
-		fmt.Printf("Payment Channels: %v channel\n", len(chs))
-	case len(chs) > 1:
-		fmt.Printf("Payment Channels: %v channels\n", len(chs))
+		// Check if the error is because payment channel manager is disabled
+		if errors.Is(err, paych.ErrPaymentChannelDisabled) {
+			fmt.Printf("Payment Channels: disabled (EnablePaymentChannelManager is set to false)\n")
+		} else {
+			return err
+		}
+	} else {
+		switch {
+		case len(chs) == 1:
+			fmt.Printf("Payment Channels: %v channel\n", len(chs))
+		default:
+			fmt.Printf("Payment Channels: %v channels\n", len(chs))
+		}
 	}
 	fmt.Println()
 	tw := tabwriter.NewWriter(os.Stdout, 6, 6, 2, ' ', 0)
