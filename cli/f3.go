@@ -90,7 +90,13 @@ var f3SubCmdPowerTable = &cli.Command{
 			Aliases:   []string{"g"},
 			Usage:     `Get F3 power table at a specific instance ID or latest instance if none is specified.`,
 			ArgsUsage: "[instance]",
-			Flags:     []cli.Flag{f3FlagPowerTableFromEC},
+			Flags: []cli.Flag{
+				f3FlagPowerTableFromEC,
+				&cli.BoolFlag{
+					Name:  "by-tipset",
+					Usage: "Gets power table by translating instance into tipset.",
+				},
+			},
 			Before: func(cctx *cli.Context) error {
 				if cctx.Args().Len() > 1 {
 					return fmt.Errorf("too many arguments")
@@ -124,14 +130,10 @@ var f3SubCmdPowerTable = &cli.Command{
 					instance = progress.ID
 				}
 
-				ltsk, expectedPowerTableCID, err := f3GetPowerTableTSKByInstance(cctx.Context, api, instance)
-				if err != nil {
-					return fmt.Errorf("getting power table tsk for instance %d: %w", instance, err)
-				}
-
 				var result = struct {
 					Instance   uint64
 					FromEC     bool
+					ByTipset   bool
 					PowerTable struct {
 						CID         string
 						Entries     gpbft.PowerEntries
@@ -141,14 +143,30 @@ var f3SubCmdPowerTable = &cli.Command{
 				}{
 					Instance: instance,
 					FromEC:   cctx.Bool(f3FlagPowerTableFromEC.Name),
+					ByTipset: cctx.Bool("by-tipset"),
 				}
-				if result.FromEC {
-					result.PowerTable.Entries, err = api.F3GetECPowerTable(cctx.Context, ltsk)
+
+				var expectedPowerTableCID cid.Cid
+				if !result.ByTipset {
+					result.PowerTable.Entries, err = api.F3GetPowerTableByInstance(cctx.Context, instance)
+					if err != nil {
+						return fmt.Errorf("getting f3 power table at instance %d: %w", instance, err)
+					}
 				} else {
-					result.PowerTable.Entries, err = api.F3GetF3PowerTable(cctx.Context, ltsk)
-				}
-				if err != nil {
-					return fmt.Errorf("getting f3 power table at instance %d: %w", instance, err)
+					var ltsk types.TipSetKey
+					ltsk, expectedPowerTableCID, err = f3GetPowerTableTSKByInstance(cctx.Context, api, instance)
+					if err != nil {
+						return fmt.Errorf("getting power table tsk for instance %d: %w", instance, err)
+					}
+
+					if result.FromEC {
+						result.PowerTable.Entries, err = api.F3GetECPowerTable(cctx.Context, ltsk)
+					} else {
+						result.PowerTable.Entries, err = api.F3GetF3PowerTable(cctx.Context, ltsk)
+					}
+					if err != nil {
+						return fmt.Errorf("getting f3 power table at instance %d: %w", instance, err)
+					}
 				}
 
 				pt := gpbft.NewPowerTable()
@@ -363,14 +381,14 @@ By default the certificates are listed in newest to oldest order,
 i.e. descending instance IDs. The order may be reversed using the
 '--reverse' flag.
 
-A range may optionally be specified as the first argument to indicate 
+A range may optionally be specified as the first argument to indicate
 inclusive range of 'from' and 'to' instances in following notation:
 '<from>..<to>'. Either <from> or <to> may be omitted, but not both.
 An omitted <from> value is always interpreted as 0, and an omitted
 <to> value indicates the latest instance. If both are specified, <from>
 must never exceed <to>.
 
-If no range is specified, the latest 10 certificates are listed, i.e. 
+If no range is specified, the latest 10 certificates are listed, i.e.
 the range of '0..' with limit of 10. Otherwise, all certificates in
 the specified range are listed unless limit is explicitly specified.
 

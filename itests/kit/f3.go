@@ -91,6 +91,10 @@ func (t *MockF3Backend) GetF3PowerTable(context.Context, types.TipSetKey) (gpbft
 	return nil, nil
 }
 
+func (t *MockF3Backend) GetPowerTableByInstance(context.Context, uint64) (gpbft.PowerEntries, error) {
+	return nil, nil
+}
+
 func (t *MockF3Backend) ListParticipants() []api.F3Participant { return nil }
 func (t *MockF3Backend) IsRunning() bool                       { return t.Running }
 func (t *MockF3Backend) Progress() gpbft.InstanceProgress      { return t.progress }

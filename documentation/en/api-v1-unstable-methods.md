@@ -92,6 +92,7 @@
   * [F3GetLatestCertificate](#F3GetLatestCertificate)
   * [F3GetManifest](#F3GetManifest)
   * [F3GetOrRenewParticipationTicket](#F3GetOrRenewParticipationTicket)
+  * [F3GetPowerTableByInstance](#F3GetPowerTableByInstance)
   * [F3GetProgress](#F3GetProgress)
   * [F3IsRunning](#F3IsRunning)
   * [F3ListParticipants](#F3ListParticipants)
@@ -3153,6 +3154,30 @@ Inputs:
 ```
 
 Response: `"Bw=="`
+
+### F3GetPowerTableByInstance
+F3GetPowerTableByInstance returns the power table (committee) used to validate the specified instance.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  42
+]
+```
+
+Response:
+```json
+[
+  {
+    "ID": 1000,
+    "Power": "0",
+    "PubKey": "Bw=="
+  }
+]
+```
 
 ### F3GetProgress
 F3GetProgress returns the progress of the current F3 instance in terms of instance ID, round and phase.

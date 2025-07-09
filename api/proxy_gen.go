@@ -274,6 +274,8 @@ type FullNodeMethods struct {
 
 	F3GetOrRenewParticipationTicket func(p0 context.Context, p1 address.Address, p2 F3ParticipationTicket, p3 uint64) (F3ParticipationTicket, error) `perm:"sign"`
 
+	F3GetPowerTableByInstance func(p0 context.Context, p1 uint64) (gpbft.PowerEntries, error) `perm:"read"`
+
 	F3GetProgress func(p0 context.Context) (gpbft.InstanceProgress, error) `perm:"read"`
 
 	F3IsRunning func(p0 context.Context) (bool, error) `perm:"read"`
@@ -727,6 +729,8 @@ type GatewayMethods struct {
 	F3GetCertificate func(p0 context.Context, p1 uint64) (*certs.FinalityCertificate, error) ``
 
 	F3GetLatestCertificate func(p0 context.Context) (*certs.FinalityCertificate, error) ``
+
+	F3GetPowerTableByInstance func(p0 context.Context, p1 uint64) (gpbft.PowerEntries, error) ``
 
 	FilecoinAddressToEthAddress func(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthAddress, error) ``
 
@@ -2231,6 +2235,17 @@ func (s *FullNodeStruct) F3GetOrRenewParticipationTicket(p0 context.Context, p1 
 
 func (s *FullNodeStub) F3GetOrRenewParticipationTicket(p0 context.Context, p1 address.Address, p2 F3ParticipationTicket, p3 uint64) (F3ParticipationTicket, error) {
 	return *new(F3ParticipationTicket), ErrNotSupported
+}
+
+func (s *FullNodeStruct) F3GetPowerTableByInstance(p0 context.Context, p1 uint64) (gpbft.PowerEntries, error) {
+	if s.Internal.F3GetPowerTableByInstance == nil {
+		return *new(gpbft.PowerEntries), ErrNotSupported
+	}
+	return s.Internal.F3GetPowerTableByInstance(p0, p1)
+}
+
+func (s *FullNodeStub) F3GetPowerTableByInstance(p0 context.Context, p1 uint64) (gpbft.PowerEntries, error) {
+	return *new(gpbft.PowerEntries), ErrNotSupported
 }
 
 func (s *FullNodeStruct) F3GetProgress(p0 context.Context) (gpbft.InstanceProgress, error) {
@@ -4662,6 +4677,17 @@ func (s *GatewayStruct) F3GetLatestCertificate(p0 context.Context) (*certs.Final
 
 func (s *GatewayStub) F3GetLatestCertificate(p0 context.Context) (*certs.FinalityCertificate, error) {
 	return nil, ErrNotSupported
+}
+
+func (s *GatewayStruct) F3GetPowerTableByInstance(p0 context.Context, p1 uint64) (gpbft.PowerEntries, error) {
+	if s.Internal.F3GetPowerTableByInstance == nil {
+		return *new(gpbft.PowerEntries), ErrNotSupported
+	}
+	return s.Internal.F3GetPowerTableByInstance(p0, p1)
+}
+
+func (s *GatewayStub) F3GetPowerTableByInstance(p0 context.Context, p1 uint64) (gpbft.PowerEntries, error) {
+	return *new(gpbft.PowerEntries), ErrNotSupported
 }
 
 func (s *GatewayStruct) FilecoinAddressToEthAddress(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthAddress, error) {

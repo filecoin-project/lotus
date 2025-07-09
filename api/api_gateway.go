@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-f3/certs"
+	"github.com/filecoin-project/go-f3/gpbft"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
@@ -148,6 +149,7 @@ type Gateway interface {
 
 	F3GetCertificate(ctx context.Context, instance uint64) (*certs.FinalityCertificate, error)
 	F3GetLatestCertificate(ctx context.Context) (*certs.FinalityCertificate, error)
+	F3GetPowerTableByInstance(ctx context.Context, instance uint64) (gpbft.PowerEntries, error)
 
 	Version(context.Context) (APIVersion, error)
 	Discover(context.Context) (apitypes.OpenRPCDocument, error)
