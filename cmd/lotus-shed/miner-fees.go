@@ -580,7 +580,7 @@ var minerFeesInspect = &cli.Command{
 						return nil
 					}
 
-					fee, penalty, err := inspectMiner(trace.Msg.To)
+					fee, penalty, err := inspectMiner(trace.Msg.From)
 					if err != nil {
 						return xerrors.Errorf("inspecting miner: %w", err)
 					}
