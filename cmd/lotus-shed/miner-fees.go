@@ -563,21 +563,30 @@ var minerFeesInspect = &cli.Command{
 					}
 					cronParams = &p
 
-					fee, penalty, err := inspectMiner(trace.Msg.To)
-					if err != nil {
-						return xerrors.Errorf("inspecting miner: %w", err)
-					}
 					thisExecCronMiner = &minerBurn{
 						addr:    trace.Msg.To,
 						burn:    big.Zero(),
-						fee:     fee,
-						penalty: penalty,
+						fee:     big.Zero(),
+						penalty: big.Zero(),
 					}
 					burns = append(burns, thisExecCronMiner)
 					cronMinerCalls[trace.Msg.To] = struct{}{}
 				} else if thisExecCronMiner != nil && trace.Msg.From == thisExecCronMiner.addr && trace.Msg.To == burnAddr {
 					// TODO: handle multiple burn? Shouldn't happen but maybe it should be checked?
 					thisExecCronMiner.burn = trace.Msg.Value
+
+					// If we have a burn, we can inspect the miner for fees and penalties.
+					if thisExecCronMiner.burn.IsZero() {
+						return nil
+					}
+
+					fee, penalty, err := inspectMiner(trace.Msg.From)
+					if err != nil {
+						return xerrors.Errorf("inspecting miner: %w", err)
+					}
+
+					thisExecCronMiner.fee = fee
+					thisExecCronMiner.penalty = penalty
 				}
 
 				for _, st := range trace.Subcalls {
