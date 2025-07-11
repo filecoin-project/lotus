@@ -35,7 +35,7 @@ func ChainBitswap(lc fx.Lifecycle, mctx helpers.MetricsCtx, host host.Host, rt r
 	// prefix protocol for chain bitswap
 	// (so bitswap uses /chain/ipfs/bitswap/1.0.0 internally for chain sync stuff)
 	bitswapNetwork := bsnet.NewFromIpfsHost(host, bsnet.Prefix("/chain"))
-	bitswapOptions := []bitswap.Option{bitswap.WithServerEnabled(false)}
+	bitswapOptions := []bitswap.Option{bitswap.WithServerEnabled(true)}
 
 	// Write all incoming bitswap blocks into a temporary blockstore for two
 	// block times. If they validate, they'll be persisted later.
