@@ -10,6 +10,7 @@
 # UNRELEASED
 - chore(deps): update go-libp2p to v0.42.0 ([filecoin-project/lotus#13190](https://github.com/filecoin-project/lotus/pull/13190))
 - chore: update Go version to 1.23.10 ([filecoin-project/lotus#13190](https://github.com/filecoin-project/lotus/pull/13190))
+- chore(deps): upgrade boxo to v0.32.0 and go-ipld-cbor to v0.2.1 ([filecoin-project/lotus#13202](https://github.com/filecoin-project/lotus/pull/13202))
 - fix(cli): fix `lotus state sector` command to display DealIDs correctly post-FIP-0076 by querying market actor's ProviderSectors HAMT while maintaining backward compatibility with DeprecatedDealIDs field ([filecoin-project/lotus#13140](https://github.com/filecoin-project/lotus/pull/13140))
 - chore(deps): bump filecoin-ffi for fvm@v4.7 which adds Logs and IpldOps to debug FVM execution traces ([filecoin-project/lotus#13029](https://github.com/filecoin-project/lotus/pull/13029))
 - chore: return `method not supported` via Gateway when /v2 isn't supported by the backend ([filecoin-project/lotus#13121](https://github.com/filecoin-project/lotus/pull/13121))
