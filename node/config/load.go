@@ -256,7 +256,7 @@ type cfgUpdateOpts struct {
 // UpdateCfgOpt is a functional option for updating the config
 type UpdateCfgOpt func(opts *cfgUpdateOpts) error
 
-// KeepUncommented sets a function for matching default valeus that should remain uncommented during
+// KeepUncommented sets a function for matching default values that should remain uncommented during
 // a config update that comments out default values.
 func KeepUncommented(f func(string) bool) UpdateCfgOpt {
 	return func(opts *cfgUpdateOpts) error {
