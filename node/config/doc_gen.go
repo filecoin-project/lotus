@@ -824,7 +824,7 @@ Format: https://<username>:<password>@<elasticsearch_url>:<port>/`,
 			Type: "string",
 
 			Comment: `Name of elasticsearch index that will be used to save tracer data.
-This property is used only if ElasticSearchTracer propery is set.`,
+This property is used only if ElasticSearchTracer property is set.`,
 		},
 		{
 			Name: "TracerSourceAuth",

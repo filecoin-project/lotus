@@ -26,7 +26,7 @@ func TestDecodeNothing(t *testing.T) {
 		cfg, err := FromFile("./does-not-exist.toml", SetDefault(fullNodeDefault))
 		assert.Nil(err, "error should be nil")
 		assert.Equal(DefaultFullNode(), cfg,
-			"config from not exisiting file should be the same as default")
+			"config from not existing file should be the same as default")
 	}
 }
 
@@ -79,7 +79,7 @@ func TestValidateSplitstoreSet(t *testing.T) {
 	[Chainstore]
 	  # type: bool                                                                         
 	  # env var: LOTUS_CHAINSTORE_ENABLESPLITSTORE                                         
-	  # oops its mising
+	  # oops its missing
 
 	[Chainstore.Splitstore]
     	ColdStoreType = "discard"
