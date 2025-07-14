@@ -44,7 +44,7 @@ func ChainBitswap(lc fx.Lifecycle, mctx helpers.MetricsCtx, host host.Host, rt r
 	bitswapBs := blockstore.NewTieredBstore(bs, cache)
 
 	// Use just exch.Close(), closing the context is not needed
-	exch := bitswap.New(mctx, bitswapNetwork, rt, bitswapBs, bitswapOptions...)
+	exch := bitswap.New(mctx, bitswapNetwork, rt, bitswapBs)
 	lc.Append(fx.Hook{
 		OnStop: func(ctx context.Context) error {
 			return exch.Close()
