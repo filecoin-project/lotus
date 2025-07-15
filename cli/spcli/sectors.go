@@ -1413,7 +1413,7 @@ type TerminatorNode interface {
 
 func TerminateSectors(ctx context.Context, full TerminatorNode, maddr address.Address, sectorNumbers []int, fromAddr address.Address) (*types.SignedMessage, error) {
 
-	terminationDeclarationParams := []miner2.TerminationDeclaration{}
+	terminationMap := make(map[string]*miner2.TerminationDeclaration)
 
 	for _, sectorNum := range sectorNumbers {
 
@@ -1425,13 +1425,21 @@ func TerminateSectors(ctx context.Context, full TerminatorNode, maddr address.Ad
 			return nil, fmt.Errorf("get state sector partition %s", err)
 		}
 
-		para := miner2.TerminationDeclaration{
-			Deadline:  loca.Deadline,
-			Partition: loca.Partition,
-			Sectors:   sectorbit,
+		key := fmt.Sprintf("%d-%d", loca.Deadline, loca.Partition)
+		if td, exists := terminationMap[key]; exists {
+			td.Sectors.Set(uint64(sectorNum))
+		} else {
+			terminationMap[key] = &miner2.TerminationDeclaration{
+				Deadline:  loca.Deadline,
+				Partition: loca.Partition,
+				Sectors:   sectorbit,
+			}
 		}
+	}
 
-		terminationDeclarationParams = append(terminationDeclarationParams, para)
+	terminationDeclarationParams := make([]miner2.TerminationDeclaration, 0, len(terminationMap))
+	for _, td := range terminationMap {
+		terminationDeclarationParams = append(terminationDeclarationParams, *td)
 	}
 
 	terminateSectorParams := &miner2.TerminateSectorsParams{
