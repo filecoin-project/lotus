@@ -374,7 +374,7 @@ var statSnapshotCmd = &cli.Command{
 		},
 		&cli.BoolFlag{
 			Name:  "pretty",
-			Usage: "print formated output instead of ldjson",
+			Usage: "print formatted output instead of ldjson",
 			Value: false,
 		},
 	},
@@ -641,7 +641,7 @@ to reduce the number of decode operations performed by caching the decoded objec
 		},
 		&cli.BoolFlag{
 			Name:  "pretty",
-			Usage: "print formated output instead of ldjson",
+			Usage: "print formatted output instead of ldjson",
 			Value: false,
 		},
 	},
