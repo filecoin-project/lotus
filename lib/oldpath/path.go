@@ -110,7 +110,7 @@ func ParsePath(txt string) (Path, error) {
 		}
 	}
 
-	// if the path doesnt begin with a '/'
+	// if the path doesn't begin with a '/'
 	// we expect this to start with a hash, and be an 'ipfs' path
 	if parts[0] != "" {
 		if _, err := cid.Decode(parts[0]); err != nil {

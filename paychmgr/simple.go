@@ -127,7 +127,7 @@ func newMergedFundsReq(reqs []*fundsReq) *mergedFundsReq {
 	return m
 }
 
-// Called when a fundsReq is cancelled
+// checkActive is called when a fundsReq is cancelled
 func (m *mergedFundsReq) checkActive() {
 	// Check if there are any active fundsReqs
 	for _, r := range m.reqs {
