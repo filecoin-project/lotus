@@ -218,7 +218,7 @@ func TestBackfillMissingEpoch(t *testing.T) {
 	require.Equal(t, uint64(2), result.IndexedEventEntriesCount)
 
 	// Verify that the epoch is now indexed
-	// fails as the events root dont match
+	// fails as the events root don't match
 	verificationResult, err := si.ChainValidateIndex(ctx, missingEpoch, false)
 	require.ErrorContains(t, err, "events AMT root mismatch")
 	require.Nil(t, verificationResult)

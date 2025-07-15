@@ -996,7 +996,7 @@ func TestFEVMGetChainPropertiesBlockHash(t *testing.T) {
 	require.NoError(t, err)
 
 	ethBlock := client.EVM().GetEthBlockFromWait(ctx, wait)
-	// in solidity we get the parent block hash because the current block hash doesnt exist at that execution context yet
+	// in solidity we get the parent block hash because the current block hash doesn't exist at that execution context yet
 	// so we compare the parent hash here in the test
 	require.Equal(t, "0x"+expectedBlockHash, ethBlock.ParentHash.String())
 }

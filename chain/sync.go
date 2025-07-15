@@ -1053,7 +1053,7 @@ func (syncer *Syncer) iterFullTipsets(ctx context.Context, headers []*types.TipS
 		}
 
 		for bsi := 0; bsi < len(bstout); bsi++ {
-			// temp storage so we don't persist data we dont want to
+			// temp storage so we don't persist data we don't want to
 			bs := bstore.NewMemory()
 			blks := cbor.NewCborStore(bs)
 

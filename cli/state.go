@@ -114,7 +114,7 @@ type TipSetResolver interface {
 
 // LoadTipSet gets the tipset from the context, or the head from the API.
 //
-// It always gets the head from the API so commands use a consistent tipset even if time pases.
+// It always gets the head from the API so commands use a consistent tipset even if time passes.
 func LoadTipSet(ctx context.Context, cctx *cli.Context, api TipSetResolver) (*types.TipSet, error) {
 	tss := cctx.String("tipset")
 	if tss == "" {

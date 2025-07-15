@@ -96,7 +96,7 @@ func (bs *gasChargingBlocks) View(ctx context.Context, c cid.Cid, cb func([]byte
 			return cb(b)
 		})
 	}
-	// the underlying blockstore doesn't implement the viewer interface, fall back to normal Get behaviour.
+	// the underlying blockstore doesn't implement the viewer interface, fall back to normal Get behavior.
 	blk, err := bs.Get(ctx, c)
 	if err == nil && blk != nil {
 		return cb(blk.RawData())
@@ -796,7 +796,7 @@ func copyRec(ctx context.Context, from, to blockstore.Blockstore, root cid.Cid, 
 	var lerr error
 	err = linksForObj(blk, func(link cid.Cid) {
 		if lerr != nil {
-			// Theres no erorr return on linksForObj callback :(
+			// There's no error return on linksForObj callback :(
 			return
 		}
 

@@ -32,7 +32,7 @@ type ExpTipSet struct {
 }
 
 func (ts *TipSet) MarshalJSON() ([]byte, error) {
-	// why didnt i just export the fields? Because the struct has methods with the
+	// why didn't i just export the fields? Because the struct has methods with the
 	// same names already
 	return json.Marshal(ExpTipSet{
 		Cids:   ts.cids,

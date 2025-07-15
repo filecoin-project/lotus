@@ -125,13 +125,13 @@ func (us UpgradeSchedule) Validate() error {
 				return xerrors.Errorf("pre-migration start-within must come before stop-within")
 			}
 
-			// If we have a dont-start-within.
+			// If we have a don't-start-within.
 			if m.DontStartWithin != 0 {
 				if m.DontStartWithin < m.StopWithin {
-					return xerrors.Errorf("pre-migration dont-start-within must come before stop-within")
+					return xerrors.Errorf("pre-migration don't-start-within must come before stop-within")
 				}
 				if m.StartWithin <= m.DontStartWithin {
-					return xerrors.Errorf("pre-migration start-within must come after dont-start-within")
+					return xerrors.Errorf("pre-migration start-within must come after don't-start-within")
 				}
 			}
 		}

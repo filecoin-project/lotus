@@ -29,6 +29,7 @@ func NewCliError(s string) error {
 // ApiConnector returns API instance
 type ApiConnector func() api.FullNode
 
+// GetFullNodeServices returns the full node services API
 func GetFullNodeServices(ctx *cli.Context) (ServicesAPI, error) {
 	if tn, ok := ctx.App.Metadata["test-services"]; ok {
 		return tn.(ServicesAPI), nil

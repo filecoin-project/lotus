@@ -1006,7 +1006,7 @@ func (mp *MessagePool) addLocked(ctx context.Context, m *types.SignedMessage, st
 	if incr {
 		mp.currentSize++
 		if mp.currentSize > mp.getConfig().SizeLimitHigh {
-			// send signal to prune messages if it hasnt already been sent
+			// send signal to prune messages if it hasn't already been sent
 			select {
 			case mp.pruneTrigger <- struct{}{}:
 			default:
