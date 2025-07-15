@@ -2,8 +2,13 @@ package main
 
 import (
 	"bytes"
+	"encoding/csv"
 	"fmt"
+	"io"
+	"os"
 	"sort"
+	"strconv"
+	"strings"
 
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/urfave/cli/v2"
@@ -392,8 +397,8 @@ var minerFeesCmd = &cli.Command{
 
 var minerFeesInspect = &cli.Command{
 	Name:      "fees-inspect",
-	UsageText: "lotus-shed miner fees-inspect [--tipset <tipset>] [--count <count>]",
-	Description: "Inspect miner fees in the given tipset and its parents. The output is a CSV with the following columns:\n" +
+	UsageText: "lotus-shed miner fees-inspect [--tipset <start-epoch>] [--count <epochs>] [--output <file>]",
+	Description: "Inspect miner fees starting from the given tipset and going forward. The output is a CSV with the following columns:\n" +
 		"Epoch, Burn, Fees, Penalties, Expected, Miners ...\n" +
 		"Where:\n" +
 		"  - Epoch: the epoch of the tipset\n" +
@@ -403,17 +408,32 @@ var minerFeesInspect = &cli.Command{
 		"  - Expected: whether the sum of fees and penalties equals the burn amount (✓ or ✗)\n" +
 		"    A discrepancy here likely results from burnt precommit deposits or miners who can't pay fees,\n" +
 		"    neither of which are currently calculated by this tool\n" +
-		"  - Miners: the list of miners that burned or were expected to burn in this tipset",
+		"  - Miners: the list of miners that burned or were expected to burn in this tipset\n\n" +
+		"Output Options:\n" +
+		"  --output <file> : Write CSV to file and track inspection progress. If file exists, inspection will resume from last epoch.\n\n" +
+		"Examples:\n" +
+		"  # Inspect 100 epochs starting from epoch 5100000\n" +
+		"  lotus-shed miner fees-inspect --tipset @5100000 --count 100\n\n" +
+		"  # Inspect from epoch 5100000 to current head\n" +
+		"  lotus-shed miner fees-inspect --tipset @5100000\n\n" +
+		"  # Save results to file, inspect 1000 epochs from epoch 5000000\n" +
+		"  lotus-shed miner fees-inspect --tipset @5000000 --count 1000 --output fees.csv\n\n" +
+		"  # Resume from last epoch in existing file (no --tipset needed)\n" +
+		"  lotus-shed miner fees-inspect --output fees.csv --count 100\n\n" +
+		"  # Resume and go to current head\n" +
+		"  lotus-shed miner fees-inspect --output fees.csv",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "tipset",
-			Usage: "tipset or height (@X or @head for latest)",
-			Value: "@head",
+			Usage: "starting tipset or height (@X to specify an epoch) - required unless resuming from file",
 		},
 		&cli.IntFlag{
 			Name:  "count",
-			Usage: "number of tipsets to inspect, working backwards from the --tipset",
-			Value: 1,
+			Usage: "number of epochs to inspect forward from --tipset (default: to current head)",
+		},
+		&cli.StringFlag{
+			Name:  "output",
+			Usage: "CSV file to save or resume results",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -432,6 +452,75 @@ var minerFeesInspect = &cli.Command{
 
 		bstore := blockstore.NewAPIBlockstore(api)
 		adtStore := adt.WrapStore(ctx, cbor.NewCborStore(bstore))
+
+		outputFile := cctx.String("output")
+		count := cctx.Int("count")
+
+		// Handle output options
+		var csvWriter *csv.Writer
+		var lastEpoch abi.ChainEpoch = 0
+
+		if outputFile != "" {
+			// Check if file exists to resume from it
+			if _, err := os.Stat(outputFile); err == nil {
+				// Read the last epoch from existing file
+				f, err := os.Open(outputFile)
+				if err != nil {
+					return xerrors.Errorf("opening output file: %w", err)
+				}
+				reader := csv.NewReader(f)
+				var lastLine []string
+				for {
+					line, err := reader.Read()
+					if err == io.EOF {
+						break
+					}
+					if err != nil {
+						_ = f.Close()
+						return xerrors.Errorf("reading output file: %w", err)
+					}
+					if line[0] != "Epoch" { // Skip header
+						lastLine = line
+					}
+				}
+				_ = f.Close()
+
+				if len(lastLine) > 0 {
+					epochStr := strings.TrimSpace(lastLine[0])
+					epoch, err := strconv.ParseInt(epochStr, 10, 64)
+					if err != nil {
+						return xerrors.Errorf("parsing last epoch from output file: %w", err)
+					}
+					lastEpoch = abi.ChainEpoch(epoch)
+					_, _ = fmt.Fprintf(cctx.App.ErrWriter, "Last processed epoch: %d\n", lastEpoch)
+				}
+			}
+
+			// Open file for appending or create new one
+			var f *os.File
+			if lastEpoch > 0 {
+				f, err = os.OpenFile(outputFile, os.O_APPEND|os.O_WRONLY, 0644)
+				if err != nil {
+					return xerrors.Errorf("opening output file for append: %w", err)
+				}
+			} else {
+				f, err = os.Create(outputFile)
+				if err != nil {
+					return xerrors.Errorf("creating output file: %w", err)
+				}
+			}
+			defer func() { _ = f.Close() }()
+
+			csvWriter = csv.NewWriter(f)
+			defer csvWriter.Flush()
+
+			// Write header if new file
+			if lastEpoch == 0 {
+				if err := csvWriter.Write([]string{"Epoch", "Burn", "Fees", "Penalties", "Expected", "Miners"}); err != nil {
+					return xerrors.Errorf("writing output header: %w", err)
+				}
+			}
+		}
 
 		inspectTipset := func(ts *types.TipSet) error {
 			compute, err := api.StateCompute(ctx, ts.Height(), nil, ts.Key())
@@ -625,32 +714,129 @@ var minerFeesInspect = &cli.Command{
 				// calculate that for each miner.
 				expected = "✗"
 			}
-			_, _ = fmt.Fprintf(cctx.App.Writer, "%d, %v, %v, %v, %s", ts.Height(), totalBurn, totalFees, totalPenalties, expected)
+			// Format output - unified CSV handling for both file and stdout
+			row := []string{
+				fmt.Sprintf("%d", ts.Height()),
+				totalBurn.String(),
+				totalFees.String(),
+				totalPenalties.String(),
+				expected,
+			}
+
+			// Add miners - consistent ordering
 			sort.Slice(miners, func(i, j int) bool {
 				return must.One(address.IDFromAddress(miners[i])) < must.One(address.IDFromAddress(miners[j]))
 			})
-			for _, maddr := range miners {
-				_, _ = fmt.Fprintf(cctx.App.Writer, ", %v", maddr)
+			minersStr := ""
+			for i, maddr := range miners {
+				if i > 0 {
+					minersStr += " "
+				}
+				minersStr += maddr.String()
 			}
-			_, _ = fmt.Fprintf(cctx.App.Writer, "\n")
+			row = append(row, minersStr)
+
+			if err := csvWriter.Write(row); err != nil {
+				return xerrors.Errorf("writing output: %w", err)
+			}
+			csvWriter.Flush()
 
 			return nil
 		}
 
-		ts, err := lcli.LoadTipSet(ctx, cctx, api)
-		if err != nil {
-			return err
+		// Determine starting point
+		var startTs *types.TipSet
+		if lastEpoch > 0 && outputFile != "" {
+			// Resume from last epoch in file
+			// Check if we're already at the head
+			head, err := api.ChainHead(ctx)
+			if err != nil {
+				return xerrors.Errorf("getting chain head: %w", err)
+			}
+
+			if lastEpoch >= head.Height() {
+				_, _ = fmt.Fprintf(cctx.App.ErrWriter, "File is up to date (last epoch %d, current head %d)\n", lastEpoch, head.Height())
+				return nil
+			}
+
+			startTs, err = api.ChainGetTipSetByHeight(ctx, lastEpoch+1, types.EmptyTSK)
+			if err != nil {
+				return xerrors.Errorf("getting tipset at height %d: %w", lastEpoch+1, err)
+			}
+			_, _ = fmt.Fprintf(cctx.App.ErrWriter, "Resuming from epoch %d\n", lastEpoch+1)
+		} else {
+			// Start from specified tipset
+			if !cctx.IsSet("tipset") {
+				return xerrors.Errorf("--tipset is required when not resuming from an existing file")
+			}
+			startTs, err = lcli.LoadTipSet(ctx, cctx, api)
+			if err != nil {
+				return err
+			}
 		}
 
-		count := cctx.Int("count")
-		_, _ = fmt.Fprintln(cctx.App.Writer, "Epoch, Burn, Fees, Penalties, Expected, Miners ...")
-		for i := 0; i < count; i++ {
-			if err := inspectTipset(ts); err != nil {
-				return xerrors.Errorf("inspecting tipset %d: %w", ts.Height(), err)
+		// Determine end point
+		var endHeight abi.ChainEpoch
+		if count > 0 {
+			// Use specified count
+			endHeight = startTs.Height() + abi.ChainEpoch(count) - 1
+		} else {
+			// Go to current head
+			head, err := api.ChainHead(ctx)
+			if err != nil {
+				return xerrors.Errorf("getting chain head: %w", err)
 			}
-			if ts, err = api.ChainGetTipSet(ctx, ts.Parents()); err != nil {
-				return xerrors.Errorf("getting parent tipset: %w", err)
+			endHeight = head.Height()
+		}
+
+		// Calculate actual count for the loop
+		actualCount := int(endHeight - startTs.Height() + 1)
+		if actualCount <= 0 {
+			return xerrors.Errorf("invalid range: start epoch %d >= end epoch %d", startTs.Height(), endHeight)
+		}
+
+		// Setup CSV writer for stdout if no output file
+		if outputFile == "" {
+			csvWriter = csv.NewWriter(cctx.App.Writer)
+			defer csvWriter.Flush()
+			// Write header for stdout
+			if err := csvWriter.Write([]string{"Epoch", "Burn", "Fees", "Penalties", "Expected", "Miners"}); err != nil {
+				return xerrors.Errorf("writing output header: %w", err)
 			}
+		}
+
+		// Process epochs forward from start to end
+		currentTs := startTs
+
+		// Print starting info if outputting to file
+		if outputFile != "" {
+			_, _ = fmt.Fprintf(cctx.App.ErrWriter, "Processing %d epochs from %d to %d\n", actualCount, startTs.Height(), endHeight)
+		}
+
+		for i := 0; i < actualCount; i++ {
+			// Show progress if outputting to file
+			if outputFile != "" {
+				_, _ = fmt.Fprintf(cctx.App.ErrWriter, "\rProcessing epoch %d [%d/%d] (%d%%)...", currentTs.Height(), i+1, actualCount, (i+1)*100/actualCount)
+			}
+
+			if err := inspectTipset(currentTs); err != nil {
+				return xerrors.Errorf("inspecting tipset %d: %w", currentTs.Height(), err)
+			}
+
+			// Move to next epoch
+			if i < actualCount-1 {
+				nextHeight := currentTs.Height() + 1
+				currentTs, err = api.ChainGetTipSetByHeight(ctx, nextHeight, types.EmptyTSK)
+				if err != nil {
+					return xerrors.Errorf("getting tipset at height %d: %w", nextHeight, err)
+				}
+			}
+		}
+
+		// Clear progress line if outputting to file
+		if outputFile != "" {
+			_, _ = fmt.Fprintf(cctx.App.ErrWriter, "\r                                                                       \r")
+			_, _ = fmt.Fprintf(cctx.App.ErrWriter, "Completed processing %d epochs\n", actualCount)
 		}
 		return nil
 	},
