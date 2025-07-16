@@ -742,7 +742,7 @@ func (pm *Manager) restartPending(ctx context.Context) error {
 	return group.Wait()
 }
 
-// getPaychWaitReady waits for a the response to the message with the given cid
+// getPaychWaitReady waits for the response to the message with the given cid
 func (ca *channelAccessor) getPaychWaitReady(ctx context.Context, mcid cid.Cid) (address.Address, error) {
 	ca.lk.Lock()
 
