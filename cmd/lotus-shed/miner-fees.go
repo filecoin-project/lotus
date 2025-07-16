@@ -826,7 +826,7 @@ var minerFeesInspect = &cli.Command{
 			// Move to next epoch
 			if i < actualCount-1 {
 				nextHeight := currentTs.Height() + 1
-				currentTs, err = api.ChainGetTipSetByHeight(ctx, nextHeight, types.EmptyTSK)
+				currentTs, err = api.ChainGetTipSetAfterHeight(ctx, nextHeight, types.EmptyTSK)
 				if err != nil {
 					return xerrors.Errorf("getting tipset at height %d: %w", nextHeight, err)
 				}
