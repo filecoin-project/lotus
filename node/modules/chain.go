@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/ipfs/boxo/bitswap"
-	"github.com/ipfs/boxo/bitswap/network"
+	"github.com/ipfs/boxo/bitswap/network/bsnet"
 	"github.com/ipfs/boxo/blockservice"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/routing"
@@ -34,8 +34,7 @@ import (
 func ChainBitswap(lc fx.Lifecycle, mctx helpers.MetricsCtx, host host.Host, rt routing.Routing, bs dtypes.ExposedBlockstore) dtypes.ChainBitswap {
 	// prefix protocol for chain bitswap
 	// (so bitswap uses /chain/ipfs/bitswap/1.0.0 internally for chain sync stuff)
-	bitswapNetwork := network.NewFromIpfsHost(host, rt, network.Prefix("/chain"))
-	bitswapOptions := []bitswap.Option{bitswap.ProvideEnabled(false)}
+	bitswapNetwork := bsnet.NewFromIpfsHost(host, bsnet.Prefix("/chain"))
 
 	// Write all incoming bitswap blocks into a temporary blockstore for two
 	// block times. If they validate, they'll be persisted later.
@@ -45,7 +44,7 @@ func ChainBitswap(lc fx.Lifecycle, mctx helpers.MetricsCtx, host host.Host, rt r
 	bitswapBs := blockstore.NewTieredBstore(bs, cache)
 
 	// Use just exch.Close(), closing the context is not needed
-	exch := bitswap.New(mctx, bitswapNetwork, bitswapBs, bitswapOptions...)
+	exch := bitswap.New(mctx, bitswapNetwork, rt, bitswapBs)
 	lc.Append(fx.Hook{
 		OnStop: func(ctx context.Context) error {
 			return exch.Close()
