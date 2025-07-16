@@ -19,7 +19,8 @@ import (
 var CacheMetricsEmitInterval = 5 * time.Second
 
 var (
-	CacheName, _ = tag.NewKey("cache_name")
+	CacheName, _   = tag.NewKey("cache_name")
+	FetchSource, _ = tag.NewKey("fetch_source") // "local" or "network"
 )
 
 // CacheMeasures groups all metrics emitted by the blockstore caches.
@@ -136,6 +137,45 @@ var CacheViews = struct {
 	},
 }
 
+// MessageFetchMeasures groups metrics for message fetch tracking
+var MessageFetchMeasures = struct {
+	Requested *stats.Int64Measure
+	Local     *stats.Int64Measure
+	Network   *stats.Int64Measure
+	Duration  *stats.Float64Measure
+}{
+	Requested: stats.Int64("message/fetch_requested", "Number of messages requested for fetch", stats.UnitDimensionless),
+	Local:     stats.Int64("message/fetch_local", "Number of messages found locally", stats.UnitDimensionless),
+	Network:   stats.Int64("message/fetch_network", "Number of messages fetched from network", stats.UnitDimensionless),
+	Duration:  stats.Float64("message/fetch_duration_ms", "Duration of message fetch operations", stats.UnitMilliseconds),
+}
+
+// MessageFetchViews groups all message fetch-related views
+var MessageFetchViews = struct {
+	Requested *view.View
+	Local     *view.View
+	Network   *view.View
+	Duration  *view.View
+}{
+	Requested: &view.View{
+		Measure:     MessageFetchMeasures.Requested,
+		Aggregation: view.Sum(),
+	},
+	Local: &view.View{
+		Measure:     MessageFetchMeasures.Local,
+		Aggregation: view.Sum(),
+	},
+	Network: &view.View{
+		Measure:     MessageFetchMeasures.Network,
+		Aggregation: view.Sum(),
+	},
+	Duration: &view.View{
+		Measure:     MessageFetchMeasures.Duration,
+		Aggregation: view.Distribution(0.01, 0.05, 0.1, 0.3, 0.6, 0.8, 1, 2, 3, 4, 5, 6, 8, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1500, 2000, 3000, 4000, 5000),
+		TagKeys:     []tag.Key{FetchSource},
+	},
+}
+
 // DefaultViews exports all default views for this package.
 var DefaultViews = []*view.View{
 	CacheViews.HitRatio,
@@ -151,4 +191,9 @@ var DefaultViews = []*view.View{
 	CacheViews.SetsDropped,
 	CacheViews.SetsRejected,
 	CacheViews.QueriesDropped,
+	// Message fetch views
+	MessageFetchViews.Requested,
+	MessageFetchViews.Local,
+	MessageFetchViews.Network,
+	MessageFetchViews.Duration,
 }

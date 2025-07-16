@@ -37,7 +37,8 @@
 - fix(cli): make lotus-miner sectors extend command resilient to higher gas ([filecoin-project/lotus#11927](https://github.com/filecoin-project/lotus/pull/11928))
 - feat(api): update go-f3 to 0.8.8, add F3GetPowerTableByInstance to the API ([filecoin-project/lotus#13201](https://github.com/filecoin-project/lotus/pull/13201))
 - fix(cli): use F3GetPowerTableByInstance to resolve F3 power tables by default, `--by-tipset` flag can be used to restore old behavior ([filecoin-project/lotus#13201](https://github.com/filecoin-project/lotus/pull/13201))
-- fix(cli): correctly construct the TerminateSectors params
+- fix(cli): correctly construct the TerminateSectors params ([filecoin-project/lotus#13207](https://github.com/filecoin-project/lotus/pull/13207))
+- feat(net): add LOTUS_ENABLE_MESSAGE_FETCH_INSTRUMENTATION=1 to turn on metrics and debugging for local vs bitswap message fetching during block validation ([filecoin-project/lotus#13221](https://github.com/filecoin-project/lotus/pull/13221))
 
 # Node v1.33.0 / 2025-05-08
 The Lotus v1.33.0 release introduces experimental v2 APIs with F3 awareness, featuring a new TipSet selection mechanism that significantly enhances how applications interact with the Filecoin blockchain. This release candidate also adds F3-aware Ethereum APIs via the /v2 endpoint.  All of the /v2 APIs implement intelligent fallback mechanisms between F3 and Expected Consensus and are exposed through the Lotus Gateway.

@@ -366,6 +366,19 @@ that wraps the stores
 `ChainExchange()` and `ChainBlockservice()` establish a BitSwap connection (FIXME libp2p link)
 to exchange chain information in the form of `blocks.Block`s stored in the repo. (See sync section for more details, the Filecoin blocks and messages are backed by these raw IPFS blocks that together form the different structures that define the state of the current/heaviest chain.)
 
+##### Monitoring Bitswap Usage
+
+To monitor how often Lotus needs to use bitswap for fetching messages (as opposed to having them available locally from pubsub), you can enable message fetch instrumentation:
+
+```bash
+export LOTUS_ENABLE_MESSAGE_FETCH_INSTRUMENTATION=1
+```
+
+This enables metrics that track:
+- `lotus_message_fetch_requested`: Total messages requested
+- `lotus_message_fetch_local`: Messages found in local blockstore (from pubsub)
+- `lotus_message_fetch_network`: Messages that required bitswap network fetch
+
 #### Incoming handlers
 `HandleIncomingBlocks()` and `HandleIncomingMessages()` start the services in charge of processing new Filecoin blocks
 and messages from the network (see `<undefined>` for more information about the topics the node is subscribed to, FIXME: should that be part of the libp2p section or should we expand on gossipsub separately?).

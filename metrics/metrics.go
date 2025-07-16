@@ -76,6 +76,9 @@ var (
 	// piecereader
 	PRReadType, _ = tag.NewKey("pr_type") // seq / rand
 	PRReadSize, _ = tag.NewKey("pr_size") // small / big
+
+	// message fetching
+	FetchSource, _ = tag.NewKey("fetch_source") // "local" or "network"
 )
 
 // Measures
@@ -131,6 +134,12 @@ var (
 	VMApplied                           = stats.Int64("vm/applied", "Counter for messages (including internal messages) processed by the VM", stats.UnitDimensionless)
 	VMExecutionWaiting                  = stats.Int64("vm/execution_waiting", "Counter for VM executions waiting to be assigned to a lane", stats.UnitDimensionless)
 	VMExecutionRunning                  = stats.Int64("vm/execution_running", "Counter for running VM executions", stats.UnitDimensionless)
+
+	// message fetching
+	MessageFetchRequested = stats.Int64("message/fetch_requested", "Number of messages requested for fetch", stats.UnitDimensionless)
+	MessageFetchLocal     = stats.Int64("message/fetch_local", "Number of messages found locally", stats.UnitDimensionless)
+	MessageFetchNetwork   = stats.Int64("message/fetch_network", "Number of messages fetched from network", stats.UnitDimensionless)
+	MessageFetchDuration  = stats.Float64("message/fetch_duration_ms", "Duration of message fetch operations", stats.UnitMilliseconds)
 
 	// miner
 	WorkerCallsStarted           = stats.Int64("sealing/worker_calls_started", "Counter of started worker tasks", stats.UnitDimensionless)
@@ -451,6 +460,28 @@ var (
 		Measure:     VMExecutionRunning,
 		Aggregation: view.Sum(),
 		TagKeys:     []tag.Key{ExecutionLane, Network},
+	}
+
+	// message fetching
+	MessageFetchRequestedView = &view.View{
+		Measure:     MessageFetchRequested,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{Network},
+	}
+	MessageFetchLocalView = &view.View{
+		Measure:     MessageFetchLocal,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{Network},
+	}
+	MessageFetchNetworkView = &view.View{
+		Measure:     MessageFetchNetwork,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{Network},
+	}
+	MessageFetchDurationView = &view.View{
+		Measure:     MessageFetchDuration,
+		Aggregation: defaultMillisecondsDistribution,
+		TagKeys:     []tag.Key{FetchSource, Network},
 	}
 
 	// miner
@@ -829,6 +860,10 @@ var ChainNodeViews = append([]*view.View{
 	VMAppliedView,
 	VMExecutionWaitingView,
 	VMExecutionRunningView,
+	MessageFetchRequestedView,
+	MessageFetchLocalView,
+	MessageFetchNetworkView,
+	MessageFetchDurationView,
 }, DefaultViews...)
 
 var MinerNodeViews = append([]*view.View{
