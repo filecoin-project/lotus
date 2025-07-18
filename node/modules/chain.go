@@ -2,6 +2,7 @@ package modules
 
 import (
 	"context"
+	"os"
 	"time"
 
 	"github.com/ipfs/boxo/bitswap"
@@ -55,6 +56,13 @@ func ChainBitswap(lc fx.Lifecycle, mctx helpers.MetricsCtx, host host.Host, rt r
 }
 
 func ChainBlockService(bs dtypes.ExposedBlockstore, rem dtypes.ChainBitswap) dtypes.ChainBlockService {
+	// Use instrumented blockservice only if explicitly enabled via environment variable.
+	// This adds minor overhead by adding an extra .Has() on every block before fetching.
+	// Enable with: LOTUS_ENABLE_MESSAGE_FETCH_INSTRUMENTATION=1
+	if os.Getenv("LOTUS_ENABLE_MESSAGE_FETCH_INSTRUMENTATION") == "1" {
+		log.Info("Message fetch instrumentation enabled via LOTUS_ENABLE_MESSAGE_FETCH_INSTRUMENTATION=1")
+		return blockstore.NewInstrumentedBlockService(bs, rem)
+	}
 	return blockservice.New(bs, rem)
 }
 

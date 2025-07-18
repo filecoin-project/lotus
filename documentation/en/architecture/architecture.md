@@ -520,6 +520,19 @@ that wraps the stores
 
 This service is primarily used by `HandleIncomingBlocks()` to fetch message content when processing new blocks received via pubsub. See the [Network Message Flow](#network-message-flow-and-bitswap-integration) section for detailed explanation of when bitswap network requests occur versus when messages are available locally.
 
+##### Monitoring Bitswap Usage
+
+To monitor how often Lotus needs to use bitswap for fetching messages (as opposed to having them available locally from pubsub), you can enable message fetch instrumentation:
+
+```bash
+export LOTUS_ENABLE_MESSAGE_FETCH_INSTRUMENTATION=1
+```
+
+This enables metrics that track:
+- `lotus_message_fetch_requested`: Total messages requested
+- `lotus_message_fetch_local`: Messages found in local blockstore (from pubsub)
+- `lotus_message_fetch_network`: Messages that required bitswap network fetch
+
 #### Incoming handlers
 
 `HandleIncomingBlocks()` and `HandleIncomingMessages()` start the services in charge of processing new Filecoin blocks
