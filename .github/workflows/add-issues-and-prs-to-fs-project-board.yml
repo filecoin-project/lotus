@@ -1,0 +1,31 @@
+######################################################################################
+# READ THIS FIRST
+# This file is authored in filecoin-project/github-mgmt repository and MANUALLY copied to other repos.
+# See https://github.com/filecoin-project/github-mgmt/blob/master/files/workflows/add-issues-and-prs-to-fs-project-board.yml for more info.
+######################################################################################
+
+# This action adds all issues and PRs with a "team/fs-wg" label to the FS project board.
+# It is used to keep the FS project board up to date with the issues and PRs.
+# It is triggered by the issue and PR events.
+# It assumes a `FILOZZY_CI_ADD_TO_PROJECT` secret is set in the repo.
+# This secret should have the permissions outlined in https://github.com/actions/add-to-project?tab=readme-ov-file#creating-a-pat-and-adding-it-to-your-repository
+name: Add issues and PRs to FS project board
+
+on:
+  issues:
+    types:
+      - labeled
+  pull_request:
+    types:
+      - labeled
+
+jobs:
+  add-to-project:
+    name: Add all "team/fs-wg" issues and PRs to project
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/add-to-project@v1.0.2
+        with:
+          project-url: https://github.com/orgs/FilOzone/projects/14
+          github-token: ${{ secrets.FILOZZY_CI_ADD_TO_PROJECT }}
+          labeled: team/fs-wg
