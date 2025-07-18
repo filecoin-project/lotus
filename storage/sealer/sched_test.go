@@ -111,7 +111,7 @@ func (s *schedTestWorker) AddPiece(ctx context.Context, sector storiface.SectorR
 	panic("implement me")
 }
 
-func (s *schedTestWorker) ReplicaUpdate(ctx context.Context, sector storiface.SectorRef, peices []abi.PieceInfo) (storiface.CallID, error) {
+func (s *schedTestWorker) ReplicaUpdate(ctx context.Context, sector storiface.SectorRef, pieces []abi.PieceInfo) (storiface.CallID, error) {
 	panic("implement me")
 }
 
