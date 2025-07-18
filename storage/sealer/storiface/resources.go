@@ -20,7 +20,7 @@ type Resources struct {
 	MinMemory uint64 `envname:"MIN_MEMORY"` // What Must be in RAM for decent perf
 	MaxMemory uint64 `envname:"MAX_MEMORY"` // Memory required (swap + ram; peak memory usage during task execution)
 
-	// GPUUtilization specifes the number of GPUs a task can use
+	// GPUUtilization specifies the number of GPUs a task can use
 	GPUUtilization float64 `envname:"GPU_UTILIZATION"`
 
 	// MaxParallelism specifies the number of CPU cores when GPU is NOT in use
