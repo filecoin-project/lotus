@@ -107,7 +107,7 @@ jobs:
         run: |
           brew update
           brew unlink curl
-          brew install curl
+          brew upgrade curl
           brew link curl --force
       - name: Build binaries
         env:
