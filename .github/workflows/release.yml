@@ -103,7 +103,7 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.inputs.ref }}
       - name: Update curl
-        if: runner.os == 'MacOS'
+        if: runner.os == 'macOS'
         run: |
           brew update
           brew unlink curl
