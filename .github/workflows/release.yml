@@ -102,6 +102,13 @@ jobs:
           submodules: 'recursive'
           fetch-depth: 0
           ref: ${{ github.event.inputs.ref }}
+      - name: Update curl
+        if: runner.os == 'macOS'
+        run: |
+          brew update
+          brew unlink curl
+          brew upgrade curl
+          brew link curl --force
       - name: Build binaries
         env:
           GITHUB_TOKEN: ${{ github.token }}
