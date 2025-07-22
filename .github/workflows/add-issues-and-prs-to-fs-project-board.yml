@@ -15,7 +15,11 @@ on:
   issues:
     types:
       - labeled
-  pull_request:
+  # Using "pull_request_target" instead of "pull_request" to support PRs from forks.
+  # Workflow runs triggered on PRs from forks do not have access to secrets, so "github-token" input below would otherwise be empty.
+  # This action does not check out nor execute user code so we should be safe.
+  # We also hardcode to specific hash to ensure no unintended changes underneath us.  
+  pull_request_target:
     types:
       - labeled
 
@@ -24,7 +28,7 @@ jobs:
     name: Add all "team/fs-wg" issues and PRs to project
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/add-to-project@v1.0.2
+      - uses: actions/add-to-project@244f685bbc3b7adfa8466e08b698b5577571133e # v1.0.2
         with:
           project-url: https://github.com/orgs/FilOzone/projects/14
           github-token: ${{ secrets.FILOZZY_CI_ADD_TO_PROJECT }}
