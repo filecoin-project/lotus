@@ -259,7 +259,7 @@ func (sim *Simulation) Walk(
 	// 4. We serially call the callback in reverse-chain order.
 	//
 	// We have a buffer of size 1 for both resolved tipsets and unresolved tipsets. This should
-	// ensure that we never block unecessarily.
+	// ensure that we never block unnecessarily.
 
 	type work struct {
 		ts     *types.TipSet
