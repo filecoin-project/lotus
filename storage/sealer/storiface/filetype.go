@@ -235,7 +235,7 @@ func (t SectorFileType) SealSpaceUse(ssize abi.SectorSize) (uint64, error) {
 // and setting the corresponding bit in the denyMask.
 // If a string in denyTypes cannot be converted to a valid SectorFileType, it is ignored.
 // Finally, the method returns the bitwise AND of the original SectorFileType and the denyMask.
-// The returned SectorFileType will only allow the types specified in allowTypes and exclude the types specified in denyTypes.`
+// The returned SectorFileType will only allow the types specified in allowTypes and exclude the types specified in denyTypes.
 func (t SectorFileType) SubAllowed(allowTypes []string, denyTypes []string) SectorFileType {
 	var denyMask SectorFileType // 1s deny
 
