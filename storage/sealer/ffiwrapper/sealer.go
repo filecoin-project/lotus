@@ -20,7 +20,7 @@ type ExternalSealer struct {
 type Sealer struct {
 	sectors SectorProvider
 
-	// externCalls cointain overrides for calling alternative sealing logic
+	// externCalls contain overrides for calling alternative sealing logic
 	externCalls ExternalSealer
 
 	stopping chan struct{}
