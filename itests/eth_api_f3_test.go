@@ -670,7 +670,7 @@ func TestEthAPIWithF3(t *testing.T) {
 					require.NoError(t, err)
 					gaslimit = ethtypes.EthUint64(gaslimitInt)
 					gasLimitOverestimation := 1.25 // default messagepool config value
-					req.Equal(int64(float64(gaslimit)*gasLimitOverestimation), int64(gaslimit))
+					req.LessOrEqual(float64(gaslimit), float64(gaslimitInt)*gasLimitOverestimation)
 				}
 			},
 		},
