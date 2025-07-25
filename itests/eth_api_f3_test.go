@@ -605,20 +605,24 @@ func TestEthAPIWithF3(t *testing.T) {
 			execute: func(req *require.Assertions, subject ethApi, blkParam string, stableExecute func(func()) *types.TipSet, expectErr string) {
 				blkCount := 5
 
-				var feeHistory *ethtypes.EthFeeHistory
+				var historyPtr *ethtypes.EthFeeHistory
 				var err error
 				expect := stableExecute(func() {
-					feeHistory, err = subject.EthFeeHistory(ctx, result.Wrap[jsonrpc.RawParams](
+					historyPtr, err = subject.EthFeeHistory(ctx, result.Wrap[jsonrpc.RawParams](
 						json.Marshal([]interface{}{blkCount, blkParam}),
 					).Assert(req.NoError))
 				})
+				var history ethtypes.EthFeeHistory
+				if historyPtr != nil {
+					history = *historyPtr
+				}
 
 				if expectErr != "" {
 					req.ErrorContains(err, expectErr)
-					req.Nil(feeHistory)
+					req.Nil(history)
 				} else {
 					req.NoError(err)
-					req.NotNil(feeHistory)
+					req.NotNil(history)
 					oldest := expect
 					for range blkCount - 1 {
 						// iterate through Parents() because we'll likely have null rounds in here so we can't
@@ -627,7 +631,7 @@ func TestEthAPIWithF3(t *testing.T) {
 						oldest, err = client.ChainGetTipSet(ctx, k)
 						req.NoError(err)
 					}
-					req.Equal(ethtypes.EthUint64(oldest.Height()), feeHistory.OldestBlock)
+					req.Equal(ethtypes.EthUint64(oldest.Height()), history.OldestBlock)
 				}
 			},
 		},
@@ -647,21 +651,26 @@ func TestEthAPIWithF3(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				var egaslimit *ethtypes.EthUint64
+				var gaslimitPtr *ethtypes.EthUint64
 				expect := stableExecute(func() {
-					egaslimit, err = subject.EthEstimateGas(ctx, gasParams)
+					gaslimitPtr, err = subject.EthEstimateGas(ctx, gasParams)
 				})
+				var gaslimit ethtypes.EthUint64
+				if gaslimitPtr != nil {
+					gaslimit = *gaslimitPtr
+				}
 
 				if expectErr != "" {
 					req.ErrorContains(err, expectErr)
-					req.Equal(ethtypes.EthUint64(0), egaslimit)
+					req.Equal(ethtypes.EthUint64(0), gaslimit)
 				} else {
 					msg, err := call.ToFilecoinMessage()
 					require.NoError(t, err)
-					gaslimit, err := client.GasEstimateGasLimit(ctx, msg, expect.Key())
+					gaslimitInt, err := client.GasEstimateGasLimit(ctx, msg, expect.Key())
 					require.NoError(t, err)
+					gaslimit = ethtypes.EthUint64(gaslimitInt)
 					gasLimitOverestimation := 1.25 // default messagepool config value
-					req.Equal(int64(float64(gaslimit)*gasLimitOverestimation), int64(*egaslimit))
+					req.Equal(int64(float64(gaslimit)*gasLimitOverestimation), int64(gaslimit))
 				}
 			},
 		},

@@ -384,20 +384,24 @@ func (pv2 *reverseProxyV2) EthFeeHistory(ctx context.Context, p jsonrpc.RawParam
 	if err != nil {
 		return nil, xerrors.Errorf("decoding params: %w", err)
 	}
-
 	if err := pv2.gateway.limit(ctx, stateRateLimitTokens); err != nil {
 		return nil, err
 	}
-
 	if err := pv2.checkBlkParam(ctx, params.NewestBlkNum, params.BlkCount); err != nil {
 		return nil, err
 	}
-
 	if params.BlkCount > ethtypes.EthUint64(EthFeeHistoryMaxBlockCount) {
 		return nil, xerrors.New("block count too high")
 	}
-
-	return pv2.server.EthFeeHistory(ctx, p)
+	v, err := pv2.server.EthFeeHistory(ctx, p)
+	switch val := any(v).(type) {
+	case *ethtypes.EthFeeHistory:
+		return val, err
+	case ethtypes.EthFeeHistory:
+		return &val, err
+	default:
+		return nil, err
+	}
 }
 
 func (pv2 *reverseProxyV2) EthMaxPriorityFeePerGas(ctx context.Context) (ethtypes.EthBigInt, error) {
@@ -409,18 +413,22 @@ func (pv2 *reverseProxyV2) EthMaxPriorityFeePerGas(ctx context.Context) (ethtype
 }
 
 func (pv2 *reverseProxyV2) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (*ethtypes.EthUint64, error) {
-	// validate params
 	_, err := jsonrpc.DecodeParams[ethtypes.EthEstimateGasParams](p)
 	if err != nil {
 		return nil, xerrors.Errorf("decoding params: %w", err)
 	}
-
 	if err := pv2.gateway.limit(ctx, stateRateLimitTokens); err != nil {
 		return nil, err
 	}
-
-	// todo limit gas? to what?
-	return pv2.server.EthEstimateGas(ctx, p)
+	v, err := pv2.server.EthEstimateGas(ctx, p)
+	switch val := any(v).(type) {
+	case *ethtypes.EthUint64:
+		return val, err
+	case ethtypes.EthUint64:
+		return &val, err
+	default:
+		return nil, err
+	}
 }
 
 func (pv2 *reverseProxyV2) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {

@@ -98,6 +98,7 @@ func TestEthFeeHistory(t *testing.T) {
 
 	assertHistory := func(history *ethtypes.EthFeeHistory, requestAmount, startHeight int) {
 		amount, oldest := calculateExpectations(tsHeights, requestAmount, startHeight)
+		require.NotNil(history)
 		require.Equal(amount+1, len(history.BaseFeePerGas))
 		require.Equal(amount, len(history.GasUsedRatio))
 		require.Equal(ethtypes.EthUint64(oldest), history.OldestBlock)

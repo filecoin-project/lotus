@@ -676,7 +676,7 @@ func TestFEVMRecursiveActorCallEstimate(t *testing.T) {
 			require.NoError(t, err)
 			require.LessOrEqual(t, int64(*gaslimit), buildconstants.BlockGasLimit)
 
-			t.Logf("EthEstimateGas GasLimit=%d", gaslimit)
+			t.Logf("EthEstimateGas GasLimit=%d", *gaslimit)
 
 			maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)
 			require.NoError(t, err)
