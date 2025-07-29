@@ -1556,7 +1556,7 @@ var StateSectorCmd = &cli.Command{
 
 		// Deals were moved into market actor's ProviderSectors in NV22 / Actors v13
 		if nv >= network.Version22 {
-			marketDealIDs, err := getMarketDealIDs(ctx, api, maddr, abi.SectorNumber(sid), ts.Key())
+			marketDealIDs, err := GetMarketDealIDs(ctx, api, maddr, abi.SectorNumber(sid), ts.Key())
 			if err != nil {
 				fmt.Printf("DealIDs (market): error retrieving from market actor: %v\n", err)
 			} else if len(marketDealIDs) > 0 {
@@ -1769,8 +1769,8 @@ var StateSysActorCIDsCmd = &cli.Command{
 	},
 }
 
-// getMarketDealIDs retrieves deal IDs for a sector from the market actor's ProviderSectors HAMT
-func getMarketDealIDs(ctx context.Context, api v0api.FullNode, maddr address.Address, sid abi.SectorNumber, tsKey types.TipSetKey) ([]abi.DealID, error) {
+// GetMarketDealIDs retrieves deal IDs for a sector from the market actor's ProviderSectors HAMT
+func GetMarketDealIDs(ctx context.Context, api v0api.FullNode, maddr address.Address, sid abi.SectorNumber, tsKey types.TipSetKey) ([]abi.DealID, error) {
 	// Convert miner address to actor ID
 	actorID, err := getMinerActorID(ctx, api, maddr, tsKey)
 	if err != nil {
