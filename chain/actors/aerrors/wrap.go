@@ -102,7 +102,7 @@ func Wrap(err ActorError, message string) ActorError {
 	}
 }
 
-// Wrapf extens chain of errors with a message
+// Wrapf extends chain of errors with a message
 func Wrapf(err ActorError, format string, args ...interface{}) ActorError {
 	if err == nil {
 		return nil
