@@ -689,7 +689,7 @@ type FullNode interface {
 	// It takes the following params: <multisig address>, <proposed transaction ID> <signer address>
 	MsigCancel(context.Context, address.Address, uint64, address.Address) (*MessagePrototype, error) //perm:sign
 
-	// MsigCancel cancels a previously-proposed multisig message
+	// MsigCancelTxnHash cancels a previously-proposed multisig message
 	// It takes the following params: <multisig address>, <proposed transaction ID>, <recipient address>, <value to transfer>,
 	// <sender address of the cancel msg>, <method to call in the proposed message>, <params to include in the proposed message>
 	MsigCancelTxnHash(context.Context, address.Address, uint64, address.Address, types.BigInt, address.Address, uint64, []byte) (*MessagePrototype, error) //perm:sign
@@ -1031,6 +1031,8 @@ type FullNode interface {
 	F3GetECPowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) //perm:read
 	// F3GetF3PowerTable returns a F3 specific power table.
 	F3GetF3PowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) //perm:read
+	// F3GetPowerTableByInstance returns the power table (committee) used to validate the specified instance.
+	F3GetPowerTableByInstance(ctx context.Context, instance uint64) (gpbft.PowerEntries, error) //perm:read
 	// F3IsRunning returns true if the F3 instance is running, false if it's not running but
 	// it's enabled, and an error when disabled entirely.
 	F3IsRunning(ctx context.Context) (bool, error) //perm:read

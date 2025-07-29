@@ -127,7 +127,7 @@ func newMergedFundsReq(reqs []*fundsReq) *mergedFundsReq {
 	return m
 }
 
-// Called when a fundsReq is cancelled
+// checkActive is called when a fundsReq is cancelled
 func (m *mergedFundsReq) checkActive() {
 	// Check if there are any active fundsReqs
 	for _, r := range m.reqs {
@@ -742,7 +742,7 @@ func (pm *Manager) restartPending(ctx context.Context) error {
 	return group.Wait()
 }
 
-// getPaychWaitReady waits for a the response to the message with the given cid
+// getPaychWaitReady waits for the response to the message with the given cid
 func (ca *channelAccessor) getPaychWaitReady(ctx context.Context, mcid cid.Cid) (address.Address, error) {
 	ca.lk.Lock()
 

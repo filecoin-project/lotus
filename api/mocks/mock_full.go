@@ -1320,6 +1320,21 @@ func (mr *MockFullNodeMockRecorder) F3GetOrRenewParticipationTicket(arg0, arg1, 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3GetOrRenewParticipationTicket", reflect.TypeOf((*MockFullNode)(nil).F3GetOrRenewParticipationTicket), arg0, arg1, arg2, arg3)
 }
 
+// F3GetPowerTableByInstance mocks base method.
+func (m *MockFullNode) F3GetPowerTableByInstance(arg0 context.Context, arg1 uint64) (gpbft.PowerEntries, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "F3GetPowerTableByInstance", arg0, arg1)
+	ret0, _ := ret[0].(gpbft.PowerEntries)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// F3GetPowerTableByInstance indicates an expected call of F3GetPowerTableByInstance.
+func (mr *MockFullNodeMockRecorder) F3GetPowerTableByInstance(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3GetPowerTableByInstance", reflect.TypeOf((*MockFullNode)(nil).F3GetPowerTableByInstance), arg0, arg1)
+}
+
 // F3GetProgress mocks base method.
 func (m *MockFullNode) F3GetProgress(arg0 context.Context) (gpbft.InstanceProgress, error) {
 	m.ctrl.T.Helper()

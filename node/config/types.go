@@ -465,7 +465,7 @@ type Pubsub struct {
 	// Format: https://<username>:<password>@<elasticsearch_url>:<port>/
 	ElasticSearchTracer string
 	// Name of elasticsearch index that will be used to save tracer data.
-	// This property is used only if ElasticSearchTracer propery is set.
+	// This property is used only if ElasticSearchTracer property is set.
 	ElasticSearchIndex string
 	// Auth token that will be passed with logs to elasticsearch - used for weighted peers score.
 	TracerSourceAuth string

@@ -86,7 +86,7 @@ func (l *logger) AddCallerSkip(skip int) dlog.Logger {
 
 func NewDrandBeacon(genesisTs, interval uint64, ps *pubsub.PubSub, config dtypes.DrandConfig) (*DrandBeacon, error) {
 	if genesisTs == 0 {
-		panic("what are you doing this cant be zero")
+		panic("what are you doing this can't be zero")
 	}
 
 	drandChain, err := dchain.InfoFromJSON(bytes.NewReader([]byte(config.ChainInfoJSON)))

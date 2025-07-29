@@ -1,5 +1,24 @@
 # Lotus
 
+* [Components](#components)
+* [Preliminaries](#preliminaries)
+	* [Tipsets](#tipsets)
+	* [Actors and Messages](#actors-and-messages)
+* [Sync](#sync)
+	* [Sync setup](#sync-setup)
+	* [Fetching and Persisting Block Headers](#fetching-and-persisting-block-headers)
+	* [Fetching and Validating Blocks](#fetching-and-validating-blocks)
+	* [Setting the head](#setting-the-head)
+	* [Keeping up with the chain](#keeping-up-with-the-chain)
+	* [Network Message Flow and Bitswap Integration](#network-message-flow-and-bitswap-integration)
+* [State](#state)
+	* [Calculating a Tipset State](#calculating-a-tipset-state)
+* [Virtual Machine](#virtual-machine)
+	* [Applying a Message](#applying-a-message)
+* [Building a Lotus node](#building-a-lotus-node)
+	* [The Repository](#the-repository)
+	* [Online](#online)
+
 Lotus is an implementation of the [Filecoin Distributed Storage Network](https://filecoin.io/).
 A Lotus node syncs blockchains that follow the
 Filecoin protocol, validating the blocks and state transitions.
@@ -8,7 +27,7 @@ The specification for the Filecoin protocol can be found [here](https://filecoin
 For information on how to setup and operate a Lotus node,
 please follow the instructions [here](en+getting-started).
 
-# Components
+## Components
 
 At a high level, a Lotus node comprises the following components:
 
@@ -24,7 +43,7 @@ FIXME: No mention of block production here, cross-reference with schomatis's min
 - Other PL dependencies (IPFS, libp2p, IPLD? FIXME, missing)
 - External libraries used by Lotus and other deps (FIXME, missing)
 
-# Preliminaries
+## Preliminaries
 
 We discuss some key Filecoin concepts here, aiming to explain them by contrasting them with analogous concepts
 in other well-known blockchains like Ethereum. We only provide brief descriptions here; elaboration
@@ -56,7 +75,7 @@ which can be thought of as pre-compiled contracts.
 A [Message](https://filecoin-project.github.io/specs/#systems__filecoin_vm__message)
 is analogous to transactions in Ethereum.
 
-# Sync
+## Sync
 
 Sync refers to the process by which a Lotus node synchronizes to the heaviest chain being advertised by its peers.
 At a high-level, Lotus syncs in a manner similar to most other blockchains; a Lotus node listens to the various
@@ -68,14 +87,14 @@ internally managed by a [`SyncManager`](https://github.com/filecoin-project/lotu
 
 We now discuss the various stages of the sync process.
 
-## Sync setup
+### Sync setup
 
 When a Lotus node connects to a new peer, we exchange the head of our chain
 with the new peer through [the `hello` protocol](https://github.com/filecoin-project/lotus/blob/master/node/hello/hello.go).
 If the peer's head is heavier than ours, we try to sync to it. Note
 that we do NOT update our chain head at this stage.
 
-## Fetching and Persisting Block Headers
+### Fetching and Persisting Block Headers
 
 Note: The API refers to these stages as `StageHeaders` and `StagePersistHeaders`.
 
@@ -95,7 +114,7 @@ and stored in a [`BadBlockCache`](https://github.com/filecoin-project/lotus/blob
 - The beacon entries in a block are inconsistent (FIXME: more details about what is validated here wouldn't be bad).
 - Switching to this new chain would involve a chain reorganization beyond the allowed threshold (SPECK-CHECK).
 
-## Fetching and Validating Blocks
+### Fetching and Validating Blocks
 
 Note: The API refers to this stage as `StageMessages`.
 
@@ -117,7 +136,7 @@ Some of the possible causes of failure in this stage include:
 The core functionality can be found in `Syncer::ValidateTipset()`, with `Syncer::checkBlockMessages()` performing
 syntactic validation of messages.
 
-## Setting the head
+### Setting the head
 
 Note: The API refers to this stage as `StageSyncComplete`.
 
@@ -135,14 +154,142 @@ FIXME: Create a further reading appendix, move this next para to it, along with 
 extraneous content
 This is one of the few items we store in `Datastore` by key, location, allowing its contents to change on every sync. This is reflected in the `(*ChainStore) writeHead()` function (called by `takeHeaviestTipSet()` above) where we reference the pointer by the explicit `chainHeadKey` address (the string `"head"`, not a hash embedded in a CID), and similarly in `(*ChainStore).Load()` when we start the node and create the `ChainStore`. Compare this to a Filecoin block or message which are immutable, stored in the `Blockstore` by CID, once created they never change.
 
-## Keeping up with the chain
+### Keeping up with the chain
 
-A Lotus node also listens for new blocks broadcast by its peers over the `gossipsub` channel (see FIXME for more).
+A Lotus node also listens for new blocks broadcast by its peers over the `gossipsub` channel (see Network Message Flow section).
 If we have validated such a block's parent tipset, and adding it to our tipset at its height would lead to a heavier
 head, then we validate and add this block. The validation described is identical to that invoked during the sync
 process (indeed, it's the same codepath).
 
-# State
+When processing incoming blocks, the node must fetch all referenced messages before validation can complete.
+This message fetching process relies on messages typically being available in the local blockstore,
+having been received earlier via the message pool from the `/fil/msgs` pubsub topic.
+
+### Network Message Flow and Bitswap Integration
+
+Lotus uses a pubsub-based architecture for real-time blockchain synchronization, combined with bitswap for reliable block and message retrieval. Understanding this flow is crucial for comprehending Lotus' networking performance characteristics.
+
+#### PubSub Topics
+
+Lotus connects to two primary pubsub topics:
+
+- **`/fil/blocks/{network}`**: Used for broadcasting and receiving new block headers
+- **`/fil/msgs/{network}`**: Used for broadcasting and receiving individual messages
+
+These topics are generated dynamically based on the network name (e.g., mainnet, calibnet) to prevent cross-network message propagation.
+
+#### Message Flow Architecture
+
+The typical flow for a well-connected node follows this pattern:
+
+**1. Message Propagation (`/fil/msgs`)**
+
+1. **Message Creation**: When transactions are submitted, they're added to the local message pool
+2. **Message Publishing**: `MessagePool.Add()` publishes new messages to `/fil/msgs` via `PubSubPublish()`
+3. **Network Reception**: Other nodes receive messages through `HandleIncomingMessages()`
+4. **Validation**: `MessageValidator.Validate()` performs signature verification and basic validation
+5. **Storage**: Valid messages are stored via `MessagePool.Add()` → `ChainStore.PutMessage()` → `chainBlockstore`
+
+**2. Block Propagation (`/fil/blocks`)**
+
+1. **Block Creation**: Miners create blocks containing message CIDs from their message pool
+2. **Block Publishing**: New blocks are published to `/fil/blocks` via `SyncSubmitBlock()`
+3. **Network Reception**: Nodes receive block headers through `HandleIncomingBlocks()`
+4. **Message Fetching**: For each block, the node must fetch the actual message content using `FetchMessagesByCids()`
+
+**3. The Critical Design: Local vs Network Fetching**
+
+**The Happy Path** (No Bitswap Needed):
+- Messages arrive via `/fil/msgs` before their containing blocks
+- Messages are stored in the local `chainBlockstore`
+- When blocks arrive, `FetchMessagesByCids()` finds messages locally
+- Result: No network requests required during block processing
+
+**When Bitswap is Used**:
+- Node missed messages from `/fil/msgs` (network partition, late join, etc.)
+- Block references message CIDs not in local storage
+- `FetchMessagesByCids()` triggers bitswap session to fetch from network
+- Retrieved messages are cached locally for future use
+
+#### Two Bitswap Mechanisms
+
+Lotus employs two distinct bitswap mechanisms for different scenarios:
+
+**1. Session-Based Bitswap (Always Active)**
+
+**Purpose**: Real-time message fetching during block processing
+**Location**: `HandleIncomingBlocks()` in `chain/sub/incoming.go`
+
+```go
+// Creates a new bitswap session for each incoming block
+ses := bserv.NewSession(ctx, bs)
+
+// Efficiently fetches missing messages
+bmsgs, err := FetchMessagesByCids(ctx, ses, blk.BlsMessages)
+smsgs, err := FetchSignedMessagesByCids(ctx, ses, blk.SecpkMessages)
+```
+
+**Characteristics**:
+- Always enabled (no configuration required)
+- Uses `ChainBlockService` built from `ChainBitswap` + `ExposedBlockstore`
+- Protocol: `/chain/ipfs/bitswap/1.0.0`
+- Short-lived sessions per block processing
+- Optimized for batched message fetching
+- Temporary caching (2 block times)
+
+**2. FallbackStore Pattern (Optional)**
+
+**Purpose**: Transparent safety net for any blockstore operation
+**Configuration**: Enabled with `LOTUS_ENABLE_CHAINSTORE_FALLBACK=1`
+
+**Characteristics**:
+- Wraps main chain and state blockstores
+- Automatically fetches any missing blocks on `Get()` operations
+- Uses standard bitswap protocol
+- Permanent local storage of retrieved blocks
+- 120-second timeout protection
+- Applies to all blockstore access, not just message fetching
+
+#### Performance Implications
+
+**When Bitswap is Rarely Needed**
+- Healthy pubsub connectivity to `/fil/msgs`
+- Good network topology with diverse peers
+- Up-to-date node with recent sync
+- **Result**: Most message fetching happens from local storage
+
+**When Bitswap Becomes Critical**
+- Network partitions or connectivity issues
+- New nodes syncing from scratch
+- Message propagation delays (blocks arrive before messages)
+- Miners including messages not widely propagated
+- **Result**: Frequent network fetches, higher latency
+
+**Network Protocol Details**
+
+**ChainBitswap Configuration**:
+- Dedicated `/chain` protocol prefix to avoid interference with IPFS bitswap
+- Tiered blockstore: `ExposedBlockstore` + temporary cache
+- Automatic peer discovery through DHT routing
+- Session-level optimizations for related message fetching
+
+**Gossipsub Integration**:
+- Peer scoring prevents spam and rewards good behavior
+- Message deduplication using Blake2b hashing
+- Topic-specific validation before propagation
+- Bootstrap nodes vs regular nodes have different subscription timing
+
+#### Monitoring and Debugging
+
+Key indicators of bitswap usage:
+- `FetchMessagesByCids` timing logs (warns if >3 seconds)
+- Bitswap block retrieval metrics
+- Peer connection and scoring status
+- Message pool health and propagation delays
+
+This architecture ensures Lotus can efficiently process blocks in the common case (local message availability) while providing robust fallback mechanisms for network reliability.
+
+## State
 
 In Filecoin, the chain state at any given point is  a collection of data stored under a root CID
 encapsulated in the [`StateTree`](https://github.com/filecoin-project/lotus/blob/master/chain/state/statetree.go),
@@ -151,7 +298,7 @@ and accessed through the
 The state at the chain's head is thus easily tracked and updated in a state root CID.
 (FIXME: Talk about CIDs somewhere,  we might want to explain some of the modify/flush/update-root mechanism here.)
 
-## Calculating a Tipset State
+### Calculating a Tipset State
 
 Recall that a tipset is a set of blocks that have identical parents (that is, that are built on top of the same tipset).
 The genesis tipset comprises the genesis block(s), and has some state corresponding to it.
@@ -166,7 +313,7 @@ Any valid block built on top of a tipset `ts` should have its Parent State Root 
 calculating the tipset state of `ts`. Note that this means that all blocks in a tipset must have the same Parent
 State Root (which is to be expected, since they have the same parent tipset)
 
-### Preparing to apply a tipset
+#### Preparing to apply a tipset
 
 When `StateManager::computeTipsetState()` is called with a tipset, `ts`,
 it retrieves the parent state root of the blocks in `ts`. It also creates a list of `BlockMessages`, which wraps the BLS
@@ -176,7 +323,7 @@ Control then flows to `StateManager::ApplyBlocks()`, which builds a VM to apply 
 is initialized with the parent state root of the blocks in `ts`. We apply the blocks in `ts` in order (see FIXME for
 ordering of blocks in a tipset).
 
-### Applying a block
+#### Applying a block
 
 For each block, we prepare to apply the ordered messages (first BLS, then SecP). Before applying a message, we check if
 we have already applied a message with that CID within the scope of this method. If so, we simply skip that message;
@@ -197,13 +344,13 @@ on the message rewards and penalties we tracked.
 We then proceed to apply the next block in `ts`, using the same VM. This means that the state changes that result
 from applying a message are visible when applying all subsequent messages, even if they are included in a different block.
 
-### Finishing up
+#### Finishing up
 
 Having applied all the blocks, we send one more implicit message, to the Cron Actor, which handles operations that
 must be performed at the end of every epoch (see FIXME for more). The resulting state after calling the Cron Actor
 is the computed state of the tipset.
 
-# Virtual Machine
+## Virtual Machine
 
 The Virtual Machine (VM) is responsible for executing messages.
 The [Lotus Virtual Machine](https://github.com/filecoin-project/lotus/blob/master/chain/vm/vm.go)
@@ -214,7 +361,7 @@ that exposes their state, allows them to take certain actions, and meters
 their gas usage. The VM also performs balance transfers, creates new account actors as needed, and tracks the gas reward,
 penalty, return value, and exit code.
 
-## Applying a Message
+### Applying a Message
 
 The primary entrypoint of the VM is the `ApplyMessage()` method. This method should not return an error
 unless something goes unrecoverably wrong.
@@ -230,7 +377,7 @@ The `send()` method creates a [`Runtime`](https://github.com/filecoin-project/lo
  for the subsequent message execution.
 It then transfers the message's value to the recipient, creating a new account actor if needed.
 
-### Method Invocation
+#### Method Invocation
 
 We use reflection to translate a Filecoin message for the VM to an actual Go function, relying on the VM's
 [`invoker`](https://github.com/filecoin-project/lotus/blob/master/chain/vm/invoker.go) structure.
@@ -243,7 +390,7 @@ FIXME (aayush) Polish this next para.
 
 The basic layout (without reflection details) of `(*invoker).transform()` is as follows. From each actor registered in `NewInvoker()` we take its `Exports()` methods converting them to `invokeFunc`s. The actual method is wrapped in another function that takes care of decoding the serialized parameters and the runtime, this function is passed to `shimCall()` that will encapsulate the actors code being run inside a `defer` function to `recover()` from panics (we fail in the actors code with panics to unwrap the stack). The return values will then be (CBOR) marshaled and returned to the VM.
 
-### Returning from the VM
+#### Returning from the VM
 
 Once method invocation is complete (including any subcalls), we return to `ApplyMessage()`, which receives
 the serialized response and the [`ActorError`](https://github.com/filecoin-project/lotus/blob/master/chain/actors/aerrors/error.go).
@@ -253,7 +400,7 @@ The sender will be charged the appropriate amount of gas for the returned respon
 The method then refunds any unused gas to the sender, sets up the gas reward for the miner, and
 wraps all of this into an `ApplyRet`, which is returned.
 
-# Building a Lotus node
+## Building a Lotus node
 
 When we launch a Lotus node with the command `./lotus daemon`
 (see [here](https://github.com/filecoin-project/lotus/blob/master/cli/lotus/daemon.go) for more),
@@ -274,7 +421,7 @@ type, which becomes one of its dependencies.
 For the node to be built successfully the `ChainBlockstore` will need to be provided before `ChainStore`, a requirement
 that is made explicit in another `Override()` call that sets the provider of that type as the `ChainBlockstore()` function.
 
-## The Repository
+### The Repository
 
 The repo is the directory where all of a node's information is stored. The node is entirely defined by its repo, which
 makes it easy to port to another location. This one-to-one relationship means we can speak
@@ -295,7 +442,7 @@ error.
 The `node.Repo()` function (`node/builder.go`) contains most of the dependencies (specified as `Override()` calls)
 needed to properly set up the node's repo. We list the most salient ones here.
 
-### Datastore
+#### Datastore
 
 `Datastore` and `ChainBlockstore`: Data related to the node state is saved in the repo's `Datastore`,
 an IPFS interface defined [here](https://github.com/ipfs/go-datastore/blob/master/datastore.go).
@@ -328,14 +475,14 @@ Metadata is stored here under the `/metadata` prefix.
 
 FIXME: Explain the key store related calls (maybe remove, per Schomatis)
 
-### LockedRepo
+#### LockedRepo
 
 `LockedRepo()`: This method doesn't create or initialize any new structures, but rather registers an
  `OnStop` [hook](https://godoc.org/go.uber.org/fx/internal/lifecycle#Hook)
  that will close the locked repository associated with it on shutdown.
 
 
-### Repo types / Node types
+#### Repo types / Node types
 
 FIXME: This section needs to be clarified / corrected...I don't fully understand the config differences (what do they have in common, if anything?)
 
@@ -346,7 +493,7 @@ At the end of the `Repo()` function we see two mutually exclusive configuration 
 ```
 As we said, the repo fully identifies the node so a repo type is also a *node* type, in this case a full node or a miner. (FIXME: What is the difference between the two, does *full* imply miner?) In this case the `daemon` command will create a `FullNode`, this is specified in the command logic itself in `main.DaemonCmd()`, the `FsRepo` created (and passed to `node.Repo()`) will be initiated with that type (see `(*FsRepo).Init(t RepoType)`).
 
-## Online
+### Online
 
 FIXME: Much of this might need to be subsumed into the p2p section
 
@@ -362,23 +509,46 @@ that wraps the stores
  (FIXME: this is incorrect, we sometimes access its underlying block store directly, and probably shouldn't).
  It also holds the crucial `heaviest` pointer, which indicates the current head of the chain.
 
- #### ChainExchange and ChainBlockservice
-`ChainExchange()` and `ChainBlockservice()` establish a BitSwap connection (FIXME libp2p link)
-to exchange chain information in the form of `blocks.Block`s stored in the repo. (See sync section for more details, the Filecoin blocks and messages are backed by these raw IPFS blocks that together form the different structures that define the state of the current/heaviest chain.)
+#### ChainExchange and ChainBlockservice
+
+`ChainExchange()` provides a custom Filecoin protocol (`/fil/chain/xchg/0.0.1`) for requesting block headers during chain synchronization. This is distinct from bitswap and optimized for bulk header retrieval.
+
+`ChainBlockservice()` creates the critical bitswap-enabled service used for real-time message fetching. It combines:
+- `ExposedBlockstore` (main local storage interface)
+- `ChainBitswap` (network exchange with `/chain` protocol prefix)
+- Tiered caching for performance optimization
+
+This service is primarily used by `HandleIncomingBlocks()` to fetch message content when processing new blocks received via pubsub. See the [Network Message Flow](#network-message-flow-and-bitswap-integration) section for detailed explanation of when bitswap network requests occur versus when messages are available locally.
+
+##### Monitoring Bitswap Usage
+
+To monitor how often Lotus needs to use bitswap for fetching messages (as opposed to having them available locally from pubsub), you can enable message fetch instrumentation:
+
+```bash
+export LOTUS_ENABLE_MESSAGE_FETCH_INSTRUMENTATION=1
+```
+
+This enables metrics that track:
+- `lotus_message_fetch_requested`: Total messages requested
+- `lotus_message_fetch_local`: Messages found in local blockstore (from pubsub)
+- `lotus_message_fetch_network`: Messages that required bitswap network fetch
 
 #### Incoming handlers
+
 `HandleIncomingBlocks()` and `HandleIncomingMessages()` start the services in charge of processing new Filecoin blocks
-and messages from the network (see `<undefined>` for more information about the topics the node is subscribed to, FIXME: should that be part of the libp2p section or should we expand on gossipsub separately?).
+and messages from the network via the `/fil/blocks` and `/fil/msgs` pubsub topics respectively. These handlers implement the core real-time synchronization logic described in the [Network Message Flow](#network-message-flow-and-bitswap-integration) section.
 
 #### Hello
+
 `RunHello()`: starts the services to both send (`(*Service).SayHello()`) and receive (`(*Service).HandleStream()`, `node/hello/hello.go`)
 `hello` messages. When nodes establish a new connection with each other, they exchange these messages
 to share chain-related information (namely their genesis block and their heaviest tipset).
 
 #### Syncer
+
 `NewSyncer()` creates the `Syncer` structure and starts the services related to the chain sync process (FIXME link).
 
-### Ordering the dependencies
+#### Ordering the dependencies
 
 We can establish the dependency relations by looking at the parameters that each function needs and by understanding
 the architecture of the node and how the different components relate to each other (the chief purpose of this document).

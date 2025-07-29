@@ -20,6 +20,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain"
@@ -72,7 +73,15 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 
 			// NOTE: we could also share a single session between
 			// all requests but that may have other consequences.
-			ses := bserv.NewSession(ctx, bs)
+			// Use the instrumented session if the blockservice supports it
+			var ses bserv.BlockGetter
+			if ibs, ok := bs.(interface {
+				NewSession(context.Context) *blockstore.InstrumentedSession
+			}); ok {
+				ses = ibs.NewSession(ctx)
+			} else {
+				ses = bserv.NewSession(ctx, bs)
+			}
 
 			start := build.Clock.Now()
 			log.Debug("about to fetch messages for block from pubsub")

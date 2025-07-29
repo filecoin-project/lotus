@@ -315,7 +315,7 @@ var minerCreateCmd = &cli.Command{
 			}
 
 			log.Infof("Initializing owner account %s, message: %s", worker, signed.Cid())
-			log.Infof("Wating for confirmation")
+			log.Infof("Waiting for confirmation")
 
 			mw, err := wapi.StateWaitMsg(ctx, signed.Cid(), buildconstants.MessageConfidence)
 			if err != nil {

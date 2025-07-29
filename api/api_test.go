@@ -66,7 +66,7 @@ func TestReturnTypes(t *testing.T) {
 				case 1: // if 1 return value, it must be an error
 					require.Equal(t, errType, m.Type.Out(0), m.Name)
 
-				case 2: // if 2 return values, first cant be an interface/function, second must be an error
+				case 2: // if 2 return values, first can't be an interface/function, second must be an error
 					seen := map[reflect.Type]struct{}{}
 					todo := []reflect.Type{m.Type.Out(0)}
 					for len(todo) > 0 {

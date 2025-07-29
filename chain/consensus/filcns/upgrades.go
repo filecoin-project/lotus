@@ -456,7 +456,7 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *stmgr.StateManager, _ st
 					}
 					available = abi.NewTokenAmount(0)
 				}()
-				// this panics if the miner doesnt have enough funds to cover their locked pledge
+				// this panics if the miner doesn't have enough funds to cover their locked pledge
 				available = st.GetAvailableBalance(act.Balance)
 			}
 

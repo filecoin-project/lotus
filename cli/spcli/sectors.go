@@ -627,6 +627,7 @@ func SectorsExtendCmd(getActorAddress ActorAddressGetter) *cli.Command {
 			&cli.Int64Flag{
 				Name:  "max-sectors",
 				Usage: "the maximum number of sectors contained in each message",
+				Value: 500,
 			},
 			&cli.BoolFlag{
 				Name:  "really-do-it",
@@ -874,101 +875,94 @@ func SectorsExtendCmd(getActorAddress ActorAddressGetter) *cli.Command {
 
 			var params []miner.ExtendSectorExpiration2Params
 
-			p := miner.ExtendSectorExpiration2Params{}
-			scount := 0
-
 			for l, exts := range extensions {
 				for newExp, numbers := range exts {
-					sectorsWithoutClaimsToExtend := bitfield.New()
-					numbersToExtend := make([]abi.SectorNumber, 0, len(numbers))
-					var sectorsWithClaims []miner.SectorClaim
-					for _, sectorNumber := range numbers {
-						claimIdsToMaintain := make([]verifreg.ClaimId, 0)
-						claimIdsToDrop := make([]verifreg.ClaimId, 0)
-						cannotExtendSector := false
-						claimIds, ok := claimIdsBySector[sectorNumber]
-						// Nothing to check, add to ccSectors
-						if !ok {
-							sectorsWithoutClaimsToExtend.Set(uint64(sectorNumber))
-							numbersToExtend = append(numbersToExtend, sectorNumber)
-						} else {
-							for _, claimId := range claimIds {
-								claim, ok := claimsMap[claimId]
-								if !ok {
-									return xerrors.Errorf("failed to find claim for claimId %d", claimId)
-								}
-								claimExpiration := claim.TermStart + claim.TermMax
-								// can be maintained in the extended sector
-								if claimExpiration > newExp {
-									claimIdsToMaintain = append(claimIdsToMaintain, claimId)
-								} else {
-									sectorInfo, ok := activeSectorsInfo[sectorNumber]
-									if !ok {
-										return xerrors.Errorf("failed to find sector in active sector set: %w", err)
-									}
-									if !cctx.Bool("drop-claims") {
-										fmt.Printf("skipping sector %d because claim %d (client f0%s, piece %s) cannot be maintained in the extended sector (use --drop-claims to drop claims)\n", sectorNumber, claimId, claim.Client, claim.Data)
-										cannotExtendSector = true
-										break
-									} else if currEpoch <= (claim.TermStart + claim.TermMin) {
-										// FIP-0045 requires the claim minimum duration to have passed
-										fmt.Printf("skipping sector %d because claim %d (client f0%s, piece %s) has not reached its minimum duration\n", sectorNumber, claimId, claim.Client, claim.Data)
-										cannotExtendSector = true
-										break
-									} else if currEpoch <= sectorInfo.Expiration-builtin.EndOfLifeClaimDropPeriod {
-										// FIP-0045 requires the sector to be in its last 30 days of life
-										fmt.Printf("skipping sector %d because claim %d (client f0%s, piece %s) is not in its last 30 days of life\n", sectorNumber, claimId, claim.Client, claim.Data)
-										cannotExtendSector = true
-										break
-									}
+					batchSize := addrSectors
 
-									claimIdsToDrop = append(claimIdsToDrop, claimId)
-								}
+					// The unfortunate thing about this approach is that batches less than batchSize in different partitions cannot be aggregated together to send messages.
+					for i := 0; i < len(numbers); i += batchSize {
+						end := i + batchSize
+						if end > len(numbers) {
+							end = len(numbers)
+						}
 
+						batch := numbers[i:end]
+
+						sectorsWithoutClaimsToExtend := bitfield.New()
+						numbersToExtend := make([]abi.SectorNumber, 0, len(numbers))
+						var sectorsWithClaims []miner.SectorClaim
+						p := miner.ExtendSectorExpiration2Params{}
+
+						for _, sectorNumber := range batch {
+							claimIdsToMaintain := make([]verifreg.ClaimId, 0)
+							claimIdsToDrop := make([]verifreg.ClaimId, 0)
+							cannotExtendSector := false
+							claimIds, ok := claimIdsBySector[sectorNumber]
+							// Nothing to check, add to ccSectors
+							if !ok {
+								sectorsWithoutClaimsToExtend.Set(uint64(sectorNumber))
 								numbersToExtend = append(numbersToExtend, sectorNumber)
-							}
-							if cannotExtendSector {
-								continue
-							}
+							} else {
+								for _, claimId := range claimIds {
+									claim, ok := claimsMap[claimId]
+									if !ok {
+										return xerrors.Errorf("failed to find claim for claimId %d", claimId)
+									}
+									claimExpiration := claim.TermStart + claim.TermMax
+									// can be maintained in the extended sector
+									if claimExpiration > newExp {
+										claimIdsToMaintain = append(claimIdsToMaintain, claimId)
+									} else {
+										sectorInfo, ok := activeSectorsInfo[sectorNumber]
+										if !ok {
+											return xerrors.Errorf("failed to find sector in active sector set: %w", err)
+										}
+										if !cctx.Bool("drop-claims") {
+											fmt.Printf("skipping sector %d because claim %d (client f0%s, piece %s) cannot be maintained in the extended sector (use --drop-claims to drop claims)\n", sectorNumber, claimId, claim.Client, claim.Data)
+											cannotExtendSector = true
+											break
+										} else if currEpoch <= (claim.TermStart + claim.TermMin) {
+											// FIP-0045 requires the claim minimum duration to have passed
+											fmt.Printf("skipping sector %d because claim %d (client f0%s, piece %s) has not reached its minimum duration\n", sectorNumber, claimId, claim.Client, claim.Data)
+											cannotExtendSector = true
+											break
+										} else if currEpoch <= sectorInfo.Expiration-builtin.EndOfLifeClaimDropPeriod {
+											// FIP-0045 requires the sector to be in its last 30 days of life
+											fmt.Printf("skipping sector %d because claim %d (client f0%s, piece %s) is not in its last 30 days of life\n", sectorNumber, claimId, claim.Client, claim.Data)
+											cannotExtendSector = true
+											break
+										}
 
-							if len(claimIdsToMaintain)+len(claimIdsToDrop) != 0 {
-								sectorsWithClaims = append(sectorsWithClaims, miner.SectorClaim{
-									SectorNumber:   sectorNumber,
-									MaintainClaims: claimIdsToMaintain,
-									DropClaims:     claimIdsToDrop,
-								})
+										claimIdsToDrop = append(claimIdsToDrop, claimId)
+									}
+
+									numbersToExtend = append(numbersToExtend, sectorNumber)
+								}
+								if cannotExtendSector {
+									continue
+								}
+
+								if len(claimIdsToMaintain)+len(claimIdsToDrop) != 0 {
+									sectorsWithClaims = append(sectorsWithClaims, miner.SectorClaim{
+										SectorNumber:   sectorNumber,
+										MaintainClaims: claimIdsToMaintain,
+										DropClaims:     claimIdsToDrop,
+									})
+								}
 							}
 						}
-					}
 
-					sectorsWithoutClaimsCount, err := sectorsWithoutClaimsToExtend.Count()
-					if err != nil {
-						return xerrors.Errorf("failed to count cc sectors: %w", err)
-					}
-
-					sectorsInDecl := int(sectorsWithoutClaimsCount) + len(sectorsWithClaims)
-					scount += sectorsInDecl
-
-					if scount > addrSectors || len(p.Extensions) >= policy.DeclarationsMax {
+						p.Extensions = append(p.Extensions, miner.ExpirationExtension2{
+							Deadline:          l.Deadline,
+							Partition:         l.Partition,
+							Sectors:           SectorNumsToBitfield(numbersToExtend),
+							SectorsWithClaims: sectorsWithClaims,
+							NewExpiration:     newExp,
+						})
 						params = append(params, p)
-						p = miner.ExtendSectorExpiration2Params{}
-						scount = sectorsInDecl
 					}
-
-					p.Extensions = append(p.Extensions, miner.ExpirationExtension2{
-						Deadline:          l.Deadline,
-						Partition:         l.Partition,
-						Sectors:           SectorNumsToBitfield(numbersToExtend),
-						SectorsWithClaims: sectorsWithClaims,
-						NewExpiration:     newExp,
-					})
 
 				}
-			}
-
-			// if we have any sectors, then one last append is needed here
-			if scount != 0 {
-				params = append(params, p)
 			}
 
 			if len(params) == 0 {
@@ -1419,7 +1413,7 @@ type TerminatorNode interface {
 
 func TerminateSectors(ctx context.Context, full TerminatorNode, maddr address.Address, sectorNumbers []int, fromAddr address.Address) (*types.SignedMessage, error) {
 
-	terminationDeclarationParams := []miner2.TerminationDeclaration{}
+	terminationMap := make(map[string]*miner2.TerminationDeclaration)
 
 	for _, sectorNum := range sectorNumbers {
 
@@ -1431,13 +1425,21 @@ func TerminateSectors(ctx context.Context, full TerminatorNode, maddr address.Ad
 			return nil, fmt.Errorf("get state sector partition %s", err)
 		}
 
-		para := miner2.TerminationDeclaration{
-			Deadline:  loca.Deadline,
-			Partition: loca.Partition,
-			Sectors:   sectorbit,
+		key := fmt.Sprintf("%d-%d", loca.Deadline, loca.Partition)
+		if td, exists := terminationMap[key]; exists {
+			td.Sectors.Set(uint64(sectorNum))
+		} else {
+			terminationMap[key] = &miner2.TerminationDeclaration{
+				Deadline:  loca.Deadline,
+				Partition: loca.Partition,
+				Sectors:   sectorbit,
+			}
 		}
+	}
 
-		terminationDeclarationParams = append(terminationDeclarationParams, para)
+	terminationDeclarationParams := make([]miner2.TerminationDeclaration, 0, len(terminationMap))
+	for _, td := range terminationMap {
+		terminationDeclarationParams = append(terminationDeclarationParams, *td)
 	}
 
 	terminateSectorParams := &miner2.TerminateSectorsParams{

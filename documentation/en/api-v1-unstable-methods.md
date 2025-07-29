@@ -92,6 +92,7 @@
   * [F3GetLatestCertificate](#F3GetLatestCertificate)
   * [F3GetManifest](#F3GetManifest)
   * [F3GetOrRenewParticipationTicket](#F3GetOrRenewParticipationTicket)
+  * [F3GetPowerTableByInstance](#F3GetPowerTableByInstance)
   * [F3GetProgress](#F3GetProgress)
   * [F3IsRunning](#F3IsRunning)
   * [F3ListParticipants](#F3ListParticipants)
@@ -3154,6 +3155,30 @@ Inputs:
 
 Response: `"Bw=="`
 
+### F3GetPowerTableByInstance
+F3GetPowerTableByInstance returns the power table (committee) used to validate the specified instance.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  42
+]
+```
+
+Response:
+```json
+[
+  {
+    "ID": 1000,
+    "Power": "0",
+    "PubKey": "Bw=="
+  }
+]
+```
+
 ### F3GetProgress
 F3GetProgress returns the progress of the current F3 instance in terms of instance ID, round and phase.
 
@@ -4812,7 +4837,7 @@ Response:
 ```
 
 ### MsigCancelTxnHash
-MsigCancel cancels a previously-proposed multisig message
+MsigCancelTxnHash cancels a previously-proposed multisig message
 It takes the following params: <multisig address>, <proposed transaction ID>, <recipient address>, <value to transfer>,
 <sender address of the cancel msg>, <method to call in the proposed message>, <params to include in the proposed message>
 

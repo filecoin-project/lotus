@@ -2,10 +2,11 @@ package modules
 
 import (
 	"context"
+	"os"
 	"time"
 
 	"github.com/ipfs/boxo/bitswap"
-	"github.com/ipfs/boxo/bitswap/network"
+	"github.com/ipfs/boxo/bitswap/network/bsnet"
 	"github.com/ipfs/boxo/blockservice"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/routing"
@@ -34,8 +35,7 @@ import (
 func ChainBitswap(lc fx.Lifecycle, mctx helpers.MetricsCtx, host host.Host, rt routing.Routing, bs dtypes.ExposedBlockstore) dtypes.ChainBitswap {
 	// prefix protocol for chain bitswap
 	// (so bitswap uses /chain/ipfs/bitswap/1.0.0 internally for chain sync stuff)
-	bitswapNetwork := network.NewFromIpfsHost(host, rt, network.Prefix("/chain"))
-	bitswapOptions := []bitswap.Option{bitswap.ProvideEnabled(false)}
+	bitswapNetwork := bsnet.NewFromIpfsHost(host, bsnet.Prefix("/chain"))
 
 	// Write all incoming bitswap blocks into a temporary blockstore for two
 	// block times. If they validate, they'll be persisted later.
@@ -45,7 +45,7 @@ func ChainBitswap(lc fx.Lifecycle, mctx helpers.MetricsCtx, host host.Host, rt r
 	bitswapBs := blockstore.NewTieredBstore(bs, cache)
 
 	// Use just exch.Close(), closing the context is not needed
-	exch := bitswap.New(mctx, bitswapNetwork, bitswapBs, bitswapOptions...)
+	exch := bitswap.New(mctx, bitswapNetwork, rt, bitswapBs)
 	lc.Append(fx.Hook{
 		OnStop: func(ctx context.Context) error {
 			return exch.Close()
@@ -56,6 +56,13 @@ func ChainBitswap(lc fx.Lifecycle, mctx helpers.MetricsCtx, host host.Host, rt r
 }
 
 func ChainBlockService(bs dtypes.ExposedBlockstore, rem dtypes.ChainBitswap) dtypes.ChainBlockService {
+	// Use instrumented blockservice only if explicitly enabled via environment variable.
+	// This adds minor overhead by adding an extra .Has() on every block before fetching.
+	// Enable with: LOTUS_ENABLE_MESSAGE_FETCH_INSTRUMENTATION=1
+	if os.Getenv("LOTUS_ENABLE_MESSAGE_FETCH_INSTRUMENTATION") == "1" {
+		log.Info("Message fetch instrumentation enabled via LOTUS_ENABLE_MESSAGE_FETCH_INSTRUMENTATION=1")
+		return blockstore.NewInstrumentedBlockService(bs, rem)
+	}
 	return blockservice.New(bs, rem)
 }
 

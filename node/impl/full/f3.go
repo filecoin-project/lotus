@@ -113,6 +113,13 @@ func (f3api *F3API) F3GetF3PowerTable(ctx context.Context, tsk types.TipSetKey) 
 	return f3api.F3.GetF3PowerTable(ctx, tsk)
 }
 
+func (f3api *F3API) F3GetPowerTableByInstance(ctx context.Context, instance uint64) (gpbft.PowerEntries, error) {
+	if f3api.F3 == nil {
+		return nil, api.ErrF3Disabled
+	}
+	return f3api.F3.GetPowerTableByInstance(ctx, instance)
+}
+
 func (f3api *F3API) F3GetProgress(context.Context) (gpbft.InstanceProgress, error) {
 	if f3api.F3 == nil {
 		return gpbft.InstanceProgress{}, api.ErrF3Disabled

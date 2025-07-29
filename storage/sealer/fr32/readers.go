@@ -4,6 +4,7 @@ import (
 	"io"
 	"math/bits"
 
+	pool "github.com/libp2p/go-buffer-pool"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -14,6 +15,8 @@ type unpadReader struct {
 
 	left uint64
 	work []byte
+
+	stash []byte
 }
 
 func BufSize(sz abi.PaddedPieceSize) int {
@@ -31,6 +34,10 @@ func NewUnpadReaderBuf(src io.Reader, sz abi.PaddedPieceSize, buf []byte) (io.Re
 		return nil, xerrors.Errorf("bad piece size: %w", err)
 	}
 
+	if abi.PaddedPieceSize(len(buf)).Validate() != nil {
+		return nil, xerrors.Errorf("bad buffer size")
+	}
+
 	return &unpadReader{
 		src: src,
 
@@ -40,6 +47,39 @@ func NewUnpadReaderBuf(src io.Reader, sz abi.PaddedPieceSize, buf []byte) (io.Re
 }
 
 func (r *unpadReader) Read(out []byte) (int, error) {
+	idealReadSize := abi.PaddedPieceSize(len(r.work)).Unpadded()
+
+	var err error
+	var rn int
+	if len(r.stash) == 0 && len(out) < int(idealReadSize) {
+		r.stash = pool.Get(int(idealReadSize))
+
+		rn, err = r.readInner(r.stash)
+		r.stash = r.stash[:rn]
+	}
+
+	if len(r.stash) > 0 {
+		n := copy(out, r.stash)
+		r.stash = r.stash[n:]
+
+		if len(r.stash) == 0 {
+			pool.Put(r.stash)
+			r.stash = nil
+		}
+
+		if err == io.EOF && rn > n {
+			err = nil
+		}
+
+		return n, err
+	}
+
+	return r.readInner(out)
+}
+
+// readInner reads from the underlying reader into the provided buffer.
+// It requires that out[] is padded(power-of-two).unpadded()-sized, ideally quite large.
+func (r *unpadReader) readInner(out []byte) (int, error) {
 	if r.left == 0 {
 		return 0, io.EOF
 	}
@@ -52,7 +92,8 @@ func (r *unpadReader) Read(out []byte) (int, error) {
 		return 0, xerrors.Errorf("output must be of valid padded piece size: %w", err)
 	}
 
-	todo := abi.PaddedPieceSize(outTwoPow)
+	// Clamp `todo` to the length of the work buffer to prevent buffer overflows
+	todo := min(abi.PaddedPieceSize(outTwoPow), abi.PaddedPieceSize(len(r.work)))
 	if r.left < uint64(todo) {
 		todo = abi.PaddedPieceSize(1 << (63 - bits.LeadingZeros64(r.left)))
 	}

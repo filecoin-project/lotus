@@ -60,7 +60,7 @@ These are options in the `[Chainstore.Splitstore]` section of the configuration:
   nodes beyond 4 finalities, while running with the discard coldstore option.
   It is also useful for miners who accept deals and need to lookback messages beyond
   the 4 finalities, which would otherwise hit the coldstore.
-- `HotStoreFullGCFrequency` -- specifies how frequenty to garbage collect the hotstore
+- `HotStoreFullGCFrequency` -- specifies how frequently to garbage collect the hotstore
   using full (moving) GC.
   The default value is 20, which uses full GC every 20 compactions (about once a week);
   set to 0 to disable full GC altogether.

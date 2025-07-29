@@ -99,7 +99,7 @@ func ManageFdLimit() (changed bool, newLimit uint64, err error) {
 		// set the soft value
 		err = setLimit(targetLimit, hard)
 		if err != nil {
-			err = fmt.Errorf("error setting ulimit wihout hard limit: %s", err)
+			err = fmt.Errorf("error setting ulimit without hard limit: %s", err)
 			break
 		}
 		newLimit = targetLimit

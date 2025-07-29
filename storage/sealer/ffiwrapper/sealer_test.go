@@ -925,7 +925,7 @@ func TestPoStChallengeAssumptions(t *testing.T) {
 		require.Equal(t, c1, c2)
 	}
 
-	// doesn't sort, challenges position dependant
+	// doesn't sort, challenges position dependent
 	{
 		c1, err := ffi.GeneratePoStFallbackSectorChallenges(abi.RegisteredPoStProof_StackedDrgWindow32GiBV1, 1000, r[:], []abi.SectorNumber{1, 2, 3, 4})
 		require.NoError(t, err)

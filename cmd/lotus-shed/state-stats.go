@@ -374,7 +374,7 @@ var statSnapshotCmd = &cli.Command{
 		},
 		&cli.BoolFlag{
 			Name:  "pretty",
-			Usage: "print formated output instead of ldjson",
+			Usage: "print formatted output instead of ldjson",
 			Value: false,
 		},
 	},
@@ -609,7 +609,7 @@ var statSnapshotCmd = &cli.Command{
 
 var statActorCmd = &cli.Command{
 	Name:  "stat-actor",
-	Usage: "calculates the size of actors and their immeidate structures",
+	Usage: "calculates the size of actors and their immediate structures",
 	Description: `Any DAG linked by the actor object (field) will have its size calculated independently of all
 other linked DAG. If an actor has two fields containing links to the same DAG the structure size will be counted
 twice, included in each fields size individually.
@@ -641,7 +641,7 @@ to reduce the number of decode operations performed by caching the decoded objec
 		},
 		&cli.BoolFlag{
 			Name:  "pretty",
-			Usage: "print formated output instead of ldjson",
+			Usage: "print formatted output instead of ldjson",
 			Value: false,
 		},
 	},

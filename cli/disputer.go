@@ -95,7 +95,7 @@ var disputerMsgCmd = &cli.Command{
 		})
 
 		if aerr != nil {
-			return xerrors.Errorf("failed to serailize params: %w", aerr)
+			return xerrors.Errorf("failed to serialize params: %w", aerr)
 		}
 
 		dmsg := &types.Message{
@@ -380,7 +380,7 @@ func makeDisputeWindowedPosts(ctx context.Context, api v0api.FullNode, dl minerD
 		})
 
 		if aerr != nil {
-			return nil, xerrors.Errorf("failed to serailize params: %w", aerr)
+			return nil, xerrors.Errorf("failed to serialize params: %w", aerr)
 		}
 
 		dispute := &types.Message{

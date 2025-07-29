@@ -173,7 +173,7 @@ NOTE: The last two examples will not work until we upgrade urfave dependency (tr
 				ticker := time.NewTicker(cctx.Duration("watch"))
 				for {
 					clearAndPrintReport := func() {
-						// clear the screen move the curser to the top left
+						// clear the screen move the cursor to the top left
 						fmt.Print("\033[2J")
 						fmt.Printf("\033[%d;%dH", 1, 1)
 						for i, e := range rpcMethods {

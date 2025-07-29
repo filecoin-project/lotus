@@ -1210,8 +1210,8 @@ func (cs *ChainStore) GetPath(ctx context.Context, from types.TipSetKey, to type
 }
 
 // ChainBlockstore returns the chain blockstore. Currently the chain and state
-// // stores are both backed by the same physical store, albeit with different
-// // caching policies, but in the future they will segregate.
+// stores are both backed by the same physical store, albeit with different
+// caching policies, but in the future they will segregate.
 func (cs *ChainStore) ChainBlockstore() bstore.Blockstore {
 	return cs.chainBlockstore
 }

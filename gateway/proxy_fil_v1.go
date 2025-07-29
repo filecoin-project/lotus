@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-f3/certs"
+	"github.com/filecoin-project/go-f3/gpbft"
 	"github.com/filecoin-project/go-state-types/abi"
 	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -662,6 +663,13 @@ func (pv1 *reverseProxyV1) F3GetCertificate(ctx context.Context, instance uint64
 		return nil, err
 	}
 	return pv1.server.F3GetCertificate(ctx, instance)
+}
+
+func (pv1 *reverseProxyV1) F3GetPowerTableByInstance(ctx context.Context, instance uint64) (gpbft.PowerEntries, error) {
+	if err := pv1.gateway.limit(ctx, basicRateLimitTokens); err != nil {
+		return nil, err
+	}
+	return pv1.server.F3GetPowerTableByInstance(ctx, instance)
 }
 
 func (pv1 *reverseProxyV1) F3GetLatestCertificate(ctx context.Context) (*certs.FinalityCertificate, error) {

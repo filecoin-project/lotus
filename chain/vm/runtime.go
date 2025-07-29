@@ -60,7 +60,7 @@ func (m *Message) ValueReceived() abi.TokenAmount {
 	return m.msg.Value
 }
 
-// EnableDetailedTracing has different behaviour in the LegacyVM and FVM.
+// EnableDetailedTracing has different behavior in the LegacyVM and FVM.
 // In the LegacyVM, it enables detailed gas tracing, slowing down execution.
 // In the FVM, it enables execution traces, which are primarily used to observe subcalls.
 var EnableDetailedTracing = os.Getenv("LOTUS_VM_ENABLE_TRACING") == "1"
