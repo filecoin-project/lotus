@@ -194,7 +194,7 @@ func ActorDealSettlementCmd(getActor ActorAddressGetter) *cli.Command {
 			}
 
 			if cctx.Bool("skip-wait-msg") {
-				fmt.Printf("skip the check status, please pay attention to the message status on the chain by yourself.")
+				fmt.Printf("skip the check status, please pay attention to the message status on the chain by yourself.\n")
 				return nil
 			}
 
