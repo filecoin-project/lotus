@@ -26,6 +26,7 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 
 	lapi "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -143,8 +144,9 @@ func ActorDealSettlementCmd(getActor ActorAddressGetter) *cli.Command {
 				if err != nil {
 					return xerrors.Errorf("Error getting StateMinerSectors for miner: %w", err)
 				}
+				wapi := &v0api.WrapperV1Full{FullNode: api}
 				for _, sector := range sectors {
-					data, err := lcli.GetMarketDealIDs(ctx, api, maddr, sector.SectorNumber, types.EmptyTSK)
+					data, err := lcli.GetMarketDealIDs(ctx, wapi, maddr, sector.SectorNumber, types.EmptyTSK)
 					if err != nil {
 						return xerrors.Errorf("Error getting all deals for miner: %w", err)
 					}
@@ -189,6 +191,7 @@ func ActorDealSettlementCmd(getActor ActorAddressGetter) *cli.Command {
 				fmt.Printf("Requested deal settlement in message: %s\nwaiting for it to be included in a block..\n", res)
 
 				if cctx.Bool("skip-wait-msg") {
+					fmt.Printf("skip the check status, please pay attention to the message status on the chain by yourself.\n")
 					continue
 				}
 
