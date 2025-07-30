@@ -34,6 +34,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v0api"
+	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -1487,7 +1488,7 @@ var StateSectorCmd = &cli.Command{
 	Usage:     "Get miner sector info",
 	ArgsUsage: "[minerAddress] [sectorNumber]",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := GetFullNodeAPIV1(cctx)
 		if err != nil {
 			return err
 		}
@@ -1770,7 +1771,7 @@ var StateSysActorCIDsCmd = &cli.Command{
 }
 
 // GetMarketDealIDs retrieves deal IDs for a sector from the market actor's ProviderSectors HAMT
-func GetMarketDealIDs(ctx context.Context, api v0api.FullNode, maddr address.Address, sid abi.SectorNumber, tsKey types.TipSetKey) ([]abi.DealID, error) {
+func GetMarketDealIDs(ctx context.Context, api v1api.FullNode, maddr address.Address, sid abi.SectorNumber, tsKey types.TipSetKey) ([]abi.DealID, error) {
 	// Convert miner address to actor ID
 	actorID, err := getMinerActorID(ctx, api, maddr, tsKey)
 	if err != nil {
@@ -1793,7 +1794,7 @@ func GetMarketDealIDs(ctx context.Context, api v0api.FullNode, maddr address.Add
 }
 
 // getMinerActorID converts a miner address to its actor ID
-func getMinerActorID(ctx context.Context, api v0api.FullNode, maddr address.Address, tsKey types.TipSetKey) (abi.ActorID, error) {
+func getMinerActorID(ctx context.Context, api v1api.FullNode, maddr address.Address, tsKey types.TipSetKey) (abi.ActorID, error) {
 	// Convert miner address to ID address
 	minerID, err := api.StateLookupID(ctx, maddr, tsKey)
 	if err != nil {
@@ -1810,7 +1811,7 @@ func getMinerActorID(ctx context.Context, api v0api.FullNode, maddr address.Addr
 }
 
 // loadMarketState loads the market actor state
-func loadMarketState(ctx context.Context, api v0api.FullNode, tsKey types.TipSetKey) (market.State, error) {
+func loadMarketState(ctx context.Context, api v1api.FullNode, tsKey types.TipSetKey) (market.State, error) {
 	// Get the market actor
 	marketActor, err := api.StateGetActor(ctx, market.Address, tsKey)
 	if err != nil {

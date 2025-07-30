@@ -3,6 +3,7 @@ package spcli
 import (
 	"bytes"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -12,7 +13,6 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
-	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
+	markettypes14 "github.com/filecoin-project/go-state-types/builtin/v14/market"
 	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/network"
 
@@ -44,19 +45,23 @@ func ActorDealSettlementCmd(getActor ActorAddressGetter) *cli.Command {
 		Usage:     "Settle deals manually, if dealIds are not provided all deals will be settled. Deal IDs can be specified as individual numbers or ranges (e.g., '123 124 125-200 220')",
 		ArgsUsage: "[...dealIds]",
 		Flags: []cli.Flag{
+			&cli.IntFlag{
+				Name:  "confidence",
+				Usage: "number of block confirmations to wait for",
+				Value: int(buildconstants.MessageConfidence),
+			},
 			&cli.StringFlag{
 				Name:  "from",
 				Usage: "specify where to send the message from (any address)",
 			},
 			&cli.IntFlag{
-				Name:  "concurrent",
-				Usage: "specify the number of concurrent messages to send",
-				Value: 1,
-			},
-			&cli.IntFlag{
 				Name:  "max-deals",
 				Usage: "the maximum number of deals contained in each message",
 				Value: 50,
+			},
+			&cli.BoolFlag{
+				Name:  "skip-wait-msg",
+				Usage: "skip to check the message status",
 			},
 			&cli.BoolFlag{
 				Name:  "really-do-it",
@@ -65,7 +70,7 @@ func ActorDealSettlementCmd(getActor ActorAddressGetter) *cli.Command {
 		},
 
 		Action: func(cctx *cli.Context) error {
-			api, acloser, err := lcli.GetFullNodeAPI(cctx)
+			api, acloser, err := lcli.GetFullNodeAPIV1(cctx)
 			if err != nil {
 				return err
 			}
@@ -149,54 +154,75 @@ func ActorDealSettlementCmd(getActor ActorAddressGetter) *cli.Command {
 				}
 			}
 
-			fmt.Printf("There are a total of %v deals, and about %v messages will be sent out quickly.\n", len(dealIDs), len(dealIDs)/cctx.Int("max-deals"))
+			fmt.Printf("There are a total of %v deals, and about %v messages will be sent out.\n", len(dealIDs), len(dealIDs)/cctx.Int("max-deals"))
 
 			if !cctx.Bool("really-do-it") {
 				return fmt.Errorf("pass --really-do-it to confirm this action")
 			}
 
+			sort.Slice(dealIDs, func(i, j int) bool {
+				return dealIDs[i] < dealIDs[j]
+			})
 			dealChucks := lo.Chunk(dealIDs, cctx.Int("max-deals"))
-			g, ctx := errgroup.WithContext(ctx)
-			g.SetLimit(cctx.Int("concurrent"))
 
 			for _, deals := range dealChucks {
-				deals := deals
-				g.Go(func() error {
-					select {
-					case <-ctx.Done():
-						return ctx.Err()
-					default:
-						dealParams := bitfield.NewFromSet(deals)
-						var err error
-						params, err := actors.SerializeParams(&dealParams)
-						if err != nil {
-							return err
-						}
+				dealParams := bitfield.NewFromSet(deals)
+				var err error
+				params, err := actors.SerializeParams(&dealParams)
+				if err != nil {
+					return err
+				}
 
-						smsg, err := api.MpoolPushMessage(ctx, &types.Message{
-							To:     marketactor.Address,
-							From:   fromAddr,
-							Value:  types.NewInt(0),
-							Method: marketactor.Methods.SettleDealPaymentsExported,
-							Params: params,
-						}, nil)
-						if err != nil {
-							return err
-						}
+				smsg, err := api.MpoolPushMessage(ctx, &types.Message{
+					To:     marketactor.Address,
+					From:   fromAddr,
+					Value:  types.NewInt(0),
+					Method: marketactor.Methods.SettleDealPaymentsExported,
+					Params: params,
+				}, nil)
+				if err != nil {
+					return err
+				}
 
-						res := smsg.Cid()
+				res := smsg.Cid()
 
-						fmt.Printf("Requested deal settlement in message: %s\n", res)
-						// I don't want to wait for the message to be packed here.
-						return nil
+				fmt.Printf("Requested deal settlement in message: %s\nwaiting for it to be included in a block..\n", res)
+
+				if cctx.Bool("skip-wait-msg") {
+					continue
+				}
+
+				// wait for it to get mined into a block
+				wait, err := api.StateWaitMsg(ctx, res, uint64(cctx.Int("confidence")), lapi.LookbackNoLimit, true)
+				if err != nil {
+					return xerrors.Errorf("Timeout waiting for deal settlement message %s", res)
+				}
+
+				if wait.Receipt.ExitCode.IsError() {
+					return xerrors.Errorf("Failed to execute withdrawal message %s: %w", wait.Message, wait.Receipt.ExitCode.Error())
+				}
+
+				var settlementReturn markettypes14.SettleDealPaymentsReturn
+				if err = settlementReturn.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return)); err != nil {
+					return err
+				}
+
+				fmt.Printf("Settled %d out of %d deals\n", settlementReturn.Results.SuccessCount, len(dealIDs))
+
+				var (
+					totalPayment        = big.Zero()
+					totalCompletedDeals = 0
+				)
+
+				for _, s := range settlementReturn.Settlements {
+					totalPayment = big.Add(totalPayment, s.Payment)
+					if s.Completed {
+						totalCompletedDeals++
 					}
+				}
 
-				})
-
-			}
-			err = g.Wait()
-			if err != nil {
-				return err
+				fmt.Printf("Total payment: %s\n", types.FIL(totalPayment))
+				fmt.Printf("Total number of deals finished their lifetime: %d\n", totalCompletedDeals)
 			}
 
 			return nil
