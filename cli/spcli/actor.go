@@ -13,6 +13,7 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
+	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -167,6 +168,7 @@ func ActorDealSettlementCmd(getActor ActorAddressGetter) *cli.Command {
 			})
 			dealChucks := lo.Chunk(dealIDs, cctx.Int("max-deals"))
 
+			var msgs []*types.Message
 			for _, deals := range dealChucks {
 				dealParams := bitfield.NewFromSet(deals)
 				var err error
@@ -174,61 +176,71 @@ func ActorDealSettlementCmd(getActor ActorAddressGetter) *cli.Command {
 				if err != nil {
 					return err
 				}
-
-				smsg, err := api.MpoolPushMessage(ctx, &types.Message{
+				msg := &types.Message{
 					To:     marketactor.Address,
 					From:   fromAddr,
 					Value:  types.NewInt(0),
 					Method: marketactor.Methods.SettleDealPaymentsExported,
 					Params: params,
-				}, nil)
-				if err != nil {
-					return err
 				}
-
-				res := smsg.Cid()
-
-				fmt.Printf("Requested deal settlement in message: %s\nwaiting for it to be included in a block..\n", res)
-
-				if cctx.Bool("skip-wait-msg") {
-					fmt.Printf("skip the check status, please pay attention to the message status on the chain by yourself.\n")
-					continue
-				}
-
-				// wait for it to get mined into a block
-				wait, err := api.StateWaitMsg(ctx, res, uint64(cctx.Int("confidence")), lapi.LookbackNoLimit, true)
-				if err != nil {
-					return xerrors.Errorf("Timeout waiting for deal settlement message %s", res)
-				}
-
-				if wait.Receipt.ExitCode.IsError() {
-					return xerrors.Errorf("Failed to execute withdrawal message %s: %w", wait.Message, wait.Receipt.ExitCode.Error())
-				}
-
-				var settlementReturn markettypes14.SettleDealPaymentsReturn
-				if err = settlementReturn.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return)); err != nil {
-					return err
-				}
-
-				fmt.Printf("Settled %d out of %d deals\n", settlementReturn.Results.SuccessCount, len(dealIDs))
-
-				var (
-					totalPayment        = big.Zero()
-					totalCompletedDeals = 0
-				)
-
-				for _, s := range settlementReturn.Settlements {
-					totalPayment = big.Add(totalPayment, s.Payment)
-					if s.Completed {
-						totalCompletedDeals++
-					}
-				}
-
-				fmt.Printf("Total payment: %s\n", types.FIL(totalPayment))
-				fmt.Printf("Total number of deals finished their lifetime: %d\n", totalCompletedDeals)
+				msgs = append(msgs, msg)
 			}
 
-			return nil
+			// MpoolBatchPushMessage method will take care of gas estimation and funds check
+			smsgs, err := api.MpoolBatchPushMessage(ctx, msgs, nil)
+			if smsgs == nil && err != nil {
+				fmt.Printf("No eligible settlement deals")
+				return err
+			}
+
+			if cctx.Bool("skip-wait-msg") {
+				fmt.Printf("skip the check status, please pay attention to the message status on the chain by yourself.")
+				return nil
+			}
+
+			// wait for msgs to get mined into a block
+			eg := errgroup.Group{}
+			eg.SetLimit(10)
+			for _, smsg := range smsgs {
+				res := smsg.Cid()
+				fmt.Printf("Requested deal settlement in message: %s\nwaiting for it to be included in a block..\n", res)
+				eg.Go(func() error {
+					// wait for it to get mined into a block
+					wait, err := api.StateWaitMsg(ctx, res, uint64(cctx.Int("confidence")), lapi.LookbackNoLimit, true)
+					if err != nil {
+						return xerrors.Errorf("Timeout waiting for deal settlement message %s", res)
+					}
+
+					if wait.Receipt.ExitCode.IsError() {
+						return xerrors.Errorf("Failed to execute withdrawal message %s: %w", wait.Message, wait.Receipt.ExitCode.Error())
+					}
+
+					var settlementReturn markettypes14.SettleDealPaymentsReturn
+					if err = settlementReturn.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return)); err != nil {
+						return err
+					}
+
+					fmt.Printf("Settled %d out of %d deals\n", settlementReturn.Results.SuccessCount, len(dealIDs))
+
+					var (
+						totalPayment        = big.Zero()
+						totalCompletedDeals = 0
+					)
+
+					for _, s := range settlementReturn.Settlements {
+						totalPayment = big.Add(totalPayment, s.Payment)
+						if s.Completed {
+							totalCompletedDeals++
+						}
+					}
+
+					fmt.Printf("Total payment: %s\n", types.FIL(totalPayment))
+					fmt.Printf("Total number of deals finished their lifetime: %d\n", totalCompletedDeals)
+
+					return nil
+				})
+			}
+			return eg.Wait()
 		},
 	}
 }
