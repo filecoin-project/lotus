@@ -188,7 +188,6 @@ func ActorDealSettlementCmd(getActor ActorAddressGetter) *cli.Command {
 			// MpoolBatchPushMessage method will take care of gas estimation and funds check
 			smsgs, err := api.MpoolBatchPushMessage(ctx, msgs, nil)
 			if smsgs == nil && err != nil {
-				fmt.Printf("No eligible settlement deals")
 				return err
 			}
 
