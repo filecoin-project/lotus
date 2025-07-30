@@ -171,7 +171,6 @@ func ActorDealSettlementCmd(getActor ActorAddressGetter) *cli.Command {
 			var msgs []*types.Message
 			for _, deals := range dealChucks {
 				dealParams := bitfield.NewFromSet(deals)
-				var err error
 				params, err := actors.SerializeParams(&dealParams)
 				if err != nil {
 					return err
