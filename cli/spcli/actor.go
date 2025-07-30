@@ -220,8 +220,6 @@ func ActorDealSettlementCmd(getActor ActorAddressGetter) *cli.Command {
 						return err
 					}
 
-					fmt.Printf("Settled %d out of %d deals\n", settlementReturn.Results.SuccessCount, len(dealIDs))
-
 					var (
 						totalPayment        = big.Zero()
 						totalCompletedDeals = 0
@@ -234,9 +232,8 @@ func ActorDealSettlementCmd(getActor ActorAddressGetter) *cli.Command {
 						}
 					}
 
-					fmt.Printf("Total payment: %s\n", types.FIL(totalPayment))
-					fmt.Printf("Total number of deals finished their lifetime: %d\n", totalCompletedDeals)
-
+					fmt.Printf("Message CID: %s\nSettled %d out of %d deals\nTotal payment: %s\nTotal number of deals finished their lifetime: %d\n",
+						res, settlementReturn.Results.SuccessCount, len(dealIDs), types.FIL(totalPayment), totalCompletedDeals)
 					return nil
 				})
 			}
