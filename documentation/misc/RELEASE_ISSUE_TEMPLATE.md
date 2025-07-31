@@ -123,7 +123,7 @@
 <!--  {{end}}-->
 
 #### Release PR for {{$rc}}
-- [ ] Update the version string(s) in `build/version.go` to one {{if contains "rc" $rc}}ending with '-{{$rc}}'{{else}}**NOT* ending with 'rcX'{{end}}.
+- [ ] Update the version string(s) in `build/version.go` to one {{if contains "rc" $rc}}ending with '-{{$rc}}'{{else}}**NOT** ending with 'rcX'{{end}}.
 <!--  {{if contains "Node" $.Type}}-->
     - Ensure to update `NodeBuildVersion`
 <!--  {{end}}-->
