@@ -42,6 +42,7 @@ This is the first release candidate of Lotus v1.33.1, which introduces performan
 - chore: increase the F3 GMessage buffer size to 1024 ([filecoin-project/lotus#13126](https://github.com/filecoin-project/lotus/pull/13126))
 - chore: bump the pubsub validation queue length to 256 ([filecoin-project/lotus#13176](https://github.com/filecoin-project/lotus/pull/13176))
 - chore(deps): update of critical underlying dependencies with go-libp2p to v0.42.0 (filecoin-project/lotus#13190) and boxo to v0.32.0 ([filecoin-project/lotus#13202](https://github.com/filecoin-project/lotus/pull/13202)) and boxo v0.33.0([filecoin-project/lotus#13226](https://github.com/filecoin-project/lotus/pull/13226))
+- feat(spcli): correctly handle the batch logic of `lotus-miner actor settle-deal`; replace the dealid data source ([filecoin-project/lotus#13189](https://github.com/filecoin-project/lotus/pull/13189))
 
 ## 📝 Changelog
 
