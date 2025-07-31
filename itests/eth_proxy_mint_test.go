@@ -75,7 +75,7 @@ func TestMintContract(t *testing.T) {
 		Nonce:                0,
 		MaxFeePerGas:         types.NanoFil,
 		MaxPriorityFeePerGas: big.Int(maxPriorityFeePerGas),
-		GasLimit:             int(implGaslimit),
+		GasLimit:             int(*implGaslimit),
 		Input:                implContract,
 		V:                    big.Zero(),
 		R:                    big.Zero(),
@@ -127,7 +127,7 @@ func TestMintContract(t *testing.T) {
 		Nonce:                1, // Second transaction from this account
 		MaxFeePerGas:         types.NanoFil,
 		MaxPriorityFeePerGas: big.Int(maxPriorityFeePerGas),
-		GasLimit:             int(proxyGaslimit),
+		GasLimit:             int(*proxyGaslimit),
 		Input:                proxyContract,
 		V:                    big.Zero(),
 		R:                    big.Zero(),
@@ -170,7 +170,7 @@ func TestMintContract(t *testing.T) {
 		Nonce:                2, // Third transaction from this account
 		MaxFeePerGas:         types.NanoFil,
 		MaxPriorityFeePerGas: big.Int(maxPriorityFeePerGas),
-		GasLimit:             int(mintGaslimit),
+		GasLimit:             int(*mintGaslimit),
 		To:                   &proxyContractAddr,
 		Input:                mintParams,
 		V:                    big.Zero(),

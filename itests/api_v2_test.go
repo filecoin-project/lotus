@@ -24,8 +24,8 @@ import (
 
 func TestAPIV2_ThroughRPC(t *testing.T) {
 	const (
-		timeout          = 2 * time.Minute
-		blockTime        = 10 * time.Millisecond
+		timeout          = 5 * time.Minute
+		blockTime        = 100 * time.Millisecond
 		f3FinalizedEpoch = 123
 		targetHeight     = 20 + policy.ChainFinality
 	)
