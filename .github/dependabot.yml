@@ -7,7 +7,7 @@ updates:
       interval: "monthly"
     # Group updates to reduce noise while maintaining visibility
     groups:
-      # Core Filecoin dependencies (except specs-actors as noted in comments)
+      # Core Filecoin dependencies including specs-actors
       filecoin-core:
         patterns:
           - "github.com/filecoin-project/go-state-types"
@@ -28,6 +28,8 @@ updates:
           - "github.com/filecoin-project/go-storedcounter"
           - "github.com/filecoin-project/pubsub"
           - "github.com/filecoin-project/test-vectors/*"
+          - "github.com/filecoin-project/specs-actors"
+          - "github.com/filecoin-project/specs-actors/*"
       # IPFS ecosystem dependencies including boxo
       ipfs-ecosystem:
         patterns:
