@@ -7,7 +7,7 @@ updates:
       interval: "monthly"
     # Group updates to reduce noise while maintaining visibility
     groups:
-      # Core Filecoin dependencies including specs-actors
+      # Core Filecoin dependencies
       filecoin-core:
         patterns:
           - "github.com/filecoin-project/go-state-types"
