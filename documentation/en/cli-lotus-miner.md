@@ -256,6 +256,7 @@ OPTIONS:
    --from value        specify where to send the message from (any address)
    --max-deals value   the maximum number of deals contained in each message (default: 50)
    --skip-wait-msg     skip to check the message status (default: false)
+   --all-deals         settle all deals. only expired deals are calculated by default (default: false)
    --really-do-it      Actually send transaction performing the action (default: false)
    --help, -h          show help
 ```
