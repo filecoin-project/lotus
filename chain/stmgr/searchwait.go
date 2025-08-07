@@ -244,7 +244,7 @@ func (sm *StateManager) searchBackForMsg(ctx context.Context, from *types.TipSet
 	cur := from
 	curActor, err := sm.LoadActor(ctx, m.VMMessage().From, cur)
 	if err != nil {
-		return nil, nil, cid.Undef, xerrors.Errorf("failed to load initital tipset")
+		return nil, nil, cid.Undef, xerrors.Errorf("failed to load initial tipset")
 	}
 
 	mFromId, err := sm.LookupIDAddress(ctx, m.VMMessage().From, from)
