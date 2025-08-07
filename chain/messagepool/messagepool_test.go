@@ -616,7 +616,7 @@ func TestLoadLocal(t *testing.T) {
 	}
 
 	if len(msgs) > 0 {
-		t.Fatalf("not all messages were laoded; missing %d messages", len(msgs))
+		t.Fatalf("not all messages were loaded; missing %d messages", len(msgs))
 	}
 }
 
