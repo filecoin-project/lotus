@@ -28,7 +28,7 @@ jobs:
     outputs:
       test_group_execution_contexts: ${{ steps.list_test_group_execution_contexts.outputs.test_group_execution_contexts }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: 'recursive'
           fetch-depth: 0
@@ -45,7 +45,7 @@ jobs:
         # We need to cache for each architecture we support: x86_64 and arm64
         runner: [ubuntu-latest, ubuntu-24.04-arm]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: 'recursive'
           fetch-depth: 0
@@ -127,7 +127,7 @@ jobs:
       matrix:
         include: ${{ fromJson(needs.discover.outputs.test_group_execution_contexts) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: 'recursive'
           fetch-depth: 0

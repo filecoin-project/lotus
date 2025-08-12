@@ -54,7 +54,7 @@ jobs:
     name: Create Release Issue
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/install-go
       - env:
           GITHUB_TOKEN: ${{ github.token }}

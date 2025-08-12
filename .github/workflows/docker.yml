@@ -72,7 +72,7 @@ jobs:
             fi
           fi
           echo "channel=$channel" | tee -a $GITHUB_OUTPUT
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: 'recursive'
           fetch-depth: 0

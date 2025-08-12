@@ -37,12 +37,12 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == 'failure'
     steps:
       - name: Check out lotus
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           path: lotus
           ref: ${{ github.event.inputs.head_commit_id || github.event.workflow_run.head_commit.id }}
       - name: Check out buildpulse-action
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: buildpulse/buildpulse-action
           path: buildpulse-action

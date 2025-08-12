@@ -27,7 +27,7 @@ jobs:
     outputs:
       skip_checks: ${{ steps.changes.outputs.nonMarkdownFiles == 'false' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - id: changes
         uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
         with:
@@ -40,7 +40,7 @@ jobs:
     if: ${{ needs.pre-check.outputs.skip_checks != 'true' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: 'recursive'
           fetch-depth: 0
@@ -57,7 +57,7 @@ jobs:
     if: ${{ needs.pre-check.outputs.skip_checks != 'true' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: 'recursive'
           fetch-depth: 0
@@ -71,7 +71,7 @@ jobs:
     if: ${{ needs.pre-check.outputs.skip_checks != 'true' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: 'recursive'
           fetch-depth: 0
@@ -84,7 +84,7 @@ jobs:
     if: ${{ needs.pre-check.outputs.skip_checks != 'true' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: 'recursive'
           fetch-depth: 0
