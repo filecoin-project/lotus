@@ -256,8 +256,8 @@ github.com/filecoin-project/go-bitfield v0.2.3/go.mod h1:CNl9WG8hgR5mttCnUErjcQj
 github.com/filecoin-project/go-bitfield v0.2.4 h1:uZ7MeE+XfM5lqrHJZ93OnhQKc/rveW8p9au0C68JPgk=
 github.com/filecoin-project/go-bitfield v0.2.4/go.mod h1:CNl9WG8hgR5mttCnUErjcQjGvuiZjRqK9rHVBsQF4oM=
 github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2/go.mod h1:pqTiPHobNkOVM5thSRsHYjyQfq7O5QSCMhvuu9JoDlg=
-github.com/filecoin-project/go-cbor-util v0.0.1 h1:E1LYZYTtjfAQwCReho0VXvbu8t3CYAVPiMx8EiV/VAs=
-github.com/filecoin-project/go-cbor-util v0.0.1/go.mod h1:pqTiPHobNkOVM5thSRsHYjyQfq7O5QSCMhvuu9JoDlg=
+github.com/filecoin-project/go-cbor-util v0.0.2 h1:vljF+a+NBwv89VfPvy5lJEtrZWe8k4nizgaqWhf6Ro8=
+github.com/filecoin-project/go-cbor-util v0.0.2/go.mod h1:96OIHk38Y1IV+KCXkGjE2WjjIxfpIanz2rWIIy5kKkQ=
 github.com/filecoin-project/go-clock v0.1.0 h1:SFbYIM75M8NnFm1yMHhN9Ahy3W5bEZV9gd6MPfXbKVU=
 github.com/filecoin-project/go-clock v0.1.0/go.mod h1:4uB/O4PvOjlx1VCMdZ9MyDZXRm//gkj1ELEbxfI1AZs=
 github.com/filecoin-project/go-commp-utils/v2 v2.1.0 h1:KWNRalUp2bhN1SW7STsJS2AHs9mnfGKk9LnQgzDe+gI=
@@ -279,8 +279,8 @@ github.com/filecoin-project/go-hamt-ipld/v3 v3.0.1/go.mod h1:gXpNmr3oQx8l3o7qkGy
 github.com/filecoin-project/go-hamt-ipld/v3 v3.1.0/go.mod h1:bxmzgT8tmeVQA1/gvBwFmYdT8SOFUwB3ovSUfG1Ux0g=
 github.com/filecoin-project/go-hamt-ipld/v3 v3.4.1 h1:wl+ZHruCcE9LvwU7blpwWn35XOcRS6+IBg75G7ZzxzY=
 github.com/filecoin-project/go-hamt-ipld/v3 v3.4.1/go.mod h1:AqjryNfkxffpnqsa5mwnJHlazhVqF6W2nilu+VYKIq8=
-github.com/filecoin-project/go-jsonrpc v0.7.0 h1:mqA5pIOlBODx7ascY9cJdBAYonhgbdUOIn2dyYI1YBg=
-github.com/filecoin-project/go-jsonrpc v0.7.0/go.mod h1:lAUpS8BSVtKaA8+/CFUMA5dokMiSM7n0ehf8bHOFdpE=
+github.com/filecoin-project/go-jsonrpc v0.8.0 h1:2yqlN3Vd8Gx5UtA3fib7tQu2aW1cSOJt253LEBWExo4=
+github.com/filecoin-project/go-jsonrpc v0.8.0/go.mod h1:p8WGOwQGYbFugSdK7qKIGhhb1VVcQ2rtBLdEiik1QWI=
 github.com/filecoin-project/go-padreader v0.0.1 h1:8h2tVy5HpoNbr2gBRr+WD6zV6VD6XHig+ynSGJg8ZOs=
 github.com/filecoin-project/go-padreader v0.0.1/go.mod h1:VYVPJqwpsfmtoHnAmPx6MUwmrK6HIcDqZJiuZhtmfLQ=
 github.com/filecoin-project/go-paramfetch v0.0.4 h1:H+Me8EL8T5+79z/KHYQQcT8NVOzYVqXIi7nhb48tdm8=
