@@ -10,35 +10,14 @@ updates:
       # Core Filecoin dependencies
       filecoin-core:
         patterns:
-          - "github.com/filecoin-project/go-state-types"
-          - "github.com/filecoin-project/go-address"
-          - "github.com/filecoin-project/go-amt-ipld/*"
-          - "github.com/filecoin-project/go-bitfield"
-          - "github.com/filecoin-project/go-cbor-util"
-          - "github.com/filecoin-project/go-commp-utils/*"
-          - "github.com/filecoin-project/go-crypto"
-          - "github.com/filecoin-project/go-f3"
-          - "github.com/filecoin-project/go-fil-commcid"
-          - "github.com/filecoin-project/go-hamt-ipld/*"
-          - "github.com/filecoin-project/go-jsonrpc"
-          - "github.com/filecoin-project/go-padreader"
-          - "github.com/filecoin-project/go-paramfetch"
-          - "github.com/filecoin-project/go-statemachine"
-          - "github.com/filecoin-project/go-statestore"
-          - "github.com/filecoin-project/go-storedcounter"
-          - "github.com/filecoin-project/pubsub"
-          - "github.com/filecoin-project/test-vectors/*"
-          - "github.com/filecoin-project/specs-actors"
-          - "github.com/filecoin-project/specs-actors/*"
-      # IPFS ecosystem dependencies including boxo
+          - "github.com/filecoin-project/*"
+      # IPFS ecosystem dependencies
       ipfs-ecosystem:
         patterns:
-          - "github.com/ipfs/boxo"
           - "github.com/ipfs/*"
       # libp2p ecosystem dependencies
       libp2p-ecosystem:
         patterns:
-          - "github.com/libp2p/go-libp2p"
           - "github.com/libp2p/*"
       # Multiformats dependencies
       multiformats:
@@ -65,4 +44,3 @@ updates:
       - "@filecoin-project/lotus-maintainers"
     labels:
       - "dependencies"
-      - "automated"
