@@ -1,0 +1,46 @@
+version: 2
+updates:
+  # Monitor Go dependencies for critical packages
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    # Group updates to reduce noise while maintaining visibility
+    groups:
+      # Core Filecoin dependencies
+      filecoin-core:
+        patterns:
+          - "github.com/filecoin-project/*"
+      # IPFS ecosystem dependencies
+      ipfs-ecosystem:
+        patterns:
+          - "github.com/ipfs/*"
+      # libp2p ecosystem dependencies
+      libp2p-ecosystem:
+        patterns:
+          - "github.com/libp2p/*"
+      # Multiformats dependencies
+      multiformats:
+        patterns:
+          - "github.com/multiformats/*"
+      # Web and networking dependencies
+      web-networking:
+        patterns:
+          - "github.com/gorilla/mux"
+          - "github.com/gorilla/websocket"
+      # Database and encoding dependencies
+      data-storage:
+        patterns:
+          - "github.com/mattn/go-sqlite3"
+          - "github.com/whyrusleeping/cbor-gen"
+      # Hardware and crypto dependencies
+      crypto-hardware:
+        patterns:
+          - "github.com/zondax/ledger-filecoin-go"
+          - "golang.org/x/crypto"
+    # Additional configuration to ensure maintainers can review
+    open-pull-requests-limit: 10
+    reviewers:
+      - "@filecoin-project/lotus-maintainers"
+    labels:
+      - "dependencies"
