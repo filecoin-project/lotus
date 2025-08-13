@@ -5,6 +5,10 @@ updates:
     directory: "/"
     schedule:
       interval: "monthly"
+    # Ignore specs-actors and its versioned packages
+    ignore:
+      - dependency-name: "github.com/filecoin-project/specs-actors"
+      - dependency-name: "github.com/filecoin-project/specs-actors/*"
     # Group updates to reduce noise while maintaining visibility
     groups:
       # Core Filecoin dependencies
@@ -40,7 +44,5 @@ updates:
           - "golang.org/x/crypto"
     # Additional configuration to ensure maintainers can review
     open-pull-requests-limit: 10
-    reviewers:
-      - "@filecoin-project/lotus-maintainers"
     labels:
       - "dependencies"
