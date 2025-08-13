@@ -142,7 +142,7 @@ require (
 	github.com/xeipuuv/gojsonschema v1.2.0
 	github.com/xorcare/golden v0.6.1-0.20191112154924-b87f686d7542 // dependency-check-ignore: unknown
 	github.com/yugabyte/pgx/v5 v5.5.3-yb-2 // dependency-check-ignore: unknown
-	github.com/zondax/ledger-filecoin-go v1.0.1
+	github.com/zondax/ledger-filecoin-go v1.1.0
 	github.com/zyedidia/generic v1.2.1
 	go.opencensus.io v0.24.0
 	go.opentelemetry.io/otel v1.35.0
@@ -150,19 +150,19 @@ require (
 	go.opentelemetry.io/otel/exporters/jaeger v1.14.0
 	go.opentelemetry.io/otel/exporters/prometheus v0.50.0
 	go.opentelemetry.io/otel/metric v1.35.0
-	go.opentelemetry.io/otel/sdk v1.34.0
-	go.opentelemetry.io/otel/sdk/metric v1.32.0
+	go.opentelemetry.io/otel/sdk v1.35.0
+	go.opentelemetry.io/otel/sdk/metric v1.35.0
 	go.uber.org/fx v1.24.0
 	go.uber.org/multierr v1.11.0
 	go.uber.org/zap v1.27.0
-	golang.org/x/crypto v0.39.0
-	golang.org/x/mod v0.25.0
-	golang.org/x/net v0.41.0
-	golang.org/x/sync v0.15.0
-	golang.org/x/sys v0.33.0
-	golang.org/x/term v0.32.0
+	golang.org/x/crypto v0.41.0
+	golang.org/x/mod v0.26.0
+	golang.org/x/net v0.42.0
+	golang.org/x/sync v0.16.0
+	golang.org/x/sys v0.35.0
+	golang.org/x/term v0.34.0
 	golang.org/x/time v0.12.0
-	golang.org/x/tools v0.34.0
+	golang.org/x/tools v0.35.0
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da
 	gotest.tools v2.2.0+incompatible
 )
@@ -337,11 +337,11 @@ require (
 	go.uber.org/mock v0.5.2 // indirect
 	go4.org v0.0.0-20230225012048-214862532bf5 // indirect
 	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b // indirect
-	golang.org/x/text v0.26.0 // indirect
+	golang.org/x/text v0.28.0 // indirect
 	gonum.org/v1/gonum v0.16.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20250212204824-5a70512c5d8b // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250212204824-5a70512c5d8b // indirect
-	google.golang.org/grpc v1.70.0 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20250324211829-b45e905df463 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250707201910-8d1bb00bc6a7 // indirect
+	google.golang.org/grpc v1.73.0 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/cheggaaa/pb.v1 v1.0.28 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
