@@ -60,7 +60,8 @@
 The Chain method group contains methods for interacting with
 the blockchain.
 
-<b>Note: This API is experimental and may change in the future.<b/>
+<b>Note: This API is experimental and may change as we explore the
+appropriate design for the Filecoin v2 APIs.<b/>
 
 Please see Filecoin V2 API design documentation for more details:
   - https://www.notion.so/filecoindev/Lotus-F3-aware-APIs-1cfdc41950c180ae97fef580e79427d5

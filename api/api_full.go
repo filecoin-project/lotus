@@ -46,9 +46,6 @@ const LookbackNoLimit = abi.ChainEpoch(-1)
 
 //                       MODIFYING THE API INTERFACE
 //
-// NOTE: This is the V1 (Unstable) API - to add methods to the V0 (Stable) API
-// you'll have to add those methods to interfaces in `api/v0api`
-//
 // When adding / changing methods in this file:
 // * Do the change here
 // * Adjust implementation in `node/impl/`
@@ -58,7 +55,9 @@ const LookbackNoLimit = abi.ChainEpoch(-1)
 //  * Generate markdown docs
 //  * Generate openrpc blobs
 
-// FullNode API is a low-level interface to the Filecoin network full node
+// FullNode API is a low-level interface to the Filecoin network full node.
+// This represents the Lotus v1 API, which is stable and maintains backward
+// compatibility.
 type FullNode interface {
 	Common
 	Net

@@ -17,13 +17,16 @@ import (
 
 // FullNode represents an interface for the v2 full node APIs. This interface
 // currently consists of chain-related functionalities and the API is
-// experimental and subject to change.
+// experimental and therefore subject to change as we explore the appropriate
+// design for the Filecoin v2 APIs.
+// The v1 API is stable and is recommended where stable APIs are preferred.
 type FullNode interface {
 	// MethodGroup: Chain
 	// The Chain method group contains methods for interacting with
 	// the blockchain.
 	//
-	// <b>Note: This API is experimental and may change in the future.<b/>
+	// <b>Note: This API is experimental and may change as we explore the
+	// appropriate design for the Filecoin v2 APIs.<b/>
 	//
 	// Please see Filecoin V2 API design documentation for more details:
 	//   - https://www.notion.so/filecoindev/Lotus-F3-aware-APIs-1cfdc41950c180ae97fef580e79427d5

@@ -26,11 +26,11 @@ import (
 
 //                       MODIFYING THE API INTERFACE
 //
-// NOTE: This is the V0 (Stable) API - when adding methods to this interface,
-// you'll need to make sure they are also present on the V1 (Unstable) API
+// NOTE: This is the v0 (Deprecated) API - when adding methods to this interface,
+// you'll need to make sure they are also present on the v1 (Stable) API
 //
 // This API is implemented in `v1_wrapper.go` as a compatibility layer backed
-// by the V1 api
+// by the v1 api
 //
 // When adding / changing methods in this file:
 // * Do the change here
@@ -41,7 +41,10 @@ import (
 //  * Generate markdown docs
 //  * Generate openrpc blobs
 
-// FullNode API is a low-level interface to the Filecoin network full node
+// FullNode API is a low-level interface to the Filecoin network full node.
+// This represents the Lotus v0 API, which is deprecated and may be removed
+// in the future. It is recommended to use the v1 API instead, which is
+// stable.
 type FullNode interface {
 	Common
 	Net

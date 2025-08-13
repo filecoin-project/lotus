@@ -23,9 +23,6 @@ import (
 
 //                       MODIFYING THE API INTERFACE
 //
-// NOTE: This is the V1 (Unstable) API - to add methods to the V0 (Stable) API
-// you'll have to add those methods to interfaces in `api/v0api`
-//
 // When adding / changing methods in this file:
 // * Do the change here
 // * Adjust implementation in `node/impl/`
@@ -35,6 +32,19 @@ import (
 //  * Generate markdown docs
 //  * Generate openrpc blobs
 
+// Gateway provides a secure, limited interface to the Filecoin network for
+// public-facing services. It exposes a carefully curated subset of the FullNode
+// API that excludes administrative operations, wallet management, and other
+// sensitive functionality that should not be accessible through public endpoints.
+//
+// This API is ideal for:
+//   - Public RPC endpoints and infrastructure providers
+//   - Applications that need read-only access to chain data
+//   - Services requiring basic transaction submission without node administration
+//   - Load balancers and proxy services in front of full nodes
+//
+// This represents the Lotus v1 API, which is stable and maintains backward
+// compatibility.
 type Gateway interface {
 	ChainGetBlock(context.Context, cid.Cid) (*types.BlockHeader, error)
 	ChainHasObj(context.Context, cid.Cid) (bool, error)
