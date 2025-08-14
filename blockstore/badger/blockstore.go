@@ -453,7 +453,7 @@ func between(min, max, val int) int {
 }
 
 func (b *Blockstore) deleteDB(path string) {
-	// follow symbolic links, otherwise the data wil be left behind
+	// follow symbolic links, otherwise the data will be left behind
 	linkPath, err := filepath.EvalSymlinks(path)
 	if err != nil {
 		log.Warnf("error resolving symlinks in %s", path)
