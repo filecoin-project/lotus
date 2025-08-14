@@ -529,7 +529,7 @@ func (s *SplitStore) Put(ctx context.Context, blk blocks.Block) error {
 }
 
 func (s *SplitStore) PutMany(ctx context.Context, blks []blocks.Block) error {
-	// filter identites
+	// filter identities
 	idcids := 0
 	for _, blk := range blks {
 		if isIdentiyCid(blk.Cid()) {
