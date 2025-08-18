@@ -1056,6 +1056,19 @@ type EthBlockNumberOrHash struct {
 	RequireCanonical bool       `json:"requireCanonical,omitempty"`
 }
 
+func (e EthBlockNumberOrHash) String() string {
+	if e.PredefinedBlock != nil {
+		return *e.PredefinedBlock
+	}
+	if e.BlockNumber != nil {
+		return e.BlockNumber.Hex()
+	}
+	if e.BlockHash != nil {
+		return e.BlockHash.String()
+	}
+	return "{}"
+}
+
 func NewEthBlockNumberOrHashFromPredefined(predefined string) EthBlockNumberOrHash {
 	return EthBlockNumberOrHash{
 		PredefinedBlock:  &predefined,
