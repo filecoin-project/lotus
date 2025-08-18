@@ -193,7 +193,7 @@ func main() {
 					},
 					&cli.StringFlag{
 						Name:     "level",
-						Usage:    "What's the level of the release? (Options: major, minor, patch)",
+						Usage:    "What's the level of the release? (Options: minor, patch)",
 						Value:    "patch",
 						Required: true,
 					},
@@ -256,8 +256,8 @@ func main() {
 					}
 
 					releaseLevel := c.String("level")
-					if releaseLevel != "major" && releaseLevel != "minor" && releaseLevel != "patch" {
-						return fmt.Errorf("invalid value for the 'level' flag. Allowed values are 'major', 'minor', and 'patch'")
+					if releaseLevel != "minor" && releaseLevel != "patch" {
+						return fmt.Errorf("invalid value for the 'level' flag. Allowed values are 'minor' and 'patch'")
 					}
 
 					networkUpgrade := c.String("network-upgrade")
@@ -343,6 +343,9 @@ func main() {
 
 					// Prepare issue creation options
 					issueTitle := fmt.Sprintf("Lotus %s v%s Release", releaseType, releaseTag)
+					if networkUpgrade != "" {
+						issueTitle += fmt.Sprintf(" (nv%s)", networkUpgrade)
+					}
 					issueBody := issueBodyBuffer.String()
 
 					// Remove duplicate newlines before headers and list items since the templating leaves a lot extra newlines around.
