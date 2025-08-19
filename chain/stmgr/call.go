@@ -39,6 +39,10 @@ var ErrExpensiveFork = errors.New("refusing explicit call due to state fork at e
 // tipset's parent. In the presence of null blocks, the height at which the message is invoked may
 // be less than the specified tipset.
 func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*api.InvocResult, error) {
+	return sm.CallOnState(ctx, cid.Undef, msg, ts)
+}
+
+func (sm *StateManager) CallOnState(ctx context.Context, stateCid cid.Cid, msg *types.Message, ts *types.TipSet) (*api.InvocResult, error) {
 	// Copy the message as we modify it below.
 	msgCopy := *msg
 	msg = &msgCopy
@@ -56,7 +60,7 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 		msg.Value = types.NewInt(0)
 	}
 
-	return sm.callInternal(ctx, msg, nil, ts, cid.Undef, sm.GetNetworkVersion, false, execSameSenderMessages)
+	return sm.callInternal(ctx, msg, nil, ts, stateCid, sm.GetNetworkVersion, false, execSameSenderMessages)
 }
 
 // ApplyOnStateWithGas applies the given message on top of the given state root with gas tracing enabled
