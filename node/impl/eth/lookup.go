@@ -70,7 +70,12 @@ func (e *ethLookup) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress,
 		return nil, xerrors.New("block param must not specify genesis block")
 	}
 
-	actor, err := e.stateManager.LoadActor(ctx, to, ts)
+	stateCid, _, err := e.stateManager.TipSetState(ctx, ts)
+	if err != nil {
+		return nil, err
+	}
+
+	actor, err := e.stateManager.LoadActorRaw(ctx, to, stateCid)
 	if err != nil {
 		if errors.Is(err, types.ErrActorNotFound) {
 			return nil, nil
@@ -84,8 +89,9 @@ func (e *ethLookup) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress,
 		return nil, nil
 	}
 
+	from, _ := (ethtypes.EthAddress{}).ToFilecoinAddress()
 	msg := &types.Message{
-		From:       builtinactors.SystemActorAddr,
+		From:       from,
 		To:         to,
 		Value:      big.Zero(),
 		Method:     builtintypes.MethodsEVM.GetBytecode,
@@ -98,7 +104,7 @@ func (e *ethLookup) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress,
 	// Try calling until we find a height with no migration.
 	var res *api.InvocResult
 	for {
-		res, err = e.stateManager.Call(ctx, msg, ts)
+		res, err = e.stateManager.ApplyOnStateWithGas(ctx, stateCid, msg, ts)
 		if err != stmgr.ErrExpensiveFork {
 			break
 		}
