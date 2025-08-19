@@ -394,14 +394,7 @@ func (pv2 *reverseProxyV2) EthFeeHistory(ctx context.Context, p jsonrpc.RawParam
 		return nil, xerrors.New("block count too high")
 	}
 	v, err := pv2.server.EthFeeHistory(ctx, p)
-	switch val := any(v).(type) {
-	case *ethtypes.EthFeeHistory:
-		return val, err
-	case ethtypes.EthFeeHistory:
-		return &val, err
-	default:
-		return nil, err
-	}
+	return v, err
 }
 
 func (pv2 *reverseProxyV2) EthMaxPriorityFeePerGas(ctx context.Context) (ethtypes.EthBigInt, error) {
@@ -421,14 +414,7 @@ func (pv2 *reverseProxyV2) EthEstimateGas(ctx context.Context, p jsonrpc.RawPara
 		return nil, err
 	}
 	v, err := pv2.server.EthEstimateGas(ctx, p)
-	switch val := any(v).(type) {
-	case *ethtypes.EthUint64:
-		return val, err
-	case ethtypes.EthUint64:
-		return &val, err
-	default:
-		return nil, err
-	}
+	return v, err
 }
 
 func (pv2 *reverseProxyV2) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {

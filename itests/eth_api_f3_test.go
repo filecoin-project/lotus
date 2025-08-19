@@ -619,10 +619,10 @@ func TestEthAPIWithF3(t *testing.T) {
 
 				if expectErr != "" {
 					req.ErrorContains(err, expectErr)
-					req.Nil(history)
+					req.Nil(historyPtr)
 				} else {
 					req.NoError(err)
-					req.NotNil(history)
+					req.NotNil(historyPtr)
 					oldest := expect
 					for range blkCount - 1 {
 						// iterate through Parents() because we'll likely have null rounds in here so we can't

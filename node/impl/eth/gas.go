@@ -169,6 +169,17 @@ func (e *ethGas) EthMaxPriorityFeePerGas(ctx context.Context) (ethtypes.EthBigIn
 	return ethtypes.EthBigInt(gasPremium), nil
 }
 
+// validateBlockNumber returns true when no specific block number was requested or
+// when the provided tipset height matches the requested block number.
+// It also returns the requested height when present for callers that need it.
+func validateBlockNumber(blkParam *ethtypes.EthBlockNumberOrHash, ts *types.TipSet) (bool, abi.ChainEpoch) {
+	if blkParam == nil || blkParam.BlockNumber == nil {
+		return true, 0
+	}
+	requestedHeight := abi.ChainEpoch(*blkParam.BlockNumber)
+	return ts.Height() == requestedHeight, requestedHeight
+}
+
 func (e *ethGas) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (*ethtypes.EthUint64, error) {
 	params, err := jsonrpc.DecodeParams[ethtypes.EthEstimateGasParams](p)
 	if err != nil {
@@ -190,11 +201,8 @@ func (e *ethGas) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (*etht
 			}
 			return nil, err
 		}
-		if params.BlkParam.BlockNumber != nil {
-			requestedHeight := abi.ChainEpoch(*params.BlkParam.BlockNumber)
-			if ts.Height() != requestedHeight {
-				return nil, nil
-			}
+		if ok, _ := validateBlockNumber(params.BlkParam, ts); !ok {
+			return nil, nil
 		}
 	}
 	gassedMsg, err := e.gasApi.GasEstimateMessageGas(ctx, msg, nil, ts.Key())
@@ -228,11 +236,8 @@ func (e *ethGas) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam etht
 		return nil, err // don't wrap, to preserve ErrNullRound
 	}
 
-	if blkParam.BlockNumber != nil {
-		requestedHeight := abi.ChainEpoch(*blkParam.BlockNumber)
-		if ts.Height() != requestedHeight {
-			return nil, api.NewErrNullRound(requestedHeight)
-		}
+	if ok, requested := validateBlockNumber(&blkParam, ts); !ok {
+		return nil, api.NewErrNullRound(requested)
 	}
 
 	invokeResult, err := e.applyMessage(ctx, msg, ts.Key())
