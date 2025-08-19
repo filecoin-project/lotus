@@ -88,9 +88,8 @@ func (e *ethLookup) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress,
 		return nil, nil
 	}
 
-	from, _ := (ethtypes.EthAddress{}).ToFilecoinAddress()
 	msg := &types.Message{
-		From:       from,
+		From:       builtinactors.SystemActorAddr,
 		To:         to,
 		Value:      big.Zero(),
 		Method:     builtintypes.MethodsEVM.GetBytecode,
@@ -103,7 +102,7 @@ func (e *ethLookup) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress,
 	// Try calling until we find a height with no migration.
 	var res *api.InvocResult
 	for {
-		res, err = e.stateManager.ApplyOnStateWithGas(ctx, stateCid, msg, ts)
+		res, err = e.stateManager.CallOnState(ctx, stateCid, msg, ts)
 		if err != stmgr.ErrExpensiveFork {
 			break
 		}
