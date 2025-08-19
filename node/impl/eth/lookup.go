@@ -7,7 +7,6 @@ import (
 
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
@@ -70,7 +69,12 @@ func (e *ethLookup) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress,
 		return nil, xerrors.New("block param must not specify genesis block")
 	}
 
-	actor, err := e.stateManager.LoadActor(ctx, to, ts)
+	stateCid, _, err := e.stateManager.TipSetState(ctx, ts)
+	if err != nil {
+		return nil, err
+	}
+
+	actor, err := e.stateManager.LoadActorRaw(ctx, to, stateCid)
 	if err != nil {
 		if errors.Is(err, types.ErrActorNotFound) {
 			return nil, nil
@@ -98,7 +102,7 @@ func (e *ethLookup) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress,
 	// Try calling until we find a height with no migration.
 	var res *api.InvocResult
 	for {
-		res, err = e.stateManager.Call(ctx, msg, ts)
+		res, err = e.stateManager.CallOnState(ctx, stateCid, msg, ts)
 		if err != stmgr.ErrExpensiveFork {
 			break
 		}
@@ -157,13 +161,12 @@ func (e *ethLookup) EthGetStorageAt(ctx context.Context, ethAddr ethtypes.EthAdd
 		return nil, xerrors.Errorf("cannot get Filecoin address: %w", err)
 	}
 
-	// use the system actor as the caller
-	from, err := address.NewIDAddress(0)
+	stateCid, _, err := e.stateManager.TipSetState(ctx, ts)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to construct system sender address: %w", err)
+		return nil, err
 	}
 
-	actor, err := e.stateManager.LoadActor(ctx, to, ts)
+	actor, err := e.stateManager.LoadActorRaw(ctx, to, stateCid)
 	if err != nil {
 		if errors.Is(err, types.ErrActorNotFound) {
 			return ethtypes.EthBytes(make([]byte, 32)), nil
@@ -183,7 +186,7 @@ func (e *ethLookup) EthGetStorageAt(ctx context.Context, ethAddr ethtypes.EthAdd
 	}
 
 	msg := &types.Message{
-		From:       from,
+		From:       builtinactors.SystemActorAddr,
 		To:         to,
 		Value:      big.Zero(),
 		Method:     builtintypes.MethodsEVM.GetStorageAt,
@@ -196,7 +199,7 @@ func (e *ethLookup) EthGetStorageAt(ctx context.Context, ethAddr ethtypes.EthAdd
 	// Try calling until we find a height with no migration.
 	var res *api.InvocResult
 	for {
-		res, err = e.stateManager.Call(ctx, msg, ts)
+		res, err = e.stateManager.CallOnState(ctx, stateCid, msg, ts)
 		if err != stmgr.ErrExpensiveFork {
 			break
 		}
