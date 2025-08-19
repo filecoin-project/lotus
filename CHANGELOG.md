@@ -10,7 +10,7 @@
 # UNRELEASED
 - feat(net): add LOTUS_ENABLE_MESSAGE_FETCH_INSTRUMENTATION=1 to turn on metrics and debugging for local vs bitswap message fetching during block validation ([filecoin-project/lotus#13221](https://github.com/filecoin-project/lotus/pull/13221))
 - chore(docs): mark v0 API as "deprecated" and v1 as "stable" ([filecoin-project/lotus#13264](https://github.com/filecoin-project/lotus/pull/13264))
-- fix(api): `eth_getCode` now returns the code after the specified block rather than before it ([filecoin-project/lotus#13247](https://github.com/filecoin-project/lotus/issues/13247))
+- fix(api): `eth_getCode` and `eth_getStorageAt` now return state after the specified block rather than before it ([filecoin-project/lotus#13247](https://github.com/filecoin-project/lotus/issues/13247))
 
 
 # Node v1.33.1 / 2025-07-31
