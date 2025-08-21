@@ -288,7 +288,7 @@ func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message,
 
 		result[i] = append(result[i], check)
 		if !check.OK {
-			// skip remaining checks if it is a syntatically invalid message
+			// skip remaining checks if it is a syntactically invalid message
 			continue
 		}
 

@@ -102,7 +102,7 @@ func checkMigrationComplete(ctx context.Context, source datastore.Batching, targ
 	return bytes.Equal(valSource, valTarget), nil
 }
 
-// migrateDatastore can be removed once at least one network upgade passes
+// migrateDatastore can be removed once at least one network upgrade passes
 func migrateDatastore(ctx context.Context, source datastore.Batching, target datastore.Batching) error {
 	if complete, err := checkMigrationComplete(ctx, source, target); err != nil {
 		return xerrors.Errorf("checking if migration complete: %w", err)
