@@ -72,7 +72,7 @@ func TestStateRecoverDealIDs(t *testing.T) {
 
 	sctx.EXPECT().Send(pipeline.SectorRemove{}).Return(nil)
 
-	// TODO sctx should satisfy an interface so it can be useable for mocking.  This will fail because we are passing in an empty context now to get this to build.
+	// TODO sctx should satisfy an interface so it can be usable for mocking.  This will fail because we are passing in an empty context now to get this to build.
 	// https://github.com/filecoin-project/lotus/issues/7867
 	err := fakeSealing.HandleRecoverDealIDs(statemachine.Context{}, pipeline.SectorInfo{
 		Pieces: []pipeline.SafeSectorPiece{
