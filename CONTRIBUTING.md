@@ -99,7 +99,7 @@ Here's how our Go version policy works in practice:
 ```
 Time t: Latest Go minor version is 1.24.x. We use 1.23.x.
 
-Time t': Go 1.25.x is released. We continue using 1.23.x 
+Time t': Go 1.25.x is released. We continue using 1.23.x
          (transition period of ~1 month).
 
 Time t'+1 month: Latest Go minor version is 1.25.x. We upgrade to 1.24.x.
@@ -124,19 +124,22 @@ When updating the Go version (either patch or minor), the following files must b
 4. **`Dockerfile`** - Docker base image version.  This ensures container builds use the correct Go version.
 
 #### Step-by-Step Process
-   
+
 ```bash
 # Update go.mod
 sed -i 's/go 1.23.7/go 1.23.10/' go.mod
-   
+
 # Update GO_VERSION_MIN
 echo "1.23.10" > GO_VERSION_MIN
-   
+
 # Update README.md badge and documentation
 sed -i 's/1.23.7/1.23.10/' README.md
-   
+
 # Update Dockerfile
 sed -i 's/FROM golang:1.23.7-bullseye/FROM golang:1.23.10-bullseye/' Dockerfile
+
+# Update workflows
+sed -i 's/1.23.7/1.23.10/' .github/workflows/builtin-actor-tests.yml
 
 # Add a changelog entry
 
