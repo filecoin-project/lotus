@@ -67,9 +67,9 @@ linters:
         text: '^var-naming: don''t use ALL_CAPS in Go names; use CamelCase'
       - path: \.go$
         text: '^var-naming: \w+ .*(Id|Api|Uuid|Http|Rpc|Url|Json|Html|Vm).* should be .*(ID|API|UUID|HTTP|RPC|URL|JSON|HTML|VM).*'
-      - path: ^node/impl/common/common\.go$
+      - path: ^node/impl/common/.*\.go$
         text: '^var-naming: avoid meaningless package names'
-      - path: '^chain/types/tipset_selector.go$'
+      - path: '^chain/types/.*\.go$'
         text: '^var-naming: avoid meaningless package names'
       - path: ^chain/types/ethtypes/(eth_1559_transactions|eth_legacy_155_transactions|eth_legacy_homestead_transactions)\.go$
         text: '^var-naming: var [a-z]_ should be [a-z]'
