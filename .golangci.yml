@@ -1,4 +1,7 @@
 version: "2"
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
 linters:
   default: none
   enable:
@@ -13,63 +16,135 @@ linters:
   exclusions:
     generated: lax
     rules:
-      - linters:
-          - gosec
-        path: .*_test.go
-      - linters:
-          - gosec
-        path: chain/vectors/gen/.*
-      - linters:
-          - gosec
-        path: cmd/lotus-bench/.*
-      - path: (.+)\.go$
+      # gosec
+      - path: _test\.go$
+        text: '^(G102|G104|G107|G112|G202):'
+      - path: ^cmd/lotus-bench/(import|reporter|rpc)\.go$
+        text: '^(G104|G114):'
+      - path: \.go$
         text: '^G101: Potential hardcoded credentials'
-      - path: (.+)\.go$
+      - path: \.go$
         text: '^G108: Profiling endpoint is automatically exposed on /debug/pprof'
-      - path: (.+)\.go$
+      - path: \.go$
+        text: '^G115: integer overflow conversion'
+      - path: \.go$
         text: '^G204: Subprocess launched with (variable|a potential tainted input or cmd arguments)'
-      - path: (.+)\.go$
+      - path: \.go$
         text: '^G301: Expect directory permissions to be 0750 or less'
-      - path: (.+)\.go$
+      - path: \.go$
         text: '^G302: Expect file permissions to be 0600 or less'
-      - path: (.+)\.go$
+      - path: \.go$
         text: '^G304: Potential file inclusion via variable'
-      - path: (.+)\.go$
+      - path: \.go$
         text: '^G306: Expect WriteFile permissions to be 0600 or less'
-      - path: (.+)\.go$
+      - path: \.go$
         text: '^G404: Use of weak random number generator'
-      - path: (.+)\.go$
-        text: '^SA1019: xerrors.* is deprecated: As of Go 1.13, use errors'
-      - path: (.+)\.go$
+
+      # revive
+      - path: \.go$
         text: '^blank-imports: a blank import should be only in a main or test package, or have a comment justifying it'
-      - path: (.+)\.go$
+      - path: _test\.go$
         text: '^dot-imports: should not use dot imports'
-      - path: (.+)\.go$
+      - path: \.go$
         text: '^exported: (func|type) name will be used as [^\s]+ by other packages, and that stutters; consider calling this \w+'
-      - path: (.+)\.go$
-        text: '^exported: comment on exported (const|var) [^\s]+ should be of the form "\w+ ..."'
-      - path: (.+)\.go$
+      - path: \.go$
+        text: '^exported: comment on exported (const|var|type|function) [^\s]+ should be of the form "\w+ ..."'
+      - path: \.go$
         text: '^exported: exported (const|function|method|type|var) [^\s]+ should have comment (\(or a comment on this block\) )?or be unexported'
-      - path: (.+)\.go$
-        text: '^indent-error-flow: if block ends with a return statement, so drop this else and outdent its block \(move short variable declaration to its own line if necessary\)'
-      - path: (.+)\.go$
+      - path: \.go$
+        text: '^indent-error-flow: if block ends with a return statement, so drop this else and outdent its block'
+      - path: ^lib/harmony/harmonydb/doc\.go$
         text: '^package-comments: package comment should be of the form "Package \w+ ..."'
-      - path: (.+)\.go$
+      - path: \.go$
         text: '^package-comments: should have a package comment'
-      - path: (.+)\.go$
+      - path: ^node/modules/lp2p/(discovery|routing)\.go$
         text: '^unexported-return: exported func \w+ returns unexported type [^\s]+, which can be annoying to use'
-      - path: (.+)\.go$
+      - path: \.go$
         text: '^unused-parameter: parameter ''\w+'' seems to be unused, consider removing or renaming it as _'
-      - path: (.+)\.go$
-        text: '^var-naming: (const|func|type|var|struct field|(method|func|interface method) parameter) [A-Z]\w+ should be'
-      - path: (.+)\.go$
-        text: '^var-naming: (method|range var) \w*(Api|Http|Id|Rpc|Url)[^\s]* should be \w*(API|HTTP|ID|RPC|URL)'
-      - path: (.+)\.go$
+      - path: \.go$
         text: '^var-naming: don''t use underscores in Go names'
-      - path: (.+)\.go$
+      - path: ^(cmd/lotus-shed/gas-estimation|node/impl/eth/utils)\.go$
         text: '^var-naming: don''t use ALL_CAPS in Go names; use CamelCase'
-    paths:
-      - chain/types/testdata/.*
+      - path: \.go$
+        text: '^var-naming: \w+ .*(Id|Api|Uuid|Http|Rpc|Url|Json|Html|Vm).* should be .*(ID|API|UUID|HTTP|RPC|URL|JSON|HTML|VM).*'
+      - path: ^node/impl/common/common\.go$
+        text: '^var-naming: avoid meaningless package names'
+      - path: '^chain/types/tipset_selector.go$'
+        text: '^var-naming: avoid meaningless package names'
+      - path: ^chain/types/ethtypes/(eth_1559_transactions|eth_legacy_155_transactions|eth_legacy_homestead_transactions)\.go$
+        text: '^var-naming: var [a-z]_ should be [a-z]'
+      - path: \.go$
+        text: '^redefines-builtin-id: redefinition of the built-in (function|type) (min|max|new|error|cap|recover)'
+
+      # staticcheck
+      - path: ^cmd/tvx/exec\.go$
+        text: 'QF1002: could use tagged switch on ss\[0\]'
+      - path: ^miner/miner\.go$
+        text: 'QF1009: probably want to use time.Time.Equal instead'
+      - path: ^cmd/lotus-shed/ledger\.go$
+        text: 'QF1010: could convert argument to string'
+      - path: ^scripts/docsgen-cli/doc_generator\.go$
+        text: 'QF1012: Use fmt.Fprintf\(...\) instead of Write\(\[\]byte\(fmt.Sprintf\(...\)\)\)'
+      - path: ^blockstore/badger/blockstore_test_suite\.go$
+        text: 'S1005: unnecessary assignment to the blank identifier'
+      - path: ^cli/util/apiinfo\.go$
+        text: 'S1007: should use raw string \(`...`\) with regexp.MustCompile to avoid having to escape twice'
+      - path: ^cmd/lotus-shed/keyinfo\.go$
+        text: 'S1008: should use ''return keyType == validTypes\[i\]'' instead of ''if keyType == validTypes\[i\] \{ return true \}; return false'''
+      - path: ^chain/actors/builtin/reward/v8\.go$
+        text: 'S1016: should convert networkQAPower \(type github.com/filecoin-project/lotus/chain/actors/builtin.FilterEstimate\) to github.com/filecoin-project/go-state-types/builtin/v8/util/smoothing.FilterEstimate instead of using struct literal'
+      - path: ^cli/sending_ui\.go$
+        text: 'S1025: the argument is already a string, there''s no need to use fmt.Sprintf'
+      - path: ^chain/types/electionproof_test\.go$
+        text: 'S1030: should use b.Bytes\(\) instead of \[\]byte\(b.String\(\)\)'
+      - path: \.go$
+        text: 'QF1001: could apply De Morgan''s law'
+      - path: \.go$
+        text: 'QF1003: could use tagged switch on .*'
+      - path: \.go$
+        text: 'QF1004: could use strings.* instead'
+      - path: \.go$
+        text: 'QF1006: could lift into loop condition'
+      - path: \.go$
+        text: 'QF1007: could merge conditional assignment into variable declaration'
+      - path: \.go$
+        text: 'QF1008: could remove embedded field .* from selector'
+      - path: \.go$
+        text: 'QF1011: could omit type .* from declaration; it will be inferred from the right-hand side'
+      - path: \.go$
+        text: 'S1000: should use .* instead of .*'
+      - path: \.go$
+        text: 'S1002: should omit comparison to bool constant, can be simplified to .*'
+      - path: \.go$
+        text: 'S1023: redundant (break|return) statement'
+      - path: \.go$
+        text: 'S1039: unnecessary use of fmt.Sprintf?'
+      - path: \.go$
+        text: 'ST1015: default case should be first or last in switch statement'
+      - path: \.go$
+        text: 'ST1019: package .* is being imported more than once'
+      - path: \.go$
+        text: 'ST1019\(related information\): other import of .*'
+      - path: \.go$
+        text: 'ST1023: should omit type .* from declaration; it will be inferred from the right-hand side'
+
+      # unconvert
+      - path: ^chain/actors/builtin/miner/v17\.go$
+        linters: [unconvert]
+      - path: ^chain/actors/builtin/miner/v9\.go$
+        linters: [unconvert]
+      - path: ^chain/actors/builtin/multisig/v17\.go$
+        linters: [unconvert]
+      - path: ^chain/actors/builtin/power/v8\.go$
+        linters: [unconvert]
+      - path: ^chain/actors/builtin/verifreg/v9\.go$
+        linters: [unconvert]
+
+      # unused
+      - path: chain/actors/builtin/paych/v\d+\.go
+        text: 'func make\d+ is unused'
+      - path: chain/actors/builtin/verifreg/v\d+\.go
+        text: 'func \(\*state\d+\).verifiedClients is unused'
 formatters:
   enable:
     - gofmt
@@ -77,4 +152,4 @@ formatters:
   exclusions:
     generated: lax
     paths:
-      - chain/types/testdata/.*
+      - chain/actors/builtin/market/v\d+\.go
