@@ -99,7 +99,7 @@ require (
 	github.com/ipfs/go-metrics-interface v0.3.0
 	github.com/ipfs/go-metrics-prometheus v0.1.0
 	github.com/ipld/go-car v0.6.2
-	github.com/ipld/go-car/v2 v2.14.3
+	github.com/ipld/go-car/v2 v2.15.0
 	github.com/ipld/go-ipld-prime v0.21.0
 	github.com/jackc/pgerrcode v0.0.0-20240316143900-6e2875d9b438
 	github.com/jpillora/backoff v1.0.0

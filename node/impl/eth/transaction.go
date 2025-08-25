@@ -261,8 +261,13 @@ func (e *ethTransaction) EthGetTransactionCount(ctx context.Context, sender etht
 		return ethtypes.EthUint64(0), err // don't wrap, to preserve ErrNullRound
 	}
 
+	stateCid, _, err := e.stateManager.TipSetState(ctx, ts)
+	if err != nil {
+		return 0, err
+	}
+
 	// Get the actor state at the specified tipset
-	actor, err := e.stateManager.LoadActor(ctx, addr, ts)
+	actor, err := e.stateManager.LoadActorRaw(ctx, addr, stateCid)
 	if err != nil {
 		if errors.Is(err, types.ErrActorNotFound) {
 			return 0, nil

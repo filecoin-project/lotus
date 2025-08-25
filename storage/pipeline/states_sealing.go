@@ -720,7 +720,7 @@ func (m *Sealing) processPieces(ctx context.Context, sector SectorInfo) ([]miner
 		piece := piece
 		if piece.HasDealInfo() {
 			info := piece.DealInfo()
-			// If we have a dealID then covert to PAM
+			// If we have a dealID then convert to PAM
 			if info.Impl().DealID > 0 {
 				alloc, err := m.Api.StateGetAllocationIdForPendingDeal(ctx, info.Impl().DealID, types.EmptyTSK)
 				if err != nil {

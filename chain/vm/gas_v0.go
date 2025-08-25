@@ -152,7 +152,7 @@ func (pl *pricelistV0) OnMethodInvocation(value abi.TokenAmount, methodNum abi.M
 
 	if methodNum != builtin.MethodSend {
 		extra += "i"
-		// running actors is cheaper becase we hand over to actors
+		// running actors is cheaper because we hand over to actors
 		ret += pl.sendInvokeMethod
 	}
 	return newGasCharge("OnMethodInvocation", ret, 0).WithExtra(extra)

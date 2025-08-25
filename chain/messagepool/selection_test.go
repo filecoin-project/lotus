@@ -438,7 +438,7 @@ func TestBasicMessageSelection(t *testing.T) {
 	}
 
 	if len(msgs) != 20 {
-		t.Fatalf("exptected 20 messages, got %d", len(msgs))
+		t.Fatalf("expected 20 messages, got %d", len(msgs))
 	}
 
 	nextNonce := 0
