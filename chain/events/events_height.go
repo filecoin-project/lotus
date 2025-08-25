@@ -28,7 +28,7 @@ type heightEvents struct {
 	lk                        sync.Mutex
 	head                      *types.TipSet
 	tsHeights, triggerHeights map[abi.ChainEpoch][]*heightHandler
-	lastGc                    abi.ChainEpoch //nolint:structcheck
+	lastGc                    abi.ChainEpoch
 }
 
 func newHeightEvents(api EventHelperAPI, obs *observer, gcConfidence abi.ChainEpoch) *heightEvents {
