@@ -239,13 +239,12 @@ func OnSingleNode(ctx context.Context) context.Context {
 	return context.WithValue(ctx, contextKey("retry-node"), new(atomic.Int32))
 }
 
-func FullNodeProxy[T api.FullNode](ins []T, outstr *api.FullNodeStruct) {
+// makeNodeProxy creates a proxy that load balances across multiple nodes with automatic retry and failover
+func makeNodeProxy[T any](ins []T, outs []interface{}) {
 	if len(ins) == 0 {
-		log.Errorf("FullNodeProxy called with empty node list")
+		log.Error("makeNodeProxy called with empty node list")
 		return
 	}
-
-	outs := api.GetInternalStructs(outstr)
 
 	var rins []reflect.Value
 	for _, in := range ins {
@@ -282,7 +281,7 @@ func FullNodeProxy[T api.FullNode](ins []T, outstr *api.FullNodeStruct) {
 				}
 
 				total := int32(len(rins))
-				result, _ := retry.Retry(ctx, 5, initialBackoff, errorsToRetry, func() ([]reflect.Value, error) {
+				result, rerr := retry.Retry(ctx, 5, initialBackoff, errorsToRetry, func() ([]reflect.Value, error) {
 					idx := curr.Load()
 					result := fns[idx].Call(args)
 					if result[len(result)-1].IsNil() {
@@ -298,80 +297,33 @@ func FullNodeProxy[T api.FullNode](ins []T, outstr *api.FullNodeStruct) {
 					e := result[len(result)-1].Interface().(error)
 					return result, e
 				})
+
+				// If retry failed and we don't have a valid result, construct an error response
+				if rerr != nil && len(result) != field.Type.NumOut() {
+					log.Errorf("retry failed for %s, err: %s", field.Name, rerr)
+					// Construct a response with zero values and the error
+					result = make([]reflect.Value, field.Type.NumOut())
+					for i := 0; i < field.Type.NumOut()-1; i++ {
+						result[i] = reflect.Zero(field.Type.Out(i))
+					}
+					// Set the last element to the error
+					result[field.Type.NumOut()-1] = reflect.ValueOf(rerr)
+				}
+
 				return result
 			}))
 		}
 	}
 }
 
-func FullNodeProxyV2[T v2api.FullNode](ins []T, outstr *v2api.FullNodeStruct) {
-
-	// This kind of load balancing in conjunction with JSONRPC go type abstractions is
-	// just plain awful and needs a re-think. For now, the code below forks the code
-	// preceding v1 logic to keep the wheels turning.
-
-	if len(ins) == 0 {
-		log.Errorf("FullNodeProxy called with empty node list")
-		return
-	}
-
+func FullNodeProxy[T api.FullNode](ins []T, outstr *api.FullNodeStruct) {
 	outs := api.GetInternalStructs(outstr)
+	makeNodeProxy(ins, outs)
+}
 
-	var rins []reflect.Value
-	for _, in := range ins {
-		rins = append(rins, reflect.ValueOf(in))
-	}
-
-	for _, out := range outs {
-		rProxyInternal := reflect.ValueOf(out).Elem()
-
-		for f := 0; f < rProxyInternal.NumField(); f++ {
-			field := rProxyInternal.Type().Field(f)
-
-			var fns []reflect.Value
-			for _, rin := range rins {
-				fns = append(fns, rin.MethodByName(field.Name))
-			}
-
-			rProxyInternal.Field(f).Set(reflect.MakeFunc(field.Type, func(args []reflect.Value) (results []reflect.Value) {
-				errorsToRetry := []error{&jsonrpc.RPCConnectionError{}, &jsonrpc.ErrClient{}}
-				initialBackoff, err := time.ParseDuration("1s")
-				if err != nil {
-					return nil
-				}
-
-				ctx := args[0].Interface().(context.Context)
-
-				// for calls that need to be performed on the same node
-				// primarily for miner when calling create block and submit block subsequently
-				var curr *atomic.Int32
-				if v, ok := ctx.Value(contextKey("retry-node")).(*atomic.Int32); ok {
-					curr = v
-				} else {
-					curr = new(atomic.Int32)
-				}
-
-				total := int32(len(rins))
-				result, _ := retry.Retry(ctx, 5, initialBackoff, errorsToRetry, func() ([]reflect.Value, error) {
-					idx := curr.Load()
-					result := fns[idx].Call(args)
-					if result[len(result)-1].IsNil() {
-						return result, nil
-					}
-					// On failure, switch to the next node.
-					//
-					// We CAS instead of incrementing because this might have
-					// already been incremented by a concurrent call if we have
-					// a shared `curr` (we're sticky to a single node).
-					curr.CompareAndSwap(idx, (idx+1)%total)
-
-					e := result[len(result)-1].Interface().(error)
-					return result, e
-				})
-				return result
-			}))
-		}
-	}
+func FullNodeProxyV2[T v2api.FullNode](ins []T, outstr *v2api.FullNodeStruct) {
+	outs := api.GetInternalStructs(outstr)
+	makeNodeProxy(ins, outs)
 }
 
 func GetFullNodeAPIV1Single(ctx *cli.Context) (v1api.FullNode, jsonrpc.ClientCloser, error) {
