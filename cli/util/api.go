@@ -242,7 +242,7 @@ func OnSingleNode(ctx context.Context) context.Context {
 // makeNodeProxy creates a proxy that load balances across multiple nodes with automatic retry and failover
 func makeNodeProxy[T any](ins []T, outs []interface{}) {
 	if len(ins) == 0 {
-		log.Error("called with empty node list")
+		log.Error("makeNodeProxy called with empty node list")
 		return
 	}
 
@@ -299,7 +299,7 @@ func makeNodeProxy[T any](ins []T, outs []interface{}) {
 				})
 
 				// If retry failed and we don't have a valid result, construct an error response
-				if rerr != nil && (result == nil || len(result) != field.Type.NumOut()) {
+				if rerr != nil && len(result) != field.Type.NumOut() {
 					log.Errorf("retry failed for %s, err: %s", field.Name, rerr)
 					// Construct a response with zero values and the error
 					result = make([]reflect.Value, field.Type.NumOut())
