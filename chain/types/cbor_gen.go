@@ -3247,3 +3247,150 @@ func (t *ExecutionTrace) UnmarshalCBOR(r io.Reader) (err error) {
 	}
 	return nil
 }
+
+var lengthBufSnapshotMetadata = []byte{131}
+
+func (t *SnapshotMetadata) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+
+	cw := cbg.NewCborWriter(w)
+
+	if _, err := cw.Write(lengthBufSnapshotMetadata); err != nil {
+		return err
+	}
+
+	// t.Version (types.SnapshotVersion) (uint64)
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.Version)); err != nil {
+		return err
+	}
+
+	// t.HeadTipsetKeys ([]cid.Cid) (slice)
+	if len(t.HeadTipsetKeys) > 8192 {
+		return xerrors.Errorf("Slice value in field t.HeadTipsetKeys was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajArray, uint64(len(t.HeadTipsetKeys))); err != nil {
+		return err
+	}
+	for _, v := range t.HeadTipsetKeys {
+
+		if err := cbg.WriteCid(cw, v); err != nil {
+			return xerrors.Errorf("failed to write cid field v: %w", err)
+		}
+
+	}
+
+	// t.F3Data (cid.Cid) (struct)
+
+	if err := cbg.WriteCid(cw, t.F3Data); err != nil {
+		return xerrors.Errorf("failed to write cid field t.F3Data: %w", err)
+	}
+
+	return nil
+}
+
+func (t *SnapshotMetadata) UnmarshalCBOR(r io.Reader) (err error) {
+	*t = SnapshotMetadata{}
+
+	cr := cbg.NewCborReader(r)
+
+	maj, extra, err := cr.ReadHeader()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+	}()
+
+	if maj != cbg.MajArray {
+		return fmt.Errorf("cbor input should be of type array")
+	}
+
+	if extra > 3 {
+		return fmt.Errorf("cbor input has too many fields %d > 3", extra)
+	}
+
+	if extra < 2 {
+		return fmt.Errorf("cbor input has too few fields %d < 2", extra)
+	}
+
+	fieldCount := extra
+
+	// t.Version (types.SnapshotVersion) (uint64)
+
+	{
+
+		maj, extra, err = cr.ReadHeader()
+		if err != nil {
+			return err
+		}
+		if maj != cbg.MajUnsignedInt {
+			return fmt.Errorf("wrong type for uint64 field")
+		}
+		t.Version = SnapshotVersion(extra)
+
+	}
+	// t.HeadTipsetKeys ([]cid.Cid) (slice)
+
+	maj, extra, err = cr.ReadHeader()
+	if err != nil {
+		return err
+	}
+
+	if extra > 8192 {
+		return fmt.Errorf("t.HeadTipsetKeys: array too large (%d)", extra)
+	}
+
+	if maj != cbg.MajArray {
+		return fmt.Errorf("expected cbor array")
+	}
+
+	if extra > 0 {
+		t.HeadTipsetKeys = make([]cid.Cid, extra)
+	}
+
+	for i := 0; i < int(extra); i++ {
+		{
+			var maj byte
+			var extra uint64
+			var err error
+			_ = maj
+			_ = extra
+			_ = err
+
+			{
+
+				c, err := cbg.ReadCid(cr)
+				if err != nil {
+					return xerrors.Errorf("failed to read cid field t.HeadTipsetKeys[i]: %w", err)
+				}
+
+				t.HeadTipsetKeys[i] = c
+
+			}
+
+		}
+	}
+	// t.F3Data (cid.Cid) (struct)
+	if fieldCount < 3 {
+		return nil
+	}
+
+	{
+
+		c, err := cbg.ReadCid(cr)
+		if err != nil {
+			return xerrors.Errorf("failed to read cid field t.F3Data: %w", err)
+		}
+
+		t.F3Data = c
+
+	}
+	return nil
+}

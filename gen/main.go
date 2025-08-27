@@ -176,5 +176,7 @@ func generateChainTypes() error {
 		types.ReturnTrace{},
 		types.TraceIpld{},
 		types.ExecutionTrace{},
+		// Snapshot
+		types.SnapshotMetadata{},
 	)
 }
