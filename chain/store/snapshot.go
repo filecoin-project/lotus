@@ -1,6 +1,7 @@
 package store
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"errors"
@@ -21,6 +22,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-f3/certstore"
 	"github.com/filecoin-project/go-state-types/abi"
 
 	bstore "github.com/filecoin-project/lotus/blockstore"
@@ -36,13 +38,46 @@ func (cs *ChainStore) UnionStore() bstore.Blockstore {
 }
 
 func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRoots abi.ChainEpoch, skipOldMsgs bool, w io.Writer) error {
+	// FIXME: The certs are not stored in metadataDs, there is a separate datastore for F3.
+	store, err := certstore.OpenStore(ctx, cs.metadataDs)
+	if err != nil {
+		return xerrors.Errorf("failed to open certstore: %w", err)
+	}
+
+	f3Buffer := bytes.NewBuffer(nil)
+	f3Cid, _, err := store.ExportLatestSnapshot(ctx, f3Buffer)
+	if err != nil {
+		return xerrors.Errorf("failed to export latest f3 snapshot: %w", err)
+	}
+
+	buffer := bytes.NewBuffer(nil)
+	metadata := types.SnapshotMetadata{
+		Version:        types.SnapshotVersion2,
+		HeadTipsetKeys: ts.Cids(),
+		F3Data:         f3Cid,
+	}
+	if err := metadata.MarshalCBOR(buffer); err != nil {
+		return xerrors.Errorf("failed to marshal snapshot metadata: %w", err)
+	}
+
+	mCid, err := abi.CidBuilder.Sum(buffer.Bytes())
+	if err != nil {
+		return xerrors.Errorf("failed to calculate CID for snapshot metadata: %w", err)
+	}
+
 	h := &car.CarHeader{
-		Roots:   ts.Cids(),
+		Roots:   []cid.Cid{mCid},
 		Version: 1,
 	}
 
 	if err := car.WriteHeader(h, w); err != nil {
 		return xerrors.Errorf("failed to write car header: %s", err)
+	}
+	if err := carutil.LdWrite(w, mCid.Bytes(), buffer.Bytes()); err != nil {
+		return xerrors.Errorf("failed to write metadata block to car output: %w", err)
+	}
+	if err := carutil.LdWrite(w, f3Cid.Bytes(), f3Buffer.Bytes()); err != nil {
+		return xerrors.Errorf("failed to write f3Data block to car output: %w", err)
 	}
 
 	unionBs := cs.UnionStore()
@@ -80,10 +115,40 @@ func (cs *ChainStore) Import(ctx context.Context, r io.Reader) (head *types.TipS
 		putThrottle <- nil
 	}
 
-	if len(br.Roots) == 0 {
+	roots := br.Roots
+
+	if len(roots) == 0 {
 		return nil, nil, xerrors.Errorf("no roots in snapshot car file")
 	}
-	nextTailCid := br.Roots[0]
+
+	if len(roots) == types.V2SnapshotRootCount {
+		var metadata types.SnapshotMetadata
+		blk, err := br.Next()
+		if err != nil {
+			return nil, nil, xerrors.Errorf("failed to read snapshot metadata block: %w", err)
+		}
+		if err := metadata.UnmarshalCBOR(bytes.NewReader(blk.RawData())); err != nil {
+			return nil, nil, xerrors.Errorf("failed to unmarshal snapshot metadata block: %w", err)
+		}
+
+		cid, f3Reader, _, err := br.NextReader()
+		if err != nil {
+			return nil, nil, xerrors.Errorf("failed to read F3Data reader: %w", err)
+		}
+		if cid != metadata.F3Data {
+			return nil, nil, xerrors.Errorf("F3Data CID mismatch")
+		}
+
+		reader := bufio.NewReader(f3Reader)
+		// FIXME: The certs are not stored in metadataDs, there is a separate datastore for F3.
+		if err := certstore.ImportSnapshotToDatastore(ctx, reader, cs.metadataDs); err != nil {
+			return nil, nil, xerrors.Errorf("failed to import f3Data to datastore: %w", err)
+		}
+
+		roots = metadata.HeadTipsetKeys
+	}
+
+	nextTailCid := roots[0]
 
 	var tailBlock types.BlockHeader
 	tailBlock.Height = abi.ChainEpoch(-1)
@@ -145,7 +210,7 @@ func (cs *ChainStore) Import(ctx context.Context, r io.Reader) (head *types.TipS
 		return nil, nil, xerrors.Errorf("expected genesis block to have height 0 (genesis), got %d: %s", tailBlock.Height, tailBlock.Cid())
 	}
 
-	root, err := cs.LoadTipSet(ctx, types.NewTipSetKey(br.Roots...))
+	root, err := cs.LoadTipSet(ctx, types.NewTipSetKey(roots...))
 	if err != nil {
 		return nil, nil, xerrors.Errorf("failed to load root tipset from chainfile: %w", err)
 	}
