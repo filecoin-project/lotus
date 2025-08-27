@@ -31,6 +31,15 @@ import (
 
 var rpclog = logging.Logger("rpc")
 
+const (
+	// HTTP server timeout constants
+	readHeaderTimeout = 10 * time.Second
+	readTimeout       = 60 * time.Second
+	writeTimeout      = 60 * time.Second
+	idleTimeout       = 60 * time.Second
+	maxHeaderBytes    = 1 << 20
+)
+
 // ServeRPC serves an HTTP handler over the supplied listen multiaddr.
 //
 // This function spawns a goroutine to run the server, and returns immediately.
@@ -47,11 +56,11 @@ func ServeRPC(h http.Handler, id string, addr multiaddr.Multiaddr) (StopFunc, er
 	// Instantiate the server and start listening.
 	srv := &http.Server{
 		Handler:           h,
-		ReadHeaderTimeout: 10 * time.Second,
-		ReadTimeout:       60 * time.Second,
-		WriteTimeout:      60 * time.Second,
-		IdleTimeout:       60 * time.Second,
-		MaxHeaderBytes:    1 << 20,
+		ReadHeaderTimeout: readHeaderTimeout,
+		ReadTimeout:       readTimeout,
+		WriteTimeout:      writeTimeout,
+		IdleTimeout:       idleTimeout,
+		MaxHeaderBytes:    maxHeaderBytes,
 		BaseContext: func(listener net.Listener) context.Context {
 			ctx := context.Background()
 			ctx = metrics.AddNetworkTag(ctx)
