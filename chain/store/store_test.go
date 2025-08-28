@@ -6,10 +6,14 @@ import (
 	"io"
 	"testing"
 
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-f3/certs"
+	"github.com/filecoin-project/go-f3/certstore"
+	"github.com/filecoin-project/go-f3/gpbft"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 
@@ -103,8 +107,15 @@ func TestChainExportImport(t *testing.T) {
 		last = ts.TipSet.TipSet()
 	}
 
+	f3ds := datastore.NewMapDatastore()
+	pt, _ := testPowerTable(10)
+	_, err = certstore.CreateStore(context.TODO(), f3ds, 0, pt)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	buf := new(bytes.Buffer)
-	if err := cg.ChainStore().Export(context.TODO(), last, 0, false, buf); err != nil {
+	if err := cg.ChainStore().Export(context.TODO(), last, 0, false, f3ds, buf); err != nil {
 		t.Fatal(err)
 	}
 
@@ -112,7 +123,8 @@ func TestChainExportImport(t *testing.T) {
 	cs := store.NewChainStore(nbs, nbs, datastore.NewMapDatastore(), filcns.Weight, nil)
 	defer cs.Close() //nolint:errcheck
 
-	root, _, err := cs.Import(context.TODO(), buf)
+	nf3ds := datastore.NewMapDatastore()
+	root, _, err := cs.Import(context.TODO(), nf3ds, buf)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,7 +151,14 @@ func TestChainImportTipsetKeyCid(t *testing.T) {
 		tsKeys = append(tsKeys, last.Key())
 	}
 
-	if err := cg.ChainStore().Export(ctx, last, last.Height(), false, buf); err != nil {
+	f3ds := datastore.NewMapDatastore()
+	pt, _ := testPowerTable(10)
+	_, err = certstore.CreateStore(context.TODO(), f3ds, 0, pt)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := cg.ChainStore().Export(ctx, last, last.Height(), false, f3ds, buf); err != nil {
 		t.Fatal(err)
 	}
 
@@ -147,7 +166,8 @@ func TestChainImportTipsetKeyCid(t *testing.T) {
 	cs := store.NewChainStore(nbs, nbs, datastore.NewMapDatastore(), filcns.Weight, nil)
 	defer cs.Close() //nolint:errcheck
 
-	root, _, err := cs.Import(ctx, buf)
+	nf3ds := datastore.NewMapDatastore()
+	root, _, err := cs.Import(ctx, nf3ds, buf)
 	require.NoError(t, err)
 
 	require.Truef(t, root.Equals(last), "imported chain differed from exported chain")
@@ -183,8 +203,15 @@ func TestChainExportImportFull(t *testing.T) {
 		last = ts.TipSet.TipSet()
 	}
 
+	f3ds := datastore.NewMapDatastore()
+	pt, _ := testPowerTable(10)
+	_, err = certstore.CreateStore(context.TODO(), f3ds, 0, pt)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	buf := new(bytes.Buffer)
-	if err := cg.ChainStore().Export(context.TODO(), last, last.Height(), false, buf); err != nil {
+	if err := cg.ChainStore().Export(context.TODO(), last, last.Height(), false, f3ds, buf); err != nil {
 		t.Fatal(err)
 	}
 
@@ -193,7 +220,8 @@ func TestChainExportImportFull(t *testing.T) {
 	cs := store.NewChainStore(nbs, nbs, ds, filcns.Weight, nil)
 	defer cs.Close() //nolint:errcheck
 
-	root, _, err := cs.Import(context.TODO(), buf)
+	nf3ds := datastore.NewMapDatastore()
+	root, _, err := cs.Import(context.TODO(), nf3ds, buf)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -229,6 +257,96 @@ func TestChainExportImportFull(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+}
+
+func TestChainExportImportWithF3Data(t *testing.T) {
+	cg, err := gen.NewGenerator()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var last *types.TipSet
+	for i := 0; i < 100; i++ {
+		ts, err := cg.NextTipSet()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		last = ts.TipSet.TipSet()
+	}
+
+	f3ds := datastore.NewMapDatastore()
+	pt, ptCid := testPowerTable(10)
+	supp := gpbft.SupplementalData{PowerTable: ptCid}
+	cst, err := certstore.CreateStore(context.TODO(), f3ds, 0, pt)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cert := makeCert(0, supp)
+	cst.Put(context.TODO(), cert)
+
+	buf := new(bytes.Buffer)
+	if err := cg.ChainStore().Export(context.TODO(), last, last.Height(), false, f3ds, buf); err != nil {
+		t.Fatal(err)
+	}
+
+	nbs := blockstore.NewMemorySync()
+	ds := datastore.NewMapDatastore()
+	cs := store.NewChainStore(nbs, nbs, ds, filcns.Weight, nil)
+	defer cs.Close() //nolint:errcheck
+
+	nf3ds := datastore.NewMapDatastore()
+	root, _, err := cs.Import(context.TODO(), nf3ds, buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = cs.SetHead(context.Background(), last)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !root.Equals(last) {
+		t.Fatal("imported chain differed from exported chain")
+	}
+
+	sm, err := stmgr.NewStateManager(cs, consensus.NewTipSetExecutor(filcns.RewardFunc), nil, filcns.DefaultUpgradeSchedule(), cg.BeaconSchedule(), ds, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for i := 0; i < 100; i++ {
+		ts, err := cs.GetTipsetByHeight(context.TODO(), abi.ChainEpoch(i), nil, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		st, err := sm.ParentState(ts)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// touches a bunch of actors
+		_, err = sm.GetCirculatingSupply(context.TODO(), abi.ChainEpoch(i), st)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	importedCertStore, err := certstore.OpenStore(context.Background(), nf3ds)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	latestCert := importedCertStore.Latest()
+
+	require.NotNil(t, latestCert)
+	require.Equal(t, cert.GPBFTInstance, latestCert.GPBFTInstance)
+	require.Equal(t, cert.ECChain.TipSets, latestCert.ECChain.TipSets)
+	require.Equal(t, cert.SupplementalData, latestCert.SupplementalData)
+	require.Equal(t, cert.Signature, latestCert.Signature)
+	require.Equal(t, cert.PowerTableDelta, latestCert.PowerTableDelta)
 }
 
 func TestEquivocations(t *testing.T) {
@@ -397,4 +515,35 @@ func addBlockToTracker(t *testing.T, cs *store.ChainStore, blk *types.BlockHeade
 	require.NoError(t, err)
 	require.NoError(t, cs.PersistTipsets(context.TODO(), []*types.TipSet{blk2Ts}))
 	require.NoError(t, cs.AddToTipSetTracker(context.TODO(), blk))
+}
+
+// copy from go-f3
+func testPowerTable(entries int64) (gpbft.PowerEntries, cid.Cid) {
+	powerTable := make(gpbft.PowerEntries, entries)
+
+	for i := range powerTable {
+		powerTable[i] = gpbft.PowerEntry{
+			ID:     gpbft.ActorID(i + 1),
+			Power:  gpbft.NewStoragePower(int64(len(powerTable)*2 - i/2)),
+			PubKey: []byte("fake key"),
+		}
+	}
+	k, err := certs.MakePowerTableCID(powerTable)
+	if err != nil {
+		panic(err)
+	}
+	return powerTable, k
+}
+
+// copy from go-f3
+func makeCert(instance uint64, supp gpbft.SupplementalData) *certs.FinalityCertificate {
+	return &certs.FinalityCertificate{
+		GPBFTInstance:    instance,
+		SupplementalData: supp,
+		ECChain: &gpbft.ECChain{
+			TipSets: []*gpbft.TipSet{
+				{Epoch: 0, Key: gpbft.TipSetKey("tsk0"), PowerTable: supp.PowerTable},
+			},
+		},
+	}
 }

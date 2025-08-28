@@ -617,8 +617,13 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 		ir = zr
 	}
 
+	f3Ds, err := lr.Datastore(ctx, "/f3")
+	if err != nil {
+		return xerrors.Errorf("failed to open f3 datastore: %w", err)
+	}
+
 	bar.Start()
-	ts, gen, err := cst.Import(ctx, ir)
+	ts, gen, err := cst.Import(ctx, f3Ds, ir)
 	bar.Finish()
 
 	if err != nil {

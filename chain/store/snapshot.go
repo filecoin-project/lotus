@@ -18,6 +18,7 @@ import (
 	carutil "github.com/ipld/go-car/util"
 	carv2 "github.com/ipld/go-car/v2"
 	"github.com/multiformats/go-multicodec"
+	mh "github.com/multiformats/go-multihash"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
@@ -29,6 +30,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
 const TipsetkeyBackfillRange = 2 * policy.ChainFinality
@@ -37,9 +39,8 @@ func (cs *ChainStore) UnionStore() bstore.Blockstore {
 	return bstore.Union(cs.stateBlockstore, cs.chainBlockstore)
 }
 
-func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRoots abi.ChainEpoch, skipOldMsgs bool, w io.Writer) error {
-	// FIXME: The certs are not stored in metadataDs, there is a separate datastore for F3.
-	store, err := certstore.OpenStore(ctx, cs.metadataDs)
+func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRoots abi.ChainEpoch, skipOldMsgs bool, f3Ds dtypes.F3DS, w io.Writer) error {
+	store, err := certstore.OpenStore(ctx, f3Ds)
 	if err != nil {
 		return xerrors.Errorf("failed to open certstore: %w", err)
 	}
@@ -47,20 +48,26 @@ func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRo
 	f3Buffer := bytes.NewBuffer(nil)
 	f3Cid, _, err := store.ExportLatestSnapshot(ctx, f3Buffer)
 	if err != nil {
-		return xerrors.Errorf("failed to export latest f3 snapshot: %w", err)
+		log.Warnln("failed to export latest f3 snapshot: %w", err)
 	}
 
 	buffer := bytes.NewBuffer(nil)
 	metadata := types.SnapshotMetadata{
 		Version:        types.SnapshotVersion2,
 		HeadTipsetKeys: ts.Cids(),
-		F3Data:         f3Cid,
 	}
+
+	if f3Cid != cid.Undef {
+		metadata.F3Data = &f3Cid
+	}
+
 	if err := metadata.MarshalCBOR(buffer); err != nil {
 		return xerrors.Errorf("failed to marshal snapshot metadata: %w", err)
 	}
 
-	mCid, err := abi.CidBuilder.Sum(buffer.Bytes())
+	// FIXME: calc cid in
+	mCid, err := cid.V1Builder{Codec: cid.DagCBOR, MhType: uint64(mh.BLAKE2B_MIN + 31)}.Sum(buffer.Bytes())
+	// mCid, err := abi.CidBuilder.Sum(buffer.Bytes())
 	if err != nil {
 		return xerrors.Errorf("failed to calculate CID for snapshot metadata: %w", err)
 	}
@@ -76,8 +83,10 @@ func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRo
 	if err := carutil.LdWrite(w, mCid.Bytes(), buffer.Bytes()); err != nil {
 		return xerrors.Errorf("failed to write metadata block to car output: %w", err)
 	}
-	if err := carutil.LdWrite(w, f3Cid.Bytes(), f3Buffer.Bytes()); err != nil {
-		return xerrors.Errorf("failed to write f3Data block to car output: %w", err)
+	if f3Cid != cid.Undef {
+		if err := carutil.LdWrite(w, f3Cid.Bytes(), f3Buffer.Bytes()); err != nil {
+			return xerrors.Errorf("failed to write f3Data block to car output: %w", err)
+		}
 	}
 
 	unionBs := cs.UnionStore()
@@ -95,7 +104,7 @@ func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRo
 	})
 }
 
-func (cs *ChainStore) Import(ctx context.Context, r io.Reader) (head *types.TipSet, genesis *types.BlockHeader, err error) {
+func (cs *ChainStore) Import(ctx context.Context, f3Ds dtypes.F3DS, r io.Reader) (head *types.TipSet, genesis *types.BlockHeader, err error) {
 	// TODO: writing only to the state blockstore is incorrect.
 	//  At this time, both the state and chain blockstores are backed by the
 	//  universal store. When we physically segregate the stores, we will need
@@ -117,6 +126,13 @@ func (cs *ChainStore) Import(ctx context.Context, r io.Reader) (head *types.TipS
 
 	roots := br.Roots
 
+	var nextTailCid cid.Cid
+
+	var tailBlock types.BlockHeader
+	tailBlock.Height = abi.ChainEpoch(-1)
+
+	var buf []blocks.Block
+
 	if len(roots) == 0 {
 		return nil, nil, xerrors.Errorf("no roots in snapshot car file")
 	}
@@ -127,33 +143,42 @@ func (cs *ChainStore) Import(ctx context.Context, r io.Reader) (head *types.TipS
 		if err != nil {
 			return nil, nil, xerrors.Errorf("failed to read snapshot metadata block: %w", err)
 		}
+
 		if err := metadata.UnmarshalCBOR(bytes.NewReader(blk.RawData())); err != nil {
-			return nil, nil, xerrors.Errorf("failed to unmarshal snapshot metadata block: %w", err)
-		}
+			// Only one cid in roots, but not metadata, maybe it's a genesis block
+			if err := tailBlock.UnmarshalCBOR(bytes.NewReader(blk.RawData())); err != nil {
+				return nil, nil, xerrors.Errorf("failed to unmarshal genesis block: %w", err)
+			}
+			if len(tailBlock.Parents) > 0 {
+				nextTailCid = tailBlock.Parents[0]
+			} else {
+				// note: even the 0th block has a parent linking to the cbor genesis block
+				return nil, nil, xerrors.Errorf("current block (epoch %d cid %s) has no parents", tailBlock.Height, tailBlock.Cid())
+			}
 
-		cid, f3Reader, _, err := br.NextReader()
-		if err != nil {
-			return nil, nil, xerrors.Errorf("failed to read F3Data reader: %w", err)
-		}
-		if cid != metadata.F3Data {
-			return nil, nil, xerrors.Errorf("F3Data CID mismatch")
-		}
+			buf = append(buf, blk)
+		} else {
+			if metadata.F3Data != nil {
+				// import f3 snapshot
+				cid, f3Reader, _, err := br.NextReader()
+				if err != nil {
+					return nil, nil, xerrors.Errorf("failed to read F3Data reader: %w", err)
+				}
+				if cid != *metadata.F3Data {
+					return nil, nil, xerrors.Errorf("F3Data CID mismatch")
+				}
 
-		reader := bufio.NewReader(f3Reader)
-		// FIXME: The certs are not stored in metadataDs, there is a separate datastore for F3.
-		if err := certstore.ImportSnapshotToDatastore(ctx, reader, cs.metadataDs); err != nil {
-			return nil, nil, xerrors.Errorf("failed to import f3Data to datastore: %w", err)
-		}
+				reader := bufio.NewReader(f3Reader)
+				if err := certstore.ImportSnapshotToDatastore(ctx, reader, f3Ds); err != nil {
+					return nil, nil, xerrors.Errorf("failed to import f3Data to datastore: %w", err)
+				}
+			}
 
-		roots = metadata.HeadTipsetKeys
+			roots = metadata.HeadTipsetKeys
+			nextTailCid = roots[0]
+		}
 	}
 
-	nextTailCid := roots[0]
-
-	var tailBlock types.BlockHeader
-	tailBlock.Height = abi.ChainEpoch(-1)
-
-	var buf []blocks.Block
 	for {
 		blk, err := br.Next()
 		if err != nil {

@@ -3286,8 +3286,14 @@ func (t *SnapshotMetadata) MarshalCBOR(w io.Writer) error {
 
 	// t.F3Data (cid.Cid) (struct)
 
-	if err := cbg.WriteCid(cw, t.F3Data); err != nil {
-		return xerrors.Errorf("failed to write cid field t.F3Data: %w", err)
+	if t.F3Data == nil {
+		if _, err := cw.Write(cbg.CborNull); err != nil {
+			return err
+		}
+	} else {
+		if err := cbg.WriteCid(cw, *t.F3Data); err != nil {
+			return xerrors.Errorf("failed to write cid field t.F3Data: %w", err)
+		}
 	}
 
 	return nil
@@ -3312,15 +3318,9 @@ func (t *SnapshotMetadata) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra > 3 {
-		return fmt.Errorf("cbor input has too many fields %d > 3", extra)
+	if extra != 3 {
+		return fmt.Errorf("cbor input had wrong number of fields")
 	}
-
-	if extra < 2 {
-		return fmt.Errorf("cbor input has too few fields %d < 2", extra)
-	}
-
-	fieldCount := extra
 
 	// t.Version (types.SnapshotVersion) (uint64)
 
@@ -3378,18 +3378,25 @@ func (t *SnapshotMetadata) UnmarshalCBOR(r io.Reader) (err error) {
 		}
 	}
 	// t.F3Data (cid.Cid) (struct)
-	if fieldCount < 3 {
-		return nil
-	}
 
 	{
 
-		c, err := cbg.ReadCid(cr)
+		b, err := cr.ReadByte()
 		if err != nil {
-			return xerrors.Errorf("failed to read cid field t.F3Data: %w", err)
+			return err
 		}
+		if b != cbg.CborNull[0] {
+			if err := cr.UnreadByte(); err != nil {
+				return err
+			}
 
-		t.F3Data = c
+			c, err := cbg.ReadCid(cr)
+			if err != nil {
+				return xerrors.Errorf("failed to read cid field t.F3Data: %w", err)
+			}
+
+			t.F3Data = &c
+		}
 
 	}
 	return nil

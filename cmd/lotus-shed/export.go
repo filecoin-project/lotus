@@ -100,6 +100,11 @@ var exportChainCmd = &cli.Command{
 			return fmt.Errorf("failed to open blockstore: %w", err)
 		}
 
+		f3Ds, err := lr.Datastore(ctx, "/f3")
+		if err != nil {
+			return xerrors.Errorf("failed to open f3 datastore: %w", err)
+		}
+
 		defer func() {
 			if c, ok := bs.(io.Closer); ok {
 				if err := c.Close(); err != nil {
@@ -133,7 +138,7 @@ var exportChainCmd = &cli.Command{
 			nroots = ts.Height() + 1
 		}
 
-		if err := cs.Export(ctx, ts, nroots, skipoldmsgs, fi); err != nil {
+		if err := cs.Export(ctx, ts, nroots, skipoldmsgs, f3Ds, fi); err != nil {
 			return xerrors.Errorf("export failed: %w", err)
 		}
 
