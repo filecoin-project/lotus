@@ -62,7 +62,7 @@ func (e *ethSend) ethSendRawTransaction(ctx context.Context, rawTx ethtypes.EthB
         pending, err := e.mpoolApi.MpoolPending(ctx, types.EmptyTSK)
         if err == nil {
             count := ethpolicy.CountPendingDelegations(pending, smsg.Message.From, smsg.Message.To, smsg.Message.Method)
-            const capPerEOA = 4
+            capPerEOA := ethpolicy.ResolveDelegationCap(4)
             if ethpolicy.ShouldRejectNewDelegation(count, capPerEOA) {
                 return ethtypes.EmptyEthHash, xerrors.Errorf("too many pending EIP-7702 delegation messages for sender; cap=%d", capPerEOA)
             }
