@@ -39,6 +39,8 @@
 - `chain/actors/builtin/delegator/` (new, scaffold)
   - `README.md`: describes intended actor behavior and next steps.
   - `types.go`: defines `DelegationParam` (tuple shape) and placeholder method num `MethodApplyDelegations`.
+  - `state.go`: placeholder state `Delegations map[address.Address][20]byte`.
+  - `actor_stub.go`: no-op `ApplyDelegations(params []DelegationParam) error`.
 
 **Quick Validation**
 - Build: `go build ./chain/types/ethtypes`
@@ -69,6 +71,8 @@
   - With `eip7702_enabled` build tag set and `DelegatorActorAddr` configured, send `types.Message{ To: DelegatorActorAddr, Method: ApplyDelegations, Params: CborEncodeEIP7702Authorizations(authz) }`.
 - Extend gas estimation:
   - In `node/impl/eth` flow, simulate delegation writes and intrinsic costs per tuple.
+  - Use a helper like `compute7702IntrinsicOverhead(len(authz))` to add intrinsic cost; simulate Delegator mapping writes for estimation.
+  - If refunds apply for empty accounts, model them per EIP-7702.
 
 **Suggested Next Tests (after actor wiring)**
 - `ApplyDelegations` unit tests: tuple validation (chainId, low-s, V ∈ {0,1}), nonce increments, mapping writes, and gas/refund accounting.
@@ -87,7 +91,7 @@ Run with: `go test ./chain/types/ethtypes -count=1`
 **Pointers (Open These Paths/Files)**
 - Repo paths:
   - `chain/types/ethtypes/` (this patch; RLP, types, parsers)
-  - `node/impl/eth/` (send path, gas estimation, receipts)
+  - `node/impl/eth/` (send path, gas estimation, receipts) — see `gas_7702_scaffold.go`, `receipt_7702_scaffold.go`.
   - `chain/actors/builtin/evm/` (runtime) and new `chain/actors/builtin/delegator/` (to add)
 - Spec: https://eips.ethereum.org/EIPS/eip-7702 (type 0x04, 13-field list, authorization tuple)
 
