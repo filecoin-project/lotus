@@ -9,6 +9,7 @@ import (
     "github.com/filecoin-project/go-state-types/big"
     "github.com/filecoin-project/lotus/build/buildconstants"
     "github.com/filecoin-project/go-address"
+    ltypes "github.com/filecoin-project/lotus/chain/types"
 )
 
 func mustHex(t *testing.T, s string) []byte {
@@ -92,6 +93,31 @@ func TestEIP7702_RLPRoundTrip(t *testing.T) {
     enc2, err := dec.ToRlpSignedMsg()
     require.NoError(t, err)
     require.Equal(t, enc, enc2)
+}
+
+func TestEIP7702_ToEthTx_CarriesAuthorizationList(t *testing.T) {
+    var to EthAddress
+    copy(to[:], mustHex(t, "0x1111111111111111111111111111111111111111"))
+    tx := &Eth7702TxArgs{
+        ChainID:              buildconstants.Eip155ChainId,
+        Nonce:                42,
+        To:                   &to,
+        Value:                big.NewInt(0),
+        MaxFeePerGas:         big.NewInt(1),
+        MaxPriorityFeePerGas: big.NewInt(1),
+        GasLimit:             21000,
+        AuthorizationList: []EthAuthorization{
+            {ChainID: EthUint64(buildconstants.Eip155ChainId), Address: to, Nonce: EthUint64(7), YParity: 0, R: EthBigInt(big.NewInt(1)), S: EthBigInt(big.NewInt(2))},
+        },
+        V: big.NewInt(0), R: big.NewInt(1), S: big.NewInt(1),
+    }
+    // Fake signed message to pass From address
+    fromFC, err := (EthAddress{}).ToFilecoinAddress()
+    require.NoError(t, err)
+    sm := &ltypes.SignedMessage{Message: ltypes.Message{From: fromFC}}
+    ethTx, err := tx.ToEthTx(sm)
+    require.NoError(t, err)
+    require.Equal(t, 1, len(ethTx.AuthorizationList))
 }
 
 func TestEIP7702_EmptyAuthorizationListRejected(t *testing.T) {

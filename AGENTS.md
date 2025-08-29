@@ -55,6 +55,8 @@
   - Adds feature-flagged intrinsic overhead for 7702 delegations during `EthEstimateGas` when targeting Delegator actor.
 - `node/impl/eth/transaction.go`
   - Calls `adjustReceiptForDelegation` after constructing receipts (single and batch).
+ - `node/impl/eth/utils.go`
+   - `newEthTxReceipt` echoes `authorizationList` from the tx into the receipt (omitempty) for client convenience.
 
 **Quick Validation**
 - Build: `go build ./chain/types/ethtypes`

@@ -532,7 +532,7 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, baseFee big.Int, ms
 		blockNumber = *tx.BlockNumber
 	}
 
-	txReceipt := ethtypes.EthTxReceipt{
+    txReceipt := ethtypes.EthTxReceipt{
 		TransactionHash:  tx.Hash,
 		From:             tx.From,
 		To:               tx.To,
@@ -543,6 +543,9 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, baseFee big.Int, ms
 		Logs:             []ethtypes.EthLog{}, // empty log array is compulsory when no logs, or libraries like ethers.js break
 		LogsBloom:        ethtypes.NewEmptyEthBloom(),
 	}
+    if len(tx.AuthorizationList) > 0 {
+        txReceipt.AuthorizationList = tx.AuthorizationList
+    }
 
 	if msgReceipt.ExitCode.IsSuccess() {
 		txReceipt.Status = 1

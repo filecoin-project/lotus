@@ -1275,6 +1275,8 @@ type EthTxReceipt struct {
 	GasUsed           EthUint64   `json:"gasUsed"`
 	EffectiveGasPrice EthBigInt   `json:"effectiveGasPrice"`
 	LogsBloom         EthBytes    `json:"logsBloom"`
-	Logs              []EthLog    `json:"logs"`
-	Type              EthUint64   `json:"type"`
+    Logs              []EthLog    `json:"logs"`
+    Type              EthUint64   `json:"type"`
+    // Present only for EIP-7702 transactions. Mirrors transaction view.
+    AuthorizationList []EthAuthorization `json:"authorizationList,omitempty"`
 }
