@@ -1,10 +1,15 @@
 package eth
 
 import (
-	"context"
+    "context"
 
-	"github.com/filecoin-project/lotus/chain/index"
-	"github.com/filecoin-project/lotus/chain/types/ethtypes"
+    "golang.org/x/xerrors"
+
+    "github.com/filecoin-project/lotus/chain/index"
+    "github.com/filecoin-project/lotus/chain/types"
+    "github.com/filecoin-project/lotus/chain/types/ethtypes"
+    delegator "github.com/filecoin-project/lotus/chain/actors/builtin/delegator"
+    "github.com/filecoin-project/lotus/node/impl/ethpolicy"
 )
 
 var (
@@ -33,26 +38,42 @@ func (e *ethSend) EthSendRawTransactionUntrusted(ctx context.Context, rawTx etht
 }
 
 func (e *ethSend) ethSendRawTransaction(ctx context.Context, rawTx ethtypes.EthBytes, untrusted bool) (ethtypes.EthHash, error) {
-	txArgs, err := ethtypes.ParseEthTransaction(rawTx)
-	if err != nil {
-		return ethtypes.EmptyEthHash, err
-	}
+    txArgs, err := ethtypes.ParseEthTransaction(rawTx)
+    if err != nil {
+        return ethtypes.EmptyEthHash, err
+    }
 
 	txHash, err := txArgs.TxHash()
 	if err != nil {
 		return ethtypes.EmptyEthHash, err
 	}
 
-	smsg, err := ethtypes.ToSignedFilecoinMessage(txArgs)
-	if err != nil {
-		return ethtypes.EmptyEthHash, err
-	}
+    smsg, err := ethtypes.ToSignedFilecoinMessage(txArgs)
+    if err != nil {
+        return ethtypes.EmptyEthHash, err
+    }
 
-	if untrusted {
-		if _, err = e.mpoolApi.MpoolPushUntrusted(ctx, smsg); err != nil {
-			return ethtypes.EmptyEthHash, err
-		}
-	} else {
+    // Basic 7702 mempool policy: cap pending ApplyDelegations per sender.
+    // Only applies when feature is enabled and DelegatorActorAddr is configured.
+    if ethtypes.Eip7702FeatureEnabled && ethtypes.DelegatorActorAddr != (smsg.Message.To) && ethtypes.DelegatorActorAddr != (smsg.Message.To) {
+        // no-op guard, keep consistent branching
+    }
+    if ethtypes.Eip7702FeatureEnabled && smsg.Message.To == ethtypes.DelegatorActorAddr && smsg.Message.Method == delegator.MethodApplyDelegations {
+        pending, err := e.mpoolApi.MpoolPending(ctx, types.EmptyTSK)
+        if err == nil {
+            count := ethpolicy.CountPendingDelegations(pending, smsg.Message.From, smsg.Message.To, smsg.Message.Method)
+            const capPerEOA = 4
+            if ethpolicy.ShouldRejectNewDelegation(count, capPerEOA) {
+                return ethtypes.EmptyEthHash, xerrors.Errorf("too many pending EIP-7702 delegation messages for sender; cap=%d", capPerEOA)
+            }
+        }
+    }
+
+    if untrusted {
+        if _, err = e.mpoolApi.MpoolPushUntrusted(ctx, smsg); err != nil {
+            return ethtypes.EmptyEthHash, err
+        }
+    } else {
 		if _, err = e.mpoolApi.MpoolPush(ctx, smsg); err != nil {
 			return ethtypes.EmptyEthHash, err
 		}
