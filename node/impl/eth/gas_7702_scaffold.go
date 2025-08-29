@@ -16,11 +16,14 @@ import (
 )
 
 func compute7702IntrinsicOverhead(authCount int) int64 {
+    // Conservative intrinsic base + per-authorization overhead.
+    // These placeholders deliberately err on the high side to avoid underestimation.
+    const baseCost = int64(2100)   // base overhead for 7702 processing
+    const perAuthCost = int64(25000) // cost per authorization tuple (placeholder)
     if authCount <= 0 {
         return 0
     }
-    const perAuthCost = 25000 // placeholder; set to PER_AUTH_BASE_COST
-    return int64(authCount) * perAuthCost
+    return baseCost + perAuthCost*int64(authCount)
 }
 
 // countAuthInDelegatorParams tries to CBOR-parse the delegator params and return
