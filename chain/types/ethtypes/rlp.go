@@ -9,9 +9,9 @@ import (
 )
 
 // maxListElements restricts the amount of RLP list elements we'll read.
-// The ETH API only ever reads EIP-1559 transactions, which are bounded by
-// 12 elements exactly, so we play it safe and set exactly that limit here.
-const maxListElements = 12
+// EIP-1559 transactions are 12 elements; EIP-7702 extends this to 13 elements.
+// Bump to 13 to accommodate type-0x04 payloads.
+const maxListElements = 13
 
 func EncodeRLP(val interface{}) ([]byte, error) {
 	return encodeRLP(val)
