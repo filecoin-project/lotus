@@ -53,6 +53,11 @@ func TestCborEncodeEIP7702Authorizations_Shape(t *testing.T) {
         maj, v, err = r.ReadHeader()
         require.NoError(t, err)
         require.Equal(t, byte(cbg.MajUnsignedInt), maj)
+        if i == 0 {
+            require.Equal(t, uint64(7), v)
+        } else {
+            require.Equal(t, uint64(8), v)
+        }
         // y_parity
         maj, v, err = r.ReadHeader()
         require.NoError(t, err)
@@ -62,13 +67,17 @@ func TestCborEncodeEIP7702Authorizations_Shape(t *testing.T) {
         maj, v, err = r.ReadHeader()
         require.NoError(t, err)
         require.Equal(t, byte(cbg.MajByteString), maj)
-        _, err = r.Read(make([]byte, v))
+        bufR := make([]byte, v)
+        _, err = r.Read(bufR)
         require.NoError(t, err)
+        require.GreaterOrEqual(t, int(v), 1)
         // s bytes
         maj, v, err = r.ReadHeader()
         require.NoError(t, err)
         require.Equal(t, byte(cbg.MajByteString), maj)
-        _, err = r.Read(make([]byte, v))
+        bufS := make([]byte, v)
+        _, err = r.Read(bufS)
         require.NoError(t, err)
+        require.GreaterOrEqual(t, int(v), 1)
     }
 }

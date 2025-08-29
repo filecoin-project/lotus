@@ -20,6 +20,9 @@
     - Validation: inner `authorizationList[*].y_parity` must be 0 or 1 (parser + test).
   - Delegator actor stub:
     - `Actor.ApplyDelegations(params []DelegationParam) error` placeholder (no‑op for now).
+  - Delegator param handling & validation (scaffold):
+    - `DecodeAuthorizationTuples([]byte) ([]DelegationParam, error)` decodes CBOR array of 6‑tuples.
+    - `ValidateDelegations([]DelegationParam, localChainID)` checks chainId∈{0,local}, y_parity∈{0,1}, non‑zero r/s, and low‑s.
 
 **Files Touched**
 - `chain/types/ethtypes/eth_transactions.go`
@@ -42,6 +45,8 @@
   - `types.go`: defines `DelegationParam` and `ApplyDelegationsParams`, and placeholder method num `MethodApplyDelegations`.
   - `state.go`: placeholder state `Delegations map[address.Address][20]byte`.
   - `actor_stub.go`: no-op `ApplyDelegations(params []DelegationParam) error`.
+  - `validation.go`: CBOR tuple decoder + static validations (y_parity, low‑s, chainId set).
+  - `validation_test.go`: tests for decode+validate, including high‑s and invalid y_parity cases.
 - `node/impl/eth/gas_7702_scaffold.go` (new)
   - Stub `compute7702IntrinsicOverhead(authCount int) int64` and helper to count authorizations from CBOR params.
 - `node/impl/eth/receipt_7702_scaffold.go` (new)
