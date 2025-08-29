@@ -10,6 +10,7 @@ import (
     "github.com/filecoin-project/go-address"
     "github.com/filecoin-project/go-state-types/big"
     "github.com/filecoin-project/lotus/build/buildconstants"
+    delegator "github.com/filecoin-project/lotus/chain/actors/builtin/delegator"
 )
 
 // Validates that when the eip7702_enabled build tag is set and the DelegatorActorAddr
@@ -43,7 +44,6 @@ func Test7702_ToUnsignedFilecoinMessage_FeatureFlag(t *testing.T) {
     msg, err := tx.ToUnsignedFilecoinMessage(from)
     require.NoError(t, err)
     require.Equal(t, DelegatorActorAddr, msg.To)
-    require.EqualValues(t, 2, msg.Method) // placeholder method id
+    require.EqualValues(t, delegator.MethodApplyDelegations, msg.Method)
     require.NotEmpty(t, msg.Params)
 }
-
