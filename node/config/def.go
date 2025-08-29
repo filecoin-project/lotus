@@ -82,12 +82,11 @@ func DefaultFullNode() *FullNode {
 				HotstoreMaxSpaceSafetyBuffer: 50_000_000_000,
 			},
 		},
-		Fevm: FevmConfig{
-			EnableEthRPC:             false,
-			EthTraceFilterMaxResults: 500,
-			EthBlkCacheSize:          500,
-			Eip7702DelegationCap:     4,
-		},
+        Fevm: FevmConfig{
+            EnableEthRPC:             false,
+            EthTraceFilterMaxResults: 500,
+            EthBlkCacheSize:          500,
+        },
 		Events: EventsConfig{
 			EnableActorEventsAPI: false,
 			FilterTTL:            Duration(time.Hour * 1),

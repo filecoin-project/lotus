@@ -9,7 +9,6 @@ import (
     "github.com/filecoin-project/lotus/chain/types"
     "github.com/filecoin-project/lotus/chain/types/ethtypes"
     delegator "github.com/filecoin-project/lotus/chain/actors/builtin/delegator"
-    "github.com/filecoin-project/lotus/node/impl/ethpolicy"
 )
 
 var (
@@ -17,19 +16,10 @@ var (
 	_ EthSendAPI = (*EthSendDisabled)(nil)
 )
 
-type ethSend struct {
-    mpoolApi      MpoolAPI
-    chainIndexer  index.Indexer
-    delegationCap int
-}
+type ethSend struct { mpoolApi MpoolAPI; chainIndexer index.Indexer }
 
 func NewEthSendAPI(mpoolApi MpoolAPI, chainIndexer index.Indexer) EthSendAPI {
     return &ethSend{mpoolApi: mpoolApi, chainIndexer: chainIndexer}
-}
-
-// NewEthSendAPIWithCap allows wiring a configured delegation cap from TOML.
-func NewEthSendAPIWithCap(mpoolApi MpoolAPI, chainIndexer index.Indexer, cap int) EthSendAPI {
-    return &ethSend{mpoolApi: mpoolApi, chainIndexer: chainIndexer, delegationCap: cap}
 }
 
 func (e *ethSend) EthSendRawTransaction(ctx context.Context, rawTx ethtypes.EthBytes) (ethtypes.EthHash, error) {
@@ -61,19 +51,7 @@ func (e *ethSend) ethSendRawTransaction(ctx context.Context, rawTx ethtypes.EthB
     if ethtypes.Eip7702FeatureEnabled && ethtypes.DelegatorActorAddr != (smsg.Message.To) && ethtypes.DelegatorActorAddr != (smsg.Message.To) {
         // no-op guard, keep consistent branching
     }
-    if ethtypes.Eip7702FeatureEnabled && smsg.Message.To == ethtypes.DelegatorActorAddr && smsg.Message.Method == delegator.MethodApplyDelegations {
-        pending, err := e.mpoolApi.MpoolPending(ctx, types.EmptyTSK)
-        if err == nil {
-            count := ethpolicy.CountPendingDelegations(pending, smsg.Message.From, smsg.Message.To, smsg.Message.Method)
-            capPerEOA := e.delegationCap
-            if capPerEOA <= 0 {
-                capPerEOA = ethpolicy.ResolveDelegationCap(4)
-            }
-            if ethpolicy.ShouldRejectNewDelegation(count, capPerEOA) {
-                return ethtypes.EmptyEthHash, xerrors.Errorf("too many pending EIP-7702 delegation messages for sender; cap=%d", capPerEOA)
-            }
-        }
-    }
+    // 7702 mempool cap now enforced in messagepool with network version gating
 
     if untrusted {
         if _, err = e.mpoolApi.MpoolPushUntrusted(ctx, smsg); err != nil {

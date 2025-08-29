@@ -970,14 +970,14 @@ func (mp *MessagePool) addSkipChecks(ctx context.Context, m *types.SignedMessage
 }
 
 func (mp *MessagePool) addLocked(ctx context.Context, m *types.SignedMessage, strict, untrusted bool) error {
-	log.Debugf("mpooladd: %s %d", m.Message.From, m.Message.Nonce)
+    log.Debugf("mpooladd: %s %d", m.Message.From, m.Message.Nonce)
 	if m.Signature.Type == crypto.SigTypeBLS {
 		mp.blsSigCache.Add(m.Cid(), m.Signature)
 	}
 
-	if _, err := mp.api.PutMessage(ctx, m); err != nil {
-		return xerrors.Errorf("mpooladd cs.PutMessage failed: %s", err)
-	}
+    if _, err := mp.api.PutMessage(ctx, m); err != nil {
+        return xerrors.Errorf("mpooladd cs.PutMessage failed: %s", err)
+    }
 
 	if _, err := mp.api.PutMessage(ctx, &m.Message); err != nil {
 		return xerrors.Errorf("mpooladd cs.PutMessage failed: %s", err)
@@ -1002,7 +1002,11 @@ func (mp *MessagePool) addLocked(ctx context.Context, m *types.SignedMessage, st
 		}
 	}
 
-	incr, err := mset.add(m, mp, strict, untrusted)
+    if err := mp.enforceDelegationCap(ctx, m); err != nil {
+        return err
+    }
+
+    incr, err := mset.add(m, mp, strict, untrusted)
 	if err != nil {
 		log.Debug(err)
 		return err
@@ -1034,18 +1038,17 @@ func (mp *MessagePool) addLocked(ctx context.Context, m *types.SignedMessage, st
 	// Record the current size of the Mpool
 	stats.Record(ctx, metrics.MpoolMessageCount.M(int64(mp.currentSize)))
 
-    // Cross-account invalidation for EIP-7702 delegation applies.
-    // When a delegation is applied, the authority's nonce is bumped, invalidating
-    // any pending messages from that authority at or below the expected nonce.
+    // EIP-7702 policies
     mp.crossAccountInvalidate(ctx, m)
 
-	return nil
+    return nil
 }
 
 // crossAccountInvalidate removes stale pending messages for authorities affected by
 // an EIP-7702 ApplyDelegations message. This is a best-effort policy applied on ingress.
 func (mp *MessagePool) crossAccountInvalidate(ctx context.Context, m *types.SignedMessage) {
-    if !ethtypes.Eip7702FeatureEnabled {
+    // Gate by network version (activate at/after next network upgrade)
+    if mp.api.StateNetworkVersion(ctx, mp.curTs.Height()) < network.Version27 { // TODO: update if activation differs
         return
     }
     if m.Message.To != ethtypes.DelegatorActorAddr || m.Message.Method != delegator.MethodApplyDelegations {
@@ -1073,6 +1076,33 @@ func (mp *MessagePool) crossAccountInvalidate(ctx context.Context, m *types.Sign
             }
         }
     }
+}
+
+// enforceDelegationCap rejects the message if too many pending delegation applications
+// exist for the sender. The cap is enforced only after the network upgrade enabling 7702.
+func (mp *MessagePool) enforceDelegationCap(ctx context.Context, m *types.SignedMessage) error {
+    if mp.api.StateNetworkVersion(ctx, mp.curTs.Height()) < network.Version27 { // TODO: update if activation differs
+        return nil
+    }
+    if m.Message.To != ethtypes.DelegatorActorAddr || m.Message.Method != delegator.MethodApplyDelegations {
+        return nil
+    }
+    // Count pending delegation messages from sender
+    ms, ok, err := mp.getPendingMset(ctx, m.Message.From)
+    if err != nil || !ok {
+        return nil
+    }
+    capPerEOA := 4
+    count := 0
+    for _, pm := range ms.msgs {
+        if pm.Message.To == ethtypes.DelegatorActorAddr && pm.Message.Method == delegator.MethodApplyDelegations {
+            count++
+            if count >= capPerEOA {
+                return xerrors.Errorf("too many pending EIP-7702 delegation messages for sender; cap=%d", capPerEOA)
+            }
+        }
+    }
+    return nil
 }
 
 func (mp *MessagePool) GetNonce(ctx context.Context, addr address.Address, _ types.TipSetKey) (uint64, error) {

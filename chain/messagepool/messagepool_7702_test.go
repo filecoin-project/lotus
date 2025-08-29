@@ -43,6 +43,8 @@ func signMsg(t *testing.T, w *wallet.LocalWallet, msg *types.Message) *types.Sig
 
 func TestCrossAccountInvalidation_Applies(t *testing.T) {
     mp, tma := makeTestMpool()
+    // Ensure NV is at/after activation for tests
+    tma.nv = buildconstants.TestNetworkVersion
 
     // Create a delegated authority (f4) with some pending message at nonce 5
     wAuth, _ := wallet.NewWallet(wallet.NewMemKeyStore())
@@ -107,6 +109,7 @@ func TestCrossAccountInvalidation_Applies(t *testing.T) {
 
 func TestCrossAccountInvalidation_MultiAuthority(t *testing.T) {
     mp, tma := makeTestMpool()
+    tma.nv = buildconstants.TestNetworkVersion
 
     // two authorities
     wA, _ := wallet.NewWallet(wallet.NewMemKeyStore())
@@ -161,4 +164,28 @@ func TestCrossAccountInvalidation_MultiAuthority(t *testing.T) {
     }
     checkGone(a1)
     checkGone(a2)
+}
+
+func TestDelegationCap_Enforced(t *testing.T) {
+    mp, tma := makeTestMpool()
+    tma.nv = buildconstants.TestNetworkVersion
+
+    // sender and delegator addr configured
+    wS, _ := wallet.NewWallet(wallet.NewMemKeyStore())
+    s, _ := wS.WalletNew(context.Background(), types.KTSecp256k1)
+    tma.setBalance(s, 10)
+    ethtypes.DelegatorActorAddr, _ = address.NewIDAddress(1234)
+
+    // add 4 pending ApplyDelegations from the same sender
+    addDel := func(nonce uint64) error {
+        m := &types.Message{From: s, To: ethtypes.DelegatorActorAddr, Method: delegator.MethodApplyDelegations, Value: types.NewInt(0), Nonce: nonce, GasLimit: 1000000, GasFeeCap: types.NewInt(100), GasPremium: types.NewInt(1)}
+        return mp.Add(context.Background(), signMsg(t, wS, m))
+    }
+    require.NoError(t, addDel(0))
+    require.NoError(t, addDel(1))
+    require.NoError(t, addDel(2))
+    require.NoError(t, addDel(3))
+
+    // 5th should be rejected
+    require.Error(t, addDel(4))
 }

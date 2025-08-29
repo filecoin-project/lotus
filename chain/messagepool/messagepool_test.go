@@ -45,16 +45,19 @@ type testMpoolAPI struct {
 
 	published int
 
-	baseFee types.BigInt
+    baseFee types.BigInt
+
+    nv network.Version
 }
 
 func newTestMpoolAPI() *testMpoolAPI {
-	tma := &testMpoolAPI{
+    tma := &testMpoolAPI{
 		bmsgs:      make(map[cid.Cid][]*types.SignedMessage),
 		statenonce: make(map[address.Address]uint64),
 		balance:    make(map[address.Address]types.BigInt),
-		baseFee:    types.NewInt(100),
-	}
+        baseFee:    types.NewInt(100),
+        nv:         buildconstants.TestNetworkVersion,
+    }
 	genesis := mock.MkBlock(nil, 1, 1)
 	tma.tipsets = append(tma.tipsets, mock.TipSet(genesis))
 	return tma
@@ -185,9 +188,7 @@ func (tma *testMpoolAPI) StateDeterministicAddressAtFinality(ctx context.Context
 	return addr, nil
 }
 
-func (tma *testMpoolAPI) StateNetworkVersion(ctx context.Context, h abi.ChainEpoch) network.Version {
-	return buildconstants.TestNetworkVersion
-}
+func (tma *testMpoolAPI) StateNetworkVersion(ctx context.Context, h abi.ChainEpoch) network.Version { return tma.nv }
 
 func (tma *testMpoolAPI) MessagesForBlock(ctx context.Context, h *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error) {
 	return nil, tma.bmsgs[h.Cid()], nil

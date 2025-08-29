@@ -14,7 +14,7 @@
 - fix(api): `eth_getTransactionCount` now returns state after the specified block rather than before it ([filecoin-project/lotus#13275](https://github.com/filecoin-project/lotus/pull/13275))
 - feat(eth/7702): intrinsic gas overhead accounting for EIP‑7702 delegation messages (conservative base + per‑authorization); CBOR tuple counting in EthEstimateGas (scaffold; to be aligned with actor constants)
 - feat(mpool/7702): cross‑account invalidation on ApplyDelegations; evict stale pending messages from affected authorities at/below expected nonce (ingress policy; tests added)
-- feat(config/7702): add `Fevm.Eip7702DelegationCap` TOML knob; keep env override `LOTUS_ETH_7702_DELEGATION_CAP` for per‑EOA pending cap
+- feat(policy/7702): enable 7702 ingress policies at/after network upgrade; no user config required
 - feat(eth/7702): support `LOTUS_ETH_7702_DELEGATOR_ADDR` (build tag `eip7702_enabled`) to configure Delegator actor address in dev/test
 - chore(eth/7702): send‑path now uses `delegator.MethodApplyDelegations` constant; cross‑package CBOR compat test; feature‑flag send‑path test; delegator apply helper + tests
 
