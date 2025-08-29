@@ -7,6 +7,7 @@ This notebook is for agents continuing the EIP-7702 work in Lotus. It captures w
 - Document current status, remaining work, and validation steps.
 
 **Status (This Commit)**
+- Phase‑1 support on the JSON‑RPC/types path is implemented and tested.
 - Adds EIP‑7702 typed transaction support on the Ethereum JSON‑RPC/types layer:
   - `EIP7702TxType = 0x04` constant.
   - Parser/encoder for type `0x04` with `authorizationList` per EIP‑7702.
@@ -43,8 +44,11 @@ This notebook is for agents continuing the EIP-7702 work in Lotus. It captures w
 - Build: `go build ./chain/types/ethtypes`
 - Focused tests: `go test ./chain/types/ethtypes -run 7702 -count=1`
 - Full package tests: `go test ./chain/types/ethtypes -count=1`
+- Delegator validation tests: `go test ./chain/actors/builtin/delegator -count=1`
 - Expected error when converting to Filecoin message (until actor wiring):
   - `EIP-7702 not yet wired to actors/FVM; parsed OK but cannot construct Filecoin message (enable actor integration to proceed)`
+
+Tip: to exercise the send‑path guard with the feature flag on, run tests with build tag `-tags eip7702_enabled`.
 
 **What Remains (Phase‑2 Back‑Half)**
 - Actor + FVM plumbing to apply delegations and route execution via delegate code.
@@ -56,27 +60,40 @@ This notebook is for agents continuing the EIP-7702 work in Lotus. It captures w
 - Gas estimation: simulate delegation writes and intrinsic costs/refunds (`PER_EMPTY_ACCOUNT_COST`, etc.).
 - RPC receipts/logs: ensure `authorizationList` echoes and logs reflect delegate execution context.
 
+Tracking checklist (to drive Phase‑2 to completion):
+- [ ] Delegator state storage implemented with HAMT/AMT and codegen types (`chain/actors/builtin/delegator/state.go`).
+- [ ] Authority recovery from `(r,s,y_parity)` implemented, including nonce lookup and increment.
+- [ ] `ApplyDelegations` actor method enforces chainId∈{0,local}, y_parity∈{0,1}, low‑s, non‑zero r/s, prevents nested delegation; writes mapping and charges gas.
+- [ ] EVM runtime consults Delegator mapping on calls to EOAs with empty code and dispatches to delegate code.
+- [ ] `Eth7702TxArgs.ToUnsignedFilecoinMessage` targets Delegator using CBOR tuples and correct method number.
+- [ ] Gas estimation accounts for intrinsic overhead and storage writes; refunds handled as per spec.
+- [ ] Mempool policy added for pending delegation caps and nonce invalidation rules.
+- [ ] RPC receipts/logs updated for `authorizationList` echo and delegate attribution.
+
 **Concrete Next Steps**
 - Complete Delegator actor implementation:
-  - State: `HAMT<EOA, DelegateAddr>` (or AMT) and authority nonces.
-  - Params (CBOR): array of tuples `(chainId uint64, authority EthAddress, nonce uint64, yParity byte, r EthBigInt, s EthBigInt)`.
-  - Method `ApplyDelegations`: validate per EIP‑7702 (correct chain, low‑s, `v∈{0,1}`, authority nonce match, no nested delegation), write mapping, bump nonce, charge gas, process refunds.
+  - State: `HAMT<EOA, DelegateAddr>` (or AMT) and authority nonces. Start by replacing the in‑memory map in `state.go` with HAMT bindings and cbor‑gen types.
+  - Params (CBOR): array of tuples `(chainId uint64, authority EthAddress, nonce uint64, yParity byte, r EthBigInt, s EthBigInt)`; the on‑chain struct is `delegator.DelegationParam` in `types.go`.
+  - Method `ApplyDelegations`: validate per EIP‑7702 (correct chain, low‑s, `v∈{0,1}`, authority nonce match, no nested delegation), write mapping, bump nonce, charge gas, process refunds. Current placeholder is `Actor.ApplyDelegations` in `actor_stub.go`.
 - Wire EVM runtime:
-  - On message to EOA with empty code, check Delegator mapping; if present, load delegate code and execute as callee code.
+  - On message to EOA with empty code, check Delegator mapping; if present, load delegate code and execute as callee code. Integration lives in `chain/actors/builtin/evm/` call dispatch.
 - Update send path:
-  - With `eip7702_enabled` and `DelegatorActorAddr` configured, have `Eth7702TxArgs.ToUnsignedFilecoinMessage` construct `types.Message{ To: DelegatorActorAddr, Method: ApplyDelegations, Params: CborEncodeEIP7702Authorizations(authz) }`.
+  - With build tag `eip7702_enabled` and `DelegatorActorAddr` configured at process init, have `Eth7702TxArgs.ToUnsignedFilecoinMessage` set `To: DelegatorActorAddr`, `Method: delegator.MethodApplyDelegations`, and `Params: CborEncodeEIP7702Authorizations(authz)`.
 - Extend gas estimation:
-  - Implement `compute7702IntrinsicOverhead(len(authz))` with concrete constants.
+  - Implement `compute7702IntrinsicOverhead(len(authz))` in `node/impl/eth/` with concrete constants, matching Delegator actor charges.
   - Simulate Delegator mapping writes; apply any empty‑account refunds.
 - Policy:
-  - Define mempool limits for pending delegations per EOA and cross‑account nonce rules.
+  - Define mempool limits for pending delegations per EOA and cross‑account nonce rules; enforce in message pool.
 
 **Suggested Tests (after actor wiring)**
 - Unit: `ApplyDelegations` validates tuples (chainId, low‑s, `v∈{0,1}`), handles nonce increments, writes mappings, charges gas, and applies refunds.
-  - Added now: unit tests for `State.ApplyDelegationsWithAuthorities` covering writes and nonce mismatches.
+  - Already added: unit tests for `State.ApplyDelegationsWithAuthorities` covering writes and nonce mismatches (`chain/actors/builtin/delegator/validation_test.go`).
 - Integration: sending a 0x04 tx routes to Delegator; subsequent call to EOA executes delegate code.
 - RPC: receipts include `authorizationList`, logs attributed to delegate, correct bloom updates.
 - Policy: mempool caps enforce deterministic behavior under delegation load.
+
+Build and test with feature flag enabled:
+- `go test ./... -tags eip7702_enabled -count=1`
 
 **Editing Strategy**
 - Use small, focused diffs with anchored context (mirror `eth_1559_transactions.go` style where possible).
