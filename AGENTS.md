@@ -9,6 +9,8 @@
   - `EthTx` extended to include `authorizationList` in RPC views.
   - Dispatch wired in `ParseEthTransaction`.
   - Clear guard in `ToUnsignedFilecoinMessage` returning a helpful error until actor/FVM wiring exists.
+  - RLP decoder limit updated to support 13‑field payloads (7702) in `rlp.go`.
+  - Unit tests added for 7702: round‑trip encode/decode and guard rails.
 
 **Files Touched**
 - `chain/types/ethtypes/eth_transactions.go`
@@ -50,6 +52,15 @@
 - Extend gas estimation:
   - In `node/impl/eth` flow, simulate delegation writes and intrinsic costs per tuple.
 
+**Tests Added (7702)**
+- `TestEIP7702_RLPRoundTrip`: ensures encode/decode is lossless and fields match.
+- `TestEIP7702_EmptyAuthorizationListRejected`: parser rejects empty `authorizationList`.
+- `TestEIP7702_NonEmptyAccessListRejected`: parser rejects non‑empty access list per current Lotus policy.
+- `TestEIP7702_VParityRejected`: parser rejects outer `v` not in `{0,1}`.
+- `TestEIP7702_ToUnsignedFilecoinMessage_Guard`: verify front‑half guard error prior to actor wiring.
+
+Run with: `go test ./chain/types/ethtypes -count=1`
+
 **Pointers (Open These Paths/Files)**
 - Repo paths:
   - `chain/types/ethtypes/` (this patch; RLP, types, parsers)
@@ -74,4 +85,3 @@
 
 **Note to Reviewers**
 - Phase‑1 is additive and safe to merge independently; it does not require actor/FVM changes and keeps legacy/EIP‑1559 behavior intact.
-

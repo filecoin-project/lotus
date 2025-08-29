@@ -7,6 +7,8 @@ import (
     "github.com/stretchr/testify/require"
 
     "github.com/filecoin-project/go-state-types/big"
+    "github.com/filecoin-project/lotus/build/buildconstants"
+    "github.com/filecoin-project/go-address"
 )
 
 func mustHex(t *testing.T, s string) []byte {
@@ -92,3 +94,127 @@ func TestEIP7702_RLPRoundTrip(t *testing.T) {
     require.Equal(t, enc, enc2)
 }
 
+func TestEIP7702_EmptyAuthorizationListRejected(t *testing.T) {
+    var to EthAddress
+    copy(to[:], mustHex(t, "0x1111111111111111111111111111111111111111"))
+
+    tx := &Eth7702TxArgs{
+        ChainID:              1,
+        Nonce:                5,
+        To:                   &to,
+        Value:                big.NewInt(0),
+        MaxFeePerGas:         big.NewInt(1),
+        MaxPriorityFeePerGas: big.NewInt(1),
+        GasLimit:             21000,
+        Input:                nil,
+        AuthorizationList:    nil, // empty
+        V:                    big.NewInt(0),
+        R:                    big.NewInt(1),
+        S:                    big.NewInt(1),
+    }
+
+    enc, err := tx.ToRlpSignedMsg()
+    require.NoError(t, err)
+
+    _, err = parseEip7702Tx(enc)
+    require.Error(t, err)
+}
+
+func TestEIP7702_NonEmptyAccessListRejected(t *testing.T) {
+    var to EthAddress
+    copy(to[:], mustHex(t, "0x1111111111111111111111111111111111111111"))
+    var authAddr EthAddress
+    copy(authAddr[:], mustHex(t, "0x2222222222222222222222222222222222222222"))
+
+    // Build fields manually to inject non-empty access list at index 8
+    chainId, _ := formatInt(1)
+    nonce, _ := formatInt(5)
+    maxPrio, _ := formatBigInt(big.NewInt(100))
+    maxFee, _ := formatBigInt(big.NewInt(200))
+    gasLimit, _ := formatInt(21000)
+    value, _ := formatBigInt(big.NewInt(0))
+    input := []byte{0xde, 0xad}
+
+    // Authorization tuple
+    ai, _ := formatInt(1)
+    ni, _ := formatInt(7)
+    yp, _ := formatInt(0)
+    ri, _ := formatBigInt(big.NewInt(1))
+    si, _ := formatBigInt(big.NewInt(2))
+    authTuple := []interface{}{ai, authAddr[:], ni, yp, ri, si}
+    authList := []interface{}{authTuple}
+
+    // Non-empty access list (one dummy element)
+    accessList := []interface{}{[]byte{0x01}}
+
+    base := []interface{}{
+        chainId,
+        nonce,
+        maxPrio,
+        maxFee,
+        gasLimit,
+        formatEthAddr(&to),
+        value,
+        input,
+        accessList, // should trigger error
+        authList,
+    }
+
+    // Append signature fields
+    sig, _ := packSigFields(big.NewInt(1), big.NewInt(3), big.NewInt(4))
+    full := append(base, sig...)
+
+    payload, err := EncodeRLP(full)
+    require.NoError(t, err)
+    enc := append([]byte{EIP7702TxType}, payload...)
+
+    _, err = parseEip7702Tx(enc)
+    require.Error(t, err)
+}
+
+func TestEIP7702_VParityRejected(t *testing.T) {
+    var to EthAddress
+    copy(to[:], mustHex(t, "0x1111111111111111111111111111111111111111"))
+
+    tx := &Eth7702TxArgs{
+        ChainID:              1,
+        Nonce:                1,
+        To:                   &to,
+        Value:                big.NewInt(0),
+        MaxFeePerGas:         big.NewInt(1),
+        MaxPriorityFeePerGas: big.NewInt(1),
+        GasLimit:             21000,
+        AuthorizationList: []EthAuthorization{
+            {ChainID: EthUint64(1), Address: to, Nonce: EthUint64(1), YParity: 0, R: EthBigInt(big.NewInt(1)), S: EthBigInt(big.NewInt(1))},
+        },
+        V: big.NewInt(2), // invalid
+        R: big.NewInt(1),
+        S: big.NewInt(1),
+    }
+    enc, err := tx.ToRlpSignedMsg()
+    require.NoError(t, err)
+    _, err = parseEip7702Tx(enc)
+    require.Error(t, err)
+}
+
+func TestEIP7702_ToUnsignedFilecoinMessage_Guard(t *testing.T) {
+    var to EthAddress
+    copy(to[:], mustHex(t, "0x1111111111111111111111111111111111111111"))
+    tx := &Eth7702TxArgs{
+        ChainID:              buildconstants.Eip155ChainId,
+        Nonce:                0,
+        To:                   &to,
+        Value:                big.NewInt(0),
+        MaxFeePerGas:         big.NewInt(1),
+        MaxPriorityFeePerGas: big.NewInt(1),
+        GasLimit:             21000,
+        AuthorizationList: []EthAuthorization{
+            {ChainID: EthUint64(buildconstants.Eip155ChainId), Address: to, Nonce: EthUint64(0), YParity: 0, R: EthBigInt(big.NewInt(1)), S: EthBigInt(big.NewInt(1))},
+        },
+        V: big.NewInt(0),
+        R: big.NewInt(1),
+        S: big.NewInt(1),
+    }
+    _, err := tx.ToUnsignedFilecoinMessage(address.Undef)
+    require.Error(t, err)
+}
