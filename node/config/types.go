@@ -541,7 +541,11 @@ type FevmConfig struct {
 	// recently requested blocks that are already cached.
 	// The default size of the cache is 500 blocks.
 	// Note: Setting this value to 0 disables the cache.
-	EthBlkCacheSize int
+    EthBlkCacheSize int
+
+    // Eip7702DelegationCap limits the number of pending delegation-apply
+    // messages per EOA accepted by the node. 0 uses the Lotus default.
+    Eip7702DelegationCap int
 }
 
 type EventsConfig struct {

@@ -86,6 +86,7 @@ func DefaultFullNode() *FullNode {
 			EnableEthRPC:             false,
 			EthTraceFilterMaxResults: 500,
 			EthBlkCacheSize:          500,
+			Eip7702DelegationCap:     4,
 		},
 		Events: EventsConfig{
 			EnableActorEventsAPI: false,

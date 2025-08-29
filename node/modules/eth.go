@@ -356,3 +356,16 @@ func MakeEventFilterManager(cfg config.EventsConfig) func(EventFilterManagerPara
 		return fm, nil
 	}
 }
+type EthSendParams struct {
+    fx.In
+    MpoolAPI  eth.MpoolAPI
+    Indexer   index.Indexer
+    FevmCfg   config.FevmConfig
+}
+
+func MakeEthSend() func(EthSendParams) eth.EthSendAPI {
+    return func(p EthSendParams) eth.EthSendAPI {
+        // Pass configured cap to the send API for 7702 policy
+        return eth.NewEthSendAPIWithCap(p.MpoolAPI, p.Indexer, p.FevmCfg.Eip7702DelegationCap)
+    }
+}

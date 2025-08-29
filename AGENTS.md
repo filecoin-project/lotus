@@ -90,6 +90,7 @@ Notes:
   - Simulate Delegator mapping writes; apply any empty‑account refunds.
 - Policy:
   - Define mempool limits for pending delegations per EOA and cross‑account nonce rules; enforce in message pool.
+  - Config: TOML knob `Fevm.Eip7702DelegationCap` added; env `LOTUS_ETH_7702_DELEGATION_CAP` remains as override.
 
 **Suggested Tests (after actor wiring)**
 - Unit: `ApplyDelegations` validates tuples (chainId, low‑s, `v∈{0,1}`), handles nonce increments, writes mappings, charges gas, and applies refunds.
