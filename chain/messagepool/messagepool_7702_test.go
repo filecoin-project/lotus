@@ -1,6 +1,7 @@
 package messagepool
 
 import (
+    "bytes"
     "context"
     "testing"
 
@@ -103,4 +104,3 @@ func TestCrossAccountInvalidation_Applies(t *testing.T) {
         }
     }
 }
-
