@@ -4,11 +4,7 @@ package delegator
 // Future work should replace this with a fully implemented actor.
 type Actor struct{}
 
-// ApplyDelegations is a stub for the method that will validate EIP-7702
-// authorization tuples and apply delegation state changes.
-// TODO: replace with real invocation signature and runtime context.
-func (Actor) ApplyDelegations(params []DelegationParam) error {
-    // no-op stub
-    return nil
-}
-
+// ApplyDelegations remains a no-op placeholder; full wiring will provide runtime
+// context and authority recovery. Use State.ApplyDelegationsWithAuthorities for
+// unit-level validation of mapping writes and nonce handling.
+func (Actor) ApplyDelegations(_ []DelegationParam) error { return nil }

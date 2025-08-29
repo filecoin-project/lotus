@@ -7,6 +7,7 @@ import (
     cbg "github.com/whyrusleeping/cbor-gen"
     "github.com/stretchr/testify/require"
     mathbig "math/big"
+    "github.com/filecoin-project/go-address"
 )
 
 // helper to encode tuples inline (mirror ethtypes encoder, no import cycles)
@@ -46,6 +47,55 @@ func TestDecodeAndValidateDelegations_OK(t *testing.T) {
     require.NoError(t, err)
     require.Len(t, list, 2)
     require.NoError(t, ValidateDelegations(list, 314))
+}
+
+func TestApplyDelegationsWithAuthorities_WritesAndBumpsNonce(t *testing.T) {
+    addr1 := make([]byte, 20)
+    for i := range addr1 { addr1[i] = 0xcc }
+    tuples := [][]interface{}{
+        {uint64(314), addr1, uint64(5), uint64(0), []byte{1}, []byte{1}},
+    }
+    enc := encodeTuples(t, tuples)
+    list, err := DecodeAuthorizationTuples(enc)
+    require.NoError(t, err)
+    require.NoError(t, ValidateDelegations(list, 314))
+
+    // Prepare state and authority nonce
+    var st State
+    auth, err := address.NewIDAddress(1001)
+    require.NoError(t, err)
+    nonces := map[address.Address]uint64{auth: 5}
+    authorities := []address.Address{auth}
+
+    // Apply
+    err = st.ApplyDelegationsWithAuthorities(nonces, authorities, list)
+    require.NoError(t, err)
+
+    // Mapping set and nonce incremented
+    v, ok := st.Delegations[auth]
+    require.True(t, ok)
+    require.Equal(t, [20]byte{0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc}, v)
+    require.EqualValues(t, 6, nonces[auth])
+}
+
+func TestApplyDelegationsWithAuthorities_NonceMismatch(t *testing.T) {
+    addr1 := make([]byte, 20)
+    tuples := [][]interface{}{
+        {uint64(314), addr1, uint64(9), uint64(0), []byte{1}, []byte{1}},
+    }
+    enc := encodeTuples(t, tuples)
+    list, err := DecodeAuthorizationTuples(enc)
+    require.NoError(t, err)
+    require.NoError(t, ValidateDelegations(list, 314))
+
+    var st State
+    auth, err := address.NewIDAddress(1001)
+    require.NoError(t, err)
+    nonces := map[address.Address]uint64{auth: 8}
+    authorities := []address.Address{auth}
+
+    err = st.ApplyDelegationsWithAuthorities(nonces, authorities, list)
+    require.Error(t, err)
 }
 
 func TestDecodeAndValidateDelegations_InvalidYParity(t *testing.T) {
