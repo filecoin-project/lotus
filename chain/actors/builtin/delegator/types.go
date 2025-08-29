@@ -21,3 +21,10 @@ type DelegationParam struct {
     R       big.Int
     S       big.Int
 }
+
+// ApplyDelegationsParams is the CBOR-encoded parameter for the ApplyDelegations method.
+// It contains an array of 7702 authorization tuples. A future revision may include
+// additional call data or flags.
+type ApplyDelegationsParams struct {
+    Authorizations []DelegationParam
+}

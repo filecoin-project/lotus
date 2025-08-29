@@ -38,7 +38,7 @@
   - `//go:build eip7702_enabled` sets `Eip7702FeatureEnabled = true`.
 - `chain/actors/builtin/delegator/` (new, scaffold)
   - `README.md`: describes intended actor behavior and next steps.
-  - `types.go`: defines `DelegationParam` (tuple shape) and placeholder method num `MethodApplyDelegations`.
+  - `types.go`: defines `DelegationParam` and `ApplyDelegationsParams`, and placeholder method num `MethodApplyDelegations`.
   - `state.go`: placeholder state `Delegations map[address.Address][20]byte`.
   - `actor_stub.go`: no-op `ApplyDelegations(params []DelegationParam) error`.
 
@@ -85,6 +85,7 @@
 - `TestEIP7702_NonEmptyAccessListRejected`: parser rejects non‑empty access list per current Lotus policy.
 - `TestEIP7702_VParityRejected`: parser rejects outer `v` not in `{0,1}`.
 - `TestEIP7702_ToUnsignedFilecoinMessage_Guard`: verify front‑half guard error prior to actor wiring.
+- Build-tagged: `Test7702_ToUnsignedFilecoinMessage_FeatureFlag` (`//go:build eip7702_enabled`) ensures the feature flag path constructs a `types.Message` targeting the Delegator actor with CBOR params.
 
 Run with: `go test ./chain/types/ethtypes -count=1`
 
