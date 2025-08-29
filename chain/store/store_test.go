@@ -284,7 +284,10 @@ func TestChainExportImportWithF3Data(t *testing.T) {
 	}
 
 	cert := makeCert(0, supp)
-	cst.Put(context.TODO(), cert)
+	err = cst.Put(context.TODO(), cert)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	buf := new(bytes.Buffer)
 	if err := cg.ChainStore().Export(context.TODO(), last, last.Height(), false, f3ds, buf); err != nil {
