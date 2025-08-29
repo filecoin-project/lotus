@@ -21,6 +21,9 @@
   - Defines `EthAuthorization` and `Eth7702TxArgs` implementing `EthTransaction`.
   - Implements RLP encode/decode (unsigned/signed), `TxHash`, `Signature`, `Sender`, `ToEthTx`.
   - `ToUnsignedFilecoinMessage` returns explicit error pending actor integration.
+ - `chain/actors/builtin/delegator/` (new, scaffold)
+   - `README.md`: describes intended actor behavior and next steps.
+   - `types.go`: defines `DelegationParam` (tuple shape) and placeholder method num `MethodApplyDelegations`.
 
 **Quick Validation**
 - Build: `go build ./chain/types/ethtypes`
@@ -40,7 +43,7 @@
 - Gas estimation: simulate delegation writes and intrinsic costs/refunds (`PER_EMPTY_ACCOUNT_COST`, etc.).
 
 **Concrete Next Steps for an Agent**
-- Add Delegator actor scaffold:
+- Complete Delegator actor implementation:
   - Path: `chain/actors/builtin/delegator/`.
   - State: `HAMT<EOA, DelegateAddr>` or AMT mapping.
   - Params type (CBOR): array of tuples `(chainId uint64, authority EthAddress, nonce uint64, yParity byte, r EthBigInt, s EthBigInt)`.
@@ -51,6 +54,11 @@
   - Build `types.Message{ To: DelegatorActor, Method: ApplyDelegations, Params: cbor.Marshal(params) }`.
 - Extend gas estimation:
   - In `node/impl/eth` flow, simulate delegation writes and intrinsic costs per tuple.
+
+**Suggested Next Tests (after actor wiring)**
+- `ApplyDelegations` unit tests: tuple validation (chainId, low-s, V ∈ {0,1}), nonce increments, mapping writes, and gas/refund accounting.
+- Integration: sending a 0x04 tx results in Delegator call; subsequent call to EOA executes delegate code.
+- RPC: receipts include `authorizationList`, logs attributed to delegate, correct bloom updates.
 
 **Tests Added (7702)**
 - `TestEIP7702_RLPRoundTrip`: ensures encode/decode is lossless and fields match.
