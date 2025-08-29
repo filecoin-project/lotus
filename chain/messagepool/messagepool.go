@@ -1070,10 +1070,26 @@ func (mp *MessagePool) crossAccountInvalidate(ctx context.Context, m *types.Sign
         }
         // Remove all messages with nonce <= expected authority nonce
         // Nonce will be bumped to nonce+1 upon successful application.
+        removed := 0
         for nonce := range mset.msgs {
             if nonce <= a.Nonce {
                 mp.remove(ctx, fa, nonce, false)
+                removed++
             }
+        }
+        if removed > 0 {
+            authEth := ethtypes.EthAddress{}
+            copy(authEth[:], a.Address[:])
+            // Journal a summary event for observability
+            mp.journal.RecordEvent(mp.evtTypes[evtTypeMpoolRemove], func() interface{} {
+                return MessagePoolEvt{
+                    Action: "7702_evict",
+                    Messages: []MessagePoolEvtMessage{{
+                        Message: types.Message{From: fa, To: ethtypes.DelegatorActorAddr, Nonce: uint64(removed)},
+                    }},
+                }
+            })
+            log.Infow("mpool 7702 eviction", "authority", fa, "removed", removed)
         }
     }
 }
@@ -1098,6 +1114,15 @@ func (mp *MessagePool) enforceDelegationCap(ctx context.Context, m *types.Signed
         if pm.Message.To == ethtypes.DelegatorActorAddr && pm.Message.Method == delegator.MethodApplyDelegations {
             count++
             if count >= capPerEOA {
+                // Journal and log the rejection for observability
+                mp.journal.RecordEvent(mp.evtTypes[evtTypeMpoolAdd], func() interface{} {
+                    return MessagePoolEvt{
+                        Action: "7702_cap_reject",
+                        Messages: []MessagePoolEvtMessage{{Message: m.Message}},
+                        Error:   xerrors.Errorf("cap=%d reached", capPerEOA),
+                    }
+                })
+                log.Warnw("mpool 7702 cap reject", "from", m.Message.From, "cap", capPerEOA)
                 return xerrors.Errorf("too many pending EIP-7702 delegation messages for sender; cap=%d", capPerEOA)
             }
         }
