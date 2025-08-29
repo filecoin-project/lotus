@@ -11,6 +11,7 @@ import (
     "github.com/filecoin-project/go-address"
     builtintypes "github.com/filecoin-project/go-state-types/builtin"
     "github.com/filecoin-project/go-state-types/crypto"
+    "github.com/filecoin-project/go-state-types/network"
     "github.com/filecoin-project/lotus/api"
     "github.com/filecoin-project/lotus/build/buildconstants"
     delegator "github.com/filecoin-project/lotus/chain/actors/builtin/delegator"
@@ -188,4 +189,64 @@ func TestDelegationCap_Enforced(t *testing.T) {
 
     // 5th should be rejected
     require.Error(t, addDel(4))
+}
+
+func TestCrossAccountInvalidation_DisabledBeforeActivation(t *testing.T) {
+    mp, tma := makeTestMpool()
+    // Set network version below activation
+    tma.nv = network.Version26
+
+    // Authority with pending nonce 1
+    wA, _ := wallet.NewWallet(wallet.NewMemKeyStore())
+    a1, _ := wA.WalletNew(context.Background(), types.KTDelegated)
+    tma.setBalance(a1, 10)
+    m := &types.Message{From: a1, To: a1, Method: 0, Value: types.NewInt(0), Nonce: 1, GasLimit: 1000000, GasFeeCap: types.NewInt(100), GasPremium: types.NewInt(1)}
+    require.NoError(t, mp.Add(context.Background(), signMsg(t, wA, m)))
+
+    // ApplyDelegations should NOT evict before activation
+    ethtypes.DelegatorActorAddr, _ = address.NewIDAddress(1234)
+    e1, _ := ethtypes.EthAddressFromFilecoinAddress(a1)
+    params := encodeSingleTuple(t, uint64(buildconstants.Eip155ChainId), e1, 1)
+
+    wS, _ := wallet.NewWallet(wallet.NewMemKeyStore())
+    s, _ := wS.WalletNew(context.Background(), types.KTSecp256k1)
+    tma.setBalance(s, 10)
+    del := &types.Message{From: s, To: ethtypes.DelegatorActorAddr, Method: delegator.MethodApplyDelegations, Value: types.NewInt(0), Nonce: 0, GasLimit: 1000000, GasFeeCap: types.NewInt(100), GasPremium: types.NewInt(1), Params: params}
+    require.NoError(t, mp.Add(context.Background(), signMsg(t, wS, del)))
+
+    // Verify original message still present
+    ms, ok, err := mp.getPendingMset(context.Background(), a1)
+    require.NoError(t, err)
+    require.True(t, ok)
+    if _, ex := ms.msgs[1]; !ex {
+        t.Fatalf("did not expect eviction before activation")
+    }
+}
+
+func TestDelegationCap_NotEnforcedBeforeActivation(t *testing.T) {
+    mp, tma := makeTestMpool()
+    tma.nv = network.Version26
+
+    wS, _ := wallet.NewWallet(wallet.NewMemKeyStore())
+    s, _ := wS.WalletNew(context.Background(), types.KTSecp256k1)
+    tma.setBalance(s, 10)
+    ethtypes.DelegatorActorAddr, _ = address.NewIDAddress(1234)
+
+    // Add more than 4 without rejection
+    for i := 0; i < 5; i++ {
+        m := &types.Message{From: s, To: ethtypes.DelegatorActorAddr, Method: delegator.MethodApplyDelegations, Value: types.NewInt(0), Nonce: uint64(i), GasLimit: 1000000, GasFeeCap: types.NewInt(100), GasPremium: types.NewInt(1)}
+        require.NoError(t, mp.Add(context.Background(), signMsg(t, wS, m)))
+    }
+
+    // Count delegation messages from sender should be 5
+    ms, ok, err := mp.getPendingMset(context.Background(), s)
+    require.NoError(t, err)
+    require.True(t, ok)
+    count := 0
+    for _, pm := range ms.msgs {
+        if pm.Message.To == ethtypes.DelegatorActorAddr && pm.Message.Method == delegator.MethodApplyDelegations {
+            count++
+        }
+    }
+    require.Equal(t, 5, count)
 }
