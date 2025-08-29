@@ -104,3 +104,61 @@ func TestCrossAccountInvalidation_Applies(t *testing.T) {
         }
     }
 }
+
+func TestCrossAccountInvalidation_MultiAuthority(t *testing.T) {
+    mp, tma := makeTestMpool()
+
+    // two authorities
+    wA, _ := wallet.NewWallet(wallet.NewMemKeyStore())
+    a1, _ := wA.WalletNew(context.Background(), types.KTDelegated)
+    wB, _ := wallet.NewWallet(wallet.NewMemKeyStore())
+    a2, _ := wB.WalletNew(context.Background(), types.KTDelegated)
+    tma.setBalance(a1, 10)
+    tma.setBalance(a2, 10)
+
+    // pending messages for both at nonce 1
+    add := func(w *wallet.LocalWallet, from address.Address) {
+        m := &types.Message{From: from, To: from, Method: 0, Value: types.NewInt(0), Nonce: 1, GasLimit: 1000000, GasFeeCap: types.NewInt(100), GasPremium: types.NewInt(1)}
+        require.NoError(t, mp.Add(context.Background(), signMsg(t, w, m)))
+    }
+    add(wA, a1)
+    add(wB, a2)
+
+    // Build params with two tuples
+    var buf bytes.Buffer
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 2))
+    encTup := func(addr20 [20]byte, nonce uint64) {
+        require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 6))
+        require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajUnsignedInt, uint64(buildconstants.Eip155ChainId)))
+        require.NoError(t, cbg.WriteByteArray(&buf, addr20[:]))
+        require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajUnsignedInt, nonce))
+        require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajUnsignedInt, 0))
+        require.NoError(t, cbg.WriteByteArray(&buf, []byte{1}))
+        require.NoError(t, cbg.WriteByteArray(&buf, []byte{1}))
+    }
+    e1, _ := ethtypes.EthAddressFromFilecoinAddress(a1)
+    e2, _ := ethtypes.EthAddressFromFilecoinAddress(a2)
+    encTup(e1, 1)
+    encTup(e2, 1)
+
+    ethtypes.DelegatorActorAddr, _ = address.NewIDAddress(1234)
+    // sender
+    wS, _ := wallet.NewWallet(wallet.NewMemKeyStore())
+    s, _ := wS.WalletNew(context.Background(), types.KTSecp256k1)
+    tma.setBalance(s, 10)
+    del := &types.Message{From: s, To: ethtypes.DelegatorActorAddr, Method: delegator.MethodApplyDelegations, Value: types.NewInt(0), Nonce: 0, GasLimit: 1000000, GasFeeCap: types.NewInt(100), GasPremium: types.NewInt(1), Params: buf.Bytes()}
+    ethtypes.Eip7702FeatureEnabled = true
+    defer func() { ethtypes.Eip7702FeatureEnabled = false }()
+    require.NoError(t, mp.Add(context.Background(), signMsg(t, wS, del)))
+
+    // both authorities should be evicted at nonce 1
+    checkGone := func(addr address.Address) {
+        if ms, ok, err := mp.getPendingMset(context.Background(), addr); err == nil && ok {
+            if _, ex := ms.msgs[1]; ex {
+                t.Fatalf("expected eviction for %s", addr)
+            }
+        }
+    }
+    checkGone(a1)
+    checkGone(a2)
+}
