@@ -102,6 +102,8 @@
 - `TestEIP7702_VParityRejected`: parser rejects outer `v` not in `{0,1}`.
 - `TestEIP7702_ToUnsignedFilecoinMessage_Guard`: verify front‑half guard error prior to actor wiring.
 - Build-tagged: `Test7702_ToUnsignedFilecoinMessage_FeatureFlag` (`//go:build eip7702_enabled`) ensures the feature flag path constructs a `types.Message` targeting the Delegator actor with CBOR params.
+- `TestEIP7702_ToEthTx_CarriesAuthorizationList`: verifies RPC tx view carries `authorizationList`.
+- Delegator: `TestApplyDelegationsFromCBOR_ValidatesAndReturnsList` decodes and validates CBOR tuples in one call.
 
 Run with: `go test ./chain/types/ethtypes -count=1`
 

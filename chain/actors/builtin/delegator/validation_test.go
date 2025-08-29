@@ -74,6 +74,20 @@ func TestDecodeAndValidateDelegations_HighSRejected(t *testing.T) {
     require.Error(t, ValidateDelegations(list, 314))
 }
 
+func TestApplyDelegationsFromCBOR_ValidatesAndReturnsList(t *testing.T) {
+    addr := make([]byte, 20)
+    tuples := [][]interface{}{
+        {uint64(314), addr, uint64(9), uint64(1), []byte{3}, []byte{4}},
+    }
+    enc := encodeTuples(t, tuples)
+    list, err := ApplyDelegationsFromCBOR(enc, 314)
+    require.NoError(t, err)
+    require.Len(t, list, 1)
+    require.EqualValues(t, 314, list[0].ChainID)
+    require.EqualValues(t, 9, list[0].Nonce)
+    require.EqualValues(t, 1, list[0].YParity)
+}
+
 // small helpers to avoid math/big import aliasing in test
 type secbig = mathbig.Int
 func one() *secbig { return new(secbig).SetUint64(1) }

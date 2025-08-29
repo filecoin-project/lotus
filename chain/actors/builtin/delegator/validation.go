@@ -116,5 +116,18 @@ func ValidateDelegations(list []DelegationParam, localChainID uint64) error {
     return nil
 }
 
+// ApplyDelegationsFromCBOR decodes CBOR tuples and validates them against
+// static rules. Intended to be called by the actor method once wired.
+func ApplyDelegationsFromCBOR(data []byte, localChainID uint64) ([]DelegationParam, error) {
+    list, err := DecodeAuthorizationTuples(data)
+    if err != nil {
+        return nil, err
+    }
+    if err := ValidateDelegations(list, localChainID); err != nil {
+        return nil, err
+    }
+    return list, nil
+}
+
 // Debug helper (not used in production), returns hex of 20b address for logging.
 func hex20(b [20]byte) string { return hex.EncodeToString(b[:]) }
