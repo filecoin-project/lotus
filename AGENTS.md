@@ -1,0 +1,77 @@
+**Purpose**
+- Provide a concise, actionable notebook for agents to continue EIP‑7702 implementation in Lotus.
+- Capture what’s already implemented (Phase‑1 front‑half) and what remains (actor/FVM + policy).
+
+**Status (This Commit)**
+- Adds EIP‑7702 typed transaction support on the Ethereum JSON‑RPC/types layer:
+  - `EIP7702TxType = 0x04` constant.
+  - Parser/encoder for type `0x04` with `authorizationList` per EIP‑7702.
+  - `EthTx` extended to include `authorizationList` in RPC views.
+  - Dispatch wired in `ParseEthTransaction`.
+  - Clear guard in `ToUnsignedFilecoinMessage` returning a helpful error until actor/FVM wiring exists.
+
+**Files Touched**
+- `chain/types/ethtypes/eth_transactions.go`
+  - New constant: `EIP7702TxType = 0x04`.
+  - `EthTx` gains `AuthorizationList []EthAuthorization` (JSON `authorizationList`).
+  - Dispatch extended: routes `0x04` to `parseEip7702Tx`.
+- `chain/types/ethtypes/eth_7702_transactions.go` (new)
+  - Defines `EthAuthorization` and `Eth7702TxArgs` implementing `EthTransaction`.
+  - Implements RLP encode/decode (unsigned/signed), `TxHash`, `Signature`, `Sender`, `ToEthTx`.
+  - `ToUnsignedFilecoinMessage` returns explicit error pending actor integration.
+
+**Quick Validation**
+- Build: `go build ./chain/types/ethtypes`
+- Tests (package-level): `go test ./chain/types/ethtypes -count=1`
+- Expected failure message when attempting to convert to Filecoin message:
+  - `EIP-7702 not yet wired to actors/FVM; parsed OK but cannot construct Filecoin message (enable actor integration to proceed)`
+
+**What Remains (Phase‑2 Back‑Half)**
+- Actor + FVM plumbing to apply delegations and route execution via delegate code:
+  - Option A (preferred for isolation): new Delegator system actor `chain/actors/builtin/delegator/` with state `Map<EOA, DelegateAddr>`.
+    - Method `ApplyDelegations(params []DelegationParam)` validates authorization tuples and writes delegation indicator; increments authority nonces; accounts gas/refunds.
+  - Option B: integrate into EVM actor with a compact mapping and code‑lookup path.
+  - EVM runtime change: on call to an EOA with empty code, if a delegation exists, execute the delegate’s code as the target.
+- Flip `Eth7702TxArgs.ToUnsignedFilecoinMessage` to construct a `types.Message` targeting the new actor/method with CBOR‑encoded tuples.
+- Mempool policy: per‑EOA pending‑delegation caps and cross‑account nonce invalidation.
+- RPC receipts/logs: ensure `authorizationList` echoes and logs reflect delegate execution context.
+- Gas estimation: simulate delegation writes and intrinsic costs/refunds (`PER_EMPTY_ACCOUNT_COST`, etc.).
+
+**Concrete Next Steps for an Agent**
+- Add Delegator actor scaffold:
+  - Path: `chain/actors/builtin/delegator/`.
+  - State: `HAMT<EOA, DelegateAddr>` or AMT mapping.
+  - Params type (CBOR): array of tuples `(chainId uint64, authority EthAddress, nonce uint64, yParity byte, r EthBigInt, s EthBigInt)`.
+  - Method: `ApplyDelegations` — validates per EIP‑7702 (correct chain, low‑s, V ∈ {0,1}, authority nonce match, no nested delegation), writes mapping, bumps nonce, charges gas, processes refunds.
+- Wire EVM runtime:
+  - On message to EOA with empty code, check delegator mapping; if present, load delegate code and execute as callee code.
+- Update `Eth7702TxArgs.ToUnsignedFilecoinMessage`:
+  - Build `types.Message{ To: DelegatorActor, Method: ApplyDelegations, Params: cbor.Marshal(params) }`.
+- Extend gas estimation:
+  - In `node/impl/eth` flow, simulate delegation writes and intrinsic costs per tuple.
+
+**Pointers (Open These Paths/Files)**
+- Repo paths:
+  - `chain/types/ethtypes/` (this patch; RLP, types, parsers)
+  - `node/impl/eth/` (send path, gas estimation, receipts)
+  - `chain/actors/builtin/evm/` (runtime) and new `chain/actors/builtin/delegator/` (to add)
+- Spec: https://eips.ethereum.org/EIPS/eip-7702 (type 0x04, 13-field list, authorization tuple)
+
+**Editing Strategy for Agents**
+- Use unified diffs or “diff‑sandwich” with anchored context.
+- For new files, provide full contents.
+- Keep edits minimal and scoped; mirror the style of `eth_1559_transactions.go` where possible.
+
+**Acceptance Criteria for Phase‑2**
+- A signed type‑`0x04` tx decodes, constructs a Filecoin message calling Delegator actor, applies valid delegations, and executes delegate code when calling EOAs.
+- JSON‑RPC returns `authorizationList` in tx views and receipts.
+- Mempool and gas estimation behave deterministically under delegation load.
+
+**Handy Commands**
+- Build fast path: `go build ./chain/types/ethtypes`
+- Focused tests: `go test ./chain/types/ethtypes -run 7702 -count=1`
+- Full package tests: `go test ./chain/types/ethtypes -count=1`
+
+**Note to Reviewers**
+- Phase‑1 is additive and safe to merge independently; it does not require actor/FVM changes and keeps legacy/EIP‑1559 behavior intact.
+

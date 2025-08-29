@@ -22,8 +22,11 @@ import (
 )
 
 const (
-	EthLegacyTxType = 0x00
-	EIP1559TxType   = 0x02
+    EthLegacyTxType = 0x00
+    EIP1559TxType   = 0x02
+    // EIP-7702 typed transaction: Set Code for EOAs (authorization list)
+    // https://eips.ethereum.org/EIPS/eip-7702
+    EIP7702TxType   = 0x04
 )
 
 const (
@@ -66,7 +69,7 @@ type EthTransaction interface {
 // - In legacy Homestead transactions, the `GasPrice` field is populated to specify the fee per unit of gas, while the `MaxFeePerGas` and `MaxPriorityFeePerGas` fields are set to nil/empty.
 // Additionally, both the `ChainID` and the `Type` fields are set to 0 in legacy Homestead transactions to differentiate them from EIP-1559 transactions.
 type EthTx struct {
-	ChainID              EthUint64   `json:"chainId"`
+    ChainID              EthUint64   `json:"chainId"`
 	Nonce                EthUint64   `json:"nonce"`
 	Hash                 EthHash     `json:"hash"`
 	BlockHash            *EthHash    `json:"blockHash"`
@@ -82,9 +85,11 @@ type EthTx struct {
 	MaxPriorityFeePerGas *EthBigInt  `json:"maxPriorityFeePerGas,omitempty"`
 	GasPrice             *EthBigInt  `json:"gasPrice,omitempty"`
 	AccessList           []EthHash   `json:"accessList"`
-	V                    EthBigInt   `json:"v"`
-	R                    EthBigInt   `json:"r"`
-	S                    EthBigInt   `json:"s"`
+    V                    EthBigInt   `json:"v"`
+    R                    EthBigInt   `json:"r"`
+    S                    EthBigInt   `json:"s"`
+    // Present only for EIP-7702 (type 0x04) transactions
+    AuthorizationList    []EthAuthorization `json:"authorizationList,omitempty"`
 }
 
 func (tx *EthTx) GasFeeCap() (EthBigInt, error) {
@@ -210,28 +215,31 @@ func ToSignedFilecoinMessage(tx EthTransaction) (*types.SignedMessage, error) {
 }
 
 func ParseEthTransaction(data []byte) (EthTransaction, error) {
-	if len(data) == 0 {
-		return nil, fmt.Errorf("empty data")
-	}
+    if len(data) == 0 {
+        return nil, fmt.Errorf("empty data")
+    }
 
-	switch data[0] {
-	case 1:
-		// EIP-2930
-		return nil, fmt.Errorf("EIP-2930 transaction is not supported")
-	case EIP1559TxType:
-		// EIP-1559
-		return parseEip1559Tx(data)
-	default:
-		if data[0] > 0x7f {
-			tx, err := parseLegacyTx(data)
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse legacy transaction: %w", err)
-			}
-			return tx, nil
-		}
-	}
+    switch data[0] {
+    case 1:
+        // EIP-2930
+        return nil, fmt.Errorf("EIP-2930 transaction is not supported")
+    case EIP1559TxType:
+        // EIP-1559
+        return parseEip1559Tx(data)
+    case EIP7702TxType:
+        // EIP-7702 (type 0x04)
+        return parseEip7702Tx(data)
+    default:
+        if data[0] > 0x7f {
+            tx, err := parseLegacyTx(data)
+            if err != nil {
+                return nil, fmt.Errorf("failed to parse legacy transaction: %w", err)
+            }
+            return tx, nil
+        }
+    }
 
-	return nil, fmt.Errorf("unsupported transaction type")
+    return nil, fmt.Errorf("unsupported transaction type")
 }
 
 type methodInfo struct {
