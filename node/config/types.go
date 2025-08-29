@@ -543,8 +543,11 @@ type FevmConfig struct {
 	// Note: Setting this value to 0 disables the cache.
     EthBlkCacheSize int
 
-    // Eip7702DelegationCap limits the number of pending delegation-apply
-    // messages per EOA accepted by the node. 0 uses the Lotus default.
+    // Eip7702DelegationCap: maximum number of pending EIP‑7702 ApplyDelegations
+    // messages accepted per EOA (sender) in the local mempool.
+    // - Set to 0 to use the Lotus default.
+    // - Can be overridden at runtime via env var `LOTUS_ETH_7702_DELEGATION_CAP`.
+    // This cap reduces spam and ensures deterministic behavior under delegation load.
     Eip7702DelegationCap int
 }
 
