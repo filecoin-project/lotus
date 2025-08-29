@@ -197,6 +197,28 @@ func TestEIP7702_VParityRejected(t *testing.T) {
     require.Error(t, err)
 }
 
+func TestEIP7702_AuthorizationYParityRejected(t *testing.T) {
+    var to EthAddress
+    copy(to[:], mustHex(t, "0x1111111111111111111111111111111111111111"))
+    tx := &Eth7702TxArgs{
+        ChainID:              1,
+        Nonce:                1,
+        To:                   &to,
+        Value:                big.NewInt(0),
+        MaxFeePerGas:         big.NewInt(1),
+        MaxPriorityFeePerGas: big.NewInt(1),
+        GasLimit:             21000,
+        AuthorizationList: []EthAuthorization{
+            {ChainID: EthUint64(1), Address: to, Nonce: EthUint64(1), YParity: 2, R: EthBigInt(big.NewInt(1)), S: EthBigInt(big.NewInt(1))},
+        },
+        V: big.NewInt(0), R: big.NewInt(1), S: big.NewInt(1),
+    }
+    enc, err := tx.ToRlpSignedMsg()
+    require.NoError(t, err)
+    _, err = parseEip7702Tx(enc)
+    require.Error(t, err)
+}
+
 func TestEIP7702_ToUnsignedFilecoinMessage_Guard(t *testing.T) {
     var to EthAddress
     copy(to[:], mustHex(t, "0x1111111111111111111111111111111111111111"))

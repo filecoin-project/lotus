@@ -366,6 +366,9 @@ func parseEip7702Tx(data []byte) (*Eth7702TxArgs, error) {
         if err != nil {
             return nil, xerrors.Errorf("authorization[%d]: bad y_parity: %w", i, err)
         }
+        if yp != 0 && yp != 1 {
+            return nil, xerrors.Errorf("authorization[%d]: y_parity must be 0 or 1", i)
+        }
         r, err := parseBigInt(t[4])
         if err != nil {
             return nil, xerrors.Errorf("authorization[%d]: bad r: %w", i, err)

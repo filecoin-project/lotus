@@ -17,6 +17,7 @@
     - `CborEncodeEIP7702Authorizations` helper to build CBOR params for delegations.
   - Additional tests:
     - CBOR params shape test validating `[chain_id, address(20), nonce, y_parity, r, s]` tuples.
+    - Validation: inner `authorizationList[*].y_parity` must be 0 or 1 (parser + test).
   - Delegator actor stub:
     - `Actor.ApplyDelegations(params []DelegationParam) error` placeholder (no‑op for now).
 
