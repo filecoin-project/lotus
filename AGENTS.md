@@ -15,6 +15,10 @@
     - `ethtypes.Eip7702FeatureEnabled` (default false; set true via build tag `eip7702_enabled`).
     - `ethtypes.DelegatorActorAddr` placeholder for the deployed actor address.
     - `CborEncodeEIP7702Authorizations` helper to build CBOR params for delegations.
+  - Additional tests:
+    - CBOR params shape test validating `[chain_id, address(20), nonce, y_parity, r, s]` tuples.
+  - Delegator actor stub:
+    - `Actor.ApplyDelegations(params []DelegationParam) error` placeholder (no‑op for now).
 
 **Files Touched**
 - `chain/types/ethtypes/eth_transactions.go`
@@ -104,3 +108,7 @@ Run with: `go test ./chain/types/ethtypes -count=1`
 
 **Note to Reviewers**
 - Phase‑1 is additive and safe to merge independently; it does not require actor/FVM changes and keeps legacy/EIP‑1559 behavior intact.
+- `chain/types/ethtypes/eth_7702_params_test.go` (new)
+  - Validates CBOR encoding structure using `cbor-gen` reader.
+- `chain/actors/builtin/delegator/actor_stub.go` (new)
+  - Minimal stub to outline intended API.
