@@ -70,6 +70,11 @@ Tracking checklist (to drive Phase‑2 to completion):
 - [x] Mempool policy added for pending delegation caps (per‑EOA, conservative default).
 - [x] RPC receipts echo `authorizationList` (already carried via tx view).
 
+Notes:
+- Delegator HAMT-backed state is scaffolded (`state_hamt_scaffold.go`), pending full actor wiring.
+- EVM runtime delegation hook placeholder is added (`chain/actors/builtin/evm/delegation_stub.go`).
+- Delegation cap is configurable via env `LOTUS_ETH_7702_DELEGATION_CAP`.
+
 **Concrete Next Steps**
 - Complete Delegator actor implementation:
   - State: `HAMT<EOA, DelegateAddr>` (or AMT) and authority nonces. Start by replacing the in‑memory map in `state.go` with HAMT bindings and cbor‑gen types.
