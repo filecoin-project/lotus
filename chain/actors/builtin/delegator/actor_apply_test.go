@@ -1,28 +1,34 @@
 package delegator
 
 import (
+    "bytes"
     "testing"
 
+    cbg "github.com/whyrusleeping/cbor-gen"
     "github.com/stretchr/testify/require"
     "github.com/filecoin-project/go-address"
-    ethtypes "github.com/filecoin-project/lotus/chain/types/ethtypes"
-    stbig "github.com/filecoin-project/go-state-types/big"
 )
 
 func TestApplyDelegationsCore_AppliesAndBumpsNonce(t *testing.T) {
-    // Build one authorization tuple via ethtypes to ensure CBOR compatibility.
-    var authAddr ethtypes.EthAddress
-    for i := range authAddr { authAddr[i] = 0x33 }
-    list := []ethtypes.EthAuthorization{{
-        ChainID: 314,
-        Address: authAddr,
-        Nonce:   10,
-        YParity: 1,
-        R:       ethtypes.EthBigInt(stbig.NewInt(1)),
-        S:       ethtypes.EthBigInt(stbig.NewInt(1)),
-    }}
-    enc, err := ethtypes.CborEncodeEIP7702Authorizations(list)
-    require.NoError(t, err)
+    // Build one authorization tuple CBOR directly.
+    var buf bytes.Buffer
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 1))
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 6))
+    // chainId
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajUnsignedInt, 314))
+    // address (20 bytes of 0x33)
+    addr := make([]byte, 20)
+    for i := range addr { addr[i] = 0x33 }
+    require.NoError(t, cbg.WriteByteArray(&buf, addr))
+    // nonce
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajUnsignedInt, 10))
+    // y_parity
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajUnsignedInt, 1))
+    // r
+    require.NoError(t, cbg.WriteByteArray(&buf, []byte{1}))
+    // s
+    require.NoError(t, cbg.WriteByteArray(&buf, []byte{1}))
+    enc := buf.Bytes()
 
     // Prepare state, nonces, and authorities (pre-resolved for this scaffold test).
     var st State

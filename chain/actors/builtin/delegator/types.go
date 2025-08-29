@@ -28,3 +28,12 @@ type DelegationParam struct {
 type ApplyDelegationsParams struct {
     Authorizations []DelegationParam
 }
+
+// Gas cost placeholders for Lotus-side estimation; the actor implementation
+// should define the authoritative charges/refunds.
+const (
+    // BaseOverheadGas is a fixed overhead charged for 7702 processing.
+    BaseOverheadGas = int64(2100)
+    // PerAuthBaseGas is charged per authorization tuple in the list.
+    PerAuthBaseGas = int64(25000)
+)

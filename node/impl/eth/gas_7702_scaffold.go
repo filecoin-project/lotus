@@ -13,17 +13,14 @@ import (
     "bytes"
 
     cbg "github.com/whyrusleeping/cbor-gen"
+    delegator "github.com/filecoin-project/lotus/chain/actors/builtin/delegator"
 )
 
 func compute7702IntrinsicOverhead(authCount int) int64 {
-    // Conservative intrinsic base + per-authorization overhead.
-    // These placeholders deliberately err on the high side to avoid underestimation.
-    const baseCost = int64(2100)   // base overhead for 7702 processing
-    const perAuthCost = int64(25000) // cost per authorization tuple (placeholder)
     if authCount <= 0 {
         return 0
     }
-    return baseCost + perAuthCost*int64(authCount)
+    return delegator.BaseOverheadGas + delegator.PerAuthBaseGas*int64(authCount)
 }
 
 // countAuthInDelegatorParams tries to CBOR-parse the delegator params and return
