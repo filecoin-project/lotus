@@ -1,6 +1,10 @@
+# EIP-7702 Implementation Notebook (Lotus)
+
+This notebook is for agents continuing the EIP-7702 work in Lotus. It captures what’s already implemented (Phase‑1 front‑half), and what remains to wire the actor/FVM and policy (Phase‑2 back‑half). It also lists quick validation steps and suggested tests.
+
 **Purpose**
-- Provide a concise, actionable notebook for agents to continue EIP‑7702 implementation in Lotus.
-- Capture what’s already implemented (Phase‑1 front‑half) and what remains (actor/FVM + policy).
+- Provide a concise, actionable plan to complete EIP‑7702.
+- Document current status, remaining work, and validation steps.
 
 **Status (This Commit)**
 - Adds EIP‑7702 typed transaction support on the Ethereum JSON‑RPC/types layer:
@@ -8,118 +12,75 @@
   - Parser/encoder for type `0x04` with `authorizationList` per EIP‑7702.
   - `EthTx` extended to include `authorizationList` in RPC views.
   - Dispatch wired in `ParseEthTransaction`.
-  - Clear guard in `ToUnsignedFilecoinMessage` returning a helpful error until actor/FVM wiring exists.
+  - Guard in `ToUnsignedFilecoinMessage` returning a helpful error until actor/FVM wiring exists.
   - RLP decoder limit updated to support 13‑field payloads (7702) in `rlp.go`.
-  - Unit tests added for 7702: round‑trip encode/decode and guard rails.
-  - Feature flag scaffold for send‑path:
-    - `ethtypes.Eip7702FeatureEnabled` (default false; set true via build tag `eip7702_enabled`).
-    - `ethtypes.DelegatorActorAddr` placeholder for the deployed actor address.
-    - `CborEncodeEIP7702Authorizations` helper to build CBOR params for delegations.
-  - Additional tests:
-    - CBOR params shape test validating `[chain_id, address(20), nonce, y_parity, r, s]` tuples.
-    - Validation: inner `authorizationList[*].y_parity` must be 0 or 1 (parser + test).
-  - Delegator actor stub:
-    - `Actor.ApplyDelegations(params []DelegationParam) error` placeholder (no‑op for now).
-  - Delegator param handling & validation (scaffold):
-    - `DecodeAuthorizationTuples([]byte) ([]DelegationParam, error)` decodes CBOR array of 6‑tuples.
-    - `ValidateDelegations([]DelegationParam, localChainID)` checks chainId∈{0,local}, y_parity∈{0,1}, non‑zero r/s, and low‑s.
+  - Unit tests for 7702: round‑trip encode/decode and guard rails.
+- Feature flag scaffold for send‑path:
+  - `ethtypes.Eip7702FeatureEnabled` (default false; set true via build tag `eip7702_enabled`).
+  - `ethtypes.DelegatorActorAddr` placeholder for the deployed actor address.
+  - `CborEncodeEIP7702Authorizations` helper to build CBOR params for delegations.
+- Additional tests:
+  - CBOR params shape test validating `[chain_id, address(20), nonce, y_parity, r, s]` tuples.
+  - Validation: inner `authorizationList[*].y_parity` must be 0 or 1 (parser + test).
+- Delegator actor stub:
+  - `Actor.ApplyDelegations(params []DelegationParam) error` placeholder (no‑op for now).
+- Delegator param handling & validation (scaffold):
+  - `DecodeAuthorizationTuples([]byte) ([]DelegationParam, error)` decodes CBOR array of 6‑tuples.
+  - `ValidateDelegations([]DelegationParam, localChainID)` checks chainId∈{0,local}, y_parity∈{0,1}, non‑zero r/s, and low‑s.
+- Node scaffolding:
+  - Gas: `compute7702IntrinsicOverhead` stub and wiring in `EthEstimateGas` when targeting Delegator actor.
+  - Receipts: `adjustReceiptForDelegation` stub and `authorizationList` echoed in receipts (omitempty).
 
-**Files Touched**
-- `chain/types/ethtypes/eth_transactions.go`
-  - New constant: `EIP7702TxType = 0x04`.
-  - `EthTx` gains `AuthorizationList []EthAuthorization` (JSON `authorizationList`).
-  - Dispatch extended: routes `0x04` to `parseEip7702Tx`.
-- `chain/types/ethtypes/eth_7702_transactions.go` (new)
-  - Defines `EthAuthorization` and `Eth7702TxArgs` implementing `EthTransaction`.
-  - Implements RLP encode/decode (unsigned/signed), `TxHash`, `Signature`, `Sender`, `ToEthTx`.
-  - `ToUnsignedFilecoinMessage` returns explicit error pending actor integration.
-  - Now gated by `Eip7702FeatureEnabled`: when enabled and `DelegatorActorAddr` is set, builds a `types.Message` targeting the Delegator actor with CBOR‑encoded authorization tuples.
-- `chain/types/ethtypes/eth_7702_params.go` (new)
-  - `CborEncodeEIP7702Authorizations` encodes `[chain_id, address, nonce, y_parity, r, s]` tuples for Delegator params.
-- `chain/types/ethtypes/eth_7702_featureflag.go` (new)
-  - Declares `Eip7702FeatureEnabled` (false) and `DelegatorActorAddr`.
-- `chain/types/ethtypes/eth_7702_featureflag_enabled.go` (new, build‑tagged)
-  - `//go:build eip7702_enabled` sets `Eip7702FeatureEnabled = true`.
-- `chain/actors/builtin/delegator/` (new, scaffold)
-  - `README.md`: describes intended actor behavior and next steps.
-  - `types.go`: defines `DelegationParam` and `ApplyDelegationsParams`, and placeholder method num `MethodApplyDelegations`.
-  - `state.go`: placeholder state `Delegations map[address.Address][20]byte`.
-  - `actor_stub.go`: no-op `ApplyDelegations(params []DelegationParam) error`.
-  - `validation.go`: CBOR tuple decoder + static validations (y_parity, low‑s, chainId set).
-  - `validation_test.go`: tests for decode+validate, including high‑s and invalid y_parity cases.
-- `node/impl/eth/gas_7702_scaffold.go` (new)
-  - Stub `compute7702IntrinsicOverhead(authCount int) int64` and helper to count authorizations from CBOR params.
-- `node/impl/eth/receipt_7702_scaffold.go` (new)
-  - Stub `adjustReceiptForDelegation(ctx, *ethtypes.EthTxReceipt)` to enable future delegated execution tweaks.
-- `node/impl/eth/gas.go`
-  - Adds feature-flagged intrinsic overhead for 7702 delegations during `EthEstimateGas` when targeting Delegator actor.
-- `node/impl/eth/transaction.go`
-  - Calls `adjustReceiptForDelegation` after constructing receipts (single and batch).
- - `node/impl/eth/utils.go`
-   - `newEthTxReceipt` echoes `authorizationList` from the tx into the receipt (omitempty) for client convenience.
+**Files To Inspect**
+- `chain/types/ethtypes/` (RLP, types, parsers; 7702 support lives here)
+- `node/impl/eth/` (send path, gas estimation, receipts)
+- `chain/actors/builtin/delegator/` (new; actor scaffold and validation)
+- `chain/actors/builtin/evm/` (runtime; for delegated execution path)
 
 **Quick Validation**
 - Build: `go build ./chain/types/ethtypes`
-- Tests (package-level): `go test ./chain/types/ethtypes -count=1`
-- Expected failure message when attempting to convert to Filecoin message:
+- Focused tests: `go test ./chain/types/ethtypes -run 7702 -count=1`
+- Full package tests: `go test ./chain/types/ethtypes -count=1`
+- Expected error when converting to Filecoin message (until actor wiring):
   - `EIP-7702 not yet wired to actors/FVM; parsed OK but cannot construct Filecoin message (enable actor integration to proceed)`
 
 **What Remains (Phase‑2 Back‑Half)**
-- Actor + FVM plumbing to apply delegations and route execution via delegate code:
-  - Option A (preferred for isolation): new Delegator system actor `chain/actors/builtin/delegator/` with state `Map<EOA, DelegateAddr>`.
-    - Method `ApplyDelegations(params []DelegationParam)` validates authorization tuples and writes delegation indicator; increments authority nonces; accounts gas/refunds.
-  - Option B: integrate into EVM actor with a compact mapping and code‑lookup path.
-  - EVM runtime change: on call to an EOA with empty code, if a delegation exists, execute the delegate’s code as the target.
-- Flip `Eth7702TxArgs.ToUnsignedFilecoinMessage` to construct a `types.Message` targeting the new actor/method with CBOR‑encoded tuples.
-- Mempool policy: per‑EOA pending‑delegation caps and cross‑account nonce invalidation.
-- RPC receipts/logs: ensure `authorizationList` echoes and logs reflect delegate execution context.
+- Actor + FVM plumbing to apply delegations and route execution via delegate code.
+  - Preferred: new Delegator system actor with state `Map<EOA, DelegateAddr>`.
+  - Alternative: integrate into EVM actor with a compact mapping and code‑lookup path.
+- EVM runtime: when calling an EOA with empty code, if a delegation exists, execute delegate code as callee.
+- Flip `Eth7702TxArgs.ToUnsignedFilecoinMessage` to target Delegator actor with CBOR‑encoded tuples.
+- Mempool policy: per‑EOA pending‑delegation caps and cross‑account nonce invalidation rules.
 - Gas estimation: simulate delegation writes and intrinsic costs/refunds (`PER_EMPTY_ACCOUNT_COST`, etc.).
+- RPC receipts/logs: ensure `authorizationList` echoes and logs reflect delegate execution context.
 
-**Concrete Next Steps for an Agent**
+**Concrete Next Steps**
 - Complete Delegator actor implementation:
-  - Path: `chain/actors/builtin/delegator/`.
-  - State: `HAMT<EOA, DelegateAddr>` or AMT mapping.
-  - Params type (CBOR): array of tuples `(chainId uint64, authority EthAddress, nonce uint64, yParity byte, r EthBigInt, s EthBigInt)`.
-  - Method: `ApplyDelegations` — validates per EIP‑7702 (correct chain, low‑s, V ∈ {0,1}, authority nonce match, no nested delegation), writes mapping, bumps nonce, charges gas, processes refunds.
+  - State: `HAMT<EOA, DelegateAddr>` (or AMT) and authority nonces.
+  - Params (CBOR): array of tuples `(chainId uint64, authority EthAddress, nonce uint64, yParity byte, r EthBigInt, s EthBigInt)`.
+  - Method `ApplyDelegations`: validate per EIP‑7702 (correct chain, low‑s, `v∈{0,1}`, authority nonce match, no nested delegation), write mapping, bump nonce, charge gas, process refunds.
 - Wire EVM runtime:
-  - On message to EOA with empty code, check delegator mapping; if present, load delegate code and execute as callee code.
-- Update `Eth7702TxArgs.ToUnsignedFilecoinMessage`:
-  - With `eip7702_enabled` build tag set and `DelegatorActorAddr` configured, send `types.Message{ To: DelegatorActorAddr, Method: ApplyDelegations, Params: CborEncodeEIP7702Authorizations(authz) }`.
+  - On message to EOA with empty code, check Delegator mapping; if present, load delegate code and execute as callee code.
+- Update send path:
+  - With `eip7702_enabled` and `DelegatorActorAddr` configured, have `Eth7702TxArgs.ToUnsignedFilecoinMessage` construct `types.Message{ To: DelegatorActorAddr, Method: ApplyDelegations, Params: CborEncodeEIP7702Authorizations(authz) }`.
 - Extend gas estimation:
-  - In `node/impl/eth` flow, simulate delegation writes and intrinsic costs per tuple.
-  - Use a helper like `compute7702IntrinsicOverhead(len(authz))` to add intrinsic cost; simulate Delegator mapping writes for estimation.
-  - If refunds apply for empty accounts, model them per EIP-7702.
+  - Implement `compute7702IntrinsicOverhead(len(authz))` with concrete constants.
+  - Simulate Delegator mapping writes; apply any empty‑account refunds.
+- Policy:
+  - Define mempool limits for pending delegations per EOA and cross‑account nonce rules.
 
-**Suggested Next Tests (after actor wiring)**
-- `ApplyDelegations` unit tests: tuple validation (chainId, low-s, V ∈ {0,1}), nonce increments, mapping writes, and gas/refund accounting.
-- Integration: sending a 0x04 tx results in Delegator call; subsequent call to EOA executes delegate code.
+**Suggested Tests (after actor wiring)**
+- Unit: `ApplyDelegations` validates tuples (chainId, low‑s, `v∈{0,1}`), handles nonce increments, writes mappings, charges gas, and applies refunds.
+- Integration: sending a 0x04 tx routes to Delegator; subsequent call to EOA executes delegate code.
 - RPC: receipts include `authorizationList`, logs attributed to delegate, correct bloom updates.
+- Policy: mempool caps enforce deterministic behavior under delegation load.
 
-**Tests Added (7702)**
-- `TestEIP7702_RLPRoundTrip`: ensures encode/decode is lossless and fields match.
-- `TestEIP7702_EmptyAuthorizationListRejected`: parser rejects empty `authorizationList`.
-- `TestEIP7702_NonEmptyAccessListRejected`: parser rejects non‑empty access list per current Lotus policy.
-- `TestEIP7702_VParityRejected`: parser rejects outer `v` not in `{0,1}`.
-- `TestEIP7702_ToUnsignedFilecoinMessage_Guard`: verify front‑half guard error prior to actor wiring.
-- Build-tagged: `Test7702_ToUnsignedFilecoinMessage_FeatureFlag` (`//go:build eip7702_enabled`) ensures the feature flag path constructs a `types.Message` targeting the Delegator actor with CBOR params.
-- `TestEIP7702_ToEthTx_CarriesAuthorizationList`: verifies RPC tx view carries `authorizationList`.
-- Delegator: `TestApplyDelegationsFromCBOR_ValidatesAndReturnsList` decodes and validates CBOR tuples in one call.
+**Editing Strategy**
+- Use small, focused diffs with anchored context (mirror `eth_1559_transactions.go` style where possible).
+- For new files, include full contents in diffs.
+- Keep edits minimal and scoped; avoid unrelated refactors.
 
-Run with: `go test ./chain/types/ethtypes -count=1`
-
-**Pointers (Open These Paths/Files)**
-- Repo paths:
-  - `chain/types/ethtypes/` (this patch; RLP, types, parsers)
-  - `node/impl/eth/` (send path, gas estimation, receipts) — see `gas_7702_scaffold.go`, `receipt_7702_scaffold.go`.
-  - `chain/actors/builtin/evm/` (runtime) and new `chain/actors/builtin/delegator/` (to add)
-- Spec: https://eips.ethereum.org/EIPS/eip-7702 (type 0x04, 13-field list, authorization tuple)
-
-**Editing Strategy for Agents**
-- Use unified diffs or “diff‑sandwich” with anchored context.
-- For new files, provide full contents.
-- Keep edits minimal and scoped; mirror the style of `eth_1559_transactions.go` where possible.
-
-**Acceptance Criteria for Phase‑2**
+**Acceptance Criteria (Phase‑2)**
 - A signed type‑`0x04` tx decodes, constructs a Filecoin message calling Delegator actor, applies valid delegations, and executes delegate code when calling EOAs.
 - JSON‑RPC returns `authorizationList` in tx views and receipts.
 - Mempool and gas estimation behave deterministically under delegation load.
@@ -129,9 +90,8 @@ Run with: `go test ./chain/types/ethtypes -count=1`
 - Focused tests: `go test ./chain/types/ethtypes -run 7702 -count=1`
 - Full package tests: `go test ./chain/types/ethtypes -count=1`
 
-**Note to Reviewers**
+**Notes to Reviewers**
 - Phase‑1 is additive and safe to merge independently; it does not require actor/FVM changes and keeps legacy/EIP‑1559 behavior intact.
-- `chain/types/ethtypes/eth_7702_params_test.go` (new)
-  - Validates CBOR encoding structure using `cbor-gen` reader.
-- `chain/actors/builtin/delegator/actor_stub.go` (new)
-  - Minimal stub to outline intended API.
+- `chain/types/ethtypes/eth_7702_params_test.go` validates CBOR encoding structure using a `cbor-gen` reader.
+- `chain/actors/builtin/delegator/actor_stub.go` outlines the intended API.
+
