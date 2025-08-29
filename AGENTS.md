@@ -11,6 +11,10 @@
   - Clear guard in `ToUnsignedFilecoinMessage` returning a helpful error until actor/FVM wiring exists.
   - RLP decoder limit updated to support 13‑field payloads (7702) in `rlp.go`.
   - Unit tests added for 7702: round‑trip encode/decode and guard rails.
+  - Feature flag scaffold for send‑path:
+    - `ethtypes.Eip7702FeatureEnabled` (default false; set true via build tag `eip7702_enabled`).
+    - `ethtypes.DelegatorActorAddr` placeholder for the deployed actor address.
+    - `CborEncodeEIP7702Authorizations` helper to build CBOR params for delegations.
 
 **Files Touched**
 - `chain/types/ethtypes/eth_transactions.go`
@@ -21,9 +25,16 @@
   - Defines `EthAuthorization` and `Eth7702TxArgs` implementing `EthTransaction`.
   - Implements RLP encode/decode (unsigned/signed), `TxHash`, `Signature`, `Sender`, `ToEthTx`.
   - `ToUnsignedFilecoinMessage` returns explicit error pending actor integration.
- - `chain/actors/builtin/delegator/` (new, scaffold)
-   - `README.md`: describes intended actor behavior and next steps.
-   - `types.go`: defines `DelegationParam` (tuple shape) and placeholder method num `MethodApplyDelegations`.
+  - Now gated by `Eip7702FeatureEnabled`: when enabled and `DelegatorActorAddr` is set, builds a `types.Message` targeting the Delegator actor with CBOR‑encoded authorization tuples.
+- `chain/types/ethtypes/eth_7702_params.go` (new)
+  - `CborEncodeEIP7702Authorizations` encodes `[chain_id, address, nonce, y_parity, r, s]` tuples for Delegator params.
+- `chain/types/ethtypes/eth_7702_featureflag.go` (new)
+  - Declares `Eip7702FeatureEnabled` (false) and `DelegatorActorAddr`.
+- `chain/types/ethtypes/eth_7702_featureflag_enabled.go` (new, build‑tagged)
+  - `//go:build eip7702_enabled` sets `Eip7702FeatureEnabled = true`.
+- `chain/actors/builtin/delegator/` (new, scaffold)
+  - `README.md`: describes intended actor behavior and next steps.
+  - `types.go`: defines `DelegationParam` (tuple shape) and placeholder method num `MethodApplyDelegations`.
 
 **Quick Validation**
 - Build: `go build ./chain/types/ethtypes`
@@ -51,7 +62,7 @@
 - Wire EVM runtime:
   - On message to EOA with empty code, check delegator mapping; if present, load delegate code and execute as callee code.
 - Update `Eth7702TxArgs.ToUnsignedFilecoinMessage`:
-  - Build `types.Message{ To: DelegatorActor, Method: ApplyDelegations, Params: cbor.Marshal(params) }`.
+  - With `eip7702_enabled` build tag set and `DelegatorActorAddr` configured, send `types.Message{ To: DelegatorActorAddr, Method: ApplyDelegations, Params: CborEncodeEIP7702Authorizations(authz) }`.
 - Extend gas estimation:
   - In `node/impl/eth` flow, simulate delegation writes and intrinsic costs per tuple.
 

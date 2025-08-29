@@ -113,7 +113,33 @@ func (tx *Eth7702TxArgs) ToUnsignedFilecoinMessage(from address.Address) (*types
     if tx.ChainID != buildconstants.Eip155ChainId {
         return nil, fmt.Errorf("invalid chain id: %d", tx.ChainID)
     }
-    return nil, fmt.Errorf("EIP-7702 not yet wired to actors/FVM; parsed OK but cannot construct Filecoin message (enable actor integration to proceed)")
+    if !Eip7702FeatureEnabled {
+        return nil, fmt.Errorf("EIP-7702 not yet wired to actors/FVM; parsed OK but cannot construct Filecoin message (enable actor integration to proceed)")
+    }
+    if DelegatorActorAddr == address.Undef {
+        return nil, fmt.Errorf("EIP-7702 feature enabled but DelegatorActorAddr is undefined; set ethtypes.DelegatorActorAddr at init")
+    }
+
+    params, err := CborEncodeEIP7702Authorizations(tx.AuthorizationList)
+    if err != nil {
+        return nil, xerrors.Errorf("failed to CBOR-encode authorizationList: %w", err)
+    }
+
+    // Method number is to be finalized with the Delegator actor. Use 2 as placeholder.
+    const methodApplyDelegations = 2
+
+    return &types.Message{
+        Version:    0,
+        To:         DelegatorActorAddr,
+        From:       from,
+        Nonce:      uint64(tx.Nonce),
+        Value:      tx.Value,
+        GasLimit:   int64(tx.GasLimit),
+        GasFeeCap:  tx.MaxFeePerGas,
+        GasPremium: tx.MaxPriorityFeePerGas,
+        Method:     methodApplyDelegations,
+        Params:     params,
+    }, nil
 }
 
 func (tx *Eth7702TxArgs) ToEthTx(smsg *types.SignedMessage) (EthTx, error) {
