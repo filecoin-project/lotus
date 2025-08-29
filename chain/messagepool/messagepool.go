@@ -43,6 +43,11 @@ import (
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+
+	// EIP-7702 cross-account invalidation support
+	delegator "github.com/filecoin-project/lotus/chain/actors/builtin/delegator"
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
+	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 )
 
 var log = logging.Logger("messagepool")
@@ -1029,7 +1034,45 @@ func (mp *MessagePool) addLocked(ctx context.Context, m *types.SignedMessage, st
 	// Record the current size of the Mpool
 	stats.Record(ctx, metrics.MpoolMessageCount.M(int64(mp.currentSize)))
 
+    // Cross-account invalidation for EIP-7702 delegation applies.
+    // When a delegation is applied, the authority's nonce is bumped, invalidating
+    // any pending messages from that authority at or below the expected nonce.
+    mp.crossAccountInvalidate(ctx, m)
+
 	return nil
+}
+
+// crossAccountInvalidate removes stale pending messages for authorities affected by
+// an EIP-7702 ApplyDelegations message. This is a best-effort policy applied on ingress.
+func (mp *MessagePool) crossAccountInvalidate(ctx context.Context, m *types.SignedMessage) {
+    if !ethtypes.Eip7702FeatureEnabled {
+        return
+    }
+    if m.Message.To != ethtypes.DelegatorActorAddr || m.Message.Method != delegator.MethodApplyDelegations {
+        return
+    }
+    list, err := delegator.DecodeAuthorizationTuples(m.Message.Params)
+    if err != nil || len(list) == 0 {
+        return
+    }
+    for _, a := range list {
+        // Map 20-byte authority (Eth) to f410 delegated Filecoin address
+        fa, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, a.Address[:])
+        if err != nil {
+            continue
+        }
+        mset, ok, err := mp.getPendingMset(ctx, fa)
+        if err != nil || !ok {
+            continue
+        }
+        // Remove all messages with nonce <= expected authority nonce
+        // Nonce will be bumped to nonce+1 upon successful application.
+        for nonce := range mset.msgs {
+            if nonce <= a.Nonce {
+                mp.remove(ctx, fa, nonce, false)
+            }
+        }
+    }
 }
 
 func (mp *MessagePool) GetNonce(ctx context.Context, addr address.Address, _ types.TipSetKey) (uint64, error) {
