@@ -41,6 +41,14 @@
   - `types.go`: defines `DelegationParam` and `ApplyDelegationsParams`, and placeholder method num `MethodApplyDelegations`.
   - `state.go`: placeholder state `Delegations map[address.Address][20]byte`.
   - `actor_stub.go`: no-op `ApplyDelegations(params []DelegationParam) error`.
+- `node/impl/eth/gas_7702_scaffold.go` (new)
+  - Stub `compute7702IntrinsicOverhead(authCount int) int64` and helper to count authorizations from CBOR params.
+- `node/impl/eth/receipt_7702_scaffold.go` (new)
+  - Stub `adjustReceiptForDelegation(ctx, *ethtypes.EthTxReceipt)` to enable future delegated execution tweaks.
+- `node/impl/eth/gas.go`
+  - Adds feature-flagged intrinsic overhead for 7702 delegations during `EthEstimateGas` when targeting Delegator actor.
+- `node/impl/eth/transaction.go`
+  - Calls `adjustReceiptForDelegation` after constructing receipts (single and batch).
 
 **Quick Validation**
 - Build: `go build ./chain/types/ethtypes`
