@@ -22,6 +22,7 @@ This notebook is for agents continuing the EIP-7702 work in Lotus. It captures w
 - Additional tests:
   - CBOR params shape test validating `[chain_id, address(20), nonce, y_parity, r, s]` tuples.
   - Validation: inner `authorizationList[*].y_parity` must be 0 or 1 (parser + test).
+  - Cross-package: delegator decodes CBOR produced by ethtypes encoder (compat check).
 - Delegator actor stub:
   - `Actor.ApplyDelegations(params []DelegationParam) error` placeholder (no‑op for now).
 - Delegator param handling & validation (scaffold):
