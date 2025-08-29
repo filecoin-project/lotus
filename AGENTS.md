@@ -6,6 +6,11 @@ This notebook is for agents continuing the EIP-7702 work in Lotus. It captures w
 - Provide a concise, actionable plan to complete EIP‑7702.
 - Document current status, remaining work, and validation steps.
 
+**Summary (Lotus vs FVM)**
+- Lotus/Go (completed): type-0x04 parsing/encoding; `authorizationList` in RPC and receipts; CBOR params; send-path targets Delegator method (dev/test flag); mempool policies (cross-account invalidation and per‑EOA cap) gated by network version; intrinsic gas overhead scaffold; delegator tuple decode/validation + state apply helpers; tests and observability.
+- Lotus/Go (remaining): align gas estimation with actor constants/refunds; end‑to‑end tests once actor/runtime land; receipt/log polish only if FVM attribution needs it; remove guardrails after network upgrade.
+- FVM/Rust (remaining): Delegator actor (HAMT state, ApplyDelegations with ecrecover, nonce checks, gas/refunds); EVM runtime delegation for EOAs with empty code; receipts/logs attribution; protocol gating at network upgrade; conformance/integration tests.
+
 **Status (This Commit)**
 - Phase‑1 support on the JSON‑RPC/types path is implemented and tested.
 - Adds EIP‑7702 typed transaction support on the Ethereum JSON‑RPC/types layer:
@@ -59,6 +64,8 @@ Tip: to exercise the send‑path guard with the feature flag on, run tests with 
 - Mempool policy: per‑EOA pending‑delegation caps and cross‑account nonce invalidation rules.
 - Gas estimation: simulate delegation writes and intrinsic costs/refunds (`PER_EMPTY_ACCOUNT_COST`, etc.).
 - RPC receipts/logs: ensure `authorizationList` echoes and logs reflect delegate execution context.
+
+Note: Lotus mempool policies are already implemented and are gated by network version; no user config is needed at/after activation. Gas/estimation currently uses conservative placeholders pending actor constants.
 
 Tracking checklist (to drive Phase‑2 to completion):
 - [ ] Delegator state storage implemented with HAMT/AMT and codegen types (`chain/actors/builtin/delegator/state.go`).
