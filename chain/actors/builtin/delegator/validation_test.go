@@ -8,6 +8,8 @@ import (
     "github.com/stretchr/testify/require"
     mathbig "math/big"
     "github.com/filecoin-project/go-address"
+    ethtypes "github.com/filecoin-project/lotus/chain/types/ethtypes"
+    stbig "github.com/filecoin-project/go-state-types/big"
 )
 
 // helper to encode tuples inline (mirror ethtypes encoder, no import cycles)
@@ -96,6 +98,37 @@ func TestApplyDelegationsWithAuthorities_NonceMismatch(t *testing.T) {
 
     err = st.ApplyDelegationsWithAuthorities(nonces, authorities, list)
     require.Error(t, err)
+}
+
+func TestDecodeTuples_AgainstEtTypesEncoder(t *testing.T) {
+    // Build two authorizations via ethtypes and encode to CBOR using the shared helper.
+    var a1, a2 ethtypes.EthAddress
+    for i := range a1 { a1[i] = 0x11 }
+    for i := range a2 { a2[i] = 0x22 }
+    list := []ethtypes.EthAuthorization{
+        { ChainID: 314, Address: a1, Nonce: 1, YParity: 0, R: ethtypes.EthBigInt(stbig.NewInt(1)), S: ethtypes.EthBigInt(stbig.NewInt(2)) },
+        { ChainID: 314, Address: a2, Nonce: 2, YParity: 1, R: ethtypes.EthBigInt(stbig.NewInt(3)), S: ethtypes.EthBigInt(stbig.NewInt(4)) },
+    }
+    enc, err := ethtypes.CborEncodeEIP7702Authorizations(list)
+    require.NoError(t, err)
+
+    // Decode via delegator and validate static rules.
+    dl, err := DecodeAuthorizationTuples(enc)
+    require.NoError(t, err)
+    require.Len(t, dl, 2)
+    require.NoError(t, ValidateDelegations(dl, 314))
+
+    // Spot-check parsed fields
+    require.EqualValues(t, 314, dl[0].ChainID)
+    require.EqualValues(t, 1, dl[0].Nonce)
+    require.EqualValues(t, 0, dl[0].YParity)
+    require.EqualValues(t, 1, dl[0].R.Int64())
+    require.EqualValues(t, 2, dl[0].S.Int64())
+
+    require.EqualValues(t, 2, dl[1].Nonce)
+    require.EqualValues(t, 1, dl[1].YParity)
+    require.EqualValues(t, 3, dl[1].R.Int64())
+    require.EqualValues(t, 4, dl[1].S.Int64())
 }
 
 func TestDecodeAndValidateDelegations_InvalidYParity(t *testing.T) {
