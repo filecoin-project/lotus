@@ -9,6 +9,7 @@ import (
     "github.com/filecoin-project/go-state-types/big"
     typescrypto "github.com/filecoin-project/go-state-types/crypto"
     "github.com/filecoin-project/lotus/build/buildconstants"
+    delegator "github.com/filecoin-project/lotus/chain/actors/builtin/delegator"
     "github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -125,9 +126,6 @@ func (tx *Eth7702TxArgs) ToUnsignedFilecoinMessage(from address.Address) (*types
         return nil, xerrors.Errorf("failed to CBOR-encode authorizationList: %w", err)
     }
 
-    // Method number is to be finalized with the Delegator actor. Use 2 as placeholder.
-    const methodApplyDelegations = 2
-
     return &types.Message{
         Version:    0,
         To:         DelegatorActorAddr,
@@ -137,7 +135,7 @@ func (tx *Eth7702TxArgs) ToUnsignedFilecoinMessage(from address.Address) (*types
         GasLimit:   int64(tx.GasLimit),
         GasFeeCap:  tx.MaxFeePerGas,
         GasPremium: tx.MaxPriorityFeePerGas,
-        Method:     methodApplyDelegations,
+        Method:     delegator.MethodApplyDelegations,
         Params:     params,
     }, nil
 }
