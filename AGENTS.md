@@ -66,6 +66,7 @@ Tracking checklist (to drive Phase‑2 to completion):
 - [x] `ApplyDelegations` path validated on scaffold: decode+validate+apply, bump nonces (test in delegator pkg).
 - [ ] EVM runtime consults Delegator mapping on calls to EOAs with empty code and dispatches to delegate code.
 - [x] `Eth7702TxArgs.ToUnsignedFilecoinMessage` targets Delegator using CBOR tuples and correct method number (behind `eip7702_enabled`).
+- [x] Env-based Delegator actor address configuration (`LOTUS_ETH_7702_DELEGATOR_ADDR`).
 - [x] Gas estimation accounts for intrinsic overhead (placeholder constants) and counts tuples.
 - [x] Mempool policy added for pending delegation caps (per‑EOA, conservative default).
 - [x] RPC receipts echo `authorizationList` (already carried via tx view).
