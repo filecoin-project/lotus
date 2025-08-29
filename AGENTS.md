@@ -27,6 +27,7 @@ This notebook is for agents continuing the EIP-7702 work in Lotus. It captures w
 - Delegator param handling & validation (scaffold):
   - `DecodeAuthorizationTuples([]byte) ([]DelegationParam, error)` decodes CBOR array of 6‑tuples.
   - `ValidateDelegations([]DelegationParam, localChainID)` checks chainId∈{0,local}, y_parity∈{0,1}, non‑zero r/s, and low‑s.
+  - `State.ApplyDelegationsWithAuthorities(nonces, authorities, list)` applies mappings with nonce checks (scaffold helper; authority recovery TBD).
 - Node scaffolding:
   - Gas: `compute7702IntrinsicOverhead` stub and wiring in `EthEstimateGas` when targeting Delegator actor.
   - Receipts: `adjustReceiptForDelegation` stub and `authorizationList` echoed in receipts (omitempty).
@@ -71,6 +72,7 @@ This notebook is for agents continuing the EIP-7702 work in Lotus. It captures w
 
 **Suggested Tests (after actor wiring)**
 - Unit: `ApplyDelegations` validates tuples (chainId, low‑s, `v∈{0,1}`), handles nonce increments, writes mappings, charges gas, and applies refunds.
+  - Added now: unit tests for `State.ApplyDelegationsWithAuthorities` covering writes and nonce mismatches.
 - Integration: sending a 0x04 tx routes to Delegator; subsequent call to EOA executes delegate code.
 - RPC: receipts include `authorizationList`, logs attributed to delegate, correct bloom updates.
 - Policy: mempool caps enforce deterministic behavior under delegation load.
@@ -94,4 +96,3 @@ This notebook is for agents continuing the EIP-7702 work in Lotus. It captures w
 - Phase‑1 is additive and safe to merge independently; it does not require actor/FVM changes and keeps legacy/EIP‑1559 behavior intact.
 - `chain/types/ethtypes/eth_7702_params_test.go` validates CBOR encoding structure using a `cbor-gen` reader.
 - `chain/actors/builtin/delegator/actor_stub.go` outlines the intended API.
-
