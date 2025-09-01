@@ -53,8 +53,8 @@ func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRo
 
 	buffer := bytes.NewBuffer(nil)
 	metadata := SnapshotMetadata{
-		Version:        SnapshotVersion2,
-		HeadTipsetKeys: ts.Cids(),
+		Version:       SnapshotVersion2,
+		HeadTipsetKey: ts.Cids(),
 	}
 
 	if f3Cid != cid.Undef {
@@ -173,7 +173,7 @@ func (cs *ChainStore) Import(ctx context.Context, f3Ds dtypes.F3DS, r io.Reader)
 				}
 			}
 
-			roots = metadata.HeadTipsetKeys
+			roots = metadata.HeadTipsetKey
 			nextTailCid = roots[0]
 		}
 	}

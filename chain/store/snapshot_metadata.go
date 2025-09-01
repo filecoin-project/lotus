@@ -13,7 +13,7 @@ const (
 const V2SnapshotRootCount int = 1
 
 type SnapshotMetadata struct {
-	Version        SnapshotVersion
-	HeadTipsetKeys []cid.Cid
-	F3Data         *cid.Cid
+	Version       SnapshotVersion
+	HeadTipsetKey []cid.Cid
+	F3Data        *cid.Cid
 }

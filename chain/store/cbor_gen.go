@@ -68,26 +68,26 @@ func (t *SnapshotMetadata) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.HeadTipsetKeys ([]cid.Cid) (slice)
-	if len("HeadTipsetKeys") > 8192 {
-		return xerrors.Errorf("Value in field \"HeadTipsetKeys\" was too long")
+	// t.HeadTipsetKey ([]cid.Cid) (slice)
+	if len("HeadTipsetKey") > 8192 {
+		return xerrors.Errorf("Value in field \"HeadTipsetKey\" was too long")
 	}
 
-	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("HeadTipsetKeys"))); err != nil {
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("HeadTipsetKey"))); err != nil {
 		return err
 	}
-	if _, err := cw.WriteString(string("HeadTipsetKeys")); err != nil {
+	if _, err := cw.WriteString(string("HeadTipsetKey")); err != nil {
 		return err
 	}
 
-	if len(t.HeadTipsetKeys) > 8192 {
-		return xerrors.Errorf("Slice value in field t.HeadTipsetKeys was too long")
+	if len(t.HeadTipsetKey) > 8192 {
+		return xerrors.Errorf("Slice value in field t.HeadTipsetKey was too long")
 	}
 
-	if err := cw.WriteMajorTypeHeader(cbg.MajArray, uint64(len(t.HeadTipsetKeys))); err != nil {
+	if err := cw.WriteMajorTypeHeader(cbg.MajArray, uint64(len(t.HeadTipsetKey))); err != nil {
 		return err
 	}
-	for _, v := range t.HeadTipsetKeys {
+	for _, v := range t.HeadTipsetKey {
 
 		if err := cbg.WriteCid(cw, v); err != nil {
 			return xerrors.Errorf("failed to write cid field v: %w", err)
@@ -122,7 +122,7 @@ func (t *SnapshotMetadata) UnmarshalCBOR(r io.Reader) (err error) {
 
 	n := extra
 
-	nameBuf := make([]byte, 14)
+	nameBuf := make([]byte, 13)
 	for i := uint64(0); i < n; i++ {
 		nameLen, ok, err := cbg.ReadFullStringIntoBuf(cr, nameBuf, 8192)
 		if err != nil {
@@ -176,8 +176,8 @@ func (t *SnapshotMetadata) UnmarshalCBOR(r io.Reader) (err error) {
 				t.Version = SnapshotVersion(extra)
 
 			}
-			// t.HeadTipsetKeys ([]cid.Cid) (slice)
-		case "HeadTipsetKeys":
+			// t.HeadTipsetKey ([]cid.Cid) (slice)
+		case "HeadTipsetKey":
 
 			maj, extra, err = cr.ReadHeader()
 			if err != nil {
@@ -185,7 +185,7 @@ func (t *SnapshotMetadata) UnmarshalCBOR(r io.Reader) (err error) {
 			}
 
 			if extra > 8192 {
-				return fmt.Errorf("t.HeadTipsetKeys: array too large (%d)", extra)
+				return fmt.Errorf("t.HeadTipsetKey: array too large (%d)", extra)
 			}
 
 			if maj != cbg.MajArray {
@@ -193,7 +193,7 @@ func (t *SnapshotMetadata) UnmarshalCBOR(r io.Reader) (err error) {
 			}
 
 			if extra > 0 {
-				t.HeadTipsetKeys = make([]cid.Cid, extra)
+				t.HeadTipsetKey = make([]cid.Cid, extra)
 			}
 
 			for i := 0; i < int(extra); i++ {
@@ -209,10 +209,10 @@ func (t *SnapshotMetadata) UnmarshalCBOR(r io.Reader) (err error) {
 
 						c, err := cbg.ReadCid(cr)
 						if err != nil {
-							return xerrors.Errorf("failed to read cid field t.HeadTipsetKeys[i]: %w", err)
+							return xerrors.Errorf("failed to read cid field t.HeadTipsetKey[i]: %w", err)
 						}
 
-						t.HeadTipsetKeys[i] = c
+						t.HeadTipsetKey[i] = c
 
 					}
 

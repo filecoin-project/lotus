@@ -283,10 +283,14 @@ func TestChainExportImportWithF3Data(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cert := makeCert(0, supp)
-	err = cst.Put(context.TODO(), cert)
-	if err != nil {
-		t.Fatal(err)
+	var lc *certs.FinalityCertificate
+	for i := uint64(0); i < 100; i++ {
+		cert := makeCert(i, supp)
+		err = cst.Put(context.TODO(), cert)
+		if err != nil {
+			t.Fatal(err)
+		}
+		lc = cert
 	}
 
 	buf := new(bytes.Buffer)
@@ -345,11 +349,11 @@ func TestChainExportImportWithF3Data(t *testing.T) {
 	latestCert := importedCertStore.Latest()
 
 	require.NotNil(t, latestCert)
-	require.Equal(t, cert.GPBFTInstance, latestCert.GPBFTInstance)
-	require.Equal(t, cert.ECChain.TipSets, latestCert.ECChain.TipSets)
-	require.Equal(t, cert.SupplementalData, latestCert.SupplementalData)
-	require.Equal(t, cert.Signature, latestCert.Signature)
-	require.Equal(t, cert.PowerTableDelta, latestCert.PowerTableDelta)
+	require.Equal(t, lc.GPBFTInstance, latestCert.GPBFTInstance)
+	require.Equal(t, lc.ECChain.TipSets, latestCert.ECChain.TipSets)
+	require.Equal(t, lc.SupplementalData, latestCert.SupplementalData)
+	require.Equal(t, lc.Signature, latestCert.Signature)
+	require.Equal(t, lc.PowerTableDelta, latestCert.PowerTableDelta)
 }
 
 func TestEquivocations(t *testing.T) {
