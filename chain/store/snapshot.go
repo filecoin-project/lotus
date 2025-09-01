@@ -144,7 +144,7 @@ func (cs *ChainStore) Import(ctx context.Context, f3Ds dtypes.F3DS, r io.Reader)
 
 		if err := metadata.UnmarshalCBOR(bytes.NewReader(blk.RawData())); err != nil {
 			// Only one cid in roots, but not metadata, maybe it's a genesis block
-			log.Infof("failed to unmarshal snapshot metadata: %v, maybe it's a genesis block", err)
+			log.Infof("failed to unmarshal snapshot metadata block: %v, attempting to parse the block as a genesis block instead", err)
 			if err := tailBlock.UnmarshalCBOR(bytes.NewReader(blk.RawData())); err != nil {
 				return nil, nil, xerrors.Errorf("failed to unmarshal genesis block: %w", err)
 			}
