@@ -52,8 +52,8 @@ func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRo
 	}
 
 	buffer := bytes.NewBuffer(nil)
-	metadata := types.SnapshotMetadata{
-		Version:        types.SnapshotVersion2,
+	metadata := SnapshotMetadata{
+		Version:        SnapshotVersion2,
 		HeadTipsetKeys: ts.Cids(),
 	}
 
@@ -135,8 +135,8 @@ func (cs *ChainStore) Import(ctx context.Context, f3Ds dtypes.F3DS, r io.Reader)
 		return nil, nil, xerrors.Errorf("no roots in snapshot car file")
 	}
 
-	if len(roots) == types.V2SnapshotRootCount {
-		var metadata types.SnapshotMetadata
+	if len(roots) == V2SnapshotRootCount {
+		var metadata SnapshotMetadata
 		blk, err := br.Next()
 		if err != nil {
 			return nil, nil, xerrors.Errorf("failed to read snapshot metadata block: %w", err)
@@ -144,6 +144,7 @@ func (cs *ChainStore) Import(ctx context.Context, f3Ds dtypes.F3DS, r io.Reader)
 
 		if err := metadata.UnmarshalCBOR(bytes.NewReader(blk.RawData())); err != nil {
 			// Only one cid in roots, but not metadata, maybe it's a genesis block
+			log.Infof("failed to unmarshal snapshot metadata: %v, maybe it's a genesis block", err)
 			if err := tailBlock.UnmarshalCBOR(bytes.NewReader(blk.RawData())); err != nil {
 				return nil, nil, xerrors.Errorf("failed to unmarshal genesis block: %w", err)
 			}

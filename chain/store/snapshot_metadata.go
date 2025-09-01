@@ -1,4 +1,4 @@
-package types
+package store
 
 import (
 	"github.com/ipfs/go-cid"
