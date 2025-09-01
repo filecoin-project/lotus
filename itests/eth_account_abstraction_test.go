@@ -250,7 +250,7 @@ func TestEthAccountAbstractionFailure(t *testing.T) {
 	require.True(t, builtin.IsEthAccountActor(eoaActor.Code))
 }
 
-// Tests that f4 addresess that aren't placeholders/ethaccounts can't be top-level senders
+// Tests that f4 addresses that aren't placeholders/ethaccounts can't be top-level senders
 func TestEthAccountAbstractionFailsFromEvmActor(t *testing.T) {
 	kit.QuietMiningLogs()
 

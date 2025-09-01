@@ -138,7 +138,7 @@ func (stage *WindowPoStStage) queueMiner(
 		if proven[idx] {
 			return nil
 		}
-		// NOTE: We're mimicing the behavior of wdpost_run.go here.
+		// NOTE: We're mimicking the behavior of wdpost_run.go here.
 		if len(partitions) > 0 && idx%uint64(poStBatchSize) == 0 {
 			partitionGroups = append(partitionGroups, partitions)
 			partitions = nil

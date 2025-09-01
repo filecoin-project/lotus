@@ -870,7 +870,7 @@ loop:
 			for _, b := range incoming.Blocks() {
 				syncer.bad.Add(b.Cid(), NewBadBlockReason(incoming.Cids(), "diverges from checkpoint"))
 			}
-			return nil, xerrors.Errorf("merge point affecting the checkpoing: %w", ErrForkCheckpoint)
+			return nil, xerrors.Errorf("merge point affecting the checkpoint: %w", ErrForkCheckpoint)
 		}
 	}
 
