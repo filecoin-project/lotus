@@ -48,7 +48,7 @@ func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRo
 	f3Buffer := bytes.NewBuffer(nil)
 	f3Cid, _, err := store.ExportLatestSnapshot(ctx, f3Buffer)
 	if err != nil {
-		log.Warnln("failed to export latest f3 snapshot: %w", err)
+		log.Warnf("failed to export latest f3 snapshot: %v", err)
 	}
 
 	buffer := bytes.NewBuffer(nil)
@@ -65,9 +65,7 @@ func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRo
 		return xerrors.Errorf("failed to marshal snapshot metadata: %w", err)
 	}
 
-	// FIXME: calc cid in
 	mCid, err := cid.V1Builder{Codec: cid.DagCBOR, MhType: uint64(mh.BLAKE2B_MIN + 31)}.Sum(buffer.Bytes())
-	// mCid, err := abi.CidBuilder.Sum(buffer.Bytes())
 	if err != nil {
 		return xerrors.Errorf("failed to calculate CID for snapshot metadata: %w", err)
 	}
