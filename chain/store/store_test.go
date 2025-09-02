@@ -8,6 +8,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/namespace"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
@@ -107,15 +108,8 @@ func TestChainExportImport(t *testing.T) {
 		last = ts.TipSet.TipSet()
 	}
 
-	f3ds := datastore.NewMapDatastore()
-	pt, _ := testPowerTable(10)
-	_, err = certstore.CreateStore(context.TODO(), f3ds, 0, pt)
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	buf := new(bytes.Buffer)
-	if err := cg.ChainStore().Export(context.TODO(), last, 0, false, f3ds, buf); err != nil {
+	if err := cg.ChainStore().ExportV1(context.TODO(), last, 0, false, buf); err != nil {
 		t.Fatal(err)
 	}
 
@@ -123,8 +117,7 @@ func TestChainExportImport(t *testing.T) {
 	cs := store.NewChainStore(nbs, nbs, datastore.NewMapDatastore(), filcns.Weight, nil)
 	defer cs.Close() //nolint:errcheck
 
-	nf3ds := datastore.NewMapDatastore()
-	root, _, err := cs.Import(context.TODO(), nf3ds, buf)
+	root, _, _, err := cs.Import(context.TODO(), buf)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,14 +144,7 @@ func TestChainImportTipsetKeyCid(t *testing.T) {
 		tsKeys = append(tsKeys, last.Key())
 	}
 
-	f3ds := datastore.NewMapDatastore()
-	pt, _ := testPowerTable(10)
-	_, err = certstore.CreateStore(context.TODO(), f3ds, 0, pt)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if err := cg.ChainStore().Export(ctx, last, last.Height(), false, f3ds, buf); err != nil {
+	if err := cg.ChainStore().ExportV1(ctx, last, last.Height(), false, buf); err != nil {
 		t.Fatal(err)
 	}
 
@@ -166,8 +152,7 @@ func TestChainImportTipsetKeyCid(t *testing.T) {
 	cs := store.NewChainStore(nbs, nbs, datastore.NewMapDatastore(), filcns.Weight, nil)
 	defer cs.Close() //nolint:errcheck
 
-	nf3ds := datastore.NewMapDatastore()
-	root, _, err := cs.Import(ctx, nf3ds, buf)
+	root, _, _, err := cs.Import(ctx, buf)
 	require.NoError(t, err)
 
 	require.Truef(t, root.Equals(last), "imported chain differed from exported chain")
@@ -203,15 +188,8 @@ func TestChainExportImportFull(t *testing.T) {
 		last = ts.TipSet.TipSet()
 	}
 
-	f3ds := datastore.NewMapDatastore()
-	pt, _ := testPowerTable(10)
-	_, err = certstore.CreateStore(context.TODO(), f3ds, 0, pt)
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	buf := new(bytes.Buffer)
-	if err := cg.ChainStore().Export(context.TODO(), last, last.Height(), false, f3ds, buf); err != nil {
+	if err := cg.ChainStore().ExportV1(context.TODO(), last, last.Height(), false, buf); err != nil {
 		t.Fatal(err)
 	}
 
@@ -220,8 +198,7 @@ func TestChainExportImportFull(t *testing.T) {
 	cs := store.NewChainStore(nbs, nbs, ds, filcns.Weight, nil)
 	defer cs.Close() //nolint:errcheck
 
-	nf3ds := datastore.NewMapDatastore()
-	root, _, err := cs.Import(context.TODO(), nf3ds, buf)
+	root, _, _, err := cs.Import(context.TODO(), buf)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -293,8 +270,13 @@ func TestChainExportImportWithF3Data(t *testing.T) {
 		lc = cert
 	}
 
+	certStore, err := certstore.OpenStore(context.TODO(), f3ds)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	buf := new(bytes.Buffer)
-	if err := cg.ChainStore().Export(context.TODO(), last, last.Height(), false, f3ds, buf); err != nil {
+	if err := cg.ChainStore().ExportV2(context.TODO(), last, last.Height(), false, certStore, buf); err != nil {
 		t.Fatal(err)
 	}
 
@@ -304,13 +286,17 @@ func TestChainExportImportWithF3Data(t *testing.T) {
 	defer cs.Close() //nolint:errcheck
 
 	nf3ds := datastore.NewMapDatastore()
-	root, _, err := cs.Import(context.TODO(), nf3ds, buf)
+	root, _, f3r, err := cs.Import(context.TODO(), buf)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	err = cs.SetHead(context.Background(), last)
 	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err = cs.ImportF3Data(context.TODO(), nf3ds, f3r); err != nil {
 		t.Fatal(err)
 	}
 
@@ -341,7 +327,15 @@ func TestChainExportImportWithF3Data(t *testing.T) {
 		}
 	}
 
-	importedCertStore, err := certstore.OpenStore(context.Background(), nf3ds)
+	prefix, err := cs.F3DatastorePrefix(context.TODO())
+	if err != nil {
+		t.Fatal(err)
+	}
+	// FIXME: ONLY FOR TESTING, DO NOT COMMIT THIS CHANGE
+	println("gen f3 datastore prefix key:", prefix.String())
+	f3DsWrapper := namespace.Wrap(nf3ds, prefix)
+
+	importedCertStore, err := certstore.OpenStore(context.Background(), f3DsWrapper)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -617,13 +617,8 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 		ir = zr
 	}
 
-	f3Ds, err := lr.Datastore(ctx, "/f3")
-	if err != nil {
-		return xerrors.Errorf("failed to open f3 datastore: %w", err)
-	}
-
 	bar.Start()
-	ts, gen, err := cst.Import(ctx, f3Ds, ir)
+	ts, gen, f3r, err := cst.Import(ctx, ir)
 	bar.Finish()
 
 	if err != nil {
@@ -637,6 +632,14 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 	log.Infof("setting genesis")
 	err = cst.SetGenesis(ctx, gen)
 	if err != nil {
+		return err
+	}
+
+	f3Ds, err := lr.Datastore(ctx, "/f3")
+	if err != nil {
+		return xerrors.Errorf("failed to open f3 datastore: %w", err)
+	}
+	if err = cst.ImportF3Data(ctx, f3Ds, f3r); err != nil {
 		return err
 	}
 

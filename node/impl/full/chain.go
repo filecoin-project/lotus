@@ -639,13 +639,7 @@ func (a *ChainAPI) ChainExport(ctx context.Context, nroots abi.ChainEpoch, skipo
 	go func() {
 		bw := bufio.NewWriterSize(w, 1<<20)
 
-		f3Ds, err := a.Repo.Datastore(ctx, "/f3")
-		if err != nil {
-			log.Errorf("failed to get f3 datastore: %s", err)
-			return
-		}
-
-		err = a.Chain.Export(ctx, ts, nroots, skipoldmsgs, f3Ds, bw)
+		err = a.Chain.ExportV1(ctx, ts, nroots, skipoldmsgs, bw)
 		_ = bw.Flush()            // it is a write to a pipe
 		_ = w.CloseWithError(err) // it is a pipe
 	}()

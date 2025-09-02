@@ -285,6 +285,7 @@ var importBenchCmd = &cli.Command{
 		}()
 
 		var head *types.TipSet
+		var f3tf *os.File
 		// --- IMPORT ---
 		if !cctx.Bool("no-import") {
 			if cctx.Bool("global-profile") {
@@ -304,11 +305,13 @@ var importBenchCmd = &cli.Command{
 				return fmt.Errorf("no CAR file provided for import")
 			}
 
-			f3Ds := datastore.NewMapDatastore()
-			head, _, err = cs.Import(cctx.Context, f3Ds, carFile)
+			head, _, f3tf, err = cs.Import(cctx.Context, carFile)
 			if err != nil {
 				return err
 			}
+
+			f3Ds := datastore.NewMapDatastore()
+			cs.ImportF3Data(cctx.Context, f3Ds, f3tf)
 
 			pprof.StopCPUProfile()
 		}
