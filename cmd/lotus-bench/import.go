@@ -311,7 +311,9 @@ var importBenchCmd = &cli.Command{
 			}
 
 			f3Ds := datastore.NewMapDatastore()
-			cs.ImportF3Data(cctx.Context, f3Ds, f3tf)
+			if err = cs.ImportF3Data(cctx.Context, f3Ds, f3tf); err != nil {
+				return err
+			}
 
 			pprof.StopCPUProfile()
 		}

@@ -74,8 +74,8 @@ func (cs *ChainStore) ExportV2(ctx context.Context, ts *types.TipSet, inclRecent
 
 	defer func() {
 		if f3TempFile != nil {
-			f3TempFile.Close()
-			os.Remove(f3TempFile.Name())
+			_ = f3TempFile.Close()
+			_ = os.Remove(f3TempFile.Name())
 		}
 	}()
 
@@ -337,8 +337,8 @@ func (cs *ChainStore) Import(ctx context.Context, r io.Reader) (head *types.TipS
 
 func (cs *ChainStore) ImportF3Data(ctx context.Context, f3Ds dtypes.F3DS, f3TempFile *os.File) error {
 	defer func() {
-		f3TempFile.Close()
-		os.Remove(f3TempFile.Name())
+		_ = f3TempFile.Close()
+		_ = os.Remove(f3TempFile.Name())
 	}()
 
 	f3Reader := bufio.NewReader(f3TempFile)
