@@ -12,6 +12,10 @@
 - chore(docs): mark v0 API as "deprecated" and v1 as "stable" ([filecoin-project/lotus#13264](https://github.com/filecoin-project/lotus/pull/13264))
 - fix(api): `eth_getCode` and `eth_getStorageAt` now return state after the specified block rather than before it ([filecoin-project/lotus#13274](https://github.com/filecoin-project/lotus/pull/13274))
 - fix(api): `eth_getTransactionCount` now returns state after the specified block rather than before it ([filecoin-project/lotus#13275](https://github.com/filecoin-project/lotus/pull/13275))
+- feat: support for F3-aware snapshot v2 format per [FRC-0108](https://github.com/filecoin-project/FIPs/blob/master/FRCs/frc-0108.md) ([filecoin-project/lotus#13282](https://github.com/filecoin-project/lotus/pull/13282))
+  - snapshot export now defaults to v2 format with embedded F3 finality certificates, dramatically reducing F3 catchup time from ~8 hours
+  - transparently imports both v1 and v2 snapshot formats
+  - to export v1 snapshots, use `lotus chain export --skip-old-msgs --recent-stateroots=2001 --snapshot-version=1 <filename>`
 
 
 # Node v1.33.1 / 2025-07-31
