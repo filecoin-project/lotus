@@ -67,7 +67,7 @@ require (
 	github.com/filecoin-project/test-vectors/schema v0.0.7
 	github.com/gbrlsnchs/jwt/v3 v3.0.1
 	github.com/gdamore/tcell/v2 v2.2.0
-	github.com/georgysavva/scany/v2 v2.1.3
+	github.com/georgysavva/scany/v2 v2.1.4
 	github.com/go-openapi/spec v0.19.11
 	github.com/golang/mock v1.6.0
 	github.com/google/go-cmp v0.7.0
