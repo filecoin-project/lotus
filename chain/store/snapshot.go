@@ -253,6 +253,9 @@ func (cs *ChainStore) Import(ctx context.Context, r io.Reader) (head *types.TipS
 			roots = metadata.HeadTipsetKey
 			nextTailCid = roots[0]
 		}
+	} else {
+		// V1 format: roots directly contains the tipset CIDs
+		nextTailCid = roots[0]
 	}
 
 	for {
@@ -281,7 +284,8 @@ func (cs *ChainStore) Import(ctx context.Context, r io.Reader) (head *types.TipS
 				nextTailCid = tailBlock.Parents[0]
 			} else {
 				// note: even the 0th block has a parent linking to the cbor genesis block
-				return nil, nil, nil, xerrors.Errorf("current block (epoch %d cid %s) has no parents", tailBlock.Height, tailBlock.Cid())
+				return nil, nil, nil, xerrors.Errorf("current block (epoch %d) has no parents", tailBlock.Height)
+				// return nil, nil, nil, xerrors.Errorf("current block (epoch %d cid %s) has no parents", tailBlock.Height, tailBlock.Cid())
 			}
 		}
 
@@ -308,7 +312,8 @@ func (cs *ChainStore) Import(ctx context.Context, r io.Reader) (head *types.TipS
 	}
 
 	if tailBlock.Height != 0 {
-		return nil, nil, nil, xerrors.Errorf("expected genesis block to have height 0 (genesis), got %d: %s", tailBlock.Height, tailBlock.Cid())
+		return nil, nil, nil, xerrors.Errorf("expected genesis block to have height 0 (genesis), got %d", tailBlock.Height)
+		// return nil, nil, nil, xerrors.Errorf("expected genesis block to have height 0 (genesis), got %d: %s", tailBlock.Height, tailBlock.Cid())
 	}
 
 	root, err := cs.LoadTipSet(ctx, types.NewTipSetKey(roots...))

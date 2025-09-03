@@ -331,8 +331,7 @@ func TestChainExportImportWithF3Data(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// FIXME: ONLY FOR TESTING, DO NOT COMMIT THIS CHANGE
-	println("gen f3 datastore prefix key:", prefix.String())
+
 	f3DsWrapper := namespace.Wrap(nf3ds, prefix)
 
 	importedCertStore, err := certstore.OpenStore(context.Background(), f3DsWrapper)
