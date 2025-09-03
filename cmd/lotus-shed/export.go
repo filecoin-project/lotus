@@ -127,13 +127,6 @@ var exportChainCmd = &cli.Command{
 			return xerrors.Errorf("failed to open f3 datastore: %w", err)
 		}
 
-		prefix, err := cs.F3DatastorePrefix(ctx)
-		if err != nil {
-			return xerrors.Errorf("failed to get F3Datastore prefix: %w", err)
-		}
-
-		f3DsWrapper := namespace.Wrap(f3Ds, prefix)
-
 		nroots := abi.ChainEpoch(cctx.Int64("recent-stateroots"))
 		fullstate := cctx.Bool("full-state")
 		skipoldmsgs := cctx.Bool("skip-old-msgs")
@@ -147,9 +140,11 @@ var exportChainCmd = &cli.Command{
 			nroots = ts.Height() + 1
 		}
 
+		prefix := store.F3DatastorePrefix()
+		f3DsWrapper := namespace.Wrap(f3Ds, prefix)
 		certStore, err := certstore.OpenStore(context.Background(), f3DsWrapper)
 		if err != nil {
-			return err
+			return xerrors.Errorf("failed to open certstore: %w", err)
 		}
 
 		if err := cs.ExportV2(ctx, ts, nroots, skipoldmsgs, certStore, fi); err != nil {

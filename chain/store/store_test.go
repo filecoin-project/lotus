@@ -117,7 +117,7 @@ func TestChainExportImport(t *testing.T) {
 	cs := store.NewChainStore(nbs, nbs, datastore.NewMapDatastore(), filcns.Weight, nil)
 	defer cs.Close() //nolint:errcheck
 
-	root, _, _, err := cs.Import(context.TODO(), buf)
+	root, _, err := cs.Import(context.TODO(), nil, buf)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,7 +152,7 @@ func TestChainImportTipsetKeyCid(t *testing.T) {
 	cs := store.NewChainStore(nbs, nbs, datastore.NewMapDatastore(), filcns.Weight, nil)
 	defer cs.Close() //nolint:errcheck
 
-	root, _, _, err := cs.Import(ctx, buf)
+	root, _, err := cs.Import(ctx, nil, buf)
 	require.NoError(t, err)
 
 	require.Truef(t, root.Equals(last), "imported chain differed from exported chain")
@@ -198,7 +198,7 @@ func TestChainExportImportFull(t *testing.T) {
 	cs := store.NewChainStore(nbs, nbs, ds, filcns.Weight, nil)
 	defer cs.Close() //nolint:errcheck
 
-	root, _, _, err := cs.Import(context.TODO(), buf)
+	root, _, err := cs.Import(context.TODO(), nil, buf)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -286,17 +286,13 @@ func TestChainExportImportWithF3Data(t *testing.T) {
 	defer cs.Close() //nolint:errcheck
 
 	nf3ds := datastore.NewMapDatastore()
-	root, _, f3r, err := cs.Import(context.TODO(), buf)
+	root, _, err := cs.Import(context.TODO(), nf3ds, buf)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	err = cs.SetHead(context.Background(), last)
 	if err != nil {
-		t.Fatal(err)
-	}
-
-	if err = cs.ImportF3Data(context.TODO(), nf3ds, f3r); err != nil {
 		t.Fatal(err)
 	}
 
@@ -327,13 +323,8 @@ func TestChainExportImportWithF3Data(t *testing.T) {
 		}
 	}
 
-	prefix, err := cs.F3DatastorePrefix(context.TODO())
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	prefix := store.F3DatastorePrefix()
 	f3DsWrapper := namespace.Wrap(nf3ds, prefix)
-
 	importedCertStore, err := certstore.OpenStore(context.Background(), f3DsWrapper)
 	if err != nil {
 		t.Fatal(err)
