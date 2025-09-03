@@ -101,13 +101,26 @@ This ToC was generated using [Markdown All in One](https://marketplace.visualstu
 
 # Introduction
 
-The Filecoin V2 APIs represent a significant redesign of Filecoin's RPC interface with several important goals in mind:
+The Filecoin V2 APIs represent a significant redesign of Filecoin's RPC interface for non-ETH APIs with several important goals in mind:
 
 1. **User-Friendly Interface**: The APIs provide intuitive ways to interact with the Filecoin network without requiring deep technical knowledge of its internals.
 2. **Expressive Selection Mechanisms**: Through the Selector pattern, users can clearly express what data they want using criteria that make sense for their use case.
 3. **Smaller API Footprint**: By using flexible selectors, we've reduced the number of distinct API methods needed, consolidating functionality into fewer, more powerful endpoints.
 4. **F3 Awareness**: The APIs are fully aware of Filecoin Fast Finality (F3) and can automatically adapt to provide the appropriate finality guarantees based on the node's consensus protocol.
 5. **Future Extensibility**: The design allows for extending selection criteria without breaking existing functionality or requiring new API methods.
+
+ETH APIs have also been updated with F3 awareness for the `finalized` and `safe` tags (see [Ethereum (Eth)](#ethereum-eth)).
+
+| Group | Dimension | `/v1` | `/v2` |
+| --- | --- | --- | --- |
+| non-ETH APIs | F3 awareness | ❌ | ✅ |
+|  | Selector pattern | ❌ | ✅ |
+|  | Stable | ✅ | Experimental.  There are no known changes to make, but we’ll make breaking changes in response to user feedback. |
+|  | Support level | Full.  Critical bugs can trigger emergency patch releases.  Backwards compatibility is a chief concern. | Very responsive to any feedback or bugs, and bugs impacting production usage can trigger an emergency patch release.  Backwards compatbility isn’t a concern currently until we get more feedback on the API. |
+|  | Footprint | Large as has accumulated bloat over the years. | Small.  There is a lot of functionality from `/v1` that doesn’t have a `v2` corrolary yet. |
+| ETH APIs | F3 awareness | ❌ | ✅ :`finalized` and `safe` tags consult the F3 subsystem (see [Ethereum (Eth)](#ethereum-eth)). |
+|  | Support level | Full | Same  |
+|  | Footprint | See [Lotus Ethereum API Compatibility](https://www.notion.so/filecoindev/Lotus-Ethereum-API-Compatibility-1d0dc41950c180cc8c3ecc9033d56cc7)  | Same.  Any `/v1` ETH APIs are supported in `/v2`. |
 
 # The Selector Pattern
 
