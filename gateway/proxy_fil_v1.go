@@ -160,6 +160,13 @@ func (pv1 *reverseProxyV1) ChainGetTipSet(ctx context.Context, tsk types.TipSetK
 	return pv1.server.ChainGetTipSet(ctx, tsk)
 }
 
+func (pv1 *reverseProxyV1) ChainGetFinalizedTipSet(ctx context.Context) (*types.TipSet, error) {
+	if err := pv1.gateway.limit(ctx, basicRateLimitTokens); err != nil {
+		return nil, err
+	}
+	return pv1.server.ChainGetFinalizedTipSet(ctx)
+}
+
 func (pv1 *reverseProxyV1) ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) {
 	if err := pv1.gateway.limit(ctx, chainRateLimitTokens); err != nil {
 		return nil, err

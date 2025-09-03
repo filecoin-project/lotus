@@ -16,6 +16,7 @@
   - snapshot export now defaults to v2 format with embedded F3 finality certificates, dramatically reducing F3 catchup time from ~8 hours
   - transparently imports both v1 and v2 snapshot formats
   - to export v1 snapshots, use `lotus chain export --skip-old-msgs --recent-stateroots=2001 --snapshot-version=1 <filename>`
+- feat(f3): expose simple ChainGetFinalizedTipSet API on v1 (and gateway) that just returns the latest F3 finalized tipset, or falls back to EC finality if F3 is not operational on the node or if the F3 finalized tipset is further back than EC finalized tipset. This API can be used for follow-up state calls that clamp to a specific tipset to have assurance of state finality. ([filecoin-project/lotus#13299](https://github.com/filecoin-project/lotus/pull/13299))
 
 
 # Node v1.33.1 / 2025-07-31
