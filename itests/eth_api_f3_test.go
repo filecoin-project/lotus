@@ -142,7 +142,7 @@ func TestEthAPIWithF3(t *testing.T) {
 			}
 		}
 		ecFinalized    = ecFixedLookback(policy.ChainFinality)
-		ecSafeV1       = ecFixedLookback(30)
+		ecSafeV1       = ecFixedLookback(200)
 		ecSafeV2       = ecFixedLookback(200)
 		tipSetAtHeight = func(height abi.ChainEpoch) func(t *testing.T) *types.TipSet {
 			return func(t *testing.T) *types.TipSet {
@@ -218,7 +218,7 @@ func TestEthAPIWithF3(t *testing.T) {
 				mockF3.LatestCertErr = nil
 				mockF3.LatestCert = plausibleCertAt(t, f3FinalizedEpoch)
 			},
-			wantTipSetV1: ecFinalized,
+			wantTipSetV1: f3Finalized,
 			wantTipSetV2: f3Finalized,
 		},
 		{
@@ -230,7 +230,7 @@ func TestEthAPIWithF3(t *testing.T) {
 				mockF3.LatestCertErr = nil
 				mockF3.LatestCert = plausibleCertAt(t, targetHeight)
 			},
-			wantTipSetV1: ecSafeV1,
+			wantTipSetV1: tipSetAtHeight(targetHeight),
 			wantTipSetV2: tipSetAtHeight(targetHeight),
 		},
 		{
@@ -303,8 +303,8 @@ func TestEthAPIWithF3(t *testing.T) {
 				mockF3.LatestCert = nil
 				mockF3.LatestCertErr = internalF3Error
 			},
-			wantTipSetV1: ecFinalized,
-			wantErrV2:    internalF3Error.Error(),
+			wantErrV1: internalF3Error.Error(),
+			wantErrV2: internalF3Error.Error(),
 		},
 		{
 			name:     "safe tag when f3 fails, but f3 is not activated",
@@ -315,8 +315,8 @@ func TestEthAPIWithF3(t *testing.T) {
 				mockF3.LatestCert = nil
 				mockF3.LatestCertErr = internalF3Error
 			},
-			wantTipSetV1: ecSafeV1,
-			wantErrV2:    internalF3Error.Error(),
+			wantErrV1: internalF3Error.Error(),
+			wantErrV2: internalF3Error.Error(),
 		},
 		{
 			name:     "safe tag when f3 fails",
@@ -327,8 +327,8 @@ func TestEthAPIWithF3(t *testing.T) {
 				mockF3.LatestCert = nil
 				mockF3.LatestCertErr = internalF3Error
 			},
-			wantTipSetV1: ecSafeV1,
-			wantErrV2:    internalF3Error.Error(),
+			wantErrV1: internalF3Error.Error(),
+			wantErrV2: internalF3Error.Error(),
 		},
 		{
 			name:     "finalize tag when f3 is too far behind falls back to ec",
@@ -363,8 +363,8 @@ func TestEthAPIWithF3(t *testing.T) {
 				mockF3.LatestCert = implausibleCert
 				mockF3.LatestCertErr = nil
 			},
-			wantTipSetV1: ecFinalized,
-			wantErrV2:    "decoding latest f3 cert tipset key",
+			wantErrV1: "decoding latest f3 cert tipset key",
+			wantErrV2: "decoding latest f3 cert tipset key",
 		},
 		{
 			name:     "safe tag when f3 is broken, but f3 is not activated",
@@ -375,8 +375,8 @@ func TestEthAPIWithF3(t *testing.T) {
 				mockF3.LatestCert = implausibleCert
 				mockF3.LatestCertErr = nil
 			},
-			wantTipSetV1: ecSafeV1,
-			wantErrV2:    "decoding latest f3 cert tipset key",
+			wantErrV1: "decoding latest f3 cert tipset key",
+			wantErrV2: "decoding latest f3 cert tipset key",
 		},
 		{
 			name:     "safe tag when f3 is broken",
@@ -387,8 +387,8 @@ func TestEthAPIWithF3(t *testing.T) {
 				mockF3.LatestCert = implausibleCert
 				mockF3.LatestCertErr = nil
 			},
-			wantTipSetV1: ecSafeV1,
-			wantErrV2:    "decoding latest f3 cert tipset key",
+			wantErrV1: "decoding latest f3 cert tipset key",
+			wantErrV2: "decoding latest f3 cert tipset key",
 		},
 		{
 			name:     "height before ec finalized epoch is ok",
