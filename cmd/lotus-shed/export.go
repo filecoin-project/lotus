@@ -20,6 +20,7 @@ import (
 	"github.com/ipfs/boxo/ipld/merkledag"
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore/namespace"
 	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/ipld/go-car"
 	"github.com/multiformats/go-base32"
@@ -28,6 +29,7 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-f3/certstore"
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/blockstore"
@@ -120,6 +122,11 @@ var exportChainCmd = &cli.Command{
 			return err
 		}
 
+		f3Ds, err := lr.Datastore(ctx, "/f3")
+		if err != nil {
+			return xerrors.Errorf("failed to open f3 datastore: %w", err)
+		}
+
 		nroots := abi.ChainEpoch(cctx.Int64("recent-stateroots"))
 		fullstate := cctx.Bool("full-state")
 		skipoldmsgs := cctx.Bool("skip-old-msgs")
@@ -133,7 +140,14 @@ var exportChainCmd = &cli.Command{
 			nroots = ts.Height() + 1
 		}
 
-		if err := cs.Export(ctx, ts, nroots, skipoldmsgs, fi); err != nil {
+		prefix := store.F3DatastorePrefix()
+		f3DsWrapper := namespace.Wrap(f3Ds, prefix)
+		certStore, err := certstore.OpenStore(context.Background(), f3DsWrapper)
+		if err != nil {
+			return xerrors.Errorf("failed to open certstore: %w", err)
+		}
+
+		if err := cs.ExportV2(ctx, ts, nroots, skipoldmsgs, certStore, fi); err != nil {
 			return xerrors.Errorf("export failed: %w", err)
 		}
 

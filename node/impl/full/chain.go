@@ -639,7 +639,7 @@ func (a *ChainAPI) ChainExport(ctx context.Context, nroots abi.ChainEpoch, skipo
 	go func() {
 		bw := bufio.NewWriterSize(w, 1<<20)
 
-		err := a.Chain.Export(ctx, ts, nroots, skipoldmsgs, bw)
+		err = a.Chain.ExportV1(ctx, ts, nroots, skipoldmsgs, bw)
 		_ = bw.Flush()            // it is a write to a pipe
 		_ = w.CloseWithError(err) // it is a pipe
 	}()

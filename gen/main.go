@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/exchange"
 	"github.com/filecoin-project/lotus/chain/market"
+	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/cmd/lotus-shed/shedgen"
 	"github.com/filecoin-project/lotus/conformance/chaos"
@@ -29,6 +30,7 @@ func main() {
 	lets.Go(generateBlockstore)
 	lets.Go(generateChainExchange)
 	lets.Go(generateChainMarket)
+	lets.Go(generateSnapshotMetadata)
 	lets.Go(generateChainTypes)
 	lets.Go(generateConformanceChaos)
 	lets.Go(generateLotusShed)
@@ -148,6 +150,12 @@ func generatePaychmgr() error {
 		paychmgr.VoucherInfo{},
 		paychmgr.ChannelInfo{},
 		paychmgr.MsgInfo{},
+	)
+}
+
+func generateSnapshotMetadata() error {
+	return gen.WriteMapEncodersToFile("./chain/store/cbor_gen.go", "store",
+		store.SnapshotMetadata{},
 	)
 }
 

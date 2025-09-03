@@ -304,7 +304,8 @@ var importBenchCmd = &cli.Command{
 				return fmt.Errorf("no CAR file provided for import")
 			}
 
-			head, _, err = cs.Import(cctx.Context, carFile)
+			f3Ds := datastore.NewMapDatastore()
+			head, _, err = cs.Import(cctx.Context, f3Ds, carFile)
 			if err != nil {
 				return err
 			}
