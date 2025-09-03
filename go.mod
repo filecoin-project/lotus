@@ -36,7 +36,7 @@ require (
 	github.com/elastic/go-elasticsearch/v7 v7.14.0
 	github.com/elastic/go-sysinfo v1.7.0
 	github.com/elastic/gosigar v0.14.3
-	github.com/etclabscore/go-openrpc-reflect v0.0.36
+	github.com/etclabscore/go-openrpc-reflect v0.0.37
 	github.com/fatih/color v1.18.0
 	github.com/filecoin-project/filecoin-ffi v1.33.1-dev // dependency-check-ignore: nv27 skeleton
 	github.com/filecoin-project/go-address v1.2.0
