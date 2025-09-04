@@ -130,6 +130,8 @@ type FullNodeMethods struct {
 
 	ChainGetEvents func(p0 context.Context, p1 cid.Cid) ([]types.Event, error) `perm:"read"`
 
+	ChainGetFinalizedTipSet func(p0 context.Context) (*types.TipSet, error) `perm:"read"`
+
 	ChainGetGenesis func(p0 context.Context) (*types.TipSet, error) `perm:"read"`
 
 	ChainGetMessage func(p0 context.Context, p1 cid.Cid) (*types.Message, error) `perm:"read"`
@@ -615,6 +617,8 @@ type GatewayMethods struct {
 	ChainGetBlockMessages func(p0 context.Context, p1 cid.Cid) (*BlockMessages, error) ``
 
 	ChainGetEvents func(p0 context.Context, p1 cid.Cid) ([]types.Event, error) ``
+
+	ChainGetFinalizedTipSet func(p0 context.Context) (*types.TipSet, error) ``
 
 	ChainGetGenesis func(p0 context.Context) (*types.TipSet, error) ``
 
@@ -1443,6 +1447,17 @@ func (s *FullNodeStruct) ChainGetEvents(p0 context.Context, p1 cid.Cid) ([]types
 
 func (s *FullNodeStub) ChainGetEvents(p0 context.Context, p1 cid.Cid) ([]types.Event, error) {
 	return *new([]types.Event), ErrNotSupported
+}
+
+func (s *FullNodeStruct) ChainGetFinalizedTipSet(p0 context.Context) (*types.TipSet, error) {
+	if s.Internal.ChainGetFinalizedTipSet == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.ChainGetFinalizedTipSet(p0)
+}
+
+func (s *FullNodeStub) ChainGetFinalizedTipSet(p0 context.Context) (*types.TipSet, error) {
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) ChainGetGenesis(p0 context.Context) (*types.TipSet, error) {
@@ -4050,6 +4065,17 @@ func (s *GatewayStruct) ChainGetEvents(p0 context.Context, p1 cid.Cid) ([]types.
 
 func (s *GatewayStub) ChainGetEvents(p0 context.Context, p1 cid.Cid) ([]types.Event, error) {
 	return *new([]types.Event), ErrNotSupported
+}
+
+func (s *GatewayStruct) ChainGetFinalizedTipSet(p0 context.Context) (*types.TipSet, error) {
+	if s.Internal.ChainGetFinalizedTipSet == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.ChainGetFinalizedTipSet(p0)
+}
+
+func (s *GatewayStub) ChainGetFinalizedTipSet(p0 context.Context) (*types.TipSet, error) {
+	return nil, ErrNotSupported
 }
 
 func (s *GatewayStruct) ChainGetGenesis(p0 context.Context) (*types.TipSet, error) {

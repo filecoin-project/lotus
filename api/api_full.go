@@ -106,8 +106,18 @@ type FullNode interface {
 
 	// ChainGetBlock returns the block specified by the given CID.
 	ChainGetBlock(context.Context, cid.Cid) (*types.BlockHeader, error) //perm:read
+
 	// ChainGetTipSet returns the tipset specified by the given TipSetKey.
 	ChainGetTipSet(context.Context, types.TipSetKey) (*types.TipSet, error) //perm:read
+
+	// ChainGetFinalizedTipSet returns the latest finalized tipset. It uses the
+	// current F3 instance to determine the finalized tipset.
+	// This is the tipset at the end of the last finalized round and can be used
+	// for follow-up querying of the chain state with the assurance that the
+	// state will not change.
+	// If F3 is operational and finalizing in this node. If not, it will fall back
+	// to the Expected Consensus (EC) finality definition of head - 900 epochs.
+	ChainGetFinalizedTipSet(ctx context.Context) (*types.TipSet, error) //perm:read
 
 	// ChainGetBlockMessages returns messages stored in the specified block.
 	//

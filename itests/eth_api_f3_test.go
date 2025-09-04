@@ -823,45 +823,14 @@ func TestEthAPIWithF3(t *testing.T) {
 			}
 			for _, test := range testCases {
 				t.Run(test.name, func(t *testing.T) {
-					mkStableExecute := func(wantTipSet func(t *testing.T) *types.TipSet) func(fn func()) *types.TipSet {
-						if wantTipSet == nil {
-							wantTipSet = func(t *testing.T) *types.TipSet { return nil }
-						}
-						// stableExecute is a helper that will execute a function required by the test case
-						// repeatedly until the tipset observed before is the same as after execution of the
-						// function. This helps reduce flakies that come from reorgs between capturing the tipset
-						// and executing the function.
-						// Unfortunately it doesn't remove the problem entirely as we could have multiple reorgs
-						// off the tipset we observe and then back to it, but it should be extremely rare.
-						return func(fn func()) *types.TipSet {
-							beforeTs := wantTipSet(t)
-							for {
-								select {
-								case <-ctx.Done():
-									t.Fatalf("context cancelled during stable execution: %v", ctx.Err())
-								default:
-								}
-
-								fn()
-								afterTs := wantTipSet(t)
-								if beforeTs.Equals(afterTs) {
-									// it seems that the chain hasn't changed while executing, so it ought to be safe to
-									// tell the test function that this is the tipset against which they executed
-									return beforeTs
-								}
-								beforeTs = afterTs
-							}
-						}
-					}
-
 					t.Run("v1", func(t *testing.T) {
-						stableExecute := mkStableExecute(state.wantTipSetV1)
+						stableExecute := kit.MakeStableExecute(ctx, t, state.wantTipSetV1)
 						subject := client
 						test.execute(require.New(t), subject, state.blkParam, stableExecute, state.wantErrV1)
 					})
 
 					t.Run("v2", func(t *testing.T) {
-						stableExecute := mkStableExecute(state.wantTipSetV2)
+						stableExecute := kit.MakeStableExecute(ctx, t, state.wantTipSetV2)
 						subject := client.V2
 						test.execute(require.New(t), subject, state.blkParam, stableExecute, state.wantErrV2)
 					})
