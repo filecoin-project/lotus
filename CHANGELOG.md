@@ -66,12 +66,38 @@ There is no pre-migration or migration with this network upgrade.
 
 For the set of changes since the last stable release:
 
-- Node: https://github.com/filecoin-project/lotus/compare/v1.33.1...v1.34.0
-- Miner: https://github.com/filecoin-project/lotus/compare/v1.3.1...miner/v1.34.1
+- Node: https://github.com/filecoin-project/lotus/compare/release/v1.33.1...release/v1.34.0
+- Miner: https://github.com/filecoin-project/lotus/compare/release/v1.3.1...release/miner/v1.34.1
 
 ## 👨‍👩‍👧‍👦 Contributors
 
-TODO
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Rod Vagg | 11 | +1780/-717 | 47 |
+| TippyFlits | 2 | +1058/-734 | 32 |
+| tediou5 | 1 | +610/-22 | 14 |
+| chris-4chain | 1 | +222/-23 | 7 |
+| Steven Allen | 1 | +142/-68 | 3 |
+| beck | 2 | +141/-52 | 8 |
+| Phi-rjan | 7 | +114/-75 | 20 |
+| dependabot[bot] | 12 | +81/-86 | 24 |
+| Steve Loeppky | 7 | +132/-29 | 7 |
+| hanabi1224 | 2 | +91/-24 | 3 |
+| raul0ligma | 1 | +88/-4 | 5 |
+| William Morriss | 3 | +41/-13 | 7 |
+| Copilot | 1 | +46/-0 | 1 |
+| deepdring | 1 | +6/-6 | 6 |
+| Block Wizard | 3 | +6/-6 | 5 |
+| wmypku | 1 | +4/-4 | 2 |
+| queryfast | 1 | +4/-4 | 4 |
+| minxinyi | 1 | +4/-4 | 4 |
+| web3-bot | 2 | +3/-3 | 3 |
+| tzchenxixi | 1 | +3/-3 | 3 |
+| haouvw | 1 | +3/-3 | 2 |
+| TimberLake | 1 | +3/-3 | 2 |
+| Jakub Sztandera | 2 | +3/-3 | 3 |
+| Micke | 1 | +2/-2 | 2 |
+| longhutianjie | 1 | +1/-1 | 1 |
 
 
 # Node v1.33.1 / 2025-07-31
