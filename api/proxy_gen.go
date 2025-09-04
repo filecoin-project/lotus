@@ -498,6 +498,8 @@ type FullNodeMethods struct {
 
 	StateMinerAvailableBalance func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.BigInt, error) `perm:"read"`
 
+	StateMinerCreationDeposit func(p0 context.Context, p1 types.TipSetKey) (types.BigInt, error) `perm:"read"`
+
 	StateMinerDeadlines func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]Deadline, error) `perm:"read"`
 
 	StateMinerFaults func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (bitfield.BitField, error) `perm:"read"`
@@ -3470,6 +3472,17 @@ func (s *FullNodeStruct) StateMinerAvailableBalance(p0 context.Context, p1 addre
 }
 
 func (s *FullNodeStub) StateMinerAvailableBalance(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.BigInt, error) {
+	return *new(types.BigInt), ErrNotSupported
+}
+
+func (s *FullNodeStruct) StateMinerCreationDeposit(p0 context.Context, p1 types.TipSetKey) (types.BigInt, error) {
+	if s.Internal.StateMinerCreationDeposit == nil {
+		return *new(types.BigInt), ErrNotSupported
+	}
+	return s.Internal.StateMinerCreationDeposit(p0, p1)
+}
+
+func (s *FullNodeStub) StateMinerCreationDeposit(p0 context.Context, p1 types.TipSetKey) (types.BigInt, error) {
 	return *new(types.BigInt), ErrNotSupported
 }
 
