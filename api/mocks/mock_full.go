@@ -3422,6 +3422,21 @@ func (mr *MockFullNodeMockRecorder) StateMinerAvailableBalance(arg0, arg1, arg2 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMinerAvailableBalance", reflect.TypeOf((*MockFullNode)(nil).StateMinerAvailableBalance), arg0, arg1, arg2)
 }
 
+// StateMinerCreationDeposit mocks base method.
+func (m *MockFullNode) StateMinerCreationDeposit(arg0 context.Context, arg1 types.TipSetKey) (big.Int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateMinerCreationDeposit", arg0, arg1)
+	ret0, _ := ret[0].(big.Int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateMinerCreationDeposit indicates an expected call of StateMinerCreationDeposit.
+func (mr *MockFullNodeMockRecorder) StateMinerCreationDeposit(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMinerCreationDeposit", reflect.TypeOf((*MockFullNode)(nil).StateMinerCreationDeposit), arg0, arg1)
+}
+
 // StateMinerDeadlines mocks base method.
 func (m *MockFullNode) StateMinerDeadlines(arg0 context.Context, arg1 address.Address, arg2 types.TipSetKey) ([]api.Deadline, error) {
 	m.ctrl.T.Helper()

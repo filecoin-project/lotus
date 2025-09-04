@@ -9,7 +9,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
 	power2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/power"
 	power6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/power"
 
@@ -94,10 +93,15 @@ func CreateStorageMiner(ctx context.Context, fullNode v1api.FullNode, owner, wor
 		return address.Undef, err
 	}
 
+	deposit, err := fullNode.StateMinerCreationDeposit(ctx, types.EmptyTSK)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("getting miner creation deposit: %w", err)
+	}
+
 	createStorageMinerMsg := &types.Message{
 		To:    power.Address,
 		From:  sender,
-		Value: big.Zero(),
+		Value: deposit,
 
 		Method: power.Methods.CreateMiner,
 		Params: params,

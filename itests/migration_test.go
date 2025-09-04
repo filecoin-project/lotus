@@ -28,9 +28,11 @@ import (
 	miner9 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	verifregst "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/go-state-types/network"
 	gstStore "github.com/filecoin-project/go-state-types/store"
+	power6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/power"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
@@ -1150,6 +1152,154 @@ func preFip0081StateMinerInitialPledgeForSector(ctx context.Context, t *testing.
 	var initialPledgeDen = types.NewInt(100)
 
 	return types.BigDiv(types.BigMul(initialPledge, initialPledgeNum), initialPledgeDen)
+}
+
+// TestMigrationNv27StateMinerCreationDepositAPI tests the StateMinerCreationDeposit API functionality across NV27 upgrade
+func TestMigrationNv27StateMinerCreationDepositAPI(t *testing.T) {
+	kit.QuietMiningLogs()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	nv27epoch := abi.ChainEpoch(100)
+	testClient, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(),
+		kit.UpgradeSchedule(stmgr.Upgrade{
+			Network: network.Version26,
+			Height:  -1,
+		}, stmgr.Upgrade{
+			Network:   network.Version27,
+			Height:    nv27epoch,
+			Migration: filcns.UpgradeActorsV17,
+		},
+		))
+
+	// Create a minimal ensemble with one full node
+	ens.InterconnectAll().BeginMining(5 * time.Millisecond)
+
+	testClient.WaitTillChain(ctx, kit.HeightAtLeast(nv27epoch-50))
+	deposit, err := testClient.StateMinerCreationDeposit(ctx, types.EmptyTSK)
+	require.NoError(t, err)
+	require.True(t, deposit.IsZero(), "deposit should be zero")
+
+	testClient.WaitTillChain(ctx, kit.HeightAtLeast(nv27epoch+50))
+	deposit, err = testClient.StateMinerCreationDeposit(ctx, types.EmptyTSK)
+	require.NoError(t, err)
+	require.True(t, deposit.GreaterThan(big.Zero()), "deposit should be greater than zero")
+}
+
+// TestMigrationNv27MinerCreationDeposit tests FIP-0077 miner creation deposit validation across NV27 upgrade
+func TestMigrationNv27MinerCreationDeposit(t *testing.T) {
+	kit.QuietMiningLogs()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	nv27epoch := abi.ChainEpoch(100)
+	testClient, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(),
+		kit.UpgradeSchedule(stmgr.Upgrade{
+			Network: network.Version26,
+			Height:  -1,
+		}, stmgr.Upgrade{
+			Network:   network.Version27,
+			Height:    nv27epoch,
+			Migration: filcns.UpgradeActorsV17,
+		},
+		))
+
+	// Create a minimal ensemble with one full node
+	ens.InterconnectAll().BeginMining(5 * time.Millisecond)
+
+	runTestFn := func(tc struct {
+		name           string
+		deposit        big.Int
+		expectExitCode exitcode.ExitCode
+	}) {
+		t.Run(tc.name, func(t *testing.T) {
+			// Create owner and worker addresses
+			owner, err := testClient.WalletNew(ctx, types.KTSecp256k1)
+			require.NoError(t, err)
+			worker, err := testClient.WalletNew(ctx, types.KTBLS)
+			require.NoError(t, err)
+
+			// Fund the accounts
+			fundAmount := big.Add(tc.deposit, types.FromFil(10)) // Ensure enough for any test case
+			kit.SendFunds(ctx, t, testClient, owner, fundAmount)
+			kit.SendFunds(ctx, t, testClient, worker, fundAmount)
+
+			// Prepare CreateMiner parameters
+			params, err := actors.SerializeParams(&power6.CreateMinerParams{
+				Owner:               owner,
+				Worker:              worker,
+				WindowPoStProofType: abi.RegisteredPoStProof_StackedDrgWindow32GiBV1_1,
+			})
+			require.NoError(t, err)
+
+			// Create the message with test deposit amount
+			createMinerMsg := &types.Message{
+				To:     power.Address,
+				From:   owner,
+				Value:  tc.deposit,
+				Method: power.Methods.CreateMiner,
+				Params: params,
+			}
+
+			// Send the message
+			signed, err := testClient.MpoolPushMessage(ctx, createMinerMsg, nil)
+			if err != nil {
+				require.ErrorContains(t, err, tc.expectExitCode.String())
+			} else {
+				// Wait for the message to be processed
+				r, err := testClient.StateWaitMsg(ctx, signed.Cid(), buildconstants.MessageConfidence, api.LookbackNoLimit, true)
+				require.NoError(t, err)
+				require.Equal(t, tc.expectExitCode, r.Receipt.ExitCode)
+			}
+		})
+	}
+
+	testCasesNv26 := []struct {
+		name           string
+		deposit        big.Int
+		expectExitCode exitcode.ExitCode
+	}{
+		{
+			name:           "NV26_ZeroDeposit_ShouldSucceed",
+			deposit:        big.Zero(),
+			expectExitCode: exitcode.Ok,
+		},
+		{
+			name:           "NV26_SufficientDeposit_ShouldSucceed",
+			deposit:        types.FromFil(1),
+			expectExitCode: exitcode.Ok,
+		},
+	}
+
+	for _, tc := range testCasesNv26 {
+		runTestFn(tc)
+	}
+
+	testCasesNv27 := []struct {
+		name           string
+		deposit        big.Int
+		expectExitCode exitcode.ExitCode
+	}{
+		{
+			name:           "NV27_ZeroDeposit_ShouldFail",
+			deposit:        big.Zero(),
+			expectExitCode: exitcode.ErrInsufficientFunds,
+		},
+		{
+			name:           "NV27_SufficientDeposit_ShouldSucceed",
+			deposit:        types.FromFil(1),
+			expectExitCode: exitcode.Ok,
+		},
+	}
+
+	head := testClient.WaitTillChain(ctx, kit.HeightAtLeast(nv27epoch+10))
+	t.Logf("Testing at height: %d", head.Height())
+
+	for _, tc := range testCasesNv27 {
+		runTestFn(tc)
+	}
 }
 
 func TestMigrationTeepTockFix(t *testing.T) {
