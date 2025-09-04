@@ -410,7 +410,7 @@ func TestEthBlockNumberAliases(t *testing.T) {
 		expectedLag abi.ChainEpoch
 	}{
 		{"latest", 1},                       // head - 1
-		{"safe", 30},                        // "latest" - 30
+		{"safe", 200},                       // "latest" - 200 when F3 isn't running
 		{"finalized", policy.ChainFinality}, // "latest" - 900
 	} {
 		t.Run(tc.param, func(t *testing.T) {
