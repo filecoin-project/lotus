@@ -459,6 +459,12 @@ type FullNode interface {
 	// Note: The value returned is overestimated by 10% (multiplied by 110/100).
 	// See: node/impl/full/state.go StateMinerInitialPledgeForSector implementation.
 	StateMinerInitialPledgeForSector(ctx context.Context, sectorDuration abi.ChainEpoch, sectorSize abi.SectorSize, verifiedSize uint64, tsk types.TipSetKey) (types.BigInt, error) //perm:read
+	// StateMinerCreationDeposit calculates the deposit required for creating a new miner
+	// according to FIP-0077 specification. This deposit is based on the network's current
+	// economic parameters including circulating supply, network power, and pledge collateral.
+	//
+	// See: node/impl/full/state.go StateMinerCreationDeposit implementation.
+	StateMinerCreationDeposit(ctx context.Context, tsk types.TipSetKey) (types.BigInt, error) //perm:read
 	// StateMinerAvailableBalance returns the portion of a miner's balance that can be withdrawn or
 	// spent. It is calculated by subtracting the following from the miner actor's balance:
 	// * Locked vesting funds (accounting for vesting funds that should already be unlocked)
