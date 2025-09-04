@@ -36,9 +36,15 @@ You can follow this release issue for keeping up with the other expected release
 
 TODO
 
-## 🏛️ Filecoin network version 27 FIPs
+## 🏛️ Filecoin network version 27 FIPs and FRCs
 
-TODO
+- [FIP-0105: BLS12-381 Precompiles for FEVM (EIP-2537)](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0105.md)
+- [FIP-0109: Smart contract notifications for Direct Data Onboarding (DDO)](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0109.md)
+- [FIP-0077: Add deposit requirement for new miner creation](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0077.md)
+- [FIP-0103: Remove ExtendSectorExpiration method](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0103.md)
+- [FIP-0106: Remove ProveReplicaUpdates method](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0106.md)
+- [FIP-0101: Remove ProveCommitAggregate method](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0101.md)
+- [FRC-0108: F3-compatible snapshots](https://github.com/filecoin-project/FIPs/blob/master/FRCs/frc-0108.md)
 
 ## 📦 v17 Builtin Actor Bundle
 
