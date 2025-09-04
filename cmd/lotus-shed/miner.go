@@ -34,6 +34,7 @@ import (
 	power7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 
+	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -239,7 +240,7 @@ var minerCreateCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		wapi, closer, err := lcli.GetFullNodeAPI(cctx)
+		wapi, closer, err := lcli.GetFullNodeAPIV1(cctx)
 		if err != nil {
 			return err
 		}
@@ -292,7 +293,7 @@ var minerCreateCmd = &cli.Command{
 			log.Infof("Initializing worker account %s, message: %s", worker, signed.Cid())
 			log.Infof("Waiting for confirmation")
 
-			mw, err := wapi.StateWaitMsg(ctx, signed.Cid(), uint64(cctx.Int("confidence")))
+			mw, err := wapi.StateWaitMsg(ctx, signed.Cid(), uint64(cctx.Int("confidence")), lapi.LookbackNoLimit, true)
 			if err != nil {
 				return xerrors.Errorf("waiting for worker init: %w", err)
 			}
@@ -317,7 +318,7 @@ var minerCreateCmd = &cli.Command{
 			log.Infof("Initializing owner account %s, message: %s", worker, signed.Cid())
 			log.Infof("Waiting for confirmation")
 
-			mw, err := wapi.StateWaitMsg(ctx, signed.Cid(), buildconstants.MessageConfidence)
+			mw, err := wapi.StateWaitMsg(ctx, signed.Cid(), uint64(cctx.Int("confidence")), lapi.LookbackNoLimit, true)
 			if err != nil {
 				return xerrors.Errorf("waiting for owner init: %w", err)
 			}
@@ -347,10 +348,16 @@ var minerCreateCmd = &cli.Command{
 			return err
 		}
 
+		// Calculate miner creation deposit according to FIP-0077
+		deposit, err := wapi.StateMinerCreationDeposit(ctx, types.EmptyTSK)
+		if err != nil {
+			return xerrors.Errorf("getting miner creation deposit: %w", err)
+		}
+
 		createStorageMinerMsg := &types.Message{
 			To:    power.Address,
 			From:  sender,
-			Value: big.Zero(),
+			Value: deposit,
 
 			Method: power.Methods.CreateMiner,
 			Params: params,
@@ -364,7 +371,7 @@ var minerCreateCmd = &cli.Command{
 		log.Infof("Pushed CreateMiner message: %s", signed.Cid())
 		log.Infof("Waiting for confirmation")
 
-		mw, err := wapi.StateWaitMsg(ctx, signed.Cid(), buildconstants.MessageConfidence)
+		mw, err := wapi.StateWaitMsg(ctx, signed.Cid(), uint64(cctx.Int("confidence")), lapi.LookbackNoLimit, true)
 		if err != nil {
 			return xerrors.Errorf("waiting for createMiner message: %w", err)
 		}

@@ -26,7 +26,6 @@ import (
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
 	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/go-statestore"
@@ -740,10 +739,16 @@ func createStorageMiner(ctx context.Context, api v1api.FullNode, ssize abi.Secto
 		return address.Undef, err
 	}
 
+	// Calculate miner creation deposit according to FIP-0077
+	deposit, err := api.StateMinerCreationDeposit(ctx, types.EmptyTSK)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("getting miner creation deposit: %w", err)
+	}
+
 	createStorageMinerMsg := &types.Message{
 		To:    power.Address,
 		From:  sender,
-		Value: big.Zero(),
+		Value: deposit,
 
 		Method: power.Methods.CreateMiner,
 		Params: params,
