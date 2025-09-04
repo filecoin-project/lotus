@@ -12,9 +12,9 @@
 
 # Node and Miner v1.34.0-rc1 / 2025-09-04
 
-This is the first release candidate of the **upcoming MANDATORY Lotus v1.34.0 release**, which will deliver the Filecoin network version 27, codenamed “Golden Week” 🏮. This release candidate sets the upgrade epoch for the calibration network to **Epoch 3007294 - 2025-09-10T23:00:00Z**.  (See the [local time for other timezones](https://www.worldtimebuddy.com/?qm=1&lid=100,5128581,5368361,1816670&h=100&date=2025-9-10&sln=23-24&hf=1&c=1196).)
+This is the first release candidate of the **upcoming MANDATORY Lotus v1.34.0 release**, which will deliver the Filecoin network version 27, codenamed “Golden Week” 🏮. This release candidate sets the upgrade epoch for the calibration network to **Epoch 3007294:  2025-09-10T23:00:00Z**.  (See the [local time for other timezones](https://www.worldtimebuddy.com/?qm=1&lid=100,5128581,5368361,1816670&h=100&date=2025-9-10&sln=23-24&hf=1&c=1196).)
 
-You can follow this release issue for keeping up with the other expected release dates, epochs, and updates: ([filecoin-project/lotus#13269](https://github.com/filecoin-project/lotus/issues/13269))
+You can follow [filecoin-project/lotus#13269](https://github.com/filecoin-project/lotus/issues/13269) for keeping up with the other expected release dates, epochs, and updates.
 
 > [!NOTE]
 > 
@@ -22,8 +22,7 @@ You can follow this release issue for keeping up with the other expected release
 
 ## ☢️ Upgrade Warnings ☢️
 - All Lotus node and Storage Provider (SP) operators must upgrade to v1.34.x before the specified dates for the Calibration and Mainnet networks.
-- The `/v1` Ethereum APIs have F3 awareness for all Ethereum calls where `"finalized"` or `"safe"` is supplied.  Nodes will likely return different results in v1.34.x+ than previous versions when these tags are used.  See more info below.
-
+- The `/v1` Ethereum APIs have "F3 awareness" for all Ethereum calls where `"finalized"` or `"safe"` are supplied.  Nodes will likely return different (and likely more recent) results in v1.34.x+ than previous versions when these tags are used.  See more info below.
 
 ## 🏛️ Filecoin network version 27 FIPs and FRCs
 
@@ -37,14 +36,14 @@ You can follow this release issue for keeping up with the other expected release
 
 ## 📦 v17 Builtin Actor Bundle
 
-This release candidate uses the [v17.0.0-dev1](https://github.com/filecoin-project/builtin-actors/releases/tag/v17.0.0-dev1)
+This release candidate uses [v17.0.0-dev1](https://github.com/filecoin-project/builtin-actors/releases/tag/v17.0.0-dev1).
 
 ## 🚚 Migration
 There is no pre-migration or migration with this network upgrade.
 
 ## ⭐ New Features highlight
 
-- feat(eth): use F3 for "finalized" and "safe" resolution in v1 APIs. This switches the /v1 Ethereum APIs to have the same resolution rules as /v2, enabling F3 awareness for all Ethereum calls where `"finalized"` or `"safe"` is supplied. See [F3-aware Ethereum APIs via `/v2` endpoint and improvements to existing `/v1` APIs](#f3-aware-ethereum-apis-via-v2-endpoint-and-improvements-to-existing-v1-apis) below for details of how the /v2 APIs work as introduced in the 1.33.0 release. Set the environment variable `LOTUS_ETH_V1_DISABLE_F3_FINALITY_RESOLUTION` to `1` to revert this behaviour but note that the option to revert will likely be removed in a future release. ([filecoin-project/lotus#13298](https://github.com/filecoin-project/lotus/pull/13298))
+- feat(eth): use F3 for "finalized" and "safe" resolution in v1 APIs. This switches the /v1 Ethereum APIs to have the same resolution rules as /v2, enabling F3 awareness for all Ethereum calls where `"finalized"` or `"safe"` is supplied. See [F3-aware Ethereum APIs via `/v2` endpoint and improvements to existing `/v1` APIs](#f3-aware-ethereum-apis-via-v2-endpoint-and-improvements-to-existing-v1-apis) below for details of how the /v2 APIs work as introduced in the 1.33.0 release. Set the environment variable `LOTUS_ETH_V1_DISABLE_F3_FINALITY_RESOLUTION` to `1` to revert this behaviour but note that the option to revert will likely be removed in a future release ([tracking issue](https://github.com/filecoin-project/lotus/issues/13315)). ([filecoin-project/lotus#13298](https://github.com/filecoin-project/lotus/pull/13298))
 - feat(f3): expose simple ChainGetFinalizedTipSet API on v1 (and gateway) that just returns the latest F3 finalized tipset, or falls back to EC finality if F3 is not operational on the node or if the F3 finalized tipset is further back than EC finalized tipset. This API can be used for follow-up state calls that clamp to a specific tipset to have assurance of state finality. ([filecoin-project/lotus#13299](https://github.com/filecoin-project/lotus/pull/13299))
 - feat: support for F3-aware snapshot v2 format per [FRC-0108](https://github.com/filecoin-project/FIPs/blob/master/FRCs/frc-0108.md) ([filecoin-project/lotus#13282](https://github.com/filecoin-project/lotus/pull/13282))
   - snapshot export now defaults to v2 format with embedded F3 finality certificates, dramatically reducing F3 catchup time from ~8 hours
