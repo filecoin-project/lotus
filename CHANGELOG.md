@@ -20,6 +20,57 @@
 - feat(eth): use F3 for "finalized" and "safe" resolution in v1 APIs. This switches the /v1 Ethereum APIs to have the same resolution rules as /v2, enabling F3 awareness for all Ethereum calls where `"finalized"` or `"safe"` is supplied. See [F3-aware Ethereum APIs via `/v2` endpoint and improvements to existing `/v1` APIs](#f3-aware-ethereum-apis-via-v2-endpoint-and-improvements-to-existing-v1-apis) below for details of how the /v2 APIs work as introduced in the 1.33.0 release. Set the environment variable `LOTUS_ETH_V1_DISABLE_F3_FINALITY_RESOLUTION` to `1` to revert this behaviour but note that the option to revert will likely be removed in a future release. ([filecoin-project/lotus#13298](https://github.com/filecoin-project/lotus/pull/13298))
 - feat(f3): expose simple ChainGetFinalizedTipSet API on v1 (and gateway) that just returns the latest F3 finalized tipset, or falls back to EC finality if F3 is not operational on the node or if the F3 finalized tipset is further back than EC finalized tipset. This API can be used for follow-up state calls that clamp to a specific tipset to have assurance of state finality. ([filecoin-project/lotus#13299](https://github.com/filecoin-project/lotus/pull/13299))
 
+# Node and Miner v1.34.0-rc1 / 2025-09-04
+
+This is the first release candidate of the **upcoming MANDATORY Lotus v1.34.0 release**, which will deliver the Filecoin network version 27, codenamed “Golden Week” 🏮. This release candidate sets the upgrade epoch for the calibration network to **Epoch 3007294 - 2025-09-10T23:00:00Z**.  (See the [local time for other timezones](https://www.worldtimebuddy.com/?qm=1&lid=100,5128581,5368361,1816670&h=100&date=2025-9-10&sln=23-24&hf=1&c=1196).)
+
+You can follow this release issue for keeping up with the other expected release dates, epochs, and updates: ([filecoin-project/lotus#13269](https://github.com/filecoin-project/lotus/issues/13269))
+
+> [!NOTE]
+> 
+> 1. This release candidate does NOT set the mainnet network upgrade epoch. It will be added in the final release (expected 2025-09-11).
+
+
+
+## ☢️ Upgrade Warnings ☢️
+
+TODO
+
+## 🏛️ Filecoin network version 27 FIPs
+
+TODO
+
+## 📦 v17 Builtin Actor Bundle
+
+This release candidate uses the [v17.0.0-dev1](https://github.com/filecoin-project/builtin-actors/releases/tag/v17.0.0-dev1)
+
+## 🚚 Migration
+There is no pre-migration or migration with this network upgrade.
+
+## New Features highlight
+
+TODO
+
+## Improvements
+
+TODO
+
+## Bug Fixes
+
+TODO
+
+## 📝 Changelog
+
+For the set of changes since the last stable release:
+
+- Node: https://github.com/filecoin-project/lotus/compare/v1.33.1...v1.34.0
+- Miner: https://github.com/filecoin-project/lotus/compare/v1.3.1...miner/v1.34.1
+
+## 👨‍👩‍👧‍👦 Contributors
+
+TODO
+
+
 # Node v1.33.1 / 2025-07-31
 This is the Lotus v1.33.1 release, which introduces performance improvements and operational enhancements. This release focuses on improving F3 subsystem performance, and enhancing CLI tools for better storage provider operations. Notable improvements include up to 6-10x performance gains in F3 power table calculations, ensuring that PreCommit and ProveCommit operations are aggregating to get optimal gas usage after FIP-100, and a enhanced sector management tool with CSV output support. These improvements collectively enhance the stability and efficiency of Lotus operations for both node operators and storage providers.
 
