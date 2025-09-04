@@ -21,6 +21,8 @@ You can follow this release issue for keeping up with the other expected release
 > This release candidate does NOT set the mainnet network upgrade epoch. It will be added in the final release (expected 2025-09-11).
 
 ## ☢️ Upgrade Warnings ☢️
+- All Lotus node and Storage Provider (SP) operators must upgrade to v1.34.x before the specified dates for the Calibration and Mainnet networks.
+- The `/v1` Ethereum APIs have F3 awareness for all Ethereum calls where `"finalized"` or `"safe"` is supplied.  Nodes will likely return different results in v1.34.x+ than previous versions when these tags are used.  See more info below.
 
 
 ## 🏛️ Filecoin network version 27 FIPs and FRCs
@@ -40,7 +42,7 @@ This release candidate uses the [v17.0.0-dev1](https://github.com/filecoin-proje
 ## 🚚 Migration
 There is no pre-migration or migration with this network upgrade.
 
-## New Features highlight
+## ⭐ New Features highlight
 
 - feat(eth): use F3 for "finalized" and "safe" resolution in v1 APIs. This switches the /v1 Ethereum APIs to have the same resolution rules as /v2, enabling F3 awareness for all Ethereum calls where `"finalized"` or `"safe"` is supplied. See [F3-aware Ethereum APIs via `/v2` endpoint and improvements to existing `/v1` APIs](#f3-aware-ethereum-apis-via-v2-endpoint-and-improvements-to-existing-v1-apis) below for details of how the /v2 APIs work as introduced in the 1.33.0 release. Set the environment variable `LOTUS_ETH_V1_DISABLE_F3_FINALITY_RESOLUTION` to `1` to revert this behaviour but note that the option to revert will likely be removed in a future release. ([filecoin-project/lotus#13298](https://github.com/filecoin-project/lotus/pull/13298))
 - feat(f3): expose simple ChainGetFinalizedTipSet API on v1 (and gateway) that just returns the latest F3 finalized tipset, or falls back to EC finality if F3 is not operational on the node or if the F3 finalized tipset is further back than EC finalized tipset. This API can be used for follow-up state calls that clamp to a specific tipset to have assurance of state finality. ([filecoin-project/lotus#13299](https://github.com/filecoin-project/lotus/pull/13299))
@@ -50,13 +52,13 @@ There is no pre-migration or migration with this network upgrade.
   - to export v1 snapshots, use `lotus chain export --skip-old-msgs --recent-stateroots=2001 --snapshot-version=1 <filename>`
 - feat(net): add LOTUS_ENABLE_MESSAGE_FETCH_INSTRUMENTATION=1 to turn on metrics and debugging for local vs bitswap message fetching during block validation ([filecoin-project/lotus#13221](https://github.com/filecoin-project/lotus/pull/13221))
 
-## Improvements
+## 👌 Improvements
 - chore(docs): mark v0 API as "deprecated" and v1 as "stable" ([filecoin-project/lotus#13264](https://github.com/filecoin-project/lotus/pull/13264))
 - feat(api): add StateMinerCreationDeposit API method for FIP-0077 - calculates the deposit required for creating a new miner ([filecoin-project/lotus#13308](https://github.com/filecoin-project/lotus/pull/13308))
 - feat(spcli): correctly handle the batch logic of `lotus-miner actor settle-deal` ([#13189](https://github.com/filecoin-project/lotus/pull/13189))
 - feat(spcli): add `--all-deals` to `lotus-miner actor settle-deal` ([#13243](https://github.com/filecoin-project/lotus/pull/13243))
 
-## Bug Fixes
+## 🐛 Bug Fixes
 - fix: properly handle all RPC API retry errors ([#13279](https://github.com/filecoin-project/lotus/pull/13279))
 - fix(api): `eth_getCode` and `eth_getStorageAt` now return state after the specified block rather than before it ([filecoin-project/lotus#13274](https://github.com/filecoin-project/lotus/pull/13274))
 - fix(api): `eth_getTransactionCount` now returns state after the specified block rather than before it ([filecoin-project/lotus#13275](https://github.com/filecoin-project/lotus/pull/13275))
