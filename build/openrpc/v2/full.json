@@ -2,7 +2,7 @@
     "openrpc": "1.2.6",
     "info": {
         "title": "Lotus RPC API",
-        "version": "1.33.2-dev"
+        "version": "1.34.1-dev"
     },
     "methods": [
         {
