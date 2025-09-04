@@ -454,7 +454,7 @@
         },
         {
             "name": "Filecoin.EthEstimateGas",
-            "description": "```go\nfunc (s *FullNodeStruct) EthEstimateGas(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthUint64, error) {\n\tif s.Internal.EthEstimateGas == nil {\n\t\treturn *new(ethtypes.EthUint64), ErrNotSupported\n\t}\n\treturn s.Internal.EthEstimateGas(p0, p1)\n}\n```",
+            "description": "```go\nfunc (s *FullNodeStruct) EthEstimateGas(p0 context.Context, p1 jsonrpc.RawParams) (*ethtypes.EthUint64, error) {\n\tif s.Internal.EthEstimateGas == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.EthEstimateGas(p0, p1)\n}\n```",
             "summary": "EthEstimateGas estimates the gas required to execute a transaction.\nMaps to JSON-RPC method: \"eth_estimateGas\".\n",
             "paramStructure": "by-position",
             "params": [
@@ -484,8 +484,8 @@
                 }
             ],
             "result": {
-                "name": "ethtypes.EthUint64",
-                "description": "ethtypes.EthUint64",
+                "name": "*ethtypes.EthUint64",
+                "description": "*ethtypes.EthUint64",
                 "summary": "",
                 "schema": {
                     "title": "number",
@@ -508,7 +508,7 @@
         },
         {
             "name": "Filecoin.EthFeeHistory",
-            "description": "```go\nfunc (s *FullNodeStruct) EthFeeHistory(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthFeeHistory, error) {\n\tif s.Internal.EthFeeHistory == nil {\n\t\treturn *new(ethtypes.EthFeeHistory), ErrNotSupported\n\t}\n\treturn s.Internal.EthFeeHistory(p0, p1)\n}\n```",
+            "description": "```go\nfunc (s *FullNodeStruct) EthFeeHistory(p0 context.Context, p1 jsonrpc.RawParams) (*ethtypes.EthFeeHistory, error) {\n\tif s.Internal.EthFeeHistory == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.EthFeeHistory(p0, p1)\n}\n```",
             "summary": "EthFeeHistory retrieves historical gas fee data for a range of blocks.\nMaps to JSON-RPC method: \"eth_feeHistory\".\n",
             "paramStructure": "by-position",
             "params": [
@@ -538,8 +538,8 @@
                 }
             ],
             "result": {
-                "name": "ethtypes.EthFeeHistory",
-                "description": "ethtypes.EthFeeHistory",
+                "name": "*ethtypes.EthFeeHistory",
+                "description": "*ethtypes.EthFeeHistory",
                 "summary": "",
                 "schema": {
                     "examples": [
@@ -627,7 +627,7 @@
         },
         {
             "name": "Filecoin.EthGetBalance",
-            "description": "```go\nfunc (s *FullNodeStruct) EthGetBalance(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBlockNumberOrHash) (ethtypes.EthBigInt, error) {\n\tif s.Internal.EthGetBalance == nil {\n\t\treturn *new(ethtypes.EthBigInt), ErrNotSupported\n\t}\n\treturn s.Internal.EthGetBalance(p0, p1, p2)\n}\n```",
+            "description": "```go\nfunc (s *FullNodeStruct) EthGetBalance(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBlockNumberOrHash) (*ethtypes.EthBigInt, error) {\n\tif s.Internal.EthGetBalance == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.EthGetBalance(p0, p1, p2)\n}\n```",
             "summary": "EthGetBalance retrieves the balance of an Ethereum address at a specific block state,\nidentified by its number, hash, or a special tag like \"latest\" or \"finalized\".\nMaps to JSON-RPC method: \"eth_getBalance\".\n",
             "paramStructure": "by-position",
             "params": [
@@ -694,8 +694,8 @@
                 }
             ],
             "result": {
-                "name": "ethtypes.EthBigInt",
-                "description": "ethtypes.EthBigInt",
+                "name": "*ethtypes.EthBigInt",
+                "description": "*ethtypes.EthBigInt",
                 "summary": "",
                 "schema": {
                     "examples": [
@@ -717,7 +717,7 @@
         },
         {
             "name": "Filecoin.EthGetBlockByHash",
-            "description": "```go\nfunc (s *FullNodeStruct) EthGetBlockByHash(p0 context.Context, p1 ethtypes.EthHash, p2 bool) (ethtypes.EthBlock, error) {\n\tif s.Internal.EthGetBlockByHash == nil {\n\t\treturn *new(ethtypes.EthBlock), ErrNotSupported\n\t}\n\treturn s.Internal.EthGetBlockByHash(p0, p1, p2)\n}\n```",
+            "description": "```go\nfunc (s *FullNodeStruct) EthGetBlockByHash(p0 context.Context, p1 ethtypes.EthHash, p2 bool) (*ethtypes.EthBlock, error) {\n\tif s.Internal.EthGetBlockByHash == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.EthGetBlockByHash(p0, p1, p2)\n}\n```",
             "summary": "EthGetBlockByHash retrieves a block by its hash. If fullTxInfo is true, it includes full\ntransaction objects; otherwise, it includes only transaction hashes.\nMaps to JSON-RPC method: \"eth_getBlockByHash\".\n",
             "paramStructure": "by-position",
             "params": [
@@ -764,8 +764,8 @@
                 }
             ],
             "result": {
-                "name": "ethtypes.EthBlock",
-                "description": "ethtypes.EthBlock",
+                "name": "*ethtypes.EthBlock",
+                "description": "*ethtypes.EthBlock",
                 "summary": "",
                 "schema": {
                     "examples": [
@@ -973,7 +973,7 @@
         },
         {
             "name": "Filecoin.EthGetBlockByNumber",
-            "description": "```go\nfunc (s *FullNodeStruct) EthGetBlockByNumber(p0 context.Context, p1 string, p2 bool) (ethtypes.EthBlock, error) {\n\tif s.Internal.EthGetBlockByNumber == nil {\n\t\treturn *new(ethtypes.EthBlock), ErrNotSupported\n\t}\n\treturn s.Internal.EthGetBlockByNumber(p0, p1, p2)\n}\n```",
+            "description": "```go\nfunc (s *FullNodeStruct) EthGetBlockByNumber(p0 context.Context, p1 string, p2 bool) (*ethtypes.EthBlock, error) {\n\tif s.Internal.EthGetBlockByNumber == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.EthGetBlockByNumber(p0, p1, p2)\n}\n```",
             "summary": "EthGetBlockByNumber retrieves a block by its number or a special tag like \"latest\" or\n\"finalized\". If fullTxInfo is true, it includes full transaction objects; otherwise, it\nincludes only transaction hashes.\nMaps to JSON-RPC method: \"eth_getBlockByNumber\".\n",
             "paramStructure": "by-position",
             "params": [
@@ -1009,8 +1009,8 @@
                 }
             ],
             "result": {
-                "name": "ethtypes.EthBlock",
-                "description": "ethtypes.EthBlock",
+                "name": "*ethtypes.EthBlock",
+                "description": "*ethtypes.EthBlock",
                 "summary": "",
                 "schema": {
                     "examples": [
@@ -1787,7 +1787,7 @@
         },
         {
             "name": "Filecoin.EthGetBlockTransactionCountByHash",
-            "description": "```go\nfunc (s *FullNodeStruct) EthGetBlockTransactionCountByHash(p0 context.Context, p1 ethtypes.EthHash) (ethtypes.EthUint64, error) {\n\tif s.Internal.EthGetBlockTransactionCountByHash == nil {\n\t\treturn *new(ethtypes.EthUint64), ErrNotSupported\n\t}\n\treturn s.Internal.EthGetBlockTransactionCountByHash(p0, p1)\n}\n```",
+            "description": "```go\nfunc (s *FullNodeStruct) EthGetBlockTransactionCountByHash(p0 context.Context, p1 ethtypes.EthHash) (*ethtypes.EthUint64, error) {\n\tif s.Internal.EthGetBlockTransactionCountByHash == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.EthGetBlockTransactionCountByHash(p0, p1)\n}\n```",
             "summary": "EthGetBlockTransactionCountByHash returns the number of transactions in a block identified by\nits block hash.\nMaps to JSON-RPC method: \"eth_getBlockTransactionCountByHash\".\n",
             "paramStructure": "by-position",
             "params": [
@@ -1819,8 +1819,8 @@
                 }
             ],
             "result": {
-                "name": "ethtypes.EthUint64",
-                "description": "ethtypes.EthUint64",
+                "name": "*ethtypes.EthUint64",
+                "description": "*ethtypes.EthUint64",
                 "summary": "",
                 "schema": {
                     "title": "number",
@@ -1843,7 +1843,7 @@
         },
         {
             "name": "Filecoin.EthGetBlockTransactionCountByNumber",
-            "description": "```go\nfunc (s *FullNodeStruct) EthGetBlockTransactionCountByNumber(p0 context.Context, p1 string) (ethtypes.EthUint64, error) {\n\tif s.Internal.EthGetBlockTransactionCountByNumber == nil {\n\t\treturn *new(ethtypes.EthUint64), ErrNotSupported\n\t}\n\treturn s.Internal.EthGetBlockTransactionCountByNumber(p0, p1)\n}\n```",
+            "description": "```go\nfunc (s *FullNodeStruct) EthGetBlockTransactionCountByNumber(p0 context.Context, p1 string) (*ethtypes.EthUint64, error) {\n\tif s.Internal.EthGetBlockTransactionCountByNumber == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.EthGetBlockTransactionCountByNumber(p0, p1)\n}\n```",
             "summary": "EthGetBlockTransactionCountByNumber returns the number of transactions in a block identified by\nits block number or a special tag like \"latest\" or \"finalized\".\nMaps to JSON-RPC method: \"eth_getBlockTransactionCountByNumber\".\n",
             "paramStructure": "by-position",
             "params": [
@@ -1864,8 +1864,8 @@
                 }
             ],
             "result": {
-                "name": "ethtypes.EthUint64",
-                "description": "ethtypes.EthUint64",
+                "name": "*ethtypes.EthUint64",
+                "description": "*ethtypes.EthUint64",
                 "summary": "",
                 "schema": {
                     "title": "number",
@@ -3215,7 +3215,7 @@
         },
         {
             "name": "Filecoin.EthGetTransactionCount",
-            "description": "```go\nfunc (s *FullNodeStruct) EthGetTransactionCount(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBlockNumberOrHash) (ethtypes.EthUint64, error) {\n\tif s.Internal.EthGetTransactionCount == nil {\n\t\treturn *new(ethtypes.EthUint64), ErrNotSupported\n\t}\n\treturn s.Internal.EthGetTransactionCount(p0, p1, p2)\n}\n```",
+            "description": "```go\nfunc (s *FullNodeStruct) EthGetTransactionCount(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBlockNumberOrHash) (*ethtypes.EthUint64, error) {\n\tif s.Internal.EthGetTransactionCount == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.EthGetTransactionCount(p0, p1, p2)\n}\n```",
             "summary": "EthGetTransactionCount retrieves the number of transactions sent from an address at a specific\nblock, identified by its number, hash, or a special tag like \"latest\" or \"finalized\".\nMaps to JSON-RPC method: \"eth_getTransactionCount\".\n",
             "paramStructure": "by-position",
             "params": [
@@ -3282,8 +3282,8 @@
                 }
             ],
             "result": {
-                "name": "ethtypes.EthUint64",
-                "description": "ethtypes.EthUint64",
+                "name": "*ethtypes.EthUint64",
+                "description": "*ethtypes.EthUint64",
                 "summary": "",
                 "schema": {
                     "title": "number",

@@ -98,6 +98,7 @@ func TestEthFeeHistory(t *testing.T) {
 
 	assertHistory := func(history *ethtypes.EthFeeHistory, requestAmount, startHeight int) {
 		amount, oldest := calculateExpectations(tsHeights, requestAmount, startHeight)
+		require.NotNil(history)
 		require.Equal(amount+1, len(history.BaseFeePerGas))
 		require.Equal(amount, len(history.GasUsedRatio))
 		require.Equal(ethtypes.EthUint64(oldest), history.OldestBlock)
@@ -107,42 +108,42 @@ func TestEthFeeHistory(t *testing.T) {
 		json.Marshal([]interface{}{5, "0x10"}),
 	).Assert(require.NoError))
 	require.NoError(err)
-	assertHistory(&history, 5, 16)
+	assertHistory(history, 5, 16)
 	require.Nil(history.Reward)
 
 	history, err = client.EthFeeHistory(ctx, result.Wrap[jsonrpc.RawParams](
 		json.Marshal([]interface{}{"5", "0x10"}),
 	).Assert(require.NoError))
 	require.NoError(err)
-	assertHistory(&history, 5, 16)
+	assertHistory(history, 5, 16)
 	require.Nil(history.Reward)
 
 	history, err = client.EthFeeHistory(ctx, result.Wrap[jsonrpc.RawParams](
 		json.Marshal([]interface{}{5, "latest"}),
 	).Assert(require.NoError))
 	require.NoError(err)
-	assertHistory(&history, 5, int(latestBlk))
+	assertHistory(history, 5, int(latestBlk))
 	require.Nil(history.Reward)
 
 	history, err = client.EthFeeHistory(ctx, result.Wrap[jsonrpc.RawParams](
 		json.Marshal([]interface{}{"0x10", "0x12"}),
 	).Assert(require.NoError))
 	require.NoError(err)
-	assertHistory(&history, 16, 18)
+	assertHistory(history, 16, 18)
 	require.Nil(history.Reward)
 
 	history, err = client.EthFeeHistory(ctx, result.Wrap[jsonrpc.RawParams](
 		json.Marshal([]interface{}{5, "0x10"}),
 	).Assert(require.NoError))
 	require.NoError(err)
-	assertHistory(&history, 5, 16)
+	assertHistory(history, 5, 16)
 	require.Nil(history.Reward)
 
 	history, err = client.EthFeeHistory(ctx, result.Wrap[jsonrpc.RawParams](
 		json.Marshal([]interface{}{5, "10"}),
 	).Assert(require.NoError))
 	require.NoError(err)
-	assertHistory(&history, 5, 10)
+	assertHistory(history, 5, 10)
 	require.Nil(history.Reward)
 
 	// test when the requested number of blocks is longer than chain length
@@ -150,7 +151,7 @@ func TestEthFeeHistory(t *testing.T) {
 		json.Marshal([]interface{}{"0x30", "latest"}),
 	).Assert(require.NoError))
 	require.NoError(err)
-	assertHistory(&history, 48, int(latestBlk))
+	assertHistory(history, 48, int(latestBlk))
 	require.Nil(history.Reward)
 
 	// test when the requested number of blocks is longer than chain length
@@ -158,14 +159,14 @@ func TestEthFeeHistory(t *testing.T) {
 		json.Marshal([]interface{}{"0x30", "10"}),
 	).Assert(require.NoError))
 	require.NoError(err)
-	assertHistory(&history, 48, 10)
+	assertHistory(history, 48, 10)
 	require.Nil(history.Reward)
 
 	history, err = client.EthFeeHistory(ctx, result.Wrap[jsonrpc.RawParams](
 		json.Marshal([]interface{}{5, "10", &[]float64{25, 50, 75}}),
 	).Assert(require.NoError))
 	require.NoError(err)
-	assertHistory(&history, 5, 10)
+	assertHistory(history, 5, 10)
 	require.NotNil(history.Reward)
 	require.Equal(5, len(*history.Reward))
 	for _, arr := range *history.Reward {
@@ -175,17 +176,17 @@ func TestEthFeeHistory(t *testing.T) {
 		}
 	}
 
-	history, err = client.EthFeeHistory(ctx, result.Wrap[jsonrpc.RawParams](
+	_, err = client.EthFeeHistory(ctx, result.Wrap[jsonrpc.RawParams](
 		json.Marshal([]interface{}{1025, "10", &[]float64{25, 50, 75}}),
 	).Assert(require.NoError))
 	require.Error(err)
 
-	history, err = client.EthFeeHistory(ctx, result.Wrap[jsonrpc.RawParams](
+	_, err = client.EthFeeHistory(ctx, result.Wrap[jsonrpc.RawParams](
 		json.Marshal([]interface{}{5, "10", &[]float64{75, 50}}),
 	).Assert(require.NoError))
 	require.Error(err)
 
-	history, err = client.EthFeeHistory(ctx, result.Wrap[jsonrpc.RawParams](
+	_, err = client.EthFeeHistory(ctx, result.Wrap[jsonrpc.RawParams](
 		json.Marshal([]interface{}{5, "10", &[]float64{}}),
 	).Assert(require.NoError))
 	require.NoError(err)

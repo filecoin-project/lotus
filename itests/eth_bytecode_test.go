@@ -40,7 +40,7 @@ func TestGetCodeAndNonce(t *testing.T) {
 		// Nonce should also be zero
 		nonce, err := client.EVM().EthGetTransactionCount(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 		require.NoError(t, err)
-		require.Zero(t, nonce)
+		require.Zero(t, *nonce)
 
 		// send some funds to the account.
 		kit.SendFunds(ctx, t, client, filAddr, types.FromFil(10))
@@ -53,7 +53,7 @@ func TestGetCodeAndNonce(t *testing.T) {
 		// Nonce should still be zero.
 		nonce, err = client.EVM().EthGetTransactionCount(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 		require.NoError(t, err)
-		require.Zero(t, nonce)
+		require.Zero(t, *nonce)
 	}
 
 	// Check contract code.
@@ -75,7 +75,7 @@ func TestGetCodeAndNonce(t *testing.T) {
 		// Nonce should be one.
 		nonce, err := client.EVM().EthGetTransactionCount(ctx, contractAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 		require.NoError(t, err)
-		require.Equal(t, ethtypes.EthUint64(1), nonce)
+		require.Equal(t, ethtypes.EthUint64(1), *nonce)
 
 		// Destroy it.
 		_, _, err = client.EVM().InvokeContractByFuncName(ctx, client.DefaultKey.Address, contractFilAddr, "destroy()", nil)
@@ -89,7 +89,7 @@ func TestGetCodeAndNonce(t *testing.T) {
 		// Nonce should go back to zero
 		nonce, err = client.EVM().EthGetTransactionCount(ctx, contractAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 		require.NoError(t, err)
-		require.Zero(t, nonce)
+		require.Zero(t, *nonce)
 	}
 
 }

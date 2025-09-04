@@ -74,7 +74,7 @@ func TestETHGetBlockByHashWithCache(t *testing.T) {
 		To:                   &ethAddr2,
 		MaxFeePerGas:         types.NanoFil,
 		MaxPriorityFeePerGas: big.Int(maxPriorityFeePerGas),
-		GasLimit:             int(gaslimit),
+		GasLimit:             int(*gaslimit),
 		V:                    big.Zero(),
 		R:                    big.Zero(),
 		S:                    big.Zero(),
@@ -156,7 +156,7 @@ func TestETHGetBlockByHashWithoutCache(t *testing.T) {
 		To:                   &ethAddr2,
 		MaxFeePerGas:         types.NanoFil,
 		MaxPriorityFeePerGas: big.Int(maxPriorityFeePerGas),
-		GasLimit:             int(gaslimit),
+		GasLimit:             int(*gaslimit),
 		V:                    big.Zero(),
 		R:                    big.Zero(),
 		S:                    big.Zero(),
@@ -416,7 +416,7 @@ func TestEthBlockNumberAliases(t *testing.T) {
 		t.Run(tc.param, func(t *testing.T) {
 			head, err := client.ChainHead(ctx)
 			require.NoError(t, err)
-			var blk ethtypes.EthBlock
+			var blk *ethtypes.EthBlock
 			for { // get a block while retaining a stable "head" reference
 				blk, err = client.EVM().EthGetBlockByNumber(ctx, tc.param, true)
 				require.NoError(t, err)

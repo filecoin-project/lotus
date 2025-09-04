@@ -68,11 +68,15 @@ func (tsr *tipSetResolver) getSafeF3TipSet(ctx context.Context) (*types.TipSet, 
 	var f3Ts *types.TipSet
 	cert, err := tsr.getLatestF3Cert(ctx)
 	if err != nil {
-		return nil, err
+		// F3 failed with an internal error; fall back to EC safe tipset
+		log.Debugw("F3 failed with internal error, falling back to EC safe tipset", "err", err)
+		return tsr.getSafeECTipSet(ctx)
 	} else if cert != nil {
 		f3Ts, err = tsr.getFinalizedF3TipSetFromCert(ctx, cert)
 		if err != nil {
-			return nil, err
+			// F3 certificate processing failed; fall back to EC safe tipset
+			log.Debugw("F3 certificate processing failed, falling back to EC safe tipset", "err", err)
+			return tsr.getSafeECTipSet(ctx)
 		}
 	} // else F3 is disabled or not ready
 	ecTs, err := tsr.getSafeECTipSet(ctx)
@@ -89,7 +93,9 @@ func (tsr *tipSetResolver) getSafeF3TipSet(ctx context.Context) (*types.TipSet, 
 func (tsr *tipSetResolver) getFinalizedF3TipSet(ctx context.Context) (*types.TipSet, error) {
 	cert, err := tsr.getLatestF3Cert(ctx)
 	if err != nil {
-		return nil, err
+		// F3 failed with an internal error; fall back to EC finalized tipset
+		log.Debugw("F3 failed with internal error, falling back to EC finalized tipset", "err", err)
+		return tsr.getFinalizedECTipSet(ctx)
 	} else if cert == nil {
 		// F3 is disabled or not ready; fall back to EC finality.
 		return tsr.getFinalizedECTipSet(ctx)
@@ -106,7 +112,13 @@ func (tsr *tipSetResolver) getFinalizedF3TipSet(ctx context.Context) (*types.Tip
 		return tsr.getFinalizedECTipSet(ctx)
 	}
 	// F3 is finalizing a higher height than EC safe; return F3 tipset
-	return tsr.getFinalizedF3TipSetFromCert(ctx, cert)
+	f3Ts, err := tsr.getFinalizedF3TipSetFromCert(ctx, cert)
+	if err != nil {
+		// F3 certificate processing failed; fall back to EC finalized tipset
+		log.Debugw("F3 certificate processing failed, falling back to EC finalized tipset", "err", err)
+		return tsr.getFinalizedECTipSet(ctx)
+	}
+	return f3Ts, nil
 }
 
 func (tsr *tipSetResolver) getSafeECTipSet(ctx context.Context) (*types.TipSet, error) {

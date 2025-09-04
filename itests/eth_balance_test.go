@@ -33,7 +33,7 @@ func TestEthGetBalanceExistingF4address(t *testing.T) {
 
 	balance, err := client.EthGetBalance(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 	require.NoError(t, err)
-	require.Equal(t, balance, ethtypes.EthBigInt{Int: fundAmount.Int})
+	require.Equal(t, *balance, ethtypes.EthBigInt{Int: fundAmount.Int})
 }
 
 func TestEthGetBalanceNonExistentF4address(t *testing.T) {
@@ -48,7 +48,7 @@ func TestEthGetBalanceNonExistentF4address(t *testing.T) {
 
 	balance, err := client.EthGetBalance(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 	require.NoError(t, err)
-	require.Equal(t, balance, ethtypes.EthBigIntZero)
+	require.Equal(t, *balance, ethtypes.EthBigIntZero)
 }
 
 func TestEthGetBalanceExistentIDMaskedAddr(t *testing.T) {
@@ -72,7 +72,7 @@ func TestEthGetBalanceExistentIDMaskedAddr(t *testing.T) {
 
 	ebal, err := client.EthGetBalance(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 	require.NoError(t, err)
-	require.Equal(t, ebal, ethtypes.EthBigInt{Int: balance.Int})
+	require.Equal(t, *ebal, ethtypes.EthBigInt{Int: balance.Int})
 }
 
 func TestEthGetBalanceBuiltinActor(t *testing.T) {
@@ -94,7 +94,7 @@ func TestEthGetBalanceBuiltinActor(t *testing.T) {
 
 	ebal, err := client.EthGetBalance(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 	require.NoError(t, err)
-	require.Equal(t, ethtypes.EthBigInt{Int: big.NewInt(10).Int}, ebal)
+	require.Equal(t, ethtypes.EthBigInt{Int: big.NewInt(10).Int}, *ebal)
 }
 
 func TestEthBalanceCorrectLookup(t *testing.T) {

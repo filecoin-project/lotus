@@ -79,7 +79,7 @@ func TestDeployment(t *testing.T) {
 		Nonce:                0,
 		MaxFeePerGas:         types.NanoFil,
 		MaxPriorityFeePerGas: big.Int(maxPriorityFeePerGas),
-		GasLimit:             int(gaslimit),
+		GasLimit:             int(*gaslimit),
 		Input:                contract,
 		V:                    big.Zero(),
 		R:                    big.Zero(),
