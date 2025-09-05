@@ -9,10 +9,11 @@
 
 # UNRELEASED
 
+# Node and Miner v1.34.0-rc2 / 2025-09-05
 
-# Node and Miner v1.34.0-rc1 / 2025-09-04
+This is the second release candidate of the **upcoming MANDATORY Lotus v1.34.0 release**, which will deliver the Filecoin network version 27, codenamed “Golden Week” 🏮. This release candidate sets the upgrade epoch for the calibration network to **Epoch 3007294:  2025-09-10T23:00:00Z**.  (See the [local time for other timezones](https://www.worldtimebuddy.com/?qm=1&lid=100,5128581,5368361,1816670&h=100&date=2025-9-10&sln=23-24&hf=1&c=1196).)  
 
-This is the first release candidate of the **upcoming MANDATORY Lotus v1.34.0 release**, which will deliver the Filecoin network version 27, codenamed “Golden Week” 🏮. This release candidate sets the upgrade epoch for the calibration network to **Epoch 3007294:  2025-09-10T23:00:00Z**.  (See the [local time for other timezones](https://www.worldtimebuddy.com/?qm=1&lid=100,5128581,5368361,1816670&h=100&date=2025-9-10&sln=23-24&hf=1&c=1196).)
+**This RC is required for participation in the nv27 calibration upgrade.**
 
 You can follow [filecoin-project/lotus#13269](https://github.com/filecoin-project/lotus/issues/13269) for keeping up with the other expected release dates, epochs, and updates.
 
@@ -36,7 +37,7 @@ You can follow [filecoin-project/lotus#13269](https://github.com/filecoin-projec
 
 ## 📦 v17 Builtin Actor Bundle
 
-This release candidate uses [v17.0.0-dev1](https://github.com/filecoin-project/builtin-actors/releases/tag/v17.0.0-dev1).
+This release candidate uses [v17.0.0-rc1](https://github.com/filecoin-project/builtin-actors/releases/tag/v17.0.0-rc1).
 
 ## 🚚 Migration
 There is no pre-migration or migration with this network upgrade.
@@ -61,6 +62,7 @@ There is no pre-migration or migration with this network upgrade.
 - fix: properly handle all RPC API retry errors ([#13279](https://github.com/filecoin-project/lotus/pull/13279))
 - fix(api): `eth_getCode` and `eth_getStorageAt` now return state after the specified block rather than before it ([filecoin-project/lotus#13274](https://github.com/filecoin-project/lotus/pull/13274))
 - fix(api): `eth_getTransactionCount` now returns state after the specified block rather than before it ([filecoin-project/lotus#13275](https://github.com/filecoin-project/lotus/pull/13275))
+- fix: handle partial reads in UnpadReader for non-power-of-2 pieces ([filecoin-project/lotus#13306](https://github.com/filecoin-project/lotus/pull/13306))
 
 ## 📝 Changelog
 
@@ -68,6 +70,10 @@ For the set of changes since the last stable release:
 
 - Node: https://github.com/filecoin-project/lotus/compare/release/v1.33.1...release/v1.34.0
 - Miner: https://github.com/filecoin-project/lotus/compare/release/v1.3.1...release/miner/v1.34.1
+
+### Changes since RC1
+- Using actors bundle v17.0.0-rc1 instead of v17.0.0-dev1.
+- Backported: fix: handle partial reads in UnpadReader for non-power-of-2 pieces ([filecoin-project/lotus#13306](https://github.com/filecoin-project/lotus/pull/13306))
 
 ## 👨‍👩‍👧‍👦 Contributors
 
@@ -99,6 +105,11 @@ For the set of changes since the last stable release:
 | Micke | 1 | +2/-2 | 2 |
 | longhutianjie | 1 | +1/-1 | 1 |
 
+# Node and Miner v1.34.0-rc1 / 2025-09-04
+
+This was the first release candidate for the **upcoming MANDATORY Lotus v1.34.0 release**.  It has been superceded by RC2, which is now required to participate in the nv27 calibration upgrade.
+
+This release candidate uses the oudated [v17.0.0-dev1](https://github.com/filecoin-project/builtin-actors/releases/tag/v17.0.0-dev1).
 
 # Node v1.33.1 / 2025-07-31
 This is the Lotus v1.33.1 release, which introduces performance improvements and operational enhancements. This release focuses on improving F3 subsystem performance, and enhancing CLI tools for better storage provider operations. Notable improvements include up to 6-10x performance gains in F3 power table calculations, ensuring that PreCommit and ProveCommit operations are aggregating to get optimal gas usage after FIP-100, and a enhanced sector management tool with CSV output support. These improvements collectively enhance the stability and efficiency of Lotus operations for both node operators and storage providers.
