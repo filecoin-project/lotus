@@ -83,8 +83,8 @@ const UpgradeTockHeight = -30
 // This fix upgrade only ran on calibrationnet
 const UpgradeTockFixHeight = -103
 
-// ??????
-const UpgradeGoldenWeekHeight = 999999999999999
+// 2025-09-10T23:00:00Z
+const UpgradeGoldenWeekHeight = 400
 
 var ConsensusMinerMinPower = abi.NewStoragePower(2 << 30)
 var PreCommitChallengeDelay = abi.ChainEpoch(150)
