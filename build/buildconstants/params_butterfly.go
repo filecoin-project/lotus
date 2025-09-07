@@ -74,17 +74,17 @@ const UpgradeTuktukHeight = -28
 // Tuktuk migration. along with a RampStartEpoch matching the upgrade height.
 var UpgradeTuktukPowerRampDurationEpochs = uint64(builtin.EpochsInYear)
 
-const UpgradeTeepHeight = -29
+const UpgradeTeepHeight = 50 // Changed to positive for NV27 Butterfly to avoid VestingFunds issue
 
 var UpgradeTeepInitialFilReserved = wholeFIL(1_600_000_000) // FIP-0100: 300M -> 1.6B FIL
 
-const UpgradeTockHeight = -30
+const UpgradeTockHeight = 100 // Changed to positive for NV27 Butterfly to avoid VestingFunds issue
 
 // This fix upgrade only ran on calibrationnet
 const UpgradeTockFixHeight = -103
 
-// ??????
-const UpgradeGoldenWeekHeight = 999999999999999
+// Butterfly NV27
+const UpgradeGoldenWeekHeight = 200
 
 var ConsensusMinerMinPower = abi.NewStoragePower(2 << 30)
 var PreCommitChallengeDelay = abi.ChainEpoch(150)
