@@ -172,6 +172,26 @@ var runCmd = &cli.Command{
 			Usage: "Enable logging of incoming API requests. Note: This will log POST request bodies which may impact performance due to body buffering and may expose sensitive data in logs",
 			Value: false,
 		},
+		&cli.DurationFlag{
+			Name:  "read-timeout",
+			Usage: "Maximum duration for reading the entire request, including the body. Use 0 to disable",
+			Value: gateway.ReadTimeout,
+		},
+		&cli.DurationFlag{
+			Name:  "write-timeout",
+			Usage: "Maximum duration before timing out writes of the response. Use 0 to disable (sensitive setting - be careful)",
+			Value: gateway.WriteTimeout,
+		},
+		&cli.DurationFlag{
+			Name:  "idle-timeout",
+			Usage: "Maximum amount of time to wait for the next request when keep-alives are enabled. Use 0 to disable",
+			Value: gateway.IdleTimeout,
+		},
+		&cli.IntFlag{
+			Name:  "max-header-bytes",
+			Usage: "Maximum number of bytes the server will read parsing the request header's keys and values",
+			Value: gateway.MaxHeaderBytes,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		log.Info("Starting lotus gateway")
@@ -208,6 +228,10 @@ var runCmd = &cli.Command{
 			maxFiltersPerConn           = cctx.Int("eth-max-filters-per-conn")
 			enableCORS                  = cctx.Bool("cors")
 			enableRequestLogging        = cctx.Bool("request-logging")
+			readTimeout                 = cctx.Duration("read-timeout")
+			writeTimeout                = cctx.Duration("write-timeout")
+			idleTimeout                 = cctx.Duration("idle-timeout")
+			maxHeaderBytes              = cctx.Int("max-header-bytes")
 		)
 
 		serverOptions := make([]jsonrpc.ServerOption, 0)
@@ -236,6 +260,10 @@ var runCmd = &cli.Command{
 			gateway.WithRateLimit(globalRateLimit),
 			gateway.WithRateLimitTimeout(rateLimitTimeout),
 			gateway.WithEthMaxFiltersPerConn(maxFiltersPerConn),
+			gateway.WithReadTimeout(readTimeout),
+			gateway.WithWriteTimeout(writeTimeout),
+			gateway.WithIdleTimeout(idleTimeout),
+			gateway.WithMaxHeaderBytes(maxHeaderBytes),
 		)
 		handler, err := gateway.Handler(
 			gwapi,
