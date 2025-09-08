@@ -48,6 +48,7 @@ This is the Lotus v1.33.1 release, which introduces performance improvements and
 - chore(deps): update of critical underlying dependencies with go-libp2p to v0.42.0 (filecoin-project/lotus#13190) and boxo to v0.32.0 ([filecoin-project/lotus#13202](https://github.com/filecoin-project/lotus/pull/13202)) and boxo v0.33.0([filecoin-project/lotus#13226](https://github.com/filecoin-project/lotus/pull/13226))
 - feat(spcli): correctly handle the batch logic of `lotus-miner actor settle-deal`; replace the dealid data source ([filecoin-project/lotus#13189](https://github.com/filecoin-project/lotus/pull/13189))
 - feat(spcli): add `--all-deals` to `lotus-miner actor settle-deal`. By default, only expired deals are processed ([filecoin-project/lotus#13243](https://github.com/filecoin-project/lotus/pull/13243))
+- fix(rpc): add read, write and idle configurable timeouts to gateway. ([filecoin-project/lotus#13327](https://github.com/filecoin-project/lotus/pull/13327))
 
 ## 📝 Changelog
 
