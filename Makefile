@@ -79,15 +79,15 @@ INTEROPNET_FLAGS=-tags=interopnet
 
 # Network-specific pattern rules
 debug-%:
-	$(MAKE) $* GOFLAGS="$(GOFLAGS) $(DEBUG_FLAGS)"
+	$(MAKE) $* GOFLAGS='$(GOFLAGS) $(DEBUG_FLAGS)'
 2k-%:
-	$(MAKE) $* GOFLAGS="$(GOFLAGS) $(TWOK_FLAGS)"
+	$(MAKE) $* GOFLAGS='$(GOFLAGS) $(TWOK_FLAGS)'
 calibnet-%:
-	$(MAKE) $* GOFLAGS="$(GOFLAGS) $(CALIBNET_FLAGS)"
+	$(MAKE) $* GOFLAGS='$(GOFLAGS) $(CALIBNET_FLAGS)'
 butterflynet-%:
-	$(MAKE) $* GOFLAGS="$(GOFLAGS) $(BUTTERFLYNET_FLAGS)"
+	$(MAKE) $* GOFLAGS='$(GOFLAGS) $(BUTTERFLYNET_FLAGS)'
 interopnet-%:
-	$(MAKE) $* GOFLAGS="$(GOFLAGS) $(INTEROPNET_FLAGS)"
+	$(MAKE) $* GOFLAGS='$(GOFLAGS) $(INTEROPNET_FLAGS)'
 
 build-devnets: build lotus-seed lotus-shed
 .PHONY: build-devnets
