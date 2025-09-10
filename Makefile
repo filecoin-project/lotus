@@ -29,7 +29,7 @@ ifneq ($(strip $(LDFLAGS)),)
 	ldflags+=-extldflags=$(LDFLAGS)
 endif
 
-GOFLAGS+=-ldflags="$(ldflags)"
+GOFLAGS+=-ldflags='$(ldflags)'
 
 FIX_IMPORTS = $(GOCC) run ./scripts/fiximports
 
