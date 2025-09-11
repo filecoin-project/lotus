@@ -68,7 +68,7 @@ For certain node operators, such as full archival nodes or systems that need to 
 For the set of changes since the last stable release:
 
 - Node: https://github.com/filecoin-project/lotus/compare/release/v1.33.1...release/v1.34.0
-- Miner: https://github.com/filecoin-project/lotus/compare/release/v1.3.1...release/miner/v1.34.0
+- Miner: https://github.com/filecoin-project/lotus/compare/release/v1.33.1...release/miner/v1.34.0
 
 ### Changes since RC2
 - Updated to use final release versions of key dependencies, including builtin-actors.  See [filecoin-project/lotus#13337](https://github.com/filecoin-project/lotus/pull/13337)).
