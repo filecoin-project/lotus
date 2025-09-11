@@ -36,7 +36,9 @@ All node operators, including storage providers, should be aware that ONE pre-mi
 - Pre-Migration is expected to take less then 1 minute.
 - The migration on the upgrade epoch is expected to take less than 30 seconds on a node with a NVMe-drive and a newer CPU. For nodes running on slower disks/CPU, it is still expected to take less then 1 minute.
 - RAM usages is expected to be under 20GiB RAM for both the pre-migration and migration.
+
 We recommend node operators (who haven’t enabled splitstore discard mode) that do not care about historical chain states, to prune the chain blockstore by syncing from a snapshot 1-2 days before the upgrade.
+
 For certain node operators, such as full archival nodes or systems that need to keep large amounts of state (RPC providers), we recommend skipping the pre-migration and run the non-cached migration (i.e., just running the migration at the network upgrade epoch), and schedule for some additional downtime. Operators of such nodes can read the [How to disable premigration in network upgrade tutorial](https://lotus.filecoin.io/kb/disable-premigration/).
 
 ## ⭐ New Features highlight
