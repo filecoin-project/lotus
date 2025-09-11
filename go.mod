@@ -38,7 +38,7 @@ require (
 	github.com/elastic/gosigar v0.14.3
 	github.com/etclabscore/go-openrpc-reflect v0.0.37
 	github.com/fatih/color v1.18.0
-	github.com/filecoin-project/filecoin-ffi v1.33.1-dev // dependency-check-ignore: nv27 skeleton
+	github.com/filecoin-project/filecoin-ffi v1.34.0
 	github.com/filecoin-project/go-address v1.2.0
 	github.com/filecoin-project/go-amt-ipld/v4 v4.4.0
 	github.com/filecoin-project/go-bitfield v0.2.4
@@ -51,7 +51,7 @@ require (
 	github.com/filecoin-project/go-jsonrpc v0.8.0
 	github.com/filecoin-project/go-padreader v0.0.1
 	github.com/filecoin-project/go-paramfetch v0.0.4
-	github.com/filecoin-project/go-state-types v0.17.0-dev2 // dependency-check-ignore: unknown
+	github.com/filecoin-project/go-state-types v0.17.0 // dependency-check-ignore: unknown
 	github.com/filecoin-project/go-statemachine v1.0.3
 	github.com/filecoin-project/go-statestore v0.2.0
 	github.com/filecoin-project/go-storedcounter v0.1.0
