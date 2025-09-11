@@ -83,7 +83,7 @@ require (
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/icza/backscanner v0.0.0-20210726202459-ac2ffc679f94
 	github.com/influxdata/influxdb1-client v0.0.0-20200827194710-b269163b24ab
-	github.com/invopop/jsonschema v0.12.0
+	github.com/invopop/jsonschema v0.13.0
 	github.com/ipfs/bbloom v0.0.4
 	github.com/ipfs/boxo v0.33.0
 	github.com/ipfs/go-block-format v0.2.2
