@@ -994,6 +994,7 @@ func (r *Remote) GeneratePoRepVanillaProof(ctx context.Context, sr storiface.Sec
 			if err != nil {
 				merr = multierror.Append(merr, xerrors.Errorf("resp.Body ReadAll: %w", err))
 				log.Warnw("GeneratePoRepVanillaProof read response body failed", "url", url, "error", err)
+				continue
 			}
 			_ = resp.Body.Close()
 
