@@ -123,7 +123,7 @@ require (
 	github.com/multiformats/go-multiaddr-dns v0.4.1
 	github.com/multiformats/go-multicodec v0.9.2
 	github.com/multiformats/go-multihash v0.2.3
-	github.com/multiformats/go-varint v0.0.7
+	github.com/multiformats/go-varint v0.1.0
 	github.com/open-rpc/meta-schema v0.0.0-20201029221707-1b72ef2ea333
 	github.com/polydawn/refmt v0.89.0
 	github.com/prometheus/client_golang v1.22.0
