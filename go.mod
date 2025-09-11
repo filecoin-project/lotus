@@ -33,7 +33,7 @@ require (
 	github.com/drand/go-clients v0.2.2
 	github.com/drand/kyber v1.3.1
 	github.com/dustin/go-humanize v1.0.1
-	github.com/elastic/go-elasticsearch/v7 v7.14.0
+	github.com/elastic/go-elasticsearch/v7 v7.17.10
 	github.com/elastic/go-sysinfo v1.15.4
 	github.com/elastic/gosigar v0.14.3
 	github.com/etclabscore/go-openrpc-reflect v0.0.37
