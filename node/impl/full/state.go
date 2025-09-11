@@ -2163,7 +2163,7 @@ func (a *StateAPI) StateGetNetworkParams(ctx context.Context) (*api.NetworkParam
 			UpgradeTuktukHeight:      buildconstants.UpgradeTuktukHeight,
 			UpgradeTeepHeight:        buildconstants.UpgradeTeepHeight,
 			UpgradeTockHeight:        buildconstants.UpgradeTockHeight,
-			UpgradeXxHeight:          buildconstants.UpgradeXxHeight,
+			UpgradeGoldenweekHeight:  buildconstants.UpgradeGoldenweekHeight,
 		},
 	}, nil
 }
