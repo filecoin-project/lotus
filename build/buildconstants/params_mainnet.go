@@ -158,7 +158,7 @@ func init() {
 	}
 	SetAddressNetwork(addrNetwork)
 
-	if os.Getenv("LOTUS_DISABLE_GOLDEN_WEEK") == "1" {
+	if os.Getenv("LOTUS_DISABLE_GOLDENWEEK") == "1" {
 		UpgradeGoldenWeekHeight = math.MaxInt64 - 1
 	}
 
