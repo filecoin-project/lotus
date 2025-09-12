@@ -788,6 +788,8 @@ type GatewayMethods struct {
 
 	StateGetNetworkParams func(p0 context.Context) (*NetworkParams, error) ``
 
+	StateGetRandomnessDigestFromBeacon func(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) (abi.Randomness, error) ``
+
 	StateListMiners func(p0 context.Context, p1 types.TipSetKey) ([]address.Address, error) ``
 
 	StateLookupID func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) ``
@@ -5002,6 +5004,17 @@ func (s *GatewayStruct) StateGetNetworkParams(p0 context.Context) (*NetworkParam
 
 func (s *GatewayStub) StateGetNetworkParams(p0 context.Context) (*NetworkParams, error) {
 	return nil, ErrNotSupported
+}
+
+func (s *GatewayStruct) StateGetRandomnessDigestFromBeacon(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) (abi.Randomness, error) {
+	if s.Internal.StateGetRandomnessDigestFromBeacon == nil {
+		return *new(abi.Randomness), ErrNotSupported
+	}
+	return s.Internal.StateGetRandomnessDigestFromBeacon(p0, p1, p2)
+}
+
+func (s *GatewayStub) StateGetRandomnessDigestFromBeacon(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) (abi.Randomness, error) {
+	return *new(abi.Randomness), ErrNotSupported
 }
 
 func (s *GatewayStruct) StateListMiners(p0 context.Context, p1 types.TipSetKey) ([]address.Address, error) {
