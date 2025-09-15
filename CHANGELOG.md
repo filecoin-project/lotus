@@ -105,15 +105,6 @@ For the set of changes since the last stable release:
 | Piotr Galar | 1 | +1/-1 | 1 |
 | Phi | 1 | +1/-1 | 1 |
 
-# Node and Miner v1.34.0-rc2 / 2025-09-05
-
-This was the second release candidate of the **upcoming MANDATORY Lotus v1.34.0 release**, which will deliver the Filecoin network version 27, codenamed “Golden Week” 🏮. This release candidate set the upgrade epoch for the calibration network to **Epoch 3007294:  2025-09-10T23:00:00Z**.  
-
-# Node and Miner v1.34.0-rc1 / 2025-09-04
-
-This was the first release candidate for the **upcoming MANDATORY Lotus v1.34.0 release**.  It has been superceded by RC2, which is now required to participate in the nv27 calibration upgrade.
-
-This release candidate uses the outdated [v17.0.0-dev1](https://github.com/filecoin-project/builtin-actors/releases/tag/v17.0.0-dev1).
 
 # Node v1.33.1 / 2025-07-31
 This is the Lotus v1.33.1 release, which introduces performance improvements and operational enhancements. This release focuses on improving F3 subsystem performance, and enhancing CLI tools for better storage provider operations. Notable improvements include up to 6-10x performance gains in F3 power table calculations, ensuring that PreCommit and ProveCommit operations are aggregating to get optimal gas usage after FIP-100, and a enhanced sector management tool with CSV output support. These improvements collectively enhance the stability and efficiency of Lotus operations for both node operators and storage providers.
