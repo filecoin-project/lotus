@@ -11,13 +11,7 @@
 
 # Node and Miner v1.34.1 / 2025-09-15
 
-This is a **critical patch release** that fixes an issue with the v1.34.0 release where the incorrect version of filecoin-ffi was included.
-
-## 🔧 Bug Fixes
-
-- **Critical Fix**: Updated filecoin-ffi from v1.34.0-dev to the stable v1.34.0 release
-  - This ensures the inclusion of ref-fvm v4.7.3 update that was missing in v1.34.0
-  - All users of v1.34.0 should upgrade to v1.34.1 immediately
+This is a non-critical patch release that fixes an issue with the Lotus `v1.34.0` release where the incorrect version of filecoin-ffi was included.  Lotus `v1.34.0` used filecoin-ffi `v1.34.0-dev` when it should have used `v1.34.0`.  This isn’t critical since it’s the same filecoin-ffi version used during the nv27 Calibration network upgrade, but for consistency with other Node implementations like Forest, we are creating this release.  This ensures the inclusion of ref-fvm `v4.7.3` update that was missing in v1.34.0.  All users of v1.34.0 are encouraged to upgrade to v1.34.1.
 
 # Node and Miner v1.34.0 / 2025-09-11
 
