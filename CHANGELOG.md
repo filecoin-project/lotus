@@ -9,6 +9,16 @@
 
 # UNRELEASED
 
+# Node and Miner v1.34.1 / 2025-09-15
+
+This is a **critical patch release** that fixes an issue with the v1.34.0 release where the incorrect version of filecoin-ffi was included.
+
+## 🔧 Bug Fixes
+
+- **Critical Fix**: Updated filecoin-ffi from v1.34.0-dev to the stable v1.34.0 release
+  - This ensures the inclusion of ref-fvm v4.7.3 update that was missing in v1.34.0
+  - All users of v1.34.0 should upgrade to v1.34.1 immediately
+
 # Node and Miner v1.34.0 / 2025-09-11
 
 This is a **MANDATORY Lotus v1.34.0 release**, which will deliver the Filecoin network version 27, codenamed “Golden Week” 🏮. This release candidate sets the upgrade epoch for the Mainnet network to **Epoch 5348280:  2025-09-24T23:00:00Z**.  (See the [local time for other timezones](https://www.worldtimebuddy.com/?qm=1&lid=100,5128581,5368361,1816670&h=100&date=2025-9-24&sln=23-24&hf=1&c=1196).)  
