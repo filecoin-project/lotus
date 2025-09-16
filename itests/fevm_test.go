@@ -1853,3 +1853,28 @@ func TestTstore(t *testing.T) {
 	_, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "testNestedContracts(address)", inputDataContract)
 	require.NoError(t, err)
 }
+
+func TestFEVMTestBLS(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	tests := []string{
+		"G1AddTest",
+		"G1MsmTest",
+		"G2AddTest",
+		"G2MsmTest",
+		"MapFpToG1Test",
+		"MapFp2ToG2Test",
+		"PairingTest",
+	}
+
+	for _, name := range tests {
+		name := name
+		t.Run(name, func(t *testing.T) {
+			filename := fmt.Sprintf("contracts/bls12/%s.hex", name)
+			fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filename)
+			_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "runTests()", []byte{})
+			require.NoError(t, err)
+		})
+	}
+}
