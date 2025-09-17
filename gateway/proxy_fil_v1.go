@@ -665,6 +665,17 @@ func (pv1 *reverseProxyV1) StateGetNetworkParams(ctx context.Context) (*api.Netw
 	return pv1.server.StateGetNetworkParams(ctx)
 }
 
+func (pv1 *reverseProxyV1) StateGetRandomnessDigestFromBeacon(ctx context.Context, randEpoch abi.ChainEpoch, tsk types.TipSetKey) (abi.Randomness, error) {
+	// limited by chainRateLimitTokens not stateRateLimitTokens because this only needs to read from the chain
+	if err := pv1.gateway.limit(ctx, chainRateLimitTokens); err != nil {
+		return nil, err
+	}
+	if err := pv1.gateway.checkKeyedTipSetHeight(ctx, randEpoch, tsk); err != nil {
+		return nil, err
+	}
+	return pv1.server.StateGetRandomnessDigestFromBeacon(ctx, randEpoch, tsk)
+}
+
 func (pv1 *reverseProxyV1) F3GetCertificate(ctx context.Context, instance uint64) (*certs.FinalityCertificate, error) {
 	if err := pv1.gateway.limit(ctx, basicRateLimitTokens); err != nil {
 		return nil, err
