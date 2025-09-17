@@ -70,8 +70,8 @@ The structured logging style of composition should be seen in contrast to an alt
 
 Two Lotus APIs are provided that can be used to obtain direct access to events stored on the node being queried (a node may not have all historical events stored and available for query):
 
-- **[`GetActorEventsRaw`](https://github.com/filecoin-project/lotus/blob/master/documentation/en/api-v1-unstable-methods.md#GetActorEventsRaw)** will return all available historical actor events that match a given *filter* argument.
-- **[`SubscribeActorEventsRaw`](https://github.com/filecoin-project/lotus/blob/master/documentation/en/api-v1-unstable-methods.md#SubscribeActorEventsRaw)** will return a long-lived stream providing all available actor events that match a given *filter* argument as they are generated. Optionally also providing a list of historical events. This API is available via websocket from the Lotus API RPC.
+- **[`GetActorEventsRaw`](https://github.com/filecoin-project/lotus/blob/master/documentation/en/api-methods-v1-stable.md#GetActorEventsRaw)** will return all available historical actor events that match a given *filter* argument.
+- **[`SubscribeActorEventsRaw`](https://github.com/filecoin-project/lotus/blob/master/documentation/en/api-methods-v1-stable.md#SubscribeActorEventsRaw)** will return a long-lived stream providing all available actor events that match a given *filter* argument as they are generated. Optionally also providing a list of historical events. This API is available via websocket from the Lotus API RPC.
 
 Both APIs take an `EventFilter`  as an argument to determine which events to return. This event filter optionally comprises the following:
 

@@ -46,7 +46,7 @@ require (
 	github.com/filecoin-project/go-commp-utils/v2 v2.1.0
 	github.com/filecoin-project/go-crypto v0.1.0
 	github.com/filecoin-project/go-f3 v0.8.10
-	github.com/filecoin-project/go-fil-commcid v0.2.0
+	github.com/filecoin-project/go-fil-commcid v0.3.1
 	github.com/filecoin-project/go-hamt-ipld/v3 v3.4.1
 	github.com/filecoin-project/go-jsonrpc v0.8.0
 	github.com/filecoin-project/go-padreader v0.0.1
@@ -83,7 +83,7 @@ require (
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/icza/backscanner v0.0.0-20210726202459-ac2ffc679f94
 	github.com/influxdata/influxdb1-client v0.0.0-20200827194710-b269163b24ab
-	github.com/invopop/jsonschema v0.12.0
+	github.com/invopop/jsonschema v0.13.0
 	github.com/ipfs/bbloom v0.0.4
 	github.com/ipfs/boxo v0.33.0
 	github.com/ipfs/go-block-format v0.2.2
@@ -123,7 +123,7 @@ require (
 	github.com/multiformats/go-multiaddr-dns v0.4.1
 	github.com/multiformats/go-multicodec v0.9.2
 	github.com/multiformats/go-multihash v0.2.3
-	github.com/multiformats/go-varint v0.0.7
+	github.com/multiformats/go-varint v0.1.0
 	github.com/open-rpc/meta-schema v0.0.0-20201029221707-1b72ef2ea333
 	github.com/polydawn/refmt v0.89.0
 	github.com/prometheus/client_golang v1.22.0

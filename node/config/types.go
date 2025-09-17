@@ -416,7 +416,7 @@ type Libp2p struct {
 	// Binding address for the libp2p host - 0 means random port.
 	// Format: multiaddress; see https://multiformats.io/multiaddr/
 	ListenAddresses []string
-	// Addresses to explicitally announce to other peers. If not specified,
+	// Addresses to explicitly announce to other peers. If not specified,
 	// all interface addresses are announced
 	// Format: multiaddress
 	AnnounceAddresses []string
