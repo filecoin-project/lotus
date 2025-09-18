@@ -273,7 +273,7 @@ var minerCreateCmd = &cli.Command{
 		}
 
 		// make sure the sender account exists on chain
-		_, err = wapi.StateLookupID(ctx, owner, types.EmptyTSK)
+		_, err = wapi.StateLookupID(ctx, sender, types.EmptyTSK)
 		if err != nil {
 			return xerrors.Errorf("sender must exist on chain: %w", err)
 		}
