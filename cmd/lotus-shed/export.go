@@ -33,6 +33,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/blockstore"
+	badgerbs "github.com/filecoin-project/lotus/blockstore/badger"
+	"github.com/filecoin-project/lotus/blockstore/splitstore"
 	"github.com/filecoin-project/lotus/chain/store"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/cmd/lotus-shed/shedgen"
@@ -97,23 +99,60 @@ var exportChainCmd = &cli.Command{
 
 		defer fi.Close() //nolint:errcheck
 
-		bs, err := lr.Blockstore(ctx, repo.UniversalBlockstore)
+		cold, err := lr.Blockstore(ctx, repo.UniversalBlockstore)
 		if err != nil {
 			return fmt.Errorf("failed to open blockstore: %w", err)
 		}
 
 		defer func() {
-			if c, ok := bs.(io.Closer); ok {
+			if c, ok := cold.(io.Closer); ok {
 				if err := c.Close(); err != nil {
 					log.Warnf("failed to close blockstore: %s", err)
 				}
 			}
 		}()
 
+		path, err := lr.SplitstorePath()
+		if err != nil {
+			return xerrors.Errorf("failed to get splitstore path: %w", err)
+		}
+
+		path = filepath.Join(path, "hot.badger")
+		if err := os.MkdirAll(path, 0755); err != nil {
+			return xerrors.Errorf("failed to create hot.badger dir: %w", err)
+		}
+
+		opts, err := repo.BadgerBlockstoreOptions(repo.HotBlockstore, path, lr.Readonly())
+		if err != nil {
+			return xerrors.Errorf("failed to get badger blockstore options: %w", err)
+		}
+
+		hot, err := badgerbs.Open(opts)
+		if err != nil {
+			return xerrors.Errorf("failed to open badger blockstore: %w", err)
+		}
+
 		mds, err := lr.Datastore(context.Background(), "/metadata")
 		if err != nil {
-			return err
+			return xerrors.Errorf("failed to open metadata datastore: %w", err)
 		}
+
+		cfg := &splitstore.Config{
+			MarkSetType:       "map",
+			DiscardColdBlocks: true,
+		}
+		ss, err := splitstore.Open(path, mds, hot, cold, cfg)
+		if err != nil {
+			return xerrors.Errorf("failed to open splitstore: %w", err)
+		}
+
+		defer func() {
+			if err := ss.Close(); err != nil {
+				log.Warnf("failed to close blockstore: %s", err)
+			}
+		}()
+
+		bs := ss
 
 		cs := store.NewChainStore(bs, bs, mds, nil, nil)
 		defer cs.Close() //nolint:errcheck
