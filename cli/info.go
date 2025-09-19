@@ -145,7 +145,9 @@ func infoCmdAct(cctx *cli.Context) error {
 	chs, err := fullapi.PaychList(ctx)
 	if err != nil {
 		// Check if the error is because payment channel manager is disabled
-		if errors.Is(err, paych.ErrPaymentChannelDisabled) {
+		// Use both errors.Is and string comparison for robustness
+		if errors.Is(err, paych.ErrPaymentChannelDisabled) ||
+			strings.Contains(err.Error(), "payment channel manager is disabled") {
 			fmt.Printf("Payment Channels: disabled (EnablePaymentChannelManager is set to false)\n")
 		} else {
 			return err
