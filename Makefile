@@ -16,7 +16,7 @@ $(warning Your Golang version is go$(shell expr $(GOVERSION) / 1000000).$(shell 
 $(error Update Golang to version to at least $(shell cat GO_VERSION_MIN))
 endif
 
-GOLANGCI_LINT_VERSION=v1.60.1
+GOLANGCI_LINT_VERSION=v2.4.0
 
 # git modules that need to be loaded
 MODULES:=
@@ -323,7 +323,7 @@ unittests:  ## Run unit tests
 lint:
 	go mod tidy
 	go vet ./...
-	go run github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION) run --timeout 10m --concurrency 4
+	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION) run --timeout 10m --concurrency 4
 .PHONY: lint
 
 clean:  ## Clean build artifacts

@@ -12,7 +12,7 @@ import (
 )
 
 type taskSelector struct {
-	best []storiface.StorageInfo //nolint: unused, structcheck
+	best []storiface.StorageInfo //nolint: unused
 }
 
 func newTaskSelector() *taskSelector {
