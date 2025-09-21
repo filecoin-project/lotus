@@ -143,6 +143,7 @@ sed -i 's/FROM golang:1.23.7-bullseye/FROM golang:1.23.10-bullseye/' Dockerfile
 go mod tidy
 make build
 make unittests
+make lint
 ```
 
 
