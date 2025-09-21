@@ -320,7 +320,7 @@ Example invocation of lotus-bench as external executor:
 
 		// Check DC-environment variable
 		sectorSizes := []string{"2KiB", "8MiB", "512MiB", "32GiB", "64GiB"}
-		resourcesType := reflect.TypeOf(storiface.Resources{})
+		resourcesType := reflect.TypeFor[storiface.Resources]()
 
 		for _, sectorSize := range sectorSizes {
 			for i := 0; i < resourcesType.NumField(); i++ {
