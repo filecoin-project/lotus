@@ -60,17 +60,16 @@ func encodeRLP(val interface{}) ([]byte, error) {
 		} else if len(data) <= 55 {
 			prefix := byte(0x80 + len(data))
 			return append([]byte{prefix}, data...), nil
-		} else {
-			lenInBytes, err := encodeLength(len(data))
-			if err != nil {
-				return nil, err
-			}
-			prefix := byte(0xb7 + len(lenInBytes))
-			return append(
-				[]byte{prefix},
-				append(lenInBytes, data...)...,
-			), nil
 		}
+		lenInBytes, err := encodeLength(len(data))
+		if err != nil {
+			return nil, err
+		}
+		prefix := byte(0xb7 + len(lenInBytes))
+		return append(
+			[]byte{prefix},
+			append(lenInBytes, data...)...,
+		), nil
 	case []interface{}:
 		encodedList, err := encodeRLPListItems(data)
 		if err != nil {
