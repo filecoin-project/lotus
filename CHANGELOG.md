@@ -40,7 +40,7 @@ This is a **MANDATORY Lotus v1.34.0 release**, which will deliver the Filecoin n
 This release candidate uses [v17.0.0](https://github.com/filecoin-project/builtin-actors/releases/tag/v17.0.0).
 
 ## 🚚 Migration
-All node operators, including storage providers, should be aware that ONE pre-migration is being scheduled 120 epochs before the network upgrade. The migration for the NV24 upgrade is expected to be light with no heavy pre-migrations:
+All node operators, including storage providers, should be aware that ONE pre-migration is being scheduled 120 epochs before the network upgrade. The migration for the NV27 upgrade is expected to be light with no heavy pre-migrations:
 - Pre-Migration is expected to take less then 1 minute.
 - The migration on the upgrade epoch is expected to take less than 30 seconds on a node with a NVMe-drive and a newer CPU. For nodes running on slower disks/CPU, it is still expected to take less then 1 minute.
 - RAM usages is expected to be under 20GiB RAM for both the pre-migration and migration.
