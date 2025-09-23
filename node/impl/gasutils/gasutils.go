@@ -224,8 +224,11 @@ func GasEstimateGasLimit(
 	return ret, nil
 }
 
-func GasEstimateFeeCap(cstore ChainStoreAPI, msg *types.Message, maxqueueblks int64) (types.BigInt, error) {
-	ts := cstore.GetHeaviestTipSet()
+func GasEstimateFeeCap(ctx context.Context, cstore ChainStoreAPI, msg *types.Message, maxqueueblks int64, tsk types.TipSetKey) (types.BigInt, error) {
+	ts, err := cstore.GetTipSetFromKey(ctx, tsk)
+	if err != nil {
+		return types.BigInt{}, xerrors.Errorf("getting tipset from key: %w", err)
+	}
 
 	parentBaseFee := ts.Blocks()[0].ParentBaseFee
 	increaseFactor := math.Pow(1.+1./float64(buildconstants.BaseFeeMaxChangeDenom), float64(maxqueueblks))
@@ -240,7 +243,7 @@ func GasEstimateFeeCap(cstore ChainStoreAPI, msg *types.Message, maxqueueblks in
 	return out, nil
 }
 
-func GasEstimateGasPremium(ctx context.Context, cstore ChainStoreAPI, cache *GasPriceCache, nblocksincl uint64) (types.BigInt, error) {
+func GasEstimateGasPremium(ctx context.Context, cstore ChainStoreAPI, cache *GasPriceCache, nblocksincl uint64, tsKey types.TipSetKey) (types.BigInt, error) {
 	if nblocksincl == 0 {
 		nblocksincl = 1
 	}
@@ -248,7 +251,11 @@ func GasEstimateGasPremium(ctx context.Context, cstore ChainStoreAPI, cache *Gas
 	var prices []GasMeta
 	var blocks int
 
-	ts := cstore.GetHeaviestTipSet()
+	ts, err := cstore.GetTipSetFromKey(ctx, tsKey)
+	if err != nil {
+		return types.BigInt{}, err
+	}
+
 	for i := uint64(0); i < nblocksincl*2; i++ {
 		if ts.Height() == 0 {
 			break // genesis
