@@ -253,7 +253,7 @@ func GasEstimateGasPremium(ctx context.Context, cstore ChainStoreAPI, cache *Gas
 
 	ts, err := cstore.GetTipSetFromKey(ctx, tsKey)
 	if err != nil {
-		return types.BigInt{}, err
+		return types.BigInt{}, xerrors.Errorf("getting tipset from key: %w", err)
 	}
 
 	for i := uint64(0); i < nblocksincl*2; i++ {
