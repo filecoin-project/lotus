@@ -202,9 +202,13 @@ func (a *PaychImpl) PaychVoucherSubmit(ctx context.Context, ch address.Address, 
 	return a.PaychMgr.SubmitVoucher(ctx, ch, sv, secret, proof)
 }
 
+// PaymentChannelDisabledMessage is the error message returned when payment channel
+// operations are attempted but the payment channel manager is disabled.
+const PaymentChannelDisabledMessage = "payment channels disabled (EnablePaymentChannelManager=false)"
+
 // ErrPaymentChannelDisabled is returned when payment channel operations are attempted
 // but the payment channel manager is disabled in the configuration.
-var ErrPaymentChannelDisabled = xerrors.New("payment channels disabled (EnablePaymentChannelManager=false)")
+var ErrPaymentChannelDisabled = xerrors.New(PaymentChannelDisabledMessage)
 
 // DisabledPaych is a stub implementation of the PaychAPI interface that returns errors for all
 // methods. It is used when the payment channel manager is disabled (e.g., when
