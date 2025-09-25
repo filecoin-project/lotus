@@ -9,12 +9,21 @@ import (
 	"testing"
 )
 
+func goRoot() (string, error) {
+	out, err := exec.Command("go", "env", "GOROOT").Output()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
 func goCmd() string {
 	var exeSuffix string
 	if runtime.GOOS == "windows" {
 		exeSuffix = ".exe"
 	}
-	path := filepath.Join(runtime.GOROOT(), "bin", "go"+exeSuffix)
+	root, _ := goRoot()
+	path := filepath.Join(root, "bin", "go"+exeSuffix)
 	if _, err := os.Stat(path); err == nil {
 		return path
 	}

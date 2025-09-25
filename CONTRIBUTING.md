@@ -126,29 +126,34 @@ When updating the Go version (either patch or minor), the following files must b
 #### Step-by-Step Process
    
 ```bash
+OLD_GO_VERSION="1.23.7"
+NEW_GO_VERSION="1.23.10"
+
 # Update go.mod
-sed -i 's/go 1.23.7/go 1.23.10/' go.mod
+sed -i "s/go $OLD_GO_VERSION/go $NEW_GO_VERSION/" go.mod
    
 # Update GO_VERSION_MIN
-echo "1.23.10" > GO_VERSION_MIN
+echo "$NEW_GO_VERSION" > GO_VERSION_MIN
    
 # Update README.md badge and documentation
-sed -i 's/1.23.7/1.23.10/' README.md
+sed -i "s/$OLD_GO_VERSION/$NEW_GO_VERSION/g" README.md
    
 # Update Dockerfile
-sed -i 's/FROM golang:1.23.7-bullseye/FROM golang:1.23.10-bullseye/' Dockerfile
+sed -i "s/FROM golang:$OLD_GO_VERSION-bullseye/FROM golang:$NEW_GO_VERSION-bullseye/" Dockerfile
 
 # Add a changelog entry
 
+# Validate
 go mod tidy
 make build
 make unittests
+make lint
 ```
-
 
 #### Example Reference
 
-For an example of a Go patch version update, see [PR #13190](https://github.com/filecoin-project/lotus/pull/13190) which updated from Go 1.23.7 to 1.23.10.
+For an example of a Go patch version update, see [PR #13190](https://github.com/filecoin-project/lotus/pull/13190), which updated from Go 1.23.7 to 1.23.10.
+For an example of a Go minor version update, see [PR #13354](https://github.com/filecoin-project/lotus/pull/13354), which updated from Go 1.23.10 to 1.24.7.
 
 ### Developer Notes
 

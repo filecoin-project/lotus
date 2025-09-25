@@ -16,7 +16,7 @@ $(warning Your Golang version is go$(shell expr $(GOVERSION) / 1000000).$(shell 
 $(error Update Golang to version to at least $(shell cat GO_VERSION_MIN))
 endif
 
-GOLANGCI_LINT_VERSION=v1.60.1
+GOLANGCI_LINT_VERSION=v1.64.8
 
 # git modules that need to be loaded
 MODULES:=
