@@ -112,7 +112,7 @@ func OpenRPCSchemaTypeMapper(ty reflect.Type) *jsonschema.Type {
 		ty = ty.Elem()
 	}
 
-	if ty == reflect.TypeOf((*interface{})(nil)).Elem() {
+	if ty == reflect.TypeFor[interface{}]() {
 		return &jsonschema.Type{Type: "object", AdditionalProperties: []byte("true")}
 	}
 

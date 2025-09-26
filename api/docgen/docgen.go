@@ -52,12 +52,12 @@ import (
 )
 
 var ExampleValues = map[reflect.Type]interface{}{
-	reflect.TypeOf(api.MinerSubsystem(0)): api.MinerSubsystem(1),
-	reflect.TypeOf(auth.Permission("")):   auth.Permission("write"),
-	reflect.TypeOf(""):                    "string value",
-	reflect.TypeOf(uint64(42)):            uint64(42),
-	reflect.TypeOf(byte(7)):               byte(7),
-	reflect.TypeOf([]byte{}):              []byte("byte array"),
+	reflect.TypeFor[api.MinerSubsystem](): api.MinerSubsystem(1),
+	reflect.TypeFor[auth.Permission]():    auth.Permission("write"),
+	reflect.TypeFor[string]():             "string value",
+	reflect.TypeFor[uint64]():             uint64(42),
+	reflect.TypeFor[byte]():               byte(7),
+	reflect.TypeFor[[]byte]():             []byte("byte array"),
 }
 
 func addExample(v interface{}) {
@@ -70,8 +70,8 @@ func init() {
 		panic(err)
 	}
 
-	ExampleValues[reflect.TypeOf(c)] = c
-	ExampleValues[reflect.TypeOf(&c)] = &c
+	ExampleValues[reflect.TypeFor[cid.Cid]()] = c
+	ExampleValues[reflect.TypeFor[*cid.Cid]()] = &c
 
 	c2, err := cid.Decode("bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve")
 	if err != nil {
@@ -80,15 +80,15 @@ func init() {
 
 	tsk := types.NewTipSetKey(c, c2)
 
-	ExampleValues[reflect.TypeOf(tsk)] = tsk
+	ExampleValues[reflect.TypeFor[types.TipSetKey]()] = tsk
 
 	addr, err := address.NewIDAddress(1234)
 	if err != nil {
 		panic(err)
 	}
 
-	ExampleValues[reflect.TypeOf(addr)] = addr
-	ExampleValues[reflect.TypeOf(&addr)] = &addr
+	ExampleValues[reflect.TypeFor[address.Address]()] = addr
+	ExampleValues[reflect.TypeFor[*address.Address]()] = &addr
 
 	var ts types.TipSet
 	err = json.Unmarshal(tipsetSampleJson, &ts)
@@ -143,8 +143,7 @@ func init() {
 	addExample(&f3Cert)
 
 	block := blocks.Block(&blocks.BasicBlock{})
-	ExampleValues[reflect.TypeOf(&block).Elem()] = block
-
+	ExampleValues[reflect.TypeFor[blocks.Block]()] = block
 	addExample(bitfield.NewFromSet([]uint64{5}))
 	addExample(abi.RegisteredSealProof_StackedDrg32GiBV1_1)
 	addExample(abi.RegisteredPoStProof_StackedDrgWindow32GiBV1)
@@ -187,9 +186,7 @@ func init() {
 	addExample(map[string]int{"name": 42})
 	addExample(map[string]time.Time{"name": time.Unix(1615243938, 0).UTC()})
 	addExample(abi.ActorID(1000))
-	addExample(map[string]types.Actor{
-		"t01236": ExampleValue("init", reflect.TypeOf(types.Actor{}), nil).(types.Actor),
-	})
+	addExample(map[string]types.Actor{"t01236": ExampleValue("init", reflect.TypeFor[types.Actor](), nil).(types.Actor)})
 	addExample(types.IpldOpGet)
 	addExample(&types.TraceIpld{
 		Op:   types.IpldOpGet,

@@ -827,7 +827,7 @@ func collectSnapshotJobStats(ctx context.Context, in job, dag format.NodeGetter,
 			varType := v.Type().Field(i).Type
 			varValue := v.Field(i).Interface()
 
-			if varType == reflect.TypeOf(cid.Cid{}) {
+			if varType == reflect.TypeFor[cid.Cid]() {
 				subjobs = append(subjobs, job{
 					key: fmt.Sprintf("%s/%s", in.key, varName),
 					c:   varValue.(cid.Cid),
@@ -894,7 +894,7 @@ func collectStats(ctx context.Context, addr address.Address, actor *types.Actor,
 			varType := v.Type().Field(i).Type
 			varValue := v.Field(i).Interface()
 
-			if varType == reflect.TypeOf(cid.Cid{}) {
+			if varType == reflect.TypeFor[cid.Cid]() {
 				fields = append(fields, fieldItem{
 					Name: varName,
 					Cid:  varValue.(cid.Cid),
