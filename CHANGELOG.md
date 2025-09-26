@@ -10,6 +10,7 @@
 # UNRELEASED
 - The minimum supported Golang version is now `1.24.7`
 - feat(gateway): expose StateGetRandomnessDigestFromBeacon ([filecoin-project/lotus#13339](https://github.com/filecoin-project/lotus/pull/13339))
+- chore(deps): update of quic-go to v0.54.1 and go-libp2p to v0.43.0 ([filecoin-project/lotus#13361](https://github.com/filecoin-project/lotus/pull/13361))
 
 # Node and Miner v1.34.0 / 2025-09-11
 
