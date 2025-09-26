@@ -53,8 +53,10 @@ build/builtin-actors/v*
 build/builtin-actors/*.car
 
 dist/
+# deprecated
 darwin_amd64_v1/
 darwin_arm64/
+# deprecated
 darwin_all/
 linux_amd64_v1/
 
