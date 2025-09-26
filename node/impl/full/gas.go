@@ -57,7 +57,7 @@ func (a *GasAPI) GasEstimateFeeCap(
 	maxqueueblks int64,
 	tsk types.TipSetKey,
 ) (types.BigInt, error) {
-	return gasutils.GasEstimateFeeCap(a.Chain, msg, maxqueueblks)
+	return gasutils.GasEstimateFeeCap(ctx, a.Chain, msg, maxqueueblks, tsk)
 }
 
 func (m *GasModule) GasEstimateFeeCap(
@@ -66,7 +66,7 @@ func (m *GasModule) GasEstimateFeeCap(
 	maxqueueblks int64,
 	tsk types.TipSetKey,
 ) (types.BigInt, error) {
-	return gasutils.GasEstimateFeeCap(m.Chain, msg, maxqueueblks)
+	return gasutils.GasEstimateFeeCap(ctx, m.Chain, msg, maxqueueblks, tsk)
 }
 
 func (a *GasAPI) GasEstimateGasPremium(
@@ -74,9 +74,9 @@ func (a *GasAPI) GasEstimateGasPremium(
 	nblocksincl uint64,
 	sender address.Address,
 	gaslimit int64,
-	_ types.TipSetKey,
+	tsk types.TipSetKey,
 ) (types.BigInt, error) {
-	return gasutils.GasEstimateGasPremium(ctx, a.Chain, a.PriceCache, nblocksincl)
+	return gasutils.GasEstimateGasPremium(ctx, a.Chain, a.PriceCache, nblocksincl, tsk)
 }
 
 func (m *GasModule) GasEstimateGasPremium(
@@ -84,9 +84,9 @@ func (m *GasModule) GasEstimateGasPremium(
 	nblocksincl uint64,
 	sender address.Address,
 	gaslimit int64,
-	_ types.TipSetKey,
+	tsk types.TipSetKey,
 ) (types.BigInt, error) {
-	return gasutils.GasEstimateGasPremium(ctx, m.Chain, m.PriceCache, nblocksincl)
+	return gasutils.GasEstimateGasPremium(ctx, m.Chain, m.PriceCache, nblocksincl, tsk)
 }
 
 func (a *GasAPI) GasEstimateGasLimit(ctx context.Context, msgIn *types.Message, tsk types.TipSetKey) (int64, error) {
@@ -105,9 +105,9 @@ func (m *GasModule) GasEstimateGasLimit(ctx context.Context, msgIn *types.Messag
 	return gasutils.GasEstimateGasLimit(ctx, m.Chain, m.Stmgr, m.Mpool, msgIn, ts)
 }
 
-func (m *GasModule) GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, _ types.TipSetKey) (*types.Message, error) {
+func (m *GasModule) GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, ts types.TipSetKey) (*types.Message, error) {
 	if msg.GasLimit == 0 {
-		gasLimit, err := m.GasEstimateGasLimit(ctx, msg, types.EmptyTSK)
+		gasLimit, err := m.GasEstimateGasLimit(ctx, msg, ts)
 		if err != nil {
 			return nil, err
 		}
@@ -120,7 +120,7 @@ func (m *GasModule) GasEstimateMessageGas(ctx context.Context, msg *types.Messag
 	}
 
 	if msg.GasPremium == types.EmptyInt || types.BigCmp(msg.GasPremium, types.NewInt(0)) == 0 {
-		gasPremium, err := m.GasEstimateGasPremium(ctx, 10, msg.From, msg.GasLimit, types.EmptyTSK)
+		gasPremium, err := m.GasEstimateGasPremium(ctx, 10, msg.From, msg.GasLimit, ts)
 		if err != nil {
 			return nil, xerrors.Errorf("estimating gas price: %w", err)
 		}
@@ -128,7 +128,7 @@ func (m *GasModule) GasEstimateMessageGas(ctx context.Context, msg *types.Messag
 	}
 
 	if msg.GasFeeCap == types.EmptyInt || types.BigCmp(msg.GasFeeCap, types.NewInt(0)) == 0 {
-		feeCap, err := m.GasEstimateFeeCap(ctx, msg, 20, types.EmptyTSK)
+		feeCap, err := m.GasEstimateFeeCap(ctx, msg, 20, ts)
 		if err != nil {
 			return nil, xerrors.Errorf("estimating fee cap: %w", err)
 		}
