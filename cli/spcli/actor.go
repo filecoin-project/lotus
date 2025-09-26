@@ -1491,6 +1491,11 @@ var ActorNewMinerCmd = &cli.Command{
 			Usage: "number of block confirmations to wait for",
 			Value: int(buildconstants.MessageConfidence),
 		},
+		&cli.Float64Flag{
+			Name:  "deposit-margin-factor",
+			Usage: "Multiplier (>=1.0) to scale the suggested deposit for on-chain variance (e.g. 1.01 adds 1%)",
+			Value: 1.01,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
@@ -1538,7 +1543,7 @@ var ActorNewMinerCmd = &cli.Command{
 		}
 		ssize := abi.SectorSize(sectorSizeInt)
 
-		_, err = createminer.CreateStorageMiner(ctx, full, owner, worker, sender, ssize, cctx.Uint64("confidence"))
+		_, err = createminer.CreateStorageMiner(ctx, full, owner, worker, sender, ssize, cctx.Uint64("confidence"), cctx.Float64("deposit-margin-factor"))
 		if err != nil {
 			return err
 		}
