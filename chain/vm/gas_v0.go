@@ -207,7 +207,7 @@ func (pl *pricelistV0) OnComputeUnsealedSectorCid(proofType abi.RegisteredSealPr
 
 // OnVerifySeal
 func (pl *pricelistV0) OnVerifySeal(info proof7.SealVerifyInfo) GasCharge {
-	// TODO: this needs more cost tunning, check with @lotus
+	// TODO: this needs more cost tuning, check with @lotus
 	// this is not used
 	return newGasCharge("OnVerifySeal", pl.verifySealBase, 0)
 }
