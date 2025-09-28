@@ -115,7 +115,7 @@ func (s *BadgerMarkSet) BeginCriticalSection() error {
 	s.mx.Unlock()
 
 	if write {
-		// all writes sync once perist is true
+		// all writes sync once persist is true
 		return s.write(seqno)
 	}
 

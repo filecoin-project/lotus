@@ -241,7 +241,7 @@ func (b *Blockstore) unlockMove(state bsMoveState) {
 //
 // The blockstore MUST accept new writes during the move and ensure that these
 // are persisted to the new blockstore; if a failure occurs aboring the move,
-// then they must be peristed to the old blockstore.
+// then they must be persisted to the old blockstore.
 // In short, the blockstore must not lose data from new writes during the move.
 func (b *Blockstore) movingGC(ctx context.Context) error {
 	// this inlines moveLock/moveUnlock for the initial state check to prevent a second move
