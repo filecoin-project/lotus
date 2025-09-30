@@ -202,10 +202,6 @@ func (a *PaychImpl) PaychVoucherSubmit(ctx context.Context, ch address.Address, 
 	return a.PaychMgr.SubmitVoucher(ctx, ch, sv, secret, proof)
 }
 
-// ErrPaymentChannelDisabled is returned when payment channel operations are attempted
-// but the payment channel manager is disabled in the configuration.
-var ErrPaymentChannelDisabled = xerrors.New("payment channel manager is disabled (EnablePaymentChannelManager is set to false)")
-
 // DisabledPaych is a stub implementation of the PaychAPI interface that returns errors for all
 // methods. It is used when the payment channel manager is disabled (e.g., when
 // EnablePaymentChannelManager is set to false in the configuration).
@@ -214,69 +210,69 @@ type DisabledPaych struct{}
 var _ PaychAPI = &DisabledPaych{}
 
 func (a *DisabledPaych) PaychGet(ctx context.Context, from, to address.Address, amt types.BigInt, opts api.PaychGetOpts) (*api.ChannelInfo, error) {
-	return nil, ErrPaymentChannelDisabled
+	return nil, api.ErrPaymentChannelDisabled
 }
 
 func (a *DisabledPaych) PaychFund(ctx context.Context, from, to address.Address, amt types.BigInt) (*api.ChannelInfo, error) {
-	return nil, ErrPaymentChannelDisabled
+	return nil, api.ErrPaymentChannelDisabled
 }
 
 func (a *DisabledPaych) PaychAvailableFunds(ctx context.Context, ch address.Address) (*api.ChannelAvailableFunds, error) {
-	return nil, ErrPaymentChannelDisabled
+	return nil, api.ErrPaymentChannelDisabled
 }
 
 func (a *DisabledPaych) PaychAvailableFundsByFromTo(ctx context.Context, from, to address.Address) (*api.ChannelAvailableFunds, error) {
-	return nil, ErrPaymentChannelDisabled
+	return nil, api.ErrPaymentChannelDisabled
 }
 
 func (a *DisabledPaych) PaychGetWaitReady(ctx context.Context, sentinel cid.Cid) (address.Address, error) {
-	return address.Undef, ErrPaymentChannelDisabled
+	return address.Undef, api.ErrPaymentChannelDisabled
 }
 
 func (a *DisabledPaych) PaychAllocateLane(ctx context.Context, ch address.Address) (uint64, error) {
-	return 0, ErrPaymentChannelDisabled
+	return 0, api.ErrPaymentChannelDisabled
 }
 
 func (a *DisabledPaych) PaychNewPayment(ctx context.Context, from, to address.Address, vouchers []api.VoucherSpec) (*api.PaymentInfo, error) {
-	return nil, ErrPaymentChannelDisabled
+	return nil, api.ErrPaymentChannelDisabled
 }
 
 func (a *DisabledPaych) PaychList(ctx context.Context) ([]address.Address, error) {
-	return nil, ErrPaymentChannelDisabled
+	return nil, api.ErrPaymentChannelDisabled
 }
 
 func (a *DisabledPaych) PaychStatus(ctx context.Context, pch address.Address) (*api.PaychStatus, error) {
-	return nil, ErrPaymentChannelDisabled
+	return nil, api.ErrPaymentChannelDisabled
 }
 
 func (a *DisabledPaych) PaychSettle(ctx context.Context, addr address.Address) (cid.Cid, error) {
-	return cid.Undef, ErrPaymentChannelDisabled
+	return cid.Undef, api.ErrPaymentChannelDisabled
 }
 
 func (a *DisabledPaych) PaychCollect(ctx context.Context, addr address.Address) (cid.Cid, error) {
-	return cid.Undef, ErrPaymentChannelDisabled
+	return cid.Undef, api.ErrPaymentChannelDisabled
 }
 
 func (a *DisabledPaych) PaychVoucherCheckValid(ctx context.Context, ch address.Address, sv *paychtypes.SignedVoucher) error {
-	return ErrPaymentChannelDisabled
+	return api.ErrPaymentChannelDisabled
 }
 
 func (a *DisabledPaych) PaychVoucherCheckSpendable(ctx context.Context, ch address.Address, sv *paychtypes.SignedVoucher, secret []byte, proof []byte) (bool, error) {
-	return false, ErrPaymentChannelDisabled
+	return false, api.ErrPaymentChannelDisabled
 }
 
 func (a *DisabledPaych) PaychVoucherAdd(ctx context.Context, ch address.Address, sv *paychtypes.SignedVoucher, proof []byte, minDelta types.BigInt) (types.BigInt, error) {
-	return types.BigInt{}, ErrPaymentChannelDisabled
+	return types.BigInt{}, api.ErrPaymentChannelDisabled
 }
 
 func (a *DisabledPaych) PaychVoucherCreate(ctx context.Context, pch address.Address, amt types.BigInt, lane uint64) (*api.VoucherCreateResult, error) {
-	return nil, ErrPaymentChannelDisabled
+	return nil, api.ErrPaymentChannelDisabled
 }
 
 func (a *DisabledPaych) PaychVoucherList(ctx context.Context, pch address.Address) ([]*paychtypes.SignedVoucher, error) {
-	return nil, ErrPaymentChannelDisabled
+	return nil, api.ErrPaymentChannelDisabled
 }
 
 func (a *DisabledPaych) PaychVoucherSubmit(ctx context.Context, ch address.Address, sv *paychtypes.SignedVoucher, secret []byte, proof []byte) (cid.Cid, error) {
-	return cid.Undef, ErrPaymentChannelDisabled
+	return cid.Undef, api.ErrPaymentChannelDisabled
 }
