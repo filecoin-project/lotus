@@ -4,7 +4,7 @@
 package buildconstants
 
 import (
-	_ "embed"	
+	_ "embed"
 	"os"
 	"strconv"
 
