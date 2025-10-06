@@ -26,6 +26,7 @@ const (
 	EF3NotReady
 	EExecutionReverted
 	ENullRound
+	EPaymentChannelDisabled
 )
 
 var (
@@ -48,6 +49,8 @@ var (
 	// ErrF3NotReady signals that the F3 instance isn't ready for participation yet. The caller
 	// should back off and try again later.
 	ErrF3NotReady = &errF3NotReady{}
+	// ErrPaymentChannelDisabled signals that payment channel operations are disabled.
+	ErrPaymentChannelDisabled = &errPaymentChannelDisabled{}
 
 	_ error                 = (*ErrOutOfGas)(nil)
 	_ error                 = (*ErrActorNotFound)(nil)
@@ -60,6 +63,7 @@ var (
 	_ jsonrpc.RPCErrorCodec = (*ErrExecutionReverted)(nil)
 	_ error                 = (*ErrNullRound)(nil)
 	_ jsonrpc.RPCErrorCodec = (*ErrNullRound)(nil)
+	_ error                 = (*errPaymentChannelDisabled)(nil)
 )
 
 func init() {
@@ -74,6 +78,7 @@ func init() {
 	RPCErrors.Register(EF3NotReady, new(*errF3NotReady))
 	RPCErrors.Register(EExecutionReverted, new(*ErrExecutionReverted))
 	RPCErrors.Register(ENullRound, new(*ErrNullRound))
+	RPCErrors.Register(EPaymentChannelDisabled, new(*errPaymentChannelDisabled))
 }
 
 func ErrorIsIn(err error, errorTypes []error) bool {
@@ -212,4 +217,10 @@ func (e *ErrNullRound) ToJSONRPCError() (jsonrpc.JSONRPCError, error) {
 func (e *ErrNullRound) Is(target error) bool {
 	_, ok := target.(*ErrNullRound)
 	return ok
+}
+
+type errPaymentChannelDisabled struct{}
+
+func (errPaymentChannelDisabled) Error() string {
+	return "payment channels disabled (EnablePaymentChannelManager=false)"
 }
