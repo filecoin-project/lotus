@@ -168,7 +168,7 @@ func TestColdStorePrune(t *testing.T) {
 	assert.True(g.t, g.Exists(ctx, garbageM), "Garbage message not found in splitstore")
 	bm.Restart()
 
-	// wait for compaction to finsih and pause to make sure it doesn't start to avoid racing
+	// wait for compaction to finish and pause to make sure it doesn't start to avoid racing
 	for {
 		bm.Pause()
 		if splitStoreCompacting(ctx, t, full) {
