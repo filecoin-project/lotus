@@ -123,7 +123,7 @@ NAME:
    lotus-worker storage - manage sector storage
 
 USAGE:
-   lotus-worker storage command [command options]
+   lotus-worker storage [command options]
 
 COMMANDS:
    attach     attach local storage path
@@ -207,7 +207,7 @@ NAME:
    lotus-worker tasks - Manage task processing
 
 USAGE:
-   lotus-worker tasks command [command options]
+   lotus-worker tasks [command options]
 
 COMMANDS:
    enable   Enable a task type
