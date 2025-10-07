@@ -290,6 +290,7 @@ var EvmDeployCmd = &cli.Command{
 			return err
 		}
 		afmt.Printf("Actor ID: %d\n", result.ActorID)
+		afmt.Printf("Message CID: %s\n", smsg.Cid())
 		afmt.Printf("ID Address: %s\n", addr)
 		afmt.Printf("Robust Address: %s\n", result.RobustAddress)
 		afmt.Printf("Eth Address: %s\n", "0x"+hex.EncodeToString(result.EthAddress[:]))
