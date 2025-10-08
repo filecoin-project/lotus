@@ -284,7 +284,7 @@ var EvmDeployCmd = &cli.Command{
 
 			afmt.Printf("Exit Code: %d\n", wait.Receipt.ExitCode)
 			afmt.Printf("Gas Used: %d\n", wait.Receipt.GasUsed)
-			afmt.Printf("Return (base64): %s\n", base64.StdEncoding.EncodeToString(wait.Receipt.Return))
+			afmt.Printf("Return: %s\n", wait.Receipt.Return)
 		}
 
 		// check it executed successfully
