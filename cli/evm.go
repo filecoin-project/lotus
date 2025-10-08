@@ -206,6 +206,11 @@ var EvmDeployCmd = &cli.Command{
 			Name:  "hex",
 			Usage: "use when input contract is in hex",
 		},
+		&cli.BoolFlag{
+			Name:  "wait",
+			Usage: "wait for message execution before returning (default: true)",
+			Value: true,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		afmt := NewAppFmt(cctx.App)
@@ -268,10 +273,18 @@ var EvmDeployCmd = &cli.Command{
 			return xerrors.Errorf("failed to push message: %w", err)
 		}
 
-		afmt.Println("waiting for message to execute...")
-		wait, err := api.StateWaitMsg(ctx, smsg.Cid(), 0)
-		if err != nil {
-			return xerrors.Errorf("error waiting for message: %w", err)
+		afmt.Printf("Message CID: %s\n", smsg.Cid())
+
+		if cctx.Bool("wait") {
+			afmt.Println("waiting for message to execute...")
+			wait, err := api.StateWaitMsg(ctx, smsg.Cid(), 0)
+			if err != nil {
+				return xerrors.Errorf("error waiting for message: %w", err)
+			}
+
+			afmt.Printf("Exit Code: %d\n", wait.Receipt.ExitCode)
+			afmt.Printf("Gas Used: %d\n", wait.Receipt.GasUsed)
+			afmt.Printf("Return (base64): %s\n", base64.StdEncoding.EncodeToString(wait.Receipt.Return))
 		}
 
 		// check it executed successfully
@@ -289,8 +302,8 @@ var EvmDeployCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
+
 		afmt.Printf("Actor ID: %d\n", result.ActorID)
-		afmt.Printf("Message CID: %s\n", smsg.Cid())
 		afmt.Printf("ID Address: %s\n", addr)
 		afmt.Printf("Robust Address: %s\n", result.RobustAddress)
 		afmt.Printf("Eth Address: %s\n", "0x"+hex.EncodeToString(result.EthAddress[:]))
