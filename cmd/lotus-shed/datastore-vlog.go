@@ -289,7 +289,7 @@ type header struct {
 	userMeta  byte
 }
 
-// Encode encodes the header into []byte. The provided []byte should be atleast 5 bytes. The
+// Encode encodes the header into []byte. The provided []byte should be at least 5 bytes. The
 // function will panic if out []byte isn't large enough to hold all the values.
 // The encoded header looks like
 // +------+----------+------------+--------------+-----------+
