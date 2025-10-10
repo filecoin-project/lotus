@@ -2365,6 +2365,7 @@ USAGE:
 OPTIONS:
    --from value  optionally specify the account to use for sending the creation message
    --hex         use when input contract is in hex (default: false)
+   --wait        wait for message execution before returning (default: true) (default: true)
    --help, -h    show help
 ```
 
