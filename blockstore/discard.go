@@ -22,10 +22,6 @@ func (b *discardstore) Has(ctx context.Context, cid cid.Cid) (bool, error) {
 	return b.bs.Has(ctx, cid)
 }
 
-func (b *discardstore) HashOnRead(hor bool) {
-	b.bs.HashOnRead(hor)
-}
-
 func (b *discardstore) Get(ctx context.Context, cid cid.Cid) (blocks.Block, error) {
 	return b.bs.Get(ctx, cid)
 }

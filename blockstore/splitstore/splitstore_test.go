@@ -681,8 +681,6 @@ func (b *mockStore) Has(_ context.Context, cid cid.Cid) (bool, error) {
 	return ok, nil
 }
 
-func (b *mockStore) HashOnRead(hor bool) {}
-
 func (b *mockStore) Get(_ context.Context, cid cid.Cid) (blocks.Block, error) {
 	b.mx.Lock()
 	defer b.mx.Unlock()

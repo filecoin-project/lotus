@@ -252,10 +252,6 @@ func (bs *AutobatchBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid,
 	return bs.backingBs.AllKeysChan(ctx)
 }
 
-func (bs *AutobatchBlockstore) HashOnRead(enabled bool) {
-	bs.backingBs.HashOnRead(enabled)
-}
-
 func (bs *AutobatchBlockstore) View(ctx context.Context, cid cid.Cid, callback func([]byte) error) error {
 	blk, err := bs.Get(ctx, cid)
 	if err != nil {

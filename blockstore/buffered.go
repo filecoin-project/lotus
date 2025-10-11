@@ -161,11 +161,6 @@ func (bs *BufferedBlockstore) Has(ctx context.Context, c cid.Cid) (bool, error) 
 	return bs.read.Has(ctx, c)
 }
 
-func (bs *BufferedBlockstore) HashOnRead(hor bool) {
-	bs.read.HashOnRead(hor)
-	bs.write.HashOnRead(hor)
-}
-
 func (bs *BufferedBlockstore) PutMany(ctx context.Context, blks []block.Block) error {
 	return bs.write.PutMany(ctx, blks)
 }
