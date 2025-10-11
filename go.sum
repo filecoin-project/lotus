@@ -212,8 +212,8 @@ github.com/drand/kyber-bls12381 v0.3.3/go.mod h1:uVRWtcZDAApOWFMwoJVcTfC4csVxXmp
 github.com/dustin/go-humanize v1.0.0/go.mod h1:HtrtbFcZ19U5GC7JDqmcUSB87Iq5E25KnS6fMYU6eOk=
 github.com/dustin/go-humanize v1.0.1 h1:GzkhY7T5VNhEkwH0PVJgjz+fX1rhBrR7pRT3mDkpeCY=
 github.com/dustin/go-humanize v1.0.1/go.mod h1:Mu1zIs6XwVuF/gI1OepvI0qD18qycQx+mFykh5fBlto=
-github.com/elastic/go-elasticsearch/v7 v7.14.0 h1:extp3jos/rwJn3J+lgbaGlwAgs0TVsIHme00GyNAyX4=
-github.com/elastic/go-elasticsearch/v7 v7.14.0/go.mod h1:OJ4wdbtDNk5g503kvlHLyErCgQwwzmDtaFC4XyOxXA4=
+github.com/elastic/go-elasticsearch/v7 v7.17.10 h1:TCQ8i4PmIJuBunvBS6bwT2ybzVFxxUhhltAs3Gyu1yo=
+github.com/elastic/go-elasticsearch/v7 v7.17.10/go.mod h1:OJ4wdbtDNk5g503kvlHLyErCgQwwzmDtaFC4XyOxXA4=
 github.com/elastic/go-sysinfo v1.15.4 h1:A3zQcunCxik14MgXu39cXFXcIw2sFXZ0zL886eyiv1Q=
 github.com/elastic/go-sysinfo v1.15.4/go.mod h1:ZBVXmqS368dOn/jvijV/zHLfakWTYHBZPk3G244lHrU=
 github.com/elastic/go-windows v1.0.2 h1:yoLLsAsV5cfg9FLhZ9EXZ2n2sQFKeDYrHenkcivY4vI=
