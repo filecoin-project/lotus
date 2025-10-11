@@ -10,6 +10,7 @@ import (
 	pubsub_pb "github.com/libp2p/go-libp2p-pubsub/pb"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/gologshim"
 	ma "github.com/multiformats/go-multiaddr"
 	"go.opencensus.io/stats"
 	"go.uber.org/fx"
@@ -436,7 +437,7 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 		if err != nil {
 			return nil, err
 		}
-		tr, err := pubsub.NewRemoteTracer(context.TODO(), in.Host, *pi)
+		tr, err := pubsub.NewRemoteTracer(context.TODO(), in.Host, *pi, gologshim.Logger("lp2p/pubsub"))
 		if err != nil {
 			return nil, err
 		}
