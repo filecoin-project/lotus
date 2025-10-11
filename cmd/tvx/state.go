@@ -42,7 +42,7 @@ func NewSurgeon(ctx context.Context, api v1api.FullNode, stores *Stores) *StateS
 // GetMaskedStateTree trims the state tree at the supplied tipset to contain
 // only the state of the actors in the retain set. It also "dives" into some
 // singleton system actors, like the init actor, to trim the state so as to
-// compute a minimal state tree. In the future, thid method will dive into
+// compute a minimal state tree. In the future, this method will dive into
 // other system actors like the power actor and the market actor.
 func (sg *StateSurgeon) GetMaskedStateTree(previousRoot cid.Cid, retain []address.Address) (cid.Cid, error) {
 	// TODO: this will need to be parameterized on network version.
