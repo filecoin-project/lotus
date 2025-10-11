@@ -22,7 +22,7 @@ require (
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
 	github.com/alecthomas/jsonschema v0.0.0-20200530073317-71f438968921
-	github.com/cheggaaa/pb/v3 v3.1.5
+	github.com/cheggaaa/pb/v3 v3.1.7
 	github.com/chzyer/readline v1.5.1
 	github.com/consensys/gnark-crypto v0.19.0
 	github.com/containerd/cgroups v1.1.0
