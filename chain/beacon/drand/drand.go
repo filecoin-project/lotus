@@ -70,18 +70,28 @@ type DrandHTTPClient interface {
 
 type logger struct {
 	*zap.SugaredLogger
+	name string
 }
 
 func (l *logger) With(args ...interface{}) dlog.Logger {
-	return &logger{l.SugaredLogger.With(args...)}
+	return &logger{l.SugaredLogger.With(args...), l.name}
 }
 
 func (l *logger) Named(s string) dlog.Logger {
-	return &logger{l.SugaredLogger.Named(s)}
+	newName := l.name
+	if newName != "" {
+		newName += "."
+	}
+	newName += s
+	return &logger{l.SugaredLogger.Named(s), newName}
 }
 
 func (l *logger) AddCallerSkip(skip int) dlog.Logger {
-	return &logger{l.SugaredLogger.With(zap.AddCallerSkip(skip))}
+	return &logger{l.SugaredLogger.With(zap.AddCallerSkip(skip)), l.name}
+}
+
+func (l *logger) Name() string {
+	return l.name
 }
 
 func NewDrandBeacon(genesisTs, interval uint64, ps *pubsub.PubSub, config dtypes.DrandConfig) (*DrandBeacon, error) {
@@ -96,7 +106,7 @@ func NewDrandBeacon(genesisTs, interval uint64, ps *pubsub.PubSub, config dtypes
 
 	var clients []drand.Client
 	for _, url := range config.Servers {
-		hc, err := hclient.NewWithInfo(&logger{&log.SugaredLogger}, url, drandChain, nil)
+		hc, err := hclient.NewWithInfo(&logger{&log.SugaredLogger, "drand"}, url, drandChain, nil)
 		if err != nil {
 			return nil, xerrors.Errorf("could not create http drand client: %w", err)
 		}
@@ -107,7 +117,7 @@ func NewDrandBeacon(genesisTs, interval uint64, ps *pubsub.PubSub, config dtypes
 	opts := []dclient.Option{
 		dclient.WithChainInfo(drandChain),
 		dclient.WithCacheSize(1024),
-		dclient.WithLogger(&logger{&log.SugaredLogger}),
+		dclient.WithLogger(&logger{&log.SugaredLogger, "drand"}),
 	}
 
 	if ps != nil {
