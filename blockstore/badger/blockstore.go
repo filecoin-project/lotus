@@ -96,7 +96,7 @@ type bsMoveState int
 const (
 	// moveStateNone signifies that there is no move in progress
 	moveStateNone bsMoveState = iota
-	// moveStateMoving signifies that there is a move  in a progress
+	// moveStateMoving signifies that there is a move in a progress
 	moveStateMoving
 	// moveStateCleanup signifies that a move has completed or aborted and we are cleaning up
 	moveStateCleanup
