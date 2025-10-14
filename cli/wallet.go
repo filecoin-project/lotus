@@ -433,6 +433,12 @@ var walletSign = &cli.Command{
 	Name:      "sign",
 	Usage:     "sign a message",
 	ArgsUsage: "<signing address> <hexMessage>",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name: "fevm",
+			Usage: "Use EIP-191 (Ethereum-style) prefix for signing FEVM messages per FRC-102",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -459,7 +465,18 @@ var walletSign = &cli.Command{
 			return err
 		}
 
-		sig, err := api.WalletSign(ctx, addr, msg)
+		var prefix []byte
+		if cctx.Bool("fevm") {
+			//EVM-Compatible 
+			prefix = []byte(fmt.Sprintf("\x19Ethereum Signed Message:\n%d", len(msg)))
+		} else {
+			//Filecoin
+			prefix = []byte(fmt.Sprintf("Filecoin Signed Message:\n%d", len(msg)))
+		}
+
+		toSign := append(prefix, msg...)
+
+		sig, err := api.WalletSign(ctx, addr, toSign)
 
 		if err != nil {
 			// Check if the address is a multisig address
