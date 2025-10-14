@@ -435,7 +435,7 @@ var walletSign = &cli.Command{
 	ArgsUsage: "<signing address> <hexMessage>",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
-			Name: "fevm",
+			Name:  "fevm",
 			Usage: "Use EIP-191 (Ethereum-style) prefix for signing FEVM messages per FRC-102",
 		},
 	},
@@ -467,7 +467,7 @@ var walletSign = &cli.Command{
 
 		var prefix []byte
 		if cctx.Bool("fevm") {
-			//EVM-Compatible 
+			//EVM-Compatible
 			prefix = []byte(fmt.Sprintf("\x19Ethereum Signed Message:\n%d", len(msg)))
 		} else {
 			//Filecoin
