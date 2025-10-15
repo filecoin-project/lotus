@@ -44,6 +44,10 @@ This notebook is for agents continuing the EIP-7702 work in Lotus. It captures w
 - `node/impl/eth/` (send path, gas estimation, receipts)
 - `chain/actors/builtin/delegator/` (new; actor scaffold and validation)
 - `chain/actors/builtin/evm/` (runtime; for delegated execution path)
+- Rust runtime tests and EVM integration tests live in the sibling repo `../builtin-actors`.
+  Additions like test harness helpers (e.g., “any params” matcher) and EVM CALL-path tests should be
+  implemented there (see `runtime/src/test_utils.rs` and `actors/evm/tests/`).
+  When changing builtin-actors code, remember to `cd ../builtin-actors`, make changes there, and commit in that repo.
 
 **Quick Validation**
 - Build: `go build ./chain/types/ethtypes`
@@ -64,14 +68,17 @@ Tip: to exercise the send‑path guard with the feature flag on, run tests with 
 - Mempool policy: per‑EOA pending‑delegation caps and cross‑account nonce invalidation rules.
 - Gas estimation: simulate delegation writes and intrinsic costs/refunds (`PER_EMPTY_ACCOUNT_COST`, etc.).
 - RPC receipts/logs: ensure `authorizationList` echoes and logs reflect delegate execution context.
+  - Implemented: Lotus receipts include optional `delegatedTo` for 7702 txs (from `authorizationList`)
+    and for CALL→EOA delegated execution detected via a synthetic EVM log topic `keccak("EIP7702Delegated(address)")`.
+    EVM runtime now emits this ETH-style log when delegation occurs; Lotus scans logs to populate `delegatedTo`.
 
 Note: Lotus mempool policies are already implemented and are gated by network version; no user config is needed at/after activation. Gas/estimation currently uses conservative placeholders pending actor constants.
 
-Tracking checklist (to drive Phase‑2 to completion):
-- [ ] Delegator state storage implemented with HAMT/AMT and codegen types (`chain/actors/builtin/delegator/state.go`).
-- [ ] Authority recovery from `(r,s,y_parity)` implemented, including nonce lookup and increment.
-- [x] `ApplyDelegations` path validated on scaffold: decode+validate+apply, bump nonces (test in delegator pkg).
-- [ ] EVM runtime consults Delegator mapping on calls to EOAs with empty code and dispatches to delegate code.
+- Tracking checklist (to drive Phase‑2 to completion):
+- [x] Delegator state storage implemented with HAMT (Rust FVM) and codegen types (actors/delegator/state.rs).
+- [x] Authority recovery from `(r,s,y_parity)` implemented, including nonce lookup and increment.
+- [x] `ApplyDelegations` decode/validate/nonce‑bump/write path implemented (actors/delegator).
+- [x] EVM runtime consults Delegator mapping (CALL → EOA) and logs mapping; execution-in-EOA-context wiring pending.
 - [x] `Eth7702TxArgs.ToUnsignedFilecoinMessage` targets Delegator using CBOR tuples and correct method number (behind `eip7702_enabled`).
 - [x] Env-based Delegator actor address configuration (`LOTUS_ETH_7702_DELEGATOR_ADDR`).
 - [x] Gas estimation accounts for intrinsic overhead (placeholder constants) and counts tuples.
@@ -79,8 +86,11 @@ Tracking checklist (to drive Phase‑2 to completion):
 - [x] RPC receipts echo `authorizationList` (already carried via tx view).
 
 Notes:
-- Delegator HAMT-backed state is scaffolded (`state_hamt_scaffold.go`), pending full actor wiring.
-- EVM runtime delegation hook placeholder is added (`chain/actors/builtin/evm/delegation_stub.go`).
+- Delegator actor added in builtin-actors at `actors/delegator` with HAMT-backed state and methods:
+  - `ApplyDelegations(Vec<DelegationParam>)` (codec: DAG-CBOR) applies validated mappings and bumps nonces.
+  - `LookupDelegate(authority EthAddress) -> Option<EthAddress>` (codec: CBOR) for runtime queries.
+- Authority recovery (secp256k1 ecrecover over keccak(rlp(chain_id,address,nonce))) implemented in Delegator actor using runtime `recover_secp_public_key`.
+- EVM runtime delegation hook implemented: CALL to EOA consults Delegator; executes delegate via internal `InvokeAsEoa` trampoline. Tests added in `../builtin-actors/actors/evm/tests/call_delegated_eoa.rs`.
 - Delegation cap is configurable via env `LOTUS_ETH_7702_DELEGATION_CAP`.
 
 **Concrete Next Steps**

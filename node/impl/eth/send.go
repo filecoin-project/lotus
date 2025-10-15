@@ -3,12 +3,8 @@ package eth
 import (
     "context"
 
-    "golang.org/x/xerrors"
-
     "github.com/filecoin-project/lotus/chain/index"
-    "github.com/filecoin-project/lotus/chain/types"
     "github.com/filecoin-project/lotus/chain/types/ethtypes"
-    delegator "github.com/filecoin-project/lotus/chain/actors/builtin/delegator"
 )
 
 var (
@@ -46,12 +42,7 @@ func (e *ethSend) ethSendRawTransaction(ctx context.Context, rawTx ethtypes.EthB
         return ethtypes.EmptyEthHash, err
     }
 
-    // Basic 7702 mempool policy: cap pending ApplyDelegations per sender.
-    // Only applies when feature is enabled and DelegatorActorAddr is configured.
-    if ethtypes.Eip7702FeatureEnabled && ethtypes.DelegatorActorAddr != (smsg.Message.To) && ethtypes.DelegatorActorAddr != (smsg.Message.To) {
-        // no-op guard, keep consistent branching
-    }
-    // 7702 mempool cap now enforced in messagepool with network version gating
+    // 7702 mempool policies (cap / eviction) are enforced in messagepool with network version gating.
 
     if untrusted {
         if _, err = e.mpoolApi.MpoolPushUntrusted(ctx, smsg); err != nil {

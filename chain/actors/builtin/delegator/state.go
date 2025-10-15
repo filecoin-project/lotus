@@ -2,7 +2,7 @@ package delegator
 
 import (
     "fmt"
-	"github.com/filecoin-project/go-address"
+    "github.com/filecoin-project/go-address"
 )
 
 // State is a scaffold for a Delegator system actor that stores a mapping

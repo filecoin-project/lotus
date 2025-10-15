@@ -343,7 +343,7 @@ func (e *ethTransaction) EthGetTransactionReceiptLimited(ctx context.Context, tx
     }
 
     // 7702: adjust receipt for delegated execution if needed
-    adjustReceiptForDelegation(ctx, &receipt)
+    adjustReceiptForDelegation(ctx, &receipt, tx)
 
 	return &receipt, nil
 }
@@ -401,7 +401,7 @@ func (e *ethTransaction) EthGetBlockReceiptsLimited(ctx context.Context, blockPa
         }
 
         // 7702: adjust receipt for delegated execution if needed
-        adjustReceiptForDelegation(ctx, &receipt)
+        adjustReceiptForDelegation(ctx, &receipt, tx)
 
 		// Set the correct Ethereum block hash
 		receipt.BlockHash = blkHash
