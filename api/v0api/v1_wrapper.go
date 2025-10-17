@@ -214,7 +214,7 @@ func (w *WrapperV1Full) BeaconGetEntry(ctx context.Context, epoch abi.ChainEpoch
 }
 
 func (w *WrapperV1Full) ChainExport(ctx context.Context, nroots abi.ChainEpoch, oldmsgskip bool, tsk types.TipSetKey) (<-chan []byte, error) {
-	return w.FullNode.ChainExport(ctx, nroots, oldmsgskip, tsk, 1)
+	return w.FullNode.ChainExport(ctx, nroots, oldmsgskip, tsk, 2)
 }
 
 var _ FullNode = &WrapperV1Full{}
