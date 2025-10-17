@@ -495,7 +495,7 @@ func TestChainExport(t *testing.T) {
 
 	gomock.InOrder(
 		mockApi.EXPECT().ChainHead(ctx).Return(ts, nil),
-		mockApi.EXPECT().ChainExport(ctx, abi.ChainEpoch(0), false, ts.Key()).Return(export, nil),
+		mockApi.EXPECT().ChainExport(ctx, abi.ChainEpoch(0), false, ts.Key(), 1).Return(export, nil),
 	)
 
 	err := app.Run([]string{"chain", "export", "whatever.car"})

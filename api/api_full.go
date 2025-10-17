@@ -207,7 +207,8 @@ type FullNode interface {
 	// back to genesis, the entire genesis state, and the most recent 'nroots'
 	// state trees.
 	// If oldmsgskip is set, messages from before the requested roots are also not included.
-	ChainExport(ctx context.Context, nroots abi.ChainEpoch, oldmsgskip bool, tsk types.TipSetKey) (<-chan []byte, error) //perm:read
+	//
+	ChainExport(ctx context.Context, nroots abi.ChainEpoch, oldmsgskip bool, tsk types.TipSetKey, version uint64) (<-chan []byte, error) //perm:read
 
 	// ChainExportRangeInternal triggers the export of a chain
 	// CAR-snapshot directly to disk. It is similar to ChainExport,

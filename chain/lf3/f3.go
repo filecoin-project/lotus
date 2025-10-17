@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/go-f3"
 	"github.com/filecoin-project/go-f3/blssig"
 	"github.com/filecoin-project/go-f3/certs"
+	"github.com/filecoin-project/go-f3/certstore"
 	"github.com/filecoin-project/go-f3/gpbft"
 	"github.com/filecoin-project/go-f3/manifest"
 
@@ -41,6 +42,7 @@ type F3Backend interface {
 	Participate(_ context.Context, ticket api.F3ParticipationTicket) (api.F3ParticipationLease, error)
 	ListParticipants() []api.F3Participant
 	GetManifest(ctx context.Context) (*manifest.Manifest, error)
+	GetCertStore() (*certstore.Store, error)
 	GetCert(ctx context.Context, instance uint64) (*certs.FinalityCertificate, error)
 	GetLatestCert(ctx context.Context) (*certs.FinalityCertificate, error)
 	GetPowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error)
@@ -284,6 +286,10 @@ func (fff *F3) GetOrRenewParticipationTicket(_ context.Context, minerID uint64, 
 
 func (fff *F3) Participate(_ context.Context, ticket api.F3ParticipationTicket) (api.F3ParticipationLease, error) {
 	return fff.leaser.participate(ticket)
+}
+
+func (fff *F3) GetCertStore() (*certstore.Store, error) {
+	return fff.inner.GetCertStore()
 }
 
 func (fff *F3) GetCert(ctx context.Context, instance uint64) (*certs.FinalityCertificate, error) {

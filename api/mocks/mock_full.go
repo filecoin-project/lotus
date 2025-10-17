@@ -142,18 +142,18 @@ func (mr *MockFullNodeMockRecorder) ChainDeleteObj(arg0, arg1 interface{}) *gomo
 }
 
 // ChainExport mocks base method.
-func (m *MockFullNode) ChainExport(arg0 context.Context, arg1 abi.ChainEpoch, arg2 bool, arg3 types.TipSetKey) (<-chan []byte, error) {
+func (m *MockFullNode) ChainExport(arg0 context.Context, arg1 abi.ChainEpoch, arg2 bool, arg3 types.TipSetKey, arg4 uint64) (<-chan []byte, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ChainExport", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "ChainExport", arg0, arg1, arg2, arg3, arg4)
 	ret0, _ := ret[0].(<-chan []byte)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ChainExport indicates an expected call of ChainExport.
-func (mr *MockFullNodeMockRecorder) ChainExport(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+func (mr *MockFullNodeMockRecorder) ChainExport(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainExport", reflect.TypeOf((*MockFullNode)(nil).ChainExport), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainExport", reflect.TypeOf((*MockFullNode)(nil).ChainExport), arg0, arg1, arg2, arg3, arg4)
 }
 
 // ChainExportRangeInternal mocks base method.
