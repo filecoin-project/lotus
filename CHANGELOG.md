@@ -14,6 +14,7 @@
 - feat(spcli): add a `deposit-margin-factor` option to `lotus-miner actor new` and `lotus-shed miner create` so the sent deposit still covers the on-chain requirement if it rises between lookup and execution
 - feat(cli): lotus evm deploy prints message CID ([filecoin-project/lotus#13378](https://github.com/filecoin-project/lotus/pull/13378))
 - fix(eth): properly return vm error in all gas estimation methods ([filecoin-project/lotus#13389](https://github.com/filecoin-project/lotus/pull/13389))
+- chore: all actor cmd support --actor ([filecoin-project/lotus#13391](https://github.com/filecoin-project/lotus/pull/13391))
 
 # Node and Miner v1.34.1 / 2025-09-15
 
