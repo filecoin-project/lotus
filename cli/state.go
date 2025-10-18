@@ -836,6 +836,10 @@ var StateListMessagesCmd = &cli.Command{
 			Name:  "cids",
 			Usage: "print message CIDs instead of messages",
 		},
+		&cli.BoolFlag{
+			Name:  "order-by-nonce",
+			Usage: "order messages by nonce",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -888,21 +892,56 @@ var StateListMessagesCmd = &cli.Command{
 				return err
 			}
 
-			for _, c := range msgs {
-				if cctx.Bool("cids") {
-					fmt.Println(c.String())
-					continue
+			// If --order-by-nonce is set and --from is used, fetch messages and sort by nonce
+			if cctx.Bool("order-by-nonce") && froma != address.Undef {
+				var sortedMsgs []struct {
+					Cid   cid.Cid
+					Nonce uint64
+					Msg   *types.Message
 				}
-
-				m, err := api.ChainGetMessage(ctx, c)
-				if err != nil {
-					return err
+				for _, c := range msgs {
+					m, err := api.ChainGetMessage(ctx, c)
+					if err != nil {
+						return err
+					}
+					if m.From == froma {
+						sortedMsgs = append(sortedMsgs, struct {
+							Cid   cid.Cid
+							Nonce uint64
+							Msg   *types.Message
+						}{c, m.Nonce, m})
+					}
 				}
-				b, err := json.MarshalIndent(m, "", "  ")
-				if err != nil {
-					return err
+				sort.Slice(sortedMsgs, func(i, j int) bool {
+					return sortedMsgs[i].Nonce < sortedMsgs[j].Nonce
+				})
+				for _, sm := range sortedMsgs {
+					if cctx.Bool("cids") {
+						fmt.Println(sm.Cid.String())
+						continue
+					}
+					b, err := json.MarshalIndent(sm.Msg, "", "  ")
+					if err != nil {
+						return err
+					}
+					fmt.Println(string(b))
 				}
-				fmt.Println(string(b))
+			} else {
+				for _, c := range msgs {
+					if cctx.Bool("cids") {
+						fmt.Println(c.String())
+						continue
+					}
+					m, err := api.ChainGetMessage(ctx, c)
+					if err != nil {
+						return err
+					}
+					b, err := json.MarshalIndent(m, "", "  ")
+					if err != nil {
+						return err
+					}
+					fmt.Println(string(b))
+				}
 			}
 
 			if end <= 0 {
