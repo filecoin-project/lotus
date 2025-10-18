@@ -167,7 +167,7 @@ func GasEstimateGasLimit(
 	}
 
 	if res.MsgRct.ExitCode != exitcode.Ok {
-		return -1, xerrors.Errorf("message execution failed: exit %s, reason: %s", res.MsgRct.ExitCode, res.Error)
+		return -1, api.NewErrExecutionRevertedFromResult(res)
 	}
 
 	ret := res.MsgRct.GasUsed

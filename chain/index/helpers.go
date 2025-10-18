@@ -20,7 +20,7 @@ const retryDelay = 150 * time.Millisecond
 // PopulateFromSnapshot initializes and populates the chain index from a snapshot.
 //
 // This function creates a new Index at the specified path and populates
-// it by using the  chain state from the provided ChainStore. It starts from the heaviest
+// it by using the chain state from the provided ChainStore. It starts from the heaviest
 // tipset and works backwards, indexing each tipset until it reaches the genesis
 // block or encounters a tipset for which it is unable to find messages in the chain store.
 //

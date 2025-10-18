@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"reflect"
@@ -10,6 +11,8 @@ import (
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/exitcode"
+
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
 var invalidExecutionRevertedMsg = xerrors.New("invalid execution reverted error")
@@ -171,6 +174,19 @@ func NewErrExecutionReverted(exitCode exitcode.ExitCode, error, reason string, d
 		Message: fmt.Sprintf("message execution failed (exit=[%s], revert reason=[%s], vm error=[%s])", exitCode, reason, error),
 		Data:    fmt.Sprintf("0x%x", data),
 	}
+}
+
+// NewErrExecutionRevertedFromResult creates an ErrExecutionReverted from an InvocResult.
+// It decodes the CBOR-encoded return data and parses any Ethereum revert reason.
+func NewErrExecutionRevertedFromResult(res *InvocResult) error {
+	reason := "none"
+	var cbytes abi.CborBytes
+	if err := cbytes.UnmarshalCBOR(bytes.NewReader(res.MsgRct.Return)); err != nil {
+		reason = "ERROR: revert reason is not cbor encoded bytes"
+	} else if len(cbytes) > 0 {
+		reason = ethtypes.ParseEthRevert(cbytes)
+	}
+	return NewErrExecutionReverted(res.MsgRct.ExitCode, res.Error, reason, cbytes)
 }
 
 type ErrNullRound struct {
