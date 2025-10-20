@@ -23,6 +23,7 @@ import (
 	v15 "github.com/filecoin-project/go-state-types/builtin/v15"
 	v16 "github.com/filecoin-project/go-state-types/builtin/v16"
 	v17 "github.com/filecoin-project/go-state-types/builtin/v17"
+	v18 "github.com/filecoin-project/go-state-types/builtin/v18"
 	v8 "github.com/filecoin-project/go-state-types/builtin/v8"
 	v9 "github.com/filecoin-project/go-state-types/builtin/v9"
 
@@ -212,6 +213,11 @@ var invariantsCmd = &cli.Command{
 			}
 		case actorstypes.Version17:
 			messages, err = v17.CheckStateInvariants(actorTree, abi.ChainEpoch(epoch), actorCodeCids)
+			if err != nil {
+				return xerrors.Errorf("checking state invariants: %w", err)
+			}
+		case actorstypes.Version18:
+			messages, err = v18.CheckStateInvariants(actorTree, abi.ChainEpoch(epoch), actorCodeCids)
 			if err != nil {
 				return xerrors.Errorf("checking state invariants: %w", err)
 			}
