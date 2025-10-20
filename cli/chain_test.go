@@ -495,13 +495,42 @@ func TestChainExport(t *testing.T) {
 
 	gomock.InOrder(
 		mockApi.EXPECT().ChainHead(ctx).Return(ts, nil),
-		mockApi.EXPECT().ChainExport(ctx, abi.ChainEpoch(0), false, ts.Key(), 1).Return(export, nil),
+		mockApi.EXPECT().ChainExport(ctx, abi.ChainEpoch(0), false, ts.Key(), uint64(2)).Return(export, nil),
 	)
 
 	err := app.Run([]string{"chain", "export", "whatever.car"})
 	assert.NoError(t, err)
 
 	assert.Equal(t, expBytes, mockFile.Bytes())
+}
+
+func TestChainExportVersionFlag(t *testing.T) {
+	app, mockApi, _, done := NewMockAppWithFullAPI(t, WithCategory("chain", ChainExportCmd))
+	defer done()
+
+	mockFile := mockExportFile{new(bytes.Buffer)}
+	app.Metadata["export-file"] = mockFile
+
+	blk := mock.MkBlock(nil, 0, 0)
+	ts := mock.TipSet(blk)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	export := make(chan []byte, 2)
+	export <- []byte("whatever")
+	export <- []byte{}
+	close(export)
+
+	gomock.InOrder(
+		mockApi.EXPECT().ChainHead(ctx).Return(ts, nil),
+		mockApi.EXPECT().ChainExport(ctx, abi.ChainEpoch(0), false, ts.Key(), uint64(1)).Return(export, nil),
+	)
+
+	err := app.Run([]string{"chain", "export", "--version", "1", "whatever.car"})
+	assert.NoError(t, err)
+
+	assert.Equal(t, "whatever", mockFile.String())
 }
 
 func TestChainGasPrice(t *testing.T) {

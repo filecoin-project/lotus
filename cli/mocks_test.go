@@ -23,6 +23,7 @@ func NewMockAppWithFullAPI(t *testing.T, cmd *ucli.Command) (*ucli.App, *mocks.M
 	mockFullNode := mocks.NewMockFullNode(ctrl)
 	var fullNode api.FullNode = mockFullNode
 	app.Metadata["test-full-api"] = fullNode
+	app.Metadata["testnode-full"] = fullNode
 
 	// this will only work if the implementation uses the app.Writer,
 	// if it uses fmt.*, it has to be refactored
