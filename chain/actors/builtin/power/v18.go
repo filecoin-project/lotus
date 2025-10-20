@@ -11,9 +11,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	builtin18 "github.com/filecoin-project/go-state-types/builtin"
-	builtin8 "github.com/filecoin-project/go-state-types/builtin"
-	power8 "github.com/filecoin-project/go-state-types/builtin/v8/power"
-	adt8 "github.com/filecoin-project/go-state-types/builtin/v8/util/adt"
+	power18 "github.com/filecoin-project/go-state-types/builtin/v18/power"
+	adt18 "github.com/filecoin-project/go-state-types/builtin/v18/util/adt"
 	"github.com/filecoin-project/go-state-types/manifest"
 
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -21,10 +20,10 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 )
 
-var _ State = (*state8)(nil)
+var _ State = (*state18)(nil)
 
-func load8(store adt.Store, root cid.Cid) (State, error) {
-	out := state8{store: store}
+func load18(store adt.Store, root cid.Cid) (State, error) {
+	out := state18{store: store}
 	err := store.Get(store.Context(), root, &out)
 	if err != nil {
 		return nil, err
@@ -32,10 +31,10 @@ func load8(store adt.Store, root cid.Cid) (State, error) {
 	return &out, nil
 }
 
-func make8(store adt.Store) (State, error) {
-	out := state8{store: store}
+func make18(store adt.Store) (State, error) {
+	out := state18{store: store}
 
-	s, err := power8.ConstructState(store)
+	s, err := power18.ConstructState(store)
 	if err != nil {
 		return nil, err
 	}
@@ -45,16 +44,16 @@ func make8(store adt.Store) (State, error) {
 	return &out, nil
 }
 
-type state8 struct {
-	power8.State
+type state18 struct {
+	power18.State
 	store adt.Store
 }
 
-func (s *state8) TotalLocked() (abi.TokenAmount, error) {
+func (s *state18) TotalLocked() (abi.TokenAmount, error) {
 	return s.TotalPledgeCollateral, nil
 }
 
-func (s *state8) TotalPower() (Claim, error) {
+func (s *state18) TotalPower() (Claim, error) {
 	return Claim{
 		RawBytePower:    s.TotalRawBytePower,
 		QualityAdjPower: s.TotalQualityAdjPower,
@@ -62,19 +61,19 @@ func (s *state8) TotalPower() (Claim, error) {
 }
 
 // Committed power to the network. Includes miners below the minimum threshold.
-func (s *state8) TotalCommitted() (Claim, error) {
+func (s *state18) TotalCommitted() (Claim, error) {
 	return Claim{
 		RawBytePower:    s.TotalBytesCommitted,
 		QualityAdjPower: s.TotalQABytesCommitted,
 	}, nil
 }
 
-func (s *state8) MinerPower(addr address.Address) (Claim, bool, error) {
+func (s *state18) MinerPower(addr address.Address) (Claim, bool, error) {
 	claims, err := s.claims()
 	if err != nil {
 		return Claim{}, false, err
 	}
-	var claim power8.Claim
+	var claim power18.Claim
 	ok, err := claims.Get(abi.AddrKey(addr), &claim)
 	if err != nil {
 		return Claim{}, false, err
@@ -85,27 +84,27 @@ func (s *state8) MinerPower(addr address.Address) (Claim, bool, error) {
 	}, ok, nil
 }
 
-func (s *state8) MinerNominalPowerMeetsConsensusMinimum(a address.Address) (bool, error) {
+func (s *state18) MinerNominalPowerMeetsConsensusMinimum(a address.Address) (bool, error) {
 	return s.State.MinerNominalPowerMeetsConsensusMinimum(s.store, a)
 }
 
-func (s *state8) TotalPowerSmoothed() (builtin.FilterEstimate, error) {
+func (s *state18) TotalPowerSmoothed() (builtin.FilterEstimate, error) {
 	return builtin.FilterEstimate(s.State.ThisEpochQAPowerSmoothed), nil
 }
 
-func (s *state8) MinerCounts() (uint64, uint64, error) {
+func (s *state18) MinerCounts() (uint64, uint64, error) {
 	return uint64(s.State.MinerAboveMinPowerCount), uint64(s.State.MinerCount), nil
 }
 
-func (s *state8) RampStartEpoch() int64 {
-	return 0
+func (s *state18) RampStartEpoch() int64 {
+	return s.State.RampStartEpoch
 }
 
-func (s *state8) RampDurationEpochs() uint64 {
-	return 0
+func (s *state18) RampDurationEpochs() uint64 {
+	return s.State.RampDurationEpochs
 }
 
-func (s *state8) ListAllMiners() ([]address.Address, error) {
+func (s *state18) ListAllMiners() ([]address.Address, error) {
 	claims, err := s.claims()
 	if err != nil {
 		return nil, err
@@ -127,31 +126,19 @@ func (s *state8) ListAllMiners() ([]address.Address, error) {
 	return miners, nil
 }
 
-func (s *state8) CollectEligibleClaims(cacheInOut *builtin18.MapReduceCache) ([]builtin18.OwnedClaim, error) {
+func (s *state18) CollectEligibleClaims(cacheInOut *builtin18.MapReduceCache) ([]builtin18.OwnedClaim, error) {
 
-	var res []builtin18.OwnedClaim
-	err := s.ForEachClaim(func(miner address.Address, claim Claim) error {
-		res = append(res, builtin18.OwnedClaim{
-			Address:         miner,
-			RawBytePower:    claim.RawBytePower,
-			QualityAdjPower: claim.QualityAdjPower,
-		})
-		return nil
-	}, true)
-	if err != nil {
-		return nil, fmt.Errorf("collecting claims: %w", err)
-	}
-	return res, nil
+	return s.State.CollectEligibleClaims(s.store, cacheInOut)
 
 }
 
-func (s *state8) ForEachClaim(cb func(miner address.Address, claim Claim) error, onlyEligible bool) error {
+func (s *state18) ForEachClaim(cb func(miner address.Address, claim Claim) error, onlyEligible bool) error {
 	claims, err := s.claims()
 	if err != nil {
 		return err
 	}
 
-	var claim power8.Claim
+	var claim power18.Claim
 	return claims.ForEach(&claim, func(k string) error {
 		a, err := address.NewFromBytes([]byte(k))
 		if err != nil {
@@ -179,67 +166,67 @@ func (s *state8) ForEachClaim(cb func(miner address.Address, claim Claim) error,
 	})
 }
 
-func (s *state8) ClaimsChanged(other State) (bool, error) {
-	other8, ok := other.(*state8)
+func (s *state18) ClaimsChanged(other State) (bool, error) {
+	other18, ok := other.(*state18)
 	if !ok {
 		// treat an upgrade as a change, always
 		return true, nil
 	}
-	return !s.State.Claims.Equals(other8.State.Claims), nil
+	return !s.State.Claims.Equals(other18.State.Claims), nil
 }
 
-func (s *state8) SetTotalQualityAdjPower(p abi.StoragePower) error {
+func (s *state18) SetTotalQualityAdjPower(p abi.StoragePower) error {
 	s.State.TotalQualityAdjPower = p
 	return nil
 }
 
-func (s *state8) SetTotalRawBytePower(p abi.StoragePower) error {
+func (s *state18) SetTotalRawBytePower(p abi.StoragePower) error {
 	s.State.TotalRawBytePower = p
 	return nil
 }
 
-func (s *state8) SetThisEpochQualityAdjPower(p abi.StoragePower) error {
+func (s *state18) SetThisEpochQualityAdjPower(p abi.StoragePower) error {
 	s.State.ThisEpochQualityAdjPower = p
 	return nil
 }
 
-func (s *state8) SetThisEpochRawBytePower(p abi.StoragePower) error {
+func (s *state18) SetThisEpochRawBytePower(p abi.StoragePower) error {
 	s.State.ThisEpochRawBytePower = p
 	return nil
 }
 
-func (s *state8) GetState() interface{} {
+func (s *state18) GetState() interface{} {
 	return &s.State
 }
 
-func (s *state8) claims() (adt.Map, error) {
-	return adt8.AsMap(s.store, s.Claims, builtin8.DefaultHamtBitwidth)
+func (s *state18) claims() (adt.Map, error) {
+	return adt18.AsMap(s.store, s.Claims, builtin18.DefaultHamtBitwidth)
 }
 
-func (s *state8) decodeClaim(val *cbg.Deferred) (Claim, error) {
-	var ci power8.Claim
+func (s *state18) decodeClaim(val *cbg.Deferred) (Claim, error) {
+	var ci power18.Claim
 	if err := ci.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
 		return Claim{}, err
 	}
-	return fromV8Claim(ci), nil
+	return fromV18Claim(ci), nil
 }
 
-func fromV8Claim(v8 power8.Claim) Claim {
+func fromV18Claim(v18 power18.Claim) Claim {
 	return Claim{
-		RawBytePower:    v8.RawBytePower,
-		QualityAdjPower: v8.QualityAdjPower,
+		RawBytePower:    v18.RawBytePower,
+		QualityAdjPower: v18.QualityAdjPower,
 	}
 }
 
-func (s *state8) ActorKey() string {
+func (s *state18) ActorKey() string {
 	return manifest.PowerKey
 }
 
-func (s *state8) ActorVersion() actorstypes.Version {
-	return actorstypes.Version8
+func (s *state18) ActorVersion() actorstypes.Version {
+	return actorstypes.Version18
 }
 
-func (s *state8) Code() cid.Cid {
+func (s *state18) Code() cid.Cid {
 	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
 	if !ok {
 		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
