@@ -26,7 +26,7 @@ func BenchmarkStateTreeSet(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		a, err := address.NewIDAddress(uint64(i))
 		if err != nil {
 			b.Fatal(err)
@@ -58,7 +58,7 @@ func BenchmarkStateTreeSetFlush(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		a, err := address.NewIDAddress(uint64(i))
 		if err != nil {
 			b.Fatal(err)
@@ -214,7 +214,7 @@ func BenchmarkStateTree10kGetActor(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		a, err := address.NewIDAddress(uint64(i % 10000))
 		if err != nil {
 			b.Fatal(err)
