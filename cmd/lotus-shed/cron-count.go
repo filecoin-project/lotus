@@ -119,7 +119,7 @@ var minerDeadlinePartitionMeasurementCmd = &cli.Command{
 			}
 			addr, err := address.NewFromString(ref.To)
 			if err != nil {
-				return xerrors.Errorf("faield to get address from input string: %w", err)
+				return xerrors.Errorf("failed to get address from input string: %w", err)
 			}
 			dline, err := n.StateMinerProvingDeadline(ctx, addr, tsBefore.Key())
 			if err != nil {
@@ -137,7 +137,7 @@ var minerDeadlinePartitionMeasurementCmd = &cli.Command{
 				return xerrors.Errorf("failed to get partitions: %w", err)
 			}
 			if len(psBefore) != len(psAfter) {
-				return xerrors.Errorf("faield")
+				return xerrors.Errorf("failed")
 			}
 
 			type partitionCount struct {
