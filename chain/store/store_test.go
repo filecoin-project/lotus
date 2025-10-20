@@ -84,7 +84,7 @@ func BenchmarkGetRandomness(b *testing.B) {
 
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, err := cg.StateManager().GetRandomnessFromTickets(context.TODO(), crypto.DomainSeparationTag_SealRandomness, 500, nil, last.Key())
 		if err != nil {
 			b.Fatal(err)
