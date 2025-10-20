@@ -120,7 +120,7 @@ func BenchmarkWinCounts(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 	for b.Loop() {
-		ep.VRFProof = []byte{byte(i), byte(i >> 8), byte(i >> 16), byte(i >> 24), byte(i >> 32)}
+		ep.VRFProof = []byte{byte(b.N), byte(b.N >> 8), byte(b.N >> 16), byte(b.N >> 24), byte(b.N >> 32)}
 		j := ep.ComputeWinCount(power, totalPower)
 		res += j
 	}
