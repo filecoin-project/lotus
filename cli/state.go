@@ -876,7 +876,7 @@ var StateListMessagesCmd = &cli.Command{
 
 		windowSize := abi.ChainEpoch(100)
 
-        obn := cctx.Bool("order-by-nonce") && !froma.Empty()
+		obn := cctx.Bool("order-by-nonce") && !froma.Empty()
 
 		var orderedMessages []struct {
 			Nonce uint64
