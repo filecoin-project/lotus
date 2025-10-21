@@ -9510,7 +9510,8 @@
                                 "UpgradeTuktukHeight": 10101,
                                 "UpgradeTeepHeight": 10101,
                                 "UpgradeTockHeight": 10101,
-                                "UpgradeGoldenWeekHeight": 10101
+                                "UpgradeGoldenWeekHeight": 10101,
+                                "UpgradeXxHeight": 10101
                             },
                             "Eip155ChainID": 123,
                             "GenesisTimestamp": 42
@@ -9658,6 +9659,10 @@
                                     "type": "number"
                                 },
                                 "UpgradeWatermelonHeight": {
+                                    "title": "number",
+                                    "type": "number"
+                                },
+                                "UpgradeXxHeight": {
                                     "title": "number",
                                     "type": "number"
                                 }
@@ -10832,7 +10837,7 @@
                     "title": "number",
                     "description": "Number is a number",
                     "examples": [
-                        27
+                        28
                     ],
                     "type": [
                         "number"

@@ -20,7 +20,7 @@ var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandQuicknet,
 }
 
-const GenesisNetworkVersion = network.Version24
+const GenesisNetworkVersion = network.Version27
 
 var NetworkBundle = "butterflynet"
 var ActorDebugging = false
@@ -83,8 +83,10 @@ const UpgradeTockHeight = -30
 // This fix upgrade only ran on calibrationnet
 const UpgradeTockFixHeight = -103
 
+var UpgradeGoldenWeekHeight = abi.ChainEpoch(-31)
+
 // ??????
-const UpgradeGoldenWeekHeight = 999999999999999
+const UpgradeXxHeight = 999999999999999
 
 var ConsensusMinerMinPower = abi.NewStoragePower(2 << 30)
 var PreCommitChallengeDelay = abi.ChainEpoch(150)
