@@ -16,7 +16,6 @@
 - chore: update benchmark tests to use testing.B.Loop for improved performance ([filecoin-project/lotus#13385](https://github.com/filecoin-project/lotus/pull/13385))([filecoin-project/lotus#13396](https://github.com/filecoin-project/lotus/pull/13396))
 - fix(eth): properly return vm error in all gas estimation methods ([filecoin-project/lotus#13389](https://github.com/filecoin-project/lotus/pull/13389))
 - chore: all actor cmd support --actor ([filecoin-project/lotus#13391](https://github.com/filecoin-project/lotus/pull/13391))
-- chore: use testing.B.Loop for improved performance ([filecoin-project/lotus#13396](https://github.com/filecoin-project/lotus/pull/13396))
 
 # Node and Miner v1.34.1 / 2025-09-15
 
