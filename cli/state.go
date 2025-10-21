@@ -876,6 +876,8 @@ var StateListMessagesCmd = &cli.Command{
 
 		windowSize := abi.ChainEpoch(100)
 
+        obn := cctx.Bool("order-by-nonce") && !froma.Empty()
+
 		var orderedMessages []struct {
 			Nonce uint64
 			Msg   []byte
@@ -913,7 +915,7 @@ var StateListMessagesCmd = &cli.Command{
 					return err
 				}
 
-				if cctx.Bool("order-by-nonce") && !froma.Empty() {
+				if obn {
 					orderedMessages = append(orderedMessages, struct {
 						Nonce uint64
 						Msg   []byte
@@ -922,16 +924,6 @@ var StateListMessagesCmd = &cli.Command{
 				} else {
 					fmt.Println(string(b))
 				}
-			}
-
-			if cctx.Bool("order-by-nonce") && !froma.Empty() {
-				sort.Slice(orderedMessages, func(i, j int) bool {
-					return orderedMessages[i].Nonce < orderedMessages[j].Nonce
-				})
-				for _, om := range orderedMessages {
-					fmt.Println(string(om.Msg))
-				}
-				orderedMessages = orderedMessages[:0]
 			}
 
 			if end <= 0 {
@@ -944,6 +936,15 @@ var StateListMessagesCmd = &cli.Command{
 			}
 
 			cur = next
+		}
+
+		if obn {
+			sort.Slice(orderedMessages, func(i, j int) bool {
+				return orderedMessages[i].Nonce < orderedMessages[j].Nonce
+			})
+			for _, om := range orderedMessages {
+				fmt.Println(string(om.Msg))
+			}
 		}
 
 		return nil
