@@ -122,7 +122,7 @@ func BenchmarkShardedMutex(b *testing.B) {
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		sm.Lock(1)
 		sm.Unlock(1)
 	}
@@ -151,7 +151,7 @@ func BenchmarkShardedMutexOf(b *testing.B) {
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		sm.Lock(str2)
 		sm.Unlock(str2)
 	}
