@@ -83,7 +83,9 @@ var UpgradeTockHeight = abi.ChainEpoch(-30)
 // This fix upgrade only ran on calibrationnet
 const UpgradeTockFixHeight abi.ChainEpoch = -4
 
-const UpgradeGoldenWeekHeight = 50
+var UpgradeGoldenWeekHeight = abi.ChainEpoch(-31)
+
+const UpgradeXxHeight = 50
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandQuicknet,

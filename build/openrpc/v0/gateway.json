@@ -4756,7 +4756,7 @@
                     "title": "number",
                     "description": "Number is a number",
                     "examples": [
-                        27
+                        28
                     ],
                     "type": [
                         "number"
