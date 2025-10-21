@@ -643,7 +643,7 @@ func stringPtr(s string) *string {
 func BenchmarkEthHashFromCid(b *testing.B) {
 	c := cid.MustParse("bafy2bzacedwviarjtjraqakob5pslltmuo5n3xev3nt5zylezofkbbv5jclyu")
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, err := EthHashFromCid(c)
 		if err != nil {
 			b.Fatalf("Error in EthHashFromCid: %v", err)
