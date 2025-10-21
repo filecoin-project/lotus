@@ -39,7 +39,7 @@ var (
 	ErrF3Disabled = &errF3Disabled{}
 	// ErrF3ParticipationTicketInvalid signals that F3ParticipationTicket cannot be decoded.
 	ErrF3ParticipationTicketInvalid = &errF3ParticipationTicketInvalid{}
-	// ErrF3ParticipationTicketExpired signals that the current GPBFT instance as surpassed the expiry of the ticket.
+	// ErrF3ParticipationTicketExpired signals that the current GPBFT instance has surpassed the expiry of the ticket.
 	ErrF3ParticipationTicketExpired = &errF3ParticipationTicketExpired{}
 	// ErrF3ParticipationIssuerMismatch signals that the ticket is not issued by the current node.
 	ErrF3ParticipationIssuerMismatch = &errF3ParticipationIssuerMismatch{}
