@@ -24,6 +24,8 @@ import (
 func encodeSingleTuple(t *testing.T, chainID uint64, addr20 [20]byte, nonce uint64) []byte {
     t.Helper()
     var buf bytes.Buffer
+    // Wrapper [ list ] where list has one tuple
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 1))
     require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 1))
     require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 6))
     require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajUnsignedInt, chainID))
@@ -128,8 +130,9 @@ func TestCrossAccountInvalidation_MultiAuthority(t *testing.T) {
     add(wA, a1)
     add(wB, a2)
 
-    // Build params with two tuples
+    // Build params with two tuples using wrapper [ list-of-tuples ]
     var buf bytes.Buffer
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 1))
     require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 2))
     encTup := func(addr20 [20]byte, nonce uint64) {
         require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 6))
@@ -194,7 +197,7 @@ func TestDelegationCap_Enforced(t *testing.T) {
 func TestCrossAccountInvalidation_DisabledBeforeActivation(t *testing.T) {
     mp, tma := makeTestMpool()
     // Set network version below activation
-    tma.nv = network.Version26
+    tma.nv = network.Version15
 
     // Authority with pending nonce 1
     wA, _ := wallet.NewWallet(wallet.NewMemKeyStore())
@@ -225,7 +228,7 @@ func TestCrossAccountInvalidation_DisabledBeforeActivation(t *testing.T) {
 
 func TestDelegationCap_NotEnforcedBeforeActivation(t *testing.T) {
     mp, tma := makeTestMpool()
-    tma.nv = network.Version26
+    tma.nv = network.Version15
 
     wS, _ := wallet.NewWallet(wallet.NewMemKeyStore())
     s, _ := wS.WalletNew(context.Background(), types.KTSecp256k1)

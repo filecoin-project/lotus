@@ -31,6 +31,12 @@ func applyEnvDelegatorAddr() {
             DelegatorActorAddr = a
         }
     }
+    // Default to ID:18 (Delegator singleton) if not provided via env.
+    if DelegatorActorAddr == address.Undef {
+        if id, err := address.NewIDAddress(18); err == nil {
+            DelegatorActorAddr = id
+        }
+    }
 }
 
 func parseUint(s string) uint64 {

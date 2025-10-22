@@ -15,11 +15,12 @@ func TestCompute7702IntrinsicOverhead(t *testing.T) {
 }
 
 func TestCountAuthInDelegatorParams(t *testing.T) {
-    // Build CBOR: array of 3 tuples [] (we only care about outer array length)
+    // Build CBOR wrapper: [ list ] with list length 3
     var buf bytes.Buffer
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 1))
     require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 3))
     for i := 0; i < 3; i++ {
-        // write an empty inner array header (shape is irrelevant for counter)
+        // write an empty tuple placeholder (array(6) with zeroed children is fine)
         require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 0))
     }
     params := buf.Bytes()
@@ -30,4 +31,3 @@ func TestCountAuthInDelegatorParams(t *testing.T) {
     require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajUnsignedInt, 7))
     require.Equal(t, 0, countAuthInDelegatorParams(buf.Bytes()))
 }
-

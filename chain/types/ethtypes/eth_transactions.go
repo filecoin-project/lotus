@@ -18,6 +18,7 @@ import (
 	typescrypto "github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/build/buildconstants"
+	delegator "github.com/filecoin-project/lotus/chain/actors/builtin/delegator"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -130,8 +131,44 @@ func EthTransactionFromSignedFilecoinMessage(smsg *types.SignedMessage) (EthTran
 		return nil, fmt.Errorf("sender was not an eth account")
 	}
 
-	// Extract Ethereum parameters and recipient from the message.
-	params, to, err := getEthParamsAndRecipient(&smsg.Message)
+    // Special-case: Delegator.ApplyDelegations (EIP-7702) -> reconstruct a 0x04 tx view
+    if DelegatorActorAddr != address.Undef && smsg.Message.To == DelegatorActorAddr && smsg.Message.Method == delegator.MethodApplyDelegations {
+        // Attempt to decode authorization tuples from CBOR params (wrapper or legacy shapes)
+        dl, err := delegator.DecodeAuthorizationTuples(smsg.Message.Params)
+        if err == nil && len(dl) > 0 {
+            authz := make([]EthAuthorization, 0, len(dl))
+            for _, d := range dl {
+                var ea EthAddress
+                copy(ea[:], d.Address[:])
+                authz = append(authz, EthAuthorization{
+                    ChainID: EthUint64(d.ChainID),
+                    Address: ea,
+                    Nonce:   EthUint64(d.Nonce),
+                    YParity: uint8(d.YParity),
+                    R:       EthBigInt(d.R),
+                    S:       EthBigInt(d.S),
+                })
+            }
+            tx := &Eth7702TxArgs{
+                ChainID:              buildconstants.Eip155ChainId,
+                Nonce:                int(smsg.Message.Nonce),
+                To:                   nil,
+                Value:                smsg.Message.Value,
+                MaxFeePerGas:         smsg.Message.GasFeeCap,
+                MaxPriorityFeePerGas: smsg.Message.GasPremium,
+                GasLimit:             int(smsg.Message.GasLimit),
+                Input:                nil,
+                AuthorizationList:    authz,
+            }
+            if err := tx.InitialiseSignature(smsg.Signature); err != nil {
+                return nil, fmt.Errorf("failed to initialise signature: %w", err)
+            }
+            return tx, nil
+        }
+    }
+
+    // Extract Ethereum parameters and recipient from the message.
+    params, to, err := getEthParamsAndRecipient(&smsg.Message)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse input params and recipient: %w", err)
 	}

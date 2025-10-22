@@ -8,10 +8,18 @@ import (
 )
 
 // CborEncodeEIP7702Authorizations encodes the authorizationList into CBOR
-// as an array of 6-tuples [chain_id, address(20b), nonce, y_parity, r, s].
+// compatible with the Delegator actor ApplyDelegations params.
+// Shape: a wrapper tuple with a single field `list`, where `list` is an
+// array of 6-tuples [chain_id, address(20b), nonce, y_parity, r, s].
+// I.e., top-level is an array with one element (the inner list).
 // Intended for params to the Delegator actor's ApplyDelegations method.
 func CborEncodeEIP7702Authorizations(list []EthAuthorization) ([]byte, error) {
     var buf bytes.Buffer
+    // Write wrapper array with 1 element (the list)
+    if err := cbg.CborWriteHeader(&buf, cbg.MajArray, 1); err != nil {
+        return nil, err
+    }
+    // Write inner list header
     if err := cbg.CborWriteHeader(&buf, cbg.MajArray, uint64(len(list))); err != nil {
         return nil, err
     }

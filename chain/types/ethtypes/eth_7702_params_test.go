@@ -24,13 +24,20 @@ func TestCborEncodeEIP7702Authorizations_Shape(t *testing.T) {
     require.NotEmpty(t, enc)
 
     r := cbg.NewCborReader(bytes.NewReader(enc))
+    // top-level wrapper array with single element
     maj, l, err := r.ReadHeader()
+    require.NoError(t, err)
+    require.Equal(t, byte(cbg.MajArray), maj)
+    require.Equal(t, uint64(1), l)
+
+    // inner list with 2 tuples
+    maj, l, err = r.ReadHeader()
     require.NoError(t, err)
     require.Equal(t, byte(cbg.MajArray), maj)
     require.Equal(t, uint64(2), l)
 
     for i := 0; i < 2; i++ {
-        maj, l, err = r.ReadHeader()
+        maj, l, err := r.ReadHeader()
         require.NoError(t, err)
         require.Equal(t, byte(cbg.MajArray), maj)
         require.Equal(t, uint64(6), l)
@@ -45,7 +52,6 @@ func TestCborEncodeEIP7702Authorizations_Shape(t *testing.T) {
         require.NoError(t, err)
         require.Equal(t, byte(cbg.MajByteString), maj)
         require.Equal(t, uint64(20), v)
-        // skip exact bytes
         buf := make([]byte, v)
         _, err = r.Read(buf)
         require.NoError(t, err)
