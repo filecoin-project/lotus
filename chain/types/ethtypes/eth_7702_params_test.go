@@ -87,3 +87,18 @@ func TestCborEncodeEIP7702Authorizations_Shape(t *testing.T) {
         require.GreaterOrEqual(t, int(v), 1)
     }
 }
+
+func TestCborEncodeEIP7702Authorizations_EmptyList_Shape(t *testing.T) {
+    // Even with empty list, encoder produces wrapper [ list ] with length 0
+    enc, err := CborEncodeEIP7702Authorizations(nil)
+    require.NoError(t, err)
+    r := cbg.NewCborReader(bytes.NewReader(enc))
+    maj, l, err := r.ReadHeader()
+    require.NoError(t, err)
+    require.Equal(t, byte(cbg.MajArray), maj)
+    require.Equal(t, uint64(1), l)
+    maj, l, err = r.ReadHeader()
+    require.NoError(t, err)
+    require.Equal(t, byte(cbg.MajArray), maj)
+    require.Equal(t, uint64(0), l)
+}

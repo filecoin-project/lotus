@@ -71,3 +71,87 @@ func TestEthTransactionFromSignedMessage_7702_Decodes(t *testing.T) {
     require.Len(t, eth.AuthorizationList, 1)
     require.EqualValues(t, 314, eth.AuthorizationList[0].ChainID)
 }
+
+func TestEthTransactionFromSignedMessage_7702_MultiTupleDecodes(t *testing.T) {
+    // Setup ID:18 Delegator address and f4 sender
+    id18, _ := address.NewIDAddress(18)
+    DelegatorActorAddr = id18
+    var from20 [20]byte
+    for i := range from20 { from20[i] = 0x22 }
+    from, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, from20[:])
+    require.NoError(t, err)
+
+    // Build params wrapper with two tuples
+    var buf bytes.Buffer
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 1))
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 2))
+    encTup := func(chain uint64, nonce uint64) {
+        require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 6))
+        require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajUnsignedInt, chain))
+        var a [20]byte; for i := range a { a[i] = 0xAA }
+        require.NoError(t, cbg.WriteByteArray(&buf, a[:]))
+        require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajUnsignedInt, nonce))
+        require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajUnsignedInt, 0))
+        require.NoError(t, cbg.WriteByteArray(&buf, []byte{1}))
+        require.NoError(t, cbg.WriteByteArray(&buf, []byte{1}))
+    }
+    encTup(314, 0)
+    encTup(314, 1)
+
+    msg := types.Message{To: DelegatorActorAddr, From: from, Method: delegator.MethodApplyDelegations, Params: buf.Bytes(), GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1), Value: types.NewInt(0)}
+    sig := typescrypto.Signature{ Type: typescrypto.SigTypeDelegated, Data: append(append(make([]byte, 31), 1), append(append(make([]byte, 31), 1), 0)...)}
+    smsg := &types.SignedMessage{ Message: msg, Signature: sig }
+
+    tx, err := EthTransactionFromSignedFilecoinMessage(smsg)
+    require.NoError(t, err)
+    eth, err := tx.ToEthTx(smsg)
+    require.NoError(t, err)
+    require.Len(t, eth.AuthorizationList, 2)
+}
+
+func TestEthTransactionFromSignedMessage_NonDelegatedSigRejected(t *testing.T) {
+    // Setup Delegator address; signature type is wrong (secp256k1)
+    id18, _ := address.NewIDAddress(18)
+    DelegatorActorAddr = id18
+    // Sender can be anything; rejection occurs earlier on sig type
+    from, _ := address.NewIDAddress(1001)
+    msg := types.Message{To: DelegatorActorAddr, From: from, Method: delegator.MethodApplyDelegations}
+    sig := typescrypto.Signature{ Type: typescrypto.SigTypeSecp256k1, Data: make([]byte, 65) }
+    smsg := &types.SignedMessage{ Message: msg, Signature: sig }
+    _, err := EthTransactionFromSignedFilecoinMessage(smsg)
+    require.Error(t, err)
+}
+
+func TestEthTransactionFromSignedMessage_SenderNotEthRejected(t *testing.T) {
+    // Delegated signature but non-f4 sender should be rejected
+    id18, _ := address.NewIDAddress(18)
+    DelegatorActorAddr = id18
+    // Non-eth sender: ID address
+    from, _ := address.NewIDAddress(42)
+    msg := types.Message{To: DelegatorActorAddr, From: from, Method: delegator.MethodApplyDelegations}
+    sig := typescrypto.Signature{ Type: typescrypto.SigTypeDelegated, Data: make([]byte, 65) }
+    smsg := &types.SignedMessage{ Message: msg, Signature: sig }
+    _, err := EthTransactionFromSignedFilecoinMessage(smsg)
+    require.Error(t, err)
+}
+
+func TestEthTransactionFromSignedMessage_7702_BadCBORRejected(t *testing.T) {
+    // Setup ID:18 Delegator address and f4 sender
+    id18, _ := address.NewIDAddress(18)
+    DelegatorActorAddr = id18
+    var from20 [20]byte
+    for i := range from20 { from20[i] = 0x33 }
+    from, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, from20[:])
+    require.NoError(t, err)
+
+    // Malformed CBOR params (unsigned int header instead of array)
+    var buf bytes.Buffer
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajUnsignedInt, 7))
+
+    msg := types.Message{To: DelegatorActorAddr, From: from, Method: delegator.MethodApplyDelegations, Params: buf.Bytes(), GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1)}
+    sig := typescrypto.Signature{ Type: typescrypto.SigTypeDelegated, Data: append(append(make([]byte, 31), 1), append(append(make([]byte, 31), 1), 0)...)}
+    smsg := &types.SignedMessage{ Message: msg, Signature: sig }
+
+    _, err = EthTransactionFromSignedFilecoinMessage(smsg)
+    require.Error(t, err)
+}

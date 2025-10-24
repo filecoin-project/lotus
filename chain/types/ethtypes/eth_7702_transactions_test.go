@@ -7,6 +7,7 @@ import (
     "github.com/stretchr/testify/require"
 
     "github.com/filecoin-project/go-state-types/big"
+    typescrypto "github.com/filecoin-project/go-state-types/crypto"
     "github.com/filecoin-project/lotus/build/buildconstants"
     "github.com/filecoin-project/go-address"
     ltypes "github.com/filecoin-project/lotus/chain/types"
@@ -120,6 +121,102 @@ func TestEIP7702_ToEthTx_CarriesAuthorizationList(t *testing.T) {
     require.Equal(t, 1, len(ethTx.AuthorizationList))
 }
 
+func TestEIP7702_ToRlpUnsigned_HasTypePrefix(t *testing.T) {
+    var to EthAddress
+    copy(to[:], mustHex(t, "0x1111111111111111111111111111111111111111"))
+    tx := &Eth7702TxArgs{
+        ChainID:              1,
+        Nonce:                0,
+        To:                   &to,
+        Value:                big.NewInt(0),
+        MaxFeePerGas:         big.NewInt(1),
+        MaxPriorityFeePerGas: big.NewInt(1),
+        GasLimit:             21000,
+        AuthorizationList: []EthAuthorization{
+            {ChainID: 1, Address: to, Nonce: 0, YParity: 0, R: EthBigInt(big.NewInt(1)), S: EthBigInt(big.NewInt(1))},
+        },
+    }
+    enc, err := tx.ToRlpUnsignedMsg()
+    require.NoError(t, err)
+    require.Greater(t, len(enc), 1)
+    require.Equal(t, byte(EIP7702TxType), enc[0])
+}
+
+func TestEIP7702_TxHash_VariesByAuthList(t *testing.T) {
+    var to EthAddress
+    copy(to[:], mustHex(t, "0x1111111111111111111111111111111111111111"))
+    base := Eth7702TxArgs{
+        ChainID:              1,
+        Nonce:                0,
+        To:                   &to,
+        Value:                big.NewInt(0),
+        MaxFeePerGas:         big.NewInt(1),
+        MaxPriorityFeePerGas: big.NewInt(1),
+        GasLimit:             21000,
+        V: big.NewInt(0), R: big.NewInt(1), S: big.NewInt(1),
+    }
+    tx1 := base
+    tx1.AuthorizationList = []EthAuthorization{{ChainID: 1, Address: to, Nonce: 0, YParity: 0, R: EthBigInt(big.NewInt(1)), S: EthBigInt(big.NewInt(1))}}
+    h1, err := tx1.TxHash()
+    require.NoError(t, err)
+
+    tx2 := base
+    tx2.AuthorizationList = []EthAuthorization{{ChainID: 1, Address: to, Nonce: 1, YParity: 0, R: EthBigInt(big.NewInt(1)), S: EthBigInt(big.NewInt(1))}}
+    h2, err := tx2.TxHash()
+    require.NoError(t, err)
+    require.NotEqual(t, h1, h2)
+}
+
+func TestEIP7702_ToUnsignedFilecoinMessage_InvalidChain(t *testing.T) {
+    var to EthAddress
+    copy(to[:], mustHex(t, "0x1111111111111111111111111111111111111111"))
+    tx := &Eth7702TxArgs{
+        ChainID:              9999, // invalid
+        Nonce:                0,
+        To:                   &to,
+        Value:                big.NewInt(0),
+        MaxFeePerGas:         big.NewInt(1),
+        MaxPriorityFeePerGas: big.NewInt(1),
+        GasLimit:             21000,
+        AuthorizationList: []EthAuthorization{
+            {ChainID: 1, Address: to, Nonce: 0, YParity: 0, R: EthBigInt(big.NewInt(1)), S: EthBigInt(big.NewInt(1))},
+        },
+        V: big.NewInt(0), R: big.NewInt(1), S: big.NewInt(1),
+    }
+    _, err := tx.ToUnsignedFilecoinMessage(address.Undef)
+    require.Error(t, err)
+}
+
+func TestEIP7702_RLPMultiAuth_RoundTrip(t *testing.T) {
+    var to EthAddress
+    copy(to[:], mustHex(t, "0x1111111111111111111111111111111111111111"))
+    var a1, a2 EthAddress
+    copy(a1[:], mustHex(t, "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"))
+    copy(a2[:], mustHex(t, "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"))
+
+    tx := &Eth7702TxArgs{
+        ChainID:              1,
+        Nonce:                1,
+        To:                   &to,
+        Value:                big.NewInt(0),
+        MaxFeePerGas:         big.NewInt(1),
+        MaxPriorityFeePerGas: big.NewInt(1),
+        GasLimit:             21000,
+        AuthorizationList: []EthAuthorization{
+            {ChainID: 1, Address: a1, Nonce: 0, YParity: 0, R: EthBigInt(big.NewInt(1)), S: EthBigInt(big.NewInt(2))},
+            {ChainID: 1, Address: a2, Nonce: 1, YParity: 1, R: EthBigInt(big.NewInt(3)), S: EthBigInt(big.NewInt(4))},
+        },
+        V: big.NewInt(0), R: big.NewInt(1), S: big.NewInt(1),
+    }
+    enc, err := tx.ToRlpSignedMsg()
+    require.NoError(t, err)
+    dec, err := parseEip7702Tx(enc)
+    require.NoError(t, err)
+    require.Len(t, dec.AuthorizationList, 2)
+    require.Equal(t, a1, dec.AuthorizationList[0].Address)
+    require.Equal(t, a2, dec.AuthorizationList[1].Address)
+}
+
 func TestEIP7702_EmptyAuthorizationListRejected(t *testing.T) {
     var to EthAddress
     copy(to[:], mustHex(t, "0x1111111111111111111111111111111111111111"))
@@ -198,6 +295,88 @@ func TestEIP7702_NonEmptyAccessListRejected(t *testing.T) {
     require.Error(t, err)
 }
 
+func TestEIP7702_BadAuthorizationAddressLengthRejected(t *testing.T) {
+    // Build 0x04 tx with an authorization tuple whose address is 19 bytes
+    var to EthAddress
+    copy(to[:], mustHex(t, "0x1111111111111111111111111111111111111111"))
+    chainId, _ := formatInt(1)
+    nonce, _ := formatInt(1)
+    maxPrio, _ := formatBigInt(big.NewInt(1))
+    maxFee, _ := formatBigInt(big.NewInt(1))
+    gasLimit, _ := formatInt(21000)
+    value, _ := formatBigInt(big.NewInt(0))
+    input := []byte{}
+    ai, _ := formatInt(1)
+    ni, _ := formatInt(0)
+    yp, _ := formatInt(0)
+    ri, _ := formatBigInt(big.NewInt(1))
+    si, _ := formatBigInt(big.NewInt(1))
+    badAddr := make([]byte, 19)
+    // Tuple with 19-byte address
+    authTuple := []interface{}{ai, badAddr, ni, yp, ri, si}
+    base := []interface{}{
+        chainId, nonce, maxPrio, maxFee, gasLimit, formatEthAddr(&to), value, input,
+        []interface{}{}, // access list
+        []interface{}{authTuple},
+    }
+    sig, _ := packSigFields(big.NewInt(0), big.NewInt(1), big.NewInt(1))
+    payload, _ := EncodeRLP(append(base, sig...))
+    enc := append([]byte{EIP7702TxType}, payload...)
+    _, err := parseEip7702Tx(enc)
+    require.Error(t, err)
+}
+
+func TestEIP7702_BadOuterLenRejected(t *testing.T) {
+    // Construct an RLP list with only 12 elements (missing one), should fail
+    var to EthAddress
+    copy(to[:], mustHex(t, "0x1111111111111111111111111111111111111111"))
+    chainId, _ := formatInt(1)
+    nonce, _ := formatInt(1)
+    maxPrio, _ := formatBigInt(big.NewInt(1))
+    maxFee, _ := formatBigInt(big.NewInt(1))
+    gasLimit, _ := formatInt(21000)
+    value, _ := formatBigInt(big.NewInt(0))
+    input := []byte{}
+    // Authorization list with one valid-looking tuple
+    var authAddr EthAddress
+    copy(authAddr[:], mustHex(t, "0x2222222222222222222222222222222222222222"))
+    ai, _ := formatInt(1)
+    ni, _ := formatInt(0)
+    yp, _ := formatInt(0)
+    ri, _ := formatBigInt(big.NewInt(1))
+    si, _ := formatBigInt(big.NewInt(1))
+    authList := []interface{}{[]interface{}{ai, authAddr[:], ni, yp, ri, si}}
+    // Build only 12 elements (omit s for outer signature later so list size is wrong)
+    base := []interface{}{chainId, nonce, maxPrio, maxFee, gasLimit, formatEthAddr(&to), value, input, []interface{}{}, authList, []byte{0x00}, []byte{0x01}}
+    payload, _ := EncodeRLP(base)
+    enc := append([]byte{EIP7702TxType}, payload...)
+    _, err := parseEip7702Tx(enc)
+    require.Error(t, err)
+}
+
+func TestEIP7702_AuthorizationListMustBeList(t *testing.T) {
+    // Insert a non-list at authorizationList position
+    var to EthAddress
+    copy(to[:], mustHex(t, "0x1111111111111111111111111111111111111111"))
+    chainId, _ := formatInt(1)
+    nonce, _ := formatInt(1)
+    maxPrio, _ := formatBigInt(big.NewInt(1))
+    maxFee, _ := formatBigInt(big.NewInt(1))
+    gasLimit, _ := formatInt(21000)
+    value, _ := formatBigInt(big.NewInt(0))
+    input := []byte{}
+    base := []interface{}{
+        chainId, nonce, maxPrio, maxFee, gasLimit, formatEthAddr(&to), value, input,
+        []interface{}{},          // access list (empty)
+        []byte{0x01, 0x02, 0x03}, // not a list
+    }
+    sig, _ := packSigFields(big.NewInt(0), big.NewInt(1), big.NewInt(1))
+    payload, _ := EncodeRLP(append(base, sig...))
+    enc := append([]byte{EIP7702TxType}, payload...)
+    _, err := parseEip7702Tx(enc)
+    require.Error(t, err)
+}
+
 func TestEIP7702_VParityRejected(t *testing.T) {
     var to EthAddress
     copy(to[:], mustHex(t, "0x1111111111111111111111111111111111111111"))
@@ -264,5 +443,90 @@ func TestEIP7702_ToUnsignedFilecoinMessage_Guard(t *testing.T) {
         S: big.NewInt(1),
     }
     _, err := tx.ToUnsignedFilecoinMessage(address.Undef)
+    require.Error(t, err)
+}
+
+func TestEIP7702_AuthorizationTupleWrongArityRejected(t *testing.T) {
+    // Build fields manually and inject an authorization tuple with only 5 items
+    var to EthAddress
+    copy(to[:], mustHex(t, "0x1111111111111111111111111111111111111111"))
+    var authAddr EthAddress
+    copy(authAddr[:], mustHex(t, "0x2222222222222222222222222222222222222222"))
+
+    chainId, _ := formatInt(1)
+    nonce, _ := formatInt(5)
+    maxPrio, _ := formatBigInt(big.NewInt(100))
+    maxFee, _ := formatBigInt(big.NewInt(200))
+    gasLimit, _ := formatInt(21000)
+    value, _ := formatBigInt(big.NewInt(0))
+    input := []byte{}
+
+    ai, _ := formatInt(1)
+    ni, _ := formatInt(7)
+    yp, _ := formatInt(0)
+    ri, _ := formatBigInt(big.NewInt(1))
+    // si omitted on purpose
+    badTuple := []interface{}{ai, authAddr[:], ni, yp, ri}
+    authList := []interface{}{badTuple}
+
+    base := []interface{}{
+        chainId,
+        nonce,
+        maxPrio,
+        maxFee,
+        gasLimit,
+        formatEthAddr(&to),
+        value,
+        input,
+        []interface{}{}, // access list
+        authList,
+    }
+    sig, _ := packSigFields(big.NewInt(0), big.NewInt(1), big.NewInt(1))
+    payload, _ := EncodeRLP(append(base, sig...))
+    enc := append([]byte{EIP7702TxType}, payload...)
+
+    _, err := parseEip7702Tx(enc)
+    require.Error(t, err)
+}
+
+func TestEIP7702_InitialiseSignature_SetsVRandS(t *testing.T) {
+    var to EthAddress
+    copy(to[:], mustHex(t, "0x1111111111111111111111111111111111111111"))
+    tx := &Eth7702TxArgs{
+        ChainID:              1,
+        Nonce:                1,
+        To:                   &to,
+        Value:                big.NewInt(0),
+        MaxFeePerGas:         big.NewInt(1),
+        MaxPriorityFeePerGas: big.NewInt(1),
+        GasLimit:             21000,
+        AuthorizationList: []EthAuthorization{
+            {ChainID: 1, Address: to, Nonce: 0, YParity: 0, R: EthBigInt(big.NewInt(1)), S: EthBigInt(big.NewInt(1))},
+        },
+    }
+    // Build a 65-byte signature r||s||v with r=2, s=3, v=1
+    sig := make([]byte, 65)
+    sig[31] = 2 // r
+    sig[63] = 3 // s
+    sig[64] = 1 // v (y_parity)
+    require.NoError(t, tx.InitialiseSignature(typescrypto.Signature{Type: typescrypto.SigTypeDelegated, Data: sig}))
+    require.Equal(t, "2", tx.R.String())
+    require.Equal(t, "3", tx.S.String())
+    require.Equal(t, "1", tx.V.String())
+}
+
+func TestEIP7702_InitialiseSignature_WrongTypeRejected(t *testing.T) {
+    var to EthAddress
+    tx := &Eth7702TxArgs{To: &to}
+    // SECP256K1 type should be rejected for 7702
+    err := tx.InitialiseSignature(typescrypto.Signature{Type: typescrypto.SigTypeSecp256k1, Data: make([]byte, 65)})
+    require.Error(t, err)
+}
+
+func TestEIP7702_InitialiseSignature_WrongLenRejected(t *testing.T) {
+    var to EthAddress
+    tx := &Eth7702TxArgs{To: &to}
+    // Delegated but wrong length (<65)
+    err := tx.InitialiseSignature(typescrypto.Signature{Type: typescrypto.SigTypeDelegated, Data: make([]byte, 64)})
     require.Error(t, err)
 }

@@ -1,0 +1,426 @@
+package eth
+
+import (
+    "bytes"
+    "context"
+    "testing"
+
+    "github.com/ipfs/go-cid"
+    "golang.org/x/crypto/sha3"
+    cbg "github.com/whyrusleeping/cbor-gen"
+    "github.com/stretchr/testify/require"
+
+    "github.com/filecoin-project/go-address"
+    "github.com/filecoin-project/go-state-types/abi"
+    "github.com/filecoin-project/go-state-types/big"
+    "github.com/filecoin-project/go-state-types/network"
+
+    "github.com/filecoin-project/go-jsonrpc"
+    "time"
+    "github.com/filecoin-project/lotus/api"
+    "github.com/filecoin-project/lotus/chain/actors/adt"
+    delegator "github.com/filecoin-project/lotus/chain/actors/builtin/delegator"
+    "github.com/filecoin-project/lotus/chain/state"
+    "github.com/filecoin-project/lotus/chain/store"
+    "github.com/filecoin-project/lotus/chain/types"
+    ethtypes "github.com/filecoin-project/lotus/chain/types/ethtypes"
+    builtintypes "github.com/filecoin-project/go-state-types/builtin"
+    typescrypto "github.com/filecoin-project/go-state-types/crypto"
+    "github.com/filecoin-project/lotus/chain/index"
+)
+
+// ---- mocks ----
+type mockTipsetResolver struct{ ts *types.TipSet }
+func (m *mockTipsetResolver) GetTipSetByHash(ctx context.Context, h ethtypes.EthHash) (*types.TipSet, error) { return m.ts, nil }
+func (m *mockTipsetResolver) GetTipsetByBlockNumber(ctx context.Context, blkParam string, strict bool) (*types.TipSet, error) {
+    return m.ts, nil
+}
+func (m *mockTipsetResolver) GetTipsetByBlockNumberOrHash(ctx context.Context, p ethtypes.EthBlockNumberOrHash) (*types.TipSet, error) {
+    return m.ts, nil
+}
+
+type mockChainStore struct{
+    ts *types.TipSet
+    smsg *types.SignedMessage
+    rcpts []types.MessageReceipt
+}
+func (m *mockChainStore) GetHeaviestTipSet() *types.TipSet { return m.ts }
+func (m *mockChainStore) GetTipsetByHeight(ctx context.Context, h abi.ChainEpoch, ts *types.TipSet, prev bool) (*types.TipSet, error) { return m.ts, nil }
+func (m *mockChainStore) GetTipSetFromKey(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error) { return m.ts, nil }
+func (m *mockChainStore) GetTipSetByCid(ctx context.Context, c cid.Cid) (*types.TipSet, error) { return m.ts, nil }
+func (m *mockChainStore) LoadTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error) { return m.ts, nil }
+func (m *mockChainStore) GetSignedMessage(ctx context.Context, c cid.Cid) (*types.SignedMessage, error) { return m.smsg, nil }
+func (m *mockChainStore) GetMessage(ctx context.Context, c cid.Cid) (*types.Message, error) { return &m.smsg.Message, nil }
+func (m *mockChainStore) BlockMsgsForTipset(ctx context.Context, ts *types.TipSet) ([]store.BlockMessages, error) { return nil, nil }
+func (m *mockChainStore) MessagesForTipset(ctx context.Context, ts *types.TipSet) ([]types.ChainMsg, error) { return []types.ChainMsg{m.smsg}, nil }
+func (m *mockChainStore) ReadReceipts(ctx context.Context, root cid.Cid) ([]types.MessageReceipt, error) { return m.rcpts, nil }
+func (m *mockChainStore) ActorStore(ctx context.Context) adt.Store { return nil }
+
+type mockStateManager struct{}
+func (m *mockStateManager) GetNetworkVersion(ctx context.Context, height abi.ChainEpoch) network.Version { return network.Version16 }
+func (m *mockStateManager) TipSetState(ctx context.Context, ts *types.TipSet) (cid.Cid, cid.Cid, error) { return cid.Undef, cid.Undef, nil }
+func (m *mockStateManager) ParentState(ts *types.TipSet) (*state.StateTree, error) { return nil, nil }
+func (m *mockStateManager) StateTree(st cid.Cid) (*state.StateTree, error) { return nil, nil }
+func (m *mockStateManager) LookupIDAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) { return addr, nil }
+func (m *mockStateManager) LoadActor(ctx context.Context, addr address.Address, ts *types.TipSet) (*types.Actor, error) { return nil, nil }
+func (m *mockStateManager) LoadActorRaw(ctx context.Context, addr address.Address, st cid.Cid) (*types.Actor, error) { return nil, nil }
+func (m *mockStateManager) ResolveToDeterministicAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) { return addr, nil }
+func (m *mockStateManager) ExecutionTrace(ctx context.Context, ts *types.TipSet) (cid.Cid, []*api.InvocResult, error) { return cid.Undef, nil, nil }
+func (m *mockStateManager) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*api.InvocResult, error) { return nil, nil }
+func (m *mockStateManager) CallOnState(ctx context.Context, stateCid cid.Cid, msg *types.Message, ts *types.TipSet) (*api.InvocResult, error) { return nil, nil }
+func (m *mockStateManager) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet, applyTsMessages bool) (*api.InvocResult, error) { return nil, nil }
+func (m *mockStateManager) ApplyOnStateWithGas(ctx context.Context, stateCid cid.Cid, msg *types.Message, ts *types.TipSet) (*api.InvocResult, error) { return nil, nil }
+func (m *mockStateManager) HasExpensiveForkBetween(parent, height abi.ChainEpoch) bool { return false }
+
+type mockEvents struct{}
+// EthEventsAPI stubs
+func (m *mockEvents) EthGetLogs(ctx context.Context, filter *ethtypes.EthFilterSpec) (*ethtypes.EthFilterResult, error) { return &ethtypes.EthFilterResult{}, nil }
+func (m *mockEvents) EthNewBlockFilter(ctx context.Context) (ethtypes.EthFilterID, error) { var z ethtypes.EthFilterID; return z, nil }
+func (m *mockEvents) EthNewPendingTransactionFilter(ctx context.Context) (ethtypes.EthFilterID, error) { var z ethtypes.EthFilterID; return z, nil }
+func (m *mockEvents) EthNewFilter(ctx context.Context, filter *ethtypes.EthFilterSpec) (ethtypes.EthFilterID, error) { var z ethtypes.EthFilterID; return z, nil }
+func (m *mockEvents) EthUninstallFilter(ctx context.Context, id ethtypes.EthFilterID) (bool, error) { return true, nil }
+func (m *mockEvents) EthGetFilterChanges(ctx context.Context, id ethtypes.EthFilterID) (*ethtypes.EthFilterResult, error) { return &ethtypes.EthFilterResult{}, nil }
+func (m *mockEvents) EthGetFilterLogs(ctx context.Context, id ethtypes.EthFilterID) (*ethtypes.EthFilterResult, error) { return &ethtypes.EthFilterResult{}, nil }
+func (m *mockEvents) EthSubscribe(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthSubscriptionID, error) { var z ethtypes.EthSubscriptionID; return z, nil }
+func (m *mockEvents) EthUnsubscribe(ctx context.Context, id ethtypes.EthSubscriptionID) (bool, error) { return true, nil }
+// Internals
+var logsForTest []ethtypes.EthLog
+var _ EthEventsInternal = (*mockEvents)(nil)
+func (m *mockEvents) GetEthLogsForBlockAndTransaction(ctx context.Context, blockHash *ethtypes.EthHash, txHash ethtypes.EthHash) ([]ethtypes.EthLog, error) { return logsForTest, nil }
+func (m *mockEvents) GC(ctx context.Context, ttl time.Duration) {}
+
+// Minimal mock indexer: maps any hash to a provided CID; other methods stubbed
+type mockIndexer struct{ cid cid.Cid }
+func (mi *mockIndexer) Start() {}
+func (mi *mockIndexer) ReconcileWithChain(ctx context.Context, currHead *types.TipSet) error { return nil }
+func (mi *mockIndexer) IndexSignedMessage(ctx context.Context, msg *types.SignedMessage) error { return nil }
+func (mi *mockIndexer) IndexEthTxHash(ctx context.Context, txHash ethtypes.EthHash, c cid.Cid) error { return nil }
+func (mi *mockIndexer) SetActorToDelegatedAddresFunc(_ index.ActorToDelegatedAddressFunc) {}
+func (mi *mockIndexer) SetRecomputeTipSetStateFunc(_ index.RecomputeTipSetStateFunc) {}
+func (mi *mockIndexer) Apply(ctx context.Context, from, to *types.TipSet) error { return nil }
+func (mi *mockIndexer) Revert(ctx context.Context, from, to *types.TipSet) error { return nil }
+func (mi *mockIndexer) GetCidFromHash(ctx context.Context, hash ethtypes.EthHash) (cid.Cid, error) { return mi.cid, nil }
+func (mi *mockIndexer) GetMsgInfo(ctx context.Context, m cid.Cid) (*index.MsgInfo, error) { return nil, index.ErrNotFound }
+func (mi *mockIndexer) GetEventsForFilter(ctx context.Context, f *index.EventFilter) ([]*index.CollectedEvent, error) { return nil, nil }
+func (mi *mockIndexer) ChainValidateIndex(ctx context.Context, epoch abi.ChainEpoch, backfill bool) (*types.IndexValidation, error) { return &types.IndexValidation{}, nil }
+func (mi *mockIndexer) Close() error { return nil }
+
+// Minimal mock state api for StateSearchMsg
+type mockStateAPI struct{ ml api.MsgLookup }
+func (m *mockStateAPI) StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error) {
+    ml := m.ml
+    return &ml, nil
+}
+
+type mockStateAPINotFound struct{}
+func (m *mockStateAPINotFound) StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error) {
+    return nil, nil
+}
+
+// ---- test helpers ----
+func make7702Params(t *testing.T, chainID uint64, addr [20]byte, nonce uint64) []byte {
+    t.Helper()
+    var buf bytes.Buffer
+    // wrapper [ list ] of length 1
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 1))
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 1))
+    // tuple [chain_id, address, nonce, y_parity, r, s]
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 6))
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajUnsignedInt, chainID))
+    require.NoError(t, cbg.WriteByteArray(&buf, addr[:]))
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajUnsignedInt, nonce))
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajUnsignedInt, 0)) // y_parity
+    require.NoError(t, cbg.WriteByteArray(&buf, []byte{1}))
+    require.NoError(t, cbg.WriteByteArray(&buf, []byte{1}))
+    return buf.Bytes()
+}
+
+func makeTipset(t *testing.T) *types.TipSet {
+    t.Helper()
+    miner, err := address.NewIDAddress(1000)
+    require.NoError(t, err)
+    // create a dummy cid for header fields that require non-undefined cids
+    var dummyCid cid.Cid
+    {
+        b := []byte{0x01}
+        c, err := abi.CidBuilder.Sum(b)
+        require.NoError(t, err)
+        dummyCid = c
+    }
+    bh := &types.BlockHeader{
+        Miner:                miner,
+        Height:               10,
+        Ticket:               &types.Ticket{VRFProof: []byte{1}},
+        ParentBaseFee:        big.NewInt(1),
+        ParentStateRoot:      dummyCid,
+        ParentMessageReceipts: dummyCid,
+        Messages:             dummyCid,
+    }
+    ts, err := types.NewTipSet([]*types.BlockHeader{bh})
+    require.NoError(t, err)
+    return ts
+}
+
+// ---- tests ----
+func TestEthGetBlockReceipts_7702_AuthListAndDelegatedTo(t *testing.T) {
+    ctx := context.Background()
+    // Delegator address configured
+    id18, _ := address.NewIDAddress(18)
+    ethtypes.DelegatorActorAddr = id18
+    // f4 sender
+    var from20 [20]byte
+    for i := range from20 { from20[i] = 0x44 }
+    from, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, from20[:])
+    require.NoError(t, err)
+    // delegate address 20b for tuple
+    var delegate20 [20]byte
+    for i := range delegate20 { delegate20[i] = 0xAB }
+
+    // SignedMessage targeting Delegator.ApplyDelegations with one authorization tuple
+    msg := types.Message{
+        Version:    0,
+        To:         ethtypes.DelegatorActorAddr,
+        From:       from,
+        Nonce:      0,
+        Value:      types.NewInt(0),
+        Method:     delegator.MethodApplyDelegations,
+        GasLimit:   100000,
+        GasFeeCap:  types.NewInt(1),
+        GasPremium: types.NewInt(1),
+        Params:     make7702Params(t, 314, delegate20, 0),
+    }
+    // delegated sig r=1 s=1 v=0
+    sig := typescrypto.Signature{ Type: typescrypto.SigTypeDelegated, Data: append(append(make([]byte, 31), 1), append(append(make([]byte, 31), 1), 0)...)}
+    smsg := &types.SignedMessage{ Message: msg, Signature: sig }
+
+    // Tipset and mocks
+    ts := makeTipset(t)
+    // Provide a dummy CreateExternalReturn so receipt parsing path (To==nil) succeeds
+    var retBuf bytes.Buffer
+    // Build a 20-byte eth address for the return
+    var retEth [20]byte
+    for i := range retEth { retEth[i] = 0xEE }
+    // CreateExternalReturn has shape (ActorID, RobustAddress*, EthAddress); we only need EthAddress populated
+    // Minimal CBOR encoding: array(3) [0, null, bytes20]
+    require.NoError(t, cbg.CborWriteHeader(&retBuf, cbg.MajArray, 3))
+    require.NoError(t, cbg.CborWriteHeader(&retBuf, cbg.MajUnsignedInt, 0)) // actor id 0
+    // null robust address
+    _, _ = retBuf.Write(cbg.CborNull)
+    // eth address bytes
+    require.NoError(t, cbg.WriteByteArray(&retBuf, retEth[:]))
+    cs := &mockChainStore{ ts: ts, smsg: smsg, rcpts: []types.MessageReceipt{{ExitCode: 0, GasUsed: 1000, Return: retBuf.Bytes()}} }
+    sm := &mockStateManager{}
+    tr := &mockTipsetResolver{ ts: ts }
+    ev := &mockEvents{}
+
+    // Build API
+    ethTxAPI, err := NewEthTransactionAPI(cs, sm, nil, nil, nil, ev, tr, 0)
+    require.NoError(t, err)
+
+    // Call and validate
+    receipts, err := ethTxAPI.EthGetBlockReceipts(ctx, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
+    require.NoError(t, err)
+    require.Len(t, receipts, 1)
+    r := receipts[0]
+    require.Len(t, r.AuthorizationList, 1)
+    require.Equal(t, ethtypes.EthUint64(314), r.AuthorizationList[0].ChainID)
+    // adjustReceiptForDelegation should have populated DelegatedTo from auth list
+    require.Len(t, r.DelegatedTo, 1)
+    var want ethtypes.EthAddress
+    copy(want[:], delegate20[:])
+    require.Equal(t, want, r.DelegatedTo[0])
+}
+
+func TestEthGetBlockReceipts_7702_SyntheticLogAttribution(t *testing.T) {
+    ctx := context.Background()
+    // Configure mocks
+    ts := makeTipset(t)
+    tr := &mockTipsetResolver{ ts: ts }
+    // fake events that will return a synthetic delegation log
+    var topic0 ethtypes.EthHash
+    h := sha3.NewLegacyKeccak256()
+    _, _ = h.Write([]byte("EIP7702Delegated(address)"))
+    copy(topic0[:], h.Sum(nil))
+    var del ethtypes.EthAddress
+    for i := range del { del[i] = 0xCD }
+    ev := &mockEvents{}
+    evLogs := []ethtypes.EthLog{{ Topics: []ethtypes.EthHash{topic0}, Data: ethtypes.EthBytes(del[:]) }}
+    // Wrap mockEvents with a function-compatible type by embedding method via a closure-like adapter
+    // We simply assign a package-level var to be used inside method (not ideal, but sufficient for tests).
+    logsForTest = evLogs
+
+    // Build a non-7702 delegated transaction (InvokeContract) so AuthorizationList is empty
+    var from20 [20]byte
+    for i := range from20 { from20[i] = 0x55 }
+    from, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, from20[:])
+    require.NoError(t, err)
+    to, _ := address.NewIDAddress(1002)
+    msg := types.Message{Version: 0, To: to, From: from, Nonce: 0, Value: types.NewInt(0), Method: builtintypes.MethodsEVM.InvokeContract, GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1)}
+    sig := typescrypto.Signature{ Type: typescrypto.SigTypeDelegated, Data: append(append(make([]byte, 31), 1), append(append(make([]byte, 31), 1), 0)...)}
+    smsg := &types.SignedMessage{ Message: msg, Signature: sig }
+
+    // Receipt with EventsRoot non-nil so newEthTxReceipt fetches logs
+    // Build dummy CID
+    var root cid.Cid
+    {
+        b := []byte{0x02}
+        c, err := abi.CidBuilder.Sum(b)
+        require.NoError(t, err)
+        root = c
+    }
+    rcpt := types.NewMessageReceiptV1(0, nil, 21000, &root)
+
+    cs := &mockChainStore{ ts: ts, smsg: smsg, rcpts: []types.MessageReceipt{rcpt} }
+    sm := &mockStateManager{}
+
+    // Build API and call
+    ethTxAPI, err := NewEthTransactionAPI(cs, sm, nil, nil, nil, ev, tr, 0)
+    require.NoError(t, err)
+    receipts, err := ethTxAPI.EthGetBlockReceipts(ctx, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
+    require.NoError(t, err)
+    require.Len(t, receipts, 1)
+    r := receipts[0]
+    // No auth list in tx view
+    require.Len(t, r.AuthorizationList, 0)
+    // DelegatedTo should be set from synthetic log
+    require.Len(t, r.DelegatedTo, 1)
+    require.Equal(t, del, r.DelegatedTo[0])
+}
+
+func TestEthGetTransactionReceipt_7702_DelegatedToAndAuthList(t *testing.T) {
+    ctx := context.Background()
+    // Delegator configured
+    id18, _ := address.NewIDAddress(18)
+    ethtypes.DelegatorActorAddr = id18
+    // Build SignedMessage to Delegator.ApplyDelegations with one tuple
+    var from20 [20]byte
+    for i := range from20 { from20[i] = 0x66 }
+    from, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, from20[:])
+    require.NoError(t, err)
+    var delegate20 [20]byte
+    for i := range delegate20 { delegate20[i] = 0xAA }
+    msg := types.Message{Version: 0, To: ethtypes.DelegatorActorAddr, From: from, Nonce: 0, Value: types.NewInt(0), Method: delegator.MethodApplyDelegations, GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1), Params: make7702Params(t, 314, delegate20, 0)}
+    sig := typescrypto.Signature{ Type: typescrypto.SigTypeDelegated, Data: append(append(make([]byte, 31), 1), append(append(make([]byte, 31), 1), 0)...)}
+    smsg := &types.SignedMessage{ Message: msg, Signature: sig }
+
+    // Tipset and mocks
+    ts := makeTipset(t)
+    cs := &mockChainStore{ ts: ts, smsg: smsg, rcpts: []types.MessageReceipt{{ExitCode: 0, GasUsed: 1000}} }
+    sm := &mockStateManager{}
+    tr := &mockTipsetResolver{ ts: ts }
+    ev := &mockEvents{}
+
+    // StateAPI should return a MsgLookup pointing to our message and receipt
+    // Provide minimal CreateExternalReturn CBOR in receipt to satisfy To==nil decode path in newEthTxReceipt
+    var retBuf bytes.Buffer
+    require.NoError(t, cbg.CborWriteHeader(&retBuf, cbg.MajArray, 3))
+    require.NoError(t, cbg.CborWriteHeader(&retBuf, cbg.MajUnsignedInt, 0))
+    _, _ = retBuf.Write(cbg.CborNull)
+    var eth20 [20]byte
+    for i := range eth20 { eth20[i] = 0xEF }
+    require.NoError(t, cbg.WriteByteArray(&retBuf, eth20[:]))
+    ml := api.MsgLookup{ Message: smsg.Cid(), Receipt: types.MessageReceipt{ExitCode: 0, GasUsed: 1000, Return: retBuf.Bytes()}, TipSet: ts.Key() }
+    sap := &mockStateAPI{ ml: ml }
+
+    // Indexer maps any tx hash to our message CID
+    idx := &mockIndexer{ cid: smsg.Cid() }
+
+    // API
+    ethTxAPI, err := NewEthTransactionAPI(cs, sm, sap, nil, idx, ev, tr, 0)
+    require.NoError(t, err)
+
+    // Any hash will do; indexer returns our CID regardless
+    var h ethtypes.EthHash
+    r, err := ethTxAPI.EthGetTransactionReceipt(ctx, h)
+    require.NoError(t, err)
+    require.NotNil(t, r)
+    // Auth list echoed
+    require.Len(t, r.AuthorizationList, 1)
+    require.Equal(t, ethtypes.EthUint64(314), r.AuthorizationList[0].ChainID)
+    // DelegatedTo populated
+    require.Len(t, r.DelegatedTo, 1)
+}
+
+func TestEthGetTransactionByHash_7702_TxViewContainsAuthList(t *testing.T) {
+    ctx := context.Background()
+    // Delegator configured
+    id18, _ := address.NewIDAddress(18)
+    ethtypes.DelegatorActorAddr = id18
+    // Build SignedMessage to Delegator.ApplyDelegations with one tuple
+    var from20 [20]byte
+    for i := range from20 { from20[i] = 0x77 }
+    from, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, from20[:])
+    require.NoError(t, err)
+    var delegate20 [20]byte
+    for i := range delegate20 { delegate20[i] = 0xBB }
+    msg := types.Message{Version: 0, To: ethtypes.DelegatorActorAddr, From: from, Nonce: 0, Value: types.NewInt(0), Method: delegator.MethodApplyDelegations, GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1), Params: make7702Params(t, 314, delegate20, 0)}
+    sig := typescrypto.Signature{ Type: typescrypto.SigTypeDelegated, Data: append(append(make([]byte, 31), 1), append(append(make([]byte, 31), 1), 0)...)}
+    smsg := &types.SignedMessage{ Message: msg, Signature: sig }
+
+    // Tipset and mocks
+    ts := makeTipset(t)
+    cs := &mockChainStore{ ts: ts, smsg: smsg, rcpts: []types.MessageReceipt{{ExitCode: 0, GasUsed: 1000}} }
+    sm := &mockStateManager{}
+    tr := &mockTipsetResolver{ ts: ts }
+    ev := &mockEvents{}
+
+    // StateAPI and Indexer
+    ml := api.MsgLookup{ Message: smsg.Cid(), Receipt: cs.rcpts[0], TipSet: ts.Key() }
+    sap := &mockStateAPI{ ml: ml }
+    idx := &mockIndexer{ cid: smsg.Cid() }
+
+    ethTxAPI, err := NewEthTransactionAPI(cs, sm, sap, nil, idx, ev, tr, 0)
+    require.NoError(t, err)
+
+    var h ethtypes.EthHash // arbitrary; indexer maps to our cid
+    tx, err := ethTxAPI.EthGetTransactionByHash(ctx, &h)
+    require.NoError(t, err)
+    require.NotNil(t, tx)
+    require.Len(t, tx.AuthorizationList, 1)
+    require.Equal(t, ethtypes.EthUint64(314), tx.AuthorizationList[0].ChainID)
+}
+
+func TestEthGetTransactionByBlockHashAndIndex_7702_TxViewContainsAuthList(t *testing.T) {
+    ctx := context.Background()
+    ethtypes.DelegatorActorAddr, _ = address.NewIDAddress(18)
+    var from20 [20]byte
+    for i := range from20 { from20[i] = 0x88 }
+    from, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, from20[:])
+    require.NoError(t, err)
+    var delegate20 [20]byte
+    for i := range delegate20 { delegate20[i] = 0xCC }
+    msg := types.Message{Version: 0, To: ethtypes.DelegatorActorAddr, From: from, Nonce: 0, Value: types.NewInt(0), Method: delegator.MethodApplyDelegations, GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1), Params: make7702Params(t, 314, delegate20, 0)}
+    sig := typescrypto.Signature{ Type: typescrypto.SigTypeDelegated, Data: append(append(make([]byte, 31), 1), append(append(make([]byte, 31), 1), 0)...)}
+    smsg := &types.SignedMessage{ Message: msg, Signature: sig }
+
+    ts := makeTipset(t)
+    cs := &mockChainStore{ ts: ts, smsg: smsg, rcpts: []types.MessageReceipt{{ExitCode: 0, GasUsed: 1000}} }
+    sm := &mockStateManager{}
+    tr := &mockTipsetResolver{ ts: ts }
+    ev := &mockEvents{}
+    api, err := NewEthTransactionAPI(cs, sm, nil, nil, nil, ev, tr, 0)
+    require.NoError(t, err)
+    var h ethtypes.EthHash
+    tx, err := api.EthGetTransactionByBlockHashAndIndex(ctx, h, 0)
+    require.NoError(t, err)
+    require.NotNil(t, tx)
+    require.Len(t, tx.AuthorizationList, 1)
+    require.Equal(t, ethtypes.EthUint64(314), tx.AuthorizationList[0].ChainID)
+}
+
+func TestEthGetTransactionReceipt_NotFoundReturnsNil(t *testing.T) {
+    ctx := context.Background()
+    ts := makeTipset(t)
+    cs := &mockChainStore{ ts: ts }
+    sm := &mockStateManager{}
+    tr := &mockTipsetResolver{ ts: ts }
+    ev := &mockEvents{}
+    idx := &mockIndexer{ cid: cid.Undef }
+    sap := &mockStateAPINotFound{}
+    api, err := NewEthTransactionAPI(cs, sm, sap, nil, idx, ev, tr, 0)
+    require.NoError(t, err)
+    var h ethtypes.EthHash
+    r, err := api.EthGetTransactionReceipt(ctx, h)
+    require.NoError(t, err)
+    require.Nil(t, r)
+}

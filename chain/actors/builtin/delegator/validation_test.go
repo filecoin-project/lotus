@@ -143,3 +143,36 @@ func TestApplyDelegationsFromCBOR_ValidatesAndReturnsList(t *testing.T) {
 // small helpers to avoid math/big import aliasing in test
 type secbig = mathbig.Int
 func one() *secbig { return new(secbig).SetUint64(1) }
+
+func TestDecodeAuthorizationTuples_WrapperFormAccepted(t *testing.T) {
+    // Build wrapper [ list ] where list contains one valid tuple
+    var buf bytes.Buffer
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 1))
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 1))
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 6))
+    // chain_id
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajUnsignedInt, 314))
+    // address
+    addr := make([]byte, 20)
+    for i := range addr { addr[i] = 0x44 }
+    require.NoError(t, cbg.WriteByteArray(&buf, addr))
+    // nonce, y_parity
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajUnsignedInt, 0))
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajUnsignedInt, 1))
+    // r, s
+    require.NoError(t, cbg.WriteByteArray(&buf, []byte{1}))
+    require.NoError(t, cbg.WriteByteArray(&buf, []byte{1}))
+
+    tuples, err := DecodeAuthorizationTuples(buf.Bytes())
+    require.NoError(t, err)
+    require.Len(t, tuples, 1)
+    require.NoError(t, ValidateDelegations(tuples, 314))
+}
+
+func TestDecodeAuthorizationTuples_TopLevelNotArray(t *testing.T) {
+    var buf bytes.Buffer
+    // Write an unsigned int instead of array
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajUnsignedInt, 7))
+    _, err := DecodeAuthorizationTuples(buf.Bytes())
+    require.Error(t, err)
+}

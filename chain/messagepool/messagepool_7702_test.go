@@ -10,7 +10,6 @@ import (
 
     "github.com/filecoin-project/go-address"
     builtintypes "github.com/filecoin-project/go-state-types/builtin"
-    "github.com/filecoin-project/go-state-types/crypto"
     "github.com/filecoin-project/go-state-types/network"
     "github.com/filecoin-project/lotus/api"
     "github.com/filecoin-project/lotus/build/buildconstants"
@@ -56,10 +55,12 @@ func TestCrossAccountInvalidation_Applies(t *testing.T) {
     tma.setBalance(authAddr, 10)
 
     // Add a pending message from authority at nonce 5
+    // For delegated (f4) senders, AuthenticateMessage requires EVM/EAM methods;
+    // use EAM.CreateExternal to satisfy signature verification.
     msgAuth := &types.Message{
         From:       authAddr,
-        To:         authAddr, // self, arbitrary
-        Method:     0,
+        To:         builtintypes.EthereumAddressManagerActorAddr,
+        Method:     builtintypes.MethodsEAM.CreateExternal,
         Value:      types.NewInt(0),
         Nonce:      5,
         GasLimit:   1000000,
@@ -110,6 +111,7 @@ func TestCrossAccountInvalidation_Applies(t *testing.T) {
     }
 }
 
+
 func TestCrossAccountInvalidation_MultiAuthority(t *testing.T) {
     mp, tma := makeTestMpool()
     tma.nv = buildconstants.TestNetworkVersion
@@ -124,7 +126,7 @@ func TestCrossAccountInvalidation_MultiAuthority(t *testing.T) {
 
     // pending messages for both at nonce 1
     add := func(w *wallet.LocalWallet, from address.Address) {
-        m := &types.Message{From: from, To: from, Method: 0, Value: types.NewInt(0), Nonce: 1, GasLimit: 1000000, GasFeeCap: types.NewInt(100), GasPremium: types.NewInt(1)}
+        m := &types.Message{From: from, To: builtintypes.EthereumAddressManagerActorAddr, Method: builtintypes.MethodsEAM.CreateExternal, Value: types.NewInt(0), Nonce: 1, GasLimit: 1000000, GasFeeCap: types.NewInt(100), GasPremium: types.NewInt(1)}
         require.NoError(t, mp.Add(context.Background(), signMsg(t, w, m)))
     }
     add(wA, a1)
@@ -203,7 +205,7 @@ func TestCrossAccountInvalidation_DisabledBeforeActivation(t *testing.T) {
     wA, _ := wallet.NewWallet(wallet.NewMemKeyStore())
     a1, _ := wA.WalletNew(context.Background(), types.KTDelegated)
     tma.setBalance(a1, 10)
-    m := &types.Message{From: a1, To: a1, Method: 0, Value: types.NewInt(0), Nonce: 1, GasLimit: 1000000, GasFeeCap: types.NewInt(100), GasPremium: types.NewInt(1)}
+    m := &types.Message{From: a1, To: builtintypes.EthereumAddressManagerActorAddr, Method: builtintypes.MethodsEAM.CreateExternal, Value: types.NewInt(0), Nonce: 1, GasLimit: 1000000, GasFeeCap: types.NewInt(100), GasPremium: types.NewInt(1)}
     require.NoError(t, mp.Add(context.Background(), signMsg(t, wA, m)))
 
     // ApplyDelegations should NOT evict before activation
@@ -223,6 +225,96 @@ func TestCrossAccountInvalidation_DisabledBeforeActivation(t *testing.T) {
     require.True(t, ok)
     if _, ex := ms.msgs[1]; !ex {
         t.Fatalf("did not expect eviction before activation")
+    }
+}
+
+func TestCrossAccountInvalidation_IgnoresNonDelegatorMessages(t *testing.T) {
+    mp, tma := makeTestMpool()
+    tma.nv = buildconstants.TestNetworkVersion
+
+    // Authority with a pending message at nonce 1
+    wA, _ := wallet.NewWallet(wallet.NewMemKeyStore())
+    a1, _ := wA.WalletNew(context.Background(), types.KTDelegated)
+    tma.setBalance(a1, 10)
+    m := &types.Message{From: a1, To: builtintypes.EthereumAddressManagerActorAddr, Method: builtintypes.MethodsEAM.CreateExternal, Value: types.NewInt(0), Nonce: 1, GasLimit: 1000000, GasFeeCap: types.NewInt(100), GasPremium: types.NewInt(1)}
+    require.NoError(t, mp.Add(context.Background(), signMsg(t, wA, m)))
+
+    // Push a message that is NOT to Delegator.ApplyDelegations; should not evict
+    wS, _ := wallet.NewWallet(wallet.NewMemKeyStore())
+    s, _ := wS.WalletNew(context.Background(), types.KTSecp256k1)
+    tma.setBalance(s, 10)
+    nonDel := &types.Message{From: s, To: builtintypes.EthereumAddressManagerActorAddr, Method: builtintypes.MethodsEAM.CreateExternal, Value: types.NewInt(0), Nonce: 0, GasLimit: 1000000, GasFeeCap: types.NewInt(100), GasPremium: types.NewInt(1)}
+    require.NoError(t, mp.Add(context.Background(), signMsg(t, wS, nonDel)))
+
+    ms, ok, err := mp.getPendingMset(context.Background(), a1)
+    require.NoError(t, err)
+    require.True(t, ok)
+    if _, ex := ms.msgs[1]; !ex {
+        t.Fatalf("did not expect eviction for non-delegator message")
+    }
+}
+
+func TestCrossAccountInvalidation_InvalidCBOR_NoEviction(t *testing.T) {
+    mp, tma := makeTestMpool()
+    tma.nv = buildconstants.TestNetworkVersion
+
+    // Authority with a pending message at nonce 2
+    wA, _ := wallet.NewWallet(wallet.NewMemKeyStore())
+    a1, _ := wA.WalletNew(context.Background(), types.KTDelegated)
+    tma.setBalance(a1, 10)
+    m := &types.Message{From: a1, To: builtintypes.EthereumAddressManagerActorAddr, Method: builtintypes.MethodsEAM.CreateExternal, Value: types.NewInt(0), Nonce: 2, GasLimit: 1000000, GasFeeCap: types.NewInt(100), GasPremium: types.NewInt(1)}
+    require.NoError(t, mp.Add(context.Background(), signMsg(t, wA, m)))
+
+    // Malformed CBOR params (unsigned int instead of array) should cause no eviction
+    var buf bytes.Buffer
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajUnsignedInt, 7))
+    ethtypes.DelegatorActorAddr, _ = address.NewIDAddress(1234)
+    wS, _ := wallet.NewWallet(wallet.NewMemKeyStore())
+    s, _ := wS.WalletNew(context.Background(), types.KTSecp256k1)
+    tma.setBalance(s, 10)
+    del := &types.Message{From: s, To: ethtypes.DelegatorActorAddr, Method: delegator.MethodApplyDelegations, Value: types.NewInt(0), Nonce: 0, GasLimit: 1000000, GasFeeCap: types.NewInt(100), GasPremium: types.NewInt(1), Params: buf.Bytes()}
+    ethtypes.Eip7702FeatureEnabled = true
+    defer func() { ethtypes.Eip7702FeatureEnabled = false }()
+    require.NoError(t, mp.Add(context.Background(), signMsg(t, wS, del)))
+
+    ms, ok, err := mp.getPendingMset(context.Background(), a1)
+    require.NoError(t, err)
+    require.True(t, ok)
+    if _, ex := ms.msgs[2]; !ex {
+        t.Fatalf("did not expect eviction for malformed CBOR params")
+    }
+}
+
+func TestCrossAccountInvalidation_EmptyWrapper_NoEviction(t *testing.T) {
+    mp, tma := makeTestMpool()
+    tma.nv = buildconstants.TestNetworkVersion
+
+    // Authority with a pending message at nonce 1
+    wA, _ := wallet.NewWallet(wallet.NewMemKeyStore())
+    a1, _ := wA.WalletNew(context.Background(), types.KTDelegated)
+    tma.setBalance(a1, 10)
+    pending := &types.Message{From: a1, To: builtintypes.EthereumAddressManagerActorAddr, Method: builtintypes.MethodsEAM.CreateExternal, Value: types.NewInt(0), Nonce: 1, GasLimit: 1000000, GasFeeCap: types.NewInt(100), GasPremium: types.NewInt(1)}
+    require.NoError(t, mp.Add(context.Background(), signMsg(t, wA, pending)))
+
+    // ApplyDelegations with empty wrapper [ list ] (list length 0) should cause no eviction
+    var buf bytes.Buffer
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 1))
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 0))
+    ethtypes.DelegatorActorAddr, _ = address.NewIDAddress(1234)
+    wS, _ := wallet.NewWallet(wallet.NewMemKeyStore())
+    s, _ := wS.WalletNew(context.Background(), types.KTSecp256k1)
+    tma.setBalance(s, 10)
+    del := &types.Message{From: s, To: ethtypes.DelegatorActorAddr, Method: delegator.MethodApplyDelegations, Value: types.NewInt(0), Nonce: 0, GasLimit: 1000000, GasFeeCap: types.NewInt(100), GasPremium: types.NewInt(1), Params: buf.Bytes()}
+    ethtypes.Eip7702FeatureEnabled = true
+    defer func() { ethtypes.Eip7702FeatureEnabled = false }()
+    require.NoError(t, mp.Add(context.Background(), signMsg(t, wS, del)))
+
+    // Verify original message still present
+    ms, ok, err := mp.getPendingMset(context.Background(), a1)
+    require.NoError(t, err)
+    require.True(t, ok)
+    if _, ex := ms.msgs[1]; !ex {
+        t.Fatalf("did not expect eviction for empty wrapper")
     }
 }
 
@@ -252,4 +344,43 @@ func TestDelegationCap_NotEnforcedBeforeActivation(t *testing.T) {
         }
     }
     require.Equal(t, 5, count)
+}
+
+func TestCrossAccountInvalidation_EvictsOnlyLTE(t *testing.T) {
+    mp, tma := makeTestMpool()
+    tma.nv = buildconstants.TestNetworkVersion
+
+    // Authority with two pending messages at nonce 5 and 6, using EAM.CreateExternal
+    wAuth, _ := wallet.NewWallet(wallet.NewMemKeyStore())
+    authAddr, _ := wAuth.WalletNew(context.Background(), types.KTDelegated)
+    tma.setBalance(authAddr, 10)
+    addPending := func(nonce uint64) {
+        m := &types.Message{From: authAddr, To: builtintypes.EthereumAddressManagerActorAddr, Method: builtintypes.MethodsEAM.CreateExternal, Value: types.NewInt(0), Nonce: nonce, GasLimit: 1000000, GasFeeCap: types.NewInt(100), GasPremium: types.NewInt(1)}
+        require.NoError(t, mp.Add(context.Background(), signMsg(t, wAuth, m)))
+    }
+    addPending(5)
+    addPending(6)
+
+    // Delegation targeting nonce 5 should evict only nonce 5
+    ethtypes.DelegatorActorAddr, _ = address.NewIDAddress(1234)
+    ethAuth, _ := ethtypes.EthAddressFromFilecoinAddress(authAddr)
+    params := encodeSingleTuple(t, uint64(buildconstants.Eip155ChainId), ethAuth, 5)
+    wS, _ := wallet.NewWallet(wallet.NewMemKeyStore())
+    s, _ := wS.WalletNew(context.Background(), types.KTSecp256k1)
+    tma.setBalance(s, 10)
+    del := &types.Message{From: s, To: ethtypes.DelegatorActorAddr, Method: delegator.MethodApplyDelegations, Value: types.NewInt(0), Nonce: 0, GasLimit: 1000000, GasFeeCap: types.NewInt(100), GasPremium: types.NewInt(1), Params: params}
+    ethtypes.Eip7702FeatureEnabled = true
+    defer func() { ethtypes.Eip7702FeatureEnabled = false }()
+    require.NoError(t, mp.Add(context.Background(), signMsg(t, wS, del)))
+
+    ms, ok, err := mp.getPendingMset(context.Background(), authAddr)
+    require.NoError(t, err)
+    if ok {
+        if _, ex := ms.msgs[5]; ex {
+            t.Fatalf("expected nonce 5 evicted")
+        }
+        if _, ex := ms.msgs[6]; !ex {
+            t.Fatalf("did not expect nonce 6 evicted")
+        }
+    }
 }
