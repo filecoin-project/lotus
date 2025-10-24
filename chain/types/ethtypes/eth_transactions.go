@@ -133,26 +133,8 @@ func EthTransactionFromSignedFilecoinMessage(smsg *types.SignedMessage) (EthTran
 
     // Special-case: Delegator methods (EIP-7702) -> reconstruct a 0x04 tx view
     if DelegatorActorAddr != address.Undef && smsg.Message.To == DelegatorActorAddr &&
-        (smsg.Message.Method == delegator.MethodApplyDelegations || smsg.Message.Method == delegator.MethodApplyAndCall) {
+        smsg.Message.Method == delegator.MethodApplyAndCall {
         var authz []EthAuthorization
-        if smsg.Message.Method == delegator.MethodApplyDelegations {
-            // Decode wrapper-only list of tuples
-            if dl, err := delegator.DecodeAuthorizationTuples(smsg.Message.Params); err == nil && len(dl) > 0 {
-                authz = make([]EthAuthorization, 0, len(dl))
-                for _, d := range dl {
-                    var ea EthAddress
-                    copy(ea[:], d.Address[:])
-                    authz = append(authz, EthAuthorization{
-                        ChainID: EthUint64(d.ChainID),
-                        Address: ea,
-                        Nonce:   EthUint64(d.Nonce),
-                        YParity: uint8(d.YParity),
-                        R:       EthBigInt(d.R),
-                        S:       EthBigInt(d.S),
-                    })
-                }
-            }
-        } else {
             // Decode atomic [ [tuples...], [to,value,input] ] and extract tuples (element 0)
             r := cbg.NewCborReader(bytes.NewReader(smsg.Message.Params))
             maj, l, err := r.ReadHeader()
@@ -200,7 +182,6 @@ func EthTransactionFromSignedFilecoinMessage(smsg *types.SignedMessage) (EthTran
                     if len(tmp) > 0 { authz = tmp }
                 }
             }
-        }
         if len(authz) > 0 {
             tx := &Eth7702TxArgs{
                 ChainID:              buildconstants.Eip155ChainId,

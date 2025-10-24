@@ -7,7 +7,6 @@ import (
 
 // Method numbers are placeholders until the actor is finalized and registered.
 const (
-    MethodApplyDelegations abi.MethodNum = 2
     // MethodApplyAndCall atomically applies EIP-7702 delegations and executes
     // the outer call (destination/value/input) within the same transaction.
     // Placeholder method number until the actor is finalized.

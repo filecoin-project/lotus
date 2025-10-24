@@ -117,34 +117,9 @@ func (tx *Eth7702TxArgs) ToVerifiableSignature(sig []byte) ([]byte, error) {
 func (tx *Eth7702TxArgs) Sender() (address.Address, error) { return sender(tx) }
 
 // IMPORTANT: Until the actor/FVM support is landed, we reject here with a clear error.
+// ToUnsignedFilecoinMessage (compat) delegates to the atomic builder.
 func (tx *Eth7702TxArgs) ToUnsignedFilecoinMessage(from address.Address) (*types.Message, error) {
-    if tx.ChainID != buildconstants.Eip155ChainId {
-        return nil, fmt.Errorf("invalid chain id: %d", tx.ChainID)
-    }
-    if !Eip7702FeatureEnabled {
-        return nil, fmt.Errorf("EIP-7702 not yet wired to actors/FVM; parsed OK but cannot construct Filecoin message (enable actor integration to proceed)")
-    }
-    if DelegatorActorAddr == address.Undef {
-        return nil, fmt.Errorf("EIP-7702 feature enabled but DelegatorActorAddr is undefined; set ethtypes.DelegatorActorAddr at init")
-    }
-
-    params, err := CborEncodeEIP7702Authorizations(tx.AuthorizationList)
-    if err != nil {
-        return nil, xerrors.Errorf("failed to CBOR-encode authorizationList: %w", err)
-    }
-
-    return &types.Message{
-        Version:    0,
-        To:         DelegatorActorAddr,
-        From:       from,
-        Nonce:      uint64(tx.Nonce),
-        Value:      tx.Value,
-        GasLimit:   int64(tx.GasLimit),
-        GasFeeCap:  tx.MaxFeePerGas,
-        GasPremium: tx.MaxPriorityFeePerGas,
-        Method:     delegator.MethodApplyDelegations,
-        Params:     params,
-    }, nil
+    return tx.ToUnsignedFilecoinMessageAtomic(from)
 }
 
 // ToUnsignedFilecoinMessageAtomic builds a Filecoin message that calls the
