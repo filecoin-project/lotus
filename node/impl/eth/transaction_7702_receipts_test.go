@@ -518,3 +518,61 @@ func TestEthGetBlockReceipts_7702_MultipleReceipts_AdjustmentPerTx(t *testing.T)
         require.Len(t, r.DelegatedTo, 1)
     }
 }
+
+func TestEthGetBlockReceipts_7702_MixedBlock_AdjustmentOnlyOn7702(t *testing.T) {
+    ctx := context.Background()
+    id18, _ := address.NewIDAddress(18)
+    ethtypes.DelegatorActorAddr = id18
+
+    // Build one 7702 SignedMessage and one non-7702 delegated SignedMessage (EVM.InvokeContract).
+    // 7702 message
+    var from20a [20]byte
+    for i := range from20a { from20a[i] = 0x33 }
+    fromA, _ := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, from20a[:])
+    var delegate20 [20]byte
+    for i := range delegate20 { delegate20[i] = 0x44 }
+    msgA := types.Message{Version: 0, To: ethtypes.DelegatorActorAddr, From: fromA, Nonce: 0, Value: types.NewInt(0), Method: delegator.MethodApplyDelegations, GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1), Params: make7702Params(t, 314, delegate20, 0)}
+    sigA := typescrypto.Signature{ Type: typescrypto.SigTypeDelegated, Data: append(append(make([]byte, 31), 1), append(append(make([]byte, 31), 1), 0)...)}
+    smA := &types.SignedMessage{ Message: msgA, Signature: sigA }
+
+    // Non-7702 message (InvokeContract) with delegated signature
+    var from20b [20]byte
+    for i := range from20b { from20b[i] = 0x55 }
+    fromB, _ := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, from20b[:])
+    toID, _ := address.NewIDAddress(1002)
+    msgB := types.Message{Version: 0, To: toID, From: fromB, Nonce: 0, Value: types.NewInt(0), Method: builtintypes.MethodsEVM.InvokeContract, GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1)}
+    sigB := typescrypto.Signature{ Type: typescrypto.SigTypeDelegated, Data: append(append(make([]byte, 31), 2), append(append(make([]byte, 31), 2), 0)...)}
+    smB := &types.SignedMessage{ Message: msgB, Signature: sigB }
+
+    // Tipset/mocks
+    ts := makeTipset(t)
+    mkRet := func() []byte {
+        var buf bytes.Buffer
+        require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 3))
+        require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajUnsignedInt, 0))
+        _, _ = buf.Write(cbg.CborNull)
+        var eth20 [20]byte
+        for i := range eth20 { eth20[i] = 0xEF }
+        require.NoError(t, cbg.WriteByteArray(&buf, eth20[:]))
+        return buf.Bytes()
+    }
+    // receipts: one with CreateExternal-shaped return (even if not used for non-7702), both success
+    rc1 := types.MessageReceipt{ ExitCode: 0, GasUsed: 1000, Return: mkRet() }
+    rc2 := types.MessageReceipt{ ExitCode: 0, GasUsed: 1000 }
+    cs := &mockChainStoreMulti{ ts: ts, smsgs: []*types.SignedMessage{smA, smB}, rcpts: []types.MessageReceipt{rc1, rc2} }
+    sm := &mockStateManager{}
+    tr := &mockTipsetResolver{ ts: ts }
+    ev := &mockEvents{}
+
+    api, err := NewEthTransactionAPI(cs, sm, nil, nil, nil, ev, tr, 0)
+    require.NoError(t, err)
+    receipts, err := api.EthGetBlockReceipts(ctx, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
+    require.NoError(t, err)
+    require.Len(t, receipts, 2)
+
+    // First is 7702: has AuthorizationList + DelegatedTo; second is non-7702: no AuthorizationList, empty DelegatedTo
+    require.Len(t, receipts[0].AuthorizationList, 1)
+    require.Len(t, receipts[0].DelegatedTo, 1)
+    require.Len(t, receipts[1].AuthorizationList, 0)
+    require.Len(t, receipts[1].DelegatedTo, 0)
+}
