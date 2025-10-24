@@ -14,8 +14,8 @@ This notebook tracks the end‑to‑end EIP‑7702 implementation across Lotus (
 - Cross‑repo scope: tests span `./lotus` and `../builtin-actors`. Keep encoding, gating, and gas constants aligned.
 - Parser/encoding (lotus):
   - Add tuple‑arity and yParity rejection cases for 0x04 RLP decode in `chain/types/ethtypes`.
-  - Ensure CBOR wrapper and legacy tuple arrays both decode in `chain/actors/builtin/delegator`.
-  - Cross‑package CBOR compatibility between encoder and actor (already present; extend with wrapper form).
+  - Canonicalize to wrapper CBOR only: actor and Go helpers accept `[ [ tuple, ... ] ]` exclusively; remove legacy array‑of‑tuples acceptance.
+  - Cross‑package CBOR compatibility between encoder and actor remains via wrapper form.
 - Receipts attribution (lotus):
   - Unit tests for delegated attribution in `node/impl/eth/receipt_7702_scaffold.go` from both `authorizationList` and synthetic log topic.
 - Mempool (lotus):
@@ -28,6 +28,47 @@ This notebook tracks the end‑to‑end EIP‑7702 implementation across Lotus (
   - Mirror geth’s `TestEIP7702` flow (apply two delegations, CALL→EOA executes delegate, storage updated) in `itests` once the Delegator actor is in the bundle.
 - Actor validations (builtin‑actors):
   - Ensure chainId ∈ {0, local}, yParity ∈ {0,1}, non‑zero r/s, low‑s, ecrecover authority, nonce tracking; add refunds and gas constants tests.
+
+**Audit Remediation Plan (Gemini)**
+
+- Atomic 0x04 semantics
+  - Implement atomic “apply authorizations + execute outer call” for type‑0x04 within a single transaction.
+  - Builtin‑actors: add an atomic entry (e.g., `ApplyAndCall`) or ensure Delegator writes occur just before the call and revert atomically on failure.
+  - Lotus: route 0x04 to atomic path in `ToSignedFilecoinMessage`; update gas estimation to simulate both phases atomically.
+  - Tests: revert path reverts both delegation and call; mirror geth’s `TestEIP7702`.
+
+- RLP per‑type decode limit
+  - Replace global `maxListElements = 13` with a per‑call limit; apply 13 only for 0x04 parsing.
+  - Add unit tests proving no regression for legacy/1559 decoders.
+
+- Canonical CBOR (consensus safety)
+  - Actor: accept wrapper `[ [ tuple, ... ] ]` only; remove dual‑shape detection in Go helper.
+  - Negative tests: malformed top‑level shapes, wrong tuple arity, invalid yParity.
+
+- FVM runtime hardening
+  - InvokeAsEoa: add storage‑context stack invariants, re‑entrancy guard, and delegation depth limit; restrict `PutStorageRoot` to EVM internal context.
+  - Pointer code semantics: CALL executes delegate; EXTCODESIZE/HASH reflect pointer code; emit `EIP7702Delegated(address)`.
+  - Authorization domain/signatures: enforce `keccak256(0x05 || rlp([chain_id,address,nonce]))`, low‑s, non‑zero r/s, yParity ∈ {0,1}, nonce equality.
+  - DoS guard: consensus cap on tuples per message (e.g., 50–100); document constant and align estimation.
+
+- Lotus follow‑ups
+  - Receipts/RPC: ensure receipts/logs reflect atomic apply+call; maintain `delegatedTo` attribution (tuples or synthetic event).
+  - Gas estimation: model atomic flow; maintain behavioral tests only until constants finalize.
+  - Parser/encoding: add `AuthorizationKeccak` test vectors for preimage/hash stability.
+
+- Networking and limits
+  - Rely on actor‑level tuple cap; keep general `MaxMessageSize` as is. Optionally validate tuple count client‑side for fast‑fail.
+
+- Gating and constants
+  - Unify activation gating with a single `NV_EIP_7702` across both repos; keep constants in sync.
+
+**Work Breakdown (Sequenced)**
+1. RLP per‑type limit in Lotus + tests.
+2. Canonical CBOR wrapper only (actor + Go helpers) + negative tests.
+3. Implement atomic 0x04 semantics (actors + Lotus route + receipts) + e2e test.
+4. FVM hardening (InvokeAsEoa guards; pointer semantics; domain/signature checks; tuple cap) + tests.
+5. Gas estimation alignment to actor constants; maintain behavioral tests until finalization.
+6. Doc updates and gating unification; add test vectors for `AuthorizationKeccak`.
 
 For a detailed builtin‑actors test plan, see `BUILTIN_ACTORS_7702_TODO.md` (tracked here but applies to `../builtin-actors`). For Lotus‑specific tests, see `LOTUS_7702_TODO.md`. These lists are part of the highest‑priority testing work for the sprint.
 
@@ -142,6 +183,7 @@ To route 0x04 transactions, build Lotus with `-tags eip7702_enabled` and set `LO
 - Commit in small, semantic units with clear messages; avoid batching unrelated changes.
 - Prefer separate commits for code, tests, and docs when practical.
 - Commit frequently to preserve incremental intent; summarize scope and rationale in the subject.
+- Push after each atomic change so reviewers can follow intent and history stays readable.
 - Keep history readable: no formatting‑only changes mixed with logic changes.
 - Pair commits with pushes regularly to keep the remote branch current (e.g., push after each semantic commit or small group of related commits). Coordinate with PR reviews to avoid large, monolithic pushes.
 

@@ -8,10 +8,10 @@ import (
 	"golang.org/x/xerrors"
 )
 
-// maxListElements restricts the amount of RLP list elements we'll read.
-// EIP-1559 transactions are 12 elements; EIP-7702 extends this to 13 elements.
-// Bump to 13 to accommodate type-0x04 payloads.
-const maxListElements = 13
+// maxListElementsDefault restricts the amount of RLP list elements we'll read
+// when no explicit limit is provided by the caller. Keep this aligned with the
+// largest non-7702 transaction list size (EIP-1559 uses 12).
+const maxListElementsDefault = 12
 
 func EncodeRLP(val interface{}) ([]byte, error) {
 	return encodeRLP(val)
@@ -97,42 +97,58 @@ func encodeRLP(val interface{}) ([]byte, error) {
 	}
 }
 
+// DecodeRLP decodes an RLP-encoded value using the default per-list element
+// limit. For callers that need a larger limit (e.g., EIP-7702's 13-element
+// transaction lists), use DecodeRLPWithLimit.
 func DecodeRLP(data []byte) (interface{}, error) {
-	res, consumed, err := decodeRLP(data)
-	if err != nil {
-		return nil, err
-	}
-	if consumed != len(data) {
-		return nil, xerrors.Errorf("invalid rlp data: length %d, consumed %d", len(data), consumed)
-	}
-	return res, nil
+    res, consumed, err := decodeRLPWithLimit(data, maxListElementsDefault)
+    if err != nil {
+        return nil, err
+    }
+    if consumed != len(data) {
+        return nil, xerrors.Errorf("invalid rlp data: length %d, consumed %d", len(data), consumed)
+    }
+    return res, nil
 }
 
-func decodeRLP(data []byte) (res interface{}, consumed int, err error) {
-	if len(data) == 0 {
-		return data, 0, xerrors.Errorf("invalid rlp data: data cannot be empty")
-	}
-	if data[0] >= 0xf8 {
-		listLenInBytes := int(data[0]) - 0xf7
-		listLen, err := decodeLength(data[1:], listLenInBytes)
-		if err != nil {
-			return nil, 0, err
-		}
-		if 1+listLenInBytes+listLen > len(data) {
-			return nil, 0, xerrors.Errorf("invalid rlp data: out of bound while parsing list")
-		}
-		result, err := decodeListElems(data[1+listLenInBytes:], listLen)
-		return result, 1 + listLenInBytes + listLen, err
-	} else if data[0] >= 0xc0 {
-		length := int(data[0]) - 0xc0
-		result, err := decodeListElems(data[1:], length)
-		return result, 1 + length, err
-	} else if data[0] >= 0xb8 {
-		strLenInBytes := int(data[0]) - 0xb7
-		strLen, err := decodeLength(data[1:], strLenInBytes)
-		if err != nil {
-			return nil, 0, err
-		}
+// DecodeRLPWithLimit decodes an RLP-encoded value with an explicit per-list
+// element limit.
+func DecodeRLPWithLimit(data []byte, maxListElements int) (interface{}, error) {
+    res, consumed, err := decodeRLPWithLimit(data, maxListElements)
+    if err != nil {
+        return nil, err
+    }
+    if consumed != len(data) {
+        return nil, xerrors.Errorf("invalid rlp data: length %d, consumed %d", len(data), consumed)
+    }
+    return res, nil
+}
+
+func decodeRLPWithLimit(data []byte, maxListElements int) (res interface{}, consumed int, err error) {
+    if len(data) == 0 {
+        return data, 0, xerrors.Errorf("invalid rlp data: data cannot be empty")
+    }
+    if data[0] >= 0xf8 {
+        listLenInBytes := int(data[0]) - 0xf7
+        listLen, err := decodeLength(data[1:], listLenInBytes)
+        if err != nil {
+            return nil, 0, err
+        }
+        if 1+listLenInBytes+listLen > len(data) {
+            return nil, 0, xerrors.Errorf("invalid rlp data: out of bound while parsing list")
+        }
+        result, err := decodeListElemsWithLimit(data[1+listLenInBytes:], listLen, maxListElements)
+        return result, 1 + listLenInBytes + listLen, err
+    } else if data[0] >= 0xc0 {
+        length := int(data[0]) - 0xc0
+        result, err := decodeListElemsWithLimit(data[1:], length, maxListElements)
+        return result, 1 + length, err
+    } else if data[0] >= 0xb8 {
+        strLenInBytes := int(data[0]) - 0xb7
+        strLen, err := decodeLength(data[1:], strLenInBytes)
+        if err != nil {
+            return nil, 0, err
+        }
 		totalLen := 1 + strLenInBytes + strLen
 		if totalLen > len(data) || totalLen < 0 {
 			return nil, 0, xerrors.Errorf("invalid rlp data: out of bound while parsing string")
@@ -168,20 +184,20 @@ func decodeLength(data []byte, lenInBytes int) (length int, err error) {
 	return int(decodedLength), nil
 }
 
-func decodeListElems(data []byte, length int) (res []interface{}, err error) {
-	totalConsumed := 0
-	result := []interface{}{}
+func decodeListElemsWithLimit(data []byte, length int, maxListElements int) (res []interface{}, err error) {
+    totalConsumed := 0
+    result := []interface{}{}
 
-	for i := 0; totalConsumed < length && i < maxListElements; i++ {
-		elem, consumed, err := decodeRLP(data[totalConsumed:])
-		if err != nil {
-			return nil, xerrors.Errorf("invalid rlp data: cannot decode list element: %w", err)
-		}
-		totalConsumed += consumed
-		result = append(result, elem)
-	}
-	if totalConsumed != length {
-		return nil, xerrors.Errorf("invalid rlp data: incorrect list length")
-	}
-	return result, nil
+    for i := 0; totalConsumed < length && i < maxListElements; i++ {
+        elem, consumed, err := decodeRLPWithLimit(data[totalConsumed:], maxListElements)
+        if err != nil {
+            return nil, xerrors.Errorf("invalid rlp data: cannot decode list element: %w", err)
+        }
+        totalConsumed += consumed
+        result = append(result, elem)
+    }
+    if totalConsumed != length {
+        return nil, xerrors.Errorf("invalid rlp data: incorrect list length")
+    }
+    return result, nil
 }

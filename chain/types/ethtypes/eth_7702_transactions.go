@@ -291,7 +291,7 @@ func parseEip7702Tx(data []byte) (*Eth7702TxArgs, error) {
     if data[0] != EIP7702TxType {
         return nil, xerrors.Errorf("not an EIP-7702 transaction: first byte is not %d", EIP7702TxType)
     }
-    d, err := DecodeRLP(data[1:])
+    d, err := DecodeRLPWithLimit(data[1:], 13)
     if err != nil {
         return nil, err
     }
