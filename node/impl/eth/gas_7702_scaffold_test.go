@@ -22,14 +22,19 @@ func TestCompute7702IntrinsicOverhead_Monotonic(t *testing.T) {
 }
 
 func TestCountAuthInDelegatorParams(t *testing.T) {
-    // Build CBOR wrapper: [ list ] with list length 3
+    // Build atomic CBOR: [ list-of-tuples, call-tuple ] with list length 3
     var buf bytes.Buffer
-    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 1))
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 2))
     require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 3))
     for i := 0; i < 3; i++ {
         // write an empty tuple placeholder (array(6) with zeroed children is fine)
         require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 0))
     }
+    // call tuple [to, value, input]
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 3))
+    require.NoError(t, cbg.WriteByteArray(&buf, make([]byte, 20)))
+    require.NoError(t, cbg.WriteByteArray(&buf, []byte{0}))
+    require.NoError(t, cbg.WriteByteArray(&buf, []byte{}))
     params := buf.Bytes()
     require.Equal(t, 3, countAuthInDelegatorParams(params))
 
@@ -39,22 +44,17 @@ func TestCountAuthInDelegatorParams(t *testing.T) {
     require.Equal(t, 0, countAuthInDelegatorParams(buf.Bytes()))
 }
 
-func TestCountAuthInDelegatorParams_LegacyShape(t *testing.T) {
-    // Build legacy top-level array with two tuples, where the first element is a tuple header (array(6)).
-    // The counter should return the top-level length (2) when the first inner header is array(6).
-    var buf bytes.Buffer
-    // top-level array with length 2
-    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 2))
-    // first element: tuple header (array of 6)
-    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 6))
-    // we don't need to fully encode the tuple contents for counting
-    require.Equal(t, 2, countAuthInDelegatorParams(buf.Bytes()))
-}
+// legacy shape tests removed: we accept atomic/wrapper-only
 
 func TestCountAuthInDelegatorParams_EmptyWrapper(t *testing.T) {
     var buf bytes.Buffer
-    // wrapper [ list ] with list length 0
-    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 1))
+    // atomic [ [], call-tuple ] with list length 0
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 2))
     require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 0))
+    // call tuple
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 3))
+    require.NoError(t, cbg.WriteByteArray(&buf, make([]byte, 20)))
+    require.NoError(t, cbg.WriteByteArray(&buf, []byte{0}))
+    require.NoError(t, cbg.WriteByteArray(&buf, []byte{}))
     require.Equal(t, 0, countAuthInDelegatorParams(buf.Bytes()))
 }

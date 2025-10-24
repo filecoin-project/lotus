@@ -52,7 +52,7 @@ func TestEthTransactionFromSignedMessage_7702_Decodes(t *testing.T) {
         From:       from,
         Nonce:      0,
         Value:      types.NewInt(0),
-        Method:     delegator.MethodApplyDelegations,
+        Method:     delegator.MethodApplyAndCall,
         GasLimit:   100000,
         GasFeeCap:  types.NewInt(1),
         GasPremium: types.NewInt(1),
@@ -98,7 +98,7 @@ func TestEthTransactionFromSignedMessage_7702_MultiTupleDecodes(t *testing.T) {
     encTup(314, 0)
     encTup(314, 1)
 
-    msg := types.Message{To: DelegatorActorAddr, From: from, Method: delegator.MethodApplyDelegations, Params: buf.Bytes(), GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1), Value: types.NewInt(0)}
+    msg := types.Message{To: DelegatorActorAddr, From: from, Method: delegator.MethodApplyAndCall, Params: buf.Bytes(), GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1), Value: types.NewInt(0)}
     sig := typescrypto.Signature{ Type: typescrypto.SigTypeDelegated, Data: append(append(make([]byte, 31), 1), append(append(make([]byte, 31), 1), 0)...)}
     smsg := &types.SignedMessage{ Message: msg, Signature: sig }
 
@@ -115,7 +115,7 @@ func TestEthTransactionFromSignedMessage_NonDelegatedSigRejected(t *testing.T) {
     DelegatorActorAddr = id18
     // Sender can be anything; rejection occurs earlier on sig type
     from, _ := address.NewIDAddress(1001)
-    msg := types.Message{To: DelegatorActorAddr, From: from, Method: delegator.MethodApplyDelegations}
+    msg := types.Message{To: DelegatorActorAddr, From: from, Method: delegator.MethodApplyAndCall}
     sig := typescrypto.Signature{ Type: typescrypto.SigTypeSecp256k1, Data: make([]byte, 65) }
     smsg := &types.SignedMessage{ Message: msg, Signature: sig }
     _, err := EthTransactionFromSignedFilecoinMessage(smsg)
@@ -128,7 +128,7 @@ func TestEthTransactionFromSignedMessage_SenderNotEthRejected(t *testing.T) {
     DelegatorActorAddr = id18
     // Non-eth sender: ID address
     from, _ := address.NewIDAddress(42)
-    msg := types.Message{To: DelegatorActorAddr, From: from, Method: delegator.MethodApplyDelegations}
+    msg := types.Message{To: DelegatorActorAddr, From: from, Method: delegator.MethodApplyAndCall}
     sig := typescrypto.Signature{ Type: typescrypto.SigTypeDelegated, Data: make([]byte, 65) }
     smsg := &types.SignedMessage{ Message: msg, Signature: sig }
     _, err := EthTransactionFromSignedFilecoinMessage(smsg)
@@ -148,7 +148,7 @@ func TestEthTransactionFromSignedMessage_7702_BadCBORRejected(t *testing.T) {
     var buf bytes.Buffer
     require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajUnsignedInt, 7))
 
-    msg := types.Message{To: DelegatorActorAddr, From: from, Method: delegator.MethodApplyDelegations, Params: buf.Bytes(), GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1)}
+    msg := types.Message{To: DelegatorActorAddr, From: from, Method: delegator.MethodApplyAndCall, Params: buf.Bytes(), GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1)}
     sig := typescrypto.Signature{ Type: typescrypto.SigTypeDelegated, Data: append(append(make([]byte, 31), 1), append(append(make([]byte, 31), 1), 0)...)}
     smsg := &types.SignedMessage{ Message: msg, Signature: sig }
 

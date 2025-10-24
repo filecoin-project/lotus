@@ -24,7 +24,7 @@ import (
 // TestEth7702_SendRoutesToDelegator exercises the send-path for type-0x04 transactions:
 // it constructs and signs a minimal 7702 tx with a non-empty authorizationList, sends it via
 // eth_sendRawTransaction, and verifies that a Filecoin message targeting the Delegator actor's
-// ApplyDelegations method is enqueued in the mpool from the recovered f4 sender.
+// ApplyAndCall method is enqueued in the mpool from the recovered f4 sender.
 func TestEth7702_SendRoutesToDelegator(t *testing.T) {
     // Ensure 7702 feature is enabled and Delegator actor address configured.
     ethtypes.Eip7702FeatureEnabled = true
@@ -91,14 +91,14 @@ func TestEth7702_SendRoutesToDelegator(t *testing.T) {
 
     found := false
     for _, sm := range pending {
-        if sm.Message.From == senderFilAddr && sm.Message.Method == delegator.MethodApplyDelegations {
+        if sm.Message.From == senderFilAddr && sm.Message.Method == delegator.MethodApplyAndCall {
             // Ensure we target the Delegator actor address (ID:18 by default when feature is enabled).
             require.Equal(t, ethtypes.DelegatorActorAddr, sm.Message.To)
             found = true
             break
         }
     }
-    require.True(t, found, "expected a Delegator.ApplyDelegations message in mpool from sender")
+    require.True(t, found, "expected a Delegator.ApplyAndCall message in mpool from sender")
 }
 
 // TestEth7702_ReceiptFields validates that once a 0x04 transaction is mined, the

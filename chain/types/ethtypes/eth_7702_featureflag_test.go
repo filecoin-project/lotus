@@ -41,9 +41,9 @@ func Test7702_ToUnsignedFilecoinMessage_FeatureFlag(t *testing.T) {
 
     from, err := address.NewIDAddress(999)
     require.NoError(t, err)
-    msg, err := tx.ToUnsignedFilecoinMessage(from)
+    msg, err := tx.ToUnsignedFilecoinMessageAtomic(from)
     require.NoError(t, err)
     require.Equal(t, DelegatorActorAddr, msg.To)
-    require.EqualValues(t, delegator.MethodApplyDelegations, msg.Method)
+    require.EqualValues(t, delegator.MethodApplyAndCall, msg.Method)
     require.NotEmpty(t, msg.Params)
 }
