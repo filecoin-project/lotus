@@ -12,22 +12,21 @@ This notebook tracks the end‑to‑end EIP‑7702 implementation across Lotus (
 
 **Testing TODO (Highest Priority)**
 - Cross‑repo scope: tests span `./lotus` and `../builtin-actors`. Keep encoding, gating, and gas constants aligned.
-- Parser/encoding (lotus):
+- Parser/encoding (Lotus):
   - Add tuple‑arity and yParity rejection cases for 0x04 RLP decode in `chain/types/ethtypes`.
-  - Canonicalize to wrapper CBOR only: actor and Go helpers accept `[ [ tuple, ... ] ]` exclusively; remove legacy array‑of‑tuples acceptance.
-  - Cross‑package CBOR compatibility between encoder and actor remains via wrapper form.
-- Receipts attribution (lotus):
-  - Unit tests for delegated attribution in `node/impl/eth/receipt_7702_scaffold.go` from both `authorizationList` and synthetic log topic.
-- Mempool (lotus):
+  - Canonicalize to atomic CBOR only: `[ [ tuple... ], [ to(20), value, input ] ]`; remove legacy shapes.
+  - Add `AuthorizationKeccak` (0x05 domain) vectors for stability across edge cases.
+- Receipts attribution (Lotus):
+  - Unit tests for delegated attribution from both `authorizationList` and synthetic `EIP7702Delegated(address)` event.
+- Mempool (Lotus):
   - No 7702-specific ingress policies. Ensure standard mempool behavior remains stable.
- - Gas estimation (lotus):
+- Gas estimation (Lotus):
   - Unit tests should focus on tuple counting and gating in `node/impl/eth/gas_7702_scaffold.go`.
-  - Do not assert absolute numeric gas values (e.g., base overhead 21000, `PerAuthBaseCost`, `PerEmptyAccountCost`) in unit tests until actor/runtime constants are finalized and mirrored across repos.
-  - Prefer behavioral checks: overhead is only applied when `AuthorizationList` is non‑empty; overhead increases monotonically with tuple count; no overhead when feature is disabled or target is not Delegator.
-- E2E (lotus):
-  - Mirror geth’s `TestEIP7702` flow (apply two delegations, CALL→EOA executes delegate, storage updated) in `itests` once the Delegator actor is in the bundle.
-- Actor validations (builtin‑actors):
-  - Ensure chainId ∈ {0, local}, yParity ∈ {0,1}, non‑zero r/s, low‑s, ecrecover authority, nonce tracking; add refunds and gas constants tests.
+  - Prefer behavioral checks: overhead only when list non‑empty; monotonic with tuple count; no overhead when feature disabled or target is not 7702 ApplyAndCall.
+- E2E (Lotus):
+  - Mirror geth’s `TestEIP7702` flow (apply two delegations, CALL→EOA executes delegate, storage updated) once the EVM actor ships ApplyAndCall.
+- Actor validations (builtin‑actors/EVM):
+  - Ensure chainId ∈ {0, local}, yParity ∈ {0,1}, non‑zero r/s, low‑s, ecrecover authority, nonce tracking; refunds and gas constants tests; enforce tuple cap.
 
 **Audit Remediation Plan (Gemini)**
 
@@ -45,11 +44,10 @@ This notebook tracks the end‑to‑end EIP‑7702 implementation across Lotus (
   - Actor: accept wrapper `[ [ tuple, ... ] ]` only; remove dual‑shape detection in Go helper.
   - Negative tests: malformed top‑level shapes, wrong tuple arity, invalid yParity.
 
-- FVM runtime hardening
-  - InvokeAsEoa: add storage‑context stack invariants, re‑entrancy guard, and delegation depth limit; restrict `PutStorageRoot` to EVM internal context.
-  - Pointer code semantics: CALL executes delegate; EXTCODESIZE/HASH reflect pointer code; emit `EIP7702Delegated(address)`.
-  - Authorization domain/signatures: enforce `keccak256(0x05 || rlp([chain_id,address,nonce]))`, low‑s, non‑zero r/s, yParity ∈ {0,1}, nonce equality.
-  - DoS guard: consensus cap on tuples per message (e.g., 50–100); document constant and align estimation.
+- EVM runtime hardening (EVM‑only)
+  - ApplyAndCall in EVM actor; pointer code semantics; event emission.
+  - Interpreter guards for authority context; depth limit on delegation; storage safety.
+  - Authorization domain/signatures; tuple cap; refunds.
 
 - Lotus follow‑ups
   - Receipts/RPC: ensure receipts/logs reflect atomic apply+call; maintain `delegatedTo` attribution (tuples or synthetic event).
@@ -155,23 +153,20 @@ Validation notes
 - Lotus fast path:
   - `go build ./chain/types/ethtypes`
   - `go test ./chain/types/ethtypes -run 7702 -count=1`
-  - `go test ./chain/actors/builtin/delegator -count=1`
-- Builtin‑actors (local toolchain permitting): `cargo test`.
-- Lotus E2E (requires FFI + Delegator in bundle):
+  - `go test ./node/impl/eth -run 7702 -count=1`
+- Builtin‑actors (local toolchain permitting): `cargo test` (EVM actor changes).
+- Lotus E2E (requires updated wasm bundle):
   - `go test ./itests -run Eth7702 -tags eip7702_enabled -count=1`
-  - Test `TestEth7702_SendRoutesToDelegator` is implemented and currently skipped by default until the Delegator actor is included in the network bundle in this environment.
 
-To route 0x04 transactions, build Lotus with `-tags eip7702_enabled` and set `LOTUS_ETH_7702_DELEGATOR_ADDR` (defaults to `ID:18` when enabled).
+To route 0x04 transactions in development, build Lotus with `-tags eip7702_enabled`.
 
 **Files & Areas**
 - Lotus:
   - `chain/types/ethtypes/` (tx parsing/encoding; CBOR params; types)
   - `node/impl/eth/` (send path; gas estimation; receipts)
   - `chain/messagepool/` (generic mempool; no 7702-specific policies)
-  - `chain/actors/builtin/delegator/` (Go helpers for validation/testing)
 - Builtin‑actors:
-  - `actors/delegator/` (actor implementation; tests)
-  - `actors/evm/` (runtime CALL delegation; `InvokeAsEoa`)
+  - `actors/evm/` (ApplyAndCall; CALL pointer semantics; EXTCODE* behavior; event emission)
   - `runtime/src/features.rs` (activation NV)
 
 **Editing Strategy**
@@ -188,10 +183,10 @@ To route 0x04 transactions, build Lotus with `-tags eip7702_enabled` and set `LO
 - Pair commits with pushes regularly to keep the remote branch current (e.g., push after each semantic commit or small group of related commits). Coordinate with PR reviews to avoid large, monolithic pushes.
 
 **Acceptance Criteria**
-- A signed type‑0x04 tx decodes, constructs a Filecoin message calling Delegator.ApplyDelegations, applies valid delegations, and subsequent CALL→EOA executes delegate code.
+- A signed type‑0x04 tx decodes, constructs a Filecoin message calling EVM.ApplyAndCall, applies valid delegations atomically with the outer call, and subsequent CALL→EOA executes delegate code.
 - JSON‑RPC returns `authorizationList` and `delegatedTo` where applicable.
- - Gas estimation accounts for tuple overhead.
+- Gas estimation accounts for tuple overhead (behavioral assertions).
 
 **Env/Flags**
 - Build tag: `eip7702_enabled` enables send‑path in Lotus.
-- Env: `LOTUS_ETH_7702_DELEGATOR_ADDR` for Delegator actor address (defaults to `ID:18` when enabled).
+- Env: no special 7702 env required once the EVM actor implements ApplyAndCall (current scaffolding used a delegator address during development; remove post‑EVM).
