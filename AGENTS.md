@@ -18,8 +18,8 @@ This notebook tracks the end‑to‑end EIP‑7702 implementation across Lotus (
   - Cross‑package CBOR compatibility between encoder and actor (already present; extend with wrapper form).
 - Receipts attribution (lotus):
   - Unit tests for delegated attribution in `node/impl/eth/receipt_7702_scaffold.go` from both `authorizationList` and synthetic log topic.
-- Mempool policies (lotus):
-  - Extend tests to verify eviction only for nonces ≤ target; multi‑authority and cap enforcement already covered in `chain/messagepool`.
+- Mempool (lotus):
+  - No 7702-specific ingress policies. Ensure standard mempool behavior remains stable.
  - Gas estimation (lotus):
   - Unit tests should focus on tuple counting and gating in `node/impl/eth/gas_7702_scaffold.go`.
   - Do not assert absolute numeric gas values (e.g., base overhead 21000, `PerAuthBaseCost`, `PerEmptyAccountCost`) in unit tests until actor/runtime constants are finalized and mirrored across repos.
@@ -126,7 +126,7 @@ To route 0x04 transactions, build Lotus with `-tags eip7702_enabled` and set `LO
 - Lotus:
   - `chain/types/ethtypes/` (tx parsing/encoding; CBOR params; types)
   - `node/impl/eth/` (send path; gas estimation; receipts)
-  - `chain/messagepool/` (mempool policies for 7702)
+  - `chain/messagepool/` (generic mempool; no 7702-specific policies)
   - `chain/actors/builtin/delegator/` (Go helpers for validation/testing)
 - Builtin‑actors:
   - `actors/delegator/` (actor implementation; tests)
@@ -148,8 +148,8 @@ To route 0x04 transactions, build Lotus with `-tags eip7702_enabled` and set `LO
 **Acceptance Criteria**
 - A signed type‑0x04 tx decodes, constructs a Filecoin message calling Delegator.ApplyDelegations, applies valid delegations, and subsequent CALL→EOA executes delegate code.
 - JSON‑RPC returns `authorizationList` and `delegatedTo` where applicable.
-- Mempool policy behaves deterministically; gas estimation accounts for tuple overhead.
+ - Gas estimation accounts for tuple overhead.
 
 **Env/Flags**
 - Build tag: `eip7702_enabled` enables send‑path in Lotus.
-- Env: `LOTUS_ETH_7702_DELEGATOR_ADDR` for Delegator actor address (defaults to `ID:18` when enabled). `LOTUS_ETH_7702_DELEGATION_CAP` to adjust per‑EOA cap.
+- Env: `LOTUS_ETH_7702_DELEGATOR_ADDR` for Delegator actor address (defaults to `ID:18` when enabled).

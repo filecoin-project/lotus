@@ -543,7 +543,6 @@ type FevmConfig struct {
 	// Note: Setting this value to 0 disables the cache.
     EthBlkCacheSize int
 
-    // (removed) EIP-7702 delegation cap is enforced by network version policy in the mempool.
 }
 
 type EventsConfig struct {

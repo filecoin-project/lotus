@@ -44,10 +44,6 @@ import (
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 
-	// EIP-7702 cross-account invalidation support
-	delegator "github.com/filecoin-project/lotus/chain/actors/builtin/delegator"
-	"github.com/filecoin-project/lotus/chain/types/ethtypes"
-	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 )
 
 var log = logging.Logger("messagepool")
@@ -1002,9 +998,6 @@ func (mp *MessagePool) addLocked(ctx context.Context, m *types.SignedMessage, st
 		}
 	}
 
-    if err := mp.enforceDelegationCap(ctx, m); err != nil {
-        return err
-    }
 
     incr, err := mset.add(m, mp, strict, untrusted)
 	if err != nil {
@@ -1038,98 +1031,9 @@ func (mp *MessagePool) addLocked(ctx context.Context, m *types.SignedMessage, st
 	// Record the current size of the Mpool
 	stats.Record(ctx, metrics.MpoolMessageCount.M(int64(mp.currentSize)))
 
-    // EIP-7702 policies
-    mp.crossAccountInvalidate(ctx, m)
-
     return nil
 }
 
-// crossAccountInvalidate removes stale pending messages for authorities affected by
-// an EIP-7702 ApplyDelegations message. This is a best-effort policy applied on ingress.
-func (mp *MessagePool) crossAccountInvalidate(ctx context.Context, m *types.SignedMessage) {
-    // Gate by network version (activate at/after next network upgrade)
-    // Gate by network version. Keep aligned with builtin-actors NV_EIP_7702.
-    if mp.api.StateNetworkVersion(ctx, mp.curTs.Height()) < network.Version16 {
-        return
-    }
-    if m.Message.To != ethtypes.DelegatorActorAddr || m.Message.Method != delegator.MethodApplyDelegations {
-        return
-    }
-    list, err := delegator.DecodeAuthorizationTuples(m.Message.Params)
-    if err != nil || len(list) == 0 {
-        return
-    }
-    for _, a := range list {
-        // Map 20-byte authority (Eth) to f410 delegated Filecoin address
-        fa, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, a.Address[:])
-        if err != nil {
-            continue
-        }
-        mset, ok, err := mp.getPendingMset(ctx, fa)
-        if err != nil || !ok {
-            continue
-        }
-        // Remove all messages with nonce <= expected authority nonce
-        // Nonce will be bumped to nonce+1 upon successful application.
-        removed := 0
-        for nonce := range mset.msgs {
-            if nonce <= a.Nonce {
-                mp.remove(ctx, fa, nonce, false)
-                removed++
-            }
-        }
-        if removed > 0 {
-            authEth := ethtypes.EthAddress{}
-            copy(authEth[:], a.Address[:])
-            // Journal a summary event for observability
-            mp.journal.RecordEvent(mp.evtTypes[evtTypeMpoolRemove], func() interface{} {
-                return MessagePoolEvt{
-                    Action: "7702_evict",
-                    Messages: []MessagePoolEvtMessage{{
-                        Message: types.Message{From: fa, To: ethtypes.DelegatorActorAddr, Nonce: uint64(removed)},
-                    }},
-                }
-            })
-            log.Infow("mpool 7702 eviction", "authority", fa, "removed", removed)
-        }
-    }
-}
-
-// enforceDelegationCap rejects the message if too many pending delegation applications
-// exist for the sender. The cap is enforced only after the network upgrade enabling 7702.
-func (mp *MessagePool) enforceDelegationCap(ctx context.Context, m *types.SignedMessage) error {
-    if mp.api.StateNetworkVersion(ctx, mp.curTs.Height()) < network.Version16 {
-        return nil
-    }
-    if m.Message.To != ethtypes.DelegatorActorAddr || m.Message.Method != delegator.MethodApplyDelegations {
-        return nil
-    }
-    // Count pending delegation messages from sender
-    ms, ok, err := mp.getPendingMset(ctx, m.Message.From)
-    if err != nil || !ok {
-        return nil
-    }
-    capPerEOA := 4
-    count := 0
-    for _, pm := range ms.msgs {
-        if pm.Message.To == ethtypes.DelegatorActorAddr && pm.Message.Method == delegator.MethodApplyDelegations {
-            count++
-            if count >= capPerEOA {
-                // Journal and log the rejection for observability
-                mp.journal.RecordEvent(mp.evtTypes[evtTypeMpoolAdd], func() interface{} {
-                    return MessagePoolEvt{
-                        Action: "7702_cap_reject",
-                        Messages: []MessagePoolEvtMessage{{Message: m.Message}},
-                        Error:   xerrors.Errorf("cap=%d reached", capPerEOA),
-                    }
-                })
-                log.Warnw("mpool 7702 cap reject", "from", m.Message.From, "cap", capPerEOA)
-                return xerrors.Errorf("too many pending EIP-7702 delegation messages for sender; cap=%d", capPerEOA)
-            }
-        }
-    }
-    return nil
-}
 
 func (mp *MessagePool) GetNonce(ctx context.Context, addr address.Address, _ types.TipSetKey) (uint64, error) {
 	mp.curTsLk.RLock()

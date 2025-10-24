@@ -42,7 +42,6 @@ func (e *ethSend) ethSendRawTransaction(ctx context.Context, rawTx ethtypes.EthB
         return ethtypes.EmptyEthHash, err
     }
 
-    // 7702 mempool policies (cap / eviction) are enforced in messagepool with network version gating.
 
     if untrusted {
         if _, err = e.mpoolApi.MpoolPushUntrusted(ctx, smsg); err != nil {
