@@ -26,6 +26,13 @@ type EthAuthorization struct {
     S       EthBigInt  `json:"s"`
 }
 
+// DomainHash computes keccak256(0x05 || rlp([chain_id, address, nonce])) for this
+// authorization tuple, as specified by EIP-7702. The chain ID used is the tuple's
+// own chainId field (which may be 0 to indicate wildcard) and not the outer tx chain.
+func (a EthAuthorization) DomainHash() ([32]byte, error) {
+    return AuthorizationKeccak(int(a.ChainID), a.Address, int(a.Nonce))
+}
+
 // ---------- EIP-7702 Transaction (type 0x04) ----------
 //
 // rlp([chain_id, nonce, max_priority_fee_per_gas, max_fee_per_gas,

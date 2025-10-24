@@ -52,6 +52,59 @@ References for parity:
   - Default Delegator actor address when feature is enabled is `ID:18` (env override supported).
   - Gating unified to a single NV constant placeholder to avoid drift.
 
+**Spec Gap: MAGIC/Version Prefix Compliance**
+- Problem: We currently omit the required MAGIC prefixing in two places required by the spec and parity references (`eip7702.md`, `revm_eip_7702.md`).
+  - Authorization tuple signing domain: inner tuple signatures must be over `keccak256(0x05 || rlp([chain_id, address, nonce]))` where `0x05` is the authorization domain separator (aka `SetCodeAuthorizationMagic`).
+  - Delegation indicator bytecode: when applying a delegation, the authority account code must be set to `0xef 0x01 0x00 || <20‑byte delegate address>`, where `0xef01` is the EIP‑7702 bytecode MAGIC and `0x00` is the version.
+
+Required changes (implementation):
+- Lotus (Go)
+  - `chain/types/ethtypes/`:
+    - Add constants: `SetCodeTxType = 0x04`, `SetCodeAuthorizationMagic = 0x05`, `Eip7702BytecodeMagic = 0xef01`, `Eip7702BytecodeVersion = 0x00`.
+    - Implement `AuthTupleHash(chainID, address, nonce) = keccak256(0x05 || rlp([chainID, address, nonce]))` and use it wherever we validate or preview inner signatures (tests and helpers only; authoritative validation happens in actor).
+    - Extend RLP decode tests to cover tuple arity/yParity rejection and ensure the above hash is stable across edge cases (zero/Big endian, etc.).
+  - `chain/actors/builtin/delegator/` (Go helpers):
+    - Update signature recovery/validation helpers to use `SetCodeAuthorizationMagic` domain separation when computing the preimage for `ecrecover`.
+    - Add `IsEip7702Code([]byte) bool` that returns true iff code has prefix `0xef0100` and length 23.
+  - `node/impl/eth/receipt_7702_scaffold.go` and `node/impl/eth/gas_7702_scaffold.go`:
+    - No numeric changes; add checks that attribution/gas logic is guarded by presence of valid `authorizationList` and does not assume delegation unless `IsEip7702Code` or explicit tuple attribution is present.
+
+- Builtin‑actors (Rust)
+  - `actors/delegator/`:
+    - In `ApplyDelegations`, compute the signed message as `keccak256(0x05 || rlp([chain_id, address, nonce]))` before `ecrecover`. Enforce `y_parity ∈ {0,1}`, non‑zero `r/s`, low‑`s` and nonce equality.
+    - On success, set authority code to EIP‑7702 bytecode: `0xef 0x01 0x00 || delegate_address` (23 bytes total). If `delegate_address == 0x0`, clear code (remove delegation).
+    - Reject any pre‑existing non‑empty, non‑EIP‑7702 code on the authority.
+    - Provide a small `is_eip7702_code(&[u8]) -> bool` helper in the crate to centralize prefix/version checks.
+  - `actors/evm/` runtime:
+    - On CALL→EOA, if the target account’s code starts with `0xef0100`, treat it as delegated code: load bytecode from the embedded 20‑byte address for execution (`InvokeAsEoa`), keep the authority context and emit the `EIP7702Delegated(address)` event.
+    - Ensure `EXTCODEHASH`, `EXTCODESIZE`, and code‑loading paths treat `0xef0100` accounts as “pointer” code (i.e., return the pointer code’s own hash/size when queried on the authority; only follow the pointer when executing). Follow the behavior in `revm_eip_7702.md`.
+  - `runtime/src/features.rs`:
+    - Gate all behavior behind the single `NV_EIP_7702` constant.
+
+Required changes (tests):
+- Lotus (Go)
+  - `chain/types/ethtypes`: add unit tests for `AuthTupleHash` against known vectors; add negative tests for tuple arity and invalid `yParity`.
+  - `chain/actors/builtin/delegator`: unit tests that the Go helpers recover the same authority as the Rust actor when using the `0x05` domain prefix, enforce low‑s, and reject zero `r/s`.
+  - `node/impl/eth/receipt_7702_scaffold.go`: add attribution tests from both `authorizationList` and synthetic `EIP7702Delegated(address)` log.
+  - `node/impl/eth/gas_7702_scaffold.go`: behavioral tests only (no absolute gas constants) ensuring overhead applies only when `authorizationList` is non‑empty and grows monotonically with tuple count.
+
+- Builtin‑actors (Rust)
+  - `actors/delegator` tests:
+    - Valid path: applies delegation, sets code to `0xef0100||addr`, increments nonce, and `LookupDelegate` returns the delegate address.
+    - Invalid signature domain: same tuple signed without the `0x05` prefix must be rejected.
+    - Invalid `y_parity`/high‑`s`/zero `r,s`/wrong chain id/nonce mismatch must be rejected.
+    - Pre‑existing non‑EIP‑7702 code on authority must be rejected.
+    - Refund/accounting tests for `PER_EMPTY_ACCOUNT_COST − PER_AUTH_BASE_COST` when authority exists in trie.
+  - `actors/evm` tests:
+    - CALL to EOA with `0xef0100` code executes delegate and updates storage; `EXTCODESIZE/HASH` reflect pointer code on the authority; synthetic event is emitted for attribution.
+
+Validation notes
+- Keep the following aligned across repos and tests:
+  - `SetCodeAuthorizationMagic = 0x05` (authorization domain)
+  - `Eip7702BytecodeMagic = 0xef01` and `Eip7702BytecodeVersion = 0x00` (delegation indicator)
+  - Gas constants: treat as placeholders until finalized; do only behavioral assertions in Lotus.
+  - Activation gating: single NV constant used in both repos.
+
 **What Remains**
 - Gas constants/refunds: finalize authoritative costs in actor/runtime and mirror in Lotus estimation (placeholders currently used in Lotus).
 - E2E tests in Lotus once wasm bundle is buildable in this environment; validate: 0x04 tx applies delegations; CALL→EOA executes delegate; receipts/logs attribution; policies behave as expected post‑activation.

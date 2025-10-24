@@ -6,6 +6,7 @@ import (
     "testing"
 
     "github.com/ipfs/go-cid"
+    cbor "github.com/ipfs/go-ipld-cbor"
     "golang.org/x/crypto/sha3"
     cbg "github.com/whyrusleeping/cbor-gen"
     "github.com/stretchr/testify/require"
@@ -27,6 +28,7 @@ import (
     builtintypes "github.com/filecoin-project/go-state-types/builtin"
     typescrypto "github.com/filecoin-project/go-state-types/crypto"
     "github.com/filecoin-project/lotus/chain/index"
+    "fmt"
 )
 
 // ---- mocks ----
@@ -58,9 +60,21 @@ func (m *mockChainStore) ActorStore(ctx context.Context) adt.Store { return nil 
 
 type mockStateManager struct{}
 func (m *mockStateManager) GetNetworkVersion(ctx context.Context, height abi.ChainEpoch) network.Version { return network.Version16 }
-func (m *mockStateManager) TipSetState(ctx context.Context, ts *types.TipSet) (cid.Cid, cid.Cid, error) { return cid.Undef, cid.Undef, nil }
+func (m *mockStateManager) TipSetState(ctx context.Context, ts *types.TipSet) (cid.Cid, cid.Cid, error) {
+    // Return non-undefined CIDs for state/receipts roots
+    c1, _ := abi.CidBuilder.Sum([]byte{0x01})
+    c2, _ := abi.CidBuilder.Sum([]byte{0x02})
+    return c1, c2, nil
+}
 func (m *mockStateManager) ParentState(ts *types.TipSet) (*state.StateTree, error) { return nil, nil }
-func (m *mockStateManager) StateTree(st cid.Cid) (*state.StateTree, error) { return nil, nil }
+func (m *mockStateManager) StateTree(st cid.Cid) (*state.StateTree, error) {
+    // Build a minimal in-memory state tree, versioned for NV16.
+    cst := cbor.NewMemCborStore()
+    sv, _ := state.VersionForNetwork(network.Version16)
+    stree, err := state.NewStateTree(cst, sv)
+    if err != nil { return nil, err }
+    return stree, nil
+}
 func (m *mockStateManager) LookupIDAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) { return addr, nil }
 func (m *mockStateManager) LoadActor(ctx context.Context, addr address.Address, ts *types.TipSet) (*types.Actor, error) { return nil, nil }
 func (m *mockStateManager) LoadActorRaw(ctx context.Context, addr address.Address, st cid.Cid) (*types.Actor, error) { return nil, nil }
@@ -100,7 +114,12 @@ func (m *mockChainStoreMulti) GetTipsetByHeight(ctx context.Context, h abi.Chain
 func (m *mockChainStoreMulti) GetTipSetFromKey(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error) { return m.ts, nil }
 func (m *mockChainStoreMulti) GetTipSetByCid(ctx context.Context, c cid.Cid) (*types.TipSet, error) { return m.ts, nil }
 func (m *mockChainStoreMulti) LoadTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error) { return m.ts, nil }
-func (m *mockChainStoreMulti) GetSignedMessage(ctx context.Context, c cid.Cid) (*types.SignedMessage, error) { return nil, nil }
+func (m *mockChainStoreMulti) GetSignedMessage(ctx context.Context, c cid.Cid) (*types.SignedMessage, error) {
+    for _, s := range m.smsgs {
+        if s.Cid() == c { return s, nil }
+    }
+    return nil, fmt.Errorf("not found")
+}
 func (m *mockChainStoreMulti) GetMessage(ctx context.Context, c cid.Cid) (*types.Message, error) { return nil, nil }
 func (m *mockChainStoreMulti) BlockMsgsForTipset(ctx context.Context, ts *types.TipSet) ([]store.BlockMessages, error) { return nil, nil }
 func (m *mockChainStoreMulti) MessagesForTipset(ctx context.Context, ts *types.TipSet) ([]types.ChainMsg, error) {
@@ -448,7 +467,6 @@ func TestEthGetTransactionReceipt_NotFoundReturnsNil(t *testing.T) {
 }
 
 func TestEthGetBlockReceipts_7702_MultipleReceipts_AdjustmentPerTx(t *testing.T) {
-    t.Skip("TODO: requires extended state/mocks; defer until state tree plumbing is available in test harness")
     ctx := context.Background()
     id18, _ := address.NewIDAddress(18)
     ethtypes.DelegatorActorAddr = id18
@@ -470,7 +488,20 @@ func TestEthGetBlockReceipts_7702_MultipleReceipts_AdjustmentPerTx(t *testing.T)
 
     // Tipset and mocks
     ts := makeTipset(t)
-    cs := &mockChainStoreMulti{ ts: ts, smsgs: []*types.SignedMessage{sm1, sm2}, rcpts: []types.MessageReceipt{{ExitCode: 0, GasUsed: 1000}, {ExitCode: 0, GasUsed: 1000}} }
+    // Build minimal CreateExternal-shaped return for receipt parsing when To==nil
+    mkRet := func() []byte {
+        var buf bytes.Buffer
+        require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 3))
+        require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajUnsignedInt, 0))
+        _, _ = buf.Write(cbg.CborNull)
+        var eth20 [20]byte
+        for i := range eth20 { eth20[i] = 0xEE }
+        require.NoError(t, cbg.WriteByteArray(&buf, eth20[:]))
+        return buf.Bytes()
+    }
+    rc1 := types.MessageReceipt{ ExitCode: 0, GasUsed: 1000, Return: mkRet() }
+    rc2 := types.MessageReceipt{ ExitCode: 0, GasUsed: 1000, Return: mkRet() }
+    cs := &mockChainStoreMulti{ ts: ts, smsgs: []*types.SignedMessage{sm1, sm2}, rcpts: []types.MessageReceipt{rc1, rc2} }
     sm := &mockStateManager{}
     tr := &mockTipsetResolver{ ts: ts }
     ev := &mockEvents{}
