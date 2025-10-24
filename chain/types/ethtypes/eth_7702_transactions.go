@@ -147,6 +147,40 @@ func (tx *Eth7702TxArgs) ToUnsignedFilecoinMessage(from address.Address) (*types
     }, nil
 }
 
+// ToUnsignedFilecoinMessageAtomic builds a Filecoin message that calls the
+// Delegator actor with atomic apply+call semantics, encoding both the
+// authorization list and the outer call (to/value/input) in params.
+func (tx *Eth7702TxArgs) ToUnsignedFilecoinMessageAtomic(from address.Address) (*types.Message, error) {
+    if tx.ChainID != buildconstants.Eip155ChainId {
+        return nil, fmt.Errorf("invalid chain id: %d", tx.ChainID)
+    }
+    if !Eip7702FeatureEnabled {
+        return nil, fmt.Errorf("EIP-7702 not yet wired to actors/FVM; parsed OK but cannot construct Filecoin message (enable actor integration to proceed)")
+    }
+    if DelegatorActorAddr == address.Undef {
+        return nil, fmt.Errorf("EIP-7702 feature enabled but DelegatorActorAddr is undefined; set ethtypes.DelegatorActorAddr at init")
+    }
+    // CBOR encode [ [tuples...], [to(20b), value, input] ]
+    var to EthAddress
+    if tx.To != nil { to = *tx.To }
+    params, err := CborEncodeEIP7702ApplyAndCall(tx.AuthorizationList, &to, tx.Value, tx.Input)
+    if err != nil {
+        return nil, xerrors.Errorf("failed to CBOR-encode apply+call params: %w", err)
+    }
+    return &types.Message{
+        Version:    0,
+        To:         DelegatorActorAddr,
+        From:       from,
+        Nonce:      uint64(tx.Nonce),
+        Value:      types.NewInt(0), // value is carried in params for the inner call
+        GasLimit:   int64(tx.GasLimit),
+        GasFeeCap:  tx.MaxFeePerGas,
+        GasPremium: tx.MaxPriorityFeePerGas,
+        Method:     delegator.MethodApplyAndCall,
+        Params:     params,
+    }, nil
+}
+
 func (tx *Eth7702TxArgs) ToEthTx(smsg *types.SignedMessage) (EthTx, error) {
     from, err := EthAddressFromFilecoinAddress(smsg.Message.From)
     if err != nil {
