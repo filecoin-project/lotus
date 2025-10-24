@@ -189,3 +189,35 @@ func TestEth7702_ReceiptFields(t *testing.T) {
     require.True(t, got[d1])
     require.True(t, got[d2])
 }
+
+// TestEth7702_DelegatedExecute is a scaffold for the full delegated execution flow:
+//   1) Apply delegations via a type-0x04 transaction so that an EOA delegates to a contract.
+//   2) CALL the EOA; the EVM should execute the delegate via InvokeAsEoa and update storage.
+// This requires the Delegator actor to be present in the runtime bundle and tuple-signing helpers.
+// Until those are available in this environment, this test is skipped.
+func TestEth7702_DelegatedExecute(t *testing.T) {
+    t.Skip("Delegator wasm + tuple-signing not wired in this environment; enable when bundled")
+
+    ctx, cancel, client := kit.SetupFEVMTest(t)
+    defer cancel()
+
+    // Enable feature and configure Delegator actor address
+    ethtypes.Eip7702FeatureEnabled = true
+    id18, _ := address.NewIDAddress(18)
+    ethtypes.DelegatorActorAddr = id18
+    _ = os.Setenv(ethtypes.EnvDelegatorActorAddr, "ID:18")
+
+    // Quick presence check: if Delegator actor is not in the bundle, skip
+    if _, err := client.StateGetActor(ctx, ethtypes.DelegatorActorAddr, types.EmptyTSK); err != nil {
+        t.Skipf("Delegator actor not present in runtime bundle: %v", err)
+    }
+
+    // Deploy a simple delegate contract that writes to storage
+    // Note: this call path relies on runtime support; left here to document the expected steps
+    _ /*from*/, delegate := client.EVM().DeployContractFromFilename(ctx, "contracts/DelegatecallStorage.hex")
+
+    // TODO: Build and send a type-0x04 tx applying delegation from an authority EOA to 'delegate'.
+    // This requires generating per-tuple signatures over keccak(rlp(chain_id,address,nonce)).
+
+    // TODO: CALL the authority EOA and assert that storage has been updated by the delegate code.
+}
