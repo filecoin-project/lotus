@@ -90,6 +90,7 @@ To route 0x04 transactions, build Lotus with `-tags eip7702_enabled` and set `LO
 - Prefer separate commits for code, tests, and docs when practical.
 - Commit frequently to preserve incremental intent; summarize scope and rationale in the subject.
 - Keep history readable: no formatting‑only changes mixed with logic changes.
+- Pair commits with pushes regularly to keep the remote branch current (e.g., push after each semantic commit or small group of related commits). Coordinate with PR reviews to avoid large, monolithic pushes.
 
 **Acceptance Criteria**
 - A signed type‑0x04 tx decodes, constructs a Filecoin message calling Delegator.ApplyDelegations, applies valid delegations, and subsequent CALL→EOA executes delegate code.
