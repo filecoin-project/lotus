@@ -29,10 +29,10 @@ func DecodeAuthorizationTuples(data []byte) ([]DelegationParam, error) {
     if maj != cbg.MajArray {
         return nil, fmt.Errorf("top-level must be array")
     }
-
-    // Two accepted shapes:
-    // 1) Wrapper: [ list ] where list is an array of 6-tuples
-    // 2) Legacy: [ tuple, tuple, ... ]
+    // Canonical wrapper shape: [ list ] where list is an array of 6-tuples
+    if l != 1 {
+        return nil, fmt.Errorf("expected wrapper array of length 1, got %d", l)
+    }
 
     // Helper to read a single tuple
     readTuple := func(idx int, r *cbg.CborReader) (DelegationParam, error) {
@@ -93,44 +93,16 @@ func DecodeAuthorizationTuples(data []byte) ([]DelegationParam, error) {
         return dp, nil
     }
 
-    res := make([]DelegationParam, 0)
-
-    if l == 0 {
-        return res, nil
-    }
-
-    // Peek by reading the next header; if it's an inner array of tuples and not a tuple itself,
-    // detect wrapper form. We need to read it, so branch and process accordingly.
-    // Save reader position by re-parsing from original bytes when needed.
-    r2 := cbg.NewCborReader(bytes.NewReader(data))
-    // consume top-level header again
-    if _, _, err := r2.ReadHeader(); err != nil {
-        return nil, fmt.Errorf("re-read top-level header: %w", err)
-    }
-    maj0, l0, err := r2.ReadHeader()
+    // Read inner list header
+    maj0, l0, err := r.ReadHeader()
     if err != nil {
-        return nil, fmt.Errorf("peek inner header: %w", err)
+        return nil, fmt.Errorf("read inner list header: %w", err)
     }
-    if maj0 == cbg.MajArray && l == 1 && l0 != 6 {
-        // Wrapper: inner is the list of tuples (length=l0)
-        for i := 0; i < int(l0); i++ {
-            dp, err := readTuple(i, r2)
-            if err != nil {
-                return nil, err
-            }
-            res = append(res, dp)
-        }
-        return res, nil
+    if maj0 != cbg.MajArray {
+        return nil, fmt.Errorf("inner must be array of tuples")
     }
-
-    // Legacy: top-level is a list of tuples (length=l)
-    // We've already read the first inner header (maj0,l0) for the first element; rewind logic is
-    // not available, so we rebuild a reader and consume top-level, then iterate reading tuples.
-    r = cbg.NewCborReader(bytes.NewReader(data))
-    if _, _, err := r.ReadHeader(); err != nil {
-        return nil, fmt.Errorf("re-read for legacy: %w", err)
-    }
-    for i := 0; i < int(l); i++ {
+    res := make([]DelegationParam, 0, l0)
+    for i := 0; i < int(l0); i++ {
         dp, err := readTuple(i, r)
         if err != nil {
             return nil, err

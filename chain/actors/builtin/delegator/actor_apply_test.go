@@ -12,8 +12,9 @@ import (
 func TestApplyDelegationsCore_AppliesAndBumpsNonce(t *testing.T) {
     // Build one authorization tuple CBOR directly.
     var buf bytes.Buffer
-    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 1))
-    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 6))
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 1)) // wrapper
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 1)) // inner list length 1
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 6)) // tuple
     // chainId
     require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajUnsignedInt, 314))
     // address (20 bytes of 0x33)

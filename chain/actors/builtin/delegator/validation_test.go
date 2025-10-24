@@ -14,6 +14,8 @@ import (
 func encodeTuples(t *testing.T, tuples [][]interface{}) []byte {
     t.Helper()
     var buf bytes.Buffer
+    // Write wrapper [ list ]
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 1))
     require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, uint64(len(tuples))))
     for _, tup := range tuples {
         require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, uint64(len(tup))))
