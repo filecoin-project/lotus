@@ -29,28 +29,20 @@ func compute7702IntrinsicOverhead(authCount int) int64 {
 // Returns 0 on any parsing error (best effort for estimation headroom).
 func countAuthInDelegatorParams(params []byte) int {
     r := cbg.NewCborReader(bytes.NewReader(params))
-    maj, l, err := r.ReadHeader()
+    maj, topLen, err := r.ReadHeader()
     if err != nil || maj != cbg.MajArray {
         return 0
     }
-    if l == 0 {
+    if topLen == 0 {
         return 0
     }
-    // Peek the next header; if it's an inner list (wrapper), return its length.
+    // Two accepted shapes on the wire:
+    // 1) ApplyDelegations: [ list-of-tuples ]
+    // 2) ApplyAndCall:     [ list-of-tuples, call-tuple ]
     maj1, l1, err := r.ReadHeader()
     if err != nil || maj1 != cbg.MajArray {
         return 0
     }
-    // Heuristic: if this inner array is not a 6-tuple, we assume it's the wrapper list
-    // and l1 is the number of tuples. If it is a 6-tuple, we are likely in legacy shape
-    // and the top-level length l is the number of tuples.
-    if l == 1 && l1 != 6 {
-        return int(l1)
-    }
-    if l1 == 6 {
-        // Legacy: count is top-level length
-        return int(l)
-    }
-    // Fallback: if ambiguous, prefer inner length
+    // l1 is the number of tuples in the inner list
     return int(l1)
 }

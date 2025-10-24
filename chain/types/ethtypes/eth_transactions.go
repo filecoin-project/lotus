@@ -131,24 +131,77 @@ func EthTransactionFromSignedFilecoinMessage(smsg *types.SignedMessage) (EthTran
 		return nil, fmt.Errorf("sender was not an eth account")
 	}
 
-    // Special-case: Delegator.ApplyDelegations (EIP-7702) -> reconstruct a 0x04 tx view
-    if DelegatorActorAddr != address.Undef && smsg.Message.To == DelegatorActorAddr && smsg.Message.Method == delegator.MethodApplyDelegations {
-        // Attempt to decode authorization tuples from CBOR params (wrapper or legacy shapes)
-        dl, err := delegator.DecodeAuthorizationTuples(smsg.Message.Params)
-        if err == nil && len(dl) > 0 {
-            authz := make([]EthAuthorization, 0, len(dl))
-            for _, d := range dl {
-                var ea EthAddress
-                copy(ea[:], d.Address[:])
-                authz = append(authz, EthAuthorization{
-                    ChainID: EthUint64(d.ChainID),
-                    Address: ea,
-                    Nonce:   EthUint64(d.Nonce),
-                    YParity: uint8(d.YParity),
-                    R:       EthBigInt(d.R),
-                    S:       EthBigInt(d.S),
-                })
+    // Special-case: Delegator methods (EIP-7702) -> reconstruct a 0x04 tx view
+    if DelegatorActorAddr != address.Undef && smsg.Message.To == DelegatorActorAddr &&
+        (smsg.Message.Method == delegator.MethodApplyDelegations || smsg.Message.Method == delegator.MethodApplyAndCall) {
+        var authz []EthAuthorization
+        if smsg.Message.Method == delegator.MethodApplyDelegations {
+            // Decode wrapper-only list of tuples
+            if dl, err := delegator.DecodeAuthorizationTuples(smsg.Message.Params); err == nil && len(dl) > 0 {
+                authz = make([]EthAuthorization, 0, len(dl))
+                for _, d := range dl {
+                    var ea EthAddress
+                    copy(ea[:], d.Address[:])
+                    authz = append(authz, EthAuthorization{
+                        ChainID: EthUint64(d.ChainID),
+                        Address: ea,
+                        Nonce:   EthUint64(d.Nonce),
+                        YParity: uint8(d.YParity),
+                        R:       EthBigInt(d.R),
+                        S:       EthBigInt(d.S),
+                    })
+                }
             }
+        } else {
+            // Decode atomic [ [tuples...], [to,value,input] ] and extract tuples (element 0)
+            r := cbg.NewCborReader(bytes.NewReader(smsg.Message.Params))
+            maj, l, err := r.ReadHeader()
+            if err == nil && maj == cbg.MajArray && l >= 1 {
+                maj0, l0, err := r.ReadHeader()
+                if err == nil && maj0 == cbg.MajArray {
+                    tmp := make([]EthAuthorization, 0, l0)
+                    for i := 0; i < int(l0); i++ {
+                        // tuple header
+                        majT, tlen, err := r.ReadHeader()
+                        if err != nil || majT != cbg.MajArray || tlen != 6 { authz = nil; break }
+                        // chain_id
+                        majF, v, err := r.ReadHeader()
+                        if err != nil || majF != cbg.MajUnsignedInt { authz = nil; break }
+                        // address
+                        majF, blen, err := r.ReadHeader()
+                        if err != nil || majF != cbg.MajByteString || blen != 20 { authz = nil; break }
+                        var ea EthAddress
+                        if _, err := r.Read(ea[:]); err != nil { authz = nil; break }
+                        // nonce
+                        majF, nv, err := r.ReadHeader()
+                        if err != nil || majF != cbg.MajUnsignedInt { authz = nil; break }
+                        // y_parity
+                        majF, yv, err := r.ReadHeader()
+                        if err != nil || majF != cbg.MajUnsignedInt { authz = nil; break }
+                        // r
+                        majF, rbl, err := r.ReadHeader()
+                        if err != nil || majF != cbg.MajByteString { authz = nil; break }
+                        rb := make([]byte, rbl)
+                        if _, err := r.Read(rb); err != nil { authz = nil; break }
+                        // s
+                        majF, sbl, err := r.ReadHeader()
+                        if err != nil || majF != cbg.MajByteString { authz = nil; break }
+                        sb := make([]byte, sbl)
+                        if _, err := r.Read(sb); err != nil { authz = nil; break }
+                        tmp = append(tmp, EthAuthorization{
+                            ChainID: EthUint64(v),
+                            Address: ea,
+                            Nonce:   EthUint64(nv),
+                            YParity: uint8(yv),
+                            R:       EthBigInt(big.NewFromGo(new(mathbig.Int).SetBytes(rb))),
+                            S:       EthBigInt(big.NewFromGo(new(mathbig.Int).SetBytes(sb))),
+                        })
+                    }
+                    if len(tmp) > 0 { authz = tmp }
+                }
+            }
+        }
+        if len(authz) > 0 {
             tx := &Eth7702TxArgs{
                 ChainID:              buildconstants.Eip155ChainId,
                 Nonce:                int(smsg.Message.Nonce),
@@ -235,10 +288,17 @@ func ToSignedFilecoinMessage(tx EthTransaction) (*types.SignedMessage, error) {
 		return nil, fmt.Errorf("failed to calculate sender: %w", err)
 	}
 
-	unsignedMsg, err := tx.ToUnsignedFilecoinMessage(from)
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert to unsigned msg: %w", err)
-	}
+    var unsignedMsg *types.Message
+    switch t := tx.(type) {
+    case *Eth7702TxArgs:
+        // Route 0x04 to atomic apply+call params
+        unsignedMsg, err = t.ToUnsignedFilecoinMessageAtomic(from)
+    default:
+        unsignedMsg, err = tx.ToUnsignedFilecoinMessage(from)
+    }
+    if err != nil {
+        return nil, fmt.Errorf("failed to convert to unsigned msg: %w", err)
+    }
 
 	siggy, err := tx.Signature()
 	if err != nil {
