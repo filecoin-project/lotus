@@ -106,6 +106,26 @@ func make7702ParamsN(t *testing.T, n int) []byte {
     return buf.Bytes()
 }
 
+// make7702ParamsLegacyN builds legacy CBOR params (top-level array of N tuples)
+// without the wrapper [ list ]. This ensures the tuple counter handles legacy shape.
+func make7702ParamsLegacyN(t *testing.T, n int) []byte {
+    t.Helper()
+    var buf bytes.Buffer
+    // top-level array with N tuples
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, uint64(n)))
+    for i := 0; i < n; i++ {
+        require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 6))
+        require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajUnsignedInt, 314))
+        var a [20]byte; a[0] = byte(0xA0 + i)
+        require.NoError(t, cbg.WriteByteArray(&buf, a[:]))
+        require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajUnsignedInt, 0))
+        require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajUnsignedInt, 0))
+        require.NoError(t, cbg.WriteByteArray(&buf, []byte{1}))
+        require.NoError(t, cbg.WriteByteArray(&buf, []byte{1}))
+    }
+    return buf.Bytes()
+}
+
 func TestEthEstimateGas_7702AddsSomeOverheadWhenTuplesPresent(t *testing.T) {
     ctx := context.Background()
     // Feature flag on and delegator addr set
@@ -234,4 +254,55 @@ func TestEthEstimateGas_7702OverheadScalesWithTupleCount(t *testing.T) {
     g1 := mk(1)
     g2 := mk(2)
     require.Greater(t, int64(g2), int64(g1))
+}
+
+func TestEthEstimateGas_LegacyCBORShape_AddsOverhead(t *testing.T) {
+    ctx := context.Background()
+    ethtypes.Eip7702FeatureEnabled = true
+    defer func(){ ethtypes.Eip7702FeatureEnabled = false }()
+    ethtypes.DelegatorActorAddr, _ = address.NewIDAddress(18)
+
+    ts := makeTipset2(t)
+    cs := &mockEGChainStore{ ts: ts }
+    sm := &mockEGStateManager{}
+    tr := &mockEGTipsetResolver{ ts: ts }
+    mp := &mockEGMessagePool{ ts: ts, cfg: types.MpoolConfig{ GasLimitOverestimation: 1.0 } }
+
+    base := int64(9500)
+    // Legacy top-level array with 2 tuples
+    params := make7702ParamsLegacyN(t, 2)
+    msg := &types.Message{ From: ts.Blocks()[0].Miner, To: ethtypes.DelegatorActorAddr, Method: delegator.MethodApplyDelegations, GasLimit: base, GasFeeCap: big.NewInt(1), GasPremium: big.NewInt(1), Params: params }
+    gas := &mockEGGasAPI{ msg: msg }
+    api := NewEthGasAPI(cs, sm, mp, gas, tr)
+    b, _ := json.Marshal([]interface{}{ethtypes.EthCall{}})
+    p := jsonrpc.RawParams(b)
+    got, err := api.EthEstimateGas(ctx, p)
+    require.NoError(t, err)
+    require.Greater(t, int64(got), base)
+}
+
+func TestEthEstimateGas_MalformedCBOR_NoOverhead(t *testing.T) {
+    ctx := context.Background()
+    ethtypes.Eip7702FeatureEnabled = true
+    defer func(){ ethtypes.Eip7702FeatureEnabled = false }()
+    ethtypes.DelegatorActorAddr, _ = address.NewIDAddress(18)
+
+    ts := makeTipset2(t)
+    cs := &mockEGChainStore{ ts: ts }
+    sm := &mockEGStateManager{}
+    tr := &mockEGTipsetResolver{ ts: ts }
+    mp := &mockEGMessagePool{ ts: ts, cfg: types.MpoolConfig{ GasLimitOverestimation: 1.0 } }
+
+    base := int64(7200)
+    // Malformed CBOR: write an unsigned int instead of an array
+    var buf bytes.Buffer
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajUnsignedInt, 7))
+    msg := &types.Message{ From: ts.Blocks()[0].Miner, To: ethtypes.DelegatorActorAddr, Method: delegator.MethodApplyDelegations, GasLimit: base, GasFeeCap: big.NewInt(1), GasPremium: big.NewInt(1), Params: buf.Bytes() }
+    gas := &mockEGGasAPI{ msg: msg }
+    api := NewEthGasAPI(cs, sm, mp, gas, tr)
+    b, _ := json.Marshal([]interface{}{ethtypes.EthCall{}})
+    p := jsonrpc.RawParams(b)
+    got, err := api.EthEstimateGas(ctx, p)
+    require.NoError(t, err)
+    require.Equal(t, ethtypes.EthUint64(base), got)
 }

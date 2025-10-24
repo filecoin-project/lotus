@@ -89,6 +89,28 @@ var _ EthEventsInternal = (*mockEvents)(nil)
 func (m *mockEvents) GetEthLogsForBlockAndTransaction(ctx context.Context, blockHash *ethtypes.EthHash, txHash ethtypes.EthHash) ([]ethtypes.EthLog, error) { return logsForTest, nil }
 func (m *mockEvents) GC(ctx context.Context, ttl time.Duration) {}
 
+// Multi-message chain store for block receipts aggregation tests
+type mockChainStoreMulti struct{
+    ts *types.TipSet
+    smsgs []*types.SignedMessage
+    rcpts []types.MessageReceipt
+}
+func (m *mockChainStoreMulti) GetHeaviestTipSet() *types.TipSet { return m.ts }
+func (m *mockChainStoreMulti) GetTipsetByHeight(ctx context.Context, h abi.ChainEpoch, ts *types.TipSet, prev bool) (*types.TipSet, error) { return m.ts, nil }
+func (m *mockChainStoreMulti) GetTipSetFromKey(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error) { return m.ts, nil }
+func (m *mockChainStoreMulti) GetTipSetByCid(ctx context.Context, c cid.Cid) (*types.TipSet, error) { return m.ts, nil }
+func (m *mockChainStoreMulti) LoadTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error) { return m.ts, nil }
+func (m *mockChainStoreMulti) GetSignedMessage(ctx context.Context, c cid.Cid) (*types.SignedMessage, error) { return nil, nil }
+func (m *mockChainStoreMulti) GetMessage(ctx context.Context, c cid.Cid) (*types.Message, error) { return nil, nil }
+func (m *mockChainStoreMulti) BlockMsgsForTipset(ctx context.Context, ts *types.TipSet) ([]store.BlockMessages, error) { return nil, nil }
+func (m *mockChainStoreMulti) MessagesForTipset(ctx context.Context, ts *types.TipSet) ([]types.ChainMsg, error) {
+    out := make([]types.ChainMsg, 0, len(m.smsgs))
+    for _, s := range m.smsgs { out = append(out, s) }
+    return out, nil
+}
+func (m *mockChainStoreMulti) ReadReceipts(ctx context.Context, root cid.Cid) ([]types.MessageReceipt, error) { return m.rcpts, nil }
+func (m *mockChainStoreMulti) ActorStore(ctx context.Context) adt.Store { return nil }
+
 // Minimal mock indexer: maps any hash to a provided CID; other methods stubbed
 type mockIndexer struct{ cid cid.Cid }
 func (mi *mockIndexer) Start() {}
@@ -423,4 +445,45 @@ func TestEthGetTransactionReceipt_NotFoundReturnsNil(t *testing.T) {
     r, err := api.EthGetTransactionReceipt(ctx, h)
     require.NoError(t, err)
     require.Nil(t, r)
+}
+
+func TestEthGetBlockReceipts_7702_MultipleReceipts_AdjustmentPerTx(t *testing.T) {
+    t.Skip("TODO: requires extended state/mocks; defer until state tree plumbing is available in test harness")
+    ctx := context.Background()
+    id18, _ := address.NewIDAddress(18)
+    ethtypes.DelegatorActorAddr = id18
+
+    // Build two SignedMessages to Delegator.ApplyDelegations with one tuple each (different delegate addresses).
+    makeSmsg := func(seed byte) *types.SignedMessage {
+        var from20 [20]byte
+        for i := range from20 { from20[i] = seed }
+        from, _ := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, from20[:])
+        var delegate20 [20]byte
+        for i := range delegate20 { delegate20[i] = seed + 1 }
+        msg := types.Message{Version: 0, To: ethtypes.DelegatorActorAddr, From: from, Nonce: 0, Value: types.NewInt(0), Method: delegator.MethodApplyDelegations, GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1), Params: make7702Params(t, 314, delegate20, 0)}
+        sig := typescrypto.Signature{ Type: typescrypto.SigTypeDelegated, Data: append(append(make([]byte, 31), 1), append(append(make([]byte, 31), 1), 0)...)}
+        return &types.SignedMessage{ Message: msg, Signature: sig }
+    }
+
+    sm1 := makeSmsg(0x10)
+    sm2 := makeSmsg(0x20)
+
+    // Tipset and mocks
+    ts := makeTipset(t)
+    cs := &mockChainStoreMulti{ ts: ts, smsgs: []*types.SignedMessage{sm1, sm2}, rcpts: []types.MessageReceipt{{ExitCode: 0, GasUsed: 1000}, {ExitCode: 0, GasUsed: 1000}} }
+    sm := &mockStateManager{}
+    tr := &mockTipsetResolver{ ts: ts }
+    ev := &mockEvents{}
+
+    api, err := NewEthTransactionAPI(cs, sm, nil, nil, nil, ev, tr, 0)
+    require.NoError(t, err)
+    receipts, err := api.EthGetBlockReceipts(ctx, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
+    require.NoError(t, err)
+    require.Len(t, receipts, 2)
+
+    // Both receipts should carry authorizationList and delegatedTo (from auth list)
+    for _, r := range receipts {
+        require.Len(t, r.AuthorizationList, 1)
+        require.Len(t, r.DelegatedTo, 1)
+    }
 }
