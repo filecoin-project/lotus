@@ -382,6 +382,44 @@ func TestEthGetTransactionReceipt_7702_DelegatedToAndAuthList(t *testing.T) {
     require.Len(t, r.DelegatedTo, 1)
 }
 
+func TestEthGetTransactionReceipt_Non7702_NoDelegatedFields(t *testing.T) {
+    ctx := context.Background()
+    // Non-7702 delegated SignedMessage (EVM.InvokeContract)
+    ts := makeTipset(t)
+    tr := &mockTipsetResolver{ ts: ts }
+    ev := &mockEvents{}
+
+    var from20 [20]byte
+    for i := range from20 { from20[i] = 0x99 }
+    from, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, from20[:])
+    require.NoError(t, err)
+    to, _ := address.NewIDAddress(1005)
+    msg := types.Message{Version: 0, To: to, From: from, Nonce: 0, Value: types.NewInt(0), Method: builtintypes.MethodsEVM.InvokeContract, GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1)}
+    sig := typescrypto.Signature{ Type: typescrypto.SigTypeDelegated, Data: append(append(make([]byte, 31), 3), append(append(make([]byte, 31), 3), 0)...)}
+    smsg := &types.SignedMessage{ Message: msg, Signature: sig }
+
+    // Build a simple receipt
+    rcpt := types.MessageReceipt{ ExitCode: 0, GasUsed: 21000 }
+    cs := &mockChainStore{ ts: ts, smsg: smsg, rcpts: []types.MessageReceipt{rcpt} }
+    sm := &mockStateManager{}
+
+    // StateAPI and Indexer to map tx hash to our message CID
+    ml := api.MsgLookup{ Message: smsg.Cid(), Receipt: rcpt, TipSet: ts.Key() }
+    sap := &mockStateAPI{ ml: ml }
+    idx := &mockIndexer{ cid: smsg.Cid() }
+
+    ethTxAPI, err := NewEthTransactionAPI(cs, sm, sap, nil, idx, ev, tr, 0)
+    require.NoError(t, err)
+
+    var h ethtypes.EthHash
+    r, err := ethTxAPI.EthGetTransactionReceipt(ctx, h)
+    require.NoError(t, err)
+    require.NotNil(t, r)
+    // Non-7702: no AuthorizationList; no DelegatedTo
+    require.Len(t, r.AuthorizationList, 0)
+    require.Len(t, r.DelegatedTo, 0)
+}
+
 func TestEthGetTransactionByHash_7702_TxViewContainsAuthList(t *testing.T) {
     ctx := context.Background()
     // Delegator configured
