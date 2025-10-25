@@ -588,7 +588,7 @@ func BenchmarkWriteWithAlignment(b *testing.B) {
 	bt := abi.UnpaddedPieceSize(2 * 127 * 1024 * 1024)
 	b.SetBytes(int64(bt))
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		b.StopTimer()
 		rf, w, _ := mock.ToReadableFile(bytes.NewReader(bytes.Repeat([]byte{0xff, 0}, int(bt/2))), int64(bt))
 		tf, _ := os.CreateTemp("/tmp/", "scrb-")
@@ -772,11 +772,11 @@ func BenchmarkAddPiece512M(b *testing.B) {
 	}
 	b.Cleanup(cleanup)
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		c, err := sb.AddPiece(context.TODO(), storiface.SectorRef{
 			ID: abi.SectorID{
 				Miner:  miner,
-				Number: abi.SectorNumber(i),
+				Number: abi.SectorNumber(b.N),
 			},
 			ProofType: abi.RegisteredSealProof_StackedDrg512MiBV1_1,
 		}, nil, sz, io.LimitReader(&nullreader.Reader{}, int64(sz)))
