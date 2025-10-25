@@ -1107,9 +1107,13 @@ var ChainExportCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name: "skip-old-msgs",
 		},
+		&cli.StringFlag{
+			Name:  "version",
+			Value: "2",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := GetFullNodeAPIV1(cctx)
 		if err != nil {
 			return err
 		}
@@ -1147,7 +1151,12 @@ var ChainExportCmd = &cli.Command{
 			return fmt.Errorf("must pass recent stateroots along with skip-old-msgs")
 		}
 
-		stream, err := api.ChainExport(ctx, rsrs, skipold, ts.Key())
+		version := cctx.Uint64("version")
+		if version != 1 && version != 2 {
+			return fmt.Errorf("invalid version %d", version)
+		}
+
+		stream, err := api.ChainExport(ctx, rsrs, skipold, ts.Key(), version)
 		if err != nil {
 			return err
 		}

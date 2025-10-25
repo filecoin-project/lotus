@@ -1970,6 +1970,7 @@ OPTIONS:
    --tipset value             specify tipset to start the export from (default: "@head")
    --recent-stateroots value  specify the number of recent state roots to include in the export (default: 0)
    --skip-old-msgs            (default: false)
+   --version value            (default: "2")
    --help, -h                 show help
 ```
 
