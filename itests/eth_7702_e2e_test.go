@@ -4,7 +4,6 @@ package itests
 
 import (
     "context"
-    "os"
     "testing"
     "time"
 
@@ -15,23 +14,21 @@ import (
     typescrypto "github.com/filecoin-project/go-state-types/crypto"
 
     "github.com/filecoin-project/lotus/build/buildconstants"
-    delegator "github.com/filecoin-project/lotus/chain/actors/builtin/delegator"
     "github.com/filecoin-project/lotus/chain/types"
     ethtypes "github.com/filecoin-project/lotus/chain/types/ethtypes"
     "github.com/filecoin-project/lotus/itests/kit"
+    abi2 "github.com/filecoin-project/go-state-types/abi"
 )
 
-// TestEth7702_SendRoutesToDelegator exercises the send-path for type-0x04 transactions:
+// TestEth7702_SendRoutesToEVM exercises the send-path for type-0x04 transactions:
 // it constructs and signs a minimal 7702 tx with a non-empty authorizationList, sends it via
-// eth_sendRawTransaction, and verifies that a Filecoin message targeting the Delegator actor's
+// eth_sendRawTransaction, and verifies that a Filecoin message targeting the EVM actor's
 // ApplyAndCall method is enqueued in the mpool from the recovered f4 sender.
-func TestEth7702_SendRoutesToDelegator(t *testing.T) {
-    // Ensure 7702 feature is enabled and Delegator actor address configured.
+func TestEth7702_SendRoutesToEVM(t *testing.T) {
+    // Ensure 7702 feature is enabled and EVM ApplyAndCall actor address configured.
     ethtypes.Eip7702FeatureEnabled = true
-    id18, _ := address.NewIDAddress(18)
-    ethtypes.DelegatorActorAddr = id18
-    // Still set env for any code paths that consult it.
-    _ = os.Setenv(ethtypes.EnvDelegatorActorAddr, "ID:18")
+    id999, _ := address.NewIDAddress(999)
+    ethtypes.EvmApplyAndCallActorAddr = id999
 
     // Set NV at/after activation to exercise mpool policies consistently.
     ctx, cancel, client := kit.SetupFEVMTest(t)
@@ -91,14 +88,14 @@ func TestEth7702_SendRoutesToDelegator(t *testing.T) {
 
     found := false
     for _, sm := range pending {
-        if sm.Message.From == senderFilAddr && sm.Message.Method == delegator.MethodApplyAndCall {
-            // Ensure we target the Delegator actor address (ID:18 by default when feature is enabled).
-            require.Equal(t, ethtypes.DelegatorActorAddr, sm.Message.To)
+        if sm.Message.From == senderFilAddr && sm.Message.Method == abi2.MethodNum(ethtypes.MethodHash("ApplyAndCall")) {
+            // Ensure we target the configured EVM ApplyAndCall actor address.
+            require.Equal(t, ethtypes.EvmApplyAndCallActorAddr, sm.Message.To)
             found = true
             break
         }
     }
-    require.True(t, found, "expected a Delegator.ApplyAndCall message in mpool from sender")
+    require.True(t, found, "expected an EVM.ApplyAndCall message in mpool from sender")
 }
 
 // TestEth7702_ReceiptFields validates that once a 0x04 transaction is mined, the
@@ -115,11 +112,10 @@ func TestEth7702_ReceiptFields(t *testing.T) {
     // Fund sender to create account actor.
     kit.SendFunds(ctx, t, client, senderFilAddr, types.FromFil(10))
 
-    // Enable feature and configure Delegator actor address only after funding completes.
+    // Enable feature and configure EVM ApplyAndCall actor address only after funding completes.
     ethtypes.Eip7702FeatureEnabled = true
-    id18, _ := address.NewIDAddress(18)
-    ethtypes.DelegatorActorAddr = id18
-    _ = os.Setenv(ethtypes.EnvDelegatorActorAddr, "ID:18")
+    id999, _ := address.NewIDAddress(999)
+    ethtypes.EvmApplyAndCallActorAddr = id999
 
     // Two delegate addresses to exercise arrays.
     var d1, d2 ethtypes.EthAddress
@@ -193,24 +189,18 @@ func TestEth7702_ReceiptFields(t *testing.T) {
 // TestEth7702_DelegatedExecute is a scaffold for the full delegated execution flow:
 //   1) Apply delegations via a type-0x04 transaction so that an EOA delegates to a contract.
 //   2) CALL the EOA; the EVM should execute the delegate via InvokeAsEoa and update storage.
-// This requires the Delegator actor to be present in the runtime bundle and tuple-signing helpers.
+// This requires the runtime EVM ApplyAndCall entrypoint and tuple-signing helpers.
 // Until those are available in this environment, this test is skipped.
 func TestEth7702_DelegatedExecute(t *testing.T) {
-    t.Skip("Delegator wasm + tuple-signing not wired in this environment; enable when bundled")
+    t.Skip("EVM.ApplyAndCall wasm + tuple-signing not wired in this environment; enable when bundled")
 
     ctx, cancel, client := kit.SetupFEVMTest(t)
     defer cancel()
 
-    // Enable feature and configure Delegator actor address
+    // Enable feature and configure EVM ApplyAndCall actor address
     ethtypes.Eip7702FeatureEnabled = true
-    id18, _ := address.NewIDAddress(18)
-    ethtypes.DelegatorActorAddr = id18
-    _ = os.Setenv(ethtypes.EnvDelegatorActorAddr, "ID:18")
-
-    // Quick presence check: if Delegator actor is not in the bundle, skip
-    if _, err := client.StateGetActor(ctx, ethtypes.DelegatorActorAddr, types.EmptyTSK); err != nil {
-        t.Skipf("Delegator actor not present in runtime bundle: %v", err)
-    }
+    id999, _ := address.NewIDAddress(999)
+    ethtypes.EvmApplyAndCallActorAddr = id999
 
     // Deploy a simple delegate contract that writes to storage
     // Note: this call path relies on runtime support; left here to document the expected steps

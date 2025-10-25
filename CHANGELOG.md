@@ -12,9 +12,9 @@
 - chore(docs): mark v0 API as "deprecated" and v1 as "stable" ([filecoin-project/lotus#13264](https://github.com/filecoin-project/lotus/pull/13264))
 - fix(api): `eth_getCode` and `eth_getStorageAt` now return state after the specified block rather than before it ([filecoin-project/lotus#13274](https://github.com/filecoin-project/lotus/pull/13274))
 - fix(api): `eth_getTransactionCount` now returns state after the specified block rather than before it ([filecoin-project/lotus#13275](https://github.com/filecoin-project/lotus/pull/13275))
-- feat(eth/7702): intrinsic gas overhead accounting for EIP‑7702 delegation messages (conservative base + per‑authorization); CBOR tuple counting in EthEstimateGas (scaffold; to be aligned with actor constants)
-- feat(eth/7702): support `LOTUS_ETH_7702_DELEGATOR_ADDR` (build tag `eip7702_enabled`) to configure Delegator actor address in dev/test
-- chore(eth/7702): send‑path now uses `delegator.MethodApplyAndCall` (atomic apply+call); CBOR encoders updated; tests adjusted
+- feat(eth/7702): intrinsic gas overhead accounting for EIP‑7702 delegation messages (conservative base + per‑authorization); CBOR tuple counting in EthEstimateGas (behavioral; aligned once actor constants finalize)
+- chore(eth/7702): EVM‑only routing — 0x04 transactions call EVM.ApplyAndCall; Delegator path and all env toggles removed; CBOR encoders updated; tests adjusted
+- migration: No migration required; EVM‑only/atomic‑only; Delegator removed.
 
 
 # Node v1.33.1 / 2025-07-31

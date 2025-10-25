@@ -20,7 +20,6 @@ import (
     "time"
     "github.com/filecoin-project/lotus/api"
     "github.com/filecoin-project/lotus/chain/actors/adt"
-    delegator "github.com/filecoin-project/lotus/chain/actors/builtin/delegator"
     "github.com/filecoin-project/lotus/chain/state"
     "github.com/filecoin-project/lotus/chain/store"
     "github.com/filecoin-project/lotus/chain/types"
@@ -29,6 +28,7 @@ import (
     typescrypto "github.com/filecoin-project/go-state-types/crypto"
     "github.com/filecoin-project/lotus/chain/index"
     "fmt"
+    abi2 "github.com/filecoin-project/go-state-types/abi"
 )
 
 // ---- mocks ----
@@ -211,9 +211,9 @@ func makeTipset(t *testing.T) *types.TipSet {
 // ---- tests ----
 func TestEthGetBlockReceipts_7702_AuthListAndDelegatedTo(t *testing.T) {
     ctx := context.Background()
-    // Delegator address configured
-    id18, _ := address.NewIDAddress(18)
-    ethtypes.DelegatorActorAddr = id18
+    // EVM ApplyAndCall address configured
+    id999, _ := address.NewIDAddress(999)
+    ethtypes.EvmApplyAndCallActorAddr = id999
     // f4 sender
     var from20 [20]byte
     for i := range from20 { from20[i] = 0x44 }
@@ -223,14 +223,14 @@ func TestEthGetBlockReceipts_7702_AuthListAndDelegatedTo(t *testing.T) {
     var delegate20 [20]byte
     for i := range delegate20 { delegate20[i] = 0xAB }
 
-    // SignedMessage targeting Delegator.ApplyAndCall with one authorization tuple
+    // SignedMessage targeting EVM.ApplyAndCall with one authorization tuple
     msg := types.Message{
         Version:    0,
-        To:         ethtypes.DelegatorActorAddr,
+        To:         ethtypes.EvmApplyAndCallActorAddr,
         From:       from,
         Nonce:      0,
         Value:      types.NewInt(0),
-        Method:     delegator.MethodApplyAndCall,
+        Method:     abi2.MethodNum(ethtypes.MethodHash("ApplyAndCall")),
         GasLimit:   100000,
         GasFeeCap:  types.NewInt(1),
         GasPremium: types.NewInt(1),
@@ -272,6 +272,73 @@ func TestEthGetBlockReceipts_7702_AuthListAndDelegatedTo(t *testing.T) {
     require.Len(t, r.AuthorizationList, 1)
     require.Equal(t, ethtypes.EthUint64(314), r.AuthorizationList[0].ChainID)
     // adjustReceiptForDelegation should have populated DelegatedTo from auth list
+    require.Len(t, r.DelegatedTo, 1)
+    var want ethtypes.EthAddress
+    copy(want[:], delegate20[:])
+    require.Equal(t, want, r.DelegatedTo[0])
+}
+
+func TestEthGetBlockReceipts_7702_EvmApplyAndCall_Attribution(t *testing.T) {
+    ctx := context.Background()
+    // Configure EVM ApplyAndCall receiver
+    id999, _ := address.NewIDAddress(999)
+    ethtypes.EvmApplyAndCallActorAddr = id999
+    // f4 sender
+    var from20 [20]byte
+    for i := range from20 { from20[i] = 0x66 }
+    from, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, from20[:])
+    require.NoError(t, err)
+    // delegate address
+    var delegate20 [20]byte
+    for i := range delegate20 { delegate20[i] = 0xAB }
+
+    // Build SignedMessage to EVM.ApplyAndCall carrying one tuple
+    msg := types.Message{
+        Version:    0,
+        To:         ethtypes.EvmApplyAndCallActorAddr,
+        From:       from,
+        Nonce:      0,
+        Value:      types.NewInt(0),
+        Method:     abi2.MethodNum(ethtypes.MethodHash("ApplyAndCall")),
+        GasLimit:   100000,
+        GasFeeCap:  types.NewInt(1),
+        GasPremium: types.NewInt(1),
+        Params:     make7702Params(t, 314, delegate20, 0),
+    }
+    sig := typescrypto.Signature{ Type: typescrypto.SigTypeDelegated, Data: append(append(make([]byte, 31), 1), append(append(make([]byte, 31), 1), 0)...)}
+    smsg := &types.SignedMessage{ Message: msg, Signature: sig }
+
+    // Tipset and mocks
+    ts := makeTipset(t)
+    // Provide a dummy return value so V1 parsing path can proceed when To==nil; build V1 receipt
+    var retBuf bytes.Buffer
+    require.NoError(t, cbg.CborWriteHeader(&retBuf, cbg.MajArray, 3))
+    require.NoError(t, cbg.CborWriteHeader(&retBuf, cbg.MajUnsignedInt, 0))
+    _, _ = retBuf.Write(cbg.CborNull)
+    require.NoError(t, cbg.WriteByteArray(&retBuf, make([]byte, 20)))
+    // Dummy events root
+    var root cid.Cid
+    {
+        b := []byte{0x03}
+        c, err := abi.CidBuilder.Sum(b)
+        require.NoError(t, err)
+        root = c
+    }
+    rcpt := types.NewMessageReceiptV1(0, retBuf.Bytes(), 50000, &root)
+    cs := &mockChainStore{ ts: ts, smsg: smsg, rcpts: []types.MessageReceipt{rcpt} }
+    sm := &mockStateManager{}
+    tr := &mockTipsetResolver{ ts: ts }
+    ev := &mockEvents{}
+
+    api, err := NewEthTransactionAPI(cs, sm, nil, nil, nil, ev, tr, 0)
+    require.NoError(t, err)
+    receipts, err := api.EthGetBlockReceipts(ctx, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
+    require.NoError(t, err)
+    require.Len(t, receipts, 1)
+    r := receipts[0]
+    // Expect AuthorizationList surfaced and DelegatedTo derived from tuple
+    require.Len(t, r.AuthorizationList, 1)
+    require.Equal(t, ethtypes.EthUint64(314), r.AuthorizationList[0].ChainID)
     require.Len(t, r.DelegatedTo, 1)
     var want ethtypes.EthAddress
     copy(want[:], delegate20[:])
@@ -337,8 +404,8 @@ func TestEthGetBlockReceipts_7702_SyntheticLogAttribution(t *testing.T) {
 func TestEthGetTransactionReceipt_7702_DelegatedToAndAuthList(t *testing.T) {
     ctx := context.Background()
     // Delegator configured
-    id18, _ := address.NewIDAddress(18)
-    ethtypes.DelegatorActorAddr = id18
+    id999, _ := address.NewIDAddress(999)
+    ethtypes.EvmApplyAndCallActorAddr = id999
     // Build SignedMessage to Delegator.ApplyAndCall with one tuple
     var from20 [20]byte
     for i := range from20 { from20[i] = 0x66 }
@@ -346,7 +413,7 @@ func TestEthGetTransactionReceipt_7702_DelegatedToAndAuthList(t *testing.T) {
     require.NoError(t, err)
     var delegate20 [20]byte
     for i := range delegate20 { delegate20[i] = 0xAA }
-    msg := types.Message{Version: 0, To: ethtypes.DelegatorActorAddr, From: from, Nonce: 0, Value: types.NewInt(0), Method: delegator.MethodApplyAndCall, GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1), Params: make7702Params(t, 314, delegate20, 0)}
+    msg := types.Message{Version: 0, To: ethtypes.EvmApplyAndCallActorAddr, From: from, Nonce: 0, Value: types.NewInt(0), Method: abi2.MethodNum(ethtypes.MethodHash("ApplyAndCall")), GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1), Params: make7702Params(t, 314, delegate20, 0)}
     sig := typescrypto.Signature{ Type: typescrypto.SigTypeDelegated, Data: append(append(make([]byte, 31), 1), append(append(make([]byte, 31), 1), 0)...)}
     smsg := &types.SignedMessage{ Message: msg, Signature: sig }
 
@@ -429,8 +496,8 @@ func TestEthGetTransactionReceipt_Non7702_NoDelegatedFields(t *testing.T) {
 func TestEthGetTransactionByHash_7702_TxViewContainsAuthList(t *testing.T) {
     ctx := context.Background()
     // Delegator configured
-    id18, _ := address.NewIDAddress(18)
-    ethtypes.DelegatorActorAddr = id18
+    id999, _ := address.NewIDAddress(999)
+    ethtypes.EvmApplyAndCallActorAddr = id999
     // Build SignedMessage to Delegator.ApplyDelegations with one tuple
     var from20 [20]byte
     for i := range from20 { from20[i] = 0x77 }
@@ -438,7 +505,7 @@ func TestEthGetTransactionByHash_7702_TxViewContainsAuthList(t *testing.T) {
     require.NoError(t, err)
     var delegate20 [20]byte
     for i := range delegate20 { delegate20[i] = 0xBB }
-    msg := types.Message{Version: 0, To: ethtypes.DelegatorActorAddr, From: from, Nonce: 0, Value: types.NewInt(0), Method: delegator.MethodApplyAndCall, GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1), Params: make7702Params(t, 314, delegate20, 0)}
+    msg := types.Message{Version: 0, To: ethtypes.EvmApplyAndCallActorAddr, From: from, Nonce: 0, Value: types.NewInt(0), Method: abi2.MethodNum(ethtypes.MethodHash("ApplyAndCall")), GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1), Params: make7702Params(t, 314, delegate20, 0)}
     sig := typescrypto.Signature{ Type: typescrypto.SigTypeDelegated, Data: append(append(make([]byte, 31), 1), append(append(make([]byte, 31), 1), 0)...)}
     smsg := &types.SignedMessage{ Message: msg, Signature: sig }
 
@@ -467,14 +534,14 @@ func TestEthGetTransactionByHash_7702_TxViewContainsAuthList(t *testing.T) {
 
 func TestEthGetTransactionByBlockHashAndIndex_7702_TxViewContainsAuthList(t *testing.T) {
     ctx := context.Background()
-    ethtypes.DelegatorActorAddr, _ = address.NewIDAddress(18)
+    ethtypes.EvmApplyAndCallActorAddr, _ = address.NewIDAddress(999)
     var from20 [20]byte
     for i := range from20 { from20[i] = 0x88 }
     from, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, from20[:])
     require.NoError(t, err)
     var delegate20 [20]byte
     for i := range delegate20 { delegate20[i] = 0xCC }
-    msg := types.Message{Version: 0, To: ethtypes.DelegatorActorAddr, From: from, Nonce: 0, Value: types.NewInt(0), Method: delegator.MethodApplyAndCall, GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1), Params: make7702Params(t, 314, delegate20, 0)}
+    msg := types.Message{Version: 0, To: ethtypes.EvmApplyAndCallActorAddr, From: from, Nonce: 0, Value: types.NewInt(0), Method: abi2.MethodNum(ethtypes.MethodHash("ApplyAndCall")), GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1), Params: make7702Params(t, 314, delegate20, 0)}
     sig := typescrypto.Signature{ Type: typescrypto.SigTypeDelegated, Data: append(append(make([]byte, 31), 1), append(append(make([]byte, 31), 1), 0)...)}
     smsg := &types.SignedMessage{ Message: msg, Signature: sig }
 
@@ -512,8 +579,8 @@ func TestEthGetTransactionReceipt_NotFoundReturnsNil(t *testing.T) {
 
 func TestEthGetBlockReceipts_7702_MultipleReceipts_AdjustmentPerTx(t *testing.T) {
     ctx := context.Background()
-    id18, _ := address.NewIDAddress(18)
-    ethtypes.DelegatorActorAddr = id18
+    id999, _ := address.NewIDAddress(999)
+    ethtypes.EvmApplyAndCallActorAddr = id999
 
     // Build two SignedMessages to Delegator.ApplyDelegations with one tuple each (different delegate addresses).
     makeSmsg := func(seed byte) *types.SignedMessage {
@@ -522,7 +589,7 @@ func TestEthGetBlockReceipts_7702_MultipleReceipts_AdjustmentPerTx(t *testing.T)
         from, _ := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, from20[:])
         var delegate20 [20]byte
         for i := range delegate20 { delegate20[i] = seed + 1 }
-        msg := types.Message{Version: 0, To: ethtypes.DelegatorActorAddr, From: from, Nonce: 0, Value: types.NewInt(0), Method: delegator.MethodApplyAndCall, GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1), Params: make7702Params(t, 314, delegate20, 0)}
+        msg := types.Message{Version: 0, To: ethtypes.EvmApplyAndCallActorAddr, From: from, Nonce: 0, Value: types.NewInt(0), Method: abi2.MethodNum(ethtypes.MethodHash("ApplyAndCall")), GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1), Params: make7702Params(t, 314, delegate20, 0)}
         sig := typescrypto.Signature{ Type: typescrypto.SigTypeDelegated, Data: append(append(make([]byte, 31), 1), append(append(make([]byte, 31), 1), 0)...)}
         return &types.SignedMessage{ Message: msg, Signature: sig }
     }
@@ -567,8 +634,8 @@ func TestEthGetBlockReceipts_7702_MixedBlock_AdjustmentOnlyOn7702(t *testing.T) 
     // Ensure no synthetic logs interfere
     logsForTest = nil
     ctx := context.Background()
-    id18, _ := address.NewIDAddress(18)
-    ethtypes.DelegatorActorAddr = id18
+    id999, _ := address.NewIDAddress(999)
+    ethtypes.EvmApplyAndCallActorAddr = id999
 
     // Build one 7702 SignedMessage and one non-7702 delegated SignedMessage (EVM.InvokeContract).
     // 7702 message
@@ -577,7 +644,7 @@ func TestEthGetBlockReceipts_7702_MixedBlock_AdjustmentOnlyOn7702(t *testing.T) 
     fromA, _ := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, from20a[:])
     var delegate20 [20]byte
     for i := range delegate20 { delegate20[i] = 0x44 }
-    msgA := types.Message{Version: 0, To: ethtypes.DelegatorActorAddr, From: fromA, Nonce: 0, Value: types.NewInt(0), Method: delegator.MethodApplyAndCall, GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1), Params: make7702Params(t, 314, delegate20, 0)}
+    msgA := types.Message{Version: 0, To: ethtypes.EvmApplyAndCallActorAddr, From: fromA, Nonce: 0, Value: types.NewInt(0), Method: abi2.MethodNum(ethtypes.MethodHash("ApplyAndCall")), GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1), Params: make7702Params(t, 314, delegate20, 0)}
     sigA := typescrypto.Signature{ Type: typescrypto.SigTypeDelegated, Data: append(append(make([]byte, 31), 1), append(append(make([]byte, 31), 1), 0)...)}
     smA := &types.SignedMessage{ Message: msgA, Signature: sigA }
 
@@ -640,8 +707,8 @@ func TestEthGetBlockReceipts_7702_MixedBlock_SyntheticEventForNon7702(t *testing
     // Start with a clean log set
     logsForTest = nil
     ctx := context.Background()
-    id18, _ := address.NewIDAddress(18)
-    ethtypes.DelegatorActorAddr = id18
+    id999, _ := address.NewIDAddress(999)
+    ethtypes.EvmApplyAndCallActorAddr = id999
 
     // Build one 7702 SignedMessage and one non-7702 delegated SignedMessage (EVM.InvokeContract).
     var from20a [20]byte
@@ -649,7 +716,7 @@ func TestEthGetBlockReceipts_7702_MixedBlock_SyntheticEventForNon7702(t *testing
     fromA, _ := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, from20a[:])
     var del20 [20]byte
     for i := range del20 { del20[i] = 0x88 }
-    msgA := types.Message{Version: 0, To: ethtypes.DelegatorActorAddr, From: fromA, Nonce: 0, Value: types.NewInt(0), Method: delegator.MethodApplyAndCall, GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1), Params: make7702Params(t, 314, del20, 0)}
+    msgA := types.Message{Version: 0, To: ethtypes.EvmApplyAndCallActorAddr, From: fromA, Nonce: 0, Value: types.NewInt(0), Method: abi2.MethodNum(ethtypes.MethodHash("ApplyAndCall")), GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1), Params: make7702Params(t, 314, del20, 0)}
     sigA := typescrypto.Signature{ Type: typescrypto.SigTypeDelegated, Data: append(append(make([]byte, 31), 1), append(append(make([]byte, 31), 1), 0)...)}
     smA := &types.SignedMessage{ Message: msgA, Signature: sigA }
 

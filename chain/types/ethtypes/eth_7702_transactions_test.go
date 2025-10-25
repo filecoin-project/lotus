@@ -446,6 +446,8 @@ func TestEIP7702_ToUnsignedFilecoinMessage_Guard(t *testing.T) {
     require.Error(t, err)
 }
 
+// Feature-gated test for EVM ApplyAndCall receiver is in eth_7702_transactions_env_enabled_test.go
+
 func TestEIP7702_AuthorizationTupleWrongArityRejected(t *testing.T) {
     // Build fields manually and inject an authorization tuple with only 5 items
     var to EthAddress

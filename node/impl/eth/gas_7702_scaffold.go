@@ -1,9 +1,8 @@
 package eth
 
 // This file contains scaffolding notes and helper stubs for EIP-7702 gas accounting.
-// It is not wired yet. Once the Delegator actor is integrated and ToUnsignedFilecoinMessage
-// builds a message targeting it, EthEstimateGas should include the intrinsic costs per
-// authorization tuple and simulate the temporary state change when applying delegations.
+// It is behavioral and uses placeholder constants. EthEstimateGas adds intrinsic
+// costs per authorization tuple when targeting EVM.ApplyAndCall.
 
 // compute7702IntrinsicOverhead returns the additional intrinsic gas to charge for a
 // 7702 transaction based on the authorization list length, constants per EIP-7702,
@@ -13,19 +12,23 @@ import (
     "bytes"
 
     cbg "github.com/whyrusleeping/cbor-gen"
-    delegator "github.com/filecoin-project/lotus/chain/actors/builtin/delegator"
+)
+
+const (
+    baseOverheadGas int64 = 1000
+    perAuthBaseGas  int64 = 500
 )
 
 func compute7702IntrinsicOverhead(authCount int) int64 {
     if authCount <= 0 {
         return 0
     }
-    return delegator.BaseOverheadGas + delegator.PerAuthBaseGas*int64(authCount)
+    return baseOverheadGas + perAuthBaseGas*int64(authCount)
 }
 
-// countAuthInDelegatorParams tries to CBOR-parse the delegator params and return
+// countAuthInDelegatorParams tries to CBOR-parse ApplyAndCall params and return
 // the number of authorization tuples included. It expects the params to be the
-// CBOR encoding of an array of 6-tuples, matching CborEncodeEIP7702Authorizations.
+// CBOR encoding of [ [tuple...], call-tuple ].
 // Returns 0 on any parsing error (best effort for estimation headroom).
 func countAuthInDelegatorParams(params []byte) int {
     r := cbg.NewCborReader(bytes.NewReader(params))
@@ -36,9 +39,8 @@ func countAuthInDelegatorParams(params []byte) int {
     if topLen == 0 {
         return 0
     }
-    // Two accepted shapes on the wire:
-    // 1) ApplyDelegations: [ list-of-tuples ]
-    // 2) ApplyAndCall:     [ list-of-tuples, call-tuple ]
+    // Shape on the wire:
+    // ApplyAndCall: [ list-of-tuples, call-tuple ]
     maj1, l1, err := r.ReadHeader()
     if err != nil || maj1 != cbg.MajArray {
         return 0

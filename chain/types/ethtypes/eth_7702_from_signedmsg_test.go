@@ -10,7 +10,7 @@ import (
     "github.com/filecoin-project/go-address"
     builtintypes "github.com/filecoin-project/go-state-types/builtin"
     typescrypto "github.com/filecoin-project/go-state-types/crypto"
-    "github.com/filecoin-project/lotus/chain/actors/builtin/delegator"
+    "github.com/filecoin-project/go-state-types/abi"
     "github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -36,23 +36,23 @@ func encodeAuthWrapper(t *testing.T) []byte {
 }
 
 func TestEthTransactionFromSignedMessage_7702_Decodes(t *testing.T) {
-    // Setup: set DelegatorActorAddr to ID:18
+    // Setup: set EvmApplyAndCallActorAddr to ID:18
     id18, _ := address.NewIDAddress(18)
-    DelegatorActorAddr = id18
+    EvmApplyAndCallActorAddr = id18
     // From must be an eth (f4) address
     var from20 [20]byte
     for i := range from20 { from20[i] = 0x11 }
     from, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, from20[:])
     require.NoError(t, err)
 
-    // Build SignedMessage targeting Delegator.ApplyDelegations
+    // Build SignedMessage targeting EVM.ApplyAndCall
     msg := types.Message{
         Version:    0,
-        To:         DelegatorActorAddr,
+        To:         EvmApplyAndCallActorAddr,
         From:       from,
         Nonce:      0,
         Value:      types.NewInt(0),
-        Method:     delegator.MethodApplyAndCall,
+        Method:     abi.MethodNum(MethodHash("ApplyAndCall")),
         GasLimit:   100000,
         GasFeeCap:  types.NewInt(1),
         GasPremium: types.NewInt(1),
@@ -73,9 +73,9 @@ func TestEthTransactionFromSignedMessage_7702_Decodes(t *testing.T) {
 }
 
 func TestEthTransactionFromSignedMessage_7702_MultiTupleDecodes(t *testing.T) {
-    // Setup ID:18 Delegator address and f4 sender
+    // Setup ID:18 EVM ApplyAndCall address and f4 sender
     id18, _ := address.NewIDAddress(18)
-    DelegatorActorAddr = id18
+    EvmApplyAndCallActorAddr = id18
     var from20 [20]byte
     for i := range from20 { from20[i] = 0x22 }
     from, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, from20[:])
@@ -98,7 +98,7 @@ func TestEthTransactionFromSignedMessage_7702_MultiTupleDecodes(t *testing.T) {
     encTup(314, 0)
     encTup(314, 1)
 
-    msg := types.Message{To: DelegatorActorAddr, From: from, Method: delegator.MethodApplyAndCall, Params: buf.Bytes(), GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1), Value: types.NewInt(0)}
+    msg := types.Message{To: EvmApplyAndCallActorAddr, From: from, Method: abi.MethodNum(MethodHash("ApplyAndCall")), Params: buf.Bytes(), GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1), Value: types.NewInt(0)}
     sig := typescrypto.Signature{ Type: typescrypto.SigTypeDelegated, Data: append(append(make([]byte, 31), 1), append(append(make([]byte, 31), 1), 0)...)}
     smsg := &types.SignedMessage{ Message: msg, Signature: sig }
 
@@ -110,12 +110,12 @@ func TestEthTransactionFromSignedMessage_7702_MultiTupleDecodes(t *testing.T) {
 }
 
 func TestEthTransactionFromSignedMessage_NonDelegatedSigRejected(t *testing.T) {
-    // Setup Delegator address; signature type is wrong (secp256k1)
+    // Setup EVM ApplyAndCall address; signature type is wrong (secp256k1)
     id18, _ := address.NewIDAddress(18)
-    DelegatorActorAddr = id18
+    EvmApplyAndCallActorAddr = id18
     // Sender can be anything; rejection occurs earlier on sig type
     from, _ := address.NewIDAddress(1001)
-    msg := types.Message{To: DelegatorActorAddr, From: from, Method: delegator.MethodApplyAndCall}
+    msg := types.Message{To: EvmApplyAndCallActorAddr, From: from, Method: abi.MethodNum(MethodHash("ApplyAndCall"))}
     sig := typescrypto.Signature{ Type: typescrypto.SigTypeSecp256k1, Data: make([]byte, 65) }
     smsg := &types.SignedMessage{ Message: msg, Signature: sig }
     _, err := EthTransactionFromSignedFilecoinMessage(smsg)
@@ -125,10 +125,10 @@ func TestEthTransactionFromSignedMessage_NonDelegatedSigRejected(t *testing.T) {
 func TestEthTransactionFromSignedMessage_SenderNotEthRejected(t *testing.T) {
     // Delegated signature but non-f4 sender should be rejected
     id18, _ := address.NewIDAddress(18)
-    DelegatorActorAddr = id18
+    EvmApplyAndCallActorAddr = id18
     // Non-eth sender: ID address
     from, _ := address.NewIDAddress(42)
-    msg := types.Message{To: DelegatorActorAddr, From: from, Method: delegator.MethodApplyAndCall}
+    msg := types.Message{To: EvmApplyAndCallActorAddr, From: from, Method: abi.MethodNum(MethodHash("ApplyAndCall"))}
     sig := typescrypto.Signature{ Type: typescrypto.SigTypeDelegated, Data: make([]byte, 65) }
     smsg := &types.SignedMessage{ Message: msg, Signature: sig }
     _, err := EthTransactionFromSignedFilecoinMessage(smsg)
@@ -136,9 +136,9 @@ func TestEthTransactionFromSignedMessage_SenderNotEthRejected(t *testing.T) {
 }
 
 func TestEthTransactionFromSignedMessage_7702_BadCBORRejected(t *testing.T) {
-    // Setup ID:18 Delegator address and f4 sender
+    // Setup ID:18 EVM ApplyAndCall address and f4 sender
     id18, _ := address.NewIDAddress(18)
-    DelegatorActorAddr = id18
+    EvmApplyAndCallActorAddr = id18
     var from20 [20]byte
     for i := range from20 { from20[i] = 0x33 }
     from, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, from20[:])
@@ -148,7 +148,7 @@ func TestEthTransactionFromSignedMessage_7702_BadCBORRejected(t *testing.T) {
     var buf bytes.Buffer
     require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajUnsignedInt, 7))
 
-    msg := types.Message{To: DelegatorActorAddr, From: from, Method: delegator.MethodApplyAndCall, Params: buf.Bytes(), GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1)}
+    msg := types.Message{To: EvmApplyAndCallActorAddr, From: from, Method: abi.MethodNum(MethodHash("ApplyAndCall")), Params: buf.Bytes(), GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1)}
     sig := typescrypto.Signature{ Type: typescrypto.SigTypeDelegated, Data: append(append(make([]byte, 31), 1), append(append(make([]byte, 31), 1), 0)...)}
     smsg := &types.SignedMessage{ Message: msg, Signature: sig }
 

@@ -234,10 +234,9 @@ func (e *ethGas) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (ethty
         return 0, xerrors.Errorf("gas search failed: %w", err)
     }
 
-    // 7702: add intrinsic overhead for authorization tuples when feature is enabled and
-    // the message targets the Delegator actor with encoded authorization params.
-    if ethtypes.Eip7702FeatureEnabled && gassedMsg.To == ethtypes.DelegatorActorAddr {
-        // Best-effort parse of top-level array length from CBOR params.
+    // 7702: add intrinsic overhead for authorization tuples only for the
+    // EVM ApplyAndCall route.
+    if ethtypes.Eip7702FeatureEnabled && gassedMsg.Method == abi.MethodNum(ethtypes.MethodHash("ApplyAndCall")) {
         authCount := countAuthInDelegatorParams(gassedMsg.Params)
         if authCount > 0 {
             expectedGas += compute7702IntrinsicOverhead(authCount)

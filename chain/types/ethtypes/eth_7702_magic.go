@@ -2,6 +2,7 @@ package ethtypes
 
 import (
     "golang.org/x/crypto/sha3"
+    "encoding/binary"
 )
 
 // EIP-7702 authorization tuple signature domain separator.
@@ -45,3 +46,11 @@ func AuthorizationKeccak(chainID int, address EthAddress, nonce int) ([32]byte, 
     return sum, nil
 }
 
+// MethodHash computes the FRC-42 4-byte method number for the given name by
+// taking the first 4 bytes of keccak256(name) as a big-endian uint32.
+func MethodHash(name string) uint64 {
+    h := sha3.NewLegacyKeccak256()
+    _, _ = h.Write([]byte(name))
+    sum := h.Sum(nil)
+    return uint64(binary.BigEndian.Uint32(sum[:4]))
+}

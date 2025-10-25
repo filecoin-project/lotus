@@ -10,14 +10,14 @@ import (
     "github.com/filecoin-project/go-state-types/big"
     "github.com/filecoin-project/lotus/build/buildconstants"
     "github.com/filecoin-project/go-address"
-    delegator "github.com/filecoin-project/lotus/chain/actors/builtin/delegator"
+    abi2 "github.com/filecoin-project/go-state-types/abi"
 )
 
 func TestEIP7702_ToUnsignedFilecoinMessageAtomic_ShapesAndMethod(t *testing.T) {
-    // Enable feature flag and set delegator addr
+    // Enable feature flag and set EVM ApplyAndCall addr
     Eip7702FeatureEnabled = true
     defer func(){ Eip7702FeatureEnabled = false }()
-    DelegatorActorAddr, _ = address.NewIDAddress(18)
+    EvmApplyAndCallActorAddr, _ = address.NewIDAddress(999)
 
     // Assemble a simple tx with one auth and call fields
     var to EthAddress
@@ -45,7 +45,7 @@ func TestEIP7702_ToUnsignedFilecoinMessageAtomic_ShapesAndMethod(t *testing.T) {
     from, _ := address.NewIDAddress(1001)
     msg, err := tx.ToUnsignedFilecoinMessageAtomic(from)
     require.NoError(t, err)
-    require.EqualValues(t, delegator.MethodApplyAndCall, msg.Method)
+    require.EqualValues(t, abi2.MethodNum(MethodHash("ApplyAndCall")), msg.Method)
 
     // Decode params shape: [ [tuple...], [to(20b), value(bytes), input(bytes)] ]
     r := cbg.NewCborReader(bytes.NewReader(msg.Params))

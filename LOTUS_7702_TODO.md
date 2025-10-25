@@ -7,12 +7,12 @@ Priority order: P0 (now), P1 (soon), P2 (later)
 P0 — Parsers and encoding
 - RLP 0x04 parser/encoder
   - Round-trip encoding/decoding; multi-authorization list; empty `authorizationList` rejected; non-empty `accessList` rejected; invalid outer `v` rejected; invalid auth `yParity` rejected; wrong tuple arity rejected; signature initialization from 65-byte r||s||v.
-- CBOR params (to Delegator)
+- CBOR params (ApplyAndCall): [ [tuple...], [to(20), value, input] ]
   - Encoder produces wrapper `[ list ]` of 6-tuples; cross-package compat with actor decoder; legacy flat array accepted by decoder.
 
 P0 — SignedMessage view + receipts
 - Eth view reconstruction
-  - `EthTransactionFromSignedFilecoinMessage` reconstructs 0x04 transactions for Delegator.ApplyDelegations; echoes `authorizationList`.
+- `EthTransactionFromSignedFilecoinMessage` reconstructs 0x04 transactions for EVM.ApplyAndCall; echoes `authorizationList`.
 - Receipts attribution
   - `adjustReceiptForDelegation` sets `delegatedTo` from `authorizationList`.
   - When absent, extracts `delegatedTo` from synthetic EVM log topic keccak("EIP7702Delegated(address)") with 20-byte data.
@@ -35,11 +35,11 @@ P1 — JSON-RPC plumbing
 
 P1 — Estimation integration
 - EthEstimateGas
-  - For messages to Delegator.ApplyDelegations with N tuples, expected gas includes intrinsic overhead; only applied when feature enabled; test via a harness or narrow integration stub.
+- For messages to EVM.ApplyAndCall with N tuples, expected gas includes intrinsic overhead (behavioral placeholder).
 
-P1 — E2E tests (gated behind eip7702_enabled; run when wasm bundle includes Delegator)
+P1 — E2E tests (gated behind eip7702_enabled; run when wasm bundle includes EVM ApplyAndCall)
 - Send-path routing
-  - Minimal 0x04 tx constructs Delegator.ApplyDelegations params; mined receipt echoes `authorizationList` and `delegatedTo`.
+- Minimal 0x04 tx constructs ApplyAndCall params; mined receipt echoes `authorizationList` and `delegatedTo`.
 - Delegated execution
   - CALL→EOA executes delegate code (via actor/runtime), storage/logs reflect delegation.
 
