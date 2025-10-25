@@ -10,7 +10,7 @@ import (
 
 func BenchmarkBLSSign(b *testing.B) {
 	signer := blsSigner{}
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		b.StopTimer()
 		pk, _ := signer.GenPrivate()
 		randMsg := make([]byte, 32)
@@ -23,7 +23,7 @@ func BenchmarkBLSSign(b *testing.B) {
 
 func BenchmarkBLSVerify(b *testing.B) {
 	signer := blsSigner{}
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		b.StopTimer()
 		randMsg := make([]byte, 32)
 		_, _ = rand.Read(randMsg)
