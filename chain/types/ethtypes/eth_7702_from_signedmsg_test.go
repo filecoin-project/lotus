@@ -155,3 +155,112 @@ func TestEthTransactionFromSignedMessage_7702_BadCBORRejected(t *testing.T) {
     _, err = EthTransactionFromSignedFilecoinMessage(smsg)
     require.Error(t, err)
 }
+
+func TestEthTransactionFromSignedMessage_7702_WrongTupleArityRejected(t *testing.T) {
+    id18, _ := address.NewIDAddress(18)
+    EvmApplyAndCallActorAddr = id18
+    var from20 [20]byte
+    for i := range from20 { from20[i] = 0x44 }
+    from, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, from20[:])
+    require.NoError(t, err)
+
+    var buf bytes.Buffer
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 1))
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 1))
+    // Wrong arity: tuple with 5 elements instead of 6
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 5))
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajUnsignedInt, 314))
+    var addr [20]byte; for i := range addr { addr[i] = 0xaa }
+    require.NoError(t, cbg.WriteByteArray(&buf, addr[:]))
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajUnsignedInt, 0))
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajUnsignedInt, 0))
+    require.NoError(t, cbg.WriteByteArray(&buf, []byte{1}))
+
+    msg := types.Message{To: EvmApplyAndCallActorAddr, From: from, Method: abi.MethodNum(MethodHash("ApplyAndCall")), Params: buf.Bytes(), GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1)}
+    sig := typescrypto.Signature{ Type: typescrypto.SigTypeDelegated, Data: append(append(make([]byte, 31), 1), append(append(make([]byte, 31), 1), 0)...)}
+    smsg := &types.SignedMessage{ Message: msg, Signature: sig }
+    _, err = EthTransactionFromSignedFilecoinMessage(smsg)
+    require.Error(t, err)
+}
+
+func TestEthTransactionFromSignedMessage_7702_BadAddressLengthRejected(t *testing.T) {
+    id18, _ := address.NewIDAddress(18)
+    EvmApplyAndCallActorAddr = id18
+    var from20 [20]byte
+    for i := range from20 { from20[i] = 0x55 }
+    from, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, from20[:])
+    require.NoError(t, err)
+
+    var buf bytes.Buffer
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 1))
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 1))
+    // Tuple with wrong address byte string length (19 instead of 20)
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 6))
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajUnsignedInt, 314))
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajByteString, 19))
+    _, _ = buf.Write(make([]byte, 19))
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajUnsignedInt, 0))
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajUnsignedInt, 0))
+    require.NoError(t, cbg.WriteByteArray(&buf, []byte{1}))
+    require.NoError(t, cbg.WriteByteArray(&buf, []byte{1}))
+
+    msg := types.Message{To: EvmApplyAndCallActorAddr, From: from, Method: abi.MethodNum(MethodHash("ApplyAndCall")), Params: buf.Bytes(), GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1)}
+    sig := typescrypto.Signature{ Type: typescrypto.SigTypeDelegated, Data: append(append(make([]byte, 31), 1), append(append(make([]byte, 31), 1), 0)...)}
+    smsg := &types.SignedMessage{ Message: msg, Signature: sig }
+    _, err = EthTransactionFromSignedFilecoinMessage(smsg)
+    require.Error(t, err)
+}
+
+func TestEthTransactionFromSignedMessage_7702_EmptyAuthListRejected(t *testing.T) {
+    id18, _ := address.NewIDAddress(18)
+    EvmApplyAndCallActorAddr = id18
+    var from20 [20]byte
+    for i := range from20 { from20[i] = 0x66 }
+    from, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, from20[:])
+    require.NoError(t, err)
+
+    var buf bytes.Buffer
+    // Top-level [ list, call ] but with empty auth list (list length 0)
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 2))
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 0))
+    // Minimal call tuple [to(20), value, input]
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 3))
+    require.NoError(t, cbg.WriteByteArray(&buf, make([]byte, 20)))
+    require.NoError(t, cbg.WriteByteArray(&buf, []byte{}))
+    require.NoError(t, cbg.WriteByteArray(&buf, []byte{}))
+
+    msg := types.Message{To: EvmApplyAndCallActorAddr, From: from, Method: abi.MethodNum(MethodHash("ApplyAndCall")), Params: buf.Bytes(), GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1)}
+    sig := typescrypto.Signature{ Type: typescrypto.SigTypeDelegated, Data: append(append(make([]byte, 31), 1), append(append(make([]byte, 31), 1), 0)...)}
+    smsg := &types.SignedMessage{ Message: msg, Signature: sig }
+    _, err = EthTransactionFromSignedFilecoinMessage(smsg)
+    require.Error(t, err)
+}
+
+func TestEthTransactionFromSignedMessage_7702_BadYParityTypeRejected(t *testing.T) {
+    id18, _ := address.NewIDAddress(18)
+    EvmApplyAndCallActorAddr = id18
+    var from20 [20]byte
+    for i := range from20 { from20[i] = 0x77 }
+    from, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, from20[:])
+    require.NoError(t, err)
+
+    var buf bytes.Buffer
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 1))
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 1))
+    // Tuple with wrong y_parity major (byte string instead of unsigned int)
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 6))
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajUnsignedInt, 314))
+    var addr [20]byte; for i := range addr { addr[i] = 0xaa }
+    require.NoError(t, cbg.WriteByteArray(&buf, addr[:]))
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajUnsignedInt, 0)) // nonce ok
+    require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajByteString, 1))  // y_parity wrong major
+    _, _ = buf.Write([]byte{0x00})
+    require.NoError(t, cbg.WriteByteArray(&buf, []byte{1}))
+    require.NoError(t, cbg.WriteByteArray(&buf, []byte{1}))
+
+    msg := types.Message{To: EvmApplyAndCallActorAddr, From: from, Method: abi.MethodNum(MethodHash("ApplyAndCall")), Params: buf.Bytes(), GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1)}
+    sig := typescrypto.Signature{ Type: typescrypto.SigTypeDelegated, Data: append(append(make([]byte, 31), 1), append(append(make([]byte, 31), 1), 0)...)}
+    smsg := &types.SignedMessage{ Message: msg, Signature: sig }
+    _, err = EthTransactionFromSignedFilecoinMessage(smsg)
+    require.Error(t, err)
+}

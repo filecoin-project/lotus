@@ -360,12 +360,25 @@ func parseEip7702Tx(data []byte) (*Eth7702TxArgs, error) {
         return nil, xerrors.Errorf("authorizationList must be non-empty")
     }
     auths := make([]EthAuthorization, 0, len(authsIface))
+    // helper to enforce canonical unsigned int encoding (no leading zero if length > 1)
+    parseUintCanonical := func(v interface{}) (int, error) {
+        b, ok := v.([]byte)
+        if !ok {
+            return 0, xerrors.Errorf("not an RLP byte string")
+        }
+        // Reject non-canonical encodings: single 0x00 and any leading zero in multi-byte.
+        if (len(b) == 1 && b[0] == 0x00) || (len(b) > 1 && b[0] == 0x00) {
+            return 0, xerrors.Errorf("non-canonical integer encoding (leading zero)")
+        }
+        return parseInt(v)
+    }
+
     for i, it := range authsIface {
         t, ok := it.([]interface{})
         if !ok || len(t) != 6 {
             return nil, xerrors.Errorf("authorization[%d]: not a 6-field tuple", i)
         }
-        ai, err := parseInt(t[0])
+        ai, err := parseUintCanonical(t[0])
         if err != nil {
             return nil, xerrors.Errorf("authorization[%d]: bad chainId: %w", i, err)
         }
@@ -373,11 +386,11 @@ func parseEip7702Tx(data []byte) (*Eth7702TxArgs, error) {
         if err != nil {
             return nil, xerrors.Errorf("authorization[%d]: bad address: %w", i, err)
         }
-        ni, err := parseInt(t[2])
+        ni, err := parseUintCanonical(t[2])
         if err != nil {
             return nil, xerrors.Errorf("authorization[%d]: bad nonce: %w", i, err)
         }
-        yp, err := parseInt(t[3])
+        yp, err := parseUintCanonical(t[3])
         if err != nil {
             return nil, xerrors.Errorf("authorization[%d]: bad y_parity: %w", i, err)
         }

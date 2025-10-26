@@ -132,47 +132,7 @@ func EthTransactionFromSignedFilecoinMessage(smsg *types.SignedMessage) (EthTran
 
     // Special-case: EVM ApplyAndCall -> reconstruct a 0x04 tx view
     if smsg.Message.Method == abi.MethodNum(MethodHash("ApplyAndCall")) {
-        var authz []EthAuthorization
-        r := cbg.NewCborReader(bytes.NewReader(smsg.Message.Params))
-        maj, l, err := r.ReadHeader()
-        if err == nil && maj == cbg.MajArray && l >= 1 {
-            maj0, l0, err := r.ReadHeader()
-            if err == nil && maj0 == cbg.MajArray {
-                tmp := make([]EthAuthorization, 0, l0)
-                for i := 0; i < int(l0); i++ {
-                    majT, tlen, err := r.ReadHeader()
-                    if err != nil || majT != cbg.MajArray || tlen != 6 { authz = nil; break }
-                    majF, v, err := r.ReadHeader()
-                    if err != nil || majF != cbg.MajUnsignedInt { authz = nil; break }
-                    majF, blen, err := r.ReadHeader()
-                    if err != nil || majF != cbg.MajByteString || blen != 20 { authz = nil; break }
-                    var ea EthAddress
-                    if _, err := r.Read(ea[:]); err != nil { authz = nil; break }
-                    majF, nv, err := r.ReadHeader()
-                    if err != nil || majF != cbg.MajUnsignedInt { authz = nil; break }
-                    majF, yv, err := r.ReadHeader()
-                    if err != nil || majF != cbg.MajUnsignedInt { authz = nil; break }
-                    majF, rbl, err := r.ReadHeader()
-                    if err != nil || majF != cbg.MajByteString { authz = nil; break }
-                    rb := make([]byte, rbl)
-                    if _, err := r.Read(rb); err != nil { authz = nil; break }
-                    majF, sbl, err := r.ReadHeader()
-                    if err != nil || majF != cbg.MajByteString { authz = nil; break }
-                    sb := make([]byte, sbl)
-                    if _, err := r.Read(sb); err != nil { authz = nil; break }
-                    tmp = append(tmp, EthAuthorization{
-                        ChainID: EthUint64(v),
-                        Address: ea,
-                        Nonce:   EthUint64(nv),
-                        YParity: uint8(yv),
-                        R:       EthBigInt(big.NewFromGo(new(mathbig.Int).SetBytes(rb))),
-                        S:       EthBigInt(big.NewFromGo(new(mathbig.Int).SetBytes(sb))),
-                    })
-                }
-                if len(tmp) > 0 { authz = tmp }
-            }
-        }
-        if len(authz) > 0 {
+        if authz, err := strictDecodeApplyAndCallAuthorizations(smsg.Message.Params); err == nil && len(authz) > 0 {
             tx := &Eth7702TxArgs{
                 ChainID:              buildconstants.Eip155ChainId,
                 Nonce:                int(smsg.Message.Nonce),
@@ -253,6 +213,63 @@ func EthTransactionFromSignedFilecoinMessage(smsg *types.SignedMessage) (EthTran
 	default:
 		return nil, fmt.Errorf("unsupported signature length")
 	}
+}
+
+// strictDecodeApplyAndCallAuthorizations decodes the canonical ApplyAndCall params and returns
+// the authorization list. It enforces:
+// - top-level array length >= 1
+// - first element is an array of 6-field tuples with exact field kinds
+// Errors out early on malformed shapes.
+func strictDecodeApplyAndCallAuthorizations(params []byte) ([]EthAuthorization, error) {
+    r := cbg.NewCborReader(bytes.NewReader(params))
+    maj, l, err := r.ReadHeader()
+    if err != nil {
+        return nil, err
+    }
+    if maj != cbg.MajArray || l < 1 {
+        return nil, fmt.Errorf("applyandcall params must be array with >=1 elements")
+    }
+    maj0, l0, err := r.ReadHeader()
+    if err != nil {
+        return nil, err
+    }
+    if maj0 != cbg.MajArray {
+        return nil, fmt.Errorf("authorizations must be array")
+    }
+    tmp := make([]EthAuthorization, 0, l0)
+    for i := 0; i < int(l0); i++ {
+        majT, tlen, err := r.ReadHeader()
+        if err != nil || majT != cbg.MajArray || tlen != 6 {
+            return nil, fmt.Errorf("authorization[%d]: not a 6-field tuple", i)
+        }
+        majF, v, err := r.ReadHeader()
+        if err != nil || majF != cbg.MajUnsignedInt { return nil, fmt.Errorf("auth[%d]: bad chainId", i) }
+        majF, blen, err := r.ReadHeader()
+        if err != nil || majF != cbg.MajByteString || blen != 20 { return nil, fmt.Errorf("auth[%d]: bad address", i) }
+        var ea EthAddress
+        if _, err := r.Read(ea[:]); err != nil { return nil, fmt.Errorf("auth[%d]: bad address bytes", i) }
+        majF, nv, err := r.ReadHeader()
+        if err != nil || majF != cbg.MajUnsignedInt { return nil, fmt.Errorf("auth[%d]: bad nonce", i) }
+        majF, yv, err := r.ReadHeader()
+        if err != nil || majF != cbg.MajUnsignedInt { return nil, fmt.Errorf("auth[%d]: bad yParity", i) }
+        majF, rbl, err := r.ReadHeader()
+        if err != nil || majF != cbg.MajByteString { return nil, fmt.Errorf("auth[%d]: bad r", i) }
+        rb := make([]byte, rbl)
+        if _, err := r.Read(rb); err != nil { return nil, fmt.Errorf("auth[%d]: bad r bytes", i) }
+        majF, sbl, err := r.ReadHeader()
+        if err != nil || majF != cbg.MajByteString { return nil, fmt.Errorf("auth[%d]: bad s", i) }
+        sb := make([]byte, sbl)
+        if _, err := r.Read(sb); err != nil { return nil, fmt.Errorf("auth[%d]: bad s bytes", i) }
+        tmp = append(tmp, EthAuthorization{
+            ChainID: EthUint64(v),
+            Address: ea,
+            Nonce:   EthUint64(nv),
+            YParity: uint8(yv),
+            R:       EthBigInt(big.NewFromGo(new(mathbig.Int).SetBytes(rb))),
+            S:       EthBigInt(big.NewFromGo(new(mathbig.Int).SetBytes(sb))),
+        })
+    }
+    return tmp, nil
 }
 
 func ToSignedFilecoinMessage(tx EthTransaction) (*types.SignedMessage, error) {
