@@ -239,6 +239,7 @@ To route 0x04 transactions in development, build Lotus with `-tags eip7702_enabl
   - Run `make check` to execute static checks and linters.
 - Builtin‑actors (paired repo at `../builtin-actors`):
   - Run `cargo fmt --all` to format Rust code consistently across crates.
+  - Run `make check` to run clippy and enforce `-D warnings` across all crates and targets.
 
 Notes:
 - Keep formatting‑only changes in their own commits where feasible. Avoid mixing formatting with logic changes to keep diffs focused and reviewable.
