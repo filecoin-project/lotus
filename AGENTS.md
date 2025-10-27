@@ -233,6 +233,16 @@ To route 0x04 transactions in development, build Lotus with `-tags eip7702_enabl
 - Keep history readable: no formatting‑only changes mixed with logic changes.
 - Pair commits with pushes regularly to keep the remote branch current (e.g., push after each semantic commit or small group of related commits). Coordinate with PR reviews to avoid large, monolithic pushes.
 
+**Pre‑Commit Checklist (Tooling/Formatting)**
+- Lotus (this repo):
+  - Run `go fmt ./...` to format Go code.
+  - Run `make check` to execute static checks and linters.
+- Builtin‑actors (paired repo at `../builtin-actors`):
+  - Run `cargo fmt --all` to format Rust code consistently across crates.
+
+Notes:
+- Keep formatting‑only changes in their own commits where feasible. Avoid mixing formatting with logic changes to keep diffs focused and reviewable.
+
 **Acceptance Criteria**
 - A signed type‑0x04 tx decodes, constructs a Filecoin message calling EVM.ApplyAndCall, applies valid delegations atomically with the outer call, and subsequent CALL→EOA executes delegate code.
 - JSON‑RPC returns `authorizationList` and `delegatedTo` where applicable.
