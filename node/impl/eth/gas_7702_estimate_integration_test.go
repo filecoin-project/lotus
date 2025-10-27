@@ -169,26 +169,6 @@ func make7702ParamsN(t *testing.T, n int) []byte {
 	return buf.Bytes()
 }
 
-// make7702ParamsLegacyN builds legacy CBOR params (top-level array of N tuples)
-// without the wrapper [ list ]. This ensures the tuple counter handles legacy shape.
-func make7702ParamsLegacyN(t *testing.T, n int) []byte {
-	t.Helper()
-	var buf bytes.Buffer
-	// top-level array with N tuples
-	require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, uint64(n)))
-	for i := 0; i < n; i++ {
-		require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 6))
-		require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajUnsignedInt, 314))
-		var a [20]byte
-		a[0] = byte(0xA0 + i)
-		require.NoError(t, cbg.WriteByteArray(&buf, a[:]))
-		require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajUnsignedInt, 0))
-		require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajUnsignedInt, 0))
-		require.NoError(t, cbg.WriteByteArray(&buf, []byte{1}))
-		require.NoError(t, cbg.WriteByteArray(&buf, []byte{1}))
-	}
-	return buf.Bytes()
-}
 
 func TestEthEstimateGas_7702AddsSomeOverheadWhenTuplesPresent(t *testing.T) {
 	ctx := context.Background()

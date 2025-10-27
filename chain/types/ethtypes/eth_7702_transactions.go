@@ -14,8 +14,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-// ---------- Authorization tuple ----------
-// Mirrors the 6-field tuple specified by EIP-7702:
+// EthAuthorization mirrors the 6-field tuple specified by EIP-7702:
 //
 //	[chain_id, address, nonce, y_parity, r, s]
 //
@@ -119,10 +118,11 @@ func (tx *Eth7702TxArgs) ToVerifiableSignature(sig []byte) ([]byte, error) {
 
 func (tx *Eth7702TxArgs) Sender() (address.Address, error) { return sender(tx) }
 
-// IMPORTANT: Until the actor/FVM support is landed, we reject here with a clear error.
-// ToUnsignedFilecoinMessage (compat) delegates to the atomic builder.
+// ToUnsignedFilecoinMessage delegates to ToUnsignedFilecoinMessageAtomic.
+// Until the actor/FVM support is fully landed, this path may return an error
+// if the EVM ApplyAndCall integration is not enabled.
 func (tx *Eth7702TxArgs) ToUnsignedFilecoinMessage(from address.Address) (*types.Message, error) {
-	return tx.ToUnsignedFilecoinMessageAtomic(from)
+    return tx.ToUnsignedFilecoinMessageAtomic(from)
 }
 
 // ToUnsignedFilecoinMessageAtomic builds a Filecoin message that calls the
