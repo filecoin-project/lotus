@@ -234,9 +234,8 @@ To route 0x04 transactions in development, build Lotus with `-tags eip7702_enabl
 - Pair commits with pushes regularly to keep the remote branch current (e.g., push after each semantic commit or small group of related commits). Coordinate with PR reviews to avoid large, monolithic pushes.
 
 **Pre‑Commit Checklist (Tooling/Formatting)**
-- Lotus (this repo):
+ - Lotus (this repo):
   - Run `go fmt ./...` to format Go code.
-  - Run `make check` to execute static checks and linters.
 - Builtin‑actors (paired repo at `../builtin-actors`):
   - Run `cargo fmt --all` to format Rust code consistently across crates.
   - Run `make check` to run clippy and enforce `-D warnings` across all crates and targets.
