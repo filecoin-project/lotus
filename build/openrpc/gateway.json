@@ -3015,7 +3015,20 @@
                                         "blockNumber": "0x5"
                                     }
                                 ],
-                                "type": "0x5"
+                                "type": "0x5",
+                                "authorizationList": [
+                                    {
+                                        "chainId": "0x5",
+                                        "address": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+                                        "nonce": "0x5",
+                                        "yParity": 7,
+                                        "r": "0x0",
+                                        "s": "0x0"
+                                    }
+                                ],
+                                "delegatedTo": [
+                                    "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031"
+                                ]
                             }
                         ]
                     ],
@@ -3023,6 +3036,45 @@
                         {
                             "additionalProperties": false,
                             "properties": {
+                                "authorizationList": {
+                                    "items": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "address": {
+                                                "items": {
+                                                    "description": "Number is a number",
+                                                    "title": "number",
+                                                    "type": "number"
+                                                },
+                                                "maxItems": 20,
+                                                "minItems": 20,
+                                                "type": "array"
+                                            },
+                                            "chainId": {
+                                                "title": "number",
+                                                "type": "number"
+                                            },
+                                            "nonce": {
+                                                "title": "number",
+                                                "type": "number"
+                                            },
+                                            "r": {
+                                                "additionalProperties": false,
+                                                "type": "object"
+                                            },
+                                            "s": {
+                                                "additionalProperties": false,
+                                                "type": "object"
+                                            },
+                                            "yParity": {
+                                                "title": "number",
+                                                "type": "number"
+                                            }
+                                        },
+                                        "type": "object"
+                                    },
+                                    "type": "array"
+                                },
                                 "blockHash": {
                                     "items": {
                                         "description": "Number is a number",
@@ -3050,6 +3102,19 @@
                                 "cumulativeGasUsed": {
                                     "title": "number",
                                     "type": "number"
+                                },
+                                "delegatedTo": {
+                                    "items": {
+                                        "items": {
+                                            "description": "Number is a number",
+                                            "title": "number",
+                                            "type": "number"
+                                        },
+                                        "maxItems": 20,
+                                        "minItems": 20,
+                                        "type": "array"
+                                    },
+                                    "type": "array"
                                 },
                                 "effectiveGasPrice": {
                                     "additionalProperties": false,
@@ -3910,7 +3975,17 @@
                             ],
                             "v": "0x0",
                             "r": "0x0",
-                            "s": "0x0"
+                            "s": "0x0",
+                            "authorizationList": [
+                                {
+                                    "chainId": "0x5",
+                                    "address": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+                                    "nonce": "0x5",
+                                    "yParity": 7,
+                                    "r": "0x0",
+                                    "s": "0x0"
+                                }
+                            ]
                         }
                     ],
                     "additionalProperties": false,
@@ -3925,6 +4000,45 @@
                                 "maxItems": 32,
                                 "minItems": 32,
                                 "type": "array"
+                            },
+                            "type": "array"
+                        },
+                        "authorizationList": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "address": {
+                                        "items": {
+                                            "description": "Number is a number",
+                                            "title": "number",
+                                            "type": "number"
+                                        },
+                                        "maxItems": 20,
+                                        "minItems": 20,
+                                        "type": "array"
+                                    },
+                                    "chainId": {
+                                        "title": "number",
+                                        "type": "number"
+                                    },
+                                    "nonce": {
+                                        "title": "number",
+                                        "type": "number"
+                                    },
+                                    "r": {
+                                        "additionalProperties": false,
+                                        "type": "object"
+                                    },
+                                    "s": {
+                                        "additionalProperties": false,
+                                        "type": "object"
+                                    },
+                                    "yParity": {
+                                        "title": "number",
+                                        "type": "number"
+                                    }
+                                },
+                                "type": "object"
                             },
                             "type": "array"
                         },
@@ -4108,7 +4222,17 @@
                             ],
                             "v": "0x0",
                             "r": "0x0",
-                            "s": "0x0"
+                            "s": "0x0",
+                            "authorizationList": [
+                                {
+                                    "chainId": "0x5",
+                                    "address": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+                                    "nonce": "0x5",
+                                    "yParity": 7,
+                                    "r": "0x0",
+                                    "s": "0x0"
+                                }
+                            ]
                         }
                     ],
                     "additionalProperties": false,
@@ -4123,6 +4247,45 @@
                                 "maxItems": 32,
                                 "minItems": 32,
                                 "type": "array"
+                            },
+                            "type": "array"
+                        },
+                        "authorizationList": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "address": {
+                                        "items": {
+                                            "description": "Number is a number",
+                                            "title": "number",
+                                            "type": "number"
+                                        },
+                                        "maxItems": 20,
+                                        "minItems": 20,
+                                        "type": "array"
+                                    },
+                                    "chainId": {
+                                        "title": "number",
+                                        "type": "number"
+                                    },
+                                    "nonce": {
+                                        "title": "number",
+                                        "type": "number"
+                                    },
+                                    "r": {
+                                        "additionalProperties": false,
+                                        "type": "object"
+                                    },
+                                    "s": {
+                                        "additionalProperties": false,
+                                        "type": "object"
+                                    },
+                                    "yParity": {
+                                        "title": "number",
+                                        "type": "number"
+                                    }
+                                },
+                                "type": "object"
                             },
                             "type": "array"
                         },
@@ -4300,7 +4463,17 @@
                             ],
                             "v": "0x0",
                             "r": "0x0",
-                            "s": "0x0"
+                            "s": "0x0",
+                            "authorizationList": [
+                                {
+                                    "chainId": "0x5",
+                                    "address": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+                                    "nonce": "0x5",
+                                    "yParity": 7,
+                                    "r": "0x0",
+                                    "s": "0x0"
+                                }
+                            ]
                         }
                     ],
                     "additionalProperties": false,
@@ -4315,6 +4488,45 @@
                                 "maxItems": 32,
                                 "minItems": 32,
                                 "type": "array"
+                            },
+                            "type": "array"
+                        },
+                        "authorizationList": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "address": {
+                                        "items": {
+                                            "description": "Number is a number",
+                                            "title": "number",
+                                            "type": "number"
+                                        },
+                                        "maxItems": 20,
+                                        "minItems": 20,
+                                        "type": "array"
+                                    },
+                                    "chainId": {
+                                        "title": "number",
+                                        "type": "number"
+                                    },
+                                    "nonce": {
+                                        "title": "number",
+                                        "type": "number"
+                                    },
+                                    "r": {
+                                        "additionalProperties": false,
+                                        "type": "object"
+                                    },
+                                    "s": {
+                                        "additionalProperties": false,
+                                        "type": "object"
+                                    },
+                                    "yParity": {
+                                        "title": "number",
+                                        "type": "number"
+                                    }
+                                },
+                                "type": "object"
                             },
                             "type": "array"
                         },
@@ -4649,11 +4861,63 @@
                                     "blockNumber": "0x5"
                                 }
                             ],
-                            "type": "0x5"
+                            "type": "0x5",
+                            "authorizationList": [
+                                {
+                                    "chainId": "0x5",
+                                    "address": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+                                    "nonce": "0x5",
+                                    "yParity": 7,
+                                    "r": "0x0",
+                                    "s": "0x0"
+                                }
+                            ],
+                            "delegatedTo": [
+                                "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031"
+                            ]
                         }
                     ],
                     "additionalProperties": false,
                     "properties": {
+                        "authorizationList": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "address": {
+                                        "items": {
+                                            "description": "Number is a number",
+                                            "title": "number",
+                                            "type": "number"
+                                        },
+                                        "maxItems": 20,
+                                        "minItems": 20,
+                                        "type": "array"
+                                    },
+                                    "chainId": {
+                                        "title": "number",
+                                        "type": "number"
+                                    },
+                                    "nonce": {
+                                        "title": "number",
+                                        "type": "number"
+                                    },
+                                    "r": {
+                                        "additionalProperties": false,
+                                        "type": "object"
+                                    },
+                                    "s": {
+                                        "additionalProperties": false,
+                                        "type": "object"
+                                    },
+                                    "yParity": {
+                                        "title": "number",
+                                        "type": "number"
+                                    }
+                                },
+                                "type": "object"
+                            },
+                            "type": "array"
+                        },
                         "blockHash": {
                             "items": {
                                 "description": "Number is a number",
@@ -4681,6 +4945,19 @@
                         "cumulativeGasUsed": {
                             "title": "number",
                             "type": "number"
+                        },
+                        "delegatedTo": {
+                            "items": {
+                                "items": {
+                                    "description": "Number is a number",
+                                    "title": "number",
+                                    "type": "number"
+                                },
+                                "maxItems": 20,
+                                "minItems": 20,
+                                "type": "array"
+                            },
+                            "type": "array"
                         },
                         "effectiveGasPrice": {
                             "additionalProperties": false,

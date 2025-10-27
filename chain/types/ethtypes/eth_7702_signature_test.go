@@ -3,9 +3,10 @@ package ethtypes
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/go-state-types/big"
 	typescrypto "github.com/filecoin-project/go-state-types/crypto"
-	"github.com/stretchr/testify/require"
 )
 
 func TestEIP7702_SignaturePacking(t *testing.T) {

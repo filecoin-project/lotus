@@ -1,9 +1,11 @@
 package ethtypes
 
 import (
-	"github.com/filecoin-project/go-state-types/big"
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-state-types/big"
 )
 
 // Helper builds a minimal 0x04 tx using manual RLP items to inject a non-canonical integer

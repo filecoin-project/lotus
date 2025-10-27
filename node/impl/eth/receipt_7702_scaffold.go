@@ -3,8 +3,10 @@ package eth
 import (
 	"context"
 	"encoding/hex"
-	"github.com/filecoin-project/lotus/chain/types/ethtypes"
+
 	"golang.org/x/crypto/sha3"
+
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
 // adjustReceiptForDelegation is a placeholder to capture receipt adjustments

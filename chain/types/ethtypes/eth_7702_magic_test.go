@@ -1,9 +1,10 @@
 package ethtypes
 
 import (
+	"testing"
+
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/sha3"
-	"testing"
 )
 
 func TestAuthorizationPreimage_Shape(t *testing.T) {

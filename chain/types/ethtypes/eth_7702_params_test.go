@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/filecoin-project/go-state-types/big"
 	"github.com/stretchr/testify/require"
 	cbg "github.com/whyrusleeping/cbor-gen"
+
+	"github.com/filecoin-project/go-state-types/big"
 )
 
 func TestCborEncodeEIP7702Authorizations_Shape(t *testing.T) {

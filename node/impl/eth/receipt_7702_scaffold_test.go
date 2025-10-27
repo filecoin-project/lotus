@@ -6,6 +6,7 @@ import (
 	"golang.org/x/crypto/sha3"
 
 	"github.com/filecoin-project/go-state-types/big"
+
 	ethtypes "github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 

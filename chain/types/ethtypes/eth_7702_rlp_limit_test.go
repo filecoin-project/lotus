@@ -3,8 +3,9 @@ package ethtypes
 import (
 	"testing"
 
-	"github.com/filecoin-project/go-state-types/big"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-state-types/big"
 )
 
 // Verifies that the 0x04 parser uses a per-type RLP element limit (13) and

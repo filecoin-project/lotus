@@ -5,10 +5,12 @@ package ethtypes
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
+
 	"github.com/filecoin-project/lotus/build/buildconstants"
-	"github.com/stretchr/testify/require"
 )
 
 func TestEIP7702_ToUnsignedFilecoinMessage_EvmReceiver(t *testing.T) {

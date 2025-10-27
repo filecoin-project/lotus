@@ -3,8 +3,9 @@ package ethtypes
 import (
 	"bytes"
 
-	"github.com/filecoin-project/go-state-types/big"
 	cbg "github.com/whyrusleeping/cbor-gen"
+
+	"github.com/filecoin-project/go-state-types/big"
 )
 
 // CborEncodeEIP7702Authorizations encodes the authorizationList into CBOR

@@ -2,6 +2,7 @@ package kit
 
 import (
 	typescrypto "github.com/filecoin-project/go-state-types/crypto"
+
 	"github.com/filecoin-project/lotus/lib/sigs"
 )
 

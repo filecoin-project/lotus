@@ -1,8 +1,9 @@
 package ethtypes
 
 import (
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestEthAuthorization_DomainHash_UsesTupleFields(t *testing.T) {

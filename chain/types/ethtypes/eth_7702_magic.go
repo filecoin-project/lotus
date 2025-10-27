@@ -2,6 +2,7 @@ package ethtypes
 
 import (
 	"encoding/binary"
+
 	"golang.org/x/crypto/sha3"
 )
 
