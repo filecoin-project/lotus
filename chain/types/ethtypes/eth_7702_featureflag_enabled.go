@@ -3,6 +3,5 @@
 package ethtypes
 
 func init() {
-    Eip7702FeatureEnabled = true
+	Eip7702FeatureEnabled = true
 }
-

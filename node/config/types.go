@@ -541,8 +541,7 @@ type FevmConfig struct {
 	// recently requested blocks that are already cached.
 	// The default size of the cache is 500 blocks.
 	// Note: Setting this value to 0 disables the cache.
-    EthBlkCacheSize int
-
+	EthBlkCacheSize int
 }
 
 type EventsConfig struct {

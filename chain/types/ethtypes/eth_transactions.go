@@ -22,11 +22,11 @@ import (
 )
 
 const (
-    EthLegacyTxType = 0x00
-    EIP1559TxType   = 0x02
-    // EIP-7702 typed transaction: Set Code for EOAs (authorization list)
-    // https://eips.ethereum.org/EIPS/eip-7702
-    EIP7702TxType   = 0x04
+	EthLegacyTxType = 0x00
+	EIP1559TxType   = 0x02
+	// EIP-7702 typed transaction: Set Code for EOAs (authorization list)
+	// https://eips.ethereum.org/EIPS/eip-7702
+	EIP7702TxType = 0x04
 )
 
 const (
@@ -69,7 +69,7 @@ type EthTransaction interface {
 // - In legacy Homestead transactions, the `GasPrice` field is populated to specify the fee per unit of gas, while the `MaxFeePerGas` and `MaxPriorityFeePerGas` fields are set to nil/empty.
 // Additionally, both the `ChainID` and the `Type` fields are set to 0 in legacy Homestead transactions to differentiate them from EIP-1559 transactions.
 type EthTx struct {
-    ChainID              EthUint64   `json:"chainId"`
+	ChainID              EthUint64   `json:"chainId"`
 	Nonce                EthUint64   `json:"nonce"`
 	Hash                 EthHash     `json:"hash"`
 	BlockHash            *EthHash    `json:"blockHash"`
@@ -85,11 +85,11 @@ type EthTx struct {
 	MaxPriorityFeePerGas *EthBigInt  `json:"maxPriorityFeePerGas,omitempty"`
 	GasPrice             *EthBigInt  `json:"gasPrice,omitempty"`
 	AccessList           []EthHash   `json:"accessList"`
-    V                    EthBigInt   `json:"v"`
-    R                    EthBigInt   `json:"r"`
-    S                    EthBigInt   `json:"s"`
-    // Present only for EIP-7702 (type 0x04) transactions
-    AuthorizationList    []EthAuthorization `json:"authorizationList,omitempty"`
+	V                    EthBigInt   `json:"v"`
+	R                    EthBigInt   `json:"r"`
+	S                    EthBigInt   `json:"s"`
+	// Present only for EIP-7702 (type 0x04) transactions
+	AuthorizationList []EthAuthorization `json:"authorizationList,omitempty"`
 }
 
 func (tx *EthTx) GasFeeCap() (EthBigInt, error) {
@@ -130,31 +130,31 @@ func EthTransactionFromSignedFilecoinMessage(smsg *types.SignedMessage) (EthTran
 		return nil, fmt.Errorf("sender was not an eth account")
 	}
 
-    // Special-case: EVM ApplyAndCall -> reconstruct a 0x04 tx view
-    if smsg.Message.Method == abi.MethodNum(MethodHash("ApplyAndCall")) {
-        if authz, err := strictDecodeApplyAndCallAuthorizations(smsg.Message.Params); err == nil && len(authz) > 0 {
-            tx := &Eth7702TxArgs{
-                ChainID:              buildconstants.Eip155ChainId,
-                Nonce:                int(smsg.Message.Nonce),
-                To:                   nil,
-                Value:                smsg.Message.Value,
-                MaxFeePerGas:         smsg.Message.GasFeeCap,
-                MaxPriorityFeePerGas: smsg.Message.GasPremium,
-                GasLimit:             int(smsg.Message.GasLimit),
-                Input:                nil,
-                AuthorizationList:    authz,
-            }
-            if err := tx.InitialiseSignature(smsg.Signature); err != nil {
-                return nil, fmt.Errorf("failed to initialise signature: %w", err)
-            }
-            return tx, nil
-        }
-    }
+	// Special-case: EVM ApplyAndCall -> reconstruct a 0x04 tx view
+	if smsg.Message.Method == abi.MethodNum(MethodHash("ApplyAndCall")) {
+		if authz, err := strictDecodeApplyAndCallAuthorizations(smsg.Message.Params); err == nil && len(authz) > 0 {
+			tx := &Eth7702TxArgs{
+				ChainID:              buildconstants.Eip155ChainId,
+				Nonce:                int(smsg.Message.Nonce),
+				To:                   nil,
+				Value:                smsg.Message.Value,
+				MaxFeePerGas:         smsg.Message.GasFeeCap,
+				MaxPriorityFeePerGas: smsg.Message.GasPremium,
+				GasLimit:             int(smsg.Message.GasLimit),
+				Input:                nil,
+				AuthorizationList:    authz,
+			}
+			if err := tx.InitialiseSignature(smsg.Signature); err != nil {
+				return nil, fmt.Errorf("failed to initialise signature: %w", err)
+			}
+			return tx, nil
+		}
+	}
 
-    // Delegator route removed (EVM-only)
+	// Delegator route removed (EVM-only)
 
-    // Extract Ethereum parameters and recipient from the message.
-    params, to, err := getEthParamsAndRecipient(&smsg.Message)
+	// Extract Ethereum parameters and recipient from the message.
+	params, to, err := getEthParamsAndRecipient(&smsg.Message)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse input params and recipient: %w", err)
 	}
@@ -221,55 +221,73 @@ func EthTransactionFromSignedFilecoinMessage(smsg *types.SignedMessage) (EthTran
 // - first element is an array of 6-field tuples with exact field kinds
 // Errors out early on malformed shapes.
 func strictDecodeApplyAndCallAuthorizations(params []byte) ([]EthAuthorization, error) {
-    r := cbg.NewCborReader(bytes.NewReader(params))
-    maj, l, err := r.ReadHeader()
-    if err != nil {
-        return nil, err
-    }
-    if maj != cbg.MajArray || l < 1 {
-        return nil, fmt.Errorf("applyandcall params must be array with >=1 elements")
-    }
-    maj0, l0, err := r.ReadHeader()
-    if err != nil {
-        return nil, err
-    }
-    if maj0 != cbg.MajArray {
-        return nil, fmt.Errorf("authorizations must be array")
-    }
-    tmp := make([]EthAuthorization, 0, l0)
-    for i := 0; i < int(l0); i++ {
-        majT, tlen, err := r.ReadHeader()
-        if err != nil || majT != cbg.MajArray || tlen != 6 {
-            return nil, fmt.Errorf("authorization[%d]: not a 6-field tuple", i)
-        }
-        majF, v, err := r.ReadHeader()
-        if err != nil || majF != cbg.MajUnsignedInt { return nil, fmt.Errorf("auth[%d]: bad chainId", i) }
-        majF, blen, err := r.ReadHeader()
-        if err != nil || majF != cbg.MajByteString || blen != 20 { return nil, fmt.Errorf("auth[%d]: bad address", i) }
-        var ea EthAddress
-        if _, err := r.Read(ea[:]); err != nil { return nil, fmt.Errorf("auth[%d]: bad address bytes", i) }
-        majF, nv, err := r.ReadHeader()
-        if err != nil || majF != cbg.MajUnsignedInt { return nil, fmt.Errorf("auth[%d]: bad nonce", i) }
-        majF, yv, err := r.ReadHeader()
-        if err != nil || majF != cbg.MajUnsignedInt { return nil, fmt.Errorf("auth[%d]: bad yParity", i) }
-        majF, rbl, err := r.ReadHeader()
-        if err != nil || majF != cbg.MajByteString { return nil, fmt.Errorf("auth[%d]: bad r", i) }
-        rb := make([]byte, rbl)
-        if _, err := r.Read(rb); err != nil { return nil, fmt.Errorf("auth[%d]: bad r bytes", i) }
-        majF, sbl, err := r.ReadHeader()
-        if err != nil || majF != cbg.MajByteString { return nil, fmt.Errorf("auth[%d]: bad s", i) }
-        sb := make([]byte, sbl)
-        if _, err := r.Read(sb); err != nil { return nil, fmt.Errorf("auth[%d]: bad s bytes", i) }
-        tmp = append(tmp, EthAuthorization{
-            ChainID: EthUint64(v),
-            Address: ea,
-            Nonce:   EthUint64(nv),
-            YParity: uint8(yv),
-            R:       EthBigInt(big.NewFromGo(new(mathbig.Int).SetBytes(rb))),
-            S:       EthBigInt(big.NewFromGo(new(mathbig.Int).SetBytes(sb))),
-        })
-    }
-    return tmp, nil
+	r := cbg.NewCborReader(bytes.NewReader(params))
+	maj, l, err := r.ReadHeader()
+	if err != nil {
+		return nil, err
+	}
+	if maj != cbg.MajArray || l < 1 {
+		return nil, fmt.Errorf("applyandcall params must be array with >=1 elements")
+	}
+	maj0, l0, err := r.ReadHeader()
+	if err != nil {
+		return nil, err
+	}
+	if maj0 != cbg.MajArray {
+		return nil, fmt.Errorf("authorizations must be array")
+	}
+	tmp := make([]EthAuthorization, 0, l0)
+	for i := 0; i < int(l0); i++ {
+		majT, tlen, err := r.ReadHeader()
+		if err != nil || majT != cbg.MajArray || tlen != 6 {
+			return nil, fmt.Errorf("authorization[%d]: not a 6-field tuple", i)
+		}
+		majF, v, err := r.ReadHeader()
+		if err != nil || majF != cbg.MajUnsignedInt {
+			return nil, fmt.Errorf("auth[%d]: bad chainId", i)
+		}
+		majF, blen, err := r.ReadHeader()
+		if err != nil || majF != cbg.MajByteString || blen != 20 {
+			return nil, fmt.Errorf("auth[%d]: bad address", i)
+		}
+		var ea EthAddress
+		if _, err := r.Read(ea[:]); err != nil {
+			return nil, fmt.Errorf("auth[%d]: bad address bytes", i)
+		}
+		majF, nv, err := r.ReadHeader()
+		if err != nil || majF != cbg.MajUnsignedInt {
+			return nil, fmt.Errorf("auth[%d]: bad nonce", i)
+		}
+		majF, yv, err := r.ReadHeader()
+		if err != nil || majF != cbg.MajUnsignedInt {
+			return nil, fmt.Errorf("auth[%d]: bad yParity", i)
+		}
+		majF, rbl, err := r.ReadHeader()
+		if err != nil || majF != cbg.MajByteString {
+			return nil, fmt.Errorf("auth[%d]: bad r", i)
+		}
+		rb := make([]byte, rbl)
+		if _, err := r.Read(rb); err != nil {
+			return nil, fmt.Errorf("auth[%d]: bad r bytes", i)
+		}
+		majF, sbl, err := r.ReadHeader()
+		if err != nil || majF != cbg.MajByteString {
+			return nil, fmt.Errorf("auth[%d]: bad s", i)
+		}
+		sb := make([]byte, sbl)
+		if _, err := r.Read(sb); err != nil {
+			return nil, fmt.Errorf("auth[%d]: bad s bytes", i)
+		}
+		tmp = append(tmp, EthAuthorization{
+			ChainID: EthUint64(v),
+			Address: ea,
+			Nonce:   EthUint64(nv),
+			YParity: uint8(yv),
+			R:       EthBigInt(big.NewFromGo(new(mathbig.Int).SetBytes(rb))),
+			S:       EthBigInt(big.NewFromGo(new(mathbig.Int).SetBytes(sb))),
+		})
+	}
+	return tmp, nil
 }
 
 func ToSignedFilecoinMessage(tx EthTransaction) (*types.SignedMessage, error) {
@@ -278,17 +296,17 @@ func ToSignedFilecoinMessage(tx EthTransaction) (*types.SignedMessage, error) {
 		return nil, fmt.Errorf("failed to calculate sender: %w", err)
 	}
 
-    var unsignedMsg *types.Message
-    switch t := tx.(type) {
-    case *Eth7702TxArgs:
-        // Route 0x04 to atomic apply+call params
-        unsignedMsg, err = t.ToUnsignedFilecoinMessageAtomic(from)
-    default:
-        unsignedMsg, err = tx.ToUnsignedFilecoinMessage(from)
-    }
-    if err != nil {
-        return nil, fmt.Errorf("failed to convert to unsigned msg: %w", err)
-    }
+	var unsignedMsg *types.Message
+	switch t := tx.(type) {
+	case *Eth7702TxArgs:
+		// Route 0x04 to atomic apply+call params
+		unsignedMsg, err = t.ToUnsignedFilecoinMessageAtomic(from)
+	default:
+		unsignedMsg, err = tx.ToUnsignedFilecoinMessage(from)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert to unsigned msg: %w", err)
+	}
 
 	siggy, err := tx.Signature()
 	if err != nil {
@@ -302,31 +320,31 @@ func ToSignedFilecoinMessage(tx EthTransaction) (*types.SignedMessage, error) {
 }
 
 func ParseEthTransaction(data []byte) (EthTransaction, error) {
-    if len(data) == 0 {
-        return nil, fmt.Errorf("empty data")
-    }
+	if len(data) == 0 {
+		return nil, fmt.Errorf("empty data")
+	}
 
-    switch data[0] {
-    case 1:
-        // EIP-2930
-        return nil, fmt.Errorf("EIP-2930 transaction is not supported")
-    case EIP1559TxType:
-        // EIP-1559
-        return parseEip1559Tx(data)
-    case EIP7702TxType:
-        // EIP-7702 (type 0x04)
-        return parseEip7702Tx(data)
-    default:
-        if data[0] > 0x7f {
-            tx, err := parseLegacyTx(data)
-            if err != nil {
-                return nil, fmt.Errorf("failed to parse legacy transaction: %w", err)
-            }
-            return tx, nil
-        }
-    }
+	switch data[0] {
+	case 1:
+		// EIP-2930
+		return nil, fmt.Errorf("EIP-2930 transaction is not supported")
+	case EIP1559TxType:
+		// EIP-1559
+		return parseEip1559Tx(data)
+	case EIP7702TxType:
+		// EIP-7702 (type 0x04)
+		return parseEip7702Tx(data)
+	default:
+		if data[0] > 0x7f {
+			tx, err := parseLegacyTx(data)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse legacy transaction: %w", err)
+			}
+			return tx, nil
+		}
+	}
 
-    return nil, fmt.Errorf("unsupported transaction type")
+	return nil, fmt.Errorf("unsupported transaction type")
 }
 
 type methodInfo struct {

@@ -3,38 +3,37 @@
 package ethtypes
 
 import (
-    "testing"
+	"testing"
 
-    "github.com/filecoin-project/go-address"
-    "github.com/stretchr/testify/require"
-    "github.com/filecoin-project/go-state-types/big"
-    "github.com/filecoin-project/lotus/build/buildconstants"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/lotus/build/buildconstants"
+	"github.com/stretchr/testify/require"
 )
 
 func TestEIP7702_ToUnsignedFilecoinMessage_EvmReceiver(t *testing.T) {
-    // Configure an EVM ApplyAndCall receiver directly and ensure the message targets it.
-    id999, _ := address.NewIDAddress(999)
-    EvmApplyAndCallActorAddr = id999
+	// Configure an EVM ApplyAndCall receiver directly and ensure the message targets it.
+	id999, _ := address.NewIDAddress(999)
+	EvmApplyAndCallActorAddr = id999
 
-    var to EthAddress
-    tx := &Eth7702TxArgs{
-        ChainID:              buildconstants.Eip155ChainId,
-        Nonce:                0,
-        To:                   &to,
-        Value:                big.NewInt(0),
-        MaxFeePerGas:         big.NewInt(1),
-        MaxPriorityFeePerGas: big.NewInt(1),
-        GasLimit:             21000,
-        AuthorizationList:    []EthAuthorization{{ChainID: EthUint64(buildconstants.Eip155ChainId), Address: to, Nonce: 0, YParity: 0, R: EthBigInt(big.NewInt(1)), S: EthBigInt(big.NewInt(1))}},
-        V:                    big.NewInt(0),
-        R:                    big.NewInt(1),
-        S:                    big.NewInt(1),
-    }
-    fromFC, err := (EthAddress{}).ToFilecoinAddress()
-    require.NoError(t, err)
-    msg, err := tx.ToUnsignedFilecoinMessage(fromFC)
-    require.NoError(t, err)
-    require.Equal(t, EvmApplyAndCallActorAddr, msg.To)
-    require.EqualValues(t, MethodHash("ApplyAndCall"), msg.Method)
+	var to EthAddress
+	tx := &Eth7702TxArgs{
+		ChainID:              buildconstants.Eip155ChainId,
+		Nonce:                0,
+		To:                   &to,
+		Value:                big.NewInt(0),
+		MaxFeePerGas:         big.NewInt(1),
+		MaxPriorityFeePerGas: big.NewInt(1),
+		GasLimit:             21000,
+		AuthorizationList:    []EthAuthorization{{ChainID: EthUint64(buildconstants.Eip155ChainId), Address: to, Nonce: 0, YParity: 0, R: EthBigInt(big.NewInt(1)), S: EthBigInt(big.NewInt(1))}},
+		V:                    big.NewInt(0),
+		R:                    big.NewInt(1),
+		S:                    big.NewInt(1),
+	}
+	fromFC, err := (EthAddress{}).ToFilecoinAddress()
+	require.NoError(t, err)
+	msg, err := tx.ToUnsignedFilecoinMessage(fromFC)
+	require.NoError(t, err)
+	require.Equal(t, EvmApplyAndCallActorAddr, msg.To)
+	require.EqualValues(t, MethodHash("ApplyAndCall"), msg.Method)
 }
-

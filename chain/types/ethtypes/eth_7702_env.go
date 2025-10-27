@@ -6,4 +6,3 @@ import "github.com/filecoin-project/go-address"
 var EvmApplyAndCallActorAddr address.Address
 
 func applyEnvEvmApplyAndCallAddr() {}
-

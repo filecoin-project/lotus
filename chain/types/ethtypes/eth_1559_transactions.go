@@ -223,7 +223,7 @@ func parseEip1559Tx(data []byte) (*Eth1559TxArgs, error) {
 		return nil, xerrors.Errorf("not an EIP-1559 transaction: first byte is not %d", EIP1559TxType)
 	}
 
-    d, err := DecodeRLP(data[1:])
+	d, err := DecodeRLP(data[1:])
 	if err != nil {
 		return nil, err
 	}

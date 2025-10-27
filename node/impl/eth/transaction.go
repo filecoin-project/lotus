@@ -337,13 +337,13 @@ func (e *ethTransaction) EthGetTransactionReceiptLimited(ctx context.Context, tx
 
 	baseFee := parentTs.Blocks()[0].ParentBaseFee
 
-    receipt, err := newEthTxReceipt(ctx, tx, baseFee, msgLookup.Receipt, e.ethEvents)
-    if err != nil {
-        return nil, xerrors.Errorf("failed to create Eth receipt: %w", err)
-    }
+	receipt, err := newEthTxReceipt(ctx, tx, baseFee, msgLookup.Receipt, e.ethEvents)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to create Eth receipt: %w", err)
+	}
 
-    // 7702: adjust receipt for delegated execution if needed
-    adjustReceiptForDelegation(ctx, &receipt, tx)
+	// 7702: adjust receipt for delegated execution if needed
+	adjustReceiptForDelegation(ctx, &receipt, tx)
 
 	return &receipt, nil
 }
@@ -395,13 +395,13 @@ func (e *ethTransaction) EthGetBlockReceiptsLimited(ctx context.Context, blockPa
 			return nil, xerrors.Errorf("failed to create EthTx: %w", err)
 		}
 
-        receipt, err := newEthTxReceipt(ctx, tx, baseFee, receipts[i], e.ethEvents)
-        if err != nil {
-            return nil, xerrors.Errorf("failed to create Eth receipt: %w", err)
-        }
+		receipt, err := newEthTxReceipt(ctx, tx, baseFee, receipts[i], e.ethEvents)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to create Eth receipt: %w", err)
+		}
 
-        // 7702: adjust receipt for delegated execution if needed
-        adjustReceiptForDelegation(ctx, &receipt, tx)
+		// 7702: adjust receipt for delegated execution if needed
+		adjustReceiptForDelegation(ctx, &receipt, tx)
 
 		// Set the correct Ethereum block hash
 		receipt.BlockHash = blkHash

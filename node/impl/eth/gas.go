@@ -229,21 +229,21 @@ func (e *ethGas) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (ethty
 		return ethtypes.EthUint64(0), xerrors.Errorf("failed to estimate gas: %w", err)
 	}
 
-    expectedGas, err := ethGasSearch(ctx, e.chainStore, e.stateManager, e.messagePool, gassedMsg, ts)
-    if err != nil {
-        return 0, xerrors.Errorf("gas search failed: %w", err)
-    }
+	expectedGas, err := ethGasSearch(ctx, e.chainStore, e.stateManager, e.messagePool, gassedMsg, ts)
+	if err != nil {
+		return 0, xerrors.Errorf("gas search failed: %w", err)
+	}
 
-    // 7702: add intrinsic overhead for authorization tuples only for the
-    // EVM ApplyAndCall route.
-    if ethtypes.Eip7702FeatureEnabled && gassedMsg.Method == abi.MethodNum(ethtypes.MethodHash("ApplyAndCall")) {
-        authCount := countAuthInDelegatorParams(gassedMsg.Params)
-        if authCount > 0 {
-            expectedGas += compute7702IntrinsicOverhead(authCount)
-        }
-    }
+	// 7702: add intrinsic overhead for authorization tuples only for the
+	// EVM ApplyAndCall route.
+	if ethtypes.Eip7702FeatureEnabled && gassedMsg.Method == abi.MethodNum(ethtypes.MethodHash("ApplyAndCall")) {
+		authCount := countAuthInDelegatorParams(gassedMsg.Params)
+		if authCount > 0 {
+			expectedGas += compute7702IntrinsicOverhead(authCount)
+		}
+	}
 
-    return ethtypes.EthUint64(expectedGas), nil
+	return ethtypes.EthUint64(expectedGas), nil
 }
 
 func (e *ethGas) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {

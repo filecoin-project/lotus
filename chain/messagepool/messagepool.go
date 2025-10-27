@@ -43,7 +43,6 @@ import (
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
-
 )
 
 var log = logging.Logger("messagepool")
@@ -966,14 +965,14 @@ func (mp *MessagePool) addSkipChecks(ctx context.Context, m *types.SignedMessage
 }
 
 func (mp *MessagePool) addLocked(ctx context.Context, m *types.SignedMessage, strict, untrusted bool) error {
-    log.Debugf("mpooladd: %s %d", m.Message.From, m.Message.Nonce)
+	log.Debugf("mpooladd: %s %d", m.Message.From, m.Message.Nonce)
 	if m.Signature.Type == crypto.SigTypeBLS {
 		mp.blsSigCache.Add(m.Cid(), m.Signature)
 	}
 
-    if _, err := mp.api.PutMessage(ctx, m); err != nil {
-        return xerrors.Errorf("mpooladd cs.PutMessage failed: %s", err)
-    }
+	if _, err := mp.api.PutMessage(ctx, m); err != nil {
+		return xerrors.Errorf("mpooladd cs.PutMessage failed: %s", err)
+	}
 
 	if _, err := mp.api.PutMessage(ctx, &m.Message); err != nil {
 		return xerrors.Errorf("mpooladd cs.PutMessage failed: %s", err)
@@ -998,8 +997,7 @@ func (mp *MessagePool) addLocked(ctx context.Context, m *types.SignedMessage, st
 		}
 	}
 
-
-    incr, err := mset.add(m, mp, strict, untrusted)
+	incr, err := mset.add(m, mp, strict, untrusted)
 	if err != nil {
 		log.Debug(err)
 		return err
@@ -1031,9 +1029,8 @@ func (mp *MessagePool) addLocked(ctx context.Context, m *types.SignedMessage, st
 	// Record the current size of the Mpool
 	stats.Record(ctx, metrics.MpoolMessageCount.M(int64(mp.currentSize)))
 
-    return nil
+	return nil
 }
-
 
 func (mp *MessagePool) GetNonce(ctx context.Context, addr address.Address, _ types.TipSetKey) (uint64, error) {
 	mp.curTsLk.RLock()

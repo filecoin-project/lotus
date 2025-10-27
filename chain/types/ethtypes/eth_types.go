@@ -1275,11 +1275,11 @@ type EthTxReceipt struct {
 	GasUsed           EthUint64   `json:"gasUsed"`
 	EffectiveGasPrice EthBigInt   `json:"effectiveGasPrice"`
 	LogsBloom         EthBytes    `json:"logsBloom"`
-    Logs              []EthLog    `json:"logs"`
-    Type              EthUint64   `json:"type"`
-    // Present only for EIP-7702 transactions. Mirrors transaction view.
-    AuthorizationList []EthAuthorization `json:"authorizationList,omitempty"`
-    // Optional: for EIP-7702 ApplyDelegations, lists delegate addresses referenced
-    // by the authorization tuples. Absent for non-7702 txs and for txs without tuples.
-    DelegatedTo []EthAddress `json:"delegatedTo,omitempty"`
+	Logs              []EthLog    `json:"logs"`
+	Type              EthUint64   `json:"type"`
+	// Present only for EIP-7702 transactions. Mirrors transaction view.
+	AuthorizationList []EthAuthorization `json:"authorizationList,omitempty"`
+	// Optional: for EIP-7702 ApplyDelegations, lists delegate addresses referenced
+	// by the authorization tuples. Absent for non-7702 txs and for txs without tuples.
+	DelegatedTo []EthAddress `json:"delegatedTo,omitempty"`
 }
