@@ -27,8 +27,9 @@ This notebook tracks the end‑to‑end EIP‑7702 implementation across Lotus (
 - Mempool (Lotus):
   - No 7702-specific ingress policies. Ensure standard mempool behavior remains stable.
 - Gas estimation (Lotus):
-  - Unit tests should focus on tuple counting and gating in `node/impl/eth/gas_7702_scaffold.go`.
-  - Prefer behavioral checks: overhead only when list non‑empty; monotonic with tuple count; no overhead when feature disabled or target is not 7702 ApplyAndCall.
+  - Gas model note (FVM): Lotus runs EVM as a Wasm actor on top of Filecoin’s gas system. We do not mirror Ethereum’s intrinsic gas accounting or constants in this branch. Estimation is behavioral and implementation‑defined.
+  - Unit tests must avoid pinning numeric gas constants or absolute gas usage. Focus on tuple counting and gating in `node/impl/eth/gas_7702_scaffold.go`.
+  - Prefer behavioral checks only: overhead applied when the authorization list is non‑empty; overhead grows monotonically with tuple count; no overhead when the feature is disabled or when the target is not EVM `ApplyAndCall`.
 - E2E (Lotus):
   - Mirror geth’s `TestEIP7702` flow (apply two delegations, CALL→EOA executes delegate, storage updated) once the EVM actor ships ApplyAndCall.
 - Actor validations (builtin‑actors/EVM):
@@ -57,7 +58,12 @@ This notebook tracks the end‑to‑end EIP‑7702 implementation across Lotus (
 
 - Lotus follow‑ups
   - Receipts/RPC: ensure receipts/logs reflect atomic apply+call; maintain `delegatedTo` attribution (tuples or synthetic event). RPC reconstruction supports EVM `ApplyAndCall` route.
-  - Gas estimation: model atomic flow; behavioral tests only until constants finalize. Overhead applied for EVM route.
+- Gas estimation: model atomic flow; behavioral tests only until constants finalize. Overhead applied for EVM route.
+
+Gas Model (Lotus on FVM)
+- EVM executes inside a Wasm actor; Filecoin consensus gas rules apply. We intentionally do not try to replicate Ethereum’s gas schedule here.
+- Lotus `eth_estimateGas` behavior for 7702 is best‑effort and behavioral: we add an intrinsic overhead per authorization tuple for user experience. Exact constants are placeholders and may change.
+- Tests must not assert exact gas usage or effective gas price; they should only assert the presence/absence of tuple overhead and its monotonicity with tuple count.
   - Parser/encoding: add `AuthorizationKeccak` test vectors for preimage/hash stability.
 
 - Networking and limits
