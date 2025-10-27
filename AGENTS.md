@@ -258,6 +258,60 @@ Notes:
 - Build tag: `eip7702_enabled` enables the 7702 send‑path in Lotus.
 - Env toggles removed; EVM‑only routing is the default.
 
+**Review Remediation TODOs (Detailed)**
+
+- CRITICAL: CBOR Interoperability — R/S padding mismatch
+  - Problem: Lotus encodes `r/s` as minimally‑encoded big‑endian; actor currently requires exactly 32‑byte values.
+  - builtin‑actors (Actors/EVM):
+    - Update `actors/evm/src/lib.rs`:
+      - In `recover_authority`, if `len(r) > 32 || len(s) > 32` → illegal_argument; else left‑pad each to 32 bytes, then build `sig = r||s||v`.
+      - In `validate_tuple`, change length validation to allow `≤32` and reject `>32` with precise errors.
+      - In `is_high_s`, assume 32‑byte input (padded earlier) and assert length as needed.
+    - Tests: add positive vectors for 1..31‑byte `r/s` (padded in actor) and negative for `>32`.
+  - lotus (client): no encoder changes; add interop tests ensuring minimally‑encoded `r/s` round‑trip and are accepted by actor.
+  - Acceptance: actor accepts ≤32‑byte `r/s`, rejects >32 with clear error; recovered authority matches padded case.
+
+- HIGH: RLP Parsing Potential Overflow (Lotus)
+  - Risk: `chain_id` and `nonce` fields in the 0x04 RLP tuple must support full `uint64` range.
+  - lotus implementation: ensure `chain_id` and `nonce` are parsed using unsigned integer parsing that supports up to `math.MaxUint64` and avoid intermediate `int64` coercions.
+  - Files: `chain/types/ethtypes/eth_7702_transactions.go` (tuple decode helpers).
+  - Tests: extend decoder tests with values above `MaxInt64` and near `MaxUint64` to prove no overflow; retain canonical arity/yParity rejection tests.
+
+- MEDIUM: Misleading error on signature length (Actors)
+  - builtin‑actors: refactor error reporting in `validate_tuple` to check `r/s` length before low‑s/zero checks; return precise messages: “r length exceeds 32”, “s length exceeds 32”, “zero r/s”, “invalid y_parity”. Keep low‑s check on padded 32‑byte `s`.
+  - Tests: negative vectors asserting error reasons for length >32 and invalid yParity.
+
+- HIGH: Insufficient Actor Validation Tests
+  - Add a dedicated `actors/evm/tests/apply_and_call_invalid.rs` suite covering:
+    - Invalid `chainId` (not 0 or local).
+    - Invalid `yParity` (>1).
+    - Zero R or zero S.
+    - High‑S rejection.
+    - Nonce mismatch.
+    - Pre‑existence policy violation (authority is an EVM contract).
+    - Duplicate authority in a single message.
+
+- MEDIUM: Missing Corner Case Tests (Actors)
+  - SELFDESTRUCT no‑op in delegated context:
+    - Build delegate bytecode that executes SELFDESTRUCT when called under InvokeAsEoa; assert no authority state/balance change; pointer mapping preserved; event emission intact.
+  - Storage isolation/persistence on delegate changes:
+    - A→B write storage; switch A→C and verify C cannot read B’s storage; clear A→0; re‑delegate A→B and verify B’s storage persists.
+  - First‑time nonce handling:
+    - Absent authority defaults to nonce=0; applying nonce=0 succeeds; next attempt with nonce=0 fails with nonce mismatch.
+
+- LOW: Fuzzing and Vectors
+  - lotus: add RLP fuzz harness for 0x04 decode focused on tuple arity/yParity/value sizes and malformed tails; ensure no panics and proper erroring.
+  - builtin‑actors: add CBOR fuzz harness for `ApplyAndCallParams` that mutates wrapper shape, tuple arity, and byte sizes for `r/s`.
+  - lotus: add AuthorizationKeccak test vectors for `keccak256(0x05 || rlp([chain_id,address,nonce]))` covering boundary values.
+
+- Gas Model reminders (Lotus on FVM)
+  - Do not pin exact gas constants or absolute gas usage in tests. Keep tests behavioral: overhead only when tuples present, monotonic with tuple count, and disabled when feature off or non‑ApplyAndCall targets.
+
+Ownership and Acceptance (for this section)
+- builtin‑actors: implement R/S padding, improve error clarity, add negative and corner‑case tests, add CBOR fuzz harness.
+- lotus: implement RLP overflow robustness, add AuthorizationKeccak vectors, add RLP fuzz harness.
+- Acceptance: all new tests pass; fuzz harnesses run without panics; interop for minimally‑encoded R/S validated; behavioral gas tests remain green.
+
 **Review Readiness (Scar‑less PR Candidate)**
 - EVM‑only: all 0x04 transactions route to EVM `ApplyAndCall`; no Delegator send/execute path remains.
 - Atomic‑only: there are no non‑atomic paths or fallback code; tests assert atomic semantics for success and revert.
