@@ -169,7 +169,6 @@ func make7702ParamsN(t *testing.T, n int) []byte {
 	return buf.Bytes()
 }
 
-
 func TestEthEstimateGas_7702AddsSomeOverheadWhenTuplesPresent(t *testing.T) {
 	ctx := context.Background()
 	// Feature flag on and EVM ApplyAndCall addr set

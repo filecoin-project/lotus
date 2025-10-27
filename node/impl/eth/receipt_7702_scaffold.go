@@ -30,9 +30,9 @@ func adjustReceiptForDelegation(_ context.Context, receipt *ethtypes.EthTxReceip
 	if len(tx.AuthorizationList) > 0 {
 		// Best-effort extraction of delegate addresses from the tuples.
 		delegated := make([]ethtypes.EthAddress, 0, len(tx.AuthorizationList))
-        for _, a := range tx.AuthorizationList {
-            delegated = append(delegated, a.Address)
-        }
+		for _, a := range tx.AuthorizationList {
+			delegated = append(delegated, a.Address)
+		}
 		if len(delegated) > 0 {
 			receipt.DelegatedTo = delegated
 		}

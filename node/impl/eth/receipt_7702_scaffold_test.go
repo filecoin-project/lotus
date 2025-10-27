@@ -1,14 +1,14 @@
 package eth
 
 import (
-    "context"
-    "testing"
+	"context"
+	"testing"
 
-    "golang.org/x/crypto/sha3"
+	"golang.org/x/crypto/sha3"
 
-    "github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/big"
 
-    ethtypes "github.com/filecoin-project/lotus/chain/types/ethtypes"
+	ethtypes "github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
 func TestAdjustReceiptForDelegation_FromAuthList(t *testing.T) {
@@ -28,8 +28,8 @@ func TestAdjustReceiptForDelegation_FromAuthList(t *testing.T) {
 			S:       ethtypes.EthBigInt(big.NewInt(1)),
 		}},
 	}
-    r := ethtypes.EthTxReceipt{}
-    adjustReceiptForDelegation(context.TODO(), &r, tx)
+	r := ethtypes.EthTxReceipt{}
+	adjustReceiptForDelegation(context.TODO(), &r, tx)
 	if len(r.DelegatedTo) != 1 {
 		t.Fatalf("expected 1 delegatedTo entry, got %d", len(r.DelegatedTo))
 	}
@@ -59,7 +59,7 @@ func TestAdjustReceiptForDelegation_FromSyntheticLog(t *testing.T) {
 	r := ethtypes.EthTxReceipt{Logs: []ethtypes.EthLog{lg}}
 	tx := ethtypes.EthTx{Type: ethtypes.EthUint64(ethtypes.EIP7702TxType)}
 
-    adjustReceiptForDelegation(context.TODO(), &r, tx)
+	adjustReceiptForDelegation(context.TODO(), &r, tx)
 	if len(r.DelegatedTo) != 1 {
 		t.Fatalf("expected 1 delegatedTo entry, got %d", len(r.DelegatedTo))
 	}
@@ -92,7 +92,7 @@ func TestAdjustReceiptForDelegation_PrefersAuthList(t *testing.T) {
 	}
 	r := ethtypes.EthTxReceipt{Logs: []ethtypes.EthLog{{Topics: []ethtypes.EthHash{topic0}, Data: ethtypes.EthBytes(other[:])}}}
 
-    adjustReceiptForDelegation(context.TODO(), &r, tx)
+	adjustReceiptForDelegation(context.TODO(), &r, tx)
 	if len(r.DelegatedTo) != 1 || r.DelegatedTo[0] != authAddr {
 		t.Fatalf("expected delegatedTo from auth list; got %v", r.DelegatedTo)
 	}
@@ -101,8 +101,8 @@ func TestAdjustReceiptForDelegation_PrefersAuthList(t *testing.T) {
 func TestAdjustReceiptForDelegation_NoopWhenNoData(t *testing.T) {
 	// When tx has no authorization list and no logs, DelegatedTo remains empty
 	tx := ethtypes.EthTx{Type: ethtypes.EthUint64(ethtypes.EIP7702TxType)}
-    r := ethtypes.EthTxReceipt{}
-    adjustReceiptForDelegation(context.TODO(), &r, tx)
+	r := ethtypes.EthTxReceipt{}
+	adjustReceiptForDelegation(context.TODO(), &r, tx)
 	if len(r.DelegatedTo) != 0 {
 		t.Fatalf("expected no delegatedTo; got %v", r.DelegatedTo)
 	}
@@ -135,7 +135,7 @@ func TestAdjustReceiptForDelegation_MultipleSyntheticLogs(t *testing.T) {
 	}
 	r := ethtypes.EthTxReceipt{Logs: logs}
 	tx := ethtypes.EthTx{Type: ethtypes.EthUint64(ethtypes.EIP7702TxType)}
-    adjustReceiptForDelegation(context.TODO(), &r, tx)
+	adjustReceiptForDelegation(context.TODO(), &r, tx)
 	if len(r.DelegatedTo) != 2 {
 		t.Fatalf("expected 2 delegatedTo entries, got %d", len(r.DelegatedTo))
 	}
@@ -162,7 +162,7 @@ func TestAdjustReceiptForDelegation_TakesLast20Bytes(t *testing.T) {
 
 	r := ethtypes.EthTxReceipt{Logs: []ethtypes.EthLog{lg}}
 	tx := ethtypes.EthTx{Type: ethtypes.EthUint64(ethtypes.EIP7702TxType)}
-    adjustReceiptForDelegation(context.TODO(), &r, tx)
+	adjustReceiptForDelegation(context.TODO(), &r, tx)
 	if len(r.DelegatedTo) != 1 || r.DelegatedTo[0] != delegate {
 		t.Fatalf("expected delegatedTo to take last 20 bytes; got %v", r.DelegatedTo)
 	}

@@ -122,7 +122,7 @@ func (tx *Eth7702TxArgs) Sender() (address.Address, error) { return sender(tx) }
 // Until the actor/FVM support is fully landed, this path may return an error
 // if the EVM ApplyAndCall integration is not enabled.
 func (tx *Eth7702TxArgs) ToUnsignedFilecoinMessage(from address.Address) (*types.Message, error) {
-    return tx.ToUnsignedFilecoinMessageAtomic(from)
+	return tx.ToUnsignedFilecoinMessageAtomic(from)
 }
 
 // ToUnsignedFilecoinMessageAtomic builds a Filecoin message that calls the
