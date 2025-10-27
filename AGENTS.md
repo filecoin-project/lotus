@@ -142,6 +142,64 @@ Validation notes
 - Optional receipt polish depending on explorer requirements.
 - Pre‑review cleanup (scar‑less): remove Delegator and non‑atomic code paths; make EVM `ApplyAndCall` the sole entry; drop env toggles used for development; scrub docs/tests for single canonical flow.
 
+---
+
+### Actionable TODOs (Handoff Plan)
+
+This section captures the concrete next steps confirmed in review, for handoff to the next implementer. Items are grouped by criticality and include implementation hints and ownership.
+
+Decisions (confirmed)
+- Atomicity: adopt spec‑compliant persistence — delegation mapping + nonce bumps MUST persist even if the outer call reverts.
+- Pre‑existence policy: reject delegations where the authority resolves to an EVM contract actor (Filecoin analogue of “code must be empty/pointer”).
+- Tuple cap: enforce a placeholder cap of 64 tuples in a single message (document as placeholder; tune/remove later).
+- Mempool policy: no 7702‑specific ingress policies on this branch (documented deviation); standard rules apply.
+- Refunds: staged approach — add plumbing + conservative caps now; switch to numeric constants once finalized.
+
+CRITICAL (consensus/security/spec)
+- ApplyAndCall atomicity (spec compliance)
+  - builtin‑actors: DONE — mapping + nonces persist before outer call; always Exit OK with embedded status/return.
+  - lotus: DONE — receipt.status is decoded from the embedded status for type‑0x04; attribution unchanged.
+  - tests: IN PROGRESS — atomic revert persistence asserted at unit level; e2e to follow once wasm lands.
+- Pre‑existence policy (do not “set code” on contracts)
+  - builtin‑actors: In ApplyAndCall, for each authority, resolve to ID and reject when builtin type == EVM (USR_ILLEGAL_ARGUMENT). Add a negative test.
+- Nested delegation depth limit
+  - builtin‑actors: DONE — Enforced depth==1. When executing under InvokeAsEoa/authority context, delegation chains are not followed. ApplyAndCall-driven unit test present.
+- Signature robustness (length + low‑s)
+  - builtin‑actors: Ensure R/S are exactly 32 bytes (already enforced) and add explicit negative tests for invalid lengths. Keep low‑s and non‑zero checks.
+
+HIGH PRIORITY (correctness/robustness)
+- Refunds (staged)
+  - builtin‑actors: STAGED — refund plumbing points present; constants/caps to be wired once finalized.
+  - lotus: Keep estimation behavioral until constants finalize; wire estimates to refunds when available.
+- Tuple cap (placeholder)
+  - builtin‑actors: DONE — Enforces `len(params.list) <= 64`; boundary tests added. Placeholder noted in code comments.
+- SELFDESTRUCT interaction
+  - builtin‑actors: Add tests where delegated code executes SELFDESTRUCT; specify and assert expected behavior for authority mapping/storage and gas.
+- Fuzzing
+  - lotus: Add RLP fuzzing for 0x04 tx decode.
+  - builtin‑actors: Add CBOR fuzzing harness for ApplyAndCall params.
+- E2E lifecycle (post‑wasm)
+  - lotus: Enable full flow once wasm includes ApplyAndCall: apply delegations, CALL→EOA executes delegate, storage persists under authority, event emitted, receipts reflect `authorizationList`, `delegatedTo`, and correct `status`.
+
+MEDIUM PRIORITY (completeness/tests)
+- EOA storage persistence: expand coverage
+  - builtin‑actors: Add tests for (a) switching delegates (A→B then A→C) and verifying B’s storage persists; (b) clearing delegation and verifying storage remains accessible on re‑delegation.
+- First‑time authority nonce handling
+  - builtin‑actors: Add an explicit test that an absent authority is treated as nonce=0; applying nonce=0 succeeds and initializes the nonces map.
+- Estimation parity
+  - lotus: In E2E, compare `eth_estimateGas` results against mined consumption to ensure intrinsic overhead and (later) refunds behave reasonably.
+
+Ownership and ordering
+- builtin‑actors (consensus): atomicity (spec compliance), pre‑existence check, depth limit, tuple cap, refunds plumbing, signature tests, SELFDESTRUCT tests, fuzzer.
+- lotus (client): receipt `status` from ApplyAndCall return, E2E lifecycle, RLP fuzzer, estimation wiring for refunds when ready.
+
+Acceptance criteria (updated)
+- A type‑0x04 tx persists delegation mapping + nonces even when the outer call reverts; Lotus sets receipt status to 0 accordingly.
+- Pre‑existence check rejects authorities that are EVM contracts.
+- No nested delegation chains are followed (depth=1 enforced).
+- Tuple cap of 64 enforced (placeholder); large lists rejected early.
+- Refund plumbing present with conservative caps; numeric constants can be dropped in once finalized.
+
 **Quick Validation**
 - Lotus fast path:
   - `go build ./chain/types/ethtypes`

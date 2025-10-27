@@ -493,6 +493,23 @@ func TestEthGetTransactionReceipt_Non7702_NoDelegatedFields(t *testing.T) {
     require.Len(t, r.DelegatedTo, 0)
 }
 
+
+func TestNewEthTxReceipt_7702_StatusFallbackOnMalformedReturn(t *testing.T) {
+    ctx := context.Background()
+    var to2 ethtypes.EthAddress
+    for i := range to2 { to2[i] = 0x22 }
+    tx := ethtypes.EthTx{ Type: 0x04, Gas: 21000, To: &to2 }
+    one := big.NewInt(1)
+    tx.MaxFeePerGas = &ethtypes.EthBigInt{ Int: one.Int }
+    tx.MaxPriorityFeePerGas = &ethtypes.EthBigInt{ Int: one.Int }
+    // Malformed (not CBOR)
+    msgReceipt := types.MessageReceipt{ ExitCode: 0, GasUsed: 21000, Return: []byte{0xff, 0x00, 0x01} }
+    rcpt, err := newEthTxReceipt(ctx, tx, big.Zero(), msgReceipt, nil)
+    require.NoError(t, err)
+    // Fallback to ExitCode-derived status (OK=1)
+    require.Equal(t, uint64(1), uint64(rcpt.Status))
+}
+
 func TestEthGetTransactionByHash_7702_TxViewContainsAuthList(t *testing.T) {
     ctx := context.Background()
     // Delegator configured
