@@ -213,7 +213,7 @@ func TestEth7702_DelegatedExecute(t *testing.T) {
 
 	// Deploy a simple delegate contract that writes to storage
 	// Note: this call path relies on runtime support; left here to document the expected steps
-    _ /*from*/, _ = client.EVM().DeployContractFromFilename(ctx, "contracts/DelegatecallStorage.hex")
+	_ /*from*/, _ = client.EVM().DeployContractFromFilename(ctx, "contracts/DelegatecallStorage.hex")
 
 	// TODO: Build and send a type-0x04 tx applying delegation from an authority EOA to 'delegate'.
 	// This requires generating per-tuple signatures over keccak(rlp(chain_id,address,nonce)).
