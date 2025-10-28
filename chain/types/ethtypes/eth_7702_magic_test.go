@@ -26,18 +26,18 @@ func TestAuthorizationPreimage_Shape(t *testing.T) {
 	require.True(t, ok)
 	require.Len(t, lst, 3)
 
-	ci, err := parseInt(lst[0])
+	ciU, err := parseUint64(lst[0])
 	require.NoError(t, err)
-	require.Equal(t, 1, ci)
+	require.Equal(t, uint64(1), ciU)
 
 	gotAddr, err := parseEthAddr(lst[1])
 	require.NoError(t, err)
 	require.NotNil(t, gotAddr)
 	require.Equal(t, addr, *gotAddr)
 
-	nn, err := parseInt(lst[2])
+	nnU, err := parseUint64(lst[2])
 	require.NoError(t, err)
-	require.Equal(t, 0, nn)
+	require.Equal(t, uint64(0), nnU)
 }
 
 func TestAuthorizationKeccak_DifferentFromWrongDomain(t *testing.T) {
@@ -51,8 +51,8 @@ func TestAuthorizationKeccak_DifferentFromWrongDomain(t *testing.T) {
 
 	// Compute a bad preimage with wrong domain prefix (0x00) and ensure hashes differ.
 	// This guards against accidentally omitting the MAGIC byte.
-	ci, _ := formatInt(314)
-	ni, _ := formatInt(7)
+	ci, _ := formatUint64(314)
+	ni, _ := formatUint64(7)
 	rl, _ := EncodeRLP([]interface{}{ci, addr[:], ni})
 	badPre := append([]byte{0x00}, rl...)
 	hh := sha3.NewLegacyKeccak256()

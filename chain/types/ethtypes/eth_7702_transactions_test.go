@@ -518,6 +518,53 @@ func TestEIP7702_InitialiseSignature_SetsVRandS(t *testing.T) {
 	require.Equal(t, "1", tx.V.String())
 }
 
+func TestEIP7702_AuthorizationTuple_Uint64BoundaryDecode(t *testing.T) {
+	// Build fields manually and inject authorization tuple with chainId and nonce near MaxUint64.
+	var to EthAddress
+	copy(to[:], mustHex(t, "0x1111111111111111111111111111111111111111"))
+
+	chainId, _ := formatInt(1)
+	nonce, _ := formatInt(1)
+	maxPrio, _ := formatBigInt(big.NewInt(1))
+	maxFee, _ := formatBigInt(big.NewInt(1))
+	gasLimit, _ := formatInt(21000)
+	value, _ := formatBigInt(big.NewInt(0))
+	input := []byte{}
+
+	// Inner tuple chainId/nonce set to max uint64 values
+	ai, _ := formatUint64(^uint64(0))
+	ni, _ := formatUint64(^uint64(0))
+	yp, _ := formatInt(0)
+	ri, _ := formatBigInt(big.NewInt(1))
+	si, _ := formatBigInt(big.NewInt(1))
+	var authAddr EthAddress
+	copy(authAddr[:], mustHex(t, "0x2222222222222222222222222222222222222222"))
+	authTuple := []interface{}{ai, authAddr[:], ni, yp, ri, si}
+	authList := []interface{}{authTuple}
+
+	base := []interface{}{
+		chainId,
+		nonce,
+		maxPrio,
+		maxFee,
+		gasLimit,
+		formatEthAddr(&to),
+		value,
+		input,
+		[]interface{}{}, // access list
+		authList,
+	}
+	sig, _ := packSigFields(big.NewInt(0), big.NewInt(1), big.NewInt(1))
+	payload, _ := EncodeRLP(append(base, sig...))
+	enc := append([]byte{EIP7702TxType}, payload...)
+
+	dec, err := parseEip7702Tx(enc)
+	require.NoError(t, err)
+	require.Len(t, dec.AuthorizationList, 1)
+	require.Equal(t, EthUint64(^uint64(0)), dec.AuthorizationList[0].ChainID)
+	require.Equal(t, EthUint64(^uint64(0)), dec.AuthorizationList[0].Nonce)
+}
+
 func TestEIP7702_InitialiseSignature_WrongTypeRejected(t *testing.T) {
 	var to EthAddress
 	tx := &Eth7702TxArgs{To: &to}

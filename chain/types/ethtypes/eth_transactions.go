@@ -435,6 +435,15 @@ func formatInt(val int) ([]byte, error) {
 	return removeLeadingZeros(buf.Bytes()), nil
 }
 
+// formatUint64 encodes a uint64 as big-endian bytes without leading zeros (RLP-compatible).
+func formatUint64(val uint64) ([]byte, error) {
+	buf := new(bytes.Buffer)
+	if err := binary.Write(buf, binary.BigEndian, val); err != nil {
+		return nil, err
+	}
+	return removeLeadingZeros(buf.Bytes()), nil
+}
+
 func formatEthAddr(addr *EthAddress) []byte {
 	if addr == nil {
 		return nil
@@ -467,6 +476,26 @@ func parseInt(v interface{}) (int, error) {
 		return 0, fmt.Errorf("cannot parse interface to EthUint64: %w", err)
 	}
 	return int(value), nil
+}
+
+// parseUint64 parses a big-endian encoded unsigned integer up to 8 bytes.
+func parseUint64(v interface{}) (uint64, error) {
+	data, ok := v.([]byte)
+	if !ok {
+		return 0, fmt.Errorf("cannot parse interface to uint64: input is not a byte array")
+	}
+	if len(data) == 0 {
+		return 0, nil
+	}
+	if len(data) > 8 {
+		return 0, fmt.Errorf("cannot parse interface to uint64: length is more than 8 bytes")
+	}
+	var value uint64
+	r := bytes.NewReader(append(make([]byte, 8-len(data)), data...))
+	if err := binary.Read(r, binary.BigEndian, &value); err != nil {
+		return 0, fmt.Errorf("cannot parse interface to uint64: %w", err)
+	}
+	return value, nil
 }
 
 func parseBigInt(v interface{}) (big.Int, error) {

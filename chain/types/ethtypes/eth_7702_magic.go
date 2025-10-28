@@ -21,13 +21,13 @@ const (
 // AuthorizationPreimage constructs the exact byte sequence that must be signed
 // for an authorization tuple: 0x05 || rlp([chain_id, address, nonce]).
 // The returned slice is a freshly allocated buffer.
-func AuthorizationPreimage(chainID int, address EthAddress, nonce int) ([]byte, error) {
+func AuthorizationPreimage(chainID uint64, address EthAddress, nonce uint64) ([]byte, error) {
 	// RLP-encode [chain_id, address, nonce]
-	ci, err := formatInt(chainID)
+	ci, err := formatUint64(chainID)
 	if err != nil {
 		return nil, err
 	}
-	ni, err := formatInt(nonce)
+	ni, err := formatUint64(nonce)
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +43,7 @@ func AuthorizationPreimage(chainID int, address EthAddress, nonce int) ([]byte, 
 }
 
 // AuthorizationKeccak returns keccak256(AuthorizationPreimage(...)).
-func AuthorizationKeccak(chainID int, address EthAddress, nonce int) ([32]byte, error) {
+func AuthorizationKeccak(chainID uint64, address EthAddress, nonce uint64) ([32]byte, error) {
 	pre, err := AuthorizationPreimage(chainID, address, nonce)
 	if err != nil {
 		return [32]byte{}, err

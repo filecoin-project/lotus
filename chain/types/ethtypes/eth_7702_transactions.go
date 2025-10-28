@@ -32,7 +32,7 @@ type EthAuthorization struct {
 // authorization tuple, as specified by EIP-7702. The chain ID used is the tuple's
 // own chainId field (which may be 0 to indicate wildcard) and not the outer tx chain.
 func (a EthAuthorization) DomainHash() ([32]byte, error) {
-	return AuthorizationKeccak(int(a.ChainID), a.Address, int(a.Nonce))
+	return AuthorizationKeccak(uint64(a.ChainID), a.Address, uint64(a.Nonce))
 }
 
 // ---------- EIP-7702 Transaction (type 0x04) ----------
@@ -366,7 +366,7 @@ func parseEip7702Tx(data []byte) (*Eth7702TxArgs, error) {
 	}
 	auths := make([]EthAuthorization, 0, len(authsIface))
 	// helper to enforce canonical unsigned int encoding (no leading zero if length > 1)
-	parseUintCanonical := func(v interface{}) (int, error) {
+	parseUintCanonical := func(v interface{}) (uint64, error) {
 		b, ok := v.([]byte)
 		if !ok {
 			return 0, xerrors.Errorf("not an RLP byte string")
@@ -375,7 +375,7 @@ func parseEip7702Tx(data []byte) (*Eth7702TxArgs, error) {
 		if (len(b) == 1 && b[0] == 0x00) || (len(b) > 1 && b[0] == 0x00) {
 			return 0, xerrors.Errorf("non-canonical integer encoding (leading zero)")
 		}
-		return parseInt(v)
+		return parseUint64(v)
 	}
 
 	for i, it := range authsIface {
