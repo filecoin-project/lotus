@@ -120,7 +120,7 @@ type FullNodeMethods struct {
 
 	ChainDeleteObj func(p0 context.Context, p1 cid.Cid) error `perm:"admin"`
 
-	ChainExport func(p0 context.Context, p1 abi.ChainEpoch, p2 bool, p3 types.TipSetKey) (<-chan []byte, error) `perm:"read"`
+	ChainExport func(p0 context.Context, p1 abi.ChainEpoch, p2 bool, p3 types.TipSetKey, p4 uint64) (<-chan []byte, error) `perm:"read"`
 
 	ChainExportRangeInternal func(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey, p3 ChainExportConfig) error `perm:"admin"`
 
@@ -1398,14 +1398,14 @@ func (s *FullNodeStub) ChainDeleteObj(p0 context.Context, p1 cid.Cid) error {
 	return ErrNotSupported
 }
 
-func (s *FullNodeStruct) ChainExport(p0 context.Context, p1 abi.ChainEpoch, p2 bool, p3 types.TipSetKey) (<-chan []byte, error) {
+func (s *FullNodeStruct) ChainExport(p0 context.Context, p1 abi.ChainEpoch, p2 bool, p3 types.TipSetKey, p4 uint64) (<-chan []byte, error) {
 	if s.Internal.ChainExport == nil {
 		return nil, ErrNotSupported
 	}
-	return s.Internal.ChainExport(p0, p1, p2, p3)
+	return s.Internal.ChainExport(p0, p1, p2, p3, p4)
 }
 
-func (s *FullNodeStub) ChainExport(p0 context.Context, p1 abi.ChainEpoch, p2 bool, p3 types.TipSetKey) (<-chan []byte, error) {
+func (s *FullNodeStub) ChainExport(p0 context.Context, p1 abi.ChainEpoch, p2 bool, p3 types.TipSetKey, p4 uint64) (<-chan []byte, error) {
 	return nil, ErrNotSupported
 }
 
