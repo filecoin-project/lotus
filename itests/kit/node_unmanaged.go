@@ -464,7 +464,7 @@ func (tm *TestUnmanagedMiner) SnapDeal(sectorNumber abi.SectorNumber, sm SectorM
 
 	tm.log("Submitting ProveReplicaUpdates3 for sector %d ...", sectorNumber)
 
-    params := &miner14.ProveReplicaUpdates3Params{
+	params := &miner14.ProveReplicaUpdates3Params{
 		SectorUpdates: []miner14.SectorUpdateManifest{
 			{
 				Sector:       sectorNumber,
@@ -474,12 +474,12 @@ func (tm *TestUnmanagedMiner) SnapDeal(sectorNumber abi.SectorNumber, sm SectorM
 				Pieces:       manifest,
 			},
 		},
-		SectorProofs:               [][]byte{snapProof},
-		UpdateProofsType:           updateProofType,
-        // Do not require activation to succeed synchronously; avoid immutable deadline races in CI.
-        RequireActivationSuccess:   false,
-        RequireNotificationSuccess: false,
-    }
+		SectorProofs:     [][]byte{snapProof},
+		UpdateProofsType: updateProofType,
+		// Do not require activation to succeed synchronously; avoid immutable deadline races in CI.
+		RequireActivationSuccess:   false,
+		RequireNotificationSuccess: false,
+	}
 	r, err := tm.SubmitMessage(params, 1, builtin.MethodsMiner.ProveReplicaUpdates3)
 	req.NoError(err)
 	req.True(r.Receipt.ExitCode.IsSuccess())
