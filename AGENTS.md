@@ -80,7 +80,7 @@ Gas Model (Lotus on FVM)
 5. Gas estimation alignment to actor constants; maintain behavioral tests until finalization. (DONE)
 6. Doc updates and gating unification; add test vectors for `AuthorizationKeccak`. (IN PROGRESS)
 
-For a detailed builtin‑actors test plan, see `BUILTIN_ACTORS_7702_TODO.md` (tracked here but applies to `../builtin-actors`). For Lotus‑specific tests, see `LOTUS_7702_TODO.md`. These lists are part of the highest‑priority testing work for the sprint.
+Detailed test plans are included below: see Builtin‑Actors Test Plan and Lotus Test Plan. These lists are part of the highest‑priority testing work for the sprint.
 
 References for parity:
 - `geth_eip_7702.md` (diff: TestEIP7702, intrinsic gas, empty auth errors)
@@ -321,3 +321,123 @@ Ownership and Acceptance (for this section)
 - No migration required. The implementation is EVM‑only and atomic‑only.
 - Delegator has been removed; ApplyAndCall is the sole entry point.
 - Single NV gate: `NV_EIP_7702`. Domain: `0x05`. Pointer code magic/version: `0xef 0x01 0x00`.
+
+---
+
+**Builtin‑Actors Test Plan (EVM‑Only)**
+
+Scope: `../builtin-actors` (paired repo), tracked here for sprint execution. Keep encodings, NV gating, and gas constants in sync with Lotus.
+
+Priority: P0 (blocking), P1 (recommended), P2 (nice‑to‑have)
+
+P0 — Critical (spec + safety)
+- Persistent delegated storage context (DONE)
+  - `InvokeAsEoa` executes against the authority’s persistent storage and flushes changes; storage roots managed per authority in EVM state.
+- Atomicity semantics (spec‑compliant persistence)
+  - Delegation mapping and nonce bumps persist even if the outer call reverts. Tests assert persistence on revert and embedded status/return in ApplyAndCall result.
+- Intrinsic gas charging (per tuple) (DONE)
+  - Per‑authorization intrinsic gas charged before validation; behavior covered in tests.
+
+P0 — ApplyAndCall core (DONE)
+- Happy path (atomic apply+call) validates mapping/nonce behavior.
+- Invalids rejected with `USR_ILLEGAL_ARGUMENT`: empty list, invalid chainId, invalid yParity, zero r/s, high‑s, nonce mismatch, duplicates.
+- Tuple decoding shape (DAG‑CBOR): canonical atomic params; round‑trip tested.
+
+P0 — EVM interpreter delegation (DONE)
+- NV gating: pre‑activation ignores mapping; post‑activation executes delegate under authority context.
+- Delegated execution: delegate writes storage; CALL→EOA executes delegate; event emitted; depth limited to 1.
+
+P1 — Authorization semantics and state
+- chainId handling: accept 0 (global) and local ChainID; reject others.
+- Nonce accounting: absent authority treated as nonce=0; applying nonce=0 initializes; subsequent apply requires increment.
+- Duplicate authorities in one message: rejected (DONE).
+- Map/nonce HAMT integrity: flush/reload yields identical mappings and nonces.
+
+P1 — Gas and refunds
+- Defer asserting absolute numeric charges until constants are finalized; focus on behavior (paths invoked, no double‑charging across tuples).
+- Refund behavior validated behaviorally; switch to numeric assertions once constants stabilize.
+- Intrinsic gas OOG not asserted in unit tests.
+
+P1 — Encoding and interop (DONE)
+- Cross‑compat with Lotus: atomic CBOR params match; round‑trip vectors added.
+
+P2 — Edge and fuzz
+- Fuzz tuple decoding for arity/type issues.
+- Large authorization lists (stress HAMT) within block gas limits.
+- Malicious inputs: overlong leading zeros/odd sizes in r/s, etc.
+
+Suggested test locations
+- `actors/evm/tests/`
+  - `apply_and_call_happy.rs` (P0)
+  - `apply_and_call_invalid.rs` (P0)
+  - `apply_and_call_tuple_roundtrip.rs` (P0)
+  - `delegation_nonce_accounting.rs` (P1)
+  - `eoa_call_pointer_semantics.rs` (P0)
+  - `eip7702_delegated_log.rs` (P0)
+  - `delegated_storage_persistence.rs` (P0)
+  - `apply_and_call_atomicity_revert.rs` (P0)
+  - `apply_and_call_intrinsic_gas.rs` (P1)
+  - `apply_and_call_duplicates.rs` (P1)
+
+Notes
+- Keep `NV_EIP_7702` in `runtime/src/features.rs` as the single gate; mirror in Lotus.
+- When gas constants change, update both repos and adjust tests together.
+
+---
+
+**Lotus Test Plan**
+
+This list tracks Lotus‑side tests for EIP‑7702 and complements the builtin‑actors plan above.
+
+Priority: P0 (now), P1 (soon), P2 (later)
+
+P0 — Decisions & safety
+- Mempool policy (DECIDED: document deviation)
+  - No 7702‑specific ingress policies on this branch; standard mempool rules apply. Documented in this notebook/changelog.
+
+P0 — Parsers and encoding
+- RLP 0x04 parser/encoder
+  - Round‑trip encode/decode; multi‑authorization list; empty `authorizationList` rejected; non‑empty `accessList` rejected; invalid outer `v` rejected; invalid auth `yParity` rejected; wrong tuple arity rejected; signature init from 65‑byte r||s||v.
+- CBOR params (ApplyAndCall): `[ [tuple...], [to(20), value, input] ]`
+  - Encoder produces canonical wrapper of 6‑tuples; compatible with actor decoder.
+
+P0 — SignedMessage view + receipts
+- Eth view reconstruction (DONE)
+  - `EthTransactionFromSignedFilecoinMessage` reconstructs 0x04 (EVM.ApplyAndCall) and echoes `authorizationList`.
+- Receipts attribution (DONE)
+  - `adjustReceiptForDelegation` sets `delegatedTo` from `authorizationList` or synthetic `EIP7702Delegated(address)` event.
+
+P0 — Mempool (N/A on this branch)
+- Cross‑account invalidation and per‑EOA cap not implemented; deviation documented.
+
+P0 — Gas accounting (scaffold) (DONE)
+- Counting + gating only; no absolute overhead assertions.
+- `countAuthInDelegatorParams` handles canonical wrapper; tests cover gating and monotonicity.
+
+P1 — JSON‑RPC plumbing (DONE)
+- `eth_getTransactionReceipt` returns `authorizationList` and `delegatedTo`; covered in unit tests.
+- Block/tx receipt flows call `adjustReceiptForDelegation`.
+- EthTransaction reconstruction robustness: strict decoder for ApplyAndCall params with negative tests for malformed CBOR.
+
+P1 — Estimation integration (DONE)
+- `eth_estimateGas` adds intrinsic overhead for N tuples (behavioral placeholder); tuple counting/gating tested.
+
+P1 — E2E tests (behind `eip7702_enabled`, run once wasm includes EVM ApplyAndCall)
+- Send‑path routing constructs ApplyAndCall params; mined receipt echoes `authorizationList` and `delegatedTo`.
+- Delegated execution: CALL→EOA executes delegate code via actor/runtime; storage/logs reflect delegation.
+- Persistent storage across transactions under authority.
+- Atomicity/revert semantics aligned with spec‑compliant persistence: mapping/nonces persist; receipt status reflects embedded status.
+
+P2 — Edge/fuzz
+- Fuzz RLP parsing for malformed tuples/fields; broaden coverage.
+- Large `authorizationList` sizes for performance regressions.
+
+P1 — RLP robustness (DONE)
+- Negative tests for canonical integer encodings (leading zeros) in tuple fields; parser enforces canonical forms.
+
+P1 — Additional negative tests (DONE)
+- ApplyAndCall CBOR reconstruction: malformed tuple arity, empty list, invalid address length; strict decoder rejects shape/type mismatches.
+
+Notes
+- Keep gating aligned to a single NV constant shared with builtin‑actors.
+- Update gas constants/refunds in lockstep once finalized.
