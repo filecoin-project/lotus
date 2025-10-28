@@ -23,7 +23,7 @@ This notebook tracks the end‑to‑end EIP‑7702 implementation across Lotus (
   - Canonicalize to atomic CBOR only: `[ [ tuple... ], [ to(20), value, input ] ]`; remove legacy shapes.
   - Add `AuthorizationKeccak` (0x05 domain) vectors for stability across edge cases.
 - Receipts attribution (Lotus):
-  - Unit tests for delegated attribution from both `authorizationList` and synthetic `EIP7702Delegated(address)` event.
+  - Unit tests for delegated attribution from both `authorizationList` and synthetic `Delegated(address)` event.
 - Mempool (Lotus):
   - No 7702-specific ingress policies. Ensure standard mempool behavior remains stable.
 - Gas estimation (Lotus):
@@ -34,6 +34,13 @@ This notebook tracks the end‑to‑end EIP‑7702 implementation across Lotus (
   - Mirror geth’s `TestEIP7702` flow (apply two delegations, CALL→EOA executes delegate, storage updated) once the EVM actor ships ApplyAndCall.
 - Actor validations (builtin‑actors/EVM):
   - Ensure chainId ∈ {0, local}, yParity ∈ {0,1}, non‑zero r/s, low‑s, ecrecover authority, nonce tracking; refunds and gas constants tests; enforce tuple cap.
+- Additional review‑driven tests (builtin‑actors/EVM):
+  - Event: topic hash for `Delegated(address)` and value = authority address (EOA), not delegate.
+  - CALL revert path: propagate revert data via `state.return_data` and memory copy.
+  - ApplyAndCall: fail outer call on failed value transfer to delegated EOA.
+  - Negative validations: invalid `chainId`, invalid `yParity`, zero/over‑32 R/S, high‑S, nonce mismatch, duplicates, tuple cap >64.
+  - Pre‑existence policy: reject when authority resolves to EVM contract.
+  - R/S padding interop: accept 1..31‑byte values (left‑padded), reject >32‑byte values.
 
 **Audit Remediation Plan (Gemini)**
 
@@ -95,7 +102,7 @@ References for parity:
   - Gas estimation scaffold adds intrinsic overhead per tuple.
   - Branch note: EVM-only routing; Delegator is not used for send/execute path on this branch.
 - Builtin‑actors/Rust (done):
-  - EVM runtime maintains pointer mapping and authority nonces; ApplyAndCall validates and updates mapping; interpreter handles EXTCODE* and emits `EIP7702Delegated(address)`; gated by `NV_EIP_7702`.
+  - EVM runtime maintains pointer mapping and authority nonces; ApplyAndCall validates and updates mapping; interpreter handles EXTCODE* and emits `Delegated(address)`; gated by `NV_EIP_7702`.
 - In‑progress alignment:
   - CBOR params: canonical wrapper only; decoder enforces wrapper shape.
   - Gating unified to a single NV constant placeholder to avoid drift.
@@ -118,7 +125,7 @@ Required changes (implementation):
 - Builtin‑actors (Rust)
   - EVM runtime manages pointer semantics and nonces; `ApplyAndCall` validates, applies, and executes atomically.
   - `actors/evm/` runtime:
-    - On CALL→EOA, if the target account’s code starts with `0xef0100`, treat it as delegated code: load bytecode from the embedded 20‑byte address for execution (`InvokeAsEoa`), keep the authority context and emit the `EIP7702Delegated(address)` event.
+    - On CALL→EOA, if the target account’s code starts with `0xef0100`, treat it as delegated code: load bytecode from the embedded 20‑byte address for execution (`InvokeAsEoa`), keep the authority context and emit the `Delegated(address)` event.
     - Ensure `EXTCODEHASH`, `EXTCODESIZE`, and code‑loading paths treat `0xef0100` accounts as “pointer” code (i.e., return the pointer code’s own hash/size when queried on the authority; only follow the pointer when executing). Follow the behavior in `revm_eip_7702.md`.
     - Implement `ApplyAndCall` that validates tuples (domain `0x05`, yParity ∈ {0,1}, non‑zero r/s, low‑s), enforces nonce equality, sets/clears pointer code, rejects non‑7702 pre‑existing code on authority, executes the outer call, emits the synthetic event, and reverts atomically on failure.
   - `runtime/src/features.rs`:
@@ -127,7 +134,7 @@ Required changes (implementation):
 Required changes (tests):
 - Lotus (Go)
   - `chain/types/ethtypes`: add unit tests for `AuthTupleHash` against known vectors; add negative tests for tuple arity and invalid `yParity`. (DONE)
-  - `node/impl/eth` receipts: attribution tests from both `authorizationList` and synthetic `EIP7702Delegated(address)` log. (DONE)
+  - `node/impl/eth` receipts: attribution tests from both `authorizationList` and synthetic `Delegated(address)` log. (DONE)
   - `node/impl/eth` gas: behavioral tests ensuring overhead applies only when tuple list is non‑empty and grows with tuple count; include Delegator + EVM routes. (DONE)
 
 - Builtin‑actors (Rust)
@@ -205,6 +212,9 @@ Acceptance criteria (updated)
 - No nested delegation chains are followed (depth=1 enforced).
 - Tuple cap of 64 enforced (placeholder); large lists rejected early.
 - Refund plumbing present with conservative caps; numeric constants can be dropped in once finalized.
+- Event compliance: topic = `keccak("Delegated(address)")` and the emitted address is the authority (EOA).
+ - Pointer semantics: for delegated authority A→B, `EXTCODESIZE(A) == 23`, `EXTCODECOPY(A,0,0,23)` returns `0xEF 0x01 0x00 || <B(20)>`, and `EXTCODEHASH(A)` equals `keccak(pointer_code)`.
+ - Delegated CALL revert data: CALL returns 0; `RETURNDATASIZE` equals revert payload length; `RETURNDATACOPY` truncates/returns per requested size with zero_fill=false semantics.
 
 **Quick Validation**
 - Lotus fast path:
@@ -212,6 +222,7 @@ Acceptance criteria (updated)
   - `go test ./chain/types/ethtypes -run 7702 -count=1`
   - `go test ./node/impl/eth -run 7702 -count=1`
 - Builtin‑actors (local toolchain permitting): `cargo test -p fil_actor_evm` (EVM actor changes).
+  - Includes pointer semantics and delegated revert‑data tests: `eoa_call_pointer_semantics.rs`, `delegated_call_revert_data.rs`.
 - Lotus E2E (requires updated wasm bundle):
   - `go test ./itests -run Eth7702 -tags eip7702_enabled -count=1`
 
@@ -315,6 +326,51 @@ Ownership and Acceptance (for this section)
 - lotus: implement RLP overflow robustness, add AuthorizationKeccak vectors, add RLP fuzz harness.
 - Acceptance: all new tests pass; fuzz harnesses run without panics; interop for minimally‑encoded R/S validated; behavioral gas tests remain green.
 
+**Builtin‑Actors Review (Action Items)**
+
+This section captures additional items from the comprehensive review of `builtin-actors.eip7702.diff` and aligns them with this notebook.
+
+- CRITICAL — Event semantics and topic (spec compliance)
+  - Event name/signature: use `Delegated(address)` for the topic hash, not `EIP7702Delegated(address)`.
+    - Files: `actors/evm/src/interpreter/instructions/call.rs`, `actors/evm/src/lib.rs`.
+    - Action: change the string used for the topic hash to `b"Delegated(address)"`.
+    - Lotus follow‑up: update `adjustReceiptForDelegation` to recognize the `Delegated(address)` topic.
+    - Status: DONE — centralized as a shared constant and used in both emission sites.
+  - Emitted address value: log the authority (EOA) address, not the delegate contract address.
+    - Files: `actors/evm/src/interpreter/instructions/call.rs`, `actors/evm/src/lib.rs`.
+    - Action: swap the value encoded in the event data from the delegate to the destination/authority.
+    - Status: DONE — tests updated to assert authority address.
+
+- HIGH — Behavioral correctness
+  - Revert data propagation on delegated CALL failures
+    - File: `actors/evm/src/interpreter/instructions/call.rs`.
+    - Action: when `InvokeAsEoa` returns an error, set `state.return_data` from the error’s data and copy it to memory so callers can `RETURNDATACOPY`.
+    - Status: DONE — delegated CALL path writes revert bytes to return buffer and copies to memory.
+  - Value transfer result handling in `ApplyAndCall`
+    - File: `actors/evm/src/lib.rs`.
+    - Action: check the result of `system.transfer` for delegated EOA targets; if it fails, set `status: 0` and return immediately (mirrors CALL behavior).
+    - Status: DONE — short‑circuit implemented and covered by tests.
+
+- HIGH — Tests to add (consensus‑critical and behavioral)
+  - `actors/evm/tests/apply_and_call_invalid.rs`: invalid `chainId`, `yParity > 1`, zero R/S, high‑S, nonce mismatch, duplicate authorities, exceeding 64‑tuple cap.
+  - Pre‑existence policy: reject when authority resolves to an EVM contract actor (expect `USR_ILLEGAL_ARGUMENT`).
+  - R/S padding interop: accept 1..31‑byte R/S (left‑padded) and reject >32 bytes.
+  - Event correctness: assert topic = `keccak("Delegated(address)")` and that the indexed/address corresponds to the authority (EOA), not the delegate contract. (DONE)
+  - Pointer semantics: `actors/evm/tests/eoa_call_pointer_semantics.rs` validates EXTCODESIZE=23, EXTCODECOPY exact bytes, and EXTCODEHASH of pointer code. (DONE)
+  - Delegated CALL revert data: `actors/evm/tests/delegated_call_revert_data.rs` validates RETURNDATASIZE and RETURNDATACOPY truncation/full‑copy semantics. (DONE)
+
+- MEDIUM — Interpreter corner cases (tests)
+  - SELFDESTRUCT is a no‑op in delegated context; authority mapping/storage and balances unaffected; event emission intact.
+  - Storage persistence/isolation across delegate changes: A→B write, A→C can’t read B; clear A→0; re‑delegate A→B and B’s storage persists.
+  - Depth limit: nested delegations (depth > 1) are not followed under authority context.
+  - First‑time nonce handling: absent authority treated as nonce=0; applying nonce=0 initializes nonces map; subsequent nonce=0 fails.
+
+- LOW — Code quality improvements
+  - Remove redundant R/S length checks from `recover_authority` (already validated in `validate_tuple`).
+  - Strengthen `is_high_s` signature to `&[u8; 32]` to avoid runtime asserts.
+  - Replace `expect` in actor code paths (e.g., resolved EVM address) with explicit error returns.
+  - Downgrade normal execution‑path logging to `debug/trace` for failed transfers and delegate call failures.
+
 **Review Readiness (Scar‑less PR Candidate)**
 - EVM‑only: all 0x04 transactions route to EVM `ApplyAndCall`; no Delegator send/execute path remains.
 - Atomic‑only: there are no non‑atomic paths or fallback code; tests assert atomic semantics for success and revert.
@@ -375,12 +431,13 @@ Suggested test locations
   - `apply_and_call_invalid.rs` (P0)
   - `apply_and_call_tuple_roundtrip.rs` (P0)
   - `delegation_nonce_accounting.rs` (P1)
-  - `eoa_call_pointer_semantics.rs` (P0)
+  - `eoa_call_pointer_semantics.rs` (P0) — DONE
   - `eip7702_delegated_log.rs` (P0)
   - `delegated_storage_persistence.rs` (P0)
   - `apply_and_call_atomicity_revert.rs` (P0)
   - `apply_and_call_intrinsic_gas.rs` (P1)
   - `apply_and_call_duplicates.rs` (P1)
+  - `delegated_call_revert_data.rs` (P0) — DONE
 
 Notes
 - Keep `NV_EIP_7702` in `runtime/src/features.rs` as the single gate; mirror in Lotus.
@@ -408,7 +465,7 @@ P0 — SignedMessage view + receipts
 - Eth view reconstruction (DONE)
   - `EthTransactionFromSignedFilecoinMessage` reconstructs 0x04 (EVM.ApplyAndCall) and echoes `authorizationList`.
 - Receipts attribution (DONE)
-  - `adjustReceiptForDelegation` sets `delegatedTo` from `authorizationList` or synthetic `EIP7702Delegated(address)` event.
+  - `adjustReceiptForDelegation` sets `delegatedTo` from `authorizationList` or synthetic `Delegated(address)` event.
 
 P0 — Mempool (N/A on this branch)
 - Cross‑account invalidation and per‑EOA cap not implemented; deviation documented.
