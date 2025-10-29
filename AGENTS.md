@@ -38,9 +38,9 @@ This notebook tracks the end‑to‑end EIP‑7702 implementation across Lotus (
   - Event: topic hash for `Delegated(address)` and value = authority address (EOA), not delegate.
   - CALL revert path: propagate revert data via `state.return_data` and memory copy.
   - ApplyAndCall: fail outer call on failed value transfer to delegated EOA.
-  - Negative validations: invalid `chainId`, invalid `yParity`, zero/over‑32 R/S, high‑S, nonce mismatch, duplicates, tuple cap >64.
-  - Pre‑existence policy: reject when authority resolves to EVM contract.
-  - R/S padding interop: accept 1..31‑byte values (left‑padded), reject >32‑byte values.
+  - Negative validations: invalid `chainId`, invalid `yParity`, zero/over‑32 R/S, high‑S, nonce mismatch, duplicates, tuple cap >64. (DONE)
+  - Pre‑existence policy: reject when authority resolves to EVM contract. (DONE)
+  - R/S padding interop: accept 1..31‑byte values (left‑padded), reject >32‑byte values. (DONE)
 
 **Audit Remediation Plan (Gemini)**
 
@@ -174,11 +174,11 @@ CRITICAL (consensus/security/spec)
   - lotus: DONE — receipt.status is decoded from the embedded status for type‑0x04; attribution unchanged.
   - tests: IN PROGRESS — atomic revert persistence asserted at unit level; e2e to follow once wasm lands.
 - Pre‑existence policy (do not “set code” on contracts)
-  - builtin‑actors: In ApplyAndCall, for each authority, resolve to ID and reject when builtin type == EVM (USR_ILLEGAL_ARGUMENT). Add a negative test.
+  - builtin‑actors: In ApplyAndCall, for each authority, resolve to ID and reject when builtin type == EVM (USR_ILLEGAL_ARGUMENT). Add a negative test. (DONE)
 - Nested delegation depth limit
   - builtin‑actors: DONE — Enforced depth==1. When executing under InvokeAsEoa/authority context, delegation chains are not followed. ApplyAndCall-driven unit test present.
 - Signature robustness (length + low‑s)
-  - builtin‑actors: Ensure R/S are exactly 32 bytes (already enforced) and add explicit negative tests for invalid lengths. Keep low‑s and non‑zero checks.
+  - builtin‑actors: Accept ≤32‑byte R/S (left‑pad to 32); reject >32 with precise errors; keep low‑s and non‑zero checks. Negative tests added. (DONE)
 
 HIGH PRIORITY (correctness/robustness)
 - Refunds (staged)
@@ -187,7 +187,7 @@ HIGH PRIORITY (correctness/robustness)
 - Tuple cap (placeholder)
   - builtin‑actors: DONE — Enforces `len(params.list) <= 64`; boundary tests added. Placeholder noted in code comments.
 - SELFDESTRUCT interaction
-  - builtin‑actors: Add tests where delegated code executes SELFDESTRUCT; specify and assert expected behavior for authority mapping/storage and gas.
+  - builtin‑actors: Add tests where delegated code executes SELFDESTRUCT; specify and assert expected behavior for authority mapping/storage and gas. (DONE)
 - Fuzzing
   - lotus: Add RLP fuzzing for 0x04 tx decode.
   - builtin‑actors: Add CBOR fuzzing harness for ApplyAndCall params.
@@ -294,6 +294,7 @@ Notes:
 - MEDIUM: Misleading error on signature length (Actors)
   - builtin‑actors: refactor error reporting in `validate_tuple` to check `r/s` length before low‑s/zero checks; return precise messages: “r length exceeds 32”, “s length exceeds 32”, “zero r/s”, “invalid y_parity”. Keep low‑s check on padded 32‑byte `s`.
   - Tests: negative vectors asserting error reasons for length >32 and invalid yParity.
+  - Status: DONE — length checks occur first; precise messages present; tests assert length‑error messages.
 
 - HIGH: Insufficient Actor Validation Tests
   - Add a dedicated `actors/evm/tests/apply_and_call_invalid.rs` suite covering:
@@ -304,6 +305,7 @@ Notes:
     - Nonce mismatch.
     - Pre‑existence policy violation (authority is an EVM contract).
     - Duplicate authority in a single message.
+  - Status: DONE — covered by `apply_and_call_invalids.rs`, `apply_and_call_nonces.rs`, `apply_and_call_duplicates.rs`.
 
 - MEDIUM: Missing Corner Case Tests (Actors)
   - SELFDESTRUCT no‑op in delegated context:
@@ -312,10 +314,12 @@ Notes:
     - A→B write storage; switch A→C and verify C cannot read B’s storage; clear A→0; re‑delegate A→B and verify B’s storage persists.
   - First‑time nonce handling:
     - Absent authority defaults to nonce=0; applying nonce=0 succeeds; next attempt with nonce=0 fails with nonce mismatch.
+  - Status: DONE — `apply_and_call_selfdestruct.rs`, `delegated_storage_isolation.rs`, `delegated_storage_persistence.rs`, and `apply_and_call_nonces.rs`.
 
 - LOW: Fuzzing and Vectors
   - lotus: add RLP fuzz harness for 0x04 decode focused on tuple arity/yParity/value sizes and malformed tails; ensure no panics and proper erroring.
   - builtin‑actors: add CBOR fuzz harness for `ApplyAndCallParams` that mutates wrapper shape, tuple arity, and byte sizes for `r/s`.
+  - Status: DONE (builtin‑actors) — CBOR fuzz harness `apply_and_call_cbor_fuzz.rs` present.
   - lotus: add AuthorizationKeccak test vectors for `keccak256(0x05 || rlp([chain_id,address,nonce]))` covering boundary values.
 
 - Gas Model reminders (Lotus on FVM)
@@ -352,9 +356,9 @@ This section captures additional items from the comprehensive review of `builtin
     - Status: DONE — short‑circuit implemented and covered by tests.
 
 - HIGH — Tests to add (consensus‑critical and behavioral)
-  - `actors/evm/tests/apply_and_call_invalid.rs`: invalid `chainId`, `yParity > 1`, zero R/S, high‑S, nonce mismatch, duplicate authorities, exceeding 64‑tuple cap.
-  - Pre‑existence policy: reject when authority resolves to an EVM contract actor (expect `USR_ILLEGAL_ARGUMENT`).
-  - R/S padding interop: accept 1..31‑byte R/S (left‑padded) and reject >32 bytes.
+  - `actors/evm/tests/apply_and_call_invalids.rs`: invalid `chainId`, `yParity > 1`, zero R/S, high‑S, nonce mismatch, duplicate authorities, exceeding 64‑tuple cap. (DONE)
+  - Pre‑existence policy: reject when authority resolves to an EVM contract actor (expect `USR_ILLEGAL_ARGUMENT`). (DONE)
+  - R/S padding interop: accept 1..31‑byte R/S (left‑padded) and reject >32 bytes. (DONE)
   - Event correctness: assert topic = `keccak("Delegated(address)")` and that the indexed/address corresponds to the authority (EOA), not the delegate contract. (DONE)
   - Pointer semantics: `actors/evm/tests/eoa_call_pointer_semantics.rs` validates EXTCODESIZE=23, EXTCODECOPY exact bytes, and EXTCODEHASH of pointer code. (DONE)
   - Delegated CALL revert data: `actors/evm/tests/delegated_call_revert_data.rs` validates RETURNDATASIZE and RETURNDATACOPY truncation/full‑copy semantics. (DONE)
@@ -449,16 +453,16 @@ P2 — Edge and fuzz
 
 Suggested test locations
 - `actors/evm/tests/`
-  - `apply_and_call_happy.rs` (P0)
-  - `apply_and_call_invalid.rs` (P0)
-  - `apply_and_call_tuple_roundtrip.rs` (P0)
-  - `delegation_nonce_accounting.rs` (P1)
+  - `apply_and_call_happy.rs` (P0) — covered by existing happy‑path tests
+  - `apply_and_call_invalids.rs` (P0) — DONE
+  - `apply_and_call_tuple_roundtrip.rs` (P0) — DONE
+  - `apply_and_call_nonces.rs` (P1) — DONE
   - `eoa_call_pointer_semantics.rs` (P0) — DONE
-  - `eip7702_delegated_log.rs` (P0)
-  - `delegated_storage_persistence.rs` (P0)
-  - `apply_and_call_atomicity_revert.rs` (P0)
-  - `apply_and_call_intrinsic_gas.rs` (P1)
-  - `apply_and_call_duplicates.rs` (P1)
+  - `eip7702_delegated_log.rs` (P0) — covered in event assertions within existing tests
+  - `delegated_storage_persistence.rs` (P0) — DONE
+  - `apply_and_call_atomicity_revert.rs` (P0) — DONE
+  - `apply_and_call_intrinsic_gas.rs` (P1) — DONE
+  - `apply_and_call_duplicates.rs` (P1) — DONE
   - `delegated_call_revert_data.rs` (P0) — DONE
 
 Notes
