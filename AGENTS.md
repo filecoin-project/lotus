@@ -365,11 +365,33 @@ This section captures additional items from the comprehensive review of `builtin
   - Depth limit: nested delegations (depth > 1) are not followed under authority context.
   - First‑time nonce handling: absent authority treated as nonce=0; applying nonce=0 initializes nonces map; subsequent nonce=0 fails.
 
+- MEDIUM — Robustness (internal invariants)
+  - Return data deserialization must not silently fall back.
+    - Files: `actors/evm/src/interpreter/instructions/call.rs`, `actors/evm/src/lib.rs`.
+    - Action: replace `.unwrap_or_else(|_| r.data)` with mandatory decode; on failure, return `ActorError::illegal_state`.
+    - Status: TODO
+  - Avoid `unwrap()` in `extcodehash` path.
+    - File: `actors/evm/src/interpreter/instructions/ext.rs`.
+    - Action: handle `BytecodeHash::try_from(...)` errors by returning `ActorError::illegal_state` (or add a clear `expect` message at minimum).
+    - Status: TODO
+
 - LOW — Code quality improvements
   - Remove redundant R/S length checks from `recover_authority` (already validated in `validate_tuple`).
   - Strengthen `is_high_s` signature to `&[u8; 32]` to avoid runtime asserts.
   - Replace `expect` in actor code paths (e.g., resolved EVM address) with explicit error returns.
   - Downgrade normal execution‑path logging to `debug/trace` for failed transfers and delegate call failures.
+  - Precompute `N/2` as a constant used by `is_high_s` (avoid recomputing at runtime).
+    - File: `actors/evm/src/lib.rs`.
+    - Action: introduce `N_DIV_2: [u8; 32]` (or equivalent) and compare against that constant.
+    - Status: TODO
+  - Centralize `InvokeContractReturn` type definition.
+    - Files: `actors/evm/src/interpreter/instructions/call.rs`, `actors/evm/src/lib.rs`.
+    - Action: move the struct to a shared module (e.g., `actors/evm/src/types.rs`) and reuse; remove local duplicates.
+    - Status: TODO
+  - Consolidate `Delegated(address)` event emission logic to a helper to remove duplication across success arms.
+    - Files: `actors/evm/src/interpreter/instructions/call.rs`, `actors/evm/src/lib.rs`.
+    - Action: factor event emission into a single helper and invoke once on success (regardless of return data presence).
+    - Status: TODO
 
 **Review Readiness (Scar‑less PR Candidate)**
 - EVM‑only: all 0x04 transactions route to EVM `ApplyAndCall`; no Delegator send/execute path remains.
