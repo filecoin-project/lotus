@@ -18,7 +18,7 @@ func FuzzParseEthTransaction_7702(f *testing.F) {
 	f.Fuzz(func(t *testing.T, data []byte) {
 		// We only care about parser stability: no panics. We ignore errors.
 		_ = func() (err error) {
-			defer func() { recover() }()
+			defer func() { _ = recover() }()
 			// Attempt to parse; ignore result/error.
 			_, _ = ParseEthTransaction(data)
 			return nil
