@@ -836,6 +836,10 @@ var StateListMessagesCmd = &cli.Command{
 			Name:  "cids",
 			Usage: "print message CIDs instead of messages",
 		},
+		&cli.BoolFlag{
+			Name:  "order-by-nonce",
+			Usage: "order messages by nonce (only applies when filtering by 'from' address)",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -872,6 +876,13 @@ var StateListMessagesCmd = &cli.Command{
 
 		windowSize := abi.ChainEpoch(100)
 
+		obn := cctx.Bool("order-by-nonce") && !froma.Empty()
+
+		var orderedMessages []struct {
+			Nonce uint64
+			Msg   []byte
+		}
+
 		cur := ts
 		for cur.Height() > toh {
 			if ctx.Err() != nil {
@@ -898,11 +909,21 @@ var StateListMessagesCmd = &cli.Command{
 				if err != nil {
 					return err
 				}
+
 				b, err := json.MarshalIndent(m, "", "  ")
 				if err != nil {
 					return err
 				}
-				fmt.Println(string(b))
+
+				if obn {
+					orderedMessages = append(orderedMessages, struct {
+						Nonce uint64
+						Msg   []byte
+					}{Nonce: m.Nonce, Msg: b})
+					continue
+				} else {
+					fmt.Println(string(b))
+				}
 			}
 
 			if end <= 0 {
@@ -915,6 +936,15 @@ var StateListMessagesCmd = &cli.Command{
 			}
 
 			cur = next
+		}
+
+		if obn {
+			sort.Slice(orderedMessages, func(i, j int) bool {
+				return orderedMessages[i].Nonce < orderedMessages[j].Nonce
+			})
+			for _, om := range orderedMessages {
+				fmt.Println(string(om.Msg))
+			}
 		}
 
 		return nil
