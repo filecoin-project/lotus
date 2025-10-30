@@ -620,7 +620,7 @@ func BenchmarkTrySched(b *testing.B) {
 
 	test := func(windows, queue int) func(b *testing.B) {
 		return func(b *testing.B) {
-			for i := 0; i < b.N; i++ {
+			for b.Loop() {
 				b.StopTimer()
 
 				var whnd api.WorkerStruct
