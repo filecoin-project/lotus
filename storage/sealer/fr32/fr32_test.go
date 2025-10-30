@@ -155,7 +155,7 @@ func BenchmarkPadChunk(b *testing.B) {
 
 	b.SetBytes(127)
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		fr32.Pad(in, buf[:])
 	}
 }
@@ -167,7 +167,7 @@ func BenchmarkChunkRoundtrip(b *testing.B) {
 
 	b.SetBytes(127)
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		fr32.Pad(buf[:], buf[:])
 		fr32.Unpad(buf[:], out[:])
 	}
@@ -185,7 +185,7 @@ func BenchmarkUnpadChunk(b *testing.B) {
 
 	bs := buf[:]
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		fr32.Unpad(bs, out[:])
 	}
 }
@@ -202,7 +202,7 @@ func BenchmarkUnpad16MChunk(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		fr32.Unpad(buf[:], out[:])
 	}
 }
@@ -218,7 +218,7 @@ func BenchmarkPad16MChunk(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		fr32.Pad(in, buf[:])
 	}
 }
@@ -234,7 +234,7 @@ func BenchmarkPad1GChunk(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		fr32.Pad(in, buf[:])
 	}
 }
@@ -251,7 +251,7 @@ func BenchmarkUnpad1GChunk(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		fr32.Unpad(buf[:], out[:])
 	}
 }
