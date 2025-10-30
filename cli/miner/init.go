@@ -746,7 +746,7 @@ func createStorageMiner(ctx context.Context, api v1api.FullNode, ssize abi.Secto
 
 	depositMarginFactor := cctx.Float64("deposit-margin-factor")
 	if depositMarginFactor < 1 {
-		return address.Undef, xerrors.Errorf("deposit margin factor must be greater than 1")
+		return address.Undef, xerrors.Errorf("deposit margin factor must be greater than or equal to 1")
 	}
 
 	deposit, err := api.StateMinerCreationDeposit(ctx, types.EmptyTSK)
