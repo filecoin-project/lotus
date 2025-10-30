@@ -126,6 +126,11 @@ var initCmd = &cli.Command{
 			Usage: "number of block confirmations to wait for",
 			Value: buildconstants.MessageConfidence,
 		},
+		&cli.Float64Flag{
+			Name:  "deposit-margin-factor",
+			Usage: "Multiplier (>=1.0) to scale the suggested deposit for on-chain variance (e.g. 1.01 adds 1%)",
+			Value: 1.01,
+		},
 	},
 	Subcommands: []*cli.Command{
 		restoreCmd,
@@ -739,16 +744,22 @@ func createStorageMiner(ctx context.Context, api v1api.FullNode, ssize abi.Secto
 		return address.Undef, err
 	}
 
-	// Calculate miner creation deposit according to FIP-0077
+	depositMarginFactor := cctx.Float64("deposit-margin-factor")
+	if depositMarginFactor < 1 {
+		return address.Undef, xerrors.Errorf("deposit margin factor must be greater than 1")
+	}
+
 	deposit, err := api.StateMinerCreationDeposit(ctx, types.EmptyTSK)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("getting miner creation deposit: %w", err)
 	}
 
+	scaledDeposit := types.BigDiv(types.BigMul(deposit, types.NewInt(uint64(depositMarginFactor*100))), types.NewInt(100))
+
 	createStorageMinerMsg := &types.Message{
 		To:    power.Address,
 		From:  sender,
-		Value: deposit,
+		Value: scaledDeposit,
 
 		Method: power.Methods.CreateMiner,
 		Params: params,
