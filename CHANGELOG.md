@@ -16,6 +16,7 @@
 - chore: update benchmark tests to use testing.B.Loop for improved performance ([filecoin-project/lotus#13385](https://github.com/filecoin-project/lotus/pull/13385)) ([filecoin-project/lotus#13396](https://github.com/filecoin-project/lotus/pull/13396)) ([filecoin-project/lotus#13405](https://github.com/filecoin-project/lotus/pull/13405))
 - fix(eth): properly return vm error in all gas estimation methods ([filecoin-project/lotus#13389](https://github.com/filecoin-project/lotus/pull/13389))
 - chore: all actor cmd support --actor ([filecoin-project/lotus#13391](https://github.com/filecoin-project/lotus/pull/13391))
+- feat(spcli): add a `deposit-margin-factor` option to `lotus-miner init` so the sent deposit still covers the on-chain requirement if it rises between lookup and execution
 
 # Node and Miner v1.34.1 / 2025-09-15
 
@@ -23,7 +24,7 @@ This is a non-critical patch release that fixes an issue with the Lotus `v1.34.0
 
 # Node and Miner v1.34.0 / 2025-09-11
 
-This is a **MANDATORY Lotus v1.34.0 release**, which will deliver the Filecoin network version 27, codenamed “Golden Week” 🏮. This release candidate sets the upgrade epoch for the Mainnet network to **Epoch 5348280:  2025-09-24T23:00:00Z**.  (See the [local time for other timezones](https://www.worldtimebuddy.com/?qm=1&lid=100,5128581,5368361,1816670&h=100&date=2025-9-24&sln=23-24&hf=1&c=1196).)  
+This is a **MANDATORY Lotus v1.34.0 release**, which will deliver the Filecoin network version 27, codenamed “Golden Week” 🏮. This release candidate sets the upgrade epoch for the Mainnet network to **Epoch 5348280:  2025-09-24T23:00:00Z**.  (See the [local time for other timezones](https://www.worldtimebuddy.com/?qm=1&lid=100,5128581,5368361,1816670&h=100&date=2025-9-24&sln=23-24&hf=1&c=1196).)
 
 ## ☢️ Upgrade Warnings ☢️
 - All Lotus node and Storage Provider (SP) operators must upgrade to v1.34.x before the specified date for the Mainnet network.
