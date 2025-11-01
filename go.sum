@@ -203,8 +203,8 @@ github.com/docker/go-units v0.5.0 h1:69rxXcBk27SvSaaxTtLh/8llcHD8vYHT7WSdRZ/jvr4
 github.com/docker/go-units v0.5.0/go.mod h1:fgPhTUdO+D/Jk86RDLlptpiXQzgHJF7gydDDbaIK4Dk=
 github.com/drand/drand/v2 v2.1.3 h1:/FDobNK5KW3onnXVOChUe8BFkGLkwIu7SNcPYrhEJH8=
 github.com/drand/drand/v2 v2.1.3/go.mod h1:8TT+5oKwd+A3dJCFjE/qE0PC8VaF6xcgMpU3TxbRybg=
-github.com/drand/go-clients v0.2.2 h1:wnXk321iBjA2mrRM9oRSWb2hHYO/Oaexf1SlW093HYQ=
-github.com/drand/go-clients v0.2.2/go.mod h1:S9nhirDj6F8GaZDYNy7kI3AbuamhERQyDGLqkCZjaGs=
+github.com/drand/go-clients v0.2.3 h1:VEIkoW/S4bOkjrwTUjHlRKnlT08WlobnMVI+0NlYVww=
+github.com/drand/go-clients v0.2.3/go.mod h1:4Vo4r+ASfbxfYfTKhT0BMkhqaJxYoWbTJjo8u7Znqkw=
 github.com/drand/kyber v1.3.1 h1:E0p6M3II+loMVwTlAp5zu4+GGZFNiRfq02qZxzw2T+Y=
 github.com/drand/kyber v1.3.1/go.mod h1:f+mNHjiGT++CuueBrpeMhFNdKZAsy0tu03bKq9D5LPA=
 github.com/drand/kyber-bls12381 v0.3.3 h1:sLl0ILJtB4+POHAKq6tdnWyg+iXADE0LjVKN91RI8JI=
@@ -512,8 +512,8 @@ github.com/hako/durafmt v0.0.0-20200710122514-c0fb7b4da026 h1:BpJ2o0OR5FV7vrkDYf
 github.com/hako/durafmt v0.0.0-20200710122514-c0fb7b4da026/go.mod h1:5Scbynm8dF1XAPwIwkGPqzkM/shndPm79Jd1003hTjE=
 github.com/hannahhoward/go-pubsub v1.0.0 h1:yONMbY9blu+FFlamGzRZVocoY6WHPJa08h3yX7nOGuA=
 github.com/hannahhoward/go-pubsub v1.0.0/go.mod h1:3lHsAt5uM7YFHauT5whoifwfgIgVwEX2fMDxPDrkpU4=
-github.com/hashicorp/consul/sdk v0.16.1 h1:V8TxTnImoPD5cj0U9Spl0TUxcytjcbbJeADFF07KdHg=
-github.com/hashicorp/consul/sdk v0.16.1/go.mod h1:fSXvwxB2hmh1FMZCNl6PwX0Q/1wdWtHJcZ7Ea5tns0s=
+github.com/hashicorp/consul/sdk v0.16.2 h1:cGX/djeEe9r087ARiKVWwVWCF64J+yW0G6ftZMZYbj0=
+github.com/hashicorp/consul/sdk v0.16.2/go.mod h1:onxcZjYVsPx5XMveAC/OtoIsdr32fykB7INFltDoRE8=
 github.com/hashicorp/errwrap v1.0.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=
 github.com/hashicorp/errwrap v1.1.0 h1:OxrOeh75EUXMY8TBjag2fzXGZ40LB6IKw45YeGUDY2I=
 github.com/hashicorp/errwrap v1.1.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=
@@ -1013,8 +1013,8 @@ github.com/onsi/gomega v1.36.3/go.mod h1:8D9+Txp43QWKhM24yyOBEdpkzN8FvJyAwecBgsU
 github.com/open-rpc/meta-schema v0.0.0-20201029221707-1b72ef2ea333 h1:CznVS40zms0Dj5he4ERo+fRPtO0qxUk8lA8Xu3ddet0=
 github.com/open-rpc/meta-schema v0.0.0-20201029221707-1b72ef2ea333/go.mod h1:Ag6rSXkHIckQmjFBCweJEEt1mrTPBv8b9W4aU/NQWfI=
 github.com/opencontainers/runtime-spec v1.0.2/go.mod h1:jwyrGlmzljRJv/Fgzds9SsS/C5hL+LL3ko9hs6T5lQ0=
-github.com/opencontainers/runtime-spec v1.2.0 h1:z97+pHb3uELt/yiAWD691HNHQIF07bE7dzrbT927iTk=
-github.com/opencontainers/runtime-spec v1.2.0/go.mod h1:jwyrGlmzljRJv/Fgzds9SsS/C5hL+LL3ko9hs6T5lQ0=
+github.com/opencontainers/runtime-spec v1.2.1 h1:S4k4ryNgEpxW1dzyqffOmhI1BHYcjzU8lpJfSlR0xww=
+github.com/opencontainers/runtime-spec v1.2.1/go.mod h1:jwyrGlmzljRJv/Fgzds9SsS/C5hL+LL3ko9hs6T5lQ0=
 github.com/opentracing/opentracing-go v1.0.2/go.mod h1:UkNAQd3GIcIGf0SeVgPpRdFStlNbqXla1AfSYxPUl2o=
 github.com/opentracing/opentracing-go v1.1.0/go.mod h1:UkNAQd3GIcIGf0SeVgPpRdFStlNbqXla1AfSYxPUl2o=
 github.com/opentracing/opentracing-go v1.2.0 h1:uEJPy/1a5RIPAJ0Ov+OIO8OxWu77jEv+1B0VhjKrZUs=
