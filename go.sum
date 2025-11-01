@@ -1308,8 +1308,8 @@ github.com/xorcare/golden v0.6.1-0.20191112154924-b87f686d7542/go.mod h1:7T39/ZM
 github.com/xordataexchange/crypt v0.0.3-0.20170626215501-b2862e3d0a77/go.mod h1:aYKd//L2LvnjZzWKhF00oedf4jCCReLcmhLdhm1A27Q=
 github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 h1:gEOO8jv9F4OT7lGCjxCBTO/36wtF6j2nSip77qHd4x4=
 github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1/go.mod h1:Ohn+xnUBiLI6FVj/9LpzZWtj1/D6lUovWYBkxHVV3aM=
-github.com/yugabyte/pgx/v5 v5.5.3-yb-2 h1:SDk2waZb2o6dSLYqk+vq0Ur2jnIv+X2A+P+QPR1UThU=
-github.com/yugabyte/pgx/v5 v5.5.3-yb-2/go.mod h1:2SxizGfDY7UDCRTtbI/xd98C/oGN7S/3YoGF8l9gx/c=
+github.com/yugabyte/pgx/v5 v5.5.3-yb-5 h1:MV66FoH4HFsA9IC+h1hRY/+9Rmo040zVyZovOX7zpuk=
+github.com/yugabyte/pgx/v5 v5.5.3-yb-5/go.mod h1:2SxizGfDY7UDCRTtbI/xd98C/oGN7S/3YoGF8l9gx/c=
 github.com/yuin/goldmark v1.1.25/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.1.32/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
