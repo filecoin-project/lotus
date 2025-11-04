@@ -143,7 +143,7 @@ func TestGetCurrentDealInfo(t *testing.T) {
 			expectedDealID:     successDealID,
 			expectedMarketDeal: successDeal,
 		},
-		"deal lookup fails proposal mis-match": {
+		"deal lookup fails proposal mismatch": {
 			publishCid: dummyCid,
 			searchMessageLookup: &api.MsgLookup{
 				Receipt: types.MessageReceipt{

@@ -117,7 +117,7 @@ func (tx *EthLegacy155TxArgs) Signature() (*typescrypto.Signature, error) {
 	sig = append(sig, padLeadingZeros(s, 32)...)
 	sig = append(sig, v...)
 
-	// pre-pend a one byte marker so nodes know that this is a legacy transaction
+	// prepend a one byte marker so nodes know that this is a legacy transaction
 	sig = append([]byte{EthLegacy155TxSignaturePrefix}, sig...)
 
 	if len(sig) != EthLegacy155TxSignatureLen0 && len(sig) != EthLegacy155TxSignatureLen1 {
