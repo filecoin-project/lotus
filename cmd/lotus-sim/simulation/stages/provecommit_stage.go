@@ -362,7 +362,7 @@ func (stage *ProveCommitStage) filterProveCommits(
 }
 
 func (stage *ProveCommitStage) load(ctx context.Context, bb *blockbuilder.BlockBuilder) error {
-	stage.initialized = false // in case something failes while we're doing this.
+	stage.initialized = false // in case something fails while we're doing this.
 	stage.commitQueue = commitQueue{offset: bb.Height()}
 	powerState, err := loadPower(bb.ActorStore(), bb.ParentStateTree())
 	if err != nil {
