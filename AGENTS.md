@@ -1,5 +1,10 @@
 # EIP-7702 Implementation Notebook (Lotus + Builtin Actors)
 
+IMPORTANT — Current Work Priority
+
+- The authoritative plan for the ongoing migration (EthAccount state + ref-fvm delegation) is tracked in `documentation/eip7702_ethaccount_ref-fvm_migration.md`.
+- This is the active focus for the branch. Use that document for scope, sequencing, and acceptance criteria. The content below remains as background and historical context.
+
 This notebook tracks the end‑to‑end EIP‑7702 implementation across Lotus (Go) and builtin‑actors (Rust), including current status, remaining tasks, and validation steps.
 
 **Purpose**
@@ -14,10 +19,25 @@ This notebook tracks the end‑to‑end EIP‑7702 implementation across Lotus (
 - This is an internal development branch with no external users or on‑chain compatibility requirements.
 - We do not preserve backward compatibility in this branch. It is acceptable to simplify encodings and remove legacy paths.
 - EVM-only on this branch. The EVM actor’s `ApplyAndCall` atomically applies authorizations and executes the outer call; no Delegator route is used.
+- Single EVM actor model. There is exactly one EVM actor responsible for EIP‑7702. That actor owns the delegation map, per‑authority nonce map, and per‑authority storage roots; all type‑0x04 transactions target this actor.
+- Global semantics via centralization. Because there is only one EVM actor, delegation effects are globally visible: CALL/EXTCODE* pointer checks consult this actor’s internal mapping, and delegated execution happens via `InvokeAsEoa` under an authority context with a depth limit.
 - Encodings are canonicalized: wrapper/atomic CBOR only; legacy shapes removed from tests/helpers.
 
+**Delegation Map Scope (Single EVM Actor)**
+- Ownership and persistence: The single EVM actor persists three HAMTs in its state: (a) delegation map `authority(20) → delegate(20)`; (b) per‑authority nonces `authority(20) → u64`; (c) per‑authority storage roots `authority(20) → Cid`. These survive across transactions until updated or cleared (zero delegate clears).
+- Apply‑and‑Call flow: `ApplyAndCall` validates tuples (chainId in {0, local}, yParity ∈ {0,1}, non‑zero/≤32‑byte r/s, low‑s), recovers the `authority`, enforces nonce equality, updates mapping/nonces, flushes state, then executes the outer call atomically. Status and revert data are returned without undoing the mapping updates.
+- Pointer semantics: When a CALL targets an EOA, the interpreter consults the single actor’s delegation map. If delegated, it executes the delegate code in an authority context (`InvokeAsEoa`) and emits a `Delegated(address)` event with the authority address. EXTCODESIZE/HASH/COPY expose a 23‑byte virtual code image (`0xEF 0x01 0x00 || delegate(20)`) for delegated EOAs.
+- Authority context and safety: In authority context, delegation is not re‑followed (depth limit = 1), SELFDESTRUCT is a no‑op (no tombstone or balance move), and storage is mounted using the authority’s persistent storage root, then restored.
+- Scope implication: With a single EVM actor, these behaviors are chain‑wide for EOAs—no divergence across contracts. There is no Delegator actor; all 0x04 messages and pointer checks route through the single EVM actor.
+
+**ApplyAndCall Outer Call Gas**
+- Top‑level behavior: For the outer call executed by `ApplyAndCall`, the EVM actor forwards all available gas (no 63/64 cap). This mirrors Ethereum’s top‑level call semantics.
+- Subcalls: Inside the interpreter, subcalls (CALL/STATICCALL/DELEGATECALL) still enforce the EIP‑150 63/64 gas clamp.
+- Consequence: Emitting the synthetic `Delegated(address)` event after the outer call is best‑effort. Under extreme gas tightness, the event may be dropped.
+- Rationale: Prioritize correctness of the callee’s execution budget for the outer call, matching user expectations on Ethereum. If future telemetry shows attribution logs are frequently dropped, consider reserving a small fixed gas budget for event emission (not a 63/64 clamp).
+
 **Testing TODO (Highest Priority)**
-- Cross‑repo scope: tests span `./lotus` and `../builtin-actors`. Keep encoding, gating, and gas constants aligned.
+- Cross‑repo scope: tests span `./lotus` and `../builtin-actors`. Keep encoding and gas behavior aligned.
 - Parser/encoding (Lotus):
   - Add tuple‑arity and yParity rejection cases for 0x04 RLP decode in `chain/types/ethtypes`.
   - Canonicalize to atomic CBOR only: `[ [ tuple... ], [ to(20), value, input ] ]`; remove legacy shapes.
@@ -77,7 +97,7 @@ Gas Model (Lotus on FVM)
   - Rely on actor‑level tuple cap; keep general `MaxMessageSize` as is. Optionally validate tuple count client‑side for fast‑fail.
 
 - Gating and constants
-  - Unify activation gating with a single `NV_EIP_7702` across both repos; keep constants in sync.
+  - Activation: via bundle; no runtime NV gates to maintain.
 
 **Work Breakdown (Sequenced)**
 1. RLP per‑type limit in Lotus + tests. (DONE)
@@ -85,7 +105,7 @@ Gas Model (Lotus on FVM)
 3. Implement atomic 0x04 semantics (EVM.ApplyAndCall + Lotus route + receipts) + e2e test. (ApplyAndCall, optional Lotus route, receipts unit tests DONE; E2E PENDING)
 4. FVM hardening (InvokeAsEoa guards; pointer semantics; domain/signature checks; tuple cap) + tests. (PARTIAL)
 5. Gas estimation alignment to actor constants; maintain behavioral tests until finalization. (DONE)
-6. Doc updates and gating unification; add test vectors for `AuthorizationKeccak`. (IN PROGRESS)
+6. Doc updates and test vector additions for `AuthorizationKeccak`. (IN PROGRESS)
 
 Detailed test plans are included below: see Builtin‑Actors Test Plan and Lotus Test Plan. These lists are part of the highest‑priority testing work for the sprint.
 
@@ -98,14 +118,14 @@ References for parity:
   - Typed 0x04 parsing/encoding with `authorizationList`; dispatch via `ParseEthTransaction`.
   - `EthTx` and receipts echo `authorizationList`; receipt adjuster surfaces `delegatedTo` from tuples or synthetic event.
   - Send path behind `-tags eip7702_enabled`: builds a Filecoin message targeting EVM.ApplyAndCall with CBOR‑encoded tuples.
-  - Mempool policies (cross‑account invalidation; per‑EOA cap), gated by network version.
+  - Mempool policies (cross‑account invalidation; per‑EOA cap). No runtime NV gate on this branch.
   - Gas estimation scaffold adds intrinsic overhead per tuple.
   - Branch note: EVM-only routing; Delegator is not used for send/execute path on this branch.
 - Builtin‑actors/Rust (done):
-  - EVM runtime maintains pointer mapping and authority nonces; ApplyAndCall validates and updates mapping; interpreter handles EXTCODE* and emits `Delegated(address)`; gated by `NV_EIP_7702`.
+  - EVM runtime maintains pointer mapping and authority nonces; ApplyAndCall validates and updates mapping; interpreter handles EXTCODE* and emits `Delegated(address)`.
 - In‑progress alignment:
   - CBOR params: canonical wrapper only; decoder enforces wrapper shape.
-  - Gating unified to a single NV constant placeholder to avoid drift.
+  - No runtime gating; activation handled by bundle.
 
 **Spec Gap: MAGIC/Version Prefix Compliance**
 - Problem: We currently omit the required MAGIC prefixing in two places required by the spec and parity references (`eip7702.md`, `revm_eip_7702.md`).
@@ -129,7 +149,7 @@ Required changes (implementation):
     - Ensure `EXTCODEHASH`, `EXTCODESIZE`, and code‑loading paths treat `0xef0100` accounts as “pointer” code (i.e., return the pointer code’s own hash/size when queried on the authority; only follow the pointer when executing). Follow the behavior in `revm_eip_7702.md`.
     - Implement `ApplyAndCall` that validates tuples (domain `0x05`, yParity ∈ {0,1}, non‑zero r/s, low‑s), enforces nonce equality, sets/clears pointer code, rejects non‑7702 pre‑existing code on authority, executes the outer call, emits the synthetic event, and reverts atomically on failure.
   - `runtime/src/features.rs`:
-    - Gate all behavior behind the single `NV_EIP_7702` constant.
+    - No runtime network-version gating required; activation is controlled by the deployed bundle.
 
 Required changes (tests):
 - Lotus (Go)
@@ -147,7 +167,7 @@ Validation notes
   - `SetCodeAuthorizationMagic = 0x05` (authorization domain)
   - `Eip7702BytecodeMagic = 0xef01` and `Eip7702BytecodeVersion = 0x00` (delegation indicator)
   - Gas constants: treat as placeholders until finalized; do only behavioral assertions in Lotus.
-  - Activation gating: single NV constant used in both repos.
+  - Activation: via bundle; no runtime NV gates.
 
 **What Remains**
 - Gas constants/refunds: finalize authoritative costs in actor/runtime and mirror in Lotus estimation (behavioral tests only for now).
@@ -235,12 +255,12 @@ To route 0x04 transactions in development, build Lotus with `-tags eip7702_enabl
   - `chain/messagepool/` (generic mempool; no 7702-specific policies)
 - Builtin‑actors:
   - `actors/evm/` (ApplyAndCall; CALL pointer semantics; EXTCODE* behavior; event emission)
-  - `runtime/src/features.rs` (activation NV)
+  - `runtime/src/features.rs` (activation doc)
 
 **Editing Strategy**
 - Keep diffs small and scoped. Mirror existing style (e.g., 1559 code) where possible.
 - When changing encodings, update encoder/decoder and tests; no backward‑compatibility is required on this branch. Drop legacy/dual shapes in favor of canonical forms.
-- Unify activation gating across repos to a single NV constant and avoid hard‑coding disparate values.
+  
 
 **Commit Guidance**
 - Commit in small, semantic units with clear messages; avoid batching unrelated changes.
@@ -405,13 +425,13 @@ This section captures additional items from the comprehensive review of `builtin
 **Migration / Compatibility**
 - No migration required. The implementation is EVM‑only and atomic‑only.
 - Delegator has been removed; ApplyAndCall is the sole entry point.
-- Single NV gate: `NV_EIP_7702`. Domain: `0x05`. Pointer code magic/version: `0xef 0x01 0x00`.
+Domain: `0x05`. Pointer code magic/version: `0xef 0x01 0x00`.
 
 ---
 
 **Builtin‑Actors Test Plan (EVM‑Only)**
 
-Scope: `../builtin-actors` (paired repo), tracked here for sprint execution. Keep encodings, NV gating, and gas constants in sync with Lotus.
+Scope: `../builtin-actors` (paired repo), tracked here for sprint execution. Keep encodings and gas behavior in sync with Lotus.
 
 Priority: P0 (blocking), P1 (recommended), P2 (nice‑to‑have)
 
@@ -429,7 +449,7 @@ P0 — ApplyAndCall core (DONE)
 - Tuple decoding shape (DAG‑CBOR): canonical atomic params; round‑trip tested.
 
 P0 — EVM interpreter delegation (DONE)
-- NV gating: pre‑activation ignores mapping; post‑activation executes delegate under authority context.
+- Delegation handling: CALL→EOA executes delegate under authority context; depth limited to 1.
 - Delegated execution: delegate writes storage; CALL→EOA executes delegate; event emitted; depth limited to 1.
 
 P1 — Authorization semantics and state
@@ -466,7 +486,7 @@ Suggested test locations
   - `delegated_call_revert_data.rs` (P0) — DONE
 
 Notes
-- Keep `NV_EIP_7702` in `runtime/src/features.rs` as the single gate; mirror in Lotus.
+ 
 - When gas constants change, update both repos and adjust tests together.
 
 ---
@@ -498,7 +518,7 @@ P0 — Mempool (N/A on this branch)
 
 P0 — Gas accounting (scaffold) (DONE)
 - Counting + gating only; no absolute overhead assertions.
-- `countAuthInDelegatorParams` handles canonical wrapper; tests cover gating and monotonicity.
+- `countAuthInDelegatorParams` handles canonical wrapper; tests cover monotonicity.
 
 P1 — JSON‑RPC plumbing (DONE)
 - `eth_getTransactionReceipt` returns `authorizationList` and `delegatedTo`; covered in unit tests.
@@ -506,7 +526,7 @@ P1 — JSON‑RPC plumbing (DONE)
 - EthTransaction reconstruction robustness: strict decoder for ApplyAndCall params with negative tests for malformed CBOR.
 
 P1 — Estimation integration (DONE)
-- `eth_estimateGas` adds intrinsic overhead for N tuples (behavioral placeholder); tuple counting/gating tested.
+- `eth_estimateGas` adds intrinsic overhead for N tuples (behavioral placeholder); tuple counting tested.
 
 P1 — E2E tests (behind `eip7702_enabled`, run once wasm includes EVM ApplyAndCall)
 - Send‑path routing constructs ApplyAndCall params; mined receipt echoes `authorizationList` and `delegatedTo`.
@@ -525,5 +545,5 @@ P1 — Additional negative tests (DONE)
 - ApplyAndCall CBOR reconstruction: malformed tuple arity, empty list, invalid address length; strict decoder rejects shape/type mismatches.
 
 Notes
-- Keep gating aligned to a single NV constant shared with builtin‑actors.
+ 
 - Update gas constants/refunds in lockstep once finalized.
