@@ -11,6 +11,18 @@ This notebook tracks the end‑to‑end EIP‑7702 implementation across Lotus (
 - Provide a concise, actionable plan to complete EIP‑7702.
 - Document current status, remaining work, and how to validate.
 
+**Progress Sync (current)**
+- Event encoding: receipts now expect topic keccak("Delegated(address)") and a 32‑byte ABI word for the address. Lotus adjuster extracts the last 20 bytes and tolerates both 20/32‑byte encodings during the transition.
+- Routing: type‑0x04 now targets EthAccount.ApplyAndCall (FRC‑42 method hash) with the canonical CBOR wrapper. EVM.ApplyAndCall routing is deprecated on this branch.
+- Runtime helper: ref‑fvm exposes `get_eth_delegate_to(ActorID) -> Option<[u8;20]>`; EVM EXTCODE* now consults this helper to project the 23‑byte pointer image.
+- VM intercept: ref‑fvm now intercepts CALL→EOA to EthAccount when `delegate_to` is set; it executes the delegate under authority context (depth=1), mounts/persists the authority `evm_storage_root`, and emits `Delegated(address)` (32‑byte ABI) best‑effort.
+- Interpreter minimalization: EVM CALL/STATICCALL to EOAs no longer follows delegation internally; delegation is handled by the VM intercept. Legacy EVM ApplyAndCall/InvokeAsEoa remain temporarily for compatibility and will be removed.
+- EthAccount: state struct added (`delegate_to`, `auth_nonce`, `evm_storage_root`) and ApplyAndCall implemented with full tuple validation and receiver‑only persistence; outer call forwards gas and returns embedded status/returndata. Initial unit tests added (invalid yParity/lengths, nonce init/increment, atomicity on revert, value transfer short‑circuit).
+- Tests: Lotus 7702 receipts updated and green; ref‑fvm helper unit test added; EVM EXTCODE* tests continue to pass with the Runtime helper.
+
+Next up
+- Expand/enable ref‑fvm unit tests for intercept semantics (delegated mapping success/revert + revert bytes, depth limit, EXTCODECOPY windowing/zero‑fill, SELFDESTRUCT no‑op); then remove legacy EVM ApplyAndCall/InvokeAsEoa paths.
+
 **Paired Repos**
 - `./lotus` (this folder)
 - `../builtin-actors` (paired repo in a neighboring folder)
@@ -116,16 +128,17 @@ References for parity:
 **Status Overview**
 - Lotus/Go (done):
   - Typed 0x04 parsing/encoding with `authorizationList`; dispatch via `ParseEthTransaction`.
-  - `EthTx` and receipts echo `authorizationList`; receipt adjuster surfaces `delegatedTo` from tuples or synthetic event.
-  - Send path behind `-tags eip7702_enabled`: builds a Filecoin message targeting EVM.ApplyAndCall with CBOR‑encoded tuples.
+  - `EthTx` and receipts echo `authorizationList`; receipt adjuster surfaces `delegatedTo` from tuples or `Delegated(address)` event.
+  - Send path behind `-tags eip7702_enabled`: builds a Filecoin message targeting EthAccount.ApplyAndCall with canonical CBOR params.
   - Mempool policies (cross‑account invalidation; per‑EOA cap). No runtime NV gate on this branch.
-  - Gas estimation scaffold adds intrinsic overhead per tuple.
-  - Branch note: EVM-only routing; Delegator is not used for send/execute path on this branch.
-- Builtin‑actors/Rust (done):
-  - EVM runtime maintains pointer mapping and authority nonces; ApplyAndCall validates and updates mapping; interpreter handles EXTCODE* and emits `Delegated(address)`.
-- In‑progress alignment:
-  - CBOR params: canonical wrapper only; decoder enforces wrapper shape.
-  - No runtime gating; activation handled by bundle.
+  - Gas estimation scaffold adds intrinsic overhead per tuple (behavioral only).
+- Builtin‑actors/Rust (updated):
+  - EVM interpreter consults Runtime helper for EXTCODE* pointer projection; no unwraps; windowing semantics enforced.
+  - EthAccount state added; ApplyAndCall validates tuples (domain 0x05, yParity, non‑zero/≤32 R/S, low‑S), enforces nonce equality, persists `delegate_to` and `auth_nonce` (receiver‑only), initializes `evm_storage_root`, and executes the outer call; mapping persists on revert. Initial unit tests added.
+  - In‑progress: EVM call path minimalization (CALL/STATICCALL to EOAs → METHOD_SEND); removal of legacy delegation/ApplyAndCall from the EVM actor will follow VM intercept.
+- ref‑fvm (updated):
+  - Runtime/Kernel/SDK helper `get_eth_delegate_to(ActorID)` implemented with strict EthAccount code check; unit test added.
+  - Next: Implement CALL intercept + authority context (depth=1), mount/persist `evm_storage_root`, best‑effort `Delegated(address)` event (ABI 32‑byte), and success/revert mapping.
 
 **Spec Gap: MAGIC/Version Prefix Compliance**
 - Problem: We currently omit the required MAGIC prefixing in two places required by the spec and parity references (`eip7702.md`, `revm_eip_7702.md`).
@@ -140,27 +153,22 @@ Required changes (implementation):
     - Extend RLP decode tests to cover tuple arity/yParity rejection and ensure the above hash is stable across edge cases (zero/Big endian, etc.).
   - Go helpers cleaned up; Delegator helpers removed.
   - `node/impl/eth/receipt_7702_scaffold.go` and `node/impl/eth/gas_7702_scaffold.go`:
-    - No numeric changes; add checks that attribution/gas logic is guarded by presence of valid `authorizationList` and does not assume delegation unless `IsEip7702Code` or explicit tuple attribution is present.
+    - Receipts adjuster updated to topic keccak("Delegated(address)"); data read as 32‑byte ABI word (last 20 bytes extracted); attribution prefers tuples; tolerates missing events. Gas logic remains behavioral and guarded by non‑empty `authorizationList` and target=EthAccount.ApplyAndCall.
 
 - Builtin‑actors (Rust)
-  - EVM runtime manages pointer semantics and nonces; `ApplyAndCall` validates, applies, and executes atomically.
-  - `actors/evm/` runtime:
-    - On CALL→EOA, if the target account’s code starts with `0xef0100`, treat it as delegated code: load bytecode from the embedded 20‑byte address for execution (`InvokeAsEoa`), keep the authority context and emit the `Delegated(address)` event.
-    - Ensure `EXTCODEHASH`, `EXTCODESIZE`, and code‑loading paths treat `0xef0100` accounts as “pointer” code (i.e., return the pointer code’s own hash/size when queried on the authority; only follow the pointer when executing). Follow the behavior in `revm_eip_7702.md`.
-    - Implement `ApplyAndCall` that validates tuples (domain `0x05`, yParity ∈ {0,1}, non‑zero r/s, low‑s), enforces nonce equality, sets/clears pointer code, rejects non‑7702 pre‑existing code on authority, executes the outer call, emits the synthetic event, and reverts atomically on failure.
-  - `runtime/src/features.rs`:
-    - No runtime network-version gating required; activation is controlled by the deployed bundle.
+  - EVM interpreter: EXTCODE* pointer projection via Runtime helper; `0xef0100` virtual code exposed; windowing and zero‑fill semantics enforced; no unwraps.
+  - EthAccount.ApplyAndCall: tuple validation as above; receiver‑only persistence; outer call forwards gas; events will be emitted from VM intercept.
+  - No runtime network‑version gating; activation via bundle.
 
 Required changes (tests):
 - Lotus (Go)
-  - `chain/types/ethtypes`: add unit tests for `AuthTupleHash` against known vectors; add negative tests for tuple arity and invalid `yParity`. (DONE)
-  - `node/impl/eth` receipts: attribution tests from both `authorizationList` and synthetic `Delegated(address)` log. (DONE)
-  - `node/impl/eth` gas: behavioral tests ensuring overhead applies only when tuple list is non‑empty and grows with tuple count; include Delegator + EVM routes. (DONE)
+  - `chain/types/ethtypes`: AuthTupleHash vectors; tuple arity/yParity negatives. (DONE)
+  - `node/impl/eth` receipts: attribution via tuples or `Delegated(address)` (32‑byte ABI data tolerant). (DONE)
+  - `node/impl/eth` gas: behavioral overhead tests guarded by tuple count and target. (DONE)
 
 - Builtin‑actors (Rust)
-  - `actors/evm` tests:
-    - CALL to EOA with `0xef0100` code executes delegate and updates storage; `EXTCODESIZE/HASH` reflect pointer code on the authority; synthetic event is emitted for attribution.
-    - ApplyAndCall happy path and revert atomicity; negative vectors for invalid domain/yParity/high‑s/zero r,s/wrong chain id/nonce mismatch; refund/accounting as specified. (INITIAL)
+  - `actors/evm` tests stay green with Runtime helper in EXTCODE* paths.
+  - `actors/ethaccount` tests added: invalid yParity/lengths, nonce init/increment, atomicity on revert, value transfer short‑circuit. More to be ported as VM intercept lands.
 
 Validation notes
 - Keep the following aligned across repos and tests:
@@ -170,10 +178,10 @@ Validation notes
   - Activation: via bundle; no runtime NV gates.
 
 **What Remains**
-- Gas constants/refunds: finalize authoritative costs in actor/runtime and mirror in Lotus estimation (behavioral tests only for now).
-- E2E tests in Lotus once wasm bundle is buildable; validate: 0x04 applies delegations atomically and outer call executes (delegated where applicable); receipts/logs attribution; policies OK post‑activation.
-- Optional receipt polish depending on explorer requirements.
-- Pre‑review cleanup (scar‑less): remove Delegator and non‑atomic code paths; make EVM `ApplyAndCall` the sole entry; drop env toggles used for development; scrub docs/tests for single canonical flow.
+- VM intercept (ref‑fvm): delegated CALL → execute delegate under authority context with depth=1; mount/persist `evm_storage_root`; best‑effort `Delegated(address)` event (ABI 32‑byte); map success/revert; test windowing, short‑circuit, depth limit, selfdestruct no‑op.
+- EVM minimalization: CALL/STATICCALL to EOAs → METHOD_SEND; remove legacy delegation + InvokeAsEoa + EVM.ApplyAndCall once intercept is in.
+- Gas constants/refunds: finalize numbers (behavioral in Lotus until then).
+- Lotus E2E: once wasm bundle includes intercept, validate atomic apply+call, delegated execution, receipts/logs attribution.
 
 ---
 
@@ -241,8 +249,9 @@ Acceptance criteria (updated)
   - `go build ./chain/types/ethtypes`
   - `go test ./chain/types/ethtypes -run 7702 -count=1`
   - `go test ./node/impl/eth -run 7702 -count=1`
-- Builtin‑actors (local toolchain permitting): `cargo test -p fil_actor_evm` (EVM actor changes).
-  - Includes pointer semantics and delegated revert‑data tests: `eoa_call_pointer_semantics.rs`, `delegated_call_revert_data.rs`.
+- Builtin‑actors (local toolchain permitting):
+  - `cargo test -p fil_actor_evm` (EVM runtime changes; EXTCODE* helper usage).
+  - `cargo test -p fil_actor_ethaccount` (EthAccount state + ApplyAndCall tests: invalids, nonces, atomicity, value transfer).
 - Lotus E2E (requires updated wasm bundle):
   - `go test ./itests -run Eth7702 -tags eip7702_enabled -count=1`
 
