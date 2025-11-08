@@ -29,21 +29,27 @@ This document defines the current work priority for EIP-7702 across builtin-acto
 - Pointer code projection (EXTCODE*):
   - On EXTCODESIZE/HASH/COPY for an EOA with `delegate_to != None`, return a virtual 23-byte code image: `0xEF 0x01 0x00 || <delegate(20)>`.
   - EXTCODEHASH returns keccak(pointer_code), size is 23, copy returns the exact 23 bytes.
-- Delegated dispatch for CALL to EOAs:
-  - If target is an EOA with `delegate_to`, transfer value to the authority; fail outer call if transfer fails.
-  - Execute the delegate contract’s EVM bytecode under an authority context with depth limit=1.
-  - Mount the authority’s `evm_storage_root` during execution and persist the updated root back to EthAccount on exit.
-  - Propagate returndata on success; on revert, set status=0 and surface revert bytes.
-  - Emit `Delegated(address)` with the authority address (best-effort; may drop under gas tightness).
+- Delegated dispatch for CALL to EOAs (implemented):
+  - Intercept EVM `InvokeEVM` → EthAccount target when the EthAccount has `delegate_to` set.
+  - Value transfer: the call manager transfers value to the authority prior to interception; on transfer failure the EVM call reports success=0 via `EVM_CONTRACT_REVERTED`.
+  - Execution: ref‑fvm invokes the caller EVM actor via a private trampoline `InvokeAsEoaWithRoot` with parameters `(code_cid, input, caller, receiver, value, initial_storage_root)`:
+    - The EVM actor mounts `initial_storage_root`, sets authority context (depth=1), executes delegate code, and returns `(output_data, new_storage_root)` or reverts with the revert payload.
+  - Persistence: the call manager persists `new_storage_root` back into the EthAccount state (`evm_storage_root`).
+  - Return mapping: on success, returns `ExitCode::OK` with raw `output_data` for the EVM interpreter; on revert, returns `EVM_CONTRACT_REVERTED` with the revert payload.
+  - Event: emits `Delegated(address)` (topic keccak("Delegated(address)")) with the authority encoded as a 32‑byte ABI word. Emission is best‑effort.
 - Authority context rules:
   - Do not re-follow delegation (depth limit enforced by a context flag).
   - SELFDESTRUCT is a no-op in authority context (no balance move or tombstone effect).
+  - Success/revert mapping: delegated subcalls map to standard EVM CALL semantics. On success, return ExitCode::OK and
+    returndata. On revert, return EVM_CONTRACT_REVERTED with revert payload as data; the EVM interpreter will set
+    success=0 and propagate returndata via RETURNDATASIZE/RETURNDATACOPY.
 
 ### ApplyAndCall in EthAccount
 
 - Method `ApplyAndCall` validates tuples and updates state, then invokes a VM syscall to execute the outer call with all gas forwarded.
 - Tuple validation (consensus-critical): domain separator 0x05; `yParity in {0,1}`; non-zero R/S; ≤32-byte R/S accepted with left-padding; low-s enforced; nonce equality; tuple cap (64 placeholder).
 - Pre-existence check: reject if the authority resolves to an EVM contract actor.
+- Receiver-only constraint (current): all tuples must target the receiver authority (authority==receiver). Multi-authority updates will be realized via VM intercept semantics.
 - Returns embedded status and return data; mapping and nonce updates persist even if outer call reverts.
 
 ### Interfaces (proposed)
@@ -51,11 +57,30 @@ This document defines the current work priority for EIP-7702 across builtin-acto
 - VM syscall invoked by EthAccount.ApplyAndCall (pseudo-signature):
   - `fn evm_apply_and_call(authority: EthAddress, to: EthAddress, value: TokenAmount, input: Bytes) -> (status: u8, returndata: Bytes)`
   - Semantics: forwards all remaining gas to the outer call; performs delegated dispatch/pointer semantics per rules above; returns status and returndata without undoing prior state updates.
-- Event topic constant: `keccak("Delegated(address)")`.
+- Runtime/Kernel helper for EXTCODE* projection (used by EVM actor):
+  - `fn get_eth_delegate_to(actor: ActorID) -> Option<[u8; 20]>` (implemented; ref-fvm + SDK)
+  - Read-only; returns the delegate address if the target is an EthAccount with `delegate_to` set.
+  - EVM interpreter (ext.rs) consults this helper on Account/EOA targets to decide if pointer code is exposed.
+- Helper EOA detection and resolution order:
+  - Resolve target to ID, load code CID, verify it is the EthAccount builtin actor; only then decode state and read
+    `delegate_to`. Never return a delegate for EVM actors or non-EOA code.
+- Event topic constant: `keccak("Delegated(address)")`; data encoded as a 32-byte ABI word (last 20 bytes form the address).
 - Pointer code constants: `MAGIC=0xEF01`, `VERSION=0x00` → 23-byte image: `0xEF 0x01 0x00 || delegate(20)`.
 - EthAccount.ApplyAndCall params (CBOR wrapper, canonical):
   - `[ [ tuples... ], [ to(20), value(u256), input(bytes) ] ]`.
   - Tuple fields validated with domain `0x05` hash preimage for signature checks.
+
+Implementation notes
+- Trampoline: `Evm.InvokeAsEoaWithRoot` (FRC‑42 selector) is added for VM use only. It mounts the provided `initial_storage_root`, runs in authority context, and returns `(output_data, new_storage_root)`.
+- EXTCODE* projection: the interpreter consults `get_eth_delegate_to(ActorID)`; pointer code is exposed as `0xEF 0x01 0x00 || delegate(20)`, `EXTCODESIZE=23`, `EXTCODEHASH=keccak(pointer_code)`, and `EXTCODECOPY` enforces windowing/zero‑fill.
+
+### EXTCODE* Semantics Over Pointer Code
+
+- EXTCODESIZE(authority) returns 23 when `delegate_to` is set, else the authority’s actual code size (typically 0).
+- EXTCODEHASH(authority) returns keccak(pointer_code) when delegated, else code hash per normal rules.
+- EXTCODECOPY(authority, destOffset, offset, size) copies up to 23 bytes of the virtual pointer code starting at
+  `offset`, truncates when out of range, and zero-fills the remainder per EVM rules. When `offset >= 23` and `size > 0`,
+  the copy yields all zeros.
 
 ## ref-fvm Changes (new branch)
 
@@ -77,6 +102,11 @@ This document defines the current work priority for EIP-7702 across builtin-acto
 - Context plumbing:
   - Execution context flag for authority mode; prevent delegation re-follow.
   - Storage overlay: mount EthAccount.evm_storage_root and persist updated root on exit.
+  - EthAccount state mutation policy: ref-fvm is responsible for persisting `evm_storage_root` back to the authority
+    EthAccount after delegated execution. This is a privileged VM operation; user code cannot mutate this field.
+    Optionally, implement as an internal EthAccount hook callable only by the VM.
+  - Address resolution policy: the VM intercept must resolve Ethereum addresses to ActorIDs, then use code CID to
+    distinguish EthAccount vs EVM actors. Delegated dispatch applies only to EthAccounts (EOAs).
 - Events:
   - Emit `Delegated(address)` after delegated outer call (best-effort).
 
@@ -91,6 +121,7 @@ This document defines the current work priority for EIP-7702 across builtin-acto
 - EVM actor:
   - Remove internal delegation/nonces/storage-root structures and InvokeAsEoa.
   - Keep the interpreter intact; do not alter EXTCODE* — the VM supplies pointer behavior.
+  - Update ext.rs to consult the runtime helper `get_eth_delegate_to` for Account/EOA targets to project pointer code.
 - Tests:
   - Global mapping test passes (eoa_pointer_mapping_global.rs).
   - Existing suites for pointer semantics, revert-data, depth limit, pre-existence, R/S padding, tuple cap keep passing through EthAccount + VM path.
@@ -137,17 +168,24 @@ This matrix maps existing builtin-actors EVM tests to expected coverage post-mig
 - Pointer semantics
   - actors/evm/tests/eoa_call_pointer_semantics.rs → remains; backed by VM EXTCODE* projection.
   - ref-fvm: add unit tests for EXTCODESIZE=23, EXTCODECOPY bytes match, EXTCODEHASH(pointer_code).
+- EXTCODECOPY windowing
+  - Add ref-fvm tests that exercise partial and out-of-bounds windows over the 23-byte image, asserting correct truncation
+    and zero-fill semantics.
 - Global mapping visibility
   - actors/evm/tests/eoa_pointer_mapping_global.rs → remains; now passes using EthAccount state.
   - ref-fvm: add test to verify cross-contract EXTCODE* sees pointer code for any EOA with delegate.
 - Delegated CALL behavior
   - actors/evm/tests/delegated_call_revert_data.rs → remains; VM must propagate revert data to return buffer + memory.
   - actors/evm/tests/apply_and_call_value_transfer.rs → remains; VM short-circuits on failed transfer.
+- Event emission under gas tightness
+  - Add ref-fvm tests that enforce extremely tight gas conditions to verify Delegated(address) emission is best-effort
+    and absence of the event does not affect outer call status/returndata.
 - Atomic ApplyAndCall
   - actors/evm/tests/apply_and_call_atomicity_* → port to EthAccount.ApplyAndCall; assert persistence on revert.
   - ref-fvm: syscall tests ensure status/returndata returned per VM dispatch.
 - Depth limit
   - actors/evm/tests/apply_and_call_depth_limit.rs → remains; VM prevents delegation re-follow under authority context.
+  - Add ref-fvm test for A->B and B->C configured; CALL→A delegates to B only (no follow to C).
 - SELFDESTRUCT no-op under authority
   - actors/evm/tests/apply_and_call_selfdestruct.rs → remains; VM enforces no-op and state/balance invariants.
 - Storage isolation/persistence
@@ -159,6 +197,10 @@ This matrix maps existing builtin-actors EVM tests to expected coverage post-mig
   - actors/evm/tests/apply_and_call_delegate_no_code.rs → remains; EthAccount rejects authorities resolving to EVM contracts.
 - NV gating (none)
   - actors/evm/tests/eoa_invoke_delegation_nv.rs → remains; ensure no runtime gating.
+- Nonce initialization
+  - actors/evm/tests/apply_and_call_nonces.rs → ensure absent authority defaults to nonce=0; applying nonce=0 succeeds;
+    subsequent nonce=0 fails with mismatch.
+  - Add a ref-fvm unit test covering EthAccount state read/write round-trips to prevent struct drift.
 
 Lotus tests (no loss of coverage):
 
@@ -180,6 +222,9 @@ ref-fvm tests (new):
 - Lotus:
   - `go test` suites for 7702 parsing/encoding, receipts attribution, behavioral gas estimation.
   - E2E once bundles include ref-fvm changes: apply delegations, CALL→EOA executes delegate, storage persists under authority, event emitted, receipts correct.
+  - Add a receipt test variant that tolerates missing Delegated(address) when gas is extremely tight (best-effort event).
+  - Add a decode robustness test for revert data in EVM paths to ensure no silent fallback on decode failures (return
+    illegal_state in invariants instead of discarding data).
 
 ## Execution Checklist
 
@@ -210,6 +255,9 @@ ref-fvm tests (new):
   - Mitigation: Dedicated tests for RETURNDATASIZE/RETURNDATACOPY semantics.
 - Risk: Event emission dropped under gas tightness.
   - Mitigation: Document best-effort; ensure outer call status unaffected; test both with/without sufficient gas.
+- Risk: Helper drift and EOA misclassification.
+  - Mitigation: Centralize EthAccount state struct and add ref-fvm round-trip tests; strictly verify code CID for
+    EthAccount in helper and intercept paths.
 
 ## Out of Scope
 
@@ -221,7 +269,7 @@ ref-fvm tests (new):
 - Delegation state and nonces are per-EOA in EthAccount and persist across transactions.
 - EXTCODESIZE/HASH/COPY on delegated EOAs exposes a 23-byte pointer code globally.
 - CALL to delegated EOAs executes the delegate’s code in authority context with a depth limit of 1 and authority storage overlay; SELFDESTRUCT no-op.
-- `ApplyAndCall` persists mapping + nonces pre-call and returns embedded status + return data; receipts/logs attribute `delegatedTo` as specified.
+- `ApplyAndCall` persists mapping + nonces pre-call and returns embedded status + return data; receipts/logs attribute `delegatedTo` as specified; Lotus routes 0x04 to EthAccount.ApplyAndCall.
 - Behavioral gas tests in Lotus remain green; no special mempool policies.
 
 ## Ownership & Areas
@@ -237,7 +285,11 @@ ref-fvm tests (new):
 
 ## Quick Commands
 
-- builtin-actors: `cargo test -p fil_actor_evm`
+- builtin-actors:
+  - `cargo test -p fil_actor_evm`
+  - `cargo test -p fil_actor_ethaccount`
+- ref-fvm:
+  - `cargo test -p fvm --test eth_delegate_to`
 - Lotus:
   - `go build ./chain/types/ethtypes`
   - `go test ./chain/types/ethtypes -run 7702 -count=1`
