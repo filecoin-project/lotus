@@ -74,6 +74,10 @@ Implementation notes
 - Trampoline: `Evm.InvokeAsEoaWithRoot` (FRC‑42 selector) is added for VM use only. It mounts the provided `initial_storage_root`, runs in authority context, and returns `(output_data, new_storage_root)`.
 - EXTCODE* projection: the interpreter consults `get_eth_delegate_to(ActorID)`; pointer code is exposed as `0xEF 0x01 0x00 || delegate(20)`, `EXTCODESIZE=23`, `EXTCODEHASH=keccak(pointer_code)`, and `EXTCODECOPY` enforces windowing/zero‑fill.
 
+Tests (current)
+- Added ref‑fvm EthAccount state (de)serialization roundtrip test to guard state layout.
+- Added skeleton tests (ignored) for intercept semantics: EXTCODE* projection, delegated CALL success/revert mapping with revert bytes, depth limit enforcement, value‑transfer short‑circuit, and SELFDESTRUCT no‑op. These will be enabled with a DefaultCallManager harness in a follow‑up.
+
 ### EXTCODE* Semantics Over Pointer Code
 
 - EXTCODESIZE(authority) returns 23 when `delegate_to` is set, else the authority’s actual code size (typically 0).
