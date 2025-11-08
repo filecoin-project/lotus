@@ -16,7 +16,7 @@ import (
 func TestEIP7702_ToUnsignedFilecoinMessage_EvmReceiver(t *testing.T) {
 	// Configure an EVM ApplyAndCall receiver directly and ensure the message targets it.
 	id999, _ := address.NewIDAddress(999)
-	EvmApplyAndCallActorAddr = id999
+	EthAccountApplyAndCallActorAddr = id999
 
 	var to EthAddress
 	tx := &Eth7702TxArgs{
@@ -36,6 +36,6 @@ func TestEIP7702_ToUnsignedFilecoinMessage_EvmReceiver(t *testing.T) {
 	require.NoError(t, err)
 	msg, err := tx.ToUnsignedFilecoinMessage(fromFC)
 	require.NoError(t, err)
-	require.Equal(t, EvmApplyAndCallActorAddr, msg.To)
+	require.Equal(t, EthAccountApplyAndCallActorAddr, msg.To)
 	require.EqualValues(t, MethodHash("ApplyAndCall"), msg.Method)
 }

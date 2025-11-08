@@ -144,13 +144,13 @@ func (tx *Eth7702TxArgs) ToUnsignedFilecoinMessageAtomic(from address.Address) (
 	if err != nil {
 		return nil, xerrors.Errorf("failed to CBOR-encode apply+call params: %w", err)
 	}
-	if EvmApplyAndCallActorAddr == address.Undef {
-		return nil, fmt.Errorf("EIP-7702 feature enabled but EvmApplyAndCallActorAddr is undefined; set ethtypes.EvmApplyAndCallActorAddr at init")
+	if EthAccountApplyAndCallActorAddr == address.Undef {
+		return nil, fmt.Errorf("EIP-7702 feature enabled but EthAccountApplyAndCallActorAddr is undefined; set ethtypes.EthAccountApplyAndCallActorAddr at init")
 	}
 	method := abi.MethodNum(MethodHash("ApplyAndCall"))
 	return &types.Message{
 		Version:    0,
-		To:         EvmApplyAndCallActorAddr,
+		To:         EthAccountApplyAndCallActorAddr,
 		From:       from,
 		Nonce:      uint64(tx.Nonce),
 		Value:      types.NewInt(0),

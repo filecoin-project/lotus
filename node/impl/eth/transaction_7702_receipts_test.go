@@ -471,14 +471,17 @@ func TestEthGetBlockReceipts_7702_SyntheticLogAttribution(t *testing.T) {
 	// fake events that will return a synthetic delegation log
 	var topic0 ethtypes.EthHash
 	h := sha3.NewLegacyKeccak256()
-	_, _ = h.Write([]byte("EIP7702Delegated(address)"))
+	_, _ = h.Write([]byte("Delegated(address)"))
 	copy(topic0[:], h.Sum(nil))
 	var del ethtypes.EthAddress
 	for i := range del {
 		del[i] = 0xCD
 	}
 	ev := &mockEvents{}
-	evLogs := []ethtypes.EthLog{{Topics: []ethtypes.EthHash{topic0}, Data: ethtypes.EthBytes(del[:])}}
+	// ABI-encode authority address into 32 bytes (right-aligned)
+	var data32 [32]byte
+	copy(data32[12:], del[:])
+	evLogs := []ethtypes.EthLog{{Topics: []ethtypes.EthHash{topic0}, Data: ethtypes.EthBytes(data32[:])}}
 	// Wrap mockEvents with a function-compatible type by embedding method via a closure-like adapter
 	// We simply assign a package-level var to be used inside method (not ideal, but sufficient for tests).
 	logsForTest = evLogs
@@ -925,16 +928,18 @@ func TestEthGetBlockReceipts_7702_MixedBlock_SyntheticEventForNon7702(t *testing
 	sm := &mockStateManager{}
 	tr := &mockTipsetResolver{ts: ts}
 
-	// Set a synthetic EIP7702Delegated(address) event for logs fetching.
+	// Set a synthetic Delegated(address) event for logs fetching.
 	var topic0 ethtypes.EthHash
 	h := sha3.NewLegacyKeccak256()
-	_, _ = h.Write([]byte("EIP7702Delegated(address)"))
+	_, _ = h.Write([]byte("Delegated(address)"))
 	copy(topic0[:], h.Sum(nil))
 	var evDel ethtypes.EthAddress
 	for i := range evDel {
 		evDel[i] = 0xDE
 	}
-	logsForTest = []ethtypes.EthLog{{Topics: []ethtypes.EthHash{topic0}, Data: ethtypes.EthBytes(evDel[:])}}
+	var data32 [32]byte
+	copy(data32[12:], evDel[:])
+	logsForTest = []ethtypes.EthLog{{Topics: []ethtypes.EthHash{topic0}, Data: ethtypes.EthBytes(data32[:])}}
 	ev := &mockEvents{}
 
 	api, err := NewEthTransactionAPI(cs, sm, nil, nil, nil, ev, tr, 0)

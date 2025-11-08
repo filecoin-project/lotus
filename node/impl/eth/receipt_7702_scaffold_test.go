@@ -40,10 +40,10 @@ func TestAdjustReceiptForDelegation_FromAuthList(t *testing.T) {
 
 func TestAdjustReceiptForDelegation_FromSyntheticLog(t *testing.T) {
 	// Build a tx without auth list, but with a synthetic log containing
-	// topic0=keccak("EIP7702Delegated(address)") and 20-byte data
+	// topic0=keccak("Delegated(address)") and ABI-encoded 32-byte data
 	var topic0 ethtypes.EthHash
 	h := sha3.NewLegacyKeccak256()
-	_, _ = h.Write([]byte("EIP7702Delegated(address)"))
+	_, _ = h.Write([]byte("Delegated(address)"))
 	sum := h.Sum(nil)
 	copy(topic0[:], sum)
 
@@ -52,9 +52,12 @@ func TestAdjustReceiptForDelegation_FromSyntheticLog(t *testing.T) {
 		delegate[i] = 0xCD
 	}
 
+	// ABI-encode the address into a 32-byte word (right-aligned).
+	var data32 [32]byte
+	copy(data32[12:], delegate[:])
 	lg := ethtypes.EthLog{
 		Topics: []ethtypes.EthHash{topic0},
-		Data:   ethtypes.EthBytes(delegate[:]),
+		Data:   ethtypes.EthBytes(data32[:]),
 	}
 	r := ethtypes.EthTxReceipt{Logs: []ethtypes.EthLog{lg}}
 	tx := ethtypes.EthTx{Type: ethtypes.EthUint64(ethtypes.EIP7702TxType)}
@@ -84,13 +87,15 @@ func TestAdjustReceiptForDelegation_PrefersAuthList(t *testing.T) {
 	// Also add a conflicting synthetic log for a different address
 	var topic0 ethtypes.EthHash
 	h := sha3.NewLegacyKeccak256()
-	_, _ = h.Write([]byte("EIP7702Delegated(address)"))
+	_, _ = h.Write([]byte("Delegated(address)"))
 	copy(topic0[:], h.Sum(nil))
 	var other ethtypes.EthAddress
 	for i := range other {
 		other[i] = 0xCD
 	}
-	r := ethtypes.EthTxReceipt{Logs: []ethtypes.EthLog{{Topics: []ethtypes.EthHash{topic0}, Data: ethtypes.EthBytes(other[:])}}}
+	var data32 [32]byte
+	copy(data32[12:], other[:])
+	r := ethtypes.EthTxReceipt{Logs: []ethtypes.EthLog{{Topics: []ethtypes.EthHash{topic0}, Data: ethtypes.EthBytes(data32[:])}}}
 
 	adjustReceiptForDelegation(context.TODO(), &r, tx)
 	if len(r.DelegatedTo) != 1 || r.DelegatedTo[0] != authAddr {
@@ -109,10 +114,10 @@ func TestAdjustReceiptForDelegation_NoopWhenNoData(t *testing.T) {
 }
 
 func TestAdjustReceiptForDelegation_MultipleSyntheticLogs(t *testing.T) {
-	// Two logs with the EIP7702Delegated topic should yield two delegates
+	// Two logs with the Delegated topic should yield two delegates
 	var topic0 ethtypes.EthHash
 	h := sha3.NewLegacyKeccak256()
-	_, _ = h.Write([]byte("EIP7702Delegated(address)"))
+	_, _ = h.Write([]byte("Delegated(address)"))
 	copy(topic0[:], h.Sum(nil))
 
 	mkAddr := func(b byte) ethtypes.EthAddress {
@@ -125,13 +130,16 @@ func TestAdjustReceiptForDelegation_MultipleSyntheticLogs(t *testing.T) {
 	a1 := mkAddr(0x01)
 	a2 := mkAddr(0x02)
 
+	var d1, d2 [32]byte
+	copy(d1[12:], a1[:])
+	copy(d2[12:], a2[:])
 	logs := []ethtypes.EthLog{
-		{Topics: []ethtypes.EthHash{topic0}, Data: ethtypes.EthBytes(a1[:])},
-		{Topics: []ethtypes.EthHash{topic0}, Data: ethtypes.EthBytes(a2[:])},
+		{Topics: []ethtypes.EthHash{topic0}, Data: ethtypes.EthBytes(d1[:])},
+		{Topics: []ethtypes.EthHash{topic0}, Data: ethtypes.EthBytes(d2[:])},
 		// a malformed log should be ignored
 		{Topics: []ethtypes.EthHash{topic0}, Data: ethtypes.EthBytes([]byte{0xAA})},
 		// wrong topic ignored
-		{Topics: []ethtypes.EthHash{{}}, Data: ethtypes.EthBytes(a1[:])},
+		{Topics: []ethtypes.EthHash{{}}, Data: ethtypes.EthBytes(d1[:])},
 	}
 	r := ethtypes.EthTxReceipt{Logs: logs}
 	tx := ethtypes.EthTx{Type: ethtypes.EthUint64(ethtypes.EIP7702TxType)}
@@ -148,7 +156,7 @@ func TestAdjustReceiptForDelegation_TakesLast20Bytes(t *testing.T) {
 	// Data longer than 20 bytes -> use last 20 bytes
 	var topic0 ethtypes.EthHash
 	h := sha3.NewLegacyKeccak256()
-	_, _ = h.Write([]byte("EIP7702Delegated(address)"))
+	_, _ = h.Write([]byte("Delegated(address)"))
 	copy(topic0[:], h.Sum(nil))
 
 	// Construct data = 12 bytes prefix + 20-byte address

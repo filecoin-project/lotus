@@ -21,7 +21,7 @@ func Test7702_ToUnsignedFilecoinMessage_FeatureFlag(t *testing.T) {
 	// Configure a fake EVM ApplyAndCall actor address
 	a, err := address.NewIDAddress(1234)
 	require.NoError(t, err)
-	EvmApplyAndCallActorAddr = a
+	EthAccountApplyAndCallActorAddr = a
 
 	// Minimal 7702 tx with one authorization
 	var to EthAddress
@@ -44,7 +44,7 @@ func Test7702_ToUnsignedFilecoinMessage_FeatureFlag(t *testing.T) {
 	require.NoError(t, err)
 	msg, err := tx.ToUnsignedFilecoinMessageAtomic(from)
 	require.NoError(t, err)
-	require.Equal(t, EvmApplyAndCallActorAddr, msg.To)
+	require.Equal(t, EthAccountApplyAndCallActorAddr, msg.To)
 	require.EqualValues(t, abi.MethodNum(MethodHash("ApplyAndCall")), msg.Method)
 	require.NotEmpty(t, msg.Params)
 }

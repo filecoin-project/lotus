@@ -39,9 +39,9 @@ func encodeAuthWrapper(t *testing.T) []byte {
 }
 
 func TestEthTransactionFromSignedMessage_7702_Decodes(t *testing.T) {
-	// Setup: set EvmApplyAndCallActorAddr to ID:18
+	// Setup: set EthAccountApplyAndCallActorAddr to ID:18
 	id18, _ := address.NewIDAddress(18)
-	EvmApplyAndCallActorAddr = id18
+	EthAccountApplyAndCallActorAddr = id18
 	// From must be an eth (f4) address
 	var from20 [20]byte
 	for i := range from20 {
@@ -53,7 +53,7 @@ func TestEthTransactionFromSignedMessage_7702_Decodes(t *testing.T) {
 	// Build SignedMessage targeting EVM.ApplyAndCall
 	msg := types.Message{
 		Version:    0,
-		To:         EvmApplyAndCallActorAddr,
+		To:         EthAccountApplyAndCallActorAddr,
 		From:       from,
 		Nonce:      0,
 		Value:      types.NewInt(0),
@@ -80,7 +80,7 @@ func TestEthTransactionFromSignedMessage_7702_Decodes(t *testing.T) {
 func TestEthTransactionFromSignedMessage_7702_MultiTupleDecodes(t *testing.T) {
 	// Setup ID:18 EVM ApplyAndCall address and f4 sender
 	id18, _ := address.NewIDAddress(18)
-	EvmApplyAndCallActorAddr = id18
+	EthAccountApplyAndCallActorAddr = id18
 	var from20 [20]byte
 	for i := range from20 {
 		from20[i] = 0x22
@@ -108,7 +108,7 @@ func TestEthTransactionFromSignedMessage_7702_MultiTupleDecodes(t *testing.T) {
 	encTup(314, 0)
 	encTup(314, 1)
 
-	msg := types.Message{To: EvmApplyAndCallActorAddr, From: from, Method: abi.MethodNum(MethodHash("ApplyAndCall")), Params: buf.Bytes(), GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1), Value: types.NewInt(0)}
+	msg := types.Message{To: EthAccountApplyAndCallActorAddr, From: from, Method: abi.MethodNum(MethodHash("ApplyAndCall")), Params: buf.Bytes(), GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1), Value: types.NewInt(0)}
 	sig := typescrypto.Signature{Type: typescrypto.SigTypeDelegated, Data: append(append(make([]byte, 31), 1), append(append(make([]byte, 31), 1), 0)...)}
 	smsg := &types.SignedMessage{Message: msg, Signature: sig}
 
@@ -122,10 +122,10 @@ func TestEthTransactionFromSignedMessage_7702_MultiTupleDecodes(t *testing.T) {
 func TestEthTransactionFromSignedMessage_NonDelegatedSigRejected(t *testing.T) {
 	// Setup EVM ApplyAndCall address; signature type is wrong (secp256k1)
 	id18, _ := address.NewIDAddress(18)
-	EvmApplyAndCallActorAddr = id18
+	EthAccountApplyAndCallActorAddr = id18
 	// Sender can be anything; rejection occurs earlier on sig type
 	from, _ := address.NewIDAddress(1001)
-	msg := types.Message{To: EvmApplyAndCallActorAddr, From: from, Method: abi.MethodNum(MethodHash("ApplyAndCall"))}
+	msg := types.Message{To: EthAccountApplyAndCallActorAddr, From: from, Method: abi.MethodNum(MethodHash("ApplyAndCall"))}
 	sig := typescrypto.Signature{Type: typescrypto.SigTypeSecp256k1, Data: make([]byte, 65)}
 	smsg := &types.SignedMessage{Message: msg, Signature: sig}
 	_, err := EthTransactionFromSignedFilecoinMessage(smsg)
@@ -135,10 +135,10 @@ func TestEthTransactionFromSignedMessage_NonDelegatedSigRejected(t *testing.T) {
 func TestEthTransactionFromSignedMessage_SenderNotEthRejected(t *testing.T) {
 	// Delegated signature but non-f4 sender should be rejected
 	id18, _ := address.NewIDAddress(18)
-	EvmApplyAndCallActorAddr = id18
+	EthAccountApplyAndCallActorAddr = id18
 	// Non-eth sender: ID address
 	from, _ := address.NewIDAddress(42)
-	msg := types.Message{To: EvmApplyAndCallActorAddr, From: from, Method: abi.MethodNum(MethodHash("ApplyAndCall"))}
+	msg := types.Message{To: EthAccountApplyAndCallActorAddr, From: from, Method: abi.MethodNum(MethodHash("ApplyAndCall"))}
 	sig := typescrypto.Signature{Type: typescrypto.SigTypeDelegated, Data: make([]byte, 65)}
 	smsg := &types.SignedMessage{Message: msg, Signature: sig}
 	_, err := EthTransactionFromSignedFilecoinMessage(smsg)
@@ -148,7 +148,7 @@ func TestEthTransactionFromSignedMessage_SenderNotEthRejected(t *testing.T) {
 func TestEthTransactionFromSignedMessage_7702_BadCBORRejected(t *testing.T) {
 	// Setup ID:18 EVM ApplyAndCall address and f4 sender
 	id18, _ := address.NewIDAddress(18)
-	EvmApplyAndCallActorAddr = id18
+	EthAccountApplyAndCallActorAddr = id18
 	var from20 [20]byte
 	for i := range from20 {
 		from20[i] = 0x33
@@ -160,7 +160,7 @@ func TestEthTransactionFromSignedMessage_7702_BadCBORRejected(t *testing.T) {
 	var buf bytes.Buffer
 	require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajUnsignedInt, 7))
 
-	msg := types.Message{To: EvmApplyAndCallActorAddr, From: from, Method: abi.MethodNum(MethodHash("ApplyAndCall")), Params: buf.Bytes(), GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1)}
+	msg := types.Message{To: EthAccountApplyAndCallActorAddr, From: from, Method: abi.MethodNum(MethodHash("ApplyAndCall")), Params: buf.Bytes(), GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1)}
 	sig := typescrypto.Signature{Type: typescrypto.SigTypeDelegated, Data: append(append(make([]byte, 31), 1), append(append(make([]byte, 31), 1), 0)...)}
 	smsg := &types.SignedMessage{Message: msg, Signature: sig}
 
@@ -170,7 +170,7 @@ func TestEthTransactionFromSignedMessage_7702_BadCBORRejected(t *testing.T) {
 
 func TestEthTransactionFromSignedMessage_7702_WrongTupleArityRejected(t *testing.T) {
 	id18, _ := address.NewIDAddress(18)
-	EvmApplyAndCallActorAddr = id18
+	EthAccountApplyAndCallActorAddr = id18
 	var from20 [20]byte
 	for i := range from20 {
 		from20[i] = 0x44
@@ -193,7 +193,7 @@ func TestEthTransactionFromSignedMessage_7702_WrongTupleArityRejected(t *testing
 	require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajUnsignedInt, 0))
 	require.NoError(t, cbg.WriteByteArray(&buf, []byte{1}))
 
-	msg := types.Message{To: EvmApplyAndCallActorAddr, From: from, Method: abi.MethodNum(MethodHash("ApplyAndCall")), Params: buf.Bytes(), GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1)}
+	msg := types.Message{To: EthAccountApplyAndCallActorAddr, From: from, Method: abi.MethodNum(MethodHash("ApplyAndCall")), Params: buf.Bytes(), GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1)}
 	sig := typescrypto.Signature{Type: typescrypto.SigTypeDelegated, Data: append(append(make([]byte, 31), 1), append(append(make([]byte, 31), 1), 0)...)}
 	smsg := &types.SignedMessage{Message: msg, Signature: sig}
 	_, err = EthTransactionFromSignedFilecoinMessage(smsg)
@@ -202,7 +202,7 @@ func TestEthTransactionFromSignedMessage_7702_WrongTupleArityRejected(t *testing
 
 func TestEthTransactionFromSignedMessage_7702_BadAddressLengthRejected(t *testing.T) {
 	id18, _ := address.NewIDAddress(18)
-	EvmApplyAndCallActorAddr = id18
+	EthAccountApplyAndCallActorAddr = id18
 	var from20 [20]byte
 	for i := range from20 {
 		from20[i] = 0x55
@@ -223,7 +223,7 @@ func TestEthTransactionFromSignedMessage_7702_BadAddressLengthRejected(t *testin
 	require.NoError(t, cbg.WriteByteArray(&buf, []byte{1}))
 	require.NoError(t, cbg.WriteByteArray(&buf, []byte{1}))
 
-	msg := types.Message{To: EvmApplyAndCallActorAddr, From: from, Method: abi.MethodNum(MethodHash("ApplyAndCall")), Params: buf.Bytes(), GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1)}
+	msg := types.Message{To: EthAccountApplyAndCallActorAddr, From: from, Method: abi.MethodNum(MethodHash("ApplyAndCall")), Params: buf.Bytes(), GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1)}
 	sig := typescrypto.Signature{Type: typescrypto.SigTypeDelegated, Data: append(append(make([]byte, 31), 1), append(append(make([]byte, 31), 1), 0)...)}
 	smsg := &types.SignedMessage{Message: msg, Signature: sig}
 	_, err = EthTransactionFromSignedFilecoinMessage(smsg)
@@ -232,7 +232,7 @@ func TestEthTransactionFromSignedMessage_7702_BadAddressLengthRejected(t *testin
 
 func TestEthTransactionFromSignedMessage_7702_EmptyAuthListRejected(t *testing.T) {
 	id18, _ := address.NewIDAddress(18)
-	EvmApplyAndCallActorAddr = id18
+	EthAccountApplyAndCallActorAddr = id18
 	var from20 [20]byte
 	for i := range from20 {
 		from20[i] = 0x66
@@ -250,7 +250,7 @@ func TestEthTransactionFromSignedMessage_7702_EmptyAuthListRejected(t *testing.T
 	require.NoError(t, cbg.WriteByteArray(&buf, []byte{}))
 	require.NoError(t, cbg.WriteByteArray(&buf, []byte{}))
 
-	msg := types.Message{To: EvmApplyAndCallActorAddr, From: from, Method: abi.MethodNum(MethodHash("ApplyAndCall")), Params: buf.Bytes(), GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1)}
+	msg := types.Message{To: EthAccountApplyAndCallActorAddr, From: from, Method: abi.MethodNum(MethodHash("ApplyAndCall")), Params: buf.Bytes(), GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1)}
 	sig := typescrypto.Signature{Type: typescrypto.SigTypeDelegated, Data: append(append(make([]byte, 31), 1), append(append(make([]byte, 31), 1), 0)...)}
 	smsg := &types.SignedMessage{Message: msg, Signature: sig}
 	_, err = EthTransactionFromSignedFilecoinMessage(smsg)
@@ -259,7 +259,7 @@ func TestEthTransactionFromSignedMessage_7702_EmptyAuthListRejected(t *testing.T
 
 func TestEthTransactionFromSignedMessage_7702_BadYParityTypeRejected(t *testing.T) {
 	id18, _ := address.NewIDAddress(18)
-	EvmApplyAndCallActorAddr = id18
+	EthAccountApplyAndCallActorAddr = id18
 	var from20 [20]byte
 	for i := range from20 {
 		from20[i] = 0x77
@@ -284,7 +284,7 @@ func TestEthTransactionFromSignedMessage_7702_BadYParityTypeRejected(t *testing.
 	require.NoError(t, cbg.WriteByteArray(&buf, []byte{1}))
 	require.NoError(t, cbg.WriteByteArray(&buf, []byte{1}))
 
-	msg := types.Message{To: EvmApplyAndCallActorAddr, From: from, Method: abi.MethodNum(MethodHash("ApplyAndCall")), Params: buf.Bytes(), GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1)}
+	msg := types.Message{To: EthAccountApplyAndCallActorAddr, From: from, Method: abi.MethodNum(MethodHash("ApplyAndCall")), Params: buf.Bytes(), GasLimit: 100000, GasFeeCap: types.NewInt(1), GasPremium: types.NewInt(1)}
 	sig := typescrypto.Signature{Type: typescrypto.SigTypeDelegated, Data: append(append(make([]byte, 31), 1), append(append(make([]byte, 31), 1), 0)...)}
 	smsg := &types.SignedMessage{Message: msg, Signature: sig}
 	_, err = EthTransactionFromSignedFilecoinMessage(smsg)

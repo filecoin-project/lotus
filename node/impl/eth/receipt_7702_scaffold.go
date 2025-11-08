@@ -39,11 +39,11 @@ func adjustReceiptForDelegation(_ context.Context, receipt *ethtypes.EthTxReceip
 	}
 
 	// For delegated execution via CALL→EOA, detect the synthetic EVM log topic and extract the
-	// delegate address from the data blob.
-	// Topic0: keccak256("EIP7702Delegated(address)")
+	// authority address from the data blob.
+	// Topic0: keccak256("Delegated(address)")
 	if len(receipt.DelegatedTo) == 0 && len(receipt.Logs) > 0 {
 		h := sha3.NewLegacyKeccak256()
-		_, _ = h.Write([]byte("EIP7702Delegated(address)"))
+		_, _ = h.Write([]byte("Delegated(address)"))
 		topic := h.Sum(nil)
 		for _, lg := range receipt.Logs {
 			if len(lg.Topics) == 0 {
@@ -53,7 +53,8 @@ func adjustReceiptForDelegation(_ context.Context, receipt *ethtypes.EthTxReceip
 			if hex.EncodeToString(lg.Topics[0][:]) != hex.EncodeToString(topic) {
 				continue
 			}
-			// Data carries 20-byte delegate address.
+			// Data carries an ABI-encoded 32-byte word for the authority address.
+			// We extract the last 20 bytes to form the EthAddress.
 			if len(lg.Data) >= 20 {
 				var addr ethtypes.EthAddress
 				copy(addr[:], lg.Data[len(lg.Data)-20:])
