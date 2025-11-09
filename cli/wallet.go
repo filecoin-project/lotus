@@ -471,7 +471,7 @@ var walletSign = &cli.Command{
 			prefix = []byte(fmt.Sprintf("\x19Ethereum Signed Message:\n%d", len(msg)))
 		} else {
 			//Filecoin
-			prefix = []byte(fmt.Sprintf("Filecoin Signed Message:\n%d", len(msg)))
+			prefix = []byte(fmt.Sprintf("\x19Filecoin Signed Message:\n%d", len(msg)))
 		}
 
 		toSign := append(prefix, msg...)
