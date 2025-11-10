@@ -255,7 +255,8 @@ Acceptance criteria (updated)
   - `go test ./node/impl/eth -run 7702 -count=1`
 - ref‑fvm (preferred):
   - `../ref-fvm/scripts/run_eip7702_tests.sh`
-  - If Docker is unavailable, expect bundle build to fail on macOS; proceed with builtin‑actors tests while enabling Docker.
+  - The script first builds the builtin‑actors bundle in Docker with `ref-fvm` mounted (to satisfy local patch paths), then runs ref‑fvm tests. If host tests fail, it falls back to running tests inside Docker.
+  - If Docker is unavailable, bundle build will fail on macOS; proceed with builtin‑actors tests while enabling Docker.
 - Builtin‑actors (local toolchain permitting):
   - `cargo test -p fil_actor_evm` (EVM runtime changes; EXTCODE* helper usage).
   - `cargo test -p fil_actor_ethaccount` (EthAccount state + ApplyAndCall tests: invalids, nonces, atomicity, value transfer).
