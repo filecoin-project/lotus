@@ -98,6 +98,22 @@ Tests (current)
 - Tests in ref-fvm:
   - Pointer projection (size/hash/copy), delegated dispatch success/revert, depth limit, SELFDESTRUCT no-op, revert-data propagation, value-transfer short-circuit.
 
+### Docker Bundle/Test Flow (macOS friendly)
+
+- Build builtin-actors bundle in Docker:
+  - From `../builtin-actors`: `make bundle-testing-repro`
+- Run ref-fvm tests with a prebuilt bundle:
+  - From `../ref-fvm`: `scripts/run_eip7702_tests.sh`
+- This avoids macOS toolchain issues (e.g., `__stack_chk_fail` Wasm import) when invoking EVM in tests.
+
+### EXTCODECOPY Windowing Examples
+
+- For an EOA A delegated to B, pointer code = `0xEF 0x01 0x00 || B(20)`.
+- EXTCODECOPY(A, dest, 0, 23) → full 23 bytes.
+- EXTCODECOPY(A, dest, 1, 22) → pointer_code[1..23].
+- EXTCODECOPY(A, dest, 23, 1) → single zero.
+- EXTCODECOPY(A, dest, 100, 10) → 10 zeros.
+
 ### Repo/Path Impact (ref-fvm)
 
 - Execution layer:

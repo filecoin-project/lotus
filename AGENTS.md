@@ -255,6 +255,14 @@ Acceptance criteria (updated)
 - Lotus E2E (requires updated wasm bundle):
   - `go test ./itests -run Eth7702 -tags eip7702_enabled -count=1`
 
+- Docker bundle + ref‑fvm tests (recommended on macOS):
+  - Convenience script: `../ref-fvm/scripts/run_eip7702_tests.sh`
+    - Builds the builtin‑actors bundle in Docker (`make bundle-testing-repro`).
+    - Runs ref‑fvm tests, including EXTCODE* windowing, depth limit, value‑transfer short‑circuit, and revert payload propagation.
+  - Fallback (no Docker): set
+    `CC_wasm32_unknown_unknown=/opt/homebrew/opt/llvm/bin/clang AR_wasm32_unknown_unknown=/opt/homebrew/opt/llvm/bin/llvm-ar RANLIB_wasm32_unknown_unknown=/opt/homebrew/opt/llvm/bin/llvm-ranlib RUSTFLAGS="-C link-arg=-Wl,-dead_strip"`
+    and run `cargo test -p fvm`. Note: some EVM Wasm invocations may fail on macOS due to `__stack_chk_fail`.
+
 To route 0x04 transactions in development, build Lotus with `-tags eip7702_enabled`.
 
 **Files & Areas**
