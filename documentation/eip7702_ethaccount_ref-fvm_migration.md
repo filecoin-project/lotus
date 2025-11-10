@@ -34,7 +34,7 @@ This document defines the current work priority for EIP-7702 across builtin-acto
   - Value transfer: the call manager transfers value to the authority prior to interception; on transfer failure the EVM call reports success=0 via `EVM_CONTRACT_REVERTED`.
   - Execution: ref‑fvm invokes the caller EVM actor via a private trampoline `InvokeAsEoaWithRoot` with parameters `(code_cid, input, caller, receiver, value, initial_storage_root)`:
     - The EVM actor mounts `initial_storage_root`, sets authority context (depth=1), executes delegate code, and returns `(output_data, new_storage_root)` or reverts with the revert payload.
-  - Persistence: the call manager persists `new_storage_root` back into the EthAccount state (`evm_storage_root`).
+  - Persistence: the call manager persists `new_storage_root` back into the EthAccount state (`evm_storage_root`). Persistence occurs only on success; revert and value‑transfer short‑circuit paths do not update the authority overlay.
   - Return mapping: on success, returns `ExitCode::OK` with raw `output_data` for the EVM interpreter; on revert, returns `EVM_CONTRACT_REVERTED` with the revert payload.
   - Event: emits `Delegated(address)` (topic keccak("Delegated(address)")) with the authority encoded as a 32‑byte ABI word. Emission is best‑effort.
 - Authority context rules:

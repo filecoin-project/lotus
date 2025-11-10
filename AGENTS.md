@@ -20,6 +20,10 @@ This notebook tracks the end‑to‑end EIP‑7702 implementation across Lotus (
 - EthAccount: state struct added (`delegate_to`, `auth_nonce`, `evm_storage_root`) and ApplyAndCall implemented with full tuple validation and receiver‑only persistence; outer call forwards gas and returns embedded status/returndata. Initial unit tests added (invalid yParity/lengths, nonce init/increment, atomicity on revert, value transfer short‑circuit).
 - Tests: Lotus 7702 receipts updated and green; ref‑fvm helper unit test added; EVM EXTCODE* tests continue to pass with the Runtime helper.
 
+Docker bundle/test flow
+- Use `../ref-fvm/scripts/run_eip7702_tests.sh` to build the builtin-actors bundle in Docker and run ref‑fvm tests end‑to‑end. This avoids macOS toolchain issues (e.g., env::__stack_chk_fail, blst section too large).
+- Fallback (local, non‑Docker): in `../builtin-actors`, try `RUSTFLAGS="-C link-arg=-Wl,-dead_strip" make bundle-testing` or `SKIP_BUNDLE=1 cargo build -p fil_builtin_actors_bundle` for compile‑time paths only (note: tests that execute EVM still need a real bundle).
+
 Next up
 - Expand/enable ref‑fvm unit tests for intercept semantics (delegated mapping success/revert + revert bytes, depth limit, EXTCODECOPY windowing/zero‑fill, SELFDESTRUCT no‑op); then remove legacy EVM ApplyAndCall/InvokeAsEoa paths.
 
@@ -249,6 +253,9 @@ Acceptance criteria (updated)
   - `go build ./chain/types/ethtypes`
   - `go test ./chain/types/ethtypes -run 7702 -count=1`
   - `go test ./node/impl/eth -run 7702 -count=1`
+- ref‑fvm (preferred):
+  - `../ref-fvm/scripts/run_eip7702_tests.sh`
+  - If Docker is unavailable, expect bundle build to fail on macOS; proceed with builtin‑actors tests while enabling Docker.
 - Builtin‑actors (local toolchain permitting):
   - `cargo test -p fil_actor_evm` (EVM runtime changes; EXTCODE* helper usage).
   - `cargo test -p fil_actor_ethaccount` (EthAccount state + ApplyAndCall tests: invalids, nonces, atomicity, value transfer).
