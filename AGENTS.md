@@ -16,7 +16,7 @@ This notebook tracks the end‑to‑end EIP‑7702 implementation across Lotus (
 - Routing: type‑0x04 now targets EthAccount.ApplyAndCall (FRC‑42 method hash) with the canonical CBOR wrapper. EVM.ApplyAndCall routing is deprecated on this branch.
 - Runtime helper: ref‑fvm exposes `get_eth_delegate_to(ActorID) -> Option<[u8;20]>`; EVM EXTCODE* now consults this helper to project the 23‑byte pointer image.
 - VM intercept: ref‑fvm now intercepts CALL→EOA to EthAccount when `delegate_to` is set; it executes the delegate under authority context (depth=1), mounts/persists the authority `evm_storage_root`, and emits `Delegated(address)` (32‑byte ABI) best‑effort.
-- Interpreter minimalization: EVM CALL/STATICCALL to EOAs no longer follows delegation internally; delegation is handled by the VM intercept. Legacy EVM ApplyAndCall/InvokeAsEoa remain temporarily for compatibility and will be removed.
+- Interpreter minimalization: EVM CALL/STATICCALL to EOAs no longer follows delegation internally; delegation is handled by the VM intercept. Legacy EVM ApplyAndCall/InvokeAsEoa have been removed on this branch; only the `InvokeAsEoaWithRoot` trampoline remains for VM intercept use.
 - EthAccount: state struct added (`delegate_to`, `auth_nonce`, `evm_storage_root`) and ApplyAndCall implemented with full tuple validation and receiver‑only persistence; outer call forwards gas and returns embedded status/returndata. Initial unit tests added (invalid yParity/lengths, nonce init/increment, atomicity on revert, value transfer short‑circuit).
 - Tests: Lotus 7702 receipts updated and green; ref‑fvm helper unit test added; EVM EXTCODE* tests continue to pass with the Runtime helper.
 
@@ -25,7 +25,7 @@ Docker bundle/test flow
 - Fallback (local, non‑Docker): in `../builtin-actors`, try `RUSTFLAGS="-C link-arg=-Wl,-dead_strip" make bundle-testing` or `SKIP_BUNDLE=1 cargo build -p fil_builtin_actors_bundle` for compile‑time paths only (note: tests that execute EVM still need a real bundle).
 
 Next up
-- Expand/enable ref‑fvm unit tests for intercept semantics (delegated mapping success/revert + revert bytes, depth limit, EXTCODECOPY windowing/zero‑fill, SELFDESTRUCT no‑op); then remove legacy EVM ApplyAndCall/InvokeAsEoa paths.
+- Expand/enable ref‑fvm unit tests for intercept semantics (delegated mapping success/revert + revert bytes, depth limit, EXTCODECOPY windowing/zero‑fill, SELFDESTRUCT no‑op); finalize cleanup of any remaining legacy stubs.
 
 ---
 
@@ -80,23 +80,21 @@ Updates (coverage work in progress)
 **Branch Scope & Compatibility**
 - This is an internal development branch with no external users or on‑chain compatibility requirements.
 - We do not preserve backward compatibility in this branch. It is acceptable to simplify encodings and remove legacy paths.
-- EVM-only on this branch. The EVM actor’s `ApplyAndCall` atomically applies authorizations and executes the outer call; no Delegator route is used.
-- Single EVM actor model. There is exactly one EVM actor responsible for EIP‑7702. That actor owns the delegation map, per‑authority nonce map, and per‑authority storage roots; all type‑0x04 transactions target this actor.
-- Global semantics via centralization. Because there is only one EVM actor, delegation effects are globally visible: CALL/EXTCODE* pointer checks consult this actor’s internal mapping, and delegated execution happens via `InvokeAsEoa` under an authority context with a depth limit.
+- Routing and semantics have moved to EthAccount + VM intercept. Type‑0x04 transactions target `EthAccount.ApplyAndCall` (FRC‑42 method hash with canonical CBOR params). Delegated CALL/EXTCODE* behavior is implemented in ref‑fvm; the EVM interpreter no longer follows delegation internally.
+- There is no Delegator actor and no single‑EVM‑actor delegation map. Delegation state lives per‑EOA in EthAccount state (`delegate_to`, `auth_nonce`, `evm_storage_root`). Global pointer semantics are provided by the VM intercept reading EthAccount state.
 - Encodings are canonicalized: wrapper/atomic CBOR only; legacy shapes removed from tests/helpers.
 
-**Delegation Map Scope (Single EVM Actor)**
-- Ownership and persistence: The single EVM actor persists three HAMTs in its state: (a) delegation map `authority(20) → delegate(20)`; (b) per‑authority nonces `authority(20) → u64`; (c) per‑authority storage roots `authority(20) → Cid`. These survive across transactions until updated or cleared (zero delegate clears).
-- Apply‑and‑Call flow: `ApplyAndCall` validates tuples (chainId in {0, local}, yParity ∈ {0,1}, non‑zero/≤32‑byte r/s, low‑s), recovers the `authority`, enforces nonce equality, updates mapping/nonces, flushes state, then executes the outer call atomically. Status and revert data are returned without undoing the mapping updates.
-- Pointer semantics: When a CALL targets an EOA, the interpreter consults the single actor’s delegation map. If delegated, it executes the delegate code in an authority context (`InvokeAsEoa`) and emits a `Delegated(address)` event with the authority address. EXTCODESIZE/HASH/COPY expose a 23‑byte virtual code image (`0xEF 0x01 0x00 || delegate(20)`) for delegated EOAs.
-- Authority context and safety: In authority context, delegation is not re‑followed (depth limit = 1), SELFDESTRUCT is a no‑op (no tombstone or balance move), and storage is mounted using the authority’s persistent storage root, then restored.
-- Scope implication: With a single EVM actor, these behaviors are chain‑wide for EOAs—no divergence across contracts. There is no Delegator actor; all 0x04 messages and pointer checks route through the single EVM actor.
+**EthAccount Delegation State (current)**
+- Ownership and persistence: EthAccount persists three fields in its state: `delegate_to: Option<EthAddress>`, `auth_nonce: u64`, and `evm_storage_root: Cid`. These survive across transactions until updated or cleared (zero delegate clears).
+- Apply‑and‑Call flow: `EthAccount.ApplyAndCall` validates tuples (domain 0x05, chainId in {0, local}, yParity ∈ {0,1}, non‑zero/≤32‑byte r/s with left‑padding, low‑s), recovers the `authority`, enforces nonce equality, updates `delegate_to`/`auth_nonce` (receiver‑only), initializes `evm_storage_root` if needed, then invokes the outer call via VM with all gas forwarded. It returns embedded status/returndata. Mapping/nonces persist even if the outer call reverts.
+- Pointer semantics: When a CALL/EXTCODE* targets an EOA with `delegate_to` set, ref‑fvm intercepts and executes the delegate under authority context (depth=1). EXTCODESIZE/HASH/COPY expose a 23‑byte virtual code image (`0xEF 0x01 0x00 || delegate(20)`).
+- Authority context and safety: In authority context, delegation is not re‑followed (depth limit = 1), SELFDESTRUCT is a no‑op (no tombstone or balance move), and storage is mounted using the authority’s persistent storage root, then persisted on success.
 
 **ApplyAndCall Outer Call Gas**
-- Top‑level behavior: For the outer call executed by `ApplyAndCall`, the EVM actor forwards all available gas (no 63/64 cap). This mirrors Ethereum’s top‑level call semantics.
+- Top‑level behavior: For the outer call executed by `EthAccount.ApplyAndCall`, ref‑fvm forwards all available gas (no 63/64 cap), mirroring Ethereum’s top‑level semantics.
 - Subcalls: Inside the interpreter, subcalls (CALL/STATICCALL/DELEGATECALL) still enforce the EIP‑150 63/64 gas clamp.
-- Consequence: Emitting the synthetic `Delegated(address)` event after the outer call is best‑effort. Under extreme gas tightness, the event may be dropped.
-- Rationale: Prioritize correctness of the callee’s execution budget for the outer call, matching user expectations on Ethereum. If future telemetry shows attribution logs are frequently dropped, consider reserving a small fixed gas budget for event emission (not a 63/64 clamp).
+- Consequence: Emitting the `Delegated(address)` event from the VM intercept is best‑effort. Under extreme gas tightness, the event may be dropped.
+- Rationale: Prioritize correctness of the callee’s execution budget for the outer call. If telemetry shows attribution logs are frequently dropped, consider reserving a small fixed gas budget for event emission (not a 63/64 clamp).
 
 **Testing TODO (Highest Priority)**
 - Cross‑repo scope: tests span `./lotus` and `../builtin-actors`. Keep encoding and gas behavior aligned.
@@ -128,9 +126,9 @@ Updates (coverage work in progress)
 
 - Atomic 0x04 semantics
   - Implement atomic “apply authorizations + execute outer call” for type‑0x04 within a single transaction.
-  - Builtin‑actors: `ApplyAndCall` in the EVM actor validates, applies pointer code, enforces nonces, and executes the outer call atomically.
-  - Lotus: route 0x04 to EVM `ApplyAndCall` exclusively; no env toggles; gas estimation simulates tuple overhead behaviorally.
-  - Tests: revert path reverts both delegation and call; mirror geth’s `TestEIP7702`.
+  - Builtin‑actors: `EthAccount.ApplyAndCall` validates tuples, enforces nonces, persists `delegate_to`/`auth_nonce` (receiver‑only), and invokes the outer call via VM atomically.
+  - Lotus: route 0x04 to EthAccount `ApplyAndCall` exclusively; no env toggles; gas estimation simulates tuple overhead behaviorally.
+  - Tests: revert path returns embedded status/revert data while delegation/nonce updates persist; mirror geth’s `TestEIP7702`.
 
 - RLP per‑type decode limit
   - Replace global `maxListElements = 13` with a per‑call limit; apply 13 only for 0x04 parsing.
@@ -140,14 +138,14 @@ Updates (coverage work in progress)
   - Actor: accept wrapper `[ [ tuple, ... ] ]` only; remove dual‑shape detection in Go helper.
   - Negative tests: malformed top‑level shapes, wrong tuple arity, invalid yParity.
 
-- EVM runtime hardening (EVM‑only)
-  - `ApplyAndCall` in EVM actor (present). Runtime delegated CALL pointer semantics and event emission (present); EXTCODESIZE/HASH/COPY expose virtual 23‑byte pointer code for delegated EOAs.
+- Runtime hardening (EVM + VM intercept)
+  - Delegated CALL pointer semantics and event emission are implemented in ref‑fvm; EXTCODESIZE/HASH/COPY expose a virtual 23‑byte pointer code for delegated EOAs.
   - Interpreter guards for authority context; depth limit on delegation; storage safety.
   - Authorization domain/signatures; tuple cap; refunds.
 
 - Lotus follow‑ups
-  - Receipts/RPC: ensure receipts/logs reflect atomic apply+call; maintain `delegatedTo` attribution (tuples or synthetic event). RPC reconstruction supports EVM `ApplyAndCall` route.
-- Gas estimation: model atomic flow; behavioral tests only until constants finalize. Overhead applied for EVM route.
+  - Receipts/RPC: ensure receipts/logs reflect atomic apply+call; maintain `delegatedTo` attribution (tuples or synthetic event). RPC reconstruction supports EthAccount `ApplyAndCall` route.
+- Gas estimation: model atomic flow; behavioral tests only until constants finalize. Overhead applied for EthAccount route.
 
 Gas Model (Lotus on FVM)
 - EVM executes inside a Wasm actor; Filecoin consensus gas rules apply. We intentionally do not try to replicate Ethereum’s gas schedule here.
@@ -164,7 +162,7 @@ Gas Model (Lotus on FVM)
 **Work Breakdown (Sequenced)**
 1. RLP per‑type limit in Lotus + tests. (DONE)
 2. Canonical CBOR wrapper only (actor + Go helpers) + negative tests. (DONE)
-3. Implement atomic 0x04 semantics (EVM.ApplyAndCall + Lotus route + receipts) + e2e test. (ApplyAndCall, optional Lotus route, receipts unit tests DONE; E2E PENDING)
+3. Implement atomic 0x04 semantics (EthAccount.ApplyAndCall + Lotus route + receipts) + e2e test. (ApplyAndCall, optional Lotus route, receipts unit tests DONE; E2E PENDING)
 4. FVM hardening (InvokeAsEoa guards; pointer semantics; domain/signature checks; tuple cap) + tests. (PARTIAL)
 5. Gas estimation alignment to actor constants; maintain behavioral tests until finalization. (DONE)
 6. Doc updates and test vector additions for `AuthorizationKeccak`. (IN PROGRESS)
@@ -175,7 +173,6 @@ References for parity:
 - `geth_eip_7702.md` (diff: TestEIP7702, intrinsic gas, empty auth errors)
 - `revm_eip_7702.md` (auth validity, gas constants, delegation code handling)
 
-**Status Overview**
 - Lotus/Go (done):
   - Typed 0x04 parsing/encoding with `authorizationList`; dispatch via `ParseEthTransaction`.
   - `EthTx` and receipts echo `authorizationList`; receipt adjuster surfaces `delegatedTo` from tuples or `Delegated(address)` event.
@@ -185,10 +182,10 @@ References for parity:
 - Builtin‑actors/Rust (updated):
   - EVM interpreter consults Runtime helper for EXTCODE* pointer projection; no unwraps; windowing semantics enforced.
   - EthAccount state added; ApplyAndCall validates tuples (domain 0x05, yParity, non‑zero/≤32 R/S, low‑S), enforces nonce equality, persists `delegate_to` and `auth_nonce` (receiver‑only), initializes `evm_storage_root`, and executes the outer call; mapping persists on revert. Initial unit tests added.
-  - In‑progress: EVM call path minimalization (CALL/STATICCALL to EOAs → METHOD_SEND); removal of legacy delegation/ApplyAndCall from the EVM actor will follow VM intercept.
+  - DONE: Legacy EVM delegation paths removed. `EVM.ApplyAndCall` and `InvokeAsEoa` are removed/stubbed; only `InvokeAsEoaWithRoot` remains for VM intercept trampolines. Interpreter does not re‑follow delegation.
 - ref‑fvm (updated):
   - Runtime/Kernel/SDK helper `get_eth_delegate_to(ActorID)` implemented with strict EthAccount code check; unit test added.
-  - Next: Implement CALL intercept + authority context (depth=1), mount/persist `evm_storage_root`, best‑effort `Delegated(address)` event (ABI 32‑byte), and success/revert mapping.
+  - VM intercept implemented: delegated CALL → execute delegate under authority context (depth=1); mount/persist `evm_storage_root`; emit `Delegated(address)` event (ABI 32‑byte); map success/revert and propagate revert data; EXTCODE* projects 23‑byte pointer code with windowing/zero‑fill semantics. Tests added for windowing, depth limit, value‑transfer short‑circuit, and storage overlay persistence.
 
 **Spec Gap: MAGIC/Version Prefix Compliance**
 - Problem: We currently omit the required MAGIC prefixing in two places required by the spec and parity references (`eip7702.md`, `revm_eip_7702.md`).
@@ -228,10 +225,10 @@ Validation notes
   - Activation: via bundle; no runtime NV gates.
 
 **What Remains**
-- VM intercept (ref‑fvm): delegated CALL → execute delegate under authority context with depth=1; mount/persist `evm_storage_root`; best‑effort `Delegated(address)` event (ABI 32‑byte); map success/revert; test windowing, short‑circuit, depth limit, selfdestruct no‑op.
-- EVM minimalization: CALL/STATICCALL to EOAs → METHOD_SEND; remove legacy delegation + InvokeAsEoa + EVM.ApplyAndCall once intercept is in.
+- VM intercept (ref‑fvm): DONE — delegated CALL → execute delegate under authority context with depth=1; mount/persist `evm_storage_root`; best‑effort `Delegated(address)` event (ABI 32‑byte); success/revert mapping; EXTCODE* projection with windowing/zero‑fill.
+- EVM minimalization: DONE — interpreter does not re‑follow delegation; legacy `InvokeAsEoa`/`EVM.ApplyAndCall` removed; only `InvokeAsEoaWithRoot` trampoline remains for VM intercept.
 - Gas constants/refunds: finalize numbers (behavioral in Lotus until then).
-- Lotus E2E: once wasm bundle includes intercept, validate atomic apply+call, delegated execution, receipts/logs attribution.
+- Lotus E2E: validate atomic apply+call, delegated execution, and receipts/logs attribution once the wasm bundle is integrated.
 
 ---
 
@@ -254,7 +251,7 @@ CRITICAL (consensus/security/spec)
 - Pre‑existence policy (do not “set code” on contracts)
   - builtin‑actors: In ApplyAndCall, for each authority, resolve to ID and reject when builtin type == EVM (USR_ILLEGAL_ARGUMENT). Add a negative test. (DONE)
 - Nested delegation depth limit
-  - builtin‑actors: DONE — Enforced depth==1. When executing under InvokeAsEoa/authority context, delegation chains are not followed. ApplyAndCall-driven unit test present.
+  - builtin‑actors: DONE — Enforced depth==1. When executing under authority context (via `InvokeAsEoaWithRoot`), delegation chains are not followed. ApplyAndCall-driven unit test present.
 - Signature robustness (length + low‑s)
   - builtin‑actors: Accept ≤32‑byte R/S (left‑pad to 32); reject >32 with precise errors; keep low‑s and non‑zero checks. Negative tests added. (DONE)
 
@@ -355,7 +352,7 @@ Notes:
 - Keep formatting‑only changes in their own commits where feasible. Avoid mixing formatting with logic changes to keep diffs focused and reviewable.
 
 **Acceptance Criteria**
-- A signed type‑0x04 tx decodes, constructs a Filecoin message calling EVM.ApplyAndCall, applies valid delegations atomically with the outer call, and subsequent CALL→EOA executes delegate code.
+- A signed type‑0x04 tx decodes, constructs a Filecoin message calling EthAccount.ApplyAndCall, applies valid delegations atomically with the outer call, and subsequent CALL→EOA executes delegate code.
 - JSON‑RPC returns `authorizationList` and `delegatedTo` where applicable.
 - Gas estimation accounts for tuple overhead (behavioral assertions).
 
@@ -400,7 +397,7 @@ Notes:
 
 - MEDIUM: Missing Corner Case Tests (Actors)
   - SELFDESTRUCT no‑op in delegated context:
-    - Build delegate bytecode that executes SELFDESTRUCT when called under InvokeAsEoa; assert no authority state/balance change; pointer mapping preserved; event emission intact.
+    - Build delegate bytecode that executes SELFDESTRUCT when executed under authority context (via VM intercept); assert no authority state/balance change; pointer mapping preserved; event emission intact.
   - Storage isolation/persistence on delegate changes:
     - A→B write storage; switch A→C and verify C cannot read B’s storage; clear A→0; re‑delegate A→B and verify B’s storage persists.
   - First‑time nonce handling:
@@ -438,9 +435,9 @@ This section captures additional items from the comprehensive review of `builtin
 
 - HIGH — Behavioral correctness
   - Revert data propagation on delegated CALL failures
-    - File: `actors/evm/src/interpreter/instructions/call.rs`.
-    - Action: when `InvokeAsEoa` returns an error, set `state.return_data` from the error’s data and copy it to memory so callers can `RETURNDATACOPY`.
-    - Status: DONE — delegated CALL path writes revert bytes to return buffer and copies to memory.
+    - File: ref‑fvm call manager intercept and EVM interpreter return mapping.
+    - Action: when the VM intercept returns a revert, propagate revert bytes to the EVM return buffer and ensure `RETURNDATASIZE/RETURNDATACOPY` expose them.
+    - Status: DONE — intercept path maps revert and copies data to memory; tests assert behavior.
   - Value transfer result handling in `ApplyAndCall`
     - File: `actors/evm/src/lib.rs`.
     - Action: check the result of `system.transfer` for delegated EOA targets; if it fails, set `status: 0` and return immediately (mirrors CALL behavior).
@@ -489,18 +486,18 @@ This section captures additional items from the comprehensive review of `builtin
     - Status: TODO
 
 **Review Readiness (Scar‑less PR Candidate)**
-- EVM‑only: all 0x04 transactions route to EVM `ApplyAndCall`; no Delegator send/execute path remains.
+- Routing: all 0x04 transactions route to EthAccount `ApplyAndCall`; no Delegator send/execute path remains.
 - Atomic‑only: there are no non‑atomic paths or fallback code; tests assert atomic semantics for success and revert.
 - Clean surface: no optional env toggles for routing or legacy decoder branches; documentation and tests reference a single, canonical flow.
 
 **Migration / Compatibility**
 - No migration required. The implementation is EVM‑only and atomic‑only.
-- Delegator has been removed; ApplyAndCall is the sole entry point.
+- Delegator has been removed; EthAccount.ApplyAndCall is the sole entry point.
 Domain: `0x05`. Pointer code magic/version: `0xef 0x01 0x00`.
 
 ---
 
-**Builtin‑Actors Test Plan (EVM‑Only)**
+**Builtin‑Actors Test Plan (EthAccount + EVM)**
 
 Scope: `../builtin-actors` (paired repo), tracked here for sprint execution. Keep encodings and gas behavior in sync with Lotus.
 
@@ -508,7 +505,7 @@ Priority: P0 (blocking), P1 (recommended), P2 (nice‑to‑have)
 
 P0 — Critical (spec + safety)
 - Persistent delegated storage context (DONE)
-  - `InvokeAsEoa` executes against the authority’s persistent storage and flushes changes; storage roots managed per authority in EVM state.
+  - VM intercept executes delegate under authority context against the authority’s persistent storage root, and persists the updated `evm_storage_root` back into EthAccount state on success.
 - Atomicity semantics (spec‑compliant persistence)
   - Delegation mapping and nonce bumps persist even if the outer call reverts. Tests assert persistence on revert and embedded status/return in ApplyAndCall result.
 - Intrinsic gas charging (per tuple) (DONE)
@@ -519,8 +516,8 @@ P0 — ApplyAndCall core (DONE)
 - Invalids rejected with `USR_ILLEGAL_ARGUMENT`: empty list, invalid chainId, invalid yParity, zero r/s, high‑s, nonce mismatch, duplicates.
 - Tuple decoding shape (DAG‑CBOR): canonical atomic params; round‑trip tested.
 
-P0 — EVM interpreter delegation (DONE)
-- Delegation handling: CALL→EOA executes delegate under authority context; depth limited to 1.
+P0 — Delegated CALL semantics (DONE)
+- Delegation handling: CALL→EOA executes delegate under authority context via VM intercept; depth limited to 1.
 - Delegated execution: delegate writes storage; CALL→EOA executes delegate; event emitted; depth limited to 1.
 
 P1 — Authorization semantics and state
@@ -580,7 +577,7 @@ P0 — Parsers and encoding
 
 P0 — SignedMessage view + receipts
 - Eth view reconstruction (DONE)
-  - `EthTransactionFromSignedFilecoinMessage` reconstructs 0x04 (EVM.ApplyAndCall) and echoes `authorizationList`.
+  - `EthTransactionFromSignedFilecoinMessage` reconstructs 0x04 (EthAccount.ApplyAndCall) and echoes `authorizationList`.
 - Receipts attribution (DONE)
   - `adjustReceiptForDelegation` sets `delegatedTo` from `authorizationList` or synthetic `Delegated(address)` event.
 
@@ -599,7 +596,7 @@ P1 — JSON‑RPC plumbing (DONE)
 P1 — Estimation integration (DONE)
 - `eth_estimateGas` adds intrinsic overhead for N tuples (behavioral placeholder); tuple counting tested.
 
-P1 — E2E tests (behind `eip7702_enabled`, run once wasm includes EVM ApplyAndCall)
+P1 — E2E tests (behind `eip7702_enabled`, run once wasm includes EthAccount.ApplyAndCall)
 - Send‑path routing constructs ApplyAndCall params; mined receipt echoes `authorizationList` and `delegatedTo`.
 - Delegated execution: CALL→EOA executes delegate code via actor/runtime; storage/logs reflect delegation.
 - Persistent storage across transactions under authority.
