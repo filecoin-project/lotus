@@ -16,7 +16,7 @@ $(warning Your Golang version is go$(shell expr $(GOVERSION) / 1000000).$(shell 
 $(error Update Golang to version to at least $(shell cat GO_VERSION_MIN))
 endif
 
-GOLANGCI_LINT_VERSION=v1.60.1
+GOLANGCI_LINT_VERSION=v1.64.8
 
 # git modules that need to be loaded
 MODULES:=
@@ -29,7 +29,7 @@ ifneq ($(strip $(LDFLAGS)),)
 	ldflags+=-extldflags=$(LDFLAGS)
 endif
 
-GOFLAGS+=-ldflags="$(ldflags)"
+GOFLAGS+=-ldflags='$(ldflags)'
 
 FIX_IMPORTS = $(GOCC) run ./scripts/fiximports
 
@@ -79,15 +79,15 @@ INTEROPNET_FLAGS=-tags=interopnet
 
 # Network-specific pattern rules
 debug-%:
-	$(MAKE) $* GOFLAGS="$(GOFLAGS) $(DEBUG_FLAGS)"
+	$(MAKE) $* GOFLAGS='$(GOFLAGS) $(DEBUG_FLAGS)'
 2k-%:
-	$(MAKE) $* GOFLAGS="$(GOFLAGS) $(TWOK_FLAGS)"
+	$(MAKE) $* GOFLAGS='$(GOFLAGS) $(TWOK_FLAGS)'
 calibnet-%:
-	$(MAKE) $* GOFLAGS="$(GOFLAGS) $(CALIBNET_FLAGS)"
+	$(MAKE) $* GOFLAGS='$(GOFLAGS) $(CALIBNET_FLAGS)'
 butterflynet-%:
-	$(MAKE) $* GOFLAGS="$(GOFLAGS) $(BUTTERFLYNET_FLAGS)"
+	$(MAKE) $* GOFLAGS='$(GOFLAGS) $(BUTTERFLYNET_FLAGS)'
 interopnet-%:
-	$(MAKE) $* GOFLAGS="$(GOFLAGS) $(INTEROPNET_FLAGS)"
+	$(MAKE) $* GOFLAGS='$(GOFLAGS) $(INTEROPNET_FLAGS)'
 
 build-devnets: build lotus-seed lotus-shed
 .PHONY: build-devnets

@@ -93,8 +93,6 @@ func (es *exposedSplitStore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, e
 	return es.s.AllKeysChan(ctx)
 }
 
-func (es *exposedSplitStore) HashOnRead(enabled bool) {}
-
 func (es *exposedSplitStore) View(ctx context.Context, c cid.Cid, f func([]byte) error) error {
 	if isIdentiyCid(c) {
 		data, err := decodeIdentityCid(c)

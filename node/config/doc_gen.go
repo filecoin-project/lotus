@@ -412,7 +412,7 @@ Format: multiaddress; see https://multiformats.io/multiaddr/`,
 			Name: "AnnounceAddresses",
 			Type: "[]string",
 
-			Comment: `Addresses to explicitally announce to other peers. If not specified,
+			Comment: `Addresses to explicitly announce to other peers. If not specified,
 all interface addresses are announced
 Format: multiaddress`,
 		},

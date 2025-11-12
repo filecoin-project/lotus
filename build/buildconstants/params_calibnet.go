@@ -125,6 +125,9 @@ var UpgradeTockHeight abi.ChainEpoch = UpgradeTeepHeight + builtin.EpochsInDay*7
 // 2025-04-07T23:00:00Z
 const UpgradeTockFixHeight abi.ChainEpoch = 2558014
 
+// 2025-09-10T23:00:00Z
+const UpgradeGoldenWeekHeight abi.ChainEpoch = 3007294
+
 // ??????
 const UpgradeXxHeight = 999999999999999
 

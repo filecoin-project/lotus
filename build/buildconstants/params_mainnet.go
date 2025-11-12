@@ -138,7 +138,10 @@ var UpgradeTockHeight = UpgradeTeepHeight + builtin.EpochsInDay*90
 // Only applied to calibnet which was already upgraded to Teep&Tock
 var UpgradeTockFixHeight = abi.ChainEpoch(-1)
 
-// ??????
+// 2025-09-24T23:00:00Z
+const UpgradeGoldenWeekHeight = abi.ChainEpoch(5348280)
+
+// ????
 var UpgradeXxHeight = abi.ChainEpoch(9999999999)
 
 var UpgradeTeepInitialFilReserved = InitialFilReserved // FIP-0100: no change for mainnet

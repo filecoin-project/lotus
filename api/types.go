@@ -195,6 +195,7 @@ type ForkUpgradeParams struct {
 	UpgradeTuktukHeight      abi.ChainEpoch
 	UpgradeTeepHeight        abi.ChainEpoch
 	UpgradeTockHeight        abi.ChainEpoch
+	UpgradeGoldenWeekHeight  abi.ChainEpoch
 	UpgradeXxHeight          abi.ChainEpoch
 }
 

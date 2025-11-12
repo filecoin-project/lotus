@@ -142,7 +142,7 @@ func TestEthAPIWithF3(t *testing.T) {
 			}
 		}
 		ecFinalized    = ecFixedLookback(policy.ChainFinality)
-		ecSafeV1       = ecFixedLookback(30)
+		ecSafeV1       = ecFixedLookback(200)
 		ecSafeV2       = ecFixedLookback(200)
 		tipSetAtHeight = func(height abi.ChainEpoch) func(t *testing.T) *types.TipSet {
 			return func(t *testing.T) *types.TipSet {
@@ -218,7 +218,7 @@ func TestEthAPIWithF3(t *testing.T) {
 				mockF3.LatestCertErr = nil
 				mockF3.LatestCert = plausibleCertAt(t, f3FinalizedEpoch)
 			},
-			wantTipSetV1: ecFinalized,
+			wantTipSetV1: f3Finalized,
 			wantTipSetV2: f3Finalized,
 		},
 		{
@@ -230,7 +230,7 @@ func TestEthAPIWithF3(t *testing.T) {
 				mockF3.LatestCertErr = nil
 				mockF3.LatestCert = plausibleCertAt(t, targetHeight)
 			},
-			wantTipSetV1: ecSafeV1,
+			wantTipSetV1: tipSetAtHeight(targetHeight),
 			wantTipSetV2: tipSetAtHeight(targetHeight),
 		},
 		{
@@ -303,8 +303,8 @@ func TestEthAPIWithF3(t *testing.T) {
 				mockF3.LatestCert = nil
 				mockF3.LatestCertErr = internalF3Error
 			},
-			wantTipSetV1: ecFinalized,
-			wantErrV2:    internalF3Error.Error(),
+			wantErrV1: internalF3Error.Error(),
+			wantErrV2: internalF3Error.Error(),
 		},
 		{
 			name:     "safe tag when f3 fails, but f3 is not activated",
@@ -315,8 +315,8 @@ func TestEthAPIWithF3(t *testing.T) {
 				mockF3.LatestCert = nil
 				mockF3.LatestCertErr = internalF3Error
 			},
-			wantTipSetV1: ecSafeV1,
-			wantErrV2:    internalF3Error.Error(),
+			wantErrV1: internalF3Error.Error(),
+			wantErrV2: internalF3Error.Error(),
 		},
 		{
 			name:     "safe tag when f3 fails",
@@ -327,8 +327,8 @@ func TestEthAPIWithF3(t *testing.T) {
 				mockF3.LatestCert = nil
 				mockF3.LatestCertErr = internalF3Error
 			},
-			wantTipSetV1: ecSafeV1,
-			wantErrV2:    internalF3Error.Error(),
+			wantErrV1: internalF3Error.Error(),
+			wantErrV2: internalF3Error.Error(),
 		},
 		{
 			name:     "finalize tag when f3 is too far behind falls back to ec",
@@ -363,8 +363,8 @@ func TestEthAPIWithF3(t *testing.T) {
 				mockF3.LatestCert = implausibleCert
 				mockF3.LatestCertErr = nil
 			},
-			wantTipSetV1: ecFinalized,
-			wantErrV2:    "decoding latest f3 cert tipset key",
+			wantErrV1: "decoding latest f3 cert tipset key",
+			wantErrV2: "decoding latest f3 cert tipset key",
 		},
 		{
 			name:     "safe tag when f3 is broken, but f3 is not activated",
@@ -375,8 +375,8 @@ func TestEthAPIWithF3(t *testing.T) {
 				mockF3.LatestCert = implausibleCert
 				mockF3.LatestCertErr = nil
 			},
-			wantTipSetV1: ecSafeV1,
-			wantErrV2:    "decoding latest f3 cert tipset key",
+			wantErrV1: "decoding latest f3 cert tipset key",
+			wantErrV2: "decoding latest f3 cert tipset key",
 		},
 		{
 			name:     "safe tag when f3 is broken",
@@ -387,8 +387,8 @@ func TestEthAPIWithF3(t *testing.T) {
 				mockF3.LatestCert = implausibleCert
 				mockF3.LatestCertErr = nil
 			},
-			wantTipSetV1: ecSafeV1,
-			wantErrV2:    "decoding latest f3 cert tipset key",
+			wantErrV1: "decoding latest f3 cert tipset key",
+			wantErrV2: "decoding latest f3 cert tipset key",
 		},
 		{
 			name:     "height before ec finalized epoch is ok",
@@ -823,45 +823,14 @@ func TestEthAPIWithF3(t *testing.T) {
 			}
 			for _, test := range testCases {
 				t.Run(test.name, func(t *testing.T) {
-					mkStableExecute := func(wantTipSet func(t *testing.T) *types.TipSet) func(fn func()) *types.TipSet {
-						if wantTipSet == nil {
-							wantTipSet = func(t *testing.T) *types.TipSet { return nil }
-						}
-						// stableExecute is a helper that will execute a function required by the test case
-						// repeatedly until the tipset observed before is the same as after execution of the
-						// function. This helps reduce flakies that come from reorgs between capturing the tipset
-						// and executing the function.
-						// Unfortunately it doesn't remove the problem entirely as we could have multiple reorgs
-						// off the tipset we observe and then back to it, but it should be extremely rare.
-						return func(fn func()) *types.TipSet {
-							beforeTs := wantTipSet(t)
-							for {
-								select {
-								case <-ctx.Done():
-									t.Fatalf("context cancelled during stable execution: %v", ctx.Err())
-								default:
-								}
-
-								fn()
-								afterTs := wantTipSet(t)
-								if beforeTs.Equals(afterTs) {
-									// it seems that the chain hasn't changed while executing, so it ought to be safe to
-									// tell the test function that this is the tipset against which they executed
-									return beforeTs
-								}
-								beforeTs = afterTs
-							}
-						}
-					}
-
 					t.Run("v1", func(t *testing.T) {
-						stableExecute := mkStableExecute(state.wantTipSetV1)
+						stableExecute := kit.MakeStableExecute(ctx, t, state.wantTipSetV1)
 						subject := client
 						test.execute(require.New(t), subject, state.blkParam, stableExecute, state.wantErrV1)
 					})
 
 					t.Run("v2", func(t *testing.T) {
-						stableExecute := mkStableExecute(state.wantTipSetV2)
+						stableExecute := kit.MakeStableExecute(ctx, t, state.wantTipSetV2)
 						subject := client.V2
 						test.execute(require.New(t), subject, state.blkParam, stableExecute, state.wantErrV2)
 					})

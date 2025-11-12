@@ -160,6 +160,13 @@ func (pv1 *reverseProxyV1) ChainGetTipSet(ctx context.Context, tsk types.TipSetK
 	return pv1.server.ChainGetTipSet(ctx, tsk)
 }
 
+func (pv1 *reverseProxyV1) ChainGetFinalizedTipSet(ctx context.Context) (*types.TipSet, error) {
+	if err := pv1.gateway.limit(ctx, basicRateLimitTokens); err != nil {
+		return nil, err
+	}
+	return pv1.server.ChainGetFinalizedTipSet(ctx)
+}
+
 func (pv1 *reverseProxyV1) ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) {
 	if err := pv1.gateway.limit(ctx, chainRateLimitTokens); err != nil {
 		return nil, err
@@ -656,6 +663,17 @@ func (pv1 *reverseProxyV1) StateGetNetworkParams(ctx context.Context) (*api.Netw
 		return nil, err
 	}
 	return pv1.server.StateGetNetworkParams(ctx)
+}
+
+func (pv1 *reverseProxyV1) StateGetRandomnessDigestFromBeacon(ctx context.Context, randEpoch abi.ChainEpoch, tsk types.TipSetKey) (abi.Randomness, error) {
+	// limited by chainRateLimitTokens not stateRateLimitTokens because this only needs to read from the chain
+	if err := pv1.gateway.limit(ctx, chainRateLimitTokens); err != nil {
+		return nil, err
+	}
+	if err := pv1.gateway.checkKeyedTipSetHeight(ctx, randEpoch, tsk); err != nil {
+		return nil, err
+	}
+	return pv1.server.StateGetRandomnessDigestFromBeacon(ctx, randEpoch, tsk)
 }
 
 func (pv1 *reverseProxyV1) F3GetCertificate(ctx context.Context, instance uint64) (*certs.FinalityCertificate, error) {

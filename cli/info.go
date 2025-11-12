@@ -15,11 +15,11 @@ import (
 
 	"github.com/filecoin-project/go-state-types/big"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/journal/alerting"
-	"github.com/filecoin-project/lotus/node/impl/paych"
 )
 
 var InfoCmd = &cli.Command{
@@ -145,7 +145,7 @@ func infoCmdAct(cctx *cli.Context) error {
 	chs, err := fullapi.PaychList(ctx)
 	if err != nil {
 		// Check if the error is because payment channel manager is disabled
-		if errors.Is(err, paych.ErrPaymentChannelDisabled) {
+		if errors.Is(err, api.ErrPaymentChannelDisabled) {
 			fmt.Printf("Payment Channels: disabled (EnablePaymentChannelManager is set to false)\n")
 		} else {
 			return err

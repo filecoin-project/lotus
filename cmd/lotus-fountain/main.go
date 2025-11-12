@@ -115,6 +115,8 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("parsing source address (provide correct --from flag!): %w", err)
 		}
 
+		box := rice.MustFindBox("site")
+
 		h := &handler{
 			ctx:            ctx,
 			api:            nodeApi,
@@ -130,9 +132,8 @@ var runCmd = &cli.Command{
 				WalletBurst: 2,
 			}),
 			recapThreshold: cctx.Float64("captcha-threshold"),
+			box:            box,
 		}
-
-		box := rice.MustFindBox("site")
 		http.Handle("/", http.FileServer(box.HTTPBox()))
 		http.HandleFunc("/funds.html", prepFundsHtml(box))
 		http.Handle("/send", h)
@@ -191,6 +192,7 @@ type handler struct {
 
 	limiter        *Limiter
 	recapThreshold float64
+	box            *rice.Box
 }
 
 func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -238,7 +240,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if decodeError != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, decodeError.Error(), http.StatusBadRequest)
 		return
 	}
 	if filecoinAddress == address.Undef {
@@ -308,8 +310,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Render the success HTML template
 	if r.RequestURI == "/send" {
-		tmplPath := "site/send_success.html"
-		tmpl, err := template.ParseFiles(tmplPath)
+		tmpl, err := template.New("send_success").Parse(h.box.MustString("send_success.html"))
 		if err != nil {
 			http.Error(w, "Template error: "+err.Error(), http.StatusInternalServerError)
 			return

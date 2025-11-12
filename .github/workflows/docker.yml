@@ -33,6 +33,7 @@ jobs:
   docker:
     name: Docker (${{ matrix.image }} / ${{ matrix.network }}) [publish=${{ github.event.inputs.publish == 'true' || github.event_name != 'pull_request' }}]
     runs-on: ubuntu-latest
+    if: github.repository_owner == 'filecoin-project'
     strategy:
       fail-fast: false
       matrix:

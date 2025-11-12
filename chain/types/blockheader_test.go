@@ -129,7 +129,7 @@ func BenchmarkBlockHeaderMarshal(b *testing.B) {
 	b.ReportAllocs()
 
 	buf := new(bytes.Buffer)
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		buf.Reset()
 		if err := bh.MarshalCBOR(buf); err != nil {
 			b.Fatal(err)

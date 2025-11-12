@@ -4,6 +4,7 @@
 package buildconstants
 
 import (
+	_ "embed"
 	"os"
 	"strconv"
 
@@ -81,6 +82,8 @@ var UpgradeTockHeight = abi.ChainEpoch(-30)
 
 // This fix upgrade only ran on calibrationnet
 const UpgradeTockFixHeight abi.ChainEpoch = -4
+
+var UpgradeGoldenWeekHeight = abi.ChainEpoch(-31)
 
 const UpgradeXxHeight = 50
 

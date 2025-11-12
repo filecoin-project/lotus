@@ -405,11 +405,6 @@ func (n *NetworkStore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) 
 	return nil, xerrors.Errorf("not supported")
 }
 
-func (n *NetworkStore) HashOnRead(enabled bool) {
-	// todo
-	return
-}
-
 func (*NetworkStore) Flush(context.Context) error { return nil }
 
 func (n *NetworkStore) Stop(ctx context.Context) error {

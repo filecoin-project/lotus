@@ -22,7 +22,7 @@ const GenesisFile = ""
 var NetworkBundle = "devnet"
 var ActorDebugging = true
 
-var GenesisNetworkVersion = network.Version26
+var GenesisNetworkVersion = network.Version27
 
 var UpgradeBreezeHeight = abi.ChainEpoch(-1)
 
@@ -95,6 +95,8 @@ var UpgradeTeepInitialFilReserved = wholeFIL(1_400_000_000) // FIP-0100: 300M ->
 var UpgradeTockHeight = abi.ChainEpoch(-30)
 
 const UpgradeTockFixHeight = -103
+
+var UpgradeGoldenWeekHeight = abi.ChainEpoch(-31)
 
 var UpgradeXxHeight = abi.ChainEpoch(200)
 
@@ -177,6 +179,7 @@ func init() {
 	UpgradeTeepHeight = getUpgradeHeight("LOTUS_TEEP_HEIGHT", UpgradeTeepHeight)
 	UpgradeTockHeight = getUpgradeHeight("LOTUS_TOCK_HEIGHT", UpgradeTockHeight)
 	//	UpgradeTockFixHeight = getUpgradeHeight("LOTUS_TOCK_FIX_HEIGHT", UpgradeTockFixHeight)
+	UpgradeGoldenWeekHeight = getUpgradeHeight("LOTUS_GOLDENWEEK_HEIGHT", UpgradeGoldenWeekHeight)
 	UpgradeXxHeight = getUpgradeHeight("LOTUS_XX_HEIGHT", UpgradeXxHeight)
 
 	DrandSchedule = map[abi.ChainEpoch]DrandEnum{

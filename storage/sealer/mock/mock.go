@@ -191,7 +191,7 @@ func (mgr *SectorMgr) SealPreCommit1(ctx context.Context, sid storiface.SectorRe
 		return nil, err
 	}
 
-	_, _, cc, err := commcid.CIDToCommitment(commd)
+	cc, err := commcid.CIDToDataCommitmentV1(commd)
 	if err != nil {
 		panic(err)
 	}

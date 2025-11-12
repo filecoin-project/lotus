@@ -8,7 +8,7 @@ USAGE:
    lotus [global options] command [command options]
 
 VERSION:
-   1.33.2-dev
+   1.34.1-dev
 
 COMMANDS:
    daemon   Start a lotus daemon process
@@ -56,7 +56,7 @@ NAME:
    lotus daemon - Start a lotus daemon process
 
 USAGE:
-   lotus daemon command [command options]
+   lotus daemon [command options]
 
 COMMANDS:
    stop     Stop a running lotus daemon
@@ -123,7 +123,7 @@ NAME:
    lotus config - Manage node config
 
 USAGE:
-   lotus config command [command options]
+   lotus config [command options]
 
 COMMANDS:
    default  Print default node config
@@ -209,7 +209,10 @@ NAME:
    lotus wallet - Manage wallet
 
 USAGE:
-   lotus wallet command [command options]
+   lotus wallet [command options]
+
+CATEGORY:
+   BASIC
 
 COMMANDS:
    new          Generate a new key of the given type
@@ -371,7 +374,7 @@ NAME:
    lotus wallet market - Interact with market balances
 
 USAGE:
-   lotus wallet market command [command options]
+   lotus wallet market [command options]
 
 COMMANDS:
    withdraw  Withdraw funds from the Storage Market Actor
@@ -436,7 +439,10 @@ NAME:
    lotus msig - Interact with a multisig wallet
 
 USAGE:
-   lotus msig command [command options]
+   lotus msig [command options]
+
+CATEGORY:
+   BASIC
 
 COMMANDS:
    create             Create a new multisig wallet
@@ -715,7 +721,10 @@ NAME:
    lotus filplus - Interact with the verified registry actor used by Filplus
 
 USAGE:
-   lotus filplus command [command options]
+   lotus filplus [command options]
+
+CATEGORY:
+   BASIC
 
 COMMANDS:
    grant-datacap                  give allowance to the specified verified client address
@@ -903,7 +912,10 @@ NAME:
    lotus paych - Manage payment channels
 
 USAGE:
-   lotus paych command [command options]
+   lotus paych [command options]
+
+CATEGORY:
+   BASIC
 
 COMMANDS:
    add-funds          Add funds to the payment channel between fromAddress and toAddress. Creates the payment channel if it doesn't already exist.
@@ -953,7 +965,7 @@ NAME:
    lotus paych voucher - Interact with payment channel vouchers
 
 USAGE:
-   lotus paych voucher command [command options]
+   lotus paych voucher [command options]
 
 COMMANDS:
    create          Create a signed payment channel voucher
@@ -1108,7 +1120,10 @@ NAME:
    lotus auth - Manage RPC permissions
 
 USAGE:
-   lotus auth command [command options]
+   lotus auth [command options]
+
+CATEGORY:
+   DEVELOPER
 
 COMMANDS:
    create-token  Create token
@@ -1154,7 +1169,10 @@ NAME:
    lotus mpool - Manage message pool
 
 USAGE:
-   lotus mpool command [command options]
+   lotus mpool [command options]
+
+CATEGORY:
+   DEVELOPER
 
 COMMANDS:
    pending   Get pending messages
@@ -1297,7 +1315,10 @@ NAME:
    lotus state - Interact with and query filecoin chain state
 
 USAGE:
-   lotus state command [command options]
+   lotus state [command options]
+
+CATEGORY:
+   DEVELOPER
 
 COMMANDS:
    power                       Query network or miner power
@@ -1608,7 +1629,7 @@ NAME:
    lotus state market - Inspect the storage market actor
 
 USAGE:
-   lotus state market command [command options]
+   lotus state market [command options]
 
 COMMANDS:
    balance           Get the market balance (locked and escrowed) for a given account
@@ -1705,7 +1726,10 @@ NAME:
    lotus chain - Interact with filecoin blockchain
 
 USAGE:
-   lotus chain command [command options]
+   lotus chain [command options]
+
+CATEGORY:
+   DEVELOPER
 
 COMMANDS:
    head                              Print chain head
@@ -2020,7 +2044,7 @@ NAME:
    lotus chain decode - decode various types
 
 USAGE:
-   lotus chain decode command [command options]
+   lotus chain decode [command options]
 
 COMMANDS:
    params   Decode message params
@@ -2052,7 +2076,7 @@ NAME:
    lotus chain encode - encode various types
 
 USAGE:
-   lotus chain encode command [command options]
+   lotus chain encode [command options]
 
 COMMANDS:
    params   Encodes the given JSON params
@@ -2085,7 +2109,7 @@ NAME:
    lotus chain disputer - interact with the window post disputer
 
 USAGE:
-   lotus chain disputer command [command options]
+   lotus chain disputer [command options]
 
 COMMANDS:
    start    Start the window post disputer
@@ -2132,7 +2156,7 @@ NAME:
    lotus chain prune - splitstore gc
 
 USAGE:
-   lotus chain prune command [command options]
+   lotus chain prune [command options]
 
 COMMANDS:
    compact-cold  force splitstore compaction on cold store state and run gc
@@ -2195,7 +2219,10 @@ NAME:
    lotus log - Manage logging
 
 USAGE:
-   lotus log command [command options]
+   lotus log [command options]
+
+CATEGORY:
+   DEVELOPER
 
 COMMANDS:
    list       List log systems
@@ -2308,7 +2335,10 @@ NAME:
    lotus evm - Commands related to the Filecoin EVM runtime
 
 USAGE:
-   lotus evm command [command options]
+   lotus evm [command options]
+
+CATEGORY:
+   DEVELOPER
 
 COMMANDS:
    deploy            Deploy an EVM smart contract and return its address
@@ -2335,6 +2365,7 @@ USAGE:
 OPTIONS:
    --from value  optionally specify the account to use for sending the creation message
    --hex         use when input contract is in hex (default: false)
+   --wait        wait for message execution before returning (default: true) (default: true)
    --help, -h    show help
 ```
 
@@ -2413,7 +2444,10 @@ NAME:
    lotus index - Commands related to managing the chainindex
 
 USAGE:
-   lotus index command [command options]
+   lotus index [command options]
+
+CATEGORY:
+   DEVELOPER
 
 COMMANDS:
    validate-backfill  Validates and optionally backfills the chainindex for a range of epochs
@@ -2483,7 +2517,10 @@ NAME:
    lotus net - Manage P2P Network
 
 USAGE:
-   lotus net command [command options]
+   lotus net [command options]
+
+CATEGORY:
+   NETWORK
 
 COMMANDS:
    peers                Print peers
@@ -2652,7 +2689,7 @@ NAME:
    lotus net block - Manage network connection gating rules
 
 USAGE:
-   lotus net block command [command options]
+   lotus net block [command options]
 
 COMMANDS:
    add      Add connection gating rules
@@ -2671,7 +2708,7 @@ NAME:
    lotus net block add - Add connection gating rules
 
 USAGE:
-   lotus net block add command [command options]
+   lotus net block add [command options]
 
 COMMANDS:
    peer     Block a peer
@@ -2729,7 +2766,7 @@ NAME:
    lotus net block remove - Remove connection gating rules
 
 USAGE:
-   lotus net block remove command [command options]
+   lotus net block remove [command options]
 
 COMMANDS:
    peer     Unblock a peer
@@ -2892,7 +2929,10 @@ NAME:
    lotus sync - Inspect or interact with the chain syncer
 
 USAGE:
-   lotus sync command [command options]
+   lotus sync [command options]
+
+CATEGORY:
+   NETWORK
 
 COMMANDS:
    status      check sync status
@@ -2995,7 +3035,10 @@ NAME:
    lotus f3 - Manages Filecoin Fast Finality (F3) interactions
 
 USAGE:
-   lotus f3 command [command options]
+   lotus f3 [command options]
+
+CATEGORY:
+   NETWORK
 
 COMMANDS:
    list-miners, lm  Lists the miners that currently participate in F3 via this node.
@@ -3029,7 +3072,7 @@ NAME:
    lotus f3 powertable - Manages interactions with F3 power tables.
 
 USAGE:
-   lotus f3 powertable command [command options]
+   lotus f3 powertable [command options]
 
 COMMANDS:
    get, g              Get F3 power table at a specific instance ID or latest instance if none is specified.
@@ -3077,7 +3120,7 @@ NAME:
    lotus f3 certs - Manages interactions with F3 finality certificates.
 
 USAGE:
-   lotus f3 certs command [command options]
+   lotus f3 certs [command options]
 
 COMMANDS:
    get      Gets an F3 finality certificate to a given instance ID, or the latest certificate if no instance is specified.

@@ -19,13 +19,13 @@ permissions:
 jobs:
   test:
     name: Test
-    if: github.event_name == 'schedule' || contains(github.event.pull_request.labels.*.name, 'need/very-expensive-tests')
+    if: github.repository_owner == 'filecoin-project' && (github.event_name == 'schedule' || contains(github.event.pull_request.labels.*.name, 'need/very-expensive-tests'))
     uses: ./.github/workflows/reusable-test.yml
     with:
       run_very_expensive_tests: true
   issue:
     name: Issue
-    if: failure() && github.event_name == 'schedule'
+    if: github.repository_owner == 'filecoin-project' && failure() && github.event_name == 'schedule'
     needs: test
     runs-on: ubuntu-latest
     steps:

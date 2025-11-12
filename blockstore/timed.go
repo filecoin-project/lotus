@@ -165,10 +165,6 @@ func (t *TimedCacheBlockstore) Has(ctx context.Context, k cid.Cid) (bool, error)
 	return t.inactive.Has(ctx, k)
 }
 
-func (t *TimedCacheBlockstore) HashOnRead(_ bool) {
-	// no-op
-}
-
 func (t *TimedCacheBlockstore) DeleteBlock(ctx context.Context, k cid.Cid) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()

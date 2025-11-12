@@ -40,6 +40,7 @@ import (
 	v15 "github.com/filecoin-project/go-state-types/builtin/v15"
 	v16 "github.com/filecoin-project/go-state-types/builtin/v16"
 	v17 "github.com/filecoin-project/go-state-types/builtin/v17"
+	v18 "github.com/filecoin-project/go-state-types/builtin/v18"
 	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
 	adt8 "github.com/filecoin-project/go-state-types/builtin/v8/util/adt"
 	v9 "github.com/filecoin-project/go-state-types/builtin/v9"
@@ -316,6 +317,8 @@ func getMigrationFuncsForNetwork(nv network.Version) (UpgradeActorsFunc, PreUpgr
 		return filcns.UpgradeActorsV16, filcns.PreUpgradeActorsV16, checkNv25Invariants, nil
 	case network.Version27:
 		return filcns.UpgradeActorsV17, filcns.PreUpgradeActorsV17, checkNv27Invariants, nil
+	case network.Version28:
+		return filcns.UpgradeActorsV18, filcns.PreUpgradeActorsV18, checkNv28Invariants, nil
 	default:
 		return nil, nil, nil, xerrors.Errorf("migration not implemented for nv%d", nv)
 	}
@@ -673,6 +676,39 @@ func checkNv27Invariants(ctx context.Context, oldStateRootCid cid.Cid, newStateR
 		return err
 	}
 	messages, err := v17.CheckStateInvariants(newActorTree, epoch, actorCodeCids)
+	if err != nil {
+		return xerrors.Errorf("checking state invariants: %w", err)
+	}
+
+	for _, message := range messages.Messages() {
+		fmt.Println("got the following error: ", message)
+	}
+
+	fmt.Println("completed invariant checks, took ", time.Since(startTime))
+
+	return nil
+}
+
+func checkNv28Invariants(ctx context.Context, oldStateRootCid cid.Cid, newStateRootCid cid.Cid, bs blockstore.Blockstore, epoch abi.ChainEpoch) error {
+
+	actorStore := store.ActorStore(ctx, bs)
+	startTime := time.Now()
+
+	// Load the new state root.
+	var newStateRoot types.StateRoot
+	if err := actorStore.Get(ctx, newStateRootCid, &newStateRoot); err != nil {
+		return xerrors.Errorf("failed to decode state root: %w", err)
+	}
+
+	actorCodeCids, err := actors.GetActorCodeIDs(actorstypes.Version18)
+	if err != nil {
+		return err
+	}
+	newActorTree, err := builtin.LoadTree(actorStore, newStateRoot.Actors)
+	if err != nil {
+		return err
+	}
+	messages, err := v18.CheckStateInvariants(newActorTree, epoch, actorCodeCids)
 	if err != nil {
 		return xerrors.Errorf("checking state invariants: %w", err)
 	}

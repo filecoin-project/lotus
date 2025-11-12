@@ -28,7 +28,7 @@ Updating these dependencies in Lotus is usually related to network upgrades.  Se
 
 1. In your `lotus` directory, `cd extern/filecoin-ffi`.
 
-2. `git fetch` to ensure you have the latests changes for *filecoin-ffi*.
+2. `git fetch` to ensure you have the latest changes for *filecoin-ffi*.
 
 3. `git checkout vX.Y.Z` to checkout the version you want to update to.
 

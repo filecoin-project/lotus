@@ -2,6 +2,7 @@ package modules
 
 import (
 	"context"
+	"os"
 	"time"
 
 	"go.uber.org/fx"
@@ -32,7 +33,18 @@ type TipSetResolverParams struct {
 }
 
 func MakeV1TipSetResolver(params TipSetResolverParams) full.EthTipSetResolverV2 {
-	return eth.NewTipSetResolver(params.ChainStore, nil, false)
+	// TODO: remove this env var in a future release and remove all special-casing for Eth v1 in
+	// builder_chain.go with a single path to instantiating Eth modules and re-using them for
+	// both v1 and v2 APIs.
+	// The env var is only intended as a temporary escape hatch for users who encounter issues
+	// with F3 certificate–based finality resolution in Eth APIs.
+	f3CertificateProvider := params.F3
+	useF3ForFinality := true
+	if os.Getenv("LOTUS_ETH_V1_DISABLE_F3_FINALITY_RESOLUTION") == "1" {
+		f3CertificateProvider = nil
+		useF3ForFinality = false
+	}
+	return eth.NewTipSetResolver(params.ChainStore, f3CertificateProvider, useF3ForFinality)
 }
 
 func MakeV2TipSetResolver(params TipSetResolverParams) full.EthTipSetResolverV2 {

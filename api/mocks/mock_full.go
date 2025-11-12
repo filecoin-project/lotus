@@ -28,7 +28,7 @@ import (
 	auth "github.com/filecoin-project/go-jsonrpc/auth"
 	abi "github.com/filecoin-project/go-state-types/abi"
 	big "github.com/filecoin-project/go-state-types/big"
-	miner "github.com/filecoin-project/go-state-types/builtin/v17/miner"
+	miner "github.com/filecoin-project/go-state-types/builtin/v18/miner"
 	paych "github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	miner0 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	verifreg "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
@@ -213,6 +213,21 @@ func (m *MockFullNode) ChainGetEvents(arg0 context.Context, arg1 cid.Cid) ([]typ
 func (mr *MockFullNodeMockRecorder) ChainGetEvents(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainGetEvents", reflect.TypeOf((*MockFullNode)(nil).ChainGetEvents), arg0, arg1)
+}
+
+// ChainGetFinalizedTipSet mocks base method.
+func (m *MockFullNode) ChainGetFinalizedTipSet(arg0 context.Context) (*types.TipSet, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ChainGetFinalizedTipSet", arg0)
+	ret0, _ := ret[0].(*types.TipSet)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ChainGetFinalizedTipSet indicates an expected call of ChainGetFinalizedTipSet.
+func (mr *MockFullNodeMockRecorder) ChainGetFinalizedTipSet(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainGetFinalizedTipSet", reflect.TypeOf((*MockFullNode)(nil).ChainGetFinalizedTipSet), arg0)
 }
 
 // ChainGetGenesis mocks base method.
@@ -3420,6 +3435,21 @@ func (m *MockFullNode) StateMinerAvailableBalance(arg0 context.Context, arg1 add
 func (mr *MockFullNodeMockRecorder) StateMinerAvailableBalance(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMinerAvailableBalance", reflect.TypeOf((*MockFullNode)(nil).StateMinerAvailableBalance), arg0, arg1, arg2)
+}
+
+// StateMinerCreationDeposit mocks base method.
+func (m *MockFullNode) StateMinerCreationDeposit(arg0 context.Context, arg1 types.TipSetKey) (big.Int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateMinerCreationDeposit", arg0, arg1)
+	ret0, _ := ret[0].(big.Int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateMinerCreationDeposit indicates an expected call of StateMinerCreationDeposit.
+func (mr *MockFullNodeMockRecorder) StateMinerCreationDeposit(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMinerCreationDeposit", reflect.TypeOf((*MockFullNode)(nil).StateMinerCreationDeposit), arg0, arg1)
 }
 
 // StateMinerDeadlines mocks base method.

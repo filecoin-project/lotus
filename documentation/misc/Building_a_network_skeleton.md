@@ -203,6 +203,7 @@ Note: one only needs to update `filecoin-ffi`'s dependency on `go-state-types` w
             - set previous upgrade to `var UpgradeXxHeigh = abi.ChainEpoch(-xx-1)`
             - Add comment with ?????? signaling that the new upgrade date is unknown
             - Add `const UpgradeXxHeight = 999999999999999`
+            - Set `const GenesisNetworkVersion = network.VersionXX` where XX is the network version you are upgrading from.
         - `params_calibnet.go`
             - Add comment with `??????` signaling that the new upgrade date is unknown
             - Add `const UpgradeXxHeight = 999999999999999`

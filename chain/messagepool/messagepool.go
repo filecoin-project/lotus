@@ -890,7 +890,7 @@ func (mp *MessagePool) addTs(ctx context.Context, m *types.SignedMessage, curTs 
 	// TODO: I'm not thrilled about depending on filcns here, but I prefer this to duplicating logic
 
 	if m.Signature.Type == crypto.SigTypeDelegated && !consensus.IsValidEthTxForSending(nv, m) {
-		return false, xerrors.Errorf("network version should be atleast NV23 for sending legacy ETH transactions; but current network version is %d", nv)
+		return false, xerrors.Errorf("network version should be at least NV23 for sending legacy ETH transactions; but current network version is %d", nv)
 	}
 
 	if !consensus.IsValidForSending(nv, senderAct) {
@@ -1367,7 +1367,7 @@ func (mp *MessagePool) HeadChange(ctx context.Context, revert []*types.TipSet, a
 	for _, s := range rmsgs {
 		for _, msg := range s {
 			if err := mp.addSkipChecks(ctx, msg); err != nil {
-				log.Errorf("Failed to readd message from reorg to mpool: %s", err)
+				log.Errorf("Failed to read message from reorg to mpool: %s", err)
 			}
 		}
 	}

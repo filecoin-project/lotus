@@ -6,7 +6,6 @@ import (
 )
 
 // MinerSubsystem represents a miner subsystem. Int and string values are not
-// guaranteed to be stable over time  is not
 // guaranteed to be stable over time.
 type MinerSubsystem int
 
