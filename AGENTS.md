@@ -63,6 +63,7 @@ Status (to hand off)
 - Initial test adjustments for minimal builds landed; CI green.
 - SDK: added pure extractor + unit tests for `eth20` slicing in `sdk/src/actor.rs`.
 - CI: coverage step for `fvm` now runs with default features to exercise delegated paths.
+- Update: to avoid OpenCL linkage on Ubuntu runners, restored `--no-default-features` on the `test-fvm` coverage step. Delegation tests remain compatible with minimal builds. If patch coverage stays low for kernel/call-manager, add targeted unit tests that don't require default features.
 - Next: validate Codecov patch % (target ≥80% on changed files) and project coverage; add any missing edge tests if needed.
 
 **Paired Repos**
