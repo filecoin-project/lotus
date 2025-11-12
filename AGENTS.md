@@ -61,7 +61,9 @@ Execution Notes
 
 Status (to hand off)
 - Initial test adjustments for minimal builds landed; CI green.
-- Next implement SDK unit tests + CI coverage tweak, then validate Codecov patch % and iterate if needed.
+- SDK: added pure extractor + unit tests for `eth20` slicing in `sdk/src/actor.rs`.
+- CI: coverage step for `fvm` now runs with default features to exercise delegated paths.
+- Next: validate Codecov patch % (target ≥80% on changed files) and project coverage; add any missing edge tests if needed.
 
 **Paired Repos**
 - `./lotus` (this folder)
