@@ -66,6 +66,13 @@ Status (to hand off)
 - Update: to avoid OpenCL linkage on Ubuntu runners, restored `--no-default-features` on the `test-fvm` coverage step. Delegation tests remain compatible with minimal builds. If patch coverage stays low for kernel/call-manager, add targeted unit tests that don't require default features.
 - Next: validate Codecov patch % (target ≥80% on changed files) and project coverage; add any missing edge tests if needed.
 
+Updates (coverage work in progress)
+- Added fvm crate tests for send paths that hit DefaultCallManager branches:
+  - Create placeholder actor (f4) via METHOD_SEND + value=0, then transfer non-zero.
+  - Create BLS account actor via METHOD_SEND + value=0, then transfer non-zero.
+- Added fvm unit tests for keccak32/frc42 helpers inside call_manager/default.rs.
+- Expect improved patch coverage in call_manager; continue adding focused tests if needed.
+
 **Paired Repos**
 - `./lotus` (this folder)
 - `../builtin-actors` (paired repo in a neighboring folder)
