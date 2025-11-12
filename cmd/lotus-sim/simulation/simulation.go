@@ -251,7 +251,7 @@ func (sim *Simulation) Walk(
 		minEpoch = sim.head.Height() - abi.ChainEpoch(lookback)
 	}
 
-	// Given tha loading messages and receipts can be a little bit slow, we do this in parallel.
+	// Given that loading messages and receipts can be a little bit slow, we do this in parallel.
 	//
 	// 1. We spin up some number of workers.
 	// 2. We hand tipsets to workers in round-robin order.
