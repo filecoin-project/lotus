@@ -131,7 +131,7 @@ func (l *leaser) getParticipantsByInstance(network gpbft.NetworkName, instance u
 	for id, lease := range l.leases {
 		if _, err := l.validateLease(currentNetwork, instance, lease); err != nil {
 			// Lazily clear old leases.
-			log.Warnf("lost F3 participation lease for miner %d at instance %d since it is no loger valid: %v ", id, instance, err)
+			log.Warnf("lost F3 participation lease for miner %d at instance %d since it is no longer valid: %v ", id, instance, err)
 			delete(l.leases, id)
 		} else {
 			participants = append(participants, id)
@@ -148,7 +148,7 @@ func (l *leaser) getValidLeases() []api.F3ParticipationLease {
 	for id, lease := range l.leases {
 		// Lazily clear old leases.
 		if validatedLease, err := l.validateLease(currentManifest.NetworkName, progress.ID, lease); err != nil {
-			log.Warnf("lost F3 participation lease for miner %d at instance %d while getting valid leases since it is no loger valid: %v ", id, progress.ID, err)
+			log.Warnf("lost F3 participation lease for miner %d at instance %d while getting valid leases since it is no longer valid: %v ", id, progress.ID, err)
 			delete(l.leases, id)
 		} else {
 			leases = append(leases, validatedLease)

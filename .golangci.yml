@@ -24,6 +24,7 @@ issues:
     # gosec
     - "^G101: Potential hardcoded credentials"
     - "^G108: Profiling endpoint is automatically exposed on /debug/pprof"
+    - "^G115: integer overflow conversion u?int(8|32|64)? -> u?int(8|32|64)?"
     - "^G204: Subprocess launched with (variable|a potential tainted input or cmd arguments)"
     - "^G301: Expect directory permissions to be 0750 or less"
     - "^G302: Expect file permissions to be 0600 or less"
@@ -47,6 +48,7 @@ issues:
     - "^var-naming: (method|range var) \\w*(Api|Http|Id|Rpc|Url)[^\\s]* should be \\w*(API|HTTP|ID|RPC|URL)"
     - "^var-naming: don't use underscores in Go names"
     - "^var-naming: don't use ALL_CAPS in Go names; use CamelCase"
+    - "^redefines-builtin-id: redefinition of the built-in (function|type) (max|min|cap|recover|new|error)"
 
   exclude-use-default: false
   exclude-rules:

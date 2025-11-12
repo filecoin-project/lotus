@@ -30,11 +30,14 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	amt4 "github.com/filecoin-project/go-amt-ipld/v4"
+	"github.com/filecoin-project/go-f3/certs"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/chain/lf3"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -54,6 +57,7 @@ type ChainModuleAPI interface {
 	ChainHead(context.Context) (*types.TipSet, error)
 	ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error)
 	ChainGetTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error)
+	ChainGetFinalizedTipSet(ctx context.Context) (*types.TipSet, error)
 	ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)
 	ChainGetTipSetAfterHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
@@ -68,7 +72,9 @@ var _ ChainModuleAPI = *new(api.FullNode)
 type ChainModule struct {
 	fx.In
 
-	Chain *store.ChainStore
+	Chain   *store.ChainStore
+	F3      lf3.F3Backend         `optional:"true"`
+	F3Certs F3CertificateProvider `optional:"true"`
 
 	// ExposedBlockstore is the global monolith blockstore that is safe to
 	// expose externally. In the future, this will be segregated into two
@@ -247,6 +253,74 @@ func (m *ChainModule) ChainGetTipSetAfterHeight(ctx context.Context, h abi.Chain
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 	return m.Chain.GetTipsetByHeight(ctx, h, ts, false)
+}
+
+func (m *ChainModule) ChainGetFinalizedTipSet(ctx context.Context) (*types.TipSet, error) {
+	head := m.Chain.GetHeaviestTipSet()
+	ecFinalityHeight := head.Height() - policy.ChainFinality
+
+	// Try F3-based finality first.
+	if ts := m.tryF3Finality(ctx, ecFinalityHeight); ts != nil {
+		return ts, nil
+	}
+
+	// Fallback: EC finalized tipset (rewind for null rounds)
+	return m.Chain.GetTipsetByHeight(ctx, ecFinalityHeight, head, true)
+}
+
+// latestF3Cert attempts to retrieve the most recent finality certificate.
+// Precedence: local F3 (m.F3) first; if no certificate is available there,
+// fall back to a possible external / remote provider (m.F3Certs).
+func (m *ChainModule) latestF3Cert(ctx context.Context) *certs.FinalityCertificate {
+	if m.F3 != nil {
+		if c, err := m.F3.GetLatestCert(ctx); err != nil {
+			log.Warnf("failed to get latest certificate from F3: %s", err)
+		} else if c != nil {
+			return c
+		}
+	}
+	if m.F3Certs != nil {
+		if c, err := m.F3Certs.F3GetLatestCertificate(ctx); err != nil {
+			log.Warnf("failed to get latest certificate from F3CertificateProvider: %s", err)
+		} else if c != nil {
+			return c
+		}
+	}
+	return nil
+}
+
+// tryF3Finality validates and converts a usable F3 finality certificate into a
+// finalized tipset. Returns nil if no suitable certificate is available, errors
+// encountered here are non-fatal and logged.
+func (m *ChainModule) tryF3Finality(ctx context.Context, ecFinalityHeight abi.ChainEpoch) *types.TipSet {
+	cert := m.latestF3Cert(ctx)
+	if cert == nil {
+		return nil
+	}
+	if cert.ECChain == nil || len(cert.ECChain.TipSets) == 0 {
+		log.Warn("F3 finalized certificate has empty EC chain")
+		return nil
+	}
+	finalizedTipSet := cert.ECChain.TipSets[len(cert.ECChain.TipSets)-1]
+	if finalizedTipSet == nil {
+		log.Warn("F3 finalized tipset in certificate is nil")
+		return nil
+	}
+	if finalizedTipSet.Epoch < int64(ecFinalityHeight) { // ensure it's not behind EC finality
+		log.Warnf("F3 finalized tipset epoch %d is earlier than EC finality height %d, ignoring F3", finalizedTipSet.Epoch, ecFinalityHeight)
+		return nil
+	}
+	tsk, err := types.TipSetKeyFromBytes(finalizedTipSet.Key)
+	if err != nil {
+		log.Errorf("failed to decode F3 finalized tipset key: %s", err)
+		return nil
+	}
+	ts, err := m.Chain.GetTipSetFromKey(ctx, tsk)
+	if err != nil {
+		log.Errorf("failed to get F3 finalized tipset at epoch %d: %s", finalizedTipSet.Epoch, err)
+		return nil
+	}
+	return ts
 }
 
 func (m *ChainModule) ChainReadObj(ctx context.Context, obj cid.Cid) ([]byte, error) {
@@ -639,7 +713,7 @@ func (a *ChainAPI) ChainExport(ctx context.Context, nroots abi.ChainEpoch, skipo
 	go func() {
 		bw := bufio.NewWriterSize(w, 1<<20)
 
-		err := a.Chain.Export(ctx, ts, nroots, skipoldmsgs, bw)
+		err = a.Chain.ExportV1(ctx, ts, nroots, skipoldmsgs, bw)
 		_ = bw.Flush()            // it is a write to a pipe
 		_ = w.CloseWithError(err) // it is a pipe
 	}()

@@ -255,7 +255,7 @@ func TestSyncManagerBucketSet(t *testing.T) {
 	require.Equal(t, 1, len(bucketSet.buckets))
 	require.Equal(t, 3, len(bucketSet.buckets[0].tips))
 
-	// inserting a tipset from  new chain, should create a new bucket
+	// inserting a tipset from new chain, should create a new bucket
 	ts4fork := mock.TipSet(mock.MkBlock(nil, 1, 1))
 	bucketSet.Insert(ts4fork)
 	require.Equal(t, 2, len(bucketSet.buckets))

@@ -17,6 +17,7 @@
   * [ChainGetBlock](#ChainGetBlock)
   * [ChainGetBlockMessages](#ChainGetBlockMessages)
   * [ChainGetEvents](#ChainGetEvents)
+  * [ChainGetFinalizedTipSet](#ChainGetFinalizedTipSet)
   * [ChainGetGenesis](#ChainGetGenesis)
   * [ChainGetMessage](#ChainGetMessage)
   * [ChainGetMessagesInTipset](#ChainGetMessagesInTipset)
@@ -245,6 +246,7 @@
   * [StateMinerActiveSectors](#StateMinerActiveSectors)
   * [StateMinerAllocated](#StateMinerAllocated)
   * [StateMinerAvailableBalance](#StateMinerAvailableBalance)
+  * [StateMinerCreationDeposit](#StateMinerCreationDeposit)
   * [StateMinerDeadlines](#StateMinerDeadlines)
   * [StateMinerFaults](#StateMinerFaults)
   * [StateMinerInfo](#StateMinerInfo)
@@ -702,6 +704,93 @@ Response:
     ]
   }
 ]
+```
+
+### ChainGetFinalizedTipSet
+ChainGetFinalizedTipSet returns the latest finalized tipset. It uses the
+current F3 instance to determine the finalized tipset.
+This is the tipset at the end of the last finalized round and can be used
+for follow-up querying of the chain state with the assurance that the
+state will not change.
+If F3 is operational and finalizing in this node. If not, it will fall back
+to the Expected Consensus (EC) finality definition of head - 900 epochs.
+
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "Cids": [
+    {
+      "/": "bafy2bzacedo7hjsumaajt6sbor42qycvjyk6goqe4oi4o4ddsjxkdeqrqf42c"
+    }
+  ],
+  "Blocks": [
+    {
+      "Miner": "f01938223",
+      "Ticket": {
+        "VRFProof": "rIPyBy+F827Szc5oN/6ylCmpzxfAWr7aI5F4YJrN4pLSyknkcJI3ivsCo2KKjQVZFRnFyEus1maD5LdzQpnFRKMla4138qEuML+Ne/fsgOMrUEAeL34ceVwJd+Mt4Jrz"
+      },
+      "ElectionProof": {
+        "WinCount": 1,
+        "VRFProof": "sN51JqjZNf+xWxwoo+wlMH1bpXI9T3wUIrla6FpwTxU4jC1z+ab5NFU/B2ZdDITTE+u8qaiibtLkld5lhNcOEOUqwKNyJ4nwFo5vAhWqvOTNdOiZmxsKpWG0NZUoXb/+"
+      },
+      "BeaconEntries": [
+        {
+          "Round": 17133822,
+          "Data": "tH4q8euIaP9/QRJt8ALfkBvttSmQ/DOAt8+37wGGV5f8kkhzEFrHhskitNnPS70j"
+        },
+        {
+          "Round": 17133832,
+          "Data": "uQD5cEn8U69+sPjpccT8Bm0jVrnXLScf2jBkLJNHvAHLA6tPsZDREzpBIckpVvPy"
+        }
+      ],
+      "WinPoStProof": [
+        {
+          "PoStProof": 3,
+          "ProofBytes": "qOPLMhMui8qm/rE2y/UceyBDv5JvRCH5Fc5Ul+kuN190XDcMme5eKURUCmE2sN1HoQ2dMZX+xNZY351dbG93H/tUr6wuNhkvmemi2Xi62YvqU36/kJh+K2YBiW7h/4LXCUTP/6XAOONOPl+j9GqS7RQxruPLfIyehvzVC0C8dB8+SVWtAnRKRPUUOPJvyHKejlrCyzWXOz/I7JG2/qEGLD0xwazBVwML1vVvuE5NzXeOoQGlnB2PwSRb5Cn8FH8Q"
+        }
+      ],
+      "Parents": [
+        {
+          "/": "bafy2bzaceba2kdmysmi5ieugzvv5np7f2lobayzpvtk777du74n7jq6xhynda"
+        },
+        {
+          "/": "bafy2bzacecrye24tkqrvvddcf62gfi4z4o33z2tdedbpaalordozaxfrz2jyi"
+        },
+        {
+          "/": "bafy2bzaceab5mrohjvnp3mz7mo33ky7qqlmssrs7veqmjrgouafxyhnd5dy66"
+        }
+      ],
+      "ParentWeight": "116013147118",
+      "Height": 4863283,
+      "ParentStateRoot": {
+        "/": "bafy2bzaceajxzsvzuq3ddzxfrs2jlaxsooqmgdy5uxbqujnjy3y56iumzzy7u"
+      },
+      "ParentMessageReceipts": {
+        "/": "bafy2bzacecfcx2ykqucyv3gkyrcy3upwrvdraz3ktfg7phkqysefdwsggglac"
+      },
+      "Messages": {
+        "/": "bafy2bzacebzofmh6migvc4v6qsme6vuxlhi6pv2ocy4apyic3uihjqm7dum3u"
+      },
+      "BLSAggregate": {
+        "Type": 2,
+        "Data": "krFATGA0OBu/kFwtXsThVtKCkppnU7045uTURCeiOeJttxuXfx3wqJrLkCytnJFWFLVC+tiVWI4BxC3wqc9r6eAlNr9dEBx+3KwML/RFG/b5grmknLpGWn7g1EB/2T4y"
+      },
+      "Timestamp": 1744204890,
+      "BlockSig": {
+        "Type": 2,
+        "Data": "pWiUr+M8xxTxLED7GuU586gSfZCaHyLbLj0uS0HhKYRtHuyG47fIrfIT/04OCmQvEXBD8pFraWbMc3tnFrSsM1mIBJ5M38UPUfXDSspo+QGdouo2kll2X+VNKY3ajb1K"
+      },
+      "ForkSignaling": 0,
+      "ParentBaseFee": "20592036"
+    }
+  ],
+  "Height": 4863283
+}
 ```
 
 ### ChainGetGenesis
@@ -6498,7 +6587,7 @@ Perms: read
 Inputs:
 ```json
 [
-  27
+  28
 ]
 ```
 
@@ -6513,7 +6602,7 @@ Perms: read
 Inputs:
 ```json
 [
-  27
+  28
 ]
 ```
 
@@ -7476,6 +7565,7 @@ Response:
     "UpgradeTuktukHeight": 10101,
     "UpgradeTeepHeight": 10101,
     "UpgradeTockHeight": 10101,
+    "UpgradeGoldenWeekHeight": 10101,
     "UpgradeXxHeight": 10101
   },
   "Eip155ChainID": 123,
@@ -7984,6 +8074,32 @@ Inputs:
 ```json
 [
   "f01234",
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `"0"`
+
+### StateMinerCreationDeposit
+StateMinerCreationDeposit calculates the deposit required for creating a new miner
+according to FIP-0077 specification. This deposit is based on the network's current
+economic parameters including circulating supply, network power, and pledge collateral.
+
+See: node/impl/full/state.go StateMinerCreationDeposit implementation.
+
+
+Perms: read
+
+Inputs:
+```json
+[
   [
     {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
@@ -8524,7 +8640,7 @@ Inputs:
 ]
 ```
 
-Response: `27`
+Response: `28`
 
 ### StateReadState
 StateReadState returns the indicated actor's state.

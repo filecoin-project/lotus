@@ -101,11 +101,37 @@ func (r *unpadReader) readInner(out []byte) (int, error) {
 	r.left -= uint64(todo)
 
 	n, err := io.ReadAtLeast(r.src, r.work[:todo], int(todo))
-	if err != nil && err != io.EOF {
-		return n, err
+	if err == io.ErrUnexpectedEOF {
+		// We got a partial read. This happens when the underlying reader
+		// doesn't have as much data as expected (e.g., non-power-of-2 pieces).
+		// Process what we got.
+		if n > 0 {
+			// Round down to complete 128-byte chunks
+			completeChunks := n / 128
+			if completeChunks > 0 {
+				validBytes := completeChunks * 128
+				Unpad(r.work[:validBytes], out[:completeChunks*127])
+				// Adjust left to reflect that we couldn't read everything
+				r.left = 0
+				return completeChunks * 127, io.EOF
+			}
+		}
+		// Not enough data for even one chunk
+		return 0, io.EOF
+	}
+	if err == io.EOF {
+		// Clean EOF with no data
+		if n == 0 {
+			return 0, io.EOF
+		}
+		// Got some data with EOF - shouldn't happen with ReadAtLeast but handle it
+		return 0, xerrors.Errorf("unexpected EOF with partial read: %d bytes", n)
+	}
+	if err != nil {
+		return 0, err
 	}
 	if n < int(todo) {
-		return 0, xerrors.Errorf("didn't read enough: %d / %d, left %d, out %d", n, todo, r.left, len(out))
+		return 0, xerrors.Errorf("short read without EOF: got %d, expected %d", n, todo)
 	}
 
 	Unpad(r.work[:todo], out[:todo.Unpadded()])

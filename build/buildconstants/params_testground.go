@@ -110,7 +110,8 @@ var (
 	UpgradeTeepInitialFilReserved        *big.Int       = wholeFIL(300_000_000)
 	UpgradeTockHeight                    abi.ChainEpoch = -32
 	UpgradeTockFixHeight                 abi.ChainEpoch = -33
-	UpgradeXxHeight                      abi.ChainEpoch = -34
+	UpgradeGoldenWeekHeight              abi.ChainEpoch = -34
+	UpgradeXxHeight                      abi.ChainEpoch = -35
 
 	DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 		0:                    DrandMainnet,

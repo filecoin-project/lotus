@@ -38,32 +38,6 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 	network.BeginMining(blockTime)
 	subject.WaitTillChain(ctx, kit.HeightAtLeast(targetHeight))
 
-	// mkStableExecute creates a stable execution wrapper that ensures the chain doesn't
-	// advance during test execution to avoid flaky tests due to chain reorgs
-	mkStableExecute := func(getTipSet func(t *testing.T) *types.TipSet) func(fn func()) *types.TipSet {
-		return func(fn func()) *types.TipSet {
-			// Create a stable execute function that takes the test context
-			return func(t *testing.T) *types.TipSet {
-				beforeTs := getTipSet(t)
-				for {
-					select {
-					case <-ctx.Done():
-						t.Fatalf("context cancelled during stable execution: %v", ctx.Err())
-					default:
-					}
-
-					fn()
-					afterTs := getTipSet(t)
-					if beforeTs.Equals(afterTs) {
-						// Chain hasn't changed during execution, safe to return
-						return beforeTs
-					}
-					beforeTs = afterTs
-				}
-			}(t) // Pass the current test context
-		}
-	}
-
 	var (
 		heaviest = func(t *testing.T) *types.TipSet {
 			head, err := subject.ChainHead(ctx)
@@ -128,8 +102,8 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 		}{
 			{
 				name:               "no selector is error",
-				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet"],"id":1}`,
-				wantErr:            "Parse error",
+				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[],"id":1}`,
+				wantErr:            "wrong param count",
 				wantResponseStatus: http.StatusInternalServerError,
 			},
 			{
@@ -330,9 +304,9 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 				}
 
 				// Use stable execute to ensure the test doesn't straddle tipsets
-				stableExecute := mkStableExecute(test.wantTipSet)
+				stableExecute := kit.MakeStableExecute(ctx, t, test.wantTipSet)
 				if test.wantTipSet == nil {
-					stableExecute = mkStableExecute(heaviest)
+					stableExecute = kit.MakeStableExecute(ctx, t, heaviest)
 				}
 
 				var gotResponseCode int
@@ -434,9 +408,9 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 				}
 
 				// Use stable execute to ensure the test doesn't straddle tipsets
-				stableExecute := mkStableExecute(test.wantTipSet)
+				stableExecute := kit.MakeStableExecute(ctx, t, test.wantTipSet)
 				if test.wantTipSet == nil {
-					stableExecute = mkStableExecute(heaviest)
+					stableExecute = kit.MakeStableExecute(ctx, t, heaviest)
 				}
 
 				var gotResponseCode int
@@ -509,9 +483,9 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 				}
 
 				// Use stable execute to ensure the test doesn't straddle tipsets
-				stableExecute := mkStableExecute(test.wantTipSet)
+				stableExecute := kit.MakeStableExecute(ctx, t, test.wantTipSet)
 				if test.wantTipSet == nil {
-					stableExecute = mkStableExecute(heaviest)
+					stableExecute = kit.MakeStableExecute(ctx, t, heaviest)
 				}
 
 				var gotResponseCode int

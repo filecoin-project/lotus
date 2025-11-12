@@ -14,7 +14,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
 	miner16 "github.com/filecoin-project/go-state-types/builtin/v16/miner"
 	"github.com/filecoin-project/go-state-types/exitcode"
@@ -169,7 +168,7 @@ func TestColdStorePrune(t *testing.T) {
 	assert.True(g.t, g.Exists(ctx, garbageM), "Garbage message not found in splitstore")
 	bm.Restart()
 
-	// wait for compaction to finsih and pause to make sure it doesn't start to avoid racing
+	// wait for compaction to finish and pause to make sure it doesn't start to avoid racing
 	for {
 		bm.Pause()
 		if splitStoreCompacting(ctx, t, full) {
@@ -477,7 +476,7 @@ func (g *Garbager) createMiner(ctx context.Context) *lapi.MsgLookup {
 	createStorageMinerMsg := &types.Message{
 		To:    power.Address,
 		From:  worker,
-		Value: big.Zero(),
+		Value: types.FromFil(1),
 
 		Method: power.Methods.CreateMiner,
 		Params: params,

@@ -196,3 +196,50 @@ func TestUnpadReaderLargeReads(t *testing.T) {
 
 	require.Equal(t, unpadded, result)
 }
+
+// TestUnpadReaderPartialPiece tests the edge case where the underlying reader
+// has less data than UnpadReader expects. This happens when dealing with pieces
+// that are not exact power-of-2 sizes.
+// This test captures the fix for the EOF errors that occurred after PR #12884.
+func TestUnpadReaderPartialPiece(t *testing.T) {
+	actualUnpadded := abi.UnpaddedPieceSize(127 * 100) // 100 chunks = 12700 bytes
+	declaredSize := abi.PaddedPieceSize(128 * 128)     // Declare 128 chunks but only have 100
+
+	// Generate test data
+	unpadded := make([]byte, actualUnpadded)
+	n, err := rand.Read(unpadded)
+	require.NoError(t, err)
+	require.Equal(t, int(actualUnpadded), n)
+
+	// Pad the data
+	paddedActual := actualUnpadded.Padded()
+	padded := make([]byte, paddedActual)
+	fr32.Pad(unpadded, padded)
+
+	// Create a reader that returns EOF after the actual data
+	limitedReader := bytes.NewReader(padded)
+
+	// Create UnpadReader with the larger declared size
+	unpadReader, err := fr32.NewUnpadReader(limitedReader, declaredSize)
+	require.NoError(t, err)
+
+	// Read all data
+	result := make([]byte, 0, actualUnpadded*2)
+	buf := make([]byte, 1024)
+
+	for {
+		n, err := unpadReader.Read(buf)
+		if n > 0 {
+			result = append(result, buf[:n]...)
+		}
+		if err == io.EOF {
+			break
+		}
+		// The fix allows UnpadReader to handle partial reads gracefully
+		require.NoError(t, err, "UnpadReader should handle partial pieces without error")
+	}
+
+	// Verify we got the correct data
+	require.Equal(t, int(actualUnpadded), len(result), "Should read all available data")
+	require.Equal(t, unpadded, result, "Data should match original")
+}

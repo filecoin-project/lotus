@@ -310,7 +310,7 @@ In case you need to downgrade to the [previous indexing system](#previous-indexi
 * It persists state to `${LOTUS_PATH}/chainindex`.
 * It has this CLI backfill tooling: [`lotus index validate-backfill`](#lotus-shed-chainindex-validate-backfill-cli-tool)
 * **Storage requirements:** See the [backfill disk space requirements](#backfill-disk-space-requirements).
-* **Backfil times:** See the [backfill timing](#backfill-timing).
+* **Backfill times:** See the [backfill timing](#backfill-timing).
 
 ## Appendix
 

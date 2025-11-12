@@ -799,7 +799,7 @@ func TestFEVMDestroyCreate2(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []byte{}, senderAfterDestroy)
 
-	// deploy new contract at same address usign same salt
+	// deploy new contract at same address using same salt
 	newAddressSelfDestruct, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "deploy(bytes32)", salt)
 	require.NoError(t, err)
 	require.Equal(t, newAddressSelfDestruct, selfDestructAddress)
@@ -1852,4 +1852,29 @@ func TestTstore(t *testing.T) {
 	//Step 4 test tranisent data from nested contract calls
 	_, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "testNestedContracts(address)", inputDataContract)
 	require.NoError(t, err)
+}
+
+func TestFEVMTestBLS(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	tests := []string{
+		"G1AddTest",
+		"G1MsmTest",
+		"G2AddTest",
+		"G2MsmTest",
+		"MapFpToG1Test",
+		"MapFp2ToG2Test",
+		"PairingTest",
+	}
+
+	for _, name := range tests {
+		name := name
+		t.Run(name, func(t *testing.T) {
+			filename := fmt.Sprintf("contracts/bls12/%s.hex", name)
+			fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filename)
+			_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "runTests()", []byte{})
+			require.NoError(t, err)
+		})
+	}
 }

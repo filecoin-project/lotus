@@ -11,7 +11,7 @@
   <a href="https://github.com/filecoin-project/lotus/actions/workflows/check.yml"><img src="https://github.com/filecoin-project/lotus/actions/workflows/check.yml/badge.svg"></a>
   <a href="https://github.com/filecoin-project/lotus/actions/workflows/test.yml"><img src="https://github.com/filecoin-project/lotus/actions/workflows/test.yml/badge.svg"></a>
   <a href="https://goreportcard.com/report/github.com/filecoin-project/lotus"><img src="https://goreportcard.com/badge/github.com/filecoin-project/lotus" /></a>
-  <a href=""><img src="https://img.shields.io/badge/golang-%3E%3D1.23.10-blue.svg" /></a>
+  <a href=""><img src="https://img.shields.io/badge/golang-%3E%3D1.24.7-blue.svg" /></a>
   <br>
 </p>
 
@@ -58,10 +58,10 @@ For other distributions you can find the required dependencies [here.](https://l
 
 #### Go
 
-To build Lotus, you need a working installation of [Go 1.23.10 or higher](https://golang.org/dl/):
+To build Lotus, you need a working installation of [Go 1.24.7 or higher](https://golang.org/dl/):
 
 ```bash
-wget -c https://golang.org/dl/go1.23.10.linux-amd64.tar.gz -O - | sudo tar -xz -C /usr/local
+wget -c https://golang.org/dl/go1.24.7.linux-amd64.tar.gz -O - | sudo tar -xz -C /usr/local
 ```
 
 **TIP:**

@@ -1,32 +1,41 @@
 package store
 
 import (
+	"bufio"
 	"bytes"
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/namespace"
 	format "github.com/ipfs/go-ipld-format"
 	"github.com/ipld/go-car"
 	carutil "github.com/ipld/go-car/util"
 	carv2 "github.com/ipld/go-car/v2"
 	"github.com/multiformats/go-multicodec"
+	mh "github.com/multiformats/go-multihash"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-f3/certstore"
 	"github.com/filecoin-project/go-state-types/abi"
 
 	bstore "github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
 const TipsetkeyBackfillRange = 2 * policy.ChainFinality
@@ -35,7 +44,7 @@ func (cs *ChainStore) UnionStore() bstore.Blockstore {
 	return bstore.Union(cs.stateBlockstore, cs.chainBlockstore)
 }
 
-func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRoots abi.ChainEpoch, skipOldMsgs bool, w io.Writer) error {
+func (cs *ChainStore) ExportV1(ctx context.Context, ts *types.TipSet, inclRecentRoots abi.ChainEpoch, skipOldMsgs bool, w io.Writer) error {
 	h := &car.CarHeader{
 		Roots:   ts.Cids(),
 		Version: 1,
@@ -45,6 +54,103 @@ func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRo
 		return xerrors.Errorf("failed to write car header: %s", err)
 	}
 
+	return cs.exportToCar(ctx, ts, inclRecentRoots, skipOldMsgs, w)
+}
+
+func (cs *ChainStore) ExportV2(ctx context.Context, ts *types.TipSet, inclRecentRoots abi.ChainEpoch, skipOldMsgs bool, certStore *certstore.Store, w io.Writer) error {
+	buffer := bytes.NewBuffer(nil)
+	metadata := SnapshotMetadata{
+		Version:       SnapshotVersion2,
+		HeadTipsetKey: ts.Cids(),
+	}
+
+	var f3TempFile *os.File
+	f3TempFile, err := os.CreateTemp("", "export-f3-snapshot-*.tmp")
+	if err != nil {
+		return xerrors.Errorf("failed to create temporary file for export F3 snapshot: %w", err)
+	}
+
+	defer func() {
+		if f3TempFile != nil {
+			_ = f3TempFile.Close()
+			_ = os.Remove(f3TempFile.Name())
+		}
+	}()
+
+	if certStore != nil {
+		f3Cid, _, err := certStore.ExportLatestSnapshot(ctx, f3TempFile)
+		if err != nil {
+			log.Warnf("failed to export latest f3 snapshot: %v", err)
+		}
+		// Reset file position to beginning for later reading
+		if _, err := f3TempFile.Seek(0, 0); err != nil {
+			return xerrors.Errorf("failed to seek to beginning of F3 temporary file: %w", err)
+		}
+		if f3Cid != cid.Undef {
+			metadata.F3Data = &f3Cid
+		}
+	}
+
+	if err := metadata.MarshalCBOR(buffer); err != nil {
+		return xerrors.Errorf("failed to marshal snapshot metadata: %w", err)
+	}
+
+	mCid, err := cid.V1Builder{Codec: cid.DagCBOR, MhType: uint64(mh.BLAKE2B_MIN + 31)}.Sum(buffer.Bytes())
+	if err != nil {
+		return xerrors.Errorf("failed to calculate CID for snapshot metadata: %w", err)
+	}
+
+	h := &car.CarHeader{
+		Roots:   []cid.Cid{mCid},
+		Version: 1,
+	}
+
+	if err := car.WriteHeader(h, w); err != nil {
+		return xerrors.Errorf("failed to write car header: %s", err)
+	}
+	if err := carutil.LdWrite(w, mCid.Bytes(), buffer.Bytes()); err != nil {
+		return xerrors.Errorf("failed to write metadata block to car output: %w", err)
+	}
+	if metadata.F3Data != nil {
+		if err := writeF3DataToCar(w, metadata.F3Data.Bytes(), f3TempFile); err != nil {
+			return xerrors.Errorf("failed to write f3Data block to car output: %w", err)
+		}
+	}
+
+	return cs.exportToCar(ctx, ts, inclRecentRoots, skipOldMsgs, w)
+}
+
+func writeF3DataToCar(w io.Writer, f3CidBytes []byte, f3Data *os.File) error {
+	i, err := f3Data.Stat()
+	if err != nil {
+		return err
+	}
+
+	sum := uint64(len(f3CidBytes)) + uint64(i.Size())
+
+	buf := make([]byte, 8)
+	n := binary.PutUvarint(buf, sum)
+	_, err = w.Write(buf[:n])
+	if err != nil {
+		return err
+	}
+
+	// write f3Cid
+	_, err = w.Write(f3CidBytes)
+	if err != nil {
+		return err
+	}
+
+	// write f3Data
+	_, err = io.Copy(w, f3Data)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (cs *ChainStore) exportToCar(ctx context.Context, ts *types.TipSet, inclRecentRoots abi.ChainEpoch, skipOldMsgs bool, w io.Writer) error {
 	unionBs := cs.UnionStore()
 	return cs.WalkSnapshot(ctx, ts, inclRecentRoots, skipOldMsgs, true, func(c cid.Cid) error {
 		blk, err := unionBs.Get(ctx, c)
@@ -60,7 +166,7 @@ func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRo
 	})
 }
 
-func (cs *ChainStore) Import(ctx context.Context, r io.Reader) (head *types.TipSet, genesis *types.BlockHeader, err error) {
+func (cs *ChainStore) Import(ctx context.Context, f3Ds dtypes.F3DS, r io.Reader) (head *types.TipSet, genesis *types.BlockHeader, err error) {
 	// TODO: writing only to the state blockstore is incorrect.
 	//  At this time, both the state and chain blockstores are backed by the
 	//  universal store. When we physically segregate the stores, we will need
@@ -80,15 +186,70 @@ func (cs *ChainStore) Import(ctx context.Context, r io.Reader) (head *types.TipS
 		putThrottle <- nil
 	}
 
-	if len(br.Roots) == 0 {
-		return nil, nil, xerrors.Errorf("no roots in snapshot car file")
-	}
-	nextTailCid := br.Roots[0]
+	roots := br.Roots
+
+	var nextTailCid cid.Cid
 
 	var tailBlock types.BlockHeader
 	tailBlock.Height = abi.ChainEpoch(-1)
 
 	var buf []blocks.Block
+
+	if len(roots) == 0 {
+		return nil, nil, xerrors.Errorf("no roots in snapshot car file")
+	}
+
+	if len(roots) == V2SnapshotRootCount {
+		var metadata SnapshotMetadata
+		blk, err := br.Next()
+		if err != nil {
+			return nil, nil, xerrors.Errorf("failed to read snapshot metadata block: %w", err)
+		}
+
+		if err := metadata.UnmarshalCBOR(bytes.NewReader(blk.RawData())); err != nil {
+			// Only one cid in roots, but not metadata, maybe it's a genesis block
+			log.Infof("failed to unmarshal snapshot metadata block: %v, attempting to parse the block as a genesis block instead", err)
+			if err := tailBlock.UnmarshalCBOR(bytes.NewReader(blk.RawData())); err != nil {
+				return nil, nil, xerrors.Errorf("failed to unmarshal genesis block: %w", err)
+			}
+			if len(tailBlock.Parents) > 0 {
+				nextTailCid = tailBlock.Parents[0]
+			} else {
+				// note: even the 0th block has a parent linking to the cbor genesis block
+				return nil, nil, xerrors.Errorf("current block (epoch %d cid %s) has no parents", tailBlock.Height, tailBlock.Cid())
+			}
+
+			buf = append(buf, blk)
+		} else {
+			if metadata.F3Data != nil {
+				// import f3 snapshot
+				cid, f3Reader, _, err := br.NextReader()
+				if err != nil {
+					return nil, nil, xerrors.Errorf("failed to read F3Data reader: %w", err)
+				}
+				if cid != *metadata.F3Data {
+					return nil, nil, xerrors.Errorf("F3Data CID mismatch")
+				}
+
+				f3r := bufio.NewReader(f3Reader)
+
+				prefix := F3DatastorePrefix()
+				f3DsWrapper := namespace.Wrap(f3Ds, prefix)
+
+				log.Info("Importing F3Data to datastore")
+				if err := certstore.ImportSnapshotToDatastore(ctx, f3r, f3DsWrapper); err != nil {
+					return nil, nil, xerrors.Errorf("failed to import f3Data to datastore: %w", err)
+				}
+			}
+
+			roots = metadata.HeadTipsetKey
+			nextTailCid = roots[0]
+		}
+	} else {
+		// V1 format: roots directly contains the tipset CIDs
+		nextTailCid = roots[0]
+	}
+
 	for {
 		blk, err := br.Next()
 		if err != nil {
@@ -145,7 +306,7 @@ func (cs *ChainStore) Import(ctx context.Context, r io.Reader) (head *types.TipS
 		return nil, nil, xerrors.Errorf("expected genesis block to have height 0 (genesis), got %d: %s", tailBlock.Height, tailBlock.Cid())
 	}
 
-	root, err := cs.LoadTipSet(ctx, types.NewTipSetKey(br.Roots...))
+	root, err := cs.LoadTipSet(ctx, types.NewTipSetKey(roots...))
 	if err != nil {
 		return nil, nil, xerrors.Errorf("failed to load root tipset from chainfile: %w", err)
 	}
@@ -167,6 +328,11 @@ func (cs *ChainStore) Import(ctx context.Context, r io.Reader) (head *types.TipS
 	}
 
 	return root, &tailBlock, nil
+}
+
+func F3DatastorePrefix() datastore.Key {
+	nn := buildconstants.F3Manifest().NetworkName
+	return datastore.NewKey("/f3/" + string(nn))
 }
 
 type walkSchedTaskType int

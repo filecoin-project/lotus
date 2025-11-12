@@ -84,7 +84,7 @@ func ManageFdLimit() (changed bool, newLimit uint64, err error) {
 	// corresponding resource
 	// the hard limit acts as a ceiling for the soft limit
 	// an unprivileged process may only set it's soft limit to a
-	// alue in the range from 0 up to the hard limit
+	// value in the range from 0 up to the hard limit
 	err = setLimit(targetLimit, targetLimit)
 	switch err {
 	case nil:

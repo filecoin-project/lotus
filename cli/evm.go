@@ -206,6 +206,11 @@ var EvmDeployCmd = &cli.Command{
 			Name:  "hex",
 			Usage: "use when input contract is in hex",
 		},
+		&cli.BoolFlag{
+			Name:  "wait",
+			Usage: "wait for message execution before returning (default: true)",
+			Value: true,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		afmt := NewAppFmt(cctx.App)
@@ -268,47 +273,54 @@ var EvmDeployCmd = &cli.Command{
 			return xerrors.Errorf("failed to push message: %w", err)
 		}
 
-		afmt.Println("waiting for message to execute...")
-		wait, err := api.StateWaitMsg(ctx, smsg.Cid(), 0)
-		if err != nil {
-			return xerrors.Errorf("error waiting for message: %w", err)
-		}
+		afmt.Printf("Message CID: %s\n", smsg.Cid())
 
-		// check it executed successfully
-		if wait.Receipt.ExitCode != 0 {
-			return xerrors.Errorf("actor execution failed")
-		}
+		if cctx.Bool("wait") {
+			afmt.Println("waiting for message to execute...")
+			wait, err := api.StateWaitMsg(ctx, smsg.Cid(), 0)
+			if err != nil {
+				return xerrors.Errorf("error waiting for message: %w", err)
+			}
 
-		var result eam.CreateReturn
-		r := bytes.NewReader(wait.Receipt.Return)
-		if err := result.UnmarshalCBOR(r); err != nil {
-			return xerrors.Errorf("error unmarshaling return value: %w", err)
-		}
+			afmt.Printf("Exit Code: %d\n", wait.Receipt.ExitCode)
+			afmt.Printf("Gas Used: %d\n", wait.Receipt.GasUsed)
 
-		addr, err := address.NewIDAddress(result.ActorID)
-		if err != nil {
-			return err
-		}
-		afmt.Printf("Actor ID: %d\n", result.ActorID)
-		afmt.Printf("ID Address: %s\n", addr)
-		afmt.Printf("Robust Address: %s\n", result.RobustAddress)
-		afmt.Printf("Eth Address: %s\n", "0x"+hex.EncodeToString(result.EthAddress[:]))
+			if wait.Receipt.ExitCode != 0 {
+				return xerrors.Errorf("actor execution failed")
+			}
 
-		ea, err := ethtypes.CastEthAddress(result.EthAddress[:])
-		if err != nil {
-			return fmt.Errorf("failed to create ethereum address: %w", err)
-		}
+			var result eam.CreateReturn
+			r := bytes.NewReader(wait.Receipt.Return)
+			if err := result.UnmarshalCBOR(r); err != nil {
+				return xerrors.Errorf("error unmarshaling return value: %w", err)
+			}
 
-		delegated, err := ea.ToFilecoinAddress()
-		if err != nil {
-			return fmt.Errorf("failed to calculate f4 address: %w", err)
-		}
+			addr, err := address.NewIDAddress(result.ActorID)
+			if err != nil {
+				return err
+			}
 
-		afmt.Printf("f4 Address: %s\n", delegated)
+			afmt.Printf("Actor ID: %d\n", result.ActorID)
+			afmt.Printf("ID Address: %s\n", addr)
+			afmt.Printf("Robust Address: %s\n", result.RobustAddress)
+			afmt.Printf("Eth Address: %s\n", "0x"+hex.EncodeToString(result.EthAddress[:]))
 
-		if len(wait.Receipt.Return) > 0 {
-			result := base64.StdEncoding.EncodeToString(wait.Receipt.Return)
-			afmt.Printf("Return: %s\n", result)
+			ea, err := ethtypes.CastEthAddress(result.EthAddress[:])
+			if err != nil {
+				return fmt.Errorf("failed to create ethereum address: %w", err)
+			}
+
+			delegated, err := ea.ToFilecoinAddress()
+			if err != nil {
+				return fmt.Errorf("failed to calculate f4 address: %w", err)
+			}
+
+			afmt.Printf("f4 Address: %s\n", delegated)
+
+			if len(wait.Receipt.Return) > 0 {
+				result := base64.StdEncoding.EncodeToString(wait.Receipt.Return)
+				afmt.Printf("Return: %s\n", result)
+			}
 		}
 
 		return nil

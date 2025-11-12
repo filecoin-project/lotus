@@ -26,7 +26,6 @@ import (
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
 	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/go-statestore"
@@ -126,6 +125,11 @@ var initCmd = &cli.Command{
 			Name:  "confidence",
 			Usage: "number of block confirmations to wait for",
 			Value: buildconstants.MessageConfidence,
+		},
+		&cli.Float64Flag{
+			Name:  "deposit-margin-factor",
+			Usage: "Multiplier (>=1.0) to scale the suggested deposit for on-chain variance (e.g. 1.01 adds 1%)",
+			Value: 1.01,
 		},
 	},
 	Subcommands: []*cli.Command{
@@ -740,10 +744,22 @@ func createStorageMiner(ctx context.Context, api v1api.FullNode, ssize abi.Secto
 		return address.Undef, err
 	}
 
+	depositMarginFactor := cctx.Float64("deposit-margin-factor")
+	if depositMarginFactor < 1 {
+		return address.Undef, xerrors.Errorf("deposit margin factor must be greater than or equal to 1")
+	}
+
+	deposit, err := api.StateMinerCreationDeposit(ctx, types.EmptyTSK)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("getting miner creation deposit: %w", err)
+	}
+
+	scaledDeposit := types.BigDiv(types.BigMul(deposit, types.NewInt(uint64(depositMarginFactor*100))), types.NewInt(100))
+
 	createStorageMinerMsg := &types.Message{
 		To:    power.Address,
 		From:  sender,
-		Value: big.Zero(),
+		Value: scaledDeposit,
 
 		Method: power.Methods.CreateMiner,
 		Params: params,

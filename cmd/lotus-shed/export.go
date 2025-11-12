@@ -20,6 +20,7 @@ import (
 	"github.com/ipfs/boxo/ipld/merkledag"
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore/namespace"
 	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/ipld/go-car"
 	"github.com/multiformats/go-base32"
@@ -28,9 +29,12 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-f3/certstore"
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/blockstore"
+	badgerbs "github.com/filecoin-project/lotus/blockstore/badger"
+	"github.com/filecoin-project/lotus/blockstore/splitstore"
 	"github.com/filecoin-project/lotus/chain/store"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/cmd/lotus-shed/shedgen"
@@ -95,29 +99,71 @@ var exportChainCmd = &cli.Command{
 
 		defer fi.Close() //nolint:errcheck
 
-		bs, err := lr.Blockstore(ctx, repo.UniversalBlockstore)
+		cold, err := lr.Blockstore(ctx, repo.UniversalBlockstore)
 		if err != nil {
 			return fmt.Errorf("failed to open blockstore: %w", err)
 		}
 
 		defer func() {
-			if c, ok := bs.(io.Closer); ok {
+			if c, ok := cold.(io.Closer); ok {
 				if err := c.Close(); err != nil {
 					log.Warnf("failed to close blockstore: %s", err)
 				}
 			}
 		}()
 
+		path, err := lr.SplitstorePath()
+		if err != nil {
+			return xerrors.Errorf("failed to get splitstore path: %w", err)
+		}
+
+		path = filepath.Join(path, "hot.badger")
+		if err := os.MkdirAll(path, 0755); err != nil {
+			return xerrors.Errorf("failed to create hot.badger dir: %w", err)
+		}
+
+		opts, err := repo.BadgerBlockstoreOptions(repo.HotBlockstore, path, lr.Readonly())
+		if err != nil {
+			return xerrors.Errorf("failed to get badger blockstore options: %w", err)
+		}
+
+		hot, err := badgerbs.Open(opts)
+		if err != nil {
+			return xerrors.Errorf("failed to open badger blockstore: %w", err)
+		}
+
 		mds, err := lr.Datastore(context.Background(), "/metadata")
 		if err != nil {
-			return err
+			return xerrors.Errorf("failed to open metadata datastore: %w", err)
 		}
+
+		cfg := &splitstore.Config{
+			MarkSetType:       "map",
+			DiscardColdBlocks: true,
+		}
+		ss, err := splitstore.Open(path, mds, hot, cold, cfg)
+		if err != nil {
+			return xerrors.Errorf("failed to open splitstore: %w", err)
+		}
+
+		defer func() {
+			if err := ss.Close(); err != nil {
+				log.Warnf("failed to close blockstore: %s", err)
+			}
+		}()
+
+		bs := ss
 
 		cs := store.NewChainStore(bs, bs, mds, nil, nil)
 		defer cs.Close() //nolint:errcheck
 
 		if err := cs.Load(context.Background()); err != nil {
 			return err
+		}
+
+		f3Ds, err := lr.Datastore(ctx, "/f3")
+		if err != nil {
+			return xerrors.Errorf("failed to open f3 datastore: %w", err)
 		}
 
 		nroots := abi.ChainEpoch(cctx.Int64("recent-stateroots"))
@@ -133,7 +179,14 @@ var exportChainCmd = &cli.Command{
 			nroots = ts.Height() + 1
 		}
 
-		if err := cs.Export(ctx, ts, nroots, skipoldmsgs, fi); err != nil {
+		prefix := store.F3DatastorePrefix()
+		f3DsWrapper := namespace.Wrap(f3Ds, prefix)
+		certStore, err := certstore.OpenStore(context.Background(), f3DsWrapper)
+		if err != nil {
+			return xerrors.Errorf("failed to open certstore: %w", err)
+		}
+
+		if err := cs.ExportV2(ctx, ts, nroots, skipoldmsgs, certStore, fi); err != nil {
 			return xerrors.Errorf("export failed: %w", err)
 		}
 

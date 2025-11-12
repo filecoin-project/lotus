@@ -290,7 +290,7 @@ func checkBlockMessages(ctx context.Context, sm *stmgr.StateManager, cs *store.C
 		}
 
 		if m.Signature.Type == crypto.SigTypeDelegated && !IsValidEthTxForSending(nv, m) {
-			return xerrors.Errorf("network version should be atleast NV23 for sending legacy ETH transactions; but current network version is %d", nv)
+			return xerrors.Errorf("network version should be at least NV23 for sending legacy ETH transactions; but current network version is %d", nv)
 		}
 
 		if err := checkMsg(m); err != nil {

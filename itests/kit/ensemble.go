@@ -563,10 +563,14 @@ func (n *Ensemble) Start() *Ensemble {
 				})
 				require.NoError(n.t, aerr)
 
+				// Calculate miner creation deposit according to FIP-0077
+				deposit, err := m.FullNode.StateMinerCreationDeposit(ctx, types.EmptyTSK)
+				require.NoError(n.t, err)
+
 				createStorageMinerMsg := &types.Message{
 					From:  m.OwnerKey.Address,
 					To:    power.Address,
-					Value: big.Zero(),
+					Value: deposit,
 
 					Method: power.Methods.CreateMiner,
 					Params: params,
@@ -837,10 +841,13 @@ func (n *Ensemble) Start() *Ensemble {
 		})
 		require.NoError(n.t, aerr)
 
+		deposit, err := m.FullNode.StateMinerCreationDeposit(ctx, types.EmptyTSK)
+		require.NoError(n.t, err)
+
 		createStorageMinerMsg := &types.Message{
 			From:  m.OwnerKey.Address,
 			To:    power.Address,
-			Value: big.Zero(),
+			Value: deposit,
 
 			Method: power.Methods.CreateMiner,
 			Params: params,

@@ -9,7 +9,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
 	power2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/power"
 	power6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/power"
 
@@ -20,7 +19,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-func CreateStorageMiner(ctx context.Context, fullNode v1api.FullNode, owner, worker, sender address.Address, ssize abi.SectorSize, confidence uint64) (address.Address, error) {
+func CreateStorageMiner(ctx context.Context, fullNode v1api.FullNode, owner, worker, sender address.Address, ssize abi.SectorSize, confidence uint64, depositMarginFactor float64) (address.Address, error) {
 	// make sure the sender account exists on chain
 	_, err := fullNode.StateLookupID(ctx, owner, types.EmptyTSK)
 	if err != nil {
@@ -94,10 +93,21 @@ func CreateStorageMiner(ctx context.Context, fullNode v1api.FullNode, owner, wor
 		return address.Undef, err
 	}
 
+	if depositMarginFactor < 1 {
+		return address.Undef, xerrors.Errorf("deposit margin factor must be greater than 1")
+	}
+
+	deposit, err := fullNode.StateMinerCreationDeposit(ctx, types.EmptyTSK)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("getting miner creation deposit: %w", err)
+	}
+
+	scaledDeposit := types.BigDiv(types.BigMul(deposit, types.NewInt(uint64(depositMarginFactor*100))), types.NewInt(100))
+
 	createStorageMinerMsg := &types.Message{
 		To:    power.Address,
 		From:  sender,
-		Value: big.Zero(),
+		Value: scaledDeposit,
 
 		Method: power.Methods.CreateMiner,
 		Params: params,

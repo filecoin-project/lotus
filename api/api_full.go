@@ -106,8 +106,18 @@ type FullNode interface {
 
 	// ChainGetBlock returns the block specified by the given CID.
 	ChainGetBlock(context.Context, cid.Cid) (*types.BlockHeader, error) //perm:read
+
 	// ChainGetTipSet returns the tipset specified by the given TipSetKey.
 	ChainGetTipSet(context.Context, types.TipSetKey) (*types.TipSet, error) //perm:read
+
+	// ChainGetFinalizedTipSet returns the latest finalized tipset. It uses the
+	// current F3 instance to determine the finalized tipset.
+	// This is the tipset at the end of the last finalized round and can be used
+	// for follow-up querying of the chain state with the assurance that the
+	// state will not change.
+	// If F3 is operational and finalizing in this node. If not, it will fall back
+	// to the Expected Consensus (EC) finality definition of head - 900 epochs.
+	ChainGetFinalizedTipSet(ctx context.Context) (*types.TipSet, error) //perm:read
 
 	// ChainGetBlockMessages returns messages stored in the specified block.
 	//
@@ -459,6 +469,12 @@ type FullNode interface {
 	// Note: The value returned is overestimated by 10% (multiplied by 110/100).
 	// See: node/impl/full/state.go StateMinerInitialPledgeForSector implementation.
 	StateMinerInitialPledgeForSector(ctx context.Context, sectorDuration abi.ChainEpoch, sectorSize abi.SectorSize, verifiedSize uint64, tsk types.TipSetKey) (types.BigInt, error) //perm:read
+	// StateMinerCreationDeposit calculates the deposit required for creating a new miner
+	// according to FIP-0077 specification. This deposit is based on the network's current
+	// economic parameters including circulating supply, network power, and pledge collateral.
+	//
+	// See: node/impl/full/state.go StateMinerCreationDeposit implementation.
+	StateMinerCreationDeposit(ctx context.Context, tsk types.TipSetKey) (types.BigInt, error) //perm:read
 	// StateMinerAvailableBalance returns the portion of a miner's balance that can be withdrawn or
 	// spent. It is calculated by subtracting the following from the miner actor's balance:
 	// * Locked vesting funds (accounting for vesting funds that should already be unlocked)

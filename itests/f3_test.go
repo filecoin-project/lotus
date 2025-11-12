@@ -2,6 +2,7 @@ package itests
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"sync"
 	"testing"
@@ -20,7 +21,9 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	lotus_api "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/lf3"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/modules"
@@ -418,4 +421,159 @@ func setupWithStaticManifest(t *testing.T, manif *manifest.Manifest, testBootstr
 	e.miners = []*kit.TestMiner{&m1, &m2, &m3, &m4}
 
 	return e
+}
+
+// TestAPIChainGetFinalizedTipSet tests the behavior of ChainGetFinalizedTipSet
+// under various F3 states, including F3 disabled, nominal operation,
+// F3 not ready, F3 internal errors, and implausible F3 certificates.
+// This is modelled off similar tests in api_v2_test.go for v2/ChainGetTipSet.
+func TestAPIChainGetFinalizedTipSet(t *testing.T) {
+	const (
+		timeout          = 2 * time.Minute
+		blockTime        = 10 * time.Millisecond
+		f3FinalizedEpoch = 100 + policy.ChainFinality
+		targetHeight     = 20 + f3FinalizedEpoch
+	)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	t.Cleanup(cancel)
+	kit.QuietMiningLogs()
+
+	mockF3 := kit.NewMockF3Backend()
+	subject, _, network := kit.EnsembleMinimal(t, kit.F3Backend(mockF3), kit.MockProofs())
+	network.BeginMining(blockTime)
+	subject.WaitTillChain(ctx, kit.HeightAtLeast(targetHeight))
+
+	var (
+		heaviest = func(t *testing.T) *types.TipSet {
+			head, err := subject.ChainHead(ctx)
+			require.NoError(t, err)
+			return head
+		}
+		ecFinalized = func(t *testing.T) *types.TipSet {
+			head, err := subject.ChainHead(ctx)
+			require.NoError(t, err)
+			ecFinalized, err := subject.ChainGetTipSetByHeight(ctx, head.Height()-policy.ChainFinality, head.Key())
+			require.NoError(t, err)
+			return ecFinalized
+		}
+		tipSetAtHeight = func(height abi.ChainEpoch) func(t *testing.T) *types.TipSet {
+			return func(t *testing.T) *types.TipSet {
+				ts, err := subject.ChainGetTipSetByHeight(ctx, height, types.EmptyTSK)
+				require.NoError(t, err)
+				return ts
+			}
+		}
+		f3Finalized     = tipSetAtHeight(f3FinalizedEpoch)
+		internalF3Error = errors.New("lost hearing in left eye")
+		plausibleCertAt = func(t *testing.T, epoch abi.ChainEpoch) *certs.FinalityCertificate {
+			f3FinalisedTipSet := tipSetAtHeight(epoch)(t)
+			return &certs.FinalityCertificate{
+				ECChain: &gpbft.ECChain{
+					TipSets: []*gpbft.TipSet{{
+						Epoch: int64(f3FinalisedTipSet.Height()),
+						Key:   f3FinalisedTipSet.Key().Bytes(),
+					}},
+				},
+			}
+		}
+		implausibleCert = &certs.FinalityCertificate{
+			ECChain: &gpbft.ECChain{
+				TipSets: []*gpbft.TipSet{{
+					Epoch: int64(1413),
+					Key:   []byte(`🐠`),
+				}},
+			},
+		}
+	)
+	for _, test := range []struct {
+		name       string
+		when       func(t *testing.T)
+		wantTipSet func(t *testing.T) *types.TipSet
+		wantErr    string
+	}{
+		{
+			name: "f3 disabled falls back to ec",
+			when: func(t *testing.T) {
+				mockF3.Running = false
+			},
+			wantTipSet: ecFinalized,
+		},
+		{
+			name: "f3 is nominal",
+			when: func(t *testing.T) {
+				mockF3.Running = true
+				mockF3.Finalizing = true
+				mockF3.LatestCertErr = nil
+				mockF3.LatestCert = plausibleCertAt(t, f3FinalizedEpoch)
+			},
+			wantTipSet: f3Finalized,
+		},
+		{
+			name: "f3 is older than ec falls back to ec",
+			when: func(t *testing.T) {
+				mockF3.Running = true
+				mockF3.Finalizing = true
+				mockF3.LatestCertErr = nil
+				mockF3.LatestCert = plausibleCertAt(t, targetHeight-policy.ChainFinality-10)
+			},
+			wantTipSet: ecFinalized,
+		},
+		{
+			name: "f3 not ready falls back to ec",
+			when: func(t *testing.T) {
+				mockF3.Running = true
+				mockF3.Finalizing = true
+				mockF3.LatestCert = nil
+				mockF3.LatestCertErr = api.ErrF3NotReady
+			},
+			wantTipSet: ecFinalized,
+		},
+		{
+			name: "f3 internal error falls back to ec",
+			when: func(t *testing.T) {
+				mockF3.Running = true
+				mockF3.Finalizing = true
+				mockF3.LatestCert = nil
+				mockF3.LatestCertErr = internalF3Error
+			},
+			wantTipSet: ecFinalized,
+		},
+		{
+			name: "f3 is broken falls back to ec",
+			when: func(t *testing.T) {
+				mockF3.Running = true
+				mockF3.Finalizing = true
+				mockF3.LatestCert = implausibleCert
+				mockF3.LatestCertErr = nil
+			},
+			wantTipSet: ecFinalized,
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if test.when != nil {
+				test.when(t)
+			}
+			stableExecute := kit.MakeStableExecute(ctx, t, heaviest)
+
+			var gotTipSet *types.TipSet
+			var err error
+			stableTipSet := stableExecute(func() {
+				gotTipSet, err = subject.ChainGetFinalizedTipSet(ctx)
+			})
+
+			if test.wantErr != "" {
+				require.Nil(t, gotTipSet)
+				if err != nil {
+					require.ErrorContains(t, err, test.wantErr)
+				}
+			} else {
+				require.Nil(t, err)
+				if test.wantTipSet != nil {
+					wantTs := test.wantTipSet(t)
+					t.Logf("Query height %d, ChainGetFinalizedTipSet height %d, Expected height: %d", stableTipSet.Height(), gotTipSet.Height(), wantTs.Height())
+					require.Equal(t, wantTs, gotTipSet)
+				}
+			}
+		})
+	}
 }

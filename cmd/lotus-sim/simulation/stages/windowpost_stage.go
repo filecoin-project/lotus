@@ -41,7 +41,7 @@ func (*WindowPoStStage) Name() string {
 	return "window-post"
 }
 
-// PackMessages packs window posts until either the block is full or all healty sectors
+// PackMessages packs window posts until either the block is full or all healthy sectors
 // have been proven. It does not recover sectors.
 func (stage *WindowPoStStage) PackMessages(ctx context.Context, bb *blockbuilder.BlockBuilder) (_err error) {
 	// Push any new window posts into the queue.
@@ -138,7 +138,7 @@ func (stage *WindowPoStStage) queueMiner(
 		if proven[idx] {
 			return nil
 		}
-		// NOTE: We're mimicing the behavior of wdpost_run.go here.
+		// NOTE: We're mimicking the behavior of wdpost_run.go here.
 		if len(partitions) > 0 && idx%uint64(poStBatchSize) == 0 {
 			partitionGroups = append(partitionGroups, partitions)
 			partitions = nil

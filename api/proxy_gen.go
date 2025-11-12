@@ -130,6 +130,8 @@ type FullNodeMethods struct {
 
 	ChainGetEvents func(p0 context.Context, p1 cid.Cid) ([]types.Event, error) `perm:"read"`
 
+	ChainGetFinalizedTipSet func(p0 context.Context) (*types.TipSet, error) `perm:"read"`
+
 	ChainGetGenesis func(p0 context.Context) (*types.TipSet, error) `perm:"read"`
 
 	ChainGetMessage func(p0 context.Context, p1 cid.Cid) (*types.Message, error) `perm:"read"`
@@ -496,6 +498,8 @@ type FullNodeMethods struct {
 
 	StateMinerAvailableBalance func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.BigInt, error) `perm:"read"`
 
+	StateMinerCreationDeposit func(p0 context.Context, p1 types.TipSetKey) (types.BigInt, error) `perm:"read"`
+
 	StateMinerDeadlines func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]Deadline, error) `perm:"read"`
 
 	StateMinerFaults func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (bitfield.BitField, error) `perm:"read"`
@@ -615,6 +619,8 @@ type GatewayMethods struct {
 	ChainGetBlockMessages func(p0 context.Context, p1 cid.Cid) (*BlockMessages, error) ``
 
 	ChainGetEvents func(p0 context.Context, p1 cid.Cid) ([]types.Event, error) ``
+
+	ChainGetFinalizedTipSet func(p0 context.Context) (*types.TipSet, error) ``
 
 	ChainGetGenesis func(p0 context.Context) (*types.TipSet, error) ``
 
@@ -781,6 +787,8 @@ type GatewayMethods struct {
 	StateGetClaims func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (map[verifregtypes.ClaimId]verifregtypes.Claim, error) ``
 
 	StateGetNetworkParams func(p0 context.Context) (*NetworkParams, error) ``
+
+	StateGetRandomnessDigestFromBeacon func(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) (abi.Randomness, error) ``
 
 	StateListMiners func(p0 context.Context, p1 types.TipSetKey) ([]address.Address, error) ``
 
@@ -1443,6 +1451,17 @@ func (s *FullNodeStruct) ChainGetEvents(p0 context.Context, p1 cid.Cid) ([]types
 
 func (s *FullNodeStub) ChainGetEvents(p0 context.Context, p1 cid.Cid) ([]types.Event, error) {
 	return *new([]types.Event), ErrNotSupported
+}
+
+func (s *FullNodeStruct) ChainGetFinalizedTipSet(p0 context.Context) (*types.TipSet, error) {
+	if s.Internal.ChainGetFinalizedTipSet == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.ChainGetFinalizedTipSet(p0)
+}
+
+func (s *FullNodeStub) ChainGetFinalizedTipSet(p0 context.Context) (*types.TipSet, error) {
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) ChainGetGenesis(p0 context.Context) (*types.TipSet, error) {
@@ -3458,6 +3477,17 @@ func (s *FullNodeStub) StateMinerAvailableBalance(p0 context.Context, p1 address
 	return *new(types.BigInt), ErrNotSupported
 }
 
+func (s *FullNodeStruct) StateMinerCreationDeposit(p0 context.Context, p1 types.TipSetKey) (types.BigInt, error) {
+	if s.Internal.StateMinerCreationDeposit == nil {
+		return *new(types.BigInt), ErrNotSupported
+	}
+	return s.Internal.StateMinerCreationDeposit(p0, p1)
+}
+
+func (s *FullNodeStub) StateMinerCreationDeposit(p0 context.Context, p1 types.TipSetKey) (types.BigInt, error) {
+	return *new(types.BigInt), ErrNotSupported
+}
+
 func (s *FullNodeStruct) StateMinerDeadlines(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]Deadline, error) {
 	if s.Internal.StateMinerDeadlines == nil {
 		return *new([]Deadline), ErrNotSupported
@@ -4050,6 +4080,17 @@ func (s *GatewayStruct) ChainGetEvents(p0 context.Context, p1 cid.Cid) ([]types.
 
 func (s *GatewayStub) ChainGetEvents(p0 context.Context, p1 cid.Cid) ([]types.Event, error) {
 	return *new([]types.Event), ErrNotSupported
+}
+
+func (s *GatewayStruct) ChainGetFinalizedTipSet(p0 context.Context) (*types.TipSet, error) {
+	if s.Internal.ChainGetFinalizedTipSet == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.ChainGetFinalizedTipSet(p0)
+}
+
+func (s *GatewayStub) ChainGetFinalizedTipSet(p0 context.Context) (*types.TipSet, error) {
+	return nil, ErrNotSupported
 }
 
 func (s *GatewayStruct) ChainGetGenesis(p0 context.Context) (*types.TipSet, error) {
@@ -4963,6 +5004,17 @@ func (s *GatewayStruct) StateGetNetworkParams(p0 context.Context) (*NetworkParam
 
 func (s *GatewayStub) StateGetNetworkParams(p0 context.Context) (*NetworkParams, error) {
 	return nil, ErrNotSupported
+}
+
+func (s *GatewayStruct) StateGetRandomnessDigestFromBeacon(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) (abi.Randomness, error) {
+	if s.Internal.StateGetRandomnessDigestFromBeacon == nil {
+		return *new(abi.Randomness), ErrNotSupported
+	}
+	return s.Internal.StateGetRandomnessDigestFromBeacon(p0, p1, p2)
+}
+
+func (s *GatewayStub) StateGetRandomnessDigestFromBeacon(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) (abi.Randomness, error) {
+	return *new(abi.Randomness), ErrNotSupported
 }
 
 func (s *GatewayStruct) StateListMiners(p0 context.Context, p1 types.TipSetKey) ([]address.Address, error) {

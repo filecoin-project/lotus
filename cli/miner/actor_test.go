@@ -66,7 +66,7 @@ func TestWorkerKeyChange(t *testing.T) {
 	// Initialize wallet.
 	kit.SendFunds(ctx, t, client1, newKey, abi.NewTokenAmount(0))
 
-	require.NoError(t, run(spcli.ActorProposeChangeWorkerCmd(LMActorGetter), "--really-do-it", newKey.String()))
+	require.NoError(t, run(spcli.ActorProposeChangeWorkerCmd(LMConfigOrActorGetter), "--really-do-it", newKey.String()))
 
 	result := output.String()
 	output.Reset()
@@ -81,12 +81,12 @@ func TestWorkerKeyChange(t *testing.T) {
 	require.NotZero(t, targetEpoch)
 
 	// Too early.
-	require.Error(t, run(spcli.ActorConfirmChangeWorkerCmd(LMActorGetter), "--really-do-it", newKey.String()))
+	require.Error(t, run(spcli.ActorConfirmChangeWorkerCmd(LMConfigOrActorGetter), "--really-do-it", newKey.String()))
 	output.Reset()
 
 	client1.WaitTillChain(ctx, kit.HeightAtLeast(abi.ChainEpoch(targetEpoch)))
 
-	require.NoError(t, run(spcli.ActorConfirmChangeWorkerCmd(LMActorGetter), "--really-do-it", newKey.String()))
+	require.NoError(t, run(spcli.ActorConfirmChangeWorkerCmd(LMConfigOrActorGetter), "--really-do-it", newKey.String()))
 	output.Reset()
 
 	head, err := client1.ChainHead(ctx)

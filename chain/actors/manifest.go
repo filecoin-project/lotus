@@ -101,7 +101,7 @@ func GetActorCodeIDsFromManifest(av actorstypes.Version) (map[string]cid.Cid, bo
 	return cids, ok
 }
 
-// LoadManifest will get the manifest for a given  Manifest CID from the store and Load data into its entries
+// LoadManifest will get the manifest for a given Manifest CID from the store and Load data into its entries
 func LoadManifest(ctx context.Context, mfCid cid.Cid, adtStore adt.Store) (*manifest.Manifest, error) {
 	var mf manifest.Manifest
 
