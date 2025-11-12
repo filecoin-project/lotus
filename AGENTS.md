@@ -27,6 +27,42 @@ Docker bundle/test flow
 Next up
 - Expand/enable ref‑fvm unit tests for intercept semantics (delegated mapping success/revert + revert bytes, depth limit, EXTCODECOPY windowing/zero‑fill, SELFDESTRUCT no‑op); then remove legacy EVM ApplyAndCall/InvokeAsEoa paths.
 
+---
+
+Coverage Improvement Plan (ref‑fvm)
+
+Context
+- Codecov patch coverage flagged low coverage across recent changes in ref‑fvm, especially in:
+  - `fvm/src/call_manager/default.rs`
+  - `sdk/src/actor.rs`
+  - `fvm/src/kernel/default.rs`
+  - `fvm/src/syscalls/actor.rs`
+- Some CI coverage steps ran with `--no-default-features`, skipping delegated CALL intercept paths and undercounting coverage.
+
+Goals
+- Patch coverage ≥ 80% on changed files.
+- Project coverage back near pre‑change baseline; fix upload parity vs. base.
+
+Actions (sequenced)
+1) SDK helper + tests
+   - Extract the 20‑byte address slicing into a pure helper in `sdk/src/actor.rs` and add unit tests covering lengths {0, <20, 20, >20} to avoid relying on syscalls.
+2) Kernel/call‑manager paths
+   - Ensure existing delegated tests cover success, revert, value‑transfer short‑circuit, depth limit, and EXTCODE* pointer image with windowing. These already exist under `fvm/tests/*`; confirm they run under the coverage profile.
+3) CI coverage job
+   - For the `test-fvm` coverage step, run with default features (remove `--no-default-features`) so delegated paths are exercised and reported. Keep other steps as‑is to avoid feature unification side‑effects.
+4) Syscall wrapper spots
+   - Opportunistic coverage via existing flows (resolve_address, get_actor_code_cid). Add minimal negative‑path assertions if needed.
+5) Upload parity
+   - Ensure the same number of coverage uploads as base (Linux primary). If base had macOS uploads, mirror them or disable redundant ones consistently.
+
+Execution Notes
+- Keep minimal‑build fallbacks in tests guarded so coverage runs (default features) take the asserting paths.
+- Commit in small steps and keep this AGENTS.md in sync after each significant change.
+
+Status (to hand off)
+- Initial test adjustments for minimal builds landed; CI green.
+- Next implement SDK unit tests + CI coverage tweak, then validate Codecov patch % and iterate if needed.
+
 **Paired Repos**
 - `./lotus` (this folder)
 - `../builtin-actors` (paired repo in a neighboring folder)
