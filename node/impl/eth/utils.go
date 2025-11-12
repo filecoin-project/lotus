@@ -211,6 +211,13 @@ func parseEthRevert(ret []byte) string {
 	return ethtypes.EthBytes(ret).String()
 }
 
+// ParseEthRevert is an exported wrapper around parseEthRevert for use in
+// analysis and tests where unexported symbols may not be visible under certain
+// vet/type-check configurations.
+func ParseEthRevert(ret []byte) string {
+	return parseEthRevert(ret)
+}
+
 // lookupEthAddress makes its best effort at finding the Ethereum address for a
 // Filecoin address. It does the following:
 //

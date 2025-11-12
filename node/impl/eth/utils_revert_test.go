@@ -38,7 +38,7 @@ func abiEncodePanic(code uint64) []byte {
 
 func TestParseEthRevert_ErrorString(t *testing.T) {
 	b := abiEncodeErrorString("oops")
-	got := parseEthRevert(b)
+	got := ParseEthRevert(b)
 	if got != "Error(oops)" {
 		t.Fatalf("unexpected parse: %s", got)
 	}
@@ -46,7 +46,7 @@ func TestParseEthRevert_ErrorString(t *testing.T) {
 
 func TestParseEthRevert_PanicCodeKnown(t *testing.T) {
 	b := abiEncodePanic(0x01) // Assert()
-	got := parseEthRevert(b)
+	got := ParseEthRevert(b)
 	if got != "Assert()" {
 		t.Fatalf("unexpected panic parse: %s", got)
 	}
@@ -54,7 +54,7 @@ func TestParseEthRevert_PanicCodeKnown(t *testing.T) {
 
 func TestParseEthRevert_ShortBuffer(t *testing.T) {
 	b := []byte{0x01, 0x02, 0x03}
-	got := parseEthRevert(b)
+	got := ParseEthRevert(b)
 	// Falls back to hex string of bytes
 	if got != ethtypes.EthBytes(b).String() {
 		t.Fatalf("unexpected short parse: %s", got)
