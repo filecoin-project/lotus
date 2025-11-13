@@ -96,7 +96,7 @@ func (s *ServicesImpl) DecodeTypedParamsFromJSON(ctx context.Context, to address
 	p := reflect.New(methodMeta.Params.Elem()).Interface().(cbg.CBORMarshaler)
 
 	if err := json.Unmarshal([]byte(paramstr), p); err != nil {
-		return nil, fmt.Errorf("unmarshaling input into params type: %w", err)
+		return nil, fmt.Errorf("unmarshalling input into params type: %w", err)
 	}
 
 	buf := new(bytes.Buffer)
