@@ -727,7 +727,7 @@ var importAnalyzeCmd = &cli.Command{
 					var tse TipSetExec
 					err := json.Unmarshal(b, &tse)
 					if err != nil {
-						log.Warnf("error unmarshaling tipset: %+v", err)
+						log.Warnf("error unmarshalling tipset: %+v", err)
 						continue
 					}
 
