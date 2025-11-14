@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/build/buildconstants"
+	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/messagepool/gasguess"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
@@ -89,6 +90,124 @@ type selectedMessages struct {
 	gasLimit  int64
 	secpLimit int
 	blsLimit  int
+
+	// mp references the parent message pool; it is used for reservation-aware
+	// pre-pack simulation when enabled.
+	mp *MessagePool
+
+	// reservationEnabled toggles reservation-aware pre-pack simulation for this
+	// selection pass. When true, reservedBySender and balanceBySender track
+	// per-sender Σ(gas_limit * gas_fee_cap) and the sender's on-chain balance
+	// at the selection base state.
+	reservationEnabled bool
+	reservationCtx     context.Context
+	reservationTipset  *types.TipSet
+	reservedBySender   map[address.Address]types.BigInt
+	balanceBySender    map[address.Address]types.BigInt
+}
+
+func (mp *MessagePool) reservationsPrePackEnabled() bool {
+	cfg := mp.getConfig()
+	if !cfg.EnableReservationPrePack {
+		return false
+	}
+	// Pre-pack simulation shares the same activation/gating switch as tipset
+	// reservations. Before activation, it is additionally gated by the mempool
+	// config flag. After activation, it follows consensus reservations
+	// activation and is always enabled when building blocks.
+	//
+	// We use the network version at the next epoch (the height at which the
+	// selected messages will be applied).
+	mp.curTsLk.RLock()
+	defer mp.curTsLk.RUnlock()
+
+	if mp.curTs == nil {
+		return false
+	}
+
+	nextEpoch := mp.curTs.Height() + 1
+	nv, err := mp.getNtwkVersion(nextEpoch)
+	if err != nil {
+		log.Warnw("mpool reservation pre-pack: failed to get network version; disabling reservation heuristics",
+			"height", nextEpoch, "error", err)
+		return false
+	}
+
+	return consensus.ReservationsEnabled(nv)
+}
+
+func (sm *selectedMessages) initReservations(ctx context.Context, ts *types.TipSet, mp *MessagePool) {
+	sm.mp = mp
+	if !mp.reservationsPrePackEnabled() {
+		return
+	}
+
+	sm.reservationEnabled = true
+	sm.reservationCtx = ctx
+	sm.reservationTipset = ts
+	sm.reservedBySender = make(map[address.Address]types.BigInt)
+	sm.balanceBySender = make(map[address.Address]types.BigInt)
+}
+
+func (sm *selectedMessages) reserveForMessages(sender address.Address, msgs []*types.SignedMessage) bool {
+	if !sm.reservationEnabled || len(msgs) == 0 {
+		return true
+	}
+
+	balance, ok := sm.balanceBySender[sender]
+	if !ok {
+		// If we don't already have a cached balance, attempt to load it from
+		// chain state. If we cannot, disable reservation heuristics to avoid
+		// partial behaviour.
+		if sm.mp == nil || sm.reservationCtx == nil || sm.reservationTipset == nil {
+			sm.reservationEnabled = false
+			sm.reservedBySender = nil
+			sm.balanceBySender = nil
+			return true
+		}
+
+		var err error
+		balance, err = sm.mp.getStateBalance(sm.reservationCtx, sender, sm.reservationTipset)
+		if err != nil {
+			log.Warnw("mpool reservation pre-pack: failed to load sender balance; disabling reservation heuristics",
+				"from", sender, "error", err)
+			sm.reservationEnabled = false
+			sm.reservedBySender = nil
+			sm.balanceBySender = nil
+			return true
+		}
+		sm.balanceBySender[sender] = balance
+	}
+
+	existing := types.NewInt(0)
+	if prev, ok := sm.reservedBySender[sender]; ok {
+		existing = prev
+	}
+
+	// Compute additional Σ(cap * limit) for this sender.
+	additional := types.NewInt(0)
+	for _, m := range msgs {
+		// All messages in a chain share the same sender, but we are defensive.
+		if m.Message.From != sender {
+			continue
+		}
+		gasLimit := types.NewInt(uint64(m.Message.GasLimit))
+		cost := types.BigMul(m.Message.GasFeeCap, gasLimit)
+		additional = types.BigAdd(additional, cost)
+	}
+
+	if types.BigCmp(additional, types.NewInt(0)) == 0 {
+		return true
+	}
+
+	nextTotal := types.BigAdd(existing, additional)
+	if types.BigCmp(nextTotal, balance) > 0 {
+		// Over-committed for this sender at the selection base state.
+		return false
+	}
+
+	sm.reservedBySender[sender] = nextTotal
+	return true
 }
 
 // returns false if chain can't be added due to block constraints
@@ -97,6 +216,16 @@ func (sm *selectedMessages) tryToAdd(mc *msgChain) bool {
 
 	if buildconstants.BlockMessageLimit < l+len(sm.msgs) || sm.gasLimit < mc.gasLimit {
 		return false
+	}
+
+	if sm.reservationEnabled && len(mc.msgs) > 0 {
+		sender := mc.msgs[0].Message.From
+		if !sm.reserveForMessages(sender, mc.msgs) {
+			// Over-committed for this sender; invalidate this chain (and any
+			// dependents) and treat it as not addable in this pass.
+			mc.Invalidate()
+			return false
+		}
 	}
 
 	if mc.sigType == crypto.SigTypeBLS {
@@ -168,6 +297,22 @@ func (sm *selectedMessages) tryToAddWithDeps(mc *msgChain, mp *MessagePool, base
 		}
 
 		return false
+	}
+
+	if sm.reservationEnabled && len(mc.msgs) > 0 {
+		sender := mc.msgs[0].Message.From
+		var toReserve []*types.SignedMessage
+		for i := len(chainDeps) - 1; i >= 0; i-- {
+			toReserve = append(toReserve, chainDeps[i].msgs...)
+		}
+		toReserve = append(toReserve, mc.msgs...)
+
+		if !sm.reserveForMessages(sender, toReserve) {
+			// Over-committed for this sender; invalidate the chain (and its
+			// dependents) so subsequent passes skip them.
+			mc.Invalidate()
+			return false
+		}
 	}
 
 	// the chain fits! include it together with all dependencies
@@ -603,7 +748,9 @@ func (mp *MessagePool) selectPriorityMessages(ctx context.Context, pending map[a
 		gasLimit:  buildconstants.BlockGasLimit,
 		blsLimit:  cbg.MaxLength,
 		secpLimit: cbg.MaxLength,
+		mp:        mp,
 	}
+	result.initReservations(ctx, ts, mp)
 	minGas := int64(gasguess.MinGas)
 
 	// 1. Get priority actor chains
