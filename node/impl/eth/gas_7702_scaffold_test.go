@@ -21,7 +21,7 @@ func TestCompute7702IntrinsicOverhead_Monotonic(t *testing.T) {
 	require.Greater(t, o2, o1)
 }
 
-func TestCountAuthInDelegatorParams(t *testing.T) {
+func TestCountAuthInApplyAndCallParams(t *testing.T) {
 	// Build atomic CBOR: [ list-of-tuples, call-tuple ] with list length 3
 	var buf bytes.Buffer
 	require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 2))
@@ -36,17 +36,17 @@ func TestCountAuthInDelegatorParams(t *testing.T) {
 	require.NoError(t, cbg.WriteByteArray(&buf, []byte{0}))
 	require.NoError(t, cbg.WriteByteArray(&buf, []byte{}))
 	params := buf.Bytes()
-	require.Equal(t, 3, countAuthInDelegatorParams(params))
+	require.Equal(t, 3, countAuthInApplyAndCallParams(params))
 
 	// Non-array should return 0
 	buf.Reset()
 	require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajUnsignedInt, 7))
-	require.Equal(t, 0, countAuthInDelegatorParams(buf.Bytes()))
+	require.Equal(t, 0, countAuthInApplyAndCallParams(buf.Bytes()))
 }
 
 // legacy shape tests removed: we accept atomic/wrapper-only
 
-func TestCountAuthInDelegatorParams_EmptyWrapper(t *testing.T) {
+func TestCountAuthInApplyAndCallParams_EmptyWrapper(t *testing.T) {
 	var buf bytes.Buffer
 	// atomic [ [], call-tuple ] with list length 0
 	require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajArray, 2))
@@ -56,5 +56,5 @@ func TestCountAuthInDelegatorParams_EmptyWrapper(t *testing.T) {
 	require.NoError(t, cbg.WriteByteArray(&buf, make([]byte, 20)))
 	require.NoError(t, cbg.WriteByteArray(&buf, []byte{0}))
 	require.NoError(t, cbg.WriteByteArray(&buf, []byte{}))
-	require.Equal(t, 0, countAuthInDelegatorParams(buf.Bytes()))
+	require.Equal(t, 0, countAuthInApplyAndCallParams(buf.Bytes()))
 }

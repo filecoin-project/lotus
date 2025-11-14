@@ -20,15 +20,15 @@ import (
 	"github.com/filecoin-project/lotus/itests/kit"
 )
 
-// TestEth7702_SendRoutesToEVM exercises the send-path for type-0x04 transactions:
+// TestEth7702_SendRoutesToEthAccount exercises the send-path for type-0x04 transactions:
 // it constructs and signs a minimal 7702 tx with a non-empty authorizationList, sends it via
-// eth_sendRawTransaction, and verifies that a Filecoin message targeting the EVM actor's
+// eth_sendRawTransaction, and verifies that a Filecoin message targeting the EthAccount actor's
 // ApplyAndCall method is enqueued in the mpool from the recovered f4 sender.
-func TestEth7702_SendRoutesToEVM(t *testing.T) {
-	// Ensure 7702 feature is enabled and EVM ApplyAndCall actor address configured.
+func TestEth7702_SendRoutesToEthAccount(t *testing.T) {
+	// Ensure 7702 feature is enabled and EthAccount.ApplyAndCall actor address configured.
 	ethtypes.Eip7702FeatureEnabled = true
 	id999, _ := address.NewIDAddress(999)
-	ethtypes.EvmApplyAndCallActorAddr = id999
+	ethtypes.EthAccountApplyAndCallActorAddr = id999
 
 	// Set NV at/after activation to exercise mpool policies consistently.
 	ctx, cancel, client := kit.SetupFEVMTest(t)
@@ -91,13 +91,13 @@ func TestEth7702_SendRoutesToEVM(t *testing.T) {
 	found := false
 	for _, sm := range pending {
 		if sm.Message.From == senderFilAddr && sm.Message.Method == abi2.MethodNum(ethtypes.MethodHash("ApplyAndCall")) {
-			// Ensure we target the configured EVM ApplyAndCall actor address.
-			require.Equal(t, ethtypes.EvmApplyAndCallActorAddr, sm.Message.To)
+			// Ensure we target the configured EthAccount.ApplyAndCall actor address.
+			require.Equal(t, ethtypes.EthAccountApplyAndCallActorAddr, sm.Message.To)
 			found = true
 			break
 		}
 	}
-	require.True(t, found, "expected an EVM.ApplyAndCall message in mpool from sender")
+	require.True(t, found, "expected an EthAccount.ApplyAndCall message in mpool from sender")
 }
 
 // TestEth7702_ReceiptFields validates that once a 0x04 transaction is mined, the
@@ -114,10 +114,10 @@ func TestEth7702_ReceiptFields(t *testing.T) {
 	// Fund sender to create account actor.
 	kit.SendFunds(ctx, t, client, senderFilAddr, types.FromFil(10))
 
-	// Enable feature and configure EVM ApplyAndCall actor address only after funding completes.
+	// Enable feature and configure EthAccount.ApplyAndCall actor address only after funding completes.
 	ethtypes.Eip7702FeatureEnabled = true
 	id999, _ := address.NewIDAddress(999)
-	ethtypes.EvmApplyAndCallActorAddr = id999
+	ethtypes.EthAccountApplyAndCallActorAddr = id999
 
 	// Two delegate addresses to exercise arrays.
 	var d1, d2 ethtypes.EthAddress
@@ -194,29 +194,135 @@ func TestEth7702_ReceiptFields(t *testing.T) {
 	require.True(t, got[d2])
 }
 
-// TestEth7702_DelegatedExecute is a scaffold for the full delegated execution flow:
-//  1. Apply delegations via a type-0x04 transaction so that an EOA delegates to a contract.
-//  2. CALL the EOA; the EVM should execute the delegate via InvokeAsEoa and update storage.
-//
-// This requires the runtime EVM ApplyAndCall entrypoint and tuple-signing helpers.
-// Until those are available in this environment, this test is skipped.
 func TestEth7702_DelegatedExecute(t *testing.T) {
-	t.Skip("EVM.ApplyAndCall wasm + tuple-signing not wired in this environment; enable when bundled")
-
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
 
-	// Enable feature and configure EVM ApplyAndCall actor address
+	// Enable feature and configure EthAccount.ApplyAndCall actor address to the
+	// authority's EthAccount actor (its f4 address).
 	ethtypes.Eip7702FeatureEnabled = true
-	id999, _ := address.NewIDAddress(999)
-	ethtypes.EvmApplyAndCallActorAddr = id999
+	senderKey, senderEthAddr, senderFilAddr := client.EVM().NewAccount()
+	// Fund the authority so it can pay for gas in both the 0x04 and follow-up calls.
+	client.EVM().TransferValueOrFail(ctx, client.DefaultKey.Address, senderFilAddr, types.FromFil(10))
 
-	// Deploy a simple delegate contract that writes to storage
-	// Note: this call path relies on runtime support; left here to document the expected steps
-	_ /*from*/, _ = client.EVM().DeployContractFromFilename(ctx, "contracts/DelegatecallStorage.hex")
+	ethtypes.EthAccountApplyAndCallActorAddr = senderFilAddr
 
-	// TODO: Build and send a type-0x04 tx applying delegation from an authority EOA to 'delegate'.
-	// This requires generating per-tuple signatures over keccak(rlp(chain_id,address,nonce)).
+	// Deploy a simple delegate contract that writes to storage when invoked.
+	_, delegateFilAddr := client.EVM().DeployContractFromFilename(ctx, "contracts/DelegatecallActor.hex")
+	delegateEthAddr, err := ethtypes.EthAddressFromFilecoinAddress(delegateFilAddr)
+	require.NoError(t, err)
 
-	// TODO: CALL the authority EOA and assert that storage has been updated by the delegate code.
+	// Build a signed authorization tuple mapping authority -> delegate.
+	authz := []ethtypes.EthAuthorization{
+		makeSignedAuthorization(t, senderKey.PrivateKey, delegateEthAddr, 0),
+	}
+
+	// Construct a type-0x04 transaction from the authority applying the delegation.
+	tx := &ethtypes.Eth7702TxArgs{
+		ChainID:              buildconstants.Eip155ChainId,
+		Nonce:                0,
+		To:                   nil,
+		Value:                big.Zero(),
+		MaxFeePerGas:         types.NewInt(1_000_000_000),
+		MaxPriorityFeePerGas: types.NewInt(1_000_000_000),
+		GasLimit:             700_000,
+		Input:                nil,
+		AuthorizationList:    authz,
+		V:                    big.Zero(),
+		R:                    big.Zero(),
+		S:                    big.Zero(),
+	}
+
+	preimage, err := tx.ToRlpUnsignedMsg()
+	require.NoError(t, err)
+	sig, err := kit.SigDelegatedSign(senderKey.PrivateKey, preimage)
+	require.NoError(t, err)
+	require.Equal(t, typescrypto.SigTypeDelegated, sig.Type)
+	require.NoError(t, tx.InitialiseSignature(*sig))
+
+	rawSigned, err := tx.ToRlpSignedMsg()
+	require.NoError(t, err)
+	hash, err := client.EVM().EthSendRawTransaction(ctx, rawSigned)
+	require.NoError(t, err)
+
+	// Wait for inclusion and validate the 0x04 receipt status.
+	applyReceipt, err := client.EVM().WaitTransaction(ctx, hash)
+	require.NoError(t, err)
+	require.NotNil(t, applyReceipt)
+	require.EqualValues(t, ethtypes.EIP7702TxType, applyReceipt.Type)
+	require.EqualValues(t, 1, applyReceipt.Status, "ApplyAndCall embedded status should be success")
+
+	// Now issue a regular EVM transaction that CALLs the authority EOA. With
+	// delegation applied, the VM intercept should execute the delegate code
+	// under the authority context and update the authority's storage.
+
+	// Build calldata for DelegatecallActor.setVars(uint256) with argument 7.
+	selector := kit.CalcFuncSignature("setVars(uint256)")
+	arg := make([]byte, 32)
+	arg[31] = 7
+	input := append(selector, arg...)
+
+	// Use a fresh caller account so nonces are independent of the 0x04 tx.
+	callerKey, _, callerFilAddr := client.EVM().NewAccount()
+	client.EVM().TransferValueOrFail(ctx, client.DefaultKey.Address, callerFilAddr, types.FromFil(10))
+
+	toAuth := senderEthAddr
+	callTx := &ethtypes.Eth1559TxArgs{
+		ChainID:              buildconstants.Eip155ChainId,
+		Nonce:                0,
+		To:                   &toAuth,
+		Value:                big.Zero(),
+		MaxFeePerGas:         types.NewInt(1_000_000_000),
+		MaxPriorityFeePerGas: types.NewInt(1_000_000_000),
+		GasLimit:             700_000,
+		Input:                input,
+	}
+
+	// Sign and submit the call transaction from the caller.
+	client.EVM().SignTransaction(callTx, callerKey.PrivateKey)
+	callHash := client.EVM().SubmitTransaction(ctx, callTx)
+	callReceipt, err := client.EVM().WaitTransaction(ctx, callHash)
+	require.NoError(t, err)
+	require.NotNil(t, callReceipt)
+	require.EqualValues(t, 1, callReceipt.Status, "delegated CALL to authority should succeed")
+
+	// Verify that storage has been updated under the authority address.
+	latest := ethtypes.NewEthBlockNumberOrHashFromPredefined("latest")
+	storage, err := client.EVM().EthGetStorageAt(ctx, senderEthAddr, nil, latest)
+	require.NoError(t, err)
+	expected := make([]byte, 32)
+	expected[31] = 7
+	require.Equal(t, ethtypes.EthBytes(expected), storage, "authority storage should reflect delegate execution")
+
+	// Receipt for the 0x04 tx should report delegatedTo containing the delegate.
+	foundDelegate := false
+	for _, a := range applyReceipt.DelegatedTo {
+		if a == delegateEthAddr {
+			foundDelegate = true
+			break
+		}
+	}
+	require.True(t, foundDelegate, "expected delegate address in 0x04 receipt.DelegatedTo")
+}
+
+func makeSignedAuthorization(t *testing.T, privKey []byte, delegate ethtypes.EthAddress, nonce uint64) ethtypes.EthAuthorization {
+	preimage, err := ethtypes.AuthorizationPreimage(uint64(buildconstants.Eip155ChainId), delegate, nonce)
+	require.NoError(t, err)
+
+	sig, err := kit.SigDelegatedSign(privKey, preimage)
+	require.NoError(t, err)
+	require.Equal(t, typescrypto.SigTypeDelegated, sig.Type)
+	require.Len(t, sig.Data, 65)
+
+	rb := sig.Data[0:32]
+	sb := sig.Data[32:64]
+
+	return ethtypes.EthAuthorization{
+		ChainID: ethtypes.EthUint64(buildconstants.Eip155ChainId),
+		Address: delegate,
+		Nonce:   ethtypes.EthUint64(nonce),
+		YParity: sig.Data[64],
+		R:       ethtypes.EthBigInt(big.PositiveFromUnsignedBytes(rb)),
+		S:       ethtypes.EthBigInt(big.PositiveFromUnsignedBytes(sb)),
+	}
 }

@@ -50,7 +50,7 @@ func TestEthTransactionFromSignedMessage_7702_Decodes(t *testing.T) {
 	from, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, from20[:])
 	require.NoError(t, err)
 
-	// Build SignedMessage targeting EVM.ApplyAndCall
+	// Build SignedMessage targeting EthAccount.ApplyAndCall
 	msg := types.Message{
 		Version:    0,
 		To:         EthAccountApplyAndCallActorAddr,
@@ -78,7 +78,7 @@ func TestEthTransactionFromSignedMessage_7702_Decodes(t *testing.T) {
 }
 
 func TestEthTransactionFromSignedMessage_7702_MultiTupleDecodes(t *testing.T) {
-	// Setup ID:18 EVM ApplyAndCall address and f4 sender
+	// Setup ID:18 EthAccount.ApplyAndCall address and f4 sender
 	id18, _ := address.NewIDAddress(18)
 	EthAccountApplyAndCallActorAddr = id18
 	var from20 [20]byte
@@ -120,7 +120,7 @@ func TestEthTransactionFromSignedMessage_7702_MultiTupleDecodes(t *testing.T) {
 }
 
 func TestEthTransactionFromSignedMessage_NonDelegatedSigRejected(t *testing.T) {
-	// Setup EVM ApplyAndCall address; signature type is wrong (secp256k1)
+	// Setup EthAccount.ApplyAndCall address; signature type is wrong (secp256k1)
 	id18, _ := address.NewIDAddress(18)
 	EthAccountApplyAndCallActorAddr = id18
 	// Sender can be anything; rejection occurs earlier on sig type
@@ -146,7 +146,7 @@ func TestEthTransactionFromSignedMessage_SenderNotEthRejected(t *testing.T) {
 }
 
 func TestEthTransactionFromSignedMessage_7702_BadCBORRejected(t *testing.T) {
-	// Setup ID:18 EVM ApplyAndCall address and f4 sender
+	// Setup ID:18 EthAccount.ApplyAndCall address and f4 sender
 	id18, _ := address.NewIDAddress(18)
 	EthAccountApplyAndCallActorAddr = id18
 	var from20 [20]byte

@@ -8,13 +8,13 @@ Related FIP PR Link: https://github.com/filecoin-project/FIPs/pull/1209
   - Authorization domain helpers: `AuthorizationPreimage` and `AuthorizationKeccak` implementing `keccak256(0x05 || rlp([chain_id,address,nonce]))`.
   - Canonical CBOR params encoders: wrapper list for authorizations, and atomic ApplyAndCall params `[ [tuple...], [to(20), value, input] ]`.
   - Robust integer parsing for `chain_id`/`nonce` up to `uint64`; reject non‑canonical encodings.
-- Route 0x04 to the EVM actor’s atomic ApplyAndCall entrypoint:
-  - `Eth7702TxArgs.ToUnsignedFilecoinMessageAtomic` builds a Filecoin message targeting `ApplyAndCall` (FRC-42 method hash) with canonical CBOR params.
-  - Feature‑gated by `-tags eip7702_enabled`; adds `Eip7702FeatureEnabled` flag and actor address stub `EvmApplyAndCallActorAddr`.
-  - No Delegator path on this branch; EVM-only routing per design.
+- Route 0x04 to the EthAccount actor’s atomic ApplyAndCall entrypoint (current design; the earlier EVM.ApplyAndCall/Delegator path has been removed on this branch):
+  - `Eth7702TxArgs.ToUnsignedFilecoinMessageAtomic` builds a Filecoin message targeting `EthAccount.ApplyAndCall` (FRC-42 method hash) with canonical CBOR params.
+  - Feature‑gated by `-tags eip7702_enabled`; adds `Eip7702FeatureEnabled` flag and an `EthAccountApplyAndCallActorAddr` actor address stub used by tests (the older `EvmApplyAndCallActorAddr` remains as a deprecated alias for historical compatibility).
+  - No Delegator path on this branch; routing is via EthAccount + VM intercept.
 - Receipts attribution for delegated execution:
   - `adjustReceiptForDelegation` surfaces `delegatedTo` from `authorizationList` and, if absent, from a synthetic event topic emitted by the EVM runtime.
-  - Current topic keyed as `keccak("EIP7702Delegated(address)")`; will align to `keccak("Delegated(address)")` once actor/event naming finalizes.
+  - Topic keyed as `keccak("Delegated(address)")`; data is a 32‑byte ABI word whose last 20 bytes form the authority (EOA) address.
 - Gas estimation alignment to actor behavior:
   - Behavioral intrinsic overhead applied when `ApplyAndCall` is targeted and `authorizationList` is non‑empty.
   - Overhead grows monotonically with tuple count; disabled otherwise. Tuple counting is derived by CBOR shape inspection only.
@@ -28,9 +28,9 @@ Related FIP PR Link: https://github.com/filecoin-project/FIPs/pull/1209
   - Mempool regression tests to ensure standard policies remain unchanged for 0x04 ingress.
 
 ## Additional Info
-- Branch scope: internal development branch; EVM‑only; no backward compatibility preserved. Canonical CBOR only (legacy shapes removed).
+- Branch scope: internal development branch; EthAccount + VM intercept; no backward compatibility preserved. Canonical CBOR only (legacy shapes removed).
 - Activation: route enabled via build tag `eip7702_enabled`; actor bundle controls consensus activation. No runtime NV gates in Lotus.
-- Event topic: actor uses `Delegated(address)` in final form; Lotus synthetic‑event attribution currently recognizes `EIP7702Delegated(address)` and will be updated to `Delegated(address)` alongside the actor landing.
+- Event topic: actor and Lotus both use `Delegated(address)` in final form for synthetic delegated attribution (see `adjustReceiptForDelegation` and ref‑fvm intercept tests).
 - Gas model: FEVM runs under FVM gas; estimation is behavioral. Tests avoid pinning absolute gas constants and effective prices.
 - Quick validation:
   - `go test ./chain/types/ethtypes -run 7702 -count=1`
@@ -49,4 +49,3 @@ Before you mark the PR ready for review, please make sure that:
   - [ ] [Discussion Tutorials](https://github.com/filecoin-project/lotus/discussions/categories/tutorials)
 - [ ] Tests exist for new functionality or change in behavior
 - [ ] CI is green
-

@@ -14,11 +14,11 @@ import (
 	"github.com/filecoin-project/lotus/build/buildconstants"
 )
 
-// Validates that when the eip7702_enabled build tag is set and the DelegatorActorAddr
-// is configured, ToUnsignedFilecoinMessage constructs a message targeting the Delegator
-// actor with CBOR-encoded params.
+// Validates that when the eip7702_enabled build tag is set and the EthAccountApplyAndCallActorAddr
+// is configured, ToUnsignedFilecoinMessage constructs a message targeting the EthAccount actor
+// with CBOR-encoded params.
 func Test7702_ToUnsignedFilecoinMessage_FeatureFlag(t *testing.T) {
-	// Configure a fake EVM ApplyAndCall actor address
+	// Configure a fake EthAccount.ApplyAndCall actor address
 	a, err := address.NewIDAddress(1234)
 	require.NoError(t, err)
 	EthAccountApplyAndCallActorAddr = a

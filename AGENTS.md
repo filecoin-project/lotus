@@ -230,6 +230,20 @@ Validation notes
 - Gas constants/refunds: finalize numbers (behavioral in Lotus until then).
 - Lotus E2E: validate atomic apply+call, delegated execution, and receipts/logs attribution once the wasm bundle is integrated.
 
+Follow‑ups from 2025‑11‑13 review (status)
+- EthAccount → VM outer‑call bridge + E2E (DONE):
+  - builtin‑actors/ref‑fvm: DONE — EthAccount.ApplyAndCall routes outer calls to EVM contracts via the `InvokeEVM` entrypoint (see `../builtin-actors/actors/ethaccount/src/lib.rs` and `../builtin-actors/actors/ethaccount/tests/apply_and_call_outer_call.rs`), and delegated CALL semantics are exercised via the VM intercept and associated tests in `../ref-fvm/fvm/src/call_manager/default.rs` and `../ref-fvm/fvm/tests`.
+  - lotus: DONE — `itests/TestEth7702_DelegatedExecute` is enabled (under the `eip7702_enabled` build tag) and asserts the full 0x04 → EthAccount.ApplyAndCall → delegated CALL→EOA lifecycle, including authority storage overlay, `Delegated(address)` event emission, receipts attribution, and status mapping.
+- Signature padding positives (DONE):
+  - builtin‑actors: Explicit EthAccount tests now accept minimally‑encoded big‑endian `r/s` with lengths 1..31 and 32 bytes (left‑padded internally), in addition to the existing >32‑byte and zero‑value rejection tests, locking in interoperability with Lotus’ minimal encoding. See `../builtin-actors/actors/ethaccount/tests/apply_and_call_rs_padding.rs`.
+- Delegated(address) event coverage (DONE):
+  - ref‑fvm: An integration test exercises a delegated CALL→EOA path, then inspects the emitted events (via `EventsRoot`) to assert:
+    - topic0 = `keccak256("Delegated(address)")`, and
+    - data is a 32‑byte ABI word whose last 20 bytes equal the authority (EOA) address.
+    See `../ref-fvm/fvm/tests/delegated_event_emission.rs`.
+- Naming/documentation cleanup (PARTIAL):
+  - lotus/builtin‑actors/ref‑fvm: Code and test comments describing live routing now consistently reference `EthAccount.ApplyAndCall` + VM intercept, and Delegator/EVM.ApplyAndCall paths are marked removed or historical. Some standalone design notes (e.g., early EVM‑only explanation docs) still describe the older EVM.ApplyAndCall‑centric design and will be updated or explicitly marked historical in a later documentation pass.
+
 ---
 
 ### Actionable TODOs (Handoff Plan)
@@ -586,7 +600,7 @@ P0 — Mempool (N/A on this branch)
 
 P0 — Gas accounting (scaffold) (DONE)
 - Counting + gating only; no absolute overhead assertions.
-- `countAuthInDelegatorParams` handles canonical wrapper; tests cover monotonicity.
+- `countAuthInApplyAndCallParams` handles canonical wrapper; tests cover monotonicity.
 
 P1 — JSON‑RPC plumbing (DONE)
 - `eth_getTransactionReceipt` returns `authorizationList` and `delegatedTo`; covered in unit tests.

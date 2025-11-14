@@ -130,7 +130,7 @@ func EthTransactionFromSignedFilecoinMessage(smsg *types.SignedMessage) (EthTran
 		return nil, fmt.Errorf("sender was not an eth account")
 	}
 
-	// Special-case: EVM ApplyAndCall -> reconstruct a 0x04 tx view
+	// Special-case: EthAccount.ApplyAndCall -> reconstruct a 0x04 tx view
 	if smsg.Message.Method == abi.MethodNum(MethodHash("ApplyAndCall")) {
 		if authz, err := strictDecodeApplyAndCallAuthorizations(smsg.Message.Params); err == nil && len(authz) > 0 {
 			tx := &Eth7702TxArgs{
@@ -151,7 +151,7 @@ func EthTransactionFromSignedFilecoinMessage(smsg *types.SignedMessage) (EthTran
 		}
 	}
 
-	// Delegator route removed (EVM-only)
+	// Delegator route removed; routing is now via EthAccount.ApplyAndCall + VM intercept.
 
 	// Extract Ethereum parameters and recipient from the message.
 	params, to, err := getEthParamsAndRecipient(&smsg.Message)

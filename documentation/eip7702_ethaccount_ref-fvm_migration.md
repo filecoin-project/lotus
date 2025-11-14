@@ -5,13 +5,13 @@ This document defines the current work priority for EIP-7702 across builtin-acto
 ## Context
 
 - Working development branch; no backward-compatibility constraints.
-- Delegation mapping is currently local to the EVM actor; cross-contract visibility test fails.
-- EVM interpreter implements delegated execution and EXTCODE* pointer semantics today.
+- Delegation mapping and nonces now live per-EOA in EthAccount state; the deprecated EVM-local delegation map has been removed.
+- Delegated execution and EXTCODE* pointer semantics are implemented in ref-fvm via a VM intercept; the EVM interpreter no longer follows delegation internally.
 
 ## Goals
 
-- Persist delegation state per EOA in EthAccount so it is globally visible.
-- Implement delegated execution and pointer code behavior in the VM (ref-fvm).
+- Keep delegation state per EOA in EthAccount so it is globally visible.
+- Maintain delegated execution and pointer code behavior in the VM (ref-fvm) as the single source of truth.
 - Preserve end-to-end behavior: atomic ApplyAndCall, depth=1, EXTCODE* projects 23-byte pointer code, Delegated(address) event with authority, revert-data propagation, value-transfer behavior, and behavioral gas model in Lotus.
 
 ## Design
@@ -86,17 +86,17 @@ Tests (current)
   `offset`, truncates when out of range, and zero-fills the remainder per EVM rules. When `offset >= 23` and `size > 0`,
   the copy yields all zeros.
 
-## ref-fvm Changes (new branch)
+## ref-fvm Changes (status)
 
 - Branch: `eip7702`.
-- Implement VM features:
+- VM features (implemented):
   - EXTCODE* pointer projection for EOAs with `delegate_to`.
   - Delegated dispatch for CALL to EOAs with authority context + storage overlay + depth limit.
   - Event emission for `Delegated(address)` with authority address.
   - Syscall invoked by EthAccount.ApplyAndCall to perform the outer call with all gas forwarded and return status/returndata.
   - Context plumbing to prevent re-following delegation and to manage storage root mount/restore.
-- Tests in ref-fvm:
-  - Pointer projection (size/hash/copy), delegated dispatch success/revert, depth limit, SELFDESTRUCT no-op, revert-data propagation, value-transfer short-circuit.
+- Tests in ref-fvm (landed):
+  - Pointer projection (size/hash/copy), delegated dispatch success/revert, depth limit, SELFDESTRUCT no-op, revert-data propagation, value-transfer short-circuit, and `Delegated(address)` event topic/data coverage.
 
 ### Docker Bundle/Test Flow (macOS friendly)
 
@@ -132,19 +132,19 @@ Tests (current)
 
 ## builtin-actors Changes
 
-- EthAccount:
-  - Extend state with `delegate_to`, `auth_nonce`, `evm_storage_root`.
-  - Implement `ApplyAndCall`:
-    - Validate tuples and nonces.
-    - Update state (delegate_to + auth_nonce; initialize storage root if needed).
-    - Invoke ref-fvm syscall for the outer call; return embedded status + return data.
-- EVM actor:
-  - Remove internal delegation/nonces/storage-root structures and InvokeAsEoa.
-  - Keep the interpreter intact; do not alter EXTCODE* — the VM supplies pointer behavior.
-  - Update ext.rs to consult the runtime helper `get_eth_delegate_to` for Account/EOA targets to project pointer code.
+- EthAccount (implemented):
+  - State extended with `delegate_to`, `auth_nonce`, `evm_storage_root`.
+  - `ApplyAndCall`:
+    - Validates tuples and nonces.
+    - Updates state (delegate_to + auth_nonce; initializes storage root if needed).
+    - Invokes ref-fvm bridge for the outer call; returns embedded status + return data.
+- EVM actor (cleaned up):
+  - Removes internal delegation/nonces/storage-root structures and the legacy InvokeAsEoa entrypoint.
+  - Keeps the interpreter intact; does not alter EXTCODE* — the VM supplies pointer behavior.
+  - Updates ext.rs to consult the runtime helper `get_eth_delegate_to` for Account/EOA targets to project pointer code.
 - Tests:
   - Global mapping test passes (eoa_pointer_mapping_global.rs).
-  - Existing suites for pointer semantics, revert-data, depth limit, pre-existence, R/S padding, tuple cap keep passing through EthAccount + VM path.
+  - Suites for pointer semantics, revert-data, depth limit, pre-existence, R/S padding, tuple cap keep passing through EthAccount + VM path.
 
 ### Repo/Path Impact (builtin-actors)
 
@@ -172,7 +172,7 @@ Tests (current)
 - chain/types/ethtypes:
   - No shape changes; keep canonical wrapper encode/decode and `AuthorizationKeccak` tests.
 
-## Sequencing
+## Sequencing (high level, completed)
 
 1. Authoritative plan: land this document and mark as current priority in AGENTS.md.
 2. Create ref-fvm branch and scaffold pointer projection, authority context flags, and ApplyAndCall syscall.
@@ -246,24 +246,24 @@ ref-fvm tests (new):
   - Add a decode robustness test for revert data in EVM paths to ensure no silent fallback on decode failures (return
     illegal_state in invariants instead of discarding data).
 
-## Execution Checklist
+## Execution Checklist (status)
 
 - ref-fvm (branch `eip7702`)
-  - [ ] EXTCODE* pointer projection for EOAs with delegate
-  - [ ] CALL→EOA delegated dispatch with authority context and depth limit
-  - [ ] Authority storage overlay mount/persist
-  - [ ] `Delegated(address)` event emission
-  - [ ] ApplyAndCall syscall with all-gas-forwarded semantics
-  - [ ] Unit tests for features above
+  - [x] EXTCODE* pointer projection for EOAs with delegate
+  - [x] CALL→EOA delegated dispatch with authority context and depth limit
+  - [x] Authority storage overlay mount/persist
+  - [x] `Delegated(address)` event emission
+  - [x] ApplyAndCall syscall with all-gas-forwarded semantics
+  - [x] Unit tests for features above
 - builtin-actors
-  - [ ] EthAccount: add `delegate_to`, `auth_nonce`, `evm_storage_root`
-  - [ ] EthAccount: implement `ApplyAndCall` validation + state updates + syscall
-  - [ ] Remove delegation maps and InvokeAsEoa from EVM actor
-  - [ ] Adapt tests to EthAccount.ApplyAndCall; keep coverage green
+  - [x] EthAccount: add `delegate_to`, `auth_nonce`, `evm_storage_root`
+  - [x] EthAccount: implement `ApplyAndCall` validation + state updates + syscall
+  - [x] Remove delegation maps and InvokeAsEoa from EVM actor
+  - [x] Adapt tests to EthAccount.ApplyAndCall; keep coverage green
 - Lotus
-  - [ ] Route 0x04 to EthAccount.ApplyAndCall
-  - [ ] Receipts attribution and status decode intact
-  - [ ] Behavioral gas estimation unchanged
+  - [x] Route 0x04 to EthAccount.ApplyAndCall
+  - [x] Receipts attribution and status decode intact
+  - [x] Behavioral gas estimation unchanged
 
 ## Risks & Mitigations
 

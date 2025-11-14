@@ -15,7 +15,7 @@ import (
 )
 
 func TestEIP7702_ToUnsignedFilecoinMessageAtomic_ShapesAndMethod(t *testing.T) {
-	// Enable feature flag and set EVM ApplyAndCall addr
+	// Enable feature flag and set EthAccount.ApplyAndCall addr
 	Eip7702FeatureEnabled = true
 	defer func() { Eip7702FeatureEnabled = false }()
 	EthAccountApplyAndCallActorAddr, _ = address.NewIDAddress(999)

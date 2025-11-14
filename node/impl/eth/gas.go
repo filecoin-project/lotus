@@ -235,9 +235,9 @@ func (e *ethGas) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (ethty
 	}
 
 	// 7702: add intrinsic overhead for authorization tuples only for the
-	// EVM ApplyAndCall route.
+	// EthAccount.ApplyAndCall route.
 	if ethtypes.Eip7702FeatureEnabled && gassedMsg.Method == abi.MethodNum(ethtypes.MethodHash("ApplyAndCall")) {
-		authCount := countAuthInDelegatorParams(gassedMsg.Params)
+		authCount := countAuthInApplyAndCallParams(gassedMsg.Params)
 		if authCount > 0 {
 			expectedGas += compute7702IntrinsicOverhead(authCount)
 		}

@@ -13,8 +13,8 @@ import (
 	"github.com/filecoin-project/lotus/build/buildconstants"
 )
 
-func TestEIP7702_ToUnsignedFilecoinMessage_EvmReceiver(t *testing.T) {
-	// Configure an EVM ApplyAndCall receiver directly and ensure the message targets it.
+func TestEIP7702_ToUnsignedFilecoinMessage_EthAccountReceiver(t *testing.T) {
+	// Configure an EthAccount.ApplyAndCall receiver directly and ensure the message targets it.
 	id999, _ := address.NewIDAddress(999)
 	EthAccountApplyAndCallActorAddr = id999
 

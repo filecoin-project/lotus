@@ -2,7 +2,7 @@ package eth
 
 // This file contains scaffolding notes and helper stubs for EIP-7702 gas accounting.
 // It is behavioral and uses placeholder constants. EthEstimateGas adds intrinsic
-// costs per authorization tuple when targeting EVM.ApplyAndCall.
+// costs per authorization tuple when targeting EthAccount.ApplyAndCall.
 
 // compute7702IntrinsicOverhead returns the additional intrinsic gas to charge for a
 // 7702 transaction based on the authorization list length, constants per EIP-7702,
@@ -26,11 +26,11 @@ func compute7702IntrinsicOverhead(authCount int) int64 {
 	return baseOverheadGas + perAuthBaseGas*int64(authCount)
 }
 
-// countAuthInDelegatorParams tries to CBOR-parse ApplyAndCall params and return
+// countAuthInApplyAndCallParams tries to CBOR-parse ApplyAndCall params and return
 // the number of authorization tuples included. It expects the params to be the
 // CBOR encoding of [ [tuple...], call-tuple ].
 // Returns 0 on any parsing error (best effort for estimation headroom).
-func countAuthInDelegatorParams(params []byte) int {
+func countAuthInApplyAndCallParams(params []byte) int {
 	r := cbg.NewCborReader(bytes.NewReader(params))
 	maj, topLen, err := r.ReadHeader()
 	if err != nil || maj != cbg.MajArray {

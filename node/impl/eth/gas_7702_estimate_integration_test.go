@@ -171,10 +171,10 @@ func make7702ParamsN(t *testing.T, n int) []byte {
 
 func TestEthEstimateGas_7702AddsSomeOverheadWhenTuplesPresent(t *testing.T) {
 	ctx := context.Background()
-	// Feature flag on and EVM ApplyAndCall addr set
+	// Feature flag on and EthAccount.ApplyAndCall addr set
 	ethtypes.Eip7702FeatureEnabled = true
 	defer func() { ethtypes.Eip7702FeatureEnabled = false }()
-	ethtypes.EvmApplyAndCallActorAddr, _ = address.NewIDAddress(999)
+	ethtypes.EthAccountApplyAndCallActorAddr, _ = address.NewIDAddress(999)
 
 	ts := makeTipset2(t)
 	cs := &mockEGChainStore{ts: ts}
@@ -182,9 +182,9 @@ func TestEthEstimateGas_7702AddsSomeOverheadWhenTuplesPresent(t *testing.T) {
 	tr := &mockEGTipsetResolver{ts: ts}
 	mp := &mockEGMessagePool{ts: ts, cfg: types.MpoolConfig{GasLimitOverestimation: 1.0}}
 
-	// fake gas API returns a message targeting EVM.ApplyAndCall with 2 tuples and base gaslimit 10000
+	// fake gas API returns a message targeting ApplyAndCall with 2 tuples and base gaslimit 10000
 	base := int64(10000)
-	msg := &types.Message{From: ts.Blocks()[0].Miner, To: ethtypes.EvmApplyAndCallActorAddr, Method: abi2.MethodNum(ethtypes.MethodHash("ApplyAndCall")), GasLimit: base, GasFeeCap: big.NewInt(1), GasPremium: big.NewInt(1), Params: make7702ParamsN(t, 2)}
+	msg := &types.Message{From: ts.Blocks()[0].Miner, To: ethtypes.EthAccountApplyAndCallActorAddr, Method: abi2.MethodNum(ethtypes.MethodHash("ApplyAndCall")), GasLimit: base, GasFeeCap: big.NewInt(1), GasPremium: big.NewInt(1), Params: make7702ParamsN(t, 2)}
 	gas := &mockEGGasAPI{msg: msg}
 
 	api := NewEthGasAPI(cs, sm, mp, gas, tr)
@@ -200,7 +200,7 @@ func TestEthEstimateGas_7702AddsSomeOverheadWhenTuplesPresent(t *testing.T) {
 func TestEthEstimateGas_7702NoOverheadWhenDisabled(t *testing.T) {
 	ctx := context.Background()
 	ethtypes.Eip7702FeatureEnabled = false
-	ethtypes.EvmApplyAndCallActorAddr, _ = address.NewIDAddress(999)
+	ethtypes.EthAccountApplyAndCallActorAddr, _ = address.NewIDAddress(999)
 
 	ts := makeTipset2(t)
 	cs := &mockEGChainStore{ts: ts}
@@ -209,7 +209,7 @@ func TestEthEstimateGas_7702NoOverheadWhenDisabled(t *testing.T) {
 	mp := &mockEGMessagePool{ts: ts, cfg: types.MpoolConfig{GasLimitOverestimation: 1.0}}
 
 	base := int64(8000)
-	msg := &types.Message{From: ts.Blocks()[0].Miner, To: ethtypes.EvmApplyAndCallActorAddr, Method: abi2.MethodNum(ethtypes.MethodHash("ApplyAndCall")), GasLimit: base, GasFeeCap: big.NewInt(1), GasPremium: big.NewInt(1), Params: make7702ParamsN(t, 1)}
+	msg := &types.Message{From: ts.Blocks()[0].Miner, To: ethtypes.EthAccountApplyAndCallActorAddr, Method: abi2.MethodNum(ethtypes.MethodHash("ApplyAndCall")), GasLimit: base, GasFeeCap: big.NewInt(1), GasPremium: big.NewInt(1), Params: make7702ParamsN(t, 1)}
 	gas := &mockEGGasAPI{msg: msg}
 	api := NewEthGasAPI(cs, sm, mp, gas, tr)
 	b, _ := json.Marshal([]interface{}{ethtypes.EthCall{}})
@@ -231,7 +231,7 @@ func TestEthEstimateGas_NoOverheadForNonApplyAndCall(t *testing.T) {
 	mp := &mockEGMessagePool{ts: ts, cfg: types.MpoolConfig{GasLimitOverestimation: 1.0}}
 
 	base := int64(7000)
-	// Not targeting EVM.ApplyAndCall
+	// Not targeting ApplyAndCall
 	to, _ := address.NewIDAddress(1001)
 	msg := &types.Message{From: ts.Blocks()[0].Miner, To: to, Method: 0, GasLimit: base, GasFeeCap: big.NewInt(1), GasPremium: big.NewInt(1)}
 	gas := &mockEGGasAPI{msg: msg}
@@ -247,7 +247,7 @@ func TestEthEstimateGas_ZeroTuple_NoOverhead(t *testing.T) {
 	ctx := context.Background()
 	ethtypes.Eip7702FeatureEnabled = true
 	defer func() { ethtypes.Eip7702FeatureEnabled = false }()
-	ethtypes.EvmApplyAndCallActorAddr, _ = address.NewIDAddress(999)
+	ethtypes.EthAccountApplyAndCallActorAddr, _ = address.NewIDAddress(999)
 
 	ts := makeTipset2(t)
 	cs := &mockEGChainStore{ts: ts}
@@ -265,8 +265,8 @@ func TestEthEstimateGas_ZeroTuple_NoOverhead(t *testing.T) {
 	require.NoError(t, cbg.WriteByteArray(&buf, make([]byte, 20)))
 	require.NoError(t, cbg.WriteByteArray(&buf, []byte{0}))
 	require.NoError(t, cbg.WriteByteArray(&buf, []byte{}))
-	ethtypes.EvmApplyAndCallActorAddr, _ = address.NewIDAddress(999)
-	msg := &types.Message{From: ts.Blocks()[0].Miner, To: ethtypes.EvmApplyAndCallActorAddr, Method: abi2.MethodNum(ethtypes.MethodHash("ApplyAndCall")), GasLimit: base, GasFeeCap: big.NewInt(1), GasPremium: big.NewInt(1), Params: buf.Bytes()}
+	ethtypes.EthAccountApplyAndCallActorAddr, _ = address.NewIDAddress(999)
+	msg := &types.Message{From: ts.Blocks()[0].Miner, To: ethtypes.EthAccountApplyAndCallActorAddr, Method: abi2.MethodNum(ethtypes.MethodHash("ApplyAndCall")), GasLimit: base, GasFeeCap: big.NewInt(1), GasPremium: big.NewInt(1), Params: buf.Bytes()}
 	gas := &mockEGGasAPI{msg: msg}
 	api := NewEthGasAPI(cs, sm, mp, gas, tr)
 	b, _ := json.Marshal([]interface{}{ethtypes.EthCall{}})
@@ -280,7 +280,7 @@ func TestEthEstimateGas_7702OverheadScalesWithTupleCount(t *testing.T) {
 	ctx := context.Background()
 	ethtypes.Eip7702FeatureEnabled = true
 	defer func() { ethtypes.Eip7702FeatureEnabled = false }()
-	ethtypes.EvmApplyAndCallActorAddr, _ = address.NewIDAddress(999)
+	ethtypes.EthAccountApplyAndCallActorAddr, _ = address.NewIDAddress(999)
 
 	ts := makeTipset2(t)
 	cs := &mockEGChainStore{ts: ts}
@@ -290,7 +290,7 @@ func TestEthEstimateGas_7702OverheadScalesWithTupleCount(t *testing.T) {
 
 	base := int64(9000)
 	mk := func(n int) ethtypes.EthUint64 {
-		msg := &types.Message{From: ts.Blocks()[0].Miner, To: ethtypes.EvmApplyAndCallActorAddr, Method: abi2.MethodNum(ethtypes.MethodHash("ApplyAndCall")), GasLimit: base, GasFeeCap: big.NewInt(1), GasPremium: big.NewInt(1), Params: make7702ParamsN(t, n)}
+		msg := &types.Message{From: ts.Blocks()[0].Miner, To: ethtypes.EthAccountApplyAndCallActorAddr, Method: abi2.MethodNum(ethtypes.MethodHash("ApplyAndCall")), GasLimit: base, GasFeeCap: big.NewInt(1), GasPremium: big.NewInt(1), Params: make7702ParamsN(t, n)}
 		gas := &mockEGGasAPI{msg: msg}
 		api := NewEthGasAPI(cs, sm, mp, gas, tr)
 		b, _ := json.Marshal([]interface{}{ethtypes.EthCall{}})
@@ -311,7 +311,7 @@ func TestEthEstimateGas_MalformedCBOR_NoOverhead(t *testing.T) {
 	ctx := context.Background()
 	ethtypes.Eip7702FeatureEnabled = true
 	defer func() { ethtypes.Eip7702FeatureEnabled = false }()
-	ethtypes.EvmApplyAndCallActorAddr, _ = address.NewIDAddress(999)
+	ethtypes.EthAccountApplyAndCallActorAddr, _ = address.NewIDAddress(999)
 
 	ts := makeTipset2(t)
 	cs := &mockEGChainStore{ts: ts}
@@ -323,7 +323,7 @@ func TestEthEstimateGas_MalformedCBOR_NoOverhead(t *testing.T) {
 	// Malformed CBOR: write an unsigned int instead of an array
 	var buf bytes.Buffer
 	require.NoError(t, cbg.CborWriteHeader(&buf, cbg.MajUnsignedInt, 7))
-	msg := &types.Message{From: ts.Blocks()[0].Miner, To: ethtypes.EvmApplyAndCallActorAddr, Method: abi2.MethodNum(ethtypes.MethodHash("ApplyAndCall")), GasLimit: base, GasFeeCap: big.NewInt(1), GasPremium: big.NewInt(1), Params: buf.Bytes()}
+	msg := &types.Message{From: ts.Blocks()[0].Miner, To: ethtypes.EthAccountApplyAndCallActorAddr, Method: abi2.MethodNum(ethtypes.MethodHash("ApplyAndCall")), GasLimit: base, GasFeeCap: big.NewInt(1), GasPremium: big.NewInt(1), Params: buf.Bytes()}
 	gas := &mockEGGasAPI{msg: msg}
 	api := NewEthGasAPI(cs, sm, mp, gas, tr)
 	b, _ := json.Marshal([]interface{}{ethtypes.EthCall{}})
@@ -333,14 +333,14 @@ func TestEthEstimateGas_MalformedCBOR_NoOverhead(t *testing.T) {
 	require.Equal(t, ethtypes.EthUint64(base), got)
 }
 
-func TestEthEstimateGas_OverheadForEvmApplyAndCall(t *testing.T) {
+func TestEthEstimateGas_OverheadForApplyAndCall(t *testing.T) {
 	ctx := context.Background()
 	ethtypes.Eip7702FeatureEnabled = true
 	defer func() { ethtypes.Eip7702FeatureEnabled = false }()
 
-	// Configure an EVM ApplyAndCall receiver
+	// Configure an EthAccount.ApplyAndCall receiver
 	id999, _ := address.NewIDAddress(999)
-	ethtypes.EvmApplyAndCallActorAddr = id999
+	ethtypes.EthAccountApplyAndCallActorAddr = id999
 
 	ts := makeTipset2(t)
 	cs := &mockEGChainStore{ts: ts}
@@ -370,7 +370,7 @@ func TestEthEstimateGas_OverheadForEvmApplyAndCall(t *testing.T) {
 	require.NoError(t, cbg.WriteByteArray(&buf, []byte{}))
 
 	base := int64(8000)
-	msg := &types.Message{From: ts.Blocks()[0].Miner, To: ethtypes.EvmApplyAndCallActorAddr, Method: abi2.MethodNum(ethtypes.MethodHash("ApplyAndCall")), GasLimit: base, GasFeeCap: big.NewInt(1), GasPremium: big.NewInt(1), Params: buf.Bytes()}
+	msg := &types.Message{From: ts.Blocks()[0].Miner, To: ethtypes.EthAccountApplyAndCallActorAddr, Method: abi2.MethodNum(ethtypes.MethodHash("ApplyAndCall")), GasLimit: base, GasFeeCap: big.NewInt(1), GasPremium: big.NewInt(1), Params: buf.Bytes()}
 	gas := &mockEGGasAPI{msg: msg}
 	api := NewEthGasAPI(cs, sm, mp, gas, tr)
 	b, _ := json.Marshal([]interface{}{ethtypes.EthCall{}})

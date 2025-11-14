@@ -119,14 +119,14 @@ func (tx *Eth7702TxArgs) ToVerifiableSignature(sig []byte) ([]byte, error) {
 func (tx *Eth7702TxArgs) Sender() (address.Address, error) { return sender(tx) }
 
 // ToUnsignedFilecoinMessage delegates to ToUnsignedFilecoinMessageAtomic.
-// Until the actor/FVM support is fully landed, this path may return an error
-// if the EVM ApplyAndCall integration is not enabled.
+// Until the EthAccount/FVM support is fully landed, this path may return an error
+// if the EthAccount.ApplyAndCall integration is not enabled.
 func (tx *Eth7702TxArgs) ToUnsignedFilecoinMessage(from address.Address) (*types.Message, error) {
 	return tx.ToUnsignedFilecoinMessageAtomic(from)
 }
 
 // ToUnsignedFilecoinMessageAtomic builds a Filecoin message that calls the
-// EVM actor ApplyAndCall method with atomic apply+call semantics, encoding both
+// EthAccount actor ApplyAndCall method with atomic apply+call semantics, encoding both
 // the authorization list and the outer call (to/value/input) in params.
 func (tx *Eth7702TxArgs) ToUnsignedFilecoinMessageAtomic(from address.Address) (*types.Message, error) {
 	if tx.ChainID != buildconstants.Eip155ChainId {

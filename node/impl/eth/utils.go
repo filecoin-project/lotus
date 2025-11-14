@@ -485,7 +485,7 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, baseFee big.Int, ms
 		txReceipt.Status = 1
 	}
 
-	// EIP-7702: for typed-0x04 routed to EVM.ApplyAndCall, actor always exits OK and embeds status in return.
+	// EIP-7702: for typed-0x04 routed to EthAccount.ApplyAndCall, the actor always exits OK and embeds status in return.
 	if tx.Type == 0x04 && len(msgReceipt.Return) > 0 {
 		if st, ok := decodeApplyAndCallReturnStatus(msgReceipt.Return); ok {
 			if st != 0 {
