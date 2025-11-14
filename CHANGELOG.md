@@ -17,6 +17,7 @@
 - fix(eth): properly return vm error in all gas estimation methods ([filecoin-project/lotus#13389](https://github.com/filecoin-project/lotus/pull/13389))
 - chore: all actor cmd support --actor ([filecoin-project/lotus#13391](https://github.com/filecoin-project/lotus/pull/13391))
 - feat(spcli): add a `deposit-margin-factor` option to `lotus-miner init` so the sent deposit still covers the on-chain requirement if it rises between lookup and execution
+- feat(consensus): wire tipset gas reservations and reservation-aware mempool pre-pack to activate at network version 28 (UpgradeXxHeight), keeping receipts and gas accounting identical while preventing miner penalties from underfunded intra-tipset messages
 
 # Node and Miner v1.34.1 / 2025-09-15
 

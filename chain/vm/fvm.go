@@ -3,6 +3,7 @@ package vm
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -22,6 +23,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/go-state-types/network"
@@ -43,6 +45,35 @@ import (
 
 var _ Interface = (*FVM)(nil)
 var _ ffi_cgo.Externs = (*FvmExtern)(nil)
+
+var (
+	ErrReservationsNotImplemented     = ffi.ErrReservationsNotImplemented
+	ErrReservationsInsufficientFunds  = ffi.ErrReservationsInsufficientFunds
+	ErrReservationsSessionOpen        = ffi.ErrReservationsSessionOpen
+	ErrReservationsSessionClosed      = ffi.ErrReservationsSessionClosed
+	ErrReservationsNonZeroRemainder   = ffi.ErrReservationsNonZeroRemainder
+	ErrReservationsPlanTooLarge       = ffi.ErrReservationsPlanTooLarge
+	ErrReservationsOverflow           = ffi.ErrReservationsOverflow
+	ErrReservationsInvariantViolation = ffi.ErrReservationsInvariantViolation
+)
+
+func reservationStatusToError(code int32) error {
+	return ffi.ReservationStatusToError(code)
+}
+
+// reservationsActivationNetworkVersion is the network version at which tipset
+// reservations become consensus-critical. Before this version, reservations
+// are best-effort and Begin/End calls may fall back to legacy mode when the
+// engine does not implement reservations. At or after this version, a node
+// must run an engine that implements reservations; ErrReservationsNotImplemented
+// is treated as a node error.
+var reservationsActivationNetworkVersion = network.Version28
+
+// ReservationsActivationNetworkVersion returns the network version at which
+// tipset reservations become consensus-critical.
+func ReservationsActivationNetworkVersion() network.Version {
+	return reservationsActivationNetworkVersion
+}
 
 type FvmExtern struct {
 	rand.Rand
@@ -250,6 +281,11 @@ type FVM struct {
 
 	// returnEvents specifies whether to parse and return events when applying messages.
 	returnEvents bool
+
+	// reservationsActive tracks whether a reservation session is currently open
+	// on the underlying FVM instance. This ensures we only call EndReservations
+	// when a session was successfully started.
+	reservationsActive bool
 }
 
 func defaultFVMOpts(ctx context.Context, opts *VMOpts) (*ffi.FVMOpts, error) {
@@ -413,6 +449,14 @@ func NewDebugFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 	return ret, nil
 }
 
+func (vm *FVM) BeginReservations(plan []byte) error {
+	return vm.fvm.BeginReservations(plan)
+}
+
+func (vm *FVM) EndReservations() error {
+	return vm.fvm.EndReservations()
+}
+
 func (vm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet, error) {
 	start := build.Clock.Now()
 	defer atomic.AddUint64(&StatApplied, 1)
@@ -476,6 +520,104 @@ func (vm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet
 	}
 
 	return applyRet, nil
+}
+
+func (vm *FVM) StartTipsetReservations(ctx context.Context, plan map[address.Address]abi.TokenAmount) error {
+	// Empty plans are a no-op and must not enter reservation mode.
+	if len(plan) == 0 {
+		return nil
+	}
+
+	planCBOR, err := encodeReservationPlanCBOR(plan)
+	if err != nil {
+		return xerrors.Errorf("encoding reservation plan: %w", err)
+	}
+
+	if err := vm.BeginReservations(planCBOR); err != nil {
+		// Pre-activation behavior: if the engine does not implement
+		// reservations, fall back to legacy mode while leaving
+		// reservationsActive=false so EndTipsetReservations is a no-op.
+		if errors.Is(err, ErrReservationsNotImplemented) && vm.nv < reservationsActivationNetworkVersion {
+			log.Debugw("FVM reservations not implemented; continuing in legacy mode")
+			vm.reservationsActive = false
+			return nil
+		}
+		return err
+	}
+
+	vm.reservationsActive = true
+	return nil
+}
+
+func (vm *FVM) EndTipsetReservations(ctx context.Context) error {
+	// If no reservation session was started (empty plan or engine did not
+	// implement reservations), this is a no-op.
+	if !vm.reservationsActive {
+		return nil
+	}
+
+	if err := vm.EndReservations(); err != nil {
+		// If Begin succeeded, ErrReservationsNotImplemented is not expected.
+		// Before activation, treat it as a legacy-mode fallback; at or after
+		// activation, surface it as a node error.
+		if errors.Is(err, ErrReservationsNotImplemented) && vm.nv < reservationsActivationNetworkVersion {
+			log.Debugw("FVM reservations end not implemented; continuing in legacy mode")
+			vm.reservationsActive = false
+			return nil
+		}
+		return err
+	}
+
+	vm.reservationsActive = false
+	return nil
+}
+
+func encodeReservationPlanCBOR(plan map[address.Address]abi.TokenAmount) ([]byte, error) {
+	entries := make([][][]byte, 0, len(plan))
+
+	for addr, amount := range plan {
+		amountBytes, err := amount.Bytes()
+		if err != nil {
+			return nil, xerrors.Errorf("serializing reservation amount: %w", err)
+		}
+
+		entries = append(entries, [][]byte{addr.Bytes(), amountBytes})
+	}
+
+	return cbor.DumpObject(entries)
+}
+
+func decodeReservationPlanCBOR(data []byte) (map[address.Address]abi.TokenAmount, error) {
+	var entries [][][]byte
+	if err := cbor.DecodeInto(data, &entries); err != nil {
+		return nil, xerrors.Errorf("decoding reservation plan: %w", err)
+	}
+
+	result := make(map[address.Address]abi.TokenAmount, len(entries))
+
+	for _, entry := range entries {
+		if len(entry) != 2 {
+			return nil, xerrors.Errorf("invalid reservation entry length %d", len(entry))
+		}
+
+		addr, err := address.NewFromBytes(entry[0])
+		if err != nil {
+			return nil, xerrors.Errorf("invalid reservation address: %w", err)
+		}
+
+		if _, exists := result[addr]; exists {
+			return nil, xerrors.Errorf("duplicate sender %s in reservation plan", addr)
+		}
+
+		amt, err := big.FromBytes(entry[1])
+		if err != nil {
+			return nil, xerrors.Errorf("invalid reservation amount encoding: %w", err)
+		}
+
+		result[addr] = abi.TokenAmount(amt)
+	}
+
+	return result, nil
 }
 
 func (vm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg *types.Message) (*ApplyRet, error) {
@@ -606,6 +748,14 @@ func (vm *dualExecutionFVM) ApplyImplicitMessage(ctx context.Context, msg *types
 
 func (vm *dualExecutionFVM) Flush(ctx context.Context) (cid.Cid, error) {
 	return vm.main.Flush(ctx)
+}
+
+func (vm *dualExecutionFVM) StartTipsetReservations(ctx context.Context, plan map[address.Address]abi.TokenAmount) error {
+	return vm.main.StartTipsetReservations(ctx, plan)
+}
+
+func (vm *dualExecutionFVM) EndTipsetReservations(ctx context.Context) error {
+	return vm.main.EndTipsetReservations(ctx)
 }
 
 // Passing this as a pointer of structs has proven to be an enormous PiTA; hence this code.

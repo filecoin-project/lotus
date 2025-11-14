@@ -1,17 +1,19 @@
 package vm
 
 import (
-	"context"
-	"os"
-	"strconv"
-	"sync"
+    "context"
+    "os"
+    "strconv"
+    "sync"
 
-	"github.com/ipfs/go-cid"
-	"go.opencensus.io/stats"
-	"go.opencensus.io/tag"
+    "github.com/ipfs/go-cid"
+    "go.opencensus.io/stats"
+    "go.opencensus.io/tag"
 
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/metrics"
+    "github.com/filecoin-project/go-address"
+    "github.com/filecoin-project/go-state-types/abi"
+    "github.com/filecoin-project/lotus/chain/types"
+    "github.com/filecoin-project/lotus/metrics"
 )
 
 const (
@@ -30,8 +32,8 @@ var execution *executionEnv
 
 // implementation of vm executor with simple sanity check preventing use after free.
 type vmExecutor struct {
-	vmi  Interface
-	lane ExecutionLane
+    vmi  Interface
+    lane ExecutionLane
 }
 
 var _ Interface = (*vmExecutor)(nil)
@@ -55,7 +57,22 @@ func (e *vmExecutor) ApplyImplicitMessage(ctx context.Context, msg *types.Messag
 }
 
 func (e *vmExecutor) Flush(ctx context.Context) (cid.Cid, error) {
-	return e.vmi.Flush(ctx)
+    return e.vmi.Flush(ctx)
+}
+
+// StartTipsetReservations forwards the call to the underlying VM implementation,
+// guarding execution lanes similarly to message application.
+func (e *vmExecutor) StartTipsetReservations(ctx context.Context, plan map[address.Address]abi.TokenAmount) error {
+    token := execution.getToken(ctx, e.lane)
+    defer token.Done()
+    return e.vmi.StartTipsetReservations(ctx, plan)
+}
+
+// EndTipsetReservations forwards the call to the underlying VM implementation.
+func (e *vmExecutor) EndTipsetReservations(ctx context.Context) error {
+    token := execution.getToken(ctx, e.lane)
+    defer token.Done()
+    return e.vmi.EndTipsetReservations(ctx)
 }
 
 type executionToken struct {
