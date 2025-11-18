@@ -393,12 +393,12 @@ func (vm *LegacyVM) send(ctx context.Context, msg *types.Message, parent *Runtim
 // supported in FVM mode. This method is provided to satisfy the Interface and
 // enable scaffolding of the reservation flow in consensus.
 func (vm *LegacyVM) StartTipsetReservations(ctx context.Context, plan map[address.Address]abi.TokenAmount) error {
-    return nil
+	return nil
 }
 
 // EndTipsetReservations is a no-op for the legacy VM.
 func (vm *LegacyVM) EndTipsetReservations(ctx context.Context) error {
-    return nil
+	return nil
 }
 
 func checkMessage(msg *types.Message) error {

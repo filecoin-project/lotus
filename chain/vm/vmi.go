@@ -1,17 +1,17 @@
 package vm
 
 import (
-    "context"
-    "fmt"
-    "os"
+	"context"
+	"fmt"
+	"os"
 
-    cid "github.com/ipfs/go-cid"
+	cid "github.com/ipfs/go-cid"
 
-    "github.com/filecoin-project/go-address"
-    "github.com/filecoin-project/go-state-types/abi"
-    "github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
 
-    "github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 // stat counters
@@ -30,20 +30,20 @@ const (
 )
 
 type Interface interface {
-    // Applies the given message onto the VM's current state, returning the result of the execution
-    ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet, error)
-    // Same as above but for system messages (the Cron invocation and block reward payments).
-    // Must NEVER fail.
-    ApplyImplicitMessage(ctx context.Context, msg *types.Message) (*ApplyRet, error)
-    // Flush all buffered objects into the state store provided to the VM at construction.
-    Flush(ctx context.Context) (cid.Cid, error)
-    // StartTipsetReservations begins a tipset-scoped reservation session.
-    // The plan maps sender addresses to the total amount to reserve for gas
-    // across the full tipset. Implementations may ignore this call if the
-    // feature is disabled or unsupported.
-    StartTipsetReservations(ctx context.Context, plan map[address.Address]abi.TokenAmount) error
-    // EndTipsetReservations ends the active reservation session, if any.
-    EndTipsetReservations(ctx context.Context) error
+	// Applies the given message onto the VM's current state, returning the result of the execution
+	ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet, error)
+	// Same as above but for system messages (the Cron invocation and block reward payments).
+	// Must NEVER fail.
+	ApplyImplicitMessage(ctx context.Context, msg *types.Message) (*ApplyRet, error)
+	// Flush all buffered objects into the state store provided to the VM at construction.
+	Flush(ctx context.Context) (cid.Cid, error)
+	// StartTipsetReservations begins a tipset-scoped reservation session.
+	// The plan maps sender addresses to the total amount to reserve for gas
+	// across the full tipset. Implementations may ignore this call if the
+	// feature is disabled or unsupported.
+	StartTipsetReservations(ctx context.Context, plan map[address.Address]abi.TokenAmount) error
+	// EndTipsetReservations ends the active reservation session, if any.
+	EndTipsetReservations(ctx context.Context) error
 }
 
 // WARNING: You will not affect your node's execution by misusing this feature, but you will confuse yourself thoroughly!

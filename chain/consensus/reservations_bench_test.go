@@ -60,4 +60,3 @@ func BenchmarkBuildReservationPlan(b *testing.B) {
 		}
 	}
 }
-
