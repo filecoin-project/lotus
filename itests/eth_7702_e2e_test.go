@@ -198,16 +198,12 @@ func TestEth7702_DelegatedExecute(t *testing.T) {
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
 
-	// Enable feature and configure EthAccount.ApplyAndCall actor address to the
-	// authority's EthAccount actor (its f4 address).
 	ethtypes.Eip7702FeatureEnabled = true
 	senderKey, senderEthAddr, senderFilAddr := client.EVM().NewAccount()
-	// Fund the authority so it can pay for gas in both the 0x04 and follow-up calls.
 	client.EVM().TransferValueOrFail(ctx, client.DefaultKey.Address, senderFilAddr, types.FromFil(10))
 
 	ethtypes.EthAccountApplyAndCallActorAddr = senderFilAddr
 
-	// Deploy a simple delegate contract that writes to storage when invoked.
 	_, delegateFilAddr := client.EVM().DeployContractFromFilename(ctx, "contracts/DelegatecallActor.hex")
 	delegateEthAddr, err := ethtypes.EthAddressFromFilecoinAddress(delegateFilAddr)
 	require.NoError(t, err)
@@ -286,7 +282,6 @@ func TestEth7702_DelegatedExecute(t *testing.T) {
 	require.NotNil(t, callReceipt)
 	require.EqualValues(t, 1, callReceipt.Status, "delegated CALL to authority should succeed")
 
-	// Verify that storage has been updated under the authority address.
 	latest := ethtypes.NewEthBlockNumberOrHashFromPredefined("latest")
 	storage, err := client.EVM().EthGetStorageAt(ctx, senderEthAddr, nil, latest)
 	require.NoError(t, err)
@@ -298,6 +293,81 @@ func TestEth7702_DelegatedExecute(t *testing.T) {
 	foundDelegate := false
 	for _, a := range applyReceipt.DelegatedTo {
 		if a == delegateEthAddr {
+			foundDelegate = true
+			break
+		}
+	}
+	require.True(t, foundDelegate, "expected delegate address in 0x04 receipt.DelegatedTo")
+}
+
+func TestEth7702_ApplyAndCallOuterCall(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	ethtypes.Eip7702FeatureEnabled = true
+	senderKey, _, senderFilAddr := client.EVM().NewAccount()
+	client.EVM().TransferValueOrFail(ctx, client.DefaultKey.Address, senderFilAddr, types.FromFil(10))
+
+	ethtypes.EthAccountApplyAndCallActorAddr = senderFilAddr
+
+	_, contractFilAddr := client.EVM().DeployContractFromFilename(ctx, "contracts/DelegatecallActor.hex")
+	contractEthAddr, err := ethtypes.EthAddressFromFilecoinAddress(contractFilAddr)
+	require.NoError(t, err)
+
+	authz := []ethtypes.EthAuthorization{
+		makeSignedAuthorization(t, senderKey.PrivateKey, contractEthAddr, 0),
+	}
+
+	selector := kit.CalcFuncSignature("setVars(uint256)")
+	arg := make([]byte, 32)
+	arg[31] = 9
+	input := append(selector, arg...)
+
+	tx := &ethtypes.Eth7702TxArgs{
+		ChainID:              buildconstants.Eip155ChainId,
+		Nonce:                0,
+		To:                   &contractEthAddr,
+		Value:                big.Zero(),
+		MaxFeePerGas:         types.NewInt(1_000_000_000),
+		MaxPriorityFeePerGas: types.NewInt(1_000_000_000),
+		GasLimit:             700_000,
+		Input:                input,
+		AuthorizationList:    authz,
+		V:                    big.Zero(),
+		R:                    big.Zero(),
+		S:                    big.Zero(),
+	}
+
+	preimage, err := tx.ToRlpUnsignedMsg()
+	require.NoError(t, err)
+	sig, err := kit.SigDelegatedSign(senderKey.PrivateKey, preimage)
+	require.NoError(t, err)
+	require.Equal(t, typescrypto.SigTypeDelegated, sig.Type)
+	require.NoError(t, tx.InitialiseSignature(*sig))
+
+	rawSigned, err := tx.ToRlpSignedMsg()
+	require.NoError(t, err)
+	hash, err := client.EVM().EthSendRawTransaction(ctx, rawSigned)
+	require.NoError(t, err)
+
+	applyReceipt, err := client.EVM().WaitTransaction(ctx, hash)
+	require.NoError(t, err)
+	require.NotNil(t, applyReceipt)
+	require.EqualValues(t, ethtypes.EIP7702TxType, applyReceipt.Type)
+	require.EqualValues(t, 1, applyReceipt.Status, "ApplyAndCall outer call should be success")
+	require.Len(t, applyReceipt.AuthorizationList, 1)
+	require.Equal(t, contractEthAddr, applyReceipt.AuthorizationList[0].Address)
+
+	latest := ethtypes.NewEthBlockNumberOrHashFromPredefined("latest")
+	storage, err := client.EVM().EthGetStorageAt(ctx, contractEthAddr, nil, latest)
+	require.NoError(t, err)
+	expected := make([]byte, 32)
+	expected[31] = 9
+	require.Equal(t, ethtypes.EthBytes(expected), storage, "contract storage should reflect outer call execution")
+
+	foundDelegate := false
+	for _, a := range applyReceipt.DelegatedTo {
+		if a == contractEthAddr {
 			foundDelegate = true
 			break
 		}
