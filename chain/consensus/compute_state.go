@@ -196,6 +196,10 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 		}
 	}
 
+	// Network version at the execution epoch, used for reservations activation
+	// and gating.
+	nv := sm.GetNetworkVersion(ctx, epoch)
+
 	vmEarlyDuration := partDone()
 	earlyCronGas := cronGas
 	cronGas = 0
@@ -205,6 +209,18 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("making vm: %w", err)
 	}
+
+	// Start a tipset reservation session around explicit messages. A deferred
+	// call ensures the session is closed on all paths, while the explicit call
+	// before cron keeps the session scope limited to explicit messages.
+	if err := startReservations(ctx, vmi, bms, nv); err != nil {
+		return cid.Undef, cid.Undef, xerrors.Errorf("starting tipset reservations: %w", err)
+	}
+	defer func() {
+		if err := endReservations(ctx, vmi, nv); err != nil {
+			log.Warnw("ending tipset reservations failed", "error", err)
+		}
+	}()
 
 	var (
 		receipts      []*types.MessageReceipt
@@ -258,6 +274,12 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 		if rErr != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("error applying reward: %w", rErr)
 		}
+	}
+
+	// End the reservation session before running cron so that reservations
+	// strictly cover explicit messages only.
+	if err := endReservations(ctx, vmi, nv); err != nil {
+		return cid.Undef, cid.Undef, xerrors.Errorf("ending tipset reservations: %w", err)
 	}
 
 	vmMsgDuration := partDone()
