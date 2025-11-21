@@ -182,7 +182,7 @@ type State interface {
 	CumsumRealized() (abi.StoragePower, error)
 
 	// InitialPledgeForPower computes the pledge requirement for committing new quality-adjusted power
-	// to the network, given the current network total and baseline power, per-epoch  reward, and
+	// to the network, given the current network total and baseline power, per-epoch reward, and
 	// circulating token supply.
 	//
 	// Prior to actors version 15, the epochsSinceRampStart and rampDurationEpochs arguments have
