@@ -36,7 +36,47 @@ For the set of changes since the last stable release:
 
 ## 👨‍👩‍👧‍👦 Contributors
 
-
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Phi-rjan | 11 | +39018/-254 | 240 |
+| Rod Vagg | 12 | +793/-656 | 45 |
+| dependabot[bot] | 33 | +483/-415 | 69 |
+| Jintu Kumar Das | 1 | +372/-372 | 24 |
+| Adin Schmahmann | 1 | +525/-53 | 6 |
+| Mikers | 1 | +519/-0 | 18 |
+| TippyFlits | 6 | +248/-160 | 22 |
+| Piotr Galar | 3 | +57/-44 | 14 |
+| aceppaluni | 1 | +48/-34 | 3 |
+| Block Wizard | 5 | +37/-36 | 18 |
+| tediou5 | 2 | +58/-6 | 4 |
+| Phi | 2 | +37/-17 | 12 |
+| Luca Moretti | 4 | +24/-24 | 18 |
+| cui | 1 | +22/-25 | 5 |
+| beck | 1 | +13/-22 | 4 |
+| Aryan Tikarya | 1 | +21/-14 | 2 |
+| parthshah1 | 1 | +11/-23 | 3 |
+| 0x5459 | 1 | +28/-4 | 4 |
+| fengyuchuanshen | 1 | +7/-7 | 7 |
+| web3-bot | 4 | +6/-7 | 5 |
+| Steve Loeppky | 1 | +7/-5 | 1 |
+| Snezhkko | 1 | +6/-6 | 5 |
+| Krishang Shah | 1 | +6/-5 | 1 |
+| Lee | 1 | +5/-5 | 1 |
+| stemlaud | 1 | +4/-4 | 4 |
+| asttool | 1 | +4/-4 | 4 |
+| Jakub Sztandera | 1 | +0/-8 | 1 |
+| Hubert | 1 | +4/-3 | 3 |
+| suranmiao | 1 | +2/-2 | 2 |
+| reddaisyy | 1 | +2/-2 | 1 |
+| joemicky | 1 | +2/-2 | 1 |
+| efcking | 1 | +2/-2 | 1 |
+| CertiK | 1 | +2/-1 | 1 |
+| wyrapeseed | 1 | +1/-1 | 1 |
+| letreturn | 1 | +1/-1 | 1 |
+| juejinyuxitu | 1 | +1/-1 | 1 |
+| cargoedit | 1 | +1/-1 | 1 |
+| asamuj | 1 | +1/-1 | 1 |
+| spuradage | 1 | +0/-1 | 1 |
 
 # Node and Miner v1.34.1 / 2025-09-15
 
