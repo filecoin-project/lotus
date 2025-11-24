@@ -8,15 +8,35 @@
 > * [CHANGELOG_1.2x.md](./documentation/changelog/CHANGELOG_1.2x.md) - v1.20.0 to v1.29.2
 
 # UNRELEASED
+
+# Node and Miner v1.34.2-rc1 / 2025-11-24
+
+This is the first release candidate of the Lotus and Lotus-Miner v1.34.2, which includes bug fixes, CLI enhancements, and dependency updates. These improvements, along with updated dependencies, enhance the stability and usability of Lotus for both node operators and storage providers.
+
+## ☢️ Upgrade Warnings ☢️
+
 - The minimum supported Golang version is now `1.24.7`
+
+## Features and Bug Fixes
+
 - feat(gateway): expose StateGetRandomnessDigestFromBeacon ([filecoin-project/lotus#13339](https://github.com/filecoin-project/lotus/pull/13339))
-- chore(deps): update of quic-go to v0.54.1 and go-libp2p to v0.43.0 ([filecoin-project/lotus#13361](https://github.com/filecoin-project/lotus/pull/13361))
-- feat(spcli): add a `deposit-margin-factor` option to `lotus-miner actor new` and `lotus-shed miner create` so the sent deposit still covers the on-chain requirement if it rises between lookup and execution
-- feat(cli): lotus evm deploy prints message CID ([filecoin-project/lotus#13378](https://github.com/filecoin-project/lotus/pull/13378))
-- chore: update benchmark tests to use testing.B.Loop for improved performance ([filecoin-project/lotus#13385](https://github.com/filecoin-project/lotus/pull/13385)) ([filecoin-project/lotus#13396](https://github.com/filecoin-project/lotus/pull/13396)) ([filecoin-project/lotus#13405](https://github.com/filecoin-project/lotus/pull/13405))
+- fix(cli): add deposit-margin-factor to the new miner commands ([filecoin-project/lotus#13365](https://github.com/filecoin-project/lotus/pull/13365))
+- feat(spcli): add a `deposit-margin-factor` option to `lotus-miner actor new` and `lotus-shed miner create` so the sent deposit still covers the on-chain requirement if it rises between lookup and execution ([filecoin-project/lotus#13407](https://github.com/filecoin-project/lotus/pull/13407))
+- feat(cli): lotus evm deploy prints message CID ([filecoin-project/lotus#13241](https://github.com/filecoin-project/lotus/pull/13241))
+- fix(miner): ensure sender account exists ([filecoin-project/lotus#13348](https://github.com/filecoin-project/lotus/pull/13348))
 - fix(eth): properly return vm error in all gas estimation methods ([filecoin-project/lotus#13389](https://github.com/filecoin-project/lotus/pull/13389))
 - chore: all actor cmd support --actor ([filecoin-project/lotus#13391](https://github.com/filecoin-project/lotus/pull/13391))
-- feat(spcli): add a `deposit-margin-factor` option to `lotus-miner init` so the sent deposit still covers the on-chain requirement if it rises between lookup and execution
+
+## 📝 Changelog
+
+For the set of changes since the last stable release:
+
+- Node: https://github.com/filecoin-project/lotus/compare/release/v1.34.1...release/v1.34.2-rc1
+- Miner: https://github.com/filecoin-project/lotus/compare/release/v1.34.1...release/miner/v1.34.2-rc1
+
+## 👨‍👩‍👧‍👦 Contributors
+
+
 
 # Node and Miner v1.34.1 / 2025-09-15
 
