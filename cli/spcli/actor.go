@@ -173,7 +173,8 @@ func ActorDealSettlementCmd(getActor ActorAddressGetter) *cli.Command {
 				}
 			}
 
-			fmt.Printf("There are a total of %v deals, and about %v messages will be sent out.\n", len(dealIDs), len(dealIDs)/cctx.Int("max-deals"))
+			msgLen := (len(dealIDs) + cctx.Int("max-deals") - 1) / cctx.Int("max-deals")
+			fmt.Printf("There are a total of %v deals, and about %v messages will be sent out.\n", len(dealIDs), msgLen)
 
 			if !cctx.Bool("really-do-it") {
 				return fmt.Errorf("pass --really-do-it to confirm this action")
