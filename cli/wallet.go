@@ -433,12 +433,6 @@ var walletSign = &cli.Command{
 	Name:      "sign",
 	Usage:     "sign a message",
 	ArgsUsage: "<signing address> <hexMessage>",
-	Flags: []cli.Flag{
-		&cli.BoolFlag{
-			Name:  "fevm",
-			Usage: "Use EIP-191 (Ethereum-style) prefix for signing FEVM messages per FRC-102",
-		},
-	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -465,21 +459,13 @@ var walletSign = &cli.Command{
 			return err
 		}
 
-		var prefix []byte
-		if cctx.Bool("fevm") {
-			//EVM-Compatible
-			prefix = []byte(fmt.Sprintf("\x19Ethereum Signed Message:\n%d", len(msg)))
-		} else {
-			//Filecoin
-			prefix = []byte(fmt.Sprintf("\x19Filecoin Signed Message:\n%d", len(msg)))
+		if addr.Protocol() == address.Delegated {
+			msg = append([]byte{0x19, 0x46}, msg...)
 		}
 
-		toSign := append(prefix, msg...)
-
-		sig, err := api.WalletSign(ctx, addr, toSign)
+		sig, err := api.WalletSign(ctx, addr, msg)
 
 		if err != nil {
-			// Check if the address is a multisig address
 			act, actErr := api.StateGetActor(ctx, addr, types.EmptyTSK)
 			if actErr == nil && builtin.IsMultisigActor(act.Code) {
 				return xerrors.Errorf("specified signer address is a multisig actor, it doesn’t have keys to sign transactions. To send a message with a multisig, signers of the multisig need to propose and approve transactions.")
@@ -524,6 +510,10 @@ var walletVerify = &cli.Command{
 			return err
 		}
 
+		if addr.Protocol() == address.Delegated {
+			msg = append([]byte{0x19, 0x46}, msg...)
+		}
+		
 		sigBytes, err := hex.DecodeString(cctx.Args().Get(2))
 
 		if err != nil {

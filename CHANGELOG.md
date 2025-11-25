@@ -13,7 +13,7 @@
 - chore(deps): update of quic-go to v0.54.1 and go-libp2p to v0.43.0 ([filecoin-project/lotus#13361](https://github.com/filecoin-project/lotus/pull/13361))
 - feat(spcli): add a `deposit-margin-factor` option to `lotus-miner actor new` and `lotus-shed miner create` so the sent deposit still covers the on-chain requirement if it rises between lookup and execution
 - feat(cli): lotus evm deploy prints message CID ([filecoin-project/lotus#13378](https://github.com/filecoin-project/lotus/pull/13378))
-- feat(cli): add FRC-102 compatible EIP-191 signing via --fevm flag ([filecoin-project/lotus#13388](https://github.com/filecoin-project/lotus/pull/13388))
+- feat(cli): wallet sign and verify apply FRC-102 personal_sign prefix for delegated addresses ([filecoin-project/lotus#13388](https://github.com/filecoin-project/lotus/pull/13388))
 
 # Node and Miner v1.34.1 / 2025-09-15
 
