@@ -10779,7 +10779,7 @@
         {
             "name": "Filecoin.MpoolBatchPushMessage",
             "description": "```go\nfunc (s *FullNodeStruct) MpoolBatchPushMessage(p0 context.Context, p1 []*types.Message, p2 *MessageSendSpec) ([]*types.SignedMessage, error) {\n\tif s.Internal.MpoolBatchPushMessage == nil {\n\t\treturn *new([]*types.SignedMessage), ErrNotSupported\n\t}\n\treturn s.Internal.MpoolBatchPushMessage(p0, p1, p2)\n}\n```",
-            "summary": "MpoolBatchPushMessage batch pushes a unsigned message to mempool.\n",
+            "summary": "MpoolBatchPushMessage batch pushes an unsigned message to mempool.\n",
             "paramStructure": "by-position",
             "params": [
                 {
