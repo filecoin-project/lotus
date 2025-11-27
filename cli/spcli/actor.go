@@ -1509,7 +1509,7 @@ var ActorNewMinerCmd = &cli.Command{
 
 		var owner address.Address
 		if cctx.String("owner") == "" {
-			return xerrors.Errorf("must provide a owner address")
+			return xerrors.Errorf("must provide an owner address")
 		}
 		owner, err = address.NewFromString(cctx.String("owner"))
 
