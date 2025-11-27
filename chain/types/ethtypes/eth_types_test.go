@@ -322,7 +322,6 @@ func TestEthFilterResultMarshalJSON(t *testing.T) {
 	}
 
 	for _, tc := range testcases {
-		tc := tc
 		t.Run("", func(t *testing.T) {
 			data, err := json.Marshal(tc.res)
 			require.NoError(t, err)
@@ -446,7 +445,6 @@ func TestEthAddressListUnmarshalJSON(t *testing.T) {
 		},
 	}
 	for _, tc := range testcases {
-		tc := tc
 		t.Run("", func(t *testing.T) {
 			var got EthAddressList
 			err := json.Unmarshal([]byte(tc.input), &got)
