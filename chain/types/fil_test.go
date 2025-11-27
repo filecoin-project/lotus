@@ -104,7 +104,6 @@ func TestFilShort(t *testing.T) {
 		{fil: "-0.0002212344", expect: "-221.234 μFIL"},
 		{fil: "-0.00022123444", expect: "-221.234 μFIL"},
 	} {
-		s := s
 		t.Run(s.fil, func(t *testing.T) {
 			f, err := ParseFIL(s.fil)
 			require.NoError(t, err)

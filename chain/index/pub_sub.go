@@ -41,13 +41,11 @@ func (si *SqliteIndexer) notifyUpdateSubs() {
 	si.mu.Lock()
 	tSubs := make([]*updateSub, 0, len(si.updateSubs))
 	for _, tSub := range si.updateSubs {
-		tSub := tSub
 		tSubs = append(tSubs, tSub)
 	}
 	si.mu.Unlock()
 
 	for _, tSub := range tSubs {
-		tSub := tSub
 		select {
 		case tSub.ch <- chainIndexUpdated{}:
 		case <-tSub.ctx.Done():
