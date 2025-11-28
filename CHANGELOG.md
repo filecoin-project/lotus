@@ -9,9 +9,9 @@
 
 # UNRELEASED
 
-# Node and Miner v1.34.2-rc1 / 2025-11-24
+# Node and Miner v1.34.2 / 2025-12-01
 
-This is the first release candidate of the Lotus and Lotus-Miner v1.34.2, which includes bug fixes, CLI enhancements, and dependency updates. These improvements, along with updated dependencies, enhance the stability and usability of Lotus for both node operators and storage providers.
+The Lotus and Lotus-Miner v1.34.2 release includes numerous bug fixes, CLI enhancements, and dependency updates. These improvements, along with updated dependencies, enhance the stability and usability of Lotus for both node operators and storage providers.
 
 ## ☢️ Upgrade Warnings ☢️
 
