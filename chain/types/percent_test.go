@@ -20,7 +20,6 @@ func TestPercent(t *testing.T) {
 		{-1012, "-10.12"},
 		{0, "0.0"},
 	} {
-		tc := tc
 		t.Run(fmt.Sprintf("%d <> %s", tc.p, tc.s), func(t *testing.T) {
 			m, err := tc.p.MarshalJSON()
 			require.NoError(t, err)
