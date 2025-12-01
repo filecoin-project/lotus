@@ -575,7 +575,7 @@ func resolveOnce(bs blockstore.Blockstore, tse stmgr.Executor) func(ctx context.
 		if names[0] == "@state" {
 			var act types.Actor
 			if err := act.UnmarshalCBOR(bytes.NewReader(nd.RawData())); err != nil {
-				return nil, nil, xerrors.Errorf("unmarshaling actor struct for @state: %w", err)
+				return nil, nil, xerrors.Errorf("unmarshalling actor struct for @state: %w", err)
 			}
 
 			head, err := ds.Get(ctx, act.Head)

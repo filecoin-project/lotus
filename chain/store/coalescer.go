@@ -134,7 +134,7 @@ func (c *HeadChangeCoalescer) background(minDelay, maxDelay, mergeInterval time.
 }
 
 func (c *HeadChangeCoalescer) coalesce(revert, apply []*types.TipSet) {
-	// newly reverted tipsets cancel out with pending applys.
+	// newly reverted tipsets cancel out with pending applies.
 	// similarly, newly applied tipsets cancel out with pending reverts.
 
 	// pending tipsets
@@ -160,13 +160,13 @@ func (c *HeadChangeCoalescer) coalesce(revert, apply []*types.TipSet) {
 	}
 
 	// coalesced revert set
-	// - pending reverts are cancelled by incoming applys
-	// - incoming reverts are cancelled by pending applys
+	// - pending reverts are cancelled by incoming applies
+	// - incoming reverts are cancelled by pending applies
 	newRevert := c.merge(c.revert, revert, pendApply, applying)
 
 	// coalesced apply set
-	// - pending applys are cancelled by incoming reverts
-	// - incoming applys are cancelled by pending reverts
+	// - pending applies are cancelled by incoming reverts
+	// - incoming applies are cancelled by pending reverts
 	newApply := c.merge(c.apply, apply, pendRevert, reverting)
 
 	// commit the coalesced sets

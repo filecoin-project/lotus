@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"reflect"
@@ -10,6 +11,8 @@ import (
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/exitcode"
+
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
 var invalidExecutionRevertedMsg = xerrors.New("invalid execution reverted error")
@@ -36,7 +39,7 @@ var (
 	ErrF3Disabled = &errF3Disabled{}
 	// ErrF3ParticipationTicketInvalid signals that F3ParticipationTicket cannot be decoded.
 	ErrF3ParticipationTicketInvalid = &errF3ParticipationTicketInvalid{}
-	// ErrF3ParticipationTicketExpired signals that the current GPBFT instance as surpassed the expiry of the ticket.
+	// ErrF3ParticipationTicketExpired signals that the current GPBFT instance has surpassed the expiry of the ticket.
 	ErrF3ParticipationTicketExpired = &errF3ParticipationTicketExpired{}
 	// ErrF3ParticipationIssuerMismatch signals that the ticket is not issued by the current node.
 	ErrF3ParticipationIssuerMismatch = &errF3ParticipationIssuerMismatch{}
@@ -167,10 +170,29 @@ func (e *ErrExecutionReverted) ToJSONRPCError() (jsonrpc.JSONRPCError, error) {
 
 // NewErrExecutionReverted creates a new ErrExecutionReverted with the given reason.
 func NewErrExecutionReverted(exitCode exitcode.ExitCode, error, reason string, data []byte) *ErrExecutionReverted {
+	revertReason := ""
+	if reason != "" {
+		revertReason = fmt.Sprintf(", revert reason=[%s]", reason)
+	}
 	return &ErrExecutionReverted{
-		Message: fmt.Sprintf("message execution failed (exit=[%s], revert reason=[%s], vm error=[%s])", exitCode, reason, error),
+		Message: fmt.Sprintf("message execution failed (exit=[%s]%s, vm error=[%s])", exitCode, revertReason, error),
 		Data:    fmt.Sprintf("0x%x", data),
 	}
+}
+
+// NewErrExecutionRevertedFromResult creates an ErrExecutionReverted from an InvocResult.
+// It decodes the CBOR-encoded return data and parses any Ethereum revert reason.
+func NewErrExecutionRevertedFromResult(res *InvocResult) error {
+	reason := ""
+	var cbytes abi.CborBytes
+	if err := cbytes.UnmarshalCBOR(bytes.NewReader(res.MsgRct.Return)); err == nil {
+		if len(cbytes) > 0 {
+			reason = ethtypes.ParseEthRevert(cbytes)
+		} else {
+			reason = "none"
+		}
+	} // else likely a non-ethereum error
+	return NewErrExecutionReverted(res.MsgRct.ExitCode, res.Error, reason, cbytes)
 }
 
 type ErrNullRound struct {

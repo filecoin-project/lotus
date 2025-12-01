@@ -318,7 +318,7 @@ type FullNode interface {
 	// MpoolBatchPushUntrusted batch pushes a signed message to mempool from untrusted sources.
 	MpoolBatchPushUntrusted(context.Context, []*types.SignedMessage) ([]cid.Cid, error) //perm:write
 
-	// MpoolBatchPushMessage batch pushes a unsigned message to mempool.
+	// MpoolBatchPushMessage batch pushes an unsigned message to mempool.
 	MpoolBatchPushMessage(context.Context, []*types.Message, *MessageSendSpec) ([]*types.SignedMessage, error) //perm:sign
 
 	// MpoolCheckMessages performs logical checks on a batch of messages

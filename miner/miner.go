@@ -198,7 +198,7 @@ func (m *Miner) niceSleep(d time.Duration) bool {
 //     6a. If we mined a block, we update our state and push it out to the network
 //     via gossipsub.
 //     6b. If we didn't mine a block, we consider this to be a nil round on top of
-//     the mining base we selected. If other miner or miners on the network
+//     the mining base we selected. If other miners on the network
 //     were eligible to mine, we will receive their blocks via gossipsub and
 //     we will select that tipset on the next iteration of the loop, thus
 //     discarding our null round.
@@ -255,7 +255,7 @@ minerLoop:
 			}
 
 			// TODO: need to change the orchestration here. the problem is that
-			// we are waiting *after* we enter this loop and selecta mining
+			// we are waiting *after* we enter this loop and select a mining
 			// candidate, which is almost certain to change in multiminer
 			// tests. Instead, we should block before entering the loop, so
 			// that when the test 'MineOne' function is triggered, we pull our

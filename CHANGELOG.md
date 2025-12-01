@@ -8,12 +8,16 @@
 > * [CHANGELOG_1.2x.md](./documentation/changelog/CHANGELOG_1.2x.md) - v1.20.0 to v1.29.2
 
 # UNRELEASED
-- The minimum supported Golang version is now `1.24.7`
-- feat(gateway): expose StateGetRandomnessDigestFromBeacon ([filecoin-project/lotus#13339](https://github.com/filecoin-project/lotus/pull/13339))
-- chore(deps): update of quic-go to v0.54.1 and go-libp2p to v0.43.0 ([filecoin-project/lotus#13361](https://github.com/filecoin-project/lotus/pull/13361))
-- feat(spcli): add a `deposit-margin-factor` option to `lotus-miner actor new` and `lotus-shed miner create` so the sent deposit still covers the on-chain requirement if it rises between lookup and execution
-- feat(cli): lotus evm deploy prints message CID ([filecoin-project/lotus#13378](https://github.com/filecoin-project/lotus/pull/13378))
+
 - feat(cli): wallet sign and verify apply FRC-102 personal_sign prefix for delegated addresses ([filecoin-project/lotus#13388](https://github.com/filecoin-project/lotus/pull/13388))
+
+## 👌 Improvements
+- docs: fix outdated link in documentation ([#13436](https://github.com/filecoin-project/lotus/pull/13436))
+- docs: fix dead link in documentation ([#13437](https://github.com/filecoin-project/lotus/pull/13437))
+
+# UNRELEASED v1.34.2
+
+See https://github.com/filecoin-project/lotus/blob/release/v1.34.2/CHANGELOG.md 
 
 # Node and Miner v1.34.1 / 2025-09-15
 
@@ -21,7 +25,7 @@ This is a non-critical patch release that fixes an issue with the Lotus `v1.34.0
 
 # Node and Miner v1.34.0 / 2025-09-11
 
-This is a **MANDATORY Lotus v1.34.0 release**, which will deliver the Filecoin network version 27, codenamed “Golden Week” 🏮. This release candidate sets the upgrade epoch for the Mainnet network to **Epoch 5348280:  2025-09-24T23:00:00Z**.  (See the [local time for other timezones](https://www.worldtimebuddy.com/?qm=1&lid=100,5128581,5368361,1816670&h=100&date=2025-9-24&sln=23-24&hf=1&c=1196).)  
+This is a **MANDATORY Lotus v1.34.0 release**, which will deliver the Filecoin network version 27, codenamed “Golden Week” 🏮. This release candidate sets the upgrade epoch for the Mainnet network to **Epoch 5348280:  2025-09-24T23:00:00Z**.  (See the [local time for other timezones](https://www.worldtimebuddy.com/?qm=1&lid=100,5128581,5368361,1816670&h=100&date=2025-9-24&sln=23-24&hf=1&c=1196).)
 
 ## ☢️ Upgrade Warnings ☢️
 - All Lotus node and Storage Provider (SP) operators must upgrade to v1.34.x before the specified date for the Mainnet network.

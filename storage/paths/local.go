@@ -868,7 +868,7 @@ func (st *Local) MoveStorage(ctx context.Context, s storiface.SectorRef, types s
 		}
 
 		if err := Move(storiface.PathByType(src, fileType), storiface.PathByType(dest, fileType)); err != nil {
-			// TODO: attempt some recovery (check if src is still there, re-declare)
+			// TODO: attempt some recovery (check if src is still there, redeclare)
 			return xerrors.Errorf("moving sector %v(%d): %w", s, fileType, err)
 		}
 

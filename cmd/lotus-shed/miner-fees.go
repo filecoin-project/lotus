@@ -211,7 +211,7 @@ var minerFeesCmd = &cli.Command{
 					if err != nil {
 						return xerrors.Errorf("getting tipset at deadline end epoch: %w", err)
 					}
-					// StateCompute at the height we arived at, which may not be dlEndEpoch if nulls were involved
+					// StateCompute at the height we arrived at, which may not be dlEndEpoch if nulls were involved
 					compute, err := api.StateCompute(ctx, dlEndTs.Height(), nil, dlEndTs.Key())
 					if err != nil {
 						return xerrors.Errorf("computing tipset at deadline end epoch: %w", err)

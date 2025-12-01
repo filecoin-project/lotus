@@ -14,9 +14,9 @@ const ({{range .actorVersions}}
 
 /* inline-gen start */
 
-var LatestVersion = 17
+var LatestVersion = 18
 
-var Versions = []int{0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17}
+var Versions = []int{0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18}
 
 const (
 	Version0  Version = 0
@@ -36,6 +36,7 @@ const (
 	Version15 Version = 15
 	Version16 Version = 16
 	Version17 Version = 17
+	Version18 Version = 18
 )
 
 /* inline-gen end */
