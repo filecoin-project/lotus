@@ -9,9 +9,9 @@
 
 # UNRELEASED
 
-# Node and Miner v1.34.2-rc1 / 2025-11-24
+# Node and Miner v1.34.2 / 2025-12-01
 
-This is the first release candidate of the Lotus and Lotus-Miner v1.34.2, which includes bug fixes, CLI enhancements, and dependency updates. These improvements, along with updated dependencies, enhance the stability and usability of Lotus for both node operators and storage providers.
+The Lotus and Lotus-Miner v1.34.2 release includes numerous bug fixes, CLI enhancements, and dependency updates. These improvements, along with updated dependencies, enhance the stability and usability of Lotus for both node operators and storage providers.
 
 ## ☢️ Upgrade Warnings ☢️
 
@@ -31,8 +31,8 @@ This is the first release candidate of the Lotus and Lotus-Miner v1.34.2, which 
 
 For the set of changes since the last stable release:
 
-- Node: https://github.com/filecoin-project/lotus/compare/release/v1.34.1...release/v1.34.2-rc1
-- Miner: https://github.com/filecoin-project/lotus/compare/release/v1.34.1...release/miner/v1.34.2-rc1
+- Node: https://github.com/filecoin-project/lotus/compare/release/v1.34.1...release/v1.34.2
+- Miner: https://github.com/filecoin-project/lotus/compare/release/v1.34.1...release/miner/v1.34.2
 
 ## 👨‍👩‍👧‍👦 Contributors
 
