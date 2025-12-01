@@ -202,7 +202,6 @@ func TestPrintDeprecated(t *testing.T) {
 		{"set old", "[Old]\nThing1 = 101\nThing2 = 102\n", New{Thing1: 101, Thing2: 102}},
 	}
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			v, err := FromReader(bytes.NewReader([]byte(tc.cfg)), &ParentCfg{New: defaultNew})
 			require.NoError(t, err)

@@ -25,7 +25,6 @@ func TestPoissonFunction(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		test := test
 		t.Run(fmt.Sprintf("lam-%d-%d", test.lambdaBase, test.lambdaShift), func(t *testing.T) {
 			b := &bytes.Buffer{}
 			b.WriteString("icdf\n")
@@ -58,7 +57,6 @@ func TestLambdaFunction(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		test := test
 		t.Run(fmt.Sprintf("%s-%s", test.power, test.totalPower), func(t *testing.T) {
 			pow, ok := new(big.Int).SetString(test.power, 10)
 			assert.True(t, ok)
