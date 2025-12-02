@@ -459,10 +459,13 @@ var walletSign = &cli.Command{
 			return err
 		}
 
+		if addr.Protocol() == address.Delegated {
+			msg = append([]byte{0x19, 0x46}, msg...)
+		}
+
 		sig, err := api.WalletSign(ctx, addr, msg)
 
 		if err != nil {
-			// Check if the address is a multisig address
 			act, actErr := api.StateGetActor(ctx, addr, types.EmptyTSK)
 			if actErr == nil && builtin.IsMultisigActor(act.Code) {
 				return xerrors.Errorf("specified signer address is a multisig actor, it doesn’t have keys to sign transactions. To send a message with a multisig, signers of the multisig need to propose and approve transactions.")
@@ -505,6 +508,10 @@ var walletVerify = &cli.Command{
 
 		if err != nil {
 			return err
+		}
+
+		if addr.Protocol() == address.Delegated {
+			msg = append([]byte{0x19, 0x46}, msg...)
 		}
 
 		sigBytes, err := hex.DecodeString(cctx.Args().Get(2))
