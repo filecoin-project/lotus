@@ -513,7 +513,7 @@ var walletVerify = &cli.Command{
 		if addr.Protocol() == address.Delegated {
 			msg = append([]byte{0x19, 0x46}, msg...)
 		}
-		
+
 		sigBytes, err := hex.DecodeString(cctx.Args().Get(2))
 
 		if err != nil {
