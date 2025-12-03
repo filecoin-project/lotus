@@ -9,6 +9,21 @@
 
 # UNRELEASED
 
+# Node v1.34.3 / 2025-12-03
+
+This is a patch release addressing Docker image glibc compatibility errors reported in v1.34.2. This update is only necessary for users running Lotus via Docker who encountered `GLIBC_2.32/2.33/2.34 not found` errors.
+
+## Bug Fixes
+
+- fix(docker): upgrade base image from ubuntu:20.04 to ubuntu:22.04 ([filecoin-project/lotus#13441](https://github.com/filecoin-project/lotus/pull/13441))
+  - The build stage uses golang:1.24.7-bookworm (glibc 2.36), but the runtime base was ubuntu:20.04 (glibc 2.31), causing GLIBC_2.32/2.33/2.34 errors when running lotus binaries.
+
+## 📝 Changelog
+
+For the set of changes since the last stable release:
+
+- Node: https://github.com/filecoin-project/lotus/compare/release/v1.34.2...release/v1.34.3
+
 # Node and Miner v1.34.2 / 2025-12-01
 
 The Lotus and Lotus-Miner v1.34.2 release includes numerous bug fixes, CLI enhancements, and dependency updates. These improvements, along with updated dependencies, enhance the stability and usability of Lotus for both node operators and storage providers.
