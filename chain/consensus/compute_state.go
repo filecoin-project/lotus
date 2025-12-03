@@ -13,6 +13,7 @@ import (
 	"golang.org/x/xerrors"
 
 	amt4 "github.com/filecoin-project/go-amt-ipld/v4"
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
@@ -222,50 +223,65 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 		}
 	}()
 
-	var (
-		receipts      []*types.MessageReceipt
-		storingEvents = sm.ChainStore().IsStoringEvents()
-		events        [][]types.Event
-		processedMsgs = make(map[cid.Cid]struct{})
-	)
-
-	var msgGas int64
-
-	for _, b := range bms {
-		penalty := types.NewInt(0)
-		gasReward := big.Zero()
-
-		for _, cm := range append(b.BlsMessages, b.SecpkMessages...) {
-			m := cm.VMMessage()
-			if _, found := processedMsgs[m.Cid()]; found {
-				continue
-			}
-			r, err := vmi.ApplyMessage(ctx, cm)
-			if err != nil {
-				return cid.Undef, cid.Undef, err
-			}
-
-			msgGas += r.GasUsed
-
-			receipts = append(receipts, &r.MessageReceipt)
-			gasReward = big.Add(gasReward, r.GasCosts.MinerTip)
-			penalty = big.Add(penalty, r.GasCosts.MinerPenalty)
-
-			if storingEvents {
-				// Appends nil when no events are returned to preserve positional alignment.
-				events = append(events, r.Events)
-			}
-
-			if em != nil {
-				if err := em.MessageApplied(ctx, ts, cm.Cid(), m, r, false); err != nil {
+		var (
+			receipts      []*types.MessageReceipt
+			storingEvents = sm.ChainStore().IsStoringEvents()
+			events        [][]types.Event
+			processedMsgs = make(map[cid.Cid]struct{})
+			seenSenders   = make(map[address.Address]struct{}) // Strict Sender Partitioning
+		)
+	
+		var msgGas int64
+	
+		for _, b := range bms {
+			penalty := types.NewInt(0)
+			gasReward := big.Zero()
+			currentBlockSenders := make(map[address.Address]struct{})
+	
+			for _, cm := range append(b.BlsMessages, b.SecpkMessages...) {
+				m := cm.VMMessage()
+				if _, found := processedMsgs[m.Cid()]; found {
+					continue
+				}
+	
+				// Strict Sender Partitioning:
+				// If this sender was seen in a previous block (higher precedence),
+				// ignore this message completely.
+				if _, found := seenSenders[m.From]; found {
+					continue
+				}
+	
+				r, err := vmi.ApplyMessage(ctx, cm)
+				if err != nil {
 					return cid.Undef, cid.Undef, err
 				}
+	
+				msgGas += r.GasUsed
+	
+				receipts = append(receipts, &r.MessageReceipt)
+				gasReward = big.Add(gasReward, r.GasCosts.MinerTip)
+				penalty = big.Add(penalty, r.GasCosts.MinerPenalty)
+	
+				if storingEvents {
+					// Appends nil when no events are returned to preserve positional alignment.
+					events = append(events, r.Events)
+				}
+	
+				if em != nil {
+					if err := em.MessageApplied(ctx, ts, cm.Cid(), m, r, false); err != nil {
+						return cid.Undef, cid.Undef, err
+					}
+				}
+				processedMsgs[m.Cid()] = struct{}{}
+				currentBlockSenders[m.From] = struct{}{}
 			}
-			processedMsgs[m.Cid()] = struct{}{}
-		}
-
-		params := &reward.AwardBlockRewardParams{
-			Miner:     b.Miner,
+	
+			// After processing the block, mark its senders as seen for future blocks.
+			for s := range currentBlockSenders {
+				seenSenders[s] = struct{}{}
+			}
+	
+			params := &reward.AwardBlockRewardParams{			Miner:     b.Miner,
 			Penalty:   penalty,
 			GasReward: gasReward,
 			WinCount:  b.WinCount,

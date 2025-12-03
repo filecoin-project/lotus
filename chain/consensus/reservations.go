@@ -35,22 +35,43 @@ func ReservationsEnabled(nv network.Version) bool {
 }
 
 // buildReservationPlan aggregates per-sender gas reservations across the full
-// tipset. The amount reserved for each message is gas_limit * gas_fee_cap, and
-// messages are deduplicated by CID across all blocks in canonical order,
-// matching processedMsgs handling in ApplyBlocks.
+// tipset. The amount reserved for each message is gas_limit * gas_fee_cap.
+//
+// Strict Sender Partitioning:
+// If a sender has already been seen in a previous block (higher precedence),
+// their messages in subsequent blocks are strictly ignored for reservation
+// purposes. This aligns with the execution logic in ApplyBlocks and prevents
+// valid individual blocks from forming an invalid tipset due to aggregate
+// over-reservation.
 func buildReservationPlan(bms []FilecoinBlockMessages) map[address.Address]abi.TokenAmount {
 	plan := make(map[address.Address]abi.TokenAmount)
-	seen := make(map[cid.Cid]struct{})
+	seenCIDs := make(map[cid.Cid]struct{})
+	seenSenders := make(map[address.Address]struct{})
 
 	for _, b := range bms {
+		currentBlockSenders := make(map[address.Address]struct{})
+
 		// canonical order is preserved in the combined slices append below
 		for _, cm := range append(b.BlsMessages, b.SecpkMessages...) {
 			m := cm.VMMessage()
 			mcid := m.Cid()
-			if _, ok := seen[mcid]; ok {
+
+			// 1. Deduplicate by CID (legacy rule)
+			if _, ok := seenCIDs[mcid]; ok {
 				continue
 			}
-			seen[mcid] = struct{}{}
+
+			// 2. Strict Sender Partitioning
+			// If this sender was seen in a previous block, ignore this message.
+			// We do NOT check currentBlockSenders here because multiple messages
+			// from the same sender in the *same* block are allowed.
+			if _, ok := seenSenders[m.From]; ok {
+				continue
+			}
+
+			seenCIDs[mcid] = struct{}{}
+			currentBlockSenders[m.From] = struct{}{}
+
 			// Only explicit messages are included in blocks; implicit messages are applied separately.
 			cost := types.BigMul(types.NewInt(uint64(m.GasLimit)), m.GasFeeCap)
 			if prev, ok := plan[m.From]; ok {
@@ -59,10 +80,14 @@ func buildReservationPlan(bms []FilecoinBlockMessages) map[address.Address]abi.T
 				plan[m.From] = cost
 			}
 		}
+
+		// After finishing the block, mark all its senders as seen for future blocks.
+		for s := range currentBlockSenders {
+			seenSenders[s] = struct{}{}
+		}
 	}
 	return plan
 }
-
 // startReservations is a helper that starts a reservation session on the VM if enabled.
 // If the computed plan is empty (no explicit messages), Begin is skipped entirely.
 func startReservations(ctx context.Context, vmi vm.Interface, bms []FilecoinBlockMessages, nv network.Version) error {
