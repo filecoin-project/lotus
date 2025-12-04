@@ -10,6 +10,8 @@ import (
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/metrics"
 )
@@ -56,6 +58,21 @@ func (e *vmExecutor) ApplyImplicitMessage(ctx context.Context, msg *types.Messag
 
 func (e *vmExecutor) Flush(ctx context.Context) (cid.Cid, error) {
 	return e.vmi.Flush(ctx)
+}
+
+// StartTipsetReservations forwards the call to the underlying VM implementation,
+// guarding execution lanes similarly to message application.
+func (e *vmExecutor) StartTipsetReservations(ctx context.Context, plan map[address.Address]abi.TokenAmount) error {
+	token := execution.getToken(ctx, e.lane)
+	defer token.Done()
+	return e.vmi.StartTipsetReservations(ctx, plan)
+}
+
+// EndTipsetReservations forwards the call to the underlying VM implementation.
+func (e *vmExecutor) EndTipsetReservations(ctx context.Context) error {
+	token := execution.getToken(ctx, e.lane)
+	defer token.Done()
+	return e.vmi.EndTipsetReservations(ctx)
 }
 
 type executionToken struct {

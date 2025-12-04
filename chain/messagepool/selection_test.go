@@ -1498,6 +1498,130 @@ func TestGasReward(t *testing.T) {
 	}
 }
 
+func TestReservationPrePackPrunesOverCommittedChain(t *testing.T) {
+	// Construct a selectedMessages instance with reservation heuristics enabled
+	// and a single chain whose Σ(cap×limit) exceeds the configured sender
+	// balance. The chain should be invalidated and not added.
+
+	var (
+		addr, _ = address.NewIDAddress(100)
+	)
+
+	sm := &selectedMessages{
+		msgs:               nil,
+		gasLimit:           buildconstants.BlockGasLimit,
+		blsLimit:           cbg.MaxLength,
+		secpLimit:          cbg.MaxLength,
+		reservationEnabled: true,
+		reservedBySender:   make(map[address.Address]types.BigInt),
+		balanceBySender:    make(map[address.Address]types.BigInt),
+	}
+
+	// Sender balance is 50 atto.
+	sm.balanceBySender[addr] = types.NewInt(50)
+
+	m1 := &types.SignedMessage{
+		Message: types.Message{
+			From:      addr,
+			GasLimit:  1,
+			GasFeeCap: types.NewInt(10),
+		},
+	}
+	m2 := &types.SignedMessage{
+		Message: types.Message{
+			From:      addr,
+			GasLimit:  1,
+			GasFeeCap: types.NewInt(100),
+		},
+	}
+
+	mc := &msgChain{
+		msgs:     []*types.SignedMessage{m1, m2},
+		gasLimit: m1.Message.GasLimit + m2.Message.GasLimit,
+		valid:    true,
+		sigType:  crypto.SigTypeSecp256k1,
+	}
+
+	ok := sm.tryToAdd(mc)
+	if ok {
+		t.Fatalf("expected tryToAdd to fail due to reservation pre-pack, but it succeeded")
+	}
+	if mc.valid {
+		t.Fatalf("expected chain to be invalidated when over-committed")
+	}
+	if len(sm.msgs) != 0 {
+		t.Fatalf("expected no messages to be added, got %d", len(sm.msgs))
+	}
+}
+
+func TestReservationPrePackAccumulatesCapTimesLimit(t *testing.T) {
+	// Verify that reservation-aware pre-pack simulation uses Σ(cap×limit) per
+	// sender when accumulating reserved totals.
+
+	addr, _ := address.NewIDAddress(200)
+
+	sm := &selectedMessages{
+		msgs:               nil,
+		gasLimit:           buildconstants.BlockGasLimit,
+		blsLimit:           cbg.MaxLength,
+		secpLimit:          cbg.MaxLength,
+		reservationEnabled: true,
+		reservedBySender:   make(map[address.Address]types.BigInt),
+		balanceBySender:    make(map[address.Address]types.BigInt),
+	}
+
+	// Large balance so neither chain is pruned.
+	sm.balanceBySender[addr] = types.NewInt(1_000_000)
+
+	m1 := &types.SignedMessage{
+		Message: types.Message{
+			From:      addr,
+			GasLimit:  5,
+			GasFeeCap: types.NewInt(10),
+		},
+	}
+	// cost1 = 5 * 10 = 50
+	mc1 := &msgChain{
+		msgs:     []*types.SignedMessage{m1},
+		gasLimit: m1.Message.GasLimit,
+		valid:    true,
+		sigType:  crypto.SigTypeSecp256k1,
+	}
+
+	if !sm.tryToAdd(mc1) {
+		t.Fatalf("expected first chain to be accepted")
+	}
+
+	expected := types.NewInt(50)
+	if got := sm.reservedBySender[addr]; !got.Equals(expected) {
+		t.Fatalf("expected reserved total %s, got %s", expected, got)
+	}
+
+	m2 := &types.SignedMessage{
+		Message: types.Message{
+			From:      addr,
+			GasLimit:  3,
+			GasFeeCap: types.NewInt(20),
+		},
+	}
+	// cost2 = 3 * 20 = 60; cumulative = 110
+	mc2 := &msgChain{
+		msgs:     []*types.SignedMessage{m2},
+		gasLimit: m2.Message.GasLimit,
+		valid:    true,
+		sigType:  crypto.SigTypeSecp256k1,
+	}
+
+	if !sm.tryToAdd(mc2) {
+		t.Fatalf("expected second chain to be accepted")
+	}
+
+	expected = types.NewInt(110)
+	if got := sm.reservedBySender[addr]; !got.Equals(expected) {
+		t.Fatalf("expected reserved total %s after second chain, got %s", expected, got)
+	}
+}
+
 func TestRealWorldSelection(t *testing.T) {
 
 	// load test-messages.json.gz and rewrite the messages so that
