@@ -39,7 +39,7 @@ type ActorEventFilter struct {
 	ToHeight *abi.ChainEpoch `json:"toHeight,omitempty"`
 
 	// Restricts events returned to those emitted from messages contained in this tipset.
-	// If `TipSetKey` is legt empty in the filter criteria, then neither `FromHeight` nor `ToHeight` are allowed.
+	// If `TipSetKey` is left empty in the filter criteria, then neither `FromHeight` nor `ToHeight` are allowed.
 	TipSetKey *TipSetKey `json:"tipsetKey,omitempty"`
 }
 

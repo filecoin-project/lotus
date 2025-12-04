@@ -8,6 +8,7 @@
 > * [CHANGELOG_1.2x.md](./documentation/changelog/CHANGELOG_1.2x.md) - v1.20.0 to v1.29.2
 
 # UNRELEASED
+
 - The minimum supported Golang version is now `1.24.7`
 - feat(gateway): expose StateGetRandomnessDigestFromBeacon ([filecoin-project/lotus#13339](https://github.com/filecoin-project/lotus/pull/13339))
 - chore(deps): update of quic-go to v0.54.1 and go-libp2p to v0.43.0 ([filecoin-project/lotus#13361](https://github.com/filecoin-project/lotus/pull/13361))
@@ -19,6 +20,13 @@
 - feat(spcli): add a `deposit-margin-factor` option to `lotus-miner init` so the sent deposit still covers the on-chain requirement if it rises between lookup and execution
 - feat(consensus): wire tipset gas reservations and reservation-aware mempool pre-pack to activate at network version 28 (UpgradeXxHeight), keeping receipts and gas accounting identical while preventing miner penalties from underfunded intra-tipset messages
 
+## 👌 Improvements
+- docs: fix outdated link in documentation ([#13436](https://github.com/filecoin-project/lotus/pull/13436))
+- docs: fix dead link in documentation ([#13437](https://github.com/filecoin-project/lotus/pull/13437))
+
+# UNRELEASED v1.34.2
+
+See https://github.com/filecoin-project/lotus/blob/release/v1.34.2/CHANGELOG.md
 # Node and Miner v1.34.1 / 2025-09-15
 
 This is a non-critical patch release that fixes an issue with the Lotus `v1.34.0` release where the incorrect version of filecoin-ffi was included.  Lotus `v1.34.0` used filecoin-ffi `v1.34.0-dev` when it should have used `v1.34.0`.  This isn’t critical since it’s the same filecoin-ffi version used during the nv27 Calibration network upgrade, but for consistency with other Node implementations like Forest, we are creating this release.  This ensures the inclusion of ref-fvm `v4.7.3` update that was missing in v1.34.0.  All users of v1.34.0 are encouraged to upgrade to v1.34.1.

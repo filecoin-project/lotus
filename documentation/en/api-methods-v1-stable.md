@@ -4064,7 +4064,7 @@ Response:
 ```
 
 ### MpoolBatchPushMessage
-MpoolBatchPushMessage batch pushes a unsigned message to mempool.
+MpoolBatchPushMessage batch pushes an unsigned message to mempool.
 
 
 Perms: sign

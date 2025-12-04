@@ -18,7 +18,7 @@ Name the file "today's date" in the format: YYYYMMDD.sql (ex: 20231231.sql for t
 	a. CREATE TABLE should NOT have a schema:
 		GOOD: CREATE TABLE foo ();
 		BAD:  CREATE TABLE me.foo ();
-	b. Schema is managed for you. It provides isolation for integraton tests & multi-use.
+	b. Schema is managed for you. It provides isolation for integration tests & multi-use.
 	c. Git Merges: All run once, so old-after-new is OK when there are no deps.
 	d. NEVER change shipped sql files. Have later files make corrections.
 	e. Anything not ran will be ran, so an older date making it to master is OK.
