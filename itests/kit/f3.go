@@ -6,6 +6,7 @@ import (
 
 	"github.com/filecoin-project/go-f3"
 	"github.com/filecoin-project/go-f3/certs"
+	"github.com/filecoin-project/go-f3/certstore"
 	"github.com/filecoin-project/go-f3/gpbft"
 	"github.com/filecoin-project/go-f3/manifest"
 
@@ -67,6 +68,10 @@ func (t *MockF3Backend) GetManifest(context.Context) (*manifest.Manifest, error)
 			Finalize: t.Finalizing,
 		},
 	}, nil
+}
+
+func (t *MockF3Backend) GetCertStore() (*certstore.Store, error) {
+	return nil, nil
 }
 
 func (t *MockF3Backend) GetCert(_ context.Context, instance uint64) (*certs.FinalityCertificate, error) {
