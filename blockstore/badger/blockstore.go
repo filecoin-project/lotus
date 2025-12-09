@@ -240,7 +240,7 @@ func (b *Blockstore) unlockMove(state bsMoveState) {
 // a symlink from the current path to the new path; the old blockstore is deleted.
 //
 // The blockstore MUST accept new writes during the move and ensure that these
-// are persisted to the new blockstore; if a failure occurs aboring the move,
+// are persisted to the new blockstore; if a failure occurs aborting the move,
 // then they must be persisted to the old blockstore.
 // In short, the blockstore must not lose data from new writes during the move.
 func (b *Blockstore) movingGC(ctx context.Context) error {
