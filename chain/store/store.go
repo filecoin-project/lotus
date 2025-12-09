@@ -910,7 +910,6 @@ func (cs *ChainStore) LoadTipSet(ctx context.Context, tsk types.TipSetKey) (*typ
 	cids := tsk.Cids()
 	blks := make([]*types.BlockHeader, len(cids))
 	for i, c := range cids {
-		i, c := i, c
 		eg.Go(func() error {
 			b, err := cs.GetBlock(ctx, c)
 			if err != nil {

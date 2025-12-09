@@ -1,5 +1,4 @@
 //go:build calibnet
-// +build calibnet
 
 package buildconstants
 

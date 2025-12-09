@@ -8,15 +8,94 @@
 > * [CHANGELOG_1.2x.md](./documentation/changelog/CHANGELOG_1.2x.md) - v1.20.0 to v1.29.2
 
 # UNRELEASED
+
+## 👌 Improvements
+- docs: fix outdated link in documentation ([#13436](https://github.com/filecoin-project/lotus/pull/13436))
+- docs: fix dead link in documentation ([#13437](https://github.com/filecoin-project/lotus/pull/13437))
+
+# Node v1.34.3 / 2025-12-03
+
+This is a patch release addressing Docker image glibc compatibility errors reported in v1.34.2. This update is only necessary for users running Lotus via Docker who encountered `GLIBC_2.32/2.33/2.34 not found` errors.
+
+## Bug Fixes
+
+- fix(docker): upgrade base image from ubuntu:20.04 to ubuntu:22.04 ([filecoin-project/lotus#13441](https://github.com/filecoin-project/lotus/pull/13441))
+  - The build stage uses golang:1.24.7-bookworm (glibc 2.36), but the runtime base was ubuntu:20.04 (glibc 2.31), causing GLIBC_2.32/2.33/2.34 errors when running lotus binaries.
+
+## 📝 Changelog
+
+For the set of changes since the last stable release:
+
+- Node: https://github.com/filecoin-project/lotus/compare/release/v1.34.2...release/v1.34.3
+
+# Node and Miner v1.34.2 / 2025-12-01
+
+The Lotus and Lotus-Miner v1.34.2 release includes numerous bug fixes, CLI enhancements, and dependency updates. These improvements, along with updated dependencies, enhance the stability and usability of Lotus for both node operators and storage providers.
+
+## ☢️ Upgrade Warnings ☢️
+
 - The minimum supported Golang version is now `1.24.7`
+
+## Features and Bug Fixes
+
 - feat(gateway): expose StateGetRandomnessDigestFromBeacon ([filecoin-project/lotus#13339](https://github.com/filecoin-project/lotus/pull/13339))
-- chore(deps): update of quic-go to v0.54.1 and go-libp2p to v0.43.0 ([filecoin-project/lotus#13361](https://github.com/filecoin-project/lotus/pull/13361))
-- feat(spcli): add a `deposit-margin-factor` option to `lotus-miner actor new` and `lotus-shed miner create` so the sent deposit still covers the on-chain requirement if it rises between lookup and execution
-- feat(cli): lotus evm deploy prints message CID ([filecoin-project/lotus#13378](https://github.com/filecoin-project/lotus/pull/13378))
-- chore: update benchmark tests to use testing.B.Loop for improved performance ([filecoin-project/lotus#13385](https://github.com/filecoin-project/lotus/pull/13385)) ([filecoin-project/lotus#13396](https://github.com/filecoin-project/lotus/pull/13396)) ([filecoin-project/lotus#13405](https://github.com/filecoin-project/lotus/pull/13405))
+- fix(cli): add deposit-margin-factor to the new miner commands ([filecoin-project/lotus#13365](https://github.com/filecoin-project/lotus/pull/13365))
+- feat(spcli): add a `deposit-margin-factor` option to `lotus-miner actor new` and `lotus-shed miner create` so the sent deposit still covers the on-chain requirement if it rises between lookup and execution ([filecoin-project/lotus#13407](https://github.com/filecoin-project/lotus/pull/13407))
+- feat(cli): lotus evm deploy prints message CID ([filecoin-project/lotus#13241](https://github.com/filecoin-project/lotus/pull/13241))
+- fix(miner): ensure sender account exists ([filecoin-project/lotus#13348](https://github.com/filecoin-project/lotus/pull/13348))
 - fix(eth): properly return vm error in all gas estimation methods ([filecoin-project/lotus#13389](https://github.com/filecoin-project/lotus/pull/13389))
 - chore: all actor cmd support --actor ([filecoin-project/lotus#13391](https://github.com/filecoin-project/lotus/pull/13391))
-- feat(spcli): add a `deposit-margin-factor` option to `lotus-miner init` so the sent deposit still covers the on-chain requirement if it rises between lookup and execution
+
+## 📝 Changelog
+
+For the set of changes since the last stable release:
+
+- Node: https://github.com/filecoin-project/lotus/compare/release/v1.34.1...release/v1.34.2
+- Miner: https://github.com/filecoin-project/lotus/compare/release/v1.34.1...release/miner/v1.34.2
+
+## 👨‍👩‍👧‍👦 Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Phi-rjan | 11 | +39018/-254 | 240 |
+| Rod Vagg | 12 | +793/-656 | 45 |
+| dependabot[bot] | 33 | +483/-415 | 69 |
+| Jintu Kumar Das | 1 | +372/-372 | 24 |
+| Adin Schmahmann | 1 | +525/-53 | 6 |
+| Mikers | 1 | +519/-0 | 18 |
+| TippyFlits | 6 | +248/-160 | 22 |
+| Piotr Galar | 3 | +57/-44 | 14 |
+| aceppaluni | 1 | +48/-34 | 3 |
+| Block Wizard | 5 | +37/-36 | 18 |
+| tediou5 | 2 | +58/-6 | 4 |
+| Phi | 2 | +37/-17 | 12 |
+| Luca Moretti | 4 | +24/-24 | 18 |
+| cui | 1 | +22/-25 | 5 |
+| beck | 1 | +13/-22 | 4 |
+| Aryan Tikarya | 1 | +21/-14 | 2 |
+| parthshah1 | 1 | +11/-23 | 3 |
+| 0x5459 | 1 | +28/-4 | 4 |
+| fengyuchuanshen | 1 | +7/-7 | 7 |
+| web3-bot | 4 | +6/-7 | 5 |
+| Steve Loeppky | 1 | +7/-5 | 1 |
+| Snezhkko | 1 | +6/-6 | 5 |
+| Krishang Shah | 1 | +6/-5 | 1 |
+| Lee | 1 | +5/-5 | 1 |
+| stemlaud | 1 | +4/-4 | 4 |
+| asttool | 1 | +4/-4 | 4 |
+| Jakub Sztandera | 1 | +0/-8 | 1 |
+| Hubert | 1 | +4/-3 | 3 |
+| suranmiao | 1 | +2/-2 | 2 |
+| reddaisyy | 1 | +2/-2 | 1 |
+| joemicky | 1 | +2/-2 | 1 |
+| efcking | 1 | +2/-2 | 1 |
+| CertiK | 1 | +2/-1 | 1 |
+| wyrapeseed | 1 | +1/-1 | 1 |
+| letreturn | 1 | +1/-1 | 1 |
+| juejinyuxitu | 1 | +1/-1 | 1 |
+| cargoedit | 1 | +1/-1 | 1 |
+| asamuj | 1 | +1/-1 | 1 |
+| spuradage | 1 | +0/-1 | 1 |
 
 # Node and Miner v1.34.1 / 2025-09-15
 

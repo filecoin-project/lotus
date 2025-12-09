@@ -185,12 +185,15 @@ jobs:
           prefix: ${{ matrix.project == 'node' && 'lotus' || format('lotus-{0}', matrix.project) }}
           version: ${{ fromJSON(steps.project.outputs.config).version }}
         run: |
+          mkdir dist
+          pushd dist
           for directory in darwin_arm64 linux_amd64_v1; do
             archive_name="${prefix}_v${version}_${directory}"
             cp -r ../$directory $archive_name
             tar -czf $archive_name.tar.gz $archive_name
             rm -r $archive_name
           done
+          popd
           ls -la .
       - name: Install Kubo (checksums generation dependency)
         uses: ipfs/download-ipfs-distribution-action@v1
