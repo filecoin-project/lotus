@@ -9,6 +9,7 @@
 
 # UNRELEASED
 - feat(gateway): expose StateGetRandomnessDigestFromBeacon ([filecoin-project/lotus#13339](https://github.com/filecoin-project/lotus/pull/13339))
+- fix(fr32): fix data corruption in multithreaded Pad/Unpad for non-aligned sizes
 
 # Node and Miner v1.34.0 / 2025-09-11
 
