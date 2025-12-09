@@ -88,6 +88,7 @@ func buildReservationPlan(bms []FilecoinBlockMessages) map[address.Address]abi.T
 	}
 	return plan
 }
+
 // startReservations is a helper that starts a reservation session on the VM if enabled.
 // If the computed plan is empty (no explicit messages), Begin is skipped entirely.
 func startReservations(ctx context.Context, vmi vm.Interface, bms []FilecoinBlockMessages, nv network.Version) error {
