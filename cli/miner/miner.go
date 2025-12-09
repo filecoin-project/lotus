@@ -156,13 +156,3 @@ func getActorAddress(ctx context.Context, cctx *cli.Context) (maddr address.Addr
 func LMActorOrEnvGetter(cctx *cli.Context) (address.Address, error) {
 	return getActorAddress(cctx.Context, cctx)
 }
-
-func LMActorGetter(cctx *cli.Context) (address.Address, error) {
-	minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
-	if err != nil {
-		return address.Undef, err
-	}
-	defer closer()
-
-	return minerApi.ActorAddress(cctx.Context)
-}

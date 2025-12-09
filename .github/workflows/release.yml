@@ -73,7 +73,6 @@ jobs:
         project: ${{ fromJSON(needs.check.outputs.projects).*.name }}
         runner:
           - ubuntu-latest # Linux X64
-          - macos-13 # MacOs X64
           - macos-14 # MacOS ARM64
     steps:
       - name: Print runner information
@@ -172,11 +171,6 @@ jobs:
         with:
           name: lotus-${{ matrix.project }}-Linux-X64
           path: linux_amd64_v1
-      - name: Download macOS X64 binaries
-        uses: actions/download-artifact@v4
-        with:
-          name: lotus-${{ matrix.project }}-macOS-X64
-          path: darwin_amd64_v1
       - name: Download macOS ARM64 binaries
         uses: actions/download-artifact@v4
         with:
@@ -190,25 +184,17 @@ jobs:
         env:
           prefix: ${{ matrix.project == 'node' && 'lotus' || format('lotus-{0}', matrix.project) }}
           version: ${{ fromJSON(steps.project.outputs.config).version }}
-          binaries: ${{ toJSON(fromJSON(steps.project.outputs.config).binaries) }}
         run: |
-          mkdir darwin_all
-          while read -r binary; do
-            if [[ -z "$binary" ]]; then
-              continue
-            fi
-            makefat ./darwin_all/$binary ./darwin_amd64_v1/$binary ./darwin_arm64/$binary
-          done <<< "$(jq -r '.[]' <<< "$binaries")"
           mkdir dist
           pushd dist
-          for directory in darwin_all linux_amd64_v1; do
+          for directory in darwin_arm64 linux_amd64_v1; do
             archive_name="${prefix}_v${version}_${directory}"
             cp -r ../$directory $archive_name
             tar -czf $archive_name.tar.gz $archive_name
             rm -r $archive_name
           done
           popd
-          ls -la dist
+          ls -la .
       - name: Install Kubo (checksums generation dependency)
         uses: ipfs/download-ipfs-distribution-action@v1
         with:

@@ -5,7 +5,7 @@ import (
 	"golang.org/x/xerrors"
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
-	builtin17 "github.com/filecoin-project/go-state-types/builtin"
+	builtin18 "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/manifest"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
@@ -21,7 +21,7 @@ import (
 )
 
 var (
-	Address = builtin17.SystemActorAddr
+	Address = builtin18.SystemActorAddr
 )
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
@@ -61,6 +61,9 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 		case actorstypes.Version17:
 			return load17(store, act.Head)
+
+		case actorstypes.Version18:
+			return load18(store, act.Head)
 
 		}
 	}
@@ -147,6 +150,9 @@ func MakeState(store adt.Store, av actorstypes.Version, builtinActors cid.Cid) (
 	case actorstypes.Version17:
 		return make17(store, builtinActors)
 
+	case actorstypes.Version18:
+		return make18(store, builtinActors)
+
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
@@ -180,5 +186,6 @@ func AllCodes() []cid.Cid {
 		(&state15{}).Code(),
 		(&state16{}).Code(),
 		(&state17{}).Code(),
+		(&state18{}).Code(),
 	}
 }

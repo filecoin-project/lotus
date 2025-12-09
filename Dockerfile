@@ -1,5 +1,5 @@
 #####################################
-FROM golang:1.23.10-bullseye AS lotus-builder
+FROM golang:1.24.7-bookworm AS lotus-builder
 MAINTAINER Lotus Development Team
 
 RUN apt-get update && apt-get install -y ca-certificates build-essential clang ocl-icd-opencl-dev ocl-icd-libopencl1 jq libhwloc-dev
@@ -46,7 +46,7 @@ ARG GOFLAGS=""
 RUN make buildall
 
 #####################################
-FROM ubuntu:20.04 AS lotus-base
+FROM ubuntu:22.04 AS lotus-base
 MAINTAINER Lotus Development Team
 
 # Base resources

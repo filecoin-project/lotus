@@ -619,11 +619,6 @@ func (s *SplitStore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 	return ch, nil
 }
 
-func (s *SplitStore) HashOnRead(enabled bool) {
-	s.hot.HashOnRead(enabled)
-	s.cold.HashOnRead(enabled)
-}
-
 func (s *SplitStore) View(ctx context.Context, cid cid.Cid, cb func([]byte) error) error {
 	if isIdentiyCid(cid) {
 		data, err := decodeIdentityCid(cid)

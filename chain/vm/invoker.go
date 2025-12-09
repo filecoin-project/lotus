@@ -129,8 +129,8 @@ func (ar *ActorRegistry) Register(av actorstypes.Version, pred ActorPredicate, v
 		// Explicitly add send, it's special.
 		methods[builtin.MethodSend] = MethodMeta{
 			Name:   "Send",
-			Params: reflect.TypeOf(new(abi.EmptyValue)),
-			Ret:    reflect.TypeOf(new(abi.EmptyValue)),
+			Params: reflect.TypeFor[*abi.EmptyValue](),
+			Ret:    reflect.TypeFor[*abi.EmptyValue](),
 		}
 
 		// Iterate over exported methods. Some of these _may_ be nil and
@@ -191,7 +191,7 @@ type invokee interface {
 func (*ActorRegistry) transform(instance invokee) (nativeCode, error) {
 	itype := reflect.TypeOf(instance)
 	exports := instance.Exports()
-	runtimeType := reflect.TypeOf((*vmr.Runtime)(nil)).Elem()
+	runtimeType := reflect.TypeFor[vmr.Runtime]()
 	for i, e := range exports {
 		i := i
 		m := e.Method
@@ -225,7 +225,7 @@ func (*ActorRegistry) transform(instance invokee) (nativeCode, error) {
 				"cbg.CBORMarshaler")
 		}
 		o0 := t.Out(0)
-		if !o0.Implements(reflect.TypeOf((*cbg.CBORMarshaler)(nil)).Elem()) {
+		if !o0.Implements(reflect.TypeFor[cbg.CBORMarshaler]()) {
 			return nil, newErr("output needs to implement cgb.CBORMarshaler")
 		}
 	}
@@ -236,7 +236,7 @@ func (*ActorRegistry) transform(instance invokee) (nativeCode, error) {
 			continue
 		}
 		meth := reflect.ValueOf(m)
-		code[id] = reflect.MakeFunc(reflect.TypeOf((invokeFunc)(nil)),
+		code[id] = reflect.MakeFunc(reflect.TypeFor[invokeFunc](),
 			func(in []reflect.Value) []reflect.Value {
 				paramT := meth.Type().In(1).Elem()
 				param := reflect.New(paramT)

@@ -1,5 +1,4 @@
 //go:build interopnet
-// +build interopnet
 
 package buildconstants
 

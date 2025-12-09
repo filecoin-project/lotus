@@ -35,12 +35,12 @@ func LatestActorsAt(upgradeHeight abi.ChainEpoch) EnsembleOpt {
 		})
 	/* inline-gen start */
 	return UpgradeSchedule(stmgr.Upgrade{
-		Network: network.Version26,
+		Network: network.Version27,
 		Height:  -1,
 	}, stmgr.Upgrade{
-		Network:   network.Version27,
+		Network:   network.Version28,
 		Height:    upgradeHeight,
-		Migration: filcns.UpgradeActorsV17,
+		Migration: filcns.UpgradeActorsV18,
 	})
 	/* inline-gen end */
 }

@@ -81,10 +81,6 @@ func (c *ReadCachedBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid,
 	return c.top.AllKeysChan(ctx)
 }
 
-func (c *ReadCachedBlockstore) HashOnRead(enabled bool) {
-	c.top.HashOnRead(enabled)
-}
-
 func (c *ReadCachedBlockstore) View(ctx context.Context, cid cid.Cid, callback func([]byte) error) error {
 	return c.top.View(ctx, cid, func(bb []byte) error {
 		blk, err := blocks.NewBlockWithCid(bb, cid)

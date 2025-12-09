@@ -173,7 +173,8 @@ func ActorDealSettlementCmd(getActor ActorAddressGetter) *cli.Command {
 				}
 			}
 
-			fmt.Printf("There are a total of %v deals, and about %v messages will be sent out.\n", len(dealIDs), len(dealIDs)/cctx.Int("max-deals"))
+			msgLen := (len(dealIDs) + cctx.Int("max-deals") - 1) / cctx.Int("max-deals")
+			fmt.Printf("There are a total of %v deals, and about %v messages will be sent out.\n", len(dealIDs), msgLen)
 
 			if !cctx.Bool("really-do-it") {
 				return fmt.Errorf("pass --really-do-it to confirm this action")
@@ -1491,6 +1492,11 @@ var ActorNewMinerCmd = &cli.Command{
 			Usage: "number of block confirmations to wait for",
 			Value: int(buildconstants.MessageConfidence),
 		},
+		&cli.Float64Flag{
+			Name:  "deposit-margin-factor",
+			Usage: "Multiplier (>=1.0) to scale the suggested deposit for on-chain variance (e.g. 1.01 adds 1%)",
+			Value: 1.01,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
@@ -1503,7 +1509,7 @@ var ActorNewMinerCmd = &cli.Command{
 
 		var owner address.Address
 		if cctx.String("owner") == "" {
-			return xerrors.Errorf("must provide a owner address")
+			return xerrors.Errorf("must provide an owner address")
 		}
 		owner, err = address.NewFromString(cctx.String("owner"))
 
@@ -1538,7 +1544,7 @@ var ActorNewMinerCmd = &cli.Command{
 		}
 		ssize := abi.SectorSize(sectorSizeInt)
 
-		_, err = createminer.CreateStorageMiner(ctx, full, owner, worker, sender, ssize, cctx.Uint64("confidence"))
+		_, err = createminer.CreateStorageMiner(ctx, full, owner, worker, sender, ssize, cctx.Uint64("confidence"), cctx.Float64("deposit-margin-factor"))
 		if err != nil {
 			return err
 		}

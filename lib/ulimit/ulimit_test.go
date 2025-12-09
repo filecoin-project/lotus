@@ -1,5 +1,4 @@
 //go:build !windows
-// +build !windows
 
 // This file tests file descriptor limits; since this is an OS feature, it should not be annotated
 

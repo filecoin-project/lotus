@@ -77,7 +77,3 @@ func (m *SyncBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error
 	// this blockstore implementation doesn't do any async work.
 	return m.bs.AllKeysChan(ctx)
 }
-
-func (m *SyncBlockstore) HashOnRead(enabled bool) {
-	// noop
-}

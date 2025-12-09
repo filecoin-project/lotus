@@ -25,7 +25,6 @@ func TestPoissonFunction(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		test := test
 		t.Run(fmt.Sprintf("lam-%d-%d", test.lambdaBase, test.lambdaShift), func(t *testing.T) {
 			b := &bytes.Buffer{}
 			b.WriteString("icdf\n")
@@ -58,7 +57,6 @@ func TestLambdaFunction(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		test := test
 		t.Run(fmt.Sprintf("%s-%s", test.power, test.totalPower), func(t *testing.T) {
 			pow, ok := new(big.Int).SetString(test.power, 10)
 			assert.True(t, ok)
@@ -119,8 +117,8 @@ func BenchmarkWinCounts(b *testing.B) {
 
 	b.ResetTimer()
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		ep.VRFProof = []byte{byte(i), byte(i >> 8), byte(i >> 16), byte(i >> 24), byte(i >> 32)}
+	for b.Loop() {
+		ep.VRFProof = []byte{byte(b.N), byte(b.N >> 8), byte(b.N >> 16), byte(b.N >> 24), byte(b.N >> 32)}
 		j := ep.ComputeWinCount(power, totalPower)
 		res += j
 	}

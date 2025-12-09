@@ -96,7 +96,7 @@ type bsMoveState int
 const (
 	// moveStateNone signifies that there is no move in progress
 	moveStateNone bsMoveState = iota
-	// moveStateMoving signifies that there is a move  in a progress
+	// moveStateMoving signifies that there is a move in a progress
 	moveStateMoving
 	// moveStateCleanup signifies that a move has completed or aborted and we are cleaning up
 	moveStateCleanup
@@ -240,8 +240,8 @@ func (b *Blockstore) unlockMove(state bsMoveState) {
 // a symlink from the current path to the new path; the old blockstore is deleted.
 //
 // The blockstore MUST accept new writes during the move and ensure that these
-// are persisted to the new blockstore; if a failure occurs aboring the move,
-// then they must be peristed to the old blockstore.
+// are persisted to the new blockstore; if a failure occurs aborting the move,
+// then they must be persisted to the old blockstore.
 // In short, the blockstore must not lose data from new writes during the move.
 func (b *Blockstore) movingGC(ctx context.Context) error {
 	// this inlines moveLock/moveUnlock for the initial state check to prevent a second move
@@ -1013,12 +1013,6 @@ func (b *Blockstore) ForEachKey(f func(cid.Cid) error) error {
 	}
 
 	return nil
-}
-
-// HashOnRead implements Blockstore.HashOnRead. It is not supported by this
-// blockstore.
-func (b *Blockstore) HashOnRead(_ bool) {
-	log.Warnf("called HashOnRead on badger blockstore; function not supported; ignoring")
 }
 
 // PooledStorageKey returns the storage key under which this CID is stored.

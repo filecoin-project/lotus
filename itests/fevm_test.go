@@ -799,7 +799,7 @@ func TestFEVMDestroyCreate2(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []byte{}, senderAfterDestroy)
 
-	// deploy new contract at same address usign same salt
+	// deploy new contract at same address using same salt
 	newAddressSelfDestruct, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "deploy(bytes32)", salt)
 	require.NoError(t, err)
 	require.Equal(t, newAddressSelfDestruct, selfDestructAddress)

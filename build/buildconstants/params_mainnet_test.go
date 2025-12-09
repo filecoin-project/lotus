@@ -1,5 +1,4 @@
 //go:build !debug && !2k && !testground && !calibnet && !butterflynet && !interopnet
-// +build !debug,!2k,!testground,!calibnet,!butterflynet,!interopnet
 
 package buildconstants
 

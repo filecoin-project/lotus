@@ -48,7 +48,7 @@ cd build/actors/
 ./pack.sh v15 v15.0.0-rc1
 ```
 
-This will fetch the CAR files from the [GitHub release page for `v15.0.0-rc1`](https://github.com/filecoin-project/builtin-actors/releases/tag/v15.0.0-rc1) and create a replacement for `build/actors/v15.tar.zst` and generate an update to [`builtin_actors_gen.go`](../../build/builtin_actors_gen.go). If v15 is the correct actors version for the current network version (as per [`upgrades.go`]((../../chain/consensus/filcns/upgrades.go)), then running itests, by default, will use your new bundle.
+This will fetch the CAR files from the [GitHub release page for `v15.0.0-rc1`](https://github.com/filecoin-project/builtin-actors/releases/tag/v15.0.0-rc1) and create a replacement for `build/actors/v15.tar.zst` and generate an update to [`builtin_actors_gen.go`](../../build/builtin_actors_gen.go). If v15 is the correct actors version for the current network version (as per [`upgrades.go`](../../chain/consensus/filcns/upgrades.go)), then running itests, by default, will use your new bundle.
 
 **If you want to bundle a custom build of builtin-actors from your local filesystem**:
 
