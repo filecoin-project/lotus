@@ -112,9 +112,12 @@ func (p *pieceProvider) tryReadUnsealedPiece(ctx context.Context, pc cid.Cid, se
 				return nil, xerrors.Errorf("getting reader at +%d: %w", startOffsetAligned, err)
 			}
 
+			// The actual padded size we're reading from the underlying reader
+			readPaddedSize := abi.PaddedPieceSize(endOffsetAligned.Padded() - startOffsetAligned.Padded())
+
 			buf := pool.Get(fr32.BufSize(pieceSize.Padded()))
 
-			upr, err := fr32.NewUnpadReaderBuf(r, pieceSize.Padded(), buf)
+			upr, err := fr32.NewUnpadReaderBuf(r, readPaddedSize, buf)
 			if err != nil {
 				r.Close() // nolint
 				return nil, xerrors.Errorf("creating unpadded reader: %w", err)

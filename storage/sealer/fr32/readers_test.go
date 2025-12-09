@@ -45,7 +45,8 @@ func TestUnpadReaderBufWithSmallWorkBuf(t *testing.T) {
 	padOut := make([]byte, ps.Padded())
 	fr32.Pad(raw, padOut)
 
-	buf := make([]byte, abi.PaddedPieceSize(uint64(128)))
+	// Minimum buffer size is 256 bytes (split 50/50 into 128-byte padbuf and 128-byte unpadbuf)
+	buf := make([]byte, 256)
 	r, err := fr32.NewUnpadReaderBuf(bytes.NewReader(padOut), ps.Padded(), buf)
 	if err != nil {
 		t.Fatal(err)

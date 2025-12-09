@@ -48,29 +48,33 @@ func NewUnpadReader(src io.Reader, sz abi.PaddedPieceSize) (io.Reader, error) {
 }
 
 // NewUnpadReaderBuf creates a new unpadding reader using the provided buffer.
-// The buffer must be a valid padded piece size (power of 2) and at least 128 bytes.
-// The buffer is used for reading padded data; an internal buffer is allocated for unpadded output.
+// sz is the number of padded bytes to read (must be a multiple of 128).
+// buf is split 50/50: first half for padded input, second half for unpadded output.
+// buf must be at least 256 bytes and a multiple of 128.
 func NewUnpadReaderBuf(src io.Reader, sz abi.PaddedPieceSize, buf []byte) (io.Reader, error) {
-	if err := sz.Validate(); err != nil {
-		return nil, xerrors.Errorf("bad piece size: %w", err)
+	if sz%128 != 0 {
+		return nil, xerrors.Errorf("padded size must be a multiple of 128: %d", sz)
 	}
 
-	if abi.PaddedPieceSize(len(buf)).Validate() != nil {
-		return nil, xerrors.Errorf("bad buffer size: must be a valid padded piece size")
+	if len(buf) < 256 {
+		return nil, xerrors.Errorf("buffer too small: must be at least 256 bytes, got %d", len(buf))
 	}
 
-	if len(buf) < 128 {
-		return nil, xerrors.Errorf("buffer too small: must be at least 128 bytes")
+	if len(buf)%128 != 0 {
+		return nil, xerrors.Errorf("buffer size must be a multiple of 128: %d", len(buf))
 	}
 
-	// Calculate unpadbuf size: for N padded bytes, we produce N*127/128 unpadded bytes
-	padBufSize := len(buf)
-	unpadBufSize := (padBufSize / 128) * 127
+	// Split buffer 50/50: first half for padded data, second half for unpadded output.
+	// Round down to ensure padbuf is a multiple of 128.
+	halfSize := (len(buf) / 2 / 128) * 128
+	if halfSize < 128 {
+		halfSize = 128
+	}
 
 	return &unpadReader{
 		src:      src,
-		padbuf:   buf,
-		unpadbuf: make([]byte, unpadBufSize),
+		padbuf:   buf[:halfSize],
+		unpadbuf: buf[halfSize:],
 		left:     uint64(sz),
 	}, nil
 }
