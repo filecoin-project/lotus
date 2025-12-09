@@ -19,7 +19,7 @@ import (
 type unpadReader struct {
 	src io.Reader
 
-	// padbuf holds padded data read from src
+	// padbuf holds padded data read from src (MUST be separate from unpadbuf)
 	padbuf []byte
 	// unpadbuf holds unpadded data ready for consumer
 	unpadbuf []byte
@@ -48,8 +48,8 @@ func NewUnpadReader(src io.Reader, sz abi.PaddedPieceSize) (io.Reader, error) {
 }
 
 // NewUnpadReaderBuf creates a new unpadding reader using the provided buffer.
-// The buffer must be a valid padded piece size (power of 2) and at least 256 bytes.
-// The buffer is split internally: half for reading padded data, half for unpadded output.
+// The buffer must be a valid padded piece size (power of 2) and at least 128 bytes.
+// The buffer is used for reading padded data; an internal buffer is allocated for unpadded output.
 func NewUnpadReaderBuf(src io.Reader, sz abi.PaddedPieceSize, buf []byte) (io.Reader, error) {
 	if err := sz.Validate(); err != nil {
 		return nil, xerrors.Errorf("bad piece size: %w", err)
@@ -59,20 +59,18 @@ func NewUnpadReaderBuf(src io.Reader, sz abi.PaddedPieceSize, buf []byte) (io.Re
 		return nil, xerrors.Errorf("bad buffer size: must be a valid padded piece size")
 	}
 
-	// We split the buffer in half: padbuf for reading padded data, unpadbuf for output.
-	// padbuf needs to be at least 128 bytes (1 chunk), so buf must be at least 256.
-	if len(buf) < 256 {
-		return nil, xerrors.Errorf("buffer too small: must be at least 256 bytes")
+	if len(buf) < 128 {
+		return nil, xerrors.Errorf("buffer too small: must be at least 128 bytes")
 	}
 
-	// Split buffer in half.
-	// Since buf is a power of 2 >= 256, half is a power of 2 >= 128.
-	halfSize := len(buf) / 2
+	// Calculate unpadbuf size: for N padded bytes, we produce N*127/128 unpadded bytes
+	padBufSize := len(buf)
+	unpadBufSize := (padBufSize / 128) * 127
 
 	return &unpadReader{
 		src:      src,
-		padbuf:   buf[:halfSize],
-		unpadbuf: buf[halfSize:],
+		padbuf:   buf,
+		unpadbuf: make([]byte, unpadBufSize),
 		left:     uint64(sz),
 	}, nil
 }
@@ -111,7 +109,7 @@ func (r *unpadReader) fill() {
 		maxChunks = padBufChunks
 	}
 
-	// Clamp to what's left to read
+	// Clamp to what's left to read (in terms of declared size)
 	toReadPadded := maxChunks * 128
 	if uint64(toReadPadded) > r.left {
 		toReadPadded = int(r.left)
@@ -120,7 +118,7 @@ func (r *unpadReader) fill() {
 	}
 
 	if toReadPadded == 0 {
-		// Less than one full chunk remaining
+		// Less than one full chunk remaining in declared size
 		r.err = io.EOF
 		return
 	}
@@ -137,7 +135,7 @@ func (r *unpadReader) fill() {
 		validPadded := completeChunks * 128
 		r.left -= uint64(validPadded)
 
-		// Unpad the complete chunks
+		// Unpad the complete chunks into unpadbuf starting at r.w
 		unpadSize := completeChunks * 127
 		Unpad(r.padbuf[:validPadded], r.unpadbuf[r.w:r.w+unpadSize])
 		r.w += unpadSize
@@ -152,13 +150,13 @@ func (r *unpadReader) fill() {
 	// Successfully read toReadPadded bytes
 	r.left -= uint64(n)
 
-	// Unpad the data
+	// Unpad the data into unpadbuf starting at r.w
 	chunks := n / 128
 	unpadSize := chunks * 127
 	Unpad(r.padbuf[:n], r.unpadbuf[r.w:r.w+unpadSize])
 	r.w += unpadSize
 
-	// If we've read everything, mark EOF for next fill
+	// If we've read everything from declared size, mark EOF for next fill
 	if r.left == 0 {
 		r.err = io.EOF
 	}
