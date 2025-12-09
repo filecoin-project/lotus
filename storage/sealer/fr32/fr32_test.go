@@ -170,7 +170,7 @@ func TestRoundtripMisalignedSizes(t *testing.T) {
 		{"prime_chunks_1009", 1009 * 8},  // ~1MB, prime-ish number of chunks
 		{"odd_chunks_8193", 8193},        // Just over 8192 (power of 2)
 		{"odd_chunks_65537", 65537},      // Just over 65536 (power of 2)
-		{"odd_chunks_100003", 100003},    // Large prime-ish
+		{"odd_chunks_100003", 100003},    // Large prime
 		{"boundary_chunks_66000", 66000}, // Near the original bug size
 		{"boundary_chunks_70000", 70000}, // Larger odd size
 	}
