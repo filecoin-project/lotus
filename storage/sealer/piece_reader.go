@@ -17,7 +17,7 @@ import (
 	"github.com/filecoin-project/lotus/metrics"
 )
 
-// For small read skips, it's faster to "burn" some bytes than to setup new sector reader.
+// For small read skips, it's faster to "burn" some bytes than to set up new sector reader.
 // Assuming 1ms stream seek latency, and 1G/s stream rate, we're willing to discard up to 1 MiB.
 var MaxPieceReaderBurnBytes int64 = 1 << 20 // 1M
 var ReadBuf = 128 * (127 * 8)               // unpadded(128k)

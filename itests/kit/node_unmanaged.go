@@ -45,13 +45,13 @@ var (
 	BogusPieceCid2 = cid.MustParse("baga6ea4seaqlhznlutptgfwhffupyer6txswamerq5fc2jlwf2lys2mm5jtiaeq")
 )
 
-// 32 bytes of 1's: this value essentially ignored in NI-PoRep proofs, but all zeros is not recommended.
+// 32 bytes of 1's: this value is essentially ignored in NI-PoRep proofs, but all zeros is not recommended.
 // Regardless of what we submit to the chain, actors will replace it with 32 1's anyway but we are
 // also doing proof verification call directly when we prepare an aggregate NI proof.
 var niPorepInteractiveRandomness = abi.InteractiveSealRandomness([]byte{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1})
 
 // TestUnmanagedMiner is a miner that's not managed by the storage/infrastructure, all tasks must be manually executed, managed and scheduled by the test or test kit.
-// Note: `TestUnmanagedMiner` is not thread safe and assumes linear access of it's methods
+// Note: `TestUnmanagedMiner` is not thread safe and assumes linear access of its methods
 type TestUnmanagedMiner struct {
 	ctx        context.Context
 	cancelFunc context.CancelFunc

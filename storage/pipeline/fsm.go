@@ -747,7 +747,7 @@ func (m *Sealing) ForceSectorState(ctx context.Context, id abi.SectorNumber, sta
 	return m.sectors.Send(id, SectorForceState{state})
 }
 
-// as sector has been removed, it's no needs to care about later events,
+// as sector has been removed, there's no need to care about later events,
 // just returns length of events as `processed` is ok.
 func finalRemoved(events []statemachine.Event, state *SectorInfo) (uint64, error) {
 	return uint64(len(events)), nil
