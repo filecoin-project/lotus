@@ -308,7 +308,7 @@ func (m *Manager) schedFetch(sector storiface.SectorRef, ft storiface.SectorFile
 
 // SectorsUnsealPiece will Unseal the Sealed sector file for the given sector.
 // It will schedule the Unsealing task on a worker that either already has the sealed sector files or has space in
-// one of it's sealing scratch spaces to store them after fetching them from another worker.
+// one of its sealing scratch spaces to store them after fetching them from another worker.
 // If the chosen worker already has the Unsealed sector file, we will NOT Unseal the sealed sector file again.
 func (m *Manager) SectorsUnsealPiece(ctx context.Context, sector storiface.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, unsealed *cid.Cid) error {
 	ctx, cancel := context.WithCancel(ctx)
