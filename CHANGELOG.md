@@ -27,6 +27,23 @@ For the set of changes since the last stable release:
 
 - Node: https://github.com/filecoin-project/lotus/compare/release/v1.34.3...release/v1.34.4-rc1
 
+## 👨‍👩‍👧‍👦 Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Łukasz Magiera | 1 | +837/-88 | 6 |
+| Phi-rjan | 4 | +111/-36 | 25 |
+| Phi | 2 | +26/-12 | 12 |
+| zjumathcode | 1 | +0/-32 | 32 |
+| Luca Moretti | 1 | +7/-7 | 7 |
+| bigmoonbit | 1 | +0/-13 | 9 |
+| xiaolinny | 1 | +6/-6 | 5 |
+| Block Wizard | 1 | +4/-1 | 2 |
+| mk0walsk | 1 | +2/-2 | 2 |
+| beck | 1 | +2/-1 | 1 |
+| Piotr Galar | 1 | +3/-0 | 1 |
+| Evan Etton | 1 | +2/-1 | 2 |
+
 # Node v1.34.3 / 2025-12-03
 
 This is a patch release addressing Docker image glibc compatibility errors reported in v1.34.2. This update is only necessary for users running Lotus via Docker who encountered `GLIBC_2.32/2.33/2.34 not found` errors.
