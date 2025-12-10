@@ -31,6 +31,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	amt4 "github.com/filecoin-project/go-amt-ipld/v4"
 	"github.com/filecoin-project/go-f3/certs"
+	"github.com/filecoin-project/go-f3/certstore"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
@@ -62,6 +63,7 @@ type ChainModuleAPI interface {
 	ChainGetTipSetAfterHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 	ChainGetPath(ctx context.Context, from, to types.TipSetKey) ([]*api.HeadChange, error)
+	ChainExport(ctx context.Context, nroots abi.ChainEpoch, skipoldmsgs bool, tsk types.TipSetKey, version uint64) (<-chan []byte, error)
 }
 
 var _ ChainModuleAPI = *new(api.FullNode)
@@ -703,17 +705,32 @@ func (a ChainAPI) ChainExportRangeInternal(ctx context.Context, head, tail types
 	return nil
 }
 
-func (a *ChainAPI) ChainExport(ctx context.Context, nroots abi.ChainEpoch, skipoldmsgs bool, tsk types.TipSetKey) (<-chan []byte, error) {
-	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
+func (m *ChainModule) ChainExport(ctx context.Context, nroots abi.ChainEpoch, skipoldmsgs bool, tsk types.TipSetKey, version uint64) (<-chan []byte, error) {
+	ts, err := m.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
+
+	var certstore *certstore.Store
+	if version == 2 {
+		certstore, err = m.F3.GetCertStore()
+		if err != nil {
+			return nil, xerrors.Errorf("getting certstore: %w", err)
+		}
+	}
+
 	r, w := io.Pipe()
 	out := make(chan []byte)
 	go func() {
 		bw := bufio.NewWriterSize(w, 1<<20)
 
-		err = a.Chain.ExportV1(ctx, ts, nroots, skipoldmsgs, bw)
+		// export v1 snapshot if not certstore or version is SnapshotVersion1
+		if certstore == nil || version == 1 {
+			err = m.Chain.ExportV1(ctx, ts, nroots, skipoldmsgs, bw)
+		} else {
+			err = m.Chain.ExportV2(ctx, ts, nroots, skipoldmsgs, certstore, bw)
+		}
+
 		_ = bw.Flush()            // it is a write to a pipe
 		_ = w.CloseWithError(err) // it is a pipe
 	}()
