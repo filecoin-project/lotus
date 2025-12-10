@@ -45,6 +45,7 @@ The Lotus and Lotus-Miner v1.34.2 release includes numerous bug fixes, CLI enhan
 - fix(miner): ensure sender account exists ([filecoin-project/lotus#13348](https://github.com/filecoin-project/lotus/pull/13348))
 - fix(eth): properly return vm error in all gas estimation methods ([filecoin-project/lotus#13389](https://github.com/filecoin-project/lotus/pull/13389))
 - chore: all actor cmd support --actor ([filecoin-project/lotus#13391](https://github.com/filecoin-project/lotus/pull/13391))
+- fix(fr32): fix data corruption in multithreaded Pad/Unpad for non-aligned sizes
 
 ## 📝 Changelog
 

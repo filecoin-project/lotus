@@ -41,7 +41,14 @@ func mtChunkCount(usz abi.PaddedPieceSize) uint64 {
 
 func mt(in, out []byte, padLen int, op func(unpadded, padded []byte)) {
 	threads := mtChunkCount(abi.PaddedPieceSize(padLen))
-	threadBytes := abi.PaddedPieceSize(padLen / int(threads))
+
+	// Ensure threadBytes is aligned to 128-byte chunk boundaries.
+	// Each fr32 chunk is 128 padded bytes / 127 unpadded bytes.
+	chunksPerThread := (padLen / int(threads)) / 128
+	if chunksPerThread == 0 {
+		chunksPerThread = 1
+	}
+	threadBytes := abi.PaddedPieceSize(chunksPerThread * 128)
 
 	var wg sync.WaitGroup
 	wg.Add(int(threads))
@@ -52,6 +59,16 @@ func mt(in, out []byte, padLen int, op func(unpadded, padded []byte)) {
 
 			start := threadBytes * abi.PaddedPieceSize(thread)
 			end := start + threadBytes
+
+			// Last thread takes any remainder
+			if thread == int(threads)-1 {
+				end = abi.PaddedPieceSize(padLen)
+			}
+
+			// Skip if this thread has no work
+			if start >= abi.PaddedPieceSize(padLen) {
+				return
+			}
 
 			op(in[start.Unpadded():end.Unpadded()], out[start:end])
 		}(i)
