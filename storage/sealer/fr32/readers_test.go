@@ -577,7 +577,6 @@ func TestUnpadReaderSizeMismatch_OffsetRead(t *testing.T) {
 
 	startOffsetPadded := startOffsetUnpadded.Padded()
 	endOffsetPadded := endOffsetUnpadded.Padded()
-	rangePadded := endOffsetPadded - startOffsetPadded
 
 	// Extract the padded range from the full padded data
 	paddedRange := fullPadded[startOffsetPadded:endOffsetPadded]
@@ -587,7 +586,7 @@ func TestUnpadReaderSizeMismatch_OffsetRead(t *testing.T) {
 
 	// BUG PATTERN: Create unpadReader with full piece size but only range available
 	// Note: We use a valid piece size that encompasses our range
-	declaredSize := abi.PaddedPieceSize(rangePadded)
+	declaredSize := endOffsetPadded - startOffsetPadded
 	// Round up to valid piece size (power of 2)
 	for declaredSize&(declaredSize-1) != 0 {
 		declaredSize = declaredSize & (declaredSize - 1)
