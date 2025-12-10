@@ -13,6 +13,20 @@
 - docs: fix outdated link in documentation ([#13436](https://github.com/filecoin-project/lotus/pull/13436))
 - docs: fix dead link in documentation ([#13437](https://github.com/filecoin-project/lotus/pull/13437))
 
+# Node v1.34.4-rc1 / 2025-12-10
+
+This is a patch release candidate primarily to include the fr32 fix required for Storage Provider software. All SPs (including Curio SPs) should update to this latest Lotus release.
+
+## Bug Fixes
+
+- fix(fr32): Update go-commp-utils to include fr32 fixes for Storage Provider compatibility ([filecoin-project/lotus#13455](https://github.com/filecoin-project/lotus/pull/13455))
+
+## 📝 Changelog
+
+For the set of changes since the last stable release:
+
+- Node: https://github.com/filecoin-project/lotus/compare/release/v1.34.3...release/v1.34.4-rc1
+
 # Node v1.34.3 / 2025-12-03
 
 This is a patch release addressing Docker image glibc compatibility errors reported in v1.34.2. This update is only necessary for users running Lotus via Docker who encountered `GLIBC_2.32/2.33/2.34 not found` errors.
