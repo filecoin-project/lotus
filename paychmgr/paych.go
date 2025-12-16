@@ -285,7 +285,7 @@ func (ca *channelAccessor) checkVoucherValidUnlocked(ctx context.Context, ch add
 	}
 
 	if len(sv.Merges) != 0 {
-		return nil, fmt.Errorf("dont currently support paych lane merges")
+		return nil, fmt.Errorf("don't currently support paych lane merges")
 	}
 
 	return laneStates, nil
@@ -540,7 +540,7 @@ func (ca *channelAccessor) laneState(ctx context.Context, state lpaych.State, ch
 func (ca *channelAccessor) totalRedeemedWithVoucher(laneStates map[uint64]lpaych.LaneState, sv *paych.SignedVoucher) (big.Int, error) {
 	// TODO: merges
 	if len(sv.Merges) != 0 {
-		return big.Int{}, xerrors.Errorf("dont currently support paych lane merges")
+		return big.Int{}, xerrors.Errorf("don't currently support paych lane merges")
 	}
 
 	total := big.NewInt(0)

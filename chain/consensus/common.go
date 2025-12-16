@@ -338,7 +338,7 @@ func checkBlockMessages(ctx context.Context, sm *stmgr.StateManager, cs *store.C
 	}
 
 	if b.Header.Messages != mrcid {
-		return fmt.Errorf("messages didnt match message root in header")
+		return fmt.Errorf("messages didn't match message root in header")
 	}
 
 	// Finally, flush.
