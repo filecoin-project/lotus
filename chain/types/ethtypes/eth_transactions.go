@@ -24,6 +24,9 @@ import (
 const (
 	EthLegacyTxType = 0x00
 	EIP1559TxType   = 0x02
+	// EIP-7702 typed transaction: Set Code for EOAs (authorization list)
+	// https://eips.ethereum.org/EIPS/eip-7702
+	EIP7702TxType = 0x04
 )
 
 const (
@@ -85,6 +88,8 @@ type EthTx struct {
 	V                    EthBigInt   `json:"v"`
 	R                    EthBigInt   `json:"r"`
 	S                    EthBigInt   `json:"s"`
+	// Present only for EIP-7702 (type 0x04) transactions
+	AuthorizationList []EthAuthorization `json:"authorizationList,omitempty"`
 }
 
 func (tx *EthTx) GasFeeCap() (EthBigInt, error) {
@@ -124,6 +129,29 @@ func EthTransactionFromSignedFilecoinMessage(smsg *types.SignedMessage) (EthTran
 	if err != nil {
 		return nil, fmt.Errorf("sender was not an eth account")
 	}
+
+	// Special-case: EthAccount.ApplyAndCall -> reconstruct a 0x04 tx view
+	if smsg.Message.Method == abi.MethodNum(MethodHash("ApplyAndCall")) {
+		if authz, err := strictDecodeApplyAndCallAuthorizations(smsg.Message.Params); err == nil && len(authz) > 0 {
+			tx := &Eth7702TxArgs{
+				ChainID:              buildconstants.Eip155ChainId,
+				Nonce:                int(smsg.Message.Nonce),
+				To:                   nil,
+				Value:                smsg.Message.Value,
+				MaxFeePerGas:         smsg.Message.GasFeeCap,
+				MaxPriorityFeePerGas: smsg.Message.GasPremium,
+				GasLimit:             int(smsg.Message.GasLimit),
+				Input:                nil,
+				AuthorizationList:    authz,
+			}
+			if err := tx.InitialiseSignature(smsg.Signature); err != nil {
+				return nil, fmt.Errorf("failed to initialise signature: %w", err)
+			}
+			return tx, nil
+		}
+	}
+
+	// Delegator route removed; routing is now via EthAccount.ApplyAndCall + VM intercept.
 
 	// Extract Ethereum parameters and recipient from the message.
 	params, to, err := getEthParamsAndRecipient(&smsg.Message)
@@ -187,13 +215,95 @@ func EthTransactionFromSignedFilecoinMessage(smsg *types.SignedMessage) (EthTran
 	}
 }
 
+// strictDecodeApplyAndCallAuthorizations decodes the canonical ApplyAndCall params and returns
+// the authorization list. It enforces:
+// - top-level array length >= 1
+// - first element is an array of 6-field tuples with exact field kinds
+// Errors out early on malformed shapes.
+func strictDecodeApplyAndCallAuthorizations(params []byte) ([]EthAuthorization, error) {
+	r := cbg.NewCborReader(bytes.NewReader(params))
+	maj, l, err := r.ReadHeader()
+	if err != nil {
+		return nil, err
+	}
+	if maj != cbg.MajArray || l < 1 {
+		return nil, fmt.Errorf("applyandcall params must be array with >=1 elements")
+	}
+	maj0, l0, err := r.ReadHeader()
+	if err != nil {
+		return nil, err
+	}
+	if maj0 != cbg.MajArray {
+		return nil, fmt.Errorf("authorizations must be array")
+	}
+	tmp := make([]EthAuthorization, 0, l0)
+	for i := 0; i < int(l0); i++ {
+		majT, tlen, err := r.ReadHeader()
+		if err != nil || majT != cbg.MajArray || tlen != 6 {
+			return nil, fmt.Errorf("authorization[%d]: not a 6-field tuple", i)
+		}
+		majF, v, err := r.ReadHeader()
+		if err != nil || majF != cbg.MajUnsignedInt {
+			return nil, fmt.Errorf("auth[%d]: bad chainId", i)
+		}
+		majF, blen, err := r.ReadHeader()
+		if err != nil || majF != cbg.MajByteString || blen != 20 {
+			return nil, fmt.Errorf("auth[%d]: bad address", i)
+		}
+		var ea EthAddress
+		if _, err := r.Read(ea[:]); err != nil {
+			return nil, fmt.Errorf("auth[%d]: bad address bytes", i)
+		}
+		majF, nv, err := r.ReadHeader()
+		if err != nil || majF != cbg.MajUnsignedInt {
+			return nil, fmt.Errorf("auth[%d]: bad nonce", i)
+		}
+		majF, yv, err := r.ReadHeader()
+		if err != nil || majF != cbg.MajUnsignedInt {
+			return nil, fmt.Errorf("auth[%d]: bad yParity", i)
+		}
+		majF, rbl, err := r.ReadHeader()
+		if err != nil || majF != cbg.MajByteString {
+			return nil, fmt.Errorf("auth[%d]: bad r", i)
+		}
+		rb := make([]byte, rbl)
+		if _, err := r.Read(rb); err != nil {
+			return nil, fmt.Errorf("auth[%d]: bad r bytes", i)
+		}
+		majF, sbl, err := r.ReadHeader()
+		if err != nil || majF != cbg.MajByteString {
+			return nil, fmt.Errorf("auth[%d]: bad s", i)
+		}
+		sb := make([]byte, sbl)
+		if _, err := r.Read(sb); err != nil {
+			return nil, fmt.Errorf("auth[%d]: bad s bytes", i)
+		}
+		tmp = append(tmp, EthAuthorization{
+			ChainID: EthUint64(v),
+			Address: ea,
+			Nonce:   EthUint64(nv),
+			YParity: uint8(yv),
+			R:       EthBigInt(big.NewFromGo(new(mathbig.Int).SetBytes(rb))),
+			S:       EthBigInt(big.NewFromGo(new(mathbig.Int).SetBytes(sb))),
+		})
+	}
+	return tmp, nil
+}
+
 func ToSignedFilecoinMessage(tx EthTransaction) (*types.SignedMessage, error) {
 	from, err := tx.Sender()
 	if err != nil {
 		return nil, fmt.Errorf("failed to calculate sender: %w", err)
 	}
 
-	unsignedMsg, err := tx.ToUnsignedFilecoinMessage(from)
+	var unsignedMsg *types.Message
+	switch t := tx.(type) {
+	case *Eth7702TxArgs:
+		// Route 0x04 to atomic apply+call params
+		unsignedMsg, err = t.ToUnsignedFilecoinMessageAtomic(from)
+	default:
+		unsignedMsg, err = tx.ToUnsignedFilecoinMessage(from)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert to unsigned msg: %w", err)
 	}
@@ -221,6 +331,9 @@ func ParseEthTransaction(data []byte) (EthTransaction, error) {
 	case EIP1559TxType:
 		// EIP-1559
 		return parseEip1559Tx(data)
+	case EIP7702TxType:
+		// EIP-7702 (type 0x04)
+		return parseEip7702Tx(data)
 	default:
 		if data[0] > 0x7f {
 			tx, err := parseLegacyTx(data)
@@ -322,6 +435,15 @@ func formatInt(val int) ([]byte, error) {
 	return removeLeadingZeros(buf.Bytes()), nil
 }
 
+// formatUint64 encodes a uint64 as big-endian bytes without leading zeros (RLP-compatible).
+func formatUint64(val uint64) ([]byte, error) {
+	buf := new(bytes.Buffer)
+	if err := binary.Write(buf, binary.BigEndian, val); err != nil {
+		return nil, err
+	}
+	return removeLeadingZeros(buf.Bytes()), nil
+}
+
 func formatEthAddr(addr *EthAddress) []byte {
 	if addr == nil {
 		return nil
@@ -354,6 +476,26 @@ func parseInt(v interface{}) (int, error) {
 		return 0, fmt.Errorf("cannot parse interface to EthUint64: %w", err)
 	}
 	return int(value), nil
+}
+
+// parseUint64 parses a big-endian encoded unsigned integer up to 8 bytes.
+func parseUint64(v interface{}) (uint64, error) {
+	data, ok := v.([]byte)
+	if !ok {
+		return 0, fmt.Errorf("cannot parse interface to uint64: input is not a byte array")
+	}
+	if len(data) == 0 {
+		return 0, nil
+	}
+	if len(data) > 8 {
+		return 0, fmt.Errorf("cannot parse interface to uint64: length is more than 8 bytes")
+	}
+	var value uint64
+	r := bytes.NewReader(append(make([]byte, 8-len(data)), data...))
+	if err := binary.Read(r, binary.BigEndian, &value); err != nil {
+		return 0, fmt.Errorf("cannot parse interface to uint64: %w", err)
+	}
+	return value, nil
 }
 
 func parseBigInt(v interface{}) (big.Int, error) {

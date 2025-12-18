@@ -509,7 +509,20 @@ Response:
         "blockNumber": "0x5"
       }
     ],
-    "type": "0x5"
+    "type": "0x5",
+    "authorizationList": [
+      {
+        "chainId": "0x5",
+        "address": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+        "nonce": "0x5",
+        "yParity": 7,
+        "r": "0x0",
+        "s": "0x0"
+      }
+    ],
+    "delegatedTo": [
+      "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031"
+    ]
   }
 ]
 ```
@@ -562,7 +575,20 @@ Response:
         "blockNumber": "0x5"
       }
     ],
-    "type": "0x5"
+    "type": "0x5",
+    "authorizationList": [
+      {
+        "chainId": "0x5",
+        "address": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+        "nonce": "0x5",
+        "yParity": 7,
+        "r": "0x0",
+        "s": "0x0"
+      }
+    ],
+    "delegatedTo": [
+      "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031"
+    ]
   }
 ]
 ```
@@ -768,7 +794,17 @@ Response:
   ],
   "v": "0x0",
   "r": "0x0",
-  "s": "0x0"
+  "s": "0x0",
+  "authorizationList": [
+    {
+      "chainId": "0x5",
+      "address": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+      "nonce": "0x5",
+      "yParity": 7,
+      "r": "0x0",
+      "s": "0x0"
+    }
+  ]
 }
 ```
 
@@ -810,7 +846,17 @@ Response:
   ],
   "v": "0x0",
   "r": "0x0",
-  "s": "0x0"
+  "s": "0x0",
+  "authorizationList": [
+    {
+      "chainId": "0x5",
+      "address": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+      "nonce": "0x5",
+      "yParity": 7,
+      "r": "0x0",
+      "s": "0x0"
+    }
+  ]
 }
 ```
 
@@ -851,7 +897,17 @@ Response:
   ],
   "v": "0x0",
   "r": "0x0",
-  "s": "0x0"
+  "s": "0x0",
+  "authorizationList": [
+    {
+      "chainId": "0x5",
+      "address": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+      "nonce": "0x5",
+      "yParity": 7,
+      "r": "0x0",
+      "s": "0x0"
+    }
+  ]
 }
 ```
 
@@ -893,7 +949,17 @@ Response:
   ],
   "v": "0x0",
   "r": "0x0",
-  "s": "0x0"
+  "s": "0x0",
+  "authorizationList": [
+    {
+      "chainId": "0x5",
+      "address": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+      "nonce": "0x5",
+      "yParity": 7,
+      "r": "0x0",
+      "s": "0x0"
+    }
+  ]
 }
 ```
 
@@ -979,7 +1045,20 @@ Response:
       "blockNumber": "0x5"
     }
   ],
-  "type": "0x5"
+  "type": "0x5",
+  "authorizationList": [
+    {
+      "chainId": "0x5",
+      "address": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+      "nonce": "0x5",
+      "yParity": 7,
+      "r": "0x0",
+      "s": "0x0"
+    }
+  ],
+  "delegatedTo": [
+    "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031"
+  ]
 }
 ```
 
@@ -1029,7 +1108,20 @@ Response:
       "blockNumber": "0x5"
     }
   ],
-  "type": "0x5"
+  "type": "0x5",
+  "authorizationList": [
+    {
+      "chainId": "0x5",
+      "address": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+      "nonce": "0x5",
+      "yParity": 7,
+      "r": "0x0",
+      "s": "0x0"
+    }
+  ],
+  "delegatedTo": [
+    "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031"
+  ]
 }
 ```
 

@@ -18,10 +18,7 @@ type ethSend struct {
 }
 
 func NewEthSendAPI(mpoolApi MpoolAPI, chainIndexer index.Indexer) EthSendAPI {
-	return &ethSend{
-		mpoolApi:     mpoolApi,
-		chainIndexer: chainIndexer,
-	}
+	return &ethSend{mpoolApi: mpoolApi, chainIndexer: chainIndexer}
 }
 
 func (e *ethSend) EthSendRawTransaction(ctx context.Context, rawTx ethtypes.EthBytes) (ethtypes.EthHash, error) {

@@ -9,6 +9,14 @@
 
 # UNRELEASED
 
+## 🚀 Features
+- EIP-7702: Add support for EIP-7702 transactions and integration.
+  - Implements the "Set EOA account code" standard via a new transaction type `0x04`.
+  - Enables atomic authorization and execution via `EthAccount.ApplyAndCall`.
+  - Adds support for parsing `0x04` transactions and `authorizationList` in `ethtypes`.
+  - Extends JSON-RPC types and receipts to include `authorizationList` and `delegatedTo` fields.
+  - *Note: The send-path is currently gated by the `eip7702_enabled` build tag.*
+
 ## 👌 Improvements
 - docs: fix outdated link in documentation ([#13436](https://github.com/filecoin-project/lotus/pull/13436))
 - docs: fix dead link in documentation ([#13437](https://github.com/filecoin-project/lotus/pull/13437))
