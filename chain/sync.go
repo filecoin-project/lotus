@@ -384,7 +384,7 @@ func copyBlockstore(ctx context.Context, from, to bstore.Blockstore) error {
 // maybe this code should actually live in blocksync??
 func zipTipSetAndMessages(bs cbor.IpldStore, ts *types.TipSet, allbmsgs []*types.Message, allsmsgs []*types.SignedMessage, bmi, smi [][]uint64) (*store.FullTipSet, error) {
 	if len(ts.Blocks()) != len(smi) || len(ts.Blocks()) != len(bmi) {
-		return nil, fmt.Errorf("msgincl length didnt match tipset size")
+		return nil, fmt.Errorf("msgincl length didn't match tipset size")
 	}
 
 	if err := checkMsgMeta(ts, allbmsgs, allsmsgs, bmi, smi); err != nil {
@@ -1108,7 +1108,7 @@ func checkMsgMeta(ts *types.TipSet, allbmsgs []*types.Message, allsmsgs []*types
 		}
 
 		if b.Messages != mrcid {
-			return fmt.Errorf("messages didnt match message root in header for ts %s", ts.Key())
+			return fmt.Errorf("messages didn't match message root in header for ts %s", ts.Key())
 		}
 	}
 
