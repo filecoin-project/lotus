@@ -47,8 +47,8 @@ type pieceReader struct {
 	// random read cache
 	remReads *lru.Cache[int64, []byte] // data start offset -> data
 	// todo try carrying a "bytes read sequentially so far" counter with those
-	//  cacahed byte buffers, increase buffer sizes when we see that we're doing
-	//  a long sequential read
+	// cached byte buffers, increase buffer sizes when we see that we're doing
+	// a long sequential read
 }
 
 func (p *pieceReader) init(ctx context.Context) (_ *pieceReader, err error) {

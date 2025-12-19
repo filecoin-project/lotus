@@ -66,7 +66,7 @@ type Worker interface {
 	StorageDetachAll(ctx context.Context) error                                          //perm:admin
 	StorageRedeclareLocal(ctx context.Context, id *storiface.ID, dropMissing bool) error //perm:admin
 
-	// SetEnabled marks the worker as enabled/disabled. Not that this setting
+	// SetEnabled marks the worker as enabled/disabled. Note that this setting
 	// may take a few seconds to propagate to task scheduler
 	SetEnabled(ctx context.Context, enabled bool) error //perm:admin
 
