@@ -130,7 +130,7 @@ require (
 	github.com/puzpuzpuz/xsync/v2 v2.5.1
 	github.com/raulk/clock v1.1.0
 	github.com/raulk/go-watchdog v1.3.0
-	github.com/samber/lo v1.47.0
+	github.com/samber/lo v1.52.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.11.1
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7 // dependency-check-ignore: unknown
