@@ -12,6 +12,7 @@ import (
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
 	amt4 "github.com/filecoin-project/go-amt-ipld/v4"
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
@@ -196,6 +197,10 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 		}
 	}
 
+	// Network version at the execution epoch, used for reservations activation
+	// and gating.
+	nv := sm.GetNetworkVersion(ctx, epoch)
+
 	vmEarlyDuration := partDone()
 	earlyCronGas := cronGas
 	cronGas = 0
@@ -206,11 +211,24 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 		return cid.Undef, cid.Undef, xerrors.Errorf("making vm: %w", err)
 	}
 
+	// Start a tipset reservation session around explicit messages. A deferred
+	// call ensures the session is closed on all paths, while the explicit call
+	// before cron keeps the session scope limited to explicit messages.
+	if err := startReservations(ctx, vmi, bms, nv); err != nil {
+		return cid.Undef, cid.Undef, xerrors.Errorf("starting tipset reservations: %w", err)
+	}
+	defer func() {
+		if err := endReservations(ctx, vmi, nv); err != nil {
+			log.Warnw("ending tipset reservations failed", "error", err)
+		}
+	}()
+
 	var (
 		receipts      []*types.MessageReceipt
 		storingEvents = sm.ChainStore().IsStoringEvents()
 		events        [][]types.Event
 		processedMsgs = make(map[cid.Cid]struct{})
+		seenSenders   = make(map[address.Address]struct{}) // Strict Sender Partitioning
 	)
 
 	var msgGas int64
@@ -218,12 +236,21 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 	for _, b := range bms {
 		penalty := types.NewInt(0)
 		gasReward := big.Zero()
+		currentBlockSenders := make(map[address.Address]struct{})
 
 		for _, cm := range append(b.BlsMessages, b.SecpkMessages...) {
 			m := cm.VMMessage()
 			if _, found := processedMsgs[m.Cid()]; found {
 				continue
 			}
+
+			// Strict Sender Partitioning:
+			// If this sender was seen in a previous block (higher precedence),
+			// ignore this message completely.
+			if _, found := seenSenders[m.From]; found {
+				continue
+			}
+
 			r, err := vmi.ApplyMessage(ctx, cm)
 			if err != nil {
 				return cid.Undef, cid.Undef, err
@@ -246,10 +273,15 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 				}
 			}
 			processedMsgs[m.Cid()] = struct{}{}
+			currentBlockSenders[m.From] = struct{}{}
 		}
 
-		params := &reward.AwardBlockRewardParams{
-			Miner:     b.Miner,
+		// After processing the block, mark its senders as seen for future blocks.
+		for s := range currentBlockSenders {
+			seenSenders[s] = struct{}{}
+		}
+
+		params := &reward.AwardBlockRewardParams{Miner: b.Miner,
 			Penalty:   penalty,
 			GasReward: gasReward,
 			WinCount:  b.WinCount,
@@ -258,6 +290,12 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 		if rErr != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("error applying reward: %w", rErr)
 		}
+	}
+
+	// End the reservation session before running cron so that reservations
+	// strictly cover explicit messages only.
+	if err := endReservations(ctx, vmi, nv); err != nil {
+		return cid.Undef, cid.Undef, xerrors.Errorf("ending tipset reservations: %w", err)
 	}
 
 	vmMsgDuration := partDone()

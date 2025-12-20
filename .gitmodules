@@ -7,3 +7,7 @@
 [submodule "extern/test-vectors"]
 	path = extern/test-vectors
 	url = https://github.com/filecoin-project/test-vectors.git
+[submodule "extern/ref-fvm"]
+	path = extern/ref-fvm
+	url = git@github.com:filecoin-project/ref-fvm.git
+	branch = multistage-execution
