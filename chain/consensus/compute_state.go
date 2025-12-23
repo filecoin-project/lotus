@@ -2,7 +2,6 @@ package consensus
 
 import (
 	"context"
-	"fmt"
 	"sort"
 	"sync/atomic"
 	"time"
@@ -11,7 +10,6 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/stats"
-	"go.opencensus.io/tag"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
@@ -227,8 +225,6 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 		totalGasLimit int64
 		totalGasUsed  int64
 		messageCount  int64
-		gasByMethod   = make(map[string]int64) // key: "actorName:methodNum"
-		countByMethod = make(map[string]int64)
 		msgGasList    []msgGasMetrics
 	)
 
@@ -253,13 +249,6 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 			totalGasUsed += r.GasUsed
 			messageCount++
 			msgGasList = append(msgGasList, msgGasMetrics{gasLimit: m.GasLimit, gasUsed: r.GasUsed})
-
-			// Track by method (actor:method format)
-			//actorName := builtin.ActorNameByCode(r.ActorCodeCid) TODO make fvm return this
-			actorName := "unknown"
-			methodKey := fmt.Sprintf("%s:%d", actorName, m.Method)
-			gasByMethod[methodKey] += r.GasUsed
-			countByMethod[methodKey]++
 
 			// Record per-message histograms
 			stats.Record(ctx, metrics.SyncedBlockMessageGasLimit.M(m.GasLimit))
@@ -401,33 +390,6 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 				break
 			}
 		}
-	}
-
-	// Record gas by method with tags
-	for methodKey, gasUsed := range gasByMethod {
-		// Parse actorName:methodNum format
-		var actorName, methodNum string
-		if _, err := fmt.Sscanf(methodKey, "%s", &actorName); err == nil {
-			// Find the colon separator
-			for i := len(methodKey) - 1; i >= 0; i-- {
-				if methodKey[i] == ':' {
-					actorName = methodKey[:i]
-					methodNum = methodKey[i+1:]
-					break
-				}
-			}
-		}
-		if actorName == "" {
-			actorName = methodKey
-			methodNum = "unknown"
-		}
-
-		tagCtx, _ := tag.New(ctx,
-			tag.Upsert(metrics.ActorName, actorName),
-			tag.Upsert(metrics.MethodName, methodNum),
-		)
-		stats.Record(tagCtx, metrics.SyncedBlockGasUsedByMethod.M(gasUsed))
-		stats.Record(tagCtx, metrics.SyncedBlockMessageCountByMethod.M(countByMethod[methodKey]))
 	}
 
 	return st, rectroot, nil

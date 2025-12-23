@@ -95,10 +95,6 @@ var (
 
 	// message fetching
 	FetchSource, _ = tag.NewKey("fetch_source") // "local" or "network"
-
-	// gas metrics
-	ActorName, _  = tag.NewKey("actor_name")
-	MethodName, _ = tag.NewKey("method_name")
 )
 
 // Measures
@@ -183,9 +179,7 @@ var (
 	SyncedBlockMessageGasUsed           = stats.Int64("chain/synced_block_message_gas_used", "Actual gas used per message in synced blocks (histogram)", stats.UnitDimensionless)
 	SyncedBlockGasUsedMedian            = stats.Int64("chain/synced_block_gas_used_median", "Median gas used per message in synced block", stats.UnitDimensionless)
 	SyncedBlockGasUsedMedianByGasUnits  = stats.Int64("chain/synced_block_gas_used_median_by_gas_units", "Median gas used weighted by gas used", stats.UnitDimensionless)
-	SyncedBlockGasUsedByMethod          = stats.Int64("chain/synced_block_gas_used_by_method", "Gas used by actor method in synced blocks", stats.UnitDimensionless)
 	SyncedBlockMessageCount             = stats.Int64("chain/synced_block_message_count", "Number of messages in synced block", stats.UnitDimensionless)
-	SyncedBlockMessageCountByMethod     = stats.Int64("chain/synced_block_message_count_by_method", "Number of messages by actor method in synced blocks", stats.UnitDimensionless)
 
 	// miner
 	WorkerCallsStarted           = stats.Int64("sealing/worker_calls_started", "Counter of started worker tasks", stats.UnitDimensionless)
@@ -631,20 +625,10 @@ var (
 		Aggregation: view.LastValue(),
 		TagKeys:     []tag.Key{Network},
 	}
-	SyncedBlockGasUsedByMethodView = &view.View{
-		Measure:     SyncedBlockGasUsedByMethod,
-		Aggregation: view.Sum(),
-		TagKeys:     []tag.Key{ActorName, MethodName, Network},
-	}
 	SyncedBlockMessageCountView = &view.View{
 		Measure:     SyncedBlockMessageCount,
 		Aggregation: view.LastValue(),
 		TagKeys:     []tag.Key{Network},
-	}
-	SyncedBlockMessageCountByMethodView = &view.View{
-		Measure:     SyncedBlockMessageCountByMethod,
-		Aggregation: view.Sum(),
-		TagKeys:     []tag.Key{ActorName, MethodName, Network},
 	}
 
 	// miner
@@ -1047,9 +1031,7 @@ var ChainNodeViews = append([]*view.View{
 	SyncedBlockMessageGasUsedView,
 	SyncedBlockGasUsedMedianView,
 	SyncedBlockGasUsedMedianByGasUnitsView,
-	SyncedBlockGasUsedByMethodView,
 	SyncedBlockMessageCountView,
-	SyncedBlockMessageCountByMethodView,
 }, DefaultViews...)
 
 var MinerNodeViews = append([]*view.View{
