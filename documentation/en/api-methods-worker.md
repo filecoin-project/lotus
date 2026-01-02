@@ -2750,7 +2750,7 @@ Response:
 
 
 ### SetEnabled
-SetEnabled marks the worker as enabled/disabled. Not that this setting
+SetEnabled marks the worker as enabled/disabled. Note that this setting
 may take a few seconds to propagate to task scheduler
 
 

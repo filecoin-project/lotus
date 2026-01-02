@@ -4939,7 +4939,7 @@
         {
             "name": "Filecoin.SetEnabled",
             "description": "```go\nfunc (s *WorkerStruct) SetEnabled(p0 context.Context, p1 bool) error {\n\tif s.Internal.SetEnabled == nil {\n\t\treturn ErrNotSupported\n\t}\n\treturn s.Internal.SetEnabled(p0, p1)\n}\n```",
-            "summary": "SetEnabled marks the worker as enabled/disabled. Not that this setting\nmay take a few seconds to propagate to task scheduler\n",
+            "summary": "SetEnabled marks the worker as enabled/disabled. Note that this setting\nmay take a few seconds to propagate to task scheduler\n",
             "paramStructure": "by-position",
             "params": [
                 {
