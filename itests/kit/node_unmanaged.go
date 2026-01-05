@@ -999,10 +999,8 @@ func (tm *TestUnmanagedMiner) waitForNextPostDeadline() error {
 	if err != nil {
 		return fmt.Errorf("waitForNextPostDeadline: failed to get proving deadline: %w", err)
 	}
-	currentDeadlineIdx := CurrentDeadlineIndex(di)
-	nextDeadlineEpoch := di.PeriodStart + di.WPoStChallengeWindow*abi.ChainEpoch(currentDeadlineIdx+1)
 
-	tm.log("Window PoST waiting until next challenge window, currentDeadlineIdx: %d, nextDeadlineEpoch: %d", currentDeadlineIdx, nextDeadlineEpoch)
+	tm.log("Window PoST waiting until next challenge window, currentDeadlineIdx: %d, nextDeadlineEpoch: %d", di.Index, di.Close)
 
 	heads, err := tm.FullNode.ChainNotify(ctx)
 	if err != nil {
@@ -1014,13 +1012,13 @@ func (tm *TestUnmanagedMiner) waitForNextPostDeadline() error {
 			if c.Type != "apply" {
 				continue
 			}
-			if ts := c.Val; ts.Height() >= nextDeadlineEpoch+5 { // add some buffer
+			if ts := c.Val; ts.Height() >= di.Close+5 { // add some buffer
 				return nil
 			}
 		}
 	}
 
-	return fmt.Errorf("waitForNextPostDeadline: failed to wait for nextDeadlineEpoch %d", nextDeadlineEpoch)
+	return fmt.Errorf("waitForNextPostDeadline: failed to wait for nextDeadlineEpoch %d", di.Close)
 }
 
 // sectorsToPost returns the sectors that are due to be posted in the current challenge window
@@ -1029,8 +1027,6 @@ func (tm *TestUnmanagedMiner) sectorsToPost() ([]abi.SectorNumber, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get proving deadline: %w", err)
 	}
-
-	currentDeadlineIdx := CurrentDeadlineIndex(di)
 
 	var allSectors []abi.SectorNumber
 	var sectorsToPost []abi.SectorNumber
@@ -1046,7 +1042,7 @@ func (tm *TestUnmanagedMiner) sectorsToPost() ([]abi.SectorNumber, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to get sector partition: %w", err)
 		}
-		if sp.Deadline == currentDeadlineIdx {
+		if sp.Deadline == di.Index {
 			sectorsToPost = append(sectorsToPost, sectorNumber)
 		}
 	}
@@ -1599,7 +1595,9 @@ func (tm *TestUnmanagedMiner) WaitTillActivatedAndAssertPower(sectors []abi.Sect
 			// if the sector is in the current or previous deadline, we can't dispute the PoSt
 			sl, err := tm.FullNode.StateSectorPartition(tm.ctx, tm.ActorAddr, sectorNumber, types.EmptyTSK)
 			req.NoError(err)
-			if sl.Deadline == CurrentDeadlineIndex(di) {
+			di, err = tm.FullNode.StateMinerProvingDeadline(tm.ctx, tm.ActorAddr, types.EmptyTSK)
+			req.NoError(err)
+			if sl.Deadline == di.Index {
 				tm.log("In current proving deadline for sector %d, waiting for the next deadline to dispute PoSt", sectorNumber)
 				// wait until we're past the proving deadline for this sector
 				tm.FullNode.WaitTillChain(tm.ctx, HeightAtLeast(di.Close+5))
@@ -1705,6 +1703,9 @@ func (tm *TestUnmanagedMiner) AssertDisputeFails(sector abi.SectorNumber) {
 // as being the current deadline for the miner or their next deadline. But we also include the
 // deadline after the next deadline in our check here to be conservative to avoid race conditions of
 // the chain progressing before messages land.
+//
+// This function uses CurrentDeadlineIndex rather than di.Index because it may be called during
+// sector onboarding before the miner is enrolled in cron, when di.Index may not be accurate.
 func (tm *TestUnmanagedMiner) MaybeImmutableDeadline(deadlineIndex uint64) bool {
 	req := require.New(tm.t)
 	di, err := tm.FullNode.StateMinerProvingDeadline(tm.ctx, tm.ActorAddr, types.EmptyTSK)
