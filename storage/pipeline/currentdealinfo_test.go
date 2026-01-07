@@ -2,6 +2,7 @@ package sealing
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"math/rand"
 	"sort"
@@ -10,7 +11,6 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/net/context"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
