@@ -200,7 +200,7 @@ func TestEthEstimateGasSkipSender(t *testing.T) {
 
 	// Gas bounds for sanity checks
 	const (
-		minGas = uint64(21_000)        // Minimum gas for a simple transfer
+		minGas = uint64(21_000)         // Minimum gas for a simple transfer
 		maxGas = uint64(10_000_000_000) // Upper bound to detect overflow
 	)
 
