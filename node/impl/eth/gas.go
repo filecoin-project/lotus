@@ -234,6 +234,15 @@ func (e *ethGas) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (ethty
 		return 0, xerrors.Errorf("gas search failed: %w", err)
 	}
 
+	// 7702: add intrinsic overhead for authorization tuples only for the
+	// EthAccount.ApplyAndCall route.
+	if ethtypes.Eip7702FeatureEnabled && gassedMsg.Method == abi.MethodNum(ethtypes.MethodHash("ApplyAndCall")) {
+		authCount := countAuthInApplyAndCallParams(gassedMsg.Params)
+		if authCount > 0 {
+			expectedGas += compute7702IntrinsicOverhead(authCount)
+		}
+	}
+
 	return ethtypes.EthUint64(expectedGas), nil
 }
 

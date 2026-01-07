@@ -142,6 +142,7 @@ func executeTipset(ctx context.Context, ts *types.TipSet, cs ChainStore, sm Stat
 	return stRoot, msgs, rcpts, nil
 }
 
+// Note: ParseEthRevert moved to chain/types/ethtypes. Use ethtypes.ParseEthRevert.
 // lookupEthAddress makes its best effort at finding the Ethereum address for a
 // Filecoin address. It does the following:
 //
@@ -474,11 +475,25 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, baseFee big.Int, ms
 		Logs:             []ethtypes.EthLog{}, // empty log array is compulsory when no logs, or libraries like ethers.js break
 		LogsBloom:        ethtypes.NewEmptyEthBloom(),
 	}
+	if len(tx.AuthorizationList) > 0 {
+		txReceipt.AuthorizationList = tx.AuthorizationList
+	}
 
+	// Default: derive status from Filecoin exit code.
+	txReceipt.Status = 0
 	if msgReceipt.ExitCode.IsSuccess() {
 		txReceipt.Status = 1
-	} else {
-		txReceipt.Status = 0
+	}
+
+	// EIP-7702: for typed-0x04 routed to EthAccount.ApplyAndCall, the actor always exits OK and embeds status in return.
+	if tx.Type == 0x04 && len(msgReceipt.Return) > 0 {
+		if st, ok := decodeApplyAndCallReturnStatus(msgReceipt.Return); ok {
+			if st != 0 {
+				txReceipt.Status = 1
+			} else {
+				txReceipt.Status = 0
+			}
+		} // else: malformed return; keep default ExitCode-derived status
 	}
 
 	txReceipt.GasUsed = ethtypes.EthUint64(msgReceipt.GasUsed)
@@ -533,6 +548,31 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, baseFee big.Int, ms
 	}
 
 	return txReceipt, nil
+}
+
+// decodeApplyAndCallReturnStatus parses a CBOR-encoded [status(uint), output_data(bytes)]
+// and returns the status if decoding succeeds.
+func decodeApplyAndCallReturnStatus(b []byte) (uint64, bool) {
+	r := bytes.NewReader(b)
+	maj, extra, err := cbg.CborReadHeader(r)
+	if err != nil || maj != cbg.MajArray || extra != 2 {
+		return 0, false
+	}
+	maj, status, err := cbg.CborReadHeader(r)
+	if err != nil || maj != cbg.MajUnsignedInt {
+		return 0, false
+	}
+	maj, extra, err = cbg.CborReadHeader(r)
+	if err != nil || maj != cbg.MajByteString {
+		return 0, false
+	}
+	if extra > 0 {
+		buf := make([]byte, extra)
+		if _, err := r.Read(buf); err != nil {
+			return 0, false
+		}
+	}
+	return status, true
 }
 
 func encodeFilecoinParamsAsABI(method abi.MethodNum, codec uint64, params []byte) []byte {

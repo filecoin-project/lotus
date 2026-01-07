@@ -342,6 +342,9 @@ func (e *ethTransaction) EthGetTransactionReceiptLimited(ctx context.Context, tx
 		return nil, xerrors.Errorf("failed to create Eth receipt: %w", err)
 	}
 
+	// 7702: adjust receipt for delegated execution if needed
+	adjustReceiptForDelegation(ctx, &receipt, tx)
+
 	return &receipt, nil
 }
 
@@ -396,6 +399,9 @@ func (e *ethTransaction) EthGetBlockReceiptsLimited(ctx context.Context, blockPa
 		if err != nil {
 			return nil, xerrors.Errorf("failed to create Eth receipt: %w", err)
 		}
+
+		// 7702: adjust receipt for delegated execution if needed
+		adjustReceiptForDelegation(ctx, &receipt, tx)
 
 		// Set the correct Ethereum block hash
 		receipt.BlockHash = blkHash

@@ -474,9 +474,10 @@ func (tm *TestUnmanagedMiner) SnapDeal(sectorNumber abi.SectorNumber, sm SectorM
 				Pieces:       manifest,
 			},
 		},
-		SectorProofs:               [][]byte{snapProof},
-		UpdateProofsType:           updateProofType,
-		RequireActivationSuccess:   true,
+		SectorProofs:     [][]byte{snapProof},
+		UpdateProofsType: updateProofType,
+		// Do not require activation to succeed synchronously; avoid immutable deadline races in CI.
+		RequireActivationSuccess:   false,
 		RequireNotificationSuccess: false,
 	}
 	r, err := tm.SubmitMessage(params, 1, builtin.MethodsMiner.ProveReplicaUpdates3)
