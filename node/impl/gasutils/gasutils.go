@@ -34,6 +34,7 @@ const MaxSpendOnFeeDenom = 100
 type StateManagerAPI interface {
 	ParentState(ts *types.TipSet) (*state.StateTree, error)
 	CallWithGas(ctx context.Context, msg *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet, applyTsMessages bool) (*api.InvocResult, error)
+	CallWithGasSkipSenderValidation(ctx context.Context, msg *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet, applyTsMessages bool) (*api.InvocResult, error)
 	ResolveToDeterministicAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)
 }
 
@@ -51,6 +52,12 @@ type MessagePoolAPI interface {
 type GasMeta struct {
 	Price big.Int
 	Limit int64
+}
+
+// shouldApplyTsMessages returns whether tipset messages should be applied during gas estimation.
+// This can be disabled by setting LOTUS_SKIP_APPLY_TS_MESSAGE_CALL_WITH_GAS=1.
+func shouldApplyTsMessages() bool {
+	return os.Getenv("LOTUS_SKIP_APPLY_TS_MESSAGE_CALL_WITH_GAS") != "1"
 }
 
 type GasPriceCache struct {
@@ -93,6 +100,74 @@ func (g *GasPriceCache) GetTSGasStats(ctx context.Context, cstore ChainStoreAPI,
 	return prices, nil
 }
 
+// gasEstimateCallWithGasInternal is the unified implementation for gas estimation calls.
+// When skipSenderValidation is true, it skips sender address resolution and uses the skip-validation
+// call path, allowing gas estimation for messages from non-existent addresses.
+func gasEstimateCallWithGasInternal(
+	ctx context.Context,
+	cstore ChainStoreAPI,
+	smgr StateManagerAPI,
+	mpool MessagePoolAPI,
+	msgIn *types.Message,
+	currTs *types.TipSet,
+	skipSenderValidation bool,
+) (*api.InvocResult, []types.ChainMsg, *types.TipSet, error) {
+	msg := *msgIn
+
+	// Determine the address to use for pending message lookup
+	fromAddr := msgIn.From
+	if !skipSenderValidation {
+		// Resolve to deterministic address for normal validation path
+		resolvedAddr, err := smgr.ResolveToDeterministicAddress(ctx, msgIn.From, currTs)
+		if err != nil {
+			// Wrap as ErrSenderValidationFailed so callers can distinguish sender validation
+			// failures from other errors and potentially retry with skip-sender-validation.
+			return nil, []types.ChainMsg{}, nil, &api.ErrSenderValidationFailed{
+				Address: msgIn.From.String(),
+				Reason:  err.Error(),
+			}
+		}
+		fromAddr = resolvedAddr
+	}
+
+	pending, ts := mpool.PendingFor(ctx, fromAddr)
+	priorMsgs := make([]types.ChainMsg, 0, len(pending))
+	for _, m := range pending {
+		if m.Message.Nonce == msg.Nonce {
+			break
+		}
+		priorMsgs = append(priorMsgs, m)
+	}
+
+	applyTsMessages := shouldApplyTsMessages()
+
+	// Try calling until we find a height with no migration.
+	var res *api.InvocResult
+	var err error
+	for {
+		if skipSenderValidation {
+			res, err = smgr.CallWithGasSkipSenderValidation(ctx, &msg, priorMsgs, ts, applyTsMessages)
+		} else {
+			res, err = smgr.CallWithGas(ctx, &msg, priorMsgs, ts, applyTsMessages)
+		}
+		if err != stmgr.ErrExpensiveFork {
+			break
+		}
+		ts, err = cstore.GetTipSetFromKey(ctx, ts.Parents())
+		if err != nil {
+			return nil, []types.ChainMsg{}, nil, xerrors.Errorf("getting parent tipset: %w", err)
+		}
+	}
+	if err != nil {
+		if skipSenderValidation {
+			return nil, []types.ChainMsg{}, nil, xerrors.Errorf("CallWithGasSkipSenderValidation failed: %w", err)
+		}
+		return nil, []types.ChainMsg{}, nil, xerrors.Errorf("CallWithGas failed: %w", err)
+	}
+
+	return res, priorMsgs, ts, nil
+}
+
 // GasEstimateCallWithGas invokes a message "msgIn" on the earliest available tipset with pending
 // messages in the message pool. The function returns the result of the message invocation, the
 // pending messages, the tipset used for the invocation, and an error if occurred.
@@ -105,43 +180,75 @@ func GasEstimateCallWithGas(
 	msgIn *types.Message,
 	currTs *types.TipSet,
 ) (*api.InvocResult, []types.ChainMsg, *types.TipSet, error) {
-	msg := *msgIn
-	fromA, err := smgr.ResolveToDeterministicAddress(ctx, msgIn.From, currTs)
-	if err != nil {
-		return nil, []types.ChainMsg{}, nil, xerrors.Errorf("getting key address: %w", err)
-	}
+	return gasEstimateCallWithGasInternal(ctx, cstore, smgr, mpool, msgIn, currTs, false)
+}
 
-	pending, ts := mpool.PendingFor(ctx, fromA)
-	priorMsgs := make([]types.ChainMsg, 0, len(pending))
-	for _, m := range pending {
-		if m.Message.Nonce == msg.Nonce {
-			break
-		}
-		priorMsgs = append(priorMsgs, m)
-	}
+// GasEstimateCallWithGasSkipSenderValidation is like GasEstimateCallWithGas but skips sender validation.
+// This allows gas estimation for messages from non-existent addresses, matching Geth's eth_estimateGas behavior.
+func GasEstimateCallWithGasSkipSenderValidation(
+	ctx context.Context,
+	cstore ChainStoreAPI,
+	smgr StateManagerAPI,
+	mpool MessagePoolAPI,
+	msgIn *types.Message,
+	currTs *types.TipSet,
+) (*api.InvocResult, []types.ChainMsg, *types.TipSet, error) {
+	return gasEstimateCallWithGasInternal(ctx, cstore, smgr, mpool, msgIn, currTs, true)
+}
 
-	applyTsMessages := true
-	if os.Getenv("LOTUS_SKIP_APPLY_TS_MESSAGE_CALL_WITH_GAS") == "1" {
-		applyTsMessages = false
-	}
+// applyTransitionalGasMultiplier adjusts gas estimation for the Hygge upgrade transition period.
+// It applies multipliers based on message type and actor type to account for gas cost changes.
+func applyTransitionalGasMultiplier(
+	smgr StateManagerAPI,
+	ts *types.TipSet,
+	msgIn *types.Message,
+	gasUsed int64,
+) int64 {
+	transitionalMulti := 1.0
+	// Overestimate gas around the upgrade
+	if ts.Height() <= buildconstants.UpgradeHyggeHeight && (buildconstants.UpgradeHyggeHeight-ts.Height() <= 20) {
+		func() {
+			// Bare transfers get about 3x more expensive: https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0057.md#product-considerations
+			if msgIn.Method == builtin.MethodSend {
+				transitionalMulti = 3.0
+				return
+			}
 
-	// Try calling until we find a height with no migration.
-	var res *api.InvocResult
-	for {
-		res, err = smgr.CallWithGas(ctx, &msg, priorMsgs, ts, applyTsMessages)
-		if err != stmgr.ErrExpensiveFork {
-			break
-		}
-		ts, err = cstore.GetTipSetFromKey(ctx, ts.Parents())
-		if err != nil {
-			return nil, []types.ChainMsg{}, nil, xerrors.Errorf("getting parent tipset: %w", err)
-		}
-	}
-	if err != nil {
-		return nil, []types.ChainMsg{}, nil, xerrors.Errorf("CallWithGas failed: %w", err)
-	}
+			st, err := smgr.ParentState(ts)
+			if err != nil {
+				return
+			}
+			act, err := st.GetActor(msgIn.To)
+			if err != nil {
+				return
+			}
 
-	return res, priorMsgs, ts, nil
+			if lbuiltin.IsStorageMinerActor(act.Code) {
+				switch msgIn.Method {
+				case 3:
+					transitionalMulti = 1.92
+				case 4:
+					transitionalMulti = 1.72
+				case 6:
+					transitionalMulti = 1.06
+				case 7:
+					transitionalMulti = 1.2
+				case 16:
+					transitionalMulti = 1.19
+				case 18:
+					transitionalMulti = 1.73
+				case 23:
+					transitionalMulti = 1.73
+				case 26:
+					transitionalMulti = 1.15
+				case 27:
+					transitionalMulti = 1.18
+				default:
+				}
+			}
+		}()
+	}
+	return (gasUsed * int64(transitionalMulti*1024)) >> 10
 }
 
 func GasEstimateGasLimit(
@@ -174,52 +281,43 @@ func GasEstimateGasLimit(
 
 	log.Debugw("GasEstimateGasLimit CallWithGas Result", "GasUsed", ret, "ExitCode", res.MsgRct.ExitCode)
 
-	transitionalMulti := 1.0
-	// Overestimate gas around the upgrade
-	if ts.Height() <= buildconstants.UpgradeHyggeHeight && (buildconstants.UpgradeHyggeHeight-ts.Height() <= 20) {
-		func() {
+	ret = applyTransitionalGasMultiplier(smgr, ts, msgIn, ret)
 
-			// Bare transfers get about 3x more expensive: https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0057.md#product-considerations
-			if msgIn.Method == builtin.MethodSend {
-				transitionalMulti = 3.0
-				return
-			}
+	return ret, nil
+}
 
-			st, err := smgr.ParentState(ts)
-			if err != nil {
-				return
-			}
-			act, err := st.GetActor(msg.To)
-			if err != nil {
-				return
-			}
+// GasEstimateGasLimitSkipSenderValidation is like GasEstimateGasLimit but skips sender validation.
+// This allows gas estimation for messages from non-existent addresses, matching Geth's eth_estimateGas behavior.
+func GasEstimateGasLimitSkipSenderValidation(
+	ctx context.Context,
+	cstore ChainStoreAPI,
+	smgr StateManagerAPI,
+	mpool MessagePoolAPI,
+	msgIn *types.Message,
+	currTs *types.TipSet,
+) (int64, error) {
+	msg := *msgIn
+	msg.GasLimit = buildconstants.BlockGasLimit
+	msg.GasFeeCap = big.Zero()
+	msg.GasPremium = big.Zero()
 
-			if lbuiltin.IsStorageMinerActor(act.Code) {
-				switch msgIn.Method {
-				case 3:
-					transitionalMulti = 1.92
-				case 4:
-					transitionalMulti = 1.72
-				case 6:
-					transitionalMulti = 1.06
-				case 7:
-					transitionalMulti = 1.2
-				case 16:
-					transitionalMulti = 1.19
-				case 18:
-					transitionalMulti = 1.73
-				case 23:
-					transitionalMulti = 1.73
-				case 26:
-					transitionalMulti = 1.15
-				case 27:
-					transitionalMulti = 1.18
-				default:
-				}
-			}
-		}()
+	res, _, ts, err := GasEstimateCallWithGasSkipSenderValidation(ctx, cstore, smgr, mpool, &msg, currTs)
+	if err != nil {
+		return -1, xerrors.Errorf("gas estimation failed: %w", err)
 	}
-	ret = (ret * int64(transitionalMulti*1024)) >> 10
+
+	if res.MsgRct.ExitCode == exitcode.SysErrOutOfGas {
+		return -1, &api.ErrOutOfGas{}
+	}
+
+	if res.MsgRct.ExitCode != exitcode.Ok {
+		return -1, api.NewErrExecutionRevertedFromResult(res)
+	}
+
+	ret := res.MsgRct.GasUsed
+
+	// Apply the same transitional multiplier as GasEstimateGasLimit
+	ret = applyTransitionalGasMultiplier(smgr, ts, msgIn, ret)
 
 	return ret, nil
 }

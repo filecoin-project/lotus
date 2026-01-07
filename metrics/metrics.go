@@ -141,6 +141,11 @@ var (
 	MessageFetchNetwork   = stats.Int64("message/fetch_network", "Number of messages fetched from network", stats.UnitDimensionless)
 	MessageFetchDuration  = stats.Float64("message/fetch_duration_ms", "Duration of message fetch operations", stats.UnitMilliseconds)
 
+	// ETH API metrics for monitoring skip-sender-validation feature
+	EthCallCount             = stats.Int64("eth/call_count", "Number of eth_call requests", stats.UnitDimensionless)
+	EthEstimateGasCount      = stats.Int64("eth/estimate_gas_count", "Number of eth_estimateGas requests", stats.UnitDimensionless)
+	EthEstimateGasSkipSender = stats.Int64("eth/estimate_gas_skip_sender", "eth_estimateGas requests using skip sender validation fallback", stats.UnitDimensionless)
+
 	// miner
 	WorkerCallsStarted           = stats.Int64("sealing/worker_calls_started", "Counter of started worker tasks", stats.UnitDimensionless)
 	WorkerCallsReturnedCount     = stats.Int64("sealing/worker_calls_returned_count", "Counter of returned worker tasks", stats.UnitDimensionless)
@@ -482,6 +487,23 @@ var (
 		Measure:     MessageFetchDuration,
 		Aggregation: defaultMillisecondsDistribution,
 		TagKeys:     []tag.Key{FetchSource, Network},
+	}
+
+	// ETH API views
+	EthCallCountView = &view.View{
+		Measure:     EthCallCount,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{Network},
+	}
+	EthEstimateGasCountView = &view.View{
+		Measure:     EthEstimateGasCount,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{Network},
+	}
+	EthEstimateGasSkipSenderView = &view.View{
+		Measure:     EthEstimateGasSkipSender,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{Network},
 	}
 
 	// miner
@@ -864,6 +886,9 @@ var ChainNodeViews = append([]*view.View{
 	MessageFetchLocalView,
 	MessageFetchNetworkView,
 	MessageFetchDurationView,
+	EthCallCountView,
+	EthEstimateGasCountView,
+	EthEstimateGasSkipSenderView,
 }, DefaultViews...)
 
 var MinerNodeViews = append([]*view.View{
