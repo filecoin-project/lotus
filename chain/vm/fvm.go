@@ -478,6 +478,12 @@ func (vm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet
 	return applyRet, nil
 }
 
+// ApplyMessageSkipSenderValidation applies the message while skipping sender validation.
+// For FVM, this delegates to ApplyMessage since FVM handles validation internally.
+func (vm *FVM) ApplyMessageSkipSenderValidation(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet, error) {
+	return vm.ApplyMessage(ctx, cmsg)
+}
+
 func (vm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg *types.Message) (*ApplyRet, error) {
 	start := build.Clock.Now()
 	defer atomic.AddUint64(&StatApplied, 1)
@@ -581,6 +587,10 @@ func (vm *dualExecutionFVM) ApplyMessage(ctx context.Context, cmsg types.ChainMs
 
 	wg.Wait()
 	return ret, err
+}
+
+func (vm *dualExecutionFVM) ApplyMessageSkipSenderValidation(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet, error) {
+	return vm.ApplyMessage(ctx, cmsg)
 }
 
 func (vm *dualExecutionFVM) ApplyImplicitMessage(ctx context.Context, msg *types.Message) (ret *ApplyRet, err error) {
