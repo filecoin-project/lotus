@@ -301,9 +301,10 @@ func (e *ethGas) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam etht
 	return ethtypes.EthBytes{}, nil
 }
 
-// applyMessage applies a message to the state at the specified tipset with sender validation skipped.
-// This enables eth_call to simulate calls from contract addresses or non-existent addresses,
-// matching Geth's behavior. Returns the invocation result or an error if execution reverts.
+// applyMessage applies a message to the state at the specified tipset.
+// It first tries the normal path with sender validation, then falls back to skip-sender-validation
+// if the sender validation fails. This enables eth_call to simulate calls from contract addresses
+// or non-existent addresses while still working correctly for normal accounts.
 func (e *ethGas) applyMessage(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (res *api.InvocResult, err error) {
 	ts, err := e.chainStore.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
@@ -325,12 +326,38 @@ func (e *ethGas) applyMessage(ctx context.Context, msg *types.Message, tsk types
 	if err != nil {
 		return nil, xerrors.Errorf("cannot get tipset state: %w", err)
 	}
-	// Use ApplyOnStateWithGasSkipSenderValidation to allow eth_call/eth_estimateGas
-	// to simulate calls from contract addresses or non-existent addresses.
-	// This matches Geth's behavior with SkipAccountChecks for RPC simulation.
-	res, err = e.stateManager.ApplyOnStateWithGasSkipSenderValidation(ctx, st, msg, ts)
+
+	// First try the normal path with sender validation
+	res, err = e.stateManager.ApplyOnStateWithGas(ctx, st, msg, ts)
+
+	// Check if we need to fall back to skip-sender-validation path.
+	// This happens in two cases:
+	// 1. The call returns an error that indicates sender validation failure
+	// 2. The call succeeds but returns SysErrSenderInvalid exit code
+	needsSkipSender := false
 	if err != nil {
-		return nil, xerrors.Errorf("ApplyWithGasOnState failed: %w", err)
+		// Check if this is a sender validation error
+		var senderErr *api.ErrSenderValidationFailed
+		var execErr *api.ErrExecutionReverted
+		needsSkipSender = errors.As(err, &senderErr) ||
+			(errors.As(err, &execErr) && strings.Contains(execErr.Message, "SysErrSenderInvalid"))
+		if !needsSkipSender {
+			// Not a sender validation error - return the original error
+			return nil, xerrors.Errorf("ApplyOnStateWithGas failed: %w", err)
+		}
+	} else if res != nil && res.MsgRct.ExitCode == exitcode.SysErrSenderInvalid {
+		// Execution returned SysErrSenderInvalid - sender is invalid (e.g., contract)
+		needsSkipSender = true
+	}
+
+	if needsSkipSender {
+		// Sender validation failed - try skip sender validation path as fallback.
+		// This handles cases where the sender is a contract or doesn't exist,
+		// matching Geth's eth_call behavior.
+		res, err = e.stateManager.ApplyOnStateWithGasSkipSenderValidation(ctx, st, msg, ts)
+		if err != nil {
+			return nil, xerrors.Errorf("ApplyOnStateWithGasSkipSenderValidation failed: %w", err)
+		}
 	}
 
 	if res.MsgRct.ExitCode.IsError() {
