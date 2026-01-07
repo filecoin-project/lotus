@@ -12,13 +12,16 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build/buildconstants"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/rand"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -60,12 +63,19 @@ func (sm *StateManager) CallOnState(ctx context.Context, stateCid cid.Cid, msg *
 		msg.Value = types.NewInt(0)
 	}
 
-	return sm.callInternal(ctx, msg, nil, ts, stateCid, sm.GetNetworkVersion, false, execSameSenderMessages)
+	return sm.callInternal(ctx, msg, nil, ts, stateCid, sm.GetNetworkVersion, false, execSameSenderMessages, false)
 }
 
 // ApplyOnStateWithGas applies the given message on top of the given state root with gas tracing enabled
 func (sm *StateManager) ApplyOnStateWithGas(ctx context.Context, stateCid cid.Cid, msg *types.Message, ts *types.TipSet) (*api.InvocResult, error) {
-	return sm.callInternal(ctx, msg, nil, ts, stateCid, sm.GetNetworkVersion, true, execNoMessages)
+	return sm.callInternal(ctx, msg, nil, ts, stateCid, sm.GetNetworkVersion, true, execNoMessages, false)
+}
+
+// ApplyOnStateWithGasSkipSenderValidation applies the given message on top of the given state root
+// with gas tracing enabled, but skips sender validation. This allows eth_call and eth_estimateGas
+// to simulate calls from contract addresses or non-existent addresses, matching Geth's behavior.
+func (sm *StateManager) ApplyOnStateWithGasSkipSenderValidation(ctx context.Context, stateCid cid.Cid, msg *types.Message, ts *types.TipSet) (*api.InvocResult, error) {
+	return sm.callInternal(ctx, msg, nil, ts, stateCid, sm.GetNetworkVersion, true, execNoMessages, true)
 }
 
 // CallWithGas calculates the state for a given tipset, and then applies the given message on top of that state.
@@ -77,7 +87,21 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 		strategy = execSameSenderMessages
 	}
 
-	return sm.callInternal(ctx, msg, priorMsgs, ts, cid.Undef, sm.GetNetworkVersion, true, strategy)
+	return sm.callInternal(ctx, msg, priorMsgs, ts, cid.Undef, sm.GetNetworkVersion, true, strategy, false)
+}
+
+// CallWithGasSkipSenderValidation is like CallWithGas but skips sender validation,
+// creating a synthetic EthAccount actor if the sender doesn't exist on chain.
+// This enables eth_estimateGas to work with non-existent addresses, matching Geth's behavior.
+func (sm *StateManager) CallWithGasSkipSenderValidation(ctx context.Context, msg *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet, applyTsMessages bool) (*api.InvocResult, error) {
+	var strategy execMessageStrategy
+	if applyTsMessages {
+		strategy = execAllMessages
+	} else {
+		strategy = execSameSenderMessages
+	}
+
+	return sm.callInternal(ctx, msg, priorMsgs, ts, cid.Undef, sm.GetNetworkVersion, true, strategy, true)
 }
 
 // CallAtStateAndVersion allows you to specify a message to execute on the given stateCid and network version.
@@ -88,14 +112,16 @@ func (sm *StateManager) CallAtStateAndVersion(ctx context.Context, msg *types.Me
 	nvGetter := func(context.Context, abi.ChainEpoch) network.Version {
 		return v
 	}
-	return sm.callInternal(ctx, msg, nil, nil, stateCid, nvGetter, true, execSameSenderMessages)
+	return sm.callInternal(ctx, msg, nil, nil, stateCid, nvGetter, true, execSameSenderMessages, false)
 }
 
 //   - If no tipset is specified, the first tipset without an expensive migration or one in its parent is used.
 //   - If executing a message at a given tipset or its parent would trigger an expensive migration, the call will
 //     fail with ErrExpensiveFork.
+//   - If skipSenderValidation is true, the sender actor doesn't need to exist or be an account actor.
+//     This enables eth_call/eth_estimateGas to simulate calls from contract addresses or non-existent addresses.
 func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet, stateCid cid.Cid,
-	nvGetter rand.NetworkVersionGetter, checkGas bool, strategy execMessageStrategy) (*api.InvocResult, error) {
+	nvGetter rand.NetworkVersionGetter, checkGas bool, strategy execMessageStrategy, skipSenderValidation bool) (*api.InvocResult, error) {
 	ctx, span := trace.StartSpan(ctx, "statemanager.callInternal")
 	defer span.End()
 
@@ -218,7 +244,33 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 
 	fromActor, err := stTree.GetActor(msg.From)
 	if err != nil {
-		return nil, xerrors.Errorf("call raw get actor: %s", err)
+		if !skipSenderValidation {
+			// Wrap as ErrSenderValidationFailed so callers can distinguish sender validation
+			// failures from other errors and potentially retry with skip-sender-validation.
+			return nil, &api.ErrSenderValidationFailed{
+				Address: msg.From.String(),
+				Reason:  fmt.Sprintf("actor not found: %v", err),
+			}
+		}
+		// When skipping sender validation (for eth_call/eth_estimateGas simulation),
+		// create a synthetic actor if the sender doesn't exist. This allows simulating
+		// calls from contract addresses or non-existent addresses, matching Geth's behavior.
+		fromActor, stateCid, vmi, err = sm.createSyntheticSenderActor(ctx, stTree, msg.From, ts, nvGetter, vmopt)
+		if err != nil {
+			return nil, err
+		}
+	} else if skipSenderValidation {
+		// Actor exists, but we need to check if it's a valid sender type.
+		// For contracts (EVM actors), we need to temporarily change the code to EthAccount
+		// so the FVM accepts it as a valid sender during simulation.
+		var newVmi vm.Interface
+		fromActor, stateCid, newVmi, err = sm.maybeModifySenderForSimulation(ctx, stTree, fromActor, msg.From, ts, nvGetter, vmopt)
+		if err != nil {
+			return nil, err
+		}
+		if newVmi != nil {
+			vmi = newVmi
+		}
 	}
 
 	msg.Nonce = fromActor.Nonce
@@ -238,9 +290,16 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 	var ret *vm.ApplyRet
 	var gasInfo api.MsgGasCost
 	if checkGas {
-		fromKey, err := sm.ResolveToDeterministicAddress(ctx, msg.From, ts)
-		if err != nil {
-			return nil, xerrors.Errorf("could not resolve key: %w", err)
+		var fromKey address.Address
+		var err error
+		if skipSenderValidation {
+			// Skip resolving sender address since it may not exist on chain
+			fromKey = msg.From
+		} else {
+			fromKey, err = sm.ResolveToDeterministicAddress(ctx, msg.From, ts)
+			if err != nil {
+				return nil, xerrors.Errorf("could not resolve key: %w", err)
+			}
 		}
 
 		var msgApply types.ChainMsg
@@ -266,7 +325,7 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 			}
 		}
 
-		ret, err = vmi.ApplyMessage(ctx, msgApply)
+		ret, err = vmi.ApplyMessageSkipSenderValidation(ctx, msgApply)
 		if err != nil {
 			return nil, xerrors.Errorf("gas estimation failed: %w", err)
 		}
@@ -311,4 +370,158 @@ func (sm *StateManager) Replay(ctx context.Context, ts *types.TipSet, mcid cid.C
 	}
 
 	return finder.outm, finder.outr, nil
+}
+
+// createSyntheticSenderActor creates a synthetic EthAccount actor for simulation when the sender
+// address doesn't exist on chain. This enables eth_call/eth_estimateGas to work with non-existent
+// addresses, matching Geth's behavior.
+//
+// IMPORTANT: State modifications are isolated via the buffered blockstore - changes are NOT
+// persisted to the underlying store. The VM operates on a copy of state that is discarded after
+// the simulation completes. This ensures eth_call simulations don't affect actual chain state.
+//
+// The synthetic actor is created with:
+//   - Code: EthAccount (allows it to be a valid sender)
+//   - Nonce: 0
+//   - Balance: 0 (value transfers will fail as expected)
+func (sm *StateManager) createSyntheticSenderActor(
+	ctx context.Context,
+	stTree *state.StateTree,
+	fromAddr address.Address,
+	ts *types.TipSet,
+	nvGetter rand.NetworkVersionGetter,
+	vmopt *vm.VMOpts,
+) (*types.Actor, cid.Cid, vm.Interface, error) {
+	log.Debugw("creating synthetic sender actor for simulation",
+		"address", fromAddr,
+		"height", ts.Height())
+
+	nv := nvGetter(ctx, ts.Height())
+	av, err := actorstypes.VersionForNetwork(nv)
+	if err != nil {
+		return nil, cid.Undef, nil, xerrors.Errorf("failed to get actors version for network version %d: %w", nv, err)
+	}
+
+	ethAcctCid, ok := actors.GetActorCodeID(av, manifest.EthAccountKey)
+	if !ok {
+		return nil, cid.Undef, nil, xerrors.Errorf("failed to get EthAccount actor code ID for actors version %d", av)
+	}
+
+	// Create synthetic actor with zero balance - value transfers will fail as expected
+	syntheticActor := &types.Actor{
+		Code:    ethAcctCid,
+		Head:    vm.EmptyObjectCid,
+		Nonce:   0,
+		Balance: types.NewInt(0), // Explicit zero balance for clarity
+	}
+
+	// Register the address with the Init actor to get an ID address
+	idAddr, err := stTree.RegisterNewAddress(fromAddr)
+	if err != nil {
+		return nil, cid.Undef, nil, xerrors.Errorf("failed to register synthetic actor address: %w", err)
+	}
+
+	// Add the synthetic actor to the state tree at the ID address
+	if err := stTree.SetActor(idAddr, syntheticActor); err != nil {
+		return nil, cid.Undef, nil, xerrors.Errorf("failed to set synthetic actor in state tree: %w", err)
+	}
+
+	// Flush the state tree to get the new state root with the synthetic actor.
+	// Note: This flush is to the buffered blockstore, NOT the underlying chain store.
+	// All changes are ephemeral and will be discarded after the simulation.
+	newStateCid, err := stTree.Flush(ctx)
+	if err != nil {
+		return nil, cid.Undef, nil, xerrors.Errorf("failed to flush state tree with synthetic actor: %w", err)
+	}
+
+	vmopt.StateBase = newStateCid
+	vmi, err := sm.newVM(ctx, vmopt)
+	if err != nil {
+		return nil, cid.Undef, nil, xerrors.Errorf("failed to set up vm with synthetic actor: %w", err)
+	}
+
+	log.Debugw("synthetic sender actor created successfully",
+		"address", fromAddr,
+		"idAddress", idAddr,
+		"newStateCid", newStateCid)
+
+	return syntheticActor, newStateCid, vmi, nil
+}
+
+// maybeModifySenderForSimulation checks if the existing sender actor needs to be modified for
+// simulation. Contract actors (EVM) need their code temporarily changed to EthAccount so the FVM
+// accepts them as valid senders. Returns the (possibly modified) actor and updated VM state.
+func (sm *StateManager) maybeModifySenderForSimulation(
+	ctx context.Context,
+	stTree *state.StateTree,
+	fromActor *types.Actor,
+	fromAddr address.Address,
+	ts *types.TipSet,
+	nvGetter rand.NetworkVersionGetter,
+	vmopt *vm.VMOpts,
+) (*types.Actor, cid.Cid, vm.Interface, error) {
+	nv := nvGetter(ctx, ts.Height())
+	av, err := actorstypes.VersionForNetwork(nv)
+	if err != nil {
+		return nil, cid.Undef, nil, xerrors.Errorf("failed to get actors version for network version %d: %w", nv, err)
+	}
+
+	// Check if this is already a valid sender type (EthAccount or Account)
+	ethAcctCid, _ := actors.GetActorCodeID(av, manifest.EthAccountKey)
+	acctCid, _ := actors.GetActorCodeID(av, manifest.AccountKey)
+
+	if fromActor.Code == ethAcctCid || fromActor.Code == acctCid {
+		// Actor is already a valid sender, no modification needed
+		return fromActor, vmopt.StateBase, nil, nil
+	}
+
+	// Only allow modification for specific actor types that make sense for simulation.
+	// EVM actors (contracts) are the primary use case - simulating calls from contracts.
+	// Placeholder actors may also need modification in some edge cases.
+	evmCid, _ := actors.GetActorCodeID(av, manifest.EvmKey)
+	placeholderCid, _ := actors.GetActorCodeID(av, manifest.PlaceholderKey)
+
+	if fromActor.Code != evmCid && fromActor.Code != placeholderCid {
+		// Actor is not an EVM/Placeholder type - don't allow modification.
+		// This prevents simulation from system actors, payment channels, etc.
+		return nil, cid.Undef, nil, xerrors.Errorf(
+			"actor type cannot be used as sender for simulation (code=%s, address=%s): only EthAccount, Account, EVM, and Placeholder actors are supported",
+			fromActor.Code, fromAddr)
+	}
+
+	// The actor is an EVM actor (contract) or Placeholder.
+	// Create a modified version with EthAccount code for simulation.
+	balance := fromActor.Balance
+
+	modifiedActor := &types.Actor{
+		Code:    ethAcctCid,
+		Head:    vm.EmptyObjectCid,
+		Nonce:   fromActor.Nonce,
+		Balance: balance,
+	}
+
+	// Look up the ID address for this actor
+	idAddr, err := stTree.LookupIDAddress(fromAddr)
+	if err != nil {
+		return nil, cid.Undef, nil, xerrors.Errorf("failed to lookup ID address: %w", err)
+	}
+
+	// Update the actor in the state tree
+	if err := stTree.SetActor(idAddr, modifiedActor); err != nil {
+		return nil, cid.Undef, nil, xerrors.Errorf("failed to set modified actor in state tree: %w", err)
+	}
+
+	// Flush the state tree
+	newStateCid, err := stTree.Flush(ctx)
+	if err != nil {
+		return nil, cid.Undef, nil, xerrors.Errorf("failed to flush state tree with modified actor: %w", err)
+	}
+
+	vmopt.StateBase = newStateCid
+	vmi, err := sm.newVM(ctx, vmopt)
+	if err != nil {
+		return nil, cid.Undef, nil, xerrors.Errorf("failed to set up vm with modified actor: %w", err)
+	}
+
+	return modifiedActor, newStateCid, vmi, nil
 }
