@@ -67,6 +67,7 @@ var (
 	_ error                 = (*ErrNullRound)(nil)
 	_ jsonrpc.RPCErrorCodec = (*ErrNullRound)(nil)
 	_ error                 = (*errPaymentChannelDisabled)(nil)
+	_ error                 = (*ErrSenderValidationFailed)(nil)
 )
 
 func init() {
@@ -245,4 +246,22 @@ type errPaymentChannelDisabled struct{}
 
 func (errPaymentChannelDisabled) Error() string {
 	return "payment channels disabled (EnablePaymentChannelManager=false)"
+}
+
+// ErrSenderValidationFailed signals that sender validation failed during message simulation.
+// This can occur when the sender actor doesn't exist on chain or is not a valid sender type.
+// This error is internal and used for control flow - not exposed via JSON-RPC.
+type ErrSenderValidationFailed struct {
+	Address string
+	Reason  string
+}
+
+func (e *ErrSenderValidationFailed) Error() string {
+	return fmt.Sprintf("sender validation failed for %s: %s", e.Address, e.Reason)
+}
+
+// Is performs a non-strict type check for errors.Is() support.
+func (e *ErrSenderValidationFailed) Is(target error) bool {
+	_, ok := target.(*ErrSenderValidationFailed)
+	return ok
 }
