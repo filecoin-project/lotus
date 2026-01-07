@@ -7,6 +7,8 @@ import (
 
 	cid "github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/chain/types"
@@ -35,6 +37,13 @@ type Interface interface {
 	ApplyImplicitMessage(ctx context.Context, msg *types.Message) (*ApplyRet, error)
 	// Flush all buffered objects into the state store provided to the VM at construction.
 	Flush(ctx context.Context) (cid.Cid, error)
+	// StartTipsetReservations begins a tipset-scoped reservation session.
+	// The plan maps sender addresses to the total amount to reserve for gas
+	// across the full tipset. Implementations may ignore this call if the
+	// feature is disabled or unsupported.
+	StartTipsetReservations(ctx context.Context, plan map[address.Address]abi.TokenAmount) error
+	// EndTipsetReservations ends the active reservation session, if any.
+	EndTipsetReservations(ctx context.Context) error
 }
 
 // WARNING: You will not affect your node's execution by misusing this feature, but you will confuse yourself thoroughly!

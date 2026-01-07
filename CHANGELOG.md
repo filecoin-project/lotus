@@ -9,6 +9,8 @@
 
 # UNRELEASED
 
+- feat(consensus): wire tipset gas reservations and reservation-aware mempool pre-pack to activate at network version 28 (UpgradeXxHeight), keeping receipts and gas accounting identical while preventing miner penalties from underfunded intra-tipset messages
+
 ## 👌 Improvements
 - docs: fix outdated link in documentation ([#13436](https://github.com/filecoin-project/lotus/pull/13436))
 - docs: fix dead link in documentation ([#13437](https://github.com/filecoin-project/lotus/pull/13437))
@@ -98,6 +100,7 @@ For the set of changes since the last stable release:
 | asamuj | 1 | +1/-1 | 1 |
 | spuradage | 1 | +0/-1 | 1 |
 
+>>>>>>> origin/master
 # Node and Miner v1.34.1 / 2025-09-15
 
 This is a non-critical patch release that fixes an issue with the Lotus `v1.34.0` release where the incorrect version of filecoin-ffi was included.  Lotus `v1.34.0` used filecoin-ffi `v1.34.0-dev` when it should have used `v1.34.0`.  This isn’t critical since it’s the same filecoin-ffi version used during the nv27 Calibration network upgrade, but for consistency with other Node implementations like Forest, we are creating this release.  This ensures the inclusion of ref-fvm `v4.7.3` update that was missing in v1.34.0.  All users of v1.34.0 are encouraged to upgrade to v1.34.1.

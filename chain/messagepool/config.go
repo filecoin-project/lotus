@@ -98,5 +98,8 @@ func DefaultConfig() *types.MpoolConfig {
 		ReplaceByFeeRatio:      ReplaceByFeePercentageDefault,
 		PruneCooldown:          PruneCooldownDefault,
 		GasLimitOverestimation: GasLimitOverestimation,
+		// Reservation-aware pre-pack simulation is opt-in and advisory. It is
+		// additionally gated by the global reservations feature flag.
+		EnableReservationPrePack: false,
 	}
 }

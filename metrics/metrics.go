@@ -134,6 +134,8 @@ var (
 	VMApplied                           = stats.Int64("vm/applied", "Counter for messages (including internal messages) processed by the VM", stats.UnitDimensionless)
 	VMExecutionWaiting                  = stats.Int64("vm/execution_waiting", "Counter for VM executions waiting to be assigned to a lane", stats.UnitDimensionless)
 	VMExecutionRunning                  = stats.Int64("vm/execution_running", "Counter for running VM executions", stats.UnitDimensionless)
+	ReservationPlanSenders              = stats.Int64("vm/reservations_plan_senders", "Number of unique senders in the reservation plan for a tipset", stats.UnitDimensionless)
+	ReservationPlanTotal                = stats.Int64("vm/reservations_plan_total_atto", "Total reserved maximum gas cost across senders in attoFIL for a tipset", stats.UnitDimensionless)
 
 	// message fetching
 	MessageFetchRequested = stats.Int64("message/fetch_requested", "Number of messages requested for fetch", stats.UnitDimensionless)
@@ -460,6 +462,16 @@ var (
 		Measure:     VMExecutionRunning,
 		Aggregation: view.Sum(),
 		TagKeys:     []tag.Key{ExecutionLane, Network},
+	}
+	ReservationPlanSendersView = &view.View{
+		Measure:     ReservationPlanSenders,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{Network},
+	}
+	ReservationPlanTotalView = &view.View{
+		Measure:     ReservationPlanTotal,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{Network},
 	}
 
 	// message fetching
@@ -860,6 +872,8 @@ var ChainNodeViews = append([]*view.View{
 	VMAppliedView,
 	VMExecutionWaitingView,
 	VMExecutionRunningView,
+	ReservationPlanSendersView,
+	ReservationPlanTotalView,
 	MessageFetchRequestedView,
 	MessageFetchLocalView,
 	MessageFetchNetworkView,
