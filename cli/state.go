@@ -920,7 +920,6 @@ var StateListMessagesCmd = &cli.Command{
 						Nonce uint64
 						Msg   []byte
 					}{Nonce: m.Nonce, Msg: b})
-					continue
 				} else {
 					fmt.Println(string(b))
 				}
