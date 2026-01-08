@@ -714,7 +714,7 @@ func (l *LocalWorker) GenerateWindowPoStAdv(ctx context.Context, ppt abi.Registe
 		// When it does happen, window post runner logic will just re-check sectors, and retry with newly-discovered-bad sectors skipped
 		log.Errorf("couldn't read some challenges (skipped %d)", len(skipped))
 
-		// note: can't return an error as this in an jsonrpc call
+		// note: can't return an error as this in a jsonrpc call
 		return storiface.WindowPoStResult{Skipped: skipped}, nil
 	}
 

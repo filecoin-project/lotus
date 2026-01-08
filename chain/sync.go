@@ -817,7 +817,7 @@ loop:
 		// FIXME: The reassembly logic should be part of the `client`
 		//  service, the consumer should not be concerned with the
 		//  `MaxRequestLength` limitation, it should just be able to request
-		//  an segment of arbitrary length. The same burden is put on
+		//  a segment of arbitrary length. The same burden is put on
 		//  `syncFork()` which needs to be aware this as well.
 		if blockSet[len(blockSet)-1].IsChildOf(blks[0]) == false {
 			return nil, xerrors.Errorf("retrieved segments of the chain are not connected at heights %d/%d",

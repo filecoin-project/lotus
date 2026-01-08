@@ -375,7 +375,7 @@ var mmApproveChangeOwner = &cli.Command{
 
 var mmProposeChangeWorker = &cli.Command{
 	Name:      "propose-change-worker",
-	Usage:     "Propose an worker address change",
+	Usage:     "Propose a worker address change",
 	ArgsUsage: "[newWorker]",
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Args().Present() {
@@ -580,7 +580,7 @@ var mmProposeChangeBeneficiary = &cli.Command{
 
 var mmConfirmChangeWorker = &cli.Command{
 	Name:      "confirm-change-worker",
-	Usage:     "Confirm an worker address change",
+	Usage:     "Confirm a worker address change",
 	ArgsUsage: "[newWorker]",
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Args().Present() {
