@@ -19,7 +19,7 @@ var invalidExecutionRevertedMsg = xerrors.New("invalid execution reverted error"
 
 const (
 	EOutOfGas = iota + jsonrpc.FirstUserCode
-	EActorNotFound
+	EExecutionReverted
 	EF3Disabled
 	EF3ParticipationTicketInvalid
 	EF3ParticipationTicketExpired
@@ -27,7 +27,7 @@ const (
 	EF3ParticipationTooManyInstances
 	EF3ParticipationTicketStartBeforeExisting
 	EF3NotReady
-	EExecutionReverted
+	EActorNotFound
 	ENullRound
 	EPaymentChannelDisabled
 )
