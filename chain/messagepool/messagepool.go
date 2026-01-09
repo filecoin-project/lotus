@@ -1440,6 +1440,11 @@ func (mp *MessagePool) HeadChange(ctx context.Context, revert []*types.TipSet, a
 		}
 	}
 
+	// Record gas metrics after head change
+	mp.lk.RLock()
+	mp.recordGasMetrics(ctx)
+	mp.lk.RUnlock()
+
 	return merr
 }
 
@@ -1664,6 +1669,106 @@ func getBaseFeeLowerBound(baseFee, factor types.BigInt) types.BigInt {
 	}
 
 	return baseFeeLowerBound
+}
+
+// msgGasInfo holds gas-related info for a message, used for computing weighted medians
+type msgGasInfo struct {
+	gasLimit   int64
+	gasPremium big.Int
+	gasFeeCap  big.Int
+}
+
+// bigIntToFloat64 converts a big.Int to float64 for metrics recording
+func bigIntToFloat64(b big.Int) float64 {
+	if b.Int == nil {
+		return 0
+	}
+	f, _ := new(stdbig.Float).SetInt(b.Int).Float64()
+	return f
+}
+
+// recordGasMetrics records gas-related metrics for the current mpool state.
+// Should be called with mp.lk held (at least RLock) and mp.curTsLk held.
+func (mp *MessagePool) recordGasMetrics(ctx context.Context) {
+	// Get basefee from current tipset
+	if mp.curTs != nil && len(mp.curTs.Blocks()) > 0 {
+		baseFee := mp.curTs.Blocks()[0].ParentBaseFee
+		stats.Record(ctx, metrics.BaseFee.M(bigIntToFloat64(baseFee)))
+	}
+
+	// Collect gas metrics from pending messages
+	var totalGasLimit int64
+	var totalPremium big.Int = big.Zero()
+	var totalFeeCap big.Int = big.Zero()
+	var msgs []msgGasInfo
+
+	mp.forEachPending(func(_ address.Address, s *msgSet) {
+		for _, m := range s.msgs {
+			gasLimit := m.Message.GasLimit
+			totalGasLimit += gasLimit
+			totalPremium = big.Add(totalPremium, m.Message.GasPremium)
+			totalFeeCap = big.Add(totalFeeCap, m.Message.GasFeeCap)
+			msgs = append(msgs, msgGasInfo{
+				gasLimit:   gasLimit,
+				gasPremium: m.Message.GasPremium,
+				gasFeeCap:  m.Message.GasFeeCap,
+			})
+			// Record histograms
+			stats.Record(ctx, metrics.MpoolMessageGasLimit.M(gasLimit))
+			stats.Record(ctx, metrics.MpoolGasPremium.M(bigIntToFloat64(m.Message.GasPremium)))
+			stats.Record(ctx, metrics.MpoolGasFeeCap.M(bigIntToFloat64(m.Message.GasFeeCap)))
+		}
+	})
+
+	msgCount := int64(len(msgs))
+	stats.Record(ctx, metrics.MpoolTotalGasLimit.M(totalGasLimit))
+
+	// Record mean and median gas metrics (avoid division by zero)
+	if msgCount > 0 {
+		// Gas Premium statistics
+		meanPremium := big.Div(totalPremium, big.NewInt(msgCount))
+		stats.Record(ctx, metrics.MpoolGasPremiumMean.M(bigIntToFloat64(meanPremium)))
+
+		// Gas Fee Cap statistics
+		meanFeeCap := big.Div(totalFeeCap, big.NewInt(msgCount))
+		stats.Record(ctx, metrics.MpoolGasFeeCapMean.M(bigIntToFloat64(meanFeeCap)))
+
+		// Compute median gas limit (by message count)
+		sort.Slice(msgs, func(i, j int) bool { return msgs[i].gasLimit < msgs[j].gasLimit })
+		medianGasLimit := msgs[len(msgs)/2].gasLimit
+		stats.Record(ctx, metrics.MpoolGasLimitMedian.M(medianGasLimit))
+
+		// Compute median gas premium (by message count)
+		sort.Slice(msgs, func(i, j int) bool { return msgs[i].gasPremium.LessThan(msgs[j].gasPremium) })
+		medianPremium := msgs[len(msgs)/2].gasPremium
+		stats.Record(ctx, metrics.MpoolGasPremiumMedian.M(bigIntToFloat64(medianPremium)))
+
+		// Compute gas-weighted median of gas premium
+		halfGas := totalGasLimit / 2
+		var accumulatedGas int64
+		for _, m := range msgs {
+			accumulatedGas += m.gasLimit
+			if accumulatedGas >= halfGas {
+				stats.Record(ctx, metrics.MpoolGasPremiumMedianByGasUnits.M(bigIntToFloat64(m.gasPremium)))
+				break
+			}
+		}
+
+		// Compute median gas fee cap (by message count)
+		sort.Slice(msgs, func(i, j int) bool { return msgs[i].gasFeeCap.LessThan(msgs[j].gasFeeCap) })
+		medianFeeCap := msgs[len(msgs)/2].gasFeeCap
+		stats.Record(ctx, metrics.MpoolGasFeeCapMedian.M(bigIntToFloat64(medianFeeCap)))
+
+		// Compute gas-weighted median of gas fee cap
+		accumulatedGas = 0
+		for _, m := range msgs {
+			accumulatedGas += m.gasLimit
+			if accumulatedGas >= halfGas {
+				stats.Record(ctx, metrics.MpoolGasFeeCapMedianByGasUnits.M(bigIntToFloat64(m.gasFeeCap)))
+				break
+			}
+		}
+	}
 }
 
 type MpoolNonceAPI interface {
