@@ -533,7 +533,7 @@ var statSnapshotCmd = &cli.Command{
 
 				var b types.BlockHeader
 				if err := b.UnmarshalCBOR(bytes.NewBuffer(nd.RawData())); err != nil {
-					return xerrors.Errorf("unmarshaling block header (cid=%s): %w", blkCid, err)
+					return xerrors.Errorf("unmarshalling block header (cid=%s): %w", blkCid, err)
 				}
 
 				// header directly to result channel

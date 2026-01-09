@@ -1367,7 +1367,7 @@ func (mp *MessagePool) HeadChange(ctx context.Context, revert []*types.TipSet, a
 	for _, s := range rmsgs {
 		for _, msg := range s {
 			if err := mp.addSkipChecks(ctx, msg); err != nil {
-				log.Errorf("Failed to readd message from reorg to mpool: %s", err)
+				log.Errorf("Failed to read message from reorg to mpool: %s", err)
 			}
 		}
 	}

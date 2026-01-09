@@ -380,7 +380,7 @@ func rleToPng(rleBytes []byte) ([]byte, error) {
 	}
 	ri, err := bf.RunIterator()
 	if err != nil {
-		return nil, xerrors.Errorf("creating interator: %w", err)
+		return nil, xerrors.Errorf("creating iterator: %w", err)
 	}
 
 	const width = 1024
@@ -407,7 +407,7 @@ func rleToPng(rleBytes []byte) ([]byte, error) {
 
 	ri, err = bf.RunIterator()
 	if err != nil {
-		return nil, xerrors.Errorf("creating interator: %w", err)
+		return nil, xerrors.Errorf("creating iterator: %w", err)
 	}
 
 	const shade = 15

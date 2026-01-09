@@ -8,7 +8,7 @@ USAGE:
    lotus-miner [global options] command [command options]
 
 VERSION:
-   v1.34.1-dev
+   1.34.4-dev
 
 COMMANDS:
    init     Initialize a lotus miner repo
@@ -68,6 +68,7 @@ OPTIONS:
    --gas-premium value                                        set gas premium for initialization messages in AttoFIL (default: "0")
    --from value                                               select which address to send actor creation message from
    --confidence value                                         number of block confirmations to wait for (default: 5)
+   --deposit-margin-factor value                              Multiplier (>=1.0) to scale the suggested deposit for on-chain variance (e.g. 1.01 adds 1%) (default: 1.01)
    --help, -h                                                 show help
 ```
 

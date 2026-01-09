@@ -11,7 +11,7 @@ import (
 	types "github.com/filecoin-project/lotus/chain/types"
 )
 
-// CompactedMessagesCBOR is used for encoding/decoding compacted messages. This is a ustom type as we need custom limits.
+// CompactedMessagesCBOR is used for encoding/decoding compacted messages. This is a custom type as we need custom limits.
 // - Max messages is 150,000 as that's 15 times the max block size (in messages). It needs to be
 // large enough to cover a full tipset full of full blocks.
 type CompactedMessagesCBOR struct {

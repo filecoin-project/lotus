@@ -92,7 +92,7 @@ func NewLiveHandler(api lapi.FullNode) *HealthHandler {
 
 // NewReadyHandler checks if we are ready to handle traffic.
 // 1. sync workers are reasonably up to date.
-// 2. libp2p is servicable
+// 2. libp2p is serviceable
 func NewReadyHandler(api lapi.FullNode) *HealthHandler {
 	ctx := context.Background()
 	h := HealthHandler{}

@@ -41,7 +41,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	//  Make sure output directory exists.
+	// Make sure output directory exists.
 	if err := os.MkdirAll(outputDir, os.ModePerm); err != nil {
 		fmt.Printf("Failed to create %s: %v\n", outputDir, err)
 		os.Exit(1)

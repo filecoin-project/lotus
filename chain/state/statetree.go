@@ -157,7 +157,7 @@ func VersionForNetwork(ver network.Version) (types.StateTreeVersion, error) {
 	case network.Version13, network.Version14, network.Version15, network.Version16, network.Version17:
 		return types.StateTreeVersion4, nil
 
-	case network.Version18, network.Version19, network.Version20, network.Version21, network.Version22, network.Version23, network.Version24, network.Version25, network.Version26, network.Version27:
+	case network.Version18, network.Version19, network.Version20, network.Version21, network.Version22, network.Version23, network.Version24, network.Version25, network.Version26, network.Version27, network.Version28:
 		return types.StateTreeVersion5, nil
 
 	default:

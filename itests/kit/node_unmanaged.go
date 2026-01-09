@@ -45,13 +45,13 @@ var (
 	BogusPieceCid2 = cid.MustParse("baga6ea4seaqlhznlutptgfwhffupyer6txswamerq5fc2jlwf2lys2mm5jtiaeq")
 )
 
-// 32 bytes of 1's: this value essentially ignored in NI-PoRep proofs, but all zeros is not recommended.
+// 32 bytes of 1's: this value is essentially ignored in NI-PoRep proofs, but all zeros is not recommended.
 // Regardless of what we submit to the chain, actors will replace it with 32 1's anyway but we are
 // also doing proof verification call directly when we prepare an aggregate NI proof.
 var niPorepInteractiveRandomness = abi.InteractiveSealRandomness([]byte{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1})
 
 // TestUnmanagedMiner is a miner that's not managed by the storage/infrastructure, all tasks must be manually executed, managed and scheduled by the test or test kit.
-// Note: `TestUnmanagedMiner` is not thread safe and assumes linear access of it's methods
+// Note: `TestUnmanagedMiner` is not thread safe and assumes linear access of its methods
 type TestUnmanagedMiner struct {
 	ctx        context.Context
 	cancelFunc context.CancelFunc
@@ -966,7 +966,15 @@ func (tm *TestUnmanagedMiner) wdPostLoop() {
 		}
 
 		for tm.ctx.Err() == nil {
-			postSectors, err := tm.sectorsToPost()
+			// Get deadline info at the start of this iteration to avoid race conditions
+			// where the chain advances between checking sectors and waiting for next deadline.
+			di, err := tm.FullNode.StateMinerProvingDeadline(tm.ctx, tm.ActorAddr, types.EmptyTSK)
+			if err != nil {
+				recordPostOrError(windowPost{Error: fmt.Errorf("failed to get proving deadline: %w", err)})
+				return
+			}
+
+			postSectors, err := tm.sectorsToPostWithDeadline(di)
 			if err != nil {
 				recordPostOrError(windowPost{Error: err})
 				return
@@ -981,8 +989,8 @@ func (tm *TestUnmanagedMiner) wdPostLoop() {
 				recordPostOrError(windowPost{Posted: postSectors})
 			}
 
-			// skip to next challenge window
-			if err := tm.waitForNextPostDeadline(); err != nil {
+			// skip to next challenge window, using the deadline info from the start of this iteration
+			if err := tm.waitForNextPostDeadlineFrom(di); err != nil {
 				recordPostOrError(windowPost{Error: err})
 				return
 			}
@@ -990,19 +998,16 @@ func (tm *TestUnmanagedMiner) wdPostLoop() {
 	}()
 }
 
-// waitForNextPostDeadline waits until we are within the next challenge window for this miner
-func (tm *TestUnmanagedMiner) waitForNextPostDeadline() error {
+// waitForNextPostDeadlineFrom waits until the deadline described in di closes and the next one opens.
+func (tm *TestUnmanagedMiner) waitForNextPostDeadlineFrom(di *dline.Info) error {
 	ctx, cancel := context.WithCancel(tm.ctx)
 	defer cancel()
 
-	di, err := tm.FullNode.StateMinerProvingDeadline(ctx, tm.ActorAddr, types.EmptyTSK)
-	if err != nil {
-		return fmt.Errorf("waitForNextPostDeadline: failed to get proving deadline: %w", err)
-	}
-	currentDeadlineIdx := CurrentDeadlineIndex(di)
-	nextDeadlineEpoch := di.PeriodStart + di.WPoStChallengeWindow*abi.ChainEpoch(currentDeadlineIdx+1)
+	// Wait for the current deadline to close. di.Close is the epoch when
+	// the current deadline ends, which is also when the next deadline opens.
+	nextDeadlineEpoch := di.Close
 
-	tm.log("Window PoST waiting until next challenge window, currentDeadlineIdx: %d, nextDeadlineEpoch: %d", currentDeadlineIdx, nextDeadlineEpoch)
+	tm.log("Window PoST waiting until next challenge window, currentDeadlineIdx: %d, nextDeadlineEpoch: %d", di.Index, nextDeadlineEpoch)
 
 	heads, err := tm.FullNode.ChainNotify(ctx)
 	if err != nil {
@@ -1020,16 +1025,12 @@ func (tm *TestUnmanagedMiner) waitForNextPostDeadline() error {
 		}
 	}
 
-	return fmt.Errorf("waitForNextPostDeadline: failed to wait for nextDeadlineEpoch %d", nextDeadlineEpoch)
+	return fmt.Errorf("waitForNextPostDeadlineFrom: failed to wait for nextDeadlineEpoch %d", nextDeadlineEpoch)
 }
 
-// sectorsToPost returns the sectors that are due to be posted in the current challenge window
-func (tm *TestUnmanagedMiner) sectorsToPost() ([]abi.SectorNumber, error) {
-	di, err := tm.FullNode.StateMinerProvingDeadline(tm.ctx, tm.ActorAddr, types.EmptyTSK)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get proving deadline: %w", err)
-	}
-
+// sectorsToPostWithDeadline returns the sectors that are due to be posted for the deadline
+// described in di.
+func (tm *TestUnmanagedMiner) sectorsToPostWithDeadline(di *dline.Info) ([]abi.SectorNumber, error) {
 	currentDeadlineIdx := CurrentDeadlineIndex(di)
 
 	var allSectors []abi.SectorNumber

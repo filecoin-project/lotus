@@ -31,7 +31,7 @@ type ActorEventFilter struct {
 	// last finalized tipset.
 	// NOTE: In a future upgrade, this will be strict when set and will result in an error if a filter
 	// cannot be fulfilled by the depth of history available in the node. Currently, the node will
-	// nott return an error, but will return starting from the epoch it has data for.
+	// not return an error, but will return starting from the epoch it has data for.
 	FromHeight *abi.ChainEpoch `json:"fromHeight,omitempty"`
 
 	// The height of the latest tipset to include in the query. If empty, the query ends at the
@@ -39,7 +39,7 @@ type ActorEventFilter struct {
 	ToHeight *abi.ChainEpoch `json:"toHeight,omitempty"`
 
 	// Restricts events returned to those emitted from messages contained in this tipset.
-	// If `TipSetKey` is legt empty in the filter criteria, then neither `FromHeight` nor `ToHeight` are allowed.
+	// If `TipSetKey` is left empty in the filter criteria, then neither `FromHeight` nor `ToHeight` are allowed.
 	TipSetKey *TipSetKey `json:"tipsetKey,omitempty"`
 }
 

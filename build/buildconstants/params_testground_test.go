@@ -1,5 +1,4 @@
 //go:build testground
-// +build testground
 
 package buildconstants
 

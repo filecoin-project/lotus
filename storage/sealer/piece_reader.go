@@ -17,7 +17,7 @@ import (
 	"github.com/filecoin-project/lotus/metrics"
 )
 
-// For small read skips, it's faster to "burn" some bytes than to setup new sector reader.
+// For small read skips, it's faster to "burn" some bytes than to set up new sector reader.
 // Assuming 1ms stream seek latency, and 1G/s stream rate, we're willing to discard up to 1 MiB.
 var MaxPieceReaderBurnBytes int64 = 1 << 20 // 1M
 var ReadBuf = 128 * (127 * 8)               // unpadded(128k)
@@ -47,8 +47,8 @@ type pieceReader struct {
 	// random read cache
 	remReads *lru.Cache[int64, []byte] // data start offset -> data
 	// todo try carrying a "bytes read sequentially so far" counter with those
-	//  cacahed byte buffers, increase buffer sizes when we see that we're doing
-	//  a long sequential read
+	// cached byte buffers, increase buffer sizes when we see that we're doing
+	// a long sequential read
 }
 
 func (p *pieceReader) init(ctx context.Context) (_ *pieceReader, err error) {

@@ -899,7 +899,7 @@ func TestMatchedNoncesRobustID(t *testing.T) {
 }
 
 func BenchmarkSyncBasic(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		runSyncBenchLength(b, 100)
 	}
 }

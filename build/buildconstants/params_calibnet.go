@@ -1,5 +1,4 @@
 //go:build calibnet
-// +build calibnet
 
 package buildconstants
 
@@ -127,6 +126,9 @@ const UpgradeTockFixHeight abi.ChainEpoch = 2558014
 
 // 2025-09-10T23:00:00Z
 const UpgradeGoldenWeekHeight abi.ChainEpoch = 3007294
+
+// ??????
+const UpgradeXxHeight = 999999999999999
 
 var ConsensusMinerMinPower = abi.NewStoragePower(32 << 30)
 var PreCommitChallengeDelay = abi.ChainEpoch(150)
