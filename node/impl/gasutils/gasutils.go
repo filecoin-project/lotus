@@ -251,20 +251,21 @@ func applyTransitionalGasMultiplier(
 	return (gasUsed * int64(transitionalMulti*1024)) >> 10
 }
 
-func GasEstimateGasLimit(
+func gasEstimateGasLimitInternal(
 	ctx context.Context,
 	cstore ChainStoreAPI,
 	smgr StateManagerAPI,
-	mpool *messagepool.MessagePool,
+	mpool MessagePoolAPI,
 	msgIn *types.Message,
 	currTs *types.TipSet,
+	skipSenderValidation bool,
 ) (int64, error) {
 	msg := *msgIn
 	msg.GasLimit = buildconstants.BlockGasLimit
 	msg.GasFeeCap = big.Zero()
 	msg.GasPremium = big.Zero()
 
-	res, _, ts, err := GasEstimateCallWithGas(ctx, cstore, smgr, mpool, &msg, currTs)
+	res, _, ts, err := gasEstimateCallWithGasInternal(ctx, cstore, smgr, mpool, &msg, currTs, skipSenderValidation)
 	if err != nil {
 		return -1, xerrors.Errorf("gas estimation failed: %w", err)
 	}
@@ -286,6 +287,17 @@ func GasEstimateGasLimit(
 	return ret, nil
 }
 
+func GasEstimateGasLimit(
+	ctx context.Context,
+	cstore ChainStoreAPI,
+	smgr StateManagerAPI,
+	mpool *messagepool.MessagePool,
+	msgIn *types.Message,
+	currTs *types.TipSet,
+) (int64, error) {
+	return gasEstimateGasLimitInternal(ctx, cstore, smgr, mpool, msgIn, currTs, false)
+}
+
 // GasEstimateGasLimitSkipSenderValidation is like GasEstimateGasLimit but skips sender validation.
 // This allows gas estimation for messages from non-existent addresses, matching Geth's eth_estimateGas behavior.
 func GasEstimateGasLimitSkipSenderValidation(
@@ -296,30 +308,7 @@ func GasEstimateGasLimitSkipSenderValidation(
 	msgIn *types.Message,
 	currTs *types.TipSet,
 ) (int64, error) {
-	msg := *msgIn
-	msg.GasLimit = buildconstants.BlockGasLimit
-	msg.GasFeeCap = big.Zero()
-	msg.GasPremium = big.Zero()
-
-	res, _, ts, err := GasEstimateCallWithGasSkipSenderValidation(ctx, cstore, smgr, mpool, &msg, currTs)
-	if err != nil {
-		return -1, xerrors.Errorf("gas estimation failed: %w", err)
-	}
-
-	if res.MsgRct.ExitCode == exitcode.SysErrOutOfGas {
-		return -1, &api.ErrOutOfGas{}
-	}
-
-	if res.MsgRct.ExitCode != exitcode.Ok {
-		return -1, api.NewErrExecutionRevertedFromResult(res)
-	}
-
-	ret := res.MsgRct.GasUsed
-
-	// Apply the same transitional multiplier as GasEstimateGasLimit
-	ret = applyTransitionalGasMultiplier(smgr, ts, msgIn, ret)
-
-	return ret, nil
+	return gasEstimateGasLimitInternal(ctx, cstore, smgr, mpool, msgIn, currTs, true)
 }
 
 func GasEstimateFeeCap(ctx context.Context, cstore ChainStoreAPI, msg *types.Message, maxqueueblks int64, tsk types.TipSetKey) (types.BigInt, error) {

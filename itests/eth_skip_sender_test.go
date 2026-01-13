@@ -73,6 +73,8 @@ func TestEthCallSkipSender(t *testing.T) {
 	nonExistent := nonExistentAddr(0x01)
 	blkParam := ethtypes.NewEthBlockNumberOrHashFromPredefined("latest")
 
+	gasPrice := ethtypes.EthBigInt(types.NewInt(1000000000))
+
 	// Deploy Errors contract for revert test
 	_, errorsFilAddr := env.client.EVM().DeployContractFromFilename(env.ctx, "contracts/Errors.hex")
 	errorsActor, err := env.client.StateGetActor(env.ctx, errorsFilAddr, types.EmptyTSK)
@@ -92,9 +94,45 @@ func TestEthCallSkipSender(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name:    "FromContractWithGasPrice",
+			call:    ethtypes.EthCall{From: &env.contractAddr, To: &env.eoaAddr, GasPrice: gasPrice},
+			wantErr: false,
+		},
+		{
+			name:    "FromContractWithValue",
+			call:    ethtypes.EthCall{From: &env.contractAddr, To: &env.eoaAddr, Value: ethtypes.EthBigInt(types.FromFil(1))},
+			wantErr: true,
+			check: func(t *testing.T, _ ethtypes.EthBytes, err error) {
+				require.Contains(t, strings.ToLower(err.Error()), "insufficient")
+			},
+		},
+		{
 			name:    "FromNonExistent",
 			call:    ethtypes.EthCall{From: &nonExistent, To: &env.eoaAddr},
 			wantErr: false,
+		},
+		{
+			name:    "FromNonExistentWithGasPrice",
+			call:    ethtypes.EthCall{From: &nonExistent, To: &env.eoaAddr, GasPrice: gasPrice},
+			wantErr: false,
+		},
+		{
+			name:    "FromNonExistentToContractWithData",
+			call:    ethtypes.EthCall{From: &nonExistent, To: &errorsAddr, Data: kit.CalcFuncSignature("failRevertEmpty()")},
+			wantErr: true,
+			check: func(t *testing.T, _ ethtypes.EthBytes, err error) {
+				var execErr *api.ErrExecutionReverted
+				require.True(t, errors.As(err, &execErr), "expected ErrExecutionReverted, got %T: %v", err, err)
+				require.Contains(t, execErr.Message, "none")
+			},
+		},
+		{
+			name:    "FromNonExistentWithValue",
+			call:    ethtypes.EthCall{From: &nonExistent, To: &env.eoaAddr, Value: ethtypes.EthBigInt(types.FromFil(1))},
+			wantErr: true,
+			check: func(t *testing.T, _ ethtypes.EthBytes, err error) {
+				require.Contains(t, strings.ToLower(err.Error()), "insufficient")
+			},
 		},
 		{
 			name:    "FromEOA",
@@ -107,8 +145,8 @@ func TestEthCallSkipSender(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "ValueNoBalance",
-			call:    ethtypes.EthCall{From: &nonExistent, To: &env.eoaAddr, Value: ethtypes.EthBigInt(types.FromFil(1))},
+			name:    "ValueOverBalance",
+			call:    ethtypes.EthCall{From: &env.eoaAddr, To: &nonExistent, Value: ethtypes.EthBigInt(types.FromFil(11))},
 			wantErr: true,
 			check: func(t *testing.T, _ ethtypes.EthBytes, err error) {
 				require.Contains(t, strings.ToLower(err.Error()), "insufficient")
@@ -190,6 +228,7 @@ func TestEthEstimateGasSkipSender(t *testing.T) {
 
 	nonExistent := nonExistentAddr(0x02)
 	blkParam := ethtypes.NewEthBlockNumberOrHashFromPredefined("latest")
+	gasPrice := ethtypes.EthBigInt(types.NewInt(1000000000))
 
 	// Deploy Errors contract for revert test
 	_, errorsFilAddr := env.client.EVM().DeployContractFromFilename(env.ctx, "contracts/Errors.hex")
@@ -220,12 +259,48 @@ func TestEthEstimateGasSkipSender(t *testing.T) {
 			},
 		},
 		{
+			name:    "FromContractWithGasPrice",
+			call:    ethtypes.EthCall{From: &env.contractAddr, To: &env.eoaAddr, GasPrice: gasPrice},
+			wantErr: false,
+			check: func(t *testing.T, gas ethtypes.EthUint64, _ error) {
+				require.GreaterOrEqual(t, uint64(gas), minGas, "gas should be at least minimum transfer gas")
+				require.Less(t, uint64(gas), maxGas, "gas should not overflow")
+			},
+		},
+		{
+			name:    "FromContractWithValue",
+			call:    ethtypes.EthCall{From: &env.contractAddr, To: &env.eoaAddr, Value: ethtypes.EthBigInt(types.FromFil(1))},
+			wantErr: true,
+			check: func(t *testing.T, _ ethtypes.EthUint64, err error) {
+				require.Contains(t, strings.ToLower(err.Error()), "insufficient")
+			},
+		},
+		{
 			name:    "FromNonExistent",
 			call:    ethtypes.EthCall{From: &nonExistent, To: &env.eoaAddr},
 			wantErr: false,
 			check: func(t *testing.T, gas ethtypes.EthUint64, _ error) {
 				require.GreaterOrEqual(t, uint64(gas), minGas, "gas should be at least minimum transfer gas")
 				require.Less(t, uint64(gas), maxGas, "gas should not overflow")
+			},
+		},
+		{
+			name:    "FromNonExistentWithGasPrice",
+			call:    ethtypes.EthCall{From: &nonExistent, To: &env.eoaAddr, GasPrice: gasPrice},
+			wantErr: false,
+			check: func(t *testing.T, gas ethtypes.EthUint64, _ error) {
+				require.GreaterOrEqual(t, uint64(gas), minGas, "gas should be at least minimum transfer gas")
+				require.Less(t, uint64(gas), maxGas, "gas should not overflow")
+			},
+		},
+		{
+			name:    "FromNonExistentToContractWithData",
+			call:    ethtypes.EthCall{From: &nonExistent, To: &errorsAddr, Data: kit.CalcFuncSignature("failRevertEmpty()")},
+			wantErr: true,
+			check: func(t *testing.T, _ ethtypes.EthUint64, err error) {
+				var execErr *api.ErrExecutionReverted
+				require.True(t, errors.As(err, &execErr), "expected ErrExecutionReverted, got %T: %v", err, err)
+				require.Contains(t, execErr.Message, "none")
 			},
 		},
 		{

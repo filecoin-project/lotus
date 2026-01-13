@@ -407,12 +407,13 @@ func (sm *StateManager) createSyntheticSenderActor(
 		return nil, cid.Undef, nil, xerrors.Errorf("failed to get EthAccount actor code ID for actors version %d", av)
 	}
 
-	// Create synthetic actor with zero balance - value transfers will fail as expected
+	// Create synthetic actor with zero balance so simulations mirror Geth behavior
+	// for non-existent senders (insufficient funds when gas/value is non-zero).
 	syntheticActor := &types.Actor{
 		Code:    ethAcctCid,
 		Head:    vm.EmptyObjectCid,
 		Nonce:   0,
-		Balance: types.NewInt(0), // Explicit zero balance for clarity
+		Balance: types.NewInt(0),
 	}
 
 	// Register the address with the Init actor to get an ID address
@@ -491,13 +492,12 @@ func (sm *StateManager) maybeModifySenderForSimulation(
 
 	// The actor is an EVM actor (contract) or Placeholder.
 	// Create a modified version with EthAccount code for simulation.
-	balance := fromActor.Balance
-
+	// Preserve the existing balance to keep simulation semantics intact.
 	modifiedActor := &types.Actor{
 		Code:    ethAcctCid,
 		Head:    vm.EmptyObjectCid,
 		Nonce:   fromActor.Nonce,
-		Balance: balance,
+		Balance: fromActor.Balance,
 	}
 
 	// Look up the ID address for this actor
