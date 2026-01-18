@@ -168,10 +168,10 @@ func (syncer *Syncer) Start() {
 
 	syncer.tickerCtxCancel = tickerCtxCancel
 
-	go syncer.runMetricsTricker(tickerCtx)
+	go syncer.runMetricsTicker(tickerCtx)
 }
 
-func (syncer *Syncer) runMetricsTricker(tickerCtx context.Context) {
+func (syncer *Syncer) runMetricsTicker(tickerCtx context.Context) {
 	genesisTime := time.Unix(int64(syncer.Genesis.MinTimestamp()), 0)
 	ticker := build.Clock.Ticker(time.Duration(buildconstants.BlockDelaySecs) * time.Second)
 	defer ticker.Stop()
