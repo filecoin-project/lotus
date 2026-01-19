@@ -904,7 +904,6 @@ var StateListMessagesCmd = &cli.Command{
 				if cctx.Bool("cids") && !obn {
 					fmt.Println(c.String())
 					continue
-
 				}
 
 				m, err := api.ChainGetMessage(ctx, c)
