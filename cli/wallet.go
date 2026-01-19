@@ -429,10 +429,27 @@ var walletImport = &cli.Command{
 	},
 }
 
+// FRC0102FilecoinPrefix is the prefix for Filecoin personal_sign messages per FRC-0102.
+// Format: 0x19 + "Filecoin Signed Message:\n" + len(message)
+// See: https://github.com/filecoin-project/FIPs/blob/master/FRCs/frc-0102.md
+const FRC0102FilecoinPrefix = "\x19Filecoin Signed Message:\n"
+
+// wrapMessageFRC0102 wraps a message with the FRC-0102 Filecoin signing envelope.
+func wrapMessageFRC0102(msg []byte) []byte {
+	prefix := fmt.Sprintf("%s%d", FRC0102FilecoinPrefix, len(msg))
+	return append([]byte(prefix), msg...)
+}
+
 var walletSign = &cli.Command{
 	Name:      "sign",
 	Usage:     "sign a message",
 	ArgsUsage: "<signing address> <hexMessage>",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "raw",
+			Usage: "sign raw bytes without FRC-0102 envelope (not recommended)",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -459,8 +476,9 @@ var walletSign = &cli.Command{
 			return err
 		}
 
-		if addr.Protocol() == address.Delegated {
-			msg = append([]byte{0x19, 0x46}, msg...)
+		// Apply FRC-0102 envelope unless --raw is specified
+		if !cctx.Bool("raw") {
+			msg = wrapMessageFRC0102(msg)
 		}
 
 		sig, err := api.WalletSign(ctx, addr, msg)
@@ -484,6 +502,12 @@ var walletVerify = &cli.Command{
 	Name:      "verify",
 	Usage:     "verify the signature of a message",
 	ArgsUsage: "<signing address> <hexMessage> <signature>",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "raw",
+			Usage: "verify raw bytes without FRC-0102 envelope (not recommended)",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -510,8 +534,9 @@ var walletVerify = &cli.Command{
 			return err
 		}
 
-		if addr.Protocol() == address.Delegated {
-			msg = append([]byte{0x19, 0x46}, msg...)
+		// Apply FRC-0102 envelope unless --raw is specified
+		if !cctx.Bool("raw") {
+			msg = wrapMessageFRC0102(msg)
 		}
 
 		sigBytes, err := hex.DecodeString(cctx.Args().Get(2))
