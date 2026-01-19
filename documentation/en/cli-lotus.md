@@ -338,6 +338,7 @@ USAGE:
    lotus wallet sign [command options] <signing address> <hexMessage>
 
 OPTIONS:
+   --raw       sign raw bytes without FRC-0102 envelope (not recommended) (default: false)
    --help, -h  show help
 ```
 
@@ -351,6 +352,7 @@ USAGE:
    lotus wallet verify [command options] <signing address> <hexMessage> <signature>
 
 OPTIONS:
+   --raw       verify raw bytes without FRC-0102 envelope (not recommended) (default: false)
    --help, -h  show help
 ```
 

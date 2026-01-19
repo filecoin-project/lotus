@@ -199,54 +199,137 @@ func TestWalletExport(t *testing.T) {
 	assert.Contains(t, buffer.String(), hex.EncodeToString(ki))
 }
 
+func TestWrapMessageFRC0102(t *testing.T) {
+	// Test that wrapMessageFRC0102 produces the correct FRC-0102 envelope
+	msg := []byte("hello")
+	wrapped := wrapMessageFRC0102(msg)
+
+	// Expected: "\x19Filecoin Signed Message:\n5hello"
+	expected := append([]byte("\x19Filecoin Signed Message:\n5"), msg...)
+	assert.Equal(t, expected, wrapped)
+
+	// Test with empty message
+	emptyWrapped := wrapMessageFRC0102([]byte{})
+	expectedEmpty := []byte("\x19Filecoin Signed Message:\n0")
+	assert.Equal(t, expectedEmpty, emptyWrapped)
+
+	// Test with longer message
+	longMsg := []byte("this is a longer test message")
+	longWrapped := wrapMessageFRC0102(longMsg)
+	expectedLong := append([]byte(fmt.Sprintf("\x19Filecoin Signed Message:\n%d", len(longMsg))), longMsg...)
+	assert.Equal(t, expectedLong, longWrapped)
+}
+
 func TestWalletSign(t *testing.T) {
-	app, mockApi, buffer, done := NewMockAppWithFullAPI(t, WithCategory("wallet", walletSign))
-	defer done()
+	t.Run("with FRC-0102 envelope (default)", func(t *testing.T) {
+		app, mockApi, buffer, done := NewMockAppWithFullAPI(t, WithCategory("wallet", walletSign))
+		defer done()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
 
-	addr, err := address.NewFromString("f01234")
-	assert.NoError(t, err)
+		addr, err := address.NewFromString("f01234")
+		assert.NoError(t, err)
 
-	msg, err := hex.DecodeString("01")
-	assert.NoError(t, err)
+		rawMsg, err := hex.DecodeString("01")
+		assert.NoError(t, err)
 
-	signature := crypto.Signature{
-		Type: crypto.SigTypeSecp256k1,
-		Data: []byte{0x01},
-	}
+		// The CLI now wraps the message with FRC-0102 envelope
+		wrappedMsg := wrapMessageFRC0102(rawMsg)
 
-	mockApi.EXPECT().WalletSign(ctx, addr, msg).Return(&signature, nil)
+		signature := crypto.Signature{
+			Type: crypto.SigTypeSecp256k1,
+			Data: []byte{0x01},
+		}
 
-	sigBytes := append([]byte{byte(signature.Type)}, signature.Data...)
+		mockApi.EXPECT().WalletSign(ctx, addr, wrappedMsg).Return(&signature, nil)
 
-	err = app.Run([]string{"wallet", "sign", "f01234", "01"})
-	assert.NoError(t, err)
-	assert.Contains(t, buffer.String(), hex.EncodeToString(sigBytes))
+		sigBytes := append([]byte{byte(signature.Type)}, signature.Data...)
+
+		err = app.Run([]string{"wallet", "sign", "f01234", "01"})
+		assert.NoError(t, err)
+		assert.Contains(t, buffer.String(), hex.EncodeToString(sigBytes))
+	})
+
+	t.Run("with --raw flag", func(t *testing.T) {
+		app, mockApi, buffer, done := NewMockAppWithFullAPI(t, WithCategory("wallet", walletSign))
+		defer done()
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		addr, err := address.NewFromString("f01234")
+		assert.NoError(t, err)
+
+		rawMsg, err := hex.DecodeString("01")
+		assert.NoError(t, err)
+
+		signature := crypto.Signature{
+			Type: crypto.SigTypeSecp256k1,
+			Data: []byte{0x01},
+		}
+
+		// With --raw, the message should NOT be wrapped
+		mockApi.EXPECT().WalletSign(ctx, addr, rawMsg).Return(&signature, nil)
+
+		sigBytes := append([]byte{byte(signature.Type)}, signature.Data...)
+
+		err = app.Run([]string{"wallet", "sign", "--raw", "f01234", "01"})
+		assert.NoError(t, err)
+		assert.Contains(t, buffer.String(), hex.EncodeToString(sigBytes))
+	})
 }
 
 func TestWalletVerify(t *testing.T) {
-	app, mockApi, buffer, done := NewMockAppWithFullAPI(t, WithCategory("wallet", walletVerify))
-	defer done()
+	t.Run("with FRC-0102 envelope (default)", func(t *testing.T) {
+		app, mockApi, buffer, done := NewMockAppWithFullAPI(t, WithCategory("wallet", walletVerify))
+		defer done()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
 
-	addr, err := address.NewIDAddress(1234)
-	assert.NoError(t, err)
+		addr, err := address.NewIDAddress(1234)
+		assert.NoError(t, err)
 
-	msg := []byte{1}
-	signature := crypto.Signature{
-		Type: crypto.SigTypeSecp256k1,
-		Data: []byte{},
-	}
+		rawMsg := []byte{1}
+		// The CLI now wraps the message with FRC-0102 envelope
+		wrappedMsg := wrapMessageFRC0102(rawMsg)
 
-	mockApi.EXPECT().WalletVerify(ctx, addr, msg, &signature).Return(true, nil)
+		signature := crypto.Signature{
+			Type: crypto.SigTypeSecp256k1,
+			Data: []byte{},
+		}
 
-	err = app.Run([]string{"wallet", "verify", "f01234", "01", "01"})
-	assert.NoError(t, err)
-	assert.Contains(t, buffer.String(), "valid")
+		mockApi.EXPECT().WalletVerify(ctx, addr, wrappedMsg, &signature).Return(true, nil)
+
+		err = app.Run([]string{"wallet", "verify", "f01234", "01", "01"})
+		assert.NoError(t, err)
+		assert.Contains(t, buffer.String(), "valid")
+	})
+
+	t.Run("with --raw flag", func(t *testing.T) {
+		app, mockApi, buffer, done := NewMockAppWithFullAPI(t, WithCategory("wallet", walletVerify))
+		defer done()
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		addr, err := address.NewIDAddress(1234)
+		assert.NoError(t, err)
+
+		rawMsg := []byte{1}
+		signature := crypto.Signature{
+			Type: crypto.SigTypeSecp256k1,
+			Data: []byte{},
+		}
+
+		// With --raw, the message should NOT be wrapped
+		mockApi.EXPECT().WalletVerify(ctx, addr, rawMsg, &signature).Return(true, nil)
+
+		err = app.Run([]string{"wallet", "verify", "--raw", "f01234", "01", "01"})
+		assert.NoError(t, err)
+		assert.Contains(t, buffer.String(), "valid")
+	})
 }
 
 func TestWalletDelete(t *testing.T) {
