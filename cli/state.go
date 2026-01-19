@@ -881,6 +881,7 @@ var StateListMessagesCmd = &cli.Command{
 		var orderedMessages []struct {
 			Nonce uint64
 			Msg   []byte
+			Cid   cid.Cid
 		}
 
 		cur := ts
@@ -900,9 +901,10 @@ var StateListMessagesCmd = &cli.Command{
 			}
 
 			for _, c := range msgs {
-				if cctx.Bool("cids") {
+				if cctx.Bool("cids") && !obn {
 					fmt.Println(c.String())
 					continue
+
 				}
 
 				m, err := api.ChainGetMessage(ctx, c)
@@ -919,7 +921,8 @@ var StateListMessagesCmd = &cli.Command{
 					orderedMessages = append(orderedMessages, struct {
 						Nonce uint64
 						Msg   []byte
-					}{Nonce: m.Nonce, Msg: b})
+						Cid   cid.Cid
+					}{Nonce: m.Nonce, Msg: b, Cid: c})
 				} else {
 					fmt.Println(string(b))
 				}
@@ -941,8 +944,14 @@ var StateListMessagesCmd = &cli.Command{
 			sort.Slice(orderedMessages, func(i, j int) bool {
 				return orderedMessages[i].Nonce < orderedMessages[j].Nonce
 			})
-			for _, om := range orderedMessages {
-				fmt.Println(string(om.Msg))
+			if cctx.Bool("cids") {
+				for _, om := range orderedMessages {
+					fmt.Println(om.Cid.String())
+				}
+			} else {
+				for _, om := range orderedMessages {
+					fmt.Println(string(om.Msg))
+				}
 			}
 		}
 
