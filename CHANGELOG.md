@@ -12,6 +12,7 @@
 ## 👌 Improvements
 - docs: fix outdated link in documentation ([#13436](https://github.com/filecoin-project/lotus/pull/13436))
 - docs: fix dead link in documentation ([#13437](https://github.com/filecoin-project/lotus/pull/13437))
+- feat(cli): implement FRC-0102 signing envelope for wallet sign/verify ([filecoin-project/lotus#13471](https://github.com/filecoin-project/lotus/pull/13471))
 - feat(cli): add --order-by-nonce flag to list messages sequentially when filtering by sender ([filecoin-project/lotus#13394](https://github.com/filecoin-project/lotus/pull/13394))
 
 # Node v1.34.3 / 2025-12-03
