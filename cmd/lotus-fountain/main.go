@@ -316,12 +316,22 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		w.Header().Set("Content-Type", "text/html")
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		if err := tmpl.Execute(w, map[string]string{"CID": smsg.Cid().String()}); err != nil {
 			http.Error(w, "Template execution error: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
-	} else {
-		_, _ = w.Write([]byte(smsg.Cid().String()))
+	} else if r.RequestURI == "/datacap" {
+		tmpl, err := template.New("datacap_success").Parse(h.box.MustString("datacap_success.html"))
+		if err != nil {
+			http.Error(w, "Template error: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		if err := tmpl.Execute(w, map[string]string{"CID": smsg.Cid().String()}); err != nil {
+			http.Error(w, "Template execution error: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 }
