@@ -40,6 +40,7 @@ var f3Cmd = &cli.Command{
 		f3ClearStateCmd,
 		f3GenExplicitPower,
 		f3CheckActivationRaw,
+		f3ProposalDecodeCmd,
 	},
 }
 
