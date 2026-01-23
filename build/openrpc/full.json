@@ -26197,7 +26197,7 @@
         {
             "name": "Filecoin.SyncSubmitBlock",
             "description": "```go\nfunc (s *FullNodeStruct) SyncSubmitBlock(p0 context.Context, p1 *types.BlockMsg) error {\n\tif s.Internal.SyncSubmitBlock == nil {\n\t\treturn ErrNotSupported\n\t}\n\treturn s.Internal.SyncSubmitBlock(p0, p1)\n}\n```",
-            "summary": "SyncSubmitBlock can be used to submit a newly created block to the.\nnetwork through this node\n",
+            "summary": "SyncSubmitBlock can be used to submit a newly created block to the\nnetwork through this node\n",
             "paramStructure": "by-position",
             "params": [
                 {

@@ -187,7 +187,7 @@ type FullNode interface {
 	// SyncState returns the current status of the lotus sync system.
 	SyncState(context.Context) (*api.SyncState, error) //perm:read
 
-	// SyncSubmitBlock can be used to submit a newly created block to the.
+	// SyncSubmitBlock can be used to submit a newly created block to the
 	// network through this node
 	SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) error //perm:write
 
