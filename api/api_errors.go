@@ -137,8 +137,9 @@ func (errF3NotReady) Error() string { return "f3 isn't yet ready to participate"
 
 // ErrExecutionReverted is used to return execution reverted with a reason for a revert in the `data` field.
 type ErrExecutionReverted struct {
-	Message string
-	Data    string
+	Message  string
+	Data     string
+	ExitCode exitcode.ExitCode
 }
 
 // Error returns the error message.
@@ -176,8 +177,9 @@ func NewErrExecutionReverted(exitCode exitcode.ExitCode, error, reason string, d
 		revertReason = fmt.Sprintf(", revert reason=[%s]", reason)
 	}
 	return &ErrExecutionReverted{
-		Message: fmt.Sprintf("message execution failed (exit=[%s]%s, vm error=[%s])", exitCode, revertReason, error),
-		Data:    fmt.Sprintf("0x%x", data),
+		Message:  fmt.Sprintf("message execution failed (exit=[%s]%s, vm error=[%s])", exitCode, revertReason, error),
+		Data:     fmt.Sprintf("0x%x", data),
+		ExitCode: exitCode,
 	}
 }
 
