@@ -210,6 +210,44 @@ func (e *ethGas) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (ethty
 		}
 	}
 
+	// Check if the sender is an EVM contract actor.
+	// EVM contracts cannot be message senders in normal Filecoin execution, but
+	// eth_estimateGas should allow simulating calls from contract addresses
+	// (matching Geth's behavior). We detect this early to use the skip-sender-validation
+	// path, which avoids balance checks that would fail for zero-balance contracts.
+	needsSkipSenderValidation := false
+	if fromActor, err := e.stateManager.LoadActor(ctx, msg.From, ts); err == nil {
+		// Actor exists - check if it's an EVM contract
+		if builtinactors.IsEvmActor(fromActor.Code) {
+			needsSkipSenderValidation = true
+		}
+	}
+	// Note: if actor doesn't exist, we'll detect it when GasEstimateMessageGas fails
+
+	// If sender is an EVM contract, use skip-sender-validation path directly
+	if needsSkipSenderValidation {
+		stats.Record(ctx, metrics.EthEstimateGasSkipSender.M(1))
+		gasLimit, err := gasutils.GasEstimateGasLimitSkipSenderValidation(ctx, e.chainStore, e.stateManager, e.messagePool, msg, ts)
+		if err != nil {
+			// Try applyMessage to get revert information
+			msg.GasLimit = buildconstants.BlockGasLimit
+			if _, err2 := e.applyMessage(ctx, msg, ts.Key()); err2 != nil {
+				var ed *api.ErrExecutionReverted
+				if errors.As(err2, &ed) {
+					return ethtypes.EthUint64(0), err2
+				}
+			}
+			return ethtypes.EthUint64(0), xerrors.Errorf("failed to estimate gas: %w", err)
+		}
+
+		// Apply overestimation
+		gasLimit = int64(float64(gasLimit) * e.messagePool.GetConfig().GasLimitOverestimation)
+		if gasLimit > buildconstants.BlockGasLimit {
+			gasLimit = buildconstants.BlockGasLimit
+		}
+		return ethtypes.EthUint64(gasLimit), nil
+	}
+
 	// First try the standard gas estimation path
 	gassedMsg, err := e.gasApi.GasEstimateMessageGas(ctx, msg, nil, ts.Key())
 	if err != nil {
