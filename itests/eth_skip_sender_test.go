@@ -417,3 +417,106 @@ func TestSkipSenderStateIsolation(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "actor not found")
 }
+
+// TestCrossContractCallbackIsolation tests that eth_call works correctly when:
+// 1. Calling from a contract address (skip sender validation)
+// 2. ContractA calls ContractB
+// 3. ContractB calls back to ContractA's view function
+// This validates that cross-contract callbacks work during simulated calls.
+func TestCrossContractCallbackIsolation(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	// Deploy ContractB first (no dependencies)
+	_, contractBFilAddr := client.EVM().DeployContractFromFilename(ctx, "contracts/ContractB.hex")
+	contractBActor, err := client.StateGetActor(ctx, contractBFilAddr, types.EmptyTSK)
+	require.NoError(t, err)
+	require.NotNil(t, contractBActor.DelegatedAddress)
+	contractBAddr, err := ethtypes.EthAddressFromFilecoinAddress(*contractBActor.DelegatedAddress)
+	require.NoError(t, err)
+
+	// Deploy ContractA
+	fromAddr, contractAFilAddr := client.EVM().DeployContractFromFilename(ctx, "contracts/ContractA.hex")
+	contractAActor, err := client.StateGetActor(ctx, contractAFilAddr, types.EmptyTSK)
+	require.NoError(t, err)
+	require.NotNil(t, contractAActor.DelegatedAddress)
+	contractAAddr, err := ethtypes.EthAddressFromFilecoinAddress(*contractAActor.DelegatedAddress)
+	require.NoError(t, err)
+
+	// Link ContractA to ContractB by calling setContractB(address)
+	// Address parameter is ABI-encoded as 32 bytes (left-padded)
+	var contractBParam [32]byte
+	copy(contractBParam[12:], contractBAddr[:])
+	_, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAFilAddr, "setContractB(address)", contractBParam[:])
+	require.NoError(t, err)
+
+	blkParam := ethtypes.NewEthBlockNumberOrHashFromPredefined("latest")
+
+	t.Run("FromContractAddress", func(t *testing.T) {
+		// Call callBAndReadBack() from ContractB's address (a contract calling another contract)
+		// This tests: ContractB (sender) -> ContractA.callBAndReadBack() -> ContractB.callBackAndRead() -> ContractA.getValue()
+		call := ethtypes.EthCall{
+			From: &contractBAddr,
+			To:   &contractAAddr,
+			Data: kit.CalcFuncSignature("callBAndReadBack()"),
+		}
+		result, err := client.EthCall(ctx, call, blkParam)
+		require.NoError(t, err, "cross-contract callback should succeed when calling from contract address")
+
+		// Result should be 42 (the storedValue in ContractA)
+		// ABI-encoded uint256 is 32 bytes
+		require.Len(t, result, 32, "result should be 32 bytes (uint256)")
+		value := result[31] // Last byte contains the value for small numbers
+		require.Equal(t, byte(42), value, "should return storedValue (42)")
+	})
+
+	t.Run("FromNonExistentAddress", func(t *testing.T) {
+		// Call from a non-existent address
+		nonExistent := nonExistentAddr(0x10)
+		call := ethtypes.EthCall{
+			From: &nonExistent,
+			To:   &contractAAddr,
+			Data: kit.CalcFuncSignature("callBAndReadBack()"),
+		}
+		result, err := client.EthCall(ctx, call, blkParam)
+		require.NoError(t, err, "cross-contract callback should succeed when calling from non-existent address")
+
+		require.Len(t, result, 32)
+		value := result[31]
+		require.Equal(t, byte(42), value, "should return storedValue (42)")
+	})
+
+	t.Run("FromEOA", func(t *testing.T) {
+		// Create and fund an EOA
+		_, eoaAddr, filAddr := client.EVM().NewAccount()
+		kit.SendFunds(ctx, t, client, filAddr, types.FromFil(1))
+
+		call := ethtypes.EthCall{
+			From: &eoaAddr,
+			To:   &contractAAddr,
+			Data: kit.CalcFuncSignature("callBAndReadBack()"),
+		}
+		result, err := client.EthCall(ctx, call, blkParam)
+		require.NoError(t, err, "cross-contract callback should succeed when calling from EOA")
+
+		require.Len(t, result, 32)
+		value := result[31]
+		require.Equal(t, byte(42), value, "should return storedValue (42)")
+	})
+
+	t.Run("DoubleCallback", func(t *testing.T) {
+		// Test the callBAndDouble function which does callback and computation
+		nonExistent := nonExistentAddr(0x11)
+		call := ethtypes.EthCall{
+			From: &nonExistent,
+			To:   &contractAAddr,
+			Data: kit.CalcFuncSignature("callBAndDouble()"),
+		}
+		result, err := client.EthCall(ctx, call, blkParam)
+		require.NoError(t, err, "double callback should succeed")
+
+		require.Len(t, result, 32)
+		value := result[31]
+		require.Equal(t, byte(84), value, "should return storedValue * 2 (84)")
+	})
+}
