@@ -8,6 +8,7 @@ import (
 	"sort"
 
 	cbg "github.com/whyrusleeping/cbor-gen"
+	"go.opencensus.io/stats"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-jsonrpc"
@@ -22,6 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
+	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node/impl/gasutils"
 )
 
@@ -182,6 +184,8 @@ func (e *ethGas) EthMaxPriorityFeePerGas(ctx context.Context) (ethtypes.EthBigIn
 }
 
 func (e *ethGas) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthUint64, error) {
+	stats.Record(ctx, metrics.EthEstimateGasCount.M(1))
+
 	params, err := jsonrpc.DecodeParams[ethtypes.EthEstimateGasParams](p)
 	if err != nil {
 		return ethtypes.EthUint64(0), xerrors.Errorf("decoding params: %w", err)
@@ -206,29 +210,93 @@ func (e *ethGas) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (ethty
 		}
 	}
 
-	gassedMsg, err := e.gasApi.GasEstimateMessageGas(ctx, msg, nil, ts.Key())
-	if err != nil {
-		// On failure, GasEstimateMessageGas doesn't actually return the invocation result,
-		// it just returns an error. That means we can't get the revert reason.
-		//
-		// So we re-execute the message with EthCall (well, applyMessage which contains the
-		// guts of EthCall). This will give us an ethereum specific error with revert
-		// information.
-		msg.GasLimit = buildconstants.BlockGasLimit
-		if _, err2 := e.applyMessage(ctx, msg, ts.Key()); err2 != nil {
-			// If err2 is an ExecutionRevertedError, return it
-			var ed *api.ErrExecutionReverted
-			if errors.As(err2, &ed) {
-				return ethtypes.EthUint64(0), err2
-			}
+	// Check if the sender is an EVM contract actor.
+	// EVM contracts cannot be message senders in normal Filecoin execution, but
+	// eth_estimateGas should allow simulating calls from contract addresses
+	// (matching Geth's behavior). We detect this early to use the skip-sender-validation
+	// path, which avoids balance checks that would fail for zero-balance contracts.
+	needsSkipSenderValidation := false
+	if fromActor, err := e.stateManager.LoadActor(ctx, msg.From, ts); err == nil {
+		// Actor exists - check if it's an EVM contract
+		if builtinactors.IsEvmActor(fromActor.Code) {
+			needsSkipSenderValidation = true
+		}
+	}
+	// Note: if actor doesn't exist, we'll detect it when GasEstimateMessageGas fails
 
-			// Otherwise, return the error from applyMessage with failed to estimate gas
-			err = err2
+	// If sender is an EVM contract, use skip-sender-validation path directly
+	if needsSkipSenderValidation {
+		stats.Record(ctx, metrics.EthEstimateGasSkipSender.M(1))
+		gasLimit, err := gasutils.GasEstimateGasLimitSkipSenderValidation(ctx, e.chainStore, e.stateManager, e.messagePool, msg, ts)
+		if err != nil {
+			// Try applyMessage to get revert information
+			msg.GasLimit = buildconstants.BlockGasLimit
+			if _, err2 := e.applyMessage(ctx, msg, ts.Key()); err2 != nil {
+				var ed *api.ErrExecutionReverted
+				if errors.As(err2, &ed) {
+					return ethtypes.EthUint64(0), err2
+				}
+			}
+			return ethtypes.EthUint64(0), xerrors.Errorf("failed to estimate gas: %w", err)
 		}
 
-		return ethtypes.EthUint64(0), xerrors.Errorf("failed to estimate gas: %w", err)
+		// Apply overestimation
+		gasLimit = int64(float64(gasLimit) * e.messagePool.GetConfig().GasLimitOverestimation)
+		if gasLimit > buildconstants.BlockGasLimit {
+			gasLimit = buildconstants.BlockGasLimit
+		}
+		return ethtypes.EthUint64(gasLimit), nil
 	}
 
+	// First try the standard gas estimation path
+	gassedMsg, err := e.gasApi.GasEstimateMessageGas(ctx, msg, nil, ts.Key())
+	if err != nil {
+		// Check if this is a sender validation error that should trigger skip-validation fallback.
+		// This includes:
+		// 1. ErrSenderValidationFailed - explicit sender validation failure (actor not found)
+		// 2. ErrExecutionReverted with SysErrSenderInvalid - VM rejected sender (e.g., contract as sender)
+		var senderErr *api.ErrSenderValidationFailed
+		var execErr *api.ErrExecutionReverted
+		isSenderValidationError := errors.As(err, &senderErr) ||
+			(errors.As(err, &execErr) && execErr.ExitCode == exitcode.SysErrSenderInvalid)
+
+		if !isSenderValidationError {
+			// Not a sender validation error - check for other execution reverts.
+			// Return execution reverted errors directly to preserve JSON-RPC error codec.
+			if errors.As(err, &execErr) {
+				return ethtypes.EthUint64(0), err
+			}
+			// Other errors (network issues, state problems, etc.) - propagate with context
+			return ethtypes.EthUint64(0), xerrors.Errorf("failed to estimate gas: %w", err)
+		}
+
+		// Sender validation failed - try skip sender validation path as fallback.
+		// This handles cases where the sender is a contract or doesn't exist,
+		// matching Geth's eth_estimateGas behavior.
+		stats.Record(ctx, metrics.EthEstimateGasSkipSender.M(1))
+		gasLimit, err2 := gasutils.GasEstimateGasLimitSkipSenderValidation(ctx, e.chainStore, e.stateManager, e.messagePool, msg, ts)
+		if err2 != nil {
+			// Both paths failed - try applyMessage to get revert information
+			msg.GasLimit = buildconstants.BlockGasLimit
+			if _, err3 := e.applyMessage(ctx, msg, ts.Key()); err3 != nil {
+				var ed *api.ErrExecutionReverted
+				if errors.As(err3, &ed) {
+					return ethtypes.EthUint64(0), err3
+				}
+				err = err3
+			}
+			return ethtypes.EthUint64(0), xerrors.Errorf("failed to estimate gas: %w", err)
+		}
+
+		// Skip sender validation path succeeded - apply overestimation
+		gasLimit = int64(float64(gasLimit) * e.messagePool.GetConfig().GasLimitOverestimation)
+		if gasLimit > buildconstants.BlockGasLimit {
+			gasLimit = buildconstants.BlockGasLimit
+		}
+		return ethtypes.EthUint64(gasLimit), nil
+	}
+
+	// Standard path succeeded - use ethGasSearch for accurate estimation
 	expectedGas, err := ethGasSearch(ctx, e.chainStore, e.stateManager, e.messagePool, gassedMsg, ts)
 	if err != nil {
 		return 0, xerrors.Errorf("gas search failed: %w", err)
@@ -238,6 +306,8 @@ func (e *ethGas) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (ethty
 }
 
 func (e *ethGas) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {
+	stats.Record(ctx, metrics.EthCallCount.M(1))
+
 	msg, err := tx.ToFilecoinMessage()
 	if err != nil {
 		return nil, xerrors.Errorf("failed to convert ethcall to filecoin message: %w", err)
@@ -250,7 +320,13 @@ func (e *ethGas) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam etht
 
 	invokeResult, err := e.applyMessage(ctx, msg, ts.Key())
 	if err != nil {
-		return nil, err
+		// Check if this is an execution reverted error - return it directly
+		// to preserve the JSON-RPC error codec for proper client deserialization.
+		var execErr *api.ErrExecutionReverted
+		if errors.As(err, &execErr) {
+			return nil, err
+		}
+		return nil, xerrors.Errorf("failed to apply message: %w", err)
 	}
 
 	if msg.To == builtintypes.EthereumAddressManagerActorAddr {
@@ -262,6 +338,10 @@ func (e *ethGas) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam etht
 	return ethtypes.EthBytes{}, nil
 }
 
+// applyMessage applies a message to the state at the specified tipset.
+// It first tries the normal path with sender validation, then falls back to skip-sender-validation
+// if the sender validation fails. This enables eth_call to simulate calls from contract addresses
+// or non-existent addresses while still working correctly for normal accounts.
 func (e *ethGas) applyMessage(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (res *api.InvocResult, err error) {
 	ts, err := e.chainStore.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
@@ -283,9 +363,38 @@ func (e *ethGas) applyMessage(ctx context.Context, msg *types.Message, tsk types
 	if err != nil {
 		return nil, xerrors.Errorf("cannot get tipset state: %w", err)
 	}
+
+	// First try the normal path with sender validation
 	res, err = e.stateManager.ApplyOnStateWithGas(ctx, st, msg, ts)
+
+	// Check if we need to fall back to skip-sender-validation path.
+	// This happens in two cases:
+	// 1. The call returns an error that indicates sender validation failure
+	// 2. The call succeeds but returns SysErrSenderInvalid exit code
+	needsSkipSender := false
 	if err != nil {
-		return nil, xerrors.Errorf("ApplyWithGasOnState failed: %w", err)
+		// Check if this is a sender validation error
+		var senderErr *api.ErrSenderValidationFailed
+		var execErr *api.ErrExecutionReverted
+		needsSkipSender = errors.As(err, &senderErr) ||
+			(errors.As(err, &execErr) && execErr.ExitCode == exitcode.SysErrSenderInvalid)
+		if !needsSkipSender {
+			// Not a sender validation error - return the original error
+			return nil, xerrors.Errorf("ApplyOnStateWithGas failed: %w", err)
+		}
+	} else if res != nil && res.MsgRct.ExitCode == exitcode.SysErrSenderInvalid {
+		// Execution returned SysErrSenderInvalid - sender is invalid (e.g., contract)
+		needsSkipSender = true
+	}
+
+	if needsSkipSender {
+		// Sender validation failed - try skip sender validation path as fallback.
+		// This handles cases where the sender is a contract or doesn't exist,
+		// matching Geth's eth_call behavior.
+		res, err = e.stateManager.ApplyOnStateWithGasSkipSenderValidation(ctx, st, msg, ts)
+		if err != nil {
+			return nil, xerrors.Errorf("ApplyOnStateWithGasSkipSenderValidation failed: %w", err)
+		}
 	}
 
 	if res.MsgRct.ExitCode.IsError() {

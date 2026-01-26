@@ -431,8 +431,23 @@ func (vm *LegacyVM) ApplyImplicitMessage(ctx context.Context, msg *types.Message
 }
 
 func (vm *LegacyVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet, error) {
+	return vm.applyMessageInternal(ctx, cmsg, false)
+}
+
+func (vm *LegacyVM) ApplyMessageSkipSenderValidation(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet, error) {
+	return vm.applyMessageInternal(ctx, cmsg, true)
+}
+
+// applyMessageInternal is the unified implementation for ApplyMessage and ApplyMessageSkipSenderValidation.
+// When skipSenderValidation is true, sender validation checks (actor existence, account type, nonce, balance)
+// are skipped to enable eth_call/eth_estimateGas simulation from contract or non-existent addresses.
+func (vm *LegacyVM) applyMessageInternal(ctx context.Context, cmsg types.ChainMsg, skipSenderValidation bool) (*ApplyRet, error) {
 	start := build.Clock.Now()
-	ctx, span := trace.StartSpan(ctx, "vm.ApplyMessage")
+	spanName := "vm.ApplyMessage"
+	if skipSenderValidation {
+		spanName = "vm.ApplyMessageSkipSenderValidation"
+	}
+	ctx, span := trace.StartSpan(ctx, spanName)
 	defer span.End()
 	defer atomic.AddUint64(&StatApplied, 1)
 	msg := cmsg.VMMessage()
@@ -470,11 +485,59 @@ func (vm *LegacyVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*App
 
 	st := vm.cstate
 
-	minerPenaltyAmount := types.BigMul(vm.baseFee, abi.NewTokenAmount(msg.GasLimit))
-	fromActor, err := st.GetActor(msg.From)
-	// this should never happen, but is currently still exercised by some tests
-	if err != nil {
-		if errors.Is(err, types.ErrActorNotFound) {
+	var fromActor *types.Actor
+	var gascost types.BigInt
+
+	if skipSenderValidation {
+		// GETH COMPATIBILITY: When simulating eth_call/eth_estimateGas, Geth allows
+		// execution from addresses that don't exist on chain or have insufficient balance.
+		// This enables several important use cases:
+		//   1. Calling view functions from any address (even non-existent ones)
+		//   2. Estimating gas for transactions before funding the account
+		//   3. Simulating contract interactions from other contracts (msg.sender)
+		//
+		// See Geth's state_transition.go for reference implementation.
+		// The balance check is intentionally skipped to match this behavior.
+		//
+		// Skip sender validation - get actor but don't fail if not found
+		var getActorErr error
+		fromActor, getActorErr = st.GetActor(msg.From)
+		if getActorErr != nil && !errors.Is(getActorErr, types.ErrActorNotFound) {
+			log.Debugw("unexpected error getting actor for simulation", "from", msg.From, "error", getActorErr)
+		}
+		if fromActor == nil {
+			// Create a minimal synthetic actor for simulation with zero balance
+			fromActor = &types.Actor{
+				Balance: types.NewInt(0),
+				Nonce:   0,
+			}
+		}
+		gascost = types.BigMul(types.NewInt(uint64(msg.GasLimit)), msg.GasFeeCap)
+		// Skip balance check - allow execution even without sufficient funds for gas
+	} else {
+		minerPenaltyAmount := types.BigMul(vm.baseFee, abi.NewTokenAmount(msg.GasLimit))
+		var err error
+		fromActor, err = st.GetActor(msg.From)
+		// this should never happen, but is currently still exercised by some tests
+		if err != nil {
+			if errors.Is(err, types.ErrActorNotFound) {
+				gasOutputs := ZeroGasOutputs()
+				gasOutputs.MinerPenalty = minerPenaltyAmount
+				return &ApplyRet{
+					MessageReceipt: types.MessageReceipt{
+						ExitCode: exitcode.SysErrSenderInvalid,
+						GasUsed:  0,
+					},
+					ActorErr: aerrors.Newf(exitcode.SysErrSenderInvalid, "actor not found: %s", msg.From),
+					GasCosts: &gasOutputs,
+					Duration: time.Since(start),
+				}, nil
+			}
+			return nil, xerrors.Errorf("failed to look up from actor: %w", err)
+		}
+
+		// this should never happen, but is currently still exercised by some tests
+		if !builtin.IsAccountActor(fromActor.Code) {
 			gasOutputs := ZeroGasOutputs()
 			gasOutputs.MinerPenalty = minerPenaltyAmount
 			return &ApplyRet{
@@ -482,59 +545,43 @@ func (vm *LegacyVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*App
 					ExitCode: exitcode.SysErrSenderInvalid,
 					GasUsed:  0,
 				},
-				ActorErr: aerrors.Newf(exitcode.SysErrSenderInvalid, "actor not found: %s", msg.From),
+				ActorErr: aerrors.Newf(exitcode.SysErrSenderInvalid, "send from not account actor: %s", fromActor.Code),
 				GasCosts: &gasOutputs,
 				Duration: time.Since(start),
 			}, nil
 		}
-		return nil, xerrors.Errorf("failed to look up from actor: %w", err)
-	}
 
-	// this should never happen, but is currently still exercised by some tests
-	if !builtin.IsAccountActor(fromActor.Code) {
-		gasOutputs := ZeroGasOutputs()
-		gasOutputs.MinerPenalty = minerPenaltyAmount
-		return &ApplyRet{
-			MessageReceipt: types.MessageReceipt{
-				ExitCode: exitcode.SysErrSenderInvalid,
-				GasUsed:  0,
-			},
-			ActorErr: aerrors.Newf(exitcode.SysErrSenderInvalid, "send from not account actor: %s", fromActor.Code),
-			GasCosts: &gasOutputs,
-			Duration: time.Since(start),
-		}, nil
-	}
+		if msg.Nonce != fromActor.Nonce {
+			gasOutputs := ZeroGasOutputs()
+			gasOutputs.MinerPenalty = minerPenaltyAmount
+			return &ApplyRet{
+				MessageReceipt: types.MessageReceipt{
+					ExitCode: exitcode.SysErrSenderStateInvalid,
+					GasUsed:  0,
+				},
+				ActorErr: aerrors.Newf(exitcode.SysErrSenderStateInvalid,
+					"actor nonce invalid: msg:%d != state:%d", msg.Nonce, fromActor.Nonce),
 
-	if msg.Nonce != fromActor.Nonce {
-		gasOutputs := ZeroGasOutputs()
-		gasOutputs.MinerPenalty = minerPenaltyAmount
-		return &ApplyRet{
-			MessageReceipt: types.MessageReceipt{
-				ExitCode: exitcode.SysErrSenderStateInvalid,
-				GasUsed:  0,
-			},
-			ActorErr: aerrors.Newf(exitcode.SysErrSenderStateInvalid,
-				"actor nonce invalid: msg:%d != state:%d", msg.Nonce, fromActor.Nonce),
+				GasCosts: &gasOutputs,
+				Duration: time.Since(start),
+			}, nil
+		}
 
-			GasCosts: &gasOutputs,
-			Duration: time.Since(start),
-		}, nil
-	}
-
-	gascost := types.BigMul(types.NewInt(uint64(msg.GasLimit)), msg.GasFeeCap)
-	if fromActor.Balance.LessThan(gascost) {
-		gasOutputs := ZeroGasOutputs()
-		gasOutputs.MinerPenalty = minerPenaltyAmount
-		return &ApplyRet{
-			MessageReceipt: types.MessageReceipt{
-				ExitCode: exitcode.SysErrSenderStateInvalid,
-				GasUsed:  0,
-			},
-			ActorErr: aerrors.Newf(exitcode.SysErrSenderStateInvalid,
-				"actor balance less than needed: %s < %s", types.FIL(fromActor.Balance), types.FIL(gascost)),
-			GasCosts: &gasOutputs,
-			Duration: time.Since(start),
-		}, nil
+		gascost = types.BigMul(types.NewInt(uint64(msg.GasLimit)), msg.GasFeeCap)
+		if fromActor.Balance.LessThan(gascost) {
+			gasOutputs := ZeroGasOutputs()
+			gasOutputs.MinerPenalty = minerPenaltyAmount
+			return &ApplyRet{
+				MessageReceipt: types.MessageReceipt{
+					ExitCode: exitcode.SysErrSenderStateInvalid,
+					GasUsed:  0,
+				},
+				ActorErr: aerrors.Newf(exitcode.SysErrSenderStateInvalid,
+					"actor balance less than needed: %s < %s", types.FIL(fromActor.Balance), types.FIL(gascost)),
+				GasCosts: &gasOutputs,
+				Duration: time.Since(start),
+			}, nil
+		}
 	}
 
 	gasHolder := &types.Actor{Balance: types.NewInt(0)}

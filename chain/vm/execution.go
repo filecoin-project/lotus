@@ -47,6 +47,13 @@ func (e *vmExecutor) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*Ap
 	return e.vmi.ApplyMessage(ctx, cmsg)
 }
 
+func (e *vmExecutor) ApplyMessageSkipSenderValidation(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet, error) {
+	token := execution.getToken(ctx, e.lane)
+	defer token.Done()
+
+	return e.vmi.ApplyMessageSkipSenderValidation(ctx, cmsg)
+}
+
 func (e *vmExecutor) ApplyImplicitMessage(ctx context.Context, msg *types.Message) (*ApplyRet, error) {
 	token := execution.getToken(ctx, e.lane)
 	defer token.Done()

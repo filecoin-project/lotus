@@ -478,6 +478,75 @@ func (vm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet
 	return applyRet, nil
 }
 
+// ApplyMessageSkipSenderValidation applies the message while skipping sender type validation.
+// This uses FVM's ApplyKind::Simulation mode which allows any actor type (including EVM contracts)
+// to be used as a sender without requiring state modification. This enables eth_call and
+// eth_estimateGas to simulate calls from contract addresses, matching Geth's behavior.
+func (vm *FVM) ApplyMessageSkipSenderValidation(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet, error) {
+	start := build.Clock.Now()
+	defer atomic.AddUint64(&StatApplied, 1)
+	vmMsg := cmsg.VMMessage()
+	msgBytes, err := vmMsg.Serialize()
+	if err != nil {
+		return nil, xerrors.Errorf("serializing msg: %w", err)
+	}
+
+	ret, err := vm.fvm.ApplyMessageForSimulation(msgBytes, uint(cmsg.ChainLength()))
+	if err != nil {
+		return nil, xerrors.Errorf("applying msg for simulation: %w", err)
+	}
+
+	duration := time.Since(start)
+
+	var receipt types.MessageReceipt
+	if vm.nv >= network.Version18 {
+		receipt = types.NewMessageReceiptV1(exitcode.ExitCode(ret.ExitCode), ret.Return, ret.GasUsed, ret.EventsRoot)
+	} else {
+		receipt = types.NewMessageReceiptV0(exitcode.ExitCode(ret.ExitCode), ret.Return, ret.GasUsed)
+	}
+
+	var aerr aerrors.ActorError
+	if ret.ExitCode != 0 {
+		amsg := ret.FailureInfo
+		if amsg == "" {
+			amsg = "unknown error"
+		}
+		aerr = aerrors.New(exitcode.ExitCode(ret.ExitCode), amsg)
+	}
+
+	var et types.ExecutionTrace
+	if len(ret.ExecTraceBytes) != 0 {
+		if err = et.UnmarshalCBOR(bytes.NewReader(ret.ExecTraceBytes)); err != nil {
+			return nil, xerrors.Errorf("failed to unmarshal exectrace: %w", err)
+		}
+	}
+
+	applyRet := &ApplyRet{
+		MessageReceipt: receipt,
+		GasCosts: &GasOutputs{
+			BaseFeeBurn:        ret.BaseFeeBurn,
+			OverEstimationBurn: ret.OverEstimationBurn,
+			MinerPenalty:       ret.MinerPenalty,
+			MinerTip:           ret.MinerTip,
+			Refund:             ret.Refund,
+			GasRefund:          ret.GasRefund,
+			GasBurned:          ret.GasBurned,
+		},
+		ActorErr:       aerr,
+		ExecutionTrace: et,
+		Duration:       duration,
+	}
+
+	if vm.returnEvents && len(ret.EventsBytes) > 0 {
+		applyRet.Events, err = decodeEvents(ret.EventsBytes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode events returned by the FVM: %w", err)
+		}
+	}
+
+	return applyRet, nil
+}
+
 func (vm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg *types.Message) (*ApplyRet, error) {
 	start := build.Clock.Now()
 	defer atomic.AddUint64(&StatApplied, 1)
@@ -575,6 +644,27 @@ func (vm *dualExecutionFVM) ApplyMessage(ctx context.Context, cmsg types.ChainMs
 	go func() {
 		defer wg.Done()
 		if _, err := vm.debug.ApplyMessage(ctx, cmsg); err != nil {
+			log.Errorf("debug execution failed: %w", err)
+		}
+	}()
+
+	wg.Wait()
+	return ret, err
+}
+
+func (vm *dualExecutionFVM) ApplyMessageSkipSenderValidation(ctx context.Context, cmsg types.ChainMsg) (ret *ApplyRet, err error) {
+	var wg sync.WaitGroup
+
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+		ret, err = vm.main.ApplyMessageSkipSenderValidation(ctx, cmsg)
+	}()
+
+	go func() {
+		defer wg.Done()
+		if _, err := vm.debug.ApplyMessageSkipSenderValidation(ctx, cmsg); err != nil {
 			log.Errorf("debug execution failed: %w", err)
 		}
 	}()
