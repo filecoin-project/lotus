@@ -1,6 +1,7 @@
 [submodule "extern/filecoin-ffi"]
 	path = extern/filecoin-ffi
-	url = https://github.com/filecoin-project/filecoin-ffi.git
+	url = https://github.com/nijoe1/filecoin-ffi.git
+	branch = feat/apply-message-for-simulation
 [submodule "extern/serialization-vectors"]
 	path = extern/serialization-vectors
 	url = https://github.com/filecoin-project/serialization-vectors.git
