@@ -338,6 +338,7 @@ USAGE:
    lotus wallet sign [command options] <signing address> <hexMessage>
 
 OPTIONS:
+   --raw       sign raw bytes without FRC-0102 envelope (not recommended) (default: false)
    --help, -h  show help
 ```
 
@@ -351,6 +352,7 @@ USAGE:
    lotus wallet verify [command options] <signing address> <hexMessage> <signature>
 
 OPTIONS:
+   --raw       verify raw bytes without FRC-0102 envelope (not recommended) (default: false)
    --help, -h  show help
 ```
 
@@ -1529,6 +1531,7 @@ OPTIONS:
    --from value      return messages from a given address
    --toheight value  don't look before given block height (default: 0)
    --cids            print message CIDs instead of messages (default: false)
+   --order-by-nonce  order messages by nonce (only applies when filtering by 'from' address) (default: false)
    --help, -h        show help
 ```
 
