@@ -1066,6 +1066,34 @@ func TestFEVMErrorParsing(t *testing.T) {
 			})
 		})
 	}
+
+	// Verify that the raw JSON-RPC error code is 3, per Ethereum standard for execution reverted.
+	// See: https://github.com/ethereum/go-ethereum/pull/21083 (geth v1.9.15)
+	t.Run("RawErrorCode3", func(t *testing.T) {
+		entryPoint := kit.CalcFuncSignature("failRevertReason()")
+
+		request := fmt.Sprintf(`{
+			"jsonrpc": "2.0",
+			"id": 1,
+			"method": "eth_call",
+			"params": [{"to": "%s", "data": "0x%x"}, "latest"]
+		}`, contractAddrEth.String(), entryPoint)
+
+		statusCode, responseBody := client.DoRawRPCRequest(t, 1, request)
+		require.Equal(t, 200, statusCode)
+
+		var rpcResponse struct {
+			Error struct {
+				Code    int    `json:"code"`
+				Message string `json:"message"`
+				Data    string `json:"data"`
+			} `json:"error"`
+		}
+		require.NoError(t, json.Unmarshal(responseBody, &rpcResponse))
+		require.Equal(t, 3, rpcResponse.Error.Code,
+			"execution reverted error code must be 3 for Ethereum RPC compatibility (EIP-1474 de facto standard)")
+		require.NotEmpty(t, rpcResponse.Error.Data, "error response should include revert data")
+	})
 }
 
 // TestEthGetBlockReceipts tests retrieving block receipts after invoking a contract
