@@ -16,11 +16,11 @@ import (
 	"github.com/multiformats/go-varint"
 	"github.com/stretchr/testify/require"
 	cbg "github.com/whyrusleeping/cbor-gen"
-	"golang.org/x/crypto/sha3"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	amt4 "github.com/filecoin-project/go-amt-ipld/v4"
+	"github.com/filecoin-project/go-keccak"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
@@ -286,7 +286,7 @@ func (e *EVM) ComputeContractAddress(deployer ethtypes.EthAddress, nonce uint64)
 	})
 	require.NoError(e.t, err)
 
-	hasher := sha3.NewLegacyKeccak256()
+	hasher := keccak.NewLegacyKeccak256()
 	hasher.Write(encoded)
 	return *(*ethtypes.EthAddress)(hasher.Sum(nil)[12:])
 }
@@ -353,7 +353,7 @@ func (e *EVM) WaitTransaction(ctx context.Context, hash ethtypes.EthHash) (*etht
 
 // CalcFuncSignature returns the first 4 bytes of the hash of the function name and types
 func CalcFuncSignature(funcName string) []byte {
-	hasher := sha3.NewLegacyKeccak256()
+	hasher := keccak.NewLegacyKeccak256()
 	hasher.Write([]byte(funcName))
 	hash := hasher.Sum(nil)
 	return hash[:4]

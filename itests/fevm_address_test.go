@@ -7,9 +7,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"golang.org/x/crypto/sha3"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-keccak"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
@@ -24,7 +24,7 @@ import (
 func effectiveEthAddressForCreate(t *testing.T, sender address.Address) ethtypes.EthAddress {
 	switch sender.Protocol() {
 	case address.SECP256K1, address.BLS:
-		hasher := sha3.NewLegacyKeccak256()
+		hasher := keccak.NewLegacyKeccak256()
 		hasher.Write(sender.Bytes())
 		addr, err := ethtypes.CastEthAddress(hasher.Sum(nil)[12:])
 		require.NoError(t, err)
