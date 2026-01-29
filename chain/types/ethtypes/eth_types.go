@@ -15,10 +15,10 @@ import (
 	"github.com/multiformats/go-multihash"
 	mh "github.com/multiformats/go-multihash"
 	"github.com/multiformats/go-varint"
-	"golang.org/x/crypto/sha3"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-keccak"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
@@ -425,7 +425,7 @@ func EthAddressFromPubKey(pubk []byte) ([]byte, error) {
 	pubk = pubk[1:]
 
 	// Calculate the Ethereum address based on the keccak hash of the pubkey.
-	hasher := sha3.NewLegacyKeccak256()
+	hasher := keccak.NewLegacyKeccak256()
 	hasher.Write(pubk)
 	ethAddr := hasher.Sum(nil)[12:]
 	return ethAddr, nil
@@ -643,7 +643,7 @@ func ParseEthHash(s string) (EthHash, error) {
 }
 
 func EthHashFromTxBytes(b []byte) EthHash {
-	hasher := sha3.NewLegacyKeccak256()
+	hasher := keccak.NewLegacyKeccak256()
 	hasher.Write(b)
 	hash := hasher.Sum(nil)
 
@@ -653,7 +653,7 @@ func EthHashFromTxBytes(b []byte) EthHash {
 }
 
 func EthBloomSet(f EthBytes, data []byte) {
-	hasher := sha3.NewLegacyKeccak256()
+	hasher := keccak.NewLegacyKeccak256()
 	hasher.Write(data)
 	hash := hasher.Sum(nil)
 
@@ -908,7 +908,7 @@ type EthSubscriptionResponse struct {
 }
 
 func GetContractEthAddressFromCode(sender EthAddress, salt [32]byte, initcode []byte) (EthAddress, error) {
-	hasher := sha3.NewLegacyKeccak256()
+	hasher := keccak.NewLegacyKeccak256()
 	hasher.Write(initcode)
 	inithash := hasher.Sum(nil)
 

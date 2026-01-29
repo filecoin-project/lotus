@@ -1,13 +1,13 @@
 package kit
 
 import (
-	"golang.org/x/crypto/sha3"
+	"github.com/filecoin-project/go-keccak"
 
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
 func EthTopicHash(sig string) ethtypes.EthHash {
-	hasher := sha3.NewLegacyKeccak256()
+	hasher := keccak.NewLegacyKeccak256()
 	hasher.Write([]byte(sig))
 	var hash ethtypes.EthHash
 	copy(hash[:], hasher.Sum(nil))
@@ -15,7 +15,7 @@ func EthTopicHash(sig string) ethtypes.EthHash {
 }
 
 func EthFunctionHash(sig string) []byte {
-	hasher := sha3.NewLegacyKeccak256()
+	hasher := keccak.NewLegacyKeccak256()
 	hasher.Write([]byte(sig))
 	return hasher.Sum(nil)[:4]
 }
