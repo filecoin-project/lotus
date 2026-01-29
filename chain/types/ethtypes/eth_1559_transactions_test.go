@@ -8,10 +8,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"golang.org/x/crypto/sha3"
 
 	"github.com/filecoin-project/go-address"
 	gocrypto "github.com/filecoin-project/go-crypto"
+	"github.com/filecoin-project/go-keccak"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/builtin/v10/evm"
@@ -163,7 +163,7 @@ func TestEcRecover(t *testing.T) {
 	sig = append(sig, v)
 	require.Equal(t, 65, len(sig))
 
-	sha := sha3.NewLegacyKeccak256()
+	sha := keccak.NewLegacyKeccak256()
 	sha.Write(msg)
 	h := sha.Sum(nil)
 

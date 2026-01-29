@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"golang.org/x/crypto/sha3"
 
+	"github.com/filecoin-project/go-keccak"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/manifest"
 	gstStore "github.com/filecoin-project/go-state-types/store"
@@ -273,7 +273,7 @@ func TestDeployment(t *testing.T) {
 	byteCodeHashChain, err := evmSt.GetBytecodeHash()
 	require.NoError(t, err)
 
-	hasher := sha3.NewLegacyKeccak256()
+	hasher := keccak.NewLegacyKeccak256()
 	hasher.Write(byteCode.RawData())
 	byteCodeHash := hasher.Sum(nil)
 	require.Equal(t, byteCodeHashChain[:], byteCodeHash)
