@@ -250,8 +250,8 @@ github.com/filecoin-project/go-commp-utils/v2 v2.1.0/go.mod h1:NbxJYlhxtWaNhlVCj
 github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03/go.mod h1:+viYnvGtUTgJRdy6oaeF4MTFKAfatX071MPDPBL11EQ=
 github.com/filecoin-project/go-crypto v0.1.0 h1:Pob2MphoipMbe/ksxZOMcQvmBHAd3sI/WEqcbpIsGI0=
 github.com/filecoin-project/go-crypto v0.1.0/go.mod h1:K9UFXvvoyAVvB+0Le7oGlKiT9mgA5FHOJdYQXEE8IhI=
-github.com/filecoin-project/go-f3 v0.8.10 h1:Mm+daAn9EKqTTDY3ICbPTR2i3Opjb4gr6Y7bJ8oCA84=
-github.com/filecoin-project/go-f3 v0.8.10/go.mod h1:hFvb2CMxHDmlJAVzfiIL/V8zCtNMQqfSnhP5TyM6CHI=
+github.com/filecoin-project/go-f3 v0.8.11 h1:4bH5PHTKCTI4zi39JBqqHSDbw+QKzPuTX/Q7aTrA/gA=
+github.com/filecoin-project/go-f3 v0.8.11/go.mod h1:2zNRQ9abAdwR31wIlxoZMnTToxFsEg68DJoxhq/WZLw=
 github.com/filecoin-project/go-fil-commcid v0.3.1 h1:4EfxpHSlvtkOqa9weG2Yt5kxFmPib2xU7Uc9Lbqk7fs=
 github.com/filecoin-project/go-fil-commcid v0.3.1/go.mod h1:z7Ssf8d7kspF9QRAVHDbZ+43JK4mkhbGH5lyph1TnKY=
 github.com/filecoin-project/go-fil-commp-hashhash v0.2.0 h1:HYIUugzjq78YvV3vC6rL95+SfC/aSTVSnZSZiDV5pCk=
@@ -264,8 +264,8 @@ github.com/filecoin-project/go-hamt-ipld/v3 v3.0.1/go.mod h1:gXpNmr3oQx8l3o7qkGy
 github.com/filecoin-project/go-hamt-ipld/v3 v3.1.0/go.mod h1:bxmzgT8tmeVQA1/gvBwFmYdT8SOFUwB3ovSUfG1Ux0g=
 github.com/filecoin-project/go-hamt-ipld/v3 v3.4.1 h1:wl+ZHruCcE9LvwU7blpwWn35XOcRS6+IBg75G7ZzxzY=
 github.com/filecoin-project/go-hamt-ipld/v3 v3.4.1/go.mod h1:AqjryNfkxffpnqsa5mwnJHlazhVqF6W2nilu+VYKIq8=
-github.com/filecoin-project/go-jsonrpc v0.9.0 h1:G47qEF52w7GholpI21vPSTVBFvsrip6geIoqNiqyZtQ=
-github.com/filecoin-project/go-jsonrpc v0.9.0/go.mod h1:OG7kVBVh/AbDFHIwx7Kw0l9ARmKOS6gGOr0LbdBpbLc=
+github.com/filecoin-project/go-jsonrpc v0.10.0 h1:gZc1thGVD5Khg5Gp1UJibRWZrnNBEP1iFrGOTn0w5TE=
+github.com/filecoin-project/go-jsonrpc v0.10.0/go.mod h1:OG7kVBVh/AbDFHIwx7Kw0l9ARmKOS6gGOr0LbdBpbLc=
 github.com/filecoin-project/go-keccak v0.1.0 h1:SWoaAVbqKgB9iXBceIjmgMskr8DlJTAJ8vWK/bQUXRg=
 github.com/filecoin-project/go-keccak v0.1.0/go.mod h1:X3vAWrEOJSO5GnJfzRFZzv8QC/2IacwECuIj11cnE4Y=
 github.com/filecoin-project/go-padreader v0.0.1 h1:8h2tVy5HpoNbr2gBRr+WD6zV6VD6XHig+ynSGJg8ZOs=
