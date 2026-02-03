@@ -15,6 +15,7 @@
 - feat(cli): implement FRC-0102 signing envelope for wallet sign/verify ([filecoin-project/lotus#13471](https://github.com/filecoin-project/lotus/pull/13471))
 - feat(cli): add --order-by-nonce flag to list messages sequentially when filtering by sender ([filecoin-project/lotus#13394](https://github.com/filecoin-project/lotus/pull/13394))
 - fix(eth): use error code 3 for EExecutionReverted for Ethereum RPC tooling compatibility ([filecoin-project/lotus#13467](https://github.com/filecoin-project/lotus/pull/13467))
+- fix(gateway): implement `UnmarshalJSON` for `EthSyncingResult` ([filecoin-project/lotus#13484](https://github.com/filecoin-project/lotus/pull/13484))
   - BREAKING: RPC error codes changed - EActorNotFound (3→11), EExecutionReverted (11→3). Mismatched client/server versions will deserialize these errors as the wrong Go type, breaking errors.Is/As checks.
 
 # Node v1.34.3 / 2025-12-03
