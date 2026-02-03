@@ -142,7 +142,7 @@ require (
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
 	github.com/xeipuuv/gojsonschema v1.2.0
 	github.com/xorcare/golden v0.6.1-0.20191112154924-b87f686d7542 // dependency-check-ignore: unknown
-	github.com/yugabyte/pgx/v5 v5.5.3-yb-5 // dependency-check-ignore: unknown
+	github.com/yugabyte/pgx/v5 v5.7.6-yb-1 // dependency-check-ignore: unknown
 	github.com/zondax/ledger-filecoin-go v1.2.0
 	github.com/zyedidia/generic v1.2.1
 	go.opencensus.io v0.24.0
