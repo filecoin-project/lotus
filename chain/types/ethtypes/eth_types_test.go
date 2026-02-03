@@ -635,7 +635,6 @@ func TestEthBlockNumberOrHashUnmarshalJSON(t *testing.T) {
 }
 
 func TestEthSyncingResultMarshalJSON(t *testing.T) {
-	// https://ethereum.org/en/developers/docs/apis/json-rpc/#quantities-encoding
 	testcases := []TestCase{
 		{EthSyncingResult{DoneSync: true}, []byte("false")},
 		{EthSyncingResult{StartingBlock: 1, CurrentBlock: 2, HighestBlock: 3}, []byte("{\"startingblock\":\"0x1\",\"currentblock\":\"0x2\",\"highestblock\":\"0x3\"}")},
