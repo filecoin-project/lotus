@@ -634,6 +634,34 @@ func TestEthBlockNumberOrHashUnmarshalJSON(t *testing.T) {
 	}
 }
 
+func TestEthSyncingResultMarshalJSON(t *testing.T) {
+	// https://ethereum.org/en/developers/docs/apis/json-rpc/#quantities-encoding
+	testcases := []TestCase{
+		{EthSyncingResult{DoneSync: true}, []byte("false")},
+		{EthSyncingResult{StartingBlock: 1, CurrentBlock: 2, HighestBlock: 3}, []byte("{\"startingblock\":\"0x1\",\"currentblock\":\"0x2\",\"highestblock\":\"0x3\"}")},
+	}
+
+	for _, tc := range testcases {
+		j, err := tc.Input.(EthSyncingResult).MarshalJSON()
+		require.Nil(t, err)
+		require.Equal(t, j, tc.Output)
+	}
+}
+
+func TestEthSyncingResultUnmarshalJSON(t *testing.T) {
+	testcases := []TestCase{
+		{[]byte("false"), EthSyncingResult{DoneSync: true}},
+		{[]byte("{\"startingblock\":\"0x1\",\"currentblock\":\"0x2\",\"highestblock\":\"0x3\"}"), EthSyncingResult{StartingBlock: 1, CurrentBlock: 2, HighestBlock: 3}},
+	}
+
+	for _, tc := range testcases {
+		var r EthSyncingResult
+		err := r.UnmarshalJSON(tc.Input.([]byte))
+		require.Nil(t, err)
+		require.Equal(t, tc.Output, r)
+	}
+}
+
 func stringPtr(s string) *string {
 	return &s
 }

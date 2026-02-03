@@ -374,6 +374,28 @@ func (sr EthSyncingResult) MarshalJSON() ([]byte, error) {
 		HighestBlock:  sr.HighestBlock})
 }
 
+func (sr *EthSyncingResult) UnmarshalJSON(b []byte) error {
+	var syncing bool
+	if err := json.Unmarshal(b, &syncing); err == nil && !syncing {
+		*sr = EthSyncingResult{DoneSync: true}
+		return nil
+	}
+	var result struct {
+		StartingBlock EthUint64 `json:"startingblock"`
+		CurrentBlock  EthUint64 `json:"currentblock"`
+		HighestBlock  EthUint64 `json:"highestblock"`
+	}
+	if err := json.Unmarshal(b, &result); err != nil {
+		return err
+	}
+	*sr = EthSyncingResult{
+		StartingBlock: result.StartingBlock,
+		CurrentBlock:  result.CurrentBlock,
+		HighestBlock:  result.HighestBlock,
+	}
+	return nil
+}
+
 const (
 	EthAddressLength = 20
 	EthHashLength    = 32
