@@ -278,7 +278,7 @@ func (e *ethTrace) EthTraceFilter(ctx context.Context, filter ethtypes.EthTraceF
 		return nil, xerrors.Errorf("cannot parse toBlock: %w", err)
 	}
 
-	var results []*ethtypes.EthTraceFilterResult
+	results := []*ethtypes.EthTraceFilterResult{}
 
 	if filter.Count != nil {
 		// If filter.Count is specified and it is 0, return an empty result set immediately.

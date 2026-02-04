@@ -897,4 +897,28 @@ func TestTraceFilter(t *testing.T) {
 	traces, err = client.EthTraceFilter(ctx, filter)
 	require.NoError(t, err)
 	require.Len(t, traces, 3) // still the same traces as before
+
+	// Query ONLY the null round epochs - should return empty array [], not null
+	// Get the current block number via Eth API
+	currentBlock, err := client.EthBlockNumber(ctx)
+	require.NoError(t, err)
+	// The 2 null rounds are at currentBlock-2 and currentBlock-1
+	// (currentBlock is the first block mined after the nulls, then we waited for one more)
+	// With InjectNulls(2), the next block has 2 nulls before it, so:
+	// - currentBlock-2 = first null round
+	// - currentBlock-1 = second null round
+	// - currentBlock = first real block after nulls
+	nullStartNum := uint64(currentBlock) - 2
+	nullEndNum := uint64(currentBlock) - 1
+	nullStart := fmt.Sprintf("0x%x", nullStartNum)
+	nullEnd := fmt.Sprintf("0x%x", nullEndNum)
+	t.Logf("Testing null round range: %s to %s (block numbers %d to %d, current %d)", nullStart, nullEnd, nullStartNum, nullEndNum, currentBlock)
+	filter = ethtypes.EthTraceFilterCriteria{
+		FromBlock: &nullStart,
+		ToBlock:   &nullEnd,
+	}
+	nullRoundTraces, err := client.EthTraceFilter(ctx, filter)
+	require.NoError(t, err)
+	require.NotNil(t, nullRoundTraces, "trace_filter should return [] not null for all-null-round ranges")
+	require.Empty(t, nullRoundTraces)
 }
