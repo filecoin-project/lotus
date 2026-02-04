@@ -9527,7 +9527,7 @@ Response:
 ```
 
 ### SyncSubmitBlock
-SyncSubmitBlock can be used to submit a newly created block to the.
+SyncSubmitBlock can be used to submit a newly created block to the
 network through this node
 
 
