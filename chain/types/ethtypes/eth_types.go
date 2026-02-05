@@ -365,13 +365,35 @@ func (sr EthSyncingResult) MarshalJSON() ([]byte, error) {
 
 	// need to do an anonymous struct to avoid infinite recursion
 	return json.Marshal(&struct {
-		StartingBlock EthUint64 `json:"startingblock"`
-		CurrentBlock  EthUint64 `json:"currentblock"`
-		HighestBlock  EthUint64 `json:"highestblock"`
+		StartingBlock EthUint64 `json:"startingBlock"`
+		CurrentBlock  EthUint64 `json:"currentBlock"`
+		HighestBlock  EthUint64 `json:"highestBlock"`
 	}{
 		StartingBlock: sr.StartingBlock,
 		CurrentBlock:  sr.CurrentBlock,
 		HighestBlock:  sr.HighestBlock})
+}
+
+func (sr *EthSyncingResult) UnmarshalJSON(b []byte) error {
+	var syncing bool
+	if err := json.Unmarshal(b, &syncing); err == nil && !syncing {
+		*sr = EthSyncingResult{DoneSync: true}
+		return nil
+	}
+	var result struct {
+		StartingBlock EthUint64 `json:"startingBlock"`
+		CurrentBlock  EthUint64 `json:"currentBlock"`
+		HighestBlock  EthUint64 `json:"highestBlock"`
+	}
+	if err := json.Unmarshal(b, &result); err != nil {
+		return err
+	}
+	*sr = EthSyncingResult{
+		StartingBlock: result.StartingBlock,
+		CurrentBlock:  result.CurrentBlock,
+		HighestBlock:  result.HighestBlock,
+	}
+	return nil
 }
 
 const (
