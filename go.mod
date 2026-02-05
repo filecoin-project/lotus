@@ -157,7 +157,7 @@ require (
 	go.uber.org/zap v1.27.1
 	golang.org/x/crypto v0.47.0
 	golang.org/x/mod v0.31.0
-	golang.org/x/net v0.48.0
+	golang.org/x/net v0.48.0 // indirect
 	golang.org/x/sync v0.19.0
 	golang.org/x/sys v0.40.0
 	golang.org/x/term v0.39.0
