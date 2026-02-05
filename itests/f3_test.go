@@ -135,8 +135,7 @@ func TestF3_InactiveModes(t *testing.T) {
 			if tc.mode == "not running" {
 				m := newTestManifest(BaseNetworkName, 1<<32, blockTime)
 				cfg := &lf3.Config{
-					BaseNetworkName: BaseNetworkName,
-					StaticManifest:  m,
+					StaticManifest: m,
 				}
 				opts = append(opts, kit.F3Config(cfg))
 			}
@@ -383,8 +382,7 @@ func setupWithStaticManifest(t *testing.T, manif *manifest.Manifest, testBootstr
 	})
 
 	cfg := &lf3.Config{
-		BaseNetworkName: BaseNetworkName,
-		StaticManifest:  manif,
+		StaticManifest: manif,
 	}
 
 	nodeOpts := []kit.NodeOpt{kit.WithAllSubsystems(), kit.F3Config(cfg)}
