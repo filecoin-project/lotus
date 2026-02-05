@@ -10,8 +10,6 @@
 # UNRELEASED
 
 ## 👌 Improvements
-- docs: fix outdated link in documentation ([#13436](https://github.com/filecoin-project/lotus/pull/13436))
-- docs: fix dead link in documentation ([#13437](https://github.com/filecoin-project/lotus/pull/13437))
 
 # Node v1.34.4-rc1 / 2025-12-10
 
@@ -19,6 +17,7 @@ This is a patch release candidate primarily to include the fr32 fix required for
 
 ## Bug Fixes
 
+- fix(eth): trace_filter returns [] for null round ranges ([filecoin-project/lotus#13483](https://github.com/filecoin-project/lotus/pull/13483))
 - fix(fr32): Update go-commp-utils to include fr32 fixes for Storage Provider compatibility ([filecoin-project/lotus#13455](https://github.com/filecoin-project/lotus/pull/13455))
 
 ## 📝 Changelog
