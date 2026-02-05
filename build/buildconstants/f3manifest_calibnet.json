@@ -2,13 +2,11 @@
   "Pause": false,
   "ProtocolVersion": 7,
   "InitialInstance": 0,
-  "BootstrapEpoch": 2081674,
-  "NetworkName": "calibrationnet",
+  "BootstrapEpoch": 3451774,
+  "NetworkName": "calibrationnet2",
   "ExplicitPower": null,
   "IgnoreECPower": false,
-  "InitialPowerTable": {
-    "/": "bafy2bzaceab236vmmb3n4q4tkvua2n4dphcbzzxerxuey3mot4g3cov5j3r2c"
-  },
+  "InitialPowerTable": null,
   "CommitteeLookback": 10,
   "CatchUpAlignment": 15000000000,
   "Gpbft": {
