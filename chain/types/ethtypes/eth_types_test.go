@@ -637,7 +637,7 @@ func TestEthBlockNumberOrHashUnmarshalJSON(t *testing.T) {
 func TestEthSyncingResultMarshalJSON(t *testing.T) {
 	testcases := []TestCase{
 		{EthSyncingResult{DoneSync: true}, []byte("false")},
-		{EthSyncingResult{StartingBlock: 1, CurrentBlock: 2, HighestBlock: 3}, []byte("{\"startingblock\":\"0x1\",\"currentblock\":\"0x2\",\"highestblock\":\"0x3\"}")},
+		{EthSyncingResult{StartingBlock: 1, CurrentBlock: 2, HighestBlock: 3}, []byte("{\"startingBlock\":\"0x1\",\"currentBlock\":\"0x2\",\"highestBlock\":\"0x3\"}")},
 	}
 
 	for _, tc := range testcases {
@@ -650,7 +650,7 @@ func TestEthSyncingResultMarshalJSON(t *testing.T) {
 func TestEthSyncingResultUnmarshalJSON(t *testing.T) {
 	testcases := []TestCase{
 		{[]byte("false"), EthSyncingResult{DoneSync: true}},
-		{[]byte("{\"startingblock\":\"0x1\",\"currentblock\":\"0x2\",\"highestblock\":\"0x3\"}"), EthSyncingResult{StartingBlock: 1, CurrentBlock: 2, HighestBlock: 3}},
+		{[]byte("{\"startingBlock\":\"0x1\",\"currentBlock\":\"0x2\",\"highestBlock\":\"0x3\"}"), EthSyncingResult{StartingBlock: 1, CurrentBlock: 2, HighestBlock: 3}},
 	}
 
 	for _, tc := range testcases {
