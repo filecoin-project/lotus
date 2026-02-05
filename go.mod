@@ -337,8 +337,9 @@ require (
 	lukechampine.com/blake3 v1.4.1 // indirect
 )
 
+require github.com/filecoin-project/go-keccak v0.1.0
+
 require (
-	github.com/filecoin-project/go-keccak v0.1.0 // indirect
 	github.com/gammazero/chanqueue v1.1.1 // indirect
 	github.com/gammazero/deque v1.1.0 // indirect
 	github.com/ipfs/go-cidutil v0.1.0 // indirect
