@@ -241,6 +241,8 @@ func (cs *ChainStore) Import(ctx context.Context, f3Ds dtypes.F3DS, r io.Reader)
 				if f3Manifest == nil {
 					log.Warnf("Snapshot contains F3 data but F3 manifest is not available in this build. Skipping F3 data import.")
 					// Skip F3 import but continue with chain import
+				} else if !f3Manifest.InitialPowerTable.Defined() {
+					log.Warnf("Snapshot contains F3 data but InitialPowerTable in F3 manifest is not available in this build. Skipping F3 data import.")
 				} else {
 					log.Info("Importing F3Data to datastore")
 					if err := certstore.ImportSnapshotToDatastore(ctx, f3r, f3DsWrapper, f3Manifest); err != nil {
