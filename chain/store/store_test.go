@@ -3,6 +3,7 @@ package store_test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"testing"
 
@@ -15,10 +16,12 @@ import (
 	"github.com/filecoin-project/go-f3/certs"
 	"github.com/filecoin-project/go-f3/certstore"
 	"github.com/filecoin-project/go-f3/gpbft"
+	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
@@ -268,6 +271,23 @@ func TestChainExportImportWithF3Data(t *testing.T) {
 			t.Fatal(err)
 		}
 		lc = cert
+	}
+
+	{
+		// patch out embedded manifest for testing
+		oldManifest := buildconstants.F3ManifestBytes
+
+		var manif manifest.Manifest
+		if err := json.Unmarshal(buildconstants.F3ManifestBytes, &manif); err != nil {
+			t.Fatal(err)
+		}
+		manif.InitialPowerTable = ptCid
+		defer func() {
+			buildconstants.F3ManifestBytes = oldManifest
+		}()
+		if buildconstants.F3ManifestBytes, err = json.Marshal(manif); err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	certStore, err := certstore.OpenStore(context.TODO(), f3ds)
