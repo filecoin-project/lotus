@@ -8,10 +8,10 @@ import (
 	mathbig "math/big"
 
 	cbg "github.com/whyrusleeping/cbor-gen"
-	"golang.org/x/crypto/sha3"
 
 	"github.com/filecoin-project/go-address"
 	gocrypto "github.com/filecoin-project/go-crypto"
+	"github.com/filecoin-project/go-keccak"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
@@ -561,7 +561,7 @@ func sender(tx EthTransaction) (address.Address, error) {
 		return address.Undef, fmt.Errorf("failed to get rlp unsigned msg: %w", err)
 	}
 
-	hasher := sha3.NewLegacyKeccak256()
+	hasher := keccak.NewLegacyKeccak256()
 	hasher.Write(msg)
 	hash := hasher.Sum(nil)
 

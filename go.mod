@@ -49,6 +49,7 @@ require (
 	github.com/filecoin-project/go-fil-commcid v0.3.1
 	github.com/filecoin-project/go-hamt-ipld/v3 v3.4.1
 	github.com/filecoin-project/go-jsonrpc v0.9.0
+	github.com/filecoin-project/go-keccak v0.1.0
 	github.com/filecoin-project/go-padreader v0.0.1
 	github.com/filecoin-project/go-paramfetch v0.0.4
 	github.com/filecoin-project/go-state-types v0.18.0-dev // dependency-check-ignore: unknown
@@ -98,7 +99,7 @@ require (
 	github.com/ipfs/go-log/v2 v2.9.0
 	github.com/ipfs/go-metrics-interface v0.3.0
 	github.com/ipfs/go-metrics-prometheus v0.1.0
-	github.com/ipld/go-car v0.6.2
+	github.com/ipld/go-car v0.6.3
 	github.com/ipld/go-car/v2 v2.16.0
 	github.com/ipld/go-ipld-prime v0.21.0
 	github.com/jackc/pgerrcode v0.0.0-20240316143900-6e2875d9b438
@@ -141,7 +142,7 @@ require (
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
 	github.com/xeipuuv/gojsonschema v1.2.0
 	github.com/xorcare/golden v0.6.1-0.20191112154924-b87f686d7542 // dependency-check-ignore: unknown
-	github.com/yugabyte/pgx/v5 v5.5.3-yb-5 // dependency-check-ignore: unknown
+	github.com/yugabyte/pgx/v5 v5.7.6-yb-1 // dependency-check-ignore: unknown
 	github.com/zondax/ledger-filecoin-go v1.2.0
 	github.com/zyedidia/generic v1.2.1
 	go.opencensus.io v0.24.0
@@ -224,17 +225,10 @@ require (
 	github.com/huandu/xstrings v1.5.0 // indirect
 	github.com/huin/goupnp v1.3.0 // indirect
 	github.com/iancoleman/orderedmap v0.1.0 // indirect
-	github.com/ipfs/go-blockservice v0.5.2 // indirect
-	github.com/ipfs/go-ipfs-blockstore v1.3.1 // indirect
-	github.com/ipfs/go-ipfs-ds-help v1.1.1 // indirect
-	github.com/ipfs/go-ipfs-exchange-interface v0.2.1 // indirect
 	github.com/ipfs/go-ipfs-pq v0.0.3 // indirect
-	github.com/ipfs/go-ipfs-util v0.0.3 // indirect
 	github.com/ipfs/go-ipld-legacy v0.2.2 // indirect
 	github.com/ipfs/go-log v1.0.5 // indirect
-	github.com/ipfs/go-merkledag v0.11.0 // indirect
 	github.com/ipfs/go-peertaskqueue v0.8.2 // indirect
-	github.com/ipfs/go-verifcid v0.0.3 // indirect
 	github.com/ipld/go-codec-dagpb v1.7.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
