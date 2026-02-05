@@ -27,9 +27,9 @@ const _CheckStatusCode_name = "MessageSerializeMessageSizeMessageValidityMessage
 var _CheckStatusCode_index = [...]uint8{0, 16, 27, 42, 55, 72, 86, 110, 134, 154, 166, 188, 202}
 
 func (i CheckStatusCode) String() string {
-	i -= 1
-	if i < 0 || i >= CheckStatusCode(len(_CheckStatusCode_index)-1) {
-		return "CheckStatusCode(" + strconv.FormatInt(int64(i+1), 10) + ")"
+	idx := int(i) - 1
+	if i < 1 || idx >= len(_CheckStatusCode_index)-1 {
+		return "CheckStatusCode(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
-	return _CheckStatusCode_name[_CheckStatusCode_index[i]:_CheckStatusCode_index[i+1]]
+	return _CheckStatusCode_name[_CheckStatusCode_index[idx]:_CheckStatusCode_index[idx+1]]
 }

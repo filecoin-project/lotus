@@ -3,10 +3,9 @@ package delegated
 import (
 	"fmt"
 
-	"golang.org/x/crypto/sha3"
-
 	"github.com/filecoin-project/go-address"
 	gocrypto "github.com/filecoin-project/go-crypto"
+	"github.com/filecoin-project/go-keccak"
 	"github.com/filecoin-project/go-state-types/builtin"
 	crypto1 "github.com/filecoin-project/go-state-types/crypto"
 
@@ -28,7 +27,7 @@ func (delegatedSigner) ToPublic(pk []byte) ([]byte, error) {
 }
 
 func (s delegatedSigner) Sign(pk []byte, msg []byte) ([]byte, error) {
-	hasher := sha3.NewLegacyKeccak256()
+	hasher := keccak.NewLegacyKeccak256()
 	hasher.Write(msg)
 	hashSum := hasher.Sum(nil)
 	sig, err := gocrypto.Sign(pk, hashSum)
@@ -40,7 +39,7 @@ func (s delegatedSigner) Sign(pk []byte, msg []byte) ([]byte, error) {
 }
 
 func (delegatedSigner) Verify(sig []byte, a address.Address, msg []byte) error {
-	hasher := sha3.NewLegacyKeccak256()
+	hasher := keccak.NewLegacyKeccak256()
 	hasher.Write(msg)
 	hash := hasher.Sum(nil)
 
