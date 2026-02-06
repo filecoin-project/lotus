@@ -9,6 +9,9 @@
 
 # UNRELEASED
 
+## 🐛 Bug Fixes
+- fix: drain F3 data reader when skipping F3 import during snapshot import ([filecoin-project/lotus#13491](https://github.com/filecoin-project/lotus/pull/13491))
+
 ## 👌 Improvements
 
 # Node v1.34.4-rc1 / 2025-12-10
