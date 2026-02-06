@@ -1152,17 +1152,7 @@
                                     "title": "Content Identifier",
                                     "type": "string"
                                 },
-                                "Message": {
-                                    "additionalProperties": false,
-                                    "properties": {
-                                        "Cid": {
-                                            "title": "Content Identifier",
-                                            "type": "string"
-                                        },
-                                        "Message": {}
-                                    },
-                                    "type": "object"
-                                }
+                                "Message": {}
                             },
                             "type": [
                                 "object"
@@ -1304,17 +1294,7 @@
                                     "title": "Content Identifier",
                                     "type": "string"
                                 },
-                                "Message": {
-                                    "additionalProperties": false,
-                                    "properties": {
-                                        "Cid": {
-                                            "title": "Content Identifier",
-                                            "type": "string"
-                                        },
-                                        "Message": {}
-                                    },
-                                    "type": "object"
-                                }
+                                "Message": {}
                             },
                             "type": [
                                 "object"
