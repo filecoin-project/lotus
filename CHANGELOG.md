@@ -10,7 +10,6 @@
 # UNRELEASED
 
 ## 🐛 Bug Fixes
-- fix: drain F3 data reader when skipping F3 import during snapshot import ([filecoin-project/lotus#13491](https://github.com/filecoin-project/lotus/pull/13491))
 
 ## 👌 Improvements
 
@@ -22,6 +21,7 @@ This is a patch release that includes bug fixes and backports, notably the fr32 
 
 - fix(eth): trace_filter returns [] for null round ranges ([filecoin-project/lotus#13483](https://github.com/filecoin-project/lotus/pull/13483))
 - fix(f3): Update F3 manifest to restart F3 on calibnet ([filecoin-project/lotus#13488](https://github.com/filecoin-project/lotus/pull/13488))
+- fix: drain F3 data reader when skipping F3 import during snapshot import ([filecoin-project/lotus#13491](https://github.com/filecoin-project/lotus/pull/13491))
 - fix(fr32): Update go-commp-utils to include fr32 fixes for Storage Provider compatibility ([filecoin-project/lotus#13455](https://github.com/filecoin-project/lotus/pull/13455))
 
 ## 📝 Changelog
