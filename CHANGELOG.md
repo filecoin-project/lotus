@@ -10,7 +10,6 @@
 # UNRELEASED
 
 ## 🐛 Bug Fixes
-- fix: drain F3 data reader when skipping F3 import during snapshot import ([filecoin-project/lotus#13491](https://github.com/filecoin-project/lotus/pull/13491))
 
 ## 👌 Improvements
 - docs: fix outdated link in documentation ([#13436](https://github.com/filecoin-project/lotus/pull/13436))
@@ -20,7 +19,40 @@
 - fix(eth): use error code 3 for EExecutionReverted for Ethereum RPC tooling compatibility ([filecoin-project/lotus#13467](https://github.com/filecoin-project/lotus/pull/13467))
   - BREAKING: RPC error codes changed - EActorNotFound (3→11), EExecutionReverted (11→3). Mismatched client/server versions will deserialize these errors as the wrong Go type, breaking errors.Is/As checks.
 - fix(eth): fix `eth_syncing` result property casing & implement `UnmarshalJSON` for `EthSyncingResult` ([filecoin-project/lotus#13484](https://github.com/filecoin-project/lotus/pull/13484))
+
+# Node v1.34.4 / 2026-02-05
+
+This is a patch release that includes bug fixes and backports, notably the fr32 fix for Storage Provider compatibility and the F3 restart on calibnet.
+
+## Bug Fixes
+
 - fix(eth): trace_filter returns [] for null round ranges ([filecoin-project/lotus#13483](https://github.com/filecoin-project/lotus/pull/13483))
+- fix(f3): Update F3 manifest to restart F3 on calibnet ([filecoin-project/lotus#13488](https://github.com/filecoin-project/lotus/pull/13488))
+- fix: drain F3 data reader when skipping F3 import during snapshot import ([filecoin-project/lotus#13491](https://github.com/filecoin-project/lotus/pull/13491))
+- fix(fr32): Update go-commp-utils to include fr32 fixes for Storage Provider compatibility ([filecoin-project/lotus#13455](https://github.com/filecoin-project/lotus/pull/13455))
+
+## 📝 Changelog
+
+For the set of changes since the last stable release:
+
+- Node: https://github.com/filecoin-project/lotus/compare/release/v1.34.3...release/v1.34.4-rc1
+
+## 👨‍👩‍👧‍👦 Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Łukasz Magiera | 1 | +837/-88 | 6 |
+| Phi-rjan | 4 | +111/-36 | 25 |
+| Phi | 2 | +26/-12 | 12 |
+| zjumathcode | 1 | +0/-32 | 32 |
+| Luca Moretti | 1 | +7/-7 | 7 |
+| bigmoonbit | 1 | +0/-13 | 9 |
+| xiaolinny | 1 | +6/-6 | 5 |
+| Block Wizard | 1 | +4/-1 | 2 |
+| mk0walsk | 1 | +2/-2 | 2 |
+| beck | 1 | +2/-1 | 1 |
+| Piotr Galar | 1 | +3/-0 | 1 |
+| Evan Etton | 1 | +2/-1 | 2 |
 
 # Node v1.34.3 / 2025-12-03
 
