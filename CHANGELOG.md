@@ -13,6 +13,21 @@
 
 ## 👌 Improvements
 
+- fix(f3): set initial power table CID in calibnet F3 manifest ([filecoin-project/lotus#13495](https://github.com/filecoin-project/lotus/pull/13495))
+- docs: fix outdated link in documentation ([#13436](https://github.com/filecoin-project/lotus/pull/13436))
+- docs: fix dead link in documentation ([#13437](https://github.com/filecoin-project/lotus/pull/13437))
+- feat(cli): implement FRC-0102 signing envelope for wallet sign/verify ([filecoin-project/lotus#13471](https://github.com/filecoin-project/lotus/pull/13471))
+- feat(cli): add --order-by-nonce flag to list messages sequentially when filtering by sender ([filecoin-project/lotus#13394](https://github.com/filecoin-project/lotus/pull/13394))
+- fix(eth): use error code 3 for EExecutionReverted for Ethereum RPC tooling compatibility ([filecoin-project/lotus#13467](https://github.com/filecoin-project/lotus/pull/13467))
+  - BREAKING: RPC error codes changed - EActorNotFound (3→11), EExecutionReverted (11→3). Mismatched client/server versions will deserialize these errors as the wrong Go type, breaking errors.Is/As checks.
+- fix(eth): fix `eth_syncing` result property casing & implement `UnmarshalJSON` for `EthSyncingResult` ([filecoin-project/lotus#13484](https://github.com/filecoin-project/lotus/pull/13484))
+
+# Node v1.34.5-rc1 / 2026-02-13
+
+This is the first release candidate of Lotus v1.34.5 patch release, which sets the initial power table CID in Calibnet F3 manifest after it was restarted on the 2026-02-12 (Ref: https://github.com/filecoin-project/go-f3/issues/1054)
+
+- fix(f3): set initial power table CID in calibnet F3 manifest ([filecoin-project/lotus#13495](https://github.com/filecoin-project/lotus/pull/13495))
+
 # Node v1.34.4 / 2026-02-05
 
 This is a patch release that includes bug fixes and backports, notably the fr32 fix for Storage Provider compatibility and the F3 restart on calibnet.
