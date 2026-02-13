@@ -12,6 +12,7 @@
 ## 🐛 Bug Fixes
 
 ## 👌 Improvements
+- fix(f3): set initial power table CID in calibnet F3 manifest ([filecoin-project/lotus#13495](https://github.com/filecoin-project/lotus/pull/13495))
 - docs: fix outdated link in documentation ([#13436](https://github.com/filecoin-project/lotus/pull/13436))
 - docs: fix dead link in documentation ([#13437](https://github.com/filecoin-project/lotus/pull/13437))
 - feat(cli): implement FRC-0102 signing envelope for wallet sign/verify ([filecoin-project/lotus#13471](https://github.com/filecoin-project/lotus/pull/13471))
