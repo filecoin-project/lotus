@@ -6,7 +6,9 @@
   "NetworkName": "calibrationnet2",
   "ExplicitPower": null,
   "IgnoreECPower": false,
-  "InitialPowerTable": null,
+  "InitialPowerTable": {
+    "/": "bafy2bzacednijkh5dhb6jb7snxhhtjt7zuqaydlewoha3ordhy76dhgwtmptg"
+  },
   "CommitteeLookback": 10,
   "CatchUpAlignment": 15000000000,
   "Gpbft": {
