@@ -126,7 +126,7 @@ require (
 	github.com/multiformats/go-multihash v0.2.3
 	github.com/multiformats/go-varint v0.1.0
 	github.com/open-rpc/meta-schema v0.0.0-20201029221707-1b72ef2ea333
-	github.com/polydawn/refmt v0.89.1-0.20231129105047-37766d95467a
+	github.com/polydawn/refmt v0.89.1-0.20231129105047-37766d95467a // dependency-check-ignore: go-ipld-prime dependency fix, upstream needs a tag
 	github.com/prometheus/client_golang v1.23.2
 	github.com/puzpuzpuz/xsync/v2 v2.5.1
 	github.com/raulk/clock v1.1.0
