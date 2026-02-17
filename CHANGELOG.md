@@ -20,6 +20,7 @@
 - fix(eth): use error code 3 for EExecutionReverted for Ethereum RPC tooling compatibility ([filecoin-project/lotus#13467](https://github.com/filecoin-project/lotus/pull/13467))
   - BREAKING: RPC error codes changed - EActorNotFound (3→11), EExecutionReverted (11→3). Mismatched client/server versions will deserialize these errors as the wrong Go type, breaking errors.Is/As checks.
 - fix(eth): fix `eth_syncing` result property casing & implement `UnmarshalJSON` for `EthSyncingResult` ([filecoin-project/lotus#13484](https://github.com/filecoin-project/lotus/pull/13484))
+- fix(gateway): return ErrFilterNotFound in EthGetFilterLogs V1 and V2 proxies ([filecoin-project/lotus#13519](https://github.com/filecoin-project/lotus/pull/13519))
 
 # Node v1.34.4 / 2026-02-05
 
