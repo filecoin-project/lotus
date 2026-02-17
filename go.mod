@@ -101,7 +101,7 @@ require (
 	github.com/ipfs/go-metrics-prometheus v0.1.0
 	github.com/ipld/go-car v0.6.3
 	github.com/ipld/go-car/v2 v2.16.0
-	github.com/ipld/go-ipld-prime v0.21.0
+	github.com/ipld/go-ipld-prime v0.22.0
 	github.com/jackc/pgerrcode v0.0.0-20240316143900-6e2875d9b438
 	github.com/jpillora/backoff v1.0.0
 	github.com/kelseyhightower/envconfig v1.4.0
@@ -126,7 +126,7 @@ require (
 	github.com/multiformats/go-multihash v0.2.3
 	github.com/multiformats/go-varint v0.1.0
 	github.com/open-rpc/meta-schema v0.0.0-20201029221707-1b72ef2ea333
-	github.com/polydawn/refmt v0.89.0
+	github.com/polydawn/refmt v0.89.1-0.20231129105047-37766d95467a // dependency-check-ignore: go-ipld-prime dependency fix, upstream needs a tag
 	github.com/prometheus/client_golang v1.23.2
 	github.com/puzpuzpuz/xsync/v2 v2.5.1
 	github.com/raulk/clock v1.1.0
@@ -289,7 +289,6 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
-	github.com/smartystreets/assertions v1.13.0 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/tidwall/gjson v1.14.4 // indirect
