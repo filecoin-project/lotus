@@ -26,7 +26,7 @@ require (
 	github.com/chzyer/readline v1.5.1
 	github.com/consensys/gnark-crypto v0.19.0
 	github.com/containerd/cgroups v1.1.0
-	github.com/coreos/go-systemd/v22 v22.6.0
+	github.com/coreos/go-systemd/v22 v22.7.0
 	github.com/detailyang/go-fallocate v0.0.0-20180908115635-432fa640bd2e
 	github.com/dgraph-io/badger/v2 v2.2007.4
 	github.com/docker/go-units v0.5.0
