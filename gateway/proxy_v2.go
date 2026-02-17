@@ -547,7 +547,7 @@ func (pv2 *reverseProxyV2) EthGetFilterLogs(ctx context.Context, id ethtypes.Eth
 	}
 
 	if !ft.hasFilter(id) {
-		return nil, nil
+		return nil, filter.ErrFilterNotFound
 	}
 
 	return pv2.server.EthGetFilterLogs(ctx, id)
