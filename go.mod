@@ -141,7 +141,7 @@ require (
 	github.com/whyrusleeping/cbor-gen v0.3.1
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
 	github.com/xeipuuv/gojsonschema v1.2.0
-	github.com/xorcare/golden v0.6.1-0.20191112154924-b87f686d7542 // dependency-check-ignore: unknown
+	github.com/xorcare/golden v0.8.3 // dependency-check-ignore: unknown
 	github.com/yugabyte/pgx/v5 v5.7.6-yb-1 // dependency-check-ignore: unknown
 	github.com/zondax/ledger-filecoin-go v1.2.1
 	github.com/zyedidia/generic v1.2.1
