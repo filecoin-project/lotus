@@ -9,17 +9,9 @@
 
 # UNRELEASED
 
-## 🐛 Bug Fixes
+# UNRELEASED v1.35.0
 
-## 👌 Improvements
-- fix(f3): set initial power table CID in calibnet F3 manifest ([filecoin-project/lotus#13495](https://github.com/filecoin-project/lotus/pull/13495))
-- docs: fix outdated link in documentation ([#13436](https://github.com/filecoin-project/lotus/pull/13436))
-- docs: fix dead link in documentation ([#13437](https://github.com/filecoin-project/lotus/pull/13437))
-- feat(cli): implement FRC-0102 signing envelope for wallet sign/verify ([filecoin-project/lotus#13471](https://github.com/filecoin-project/lotus/pull/13471))
-- feat(cli): add --order-by-nonce flag to list messages sequentially when filtering by sender ([filecoin-project/lotus#13394](https://github.com/filecoin-project/lotus/pull/13394))
-- fix(eth): use error code 3 for EExecutionReverted for Ethereum RPC tooling compatibility ([filecoin-project/lotus#13467](https://github.com/filecoin-project/lotus/pull/13467))
-  - BREAKING: RPC error codes changed - EActorNotFound (3→11), EExecutionReverted (11→3). Mismatched client/server versions will deserialize these errors as the wrong Go type, breaking errors.Is/As checks.
-- fix(eth): fix `eth_syncing` result property casing & implement `UnmarshalJSON` for `EthSyncingResult` ([filecoin-project/lotus#13484](https://github.com/filecoin-project/lotus/pull/13484))
+See https://github.com/filecoin-project/lotus/blob/release/v1.35.0/CHANGELOG.md 
 
 # Node v1.34.4 / 2026-02-05
 
