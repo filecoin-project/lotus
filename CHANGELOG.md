@@ -9,9 +9,61 @@
 
 # UNRELEASED
 
-# UNRELEASED v1.35.0
+## 👌 Improvements
 
-See https://github.com/filecoin-project/lotus/blob/release/v1.35.0/CHANGELOG.md 
+# Node and Miner v1.35.0 / 2026-02-19
+
+The Lotus and Lotus-Miner v1.35.0 release includes Ethereum RPC compatibility improvements, CLI enhancements, and numerous dependency updates. Highlights include FRC-0102 signing envelope support, an Ethereum RPC error code correction for tooling compatibility, and updated OpenTelemetry tracing.
+
+## ☢️ Upgrade Warnings ☢️
+
+- **Ethereum RPC error code change**: `EExecutionReverted` now uses error code `3` (was `11`) and `EActorNotFound` now uses error code `11` (was `3`), aligning with standard Ethereum RPC tooling expectations. Mismatched client/server versions will deserialize these errors as the wrong Go type, breaking `errors.Is`/`errors.As` checks. ([filecoin-project/lotus#13467](https://github.com/filecoin-project/lotus/pull/13467))
+
+## ⭐ New Features
+
+- feat(cli): implement FRC-0102 signing envelope for `wallet sign` and `wallet verify` ([filecoin-project/lotus#13388](https://github.com/filecoin-project/lotus/pull/13388))
+- feat(cli): add `--order-by-nonce` flag to list messages sequentially when filtering by sender ([filecoin-project/lotus#13394](https://github.com/filecoin-project/lotus/pull/13394))
+- feat: add slog integration for libp2p log level control ([filecoin-project/lotus#13422](https://github.com/filecoin-project/lotus/pull/13422))
+
+## 🐛 Bug Fixes
+
+- fix(eth): use error code 3 for `EExecutionReverted` for Ethereum RPC tooling compatibility ([filecoin-project/lotus#13467](https://github.com/filecoin-project/lotus/pull/13467))
+- fix(eth): fix `eth_syncing` result property casing & implement `UnmarshalJSON` for `EthSyncingResult` ([filecoin-project/lotus#13484](https://github.com/filecoin-project/lotus/pull/13484))
+- fix(f3): set initial power table CID in calibnet F3 manifest ([filecoin-project/lotus#13496](https://github.com/filecoin-project/lotus/pull/13496))
+- fix(itests): prevent wdPostLoop deadline skip race condition ([filecoin-project/lotus#13464](https://github.com/filecoin-project/lotus/pull/13464))
+
+## 👌 Improvements
+
+- chore(tracing): update OpenTelemetry semconv from v1.7.0 to v1.39.0 ([filecoin-project/lotus#13511](https://github.com/filecoin-project/lotus/pull/13511))
+- chore(deps): replace `golang.org/x/crypto/sha3` with go-keccak, upgrade x/crypto ([filecoin-project/lotus#13477](https://github.com/filecoin-project/lotus/pull/13477))
+- chore: bump FFI to v1.34.6 ([filecoin-project/lotus#13521](https://github.com/filecoin-project/lotus/pull/13521))
+
+## 📝 Changelog
+
+For the set of changes since the last stable release:
+
+- Node: https://github.com/filecoin-project/lotus/compare/release/v1.34.4...release/v1.35.0
+- Miner: https://github.com/filecoin-project/lotus/compare/release/v1.34.4...release/miner/v1.35.0
+
+## 👨‍👩‍👧‍👦 Contributors
+
+Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| dependabot[bot] | 24 | +459/-442 | 51 |
+| Rod Vagg | 10 | +249/-102 | 29 |
+| Phi-rjan | 7 | +132/-80 | 26 |
+| Thiago Ribeiro | 1 | +199/-7 | 4 |
+| aceppaluni | 1 | +151/-33 | 4 |
+| hanabi1224 | 1 | +53/-3 | 3 |
+| Sambhav Jain | 1 | +41/-2 | 3 |
+| Phi | 1 | +12/-12 | 11 |
+| slightsharp | 1 | +6/-6 | 6 |
+| boqishan | 1 | +6/-6 | 5 |
+| mk0walsk | 1 | +5/-5 | 3 |
+| Aliz Fara | 1 | +4/-4 | 3 |
+| oncecelll | 1 | +2/-2 | 1 |
 
 # Node v1.34.4 / 2026-02-05
 
