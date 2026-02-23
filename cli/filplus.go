@@ -956,6 +956,11 @@ If the client id different then claim can be extended up to maximum 5 years from
 			Usage:    "the client address that will used to send the message",
 			Required: true,
 		},
+		&cli.StringFlag{
+			Name:    "target-client",
+			Usage:   "only extend claims made by this client address",
+			Aliases: []string{"c"},
+		},
 		&cli.BoolFlag{
 			Name:  "all",
 			Usage: "automatically extend TermMax of all claims for specified miner[s] to --term-max (default: 5 years from claim start epoch)",
@@ -980,6 +985,11 @@ If the client id different then claim can be extended up to maximum 5 years from
 			Usage: "number of extend requests per batch. If set incorrectly, this will lead to out of gas error",
 			Value: 500,
 		},
+		&cli.IntFlag{
+			Name:  "max-days-from-now",
+			Usage: "only extend claims that expire within this many days from now (based on TermStart+TermMax)",
+			Value: 0,
+		},
 	},
 	ArgsUsage: "<claim1> <claim2> ... or <miner1=claim1> <miner2=claims2> ...",
 	Action: func(cctx *cli.Context) error {
@@ -987,7 +997,9 @@ If the client id different then claim can be extended up to maximum 5 years from
 		miners := cctx.StringSlice("miner")
 		all := cctx.Bool("all")
 		client := cctx.String("client")
+		targetClient := cctx.String("target-client")
 		tmax := cctx.Int64("term-max")
+		maxDaysFromNow := cctx.Int("max-days-from-now")
 
 		// No miner IDs and no arguments
 		if len(miners) == 0 && cctx.Args().Len() == 0 {
@@ -1083,7 +1095,15 @@ If the client id different then claim can be extended up to maximum 5 years from
 			}
 		}
 
-		msgs, err := CreateExtendClaimMsg(ctx, api, claimMap, miners, clientAddr, abi.ChainEpoch(tmax), all, cctx.Bool("assume-yes"), cctx.Int("batch-size"))
+		var targetClientAddr address.Address
+		if targetClient != "" {
+			targetClientAddr, err = address.NewFromString(targetClient)
+			if err != nil {
+				return err
+			}
+		}
+
+		msgs, err := CreateExtendClaimMsg(ctx, api, claimMap, miners, clientAddr, targetClientAddr, abi.ChainEpoch(tmax), all, cctx.Bool("assume-yes"), cctx.Int("batch-size"), maxDaysFromNow)
 		if err != nil {
 			return err
 		}
@@ -1136,7 +1156,7 @@ type ProvInfo struct {
 // 6. Extend all claims for multiple miner IDs with different client address (2 messages)
 // 7. Extend specified claims for a miner ID with different client address (2 messages)
 // 8. Extend specific claims for specific miner ID with different client address (2 messages)
-func CreateExtendClaimMsg(ctx context.Context, api api.FullNode, pcm map[verifregtypes13.ClaimId]ProvInfo, miners []string, wallet address.Address, tmax abi.ChainEpoch, all, assumeYes bool, batchSize int) ([]*types.Message, error) {
+func CreateExtendClaimMsg(ctx context.Context, api api.FullNode, pcm map[verifregtypes13.ClaimId]ProvInfo, miners []string, wallet, targetClient address.Address, tmax abi.ChainEpoch, all, assumeYes bool, batchSize, maxDaysFromNow int) ([]*types.Message, error) {
 
 	ac, err := api.StateLookupID(ctx, wallet, types.EmptyTSK)
 	if err != nil {
@@ -1149,9 +1169,28 @@ func CreateExtendClaimMsg(ctx context.Context, api api.FullNode, pcm map[verifre
 
 	wid := abi.ActorID(w)
 
+	var targetClientID abi.ActorID
+	if targetClient != (address.Undef) {
+		tc, err := api.StateLookupID(ctx, targetClient, types.EmptyTSK)
+		if err != nil {
+			return nil, err
+		}
+		tcid, err := address.IDFromAddress(tc)
+		if err != nil {
+			return nil, xerrors.Errorf("converting target client address to ID: %w", err)
+		}
+		targetClientID = abi.ActorID(tcid)
+	}
+
 	head, err := api.ChainHead(ctx)
 	if err != nil {
 		return nil, err
+	}
+
+	// Convert maxDaysFromNow to epochs (30 seconds per epoch = 2880 epochs per day)
+	var maxExpirationEpoch abi.ChainEpoch
+	if maxDaysFromNow > 0 {
+		maxExpirationEpoch = head.Height() + abi.ChainEpoch(maxDaysFromNow*2880)
 	}
 
 	var terms []verifregtypes13.ClaimTerm
@@ -1176,6 +1215,14 @@ func CreateExtendClaimMsg(ctx context.Context, api api.FullNode, pcm map[verifre
 			for claimID, claim := range claims {
 				claimID := claimID
 				claim := claim
+				// Skip if target client is specified and doesn't match
+				if targetClient != (address.Undef) && claim.Client != targetClientID {
+					continue
+				}
+				// Skip if claim expires later than maxDaysFromNow
+				if maxDaysFromNow > 0 && claim.TermStart+claim.TermMax > maxExpirationEpoch {
+					continue
+				}
 				// If the client is not the original client - burn datacap
 				if claim.Client != wid {
 					// The new duration should be greater than the original deal duration and claim should not already be expired
@@ -1224,6 +1271,14 @@ func CreateExtendClaimMsg(ctx context.Context, api api.FullNode, pcm map[verifre
 			if !ok {
 				return nil, xerrors.Errorf("claim %d not found for provider %s", claimID, miners[0])
 			}
+			// Skip if target client is specified and doesn't match
+			if targetClient != (address.Undef) && claim.Client != targetClientID {
+				continue
+			}
+			// Skip if claim expires later than maxDaysFromNow
+			if maxDaysFromNow > 0 && claim.TermStart+claim.TermMax > maxExpirationEpoch {
+				continue
+			}
 			// If the client is not the original client - burn datacap
 			if claim.Client != wid {
 				// The new duration should be greater than the original deal duration and claim should not already be expired
@@ -1260,6 +1315,14 @@ func CreateExtendClaimMsg(ctx context.Context, api api.FullNode, pcm map[verifre
 			}
 			if claim == nil {
 				return nil, xerrors.Errorf("claim %d not found in the actor state", claimID)
+			}
+			// Skip if target client is specified and doesn't match
+			if targetClient != (address.Undef) && claim.Client != targetClientID {
+				continue
+			}
+			// Skip if claim expires later than maxDaysFromNow
+			if maxDaysFromNow > 0 && claim.TermStart+claim.TermMax > maxExpirationEpoch {
+				continue
 			}
 			// If the client is not the original client - burn datacap
 			if claim.Client != wid {
