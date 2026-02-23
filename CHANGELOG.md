@@ -10,6 +10,7 @@
 # UNRELEASED
 
 ## 👌 Improvements
+- fix(gateway): return `ErrFilterNotFound` error instead of empty result for unknown filter IDs in `EthGetFilterLogs` ([filecoin-project/lotus#13519](https://github.com/filecoin-project/lotus/pull/13519))
 
 # Node and Miner v1.35.0 / 2026-02-19
 
