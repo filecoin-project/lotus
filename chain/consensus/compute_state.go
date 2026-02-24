@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"context"
+	"sort"
 	"sync/atomic"
 	"time"
 
@@ -215,6 +216,18 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 
 	var msgGas int64
 
+	// Track gas metrics for synced blocks
+	type msgGasMetrics struct {
+		gasLimit int64
+		gasUsed  int64
+	}
+	var (
+		totalGasLimit int64
+		totalGasUsed  int64
+		messageCount  int64
+		msgGasList    []msgGasMetrics
+	)
+
 	for _, b := range bms {
 		penalty := types.NewInt(0)
 		gasReward := big.Zero()
@@ -230,6 +243,16 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 			}
 
 			msgGas += r.GasUsed
+
+			// Accumulate gas metrics
+			totalGasLimit += m.GasLimit
+			totalGasUsed += r.GasUsed
+			messageCount++
+			msgGasList = append(msgGasList, msgGasMetrics{gasLimit: m.GasLimit, gasUsed: r.GasUsed})
+
+			// Record per-message histograms
+			stats.Record(ctx, metrics.SyncedBlockMessageGasLimit.M(m.GasLimit))
+			stats.Record(ctx, metrics.SyncedBlockMessageGasUsed.M(r.GasUsed))
 
 			receipts = append(receipts, &r.MessageReceipt)
 			gasReward = big.Add(gasReward, r.GasCosts.MinerTip)
@@ -329,6 +352,45 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 		metrics.VMApplyMessagesGas.M(msgGas),
 		metrics.VMApplyCronGas.M(cronGas),
 	)
+
+	// Record synced block gas metrics
+	stats.Record(ctx,
+		metrics.SyncedBlockTotalGasLimit.M(totalGasLimit),
+		metrics.SyncedBlockTotalGasUsed.M(totalGasUsed),
+		metrics.SyncedBlockMessageCount.M(messageCount),
+	)
+
+	// Compute and record medians if there are messages
+	if len(msgGasList) > 0 {
+		// Median gas limit (by message count)
+		sort.Slice(msgGasList, func(i, j int) bool { return msgGasList[i].gasLimit < msgGasList[j].gasLimit })
+		stats.Record(ctx, metrics.SyncedBlockGasLimitMedian.M(msgGasList[len(msgGasList)/2].gasLimit))
+
+		// Gas-weighted median of gas limit (what gas limit the median executed gas unit had)
+		halfGasUsed := totalGasUsed / 2
+		var accumulatedGas int64
+		for _, m := range msgGasList {
+			accumulatedGas += m.gasUsed
+			if accumulatedGas >= halfGasUsed {
+				stats.Record(ctx, metrics.SyncedBlockGasLimitMedianByGasUnits.M(m.gasLimit))
+				break
+			}
+		}
+
+		// Median gas used (by message count)
+		sort.Slice(msgGasList, func(i, j int) bool { return msgGasList[i].gasUsed < msgGasList[j].gasUsed })
+		stats.Record(ctx, metrics.SyncedBlockGasUsedMedian.M(msgGasList[len(msgGasList)/2].gasUsed))
+
+		// Gas-weighted median of gas used (what gas used the median gas unit had)
+		accumulatedGas = 0
+		for _, m := range msgGasList {
+			accumulatedGas += m.gasUsed
+			if accumulatedGas >= halfGasUsed {
+				stats.Record(ctx, metrics.SyncedBlockGasUsedMedianByGasUnits.M(m.gasUsed))
+				break
+			}
+		}
+	}
 
 	return st, rectroot, nil
 }
