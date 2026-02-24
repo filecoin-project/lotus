@@ -1,6 +1,6 @@
 module github.com/filecoin-project/lotus
 
-go 1.24.7
+go 1.25
 
 retract v1.14.0 // Accidentally force-pushed tag, use v1.14.1+ instead.
 
@@ -31,7 +31,7 @@ require (
 	github.com/dgraph-io/badger/v2 v2.2007.4
 	github.com/docker/go-units v0.5.0
 	github.com/drand/go-clients v0.2.3
-	github.com/drand/kyber v1.3.1
+	github.com/drand/kyber v1.3.2
 	github.com/dustin/go-humanize v1.0.1
 	github.com/elastic/go-elasticsearch/v7 v7.17.10
 	github.com/elastic/go-sysinfo v1.15.4
@@ -178,7 +178,7 @@ require (
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/benbjohnson/clock v1.3.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/bits-and-blooms/bitset v1.20.0 // indirect
+	github.com/bits-and-blooms/bitset v1.24.4 // indirect
 	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
@@ -192,7 +192,7 @@ require (
 	github.com/dgraph-io/ristretto v0.2.0 // indirect
 	github.com/dgryski/go-farm v0.0.0-20200201041132-a6ae2369ad13 // indirect
 	github.com/drand/drand/v2 v2.1.3
-	github.com/drand/kyber-bls12381 v0.3.3 // indirect
+	github.com/drand/kyber-bls12381 v0.3.4 // indirect
 	github.com/elastic/go-windows v1.0.2 // indirect
 	github.com/etclabscore/go-jsonschema-walk v0.0.6 // indirect
 	github.com/filecoin-project/go-amt-ipld/v2 v2.1.0 // indirect
