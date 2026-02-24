@@ -36,6 +36,11 @@ const (
 	stateRateLimitTokens  = 3
 
 	MaxRateLimitTokens = stateRateLimitTokens // Number of tokens consumed for the most expensive types of operations
+	ReadHeaderTimeout  = time.Second * 10     // Maximum duration to wait for request headers to be read
+	ReadTimeout        = time.Second * 60     // Maximum duration for reading the entire request, including the body
+	WriteTimeout       = 0                    // Maximum duration before timing out writes of the response (disabled by default)
+	IdleTimeout        = time.Second * 60     // Maximum amount of time to wait for the next request when keep-alives are enabled
+	MaxHeaderBytes     = 1 << 20              // Maximum number of bytes the server will read parsing the request header's keys and values (1MB)
 )
 
 type Node struct {
@@ -46,6 +51,11 @@ type Node struct {
 	rateLimiter              *rate.Limiter
 	rateLimitTimeout         time.Duration
 	ethMaxFiltersPerConn     int
+	readHeaderTimeout        time.Duration
+	readTimeout              time.Duration
+	writeTimeout             time.Duration
+	idleTimeout              time.Duration
+	maxHeaderBytes           int
 	errLookback              error
 }
 
@@ -57,6 +67,11 @@ type options struct {
 	rateLimit                int
 	rateLimitTimeout         time.Duration
 	ethMaxFiltersPerConn     int
+	ReadHeaderTimeout        time.Duration
+	ReadTimeout              time.Duration
+	WriteTimeout             time.Duration
+	IdleTimeout              time.Duration
+	MaxHeaderBytes           int
 }
 
 type Option func(*options)
@@ -115,6 +130,41 @@ func WithEthMaxFiltersPerConn(ethMaxFiltersPerConn int) Option {
 	}
 }
 
+// WithReadHeaderTimeout sets the maximum duration to wait for request headers to be read.
+func WithReadHeaderTimeout(readHeaderTimeout time.Duration) Option {
+	return func(opts *options) {
+		opts.ReadHeaderTimeout = readHeaderTimeout
+	}
+}
+
+// WithReadTimeout sets the maximum duration for reading the entire request, including the body.
+func WithReadTimeout(readTimeout time.Duration) Option {
+	return func(opts *options) {
+		opts.ReadTimeout = readTimeout
+	}
+}
+
+// WithWriteTimeout sets the maximum duration before timing out writes of the response.
+func WithWriteTimeout(writeTimeout time.Duration) Option {
+	return func(opts *options) {
+		opts.WriteTimeout = writeTimeout
+	}
+}
+
+// WithIdleTimeout sets the maximum amount of time to wait for the next request when keep-alives are enabled.
+func WithIdleTimeout(idleTimeout time.Duration) Option {
+	return func(opts *options) {
+		opts.IdleTimeout = idleTimeout
+	}
+}
+
+// WithMaxHeaderBytes sets the maximum number of bytes the server will read parsing the request header's keys and values.
+func WithMaxHeaderBytes(maxHeaderBytes int) Option {
+	return func(opts *options) {
+		opts.MaxHeaderBytes = maxHeaderBytes
+	}
+}
+
 // NewNode creates a new gateway node.
 func NewNode(v1 v1api.FullNode, v2 v2api.FullNode, opts ...Option) *Node {
 	options := &options{
@@ -122,6 +172,11 @@ func NewNode(v1 v1api.FullNode, v2 v2api.FullNode, opts ...Option) *Node {
 		maxMessageLookbackEpochs: DefaultMaxMessageLookbackEpochs,
 		rateLimitTimeout:         DefaultRateLimitTimeout,
 		ethMaxFiltersPerConn:     DefaultEthMaxFiltersPerConn,
+		ReadHeaderTimeout:        ReadHeaderTimeout,
+		ReadTimeout:              ReadTimeout,
+		WriteTimeout:             WriteTimeout,
+		IdleTimeout:              IdleTimeout,
+		MaxHeaderBytes:           MaxHeaderBytes,
 	}
 	for _, opt := range opts {
 		opt(options)
@@ -138,6 +193,11 @@ func NewNode(v1 v1api.FullNode, v2 v2api.FullNode, opts ...Option) *Node {
 		rateLimitTimeout:         options.rateLimitTimeout,
 		errLookback:              fmt.Errorf("lookbacks of more than %s are disallowed", options.maxLookbackDuration),
 		ethMaxFiltersPerConn:     options.ethMaxFiltersPerConn,
+		readHeaderTimeout:        options.ReadHeaderTimeout,
+		readTimeout:              options.ReadTimeout,
+		writeTimeout:             options.WriteTimeout,
+		idleTimeout:              options.IdleTimeout,
+		maxHeaderBytes:           options.MaxHeaderBytes,
 	}
 	gateway.v1Proxy = &reverseProxyV1{
 		gateway:       gateway,
