@@ -981,8 +981,9 @@ func (tm *TestUnmanagedMiner) wdPostLoop() {
 			}
 			tm.log("WindowPoST sectors to post in this challenge window: %v", postSectors)
 			if len(postSectors) > 0 {
-				// something to post now
-				if err = tm.submitWindowPost(postSectors); err != nil {
+				// something to post now, use the same di from this iteration to avoid
+				// race conditions where the chain advances past the deadline boundary
+				if err = tm.submitWindowPost(di, postSectors); err != nil {
 					recordPostOrError(windowPost{Error: err})
 					return
 				}
@@ -1087,7 +1088,7 @@ func (tm *TestUnmanagedMiner) submitPostDispute(sectorNumber abi.SectorNumber) e
 	return err
 }
 
-func (tm *TestUnmanagedMiner) submitWindowPost(sectorNumbers []abi.SectorNumber) error {
+func (tm *TestUnmanagedMiner) submitWindowPost(di *dline.Info, sectorNumbers []abi.SectorNumber) error {
 	if len(sectorNumbers) == 0 {
 		return fmt.Errorf("no sectors to submit window post for")
 	}
@@ -1102,10 +1103,9 @@ func (tm *TestUnmanagedMiner) submitWindowPost(sectorNumbers []abi.SectorNumber)
 		return fmt.Errorf("Miner(%s): failed to get chain head: %w", tm.ActorAddr, err)
 	}
 
-	di, err := tm.FullNode.StateMinerProvingDeadline(tm.ctx, tm.ActorAddr, head.Key())
-	if err != nil {
-		return fmt.Errorf("Miner(%s): failed to get proving deadline: %w", tm.ActorAddr, err)
-	}
+	// di is passed in from the caller (wdPostLoop) so the deadline we post for is consistent with
+	// the one used to select sectors. Fetching a fresh di here would race with the chain advancing
+	// past the deadline boundary, causing a deadline mismatch error and killing the post loop.
 	chainRandomnessEpoch := di.Challenge
 
 	for _, sectorNumber := range sectorNumbers {
