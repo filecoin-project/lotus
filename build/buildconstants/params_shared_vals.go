@@ -83,6 +83,7 @@ const VerifSigCacheSize = 32000
 const BlockMessageLimit = 10000
 
 var BlockGasLimit = int64(10_000_000_000)
+var BlockGasTargetIndex = int64(8_000_000_000)
 var BlockGasTarget = BlockGasLimit / 2
 
 const BaseFeeMaxChangeDenom int64 = 8 // 12.5%
