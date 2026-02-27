@@ -23,6 +23,7 @@ var (
 	BlockMessageLimit       = 512
 	BlockGasLimit           = int64(100_000_000_000)
 	BlockGasTarget          = int64(BlockGasLimit / 2)
+	BlockGasTargetIndex     = BlockGasLimit*80/100 - 1
 	BaseFeeMaxChangeDenom   = int64(8) // 12.5%
 	InitialBaseFee          = int64(100e6)
 	MinimumBaseFee          = int64(100)
