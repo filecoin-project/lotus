@@ -14,6 +14,30 @@ import (
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 )
 
+func TestEffectiveGasPremium(t *testing.T) {
+	tests := []struct {
+		baseFee              int64
+		maxFeePerGas         int64
+		maxPriorityFeePerGas int64
+		expected             int64
+	}{
+		{8, 8, 8, 0},
+		{8, 16, 7, 7},
+		{8, 19, 10, 10},
+		{123456, 123455, 123455, 0},
+		{123456, 1234567, 1111112, 1111111},
+	}
+	for _, tc := range tests {
+		msg := &Message{
+			GasFeeCap:  big.NewInt(tc.maxFeePerGas),
+			GasPremium: big.NewInt(tc.maxPriorityFeePerGas),
+		}
+		got := msg.EffectiveGasPremium(big.NewInt(tc.baseFee))
+		require.Equal(t, big.NewInt(tc.expected).String(), got.String(),
+			"baseFee=%d maxFeePerGas=%d maxPriorityFeePerGas=%d", tc.baseFee, tc.maxFeePerGas, tc.maxPriorityFeePerGas)
+	}
+}
+
 func TestEqualCall(t *testing.T) {
 	m1 := &Message{
 		To:    builtin2.StoragePowerActorAddr,

@@ -2,10 +2,12 @@ package store
 
 import (
 	"context"
+	"math/rand"
 
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 
@@ -14,8 +16,8 @@ import (
 )
 
 func ComputeNextBaseFee(baseFee types.BigInt, gasLimitUsed int64, noOfBlocks int, epoch abi.ChainEpoch) types.BigInt {
-	// deta := gasLimitUsed/noOfBlocks - buildconstants.BlockGasTarget
-	// change := baseFee * deta / BlockGasTarget
+	// delta := gasLimitUsed/noOfBlocks - buildconstants.BlockGasTarget
+	// change := baseFee * delta / BlockGasTarget
 	// nextBaseFee = baseFee + change
 	// nextBaseFee = max(nextBaseFee, buildconstants.MinimumBaseFee)
 
@@ -51,7 +53,13 @@ func (cs *ChainStore) ComputeBaseFee(ctx context.Context, ts *types.TipSet) (abi
 	if buildconstants.UpgradeBreezeHeight >= 0 && ts.Height() > buildconstants.UpgradeBreezeHeight && ts.Height() < buildconstants.UpgradeBreezeHeight+buildconstants.BreezeGasTampingDuration {
 		return abi.NewTokenAmount(100), nil
 	}
+	if ts.Height() < buildconstants.UpgradeXxHeight {
+		return cs.ComputeNextBaseFeeFromUtilization(ctx, ts)
+	}
+	return cs.ComputeNextBaseFeeFromPremiums(ctx, ts)
+}
 
+func (cs *ChainStore) ComputeNextBaseFeeFromUtilization(ctx context.Context, ts *types.TipSet) (abi.TokenAmount, error) {
 	zero := abi.NewTokenAmount(0)
 
 	// totalLimit is sum of GasLimits of unique messages in a tipset
@@ -60,18 +68,18 @@ func (cs *ChainStore) ComputeBaseFee(ctx context.Context, ts *types.TipSet) (abi
 	seen := make(map[cid.Cid]struct{})
 
 	for _, b := range ts.Blocks() {
-		msg1, msg2, err := cs.MessagesForBlock(ctx, b)
+		blsMsgs, secpMsgs, err := cs.MessagesForBlock(ctx, b)
 		if err != nil {
 			return zero, xerrors.Errorf("error getting messages for: %s: %w", b.Cid(), err)
 		}
-		for _, m := range msg1 {
+		for _, m := range blsMsgs {
 			c := m.Cid()
 			if _, ok := seen[c]; !ok {
 				totalLimit += m.GasLimit
 				seen[c] = struct{}{}
 			}
 		}
-		for _, m := range msg2 {
+		for _, m := range secpMsgs {
 			c := m.Cid()
 			if _, ok := seen[c]; !ok {
 				totalLimit += m.Message.GasLimit
@@ -82,4 +90,106 @@ func (cs *ChainStore) ComputeBaseFee(ctx context.Context, ts *types.TipSet) (abi
 	parentBaseFee := ts.Blocks()[0].ParentBaseFee
 
 	return ComputeNextBaseFee(parentBaseFee, totalLimit, len(ts.Blocks()), ts.Height()), nil
+}
+
+type SenderNonce struct {
+	Sender address.Address
+	Nonce  uint64
+}
+
+func (cs *ChainStore) ComputeNextBaseFeeFromPremiums(ctx context.Context, ts *types.TipSet) (abi.TokenAmount, error) {
+	zero := abi.NewTokenAmount(0)
+	parentBaseFee := ts.Blocks()[0].ParentBaseFee
+	var premiums []abi.TokenAmount
+	var limits []int64
+	seen := make(map[SenderNonce]struct{})
+
+	for _, b := range ts.Blocks() {
+		blsMsgs, secpMsgs, err := cs.MessagesForBlock(ctx, b)
+		if err != nil {
+			return zero, xerrors.Errorf("error getting messages for: %s: %w", b.Cid(), err)
+		}
+		for _, msg := range blsMsgs {
+			senderNonce := SenderNonce{msg.From, msg.Nonce}
+			if _, ok := seen[senderNonce]; !ok {
+				limits = append(limits, msg.GasLimit)
+				premiums = append(premiums, msg.EffectiveGasPremium(parentBaseFee))
+				seen[senderNonce] = struct{}{}
+			}
+		}
+		for _, signed := range secpMsgs {
+			senderNonce := SenderNonce{signed.Message.From, signed.Message.Nonce}
+			if _, ok := seen[senderNonce]; !ok {
+				limits = append(limits, signed.Message.GasLimit)
+				premiums = append(premiums, signed.Message.EffectiveGasPremium(parentBaseFee))
+				seen[senderNonce] = struct{}{}
+			}
+		}
+	}
+
+	percentilePremium := WeightedQuickSelect(premiums, limits, buildconstants.BlockGasTargetIndex)
+
+	return nextBaseFeeFromPremium(parentBaseFee, percentilePremium), nil
+}
+
+func nextBaseFeeFromPremium(baseFee, premiumP abi.TokenAmount) abi.TokenAmount {
+	denom := big.NewInt(buildconstants.BaseFeeMaxChangeDenom)
+	maxAdj := big.Div(big.Add(baseFee, big.Sub(denom, big.NewInt(1))), denom)
+	return big.Max(
+		big.NewInt(buildconstants.MinimumBaseFee),
+		big.Add(
+			baseFee,
+			big.Min(maxAdj, big.Sub(premiumP, maxAdj)),
+		),
+	)
+}
+
+func WeightedQuickSelect(premiums []abi.TokenAmount, limits []int64, index int64) abi.TokenAmount {
+	if len(premiums) == 0 {
+		return big.Zero()
+	}
+	if len(premiums) == 1 {
+		if limits[0] <= index {
+			return big.Zero()
+		}
+		return premiums[0]
+	}
+
+	pivot := premiums[rand.Intn(len(premiums))]
+
+	var less []abi.TokenAmount
+	var lessWeights []int64
+	var lessW int64
+	var eqW int64
+	var more []abi.TokenAmount
+	var moreWeights []int64
+	var moreW int64
+
+	for i, premium := range premiums {
+		cmp := big.Cmp(premium, pivot)
+		if cmp < 0 {
+			less = append(less, premium)
+			lessWeights = append(lessWeights, limits[i])
+			lessW += limits[i]
+		} else if cmp == 0 {
+			eqW += limits[i]
+		} else {
+			more = append(more, premium)
+			moreWeights = append(moreWeights, limits[i])
+			moreW += limits[i]
+		}
+	}
+
+	if index < moreW {
+		return WeightedQuickSelect(more, moreWeights, index)
+	}
+	index -= moreW
+	if index < eqW {
+		return pivot
+	}
+	index -= eqW
+	if index < lessW {
+		return WeightedQuickSelect(less, lessWeights, index)
+	}
+	return big.Zero()
 }
