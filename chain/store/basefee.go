@@ -145,6 +145,9 @@ func nextBaseFeeFromPremium(baseFee, premiumP abi.TokenAmount) abi.TokenAmount {
 }
 
 func WeightedQuickSelect(premiums []abi.TokenAmount, limits []int64, index int64) abi.TokenAmount {
+	if len(premiums) == 0 {
+		return big.Zero()
+	}
 	if len(premiums) == 1 {
 		if limits[0] <= index {
 			return big.Zero()
