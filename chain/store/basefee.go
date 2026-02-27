@@ -4,6 +4,7 @@ import (
 	"context"
 	"math/rand"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -53,9 +54,9 @@ func (cs *ChainStore) ComputeBaseFee(ctx context.Context, ts *types.TipSet) (abi
 		return abi.NewTokenAmount(100), nil
 	}
 	if ts.Height() < buildconstants.UpgradeXxHeight {
-		return ComputeNextBaseFeeFromUtilization(ctx, ts)
+		return cs.ComputeNextBaseFeeFromUtilization(ctx, ts)
 	}
-	return ComputeNextBaseFeeFromPremiums(ctx, ts)
+	return cs.ComputeNextBaseFeeFromPremiums(ctx, ts)
 }
 
 func (cs *ChainStore) ComputeNextBaseFeeFromUtilization(ctx context.Context, ts *types.TipSet) (abi.TokenAmount, error) {
@@ -97,26 +98,30 @@ type SenderNonce struct {
 }
 
 func (cs *ChainStore) ComputeNextBaseFeeFromPremiums(ctx context.Context, ts *types.TipSet) (abi.TokenAmount, error) {
+	zero := abi.NewTokenAmount(0)
 	parentBaseFee := ts.Blocks()[0].ParentBaseFee
-	premiums := make([]abi.TokenAmount)
-	limits := make([]int64)
+	var premiums []abi.TokenAmount
+	var limits []int64
 	seen := make(map[SenderNonce]struct{})
 
 	for _, b := range ts.Blocks() {
 		blsMsgs, secpMsgs, err := cs.MessagesForBlock(ctx, b)
+		if err != nil {
+			return zero, xerrors.Errorf("error getting messages for: %s: %w", b.Cid(), err)
+		}
 		for _, msg := range blsMsgs {
 			senderNonce := SenderNonce{msg.From, msg.Nonce}
 			if _, ok := seen[senderNonce]; !ok {
-				limits := append(limits, msg.GasLimit)
-				premiums := append(premiums, msg.EffectiveGasPremium(parentBaseFee))
+				limits = append(limits, msg.GasLimit)
+				premiums = append(premiums, msg.EffectiveGasPremium(parentBaseFee))
 				seen[senderNonce] = struct{}{}
 			}
 		}
 		for _, signed := range secpMsgs {
-			senderNonce := SenderNonce{signed.Msg.From, signed.Msg.Nonce}
+			senderNonce := SenderNonce{signed.Message.From, signed.Message.Nonce}
 			if _, ok := seen[senderNonce]; !ok {
-				limits := append(limits, signed.Msg.GasLimit)
-				premiums := append(premiums, signed.Msg.EffectiveGasPremium(parentBaseFee))
+				limits = append(limits, signed.Message.GasLimit)
+				premiums = append(premiums, signed.Message.EffectiveGasPremium(parentBaseFee))
 				seen[senderNonce] = struct{}{}
 			}
 		}
@@ -124,21 +129,24 @@ func (cs *ChainStore) ComputeNextBaseFeeFromPremiums(ctx context.Context, ts *ty
 
 	percentilePremium := WeightedQuickSelect(premiums, limits, buildconstants.BlockGasTargetIndex)
 
-	denom := big.NewInt(buildconstants.BaseFeeMaxChangeDenom)
-	maxAdj := big.Div(big.Add(parentBaseFee, big.Sub(denom, big.NewInt(1))), denom)
+	return nextBaseFeeFromPremium(parentBaseFee, percentilePremium), nil
+}
 
+func nextBaseFeeFromPremium(baseFee, premiumP abi.TokenAmount) abi.TokenAmount {
+	denom := big.NewInt(buildconstants.BaseFeeMaxChangeDenom)
+	maxAdj := big.Div(big.Add(baseFee, big.Sub(denom, big.NewInt(1))), denom)
 	return big.Max(
 		big.NewInt(buildconstants.MinimumBaseFee),
 		big.Add(
-			parentBaseFee,
-			big.Min(maxAdj, big.Sub(percentilePremium, maxAdj)),
+			baseFee,
+			big.Min(maxAdj, big.Sub(premiumP, maxAdj)),
 		),
-	), nil
+	)
 }
 
 func WeightedQuickSelect(premiums []abi.TokenAmount, limits []int64, index int64) abi.TokenAmount {
 	if len(premiums) == 1 {
-		if limits[i] <= index {
+		if limits[0] <= index {
 			return big.Zero()
 		}
 		return premiums[0]
