@@ -10,6 +10,7 @@
 # UNRELEASED
 
 ## 👌 Improvements
+- refactor(tracing): replace deprecated `jaeger` exporter with OTLP HTTP exporter. The `LOTUS_JAEGER_*` environment variables have been replaced by `LOTUS_OTEL_EXPORTER_ENDPOINT` and `LOTUS_OTEL_EXPORTER_INSECURE`. ([filecoin-project/lotus#13415](https://github.com/filecoin-project/lotus/pull/13415))
 - fix(gateway): return `ErrFilterNotFound` error instead of empty result for unknown filter IDs in `EthGetFilterLogs` ([filecoin-project/lotus#13519](https://github.com/filecoin-project/lotus/pull/13519))
 
 # Node and Miner v1.35.0 / 2026-02-19
