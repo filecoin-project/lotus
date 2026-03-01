@@ -1,6 +1,6 @@
 module github.com/filecoin-project/lotus
 
-go 1.24.7
+go 1.25.0
 
 retract v1.14.0 // Accidentally force-pushed tag, use v1.14.1+ instead.
 
@@ -86,10 +86,10 @@ require (
 	github.com/influxdata/influxdb1-client v0.0.0-20200827194710-b269163b24ab
 	github.com/invopop/jsonschema v0.13.0
 	github.com/ipfs/bbloom v0.0.4
-	github.com/ipfs/boxo v0.36.0
+	github.com/ipfs/boxo v0.37.0
 	github.com/ipfs/go-block-format v0.2.3
 	github.com/ipfs/go-cid v0.6.0
-	github.com/ipfs/go-datastore v0.9.0
+	github.com/ipfs/go-datastore v0.9.1
 	github.com/ipfs/go-ds-badger2 v0.1.5
 	github.com/ipfs/go-ds-leveldb v0.5.2
 	github.com/ipfs/go-ds-measure v0.2.2
@@ -109,7 +109,7 @@ require (
 	github.com/koalacxr/quantile v0.0.1
 	github.com/libp2p/go-buffer-pool v0.1.0
 	github.com/libp2p/go-libp2p v0.47.0
-	github.com/libp2p/go-libp2p-kad-dht v0.37.1
+	github.com/libp2p/go-libp2p-kad-dht v0.38.0
 	github.com/libp2p/go-libp2p-pubsub v0.15.0
 	github.com/libp2p/go-libp2p-record v0.3.1
 	github.com/libp2p/go-libp2p-routing-helpers v0.7.5
@@ -269,7 +269,7 @@ require (
 	github.com/pion/datachannel v1.5.10 // indirect
 	github.com/pion/dtls/v2 v2.2.12 // indirect
 	github.com/pion/interceptor v0.1.40 // indirect
-	github.com/pion/logging v0.2.3 // indirect
+	github.com/pion/logging v0.2.4 // indirect
 	github.com/pion/randutil v0.1.0 // indirect
 	github.com/pion/rtcp v1.2.15 // indirect
 	github.com/pion/rtp v1.8.19 // indirect
@@ -311,10 +311,10 @@ require (
 	go.uber.org/dig v1.19.0 // indirect
 	go.uber.org/mock v0.5.2 // indirect
 	go4.org v0.0.0-20230225012048-214862532bf5 // indirect
-	golang.org/x/exp v0.0.0-20260112195511-716be5621a96 // indirect
+	golang.org/x/exp v0.0.0-20260212183809-81e46e3db34a // indirect
 	golang.org/x/text v0.34.0 // indirect
 	gonum.org/v1/gonum v0.17.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260114163908-3f89685c29c3 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260128011058-8636f8732409 // indirect
 	google.golang.org/grpc v1.78.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/cheggaaa/pb.v1 v1.0.28 // indirect
@@ -326,8 +326,8 @@ require (
 
 require (
 	github.com/dunglas/httpsfv v1.1.0 // indirect
-	github.com/gammazero/chanqueue v1.1.1 // indirect
-	github.com/gammazero/deque v1.2.0 // indirect
+	github.com/gammazero/chanqueue v1.1.2 // indirect
+	github.com/gammazero/deque v1.2.1 // indirect
 	github.com/go-openapi/swag/conv v0.25.4 // indirect
 	github.com/go-openapi/swag/jsonname v0.25.4 // indirect
 	github.com/go-openapi/swag/jsonutils v0.25.4 // indirect
@@ -335,16 +335,17 @@ require (
 	github.com/go-openapi/swag/stringutils v0.25.4 // indirect
 	github.com/go-openapi/swag/typeutils v0.25.4 // indirect
 	github.com/go-openapi/swag/yamlutils v0.25.4 // indirect
-	github.com/ipfs/go-cidutil v0.1.0 // indirect
-	github.com/ipfs/go-dsqueue v0.1.2 // indirect
+	github.com/ipfs/go-cidutil v0.1.1 // indirect
+	github.com/ipfs/go-dsqueue v0.2.0 // indirect
 	github.com/libp2p/go-yamux/v5 v5.0.1 // indirect
 	github.com/onsi/gomega v1.36.3 // indirect
-	github.com/pion/dtls/v3 v3.0.6 // indirect
+	github.com/pion/dtls/v3 v3.1.1 // indirect
 	github.com/pion/ice/v4 v4.0.10 // indirect
 	github.com/pion/mdns/v2 v2.0.7 // indirect
 	github.com/pion/srtp/v3 v3.0.6 // indirect
 	github.com/pion/stun/v3 v3.0.0 // indirect
 	github.com/pion/transport/v3 v3.0.7 // indirect
+	github.com/pion/transport/v4 v4.0.1 // indirect
 	github.com/pion/turn/v4 v4.0.2 // indirect
 	github.com/pion/webrtc/v4 v4.1.2 // indirect
 	github.com/quic-go/quic-go v0.59.0 // indirect
