@@ -48,10 +48,10 @@ func App() *cli.App {
 		lcli.WithCategory("storage", sealingCmd),
 	}
 
-	jaeger := tracing.SetupJaegerTracing("lotus")
+	tp := tracing.SetupOTLPTracing(context.Background(), "lotus")
 	defer func() {
-		if jaeger != nil {
-			_ = jaeger.ForceFlush(context.Background())
+		if tp != nil {
+			_ = tp.ForceFlush(context.Background())
 		}
 	}()
 
@@ -59,10 +59,10 @@ func App() *cli.App {
 		cmd := cmd
 		originBefore := cmd.Before
 		cmd.Before = func(cctx *cli.Context) error {
-			if jaeger != nil {
-				_ = jaeger.Shutdown(cctx.Context)
+			if tp != nil {
+				_ = tp.Shutdown(cctx.Context)
 			}
-			jaeger = tracing.SetupJaegerTracing("lotus/" + cmd.Name)
+			tp = tracing.SetupOTLPTracing(cctx.Context, "lotus/"+cmd.Name)
 
 			if cctx.IsSet("color") {
 				color.NoColor = !cctx.Bool("color")
