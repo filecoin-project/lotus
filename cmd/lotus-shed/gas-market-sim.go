@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"math"
 	"math/rand"
 	"sort"
 	"time"
@@ -39,6 +40,16 @@ var gasMktSimCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name:  "epoch-remaining-zero",
 			Usage: "fix epochFractionRemaining to 0 for all transactions (disables time-based scaling)",
+		},
+		&cli.Float64Flag{
+			Name:  "gas-per-epoch",
+			Usage: "average gas submitted per epoch as a multiple of BlockGasLimit",
+			Value: 3.0,
+		},
+		&cli.Int64Flag{
+			Name:  "base-fee",
+			Usage: "starting base fee in attoFIL",
+			Value: buildconstants.MinimumBaseFee,
 		},
 	},
 	Action: runGasMktSim,
@@ -213,9 +224,9 @@ func simSelectMessages(msgs []*types.SignedMessage, effPremiums []abi.TokenAmoun
 
 // runGasMktSim runs the gas market simulation.
 // Every epoch:
-//   - 30 transactions are inserted with premiums estimated via GasEstimateGasPremiumFromMempool
+//   - txsPerEpoch transactions are inserted with premiums estimated via GasEstimateGasPremiumFromMempool
 //     (nblocksincl bimodal: p(1)=0.1, p(2)=0.2, p(10)=0.7), gas limits drawn from a
-//     shifted-exponential averaging bgl/10 (≈3 full blocks of gas per epoch)
+//     shifted-exponential averaging bgl/10
 //   - Each tx has a deadline = submission epoch + nblocksincl; late txs are counted
 //   - 5 independent proposers each select messages with a random tq, unaware of each other;
 //     the tipset is the union of their selections
@@ -224,12 +235,19 @@ func runGasMktSim(cctx *cli.Context) error {
 	epochs := cctx.Int("epochs")
 	seed := cctx.Int64("seed")
 	epochRemainingZero := cctx.Bool("epoch-remaining-zero")
+	gasPerEpoch := cctx.Float64("gas-per-epoch")
+	startBaseFee := cctx.Int64("base-fee")
 
 	bgl := buildconstants.BlockGasLimit
+	// Mean gas per tx from simSampleGasLimit is bgl/10, so txs = gasPerEpoch * 10.
+	txsPerEpoch := int(math.Round(gasPerEpoch * 10))
+	if txsPerEpoch < 1 {
+		txsPerEpoch = 1
+	}
 	rng := rand.New(rand.NewSource(seed))
 	ctx := context.Background()
 
-	baseFee := big.NewInt(buildconstants.MinimumBaseFee)
+	baseFee := big.NewInt(startBaseFee)
 	mempool := make([]*types.SignedMessage, 0, 5000)
 	deadlines := make([]int, 0, 5000)       // deadline[i] = epoch by which mempool[i] must be included
 	nblocksincls := make([]uint64, 0, 5000) // nblocksincls[i] = nblocksincl used when submitting mempool[i]
@@ -239,7 +257,7 @@ func runGasMktSim(cctx *cli.Context) error {
 	for epoch := 0; epoch < epochs; epoch++ {
 		ts := buildSimTipSet(baseFee, 0)
 		now := time.Now().Unix()
-		for i := range 30 {
+		for i := range txsPerEpoch {
 			var csTs *types.TipSet
 			if epochRemainingZero {
 				csTs = buildSimTipSet(baseFee, 0)
