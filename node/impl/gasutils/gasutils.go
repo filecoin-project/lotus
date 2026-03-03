@@ -282,18 +282,47 @@ func GasEstimateGasPremiumFromMempool(
 	fractionRemaining := epochFractionRemaining(ts)
 
 	for {
-		// Step 4 (mempool portion): compute effective premiums and scale gasLimits in-place.
-		// We add fractionRemaining * originalGasLimit each iteration so that modeled
-		// competition grows linearly with time rather than exponentially (scaling by the
-		// current — already-inflated — gasLimit would compound each round).
+		// Step 4 (mempool portion): compute effective premiums, then apply the incoming-gas
+		// budget to the top of the distribution. Concentrating new arrivals at competitive
+		// premium levels (rather than scaling all messages proportionally) better models
+		// the actual arrival pattern: new transactions bid at or above market rate.
 		premiums := make([]abi.TokenAmount, 0, len(distribution)+1)
 		limits := make([]int64, 0, len(distribution)+1)
+
+		effP := make([]abi.TokenAmount, len(distribution))
 		for i := range distribution {
-			p := mempoolEffectivePremium(distribution[i].gasFeeCap, distribution[i].gasPremium, baseFee)
-			if fractionRemaining > 0 && p.Sign() > 0 {
-				distribution[i].gasLimit += int64(fractionRemaining * float64(distribution[i].originalGasLimit))
+			effP[i] = mempoolEffectivePremium(distribution[i].gasFeeCap, distribution[i].gasPremium, baseFee)
+		}
+
+		// Apply a fixed incoming-gas budget to the highest-premium non-zombie messages.
+		// Budget = fractionRemaining * BlockGasLimit: one block-worth of arriving gas per
+		// epoch, scaled by how much of the epoch remains.
+		if fractionRemaining > 0 {
+			idxs := make([]int, 0, len(distribution))
+			for i := range distribution {
+				if effP[i].Sign() > 0 {
+					idxs = append(idxs, i)
+				}
 			}
-			premiums = append(premiums, p)
+			sort.Slice(idxs, func(a, b int) bool {
+				return effP[idxs[a]].GreaterThan(effP[idxs[b]])
+			})
+			budget := int64(fractionRemaining * float64(buildconstants.BlockGasLimit))
+			for _, idx := range idxs {
+				if budget <= 0 {
+					break
+				}
+				add := distribution[idx].originalGasLimit
+				if add > budget {
+					add = budget
+				}
+				distribution[idx].gasLimit += add
+				budget -= add
+			}
+		}
+
+		for i := range distribution {
+			premiums = append(premiums, effP[i])
 			limits = append(limits, distribution[i].gasLimit)
 		}
 
