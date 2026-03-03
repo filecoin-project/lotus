@@ -33,7 +33,8 @@ func TestEffectiveGasPremium(t *testing.T) {
 			GasPremium: big.NewInt(tc.maxPriorityFeePerGas),
 		}
 		got := msg.EffectiveGasPremium(big.NewInt(tc.baseFee))
-		require.Equal(t, big.NewInt(tc.expected).String(), got.String(),
+		expected := big.NewInt(tc.expected)
+		require.True(t, big.Cmp(expected, got) == 0,
 			"baseFee=%d maxFeePerGas=%d maxPriorityFeePerGas=%d", tc.baseFee, tc.maxFeePerGas, tc.maxPriorityFeePerGas)
 	}
 }
