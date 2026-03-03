@@ -41,7 +41,6 @@ import (
 	"github.com/filecoin-project/lotus/node/impl/common"
 	"github.com/filecoin-project/lotus/node/impl/eth"
 	"github.com/filecoin-project/lotus/node/impl/full"
-	"github.com/filecoin-project/lotus/node/impl/gasutils"
 	"github.com/filecoin-project/lotus/node/impl/net"
 	"github.com/filecoin-project/lotus/node/impl/paych"
 	"github.com/filecoin-project/lotus/node/modules"
@@ -121,8 +120,6 @@ var ChainNode = Options(
 
 	// Markets (storage)
 	Override(new(*market.FundManager), market.NewFundManager),
-
-	Override(new(*gasutils.GasPriceCache), gasutils.NewGasPriceCache),
 
 	// Lite node API
 	ApplyIf(isLiteNode,

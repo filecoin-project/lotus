@@ -6,8 +6,8 @@ import (
 	"math/rand/v2"
 	"os"
 	"sort"
+	"time"
 
-	lru "github.com/hashicorp/golang-lru/v2"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
@@ -23,6 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
+	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -41,56 +42,16 @@ type ChainStoreAPI interface {
 	GetHeaviestTipSet() *types.TipSet
 	GetTipSetFromKey(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error)
 	LoadTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error)
-	MessagesForTipset(ctx context.Context, ts *types.TipSet) ([]types.ChainMsg, error)
 }
 
 type MessagePoolAPI interface {
 	PendingFor(ctx context.Context, a address.Address) ([]*types.SignedMessage, *types.TipSet)
+	Pending(ctx context.Context) ([]*types.SignedMessage, *types.TipSet)
 }
 
 type GasMeta struct {
 	Price big.Int
 	Limit int64
-}
-
-type GasPriceCache struct {
-	c *lru.TwoQueueCache[types.TipSetKey, []GasMeta]
-}
-
-func NewGasPriceCache() *GasPriceCache {
-	// 50 because we usually won't access more than 40
-	c, err := lru.New2Q[types.TipSetKey, []GasMeta](50)
-	if err != nil {
-		// err only if parameter is bad
-		panic(err)
-	}
-
-	return &GasPriceCache{
-		c: c,
-	}
-}
-
-func (g *GasPriceCache) GetTSGasStats(ctx context.Context, cstore ChainStoreAPI, ts *types.TipSet) ([]GasMeta, error) {
-	i, has := g.c.Get(ts.Key())
-	if has {
-		return i, nil
-	}
-
-	var prices []GasMeta
-	msgs, err := cstore.MessagesForTipset(ctx, ts)
-	if err != nil {
-		return nil, xerrors.Errorf("loading messages: %w", err)
-	}
-	for _, msg := range msgs {
-		prices = append(prices, GasMeta{
-			Price: msg.VMMessage().GasPremium,
-			Limit: msg.VMMessage().GasLimit,
-		})
-	}
-
-	g.c.Add(ts.Key(), prices)
-
-	return prices, nil
 }
 
 // GasEstimateCallWithGas invokes a message "msgIn" on the earliest available tipset with pending
@@ -243,83 +204,242 @@ func GasEstimateFeeCap(ctx context.Context, cstore ChainStoreAPI, msg *types.Mes
 	return out, nil
 }
 
-func GasEstimateGasPremium(ctx context.Context, cstore ChainStoreAPI, cache *GasPriceCache, nblocksincl uint64, tsKey types.TipSetKey) (types.BigInt, error) {
+// GasEstimateGasPremiumFromMempool implements the gas premium estimation algorithm from
+// FIP-0115. It analyzes the current mempool state and models future transaction arrivals to
+// recommend the minimum premium needed for inclusion within nblocksincl blocks.
+//
+// Algorithm (per FIP-0115):
+//  1. k = gaslimit / BlockGasLimit
+//  2. Initialize result to safe maximum
+//  3. Build distribution from mempool once (dedup by sender+nonce)
+//  4. Scale above-baseFee portion by fraction of current epoch remaining
+//  5. Premium_k = k-th percentile of top BlockGasLimit gas in scaled distribution
+//  6. result = min(result, Premium_k)
+//  7. If nblocksincl < 2, return result
+//  8. Else: simulate block, remove top txs, recalculate baseFee, repeat from 4
+func GasEstimateGasPremiumFromMempool(
+	ctx context.Context,
+	cstore ChainStoreAPI,
+	mpool MessagePoolAPI,
+	nblocksincl uint64,
+	gaslimit int64,
+	tsKey types.TipSetKey,
+) (types.BigInt, error) {
 	if nblocksincl == 0 {
 		nblocksincl = 1
 	}
+	if gaslimit <= 0 {
+		gaslimit = buildconstants.BlockGasLimit / 5
+	}
+	if gaslimit > buildconstants.BlockGasLimit {
+		gaslimit = buildconstants.BlockGasLimit
+	}
 
-	var prices []GasMeta
-	var blocks int
+	// Step 1: k = GasLimit_i / BlockGasLimit
+	k := float64(gaslimit) / float64(buildconstants.BlockGasLimit)
 
 	ts, err := cstore.GetTipSetFromKey(ctx, tsKey)
 	if err != nil {
 		return types.BigInt{}, xerrors.Errorf("getting tipset from key: %w", err)
 	}
+	baseFee := ts.Blocks()[0].ParentBaseFee
+	initialBaseFee := baseFee
 
-	for i := uint64(0); i < nblocksincl*2; i++ {
-		if ts.Height() == 0 {
-			break // genesis
+	// Step 2: Initialize result to safe maximum (will be reduced by min in the loop)
+	result := abi.NewTokenAmount(math.MaxInt64)
+
+	// Step 3: Build the distribution once from the mempool, deduplicating by sender+nonce.
+	// We keep GasFeeCap and GasPremium so we can recompute effective premiums as baseFee
+	// changes during multi-block simulation. originalGasLimit is preserved so that step 4
+	// can add a fixed amount of modeled gas per epoch, ensuring linear rather than
+	// exponential growth in modeled competition over multiple simulated blocks.
+	type rawMsg struct {
+		gasLimit         int64
+		originalGasLimit int64
+		gasFeeCap        abi.TokenAmount
+		gasPremium       abi.TokenAmount
+	}
+	pendingMsgs, _ := mpool.Pending(ctx)
+	seen := make(map[store.SenderNonce]struct{}, len(pendingMsgs))
+	distribution := make([]rawMsg, 0, len(pendingMsgs))
+	for _, sm := range pendingMsgs {
+		m := &sm.Message
+		sn := store.SenderNonce{Sender: m.From, Nonce: m.Nonce}
+		if _, ok := seen[sn]; !ok {
+			seen[sn] = struct{}{}
+			distribution = append(distribution, rawMsg{
+				gasLimit:         m.GasLimit,
+				originalGasLimit: m.GasLimit,
+				gasFeeCap:        m.GasFeeCap,
+				gasPremium:       m.GasPremium,
+			})
 		}
-
-		pts, err := cstore.LoadTipSet(ctx, ts.Parents())
-		if err != nil {
-			return types.BigInt{}, err
-		}
-
-		blocks += len(pts.Blocks())
-		meta, err := cache.GetTSGasStats(ctx, cstore, pts)
-		if err != nil {
-			return types.BigInt{}, err
-		}
-		prices = append(prices, meta...)
-
-		ts = pts
 	}
 
-	premium := medianGasPremium(prices, blocks)
+	// Fraction of the current epoch remaining, used to model incoming transactions.
+	// For subsequent simulated blocks (future epochs) we use 1.0, since a full
+	// epoch of additional transactions is expected.
+	fractionRemaining := epochFractionRemaining(ts)
 
-	if types.BigCmp(premium, types.NewInt(MinGasPremium)) < 0 {
-		switch nblocksincl {
-		case 1:
-			premium = types.NewInt(2 * MinGasPremium)
-		case 2:
-			premium = types.NewInt(1.5 * MinGasPremium)
-		default:
-			premium = types.NewInt(MinGasPremium)
+	for {
+		// Step 4 (mempool portion): compute effective premiums and scale gasLimits in-place.
+		// We add fractionRemaining * originalGasLimit each iteration so that modeled
+		// competition grows linearly with time rather than exponentially (scaling by the
+		// current — already-inflated — gasLimit would compound each round).
+		premiums := make([]abi.TokenAmount, 0, len(distribution)+1)
+		limits := make([]int64, 0, len(distribution)+1)
+		for i := range distribution {
+			p := mempoolEffectivePremium(distribution[i].gasFeeCap, distribution[i].gasPremium, baseFee)
+			if fractionRemaining > 0 && p.Sign() > 0 {
+				distribution[i].gasLimit += int64(fractionRemaining * float64(distribution[i].originalGasLimit))
+			}
+			premiums = append(premiums, p)
+			limits = append(limits, distribution[i].gasLimit)
 		}
-	}
 
-	// add some noise to normalize behaviour of message selection
-	const precision = 32
-	// mean 1, stddev 0.005 => 95% within +-1%
-	noise := 1 + rand.NormFloat64()*0.005
-	premium = types.BigMul(premium, types.NewInt(uint64(noise*(1<<precision))+1))
-	premium = types.BigDiv(premium, types.NewInt(1<<precision))
-	return premium, nil
-}
+		// Step 4 (market-rate portion): append a synthetic entry at baseFee*R to the
+		// model distribution, representing half a remaining epoch's worth of new
+		// transactions at the equilibrium rate. It participates in step 5 and step 8
+		// equally with real messages and may be selected into the simulated block.
+		if fractionRemaining > 0 {
+			incomingGas := int64(fractionRemaining / 2 * float64(buildconstants.BlockGasLimit))
+			if incomingGas > 0 {
+				incomingPremium := big.Div(baseFee, big.NewInt(buildconstants.BaseFeeMaxChangeDenom))
+				distribution = append(distribution, rawMsg{
+					gasLimit:         incomingGas,
+					originalGasLimit: incomingGas,
+					gasFeeCap:        big.Add(baseFee, incomingPremium),
+					gasPremium:       incomingPremium,
+				})
+				premiums = append(premiums, incomingPremium)
+				limits = append(limits, incomingGas)
+			}
+		}
 
-// finds 55th percntile instead of median to put negative pressure on gas price
-func medianGasPremium(prices []GasMeta, blocks int) abi.TokenAmount {
-	sort.Slice(prices, func(i, j int) bool {
-		// sort desc by price
-		return prices[i].Price.GreaterThan(prices[j].Price)
-	})
+		// Step 5: Premium_k = premium at position (1-k)*BlockGasLimit from the top.
+		// A transaction of size k*BlockGasLimit needs to outbid the (1-k)*BlockGasLimit
+		// gas worth of higher-premium transactions that would fill the block ahead of it.
+		// WeightedQuickSelect finds this without requiring a sorted distribution.
+		position := int64((1 - k) * float64(buildconstants.BlockGasLimit))
+		premiumK := store.WeightedQuickSelect(premiums, limits, position)
 
-	at := buildconstants.BlockGasTarget * int64(blocks) / 2        // 50th
-	at += buildconstants.BlockGasTarget * int64(blocks) / (2 * 20) // move 5% further
-	prev1, prev2 := big.Zero(), big.Zero()
-	for _, price := range prices {
-		prev1, prev2 = price.Price, prev1
-		at -= price.Limit
-		if at < 0 {
+		// Step 6: result = min(result, Premium_k)
+		if big.Cmp(premiumK, result) < 0 {
+			result = premiumK
+		}
+
+		// Step 7: return if we only need one more block
+		if nblocksincl < 2 {
 			break
 		}
+		nblocksincl--
+
+		// Step 8: Simulate block selection using the already-computed premiums and limits.
+		// Sort indices by effective premium descending to select the top messages.
+		indices := make([]int, len(distribution))
+		for i := range indices {
+			indices[i] = i
+		}
+		sort.Slice(indices, func(a, b int) bool {
+			return premiums[indices[a]].GreaterThan(premiums[indices[b]])
+		})
+
+		blockPremiums := make([]abi.TokenAmount, 0, len(distribution))
+		blockLimits := make([]int64, 0, len(distribution))
+		var blockGasUsed int64
+		inBlock := make([]bool, len(distribution))
+		for _, idx := range indices {
+			if blockGasUsed+limits[idx] <= buildconstants.BlockGasLimit {
+				blockPremiums = append(blockPremiums, premiums[idx])
+				blockLimits = append(blockLimits, limits[idx])
+				blockGasUsed += limits[idx]
+				inBlock[idx] = true
+			}
+		}
+
+		// Compact distribution: remove messages selected into the simulated block.
+		j := 0
+		for i := range distribution {
+			if !inBlock[i] {
+				distribution[j] = distribution[i]
+				j++
+			}
+		}
+		distribution = distribution[:j]
+
+		// Recalculate baseFee from the simulated block's premium distribution.
+		percentilePremium := store.WeightedQuickSelect(blockPremiums, blockLimits, buildconstants.BlockGasTargetIndex)
+		baseFee = store.NextBaseFeeFromPremium(baseFee, percentilePremium)
+
+		// For future epochs, a full epoch of new transactions is expected.
+		fractionRemaining = 1.0
 	}
 
-	premium := prev1
-	if prev2.Sign() != 0 {
-		premium = big.Div(types.BigAdd(prev1, prev2), types.NewInt(2))
-	}
+	// Suggest Pk+1 so the submitter outbids all existing messages at this premium level.
+	result = big.Add(result, big.NewInt(1))
 
-	return premium
+	// Floor: baseFee * R / 2, where R = 1/BaseFeeMaxChangeDenom.
+	// A zero premium will not be proposed; this ensures a minimum viable miner incentive.
+	minPremium := big.Div(initialBaseFee, big.NewInt(2*buildconstants.BaseFeeMaxChangeDenom))
+	result = big.Max(result, minPremium)
+
+	// Add small noise to distribute message selection across nodes and avoid ties.
+	// Ceiling division ensures noise always rounds up, so it is never truncated to zero
+	// for small premium values.
+	const precision = 32
+	divisor := types.NewInt(1 << precision)
+	// mean 1, stddev 0.005 => 95% within +-1%
+	noise := 1 + rand.NormFloat64()*0.005
+	result = types.BigMul(result, types.NewInt(uint64(noise*(1<<precision))+1))
+	result = types.BigDiv(types.BigAdd(result, types.BigSub(divisor, types.NewInt(1))), divisor)
+
+	return result, nil
+}
+
+// mempoolEffectivePremium returns the effective gas premium for a mempool message given the
+// current baseFee, clamped to max(0, feeCap - baseFee).
+func mempoolEffectivePremium(feeCap, premium, baseFee abi.TokenAmount) abi.TokenAmount {
+	available := big.Sub(feeCap, baseFee)
+	if available.LessThan(big.Zero()) {
+		return big.Zero()
+	}
+	if big.Cmp(premium, available) <= 0 {
+		return premium
+	}
+	return available
+}
+
+// premiumAtGasPosition returns the gas premium at a given cumulative gas position (from the top)
+// within the top BlockGasLimit gas of a distribution sorted descending by price.
+func premiumAtGasPosition(distribution []GasMeta, position int64) abi.TokenAmount {
+	var accumulated int64
+	for _, e := range distribution {
+		if accumulated >= buildconstants.BlockGasLimit {
+			break
+		}
+		limit := e.Limit
+		if accumulated+limit > buildconstants.BlockGasLimit {
+			limit = buildconstants.BlockGasLimit - accumulated
+		}
+		accumulated += limit
+		if accumulated >= position {
+			return e.Price
+		}
+	}
+	return big.Zero()
+}
+
+// epochFractionRemaining returns the fraction [0,1] of the current epoch's block delay remaining.
+// This is used to scale the above-baseFee mempool distribution to model incoming transactions.
+func epochFractionRemaining(ts *types.TipSet) float64 {
+	epochEnd := int64(ts.MinTimestamp()) + int64(buildconstants.BlockDelaySecs)
+	remaining := epochEnd - time.Now().Unix()
+	if remaining <= 0 {
+		return 0
+	}
+	f := float64(remaining) / float64(buildconstants.BlockDelaySecs)
+	if f > 1 {
+		return 1
+	}
+	return f
 }

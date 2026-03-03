@@ -153,7 +153,7 @@ func TestNextBaseFeeFromPremium(t *testing.T) {
 		{808, 203, 909},
 	}
 	for _, tc := range tests {
-		got := nextBaseFeeFromPremium(big.NewInt(tc.baseFee), big.NewInt(tc.premiumP))
+		got := NextBaseFeeFromPremium(big.NewInt(tc.baseFee), big.NewInt(tc.premiumP))
 		assert.Equal(t, big.NewInt(tc.expected).String(), got.String(),
 			"baseFee=%d premiumP=%d", tc.baseFee, tc.premiumP)
 	}

@@ -33,8 +33,6 @@ type GasModule struct {
 	Chain     *store.ChainStore
 	Mpool     *messagepool.MessagePool
 	GetMaxFee dtypes.DefaultMaxFeeFunc
-
-	PriceCache *gasutils.GasPriceCache
 }
 
 var _ GasModuleAPI = (*GasModule)(nil)
@@ -47,8 +45,6 @@ type GasAPI struct {
 	Stmgr *stmgr.StateManager
 	Chain *store.ChainStore
 	Mpool *messagepool.MessagePool
-
-	PriceCache *gasutils.GasPriceCache
 }
 
 func (a *GasAPI) GasEstimateFeeCap(
@@ -76,7 +72,7 @@ func (a *GasAPI) GasEstimateGasPremium(
 	gaslimit int64,
 	tsk types.TipSetKey,
 ) (types.BigInt, error) {
-	return gasutils.GasEstimateGasPremium(ctx, a.Chain, a.PriceCache, nblocksincl, tsk)
+	return gasutils.GasEstimateGasPremiumFromMempool(ctx, a.Chain, a.Mpool, nblocksincl, gaslimit, tsk)
 }
 
 func (m *GasModule) GasEstimateGasPremium(
@@ -86,7 +82,7 @@ func (m *GasModule) GasEstimateGasPremium(
 	gaslimit int64,
 	tsk types.TipSetKey,
 ) (types.BigInt, error) {
-	return gasutils.GasEstimateGasPremium(ctx, m.Chain, m.PriceCache, nblocksincl, tsk)
+	return gasutils.GasEstimateGasPremiumFromMempool(ctx, m.Chain, m.Mpool, nblocksincl, gaslimit, tsk)
 }
 
 func (a *GasAPI) GasEstimateGasLimit(ctx context.Context, msgIn *types.Message, tsk types.TipSetKey) (int64, error) {
