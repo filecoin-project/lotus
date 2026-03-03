@@ -285,7 +285,7 @@ func (mp *MessagePool) selectMessagesOptimal(ctx context.Context, curTs, ts *typ
 
 	// 4. Compute effective performance for each chain, based on the partition they fall into
 	//    The effective performance is the gasPerf of the chain * block probability
-	blockProb := mp.blockProbabilities(tq)
+	blockProb := BlockProbabilities(tq)
 	effChains := 0
 	for i := 0; i < MaxBlocks; i++ {
 		for _, chain := range partitions[i] {

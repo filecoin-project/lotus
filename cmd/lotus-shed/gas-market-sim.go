@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"math"
 	"math/rand"
 	"sort"
 	"time"
@@ -17,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/build/buildconstants"
+	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/impl/gasutils"
@@ -124,53 +124,6 @@ func simSampleGasLimit(rng *rand.Rand, bgl int64) int64 {
 	}
 }
 
-// simBlockProbabilities computes the probability of landing at each block position
-// for a miner with ticket quality tq. Mirrors chain/messagepool.blockProbabilities.
-func simBlockProbabilities(tq float64) []float64 {
-	const maxBlocks = 15
-	const mu = 5.0
-
-	cond := math.Log(-1 + math.Exp(mu))
-	noWinners := make([]float64, maxBlocks)
-	for i := 0; i < maxBlocks; i++ {
-		k := float64(i + 1)
-		lg, _ := math.Lgamma(k + 1)
-		noWinners[i] = math.Exp(math.Log(mu)*k - lg - cond)
-	}
-
-	p := 1 - tq
-	binoPdf := func(x, n int) float64 {
-		if x > n {
-			return 0
-		}
-		if p <= 0 {
-			if x == 0 {
-				return 1
-			}
-			return 0
-		}
-		if p >= 1 {
-			if x == n {
-				return 1
-			}
-			return 0
-		}
-		coef := 1.0
-		for d := 1; d <= x; d++ {
-			coef = coef * float64(n-x+d) / float64(d)
-		}
-		return coef * math.Pow(p, float64(x)) * math.Pow(1-p, float64(n-x))
-	}
-
-	out := make([]float64, maxBlocks)
-	for place := 0; place < maxBlocks; place++ {
-		for k, pCase := range noWinners {
-			out[place] += pCase * binoPdf(place, k)
-		}
-	}
-	return out
-}
-
 // simSelectMessages fills one block for a proposer with the given ticket quality,
 // selecting independently from the full mempool without knowledge of other proposers.
 func simSelectMessages(msgs []*types.SignedMessage, effPremiums []abi.TokenAmount, tq float64, bgl int64) []bool {
@@ -207,7 +160,7 @@ func simSelectMessages(msgs []*types.SignedMessage, effPremiums []abi.TokenAmoun
 		return chosen
 	}
 
-	blockProb := simBlockProbabilities(tq)
+	blockProb := messagepool.BlockProbabilities(tq)
 
 	partitions := make([]int, n)
 	for i := range partitions {
@@ -278,7 +231,7 @@ func runGasMktSim(cctx *cli.Context) error {
 
 	baseFee := big.NewInt(buildconstants.MinimumBaseFee)
 	mempool := make([]*types.SignedMessage, 0, 5000)
-	deadlines := make([]int, 0, 5000)      // deadline[i] = epoch by which mempool[i] must be included
+	deadlines := make([]int, 0, 5000)       // deadline[i] = epoch by which mempool[i] must be included
 	nblocksincls := make([]uint64, 0, 5000) // nblocksincls[i] = nblocksincl used when submitting mempool[i]
 	var nextSender uint64 = 2
 	var totalGasUsed int64
