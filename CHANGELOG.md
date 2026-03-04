@@ -9,6 +9,10 @@
 
 # UNRELEASED
 
+## ☢️ Upgrade Warnings ☢️
+
+- The minimum supported Golang version is now `1.25.0`.
+
 ## 👌 Improvements
 - fix(gateway): return `ErrFilterNotFound` error instead of empty result for unknown filter IDs in `EthGetFilterLogs` ([filecoin-project/lotus#13519](https://github.com/filecoin-project/lotus/pull/13519))
 
