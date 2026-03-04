@@ -978,7 +978,7 @@ If the client id different then claim can be extended up to maximum 5 years from
 		&cli.IntFlag{
 			Name:  "batch-size",
 			Usage: "number of extend requests per batch. If set incorrectly, this will lead to out of gas error",
-			Value: 500,
+			Value: 100,
 		},
 	},
 	ArgsUsage: "<claim1> <claim2> ... or <miner1=claim1> <miner2=claims2> ...",
