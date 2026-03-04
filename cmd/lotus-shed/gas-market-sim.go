@@ -283,6 +283,11 @@ func runGasMktSim(cctx *cli.Context) error {
 			if err != nil {
 				return fmt.Errorf("epoch %d tx %d: %w", epoch, i, err)
 			}
+			partialMsg := &types.Message{GasLimit: gl, GasPremium: premium}
+			feeCap, err := gasutils.GasEstimateFeeCap(ctx, cs, partialMsg, int64(nblocksincl), types.EmptyTSK)
+			if err != nil {
+				return fmt.Errorf("epoch %d tx %d fee cap: %w", epoch, i, err)
+			}
 
 			addr, _ := address.NewIDAddress(nextSender)
 			mempool = append(mempool, &types.SignedMessage{
@@ -292,7 +297,7 @@ func runGasMktSim(cctx *cli.Context) error {
 					Nonce:      0,
 					GasLimit:   gl,
 					GasPremium: premium,
-					GasFeeCap:  big.Add(baseFee, premium),
+					GasFeeCap:  feeCap,
 				},
 			})
 			deadlines = append(deadlines, epoch+int(nblocksincl))
