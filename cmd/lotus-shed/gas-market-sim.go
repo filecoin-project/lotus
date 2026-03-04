@@ -55,6 +55,10 @@ var gasMktSimCmd = &cli.Command{
 			Name:  "flat-premium",
 			Usage: "bypass mempool estimator; use baseFee*R+noise as premium for all transactions",
 		},
+		&cli.BoolFlag{
+			Name:  "legacy-premium",
+			Usage: "use pre-FIP-0115 gas premium estimate based on historical included-message premiums",
+		},
 	},
 	Action: runGasMktSim,
 }
@@ -68,6 +72,12 @@ func (s *simChainStore) GetTipSetFromKey(_ context.Context, _ types.TipSetKey) (
 }
 func (s *simChainStore) LoadTipSet(_ context.Context, _ types.TipSetKey) (*types.TipSet, error) {
 	return s.ts, nil
+}
+
+// simEpochData holds the gas metas of messages included in one simulated epoch.
+type simEpochData struct {
+	premiums []abi.TokenAmount
+	limits   []int64
 }
 
 // simMpool implements gasutils.MessagePoolAPI backed by an in-memory message slice.
@@ -226,6 +236,81 @@ func simSelectMessages(msgs []*types.SignedMessage, effPremiums []abi.TokenAmoun
 	return chosen
 }
 
+// legacyGasPremiumEstimate replicates the pre-FIP-0115 GasEstimateGasPremium logic:
+// it looks back nblocksincl*2 epochs of included-message history and returns
+// the gas-weighted 55th-percentile premium (plus noise), matching the original
+// medianGasPremium implementation.
+// history is a circular buffer of length cap; epoch is the index of the most
+// recently written slot (epoch % cap).
+func legacyGasPremiumEstimate(history []simEpochData, epoch int, nblocksincl uint64, rng *rand.Rand) abi.TokenAmount {
+	cap := len(history)
+	lookback := int(nblocksincl * 2)
+	if lookback > epoch+1 {
+		lookback = epoch + 1
+	}
+	if lookback > cap {
+		lookback = cap
+	}
+
+	type gasMeta struct {
+		price abi.TokenAmount
+		limit int64
+	}
+	var metas []gasMeta
+	totalBlocks := 5 * lookback // 5 proposers per simulated epoch
+	for i := 0; i < lookback; i++ {
+		// epoch-i wraps around the circular buffer; add cap before modulo to avoid negative.
+		e := history[(epoch-i+cap)%cap]
+		for j, p := range e.premiums {
+			metas = append(metas, gasMeta{p, e.limits[j]})
+		}
+	}
+
+	// Sort descending by price.
+	sort.Slice(metas, func(i, j int) bool {
+		return big.Cmp(metas[i].price, metas[j].price) > 0
+	})
+
+	// Find gas-weighted 55th percentile (50th + 5% further toward high end).
+	at := buildconstants.BlockGasTarget * int64(totalBlocks) / 2
+	at += buildconstants.BlockGasTarget * int64(totalBlocks) / (2 * 20)
+	prev1, prev2 := big.Zero(), big.Zero()
+	for _, m := range metas {
+		prev1, prev2 = m.price, prev1
+		at -= m.limit
+		if at < 0 {
+			break
+		}
+	}
+	premium := prev1
+	if prev2.Sign() != 0 {
+		premium = big.Div(big.Add(prev1, prev2), big.NewInt(2))
+	}
+
+	// Apply minimum premium.
+	minP := big.NewInt(int64(gasutils.MinGasPremium))
+	if big.Cmp(premium, minP) < 0 {
+		switch nblocksincl {
+		case 1:
+			premium = big.NewInt(2 * int64(gasutils.MinGasPremium))
+		case 2:
+			premium = big.NewInt(150000) // 1.5 * MinGasPremium
+		default:
+			premium = minP
+		}
+	}
+
+	// Add noise: mean 1, stddev 0.005 (same as original).
+	const precision = 32
+	noiseFactor := 1 + rng.NormFloat64()*0.005
+	noiseInt := int64(noiseFactor*float64(int64(1)<<precision)) + 1
+	premium = big.Div(big.Mul(premium, big.NewInt(noiseInt)), big.NewInt(int64(1)<<precision))
+	if premium.Sign() <= 0 {
+		premium = big.NewInt(1)
+	}
+	return premium
+}
+
 // runGasMktSim runs the gas market simulation.
 // Every epoch:
 //   - txsPerEpoch transactions are inserted with premiums estimated via GasEstimateGasPremiumFromMempool
@@ -242,6 +327,7 @@ func runGasMktSim(cctx *cli.Context) error {
 	gasPerEpoch := cctx.Float64("gas-per-epoch")
 	startBaseFee := cctx.Int64("base-fee")
 	flatPremium := cctx.Bool("flat-premium")
+	legacyPremium := cctx.Bool("legacy-premium")
 
 	bgl := buildconstants.BlockGasLimit
 	// Mean gas per tx from simSampleGasLimit is bgl/10, so txs = gasPerEpoch * 10.
@@ -260,6 +346,7 @@ func runGasMktSim(cctx *cli.Context) error {
 	var totalGasUsed int64
 	var submitted1, submitted2, submitted10 int
 	var everLate1, everLate2, everLate10 int
+	epochHistory := make([]simEpochData, 20) // circular buffer; slot = epoch % 20
 
 	for epoch := 0; epoch < epochs; epoch++ {
 		ts := buildSimTipSet(baseFee, 0)
@@ -287,7 +374,8 @@ func runGasMktSim(cctx *cli.Context) error {
 				nblocksincl = 10
 			}
 			var premium abi.TokenAmount
-			if flatPremium {
+			switch {
+			case flatPremium:
 				// baseFee * R where R = 1/BaseFeeMaxChangeDenom, plus small noise.
 				base := big.Div(baseFee, big.NewInt(buildconstants.BaseFeeMaxChangeDenom))
 				noised := int64(math.Ceil(float64(base.Int64()) * (1 + rng.NormFloat64()*0.005)))
@@ -295,7 +383,9 @@ func runGasMktSim(cctx *cli.Context) error {
 					noised = 1
 				}
 				premium = big.NewInt(noised)
-			} else {
+			case legacyPremium:
+				premium = legacyGasPremiumEstimate(epochHistory, epoch-1, nblocksincl, rng)
+			default:
 				var err error
 				premium, err = gasutils.GasEstimateGasPremiumFromMempool(ctx, cs, mp, nblocksincl, gl, types.EmptyTSK)
 				if err != nil {
@@ -354,6 +444,17 @@ func runGasMktSim(cctx *cli.Context) error {
 
 		percentilePremium := store.WeightedQuickSelect(tipPremiums, tipLimits, buildconstants.BlockGasTargetIndex)
 		baseFee = store.NextBaseFeeFromPremium(baseFee, percentilePremium)
+
+		// Record raw premiums of included messages into the circular epoch history buffer.
+		ed := &epochHistory[epoch%20]
+		ed.premiums = ed.premiums[:0]
+		ed.limits = ed.limits[:0]
+		for i, m := range mempool {
+			if selectedByAny[i] {
+				ed.premiums = append(ed.premiums, m.Message.GasPremium)
+				ed.limits = append(ed.limits, m.Message.GasLimit)
+			}
+		}
 
 		j := 0
 		for i, m := range mempool {
