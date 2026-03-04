@@ -82,7 +82,7 @@ func TestMessageReceiptSerdeRoundrip(t *testing.T) {
 	// Version 2 -- all fields populated
 	//
 	buf.Reset()
-	codec := uint64(0x51) // dag-cbor
+	codec := uint64(0x51) // cbor
 	mr = NewMessageReceiptV2(0, []byte{0x00, 0x01, 0x02, 0x04}, 42, &randomCid, &codec, &randomCid2)
 
 	err = mr.MarshalCBOR(buf)

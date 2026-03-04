@@ -14,7 +14,6 @@ import (
 
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	"github.com/multiformats/go-multicodec"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
@@ -530,12 +529,9 @@ func (vm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg *types.Message) (*
 // include IpldCodec and Message CID fields.
 func (vm *FVM) buildReceipt(ret *ffi.ApplyRet, msgCid cid.Cid) types.MessageReceipt {
 	if vm.nv >= network.Version28 {
-		codec := ret.ReturnCodec
-		if codec == 0 && len(ret.Return) > 0 {
-			codec = uint64(multicodec.DagCbor)
-		}
 		var codecPtr *uint64
-		if codec != 0 {
+		if ret.ReturnCodec != 0 {
+			codec := ret.ReturnCodec
 			codecPtr = &codec
 		}
 		return types.NewMessageReceiptV2(exitcode.ExitCode(ret.ExitCode), ret.Return, ret.GasUsed, ret.EventsRoot, codecPtr, &msgCid)
