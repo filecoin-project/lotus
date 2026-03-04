@@ -51,6 +51,10 @@ var gasMktSimCmd = &cli.Command{
 			Usage: "starting base fee in attoFIL",
 			Value: buildconstants.MinimumBaseFee,
 		},
+		&cli.BoolFlag{
+			Name:  "flat-premium",
+			Usage: "bypass mempool estimator; use baseFee*R+noise as premium for all transactions",
+		},
 	},
 	Action: runGasMktSim,
 }
@@ -237,6 +241,7 @@ func runGasMktSim(cctx *cli.Context) error {
 	epochRemainingZero := cctx.Bool("epoch-remaining-zero")
 	gasPerEpoch := cctx.Float64("gas-per-epoch")
 	startBaseFee := cctx.Int64("base-fee")
+	flatPremium := cctx.Bool("flat-premium")
 
 	bgl := buildconstants.BlockGasLimit
 	// Mean gas per tx from simSampleGasLimit is bgl/10, so txs = gasPerEpoch * 10.
@@ -281,9 +286,21 @@ func runGasMktSim(cctx *cli.Context) error {
 			default:
 				nblocksincl = 10
 			}
-			premium, err := gasutils.GasEstimateGasPremiumFromMempool(ctx, cs, mp, nblocksincl, gl, types.EmptyTSK)
-			if err != nil {
-				return fmt.Errorf("epoch %d tx %d: %w", epoch, i, err)
+			var premium abi.TokenAmount
+			if flatPremium {
+				// baseFee * R where R = 1/BaseFeeMaxChangeDenom, plus small noise.
+				base := big.Div(baseFee, big.NewInt(buildconstants.BaseFeeMaxChangeDenom))
+				noised := int64(math.Ceil(float64(base.Int64()) * (1 + rng.NormFloat64()*0.005)))
+				if noised < 1 {
+					noised = 1
+				}
+				premium = big.NewInt(noised)
+			} else {
+				var err error
+				premium, err = gasutils.GasEstimateGasPremiumFromMempool(ctx, cs, mp, nblocksincl, gl, types.EmptyTSK)
+				if err != nil {
+					return fmt.Errorf("epoch %d tx %d: %w", epoch, i, err)
+				}
 			}
 			partialMsg := &types.Message{GasLimit: gl, GasPremium: premium}
 			feeCap, err := gasutils.GasEstimateFeeCap(ctx, cs, partialMsg, int64(nblocksincl), types.EmptyTSK)
