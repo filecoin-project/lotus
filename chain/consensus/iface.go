@@ -48,8 +48,9 @@ type Consensus interface {
 // RewardFunc parametrizes the logic for rewards when a message is executed.
 //
 // Each consensus implementation can set their own reward function.
+// Returns the apply result, the reward message, and any error.
 type RewardFunc func(ctx context.Context, vmi vm.Interface, em stmgr.ExecMonitor,
-	epoch abi.ChainEpoch, ts *types.TipSet, params *reward.AwardBlockRewardParams) error
+	epoch abi.ChainEpoch, ts *types.TipSet, params *reward.AwardBlockRewardParams) (*vm.ApplyRet, *types.Message, error)
 
 // ValidateBlockPubsub implements the common checks performed by all consensus implementations
 // when a block is received through the pubsub channel.

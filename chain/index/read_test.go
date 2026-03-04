@@ -215,6 +215,10 @@ func (d *dummyChainStore) GetTipsetByHeight(ctx context.Context, h abi.ChainEpoc
 	return ts, nil
 }
 
+func (d *dummyChainStore) GetMessage(_ context.Context, _ cid.Cid) (*types.Message, error) {
+	return nil, errors.New("not implemented")
+}
+
 func (d *dummyChainStore) IsStoringEvents() bool {
 	return true
 }

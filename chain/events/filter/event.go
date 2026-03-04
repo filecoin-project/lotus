@@ -459,53 +459,87 @@ func (m *EventFilterManager) loadExecutedMessages(ctx context.Context, msgTs, rc
 		return nil, xerrors.Errorf("load receipts amt: %w", err)
 	}
 
-	if uint64(len(msgs)) != arr.Length() {
-		return nil, xerrors.Errorf("mismatching message and receipt counts (%d msgs, %d rcts)", len(msgs), arr.Length())
+	// FIP-0107: post-upgrade, receipts include implicit messages (cron, reward)
+	// so the receipt count may exceed the explicit message count.
+	hasImplicitReceipts := arr.Length() > uint64(len(msgs))
+
+	if arr.Length() < uint64(len(msgs)) {
+		return nil, xerrors.Errorf("fewer receipts than messages (%d msgs, %d rcts)", len(msgs), arr.Length())
 	}
 
-	ems := make([]executedMessage, len(msgs))
+	// Build a map from message CID to message for post-upgrade receipt matching.
+	var msgByCid map[cid.Cid]types.ChainMsg
+	if hasImplicitReceipts {
+		msgByCid = make(map[cid.Cid]types.ChainMsg, len(msgs))
+		for _, m := range msgs {
+			msgByCid[m.Cid()] = m
+		}
+	}
 
-	for i := 0; i < len(msgs); i++ {
-		ems[i].msg = msgs[i]
+	var ems []executedMessage
+	if !hasImplicitReceipts {
+		ems = make([]executedMessage, len(msgs))
+	}
 
+	receiptCount := arr.Length()
+	for i := uint64(0); i < receiptCount; i++ {
 		var rct types.MessageReceipt
-		found, err := arr.Get(uint64(i), &rct)
+		found, err := arr.Get(i, &rct)
 		if err != nil {
-			return nil, xerrors.Errorf("load receipt: %w", err)
+			return nil, xerrors.Errorf("load receipt %d: %w", i, err)
 		}
 		if !found {
 			return nil, xerrors.Errorf("receipt %d not found", i)
 		}
-		ems[i].rct = &rct
 
-		if rct.EventsRoot == nil {
-			continue
-		}
-
-		evtArr, err := amt4.LoadAMT(ctx, st, *rct.EventsRoot, amt4.UseTreeBitWidth(types.EventAMTBitwidth))
-		if err != nil {
-			return nil, xerrors.Errorf("load events amt: %w", err)
-		}
-
-		ems[i].evs = make([]*types.Event, evtArr.Len())
-		var evt types.Event
-		err = evtArr.ForEach(ctx, func(u uint64, deferred *cbg.Deferred) error {
-			if u > math.MaxInt {
-				return xerrors.Errorf("too many events")
+		var msg types.ChainMsg
+		if hasImplicitReceipts {
+			if rct.Message == nil {
+				return nil, xerrors.Errorf("receipt %d has no Message CID in post-upgrade tipset", i)
 			}
-			if err := evt.UnmarshalCBOR(bytes.NewReader(deferred.Raw)); err != nil {
-				return err
+			if m, ok := msgByCid[*rct.Message]; ok {
+				msg = m
+			} else {
+				// Implicit message (cron/reward), skip it for event filtering since
+				// implicit events are not surfaced through these APIs.
+				continue
 			}
-
-			cpy := evt
-			ems[i].evs[int(u)] = &cpy //nolint:scopelint
-			return nil
-		})
-
-		if err != nil {
-			return nil, xerrors.Errorf("read events: %w", err)
+		} else {
+			msg = msgs[i]
 		}
 
+		em := executedMessage{msg: msg, rct: &rct}
+
+		if rct.EventsRoot != nil {
+			evtArr, err := amt4.LoadAMT(ctx, st, *rct.EventsRoot, amt4.UseTreeBitWidth(types.EventAMTBitwidth))
+			if err != nil {
+				return nil, xerrors.Errorf("load events amt: %w", err)
+			}
+
+			em.evs = make([]*types.Event, evtArr.Len())
+			var evt types.Event
+			err = evtArr.ForEach(ctx, func(u uint64, deferred *cbg.Deferred) error {
+				if u > math.MaxInt {
+					return xerrors.Errorf("too many events")
+				}
+				if err := evt.UnmarshalCBOR(bytes.NewReader(deferred.Raw)); err != nil {
+					return err
+				}
+
+				cpy := evt
+				em.evs[int(u)] = &cpy
+				return nil
+			})
+			if err != nil {
+				return nil, xerrors.Errorf("read events: %w", err)
+			}
+		}
+
+		if hasImplicitReceipts {
+			ems = append(ems, em)
+		} else {
+			ems[i] = em
+		}
 	}
 
 	return ems, nil

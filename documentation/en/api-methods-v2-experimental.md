@@ -1,5 +1,7 @@
 # Groups
 * [Chain](#Chain)
+  * [ChainGetMessages](#ChainGetMessages)
+  * [ChainGetReceipts](#ChainGetReceipts)
   * [ChainGetTipSet](#ChainGetTipSet)
 * [Eth](#Eth)
   * [EthAccounts](#EthAccounts)
@@ -67,6 +69,116 @@ Please see Filecoin V2 API design documentation for more details:
   - https://www.notion.so/filecoindev/Lotus-F3-aware-APIs-1cfdc41950c180ae97fef580e79427d5
   - https://www.notion.so/filecoindev/Filecoin-V2-APIs-1d0dc41950c1808b914de5966d501658
 
+
+### ChainGetMessages
+ChainGetMessages returns messages that were executed in the specified tipset.
+
+The TipSetSelector specifies the tipset whose messages are returned. The
+tipset must have been executed (i.e., it cannot be the current chain head).
+
+By default, only explicit (user-submitted) messages are returned. Use
+MessageOptions to include implicit (system) messages such as cron tick and
+block reward messages. When implicit messages are included, they appear in
+execution order: null round cron messages first, then per-block explicit
+messages interleaved with reward messages, and finally the epoch cron
+message.
+
+The returned messages are index-aligned with the receipts returned by
+ChainGetReceipts when called with the same selector and options.
+
+Experimental: This API is experimental and may change without notice.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "tag": "finalized"
+  },
+  {
+    "include": "all"
+  }
+]
+```
+
+Response:
+```json
+[
+  {
+    "Cid": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "Message": {
+      "Version": 42,
+      "To": "f01234",
+      "From": "f01234",
+      "Nonce": 42,
+      "Value": "0",
+      "GasLimit": 9,
+      "GasFeeCap": "0",
+      "GasPremium": "0",
+      "Method": 1,
+      "Params": "Ynl0ZSBhcnJheQ==",
+      "CID": {
+        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      }
+    }
+  }
+]
+```
+
+### ChainGetReceipts
+ChainGetReceipts returns receipts from executing the specified tipset's
+messages.
+
+The TipSetSelector specifies the tipset whose execution receipts are
+returned. The tipset must have been executed (i.e., it cannot be the
+current chain head).
+
+By default, only receipts for explicit (user-submitted) messages are
+returned. Use MessageOptions to include receipts for implicit (system)
+messages. Post-FIP-0107 (network version 28+), receipts include IpldCodec
+and Message CID fields for all messages.
+
+The returned receipts are index-aligned with the messages returned by
+ChainGetMessages when called with the same selector and options.
+
+Experimental: This API is experimental and may change without notice.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "tag": "finalized"
+  },
+  {
+    "include": "all"
+  }
+]
+```
+
+Response:
+```json
+[
+  {
+    "ExitCode": 0,
+    "Return": "Ynl0ZSBhcnJheQ==",
+    "GasUsed": 9,
+    "EventsRoot": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "IpldCodec": 12,
+    "Message": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
+  }
+]
+```
 
 ### ChainGetTipSet
 ChainGetTipSet retrieves a tipset that corresponds to the specified selector

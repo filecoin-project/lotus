@@ -84,6 +84,7 @@ type ChainStore interface {
 	MessagesForBlock(ctx context.Context, b *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error)
 	ActorStore(ctx context.Context) adt.Store
 	GetTipsetByHeight(ctx context.Context, h abi.ChainEpoch, ts *types.TipSet, prev bool) (*types.TipSet, error)
+	GetMessage(ctx context.Context, c cid.Cid) (*types.Message, error)
 	IsStoringEvents() bool
 }
 

@@ -1353,6 +1353,10 @@
                                 "GasUsed": 9,
                                 "EventsRoot": {
                                     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+                                },
+                                "IpldCodec": 12,
+                                "Message": {
+                                    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
                                 }
                             }
                         ]
@@ -1372,6 +1376,14 @@
                                 "GasUsed": {
                                     "title": "number",
                                     "type": "number"
+                                },
+                                "IpldCodec": {
+                                    "title": "number",
+                                    "type": "number"
+                                },
+                                "Message": {
+                                    "title": "Content Identifier",
+                                    "type": "string"
                                 },
                                 "Return": {
                                     "media": {
@@ -18066,6 +18078,10 @@
                                 "GasUsed": 9,
                                 "EventsRoot": {
                                     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+                                },
+                                "IpldCodec": 12,
+                                "Message": {
+                                    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
                                 }
                             },
                             "GasCost": {
@@ -18465,6 +18481,14 @@
                                     "title": "number",
                                     "type": "number"
                                 },
+                                "IpldCodec": {
+                                    "title": "number",
+                                    "type": "number"
+                                },
+                                "Message": {
+                                    "title": "Content Identifier",
+                                    "type": "string"
+                                },
                                 "Return": {
                                     "media": {
                                         "binaryEncoding": "base64"
@@ -18811,6 +18835,10 @@
                                         "Return": "Ynl0ZSBhcnJheQ==",
                                         "GasUsed": 9,
                                         "EventsRoot": {
+                                            "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+                                        },
+                                        "IpldCodec": 12,
+                                        "Message": {
                                             "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
                                         }
                                     },
@@ -19220,6 +19248,14 @@
                                             "GasUsed": {
                                                 "title": "number",
                                                 "type": "number"
+                                            },
+                                            "IpldCodec": {
+                                                "title": "number",
+                                                "type": "number"
+                                            },
+                                            "Message": {
+                                                "title": "Content Identifier",
+                                                "type": "string"
                                             },
                                             "Return": {
                                                 "media": {
@@ -24276,6 +24312,10 @@
                                 "GasUsed": 9,
                                 "EventsRoot": {
                                     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+                                },
+                                "IpldCodec": 12,
+                                "Message": {
+                                    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
                                 }
                             },
                             "GasCost": {
@@ -24675,6 +24715,14 @@
                                     "title": "number",
                                     "type": "number"
                                 },
+                                "IpldCodec": {
+                                    "title": "number",
+                                    "type": "number"
+                                },
+                                "Message": {
+                                    "title": "Content Identifier",
+                                    "type": "string"
+                                },
                                 "Return": {
                                     "media": {
                                         "binaryEncoding": "base64"
@@ -24795,6 +24843,10 @@
                                 "GasUsed": 9,
                                 "EventsRoot": {
                                     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+                                },
+                                "IpldCodec": 12,
+                                "Message": {
+                                    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
                                 }
                             },
                             "ReturnDec": {},
@@ -24833,6 +24885,14 @@
                                 "GasUsed": {
                                     "title": "number",
                                     "type": "number"
+                                },
+                                "IpldCodec": {
+                                    "title": "number",
+                                    "type": "number"
+                                },
+                                "Message": {
+                                    "title": "Content Identifier",
+                                    "type": "string"
                                 },
                                 "Return": {
                                     "media": {
@@ -25743,6 +25803,10 @@
                                 "GasUsed": 9,
                                 "EventsRoot": {
                                     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+                                },
+                                "IpldCodec": 12,
+                                "Message": {
+                                    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
                                 }
                             },
                             "ReturnDec": {},
@@ -25781,6 +25845,14 @@
                                 "GasUsed": {
                                     "title": "number",
                                     "type": "number"
+                                },
+                                "IpldCodec": {
+                                    "title": "number",
+                                    "type": "number"
+                                },
+                                "Message": {
+                                    "title": "Content Identifier",
+                                    "type": "string"
                                 },
                                 "Return": {
                                     "media": {

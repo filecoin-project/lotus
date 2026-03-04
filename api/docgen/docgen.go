@@ -481,6 +481,8 @@ func init() {
 		Input: ecchain,
 	})
 	addExample(types.TipSetSelectors.Finalized)
+	addExample(v2api.MessageIncludeAll)
+	addExample(&v2api.MessageOptions{Include: v2api.MessageIncludeAll})
 }
 
 func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []reflect.Type) {

@@ -61,10 +61,10 @@ type FilecoinEC struct {
 const MaxHeightDrift = 5
 
 var RewardFunc = func(ctx context.Context, vmi vm.Interface, em stmgr.ExecMonitor,
-	epoch abi.ChainEpoch, ts *types.TipSet, params *reward.AwardBlockRewardParams) error {
+	epoch abi.ChainEpoch, ts *types.TipSet, params *reward.AwardBlockRewardParams) (*vm.ApplyRet, *types.Message, error) {
 	ser, err := actors.SerializeParams(params)
 	if err != nil {
-		return xerrors.Errorf("failed to serialize award params: %w", err)
+		return nil, nil, xerrors.Errorf("failed to serialize award params: %w", err)
 	}
 	rwMsg := &types.Message{
 		From:       builtin.SystemActorAddr,
@@ -79,20 +79,20 @@ var RewardFunc = func(ctx context.Context, vmi vm.Interface, em stmgr.ExecMonito
 	}
 	ret, actErr := vmi.ApplyImplicitMessage(ctx, rwMsg)
 	if actErr != nil {
-		return xerrors.Errorf("failed to apply reward message: %w", actErr)
+		return nil, nil, xerrors.Errorf("failed to apply reward message: %w", actErr)
 	}
 
 	if !ret.ExitCode.IsSuccess() {
-		return xerrors.Errorf("reward actor failed with exit code %d: %w", ret.ExitCode, ret.ActorErr)
+		return nil, nil, xerrors.Errorf("reward actor failed with exit code %d: %w", ret.ExitCode, ret.ActorErr)
 	}
 
 	if em != nil {
 		if err := em.MessageApplied(ctx, ts, rwMsg.Cid(), rwMsg, ret, true); err != nil {
-			return xerrors.Errorf("callback failed on reward message: %w", err)
+			return nil, nil, xerrors.Errorf("callback failed on reward message: %w", err)
 		}
 	}
 
-	return nil
+	return ret, rwMsg, nil
 }
 
 func NewFilecoinExpectedConsensus(sm *stmgr.StateManager, beacon beacon.Schedule, verifier proofs.Verifier, genesis chain.Genesis) consensus.Consensus {

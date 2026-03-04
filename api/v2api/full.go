@@ -9,9 +9,33 @@ import (
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
+
+// MessageInclude specifies which messages to include in API results.
+type MessageInclude string
+
+const (
+	// MessageIncludeExplicit returns only explicit (user-submitted) messages.
+	// This is the default when MessageOptions is nil or Include is empty.
+	MessageIncludeExplicit MessageInclude = "explicit"
+	// MessageIncludeAll returns both explicit and implicit (system) messages.
+	MessageIncludeAll MessageInclude = "all"
+	// MessageIncludeImplicit returns only implicit (system) messages such as
+	// cron tick and block reward messages.
+	MessageIncludeImplicit MessageInclude = "implicit"
+)
+
+// MessageOptions controls filtering of messages and receipts in chain APIs.
+type MessageOptions struct {
+	// Include specifies which messages to include: "explicit" (default), "all",
+	// or "implicit". Explicit messages are user-submitted transactions. Implicit
+	// messages are system-generated (cron and reward) messages executed as part
+	// of tipset processing but not included in any block's message list.
+	Include MessageInclude `json:"include,omitempty"`
+}
 
 //go:generate go run github.com/golang/mock/mockgen -destination=v2mocks/mock_full.go -package=v2mocks . FullNode
 
@@ -64,6 +88,42 @@ type FullNode interface {
 	//  fmt.Printf("Latest TipSet: %v\n", tipSet)
 	//
 	ChainGetTipSet(context.Context, types.TipSetSelector) (*types.TipSet, error) //perm:read
+
+	// ChainGetMessages returns messages that were executed in the specified tipset.
+	//
+	// The TipSetSelector specifies the tipset whose messages are returned. The
+	// tipset must have been executed (i.e., it cannot be the current chain head).
+	//
+	// By default, only explicit (user-submitted) messages are returned. Use
+	// MessageOptions to include implicit (system) messages such as cron tick and
+	// block reward messages. When implicit messages are included, they appear in
+	// execution order: null round cron messages first, then per-block explicit
+	// messages interleaved with reward messages, and finally the epoch cron
+	// message.
+	//
+	// The returned messages are index-aligned with the receipts returned by
+	// ChainGetReceipts when called with the same selector and options.
+	//
+	// Experimental: This API is experimental and may change without notice.
+	ChainGetMessages(context.Context, types.TipSetSelector, *MessageOptions) ([]api.Message, error) //perm:read
+
+	// ChainGetReceipts returns receipts from executing the specified tipset's
+	// messages.
+	//
+	// The TipSetSelector specifies the tipset whose execution receipts are
+	// returned. The tipset must have been executed (i.e., it cannot be the
+	// current chain head).
+	//
+	// By default, only receipts for explicit (user-submitted) messages are
+	// returned. Use MessageOptions to include receipts for implicit (system)
+	// messages. Post-FIP-0107 (network version 28+), receipts include IpldCodec
+	// and Message CID fields for all messages.
+	//
+	// The returned receipts are index-aligned with the messages returned by
+	// ChainGetMessages when called with the same selector and options.
+	//
+	// Experimental: This API is experimental and may change without notice.
+	ChainGetReceipts(context.Context, types.TipSetSelector, *MessageOptions) ([]*types.MessageReceipt, error) //perm:read
 
 	// MethodGroup: State
 	// The State method group contains methods for interacting with the Filecoin
