@@ -253,6 +253,8 @@ func runGasMktSim(cctx *cli.Context) error {
 	nblocksincls := make([]uint64, 0, 5000) // nblocksincls[i] = nblocksincl used when submitting mempool[i]
 	var nextSender uint64 = 2
 	var totalGasUsed int64
+	var submitted1, submitted2, submitted10 int
+	var everLate1, everLate2, everLate10 int
 
 	for epoch := 0; epoch < epochs; epoch++ {
 		ts := buildSimTipSet(baseFee, 0)
@@ -302,6 +304,14 @@ func runGasMktSim(cctx *cli.Context) error {
 			})
 			deadlines = append(deadlines, epoch+int(nblocksincl))
 			nblocksincls = append(nblocksincls, nblocksincl)
+			switch nblocksincl {
+			case 1:
+				submitted1++
+			case 2:
+				submitted2++
+			default:
+				submitted10++
+			}
 			nextSender++
 		}
 
@@ -330,7 +340,18 @@ func runGasMktSim(cctx *cli.Context) error {
 
 		j := 0
 		for i, m := range mempool {
-			if !selectedByAny[i] {
+			if selectedByAny[i] {
+				if epoch >= deadlines[i] {
+					switch nblocksincls[i] {
+					case 1:
+						everLate1++
+					case 2:
+						everLate2++
+					default:
+						everLate10++
+					}
+				}
+			} else {
 				mempool[j] = m
 				deadlines[j] = deadlines[i]
 				nblocksincls[j] = nblocksincls[i]
@@ -348,30 +369,56 @@ func runGasMktSim(cctx *cli.Context) error {
 		totalGasUsed += tipGasUsed
 		tipGasLimit := int64(5) * bgl
 
-		var late1, late2, late10 int
+		var delayed1, delayed2, delayed10 int
 		for i, d := range deadlines {
 			if epoch >= d {
 				switch nblocksincls[i] {
 				case 1:
-					late1++
+					delayed1++
 				case 2:
-					late2++
+					delayed2++
 				default:
-					late10++
+					delayed10++
 				}
 			}
 		}
-		lateCount := late1 + late2 + late10
+		delayedCount := delayed1 + delayed2 + delayed10
 
-		fmt.Printf("epoch %4d: baseFee=%15s  mempoolSize=%5d  late=%4d (nb1=%d nb2=%d nb10=%d)  tipGas=%d/%d (%.1f%%)\n",
-			epoch+1, baseFee, len(mempool), lateCount, late1, late2, late10,
+		fmt.Printf("epoch %4d: baseFee=%15s  mempoolSize=%5d  delayed=%4d (nb1=%d nb2=%d nb10=%d)  tipGas=%d/%d (%.1f%%)\n",
+			epoch+1, baseFee, len(mempool), delayedCount, delayed1, delayed2, delayed10,
 			tipGasUsed, tipGasLimit, float64(tipGasUsed)/float64(tipGasLimit)*100)
 	}
 
+	// Count remaining mempool messages that were ever past their deadline.
+	for i, d := range deadlines {
+		if epochs-1 >= d {
+			switch nblocksincls[i] {
+			case 1:
+				everLate1++
+			case 2:
+				everLate2++
+			default:
+				everLate10++
+			}
+		}
+	}
+	everLateTotal := everLate1 + everLate2 + everLate10
+
 	totalGasLimit := int64(epochs) * int64(5) * bgl
-	fmt.Printf("=== SUMMARY: total gas used %d / %d (%.1f%%)\n",
+	submittedTotal := submitted1 + submitted2 + submitted10
+	pct := func(n, d int) float64 {
+		if d == 0 {
+			return 0
+		}
+		return float64(n) / float64(d) * 100
+	}
+	fmt.Printf("=== SUMMARY: total gas used %d / %d (%.1f%%)  ever-late=%d/%d (%.1f%%)  (nb1=%d/%d %.1f%%  nb2=%d/%d %.1f%%  nb10=%d/%d %.1f%%)\n",
 		totalGasUsed, totalGasLimit,
-		float64(totalGasUsed)/float64(totalGasLimit)*100)
+		float64(totalGasUsed)/float64(totalGasLimit)*100,
+		everLateTotal, submittedTotal, pct(everLateTotal, submittedTotal),
+		everLate1, submitted1, pct(everLate1, submitted1),
+		everLate2, submitted2, pct(everLate2, submitted2),
+		everLate10, submitted10, pct(everLate10, submitted10))
 
 	return nil
 }
