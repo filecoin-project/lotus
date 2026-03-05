@@ -46,6 +46,10 @@ var gasMktSimCmd = &cli.Command{
 			Usage: "average gas submitted per epoch as a multiple of BlockGasLimit",
 			Value: 3.0,
 		},
+		&cli.BoolFlag{
+			Name:  "dynamic-demand",
+			Usage: "at each epoch, probabilistically increase or decrease the gas-per-epoch",
+		},
 		&cli.Int64Flag{
 			Name:  "base-fee",
 			Usage: "starting base fee in attoFIL",
@@ -325,15 +329,16 @@ func runGasMktSim(cctx *cli.Context) error {
 	seed := cctx.Int64("seed")
 	epochRemainingZero := cctx.Bool("epoch-remaining-zero")
 	gasPerEpoch := cctx.Float64("gas-per-epoch")
-	startBaseFee := cctx.Int64("base-fee")
+	dynamicDemand := cctx.Bool("dynamic-demand")
+	startBaseFee := big.NewInt(cctx.Int64("base-fee"))
 	flatPremium := cctx.Bool("flat-premium")
 	legacyPremium := cctx.Bool("legacy-premium")
 
 	bgl := buildconstants.BlockGasLimit
 	// Mean gas per tx from simSampleGasLimit is bgl/10, so txs = gasPerEpoch * 10.
 	txsPerEpoch := int(math.Round(gasPerEpoch * 10))
-	if txsPerEpoch < 1 {
-		txsPerEpoch = 1
+	if txsPerEpoch < 0 {
+		txsPerEpoch = 0
 	}
 	// this seed is used to generate the simulation inputs (tq, gaslimit, nlblocksincl)
 	rng := rand.New(rand.NewSource(seed))
@@ -341,7 +346,7 @@ func runGasMktSim(cctx *cli.Context) error {
 	noiseRng := rand.New(rand.NewSource(seed))
 	ctx := context.Background()
 
-	baseFee := big.NewInt(startBaseFee)
+	baseFee := startBaseFee
 	mempool := make([]*types.SignedMessage, 0, 5000)
 	deadlines := make([]int, 0, 5000)       // deadline[i] = epoch by which mempool[i] must be included
 	nblocksincls := make([]uint64, 0, 5000) // nblocksincls[i] = nblocksincl used when submitting mempool[i]
@@ -505,9 +510,24 @@ func runGasMktSim(cctx *cli.Context) error {
 		}
 		delayedCount := delayed1 + delayed2 + delayed10
 
-		fmt.Printf("epoch %4d: baseFee=%15s  mempoolSize=%5d  delayed=%4d (nb1=%d nb2=%d nb10=%d)  tipGas=%d/%d (%.1f%%)\n",
-			epoch+1, baseFee, len(mempool), delayedCount, delayed1, delayed2, delayed10,
+		fmt.Printf("epoch %4d: newTxs=%2d baseFee=%15s  mempoolSize=%5d  delayed=%4d (nb1=%d nb2=%d nb10=%d)  tipGas=%d/%d (%.1f%%)\n",
+			epoch+1, txsPerEpoch, baseFee, len(mempool), delayedCount, delayed1, delayed2, delayed10,
 			tipGasUsed, tipGasLimit, float64(tipGasUsed)/float64(tipGasLimit)*100)
+		if dynamicDemand {
+			switch r := rng.Float64(); {
+			case r < 0.1:
+				txsPerEpoch += 5
+			case r < 0.3:
+				txsPerEpoch += 2
+			case r >= 0.9:
+				txsPerEpoch -= 5
+			case r >= 0.7:
+				txsPerEpoch -= 2
+			default:
+				txsPerEpoch += big.Cmp(startBaseFee, baseFee)
+			}
+			txsPerEpoch = max(0, min(56, txsPerEpoch))
+		}
 		select {
 		case <-cctx.Done():
 			// exit loop early
