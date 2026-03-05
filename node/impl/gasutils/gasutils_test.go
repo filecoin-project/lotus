@@ -108,67 +108,6 @@ func TestMempoolEffectivePremium(t *testing.T) {
 	}
 }
 
-// TestPremiumAtGasPosition verifies finding the premium at a given cumulative gas position
-// from the top of a descending distribution, capped at BlockGasLimit.
-func TestPremiumAtGasPosition(t *testing.T) {
-	bgl := buildconstants.BlockGasLimit // 10_000_000_000
-
-	tests := []struct {
-		name         string
-		distribution []GasMeta
-		position     int64
-		expected     int64
-	}{
-		{
-			"empty distribution returns zero",
-			nil, 1, 0,
-		},
-		{
-			"single entry covers position",
-			[]GasMeta{{big.NewInt(100), bgl / 2}},
-			bgl / 4, 100,
-		},
-		{
-			"position at boundary of first entry",
-			[]GasMeta{{big.NewInt(100), bgl / 4}, {big.NewInt(50), bgl / 2}},
-			bgl / 4, 100,
-		},
-		{
-			"position falls in second entry",
-			[]GasMeta{{big.NewInt(100), bgl / 4}, {big.NewInt(50), bgl / 2}},
-			bgl/4 + 1, 50,
-		},
-		{
-			"position beyond total gas returns zero",
-			[]GasMeta{{big.NewInt(100), bgl / 4}},
-			bgl / 2, 0,
-		},
-		{
-			"distribution exceeds BlockGasLimit, cap applied",
-			// first entry fills 60% of block, second fills 60% → total would be 120% but capped
-			// position at 70% should fall in second entry
-			[]GasMeta{{big.NewInt(100), bgl * 6 / 10}, {big.NewInt(50), bgl * 6 / 10}},
-			bgl * 7 / 10, 50,
-		},
-		{
-			"distribution exceeds BlockGasLimit, position past cap returns zero",
-			[]GasMeta{{big.NewInt(100), bgl * 6 / 10}, {big.NewInt(50), bgl * 6 / 10}},
-			bgl + 1, 0,
-		},
-		{
-			"position zero returns first entry price",
-			[]GasMeta{{big.NewInt(200), 1}, {big.NewInt(100), bgl}},
-			0, 200,
-		},
-	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			got := premiumAtGasPosition(tc.distribution, tc.position)
-			assert.Equal(t, big.NewInt(tc.expected).String(), got.String())
-		})
-	}
-}
-
 // TestGasEstimateGasPremiumFromMempoolGasLimitEffect verifies that a larger gaslimit produces
 // a higher recommended premium, since the transaction competes for more block space.
 //

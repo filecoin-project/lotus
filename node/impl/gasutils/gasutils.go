@@ -445,26 +445,6 @@ func mempoolEffectivePremium(feeCap, premium, baseFee abi.TokenAmount) abi.Token
 	return available
 }
 
-// premiumAtGasPosition returns the gas premium at a given cumulative gas position (from the top)
-// within the top BlockGasLimit gas of a distribution sorted descending by price.
-func premiumAtGasPosition(distribution []GasMeta, position int64) abi.TokenAmount {
-	var accumulated int64
-	for _, e := range distribution {
-		if accumulated >= buildconstants.BlockGasLimit {
-			break
-		}
-		limit := e.Limit
-		if accumulated+limit > buildconstants.BlockGasLimit {
-			limit = buildconstants.BlockGasLimit - accumulated
-		}
-		accumulated += limit
-		if accumulated >= position {
-			return e.Price
-		}
-	}
-	return big.Zero()
-}
-
 // epochFractionRemaining returns the fraction [0,1] of the current epoch's block delay remaining.
 // This is used to scale the above-baseFee mempool distribution to model incoming transactions.
 func epochFractionRemaining(ts *types.TipSet) float64 {
