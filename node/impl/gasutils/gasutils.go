@@ -364,6 +364,11 @@ func GasEstimateGasPremiumFromMempool(
 			break
 		}
 		nblocksincl--
+		select {
+		case <-ctx.Done():
+			return result, ctx.Err()
+		default:
+		}
 
 		// Step 8: Simulate block selection using the already-computed premiums and limits.
 		// Sort indices by effective premium descending to select the top messages.

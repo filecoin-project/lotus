@@ -509,7 +509,7 @@ func runGasMktSim(cctx *cli.Context) error {
 			epoch+1, baseFee, len(mempool), delayedCount, delayed1, delayed2, delayed10,
 			tipGasUsed, tipGasLimit, float64(tipGasUsed)/float64(tipGasLimit)*100)
 		select {
-		case <- cctx.Done():
+		case <-cctx.Done():
 			// exit loop early
 			epoch = epochs
 		default:
