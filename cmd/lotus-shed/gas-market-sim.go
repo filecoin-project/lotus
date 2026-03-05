@@ -508,6 +508,12 @@ func runGasMktSim(cctx *cli.Context) error {
 		fmt.Printf("epoch %4d: baseFee=%15s  mempoolSize=%5d  delayed=%4d (nb1=%d nb2=%d nb10=%d)  tipGas=%d/%d (%.1f%%)\n",
 			epoch+1, baseFee, len(mempool), delayedCount, delayed1, delayed2, delayed10,
 			tipGasUsed, tipGasLimit, float64(tipGasUsed)/float64(tipGasLimit)*100)
+		select {
+		case <- cctx.Done():
+			// exit loop early
+			epoch = epochs
+		default:
+		}
 	}
 
 	// Count remaining mempool messages that were ever past their deadline.
