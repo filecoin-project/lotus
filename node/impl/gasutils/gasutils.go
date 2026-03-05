@@ -227,6 +227,8 @@ func GasEstimateGasPremiumFromMempool(
 ) (types.BigInt, error) {
 	if nblocksincl == 0 {
 		nblocksincl = 1
+	} else if nblocksincl > 10 {
+		nblocksincl = 10
 	}
 	if gaslimit <= 0 {
 		gaslimit = buildconstants.BlockGasLimit / 5
