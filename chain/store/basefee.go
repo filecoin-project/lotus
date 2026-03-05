@@ -145,7 +145,7 @@ func nextBaseFeeFromPremium(baseFee, premiumP abi.TokenAmount) abi.TokenAmount {
 	)
 }
 
-var selectRand *rand.Rand = rand.New(rand.NewSource(time.Now().UnixNano()))
+var selectRand = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 type RandInt interface {
 	Intn(n int) int

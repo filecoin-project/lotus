@@ -61,7 +61,7 @@ func (p *AllPermutations) Reset() {
 		p.dfs = p.dfs[:len(p.dfs)-1]
 	}
 	if len(p.dfs) > 0 {
-		p.dfs[len(p.dfs)-1] += 1
+		p.dfs[len(p.dfs)-1]++
 	}
 	// next iteration in the permutation
 	p.level = 0
@@ -81,7 +81,7 @@ func (p *AllPermutations) Intn(n int) int {
 		p.domain = append(p.domain, n)
 		p.dfs = append(p.dfs, 0)
 	}
-	p.level += 1
+	p.level++
 	return p.dfs[p.level-1]
 }
 
