@@ -335,7 +335,10 @@ func runGasMktSim(cctx *cli.Context) error {
 	if txsPerEpoch < 1 {
 		txsPerEpoch = 1
 	}
+	// this seed is used to generate the simulation inputs (tq, gaslimit, nlblocksincl)
 	rng := rand.New(rand.NewSource(seed))
+	// this seed is used by premium estimation logic
+	noiseRng := rand.New(rand.NewSource(seed))
 	ctx := context.Background()
 
 	baseFee := big.NewInt(startBaseFee)
@@ -378,13 +381,13 @@ func runGasMktSim(cctx *cli.Context) error {
 			case flatPremium:
 				// baseFee * R where R = 1/BaseFeeMaxChangeDenom, plus small noise.
 				base := big.Div(baseFee, big.NewInt(buildconstants.BaseFeeMaxChangeDenom))
-				noised := int64(math.Ceil(float64(base.Int64()) * (1 + rng.NormFloat64()*0.005)))
+				noised := int64(math.Ceil(float64(base.Int64()) * (1 + noiseRng.NormFloat64()*0.005)))
 				if noised < 1 {
 					noised = 1
 				}
 				premium = big.NewInt(noised)
 			case legacyPremium:
-				premium = legacyGasPremiumEstimate(epochHistory, epoch-1, nblocksincl, rng)
+				premium = legacyGasPremiumEstimate(epochHistory, epoch-1, nblocksincl, noiseRng)
 			default:
 				var err error
 				premium, err = gasutils.GasEstimateGasPremiumFromMempool(ctx, cs, mp, nblocksincl, gl, types.EmptyTSK)
