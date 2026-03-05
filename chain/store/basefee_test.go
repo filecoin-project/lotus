@@ -40,6 +40,51 @@ func TestBaseFee(t *testing.T) {
 	}
 }
 
+// Test randomized algorithm by trying all permutations
+type AllPermutations struct {
+	t *testing.T
+	// current level
+	level int
+	// known domain (n) at current level
+	domain []int
+	// current iteration positions (i < n) in the domain
+	dfs []int
+}
+
+func (p *AllPermutations) Reset() {
+	// same outputs should result in same inputs
+	assert.Equal(p.t, p.level, len(p.domain), "nondeterminism detected (fewer queries)")
+
+	for len(p.dfs) > 0 && p.dfs[len(p.dfs)-1]+1 == p.domain[len(p.domain)-1] {
+		// pop finished domains
+		p.domain = p.domain[:len(p.domain)-1]
+		p.dfs = p.dfs[:len(p.dfs)-1]
+	}
+	if len(p.dfs) > 0 {
+		p.dfs[len(p.dfs)-1] += 1
+	}
+	// next iteration in the permutation
+	p.level = 0
+}
+
+func (p *AllPermutations) Done() bool {
+	return len(p.domain) == 0
+}
+
+func (p *AllPermutations) Intn(n int) int {
+	assert.True(p.t, n > 0, "Intn(0)")
+	if p.level < len(p.domain) {
+		// same outputs should result in same inputs
+		assert.Equal(p.t, p.domain[p.level], n, "nondeterminism detected (different queries)")
+	} else {
+		// expand search domain
+		p.domain = append(p.domain, n)
+		p.dfs = append(p.dfs, 0)
+	}
+	p.level += 1
+	return p.dfs[p.level-1]
+}
+
 // TestWeightedQuickSelect tests the tipset gas percentile cases.
 // BlockGasLimit = 10_000_000_000, P = 20.
 func TestWeightedQuickSelect(t *testing.T) {
@@ -55,15 +100,24 @@ func TestWeightedQuickSelect(t *testing.T) {
 		{[]int64{123, 100}, []int64{7_999_999_999, 2_000_000_001}, 100},
 		{[]int64{123, 100}, []int64{8_000_000_000, 2_000_000_000}, 123},
 		{[]int64{123, 100}, []int64{8_000_000_000, 9_000_000_000}, 123},
+		{[]int64{100, 200, 300, 400, 500, 600, 700}, []int64{4_000_000_000, 1_000_000_000, 2_000_000_000, 1_000_000_000, 2_000_000_000, 2_000_000_000, 3_000_000_000}, 400},
 	}
 	for _, tc := range tests {
 		premiums := make([]abi.TokenAmount, len(tc.premiums))
 		for i, p := range tc.premiums {
 			premiums[i] = big.NewInt(p)
 		}
-		got := WeightedQuickSelect(premiums, tc.limits, buildconstants.BlockGasTargetIndex)
-		assert.Equal(t, big.NewInt(tc.expected).String(), got.String(),
-			"premiums=%v limits=%v", tc.premiums, tc.limits)
+		rand := &AllPermutations{}
+		rand.t = t
+		for {
+			got := weightedQuickSelect(premiums, tc.limits, buildconstants.BlockGasTargetIndex, rand)
+			assert.Equal(t, big.NewInt(tc.expected).String(), got.String(),
+				"premiums=%v limits=%v", tc.premiums, tc.limits)
+			rand.Reset()
+			if rand.Done() {
+				break
+			}
+		}
 	}
 }
 

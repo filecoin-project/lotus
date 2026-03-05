@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"math/rand"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
@@ -144,7 +145,17 @@ func nextBaseFeeFromPremium(baseFee, premiumP abi.TokenAmount) abi.TokenAmount {
 	)
 }
 
+var selectRand *rand.Rand = rand.New(rand.NewSource(time.Now().UnixNano()))
+
+type RandInt interface {
+	Intn(n int) int
+}
+
 func WeightedQuickSelect(premiums []abi.TokenAmount, limits []int64, index int64) abi.TokenAmount {
+	return weightedQuickSelect(premiums, limits, index, selectRand)
+}
+
+func weightedQuickSelect(premiums []abi.TokenAmount, limits []int64, index int64, randImpl RandInt) abi.TokenAmount {
 	if len(premiums) == 0 {
 		return big.Zero()
 	}
@@ -155,7 +166,7 @@ func WeightedQuickSelect(premiums []abi.TokenAmount, limits []int64, index int64
 		return premiums[0]
 	}
 
-	pivot := premiums[rand.Intn(len(premiums))]
+	pivot := premiums[randImpl.Intn(len(premiums))]
 
 	var less []abi.TokenAmount
 	var lessWeights []int64
@@ -181,7 +192,7 @@ func WeightedQuickSelect(premiums []abi.TokenAmount, limits []int64, index int64
 	}
 
 	if index < moreW {
-		return WeightedQuickSelect(more, moreWeights, index)
+		return weightedQuickSelect(more, moreWeights, index, randImpl)
 	}
 	index -= moreW
 	if index < eqW {
@@ -189,7 +200,7 @@ func WeightedQuickSelect(premiums []abi.TokenAmount, limits []int64, index int64
 	}
 	index -= eqW
 	if index < lessW {
-		return WeightedQuickSelect(less, lessWeights, index)
+		return weightedQuickSelect(less, lessWeights, index, randImpl)
 	}
 	return big.Zero()
 }
