@@ -526,7 +526,7 @@ func runGasMktSim(cctx *cli.Context) error {
 			default:
 				txsPerEpoch += big.Cmp(startBaseFee, baseFee)
 			}
-			txsPerEpoch = max(0, min(56, txsPerEpoch))
+			txsPerEpoch = max(0, min(50, txsPerEpoch))
 		}
 		select {
 		case <-cctx.Done():
