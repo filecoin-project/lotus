@@ -1257,7 +1257,9 @@ func (mp *MessagePool) Pending(ctx context.Context) ([]*types.SignedMessage, *ty
 		mp.lk.RUnlock()
 	}
 
-	return snapshot.msgs, snapshot.ts
+	msgs := make([]*types.SignedMessage, len(snapshot.msgs))
+	copy(msgs, snapshot.msgs)
+	return msgs, snapshot.ts
 }
 
 func (mp *MessagePool) allPending(ctx context.Context) ([]*types.SignedMessage, *types.TipSet) {
