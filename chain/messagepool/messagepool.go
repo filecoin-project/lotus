@@ -1637,6 +1637,8 @@ func (mp *MessagePool) Clear(ctx context.Context, local bool) {
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
+	mp.snapshot.Store(nil)
+
 	// remove everything if local is true, including removing local messages from
 	// the datastore
 	if local {
@@ -1679,8 +1681,6 @@ func (mp *MessagePool) Clear(ctx context.Context, local bool) {
 			return
 		}
 	})
-
-	mp.snapshot.Store(nil)
 }
 
 func getBaseFeeLowerBound(baseFee, factor types.BigInt) types.BigInt {
