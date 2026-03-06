@@ -258,7 +258,7 @@ USAGE:
 OPTIONS:
    --confidence value  number of block confirmations to wait for (default: 5)
    --from value        specify where to send the message from (any address)
-   --max-deals value   the maximum number of deals contained in each message (default: 50)
+   --max-deals value   the maximum number of deals contained in each message (default: 20)
    --skip-wait-msg     skip to check the message status (default: false)
    --all-deals         settle all deals. only expired deals are calculated by default (default: false)
    --really-do-it      Actually send transaction performing the action (default: false)
@@ -752,7 +752,7 @@ OPTIONS:
    --drop-claims           drop claims for sectors that can be extended, but only by dropping some of their verified power claims (default: false)
    --tolerance value       don't try to extend sectors by fewer than this number of epochs, defaults to 7 days (default: 20160)
    --max-fee value         use up to this amount of FIL for one message. pass this flag to avoid message congestion. (default: "0")
-   --max-sectors value     the maximum number of sectors contained in each message (default: 500)
+   --max-sectors value     the maximum number of sectors contained in each message (default: 200)
    --really-do-it          pass this flag to really extend sectors, otherwise will only print out json representation of parameters (default: false)
    --help, -h              show help
 ```
