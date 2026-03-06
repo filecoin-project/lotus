@@ -1679,6 +1679,8 @@ func (mp *MessagePool) Clear(ctx context.Context, local bool) {
 			return
 		}
 	})
+
+	mp.snapshot.Store(nil)
 }
 
 func getBaseFeeLowerBound(baseFee, factor types.BigInt) types.BigInt {
