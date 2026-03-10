@@ -13,6 +13,10 @@
 
 - The minimum supported Golang version is now `1.25.0`.
 
+## ⭐ New Features
+
+- feat(shed): add `lotus-shed finality-calculator` for EC finality probability computation per [FRC-0089](https://github.com/filecoin-project/FIPs/blob/master/FRCs/frc-0089.md) ([filecoin-project/lotus#12093](https://github.com/filecoin-project/lotus/pull/12093))
+
 ## 👌 Improvements
 - fix(gateway): return `ErrFilterNotFound` error instead of empty result for unknown filter IDs in `EthGetFilterLogs` ([filecoin-project/lotus#13519](https://github.com/filecoin-project/lotus/pull/13519))
 

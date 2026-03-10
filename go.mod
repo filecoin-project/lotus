@@ -131,6 +131,7 @@ require (
 	github.com/puzpuzpuz/xsync/v2 v2.5.1
 	github.com/raulk/clock v1.1.0
 	github.com/raulk/go-watchdog v1.3.0
+	github.com/rvagg/go-skellam-pmf v0.0.2
 	github.com/samber/lo v1.52.0
 	github.com/sirupsen/logrus v1.9.4
 	github.com/stretchr/testify v1.11.1
