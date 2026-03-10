@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"slices"
 	"strconv"
 
 	skellampmf "github.com/rvagg/go-skellam-pmf"
@@ -95,6 +96,9 @@ machine-readable output of all 900 epochs.`,
 				}
 				chain = append(chain, len(head.Cids()))
 			}
+			// API walk produces most-recent-first; reverse to match the
+			// expected ordering (index 0 = earliest epoch).
+			slices.Reverse(chain)
 		} else {
 			input := cctx.String("input")
 			file, err := os.Open(input)
@@ -117,6 +121,10 @@ machine-readable output of all 900 epochs.`,
 			headEpoch = len(chain) - 1
 		}
 
+		if len(chain) < 2 {
+			return fmt.Errorf("chain must contain at least 2 epochs, got %d", len(chain))
+		}
+
 		blocksPerEpoch := cctx.Float64("blocks-per-epoch")
 		byzantineFraction := cctx.Float64("byzantine-fraction")
 		safetyExponent := cctx.Int("safety-exponent")
@@ -136,7 +144,7 @@ machine-readable output of all 900 epochs.`,
 		// CSV mode: raw output for all epochs
 		if cctx.Bool("csv") {
 			_, _ = fmt.Fprintln(out, "epoch,depth,error_probability")
-			for i := range int(policy.ChainFinality) {
+			for i := range min(int(policy.ChainFinality), currentEpoch) {
 				prob := FinalityCalcValidator(chain, blocksPerEpoch, byzantineFraction, currentEpoch, currentEpoch-i)
 				_, _ = fmt.Fprintf(out, "%d,%d,%e\n", headEpoch-i, i, prob)
 			}
@@ -145,7 +153,7 @@ machine-readable output of all 900 epochs.`,
 
 		// Compute chain health: average blocks per epoch over recent history
 		recentBlocks := 0
-		recentCount := min(recentHealthWindow, currentEpoch)
+		recentCount := max(1, min(recentHealthWindow, currentEpoch))
 		for i := range recentCount {
 			recentBlocks += chain[currentEpoch-i]
 		}
@@ -159,10 +167,12 @@ machine-readable output of all 900 epochs.`,
 
 		// Bisect search for the finality threshold depth
 		thresholdDepth := -1
-		low, high := bisectLow, bisectHigh
+		low, high := bisectLow, min(bisectHigh, currentEpoch)
 
-		probLow := FinalityCalcValidator(chain, blocksPerEpoch, byzantineFraction, currentEpoch, currentEpoch-low)
-		if probLow < guarantee {
+		if low >= high {
+			// Chain too short for bisect search
+			thresholdDepth = -1
+		} else if probLow := FinalityCalcValidator(chain, blocksPerEpoch, byzantineFraction, currentEpoch, currentEpoch-low); probLow < guarantee {
 			thresholdDepth = low
 		} else {
 			probHigh := FinalityCalcValidator(chain, blocksPerEpoch, byzantineFraction, currentEpoch, currentEpoch-high)
@@ -289,7 +299,7 @@ func FinalityCalcValidator(chain []int, blocksPerEpoch float64, byzantineFractio
 		sumExpectedAdversarialBlocksI := 0.0
 		sumChainBlocksI := 0
 
-		for i := targetEpoch; i > currentEpoch-int(policy.ChainFinality); i-- {
+		for i := targetEpoch; i > max(0, currentEpoch-int(policy.ChainFinality)); i-- {
 			sumExpectedAdversarialBlocksI += rateMaliciousBlocks
 			sumChainBlocksI += chain[i-1]
 			prLi := poissonProb(sumExpectedAdversarialBlocksI, float64(k+sumChainBlocksI))
@@ -389,6 +399,12 @@ func poissonProb(lambda float64, x float64) float64 {
 
 func poissonLogProb(lambda float64, x float64) float64 {
 	if x < 0 || math.Floor(x) != x {
+		return math.Inf(-1)
+	}
+	if lambda == 0 {
+		if x == 0 {
+			return 0 // P(X=0 | lambda=0) = 1, log(1) = 0
+		}
 		return math.Inf(-1)
 	}
 	lg, _ := math.Lgamma(math.Floor(x) + 1)
