@@ -83,7 +83,7 @@ machine-readable output of all 900 epochs.`,
 			headEpoch = int(head.Height())
 			readLength := int(policy.ChainFinality) + 5
 			chain = append(chain, len(head.Cids()))
-			for range readLength {
+			for range readLength - 1 {
 				head, err = api.ChainGetTipSet(ctx, head.Parents())
 				if err != nil {
 					return err
@@ -228,7 +228,7 @@ machine-readable output of all 900 epochs.`,
 			}
 			depthStr := fmt.Sprintf("%d (%s)", depth, epochToTime(depth))
 
-			tw.Write(map[string]interface{}{
+			tw.Write(map[string]any{
 				"Depth":             depthStr,
 				"Epoch":             headEpoch - depth,
 				"Reorg Probability": probStr,

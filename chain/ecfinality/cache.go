@@ -119,7 +119,7 @@ func (c *ECFinalityCache) GetFinalizedTipSet(ctx context.Context) (*types.TipSet
 // walkChain walks back from head collecting block counts for the calculator.
 // Each LoadTipSet call typically hits the ChainStore's ARC cache.
 func (c *ECFinalityCache) walkChain(ctx context.Context, head *types.TipSet) ([]int, error) {
-	needed := c.windowSize + 1
+	needed := c.windowSize
 	chain := make([]int, 0, needed)
 	ts := head
 	for len(chain) < needed {

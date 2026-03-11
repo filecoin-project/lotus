@@ -448,7 +448,7 @@ func TestEthAPIWithF3(t *testing.T) {
 			wantTipSetV2: ecFinalized,
 		},
 		{
-			name:     "safe tag uses ec calculator when finalized beats safe distance",
+			name:     "safe tag uses ec calculator when finalized beats safe distance with f3",
 			blkParam: "safe",
 			setup: func(t *testing.T) {
 				mockF3.Running = true
@@ -462,6 +462,19 @@ func TestEthAPIWithF3(t *testing.T) {
 			},
 			wantTipSetV1: tipSetAtHeight(targetHeight),
 			wantTipSetV2: tipSetAtHeight(targetHeight),
+		},
+		{
+			name:     "safe tag uses ec calculator when finalized beats safe distance without f3",
+			blkParam: "safe",
+			setup: func(t *testing.T) {
+				mockF3.Running = false
+				ecTipSet := tipSetAtHeight(targetHeight - 20)(t) // EC calc at depth ~20
+				mockECFinality.FinalizedTipSet = ecTipSet
+				mockECFinality.ThresholdDepth = 20
+				mockECFinality.Err = nil
+			},
+			wantTipSetV1: tipSetAtHeight(targetHeight - 20),
+			wantTipSetV2: tipSetAtHeight(targetHeight - 20),
 		},
 		{
 			name:     "height before ec finalized epoch is ok",

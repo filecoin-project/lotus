@@ -109,11 +109,15 @@ func (tsr *tipSetResolver) getFinalizedF3TipSet(ctx context.Context) (*types.Tip
 }
 
 func (tsr *tipSetResolver) getSafeECTipSet(ctx context.Context) (*types.TipSet, error) {
+	finalized, err := tsr.getFinalizedECTipSet(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	head := tsr.cs.GetHeaviestTipSet()
 	if head == nil {
 		return nil, xerrors.Errorf("no known heaviest tipset")
 	}
-	height := head.Height()
 
 	// Default safe distance (used for v2 APIs, or v1 APIs when F3 is finalizing)
 	safeDistance := buildconstants.SafeHeightDistance
@@ -124,7 +128,10 @@ func (tsr *tipSetResolver) getSafeECTipSet(ctx context.Context) (*types.TipSet, 
 		safeDistance = ethtypes.SafeEpochDelay
 	}
 
-	safeHeight := max(0, height-safeDistance)
+	safeHeight := max(0, head.Height()-safeDistance)
+	if finalized != nil && finalized.Height() >= safeHeight {
+		return finalized, nil
+	}
 	return tsr.cs.GetTipsetByHeight(ctx, safeHeight, head, true)
 }
 
