@@ -481,6 +481,13 @@ func init() {
 		Input: ecchain,
 	})
 	addExample(types.TipSetSelectors.Finalized)
+	addExample(&types.FinalityStatus{
+		ECFinalityThresholdDepth: 30,
+		ECFinalizedTipSet:        &ts,
+		F3FinalizedTipSet:        &ts,
+		FinalizedTipSet:          &ts,
+		Head:                     &ts,
+	})
 }
 
 func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []reflect.Type) {

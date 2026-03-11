@@ -57,6 +57,21 @@ func (mr *MockFullNodeMockRecorder) ChainGetTipSet(arg0, arg1 interface{}) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainGetTipSet", reflect.TypeOf((*MockFullNode)(nil).ChainGetTipSet), arg0, arg1)
 }
 
+// ChainGetTipSetFinalityStatus mocks base method.
+func (m *MockFullNode) ChainGetTipSetFinalityStatus(arg0 context.Context) (*types.FinalityStatus, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ChainGetTipSetFinalityStatus", arg0)
+	ret0, _ := ret[0].(*types.FinalityStatus)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ChainGetTipSetFinalityStatus indicates an expected call of ChainGetTipSetFinalityStatus.
+func (mr *MockFullNodeMockRecorder) ChainGetTipSetFinalityStatus(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainGetTipSetFinalityStatus", reflect.TypeOf((*MockFullNode)(nil).ChainGetTipSetFinalityStatus), arg0)
+}
+
 // EthAccounts mocks base method.
 func (m *MockFullNode) EthAccounts(arg0 context.Context) ([]ethtypes.EthAddress, error) {
 	m.ctrl.T.Helper()

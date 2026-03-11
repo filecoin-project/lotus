@@ -59,7 +59,8 @@ func TestEthAPIWithF3(t *testing.T) {
 	kit.QuietMiningLogs()
 
 	mockF3 := kit.NewMockF3Backend()
-	client, miner, network := kit.EnsembleMinimal(t, kit.F3Backend(mockF3), kit.MockProofs())
+	mockECFinality := kit.NewMockECFinalityProvider()
+	client, miner, network := kit.EnsembleMinimal(t, kit.F3Backend(mockF3), kit.ECFinalityProvider(mockECFinality), kit.MockProofs())
 	network.BeginMining(blockTime)
 
 	_, fundedEthAddr, fundedFilAddr := client.EVM().NewAccount()
@@ -391,6 +392,78 @@ func TestEthAPIWithF3(t *testing.T) {
 			wantErrV2: "decoding latest f3 cert tipset key",
 		},
 		{
+			name:     "finalized tag when ec calculator ahead of f3 uses ec finalized",
+			blkParam: "finalized",
+			setup: func(t *testing.T) {
+				mockF3.Running = true
+				mockF3.Finalizing = true
+				mockF3.LatestCertErr = nil
+				mockF3.LatestCert = plausibleCertAt(t, 50) // F3 at 50
+				ecTipSet := tipSetAtHeight(f3FinalizedEpoch)(t)
+				mockECFinality.FinalizedTipSet = ecTipSet // EC calc at f3FinalizedEpoch (300)
+				mockECFinality.ThresholdDepth = int(targetHeight - f3FinalizedEpoch)
+				mockECFinality.Err = nil
+			},
+			wantTipSetV1: tipSetAtHeight(f3FinalizedEpoch),
+			wantTipSetV2: tipSetAtHeight(f3FinalizedEpoch),
+		},
+		{
+			name:     "finalized tag when f3 ahead of ec calculator uses f3 finalized",
+			blkParam: "finalized",
+			setup: func(t *testing.T) {
+				mockF3.Running = true
+				mockF3.Finalizing = true
+				mockF3.LatestCertErr = nil
+				mockF3.LatestCert = plausibleCertAt(t, f3FinalizedEpoch) // F3 at 300
+				ecTipSet := tipSetAtHeight(50)(t)
+				mockECFinality.FinalizedTipSet = ecTipSet // EC calc at 50
+				mockECFinality.ThresholdDepth = int(targetHeight - 50)
+				mockECFinality.Err = nil
+			},
+			wantTipSetV1: tipSetAtHeight(f3FinalizedEpoch),
+			wantTipSetV2: tipSetAtHeight(f3FinalizedEpoch),
+		},
+		{
+			name:     "finalized tag when ec calculator error falls back to static ec finality",
+			blkParam: "finalized",
+			setup: func(t *testing.T) {
+				mockF3.Running = false
+				mockECFinality.FinalizedTipSet = nil
+				mockECFinality.ThresholdDepth = -1
+				mockECFinality.Err = errors.New("calculator broken")
+			},
+			wantTipSetV1: ecFinalized,
+			wantTipSetV2: ecFinalized,
+		},
+		{
+			name:     "finalized tag when ec calculator not met falls back to static ec finality",
+			blkParam: "finalized",
+			setup: func(t *testing.T) {
+				mockF3.Running = false
+				mockECFinality.FinalizedTipSet = nil
+				mockECFinality.ThresholdDepth = -1
+				mockECFinality.Err = nil
+			},
+			wantTipSetV1: ecFinalized,
+			wantTipSetV2: ecFinalized,
+		},
+		{
+			name:     "safe tag uses ec calculator when finalized beats safe distance",
+			blkParam: "safe",
+			setup: func(t *testing.T) {
+				mockF3.Running = true
+				mockF3.Finalizing = true
+				mockF3.LatestCertErr = nil
+				mockF3.LatestCert = plausibleCertAt(t, targetHeight) // F3 at head
+				ecTipSet := tipSetAtHeight(targetHeight)(t)
+				mockECFinality.FinalizedTipSet = ecTipSet // EC calc at head
+				mockECFinality.ThresholdDepth = 0
+				mockECFinality.Err = nil
+			},
+			wantTipSetV1: tipSetAtHeight(targetHeight),
+			wantTipSetV2: tipSetAtHeight(targetHeight),
+		},
+		{
 			name:     "height before ec finalized epoch is ok",
 			blkParam: fmt.Sprintf("0x%x", int(tipSetAtHeight(10)(t).Height())),
 			setup: func(t *testing.T) {
@@ -398,6 +471,9 @@ func TestEthAPIWithF3(t *testing.T) {
 				mockF3.Finalizing = true
 				mockF3.LatestCert = plausibleCertAt(t, f3FinalizedEpoch)
 				mockF3.LatestCertErr = nil
+				mockECFinality.FinalizedTipSet = nil
+				mockECFinality.ThresholdDepth = -1
+				mockECFinality.Err = nil
 			},
 			wantTipSetV1: tipSetAtHeight(10),
 			wantTipSetV2: tipSetAtHeight(10),

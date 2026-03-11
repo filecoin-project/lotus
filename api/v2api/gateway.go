@@ -18,6 +18,7 @@ var _ FullNode = (Gateway)(nil)
 
 type Gateway interface {
 	ChainGetTipSet(context.Context, types.TipSetSelector) (*types.TipSet, error)
+	ChainGetTipSetFinalityStatus(context.Context) (*types.FinalityStatus, error)
 	StateGetActor(context.Context, address.Address, types.TipSetSelector) (*types.Actor, error)
 	StateGetID(context.Context, address.Address, types.TipSetSelector) (*address.Address, error)
 	EthAddressToFilecoinAddress(ctx context.Context, ethAddress ethtypes.EthAddress) (address.Address, error)

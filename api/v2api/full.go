@@ -65,6 +65,16 @@ type FullNode interface {
 	//
 	ChainGetTipSet(context.Context, types.TipSetSelector) (*types.TipSet, error) //perm:read
 
+	// ChainGetTipSetFinalityStatus returns a breakdown of how the node is
+	// currently determining finality. The result includes the EC probabilistic
+	// finality depth (based on observed chain health), the F3-finalized tipset
+	// (if available), and the overall finalized tipset the node is using.
+	//
+	// Useful for monitoring chain health and diagnosing finality lag.
+	//
+	// Experimental: This API is experimental and may change without notice.
+	ChainGetTipSetFinalityStatus(context.Context) (*types.FinalityStatus, error) //perm:read
+
 	// MethodGroup: State
 	// The State method group contains methods for interacting with the Filecoin
 	// blockchain state, including actor information, addresses, and chain data.
