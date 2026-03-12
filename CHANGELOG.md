@@ -46,6 +46,7 @@ The Lotus and Lotus-Miner v1.35.0 release includes Ethereum RPC compatibility im
 - chore(tracing): update OpenTelemetry semconv from v1.7.0 to v1.39.0 ([filecoin-project/lotus#13511](https://github.com/filecoin-project/lotus/pull/13511))
 - chore(deps): replace `golang.org/x/crypto/sha3` with go-keccak, upgrade x/crypto ([filecoin-project/lotus#13477](https://github.com/filecoin-project/lotus/pull/13477))
 - chore: bump FFI to v1.34.6 ([filecoin-project/lotus#13521](https://github.com/filecoin-project/lotus/pull/13521))
+- perf: MessagePool Pending() snapshot ([filecoin-project/lotus#13542](https://github.com/filecoin-project/lotus/pull/13542))
 
 ## 📝 Changelog
 
