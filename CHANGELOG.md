@@ -20,6 +20,7 @@
 ## 👌 Improvements
 - fix(gateway): return `ErrFilterNotFound` error instead of empty result for unknown filter IDs in `EthGetFilterLogs` ([filecoin-project/lotus#13519](https://github.com/filecoin-project/lotus/pull/13519))
 - feat(basefee)!: premium-based base fee adjustment, activating in nv28 ([filecoin-project/lotus#13531](https://github.com/filecoin-project/lotus/pull/13531))
+- feat: estimate gas premium with mempool ([filecoin-project/lotus#13534](https://github.com/filecoin-project/lotus/pull/13534))
 
 # Node and Miner v1.35.0 / 2026-02-19
 
