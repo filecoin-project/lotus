@@ -2032,14 +2032,14 @@ func TestFEVMMigrationStoragePreservation(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, preStorageValue, postStorageValue, "storage slots must survive bytecode migration")
 
-	// Confirm the bytecode actually changed
-	preMigrationCode, err := client.EthGetCode(ctx, contractEthAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
+	// Confirm the bytecode now matches the source contract's bytecode
+	postCode, err := client.EthGetCode(ctx, contractEthAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 	require.NoError(t, err)
 	diffEthAddr, err := ethtypes.EthAddressFromFilecoinAddress(diffIdAddr)
 	require.NoError(t, err)
 	diffCode, err := client.EthGetCode(ctx, diffEthAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 	require.NoError(t, err)
-	require.True(t, bytes.Equal(diffCode, preMigrationCode), "bytecode should match replacement")
+	require.True(t, bytes.Equal(diffCode, postCode), "target bytecode should match source after migration")
 }
 
 // fevmBytecodeMigration encapsulates the coordination between a test and its
