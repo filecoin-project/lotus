@@ -36,6 +36,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/lf3"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -204,9 +205,23 @@ func (a *ChainAPI) ChainGetParentReceipts(ctx context.Context, bcid cid.Cid) ([]
 		return nil, err
 	}
 
-	out := make([]*types.MessageReceipt, len(receipts))
+	// FIP-0107: filter out implicit message receipts for v1 API backward
+	// compatibility. V2 receipts have a Message field; receipts for implicit
+	// messages reference system actor messages (From=f00). Only return
+	// receipts for explicit messages to maintain the v1 invariant that
+	// len(ChainGetParentReceipts) == len(ChainGetParentMessages).
+	out := make([]*types.MessageReceipt, 0, len(receipts))
 	for i := range receipts {
-		out[i] = &receipts[i]
+		if receipts[i].Version() == types.MessageReceiptV2 && receipts[i].Message != nil {
+			msg, err := a.Chain.GetMessage(ctx, *receipts[i].Message)
+			if err != nil {
+				return nil, xerrors.Errorf("loading message for receipt %d: %w", i, err)
+			}
+			if msg.From == builtin.SystemActorAddr {
+				continue
+			}
+		}
+		out = append(out, &receipts[i])
 	}
 
 	return out, nil

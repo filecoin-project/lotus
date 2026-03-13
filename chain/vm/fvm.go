@@ -429,12 +429,7 @@ func (vm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet
 
 	duration := time.Since(start)
 
-	var receipt types.MessageReceipt
-	if vm.nv >= network.Version18 {
-		receipt = types.NewMessageReceiptV1(exitcode.ExitCode(ret.ExitCode), ret.Return, ret.GasUsed, ret.EventsRoot)
-	} else {
-		receipt = types.NewMessageReceiptV0(exitcode.ExitCode(ret.ExitCode), ret.Return, ret.GasUsed)
-	}
+	receipt := vm.buildReceipt(ret, cmsg.Cid())
 
 	var aerr aerrors.ActorError
 	if ret.ExitCode != 0 {
@@ -494,12 +489,7 @@ func (vm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg *types.Message) (*
 
 	duration := time.Since(start)
 
-	var receipt types.MessageReceipt
-	if vm.nv >= network.Version18 {
-		receipt = types.NewMessageReceiptV1(exitcode.ExitCode(ret.ExitCode), ret.Return, ret.GasUsed, ret.EventsRoot)
-	} else {
-		receipt = types.NewMessageReceiptV0(exitcode.ExitCode(ret.ExitCode), ret.Return, ret.GasUsed)
-	}
+	receipt := vm.buildReceipt(ret, cmsg.Cid())
 
 	var aerr aerrors.ActorError
 	if ret.ExitCode != 0 {
@@ -532,6 +522,24 @@ func (vm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg *types.Message) (*
 	}
 
 	return applyRet, nil
+}
+
+// buildReceipt constructs a MessageReceipt from FFI return data, selecting
+// the appropriate version based on network version. V2 receipts (FIP-0107)
+// include IpldCodec and Message CID fields.
+func (vm *FVM) buildReceipt(ret *ffi.ApplyRet, msgCid cid.Cid) types.MessageReceipt {
+	if vm.nv >= network.Version28 {
+		var codecPtr *uint64
+		if ret.ReturnCodec != 0 {
+			codec := ret.ReturnCodec
+			codecPtr = &codec
+		}
+		return types.NewMessageReceiptV2(exitcode.ExitCode(ret.ExitCode), ret.Return, ret.GasUsed, ret.EventsRoot, codecPtr, &msgCid)
+	}
+	if vm.nv >= network.Version18 {
+		return types.NewMessageReceiptV1(exitcode.ExitCode(ret.ExitCode), ret.Return, ret.GasUsed, ret.EventsRoot)
+	}
+	return types.NewMessageReceiptV0(exitcode.ExitCode(ret.ExitCode), ret.Return, ret.GasUsed)
 }
 
 func (vm *FVM) Flush(ctx context.Context) (cid.Cid, error) {

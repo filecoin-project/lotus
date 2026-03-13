@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	amt4 "github.com/filecoin-project/go-amt-ipld/v4"
 	"github.com/filecoin-project/go-state-types/abi"
+	builtinactors "github.com/filecoin-project/go-state-types/builtin"
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/chain/types"
@@ -90,6 +91,15 @@ func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *typ
 	addressLookups := make(map[abi.ActorID]address.Address)
 
 	for _, em := range ems {
+		// FIP-0107: skip implicit messages (cron, reward). They are also filtered out
+		// upstream in loadExecutedMessages, but we guard here too since they have no
+		// entry in the tipset_message table. Indexing implicit events would require a
+		// DB migration (adding an `implicit` column to tipset_message) and is deferred
+		// to v2 event APIs ({Get,Subscribe}ActorEvents).
+		if em.msg.VMMessage().From == builtinactors.SystemActorAddr {
+			continue
+		}
+
 		msgCidBytes := em.msg.Cid().Bytes()
 
 		// read message id for this message cid and tipset key cid
@@ -191,22 +201,52 @@ func loadExecutedMessages(ctx context.Context, cs ChainStore, recomputeTipSetSta
 		}
 	}
 
-	if uint64(len(msgs)) != receiptsArr.Length() {
-		return nil, xerrors.Errorf("mismatching message and receipt counts (%d msgs, %d rcts)", len(msgs), receiptsArr.Length())
+	// FIP-0107: post-upgrade, receipts include implicit messages (cron, reward)
+	// so the receipt count may exceed the explicit message count. When this
+	// happens, match receipts to messages using the receipt's Message CID field.
+	if receiptsArr.Length() < uint64(len(msgs)) {
+		return nil, xerrors.Errorf("fewer receipts than messages (%d msgs, %d rcts)", len(msgs), receiptsArr.Length())
+	}
+	hasImplicitReceipts := receiptsArr.Length() > uint64(len(msgs))
+
+	// Build a map from message CID to message for post-upgrade receipt matching.
+	var msgByCid map[cid.Cid]types.ChainMsg
+	if hasImplicitReceipts {
+		msgByCid = make(map[cid.Cid]types.ChainMsg, len(msgs))
+		for _, m := range msgs {
+			msgByCid[m.Cid()] = m
+		}
 	}
 
-	ems := make([]executedMessage, len(msgs))
+	var ems []executedMessage
+	if !hasImplicitReceipts {
+		ems = make([]executedMessage, len(msgs))
+	}
 
-	for i := 0; i < len(msgs); i++ {
-		ems[i].msg = msgs[i]
-
+	receiptCount := receiptsArr.Length()
+	for i := uint64(0); i < receiptCount; i++ {
 		var rct types.MessageReceipt
-		if found, err := receiptsArr.Get(uint64(i), &rct); err != nil {
+		if found, err := receiptsArr.Get(i, &rct); err != nil {
 			return nil, xerrors.Errorf("failed to load receipt %d: %w", i, err)
 		} else if !found {
 			return nil, xerrors.Errorf("receipt %d not found", i)
 		}
-		ems[i].rct = rct
+
+		if hasImplicitReceipts {
+			if rct.Message == nil {
+				return nil, xerrors.Errorf("receipt %d has no Message CID in post-upgrade tipset", i)
+			}
+			// Match receipt to an explicit message; skip implicit messages
+			// (cron, reward) since they are not indexed.
+			if m, ok := msgByCid[*rct.Message]; ok {
+				ems = append(ems, executedMessage{msg: m, rct: rct})
+			} else {
+				continue
+			}
+		} else {
+			ems[i].msg = msgs[i]
+			ems[i].rct = rct
+		}
 
 		// no events in the receipt
 		if rct.EventsRoot == nil {

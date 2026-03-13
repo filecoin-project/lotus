@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/api"
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
@@ -18,6 +19,8 @@ var _ FullNode = (Gateway)(nil)
 
 type Gateway interface {
 	ChainGetTipSet(context.Context, types.TipSetSelector) (*types.TipSet, error)
+	ChainGetMessages(context.Context, types.TipSetSelector, *MessageOptions) ([]api.Message, error)
+	ChainGetReceipts(context.Context, types.TipSetSelector, *MessageOptions) ([]*types.MessageReceipt, error)
 	StateGetActor(context.Context, address.Address, types.TipSetSelector) (*types.Actor, error)
 	StateGetID(context.Context, address.Address, types.TipSetSelector) (*address.Address, error)
 	EthAddressToFilecoinAddress(ctx context.Context, ethAddress ethtypes.EthAddress) (address.Address, error)

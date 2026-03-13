@@ -15,6 +15,8 @@ import (
 	jsonrpc "github.com/filecoin-project/go-jsonrpc"
 	abi "github.com/filecoin-project/go-state-types/abi"
 
+	api "github.com/filecoin-project/lotus/api"
+	v2api "github.com/filecoin-project/lotus/api/v2api"
 	types "github.com/filecoin-project/lotus/chain/types"
 	ethtypes "github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
@@ -40,6 +42,36 @@ func NewMockFullNode(ctrl *gomock.Controller) *MockFullNode {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockFullNode) EXPECT() *MockFullNodeMockRecorder {
 	return m.recorder
+}
+
+// ChainGetMessages mocks base method.
+func (m *MockFullNode) ChainGetMessages(arg0 context.Context, arg1 types.TipSetSelector, arg2 *v2api.MessageOptions) ([]api.Message, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ChainGetMessages", arg0, arg1, arg2)
+	ret0, _ := ret[0].([]api.Message)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ChainGetMessages indicates an expected call of ChainGetMessages.
+func (mr *MockFullNodeMockRecorder) ChainGetMessages(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainGetMessages", reflect.TypeOf((*MockFullNode)(nil).ChainGetMessages), arg0, arg1, arg2)
+}
+
+// ChainGetReceipts mocks base method.
+func (m *MockFullNode) ChainGetReceipts(arg0 context.Context, arg1 types.TipSetSelector, arg2 *v2api.MessageOptions) ([]*types.MessageReceipt, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ChainGetReceipts", arg0, arg1, arg2)
+	ret0, _ := ret[0].([]*types.MessageReceipt)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ChainGetReceipts indicates an expected call of ChainGetReceipts.
+func (mr *MockFullNodeMockRecorder) ChainGetReceipts(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainGetReceipts", reflect.TypeOf((*MockFullNode)(nil).ChainGetReceipts), arg0, arg1, arg2)
 }
 
 // ChainGetTipSet mocks base method.
