@@ -69,7 +69,7 @@ Displays a table of reorg probabilities at various depths for the current chain,
 
 ## How EC probabilistic finality works
 
-The EC calculator examines recent chain history (block counts per epoch over the last 900 epochs) and computes an upper bound on the probability that an adversary controlling up to 30% of mining power could build a longer fork that replaces a confirmed tipset. The algorithm is specified in [FRC-0089](https://github.com/filecoin-project/FIPs/blob/master/FRCs/frc-0089.md).
+The EC calculator examines recent chain history (block counts per epoch over the last 900 epochs) and computes an upper bound on the probability that an adversary controlling up to 30% of mining power could build a longer fork that replaces a confirmed tipset. The algorithm is specified in [FRC-0089](https://github.com/filecoin-project/FIPs/blob/master/FRCs/frc-0089.md), with formal proofs and evaluation in ["The Finality Calculator: Analyzing and Quantifying Filecoin's Finality Guarantees"](https://arxiv.org/abs/2603.01307) (Goren & Soares, 2026).
 
 Key factors that affect the threshold depth:
 
