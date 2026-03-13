@@ -26,6 +26,8 @@ type FullNodeStruct struct {
 type FullNodeMethods struct {
 	ChainGetTipSet func(p0 context.Context, p1 types.TipSetSelector) (*types.TipSet, error) `perm:"read"`
 
+	ChainGetTipSetFinalityStatus func(p0 context.Context) (*types.FinalityStatus, error) `perm:"read"`
+
 	EthAccounts func(p0 context.Context) ([]ethtypes.EthAddress, error) `perm:"read"`
 
 	EthAddressToFilecoinAddress func(p0 context.Context, p1 ethtypes.EthAddress) (address.Address, error) `perm:"read"`
@@ -136,6 +138,8 @@ type GatewayStruct struct {
 
 type GatewayMethods struct {
 	ChainGetTipSet func(p0 context.Context, p1 types.TipSetSelector) (*types.TipSet, error) ``
+
+	ChainGetTipSetFinalityStatus func(p0 context.Context) (*types.FinalityStatus, error) ``
 
 	Discover func(p0 context.Context) (apitypes.OpenRPCDocument, error) ``
 
@@ -251,6 +255,17 @@ func (s *FullNodeStruct) ChainGetTipSet(p0 context.Context, p1 types.TipSetSelec
 }
 
 func (s *FullNodeStub) ChainGetTipSet(p0 context.Context, p1 types.TipSetSelector) (*types.TipSet, error) {
+	return nil, ErrNotSupported
+}
+
+func (s *FullNodeStruct) ChainGetTipSetFinalityStatus(p0 context.Context) (*types.FinalityStatus, error) {
+	if s.Internal.ChainGetTipSetFinalityStatus == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.ChainGetTipSetFinalityStatus(p0)
+}
+
+func (s *FullNodeStub) ChainGetTipSetFinalityStatus(p0 context.Context) (*types.FinalityStatus, error) {
 	return nil, ErrNotSupported
 }
 
@@ -812,6 +827,17 @@ func (s *GatewayStruct) ChainGetTipSet(p0 context.Context, p1 types.TipSetSelect
 }
 
 func (s *GatewayStub) ChainGetTipSet(p0 context.Context, p1 types.TipSetSelector) (*types.TipSet, error) {
+	return nil, ErrNotSupported
+}
+
+func (s *GatewayStruct) ChainGetTipSetFinalityStatus(p0 context.Context) (*types.FinalityStatus, error) {
+	if s.Internal.ChainGetTipSetFinalityStatus == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.ChainGetTipSetFinalityStatus(p0)
+}
+
+func (s *GatewayStub) ChainGetTipSetFinalityStatus(p0 context.Context) (*types.FinalityStatus, error) {
 	return nil, ErrNotSupported
 }
 
