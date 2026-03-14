@@ -357,10 +357,16 @@ func matchFilterCriteria(trace *ethtypes.EthTraceBlock, fromDecodedAddresses []e
 		}
 
 		if result.Address == nil {
-			return false, xerrors.New("address is nil in create trace result")
+			// Failed contract creations have no result address. If the filter
+			// requires a specific toAddress, this trace cannot match.
+			if len(toDecodedAddresses) > 0 {
+				return false, nil
+			}
+			// No toAddress filter; include trace with a zero address as "to".
+			traceTo = ethtypes.EthAddress{}
+		} else {
+			traceTo = *result.Address
 		}
-
-		traceTo = *result.Address
 		traceFrom = action.From
 	default:
 		return false, xerrors.Errorf("invalid trace type: %s", trace.Type)
