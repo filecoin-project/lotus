@@ -129,6 +129,8 @@ type ChainStore struct {
 
 	storeEvents bool
 
+	fip0115BaseFeeHeight abi.ChainEpoch
+
 	cancelFn context.CancelFunc
 	wg       sync.WaitGroup
 }
@@ -156,6 +158,7 @@ func NewChainStore(chainBs bstore.Blockstore, stateBs bstore.Blockstore, ds dsto
 		tsCache:              tsc,
 		cancelFn:             cancel,
 		journal:              j,
+		fip0115BaseFeeHeight: -1,
 	}
 
 	cs.evtTypes = [1]journal.EventType{
@@ -1327,6 +1330,12 @@ func (cs *ChainStore) StoreEvents(store bool) {
 // IsStoringEvents indicates if this ChainStore is storing events.
 func (cs *ChainStore) IsStoringEvents() bool {
 	return cs.storeEvents
+}
+
+// SetFIP0115Height sets the epoch at which FIP-0115 base fee calculation activates.
+// A value of -1 disables it.
+func (cs *ChainStore) SetFIP0115Height(height int64) {
+	cs.fip0115BaseFeeHeight = abi.ChainEpoch(height)
 }
 
 // true if ts1 wins according to the filecoin tie-break rule
