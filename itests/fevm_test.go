@@ -12,13 +12,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
+	"github.com/filecoin-project/go-keccak"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
+	evm18 "github.com/filecoin-project/go-state-types/builtin/v18/evm"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/go-state-types/network"
@@ -27,6 +31,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
+	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -1905,4 +1910,250 @@ func TestFEVMTestBLS(t *testing.T) {
 			require.NoError(t, err)
 		})
 	}
+}
+
+// TestFEVMMigrationBytecodeSwap demonstrates that FEVM contract bytecode
+// can be replaced in a network upgrade migration
+func TestFEVMMigrationBytecodeSwap(t *testing.T) {
+	upgradeHeight := abi.ChainEpoch(100)
+	migration := newFEVMBytecodeMigration(t)
+
+	ctx, cancel, client := kit.SetupFEVMTest(t, kit.UpgradeSchedule(
+		stmgr.Upgrade{Network: network.Version28, Height: -1},
+		stmgr.Upgrade{Network: network.Version28, Height: upgradeHeight, Migration: migration.fn},
+	))
+	defer cancel()
+
+	fromAddr := client.DefaultKey.Address
+
+	// Deploy SimpleCoin contract and verify it works
+	_, contractIdAddr := client.EVM().DeployContractFromFilename(ctx, "contracts/SimpleCoin.hex")
+	inputData := inputDataFromFrom(ctx, t, client, fromAddr)
+	result, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractIdAddr, "getBalance(address)", inputData)
+	require.NoError(t, err)
+	balance, err := decodeOutputToUint64(result)
+	require.NoError(t, err)
+	require.Equal(t, uint64(10000), balance)
+
+	// Record the pre-migration bytecode
+	contractEthAddr, err := ethtypes.EthAddressFromFilecoinAddress(contractIdAddr)
+	require.NoError(t, err)
+	preMigrationCode, err := client.EthGetCode(ctx, contractEthAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
+	require.NoError(t, err)
+	require.NotEmpty(t, preMigrationCode)
+
+	// Deploy GetDifficulty (the replacement bytecode source) and read its
+	// deployed runtime bytecode for post-migration comparison
+	_, diffIdAddr := client.EVM().DeployContractFromFilename(ctx, "contracts/GetDifficulty.hex")
+	diffEthAddr, err := ethtypes.EthAddressFromFilecoinAddress(diffIdAddr)
+	require.NoError(t, err)
+	diffCode, err := client.EthGetCode(ctx, diffEthAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
+	require.NoError(t, err)
+	require.NotEmpty(t, diffCode)
+
+	// Signal the migration with target and source addresses
+	head, err := client.ChainHead(ctx)
+	require.NoError(t, err)
+	require.True(t, head.Height() < upgradeHeight, "chain already past upgrade height %d", upgradeHeight)
+	migration.signal(contractIdAddr, diffIdAddr)
+
+	// Wait for the migration to execute
+	client.WaitTillChain(ctx, kit.HeightAtLeast(upgradeHeight+5))
+
+	// Verify bytecode was replaced
+	postMigrationCode, err := client.EthGetCode(ctx, contractEthAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
+	require.NoError(t, err)
+	require.NotEmpty(t, postMigrationCode)
+	require.False(t, bytes.Equal(preMigrationCode, postMigrationCode), "bytecode should have changed")
+	require.True(t, bytes.Equal(diffCode, postMigrationCode), "bytecode should match GetDifficulty")
+
+	// Verify the new bytecode is functional: getDifficulty() should work on
+	// the contract that was originally SimpleCoin
+	result, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractIdAddr, "getDifficulty()", nil)
+	require.NoError(t, err)
+	_, err = decodeOutputToUint64(result)
+	require.NoError(t, err)
+
+	// Verify the source contract is unaffected
+	_, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, diffIdAddr, "getDifficulty()", nil)
+	require.NoError(t, err)
+}
+
+// TestFEVMMigrationStoragePreservation verifies that contract storage slots
+// survive a bytecode migration. Deploys SimpleCoin (which sets deployer balance
+// to 10000 in the constructor), swaps its bytecode to GetDifficulty via
+// migration, then confirms the original storage slot value is still readable
+// via EthGetStorageAt.
+func TestFEVMMigrationStoragePreservation(t *testing.T) {
+	upgradeHeight := abi.ChainEpoch(100)
+	migration := newFEVMBytecodeMigration(t)
+
+	ctx, cancel, client := kit.SetupFEVMTest(t, kit.UpgradeSchedule(
+		stmgr.Upgrade{Network: network.Version28, Height: -1},
+		stmgr.Upgrade{Network: network.Version28, Height: upgradeHeight, Migration: migration.fn},
+	))
+	defer cancel()
+
+	fromAddr := client.DefaultKey.Address
+
+	// Deploy SimpleCoin
+	_, contractIdAddr := client.EVM().DeployContractFromFilename(ctx, "contracts/SimpleCoin.hex")
+	contractEthAddr, err := ethtypes.EthAddressFromFilecoinAddress(contractIdAddr)
+	require.NoError(t, err)
+
+	// Compute the storage key for balances[deployer]. SimpleCoin uses
+	// tx.origin in the constructor, so the key is the deployer's ID-based
+	// eth address. Solidity stores mapping(address => uint256) at slot 0 as
+	// keccak256(abi.encode(address, uint256(0))).
+	fromId, err := client.StateLookupID(ctx, fromAddr, types.EmptyTSK)
+	require.NoError(t, err)
+	deployerEthAddr, err := ethtypes.EthAddressFromFilecoinAddress(fromId)
+	require.NoError(t, err)
+	storageKey := computeSolidityMappingKey(deployerEthAddr, 0)
+
+	// Verify storage contains the expected balance (10000 = 0x2710)
+	preStorageValue, err := client.EthGetStorageAt(ctx, contractEthAddr, storageKey, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
+	require.NoError(t, err)
+	require.Equal(t, "0000000000000000000000000000000000000000000000000000000000002710",
+		hex.EncodeToString(preStorageValue), "deployer balance should be 10000")
+
+	// Deploy GetDifficulty as the replacement bytecode source
+	_, diffIdAddr := client.EVM().DeployContractFromFilename(ctx, "contracts/GetDifficulty.hex")
+
+	// Signal the migration and wait
+	head, err := client.ChainHead(ctx)
+	require.NoError(t, err)
+	require.True(t, head.Height() < upgradeHeight, "chain already past upgrade height %d", upgradeHeight)
+	migration.signal(contractIdAddr, diffIdAddr)
+	client.WaitTillChain(ctx, kit.HeightAtLeast(upgradeHeight+5))
+
+	// Storage slots should be preserved even though bytecode changed
+	postStorageValue, err := client.EthGetStorageAt(ctx, contractEthAddr, storageKey, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
+	require.NoError(t, err)
+	require.Equal(t, preStorageValue, postStorageValue, "storage slots must survive bytecode migration")
+
+	// Confirm the bytecode now matches the source contract's bytecode
+	postCode, err := client.EthGetCode(ctx, contractEthAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
+	require.NoError(t, err)
+	diffEthAddr, err := ethtypes.EthAddressFromFilecoinAddress(diffIdAddr)
+	require.NoError(t, err)
+	diffCode, err := client.EthGetCode(ctx, diffEthAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
+	require.NoError(t, err)
+	require.True(t, bytes.Equal(diffCode, postCode), "target bytecode should match source after migration")
+}
+
+// fevmBytecodeMigration encapsulates the coordination between a test and its
+// migration function. The test deploys contracts, then calls signal() to tell
+// the migration which actor to target and where to source the replacement
+// bytecode from. The migration blocks until signal() is called.
+type fevmBytecodeMigration struct {
+	fn         stmgr.MigrationFunc
+	targetAddr address.Address
+	sourceAddr address.Address
+	ready      chan struct{}
+}
+
+func newFEVMBytecodeMigration(t *testing.T) *fevmBytecodeMigration {
+	m := &fevmBytecodeMigration{
+		ready: make(chan struct{}),
+	}
+	m.fn = m.makeMigrationFunc(t)
+	return m
+}
+
+func (m *fevmBytecodeMigration) signal(target, source address.Address) {
+	m.targetAddr = target
+	m.sourceAddr = source
+	close(m.ready)
+}
+
+// makeMigrationFunc returns a MigrationFunc that copies the bytecode CID and
+// hash from one EVM actor to another in the state tree.
+//
+// The bytecode block already exists in the blockstore (placed there by FVM
+// when the source contract was deployed), so no new blocks need to be written,
+// just the state pointers are updated. The target's ContractState KAMT
+// (storage slots) is deliberately left untouched, demonstrating that storage
+// survives the bytecode swap.
+func (m *fevmBytecodeMigration) makeMigrationFunc(t *testing.T) stmgr.MigrationFunc {
+	return func(
+		ctx context.Context,
+		sm *stmgr.StateManager,
+		cache stmgr.MigrationCache,
+		cb stmgr.ExecMonitor,
+		root cid.Cid,
+		height abi.ChainEpoch,
+		ts *types.TipSet,
+	) (cid.Cid, error) {
+		select {
+		case <-m.ready:
+		case <-ctx.Done():
+			return cid.Undef, ctx.Err()
+		}
+
+		t.Logf("migration: copying bytecode from %s to %s at height %d",
+			m.sourceAddr, m.targetAddr, height)
+
+		adtStore := store.ActorStore(ctx, sm.ChainStore().StateBlockstore())
+		cborStore := cbor.NewCborStore(sm.ChainStore().StateBlockstore())
+		stateTree, err := state.LoadStateTree(cborStore, root)
+		if err != nil {
+			return cid.Undef, err
+		}
+
+		// Read the source actor's bytecode CID and hash
+		sourceAct, err := stateTree.GetActor(m.sourceAddr)
+		if err != nil {
+			return cid.Undef, err
+		}
+		var sourceState evm18.State
+		if err := adtStore.Get(ctx, sourceAct.Head, &sourceState); err != nil {
+			return cid.Undef, err
+		}
+
+		// Read the target actor's state
+		targetAct, err := stateTree.GetActor(m.targetAddr)
+		if err != nil {
+			return cid.Undef, err
+		}
+		var targetState evm18.State
+		if err := adtStore.Get(ctx, targetAct.Head, &targetState); err != nil {
+			return cid.Undef, err
+		}
+
+		t.Logf("migration: old bytecode CID = %s", targetState.Bytecode)
+		t.Logf("migration: new bytecode CID = %s (from source)", sourceState.Bytecode)
+
+		// Swap the bytecode pointer and hash; leave ContractState untouched
+		targetState.Bytecode = sourceState.Bytecode
+		targetState.BytecodeHash = sourceState.BytecodeHash
+
+		// Persist the modified state
+		newHead, err := adtStore.Put(ctx, &targetState)
+		if err != nil {
+			return cid.Undef, err
+		}
+		targetAct.Head = newHead
+
+		if err := stateTree.SetActor(m.targetAddr, targetAct); err != nil {
+			return cid.Undef, err
+		}
+
+		return stateTree.Flush(ctx)
+	}
+}
+
+// computeSolidityMappingKey computes the storage key for a Solidity mapping
+// entry: keccak256(abi.encode(key, slot)). This is the standard storage layout
+// for mapping(address => T) at the given slot position. Only handles slots
+// that fit in a single byte (0-255).
+func computeSolidityMappingKey(addr ethtypes.EthAddress, slot byte) ethtypes.EthBytes {
+	// abi.encode(address, uint256): 32-byte padded address + 32-byte padded slot
+	data := make([]byte, 64)
+	copy(data[12:32], addr[:])
+	data[63] = slot
+
+	hasher := keccak.NewLegacyKeccak256()
+	hasher.Write(data)
+	return hasher.Sum(nil)
 }
