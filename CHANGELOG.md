@@ -17,6 +17,10 @@
 
 - feat(shed): add `lotus-shed finality-calculator` for EC finality probability computation per [FRC-0089](https://github.com/filecoin-project/FIPs/blob/master/FRCs/frc-0089.md) ([filecoin-project/lotus#12093](https://github.com/filecoin-project/lotus/pull/12093))
 
+## 🐛 Bug Fixes
+
+- fix(test): prevent TestDailyFees from overshooting second proving window ([filecoin-project/lotus#13551](https://github.com/filecoin-project/lotus/pull/13551))
+
 ## 👌 Improvements
 - fix(gateway): return `ErrFilterNotFound` error instead of empty result for unknown filter IDs in `EthGetFilterLogs` ([filecoin-project/lotus#13519](https://github.com/filecoin-project/lotus/pull/13519))
 - feat(basefee)!: premium-based base fee adjustment, activating in nv28 ([filecoin-project/lotus#13531](https://github.com/filecoin-project/lotus/pull/13531))
