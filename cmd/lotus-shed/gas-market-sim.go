@@ -63,6 +63,11 @@ var gasMktSimCmd = &cli.Command{
 			Name:  "legacy-premium",
 			Usage: "use pre-FIP-0115 gas premium estimate based on historical included-message premiums",
 		},
+		&cli.StringFlag{
+			Name:  "base-fee-update",
+			Usage: "base fee update mechanism: 'premium' (FIP-0115 percentile) or 'utilization' (legacy)",
+			Value: "premium",
+		},
 	},
 	Action: runGasMktSim,
 }
@@ -333,6 +338,7 @@ func runGasMktSim(cctx *cli.Context) error {
 	startBaseFee := big.NewInt(cctx.Int64("base-fee"))
 	flatPremium := cctx.Bool("flat-premium")
 	legacyPremium := cctx.Bool("legacy-premium")
+	baseFeeUpdate := cctx.String("base-fee-update")
 
 	bgl := buildconstants.BlockGasLimit
 	// Mean gas per tx from simSampleGasLimit is bgl/10, so txs = gasPerEpoch * 10.
@@ -450,8 +456,17 @@ func runGasMktSim(cctx *cli.Context) error {
 			}
 		}
 
-		percentilePremium := store.WeightedQuickSelect(tipPremiums, tipLimits, buildconstants.BlockGasTargetIndex)
-		baseFee = store.NextBaseFeeFromPremium(baseFee, percentilePremium)
+		switch baseFeeUpdate {
+		case "utilization":
+			var tipGasUsedForUpdate int64
+			for _, l := range tipLimits {
+				tipGasUsedForUpdate += l
+			}
+			baseFee = store.ComputeNextBaseFee(baseFee, tipGasUsedForUpdate, 5, buildconstants.UpgradeXxHeight-1)
+		default: // "premium"
+			percentilePremium := store.WeightedQuickSelect(tipPremiums, tipLimits, buildconstants.BlockGasTargetIndex)
+			baseFee = store.NextBaseFeeFromPremium(baseFee, percentilePremium)
+		}
 
 		// Record raw premiums of included messages into the circular epoch history buffer.
 		ed := &epochHistory[epoch%20]
