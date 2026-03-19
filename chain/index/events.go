@@ -161,13 +161,13 @@ func loadExecutedMessages(ctx context.Context, cs ChainStore, recomputeTipSetSta
 	st := cs.ActorStore(ctx)
 
 	var recomputed bool
-	recompute := func() error {
+	recompute := func(loadErr error) error {
 		tskCid, err2 := rctTs.Key().Cid()
 		if err2 != nil {
 			return xerrors.Errorf("failed to compute tipset key cid: %w", err2)
 		}
 
-		log.Warnf("failed to load receipts for tipset %s (height %d): %s; recomputing tipset state", tskCid.String(), rctTs.Height(), err.Error())
+		log.Warnf("failed to load receipts for tipset %s (height %d): %s; recomputing tipset state", tskCid.String(), rctTs.Height(), loadErr.Error())
 		if err := recomputeTipSetStateFunc(ctx, msgTs); err != nil {
 			return xerrors.Errorf("failed to recompute tipset state: %w", err)
 		}
@@ -181,7 +181,7 @@ func loadExecutedMessages(ctx context.Context, cs ChainStore, recomputeTipSetSta
 			return nil, xerrors.Errorf("failed to load message receipts: %w", err)
 		}
 
-		if err := recompute(); err != nil {
+		if err := recompute(err); err != nil {
 			return nil, err
 		}
 		recomputed = true
@@ -219,7 +219,7 @@ func loadExecutedMessages(ctx context.Context, cs ChainStore, recomputeTipSetSta
 				return nil, xerrors.Errorf("failed to load events root for message %s: err: %w", ems[i].msg.Cid(), err)
 			}
 			// we may have the receipts but not the events, IsStoringEvents may have been false
-			if err := recompute(); err != nil {
+			if err := recompute(err); err != nil {
 				return nil, err
 			}
 			eventsArr, err = amt4.LoadAMT(ctx, st, *rct.EventsRoot, amt4.UseTreeBitWidth(types.EventAMTBitwidth))
@@ -400,6 +400,10 @@ func (si *SqliteIndexer) getTipsetKeyCidByHeight(ctx context.Context, height abi
 // Returns nil, ErrNotFound if the filter has no matching events and the tipset is not indexed
 // Returns nil, err for all other errors
 func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter) ([]*CollectedEvent, error) {
+	if si.needsBackfill {
+		return nil, ErrBackfillRequired
+	}
+
 	getEventsFnc := func(stmt *sql.Stmt, values []any) ([]*CollectedEvent, error) {
 		q, err := stmt.QueryContext(ctx, values...)
 		if err != nil {

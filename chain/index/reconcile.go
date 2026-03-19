@@ -73,6 +73,7 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, head *types.Tip
 		// we only need to walk back as far as the reconciliation epoch as all the tipsets in the index
 		// below the reconciliation epoch are already marked as reverted because the reconciliation epoch
 		// is the minimum non-reverted height in the index
+		epochsWalked := abi.ChainEpoch(0)
 		for currTs != nil && currTs.Height() >= reconciliationEpoch {
 			tsKeyCidBytes, err := toTipsetKeyCidBytes(currTs)
 			if err != nil {
@@ -90,6 +91,13 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, head *types.Tip
 				reconciliationEpoch = currTs.Height() + 1
 				log.Infof("found matching tipset at height %d, setting reconciliation epoch to %d", currTs.Height(), reconciliationEpoch)
 				break
+			}
+
+			epochsWalked++
+			if si.maxReconcileTipsets > 0 && uint64(epochsWalked) > si.maxReconcileTipsets {
+				return xerrors.Errorf("gap between chain index and chain head is too large (walked %d epochs without "+
+					"finding a matching tipset, MaxReconcileTipsets is %d): %w",
+					epochsWalked, si.maxReconcileTipsets, ErrBackfillRequired)
 			}
 
 			if currTs.Height() == 0 {

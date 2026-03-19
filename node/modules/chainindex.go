@@ -2,6 +2,7 @@ package modules
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 
 	"go.uber.org/fx"
@@ -98,12 +99,20 @@ func InitChainIndexer(cfg config.ChainIndexerConfig) func(lc fx.Lifecycle, mctx 
 				}
 				if err := indexer.ReconcileWithChain(ctx, head); err != nil {
 					unlockObserver()
-					if !cfg.AllowIndexReconciliationFailure {
+					if errors.Is(err, index.ErrBackfillRequired) {
+						log.Errorf("chain index is too far behind chain head and requires a backfill: %s", err)
+						log.Error("the chain index will not serve queries until it is backfilled; use ChainValidateIndex with backfill=true to repair the index")
+						if si, ok := indexer.(*index.SqliteIndexer); ok {
+							si.SetBackfillRequired()
+						}
+					} else if !cfg.AllowIndexReconciliationFailure {
 						return xerrors.Errorf("error while reconciling chain index with chain state: %w", err)
+					} else {
+						log.Warnf("error while reconciling chain index with chain state: %s", err)
 					}
-					log.Warnf("error while reconciling chain index with chain state: %s", err)
+				} else {
+					unlockObserver()
 				}
-				unlockObserver()
 
 				indexer.Start()
 

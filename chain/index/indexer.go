@@ -80,7 +80,8 @@ type SqliteIndexer struct {
 	updateSubs   map[uint64]*updateSub
 	subIdCounter uint64
 
-	started bool
+	started       bool
+	needsBackfill bool
 
 	// ensures writes are serialized so backfilling does not race with index updates
 	writerLk sync.Mutex
@@ -137,6 +138,10 @@ func (si *SqliteIndexer) Start() {
 	go si.gcLoop()
 
 	si.started = true
+}
+
+func (si *SqliteIndexer) SetBackfillRequired() {
+	si.needsBackfill = true
 }
 
 func (si *SqliteIndexer) SetActorToDelegatedAddresFunc(actorToDelegatedAddresFunc ActorToDelegatedAddressFunc) {

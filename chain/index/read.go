@@ -19,6 +19,9 @@ func (si *SqliteIndexer) GetCidFromHash(ctx context.Context, txHash ethtypes.Eth
 	if si.isClosed() {
 		return cid.Undef, ErrClosed
 	}
+	if si.needsBackfill {
+		return cid.Undef, ErrBackfillRequired
+	}
 
 	var msgCidBytes []byte
 
@@ -43,6 +46,9 @@ func (si *SqliteIndexer) queryMsgCidFromEthHash(ctx context.Context, txHash etht
 func (si *SqliteIndexer) GetMsgInfo(ctx context.Context, messageCid cid.Cid) (*MsgInfo, error) {
 	if si.isClosed() {
 		return nil, ErrClosed
+	}
+	if si.needsBackfill {
+		return nil, ErrBackfillRequired
 	}
 
 	var tipsetKeyCidBytes []byte
