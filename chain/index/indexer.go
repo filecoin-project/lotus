@@ -140,10 +140,6 @@ func (si *SqliteIndexer) Start() {
 	si.started = true
 }
 
-func (si *SqliteIndexer) SetBackfillRequired() {
-	si.needsBackfill = true
-}
-
 func (si *SqliteIndexer) SetActorToDelegatedAddresFunc(actorToDelegatedAddresFunc ActorToDelegatedAddressFunc) {
 	si.actorToDelegatedAddresFunc = actorToDelegatedAddresFunc
 }

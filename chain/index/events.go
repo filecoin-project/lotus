@@ -398,6 +398,7 @@ func (si *SqliteIndexer) getTipsetKeyCidByHeight(ctx context.Context, height abi
 // GetEventsForFilter returns matching events for the given filter
 // Returns nil, nil if the filter has no matching events
 // Returns nil, ErrNotFound if the filter has no matching events and the tipset is not indexed
+// Returns nil, ErrBackfillRequired if the index is in degraded mode and requires a backfill
 // Returns nil, err for all other errors
 func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter) ([]*CollectedEvent, error) {
 	if si.needsBackfill {

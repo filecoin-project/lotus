@@ -94,9 +94,13 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, head *types.Tip
 			}
 
 			epochsWalked++
-			if si.maxReconcileTipsets > 0 && uint64(epochsWalked) > si.maxReconcileTipsets {
+			if si.maxReconcileTipsets > 0 && uint64(epochsWalked) >= si.maxReconcileTipsets {
+				si.needsBackfill = true
 				return xerrors.Errorf("gap between chain index and chain head is too large (walked %d epochs without "+
-					"finding a matching tipset, MaxReconcileTipsets is %d): %w",
+					"finding a matching tipset, MaxReconcileTipsets is %d); to start the node in a degraded mode and "+
+					"backfill the index, set AllowIndexReconciliationFailure to true in the [ChainIndexer] config, "+
+					"then use 'lotus index validate-backfill' (or the ChainValidateIndex RPC) to repair the index "+
+					"and restart: %w",
 					epochsWalked, si.maxReconcileTipsets, ErrBackfillRequired)
 			}
 
@@ -150,6 +154,7 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, head *types.Tip
 
 		return nil
 	})
+
 }
 
 func (si *SqliteIndexer) getReconciliationEpoch(ctx context.Context, tx *sql.Tx) (abi.ChainEpoch, error) {
