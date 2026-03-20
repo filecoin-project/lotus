@@ -12,9 +12,9 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-// Provider is the interface for EC finality queries, implemented by
-// ECFinalityCache for production and by mocks for testing.
-type Provider interface {
+// ECFinalityCalculator is the interface for EC finality queries, implemented
+// by ECFinalityCache for production and by mocks for testing.
+type ECFinalityCalculator interface {
 	GetStatus(ctx context.Context) (*ECFinalityStatus, error)
 	GetFinalizedTipSet(ctx context.Context) (*types.TipSet, error)
 }

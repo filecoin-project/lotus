@@ -168,10 +168,10 @@ var ChainNode = Options(
 		Override(new(messagepool.MpoolNonceAPI), From(new(*messagepool.MessagePool))),
 		Override(new(full.ChainModuleAPI), From(new(full.ChainModule))),
 		Override(new(full.ChainModuleAPIv2), From(new(full.ChainModuleV2))),
-		Override(new(ecfinality.Provider), func(cs *store.ChainStore) ecfinality.Provider {
+		Override(new(ecfinality.ECFinalityCalculator), func(cs *store.ChainStore) ecfinality.ECFinalityCalculator {
 			return ecfinality.NewECFinalityCache(cs, int(policy.ChainFinality))
 		}),
-		Override(new(eth.ECFinalityProvider), From(new(ecfinality.Provider))),
+		Override(new(eth.ECFinalityProvider), From(new(ecfinality.ECFinalityCalculator))),
 		Override(new(full.GasModuleAPI), From(new(full.GasModule))),
 		Override(new(full.MpoolModuleAPI), From(new(full.MpoolModule))),
 		Override(new(full.StateModuleAPI), From(new(full.StateModule))),

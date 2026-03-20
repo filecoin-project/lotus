@@ -121,7 +121,7 @@ var DefaultNodeOpts = nodeOpts{
 	// Tests that need EC finality can use ECFinalityProvider() to inject a
 	// mock with controlled values.
 	extraNodeOpts: []node.Option{
-		node.Override(new(ecfinality.Provider), func() ecfinality.Provider { return nil }),
+		node.Override(new(ecfinality.ECFinalityCalculator), func() ecfinality.ECFinalityCalculator { return nil }),
 		node.Override(new(eth.ECFinalityProvider), func() eth.ECFinalityProvider { return nil }),
 	},
 }

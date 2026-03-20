@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/lotus/node/impl/eth"
 )
 
-// MockECFinalityProvider satisfies ecfinality.Provider (for ChainModuleV2) and
+// MockECFinalityProvider satisfies ecfinality.ECFinalityCalculator (for ChainModuleV2) and
 // eth.ECFinalityProvider (for tipSetResolver), allowing tests to control the
 // EC finality calculator response without the additional cost of running the
 // FRC-0089 calculator across 905 tipsets on every head change when the block
@@ -47,7 +47,7 @@ func (m *MockECFinalityProvider) GetStatus(_ context.Context) (*ecfinality.ECFin
 }
 
 var (
-	_ ecfinality.Provider    = (*MockECFinalityProvider)(nil)
+	_ ecfinality.ECFinalityCalculator = (*MockECFinalityProvider)(nil)
 	_ eth.ECFinalityProvider = (*MockECFinalityProvider)(nil)
 )
 
@@ -56,7 +56,7 @@ var (
 // 905 tipsets on every head change.
 func ECFinalityProvider(provider *MockECFinalityProvider) NodeOpt {
 	return ConstructorOpts(
-		node.Override(new(ecfinality.Provider), provider),
+		node.Override(new(ecfinality.ECFinalityCalculator), provider),
 		node.Override(new(eth.ECFinalityProvider), provider),
 	)
 }
