@@ -458,6 +458,9 @@ func runGasMktSim(cctx *cli.Context) error {
 	var totalGasUsed int64
 	var submitted1, submitted2, submitted10 int
 	var everLate1, everLate2, everLate10 int
+	// gas-weighted sum of effective priority fee at confirmation time, per nblocksincl cohort
+	var confirmedPremiumGas1, confirmedPremiumGas2, confirmedPremiumGas10 float64
+	var confirmedGas1, confirmedGas2, confirmedGas10 float64
 	epochHistory := make([]simEpochData, 20) // circular buffer; slot = epoch % 20
 
 	for epoch := 0; epoch < epochs; epoch++ {
@@ -590,6 +593,19 @@ func runGasMktSim(cctx *cli.Context) error {
 						everLate10++
 					}
 				}
+				ep := float64(effPremiums[i].Int64())
+				gl := float64(m.Message.GasLimit)
+				switch nblocksincls[i] {
+				case 1:
+					confirmedPremiumGas1 += ep * gl
+					confirmedGas1 += gl
+				case 2:
+					confirmedPremiumGas2 += ep * gl
+					confirmedGas2 += gl
+				default:
+					confirmedPremiumGas10 += ep * gl
+					confirmedGas10 += gl
+				}
 			} else {
 				mempool[j] = m
 				deadlines[j] = deadlines[i]
@@ -672,6 +688,12 @@ func runGasMktSim(cctx *cli.Context) error {
 		}
 		return float64(n) / float64(d) * 100
 	}
+	avgPremium := func(premiumGas, gas float64) float64 {
+		if gas == 0 {
+			return 0
+		}
+		return premiumGas / gas
+	}
 	fmt.Printf("=== SUMMARY: total gas used %d / %d (%.1f%%)  ever-late=%d/%d (%.1f%%)  (nb1=%d/%d %.1f%%  nb2=%d/%d %.1f%%  nb10=%d/%d %.1f%%)\n",
 		totalGasUsed, totalGasLimit,
 		float64(totalGasUsed)/float64(totalGasLimit)*100,
@@ -679,6 +701,10 @@ func runGasMktSim(cctx *cli.Context) error {
 		everLate1, submitted1, pct(everLate1, submitted1),
 		everLate2, submitted2, pct(everLate2, submitted2),
 		everLate10, submitted10, pct(everLate10, submitted10))
+	fmt.Printf("=== AVG PRIORITY FEE/GAS (confirmed only): nb1=%.2f  nb2=%.2f  nb10=%.2f\n",
+		avgPremium(confirmedPremiumGas1, confirmedGas1),
+		avgPremium(confirmedPremiumGas2, confirmedGas2),
+		avgPremium(confirmedPremiumGas10, confirmedGas10))
 
 	return nil
 }
