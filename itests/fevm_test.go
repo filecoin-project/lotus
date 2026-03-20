@@ -1833,6 +1833,71 @@ func TestFEVMEamCreateTwiceFail(t *testing.T) {
 	req.Contains(traces[2].EthTrace.Error, "ErrForbidden")
 }
 
+func TestFEVMEthTraceFilterFailedCreate(t *testing.T) {
+	// Test that EthTraceFilter handles failed contract creations (nil result address)
+	// without erroring.
+	// The DuplicateCreate2Error contract performs two CREATE2 calls with the same salt.
+	// The first succeeds (creates an address), the second fails with ErrForbidden
+	// (nil result address). The whole transaction reverts, so both create traces end
+	// up with nil addresses. EthTraceFilter must handle this case when filtering by
+	// toAddress without returning an error.
+
+	req := require.New(t)
+
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	filenameActor := "contracts/DuplicateCreate2Error.hex"
+	fromAddr, actorAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
+
+	_, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, actorAddr, "deployTwice()", nil)
+	req.Error(err)
+	req.Equal(exitcode.ExitCode(33), wait.Receipt.ExitCode)
+
+	// Get the Eth transaction hash for the invoke so we can look up its receipt
+	// and determine the correct block number.
+	invokeMsgCid := wait.Message
+	txHash, err := client.EthGetTransactionHashByCid(ctx, invokeMsgCid)
+	req.NoError(err)
+	req.NotNil(txHash)
+
+	ethReceipt, err := client.EthGetTransactionReceipt(ctx, *txHash)
+	req.NoError(err)
+	req.NotNil(ethReceipt)
+
+	// Verify the block has create traces via EthTraceBlock (this path already works).
+	blockNum := fmt.Sprintf("0x%x", ethReceipt.BlockNumber)
+	blockTraces, err := client.EthTraceBlock(ctx, blockNum)
+	req.NoError(err)
+	req.Len(blockTraces, 3)
+	req.Equal("call", blockTraces[0].EthTrace.Type)
+	req.Equal("create", blockTraces[1].EthTrace.Type)
+	req.Equal("create", blockTraces[2].EthTrace.Type)
+	req.Contains(blockTraces[2].EthTrace.Error, "ErrForbidden")
+
+	// EthTraceFilter with a toAddress filter on a block containing failed creates.
+	fromBlock := blockNum
+	toBlock := blockNum
+	someAddr := ethtypes.EthAddress{0x01, 0x02, 0x03}
+	filter := ethtypes.EthTraceFilterCriteria{
+		FromBlock: &fromBlock,
+		ToBlock:   &toBlock,
+		ToAddress: ethtypes.EthAddressList{someAddr},
+	}
+	traces, err := client.EthTraceFilter(ctx, filter)
+	req.NoError(err, "EthTraceFilter should not error on blocks with failed creates")
+	req.Empty(traces, "no traces should match an arbitrary toAddress")
+
+	// Without any address filter, all traces in the block should be returned.
+	filter = ethtypes.EthTraceFilterCriteria{
+		FromBlock: &fromBlock,
+		ToBlock:   &toBlock,
+	}
+	traces, err = client.EthTraceFilter(ctx, filter)
+	req.NoError(err, "EthTraceFilter should not error with no address filter")
+	req.Len(traces, 3, "should return all three traces including the failed create")
+}
+
 func TestTstore(t *testing.T) {
 	nv25epoch := abi.ChainEpoch(100)
 	upgradeSchedule := kit.UpgradeSchedule(
