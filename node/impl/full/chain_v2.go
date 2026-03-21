@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/ipfs/go-cid"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -11,9 +12,11 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v2api"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/lf3"
+	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -22,11 +25,14 @@ var _ ChainModuleAPIv2 = (*ChainModuleV2)(nil)
 
 type ChainModuleAPIv2 interface {
 	ChainGetTipSet(context.Context, types.TipSetSelector) (*types.TipSet, error)
+	ChainGetMessages(context.Context, types.TipSetSelector, *v2api.MessageOptions) ([]api.Message, error)
+	ChainGetReceipts(context.Context, types.TipSetSelector, *v2api.MessageOptions) ([]*types.MessageReceipt, error)
 }
 
 type ChainModuleV2 struct {
-	Chain *store.ChainStore
-	F3    lf3.F3Backend `optional:"true"`
+	Chain        *store.ChainStore
+	StateManager *stmgr.StateManager
+	F3           lf3.F3Backend `optional:"true"`
 
 	fx.In
 }
@@ -155,4 +161,137 @@ func (cm *ChainModuleV2) getECFinalized(ctx context.Context) (*types.TipSet, err
 	head := cm.Chain.GetHeaviestTipSet()
 	finalizedHeight := max(0, head.Height()-policy.ChainFinality)
 	return cm.Chain.GetTipsetByHeight(ctx, finalizedHeight, head, true)
+}
+
+func (cm *ChainModuleV2) ChainGetMessages(ctx context.Context, selector types.TipSetSelector, opts *v2api.MessageOptions) ([]api.Message, error) {
+	ts, err := cm.ChainGetTipSet(ctx, selector)
+	if err != nil {
+		return nil, xerrors.Errorf("getting tipset: %w", err)
+	}
+
+	include := resolveInclude(opts)
+
+	explicitMsgs, err := cm.Chain.MessagesForTipset(ctx, ts)
+	if err != nil {
+		return nil, xerrors.Errorf("loading messages for tipset: %w", err)
+	}
+
+	// Fast path: explicit-only doesn't need receipts.
+	if include == v2api.MessageIncludeExplicit {
+		out := make([]api.Message, len(explicitMsgs))
+		for i, m := range explicitMsgs {
+			out[i] = api.Message{Cid: m.Cid(), Message: m.VMMessage()}
+		}
+		return out, nil
+	}
+
+	receipts, err := cm.loadReceipts(ctx, ts)
+	if err != nil {
+		return nil, xerrors.Errorf("loading receipts: %w", err)
+	}
+
+	explicitByCid := make(map[cid.Cid]types.ChainMsg, len(explicitMsgs))
+	for _, m := range explicitMsgs {
+		explicitByCid[m.Cid()] = m
+	}
+
+	var out []api.Message
+	for i := range receipts {
+		r := &receipts[i]
+		if r.Message == nil {
+			// Pre-FIP-0107: no Message CID on receipts, no implicit messages
+			// exist, so "all" and "implicit" both degrade to explicit-by-index.
+			if include == v2api.MessageIncludeImplicit {
+				continue
+			}
+			if i < len(explicitMsgs) {
+				out = append(out, api.Message{Cid: explicitMsgs[i].Cid(), Message: explicitMsgs[i].VMMessage()})
+			}
+			continue
+		}
+		if em, ok := explicitByCid[*r.Message]; ok {
+			if include != v2api.MessageIncludeImplicit {
+				out = append(out, api.Message{Cid: em.Cid(), Message: em.VMMessage()})
+			}
+		} else if include != v2api.MessageIncludeExplicit {
+			msg, err := cm.Chain.GetMessage(ctx, *r.Message)
+			if err != nil {
+				return nil, xerrors.Errorf("loading implicit message %s for receipt %d: %w", *r.Message, i, err)
+			}
+			out = append(out, api.Message{Cid: *r.Message, Message: msg})
+		}
+	}
+	return out, nil
+}
+
+func (cm *ChainModuleV2) ChainGetReceipts(ctx context.Context, selector types.TipSetSelector, opts *v2api.MessageOptions) ([]*types.MessageReceipt, error) {
+	ts, err := cm.ChainGetTipSet(ctx, selector)
+	if err != nil {
+		return nil, xerrors.Errorf("getting tipset: %w", err)
+	}
+
+	receipts, err := cm.loadReceipts(ctx, ts)
+	if err != nil {
+		return nil, xerrors.Errorf("loading receipts: %w", err)
+	}
+
+	include := resolveInclude(opts)
+
+	// Fast path: return all receipts without classification.
+	if include == v2api.MessageIncludeAll {
+		out := make([]*types.MessageReceipt, len(receipts))
+		for i := range receipts {
+			out[i] = &receipts[i]
+		}
+		return out, nil
+	}
+
+	explicitCids, err := cm.explicitMsgCids(ctx, ts)
+	if err != nil {
+		return nil, err
+	}
+
+	var out []*types.MessageReceipt
+	for i := range receipts {
+		r := &receipts[i]
+		// Pre-FIP-0107 receipts have no Message CID; treat as explicit.
+		isExplicit := r.Message == nil || explicitCids[*r.Message]
+		if (include == v2api.MessageIncludeExplicit) == isExplicit {
+			out = append(out, r)
+		}
+	}
+	return out, nil
+}
+
+// explicitMsgCids returns the set of message CIDs from explicit (user-submitted)
+// messages in the tipset.
+func (cm *ChainModuleV2) explicitMsgCids(ctx context.Context, ts *types.TipSet) (map[cid.Cid]bool, error) {
+	msgs, err := cm.Chain.MessagesForTipset(ctx, ts)
+	if err != nil {
+		return nil, xerrors.Errorf("loading messages for tipset: %w", err)
+	}
+	cids := make(map[cid.Cid]bool, len(msgs))
+	for _, m := range msgs {
+		cids[m.Cid()] = true
+	}
+	return cids, nil
+}
+
+// loadReceipts loads receipts for the given execution tipset. It uses
+// StateManager.TipSetState which first tries to look up pre-computed receipts
+// from a child tipset on the canonical chain, and falls back to re-executing
+// the tipset if needed (e.g. for non-canonical forks or missing state).
+func (cm *ChainModuleV2) loadReceipts(ctx context.Context, ts *types.TipSet) ([]types.MessageReceipt, error) {
+	_, rcptRoot, err := cm.StateManager.TipSetState(ctx, ts)
+	if err != nil {
+		return nil, xerrors.Errorf("computing tipset state: %w", err)
+	}
+	return cm.Chain.ReadReceipts(ctx, rcptRoot)
+}
+
+func resolveInclude(opts *v2api.MessageOptions) v2api.MessageInclude {
+	if opts == nil || opts.Include == "" {
+		return v2api.MessageIncludeExplicit
+	}
+	return opts.Include
 }

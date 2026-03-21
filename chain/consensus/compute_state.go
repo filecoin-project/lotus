@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/network"
 	exported0 "github.com/filecoin-project/specs-actors/actors/builtin/exported"
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 	exported2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/exported"
@@ -125,7 +126,12 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 
 	var cronGas int64
 
-	runCron := func(vmCron vm.Interface, epoch abi.ChainEpoch) error {
+	// FIP-0107: when the network version activates implicit receipts,
+	// collect receipts from cron and reward messages alongside explicit messages.
+	nv := sm.GetNetworkVersion(ctx, epoch)
+	includeImplicitReceipts := nv >= network.Version28
+
+	runCron := func(vmCron vm.Interface, epoch abi.ChainEpoch) (*vm.ApplyRet, *types.Message, error) {
 		cronMsg := &types.Message{
 			To:         cron.Address,
 			From:       builtin.SystemActorAddr,
@@ -139,27 +145,30 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 		}
 		ret, err := vmCron.ApplyImplicitMessage(ctx, cronMsg)
 		if err != nil {
-			return xerrors.Errorf("running cron: %w", err)
+			return nil, nil, xerrors.Errorf("running cron: %w", err)
 		}
 
 		if !ret.ExitCode.IsSuccess() {
-			return xerrors.Errorf("cron failed with exit code %d: %w", ret.ExitCode, ret.ActorErr)
+			return nil, nil, xerrors.Errorf("cron failed with exit code %d: %w", ret.ExitCode, ret.ActorErr)
 		}
 
 		cronGas += ret.GasUsed
 
 		if em != nil {
 			if err := em.MessageApplied(ctx, ts, cronMsg.Cid(), cronMsg, ret, true); err != nil {
-				return xerrors.Errorf("callback failed on cron message: %w", err)
+				return nil, nil, xerrors.Errorf("callback failed on cron message: %w", err)
 			}
 		}
 
-		return nil
+		return ret, cronMsg, nil
 	}
 
 	// May get filled with the genesis block header if there are null rounds
 	// for which to backfill cron execution.
 	var genesis *types.BlockHeader
+
+	// Collect null round cron receipts for FIP-0107 (prepended to receipt array).
+	var nullCronReceipts []*vm.ApplyRet
 
 	// There were null rounds in between the current epoch and the parent epoch.
 	for i := parentEpoch; i < epoch; i++ {
@@ -177,9 +186,15 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 				return cid.Undef, cid.Undef, xerrors.Errorf("making cron vm: %w", err)
 			}
 
-			// run cron for null rounds if any
-			if err = runCron(vmCron, i); err != nil {
+			cronRet, cronMsg, err := runCron(vmCron, i)
+			if err != nil {
 				return cid.Undef, cid.Undef, xerrors.Errorf("running cron: %w", err)
+			}
+			if includeImplicitReceipts {
+				nullCronReceipts = append(nullCronReceipts, cronRet)
+				if _, err := sm.ChainStore().PutMessage(ctx, cronMsg); err != nil {
+					return cid.Undef, cid.Undef, xerrors.Errorf("storing null round cron message: %w", err)
+				}
 			}
 
 			pstate, err = vmCron.Flush(ctx)
@@ -212,6 +227,14 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 		events        [][]types.Event
 		processedMsgs = make(map[cid.Cid]struct{})
 	)
+
+	// Prepend null round cron receipts (FIP-0107).
+	for _, cronRet := range nullCronReceipts {
+		receipts = append(receipts, &cronRet.MessageReceipt)
+		if storingEvents {
+			events = append(events, cronRet.Events)
+		}
+	}
 
 	var msgGas int64
 
@@ -254,17 +277,36 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 			GasReward: gasReward,
 			WinCount:  b.WinCount,
 		}
-		rErr := t.reward(ctx, vmi, em, epoch, ts, params)
+		rewardRet, rewardMsg, rErr := t.reward(ctx, vmi, em, epoch, ts, params)
 		if rErr != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("error applying reward: %w", rErr)
+		}
+		if includeImplicitReceipts {
+			receipts = append(receipts, &rewardRet.MessageReceipt)
+			if storingEvents {
+				events = append(events, rewardRet.Events)
+			}
+			if _, err := sm.ChainStore().PutMessage(ctx, rewardMsg); err != nil {
+				return cid.Undef, cid.Undef, xerrors.Errorf("storing reward message: %w", err)
+			}
 		}
 	}
 
 	vmMsgDuration := partDone()
 	partDone = metrics.Timer(ctx, metrics.VMApplyCron)
 
-	if err := runCron(vmi, epoch); err != nil {
+	epochCronRet, epochCronMsg, err := runCron(vmi, epoch)
+	if err != nil {
 		return cid.Cid{}, cid.Cid{}, err
+	}
+	if includeImplicitReceipts {
+		receipts = append(receipts, &epochCronRet.MessageReceipt)
+		if storingEvents {
+			events = append(events, epochCronRet.Events)
+		}
+		if _, err := sm.ChainStore().PutMessage(ctx, epochCronMsg); err != nil {
+			return cid.Undef, cid.Undef, xerrors.Errorf("storing epoch cron message: %w", err)
+		}
 	}
 
 	vmCronDuration := partDone()

@@ -14,8 +14,10 @@ import (
 	"github.com/filecoin-project/go-f3/certs"
 	"github.com/filecoin-project/go-f3/gpbft"
 	"github.com/filecoin-project/go-state-types/abi"
+	builtinactors "github.com/filecoin-project/go-state-types/builtin"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v2api"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -445,6 +447,88 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 				}
 			})
 		}
+	})
+	t.Run("ChainGetMessages_ChainGetReceipts", func(t *testing.T) {
+		// Use a tipset that has been executed (not head).
+		targetTs, err := subject.ChainGetTipSetByHeight(ctx, 10, types.EmptyTSK)
+		require.NoError(t, err)
+		selector := types.TipSetSelector{Key: &types.TipSetKey{}}
+		*selector.Key = targetTs.Key()
+
+		t.Run("default returns explicit only", func(t *testing.T) {
+			msgs, err := subject.V2.ChainGetMessages(ctx, selector, nil)
+			require.NoError(t, err)
+			rcpts, err := subject.V2.ChainGetReceipts(ctx, selector, nil)
+			require.NoError(t, err)
+			require.Equal(t, len(msgs), len(rcpts), "messages and receipts should be index-aligned")
+			// All messages should be from non-system actors.
+			for _, m := range msgs {
+				require.NotEqual(t, builtinactors.SystemActorAddr, m.Message.From, "explicit messages should not be from system actor")
+			}
+		})
+
+		t.Run("explicit option returns explicit only", func(t *testing.T) {
+			opts := &v2api.MessageOptions{Include: v2api.MessageIncludeExplicit}
+			msgs, err := subject.V2.ChainGetMessages(ctx, selector, opts)
+			require.NoError(t, err)
+			rcpts, err := subject.V2.ChainGetReceipts(ctx, selector, opts)
+			require.NoError(t, err)
+			require.Equal(t, len(msgs), len(rcpts))
+		})
+
+		t.Run("all returns explicit and implicit", func(t *testing.T) {
+			opts := &v2api.MessageOptions{Include: v2api.MessageIncludeAll}
+			allMsgs, err := subject.V2.ChainGetMessages(ctx, selector, opts)
+			require.NoError(t, err)
+			allRcpts, err := subject.V2.ChainGetReceipts(ctx, selector, opts)
+			require.NoError(t, err)
+			require.Equal(t, len(allMsgs), len(allRcpts), "all messages and receipts should be index-aligned")
+
+			explicitMsgs, err := subject.V2.ChainGetMessages(ctx, selector, nil)
+			require.NoError(t, err)
+			// "all" should return at least as many as "explicit".
+			require.GreaterOrEqual(t, len(allMsgs), len(explicitMsgs)+2, "all should include at least 2 more messages than explicit (reward + cron)")
+		})
+
+		t.Run("implicit returns only implicit messages", func(t *testing.T) {
+			opts := &v2api.MessageOptions{Include: v2api.MessageIncludeImplicit}
+			implMsgs, err := subject.V2.ChainGetMessages(ctx, selector, opts)
+			require.NoError(t, err)
+			implRcpts, err := subject.V2.ChainGetReceipts(ctx, selector, opts)
+			require.NoError(t, err)
+			require.Equal(t, len(implMsgs), len(implRcpts), "implicit messages and receipts should be index-aligned")
+
+			// Implicit messages should be from the system actor (f00).
+			for _, m := range implMsgs {
+				require.Equal(t, builtinactors.SystemActorAddr, m.Message.From, "implicit messages should be from system actor")
+			}
+		})
+
+		t.Run("all count equals explicit plus implicit", func(t *testing.T) {
+			allOpts := &v2api.MessageOptions{Include: v2api.MessageIncludeAll}
+			explOpts := &v2api.MessageOptions{Include: v2api.MessageIncludeExplicit}
+			implOpts := &v2api.MessageOptions{Include: v2api.MessageIncludeImplicit}
+
+			allMsgs, err := subject.V2.ChainGetMessages(ctx, selector, allOpts)
+			require.NoError(t, err)
+			explMsgs, err := subject.V2.ChainGetMessages(ctx, selector, explOpts)
+			require.NoError(t, err)
+			implMsgs, err := subject.V2.ChainGetMessages(ctx, selector, implOpts)
+			require.NoError(t, err)
+
+			require.Equal(t, len(allMsgs), len(explMsgs)+len(implMsgs), "all = explicit + implicit")
+		})
+
+		t.Run("head tipset receipts via re-execution", func(t *testing.T) {
+			head, err := subject.ChainHead(ctx)
+			require.NoError(t, err)
+			headSelector := types.TipSetSelector{Key: &types.TipSetKey{}}
+			*headSelector.Key = head.Key()
+			allOpts := &v2api.MessageOptions{Include: v2api.MessageIncludeAll}
+			rcpts, err := subject.V2.ChainGetReceipts(ctx, headSelector, allOpts)
+			require.NoError(t, err)
+			require.GreaterOrEqual(t, len(rcpts), 2, "head tipset should have at least cron + reward receipts")
+		})
 	})
 	t.Run("StateGetID", func(t *testing.T) {
 		for _, test := range []struct {

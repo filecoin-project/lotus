@@ -1,12 +1,16 @@
-# builtin-actors Development with Lotus
+# builtin-actors and ref-fvm Development with Lotus
 
-This guide will walk through how to develop, update and test builtin-actors from within Lotus. The aim of this guide is to make it easier to contribute to builtin-actors by providing a clear path to follow through the somewhat complex web of dependencies and processes involved in integrating changes through to Lotus.
+This guide will walk through how to develop, update and test builtin-actors and ref-fvm changes from within Lotus. The aim of this guide is to make it easier to contribute to these Rust codebases by providing a clear path to follow through the somewhat complex web of dependencies and processes involved in integrating changes through to Lotus.
 
 * [Context](#context)
 * [Builtin-actors-only changes](#builtin-actors-only-changes)
   * [Environment variable override](#environment-variable-override)
   * [Replacing actors bundles](#replacing-actors-bundles)
   * [Writing tests](#writing-tests)
+* [ref-fvm-only changes](#ref-fvm-only-changes)
+  * [Dependency chain](#dependency-chain)
+  * [Local development with Cargo patches](#local-development-with-cargo-patches)
+  * [Building filecoin-ffi from source](#building-filecoin-ffi-from-source)
 * [Builtin-actors and chain or state type (go-state-types) changes](#builtin-actors-and-chain-or-state-type-go-state-types-changes)
 * [Builtin-actors and (go-state-types) state migration changes](#builtin-actors-and-go-state-types-state-migration-changes)
 * [Builtin-actors, (go-state-types) state migration and FVM changes](#builtin-actors-go-state-types-state-migration-and-fvm-changes)
@@ -87,6 +91,84 @@ There also exists a `kit.LatestActorsAt(100)` short-hand for this which will pro
 
 Using `client.WaitTillChain(ctx, kit.HeightAtLeast(105))` within your test will provide a boundary between the two network versions where you can test the feature before and after the upgrade, in this instance we are aiming at testing the feature at height `105` to provide a small buffer after the upgrade at `100`.
 
+## ref-fvm-only changes
+
+Sometimes changes are needed in [ref-fvm](https://github.com/filecoin-project/ref-fvm/) without any builtin-actors changes. For example, exposing new data through the FVM execution pipeline, or changing how receipts or execution results are constructed. These changes must flow through a chain of dependencies to reach Lotus:
+
+### Dependency chain
+
+```
+ref-fvm (Rust) -> filecoin-ffi (Rust+CGo) -> Lotus (Go)
+```
+
+The key crates in ref-fvm that are relevant:
+
+- `fvm` - The main FVM executor crate (contains `ApplyRet`, `DefaultExecutor`, etc.)
+- `fvm_shared` - Shared types used across the FVM (contains `Receipt`, `Message`, etc.)
+- `fvm_ipld_encoding` - IPLD serialization utilities
+- `fvm_ipld_blockstore` - Blockstore traits
+
+The [filecoin-ffi](https://github.com/filecoin-project/filecoin-ffi) crate (`extern/filecoin-ffi/` in the Lotus repo, as a git submodule) bridges these Rust types to Go through a C FFI boundary:
+
+- `rust/src/fvm/types.rs` - C-compatible struct definitions (e.g. `FvmMachineExecuteResponse`)
+- `rust/src/fvm/machine.rs` - Maps FVM `ApplyRet` fields to the C struct
+- `rust/src/fvm/engine.rs` - Adapters for older FVM versions (v2, v3) to the current v4 types
+- `cgo/types_fvm.go` - CGo bindings that map C struct fields to Go types
+- `fvm.go` - Go-level `ApplyRet` that Lotus consumes
+
+### Local development with Cargo patches
+
+To develop against a local ref-fvm checkout, use Cargo's `[patch.crates-io]` in the filecoin-ffi `rust/Cargo.toml`:
+
+```toml
+[patch.crates-io]
+fvm = { path = "/path/to/ref-fvm/fvm" }
+fvm_shared = { path = "/path/to/ref-fvm/shared" }
+fvm_ipld_encoding = { path = "/path/to/ref-fvm/ipld/encoding" }
+fvm_ipld_blockstore = { path = "/path/to/ref-fvm/ipld/blockstore" }
+```
+
+**Important considerations:**
+
+1. **Patch all related crates together.** If you only patch `fvm`, its transitive dependency on `fvm_shared` will pull from the local workspace, creating a version conflict with the crates.io `fvm_shared` that filecoin-ffi depends on directly. You'll see errors like _"two different versions of crate `fvm_shared` are being used"_.
+
+2. **The IPLD crates must also be patched** because filecoin-ffi has direct dependencies on `fvm_ipld_encoding` and `fvm_ipld_blockstore`. Without patching these, types like `IpldBlock` that cross the crate boundary will be considered different types even though they're structurally identical.
+
+3. **Watch for transitive dependency version skew.** filecoin-ffi supports multiple FVM versions (v2, v3, v4) simultaneously. The `[patch.crates-io]` section replaces crates for ALL semver-compatible dependents. If the local ref-fvm workspace has bumped a transitive dependency (e.g. `serde_tuple` from `0.5` to `1.x`), this can break compilation of older FVM versions that also depend on `fvm_ipld_encoding`. In such cases, you may need to temporarily pin the local crate's dependency to match the published version. These version bumps are often from automated tools like Dependabot and are safe to temporarily revert for local development.
+
+4. **Version compatibility.** The `[patch.crates-io]` mechanism requires that the local crate version is semver-compatible with the declared dependency. For example, if filecoin-ffi declares `fvm = "~4.7.4"` (meaning `>=4.7.4, <4.8.0`), your local ref-fvm must have a version in that range.
+
+Once the patches are in place, verify compilation with:
+
+```bash
+cd extern/filecoin-ffi/rust
+cargo check --features default
+```
+
+### Building filecoin-ffi from source
+
+After verifying that the Rust side compiles, you need to build the full FFI library including C header generation and the static library:
+
+```bash
+cd extern/filecoin-ffi
+FFI_BUILD_FROM_SOURCE=1 make
+```
+
+This runs `install-filcrypto` which compiles the Rust code, generates the `filcrypto.h` C header (via `safer-ffi`), and produces `libfilcrypto.a`. The C header generation is automatic -- any new fields added to `#[derive_ReprC]` structs in the Rust code will appear in the generated header and become accessible from Go through CGo.
+
+The typical change flow for adding a new field through the FFI pipeline is:
+
+1. **ref-fvm**: Add the field to the relevant Rust struct (e.g. `ApplyRet`)
+2. **filecoin-ffi Rust** (`rust/src/fvm/types.rs`): Add the field to the `FvmMachineExecuteResponse` C struct
+3. **filecoin-ffi Rust** (`rust/src/fvm/machine.rs`): Map the field from the FVM result to the C struct
+4. **filecoin-ffi Rust** (`rust/src/fvm/engine.rs`): Provide default values for older FVM version adapters
+5. **filecoin-ffi Go** (`cgo/types_fvm.go`): Map the field from the C struct to the Go type
+6. **filecoin-ffi Go** (`fvm.go`): Include the field in the Go-level `ApplyRet`
+7. **Lotus** (`chain/vm/fvm.go`): Use the field in receipt construction or other logic
+
+> [!NOTE]
+> The `[patch.crates-io]` entries in `Cargo.toml` and any `Cargo.lock` changes should NOT be committed. They are for local development only. Once the ref-fvm changes are published to crates.io with a new version, filecoin-ffi should update its dependency version normally.
+
 ## Builtin-actors and chain or state type (go-state-types) changes
 
 Similar to builtin-actors only, but requires additional steps to match go-state-types to builtin-actors types such that serialisation of message parameters, return types and/or state properties are consistent between the two so that Lotus can communicate with the actors correctly. Such changes require coordinating changes to both the builtin-actors and the go-state-types codebases as well as their integration into Lotus.
@@ -101,6 +183,6 @@ _**TODO**: More detail is needed on how to coordinate changes between builtin-ac
 
 ## Builtin-actors, (go-state-types) state migration and FVM changes
 
-Similar to builtin-actors and state migration changes, but requires additional coordination to integrate a new version of [ref-fvm](https://github.com/filecoin-project/ref-fvm/) with builtin-actors and [filecoin-ffi](https://github.com/filecoin-project/filecoin-ffi) and then integrate that into Lotus along with builtin-actors and go-state-types, along with appropriate tests.
+Similar to builtin-actors and state migration changes, but requires additional coordination to integrate a new version of [ref-fvm](https://github.com/filecoin-project/ref-fvm/) with builtin-actors and [filecoin-ffi](https://github.com/filecoin-project/filecoin-ffi) and then integrate that into Lotus along with builtin-actors and go-state-types, along with appropriate tests. See the [ref-fvm-only changes](#ref-fvm-only-changes) section for details on the ref-fvm to filecoin-ffi to Lotus pipeline.
 
 _**TODO**: More detail is needed on how to coordinate changes between builtin-actors, go-state-types, ref-fvm and Lotus for state migration_

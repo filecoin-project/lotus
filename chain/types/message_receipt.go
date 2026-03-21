@@ -15,6 +15,8 @@ const (
 	MessageReceiptV0 MessageReceiptVersion = 0
 	// MessageReceiptV1 refers to post FIP-0049 receipts.
 	MessageReceiptV1 MessageReceiptVersion = 1
+	// MessageReceiptV2 refers to post FIP-0107 receipts.
+	MessageReceiptV2 MessageReceiptVersion = 2
 )
 
 const EventAMTBitwidth = 5
@@ -26,6 +28,8 @@ type MessageReceipt struct {
 	Return     []byte
 	GasUsed    int64
 	EventsRoot *cid.Cid // Root of Event AMT with bitwidth = EventAMTBitwidth
+	IpldCodec  *uint64  // IPLD codec for interpreting Return bytes (FIP-0107)
+	Message    *cid.Cid // Reference to the executed message (FIP-0107)
 }
 
 // NewMessageReceiptV0 creates a new pre FIP-0049 receipt with no capability to
@@ -39,7 +43,7 @@ func NewMessageReceiptV0(exitcode exitcode.ExitCode, ret []byte, gasUsed int64) 
 	}
 }
 
-// NewMessageReceiptV1 creates a new pre FIP-0049 receipt with the ability to
+// NewMessageReceiptV1 creates a post FIP-0049 receipt with the ability to
 // convey events.
 func NewMessageReceiptV1(exitcode exitcode.ExitCode, ret []byte, gasUsed int64, eventsRoot *cid.Cid) MessageReceipt {
 	return MessageReceipt{
@@ -51,11 +55,27 @@ func NewMessageReceiptV1(exitcode exitcode.ExitCode, ret []byte, gasUsed int64, 
 	}
 }
 
+// NewMessageReceiptV2 creates a post FIP-0107 receipt with IPLD codec
+// information and a reference to the executed message.
+func NewMessageReceiptV2(exitcode exitcode.ExitCode, ret []byte, gasUsed int64, eventsRoot *cid.Cid, ipldCodec *uint64, message *cid.Cid) MessageReceipt {
+	return MessageReceipt{
+		version:    MessageReceiptV2,
+		ExitCode:   exitcode,
+		Return:     ret,
+		GasUsed:    gasUsed,
+		EventsRoot: eventsRoot,
+		IpldCodec:  ipldCodec,
+		Message:    message,
+	}
+}
+
 func (mr *MessageReceipt) Version() MessageReceiptVersion {
 	return mr.version
 }
 
 func (mr *MessageReceipt) Equals(o *MessageReceipt) bool {
 	return mr.version == o.version && mr.ExitCode == o.ExitCode && bytes.Equal(mr.Return, o.Return) && mr.GasUsed == o.GasUsed &&
-		(mr.EventsRoot == o.EventsRoot || (mr.EventsRoot != nil && o.EventsRoot != nil && *mr.EventsRoot == *o.EventsRoot))
+		(mr.EventsRoot == o.EventsRoot || (mr.EventsRoot != nil && o.EventsRoot != nil && *mr.EventsRoot == *o.EventsRoot)) &&
+		(mr.IpldCodec == o.IpldCodec || (mr.IpldCodec != nil && o.IpldCodec != nil && *mr.IpldCodec == *o.IpldCodec)) &&
+		(mr.Message == o.Message || (mr.Message != nil && o.Message != nil && *mr.Message == *o.Message))
 }

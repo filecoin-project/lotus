@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/api"
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
@@ -24,6 +25,10 @@ type FullNodeStruct struct {
 }
 
 type FullNodeMethods struct {
+	ChainGetMessages func(p0 context.Context, p1 types.TipSetSelector, p2 *MessageOptions) ([]api.Message, error) `perm:"read"`
+
+	ChainGetReceipts func(p0 context.Context, p1 types.TipSetSelector, p2 *MessageOptions) ([]*types.MessageReceipt, error) `perm:"read"`
+
 	ChainGetTipSet func(p0 context.Context, p1 types.TipSetSelector) (*types.TipSet, error) `perm:"read"`
 
 	EthAccounts func(p0 context.Context) ([]ethtypes.EthAddress, error) `perm:"read"`
@@ -135,6 +140,10 @@ type GatewayStruct struct {
 }
 
 type GatewayMethods struct {
+	ChainGetMessages func(p0 context.Context, p1 types.TipSetSelector, p2 *MessageOptions) ([]api.Message, error) ``
+
+	ChainGetReceipts func(p0 context.Context, p1 types.TipSetSelector, p2 *MessageOptions) ([]*types.MessageReceipt, error) ``
+
 	ChainGetTipSet func(p0 context.Context, p1 types.TipSetSelector) (*types.TipSet, error) ``
 
 	Discover func(p0 context.Context) (apitypes.OpenRPCDocument, error) ``
@@ -241,6 +250,28 @@ type GatewayMethods struct {
 }
 
 type GatewayStub struct {
+}
+
+func (s *FullNodeStruct) ChainGetMessages(p0 context.Context, p1 types.TipSetSelector, p2 *MessageOptions) ([]api.Message, error) {
+	if s.Internal.ChainGetMessages == nil {
+		return *new([]api.Message), ErrNotSupported
+	}
+	return s.Internal.ChainGetMessages(p0, p1, p2)
+}
+
+func (s *FullNodeStub) ChainGetMessages(p0 context.Context, p1 types.TipSetSelector, p2 *MessageOptions) ([]api.Message, error) {
+	return *new([]api.Message), ErrNotSupported
+}
+
+func (s *FullNodeStruct) ChainGetReceipts(p0 context.Context, p1 types.TipSetSelector, p2 *MessageOptions) ([]*types.MessageReceipt, error) {
+	if s.Internal.ChainGetReceipts == nil {
+		return *new([]*types.MessageReceipt), ErrNotSupported
+	}
+	return s.Internal.ChainGetReceipts(p0, p1, p2)
+}
+
+func (s *FullNodeStub) ChainGetReceipts(p0 context.Context, p1 types.TipSetSelector, p2 *MessageOptions) ([]*types.MessageReceipt, error) {
+	return *new([]*types.MessageReceipt), ErrNotSupported
 }
 
 func (s *FullNodeStruct) ChainGetTipSet(p0 context.Context, p1 types.TipSetSelector) (*types.TipSet, error) {
@@ -802,6 +833,28 @@ func (s *FullNodeStruct) Web3ClientVersion(p0 context.Context) (string, error) {
 
 func (s *FullNodeStub) Web3ClientVersion(p0 context.Context) (string, error) {
 	return "", ErrNotSupported
+}
+
+func (s *GatewayStruct) ChainGetMessages(p0 context.Context, p1 types.TipSetSelector, p2 *MessageOptions) ([]api.Message, error) {
+	if s.Internal.ChainGetMessages == nil {
+		return *new([]api.Message), ErrNotSupported
+	}
+	return s.Internal.ChainGetMessages(p0, p1, p2)
+}
+
+func (s *GatewayStub) ChainGetMessages(p0 context.Context, p1 types.TipSetSelector, p2 *MessageOptions) ([]api.Message, error) {
+	return *new([]api.Message), ErrNotSupported
+}
+
+func (s *GatewayStruct) ChainGetReceipts(p0 context.Context, p1 types.TipSetSelector, p2 *MessageOptions) ([]*types.MessageReceipt, error) {
+	if s.Internal.ChainGetReceipts == nil {
+		return *new([]*types.MessageReceipt), ErrNotSupported
+	}
+	return s.Internal.ChainGetReceipts(p0, p1, p2)
+}
+
+func (s *GatewayStub) ChainGetReceipts(p0 context.Context, p1 types.TipSetSelector, p2 *MessageOptions) ([]*types.MessageReceipt, error) {
+	return *new([]*types.MessageReceipt), ErrNotSupported
 }
 
 func (s *GatewayStruct) ChainGetTipSet(p0 context.Context, p1 types.TipSetSelector) (*types.TipSet, error) {

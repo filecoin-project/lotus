@@ -52,6 +52,20 @@ func (pv2 *reverseProxyV2) StateGetID(ctx context.Context, address address.Addre
 	return pv2.server.StateGetID(ctx, address, selector)
 }
 
+func (pv2 *reverseProxyV2) ChainGetMessages(ctx context.Context, selector types.TipSetSelector, opts *v2api.MessageOptions) ([]api.Message, error) {
+	if err := pv2.gateway.limit(ctx, chainRateLimitTokens); err != nil {
+		return nil, err
+	}
+	return pv2.server.ChainGetMessages(ctx, selector, opts)
+}
+
+func (pv2 *reverseProxyV2) ChainGetReceipts(ctx context.Context, selector types.TipSetSelector, opts *v2api.MessageOptions) ([]*types.MessageReceipt, error) {
+	if err := pv2.gateway.limit(ctx, chainRateLimitTokens); err != nil {
+		return nil, err
+	}
+	return pv2.server.ChainGetReceipts(ctx, selector, opts)
+}
+
 func (pv2 *reverseProxyV2) EthAddressToFilecoinAddress(ctx context.Context, ethAddress ethtypes.EthAddress) (address.Address, error) {
 	return pv2.server.EthAddressToFilecoinAddress(ctx, ethAddress)
 }

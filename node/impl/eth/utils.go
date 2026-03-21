@@ -135,8 +135,28 @@ func executeTipset(ctx context.Context, ts *types.TipSet, cs ChainStore, sm Stat
 		return cid.Undef, nil, nil, xerrors.Errorf("error loading receipts for tipset: %v: %w", ts, err)
 	}
 
+	// FIP-0107: post-upgrade, the receipts array includes implicit messages
+	// (cron and reward). Filter to only explicit message receipts for Eth API
+	// compatibility. Build a set of explicit message CIDs and match against
+	// each receipt's Message field.
 	if len(msgs) != len(rcpts) {
-		return cid.Undef, nil, nil, xerrors.Errorf("receipts and message array lengths didn't match for tipset: %v: %w", ts, err)
+		msgCids := make(map[cid.Cid]struct{}, len(msgs))
+		for _, m := range msgs {
+			msgCids[m.Cid()] = struct{}{}
+		}
+		filtered := make([]types.MessageReceipt, 0, len(msgs))
+		for _, rct := range rcpts {
+			if rct.Message == nil {
+				// Pre-V2 receipt, include as-is
+				filtered = append(filtered, rct)
+			} else if _, ok := msgCids[*rct.Message]; ok {
+				filtered = append(filtered, rct)
+			}
+		}
+		rcpts = filtered
+		if len(msgs) != len(rcpts) {
+			return cid.Undef, nil, nil, xerrors.Errorf("receipts and message array lengths didn't match for tipset after filtering: %v (%d msgs, %d rcpts)", ts, len(msgs), len(rcpts))
+		}
 	}
 
 	return stRoot, msgs, rcpts, nil
