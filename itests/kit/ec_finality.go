@@ -48,7 +48,7 @@ func (m *MockECFinalityProvider) GetStatus(_ context.Context) (*ecfinality.ECFin
 
 var (
 	_ ecfinality.ECFinalityCalculator = (*MockECFinalityProvider)(nil)
-	_ eth.ECFinalityProvider = (*MockECFinalityProvider)(nil)
+	_ eth.ECFinalityProvider          = (*MockECFinalityProvider)(nil)
 )
 
 // ECFinalityProvider overrides the EC finality calculator used by the test
