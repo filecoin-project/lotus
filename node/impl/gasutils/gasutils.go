@@ -247,6 +247,9 @@ func GasEstimateGasPremium(ctx context.Context, cstore ChainStoreAPI, cache *Gas
 	if nblocksincl == 0 {
 		nblocksincl = 1
 	}
+	if nblocksincl > 128 {
+		nblocksincl = 128
+	}
 
 	var prices []GasMeta
 	var blocks int
@@ -298,7 +301,8 @@ func GasEstimateGasPremium(ctx context.Context, cstore ChainStoreAPI, cache *Gas
 	return premium, nil
 }
 
-// finds 55th percntile instead of median to put negative pressure on gas price
+// medianGasPremium finds the ~52.5th percentile gas premium weighted by gas limit,
+// applying slight upward pressure beyond the true median.
 func medianGasPremium(prices []GasMeta, blocks int) abi.TokenAmount {
 	sort.Slice(prices, func(i, j int) bool {
 		// sort desc by price
