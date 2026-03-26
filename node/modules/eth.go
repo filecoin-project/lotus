@@ -29,7 +29,8 @@ import (
 type TipSetResolverParams struct {
 	fx.In
 	ChainStore eth.ChainStore
-	F3         full.F3ModuleAPI `optional:"true"`
+	F3         full.F3ModuleAPI       `optional:"true"`
+	ECFinality eth.ECFinalityProvider `optional:"true"`
 }
 
 func MakeV1TipSetResolver(params TipSetResolverParams) full.EthTipSetResolverV2 {
@@ -44,11 +45,11 @@ func MakeV1TipSetResolver(params TipSetResolverParams) full.EthTipSetResolverV2 
 		f3CertificateProvider = nil
 		useF3ForFinality = false
 	}
-	return eth.NewTipSetResolver(params.ChainStore, f3CertificateProvider, useF3ForFinality)
+	return eth.NewTipSetResolver(params.ChainStore, f3CertificateProvider, params.ECFinality, useF3ForFinality)
 }
 
 func MakeV2TipSetResolver(params TipSetResolverParams) full.EthTipSetResolverV2 {
-	return eth.NewTipSetResolver(params.ChainStore, params.F3, true)
+	return eth.NewTipSetResolver(params.ChainStore, params.F3, params.ECFinality, true)
 }
 
 func MakeEthFilecoinV1(stateManager eth.StateManager, tipsetResolver full.EthTipSetResolverV1) full.EthFilecoinAPIV1 {

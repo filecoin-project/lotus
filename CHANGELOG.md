@@ -15,7 +15,8 @@
 
 ## ⭐ New Features
 
-- feat(shed): add `lotus-shed finality-calculator` for EC finality probability computation per [FRC-0089](https://github.com/filecoin-project/FIPs/blob/master/FRCs/frc-0089.md) ([filecoin-project/lotus#12093](https://github.com/filecoin-project/lotus/pull/12093))
+- feat(api): integrate [FRC-0089](https://github.com/filecoin-project/FIPs/blob/master/FRCs/frc-0089.md) EC finality calculator into v2 API and Eth RPC, so `"finalized"` and `"safe"` tags reflect actual chain health (~20-30 epochs) rather than worst-case static 900-epoch fallback. Adds `ChainGetTipSetFinalityStatus` v2 endpoint for finality diagnostics. ([filecoin-project/lotus#13547](https://github.com/filecoin-project/lotus/pull/13547))
+- feat(shed): add `lotus-shed finality-calculator` for EC finality probability computation per FRC-0089 ([filecoin-project/lotus#12093](https://github.com/filecoin-project/lotus/pull/12093))
 
 ## 👌 Improvements
 - fix(gateway): return `ErrFilterNotFound` error instead of empty result for unknown filter IDs in `EthGetFilterLogs` ([filecoin-project/lotus#13519](https://github.com/filecoin-project/lotus/pull/13519))

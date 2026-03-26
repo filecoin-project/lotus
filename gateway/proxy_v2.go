@@ -38,6 +38,13 @@ func (pv2 *reverseProxyV2) ChainGetTipSet(ctx context.Context, selector types.Ti
 	return pv2.server.ChainGetTipSet(ctx, selector)
 }
 
+func (pv2 *reverseProxyV2) ChainGetTipSetFinalityStatus(ctx context.Context) (*types.FinalityStatus, error) {
+	if err := pv2.gateway.limit(ctx, chainRateLimitTokens); err != nil {
+		return nil, err
+	}
+	return pv2.server.ChainGetTipSetFinalityStatus(ctx)
+}
+
 func (pv2 *reverseProxyV2) StateGetActor(ctx context.Context, address address.Address, selector types.TipSetSelector) (*types.Actor, error) {
 	if err := pv2.gateway.limit(ctx, stateRateLimitTokens); err != nil {
 		return nil, err
