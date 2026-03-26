@@ -30,6 +30,7 @@ var log = logging.Logger("node/gasutils")
 
 const MinGasPremium = 100e3
 const MaxSpendOnFeeDenom = 100
+const MaxGasHistory = 128
 
 type StateManagerAPI interface {
 	ParentState(ts *types.TipSet) (*state.StateTree, error)
@@ -246,9 +247,8 @@ func GasEstimateFeeCap(ctx context.Context, cstore ChainStoreAPI, msg *types.Mes
 func GasEstimateGasPremium(ctx context.Context, cstore ChainStoreAPI, cache *GasPriceCache, nblocksincl uint64, tsKey types.TipSetKey) (types.BigInt, error) {
 	if nblocksincl == 0 {
 		nblocksincl = 1
-	}
-	if nblocksincl > 128 {
-		nblocksincl = 128
+	} else if nblocksincl > MaxGasHistory {
+		nblocksincl = MaxGasHistory
 	}
 
 	var prices []GasMeta

@@ -79,9 +79,7 @@ func (pv1 *reverseProxyV1) GasEstimateGasPremium(ctx context.Context, nblocksinc
 	if err := pv1.gateway.checkTipSetKey(ctx, tsk); err != nil {
 		return types.BigInt{}, err
 	}
-	if nblocksincl > 128 {
-		nblocksincl = 128
-	}
+	// nblocksincl is bounded by gasutils.MaxGasHistory upstream
 	return pv1.server.GasEstimateGasPremium(ctx, nblocksincl, sender, gaslimit, tsk)
 }
 
