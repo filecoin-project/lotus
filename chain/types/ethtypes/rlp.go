@@ -211,7 +211,7 @@ func decodeLength(data []byte, lenInBytes int) (int, error) {
 	copy(buf[8-lenInBytes:], data[:lenInBytes])
 	length := binary.BigEndian.Uint64(buf[:])
 	if length > uint64(len(data)-lenInBytes) {
-		return 0, errRLPListBounds
+		return 0, errRLPLengthBounds
 	}
 	return int(length), nil
 }

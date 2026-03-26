@@ -190,8 +190,8 @@ func TestDecodeError(t *testing.T) {
 	}
 }
 
-// TestDecodeLimits verifies the decoder's input validation bounds: max input
-// size, list nesting depth, and per-list element count.
+// TestDecodeLimits verifies the decoder's input validation bounds: empty input,
+// max input size, list nesting depth, and per-list element count.
 func TestDecodeLimits(t *testing.T) {
 	t.Run("empty input", func(t *testing.T) {
 		_, err := DecodeRLP([]byte{})
@@ -237,6 +237,18 @@ func TestDecodeLimits(t *testing.T) {
 			cur = lst[0]
 		}
 		require.Equal(t, []byte{0x42}, cur)
+	})
+
+	t.Run("list element count exceeds limit", func(t *testing.T) {
+		// Encode a list with maxListElements+1 single-byte elements.
+		elems := make([]byte, maxListElements+1)
+		for i := range elems {
+			elems[i] = byte(i)
+		}
+		// Short list prefix: 0xc0 + content length.
+		data := append([]byte{byte(0xc0 + len(elems))}, elems...)
+		_, err := DecodeRLP(data)
+		require.ErrorContains(t, err, "incorrect list length")
 	})
 }
 
@@ -295,18 +307,19 @@ func TestDecodeCanonical(t *testing.T) {
 	})
 }
 
-// TestDecodeTruncated checks that the decoder rejects payloads where the
-// header declares more content than is actually present.
-func TestDecodeTruncated(t *testing.T) {
+// TestDecodeLengthMismatch checks that the decoder rejects payloads where the
+// declared length does not match the available data (truncated payloads or
+// extra trailing bytes).
+func TestDecodeLengthMismatch(t *testing.T) {
 	testcases := []struct {
 		name  string
 		input string
 	}{
 		{"short string truncated", "8201"},                           // claims 2 bytes, only 1
 		{"long string truncated", "b838" + strings.Repeat("ff", 10)}, // claims 56, only 10
-		{"short list truncated", "c3000102ff"},                       // list claims 3 bytes, but 4 follow so consumed != len (extra byte)
+		{"short list trailing data", "c3000102ff"},                   // list claims 3 bytes content, but 4 follow (extra byte)
 		{"long list truncated", "f838" + strings.Repeat("00", 10)},   // claims 56 bytes content, only 10
-		{"string longer than data", "850505050505ff"},                // claims 5 bytes, has 5 + trailing
+		{"string with trailing data", "850505050505ff"},              // claims 5 bytes, has 5 + trailing
 	}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
