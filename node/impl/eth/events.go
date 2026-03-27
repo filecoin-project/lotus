@@ -633,7 +633,7 @@ func parseBlockRange(heaviest abi.ChainEpoch, fromBlock, toBlock *string, maxRan
 		}
 	} else if minHeight >= 0 && maxHeight >= 0 {
 		if minHeight > maxHeight {
-			return 0, 0, xerrors.Errorf("invalid epoch range: to block (%d) must be after from block (%d)", minHeight, maxHeight)
+			return 0, 0, xerrors.Errorf("invalid epoch range: to block (%d) must be after from block (%d)", maxHeight, minHeight)
 		} else if maxHeight-minHeight > maxRange {
 			return 0, 0, api.NewErrBlockRangeExceeded(uint64(maxRange), uint64(maxHeight-minHeight))
 		}
