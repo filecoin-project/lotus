@@ -317,12 +317,12 @@ func ConfigFullNode(c interface{}) Option {
 
 				Override(new(full.EthTransactionAPIV1), modules.MakeEthTransactionV1(cfg.Fevm)),
 				Override(new(full.EthLookupAPIV1), modules.MakeEthLookupV1),
-				Override(new(full.EthTraceAPIV1), modules.MakeEthTraceV1(cfg.Fevm)),
+				Override(new(full.EthTraceAPIV1), modules.MakeEthTraceV1(cfg.Fevm, cfg.Events)),
 				Override(new(full.EthGasAPIV1), modules.MakeEthGasV1),
 
 				Override(new(full.EthTransactionAPIV2), modules.MakeEthTransactionV2(cfg.Fevm)),
 				Override(new(full.EthLookupAPIV2), modules.MakeEthLookupV2),
-				Override(new(full.EthTraceAPIV2), modules.MakeEthTraceV2(cfg.Fevm)),
+				Override(new(full.EthTraceAPIV2), modules.MakeEthTraceV2(cfg.Fevm, cfg.Events)),
 				Override(new(full.EthGasAPIV2), modules.MakeEthGasV2),
 			),
 			If(!cfg.Fevm.EnableEthRPC,
