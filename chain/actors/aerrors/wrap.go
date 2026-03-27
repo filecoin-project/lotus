@@ -32,6 +32,7 @@ func New(retCode exitcode.ExitCode, message string) ActorError {
 
 // Newf creates a new non-fatal error
 func Newf(retCode exitcode.ExitCode, format string, args ...interface{}) ActorError {
+	wrappedErr := fmt.Errorf(format, args...)
 	if retCode == 0 {
 		return &actorError{
 			fatal:   true,
@@ -39,20 +40,22 @@ func Newf(retCode exitcode.ExitCode, format string, args ...interface{}) ActorEr
 
 			msg:   "tried creating an error and setting RetCode to 0",
 			frame: xerrors.Caller(1),
-			err:   fmt.Errorf(format, args...),
+			err:   wrappedErr,
 		}
 	}
 	return &actorError{
 		retCode: retCode,
 
-		msg:   fmt.Sprintf(format, args...),
+		msg:   wrappedErr.Error(),
 		frame: xerrors.Caller(1),
+		err:   wrappedErr,
 	}
 }
 
 // todo: bit hacky
 
 func NewfSkip(skip int, retCode exitcode.ExitCode, format string, args ...interface{}) ActorError {
+	wrappedErr := fmt.Errorf(format, args...)
 	if retCode == 0 {
 		return &actorError{
 			fatal:   true,
@@ -60,14 +63,15 @@ func NewfSkip(skip int, retCode exitcode.ExitCode, format string, args ...interf
 
 			msg:   "tried creating an error and setting RetCode to 0",
 			frame: xerrors.Caller(skip),
-			err:   fmt.Errorf(format, args...),
+			err:   wrappedErr,
 		}
 	}
 	return &actorError{
 		retCode: retCode,
 
-		msg:   fmt.Sprintf(format, args...),
+		msg:   wrappedErr.Error(),
 		frame: xerrors.Caller(skip),
+		err:   wrappedErr,
 	}
 }
 
