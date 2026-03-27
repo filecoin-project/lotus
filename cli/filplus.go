@@ -1104,7 +1104,6 @@ If the client id different then claim can be extended up to maximum 5 years from
 		eg := errgroup.Group{}
 		eg.SetLimit(10)
 		for _, msg := range smsgs {
-			msg := msg
 			eg.Go(func() error {
 				wait, err := api.StateWaitMsg(ctx, msg.Cid(), uint64(cctx.Int("confidence")), 2000, true)
 				if err != nil {
@@ -1174,8 +1173,6 @@ func CreateExtendClaimMsg(ctx context.Context, api api.FullNode, pcm map[verifre
 				return nil, xerrors.Errorf("getting claims for miner %s: %s", maddr, err)
 			}
 			for claimID, claim := range claims {
-				claimID := claimID
-				claim := claim
 				// If the client is not the original client - burn datacap
 				if claim.Client != wid {
 					// The new duration should be greater than the original deal duration and claim should not already be expired
@@ -1219,7 +1216,6 @@ func CreateExtendClaimMsg(ctx context.Context, api api.FullNode, pcm map[verifre
 		}
 
 		for claimID := range pcm {
-			claimID := claimID
 			claim, ok := claims[verifregtypes9.ClaimId(claimID)]
 			if !ok {
 				return nil, xerrors.Errorf("claim %d not found for provider %s", claimID, miners[0])
@@ -1252,8 +1248,6 @@ func CreateExtendClaimMsg(ctx context.Context, api api.FullNode, pcm map[verifre
 
 	if len(miners) == 0 && len(pcm) > 0 {
 		for claimID, prov := range pcm {
-			prov := prov
-			claimID := claimID
 			claim, err := api.StateGetClaim(ctx, prov.Addr, verifregtypes9.ClaimId(claimID), types.EmptyTSK)
 			if err != nil {
 				return nil, xerrors.Errorf("could not load the claim %d: %s", claimID, err)

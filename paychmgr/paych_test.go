@@ -195,7 +195,6 @@ func TestCheckVoucherValid(t *testing.T) {
 	}}
 
 	for _, tcase := range tcases {
-		tcase := tcase
 		t.Run(tcase.name, func(t *testing.T) {
 			// Create an actor for the channel with the test case balance
 			act := &types.Actor{

@@ -84,7 +84,6 @@ func TestGatewayAPIChainGetTipSetByHeight(t *testing.T) {
 		},
 	}}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			mockV1 := v1mocks.NewMockFullNode(ctrl)
