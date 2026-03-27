@@ -51,7 +51,7 @@ require (
 	github.com/filecoin-project/go-jsonrpc v0.10.1
 	github.com/filecoin-project/go-keccak v0.1.0
 	github.com/filecoin-project/go-padreader v0.0.1
-	github.com/filecoin-project/go-paramfetch v0.0.4
+	github.com/filecoin-project/go-paramfetch v0.0.5
 	github.com/filecoin-project/go-state-types v0.18.0-dev // dependency-check-ignore: unknown
 	github.com/filecoin-project/go-statemachine v1.0.3
 	github.com/filecoin-project/go-statestore v0.2.0
@@ -318,7 +318,6 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260128011058-8636f8732409 // indirect
 	google.golang.org/grpc v1.78.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
-	gopkg.in/cheggaaa/pb.v1 v1.0.28 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	howett.net/plist v0.0.0-20181124034731-591f970eefbb // indirect; dependency-check-ignore: required by github.com/elastic/go-sysinfo
