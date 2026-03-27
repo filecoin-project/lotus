@@ -14,10 +14,10 @@ const (
 	// at 12 (legacy has 9). This is set to match that upper bound.
 	maxListElements = 12
 
-	// maxListDepth limits how deeply RLP lists may be nested. Ethereum
-	// transactions nest at most 3 levels deep (tx list > access list >
-	// [address, storageKeys] tuple > keys list). 32 provides generous
-	// headroom for any future transaction format.
+	// maxListDepth limits how deeply RLP lists may be nested. Input length
+	// alone does not bound recursion depth, a sequence of 0xc1 bytes
+	// creates one stack frame per byte, so an explicit limit is required.
+	// Ethereum transactions nest at most 3 levels deep; 32 is generous.
 	maxListDepth = 32
 
 	// maxInputLen is the largest RLP blob we will attempt to decode.
@@ -136,14 +136,14 @@ func decodeRLP(data []byte, depth int) (res any, consumed int, err error) {
 	if len(data) == 0 {
 		return nil, 0, errRLPEmptyInput
 	}
+	if depth > maxListDepth {
+		return nil, 0, fmt.Errorf("invalid rlp data: list nesting depth exceeds limit of %d", maxListDepth)
+	}
 
 	b := data[0]
 
 	switch {
 	case b >= 0xf8: // long list (> 55 bytes content)
-		if depth > maxListDepth {
-			return nil, 0, fmt.Errorf("invalid rlp data: list nesting depth exceeds limit of %d", maxListDepth)
-		}
 		listLenInBytes := int(b) - 0xf7
 		listLen, err := decodeLength(data[1:], listLenInBytes)
 		if err != nil {
@@ -159,9 +159,6 @@ func decodeRLP(data []byte, depth int) (res any, consumed int, err error) {
 		return result, 1 + listLenInBytes + listLen, err
 
 	case b >= 0xc0: // short list (0-55 bytes content)
-		if depth > maxListDepth {
-			return nil, 0, fmt.Errorf("invalid rlp data: list nesting depth exceeds limit of %d", maxListDepth)
-		}
 		length := int(b) - 0xc0
 		if 1+length > len(data) {
 			return nil, 0, errRLPListBounds
