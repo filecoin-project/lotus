@@ -11,18 +11,62 @@
 
 ## ☢️ Upgrade Warnings ☢️
 
-- The minimum supported Golang version is now `1.25.0`.
+## ⭐ New Features
+
+## 🐛 Bug Fixes
+
+## 👌 Improvements
+
+# Node v1.35.1 / 2026-03-26
+
+This is a release candidate of a patch release that extends EC finality tooling into the v2 API, Eth RPC, and `lotus-shed`, improves Ethereum RPC and gas estimation behavior. It also lowers several CLI batch defaults to reduce out-of-gas failures and raises the minimum supported Golang version to `1.25.0`.
+
+## ☢️ Upgrade Warnings ☢️
+
+- The minimum supported Golang version is now `1.25.0`. ([filecoin-project/lotus#13538](https://github.com/filecoin-project/lotus/pull/13538))
 
 ## ⭐ New Features
 
 - feat(api): integrate [FRC-0089](https://github.com/filecoin-project/FIPs/blob/master/FRCs/frc-0089.md) EC finality calculator into v2 API and Eth RPC, so `"finalized"` and `"safe"` tags reflect actual chain health (~20-30 epochs) rather than worst-case static 900-epoch fallback. Adds `ChainGetTipSetFinalityStatus` v2 endpoint for finality diagnostics. ([filecoin-project/lotus#13547](https://github.com/filecoin-project/lotus/pull/13547))
 - feat(shed): add `lotus-shed finality-calculator` for EC finality probability computation per FRC-0089 ([filecoin-project/lotus#12093](https://github.com/filecoin-project/lotus/pull/12093))
 
+## 🐛 Bug Fixes
+
+- fix(gateway): return `ErrFilterNotFound` instead of an empty result for unknown filter IDs in `EthGetFilterLogs` ([filecoin-project/lotus#13519](https://github.com/filecoin-project/lotus/pull/13519))
+- fix(eth): handle failed contract creates with nil result addresses in `trace_filter` ([filecoin-project/lotus#13549](https://github.com/filecoin-project/lotus/pull/13549))
+- fix(chainstore): remove expected CBOR decode warnings in `GetCMessage` for Ethereum-style transactions, reducing log spam on busy nodes ([filecoin-project/lotus#13524](https://github.com/filecoin-project/lotus/pull/13524))
+- fix(net): update FIL DevTTY WebTransport certhashes in the mainnet bootstrap list ([filecoin-project/lotus#13530](https://github.com/filecoin-project/lotus/pull/13530))
+- fix(gas): stricter bounds for `GasEstimateGasPremium` lookback ([filecoin-project/lotus#13556](https://github.com/filecoin-project/lotus/pull/13556))
+- fix: remove duplicate SQL statement entries from `preparedStatementMapping` ([filecoin-project/lotus#13545](https://github.com/filecoin-project/lotus/pull/13545))
+
 ## 👌 Improvements
-- fix(gateway): return `ErrFilterNotFound` error instead of empty result for unknown filter IDs in `EthGetFilterLogs` ([filecoin-project/lotus#13519](https://github.com/filecoin-project/lotus/pull/13519))
-- feat(basefee)!: premium-based base fee adjustment (FIP-0115), which may be included in a future upgrade ([filecoin-project/lotus#13531](https://github.com/filecoin-project/lotus/pull/13531))
-- fix(eth): handle nil address in trace_filter for failed contract creates ([filecoin-project/lotus#13549](https://github.com/filecoin-project/lotus/pull/13549))
-- fix(gas): stricter bounds for GasEstimateGasPremium lookback ([filecoin-project/lotus#13555](https://github.com/filecoin-project/lotus/pull/13555))
+
+- perf(MessagePool): cache `Pending()` snapshots to reduce repeated message pool reconstruction work ([filecoin-project/lotus#13542](https://github.com/filecoin-project/lotus/pull/13542))
+- chore(cli): lower default batch sizes for claim extension, deal settlement, and sector extension commands to reduce out-of-gas failures ([filecoin-project/lotus#13537](https://github.com/filecoin-project/lotus/pull/13537))
+- build(deps): bump `github.com/ipfs/boxo` to `0.37.0`, `github.com/drand/drand/v2` to `2.1.4`, `github.com/drand/kyber` to `1.3.2`, and `github.com/libp2p/go-libp2p-kad-dht` to `0.38.0` ([filecoin-project/lotus#13541](https://github.com/filecoin-project/lotus/pull/13541), [filecoin-project/lotus#13510](https://github.com/filecoin-project/lotus/pull/13510), [filecoin-project/lotus#13516](https://github.com/filecoin-project/lotus/pull/13516), [filecoin-project/lotus#13502](https://github.com/filecoin-project/lotus/pull/13502))
+
+## 📝 Changelog
+
+For the set of changes since the last stable release:
+
+- Node: https://github.com/filecoin-project/lotus/compare/release/v1.35.0...phi/prep-release-v1351-rc1
+
+## 👨‍👩‍👧‍👦 Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Rod Vagg | 8 | +3140/-418 | 41 |
+| William Morriss | 3 | +351/-15 | 18 |
+| dependabot[bot] | 4 | +98/-89 | 8 |
+| Phi-rjan | 3 | +81/-33 | 19 |
+| hanabi1224 | 1 | +0/-17 | 1 |
+| eroderust | 1 | +7/-7 | 5 |
+| beck | 1 | +6/-6 | 5 |
+| Shashank | 1 | +3/-2 | 3 |
+| TippyFlits | 1 | +0/-5 | 1 |
+| stringsbuilder | 1 | +2/-2 | 1 |
+| relotnek | 1 | +1/-1 | 1 |
+| Hubert | 1 | +0/-1 | 1 |
 
 # Node and Miner v1.35.0 / 2026-02-19
 
