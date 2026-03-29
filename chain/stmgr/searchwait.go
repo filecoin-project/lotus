@@ -3,6 +3,7 @@ package stmgr
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
@@ -158,6 +159,9 @@ func (sm *StateManager) SearchForMessage(ctx context.Context, head *types.TipSet
 	switch {
 	case err == nil:
 		if r != nil && foundMsg.Defined() {
+			if lookbackLimit != LookbackNoLimit && fts.Height()+lookbackLimit < head.Height() {
+				return nil, nil, cid.Undef, fmt.Errorf("message %s not found", mcid)
+			}
 			return fts, r, foundMsg, nil
 		}
 
