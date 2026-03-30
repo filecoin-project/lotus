@@ -17,9 +17,9 @@
 
 ## 👌 Improvements
 
-# Node v1.35.1 / 2026-03-26
+# Node v1.35.1 / 2026-03-30
 
-This is a release candidate of a patch release that extends EC finality tooling into the v2 API, Eth RPC, and `lotus-shed`, improves Ethereum RPC and gas estimation behavior. It also lowers several CLI batch defaults to reduce out-of-gas failures and raises the minimum supported Golang version to `1.25.0`.
+This is the stable release of Lotus node v1.35.1, a patch release that extends EC finality tooling into the v2 API, Eth RPC, and `lotus-shed`, improves Ethereum RPC and gas estimation behavior, lowers several CLI batch defaults to reduce out-of-gas failures, and raises the minimum supported Golang version to `1.25.0`. The final release also includes late backports for Ethereum RLP hardening, proof-parameter fetch robustness, and indexed `StateSearchMsg` lookback handling.
 
 ## ☢️ Upgrade Warnings ☢️
 
@@ -32,25 +32,27 @@ This is a release candidate of a patch release that extends EC finality tooling 
 
 ## 🐛 Bug Fixes
 
+- fix(rlp): modernize and harden Ethereum RLP decoding with tighter canonical-encoding validation, explicit nesting and input bounds, and expanded roundtrip coverage for transaction parsing ([filecoin-project/lotus#13555](https://github.com/filecoin-project/lotus/pull/13555))
 - fix(gateway): return `ErrFilterNotFound` instead of an empty result for unknown filter IDs in `EthGetFilterLogs` ([filecoin-project/lotus#13519](https://github.com/filecoin-project/lotus/pull/13519))
 - fix(eth): handle failed contract creates with nil result addresses in `trace_filter` ([filecoin-project/lotus#13549](https://github.com/filecoin-project/lotus/pull/13549))
 - fix(chainstore): remove expected CBOR decode warnings in `GetCMessage` for Ethereum-style transactions, reducing log spam on busy nodes ([filecoin-project/lotus#13524](https://github.com/filecoin-project/lotus/pull/13524))
 - fix(net): update FIL DevTTY WebTransport certhashes in the mainnet bootstrap list ([filecoin-project/lotus#13530](https://github.com/filecoin-project/lotus/pull/13530))
 - fix(gas): stricter bounds for `GasEstimateGasPremium` lookback ([filecoin-project/lotus#13556](https://github.com/filecoin-project/lotus/pull/13556))
 - fix: remove duplicate SQL statement entries from `preparedStatementMapping` ([filecoin-project/lotus#13545](https://github.com/filecoin-project/lotus/pull/13545))
-- fix(api): `StateSearchMsg` should respect `lookbackLimit` [filecoin-project/lotus#13562](https://github.com/filecoin-project/lotus/pull/13562)
+- fix(api): make `StateSearchMsg` respect `lookbackLimit` when returning indexed results ([filecoin-project/lotus#13562](https://github.com/filecoin-project/lotus/pull/13562))
 
 ## 👌 Improvements
 
 - perf(MessagePool): cache `Pending()` snapshots to reduce repeated message pool reconstruction work ([filecoin-project/lotus#13542](https://github.com/filecoin-project/lotus/pull/13542))
 - chore(cli): lower default batch sizes for claim extension, deal settlement, and sector extension commands to reduce out-of-gas failures ([filecoin-project/lotus#13537](https://github.com/filecoin-project/lotus/pull/13537))
+- chore(paramfetch): bump `go-paramfetch` to `v0.0.5`, improving parameter downloads by rejecting unexpected HTTP responses and avoiding redundant concurrent fetches ([filecoin-project/lotus#13559](https://github.com/filecoin-project/lotus/pull/13559))
 - build(deps): bump `github.com/ipfs/boxo` to `0.37.0`, `github.com/drand/drand/v2` to `2.1.4`, `github.com/drand/kyber` to `1.3.2`, and `github.com/libp2p/go-libp2p-kad-dht` to `0.38.0` ([filecoin-project/lotus#13541](https://github.com/filecoin-project/lotus/pull/13541), [filecoin-project/lotus#13510](https://github.com/filecoin-project/lotus/pull/13510), [filecoin-project/lotus#13516](https://github.com/filecoin-project/lotus/pull/13516), [filecoin-project/lotus#13502](https://github.com/filecoin-project/lotus/pull/13502))
 
 ## 📝 Changelog
 
 For the set of changes since the last stable release:
 
-- Node: https://github.com/filecoin-project/lotus/compare/release/v1.35.0...phi/prep-release-v1351-rc1
+- Node: https://github.com/filecoin-project/lotus/compare/release/v1.35.0...release/v1.35.1
 
 ## 👨‍👩‍👧‍👦 Contributors
 
