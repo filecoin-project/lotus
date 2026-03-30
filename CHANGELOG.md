@@ -38,6 +38,7 @@ This is a release candidate of a patch release that extends EC finality tooling 
 - fix(net): update FIL DevTTY WebTransport certhashes in the mainnet bootstrap list ([filecoin-project/lotus#13530](https://github.com/filecoin-project/lotus/pull/13530))
 - fix(gas): stricter bounds for `GasEstimateGasPremium` lookback ([filecoin-project/lotus#13556](https://github.com/filecoin-project/lotus/pull/13556))
 - fix: remove duplicate SQL statement entries from `preparedStatementMapping` ([filecoin-project/lotus#13545](https://github.com/filecoin-project/lotus/pull/13545))
+- fix(api): `StateSearchMsg` should respect `lookbackLimit` [filecoin-project/lotus#13562](https://github.com/filecoin-project/lotus/pull/13562)
 
 ## 👌 Improvements
 
