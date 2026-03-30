@@ -116,8 +116,11 @@ func (c *ECFinalityCache) GetFinalizedTipSet(ctx context.Context) (*types.TipSet
 	return s.FinalizedTipSet, nil
 }
 
-// walkChain walks back from head collecting block counts for the calculator.
-// Each LoadTipSet call typically hits the ChainStore's ARC cache.
+// walkChain walks back from head collecting block counts per epoch for the
+// calculator. Null rounds (epochs with no blocks) are included as 0 entries
+// so that the calculator sees the real timeline and the returned array depth
+// corresponds directly to epoch height differences. Each LoadTipSet call
+// typically hits the ChainStore's ARC cache.
 func (c *ECFinalityCache) walkChain(ctx context.Context, head *types.TipSet) ([]int, error) {
 	needed := c.windowSize
 	chain := make([]int, 0, needed)
@@ -127,6 +130,10 @@ func (c *ECFinalityCache) walkChain(ctx context.Context, head *types.TipSet) ([]
 		parent, err := c.cs.LoadTipSet(ctx, ts.Parents())
 		if err != nil {
 			return nil, err
+		}
+		// Insert 0 entries for null rounds between this tipset and its parent.
+		for nulls := int(ts.Height()-parent.Height()) - 1; nulls > 0 && len(chain) < needed; nulls-- {
+			chain = append(chain, 0)
 		}
 		ts = parent
 	}

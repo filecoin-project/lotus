@@ -83,13 +83,20 @@ machine-readable output of all 900 epochs.`,
 			headEpoch = int(head.Height())
 			readLength := int(policy.ChainFinality) + 5
 			chain = append(chain, len(head.Cids()))
-			for range readLength - 1 {
-				head, err = api.ChainGetTipSet(ctx, head.Parents())
+			for len(chain) < readLength {
+				parent, err := api.ChainGetTipSet(ctx, head.Parents())
 				if err != nil {
 					return err
 				}
-				chain = append(chain, len(head.Cids()))
+				// Insert 0 entries for null rounds between this tipset and its parent.
+				for nulls := int(head.Height()-parent.Height()) - 1; nulls > 0 && len(chain) < readLength; nulls-- {
+					chain = append(chain, 0)
+				}
+				chain = append(chain, len(parent.Cids()))
+				head = parent
 			}
+			// Trim to exact length in case null round insertion overshot.
+			chain = chain[:readLength]
 			// API walk produces most-recent-first; reverse to match the
 			// expected ordering (index 0 = earliest epoch).
 			slices.Reverse(chain)

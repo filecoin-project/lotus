@@ -22,9 +22,9 @@ const (
 	// BisectLow and BisectHigh define the search range for the bisect algorithm
 	// that finds the epoch depth at which the finality guarantee is met. A low
 	// bound of 3 avoids evaluating trivially shallow depths; a high bound of
-	// 200 accommodates degraded chains that take longer to finalize.
+	// 450 accommodates degraded chains that take longer to finalize.
 	BisectLow  = 3
-	BisectHigh = 200
+	BisectHigh = 450
 
 	// DefaultBlocksPerEpoch is the Filecoin mainnet expected block production rate.
 	DefaultBlocksPerEpoch = 5.0
