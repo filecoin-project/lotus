@@ -160,7 +160,7 @@ func (sm *StateManager) SearchForMessage(ctx context.Context, head *types.TipSet
 	case err == nil:
 		if r != nil && foundMsg.Defined() {
 			if lookbackLimit != LookbackNoLimit && fts.Height()+lookbackLimit < head.Height() {
-				return nil, nil, cid.Undef, fmt.Errorf("message %s not found", mcid)
+				return nil, nil, cid.Undef, nil
 			}
 			return fts, r, foundMsg, nil
 		}
