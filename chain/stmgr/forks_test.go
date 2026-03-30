@@ -252,9 +252,6 @@ func TestForkRefuseCall(t *testing.T) {
 
 	for after := 0; after < 3; after++ {
 		for before := 0; before < 3; before++ {
-			// Makes the lints happy...
-			after := after
-			before := before
 			t.Run(fmt.Sprintf("after:%d,before:%d", after, before), func(t *testing.T) {
 				testForkRefuseCall(t, before, after)
 			})

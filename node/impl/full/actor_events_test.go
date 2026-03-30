@@ -115,7 +115,6 @@ func TestParseHeightRange(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			req := require.New(t)
 			min, max, err := parseHeightRange(tc.heaviest, tc.from, tc.to, tc.maxRange)
@@ -229,7 +228,6 @@ func TestGetActorEventsRaw(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			efm := newMockEventFilterManager(t)
 			collectedEvents := makeCollectedEvents(t, rng, 0, 1, 10)
@@ -292,7 +290,6 @@ func TestSubscribeActorEventsRaw(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
 
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			req := require.New(t)
 
@@ -454,7 +451,6 @@ func TestSubscribeActorEventsRaw_OnlyHistorical(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
 
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			req := require.New(t)
 
