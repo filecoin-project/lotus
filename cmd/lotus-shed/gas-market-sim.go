@@ -1,11 +1,17 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	_ "embed"
+	"encoding/csv"
 	"fmt"
+	"io"
 	"math"
 	"math/rand"
+	"os"
 	"sort"
+	"strconv"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -22,6 +28,82 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/impl/gasutils"
 )
+
+//go:embed gas_limit_dist.csv
+var defaultGasLimitDistCSV []byte
+
+// The width of each bucket in gas.
+// Custom distributions supplied via --gas-limit-dist must use the same bucket size.
+const gasLimitBucketSize = 20_000_000
+
+// gasLimitDist samples gas limits from a bucket distribution.
+// Within a bucket, the sample is drawn uniformly.
+type gasLimitDist struct {
+	cdf   []int64 // cdf[i] = sum of counts for buckets 0..i (inclusive)
+	total int64
+}
+
+// The CSV format is two columns (bucket, count).
+// Bucket i covers [i*gasLimitBucketSize, (i+1)*gasLimitBucketSize).
+func loadGasLimitDist(r io.Reader) (*gasLimitDist, error) {
+	cr := csv.NewReader(r)
+	cr.Comment = '#'
+	rows, err := cr.ReadAll()
+	if err != nil {
+		return nil, err
+	}
+	if len(rows) < 2 {
+		return nil, fmt.Errorf("gas limit dist CSV has no data rows")
+	}
+	// find max bucket index to size the CDF slice
+	maxBucket := 0
+	for _, row := range rows[1:] {
+		b, err := strconv.Atoi(row[0])
+		if err != nil {
+			return nil, fmt.Errorf("invalid bucket %q: %w", row[0], err)
+		}
+		if b > maxBucket {
+			maxBucket = b
+		}
+	}
+	counts := make([]int64, maxBucket+1)
+	for _, row := range rows[1:] {
+		b, _ := strconv.Atoi(row[0])
+		c, err := strconv.ParseInt(row[1], 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("invalid count %q: %w", row[1], err)
+		}
+		counts[b] += c
+	}
+	cdf := make([]int64, len(counts))
+	var running int64
+	for i, c := range counts {
+		running += c
+		cdf[i] = running
+	}
+	if running == 0 {
+		return nil, fmt.Errorf("gas limit dist has zero total weight")
+	}
+	return &gasLimitDist{cdf: cdf, total: running}, nil
+}
+
+// sample draws one gas limit from the distribution.
+func (d *gasLimitDist) sample(rng *rand.Rand) int64 {
+	r := rng.Int63n(d.total)
+	// binary search for the first bucket whose cdf > r
+	lo, hi := 0, len(d.cdf)-1
+	for lo < hi {
+		mid := (lo + hi) / 2
+		if d.cdf[mid] <= r {
+			lo = mid + 1
+		} else {
+			hi = mid
+		}
+	}
+	base := int64(lo) * gasLimitBucketSize
+	offset := rng.Int63n(gasLimitBucketSize)
+	return base + offset
+}
 
 var gasMktSimCmd = &cli.Command{
 	Name:  "gas-market-sim",
@@ -67,6 +149,10 @@ var gasMktSimCmd = &cli.Command{
 			Name:  "base-fee-update",
 			Usage: "base fee update mechanism: 'premium' (FIP-0115 percentile) or 'utilization' (legacy)",
 			Value: "premium",
+		},
+		&cli.StringFlag{
+			Name:  "gas-limit-dist",
+			Usage: "path to a CSV file (bucket,count) defining the gas limit distribution; defaults to the embedded empirical distribution",
 		},
 	},
 	Action: runGasMktSim,
@@ -140,22 +226,6 @@ func simEffectivePremium(feeCap, premium, baseFee abi.TokenAmount) abi.TokenAmou
 		return premium
 	}
 	return available
-}
-
-// simSampleGasLimit returns a gas limit drawn from a shifted-exponential distribution
-// with approximate mean bgl/10, clamped to [bgl/120, 3*bgl/4].
-// This gives an average of ~3 full blocks of gas per 30-transaction epoch.
-func simSampleGasLimit(rng *rand.Rand, bgl int64) int64 {
-	min := bgl / 120
-	max := bgl * 3 / 4
-	// E[min + Exp(meanExp)] = min + meanExp = bgl/10 → meanExp = 11*bgl/120
-	meanExp := float64(bgl) * 11.0 / 120.0
-	for {
-		sample := min + int64(rng.ExpFloat64()*meanExp)
-		if sample <= max {
-			return sample
-		}
-	}
 }
 
 // simSelectMessages fills one block for a proposer with the given ticket quality,
@@ -324,7 +394,7 @@ func legacyGasPremiumEstimate(history []simEpochData, epoch int, nblocksincl uin
 // Every epoch:
 //   - txsPerEpoch transactions are inserted with premiums estimated via GasEstimateGasPremiumFromMempool
 //     (nblocksincl bimodal: p(1)=0.1, p(2)=0.2, p(10)=0.7), gas limits drawn from a
-//     shifted-exponential averaging bgl/10
+//     empirical distribution (default: embedded gas_limit_dist.csv, 500 buckets of 20M)
 //   - Each tx has a deadline = submission epoch + nblocksincl; late txs are counted
 //   - 5 independent proposers each select messages with a random tq, unaware of each other;
 //     the tipset is the union of their selections
@@ -341,8 +411,36 @@ func runGasMktSim(cctx *cli.Context) error {
 	baseFeeUpdate := cctx.String("base-fee-update")
 
 	bgl := buildconstants.BlockGasLimit
-	// Mean gas per tx from simSampleGasLimit is bgl/10, so txs = gasPerEpoch * 10.
-	txsPerEpoch := int(math.Round(gasPerEpoch * 10))
+
+	// Load gas limit distribution.
+	var glDistReader io.Reader
+	if distPath := cctx.String("gas-limit-dist"); distPath != "" {
+		f, err := os.Open(distPath)
+		if err != nil {
+			return fmt.Errorf("opening gas-limit-dist: %w", err)
+		}
+		defer f.Close() //nolint:errcheck
+		glDistReader = f
+	} else {
+		glDistReader = bytes.NewReader(defaultGasLimitDistCSV)
+	}
+	glDist, err := loadGasLimitDist(glDistReader)
+	if err != nil {
+		return fmt.Errorf("loading gas limit distribution: %w", err)
+	}
+
+	// txsPerEpoch: scale so average submitted gas ≈ gasPerEpoch * BlockGasLimit.
+	// Mean gas per tx from the empirical distribution (mean bucket ≈ 10, midpoint ≈ 205M).
+	var distMeanGas float64
+	prev := int64(0)
+	for i, c := range glDist.cdf {
+		bucketCount := c - prev
+		prev = c
+		midpoint := float64(int64(i)*gasLimitBucketSize) + gasLimitBucketSize/2
+		distMeanGas += midpoint * float64(bucketCount)
+	}
+	distMeanGas /= float64(glDist.total)
+	txsPerEpoch := int(math.Round(gasPerEpoch * float64(bgl) / distMeanGas))
 	if txsPerEpoch < 0 {
 		txsPerEpoch = 0
 	}
@@ -377,7 +475,7 @@ func runGasMktSim(cctx *cli.Context) error {
 			cs := &simChainStore{ts: csTs}
 			mp := &simMpool{msgs: mempool, ts: ts}
 
-			gl := simSampleGasLimit(rng, bgl)
+			gl := glDist.sample(rng)
 			var nblocksincl uint64
 			switch r := rng.Float64(); {
 			case r < 0.1:
