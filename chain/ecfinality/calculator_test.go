@@ -147,11 +147,11 @@ func TestFindThresholdDepth_HealthyChain(t *testing.T) {
 func TestFindThresholdDepth_DegradedChain(t *testing.T) {
 	req := require.New(t)
 
-	// All-2s chain is too degraded to achieve 2^-30 within the bisect
+	// All-1s chain is too degraded to achieve 2^-30 within the bisect
 	// search range (BisectHigh=450), so threshold is not found
 	chain := make([]int, 905)
 	for i := range chain {
-		chain[i] = 2
+		chain[i] = 1
 	}
 	guarantee := math.Pow(2, -30)
 
