@@ -30,6 +30,7 @@ var log = logging.Logger("node/gasutils")
 
 const MinGasPremium = 100e3
 const MaxSpendOnFeeDenom = 100
+const MaxGasHistory = 128
 
 type StateManagerAPI interface {
 	ParentState(ts *types.TipSet) (*state.StateTree, error)
@@ -246,6 +247,8 @@ func GasEstimateFeeCap(ctx context.Context, cstore ChainStoreAPI, msg *types.Mes
 func GasEstimateGasPremium(ctx context.Context, cstore ChainStoreAPI, cache *GasPriceCache, nblocksincl uint64, tsKey types.TipSetKey) (types.BigInt, error) {
 	if nblocksincl == 0 {
 		nblocksincl = 1
+	} else if nblocksincl > MaxGasHistory {
+		nblocksincl = MaxGasHistory
 	}
 
 	var prices []GasMeta
@@ -298,15 +301,19 @@ func GasEstimateGasPremium(ctx context.Context, cstore ChainStoreAPI, cache *Gas
 	return premium, nil
 }
 
-// finds 55th percntile instead of median to put negative pressure on gas price
+// medianGasPremium finds a gaslimit-weighted percentile gas premium from a
+// descending-sorted distribution. It walks 52.5% of total gas capacity from the
+// top (highest premium), landing at approximately the 47.5th percentile from the
+// bottom. This is slightly below the true median, applying gentle downward
+// pressure on gas premiums.
 func medianGasPremium(prices []GasMeta, blocks int) abi.TokenAmount {
 	sort.Slice(prices, func(i, j int) bool {
 		// sort desc by price
 		return prices[i].Price.GreaterThan(prices[j].Price)
 	})
 
-	at := buildconstants.BlockGasTarget * int64(blocks) / 2        // 50th
-	at += buildconstants.BlockGasTarget * int64(blocks) / (2 * 20) // move 5% further
+	at := buildconstants.BlockGasTarget * int64(blocks) / 2        // 50% of total capacity
+	at += buildconstants.BlockGasTarget * int64(blocks) / (2 * 20) // + 2.5% of total capacity
 	prev1, prev2 := big.Zero(), big.Zero()
 	for _, price := range prices {
 		prev1, prev2 = price.Price, prev1

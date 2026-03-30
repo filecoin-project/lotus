@@ -13,9 +13,11 @@ import (
 	"github.com/filecoin-project/lotus/api/v2api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
+	"github.com/filecoin-project/lotus/chain/ecfinality"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/events/filter"
 	"github.com/filecoin-project/lotus/chain/exchange"
@@ -166,6 +168,10 @@ var ChainNode = Options(
 		Override(new(messagepool.MpoolNonceAPI), From(new(*messagepool.MessagePool))),
 		Override(new(full.ChainModuleAPI), From(new(full.ChainModule))),
 		Override(new(full.ChainModuleAPIv2), From(new(full.ChainModuleV2))),
+		Override(new(ecfinality.ECFinalityCalculator), func(cs *store.ChainStore) ecfinality.ECFinalityCalculator {
+			return ecfinality.NewECFinalityCache(cs, int(policy.ChainFinality))
+		}),
+		Override(new(eth.ECFinalityProvider), From(new(ecfinality.ECFinalityCalculator))),
 		Override(new(full.GasModuleAPI), From(new(full.GasModule))),
 		Override(new(full.MpoolModuleAPI), From(new(full.MpoolModule))),
 		Override(new(full.StateModuleAPI), From(new(full.StateModule))),
@@ -266,6 +272,10 @@ func ConfigFullNode(c interface{}) Option {
 		// This is the case even if real-time and historic filtering are disabled,
 		// as it enables us to serve logs in eth_getTransactionReceipt.
 		If(cfg.Fevm.EnableEthRPC || cfg.Events.EnableActorEventsAPI || cfg.ChainIndexer.EnableIndexer, Override(StoreEventsKey, modules.EnableStoringEvents)),
+
+		Override(SetFIP0115BaseFeeHeightKey, func(cs *store.ChainStore) {
+			cs.SetFIP0115Height(cfg.Fees.FIP0115Height)
+		}),
 
 		If(cfg.Wallet.RemoteBackend != "",
 			Override(new(*remotewallet.RemoteWallet), remotewallet.SetupRemoteWallet(cfg.Wallet.RemoteBackend)),

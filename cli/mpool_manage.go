@@ -343,7 +343,7 @@ func confirmationScene(yes *bool, ask ...string) func(*imtui.Tui) error {
 		}
 
 		for _, a := range ask {
-			display(a)
+			display("%s", a)
 		}
 		row++
 		display("Enter to confirm")
