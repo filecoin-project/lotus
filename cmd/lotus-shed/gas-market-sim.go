@@ -572,16 +572,18 @@ func runGasMktSim(cctx *cli.Context) error {
 			}
 		}
 
-		switch baseFeeUpdate {
-		case "utilization":
-			var tipGasUsedForUpdate int64
-			for _, l := range tipLimits {
-				tipGasUsedForUpdate += l
+		if nProposers > 0 {
+			switch baseFeeUpdate {
+			case "utilization":
+				var tipGasUsedForUpdate int64
+				for _, l := range tipLimits {
+					tipGasUsedForUpdate += l
+				}
+				baseFee = store.ComputeNextBaseFee(baseFee, tipGasUsedForUpdate, nProposers, buildconstants.UpgradeXxHeight-1)
+			default: // "premium"
+				percentilePremium := store.WeightedQuickSelect(tipPremiums, tipLimits, buildconstants.BlockGasTargetIndex)
+				baseFee = store.NextBaseFeeFromPremium(baseFee, percentilePremium)
 			}
-			baseFee = store.ComputeNextBaseFee(baseFee, tipGasUsedForUpdate, nProposers, buildconstants.UpgradeXxHeight-1)
-		default: // "premium"
-			percentilePremium := store.WeightedQuickSelect(tipPremiums, tipLimits, buildconstants.BlockGasTargetIndex)
-			baseFee = store.NextBaseFeeFromPremium(baseFee, percentilePremium)
 		}
 
 		// Record raw premiums of included messages into the circular epoch history buffer.
