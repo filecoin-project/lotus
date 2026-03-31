@@ -288,7 +288,7 @@
   #MaxFilterResults = 10000
 
   # MaxFilterHeightRange specifies the maximum range of heights that can be used in a filter (to avoid querying
-  # the entire chain)
+  # the entire chain). Applies to eth_getLogs and trace_filter block range limits.
   #
   # type: uint64
   # env var: LOTUS_EVENTS_MAXFILTERHEIGHTRANGE

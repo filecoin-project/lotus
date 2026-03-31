@@ -32,6 +32,10 @@ const (
 	EPaymentChannelDisabled
 )
 
+// ELimitExceeded is the standard Ethereum JSON-RPC error code for request limit
+// violations (EIP-1474). Used when a block range exceeds the configured maximum.
+const ELimitExceeded jsonrpc.ErrorCode = -32005
+
 var (
 	RPCErrors = jsonrpc.NewErrors()
 
@@ -67,6 +71,8 @@ var (
 	_ error                 = (*ErrNullRound)(nil)
 	_ jsonrpc.RPCErrorCodec = (*ErrNullRound)(nil)
 	_ error                 = (*errPaymentChannelDisabled)(nil)
+	_ error                 = (*ErrBlockRangeExceeded)(nil)
+	_ jsonrpc.RPCErrorCodec = (*ErrBlockRangeExceeded)(nil)
 )
 
 func init() {
@@ -82,6 +88,7 @@ func init() {
 	RPCErrors.Register(EExecutionReverted, new(*ErrExecutionReverted))
 	RPCErrors.Register(ENullRound, new(*ErrNullRound))
 	RPCErrors.Register(EPaymentChannelDisabled, new(*errPaymentChannelDisabled))
+	RPCErrors.Register(ELimitExceeded, new(*ErrBlockRangeExceeded))
 }
 
 func ErrorIsIn(err error, errorTypes []error) bool {
@@ -245,4 +252,41 @@ type errPaymentChannelDisabled struct{}
 
 func (errPaymentChannelDisabled) Error() string {
 	return "payment channels disabled (EnablePaymentChannelManager=false)"
+}
+
+// ErrBlockRangeExceeded signals that a request's block range exceeds the configured
+// maximum. Returned with the standard Ethereum JSON-RPC -32005 "limit exceeded" code.
+type ErrBlockRangeExceeded struct {
+	Message string
+}
+
+func NewErrBlockRangeExceeded(maxBlockRange, given uint64) *ErrBlockRangeExceeded {
+	return &ErrBlockRangeExceeded{
+		Message: fmt.Sprintf("block range exceeds maximum of %d (got %d)", maxBlockRange, given),
+	}
+}
+
+func (e *ErrBlockRangeExceeded) Error() string {
+	return e.Message
+}
+
+func (e *ErrBlockRangeExceeded) FromJSONRPCError(jerr jsonrpc.JSONRPCError) error {
+	if jerr.Code != ELimitExceeded {
+		return fmt.Errorf("unexpected error code: %d", jerr.Code)
+	}
+	e.Message = jerr.Message
+	return nil
+}
+
+func (e *ErrBlockRangeExceeded) ToJSONRPCError() (jsonrpc.JSONRPCError, error) {
+	return jsonrpc.JSONRPCError{
+		Code:    ELimitExceeded,
+		Message: e.Error(),
+	}, nil
+}
+
+// Is performs a non-strict type check so errors.Is works regardless of field values.
+func (e *ErrBlockRangeExceeded) Is(target error) bool {
+	_, ok := target.(*ErrBlockRangeExceeded)
+	return ok
 }

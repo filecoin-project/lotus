@@ -82,6 +82,12 @@ func NewEthEventsAPI(
 func (e *ethEvents) EthGetLogs(ctx context.Context, filterSpec *ethtypes.EthFilterSpec) (*ethtypes.EthFilterResult, error) {
 	ces, err := e.ethGetEventsForFilter(ctx, filterSpec)
 	if err != nil {
+		// Propagate ErrBlockRangeExceeded unwrapped so go-jsonrpc can match the
+		// type and return the correct -32005 error code.
+		var bre *api.ErrBlockRangeExceeded
+		if errors.As(err, &bre) {
+			return nil, bre
+		}
 		return nil, xerrors.Errorf("failed to get events for filter: %w", err)
 	}
 	return ethFilterResultFromEvents(ctx, ces, e.chainStore, e.stateManager)
@@ -618,18 +624,18 @@ func parseBlockRange(heaviest abi.ChainEpoch, fromBlock, toBlock *string, maxRan
 	if minHeight == -1 && maxHeight > 0 {
 		// Here the client is looking for events between the head and some future height
 		if maxHeight-heaviest > maxRange {
-			return 0, 0, xerrors.Errorf("invalid epoch range: to block is too far in the future (maximum: %d)", maxRange)
+			return 0, 0, api.NewErrBlockRangeExceeded(uint64(maxRange), uint64(maxHeight-heaviest))
 		}
 	} else if minHeight >= 0 && maxHeight == -1 {
 		// Here the client is looking for events between some time in the past and the current head
 		if heaviest-minHeight > maxRange {
-			return 0, 0, xerrors.Errorf("invalid epoch range: from block is too far in the past (maximum: %d)", maxRange)
+			return 0, 0, api.NewErrBlockRangeExceeded(uint64(maxRange), uint64(heaviest-minHeight))
 		}
 	} else if minHeight >= 0 && maxHeight >= 0 {
 		if minHeight > maxHeight {
-			return 0, 0, xerrors.Errorf("invalid epoch range: to block (%d) must be after from block (%d)", minHeight, maxHeight)
+			return 0, 0, xerrors.Errorf("invalid epoch range: to block (%d) must be after from block (%d)", maxHeight, minHeight)
 		} else if maxHeight-minHeight > maxRange {
-			return 0, 0, xerrors.Errorf("invalid epoch range: range between to and from blocks is too large (maximum: %d)", maxRange)
+			return 0, 0, api.NewErrBlockRangeExceeded(uint64(maxRange), uint64(maxHeight-minHeight))
 		}
 	}
 	return minHeight, maxHeight, nil
