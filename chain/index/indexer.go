@@ -80,7 +80,8 @@ type SqliteIndexer struct {
 	updateSubs   map[uint64]*updateSub
 	subIdCounter uint64
 
-	started bool
+	started       bool
+	needsBackfill bool
 
 	// ensures writes are serialized so backfilling does not race with index updates
 	writerLk sync.Mutex

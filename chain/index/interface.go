@@ -18,6 +18,7 @@ import (
 
 var ErrNotFound = errors.New("not found in index")
 var ErrClosed = errors.New("index closed")
+var ErrBackfillRequired = errors.New("chain index requires backfill")
 
 // MsgInfo is the Message metadata the index tracks.
 type MsgInfo struct {
