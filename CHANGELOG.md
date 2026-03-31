@@ -40,6 +40,8 @@ This is a release candidate of a patch release that extends EC finality tooling 
 - fix: remove duplicate SQL statement entries from `preparedStatementMapping` ([filecoin-project/lotus#13545](https://github.com/filecoin-project/lotus/pull/13545))
 - fix(api): `StateSearchMsg` should respect `lookbackLimit` [filecoin-project/lotus#13562](https://github.com/filecoin-project/lotus/pull/13562)
 - fix(eth): tighten block range handling for `trace_filter` and `eth_getLogs`, including consistent `-32005` limit-exceeded errors and gateway range enforcement for `trace_filter` ([filecoin-project/lotus#13561](https://github.com/filecoin-project/lotus/pull/13561))
+- fix(ecfinality): account for null rounds in EC finality calculator chain walk, aligning with FRC-0089 theoretical model and fixing depth-to-height conversion ([filecoin-project/lotus#13565](https://github.com/filecoin-project/lotus/pull/13565))
+
 
 ## 👌 Improvements
 
