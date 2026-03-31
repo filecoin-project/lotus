@@ -216,6 +216,20 @@ func buildSimTipSet(baseFee abi.TokenAmount, timestamp uint64) *types.TipSet {
 	return ts
 }
 
+// simSampleNProposers samples the number of proposers in a tipset from a
+// Poisson distribution with mean 5, matching Filecoin's Expected Consensus.
+func simSampleNProposers(rng *rand.Rand) int {
+	const lambda = 5.0
+	L := math.Exp(-lambda)
+	k := 0
+	p := 1.0
+	for p > L {
+		k++
+		p *= rng.Float64()
+	}
+	return k - 1
+}
+
 // simEffectivePremium returns the effective gas premium clamped to max(0, feeCap-baseFee).
 func simEffectivePremium(feeCap, premium, baseFee abi.TokenAmount) abi.TokenAmount {
 	available := big.Sub(feeCap, baseFee)
@@ -455,7 +469,7 @@ func runGasMktSim(cctx *cli.Context) error {
 	deadlines := make([]int, 0, 5000)       // deadline[i] = epoch by which mempool[i] must be included
 	nblocksincls := make([]uint64, 0, 5000) // nblocksincls[i] = nblocksincl used when submitting mempool[i]
 	var nextSender uint64 = 2
-	var totalGasUsed int64
+	var totalGasUsed, totalGasLimit int64
 	var submitted1, submitted2, submitted10 int
 	var everLate1, everLate2, everLate10 int
 	// gas-weighted sum of effective priority fee at confirmation time, per nblocksincl cohort
@@ -542,10 +556,11 @@ func runGasMktSim(cctx *cli.Context) error {
 			effPremiums[i] = simEffectivePremium(m.Message.GasFeeCap, m.Message.GasPremium, baseFee)
 		}
 
+		nProposers := simSampleNProposers(rng)
 		selectedByAny := make([]bool, len(mempool))
 		tipPremiums := make([]abi.TokenAmount, 0, len(mempool))
 		tipLimits := make([]int64, 0, len(mempool))
-		for range 5 {
+		for range nProposers {
 			tq := rng.Float64()
 			chosen := simSelectMessages(mempool, effPremiums, tq, bgl)
 			for i, s := range chosen {
@@ -563,7 +578,7 @@ func runGasMktSim(cctx *cli.Context) error {
 			for _, l := range tipLimits {
 				tipGasUsedForUpdate += l
 			}
-			baseFee = store.ComputeNextBaseFee(baseFee, tipGasUsedForUpdate, 5, buildconstants.UpgradeXxHeight-1)
+			baseFee = store.ComputeNextBaseFee(baseFee, tipGasUsedForUpdate, nProposers, buildconstants.UpgradeXxHeight-1)
 		default: // "premium"
 			percentilePremium := store.WeightedQuickSelect(tipPremiums, tipLimits, buildconstants.BlockGasTargetIndex)
 			baseFee = store.NextBaseFeeFromPremium(baseFee, percentilePremium)
@@ -622,7 +637,8 @@ func runGasMktSim(cctx *cli.Context) error {
 			tipGasUsed += l
 		}
 		totalGasUsed += tipGasUsed
-		tipGasLimit := int64(5) * bgl
+		tipGasLimit := int64(nProposers) * bgl
+		totalGasLimit += tipGasLimit
 
 		var delayed1, delayed2, delayed10 int
 		for i, d := range deadlines {
@@ -680,7 +696,6 @@ func runGasMktSim(cctx *cli.Context) error {
 	}
 	everLateTotal := everLate1 + everLate2 + everLate10
 
-	totalGasLimit := int64(epochs) * int64(5) * bgl
 	submittedTotal := submitted1 + submitted2 + submitted10
 	pct := func(n, d int) float64 {
 		if d == 0 {
