@@ -171,8 +171,9 @@ func (s *simChainStore) LoadTipSet(_ context.Context, _ types.TipSetKey) (*types
 
 // simEpochData holds the gas metas of messages included in one simulated epoch.
 type simEpochData struct {
-	premiums []abi.TokenAmount
-	limits   []int64
+	premiums   []abi.TokenAmount
+	limits     []int64
+	nProposers int
 }
 
 // simMpool implements gasutils.MessagePoolAPI backed by an in-memory message slice.
@@ -266,13 +267,15 @@ func simSelectMessages(msgs []*types.SignedMessage, effPremiums []abi.TokenAmoun
 
 	if tq > 0.84 {
 		var blockGas int64
+		var msgCount int
 		for _, idx := range idxs {
-			if gasPerfs[idx] < 0 {
+			if gasPerfs[idx] < 0 || msgCount >= buildconstants.BlockMessageLimit {
 				break
 			}
 			if blockGas+msgs[idx].Message.GasLimit <= bgl {
 				chosen[idx] = true
 				blockGas += msgs[idx].Message.GasLimit
+				msgCount++
 			}
 		}
 		return chosen
@@ -317,13 +320,15 @@ func simSelectMessages(msgs []*types.SignedMessage, effPremiums []abi.TokenAmoun
 		return effPerfs[idxs[a]] > effPerfs[idxs[b]]
 	})
 	var blockGas int64
+	var msgCount int
 	for _, idx := range idxs {
-		if effPerfs[idx] < 0 {
+		if effPerfs[idx] < 0 || msgCount >= buildconstants.BlockMessageLimit {
 			break
 		}
 		if blockGas+msgs[idx].Message.GasLimit <= bgl {
 			chosen[idx] = true
 			blockGas += msgs[idx].Message.GasLimit
+			msgCount++
 		}
 	}
 	return chosen
@@ -350,10 +355,11 @@ func legacyGasPremiumEstimate(history []simEpochData, epoch int, nblocksincl uin
 		limit int64
 	}
 	var metas []gasMeta
-	totalBlocks := 5 * lookback // 5 proposers per simulated epoch
+	var totalBlocks int
 	for i := 0; i < lookback; i++ {
 		// epoch-i wraps around the circular buffer; add cap before modulo to avoid negative.
 		e := history[(epoch-i+cap)%cap]
+		totalBlocks += e.nProposers
 		for j, p := range e.premiums {
 			metas = append(metas, gasMeta{p, e.limits[j]})
 		}
@@ -590,6 +596,7 @@ func runGasMktSim(cctx *cli.Context) error {
 		ed := &epochHistory[epoch%20]
 		ed.premiums = ed.premiums[:0]
 		ed.limits = ed.limits[:0]
+		ed.nProposers = nProposers
 		for i, m := range mempool {
 			if selectedByAny[i] {
 				ed.premiums = append(ed.premiums, m.Message.GasPremium)
