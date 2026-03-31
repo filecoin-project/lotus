@@ -35,6 +35,7 @@ import (
 	"github.com/filecoin-project/lotus/itests/multisig"
 	res "github.com/filecoin-project/lotus/lib/result"
 	"github.com/filecoin-project/lotus/node"
+	"github.com/filecoin-project/lotus/node/config"
 )
 
 const (
@@ -611,5 +612,168 @@ func TestGatewayF3(t *testing.T) {
 		cert, err = nodes.lite.F3GetCertificate(ctx, 2)
 		require.ErrorIs(t, err, api.ErrF3Disabled)
 		require.Nil(t, cert)
+	})
+}
+
+// TestEthBlockRangeLimits verifies that block range limits are enforced on
+// EthTraceFilter and EthGetLogs, returning the standard Ethereum JSON-RPC
+// -32005 "limit exceeded" error code via ErrBlockRangeExceeded.
+func TestEthBlockRangeLimits(t *testing.T) {
+	const (
+		nodeMaxRange    uint64 = 10
+		gatewayMaxRange int64  = 5
+	)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	full, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(),
+		kit.WithCfgOpt(func(cfg *config.FullNode) error {
+			cfg.Events.MaxFilterHeightRange = nodeMaxRange
+			return nil
+		}),
+	)
+	ens.InterconnectAll().BeginMining(100 * time.Millisecond)
+
+	full.WaitTillChain(ctx, kit.HeightAtLeast(20))
+
+	head, err := full.EthBlockNumber(ctx)
+	require.NoError(t, err)
+
+	// Block range that exceeds the node's MaxFilterHeightRange
+	fromBlock := fmt.Sprintf("0x%x", uint64(head)-nodeMaxRange-5)
+	toBlock := fmt.Sprintf("0x%x", uint64(head))
+	// Block range within the node's limit
+	withinFrom := fmt.Sprintf("0x%x", uint64(head)-nodeMaxRange+1)
+
+	t.Run("trace_filter_node", func(t *testing.T) {
+		req := require.New(t)
+
+		filter := ethtypes.EthTraceFilterCriteria{
+			FromBlock: &fromBlock,
+			ToBlock:   &toBlock,
+		}
+		_, err := full.EthTraceFilter(ctx, filter)
+		req.Error(err)
+
+		var blockRangeErr *api.ErrBlockRangeExceeded
+		req.ErrorAs(err, &blockRangeErr)
+		req.Contains(blockRangeErr.Error(), "block range exceeds maximum")
+
+		withinFilter := ethtypes.EthTraceFilterCriteria{
+			FromBlock: &withinFrom,
+			ToBlock:   &toBlock,
+		}
+		_, err = full.EthTraceFilter(ctx, withinFilter)
+		req.NoError(err)
+	})
+
+	t.Run("eth_getLogs_node", func(t *testing.T) {
+		req := require.New(t)
+
+		filter := ethtypes.EthFilterSpec{
+			FromBlock: &fromBlock,
+			ToBlock:   &toBlock,
+		}
+		_, err := full.EthGetLogs(ctx, &filter)
+		req.Error(err)
+
+		var blockRangeErr *api.ErrBlockRangeExceeded
+		req.ErrorAs(err, &blockRangeErr)
+		req.Contains(blockRangeErr.Error(), "block range exceeds maximum")
+	})
+
+	t.Run("trace_filter_gateway", func(t *testing.T) {
+		req := require.New(t)
+
+		// Set up gateway with a tighter trace filter limit
+		v1EthSubHandler := gateway.NewEthSubHandler()
+		v2EthSubHandler := gateway.NewEthSubHandler()
+		gwapi := gateway.NewNode(
+			full, full.V2,
+			gateway.WithV1EthSubHandler(v1EthSubHandler),
+			gateway.WithV2EthSubHandler(v2EthSubHandler),
+			gateway.WithEthTraceFilterMaxBlockRange(gatewayMaxRange),
+			gateway.WithMaxLookbackDuration(24*365*time.Hour), // test timestamps don't match wall clock
+		)
+		handler, err := gateway.Handler(gwapi)
+		req.NoError(err)
+		t.Cleanup(func() { _ = handler.Shutdown(ctx) })
+
+		l, err := net.Listen("tcp", "127.0.0.1:0")
+		req.NoError(err)
+		srv, _, _ := kit.CreateRPCServer(t, handler, l)
+		gwAddr := srv.Listener.Addr().String()
+
+		gapiv1, v1Closer, err := client.NewGatewayRPCV1(ctx, "ws://"+gwAddr+"/rpc/v1", nil,
+			jsonrpc.WithClientHandler("Filecoin", v1EthSubHandler),
+			jsonrpc.WithClientHandlerAlias("eth_subscription", "Filecoin.EthSubscription"),
+		)
+		req.NoError(err)
+		t.Cleanup(v1Closer)
+
+		gapiv2, v2Closer, err := client.NewGatewayRPCV2(ctx, "ws://"+gwAddr+"/rpc/v2", nil,
+			jsonrpc.WithClientHandler("Filecoin", v2EthSubHandler),
+			jsonrpc.WithClientHandlerAlias("eth_subscription", "Filecoin.EthSubscription"),
+		)
+		req.NoError(err)
+		t.Cleanup(v2Closer)
+
+		// Range exceeding gateway limit (but within node limit)
+		gwFromBlock := fmt.Sprintf("0x%x", uint64(head)-uint64(gatewayMaxRange)-2)
+		gwWithinFrom := fmt.Sprintf("0x%x", uint64(head)-uint64(gatewayMaxRange)+1)
+
+		for _, tc := range []struct {
+			name   string
+			caller interface {
+				EthTraceFilter(context.Context, ethtypes.EthTraceFilterCriteria) ([]*ethtypes.EthTraceFilterResult, error)
+			}
+			rpcVersion int
+		}{
+			{"v1", gapiv1, 1},
+			{"v2", gapiv2, 2},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				req := require.New(t)
+
+				filter := ethtypes.EthTraceFilterCriteria{
+					FromBlock: &gwFromBlock,
+					ToBlock:   &toBlock,
+				}
+
+				_, err := tc.caller.EthTraceFilter(ctx, filter)
+				req.Error(err)
+
+				var blockRangeErr *api.ErrBlockRangeExceeded
+				req.ErrorAs(err, &blockRangeErr)
+				req.Contains(blockRangeErr.Error(), "block range exceeds maximum")
+
+				// Verify raw JSON-RPC error code is -32005
+				rawPayload := fmt.Sprintf(
+					`{"jsonrpc":"2.0","method":"Filecoin.EthTraceFilter","params":[{"fromBlock":"%s","toBlock":"%s"}],"id":1}`,
+					gwFromBlock, toBlock,
+				)
+				status, body := makeManualRpcCall(t, tc.rpcVersion, http.DefaultClient, gwAddr, rawPayload)
+				req.Equal(http.StatusOK, status)
+
+				var rpcResp struct {
+					Error *struct {
+						Code    int    `json:"code"`
+						Message string `json:"message"`
+					} `json:"error,omitempty"`
+				}
+				req.NoError(json.Unmarshal([]byte(body), &rpcResp))
+				req.NotNil(rpcResp.Error)
+				req.Equal(-32005, rpcResp.Error.Code)
+				req.Contains(rpcResp.Error.Message, "block range exceeds maximum")
+
+				withinFilter := ethtypes.EthTraceFilterCriteria{
+					FromBlock: &gwWithinFrom,
+					ToBlock:   &toBlock,
+				}
+				_, err = tc.caller.EthTraceFilter(ctx, withinFilter)
+				req.NoError(err)
+			})
+		}
 	})
 }
