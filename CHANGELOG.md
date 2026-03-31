@@ -12,6 +12,7 @@
 ## ☢️ Upgrade Warnings ☢️
 
 - The minimum supported Golang version is now `1.25.0`.
+- **F3 Prometheus metric names may change**: The OpenTelemetry Prometheus exporter has been bumped from v0.50.0 to v0.63.0, which changes how metric unit suffixes are applied. F3 metrics with unit `"s"` (seconds) or `"By"` (bytes) may gain `_seconds` or `_bytes` suffixes in their Prometheus names. This only affects `f3_*` metrics -- core Lotus metrics (`lotus_*`) are exported via the separate OpenCensus exporter, which is unchanged. Operators with dashboards or alerting rules that query `f3_*` metrics should verify metric names after upgrading. ([filecoin-project/lotus#13511](https://github.com/filecoin-project/lotus/pull/13511))
 
 ## ⭐ New Features
 
@@ -51,7 +52,7 @@ The Lotus and Lotus-Miner v1.35.0 release includes Ethereum RPC compatibility im
 
 ## 👌 Improvements
 
-- chore(tracing): update OpenTelemetry semconv from v1.7.0 to v1.39.0 ([filecoin-project/lotus#13511](https://github.com/filecoin-project/lotus/pull/13511))
+- chore(tracing): update OpenTelemetry semconv from v1.7.0 to v1.39.0 ([filecoin-project/lotus#13508](https://github.com/filecoin-project/lotus/pull/13508))
 - chore(deps): replace `golang.org/x/crypto/sha3` with go-keccak, upgrade x/crypto ([filecoin-project/lotus#13477](https://github.com/filecoin-project/lotus/pull/13477))
 - chore: bump FFI to v1.34.6 ([filecoin-project/lotus#13521](https://github.com/filecoin-project/lotus/pull/13521))
 - perf: MessagePool Pending() snapshot ([filecoin-project/lotus#13542](https://github.com/filecoin-project/lotus/pull/13542))
