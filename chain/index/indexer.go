@@ -284,7 +284,6 @@ func (si *SqliteIndexer) indexTipset(ctx context.Context, tx *sql.Tx, ts *types.
 
 	for i, msg := range msgs {
 		insertTipsetMsgStmt := tx.Stmt(si.stmts.insertTipsetMessageStmt)
-		msg := msg
 		if _, err := insertTipsetMsgStmt.ExecContext(ctx, tsKeyCidBytes, height, 0, msg.Cid().Bytes(), i); err != nil {
 			return xerrors.Errorf("failed to insert tipset message: %w", err)
 		}
