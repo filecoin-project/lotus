@@ -375,6 +375,14 @@ func (pv2 *reverseProxyV2) EthTraceFilter(ctx context.Context, filter ethtypes.E
 		}
 	}
 
+	head, err := pv2.ChainGetTipSet(ctx, types.TipSetSelectors.Latest)
+	if err != nil {
+		return nil, err
+	}
+	if err := pv2.gateway.checkEthTraceFilterBlockRange(head.Height(), filter); err != nil {
+		return nil, err
+	}
+
 	return pv2.server.EthTraceFilter(ctx, filter)
 }
 

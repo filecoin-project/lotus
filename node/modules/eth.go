@@ -155,7 +155,7 @@ func makeEthTransaction(params EthTransactionParams, tipSetResolver eth.TipSetRe
 	)
 }
 
-func MakeEthTraceV1(cfg config.FevmConfig) func(
+func MakeEthTraceV1(cfg config.FevmConfig, eventsCfg config.EventsConfig) func(
 	chainStore eth.ChainStore,
 	stateManager eth.StateManager,
 	ethTransaction full.EthTransactionAPIV1,
@@ -167,11 +167,11 @@ func MakeEthTraceV1(cfg config.FevmConfig) func(
 		ethTransaction full.EthTransactionAPIV1,
 		tipsetResolver full.EthTipSetResolverV1,
 	) full.EthTraceAPIV1 {
-		return eth.NewEthTraceAPI(chainStore, stateManager, ethTransaction, tipsetResolver, cfg.EthTraceFilterMaxResults)
+		return eth.NewEthTraceAPI(chainStore, stateManager, ethTransaction, tipsetResolver, cfg.EthTraceFilterMaxResults, eventsCfg.MaxFilterHeightRange)
 	}
 }
 
-func MakeEthTraceV2(cfg config.FevmConfig) func(
+func MakeEthTraceV2(cfg config.FevmConfig, eventsCfg config.EventsConfig) func(
 	chainStore eth.ChainStore,
 	stateManager eth.StateManager,
 	ethTransaction full.EthTransactionAPIV2,
@@ -183,7 +183,7 @@ func MakeEthTraceV2(cfg config.FevmConfig) func(
 		ethTransaction full.EthTransactionAPIV2,
 		tipsetResolver full.EthTipSetResolverV2,
 	) full.EthTraceAPIV2 {
-		return eth.NewEthTraceAPI(chainStore, stateManager, ethTransaction, tipsetResolver, cfg.EthTraceFilterMaxResults)
+		return eth.NewEthTraceAPI(chainStore, stateManager, ethTransaction, tipsetResolver, cfg.EthTraceFilterMaxResults, eventsCfg.MaxFilterHeightRange)
 	}
 }
 

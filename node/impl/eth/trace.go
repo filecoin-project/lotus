@@ -37,6 +37,7 @@ type ethTrace struct {
 	tipsetResolver    TipSetResolver
 
 	traceFilterMaxResults uint64
+	maxFilterHeightRange  uint64
 }
 
 func NewEthTraceAPI(
@@ -45,6 +46,7 @@ func NewEthTraceAPI(
 	ethTransactionApi EthTransactionAPI,
 	tipsetResolver TipSetResolver,
 	ethTraceFilterMaxResults uint64,
+	maxFilterHeightRange uint64,
 ) EthTraceAPI {
 	return &ethTrace{
 		chainStore:            chainStore,
@@ -52,6 +54,7 @@ func NewEthTraceAPI(
 		ethTransactionApi:     ethTransactionApi,
 		tipsetResolver:        tipsetResolver,
 		traceFilterMaxResults: ethTraceFilterMaxResults,
+		maxFilterHeightRange:  maxFilterHeightRange,
 	}
 }
 
@@ -276,6 +279,10 @@ func (e *ethTrace) EthTraceFilter(ctx context.Context, filter ethtypes.EthTraceF
 	toBlock, err := getEthBlockNumberFromString(ctx, filter.ToBlock)
 	if err != nil {
 		return nil, xerrors.Errorf("cannot parse toBlock: %w", err)
+	}
+
+	if e.maxFilterHeightRange != 0 && toBlock > fromBlock && uint64(toBlock-fromBlock) > e.maxFilterHeightRange {
+		return nil, api.NewErrBlockRangeExceeded(e.maxFilterHeightRange, uint64(toBlock-fromBlock))
 	}
 
 	results := []*ethtypes.EthTraceFilterResult{}
