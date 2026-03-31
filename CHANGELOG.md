@@ -24,6 +24,7 @@
 - fix(eth): handle nil address in trace_filter for failed contract creates ([filecoin-project/lotus#13549](https://github.com/filecoin-project/lotus/pull/13549))
 - fix(gas): stricter bounds for GasEstimateGasPremium lookback ([filecoin-project/lotus#13555](https://github.com/filecoin-project/lotus/pull/13555))
 - fix(api): `StateSearchMsg` should respect `lookbackLimit` [filecoin-project/lotus#13562](https://github.com/filecoin-project/lotus/pull/13562)
+- fix(ecfinality): account for null rounds in EC finality calculator chain walk, aligning with FRC-0089 theoretical model and fixing depth-to-height conversion ([filecoin-project/lotus#13565](https://github.com/filecoin-project/lotus/pull/13565))
 
 # Node and Miner v1.35.0 / 2026-02-19
 
