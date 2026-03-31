@@ -125,8 +125,11 @@ func (c *ECFinalityCache) walkChain(ctx context.Context, head *types.TipSet) ([]
 	needed := c.windowSize
 	chain := make([]int, 0, needed)
 	ts := head
-	for len(chain) < needed {
+	for {
 		chain = append(chain, len(ts.Cids()))
+		if len(chain) >= needed {
+			break
+		}
 		parent, err := c.cs.LoadTipSet(ctx, ts.Parents())
 		if err != nil {
 			return nil, err
