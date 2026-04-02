@@ -96,6 +96,7 @@ func main() {
 		f3Cmd,
 		finalityCmd,
 		findMsgCmd,
+		txHistoryCmd,
 	}
 
 	app := &cli.App{
