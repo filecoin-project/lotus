@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	stdbig "math/big"
+	"os"
 	"sort"
 	"sync"
 	"sync/atomic"
@@ -186,6 +187,8 @@ type MessagePool struct {
 	journal  journal.Journal
 
 	snapshot atomic.Pointer[MessagePoolPendingSnapshot]
+
+	csvLogger *mempoolCSVLogger
 }
 
 type stateNonceCacheKey struct {
@@ -426,6 +429,16 @@ func New(ctx context.Context, api Provider, ds dtypes.MetadataDS, us stmgr.Upgra
 
 	// enable initial prunes
 	mp.pruneCooldown <- struct{}{}
+
+	if csvPath := os.Getenv("LOTUS_MEMPOOL_CSV"); csvPath != "" {
+		csvLogger, err := newMempoolCSVLogger(csvPath)
+		if err != nil {
+			log.Warnf("failed to open mempool CSV log at %s: %s", csvPath, err)
+		} else {
+			log.Infof("logging mempool transactions to %s", csvPath)
+			mp.csvLogger = csvLogger
+		}
+	}
 
 	ctx, cancel := context.WithCancel(context.TODO())
 
@@ -895,6 +908,18 @@ func (mp *MessagePool) addTs(ctx context.Context, m *types.SignedMessage, curTs 
 	epoch := curTs.Height() + 1
 	nv := mp.api.StateNetworkVersion(ctx, epoch)
 
+	// Compute next base fee for CSV logging before acquiring lk.
+	var nextBaseFee types.BigInt
+	if mp.csvLogger != nil {
+		nextBaseFee, err = mp.api.ChainComputeBaseFee(ctx, curTs)
+		if err != nil {
+			log.Debugf("mpool csv: failed to compute next base fee: %s", err)
+			if len(curTs.Blocks()) > 0 {
+				nextBaseFee = curTs.Blocks()[0].ParentBaseFee
+			}
+		}
+	}
+
 	// TODO: I'm not thrilled about depending on filcns here, but I prefer this to duplicating logic
 
 	if m.Signature.Type == crypto.SigTypeDelegated && !consensus.IsValidEthTxForSending(nv, m) {
@@ -920,6 +945,11 @@ func (mp *MessagePool) addTs(ctx context.Context, m *types.SignedMessage, curTs 
 	err = mp.addLocked(ctx, m, !local, untrusted)
 	if err != nil {
 		return false, xerrors.Errorf("failed to add locked: %w", err)
+	}
+
+	if mp.csvLogger != nil {
+		mp.csvLogger.logTx(epoch, nextBaseFee, m.Message.From, snonce, m.Message.Nonce,
+			m.Message.GasFeeCap, m.Message.GasPremium, m.Message.GasLimit)
 	}
 
 	if local {
