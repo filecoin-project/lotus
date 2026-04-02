@@ -105,6 +105,96 @@ func (d *gasLimitDist) sample(rng *rand.Rand) int64 {
 	return base + offset
 }
 
+// historicTx holds the gas parameters for one transaction from a mempool history CSV.
+type historicTx struct {
+	arrivalMs  int64
+	gasFeeCap  abi.TokenAmount
+	gasPremium abi.TokenAmount
+	gasLimit   int64
+}
+
+// loadMempoolHistory reads a mempool history CSV and returns transactions grouped by epoch.
+// The CSV must have at minimum the columns: arrival_timestamp_ms, epoch, next_base_fee, gas_fee_cap, gas_premium, gas_limit.
+// Also returns the (min, max) epoch seen and the next_base_fee from the earliest epoch (used as a
+// default starting base fee for the simulation).
+func loadMempoolHistory(path string) (txsByEpoch map[int64][]historicTx, minEpoch, maxEpoch int64, firstBaseFee abi.TokenAmount, err error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, 0, 0, big.Zero(), err
+	}
+	defer f.Close() //nolint:errcheck
+
+	cr := csv.NewReader(f)
+	header, err := cr.Read()
+	if err != nil {
+		return nil, 0, 0, big.Zero(), fmt.Errorf("reading CSV header: %w", err)
+	}
+	col := make(map[string]int)
+	for i, h := range header {
+		col[h] = i
+	}
+	for _, required := range []string{"arrival_timestamp_ms", "epoch", "next_base_fee", "gas_fee_cap", "gas_premium", "gas_limit"} {
+		if _, ok := col[required]; !ok {
+			return nil, 0, 0, big.Zero(), fmt.Errorf("mempool CSV missing required column %q", required)
+		}
+	}
+
+	txsByEpoch = make(map[int64][]historicTx)
+	minEpoch = math.MaxInt64
+	maxEpoch = math.MinInt64
+
+	for {
+		row, err := cr.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, 0, 0, big.Zero(), err
+		}
+		arrivalMs, err := strconv.ParseInt(row[col["arrival_timestamp_ms"]], 10, 64)
+		if err != nil {
+			return nil, 0, 0, big.Zero(), fmt.Errorf("parsing arrival_timestamp_ms: %w", err)
+		}
+		epoch, err := strconv.ParseInt(row[col["epoch"]], 10, 64)
+		if err != nil {
+			return nil, 0, 0, big.Zero(), fmt.Errorf("parsing epoch: %w", err)
+		}
+		nextBaseFeeI, err := strconv.ParseInt(row[col["next_base_fee"]], 10, 64)
+		if err != nil {
+			return nil, 0, 0, big.Zero(), fmt.Errorf("parsing next_base_fee: %w", err)
+		}
+		feeCapI, err := strconv.ParseInt(row[col["gas_fee_cap"]], 10, 64)
+		if err != nil {
+			return nil, 0, 0, big.Zero(), fmt.Errorf("parsing gas_fee_cap: %w", err)
+		}
+		premiumI, err := strconv.ParseInt(row[col["gas_premium"]], 10, 64)
+		if err != nil {
+			return nil, 0, 0, big.Zero(), fmt.Errorf("parsing gas_premium: %w", err)
+		}
+		gasLimitI, err := strconv.ParseInt(row[col["gas_limit"]], 10, 64)
+		if err != nil {
+			return nil, 0, 0, big.Zero(), fmt.Errorf("parsing gas_limit: %w", err)
+		}
+		if epoch < minEpoch {
+			minEpoch = epoch
+			firstBaseFee = big.NewInt(nextBaseFeeI)
+		}
+		if epoch > maxEpoch {
+			maxEpoch = epoch
+		}
+		txsByEpoch[epoch] = append(txsByEpoch[epoch], historicTx{
+			arrivalMs:  arrivalMs,
+			gasFeeCap:  big.NewInt(feeCapI),
+			gasPremium: big.NewInt(premiumI),
+			gasLimit:   gasLimitI,
+		})
+	}
+	if minEpoch > maxEpoch {
+		return nil, 0, 0, big.Zero(), fmt.Errorf("mempool CSV has no data rows")
+	}
+	return txsByEpoch, minEpoch, maxEpoch, firstBaseFee, nil
+}
+
 var gasMktSimCmd = &cli.Command{
 	Name:  "gas-market-sim",
 	Usage: "simulate FIP-0115 gas market dynamics over many epochs",
@@ -153,6 +243,19 @@ var gasMktSimCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:  "gas-limit-dist",
 			Usage: "path to a CSV file (bucket,count) defining the gas limit distribution; defaults to the embedded empirical distribution",
+		},
+		&cli.StringFlag{
+			Name:  "replay",
+			Usage: "path to a mempool history CSV (columns: arrival_timestamp_ms,epoch,next_base_fee,...,gas_fee_cap,gas_premium,gas_limit); the simulation starts one epoch before the first epoch in the file",
+		},
+		&cli.BoolFlag{
+			Name:  "keep-historic-prices",
+			Usage: "when using --replay, use gas_fee_cap and gas_premium from the CSV as-is instead of re-estimating them",
+		},
+		&cli.Int64Flag{
+			Name:  "genesis-timestamp",
+			Usage: "Unix timestamp (seconds) of chain epoch 0, used to compute epoch start times from arrival timestamps in --replay mode",
+			Value: MAINNET_GENESIS_TIME,
 		},
 	},
 	Action: runGasMktSim,
@@ -429,6 +532,34 @@ func runGasMktSim(cctx *cli.Context) error {
 	flatPremium := cctx.Bool("flat-premium")
 	legacyPremium := cctx.Bool("legacy-premium")
 	baseFeeUpdate := cctx.String("base-fee-update")
+	mempoolHistoryPath := cctx.String("replay")
+	keepHistoricPrices := cctx.Bool("keep-historic-prices")
+	genesisTimestamp := cctx.Int64("genesis-timestamp")
+
+	// Load mempool history if provided.
+	var (
+		txsByEpoch    map[int64][]historicTx
+		useHistory    bool
+		startEpochNum int64
+	)
+	if mempoolHistoryPath != "" {
+		useHistory = true
+		var histMinEpoch, histMaxEpoch int64
+		var firstBaseFee abi.TokenAmount
+		var err error
+		txsByEpoch, histMinEpoch, histMaxEpoch, firstBaseFee, err = loadMempoolHistory(mempoolHistoryPath)
+		if err != nil {
+			return fmt.Errorf("loading mempool history: %w", err)
+		}
+		startEpochNum = histMinEpoch - 1
+		if !cctx.IsSet("epochs") {
+			// one setup epoch + one epoch per chain epoch in the CSV
+			epochs = int(histMaxEpoch-histMinEpoch) + 2
+		}
+		if !cctx.IsSet("base-fee") {
+			startBaseFee = firstBaseFee
+		}
+	}
 
 	bgl := buildconstants.BlockGasLimit
 
@@ -484,77 +615,172 @@ func runGasMktSim(cctx *cli.Context) error {
 	epochHistory := make([]simEpochData, 20) // circular buffer; slot = epoch % 20
 
 	for epoch := 0; epoch < epochs; epoch++ {
+		currentEpochNum := startEpochNum + int64(epoch)
 		ts := buildSimTipSet(baseFee, 0)
 		now := time.Now().Unix()
-		for i := range txsPerEpoch {
-			var csTs *types.TipSet
-			if epochRemainingZero {
-				csTs = buildSimTipSet(baseFee, 0)
-			} else {
-				// Descending timestamps so epochFractionRemaining returns (30-i)/30:
-				// the first tx sees a near-full epoch remaining, the last sees 1/30.
-				csTs = buildSimTipSet(baseFee, uint64(now-int64(i)))
-			}
-			cs := &simChainStore{ts: csTs}
-			mp := &simMpool{msgs: mempool, ts: ts}
+		newTxsThisEpoch := 0
 
-			gl := glDist.sample(rng)
-			var nblocksincl uint64
-			switch r := rng.Float64(); {
-			case r < 0.1:
-				nblocksincl = 1
-			case r < 0.3:
-				nblocksincl = 2
-			default:
-				nblocksincl = 10
-			}
-			var premium abi.TokenAmount
-			switch {
-			case flatPremium:
-				// baseFee * R where R = 1/BaseFeeMaxChangeDenom, plus small noise.
-				base := big.Div(baseFee, big.NewInt(buildconstants.BaseFeeMaxChangeDenom))
-				noised := int64(math.Ceil(float64(base.Int64()) * (1 + noiseRng.NormFloat64()*0.005)))
-				if noised < 1 {
-					noised = 1
+		if useHistory {
+			// Epoch start time derived from the genesis timestamp and epoch number,
+			// so each tx's offset within the epoch reflects its actual arrival time.
+			epochStartMs := (genesisTimestamp + currentEpochNum*int64(buildconstants.BlockDelaySecs)) * 1000
+			epochTxs := txsByEpoch[currentEpochNum]
+
+			for _, htx := range epochTxs {
+				var nblocksincl uint64
+				switch r := rng.Float64(); {
+				case r < 0.1:
+					nblocksincl = 1
+				case r < 0.3:
+					nblocksincl = 2
+				default:
+					nblocksincl = 10
 				}
-				premium = big.NewInt(noised)
-			case legacyPremium:
-				premium = legacyGasPremiumEstimate(epochHistory, epoch-1, nblocksincl, noiseRng)
-			default:
-				var err error
-				premium, err = gasutils.GasEstimateGasPremiumFromMempool(ctx, cs, mp, nblocksincl, gl, types.EmptyTSK)
+
+				var premium, feeCap abi.TokenAmount
+				if keepHistoricPrices {
+					premium = htx.gasPremium
+					feeCap = htx.gasFeeCap
+				} else {
+					var csTs *types.TipSet
+					if epochRemainingZero {
+						csTs = buildSimTipSet(baseFee, 0)
+					} else {
+						// Use the tx's actual position within the epoch to compute
+						// a tipset timestamp that yields the correct epochFractionRemaining.
+						offsetSec := (htx.arrivalMs - epochStartMs) / 1000
+						if offsetSec < 0 {
+							offsetSec = 0
+						}
+						if offsetSec >= int64(buildconstants.BlockDelaySecs) {
+							offsetSec = int64(buildconstants.BlockDelaySecs) - 1
+						}
+						csTs = buildSimTipSet(baseFee, uint64(now-offsetSec))
+					}
+					cs := &simChainStore{ts: csTs}
+					mp := &simMpool{msgs: mempool, ts: ts}
+
+					switch {
+					case flatPremium:
+						base := big.Div(baseFee, big.NewInt(buildconstants.BaseFeeMaxChangeDenom))
+						noised := int64(math.Ceil(float64(base.Int64()) * (1 + noiseRng.NormFloat64()*0.005)))
+						if noised < 1 {
+							noised = 1
+						}
+						premium = big.NewInt(noised)
+					case legacyPremium:
+						premium = legacyGasPremiumEstimate(epochHistory, epoch-1, nblocksincl, noiseRng)
+					default:
+						var err error
+						premium, err = gasutils.GasEstimateGasPremiumFromMempool(ctx, cs, mp, nblocksincl, htx.gasLimit, types.EmptyTSK)
+						if err != nil {
+							return fmt.Errorf("epoch %d: %w", epoch, err)
+						}
+					}
+					partialMsg := &types.Message{GasLimit: htx.gasLimit, GasPremium: premium}
+					var err error
+					feeCap, err = gasutils.GasEstimateFeeCap(ctx, cs, partialMsg, int64(nblocksincl), types.EmptyTSK)
+					if err != nil {
+						return fmt.Errorf("epoch %d fee cap: %w", epoch, err)
+					}
+				}
+
+				addr, _ := address.NewIDAddress(nextSender)
+				mempool = append(mempool, &types.SignedMessage{
+					Message: types.Message{
+						From:       addr,
+						To:         addr,
+						Nonce:      0,
+						GasLimit:   htx.gasLimit,
+						GasPremium: premium,
+						GasFeeCap:  feeCap,
+					},
+				})
+				deadlines = append(deadlines, epoch+int(nblocksincl))
+				nblocksincls = append(nblocksincls, nblocksincl)
+				switch nblocksincl {
+				case 1:
+					submitted1++
+				case 2:
+					submitted2++
+				default:
+					submitted10++
+				}
+				nextSender++
+				newTxsThisEpoch++
+			}
+		} else {
+			for i := range txsPerEpoch {
+				var csTs *types.TipSet
+				if epochRemainingZero {
+					csTs = buildSimTipSet(baseFee, 0)
+				} else {
+					// Descending timestamps so epochFractionRemaining returns (30-i)/30:
+					// the first tx sees a near-full epoch remaining, the last sees 1/30.
+					csTs = buildSimTipSet(baseFee, uint64(now-int64(i)))
+				}
+				cs := &simChainStore{ts: csTs}
+				mp := &simMpool{msgs: mempool, ts: ts}
+
+				gl := glDist.sample(rng)
+				var nblocksincl uint64
+				switch r := rng.Float64(); {
+				case r < 0.1:
+					nblocksincl = 1
+				case r < 0.3:
+					nblocksincl = 2
+				default:
+					nblocksincl = 10
+				}
+				var premium abi.TokenAmount
+				switch {
+				case flatPremium:
+					// baseFee * R where R = 1/BaseFeeMaxChangeDenom, plus small noise.
+					base := big.Div(baseFee, big.NewInt(buildconstants.BaseFeeMaxChangeDenom))
+					noised := int64(math.Ceil(float64(base.Int64()) * (1 + noiseRng.NormFloat64()*0.005)))
+					if noised < 1 {
+						noised = 1
+					}
+					premium = big.NewInt(noised)
+				case legacyPremium:
+					premium = legacyGasPremiumEstimate(epochHistory, epoch-1, nblocksincl, noiseRng)
+				default:
+					var err error
+					premium, err = gasutils.GasEstimateGasPremiumFromMempool(ctx, cs, mp, nblocksincl, gl, types.EmptyTSK)
+					if err != nil {
+						return fmt.Errorf("epoch %d tx %d: %w", epoch, i, err)
+					}
+				}
+				partialMsg := &types.Message{GasLimit: gl, GasPremium: premium}
+				feeCap, err := gasutils.GasEstimateFeeCap(ctx, cs, partialMsg, int64(nblocksincl), types.EmptyTSK)
 				if err != nil {
-					return fmt.Errorf("epoch %d tx %d: %w", epoch, i, err)
+					return fmt.Errorf("epoch %d tx %d fee cap: %w", epoch, i, err)
 				}
-			}
-			partialMsg := &types.Message{GasLimit: gl, GasPremium: premium}
-			feeCap, err := gasutils.GasEstimateFeeCap(ctx, cs, partialMsg, int64(nblocksincl), types.EmptyTSK)
-			if err != nil {
-				return fmt.Errorf("epoch %d tx %d fee cap: %w", epoch, i, err)
-			}
 
-			addr, _ := address.NewIDAddress(nextSender)
-			mempool = append(mempool, &types.SignedMessage{
-				Message: types.Message{
-					From:       addr,
-					To:         addr,
-					Nonce:      0,
-					GasLimit:   gl,
-					GasPremium: premium,
-					GasFeeCap:  feeCap,
-				},
-			})
-			deadlines = append(deadlines, epoch+int(nblocksincl))
-			nblocksincls = append(nblocksincls, nblocksincl)
-			switch nblocksincl {
-			case 1:
-				submitted1++
-			case 2:
-				submitted2++
-			default:
-				submitted10++
+				addr, _ := address.NewIDAddress(nextSender)
+				mempool = append(mempool, &types.SignedMessage{
+					Message: types.Message{
+						From:       addr,
+						To:         addr,
+						Nonce:      0,
+						GasLimit:   gl,
+						GasPremium: premium,
+						GasFeeCap:  feeCap,
+					},
+				})
+				deadlines = append(deadlines, epoch+int(nblocksincl))
+				nblocksincls = append(nblocksincls, nblocksincl)
+				switch nblocksincl {
+				case 1:
+					submitted1++
+				case 2:
+					submitted2++
+				default:
+					submitted10++
+				}
+				nextSender++
 			}
-			nextSender++
+			newTxsThisEpoch = txsPerEpoch
 		}
 
 		effPremiums := make([]abi.TokenAmount, len(mempool))
@@ -664,8 +890,8 @@ func runGasMktSim(cctx *cli.Context) error {
 		}
 		delayedCount := delayed1 + delayed2 + delayed10
 
-		fmt.Printf("epoch %4d: newTxs=%2d baseFee=%15s  mempoolSize=%5d  delayed=%4d (nb1=%d nb2=%d nb10=%d)  tipGas=%d/%d (%.1f%%)\n",
-			epoch+1, txsPerEpoch, baseFee, len(mempool), delayedCount, delayed1, delayed2, delayed10,
+		fmt.Printf("epoch %7d: newTxs=%2d baseFee=%15s  mempoolSize=%5d  delayed=%4d (nb1=%d nb2=%d nb10=%d)  tipGas=%d/%d (%.1f%%)\n",
+			currentEpochNum, newTxsThisEpoch, baseFee, len(mempool), delayedCount, delayed1, delayed2, delayed10,
 			tipGasUsed, tipGasLimit, float64(tipGasUsed)/float64(tipGasLimit)*100)
 		if dynamicDemand {
 			switch r := rng.Float64(); {
