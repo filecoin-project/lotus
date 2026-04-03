@@ -36,6 +36,9 @@ var defaultGasLimitDistCSV []byte
 // Custom distributions supplied via --gas-limit-dist must use the same bucket size.
 const gasLimitBucketSize = 20_000_000
 
+// Transactions above this gas limit are classified as "large" and tracked under nb20.
+const largeGasTxThreshold = 8_000_000_000
+
 // gasLimitDist samples gas limits from a bucket distribution.
 // Within a bucket, the sample is drawn uniformly.
 type gasLimitDist struct {
@@ -607,11 +610,11 @@ func runGasMktSim(cctx *cli.Context) error {
 	nblocksincls := make([]uint64, 0, 5000) // nblocksincls[i] = nblocksincl used when submitting mempool[i]
 	var nextSender uint64 = 2
 	var totalGasUsed, totalGasLimit int64
-	var submitted1, submitted2, submitted10 int
-	var everLate1, everLate2, everLate10 int
+	var submitted1, submitted2, submitted10, submitted20 int
+	var everLate1, everLate2, everLate10, everLate20 int
 	// gas-weighted sum of effective priority fee at confirmation time, per nblocksincl cohort
-	var confirmedPremiumGas1, confirmedPremiumGas2, confirmedPremiumGas10 float64
-	var confirmedGas1, confirmedGas2, confirmedGas10 float64
+	var confirmedPremiumGas1, confirmedPremiumGas2, confirmedPremiumGas10, confirmedPremiumGas20 float64
+	var confirmedGas1, confirmedGas2, confirmedGas10, confirmedGas20 float64
 	epochHistory := make([]simEpochData, 20) // circular buffer; slot = epoch % 20
 
 	for epoch := 0; epoch < epochs; epoch++ {
@@ -628,13 +631,17 @@ func runGasMktSim(cctx *cli.Context) error {
 
 			for _, htx := range epochTxs {
 				var nblocksincl uint64
-				switch r := rng.Float64(); {
-				case r < 0.1:
-					nblocksincl = 1
-				case r < 0.3:
-					nblocksincl = 2
-				default:
-					nblocksincl = 10
+				if htx.gasLimit > largeGasTxThreshold {
+					nblocksincl = 20
+				} else {
+					switch r := rng.Float64(); {
+					case r < 0.1:
+						nblocksincl = 1
+					case r < 0.3:
+						nblocksincl = 2
+					default:
+						nblocksincl = 10
+					}
 				}
 
 				var premium, feeCap abi.TokenAmount
@@ -703,6 +710,8 @@ func runGasMktSim(cctx *cli.Context) error {
 					submitted1++
 				case 2:
 					submitted2++
+				case 20:
+					submitted20++
 				default:
 					submitted10++
 				}
@@ -724,13 +733,17 @@ func runGasMktSim(cctx *cli.Context) error {
 
 				gl := glDist.sample(rng)
 				var nblocksincl uint64
-				switch r := rng.Float64(); {
-				case r < 0.1:
-					nblocksincl = 1
-				case r < 0.3:
-					nblocksincl = 2
-				default:
-					nblocksincl = 10
+				if gl > largeGasTxThreshold {
+					nblocksincl = 20
+				} else {
+					switch r := rng.Float64(); {
+					case r < 0.1:
+						nblocksincl = 1
+					case r < 0.3:
+						nblocksincl = 2
+					default:
+						nblocksincl = 10
+					}
 				}
 				var premium abi.TokenAmount
 				switch {
@@ -775,6 +788,8 @@ func runGasMktSim(cctx *cli.Context) error {
 					submitted1++
 				case 2:
 					submitted2++
+				case 20:
+					submitted20++
 				default:
 					submitted10++
 				}
@@ -839,6 +854,8 @@ func runGasMktSim(cctx *cli.Context) error {
 						everLate1++
 					case 2:
 						everLate2++
+					case 20:
+						everLate20++
 					default:
 						everLate10++
 					}
@@ -852,6 +869,9 @@ func runGasMktSim(cctx *cli.Context) error {
 				case 2:
 					confirmedPremiumGas2 += ep * gl
 					confirmedGas2 += gl
+				case 20:
+					confirmedPremiumGas20 += ep * gl
+					confirmedGas20 += gl
 				default:
 					confirmedPremiumGas10 += ep * gl
 					confirmedGas10 += gl
@@ -875,7 +895,7 @@ func runGasMktSim(cctx *cli.Context) error {
 		tipGasLimit := int64(nProposers) * bgl
 		totalGasLimit += tipGasLimit
 
-		var delayed1, delayed2, delayed10 int
+		var delayed1, delayed2, delayed10, delayed20 int
 		for i, d := range deadlines {
 			if epoch >= d {
 				switch nblocksincls[i] {
@@ -883,15 +903,17 @@ func runGasMktSim(cctx *cli.Context) error {
 					delayed1++
 				case 2:
 					delayed2++
+				case 20:
+					delayed20++
 				default:
 					delayed10++
 				}
 			}
 		}
-		delayedCount := delayed1 + delayed2 + delayed10
+		delayedCount := delayed1 + delayed2 + delayed10 + delayed20
 
-		fmt.Printf("epoch %7d: newTxs=%2d baseFee=%15s  mempoolSize=%5d  delayed=%4d (nb1=%d nb2=%d nb10=%d)  tipGas=%d/%d (%.1f%%)\n",
-			currentEpochNum, newTxsThisEpoch, baseFee, len(mempool), delayedCount, delayed1, delayed2, delayed10,
+		fmt.Printf("epoch %7d: newTxs=%2d baseFee=%15s  mempoolSize=%5d  delayed=%4d (nb1=%d nb2=%d nb10=%d nb20=%d)  tipGas=%d/%d (%.1f%%)\n",
+			currentEpochNum, newTxsThisEpoch, baseFee, len(mempool), delayedCount, delayed1, delayed2, delayed10, delayed20,
 			tipGasUsed, tipGasLimit, float64(tipGasUsed)/float64(tipGasLimit)*100)
 		if dynamicDemand {
 			switch r := rng.Float64(); {
@@ -924,14 +946,16 @@ func runGasMktSim(cctx *cli.Context) error {
 				everLate1++
 			case 2:
 				everLate2++
+			case 20:
+				everLate20++
 			default:
 				everLate10++
 			}
 		}
 	}
-	everLateTotal := everLate1 + everLate2 + everLate10
+	everLateTotal := everLate1 + everLate2 + everLate10 + everLate20
 
-	submittedTotal := submitted1 + submitted2 + submitted10
+	submittedTotal := submitted1 + submitted2 + submitted10 + submitted20
 	pct := func(n, d int) float64 {
 		if d == 0 {
 			return 0
@@ -944,17 +968,19 @@ func runGasMktSim(cctx *cli.Context) error {
 		}
 		return premiumGas / gas
 	}
-	fmt.Printf("=== SUMMARY: total gas used %d / %d (%.1f%%)  ever-late=%d/%d (%.1f%%)  (nb1=%d/%d %.1f%%  nb2=%d/%d %.1f%%  nb10=%d/%d %.1f%%)\n",
+	fmt.Printf("=== SUMMARY: total gas used %d / %d (%.1f%%)  ever-late=%d/%d (%.1f%%)  (nb1=%d/%d %.1f%%  nb2=%d/%d %.1f%%  nb10=%d/%d %.1f%%  nb20=%d/%d %.1f%%)\n",
 		totalGasUsed, totalGasLimit,
 		float64(totalGasUsed)/float64(totalGasLimit)*100,
 		everLateTotal, submittedTotal, pct(everLateTotal, submittedTotal),
 		everLate1, submitted1, pct(everLate1, submitted1),
 		everLate2, submitted2, pct(everLate2, submitted2),
-		everLate10, submitted10, pct(everLate10, submitted10))
-	fmt.Printf("=== AVG PRIORITY FEE/GAS (confirmed only): nb1=%.2f  nb2=%.2f  nb10=%.2f\n",
+		everLate10, submitted10, pct(everLate10, submitted10),
+		everLate20, submitted20, pct(everLate20, submitted20))
+	fmt.Printf("=== AVG PRIORITY FEE/GAS (confirmed only): nb1=%.2f  nb2=%.2f  nb10=%.2f  nb20=%.2f\n",
 		avgPremium(confirmedPremiumGas1, confirmedGas1),
 		avgPremium(confirmedPremiumGas2, confirmedGas2),
-		avgPremium(confirmedPremiumGas10, confirmedGas10))
+		avgPremium(confirmedPremiumGas10, confirmedGas10),
+		avgPremium(confirmedPremiumGas20, confirmedGas20))
 
 	return nil
 }
