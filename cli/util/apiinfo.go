@@ -3,7 +3,6 @@ package cliutil
 import (
 	"net/http"
 	"net/url"
-	"regexp"
 	"strings"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -13,10 +12,6 @@ import (
 
 var log = logging.Logger("cliutil")
 
-var (
-	infoWithToken = regexp.MustCompile("^[a-zA-Z0-9\\-_]+?\\.[a-zA-Z0-9\\-_]+?\\.([a-zA-Z0-9\\-_]+)?:.+$")
-)
-
 type APIInfo struct {
 	Addr  string
 	Token []byte
@@ -25,10 +20,13 @@ type APIInfo struct {
 func ParseApiInfo(s string) APIInfo {
 	var tok []byte
 
-	if infoWithToken.Match([]byte(s)) {
-		sp := strings.SplitN(s, ":", 2)
-		tok = []byte(sp[0])
-		s = sp[1]
+	// Format is "TOKEN:ADDRESS". Skip the split when the address is a
+	// bare multiaddr (leading "/") or a URL scheme (":" followed by "//").
+	if !strings.HasPrefix(s, "/") {
+		if idx := strings.Index(s, ":"); idx > 0 && !strings.HasPrefix(s[idx+1:], "//") {
+			tok = []byte(s[:idx])
+			s = s[idx+1:]
+		}
 	}
 
 	return APIInfo{

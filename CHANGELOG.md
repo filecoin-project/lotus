@@ -17,6 +17,8 @@
 
 ## 👌 Improvements
 
+- feat(cliutil): accept non-JWT API tokens in `TOKEN:ADDRESS`, enabling use of third-party RPC providers (e.g. Glif) that issue opaque API keys ([filecoin-project/lotus#13578](https://github.com/filecoin-project/lotus/pull/13578))
+
 # Node v1.35.1 / 2026-03-31
 
 This is the stable release of Lotus node v1.35.1, a patch release that extends EC finality tooling into the v2 API, Eth RPC, and `lotus-shed`, improves Ethereum RPC and gas estimation behavior, lowers several CLI batch defaults to reduce out-of-gas failures, and raises the minimum supported Golang version to `1.25.0`. The final release also includes late backports for Ethereum RLP hardening, proof-parameter fetch robustness, indexed `StateSearchMsg` lookback handling, tightened Ethereum filter block-range enforcement, and null-round-aware EC finality chain walks.
