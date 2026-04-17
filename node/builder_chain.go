@@ -273,10 +273,6 @@ func ConfigFullNode(c interface{}) Option {
 		// as it enables us to serve logs in eth_getTransactionReceipt.
 		If(cfg.Fevm.EnableEthRPC || cfg.Events.EnableActorEventsAPI || cfg.ChainIndexer.EnableIndexer, Override(StoreEventsKey, modules.EnableStoringEvents)),
 
-		Override(SetFIP0115BaseFeeHeightKey, func(cs *store.ChainStore) {
-			cs.SetFIP0115Height(cfg.Fees.FIP0115Height)
-		}),
-
 		If(cfg.Wallet.RemoteBackend != "",
 			Override(new(*remotewallet.RemoteWallet), remotewallet.SetupRemoteWallet(cfg.Wallet.RemoteBackend)),
 		),

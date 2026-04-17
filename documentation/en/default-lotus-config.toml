@@ -147,14 +147,6 @@
   # env var: LOTUS_FEES_DEFAULTMAXFEE
   #DefaultMaxFee = "0.07 FIL"
 
-  # FIP0115Height sets the epoch at which FIP-0115 base fee calculation activates.
-  # Set to -1 to disable.
-  # WARNING: This is a consensus-breaking change and should only be used for testing.
-  #
-  # type: int64
-  # env var: LOTUS_FEES_FIP0115HEIGHT
-  #FIP0115Height = -1
-
 
 [Chainstore]
   # type: bool

@@ -525,11 +525,6 @@ type Wallet struct {
 
 type FeeConfig struct {
 	DefaultMaxFee types.FIL
-
-	// FIP0115Height sets the epoch at which FIP-0115 base fee calculation activates.
-	// Set to -1 to disable.
-	// WARNING: This is a consensus-breaking change and should only be used for testing.
-	FIP0115Height int64
 }
 
 type FevmConfig struct {
