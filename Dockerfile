@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     git \
     build-essential \
+    pkg-config \
     clang \
     ocl-icd-opencl-dev \
     ocl-icd-libopencl1 \
