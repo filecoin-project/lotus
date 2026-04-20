@@ -590,7 +590,7 @@ func (mp *MessagePool) Close() error {
 func (mp *MessagePool) Prune() {
 	// this magic incantation of triggering prune thrice is here to make the Prune method
 	// synchronous:
-	// so, its a single slot buffered channel. The first send fills the channel,
+	// so, it's a single slot buffered channel. The first send fills the channel,
 	// the second send goes through when the pruning starts,
 	// and the third send goes through (and noops) after the pruning finishes
 	// and goes through the loop again
