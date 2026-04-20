@@ -54,10 +54,10 @@ func (cs *ChainStore) ComputeBaseFee(ctx context.Context, ts *types.TipSet) (abi
 	if buildconstants.UpgradeBreezeHeight >= 0 && ts.Height() > buildconstants.UpgradeBreezeHeight && ts.Height() < buildconstants.UpgradeBreezeHeight+buildconstants.BreezeGasTampingDuration {
 		return abi.NewTokenAmount(100), nil
 	}
-	if cs.fip0115BaseFeeHeight >= 0 && ts.Height() >= cs.fip0115BaseFeeHeight {
-		return cs.ComputeNextBaseFeeFromPremiums(ctx, ts)
+	if ts.Height() < buildconstants.UpgradeFireHorseHeight {
+		return cs.ComputeNextBaseFeeFromUtilization(ctx, ts)
 	}
-	return cs.ComputeNextBaseFeeFromUtilization(ctx, ts)
+	return cs.ComputeNextBaseFeeFromPremiums(ctx, ts)
 }
 
 func (cs *ChainStore) ComputeNextBaseFeeFromUtilization(ctx context.Context, ts *types.TipSet) (abi.TokenAmount, error) {

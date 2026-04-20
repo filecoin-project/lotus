@@ -134,7 +134,6 @@ const (
 	SetApiEndpointKey
 
 	StoreEventsKey
-	SetFIP0115BaseFeeHeightKey
 
 	InitChainIndexerKey
 	InitApiV2Key

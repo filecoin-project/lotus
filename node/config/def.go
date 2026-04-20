@@ -67,7 +67,6 @@ func DefaultFullNode() *FullNode {
 
 		Fees: FeeConfig{
 			DefaultMaxFee: DefaultDefaultMaxFee(),
-			FIP0115Height: -1,
 		},
 
 		Chainstore: Chainstore{
