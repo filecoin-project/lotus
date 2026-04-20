@@ -1,9 +1,35 @@
 #####################################
-FROM golang:1.25.0-bookworm AS lotus-builder
+FROM debian:bullseye AS lotus-builder
 MAINTAINER Lotus Development Team
 
-RUN apt-get update && apt-get install -y ca-certificates build-essential clang ocl-icd-opencl-dev ocl-icd-libopencl1 jq libhwloc-dev
+ARG GO_VERSION=1.25.0
+ARG TARGETARCH
 
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    wget \
+    git \
+    build-essential \
+    clang \
+    ocl-icd-opencl-dev \
+    ocl-icd-libopencl1 \
+    jq \
+    libhwloc-dev \
+    xz-utils \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN set -eux; \
+    targetArch="${TARGETARCH:-$(dpkg --print-architecture)}"; \
+    case "${targetArch}" in \
+      amd64) GOARCH=amd64 ;; \
+      arm64) GOARCH=arm64 ;; \
+      *) echo "unsupported arch: ${targetArch}"; exit 1 ;; \
+    esac; \
+    wget -O /tmp/go.tgz "https://go.dev/dl/go${GO_VERSION}.linux-${GOARCH}.tar.gz"; \
+    tar -C /usr/local -xzf /tmp/go.tgz; \
+    rm /tmp/go.tgz
+
+ENV PATH=/usr/local/go/bin:$PATH
 ENV XDG_CACHE_HOME="/tmp"
 
 ENV RUSTUP_HOME=/usr/local/rustup \
