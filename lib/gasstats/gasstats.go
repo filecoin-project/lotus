@@ -99,11 +99,11 @@ func FormatTable(w io.Writer, tallies []Tally, total Tally) error {
 		"Type":        "Total",
 		"Count":       total.Count,
 		"Storage Gas": total.StorageGas,
-		"S%":          "100.00",
+		"S%":          pct(total.StorageGas, total.StorageGas),
 		"Compute Gas": total.ComputeGas,
-		"C%":          "100.00",
+		"C%":          pct(total.ComputeGas, total.ComputeGas),
 		"Total Gas":   total.Total(),
-		"T%":          "100.00",
+		"T%":          pct(total.Total(), total.Total()),
 	})
 	return tw.Flush(w, tablewriter.WithBorders())
 }

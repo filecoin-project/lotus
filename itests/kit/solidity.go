@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/filecoin-project/go-keccak"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-keccak"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"

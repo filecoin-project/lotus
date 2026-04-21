@@ -221,8 +221,26 @@ func TestFEVMRecursiveDelegatecallCanary(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(fmt.Sprintf("count=%d,success=%t", tc.recursionCount, tc.expectSuccess), func(t *testing.T) {
 			fromAddr, actorAddr := client.EVM().DeployContractFromFilename(ctx, "contracts/RecursiveDelegeatecall.hex")
-			trace, observedCount, err := runRecursiveDelegatecall(ctx, t, client, fromAddr, actorAddr, tc.recursionCount)
+			trace, exit, observedCount, err := runRecursiveDelegatecall(ctx, t, client, fromAddr, actorAddr, tc.recursionCount)
 			require.NoError(t, err)
+
+			// The outer recursiveCall always exits Ok: the contract catches
+			// failing sub-delegatecalls and returns the iteration count
+			// reached before the failure. A non-Ok outer exit signals a
+			// behavioural change beyond bundle drift, not a retune.
+			if exit != exitcode.Ok {
+				reportCanaryFailure(t, canaryFailure{
+					testName:       "TestFEVMRecursiveDelegatecallCanary",
+					caseLabel:      fmt.Sprintf("count=%d", tc.recursionCount),
+					recursionCount: int(tc.recursionCount),
+					expectedExit:   exitcode.Ok,
+					actualExit:     exit,
+					trace:          trace,
+					perIterApprox:  delegatecallPerIterGasApprox,
+					extraReason:    "outer recursiveCall returned non-Ok; the contract is expected to catch inner failures and return Ok",
+				})
+				return
+			}
 
 			var problem string
 			switch {
@@ -241,7 +259,7 @@ func TestFEVMRecursiveDelegatecallCanary(t *testing.T) {
 				caseLabel:      fmt.Sprintf("count=%d", tc.recursionCount),
 				recursionCount: int(tc.recursionCount),
 				expectedExit:   exitcode.Ok,
-				actualExit:     exitcode.Ok,
+				actualExit:     exit,
 				trace:          trace,
 				perIterApprox:  delegatecallPerIterGasApprox,
 				extraReason:    problem,
@@ -318,7 +336,6 @@ func TestFEVMCanaryBundleCompareHistorical(t *testing.T) {
 		t.Skip("set LOTUS_TEST_FEVM_CANARY_HISTORICAL=1 to run")
 	}
 	for _, tr := range bundleTransitionsFromSchedule() {
-		tr := tr
 		t.Run(tr.label, func(t *testing.T) {
 			measureBundleTransition(t, tr)
 		})
@@ -391,29 +408,29 @@ func runRecursiveActorCall(ctx context.Context, t *testing.T, client *kit.TestFu
 
 // runRecursiveDelegatecall invokes recursiveCall(uint256) on a
 // RecursiveDelegatecall contract and then queries totalCalls() to find out
-// how many iterations actually ran. Returns the recursiveCall trace plus
-// the observed iteration count.
-func runRecursiveDelegatecall(ctx context.Context, t *testing.T, client *kit.TestFullNode, from, contract address.Address, n uint64) (types.ExecutionTrace, uint64, error) {
+// how many iterations actually ran. Returns the recursiveCall trace, the
+// outer-call receipt exit code, and the observed iteration count.
+func runRecursiveDelegatecall(ctx context.Context, t *testing.T, client *kit.TestFullNode, from, contract address.Address, n uint64) (types.ExecutionTrace, exitcode.ExitCode, uint64, error) {
 	t.Helper()
 	input := kit.EvmWordUint64(n)
 	entry := kit.CalcFuncSignature("recursiveCall(uint256)")
 	wait, err := client.EVM().InvokeSolidity(ctx, from, contract, entry, input)
 	if err != nil {
-		return types.ExecutionTrace{}, 0, err
+		return types.ExecutionTrace{}, 0, 0, err
 	}
 	replay, err := client.StateReplay(ctx, types.EmptyTSK, wait.Message)
 	if err != nil {
-		return types.ExecutionTrace{}, 0, err
+		return types.ExecutionTrace{}, 0, 0, err
 	}
 	result, _, err := client.EVM().InvokeContractByFuncName(ctx, from, contract, "totalCalls()", []byte{})
 	if err != nil {
-		return replay.ExecutionTrace, 0, err
+		return replay.ExecutionTrace, wait.Receipt.ExitCode, 0, err
 	}
 	total, err := kit.EvmDecodeUint64(result)
 	if err != nil {
-		return replay.ExecutionTrace, 0, err
+		return replay.ExecutionTrace, wait.Receipt.ExitCode, 0, err
 	}
-	return replay.ExecutionTrace, total, nil
+	return replay.ExecutionTrace, wait.Receipt.ExitCode, total, nil
 }
 
 // canaryFailure bundles the context needed to produce a useful failure
