@@ -39,37 +39,6 @@ import (
 	"github.com/filecoin-project/lotus/itests/kit"
 )
 
-// convert a simple byte array into input data which is a left padded 32 byte array
-func inputDataFromArray(input []byte) []byte {
-	inputData := make([]byte, 32)
-	copy(inputData[32-len(input):], input[:])
-	return inputData
-}
-
-// convert a "from" address into input data which is a left padded 32 byte array
-func inputDataFromFrom(ctx context.Context, t *testing.T, client *kit.TestFullNode, from address.Address) []byte {
-	fromId, err := client.StateLookupID(ctx, from, types.EmptyTSK)
-	require.NoError(t, err)
-	senderEthAddr, err := ethtypes.EthAddressFromFilecoinAddress(fromId)
-	require.NoError(t, err)
-	inputData := make([]byte, 32)
-	copy(inputData[32-len(senderEthAddr):], senderEthAddr[:])
-	return inputData
-}
-
-func decodeOutputToUint64(output []byte) (uint64, error) {
-	var result uint64
-	buf := bytes.NewReader(output[len(output)-8:])
-	err := binary.Read(buf, binary.BigEndian, &result)
-	return result, err
-}
-func buildInputFromUint64(number uint64) []byte {
-	// Convert the number to a binary uint64 array
-	binaryNumber := make([]byte, 8)
-	binary.BigEndian.PutUint64(binaryNumber, number)
-	return inputDataFromArray(binaryNumber)
-}
-
 // TestFEVMRecursive does a basic fevm contract installation and invocation
 func TestFEVMRecursive(t *testing.T) {
 	callCounts := []uint64{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 100, 230, 330}
@@ -81,7 +50,7 @@ func TestFEVMRecursive(t *testing.T) {
 	// Successful calls
 	for _, callCount := range callCounts {
 		t.Run(fmt.Sprintf("TestFEVMRecursive%d", callCount), func(t *testing.T) {
-			_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", buildInputFromUint64(callCount))
+			_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", kit.EvmWordUint64(callCount))
 			require.NoError(t, err)
 		})
 	}
@@ -98,7 +67,7 @@ func TestFEVMRecursiveFail(t *testing.T) {
 	failCallCounts := []uint64{340, 400, 600, 850, 1000}
 	for _, failCallCount := range failCallCounts {
 		t.Run(fmt.Sprintf("TestFEVMRecursiveFail%d", failCallCount), func(t *testing.T) {
-			_, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", buildInputFromUint64(failCallCount))
+			_, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", kit.EvmWordUint64(failCallCount))
 			require.Error(t, err)
 			require.Equal(t, exitcode.ExitCode(37), wait.Receipt.ExitCode)
 		})
@@ -127,54 +96,9 @@ func TestFEVMRecursive2(t *testing.T) {
 	require.Equal(t, 2, len(events))
 }
 
-// TestFEVMRecursiveDelegatecallCount tests the maximum delegatecall recursion depth.
-func TestFEVMRecursiveDelegatecallCount(t *testing.T) {
-	ctx, cancel, client := kit.SetupFEVMTest(t)
-	defer cancel()
-
-	// these depend on the actors bundle, may need to be adjusted with a network upgrade
-	const highestSuccessCount = 228
-	const expectedIterationsBeforeFailing = 222
-
-	filename := "contracts/RecursiveDelegeatecall.hex"
-
-	testCases := []struct {
-		recursionCount uint64
-		expectSuccess  bool
-	}{
-		// success
-		{1, true},
-		{2, true},
-		{10, true},
-		{100, true},
-		{highestSuccessCount, true},
-		// failure
-		{highestSuccessCount + 1, false},
-		{1000, false},
-		{10000000, false},
-	}
-	for _, tc := range testCases {
-		t.Run(fmt.Sprintf("recursionCount=%d,expectSuccess=%t", tc.recursionCount, tc.expectSuccess), func(t *testing.T) {
-			fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
-			inputData := buildInputFromUint64(tc.recursionCount)
-			_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", inputData)
-			require.NoError(t, err)
-
-			result, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "totalCalls()", []byte{})
-			require.NoError(t, err)
-
-			resultUint, err := decodeOutputToUint64(result)
-			require.NoError(t, err)
-
-			if tc.expectSuccess {
-				require.Equal(t, int(tc.recursionCount), int(resultUint))
-			} else {
-				require.NotEqual(t, int(resultUint), int(tc.recursionCount), "unexpected recursion count, if the actors bundle has changed, this test may need to be adjusted")
-				require.Equal(t, int(expectedIterationsBeforeFailing), int(resultUint))
-			}
-		})
-	}
-}
+// TestFEVMRecursiveDelegatecallCount moved to fevm_bundle_canary_test.go
+// as TestFEVMRecursiveDelegatecallCanary — its boundary values retune with
+// every actors bundle release.
 
 // TestFEVMBasic does a basic fevm contract installation and invocation
 func TestFEVMBasic(t *testing.T) {
@@ -188,7 +112,7 @@ func TestFEVMBasic(t *testing.T) {
 
 	// invoke the contract with owner
 	{
-		inputData := inputDataFromFrom(ctx, t, client, fromAddr)
+		inputData := kit.EvmWordFromAddr(ctx, t, client, fromAddr)
 		result, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "getBalance(address)", inputData)
 		require.NoError(t, err)
 
@@ -199,7 +123,7 @@ func TestFEVMBasic(t *testing.T) {
 
 	// invoke the contract with non owner
 	{
-		inputData := inputDataFromFrom(ctx, t, client, fromAddr)
+		inputData := kit.EvmWordFromAddr(ctx, t, client, fromAddr)
 		inputData[31]++ // change the pub address to one that has 0 balance by modifying the last byte of the address
 		result, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "getBalance(address)", inputData)
 		require.NoError(t, err)
@@ -244,8 +168,8 @@ func TestFEVMDelegateCall(t *testing.T) {
 
 	// call Contract Storage which makes a delegatecall to contract Actor
 	// this contract call sets the "counter" variable to 7, from default value 0
-	inputDataContract := inputDataFromFrom(ctx, t, client, actorAddr)
-	inputDataValue := inputDataFromArray([]byte{7})
+	inputDataContract := kit.EvmWordFromAddr(ctx, t, client, actorAddr)
+	inputDataValue := kit.EvmWordBytes([]byte{7})
 	inputData := append(inputDataContract, inputDataValue...)
 
 	// verify that the returned value of the call to setvars is 7
@@ -299,8 +223,8 @@ func TestFEVMDelegateCallRevert(t *testing.T) {
 	// call Contract Storage which makes a delegatecall to contract Actor
 	// this contract call sets the "counter" variable to 7, from default value 0
 
-	inputDataContract := inputDataFromFrom(ctx, t, client, actorAddr)
-	inputDataValue := inputDataFromArray([]byte{7})
+	inputDataContract := kit.EvmWordFromAddr(ctx, t, client, actorAddr)
+	inputDataValue := kit.EvmWordBytes([]byte{7})
 	inputData := append(inputDataContract, inputDataValue...)
 
 	// verify that the returned value of the call to setvars is 7
@@ -501,8 +425,8 @@ func TestFEVMDelegateCallRecursiveFail(t *testing.T) {
 	fromAddr, actorAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
 
 	// any data will do for this test that fails
-	inputDataContract := inputDataFromFrom(ctx, t, client, actorAddr)
-	inputDataValue := inputDataFromArray([]byte{7})
+	inputDataContract := kit.EvmWordFromAddr(ctx, t, client, actorAddr)
+	inputDataValue := kit.EvmWordBytes([]byte{7})
 	inputData := append(inputDataContract, inputDataValue...)
 
 	// verify that we run out of gas then revert.
@@ -587,7 +511,6 @@ func TestFEVMRecursiveActorCall(t *testing.T) {
 	fromAddr, actorAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
 
 	exitCodeStackOverflow := exitcode.ExitCode(37)
-	exitCodeTransactionReverted := exitcode.ExitCode(33)
 
 	testCases := []struct {
 		stackDepth     int
@@ -612,11 +535,10 @@ func TestFEVMRecursiveActorCall(t *testing.T) {
 		{200, 32, exitcode.Ok},
 		{251, 32, exitcode.Ok},
 		{252, 32, exitCodeStackOverflow},
-		// the following are actors bundle dependent and may need to be tweaked with a network upgrade
-		{0, 255, exitcode.Ok},
-		{251, 164, exitcode.Ok},
-		{0, 261, exitCodeTransactionReverted},
-		{251, 173, exitCodeTransactionReverted},
+		// Bundle-dependent gas-exhaustion boundary cases live in
+		// fevm_bundle_canary_test.go; those retune with every actors bundle.
+		// The cases above exercise the wasm-stack / recursion-protection
+		// boundary, which is not bundle-dependent.
 	}
 	for _, tc := range testCases {
 		var fail string
@@ -754,7 +676,7 @@ func TestFEVMDeployWithValue(t *testing.T) {
 	ret, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "getNewContractBalance()", []byte{})
 	require.NoError(t, err)
 
-	contractBalance, err := decodeOutputToUint64(ret)
+	contractBalance, err := kit.EvmDecodeUint64(ret)
 	require.NoError(t, err)
 
 	// require balance of NewContract is testValue
@@ -789,7 +711,7 @@ func TestFEVMDestroyCreate2(t *testing.T) {
 	require.NoError(t, err)
 
 	// assert contract has correct data
-	ethFromAddr := inputDataFromFrom(ctx, t, client, fromAddr)
+	ethFromAddr := kit.EvmWordFromAddr(ctx, t, client, fromAddr)
 	require.Equal(t, ethFromAddr, ret)
 
 	// run test() which 1.calls sefldestruct 2. verifies sender() is the correct value 3. attempts and fails to deploy via create2
@@ -957,7 +879,7 @@ func TestFEVMGetChainPropertiesBlockTimestamp(t *testing.T) {
 	ret, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "getTimestamp()", []byte{})
 	require.NoError(t, err)
 
-	timestampFromSolidity, err := decodeOutputToUint64(ret)
+	timestampFromSolidity, err := kit.EvmDecodeUint64(ret)
 	require.NoError(t, err)
 
 	ethBlock := client.EVM().GetEthBlockFromWait(ctx, wait)
@@ -977,7 +899,7 @@ func TestFEVMGetChainPropertiesBlockNumber(t *testing.T) {
 	ret, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "getBlockNumber()", []byte{})
 	require.NoError(t, err)
 
-	blockHeightFromSolidity, err := decodeOutputToUint64(ret)
+	blockHeightFromSolidity, err := kit.EvmDecodeUint64(ret)
 	require.NoError(t, err)
 
 	ethBlock := client.EVM().GetEthBlockFromWait(ctx, wait)
@@ -1014,7 +936,7 @@ func TestFEVMGetChainPropertiesBaseFee(t *testing.T) {
 
 	ret, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "getBasefee()", []byte{})
 	require.NoError(t, err)
-	baseFeeRet, err := decodeOutputToUint64(ret)
+	baseFeeRet, err := kit.EvmDecodeUint64(ret)
 	require.NoError(t, err)
 
 	ethBlock := client.EVM().GetEthBlockFromWait(ctx, wait)
@@ -1937,7 +1859,7 @@ func TestTstore(t *testing.T) {
 	require.NoError(t, err)
 
 	fromAddr, contractAddr2 := client.EVM().DeployContractFromFilename(ctx, filenameActor)
-	inputDataContract := inputDataFromFrom(ctx, t, client, contractAddr2)
+	inputDataContract := kit.EvmWordFromAddr(ctx, t, client, contractAddr2)
 
 	//Step 3 test reentry from multiple contracts in a transaction
 	_, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "testReentry(address)", inputDataContract)
@@ -1988,10 +1910,10 @@ func TestFEVMMigrationBytecodeSwap(t *testing.T) {
 
 	// Deploy SimpleCoin contract and verify it works
 	_, contractIdAddr := client.EVM().DeployContractFromFilename(ctx, "contracts/SimpleCoin.hex")
-	inputData := inputDataFromFrom(ctx, t, client, fromAddr)
+	inputData := kit.EvmWordFromAddr(ctx, t, client, fromAddr)
 	result, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractIdAddr, "getBalance(address)", inputData)
 	require.NoError(t, err)
-	balance, err := decodeOutputToUint64(result)
+	balance, err := kit.EvmDecodeUint64(result)
 	require.NoError(t, err)
 	require.Equal(t, uint64(10000), balance)
 
@@ -2031,7 +1953,7 @@ func TestFEVMMigrationBytecodeSwap(t *testing.T) {
 	// the contract that was originally SimpleCoin
 	result, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractIdAddr, "getDifficulty()", nil)
 	require.NoError(t, err)
-	_, err = decodeOutputToUint64(result)
+	_, err = kit.EvmDecodeUint64(result)
 	require.NoError(t, err)
 
 	// Verify the source contract is unaffected
