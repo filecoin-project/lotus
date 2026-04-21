@@ -1,8 +1,18 @@
 package kit
 
 import (
-	"github.com/filecoin-project/go-keccak"
+	"bytes"
+	"context"
+	"encoding/binary"
+	"fmt"
+	"testing"
 
+	"github.com/filecoin-project/go-keccak"
+	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-address"
+
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
@@ -18,6 +28,48 @@ func EthFunctionHash(sig string) []byte {
 	hasher := keccak.NewLegacyKeccak256()
 	hasher.Write([]byte(sig))
 	return hasher.Sum(nil)[:4]
+}
+
+// EvmWordBytes right-aligns input into a 32-byte big-endian EVM word.
+// Panics if input is longer than 32 bytes.
+func EvmWordBytes(input []byte) []byte {
+	if len(input) > 32 {
+		panic(fmt.Sprintf("EvmWordBytes: input of %d bytes exceeds word size", len(input)))
+	}
+	word := make([]byte, 32)
+	copy(word[32-len(input):], input)
+	return word
+}
+
+// EvmWordUint64 encodes n as a 32-byte big-endian EVM word.
+func EvmWordUint64(n uint64) []byte {
+	word := make([]byte, 32)
+	binary.BigEndian.PutUint64(word[24:], n)
+	return word
+}
+
+// EvmWordFromAddr resolves a Filecoin address to its corresponding Ethereum
+// address and returns it as a 32-byte big-endian EVM word.
+func EvmWordFromAddr(ctx context.Context, t *testing.T, client *TestFullNode, from address.Address) []byte {
+	t.Helper()
+	fromID, err := client.StateLookupID(ctx, from, types.EmptyTSK)
+	require.NoError(t, err)
+	ethAddr, err := ethtypes.EthAddressFromFilecoinAddress(fromID)
+	require.NoError(t, err)
+	return EvmWordBytes(ethAddr[:])
+}
+
+// EvmDecodeUint64 interprets the low 8 bytes of an EVM word as a big-endian
+// uint64. Returns an error if output is shorter than 8 bytes.
+func EvmDecodeUint64(output []byte) (uint64, error) {
+	if len(output) < 8 {
+		return 0, fmt.Errorf("EvmDecodeUint64: output too short: %d bytes, need 8", len(output))
+	}
+	var n uint64
+	if err := binary.Read(bytes.NewReader(output[len(output)-8:]), binary.BigEndian, &n); err != nil {
+		return 0, err
+	}
+	return n, nil
 }
 
 // SolidityContractDef holds information about one of the test contracts

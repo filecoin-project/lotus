@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"sort"
 
 	"github.com/fatih/color"
 	"github.com/ipfs/go-cid"
@@ -21,7 +20,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/lib/tablewriter"
+	"github.com/filecoin-project/lotus/lib/gasstats"
 )
 
 var msgCmd = &cli.Command{
@@ -103,7 +102,7 @@ var msgCmd = &cli.Command{
 						typ = "Subcall"
 					}
 					_, _ = fmt.Fprintln(cctx.App.Writer, color.New(color.Bold).Sprint(fmt.Sprintf("%s (%s%s) gas charges:", typ, descPfx, trace.Msg.To)))
-					if err := statsTable(cctx.App.Writer, trace, false); err != nil {
+					if err := writeGasStats(cctx.App.Writer, trace, false); err != nil {
 						return err
 					}
 					for _, subtrace := range trace.Subcalls {
@@ -120,13 +119,13 @@ var msgCmd = &cli.Command{
 				if len(res.ExecutionTrace.Subcalls) > 0 {
 					_, _ = fmt.Fprintln(cctx.App.Writer)
 					_, _ = fmt.Fprintln(cctx.App.Writer, color.New(color.Bold).Sprint("Total gas charges:"))
-					if err := statsTable(cctx.App.Writer, res.ExecutionTrace, true); err != nil {
+					if err := writeGasStats(cctx.App.Writer, res.ExecutionTrace, true); err != nil {
 						return err
 					}
-					perCallTrace := gasTracesPerCall(res.ExecutionTrace)
+					perCallTrace := gasstats.PerCallTrace(res.ExecutionTrace)
 					_, _ = fmt.Fprintln(cctx.App.Writer)
 					_, _ = fmt.Fprintln(cctx.App.Writer, color.New(color.Bold).Sprint("Gas charges per call:"))
-					if err := statsTable(cctx.App.Writer, perCallTrace, false); err != nil {
+					if err := writeGasStats(cctx.App.Writer, perCallTrace, false); err != nil {
 						return err
 					}
 				}
@@ -393,104 +392,7 @@ func messageFromCID(cctx *cli.Context, c cid.Cid) (types.ChainMsg, error) {
 	return messageFromBytes(cctx, msgb)
 }
 
-type gasTally struct {
-	storageGas int64
-	computeGas int64
-	count      int
-}
-
-func accumGasTallies(charges map[string]*gasTally, totals *gasTally, trace types.ExecutionTrace, recurse bool) {
-	for _, charge := range trace.GasCharges {
-		name := charge.Name
-		if _, ok := charges[name]; !ok {
-			charges[name] = &gasTally{}
-		}
-		charges[name].computeGas += charge.ComputeGas
-		charges[name].storageGas += charge.StorageGas
-		charges[name].count++
-		totals.computeGas += charge.ComputeGas
-		totals.storageGas += charge.StorageGas
-		totals.count++
-	}
-	if recurse {
-		for _, subtrace := range trace.Subcalls {
-			accumGasTallies(charges, totals, subtrace, recurse)
-		}
-	}
-}
-
-func statsTable(out io.Writer, trace types.ExecutionTrace, recurse bool) error {
-	tw := tablewriter.New(
-		tablewriter.Col("Type"),
-		tablewriter.Col("Count", tablewriter.RightAlign()),
-		tablewriter.Col("Storage Gas", tablewriter.RightAlign()),
-		tablewriter.Col("S%", tablewriter.RightAlign()),
-		tablewriter.Col("Compute Gas", tablewriter.RightAlign()),
-		tablewriter.Col("C%", tablewriter.RightAlign()),
-		tablewriter.Col("Total Gas", tablewriter.RightAlign()),
-		tablewriter.Col("T%", tablewriter.RightAlign()),
-	)
-
-	totals := &gasTally{}
-	charges := make(map[string]*gasTally)
-	accumGasTallies(charges, totals, trace, recurse)
-
-	// Sort by name
-	names := make([]string, 0, len(charges))
-	for name := range charges {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-
-	for _, name := range names {
-		charge := charges[name]
-		tw.Write(map[string]interface{}{
-			"Type":        name,
-			"Count":       charge.count,
-			"Storage Gas": charge.storageGas,
-			"S%":          fmt.Sprintf("%.2f", float64(charge.storageGas)/float64(totals.storageGas)*100),
-			"Compute Gas": charge.computeGas,
-			"C%":          fmt.Sprintf("%.2f", float64(charge.computeGas)/float64(totals.computeGas)*100),
-			"Total Gas":   charge.storageGas + charge.computeGas,
-			"T%":          fmt.Sprintf("%.2f", float64(charge.storageGas+charge.computeGas)/float64(totals.storageGas+totals.computeGas)*100),
-		})
-	}
-	tw.Write(map[string]interface{}{
-		"Type":        "Total",
-		"Count":       totals.count,
-		"Storage Gas": totals.storageGas,
-		"S%":          "100.00",
-		"Compute Gas": totals.computeGas,
-		"C%":          "100.00",
-		"Total Gas":   totals.storageGas + totals.computeGas,
-		"T%":          "100.00",
-	})
-	return tw.Flush(out, tablewriter.WithBorders())
-}
-
-// Takes an execution trace and returns a new trace that groups all the gas charges by the message
-// they were charged in, with the gas charges named per message; the output is partial and only
-// suitable for calling statsTable() with.
-func gasTracesPerCall(inTrace types.ExecutionTrace) types.ExecutionTrace {
-	outTrace := types.ExecutionTrace{
-		GasCharges: []*types.GasTrace{},
-	}
-	count := 1
-	var accum func(name string, trace types.ExecutionTrace)
-	accum = func(name string, trace types.ExecutionTrace) {
-		totals := &gasTally{}
-		charges := make(map[string]*gasTally)
-		accumGasTallies(charges, totals, trace, false)
-		outTrace.GasCharges = append(outTrace.GasCharges, &types.GasTrace{
-			Name:       fmt.Sprintf("#%d %s", count, name),
-			ComputeGas: totals.computeGas,
-			StorageGas: totals.storageGas,
-		})
-		count++
-		for _, subtrace := range trace.Subcalls {
-			accum(name+"➜"+subtrace.Msg.To.String(), subtrace)
-		}
-	}
-	accum(inTrace.Msg.To.String(), inTrace)
-	return outTrace
+func writeGasStats(w io.Writer, trace types.ExecutionTrace, recurse bool) error {
+	tallies, total := gasstats.Aggregate(trace, recurse)
+	return gasstats.FormatTable(w, tallies, total)
 }
