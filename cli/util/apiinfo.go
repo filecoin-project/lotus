@@ -55,7 +55,16 @@ func (a APIInfo) DialArgs(version string) (string, error) {
 			return "", err
 		}
 
-		return "ws://" + addr + "/rpc/" + version, nil
+		scheme := "ws"
+		multiaddr.ForEach(ma, func(c multiaddr.Component) bool {
+			switch c.Protocol().Code {
+			case multiaddr.P_WSS, multiaddr.P_TLS:
+				scheme = "wss"
+			}
+			return true
+		})
+
+		return scheme + "://" + addr + "/rpc/" + version, nil
 	}
 
 	_, err = url.Parse(a.Addr)
