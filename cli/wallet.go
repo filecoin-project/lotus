@@ -325,6 +325,9 @@ var walletExport = &cli.Command{
 			if ki.Type != types.KTSecp256k1 && ki.Type != types.KTDelegated {
 				return fmt.Errorf("hex-eth format requires a secp256k1 or delegated key, got: %s", ki.Type)
 			}
+			if len(ki.PrivateKey) != 32 {
+				return fmt.Errorf("expected 32-byte private key, got %d bytes", len(ki.PrivateKey))
+			}
 			afmt.Println("0x" + hex.EncodeToString(ki.PrivateKey))
 		default:
 			return fmt.Errorf("unrecognized format: %s", cctx.String("format"))
@@ -341,12 +344,12 @@ var walletImport = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "format",
-			Usage: "input format: 'hex-lotus' (hex-encoded JSON KeyInfo), 'json-lotus' (JSON KeyInfo), 'gfc-json' (go-filecoin JSON), 'hex-eth' (raw 32-byte private key as hex, Ethereum-compatible; requires --type)",
+			Usage: "input format: 'hex-lotus' (hex-encoded JSON KeyInfo), 'json-lotus' (JSON KeyInfo), 'gfc-json' (go-filecoin JSON), 'hex-eth' (raw 32-byte private key as hex, Ethereum-compatible; key type set via --type)",
 			Value: "hex-lotus",
 		},
 		&cli.StringFlag{
 			Name:  "type",
-			Usage: "key type for raw private-key formats ('hex-eth'): 'secp256k1' or 'delegated'",
+			Usage: "key type for raw private-key formats such as 'hex-eth': 'secp256k1' or 'delegated'",
 			Value: "delegated",
 		},
 		&cli.BoolFlag{

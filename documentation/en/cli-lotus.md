@@ -298,8 +298,8 @@ USAGE:
    lotus wallet import [command options] [<path> (optional, will read from stdin if omitted)]
 
 OPTIONS:
-   --format value  input format: 'hex-lotus' (hex-encoded JSON KeyInfo), 'json-lotus' (JSON KeyInfo), 'gfc-json' (go-filecoin JSON), 'hex-eth' (raw 32-byte private key as hex, Ethereum-compatible; requires --type) (default: "hex-lotus")
-   --type value    key type for raw private-key formats ('hex-eth'): 'secp256k1' or 'delegated' (default: "delegated")
+   --format value  input format: 'hex-lotus' (hex-encoded JSON KeyInfo), 'json-lotus' (JSON KeyInfo), 'gfc-json' (go-filecoin JSON), 'hex-eth' (raw 32-byte private key as hex, Ethereum-compatible; key type set via --type) (default: "hex-lotus")
+   --type value    key type for raw private-key formats such as 'hex-eth': 'secp256k1' or 'delegated' (default: "delegated")
    --as-default    import the given key as your new default key (default: false)
    --help, -h      show help
 ```

@@ -18,7 +18,7 @@
 ## 👌 Improvements
 
 - feat(cliutil): accept non-JWT API tokens in `TOKEN:ADDRESS`, enabling use of third-party RPC providers (e.g. Glif) that issue opaque API keys ([filecoin-project/lotus#13578](https://github.com/filecoin-project/lotus/pull/13578))
-- feat(cli): `lotus wallet export` gains a `--format` flag with a new `hex-eth` value that emits the raw 32-byte private key as hex, directly importable into Ethereum tools (Metamask, ethers.js, foundry). `hex-eth` is also accepted by `lotus wallet import` together with a `--type` flag (`secp256k1` or `delegated`).
+- feat(cli): `lotus wallet export` gains a `--format` flag with a new `hex-eth` value that emits the raw 32-byte private key as hex, directly importable into Ethereum tools (Metamask, ethers.js, foundry). `hex-eth` is also accepted by `lotus wallet import` together with a `--type` flag (`secp256k1` or `delegated`, defaulting to `delegated`). ([filecoin-project/lotus#13586](https://github.com/filecoin-project/lotus/pull/13586))
 
 # Node v1.35.1 / 2026-03-31
 
