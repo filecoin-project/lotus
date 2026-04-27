@@ -78,28 +78,37 @@ your node if metadata log is disabled`,
 
 			Comment: `EnableIndexer controls whether the chain indexer is active.
 The chain indexer is responsible for indexing tipsets, messages, and events from the chain state.
-It is a crucial component for optimizing Lotus RPC response times.
+It is a crucial component for optimizing Lotus RPC response times and is required by the Ethereum
+JSON-RPC (Fevm.EnableEthRPC) and Actor events (Events.EnableActorEventsAPI) APIs.
 
-Default: false (indexer is disabled)
+Default: true (indexer is enabled)
 
-Setting this to true will enable the indexer, which will significantly improve RPC performance.
-It is strongly recommended to keep this set to true if you are an RPC provider.
-
-If EnableEthRPC or EnableActorEventsAPI are set to true, the ChainIndexer must be enabled using
-this option to avoid errors at startup.`,
+The indexer writes to ${LOTUS_PATH}/chainindex and, on mainnet, grows at roughly 200 MiB per day
+(around 6 GiB per month) until trimmed by GCRetentionEpochs. Operators who do not serve the
+Ethereum or Actor events APIs can set this to false to save disk; in that case Fevm.EnableEthRPC
+and Events.EnableActorEventsAPI must also be set to false or the node will fail to start.`,
 		},
 		{
 			Name: "GCRetentionEpochs",
 			Type: "int64",
 
 			Comment: `GCRetentionEpochs specifies the number of epochs for which data is retained in the Indexer.
-The garbage collection (GC) process removes data older than this retention period.
-Setting this to 0 disables GC, preserving all historical data indefinitely.
+The garbage collection (GC) process removes data older than this retention period and runs
+every 4 hours.
 
-If set, the minimum value must be greater than builtin.EpochsInDay (i.e. "2880" epochs for mainnet).
-This ensures a reasonable retention period for the indexed data.
+Default: 20160 epochs (7 days on mainnet, at 2880 epochs/day).
 
-Default: 0 (GC disabled)`,
+This default is aimed at non-archival nodes running with the default Splitstore configuration
+(HotStoreMaxSpaceTarget=650GB, ColdStoreType="discard"), where chain state itself is bounded
+to a few days of recent epochs. Indexing data older than the chain-state retention is largely
+wasted, since lookups that need state will fail anyway.
+
+Set to 0 to disable GC entirely and retain all indexed data indefinitely (suitable for
+archival nodes or RPC providers serving deep history). Any other value must be greater than
+builtin.EpochsInDay (2880 epochs); smaller non-zero values are rejected at startup.
+
+Operators serving an Ethereum or events RPC tier with deeper history should set this to match
+(or slightly exceed) their effective chain-state retention.`,
 		},
 		{
 			Name: "ReconcileEmptyIndex",
@@ -199,9 +208,9 @@ This can lead to inaccurate or missing data in RPC responses that depend on the 
 			Type: "bool",
 
 			Comment: `EnableActorEventsAPI enables the Actor events API that enables clients to consume events
-emitted by (smart contracts + built-in Actors).
-Note: Setting this to true will also require that ChainIndexer is enabled, otherwise it will cause an error at startup.
-Set EnableIndexer in the ChainIndexer section of the config to true to enable the ChainIndexer.`,
+emitted by (smart contracts + built-in Actors). Enabled by default.
+Requires ChainIndexer.EnableIndexer to also be true (the default); the node will fail to start otherwise.
+To disable the Actor events API, set this to false.`,
 		},
 		{
 			Name: "FilterTTL",
@@ -276,9 +285,10 @@ rewards. This address should have adequate funds to cover gas fees.`,
 			Name: "EnableEthRPC",
 			Type: "bool",
 
-			Comment: `EnableEthRPC enables eth_ RPC methods.
-Note: Setting this to true will also require that ChainIndexer is enabled, otherwise it will cause an error at startup.
-Set EnableIndexer in the ChainIndexer section of the config to true to enable the ChainIndexer.`,
+			Comment: `EnableEthRPC enables eth_ RPC methods. Enabled by default.
+Requires ChainIndexer.EnableIndexer to also be true (the default); the node will fail to start otherwise.
+To disable eth_ RPC methods, set this to false; consider also disabling ChainIndexer.EnableIndexer and
+Events.EnableActorEventsAPI to avoid running subsystems whose output is not served.`,
 		},
 		{
 			Name: "EthTraceFilterMaxResults",
