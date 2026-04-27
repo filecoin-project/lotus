@@ -277,6 +277,13 @@ var walletExport = &cli.Command{
 	Name:      "export",
 	Usage:     "export keys",
 	ArgsUsage: "[address]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "format",
+			Usage: "output format: 'hex-lotus' (hex-encoded JSON KeyInfo), 'json-lotus' (JSON KeyInfo), 'hex-eth' (raw 32-byte private key as hex, Ethereum-compatible; secp256k1 and delegated keys only)",
+			Value: "hex-lotus",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -301,12 +308,28 @@ var walletExport = &cli.Command{
 			return err
 		}
 
-		b, err := json.Marshal(ki)
-		if err != nil {
-			return err
+		switch cctx.String("format") {
+		case "hex-lotus":
+			b, err := json.Marshal(ki)
+			if err != nil {
+				return err
+			}
+			afmt.Println(hex.EncodeToString(b))
+		case "json-lotus":
+			b, err := json.Marshal(ki)
+			if err != nil {
+				return err
+			}
+			afmt.Println(string(b))
+		case "hex-eth":
+			if ki.Type != types.KTSecp256k1 && ki.Type != types.KTDelegated {
+				return fmt.Errorf("hex-eth format requires a secp256k1 or delegated key, got: %s", ki.Type)
+			}
+			afmt.Println("0x" + hex.EncodeToString(ki.PrivateKey))
+		default:
+			return fmt.Errorf("unrecognized format: %s", cctx.String("format"))
 		}
 
-		afmt.Println(hex.EncodeToString(b))
 		return nil
 	},
 }
@@ -318,8 +341,13 @@ var walletImport = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "format",
-			Usage: "specify input format for key",
+			Usage: "input format: 'hex-lotus' (hex-encoded JSON KeyInfo), 'json-lotus' (JSON KeyInfo), 'gfc-json' (go-filecoin JSON), 'hex-eth' (raw 32-byte private key as hex, Ethereum-compatible; requires --type)",
 			Value: "hex-lotus",
+		},
+		&cli.StringFlag{
+			Name:  "type",
+			Usage: "key type for raw private-key formats ('hex-eth'): 'secp256k1' or 'delegated'",
+			Value: "delegated",
 		},
 		&cli.BoolFlag{
 			Name:  "as-default",
@@ -409,6 +437,29 @@ var walletImport = &cli.Command{
 			default:
 				return fmt.Errorf("unrecognized key type: %d", gk.SigType)
 			}
+		case "hex-eth":
+			var keyType types.KeyType
+			switch cctx.String("type") {
+			case "secp256k1":
+				keyType = types.KTSecp256k1
+			case "delegated":
+				keyType = types.KTDelegated
+			default:
+				return fmt.Errorf("--type for hex-eth format must be 'secp256k1' or 'delegated', got: %q", cctx.String("type"))
+			}
+
+			hexStr := strings.TrimSpace(string(inpdata))
+			hexStr = strings.TrimPrefix(hexStr, "0x")
+			hexStr = strings.TrimPrefix(hexStr, "0X")
+			pk, err := hex.DecodeString(hexStr)
+			if err != nil {
+				return xerrors.Errorf("decoding hex private key: %w", err)
+			}
+			if len(pk) != 32 {
+				return fmt.Errorf("expected 32-byte private key, got %d bytes", len(pk))
+			}
+			ki.Type = keyType
+			ki.PrivateKey = pk
 		default:
 			return fmt.Errorf("unrecognized format: %s", cctx.String("format"))
 		}
