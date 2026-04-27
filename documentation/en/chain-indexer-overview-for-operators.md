@@ -1,8 +1,8 @@
-# ChainIndexer Documentation for Operators <!-- omit in toc -->
+# Chain Indexer Guide <!-- omit in toc -->
 
 - [Introduction](#introduction)
 - [ChainIndexer Config](#chainindexer-config)
-  - [Enablement](#enablement)
+  - [Defaults and Disablement](#defaults-and-disablement)
   - [Garbage Collection](#garbage-collection)
     - [Recommendations](#recommendations)
   - [Removed Options](#removed-options)
@@ -30,70 +30,86 @@
 
 ## Introduction
 
-This document is for externally-available, high-performance RPC providers and for node operators who use or expose the Ethereum and/or events APIs.  It walks through the configuration changes, migration flow and operations/maintenance work needed to enable, backfill and maintain the [`ChainIndexer`](#chainindexer-indexing-system).  The justification for and benefits of the `ChainIndexer` are documented [here](https://github.com/filecoin-project/lotus/issues/12453). 
+This document walks through configuring, backfilling, and maintaining the [`ChainIndexer`](#chainindexer-indexing-system) on a Lotus node. The justification for and benefits of the `ChainIndexer` are documented [here](https://github.com/filecoin-project/lotus/issues/12453).
 
-The ChainIndexer is now also required if you enable:
-1. Ethereum (`eth_*`) APIs using the `EnableEthRPC` Lotus configuration option OR
-2. ActorEvent APIs using the `EnableActorEventsAPI` Lotus configuration option
+The Ethereum JSON-RPC (`eth_*`), Actor events, and ChainIndexer subsystems are **enabled by default**. Most operators do not need to change any configuration to get working Ethereum and events APIs; the bulk of this document is relevant if you want to:
 
-**Note: If you are a Storage Provider or node operator who does not serve public RPC requests or does not need Ethereum or Event APIs (i.e, if `Fevm.EnableEthRPC = false` and `Events.EnableActorEventsAPI = false`, their default values), you can skip this document as the `ChainIndexer` is already disabled by default**. 
+* backfill historical chain state into a newly-created index (for any node that needs Ethereum or events coverage older than the epoch at which the indexer started running),
+* tune garbage collection to bound disk usage,
+* downgrade to an older Lotus version that used the [previous indexing system](#previous-indexing-system), or
+* disable the indexer entirely on nodes that do not serve Ethereum or events RPC.
+
+Much of the operational guidance below (routing traffic away, keeping a spare node) is written for fleet operators running public RPC infrastructure. For single-node deployments (dApp or contract backends, Storage Providers interacting with Ethereum-addressable contracts, individual developers), the equivalent procedure is simpler: stop the node, confirm configuration, restart, and backfill if historical coverage is needed.
+
+Dependencies between the three options, enforced at startup:
+
+* `Fevm.EnableEthRPC = true` requires `ChainIndexer.EnableIndexer = true`
+* `Events.EnableActorEventsAPI = true` requires `ChainIndexer.EnableIndexer = true`
+
+All three default to `true`. Setting any of them to `false` without adjusting the others may cause Lotus to exit at startup with a configuration error.
 
 ## ChainIndexer Config
-### Enablement
+### Defaults and Disablement
 
-The following must be enabled on an Lotus node before starting as they are disabled by default:
+The relevant options and their defaults are:
 
 ```toml
 [Fevm]
-# Enable the ETH RPC APIs.
-# This is not required for ChainIndexer support, but ChainIndexer is required if you enable this.
+# Ethereum JSON-RPC (eth_*). Default: true.
   EnableEthRPC = true
 
 [Events]
-# Enable the Actor Events APIs.
-# This is not required for ChainIndexer support, but ChainIndexer is required if you enable this.
+# Actor events API. Default: true.
   EnableActorEventsAPI = true
 
 [ChainIndexer]
-# Enable the ChainIndexer, which is required for the ETH RPC APIs and Actor Events APIs.
-# If they are enabled, but the ChainIndexer is not, Lotus will exit during startup.
-# (ChainIndexer needs to be explicitly enabled to signal to the node operator the extra
-# supporting functionality that will now be running.)
-  EnableIndexer = true 
+# Chain indexer, required by the two APIs above. Default: true.
+  EnableIndexer = true
 ```
 
-You can learn more about these configuration options and other configuration options available for the `ChainIndexer` [here](https://github.com/filecoin-project/lotus/blob/master/documentation/en/default-lotus-config.toml).
+To disable the indexer on a node that does not serve or consume Ethereum or events RPC (for example, a Storage Provider's chain node that does not interact with smart-contract markets), set all three to `false`:
+
+```toml
+[Fevm]
+  EnableEthRPC = false
+
+[Events]
+  EnableActorEventsAPI = false
+
+[ChainIndexer]
+  EnableIndexer = false
+```
+
+You can learn more about these and other `ChainIndexer` configuration options [here](https://github.com/filecoin-project/lotus/blob/master/documentation/en/default-lotus-config.toml).
 
 
 ### Garbage Collection
 
-The `ChainIndexer` includes a garbage collection (GC) mechanism to manage the amount of historical data retained.  See the [ChainIndexer size requirements](#backfill-disk-space-requirements).
+The `ChainIndexer` includes a garbage collection (GC) mechanism to manage the amount of historical data retained. See the [ChainIndexer size requirements](#backfill-disk-space-requirements).
 
-By default, GC is disabled to preserve all indexed data.
+GC retention is controlled by `ChainIndexer.GCRetentionEpochs`. The default is `20160` (7 days on mainnet, at 2880 epochs per day), aligned with the bounded chain-state retention of the default Splitstore configuration.
 
-To configure GC, use the `GCRetentionEpochs` parameter in the `ChainIndexer` section of your config.
-
-The ChainIndexer [periodically runs](https://github.com/filecoin-project/lotus/blob/master/chain/index/gc.go#L15) GC if `GCRetentionEpochs` is > 0 and removes indexed data for epochs older than `(current_head_height - GCRetentionEpochs)`.
+The ChainIndexer [runs GC every 4 hours](https://github.com/filecoin-project/lotus/blob/master/chain/index/gc.go#L15) when `GCRetentionEpochs > 0`, removing indexed data for epochs older than `(current_head_height - GCRetentionEpochs)`.
 
 ```toml
 [ChainIndexer]
-  GCRetentionEpochs = X  # Replace X with your desired value
+  GCRetentionEpochs = 20160  # 7 days on mainnet (default)
 ```
 
-- Setting `GCRetentionEpochs` to 0 (**default**) disables GC.
-- Any positive value enables GC and determines the number of epochs of historical data to retain.
+- `GCRetentionEpochs = 0` disables GC entirely; the index grows unbounded.
+- Any positive value must be greater than `EpochsInDay` (2880 on mainnet); smaller non-zero values are rejected at startup.
 
 #### Recommendations
 
-1. **Archival Nodes**: **Keep GC disabled** (`GCRetentionEpochs` = 0) to retain all indexed data.
+1. **Default (non-archival) nodes**: Leave `GCRetentionEpochs` at its default of `20160` (7 days). This matches the bounded chain-state retention of the default Splitstore configuration (`HotStoreMaxSpaceTarget=650GB`, `ColdStoreType="discard"`) and caps index disk usage at roughly 1-2 GiB.
 
-2. **Non-Archival Nodes**:  Set `GCRetentionEpochs` to match the amount of chain state your node retains 
+2. **Archival nodes**: Set `GCRetentionEpochs = 0` to disable GC and retain all indexed data indefinitely. Combine with a non-discard `ColdStoreType` so the chain state itself is preserved.
 
-**Example:** if your node is configured to retain Filecoin chain state with a Splitstore Hotstore that approximates 2 days of epochs, set `GCRetentionEpochs` to at least `retentionDays * epochsPerDay = 2 * 2880 = 5760`).
+3. **RPC providers serving deeper history**: Set `GCRetentionEpochs` to match (or slightly exceed) your effective chain-state retention. For example, an operator who has tuned Splitstore to approximate 30 days of chain state should set `GCRetentionEpochs = 30 * 2880 = 86400`.
 
-**Warning:** Setting this value below the chain state retention period may degrade RPC performance and reliability because the ChainIndexer will lack data for epochs still present in the chain state.
+**Warning:** Setting `GCRetentionEpochs` below your effective chain-state retention period degrades RPC performance and reliability because the ChainIndexer lacks data for epochs still present in the chain state. Align the two when in doubt.
 
-**Note:** `Chainstore.Splitstore` is configured in terms of bytes (not epochs) and `ChainIndexer.GCRetentionEpochs` is in terms of epochs (not bytes).  For the purposes of this discussion, we're assuming operators have determined `Chainstore.Splitstore.HotStoreMaxSpaceTarget` and `Chainstore.Splitstore.HotStoreMaxSpaceThreshold` values that approximate a certain number days of storage in the Splitstore Hotstore.  The guidance here is to make sure this approximation exceeds `ChainIndexer.GCRetentionEpochs`.
+**Note:** `Chainstore.Splitstore` is configured in terms of bytes (not epochs) and `ChainIndexer.GCRetentionEpochs` is in terms of epochs (not bytes). The guidance above assumes operators have determined `Chainstore.Splitstore.HotStoreMaxSpaceTarget` and `Chainstore.Splitstore.HotStoreMaxSpaceThreshold` values that approximate a certain number of days of hotstore retention. The aim is for that approximation to exceed `ChainIndexer.GCRetentionEpochs`.
 
 ### Removed Options
 
@@ -141,8 +157,8 @@ One should also check to ensure they have [sufficient disk space](#backfill-disk
    - Example: prevent a load balancer from routing traffic to a designated node.
 2. **Stop the designated Lotus Node**
    - Stop the designated Lotus node before starting the upgrade and backfill process.
-3. **Update Configuration**
-   - Modify the Lotus configuration to enable the `ChainIndexer` as described in the [`ChainIndexer Config` section above](#chainindexer-config). 
+3. **Confirm Configuration**
+   - The `ChainIndexer` is enabled by default; confirm that `ChainIndexer.EnableIndexer` has not been explicitly set to `false` in your `config.toml` (see the [`ChainIndexer Config` section above](#chainindexer-config)). 
 4. **Restart Lotus Node**
    - Restart the Lotus node with the new configuration.
    - The `ChainIndexer` will begin indexing **real-time chain state changes** immediately in the `${LOTUS_PATH}/chainindex` directory.
@@ -168,8 +184,8 @@ Both of these will result in a file `/copy/destination/path/chainindex.db` that 
 Now that one has a `${LOTUS_PATH}/chainindex/chainindex.db` from a trusted node, it can be copied to additional nodes to expedite bootstrapping.
 1. **Route traffic away from the next node to upgrade**
 2. **Stop the Lotus Node**
-3. **Update Configuration**
-   - Modify the Lotus configuration to enable the `ChainIndexer` as described in the [`ChainIndexer Config` section above](#chainindexer-config). 
+3. **Confirm Configuration**
+   - The `ChainIndexer` is enabled by default; confirm that `ChainIndexer.EnableIndexer` has not been explicitly set to `false` in your `config.toml` (see the [`ChainIndexer Config` section above](#chainindexer-config)). 
 4. **Copy `/copy/destination/path/chainindex.db` from the trusted node in [part 2 above](#part-2-create-a-copyable-chainindexdb)**
 4. **Restart Lotus Node**
    - Restart your Lotus node with the new configuration.
@@ -193,8 +209,8 @@ Note: this upgrade path assumes one is starting a fresh node and importing chain
    - The disk space and upgrade times will be much smaller than the ["upgrade with existing chain state" path](#upgrade-when-using-existing-lotus_path-chain-state) assuming this is a non-archival node that is only indexing a limited number of days of epochs.
 2. **Ensure the node is stopped and won't take any traffic initially upon starting**
    - Example: prevent a load balancer from routing traffic to the node.
-3. **Update Configuration**
-   - Modify the Lotus configuration to enable the `ChainIndexer` as described in the [`ChainIndexer Config` section above](#chainindexer-config). 
+3. **Confirm Configuration**
+   - The `ChainIndexer` is enabled by default; confirm that `ChainIndexer.EnableIndexer` has not been explicitly set to `false` in your `config.toml` (see the [`ChainIndexer Config` section above](#chainindexer-config)). 
 4. **Start lotus with the snapshot import**
    - `lotus daemon --import-snapshot`
 5. **Wait for the Lotus daemon to sync**
@@ -216,12 +232,12 @@ Backfilling the new `ChainIndexer` was [benchmarked to take approximately ~12 ho
 
 ### Backfill Disk Space Requirements
 
-As of 202410, ChainIndexer will accumulate approximately ~340 MiB per day of data, or 10 GiB per month (see [here](https://github.com/filecoin-project/lotus/issues/12453)).
+As of 2026, ChainIndexer accumulates roughly 200 MiB per day of data on mainnet, or around 6 GiB per month (see [here](https://github.com/filecoin-project/lotus/issues/12453) for earlier sizing notes). Real-world growth varies with network activity.
 
 ### `lotus index validate-backfill` CLI tool
 The `lotus index validate-backfill` command is a tool for validating and optionally backfilling the chain index over a range of epochs since calling the [`ChainValidateIndex` API](#chainvalidateindex-rpc-api) for a single epoch at a time can be cumbersome, especially when backfilling or validating the index over a range of historical epochs, such as during a backfill. This tool wraps the `ChainValidateIndex` API to efficiently process multiple epochs.
 
-**Note: This command can only be run when the Lotus daemon is already running with the [`ChainIndexer` enabled](#enablement) as it depends on the `ChainValidateIndex` RPC API.**
+**Note: This command can only be run when the Lotus daemon is already running with the [`ChainIndexer` enabled](#defaults-and-disablement) as it depends on the `ChainValidateIndex` RPC API.**
 
 #### Usage
 
@@ -332,7 +348,7 @@ Please refer to the [Lotus API documentation](https://github.com/filecoin-projec
 
 The `ChainValidateIndex` JSON RPC API serves a dual purpose: it validates/diagnoses the integrity of the index at a specific epoch (i.e., it ensures consistency between indexed data and actual chain state), while also providing the option to backfill the `ChainIndexer` if it does not have data for the specified epoch. 
 
-The `ChainValidateIndex` RPC API is available for use once the Lotus daemon has started with `ChainIndexer` [enabled](#enablement). 
+The `ChainValidateIndex` RPC API is available for use once the Lotus daemon has started with `ChainIndexer` [enabled](#defaults-and-disablement). 
 
 Here are some examples of how to use the `ChainValidateIndex` JSON RPC API for validating/ backfilling the index:
 

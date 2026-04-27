@@ -1,6 +1,7 @@
 # Actor Events and Lotus APIs
 
 * [Background](#background)
+* [Availability on a Lotus node](#availability-on-a-lotus-node)
 * [ActorEvent structure](#actorevent-structure)
 * [Querying Lotus for ActorEvents](#querying-lotus-for-actorevents)
 * [Retrieving events from message receipts](#retrieving-events-from-message-receipts)
@@ -25,11 +26,19 @@
 
 ## Background
 
-Actor events are a fire-and-forget mechanism for actors in Filecoin to signal events that occur during execution of their methods to external observers. Actor events are intended to be used by tooling and applications that need to observe and react to events that occur within the chain. The events themselves are not stored in chain state, although a root CID for an array (AMT) of all events emitted for a single message is recorded on message receipts, which are themselves referenced as an array (AMT) in the `ParentMessageReceipts` in each `BlockHeader` of a tipset. A node may optionally retain historical events for querying, but this is not guaranteed and not essential as it does not affect the chain state.
+Actor events are a fire-and-forget mechanism for actors in Filecoin to signal events that occur during execution of their methods to external observers. Actor events are intended to be used by tooling and applications that need to observe and react to events that occur within the chain. The events themselves are not stored in chain state, although a root CID for an array (AMT) of all events emitted for a single message is recorded on message receipts, which are themselves referenced as an array (AMT) in the `ParentMessageReceipts` in each `BlockHeader` of a tipset. Nodes running the [`ChainIndexer`](./chain-indexer-overview-for-operators.md) retain historical events for querying; without the indexer, events can only be reconstructed from message receipts (see [`ChainGetEvents`](#retrieving-events-from-message-receipts) below).
 
 The FVM already has this capability and new events for builtin actors have been added to support a range of new features, starting at network version 22 with a focus on some information gaps for consumers of data onboarding activity insight due to the introduction of [Direct Data Onboarding (DDO)](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0076.md), plus some additional events related to data onboarding, deal lifecycles, sector lifecycles, and DataCap activity. Additional events are expected to be added in the future to support other features and use cases.
 
 Builtin actor events share basic similarities to the existing events emitted by user-programmed actors in FVM, but each have a specific schema that reflects their specific concerns. They also all use CBOR encoding for their values. There are also new APIs in Lotus to support querying for these events that bear some similarities to the existing FEVM `Eth*` APIs for querying events but are unique to builtin actors.
+
+## Availability on a Lotus node
+
+The Actor events APIs are enabled by default. They are controlled by `Events.EnableActorEventsAPI` and require `ChainIndexer.EnableIndexer` to also be true (both are the default); the node will fail to start if `EnableActorEventsAPI` is set to `true` while the indexer is disabled. Operators who explicitly disabled these options in an older configuration need to restore the defaults (or remove the overrides) to serve these APIs.
+
+Historical event retrieval depends on the range of chain state the `ChainIndexer` has recorded. A freshly-initialized index only covers epochs from the point it began running; archival operators and RPC providers who need deeper history should follow the backfill instructions in the [ChainIndexer operator guide](./chain-indexer-overview-for-operators.md).
+
+Filter lifetime and result-size limits are tunable via the `[Events]` section of the config: see `FilterTTL`, `MaxFilters`, `MaxFilterResults`, and `MaxFilterHeightRange` in the [default config](./default-lotus-config.toml).
 
 ## ActorEvent structure
 
