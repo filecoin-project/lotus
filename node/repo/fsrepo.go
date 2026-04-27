@@ -512,6 +512,7 @@ func (fsr *fsLockedRepo) loadConfigFromDisk() (interface{}, error) {
 	if fsr.repoType == FullNode {
 		opts = append(opts, config.SetCanFallbackOnDefault(config.NoDefaultForSplitstoreTransition))
 		opts = append(opts, config.SetValidate(config.ValidateSplitstoreSet))
+		opts = append(opts, config.SetValidate(config.ValidateIndexerRetentionSet))
 	}
 	opts = append(opts, config.SetDefault(func() (interface{}, error) {
 		return fsr.repoType.Config(), nil

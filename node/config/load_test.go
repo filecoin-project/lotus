@@ -225,3 +225,61 @@ func TestPrintDeprecated(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateIndexerRetentionSet(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		cfg  string
+		env  map[string]string
+		err  bool
+	}{
+		{name: "empty", cfg: ``},
+		{name: "indexer default", cfg: "[ChainIndexer]\n  #EnableIndexer = true\n"},
+		{name: "indexer disabled", cfg: "[ChainIndexer]\n  EnableIndexer = false\n"},
+		{name: "enabled without retention", cfg: "[ChainIndexer]\n  EnableIndexer = true\n", err: true},
+		{name: "enabled with retention commented", cfg: "[ChainIndexer]\n  EnableIndexer = true\n  #GCRetentionEpochs = 20160\n", err: true},
+		{name: "enabled keeping everything", cfg: "[ChainIndexer]\n  EnableIndexer = true\n  GCRetentionEpochs = 0\n"},
+		{name: "enabled with retention", cfg: "[ChainIndexer]\n  EnableIndexer = true\n  GCRetentionEpochs = 20160\n"},
+		{name: "enabled by env", env: map[string]string{"LOTUS_CHAININDEXER_ENABLEINDEXER": "true"}, err: true},
+		{name: "enabled by env with retention in env", env: map[string]string{
+			"LOTUS_CHAININDEXER_ENABLEINDEXER":     "true",
+			"LOTUS_CHAININDEXER_GCRETENTIONEPOCHS": "0",
+		}},
+		{name: "enabled by env with retention in file", cfg: "[ChainIndexer]\n  GCRetentionEpochs = 0\n",
+			env: map[string]string{"LOTUS_CHAININDEXER_ENABLEINDEXER": "true"}},
+		{name: "enabled in file with retention in env", cfg: "[ChainIndexer]\n  EnableIndexer = true\n",
+			env: map[string]string{"LOTUS_CHAININDEXER_GCRETENTIONEPOCHS": "0"}},
+		{name: "enabled in file, disabled by env", cfg: "[ChainIndexer]\n  EnableIndexer = true\n",
+			env: map[string]string{"LOTUS_CHAININDEXER_ENABLEINDEXER": "false"}},
+		{name: "enabled by env as 1", env: map[string]string{"LOTUS_CHAININDEXER_ENABLEINDEXER": "1"}, err: true},
+		{name: "lowercase without retention", cfg: "[chainindexer]\n  enableindexer = true\n", err: true},
+		{name: "lowercase with retention", cfg: "[chainindexer]\n  enableindexer = true\n  gcretentionepochs = 0\n"},
+		{name: "mixed case retention", cfg: "[ChainIndexer]\n  EnableIndexer = true\n  gcRetentionEpochs = 0\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, k := range []string{"LOTUS_CHAININDEXER_ENABLEINDEXER", "LOTUS_CHAININDEXER_GCRETENTIONEPOCHS"} {
+				t.Setenv(k, "") // restores any ambient value after the test
+				require.NoError(t, os.Unsetenv(k))
+			}
+			for k, v := range tc.env {
+				t.Setenv(k, v)
+			}
+			err := ValidateIndexerRetentionSet(tc.cfg)
+			if tc.err {
+				require.ErrorContains(t, err, "without ChainIndexer.GCRetentionEpochs")
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestFromFileRunsEveryValidator(t *testing.T) {
+	fname := filepath.Join(t.TempDir(), "config.toml")
+	cfg := "[Chainstore]\n  EnableSplitstore = true\n[ChainIndexer]\n  EnableIndexer = true\n"
+	require.NoError(t, os.WriteFile(fname, []byte(cfg), 0644))
+
+	_, err := FromFile(fname, SetDefault(fullNodeDefault),
+		SetValidate(ValidateIndexerRetentionSet), SetValidate(ValidateSplitstoreSet))
+	require.ErrorContains(t, err, "without ChainIndexer.GCRetentionEpochs")
+}

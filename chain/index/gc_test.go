@@ -373,3 +373,15 @@ func TestGCBatchKeepsMarkersOfRemainingHeights(t *testing.T) {
 	require.NoError(t, si.db.QueryRow("SELECT COUNT(*) FROM tipset_message WHERE height = 20").Scan(&rowsAt20))
 	require.Equal(t, 2, rowsAt20)
 }
+
+func TestGCRetentionEpochsBounds(t *testing.T) {
+	for _, epochs := range []int64{0, builtin.EpochsInDay, 7 * builtin.EpochsInDay} {
+		si, err := NewSqliteIndexer(":memory:", newDummyChainStore(), epochs, false, 0)
+		require.NoError(t, err, "epochs %d", epochs)
+		require.NoError(t, si.Close())
+	}
+	for _, epochs := range []int64{-1, 1, builtin.EpochsInDay - 1} {
+		_, err := NewSqliteIndexer(":memory:", newDummyChainStore(), epochs, false, 0)
+		require.ErrorContains(t, err, fmt.Sprintf("must be 0 or at least %d", builtin.EpochsInDay), "epochs %d", epochs)
+	}
+}
