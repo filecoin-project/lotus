@@ -126,8 +126,8 @@ When updating the Go version (either patch or minor), the following files must b
 #### Step-by-Step Process
    
 ```bash
-OLD_GO_VERSION="1.24.7"
-NEW_GO_VERSION="1.25.0"
+OLD_GO_VERSION="1.25.0"
+NEW_GO_VERSION="1.25.7"
 
 # Update go.mod
 sed -i "s/go $OLD_GO_VERSION/go $NEW_GO_VERSION/" go.mod
