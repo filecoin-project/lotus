@@ -299,8 +299,8 @@ github.com/filecoin-project/go-state-types v0.0.0-20200928172055-2df22083d8ab/go
 github.com/filecoin-project/go-state-types v0.0.0-20201102161440-c8033295a1fc/go.mod h1:ezYnPf0bNkTsDibL/psSz5dy4B5awOJ/E7P2Saeep8g=
 github.com/filecoin-project/go-state-types v0.1.0/go.mod h1:ezYnPf0bNkTsDibL/psSz5dy4B5awOJ/E7P2Saeep8g=
 github.com/filecoin-project/go-state-types v0.1.6/go.mod h1:UwGVoMsULoCK+bWjEdd/xLCvLAQFBC7EDT477SKml+Q=
-github.com/filecoin-project/go-state-types v0.18.0-rc1 h1:D5hxVuc9ugqg+LkwVDGk4jW8Z/BSxoCwPkQFLpWUhfo=
-github.com/filecoin-project/go-state-types v0.18.0-rc1/go.mod h1:CcyG4ZQRDWW+QUY2WDf1KtVDRN7W4twjsfgnGbQfJVI=
+github.com/filecoin-project/go-state-types v0.18.0 h1:oDcjihXRlf2cM176atZzllp79Zc+kcbiuQM9DPL/1a4=
+github.com/filecoin-project/go-state-types v0.18.0/go.mod h1:CcyG4ZQRDWW+QUY2WDf1KtVDRN7W4twjsfgnGbQfJVI=
 github.com/filecoin-project/go-statemachine v1.0.3 h1:N07o6alys+V1tNoSTi4WuuoeNC4erS/6jE74+NsgQuk=
 github.com/filecoin-project/go-statemachine v1.0.3/go.mod h1:jZdXXiHa61n4NmgWFG4w8tnqgvZVHYbJ3yW7+y8bF54=
 github.com/filecoin-project/go-statestore v0.1.0/go.mod h1:LFc9hD+fRxPqiHiaqUEZOinUJB4WARkRfNl10O7kTnI=
@@ -627,8 +627,8 @@ github.com/ipfs/go-cid v0.0.6-0.20200501230655-7c82f3b81c00/go.mod h1:plgt+Y5MnO
 github.com/ipfs/go-cid v0.0.6/go.mod h1:6Ux9z5e+HpkQdckYoX1PG/6xqKspzlEIR5SDmgqgC/I=
 github.com/ipfs/go-cid v0.0.7/go.mod h1:6Ux9z5e+HpkQdckYoX1PG/6xqKspzlEIR5SDmgqgC/I=
 github.com/ipfs/go-cid v0.4.1/go.mod h1:uQHwDeX4c6CtyrFwdqyhpNcxVewur1M7l7fNU7LKwZk=
-github.com/ipfs/go-cid v0.6.0 h1:DlOReBV1xhHBhhfy/gBNNTSyfOM6rLiIx9J7A4DGf30=
-github.com/ipfs/go-cid v0.6.0/go.mod h1:NC4kS1LZjzfhK40UGmpXv5/qD2kcMzACYJNntCUiDhQ=
+github.com/ipfs/go-cid v0.6.1 h1:T5TnNb08+ueovG76Z5gx1L4Y7QOaGTXHg1F6raWFxIc=
+github.com/ipfs/go-cid v0.6.1/go.mod h1:zrY0SwOhjrrIdfPQ/kf+k1sXyJ0QE7cMxfCployLBs0=
 github.com/ipfs/go-cidutil v0.1.1 h1:COuby6H8C2ml0alvHYX3WdbFM4F07YtbY0UlT5j+sgI=
 github.com/ipfs/go-cidutil v0.1.1/go.mod h1:SCoUftGEUgoXe5Hjeyw5CiLZF8cwYn/TbtpFQXJCP6k=
 github.com/ipfs/go-datastore v0.0.1/go.mod h1:d4KVXhMt913cLBEI/PXAy6ko+W7e9AhyAKBGh803qeE=
@@ -719,8 +719,8 @@ github.com/ipld/go-car/v2 v2.16.0/go.mod h1:RqFGWN9ifcXVmCrTAVnfnxiWZk1+jIx67SYh
 github.com/ipld/go-codec-dagpb v1.7.0 h1:hpuvQjCSVSLnTnHXn+QAMR0mLmb1gA6wl10LExo2Ts0=
 github.com/ipld/go-codec-dagpb v1.7.0/go.mod h1:rD3Zg+zub9ZnxcLwfol/OTQRVjaLzXypgy4UqHQvilM=
 github.com/ipld/go-ipld-prime v0.0.2-0.20191108012745-28a82f04c785/go.mod h1:bDDSvVz7vaK12FNvMeRYnpRFkSUPNQOiCYQezMD/P3w=
-github.com/ipld/go-ipld-prime v0.22.0 h1:YJhDhjEOvOYaqshd3b4atIWUoRg/rKrgmwCyUHwlbuY=
-github.com/ipld/go-ipld-prime v0.22.0/go.mod h1:ol7vKxOOVgEh0iAPuiDalM+0gScXVMA5ZZa4DVrTnEA=
+github.com/ipld/go-ipld-prime v0.23.0 h1:csqdPZH60BsTC+AZrv7fpa27v+09I/oTqyHYYYE27eE=
+github.com/ipld/go-ipld-prime v0.23.0/go.mod h1:46YCFSFNFBJHPjB0pfMuv7Ly7df2eChpkpyPo5SE0bA=
 github.com/ipld/go-ipld-prime-proto v0.0.0-20191113031812-e32bd156a1e5/go.mod h1:gcvzoEDBjwycpXt3LBE061wT9f46szXGHAmj9uoP6fU=
 github.com/ipld/go-ipld-prime/storage/bsadapter v0.0.0-20250821084354-a425e60cd714 h1:cqNk8PEwHnK0vqWln+U/YZhQc9h2NB3KjUjDPZo5Q2s=
 github.com/ipld/go-ipld-prime/storage/bsadapter v0.0.0-20250821084354-a425e60cd714/go.mod h1:ZEUdra3CoqRVRYgAX/jAJO9aZGz6SKtKEG628fHHktY=
@@ -968,8 +968,9 @@ github.com/mr-tron/base58 v1.1.0/go.mod h1:xcD2VGqlgYjBdcBLw+TuYLr8afG+Hj8g2eTVq
 github.com/mr-tron/base58 v1.1.1/go.mod h1:xcD2VGqlgYjBdcBLw+TuYLr8afG+Hj8g2eTVqeSzSU8=
 github.com/mr-tron/base58 v1.1.2/go.mod h1:BinMc/sQntlIE1frQmRFPUoPA1Zkr8VRgBdjWI2mNwc=
 github.com/mr-tron/base58 v1.1.3/go.mod h1:BinMc/sQntlIE1frQmRFPUoPA1Zkr8VRgBdjWI2mNwc=
-github.com/mr-tron/base58 v1.2.0 h1:T/HDJBh4ZCPbU39/+c3rRvE0uKBQlU27+QI8LJ4t64o=
 github.com/mr-tron/base58 v1.2.0/go.mod h1:BinMc/sQntlIE1frQmRFPUoPA1Zkr8VRgBdjWI2mNwc=
+github.com/mr-tron/base58 v1.3.0 h1:K6Y13R2h+dku0wOqKtecgRnBUBPrZzLZy5aIj8lCcJI=
+github.com/mr-tron/base58 v1.3.0/go.mod h1:2BuubE67DCSWwVfx37JWNG8emOC0sHEU4/HpcYgCLX8=
 github.com/multiformats/go-base32 v0.0.3/go.mod h1:pLiuGC8y0QR3Ue4Zug5UzK9LjgbkL8NSQj0zQ5Nz/AA=
 github.com/multiformats/go-base32 v0.1.0 h1:pVx9xoSPqEIQG8o+UbAe7DNi51oej1NtK+aGkbLYxPE=
 github.com/multiformats/go-base32 v0.1.0/go.mod h1:Kj3tFY6zNr+ABYMqeUNeGvkIC/UYgtWibDcT0rExnbI=
@@ -993,8 +994,8 @@ github.com/multiformats/go-multiaddr-fmt v0.1.0/go.mod h1:hGtDIW4PU4BqJ50gW2quDu
 github.com/multiformats/go-multiaddr-net v0.0.1/go.mod h1:nw6HSxNmCIQH27XPGBuX+d1tnvM7ihcFwHMSstNAVUU=
 github.com/multiformats/go-multibase v0.0.1/go.mod h1:bja2MqRZ3ggyXtZSEDKpl0uO/gviWFaSteVbWT51qgs=
 github.com/multiformats/go-multibase v0.0.3/go.mod h1:5+1R4eQrT3PkYZ24C3W2Ue2tPwIdYQD509ZjSb5y9Oc=
-github.com/multiformats/go-multibase v0.2.0 h1:isdYCVLvksgWlMW9OZRYJEa9pZETFivncJHmHnnd87g=
-github.com/multiformats/go-multibase v0.2.0/go.mod h1:bFBZX4lKCA/2lyOFSAoKH5SS6oPyjtnzK/XTFDPkNuk=
+github.com/multiformats/go-multibase v0.3.0 h1:8helZD2+4Db7NNWFiktk2NePbF0boolBe6bDQvM4r68=
+github.com/multiformats/go-multibase v0.3.0/go.mod h1:MoBLQPCkRTOL3eveIPO81860j2AQY8JwcnNlRkGRUfI=
 github.com/multiformats/go-multicodec v0.10.0 h1:UpP223cig/Cx8J76jWt91njpK3GTAO1w02sdcjZDSuc=
 github.com/multiformats/go-multicodec v0.10.0/go.mod h1:wg88pM+s2kZJEQfRCKBNU+g32F5aWBEjyFHXvZLTcLI=
 github.com/multiformats/go-multihash v0.0.1/go.mod h1:w/5tugSrLEbWqlcgJabL3oHFKTwfvkofsjW2Qa1ct4U=

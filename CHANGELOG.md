@@ -11,6 +11,8 @@
 
 ## ☢️ Upgrade Warnings ☢️
 
+- Minimum go-version supported is go 1.25.7 ([filecoin-project/lotus#13594](https://github.com/filecoin-project/lotus/pull/13594))
+
 ## ⭐ New Features
 
 ## 🐛 Bug Fixes
