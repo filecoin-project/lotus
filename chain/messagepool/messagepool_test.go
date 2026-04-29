@@ -894,6 +894,67 @@ func TestMessageValueTooHigh(t *testing.T) {
 	}
 }
 
+func TestCheckBalanceInsufficientFunds(t *testing.T) {
+	tma := newTestMpoolAPI()
+
+	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	require.NoError(t, err)
+
+	from, err := w.WalletNew(context.Background(), types.KTBLS)
+	require.NoError(t, err)
+
+	to := mock.Address(1001)
+
+	// GasFeeCap=100, GasLimit=50_000_000 → RequiredFunds = 5_000_000_000 attoFIL
+	const gasLimit = 50_000_000
+	const feeCap = 100
+	requiredFunds := int64(feeCap * gasLimit)
+
+	// Set balance 1 attoFIL below what the message needs
+	tma.setBalanceRaw(from, types.NewInt(uint64(requiredFunds-1)))
+
+	ds := datastore.NewMapDatastore()
+	mp, err := New(context.Background(), tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
+	require.NoError(t, err)
+
+	sm := makeTestMessage(w, from, to, 0, gasLimit, 0)
+	err = mp.Add(context.TODO(), sm)
+	require.ErrorIs(t, err, ErrNotEnoughFunds)
+}
+
+func TestCheckBalanceCumulativePending(t *testing.T) {
+	tma := newTestMpoolAPI()
+
+	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	require.NoError(t, err)
+
+	from, err := w.WalletNew(context.Background(), types.KTBLS)
+	require.NoError(t, err)
+
+	to := mock.Address(1001)
+
+	// GasFeeCap=100, GasLimit=50_000_000 → RequiredFunds = 5_000_000_000 attoFIL per message
+	const gasLimit = 50_000_000
+	const feeCap = 100
+	requiredFunds := int64(feeCap * gasLimit)
+
+	// Set balance to cover exactly one message but not two
+	tma.setBalanceRaw(from, types.NewInt(uint64(2*requiredFunds-1)))
+
+	ds := datastore.NewMapDatastore()
+	mp, err := New(context.Background(), tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
+	require.NoError(t, err)
+
+	// First message fits within balance
+	sm0 := makeTestMessage(w, from, to, 0, gasLimit, 0)
+	require.NoError(t, mp.Add(context.TODO(), sm0))
+
+	// Second message pushes cumulative cost over balance
+	sm1 := makeTestMessage(w, from, to, 1, gasLimit, 0)
+	err = mp.Add(context.TODO(), sm1)
+	require.ErrorIs(t, err, ErrSoftValidationFailure)
+}
+
 func TestMessageSignatureInvalid(t *testing.T) {
 	tma := newTestMpoolAPI()
 
