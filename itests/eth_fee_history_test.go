@@ -11,6 +11,7 @@ import (
 
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/itests/kit"
@@ -169,7 +170,7 @@ func TestEthFeeHistory(t *testing.T) {
 	for _, arr := range *history.Reward {
 		require.Equal(3, len(arr))
 		for _, item := range arr {
-			t.Logf("reward item: %v", item)
+			require.Equal(ethtypes.EthBigInt(big.NewInt(0)), item)
 		}
 	}
 
