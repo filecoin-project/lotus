@@ -70,12 +70,17 @@ For the set of changes since the last stable release:
 
 | Contributor | Commits | Lines ± | Files Changed |
 |-------------|---------|---------|---------------|
-| dependabot[bot] | 4 | +45/-45 | 8 |
-| Phi-rjan | 3 | +327/-325 | 30 |
-| Rod Vagg | 2 | +1002/-230 | 10 |
+| Rod Vagg | 8 | +1931/-457 | 89 |
+| dependabot[bot] | 14 | +676/-103 | 28 |
+| Phi-rjan | 9 | +401/-353 | 47 |
+| Aryan Tikarya | 1 | +322/-11 | 5 |
 | beck | 2 | +182/-13 | 4 |
-| Phi | 1 | +12/-12 | 11 |
+| Phi | 2 | +71/-16 | 12 |
 | William Morriss | 1 | +4/-40 | 9 |
+| ledigang | 1 | +11/-11 | 11 |
+| Aditya Belgaonkar | 1 | +15/-0 | 9 |
+| hanabi1224 | 1 | +4/-0 | 2 |
+| web3-bot | 1 | +1/-1 | 1 |
 
 # Node v1.35.1 / 2026-03-31
 
