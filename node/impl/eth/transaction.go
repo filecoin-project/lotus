@@ -385,8 +385,6 @@ func (e *ethTransaction) EthGetBlockReceiptsLimited(ctx context.Context, blockPa
 
 	ethReceipts := make([]*ethtypes.EthTxReceipt, 0, len(msgs))
 	for i, msg := range msgs {
-		msg := msg
-
 		tx, err := newEthTx(ctx, e.chainStore, stateTree, ts.Height(), tsCid, msg.Cid(), i)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to create EthTx: %w", err)

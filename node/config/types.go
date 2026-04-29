@@ -566,7 +566,7 @@ type EventsConfig struct {
 	MaxFilterResults int
 
 	// MaxFilterHeightRange specifies the maximum range of heights that can be used in a filter (to avoid querying
-	// the entire chain)
+	// the entire chain). Applies to eth_getLogs and trace_filter block range limits.
 	MaxFilterHeightRange uint64
 }
 

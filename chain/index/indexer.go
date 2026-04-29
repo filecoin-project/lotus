@@ -80,7 +80,8 @@ type SqliteIndexer struct {
 	updateSubs   map[uint64]*updateSub
 	subIdCounter uint64
 
-	started bool
+	started       bool
+	needsBackfill bool
 
 	// ensures writes are serialized so backfilling does not race with index updates
 	writerLk sync.Mutex
@@ -283,7 +284,6 @@ func (si *SqliteIndexer) indexTipset(ctx context.Context, tx *sql.Tx, ts *types.
 
 	for i, msg := range msgs {
 		insertTipsetMsgStmt := tx.Stmt(si.stmts.insertTipsetMessageStmt)
-		msg := msg
 		if _, err := insertTipsetMsgStmt.ExecContext(ctx, tsKeyCidBytes, height, 0, msg.Cid().Bytes(), i); err != nil {
 			return xerrors.Errorf("failed to insert tipset message: %w", err)
 		}

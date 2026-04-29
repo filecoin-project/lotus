@@ -38,6 +38,13 @@ func (pv2 *reverseProxyV2) ChainGetTipSet(ctx context.Context, selector types.Ti
 	return pv2.server.ChainGetTipSet(ctx, selector)
 }
 
+func (pv2 *reverseProxyV2) ChainGetTipSetFinalityStatus(ctx context.Context) (*types.FinalityStatus, error) {
+	if err := pv2.gateway.limit(ctx, chainRateLimitTokens); err != nil {
+		return nil, err
+	}
+	return pv2.server.ChainGetTipSetFinalityStatus(ctx)
+}
+
 func (pv2 *reverseProxyV2) StateGetActor(ctx context.Context, address address.Address, selector types.TipSetSelector) (*types.Actor, error) {
 	if err := pv2.gateway.limit(ctx, stateRateLimitTokens); err != nil {
 		return nil, err
@@ -366,6 +373,14 @@ func (pv2 *reverseProxyV2) EthTraceFilter(ctx context.Context, filter ethtypes.E
 		if err := pv2.checkBlkParam(ctx, *filter.FromBlock, 0); err != nil {
 			return nil, err
 		}
+	}
+
+	head, err := pv2.ChainGetTipSet(ctx, types.TipSetSelectors.Latest)
+	if err != nil {
+		return nil, err
+	}
+	if err := pv2.gateway.checkEthTraceFilterBlockRange(head.Height(), filter); err != nil {
+		return nil, err
 	}
 
 	return pv2.server.EthTraceFilter(ctx, filter)

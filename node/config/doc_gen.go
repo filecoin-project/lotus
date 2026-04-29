@@ -231,7 +231,7 @@ of filters per connection.`,
 			Type: "uint64",
 
 			Comment: `MaxFilterHeightRange specifies the maximum range of heights that can be used in a filter (to avoid querying
-the entire chain)`,
+the entire chain). Applies to eth_getLogs and trace_filter block range limits.`,
 		},
 	},
 	"FaultReporterConfig": {

@@ -72,6 +72,7 @@ type StateModuleAPI interface {
 	StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error)
 	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error)
 	StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (res *api.InvocResult, err error)
+	StateGetRandomnessDigestFromBeacon(ctx context.Context, randEpoch abi.ChainEpoch, tsk types.TipSetKey) (abi.Randomness, error)
 }
 
 var _ StateModuleAPI = *new(api.FullNode)
@@ -2068,13 +2069,13 @@ func (a *StateAPI) StateGetRandomnessDigestFromTickets(ctx context.Context, rand
 	return ret[:], nil
 }
 
-func (a *StateAPI) StateGetRandomnessDigestFromBeacon(ctx context.Context, randEpoch abi.ChainEpoch, tsk types.TipSetKey) (abi.Randomness, error) {
-	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
+func (m *StateModule) StateGetRandomnessDigestFromBeacon(ctx context.Context, randEpoch abi.ChainEpoch, tsk types.TipSetKey) (abi.Randomness, error) {
+	ts, err := m.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	ret, err := a.StateManager.GetRandomnessDigestFromBeacon(ctx, randEpoch, ts.Key())
+	ret, err := m.StateManager.GetRandomnessDigestFromBeacon(ctx, randEpoch, ts.Key())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get randomness digest from tickets: %w", err)
 	}
@@ -2164,7 +2165,7 @@ func (a *StateAPI) StateGetNetworkParams(ctx context.Context) (*api.NetworkParam
 			UpgradeTeepHeight:        buildconstants.UpgradeTeepHeight,
 			UpgradeTockHeight:        buildconstants.UpgradeTockHeight,
 			UpgradeGoldenWeekHeight:  buildconstants.UpgradeGoldenWeekHeight,
-			UpgradeXxHeight:          buildconstants.UpgradeXxHeight,
+			UpgradeFireHorseHeight:   buildconstants.UpgradeFireHorseHeight,
 		},
 	}, nil
 }

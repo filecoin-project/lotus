@@ -29,8 +29,7 @@ import (
 
 var log = logging.Logger("node/gasutils")
 
-const MinGasPremium = 100e3
-const MaxSpendOnFeeDenom = 100
+const MaxGasSim = 10
 
 type StateManagerAPI interface {
 	ParentState(ts *types.TipSet) (*state.StateTree, error)
@@ -227,8 +226,8 @@ func GasEstimateGasPremiumFromMempool(
 ) (types.BigInt, error) {
 	if nblocksincl == 0 {
 		nblocksincl = 1
-	} else if nblocksincl > 10 {
-		nblocksincl = 10
+	} else if nblocksincl > MaxGasSim {
+		nblocksincl = MaxGasSim
 	}
 	if gaslimit <= 0 {
 		gaslimit = buildconstants.BlockGasLimit / 5

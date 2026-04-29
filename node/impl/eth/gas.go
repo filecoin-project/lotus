@@ -32,7 +32,7 @@ var (
 	_ EthGasAPI = (*EthGasDisabled)(nil)
 )
 
-var minGasPremium = ethtypes.EthBigInt(types.NewInt(gasutils.MinGasPremium))
+var minGasPremium = ethtypes.EthBigInt(types.NewInt(100_000))
 
 type ethGas struct {
 	chainStore   ChainStore

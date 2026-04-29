@@ -54,7 +54,7 @@ func (cs *ChainStore) ComputeBaseFee(ctx context.Context, ts *types.TipSet) (abi
 	if buildconstants.UpgradeBreezeHeight >= 0 && ts.Height() > buildconstants.UpgradeBreezeHeight && ts.Height() < buildconstants.UpgradeBreezeHeight+buildconstants.BreezeGasTampingDuration {
 		return abi.NewTokenAmount(100), nil
 	}
-	if ts.Height() < buildconstants.UpgradeXxHeight {
+	if ts.Height() < buildconstants.UpgradeFireHorseHeight {
 		return cs.ComputeNextBaseFeeFromUtilization(ctx, ts)
 	}
 	return cs.ComputeNextBaseFeeFromPremiums(ctx, ts)

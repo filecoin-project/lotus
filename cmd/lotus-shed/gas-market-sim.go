@@ -35,6 +35,7 @@ var defaultGasLimitDistCSV []byte
 // The width of each bucket in gas.
 // Custom distributions supplied via --gas-limit-dist must use the same bucket size.
 const gasLimitBucketSize = 20_000_000
+const legacyMinGasPremium = 100_000
 
 // gasLimitDist samples gas limits from a bucket distribution.
 // Within a bucket, the sample is drawn uniformly.
@@ -490,13 +491,13 @@ func legacyGasPremiumEstimate(history []simEpochData, epoch int, nblocksincl uin
 	}
 
 	// Apply minimum premium.
-	minP := big.NewInt(int64(gasutils.MinGasPremium))
+	minP := big.NewInt(legacyMinGasPremium)
 	if big.Cmp(premium, minP) < 0 {
 		switch nblocksincl {
 		case 1:
-			premium = big.NewInt(2 * int64(gasutils.MinGasPremium))
+			premium = big.NewInt(2 * legacyMinGasPremium)
 		case 2:
-			premium = big.NewInt(150000) // 1.5 * MinGasPremium
+			premium = big.NewInt(1.5 * legacyMinGasPremium)
 		default:
 			premium = minP
 		}
@@ -811,7 +812,7 @@ func runGasMktSim(cctx *cli.Context) error {
 				for _, l := range tipLimits {
 					tipGasUsedForUpdate += l
 				}
-				baseFee = store.ComputeNextBaseFee(baseFee, tipGasUsedForUpdate, nProposers, buildconstants.UpgradeXxHeight-1)
+				baseFee = store.ComputeNextBaseFee(baseFee, tipGasUsedForUpdate, nProposers, buildconstants.UpgradeFireHorseHeight-1)
 			default: // "premium"
 				percentilePremium := store.WeightedQuickSelect(tipPremiums, tipLimits, buildconstants.BlockGasTargetIndex)
 				baseFee = store.NextBaseFeeFromPremium(baseFee, percentilePremium)
