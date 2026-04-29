@@ -1855,3 +1855,206 @@ readLoop:
 		t.Fatalf("failed to pack with tq=0.01; packed %d, minimum packing: %d", gasLimit, minGasLimit)
 	}
 }
+
+// requireSequentialMsgs checks that msgs are a sequential nonce run starting at startNonce from sender.
+func requireSequentialMsgs(t *testing.T, msgs []*types.SignedMessage, sender address.Address, startNonce, count int) {
+	t.Helper()
+	if len(msgs) != count {
+		t.Fatalf("expected %d messages, got %d", count, len(msgs))
+	}
+	for i, m := range msgs {
+		if m.Message.From != sender {
+			t.Fatalf("msg %d: expected sender %s, got %s", i, sender, m.Message.From)
+		}
+		want := uint64(startNonce + i)
+		if m.Message.Nonce != want {
+			t.Fatalf("msg %d: expected nonce %d, got %d", i, want, m.Message.Nonce)
+		}
+	}
+}
+
+// TestMessageSelectionReorgNonceIncrease covers the case where a reorg replaces a fork that
+// included fewer messages with one that included more, raising the on-chain nonce. Selection
+// must start from the new (higher) state nonce and return only the remaining pending messages.
+func TestMessageSelectionReorgNonceIncrease(t *testing.T) {
+	mp, tma := makeTestMpool()
+
+	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+	sender, err := w.WalletNew(context.Background(), types.KTSecp256k1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	receiver := mock.Address(1001)
+
+	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: 2}]
+	tma.setBalance(sender, 1)
+
+	// Add msgs 0-9 to the mpool.
+	var allMsgs []*types.SignedMessage
+	for i := 0; i < 10; i++ {
+		m := makeTestMessage(w, sender, receiver, uint64(i), gasLimit, uint64(i+1))
+		allMsgs = append(allMsgs, m)
+		mustAdd(t, mp, m)
+	}
+
+	// Build fork A (nonces 0-4) on top of the genesis tipset.
+	parentTs := tma.tipsets[len(tma.tipsets)-1]
+	blockA := tma.nextBlock()
+	tma.setBlockMessages(blockA, allMsgs[:5]...)
+
+	// Apply fork A so the mpool removes nonces 0-4.
+	tma.applyBlock(t, blockA)
+
+	// Build fork B on the same parent (nonces 0-8), simulating a deeper reorg.
+	blockB := mock.MkBlock(parentTs, 1, 2) // different ticketNonce → different CID
+	tma.tipsets = append(tma.tipsets, mock.TipSet(blockB))
+	tma.setBlockMessages(blockB, allMsgs[:9]...)
+
+	// Reorg: revert fork A, apply fork B.
+	if err := tma.cb([]*types.TipSet{mock.TipSet(blockA)}, []*types.TipSet{mock.TipSet(blockB)}); err != nil {
+		t.Fatal(err)
+	}
+
+	// After the reorg the on-chain nonce is 9 (msgs 0-8 included in B).
+	// Only msg 9 should be selected.
+	msgs, err := mp.SelectMessages(context.Background(), mock.TipSet(blockB), 1.0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	requireSequentialMsgs(t, msgs, sender, 9, 1)
+}
+
+// TestMessageSelectionReorgNonceDecrease covers the case where a reorg replaces a fork that
+// included more messages with one that included fewer, lowering the on-chain nonce. Selection
+// must start from the new (lower) state nonce and include the messages that were un-applied.
+func TestMessageSelectionReorgNonceDecrease(t *testing.T) {
+	mp, tma := makeTestMpool()
+
+	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+	sender, err := w.WalletNew(context.Background(), types.KTSecp256k1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	receiver := mock.Address(1001)
+
+	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: 2}]
+	tma.setBalance(sender, 1)
+
+	// Add msgs 0-9 to the mpool.
+	var allMsgs []*types.SignedMessage
+	for i := 0; i < 10; i++ {
+		m := makeTestMessage(w, sender, receiver, uint64(i), gasLimit, uint64(i+1))
+		allMsgs = append(allMsgs, m)
+		mustAdd(t, mp, m)
+	}
+
+	// Build fork A (nonces 0-4) on top of the genesis tipset.
+	parentTs := tma.tipsets[len(tma.tipsets)-1]
+	blockA := tma.nextBlock()
+	tma.setBlockMessages(blockA, allMsgs[:5]...)
+
+	// Apply fork A so the mpool removes nonces 0-4.
+	tma.applyBlock(t, blockA)
+
+	// Build fork B on the same parent, including only nonces 0-2.
+	blockB := mock.MkBlock(parentTs, 1, 2)
+	tma.tipsets = append(tma.tipsets, mock.TipSet(blockB))
+	tma.setBlockMessages(blockB, allMsgs[:3]...)
+
+	// Reorg: revert fork A, apply fork B.
+	if err := tma.cb([]*types.TipSet{mock.TipSet(blockA)}, []*types.TipSet{mock.TipSet(blockB)}); err != nil {
+		t.Fatal(err)
+	}
+
+	// After the reorg the on-chain nonce is 3 (msgs 0-2 included in B).
+	// Msgs 3-9 should be selected.
+	msgs, err := mp.SelectMessages(context.Background(), mock.TipSet(blockB), 1.0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	requireSequentialMsgs(t, msgs, sender, 3, 7)
+}
+
+// TestMessageSelectionAfterApply verifies that after a block is applied, selection starts from
+// the new (higher) on-chain nonce and skips the messages that were included in the block.
+func TestMessageSelectionAfterApply(t *testing.T) {
+	mp, tma := makeTestMpool()
+
+	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+	sender, err := w.WalletNew(context.Background(), types.KTSecp256k1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	receiver := mock.Address(1001)
+
+	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: 2}]
+	tma.setBalance(sender, 1)
+
+	var allMsgs []*types.SignedMessage
+	for i := 0; i < 10; i++ {
+		m := makeTestMessage(w, sender, receiver, uint64(i), gasLimit, uint64(i+1))
+		allMsgs = append(allMsgs, m)
+		mustAdd(t, mp, m)
+	}
+
+	block := tma.nextBlock()
+	tma.setBlockMessages(block, allMsgs[:5]...)
+	tma.applyBlock(t, block)
+
+	// On-chain nonce is now 5; only msgs 5-9 should be selected.
+	msgs, err := mp.SelectMessages(context.Background(), mock.TipSet(block), 1.0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	requireSequentialMsgs(t, msgs, sender, 5, 5)
+}
+
+// TestMessageSelectionAfterRevert verifies that after a block is reverted, selection restarts
+// from the lower on-chain nonce and includes the messages that were un-applied.
+func TestMessageSelectionAfterRevert(t *testing.T) {
+	mp, tma := makeTestMpool()
+
+	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+	sender, err := w.WalletNew(context.Background(), types.KTSecp256k1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	receiver := mock.Address(1001)
+
+	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: 2}]
+	tma.setBalance(sender, 1)
+
+	var allMsgs []*types.SignedMessage
+	for i := 0; i < 10; i++ {
+		m := makeTestMessage(w, sender, receiver, uint64(i), gasLimit, uint64(i+1))
+		allMsgs = append(allMsgs, m)
+		mustAdd(t, mp, m)
+	}
+
+	block := tma.nextBlock()
+	tma.setBlockMessages(block, allMsgs[:5]...)
+	tma.applyBlock(t, block)
+
+	// Revert the block; msgs 0-4 return to the mpool.
+	tma.revertBlock(t, block)
+
+	// On-chain nonce is back to 0; all 10 msgs should be selected.
+	parentTs := tma.tipsets[len(tma.tipsets)-2] // tipset before block was appended
+	msgs, err := mp.SelectMessages(context.Background(), parentTs, 1.0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	requireSequentialMsgs(t, msgs, sender, 0, 10)
+}
