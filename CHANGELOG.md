@@ -11,16 +11,15 @@
 
 ## ☢️ Upgrade Warnings ☢️
 
-- Minimum go-version supported is go 1.25.7 ([filecoin-project/lotus#13594](https://github.com/filecoin-project/lotus/pull/13594))
-
 ## ⭐ New Features
 
 ## 🐛 Bug Fixes
 
 ## 👌 Improvements
 
-- feat(cliutil): accept non-JWT API tokens in `TOKEN:ADDRESS`, enabling use of third-party RPC providers (e.g. Glif) that issue opaque API keys ([filecoin-project/lotus#13578](https://github.com/filecoin-project/lotus/pull/13578))
-- feat(cli): `lotus wallet export` gains a `--format` flag with a new `hex-eth` value that emits the raw 32-byte private key as hex, directly importable into Ethereum tools (Metamask, ethers.js, foundry). `hex-eth` is also accepted by `lotus wallet import` together with a `--type` flag (`secp256k1` or `delegated`, defaulting to `delegated`). ([filecoin-project/lotus#13586](https://github.com/filecoin-project/lotus/pull/13586))
+# UNRELEASED v1.36.0
+
+See https://github.com/filecoin-project/lotus/blob/release/v1.36.0/CHANGELOG.md
 
 # Node v1.35.1 / 2026-03-31
 
