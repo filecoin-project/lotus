@@ -11,16 +11,71 @@
 
 ## ☢️ Upgrade Warnings ☢️
 
-- Minimum go-version supported is go 1.25.7 ([filecoin-project/lotus#13594](https://github.com/filecoin-project/lotus/pull/13594))
-
 ## ⭐ New Features
 
 ## 🐛 Bug Fixes
 
 ## 👌 Improvements
 
-- feat(cliutil): accept non-JWT API tokens in `TOKEN:ADDRESS`, enabling use of third-party RPC providers (e.g. Glif) that issue opaque API keys ([filecoin-project/lotus#13578](https://github.com/filecoin-project/lotus/pull/13578))
-- feat(cli): `lotus wallet export` gains a `--format` flag with a new `hex-eth` value that emits the raw 32-byte private key as hex, directly importable into Ethereum tools (Metamask, ethers.js, foundry). `hex-eth` is also accepted by `lotus wallet import` together with a `--type` flag (`secp256k1` or `delegated`, defaulting to `delegated`). ([filecoin-project/lotus#13586](https://github.com/filecoin-project/lotus/pull/13586))
+# Node and Miner v1.36.0-rc1 / 2026-04-29
+
+This is the first release candidate of the upcoming MANDATORY Lotus v1.36.0 release, which will deliver the Filecoin network version 28, codenamed Fire Horse” 🔥🐎. This release candidate sets the upgrade epoch for the Calibration network to Epoch 3694534: 2026-05-07T14:00:00Z. [See the local time for other timezones.](https://www.worldtimebuddy.com/?qm=1&lid=100,1816670,2643743,5368361&h=100&date=2026-5-7&sln=14-15&hf=0)
+
+Mainnet activation is not yet scheduled in this release candidate, and will be determined after a succesful upgrade on Calibration network.
+
+## ☢️ Upgrade Warnings ☢️
+
+- All Lotus node and Storage Provider (SP) operators on Calibration network must upgrade to this release candidate before the specified upgrade date for the Calibration network.
+- The minimum supported Go version is now `1.25.7`. ([filecoin-project/lotus#13594](https://github.com/filecoin-project/lotus/pull/13594))
+
+## 🏛️ Filecoin network version 28 FIPs and FRCs
+
+- [FIP-0112: Export Sector Status to FEVM](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0112.md)
+- [FIP-0113: secp256r1 (P-256) P256VERIFY Precompile for FEVM](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0113.md)
+- [FIP-0114: Add Support for EIP-7939 (CLZ Opcode) in the FEVM](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0114.md)
+- [FIP-0115: Premium Percentile Base Fee Target](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0115.md)
+
+## 📦 v18 Builtin Actor Bundle
+
+This release candidate uses the [v18.0.0 actor bundle](https://github.com/filecoin-project/builtin-actors/releases/tag/v18.0.0)
+
+## 🚚 Migration
+
+All node operators, including storage providers, should be aware that ONE pre-migration is being scheduled 120 epochs before the network upgrade. The migration for the NV28 upgrade is expected to be light with no heavy pre-migrations:
+
+- Pre-Migration is expected to take less then 3 minutes.
+- The migration on the upgrade epoch is expected to take approximately 30 seconds on a node with a NVMe-drive and a newer CPU. For nodes running on slower disks/CPU, it is still expected to around 1 minute.
+- RAM usages is expected to be under 20GiB RAM for both the pre-migration and migration.
+
+We recommend node operators (who haven’t enabled splitstore discard mode) that do not care about historical chain states, to prune the chain blockstore by syncing from a snapshot 1-2 days before the upgrade.
+
+For certain node operators, such as full archival nodes or systems that need to keep large amounts of state (RPC providers), we recommend skipping the pre-migration and run the non-cached migration (i.e., just running the migration at the network upgrade epoch), and schedule for some additional downtime. Operators of such nodes can read the How to disable premigration in network upgrade tutorial.
+
+## ⭐ New Features highlight
+
+- feat(cli): `lotus wallet export` gains a `--format` flag with a new `hex-eth` value that emits the raw 32-byte private key as hex, directly importable into Ethereum tools such as MetaMask, ethers.js, and Foundry. `hex-eth` is also accepted by `lotus wallet import` together with a `--type` flag (`secp256k1` or `delegated`, defaulting to `delegated`). ([filecoin-project/lotus#13586](https://github.com/filecoin-project/lotus/pull/13586))
+- feat(cliutil): accept non-JWT API tokens in `TOKEN:ADDRESS`, enabling use of third-party RPC providers that issue opaque API keys. Multiaddrs using `/wss` or `/tls` now dial with `wss://`. ([filecoin-project/lotus#13578](https://github.com/filecoin-project/lotus/pull/13578))
+
+## 🐛 Bug Fixes
+
+- fix(state): move `StateGetRandomnessDigestFromBeacon` into `StateModule` so lite nodes can serve the method correctly. ([filecoin-project/lotus#13579](https://github.com/filecoin-project/lotus/pull/13579))
+
+## 📝 Changelog
+
+For the set of changes since the last stable release:
+
+- Node and Miner: https://github.com/filecoin-project/lotus/compare/release/v1.35.1...release/v1.36.0
+
+## 👨‍👩‍👧‍👦 Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| dependabot[bot] | 4 | +45/-45 | 8 |
+| Phi-rjan | 3 | +327/-325 | 30 |
+| Rod Vagg | 2 | +1002/-230 | 10 |
+| beck | 2 | +182/-13 | 4 |
+| Phi | 1 | +12/-12 | 11 |
+| William Morriss | 1 | +4/-40 | 9 |
 
 # Node v1.35.1 / 2026-03-31
 
