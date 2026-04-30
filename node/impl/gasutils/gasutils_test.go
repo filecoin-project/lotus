@@ -41,6 +41,9 @@ func (m *mockMpool) PendingFor(_ context.Context, _ address.Address) ([]*types.S
 func (m *mockMpool) Pending(_ context.Context) ([]*types.SignedMessage, *types.TipSet) {
 	return m.msgs, m.ts
 }
+func (m *mockMpool) PendingExecutable(_ context.Context) []*types.SignedMessage {
+	return m.msgs
+}
 
 // makeTipSet builds a minimal single-block TipSet with the given ParentBaseFee.
 func makeTipSet(t testing.TB, baseFee abi.TokenAmount) *types.TipSet {
