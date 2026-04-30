@@ -1425,11 +1425,8 @@ func TestHeadChangeApplyUnknownFillsGap(t *testing.T) {
 
 	// Add nonces 1, 2, 3 without nonce 0: gap at 0.
 	nonce0 := mock.MkMessage(sender, target, 0, w)
-	var msgs []*types.SignedMessage
 	for i := 1; i <= 3; i++ {
-		m := mock.MkMessage(sender, target, uint64(i), w)
-		msgs = append(msgs, m)
-		mustAdd(t, mp, m)
+		mustAdd(t, mp, mock.MkMessage(sender, target, uint64(i), w))
 	}
 	requireMpoolNoGapBelowNextNonce(t, mp, sender)
 
