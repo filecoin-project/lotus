@@ -292,6 +292,9 @@ func (m *simMpool) PendingFor(_ context.Context, _ address.Address) ([]*types.Si
 func (m *simMpool) Pending(_ context.Context) ([]*types.SignedMessage, *types.TipSet) {
 	return m.msgs, m.ts
 }
+func (m *simMpool) PendingExecutable(_ context.Context) []*types.SignedMessage {
+	return m.msgs
+}
 
 // buildSimTipSet constructs a single-block TipSet with the given baseFee and timestamp.
 func buildSimTipSet(baseFee abi.TokenAmount, timestamp uint64) *types.TipSet {

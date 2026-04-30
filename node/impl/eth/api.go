@@ -229,6 +229,7 @@ type MpoolAPI interface {
 type MessagePool interface {
 	PendingFor(ctx context.Context, a address.Address) ([]*types.SignedMessage, *types.TipSet)
 	Pending(ctx context.Context) ([]*types.SignedMessage, *types.TipSet)
+	PendingExecutable(ctx context.Context) []*types.SignedMessage
 	GetConfig() *types.MpoolConfig
 }
 
