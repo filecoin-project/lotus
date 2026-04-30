@@ -46,6 +46,7 @@ type ChainStoreAPI interface {
 type MessagePoolAPI interface {
 	PendingFor(ctx context.Context, a address.Address) ([]*types.SignedMessage, *types.TipSet)
 	Pending(ctx context.Context) ([]*types.SignedMessage, *types.TipSet)
+	PendingExecutable(ctx context.Context) []*types.SignedMessage
 }
 
 type GasMeta struct {
@@ -260,7 +261,7 @@ func GasEstimateGasPremiumFromMempool(
 		gasFeeCap        abi.TokenAmount
 		gasPremium       abi.TokenAmount
 	}
-	pendingMsgs, _ := mpool.Pending(ctx)
+	pendingMsgs := mpool.PendingExecutable(ctx)
 	seen := make(map[store.SenderNonce]struct{}, len(pendingMsgs))
 	distribution := make([]rawMsg, 0, len(pendingMsgs))
 	for _, sm := range pendingMsgs {
