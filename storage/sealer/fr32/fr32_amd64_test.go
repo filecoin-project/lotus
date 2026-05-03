@@ -21,6 +21,7 @@ func asmImpls() []asmImpl {
 	return []asmImpl{
 		{"go", padGo, unpadGo, true},
 		{"scalar", padScalar, unpadScalar, true},
+		{"scalar-nt-pad", padScalarNT, unpadScalar, true},
 		{"avx2", padAVX2, unpadAVX2, cpu.X86.HasAVX2},
 		{"avx512", padAVX512, unpadAVX512, cpu.X86.HasAVX512BW && cpu.X86.HasAVX512VL && cpu.X86.HasAVX512VBMI},
 	}

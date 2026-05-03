@@ -7,6 +7,7 @@ TEXT ·padScalar(SB), NOSPLIT, $0-48
 	SHRQ $7, CX
 	TESTQ CX, CX
 	JZ padScalarDone
+	MOVQ $0x3FFFFFFFFFFFFFFF, R10
 
 padScalarChunk:
 	MOVOU 0(SI), X0
@@ -17,79 +18,85 @@ padScalarChunk:
 	ANDL $0x3f, R9
 	MOVB R9, 31(DI)
 
+	// Group 1: shift-2, bytes 32..63 (interleaved pairs)
 	MOVQ 31(SI), R8
-	SHRQ $6, R8
 	MOVQ 32(SI), R9
+	MOVQ 39(SI), R11
+	MOVQ 40(SI), R12
+	SHRQ $6, R8
 	SHLQ $2, R9
+	SHRQ $6, R11
+	SHLQ $2, R12
 	ORQ R9, R8
+	ORQ R12, R11
 	MOVQ R8, 32(DI)
-	MOVQ 39(SI), R8
-	SHRQ $6, R8
-	MOVQ 40(SI), R9
-	SHLQ $2, R9
-	ORQ R9, R8
-	MOVQ R8, 40(DI)
+	MOVQ R11, 40(DI)
+
 	MOVQ 47(SI), R8
-	SHRQ $6, R8
 	MOVQ 48(SI), R9
-	SHLQ $2, R9
-	ORQ R9, R8
-	MOVQ R8, 48(DI)
-	MOVQ 55(SI), R8
+	MOVQ 55(SI), R11
+	MOVQ 56(SI), R12
 	SHRQ $6, R8
-	MOVQ 56(SI), R9
 	SHLQ $2, R9
+	SHRQ $6, R11
+	SHLQ $2, R12
 	ORQ R9, R8
-	MOVQ R8, 56(DI)
-	ANDB $0x3f, 63(DI)
+	ORQ R12, R11
+	MOVQ R8, 48(DI)
+	ANDQ R10, R11
+	MOVQ R11, 56(DI)
 
+	// Group 2: shift-4, bytes 64..95 (interleaved pairs)
 	MOVQ 63(SI), R8
-	SHRQ $4, R8
 	MOVQ 64(SI), R9
+	MOVQ 71(SI), R11
+	MOVQ 72(SI), R12
+	SHRQ $4, R8
 	SHLQ $4, R9
+	SHRQ $4, R11
+	SHLQ $4, R12
 	ORQ R9, R8
+	ORQ R12, R11
 	MOVQ R8, 64(DI)
-	MOVQ 71(SI), R8
-	SHRQ $4, R8
-	MOVQ 72(SI), R9
-	SHLQ $4, R9
-	ORQ R9, R8
-	MOVQ R8, 72(DI)
-	MOVQ 79(SI), R8
-	SHRQ $4, R8
-	MOVQ 80(SI), R9
-	SHLQ $4, R9
-	ORQ R9, R8
-	MOVQ R8, 80(DI)
-	MOVQ 87(SI), R8
-	SHRQ $4, R8
-	MOVQ 88(SI), R9
-	SHLQ $4, R9
-	ORQ R9, R8
-	MOVQ R8, 88(DI)
-	ANDB $0x3f, 95(DI)
+	MOVQ R11, 72(DI)
 
+	MOVQ 79(SI), R8
+	MOVQ 80(SI), R9
+	MOVQ 87(SI), R11
+	MOVQ 88(SI), R12
+	SHRQ $4, R8
+	SHLQ $4, R9
+	SHRQ $4, R11
+	SHLQ $4, R12
+	ORQ R9, R8
+	ORQ R12, R11
+	MOVQ R8, 80(DI)
+	ANDQ R10, R11
+	MOVQ R11, 88(DI)
+
+	// Group 3: shift-6, bytes 96..127 (interleaved pairs)
 	MOVQ 95(SI), R8
-	SHRQ $2, R8
 	MOVQ 96(SI), R9
+	MOVQ 103(SI), R11
+	MOVQ 104(SI), R12
+	SHRQ $2, R8
 	SHLQ $6, R9
+	SHRQ $2, R11
+	SHLQ $6, R12
 	ORQ R9, R8
+	ORQ R12, R11
 	MOVQ R8, 96(DI)
-	MOVQ 103(SI), R8
-	SHRQ $2, R8
-	MOVQ 104(SI), R9
-	SHLQ $6, R9
-	ORQ R9, R8
-	MOVQ R8, 104(DI)
+	MOVQ R11, 104(DI)
+
 	MOVQ 111(SI), R8
-	SHRQ $2, R8
 	MOVQ 112(SI), R9
+	MOVQ 119(SI), R11
+	SHRQ $2, R8
 	SHLQ $6, R9
+	SHRQ $2, R11
 	ORQ R9, R8
 	MOVQ R8, 112(DI)
-	MOVQ 119(SI), R8
-	SHRQ $2, R8
-	MOVQ R8, 120(DI)
+	MOVQ R11, 120(DI)
 
 	ADDQ $127, SI
 	ADDQ $128, DI
@@ -97,6 +104,120 @@ padScalarChunk:
 	JNZ padScalarChunk
 
 padScalarDone:
+	RET
+
+// padScalarNT uses MOVNTIQ for all stores, avoiding write-allocate traffic.
+// The pad output stride is 128 bytes (exactly 2 cache lines), so WC buffers
+// coalesce correctly. ALL stores must be NT to avoid evicting WC entries.
+// Byte 31 is folded into the qword at offset 24 to avoid any temporal store.
+TEXT ·padScalarNT(SB), NOSPLIT, $0-48
+	MOVQ in_base+0(FP), SI
+	MOVQ out_base+24(FP), DI
+	MOVQ out_len+32(FP), CX
+	SHRQ $7, CX
+	TESTQ CX, CX
+	JZ padScalarNTDone
+	MOVQ $0x3FFFFFFFFFFFFFFF, R10
+
+padScalarNTChunk:
+	// Copy bytes 0..31 entirely via MOVNTIQ. Byte 31 is masked in the qword.
+	MOVQ 0(SI), R8
+	MOVNTIQ R8, 0(DI)
+	MOVQ 8(SI), R8
+	MOVNTIQ R8, 8(DI)
+	MOVQ 16(SI), R8
+	MOVNTIQ R8, 16(DI)
+	MOVQ 24(SI), R8
+	ANDQ R10, R8
+	MOVNTIQ R8, 24(DI)
+
+	// Group 1: shift-2, bytes 32..63
+	MOVQ 31(SI), R8
+	MOVQ 32(SI), R9
+	MOVQ 39(SI), R11
+	MOVQ 40(SI), R12
+	SHRQ $6, R8
+	SHLQ $2, R9
+	SHRQ $6, R11
+	SHLQ $2, R12
+	ORQ R9, R8
+	ORQ R12, R11
+	MOVNTIQ R8, 32(DI)
+	MOVNTIQ R11, 40(DI)
+
+	MOVQ 47(SI), R8
+	MOVQ 48(SI), R9
+	MOVQ 55(SI), R11
+	MOVQ 56(SI), R12
+	SHRQ $6, R8
+	SHLQ $2, R9
+	SHRQ $6, R11
+	SHLQ $2, R12
+	ORQ R9, R8
+	ORQ R12, R11
+	MOVNTIQ R8, 48(DI)
+	ANDQ R10, R11
+	MOVNTIQ R11, 56(DI)
+
+	// Group 2: shift-4, bytes 64..95
+	MOVQ 63(SI), R8
+	MOVQ 64(SI), R9
+	MOVQ 71(SI), R11
+	MOVQ 72(SI), R12
+	SHRQ $4, R8
+	SHLQ $4, R9
+	SHRQ $4, R11
+	SHLQ $4, R12
+	ORQ R9, R8
+	ORQ R12, R11
+	MOVNTIQ R8, 64(DI)
+	MOVNTIQ R11, 72(DI)
+
+	MOVQ 79(SI), R8
+	MOVQ 80(SI), R9
+	MOVQ 87(SI), R11
+	MOVQ 88(SI), R12
+	SHRQ $4, R8
+	SHLQ $4, R9
+	SHRQ $4, R11
+	SHLQ $4, R12
+	ORQ R9, R8
+	ORQ R12, R11
+	MOVNTIQ R8, 80(DI)
+	ANDQ R10, R11
+	MOVNTIQ R11, 88(DI)
+
+	// Group 3: shift-6, bytes 96..127
+	MOVQ 95(SI), R8
+	MOVQ 96(SI), R9
+	MOVQ 103(SI), R11
+	MOVQ 104(SI), R12
+	SHRQ $2, R8
+	SHLQ $6, R9
+	SHRQ $2, R11
+	SHLQ $6, R12
+	ORQ R9, R8
+	ORQ R12, R11
+	MOVNTIQ R8, 96(DI)
+	MOVNTIQ R11, 104(DI)
+
+	MOVQ 111(SI), R8
+	MOVQ 112(SI), R9
+	MOVQ 119(SI), R11
+	SHRQ $2, R8
+	SHLQ $6, R9
+	SHRQ $2, R11
+	ORQ R9, R8
+	MOVNTIQ R8, 112(DI)
+	MOVNTIQ R11, 120(DI)
+
+	ADDQ $127, SI
+	ADDQ $128, DI
+	DECQ CX
+	JNZ padScalarNTChunk
+	SFENCE
+
+padScalarNTDone:
 	RET
 
 TEXT ·unpadScalar(SB), NOSPLIT, $0-48
@@ -118,96 +239,102 @@ unpadScalarChunk:
 	ORL R10, R11
 	MOVB R11, 31(DI)
 
+	// Group 1: shift-2, bytes 32..63 (interleaved pairs)
 	MOVQ 32(SI), R8
-	SHRQ $2, R8
 	MOVQ 33(SI), R9
+	MOVQ 40(SI), R11
+	MOVQ 41(SI), R12
+	SHRQ $2, R8
 	SHLQ $6, R9
+	SHRQ $2, R11
+	SHLQ $6, R12
 	ORQ R9, R8
+	ORQ R12, R11
 	MOVQ R8, 32(DI)
-	MOVQ 40(SI), R8
-	SHRQ $2, R8
-	MOVQ 41(SI), R9
-	SHLQ $6, R9
-	ORQ R9, R8
-	MOVQ R8, 40(DI)
+	MOVQ R11, 40(DI)
+
 	MOVQ 48(SI), R8
-	SHRQ $2, R8
 	MOVQ 49(SI), R9
-	SHLQ $6, R9
-	ORQ R9, R8
-	MOVQ R8, 48(DI)
-	MOVQ 56(SI), R8
+	MOVQ 56(SI), R11
+	MOVQ 57(SI), R12
 	SHRQ $2, R8
-	MOVQ 57(SI), R9
 	SHLQ $6, R9
+	SHRQ $2, R11
+	SHLQ $6, R12
 	ORQ R9, R8
-	MOVQ R8, 56(DI)
+	ORQ R12, R11
+	MOVQ R8, 48(DI)
+	MOVQ R11, 56(DI)
 	MOVBLZX 63(SI), R9
-	MOVBLZX 64(SI), R10
+	MOVBLZX 64(SI), R13
 	SHRL $2, R9
-	SHLL $4, R10
-	ORL R10, R9
+	SHLL $4, R13
+	ORL R13, R9
 	MOVB R9, 63(DI)
 
+	// Group 2: shift-4, bytes 64..95 (interleaved pairs)
 	MOVQ 64(SI), R8
-	SHRQ $4, R8
 	MOVQ 65(SI), R9
+	MOVQ 72(SI), R11
+	MOVQ 73(SI), R12
+	SHRQ $4, R8
 	SHLQ $4, R9
+	SHRQ $4, R11
+	SHLQ $4, R12
 	ORQ R9, R8
+	ORQ R12, R11
 	MOVQ R8, 64(DI)
-	MOVQ 72(SI), R8
-	SHRQ $4, R8
-	MOVQ 73(SI), R9
-	SHLQ $4, R9
-	ORQ R9, R8
-	MOVQ R8, 72(DI)
+	MOVQ R11, 72(DI)
+
 	MOVQ 80(SI), R8
-	SHRQ $4, R8
 	MOVQ 81(SI), R9
-	SHLQ $4, R9
-	ORQ R9, R8
-	MOVQ R8, 80(DI)
-	MOVQ 88(SI), R8
+	MOVQ 88(SI), R11
+	MOVQ 89(SI), R12
 	SHRQ $4, R8
-	MOVQ 89(SI), R9
 	SHLQ $4, R9
+	SHRQ $4, R11
+	SHLQ $4, R12
 	ORQ R9, R8
-	MOVQ R8, 88(DI)
+	ORQ R12, R11
+	MOVQ R8, 80(DI)
+	MOVQ R11, 88(DI)
 	MOVBLZX 95(SI), R9
-	MOVBLZX 96(SI), R10
+	MOVBLZX 96(SI), R13
 	SHRL $4, R9
-	SHLL $2, R10
-	ORL R10, R9
+	SHLL $2, R13
+	ORL R13, R9
 	MOVB R9, 95(DI)
 
+	// Group 3: shift-6, bytes 96..126 (interleaved pairs)
 	MOVQ 96(SI), R8
-	SHRQ $6, R8
 	MOVQ 97(SI), R9
+	MOVQ 104(SI), R11
+	MOVQ 105(SI), R12
+	SHRQ $6, R8
 	SHLQ $2, R9
+	SHRQ $6, R11
+	SHLQ $2, R12
 	ORQ R9, R8
+	ORQ R12, R11
 	MOVQ R8, 96(DI)
-	MOVQ 104(SI), R8
-	SHRQ $6, R8
-	MOVQ 105(SI), R9
-	SHLQ $2, R9
-	ORQ R9, R8
-	MOVQ R8, 104(DI)
+	MOVQ R11, 104(DI)
+
 	MOVQ 112(SI), R8
-	SHRQ $6, R8
 	MOVQ 113(SI), R9
-	SHLQ $2, R9
-	ORQ R9, R8
-	MOVQ R8, 112(DI)
-	MOVQ 120(SI), R8
+	MOVQ 120(SI), R11
+	MOVQ 121(SI), R12
 	SHRQ $6, R8
-	MOVQ 121(SI), R9
 	SHLQ $2, R9
+	SHRQ $6, R11
+	SHLQ $2, R12
 	ORQ R9, R8
-	MOVL R8, 120(DI)
-	SHRQ $32, R8
-	MOVW R8, 124(DI)
-	SHRQ $16, R8
-	MOVB R8, 126(DI)
+	ORQ R12, R11
+	MOVQ R8, 112(DI)
+	MOVL R11, 120(DI)
+	SHRQ $32, R11
+	MOVW R11, 124(DI)
+	SHRQ $16, R11
+	MOVB R11, 126(DI)
 
 	ADDQ $128, SI
 	ADDQ $127, DI
@@ -583,42 +710,53 @@ TEXT ·unpadAVX512(SB), NOSPLIT, $0-48
 	JZ unpadAVX512Done
 
 unpadAVX512Chunk:
-	VMOVDQU 0(SI), X2
-	VMOVDQU X2, 0(DI)
-	VMOVDQU 15(SI), X2
-	VMOVDQU X2, 15(DI)
+	// Pre-compute all 3 boundary bytes from input before any stores
 	MOVBLZX 31(SI), R8
 	MOVBLZX 32(SI), R9
 	SHLL $6, R9
 	ORL R9, R8
+	// R8 = byte 31 value
+
+	MOVBLZX 63(SI), R11
+	MOVBLZX 64(SI), R12
+	SHRL $2, R11
+	SHLL $4, R12
+	ORL R12, R11
+	// R11 = byte 63 value
+
+	MOVBLZX 95(SI), R13
+	MOVBLZX 96(SI), R14
+	SHRL $4, R13
+	SHLL $2, R14
+	ORL R14, R13
+	// R13 = byte 95 value
+
+	// Copy first 31 bytes
+	VMOVDQU 0(SI), X2
+	VMOVDQU X2, 0(DI)
+	VMOVDQU 15(SI), X2
+	VMOVDQU X2, 15(DI)
 	MOVB R8, 31(DI)
 
+	// Vector unpad bytes 32..63
 	VPMOVZXBW 32(SI), K1, Z0
 	VPMOVZXBW 33(SI), K1, Z1
 	VPSRLW $2, Z0, K1, Z0
 	VPSLLW $6, Z1, K1, Z1
 	VPORQ Z1, Z0, K1, Z0
 	VPMOVWB Z0, K1, 32(DI)
-	MOVBLZX 63(SI), R8
-	MOVBLZX 64(SI), R9
-	SHRL $2, R8
-	SHLL $4, R9
-	ORL R9, R8
-	MOVB R8, 63(DI)
+	MOVB R11, 63(DI)
 
+	// Vector unpad bytes 64..95
 	VPMOVZXBW 64(SI), K1, Z0
 	VPMOVZXBW 65(SI), K1, Z1
 	VPSRLW $4, Z0, K1, Z0
 	VPSLLW $4, Z1, K1, Z1
 	VPORQ Z1, Z0, K1, Z0
 	VPMOVWB Z0, K1, 64(DI)
-	MOVBLZX 95(SI), R8
-	MOVBLZX 96(SI), R9
-	SHRL $4, R8
-	SHLL $2, R9
-	ORL R9, R8
-	MOVB R8, 95(DI)
+	MOVB R13, 95(DI)
 
+	// Vector unpad bytes 96..126
 	VPMOVZXBW 96(SI), K2, Z0
 	VPMOVZXBW 97(SI), K2, Z1
 	VPSRLW $6, Z0, K1, Z0
