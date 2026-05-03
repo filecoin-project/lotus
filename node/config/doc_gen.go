@@ -1212,7 +1212,7 @@ exceeds HotstoreMaxSpaceTarget - HotstoreMaxSpaceThreshold`,
 			Type: "uint64",
 
 			Comment: `Safety buffer to prevent moving GC from overflowing disk when HotStoreMaxSpaceTarget
-is set.  Moving GC will not occur when total moving size exceeds
+is set. Moving GC will not occur when total moving size exceeds
 HotstoreMaxSpaceTarget - HotstoreMaxSpaceSafetyBuffer`,
 		},
 	},
