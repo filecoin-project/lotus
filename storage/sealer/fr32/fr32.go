@@ -1,7 +1,6 @@
 package fr32
 
 import (
-	"math/bits"
 	"runtime"
 	"sync"
 	"unsafe"
@@ -24,6 +23,8 @@ func init() {
 	}
 }
 
+// MTTresh is the padded-size threshold above which multithreaded dispatch is
+// used. Exported for use by readers.go BufSize().
 var MTTresh = uint64(512 << 10)
 
 var (
@@ -31,18 +32,59 @@ var (
 	unpadImpl = unpadGo
 )
 
+// mtChunkCount returns the number of worker goroutines for a given padded size.
+// The per-thread minimum work size is set to balance goroutine overhead against
+// parallelism. Pad uses a smaller minimum (512KB) because NT stores benefit from
+// more memory controllers. Unpad uses a larger minimum (2MB) because temporal
+// stores benefit from L3 cache locality.
 func mtChunkCount(usz abi.PaddedPieceSize) uint64 {
-	threads := (uint64(usz)) / MTTresh
-	if threads > uint64(runtime.NumCPU()) {
-		threads = 1 << (bits.Len32(uint32(runtime.NumCPU())))
+	return mtChunkCountMinWork(usz, MTTresh)
+}
+
+func mtChunkCountMinWork(usz abi.PaddedPieceSize, minWorkPerThread uint64) uint64 {
+	threads := uint64(usz) / minWorkPerThread
+	ncpu := uint64(runtime.NumCPU())
+	if threads > ncpu {
+		threads = ncpu
 	}
 	if threads == 0 {
 		return 1
 	}
-	if threads > 32 {
-		return 32 // avoid too large buffers
-	}
 	return threads
+}
+
+func mtWithMinWork(in, out []byte, padLen int, minWork uint64, op func(unpadded, padded []byte)) {
+	threads := mtChunkCountMinWork(abi.PaddedPieceSize(padLen), minWork)
+
+	// Ensure threadBytes is aligned to 128-byte chunk boundaries.
+	chunksPerThread := (padLen / int(threads)) / 128
+	if chunksPerThread == 0 {
+		chunksPerThread = 1
+	}
+	threadBytes := abi.PaddedPieceSize(chunksPerThread * 128)
+
+	var wg sync.WaitGroup
+	wg.Add(int(threads))
+
+	for i := 0; i < int(threads); i++ {
+		go func(thread int) {
+			defer wg.Done()
+
+			start := threadBytes * abi.PaddedPieceSize(thread)
+			end := start + threadBytes
+
+			if thread == int(threads)-1 {
+				end = abi.PaddedPieceSize(padLen)
+			}
+
+			if start >= abi.PaddedPieceSize(padLen) {
+				return
+			}
+
+			op(in[start.Unpadded():end.Unpadded()], out[start:end])
+		}(i)
+	}
+	wg.Wait()
 }
 
 func mt(in, out []byte, padLen int, op func(unpadded, padded []byte)) {
@@ -86,7 +128,9 @@ func Pad(in, out []byte) {
 	// Assumes len(in)%127==0 and len(out)%128==0
 	assertNoOverlap(in, out)
 	if len(out) > int(MTTresh) {
-		mt(in, out, len(out), pad)
+		// 512KB per thread: pad uses NT stores which bypass cache, so more
+		// threads = more memory controllers utilized.
+		mtWithMinWork(in, out, len(out), 512<<10, pad)
 		return
 	}
 
@@ -165,7 +209,9 @@ func Unpad(in []byte, out []byte) {
 	// Assumes len(in)%128==0 and len(out)%127==0
 	assertNoOverlap(in, out)
 	if len(in) > int(MTTresh) {
-		mt(out, in, len(in), unpad)
+		// 2MB per thread: unpad uses temporal stores which benefit from L3
+		// cache locality, so fewer larger chunks improve hit rate.
+		mtWithMinWork(out, in, len(in), 2<<20, unpad)
 		return
 	}
 

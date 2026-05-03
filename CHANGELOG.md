@@ -17,7 +17,7 @@
 
 ## 👌 Improvements
 
-- perf(fr32): accelerate fr32 pad/unpad with hand-written amd64 assembly (64-bit SWAR with non-temporal stores for pad, AVX512 masked-tail for unpad), achieving ~96% of memcpy throughput for pad and ~12x speedup over pure Go. Overlapping input/output buffers are now rejected at the API level.
+- perf(fr32): accelerate fr32 pad/unpad with hand-written amd64 assembly (64-bit SWAR with non-temporal stores for pad, AVX512 masked-tail for unpad), achieving ~96% of memcpy throughput for pad and ~12x speedup over pure Go. Multithread dispatch tuned per-operation: 1G pad 36->110 GB/s, 1G unpad 23->83 GB/s. Overlapping input/output buffers are now rejected at the API level.
 
 # UNRELEASED v1.36.0
 

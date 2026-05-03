@@ -6,9 +6,12 @@ import (
 	"bytes"
 	"fmt"
 	"math/rand"
+	"sync"
 	"testing"
 
 	"golang.org/x/sys/cpu"
+
+	"github.com/filecoin-project/go-state-types/abi"
 )
 
 type asmImpl struct {
@@ -281,6 +284,80 @@ func benchSequentialCopyBaseline(b *testing.B, size int) {
 	for b.Loop() {
 		copy(dst, src)
 	}
+}
+
+// BenchmarkMTScaling sweeps thread count and per-thread chunk size for pad and
+// unpad at 16M and 1G to find the optimal dispatch parameters.
+func BenchmarkMTScaling(b *testing.B) {
+	for _, totalMB := range []int{16, 1024} {
+		totalPadded := totalMB << 20
+		totalUnpadded := totalPadded / 128 * 127
+
+		inPad := make([]byte, totalUnpadded)
+		outPad := make([]byte, totalPadded)
+		rand.New(rand.NewSource(5)).Read(inPad)
+
+		// Prepare padded data for unpad
+		padGo(inPad, outPad)
+		outUnpad := make([]byte, totalUnpadded)
+
+		for _, threads := range []int{4, 8, 16, 32, 64, 96, 128, 192} {
+			perThreadKB := totalPadded / threads / 1024
+			if perThreadKB == 0 {
+				continue
+			}
+
+			label := fmt.Sprintf("%dM/pad/t%d_%dKB", totalMB, threads, perThreadKB)
+			b.Run(label, func(b *testing.B) {
+				b.SetBytes(int64(totalUnpadded))
+				b.ReportAllocs()
+				b.ResetTimer()
+				for b.Loop() {
+					mtN(inPad, outPad, totalPadded, threads, pad)
+				}
+			})
+
+			label = fmt.Sprintf("%dM/unpad/t%d_%dKB", totalMB, threads, perThreadKB)
+			b.Run(label, func(b *testing.B) {
+				b.SetBytes(int64(totalUnpadded))
+				b.ReportAllocs()
+				b.ResetTimer()
+				for b.Loop() {
+					mtN(outUnpad, outPad, totalPadded, threads, unpad)
+				}
+			})
+		}
+	}
+}
+
+// mtN is mt() with an explicit thread count for benchmarking.
+func mtN(in, out []byte, padLen int, threads int, op func(unpadded, padded []byte)) {
+	chunksPerThread := (padLen / threads) / 128
+	if chunksPerThread == 0 {
+		chunksPerThread = 1
+	}
+	threadBytes := abi.PaddedPieceSize(chunksPerThread * 128)
+
+	var wg sync.WaitGroup
+	wg.Add(threads)
+
+	for i := 0; i < threads; i++ {
+		go func(thread int) {
+			defer wg.Done()
+
+			start := threadBytes * abi.PaddedPieceSize(thread)
+			end := start + threadBytes
+			if thread == threads-1 {
+				end = abi.PaddedPieceSize(padLen)
+			}
+			if start >= abi.PaddedPieceSize(padLen) {
+				return
+			}
+
+			op(in[start.Unpadded():end.Unpadded()], out[start:end])
+		}(i)
+	}
+	wg.Wait()
 }
 
 func firstDiff(a, b []byte) int {
