@@ -176,11 +176,11 @@ func checkPrecommit(ctx context.Context, maddr address.Address, si SectorInfo, t
 		return xerrors.Errorf("checking if sector is allocated: %w", err)
 	}
 	if alloc {
-		//committed P2 message  but commit C2 message too late, pci should be null in this case
+		// committed P2 message but commit C2 message too late, pci should be null in this case
 		return &ErrSectorNumberAllocated{xerrors.Errorf("sector %d is allocated, but PreCommit info wasn't found on chain", si.SectorNumber)}
 	}
 
-	//never commit P2 message before, check ticket expiration
+	// never commit P2 message before, check ticket expiration
 	ticketEarliest := height - policy.MaxPreCommitRandomnessLookback
 
 	if si.TicketEpoch < ticketEarliest {
