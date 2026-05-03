@@ -87,43 +87,6 @@ func mtWithMinWork(in, out []byte, padLen int, minWork uint64, op func(unpadded,
 	wg.Wait()
 }
 
-func mt(in, out []byte, padLen int, op func(unpadded, padded []byte)) {
-	threads := mtChunkCount(abi.PaddedPieceSize(padLen))
-
-	// Ensure threadBytes is aligned to 128-byte chunk boundaries.
-	// Each fr32 chunk is 128 padded bytes / 127 unpadded bytes.
-	chunksPerThread := (padLen / int(threads)) / 128
-	if chunksPerThread == 0 {
-		chunksPerThread = 1
-	}
-	threadBytes := abi.PaddedPieceSize(chunksPerThread * 128)
-
-	var wg sync.WaitGroup
-	wg.Add(int(threads))
-
-	for i := 0; i < int(threads); i++ {
-		go func(thread int) {
-			defer wg.Done()
-
-			start := threadBytes * abi.PaddedPieceSize(thread)
-			end := start + threadBytes
-
-			// Last thread takes any remainder
-			if thread == int(threads)-1 {
-				end = abi.PaddedPieceSize(padLen)
-			}
-
-			// Skip if this thread has no work
-			if start >= abi.PaddedPieceSize(padLen) {
-				return
-			}
-
-			op(in[start.Unpadded():end.Unpadded()], out[start:end])
-		}(i)
-	}
-	wg.Wait()
-}
-
 func Pad(in, out []byte) {
 	// Assumes len(in)%127==0 and len(out)%128==0
 	assertNoOverlap(in, out)
@@ -153,8 +116,8 @@ func slicesOverlap(a, b []byte) bool {
 		return false
 	}
 
-	aStart := uintptr(unsafe.Pointer(&a[0]))
-	bStart := uintptr(unsafe.Pointer(&b[0]))
+	aStart := uintptr(unsafe.Pointer(&a[0])) /* #nosec G103 -- pointer comparison only, no deref */
+	bStart := uintptr(unsafe.Pointer(&b[0])) /* #nosec G103 -- pointer comparison only, no deref */
 	aEnd := aStart + uintptr(len(a))
 	bEnd := bStart + uintptr(len(b))
 
