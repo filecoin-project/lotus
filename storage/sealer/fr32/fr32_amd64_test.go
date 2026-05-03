@@ -27,7 +27,7 @@ func asmImpls() []asmImpl {
 		{"scalar", padScalar, unpadScalar, true},
 		{"scalar-nt-pad", padScalarNT, unpadScalar, true},
 		{"avx2", padAVX2, unpadAVX2, cpu.X86.HasAVX2},
-		{"avx512", padAVX512, unpadAVX512, cpu.X86.HasAVX512BW && cpu.X86.HasAVX512VL && cpu.X86.HasAVX512VBMI},
+		{"avx512", padAVX512, unpadAVX512, cpu.X86.HasAVX512F && cpu.X86.HasAVX512BW},
 	}
 }
 

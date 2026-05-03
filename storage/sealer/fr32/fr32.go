@@ -158,7 +158,13 @@ func slicesOverlap(a, b []byte) bool {
 	aEnd := aStart + uintptr(len(a))
 	bEnd := bStart + uintptr(len(b))
 
-	return aStart < bEnd && bStart < aEnd
+	overlap := aStart < bEnd && bStart < aEnd
+
+	// Keep slices live across the unsafe pointer arithmetic above.
+	runtime.KeepAlive(a)
+	runtime.KeepAlive(b)
+
+	return overlap
 }
 
 func pad(in, out []byte) {

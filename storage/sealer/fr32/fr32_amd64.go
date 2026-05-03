@@ -14,7 +14,9 @@ func init() {
 	padImpl = padSWAR
 	unpadImpl = unpadScalar
 
-	if cpu.X86.HasAVX512BW && cpu.X86.HasAVX512VL && cpu.X86.HasAVX512VBMI {
+	// The AVX512 unpad backend uses AVX512F (VPORQ) and AVX512BW (VPMOVZXBW,
+	// VPMOVWB, VPSRLW, VPSLLW, KMOVQ) only. No VBMI or VL instructions.
+	if cpu.X86.HasAVX512F && cpu.X86.HasAVX512BW {
 		unpadImpl = unpadAVX512
 	}
 }
