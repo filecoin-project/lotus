@@ -4,6 +4,7 @@ package fr32
 
 import (
 	"bytes"
+	"fmt"
 	"math/rand"
 	"testing"
 
@@ -63,6 +64,143 @@ func TestAsmImplementations(t *testing.T) {
 
 			})
 		}
+	}
+}
+
+// TestAsmImplementationsLarge verifies every backend against the pure Go
+// implementation for multi-chunk random data at various sizes, including
+// sizes that cross the NT store threshold.
+func TestAsmImplementationsLarge(t *testing.T) {
+	sizes := []struct {
+		name      string
+		numChunks int
+	}{
+		{"2_chunks", 2},
+		{"7_chunks", 7},
+		{"64_chunks", 64},
+		{"1000_chunks", 1000},         // ~127KB, below NT threshold
+		{"2048_chunks", 2048},         // ~256KB, at NT threshold boundary
+		{"2049_chunks", 2049},         // just above NT threshold
+		{"4096_chunks", 4096},         // ~512KB
+		{"8192_chunks_1M", 8192},      // ~1MB
+		{"131072_chunks_16M", 131072}, // ~16MB, exercises multithread path
+	}
+
+	rng := rand.New(rand.NewSource(42))
+
+	for _, impl := range asmImpls() {
+		for _, sz := range sizes {
+			t.Run(impl.name+"/"+sz.name, func(t *testing.T) {
+				if !impl.supported {
+					t.Skip("CPU does not support this backend")
+				}
+
+				unpaddedSize := sz.numChunks * 127
+				paddedSize := sz.numChunks * 128
+
+				input := make([]byte, unpaddedSize)
+				rng.Read(input)
+
+				// Reference: pure Go
+				expectPadded := make([]byte, paddedSize)
+				padGo(input, expectPadded)
+
+				// Test pad
+				gotPadded := make([]byte, paddedSize)
+				impl.pad(input, gotPadded)
+				if !bytes.Equal(expectPadded, gotPadded) {
+					i := firstDiff(expectPadded, gotPadded)
+					t.Fatalf("pad mismatch at byte %d (chunk %d offset %d): expected %02x got %02x",
+						i, i/128, i%128, expectPadded[i], gotPadded[i])
+				}
+
+				// Test unpad
+				gotUnpadded := make([]byte, unpaddedSize)
+				impl.unpad(gotUnpadded, gotPadded)
+				if !bytes.Equal(input, gotUnpadded) {
+					i := firstDiff(input, gotUnpadded)
+					t.Fatalf("unpad mismatch at byte %d (chunk %d offset %d): expected %02x got %02x",
+						i, i/127, i%127, input[i], gotUnpadded[i])
+				}
+			})
+		}
+	}
+}
+
+// TestAsmRoundtripRandom verifies pad then unpad produces the original data for
+// each backend with many random inputs.
+func TestAsmRoundtripRandom(t *testing.T) {
+	rng := rand.New(rand.NewSource(99))
+
+	for _, impl := range asmImpls() {
+		t.Run(impl.name, func(t *testing.T) {
+			if !impl.supported {
+				t.Skip("CPU does not support this backend")
+			}
+
+			for i := 0; i < 500; i++ {
+				// Random number of chunks 1..64
+				numChunks := rng.Intn(64) + 1
+				input := make([]byte, numChunks*127)
+				rng.Read(input)
+
+				padded := make([]byte, numChunks*128)
+				impl.pad(input, padded)
+
+				output := make([]byte, numChunks*127)
+				impl.unpad(output, padded)
+
+				if !bytes.Equal(input, output) {
+					i := firstDiff(input, output)
+					t.Fatalf("roundtrip mismatch at byte %d (chunk %d): expected %02x got %02x",
+						i, i/127, input[i], output[i])
+				}
+			}
+		})
+	}
+}
+
+// TestDispatchedPadMatchesGo verifies the default-dispatched Pad/Unpad
+// (which selects backends based on CPU and size thresholds) matches padGo.
+func TestDispatchedPadMatchesGo(t *testing.T) {
+	sizes := []int{
+		127,          // 1 chunk
+		127 * 17,     // 17 chunks
+		127 * 2048,   // at NT threshold
+		127 * 2049,   // just above
+		127 * 131072, // 16MB, multithread
+	}
+
+	rng := rand.New(rand.NewSource(77))
+
+	for _, unpaddedSize := range sizes {
+		paddedSize := unpaddedSize / 127 * 128
+		t.Run(fmt.Sprintf("%d_bytes", unpaddedSize), func(t *testing.T) {
+			input := make([]byte, unpaddedSize)
+			rng.Read(input)
+
+			expectPadded := make([]byte, paddedSize)
+			padGo(input, expectPadded)
+
+			gotPadded := make([]byte, paddedSize)
+			pad(input, gotPadded)
+			if !bytes.Equal(expectPadded, gotPadded) {
+				i := firstDiff(expectPadded, gotPadded)
+				t.Fatalf("dispatched pad mismatch at byte %d: expected %02x got %02x",
+					i, expectPadded[i], gotPadded[i])
+			}
+
+			expectUnpadded := make([]byte, unpaddedSize)
+			unpadGo(expectUnpadded, expectPadded)
+
+			gotUnpadded := make([]byte, unpaddedSize)
+			unpad(gotUnpadded, gotPadded)
+			if !bytes.Equal(expectUnpadded, gotUnpadded) {
+				i := firstDiff(expectUnpadded, gotUnpadded)
+				t.Fatalf("dispatched unpad mismatch at byte %d: expected %02x got %02x",
+					i, expectUnpadded[i], gotUnpadded[i])
+			}
+		})
 	}
 }
 
