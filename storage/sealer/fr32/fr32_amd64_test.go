@@ -4,6 +4,7 @@ package fr32
 
 import (
 	"bytes"
+	cryptorand "crypto/rand"
 	"fmt"
 	"math/rand"
 	"sync"
@@ -13,6 +14,22 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 )
+
+// fuzzSeedSizes returns chunk counts covering key boundaries: single chunk,
+// small multi-chunk, near-NT-threshold (256KB padded = 2048 chunks),
+// near-MT-threshold (512KB padded = 4096 chunks), and multi-MB.
+func fuzzSeedSizes() []int {
+	return []int{1, 3, 17, 64, 2047, 2048, 2049, 4095, 4096, 4097, 8192}
+}
+
+// cryptoRandSeed returns a crypto/rand-filled byte slice of the given size.
+func cryptoRandSeed(size int) []byte {
+	buf := make([]byte, size)
+	if _, err := cryptorand.Read(buf); err != nil {
+		panic(err)
+	}
+	return buf
+}
 
 type asmImpl struct {
 	name      string
@@ -365,26 +382,19 @@ func mtN(in, out []byte, padLen int, threads int, op func(unpadded, padded []byt
 // Each fuzz target takes arbitrary bytes from the fuzzer, trims to a valid
 // chunk-aligned length, and verifies that every supported asm backend produces
 // output identical to the pure Go reference implementation.
+//
+// Seeds include crypto/rand data at sizes spanning key thresholds: single
+// chunk, near-NT (256KB), near-MT (512KB), and multi-MB.
 
 // FuzzPadBackends verifies that all pad backends produce identical output to padGo.
 func FuzzPadBackends(f *testing.F) {
-	// Seed corpus: single chunk, a few chunks, and a pattern that exercises
-	// all four shift groups and boundary bytes.
-	f.Add(bytes.Repeat([]byte{0xff}, 127))
-	f.Add(bytes.Repeat([]byte{0x00}, 127))
-	f.Add(bytes.Repeat([]byte{0x55}, 127*3))
-	f.Add(bytes.Repeat([]byte{0xaa}, 127*7))
-
-	edge := make([]byte, 127)
-	for i := range edge {
-		edge[i] = byte(i)
+	for _, n := range fuzzSeedSizes() {
+		f.Add(cryptoRandSeed(n * 127))
 	}
-	f.Add(edge)
 
 	impls := asmImpls()
 
 	f.Fuzz(func(t *testing.T, data []byte) {
-		// Trim to valid chunk-aligned length
 		chunks := len(data) / 127
 		if chunks == 0 {
 			return
@@ -410,20 +420,15 @@ func FuzzPadBackends(f *testing.F) {
 	})
 }
 
-// FuzzUnpadBackends verifies that all unpad backends produce identical output to unpadGo.
-// The fuzzer provides raw (unpadded) data which is first padded with padGo to produce
-// valid fr32-padded input, since unpad is only defined for validly-padded data
-// (bytes 31, 63, 95 must have their top 2 bits cleared).
+// FuzzUnpadBackends verifies that all unpad backends produce identical output
+// to unpadGo. The fuzzer provides raw unpadded data which is first padded with
+// padGo to produce valid fr32-padded input, since unpad is only defined for
+// data where the fr32 zero-bit positions (bits 62-63 of bytes 31, 63, 95 in
+// each chunk) are cleared.
 func FuzzUnpadBackends(f *testing.F) {
-	f.Add(bytes.Repeat([]byte{0xff}, 127*3))
-	f.Add(bytes.Repeat([]byte{0x55}, 127*5))
-	f.Add(bytes.Repeat([]byte{0x00}, 127))
-
-	seq := make([]byte, 127*7)
-	for i := range seq {
-		seq[i] = byte(i * 13)
+	for _, n := range fuzzSeedSizes() {
+		f.Add(cryptoRandSeed(n * 127))
 	}
-	f.Add(seq)
 
 	impls := asmImpls()
 
@@ -442,7 +447,7 @@ func FuzzUnpadBackends(f *testing.F) {
 		expect := make([]byte, len(input))
 		unpadGo(expect, padded)
 
-		// Verify that unpadGo roundtrips correctly (sanity check)
+		// Sanity: padGo/unpadGo must roundtrip
 		if !bytes.Equal(input, expect) {
 			t.Fatalf("padGo/unpadGo roundtrip broken at byte %d", firstDiff(input, expect))
 		}
@@ -462,17 +467,12 @@ func FuzzUnpadBackends(f *testing.F) {
 	})
 }
 
-// FuzzRoundtripBackends verifies that pad then unpad produces the original input
-// for every supported backend pair.
+// FuzzRoundtripBackends verifies that pad then unpad produces the original
+// input for every supported backend pair.
 func FuzzRoundtripBackends(f *testing.F) {
-	f.Add(bytes.Repeat([]byte{0x01}, 127))
-	f.Add(bytes.Repeat([]byte{0x80}, 127*5))
-
-	seq := make([]byte, 127*10)
-	for i := range seq {
-		seq[i] = byte(i * 7)
+	for _, n := range fuzzSeedSizes() {
+		f.Add(cryptoRandSeed(n * 127))
 	}
-	f.Add(seq)
 
 	impls := asmImpls()
 
@@ -504,17 +504,11 @@ func FuzzRoundtripBackends(f *testing.F) {
 }
 
 // FuzzDispatchedPad verifies the dispatched pad/unpad (including NT threshold
-// switching) matches the pure Go implementation.
+// switching and MT dispatch) matches the pure Go implementation.
 func FuzzDispatchedPad(f *testing.F) {
-	f.Add(bytes.Repeat([]byte{0xff}, 127))
-	f.Add(bytes.Repeat([]byte{0x42}, 127*100))
-
-	// Seed across NT threshold (256KB padded = 2048 chunks)
-	big := make([]byte, 127*2100)
-	for i := range big {
-		big[i] = byte(i ^ (i >> 8))
+	for _, n := range fuzzSeedSizes() {
+		f.Add(cryptoRandSeed(n * 127))
 	}
-	f.Add(big)
 
 	f.Fuzz(func(t *testing.T, data []byte) {
 		chunks := len(data) / 127
