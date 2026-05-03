@@ -4,6 +4,7 @@ import (
 	"math/bits"
 	"runtime"
 	"sync"
+	"unsafe"
 
 	"github.com/filecoin-project/go-state-types/abi"
 )
@@ -24,6 +25,11 @@ func init() {
 }
 
 var MTTresh = uint64(512 << 10)
+
+var (
+	padImpl   = padGo
+	unpadImpl = unpadGo
+)
 
 func mtChunkCount(usz abi.PaddedPieceSize) uint64 {
 	threads := (uint64(usz)) / MTTresh
@@ -78,6 +84,7 @@ func mt(in, out []byte, padLen int, op func(unpadded, padded []byte)) {
 
 func Pad(in, out []byte) {
 	// Assumes len(in)%127==0 and len(out)%128==0
+	assertNoOverlap(in, out)
 	if len(out) > int(MTTresh) {
 		mt(in, out, len(out), pad)
 		return
@@ -87,10 +94,34 @@ func Pad(in, out []byte) {
 }
 
 func PadSingle(in, out []byte) {
+	assertNoOverlap(in, out)
 	pad(in, out)
 }
 
+func assertNoOverlap(in, out []byte) {
+	if slicesOverlap(in, out) {
+		panic("fr32: input and output buffers must not overlap")
+	}
+}
+
+func slicesOverlap(a, b []byte) bool {
+	if len(a) == 0 || len(b) == 0 {
+		return false
+	}
+
+	aStart := uintptr(unsafe.Pointer(&a[0]))
+	bStart := uintptr(unsafe.Pointer(&b[0]))
+	aEnd := aStart + uintptr(len(a))
+	bEnd := bStart + uintptr(len(b))
+
+	return aStart < bEnd && bStart < aEnd
+}
+
 func pad(in, out []byte) {
+	padImpl(in, out)
+}
+
+func padGo(in, out []byte) {
 	chunks := len(out) / 128
 	for chunk := 0; chunk < chunks; chunk++ {
 		inOff := chunk * 127
@@ -132,6 +163,7 @@ func pad(in, out []byte) {
 
 func Unpad(in []byte, out []byte) {
 	// Assumes len(in)%128==0 and len(out)%127==0
+	assertNoOverlap(in, out)
 	if len(in) > int(MTTresh) {
 		mt(out, in, len(in), unpad)
 		return
@@ -141,6 +173,10 @@ func Unpad(in []byte, out []byte) {
 }
 
 func unpad(out, in []byte) {
+	unpadImpl(out, in)
+}
+
+func unpadGo(out, in []byte) {
 	chunks := len(in) / 128
 	for chunk := 0; chunk < chunks; chunk++ {
 		inOffNext := chunk*128 + 1
