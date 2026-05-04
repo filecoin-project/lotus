@@ -120,7 +120,7 @@ func (pv1 *reverseProxyV1) checkEthBlockParam(ctx context.Context, blkParam etht
 		return pv1.gateway.checkTipSetHeight(head, abi.ChainEpoch(num))
 	}
 
-	// otherwise its a block hash
+	// otherwise it's a block hash
 	if blkParam.BlockHash != nil {
 		return pv1.checkBlkHash(ctx, *blkParam.BlockHash)
 	}

@@ -751,7 +751,7 @@ func (pv2 *reverseProxyV2) checkEthBlockParam(ctx context.Context, blkParam etht
 		return pv2.gateway.checkTipSetHeight(head, abi.ChainEpoch(num))
 	}
 
-	// otherwise its a block hash
+	// otherwise it's a block hash
 	if blkParam.BlockHash != nil {
 		return pv2.checkBlkHash(ctx, *blkParam.BlockHash)
 	}
