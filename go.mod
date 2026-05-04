@@ -67,7 +67,7 @@ require (
 	github.com/filecoin-project/specs-actors/v8 v8.0.1
 	github.com/filecoin-project/test-vectors/schema v0.0.7
 	github.com/gbrlsnchs/jwt/v3 v3.0.1
-	github.com/gdamore/tcell/v2 v2.13.8
+	github.com/gdamore/tcell/v2 v2.13.9
 	github.com/georgysavva/scany/v2 v2.1.4
 	github.com/go-openapi/spec v0.22.3
 	github.com/golang/mock v1.6.0
