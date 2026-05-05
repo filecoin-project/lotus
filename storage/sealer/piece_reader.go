@@ -153,7 +153,7 @@ func (p *pieceReader) readSeqReader(b []byte) (n int, err error) {
 	// 1. Get the backing reader into the correct position
 
 	// if the backing reader is ahead of the offset we want, or more than
-	//  MaxPieceReaderBurnBytes behind, reset the reader
+	// MaxPieceReaderBurnBytes behind, reset the reader
 	if p.r == nil || p.rAt > off || p.rAt+MaxPieceReaderBurnBytes < off {
 		if p.r != nil {
 			if err := p.r.Close(); err != nil {

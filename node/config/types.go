@@ -510,7 +510,7 @@ type Splitstore struct {
 	HotStoreMaxSpaceThreshold uint64
 
 	// Safety buffer to prevent moving GC from overflowing disk when HotStoreMaxSpaceTarget
-	// is set.  Moving GC will not occur when total moving size exceeds
+	// is set. Moving GC will not occur when total moving size exceeds
 	// HotstoreMaxSpaceTarget - HotstoreMaxSpaceSafetyBuffer
 	HotstoreMaxSpaceSafetyBuffer uint64
 }

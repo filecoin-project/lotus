@@ -26,7 +26,7 @@ type Unsealer interface {
 type PieceProvider interface {
 	// ReadPiece is used to read an Unsealed piece at the given offset and of the given size from a Sector
 	// pieceOffset + pieceSize specify piece bounds for unsealing (note: with SDR the entire sector will be unsealed by
-	//  default in most cases, but this might matter with future PoRep)
+	// default in most cases, but this might matter with future PoRep)
 	// startOffset is added to the pieceOffset to get the starting reader offset.
 	// The number of bytes that can be read is pieceSize-startOffset
 	ReadPiece(ctx context.Context, sector storiface.SectorRef, pieceOffset storiface.UnpaddedByteIndex, pieceSize abi.UnpaddedPieceSize, ticket abi.SealRandomness, unsealed cid.Cid) (storiface.Reader, bool, error)
@@ -169,7 +169,7 @@ var _ io.Closer = funcCloser(nil)
 // ReadPiece is used to read an Unsealed piece at the given offset and of the given size from a Sector
 // If an Unsealed sector file exists with the Piece Unsealed in it, we'll use that for the read.
 // Otherwise, we will Unseal a Sealed sector file for the given sector and read the Unsealed piece from it.
-// If we do NOT have an existing unsealed file  containing the given piece thus causing us to schedule an Unseal,
+// If we do NOT have an existing unsealed file containing the given piece thus causing us to schedule an Unseal,
 // the returned boolean parameter will be set to true.
 // If we have an existing unsealed file containing the given piece, the returned boolean will be set to false.
 func (p *pieceProvider) ReadPiece(ctx context.Context, sector storiface.SectorRef, pieceOffset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, unsealed cid.Cid) (storiface.Reader, bool, error) {
