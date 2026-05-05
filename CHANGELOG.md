@@ -37,6 +37,7 @@ This is the stable release of Lotus node v1.35.1, a patch release that extends E
 ## 👌 Improvements
 - fix(gateway): return `ErrFilterNotFound` error instead of empty result for unknown filter IDs in `EthGetFilterLogs` ([filecoin-project/lotus#13519](https://github.com/filecoin-project/lotus/pull/13519))
 - feat(basefee)!: premium-based base fee adjustment, activating in nv28 ([filecoin-project/lotus#13531](https://github.com/filecoin-project/lotus/pull/13531))
+- feat: estimate gas premium with mempool ([filecoin-project/lotus#13534](https://github.com/filecoin-project/lotus/pull/13534))
 - fix(eth): handle nil address in trace_filter for failed contract creates ([filecoin-project/lotus#13549](https://github.com/filecoin-project/lotus/pull/13549))
 - fix(gas): stricter bounds for GasEstimateGasPremium lookback ([filecoin-project/lotus#13555](https://github.com/filecoin-project/lotus/pull/13555))
 - fix(api): `StateSearchMsg` should respect `lookbackLimit` [filecoin-project/lotus#13562](https://github.com/filecoin-project/lotus/pull/13562)
