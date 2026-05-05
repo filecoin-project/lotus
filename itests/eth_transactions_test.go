@@ -820,13 +820,13 @@ func TestTraceFilter(t *testing.T) {
 
 	// Assert that initial transactions returned by the trace are valid
 	require.Len(t, traces, 3)
-	require.Equal(t, 1, traces[0].TransactionPosition)
+	require.Equal(t, 0, traces[0].TransactionPosition)
 	require.Equal(t, "call", traces[0].EthTrace.Type)
-	require.Equal(t, 1, traces[1].TransactionPosition)
+	require.Equal(t, 0, traces[1].TransactionPosition)
 	require.Equal(t, "call", traces[1].EthTrace.Type)
 
 	// our transaction will be in the third element of traces with the expected hash
-	require.Equal(t, 1, traces[2].TransactionPosition)
+	require.Equal(t, 0, traces[2].TransactionPosition)
 	require.Equal(t, hash, traces[2].TransactionHash)
 	require.Equal(t, "create", traces[2].EthTrace.Type)
 
@@ -846,7 +846,7 @@ func TestTraceFilter(t *testing.T) {
 
 	// we should only get our contract deploy transaction
 	require.Len(t, tracesAddressFilter, 1)
-	require.Equal(t, 1, tracesAddressFilter[0].TransactionPosition)
+	require.Equal(t, 0, tracesAddressFilter[0].TransactionPosition)
 	require.Equal(t, hash, tracesAddressFilter[0].TransactionHash)
 	require.Equal(t, "create", tracesAddressFilter[0].EthTrace.Type)
 
