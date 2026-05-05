@@ -15,6 +15,8 @@
 
 ## 🐛 Bug Fixes
 
+- Fix off-by-one in `transactionPosition` returned by `trace_block`, `trace_filter` and `trace_transaction`. Positions were 1-indexed; per the Ethereum trace API spec they are 0-indexed and must match the corresponding `transactionIndex` from `eth_getBlockByNumber`. ([filecoin-project/lotus#13610](https://github.com/filecoin-project/lotus/pull/13610))
+
 ## 👌 Improvements
 
 # UNRELEASED v1.36.0
