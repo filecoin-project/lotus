@@ -11,7 +11,12 @@
 
 ## ☢️ Upgrade Warnings ☢️
 
+- The Ethereum JSON-RPC (`Fevm.EnableEthRPC`), Actor events (`Events.EnableActorEventsAPI`), and `ChainIndexer` (`ChainIndexer.EnableIndexer`) subsystems now default to `true`. Operators upgrading from a prior version who did not explicitly set these options will find the `ChainIndexer` running on first start, writing to `${LOTUS_PATH}/chainindex` at roughly 200 MiB per day on mainnet (around 6 GiB per month, as of 2026). The index starts fresh at upgrade time (`ReconcileEmptyIndex` remains `false` by default) and only covers epochs from that point forward; see the [Chain Indexer Guide](./documentation/en/chain-indexer-overview-for-operators.md) for backfill procedures if historical coverage is needed. Operators whose nodes do not serve or consume Ethereum or events RPC (for example, Storage Providers' chain nodes that do not interact with smart-contract markets) can opt out by explicitly setting `Fevm.EnableEthRPC`, `Events.EnableActorEventsAPI`, and `ChainIndexer.EnableIndexer` all to `false`. ([filecoin-project/lotus#13586](https://github.com/filecoin-project/lotus/pull/13586))
+- **`ChainIndexer.GCRetentionEpochs` now defaults to `20160` (7 days on mainnet)**, previously `0` (GC disabled). **If you want indexed Ethereum or events history deeper than 7 days, set this explicitly**; use `0` for unbounded retention, or a positive value to match your chain-state retention. Existing nodes with accumulated history must set this *before* the first start under the new defaults; otherwise the next GC pass (within 4 hours) trims everything older than 7 days. ([filecoin-project/lotus#13586](https://github.com/filecoin-project/lotus/pull/13586))
+
 ## ⭐ New Features
+
+- feat(config): Lotus daemons now serve Ethereum JSON-RPC (`eth_*`) and Actor events out of the box; `Fevm.EnableEthRPC`, `Events.EnableActorEventsAPI`, and `ChainIndexer.EnableIndexer` all default to `true`. ([filecoin-project/lotus#13586](https://github.com/filecoin-project/lotus/pull/13586))
 
 ## 🐛 Bug Fixes
 
