@@ -15,6 +15,8 @@
 
 ## 🐛 Bug Fixes
 
+- fix(beacon): centralize `LOTUS_IGNORE_DRAND` guard so every code path through `DrandBeacon` short-circuits when the env var is set, not only `RandomSchedule` ([filecoin-project/lotus#13584](https://github.com/filecoin-project/lotus/pull/13584))
+
 ## 👌 Improvements
 
 # UNRELEASED v1.36.0
