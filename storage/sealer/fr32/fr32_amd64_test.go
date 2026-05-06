@@ -1,0 +1,555 @@
+//go:build amd64
+
+package fr32
+
+import (
+	"bytes"
+	cryptorand "crypto/rand"
+	"fmt"
+	"math/rand"
+	"sync"
+	"testing"
+
+	"golang.org/x/sys/cpu"
+
+	"github.com/filecoin-project/go-state-types/abi"
+)
+
+// fuzzSeedSizes returns chunk counts covering key boundaries: single chunk,
+// small multi-chunk, near-NT-threshold (256KB padded = 2048 chunks),
+// near-MT-threshold (512KB padded = 4096 chunks), and multi-MB.
+func fuzzSeedSizes() []int {
+	return []int{1, 3, 17, 64, 2047, 2048, 2049, 4095, 4096, 4097, 8192}
+}
+
+// cryptoRandSeed returns a crypto/rand-filled byte slice of the given size.
+func cryptoRandSeed(size int) []byte {
+	buf := make([]byte, size)
+	if _, err := cryptorand.Read(buf); err != nil {
+		panic(err)
+	}
+	return buf
+}
+
+type asmImpl struct {
+	name      string
+	pad       func([]byte, []byte)
+	unpad     func([]byte, []byte)
+	supported bool
+}
+
+func asmImpls() []asmImpl {
+	return []asmImpl{
+		{"go", padGo, unpadGo, true},
+		{"scalar", padScalar, unpadScalar, true},
+		{"scalar-nt-pad", padScalarNT, unpadScalar, true},
+		{"avx2", padAVX2, unpadAVX2, cpu.X86.HasAVX2},
+		{"avx512", padAVX512, unpadAVX512, cpu.X86.HasAVX512F && cpu.X86.HasAVX512BW},
+	}
+}
+
+func TestAsmImplementations(t *testing.T) {
+	inputs := [][]byte{
+		bytes.Repeat([]byte{0x00}, 127),
+		bytes.Repeat([]byte{0x01}, 127),
+		bytes.Repeat([]byte{0x80}, 127),
+		bytes.Repeat([]byte{0xff}, 127),
+		make([]byte, 127*17),
+	}
+	rand.New(rand.NewSource(1)).Read(inputs[len(inputs)-1])
+
+	for _, impl := range asmImpls() {
+		for _, input := range inputs {
+			t.Run(impl.name, func(t *testing.T) {
+				if !impl.supported {
+					t.Skip("CPU does not support this backend")
+				}
+
+				expect := make([]byte, len(input)/127*128)
+				padGo(input, expect)
+
+				padded := make([]byte, len(expect))
+				impl.pad(input, padded)
+				if !bytes.Equal(expect, padded) {
+					i := firstDiff(expect, padded)
+					t.Fatalf("pad mismatch at %d: expected %02x got %02x", i, expect[i], padded[i])
+				}
+
+				out := make([]byte, len(input))
+				impl.unpad(out, padded)
+				if !bytes.Equal(input, out) {
+					i := firstDiff(input, out)
+					t.Fatalf("unpad mismatch at %d: expected %02x got %02x", i, input[i], out[i])
+				}
+
+			})
+		}
+	}
+}
+
+// TestAsmImplementationsLarge verifies every backend against the pure Go
+// implementation for multi-chunk random data at various sizes, including
+// sizes that cross the NT store threshold.
+func TestAsmImplementationsLarge(t *testing.T) {
+	sizes := []struct {
+		name      string
+		numChunks int
+	}{
+		{"2_chunks", 2},
+		{"7_chunks", 7},
+		{"64_chunks", 64},
+		{"1000_chunks", 1000},         // ~127KB, below NT threshold
+		{"2048_chunks", 2048},         // ~256KB, at NT threshold boundary
+		{"2049_chunks", 2049},         // just above NT threshold
+		{"4096_chunks", 4096},         // ~512KB
+		{"8192_chunks_1M", 8192},      // ~1MB
+		{"131072_chunks_16M", 131072}, // ~16MB, exercises multithread path
+	}
+
+	rng := rand.New(rand.NewSource(42))
+
+	for _, impl := range asmImpls() {
+		for _, sz := range sizes {
+			t.Run(impl.name+"/"+sz.name, func(t *testing.T) {
+				if !impl.supported {
+					t.Skip("CPU does not support this backend")
+				}
+
+				unpaddedSize := sz.numChunks * 127
+				paddedSize := sz.numChunks * 128
+
+				input := make([]byte, unpaddedSize)
+				rng.Read(input)
+
+				// Reference: pure Go
+				expectPadded := make([]byte, paddedSize)
+				padGo(input, expectPadded)
+
+				// Test pad
+				gotPadded := make([]byte, paddedSize)
+				impl.pad(input, gotPadded)
+				if !bytes.Equal(expectPadded, gotPadded) {
+					i := firstDiff(expectPadded, gotPadded)
+					t.Fatalf("pad mismatch at byte %d (chunk %d offset %d): expected %02x got %02x",
+						i, i/128, i%128, expectPadded[i], gotPadded[i])
+				}
+
+				// Test unpad
+				gotUnpadded := make([]byte, unpaddedSize)
+				impl.unpad(gotUnpadded, gotPadded)
+				if !bytes.Equal(input, gotUnpadded) {
+					i := firstDiff(input, gotUnpadded)
+					t.Fatalf("unpad mismatch at byte %d (chunk %d offset %d): expected %02x got %02x",
+						i, i/127, i%127, input[i], gotUnpadded[i])
+				}
+			})
+		}
+	}
+}
+
+// TestAsmRoundtripRandom verifies pad then unpad produces the original data for
+// each backend with many random inputs.
+func TestAsmRoundtripRandom(t *testing.T) {
+	rng := rand.New(rand.NewSource(99))
+
+	for _, impl := range asmImpls() {
+		t.Run(impl.name, func(t *testing.T) {
+			if !impl.supported {
+				t.Skip("CPU does not support this backend")
+			}
+
+			for i := 0; i < 500; i++ {
+				// Random number of chunks 1..64
+				numChunks := rng.Intn(64) + 1
+				input := make([]byte, numChunks*127)
+				rng.Read(input)
+
+				padded := make([]byte, numChunks*128)
+				impl.pad(input, padded)
+
+				output := make([]byte, numChunks*127)
+				impl.unpad(output, padded)
+
+				if !bytes.Equal(input, output) {
+					i := firstDiff(input, output)
+					t.Fatalf("roundtrip mismatch at byte %d (chunk %d): expected %02x got %02x",
+						i, i/127, input[i], output[i])
+				}
+			}
+		})
+	}
+}
+
+// TestDispatchedPadMatchesGo verifies the default-dispatched Pad/Unpad
+// (which selects backends based on CPU and size thresholds) matches padGo.
+func TestDispatchedPadMatchesGo(t *testing.T) {
+	sizes := []int{
+		127,          // 1 chunk
+		127 * 17,     // 17 chunks
+		127 * 2048,   // at NT threshold
+		127 * 2049,   // just above
+		127 * 131072, // 16MB, multithread
+	}
+
+	rng := rand.New(rand.NewSource(77))
+
+	for _, unpaddedSize := range sizes {
+		paddedSize := unpaddedSize / 127 * 128
+		t.Run(fmt.Sprintf("%d_bytes", unpaddedSize), func(t *testing.T) {
+			input := make([]byte, unpaddedSize)
+			rng.Read(input)
+
+			expectPadded := make([]byte, paddedSize)
+			padGo(input, expectPadded)
+
+			gotPadded := make([]byte, paddedSize)
+			pad(input, gotPadded)
+			if !bytes.Equal(expectPadded, gotPadded) {
+				i := firstDiff(expectPadded, gotPadded)
+				t.Fatalf("dispatched pad mismatch at byte %d: expected %02x got %02x",
+					i, expectPadded[i], gotPadded[i])
+			}
+
+			expectUnpadded := make([]byte, unpaddedSize)
+			unpadGo(expectUnpadded, expectPadded)
+
+			gotUnpadded := make([]byte, unpaddedSize)
+			unpad(gotUnpadded, gotPadded)
+			if !bytes.Equal(expectUnpadded, gotUnpadded) {
+				i := firstDiff(expectUnpadded, gotUnpadded)
+				t.Fatalf("dispatched unpad mismatch at byte %d: expected %02x got %02x",
+					i, expectUnpadded[i], gotUnpadded[i])
+			}
+		})
+	}
+}
+
+func BenchmarkAsmPadMatrix(b *testing.B) {
+	benchPadMatrix(b, 128)
+}
+
+func BenchmarkAsmPadMatrix16M(b *testing.B) {
+	benchPadMatrix(b, 16<<20)
+}
+
+func BenchmarkAsmUnpadMatrix(b *testing.B) {
+	benchUnpadMatrix(b, 128)
+}
+
+func BenchmarkAsmUnpadMatrix16M(b *testing.B) {
+	benchUnpadMatrix(b, 16<<20)
+}
+
+func BenchmarkSequentialCopyBaseline(b *testing.B) {
+	benchSequentialCopyBaseline(b, 128)
+}
+
+func BenchmarkSequentialCopyBaseline16M(b *testing.B) {
+	benchSequentialCopyBaseline(b, 16<<20)
+}
+
+func benchPadMatrix(b *testing.B, paddedSize int) {
+	input := make([]byte, paddedSize/128*127)
+	out := make([]byte, paddedSize)
+	rand.New(rand.NewSource(2)).Read(input)
+
+	for _, impl := range asmImpls() {
+		b.Run(impl.name, func(b *testing.B) {
+			if !impl.supported {
+				b.Skip("CPU does not support this backend")
+			}
+			b.SetBytes(int64(len(input)))
+			b.ReportAllocs()
+			b.ResetTimer()
+			for b.Loop() {
+				impl.pad(input, out)
+			}
+		})
+	}
+}
+
+func benchUnpadMatrix(b *testing.B, paddedSize int) {
+	input := make([]byte, paddedSize/128*127)
+	padded := make([]byte, paddedSize)
+	out := make([]byte, len(input))
+	rand.New(rand.NewSource(3)).Read(input)
+	padGo(input, padded)
+
+	for _, impl := range asmImpls() {
+		b.Run(impl.name, func(b *testing.B) {
+			if !impl.supported {
+				b.Skip("CPU does not support this backend")
+			}
+			b.SetBytes(int64(len(input)))
+			b.ReportAllocs()
+			b.ResetTimer()
+			for b.Loop() {
+				impl.unpad(out, padded)
+			}
+		})
+	}
+}
+
+func benchSequentialCopyBaseline(b *testing.B, size int) {
+	src := make([]byte, size)
+	dst := make([]byte, size)
+	rand.New(rand.NewSource(4)).Read(src)
+
+	b.SetBytes(int64(size))
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		copy(dst, src)
+	}
+}
+
+// BenchmarkMTScaling sweeps thread count and per-thread chunk size for pad and
+// unpad at 16M and 1G to find the optimal dispatch parameters.
+func BenchmarkMTScaling(b *testing.B) {
+	for _, totalMB := range []int{16, 1024} {
+		totalPadded := totalMB << 20
+		totalUnpadded := totalPadded / 128 * 127
+
+		inPad := make([]byte, totalUnpadded)
+		outPad := make([]byte, totalPadded)
+		rand.New(rand.NewSource(5)).Read(inPad)
+
+		// Prepare padded data for unpad
+		padGo(inPad, outPad)
+		outUnpad := make([]byte, totalUnpadded)
+
+		for _, threads := range []int{4, 8, 16, 32, 64, 96, 128, 192} {
+			perThreadKB := totalPadded / threads / 1024
+			if perThreadKB == 0 {
+				continue
+			}
+
+			label := fmt.Sprintf("%dM/pad/t%d_%dKB", totalMB, threads, perThreadKB)
+			b.Run(label, func(b *testing.B) {
+				b.SetBytes(int64(totalUnpadded))
+				b.ReportAllocs()
+				b.ResetTimer()
+				for b.Loop() {
+					mtN(inPad, outPad, totalPadded, threads, pad)
+				}
+			})
+
+			label = fmt.Sprintf("%dM/unpad/t%d_%dKB", totalMB, threads, perThreadKB)
+			b.Run(label, func(b *testing.B) {
+				b.SetBytes(int64(totalUnpadded))
+				b.ReportAllocs()
+				b.ResetTimer()
+				for b.Loop() {
+					mtN(outUnpad, outPad, totalPadded, threads, unpad)
+				}
+			})
+		}
+	}
+}
+
+// mtN is mt() with an explicit thread count for benchmarking.
+func mtN(in, out []byte, padLen int, threads int, op func(unpadded, padded []byte)) {
+	chunksPerThread := (padLen / threads) / 128
+	if chunksPerThread == 0 {
+		chunksPerThread = 1
+	}
+	threadBytes := abi.PaddedPieceSize(chunksPerThread * 128)
+
+	var wg sync.WaitGroup
+	wg.Add(threads)
+
+	for i := 0; i < threads; i++ {
+		go func(thread int) {
+			defer wg.Done()
+
+			start := threadBytes * abi.PaddedPieceSize(thread)
+			end := start + threadBytes
+			if thread == threads-1 {
+				end = abi.PaddedPieceSize(padLen)
+			}
+			if start >= abi.PaddedPieceSize(padLen) {
+				return
+			}
+
+			op(in[start.Unpadded():end.Unpadded()], out[start:end])
+		}(i)
+	}
+	wg.Wait()
+}
+
+// --- Fuzz tests ---
+//
+// Each fuzz target takes arbitrary bytes from the fuzzer, trims to a valid
+// chunk-aligned length, and verifies that every supported asm backend produces
+// output identical to the pure Go reference implementation.
+//
+// Seeds include crypto/rand data at sizes spanning key thresholds: single
+// chunk, near-NT (256KB), near-MT (512KB), and multi-MB.
+
+// FuzzPadBackends verifies that all pad backends produce identical output to padGo.
+func FuzzPadBackends(f *testing.F) {
+	for _, n := range fuzzSeedSizes() {
+		f.Add(cryptoRandSeed(n * 127))
+	}
+
+	impls := asmImpls()
+
+	f.Fuzz(func(t *testing.T, data []byte) {
+		chunks := len(data) / 127
+		if chunks == 0 {
+			return
+		}
+		input := data[:chunks*127]
+		paddedLen := chunks * 128
+
+		expect := make([]byte, paddedLen)
+		padGo(input, expect)
+
+		for _, impl := range impls {
+			if !impl.supported {
+				continue
+			}
+			got := make([]byte, paddedLen)
+			impl.pad(input, got)
+			if !bytes.Equal(expect, got) {
+				i := firstDiff(expect, got)
+				t.Errorf("%s pad mismatch at byte %d (chunk %d, offset %d): expected %02x got %02x",
+					impl.name, i, i/128, i%128, expect[i], got[i])
+			}
+		}
+	})
+}
+
+// FuzzUnpadBackends verifies that all unpad backends produce identical output
+// to unpadGo. The fuzzer provides raw unpadded data which is first padded with
+// padGo to produce valid fr32-padded input, since unpad is only defined for
+// data where the fr32 zero-bit positions (bits 62-63 of bytes 31, 63, 95 in
+// each chunk) are cleared.
+func FuzzUnpadBackends(f *testing.F) {
+	for _, n := range fuzzSeedSizes() {
+		f.Add(cryptoRandSeed(n * 127))
+	}
+
+	impls := asmImpls()
+
+	f.Fuzz(func(t *testing.T, data []byte) {
+		chunks := len(data) / 127
+		if chunks == 0 {
+			return
+		}
+		input := data[:chunks*127]
+		paddedLen := chunks * 128
+
+		// Produce valid padded data via the Go reference
+		padded := make([]byte, paddedLen)
+		padGo(input, padded)
+
+		expect := make([]byte, len(input))
+		unpadGo(expect, padded)
+
+		// Sanity: padGo/unpadGo must roundtrip
+		if !bytes.Equal(input, expect) {
+			t.Fatalf("padGo/unpadGo roundtrip broken at byte %d", firstDiff(input, expect))
+		}
+
+		for _, impl := range impls {
+			if !impl.supported {
+				continue
+			}
+			got := make([]byte, len(input))
+			impl.unpad(got, padded)
+			if !bytes.Equal(expect, got) {
+				i := firstDiff(expect, got)
+				t.Errorf("%s unpad mismatch at byte %d (chunk %d, offset %d): expected %02x got %02x",
+					impl.name, i, i/127, i%127, expect[i], got[i])
+			}
+		}
+	})
+}
+
+// FuzzRoundtripBackends verifies that pad then unpad produces the original
+// input for every supported backend pair.
+func FuzzRoundtripBackends(f *testing.F) {
+	for _, n := range fuzzSeedSizes() {
+		f.Add(cryptoRandSeed(n * 127))
+	}
+
+	impls := asmImpls()
+
+	f.Fuzz(func(t *testing.T, data []byte) {
+		chunks := len(data) / 127
+		if chunks == 0 {
+			return
+		}
+		input := data[:chunks*127]
+		paddedLen := chunks * 128
+
+		for _, impl := range impls {
+			if !impl.supported {
+				continue
+			}
+			padded := make([]byte, paddedLen)
+			impl.pad(input, padded)
+
+			output := make([]byte, len(input))
+			impl.unpad(output, padded)
+
+			if !bytes.Equal(input, output) {
+				i := firstDiff(input, output)
+				t.Errorf("%s roundtrip mismatch at byte %d (chunk %d): expected %02x got %02x",
+					impl.name, i, i/127, input[i], output[i])
+			}
+		}
+	})
+}
+
+// FuzzDispatchedPad verifies the dispatched pad/unpad (including NT threshold
+// switching and MT dispatch) matches the pure Go implementation.
+func FuzzDispatchedPad(f *testing.F) {
+	for _, n := range fuzzSeedSizes() {
+		f.Add(cryptoRandSeed(n * 127))
+	}
+
+	f.Fuzz(func(t *testing.T, data []byte) {
+		chunks := len(data) / 127
+		if chunks == 0 {
+			return
+		}
+		input := data[:chunks*127]
+		paddedLen := chunks * 128
+
+		expectPadded := make([]byte, paddedLen)
+		padGo(input, expectPadded)
+
+		gotPadded := make([]byte, paddedLen)
+		pad(input, gotPadded)
+		if !bytes.Equal(expectPadded, gotPadded) {
+			i := firstDiff(expectPadded, gotPadded)
+			t.Errorf("dispatched pad mismatch at byte %d: expected %02x got %02x",
+				i, expectPadded[i], gotPadded[i])
+		}
+
+		expectUnpadded := make([]byte, len(input))
+		unpadGo(expectUnpadded, expectPadded)
+
+		gotUnpadded := make([]byte, len(input))
+		unpad(gotUnpadded, gotPadded)
+		if !bytes.Equal(expectUnpadded, gotUnpadded) {
+			i := firstDiff(expectUnpadded, gotUnpadded)
+			t.Errorf("dispatched unpad mismatch at byte %d: expected %02x got %02x",
+				i, expectUnpadded[i], gotUnpadded[i])
+		}
+	})
+}
+
+func firstDiff(a, b []byte) int {
+	for i := range a {
+		if a[i] != b[i] {
+			return i
+		}
+	}
+	if len(a) != len(b) {
+		return min(len(a), len(b))
+	}
+	return -1
+}
