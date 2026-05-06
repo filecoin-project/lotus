@@ -17,6 +17,8 @@
 
 ## 👌 Improvements
 
+* Silence libp2p config log spam ([filecoin-project/lotus#13612](https://github.com/filecoin-project/lotus/pull/13612))
+
 # UNRELEASED v1.36.0
 
 See https://github.com/filecoin-project/lotus/blob/release/v1.36.0/CHANGELOG.md
