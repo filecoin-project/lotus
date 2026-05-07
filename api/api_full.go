@@ -882,6 +882,7 @@ type FullNode interface {
 	NetVersion(ctx context.Context) (string, error)                                                                                                                  //perm:read
 	NetListening(ctx context.Context) (bool, error)                                                                                                                  //perm:read
 	EthProtocolVersion(ctx context.Context) (ethtypes.EthUint64, error)                                                                                              //perm:read
+	EthBaseFee(ctx context.Context) (ethtypes.EthBigInt, error)                                                                                                      //perm:read
 	EthGasPrice(ctx context.Context) (ethtypes.EthBigInt, error)                                                                                                     //perm:read
 	EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthFeeHistory, error)                                                                          //perm:read
 

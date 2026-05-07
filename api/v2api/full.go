@@ -359,6 +359,10 @@ type FullNode interface {
 
 	// EthGasAPI methods
 
+	// EthBaseFee retrieves the base fee of the next block.
+	// Maps to JSON-RPC method: "eth_baseFee".
+	EthBaseFee(ctx context.Context) (ethtypes.EthBigInt, error) //perm:read
+
 	// EthGasPrice retrieves the current gas price in the network.
 	// Maps to JSON-RPC method: "eth_gasPrice".
 	EthGasPrice(ctx context.Context) (ethtypes.EthBigInt, error) //perm:read

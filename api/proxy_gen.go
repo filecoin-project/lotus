@@ -188,6 +188,8 @@ type FullNodeMethods struct {
 
 	EthEstimateGas func(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthUint64, error) `perm:"read"`
 
+	EthBaseFee func(p0 context.Context) (ethtypes.EthBigInt, error) `perm:"read"`
+
 	EthFeeHistory func(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthFeeHistory, error) `perm:"read"`
 
 	EthGasPrice func(p0 context.Context) (ethtypes.EthBigInt, error) `perm:"read"`
@@ -663,6 +665,8 @@ type GatewayMethods struct {
 	EthChainId func(p0 context.Context) (ethtypes.EthUint64, error) ``
 
 	EthEstimateGas func(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthUint64, error) ``
+
+	EthBaseFee func(p0 context.Context) (ethtypes.EthBigInt, error) ``
 
 	EthFeeHistory func(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthFeeHistory, error) ``
 
@@ -1781,6 +1785,17 @@ func (s *FullNodeStruct) EthFeeHistory(p0 context.Context, p1 jsonrpc.RawParams)
 
 func (s *FullNodeStub) EthFeeHistory(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthFeeHistory, error) {
 	return *new(ethtypes.EthFeeHistory), ErrNotSupported
+}
+
+func (s *FullNodeStruct) EthBaseFee(p0 context.Context) (ethtypes.EthBigInt, error) {
+	if s.Internal.EthBaseFee == nil {
+		return *new(ethtypes.EthBigInt), ErrNotSupported
+	}
+	return s.Internal.EthBaseFee(p0)
+}
+
+func (s *FullNodeStub) EthBaseFee(p0 context.Context) (ethtypes.EthBigInt, error) {
+	return *new(ethtypes.EthBigInt), ErrNotSupported
 }
 
 func (s *FullNodeStruct) EthGasPrice(p0 context.Context) (ethtypes.EthBigInt, error) {
@@ -4333,6 +4348,17 @@ func (s *GatewayStruct) EthFeeHistory(p0 context.Context, p1 jsonrpc.RawParams) 
 
 func (s *GatewayStub) EthFeeHistory(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthFeeHistory, error) {
 	return *new(ethtypes.EthFeeHistory), ErrNotSupported
+}
+
+func (s *GatewayStruct) EthBaseFee(p0 context.Context) (ethtypes.EthBigInt, error) {
+	if s.Internal.EthBaseFee == nil {
+		return *new(ethtypes.EthBigInt), ErrNotSupported
+	}
+	return s.Internal.EthBaseFee(p0)
+}
+
+func (s *GatewayStub) EthBaseFee(p0 context.Context) (ethtypes.EthBigInt, error) {
+	return *new(ethtypes.EthBigInt), ErrNotSupported
 }
 
 func (s *GatewayStruct) EthGasPrice(p0 context.Context) (ethtypes.EthBigInt, error) {
