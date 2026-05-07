@@ -14,6 +14,7 @@
 ## ⭐ New Features
 
 ## 🐛 Bug Fixes
+- fix(api): trace transaction api returns the correct error ([filecoin-project/lotus#13614](https://github.com/filecoin-project/lotus/pull/13614))
 
 ## 👌 Improvements
 
