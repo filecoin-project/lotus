@@ -438,7 +438,7 @@ func traceIsEVMOrEAM(et *types.ExecutionTrace) bool {
 		return false
 	}
 	return builtinactors.IsEvmActor(et.InvokedActor.State.Code) ||
-		et.InvokedActor.Id != abi.ActorID(builtin.EthereumAddressManagerActorID)
+		et.InvokedActor.Id == abi.ActorID(builtin.EthereumAddressManagerActorID)
 }
 
 func traceErrMsg(et *types.ExecutionTrace) string {
