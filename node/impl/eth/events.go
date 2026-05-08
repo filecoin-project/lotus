@@ -316,21 +316,45 @@ func (e *ethEvents) EthUnsubscribe(ctx context.Context, id ethtypes.EthSubscript
 }
 
 func (e *ethEvents) GetEthLogsForBlockAndTransaction(ctx context.Context, blockHash *ethtypes.EthHash, txHash ethtypes.EthHash) ([]ethtypes.EthLog, error) {
-	ces, err := e.ethGetEventsForFilter(ctx, &ethtypes.EthFilterSpec{BlockHash: blockHash})
+	if e.eventFilterManager == nil {
+		return nil, api.ErrNotSupported
+	}
+	if e.chainIndexer == nil {
+		return nil, ErrChainIndexerDisabled
+	}
+	if blockHash == nil {
+		return nil, errors.New("block hash is required")
+	}
+
+	msgCid, err := e.chainIndexer.GetCidFromHash(ctx, txHash)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to resolve transaction hash: %w", err)
 	}
-	logs, err := ethFilterLogsFromEvents(ctx, ces, e.chainStore, e.stateManager)
+	if msgCid == cid.Undef {
+		return nil, nil
+	}
+
+	tipsetCid := blockHash.ToCid()
+	ts, err := e.chainStore.GetTipSetByCid(ctx, tipsetCid)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to get tipset by cid: %w", err)
 	}
-	var out []ethtypes.EthLog
-	for _, log := range logs {
-		if log.TransactionHash == txHash {
-			out = append(out, log)
-		}
+	if ts.Height() >= e.chainStore.GetHeaviestTipSet().Height() {
+		return nil, ErrEventsNotYetAvailable
 	}
-	return out, nil
+
+	ces, err := e.chainIndexer.GetEventsForFilter(ctx, &index.EventFilter{
+		MinHeight: -1,
+		MaxHeight: -1,
+		TipsetCid: tipsetCid,
+		MsgCid:    msgCid,
+		Codec:     multicodec.Raw,
+	})
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get events for filter from chain indexer: %w", err)
+	}
+
+	return ethFilterLogsFromEvents(ctx, ces, e.chainStore, e.stateManager)
 }
 
 // GC runs a garbage collection loop, deleting filters that have not been used within the ttl window
@@ -379,12 +403,12 @@ func (e *ethEvents) ethGetEventsForFilter(ctx context.Context, filterSpec *ethty
 			return nil, xerrors.Errorf("failed to get tipset by cid: %w", err)
 		}
 		if ts.Height() >= head.Height() {
-			return nil, xerrors.New("cannot ask for events for a tipset at or greater than head")
+			return nil, ErrEventsNotYetAvailable
 		}
 	}
 
 	if pf.minHeight >= head.Height() || pf.maxHeight >= head.Height() {
-		return nil, xerrors.New("cannot ask for events for a tipset at or greater than head")
+		return nil, ErrEventsNotYetAvailable
 	}
 
 	ef := &index.EventFilter{

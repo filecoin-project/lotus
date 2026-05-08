@@ -414,7 +414,14 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter)
 
 		var ces []*CollectedEvent
 		var currentID int64 = -1
+		var lastHeight abi.ChainEpoch = -1
+		var tipsetsSeen int
 		var ce *CollectedEvent
+
+		// Queries narrowed to a single message or tipset bypass MaxResults. For range queries,
+		// the cap is enforced as a hard limit once events come from more than one tipset; a
+		// range whose events all live in one tipset may exceed MaxResults.
+		enforceMaxResults := f.MaxResults > 0 && f.TipsetCid == cid.Undef && f.MsgCid == cid.Undef
 
 		for q.Next() {
 			select {
@@ -457,24 +464,27 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter)
 				return nil, xerrors.Errorf("read prefill row: %w", err)
 			}
 
-			// The query will return all entries for all matching events, so we need to keep track
-			// of which event we are dealing with and create a new one each time we see a new id
+			// The query returns all entries for all matching events; create a new CollectedEvent each time we see a new id.
 			if row.id != currentID {
-				// Unfortunately we can't easily incorporate the max results limit into the query due to the
-				// unpredictable number of rows caused by joins
-				// Error here to inform the caller that we've hit the max results limit
-				if f.MaxResults > 0 && len(ces) >= f.MaxResults {
-					return nil, ErrMaxResultsReached
+				rowHeight := abi.ChainEpoch(row.height)
+				if rowHeight != lastHeight {
+					tipsetsSeen++
+					lastHeight = rowHeight
 				}
 
 				currentID = row.id
 				ce = &CollectedEvent{
 					EventIdx: row.eventIndex,
 					Reverted: row.reverted,
-					Height:   abi.ChainEpoch(row.height),
+					Height:   rowHeight,
 					MsgIdx:   row.messageIndex,
 				}
 				ces = append(ces, ce)
+
+				// Hard cap once events span multiple tipsets; a single contributing tipset may bust.
+				if enforceMaxResults && tipsetsSeen > 1 && len(ces) > f.MaxResults {
+					return nil, ErrMaxResultsReached
+				}
 
 				if row.emitterAddr == nil {
 					ce.EmitterAddr, err = address.NewIDAddress(row.emitterID)
@@ -612,6 +622,11 @@ func makePrefillFilterQuery(f *EventFilter) ([]any, string, error) {
 		// unless asking for a specific tipset, we never want to see reverted historical events
 		clauses = append(clauses, "e.reverted=?")
 		values = append(values, false)
+	}
+
+	if f.MsgCid != cid.Undef {
+		clauses = append(clauses, "tm.message_cid=?")
+		values = append(values, f.MsgCid.Bytes())
 	}
 
 	if len(f.Addresses) > 0 {

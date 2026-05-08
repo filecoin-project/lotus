@@ -2,11 +2,11 @@ package eth
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
@@ -22,8 +22,9 @@ import (
 )
 
 var (
-	ErrChainIndexerDisabled = xerrors.New("chain indexer is disabled; please enable the ChainIndexer to use the ETH RPC API")
-	ErrModuleDisabled       = xerrors.New("module disabled, enable with Fevm.EnableEthRPC / LOTUS_FEVM_ENABLEETHRPC")
+	ErrChainIndexerDisabled  = errors.New("chain indexer is disabled; please enable the ChainIndexer to use the ETH RPC API")
+	ErrModuleDisabled        = errors.New("module disabled, enable with Fevm.EnableEthRPC / LOTUS_FEVM_ENABLEETHRPC")
+	ErrEventsNotYetAvailable = errors.New("events for the requested block are not yet available")
 )
 
 var log = logging.Logger("node/eth")
