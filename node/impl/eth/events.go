@@ -315,7 +315,7 @@ func (e *ethEvents) EthUnsubscribe(ctx context.Context, id ethtypes.EthSubscript
 	return true, nil
 }
 
-func (e *ethEvents) GetEthLogsForBlockAndTransaction(ctx context.Context, blockHash *ethtypes.EthHash, txHash ethtypes.EthHash) ([]ethtypes.EthLog, error) {
+func (e *ethEvents) GetEthLogsForBlockAndTransaction(ctx context.Context, blockHash *ethtypes.EthHash, msgCid cid.Cid) ([]ethtypes.EthLog, error) {
 	if e.eventFilterManager == nil {
 		return nil, api.ErrNotSupported
 	}
@@ -325,13 +325,8 @@ func (e *ethEvents) GetEthLogsForBlockAndTransaction(ctx context.Context, blockH
 	if blockHash == nil {
 		return nil, errors.New("block hash is required")
 	}
-
-	msgCid, err := e.chainIndexer.GetCidFromHash(ctx, txHash)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to resolve transaction hash: %w", err)
-	}
 	if msgCid == cid.Undef {
-		return nil, nil
+		return nil, errors.New("message cid is required")
 	}
 
 	tipsetCid := blockHash.ToCid()
