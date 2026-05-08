@@ -13,6 +13,8 @@
 
 ## ⭐ New Features
 
+- feat(eth): add `eth_baseFee` JSON-RPC method returning the base fee for the next block, matching geth behavior via `ComputeBaseFee` on the current tipset ([filecoin-project/lotus#13615](https://github.com/filecoin-project/lotus/pull/13615))
+
 ## 🐛 Bug Fixes
 
 ## 👌 Improvements
