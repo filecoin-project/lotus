@@ -10,15 +10,6 @@ import (
 	reflect "reflect"
 	time "time"
 
-	gomock "github.com/golang/mock/gomock"
-	uuid "github.com/google/uuid"
-	blocks "github.com/ipfs/go-block-format"
-	cid "github.com/ipfs/go-cid"
-	metrics "github.com/libp2p/go-libp2p/core/metrics"
-	network0 "github.com/libp2p/go-libp2p/core/network"
-	peer "github.com/libp2p/go-libp2p/core/peer"
-	protocol "github.com/libp2p/go-libp2p/core/protocol"
-
 	address "github.com/filecoin-project/go-address"
 	bitfield "github.com/filecoin-project/go-bitfield"
 	certs "github.com/filecoin-project/go-f3/certs"
@@ -35,7 +26,6 @@ import (
 	crypto "github.com/filecoin-project/go-state-types/crypto"
 	dline "github.com/filecoin-project/go-state-types/dline"
 	network "github.com/filecoin-project/go-state-types/network"
-
 	api "github.com/filecoin-project/lotus/api"
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	miner1 "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -43,6 +33,14 @@ import (
 	ethtypes "github.com/filecoin-project/lotus/chain/types/ethtypes"
 	alerting "github.com/filecoin-project/lotus/journal/alerting"
 	dtypes "github.com/filecoin-project/lotus/node/modules/dtypes"
+	gomock "github.com/golang/mock/gomock"
+	uuid "github.com/google/uuid"
+	blocks "github.com/ipfs/go-block-format"
+	cid "github.com/ipfs/go-cid"
+	metrics "github.com/libp2p/go-libp2p/core/metrics"
+	network0 "github.com/libp2p/go-libp2p/core/network"
+	peer "github.com/libp2p/go-libp2p/core/peer"
+	protocol "github.com/libp2p/go-libp2p/core/protocol"
 )
 
 // MockFullNode is a mock of FullNode interface.
@@ -613,6 +611,21 @@ func (m *MockFullNode) EthAddressToFilecoinAddress(arg0 context.Context, arg1 et
 func (mr *MockFullNodeMockRecorder) EthAddressToFilecoinAddress(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthAddressToFilecoinAddress", reflect.TypeOf((*MockFullNode)(nil).EthAddressToFilecoinAddress), arg0, arg1)
+}
+
+// EthBaseFee mocks base method.
+func (m *MockFullNode) EthBaseFee(arg0 context.Context) (ethtypes.EthBigInt, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthBaseFee", arg0)
+	ret0, _ := ret[0].(ethtypes.EthBigInt)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EthBaseFee indicates an expected call of EthBaseFee.
+func (mr *MockFullNodeMockRecorder) EthBaseFee(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthBaseFee", reflect.TypeOf((*MockFullNode)(nil).EthBaseFee), arg0)
 }
 
 // EthBlockNumber mocks base method.

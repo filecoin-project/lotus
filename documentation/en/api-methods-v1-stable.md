@@ -44,6 +44,7 @@
 * [Eth](#Eth)
   * [EthAccounts](#EthAccounts)
   * [EthAddressToFilecoinAddress](#EthAddressToFilecoinAddress)
+  * [EthBaseFee](#EthBaseFee)
   * [EthBlockNumber](#EthBlockNumber)
   * [EthCall](#EthCall)
   * [EthChainId](#EthChainId)
@@ -1921,6 +1922,15 @@ Inputs:
 ```
 
 Response: `"f01234"`
+
+### EthBaseFee
+
+
+Perms: read
+
+Inputs: `null`
+
+Response: `"0x0"`
 
 ### EthBlockNumber
 EthBlockNumber returns the height of the latest (heaviest) TipSet
