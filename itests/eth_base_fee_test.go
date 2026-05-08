@@ -28,8 +28,9 @@ func TestEthBaseFee(t *testing.T) {
 
 	ens.InterconnectAll().BeginMining(blockTime)
 
-	// Empty blocks drive the base fee down to the minimum within a few epochs.
-	client.WaitTillChain(ctx, kit.HeightAtLeast(10))
+	// Empty blocks decay the base fee by 12.5% per block.
+	// Starting from InitialBaseFee (100e6), the floor is reached after ~104 blocks.
+	client.WaitTillChain(ctx, kit.HeightAtLeast(110))
 
 	baseFee, err := client.EthBaseFee(ctx)
 	require.NoError(t, err)
