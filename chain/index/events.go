@@ -424,32 +424,42 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter)
 		var lastTsKey types.TipSetKey
 		var lastMsgCid cid.Cid
 
+		// Memoize emitter address; the flag handles invalidation when the source path
+		// switches between ID actor and delegated bytes.
+		var (
+			lastEmitterAddr      address.Address // address.Undef until first set
+			lastEmitterIsID      bool            // true if last was derived from emitterID
+			lastEmitterID        uint64          // valid when lastEmitterIsID
+			lastEmitterAddrBytes string          // valid when !lastEmitterIsID && set
+		)
+
 		// Queries narrowed to a single message or tipset bypass MaxResults. For range queries,
 		// the cap is enforced as a hard limit once events come from more than one tipset; a
 		// range whose events all live in one tipset may exceed MaxResults.
 		enforceMaxResults := f.MaxResults > 0 && f.TipsetCid == cid.Undef && f.MsgCid == cid.Undef
+
+		// Reused across rows; declaring inside the loop allocates fresh slots each iteration.
+		var row struct {
+			id           int64
+			height       uint64
+			tipsetKeyCid []byte
+			emitterID    uint64
+			emitterAddr  []byte
+			eventIndex   int
+			messageCid   []byte
+			messageIndex int
+			reverted     bool
+			flags        []byte
+			key          string
+			codec        uint64
+			value        []byte
+		}
 
 		for q.Next() {
 			select {
 			case <-ctx.Done():
 				return nil, ctx.Err()
 			default:
-			}
-
-			var row struct {
-				id           int64
-				height       uint64
-				tipsetKeyCid []byte
-				emitterID    uint64
-				emitterAddr  []byte
-				eventIndex   int
-				messageCid   []byte
-				messageIndex int
-				reverted     bool
-				flags        []byte
-				key          string
-				codec        uint64
-				value        []byte
 			}
 
 			if err := q.Scan(
@@ -493,16 +503,25 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter)
 				}
 
 				if row.emitterAddr == nil {
-					ce.EmitterAddr, err = address.NewIDAddress(row.emitterID)
-					if err != nil {
-						return nil, xerrors.Errorf("failed to parse emitter id: %w", err)
+					if !lastEmitterIsID || row.emitterID != lastEmitterID || lastEmitterAddr == address.Undef {
+						lastEmitterAddr, err = address.NewIDAddress(row.emitterID)
+						if err != nil {
+							return nil, xerrors.Errorf("failed to parse emitter id: %w", err)
+						}
+						lastEmitterIsID = true
+						lastEmitterID = row.emitterID
 					}
 				} else {
-					ce.EmitterAddr, err = address.NewFromBytes(row.emitterAddr)
-					if err != nil {
-						return nil, xerrors.Errorf("parse emitter addr: %w", err)
+					if lastEmitterIsID || string(row.emitterAddr) != lastEmitterAddrBytes || lastEmitterAddr == address.Undef {
+						lastEmitterAddr, err = address.NewFromBytes(row.emitterAddr)
+						if err != nil {
+							return nil, xerrors.Errorf("parse emitter addr: %w", err)
+						}
+						lastEmitterIsID = false
+						lastEmitterAddrBytes = string(row.emitterAddr)
 					}
 				}
+				ce.EmitterAddr = lastEmitterAddr
 
 				if string(row.tipsetKeyCid) != lastTsKeyCid.KeyString() {
 					lastTsKeyCid, err = cid.Cast(row.tipsetKeyCid)

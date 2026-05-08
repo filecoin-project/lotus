@@ -473,8 +473,9 @@ func ethFilterResultFromMessages(cs []*types.SignedMessage) (*ethtypes.EthFilter
 }
 
 func ethFilterLogsFromEvents(ctx context.Context, evs []*index.CollectedEvent, cs ChainStore, sa StateManager) ([]ethtypes.EthLog, error) {
-	// Skip re-resolving msg->txHash and tipset->blockHash on every emitted log. Per-result
-	// (msg, tipset) sets are small (bounded by messages-per-block * tipsets-per-range).
+	// Skip re-resolving msg->txHash, tipset->blockHash, and emitter->EthAddress on every
+	// emitted log. The set of distinct (msg, tipset, emitter) tuples in any filter result
+	// is small relative to the log count, so plain maps suffice.
 	txHashByMsg := make(map[cid.Cid]ethtypes.EthHash)
 	txHashFor := func(c cid.Cid) (ethtypes.EthHash, error) {
 		if h, ok := txHashByMsg[c]; ok {
@@ -505,7 +506,20 @@ func ethFilterLogsFromEvents(ctx context.Context, evs []*index.CollectedEvent, c
 		return h, nil
 	}
 
-	var logs []ethtypes.EthLog
+	ethAddrByEmitter := make(map[address.Address]ethtypes.EthAddress)
+	ethAddrFor := func(a address.Address) (ethtypes.EthAddress, error) {
+		if e, ok := ethAddrByEmitter[a]; ok {
+			return e, nil
+		}
+		e, err := ethtypes.EthAddressFromFilecoinAddress(a)
+		if err != nil {
+			return ethtypes.EthAddress{}, err
+		}
+		ethAddrByEmitter[a] = e
+		return e, nil
+	}
+
+	logs := make([]ethtypes.EthLog, 0, len(evs))
 	for _, ev := range evs {
 		log := ethtypes.EthLog{
 			Removed:          ev.Reverted,
@@ -523,7 +537,7 @@ func ethFilterLogsFromEvents(ctx context.Context, evs []*index.CollectedEvent, c
 			continue
 		}
 
-		log.Address, err = ethtypes.EthAddressFromFilecoinAddress(ev.EmitterAddr)
+		log.Address, err = ethAddrFor(ev.EmitterAddr)
 		if err != nil {
 			return nil, err
 		}
