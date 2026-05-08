@@ -473,6 +473,38 @@ func ethFilterResultFromMessages(cs []*types.SignedMessage) (*ethtypes.EthFilter
 }
 
 func ethFilterLogsFromEvents(ctx context.Context, evs []*index.CollectedEvent, cs ChainStore, sa StateManager) ([]ethtypes.EthLog, error) {
+	// Skip re-resolving msg->txHash and tipset->blockHash on every emitted log. Per-result
+	// (msg, tipset) sets are small (bounded by messages-per-block * tipsets-per-range).
+	txHashByMsg := make(map[cid.Cid]ethtypes.EthHash)
+	txHashFor := func(c cid.Cid) (ethtypes.EthHash, error) {
+		if h, ok := txHashByMsg[c]; ok {
+			return h, nil
+		}
+		h, err := ethTxHashFromMessageCid(ctx, c, cs)
+		if err != nil {
+			return ethtypes.EmptyEthHash, err
+		}
+		txHashByMsg[c] = h
+		return h, nil
+	}
+
+	blockHashByTipset := make(map[types.TipSetKey]ethtypes.EthHash)
+	blockHashFor := func(tsk types.TipSetKey) (ethtypes.EthHash, error) {
+		if h, ok := blockHashByTipset[tsk]; ok {
+			return h, nil
+		}
+		c, err := tsk.Cid()
+		if err != nil {
+			return ethtypes.EmptyEthHash, err
+		}
+		h, err := ethtypes.EthHashFromCid(c)
+		if err != nil {
+			return ethtypes.EmptyEthHash, err
+		}
+		blockHashByTipset[tsk] = h
+		return h, nil
+	}
+
 	var logs []ethtypes.EthLog
 	for _, ev := range evs {
 		log := ethtypes.EthLog{
@@ -496,7 +528,7 @@ func ethFilterLogsFromEvents(ctx context.Context, evs []*index.CollectedEvent, c
 			return nil, err
 		}
 
-		log.TransactionHash, err = ethTxHashFromMessageCid(ctx, ev.MsgCid, cs)
+		log.TransactionHash, err = txHashFor(ev.MsgCid)
 		if err != nil {
 			return nil, err
 		}
@@ -504,11 +536,8 @@ func ethFilterLogsFromEvents(ctx context.Context, evs []*index.CollectedEvent, c
 			// We've garbage collected the message, ignore the events and continue.
 			continue
 		}
-		c, err := ev.TipSetKey.Cid()
-		if err != nil {
-			return nil, err
-		}
-		log.BlockHash, err = ethtypes.EthHashFromCid(c)
+
+		log.BlockHash, err = blockHashFor(ev.TipSetKey)
 		if err != nil {
 			return nil, err
 		}

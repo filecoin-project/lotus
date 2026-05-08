@@ -418,6 +418,12 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter)
 		var tipsetsSeen int
 		var ce *CollectedEvent
 
+		// Rows are sorted by (height, message_index, event_index), so consecutive events
+		// usually share tipset_key_cid and message_cid; cache the last seen to skip work.
+		var lastTsKeyCid cid.Cid
+		var lastTsKey types.TipSetKey
+		var lastMsgCid cid.Cid
+
 		// Queries narrowed to a single message or tipset bypass MaxResults. For range queries,
 		// the cap is enforced as a hard limit once events come from more than one tipset; a
 		// range whose events all live in one tipset may exceed MaxResults.
@@ -498,25 +504,29 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter)
 					}
 				}
 
-				tsKeyCid, err := cid.Cast(row.tipsetKeyCid)
-				if err != nil {
-					return nil, xerrors.Errorf("parse tipsetkey cid: %w", err)
+				if string(row.tipsetKeyCid) != lastTsKeyCid.KeyString() {
+					lastTsKeyCid, err = cid.Cast(row.tipsetKeyCid)
+					if err != nil {
+						return nil, xerrors.Errorf("parse tipsetkey cid: %w", err)
+					}
+					ts, err := si.cs.GetTipSetByCid(ctx, lastTsKeyCid)
+					if err != nil {
+						return nil, xerrors.Errorf("get tipset by cid: %w", err)
+					}
+					if ts == nil {
+						return nil, xerrors.Errorf("failed to get tipset from cid: tipset is nil for cid: %s", lastTsKeyCid)
+					}
+					lastTsKey = ts.Key()
 				}
+				ce.TipSetKey = lastTsKey
 
-				ts, err := si.cs.GetTipSetByCid(ctx, tsKeyCid)
-				if err != nil {
-					return nil, xerrors.Errorf("get tipset by cid: %w", err)
+				if string(row.messageCid) != lastMsgCid.KeyString() {
+					lastMsgCid, err = cid.Cast(row.messageCid)
+					if err != nil {
+						return nil, xerrors.Errorf("parse message cid: %w", err)
+					}
 				}
-				if ts == nil {
-					return nil, xerrors.Errorf("failed to get tipset from cid: tipset is nil for cid: %s", tsKeyCid)
-				}
-
-				ce.TipSetKey = ts.Key()
-
-				ce.MsgCid, err = cid.Cast(row.messageCid)
-				if err != nil {
-					return nil, xerrors.Errorf("parse message cid: %w", err)
-				}
+				ce.MsgCid = lastMsgCid
 			}
 
 			ce.Entries = append(ce.Entries, types.EventEntry{
