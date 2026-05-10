@@ -20,6 +20,7 @@ import (
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
 const maxLookBackForWait = 120 // one hour of tipsets
@@ -73,11 +74,6 @@ func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *typ
 	if err != nil {
 		return xerrors.Errorf("failed to get rows affected by unreverting events for tipset: %w", err)
 	}
-	if rows > 0 {
-		log.Debugf("unreverted %d events for tipset: %s", rows, msgTs.Key())
-		return nil
-	}
-
 	if !si.cs.IsStoringEvents() {
 		return nil
 	}
@@ -86,6 +82,19 @@ func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *typ
 	if err != nil {
 		return xerrors.Errorf("failed to load executed messages: %w", err)
 	}
+	blockBloom := ethtypes.NewEmptyEthBloom()
+
+	if rows > 0 {
+		log.Debugf("unreverted %d events for tipset: %s", rows, msgTs.Key())
+		if err := si.buildTipsetBloom(ctx, ems, executionTs, blockBloom); err != nil {
+			return xerrors.Errorf("failed to build tipset bloom: %w", err)
+		}
+		if err := si.upsertTipsetBloom(ctx, tx, msgTsKeyCidBytes, msgTs.Height(), blockBloom); err != nil {
+			return xerrors.Errorf("failed to store tipset bloom: %w", err)
+		}
+		return nil
+	}
+
 	eventCount := 0
 	addressLookups := make(map[abi.ActorID]address.Address)
 
@@ -113,6 +122,8 @@ func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *typ
 				}
 				addressLookups[event.Emitter] = addr
 			}
+
+			addEventToBloom(blockBloom, addr, event.Entries)
 
 			var robustAddrbytes []byte
 			if addr.Protocol() == address.Delegated {
@@ -149,7 +160,91 @@ func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *typ
 		}
 	}
 
+	if err := si.upsertTipsetBloom(ctx, tx, msgTsKeyCidBytes, msgTs.Height(), blockBloom); err != nil {
+		return xerrors.Errorf("failed to store tipset bloom: %w", err)
+	}
+
 	return nil
+}
+
+func (si *SqliteIndexer) buildTipsetBloom(ctx context.Context, ems []executedMessage, executionTs *types.TipSet, blockBloom ethtypes.EthBytes) error {
+	addressLookups := make(map[abi.ActorID]address.Address)
+	for _, em := range ems {
+		for _, event := range em.evs {
+			addr, found := addressLookups[event.Emitter]
+			if !found {
+				var ok bool
+				addr, ok = si.actorToDelegatedAddresFunc(ctx, event.Emitter, executionTs)
+				if !ok {
+					continue
+				}
+				addressLookups[event.Emitter] = addr
+			}
+			addEventToBloom(blockBloom, addr, event.Entries)
+		}
+	}
+	return nil
+}
+
+func addEventToBloom(blockBloom ethtypes.EthBytes, emitterAddr address.Address, entries []types.EventEntry) {
+	ethAddr, err := ethtypes.EthAddressFromFilecoinAddress(emitterAddr)
+	if err != nil {
+		return
+	}
+
+	topics, ok := ethLogBloomTopics(entries)
+	if !ok {
+		return
+	}
+
+	ethtypes.EthBloomSet(blockBloom, ethAddr[:])
+	for _, topic := range topics {
+		ethtypes.EthBloomSet(blockBloom, topic[:])
+	}
+}
+
+func ethLogBloomTopics(entries []types.EventEntry) ([]ethtypes.EthHash, bool) {
+	var (
+		topicsFound      [4]bool
+		topicsFoundCount int
+		dataFound        bool
+	)
+	topics := make([]ethtypes.EthHash, 0, 4)
+	for _, entry := range entries {
+		if entry.Codec != cid.Raw {
+			return nil, false
+		}
+		if len(entry.Key) == 2 && "t1" <= entry.Key && entry.Key <= "t4" {
+			idx := int(entry.Key[1] - '1')
+			if len(entry.Value) != 32 {
+				return nil, false
+			}
+			if topicsFound[idx] {
+				return nil, false
+			}
+			topicsFound[idx] = true
+			topicsFoundCount++
+			for len(topics) <= idx {
+				topics = append(topics, ethtypes.EthHash{})
+			}
+			copy(topics[idx][:], entry.Value)
+		} else if entry.Key == "d" {
+			if dataFound {
+				return nil, false
+			}
+			dataFound = true
+		}
+	}
+
+	if len(topics) != topicsFoundCount {
+		return nil, false
+	}
+	return topics, true
+}
+
+func (si *SqliteIndexer) upsertTipsetBloom(ctx context.Context, tx *sql.Tx, tipsetKeyCid []byte, height abi.ChainEpoch, bloom ethtypes.EthBytes) error {
+	_, err := tx.Stmt(si.stmts.insertTipsetBloomStmt).ExecContext(ctx, tipsetKeyCid, height, []byte(bloom))
+	return err
 }
 
 func loadExecutedMessages(ctx context.Context, cs ChainStore, recomputeTipSetStateFunc RecomputeTipSetStateFunc, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {

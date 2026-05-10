@@ -34,6 +34,7 @@ type preparedStatements struct {
 	hasTipsetStmt                         *sql.Stmt
 	updateTipsetToNonRevertedStmt         *sql.Stmt
 	removeTipsetsBeforeHeightStmt         *sql.Stmt
+	removeTipsetBloomsBeforeHeightStmt    *sql.Stmt
 	removeEthHashesOlderThanStmt          *sql.Stmt
 	updateTipsetsToRevertedFromHeightStmt *sql.Stmt
 	updateEventsToRevertedFromHeightStmt  *sql.Stmt
@@ -47,6 +48,9 @@ type preparedStatements struct {
 	insertEventEntryStmt                  *sql.Stmt
 	getEventIdAndEmitterIdStmt            *sql.Stmt
 	getEventEntriesStmt                   *sql.Stmt
+	insertTipsetBloomStmt                 *sql.Stmt
+	getTipsetBloomStmt                    *sql.Stmt
+	removeTipsetBloomStmt                 *sql.Stmt
 
 	hasNullRoundAtHeightStmt         *sql.Stmt
 	getNonRevertedTipsetAtHeightStmt *sql.Stmt
@@ -108,7 +112,7 @@ func NewSqliteIndexer(path string, cs ChainStore, gcRetentionEpochs int64, recon
 		}
 	}()
 
-	err = sqlite.InitDb(ctx, "chain index", db, ddls, []sqlite.MigrationFunc{})
+	err = sqlite.InitDb(ctx, "chain index", db, ddls, migrations)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to init chain index db: %w", err)
 	}
@@ -379,6 +383,9 @@ func (si *SqliteIndexer) Revert(ctx context.Context, from, to *types.TipSet) err
 		// So we need to revert the events for the message inclusion tipset i.e. `to` tipset.
 		if _, err := tx.Stmt(si.stmts.updateEventsToRevertedStmt).ExecContext(ctx, eventTsKeyCid); err != nil {
 			return xerrors.Errorf("failed to revert events for tipset %s: %w", eventTsKeyCid, err)
+		}
+		if _, err := tx.Stmt(si.stmts.removeTipsetBloomStmt).ExecContext(ctx, eventTsKeyCid); err != nil {
+			return xerrors.Errorf("failed to remove tipset bloom for tipset %s: %w", eventTsKeyCid, err)
 		}
 
 		return nil

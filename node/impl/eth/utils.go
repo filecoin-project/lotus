@@ -23,6 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/index"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
@@ -41,7 +42,7 @@ func init() {
 	}
 }
 
-func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTxInfo bool, cs ChainStore, sm StateManager) (ethtypes.EthBlock, error) {
+func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTxInfo bool, cs ChainStore, sm StateManager, chainIndexer index.Indexer) (ethtypes.EthBlock, error) {
 	parentKeyCid, err := ts.Parents().Cid()
 	if err != nil {
 		return ethtypes.EthBlock{}, err
@@ -74,6 +75,7 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 	}
 
 	block := ethtypes.NewEthBlock(len(msgs) > 0, len(ts.Blocks()))
+	block.LogsBloom = newEthBlockLogsBloom(ctx, blkCid, chainIndexer)
 
 	gasUsed := int64(0)
 	for i, msg := range msgs {
@@ -117,6 +119,27 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 	block.BaseFeePerGas = ethtypes.EthBigInt{Int: ts.Blocks()[0].ParentBaseFee.Int}
 	block.GasUsed = ethtypes.EthUint64(gasUsed)
 	return block, nil
+}
+
+func newEthBlockLogsBloom(ctx context.Context, tipsetKeyCid cid.Cid, chainIndexer index.Indexer) ethtypes.EthBytes {
+	if chainIndexer == nil {
+		return ethtypes.NewFullEthBloom()
+	}
+
+	bloom, found, err := chainIndexer.GetTipsetBloom(ctx, tipsetKeyCid)
+	if err != nil {
+		log.Warnw("failed to read indexed tipset bloom", "tipset", tipsetKeyCid, "error", err)
+		return ethtypes.NewFullEthBloom()
+	}
+	if !found {
+		return ethtypes.NewFullEthBloom()
+	}
+	if len(bloom) != ethtypes.EthBloomSize/8 {
+		log.Warnw("indexed tipset bloom has invalid size", "tipset", tipsetKeyCid, "size", len(bloom))
+		return ethtypes.NewFullEthBloom()
+	}
+
+	return ethtypes.EthBytes(bloom)
 }
 
 func executeTipset(ctx context.Context, ts *types.TipSet, cs ChainStore, sm StateManager) (cid.Cid, []types.ChainMsg, []types.MessageReceipt, error) {

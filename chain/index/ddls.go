@@ -1,6 +1,11 @@
 package index
 
-import "database/sql"
+import (
+	"context"
+	"database/sql"
+
+	"github.com/filecoin-project/lotus/lib/sqlite"
+)
 
 const DefaultDbFilename = "chainindex.db"
 
@@ -42,6 +47,12 @@ var ddls = []string{
 		FOREIGN KEY (event_id) REFERENCES event(id) ON DELETE CASCADE
 	)`,
 
+	`CREATE TABLE IF NOT EXISTS tipset_bloom (
+		tipset_key_cid BLOB PRIMARY KEY,
+		height INTEGER NOT NULL,
+		bloom BLOB NOT NULL
+	)`,
+
 	`CREATE INDEX IF NOT EXISTS insertion_time_index ON eth_tx_hash (inserted_at)`,
 
 	`CREATE INDEX IF NOT EXISTS idx_message_cid ON tipset_message (message_cid)`,
@@ -53,6 +64,22 @@ var ddls = []string{
 	`CREATE INDEX IF NOT EXISTS idx_height ON tipset_message (height)`,
 
 	`CREATE INDEX IF NOT EXISTS event_entry_event_id ON event_entry(event_id)`,
+
+	`CREATE INDEX IF NOT EXISTS idx_tipset_bloom_height ON tipset_bloom (height)`,
+}
+
+var migrations = []sqlite.MigrationFunc{
+	func(ctx context.Context, tx *sql.Tx) error {
+		if _, err := tx.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS tipset_bloom (
+			tipset_key_cid BLOB PRIMARY KEY,
+			height INTEGER NOT NULL,
+			bloom BLOB NOT NULL
+		)`); err != nil {
+			return err
+		}
+		_, err := tx.ExecContext(ctx, `CREATE INDEX IF NOT EXISTS idx_tipset_bloom_height ON tipset_bloom (height)`)
+		return err
+	},
 }
 
 // preparedStatementMapping returns a map of fields of the preparedStatements struct to the SQL
@@ -77,6 +104,7 @@ func preparedStatementMapping(ps *preparedStatements) map[**sql.Stmt]string {
 		&ps.updateTipsetToNonRevertedStmt:             "UPDATE tipset_message SET reverted = 0 WHERE tipset_key_cid = ?",
 		&ps.updateTipsetToRevertedStmt:                "UPDATE tipset_message SET reverted = 1 WHERE tipset_key_cid = ?",
 		&ps.removeTipsetsBeforeHeightStmt:             "DELETE FROM tipset_message WHERE height < ?",
+		&ps.removeTipsetBloomsBeforeHeightStmt:        "DELETE FROM tipset_bloom WHERE height < ?",
 		&ps.removeEthHashesOlderThanStmt:              "DELETE FROM eth_tx_hash WHERE inserted_at < datetime('now', ?)",
 		&ps.updateTipsetsToRevertedFromHeightStmt:     "UPDATE tipset_message SET reverted = 1 WHERE height >= ?",
 		&ps.updateEventsToRevertedFromHeightStmt:      "UPDATE event SET reverted = 1 WHERE message_id IN (SELECT id FROM tipset_message WHERE height >= ?)",
@@ -89,5 +117,8 @@ func preparedStatementMapping(ps *preparedStatements) map[**sql.Stmt]string {
 		&ps.insertEventEntryStmt:                      "INSERT INTO event_entry (event_id, indexed, flags, key, codec, value) VALUES (?, ?, ?, ?, ?, ?)",
 		&ps.getEventEntriesStmt:                       "SELECT flags, key, codec, value FROM event_entry WHERE event_id=? ORDER BY _rowid_ ASC",
 		&ps.getEventIdAndEmitterIdStmt:                "SELECT e.id, e.emitter_id FROM event e JOIN tipset_message tm ON e.message_id = tm.id WHERE tm.tipset_key_cid = ? AND tm.message_cid = ? ORDER BY e.event_index ASC",
+		&ps.insertTipsetBloomStmt:                     "INSERT INTO tipset_bloom (tipset_key_cid, height, bloom) VALUES (?, ?, ?) ON CONFLICT (tipset_key_cid) DO UPDATE SET height = excluded.height, bloom = excluded.bloom",
+		&ps.getTipsetBloomStmt:                        "SELECT bloom FROM tipset_bloom WHERE tipset_key_cid = ? LIMIT 1",
+		&ps.removeTipsetBloomStmt:                     "DELETE FROM tipset_bloom WHERE tipset_key_cid = ?",
 	}
 }

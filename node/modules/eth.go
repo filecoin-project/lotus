@@ -243,7 +243,7 @@ func MakeEthEventsExtended(cfg config.EventsConfig, enableEthRPC bool) func(EthE
 			), nil
 		}
 
-		subscriptionManager = eth.NewEthSubscriptionManager(chainStore, stateManager)
+		subscriptionManager = eth.NewEthSubscriptionManager(chainStore, stateManager, chainIndexer)
 		filterStore = filter.NewMemFilterStore(cfg.MaxFilters)
 		tipSetFilterManager = &filter.TipSetFilterManager{MaxFilterResults: cfg.MaxFilterResults}
 		memPoolFilterManager = &filter.MemPoolFilterManager{MaxFilterResults: cfg.MaxFilterResults}
