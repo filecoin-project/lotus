@@ -433,11 +433,6 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter)
 			lastEmitterAddrBytes string          // valid when !lastEmitterIsID && set
 		)
 
-		// Queries narrowed to a single message or tipset bypass MaxResults. For range queries,
-		// the cap is enforced as a hard limit once events come from more than one tipset; a
-		// range whose events all live in one tipset may exceed MaxResults.
-		enforceMaxResults := f.MaxResults > 0 && f.TipsetCid == cid.Undef && f.MsgCid == cid.Undef
-
 		// Reused across rows; declaring inside the loop allocates fresh slots each iteration.
 		var row struct {
 			id           int64
@@ -497,8 +492,10 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter)
 				}
 				ces = append(ces, ce)
 
-				// Hard cap once events span multiple tipsets; a single contributing tipset may bust.
-				if enforceMaxResults && tipsetsSeen > 1 && len(ces) > f.MaxResults {
+				// MaxResults applies as a hard cap only once events span more than one tipset;
+				// a single contributing tipset may exceed the cap. Single-tipset and
+				// single-message queries naturally bypass this because tipsetsSeen stays at 1.
+				if f.MaxResults > 0 && tipsetsSeen > 1 && len(ces) > f.MaxResults {
 					return nil, ErrMaxResultsReached
 				}
 
