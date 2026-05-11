@@ -45,6 +45,7 @@ type EventFilter struct {
 	MinHeight abi.ChainEpoch // minimum epoch to apply filter or -1 if no minimum
 	MaxHeight abi.ChainEpoch // maximum epoch to apply filter or -1 if no maximum
 	TipsetCid cid.Cid
+	MsgCid    cid.Cid           // optional: restrict to events emitted by a single message; pairs with TipsetCid or a height range
 	Addresses []address.Address // list of actor addresses that are extpected to emit the event
 
 	KeysWithCodec map[string][]types.ActorEventBlock // map of key names to a list of alternate values that may match
