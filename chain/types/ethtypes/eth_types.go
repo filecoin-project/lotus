@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/multiformats/go-multihash"
 	mh "github.com/multiformats/go-multihash"
 	"github.com/multiformats/go-varint"
@@ -29,6 +30,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/must"
 )
+
+var log = logging.Logger("ethtypes")
 
 var expectedHashPrefix = cid.Prefix{
 	Version:  1,
@@ -683,6 +686,69 @@ func EthBloomSet(f EthBytes, data []byte) {
 		n := binary.BigEndian.Uint16(hash[i*2:]) % EthBloomSize
 		f[(EthBloomSize/8)-(n/8)-1] |= 1 << (n % 8)
 	}
+}
+
+func EthLogFromEvent(entries []types.EventEntry) (data []byte, topics []EthHash, ok bool) {
+	var (
+		topicsFound      [4]bool
+		topicsFoundCount int
+		dataFound        bool
+	)
+	// Topics must be non-nil, even if empty. So we might as well pre-allocate for 4 (the max).
+	topics = make([]EthHash, 0, 4)
+	for _, entry := range entries {
+		// Drop events with non-raw topics. Built-in actors emit CBOR, and anything else would be
+		// invalid anyway.
+		if entry.Codec != cid.Raw {
+			return nil, nil, false
+		}
+		// Check if the key is t1..t4
+		if len(entry.Key) == 2 && "t1" <= entry.Key && entry.Key <= "t4" {
+			// '1' - '1' == 0, etc.
+			idx := int(entry.Key[1] - '1')
+
+			// Drop events with mis-sized topics.
+			if len(entry.Value) != 32 {
+				log.Warnw("got an EVM event topic with an invalid size", "key", entry.Key, "size", len(entry.Value))
+				return nil, nil, false
+			}
+
+			// Drop events with duplicate topics.
+			if topicsFound[idx] {
+				log.Warnw("got a duplicate EVM event topic", "key", entry.Key)
+				return nil, nil, false
+			}
+			topicsFound[idx] = true
+			topicsFoundCount++
+
+			// Extend the topics array
+			for len(topics) <= idx {
+				topics = append(topics, EthHash{})
+			}
+			copy(topics[idx][:], entry.Value)
+		} else if entry.Key == "d" {
+			// Drop events with duplicate data fields.
+			if dataFound {
+				log.Warnw("got duplicate EVM event data")
+				return nil, nil, false
+			}
+
+			dataFound = true
+			data = entry.Value
+		} else {
+			// Skip entries we don't understand (makes it easier to extend things).
+			// But we warn for now because we don't expect them.
+			log.Warnw("unexpected event entry", "key", entry.Key)
+		}
+
+	}
+
+	// Drop events with skipped topics.
+	if len(topics) != topicsFoundCount {
+		log.Warnw("EVM event topic length mismatch", "expected", len(topics), "actual", topicsFoundCount)
+		return nil, nil, false
+	}
+	return data, topics, true
 }
 
 type EthFeeHistory struct {

@@ -74,6 +74,19 @@ func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *typ
 	if err != nil {
 		return xerrors.Errorf("failed to get rows affected by unreverting events for tipset: %w", err)
 	}
+	blockBloom := ethtypes.NewEmptyEthBloom()
+
+	if rows > 0 {
+		log.Debugf("unreverted %d events for tipset: %s", rows, msgTs.Key())
+		if err := si.buildTipsetBloomFromIndex(ctx, tx, msgTsKeyCidBytes, blockBloom); err != nil {
+			return xerrors.Errorf("failed to build tipset bloom from index: %w", err)
+		}
+		if err := si.upsertTipsetBloom(ctx, tx, msgTsKeyCidBytes, msgTs.Height(), blockBloom); err != nil {
+			return xerrors.Errorf("failed to store tipset bloom: %w", err)
+		}
+		return nil
+	}
+
 	if !si.cs.IsStoringEvents() {
 		return nil
 	}
@@ -82,82 +95,61 @@ func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *typ
 	if err != nil {
 		return xerrors.Errorf("failed to load executed messages: %w", err)
 	}
-	blockBloom := ethtypes.NewEmptyEthBloom()
-
-	if rows > 0 {
-		log.Debugf("unreverted %d events for tipset: %s", rows, msgTs.Key())
-		if err := si.buildTipsetBloom(ctx, ems, executionTs, blockBloom); err != nil {
-			return xerrors.Errorf("failed to build tipset bloom: %w", err)
-		}
-		if err := si.upsertTipsetBloom(ctx, tx, msgTsKeyCidBytes, msgTs.Height(), blockBloom); err != nil {
-			return xerrors.Errorf("failed to store tipset bloom: %w", err)
-		}
-		return nil
-	}
 
 	eventCount := 0
-	addressLookups := make(map[abi.ActorID]address.Address)
+	messageIDs := make(map[string]int64)
 
-	for _, em := range ems {
-		msgCidBytes := em.msg.Cid().Bytes()
-
-		// read message id for this message cid and tipset key cid
-		var messageID int64
-		if err := tx.Stmt(si.stmts.getMsgIdForMsgCidAndTipsetStmt).QueryRowContext(ctx, msgTsKeyCidBytes, msgCidBytes).Scan(&messageID); err != nil {
-			return xerrors.Errorf("failed to get message id for message cid and tipset key cid: %w", err)
-		}
-		if messageID == 0 {
-			return xerrors.Errorf("message id not found for message cid %s and tipset key cid %s", em.msg.Cid(), msgTs.Key())
-		}
-
-		// Insert events for this message
-		for _, event := range em.evs {
-			addr, found := addressLookups[event.Emitter]
-			if !found {
-				var ok bool
-				addr, ok = si.actorToDelegatedAddresFunc(ctx, event.Emitter, executionTs)
-				if !ok {
-					// not an address we will be able to match against
-					continue
-				}
-				addressLookups[event.Emitter] = addr
+	if err := si.forEachExecutedEvent(ctx, ems, executionTs, func(em executedMessage, event types.Event, addr address.Address) error {
+		msgCid := em.msg.Cid()
+		messageID, found := messageIDs[msgCid.KeyString()]
+		if !found {
+			msgCidBytes := msgCid.Bytes()
+			if err := tx.Stmt(si.stmts.getMsgIdForMsgCidAndTipsetStmt).QueryRowContext(ctx, msgTsKeyCidBytes, msgCidBytes).Scan(&messageID); err != nil {
+				return xerrors.Errorf("failed to get message id for message cid and tipset key cid: %w", err)
 			}
-
-			addEventToBloom(blockBloom, addr, event.Entries)
-
-			var robustAddrbytes []byte
-			if addr.Protocol() == address.Delegated {
-				robustAddrbytes = addr.Bytes()
+			if messageID == 0 {
+				return xerrors.Errorf("message id not found for message cid %s and tipset key cid %s", msgCid, msgTs.Key())
 			}
+			messageIDs[msgCid.KeyString()] = messageID
+		}
 
-			// Insert event into events table
-			eventResult, err := tx.Stmt(si.stmts.insertEventStmt).ExecContext(ctx, messageID, eventCount, uint64(event.Emitter), robustAddrbytes, 0)
+		addEventToBloom(blockBloom, addr, event.Entries)
+
+		var robustAddrbytes []byte
+		if addr.Protocol() == address.Delegated {
+			robustAddrbytes = addr.Bytes()
+		}
+
+		// Insert event into events table
+		eventResult, err := tx.Stmt(si.stmts.insertEventStmt).ExecContext(ctx, messageID, eventCount, uint64(event.Emitter), robustAddrbytes, 0)
+		if err != nil {
+			return xerrors.Errorf("failed to insert event: %w", err)
+		}
+
+		// Get the event_id of the inserted event
+		eventID, err := eventResult.LastInsertId()
+		if err != nil {
+			return xerrors.Errorf("failed to get last insert id for event: %w", err)
+		}
+
+		// Insert event entries
+		for _, entry := range event.Entries {
+			_, err := tx.Stmt(si.stmts.insertEventEntryStmt).ExecContext(ctx,
+				eventID,
+				isIndexedFlag(entry.Flags),
+				[]byte{entry.Flags},
+				entry.Key,
+				entry.Codec,
+				entry.Value,
+			)
 			if err != nil {
-				return xerrors.Errorf("failed to insert event: %w", err)
+				return xerrors.Errorf("failed to insert event entry: %w", err)
 			}
-
-			// Get the event_id of the inserted event
-			eventID, err := eventResult.LastInsertId()
-			if err != nil {
-				return xerrors.Errorf("failed to get last insert id for event: %w", err)
-			}
-
-			// Insert event entries
-			for _, entry := range event.Entries {
-				_, err := tx.Stmt(si.stmts.insertEventEntryStmt).ExecContext(ctx,
-					eventID,
-					isIndexedFlag(entry.Flags),
-					[]byte{entry.Flags},
-					entry.Key,
-					entry.Codec,
-					entry.Value,
-				)
-				if err != nil {
-					return xerrors.Errorf("failed to insert event entry: %w", err)
-				}
-			}
-			eventCount++
 		}
+		eventCount++
+		return nil
+	}); err != nil {
+		return err
 	}
 
 	if err := si.upsertTipsetBloom(ctx, tx, msgTsKeyCidBytes, msgTs.Height(), blockBloom); err != nil {
@@ -167,7 +159,7 @@ func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *typ
 	return nil
 }
 
-func (si *SqliteIndexer) buildTipsetBloom(ctx context.Context, ems []executedMessage, executionTs *types.TipSet, blockBloom ethtypes.EthBytes) error {
+func (si *SqliteIndexer) forEachExecutedEvent(ctx context.Context, ems []executedMessage, executionTs *types.TipSet, cb func(executedMessage, types.Event, address.Address) error) error {
 	addressLookups := make(map[abi.ActorID]address.Address)
 	for _, em := range ems {
 		for _, event := range em.evs {
@@ -180,19 +172,87 @@ func (si *SqliteIndexer) buildTipsetBloom(ctx context.Context, ems []executedMes
 				}
 				addressLookups[event.Emitter] = addr
 			}
-			addEventToBloom(blockBloom, addr, event.Entries)
+			if err := cb(em, event, addr); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
 }
 
+func (si *SqliteIndexer) buildTipsetBloomFromIndex(ctx context.Context, tx *sql.Tx, tipsetKeyCid []byte, blockBloom ethtypes.EthBytes) error {
+	rows, err := tx.Stmt(si.stmts.getTipsetEventEntriesStmt).QueryContext(ctx, tipsetKeyCid)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = rows.Close() }()
+
+	var currentID int64
+	var emitterAddr address.Address
+	var entries []types.EventEntry
+	flush := func() error {
+		if currentID == 0 {
+			return nil
+		}
+		addEventToBloom(blockBloom, emitterAddr, entries)
+		return nil
+	}
+
+	for rows.Next() {
+		var (
+			eventID          int64
+			emitterID        uint64
+			emitterAddrBytes []byte
+			flags            []byte
+			key              string
+			codec            uint64
+			value            []byte
+		)
+		if err := rows.Scan(&eventID, &emitterID, &emitterAddrBytes, &flags, &key, &codec, &value); err != nil {
+			return xerrors.Errorf("read indexed event row: %w", err)
+		}
+		if len(flags) == 0 {
+			return xerrors.Errorf("event entry for event %d has no flags", eventID)
+		}
+		if eventID != currentID {
+			if err := flush(); err != nil {
+				return err
+			}
+			currentID = eventID
+			entries = entries[:0]
+			if emitterAddrBytes == nil {
+				emitterAddr, err = address.NewIDAddress(emitterID)
+				if err != nil {
+					return xerrors.Errorf("failed to parse emitter id: %w", err)
+				}
+			} else {
+				emitterAddr, err = address.NewFromBytes(emitterAddrBytes)
+				if err != nil {
+					return xerrors.Errorf("parse emitter addr: %w", err)
+				}
+			}
+		}
+		entries = append(entries, types.EventEntry{
+			Flags: flags[0],
+			Key:   key,
+			Codec: codec,
+			Value: value,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return xerrors.Errorf("read indexed event rows: %w", err)
+	}
+	return flush()
+}
+
 func addEventToBloom(blockBloom ethtypes.EthBytes, emitterAddr address.Address, entries []types.EventEntry) {
 	ethAddr, err := ethtypes.EthAddressFromFilecoinAddress(emitterAddr)
 	if err != nil {
+		log.Warnw("failed to convert event emitter address to Ethereum address for bloom", "address", emitterAddr, "error", err)
 		return
 	}
 
-	topics, ok := ethLogBloomTopics(entries)
+	_, topics, ok := ethtypes.EthLogFromEvent(entries)
 	if !ok {
 		return
 	}
@@ -201,45 +261,6 @@ func addEventToBloom(blockBloom ethtypes.EthBytes, emitterAddr address.Address, 
 	for _, topic := range topics {
 		ethtypes.EthBloomSet(blockBloom, topic[:])
 	}
-}
-
-func ethLogBloomTopics(entries []types.EventEntry) ([]ethtypes.EthHash, bool) {
-	var (
-		topicsFound      [4]bool
-		topicsFoundCount int
-		dataFound        bool
-	)
-	topics := make([]ethtypes.EthHash, 0, 4)
-	for _, entry := range entries {
-		if entry.Codec != cid.Raw {
-			return nil, false
-		}
-		if len(entry.Key) == 2 && "t1" <= entry.Key && entry.Key <= "t4" {
-			idx := int(entry.Key[1] - '1')
-			if len(entry.Value) != 32 {
-				return nil, false
-			}
-			if topicsFound[idx] {
-				return nil, false
-			}
-			topicsFound[idx] = true
-			topicsFoundCount++
-			for len(topics) <= idx {
-				topics = append(topics, ethtypes.EthHash{})
-			}
-			copy(topics[idx][:], entry.Value)
-		} else if entry.Key == "d" {
-			if dataFound {
-				return nil, false
-			}
-			dataFound = true
-		}
-	}
-
-	if len(topics) != topicsFoundCount {
-		return nil, false
-	}
-	return topics, true
 }
 
 func (si *SqliteIndexer) upsertTipsetBloom(ctx context.Context, tx *sql.Tx, tipsetKeyCid []byte, height abi.ChainEpoch, bloom ethtypes.EthBytes) error {

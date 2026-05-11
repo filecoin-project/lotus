@@ -117,6 +117,7 @@ func preparedStatementMapping(ps *preparedStatements) map[**sql.Stmt]string {
 		&ps.insertEventEntryStmt:                      "INSERT INTO event_entry (event_id, indexed, flags, key, codec, value) VALUES (?, ?, ?, ?, ?, ?)",
 		&ps.getEventEntriesStmt:                       "SELECT flags, key, codec, value FROM event_entry WHERE event_id=? ORDER BY _rowid_ ASC",
 		&ps.getEventIdAndEmitterIdStmt:                "SELECT e.id, e.emitter_id FROM event e JOIN tipset_message tm ON e.message_id = tm.id WHERE tm.tipset_key_cid = ? AND tm.message_cid = ? ORDER BY e.event_index ASC",
+		&ps.getTipsetEventEntriesStmt:                 "SELECT e.id, e.emitter_id, e.emitter_addr, ee.flags, ee.key, ee.codec, ee.value FROM event e JOIN event_entry ee ON ee.event_id = e.id JOIN tipset_message tm ON e.message_id = tm.id WHERE tm.tipset_key_cid = ? AND tm.reverted = 0 AND e.reverted = 0 ORDER BY e.event_index ASC, ee._rowid_ ASC",
 		&ps.insertTipsetBloomStmt:                     "INSERT INTO tipset_bloom (tipset_key_cid, height, bloom) VALUES (?, ?, ?) ON CONFLICT (tipset_key_cid) DO UPDATE SET height = excluded.height, bloom = excluded.bloom",
 		&ps.getTipsetBloomStmt:                        "SELECT bloom FROM tipset_bloom WHERE tipset_key_cid = ? LIMIT 1",
 		&ps.removeTipsetBloomStmt:                     "DELETE FROM tipset_bloom WHERE tipset_key_cid = ?",
