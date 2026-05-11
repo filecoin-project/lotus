@@ -315,22 +315,41 @@ func (e *ethEvents) EthUnsubscribe(ctx context.Context, id ethtypes.EthSubscript
 	return true, nil
 }
 
-func (e *ethEvents) GetEthLogsForBlockAndTransaction(ctx context.Context, blockHash *ethtypes.EthHash, txHash ethtypes.EthHash) ([]ethtypes.EthLog, error) {
-	ces, err := e.ethGetEventsForFilter(ctx, &ethtypes.EthFilterSpec{BlockHash: blockHash})
+func (e *ethEvents) GetEthLogsForBlockAndTransaction(ctx context.Context, blockHash *ethtypes.EthHash, msgCid cid.Cid) ([]ethtypes.EthLog, error) {
+	if e.eventFilterManager == nil {
+		return nil, api.ErrNotSupported
+	}
+	if e.chainIndexer == nil {
+		return nil, ErrChainIndexerDisabled
+	}
+	if blockHash == nil {
+		return nil, errors.New("block hash is required")
+	}
+	if msgCid == cid.Undef {
+		return nil, errors.New("message cid is required")
+	}
+
+	tipsetCid := blockHash.ToCid()
+	ts, err := e.chainStore.GetTipSetByCid(ctx, tipsetCid)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to get tipset by cid: %w", err)
 	}
-	logs, err := ethFilterLogsFromEvents(ctx, ces, e.chainStore, e.stateManager)
+	if ts.Height() >= e.chainStore.GetHeaviestTipSet().Height() {
+		return nil, ErrEventsNotYetAvailable
+	}
+
+	ces, err := e.chainIndexer.GetEventsForFilter(ctx, &index.EventFilter{
+		MinHeight: -1,
+		MaxHeight: -1,
+		TipsetCid: tipsetCid,
+		MsgCid:    msgCid,
+		Codec:     multicodec.Raw,
+	})
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to get events for filter from chain indexer: %w", err)
 	}
-	var out []ethtypes.EthLog
-	for _, log := range logs {
-		if log.TransactionHash == txHash {
-			out = append(out, log)
-		}
-	}
-	return out, nil
+
+	return ethFilterLogsFromEvents(ctx, ces, e.chainStore, e.stateManager)
 }
 
 // GC runs a garbage collection loop, deleting filters that have not been used within the ttl window
@@ -379,12 +398,12 @@ func (e *ethEvents) ethGetEventsForFilter(ctx context.Context, filterSpec *ethty
 			return nil, xerrors.Errorf("failed to get tipset by cid: %w", err)
 		}
 		if ts.Height() >= head.Height() {
-			return nil, xerrors.New("cannot ask for events for a tipset at or greater than head")
+			return nil, ErrEventsNotYetAvailable
 		}
 	}
 
 	if pf.minHeight >= head.Height() || pf.maxHeight >= head.Height() {
-		return nil, xerrors.New("cannot ask for events for a tipset at or greater than head")
+		return nil, ErrEventsNotYetAvailable
 	}
 
 	ef := &index.EventFilter{
@@ -454,7 +473,53 @@ func ethFilterResultFromMessages(cs []*types.SignedMessage) (*ethtypes.EthFilter
 }
 
 func ethFilterLogsFromEvents(ctx context.Context, evs []*index.CollectedEvent, cs ChainStore, sa StateManager) ([]ethtypes.EthLog, error) {
-	var logs []ethtypes.EthLog
+	// Skip re-resolving msg->txHash, tipset->blockHash, and emitter->EthAddress on every
+	// emitted log. The set of distinct (msg, tipset, emitter) tuples in any filter result
+	// is small relative to the log count, so plain maps suffice.
+	txHashByMsg := make(map[cid.Cid]ethtypes.EthHash)
+	txHashFor := func(c cid.Cid) (ethtypes.EthHash, error) {
+		if h, ok := txHashByMsg[c]; ok {
+			return h, nil
+		}
+		h, err := ethTxHashFromMessageCid(ctx, c, cs)
+		if err != nil {
+			return ethtypes.EmptyEthHash, err
+		}
+		txHashByMsg[c] = h
+		return h, nil
+	}
+
+	blockHashByTipset := make(map[types.TipSetKey]ethtypes.EthHash)
+	blockHashFor := func(tsk types.TipSetKey) (ethtypes.EthHash, error) {
+		if h, ok := blockHashByTipset[tsk]; ok {
+			return h, nil
+		}
+		c, err := tsk.Cid()
+		if err != nil {
+			return ethtypes.EmptyEthHash, err
+		}
+		h, err := ethtypes.EthHashFromCid(c)
+		if err != nil {
+			return ethtypes.EmptyEthHash, err
+		}
+		blockHashByTipset[tsk] = h
+		return h, nil
+	}
+
+	ethAddrByEmitter := make(map[address.Address]ethtypes.EthAddress)
+	ethAddrFor := func(a address.Address) (ethtypes.EthAddress, error) {
+		if e, ok := ethAddrByEmitter[a]; ok {
+			return e, nil
+		}
+		e, err := ethtypes.EthAddressFromFilecoinAddress(a)
+		if err != nil {
+			return ethtypes.EthAddress{}, err
+		}
+		ethAddrByEmitter[a] = e
+		return e, nil
+	}
+
+	logs := make([]ethtypes.EthLog, 0, len(evs))
 	for _, ev := range evs {
 		log := ethtypes.EthLog{
 			Removed:          ev.Reverted,
@@ -472,12 +537,12 @@ func ethFilterLogsFromEvents(ctx context.Context, evs []*index.CollectedEvent, c
 			continue
 		}
 
-		log.Address, err = ethtypes.EthAddressFromFilecoinAddress(ev.EmitterAddr)
+		log.Address, err = ethAddrFor(ev.EmitterAddr)
 		if err != nil {
 			return nil, err
 		}
 
-		log.TransactionHash, err = ethTxHashFromMessageCid(ctx, ev.MsgCid, cs)
+		log.TransactionHash, err = txHashFor(ev.MsgCid)
 		if err != nil {
 			return nil, err
 		}
@@ -485,11 +550,8 @@ func ethFilterLogsFromEvents(ctx context.Context, evs []*index.CollectedEvent, c
 			// We've garbage collected the message, ignore the events and continue.
 			continue
 		}
-		c, err := ev.TipSetKey.Cid()
-		if err != nil {
-			return nil, err
-		}
-		log.BlockHash, err = ethtypes.EthHashFromCid(c)
+
+		log.BlockHash, err = blockHashFor(ev.TipSetKey)
 		if err != nil {
 			return nil, err
 		}
