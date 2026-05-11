@@ -2,11 +2,11 @@ package eth
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
@@ -22,8 +22,9 @@ import (
 )
 
 var (
-	ErrChainIndexerDisabled = xerrors.New("chain indexer is disabled; please enable the ChainIndexer to use the ETH RPC API")
-	ErrModuleDisabled       = xerrors.New("module disabled, enable with Fevm.EnableEthRPC / LOTUS_FEVM_ENABLEETHRPC")
+	ErrChainIndexerDisabled  = errors.New("chain indexer is disabled; please enable the ChainIndexer to use the ETH RPC API")
+	ErrModuleDisabled        = errors.New("module disabled, enable with Fevm.EnableEthRPC / LOTUS_FEVM_ENABLEETHRPC")
+	ErrEventsNotYetAvailable = errors.New("events for the requested block are not yet available")
 )
 
 var log = logging.Logger("node/eth")
@@ -131,9 +132,10 @@ type EthEventsAPI interface {
 type EthEventsInternal interface {
 	EthEventsAPI
 
-	// GetEthLogsForBlockAndTransaction returns the logs for a block and transaction, it is intended
-	// for internal use rather than being exposed via the JSON-RPC API.
-	GetEthLogsForBlockAndTransaction(ctx context.Context, blockHash *ethtypes.EthHash, txHash ethtypes.EthHash) ([]ethtypes.EthLog, error)
+	// GetEthLogsForBlockAndTransaction returns the logs for a single message in a tipset; the
+	// caller supplies the message CID directly so the indexer query is narrowed at the SQL
+	// level. Intended for internal use rather than being exposed via the JSON-RPC API.
+	GetEthLogsForBlockAndTransaction(ctx context.Context, blockHash *ethtypes.EthHash, msgCid cid.Cid) ([]ethtypes.EthLog, error)
 	// GC runs a garbage collection loop, deleting filters that have not been used within the ttl
 	// window, it is intended for internal use rather than being exposed via the JSON-RPC API.
 	GC(ctx context.Context, ttl time.Duration)

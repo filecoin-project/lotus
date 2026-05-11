@@ -628,8 +628,7 @@ func TestMaxFilterResults(t *testing.T) {
 	// Apply the indexer to process the tipsets
 	require.NoError(t, si.Apply(ctx, fakeTipSet1, fakeTipSet2))
 
-	// if we hit max results, we should get an error
-	// we have total 4 events
+	// All 4 events are in one tipset; MaxResults applies at tipset boundaries so no bisection occurs.
 	testCases := []struct {
 		name          string
 		maxResults    int
@@ -637,8 +636,8 @@ func TestMaxFilterResults(t *testing.T) {
 		expectedErr   string
 	}{
 		{name: "no max results", maxResults: 0, expectedCount: 4},
-		{name: "max result more that total events", maxResults: 10, expectedCount: 4},
-		{name: "max results less than total events", maxResults: 1, expectedErr: ErrMaxResultsReached.Error()},
+		{name: "max above total events", maxResults: 10, expectedCount: 4},
+		{name: "max below tipset event count returns full tipset", maxResults: 1, expectedCount: 4},
 	}
 
 	for _, tc := range testCases {
@@ -659,6 +658,294 @@ func TestMaxFilterResults(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TipsetCid-scoped queries return every event for the tipset regardless of MaxResults;
+// eth_getTransactionReceipt and eth_getLogs-by-block-hash depend on this.
+func TestMaxFilterResultsTipsetCidBypass(t *testing.T) {
+	ctx := context.Background()
+	seed := time.Now().UnixNano()
+	t.Logf("seed: %d", seed)
+	rng := pseudo.New(pseudo.NewSource(seed))
+	headHeight := abi.ChainEpoch(60)
+
+	si, _, cs := setupWithHeadIndexed(t, headHeight, rng)
+	t.Cleanup(func() { _ = si.Close() })
+
+	events := []types.Event{
+		*fakeEventWithCodec(abi.ActorID(1), []kv{{k: "type", v: []byte("a")}}, multicodec.Raw),
+		*fakeEventWithCodec(abi.ActorID(2), []kv{{k: "type", v: []byte("b")}}, multicodec.Raw),
+		*fakeEventWithCodec(abi.ActorID(3), []kv{{k: "type", v: []byte("c")}}, multicodec.Raw),
+		*fakeEventWithCodec(abi.ActorID(4), []kv{{k: "type", v: []byte("d")}}, multicodec.Raw),
+	}
+
+	fm := fakeMessage(address.TestAddress, address.TestAddress)
+	em1 := executedMessage{msg: fm, evs: events}
+
+	si.SetActorToDelegatedAddresFunc(func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool) {
+		idAddr, err := address.NewIDAddress(uint64(emitter))
+		if err != nil {
+			return address.Undef, false
+		}
+		return idAddr, true
+	})
+	si.setExecutedMessagesLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
+		return []executedMessage{em1}, nil
+	})
+
+	fakeTipSet1 := fakeTipSet(t, rng, 1, nil)
+	fakeTipSet2 := fakeTipSet(t, rng, 2, nil)
+	cs.SetTipsetByHeightAndKey(1, fakeTipSet1.Key(), fakeTipSet1)
+	cs.SetTipsetByHeightAndKey(2, fakeTipSet2.Key(), fakeTipSet2)
+	cs.SetTipSetByCid(t, fakeTipSet1)
+	cs.SetTipSetByCid(t, fakeTipSet2)
+	cs.SetMessagesForTipset(fakeTipSet1, []types.ChainMsg{fm})
+	require.NoError(t, si.Apply(ctx, fakeTipSet1, fakeTipSet2))
+
+	tsCid, err := fakeTipSet1.Key().Cid()
+	require.NoError(t, err)
+
+	f := &EventFilter{
+		TipsetCid:  tsCid,
+		MaxResults: 1,
+	}
+	ces, err := si.GetEventsForFilter(ctx, f)
+	require.NoError(t, err)
+	require.Equal(t, 4, len(ces))
+}
+
+// MaxResults is a hard cap once a range query's events span more than one tipset; a
+// single contributing tipset may exceed MaxResults but two or more tipsets together
+// must not.
+func TestMaxFilterResultsTipsetBoundary(t *testing.T) {
+	ctx := context.Background()
+	seed := time.Now().UnixNano()
+	t.Logf("seed: %d", seed)
+	rng := pseudo.New(pseudo.NewSource(seed))
+	headHeight := abi.ChainEpoch(60)
+
+	si, _, cs := setupWithHeadIndexed(t, headHeight, rng)
+	t.Cleanup(func() { _ = si.Close() })
+
+	si.SetActorToDelegatedAddresFunc(func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool) {
+		idAddr, err := address.NewIDAddress(uint64(emitter))
+		if err != nil {
+			return address.Undef, false
+		}
+		return idAddr, true
+	})
+
+	// Two events at height 1, two events at height 2.
+	fm1 := fakeMessage(address.TestAddress, address.TestAddress)
+	fm2 := fakeMessage(address.TestAddress, address.TestAddress)
+	fm2.Nonce = 198
+	em1 := executedMessage{
+		msg: fm1,
+		evs: []types.Event{
+			*fakeEventWithCodec(abi.ActorID(1), []kv{{k: "type", v: []byte("a")}}, multicodec.Raw),
+			*fakeEventWithCodec(abi.ActorID(2), []kv{{k: "type", v: []byte("b")}}, multicodec.Raw),
+		},
+	}
+	em2 := executedMessage{
+		msg: fm2,
+		evs: []types.Event{
+			*fakeEventWithCodec(abi.ActorID(3), []kv{{k: "type", v: []byte("c")}}, multicodec.Raw),
+			*fakeEventWithCodec(abi.ActorID(4), []kv{{k: "type", v: []byte("d")}}, multicodec.Raw),
+		},
+	}
+
+	fakeTipSet1 := fakeTipSet(t, rng, 1, nil)
+	fakeTipSet2 := fakeTipSet(t, rng, 2, nil)
+	fakeTipSet3 := fakeTipSet(t, rng, 3, nil)
+	cs.SetTipsetByHeightAndKey(1, fakeTipSet1.Key(), fakeTipSet1)
+	cs.SetTipsetByHeightAndKey(2, fakeTipSet2.Key(), fakeTipSet2)
+	cs.SetTipsetByHeightAndKey(3, fakeTipSet3.Key(), fakeTipSet3)
+	cs.SetTipSetByCid(t, fakeTipSet1)
+	cs.SetTipSetByCid(t, fakeTipSet2)
+	cs.SetTipSetByCid(t, fakeTipSet3)
+	cs.SetMessagesForTipset(fakeTipSet1, []types.ChainMsg{fm1})
+	cs.SetMessagesForTipset(fakeTipSet2, []types.ChainMsg{fm2})
+
+	si.setExecutedMessagesLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
+		return []executedMessage{em1}, nil
+	})
+	require.NoError(t, si.Apply(ctx, fakeTipSet1, fakeTipSet2))
+
+	si.setExecutedMessagesLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
+		return []executedMessage{em2}, nil
+	})
+	require.NoError(t, si.Apply(ctx, fakeTipSet2, fakeTipSet3))
+
+	testCases := []struct {
+		name          string
+		maxResults    int
+		expectedCount int
+		expectedErr   string
+	}{
+		{name: "no max results returns all", maxResults: 0, expectedCount: 4},
+		{name: "max above total returns all", maxResults: 10, expectedCount: 4},
+		{name: "max equal to total returns all", maxResults: 4, expectedCount: 4},
+		{name: "max below total fires", maxResults: 3, expectedErr: ErrMaxResultsReached.Error()},
+		{name: "max equal to first tipset count fires", maxResults: 2, expectedErr: ErrMaxResultsReached.Error()},
+		{name: "max below first tipset count fires", maxResults: 1, expectedErr: ErrMaxResultsReached.Error()},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			f := &EventFilter{
+				MinHeight:  1,
+				MaxHeight:  2,
+				MaxResults: tc.maxResults,
+			}
+
+			ces, err := si.GetEventsForFilter(ctx, f)
+			if tc.expectedErr != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tc.expectedErr)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tc.expectedCount, len(ces))
+			}
+		})
+	}
+}
+
+// MsgCid restricts filter queries to events emitted by a single message; this exercises
+// per-tx scoping for eth_getTransactionReceipt against a tipset that contains other
+// messages. The MsgCid path also bypasses MaxResults because the natural unit is the
+// message's events.
+func TestEventFilterMsgCid(t *testing.T) {
+	ctx := context.Background()
+	seed := time.Now().UnixNano()
+	t.Logf("seed: %d", seed)
+	rng := pseudo.New(pseudo.NewSource(seed))
+	headHeight := abi.ChainEpoch(60)
+
+	si, _, cs := setupWithHeadIndexed(t, headHeight, rng)
+	t.Cleanup(func() { _ = si.Close() })
+
+	si.SetActorToDelegatedAddresFunc(func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool) {
+		idAddr, err := address.NewIDAddress(uint64(emitter))
+		if err != nil {
+			return address.Undef, false
+		}
+		return idAddr, true
+	})
+
+	// Two messages in the same tipset; each emits two events.
+	fm1 := fakeMessage(address.TestAddress, address.TestAddress)
+	fm2 := fakeMessage(address.TestAddress, address.TestAddress)
+	fm2.Nonce = 198
+	em1 := executedMessage{
+		msg: fm1,
+		evs: []types.Event{
+			*fakeEventWithCodec(abi.ActorID(1), []kv{{k: "type", v: []byte("m1a")}}, multicodec.Raw),
+			*fakeEventWithCodec(abi.ActorID(2), []kv{{k: "type", v: []byte("m1b")}}, multicodec.Raw),
+		},
+	}
+	em2 := executedMessage{
+		msg: fm2,
+		evs: []types.Event{
+			*fakeEventWithCodec(abi.ActorID(3), []kv{{k: "type", v: []byte("m2a")}}, multicodec.Raw),
+			*fakeEventWithCodec(abi.ActorID(4), []kv{{k: "type", v: []byte("m2b")}}, multicodec.Raw),
+		},
+	}
+
+	fakeTipSet1 := fakeTipSet(t, rng, 1, nil)
+	fakeTipSet2 := fakeTipSet(t, rng, 2, nil)
+	cs.SetTipsetByHeightAndKey(1, fakeTipSet1.Key(), fakeTipSet1)
+	cs.SetTipsetByHeightAndKey(2, fakeTipSet2.Key(), fakeTipSet2)
+	cs.SetTipSetByCid(t, fakeTipSet1)
+	cs.SetTipSetByCid(t, fakeTipSet2)
+	cs.SetMessagesForTipset(fakeTipSet1, []types.ChainMsg{fm1, fm2})
+
+	si.setExecutedMessagesLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
+		return []executedMessage{em1, em2}, nil
+	})
+	require.NoError(t, si.Apply(ctx, fakeTipSet1, fakeTipSet2))
+
+	tsCid, err := fakeTipSet1.Key().Cid()
+	require.NoError(t, err)
+	otherTsCid, err := fakeTipSet2.Key().Cid()
+	require.NoError(t, err)
+
+	requireEventEmitter := func(t *testing.T, ces []*CollectedEvent, expectedEmitters ...abi.ActorID) {
+		t.Helper()
+		require.Equal(t, len(expectedEmitters), len(ces))
+		for i, ce := range ces {
+			expected, err := address.NewIDAddress(uint64(expectedEmitters[i]))
+			require.NoError(t, err)
+			require.Equal(t, expected, ce.EmitterAddr)
+		}
+	}
+
+	t.Run("MsgCid scopes to single message", func(t *testing.T) {
+		ces, err := si.GetEventsForFilter(ctx, &EventFilter{
+			MinHeight: 1,
+			MaxHeight: 1,
+			MsgCid:    fm1.Cid(),
+		})
+		require.NoError(t, err)
+		requireEventEmitter(t, ces, 1, 2)
+
+		ces, err = si.GetEventsForFilter(ctx, &EventFilter{
+			MinHeight: 1,
+			MaxHeight: 1,
+			MsgCid:    fm2.Cid(),
+		})
+		require.NoError(t, err)
+		requireEventEmitter(t, ces, 3, 4)
+	})
+
+	t.Run("without MsgCid returns all messages' events", func(t *testing.T) {
+		ces, err := si.GetEventsForFilter(ctx, &EventFilter{
+			MinHeight: 1,
+			MaxHeight: 1,
+		})
+		require.NoError(t, err)
+		requireEventEmitter(t, ces, 1, 2, 3, 4)
+	})
+
+	t.Run("MsgCid combined with matching TipsetCid", func(t *testing.T) {
+		ces, err := si.GetEventsForFilter(ctx, &EventFilter{
+			TipsetCid: tsCid,
+			MsgCid:    fm1.Cid(),
+		})
+		require.NoError(t, err)
+		requireEventEmitter(t, ces, 1, 2)
+	})
+
+	t.Run("MsgCid combined with mismatched TipsetCid returns nothing", func(t *testing.T) {
+		ces, err := si.GetEventsForFilter(ctx, &EventFilter{
+			TipsetCid: otherTsCid,
+			MsgCid:    fm1.Cid(),
+		})
+		require.NoError(t, err)
+		require.Empty(t, ces)
+	})
+
+	t.Run("MsgCid not present in tipset returns nothing", func(t *testing.T) {
+		// A valid CID the indexer has not seen as a message; the tipset is indexed so the
+		// filter just returns no rows.
+		ces, err := si.GetEventsForFilter(ctx, &EventFilter{
+			MinHeight: 1,
+			MaxHeight: 1,
+			MsgCid:    tsCid,
+		})
+		require.NoError(t, err)
+		require.Empty(t, ces)
+	})
+
+	t.Run("MsgCid bypasses MaxResults", func(t *testing.T) {
+		ces, err := si.GetEventsForFilter(ctx, &EventFilter{
+			MinHeight:  1,
+			MaxHeight:  1,
+			MsgCid:     fm1.Cid(),
+			MaxResults: 1,
+		})
+		require.NoError(t, err)
+		requireEventEmitter(t, ces, 1, 2)
+	})
 }
 
 func sortAddresses(addrs []address.Address) {
