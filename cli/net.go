@@ -275,6 +275,10 @@ var NetDisconnect = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
+		if cctx.NArg() == 0 {
+			return IncorrectNumArgsWithHint(cctx, "must provide at least one peerID")
+		}
+
 		ids := cctx.Args().Slice()
 		for _, id := range ids {
 			pid, err := peer.Decode(id)
@@ -399,8 +403,7 @@ var NetFindPeer = &cli.Command{
 	ArgsUsage: "[peerId]",
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 1 {
-			fmt.Println("Usage: findpeer [peer ID]")
-			return nil
+			return IncorrectNumArgsWithHint(cctx, "must provide a peerID")
 		}
 
 		pid, err := peer.Decode(cctx.Args().First())
@@ -585,6 +588,10 @@ var NetBlockAddPeer = &cli.Command{
 	Usage:     "Block a peer",
 	ArgsUsage: "<Peer> ...",
 	Action: func(cctx *cli.Context) error {
+		if cctx.NArg() < 1 {
+			return IncorrectNumArgs(cctx)
+		}
+
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -611,6 +618,10 @@ var NetBlockAddIP = &cli.Command{
 	Usage:     "Block an IP address",
 	ArgsUsage: "<IP> ...",
 	Action: func(cctx *cli.Context) error {
+		if cctx.NArg() < 1 {
+			return IncorrectNumArgs(cctx)
+		}
+
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -627,6 +638,10 @@ var NetBlockAddSubnet = &cli.Command{
 	Usage:     "Block an IP subnet",
 	ArgsUsage: "<CIDR> ...",
 	Action: func(cctx *cli.Context) error {
+		if cctx.NArg() < 1 {
+			return IncorrectNumArgs(cctx)
+		}
+
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -653,6 +668,10 @@ var NetBlockRemovePeer = &cli.Command{
 	Usage:     "Unblock a peer",
 	ArgsUsage: "<Peer> ...",
 	Action: func(cctx *cli.Context) error {
+		if cctx.NArg() < 1 {
+			return IncorrectNumArgs(cctx)
+		}
+
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -679,6 +698,10 @@ var NetBlockRemoveIP = &cli.Command{
 	Usage:     "Unblock an IP address",
 	ArgsUsage: "<IP> ...",
 	Action: func(cctx *cli.Context) error {
+		if cctx.NArg() < 1 {
+			return IncorrectNumArgs(cctx)
+		}
+
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -695,6 +718,10 @@ var NetBlockRemoveSubnet = &cli.Command{
 	Usage:     "Unblock an IP subnet",
 	ArgsUsage: "<CIDR> ...",
 	Action: func(cctx *cli.Context) error {
+		if cctx.NArg() < 1 {
+			return IncorrectNumArgs(cctx)
+		}
+
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
