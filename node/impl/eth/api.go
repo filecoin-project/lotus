@@ -100,6 +100,7 @@ type EthTraceAPI interface {
 // EthGas ------------------------------------------------------------------------------------------
 
 type EthGasAPI interface {
+	EthBaseFee(ctx context.Context) (ethtypes.EthBigInt, error)
 	EthGasPrice(ctx context.Context) (ethtypes.EthBigInt, error)
 	EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthFeeHistory, error)
 	EthMaxPriorityFeePerGas(ctx context.Context) (ethtypes.EthBigInt, error)
@@ -190,6 +191,7 @@ type ChainStore interface {
 
 	// Misc
 	ActorStore(ctx context.Context) adt.Store
+	ComputeBaseFee(ctx context.Context, ts *types.TipSet) (abi.TokenAmount, error)
 }
 
 // StateAPI is a minimal version of full.StateAPI

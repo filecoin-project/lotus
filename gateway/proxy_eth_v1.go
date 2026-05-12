@@ -342,6 +342,14 @@ func (pv1 *reverseProxyV1) EthProtocolVersion(ctx context.Context) (ethtypes.Eth
 	return pv1.server.EthProtocolVersion(ctx)
 }
 
+func (pv1 *reverseProxyV1) EthBaseFee(ctx context.Context) (ethtypes.EthBigInt, error) {
+	if err := pv1.gateway.limit(ctx, chainRateLimitTokens); err != nil {
+		return ethtypes.EthBigInt(big.Zero()), err
+	}
+
+	return pv1.server.EthBaseFee(ctx)
+}
+
 func (pv1 *reverseProxyV1) EthGasPrice(ctx context.Context) (ethtypes.EthBigInt, error) {
 	if err := pv1.gateway.limit(ctx, chainRateLimitTokens); err != nil {
 		return ethtypes.EthBigInt(big.Zero()), err

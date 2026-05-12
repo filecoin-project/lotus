@@ -55,6 +55,7 @@ type Gateway interface {
 	EthTraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error)
 	EthTraceTransaction(ctx context.Context, txHash string) ([]*ethtypes.EthTraceTransaction, error)
 	EthTraceFilter(ctx context.Context, filter ethtypes.EthTraceFilterCriteria) ([]*ethtypes.EthTraceFilterResult, error)
+	EthBaseFee(ctx context.Context) (ethtypes.EthBigInt, error)
 	EthGasPrice(ctx context.Context) (ethtypes.EthBigInt, error)
 	EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthFeeHistory, error)
 	EthMaxPriorityFeePerGas(ctx context.Context) (ethtypes.EthBigInt, error)

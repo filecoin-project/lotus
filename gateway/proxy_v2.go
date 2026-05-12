@@ -386,6 +386,14 @@ func (pv2 *reverseProxyV2) EthTraceFilter(ctx context.Context, filter ethtypes.E
 	return pv2.server.EthTraceFilter(ctx, filter)
 }
 
+func (pv2 *reverseProxyV2) EthBaseFee(ctx context.Context) (ethtypes.EthBigInt, error) {
+	if err := pv2.gateway.limit(ctx, chainRateLimitTokens); err != nil {
+		return ethtypes.EthBigInt(big.Zero()), err
+	}
+
+	return pv2.server.EthBaseFee(ctx)
+}
+
 func (pv2 *reverseProxyV2) EthGasPrice(ctx context.Context) (ethtypes.EthBigInt, error) {
 	if err := pv2.gateway.limit(ctx, chainRateLimitTokens); err != nil {
 		return ethtypes.EthBigInt(big.Zero()), err

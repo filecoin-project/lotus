@@ -32,6 +32,8 @@ type FullNodeMethods struct {
 
 	EthAddressToFilecoinAddress func(p0 context.Context, p1 ethtypes.EthAddress) (address.Address, error) `perm:"read"`
 
+	EthBaseFee func(p0 context.Context) (ethtypes.EthBigInt, error) `perm:"read"`
+
 	EthBlockNumber func(p0 context.Context) (ethtypes.EthUint64, error) `perm:"read"`
 
 	EthCall func(p0 context.Context, p1 ethtypes.EthCall, p2 ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) `perm:"read"`
@@ -146,6 +148,8 @@ type GatewayMethods struct {
 	EthAccounts func(p0 context.Context) ([]ethtypes.EthAddress, error) ``
 
 	EthAddressToFilecoinAddress func(p0 context.Context, p1 ethtypes.EthAddress) (address.Address, error) ``
+
+	EthBaseFee func(p0 context.Context) (ethtypes.EthBigInt, error) ``
 
 	EthBlockNumber func(p0 context.Context) (ethtypes.EthUint64, error) ``
 
@@ -289,6 +293,17 @@ func (s *FullNodeStruct) EthAddressToFilecoinAddress(p0 context.Context, p1 etht
 
 func (s *FullNodeStub) EthAddressToFilecoinAddress(p0 context.Context, p1 ethtypes.EthAddress) (address.Address, error) {
 	return *new(address.Address), ErrNotSupported
+}
+
+func (s *FullNodeStruct) EthBaseFee(p0 context.Context) (ethtypes.EthBigInt, error) {
+	if s.Internal.EthBaseFee == nil {
+		return *new(ethtypes.EthBigInt), ErrNotSupported
+	}
+	return s.Internal.EthBaseFee(p0)
+}
+
+func (s *FullNodeStub) EthBaseFee(p0 context.Context) (ethtypes.EthBigInt, error) {
+	return *new(ethtypes.EthBigInt), ErrNotSupported
 }
 
 func (s *FullNodeStruct) EthBlockNumber(p0 context.Context) (ethtypes.EthUint64, error) {
@@ -872,6 +887,17 @@ func (s *GatewayStruct) EthAddressToFilecoinAddress(p0 context.Context, p1 ethty
 
 func (s *GatewayStub) EthAddressToFilecoinAddress(p0 context.Context, p1 ethtypes.EthAddress) (address.Address, error) {
 	return *new(address.Address), ErrNotSupported
+}
+
+func (s *GatewayStruct) EthBaseFee(p0 context.Context) (ethtypes.EthBigInt, error) {
+	if s.Internal.EthBaseFee == nil {
+		return *new(ethtypes.EthBigInt), ErrNotSupported
+	}
+	return s.Internal.EthBaseFee(p0)
+}
+
+func (s *GatewayStub) EthBaseFee(p0 context.Context) (ethtypes.EthBigInt, error) {
+	return *new(ethtypes.EthBigInt), ErrNotSupported
 }
 
 func (s *GatewayStruct) EthBlockNumber(p0 context.Context) (ethtypes.EthUint64, error) {
