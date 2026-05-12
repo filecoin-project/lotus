@@ -1924,6 +1924,8 @@ Inputs:
 Response: `"f01234"`
 
 ### EthBaseFee
+EthBaseFee retrieves the base fee of the next block.
+Maps to JSON-RPC method: "eth_baseFee".
 
 
 Perms: read

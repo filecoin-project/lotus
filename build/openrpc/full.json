@@ -2717,7 +2717,7 @@
         {
             "name": "Filecoin.EthBaseFee",
             "description": "```go\nfunc (s *FullNodeStruct) EthBaseFee(p0 context.Context) (ethtypes.EthBigInt, error) {\n\tif s.Internal.EthBaseFee == nil {\n\t\treturn *new(ethtypes.EthBigInt), ErrNotSupported\n\t}\n\treturn s.Internal.EthBaseFee(p0)\n}\n```",
-            "summary": "",
+            "summary": "EthBaseFee retrieves the base fee of the next block.\nMaps to JSON-RPC method: \"eth_baseFee\".\n",
             "paramStructure": "by-position",
             "params": [],
             "result": {
