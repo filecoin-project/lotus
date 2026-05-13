@@ -15,6 +15,8 @@
 
 ## 🐛 Bug Fixes
 
+- fix(eth): return indexed block-level `logsBloom` for `eth_getBlockByHash` and `eth_getBlockByNumber` ([filecoin-project/lotus#13618](https://github.com/filecoin-project/lotus/pull/13618))
+
 ## 👌 Improvements
 
 # UNRELEASED v1.36.0
