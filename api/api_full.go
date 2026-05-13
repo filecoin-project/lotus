@@ -882,8 +882,11 @@ type FullNode interface {
 	NetVersion(ctx context.Context) (string, error)                                                                                                                  //perm:read
 	NetListening(ctx context.Context) (bool, error)                                                                                                                  //perm:read
 	EthProtocolVersion(ctx context.Context) (ethtypes.EthUint64, error)                                                                                              //perm:read
-	EthGasPrice(ctx context.Context) (ethtypes.EthBigInt, error)                                                                                                     //perm:read
-	EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthFeeHistory, error)                                                                          //perm:read
+	// EthBaseFee retrieves the base fee of the next block.
+	// Maps to JSON-RPC method: "eth_baseFee".
+	EthBaseFee(ctx context.Context) (ethtypes.EthBigInt, error)                             //perm:read
+	EthGasPrice(ctx context.Context) (ethtypes.EthBigInt, error)                            //perm:read
+	EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthFeeHistory, error) //perm:read
 
 	EthMaxPriorityFeePerGas(ctx context.Context) (ethtypes.EthBigInt, error)                                             //perm:read
 	EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthUint64, error)                                 //perm:read
