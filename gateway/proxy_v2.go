@@ -137,13 +137,6 @@ func (pv2 *reverseProxyV2) EthSendRawTransaction(ctx context.Context, rawTx etht
 	return pv2.server.EthSendRawTransactionUntrusted(ctx, rawTx)
 }
 
-func (pv2 *reverseProxyV2) EthSendRawTransactionUntrusted(ctx context.Context, rawTx ethtypes.EthBytes) (ethtypes.EthHash, error) {
-	if err := pv2.gateway.limit(ctx, stateRateLimitTokens); err != nil {
-		return ethtypes.EthHash{}, err
-	}
-	return pv2.server.EthSendRawTransactionUntrusted(ctx, rawTx)
-}
-
 func (pv2 *reverseProxyV2) EthBlockNumber(ctx context.Context) (ethtypes.EthUint64, error) {
 	if err := pv2.gateway.limit(ctx, chainRateLimitTokens); err != nil {
 		return 0, err
@@ -201,13 +194,6 @@ func (pv2 *reverseProxyV2) EthGetTransactionByHash(ctx context.Context, txHash *
 		return nil, err
 	}
 	return pv2.server.EthGetTransactionByHashLimited(ctx, txHash, pv2.gateway.maxMessageLookbackEpochs)
-}
-
-func (pv2 *reverseProxyV2) EthGetTransactionByHashLimited(ctx context.Context, txHash *ethtypes.EthHash, limit abi.ChainEpoch) (*ethtypes.EthTx, error) {
-	if err := pv2.gateway.limit(ctx, stateRateLimitTokens); err != nil {
-		return nil, err
-	}
-	return pv2.server.EthGetTransactionByHashLimited(ctx, txHash, limit)
 }
 
 func (pv2 *reverseProxyV2) EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash ethtypes.EthHash, txIndex ethtypes.EthUint64) (*ethtypes.EthTx, error) {
@@ -269,25 +255,11 @@ func (pv2 *reverseProxyV2) EthGetTransactionReceipt(ctx context.Context, txHash 
 	return pv2.server.EthGetTransactionReceiptLimited(ctx, txHash, pv2.gateway.maxMessageLookbackEpochs)
 }
 
-func (pv2 *reverseProxyV2) EthGetTransactionReceiptLimited(ctx context.Context, txHash ethtypes.EthHash, limit abi.ChainEpoch) (*ethtypes.EthTxReceipt, error) {
-	if err := pv2.gateway.limit(ctx, stateRateLimitTokens); err != nil {
-		return nil, err
-	}
-	return pv2.server.EthGetTransactionReceiptLimited(ctx, txHash, limit)
-}
-
 func (pv2 *reverseProxyV2) EthGetBlockReceipts(ctx context.Context, blkParam ethtypes.EthBlockNumberOrHash) ([]*ethtypes.EthTxReceipt, error) {
 	if err := pv2.gateway.limit(ctx, stateRateLimitTokens); err != nil {
 		return nil, err
 	}
 	return pv2.server.EthGetBlockReceiptsLimited(ctx, blkParam, pv2.gateway.maxMessageLookbackEpochs)
-}
-
-func (pv2 *reverseProxyV2) EthGetBlockReceiptsLimited(ctx context.Context, blkParam ethtypes.EthBlockNumberOrHash, limit abi.ChainEpoch) ([]*ethtypes.EthTxReceipt, error) {
-	if err := pv2.gateway.limit(ctx, stateRateLimitTokens); err != nil {
-		return nil, err
-	}
-	return pv2.server.EthGetBlockReceiptsLimited(ctx, blkParam, limit)
 }
 
 func (pv2 *reverseProxyV2) EthGetCode(ctx context.Context, address ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {
