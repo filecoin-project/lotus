@@ -201,6 +201,14 @@ func BuiltinDrandConfig() dtypes.DrandSchedule {
 }
 
 func RandomSchedule(lc fx.Lifecycle, mctx helpers.MetricsCtx, p RandomBeaconParams, _ dtypes.AfterGenesisSet) (beacon.Schedule, error) {
+	// When LOTUS_IGNORE_DRAND is set, return a mock beacon so the node never
+	// dials external drand servers. Useful for hermetic / network-isolated
+	// test environments and consistent with the per-method guards in
+	// DrandBeacon.Entry and DrandBeacon.VerifyEntry.
+	if os.Getenv("LOTUS_IGNORE_DRAND") == "_yes_" {
+		log.Debugw("LOTUS_IGNORE_DRAND: returning mock beacon schedule")
+		return beacon.Schedule{{Start: 0, Beacon: beacon.NewMockBeacon(time.Duration(buildconstants.BlockDelaySecs) * time.Second)}}, nil
+	}
 	gen, err := p.Cs.GetGenesis(helpers.LifecycleCtx(mctx, lc))
 	if err != nil {
 		return nil, err

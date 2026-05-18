@@ -22,6 +22,8 @@
 - fix(eth): `eth_getTransactionReceipt` no longer fails when another transaction in the same block emits a large number of events. `MaxFilterResults` now caps only multi-tipset event queries; single-block calls (`eth_getLogs` with `BlockHash`, `eth_getBlockReceipts`, `eth_getTransactionReceipt`) bypass it. Public RPC operators should apply rate and response-size limits at the proxy layer for these calls; a single response can be large when a block contains log-heavy transactions ([filecoin-project/lotus#13617](https://github.com/filecoin-project/lotus/pull/13617))
 - fix(gateway): align v2 RPC surface (`/rpc/v2`) with v1; remove `*Limited` and `*Untrusted` eth method variants ([filecoin-project/lotus#13628](https://github.com/filecoin-project/lotus/pull/13628))
 
+- fix(beacon): centralize `LOTUS_IGNORE_DRAND` guard so every code path through `DrandBeacon` short-circuits when the env var is set, not only `RandomSchedule` ([filecoin-project/lotus#13584](https://github.com/filecoin-project/lotus/pull/13584))
+
 ## 👌 Improvements
 
 * Silence libp2p config log spam ([filecoin-project/lotus#13612](https://github.com/filecoin-project/lotus/pull/13612))
