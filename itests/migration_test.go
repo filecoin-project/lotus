@@ -1308,9 +1308,9 @@ func TestMigrationTeepTockFix(t *testing.T) {
 	kit.QuietMiningLogs()
 
 	var (
-		nv25Epoch    abi.ChainEpoch = 100
-		nv26Epoch    abi.ChainEpoch = nv25Epoch + 100
-		teepFixEpoch abi.ChainEpoch = nv26Epoch + 100
+		nv25Epoch    = abi.ChainEpoch(100)
+		nv26Epoch    = nv25Epoch + 100
+		teepFixEpoch = nv26Epoch + 100
 	)
 	const networkName = "testing-fake-proofs"
 	buildconstants.UpgradeTockFixHeight = teepFixEpoch // needed to be set for migration to run

@@ -882,8 +882,8 @@ func (m *Sealing) tryGetDealSector(ctx context.Context, sp abi.RegisteredSealPro
 		maxUpgrading = cfg.MaxUpgradingSectors
 	}
 
-	canCreate := cfg.MakeNewSectorForDeals && !(cfg.MaxSealingSectorsForDeals > 0 && m.stats.curSealing() >= cfg.MaxSealingSectorsForDeals)
-	canUpgrade := !(maxUpgrading > 0 && m.stats.curSealing() >= maxUpgrading)
+	canCreate := cfg.MakeNewSectorForDeals && (cfg.MaxSealingSectorsForDeals <= 0 || m.stats.curSealing() < cfg.MaxSealingSectorsForDeals)
+	canUpgrade := maxUpgrading <= 0 || m.stats.curSealing() < maxUpgrading
 
 	// we want to try to upgrade when:
 	// - we can upgrade and prefer upgrades

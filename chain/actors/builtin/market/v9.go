@@ -15,7 +15,6 @@ import (
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/builtin"
 	market9 "github.com/filecoin-project/go-state-types/builtin/v9/market"
-	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	adt9 "github.com/filecoin-project/go-state-types/builtin/v9/util/adt"
 	"github.com/filecoin-project/go-state-types/manifest"
 
@@ -330,16 +329,16 @@ func fromV9Label(v9 market9.DealLabel) (DealLabel, error) {
 	if v9.IsString() {
 		str, err := v9.ToString()
 		if err != nil {
-			return markettypes.EmptyDealLabel, xerrors.Errorf("failed to convert string label to string: %w", err)
+			return market9.EmptyDealLabel, xerrors.Errorf("failed to convert string label to string: %w", err)
 		}
-		return markettypes.NewLabelFromString(str)
+		return market9.NewLabelFromString(str)
 	}
 
 	bs, err := v9.ToBytes()
 	if err != nil {
-		return markettypes.EmptyDealLabel, xerrors.Errorf("failed to convert bytes label to bytes: %w", err)
+		return market9.EmptyDealLabel, xerrors.Errorf("failed to convert bytes label to bytes: %w", err)
 	}
-	return markettypes.NewLabelFromBytes(bs)
+	return market9.NewLabelFromBytes(bs)
 }
 
 func (s *state9) GetState() interface{} {

@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/test-vectors/schema"
 
-	"github.com/filecoin-project/lotus/api"
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
@@ -208,7 +207,7 @@ func doExtractMessage(opts extractOpts) error {
 	// TODO sometimes this returns a nil receipt and no error ¯\_(ツ)_/¯
 	//  ex: https://filfox.info/en/message/bafy2bzacebpxw3yiaxzy2bako62akig46x3imji7fewszen6fryiz6nymu2b2
 	//  This code is lenient and skips receipt comparison in case of a nil receipt.
-	rec, err := FullAPI.StateSearchMsg(ctx, execTs.Key(), mcid, api.LookbackNoLimit, false)
+	rec, err := FullAPI.StateSearchMsg(ctx, execTs.Key(), mcid, lapi.LookbackNoLimit, false)
 	if err != nil {
 		return fmt.Errorf("failed to find receipt on chain: %w", err)
 	}
@@ -404,7 +403,7 @@ func fetchThisAndPrevTipset(ctx context.Context, api v1api.FullNode, target type
 // findMsgAndPrecursors ranges through the canonical messages slice, locating
 // the target message and returning precursors in accordance to the supplied
 // mode.
-func findMsgAndPrecursors(ctx context.Context, mode string, msgCid cid.Cid, sender address.Address, recipient address.Address, msgs []api.Message) (related []*types.Message, found bool, err error) {
+func findMsgAndPrecursors(ctx context.Context, mode string, msgCid cid.Cid, sender address.Address, recipient address.Address, msgs []lapi.Message) (related []*types.Message, found bool, err error) {
 	// Resolve addresses to IDs for canonicality.
 	senderID := mustResolveAddr(ctx, sender)
 	recipientID := mustResolveAddr(ctx, recipient)

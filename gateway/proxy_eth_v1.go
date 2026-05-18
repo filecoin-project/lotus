@@ -101,9 +101,10 @@ func (pv1 *reverseProxyV1) checkEthBlockParam(ctx context.Context, blkParam etht
 
 		var num ethtypes.EthUint64
 		if blkParam.PredefinedBlock != nil {
-			if *blkParam.PredefinedBlock == "earliest" {
+			switch *blkParam.PredefinedBlock {
+			case "earliest":
 				return xerrors.New("block param \"earliest\" is not supported")
-			} else if *blkParam.PredefinedBlock == "pending" || *blkParam.PredefinedBlock == "latest" {
+			case "pending", "latest":
 				// Head is always ok.
 				if lookback == 0 {
 					return nil

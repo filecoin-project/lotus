@@ -26,7 +26,9 @@ import (
 	power{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}power"
 	adt{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}util/adt"
 {{end}}
-    builtin{{.latestVersion}} "github.com/filecoin-project/go-state-types/builtin"
+{{if and (ne .v .latestVersion) (le .v 7)}}
+	builtin{{.latestVersion}} "github.com/filecoin-project/go-state-types/builtin"
+{{end}}
 )
 
 var _ State = (*state{{.v}})(nil)
@@ -111,7 +113,7 @@ func (s *state{{.v}}) MinerNominalPowerMeetsConsensusMinimum(a address.Address) 
 }
 
 func (s *state{{.v}}) TotalPowerSmoothed() (builtin.FilterEstimate, error) {
-	return builtin.FilterEstimate({{if (le .v 1)}}*{{end}}s.State.ThisEpochQAPowerSmoothed), nil
+	return {{if (le .v 1)}}builtin.FilterEstimate(*s.State.ThisEpochQAPowerSmoothed){{else if (eq .v 8)}}s.State.ThisEpochQAPowerSmoothed{{else}}builtin.FilterEstimate(s.State.ThisEpochQAPowerSmoothed){{end}}, nil
 }
 
 func (s *state{{.v}}) MinerCounts() (uint64, uint64, error) {
@@ -148,13 +150,13 @@ func (s *state{{.v}}) ListAllMiners() ([]address.Address, error) {
 	return miners, nil
 }
 
-func (s *state{{.v}}) CollectEligibleClaims(cacheInOut *builtin{{.latestVersion}}.MapReduceCache) ([]builtin{{.latestVersion}}.OwnedClaim, error) {
+func (s *state{{.v}}) CollectEligibleClaims(cacheInOut *{{if (gt .v 7)}}builtin{{.v}}{{else}}builtin{{.latestVersion}}{{end}}.MapReduceCache) ([]{{if (gt .v 7)}}builtin{{.v}}{{else}}builtin{{.latestVersion}}{{end}}.OwnedClaim, error) {
 {{if (ge .v 16)}}
 	return s.State.CollectEligibleClaims(s.store, cacheInOut)
 {{else}}
-	var res []builtin{{.latestVersion}}.OwnedClaim
+	var res []{{if (gt .v 7)}}builtin{{.v}}{{else}}builtin{{.latestVersion}}{{end}}.OwnedClaim
 	err := s.ForEachClaim(func(miner address.Address, claim Claim) error {
-		res = append(res, builtin{{.latestVersion}}.OwnedClaim{
+		res = append(res, {{if (gt .v 7)}}builtin{{.v}}{{else}}builtin{{.latestVersion}}{{end}}.OwnedClaim{
 			Address:         miner,
 			RawBytePower:    claim.RawBytePower,
 			QualityAdjPower: claim.QualityAdjPower,

@@ -55,7 +55,7 @@ func RunMultisigTests(t *testing.T, client *kit.TestFullNode) {
 	// Extract msig robust address from output
 	expCreateOutPrefix := "Created new multisig:"
 	require.Regexp(t, regexp.MustCompile(expCreateOutPrefix), out)
-	parts := strings.Split(strings.TrimSpace(strings.Replace(out, expCreateOutPrefix, "", -1)), " ")
+	parts := strings.Split(strings.TrimSpace(strings.ReplaceAll(out, expCreateOutPrefix, "")), " ")
 	require.Len(t, parts, 2)
 	msigRobustAddr := parts[1]
 	fmt.Println("msig robust address:", msigRobustAddr)

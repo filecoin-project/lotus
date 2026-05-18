@@ -673,11 +673,7 @@ func TestRestartWorker(t *testing.T) {
 	<-arch
 	require.NoError(t, w.Close())
 
-	for {
-		if len(m.WorkerStats(ctx)) == 0 {
-			break
-		}
-
+	for len(m.WorkerStats(ctx)) != 0 {
 		time.Sleep(time.Millisecond * 3)
 	}
 

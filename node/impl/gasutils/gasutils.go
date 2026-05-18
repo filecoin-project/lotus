@@ -121,10 +121,7 @@ func GasEstimateCallWithGas(
 		priorMsgs = append(priorMsgs, m)
 	}
 
-	applyTsMessages := true
-	if os.Getenv("LOTUS_SKIP_APPLY_TS_MESSAGE_CALL_WITH_GAS") == "1" {
-		applyTsMessages = false
-	}
+	applyTsMessages := os.Getenv("LOTUS_SKIP_APPLY_TS_MESSAGE_CALL_WITH_GAS") != "1"
 
 	// Try calling until we find a height with no migration.
 	var res *api.InvocResult

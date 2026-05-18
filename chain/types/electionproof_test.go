@@ -40,7 +40,7 @@ func TestPoissonFunction(t *testing.T) {
 				b.WriteString(p.next().String())
 				b.WriteRune('\n')
 			}
-			golden.Assert(t, []byte(b.String()))
+			golden.Assert(t, b.Bytes())
 		})
 	}
 }

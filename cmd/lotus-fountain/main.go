@@ -273,14 +273,15 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var smsg *types.SignedMessage
-	if r.RequestURI == "/send" {
+	switch r.RequestURI {
+	case "/send":
 		smsg, err = h.api.MpoolPushMessage(
 			h.ctx, &types.Message{
 				Value: types.BigInt(h.sendPerRequest),
 				From:  h.from,
 				To:    filecoinAddress,
 			}, nil)
-	} else if r.RequestURI == "/datacap" {
+	case "/datacap":
 		var params []byte
 		params, err = actors.SerializeParams(
 			&verifregtypes9.AddVerifiedClientParams{
@@ -298,7 +299,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				To:     verifreg.Address,
 				Method: verifreg.Methods.AddVerifiedClient,
 			}, nil)
-	} else {
+	default:
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}

@@ -355,7 +355,6 @@ var provingRecoverFaultsCmd = &cli.Command{
 					return
 				}
 				results <- nil
-				return
 			}(msg)
 		}
 

@@ -27,7 +27,7 @@ import (
 	adt{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/util/adt"
 {{else}}
 	market{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}market"
-	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
+	{{if (ne .v 9)}}markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"{{end}}
 	adt{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}util/adt"
 {{end}}
 {{if (ge .v 3)}}
@@ -357,16 +357,16 @@ func fromV{{.v}}DealProposal(v{{.v}} market{{.v}}.DealProposal) (DealProposal, e
         if v{{.v}}.IsString() {
             str, err := v{{.v}}.ToString()
             if err != nil {
-                return markettypes.EmptyDealLabel, xerrors.Errorf("failed to convert string label to string: %w", err)
+                return {{if (eq .v 9)}}market{{.v}}{{else}}markettypes{{end}}.EmptyDealLabel, xerrors.Errorf("failed to convert string label to string: %w", err)
             }
-            return markettypes.NewLabelFromString(str)
+            return {{if (eq .v 9)}}market{{.v}}{{else}}markettypes{{end}}.NewLabelFromString(str)
         }
 
         bs, err := v{{.v}}.ToBytes()
         if err != nil {
-            return markettypes.EmptyDealLabel, xerrors.Errorf("failed to convert bytes label to bytes: %w", err)
+            return {{if (eq .v 9)}}market{{.v}}{{else}}markettypes{{end}}.EmptyDealLabel, xerrors.Errorf("failed to convert bytes label to bytes: %w", err)
         }
-        return markettypes.NewLabelFromBytes(bs)
+        return {{if (eq .v 9)}}market{{.v}}{{else}}markettypes{{end}}.NewLabelFromBytes(bs)
     }
 {{end}}
 

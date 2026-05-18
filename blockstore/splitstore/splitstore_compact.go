@@ -373,8 +373,6 @@ func (s *SplitStore) trackTxnRefMany(cids []cid.Cid) {
 
 		s.txnRefs[c] = struct{}{}
 	}
-
-	return
 }
 
 // protect all pending transactional references

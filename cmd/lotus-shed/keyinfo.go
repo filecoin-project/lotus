@@ -124,8 +124,6 @@ var keyinfoVerifyCmd = &cli.Command{
 			if string(name) != list[0] {
 				return fmt.Errorf("%s of type %s; file is named for %s, but key is actually %s", fileName, keyInfo.Type, string(name), list[0])
 			}
-
-			break
 		default:
 			return fmt.Errorf("unknown keytype %s", keyInfo.Type)
 		}
@@ -210,8 +208,6 @@ var keyinfoImportCmd = &cli.Command{
 			}
 
 			fmt.Printf("%s\n", peerid.String())
-
-			break
 		case types.KTSecp256k1, types.KTBLS:
 			w, err := wallet.NewWallet(keystore)
 			if err != nil {
@@ -313,8 +309,6 @@ var keyinfoInfoCmd = &cli.Command{
 
 			kio.Address = peerid.String()
 			kio.PublicKey = base64.StdEncoding.EncodeToString(pkBytes)
-
-			break
 		case types.KTSecp256k1, types.KTBLS:
 			kio.Type = keyInfo.Type
 
@@ -368,10 +362,7 @@ var keyinfoNewCmd = &cli.Command{
 		flagOutput := cctx.String("output")
 
 		if i := SliceIndex(len(validTypes), func(i int) bool {
-			if keyType == validTypes[i] {
-				return true
-			}
-			return false
+			return keyType == validTypes[i]
 		}); i == -1 {
 			return fmt.Errorf("invalid key type argument provided '%s'", keyType)
 		}
@@ -400,8 +391,6 @@ var keyinfoNewCmd = &cli.Command{
 
 			keyAddr = peerid.String()
 			keyInfo = ki
-
-			break
 		case types.KTSecp256k1, types.KTBLS:
 			key, err := key.GenerateKey(keyType)
 			if err != nil {
@@ -410,8 +399,6 @@ var keyinfoNewCmd = &cli.Command{
 
 			keyAddr = key.Address.String()
 			keyInfo = key.KeyInfo
-
-			break
 		}
 
 		filename := flagOutput

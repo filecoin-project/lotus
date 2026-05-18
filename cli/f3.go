@@ -455,7 +455,7 @@ Examples:
 				}
 
 				var cert *certs.FinalityCertificate
-				for cctx.Context.Err() == nil {
+				for cctx.Err() == nil {
 					next, proceed := r.next()
 					if !proceed {
 						return nil
