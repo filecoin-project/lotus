@@ -300,7 +300,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				Method: verifreg.Methods.AddVerifiedClient,
 			}, nil)
 	default:
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, "unsupported endpoint", http.StatusBadRequest)
 		return
 	}
 

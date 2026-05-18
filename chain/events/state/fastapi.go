@@ -16,19 +16,21 @@ type FastChainApiAPI interface {
 
 type fastAPI struct {
 	FastChainApiAPI
+	api FastChainApiAPI
 }
 
 func WrapFastAPI(api FastChainApiAPI) ChainAPI {
 	return &fastAPI{
-		api,
+		FastChainApiAPI: api,
+		api:             api,
 	}
 }
 
 func (a *fastAPI) StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) {
-	ts, err := a.ChainGetTipSet(ctx, tsk)
+	ts, err := a.api.ChainGetTipSet(ctx, tsk)
 	if err != nil {
 		return nil, err
 	}
 
-	return a.StateGetActor(ctx, actor, ts.Parents())
+	return a.api.StateGetActor(ctx, actor, ts.Parents())
 }

@@ -27,7 +27,10 @@ func ParseDir(fset *token.FileSet, dir, pkgName string, mode parser.Mode) (map[s
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".go") {
 			continue
 		}
-		path := filepath.Join(dir, e.Name())
+		path, err := filepath.Abs(filepath.Join(dir, e.Name()))
+		if err != nil {
+			return nil, err
+		}
 		f, err := parser.ParseFile(fset, path, nil, mode)
 		if err != nil {
 			return nil, err
