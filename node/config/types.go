@@ -599,8 +599,8 @@ type ChainIndexerConfig struct {
 	EnableIndexer bool
 
 	// GCRetentionEpochs specifies the number of epochs for which data is retained in the Indexer.
-	// The garbage collection (GC) process removes data older than this retention period and runs
-	// every 4 hours.
+	// The garbage collection (GC) process removes data older than this retention period; it runs
+	// once on indexer startup and then every 4 hours thereafter.
 	//
 	// Default: 20160 epochs (7 days on mainnet, at 2880 epochs/day).
 	//
@@ -610,8 +610,8 @@ type ChainIndexerConfig struct {
 	// wasted, since lookups that need state will fail anyway.
 	//
 	// Set to 0 to disable GC entirely and retain all indexed data indefinitely (suitable for
-	// archival nodes or RPC providers serving deep history). Any other value must be greater than
-	// builtin.EpochsInDay (2880 epochs); smaller non-zero values are rejected at startup.
+	// archival nodes or RPC providers serving deep history). Any other value must be at least
+	// builtin.EpochsInDay (2880 epochs on mainnet); smaller non-zero values are rejected at startup.
 	//
 	// Operators serving an Ethereum or events RPC tier with deeper history should set this to match
 	// (or slightly exceed) their effective chain-state retention.

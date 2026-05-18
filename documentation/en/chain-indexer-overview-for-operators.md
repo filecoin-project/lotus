@@ -89,7 +89,7 @@ The `ChainIndexer` includes a garbage collection (GC) mechanism to manage the am
 
 GC retention is controlled by `ChainIndexer.GCRetentionEpochs`. The default is `20160` (7 days on mainnet, at 2880 epochs per day), aligned with the bounded chain-state retention of the default Splitstore configuration.
 
-The ChainIndexer [runs GC every 4 hours](https://github.com/filecoin-project/lotus/blob/master/chain/index/gc.go#L15) when `GCRetentionEpochs > 0`, removing indexed data for epochs older than `(current_head_height - GCRetentionEpochs)`.
+When `GCRetentionEpochs > 0`, the ChainIndexer [runs GC once on startup and then every 4 hours thereafter](https://github.com/filecoin-project/lotus/blob/master/chain/index/gc.go#L18-L39), removing indexed data for epochs older than `(current_head_height - GCRetentionEpochs)`. The first pass on a freshly-upgraded node therefore happens immediately, not after a 4-hour delay.
 
 ```toml
 [ChainIndexer]
@@ -97,7 +97,7 @@ The ChainIndexer [runs GC every 4 hours](https://github.com/filecoin-project/lot
 ```
 
 - `GCRetentionEpochs = 0` disables GC entirely; the index grows unbounded.
-- Any positive value must be greater than `EpochsInDay` (2880 on mainnet); smaller non-zero values are rejected at startup.
+- Any positive value must be at least `EpochsInDay` (2880 on mainnet); smaller non-zero values are rejected at startup.
 
 #### Recommendations
 
