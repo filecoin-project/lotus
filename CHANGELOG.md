@@ -25,9 +25,69 @@
 
 * Silence libp2p config log spam ([filecoin-project/lotus#13612](https://github.com/filecoin-project/lotus/pull/13612))
 
-# UNRELEASED v1.36.0
+# Node and Miner v1.36.0 / 2026-05-13
 
-See https://github.com/filecoin-project/lotus/blob/release/v1.36.0/CHANGELOG.md
+This is the stable release of the **MANDATORY Lotus v1.36.0 release**, which delivers the Filecoin network version 28, codenamed “Fire Horse” 🔥🐎. This release sets the upgrade epoch for the Mainnet network to **Epoch 6052800: 2026-05-27T14:00:00Z**. [See the local time for other timezones.](https://www.worldtimebuddy.com/?qm=1&lid=100,1816670,2643743,5368361&h=100&date=2026-5-27&sln=14-15&hf=0)
+
+## ☢️ Upgrade Warnings ☢️
+
+- All Lotus node and Storage Provider (SP) operators on Mainnet must upgrade to v1.36.0 before epoch `6052800`, corresponding to `2026-05-27T14:00:00Z`.
+- The minimum supported Go version is now `1.25.7`. ([filecoin-project/lotus#13594](https://github.com/filecoin-project/lotus/pull/13594))
+
+## 🏛️ Filecoin network version 28 FIPs and FRCs
+
+- [FIP-0112: Export Sector Status to FEVM](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0112.md)
+- [FIP-0113: secp256r1 (P-256) P256VERIFY Precompile for FEVM](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0113.md)
+- [FIP-0114: Add Support for EIP-7939 (CLZ Opcode) in the FEVM](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0114.md)
+- [FIP-0115: Premium Percentile Base Fee Target](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0115.md)
+
+## 📦 v18 Builtin Actor Bundle
+
+This release uses the [v18.0.0 actor bundle](https://github.com/filecoin-project/builtin-actors/releases/tag/v18.0.0).
+
+## 🚚 Migration
+
+All node operators, including storage providers, should be aware that ONE pre-migration is being scheduled 120 epochs before the network upgrade. The migration for the NV28 upgrade is expected to be light with no heavy pre-migrations:
+
+- Pre-migration is expected to take less than 5 minutes.
+- The migration on the upgrade epoch is expected to take approximately 1 minute on a node with a NVMe drive and a newer CPU. For nodes running on slower disks/CPU, it is expected to take around 1-2 minutes.
+- RAM usage is expected to be under 20GiB RAM for both the pre-migration and migration.
+
+We recommend node operators who have not enabled splitstore discard mode, and do not care about historical chain states, to prune the chain blockstore by syncing from a snapshot 1-2 days before the upgrade.
+
+For certain node operators, such as full archival nodes or systems that need to keep large amounts of state (RPC providers), we recommend skipping the pre-migration, running the non-cached migration at the network upgrade epoch, and scheduling some additional downtime. Operators of such nodes can read the [How to disable premigration in network upgrade tutorial](https://lotus.filecoin.io/kb/disable-premigration/).
+
+## ⭐ New Features highlight
+
+- feat(cli): `lotus wallet export` gains a `--format` flag with a new `hex-eth` value that emits the raw 32-byte private key as hex, directly importable into Ethereum tools such as MetaMask, ethers.js, and Foundry. `hex-eth` is also accepted by `lotus wallet import` together with a `--type` flag (`secp256k1` or `delegated`, defaulting to `delegated`). ([filecoin-project/lotus#13586](https://github.com/filecoin-project/lotus/pull/13586))
+- feat(cliutil): accept non-JWT API tokens in `TOKEN:ADDRESS`, enabling use of third-party RPC providers that issue opaque API keys. Multiaddrs using `/wss` or `/tls` now dial with `wss://`. ([filecoin-project/lotus#13578](https://github.com/filecoin-project/lotus/pull/13578))
+
+## 🐛 Bug Fixes
+
+- fix(state): move `StateGetRandomnessDigestFromBeacon` into `StateModule` so lite nodes can serve the method correctly. ([filecoin-project/lotus#13579](https://github.com/filecoin-project/lotus/pull/13579))
+- fix(eth): `eth_getTransactionReceipt` no longer fails when another transaction in the same block emits a large number of events. `MaxFilterResults` now caps only multi-tipset event queries; single-block calls (`eth_getLogs` with `BlockHash`, `eth_getBlockReceipts`, `eth_getTransactionReceipt`) bypass it. Public RPC operators should apply rate and response-size limits at the proxy layer for these calls; a single response can be large when a block contains log-heavy transactions. ([filecoin-project/lotus#13617](https://github.com/filecoin-project/lotus/pull/13617))
+
+## 📝 Changelog
+
+For the set of changes since the last stable release:
+
+- Node and Miner: https://github.com/filecoin-project/lotus/compare/release/v1.35.1...release/v1.36.0
+
+## 👨‍👩‍👧‍👦 Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Rod Vagg | 9 | +2451/-542 | 100 |
+| Phi-rjan | 13 | +496/-374 | 67 |
+| dependabot[bot] | 14 | +676/-103 | 28 |
+| Aryan Tikarya | 1 | +322/-11 | 5 |
+| beck | 2 | +182/-13 | 4 |
+| Jakub Sztandera | 1 | +50/-3 | 3 |
+| William Morriss | 1 | +4/-40 | 9 |
+| ledigang | 1 | +11/-11 | 11 |
+| Aditya Belgaonkar | 1 | +15/-0 | 9 |
+| web3-bot | 2 | +5/-5 | 4 |
+| hanabi1224 | 1 | +4/-0 | 2 |
 
 # Node v1.35.1 / 2026-03-31
 
