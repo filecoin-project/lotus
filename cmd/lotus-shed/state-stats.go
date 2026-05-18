@@ -781,7 +781,7 @@ to reduce the number of decode operations performed by caching the decoded objec
 
 func collectSnapshotJobStats(ctx context.Context, in job, dag format.NodeGetter, visit func(c cid.Cid) bool) ([]result, error) {
 	// "state" and "churn" attempt further breakdown by actor type
-	if !(path.Dir(in.key) == "/statetree/latest") && !(path.Dir(in.key) == "/statetree/churn") {
+	if path.Dir(in.key) != "/statetree/latest" && path.Dir(in.key) != "/statetree/churn" {
 		dsc := &dagStatCollector{
 			ds:   dag,
 			walk: carWalkFunc,

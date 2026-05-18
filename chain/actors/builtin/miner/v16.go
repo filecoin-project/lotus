@@ -480,7 +480,7 @@ func (d *deadline16) LoadPartition(idx uint64) (Partition, error) {
 }
 
 func (d *deadline16) ForEachPartition(cb func(uint64, Partition) error) error {
-	ps, err := d.Deadline.PartitionsArray(d.store)
+	ps, err := d.PartitionsArray(d.store)
 	if err != nil {
 		return err
 	}
@@ -497,7 +497,7 @@ func (d *deadline16) PartitionsChanged(other Deadline) (bool, error) {
 		return true, nil
 	}
 
-	return !d.Deadline.Partitions.Equals(other16.Deadline.Partitions), nil
+	return !d.Partitions.Equals(other16.Partitions), nil
 }
 
 func (d *deadline16) PartitionsPoSted() (bitfield.BitField, error) {
@@ -523,19 +523,19 @@ func (d *deadline16) DailyFee() (abi.TokenAmount, error) {
 }
 
 func (p *partition16) AllSectors() (bitfield.BitField, error) {
-	return p.Partition.Sectors, nil
+	return p.Sectors, nil
 }
 
 func (p *partition16) FaultySectors() (bitfield.BitField, error) {
-	return p.Partition.Faults, nil
+	return p.Faults, nil
 }
 
 func (p *partition16) RecoveringSectors() (bitfield.BitField, error) {
-	return p.Partition.Recoveries, nil
+	return p.Recoveries, nil
 }
 
 func (p *partition16) UnprovenSectors() (bitfield.BitField, error) {
-	return p.Partition.Unproven, nil
+	return p.Unproven, nil
 }
 
 func fromV16SectorOnChainInfo(v16 miner16.SectorOnChainInfo) SectorOnChainInfo {

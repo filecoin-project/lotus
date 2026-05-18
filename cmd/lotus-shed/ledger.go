@@ -185,7 +185,7 @@ var ledgerKeyInfoCmd = &cli.Command{
 
 		if cctx.Bool("verbose") {
 			fmt.Println(addr)
-			fmt.Println(pubk)
+			fmt.Println(string(pubk))
 		}
 
 		a, err := address.NewFromString(addr)

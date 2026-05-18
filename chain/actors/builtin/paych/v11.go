@@ -66,7 +66,7 @@ func (s *state11) getOrLoadLsAmt() (*adt11.Array, error) {
 	}
 
 	// Get the lane state from the chain
-	lsamt, err := adt11.AsArray(s.store, s.State.LaneStates, paych11.LaneStatesAmtBitwidth)
+	lsamt, err := adt11.AsArray(s.store, s.LaneStates, paych11.LaneStatesAmtBitwidth)
 	if err != nil {
 		return nil, err
 	}

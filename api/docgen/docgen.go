@@ -45,6 +45,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
+	"github.com/filecoin-project/lotus/lib/parsehelper"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
@@ -574,7 +575,7 @@ func ExampleValue(method string, t, parent reflect.Type) interface{} {
 		}
 		return out.Interface()
 
-	case reflect.Ptr:
+	case reflect.Pointer:
 		if t.Elem().Kind() == reflect.Struct {
 			es := exampleStruct(method, t.Elem(), t)
 			ExampleValues[t] = es
@@ -781,19 +782,19 @@ func ParseApiASTInfo(apiFile, iface, pkg, dir string) (ApiASTInfo, error) { //no
 	if err != nil {
 		return ApiASTInfo{}, fmt.Errorf("filepath absolute file: %s, err: %w", apiFile, err)
 	}
-	pkgs, err := parser.ParseDir(fset, apiDir, nil, parser.AllErrors|parser.ParseComments)
+	files, err := parsehelper.ParseDir(fset, apiDir, pkg, parser.AllErrors|parser.ParseComments)
 	if err != nil {
 		return ApiASTInfo{}, fmt.Errorf("parse error: %w", err)
 	}
 
-	ap := pkgs[pkg]
-
-	f := ap.Files[apiFile]
+	f := files[apiFile]
 
 	cmap := ast.NewCommentMap(fset, f, f.Comments)
 
 	v := &Visitor{iface, make(map[string]ast.Node)}
-	ast.Walk(v, ap)
+	for _, file := range files {
+		ast.Walk(v, file)
+	}
 
 	comments := make(map[string]string)
 	groupDocs := make(map[string]string)

@@ -9,7 +9,6 @@ import (
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	miner8 "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	reward8 "github.com/filecoin-project/go-state-types/builtin/v8/reward"
-	smoothing8 "github.com/filecoin-project/go-state-types/builtin/v8/util/smoothing"
 	"github.com/filecoin-project/go-state-types/manifest"
 
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -81,20 +80,14 @@ func (s *state8) InitialPledgeForPower(qaPower abi.StoragePower, _ abi.TokenAmou
 		qaPower,
 		s.State.ThisEpochBaselinePower,
 		s.State.ThisEpochRewardSmoothed,
-		smoothing8.FilterEstimate{
-			PositionEstimate: networkQAPower.PositionEstimate,
-			VelocityEstimate: networkQAPower.VelocityEstimate,
-		},
+		*networkQAPower,
 		circSupply,
 	), nil
 }
 
 func (s *state8) PreCommitDepositForPower(networkQAPower builtin.FilterEstimate, sectorWeight abi.StoragePower) (abi.TokenAmount, error) {
 	return miner8.PreCommitDepositForPower(s.State.ThisEpochRewardSmoothed,
-		smoothing8.FilterEstimate{
-			PositionEstimate: networkQAPower.PositionEstimate,
-			VelocityEstimate: networkQAPower.VelocityEstimate,
-		},
+		networkQAPower,
 		sectorWeight), nil
 }
 

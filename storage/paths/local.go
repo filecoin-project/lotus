@@ -366,7 +366,7 @@ func (st *Local) declareSectors(ctx context.Context, p string, id storiface.ID, 
 		}
 
 		for _, decl := range decls[id] {
-			for _, fileType := range decl.SectorFileType.AllSet() {
+			for _, fileType := range decl.AllSet() {
 				indexed[storiface.Decl{
 					SectorID:       decl.SectorID,
 					SectorFileType: fileType,

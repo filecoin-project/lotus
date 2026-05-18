@@ -575,12 +575,12 @@ func (n *Ensemble) Start() *Ensemble {
 					Method: power.Methods.CreateMiner,
 					Params: params,
 				}
-				signed, err := m.FullNode.FullNode.MpoolPushMessage(ctx, createStorageMinerMsg, &api.MessageSendSpec{
+				signed, err := m.FullNode.MpoolPushMessage(ctx, createStorageMinerMsg, &api.MessageSendSpec{
 					MsgUuid: uuid.New(),
 				})
 				require.NoError(n.t, err)
 
-				mw, err := m.FullNode.FullNode.StateWaitMsg(ctx, signed.Cid(), buildconstants.MessageConfidence, api.LookbackNoLimit, true)
+				mw, err := m.FullNode.StateWaitMsg(ctx, signed.Cid(), buildconstants.MessageConfidence, api.LookbackNoLimit, true)
 				require.NoError(n.t, err)
 				require.Equal(n.t, exitcode.Ok, mw.Receipt.ExitCode)
 
@@ -601,12 +601,12 @@ func (n *Ensemble) Start() *Ensemble {
 					Value:  types.NewInt(0),
 				}
 
-				signed, err2 := m.FullNode.FullNode.MpoolPushMessage(ctx, msg, &api.MessageSendSpec{
+				signed, err2 := m.FullNode.MpoolPushMessage(ctx, msg, &api.MessageSendSpec{
 					MsgUuid: uuid.New(),
 				})
 				require.NoError(n.t, err2)
 
-				mw, err2 := m.FullNode.FullNode.StateWaitMsg(ctx, signed.Cid(), buildconstants.MessageConfidence, api.LookbackNoLimit, true)
+				mw, err2 := m.FullNode.StateWaitMsg(ctx, signed.Cid(), buildconstants.MessageConfidence, api.LookbackNoLimit, true)
 				require.NoError(n.t, err2)
 				require.Equal(n.t, exitcode.Ok, mw.Receipt.ExitCode)
 			}
@@ -639,7 +639,7 @@ func (n *Ensemble) Start() *Ensemble {
 		if !ok {
 			n.t.Fatalf("invalid config from repo, got: %T", c)
 		}
-		cfg.Common.API.RemoteListenAddress = m.RemoteListener.Addr().String()
+		cfg.API.RemoteListenAddress = m.RemoteListener.Addr().String()
 		cfg.Subsystems.EnableMining = m.options.subsystems.Has(SMining)
 		cfg.Subsystems.EnableSealing = m.options.subsystems.Has(SSealing)
 		cfg.Subsystems.EnableSectorStorage = m.options.subsystems.Has(SSectorStorage)
@@ -852,12 +852,12 @@ func (n *Ensemble) Start() *Ensemble {
 			Method: power.Methods.CreateMiner,
 			Params: params,
 		}
-		signed, err := m.FullNode.FullNode.MpoolPushMessage(ctx, createStorageMinerMsg, &api.MessageSendSpec{
+		signed, err := m.FullNode.MpoolPushMessage(ctx, createStorageMinerMsg, &api.MessageSendSpec{
 			MsgUuid: uuid.New(),
 		})
 		require.NoError(n.t, err)
 
-		mw, err := m.FullNode.FullNode.StateWaitMsg(ctx, signed.Cid(), buildconstants.MessageConfidence, api.LookbackNoLimit, true)
+		mw, err := m.FullNode.StateWaitMsg(ctx, signed.Cid(), buildconstants.MessageConfidence, api.LookbackNoLimit, true)
 		require.NoError(n.t, err)
 		require.Equal(n.t, exitcode.Ok, mw.Receipt.ExitCode)
 

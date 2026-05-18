@@ -74,12 +74,6 @@ var importCarCmd = &cli.Command{
 				}
 				fmt.Println()
 				return nil
-			default:
-				if err := f.Close(); err != nil {
-					return err
-				}
-				fmt.Println()
-				return err
 			case nil:
 				fmt.Printf("\r%s", blk.Cid())
 				if err := bs.Put(context.Background(), blk); err != nil {
@@ -88,6 +82,12 @@ var importCarCmd = &cli.Command{
 					}
 					return xerrors.Errorf("put %s: %w", blk.Cid(), err)
 				}
+			default:
+				if err := f.Close(); err != nil {
+					return err
+				}
+				fmt.Println()
+				return err
 			}
 		}
 	},

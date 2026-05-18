@@ -436,7 +436,7 @@ func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message,
 			},
 		}
 
-		if balance.Int.Cmp(st.requiredFunds) < 0 {
+		if balance.Cmp(st.requiredFunds) < 0 {
 			check.OK = false
 			check.Err = "insufficient balance"
 		} else {

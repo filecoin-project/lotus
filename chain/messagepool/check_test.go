@@ -25,7 +25,7 @@ func init() {
 func getCheckMessageStatus(statusCode api.CheckStatusCode, msgStatuses []api.MessageCheckStatus) (*api.MessageCheckStatus, error) {
 	for i := 0; i < len(msgStatuses); i++ {
 		iMsgStatuses := msgStatuses[i]
-		if iMsgStatuses.CheckStatus.Code == statusCode {
+		if iMsgStatuses.Code == statusCode {
 			return &iMsgStatuses, nil
 		}
 	}

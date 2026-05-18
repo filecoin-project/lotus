@@ -239,14 +239,11 @@ var runCmd = &cli.Command{
 		go func() {
 			t := time.NewTicker(time.Second)
 
-			for {
-				select {
-				case <-t.C:
-					sinceGenesis := build.Clock.Now().Sub(genesisTime)
-					expectedHeight := int64(sinceGenesis.Seconds()) / int64(buildconstants.BlockDelaySecs)
+			for range t.C {
+				sinceGenesis := build.Clock.Now().Sub(genesisTime)
+				expectedHeight := int64(sinceGenesis.Seconds()) / int64(buildconstants.BlockDelaySecs)
 
-					stats.Record(ctx, metrics.TipsetCollectionHeightExpected.M(expectedHeight))
-				}
+				stats.Record(ctx, metrics.TipsetCollectionHeightExpected.M(expectedHeight))
 			}
 		}()
 

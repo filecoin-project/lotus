@@ -3,9 +3,9 @@ package evm
 import (
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/lotus/chain/actors/adt"
-	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/go-state-types/abi"
+
+	"github.com/filecoin-project/lotus/chain/actors/adt"
 
 	evm{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}evm"
 )
@@ -43,7 +43,7 @@ func (s *state{{.v}}) Nonce() (uint64, error) {
 }
 
 func (s *state{{.v}}) IsAlive() (bool, error) {
-	return s.State.Tombstone == nil, nil
+	return s.Tombstone == nil, nil
 }
 
 func (s *state{{.v}}) GetState() interface{} {
@@ -51,11 +51,11 @@ func (s *state{{.v}}) GetState() interface{} {
 }
 
 func (s *state{{.v}}) GetBytecodeCID() (cid.Cid, error) {
-	return s.State.Bytecode, nil
+	return s.Bytecode, nil
 }
 
 func (s *state{{.v}}) GetBytecodeHash() ([32]byte, error) {
-	return s.State.BytecodeHash, nil
+	return s.BytecodeHash, nil
 }
 
 func (s *state{{.v}}) GetBytecode() ([]byte, error) {

@@ -17,7 +17,6 @@ import (
 	"github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/big"
 
-	"github.com/filecoin-project/lotus/api"
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
@@ -72,7 +71,7 @@ var restoreCmd = &cli.Command{
 
 		repoPath := cctx.String(FlagMinerRepo)
 
-		if err := restore(ctx, cctx, repoPath, storageCfg, nil, func(api lapi.FullNode, maddr address.Address, peerid peer.ID, mi api.MinerInfo) error {
+		if err := restore(ctx, cctx, repoPath, storageCfg, nil, func(api lapi.FullNode, maddr address.Address, peerid peer.ID, mi lapi.MinerInfo) error {
 			log.Info("Checking proof parameters")
 
 			if err := paramfetch.GetParams(ctx, build.ParametersJSON(), build.SrsJSON(), uint64(mi.SectorSize)); err != nil {
@@ -93,7 +92,7 @@ var restoreCmd = &cli.Command{
 	},
 }
 
-func restore(ctx context.Context, cctx *cli.Context, targetPath string, strConfig *storiface.StorageConfig, manageConfig func(*config.StorageMiner) error, after func(api lapi.FullNode, addr address.Address, peerid peer.ID, mi api.MinerInfo) error) error {
+func restore(ctx context.Context, cctx *cli.Context, targetPath string, strConfig *storiface.StorageConfig, manageConfig func(*config.StorageMiner) error, after func(api lapi.FullNode, addr address.Address, peerid peer.ID, mi lapi.MinerInfo) error) error {
 	if cctx.NArg() != 1 {
 		return lcli.IncorrectNumArgs(cctx)
 	}

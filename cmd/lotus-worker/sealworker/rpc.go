@@ -209,7 +209,7 @@ func (w *Worker) Discover(ctx context.Context) (apitypes.OpenRPCDocument, error)
 }
 
 func (w *Worker) Shutdown(ctx context.Context) error {
-	return w.LocalWorker.Close()
+	return w.Close()
 }
 
 var _ storiface.WorkerCalls = &Worker{}

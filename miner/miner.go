@@ -329,7 +329,7 @@ minerLoop:
 			now := build.Clock.Now()
 			// Handle timing for broadcasting the block.
 			switch {
-			case btime == now:
+			case btime.Equal(now):
 				// block timestamp is perfectly aligned with time.
 			case btime.After(now):
 				// Wait until it's time to broadcast the block.

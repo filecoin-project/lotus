@@ -47,7 +47,7 @@ func RunApp(app *ufcli.App) {
 	}()
 
 	if err := app.Run(os.Args); err != nil {
-		if cfg := logging.GetConfig(); !(cfg.Stdout || cfg.Stderr) {
+		if cfg := logging.GetConfig(); !cfg.Stdout && !cfg.Stderr {
 			// To avoid printing the error twice while making sure that log file contains the
 			// error, check the config and only print it if the output isn't stderr or
 			// stdout.

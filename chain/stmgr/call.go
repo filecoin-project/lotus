@@ -184,9 +184,10 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 		if err != nil {
 			return nil, xerrors.Errorf("failed to lookup messages for parent tipset: %w", err)
 		}
-		if strategy == execAllMessages {
+		switch strategy {
+		case execAllMessages:
 			priorMsgs = append(tsMsgs, priorMsgs...)
-		} else if strategy == execSameSenderMessages {
+		case execSameSenderMessages:
 			var filteredTsMsgs []types.ChainMsg
 			for _, tsMsg := range tsMsgs {
 				//TODO we should technically be normalizing the filecoin address of from when we compare here

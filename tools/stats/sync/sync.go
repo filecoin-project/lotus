@@ -41,10 +41,10 @@ func SyncWait(ctx context.Context, napi SyncWaitApi) error {
 		for i, ss := range state.ActiveSyncs {
 			switch ss.Stage {
 			case api.StageSyncComplete:
-			default:
-				working = i
 			case api.StageIdle:
 				// not complete, not actively working
+			default:
+				working = i
 			}
 		}
 
@@ -164,11 +164,7 @@ func BufferedTipsetChannel(ctx context.Context, api BufferedTipsetChannelApi, la
 func loadTipsets(ctx context.Context, api BufferedTipsetChannelApi, curr *types.TipSet, lowestHeight abi.ChainEpoch) ([]*types.TipSet, error) {
 	log.Infow("loading tipsets", "to_height", lowestHeight, "from_height", curr.Height())
 	tipsets := []*types.TipSet{}
-	for {
-		if curr.Height() == 0 {
-			break
-		}
-
+	for curr.Height() > 0 {
 		if curr.Height() <= lowestHeight {
 			break
 		}

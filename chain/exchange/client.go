@@ -219,7 +219,7 @@ func (c *client) processResponse(req *Request, res *Response, tipsets []*types.T
 
 		// Check `TipSet`s are connected (valid chain).
 		for i := 0; i < len(validRes.tipsets)-1; i++ {
-			if validRes.tipsets[i].IsChildOf(validRes.tipsets[i+1]) == false {
+			if !validRes.tipsets[i].IsChildOf(validRes.tipsets[i+1]) {
 				return nil, fmt.Errorf("tipsets are not connected at height (head - %d)/(head - %d)",
 					i, i+1)
 				// FIXME: Maybe give more information here, like CIDs.

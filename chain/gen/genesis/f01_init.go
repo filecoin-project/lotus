@@ -127,7 +127,8 @@ func SetupInitActor(ctx context.Context, bs bstore.Blockstore, netname string, i
 		return nil
 	}
 
-	if rootVerifier.Type == genesis.TAccount {
+	switch rootVerifier.Type {
+	case genesis.TAccount:
 		var ainfo genesis.AccountMeta
 		if err := json.Unmarshal(rootVerifier.Meta, &ainfo); err != nil {
 			return 0, nil, nil, xerrors.Errorf("unmarshaling account meta: %w", err)
@@ -136,14 +137,15 @@ func SetupInitActor(ctx context.Context, bs bstore.Blockstore, netname string, i
 		if err := amap.Put(abi.AddrKey(ainfo.Owner), &value); err != nil {
 			return 0, nil, nil, err
 		}
-	} else if rootVerifier.Type == genesis.TMultisig {
+	case genesis.TMultisig:
 		err := setupMsig(rootVerifier.Meta)
 		if err != nil {
 			return 0, nil, nil, xerrors.Errorf("setting up root verifier msig: %w", err)
 		}
 	}
 
-	if remainder.Type == genesis.TAccount {
+	switch remainder.Type {
+	case genesis.TAccount:
 		var ainfo genesis.AccountMeta
 		if err := json.Unmarshal(remainder.Meta, &ainfo); err != nil {
 			return 0, nil, nil, xerrors.Errorf("unmarshaling account meta: %w", err)
@@ -154,7 +156,7 @@ func SetupInitActor(ctx context.Context, bs bstore.Blockstore, netname string, i
 		if err := amap.Put(abi.AddrKey(ainfo.Owner), &value); err != nil {
 			return 0, nil, nil, err
 		}
-	} else if remainder.Type == genesis.TMultisig {
+	case genesis.TMultisig:
 		err := setupMsig(remainder.Meta)
 		if err != nil {
 			return 0, nil, nil, xerrors.Errorf("setting up remainder msig: %w", err)

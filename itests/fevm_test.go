@@ -1741,14 +1741,14 @@ func TestFEVMEamCreateTwiceFail(t *testing.T) {
 
 	req.Len(traces, 3)
 	req.EqualValues(wait.Height-1, traces[0].BlockNumber)
-	req.Equal("call", traces[0].EthTrace.Type)
-	req.Contains("Reverted", traces[0].EthTrace.Error)
+	req.Equal("call", traces[0].Type)
+	req.Contains("Reverted", traces[0].Error)
 	req.EqualValues(wait.Height-1, traces[1].BlockNumber)
-	req.Equal("create", traces[1].EthTrace.Type)
-	req.Equal("", traces[1].EthTrace.Error)
+	req.Equal("create", traces[1].Type)
+	req.Equal("", traces[1].Error)
 	req.EqualValues(wait.Height-1, traces[2].BlockNumber)
-	req.Equal("create", traces[2].EthTrace.Type)
-	req.Contains(traces[2].EthTrace.Error, "ErrForbidden")
+	req.Equal("create", traces[2].Type)
+	req.Contains(traces[2].Error, "ErrForbidden")
 }
 
 func TestFEVMEthTraceFilterFailedCreate(t *testing.T) {
@@ -1788,10 +1788,10 @@ func TestFEVMEthTraceFilterFailedCreate(t *testing.T) {
 	blockTraces, err := client.EthTraceBlock(ctx, blockNum)
 	req.NoError(err)
 	req.Len(blockTraces, 3)
-	req.Equal("call", blockTraces[0].EthTrace.Type)
-	req.Equal("create", blockTraces[1].EthTrace.Type)
-	req.Equal("create", blockTraces[2].EthTrace.Type)
-	req.Contains(blockTraces[2].EthTrace.Error, "ErrForbidden")
+	req.Equal("call", blockTraces[0].Type)
+	req.Equal("create", blockTraces[1].Type)
+	req.Equal("create", blockTraces[2].Type)
+	req.Contains(blockTraces[2].Error, "ErrForbidden")
 
 	// EthTraceFilter with a toAddress filter on a block containing failed creates.
 	fromBlock := blockNum

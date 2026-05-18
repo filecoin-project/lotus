@@ -449,7 +449,7 @@ func (d *deadline0) LoadPartition(idx uint64) (Partition, error) {
 }
 
 func (d *deadline0) ForEachPartition(cb func(uint64, Partition) error) error {
-	ps, err := d.Deadline.PartitionsArray(d.store)
+	ps, err := d.PartitionsArray(d.store)
 	if err != nil {
 		return err
 	}
@@ -466,11 +466,11 @@ func (d *deadline0) PartitionsChanged(other Deadline) (bool, error) {
 		return true, nil
 	}
 
-	return !d.Deadline.Partitions.Equals(other0.Deadline.Partitions), nil
+	return !d.Partitions.Equals(other0.Partitions), nil
 }
 
 func (d *deadline0) PartitionsPoSted() (bitfield.BitField, error) {
-	return d.Deadline.PostSubmissions, nil
+	return d.PostSubmissions, nil
 }
 
 func (d *deadline0) DisputableProofCount() (uint64, error) {
@@ -485,15 +485,15 @@ func (d *deadline0) DailyFee() (abi.TokenAmount, error) {
 }
 
 func (p *partition0) AllSectors() (bitfield.BitField, error) {
-	return p.Partition.Sectors, nil
+	return p.Sectors, nil
 }
 
 func (p *partition0) FaultySectors() (bitfield.BitField, error) {
-	return p.Partition.Faults, nil
+	return p.Faults, nil
 }
 
 func (p *partition0) RecoveringSectors() (bitfield.BitField, error) {
-	return p.Partition.Recoveries, nil
+	return p.Recoveries, nil
 }
 
 func (p *partition0) UnprovenSectors() (bitfield.BitField, error) {

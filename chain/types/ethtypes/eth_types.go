@@ -13,7 +13,6 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
-	mh "github.com/multiformats/go-multihash"
 	"github.com/multiformats/go-varint"
 	"golang.org/x/xerrors"
 
@@ -33,7 +32,7 @@ import (
 var expectedHashPrefix = cid.Prefix{
 	Version:  1,
 	Codec:    cid.DagCBOR,
-	MhType:   uint64(mh.BLAKE2B_MIN + 31),
+	MhType:   uint64(multihash.BLAKE2B_MIN + 31),
 	MhLength: 32,
 }.Bytes()
 
@@ -86,7 +85,7 @@ func (e *EthUint64) UnmarshalJSON(b []byte) error {
 }
 
 func EthUint64FromHex(s string) (EthUint64, error) {
-	parsedInt, err := strconv.ParseUint(strings.Replace(s, "0x", "", -1), 16, 64)
+	parsedInt, err := strconv.ParseUint(strings.ReplaceAll(s, "0x", ""), 16, 64)
 	if err != nil {
 		return EthUint64(0), err
 	}
@@ -128,7 +127,7 @@ type EthBigInt big.Int
 var EthBigIntZero = EthBigInt{Int: big.Zero().Int}
 
 func (e EthBigInt) String() string {
-	if e.Int == nil || e.Int.BitLen() == 0 {
+	if e.Int == nil || e.BitLen() == 0 {
 		return "0x0"
 	}
 	return fmt.Sprintf("0x%x", e.Int)
@@ -144,7 +143,7 @@ func (e *EthBigInt) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
-	replaced := strings.Replace(s, "0x", "", -1)
+	replaced := strings.ReplaceAll(s, "0x", "")
 	if len(replaced)%2 == 1 {
 		replaced = "0" + replaced
 	}
@@ -176,7 +175,7 @@ func (e *EthBytes) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
-	s = strings.Replace(s, "0x", "", -1)
+	s = strings.ReplaceAll(s, "0x", "")
 	if len(s)%2 == 1 {
 		s = "0" + s
 	}
@@ -417,7 +416,7 @@ func (n *EthNonce) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
-	s = strings.Replace(s, "0x", "", -1)
+	s = strings.ReplaceAll(s, "0x", "")
 	if len(s)%2 == 1 {
 		s = "0" + s
 	}

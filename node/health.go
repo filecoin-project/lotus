@@ -100,17 +100,14 @@ func NewReadyHandler(api lapi.FullNode) *HealthHandler {
 		const heightTolerance = uint64(5)
 		var nethealth, synchealth bool
 		minutely := time.NewTicker(time.Minute)
-		for {
-			select {
-			case <-minutely.C:
-				netstat, err := api.NetAutoNatStatus(ctx)
-				nethealth = err == nil && netstat.Reachability != network.ReachabilityUnknown
+		for range minutely.C {
+			netstat, err := api.NetAutoNatStatus(ctx)
+			nethealth = err == nil && netstat.Reachability != network.ReachabilityUnknown
 
-				nodestat, err := api.NodeStatus(ctx, false)
-				synchealth = err == nil && nodestat.SyncStatus.Behind < heightTolerance
+			nodestat, err := api.NodeStatus(ctx, false)
+			synchealth = err == nil && nodestat.SyncStatus.Behind < heightTolerance
 
-				h.SetHealthy(nethealth && synchealth)
-			}
+			h.SetHealthy(nethealth && synchealth)
 		}
 	}()
 	return &h

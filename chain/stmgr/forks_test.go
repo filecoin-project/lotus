@@ -35,7 +35,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/gen"
-	"github.com/filecoin-project/lotus/chain/stmgr"
 	. "github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
@@ -666,7 +665,7 @@ func TestMigrtionCache(t *testing.T) {
 	ts, err := cg.ChainStore().GetTipsetByHeight(context.Background(), testForkHeight, nil, false)
 	require.NoError(t, err)
 
-	root, _, err := stmgr.ComputeState(context.Background(), sm, testForkHeight+1, []*types.Message{}, ts)
+	root, _, err := ComputeState(context.Background(), sm, testForkHeight+1, []*types.Message{}, ts)
 	require.NoError(t, err)
 	t.Log(root)
 

@@ -2326,16 +2326,16 @@ func AssertEthLogs(t *testing.T, actual []*ethtypes.EthLog, expected []ExpectedE
 
 		if !matched {
 			var buf strings.Builder
-			buf.WriteString(fmt.Sprintf("found unexpected log at height %d:\n", msg.ts.Height()))
-			buf.WriteString(fmt.Sprintf("  address: %s\n", elog.Address))
-			buf.WriteString(fmt.Sprintf("  topics: %s\n", formatTopics(elog.Topics)))
-			buf.WriteString(fmt.Sprintf("  data: %x\n", elog.Data))
+			fmt.Fprintf(&buf, "found unexpected log at height %d:\n", msg.ts.Height())
+			fmt.Fprintf(&buf, "  address: %s\n", elog.Address)
+			fmt.Fprintf(&buf, "  topics: %s\n", formatTopics(elog.Topics))
+			fmt.Fprintf(&buf, "  data: %x\n", elog.Data)
 			buf.WriteString("original events from receipt were:\n")
 			for i, ev := range msg.events {
-				buf.WriteString(fmt.Sprintf("event %d\n", i))
-				buf.WriteString(fmt.Sprintf("  emitter: %v\n", ev.Emitter))
+				fmt.Fprintf(&buf, "event %d\n", i)
+				fmt.Fprintf(&buf, "  emitter: %v\n", ev.Emitter)
 				for _, en := range ev.Entries {
-					buf.WriteString(fmt.Sprintf("  %s=%x\n", en.Key, en.Value))
+					fmt.Fprintf(&buf, "  %s=%x\n", en.Key, en.Value)
 				}
 			}
 
@@ -2346,10 +2346,10 @@ func AssertEthLogs(t *testing.T, actual []*ethtypes.EthLog, expected []ExpectedE
 	for i := range expected {
 		if _, ok := expectedMatched[i]; !ok {
 			var buf strings.Builder
-			buf.WriteString(fmt.Sprintf("did not find expected log with index %d:\n", i))
-			buf.WriteString(fmt.Sprintf("  address: %s\n", expected[i].Address))
-			buf.WriteString(fmt.Sprintf("  topics: %s\n", formatTopics(expected[i].Topics)))
-			buf.WriteString(fmt.Sprintf("  data: %x\n", expected[i].Data))
+			fmt.Fprintf(&buf, "did not find expected log with index %d:\n", i)
+			fmt.Fprintf(&buf, "  address: %s\n", expected[i].Address)
+			fmt.Fprintf(&buf, "  topics: %s\n", formatTopics(expected[i].Topics))
+			fmt.Fprintf(&buf, "  data: %x\n", expected[i].Data)
 			t.Error(buf.String())
 		}
 	}
@@ -2408,7 +2408,7 @@ func ParseEthLog(in map[string]interface{}) (*ethtypes.EthLog, error) {
 		if !ok {
 			return 0, xerrors.Errorf(k + " not a string")
 		}
-		parsedInt, err := strconv.ParseUint(strings.Replace(s, "0x", "", -1), 16, 64)
+		parsedInt, err := strconv.ParseUint(strings.ReplaceAll(s, "0x", ""), 16, 64)
 		if err != nil {
 			return 0, err
 		}
