@@ -363,8 +363,8 @@ func (m *Manager) SectorsUnsealPiece(ctx context.Context, sector storiface.Secto
 		// TODO: make restartable
 
 		// NOTE: we're unsealing the whole sector here as with SDR we can't really
-		//  unseal the sector partially. Requesting the whole sector here can
-		//  save us some work in case another piece is requested from here
+		// unseal the sector partially. Requesting the whole sector here can
+		// save us some work in case another piece is requested from here
 		log.Debugf("calling unseal sector on worker, sectoID=%d", sector.ID)
 
 		// Note: This unseal piece call will essentially become a no-op if the worker already has an Unsealed sector file for the given sector.

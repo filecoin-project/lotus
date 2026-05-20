@@ -58,7 +58,7 @@ func (fs *FundingStage) Fund(bb *blockbuilder.BlockBuilder, target address.Addre
 //  1. Tries to send the given message.
 //  2. If that fails, it checks to see if the exit code was ErrInsufficientFunds.
 //  3. If so, it sends 1K FIL from the "burnt funds actor" (because we need to send it from
-//     somewhere) and re-tries the message.0
+//     somewhere) and re-tries the message.
 func (fs *FundingStage) SendAndFund(bb *blockbuilder.BlockBuilder, msg *types.Message) (res *types.MessageReceipt, err error) {
 	for i := 0; i < 10; i++ {
 		res, err = bb.PushMessage(msg)

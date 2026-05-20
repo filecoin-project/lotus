@@ -88,7 +88,7 @@ func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
 	//       progress.
 	//       this is guaranteed by the chainstore, and it is pervasive in all lotus
 	//       -- if that ever changes then all hell will break loose in general and
-	//       we will have a rance to protectTipSets here.
+	//       we will have a chance to protectTipSets here.
 	//      Regardless, we put a mutex in HeadChange just to be safe
 
 	if !atomic.CompareAndSwapInt32(&s.compacting, 0, 1) {

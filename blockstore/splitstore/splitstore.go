@@ -740,7 +740,7 @@ func (s *SplitStore) Start(chain ChainAccessor, us stmgr.UpgradeSchedule) error 
 		s.pruneEpoch = bytesToEpoch(bs)
 	case dstore.ErrNotFound:
 		if curTs == nil {
-			//this can happen in some tests
+			// this can happen in some tests
 			break
 		}
 		if err := s.setPruneEpoch(curTs.Height()); err != nil {
