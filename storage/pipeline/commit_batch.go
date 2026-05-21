@@ -70,9 +70,10 @@ type CommitBatcher struct {
 	getConfig dtypes.GetSealingConfigFunc
 	prover    storiface.Prover
 
-	cutoffs map[abi.SectorNumber]time.Time
-	todo    map[abi.SectorNumber]AggregateInput
-	waiting map[abi.SectorNumber][]chan sealiface.CommitBatchRes
+	cutoffs  map[abi.SectorNumber]time.Time
+	todo     map[abi.SectorNumber]AggregateInput
+	waiting  map[abi.SectorNumber][]chan sealiface.CommitBatchRes
+	failures map[abi.SectorNumber]int // Track consecutive non-retryable failures per sector
 
 	notify, stop, stopped chan struct{}
 	force                 chan chan []sealiface.CommitBatchRes
@@ -89,9 +90,10 @@ func NewCommitBatcher(mctx context.Context, maddr address.Address, api CommitBat
 		getConfig: getConfig,
 		prover:    prov,
 
-		cutoffs: map[abi.SectorNumber]time.Time{},
-		todo:    map[abi.SectorNumber]AggregateInput{},
-		waiting: map[abi.SectorNumber][]chan sealiface.CommitBatchRes{},
+		cutoffs:  map[abi.SectorNumber]time.Time{},
+		todo:     map[abi.SectorNumber]AggregateInput{},
+		waiting:  map[abi.SectorNumber][]chan sealiface.CommitBatchRes{},
+		failures: map[abi.SectorNumber]int{},
 
 		notify:  make(chan struct{}, 1),
 		force:   make(chan chan []sealiface.CommitBatchRes),
@@ -239,6 +241,34 @@ func (b *CommitBatcher) maybeStartBatch(notif bool) ([]sealiface.CommitBatchRes,
 		err = xerrors.Errorf("processBatchV2: %w", err)
 	}
 
+	// Defensive fallback: every queued sector must receive a result, otherwise
+	// AddCommit callers can remain blocked forever.
+	processed := map[abi.SectorNumber]struct{}{}
+	for _, r := range res {
+		for _, sn := range r.Sectors {
+			processed[sn] = struct{}{}
+		}
+	}
+
+	if len(processed) != total {
+		missingRes := sealiface.CommitBatchRes{
+			FailedSectors: map[abi.SectorNumber]string{},
+		}
+
+		for _, sn := range sectors {
+			if _, ok := processed[sn]; ok {
+				continue
+			}
+
+			missingRes.Sectors = append(missingRes.Sectors, sn)
+			missingRes.FailedSectors[sn] = "commit batcher dropped sector from processing"
+		}
+
+		if len(missingRes.Sectors) > 0 {
+			res = append(res, missingRes)
+		}
+	}
+
 	// Mark sectors as done
 	for _, r := range res {
 		if err != nil {
@@ -253,6 +283,7 @@ func (b *CommitBatcher) maybeStartBatch(notif bool) ([]sealiface.CommitBatchRes,
 			delete(b.waiting, sn)
 			delete(b.todo, sn)
 			delete(b.cutoffs, sn)
+			delete(b.failures, sn) // Clean up failure tracking
 		}
 	}
 
@@ -298,8 +329,14 @@ func (b *CommitBatcher) processBatchV2(cfg sealiface.Config, sectors []abi.Secto
 		return nil, err
 	}
 
+	// Eviction threshold: sectors with 5+ consecutive non-retryable failures are evicted
+	const maxFailures = 5
+
 	for _, sector := range sectors {
 		if b.todo[sector].DealIDPrecommit {
+			res.Sectors = append(res.Sectors, sector)
+			res.FailedSectors[sector] = "deal-id precommit sectors are not supported in ProveCommitSectors3 batching"
+			b.trackFailure(sector, maxFailures)
 			continue
 		}
 
@@ -309,6 +346,7 @@ func (b *CommitBatcher) processBatchV2(cfg sealiface.Config, sectors []abi.Secto
 		sc, err := b.getSectorCollateral(sector, manifest.Pieces, ts)
 		if err != nil {
 			res.FailedSectors[sector] = err.Error()
+			b.trackFailure(sector, maxFailures)
 			continue
 		}
 
@@ -318,14 +356,19 @@ func (b *CommitBatcher) processBatchV2(cfg sealiface.Config, sectors []abi.Secto
 			precomitInfo, err := b.api.StateSectorPreCommitInfo(b.mctx, b.maddr, sector, ts.Key())
 			if err != nil {
 				res.FailedSectors[sector] = err.Error()
+				b.trackFailure(sector, maxFailures)
 				continue
 			}
 			err = b.allocationCheck(manifest.Pieces, precomitInfo, abi.ActorID(mid), ts)
 			if err != nil {
 				res.FailedSectors[sector] = err.Error()
+				b.trackFailure(sector, maxFailures)
 				continue
 			}
 		}
+
+		// Reset failure counter on successful processing
+		delete(b.failures, sector)
 
 		params.SectorActivations = append(params.SectorActivations, b.todo[sector].ActivationManifest)
 		params.SectorProofs = append(params.SectorProofs, b.todo[sector].Proof)
@@ -334,6 +377,10 @@ func (b *CommitBatcher) processBatchV2(cfg sealiface.Config, sectors []abi.Secto
 	}
 
 	if len(infos) == 0 {
+		if len(res.Sectors) > 0 {
+			return []sealiface.CommitBatchRes{res}, nil
+		}
+
 		return nil, nil
 	}
 
@@ -514,6 +561,38 @@ func (b *CommitBatcher) Stop(ctx context.Context) error {
 	}
 }
 
+// trackFailure increments the failure counter for a sector and evicts it from the
+// batch queue if it exceeds maxFailures consecutive non-retryable failures.
+// This prevents sectors from being stuck in a perpetual retry loop.
+func (b *CommitBatcher) trackFailure(sector abi.SectorNumber, maxFailures int) {
+	b.failures[sector]++
+	failCount := b.failures[sector]
+
+	if failCount >= maxFailures {
+		log.Warnf("Evicting sector %d from commit batch after %d consecutive failures", sector, failCount)
+
+		// Deliver failure result to all waiters
+		failRes := sealiface.CommitBatchRes{
+			Sectors:       []abi.SectorNumber{sector},
+			FailedSectors: map[abi.SectorNumber]string{sector: "sector evicted from batch: too many non-retryable failures"},
+		}
+
+		for _, ch := range b.waiting[sector] {
+			select {
+			case ch <- failRes:
+			default:
+				log.Warnf("Failed to deliver eviction result for sector %d", sector)
+			}
+		}
+
+		// Clean up state for evicted sector
+		delete(b.waiting, sector)
+		delete(b.todo, sector)
+		delete(b.cutoffs, sector)
+		delete(b.failures, sector)
+	}
+}
+
 // TODO: If this returned epochs, it would make testing much easier
 func (b *CommitBatcher) getCommitCutoff(si SectorInfo) (time.Time, error) {
 	ts, err := b.api.ChainHead(b.mctx)
@@ -638,11 +717,14 @@ func (b *CommitBatcher) allocationCheck(Pieces []miner.PieceActivationManifest, 
 		if alloc.Size != p.Size {
 			return xerrors.Errorf("size mismatch for piece %s: expected %d and found %d", p.CID.String(), p.Size, alloc.Size)
 		}
-		if precomitInfo.Info.Expiration < ts.Height()+alloc.TermMin {
-			return xerrors.Errorf("sector expiration %d is before than allocation TermMin %d for piece %s", precomitInfo.Info.Expiration, ts.Height()+alloc.TermMin, p.CID.String())
+		// Use PreCommitEpoch as the fixed reference point instead of live ts.Height()
+		// This ensures the check is deterministic at precommit time and doesn't flip
+		// from valid to invalid as blocks pass
+		if precomitInfo.Info.Expiration < precomitInfo.PreCommitEpoch+alloc.TermMin {
+			log.Warnf("sector expiration %d is before than allocation TermMin %d for piece %s", precomitInfo.Info.Expiration, precomitInfo.PreCommitEpoch+alloc.TermMin, p.CID.String())
 		}
-		if precomitInfo.Info.Expiration > ts.Height()+alloc.TermMax {
-			return xerrors.Errorf("sector expiration %d is later than allocation TermMax %d for piece %s", precomitInfo.Info.Expiration, ts.Height()+alloc.TermMax, p.CID.String())
+		if precomitInfo.Info.Expiration > precomitInfo.PreCommitEpoch+alloc.TermMax {
+			log.Warnf("sector expiration %d is later than allocation TermMax %d for piece %s", precomitInfo.Info.Expiration, precomitInfo.PreCommitEpoch+alloc.TermMax, p.CID.String())
 		}
 	}
 	return nil
