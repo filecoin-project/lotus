@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/lotus/storage/pipeline/piece"
 )
 
 type PreCommitPolicy interface {
@@ -22,6 +23,7 @@ type PreCommitPolicy interface {
 type Chain interface {
 	ChainHead(context.Context) (*types.TipSet, error)
 	StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error)
+	piece.AllocationAPI
 }
 
 // BasicPreCommitPolicy satisfies PreCommitPolicy. It has two modes:
@@ -66,6 +68,7 @@ func (p *BasicPreCommitPolicy) Expiration(ctx context.Context, ps ...SafeSectorP
 	}
 
 	var end *abi.ChainEpoch
+	chainAPI := p.api
 
 	for _, p := range ps {
 		if !p.HasDealInfo() {
@@ -75,6 +78,28 @@ func (p *BasicPreCommitPolicy) Expiration(ctx context.Context, ps ...SafeSectorP
 		endEpoch, err := p.EndEpoch()
 		if err != nil {
 			return 0, xerrors.Errorf("failed to get end epoch: %w", err)
+		}
+
+		alloc, err := p.GetAllocation(ctx, chainAPI, ts.Key())
+		if err != nil {
+			return 0, xerrors.Errorf("failed to get allocation: %w", err)
+		}
+		if alloc != nil {
+			pieceCID := p.PieceCID()
+			if alloc.Data != pieceCID {
+				return 0, xerrors.Errorf("allocation piece cid mismatch: expected %s, got %s", pieceCID, alloc.Data)
+			}
+
+			pieceSize := p.Piece().Size
+			if alloc.Size != pieceSize {
+				return 0, xerrors.Errorf("allocation piece size mismatch: expected %d, got %d", pieceSize, alloc.Size)
+			}
+
+			maxAllowed := ts.Height() + alloc.TermMax
+			if maxAllowed < endEpoch {
+				log.Warnf("deal end epoch %d is after allocation term maximum %d, clamping to maximum", endEpoch, maxAllowed)
+				endEpoch = maxAllowed
+			}
 		}
 
 		if endEpoch < ts.Height() {
