@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
@@ -295,6 +296,12 @@ func TestContractInvocationMultiple(t *testing.T) {
 		totalMessages = 20
 		maxUntrusted  = 10
 	)
+
+	// Pin the untrusted-push cap so the test exercises a small, bounded
+	// scenario independent of the package default.
+	prev := messagepool.MaxUntrustedActorPendingMessages
+	messagepool.MaxUntrustedActorPendingMessages = maxUntrusted
+	t.Cleanup(func() { messagepool.MaxUntrustedActorPendingMessages = prev })
 
 	for _, untrusted := range []bool{true, false} {
 		t.Run(fmt.Sprintf("untrusted=%t", untrusted), func(t *testing.T) {
