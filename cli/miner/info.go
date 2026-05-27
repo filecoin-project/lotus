@@ -188,7 +188,7 @@ func handleMiningInfo(ctx context.Context, cctx *cli.Context, fullapi v1api.Full
 		}
 		fmt.Printf("\tProving: %s (%s Faulty, %.2f%%)\n",
 			types.SizeStr(types.BigMul(types.NewInt(proving), types.NewInt(uint64(mi.SectorSize)))),
-			types.SizeStr(types.BigMul(types.NewInt(nfaults), types.NewInt(uint64(mi.SectorSize)))),
+			color.RedString(types.SizeStr(types.BigMul(types.NewInt(nfaults), types.NewInt(uint64(mi.SectorSize))))),
 			faultyPercentage)
 	}
 
