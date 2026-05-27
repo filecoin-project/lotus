@@ -185,7 +185,9 @@ The table below gives an overview of how Lotus and its critical dependencies rel
 
 6. Before opening code PRs, check whether some repository work has already landed. Search each repository for `nvXX-dev`, `NetworkVersion::VXX`, `network version XX`, and existing PRs or tags for the target network version. If a repository already satisfies its done criteria, add the evidence to the tracking issue and close it instead of opening duplicate work.
 
-7. Clone Repos
+7. Parallelize where dependencies allow it. Ref-FVM support must be published before Filecoin-FFI can consume it, but Go-State-Types skeleton work can proceed while the Filecoin-FFI skeleton PR is waiting for review, merge, or release-candidate work.
+
+8. Clone Repos
    1. [ref-fvm](https://github.com/filecoin-project/ref-fvm.git)
    2. [go-state-types](https://github.com/filecoin-project/go-state-types)
    3. [filecoin-ffi](https://github.com/filecoin-project/filecoin-ffi.git)
