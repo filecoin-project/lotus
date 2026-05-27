@@ -60,7 +60,7 @@ var baseFeeLowerBoundFactor = types.NewInt(10)
 var baseFeeLowerBoundFactorConservative = types.NewInt(100)
 
 var MaxActorPendingMessages = 1000
-var MaxUntrustedActorPendingMessages = 10
+var MaxUntrustedActorPendingMessages = 100
 
 var MaxNonceGap = uint64(4)
 
@@ -596,7 +596,7 @@ func (mp *MessagePool) Close() error {
 func (mp *MessagePool) Prune() {
 	// this magic incantation of triggering prune thrice is here to make the Prune method
 	// synchronous:
-	// so, its a single slot buffered channel. The first send fills the channel,
+	// so, it's a single slot buffered channel. The first send fills the channel,
 	// the second send goes through when the pruning starts,
 	// and the third send goes through (and noops) after the pruning finishes
 	// and goes through the loop again
@@ -1158,7 +1158,7 @@ func (mp *MessagePool) getStateBalance(ctx context.Context, addr address.Address
 // differences from Push:
 //   - strict checks are enabled
 //   - extra strict add checks are used when adding the messages to the msgSet
-//     that means: no nonce gaps, at most 10 pending messages for the actor
+//     that means: no nonce gaps, at most 100 pending messages for the actor
 func (mp *MessagePool) PushUntrusted(ctx context.Context, m *types.SignedMessage) (cid.Cid, error) {
 	err := mp.checkMessage(ctx, m)
 	if err != nil {

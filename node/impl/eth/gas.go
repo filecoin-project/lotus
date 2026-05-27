@@ -59,6 +59,15 @@ func NewEthGasAPI(
 	}
 }
 
+func (e *ethGas) EthBaseFee(ctx context.Context) (ethtypes.EthBigInt, error) {
+	ts := e.chainStore.GetHeaviestTipSet()
+	nextBaseFee, err := e.chainStore.ComputeBaseFee(ctx, ts)
+	if err != nil {
+		return ethtypes.EthBigInt{}, xerrors.Errorf("computing next base fee: %w", err)
+	}
+	return ethtypes.EthBigInt(nextBaseFee), nil
+}
+
 func (e *ethGas) EthGasPrice(ctx context.Context) (ethtypes.EthBigInt, error) {
 	// According to Geth's implementation, eth_gasPrice should return base + tip
 	// Ref: https://github.com/ethereum/pm/issues/328#issuecomment-853234014
@@ -468,6 +477,9 @@ func (g gasRewardSorter) Less(i, j int) bool {
 
 type EthGasDisabled struct{}
 
+func (EthGasDisabled) EthBaseFee(ctx context.Context) (ethtypes.EthBigInt, error) {
+	return ethtypes.EthBigInt{}, ErrModuleDisabled
+}
 func (EthGasDisabled) EthGasPrice(ctx context.Context) (ethtypes.EthBigInt, error) {
 	return ethtypes.EthBigInt{}, ErrModuleDisabled
 }

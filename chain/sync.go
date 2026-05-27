@@ -1092,11 +1092,17 @@ func checkMsgMeta(ts *types.TipSet, allbmsgs []*types.Message, allsmsgs []*types
 
 		var smsgCids []cid.Cid
 		for _, m := range smi[bi] {
+			if allsmsgs[m] == nil {
+				return fmt.Errorf("nil signed message at index %d in secp array", m)
+			}
 			smsgCids = append(smsgCids, allsmsgs[m].Cid())
 		}
 
 		var bmsgCids []cid.Cid
 		for _, m := range bmi[bi] {
+			if allbmsgs[m] == nil {
+				return fmt.Errorf("nil bls message at index %d in bls array", m)
+			}
 			bmsgCids = append(bmsgCids, allbmsgs[m].Cid())
 		}
 

@@ -43,7 +43,7 @@ func BadgerBlockstoreOptions(domain BlockstoreDomain, path string, readonly bool
 	opts.MaxTableSize = 64 << 20
 
 	// NOTE: The chain blockstore doesn't require any GC (blocks are never
-	// deleted). This will change if we move to a tiered blockstore.
+	// deleted). This will change if/when we move to a tiered blockstore.
 
 	opts.ReadOnly = readonly
 

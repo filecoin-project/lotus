@@ -92,8 +92,6 @@ func (e *ethTrace) EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtype
 			continue
 		}
 
-		msgIdx++
-
 		txHash, err := getTransactionHashByCid(ctx, e.chainStore, ir.MsgCid)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to get transaction hash by cid: %w", err)
@@ -121,6 +119,8 @@ func (e *ethTrace) EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtype
 				TransactionPosition: msgIdx,
 			})
 		}
+
+		msgIdx++
 	}
 
 	return allTraces, nil
@@ -438,7 +438,7 @@ func traceIsEVMOrEAM(et *types.ExecutionTrace) bool {
 		return false
 	}
 	return builtinactors.IsEvmActor(et.InvokedActor.State.Code) ||
-		et.InvokedActor.Id != abi.ActorID(builtin.EthereumAddressManagerActorID)
+		et.InvokedActor.Id == abi.ActorID(builtin.EthereumAddressManagerActorID)
 }
 
 func traceErrMsg(et *types.ExecutionTrace) string {
