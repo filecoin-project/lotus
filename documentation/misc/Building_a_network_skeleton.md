@@ -296,16 +296,20 @@ You can take a look at [this PR as a reference](https://github.com/filecoin-proj
 
     👉 You can take a look at this [Filecoin-FFI PR as a reference](https://github.com/filecoin-project/filecoin-ffi/pull/479), which added the skeleton for network version 24.
 
-3.  [Follow the release process](https://github.com/filecoin-project/filecoin-ffi/blob/master/RELEASE.md) to publish `v1.NEW_LOTUS_MINOR_VERSION.0-dev`
-
-    👉 You can take a look at this [Filecoin-FFI PR as a reference](https://github.com/filecoin-project/filecoin-ffi/pull/481), which was for network version 24.
-
-4. Validate the patch:
+3. Validate the patch:
 
     ```bash
     cargo fmt --manifest-path rust/Cargo.toml --check
     cargo check --manifest-path rust/Cargo.toml --no-default-features --features fvm
     ```
+
+4. Open the skeleton PR and request review.
+
+    This is a handoff boundary for agentic execution: CI can take a long time, so record the PR URL and current status, then stop unless the user explicitly asks you to keep watching. Do not start the Filecoin-FFI release-candidate work until the skeleton PR has been reviewed, approved, and merged.
+
+5. [Follow the release process](https://github.com/filecoin-project/filecoin-ffi/blob/master/RELEASE.md) to publish `v1.NEW_LOTUS_MINOR_VERSION.0-dev`
+
+    👉 You can take a look at this [Filecoin-FFI PR as a reference](https://github.com/filecoin-project/filecoin-ffi/pull/481), which was for network version 24.
 
 Note: one only needs to update `filecoin-ffi`'s dependency on `go-state-types` when a network upgrade is introducing new types in `go-state-types`  (see [below](#new-types-in-go-state-types)).  Otherwise, `filecoin-ffi`'s dependency on `go-state-types` is just updated when doing final releases before the network upgrade.
 
