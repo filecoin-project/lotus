@@ -60,7 +60,7 @@ var baseFeeLowerBoundFactor = types.NewInt(10)
 var baseFeeLowerBoundFactorConservative = types.NewInt(100)
 
 var MaxActorPendingMessages = 1000
-var MaxUntrustedActorPendingMessages = 10
+var MaxUntrustedActorPendingMessages = 100
 
 var MaxNonceGap = uint64(4)
 
@@ -1152,7 +1152,7 @@ func (mp *MessagePool) getStateBalance(ctx context.Context, addr address.Address
 // differences from Push:
 //   - strict checks are enabled
 //   - extra strict add checks are used when adding the messages to the msgSet
-//     that means: no nonce gaps, at most 10 pending messages for the actor
+//     that means: no nonce gaps, at most 100 pending messages for the actor
 func (mp *MessagePool) PushUntrusted(ctx context.Context, m *types.SignedMessage) (cid.Cid, error) {
 	err := mp.checkMessage(ctx, m)
 	if err != nil {
