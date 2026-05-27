@@ -1,6 +1,6 @@
 # Network Upgrade Skeleton in Lotus <!-- omit in toc -->
 
-This guide will walk you through the process of creating a skeleton for a network upgrade in Lotus. 
+This guide will walk you through the process of creating a skeleton for a network upgrade in Lotus. It is written for both human and agentic execution: resolve the target network version once, create the cross-repo tracking issues, then make and validate the dependency changes in order.
 
 - [Context](#context)
   - [Network Upgrade Dependency Versions](#network-upgrade-dependency-versions)
@@ -61,36 +61,152 @@ The table below gives an overview of how Lotus and its critical dependencies rel
 
 ## Setup
 
-1. Create a tracking issue for this effort:
+1. Resolve the target values once and reuse them everywhere:
 
-   Title: Skeleton for nvXX to support development and testing
-   Body:
+   ```bash
+   export NETWORK_VERSION=29
+   export PREVIOUS_NETWORK_VERSION=$((NETWORK_VERSION - 1))
+   export NV="nv${NETWORK_VERSION}"
+   export PREVIOUS_NV="nv${PREVIOUS_NETWORK_VERSION}"
+   export ISSUE_TITLE="Skeleton for ${NV} to support development and testing"
+   export DOC_URL="https://github.com/filecoin-project/lotus/blob/master/documentation/misc/Building_a_network_skeleton.md"
+   ```
 
-````
-## Done Criteria
-There is a network skeleton in Lotus, which bubbles up all the other dependencies, and allows one to run a 2k-network and see that it switches network version from nv(XX-1) --> nvXX
+2. Verify GitHub access:
 
-## Notes
-1. This is the overarching tracking issue for the network skeleton update, but there are tasks that need to be completed in other repos as well.  All PRs for this effort can reference this issue.
-2. How to create a skeleton in Lotus is documented here: https://github.com/filecoin-project/lotus/blob/master/documentation/misc/Building_a_network_skeleton.md
+   ```bash
+   gh auth status
+   ```
 
-```[tasklist]
-## Tasks
-- [ ] Skeleton for nv24 to support development and testing ref-fvm
-- [ ] Skeleton for nv24 to support development and testing go-state-types
-- [ ] Skeleton for nv24 to support development and testing filecoin-ffi
-- [ ] Skeleton for nv24 to support development and testing Lotus
-```
+3. Check for existing tracking issues before creating new ones:
 
-````
+   ```bash
+   for repo in lotus ref-fvm filecoin-ffi go-state-types; do
+     gh issue list \
+       --repo "filecoin-project/${repo}" \
+       --search "\"${ISSUE_TITLE}\"" \
+       --state all \
+       --json number,title,url,state
+   done
+   ```
 
-2. Clone Repos
+4. Create one issue in each repository with the title in `ISSUE_TITLE`. Apply the `good first issue` label when it exists in the repository. Create the dependency issues first, then the Lotus issue, so the Lotus issue can link to the others:
+
+   1. `filecoin-project/ref-fvm`
+   2. `filecoin-project/go-state-types`
+   3. `filecoin-project/filecoin-ffi`
+   4. `filecoin-project/lotus`
+
+5. After all four issues exist, edit every issue body so the cross-repo links are complete. Do not leave `link to be added` placeholders in the final issue bodies.
+
+   Use this common opening in every issue body, replacing the list item for the current repository with `(this ticket)`:
+
+   ```markdown
+   Write the skeleton for nvXX. This is part of a series of tickets across multiple repos, as building up a network upgrade skeleton requires changes across:
+
+   - https://github.com/filecoin-project/ref-fvm/issues/REF_FVM_ISSUE_NUMBER
+   - https://github.com/filecoin-project/filecoin-ffi/issues/FILECOIN_FFI_ISSUE_NUMBER
+   - https://github.com/filecoin-project/go-state-types/issues/GO_STATE_TYPES_ISSUE_NUMBER
+   - https://github.com/filecoin-project/lotus/issues/LOTUS_ISSUE_NUMBER
+   ```
+
+   Ref-FVM issue body:
+
+   ```markdown
+   How to create a network skeleton in Ref-FVM is documented here: https://github.com/filecoin-project/lotus/blob/master/documentation/misc/Building_a_network_skeleton.md#ref-fvm-checklist
+
+   ## Done Criteria
+   - FVM crates are published that support network version XX behind the `nvXX-dev` feature flag.
+
+   ## User/Customer
+   Implementers
+   ```
+
+   Go-State-Types issue body:
+
+   ```markdown
+   How to create a network skeleton in Go-State-Types is documented here: https://github.com/filecoin-project/lotus/blob/master/documentation/misc/Building_a_network_skeleton.md#go-state-types-checklist
+
+   ## Done Criteria
+   - There is a go-state-types developer release that supports the skeleton for network version XX.
+
+   ## User/Customer
+   Implementers
+   ```
+
+   Filecoin-FFI issue body:
+
+   ```markdown
+   How to create a network skeleton in Filecoin-FFI is documented here: https://github.com/filecoin-project/lotus/blob/master/documentation/misc/Building_a_network_skeleton.md#filecoin-ffi-checklist
+
+   ## Done Criteria
+   - There is a Filecoin-FFI release that supports network version XX.
+
+   ## User/Customer
+   Implementers
+   ```
+
+   Lotus tracking issue body:
+
+   ```markdown
+   How to create a skeleton in Lotus is documented here: https://github.com/filecoin-project/lotus/blob/master/documentation/misc/Building_a_network_skeleton.md#lotus-checklist
+
+   ## Done Criteria
+   - There is a network skeleton in Lotus, which bubbles up all the other dependencies, and allows one to run a 2k-network and see that it switches network version from nv(XX-1) to nvXX.
+
+   ## User/Customer
+   Implementers
+   ```
+
+   When using `gh`, create or edit issue bodies with `--body-file -` and a heredoc. For example:
+
+   ```bash
+   gh issue create \
+     --repo filecoin-project/ref-fvm \
+     --title "${ISSUE_TITLE}" \
+     --label "good first issue" \
+     --body-file - <<EOF
+   Write the skeleton for ${NV}. This is part of a series of tickets across multiple repos, as building up a network upgrade skeleton requires changes across:
+
+   - ref-fvm (this ticket)
+   - filecoin-ffi (link to be added)
+   - go-state-types (link to be added)
+   - Lotus (link to be added)
+
+   How to create a network skeleton in Ref-FVM is documented here: ${DOC_URL}#ref-fvm-checklist
+
+   ## Done Criteria
+   - FVM crates are published that support network version ${NETWORK_VERSION} behind the `${NV}-dev` feature flag.
+
+   ## User/Customer
+   Implementers
+   EOF
+   ```
+
+6. Before opening code PRs, check whether some repository work has already landed. Search each repository for `nvXX-dev`, `NetworkVersion::VXX`, `network version XX`, and existing PRs or tags for the target network version. If a repository already satisfies its done criteria, add the evidence to the tracking issue and close it instead of opening duplicate work.
+
+7. Clone Repos
    1. [ref-fvm](https://github.com/filecoin-project/ref-fvm.git)
    2. [go-state-types](https://github.com/filecoin-project/go-state-types)
    3. [filecoin-ffi](https://github.com/filecoin-project/filecoin-ffi.git)
    4. [lotus](https://github.com/filecoin-project/lotus)
 
 ## Ref-FVM Checklist
+
+0. Preflight current state:
+
+    - Search current `master` for the target feature and network version:
+        ```bash
+        rg "nvXX-dev|NetworkVersion::VXX|VXX|network version XX" fvm shared
+        ```
+    - Check whether the target support has already been released:
+        ```bash
+        git tag --list 'fvm@v*' --sort=-v:refname | head
+        cargo info fvm@VERSION --registry crates-io
+        cargo info fvm_shared@VERSION --registry crates-io
+        cargo info fvm_sdk@VERSION --registry crates-io
+        ```
+    - If the target network version is already in a published FVM release, record the skeleton PR, release PR/tag, and published crate versions in the tracking issue, then close the issue as complete.
 
 1. Add support for the new network version in Ref-FVM:
 
@@ -167,6 +283,11 @@ You can take a look at [this PR as a reference](https://github.com/filecoin-proj
 
 ## Filecoin-FFI Checklist
 
+0. Preflight current state:
+
+    - Check whether `rust/Cargo.toml` and `rust/Cargo.lock` already consume the Ref-FVM release with the target `nvXX-dev` feature.
+    - Even when the dependency bump is already present, verify that `rust/src/fvm/engine.rs` maps the target network version to the FVM v4 engine.
+
 1. Update the `TryFrom<u32>` implementation for `EngineVersion` in `rust/src/fvm/engine.rs`
     - Add the new network version number (XX+1) to the existing match arm for the network version.
 
@@ -178,6 +299,13 @@ You can take a look at [this PR as a reference](https://github.com/filecoin-proj
 3.  [Follow the release process](https://github.com/filecoin-project/filecoin-ffi/blob/master/RELEASE.md) to publish `v1.NEW_LOTUS_MINOR_VERSION.0-dev`
 
     👉 You can take a look at this [Filecoin-FFI PR as a reference](https://github.com/filecoin-project/filecoin-ffi/pull/481), which was for network version 24.
+
+4. Validate the patch:
+
+    ```bash
+    cargo fmt --manifest-path rust/Cargo.toml --check
+    cargo check --manifest-path rust/Cargo.toml --no-default-features --features fvm
+    ```
 
 Note: one only needs to update `filecoin-ffi`'s dependency on `go-state-types` when a network upgrade is introducing new types in `go-state-types`  (see [below](#new-types-in-go-state-types)).  Otherwise, `filecoin-ffi`'s dependency on `go-state-types` is just updated when doing final releases before the network upgrade.
 
