@@ -427,7 +427,7 @@ func producedBlocks(ctx context.Context, count int, maddr address.Address, napi 
 	tty := isatty.IsTerminal(os.Stderr.Fd())
 
 	ts := head
-	fmt.Printf(" Epoch   | Block ID                                                       | Reward\n")
+	fmt.Printf(" Epoch   | Time                      | Block ID                                                       | Reward\n")
 	for count > 0 {
 		tsk := ts.Key()
 		bhs := ts.Blocks()
@@ -458,7 +458,11 @@ func producedBlocks(ctx context.Context, count int, maddr address.Address, napi 
 				minerReward := types.BigDiv(types.BigMul(types.NewInt(uint64(bh.ElectionProof.WinCount)),
 					blockReward), types.NewInt(uint64(builtin.ExpectedLeadersPerEpoch)))
 
-				fmt.Printf("%8d | %s | %s\n", ts.Height(), bh.Cid(), types.FIL(minerReward))
+				fmt.Printf("%8d | %s | %s | %s\n",
+					ts.Height(),
+					time.Unix(int64(bh.Timestamp), 0).Format("2006-01-02 15:04:05 -0700"),
+					bh.Cid(),
+					types.FIL(minerReward))
 				count--
 			} else if tty && bh.Height%120 == 0 {
 				_, _ = fmt.Fprintf(os.Stderr, "\r\x1b[0KChecking epoch %s", cliutil.EpochTime(head.Height(), bh.Height))
