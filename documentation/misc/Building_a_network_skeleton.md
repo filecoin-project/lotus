@@ -279,7 +279,11 @@ You can take a look at [this PR as a reference](https://github.com/filecoin-proj
 
     👉 You can take a look at this [Go-State-Types PR as a reference](https://github.com/filecoin-project/go-state-types/pull/304), which added a simple migration for network version 24.
 
-3. [Follow the release process](https://github.com/filecoin-project/go-state-types#release-process) to publish `v0.NEW_VERSION.0-dev`
+3. Open the skeleton PR and request review.
+
+    This is another handoff boundary for agentic execution. Do not start the Go-State-Types release work until the skeleton PR has been reviewed, approved, and merged.
+
+4. [Follow the release process](https://github.com/filecoin-project/go-state-types#release-process) to publish `v0.NEW_VERSION.0-dev`
 
     👉 You can take a look at this [Go-State-Types PR as a reference](https://github.com/filecoin-project/go-state-types/pull/306), which was for network version 24.
 
