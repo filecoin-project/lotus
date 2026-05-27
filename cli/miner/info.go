@@ -16,6 +16,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -56,12 +57,6 @@ var infoCmd = &cli.Command{
 }
 
 func infoCmdAct(cctx *cli.Context) error {
-	minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
-	if err != nil {
-		return err
-	}
-	defer closer()
-
 	fullapi, acloser, err := lcli.GetFullNodeAPIV1(cctx)
 	if err != nil {
 		return err
@@ -70,18 +65,28 @@ func infoCmdAct(cctx *cli.Context) error {
 
 	ctx := lcli.ReqContext(cctx)
 
-	subsystems, err := minerApi.RuntimeSubsystems(ctx)
-	if err != nil {
-		return err
-	}
+	var minerApi api.StorageMiner
+	if !cctx.IsSet("actor") {
+		var closer jsonrpc.ClientCloser
+		minerApi, closer, err = lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
 
-	fmt.Println("Enabled subsystems:", subsystems)
+		subsystems, err := minerApi.RuntimeSubsystems(ctx)
+		if err != nil {
+			return err
+		}
 
-	start, err := minerApi.StartTime(ctx)
-	if err != nil {
-		return err
+		fmt.Println("Enabled subsystems:", subsystems)
+
+		start, err := minerApi.StartTime(ctx)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("StartTime: %s (started at %s)\n", time.Since(start).Truncate(time.Second), start.Truncate(time.Second))
 	}
-	fmt.Printf("StartTime: %s (started at %s)\n", time.Since(start).Truncate(time.Second), start.Truncate(time.Second))
 
 	fmt.Print("Chain: ")
 
@@ -92,19 +97,21 @@ func infoCmdAct(cctx *cli.Context) error {
 
 	fmt.Println()
 
-	alerts, err := minerApi.LogAlerts(ctx)
-	if err != nil {
-		fmt.Printf("ERROR: getting alerts: %s\n", err)
-	}
-
-	activeAlerts := make([]alerting.Alert, 0)
-	for _, alert := range alerts {
-		if alert.Active {
-			activeAlerts = append(activeAlerts, alert)
+	if minerApi != nil {
+		alerts, err := minerApi.LogAlerts(ctx)
+		if err != nil {
+			fmt.Printf("ERROR: getting alerts: %s\n", err)
 		}
-	}
-	if len(activeAlerts) > 0 {
-		fmt.Printf("%s (check %s)\n", color.RedString("⚠ %d Active alerts", len(activeAlerts)), color.YellowString("lotus-miner log alerts"))
+
+		activeAlerts := make([]alerting.Alert, 0)
+		for _, alert := range alerts {
+			if alert.Active {
+				activeAlerts = append(activeAlerts, alert)
+			}
+		}
+		if len(activeAlerts) > 0 {
+			fmt.Printf("%s (check %s)\n", color.RedString("⚠ %d Active alerts", len(activeAlerts)), color.YellowString("lotus-miner log alerts"))
+		}
 	}
 
 	err = handleMiningInfo(ctx, cctx, fullapi, minerApi)
@@ -314,7 +321,7 @@ func handleMiningInfo(ctx context.Context, cctx *cli.Context, fullapi v1api.Full
 	}
 	fmt.Println()
 
-	if !cctx.Bool("hide-sectors-info") {
+	if nodeApi != nil && !cctx.Bool("hide-sectors-info") {
 		fmt.Println("Sectors:")
 		err = sectorsInfo(ctx, nodeApi)
 		if err != nil {
@@ -324,35 +331,37 @@ func handleMiningInfo(ctx context.Context, cctx *cli.Context, fullapi v1api.Full
 
 	fmt.Println()
 
-	ws, err := nodeApi.WorkerStats(ctx)
-	if err != nil {
-		fmt.Printf("ERROR: getting worker stats: %s\n", err)
-	} else {
-		workersByType := map[string]int{
-			sealtasks.WorkerSealing:     0,
-			sealtasks.WorkerWindowPoSt:  0,
-			sealtasks.WorkerWinningPoSt: 0,
-		}
-
-	wloop:
-		for _, st := range ws {
-			if !st.Enabled {
-				continue
+	if nodeApi != nil {
+		ws, err := nodeApi.WorkerStats(ctx)
+		if err != nil {
+			fmt.Printf("ERROR: getting worker stats: %s\n", err)
+		} else {
+			workersByType := map[string]int{
+				sealtasks.WorkerSealing:     0,
+				sealtasks.WorkerWindowPoSt:  0,
+				sealtasks.WorkerWinningPoSt: 0,
 			}
 
-			for _, task := range st.Tasks {
-				if task.WorkerType() != sealtasks.WorkerSealing {
-					workersByType[task.WorkerType()]++
-					continue wloop
+		wloop:
+			for _, st := range ws {
+				if !st.Enabled {
+					continue
 				}
-			}
-			workersByType[sealtasks.WorkerSealing]++
-		}
 
-		fmt.Printf("Workers: Seal(%d) WdPoSt(%d) WinPoSt(%d)\n",
-			workersByType[sealtasks.WorkerSealing],
-			workersByType[sealtasks.WorkerWindowPoSt],
-			workersByType[sealtasks.WorkerWinningPoSt])
+				for _, task := range st.Tasks {
+					if task.WorkerType() != sealtasks.WorkerSealing {
+						workersByType[task.WorkerType()]++
+						continue wloop
+					}
+				}
+				workersByType[sealtasks.WorkerSealing]++
+			}
+
+			fmt.Printf("Workers: Seal(%d) WdPoSt(%d) WinPoSt(%d)\n",
+				workersByType[sealtasks.WorkerSealing],
+				workersByType[sealtasks.WorkerWindowPoSt],
+				workersByType[sealtasks.WorkerWinningPoSt])
+		}
 	}
 
 	if cctx.IsSet("blocks") {
