@@ -321,13 +321,22 @@ Note: one only needs to update `filecoin-ffi`'s dependency on `go-state-types` w
 
 ## Lotus Checklist
 
-1. To integrate the network skeleton into Lotus, ensure that the relevant releases for ref-fvm, go-state-types, and filecoin-ffi are bubbled up to Lotus.
+1. To fully integrate the network skeleton into Lotus, ensure that the relevant releases for ref-fvm, go-state-types, and filecoin-ffi are bubbled up to Lotus.
     - Refer to the [Update Dependencies Lotus tutorial](Update_Dependencies_Lotus.md) for detailed instructions on updating these dependencies in Lotus.
+
+    This is also a useful draft-PR boundary. While waiting for Go-State-Types and Filecoin-FFI skeleton PRs to be reviewed, merged, and released, a Lotus draft PR can still include:
+    - A mock actor bundle and generated bundle metadata.
+    - The placeholder upgrade-height constants.
+    - The `ForkUpgradeParams` and `StateGetNetworkParams` API plumbing.
+    - Generated OpenRPC/API docs for the new upgrade-height field.
+
+    Do not commit dependency bumps, `gen/inlinegen-data.json` changes, generated actor adapters, migration schedule wiring, statetree mappings, compute-state registry changes, invariant commands, or real actor-bundle replacement until the required Go-State-Types and Filecoin-FFI releases exist. If temporary local replacements are needed for exploration, remove them before publishing the draft PR.
 
 2. Import new actors:
 
     - Create a mock actor-bundle for the new network version.
     - In `/build/actors` run `./pack.sh vXX+1 vXX.0.0` where XX is the current actor bundle version.
+    - On macOS, run the pack script with `COPYFILE_DISABLE=1` if the generated bundle contains AppleDouble `._` files.
 
 3. Define upgrade heights in `build/params_`:
 
