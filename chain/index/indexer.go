@@ -50,6 +50,7 @@ type preparedStatements struct {
 	getEventEntriesStmt                   *sql.Stmt
 	getTipsetEventEntriesStmt             *sql.Stmt
 	insertTipsetBloomStmt                 *sql.Stmt
+	hasTipsetBloomStmt                    *sql.Stmt
 	getTipsetBloomStmt                    *sql.Stmt
 	removeTipsetBloomStmt                 *sql.Stmt
 

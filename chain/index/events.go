@@ -78,6 +78,13 @@ func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *typ
 
 	if rows > 0 {
 		log.Debugf("unreverted %d events for tipset: %s", rows, msgTs.Key())
+		hasBloom, err := si.hasTipsetBloom(ctx, tx, msgTsKeyCidBytes)
+		if err != nil {
+			return xerrors.Errorf("failed to check tipset bloom: %w", err)
+		}
+		if hasBloom {
+			return nil
+		}
 		if err := si.buildTipsetBloomFromIndex(ctx, tx, msgTsKeyCidBytes, blockBloom); err != nil {
 			return xerrors.Errorf("failed to build tipset bloom from index: %w", err)
 		}
@@ -266,6 +273,12 @@ func addEventToBloom(blockBloom ethtypes.EthBytes, emitterAddr address.Address, 
 func (si *SqliteIndexer) upsertTipsetBloom(ctx context.Context, tx *sql.Tx, tipsetKeyCid []byte, height abi.ChainEpoch, bloom ethtypes.EthBytes) error {
 	_, err := tx.Stmt(si.stmts.insertTipsetBloomStmt).ExecContext(ctx, tipsetKeyCid, height, []byte(bloom))
 	return err
+}
+
+func (si *SqliteIndexer) hasTipsetBloom(ctx context.Context, tx *sql.Tx, tipsetKeyCid []byte) (bool, error) {
+	var hasBloom bool
+	err := tx.Stmt(si.stmts.hasTipsetBloomStmt).QueryRowContext(ctx, tipsetKeyCid).Scan(&hasBloom)
+	return hasBloom, err
 }
 
 func loadExecutedMessages(ctx context.Context, cs ChainStore, recomputeTipSetStateFunc RecomputeTipSetStateFunc, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
