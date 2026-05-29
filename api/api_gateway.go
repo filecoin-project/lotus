@@ -134,6 +134,7 @@ type Gateway interface {
 	NetVersion(ctx context.Context) (string, error)
 	NetListening(ctx context.Context) (bool, error)
 	EthProtocolVersion(ctx context.Context) (ethtypes.EthUint64, error)
+	EthBaseFee(ctx context.Context) (ethtypes.EthBigInt, error)
 	EthGasPrice(ctx context.Context) (ethtypes.EthBigInt, error)
 	EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthFeeHistory, error)
 	EthMaxPriorityFeePerGas(ctx context.Context) (ethtypes.EthBigInt, error)

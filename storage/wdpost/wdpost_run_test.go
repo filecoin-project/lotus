@@ -524,6 +524,7 @@ func mockTipSet(t *testing.T) *types.TipSet {
 	blks := []*types.BlockHeader{
 		{
 			Miner:                 minerAct,
+			Ticket:                &types.Ticket{VRFProof: []byte{0}},
 			Height:                abi.ChainEpoch(1),
 			ParentStateRoot:       c,
 			ParentMessageReceipts: c,

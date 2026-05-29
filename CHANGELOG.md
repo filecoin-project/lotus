@@ -13,11 +13,17 @@
 
 ## ⭐ New Features
 
+- feat(eth): add `eth_baseFee` JSON-RPC method returning the base fee for the next block, matching geth behavior via `ComputeBaseFee` on the current tipset ([filecoin-project/lotus#13615](https://github.com/filecoin-project/lotus/pull/13615))
+
 ## 🐛 Bug Fixes
 
 - fix(eth): return indexed block-level `logsBloom` for `eth_getBlockByHash` and `eth_getBlockByNumber` ([filecoin-project/lotus#13618](https://github.com/filecoin-project/lotus/pull/13618))
+- Fix off-by-one in `transactionPosition` returned by `trace_block`, `trace_filter` and `trace_transaction`. Positions were 1-indexed; per the Ethereum trace API spec they are 0-indexed and must match the corresponding `transactionIndex` from `eth_getBlockByNumber`. ([filecoin-project/lotus#13610](https://github.com/filecoin-project/lotus/pull/13610))
+- fix(eth): `eth_getTransactionReceipt` no longer fails when another transaction in the same block emits a large number of events. `MaxFilterResults` now caps only multi-tipset event queries; single-block calls (`eth_getLogs` with `BlockHash`, `eth_getBlockReceipts`, `eth_getTransactionReceipt`) bypass it. Public RPC operators should apply rate and response-size limits at the proxy layer for these calls; a single response can be large when a block contains log-heavy transactions ([filecoin-project/lotus#13617](https://github.com/filecoin-project/lotus/pull/13617))
 
 ## 👌 Improvements
+
+* Silence libp2p config log spam ([filecoin-project/lotus#13612](https://github.com/filecoin-project/lotus/pull/13612))
 
 # UNRELEASED v1.36.0
 

@@ -543,29 +543,47 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter)
 
 		var ces []*CollectedEvent
 		var currentID int64 = -1
+		var lastHeight abi.ChainEpoch = -1
+		var tipsetsSeen int
 		var ce *CollectedEvent
+
+		// Rows are sorted by (height, message_index, event_index), so consecutive events
+		// usually share tipset_key_cid and message_cid; cache the last seen to skip work.
+		var lastTsKeyCid cid.Cid
+		var lastTsKey types.TipSetKey
+		var lastMsgCid cid.Cid
+
+		// Memoize emitter address; the flag handles invalidation when the source path
+		// switches between ID actor and delegated bytes.
+		var (
+			lastEmitterAddr      address.Address // address.Undef until first set
+			lastEmitterIsID      bool            // true if last was derived from emitterID
+			lastEmitterID        uint64          // valid when lastEmitterIsID
+			lastEmitterAddrBytes string          // valid when !lastEmitterIsID && set
+		)
+
+		// Reused across rows; declaring inside the loop allocates fresh slots each iteration.
+		var row struct {
+			id           int64
+			height       uint64
+			tipsetKeyCid []byte
+			emitterID    uint64
+			emitterAddr  []byte
+			eventIndex   int
+			messageCid   []byte
+			messageIndex int
+			reverted     bool
+			flags        []byte
+			key          string
+			codec        uint64
+			value        []byte
+		}
 
 		for q.Next() {
 			select {
 			case <-ctx.Done():
 				return nil, ctx.Err()
 			default:
-			}
-
-			var row struct {
-				id           int64
-				height       uint64
-				tipsetKeyCid []byte
-				emitterID    uint64
-				emitterAddr  []byte
-				eventIndex   int
-				messageCid   []byte
-				messageIndex int
-				reverted     bool
-				flags        []byte
-				key          string
-				codec        uint64
-				value        []byte
 			}
 
 			if err := q.Scan(
@@ -586,56 +604,74 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter)
 				return nil, xerrors.Errorf("read prefill row: %w", err)
 			}
 
-			// The query will return all entries for all matching events, so we need to keep track
-			// of which event we are dealing with and create a new one each time we see a new id
+			// The query returns all entries for all matching events; create a new CollectedEvent each time we see a new id.
 			if row.id != currentID {
-				// Unfortunately we can't easily incorporate the max results limit into the query due to the
-				// unpredictable number of rows caused by joins
-				// Error here to inform the caller that we've hit the max results limit
-				if f.MaxResults > 0 && len(ces) >= f.MaxResults {
-					return nil, ErrMaxResultsReached
+				rowHeight := abi.ChainEpoch(row.height)
+				if rowHeight != lastHeight {
+					tipsetsSeen++
+					lastHeight = rowHeight
 				}
 
 				currentID = row.id
 				ce = &CollectedEvent{
 					EventIdx: row.eventIndex,
 					Reverted: row.reverted,
-					Height:   abi.ChainEpoch(row.height),
+					Height:   rowHeight,
 					MsgIdx:   row.messageIndex,
 				}
 				ces = append(ces, ce)
 
+				// MaxResults applies as a hard cap only once events span more than one tipset;
+				// a single contributing tipset may exceed the cap. Single-tipset and
+				// single-message queries naturally bypass this because tipsetsSeen stays at 1.
+				if f.MaxResults > 0 && tipsetsSeen > 1 && len(ces) > f.MaxResults {
+					return nil, ErrMaxResultsReached
+				}
+
 				if row.emitterAddr == nil {
-					ce.EmitterAddr, err = address.NewIDAddress(row.emitterID)
-					if err != nil {
-						return nil, xerrors.Errorf("failed to parse emitter id: %w", err)
+					if !lastEmitterIsID || row.emitterID != lastEmitterID || lastEmitterAddr == address.Undef {
+						lastEmitterAddr, err = address.NewIDAddress(row.emitterID)
+						if err != nil {
+							return nil, xerrors.Errorf("failed to parse emitter id: %w", err)
+						}
+						lastEmitterIsID = true
+						lastEmitterID = row.emitterID
 					}
 				} else {
-					ce.EmitterAddr, err = address.NewFromBytes(row.emitterAddr)
-					if err != nil {
-						return nil, xerrors.Errorf("parse emitter addr: %w", err)
+					if lastEmitterIsID || string(row.emitterAddr) != lastEmitterAddrBytes || lastEmitterAddr == address.Undef {
+						lastEmitterAddr, err = address.NewFromBytes(row.emitterAddr)
+						if err != nil {
+							return nil, xerrors.Errorf("parse emitter addr: %w", err)
+						}
+						lastEmitterIsID = false
+						lastEmitterAddrBytes = string(row.emitterAddr)
 					}
 				}
+				ce.EmitterAddr = lastEmitterAddr
 
-				tsKeyCid, err := cid.Cast(row.tipsetKeyCid)
-				if err != nil {
-					return nil, xerrors.Errorf("parse tipsetkey cid: %w", err)
+				if string(row.tipsetKeyCid) != lastTsKeyCid.KeyString() {
+					lastTsKeyCid, err = cid.Cast(row.tipsetKeyCid)
+					if err != nil {
+						return nil, xerrors.Errorf("parse tipsetkey cid: %w", err)
+					}
+					ts, err := si.cs.GetTipSetByCid(ctx, lastTsKeyCid)
+					if err != nil {
+						return nil, xerrors.Errorf("get tipset by cid: %w", err)
+					}
+					if ts == nil {
+						return nil, xerrors.Errorf("failed to get tipset from cid: tipset is nil for cid: %s", lastTsKeyCid)
+					}
+					lastTsKey = ts.Key()
 				}
+				ce.TipSetKey = lastTsKey
 
-				ts, err := si.cs.GetTipSetByCid(ctx, tsKeyCid)
-				if err != nil {
-					return nil, xerrors.Errorf("get tipset by cid: %w", err)
+				if string(row.messageCid) != lastMsgCid.KeyString() {
+					lastMsgCid, err = cid.Cast(row.messageCid)
+					if err != nil {
+						return nil, xerrors.Errorf("parse message cid: %w", err)
+					}
 				}
-				if ts == nil {
-					return nil, xerrors.Errorf("failed to get tipset from cid: tipset is nil for cid: %s", tsKeyCid)
-				}
-
-				ce.TipSetKey = ts.Key()
-
-				ce.MsgCid, err = cid.Cast(row.messageCid)
-				if err != nil {
-					return nil, xerrors.Errorf("parse message cid: %w", err)
-				}
+				ce.MsgCid = lastMsgCid
 			}
 
 			ce.Entries = append(ce.Entries, types.EventEntry{
@@ -741,6 +777,11 @@ func makePrefillFilterQuery(f *EventFilter) ([]any, string, error) {
 		// unless asking for a specific tipset, we never want to see reverted historical events
 		clauses = append(clauses, "e.reverted=?")
 		values = append(values, false)
+	}
+
+	if f.MsgCid != cid.Undef {
+		clauses = append(clauses, "tm.message_cid=?")
+		values = append(values, f.MsgCid.Bytes())
 	}
 
 	if len(f.Addresses) > 0 {
