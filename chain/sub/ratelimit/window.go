@@ -2,8 +2,8 @@ package ratelimit
 
 import "time"
 
-// Window is a time windows for counting events within a span of time.  The
-// windows slides forward in time so that it spans from the most recent event
+// Window is a time window for counting events within a span of time.  The
+// window slides forward in time so that it spans from the most recent event
 // to size time in the past.
 type Window struct {
 	q    *queue

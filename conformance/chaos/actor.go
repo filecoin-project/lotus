@@ -19,7 +19,7 @@ import (
 // production code, but are important to test that the VM constraints are
 // properly enforced.
 //
-// The chaos actor is being incubated and its behaviour and ABI be standardised
+// The chaos actor is being incubated and its behaviour and ABI will be standardised
 // shortly. Its CID is ChaosActorCodeCID, and its singleton address is 98 (Address).
 // It cannot be instantiated via the init actor, and its constructor panics.
 //

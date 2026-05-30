@@ -150,7 +150,7 @@ type TipSetAnchor struct {
 
 	// TODO: We might want to rename the term "anchor" to "parent" if they're
 	//       conceptually interchangeable. Because, it is easier to reuse a term that
-	//       already exist compared to teaching people a new one. For now we'll keep it as
+	//       already exists compared to teaching people a new one. For now we'll keep it as
 	//       "anchor" to keep consistent with the internal API design discussions. We will
 	//       revisit the terminology here as the new API groups are added, namely
 	//       StateSearchMsg.
