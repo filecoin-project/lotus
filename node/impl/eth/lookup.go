@@ -99,8 +99,9 @@ func (e *ethLookup) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress,
 		GasPremium: big.Zero(),
 	}
 
-	// Rewind ts to escape the fork guard but keep stateCid (the requested epoch's state):
-	// bytecode reads are epoch-insensitive, so recomputing it for the parent would read an earlier epoch.
+	// Rewind ts to escape the fork guard, but keep stateCid fixed to the requested epoch: the
+	// result comes from stateCid (ts only supplies execution context), so recomputing it for the
+	// parent would read an earlier epoch's bytecode.
 	var res *api.InvocResult
 	for {
 		res, err = e.stateManager.CallOnState(ctx, stateCid, msg, ts)
@@ -197,8 +198,9 @@ func (e *ethLookup) EthGetStorageAt(ctx context.Context, ethAddr ethtypes.EthAdd
 		GasPremium: big.Zero(),
 	}
 
-	// Rewind ts to escape the fork guard but keep stateCid (the requested epoch's state):
-	// storage reads are epoch-insensitive, so recomputing it for the parent would read an earlier epoch.
+	// Rewind ts to escape the fork guard, but keep stateCid fixed to the requested epoch: the
+	// result comes from stateCid (ts only supplies execution context), so recomputing it for the
+	// parent would read an earlier epoch's storage.
 	var res *api.InvocResult
 	for {
 		res, err = e.stateManager.CallOnState(ctx, stateCid, msg, ts)

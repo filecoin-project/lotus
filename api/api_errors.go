@@ -281,6 +281,7 @@ func (e *ErrExpensiveFork) FromJSONRPCError(jerr jsonrpc.JSONRPCError) error {
 		return fmt.Errorf("unexpected error code: %d", jerr.Code)
 	}
 	e.Message = jerr.Message
+	e.Epoch = -1
 	if epoch, ok := jerr.Data.(float64); ok {
 		e.Epoch = abi.ChainEpoch(epoch)
 	}
