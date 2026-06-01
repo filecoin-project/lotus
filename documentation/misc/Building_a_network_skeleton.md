@@ -185,7 +185,9 @@ The table below gives an overview of how Lotus and its critical dependencies rel
 
 6. Before opening code PRs, check whether some repository work has already landed. Search each repository for `nvXX-dev`, `NetworkVersion::VXX`, `network version XX`, and existing PRs or tags for the target network version. If a repository already satisfies its done criteria, add the evidence to the tracking issue and close it instead of opening duplicate work.
 
-7. Parallelize where dependencies allow it. Ref-FVM support must be published before Filecoin-FFI can consume it, but Go-State-Types skeleton work can proceed while the Filecoin-FFI skeleton PR is waiting for review, merge, or release-candidate work.
+7. Parallelize where dependencies allow it. Ref-FVM support must be published before Filecoin-FFI can consume it, but Go-State-Types skeleton work can proceed while the Filecoin-FFI skeleton PR is waiting for review, merge, or release-candidate work. Treat review/merge boundaries as explicit handoffs: record the PR URL and stop until the PR is reviewed, approved, and merged. Then open the release PR for that repo.
+
+   If a tracking issue's done criteria requires a published release, close it from the release PR instead of the skeleton PR. This keeps the issue open while downstream repositories are still blocked on the release tag.
 
 8. Clone Repos
    1. [ref-fvm](https://github.com/filecoin-project/ref-fvm.git)
@@ -285,6 +287,8 @@ You can take a look at [this PR as a reference](https://github.com/filecoin-proj
 
 4. [Follow the release process](https://github.com/filecoin-project/go-state-types#release-process) to publish `v0.NEW_VERSION.0-dev`
 
+    Include `Closes #ISSUE_NUMBER` in the release PR body, because the Go-State-Types tracking issue is only complete once the developer release exists.
+
     👉 You can take a look at this [Go-State-Types PR as a reference](https://github.com/filecoin-project/go-state-types/pull/306), which was for network version 24.
 
 ## Filecoin-FFI Checklist
@@ -315,6 +319,8 @@ You can take a look at [this PR as a reference](https://github.com/filecoin-proj
 
 5. [Follow the release process](https://github.com/filecoin-project/filecoin-ffi/blob/master/RELEASE.md) to publish `v1.NEW_LOTUS_MINOR_VERSION.0-dev`
 
+    Include `Closes #ISSUE_NUMBER` in the release PR body, because the Filecoin-FFI tracking issue is only complete once the developer release exists.
+
     👉 You can take a look at this [Filecoin-FFI PR as a reference](https://github.com/filecoin-project/filecoin-ffi/pull/481), which was for network version 24.
 
 Note: one only needs to update `filecoin-ffi`'s dependency on `go-state-types` when a network upgrade is introducing new types in `go-state-types`  (see [below](#new-types-in-go-state-types)).  Otherwise, `filecoin-ffi`'s dependency on `go-state-types` is just updated when doing final releases before the network upgrade.
@@ -331,6 +337,15 @@ Note: one only needs to update `filecoin-ffi`'s dependency on `go-state-types` w
     - Generated OpenRPC/API docs for the new upgrade-height field.
 
     Do not commit dependency bumps, `gen/inlinegen-data.json` changes, generated actor adapters, migration schedule wiring, statetree mappings, compute-state registry changes, invariant commands, or real actor-bundle replacement until the required Go-State-Types and Filecoin-FFI releases exist. If temporary local replacements are needed for exploration, remove them before publishing the draft PR.
+
+    Before consuming a downstream release, verify the tag exists:
+
+    ```bash
+    gh release view "v0.NEW_ACTORS_VERSION.0-dev" --repo filecoin-project/go-state-types
+    gh release view "v1.NEW_LOTUS_MINOR_VERSION.0-dev" --repo filecoin-project/filecoin-ffi
+    ```
+
+    After a downstream release is consumed, update the Lotus PR body so reviewers can see which release gates are resolved and which follow-ups remain. When all skeleton dependencies have been consumed, move the PR out of draft.
 
 2. Import new actors:
 
@@ -367,11 +382,21 @@ Note: one only needs to update `filecoin-ffi`'s dependency on `go-state-types` w
 
 4. Generate adapters:
 
+    - After the Go-State-Types release exists, bump the Lotus dependency and refresh sums:
+        ```bash
+        go get github.com/filecoin-project/go-state-types@v0.NEW_ACTORS_VERSION.0-dev
+        go mod tidy
+        ```
+
+      The `go get` may also upgrade transitive `golang.org/x/*` modules because those versions can be constrained by `go-state-types`.
+
     - Update `gen/inlinegen-data.json`.
         - Add `XX+1` to "actorVersions" and set "latestActorsVersion" to `XX+1`.
         - Add `XX+1` to "networkVersions" and set "latestNetworkVersion" to `XX+1`.
 
-    - Run `make actors-gen`. This generates the `/chain/actors/builtin/*` code, `/chain/actors/policy/policy.go` code, `/chain/actors/version.go`, and `/itest/kit/ensemble_opts_nv.go`.
+    - Run `make actors-gen`. This generates the `/chain/actors/builtin/*` code, `/chain/actors/policy/policy.go` code, `/chain/actors/version.go`, and `/itests/kit/ensemble_opts_nv.go`.
+
+      If `make actors-gen` fails with missing `go.sum` entries after the Go-State-Types bump, run `go mod tidy` and retry.
 
 5. Update `chain/consensus/filcns/upgrades.go`.
     - Import `nv(XX+1) "github.com/filecoin-project/go-state-types/builtin/v(XX+1)/migration`.
@@ -396,7 +421,15 @@ Note: one only needs to update `filecoin-ffi`'s dependency on `go-state-types` w
 
 12. Run `make gen`.
 
+    This may also update API mocks, OpenRPC JSON, API docs, and storage mocks because `latestNetworkVersion` and the latest actor imports are used in generated examples and mock signatures.
+
 13. Run `make docsgen-cli`.
+
+    On macOS, if local commands that link Filecoin-FFI fail to find Homebrew libraries such as `hwloc`, prefix the command with:
+
+    ```bash
+    CGO_LDFLAGS="-L/opt/homebrew/lib"
+    ```
 
 14. Validate the network skeleton on a devnet by:
   - Have a local developer network that starts at the current network version.  See docs at https://docs.filecoin.io/networks/local-testnet .  
@@ -408,6 +441,8 @@ Note: one only needs to update `filecoin-ffi`'s dependency on `go-state-types` w
 15. Post a PR with the changes and include the local devnet output.
    - [nv24 example](https://github.com/filecoin-project/lotus/pull/12455)
    - [nv27 example](https://github.com/filecoin-project/lotus/pull/13125)
+
+    If the skeleton PR changes Go files, `go.mod`, or `go.sum` but does not need a user-facing changelog entry, add `[skip changelog]` to the PR body or apply the `skip/changelog` label before moving it out of draft. Otherwise the changelog workflow will fail.
 
 And you're done 🎉! This creates a basis where you can start testing new FIPs. 
 
