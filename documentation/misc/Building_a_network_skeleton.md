@@ -287,7 +287,7 @@ You can take a look at [this PR as a reference](https://github.com/filecoin-proj
 
 4. [Follow the release process](https://github.com/filecoin-project/go-state-types#release-process) to publish `v0.NEW_VERSION.0-dev`
 
-    Include `Closes #ISSUE_NUMBER` in the release PR body, because the Go-State-Types tracking issue is only complete once the developer release exists.
+    Include `Closes #ISSUE_NUMBER` in the release PR body, because the go-state-types tracking issue is only complete once the developer release exists.
 
     👉 You can take a look at this [Go-State-Types PR as a reference](https://github.com/filecoin-project/go-state-types/pull/306), which was for network version 24.
 
