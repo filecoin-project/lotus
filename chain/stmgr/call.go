@@ -33,7 +33,8 @@ const (
 	execSameSenderMessages                            // apply all prior messages and any current tipset messages from the same sender
 )
 
-var ErrExpensiveFork = errors.New("refusing explicit call due to state fork at epoch")
+// ErrExpensiveFork matches any expensive-fork refusal; the returned errors carry the epoch.
+var ErrExpensiveFork error = &api.ErrExpensiveFork{}
 
 // Call applies the given message to the given tipset's parent state, at the epoch following the
 // tipset's parent. In the presence of null blocks, the height at which the message is invoked may
@@ -92,8 +93,8 @@ func (sm *StateManager) CallAtStateAndVersion(ctx context.Context, msg *types.Me
 }
 
 //   - If no tipset is specified, the first tipset without an expensive migration or one in its parent is used.
-//   - If executing a message at a given tipset or its parent would trigger an expensive migration, the call will
-//     fail with ErrExpensiveFork.
+//   - A migration at the tipset's epoch fails with ErrExpensiveFork. A migration at the parent epoch also
+//     fails, unless an explicit (already post-fork) stateCid is supplied.
 func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet, stateCid cid.Cid,
 	nvGetter rand.NetworkVersionGetter, checkGas bool, strategy execMessageStrategy) (*api.InvocResult, error) {
 	ctx, span := trace.StartSpan(ctx, "statemanager.callInternal")
@@ -130,8 +131,16 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 		if err != nil {
 			return nil, xerrors.Errorf("failed to find a non-forking epoch: %w", err)
 		}
-		if sm.HasExpensiveForkBetween(pts.Height(), ts.Height()+1) {
-			return nil, ErrExpensiveFork
+		// HandleStateForks (below) runs the migration at ts.Height() on demand, so that epoch is
+		// always refused. An explicit stateCid (the Eth path's TipSetState) already reflects every
+		// migration below ts.Height(), so nothing else need be refused. ts.ParentState() (the
+		// default) lags a tipset behind, so it must also refuse a migration at the parent epoch.
+		forkFloor := pts.Height()
+		if stateCid != cid.Undef {
+			forkFloor = ts.Height()
+		}
+		if sm.HasExpensiveForkBetween(forkFloor, ts.Height()+1) {
+			return nil, api.NewErrExpensiveFork(ts.Height())
 		}
 	}
 

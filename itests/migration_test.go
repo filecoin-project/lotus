@@ -3,7 +3,9 @@ package itests
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"fmt"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -1399,4 +1401,104 @@ func TestMigrationTeepTockFix(t *testing.T) {
 			req.Equal(systemCode, systemAct.Code)
 		})
 	}
+}
+
+// TestEthCallAcrossExpensiveFork pins down the boundary of the ErrExpensiveFork guard for explicit
+// calls (eth_call / StateCall). The guard must refuse a call at the upgrade epoch U (where the
+// migration would have to run on demand), but must serve the epoch immediately after it (U+1):
+// at U+1 the migrated state is already materialized, so no migration runs.
+//
+// The migration is wrapped in a counter so the test can prove that serving the U+1 call does not
+// re-invoke it.
+func TestEthCallAcrossExpensiveFork(t *testing.T) {
+	kit.QuietMiningLogs()
+
+	const upgradeHeight = 40
+
+	var migrationRuns atomic.Int64
+	countingMigration := func(
+		ctx context.Context,
+		sm *stmgr.StateManager, cache stmgr.MigrationCache,
+		cb stmgr.ExecMonitor,
+		oldState cid.Cid,
+		height abi.ChainEpoch, ts *types.TipSet,
+	) (cid.Cid, error) {
+		migrationRuns.Add(1)
+		return filcns.UpgradeActorsV18(ctx, sm, cache, cb, oldState, height, ts)
+	}
+
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(),
+		kit.UpgradeSchedule(
+			stmgr.Upgrade{Network: network.Version27, Height: -1},
+			stmgr.Upgrade{
+				Network:   network.Version28,
+				Height:    upgradeHeight,
+				Migration: countingMigration,
+				Expensive: true,
+			},
+		),
+	)
+	// 100ms (not the usual itest 10ms) so the miner keeps up across the ~60ms migration and does
+	// not drop ticks into null rounds around the upgrade epoch, which the assertions below pin to.
+	ens.InterconnectAll().BeginMining(100 * time.Millisecond)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Deploy a contract well before the upgrade so it exists at U-1, U and U+1.
+	ownerAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, "contracts/SimpleCoin.hex")
+	contractEth, err := ethtypes.EthAddressFromFilecoinAddress(contractAddr)
+	require.NoError(t, err)
+
+	// Guard the test premise: the contract must be deployed before the upgrade epoch.
+	deployedAt, err := client.EthBlockNumber(ctx)
+	require.NoError(t, err)
+	require.Less(t, int(deployedAt), upgradeHeight, "contract must deploy before the upgrade epoch")
+
+	// getBalance(owner) is a pure read returning a deterministic value, unchanged across the
+	// upgrade window (no message touches this contract there).
+	data := append(kit.CalcFuncSignature("getBalance(address)"), kit.EvmWordFromAddr(ctx, t, client, ownerAddr)...)
+	mkCall := func() ethtypes.EthCall { return ethtypes.EthCall{To: &contractEth, Data: data} }
+	at := func(h abi.ChainEpoch) ethtypes.EthBlockNumberOrHash {
+		return ethtypes.NewEthBlockNumberOrHashFromNumber(ethtypes.EthUint64(h))
+	}
+
+	// Wait until the chain is safely past the upgrade so the migrated state is materialised.
+	head := client.WaitTillChain(ctx, kit.HeightAtLeast(upgradeHeight+5))
+
+	// The migration ran while the chain crossed U. Capture the count; the served call below must
+	// not change it.
+	runsBefore := migrationRuns.Load()
+	require.GreaterOrEqual(t, runsBefore, int64(1), "migration should have run while syncing across U")
+
+	// Null rounds can fall on any epoch, so target real tipsets rather than fixed heights. The
+	// first non-null tipset after U executes the migration, so its state is post-migration.
+	var servedHeight abi.ChainEpoch
+	for h := abi.ChainEpoch(upgradeHeight) + 1; h <= head.Height(); h++ {
+		ts, err := client.ChainGetTipSetByHeight(ctx, h, head.Key())
+		require.NoError(t, err)
+		if ts.Height() == h {
+			servedHeight = h
+			break
+		}
+	}
+	require.NotZero(t, servedHeight, "expected a non-null tipset after the upgrade")
+
+	// The fix under test: a call at the first epoch after the migration must be served, return a
+	// correct value, and must NOT re-run the migration.
+	got, err := client.EthCall(ctx, mkCall(), at(servedHeight))
+	require.NoError(t, err, "eth_call after the upgrade must be served, not refused with ErrExpensiveFork")
+	expected, err := hex.DecodeString("0000000000000000000000000000000000000000000000000000000000002710") // getBalance(owner) == 10000
+	require.NoError(t, err)
+	require.Equal(t, ethtypes.EthBytes(expected), got, "served call must return the correct contract state")
+	require.Equal(t, runsBefore, migrationRuns.Load(), "serving a post-migration call must not run the migration")
+
+	// Safety boundary preserved: the upgrade epoch U itself cannot be served, since serving it
+	// would require running the migration on demand. The typed error must survive the RPC round
+	// trip and decode back to *api.ErrExpensiveFork with its epoch.
+	_, err = client.EthCall(ctx, mkCall(), at(upgradeHeight))
+	var forkErr *api.ErrExpensiveFork
+	require.ErrorAs(t, err, &forkErr)
+	require.Equal(t, abi.ChainEpoch(upgradeHeight), forkErr.Epoch)
+	require.Equal(t, runsBefore, migrationRuns.Load(), "the refused call at U must not run the migration either")
 }

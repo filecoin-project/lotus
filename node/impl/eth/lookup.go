@@ -103,7 +103,7 @@ func (e *ethLookup) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress,
 	var res *api.InvocResult
 	for {
 		res, err = e.stateManager.CallOnState(ctx, stateCid, msg, ts)
-		if err != stmgr.ErrExpensiveFork {
+		if !errors.Is(err, stmgr.ErrExpensiveFork) {
 			break
 		}
 		ts, err = e.chainStore.GetTipSetFromKey(ctx, ts.Parents())
@@ -200,7 +200,7 @@ func (e *ethLookup) EthGetStorageAt(ctx context.Context, ethAddr ethtypes.EthAdd
 	var res *api.InvocResult
 	for {
 		res, err = e.stateManager.CallOnState(ctx, stateCid, msg, ts)
-		if err != stmgr.ErrExpensiveFork {
+		if !errors.Is(err, stmgr.ErrExpensiveFork) {
 			break
 		}
 		ts, err = e.chainStore.GetTipSetFromKey(ctx, ts.Parents())

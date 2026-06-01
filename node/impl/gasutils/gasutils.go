@@ -2,6 +2,7 @@ package gasutils
 
 import (
 	"context"
+	"errors"
 	"math"
 	"math/rand/v2"
 	"os"
@@ -130,7 +131,7 @@ func GasEstimateCallWithGas(
 	var res *api.InvocResult
 	for {
 		res, err = smgr.CallWithGas(ctx, &msg, priorMsgs, ts, applyTsMessages)
-		if err != stmgr.ErrExpensiveFork {
+		if !errors.Is(err, stmgr.ErrExpensiveFork) {
 			break
 		}
 		ts, err = cstore.GetTipSetFromKey(ctx, ts.Parents())
