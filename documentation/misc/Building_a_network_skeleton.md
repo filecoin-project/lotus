@@ -319,7 +319,7 @@ You can take a look at [this PR as a reference](https://github.com/filecoin-proj
 
 5. [Follow the release process](https://github.com/filecoin-project/filecoin-ffi/blob/master/RELEASE.md) to publish `v1.NEW_LOTUS_MINOR_VERSION.0-dev`
 
-    Include `Closes #ISSUE_NUMBER` in the release PR body, because the Filecoin-FFI tracking issue is only complete once the developer release exists.
+    Include `Closes #ISSUE_NUMBER` in the release PR body, because the filecoin-ffi tracking issue is only complete once the developer release exists.
 
     👉 You can take a look at this [Filecoin-FFI PR as a reference](https://github.com/filecoin-project/filecoin-ffi/pull/481), which was for network version 24.
 
