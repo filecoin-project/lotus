@@ -425,7 +425,7 @@ Note: one only needs to update `filecoin-ffi`'s dependency on `go-state-types` w
 
 13. Run `make docsgen-cli`.
 
-    On macOS, if local commands that link Filecoin-FFI fail to find Homebrew libraries such as `hwloc`, prefix the command with:
+    On macOS, if local commands that link filecoin-ffi fail to find Homebrew libraries such as `hwloc`, prefix the command with:
 
     ```bash
     CGO_LDFLAGS="-L/opt/homebrew/lib"
