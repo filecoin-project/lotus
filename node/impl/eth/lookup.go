@@ -99,7 +99,8 @@ func (e *ethLookup) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress,
 		GasPremium: big.Zero(),
 	}
 
-	// Try calling until we find a height with no migration.
+	// Rewind ts to escape the fork guard but keep stateCid (the requested epoch's state):
+	// bytecode reads are epoch-insensitive, so recomputing it for the parent would read an earlier epoch.
 	var res *api.InvocResult
 	for {
 		res, err = e.stateManager.CallOnState(ctx, stateCid, msg, ts)
@@ -196,7 +197,8 @@ func (e *ethLookup) EthGetStorageAt(ctx context.Context, ethAddr ethtypes.EthAdd
 		GasPremium: big.Zero(),
 	}
 
-	// Try calling until we find a height with no migration.
+	// Rewind ts to escape the fork guard but keep stateCid (the requested epoch's state):
+	// storage reads are epoch-insensitive, so recomputing it for the parent would read an earlier epoch.
 	var res *api.InvocResult
 	for {
 		res, err = e.stateManager.CallOnState(ctx, stateCid, msg, ts)

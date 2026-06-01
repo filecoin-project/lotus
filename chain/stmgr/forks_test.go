@@ -333,8 +333,12 @@ func testForkRefuseCall(t *testing.T, nullsBefore, nullsAfter int) {
 		// CallWithGas calls on top of the given tipset.
 		ret, err := sm.CallWithGas(ctx, m, nil, ts.TipSet.TipSet(), true)
 		if parentHeight <= testForkHeight && currentHeight >= testForkHeight {
-			// If I had a fork, or I _will_ have a fork, it should fail.
+			// If I had a fork, or I _will_ have a fork, it should fail, reporting the fork epoch
+			// (not the queried tipset height, which differs when the fork is at the parent).
 			require.ErrorIs(t, err, ErrExpensiveFork)
+			var fe *api.ErrExpensiveFork
+			require.ErrorAs(t, err, &fe)
+			require.Equal(t, abi.ChainEpoch(testForkHeight), fe.Epoch)
 		} else {
 			require.NoError(t, err)
 			require.True(t, ret.MsgRct.ExitCode.IsSuccess())

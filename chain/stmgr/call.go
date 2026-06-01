@@ -131,16 +131,15 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 		if err != nil {
 			return nil, xerrors.Errorf("failed to find a non-forking epoch: %w", err)
 		}
-		// HandleStateForks (below) runs the migration at ts.Height() on demand, so that epoch is
-		// always refused. An explicit stateCid (the Eth path's TipSetState) already reflects every
-		// migration below ts.Height(), so nothing else need be refused. ts.ParentState() (the
-		// default) lags a tipset behind, so it must also refuse a migration at the parent epoch.
+		// HandleStateForks below runs the migration at ts.Height() on demand, so refuse it. An
+		// explicit stateCid (Eth path's TipSetState) already holds every fork below ts.Height();
+		// ts.ParentState() (the default) lags a tipset, so it must also refuse the parent's fork.
 		forkFloor := pts.Height()
 		if stateCid != cid.Undef {
 			forkFloor = ts.Height()
 		}
-		if sm.HasExpensiveForkBetween(forkFloor, ts.Height()+1) {
-			return nil, api.NewErrExpensiveFork(ts.Height())
+		if forkEpoch, ok := sm.expensiveForkBetween(forkFloor, ts.Height()+1); ok {
+			return nil, api.NewErrExpensiveFork(forkEpoch)
 		}
 	}
 

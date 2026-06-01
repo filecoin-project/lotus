@@ -228,12 +228,18 @@ func (sm *StateManager) HandleStateForks(ctx context.Context, root cid.Cid, heig
 // trigger an expensive migration. NOTE: migrations occurring _at_ the target height are not
 // included, as they're executed _after_ the target height.
 func (sm *StateManager) HasExpensiveForkBetween(parent, height abi.ChainEpoch) bool {
+	_, ok := sm.expensiveForkBetween(parent, height)
+	return ok
+}
+
+// expensiveForkBetween returns the lowest expensive-migration epoch in [parent, height), if any.
+func (sm *StateManager) expensiveForkBetween(parent, height abi.ChainEpoch) (abi.ChainEpoch, bool) {
 	for h := parent; h < height; h++ {
 		if _, ok := sm.expensiveUpgrades[h]; ok {
-			return true
+			return h, true
 		}
 	}
-	return false
+	return 0, false
 }
 
 func runPreMigration(ctx context.Context, sm *StateManager, fn PreMigrationFunc, cache *nv16.MemMigrationCache, ts *types.TipSet) {
