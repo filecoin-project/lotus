@@ -396,7 +396,7 @@ Note: one only needs to update `filecoin-ffi`'s dependency on `go-state-types` w
 
     - Run `make actors-gen`. This generates the `/chain/actors/builtin/*` code, `/chain/actors/policy/policy.go` code, `/chain/actors/version.go`, and `/itests/kit/ensemble_opts_nv.go`.
 
-      If `make actors-gen` fails with missing `go.sum` entries after the Go-State-Types bump, run `go mod tidy` and retry.
+      If `make actors-gen` fails with missing `go.sum` entries after the go-state-types bump, run `go mod tidy` and retry.
 
 5. Update `chain/consensus/filcns/upgrades.go`.
     - Import `nv(XX+1) "github.com/filecoin-project/go-state-types/builtin/v(XX+1)/migration`.
