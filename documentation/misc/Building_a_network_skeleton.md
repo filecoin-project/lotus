@@ -382,7 +382,7 @@ Note: one only needs to update `filecoin-ffi`'s dependency on `go-state-types` w
 
 4. Generate adapters:
 
-    - After the Go-State-Types release exists, bump the Lotus dependency and refresh sums:
+    - After the go-state-types release exists, bump the Lotus dependency and refresh sums:
         ```bash
         go get github.com/filecoin-project/go-state-types@v0.NEW_ACTORS_VERSION.0-dev
         go mod tidy
