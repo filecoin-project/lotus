@@ -185,7 +185,7 @@ The table below gives an overview of how Lotus and its critical dependencies rel
 
 6. Before opening code PRs, check whether some repository work has already landed. Search each repository for `nvXX-dev`, `NetworkVersion::VXX`, `network version XX`, and existing PRs or tags for the target network version. If a repository already satisfies its done criteria, add the evidence to the tracking issue and close it instead of opening duplicate work.
 
-7. Parallelize where dependencies allow it. Ref-FVM support must be published before Filecoin-FFI can consume it, but Go-State-Types skeleton work can proceed while the Filecoin-FFI skeleton PR is waiting for review, merge, or release-candidate work. Treat review/merge boundaries as explicit handoffs: record the PR URL and stop until the PR is reviewed, approved, and merged. Then open the release PR for that repo.
+7. Parallelize where dependencies allow it. ref-fvm support must be published before filecoin-ffi can consume it, but go-state-types skeleton work can proceed while the filecoin-ffi skeleton PR is waiting for review, merge, or release-candidate work. Treat review/merge boundaries as explicit handoffs: record the PR URL and stop until the PR is reviewed, approved, and merged. Then open the release PR for that repo.
 
    If a tracking issue's done criteria requires a published release, close it from the release PR instead of the skeleton PR. This keeps the issue open while downstream repositories are still blocked on the release tag.
 
