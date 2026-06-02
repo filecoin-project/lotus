@@ -183,7 +183,7 @@ func feeUI(baseFee abi.TokenAmount, gasLimit int64, maxFee *abi.TokenAmount, sen
 	required := big.Mul(baseFee, big.NewInt(gasLimit))
 	safe := big.Mul(required, big.NewInt(10))
 
-	price := fmt.Sprintf("%s", types.FIL(*maxFee).Unitless())
+	price := types.FIL(*maxFee).Unitless()
 
 	return func(t *imtui.Tui) error {
 		if t.CurrentKey != nil {
@@ -196,13 +196,13 @@ func feeUI(baseFee abi.TokenAmount, gasLimit int64, maxFee *abi.TokenAmount, sen
 					if err == nil {
 						p := big.Mul(big.Int(pF), types.NewInt(11))
 						p = big.Div(p, types.NewInt(10))
-						price = fmt.Sprintf("%s", types.FIL(p).Unitless())
+						price = types.FIL(p).Unitless()
 					}
 				case '-':
 					if err == nil {
 						p := big.Mul(big.Int(pF), types.NewInt(10))
 						p = big.Div(p, types.NewInt(11))
-						price = fmt.Sprintf("%s", types.FIL(p).Unitless())
+						price = types.FIL(p).Unitless()
 					}
 				default:
 				}

@@ -926,7 +926,7 @@ func TestSyncInputs(t *testing.T) {
 
 	fn := tu.nds[p1].(*impl.FullNodeAPI)
 
-	s := fn.SyncAPI.Syncer
+	s := fn.Syncer
 
 	err := s.ValidateBlock(context.TODO(), &types.FullBlock{
 		Header: &types.BlockHeader{},

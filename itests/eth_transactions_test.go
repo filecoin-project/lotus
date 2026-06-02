@@ -81,7 +81,7 @@ func TestValueTransferValidSignature(t *testing.T) {
 
 	client.EVM().SignTransaction(&tx, key.PrivateKey)
 	// Mangle signature
-	tx.V.Int.Xor(tx.V.Int, big.NewInt(1).Int)
+	tx.V.Xor(tx.V.Int, big.NewInt(1).Int)
 
 	signed, err := tx.ToRlpSignedMsg()
 	require.NoError(t, err)
@@ -153,7 +153,7 @@ func TestContractDeploymentValidSignature(t *testing.T) {
 
 	client.EVM().SignTransaction(tx, key.PrivateKey)
 	// Mangle signature
-	tx.V.Int.Xor(tx.V.Int, big.NewInt(1).Int)
+	tx.V.Xor(tx.V.Int, big.NewInt(1).Int)
 
 	signed, err := tx.ToRlpSignedMsg()
 	require.NoError(t, err)
@@ -257,7 +257,7 @@ func TestContractInvocation(t *testing.T) {
 
 	client.EVM().SignTransaction(&invokeTx, key.PrivateKey)
 	// Mangle signature
-	invokeTx.V.Int.Xor(invokeTx.V.Int, big.NewInt(1).Int)
+	invokeTx.V.Xor(invokeTx.V.Int, big.NewInt(1).Int)
 
 	signed, err := invokeTx.ToRlpSignedMsg()
 	require.NoError(t, err)
@@ -822,20 +822,20 @@ func TestTraceFilter(t *testing.T) {
 	require.NotEmpty(t, traces)
 
 	for i, trace := range traces {
-		t.Logf("Trace %d: TransactionPosition=%d, TransactionHash=%s, Type=%s", i, trace.TransactionPosition, trace.TransactionHash, trace.EthTrace.Type)
+		t.Logf("Trace %d: TransactionPosition=%d, TransactionHash=%s, Type=%s", i, trace.TransactionPosition, trace.TransactionHash, trace.Type)
 	}
 
 	// Assert that initial transactions returned by the trace are valid
 	require.Len(t, traces, 3)
 	require.Equal(t, 0, traces[0].TransactionPosition)
-	require.Equal(t, "call", traces[0].EthTrace.Type)
+	require.Equal(t, "call", traces[0].Type)
 	require.Equal(t, 0, traces[1].TransactionPosition)
-	require.Equal(t, "call", traces[1].EthTrace.Type)
+	require.Equal(t, "call", traces[1].Type)
 
 	// our transaction will be in the third element of traces with the expected hash
 	require.Equal(t, 0, traces[2].TransactionPosition)
 	require.Equal(t, hash, traces[2].TransactionHash)
-	require.Equal(t, "create", traces[2].EthTrace.Type)
+	require.Equal(t, "create", traces[2].Type)
 
 	toBlock = "latest"
 	filter = ethtypes.EthTraceFilterCriteria{
@@ -855,7 +855,7 @@ func TestTraceFilter(t *testing.T) {
 	require.Len(t, tracesAddressFilter, 1)
 	require.Equal(t, 0, tracesAddressFilter[0].TransactionPosition)
 	require.Equal(t, hash, tracesAddressFilter[0].TransactionHash)
-	require.Equal(t, "create", tracesAddressFilter[0].EthTrace.Type)
+	require.Equal(t, "create", tracesAddressFilter[0].Type)
 
 	after := ethtypes.EthUint64(1)
 	count := ethtypes.EthUint64(2)

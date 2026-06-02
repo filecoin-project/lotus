@@ -1308,13 +1308,14 @@ var sectorsBatchingPendingCommit = &cli.Command{
 			}
 			userInput = strings.ToLower(strings.TrimSpace(userInput))
 
-			if userInput == "yes" {
+			switch userInput {
+			case "yes":
 				err := cctx.Set("publish-now", "true")
 				if err != nil {
 					return xerrors.Errorf("setting publish-now flag: %w", err)
 				}
 				return cctx.Command.Action(cctx)
-			} else if userInput == "no" {
+			case "no":
 				return nil
 			}
 			fmt.Println("Invalid input. Please answer with 'yes' or 'no'.")
@@ -1384,13 +1385,14 @@ var sectorsBatchingPendingPreCommit = &cli.Command{
 			}
 			userInput = strings.ToLower(strings.TrimSpace(userInput))
 
-			if userInput == "yes" {
+			switch userInput {
+			case "yes":
 				err := cctx.Set("publish-now", "true")
 				if err != nil {
 					return xerrors.Errorf("setting publish-now flag: %w", err)
 				}
 				return cctx.Command.Action(cctx)
-			} else if userInput == "no" {
+			case "no":
 				return nil
 			}
 			fmt.Println("Invalid input. Please answer with 'yes' or 'no'.")

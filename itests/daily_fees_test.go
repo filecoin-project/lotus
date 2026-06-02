@@ -41,8 +41,8 @@ func TestDailyFees(t *testing.T) {
 		client    kit.TestFullNode
 		genminer  kit.TestMiner
 		// don't upgrade until original sectors are fully proven and power updated
-		nv25epoch abi.ChainEpoch = builtin.EpochsInDay + 200         // Teep
-		nv26epoch abi.ChainEpoch = nv25epoch + builtin.EpochsInDay/2 // Tock
+		nv25epoch = abi.ChainEpoch(builtin.EpochsInDay + 200) // Teep
+		nv26epoch = nv25epoch + builtin.EpochsInDay/2         // Tock
 		feePostWg sync.WaitGroup
 	)
 	// itests start off with a FilReserved of 300M FIL, leading to a circulating supply of 0 initially,

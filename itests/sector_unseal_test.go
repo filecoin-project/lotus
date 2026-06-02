@@ -96,7 +96,7 @@ func TestUnsealPiece(t *testing.T) {
 			case id == wpaths[0].ID: // worker path
 				if workers != storiface.FTNone {
 					require.Len(t, decls, 1)
-					require.EqualValues(t, workers.Strings(), decls[0].SectorFileType.Strings())
+					require.EqualValues(t, workers.Strings(), decls[0].Strings())
 				} else {
 					require.Len(t, decls, 0)
 				}
@@ -105,7 +105,7 @@ func TestUnsealPiece(t *testing.T) {
 			default: // miner path
 				if miners != storiface.FTNone {
 					require.Len(t, decls, 1)
-					require.EqualValues(t, miners.Strings(), decls[0].SectorFileType.Strings())
+					require.EqualValues(t, miners.Strings(), decls[0].Strings())
 				} else {
 					require.Len(t, decls, 0)
 				}

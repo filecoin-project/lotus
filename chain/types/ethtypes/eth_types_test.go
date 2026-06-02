@@ -53,7 +53,7 @@ func TestEthIntUnmarshalJSON(t *testing.T) {
 		require.Nil(t, err)
 		require.Equal(t, tc.Output, i)
 
-		i, err = EthUint64FromString(strings.Replace(string(tc.Input.([]byte)), `"`, "", -1))
+		i, err = EthUint64FromString(strings.ReplaceAll(string(tc.Input.([]byte)), `"`, ""))
 		require.Nil(t, err)
 		require.Equal(t, tc.Output, i)
 	}
@@ -100,7 +100,7 @@ func TestEthHash(t *testing.T) {
 		err := h.UnmarshalJSON([]byte(hash))
 
 		require.Nil(t, err)
-		require.Equal(t, h.String(), strings.Replace(hash, `"`, "", -1))
+		require.Equal(t, h.String(), strings.ReplaceAll(hash, `"`, ""))
 
 		c := h.ToCid()
 		h1, err := EthHashFromCid(c)
@@ -135,7 +135,7 @@ func TestEthFilterID(t *testing.T) {
 		err := h.UnmarshalJSON([]byte(hash))
 
 		require.Nil(t, err)
-		require.Equal(t, h.String(), strings.Replace(hash, `"`, "", -1))
+		require.Equal(t, h.String(), strings.ReplaceAll(hash, `"`, ""))
 
 		jm, err := json.Marshal(h)
 		require.NoError(t, err)
@@ -154,7 +154,7 @@ func TestEthSubscriptionID(t *testing.T) {
 		err := h.UnmarshalJSON([]byte(hash))
 
 		require.Nil(t, err)
-		require.Equal(t, h.String(), strings.Replace(hash, `"`, "", -1))
+		require.Equal(t, h.String(), strings.ReplaceAll(hash, `"`, ""))
 
 		jm, err := json.Marshal(h)
 		require.NoError(t, err)
@@ -174,7 +174,7 @@ func TestEthAddr(t *testing.T) {
 		err := a.UnmarshalJSON([]byte(addr))
 
 		require.Nil(t, err)
-		require.Equal(t, a.String(), strings.Replace(addr, `"`, "", -1))
+		require.Equal(t, a.String(), strings.ReplaceAll(addr, `"`, ""))
 	}
 }
 

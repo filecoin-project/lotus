@@ -424,9 +424,10 @@ func TestFundManagerWithdrawByWallet(t *testing.T) {
 		}
 		withdrawalCount = len(fa.withdrawals)
 
-		if withdrawalCount == 1 {
+		switch withdrawalCount {
+		case 1:
 			close(walletAQueuedUp)
-		} else if withdrawalCount == 3 {
+		case 3:
 			close(queueReady)
 			return true
 		}

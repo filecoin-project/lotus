@@ -97,7 +97,7 @@ func (sm *StorageMinerAPI) StorageAuthVerify(ctx context.Context, token string) 
 
 func (sm *StorageMinerAPI) ServeRemote(perm bool) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if perm == true {
+		if perm {
 			if !auth.HasPerm(r.Context(), nil, api.PermAdmin) {
 				w.WriteHeader(401)
 				_ = json.NewEncoder(w).Encode(struct{ Error string }{"unauthorized: missing write permission"})

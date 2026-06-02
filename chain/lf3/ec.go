@@ -49,13 +49,13 @@ type f3TipSet struct {
 
 func (ts *f3TipSet) String() string       { return ts.TipSet.String() }
 func (ts *f3TipSet) Key() gpbft.TipSetKey { return ts.TipSet.Key().Bytes() }
-func (ts *f3TipSet) Epoch() int64         { return int64(ts.TipSet.Height()) }
+func (ts *f3TipSet) Epoch() int64         { return int64(ts.Height()) }
 
 func (ts *f3TipSet) FirstBlockHeader() *types.BlockHeader {
-	if ts.TipSet == nil || len(ts.TipSet.Blocks()) == 0 {
+	if ts.TipSet == nil || len(ts.Blocks()) == 0 {
 		return nil
 	}
-	return ts.TipSet.Blocks()[0]
+	return ts.Blocks()[0]
 }
 
 func (ts *f3TipSet) Beacon() []byte {

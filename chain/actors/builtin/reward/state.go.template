@@ -16,7 +16,7 @@ import (
 	reward{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/reward"
 	smoothing{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/util/smoothing"
 {{else}}
-	smoothing{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}util/smoothing"
+	{{if (ne .v 8)}}smoothing{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}util/smoothing"{{end}}
 	miner{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}miner"
 	reward{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}reward"
 {{end}}
@@ -88,10 +88,7 @@ func (s *state{{.v}}) InitialPledgeForPower(qaPower abi.StoragePower, _ abi.Toke
 		qaPower,
 		s.State.ThisEpochBaselinePower,
 		s.State.ThisEpochRewardSmoothed,
-		smoothing{{.v}}.FilterEstimate{
-			PositionEstimate: networkQAPower.PositionEstimate,
-			VelocityEstimate: networkQAPower.VelocityEstimate,
-		},
+		{{if (eq .v 8)}}*networkQAPower{{else}}smoothing{{.v}}.FilterEstimate(*networkQAPower){{end}},
 		circSupply,
 		epochsSinceRampStart,
 		rampDurationEpochs,
@@ -100,34 +97,29 @@ func (s *state{{.v}}) InitialPledgeForPower(qaPower abi.StoragePower, _ abi.Toke
 		qaPower,
 		s.State.ThisEpochBaselinePower,
 		s.State.ThisEpochRewardSmoothed,
-		smoothing{{.v}}.FilterEstimate{
-			PositionEstimate: networkQAPower.PositionEstimate,
-			VelocityEstimate: networkQAPower.VelocityEstimate,
-		},
+		{{if (eq .v 8)}}*networkQAPower{{else}}smoothing{{.v}}.FilterEstimate(*networkQAPower){{end}},
 		circSupply,
 	), nil
 {{end}}}
 {{else}}
 func (s *state0) InitialPledgeForPower(sectorWeight abi.StoragePower, networkTotalPledge abi.TokenAmount, networkQAPower *builtin.FilterEstimate, circSupply abi.TokenAmount, _ int64, _ uint64) (abi.TokenAmount, error) {
+	qaPower := smoothing0.FilterEstimate(*networkQAPower)
 	return miner0.InitialPledgeForPower(
 		sectorWeight,
 		s.State.ThisEpochBaselinePower,
 		networkTotalPledge,
 		s.State.ThisEpochRewardSmoothed,
-		&smoothing0.FilterEstimate{
-			PositionEstimate: networkQAPower.PositionEstimate,
-			VelocityEstimate: networkQAPower.VelocityEstimate,
-		},
+		&qaPower,
 		circSupply), nil
 }
 {{end}}
 func (s *state{{.v}}) PreCommitDepositForPower(networkQAPower builtin.FilterEstimate, sectorWeight abi.StoragePower) (abi.TokenAmount, error) {
+	{{if (le .v 0)}}qaPower := smoothing{{.v}}.FilterEstimate(networkQAPower)
 	return miner{{.v}}.PreCommitDepositForPower(s.State.ThisEpochRewardSmoothed,
-		{{if (le .v 0)}}&{{end}}smoothing{{.v}}.FilterEstimate{
-			PositionEstimate: networkQAPower.PositionEstimate,
-			VelocityEstimate: networkQAPower.VelocityEstimate,
-		},
-		sectorWeight), nil
+		&qaPower,
+		sectorWeight), nil{{else}}return miner{{.v}}.PreCommitDepositForPower(s.State.ThisEpochRewardSmoothed,
+		{{if (eq .v 8)}}networkQAPower{{else}}smoothing{{.v}}.FilterEstimate(networkQAPower){{end}},
+		sectorWeight), nil{{end}}
 }
 
 func (s *state{{.v}}) GetState() interface{} {

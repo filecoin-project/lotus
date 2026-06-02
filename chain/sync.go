@@ -817,7 +817,7 @@ loop:
 		//  `MaxRequestLength` limitation, it should just be able to request
 		//  a segment of arbitrary length. The same burden is put on
 		//  `syncFork()` which needs to be aware this as well.
-		if blockSet[len(blockSet)-1].IsChildOf(blks[0]) == false {
+		if !blockSet[len(blockSet)-1].IsChildOf(blks[0]) {
 			return nil, xerrors.Errorf("retrieved segments of the chain are not connected at heights %d/%d",
 				blockSet[len(blockSet)-1].Height(), blks[0].Height())
 			// A successful `GetBlocks()` call is guaranteed to fetch at least

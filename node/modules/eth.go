@@ -217,7 +217,7 @@ func MakeEthEventsExtended(cfg config.EventsConfig, enableEthRPC bool) func(EthE
 			subscriptionCtx                       = lctx
 			chainStore           eth.ChainStore   = params.ChainStore
 			stateManager         eth.StateManager = params.StateManager
-			chainIndexer         index.Indexer    = params.Indexer
+			chainIndexer                          = params.Indexer
 			eventFilterManager   *filter.EventFilterManager
 			tipSetFilterManager  *filter.TipSetFilterManager
 			memPoolFilterManager *filter.MemPoolFilterManager

@@ -309,7 +309,7 @@ func TestManualNISectorOnboarding(t *testing.T) {
 						})
 					}
 					from := head.Height()
-					recentEvents, err := client.FullNode.GetActorEventsRaw(ctx, &types.ActorEventFilter{FromHeight: &from})
+					recentEvents, err := client.GetActorEventsRaw(ctx, &types.ActorEventFilter{FromHeight: &from})
 					req.NoError(err)
 					req.Len(recentEvents, len(sectors[i]))
 					for i, event := range recentEvents {
@@ -348,7 +348,7 @@ func TestManualNISectorOnboarding(t *testing.T) {
 						{Flags: 0x01, Codec: uint64(multicodec.Cbor), Key: "piece-size", Value: must.One(ipld.Encode(basicnode.NewInt(int64(snapPieces[0].Size)), dagcbor.Encode))},
 					}
 					from := head.Height()
-					recentEvents, err := client.FullNode.GetActorEventsRaw(ctx, &types.ActorEventFilter{FromHeight: &from})
+					recentEvents, err := client.GetActorEventsRaw(ctx, &types.ActorEventFilter{FromHeight: &from})
 					req.NoError(err)
 					req.Len(recentEvents, 1)
 					req.Equal(expectedEntries, recentEvents[0].Entries)

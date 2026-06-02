@@ -342,8 +342,8 @@ func (vm *LegacyVM) send(ctx context.Context, msg *types.Message, parent *Runtim
 					nmsg := Message{
 						msg: types.Message{
 							To:    aid,
-							From:  rt.Message.Caller(),
-							Value: rt.Message.ValueReceived(),
+							From:  rt.Caller(),
+							Value: rt.ValueReceived(),
 						},
 					}
 					rt.Message = &nmsg

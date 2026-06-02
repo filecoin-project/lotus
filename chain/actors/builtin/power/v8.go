@@ -10,7 +10,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
-	builtin18 "github.com/filecoin-project/go-state-types/builtin"
 	builtin8 "github.com/filecoin-project/go-state-types/builtin"
 	power8 "github.com/filecoin-project/go-state-types/builtin/v8/power"
 	adt8 "github.com/filecoin-project/go-state-types/builtin/v8/util/adt"
@@ -90,7 +89,7 @@ func (s *state8) MinerNominalPowerMeetsConsensusMinimum(a address.Address) (bool
 }
 
 func (s *state8) TotalPowerSmoothed() (builtin.FilterEstimate, error) {
-	return builtin.FilterEstimate(s.State.ThisEpochQAPowerSmoothed), nil
+	return s.State.ThisEpochQAPowerSmoothed, nil
 }
 
 func (s *state8) MinerCounts() (uint64, uint64, error) {
@@ -127,11 +126,11 @@ func (s *state8) ListAllMiners() ([]address.Address, error) {
 	return miners, nil
 }
 
-func (s *state8) CollectEligibleClaims(cacheInOut *builtin18.MapReduceCache) ([]builtin18.OwnedClaim, error) {
+func (s *state8) CollectEligibleClaims(cacheInOut *builtin8.MapReduceCache) ([]builtin8.OwnedClaim, error) {
 
-	var res []builtin18.OwnedClaim
+	var res []builtin8.OwnedClaim
 	err := s.ForEachClaim(func(miner address.Address, claim Claim) error {
-		res = append(res, builtin18.OwnedClaim{
+		res = append(res, builtin8.OwnedClaim{
 			Address:         miner,
 			RawBytePower:    claim.RawBytePower,
 			QualityAdjPower: claim.QualityAdjPower,

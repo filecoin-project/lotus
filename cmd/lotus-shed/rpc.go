@@ -160,7 +160,7 @@ var rpcCmd = &cli.Command{
 			method := s.TokenText()
 
 			s.Scan()
-			params := line[s.Position.Offset:]
+			params := line[s.Offset:]
 
 			if err := send(method, params); err != nil {
 				_, _ = fmt.Fprintf(os.Stderr, "%v", err)

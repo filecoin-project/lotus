@@ -73,7 +73,7 @@ func (w *WrapperV1Full) Version(ctx context.Context) (api.APIVersion, error) {
 }
 
 func (w *WrapperV1Full) executePrototype(ctx context.Context, p *api.MessagePrototype) (cid.Cid, error) {
-	sm, err := w.FullNode.MpoolPushMessage(ctx, &p.Message, nil)
+	sm, err := w.MpoolPushMessage(ctx, &p.Message, nil)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("pushing message: %w", err)
 	}
@@ -119,7 +119,7 @@ func (w *WrapperV1Full) MsigApproveTxnHash(ctx context.Context, msig address.Add
 }
 
 func (w *WrapperV1Full) MsigCancel(ctx context.Context, msig address.Address, txID uint64, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (cid.Cid, error) {
-	p, err := w.FullNode.MsigCancelTxnHash(ctx, msig, txID, to, amt, src, method, params)
+	p, err := w.MsigCancelTxnHash(ctx, msig, txID, to, amt, src, method, params)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("creating prototype: %w", err)
 	}
@@ -206,7 +206,7 @@ func (w *WrapperV1Full) ChainGetRandomnessFromBeacon(ctx context.Context, tsk ty
 }
 
 func (w *WrapperV1Full) PaychGet(ctx context.Context, from, to address.Address, amt types.BigInt) (*api.ChannelInfo, error) {
-	return w.FullNode.PaychFund(ctx, from, to, amt)
+	return w.PaychFund(ctx, from, to, amt)
 }
 
 func (w *WrapperV1Full) BeaconGetEntry(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) {

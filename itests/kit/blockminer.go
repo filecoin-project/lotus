@@ -122,7 +122,7 @@ func (p *partitionTracker) recordIfPost(t *testing.T, msg *types.Message) (ret b
 	defer func() {
 		ret = p.done(t)
 	}()
-	if !(msg.To == p.minerAddr) {
+	if msg.To != p.minerAddr {
 		return
 	}
 	if msg.Method != builtin.MethodsMiner.SubmitWindowedPoSt {

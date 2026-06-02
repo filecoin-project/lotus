@@ -45,7 +45,7 @@ func make{{.v}}(store adt.Store, signers []address.Address, threshold uint64, st
 	out := state{{.v}}{store: store}
 	out.State = msig{{.v}}.State{}
 	out.State.Signers = signers
-	out.State.NumApprovalsThreshold = threshold
+	out.NumApprovalsThreshold = threshold
 	out.State.StartEpoch = startEpoch
 	out.State.UnlockDuration = unlockDuration
 	out.State.InitialBalance = initialBalance
@@ -55,14 +55,14 @@ func make{{.v}}(store adt.Store, signers []address.Address, threshold uint64, st
 			return nil, err
 		}
 
-		out.State.PendingTxns = em
+		out.PendingTxns = em
 	{{else}}
 		em, err := adt{{.v}}.StoreEmptyMap(store, builtin{{.v}}.DefaultHamtBitwidth)
 		if err != nil {
 			return nil, err
 		}
 
-		out.State.PendingTxns = em
+		out.PendingTxns = em
 	{{end}}
 	return &out, nil
 }
@@ -73,7 +73,7 @@ type state{{.v}} struct {
 }
 
 func (s *state{{.v}}) LockedBalance(currEpoch abi.ChainEpoch) (abi.TokenAmount, error) {
-	return s.State.AmountLocked(currEpoch - s.State.StartEpoch), nil
+	return s.AmountLocked(currEpoch - s.State.StartEpoch), nil
 }
 
 func (s *state{{.v}}) StartEpoch() (abi.ChainEpoch, error) {
@@ -97,7 +97,7 @@ func (s *state{{.v}}) Signers() ([]address.Address, error) {
 }
 
 func (s *state{{.v}}) ForEachPendingTxn(cb func(id int64, txn Transaction) error) error {
-	arr, err := adt{{.v}}.AsMap(s.store, s.State.PendingTxns{{if (ge .v 3)}}, builtin{{.v}}.DefaultHamtBitwidth{{end}})
+	arr, err := adt{{.v}}.AsMap(s.store, s.PendingTxns{{if (ge .v 3)}}, builtin{{.v}}.DefaultHamtBitwidth{{end}})
 	if err != nil {
 		return err
 	}
@@ -117,7 +117,7 @@ func (s *state{{.v}}) PendingTxnChanged(other State) (bool, error) {
 		// treat an upgrade as a change, always
 		return true, nil
 	}
-	return !s.State.PendingTxns.Equals(other{{.v}}.PendingTxns), nil
+	return !s.PendingTxns.Equals(other{{.v}}.PendingTxns), nil
 }
 
 func (s *state{{.v}}) transactions() (adt.Map, error) {
@@ -129,7 +129,7 @@ func (s *state{{.v}}) decodeTransaction(val *cbg.Deferred) (Transaction, error) 
 	if err := tx.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
 		return Transaction{}, err
 	}
-	return Transaction(tx), nil
+	return {{if (eq .v .latestVersion)}}tx{{else}}Transaction(tx){{end}}, nil
 }
 
 func (s *state{{.v}}) GetState() interface{} {

@@ -302,8 +302,6 @@ func (mgr *SectorMgr) Fail() {
 	mgr.lk.Lock()
 	defer mgr.lk.Unlock()
 	mgr.failPoSt = true
-
-	return
 }
 
 func (mgr *SectorMgr) MarkCorrupted(sid storiface.SectorRef, corrupted bool) error {

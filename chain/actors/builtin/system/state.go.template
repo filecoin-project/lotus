@@ -50,7 +50,7 @@ func (s *state{{.v}}) GetBuiltinActors() cid.Cid {
 {{if (le .v 7)}}
 	return cid.Undef
 {{else}}
-	return s.State.BuiltinActors
+	return s.BuiltinActors
 {{end}}
 }
 
@@ -58,7 +58,7 @@ func (s *state{{.v}}) SetBuiltinActors(c cid.Cid) error {
 {{if (le .v 7)}}
 	return xerrors.New("cannot set manifest cid before v8")
 {{else}}
-	s.State.BuiltinActors = c
+	s.BuiltinActors = c
 	return nil
 {{end}}
 }

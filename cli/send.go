@@ -114,7 +114,7 @@ var SendCmd = &cli.Command{
 				return ShowHelp(cctx, fmt.Errorf("failed to convert ETH address to FIL address: %w", err))
 			}
 			// ideally, this should never happen
-			if !(params.To.Protocol() == address.ID || params.To.Protocol() == address.Delegated) {
+			if params.To.Protocol() != address.ID && params.To.Protocol() != address.Delegated {
 				return ShowHelp(cctx, fmt.Errorf("ETH addresses can only map to a FIL addresses starting with f410f or f0"))
 			}
 		}
@@ -187,7 +187,7 @@ var SendCmd = &cli.Command{
 			}
 
 			// We can only send to an f410f or f0 address.
-			if !(params.To.Protocol() == address.ID || params.To.Protocol() == address.Delegated) {
+			if params.To.Protocol() != address.ID && params.To.Protocol() != address.Delegated {
 				api := srv.FullNodeAPI()
 				// Resolve id addr if possible.
 				params.To, err = api.StateLookupID(ctx, params.To, types.EmptyTSK)

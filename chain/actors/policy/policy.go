@@ -6,17 +6,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
-	builtin10 "github.com/filecoin-project/go-state-types/builtin"
-	builtin11 "github.com/filecoin-project/go-state-types/builtin"
-	builtin12 "github.com/filecoin-project/go-state-types/builtin"
-	builtin13 "github.com/filecoin-project/go-state-types/builtin"
-	builtin14 "github.com/filecoin-project/go-state-types/builtin"
-	builtin15 "github.com/filecoin-project/go-state-types/builtin"
-	builtin16 "github.com/filecoin-project/go-state-types/builtin"
-	builtin17 "github.com/filecoin-project/go-state-types/builtin"
-	builtin18 "github.com/filecoin-project/go-state-types/builtin"
-	builtin8 "github.com/filecoin-project/go-state-types/builtin"
-	builtin9 "github.com/filecoin-project/go-state-types/builtin"
+	"github.com/filecoin-project/go-state-types/builtin"
 	market10 "github.com/filecoin-project/go-state-types/builtin/v10/market"
 	miner10 "github.com/filecoin-project/go-state-types/builtin/v10/miner"
 	verifreg10 "github.com/filecoin-project/go-state-types/builtin/v10/verifreg"
@@ -86,7 +76,7 @@ const (
 	ChainFinality                  = miner18.ChainFinality
 	SealRandomnessLookback         = ChainFinality
 	PaychSettleDelay               = paych18.SettleDelay
-	MaxPreCommitRandomnessLookback = builtin18.EpochsInDay + SealRandomnessLookback
+	MaxPreCommitRandomnessLookback = builtin.EpochsInDay + SealRandomnessLookback
 	DeclarationsMax                = 3000
 )
 
@@ -256,47 +246,47 @@ func SetConsensusMinerMinPower(p abi.StoragePower) {
 		policy.ConsensusMinerMinPower = p
 	}
 
-	for _, policy := range builtin8.PoStProofPolicies {
+	for _, policy := range builtin.PoStProofPolicies {
 		policy.ConsensusMinerMinPower = p
 	}
 
-	for _, policy := range builtin9.PoStProofPolicies {
+	for _, policy := range builtin.PoStProofPolicies {
 		policy.ConsensusMinerMinPower = p
 	}
 
-	for _, policy := range builtin10.PoStProofPolicies {
+	for _, policy := range builtin.PoStProofPolicies {
 		policy.ConsensusMinerMinPower = p
 	}
 
-	for _, policy := range builtin11.PoStProofPolicies {
+	for _, policy := range builtin.PoStProofPolicies {
 		policy.ConsensusMinerMinPower = p
 	}
 
-	for _, policy := range builtin12.PoStProofPolicies {
+	for _, policy := range builtin.PoStProofPolicies {
 		policy.ConsensusMinerMinPower = p
 	}
 
-	for _, policy := range builtin13.PoStProofPolicies {
+	for _, policy := range builtin.PoStProofPolicies {
 		policy.ConsensusMinerMinPower = p
 	}
 
-	for _, policy := range builtin14.PoStProofPolicies {
+	for _, policy := range builtin.PoStProofPolicies {
 		policy.ConsensusMinerMinPower = p
 	}
 
-	for _, policy := range builtin15.PoStProofPolicies {
+	for _, policy := range builtin.PoStProofPolicies {
 		policy.ConsensusMinerMinPower = p
 	}
 
-	for _, policy := range builtin16.PoStProofPolicies {
+	for _, policy := range builtin.PoStProofPolicies {
 		policy.ConsensusMinerMinPower = p
 	}
 
-	for _, policy := range builtin17.PoStProofPolicies {
+	for _, policy := range builtin.PoStProofPolicies {
 		policy.ConsensusMinerMinPower = p
 	}
 
-	for _, policy := range builtin18.PoStProofPolicies {
+	for _, policy := range builtin.PoStProofPolicies {
 		policy.ConsensusMinerMinPower = p
 	}
 
@@ -459,57 +449,57 @@ func SetProviderCollateralSupplyTarget(num, denom big.Int) {
 		Denominator: denom,
 	}
 
-	market8.ProviderCollateralSupplyTarget = builtin8.BigFrac{
+	market8.ProviderCollateralSupplyTarget = builtin.BigFrac{
 		Numerator:   num,
 		Denominator: denom,
 	}
 
-	market9.ProviderCollateralSupplyTarget = builtin9.BigFrac{
+	market9.ProviderCollateralSupplyTarget = builtin.BigFrac{
 		Numerator:   num,
 		Denominator: denom,
 	}
 
-	market10.ProviderCollateralSupplyTarget = builtin10.BigFrac{
+	market10.ProviderCollateralSupplyTarget = builtin.BigFrac{
 		Numerator:   num,
 		Denominator: denom,
 	}
 
-	market11.ProviderCollateralSupplyTarget = builtin11.BigFrac{
+	market11.ProviderCollateralSupplyTarget = builtin.BigFrac{
 		Numerator:   num,
 		Denominator: denom,
 	}
 
-	market12.ProviderCollateralSupplyTarget = builtin12.BigFrac{
+	market12.ProviderCollateralSupplyTarget = builtin.BigFrac{
 		Numerator:   num,
 		Denominator: denom,
 	}
 
-	market13.ProviderCollateralSupplyTarget = builtin13.BigFrac{
+	market13.ProviderCollateralSupplyTarget = builtin.BigFrac{
 		Numerator:   num,
 		Denominator: denom,
 	}
 
-	market14.ProviderCollateralSupplyTarget = builtin14.BigFrac{
+	market14.ProviderCollateralSupplyTarget = builtin.BigFrac{
 		Numerator:   num,
 		Denominator: denom,
 	}
 
-	market15.ProviderCollateralSupplyTarget = builtin15.BigFrac{
+	market15.ProviderCollateralSupplyTarget = builtin.BigFrac{
 		Numerator:   num,
 		Denominator: denom,
 	}
 
-	market16.ProviderCollateralSupplyTarget = builtin16.BigFrac{
+	market16.ProviderCollateralSupplyTarget = builtin.BigFrac{
 		Numerator:   num,
 		Denominator: denom,
 	}
 
-	market17.ProviderCollateralSupplyTarget = builtin17.BigFrac{
+	market17.ProviderCollateralSupplyTarget = builtin.BigFrac{
 		Numerator:   num,
 		Denominator: denom,
 	}
 
-	market18.ProviderCollateralSupplyTarget = builtin18.BigFrac{
+	market18.ProviderCollateralSupplyTarget = builtin.BigFrac{
 		Numerator:   num,
 		Denominator: denom,
 	}
@@ -831,7 +821,7 @@ func GetMinSectorExpiration() abi.ChainEpoch {
 }
 
 func GetMaxPoStPartitions(nv network.Version, p abi.RegisteredPoStProof) (int, error) {
-	sectorsPerPart, err := builtin18.PoStProofWindowPoStPartitionSectors(p)
+	sectorsPerPart, err := builtin.PoStProofWindowPoStPartitionSectors(p)
 	if err != nil {
 		return 0, err
 	}
@@ -852,7 +842,7 @@ func GetSectorMaxLifetime(proof abi.RegisteredSealProof, nwVer network.Version) 
 		return builtin4.SealProofPoliciesV0[proof].SectorMaxLifetime
 	}
 
-	return builtin18.SealProofPoliciesV11[proof].SectorMaxLifetime
+	return builtin.SealProofPoliciesV11[proof].SectorMaxLifetime
 }
 
 func GetAddressedSectorsMax(nwVer network.Version) (int, error) {

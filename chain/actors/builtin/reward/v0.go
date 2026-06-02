@@ -74,24 +74,20 @@ func (s *state0) CumsumRealized() (reward0.Spacetime, error) {
 }
 
 func (s *state0) InitialPledgeForPower(sectorWeight abi.StoragePower, networkTotalPledge abi.TokenAmount, networkQAPower *builtin.FilterEstimate, circSupply abi.TokenAmount, _ int64, _ uint64) (abi.TokenAmount, error) {
+	qaPower := smoothing0.FilterEstimate(*networkQAPower)
 	return miner0.InitialPledgeForPower(
 		sectorWeight,
 		s.State.ThisEpochBaselinePower,
 		networkTotalPledge,
 		s.State.ThisEpochRewardSmoothed,
-		&smoothing0.FilterEstimate{
-			PositionEstimate: networkQAPower.PositionEstimate,
-			VelocityEstimate: networkQAPower.VelocityEstimate,
-		},
+		&qaPower,
 		circSupply), nil
 }
 
 func (s *state0) PreCommitDepositForPower(networkQAPower builtin.FilterEstimate, sectorWeight abi.StoragePower) (abi.TokenAmount, error) {
+	qaPower := smoothing0.FilterEstimate(networkQAPower)
 	return miner0.PreCommitDepositForPower(s.State.ThisEpochRewardSmoothed,
-		&smoothing0.FilterEstimate{
-			PositionEstimate: networkQAPower.PositionEstimate,
-			VelocityEstimate: networkQAPower.VelocityEstimate,
-		},
+		&qaPower,
 		sectorWeight), nil
 }
 

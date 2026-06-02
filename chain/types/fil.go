@@ -88,7 +88,7 @@ func (f FIL) UnmarshalText(text []byte) error {
 		return err
 	}
 
-	f.Int.Set(p.Int)
+	f.Set(p.Int)
 	return nil
 }
 

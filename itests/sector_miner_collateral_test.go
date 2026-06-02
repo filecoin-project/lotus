@@ -21,7 +21,6 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 
 	"github.com/filecoin-project/lotus/api"
-	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/datacap"
@@ -90,7 +89,7 @@ func TestMinerBalanceCollateral(t *testing.T) {
 		for len(toCheck) > 0 {
 			states := map[api.SectorState]int{}
 			for n := range toCheck {
-				st, err := miner.StorageMiner.SectorsStatus(ctx, n, false)
+				st, err := miner.SectorsStatus(ctx, n, false)
 				require.NoError(t, err)
 				states[st.State]++
 				if st.State == api.SectorState(sealing.Proving) {
@@ -219,7 +218,7 @@ func TestPledgeCalculations(t *testing.T) {
 		}, nil)
 		require.NoError(t, err, "AddVerifier failed")
 
-		res, err := client.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
+		res, err := client.StateWaitMsg(ctx, sm.Cid(), 1, api.LookbackNoLimit, true)
 		require.NoError(t, err)
 		require.EqualValues(t, 0, res.Receipt.ExitCode)
 
@@ -239,7 +238,7 @@ func TestPledgeCalculations(t *testing.T) {
 		}, nil)
 		require.NoError(t, err)
 
-		res, err = client.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
+		res, err = client.StateWaitMsg(ctx, sm.Cid(), 1, api.LookbackNoLimit, true)
 		require.NoError(t, err)
 		require.EqualValues(t, 0, res.Receipt.ExitCode)
 	}
@@ -279,7 +278,7 @@ func TestPledgeCalculations(t *testing.T) {
 		}, nil)
 		require.NoError(t, err)
 
-		res, err := client.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
+		res, err := client.StateWaitMsg(ctx, sm.Cid(), 1, api.LookbackNoLimit, true)
 		require.NoError(t, err)
 		require.EqualValues(t, 0, res.Receipt.ExitCode)
 
@@ -440,7 +439,7 @@ func TestPledgeCalculations(t *testing.T) {
 		// new one that just uses sector size, duration and a simple verified size. They should be
 		// the same.
 
-		precommit, err := client.FullNode.StateSectorPreCommitInfo(ctx, testMinerAddr, sectorNumber, tsk)
+		precommit, err := client.StateSectorPreCommitInfo(ctx, testMinerAddr, sectorNumber, tsk)
 		require.NoError(t, err)
 
 		// nolint:staticcheck // SA1019 intentionally using a deprecated method
@@ -448,7 +447,7 @@ func TestPledgeCalculations(t *testing.T) {
 		require.NoError(t, err)
 		t.Logf("Pledge from precommit: %s", pledgeFromPrecommitCC)
 
-		pledge, err := client.FullNode.StateMinerInitialPledgeForSector(ctx, precommit.Info.Expiration-r.Height, sectorSize, verifiedSize, tsk)
+		pledge, err := client.StateMinerInitialPledgeForSector(ctx, precommit.Info.Expiration-r.Height, sectorSize, verifiedSize, tsk)
 		require.NoError(t, err)
 		t.Logf("Pledge from duration, size and verified: %s", pledge)
 
