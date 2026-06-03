@@ -322,8 +322,8 @@ require (
 )
 
 require (
-	filippo.io/bigmod v0.1.1-0.20260103110540-f8a47775ebe5 // indirect
-	filippo.io/keygen v0.0.0-20260114151900-8e2790ea4c5b // indirect
+	filippo.io/bigmod v0.1.1-0.20260103110540-f8a47775ebe5 // indirect dependency-check-ignore: required by libp2p
+	filippo.io/keygen v0.0.0-20260114151900-8e2790ea4c5b // indirect dependency-check-ignore: required by libp2p
 	github.com/clipperhouse/stringish v0.1.1 // indirect
 	github.com/clipperhouse/uax29/v2 v2.3.0 // indirect
 	github.com/dunglas/httpsfv v1.1.0 // indirect
