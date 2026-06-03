@@ -151,7 +151,7 @@ func (m *StateModule) StateCall(ctx context.Context, msg *types.Message, tsk typ
 	}
 	for {
 		res, err = m.StateManager.Call(ctx, msg, ts)
-		if err != stmgr.ErrExpensiveFork {
+		if !errors.Is(err, stmgr.ErrExpensiveFork) {
 			break
 		}
 		ts, err = m.Chain.GetTipSetFromKey(ctx, ts.Parents())
