@@ -201,8 +201,8 @@ var msigInspectCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if !cctx.Args().Present() {
-			return ShowHelp(cctx, fmt.Errorf("must specify address of multisig to inspect"))
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgsWithHint(cctx, "specify address of multisig")
 		}
 
 		api, closer, err := GetFullNodeAPI(cctx)
