@@ -139,6 +139,11 @@ func TestAPIInfoDialArgs(t *testing.T) {
 			want: "https://api.node.glif.io/rpc/v1",
 		},
 		{
+			name: "https URL with trailing slash",
+			addr: "https://api.node.glif.io/",
+			want: "https://api.node.glif.io/rpc/v1",
+		},
+		{
 			name: "wss URL passes through",
 			addr: "wss://host.example",
 			want: "wss://host.example/rpc/v1",
