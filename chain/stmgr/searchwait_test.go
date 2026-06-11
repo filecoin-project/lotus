@@ -2,11 +2,13 @@ package stmgr_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/lotus/chain/gen"
+	"github.com/filecoin-project/lotus/chain/stmgr"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
 )
@@ -106,6 +108,9 @@ func TestSearchForMessageReplacements(t *testing.T) {
 	_, _, _, err = cg.StateManager().SearchForMessage(ctx, mts2.TipSet.TipSet(), rm.Cid(), 100, false)
 	if err == nil {
 		t.Fatal("expected search to fail")
+	}
+	if !errors.Is(err, stmgr.ErrMessageReplaced) {
+		t.Fatalf("expected replacement error, got %v", err)
 	}
 
 	// nrm is NOT a valid replacement message for m

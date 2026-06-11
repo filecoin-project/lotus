@@ -121,6 +121,110 @@ func TestTransactionHashLookup(t *testing.T) {
 	require.Nil(t, receipt)
 }
 
+func TestEthGetTransactionHashLookupIgnoresReplacementMessages(t *testing.T) {
+	kit.QuietMiningLogs()
+
+	blocktime := 200 * time.Millisecond
+	client, _, ens := kit.EnsembleMinimal(
+		t,
+		kit.MockProofs(),
+		kit.ThroughRPC(),
+	)
+	miners := ens.InterconnectAll().BeginMining(blocktime)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	key, ethAddr, deployer := client.EVM().NewAccount()
+	kit.SendFunds(ctx, t, client, deployer, types.FromFil(10))
+
+	tx := deployContractWithEth(ctx, t, client, ethAddr, "./contracts/MultipleEvents.hex")
+	client.EVM().SignTransaction(tx, key.PrivateKey)
+	deployHash := client.EVM().SubmitTransaction(ctx, tx)
+
+	receipt, err := client.EVM().WaitTransaction(ctx, deployHash)
+	require.NoError(t, err)
+	require.NotNil(t, receipt)
+	require.EqualValues(t, 1, receipt.Status)
+
+	miners[0].Pause()
+
+	contractAddr := client.EVM().ComputeContractAddress(ethAddr, 0)
+
+	params4Events, err := hex.DecodeString("98e8da00")
+	require.NoError(t, err)
+
+	gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
+		From: &ethAddr,
+		To:   &contractAddr,
+		Data: params4Events,
+	}})
+	require.NoError(t, err)
+
+	gaslimit, err := client.EthEstimateGas(ctx, gasParams)
+	require.NoError(t, err)
+
+	maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)
+	require.NoError(t, err)
+	if big.Int(maxPriorityFeePerGas).LessThan(big.NewInt(1)) {
+		maxPriorityFeePerGas = ethtypes.EthBigInt(big.NewInt(1))
+	}
+
+	originalTx := ethtypes.Eth1559TxArgs{
+		ChainID:              buildconstants.Eip155ChainId,
+		To:                   &contractAddr,
+		Value:                big.Zero(),
+		Nonce:                1,
+		MaxFeePerGas:         types.NanoFil,
+		MaxPriorityFeePerGas: big.Int(maxPriorityFeePerGas),
+		GasLimit:             int(gaslimit),
+		Input:                params4Events,
+		V:                    big.Zero(),
+		R:                    big.Zero(),
+		S:                    big.Zero(),
+	}
+	client.EVM().SignTransaction(&originalTx, key.PrivateKey)
+	originalHash := client.EVM().SubmitTransaction(ctx, &originalTx)
+	originalCid, err := client.EthGetMessageCidByTransactionHash(ctx, &originalHash)
+	require.NoError(t, err)
+	require.NotNil(t, originalCid)
+
+	replacementTx := originalTx
+	replacementTx.MaxFeePerGas = big.Mul(originalTx.MaxFeePerGas, big.NewInt(2))
+	replacementTx.MaxPriorityFeePerGas = big.Mul(big.Int(maxPriorityFeePerGas), big.NewInt(2))
+	replacementTx.V = big.Zero()
+	replacementTx.R = big.Zero()
+	replacementTx.S = big.Zero()
+	client.EVM().SignTransaction(&replacementTx, key.PrivateKey)
+	replacementHash := client.EVM().SubmitTransaction(ctx, &replacementTx)
+	require.NotEqual(t, originalHash, replacementHash)
+
+	miners[0].Restart()
+
+	replacementReceipt, err := client.EVM().WaitTransaction(ctx, replacementHash)
+	require.NoError(t, err)
+	require.NotNil(t, replacementReceipt)
+	require.EqualValues(t, 1, replacementReceipt.Status)
+	require.Len(t, replacementReceipt.Logs, 4)
+
+	replacementLookup, err := client.EthGetTransactionByHash(ctx, &replacementHash)
+	require.NoError(t, err)
+	require.NotNil(t, replacementLookup)
+	require.Equal(t, replacementHash, replacementLookup.Hash)
+
+	originalLookup, err := client.EthGetTransactionByHash(ctx, &originalHash)
+	require.NoError(t, err)
+	require.Nil(t, originalLookup)
+
+	originalReceipt, err := client.EthGetTransactionReceipt(ctx, originalHash)
+	require.NoError(t, err)
+	require.Nil(t, originalReceipt)
+
+	originalSearch, err := client.StateSearchMsg(ctx, types.EmptyTSK, *originalCid, api.LookbackNoLimit, false)
+	require.NoError(t, err)
+	require.Nil(t, originalSearch)
+}
+
 // TestTransactionHashLookupBlsFilecoinMessage tests to see if lotus can find a BLS Filecoin Message using the transaction hash
 func TestTransactionHashLookupBlsFilecoinMessage(t *testing.T) {
 	kit.QuietMiningLogs()
