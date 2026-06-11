@@ -243,29 +243,33 @@ func (b *CommitBatcher) maybeStartBatch(notif bool) ([]sealiface.CommitBatchRes,
 
 	// Defensive fallback: every queued sector must receive a result, otherwise
 	// AddCommit callers can remain blocked forever.
-	processed := map[abi.SectorNumber]struct{}{}
-	for _, r := range res {
-		for _, sn := range r.Sectors {
-			processed[sn] = struct{}{}
-		}
-	}
-
-	if len(processed) != total {
-		missingRes := sealiface.CommitBatchRes{
-			FailedSectors: map[abi.SectorNumber]string{},
+	// Only run when processBatchV2 succeeded. On batch-level errors, preserve the
+	// queue so sectors can be retried on the next batch attempt.
+	if err == nil {
+		processed := map[abi.SectorNumber]struct{}{}
+		for _, r := range res {
+			for _, sn := range r.Sectors {
+				processed[sn] = struct{}{}
+			}
 		}
 
-		for _, sn := range sectors {
-			if _, ok := processed[sn]; ok {
-				continue
+		if len(processed) != total {
+			missingRes := sealiface.CommitBatchRes{
+				FailedSectors: map[abi.SectorNumber]string{},
 			}
 
-			missingRes.Sectors = append(missingRes.Sectors, sn)
-			missingRes.FailedSectors[sn] = "commit batcher dropped sector from processing"
-		}
+			for _, sn := range sectors {
+				if _, ok := processed[sn]; ok {
+					continue
+				}
 
-		if len(missingRes.Sectors) > 0 {
-			res = append(res, missingRes)
+				missingRes.Sectors = append(missingRes.Sectors, sn)
+				missingRes.FailedSectors[sn] = "commit batcher dropped sector from processing"
+			}
+
+			if len(missingRes.Sectors) > 0 {
+				res = append(res, missingRes)
+			}
 		}
 	}
 
@@ -721,10 +725,10 @@ func (b *CommitBatcher) allocationCheck(Pieces []miner.PieceActivationManifest, 
 		// This ensures the check is deterministic at precommit time and doesn't flip
 		// from valid to invalid as blocks pass
 		if precomitInfo.Info.Expiration < precomitInfo.PreCommitEpoch+alloc.TermMin {
-			log.Warnf("sector expiration %d is before than allocation TermMin %d for piece %s", precomitInfo.Info.Expiration, precomitInfo.PreCommitEpoch+alloc.TermMin, p.CID.String())
+			return xerrors.Errorf("sector expiration %d is before allocation TermMin %d for piece %s", precomitInfo.Info.Expiration, precomitInfo.PreCommitEpoch+alloc.TermMin, p.CID.String())
 		}
 		if precomitInfo.Info.Expiration > precomitInfo.PreCommitEpoch+alloc.TermMax {
-			log.Warnf("sector expiration %d is later than allocation TermMax %d for piece %s", precomitInfo.Info.Expiration, precomitInfo.PreCommitEpoch+alloc.TermMax, p.CID.String())
+			return xerrors.Errorf("sector expiration %d is later than allocation TermMax %d for piece %s", precomitInfo.Info.Expiration, precomitInfo.PreCommitEpoch+alloc.TermMax, p.CID.String())
 		}
 	}
 	return nil

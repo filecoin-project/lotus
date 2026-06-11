@@ -95,7 +95,11 @@ func (p *BasicPreCommitPolicy) Expiration(ctx context.Context, ps ...SafeSectorP
 				return 0, xerrors.Errorf("allocation piece size mismatch: expected %d, got %d", pieceSize, alloc.Size)
 			}
 
-			maxAllowed := ts.Height() + alloc.TermMax
+			startEpoch, err := p.StartEpoch()
+			if err != nil {
+				return 0, xerrors.Errorf("failed to get start epoch for allocation: %w", err)
+			}
+			maxAllowed := startEpoch + alloc.TermMax
 			if maxAllowed < endEpoch {
 				log.Warnf("deal end epoch %d is after allocation term maximum %d, clamping to maximum", endEpoch, maxAllowed)
 				endEpoch = maxAllowed
