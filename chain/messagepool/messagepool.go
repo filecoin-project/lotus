@@ -185,7 +185,13 @@ type MessagePool struct {
 	evtTypes [3]journal.EventType
 	journal  journal.Journal
 
-	snapshot atomic.Pointer[MessagePoolPendingSnapshot]
+	snapshot           atomic.Pointer[MessagePoolPendingSnapshot]
+	executableSnapshot atomic.Pointer[MessagePoolPendingSnapshot]
+}
+
+func (mp *MessagePool) invalidateSnapshots() {
+	mp.snapshot.Store(nil)
+	mp.executableSnapshot.Store(nil)
 }
 
 type stateNonceCacheKey struct {
@@ -1037,7 +1043,7 @@ func (mp *MessagePool) addLocked(ctx context.Context, m *types.SignedMessage, st
 	// Record the current size of the Mpool
 	stats.Record(ctx, metrics.MpoolMessageCount.M(int64(mp.currentSize)))
 
-	mp.snapshot.Store(nil)
+	mp.invalidateSnapshots()
 
 	return nil
 }
@@ -1235,7 +1241,7 @@ func (mp *MessagePool) remove(ctx context.Context, from address.Address, nonce u
 	// Record the current size of the Mpool
 	stats.Record(ctx, metrics.MpoolMessageCount.M(int64(mp.currentSize)))
 
-	mp.snapshot.Store(nil)
+	mp.invalidateSnapshots()
 }
 
 func (mp *MessagePool) Pending(ctx context.Context) ([]*types.SignedMessage, *types.TipSet) {
@@ -1270,6 +1276,35 @@ func (mp *MessagePool) allPending(ctx context.Context) ([]*types.SignedMessage, 
 	})
 
 	return out, mp.curTs
+}
+
+// PendingExecutable returns only messages that form the consecutive executable
+// prefix for each actor — i.e. messages whose nonce < msgSet.nextNonce.
+// Messages at or beyond nextNonce have a nonce gap before them and cannot be
+// included in the next block, so they are excluded from the result.
+func (mp *MessagePool) PendingExecutable(ctx context.Context) []*types.SignedMessage {
+	snapshot := mp.executableSnapshot.Load()
+
+	if snapshot == nil {
+		mp.lk.RLock()
+
+		out := make([]*types.SignedMessage, 0)
+		mp.forEachPending(func(_ address.Address, mset *msgSet) {
+			for nonce, m := range mset.msgs {
+				if nonce < mset.nextNonce {
+					out = append(out, m)
+				}
+			}
+		})
+		snapshot = &MessagePoolPendingSnapshot{msgs: out}
+		mp.executableSnapshot.Store(snapshot)
+
+		mp.lk.RUnlock()
+	}
+
+	msgs := make([]*types.SignedMessage, len(snapshot.msgs))
+	copy(msgs, snapshot.msgs)
+	return msgs
 }
 
 func (mp *MessagePool) PendingFor(ctx context.Context, a address.Address) ([]*types.SignedMessage, *types.TipSet) {
@@ -1639,7 +1674,7 @@ func (mp *MessagePool) Clear(ctx context.Context, local bool) {
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
-	mp.snapshot.Store(nil)
+	mp.invalidateSnapshots()
 
 	// remove everything if local is true, including removing local messages from
 	// the datastore
