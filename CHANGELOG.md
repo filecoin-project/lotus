@@ -23,6 +23,8 @@
 - fix(gateway): align v2 RPC surface (`/rpc/v2`) with v1; remove `*Limited` and `*Untrusted` eth method variants ([filecoin-project/lotus#13628](https://github.com/filecoin-project/lotus/pull/13628))
 - fix(eth): `eth_call`, `eth_estimateGas` and `StateCall` are no longer refused at the epoch immediately after an expensive network-upgrade migration; that block's migrated state is already available, so only the upgrade epoch itself is refused. This unblocks indexers (e.g. The Graph) that replay `eth_call` at the block of each event. The refusal now returns a typed error with the registered JSON-RPC code `-32002` and a recognisable message, instead of the generic application code `1` ([filecoin-project/lotus#13644](https://github.com/filecoin-project/lotus/pull/13644))
 
+- fix(eth): restore lite node Eth transaction API (`EthGetTransactionByHash`, `EthGetTransactionReceipt`, etc.) that returned nil results when the gateway was used as the backing full node ([filecoin-project/lotus#13577](https://github.com/filecoin-project/lotus/pull/13577))
+
 ## 👌 Improvements
 
 * Silence libp2p config log spam ([filecoin-project/lotus#13612](https://github.com/filecoin-project/lotus/pull/13612))

@@ -11,6 +11,8 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v2api"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/events/filter"
 	"github.com/filecoin-project/lotus/chain/index"
@@ -291,31 +293,63 @@ func MakeEthEventsExtended(cfg config.EventsConfig, enableEthRPC bool) func(EthE
 // EthSendRawTransactionUntrusted. The Gateway API doesn't expose this method, so this is a
 // precautionary measure.
 type GatewayEthSend struct {
-	fx.In
-	eth.EthSendAPI
+	api.Gateway
+}
+
+var _ eth.EthSendAPI = (*GatewayEthSend)(nil)
+
+func NewGatewayEthSend(gw api.Gateway) eth.EthSendAPI {
+	return &GatewayEthSend{Gateway: gw}
 }
 
 func (*GatewayEthSend) EthSendRawTransactionUntrusted(ctx context.Context, rawTx ethtypes.EthBytes) (ethtypes.EthHash, error) {
 	return ethtypes.EthHash{}, xerrors.New("EthSendRawTransactionUntrusted is not supported in gateway mode")
 }
 
-// GatewayEthTransaction is a helper to provide the Gateway with the EthTransactionAPI but block the
-// use of EthGetTransactionByHashLimited, EthGetTransactionReceiptLimited and
-// EthGetBlockReceiptsLimited. The Gateway API doesn't expose these methods, so this is a
-// precautionary measure.
-type GatewayEthTransaction struct {
-	fx.In
-	eth.EthTransactionAPI
+// GatewayEthTransactionV1 is a helper to provide the Gateway with the EthTransactionAPI but block
+// the use of EthGetTransactionByHashLimited, EthGetTransactionReceiptLimited and
+// EthGetBlockReceiptsLimited. The V1 Gateway API doesn't expose these methods, so this is both a
+// precautionary measure and required to satisfy the eth.EthTransactionAPI interface.
+type GatewayEthTransactionV1 struct {
+	api.Gateway
 }
 
-func (*GatewayEthTransaction) EthGetTransactionByHashLimited(ctx context.Context, txHash *ethtypes.EthHash, limit abi.ChainEpoch) (*ethtypes.EthTx, error) {
+var _ full.EthTransactionAPIV1 = (*GatewayEthTransactionV1)(nil)
+
+func NewGatewayEthTransactionV1(gw api.Gateway) full.EthTransactionAPIV1 {
+	return &GatewayEthTransactionV1{Gateway: gw}
+}
+
+func (*GatewayEthTransactionV1) EthGetTransactionByHashLimited(ctx context.Context, txHash *ethtypes.EthHash, limit abi.ChainEpoch) (*ethtypes.EthTx, error) {
 	return nil, xerrors.New("EthGetTransactionByHashLimited is not supported in gateway mode")
 }
-func (*GatewayEthTransaction) EthGetTransactionReceiptLimited(ctx context.Context, txHash ethtypes.EthHash, limit abi.ChainEpoch) (*ethtypes.EthTxReceipt, error) {
+func (*GatewayEthTransactionV1) EthGetTransactionReceiptLimited(ctx context.Context, txHash ethtypes.EthHash, limit abi.ChainEpoch) (*ethtypes.EthTxReceipt, error) {
+	return nil, xerrors.New("EthGetTransactionReceiptLimited is not supported in gateway mode")
+}
+func (*GatewayEthTransactionV1) EthGetBlockReceiptsLimited(ctx context.Context, blkParam ethtypes.EthBlockNumberOrHash, limit abi.ChainEpoch) ([]*ethtypes.EthTxReceipt, error) {
+	return nil, xerrors.New("EthGetBlockReceiptsLimited is not supported in gateway mode")
+}
+
+// GatewayEthTransactionV2 is the V2 equivalent of GatewayEthTransactionV1, wrapping the v2api
+// Gateway and blocking the Limited methods as a precautionary measure.
+type GatewayEthTransactionV2 struct {
+	v2api.Gateway
+}
+
+var _ full.EthTransactionAPIV2 = (*GatewayEthTransactionV2)(nil)
+
+func NewGatewayEthTransactionV2(gw v2api.Gateway) full.EthTransactionAPIV2 {
+	return &GatewayEthTransactionV2{Gateway: gw}
+}
+
+func (*GatewayEthTransactionV2) EthGetTransactionByHashLimited(ctx context.Context, txHash *ethtypes.EthHash, limit abi.ChainEpoch) (*ethtypes.EthTx, error) {
 	return nil, xerrors.New("EthGetTransactionByHashLimited is not supported in gateway mode")
 }
-func (*GatewayEthTransaction) EthGetBlockReceiptsLimited(ctx context.Context, blkParam ethtypes.EthBlockNumberOrHash, limit abi.ChainEpoch) ([]*ethtypes.EthTxReceipt, error) {
-	return nil, xerrors.New("EthGetTransactionByHashLimited is not supported in gateway mode")
+func (*GatewayEthTransactionV2) EthGetTransactionReceiptLimited(ctx context.Context, txHash ethtypes.EthHash, limit abi.ChainEpoch) (*ethtypes.EthTxReceipt, error) {
+	return nil, xerrors.New("EthGetTransactionReceiptLimited is not supported in gateway mode")
+}
+func (*GatewayEthTransactionV2) EthGetBlockReceiptsLimited(ctx context.Context, blkParam ethtypes.EthBlockNumberOrHash, limit abi.ChainEpoch) ([]*ethtypes.EthTxReceipt, error) {
+	return nil, xerrors.New("EthGetBlockReceiptsLimited is not supported in gateway mode")
 }
 
 type EventFilterManagerParams struct {
