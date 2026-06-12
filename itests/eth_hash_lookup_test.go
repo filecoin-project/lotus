@@ -138,7 +138,7 @@ func TestEthGetTransactionHashLookupIgnoresReplacementMessages(t *testing.T) {
 	key, ethAddr, deployer := client.EVM().NewAccount()
 	kit.SendFunds(ctx, t, client, deployer, types.FromFil(10))
 
-	tx := deployContractWithEth(ctx, t, client, ethAddr, "./contracts/MultipleEvents.hex")
+	tx := client.EVM().BuildDeployContractTx(ctx, ethAddr, "./contracts/MultipleEvents.hex")
 	client.EVM().SignTransaction(tx, key.PrivateKey)
 	deployHash := client.EVM().SubmitTransaction(ctx, tx)
 
