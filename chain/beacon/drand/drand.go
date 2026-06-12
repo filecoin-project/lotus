@@ -3,6 +3,7 @@ package drand
 import (
 	"bytes"
 	"context"
+	"os"
 	"time"
 
 	dcommon "github.com/drand/drand/v2/common"
@@ -31,6 +32,12 @@ import (
 )
 
 var log = logging.Logger("drand")
+
+// drandStubSigLen is the byte length used for stub beacon entries when
+// LOTUS_IGNORE_DRAND is active. The value is not tied to a specific drand
+// scheme; it only needs to be non-empty so downstream code that inspects
+// BeaconEntry.Data does not hit a nil/zero-length slice.
+const drandStubSigLen = 96
 
 // DrandBeacon connects Lotus with a drand network in order to provide
 // randomness to the system in a way that's aligned with Filecoin rounds/epochs.
@@ -161,6 +168,16 @@ func NewDrandBeacon(genesisTs, interval uint64, ps *pubsub.PubSub, config dtypes
 }
 
 func (db *DrandBeacon) Entry(ctx context.Context, round uint64) <-chan beacon.Response {
+	// Defense-in-depth: if LOTUS_IGNORE_DRAND is set, return a deterministic
+	// stub instead of reaching out to drand servers. Catches any DrandBeacon
+	// that leaks past the RandomSchedule guard.
+	if os.Getenv("LOTUS_IGNORE_DRAND") == "_yes_" {
+		log.Debugw("LOTUS_IGNORE_DRAND: returning stub beacon entry", "round", round)
+		out := make(chan beacon.Response, 1)
+		out <- beacon.Response{Entry: types.BeaconEntry{Round: round, Data: make([]byte, drandStubSigLen)}}
+		close(out)
+		return out
+	}
 	out := make(chan beacon.Response, 1)
 	if round != 0 {
 		be := db.getCachedValue(round)
@@ -200,6 +217,11 @@ func (db *DrandBeacon) getCachedValue(round uint64) *types.BeaconEntry {
 }
 
 func (db *DrandBeacon) VerifyEntry(entry types.BeaconEntry, prevEntrySig []byte) error {
+	// Skip signature verification when running with a mock beacon.
+	if os.Getenv("LOTUS_IGNORE_DRAND") == "_yes_" {
+		log.Debugw("LOTUS_IGNORE_DRAND: skipping beacon signature verification")
+		return nil
+	}
 	if be := db.getCachedValue(entry.Round); be != nil {
 		if !bytes.Equal(entry.Data, be.Data) {
 			return xerrors.New("invalid beacon value, does not match cached good value")
