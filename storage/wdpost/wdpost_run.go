@@ -151,14 +151,7 @@ func (s *WindowPoStScheduler) runSubmitPoST(
 	defer span.End()
 
 	// Get randomness from tickets
-	// use the challenge epoch if we've upgraded to network version 4
-	// (actors version 2). We want to go back as far as possible to be safe.
-	commEpoch := deadline.Open
-	if ver, err := s.api.StateNetworkVersion(ctx, types.EmptyTSK); err != nil {
-		log.Errorw("failed to get network version to determine PoSt epoch randomness lookback", "error", err)
-	} else if ver >= network.Version4 {
-		commEpoch = deadline.Challenge
-	}
+	commEpoch := deadline.Challenge
 
 	commRand, err := s.api.StateGetRandomnessFromTickets(ctx, crypto.DomainSeparationTag_PoStChainCommit, commEpoch, nil, ts.Key())
 	if err != nil {
@@ -220,18 +213,10 @@ func (s *WindowPoStScheduler) checkSectors(ctx context.Context, check bitfield.B
 		})
 	}
 
-	nv, err := s.api.StateNetworkVersion(ctx, types.EmptyTSK)
-	if err != nil {
-		return bitfield.BitField{}, xerrors.Errorf("failed to get network version: %w", err)
-	}
-
 	pp := s.proofType
-	// TODO: Drop after nv19 comes and goes
-	if nv >= network.Version19 {
-		pp, err = pp.ToV1_1PostProof()
-		if err != nil {
-			return bitfield.BitField{}, xerrors.Errorf("failed to convert to v1_1 post proof: %w", err)
-		}
+	pp, err = pp.ToV1_1PostProof()
+	if err != nil {
+		return bitfield.BitField{}, xerrors.Errorf("failed to convert to v1_1 post proof: %w", err)
 	}
 
 	bad, err := s.faultTracker.CheckProvable(ctx, pp, tocheck, func(ctx context.Context, id abi.SectorID) (cid.Cid, bool, error) {

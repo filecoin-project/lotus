@@ -365,12 +365,7 @@ func (m *Sealing) sectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPiec
 		return api.SectorOffset{}, xerrors.Errorf("couldn't get chain head: %w", err)
 	}
 
-	nv, err := m.Api.StateNetworkVersion(ctx, types.EmptyTSK)
-	if err != nil {
-		return api.SectorOffset{}, xerrors.Errorf("getting network version: %w", err)
-	}
-
-	if err := pieceInfo.Valid(nv); err != nil {
+	if err := pieceInfo.Valid(); err != nil {
 		return api.SectorOffset{}, xerrors.Errorf("piece metadata invalid: %w", err)
 	}
 
@@ -956,11 +951,6 @@ func (m *Sealing) SectorsStatus(ctx context.Context, sid abi.SectorNumber, showO
 		return api.SectorInfo{}, err
 	}
 
-	nv, err := m.Api.StateNetworkVersion(ctx, types.EmptyTSK)
-	if err != nil {
-		return api.SectorInfo{}, xerrors.Errorf("getting network version: %w", err)
-	}
-
 	deals := make([]abi.DealID, len(info.Pieces))
 	pieces := make([]api.SectorPiece, len(info.Pieces))
 	for i, piece := range info.Pieces {
@@ -971,7 +961,7 @@ func (m *Sealing) SectorsStatus(ctx context.Context, sid abi.SectorNumber, showO
 		}
 
 		pdi := piece.Impl()
-		if pdi.Valid(nv) != nil {
+		if pdi.Valid() != nil {
 			continue
 		}
 
