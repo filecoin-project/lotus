@@ -4,6 +4,12 @@
 [//]: # (Learn more at https://github.com/filecoin-project/lotus/tree/master/cmd/release#readme.)
 <!--{{end}}-->
 [//]: # (❗️ Complete the steps below as part of creating a release issue and mark them complete with an X or ✅ when done.)
+[//]: # (Agent/operator guide for completing this release issue:)
+[//]: # (1. Treat this issue as the mutable release ledger. Edit it for concrete release progress: links, checked boxes, dates, release URLs, CI/release status, announcement comment links, and short release-specific facts.)
+[//]: # (2. Put process/template improvements in the release-template-improvements PR from Before RC1, not directly in this issue.)
+[//]: # (3. Work top-to-bottom. Do not start RC release PR work until Dependencies for releases/rc1 has either linked blockers or an explicit "No additional dependencies" entry and the dependency checkpoint is complete.)
+[//]: # (4. For regular releases, create release branches from origin/master after dependencies are resolved. For critical security patches, follow the visible release/vX.Y.x guidance.)
+[//]: # (5. Keep the release issue and linked PRs synchronized as each step completes.)
 <!--{{if not .ContentGeneratedWithLotusReleaseCli}}-->
 [//]: # ([ ] Start an issue with title "Lotus {{.Type}} v{{.Tag}} Release" and adjust the title for whether it's a Node or Miner release.)
 [//]: # ([ ] Copy in the content of https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md)
@@ -150,13 +156,14 @@
 <!--  {{end}}-->
 
 #### Release PR for {{$rc}}
-- [ ] Update the version string(s) in `build/version.go` to `v{{$.Tag}}{{$tagSuffix}}`.
+- [ ] Update the version string(s) in `build/version.go` to `{{$.Tag}}{{$tagSuffix}}` (without a leading `v`).
 <!--  {{if contains "Node" $.Type}}-->
-    - Change `NodeBuildVersion` to `v{{$.Tag}}{{$tagSuffix}}`
+    - Change `NodeBuildVersion` to `{{$.Tag}}{{$tagSuffix}}`
 <!--  {{end}}-->
 <!--  {{if contains "Miner" $.Type}}-->
-    - Change `MinerBuildVersion` to `v{{$.Tag}}{{$tagSuffix}}`
+    - Change `MinerBuildVersion` to `{{$.Tag}}{{$tagSuffix}}`
 <!--  {{end}}-->
+    - The release tags include the leading `v`; the values in `build/version.go` do not.
 <!--  {{if and (contains "Node" $.Type) (contains "Miner" $.Type)}}-->
     - If the release branches still point at the same commit, one PR that updates both version strings is expected. If the branches diverge later, add/link one PR per branch here.
 <!--  {{end}}-->
@@ -166,6 +173,7 @@
    - Opening a PR will trigger a CI run that will build assets, create a draft GitHub release, and attach the assets.
 - [ ] Changelog prep
    - [ ] After the draft release exists, copy the auto-generated release notes into the CHANGELOG.
+      - Note: after a draft release exists, rerunning the release workflow preserves the existing draft release body. Make editorial fixes in CHANGELOG and let the merge/push workflow publish from the release branch contents.
 <!--  {{if contains "Node" $.Type}}-->
       - Node release body: `gh release view v{{$.Tag}}{{$tagSuffix}} --repo filecoin-project/lotus --json body -q .body`
 <!--  {{end}}-->
