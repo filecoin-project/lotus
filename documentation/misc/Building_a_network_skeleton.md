@@ -1,6 +1,6 @@
 # Network Upgrade Skeleton in Lotus <!-- omit in toc -->
 
-This guide will walk you through the process of creating a skeleton for a network upgrade in Lotus. 
+This guide will walk you through the process of creating a skeleton for a network upgrade in Lotus. It is written for both human and agentic execution: resolve the target network version once, create the cross-repo tracking issues, then make and validate the dependency changes in order.
 
 - [Context](#context)
   - [Network Upgrade Dependency Versions](#network-upgrade-dependency-versions)
@@ -61,36 +61,156 @@ The table below gives an overview of how Lotus and its critical dependencies rel
 
 ## Setup
 
-1. Create a tracking issue for this effort:
+1. Resolve the target values once and reuse them everywhere:
 
-   Title: Skeleton for nvXX to support development and testing
-   Body:
+   ```bash
+   export NETWORK_VERSION=29
+   export PREVIOUS_NETWORK_VERSION=$((NETWORK_VERSION - 1))
+   export NV="nv${NETWORK_VERSION}"
+   export PREVIOUS_NV="nv${PREVIOUS_NETWORK_VERSION}"
+   export ISSUE_TITLE="Skeleton for ${NV} to support development and testing"
+   export DOC_URL="https://github.com/filecoin-project/lotus/blob/master/documentation/misc/Building_a_network_skeleton.md"
+   ```
 
-````
-## Done Criteria
-There is a network skeleton in Lotus, which bubbles up all the other dependencies, and allows one to run a 2k-network and see that it switches network version from nv(XX-1) --> nvXX
+2. Verify GitHub access:
 
-## Notes
-1. This is the overarching tracking issue for the network skeleton update, but there are tasks that need to be completed in other repos as well.  All PRs for this effort can reference this issue.
-2. How to create a skeleton in Lotus is documented here: https://github.com/filecoin-project/lotus/blob/master/documentation/misc/Building_a_network_skeleton.md
+   ```bash
+   gh auth status
+   ```
 
-```[tasklist]
-## Tasks
-- [ ] Skeleton for nv24 to support development and testing ref-fvm
-- [ ] Skeleton for nv24 to support development and testing go-state-types
-- [ ] Skeleton for nv24 to support development and testing filecoin-ffi
-- [ ] Skeleton for nv24 to support development and testing Lotus
-```
+3. Check for existing tracking issues before creating new ones:
 
-````
+   ```bash
+   for repo in lotus ref-fvm filecoin-ffi go-state-types; do
+     gh issue list \
+       --repo "filecoin-project/${repo}" \
+       --search "\"${ISSUE_TITLE}\"" \
+       --state all \
+       --json number,title,url,state
+   done
+   ```
 
-2. Clone Repos
+4. Create one issue in each repository with the title in `ISSUE_TITLE`. Apply the `good first issue` label when it exists in the repository. Create the dependency issues first, then the Lotus issue, so the Lotus issue can link to the others:
+
+   1. `filecoin-project/ref-fvm`
+   2. `filecoin-project/go-state-types`
+   3. `filecoin-project/filecoin-ffi`
+   4. `filecoin-project/lotus`
+
+5. After all four issues exist, edit every issue body so the cross-repo links are complete. Do not leave `link to be added` placeholders in the final issue bodies.
+
+   Use this common opening in every issue body, replacing the list item for the current repository with `(this ticket)`:
+
+   ```markdown
+   Write the skeleton for nvXX. This is part of a series of tickets across multiple repos, as building up a network upgrade skeleton requires changes across:
+
+   - https://github.com/filecoin-project/ref-fvm/issues/REF_FVM_ISSUE_NUMBER
+   - https://github.com/filecoin-project/filecoin-ffi/issues/FILECOIN_FFI_ISSUE_NUMBER
+   - https://github.com/filecoin-project/go-state-types/issues/GO_STATE_TYPES_ISSUE_NUMBER
+   - https://github.com/filecoin-project/lotus/issues/LOTUS_ISSUE_NUMBER
+   ```
+
+   Ref-FVM issue body:
+
+   ```markdown
+   How to create a network skeleton in Ref-FVM is documented here: https://github.com/filecoin-project/lotus/blob/master/documentation/misc/Building_a_network_skeleton.md#ref-fvm-checklist
+
+   ## Done Criteria
+   - FVM crates are published that support network version XX behind the `nvXX-dev` feature flag.
+
+   ## User/Customer
+   Implementers
+   ```
+
+   Go-State-Types issue body:
+
+   ```markdown
+   How to create a network skeleton in Go-State-Types is documented here: https://github.com/filecoin-project/lotus/blob/master/documentation/misc/Building_a_network_skeleton.md#go-state-types-checklist
+
+   ## Done Criteria
+   - There is a go-state-types developer release that supports the skeleton for network version XX.
+
+   ## User/Customer
+   Implementers
+   ```
+
+   Filecoin-FFI issue body:
+
+   ```markdown
+   How to create a network skeleton in Filecoin-FFI is documented here: https://github.com/filecoin-project/lotus/blob/master/documentation/misc/Building_a_network_skeleton.md#filecoin-ffi-checklist
+
+   ## Done Criteria
+   - There is a Filecoin-FFI release that supports network version XX.
+
+   ## User/Customer
+   Implementers
+   ```
+
+   Lotus tracking issue body:
+
+   ```markdown
+   How to create a skeleton in Lotus is documented here: https://github.com/filecoin-project/lotus/blob/master/documentation/misc/Building_a_network_skeleton.md#lotus-checklist
+
+   ## Done Criteria
+   - There is a network skeleton in Lotus, which bubbles up all the other dependencies, and allows one to run a 2k-network and see that it switches network version from nv(XX-1) to nvXX.
+
+   ## User/Customer
+   Implementers
+   ```
+
+   When using `gh`, create or edit issue bodies with `--body-file -` and a heredoc. For example:
+
+   ```bash
+   gh issue create \
+     --repo filecoin-project/ref-fvm \
+     --title "${ISSUE_TITLE}" \
+     --label "good first issue" \
+     --body-file - <<EOF
+   Write the skeleton for ${NV}. This is part of a series of tickets across multiple repos, as building up a network upgrade skeleton requires changes across:
+
+   - ref-fvm (this ticket)
+   - filecoin-ffi (link to be added)
+   - go-state-types (link to be added)
+   - Lotus (link to be added)
+
+   How to create a network skeleton in Ref-FVM is documented here: ${DOC_URL}#ref-fvm-checklist
+
+   ## Done Criteria
+   - FVM crates are published that support network version ${NETWORK_VERSION} behind the `${NV}-dev` feature flag.
+
+   ## User/Customer
+   Implementers
+   EOF
+   ```
+
+6. Before opening code PRs, check whether some repository work has already landed. Search each repository for `nvXX-dev`, `NetworkVersion::VXX`, `network version XX`, and existing PRs or tags for the target network version. If a repository already satisfies its done criteria, add the evidence to the tracking issue and close it instead of opening duplicate work.
+
+7. Parallelize where dependencies allow it. ref-fvm support must be published before filecoin-ffi can consume it, but go-state-types skeleton work can proceed while the filecoin-ffi skeleton PR is waiting for review, merge, or release-candidate work. Treat review/merge boundaries as explicit handoffs: record the PR URL and stop until the PR is reviewed, approved, and merged. Then open the release PR for that repo.
+
+   If a tracking issue's done criteria requires a published release, close it from the release PR instead of the skeleton PR. This keeps the issue open while downstream repositories are still blocked on the release tag.
+
+8. Clone Repos
    1. [ref-fvm](https://github.com/filecoin-project/ref-fvm.git)
    2. [go-state-types](https://github.com/filecoin-project/go-state-types)
    3. [filecoin-ffi](https://github.com/filecoin-project/filecoin-ffi.git)
    4. [lotus](https://github.com/filecoin-project/lotus)
 
 ## Ref-FVM Checklist
+
+0. Preflight current state:
+
+    - Search current `master` for the target feature and network version:
+        ```bash
+        rg "nvXX-dev|NetworkVersion::VXX|VXX|network version XX" fvm shared
+        ```
+    - Check whether the target support has already been released:
+        ```bash
+        git tag --list 'fvm@v*' --sort=-v:refname | head
+        cargo info fvm@VERSION --registry crates-io
+        cargo info fvm_shared@VERSION --registry crates-io
+        cargo info fvm_sdk@VERSION --registry crates-io
+        ```
+    - If the target network version is already in a published FVM release, record the skeleton PR, release PR/tag, and published crate versions in the tracking issue, then close the issue as complete.
 
 1. Add support for the new network version in Ref-FVM:
 
@@ -161,11 +281,22 @@ You can take a look at [this PR as a reference](https://github.com/filecoin-proj
 
     👉 You can take a look at this [Go-State-Types PR as a reference](https://github.com/filecoin-project/go-state-types/pull/304), which added a simple migration for network version 24.
 
-3. [Follow the release process](https://github.com/filecoin-project/go-state-types#release-process) to publish `v0.NEW_VERSION.0-dev`
+3. Open the skeleton PR and request review.
+
+    This is another handoff boundary for agentic execution. Do not start the Go-State-Types release work until the skeleton PR has been reviewed, approved, and merged.
+
+4. [Follow the release process](https://github.com/filecoin-project/go-state-types#release-process) to publish `v0.NEW_VERSION.0-dev`
+
+    Include `Closes #ISSUE_NUMBER` in the release PR body, because the go-state-types tracking issue is only complete once the developer release exists.
 
     👉 You can take a look at this [Go-State-Types PR as a reference](https://github.com/filecoin-project/go-state-types/pull/306), which was for network version 24.
 
 ## Filecoin-FFI Checklist
+
+0. Preflight current state:
+
+    - Check whether `rust/Cargo.toml` and `rust/Cargo.lock` already consume the Ref-FVM release with the target `nvXX-dev` feature.
+    - Even when the dependency bump is already present, verify that `rust/src/fvm/engine.rs` maps the target network version to the FVM v4 engine.
 
 1. Update the `TryFrom<u32>` implementation for `EngineVersion` in `rust/src/fvm/engine.rs`
     - Add the new network version number (XX+1) to the existing match arm for the network version.
@@ -175,7 +306,20 @@ You can take a look at [this PR as a reference](https://github.com/filecoin-proj
 
     👉 You can take a look at this [Filecoin-FFI PR as a reference](https://github.com/filecoin-project/filecoin-ffi/pull/479), which added the skeleton for network version 24.
 
-3.  [Follow the release process](https://github.com/filecoin-project/filecoin-ffi/blob/master/RELEASE.md) to publish `v1.NEW_LOTUS_MINOR_VERSION.0-dev`
+3. Validate the patch:
+
+    ```bash
+    cargo fmt --manifest-path rust/Cargo.toml --check
+    cargo check --manifest-path rust/Cargo.toml --no-default-features --features fvm
+    ```
+
+4. Open the skeleton PR and request review.
+
+    This is a handoff boundary for agentic execution: CI can take a long time, so record the PR URL and current status, then stop unless the user explicitly asks you to keep watching. Do not start the Filecoin-FFI release-candidate work until the skeleton PR has been reviewed, approved, and merged.
+
+5. [Follow the release process](https://github.com/filecoin-project/filecoin-ffi/blob/master/RELEASE.md) to publish `v1.NEW_LOTUS_MINOR_VERSION.0-dev`
+
+    Include `Closes #ISSUE_NUMBER` in the release PR body, because the filecoin-ffi tracking issue is only complete once the developer release exists.
 
     👉 You can take a look at this [Filecoin-FFI PR as a reference](https://github.com/filecoin-project/filecoin-ffi/pull/481), which was for network version 24.
 
@@ -183,13 +327,31 @@ Note: one only needs to update `filecoin-ffi`'s dependency on `go-state-types` w
 
 ## Lotus Checklist
 
-1. To integrate the network skeleton into Lotus, ensure that the relevant releases for ref-fvm, go-state-types, and filecoin-ffi are bubbled up to Lotus.
+1. To fully integrate the network skeleton into Lotus, ensure that the relevant releases for ref-fvm, go-state-types, and filecoin-ffi are bubbled up to Lotus.
     - Refer to the [Update Dependencies Lotus tutorial](Update_Dependencies_Lotus.md) for detailed instructions on updating these dependencies in Lotus.
+
+    This is also a useful draft-PR boundary. While waiting for Go-State-Types and Filecoin-FFI skeleton PRs to be reviewed, merged, and released, a Lotus draft PR can still include:
+    - A mock actor bundle and generated bundle metadata.
+    - The placeholder upgrade-height constants.
+    - The `ForkUpgradeParams` and `StateGetNetworkParams` API plumbing.
+    - Generated OpenRPC/API docs for the new upgrade-height field.
+
+    Do not commit dependency bumps, `gen/inlinegen-data.json` changes, generated actor adapters, migration schedule wiring, statetree mappings, compute-state registry changes, invariant commands, or real actor-bundle replacement until the required Go-State-Types and Filecoin-FFI releases exist. If temporary local replacements are needed for exploration, remove them before publishing the draft PR.
+
+    Before consuming a downstream release, verify the tag exists:
+
+    ```bash
+    gh release view "v0.NEW_ACTORS_VERSION.0-dev" --repo filecoin-project/go-state-types
+    gh release view "v1.NEW_LOTUS_MINOR_VERSION.0-dev" --repo filecoin-project/filecoin-ffi
+    ```
+
+    After a downstream release is consumed, update the Lotus PR body so reviewers can see which release gates are resolved and which follow-ups remain. When all skeleton dependencies have been consumed, move the PR out of draft.
 
 2. Import new actors:
 
     - Create a mock actor-bundle for the new network version.
     - In `/build/actors` run `./pack.sh vXX+1 vXX.0.0` where XX is the current actor bundle version.
+    - On macOS, run the pack script with `COPYFILE_DISABLE=1` if the generated bundle contains AppleDouble `._` files.
 
 3. Define upgrade heights in `build/params_`:
 
@@ -220,11 +382,21 @@ Note: one only needs to update `filecoin-ffi`'s dependency on `go-state-types` w
 
 4. Generate adapters:
 
+    - After the go-state-types release exists, bump the Lotus dependency and refresh sums:
+        ```bash
+        go get github.com/filecoin-project/go-state-types@v0.NEW_ACTORS_VERSION.0-dev
+        go mod tidy
+        ```
+
+      The `go get` may also upgrade transitive `golang.org/x/*` modules because those versions can be constrained by `go-state-types`.
+
     - Update `gen/inlinegen-data.json`.
         - Add `XX+1` to "actorVersions" and set "latestActorsVersion" to `XX+1`.
         - Add `XX+1` to "networkVersions" and set "latestNetworkVersion" to `XX+1`.
 
-    - Run `make actors-gen`. This generates the `/chain/actors/builtin/*` code, `/chain/actors/policy/policy.go` code, `/chain/actors/version.go`, and `/itest/kit/ensemble_opts_nv.go`.
+    - Run `make actors-gen`. This generates the `/chain/actors/builtin/*` code, `/chain/actors/policy/policy.go` code, `/chain/actors/version.go`, and `/itests/kit/ensemble_opts_nv.go`.
+
+      If `make actors-gen` fails with missing `go.sum` entries after the go-state-types bump, run `go mod tidy` and retry.
 
 5. Update `chain/consensus/filcns/upgrades.go`.
     - Import `nv(XX+1) "github.com/filecoin-project/go-state-types/builtin/v(XX+1)/migration`.
@@ -249,7 +421,15 @@ Note: one only needs to update `filecoin-ffi`'s dependency on `go-state-types` w
 
 12. Run `make gen`.
 
+    This may also update API mocks, OpenRPC JSON, API docs, and storage mocks because `latestNetworkVersion` and the latest actor imports are used in generated examples and mock signatures.
+
 13. Run `make docsgen-cli`.
+
+    On macOS, if local commands that link filecoin-ffi fail to find Homebrew libraries such as `hwloc`, prefix the command with:
+
+    ```bash
+    CGO_LDFLAGS="-L/opt/homebrew/lib"
+    ```
 
 14. Validate the network skeleton on a devnet by:
   - Have a local developer network that starts at the current network version.  See docs at https://docs.filecoin.io/networks/local-testnet .  
@@ -261,6 +441,8 @@ Note: one only needs to update `filecoin-ffi`'s dependency on `go-state-types` w
 15. Post a PR with the changes and include the local devnet output.
    - [nv24 example](https://github.com/filecoin-project/lotus/pull/12455)
    - [nv27 example](https://github.com/filecoin-project/lotus/pull/13125)
+
+    If the skeleton PR changes Go files, `go.mod`, or `go.sum` but does not need a user-facing changelog entry, add `[skip changelog]` to the PR body or apply the `skip/changelog` label before moving it out of draft. Otherwise the changelog workflow will fail.
 
 And you're done 🎉! This creates a basis where you can start testing new FIPs. 
 

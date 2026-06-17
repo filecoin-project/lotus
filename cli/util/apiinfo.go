@@ -64,14 +64,14 @@ func (a APIInfo) DialArgs(version string) (string, error) {
 			return true
 		})
 
-		return scheme + "://" + addr + "/rpc/" + version, nil
+		return url.JoinPath(scheme+"://"+addr, "rpc", version)
 	}
 
 	_, err = url.Parse(a.Addr)
 	if err != nil {
 		return "", err
 	}
-	return a.Addr + "/rpc/" + version, nil
+	return url.JoinPath(a.Addr, "rpc", version)
 }
 
 func (a APIInfo) Host() (string, error) {

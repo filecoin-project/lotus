@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
 )
@@ -267,6 +268,12 @@ func TestMemPoolPushSingleNode(t *testing.T) {
 	const blockTime = 50 * time.Millisecond
 	const maxMessages = 20
 	const maxUntrusted = 10
+
+	// Pin the untrusted-push cap so the test exercises a small, bounded
+	// scenario independent of the package default.
+	prev := messagepool.MaxUntrustedActorPendingMessages
+	messagepool.MaxUntrustedActorPendingMessages = maxUntrusted
+	t.Cleanup(func() { messagepool.MaxUntrustedActorPendingMessages = prev })
 
 	for _, style := range []string{"MpoolPush", "MpoolPushUntrusted", "MpoolPushMessage"} {
 		t.Run(style, func(t *testing.T) {

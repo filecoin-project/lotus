@@ -8,7 +8,7 @@ import (
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	multisig11 "github.com/filecoin-project/go-state-types/builtin/v11/multisig"
-	init18 "github.com/filecoin-project/go-state-types/builtin/v18/init"
+	init19 "github.com/filecoin-project/go-state-types/builtin/v19/init"
 	"github.com/filecoin-project/go-state-types/manifest"
 
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -57,7 +57,7 @@ func (m message11) Create(
 	}
 
 	// new actors are created by invoking 'exec' on the init actor with the constructor params
-	execParams := &init18.ExecParams{
+	execParams := &init19.ExecParams{
 		CodeCID:           code,
 		ConstructorParams: enc,
 	}

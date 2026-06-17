@@ -333,8 +333,12 @@ func testForkRefuseCall(t *testing.T, nullsBefore, nullsAfter int) {
 		// CallWithGas calls on top of the given tipset.
 		ret, err := sm.CallWithGas(ctx, m, nil, ts.TipSet.TipSet(), true)
 		if parentHeight <= testForkHeight && currentHeight >= testForkHeight {
-			// If I had a fork, or I _will_ have a fork, it should fail.
-			require.Equal(t, ErrExpensiveFork, err)
+			// If I had a fork, or I _will_ have a fork, it should fail, reporting the fork epoch
+			// (not the queried tipset height, which differs when the fork is at the parent).
+			require.ErrorIs(t, err, ErrExpensiveFork)
+			var fe *api.ErrExpensiveFork
+			require.ErrorAs(t, err, &fe)
+			require.Equal(t, abi.ChainEpoch(testForkHeight), fe.Epoch)
 		} else {
 			require.NoError(t, err)
 			require.True(t, ret.MsgRct.ExitCode.IsSuccess())
@@ -343,7 +347,22 @@ func testForkRefuseCall(t *testing.T, nullsBefore, nullsAfter int) {
 		// Call always applies the message to the "next block" after the tipset's parent state.
 		ret, err = sm.Call(ctx, m, ts.TipSet.TipSet())
 		if parentHeight <= testForkHeight && currentHeight >= testForkHeight {
-			require.Equal(t, ErrExpensiveFork, err)
+			require.ErrorIs(t, err, ErrExpensiveFork)
+		} else {
+			require.NoError(t, err)
+			require.True(t, ret.MsgRct.ExitCode.IsSuccess())
+		}
+
+		// ApplyOnStateWithGas runs on an explicit (already computed) tipset state, as the Eth APIs
+		// do via TipSetState. That state already reflects a migration at or below the parent, so
+		// only a migration _at_ the tipset's own height is refused, even when the fork epoch is
+		// spanned by null rounds. This is the asymmetry with the ParentState-based calls above,
+		// which refuse a fork at the parent too.
+		st, _, err := sm.TipSetState(ctx, ts.TipSet.TipSet())
+		require.NoError(t, err)
+		ret, err = sm.ApplyOnStateWithGas(ctx, st, m, ts.TipSet.TipSet())
+		if currentHeight == testForkHeight {
+			require.ErrorIs(t, err, ErrExpensiveFork)
 		} else {
 			require.NoError(t, err)
 			require.True(t, ret.MsgRct.ExitCode.IsSuccess())

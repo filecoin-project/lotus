@@ -151,7 +151,7 @@ func (m *StateModule) StateCall(ctx context.Context, msg *types.Message, tsk typ
 	}
 	for {
 		res, err = m.StateManager.Call(ctx, msg, ts)
-		if err != stmgr.ErrExpensiveFork {
+		if !errors.Is(err, stmgr.ErrExpensiveFork) {
 			break
 		}
 		ts, err = m.Chain.GetTipSetFromKey(ctx, ts.Parents())
@@ -2166,6 +2166,7 @@ func (a *StateAPI) StateGetNetworkParams(ctx context.Context) (*api.NetworkParam
 			UpgradeTockHeight:        buildconstants.UpgradeTockHeight,
 			UpgradeGoldenWeekHeight:  buildconstants.UpgradeGoldenWeekHeight,
 			UpgradeFireHorseHeight:   buildconstants.UpgradeFireHorseHeight,
+			UpgradeXxHeight:          buildconstants.UpgradeXxHeight,
 		},
 	}, nil
 }

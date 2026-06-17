@@ -99,11 +99,13 @@ func (e *ethLookup) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress,
 		GasPremium: big.Zero(),
 	}
 
-	// Try calling until we find a height with no migration.
+	// Rewind ts to escape the fork guard, but keep stateCid fixed to the requested epoch: the
+	// result comes from stateCid (ts only supplies execution context), so recomputing it for the
+	// parent would read an earlier epoch's bytecode.
 	var res *api.InvocResult
 	for {
 		res, err = e.stateManager.CallOnState(ctx, stateCid, msg, ts)
-		if err != stmgr.ErrExpensiveFork {
+		if !errors.Is(err, stmgr.ErrExpensiveFork) {
 			break
 		}
 		ts, err = e.chainStore.GetTipSetFromKey(ctx, ts.Parents())
@@ -196,11 +198,13 @@ func (e *ethLookup) EthGetStorageAt(ctx context.Context, ethAddr ethtypes.EthAdd
 		GasPremium: big.Zero(),
 	}
 
-	// Try calling until we find a height with no migration.
+	// Rewind ts to escape the fork guard, but keep stateCid fixed to the requested epoch: the
+	// result comes from stateCid (ts only supplies execution context), so recomputing it for the
+	// parent would read an earlier epoch's storage.
 	var res *api.InvocResult
 	for {
 		res, err = e.stateManager.CallOnState(ctx, stateCid, msg, ts)
-		if err != stmgr.ErrExpensiveFork {
+		if !errors.Is(err, stmgr.ErrExpensiveFork) {
 			break
 		}
 		ts, err = e.chainStore.GetTipSetFromKey(ctx, ts.Parents())
