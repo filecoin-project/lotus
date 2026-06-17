@@ -72,6 +72,7 @@ type Indexer interface {
 	GetMsgInfo(ctx context.Context, m cid.Cid) (*MsgInfo, error)
 
 	GetEventsForFilter(ctx context.Context, f *EventFilter) ([]*CollectedEvent, error)
+	GetTipsetBloom(ctx context.Context, tipsetKeyCid cid.Cid) ([]byte, bool, error)
 
 	ChainValidateIndex(ctx context.Context, epoch abi.ChainEpoch, backfill bool) (*types.IndexValidation, error)
 

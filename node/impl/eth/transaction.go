@@ -479,7 +479,7 @@ func (e *ethTransaction) getBlockByTipset(ctx context.Context, ts *types.TipSet,
 	}
 
 	// Generate an Ethereum block from the Filecoin tipset
-	blk, err := newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo, e.chainStore, e.stateManager)
+	blk, err := newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo, e.chainStore, e.stateManager, e.chainIndexer)
 	if err != nil {
 		return ethtypes.EthBlock{}, xerrors.Errorf("failed to create Ethereum block from Filecoin tipset: %w", err)
 	}

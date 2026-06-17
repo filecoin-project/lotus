@@ -20,6 +20,22 @@ import (
 
 var ErrChainForked = xerrors.New("chain forked")
 
+func (si *SqliteIndexer) GetTipsetBloom(ctx context.Context, tipsetKeyCid cid.Cid) ([]byte, bool, error) {
+	if si.isClosed() {
+		return nil, false, ErrClosed
+	}
+
+	var bloom []byte
+	err := si.stmts.getTipsetBloomStmt.QueryRowContext(ctx, tipsetKeyCid.Bytes()).Scan(&bloom)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, false, nil
+	}
+	if err != nil {
+		return nil, false, xerrors.Errorf("failed to get tipset bloom: %w", err)
+	}
+	return bloom, true, nil
+}
+
 func (si *SqliteIndexer) ChainValidateIndex(ctx context.Context, epoch abi.ChainEpoch, backfill bool) (*types.IndexValidation, error) {
 	// return an error if the indexer is not started
 	if !si.started {
