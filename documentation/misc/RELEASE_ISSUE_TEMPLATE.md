@@ -121,7 +121,7 @@
       - Ensure to update `MinerBuildVersion`
 <!--{{  end}}-->
    - [ ] Run `make gen && make docsgen-cli` before committing changes.
-   - [ ] Update the CHANGELOG
+   - [ ] `master` branch CHANGELOG updates
      - [ ] Change the `UNRELEASED` section header to `UNRELEASED v{{.Tag}}`
      - [ ] Set the `UNRELEASED v{{.Tag}}` section's content to be "_See https://github.com/filecoin-project/lotus/blob/release/v{{.Tag}}/CHANGELOG.md_"
      - [ ] Add a new `UNRELEASED` header to top.
