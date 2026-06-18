@@ -13,9 +13,24 @@
 
 ## ⭐ New Features
 
+## 🐛 Bug Fixes
+
+## 👌 Improvements
+
+# Node and Miner v1.36.1-rc1 / 2026-06-17
+
+This is the first release candidate for Lotus Node and Miner v1.36.1, a recommended patch release focused on Ethereum RPC correctness, gateway API alignment, and release/build reliability.
+
+## ☢️ Upgrade Warnings ☢️
+
+- There are no upgrade warnings for this release candidate.
+
+## ⭐ New Features
+
 - feat(eth): add `eth_baseFee` JSON-RPC method returning the base fee for the next block, matching geth behavior via `ComputeBaseFee` on the current tipset ([filecoin-project/lotus#13615](https://github.com/filecoin-project/lotus/pull/13615))
 
 ## 🐛 Bug Fixes
+
 - fix(api): trace transaction api returns the correct error ([filecoin-project/lotus#13614](https://github.com/filecoin-project/lotus/pull/13614))
 - fix(cli): RPC API URLs ending with a trailing slash no longer produce duplicate slashes before `/rpc/<version>` ([filecoin-project/lotus#13662](https://github.com/filecoin-project/lotus/pull/13662))
 - Fix off-by-one in `transactionPosition` returned by `trace_block`, `trace_filter` and `trace_transaction`. Positions were 1-indexed; per the Ethereum trace API spec they are 0-indexed and must match the corresponding `transactionIndex` from `eth_getBlockByNumber`. ([filecoin-project/lotus#13610](https://github.com/filecoin-project/lotus/pull/13610))
@@ -23,12 +38,43 @@
 - fix(eth): return indexed block-level `logsBloom` for `eth_getBlockByHash`, `eth_getBlockByNumber`, and new-head subscription payloads when chain-index bloom data is available; existing tipsets without bloom rows continue to fall back to the previous full bloom. This adds a chain index DB migration for the `tipset_bloom` table and requires no RPC-provider config changes. ([filecoin-project/lotus#13618](https://github.com/filecoin-project/lotus/pull/13618))
 - fix(gateway): align v2 RPC surface (`/rpc/v2`) with v1; remove `*Limited` and `*Untrusted` eth method variants ([filecoin-project/lotus#13628](https://github.com/filecoin-project/lotus/pull/13628))
 - fix(eth): `eth_call`, `eth_estimateGas` and `StateCall` are no longer refused at the epoch immediately after an expensive network-upgrade migration; that block's migrated state is already available, so only the upgrade epoch itself is refused. This unblocks indexers (e.g. The Graph) that replay `eth_call` at the block of each event. The refusal now returns a typed error with the registered JSON-RPC code `-32002` and a recognisable message, instead of the generic application code `1` ([filecoin-project/lotus#13644](https://github.com/filecoin-project/lotus/pull/13644))
+- fix: update Filecoin FFI to v1.36.1 ([filecoin-project/lotus#13663](https://github.com/filecoin-project/lotus/pull/13663))
+- fix(build): ffi-version-check now depends on the module update ([filecoin-project/lotus#13658](https://github.com/filecoin-project/lotus/pull/13658))
+- fix: docker builds Lotus on bullseye again ([filecoin-project/lotus#13611](https://github.com/filecoin-project/lotus/pull/13611))
+- fix: remove F3 data with existing chain cleanup ([filecoin-project/lotus#13609](https://github.com/filecoin-project/lotus/pull/13609))
 
 ## 👌 Improvements
 
-* Silence libp2p config log spam ([filecoin-project/lotus#13612](https://github.com/filecoin-project/lotus/pull/13612))
-* feat(mempool): raise the default per-actor cap on the untrusted push path (`MaxUntrustedActorPendingMessages`) from 10 to 100, reducing spurious `ErrTooManyPendingMessages` rejections for normal-cadence senders relaying through `lotus-gateway` / public RPC ([filecoin-project/lotus#13636](https://github.com/filecoin-project/lotus/pull/13636))
-* chore(cli): `lotus-miner info` supports `--actor` to query any miner without a local miner repo; miner-daemon-only sections (subsystems, start time, alerts, workers, sectors) are skipped when `--actor` is set
+- Silence libp2p config log spam ([filecoin-project/lotus#13612](https://github.com/filecoin-project/lotus/pull/13612))
+- feat(mempool): raise the default per-actor cap on the untrusted push path (`MaxUntrustedActorPendingMessages`) from 10 to 100, reducing spurious `ErrTooManyPendingMessages` rejections for normal-cadence senders relaying through `lotus-gateway` / public RPC ([filecoin-project/lotus#13636](https://github.com/filecoin-project/lotus/pull/13636))
+- chore(cli): `lotus-miner info` supports `--actor` to query any miner without a local miner repo; miner-daemon-only sections (subsystems, start time, alerts, workers, sectors) are skipped when `--actor` is set ([filecoin-project/lotus#13641](https://github.com/filecoin-project/lotus/pull/13641))
+- feat: update `mainnet.pi` to remove the Venus bootstrap peer ([filecoin-project/lotus#13648](https://github.com/filecoin-project/lotus/pull/13648))
+
+## 📝 Changelog
+
+For the set of changes since the last stable release:
+
+- Node and Miner: https://github.com/filecoin-project/lotus/compare/release/v1.36.0...release/v1.36.1
+
+## 👨‍👩‍👧‍👦 Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Phi-rjan | 24 | +39927/-837 | 251 |
+| Rod Vagg | 6 | +1685/-1777 | 34 |
+| William Morriss | 1 | +862/-579 | 23 |
+| Shriraj Pawar | 1 | +368/-105 | 14 |
+| Andrew Jackson (Ajax) | 2 | +290/-90 | 18 |
+| Piotr Galar | 3 | +223/-78 | 14 |
+| dependabot[bot] | 16 | +130/-130 | 29 |
+| beck | 3 | +93/-59 | 9 |
+| Phi | 3 | +33/-33 | 13 |
+| chuanshanjida | 1 | +6/-6 | 6 |
+| Łukasz Magiera | 1 | +5/-5 | 1 |
+| Steve Loeppky | 1 | +7/-3 | 1 |
+| Jakub Sztandera | 2 | +3/-3 | 2 |
+| Aryan Tikarya | 1 | +2/-1 | 2 |
+| Jimmy Zhang | 1 | +0/-1 | 1 |
 
 # Node and Miner v1.36.0 / 2026-05-13
 
