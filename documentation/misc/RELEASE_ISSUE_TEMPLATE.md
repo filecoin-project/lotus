@@ -173,7 +173,7 @@
    - Opening a PR will trigger a CI run that will build assets, create a draft GitHub release, and attach the assets.
 - [ ] Changelog prep
    - [ ] After the draft release exists, copy the auto-generated release notes into the CHANGELOG.
-      - Note: after a draft release exists, rerunning the release workflow preserves the existing draft release body. Make editorial fixes in CHANGELOG and let the merge/push workflow publish from the release branch contents.
+      - Note: after a draft release exists, rerunning the [release workflow](https://github.com/filecoin-project/lotus/blob/master/.github/workflows/release.yml#L220-L229) preserves the existing draft release body. If editorial review changes release-note content in CHANGELOG, update the draft GitHub release body too before merge; the [push-triggered publish step](https://github.com/filecoin-project/lotus/blob/master/.github/workflows/release.yml#L307-L308) publishes that draft body.
 <!--  {{if contains "Node" $.Type}}-->
       - Node release body: `gh release view v{{$.Tag}}{{$tagSuffix}} --repo filecoin-project/lotus --json body -q .body`
 <!--  {{end}}-->
