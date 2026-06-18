@@ -14,6 +14,7 @@
 ## ⭐ New Features
 
 - feat(eth): add `eth_baseFee` JSON-RPC method returning the base fee for the next block, matching geth behavior via `ComputeBaseFee` on the current tipset ([filecoin-project/lotus#13615](https://github.com/filecoin-project/lotus/pull/13615))
+- feat(cli): `lotus-miner actor settle-deal` now uses gas-aware adaptive batching — deal batches whose estimated gas would exceed a fraction of the block gas limit (tunable via `--max-gas-fraction`, default 1/4) are automatically split so no single `SettleDealPaymentsExported` message hogs block capacity ([filecoin-project/lotus#13471](https://github.com/filecoin-project/lotus/issues/13471))
 
 ## 🐛 Bug Fixes
 - fix(api): trace transaction api returns the correct error ([filecoin-project/lotus#13614](https://github.com/filecoin-project/lotus/pull/13614))
