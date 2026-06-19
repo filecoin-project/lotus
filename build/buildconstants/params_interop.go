@@ -84,6 +84,8 @@ const UpgradeTockFixHeight abi.ChainEpoch = -4
 
 var UpgradeGoldenWeekHeight = abi.ChainEpoch(-31)
 
+const UpgradeFireHorseHeight = -32
+
 const UpgradeXxHeight = 50
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{

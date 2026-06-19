@@ -12,13 +12,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
+	"github.com/filecoin-project/go-keccak"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
+	evm18 "github.com/filecoin-project/go-state-types/builtin/v18/evm"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/go-state-types/network"
@@ -27,43 +31,13 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
+	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/itests/kit"
 )
-
-// convert a simple byte array into input data which is a left padded 32 byte array
-func inputDataFromArray(input []byte) []byte {
-	inputData := make([]byte, 32)
-	copy(inputData[32-len(input):], input[:])
-	return inputData
-}
-
-// convert a "from" address into input data which is a left padded 32 byte array
-func inputDataFromFrom(ctx context.Context, t *testing.T, client *kit.TestFullNode, from address.Address) []byte {
-	fromId, err := client.StateLookupID(ctx, from, types.EmptyTSK)
-	require.NoError(t, err)
-	senderEthAddr, err := ethtypes.EthAddressFromFilecoinAddress(fromId)
-	require.NoError(t, err)
-	inputData := make([]byte, 32)
-	copy(inputData[32-len(senderEthAddr):], senderEthAddr[:])
-	return inputData
-}
-
-func decodeOutputToUint64(output []byte) (uint64, error) {
-	var result uint64
-	buf := bytes.NewReader(output[len(output)-8:])
-	err := binary.Read(buf, binary.BigEndian, &result)
-	return result, err
-}
-func buildInputFromUint64(number uint64) []byte {
-	// Convert the number to a binary uint64 array
-	binaryNumber := make([]byte, 8)
-	binary.BigEndian.PutUint64(binaryNumber, number)
-	return inputDataFromArray(binaryNumber)
-}
 
 // TestFEVMRecursive does a basic fevm contract installation and invocation
 func TestFEVMRecursive(t *testing.T) {
@@ -75,9 +49,8 @@ func TestFEVMRecursive(t *testing.T) {
 
 	// Successful calls
 	for _, callCount := range callCounts {
-		callCount := callCount // linter unhappy unless callCount is local to loop
 		t.Run(fmt.Sprintf("TestFEVMRecursive%d", callCount), func(t *testing.T) {
-			_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", buildInputFromUint64(callCount))
+			_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", kit.EvmWordUint64(callCount))
 			require.NoError(t, err)
 		})
 	}
@@ -93,9 +66,8 @@ func TestFEVMRecursiveFail(t *testing.T) {
 	// Unsuccessful calls
 	failCallCounts := []uint64{340, 400, 600, 850, 1000}
 	for _, failCallCount := range failCallCounts {
-		failCallCount := failCallCount // linter unhappy unless callCount is local to loop
 		t.Run(fmt.Sprintf("TestFEVMRecursiveFail%d", failCallCount), func(t *testing.T) {
-			_, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", buildInputFromUint64(failCallCount))
+			_, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", kit.EvmWordUint64(failCallCount))
 			require.Error(t, err)
 			require.Equal(t, exitcode.ExitCode(37), wait.Receipt.ExitCode)
 		})
@@ -124,54 +96,9 @@ func TestFEVMRecursive2(t *testing.T) {
 	require.Equal(t, 2, len(events))
 }
 
-// TestFEVMRecursiveDelegatecallCount tests the maximum delegatecall recursion depth.
-func TestFEVMRecursiveDelegatecallCount(t *testing.T) {
-	ctx, cancel, client := kit.SetupFEVMTest(t)
-	defer cancel()
-
-	// these depend on the actors bundle, may need to be adjusted with a network upgrade
-	const highestSuccessCount = 228
-	const expectedIterationsBeforeFailing = 222
-
-	filename := "contracts/RecursiveDelegeatecall.hex"
-
-	testCases := []struct {
-		recursionCount uint64
-		expectSuccess  bool
-	}{
-		// success
-		{1, true},
-		{2, true},
-		{10, true},
-		{100, true},
-		{highestSuccessCount, true},
-		// failure
-		{highestSuccessCount + 1, false},
-		{1000, false},
-		{10000000, false},
-	}
-	for _, tc := range testCases {
-		t.Run(fmt.Sprintf("recursionCount=%d,expectSuccess=%t", tc.recursionCount, tc.expectSuccess), func(t *testing.T) {
-			fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
-			inputData := buildInputFromUint64(tc.recursionCount)
-			_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", inputData)
-			require.NoError(t, err)
-
-			result, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "totalCalls()", []byte{})
-			require.NoError(t, err)
-
-			resultUint, err := decodeOutputToUint64(result)
-			require.NoError(t, err)
-
-			if tc.expectSuccess {
-				require.Equal(t, int(tc.recursionCount), int(resultUint))
-			} else {
-				require.NotEqual(t, int(resultUint), int(tc.recursionCount), "unexpected recursion count, if the actors bundle has changed, this test may need to be adjusted")
-				require.Equal(t, int(expectedIterationsBeforeFailing), int(resultUint))
-			}
-		})
-	}
-}
+// TestFEVMRecursiveDelegatecallCount moved to fevm_bundle_canary_test.go
+// as TestFEVMRecursiveDelegatecallCanary — its boundary values retune with
+// every actors bundle release.
 
 // TestFEVMBasic does a basic fevm contract installation and invocation
 func TestFEVMBasic(t *testing.T) {
@@ -185,7 +112,7 @@ func TestFEVMBasic(t *testing.T) {
 
 	// invoke the contract with owner
 	{
-		inputData := inputDataFromFrom(ctx, t, client, fromAddr)
+		inputData := kit.EvmWordFromAddr(ctx, t, client, fromAddr)
 		result, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "getBalance(address)", inputData)
 		require.NoError(t, err)
 
@@ -196,7 +123,7 @@ func TestFEVMBasic(t *testing.T) {
 
 	// invoke the contract with non owner
 	{
-		inputData := inputDataFromFrom(ctx, t, client, fromAddr)
+		inputData := kit.EvmWordFromAddr(ctx, t, client, fromAddr)
 		inputData[31]++ // change the pub address to one that has 0 balance by modifying the last byte of the address
 		result, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "getBalance(address)", inputData)
 		require.NoError(t, err)
@@ -241,8 +168,8 @@ func TestFEVMDelegateCall(t *testing.T) {
 
 	// call Contract Storage which makes a delegatecall to contract Actor
 	// this contract call sets the "counter" variable to 7, from default value 0
-	inputDataContract := inputDataFromFrom(ctx, t, client, actorAddr)
-	inputDataValue := inputDataFromArray([]byte{7})
+	inputDataContract := kit.EvmWordFromAddr(ctx, t, client, actorAddr)
+	inputDataValue := kit.EvmWordBytes([]byte{7})
 	inputData := append(inputDataContract, inputDataValue...)
 
 	// verify that the returned value of the call to setvars is 7
@@ -296,8 +223,8 @@ func TestFEVMDelegateCallRevert(t *testing.T) {
 	// call Contract Storage which makes a delegatecall to contract Actor
 	// this contract call sets the "counter" variable to 7, from default value 0
 
-	inputDataContract := inputDataFromFrom(ctx, t, client, actorAddr)
-	inputDataValue := inputDataFromArray([]byte{7})
+	inputDataContract := kit.EvmWordFromAddr(ctx, t, client, actorAddr)
+	inputDataValue := kit.EvmWordBytes([]byte{7})
 	inputData := append(inputDataContract, inputDataValue...)
 
 	// verify that the returned value of the call to setvars is 7
@@ -498,8 +425,8 @@ func TestFEVMDelegateCallRecursiveFail(t *testing.T) {
 	fromAddr, actorAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
 
 	// any data will do for this test that fails
-	inputDataContract := inputDataFromFrom(ctx, t, client, actorAddr)
-	inputDataValue := inputDataFromArray([]byte{7})
+	inputDataContract := kit.EvmWordFromAddr(ctx, t, client, actorAddr)
+	inputDataValue := kit.EvmWordBytes([]byte{7})
 	inputData := append(inputDataContract, inputDataValue...)
 
 	// verify that we run out of gas then revert.
@@ -584,7 +511,6 @@ func TestFEVMRecursiveActorCall(t *testing.T) {
 	fromAddr, actorAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
 
 	exitCodeStackOverflow := exitcode.ExitCode(37)
-	exitCodeTransactionReverted := exitcode.ExitCode(33)
 
 	testCases := []struct {
 		stackDepth     int
@@ -609,11 +535,10 @@ func TestFEVMRecursiveActorCall(t *testing.T) {
 		{200, 32, exitcode.Ok},
 		{251, 32, exitcode.Ok},
 		{252, 32, exitCodeStackOverflow},
-		// the following are actors bundle dependent and may need to be tweaked with a network upgrade
-		{0, 255, exitcode.Ok},
-		{251, 164, exitcode.Ok},
-		{0, 261, exitCodeTransactionReverted},
-		{251, 173, exitCodeTransactionReverted},
+		// Bundle-dependent gas-exhaustion boundary cases live in
+		// fevm_bundle_canary_test.go; those retune with every actors bundle.
+		// The cases above exercise the wasm-stack / recursion-protection
+		// boundary, which is not bundle-dependent.
 	}
 	for _, tc := range testCases {
 		var fail string
@@ -751,7 +676,7 @@ func TestFEVMDeployWithValue(t *testing.T) {
 	ret, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "getNewContractBalance()", []byte{})
 	require.NoError(t, err)
 
-	contractBalance, err := decodeOutputToUint64(ret)
+	contractBalance, err := kit.EvmDecodeUint64(ret)
 	require.NoError(t, err)
 
 	// require balance of NewContract is testValue
@@ -786,7 +711,7 @@ func TestFEVMDestroyCreate2(t *testing.T) {
 	require.NoError(t, err)
 
 	// assert contract has correct data
-	ethFromAddr := inputDataFromFrom(ctx, t, client, fromAddr)
+	ethFromAddr := kit.EvmWordFromAddr(ctx, t, client, fromAddr)
 	require.Equal(t, ethFromAddr, ret)
 
 	// run test() which 1.calls sefldestruct 2. verifies sender() is the correct value 3. attempts and fails to deploy via create2
@@ -954,7 +879,7 @@ func TestFEVMGetChainPropertiesBlockTimestamp(t *testing.T) {
 	ret, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "getTimestamp()", []byte{})
 	require.NoError(t, err)
 
-	timestampFromSolidity, err := decodeOutputToUint64(ret)
+	timestampFromSolidity, err := kit.EvmDecodeUint64(ret)
 	require.NoError(t, err)
 
 	ethBlock := client.EVM().GetEthBlockFromWait(ctx, wait)
@@ -974,7 +899,7 @@ func TestFEVMGetChainPropertiesBlockNumber(t *testing.T) {
 	ret, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "getBlockNumber()", []byte{})
 	require.NoError(t, err)
 
-	blockHeightFromSolidity, err := decodeOutputToUint64(ret)
+	blockHeightFromSolidity, err := kit.EvmDecodeUint64(ret)
 	require.NoError(t, err)
 
 	ethBlock := client.EVM().GetEthBlockFromWait(ctx, wait)
@@ -1011,7 +936,7 @@ func TestFEVMGetChainPropertiesBaseFee(t *testing.T) {
 
 	ret, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "getBasefee()", []byte{})
 	require.NoError(t, err)
-	baseFeeRet, err := decodeOutputToUint64(ret)
+	baseFeeRet, err := kit.EvmDecodeUint64(ret)
 	require.NoError(t, err)
 
 	ethBlock := client.EVM().GetEthBlockFromWait(ctx, wait)
@@ -1036,8 +961,6 @@ func TestFEVMErrorParsing(t *testing.T) {
 		"failDivZero()":      "0x4e487b710000000000000000000000000000000000000000000000000000000000000012", // DivideByZero()
 		"failCustom()":       customError,
 	} {
-		sig := sig
-		expected := expected
 		t.Run(sig, func(t *testing.T) {
 			entryPoint := kit.CalcFuncSignature(sig)
 			t.Run("EthCall", func(t *testing.T) {
@@ -1828,6 +1751,71 @@ func TestFEVMEamCreateTwiceFail(t *testing.T) {
 	req.Contains(traces[2].EthTrace.Error, "ErrForbidden")
 }
 
+func TestFEVMEthTraceFilterFailedCreate(t *testing.T) {
+	// Test that EthTraceFilter handles failed contract creations (nil result address)
+	// without erroring.
+	// The DuplicateCreate2Error contract performs two CREATE2 calls with the same salt.
+	// The first succeeds (creates an address), the second fails with ErrForbidden
+	// (nil result address). The whole transaction reverts, so both create traces end
+	// up with nil addresses. EthTraceFilter must handle this case when filtering by
+	// toAddress without returning an error.
+
+	req := require.New(t)
+
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	filenameActor := "contracts/DuplicateCreate2Error.hex"
+	fromAddr, actorAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
+
+	_, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, actorAddr, "deployTwice()", nil)
+	req.Error(err)
+	req.Equal(exitcode.ExitCode(33), wait.Receipt.ExitCode)
+
+	// Get the Eth transaction hash for the invoke so we can look up its receipt
+	// and determine the correct block number.
+	invokeMsgCid := wait.Message
+	txHash, err := client.EthGetTransactionHashByCid(ctx, invokeMsgCid)
+	req.NoError(err)
+	req.NotNil(txHash)
+
+	ethReceipt, err := client.EthGetTransactionReceipt(ctx, *txHash)
+	req.NoError(err)
+	req.NotNil(ethReceipt)
+
+	// Verify the block has create traces via EthTraceBlock (this path already works).
+	blockNum := fmt.Sprintf("0x%x", ethReceipt.BlockNumber)
+	blockTraces, err := client.EthTraceBlock(ctx, blockNum)
+	req.NoError(err)
+	req.Len(blockTraces, 3)
+	req.Equal("call", blockTraces[0].EthTrace.Type)
+	req.Equal("create", blockTraces[1].EthTrace.Type)
+	req.Equal("create", blockTraces[2].EthTrace.Type)
+	req.Contains(blockTraces[2].EthTrace.Error, "ErrForbidden")
+
+	// EthTraceFilter with a toAddress filter on a block containing failed creates.
+	fromBlock := blockNum
+	toBlock := blockNum
+	someAddr := ethtypes.EthAddress{0x01, 0x02, 0x03}
+	filter := ethtypes.EthTraceFilterCriteria{
+		FromBlock: &fromBlock,
+		ToBlock:   &toBlock,
+		ToAddress: ethtypes.EthAddressList{someAddr},
+	}
+	traces, err := client.EthTraceFilter(ctx, filter)
+	req.NoError(err, "EthTraceFilter should not error on blocks with failed creates")
+	req.Empty(traces, "no traces should match an arbitrary toAddress")
+
+	// Without any address filter, all traces in the block should be returned.
+	filter = ethtypes.EthTraceFilterCriteria{
+		FromBlock: &fromBlock,
+		ToBlock:   &toBlock,
+	}
+	traces, err = client.EthTraceFilter(ctx, filter)
+	req.NoError(err, "EthTraceFilter should not error with no address filter")
+	req.Len(traces, 3, "should return all three traces including the failed create")
+}
+
 func TestTstore(t *testing.T) {
 	nv25epoch := abi.ChainEpoch(100)
 	upgradeSchedule := kit.UpgradeSchedule(
@@ -1871,7 +1859,7 @@ func TestTstore(t *testing.T) {
 	require.NoError(t, err)
 
 	fromAddr, contractAddr2 := client.EVM().DeployContractFromFilename(ctx, filenameActor)
-	inputDataContract := inputDataFromFrom(ctx, t, client, contractAddr2)
+	inputDataContract := kit.EvmWordFromAddr(ctx, t, client, contractAddr2)
 
 	//Step 3 test reentry from multiple contracts in a transaction
 	_, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "testReentry(address)", inputDataContract)
@@ -1897,7 +1885,6 @@ func TestFEVMTestBLS(t *testing.T) {
 	}
 
 	for _, name := range tests {
-		name := name
 		t.Run(name, func(t *testing.T) {
 			filename := fmt.Sprintf("contracts/bls12/%s.hex", name)
 			fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filename)
@@ -1905,4 +1892,250 @@ func TestFEVMTestBLS(t *testing.T) {
 			require.NoError(t, err)
 		})
 	}
+}
+
+// TestFEVMMigrationBytecodeSwap demonstrates that FEVM contract bytecode
+// can be replaced in a network upgrade migration
+func TestFEVMMigrationBytecodeSwap(t *testing.T) {
+	upgradeHeight := abi.ChainEpoch(100)
+	migration := newFEVMBytecodeMigration(t)
+
+	ctx, cancel, client := kit.SetupFEVMTest(t, kit.UpgradeSchedule(
+		stmgr.Upgrade{Network: network.Version28, Height: -1},
+		stmgr.Upgrade{Network: network.Version28, Height: upgradeHeight, Migration: migration.fn},
+	))
+	defer cancel()
+
+	fromAddr := client.DefaultKey.Address
+
+	// Deploy SimpleCoin contract and verify it works
+	_, contractIdAddr := client.EVM().DeployContractFromFilename(ctx, "contracts/SimpleCoin.hex")
+	inputData := kit.EvmWordFromAddr(ctx, t, client, fromAddr)
+	result, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractIdAddr, "getBalance(address)", inputData)
+	require.NoError(t, err)
+	balance, err := kit.EvmDecodeUint64(result)
+	require.NoError(t, err)
+	require.Equal(t, uint64(10000), balance)
+
+	// Record the pre-migration bytecode
+	contractEthAddr, err := ethtypes.EthAddressFromFilecoinAddress(contractIdAddr)
+	require.NoError(t, err)
+	preMigrationCode, err := client.EthGetCode(ctx, contractEthAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
+	require.NoError(t, err)
+	require.NotEmpty(t, preMigrationCode)
+
+	// Deploy GetDifficulty (the replacement bytecode source) and read its
+	// deployed runtime bytecode for post-migration comparison
+	_, diffIdAddr := client.EVM().DeployContractFromFilename(ctx, "contracts/GetDifficulty.hex")
+	diffEthAddr, err := ethtypes.EthAddressFromFilecoinAddress(diffIdAddr)
+	require.NoError(t, err)
+	diffCode, err := client.EthGetCode(ctx, diffEthAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
+	require.NoError(t, err)
+	require.NotEmpty(t, diffCode)
+
+	// Signal the migration with target and source addresses
+	head, err := client.ChainHead(ctx)
+	require.NoError(t, err)
+	require.True(t, head.Height() < upgradeHeight, "chain already past upgrade height %d", upgradeHeight)
+	migration.signal(contractIdAddr, diffIdAddr)
+
+	// Wait for the migration to execute
+	client.WaitTillChain(ctx, kit.HeightAtLeast(upgradeHeight+5))
+
+	// Verify bytecode was replaced
+	postMigrationCode, err := client.EthGetCode(ctx, contractEthAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
+	require.NoError(t, err)
+	require.NotEmpty(t, postMigrationCode)
+	require.False(t, bytes.Equal(preMigrationCode, postMigrationCode), "bytecode should have changed")
+	require.True(t, bytes.Equal(diffCode, postMigrationCode), "bytecode should match GetDifficulty")
+
+	// Verify the new bytecode is functional: getDifficulty() should work on
+	// the contract that was originally SimpleCoin
+	result, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractIdAddr, "getDifficulty()", nil)
+	require.NoError(t, err)
+	_, err = kit.EvmDecodeUint64(result)
+	require.NoError(t, err)
+
+	// Verify the source contract is unaffected
+	_, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, diffIdAddr, "getDifficulty()", nil)
+	require.NoError(t, err)
+}
+
+// TestFEVMMigrationStoragePreservation verifies that contract storage slots
+// survive a bytecode migration. Deploys SimpleCoin (which sets deployer balance
+// to 10000 in the constructor), swaps its bytecode to GetDifficulty via
+// migration, then confirms the original storage slot value is still readable
+// via EthGetStorageAt.
+func TestFEVMMigrationStoragePreservation(t *testing.T) {
+	upgradeHeight := abi.ChainEpoch(100)
+	migration := newFEVMBytecodeMigration(t)
+
+	ctx, cancel, client := kit.SetupFEVMTest(t, kit.UpgradeSchedule(
+		stmgr.Upgrade{Network: network.Version28, Height: -1},
+		stmgr.Upgrade{Network: network.Version28, Height: upgradeHeight, Migration: migration.fn},
+	))
+	defer cancel()
+
+	fromAddr := client.DefaultKey.Address
+
+	// Deploy SimpleCoin
+	_, contractIdAddr := client.EVM().DeployContractFromFilename(ctx, "contracts/SimpleCoin.hex")
+	contractEthAddr, err := ethtypes.EthAddressFromFilecoinAddress(contractIdAddr)
+	require.NoError(t, err)
+
+	// Compute the storage key for balances[deployer]. SimpleCoin uses
+	// tx.origin in the constructor, so the key is the deployer's ID-based
+	// eth address. Solidity stores mapping(address => uint256) at slot 0 as
+	// keccak256(abi.encode(address, uint256(0))).
+	fromId, err := client.StateLookupID(ctx, fromAddr, types.EmptyTSK)
+	require.NoError(t, err)
+	deployerEthAddr, err := ethtypes.EthAddressFromFilecoinAddress(fromId)
+	require.NoError(t, err)
+	storageKey := computeSolidityMappingKey(deployerEthAddr, 0)
+
+	// Verify storage contains the expected balance (10000 = 0x2710)
+	preStorageValue, err := client.EthGetStorageAt(ctx, contractEthAddr, storageKey, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
+	require.NoError(t, err)
+	require.Equal(t, "0000000000000000000000000000000000000000000000000000000000002710",
+		hex.EncodeToString(preStorageValue), "deployer balance should be 10000")
+
+	// Deploy GetDifficulty as the replacement bytecode source
+	_, diffIdAddr := client.EVM().DeployContractFromFilename(ctx, "contracts/GetDifficulty.hex")
+
+	// Signal the migration and wait
+	head, err := client.ChainHead(ctx)
+	require.NoError(t, err)
+	require.True(t, head.Height() < upgradeHeight, "chain already past upgrade height %d", upgradeHeight)
+	migration.signal(contractIdAddr, diffIdAddr)
+	client.WaitTillChain(ctx, kit.HeightAtLeast(upgradeHeight+5))
+
+	// Storage slots should be preserved even though bytecode changed
+	postStorageValue, err := client.EthGetStorageAt(ctx, contractEthAddr, storageKey, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
+	require.NoError(t, err)
+	require.Equal(t, preStorageValue, postStorageValue, "storage slots must survive bytecode migration")
+
+	// Confirm the bytecode now matches the source contract's bytecode
+	postCode, err := client.EthGetCode(ctx, contractEthAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
+	require.NoError(t, err)
+	diffEthAddr, err := ethtypes.EthAddressFromFilecoinAddress(diffIdAddr)
+	require.NoError(t, err)
+	diffCode, err := client.EthGetCode(ctx, diffEthAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
+	require.NoError(t, err)
+	require.True(t, bytes.Equal(diffCode, postCode), "target bytecode should match source after migration")
+}
+
+// fevmBytecodeMigration encapsulates the coordination between a test and its
+// migration function. The test deploys contracts, then calls signal() to tell
+// the migration which actor to target and where to source the replacement
+// bytecode from. The migration blocks until signal() is called.
+type fevmBytecodeMigration struct {
+	fn         stmgr.MigrationFunc
+	targetAddr address.Address
+	sourceAddr address.Address
+	ready      chan struct{}
+}
+
+func newFEVMBytecodeMigration(t *testing.T) *fevmBytecodeMigration {
+	m := &fevmBytecodeMigration{
+		ready: make(chan struct{}),
+	}
+	m.fn = m.makeMigrationFunc(t)
+	return m
+}
+
+func (m *fevmBytecodeMigration) signal(target, source address.Address) {
+	m.targetAddr = target
+	m.sourceAddr = source
+	close(m.ready)
+}
+
+// makeMigrationFunc returns a MigrationFunc that copies the bytecode CID and
+// hash from one EVM actor to another in the state tree.
+//
+// The bytecode block already exists in the blockstore (placed there by FVM
+// when the source contract was deployed), so no new blocks need to be written,
+// just the state pointers are updated. The target's ContractState KAMT
+// (storage slots) is deliberately left untouched, demonstrating that storage
+// survives the bytecode swap.
+func (m *fevmBytecodeMigration) makeMigrationFunc(t *testing.T) stmgr.MigrationFunc {
+	return func(
+		ctx context.Context,
+		sm *stmgr.StateManager,
+		cache stmgr.MigrationCache,
+		cb stmgr.ExecMonitor,
+		root cid.Cid,
+		height abi.ChainEpoch,
+		ts *types.TipSet,
+	) (cid.Cid, error) {
+		select {
+		case <-m.ready:
+		case <-ctx.Done():
+			return cid.Undef, ctx.Err()
+		}
+
+		t.Logf("migration: copying bytecode from %s to %s at height %d",
+			m.sourceAddr, m.targetAddr, height)
+
+		adtStore := store.ActorStore(ctx, sm.ChainStore().StateBlockstore())
+		cborStore := cbor.NewCborStore(sm.ChainStore().StateBlockstore())
+		stateTree, err := state.LoadStateTree(cborStore, root)
+		if err != nil {
+			return cid.Undef, err
+		}
+
+		// Read the source actor's bytecode CID and hash
+		sourceAct, err := stateTree.GetActor(m.sourceAddr)
+		if err != nil {
+			return cid.Undef, err
+		}
+		var sourceState evm18.State
+		if err := adtStore.Get(ctx, sourceAct.Head, &sourceState); err != nil {
+			return cid.Undef, err
+		}
+
+		// Read the target actor's state
+		targetAct, err := stateTree.GetActor(m.targetAddr)
+		if err != nil {
+			return cid.Undef, err
+		}
+		var targetState evm18.State
+		if err := adtStore.Get(ctx, targetAct.Head, &targetState); err != nil {
+			return cid.Undef, err
+		}
+
+		t.Logf("migration: old bytecode CID = %s", targetState.Bytecode)
+		t.Logf("migration: new bytecode CID = %s (from source)", sourceState.Bytecode)
+
+		// Swap the bytecode pointer and hash; leave ContractState untouched
+		targetState.Bytecode = sourceState.Bytecode
+		targetState.BytecodeHash = sourceState.BytecodeHash
+
+		// Persist the modified state
+		newHead, err := adtStore.Put(ctx, &targetState)
+		if err != nil {
+			return cid.Undef, err
+		}
+		targetAct.Head = newHead
+
+		if err := stateTree.SetActor(m.targetAddr, targetAct); err != nil {
+			return cid.Undef, err
+		}
+
+		return stateTree.Flush(ctx)
+	}
+}
+
+// computeSolidityMappingKey computes the storage key for a Solidity mapping
+// entry: keccak256(abi.encode(key, slot)). This is the standard storage layout
+// for mapping(address => T) at the given slot position. Only handles slots
+// that fit in a single byte (0-255).
+func computeSolidityMappingKey(addr ethtypes.EthAddress, slot byte) ethtypes.EthBytes {
+	// abi.encode(address, uint256): 32-byte padded address + 32-byte padded slot
+	data := make([]byte, 64)
+	copy(data[12:32], addr[:])
+	data[63] = slot
+
+	hasher := keccak.NewLegacyKeccak256()
+	hasher.Write(data)
+	return hasher.Sum(nil)
 }

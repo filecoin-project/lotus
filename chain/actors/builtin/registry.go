@@ -154,6 +154,22 @@ import (
 	reward18 "github.com/filecoin-project/go-state-types/builtin/v18/reward"
 	system18 "github.com/filecoin-project/go-state-types/builtin/v18/system"
 	verifreg18 "github.com/filecoin-project/go-state-types/builtin/v18/verifreg"
+	account19 "github.com/filecoin-project/go-state-types/builtin/v19/account"
+	cron19 "github.com/filecoin-project/go-state-types/builtin/v19/cron"
+	datacap19 "github.com/filecoin-project/go-state-types/builtin/v19/datacap"
+	eam19 "github.com/filecoin-project/go-state-types/builtin/v19/eam"
+	ethaccount19 "github.com/filecoin-project/go-state-types/builtin/v19/ethaccount"
+	evm19 "github.com/filecoin-project/go-state-types/builtin/v19/evm"
+	_init19 "github.com/filecoin-project/go-state-types/builtin/v19/init"
+	market19 "github.com/filecoin-project/go-state-types/builtin/v19/market"
+	miner19 "github.com/filecoin-project/go-state-types/builtin/v19/miner"
+	multisig19 "github.com/filecoin-project/go-state-types/builtin/v19/multisig"
+	paych19 "github.com/filecoin-project/go-state-types/builtin/v19/paych"
+	placeholder19 "github.com/filecoin-project/go-state-types/builtin/v19/placeholder"
+	power19 "github.com/filecoin-project/go-state-types/builtin/v19/power"
+	reward19 "github.com/filecoin-project/go-state-types/builtin/v19/reward"
+	system19 "github.com/filecoin-project/go-state-types/builtin/v19/system"
+	verifreg19 "github.com/filecoin-project/go-state-types/builtin/v19/verifreg"
 	account8 "github.com/filecoin-project/go-state-types/builtin/v8/account"
 	cron8 "github.com/filecoin-project/go-state-types/builtin/v8/cron"
 	_init8 "github.com/filecoin-project/go-state-types/builtin/v8/init"
@@ -1331,6 +1347,110 @@ func MakeRegistry(av actorstypes.Version) []RegistryEntry {
 				registry = append(registry, RegistryEntry{
 					code:    codeID,
 					methods: ethaccount18.Methods,
+					state:   nil,
+				})
+
+			}
+		}
+
+	case actorstypes.Version19:
+		for key, codeID := range codeIDs {
+			switch key {
+			case manifest.AccountKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: account19.Methods,
+					state:   new(account19.State),
+				})
+			case manifest.CronKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: cron19.Methods,
+					state:   new(cron19.State),
+				})
+			case manifest.InitKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: _init19.Methods,
+					state:   new(_init19.State),
+				})
+			case manifest.MarketKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: market19.Methods,
+					state:   new(market19.State),
+				})
+			case manifest.MinerKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: miner19.Methods,
+					state:   new(miner19.State),
+				})
+			case manifest.MultisigKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: multisig19.Methods,
+					state:   new(multisig19.State),
+				})
+			case manifest.PaychKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: paych19.Methods,
+					state:   new(paych19.State),
+				})
+			case manifest.PowerKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: power19.Methods,
+					state:   new(power19.State),
+				})
+			case manifest.RewardKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: reward19.Methods,
+					state:   new(reward19.State),
+				})
+			case manifest.SystemKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: system19.Methods,
+					state:   new(system19.State),
+				})
+			case manifest.VerifregKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: verifreg19.Methods,
+					state:   new(verifreg19.State),
+				})
+			case manifest.DatacapKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: datacap19.Methods,
+					state:   new(datacap19.State),
+				})
+
+			case manifest.EvmKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: evm19.Methods,
+					state:   new(evm19.State),
+				})
+			case manifest.EamKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: eam19.Methods,
+					state:   nil,
+				})
+			case manifest.PlaceholderKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: placeholder19.Methods,
+					state:   nil,
+				})
+			case manifest.EthAccountKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: ethaccount19.Methods,
 					state:   nil,
 				})
 

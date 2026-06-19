@@ -82,6 +82,12 @@ func NewEthEventsAPI(
 func (e *ethEvents) EthGetLogs(ctx context.Context, filterSpec *ethtypes.EthFilterSpec) (*ethtypes.EthFilterResult, error) {
 	ces, err := e.ethGetEventsForFilter(ctx, filterSpec)
 	if err != nil {
+		// Propagate ErrBlockRangeExceeded unwrapped so go-jsonrpc can match the
+		// type and return the correct -32005 error code.
+		var bre *api.ErrBlockRangeExceeded
+		if errors.As(err, &bre) {
+			return nil, bre
+		}
 		return nil, xerrors.Errorf("failed to get events for filter: %w", err)
 	}
 	return ethFilterResultFromEvents(ctx, ces, e.chainStore, e.stateManager)
@@ -309,22 +315,41 @@ func (e *ethEvents) EthUnsubscribe(ctx context.Context, id ethtypes.EthSubscript
 	return true, nil
 }
 
-func (e *ethEvents) GetEthLogsForBlockAndTransaction(ctx context.Context, blockHash *ethtypes.EthHash, txHash ethtypes.EthHash) ([]ethtypes.EthLog, error) {
-	ces, err := e.ethGetEventsForFilter(ctx, &ethtypes.EthFilterSpec{BlockHash: blockHash})
+func (e *ethEvents) GetEthLogsForBlockAndTransaction(ctx context.Context, blockHash *ethtypes.EthHash, msgCid cid.Cid) ([]ethtypes.EthLog, error) {
+	if e.eventFilterManager == nil {
+		return nil, api.ErrNotSupported
+	}
+	if e.chainIndexer == nil {
+		return nil, ErrChainIndexerDisabled
+	}
+	if blockHash == nil {
+		return nil, errors.New("block hash is required")
+	}
+	if msgCid == cid.Undef {
+		return nil, errors.New("message cid is required")
+	}
+
+	tipsetCid := blockHash.ToCid()
+	ts, err := e.chainStore.GetTipSetByCid(ctx, tipsetCid)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to get tipset by cid: %w", err)
 	}
-	logs, err := ethFilterLogsFromEvents(ctx, ces, e.chainStore, e.stateManager)
+	if ts.Height() >= e.chainStore.GetHeaviestTipSet().Height() {
+		return nil, ErrEventsNotYetAvailable
+	}
+
+	ces, err := e.chainIndexer.GetEventsForFilter(ctx, &index.EventFilter{
+		MinHeight: -1,
+		MaxHeight: -1,
+		TipsetCid: tipsetCid,
+		MsgCid:    msgCid,
+		Codec:     multicodec.Raw,
+	})
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to get events for filter from chain indexer: %w", err)
 	}
-	var out []ethtypes.EthLog
-	for _, log := range logs {
-		if log.TransactionHash == txHash {
-			out = append(out, log)
-		}
-	}
-	return out, nil
+
+	return ethFilterLogsFromEvents(ctx, ces, e.chainStore, e.stateManager)
 }
 
 // GC runs a garbage collection loop, deleting filters that have not been used within the ttl window
@@ -373,12 +398,12 @@ func (e *ethEvents) ethGetEventsForFilter(ctx context.Context, filterSpec *ethty
 			return nil, xerrors.Errorf("failed to get tipset by cid: %w", err)
 		}
 		if ts.Height() >= head.Height() {
-			return nil, xerrors.New("cannot ask for events for a tipset at or greater than head")
+			return nil, ErrEventsNotYetAvailable
 		}
 	}
 
 	if pf.minHeight >= head.Height() || pf.maxHeight >= head.Height() {
-		return nil, xerrors.New("cannot ask for events for a tipset at or greater than head")
+		return nil, ErrEventsNotYetAvailable
 	}
 
 	ef := &index.EventFilter{
@@ -448,7 +473,53 @@ func ethFilterResultFromMessages(cs []*types.SignedMessage) (*ethtypes.EthFilter
 }
 
 func ethFilterLogsFromEvents(ctx context.Context, evs []*index.CollectedEvent, cs ChainStore, sa StateManager) ([]ethtypes.EthLog, error) {
-	var logs []ethtypes.EthLog
+	// Skip re-resolving msg->txHash, tipset->blockHash, and emitter->EthAddress on every
+	// emitted log. The set of distinct (msg, tipset, emitter) tuples in any filter result
+	// is small relative to the log count, so plain maps suffice.
+	txHashByMsg := make(map[cid.Cid]ethtypes.EthHash)
+	txHashFor := func(c cid.Cid) (ethtypes.EthHash, error) {
+		if h, ok := txHashByMsg[c]; ok {
+			return h, nil
+		}
+		h, err := ethTxHashFromMessageCid(ctx, c, cs)
+		if err != nil {
+			return ethtypes.EmptyEthHash, err
+		}
+		txHashByMsg[c] = h
+		return h, nil
+	}
+
+	blockHashByTipset := make(map[types.TipSetKey]ethtypes.EthHash)
+	blockHashFor := func(tsk types.TipSetKey) (ethtypes.EthHash, error) {
+		if h, ok := blockHashByTipset[tsk]; ok {
+			return h, nil
+		}
+		c, err := tsk.Cid()
+		if err != nil {
+			return ethtypes.EmptyEthHash, err
+		}
+		h, err := ethtypes.EthHashFromCid(c)
+		if err != nil {
+			return ethtypes.EmptyEthHash, err
+		}
+		blockHashByTipset[tsk] = h
+		return h, nil
+	}
+
+	ethAddrByEmitter := make(map[address.Address]ethtypes.EthAddress)
+	ethAddrFor := func(a address.Address) (ethtypes.EthAddress, error) {
+		if e, ok := ethAddrByEmitter[a]; ok {
+			return e, nil
+		}
+		e, err := ethtypes.EthAddressFromFilecoinAddress(a)
+		if err != nil {
+			return ethtypes.EthAddress{}, err
+		}
+		ethAddrByEmitter[a] = e
+		return e, nil
+	}
+
+	logs := make([]ethtypes.EthLog, 0, len(evs))
 	for _, ev := range evs {
 		log := ethtypes.EthLog{
 			Removed:          ev.Reverted,
@@ -466,12 +537,12 @@ func ethFilterLogsFromEvents(ctx context.Context, evs []*index.CollectedEvent, c
 			continue
 		}
 
-		log.Address, err = ethtypes.EthAddressFromFilecoinAddress(ev.EmitterAddr)
+		log.Address, err = ethAddrFor(ev.EmitterAddr)
 		if err != nil {
 			return nil, err
 		}
 
-		log.TransactionHash, err = ethTxHashFromMessageCid(ctx, ev.MsgCid, cs)
+		log.TransactionHash, err = txHashFor(ev.MsgCid)
 		if err != nil {
 			return nil, err
 		}
@@ -479,11 +550,8 @@ func ethFilterLogsFromEvents(ctx context.Context, evs []*index.CollectedEvent, c
 			// We've garbage collected the message, ignore the events and continue.
 			continue
 		}
-		c, err := ev.TipSetKey.Cid()
-		if err != nil {
-			return nil, err
-		}
-		log.BlockHash, err = ethtypes.EthHashFromCid(c)
+
+		log.BlockHash, err = blockHashFor(ev.TipSetKey)
 		if err != nil {
 			return nil, err
 		}
@@ -495,66 +563,7 @@ func ethFilterLogsFromEvents(ctx context.Context, evs []*index.CollectedEvent, c
 }
 
 func ethLogFromEvent(entries []types.EventEntry) (data []byte, topics []ethtypes.EthHash, ok bool) {
-	var (
-		topicsFound      [4]bool
-		topicsFoundCount int
-		dataFound        bool
-	)
-	// Topics must be non-nil, even if empty. So we might as well pre-allocate for 4 (the max).
-	topics = make([]ethtypes.EthHash, 0, 4)
-	for _, entry := range entries {
-		// Drop events with non-raw topics. Built-in actors emit CBOR, and anything else would be
-		// invalid anyway.
-		if entry.Codec != cid.Raw {
-			return nil, nil, false
-		}
-		// Check if the key is t1..t4
-		if len(entry.Key) == 2 && "t1" <= entry.Key && entry.Key <= "t4" {
-			// '1' - '1' == 0, etc.
-			idx := int(entry.Key[1] - '1')
-
-			// Drop events with mis-sized topics.
-			if len(entry.Value) != 32 {
-				log.Warnw("got an EVM event topic with an invalid size", "key", entry.Key, "size", len(entry.Value))
-				return nil, nil, false
-			}
-
-			// Drop events with duplicate topics.
-			if topicsFound[idx] {
-				log.Warnw("got a duplicate EVM event topic", "key", entry.Key)
-				return nil, nil, false
-			}
-			topicsFound[idx] = true
-			topicsFoundCount++
-
-			// Extend the topics array
-			for len(topics) <= idx {
-				topics = append(topics, ethtypes.EthHash{})
-			}
-			copy(topics[idx][:], entry.Value)
-		} else if entry.Key == "d" {
-			// Drop events with duplicate data fields.
-			if dataFound {
-				log.Warnw("got duplicate EVM event data")
-				return nil, nil, false
-			}
-
-			dataFound = true
-			data = entry.Value
-		} else {
-			// Skip entries we don't understand (makes it easier to extend things).
-			// But we warn for now because we don't expect them.
-			log.Warnw("unexpected event entry", "key", entry.Key)
-		}
-
-	}
-
-	// Drop events with skipped topics.
-	if len(topics) != topicsFoundCount {
-		log.Warnw("EVM event topic length mismatch", "expected", len(topics), "actual", topicsFoundCount)
-		return nil, nil, false
-	}
-	return data, topics, true
+	return ethtypes.EthLogFromEvent(entries)
 }
 
 func ethTxHashFromMessageCid(ctx context.Context, c cid.Cid, cs ChainStore) (ethtypes.EthHash, error) {
@@ -618,18 +627,18 @@ func parseBlockRange(heaviest abi.ChainEpoch, fromBlock, toBlock *string, maxRan
 	if minHeight == -1 && maxHeight > 0 {
 		// Here the client is looking for events between the head and some future height
 		if maxHeight-heaviest > maxRange {
-			return 0, 0, xerrors.Errorf("invalid epoch range: to block is too far in the future (maximum: %d)", maxRange)
+			return 0, 0, api.NewErrBlockRangeExceeded(uint64(maxRange), uint64(maxHeight-heaviest))
 		}
 	} else if minHeight >= 0 && maxHeight == -1 {
 		// Here the client is looking for events between some time in the past and the current head
 		if heaviest-minHeight > maxRange {
-			return 0, 0, xerrors.Errorf("invalid epoch range: from block is too far in the past (maximum: %d)", maxRange)
+			return 0, 0, api.NewErrBlockRangeExceeded(uint64(maxRange), uint64(heaviest-minHeight))
 		}
 	} else if minHeight >= 0 && maxHeight >= 0 {
 		if minHeight > maxHeight {
-			return 0, 0, xerrors.Errorf("invalid epoch range: to block (%d) must be after from block (%d)", minHeight, maxHeight)
+			return 0, 0, xerrors.Errorf("invalid epoch range: to block (%d) must be after from block (%d)", maxHeight, minHeight)
 		} else if maxHeight-minHeight > maxRange {
-			return 0, 0, xerrors.Errorf("invalid epoch range: range between to and from blocks is too large (maximum: %d)", maxRange)
+			return 0, 0, api.NewErrBlockRangeExceeded(uint64(maxRange), uint64(maxHeight-minHeight))
 		}
 	}
 	return minHeight, maxHeight, nil

@@ -23,6 +23,7 @@ var (
 	BlockMessageLimit       = 512
 	BlockGasLimit           = int64(100_000_000_000)
 	BlockGasTarget          = int64(BlockGasLimit / 2)
+	BlockGasTargetIndex     = BlockGasLimit*80/100 - 1
 	BaseFeeMaxChangeDenom   = int64(8) // 12.5%
 	InitialBaseFee          = int64(100e6)
 	MinimumBaseFee          = int64(100)
@@ -110,7 +111,8 @@ var (
 	UpgradeTockHeight                    abi.ChainEpoch = -32
 	UpgradeTockFixHeight                 abi.ChainEpoch = -33
 	UpgradeGoldenWeekHeight              abi.ChainEpoch = -34
-	UpgradeXxHeight                      abi.ChainEpoch = -35
+	UpgradeFireHorseHeight               abi.ChainEpoch = -35
+	UpgradeXxHeight                      abi.ChainEpoch = -36
 
 	DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 		0:                    DrandMainnet,

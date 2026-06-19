@@ -25,10 +25,11 @@ import (
 var log = logger.Logger("gateway")
 
 const (
-	DefaultMaxLookbackDuration      = time.Hour * 24     // Default duration that a gateway request can look back in chain history
-	DefaultMaxMessageLookbackEpochs = abi.ChainEpoch(20) // Default number of epochs that a gateway message lookup can look back in chain history
-	DefaultRateLimitTimeout         = time.Second * 5    // Default timeout for rate limiting requests; where a request would take longer to wait than this value, it will be rejected
-	DefaultEthMaxFiltersPerConn     = 16                 // Default maximum number of ETH filters and subscriptions per websocket connection
+	DefaultMaxLookbackDuration         = time.Hour * 24     // Default duration that a gateway request can look back in chain history
+	DefaultMaxMessageLookbackEpochs    = abi.ChainEpoch(20) // Default number of epochs that a gateway message lookup can look back in chain history
+	DefaultRateLimitTimeout            = time.Second * 5    // Default timeout for rate limiting requests; where a request would take longer to wait than this value, it will be rejected
+	DefaultEthMaxFiltersPerConn        = 16                 // Default maximum number of ETH filters and subscriptions per websocket connection
+	DefaultEthTraceFilterMaxBlockRange = int64(100)         // Default maximum block range for EthTraceFilter on the gateway
 
 	basicRateLimitTokens  = 1
 	walletRateLimitTokens = 1
@@ -39,24 +40,26 @@ const (
 )
 
 type Node struct {
-	v1Proxy                  *reverseProxyV1
-	v2Proxy                  *reverseProxyV2
-	maxLookbackDuration      time.Duration
-	maxMessageLookbackEpochs abi.ChainEpoch
-	rateLimiter              *rate.Limiter
-	rateLimitTimeout         time.Duration
-	ethMaxFiltersPerConn     int
-	errLookback              error
+	v1Proxy                     *reverseProxyV1
+	v2Proxy                     *reverseProxyV2
+	maxLookbackDuration         time.Duration
+	maxMessageLookbackEpochs    abi.ChainEpoch
+	rateLimiter                 *rate.Limiter
+	rateLimitTimeout            time.Duration
+	ethMaxFiltersPerConn        int
+	ethTraceFilterMaxBlockRange int64
+	errLookback                 error
 }
 
 type options struct {
-	v1SubHandler             *EthSubHandler
-	v2SubHandler             *EthSubHandler
-	maxLookbackDuration      time.Duration
-	maxMessageLookbackEpochs abi.ChainEpoch
-	rateLimit                int
-	rateLimitTimeout         time.Duration
-	ethMaxFiltersPerConn     int
+	v1SubHandler                *EthSubHandler
+	v2SubHandler                *EthSubHandler
+	maxLookbackDuration         time.Duration
+	maxMessageLookbackEpochs    abi.ChainEpoch
+	rateLimit                   int
+	rateLimitTimeout            time.Duration
+	ethMaxFiltersPerConn        int
+	ethTraceFilterMaxBlockRange int64
 }
 
 type Option func(*options)
@@ -115,13 +118,23 @@ func WithEthMaxFiltersPerConn(ethMaxFiltersPerConn int) Option {
 	}
 }
 
+// WithEthTraceFilterMaxBlockRange sets the maximum block range allowed for EthTraceFilter
+// requests on the gateway. This is typically tighter than the node-level MaxFilterHeightRange
+// because trace replay is significantly more expensive than log lookups.
+func WithEthTraceFilterMaxBlockRange(maxBlockRange int64) Option {
+	return func(opts *options) {
+		opts.ethTraceFilterMaxBlockRange = maxBlockRange
+	}
+}
+
 // NewNode creates a new gateway node.
 func NewNode(v1 v1api.FullNode, v2 v2api.FullNode, opts ...Option) *Node {
 	options := &options{
-		maxLookbackDuration:      DefaultMaxLookbackDuration,
-		maxMessageLookbackEpochs: DefaultMaxMessageLookbackEpochs,
-		rateLimitTimeout:         DefaultRateLimitTimeout,
-		ethMaxFiltersPerConn:     DefaultEthMaxFiltersPerConn,
+		maxLookbackDuration:         DefaultMaxLookbackDuration,
+		maxMessageLookbackEpochs:    DefaultMaxMessageLookbackEpochs,
+		rateLimitTimeout:            DefaultRateLimitTimeout,
+		ethMaxFiltersPerConn:        DefaultEthMaxFiltersPerConn,
+		ethTraceFilterMaxBlockRange: DefaultEthTraceFilterMaxBlockRange,
 	}
 	for _, opt := range opts {
 		opt(options)
@@ -132,12 +145,13 @@ func NewNode(v1 v1api.FullNode, v2 v2api.FullNode, opts ...Option) *Node {
 		limit = rate.Every(time.Second / time.Duration(options.rateLimit))
 	}
 	gateway := &Node{
-		maxLookbackDuration:      options.maxLookbackDuration,
-		maxMessageLookbackEpochs: options.maxMessageLookbackEpochs,
-		rateLimiter:              rate.NewLimiter(limit, MaxRateLimitTokens), // allow for a burst of MaxRateLimitTokens
-		rateLimitTimeout:         options.rateLimitTimeout,
-		errLookback:              fmt.Errorf("lookbacks of more than %s are disallowed", options.maxLookbackDuration),
-		ethMaxFiltersPerConn:     options.ethMaxFiltersPerConn,
+		maxLookbackDuration:         options.maxLookbackDuration,
+		maxMessageLookbackEpochs:    options.maxMessageLookbackEpochs,
+		rateLimiter:                 rate.NewLimiter(limit, MaxRateLimitTokens), // allow for a burst of MaxRateLimitTokens
+		rateLimitTimeout:            options.rateLimitTimeout,
+		errLookback:                 fmt.Errorf("lookbacks of more than %s are disallowed", options.maxLookbackDuration),
+		ethMaxFiltersPerConn:        options.ethMaxFiltersPerConn,
+		ethTraceFilterMaxBlockRange: options.ethTraceFilterMaxBlockRange,
 	}
 	gateway.v1Proxy = &reverseProxyV1{
 		gateway:       gateway,

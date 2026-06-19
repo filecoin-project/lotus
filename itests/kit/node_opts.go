@@ -13,11 +13,13 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/lotus/build/buildconstants"
+	"github.com/filecoin-project/lotus/chain/ecfinality"
 	"github.com/filecoin-project/lotus/chain/lf3"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/node/impl/eth"
 	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -112,6 +114,16 @@ var DefaultNodeOpts = nodeOpts{
 
 	workerTasks:      []sealtasks.TaskType{sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTFinalizeUnsealed},
 	workerStorageOpt: func(store paths.Store) paths.Store { return store },
+
+	// Disable the EC finality calculator by default. In test environments
+	// with 1-2 miners, chain health is poor so the calculator either won't
+	// meet its threshold or returns a depth near the static 900 fallback.
+	// Tests that need EC finality can use ECFinalityProvider() to inject a
+	// mock with controlled values.
+	extraNodeOpts: []node.Option{
+		node.Override(new(ecfinality.ECFinalityCalculator), func() ecfinality.ECFinalityCalculator { return nil }),
+		node.Override(new(eth.ECFinalityProvider), func() eth.ECFinalityProvider { return nil }),
+	},
 }
 
 // OptBuilder is used to create an option after some other node is already

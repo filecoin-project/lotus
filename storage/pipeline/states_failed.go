@@ -555,8 +555,6 @@ func recoveryPiecesToFix(ctx context.Context, api SealingAPI, sector SectorInfo,
 	nonBuiltinMarketPieces := 0
 
 	for i, p := range sector.Pieces {
-		i, p := i, p
-
 		err := p.handleDealInfo(handleDealInfoParams{
 			FillerHandler: func(info UniversalPieceInfo) error {
 				// if no deal is associated with the piece, ensure that we added it as

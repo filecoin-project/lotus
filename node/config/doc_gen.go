@@ -224,14 +224,27 @@ of filters per connection.`,
 			Name: "MaxFilterResults",
 			Type: "int",
 
-			Comment: `MaxFilterResults specifies the maximum number of results that can be accumulated by an actor event filter.`,
+			Comment: `MaxFilterResults caps the events returned by event filter queries used by the actor
+events API (GetActorEventsRaw, SubscribeActorEventsRaw) and the Ethereum event and
+receipt APIs (eth_getLogs, eth_getFilterLogs, eth_getFilterChanges,
+eth_getBlockReceipts). Set to 0 for no limit.
+
+The cap is a hard limit only when a query's events come from more than one tipset.
+A range whose events all live in a single tipset may exceed MaxFilterResults; queries
+scoped to a single tipset (TipsetCid set, eth_getLogs with a BlockHash,
+eth_getBlockReceipts) bypass it entirely. eth_getTransactionReceipt narrows to a
+single message at the index level and is also unaffected. The cap exists to bound
+the cost of multi-tipset range queries.
+
+Self-hosted nodes serving trusted callers can use 0 or a high value. Public RPC
+operators should keep it bounded.`,
 		},
 		{
 			Name: "MaxFilterHeightRange",
 			Type: "uint64",
 
 			Comment: `MaxFilterHeightRange specifies the maximum range of heights that can be used in a filter (to avoid querying
-the entire chain)`,
+the entire chain). Applies to eth_getLogs and trace_filter block range limits.`,
 		},
 	},
 	"FaultReporterConfig": {

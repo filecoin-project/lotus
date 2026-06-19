@@ -59,7 +59,7 @@ func ActorDealSettlementCmd(getActor ActorAddressGetter) *cli.Command {
 			&cli.IntFlag{
 				Name:  "max-deals",
 				Usage: "the maximum number of deals contained in each message",
-				Value: 50,
+				Value: 20,
 			},
 			&cli.BoolFlag{
 				Name:  "skip-wait-msg",

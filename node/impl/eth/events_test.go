@@ -1,7 +1,6 @@
 package eth
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/ipfs/go-cid"
@@ -9,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
@@ -32,7 +32,7 @@ func TestParseBlockRange(t *testing.T) {
 			maxRange: 10,
 			minOut:   0,
 			maxOut:   0,
-			errStr:   "too large",
+			errStr:   "block range exceeds maximum",
 		},
 		"fails when min is specified and range is greater than max allowed range": {
 			heaviest: 500,
@@ -41,7 +41,7 @@ func TestParseBlockRange(t *testing.T) {
 			maxRange: 10,
 			minOut:   0,
 			maxOut:   0,
-			errStr:   "too far in the past",
+			errStr:   "block range exceeds maximum",
 		},
 		"fails when max is specified and range is greater than max allowed range": {
 			heaviest: 500,
@@ -50,7 +50,7 @@ func TestParseBlockRange(t *testing.T) {
 			maxRange: 10,
 			minOut:   0,
 			maxOut:   0,
-			errStr:   "too large",
+			errStr:   "block range exceeds maximum",
 		},
 		"works when range is valid": {
 			heaviest: 500,
@@ -77,9 +77,10 @@ func TestParseBlockRange(t *testing.T) {
 			require.Equal(t, tc2.minOut, min)
 			require.Equal(t, tc2.maxOut, max)
 			if tc2.errStr != "" {
-				fmt.Println(err)
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tc2.errStr)
+				var blockRangeErr *api.ErrBlockRangeExceeded
+				require.ErrorAs(t, err, &blockRangeErr)
 			} else {
 				require.NoError(t, err)
 			}

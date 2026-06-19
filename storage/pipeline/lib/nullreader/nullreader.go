@@ -23,8 +23,6 @@ func (m NullReader) NullBytes() int64 {
 type Reader struct{}
 
 func (Reader) Read(out []byte) (int, error) {
-	for i := range out {
-		out[i] = 0
-	}
+	clear(out)
 	return len(out), nil
 }

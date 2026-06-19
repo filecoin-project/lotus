@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
@@ -295,6 +296,12 @@ func TestContractInvocationMultiple(t *testing.T) {
 		totalMessages = 20
 		maxUntrusted  = 10
 	)
+
+	// Pin the untrusted-push cap so the test exercises a small, bounded
+	// scenario independent of the package default.
+	prev := messagepool.MaxUntrustedActorPendingMessages
+	messagepool.MaxUntrustedActorPendingMessages = maxUntrusted
+	t.Cleanup(func() { messagepool.MaxUntrustedActorPendingMessages = prev })
 
 	for _, untrusted := range []bool{true, false} {
 		t.Run(fmt.Sprintf("untrusted=%t", untrusted), func(t *testing.T) {
@@ -820,13 +827,13 @@ func TestTraceFilter(t *testing.T) {
 
 	// Assert that initial transactions returned by the trace are valid
 	require.Len(t, traces, 3)
-	require.Equal(t, 1, traces[0].TransactionPosition)
+	require.Equal(t, 0, traces[0].TransactionPosition)
 	require.Equal(t, "call", traces[0].EthTrace.Type)
-	require.Equal(t, 1, traces[1].TransactionPosition)
+	require.Equal(t, 0, traces[1].TransactionPosition)
 	require.Equal(t, "call", traces[1].EthTrace.Type)
 
 	// our transaction will be in the third element of traces with the expected hash
-	require.Equal(t, 1, traces[2].TransactionPosition)
+	require.Equal(t, 0, traces[2].TransactionPosition)
 	require.Equal(t, hash, traces[2].TransactionHash)
 	require.Equal(t, "create", traces[2].EthTrace.Type)
 
@@ -846,7 +853,7 @@ func TestTraceFilter(t *testing.T) {
 
 	// we should only get our contract deploy transaction
 	require.Len(t, tracesAddressFilter, 1)
-	require.Equal(t, 1, tracesAddressFilter[0].TransactionPosition)
+	require.Equal(t, 0, tracesAddressFilter[0].TransactionPosition)
 	require.Equal(t, hash, tracesAddressFilter[0].TransactionHash)
 	require.Equal(t, "create", tracesAddressFilter[0].EthTrace.Type)
 

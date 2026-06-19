@@ -111,7 +111,6 @@ func TestStateGetBeaconEntry(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			req := require.New(t)
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

@@ -38,6 +38,13 @@ func (pv2 *reverseProxyV2) ChainGetTipSet(ctx context.Context, selector types.Ti
 	return pv2.server.ChainGetTipSet(ctx, selector)
 }
 
+func (pv2 *reverseProxyV2) ChainGetTipSetFinalityStatus(ctx context.Context) (*types.FinalityStatus, error) {
+	if err := pv2.gateway.limit(ctx, chainRateLimitTokens); err != nil {
+		return nil, err
+	}
+	return pv2.server.ChainGetTipSetFinalityStatus(ctx)
+}
+
 func (pv2 *reverseProxyV2) StateGetActor(ctx context.Context, address address.Address, selector types.TipSetSelector) (*types.Actor, error) {
 	if err := pv2.gateway.limit(ctx, stateRateLimitTokens); err != nil {
 		return nil, err
@@ -130,13 +137,6 @@ func (pv2 *reverseProxyV2) EthSendRawTransaction(ctx context.Context, rawTx etht
 	return pv2.server.EthSendRawTransactionUntrusted(ctx, rawTx)
 }
 
-func (pv2 *reverseProxyV2) EthSendRawTransactionUntrusted(ctx context.Context, rawTx ethtypes.EthBytes) (ethtypes.EthHash, error) {
-	if err := pv2.gateway.limit(ctx, stateRateLimitTokens); err != nil {
-		return ethtypes.EthHash{}, err
-	}
-	return pv2.server.EthSendRawTransactionUntrusted(ctx, rawTx)
-}
-
 func (pv2 *reverseProxyV2) EthBlockNumber(ctx context.Context) (ethtypes.EthUint64, error) {
 	if err := pv2.gateway.limit(ctx, chainRateLimitTokens); err != nil {
 		return 0, err
@@ -194,13 +194,6 @@ func (pv2 *reverseProxyV2) EthGetTransactionByHash(ctx context.Context, txHash *
 		return nil, err
 	}
 	return pv2.server.EthGetTransactionByHashLimited(ctx, txHash, pv2.gateway.maxMessageLookbackEpochs)
-}
-
-func (pv2 *reverseProxyV2) EthGetTransactionByHashLimited(ctx context.Context, txHash *ethtypes.EthHash, limit abi.ChainEpoch) (*ethtypes.EthTx, error) {
-	if err := pv2.gateway.limit(ctx, stateRateLimitTokens); err != nil {
-		return nil, err
-	}
-	return pv2.server.EthGetTransactionByHashLimited(ctx, txHash, limit)
 }
 
 func (pv2 *reverseProxyV2) EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash ethtypes.EthHash, txIndex ethtypes.EthUint64) (*ethtypes.EthTx, error) {
@@ -262,25 +255,11 @@ func (pv2 *reverseProxyV2) EthGetTransactionReceipt(ctx context.Context, txHash 
 	return pv2.server.EthGetTransactionReceiptLimited(ctx, txHash, pv2.gateway.maxMessageLookbackEpochs)
 }
 
-func (pv2 *reverseProxyV2) EthGetTransactionReceiptLimited(ctx context.Context, txHash ethtypes.EthHash, limit abi.ChainEpoch) (*ethtypes.EthTxReceipt, error) {
-	if err := pv2.gateway.limit(ctx, stateRateLimitTokens); err != nil {
-		return nil, err
-	}
-	return pv2.server.EthGetTransactionReceiptLimited(ctx, txHash, limit)
-}
-
 func (pv2 *reverseProxyV2) EthGetBlockReceipts(ctx context.Context, blkParam ethtypes.EthBlockNumberOrHash) ([]*ethtypes.EthTxReceipt, error) {
 	if err := pv2.gateway.limit(ctx, stateRateLimitTokens); err != nil {
 		return nil, err
 	}
 	return pv2.server.EthGetBlockReceiptsLimited(ctx, blkParam, pv2.gateway.maxMessageLookbackEpochs)
-}
-
-func (pv2 *reverseProxyV2) EthGetBlockReceiptsLimited(ctx context.Context, blkParam ethtypes.EthBlockNumberOrHash, limit abi.ChainEpoch) ([]*ethtypes.EthTxReceipt, error) {
-	if err := pv2.gateway.limit(ctx, stateRateLimitTokens); err != nil {
-		return nil, err
-	}
-	return pv2.server.EthGetBlockReceiptsLimited(ctx, blkParam, limit)
 }
 
 func (pv2 *reverseProxyV2) EthGetCode(ctx context.Context, address ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {
@@ -368,7 +347,23 @@ func (pv2 *reverseProxyV2) EthTraceFilter(ctx context.Context, filter ethtypes.E
 		}
 	}
 
+	head, err := pv2.ChainGetTipSet(ctx, types.TipSetSelectors.Latest)
+	if err != nil {
+		return nil, err
+	}
+	if err := pv2.gateway.checkEthTraceFilterBlockRange(head.Height(), filter); err != nil {
+		return nil, err
+	}
+
 	return pv2.server.EthTraceFilter(ctx, filter)
+}
+
+func (pv2 *reverseProxyV2) EthBaseFee(ctx context.Context) (ethtypes.EthBigInt, error) {
+	if err := pv2.gateway.limit(ctx, chainRateLimitTokens); err != nil {
+		return ethtypes.EthBigInt(big.Zero()), err
+	}
+
+	return pv2.server.EthBaseFee(ctx)
 }
 
 func (pv2 *reverseProxyV2) EthGasPrice(ctx context.Context) (ethtypes.EthBigInt, error) {
@@ -736,7 +731,7 @@ func (pv2 *reverseProxyV2) checkEthBlockParam(ctx context.Context, blkParam etht
 		return pv2.gateway.checkTipSetHeight(head, abi.ChainEpoch(num))
 	}
 
-	// otherwise its a block hash
+	// otherwise it's a block hash
 	if blkParam.BlockHash != nil {
 		return pv2.checkBlkHash(ctx, *blkParam.BlockHash)
 	}

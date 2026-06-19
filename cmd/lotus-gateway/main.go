@@ -162,6 +162,11 @@ var runCmd = &cli.Command{
 			Usage: "The maximum number of filters plus subscriptions that a single websocket connection can maintain",
 			Value: gateway.DefaultEthMaxFiltersPerConn,
 		},
+		&cli.Int64Flag{
+			Name:  "eth-trace-filter-max-block-range",
+			Usage: "Maximum block range allowed for expensive trace_filter requests (0 = no limit)",
+			Value: gateway.DefaultEthTraceFilterMaxBlockRange,
+		},
 		&cli.BoolFlag{
 			Name:  "cors",
 			Usage: "Enable CORS headers to allow cross-origin requests from web browsers",
@@ -206,6 +211,7 @@ var runCmd = &cli.Command{
 			rateLimitTimeout            = cctx.Duration("rate-limit-timeout")
 			perHostConnectionsPerMinute = cctx.Int("conn-per-minute")
 			maxFiltersPerConn           = cctx.Int("eth-max-filters-per-conn")
+			traceFilterMaxBlockRange    = cctx.Int64("eth-trace-filter-max-block-range")
 			enableCORS                  = cctx.Bool("cors")
 			enableRequestLogging        = cctx.Bool("request-logging")
 		)
@@ -236,6 +242,7 @@ var runCmd = &cli.Command{
 			gateway.WithRateLimit(globalRateLimit),
 			gateway.WithRateLimitTimeout(rateLimitTimeout),
 			gateway.WithEthMaxFiltersPerConn(maxFiltersPerConn),
+			gateway.WithEthTraceFilterMaxBlockRange(traceFilterMaxBlockRange),
 		)
 		handler, err := gateway.Handler(
 			gwapi,
@@ -246,7 +253,7 @@ var runCmd = &cli.Command{
 			gateway.WithRequestLogging(enableRequestLogging),
 		)
 		if err != nil {
-			return xerrors.Errorf("failed to set up gateway HTTP handler")
+			return xerrors.Errorf("failed to set up gateway HTTP handler: %w", err)
 		}
 
 		stopFunc, err := node.ServeRPC(handler, "lotus-gateway", maddr)

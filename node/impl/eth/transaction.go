@@ -337,7 +337,7 @@ func (e *ethTransaction) EthGetTransactionReceiptLimited(ctx context.Context, tx
 
 	baseFee := parentTs.Blocks()[0].ParentBaseFee
 
-	receipt, err := newEthTxReceipt(ctx, tx, baseFee, msgLookup.Receipt, e.ethEvents)
+	receipt, err := newEthTxReceipt(ctx, tx, c, baseFee, msgLookup.Receipt, e.ethEvents)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to create Eth receipt: %w", err)
 	}
@@ -385,14 +385,12 @@ func (e *ethTransaction) EthGetBlockReceiptsLimited(ctx context.Context, blockPa
 
 	ethReceipts := make([]*ethtypes.EthTxReceipt, 0, len(msgs))
 	for i, msg := range msgs {
-		msg := msg
-
 		tx, err := newEthTx(ctx, e.chainStore, stateTree, ts.Height(), tsCid, msg.Cid(), i)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to create EthTx: %w", err)
 		}
 
-		receipt, err := newEthTxReceipt(ctx, tx, baseFee, receipts[i], e.ethEvents)
+		receipt, err := newEthTxReceipt(ctx, tx, msg.Cid(), baseFee, receipts[i], e.ethEvents)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to create Eth receipt: %w", err)
 		}
@@ -481,7 +479,7 @@ func (e *ethTransaction) getBlockByTipset(ctx context.Context, ts *types.TipSet,
 	}
 
 	// Generate an Ethereum block from the Filecoin tipset
-	blk, err := newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo, e.chainStore, e.stateManager)
+	blk, err := newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo, e.chainStore, e.stateManager, e.chainIndexer)
 	if err != nil {
 		return ethtypes.EthBlock{}, xerrors.Errorf("failed to create Ethereum block from Filecoin tipset: %w", err)
 	}

@@ -1,23 +1,50 @@
 package ethtypes
 
 import (
-	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 
 	"golang.org/x/xerrors"
 )
 
-// maxListElements restricts the amount of RLP list elements we'll read.
-// The ETH API only ever reads EIP-1559 transactions, which are bounded by
-// 12 elements exactly, so we play it safe and set exactly that limit here.
-const maxListElements = 12
+const (
+	// maxListElements limits the number of elements decoded per RLP list.
+	// Of the transaction formats we decode, EIP-1559 has the most fields
+	// at 12 (legacy has 9). This is set to match that upper bound.
+	maxListElements = 12
 
-func EncodeRLP(val interface{}) ([]byte, error) {
+	// maxListDepth limits how deeply RLP lists may be nested. Input length
+	// alone does not bound recursion depth, a sequence of 0xc1 bytes
+	// creates one stack frame per byte, so an explicit limit is required.
+	// Ethereum transactions nest at most 3 levels deep; 32 is generous.
+	maxListDepth = 32
+
+	// maxInputLen is the largest RLP blob we will attempt to decode.
+	// Contract-deploy transactions on Filecoin can carry up to 1 MiB of
+	// init-code; 2 MiB gives comfortable headroom after RLP framing.
+	maxInputLen = 2 << 20 // 2 MiB
+)
+
+var (
+	errRLPEmptyInput          = errors.New("invalid rlp data: data is empty")
+	errRLPNonCanonicalList    = errors.New("invalid rlp data: non-canonical list length encoding")
+	errRLPNonCanonicalString  = errors.New("invalid rlp data: non-canonical string length encoding")
+	errRLPNonCanonicalByte    = errors.New("invalid rlp data: non-canonical single byte encoding")
+	errRLPNonCanonicalLeading = errors.New("invalid rlp data: non-canonical length encoding with leading zeros")
+	errRLPListBounds          = errors.New("invalid rlp data: out of bound while parsing list")
+	errRLPStringBounds        = errors.New("invalid rlp data: out of bound while parsing string")
+	errRLPLengthBounds        = errors.New("invalid rlp data: out of bound while parsing length")
+	errRLPIncorrectListLen    = errors.New("invalid rlp data: incorrect list length")
+	errRLPEncodeZeroLength    = errors.New("cannot encode length: length should be larger than 0")
+	errRLPEncodeInvalidType   = errors.New("input data should either be a list or a byte array")
+)
+
+func EncodeRLP(val any) ([]byte, error) {
 	return encodeRLP(val)
 }
 
-func encodeRLPListItems(list []interface{}) (result []byte, err error) {
+func encodeRLPListItems(list []any) (result []byte, err error) {
 	res := []byte{}
 	for _, elem := range list {
 		encoded, err := encodeRLP(elem)
@@ -29,30 +56,22 @@ func encodeRLPListItems(list []interface{}) (result []byte, err error) {
 	return res, nil
 }
 
-func encodeLength(length int) (lenInBytes []byte, err error) {
+// encodeLength returns the minimal big-endian representation of length.
+func encodeLength(length int) ([]byte, error) {
 	if length == 0 {
-		return nil, fmt.Errorf("cannot encode length: length should be larger than 0")
+		return nil, errRLPEncodeZeroLength
 	}
-
-	buf := new(bytes.Buffer)
-	err = binary.Write(buf, binary.BigEndian, int64(length))
-	if err != nil {
-		return nil, err
-	}
-
-	firstNonZeroIndex := len(buf.Bytes()) - 1
-	for i, b := range buf.Bytes() {
+	var buf [8]byte
+	binary.BigEndian.PutUint64(buf[:], uint64(length))
+	for i, b := range buf {
 		if b != 0 {
-			firstNonZeroIndex = i
-			break
+			return append([]byte{}, buf[i:]...), nil
 		}
 	}
-
-	res := buf.Bytes()[firstNonZeroIndex:]
-	return res, nil
+	return nil, errRLPEncodeZeroLength
 }
 
-func encodeRLP(val interface{}) ([]byte, error) {
+func encodeRLP(val any) ([]byte, error) {
 	switch data := val.(type) {
 	case []byte:
 		if len(data) == 1 && data[0] <= 0x7f {
@@ -70,7 +89,7 @@ func encodeRLP(val interface{}) ([]byte, error) {
 			[]byte{prefix},
 			append(lenInBytes, data...)...,
 		), nil
-	case []interface{}:
+	case []any:
 		encodedList, err := encodeRLPListItems(data)
 		if err != nil {
 			return nil, err
@@ -92,87 +111,114 @@ func encodeRLP(val interface{}) ([]byte, error) {
 			append(lenInBytes, encodedList...)...,
 		), nil
 	default:
-		return nil, fmt.Errorf("input data should either be a list or a byte array")
+		return nil, errRLPEncodeInvalidType
 	}
 }
 
-func DecodeRLP(data []byte) (interface{}, error) {
-	res, consumed, err := decodeRLP(data)
+func DecodeRLP(data []byte) (any, error) {
+	if len(data) == 0 {
+		return nil, errRLPEmptyInput
+	}
+	if len(data) > maxInputLen {
+		return nil, fmt.Errorf("invalid rlp data: input length %d exceeds limit of %d", len(data), maxInputLen)
+	}
+	res, consumed, err := decodeRLP(data, 0)
 	if err != nil {
 		return nil, err
 	}
 	if consumed != len(data) {
-		return nil, xerrors.Errorf("invalid rlp data: length %d, consumed %d", len(data), consumed)
+		return nil, fmt.Errorf("invalid rlp data: length %d, consumed %d", len(data), consumed)
 	}
 	return res, nil
 }
 
-func decodeRLP(data []byte) (res interface{}, consumed int, err error) {
+func decodeRLP(data []byte, depth int) (res any, consumed int, err error) {
 	if len(data) == 0 {
-		return data, 0, xerrors.Errorf("invalid rlp data: data cannot be empty")
+		return nil, 0, errRLPEmptyInput
 	}
-	if data[0] >= 0xf8 {
-		listLenInBytes := int(data[0]) - 0xf7
+	if depth > maxListDepth {
+		return nil, 0, fmt.Errorf("invalid rlp data: list nesting depth exceeds limit of %d", maxListDepth)
+	}
+
+	b := data[0]
+
+	switch {
+	case b >= 0xf8: // long list (> 55 bytes content)
+		listLenInBytes := int(b) - 0xf7
 		listLen, err := decodeLength(data[1:], listLenInBytes)
 		if err != nil {
 			return nil, 0, err
 		}
-		if 1+listLenInBytes+listLen > len(data) {
-			return nil, 0, xerrors.Errorf("invalid rlp data: out of bound while parsing list")
+		if listLen < 56 {
+			return nil, 0, errRLPNonCanonicalList
 		}
-		result, err := decodeListElems(data[1+listLenInBytes:], listLen)
+		if 1+listLenInBytes+listLen > len(data) {
+			return nil, 0, errRLPListBounds
+		}
+		result, err := decodeListElems(data[1+listLenInBytes:], listLen, depth+1)
 		return result, 1 + listLenInBytes + listLen, err
-	} else if data[0] >= 0xc0 {
-		length := int(data[0]) - 0xc0
-		result, err := decodeListElems(data[1:], length)
+
+	case b >= 0xc0: // short list (0-55 bytes content)
+		length := int(b) - 0xc0
+		if 1+length > len(data) {
+			return nil, 0, errRLPListBounds
+		}
+		result, err := decodeListElems(data[1:], length, depth+1)
 		return result, 1 + length, err
-	} else if data[0] >= 0xb8 {
-		strLenInBytes := int(data[0]) - 0xb7
+
+	case b >= 0xb8: // long string (> 55 bytes)
+		strLenInBytes := int(b) - 0xb7
 		strLen, err := decodeLength(data[1:], strLenInBytes)
 		if err != nil {
 			return nil, 0, err
 		}
+		if strLen < 56 {
+			return nil, 0, errRLPNonCanonicalString
+		}
 		totalLen := 1 + strLenInBytes + strLen
 		if totalLen > len(data) || totalLen < 0 {
-			return nil, 0, xerrors.Errorf("invalid rlp data: out of bound while parsing string")
+			return nil, 0, errRLPStringBounds
 		}
 		return data[1+strLenInBytes : totalLen], totalLen, nil
-	} else if data[0] >= 0x80 {
-		length := int(data[0]) - 0x80
+
+	case b >= 0x80: // short string (0-55 bytes)
+		length := int(b) - 0x80
 		if 1+length > len(data) {
-			return nil, 0, xerrors.Errorf("invalid rlp data: out of bound while parsing string")
+			return nil, 0, errRLPStringBounds
+		}
+		if length == 1 && data[1] < 0x80 {
+			return nil, 0, errRLPNonCanonicalByte
 		}
 		return data[1 : 1+length], 1 + length, nil
+
+	default: // single byte [0x00, 0x7f]
+		return []byte{b}, 1, nil
 	}
-	return []byte{data[0]}, 1, nil
 }
 
-func decodeLength(data []byte, lenInBytes int) (length int, err error) {
+// decodeLength reads a big-endian length from the first lenInBytes of data.
+func decodeLength(data []byte, lenInBytes int) (int, error) {
 	if lenInBytes > len(data) || lenInBytes > 8 {
-		return 0, xerrors.Errorf("invalid rlp data: out of bound while parsing list length")
+		return 0, errRLPLengthBounds
 	}
-	var decodedLength int64
-	r := bytes.NewReader(append(make([]byte, 8-lenInBytes), data[:lenInBytes]...))
-	if err := binary.Read(r, binary.BigEndian, &decodedLength); err != nil {
-		return 0, xerrors.Errorf("invalid rlp data: cannot parse string length: %w", err)
+	if lenInBytes > 0 && data[0] == 0 {
+		return 0, errRLPNonCanonicalLeading
 	}
-	if decodedLength < 0 {
-		return 0, xerrors.Errorf("invalid rlp data: negative string length")
+	var buf [8]byte
+	copy(buf[8-lenInBytes:], data[:lenInBytes])
+	length := binary.BigEndian.Uint64(buf[:])
+	if length > uint64(len(data)-lenInBytes) {
+		return 0, errRLPLengthBounds
 	}
-
-	totalLength := lenInBytes + int(decodedLength)
-	if totalLength < 0 || totalLength > len(data) {
-		return 0, xerrors.Errorf("invalid rlp data: out of bound while parsing list")
-	}
-	return int(decodedLength), nil
+	return int(length), nil
 }
 
-func decodeListElems(data []byte, length int) (res []interface{}, err error) {
+func decodeListElems(data []byte, length int, depth int) (res []any, err error) {
 	totalConsumed := 0
-	result := []interface{}{}
+	result := []any{}
 
 	for i := 0; totalConsumed < length && i < maxListElements; i++ {
-		elem, consumed, err := decodeRLP(data[totalConsumed:])
+		elem, consumed, err := decodeRLP(data[totalConsumed:], depth)
 		if err != nil {
 			return nil, xerrors.Errorf("invalid rlp data: cannot decode list element: %w", err)
 		}
@@ -180,7 +226,7 @@ func decodeListElems(data []byte, length int) (res []interface{}, err error) {
 		result = append(result, elem)
 	}
 	if totalConsumed != length {
-		return nil, xerrors.Errorf("invalid rlp data: incorrect list length")
+		return nil, errRLPIncorrectListLen
 	}
 	return result, nil
 }

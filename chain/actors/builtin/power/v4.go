@@ -10,7 +10,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
-	builtin18 "github.com/filecoin-project/go-state-types/builtin"
+	builtin19 "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/manifest"
 	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
 	power4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/power"
@@ -127,11 +127,11 @@ func (s *state4) ListAllMiners() ([]address.Address, error) {
 	return miners, nil
 }
 
-func (s *state4) CollectEligibleClaims(cacheInOut *builtin18.MapReduceCache) ([]builtin18.OwnedClaim, error) {
+func (s *state4) CollectEligibleClaims(cacheInOut *builtin19.MapReduceCache) ([]builtin19.OwnedClaim, error) {
 
-	var res []builtin18.OwnedClaim
+	var res []builtin19.OwnedClaim
 	err := s.ForEachClaim(func(miner address.Address, claim Claim) error {
-		res = append(res, builtin18.OwnedClaim{
+		res = append(res, builtin19.OwnedClaim{
 			Address:         miner,
 			RawBytePower:    claim.RawBytePower,
 			QualityAdjPower: claim.QualityAdjPower,

@@ -102,8 +102,9 @@ func InitChainIndexer(cfg config.ChainIndexerConfig) func(lc fx.Lifecycle, mctx 
 						return xerrors.Errorf("error while reconciling chain index with chain state: %w", err)
 					}
 					log.Warnf("error while reconciling chain index with chain state: %s", err)
+				} else {
+					unlockObserver()
 				}
-				unlockObserver()
 
 				indexer.Start()
 

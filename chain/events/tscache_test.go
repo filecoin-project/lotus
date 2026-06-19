@@ -61,6 +61,7 @@ func newCacheharness(t *testing.T) *cacheHarness {
 func (h *cacheHarness) addWithParents(parents []cid.Cid) {
 	ts, err := types.NewTipSet([]*types.BlockHeader{{
 		Miner:                 h.miner,
+		Ticket:                &types.Ticket{VRFProof: []byte{byte(h.height)}},
 		Height:                h.height,
 		ParentStateRoot:       dummyCid,
 		Messages:              dummyCid,
@@ -196,6 +197,7 @@ func TestTsCacheSkip(t *testing.T) {
 
 	ts, err := types.NewTipSet([]*types.BlockHeader{{
 		Miner:                 h.miner,
+		Ticket:                &types.Ticket{VRFProof: []byte{byte(h.height)}},
 		Height:                h.height,
 		ParentStateRoot:       dummyCid,
 		Messages:              dummyCid,

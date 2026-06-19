@@ -196,7 +196,6 @@ func TestRemoteGetAllocated(t *testing.T) {
 	}
 
 	for name, tc := range tcs {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			// create go mock controller here
 			mockCtrl := gomock.NewController(t)
@@ -366,7 +365,6 @@ func TestRemoteGetSector(t *testing.T) {
 	}
 
 	for name, tc := range tcs {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 			// when test is done, assert expectations on all mock objects.

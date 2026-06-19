@@ -65,6 +65,16 @@ type FullNode interface {
 	//
 	ChainGetTipSet(context.Context, types.TipSetSelector) (*types.TipSet, error) //perm:read
 
+	// ChainGetTipSetFinalityStatus returns a breakdown of how the node is
+	// currently determining finality. The result includes the EC probabilistic
+	// finality depth (based on observed chain health), the F3-finalized tipset
+	// (if available), and the overall finalized tipset the node is using.
+	//
+	// Useful for monitoring chain health and diagnosing finality lag.
+	//
+	// Experimental: This API is experimental and may change without notice.
+	ChainGetTipSetFinalityStatus(context.Context) (*types.FinalityStatus, error) //perm:read
+
 	// MethodGroup: State
 	// The State method group contains methods for interacting with the Filecoin
 	// blockchain state, including actor information, addresses, and chain data.
@@ -348,6 +358,10 @@ type FullNode interface {
 	EthTraceFilter(ctx context.Context, filter ethtypes.EthTraceFilterCriteria) ([]*ethtypes.EthTraceFilterResult, error) //perm:read
 
 	// EthGasAPI methods
+
+	// EthBaseFee retrieves the base fee of the next block.
+	// Maps to JSON-RPC method: "eth_baseFee".
+	EthBaseFee(ctx context.Context) (ethtypes.EthBigInt, error) //perm:read
 
 	// EthGasPrice retrieves the current gas price in the network.
 	// Maps to JSON-RPC method: "eth_gasPrice".

@@ -34,7 +34,8 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 	kit.QuietMiningLogs()
 
 	mockF3 := kit.NewMockF3Backend()
-	subject, miner, network := kit.EnsembleMinimal(t, kit.ThroughRPC(), kit.F3Backend(mockF3))
+	mockECFinality := kit.NewMockECFinalityProvider()
+	subject, miner, network := kit.EnsembleMinimal(t, kit.ThroughRPC(), kit.F3Backend(mockF3), kit.ECFinalityProvider(mockECFinality))
 	network.BeginMining(blockTime)
 	subject.WaitTillChain(ctx, kit.HeightAtLeast(targetHeight))
 
@@ -286,12 +287,84 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 				wantResponseStatus: http.StatusOK,
 			},
 			{
+				name: "ec calculator ahead of f3 uses ec finalized",
+				when: func(t *testing.T) {
+					mockF3.Running = true
+					mockF3.Finalizing = true
+					mockF3.LatestCertErr = nil
+					mockF3.LatestCert = plausibleCertAt(t, 50) // F3 at 50
+					ecTipSet := tipSetAtHeight(200)(t)         // EC calculator at 200
+					mockECFinality.FinalizedTipSet = ecTipSet
+					mockECFinality.ThresholdDepth = int(targetHeight - 200)
+					mockECFinality.Err = nil
+				},
+				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"tag":"finalized"}],"id":1}`,
+				wantTipSet:         tipSetAtHeight(200),
+				wantResponseStatus: http.StatusOK,
+			},
+			{
+				name: "f3 ahead of ec calculator uses f3 finalized",
+				when: func(t *testing.T) {
+					mockF3.Running = true
+					mockF3.Finalizing = true
+					mockF3.LatestCertErr = nil
+					mockF3.LatestCert = plausibleCertAt(t, 500) // F3 at 500
+					ecTipSet := tipSetAtHeight(200)(t)          // EC calculator at 200
+					mockECFinality.FinalizedTipSet = ecTipSet
+					mockECFinality.ThresholdDepth = int(targetHeight - 200)
+					mockECFinality.Err = nil
+				},
+				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"tag":"finalized"}],"id":1}`,
+				wantTipSet:         tipSetAtHeight(500),
+				wantResponseStatus: http.StatusOK,
+			},
+			{
+				name: "ec calculator error falls back to static ec finality",
+				when: func(t *testing.T) {
+					mockF3.Running = false
+					mockECFinality.FinalizedTipSet = nil
+					mockECFinality.ThresholdDepth = -1
+					mockECFinality.Err = errors.New("calculator broken")
+				},
+				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"tag":"finalized"}],"id":1}`,
+				wantTipSet:         ecFinalized,
+				wantResponseStatus: http.StatusOK,
+			},
+			{
+				name: "ec calculator not met falls back to static ec finality",
+				when: func(t *testing.T) {
+					mockF3.Running = false
+					mockECFinality.FinalizedTipSet = nil
+					mockECFinality.ThresholdDepth = -1
+					mockECFinality.Err = nil
+				},
+				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"tag":"finalized"}],"id":1}`,
+				wantTipSet:         ecFinalized,
+				wantResponseStatus: http.StatusOK,
+			},
+			{
+				name: "safe tag uses ec calculator when finalized beats safe distance",
+				when: func(t *testing.T) {
+					mockF3.Running = false
+					ecTipSet := tipSetAtHeight(900)(t) // well ahead of safe distance
+					mockECFinality.FinalizedTipSet = ecTipSet
+					mockECFinality.ThresholdDepth = int(targetHeight - 900)
+					mockECFinality.Err = nil
+				},
+				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"tag":"safe"}],"id":1}`,
+				wantTipSet:         tipSetAtHeight(900),
+				wantResponseStatus: http.StatusOK,
+			},
+			{
 				name: "height with anchor to latest",
 				when: func(t *testing.T) {
 					mockF3.Running = true
 					mockF3.Finalizing = true
 					mockF3.LatestCert = plausibleCertAt(t, f3FinalizedEpoch)
 					mockF3.LatestCertErr = nil
+					mockECFinality.FinalizedTipSet = nil
+					mockECFinality.ThresholdDepth = -1
+					mockECFinality.Err = nil
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"height":{"at":890,"anchor":{"tag":"latest"}}}],"id":1}`,
 				wantTipSet:         tipSetAtHeight(890),
@@ -442,6 +515,122 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 						require.NoError(t, err)
 						require.Equal(t, wantActor, resultOrError.Result)
 					}
+				}
+			})
+		}
+	})
+	t.Run("ChainGetTipSetFinalityStatus", func(t *testing.T) {
+		for _, test := range []struct {
+			name                  string
+			when                  func(t *testing.T)
+			wantECThresholdDepth  int
+			wantECFinalizedHeight abi.ChainEpoch // -1 means nil
+			wantF3FinalizedHeight abi.ChainEpoch // -1 means nil
+			wantFinalizedHeight   abi.ChainEpoch // -1 means check non-nil but dynamic
+		}{
+			{
+				name: "ec calculator with f3 ahead",
+				when: func(t *testing.T) {
+					mockF3.Running = true
+					mockF3.Finalizing = true
+					mockF3.LatestCertErr = nil
+					mockF3.LatestCert = plausibleCertAt(t, 500)
+					ecTipSet := tipSetAtHeight(200)(t)
+					mockECFinality.FinalizedTipSet = ecTipSet
+					mockECFinality.ThresholdDepth = int(targetHeight - 200)
+					mockECFinality.Err = nil
+				},
+				wantECThresholdDepth:  int(targetHeight - 200),
+				wantECFinalizedHeight: 200,
+				wantF3FinalizedHeight: 500,
+				wantFinalizedHeight:   500,
+			},
+			{
+				name: "ec calculator ahead of f3",
+				when: func(t *testing.T) {
+					mockF3.Running = true
+					mockF3.Finalizing = true
+					mockF3.LatestCertErr = nil
+					mockF3.LatestCert = plausibleCertAt(t, 50)
+					ecTipSet := tipSetAtHeight(200)(t)
+					mockECFinality.FinalizedTipSet = ecTipSet
+					mockECFinality.ThresholdDepth = int(targetHeight - 200)
+					mockECFinality.Err = nil
+				},
+				wantECThresholdDepth:  int(targetHeight - 200),
+				wantECFinalizedHeight: 200,
+				wantF3FinalizedHeight: 50,
+				wantFinalizedHeight:   200,
+			},
+			{
+				name: "ec calculator not met and no f3 falls back to static finality",
+				when: func(t *testing.T) {
+					mockF3.Running = false
+					mockECFinality.FinalizedTipSet = nil
+					mockECFinality.ThresholdDepth = -1
+					mockECFinality.Err = nil
+				},
+				wantECThresholdDepth:  -1,
+				wantECFinalizedHeight: -1,
+				wantF3FinalizedHeight: -1,
+				wantFinalizedHeight:   -1, // dynamic: head - policy.ChainFinality
+			},
+			{
+				name: "ec calculator error falls back to static finality",
+				when: func(t *testing.T) {
+					mockF3.Running = false
+					mockECFinality.FinalizedTipSet = nil
+					mockECFinality.ThresholdDepth = -1
+					mockECFinality.Err = errors.New("calculator broken")
+				},
+				wantECThresholdDepth:  -1,
+				wantECFinalizedHeight: -1,
+				wantF3FinalizedHeight: -1,
+				wantFinalizedHeight:   -1, // dynamic: head - policy.ChainFinality
+			},
+		} {
+			t.Run(test.name, func(t *testing.T) {
+				if test.when != nil {
+					test.when(t)
+				}
+
+				var gotResponseCode int
+				var gotResponseBody []byte
+				var resultOrError struct {
+					Result *types.FinalityStatus `json:"result,omitempty"`
+					Error  *struct {
+						Code    int    `json:"code,omitempty"`
+						Message string `json:"message,omitempty"`
+					} `json:"error,omitempty"`
+				}
+
+				gotResponseCode, gotResponseBody = subject.DoRawRPCRequest(t, 2, `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSetFinalityStatus","params":[],"id":1}`)
+				require.Equal(t, http.StatusOK, gotResponseCode, string(gotResponseBody))
+				require.NoError(t, json.Unmarshal(gotResponseBody, &resultOrError))
+				require.Nil(t, resultOrError.Error)
+				require.NotNil(t, resultOrError.Result)
+				status := resultOrError.Result
+
+				require.NotNil(t, status.Head, "Head should always be set")
+				require.Equal(t, test.wantECThresholdDepth, status.ECFinalityThresholdDepth)
+
+				if test.wantECFinalizedHeight >= 0 {
+					require.NotNil(t, status.ECFinalizedTipSet)
+					require.Equal(t, test.wantECFinalizedHeight, status.ECFinalizedTipSet.Height())
+				} else {
+					require.Nil(t, status.ECFinalizedTipSet)
+				}
+
+				if test.wantF3FinalizedHeight >= 0 {
+					require.NotNil(t, status.F3FinalizedTipSet)
+					require.Equal(t, test.wantF3FinalizedHeight, status.F3FinalizedTipSet.Height())
+				} else {
+					require.Nil(t, status.F3FinalizedTipSet)
+				}
+
+				require.NotNil(t, status.FinalizedTipSet, "FinalizedTipSet should always be set")
+				if test.wantFinalizedHeight >= 0 {
+					require.Equal(t, test.wantFinalizedHeight, status.FinalizedTipSet.Height())
 				}
 			})
 		}

@@ -299,7 +299,7 @@ func testReaderRedirectDrop(t *testing.T) {
 	}()
 
 	<-contCh             // exec enter ReadAllWaiting
-	contCh <- struct{}{} // stert subcall
+	contCh <- struct{}{} // start subcall
 	<-contCh             // wait for subcall to finish
 
 	done.Wait()
@@ -328,7 +328,7 @@ func testReaderRedirectDrop(t *testing.T) {
 	// ReadAllWaiting should fail
 	done.Wait()
 
-	// resume execution in ReadAllWaiting, calling redicect
+	// resume execution in ReadAllWaiting, calling redirect
 	contCh <- struct{}{}
 
 	// wait for subcall to finish

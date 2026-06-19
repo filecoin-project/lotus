@@ -19,7 +19,7 @@ var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandQuicknet,
 }
 
-const GenesisNetworkVersion = network.Version27
+const GenesisNetworkVersion = network.Version28
 
 var NetworkBundle = "butterflynet"
 var ActorDebugging = false
@@ -84,7 +84,8 @@ const UpgradeTockFixHeight = -103
 
 var UpgradeGoldenWeekHeight = abi.ChainEpoch(-31)
 
-// ??????
+const UpgradeFireHorseHeight = -32
+
 const UpgradeXxHeight = 999999999999999
 
 var ConsensusMinerMinPower = abi.NewStoragePower(2 << 30)

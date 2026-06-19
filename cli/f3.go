@@ -179,7 +179,7 @@ var f3SubCmdPowerTable = &cli.Command{
 
 				actualPowerTableCID, err := certs.MakePowerTableCID(result.PowerTable.Entries)
 				if err != nil {
-					return fmt.Errorf("gettingh power table CID at instance %d: %w", instance, err)
+					return fmt.Errorf("getting power table CID at instance %d: %w", instance, err)
 				}
 				if !cid.Undef.Equals(expectedPowerTableCID) && !expectedPowerTableCID.Equals(actualPowerTableCID) {
 					return fmt.Errorf("expected power table CID %s at instance %d, got: %s", expectedPowerTableCID, instance, actualPowerTableCID)
@@ -265,7 +265,7 @@ var f3SubCmdPowerTable = &cli.Command{
 
 				actualPowerTableCID, err := certs.MakePowerTableCID(powerEntries)
 				if err != nil {
-					return fmt.Errorf("gettingh power table CID at instance %d: %w", instance, err)
+					return fmt.Errorf("getting power table CID at instance %d: %w", instance, err)
 				}
 				if !cid.Undef.Equals(expectedPowerTableCID) && !expectedPowerTableCID.Equals(actualPowerTableCID) {
 					return fmt.Errorf("expected power table CID %s at instance %d, got: %s", expectedPowerTableCID, instance, actualPowerTableCID)
@@ -568,7 +568,7 @@ var f3FlagInstanceLimit = &cli.IntFlag{
 }
 var f3FlagReverseOrder = &cli.BoolFlag{
 	Name:  "reverse",
-	Usage: "Reverses the default order of output. ",
+	Usage: "Reverses the default order of output.",
 }
 var f3FlagPowerTableFromEC = &cli.BoolFlag{
 	Name:  "ec",

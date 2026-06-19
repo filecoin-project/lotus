@@ -23,14 +23,22 @@ type F3CertificateProvider interface {
 	F3GetLatestCertificate(ctx context.Context) (*certs.FinalityCertificate, error)
 }
 
+// ECFinalityProvider provides a probabilistic EC finality tipset based on the
+// FRC-0089 calculator. The provider may return nil if the finality threshold is
+// not met within the search range.
+type ECFinalityProvider interface {
+	GetFinalizedTipSet(ctx context.Context) (*types.TipSet, error)
+}
+
 type tipSetResolver struct {
 	cs               ChainStore
 	f3               F3CertificateProvider // can be nil if disabled
+	ecFinality       ECFinalityProvider    // can be nil if disabled
 	useF3ForFinality bool                  // if true, attempt to use F3 to determine "finalized" tipset
 }
 
-func NewTipSetResolver(cs ChainStore, f3 F3CertificateProvider, useF3ForFinality bool) TipSetResolver {
-	return &tipSetResolver{cs: cs, f3: f3, useF3ForFinality: useF3ForFinality}
+func NewTipSetResolver(cs ChainStore, f3 F3CertificateProvider, ecFinality ECFinalityProvider, useF3ForFinality bool) TipSetResolver {
+	return &tipSetResolver{cs: cs, f3: f3, ecFinality: ecFinality, useF3ForFinality: useF3ForFinality}
 }
 
 func (tsr *tipSetResolver) getLatestF3Cert(ctx context.Context) (*certs.FinalityCertificate, error) {
@@ -63,55 +71,53 @@ func (tsr *tipSetResolver) getFinalizedF3TipSetFromCert(ctx context.Context, cer
 }
 
 func (tsr *tipSetResolver) getSafeF3TipSet(ctx context.Context) (*types.TipSet, error) {
-	// To determine the safe tipset, we check the finalized F3 tipset and compare that to the tipset
-	// we consider safe from EC and return the higher of the two.
-	var f3Ts *types.TipSet
-	cert, err := tsr.getLatestF3Cert(ctx)
-	if err != nil {
-		return nil, err
-	} else if cert != nil {
-		f3Ts, err = tsr.getFinalizedF3TipSetFromCert(ctx, cert)
-		if err != nil {
-			return nil, err
-		}
-	} // else F3 is disabled or not ready
-	ecTs, err := tsr.getSafeECTipSet(ctx)
+	// Compute the full finalized tipset (EC calculator + F3, whichever is more recent), then compare
+	// with the static safe distance. If finalization is ahead of the safe distance, return the
+	// finalized tipset since it provides a stronger guarantee.
+	finalized, err := tsr.getFinalizedF3TipSet(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if f3Ts == nil || f3Ts.Height() < ecTs.Height() {
-		return ecTs, nil
+	ecSafe, err := tsr.getSafeECTipSet(ctx)
+	if err != nil {
+		return nil, err
 	}
-	// F3 is finalizing a higher height than EC safe; return F3 tipset
-	return f3Ts, nil
+	if finalized != nil && finalized.Height() >= ecSafe.Height() {
+		return finalized, nil
+	}
+	return ecSafe, nil
 }
 
 func (tsr *tipSetResolver) getFinalizedF3TipSet(ctx context.Context) (*types.TipSet, error) {
+	// Always compute EC finality so it can be compared with F3.
+	ecTs, err := tsr.getFinalizedECTipSet(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	cert, err := tsr.getLatestF3Cert(ctx)
 	if err != nil {
 		return nil, err
-	} else if cert == nil {
-		// F3 is disabled or not ready; fall back to EC finality.
-		return tsr.getFinalizedECTipSet(ctx)
 	}
-	// Check F3 finalized tipset against the heaviest tipset, and if it is too far
-	// behind fall back to EC.
-	head := tsr.cs.GetHeaviestTipSet()
-	if head == nil {
-		return nil, xerrors.Errorf("no known heaviest tipset")
+
+	// If not operating, or the F3 finalized tipset is behind EC finality, just use EC finality.
+	if cert == nil || abi.ChainEpoch(cert.ECChain.Head().Epoch) <= ecTs.Height() {
+		return ecTs, nil
 	}
-	f3FinalizedHeight := abi.ChainEpoch(cert.ECChain.Head().Epoch)
-	if head.Height()-f3FinalizedHeight > policy.ChainFinality {
-		log.Debugw("Falling back to EC finalized tipset as the latest F3 finalized tipset is too far behind", "headHeight", head.Height(), "f3FinalizedHeight", f3FinalizedHeight)
-		return tsr.getFinalizedECTipSet(ctx)
-	}
-	// F3 is finalizing a higher height than EC safe; return F3 tipset
+
 	return tsr.getFinalizedF3TipSetFromCert(ctx, cert)
 }
 
 func (tsr *tipSetResolver) getSafeECTipSet(ctx context.Context) (*types.TipSet, error) {
+	finalized, err := tsr.getFinalizedECTipSet(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	head := tsr.cs.GetHeaviestTipSet()
-	height := head.Height()
+	if head == nil {
+		return nil, xerrors.Errorf("no known heaviest tipset")
+	}
 
 	// Default safe distance (used for v2 APIs, or v1 APIs when F3 is finalizing)
 	safeDistance := buildconstants.SafeHeightDistance
@@ -122,12 +128,26 @@ func (tsr *tipSetResolver) getSafeECTipSet(ctx context.Context) (*types.TipSet, 
 		safeDistance = ethtypes.SafeEpochDelay
 	}
 
-	safeHeight := max(0, height-safeDistance)
+	safeHeight := max(0, head.Height()-safeDistance)
+	if finalized != nil && finalized.Height() >= safeHeight {
+		return finalized, nil
+	}
 	return tsr.cs.GetTipsetByHeight(ctx, safeHeight, head, true)
 }
 
 func (tsr *tipSetResolver) getFinalizedECTipSet(ctx context.Context) (*types.TipSet, error) {
+	if tsr.ecFinality != nil {
+		ts, err := tsr.ecFinality.GetFinalizedTipSet(ctx)
+		if err != nil {
+			log.Debugw("EC finality calculator error, falling back to static finality", "err", err)
+		} else if ts != nil {
+			return ts, nil
+		}
+	}
 	head := tsr.cs.GetHeaviestTipSet()
+	if head == nil {
+		return nil, xerrors.Errorf("no known heaviest tipset")
+	}
 	height := max(0, head.Height()-policy.ChainFinality)
 	return tsr.cs.GetTipsetByHeight(ctx, height, head, true)
 }

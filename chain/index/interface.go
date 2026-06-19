@@ -18,6 +18,7 @@ import (
 
 var ErrNotFound = errors.New("not found in index")
 var ErrClosed = errors.New("index closed")
+var ErrBackfillRequired = errors.New("chain index requires backfill")
 
 // MsgInfo is the Message metadata the index tracks.
 type MsgInfo struct {
@@ -44,6 +45,7 @@ type EventFilter struct {
 	MinHeight abi.ChainEpoch // minimum epoch to apply filter or -1 if no minimum
 	MaxHeight abi.ChainEpoch // maximum epoch to apply filter or -1 if no maximum
 	TipsetCid cid.Cid
+	MsgCid    cid.Cid           // optional: restrict to events emitted by a single message; pairs with TipsetCid or a height range
 	Addresses []address.Address // list of actor addresses that are extpected to emit the event
 
 	KeysWithCodec map[string][]types.ActorEventBlock // map of key names to a list of alternate values that may match
@@ -70,6 +72,7 @@ type Indexer interface {
 	GetMsgInfo(ctx context.Context, m cid.Cid) (*MsgInfo, error)
 
 	GetEventsForFilter(ctx context.Context, f *EventFilter) ([]*CollectedEvent, error)
+	GetTipsetBloom(ctx context.Context, tipsetKeyCid cid.Cid) ([]byte, bool, error)
 
 	ChainValidateIndex(ctx context.Context, epoch abi.ChainEpoch, backfill bool) (*types.IndexValidation, error)
 

@@ -2,7 +2,7 @@
     "openrpc": "1.2.6",
     "info": {
         "title": "Lotus RPC API",
-        "version": "1.35.1-dev"
+        "version": "v1.36.1-dev"
     },
     "methods": [
         {
@@ -156,6 +156,334 @@
             }
         },
         {
+            "name": "Filecoin.ChainGetTipSetFinalityStatus",
+            "description": "```go\nfunc (s *FullNodeStruct) ChainGetTipSetFinalityStatus(p0 context.Context) (*types.FinalityStatus, error) {\n\tif s.Internal.ChainGetTipSetFinalityStatus == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.ChainGetTipSetFinalityStatus(p0)\n}\n```",
+            "summary": "ChainGetTipSetFinalityStatus returns a breakdown of how the node is\ncurrently determining finality. The result includes the EC probabilistic\nfinality depth (based on observed chain health), the F3-finalized tipset\n(if available), and the overall finalized tipset the node is using.\n\nUseful for monitoring chain health and diagnosing finality lag.\n\nExperimental: This API is experimental and may change without notice.\n",
+            "paramStructure": "by-position",
+            "params": [],
+            "result": {
+                "name": "*types.FinalityStatus",
+                "description": "*types.FinalityStatus",
+                "summary": "",
+                "schema": {
+                    "examples": [
+                        {
+                            "ecFinalityThresholdDepth": 30,
+                            "ecFinalizedTipSet": {
+                                "Cids": [
+                                    {
+                                        "/": "bafy2bzacedo7hjsumaajt6sbor42qycvjyk6goqe4oi4o4ddsjxkdeqrqf42c"
+                                    }
+                                ],
+                                "Blocks": [
+                                    {
+                                        "Miner": "f01938223",
+                                        "Ticket": {
+                                            "VRFProof": "rIPyBy+F827Szc5oN/6ylCmpzxfAWr7aI5F4YJrN4pLSyknkcJI3ivsCo2KKjQVZFRnFyEus1maD5LdzQpnFRKMla4138qEuML+Ne/fsgOMrUEAeL34ceVwJd+Mt4Jrz"
+                                        },
+                                        "ElectionProof": {
+                                            "WinCount": 1,
+                                            "VRFProof": "sN51JqjZNf+xWxwoo+wlMH1bpXI9T3wUIrla6FpwTxU4jC1z+ab5NFU/B2ZdDITTE+u8qaiibtLkld5lhNcOEOUqwKNyJ4nwFo5vAhWqvOTNdOiZmxsKpWG0NZUoXb/+"
+                                        },
+                                        "BeaconEntries": [
+                                            {
+                                                "Round": 17133822,
+                                                "Data": "tH4q8euIaP9/QRJt8ALfkBvttSmQ/DOAt8+37wGGV5f8kkhzEFrHhskitNnPS70j"
+                                            },
+                                            {
+                                                "Round": 17133832,
+                                                "Data": "uQD5cEn8U69+sPjpccT8Bm0jVrnXLScf2jBkLJNHvAHLA6tPsZDREzpBIckpVvPy"
+                                            }
+                                        ],
+                                        "WinPoStProof": [
+                                            {
+                                                "PoStProof": 3,
+                                                "ProofBytes": "qOPLMhMui8qm/rE2y/UceyBDv5JvRCH5Fc5Ul+kuN190XDcMme5eKURUCmE2sN1HoQ2dMZX+xNZY351dbG93H/tUr6wuNhkvmemi2Xi62YvqU36/kJh+K2YBiW7h/4LXCUTP/6XAOONOPl+j9GqS7RQxruPLfIyehvzVC0C8dB8+SVWtAnRKRPUUOPJvyHKejlrCyzWXOz/I7JG2/qEGLD0xwazBVwML1vVvuE5NzXeOoQGlnB2PwSRb5Cn8FH8Q"
+                                            }
+                                        ],
+                                        "Parents": [
+                                            {
+                                                "/": "bafy2bzaceba2kdmysmi5ieugzvv5np7f2lobayzpvtk777du74n7jq6xhynda"
+                                            },
+                                            {
+                                                "/": "bafy2bzacecrye24tkqrvvddcf62gfi4z4o33z2tdedbpaalordozaxfrz2jyi"
+                                            },
+                                            {
+                                                "/": "bafy2bzaceab5mrohjvnp3mz7mo33ky7qqlmssrs7veqmjrgouafxyhnd5dy66"
+                                            }
+                                        ],
+                                        "ParentWeight": "116013147118",
+                                        "Height": 4863283,
+                                        "ParentStateRoot": {
+                                            "/": "bafy2bzaceajxzsvzuq3ddzxfrs2jlaxsooqmgdy5uxbqujnjy3y56iumzzy7u"
+                                        },
+                                        "ParentMessageReceipts": {
+                                            "/": "bafy2bzacecfcx2ykqucyv3gkyrcy3upwrvdraz3ktfg7phkqysefdwsggglac"
+                                        },
+                                        "Messages": {
+                                            "/": "bafy2bzacebzofmh6migvc4v6qsme6vuxlhi6pv2ocy4apyic3uihjqm7dum3u"
+                                        },
+                                        "BLSAggregate": {
+                                            "Type": 2,
+                                            "Data": "krFATGA0OBu/kFwtXsThVtKCkppnU7045uTURCeiOeJttxuXfx3wqJrLkCytnJFWFLVC+tiVWI4BxC3wqc9r6eAlNr9dEBx+3KwML/RFG/b5grmknLpGWn7g1EB/2T4y"
+                                        },
+                                        "Timestamp": 1744204890,
+                                        "BlockSig": {
+                                            "Type": 2,
+                                            "Data": "pWiUr+M8xxTxLED7GuU586gSfZCaHyLbLj0uS0HhKYRtHuyG47fIrfIT/04OCmQvEXBD8pFraWbMc3tnFrSsM1mIBJ5M38UPUfXDSspo+QGdouo2kll2X+VNKY3ajb1K"
+                                        },
+                                        "ForkSignaling": 0,
+                                        "ParentBaseFee": "20592036"
+                                    }
+                                ],
+                                "Height": 4863283
+                            },
+                            "f3FinalizedTipSet": {
+                                "Cids": [
+                                    {
+                                        "/": "bafy2bzacedo7hjsumaajt6sbor42qycvjyk6goqe4oi4o4ddsjxkdeqrqf42c"
+                                    }
+                                ],
+                                "Blocks": [
+                                    {
+                                        "Miner": "f01938223",
+                                        "Ticket": {
+                                            "VRFProof": "rIPyBy+F827Szc5oN/6ylCmpzxfAWr7aI5F4YJrN4pLSyknkcJI3ivsCo2KKjQVZFRnFyEus1maD5LdzQpnFRKMla4138qEuML+Ne/fsgOMrUEAeL34ceVwJd+Mt4Jrz"
+                                        },
+                                        "ElectionProof": {
+                                            "WinCount": 1,
+                                            "VRFProof": "sN51JqjZNf+xWxwoo+wlMH1bpXI9T3wUIrla6FpwTxU4jC1z+ab5NFU/B2ZdDITTE+u8qaiibtLkld5lhNcOEOUqwKNyJ4nwFo5vAhWqvOTNdOiZmxsKpWG0NZUoXb/+"
+                                        },
+                                        "BeaconEntries": [
+                                            {
+                                                "Round": 17133822,
+                                                "Data": "tH4q8euIaP9/QRJt8ALfkBvttSmQ/DOAt8+37wGGV5f8kkhzEFrHhskitNnPS70j"
+                                            },
+                                            {
+                                                "Round": 17133832,
+                                                "Data": "uQD5cEn8U69+sPjpccT8Bm0jVrnXLScf2jBkLJNHvAHLA6tPsZDREzpBIckpVvPy"
+                                            }
+                                        ],
+                                        "WinPoStProof": [
+                                            {
+                                                "PoStProof": 3,
+                                                "ProofBytes": "qOPLMhMui8qm/rE2y/UceyBDv5JvRCH5Fc5Ul+kuN190XDcMme5eKURUCmE2sN1HoQ2dMZX+xNZY351dbG93H/tUr6wuNhkvmemi2Xi62YvqU36/kJh+K2YBiW7h/4LXCUTP/6XAOONOPl+j9GqS7RQxruPLfIyehvzVC0C8dB8+SVWtAnRKRPUUOPJvyHKejlrCyzWXOz/I7JG2/qEGLD0xwazBVwML1vVvuE5NzXeOoQGlnB2PwSRb5Cn8FH8Q"
+                                            }
+                                        ],
+                                        "Parents": [
+                                            {
+                                                "/": "bafy2bzaceba2kdmysmi5ieugzvv5np7f2lobayzpvtk777du74n7jq6xhynda"
+                                            },
+                                            {
+                                                "/": "bafy2bzacecrye24tkqrvvddcf62gfi4z4o33z2tdedbpaalordozaxfrz2jyi"
+                                            },
+                                            {
+                                                "/": "bafy2bzaceab5mrohjvnp3mz7mo33ky7qqlmssrs7veqmjrgouafxyhnd5dy66"
+                                            }
+                                        ],
+                                        "ParentWeight": "116013147118",
+                                        "Height": 4863283,
+                                        "ParentStateRoot": {
+                                            "/": "bafy2bzaceajxzsvzuq3ddzxfrs2jlaxsooqmgdy5uxbqujnjy3y56iumzzy7u"
+                                        },
+                                        "ParentMessageReceipts": {
+                                            "/": "bafy2bzacecfcx2ykqucyv3gkyrcy3upwrvdraz3ktfg7phkqysefdwsggglac"
+                                        },
+                                        "Messages": {
+                                            "/": "bafy2bzacebzofmh6migvc4v6qsme6vuxlhi6pv2ocy4apyic3uihjqm7dum3u"
+                                        },
+                                        "BLSAggregate": {
+                                            "Type": 2,
+                                            "Data": "krFATGA0OBu/kFwtXsThVtKCkppnU7045uTURCeiOeJttxuXfx3wqJrLkCytnJFWFLVC+tiVWI4BxC3wqc9r6eAlNr9dEBx+3KwML/RFG/b5grmknLpGWn7g1EB/2T4y"
+                                        },
+                                        "Timestamp": 1744204890,
+                                        "BlockSig": {
+                                            "Type": 2,
+                                            "Data": "pWiUr+M8xxTxLED7GuU586gSfZCaHyLbLj0uS0HhKYRtHuyG47fIrfIT/04OCmQvEXBD8pFraWbMc3tnFrSsM1mIBJ5M38UPUfXDSspo+QGdouo2kll2X+VNKY3ajb1K"
+                                        },
+                                        "ForkSignaling": 0,
+                                        "ParentBaseFee": "20592036"
+                                    }
+                                ],
+                                "Height": 4863283
+                            },
+                            "finalizedTipSet": {
+                                "Cids": [
+                                    {
+                                        "/": "bafy2bzacedo7hjsumaajt6sbor42qycvjyk6goqe4oi4o4ddsjxkdeqrqf42c"
+                                    }
+                                ],
+                                "Blocks": [
+                                    {
+                                        "Miner": "f01938223",
+                                        "Ticket": {
+                                            "VRFProof": "rIPyBy+F827Szc5oN/6ylCmpzxfAWr7aI5F4YJrN4pLSyknkcJI3ivsCo2KKjQVZFRnFyEus1maD5LdzQpnFRKMla4138qEuML+Ne/fsgOMrUEAeL34ceVwJd+Mt4Jrz"
+                                        },
+                                        "ElectionProof": {
+                                            "WinCount": 1,
+                                            "VRFProof": "sN51JqjZNf+xWxwoo+wlMH1bpXI9T3wUIrla6FpwTxU4jC1z+ab5NFU/B2ZdDITTE+u8qaiibtLkld5lhNcOEOUqwKNyJ4nwFo5vAhWqvOTNdOiZmxsKpWG0NZUoXb/+"
+                                        },
+                                        "BeaconEntries": [
+                                            {
+                                                "Round": 17133822,
+                                                "Data": "tH4q8euIaP9/QRJt8ALfkBvttSmQ/DOAt8+37wGGV5f8kkhzEFrHhskitNnPS70j"
+                                            },
+                                            {
+                                                "Round": 17133832,
+                                                "Data": "uQD5cEn8U69+sPjpccT8Bm0jVrnXLScf2jBkLJNHvAHLA6tPsZDREzpBIckpVvPy"
+                                            }
+                                        ],
+                                        "WinPoStProof": [
+                                            {
+                                                "PoStProof": 3,
+                                                "ProofBytes": "qOPLMhMui8qm/rE2y/UceyBDv5JvRCH5Fc5Ul+kuN190XDcMme5eKURUCmE2sN1HoQ2dMZX+xNZY351dbG93H/tUr6wuNhkvmemi2Xi62YvqU36/kJh+K2YBiW7h/4LXCUTP/6XAOONOPl+j9GqS7RQxruPLfIyehvzVC0C8dB8+SVWtAnRKRPUUOPJvyHKejlrCyzWXOz/I7JG2/qEGLD0xwazBVwML1vVvuE5NzXeOoQGlnB2PwSRb5Cn8FH8Q"
+                                            }
+                                        ],
+                                        "Parents": [
+                                            {
+                                                "/": "bafy2bzaceba2kdmysmi5ieugzvv5np7f2lobayzpvtk777du74n7jq6xhynda"
+                                            },
+                                            {
+                                                "/": "bafy2bzacecrye24tkqrvvddcf62gfi4z4o33z2tdedbpaalordozaxfrz2jyi"
+                                            },
+                                            {
+                                                "/": "bafy2bzaceab5mrohjvnp3mz7mo33ky7qqlmssrs7veqmjrgouafxyhnd5dy66"
+                                            }
+                                        ],
+                                        "ParentWeight": "116013147118",
+                                        "Height": 4863283,
+                                        "ParentStateRoot": {
+                                            "/": "bafy2bzaceajxzsvzuq3ddzxfrs2jlaxsooqmgdy5uxbqujnjy3y56iumzzy7u"
+                                        },
+                                        "ParentMessageReceipts": {
+                                            "/": "bafy2bzacecfcx2ykqucyv3gkyrcy3upwrvdraz3ktfg7phkqysefdwsggglac"
+                                        },
+                                        "Messages": {
+                                            "/": "bafy2bzacebzofmh6migvc4v6qsme6vuxlhi6pv2ocy4apyic3uihjqm7dum3u"
+                                        },
+                                        "BLSAggregate": {
+                                            "Type": 2,
+                                            "Data": "krFATGA0OBu/kFwtXsThVtKCkppnU7045uTURCeiOeJttxuXfx3wqJrLkCytnJFWFLVC+tiVWI4BxC3wqc9r6eAlNr9dEBx+3KwML/RFG/b5grmknLpGWn7g1EB/2T4y"
+                                        },
+                                        "Timestamp": 1744204890,
+                                        "BlockSig": {
+                                            "Type": 2,
+                                            "Data": "pWiUr+M8xxTxLED7GuU586gSfZCaHyLbLj0uS0HhKYRtHuyG47fIrfIT/04OCmQvEXBD8pFraWbMc3tnFrSsM1mIBJ5M38UPUfXDSspo+QGdouo2kll2X+VNKY3ajb1K"
+                                        },
+                                        "ForkSignaling": 0,
+                                        "ParentBaseFee": "20592036"
+                                    }
+                                ],
+                                "Height": 4863283
+                            },
+                            "head": {
+                                "Cids": [
+                                    {
+                                        "/": "bafy2bzacedo7hjsumaajt6sbor42qycvjyk6goqe4oi4o4ddsjxkdeqrqf42c"
+                                    }
+                                ],
+                                "Blocks": [
+                                    {
+                                        "Miner": "f01938223",
+                                        "Ticket": {
+                                            "VRFProof": "rIPyBy+F827Szc5oN/6ylCmpzxfAWr7aI5F4YJrN4pLSyknkcJI3ivsCo2KKjQVZFRnFyEus1maD5LdzQpnFRKMla4138qEuML+Ne/fsgOMrUEAeL34ceVwJd+Mt4Jrz"
+                                        },
+                                        "ElectionProof": {
+                                            "WinCount": 1,
+                                            "VRFProof": "sN51JqjZNf+xWxwoo+wlMH1bpXI9T3wUIrla6FpwTxU4jC1z+ab5NFU/B2ZdDITTE+u8qaiibtLkld5lhNcOEOUqwKNyJ4nwFo5vAhWqvOTNdOiZmxsKpWG0NZUoXb/+"
+                                        },
+                                        "BeaconEntries": [
+                                            {
+                                                "Round": 17133822,
+                                                "Data": "tH4q8euIaP9/QRJt8ALfkBvttSmQ/DOAt8+37wGGV5f8kkhzEFrHhskitNnPS70j"
+                                            },
+                                            {
+                                                "Round": 17133832,
+                                                "Data": "uQD5cEn8U69+sPjpccT8Bm0jVrnXLScf2jBkLJNHvAHLA6tPsZDREzpBIckpVvPy"
+                                            }
+                                        ],
+                                        "WinPoStProof": [
+                                            {
+                                                "PoStProof": 3,
+                                                "ProofBytes": "qOPLMhMui8qm/rE2y/UceyBDv5JvRCH5Fc5Ul+kuN190XDcMme5eKURUCmE2sN1HoQ2dMZX+xNZY351dbG93H/tUr6wuNhkvmemi2Xi62YvqU36/kJh+K2YBiW7h/4LXCUTP/6XAOONOPl+j9GqS7RQxruPLfIyehvzVC0C8dB8+SVWtAnRKRPUUOPJvyHKejlrCyzWXOz/I7JG2/qEGLD0xwazBVwML1vVvuE5NzXeOoQGlnB2PwSRb5Cn8FH8Q"
+                                            }
+                                        ],
+                                        "Parents": [
+                                            {
+                                                "/": "bafy2bzaceba2kdmysmi5ieugzvv5np7f2lobayzpvtk777du74n7jq6xhynda"
+                                            },
+                                            {
+                                                "/": "bafy2bzacecrye24tkqrvvddcf62gfi4z4o33z2tdedbpaalordozaxfrz2jyi"
+                                            },
+                                            {
+                                                "/": "bafy2bzaceab5mrohjvnp3mz7mo33ky7qqlmssrs7veqmjrgouafxyhnd5dy66"
+                                            }
+                                        ],
+                                        "ParentWeight": "116013147118",
+                                        "Height": 4863283,
+                                        "ParentStateRoot": {
+                                            "/": "bafy2bzaceajxzsvzuq3ddzxfrs2jlaxsooqmgdy5uxbqujnjy3y56iumzzy7u"
+                                        },
+                                        "ParentMessageReceipts": {
+                                            "/": "bafy2bzacecfcx2ykqucyv3gkyrcy3upwrvdraz3ktfg7phkqysefdwsggglac"
+                                        },
+                                        "Messages": {
+                                            "/": "bafy2bzacebzofmh6migvc4v6qsme6vuxlhi6pv2ocy4apyic3uihjqm7dum3u"
+                                        },
+                                        "BLSAggregate": {
+                                            "Type": 2,
+                                            "Data": "krFATGA0OBu/kFwtXsThVtKCkppnU7045uTURCeiOeJttxuXfx3wqJrLkCytnJFWFLVC+tiVWI4BxC3wqc9r6eAlNr9dEBx+3KwML/RFG/b5grmknLpGWn7g1EB/2T4y"
+                                        },
+                                        "Timestamp": 1744204890,
+                                        "BlockSig": {
+                                            "Type": 2,
+                                            "Data": "pWiUr+M8xxTxLED7GuU586gSfZCaHyLbLj0uS0HhKYRtHuyG47fIrfIT/04OCmQvEXBD8pFraWbMc3tnFrSsM1mIBJ5M38UPUfXDSspo+QGdouo2kll2X+VNKY3ajb1K"
+                                        },
+                                        "ForkSignaling": 0,
+                                        "ParentBaseFee": "20592036"
+                                    }
+                                ],
+                                "Height": 4863283
+                            }
+                        }
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                        "ecFinalityThresholdDepth": {
+                            "title": "number",
+                            "type": "number"
+                        },
+                        "ecFinalizedTipSet": {
+                            "additionalProperties": false,
+                            "type": "object"
+                        },
+                        "f3FinalizedTipSet": {
+                            "additionalProperties": false,
+                            "type": "object"
+                        },
+                        "finalizedTipSet": {
+                            "additionalProperties": false,
+                            "type": "object"
+                        },
+                        "head": {
+                            "additionalProperties": false,
+                            "type": "object"
+                        }
+                    },
+                    "type": [
+                        "object"
+                    ]
+                },
+                "required": true,
+                "deprecated": false
+            },
+            "deprecated": false,
+            "externalDocs": {
+                "description": "Github remote link",
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L257"
+            }
+        },
+        {
             "name": "Filecoin.EthAccounts",
             "description": "```go\nfunc (s *FullNodeStruct) EthAccounts(p0 context.Context) ([]ethtypes.EthAddress, error) {\n\tif s.Internal.EthAccounts == nil {\n\t\treturn *new([]ethtypes.EthAddress), ErrNotSupported\n\t}\n\treturn s.Internal.EthAccounts(p0)\n}\n```",
             "summary": "EthAccounts returns a list of Ethereum accounts managed by the node.\nMaps to JSON-RPC method: \"eth_accounts\".\nLotus does not manage private keys, so this will always return an empty array.\n",
@@ -199,7 +527,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L257"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L268"
             }
         },
         {
@@ -254,7 +582,35 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L268"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L279"
+            }
+        },
+        {
+            "name": "Filecoin.EthBaseFee",
+            "description": "```go\nfunc (s *FullNodeStruct) EthBaseFee(p0 context.Context) (ethtypes.EthBigInt, error) {\n\tif s.Internal.EthBaseFee == nil {\n\t\treturn *new(ethtypes.EthBigInt), ErrNotSupported\n\t}\n\treturn s.Internal.EthBaseFee(p0)\n}\n```",
+            "summary": "EthBaseFee retrieves the base fee of the next block.\nMaps to JSON-RPC method: \"eth_baseFee\".\n",
+            "paramStructure": "by-position",
+            "params": [],
+            "result": {
+                "name": "ethtypes.EthBigInt",
+                "description": "ethtypes.EthBigInt",
+                "summary": "",
+                "schema": {
+                    "examples": [
+                        "0x0"
+                    ],
+                    "additionalProperties": false,
+                    "type": [
+                        "object"
+                    ]
+                },
+                "required": true,
+                "deprecated": false
+            },
+            "deprecated": false,
+            "externalDocs": {
+                "description": "Github remote link",
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L290"
             }
         },
         {
@@ -283,7 +639,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L279"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L301"
             }
         },
         {
@@ -420,7 +776,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L290"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L312"
             }
         },
         {
@@ -449,7 +805,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L301"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L323"
             }
         },
         {
@@ -503,7 +859,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L312"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L334"
             }
         },
         {
@@ -594,7 +950,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L323"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L345"
             }
         },
         {
@@ -622,7 +978,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L334"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L356"
             }
         },
         {
@@ -712,7 +1068,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L345"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L367"
             }
         },
         {
@@ -968,7 +1324,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L356"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L378"
             }
         },
         {
@@ -1213,7 +1569,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L367"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L389"
             }
         },
         {
@@ -1489,7 +1845,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L378"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L400"
             }
         },
         {
@@ -1782,7 +2138,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L389"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L411"
             }
         },
         {
@@ -1838,7 +2194,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L400"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L422"
             }
         },
         {
@@ -1883,7 +2239,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L411"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L433"
             }
         },
         {
@@ -1981,7 +2337,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L422"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L444"
             }
         },
         {
@@ -2047,7 +2403,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L433"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L455"
             }
         },
         {
@@ -2113,7 +2469,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L444"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L466"
             }
         },
         {
@@ -2222,7 +2578,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L455"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L477"
             }
         },
         {
@@ -2280,7 +2636,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L466"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L488"
             }
         },
         {
@@ -2402,7 +2758,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L477"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L499"
             }
         },
         {
@@ -2611,7 +2967,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L488"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L510"
             }
         },
         {
@@ -2809,7 +3165,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L499"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L521"
             }
         },
         {
@@ -3001,7 +3357,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L510"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L532"
             }
         },
         {
@@ -3210,7 +3566,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L521"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L543"
             }
         },
         {
@@ -3301,7 +3657,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L532"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L554"
             }
         },
         {
@@ -3359,7 +3715,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L543"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L565"
             }
         },
         {
@@ -3617,7 +3973,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L554"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L576"
             }
         },
         {
@@ -3892,7 +4248,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L565"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L587"
             }
         },
         {
@@ -3920,7 +4276,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L576"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L598"
             }
         },
         {
@@ -3958,7 +4314,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L587"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L609"
             }
         },
         {
@@ -4066,7 +4422,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L598"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L620"
             }
         },
         {
@@ -4104,7 +4460,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L609"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L631"
             }
         },
         {
@@ -4133,7 +4489,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L620"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L642"
             }
         },
         {
@@ -4196,7 +4552,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L631"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L653"
             }
         },
         {
@@ -4259,7 +4615,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L642"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L664"
             }
         },
         {
@@ -4322,7 +4678,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L653"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L675"
             }
         },
         {
@@ -4367,7 +4723,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L664"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L686"
             }
         },
         {
@@ -4489,7 +4845,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L675"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L697"
             }
         },
         {
@@ -4665,7 +5021,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L686"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L708"
             }
         },
         {
@@ -4820,7 +5176,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L697"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L719"
             }
         },
         {
@@ -4942,7 +5298,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L708"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L730"
             }
         },
         {
@@ -4996,7 +5352,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L719"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L741"
             }
         },
         {
@@ -5050,7 +5406,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L730"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L752"
             }
         },
         {
@@ -5113,7 +5469,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L741"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L763"
             }
         },
         {
@@ -5140,7 +5496,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L752"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L774"
             }
         },
         {
@@ -5167,7 +5523,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L763"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L785"
             }
         },
         {
@@ -5297,7 +5653,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L774"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L796"
             }
         },
         {
@@ -5395,7 +5751,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L785"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L807"
             }
         },
         {
@@ -5422,7 +5778,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L796"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/v2api/proxy_gen.go#L818"
             }
         }
     ]

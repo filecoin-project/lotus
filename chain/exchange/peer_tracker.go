@@ -83,7 +83,7 @@ const (
 )
 
 func (bpt *bsPeerTracker) prefSortedPeers() []peer.ID {
-	// TODO: this could probably be cached, but as long as its not too many peers, fine for now
+	// TODO: this could probably be cached, but as long as it's not too many peers, fine for now
 	bpt.lk.Lock()
 	defer bpt.lk.Unlock()
 	out := make([]peer.ID, 0, len(bpt.peers))

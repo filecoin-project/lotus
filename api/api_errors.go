@@ -32,6 +32,14 @@ const (
 	EPaymentChannelDisabled
 )
 
+// ELimitExceeded is the standard Ethereum JSON-RPC error code for request limit
+// violations (EIP-1474). Used when a block range exceeds the configured maximum.
+const ELimitExceeded jsonrpc.ErrorCode = -32005
+
+// EExpensiveFork is the EIP-1474 "resource unavailable" code, used for ErrExpensiveFork when an
+// explicit call targets a block whose state is not available to serve.
+const EExpensiveFork jsonrpc.ErrorCode = -32002
+
 var (
 	RPCErrors = jsonrpc.NewErrors()
 
@@ -67,6 +75,10 @@ var (
 	_ error                 = (*ErrNullRound)(nil)
 	_ jsonrpc.RPCErrorCodec = (*ErrNullRound)(nil)
 	_ error                 = (*errPaymentChannelDisabled)(nil)
+	_ error                 = (*ErrBlockRangeExceeded)(nil)
+	_ jsonrpc.RPCErrorCodec = (*ErrBlockRangeExceeded)(nil)
+	_ error                 = (*ErrExpensiveFork)(nil)
+	_ jsonrpc.RPCErrorCodec = (*ErrExpensiveFork)(nil)
 )
 
 func init() {
@@ -82,6 +94,8 @@ func init() {
 	RPCErrors.Register(EExecutionReverted, new(*ErrExecutionReverted))
 	RPCErrors.Register(ENullRound, new(*ErrNullRound))
 	RPCErrors.Register(EPaymentChannelDisabled, new(*errPaymentChannelDisabled))
+	RPCErrors.Register(ELimitExceeded, new(*ErrBlockRangeExceeded))
+	RPCErrors.Register(EExpensiveFork, new(*ErrExpensiveFork))
 }
 
 func ErrorIsIn(err error, errorTypes []error) bool {
@@ -241,8 +255,92 @@ func (e *ErrNullRound) Is(target error) bool {
 	return ok
 }
 
+// ErrExpensiveFork signals that an explicit call cannot be served at the requested epoch
+// because an expensive state migration would have to run on demand to serve it.
+type ErrExpensiveFork struct {
+	Epoch   abi.ChainEpoch
+	Message string
+}
+
+func NewErrExpensiveFork(epoch abi.ChainEpoch) *ErrExpensiveFork {
+	return &ErrExpensiveFork{
+		Epoch:   epoch,
+		Message: fmt.Sprintf("required historical state unavailable: refusing explicit call due to state fork at epoch %d", epoch),
+	}
+}
+
+func (e *ErrExpensiveFork) Error() string {
+	if e.Message == "" {
+		return "required historical state unavailable: refusing explicit call due to state fork"
+	}
+	return e.Message
+}
+
+func (e *ErrExpensiveFork) FromJSONRPCError(jerr jsonrpc.JSONRPCError) error {
+	if jerr.Code != EExpensiveFork {
+		return fmt.Errorf("unexpected error code: %d", jerr.Code)
+	}
+	e.Message = jerr.Message
+	e.Epoch = -1
+	if epoch, ok := jerr.Data.(float64); ok {
+		e.Epoch = abi.ChainEpoch(epoch)
+	}
+	return nil
+}
+
+func (e *ErrExpensiveFork) ToJSONRPCError() (jsonrpc.JSONRPCError, error) {
+	return jsonrpc.JSONRPCError{
+		Code:    EExpensiveFork,
+		Message: e.Error(),
+		Data:    e.Epoch,
+	}, nil
+}
+
+// Is performs a non-strict type check so errors.Is works regardless of the Epoch value.
+func (e *ErrExpensiveFork) Is(target error) bool {
+	_, ok := target.(*ErrExpensiveFork)
+	return ok
+}
+
 type errPaymentChannelDisabled struct{}
 
 func (errPaymentChannelDisabled) Error() string {
 	return "payment channels disabled (EnablePaymentChannelManager=false)"
+}
+
+// ErrBlockRangeExceeded signals that a request's block range exceeds the configured
+// maximum. Returned with the standard Ethereum JSON-RPC -32005 "limit exceeded" code.
+type ErrBlockRangeExceeded struct {
+	Message string
+}
+
+func NewErrBlockRangeExceeded(maxBlockRange, given uint64) *ErrBlockRangeExceeded {
+	return &ErrBlockRangeExceeded{
+		Message: fmt.Sprintf("block range exceeds maximum of %d (got %d)", maxBlockRange, given),
+	}
+}
+
+func (e *ErrBlockRangeExceeded) Error() string {
+	return e.Message
+}
+
+func (e *ErrBlockRangeExceeded) FromJSONRPCError(jerr jsonrpc.JSONRPCError) error {
+	if jerr.Code != ELimitExceeded {
+		return fmt.Errorf("unexpected error code: %d", jerr.Code)
+	}
+	e.Message = jerr.Message
+	return nil
+}
+
+func (e *ErrBlockRangeExceeded) ToJSONRPCError() (jsonrpc.JSONRPCError, error) {
+	return jsonrpc.JSONRPCError{
+		Code:    ELimitExceeded,
+		Message: e.Error(),
+	}, nil
+}
+
+// Is performs a non-strict type check so errors.Is works regardless of field values.
+func (e *ErrBlockRangeExceeded) Is(target error) bool {
+	_, ok := target.(*ErrBlockRangeExceeded)
+	return ok
 }

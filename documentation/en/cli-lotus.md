@@ -8,7 +8,7 @@ USAGE:
    lotus [global options] command [command options]
 
 VERSION:
-   1.35.1-dev
+   v1.36.1-dev
 
 COMMANDS:
    daemon   Start a lotus daemon process
@@ -284,7 +284,8 @@ USAGE:
    lotus wallet export [command options] [address]
 
 OPTIONS:
-   --help, -h  show help
+   --format value  output format: 'hex-lotus' (hex-encoded JSON KeyInfo), 'json-lotus' (JSON KeyInfo), 'hex-eth' (raw 32-byte private key as hex, Ethereum-compatible; secp256k1 and delegated keys only) (default: "hex-lotus")
+   --help, -h      show help
 ```
 
 ### lotus wallet import
@@ -297,7 +298,8 @@ USAGE:
    lotus wallet import [command options] [<path> (optional, will read from stdin if omitted)]
 
 OPTIONS:
-   --format value  specify input format for key (default: "hex-lotus")
+   --format value  input format: 'hex-lotus' (hex-encoded JSON KeyInfo), 'json-lotus' (JSON KeyInfo), 'gfc-json' (go-filecoin JSON), 'hex-eth' (raw 32-byte private key as hex, Ethereum-compatible; key type set via --type) (default: "hex-lotus")
+   --type value    key type for raw private-key formats such as 'hex-eth': 'secp256k1' or 'delegated' (default: "delegated")
    --as-default    import the given key as your new default key (default: false)
    --help, -h      show help
 ```
@@ -903,7 +905,7 @@ OPTIONS:
    --miner value, -m value, --provider value, -p value [ --miner value, -m value, --provider value, -p value ]  storage provider address[es]
    --assume-yes, -y, --yes                                                                                      automatic yes to prompts; assume 'yes' as answer to all prompts and run non-interactively (default: false)
    --confidence value                                                                                           number of block confirmations to wait for (default: 5)
-   --batch-size value                                                                                           number of extend requests per batch. If set incorrectly, this will lead to out of gas error (default: 500)
+   --batch-size value                                                                                           number of extend requests per batch. If set incorrectly, this will lead to out of gas error (default: 100)
    --help, -h                                                                                                   show help
 ```
 
@@ -3230,7 +3232,7 @@ USAGE:
 OPTIONS:
    --output value  The output format. Supported formats: text, json (default: "text")
    --limit value   The maximum number of instances. A value less than 0 indicates no limit. (default: 10 when no range is specified. Otherwise, unlimited.)
-   --reverse       Reverses the default order of output.  (default: false)
+   --reverse       Reverses the default order of output. (default: false)
    --help, -h      show help
 ```
 

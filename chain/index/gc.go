@@ -69,6 +69,20 @@ func (si *SqliteIndexer) gc(ctx context.Context) {
 
 	log.Infof("gc'd %d entries before epoch %d", rows, removalEpoch)
 
+	res, err = si.stmts.removeTipsetBloomsBeforeHeightStmt.ExecContext(ctx, removalEpoch)
+	if err != nil {
+		log.Errorw("failed to remove tipset blooms before height", "height", removalEpoch, "error", err)
+		return
+	}
+
+	rows, err = res.RowsAffected()
+	if err != nil {
+		log.Errorw("failed to get rows affected", "error", err)
+		return
+	}
+
+	log.Infof("gc'd %d tipset blooms before epoch %d", rows, removalEpoch)
+
 	// -------------------------------------------------------------------------------------------------
 	// Also GC eth hashes
 

@@ -233,7 +233,7 @@ func TestDailyFees(t *testing.T) {
 		}
 
 		// SectorOnChainInfo has a lazy migration for v16, it could take either a 15 field format or a
-		// 16 field format with a DailyFee field on the end. We want to determine whether its a 15 or a
+		// 16 field format with a DailyFee field on the end. We want to determine whether it's a 15 or a
 		// 16 field version by first trying to decode it as a 15 field version.
 
 		dailyFee := big.Zero()

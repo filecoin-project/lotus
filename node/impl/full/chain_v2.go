@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/chain/ecfinality"
 	"github.com/filecoin-project/lotus/chain/lf3"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -22,11 +23,13 @@ var _ ChainModuleAPIv2 = (*ChainModuleV2)(nil)
 
 type ChainModuleAPIv2 interface {
 	ChainGetTipSet(context.Context, types.TipSetSelector) (*types.TipSet, error)
+	ChainGetTipSetFinalityStatus(context.Context) (*types.FinalityStatus, error)
 }
 
 type ChainModuleV2 struct {
-	Chain *store.ChainStore
-	F3    lf3.F3Backend `optional:"true"`
+	Chain      *store.ChainStore
+	F3         lf3.F3Backend                   `optional:"true"`
+	ECFinality ecfinality.ECFinalityCalculator `optional:"true"`
 
 	fx.In
 }
@@ -56,6 +59,71 @@ func (cm *ChainModuleV2) ChainGetTipSet(ctx context.Context, selector types.TipS
 	}
 
 	return nil, xerrors.Errorf("no tipset found for selector")
+}
+
+func (cm *ChainModuleV2) ChainGetTipSetFinalityStatus(ctx context.Context) (*types.FinalityStatus, error) {
+	head := cm.Chain.GetHeaviestTipSet()
+	if head == nil {
+		return nil, xerrors.New("no known heaviest tipset")
+	}
+
+	status := &types.FinalityStatus{
+		Head:                     head,
+		ECFinalityThresholdDepth: -1,
+	}
+
+	// EC calculator result
+	if cm.ECFinality != nil {
+		ecStatus, err := cm.ECFinality.GetStatus(ctx)
+		if err != nil {
+			log.Debugw("EC finality calculator error in status query", "err", err)
+		} else {
+			status.ECFinalityThresholdDepth = ecStatus.ThresholdDepth
+			status.ECFinalizedTipSet = ecStatus.FinalizedTipSet
+		}
+	}
+
+	// EC finalized tipset: use the calculator result if available, otherwise
+	// fall back to static head - policy.ChainFinality.
+	ecFinalized := status.ECFinalizedTipSet
+	if ecFinalized == nil {
+		finalizedHeight := max(0, head.Height()-policy.ChainFinality)
+		ts, err := cm.Chain.GetTipsetByHeight(ctx, finalizedHeight, head, true)
+		if err != nil {
+			return nil, xerrors.Errorf("getting static EC finalized tipset: %w", err)
+		}
+		ecFinalized = ts
+	}
+	status.FinalizedTipSet = ecFinalized
+
+	// F3 result: if F3 is ahead of EC, use that as the overall finalized tipset.
+	if cm.F3 != nil {
+		cert, err := cm.F3.GetLatestCert(ctx)
+		if err != nil {
+			if !errors.Is(err, f3.ErrF3NotRunning) && !errors.Is(err, api.ErrF3NotReady) {
+				return nil, xerrors.Errorf("getting F3 certificate: %w", err)
+			}
+		} else if cert != nil {
+			f3Epoch := abi.ChainEpoch(cert.ECChain.Head().Epoch)
+			// Only use F3 if it's within a plausible range of EC finality.
+			if head.Height()-f3Epoch <= policy.ChainFinality {
+				tsk, err := types.TipSetKeyFromBytes(cert.ECChain.Head().Key)
+				if err != nil {
+					return nil, xerrors.Errorf("decoding F3 cert tipset key: %w", err)
+				}
+				f3Ts, err := cm.Chain.LoadTipSet(ctx, tsk)
+				if err != nil {
+					return nil, xerrors.Errorf("loading F3 cert tipset %s: %w", tsk, err)
+				}
+				status.F3FinalizedTipSet = f3Ts
+				if f3Ts.Height() > status.FinalizedTipSet.Height() {
+					status.FinalizedTipSet = f3Ts
+				}
+			}
+		}
+	}
+
+	return status, nil
 }
 
 func (cm *ChainModuleV2) getTipSetByTag(ctx context.Context, tag types.TipSetTag) (*types.TipSet, error) {
@@ -88,49 +156,41 @@ func (cm *ChainModuleV2) getLatestSafeTipSet(ctx context.Context) (*types.TipSet
 }
 
 func (cm *ChainModuleV2) getLatestFinalizedTipset(ctx context.Context) (*types.TipSet, error) {
+	// EC finality: use the FRC-0089 calculator when available, otherwise static
+	// head-900 fallback. This is always computed so it can be compared with F3.
+	ecTs, err := cm.getECFinalized(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	if cm.F3 == nil {
 		// F3 is disabled; fall back to EC finality.
-		return cm.getECFinalized(ctx)
+		return ecTs, nil
 	}
 
 	cert, err := cm.F3.GetLatestCert(ctx)
 	if err != nil {
 		if errors.Is(err, f3.ErrF3NotRunning) || errors.Is(err, api.ErrF3NotReady) {
-			// Only fall back to EC finality if F3 isn't running or not ready.
-			log.Debugw("F3 not running or not ready, falling back to EC finality", "err", err)
-			return cm.getECFinalized(ctx)
+			log.Debugw("F3 not running or not ready, using EC finality", "err", err)
+			return ecTs, nil
 		}
 		return nil, err
 	}
-	if cert == nil {
-		// No latest certificate. Fall back to EC finality.
-		return cm.getECFinalized(ctx)
+
+	// If not operating, or the F3 finalized tipset is behind EC finality, just use EC finality.
+	if cert == nil || abi.ChainEpoch(cert.ECChain.Head().Epoch) <= ecTs.Height() {
+		return ecTs, nil
 	}
 
-	// Extract the finalized tipeset from the certificate.
-	latestF3FinalizedTipSet := cert.ECChain.Head()
-
-	// Fall back to EC finality if the latest F3 finalized tipset is older than EC finality.
-	latestF3FinalizedEpoch := abi.ChainEpoch(latestF3FinalizedTipSet.Epoch)
-	head := cm.Chain.GetHeaviestTipSet()
-	if head == nil {
-		return nil, xerrors.New("no known heaviest tipset")
-	}
-	if head.Height()-latestF3FinalizedEpoch > policy.ChainFinality {
-		log.Debugw("Latest F3 finalized tipset is older than EC finality, falling back to EC finality", "headEpoch", head.Height(), "latestF3FinalizedEpoch", latestF3FinalizedEpoch)
-		return cm.getECFinalized(ctx)
-	}
-
-	// All good, load the latest F3 finalized tipset.
-	tsk, err := types.TipSetKeyFromBytes(latestF3FinalizedTipSet.Key)
+	tsk, err := types.TipSetKeyFromBytes(cert.ECChain.Head().Key)
 	if err != nil {
 		return nil, xerrors.Errorf("decoding latest f3 cert tipset key: %w", err)
 	}
-	ts, err := cm.Chain.LoadTipSet(ctx, tsk)
+	f3Ts, err := cm.Chain.LoadTipSet(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading latest f3 cert tipset %s: %w", tsk, err)
 	}
-	return ts, nil
+	return f3Ts, nil
 }
 
 func (cm *ChainModuleV2) getTipSetByAnchor(ctx context.Context, anchor *types.TipSetAnchor) (*types.TipSet, error) {
@@ -152,7 +212,20 @@ func (cm *ChainModuleV2) getTipSetByAnchor(ctx context.Context, anchor *types.Ti
 }
 
 func (cm *ChainModuleV2) getECFinalized(ctx context.Context) (*types.TipSet, error) {
+	// Use the FRC-0089 calculator for probabilistic EC finality when available.
+	if cm.ECFinality != nil {
+		ts, err := cm.ECFinality.GetFinalizedTipSet(ctx)
+		if err != nil {
+			log.Debugw("EC finality calculator error, falling back to static finality", "err", err)
+		} else if ts != nil {
+			return ts, nil
+		}
+		// Calculator returned nil (threshold not met), fall through to static.
+	}
 	head := cm.Chain.GetHeaviestTipSet()
+	if head == nil {
+		return nil, xerrors.New("no known heaviest tipset")
+	}
 	finalizedHeight := max(0, head.Height()-policy.ChainFinality)
 	return cm.Chain.GetTipsetByHeight(ctx, finalizedHeight, head, true)
 }

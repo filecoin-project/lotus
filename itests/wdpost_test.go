@@ -42,7 +42,6 @@ func TestWindowedPost(t *testing.T) {
 		162,  // while sealing
 		5000, // while proving
 	} {
-		height := height // copy to satisfy lints
 		t.Run(fmt.Sprintf("upgrade-%d", height), func(t *testing.T) {
 			testWindowPostUpgrade(t, blocktime, nSectors, height)
 		})

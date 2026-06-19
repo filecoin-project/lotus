@@ -20,6 +20,7 @@ import (
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
 const maxLookBackForWait = 120 // one hour of tipsets
@@ -73,8 +74,23 @@ func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *typ
 	if err != nil {
 		return xerrors.Errorf("failed to get rows affected by unreverting events for tipset: %w", err)
 	}
+	blockBloom := ethtypes.NewEmptyEthBloom()
+
 	if rows > 0 {
 		log.Debugf("unreverted %d events for tipset: %s", rows, msgTs.Key())
+		hasBloom, err := si.hasTipsetBloom(ctx, tx, msgTsKeyCidBytes)
+		if err != nil {
+			return xerrors.Errorf("failed to check tipset bloom: %w", err)
+		}
+		if hasBloom {
+			return nil
+		}
+		if err := si.buildTipsetBloomFromIndex(ctx, tx, msgTsKeyCidBytes, blockBloom); err != nil {
+			return xerrors.Errorf("failed to build tipset bloom from index: %w", err)
+		}
+		if err := si.upsertTipsetBloom(ctx, tx, msgTsKeyCidBytes, msgTs.Height(), blockBloom); err != nil {
+			return xerrors.Errorf("failed to store tipset bloom: %w", err)
+		}
 		return nil
 	}
 
@@ -86,70 +102,183 @@ func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *typ
 	if err != nil {
 		return xerrors.Errorf("failed to load executed messages: %w", err)
 	}
+
 	eventCount := 0
+	messageIDs := make(map[string]int64)
+
+	if err := si.forEachExecutedEvent(ctx, ems, executionTs, func(em executedMessage, event types.Event, addr address.Address) error {
+		msgCid := em.msg.Cid()
+		messageID, found := messageIDs[msgCid.KeyString()]
+		if !found {
+			msgCidBytes := msgCid.Bytes()
+			if err := tx.Stmt(si.stmts.getMsgIdForMsgCidAndTipsetStmt).QueryRowContext(ctx, msgTsKeyCidBytes, msgCidBytes).Scan(&messageID); err != nil {
+				return xerrors.Errorf("failed to get message id for message cid and tipset key cid: %w", err)
+			}
+			if messageID == 0 {
+				return xerrors.Errorf("message id not found for message cid %s and tipset key cid %s", msgCid, msgTs.Key())
+			}
+			messageIDs[msgCid.KeyString()] = messageID
+		}
+
+		addEventToBloom(blockBloom, addr, event.Entries)
+
+		var robustAddrbytes []byte
+		if addr.Protocol() == address.Delegated {
+			robustAddrbytes = addr.Bytes()
+		}
+
+		// Insert event into events table
+		eventResult, err := tx.Stmt(si.stmts.insertEventStmt).ExecContext(ctx, messageID, eventCount, uint64(event.Emitter), robustAddrbytes, 0)
+		if err != nil {
+			return xerrors.Errorf("failed to insert event: %w", err)
+		}
+
+		// Get the event_id of the inserted event
+		eventID, err := eventResult.LastInsertId()
+		if err != nil {
+			return xerrors.Errorf("failed to get last insert id for event: %w", err)
+		}
+
+		// Insert event entries
+		for _, entry := range event.Entries {
+			_, err := tx.Stmt(si.stmts.insertEventEntryStmt).ExecContext(ctx,
+				eventID,
+				isIndexedFlag(entry.Flags),
+				[]byte{entry.Flags},
+				entry.Key,
+				entry.Codec,
+				entry.Value,
+			)
+			if err != nil {
+				return xerrors.Errorf("failed to insert event entry: %w", err)
+			}
+		}
+		eventCount++
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	if err := si.upsertTipsetBloom(ctx, tx, msgTsKeyCidBytes, msgTs.Height(), blockBloom); err != nil {
+		return xerrors.Errorf("failed to store tipset bloom: %w", err)
+	}
+
+	return nil
+}
+
+func (si *SqliteIndexer) forEachExecutedEvent(ctx context.Context, ems []executedMessage, executionTs *types.TipSet, cb func(executedMessage, types.Event, address.Address) error) error {
 	addressLookups := make(map[abi.ActorID]address.Address)
-
 	for _, em := range ems {
-		msgCidBytes := em.msg.Cid().Bytes()
-
-		// read message id for this message cid and tipset key cid
-		var messageID int64
-		if err := tx.Stmt(si.stmts.getMsgIdForMsgCidAndTipsetStmt).QueryRowContext(ctx, msgTsKeyCidBytes, msgCidBytes).Scan(&messageID); err != nil {
-			return xerrors.Errorf("failed to get message id for message cid and tipset key cid: %w", err)
-		}
-		if messageID == 0 {
-			return xerrors.Errorf("message id not found for message cid %s and tipset key cid %s", em.msg.Cid(), msgTs.Key())
-		}
-
-		// Insert events for this message
 		for _, event := range em.evs {
 			addr, found := addressLookups[event.Emitter]
 			if !found {
 				var ok bool
 				addr, ok = si.actorToDelegatedAddresFunc(ctx, event.Emitter, executionTs)
 				if !ok {
-					// not an address we will be able to match against
 					continue
 				}
 				addressLookups[event.Emitter] = addr
 			}
-
-			var robustAddrbytes []byte
-			if addr.Protocol() == address.Delegated {
-				robustAddrbytes = addr.Bytes()
+			if err := cb(em, event, addr); err != nil {
+				return err
 			}
-
-			// Insert event into events table
-			eventResult, err := tx.Stmt(si.stmts.insertEventStmt).ExecContext(ctx, messageID, eventCount, uint64(event.Emitter), robustAddrbytes, 0)
-			if err != nil {
-				return xerrors.Errorf("failed to insert event: %w", err)
-			}
-
-			// Get the event_id of the inserted event
-			eventID, err := eventResult.LastInsertId()
-			if err != nil {
-				return xerrors.Errorf("failed to get last insert id for event: %w", err)
-			}
-
-			// Insert event entries
-			for _, entry := range event.Entries {
-				_, err := tx.Stmt(si.stmts.insertEventEntryStmt).ExecContext(ctx,
-					eventID,
-					isIndexedFlag(entry.Flags),
-					[]byte{entry.Flags},
-					entry.Key,
-					entry.Codec,
-					entry.Value,
-				)
-				if err != nil {
-					return xerrors.Errorf("failed to insert event entry: %w", err)
-				}
-			}
-			eventCount++
 		}
 	}
-
 	return nil
+}
+
+func (si *SqliteIndexer) buildTipsetBloomFromIndex(ctx context.Context, tx *sql.Tx, tipsetKeyCid []byte, blockBloom ethtypes.EthBytes) error {
+	rows, err := tx.Stmt(si.stmts.getTipsetEventEntriesStmt).QueryContext(ctx, tipsetKeyCid)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = rows.Close() }()
+
+	var currentID int64
+	var emitterAddr address.Address
+	var entries []types.EventEntry
+	flush := func() error {
+		if currentID == 0 {
+			return nil
+		}
+		addEventToBloom(blockBloom, emitterAddr, entries)
+		return nil
+	}
+
+	for rows.Next() {
+		var (
+			eventID          int64
+			emitterID        uint64
+			emitterAddrBytes []byte
+			flags            []byte
+			key              string
+			codec            uint64
+			value            []byte
+		)
+		if err := rows.Scan(&eventID, &emitterID, &emitterAddrBytes, &flags, &key, &codec, &value); err != nil {
+			return xerrors.Errorf("read indexed event row: %w", err)
+		}
+		if len(flags) == 0 {
+			return xerrors.Errorf("event entry for event %d has no flags", eventID)
+		}
+		if eventID != currentID {
+			if err := flush(); err != nil {
+				return err
+			}
+			currentID = eventID
+			entries = entries[:0]
+			if emitterAddrBytes == nil {
+				emitterAddr, err = address.NewIDAddress(emitterID)
+				if err != nil {
+					return xerrors.Errorf("failed to parse emitter id: %w", err)
+				}
+			} else {
+				emitterAddr, err = address.NewFromBytes(emitterAddrBytes)
+				if err != nil {
+					return xerrors.Errorf("parse emitter addr: %w", err)
+				}
+			}
+		}
+		entries = append(entries, types.EventEntry{
+			Flags: flags[0],
+			Key:   key,
+			Codec: codec,
+			Value: value,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return xerrors.Errorf("read indexed event rows: %w", err)
+	}
+	return flush()
+}
+
+func addEventToBloom(blockBloom ethtypes.EthBytes, emitterAddr address.Address, entries []types.EventEntry) {
+	ethAddr, err := ethtypes.EthAddressFromFilecoinAddress(emitterAddr)
+	if err != nil {
+		log.Warnw("failed to convert event emitter address to Ethereum address for bloom", "address", emitterAddr, "error", err)
+		return
+	}
+
+	_, topics, ok := ethtypes.EthLogFromEvent(entries)
+	if !ok {
+		return
+	}
+
+	ethtypes.EthBloomSet(blockBloom, ethAddr[:])
+	for _, topic := range topics {
+		ethtypes.EthBloomSet(blockBloom, topic[:])
+	}
+}
+
+func (si *SqliteIndexer) upsertTipsetBloom(ctx context.Context, tx *sql.Tx, tipsetKeyCid []byte, height abi.ChainEpoch, bloom ethtypes.EthBytes) error {
+	_, err := tx.Stmt(si.stmts.insertTipsetBloomStmt).ExecContext(ctx, tipsetKeyCid, height, []byte(bloom))
+	return err
+}
+
+func (si *SqliteIndexer) hasTipsetBloom(ctx context.Context, tx *sql.Tx, tipsetKeyCid []byte) (bool, error) {
+	var hasBloom bool
+	err := tx.Stmt(si.stmts.hasTipsetBloomStmt).QueryRowContext(ctx, tipsetKeyCid).Scan(&hasBloom)
+	return hasBloom, err
 }
 
 func loadExecutedMessages(ctx context.Context, cs ChainStore, recomputeTipSetStateFunc RecomputeTipSetStateFunc, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
@@ -161,13 +290,13 @@ func loadExecutedMessages(ctx context.Context, cs ChainStore, recomputeTipSetSta
 	st := cs.ActorStore(ctx)
 
 	var recomputed bool
-	recompute := func() error {
+	recompute := func(loadErr error) error {
 		tskCid, err2 := rctTs.Key().Cid()
 		if err2 != nil {
 			return xerrors.Errorf("failed to compute tipset key cid: %w", err2)
 		}
 
-		log.Warnf("failed to load receipts for tipset %s (height %d): %s; recomputing tipset state", tskCid.String(), rctTs.Height(), err.Error())
+		log.Warnf("failed to load receipts for tipset %s (height %d): %s; recomputing tipset state", tskCid.String(), rctTs.Height(), loadErr.Error())
 		if err := recomputeTipSetStateFunc(ctx, msgTs); err != nil {
 			return xerrors.Errorf("failed to recompute tipset state: %w", err)
 		}
@@ -181,7 +310,7 @@ func loadExecutedMessages(ctx context.Context, cs ChainStore, recomputeTipSetSta
 			return nil, xerrors.Errorf("failed to load message receipts: %w", err)
 		}
 
-		if err := recompute(); err != nil {
+		if err := recompute(err); err != nil {
 			return nil, err
 		}
 		recomputed = true
@@ -219,7 +348,7 @@ func loadExecutedMessages(ctx context.Context, cs ChainStore, recomputeTipSetSta
 				return nil, xerrors.Errorf("failed to load events root for message %s: err: %w", ems[i].msg.Cid(), err)
 			}
 			// we may have the receipts but not the events, IsStoringEvents may have been false
-			if err := recompute(); err != nil {
+			if err := recompute(err); err != nil {
 				return nil, err
 			}
 			eventsArr, err = amt4.LoadAMT(ctx, st, *rct.EventsRoot, amt4.UseTreeBitWidth(types.EventAMTBitwidth))
@@ -398,8 +527,13 @@ func (si *SqliteIndexer) getTipsetKeyCidByHeight(ctx context.Context, height abi
 // GetEventsForFilter returns matching events for the given filter
 // Returns nil, nil if the filter has no matching events
 // Returns nil, ErrNotFound if the filter has no matching events and the tipset is not indexed
+// Returns nil, ErrBackfillRequired if the index is in degraded mode and requires a backfill
 // Returns nil, err for all other errors
 func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter) ([]*CollectedEvent, error) {
+	if si.needsBackfill {
+		return nil, ErrBackfillRequired
+	}
+
 	getEventsFnc := func(stmt *sql.Stmt, values []any) ([]*CollectedEvent, error) {
 		q, err := stmt.QueryContext(ctx, values...)
 		if err != nil {
@@ -409,29 +543,47 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter)
 
 		var ces []*CollectedEvent
 		var currentID int64 = -1
+		var lastHeight abi.ChainEpoch = -1
+		var tipsetsSeen int
 		var ce *CollectedEvent
+
+		// Rows are sorted by (height, message_index, event_index), so consecutive events
+		// usually share tipset_key_cid and message_cid; cache the last seen to skip work.
+		var lastTsKeyCid cid.Cid
+		var lastTsKey types.TipSetKey
+		var lastMsgCid cid.Cid
+
+		// Memoize emitter address; the flag handles invalidation when the source path
+		// switches between ID actor and delegated bytes.
+		var (
+			lastEmitterAddr      address.Address // address.Undef until first set
+			lastEmitterIsID      bool            // true if last was derived from emitterID
+			lastEmitterID        uint64          // valid when lastEmitterIsID
+			lastEmitterAddrBytes string          // valid when !lastEmitterIsID && set
+		)
+
+		// Reused across rows; declaring inside the loop allocates fresh slots each iteration.
+		var row struct {
+			id           int64
+			height       uint64
+			tipsetKeyCid []byte
+			emitterID    uint64
+			emitterAddr  []byte
+			eventIndex   int
+			messageCid   []byte
+			messageIndex int
+			reverted     bool
+			flags        []byte
+			key          string
+			codec        uint64
+			value        []byte
+		}
 
 		for q.Next() {
 			select {
 			case <-ctx.Done():
 				return nil, ctx.Err()
 			default:
-			}
-
-			var row struct {
-				id           int64
-				height       uint64
-				tipsetKeyCid []byte
-				emitterID    uint64
-				emitterAddr  []byte
-				eventIndex   int
-				messageCid   []byte
-				messageIndex int
-				reverted     bool
-				flags        []byte
-				key          string
-				codec        uint64
-				value        []byte
 			}
 
 			if err := q.Scan(
@@ -452,56 +604,74 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter)
 				return nil, xerrors.Errorf("read prefill row: %w", err)
 			}
 
-			// The query will return all entries for all matching events, so we need to keep track
-			// of which event we are dealing with and create a new one each time we see a new id
+			// The query returns all entries for all matching events; create a new CollectedEvent each time we see a new id.
 			if row.id != currentID {
-				// Unfortunately we can't easily incorporate the max results limit into the query due to the
-				// unpredictable number of rows caused by joins
-				// Error here to inform the caller that we've hit the max results limit
-				if f.MaxResults > 0 && len(ces) >= f.MaxResults {
-					return nil, ErrMaxResultsReached
+				rowHeight := abi.ChainEpoch(row.height)
+				if rowHeight != lastHeight {
+					tipsetsSeen++
+					lastHeight = rowHeight
 				}
 
 				currentID = row.id
 				ce = &CollectedEvent{
 					EventIdx: row.eventIndex,
 					Reverted: row.reverted,
-					Height:   abi.ChainEpoch(row.height),
+					Height:   rowHeight,
 					MsgIdx:   row.messageIndex,
 				}
 				ces = append(ces, ce)
 
+				// MaxResults applies as a hard cap only once events span more than one tipset;
+				// a single contributing tipset may exceed the cap. Single-tipset and
+				// single-message queries naturally bypass this because tipsetsSeen stays at 1.
+				if f.MaxResults > 0 && tipsetsSeen > 1 && len(ces) > f.MaxResults {
+					return nil, ErrMaxResultsReached
+				}
+
 				if row.emitterAddr == nil {
-					ce.EmitterAddr, err = address.NewIDAddress(row.emitterID)
-					if err != nil {
-						return nil, xerrors.Errorf("failed to parse emitter id: %w", err)
+					if !lastEmitterIsID || row.emitterID != lastEmitterID || lastEmitterAddr == address.Undef {
+						lastEmitterAddr, err = address.NewIDAddress(row.emitterID)
+						if err != nil {
+							return nil, xerrors.Errorf("failed to parse emitter id: %w", err)
+						}
+						lastEmitterIsID = true
+						lastEmitterID = row.emitterID
 					}
 				} else {
-					ce.EmitterAddr, err = address.NewFromBytes(row.emitterAddr)
-					if err != nil {
-						return nil, xerrors.Errorf("parse emitter addr: %w", err)
+					if lastEmitterIsID || string(row.emitterAddr) != lastEmitterAddrBytes || lastEmitterAddr == address.Undef {
+						lastEmitterAddr, err = address.NewFromBytes(row.emitterAddr)
+						if err != nil {
+							return nil, xerrors.Errorf("parse emitter addr: %w", err)
+						}
+						lastEmitterIsID = false
+						lastEmitterAddrBytes = string(row.emitterAddr)
 					}
 				}
+				ce.EmitterAddr = lastEmitterAddr
 
-				tsKeyCid, err := cid.Cast(row.tipsetKeyCid)
-				if err != nil {
-					return nil, xerrors.Errorf("parse tipsetkey cid: %w", err)
+				if string(row.tipsetKeyCid) != lastTsKeyCid.KeyString() {
+					lastTsKeyCid, err = cid.Cast(row.tipsetKeyCid)
+					if err != nil {
+						return nil, xerrors.Errorf("parse tipsetkey cid: %w", err)
+					}
+					ts, err := si.cs.GetTipSetByCid(ctx, lastTsKeyCid)
+					if err != nil {
+						return nil, xerrors.Errorf("get tipset by cid: %w", err)
+					}
+					if ts == nil {
+						return nil, xerrors.Errorf("failed to get tipset from cid: tipset is nil for cid: %s", lastTsKeyCid)
+					}
+					lastTsKey = ts.Key()
 				}
+				ce.TipSetKey = lastTsKey
 
-				ts, err := si.cs.GetTipSetByCid(ctx, tsKeyCid)
-				if err != nil {
-					return nil, xerrors.Errorf("get tipset by cid: %w", err)
+				if string(row.messageCid) != lastMsgCid.KeyString() {
+					lastMsgCid, err = cid.Cast(row.messageCid)
+					if err != nil {
+						return nil, xerrors.Errorf("parse message cid: %w", err)
+					}
 				}
-				if ts == nil {
-					return nil, xerrors.Errorf("failed to get tipset from cid: tipset is nil for cid: %s", tsKeyCid)
-				}
-
-				ce.TipSetKey = ts.Key()
-
-				ce.MsgCid, err = cid.Cast(row.messageCid)
-				if err != nil {
-					return nil, xerrors.Errorf("parse message cid: %w", err)
-				}
+				ce.MsgCid = lastMsgCid
 			}
 
 			ce.Entries = append(ce.Entries, types.EventEntry{
@@ -607,6 +777,11 @@ func makePrefillFilterQuery(f *EventFilter) ([]any, string, error) {
 		// unless asking for a specific tipset, we never want to see reverted historical events
 		clauses = append(clauses, "e.reverted=?")
 		values = append(values, false)
+	}
+
+	if f.MsgCid != cid.Undef {
+		clauses = append(clauses, "tm.message_cid=?")
+		values = append(values, f.MsgCid.Bytes())
 	}
 
 	if len(f.Addresses) > 0 {

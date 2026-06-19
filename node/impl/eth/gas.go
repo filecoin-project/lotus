@@ -19,7 +19,6 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	builtinactors "github.com/filecoin-project/lotus/chain/actors/builtin"
-	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/node/impl/gasutils"
@@ -57,6 +56,15 @@ func NewEthGasAPI(
 		gasApi:         gasApi,
 		tipsetResolver: tipsetResolver,
 	}
+}
+
+func (e *ethGas) EthBaseFee(ctx context.Context) (ethtypes.EthBigInt, error) {
+	ts := e.chainStore.GetHeaviestTipSet()
+	nextBaseFee, err := e.chainStore.ComputeBaseFee(ctx, ts)
+	if err != nil {
+		return ethtypes.EthBigInt{}, xerrors.Errorf("computing next base fee: %w", err)
+	}
+	return ethtypes.EthBigInt(nextBaseFee), nil
 }
 
 func (e *ethGas) EthGasPrice(ctx context.Context) (ethtypes.EthBigInt, error) {
@@ -269,13 +277,11 @@ func (e *ethGas) applyMessage(ctx context.Context, msg *types.Message, tsk types
 	}
 
 	if ts.Height() > 0 {
-		pts, err := e.chainStore.GetTipSetFromKey(ctx, ts.Parents())
-		if err != nil {
-			return nil, xerrors.Errorf("failed to find a non-forking epoch: %w", err)
-		}
-		// Check for expensive forks from the parents to the tipset, including nil tipsets
-		if e.stateManager.HasExpensiveForkBetween(pts.Height(), ts.Height()+1) {
-			return nil, stmgr.ErrExpensiveFork
+		// We run the call on TipSetState(ts), which already reflects every migration below
+		// ts.Height(); only a migration at ts.Height() itself (which HandleStateForks would run
+		// on demand) cannot be served.
+		if e.stateManager.HasExpensiveForkBetween(ts.Height(), ts.Height()+1) {
+			return nil, api.NewErrExpensiveFork(ts.Height())
 		}
 	}
 
@@ -468,6 +474,9 @@ func (g gasRewardSorter) Less(i, j int) bool {
 
 type EthGasDisabled struct{}
 
+func (EthGasDisabled) EthBaseFee(ctx context.Context) (ethtypes.EthBigInt, error) {
+	return ethtypes.EthBigInt{}, ErrModuleDisabled
+}
 func (EthGasDisabled) EthGasPrice(ctx context.Context) (ethtypes.EthBigInt, error) {
 	return ethtypes.EthBigInt{}, ErrModuleDisabled
 }

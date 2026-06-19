@@ -203,6 +203,7 @@ func getRunners(testGroupName string) []Runner {
 		"itest-eth_fee_history":          {linux_x64_xlarge},
 		"itest-eth_transactions":         {linux_x64_xlarge},
 		"itest-fevm_address":             {linux_x64_xlarge},
+		"itest-fevm_bundle_canary":       {linux_x64_xlarge},
 		"itest-fevm_events":              {linux_x64_xlarge},
 		"itest-gas_estimation":           {linux_x64_xlarge},
 		"itest-gateway":                  {linux_x64_2xlarge},

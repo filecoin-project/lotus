@@ -484,7 +484,6 @@ func (st *Local) Reserve(ctx context.Context, sid storiface.SectorRef, ft storif
 	}()
 
 	for _, fileType := range ft.AllSet() {
-		fileType := fileType
 		id := storiface.ID(storiface.PathByType(storageIDs, fileType))
 
 		p, ok := st.paths[id]

@@ -2,7 +2,7 @@
     "openrpc": "1.2.6",
     "info": {
         "title": "Lotus RPC API",
-        "version": "1.35.1-dev"
+        "version": "v1.36.1-dev"
     },
     "methods": [
         {
@@ -4756,7 +4756,7 @@
                     "title": "number",
                     "description": "Number is a number",
                     "examples": [
-                        28
+                        29
                     ],
                     "type": [
                         "number"

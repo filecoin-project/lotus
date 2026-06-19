@@ -2,19 +2,24 @@ package gateway
 
 import (
 	"context"
+	"reflect"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/golang/mock/gomock"
+	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/api"
 	v1mocks "github.com/filecoin-project/lotus/api/mocks"
+	"github.com/filecoin-project/lotus/api/v2api"
 	"github.com/filecoin-project/lotus/api/v2api/v2mocks"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/chain/types/mock"
 )
 
@@ -84,7 +89,6 @@ func TestGatewayAPIChainGetTipSetByHeight(t *testing.T) {
 		},
 	}}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			mockV1 := v1mocks.NewMockFullNode(ctrl)
@@ -201,4 +205,203 @@ func TestGatewayLimitTokensRate(t *testing.T) {
 	a = NewNode(mockV1, mockV2, WithRateLimit(rateLimit), WithRateLimitTimeout(rateLimitTimeout))
 	require.NoError(t, a.limit(ctx, tokens))
 	require.ErrorContains(t, a.limit(ctx, tokens), "server busy", "API calls should be hard rate limited when they hit limits")
+}
+
+// TestGatewayEthMessageLookbackBounded verifies that both gateway proxies'
+// eth message- and receipt-lookup methods forward to the backend's *Limited
+// variant with the gateway's configured maxMessageLookbackEpochs. The Gateway
+// interfaces themselves do not expose the *Limited variants.
+func TestGatewayEthMessageLookbackBounded(t *testing.T) {
+	ctx := context.Background()
+	const bound = abi.ChainEpoch(7)
+
+	txHash := ethtypes.EthHash{0xde, 0xad}
+	blkParam := ethtypes.EthBlockNumberOrHash{}
+	num := "latest"
+	blkParam.PredefinedBlock = &num
+
+	// Each method has a (proxy, backend-mock) pair per gateway version. The
+	// expectation is set on exactly the version's backend mock; if the proxy
+	// hits the wrong mock (or none), gomock reports an unexpected call.
+	type variant struct {
+		name   string
+		expect func(v1 *v1mocks.MockFullNode, v2 *v2mocks.MockFullNode)
+		call   func(a *Node) error
+	}
+
+	cases := []struct {
+		method   string
+		variants []variant
+	}{
+		{
+			method: "EthGetTransactionByHash",
+			variants: []variant{
+				{"v1", func(v1 *v1mocks.MockFullNode, _ *v2mocks.MockFullNode) {
+					v1.EXPECT().EthGetTransactionByHashLimited(gomock.AssignableToTypeOf(ctx), gomock.Eq(&txHash), gomock.Eq(bound)).Return(nil, nil)
+				}, func(a *Node) error { _, err := a.v1Proxy.EthGetTransactionByHash(ctx, &txHash); return err }},
+				{"v2", func(_ *v1mocks.MockFullNode, v2 *v2mocks.MockFullNode) {
+					v2.EXPECT().EthGetTransactionByHashLimited(gomock.AssignableToTypeOf(ctx), gomock.Eq(&txHash), gomock.Eq(bound)).Return(nil, nil)
+				}, func(a *Node) error { _, err := a.v2Proxy.EthGetTransactionByHash(ctx, &txHash); return err }},
+			},
+		},
+		{
+			method: "EthGetTransactionReceipt",
+			variants: []variant{
+				{"v1", func(v1 *v1mocks.MockFullNode, _ *v2mocks.MockFullNode) {
+					v1.EXPECT().EthGetTransactionReceiptLimited(gomock.AssignableToTypeOf(ctx), gomock.Eq(txHash), gomock.Eq(bound)).Return(nil, nil)
+				}, func(a *Node) error { _, err := a.v1Proxy.EthGetTransactionReceipt(ctx, txHash); return err }},
+				{"v2", func(_ *v1mocks.MockFullNode, v2 *v2mocks.MockFullNode) {
+					v2.EXPECT().EthGetTransactionReceiptLimited(gomock.AssignableToTypeOf(ctx), gomock.Eq(txHash), gomock.Eq(bound)).Return(nil, nil)
+				}, func(a *Node) error { _, err := a.v2Proxy.EthGetTransactionReceipt(ctx, txHash); return err }},
+			},
+		},
+		{
+			method: "EthGetBlockReceipts",
+			variants: []variant{
+				{"v1", func(v1 *v1mocks.MockFullNode, _ *v2mocks.MockFullNode) {
+					v1.EXPECT().EthGetBlockReceiptsLimited(gomock.AssignableToTypeOf(ctx), gomock.Eq(blkParam), gomock.Eq(bound)).Return(nil, nil)
+				}, func(a *Node) error { _, err := a.v1Proxy.EthGetBlockReceipts(ctx, blkParam); return err }},
+				{"v2", func(_ *v1mocks.MockFullNode, v2 *v2mocks.MockFullNode) {
+					v2.EXPECT().EthGetBlockReceiptsLimited(gomock.AssignableToTypeOf(ctx), gomock.Eq(blkParam), gomock.Eq(bound)).Return(nil, nil)
+				}, func(a *Node) error { _, err := a.v2Proxy.EthGetBlockReceipts(ctx, blkParam); return err }},
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		for _, v := range tc.variants {
+			t.Run(v.name+"/"+tc.method, func(t *testing.T) {
+				ctrl := gomock.NewController(t)
+				defer ctrl.Finish()
+				mockV1 := v1mocks.NewMockFullNode(ctrl)
+				mockV2 := v2mocks.NewMockFullNode(ctrl)
+				a := NewNode(mockV1, mockV2, WithMaxMessageLookbackEpochs(bound))
+				v.expect(mockV1, mockV2)
+				require.NoError(t, v.call(a))
+			})
+		}
+	}
+}
+
+// TestGatewayEthSendRawTransactionUsesUntrusted verifies that both gateway
+// proxies forward EthSendRawTransaction to the backend's
+// EthSendRawTransactionUntrusted (which routes through MpoolPushUntrusted).
+// The Untrusted variant is not exposed on the Gateway interfaces themselves.
+func TestGatewayEthSendRawTransactionUsesUntrusted(t *testing.T) {
+	ctx := context.Background()
+	rawTx := ethtypes.EthBytes{0x01, 0x02, 0x03}
+
+	cases := []struct {
+		version string
+		expect  func(v1 *v1mocks.MockFullNode, v2 *v2mocks.MockFullNode)
+		call    func(a *Node) error
+	}{
+		{
+			version: "v1",
+			expect: func(v1 *v1mocks.MockFullNode, _ *v2mocks.MockFullNode) {
+				v1.EXPECT().EthSendRawTransactionUntrusted(gomock.AssignableToTypeOf(ctx), gomock.Eq(rawTx)).Return(ethtypes.EthHash{}, nil)
+			},
+			call: func(a *Node) error { _, err := a.v1Proxy.EthSendRawTransaction(ctx, rawTx); return err },
+		},
+		{
+			version: "v2",
+			expect: func(_ *v1mocks.MockFullNode, v2 *v2mocks.MockFullNode) {
+				v2.EXPECT().EthSendRawTransactionUntrusted(gomock.AssignableToTypeOf(ctx), gomock.Eq(rawTx)).Return(ethtypes.EthHash{}, nil)
+			},
+			call: func(a *Node) error { _, err := a.v2Proxy.EthSendRawTransaction(ctx, rawTx); return err },
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.version, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+			mockV1 := v1mocks.NewMockFullNode(ctrl)
+			mockV2 := v2mocks.NewMockFullNode(ctrl)
+			a := NewNode(mockV1, mockV2)
+			tc.expect(mockV1, mockV2)
+			require.NoError(t, tc.call(a))
+		})
+	}
+}
+
+// TestV1GatewayStateMessageLookbackClamped exercises the limit normalisation
+// applied to StateSearchMsg and StateWaitMsg: a caller-supplied limit is
+// normalised to maxMessageLookbackEpochs when it is LookbackNoLimit (-1) or
+// when it exceeds the bound; a limit below the bound is forwarded unchanged.
+func TestV1GatewayStateMessageLookbackClamped(t *testing.T) {
+	ctx := context.Background()
+	const bound = abi.ChainEpoch(10)
+
+	cases := []struct {
+		name string
+		in   abi.ChainEpoch
+		want abi.ChainEpoch
+	}{
+		{"LookbackNoLimit clamps to bound", api.LookbackNoLimit, bound},
+		{"limit above bound clamps", bound + 5, bound},
+		{"limit at bound passes through", bound, bound},
+		{"limit below bound passes through", bound - 1, bound - 1},
+	}
+
+	emptyTSK := types.EmptyTSK
+	msgCid := cid.Undef
+
+	for _, tc := range cases {
+		t.Run("StateSearchMsg/"+tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+			mockV1 := v1mocks.NewMockFullNode(ctrl)
+			mockV2 := v2mocks.NewMockFullNode(ctrl)
+			a := NewNode(mockV1, mockV2, WithMaxMessageLookbackEpochs(bound))
+
+			mockV1.EXPECT().
+				StateSearchMsg(gomock.AssignableToTypeOf(ctx), gomock.Eq(emptyTSK), gomock.Eq(msgCid), gomock.Eq(tc.want), gomock.Eq(true)).
+				Return(nil, nil)
+
+			_, err := a.v1Proxy.StateSearchMsg(ctx, emptyTSK, msgCid, tc.in, true)
+			require.NoError(t, err)
+		})
+
+		t.Run("StateWaitMsg/"+tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+			mockV1 := v1mocks.NewMockFullNode(ctrl)
+			mockV2 := v2mocks.NewMockFullNode(ctrl)
+			a := NewNode(mockV1, mockV2, WithMaxMessageLookbackEpochs(bound))
+
+			mockV1.EXPECT().
+				StateWaitMsg(gomock.AssignableToTypeOf(ctx), gomock.Eq(msgCid), gomock.Eq(uint64(0)), gomock.Eq(tc.want), gomock.Eq(true)).
+				Return(nil, nil)
+
+			_, err := a.v1Proxy.StateWaitMsg(ctx, msgCid, 0, tc.in, true)
+			require.NoError(t, err)
+		})
+	}
+}
+
+// TestGatewayInterfacesDoNotExposeLimitedOrUntrusted asserts the invariant
+// that neither Gateway interface exposes a `*Limited` or `*Untrusted` method
+// variant. Those variants exist on FullNode for internal use by the gateway
+// proxies, which apply the gateway's maxMessageLookbackEpochs and route mpool
+// pushes through the Untrusted backend method.
+func TestGatewayInterfacesDoNotExposeLimitedOrUntrusted(t *testing.T) {
+	check := func(t *testing.T, iface reflect.Type) {
+		for i := 0; i < iface.NumMethod(); i++ {
+			name := iface.Method(i).Name
+			require.Falsef(t, strings.HasSuffix(name, "Limited"),
+				"%s.%s should not appear on the Gateway interface; *Limited variants are used internally by the gateway proxy",
+				iface.Name(), name)
+			require.Falsef(t, strings.HasSuffix(name, "Untrusted"),
+				"%s.%s should not appear on the Gateway interface; *Untrusted variants are used internally by the gateway proxy",
+				iface.Name(), name)
+		}
+	}
+
+	t.Run("v1", func(t *testing.T) {
+		check(t, reflect.TypeFor[api.Gateway]())
+	})
+	t.Run("v2", func(t *testing.T) {
+		check(t, reflect.TypeFor[v2api.Gateway]())
+	})
 }

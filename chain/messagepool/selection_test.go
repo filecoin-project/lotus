@@ -1481,7 +1481,6 @@ func TestGasReward(t *testing.T) {
 
 	mp := new(MessagePool)
 	for _, test := range tests {
-		test := test
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
 			msg := &types.SignedMessage{
 				Message: types.Message{

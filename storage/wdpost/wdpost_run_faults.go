@@ -230,8 +230,6 @@ func (s *WindowPoStScheduler) asyncFaultRecover(di dline.Info, ts *types.TipSet)
 		// should always be true, skip journaling if not for some reason
 		if len(recoveries) == len(sigmsgs) {
 			for i, recovery := range recoveries {
-				// clone for function literal
-				recovery := recovery
 				msgCID := optionalCid(sigmsgs[i])
 				s.journal.RecordEvent(s.evtTypes[evtTypeWdPoStRecoveries], func() interface{} {
 					j := WdPoStRecoveriesProcessedEvt{

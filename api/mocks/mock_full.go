@@ -28,7 +28,7 @@ import (
 	auth "github.com/filecoin-project/go-jsonrpc/auth"
 	abi "github.com/filecoin-project/go-state-types/abi"
 	big "github.com/filecoin-project/go-state-types/big"
-	miner "github.com/filecoin-project/go-state-types/builtin/v18/miner"
+	miner "github.com/filecoin-project/go-state-types/builtin/v19/miner"
 	paych "github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	miner0 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	verifreg "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
@@ -613,6 +613,21 @@ func (m *MockFullNode) EthAddressToFilecoinAddress(arg0 context.Context, arg1 et
 func (mr *MockFullNodeMockRecorder) EthAddressToFilecoinAddress(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthAddressToFilecoinAddress", reflect.TypeOf((*MockFullNode)(nil).EthAddressToFilecoinAddress), arg0, arg1)
+}
+
+// EthBaseFee mocks base method.
+func (m *MockFullNode) EthBaseFee(arg0 context.Context) (ethtypes.EthBigInt, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthBaseFee", arg0)
+	ret0, _ := ret[0].(ethtypes.EthBigInt)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EthBaseFee indicates an expected call of EthBaseFee.
+func (mr *MockFullNodeMockRecorder) EthBaseFee(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthBaseFee", reflect.TypeOf((*MockFullNode)(nil).EthBaseFee), arg0)
 }
 
 // EthBlockNumber mocks base method.

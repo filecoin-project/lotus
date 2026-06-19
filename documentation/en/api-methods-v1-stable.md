@@ -44,6 +44,7 @@
 * [Eth](#Eth)
   * [EthAccounts](#EthAccounts)
   * [EthAddressToFilecoinAddress](#EthAddressToFilecoinAddress)
+  * [EthBaseFee](#EthBaseFee)
   * [EthBlockNumber](#EthBlockNumber)
   * [EthCall](#EthCall)
   * [EthChainId](#EthChainId)
@@ -1845,7 +1846,7 @@ Response:
 
 
 ### CreateBackup
-CreateBackup creates node backup onder the specified file name. The
+CreateBackup creates node backup under the specified file name. The
 method requires that the lotus daemon is running with the
 LOTUS_BACKUP_BASE_PATH environment variable set to some path, and that
 the path specified when calling CreateBackup is within the base path
@@ -1921,6 +1922,17 @@ Inputs:
 ```
 
 Response: `"f01234"`
+
+### EthBaseFee
+EthBaseFee retrieves the base fee of the next block.
+Maps to JSON-RPC method: "eth_baseFee".
+
+
+Perms: read
+
+Inputs: `null`
+
+Response: `"0x0"`
 
 ### EthBlockNumber
 EthBlockNumber returns the height of the latest (heaviest) TipSet
@@ -6495,7 +6507,7 @@ Perms: read
 Inputs:
 ```json
 [
-  28
+  29
 ]
 ```
 
@@ -6510,7 +6522,7 @@ Perms: read
 Inputs:
 ```json
 [
-  28
+  29
 ]
 ```
 
@@ -7474,6 +7486,7 @@ Response:
     "UpgradeTeepHeight": 10101,
     "UpgradeTockHeight": 10101,
     "UpgradeGoldenWeekHeight": 10101,
+    "UpgradeFireHorseHeight": 10101,
     "UpgradeXxHeight": 10101
   },
   "Eip155ChainID": 123,
@@ -8548,7 +8561,7 @@ Inputs:
 ]
 ```
 
-Response: `28`
+Response: `29`
 
 ### StateReadState
 StateReadState returns the indicated actor's state.

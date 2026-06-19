@@ -9,6 +9,7 @@ import (
 	stdbig "math/big"
 	"sort"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
@@ -59,7 +60,7 @@ var baseFeeLowerBoundFactor = types.NewInt(10)
 var baseFeeLowerBoundFactorConservative = types.NewInt(100)
 
 var MaxActorPendingMessages = 1000
-var MaxUntrustedActorPendingMessages = 10
+var MaxUntrustedActorPendingMessages = 100
 
 var MaxNonceGap = uint64(4)
 
@@ -112,6 +113,11 @@ type MessagePoolEvtMessage struct {
 	types.Message
 
 	CID cid.Cid
+}
+
+type MessagePoolPendingSnapshot struct {
+	msgs []*types.SignedMessage
+	ts   *types.TipSet
 }
 
 func init() {
@@ -178,6 +184,8 @@ type MessagePool struct {
 
 	evtTypes [3]journal.EventType
 	journal  journal.Journal
+
+	snapshot atomic.Pointer[MessagePoolPendingSnapshot]
 }
 
 type stateNonceCacheKey struct {
@@ -582,7 +590,7 @@ func (mp *MessagePool) Close() error {
 func (mp *MessagePool) Prune() {
 	// this magic incantation of triggering prune thrice is here to make the Prune method
 	// synchronous:
-	// so, its a single slot buffered channel. The first send fills the channel,
+	// so, it's a single slot buffered channel. The first send fills the channel,
 	// the second send goes through when the pruning starts,
 	// and the third send goes through (and noops) after the pruning finishes
 	// and goes through the loop again
@@ -1029,6 +1037,8 @@ func (mp *MessagePool) addLocked(ctx context.Context, m *types.SignedMessage, st
 	// Record the current size of the Mpool
 	stats.Record(ctx, metrics.MpoolMessageCount.M(int64(mp.currentSize)))
 
+	mp.snapshot.Store(nil)
+
 	return nil
 }
 
@@ -1142,7 +1152,7 @@ func (mp *MessagePool) getStateBalance(ctx context.Context, addr address.Address
 // differences from Push:
 //   - strict checks are enabled
 //   - extra strict add checks are used when adding the messages to the msgSet
-//     that means: no nonce gaps, at most 10 pending messages for the actor
+//     that means: no nonce gaps, at most 100 pending messages for the actor
 func (mp *MessagePool) PushUntrusted(ctx context.Context, m *types.SignedMessage) (cid.Cid, error) {
 	err := mp.checkMessage(ctx, m)
 	if err != nil {
@@ -1224,16 +1234,32 @@ func (mp *MessagePool) remove(ctx context.Context, from address.Address, nonce u
 
 	// Record the current size of the Mpool
 	stats.Record(ctx, metrics.MpoolMessageCount.M(int64(mp.currentSize)))
+
+	mp.snapshot.Store(nil)
 }
 
 func (mp *MessagePool) Pending(ctx context.Context) ([]*types.SignedMessage, *types.TipSet) {
-	mp.curTsLk.RLock()
-	defer mp.curTsLk.RUnlock()
+	snapshot := mp.snapshot.Load()
 
-	mp.lk.RLock()
-	defer mp.lk.RUnlock()
+	if snapshot == nil {
+		mp.curTsLk.RLock()
+		defer mp.curTsLk.RUnlock()
 
-	return mp.allPending(ctx)
+		mp.lk.RLock()
+
+		msgs, ts := mp.allPending(ctx)
+		snapshot = &MessagePoolPendingSnapshot{
+			msgs: msgs,
+			ts:   ts,
+		}
+		mp.snapshot.Store(snapshot)
+
+		mp.lk.RUnlock()
+	}
+
+	msgs := make([]*types.SignedMessage, len(snapshot.msgs))
+	copy(msgs, snapshot.msgs)
+	return msgs, snapshot.ts
 }
 
 func (mp *MessagePool) allPending(ctx context.Context) ([]*types.SignedMessage, *types.TipSet) {
@@ -1612,6 +1638,8 @@ func (mp *MessagePool) loadLocal(ctx context.Context) error {
 func (mp *MessagePool) Clear(ctx context.Context, local bool) {
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
+
+	mp.snapshot.Store(nil)
 
 	// remove everything if local is true, including removing local messages from
 	// the datastore
