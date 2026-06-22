@@ -427,6 +427,12 @@ var DaemonCmd = &cli.Command{
 					if err != nil {
 						return err
 					}
+					configured, err := configuredAPIListenAddress(lr)
+					if err != nil {
+						log.Warnw("could not read configured API listen address before applying --api override", "error", err)
+					} else if warning := apiFlagOverrideWarning(configured, apima); warning != "" {
+						log.Warn(warning)
+					}
 					return lr.SetAPIEndpoint(apima)
 				})),
 			node.ApplyIf(func(s *node.Settings) bool { return !cctx.Bool("bootstrap") },
@@ -500,6 +506,28 @@ func readGenesis(path string) ([]byte, error) {
 		return build.DecompressAsZstd(genesisFile)
 	}
 	return io.ReadAll(genesisFile)
+}
+
+func configuredAPIListenAddress(lr repo.LockedRepo) (string, error) {
+	c, err := lr.Config()
+	if err != nil {
+		return "", err
+	}
+	cfg, ok := c.(*config.FullNode)
+	if !ok {
+		return "", xerrors.Errorf("invalid config for repo, got: %T", c)
+	}
+	return cfg.Common.API.ListenAddress, nil
+}
+
+func apiFlagOverrideWarning(configured string, override multiaddr.Multiaddr) string {
+	if configured == "" || override == nil {
+		return ""
+	}
+	if configured == override.String() {
+		return ""
+	}
+	return fmt.Sprintf("--api overrides configured API listen address %q (API.ListenAddress / LOTUS_API_LISTENADDRESS); using %q", configured, override.String())
 }
 
 func importKey(ctx context.Context, api lapi.FullNode, f string) error {

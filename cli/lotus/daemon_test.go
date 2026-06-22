@@ -7,13 +7,42 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
+	"github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/lotus/node/repo"
 )
+
+func TestAPIFlagOverrideWarning(t *testing.T) {
+	configured := "/ip4/0.0.0.0/tcp/3456/http"
+	override, err := multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/1234")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	warning := apiFlagOverrideWarning(configured, override)
+	for _, want := range []string{"--api", "LOTUS_API_LISTENADDRESS", configured, override.String()} {
+		if !strings.Contains(warning, want) {
+			t.Fatalf("expected warning %q to contain %q", warning, want)
+		}
+	}
+}
+
+func TestAPIFlagOverrideWarningUnchangedAddress(t *testing.T) {
+	configured := "/ip4/127.0.0.1/tcp/1234"
+	override, err := multiaddr.NewMultiaddr(configured)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if warning := apiFlagOverrideWarning(configured, override); warning != "" {
+		t.Fatalf("expected no warning for unchanged address, got %q", warning)
+	}
+}
 
 func TestRemoveExistingChainRemovesF3Data(t *testing.T) {
 	repoPath := t.TempDir()
