@@ -3,6 +3,7 @@ package itests
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -21,6 +22,8 @@ import (
 	"github.com/filecoin-project/go-f3"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
+	builtintypes "github.com/filecoin-project/go-state-types/builtin"
+	"github.com/filecoin-project/go-state-types/exitcode"
 	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
 	multisig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
 
@@ -363,6 +366,39 @@ func sendFunds(ctx context.Context, fromNode *kit.TestFullNode, fromAddr address
 	}
 
 	return nil
+}
+
+func TestGatewayStateCallRespectsGasLimit(t *testing.T) {
+	kit.QuietMiningLogs()
+
+	ctx := context.Background()
+	nodes := startNodes(ctx, t)
+
+	// Init bytecode returns a one-byte STOP runtime. With GasLimit=1, the
+	// StateCall should run out of gas before even this trivial runtime can
+	// succeed.
+	initcode, err := hex.DecodeString("600180600b6000396000f300")
+	require.NoError(t, err)
+
+	from, err := nodes.full.WalletDefaultAddress(ctx)
+	require.NoError(t, err)
+
+	createRet := nodes.full.EVM().DeployContract(ctx, from, initcode)
+	require.NotNil(t, createRet.RobustAddress)
+	target := *createRet.RobustAddress
+
+	ret, err := nodes.lite.StateCall(ctx, &types.Message{
+		From:       builtintypes.SystemActorAddr,
+		To:         target,
+		Value:      types.NewInt(0),
+		Method:     builtintypes.MethodsAccount.AuthenticateMessage,
+		GasLimit:   1,
+		GasFeeCap:  types.NewInt(0),
+		GasPremium: types.NewInt(0),
+	}, types.EmptyTSK)
+	require.NoError(t, err)
+	require.NotNil(t, ret.MsgRct)
+	require.Equal(t, exitcode.SysErrOutOfGas, ret.MsgRct.ExitCode)
 }
 
 func TestGatewayRateLimits(t *testing.T) {

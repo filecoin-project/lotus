@@ -18,7 +18,6 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/rand"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -48,8 +47,15 @@ func (sm *StateManager) CallOnState(ctx context.Context, stateCid cid.Cid, msg *
 	msgCopy := *msg
 	msg = &msgCopy
 
+	// StateCall accepts zero as "use the configured cap", but the VM
+	// simulation path expects callers to pass a positive gas limit.
+	gasLimitCap := sm.StateCallGasLimit()
 	if msg.GasLimit == 0 {
-		msg.GasLimit = buildconstants.BlockGasLimit
+		msg.GasLimit = gasLimitCap
+	} else if msg.GasLimit < 0 {
+		return nil, xerrors.Errorf("StateCall gas limit must be zero for the default or positive, was %d", msg.GasLimit)
+	} else if msg.GasLimit > gasLimitCap {
+		return nil, xerrors.Errorf("StateCall gas limit %d exceeds configured cap %d", msg.GasLimit, gasLimitCap)
 	}
 	if msg.GasFeeCap == types.EmptyInt {
 		msg.GasFeeCap = types.NewInt(0)
@@ -280,7 +286,7 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 		}
 		gasInfo = MakeMsgGasCost(msg, ret)
 	} else {
-		ret, err = vmi.ApplyImplicitMessage(ctx, msg)
+		ret, err = vmi.ApplyImplicitMessageForSimulation(ctx, msg)
 		if err != nil && ret == nil {
 			return nil, xerrors.Errorf("apply message failed: %w", err)
 		}

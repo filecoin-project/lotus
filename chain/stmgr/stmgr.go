@@ -158,6 +158,10 @@ type StateManager struct {
 
 	chainIndexer index.Indexer
 
+	// Maximum gas allowed for StateCall-style simulations. Zero means the
+	// network block gas limit.
+	stateCallGasLimit int64
+
 	// We keep a small cache for calls to ExecutionTrace which helps improve
 	// performance for node operators like exchanges and block explorers
 	execTraceCache *arc.ARCCache[types.TipSetKey, tipSetCacheEntry]
@@ -246,6 +250,17 @@ func NewStateManager(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder,
 		chainIndexer:   chainIndexer,
 		execTraceCache: execTraceCache,
 	}, nil
+}
+
+func (sm *StateManager) SetStateCallGasLimit(limit int64) {
+	sm.stateCallGasLimit = limit
+}
+
+func (sm *StateManager) StateCallGasLimit() int64 {
+	if sm.stateCallGasLimit <= 0 {
+		return buildconstants.BlockGasLimit
+	}
+	return sm.stateCallGasLimit
 }
 
 func NewStateManagerWithUpgradeScheduleAndMonitor(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder, us UpgradeSchedule, b beacon.Schedule, em ExecMonitor, metadataDs dstore.Batching, chainIndexer index.Indexer) (*StateManager, error) {

@@ -478,10 +478,28 @@ func (vm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet
 	return applyRet, nil
 }
 
-func (vm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg *types.Message) (*ApplyRet, error) {
+// ApplyImplicitMessageForSimulation applies an implicit message for local
+// simulation. The caller must normalize any default gas policy before calling
+// this method and pass a positive GasLimit; the FVM will execute with that
+// limit unchanged.
+func (vm *FVM) ApplyImplicitMessageForSimulation(ctx context.Context, cmsg *types.Message) (*ApplyRet, error) {
+	if cmsg.GasLimit <= 0 {
+		return nil, xerrors.Errorf("simulation implicit message gas limit must be positive after caller normalization, was %d", cmsg.GasLimit)
+	}
+	return vm.applyImplicitMessage(ctx, cmsg)
+}
+
+// ApplySystemImplicitMessage applies an implicit system message such as cron or
+// reward execution. It preserves the historical system-implicit behavior by
+// overwriting GasLimit with an effectively unlimited value before execution.
+func (vm *FVM) ApplySystemImplicitMessage(ctx context.Context, cmsg *types.Message) (*ApplyRet, error) {
+	cmsg.GasLimit = math.MaxInt64 / 2
+	return vm.applyImplicitMessage(ctx, cmsg)
+}
+
+func (vm *FVM) applyImplicitMessage(ctx context.Context, cmsg *types.Message) (*ApplyRet, error) {
 	start := build.Clock.Now()
 	defer atomic.AddUint64(&StatApplied, 1)
-	cmsg.GasLimit = math.MaxInt64 / 2
 	vmMsg := cmsg.VMMessage()
 	msgBytes, err := vmMsg.Serialize()
 	if err != nil {
@@ -583,19 +601,45 @@ func (vm *dualExecutionFVM) ApplyMessage(ctx context.Context, cmsg types.ChainMs
 	return ret, err
 }
 
-func (vm *dualExecutionFVM) ApplyImplicitMessage(ctx context.Context, msg *types.Message) (ret *ApplyRet, err error) {
+func (vm *dualExecutionFVM) ApplyImplicitMessageForSimulation(ctx context.Context, msg *types.Message) (ret *ApplyRet, err error) {
 	var wg sync.WaitGroup
 
 	wg.Add(2)
 
 	go func() {
 		defer wg.Done()
-		ret, err = vm.main.ApplyImplicitMessage(ctx, msg)
+		ret, err = vm.main.ApplyImplicitMessageForSimulation(ctx, msg)
 	}()
 
 	go func() {
 		defer wg.Done()
-		if _, err := vm.debug.ApplyImplicitMessage(ctx, msg); err != nil {
+		if _, err := vm.debug.ApplyImplicitMessageForSimulation(ctx, msg); err != nil {
+			log.Errorf("debug execution failed: %s", err)
+		}
+	}()
+
+	wg.Wait()
+	return ret, err
+}
+
+func (vm *dualExecutionFVM) ApplySystemImplicitMessage(ctx context.Context, msg *types.Message) (ret *ApplyRet, err error) {
+	msg.GasLimit = math.MaxInt64 / 2
+	// Copy the message before concurrent debug execution; FVM system-implicit
+	// execution mutates the gas limit on its message argument.
+	debugMsg := *msg
+
+	var wg sync.WaitGroup
+
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+		ret, err = vm.main.ApplySystemImplicitMessage(ctx, msg)
+	}()
+
+	go func() {
+		defer wg.Done()
+		if _, err := vm.debug.ApplySystemImplicitMessage(ctx, &debugMsg); err != nil {
 			log.Errorf("debug execution failed: %s", err)
 		}
 	}()

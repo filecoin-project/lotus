@@ -277,6 +277,7 @@ func ConfigCommon(cfg *config.Common, buildVersion build.BuildVersion) Option {
 	return Options(
 		func(s *Settings) error { s.Config = true; return nil },
 		Override(new(build.BuildVersion), buildVersion),
+		Override(new(config.API), cfg.API),
 		Override(new(dtypes.APIEndpoint), func() (dtypes.APIEndpoint, error) {
 			ma, err := multiaddr.NewMultiaddr(cfg.API.ListenAddress)
 			if err != nil {

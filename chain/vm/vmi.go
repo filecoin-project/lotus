@@ -30,9 +30,12 @@ const (
 type Interface interface {
 	// Applies the given message onto the VM's current state, returning the result of the execution
 	ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet, error)
-	// Same as above but for system messages (the Cron invocation and block reward payments).
+	// Applies an implicit message for StateCall-style simulation. The caller must
+	// normalize default gas and set a positive gas limit; the VM will respect it.
+	ApplyImplicitMessageForSimulation(ctx context.Context, msg *types.Message) (*ApplyRet, error)
+	// Applies an implicit message for system execution (cron, reward, genesis).
 	// Must NEVER fail.
-	ApplyImplicitMessage(ctx context.Context, msg *types.Message) (*ApplyRet, error)
+	ApplySystemImplicitMessage(ctx context.Context, msg *types.Message) (*ApplyRet, error)
 	// Flush all buffered objects into the state store provided to the VM at construction.
 	Flush(ctx context.Context) (cid.Cid, error)
 }

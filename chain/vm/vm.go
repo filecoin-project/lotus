@@ -412,7 +412,15 @@ func checkMessage(msg *types.Message) error {
 	return nil
 }
 
-func (vm *LegacyVM) ApplyImplicitMessage(ctx context.Context, msg *types.Message) (*ApplyRet, error) {
+func (vm *LegacyVM) ApplyImplicitMessageForSimulation(ctx context.Context, msg *types.Message) (*ApplyRet, error) {
+	return vm.applyImplicitMessage(ctx, msg)
+}
+
+func (vm *LegacyVM) ApplySystemImplicitMessage(ctx context.Context, msg *types.Message) (*ApplyRet, error) {
+	return vm.applyImplicitMessage(ctx, msg)
+}
+
+func (vm *LegacyVM) applyImplicitMessage(ctx context.Context, msg *types.Message) (*ApplyRet, error) {
 	start := build.Clock.Now()
 	defer atomic.AddUint64(&StatApplied, 1)
 	ret, actorErr, rt := vm.send(ctx, msg, nil, nil, start)

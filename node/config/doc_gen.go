@@ -28,6 +28,18 @@ var Doc = map[string][]DocField{
 
 			Comment: ``,
 		},
+		{
+			Name: "StateCallGasLimit",
+			Type: "int64",
+
+			Comment: `StateCallGasLimit is the maximum gas allowed for StateCall simulation.
+
+StateCall executes actor code locally without publishing a message on chain.
+The default limit is the network block gas limit, which matches normal chain
+execution. Operators may raise this limit to support trusted users who need
+larger local simulations, but doing so increases the CPU and memory that a
+single StateCall can consume. If zero, the network block gas limit is used.`,
+		},
 	},
 	"ApisConfig": {
 		{
