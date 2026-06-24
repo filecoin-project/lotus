@@ -117,9 +117,13 @@ type mCid struct {
 type RawMessage Message
 
 func (m *Message) MarshalJSON() ([]byte, error) {
+	b, err := m.ToStorageBlock()
+	if err != nil {
+		return nil, xerrors.Errorf("failed to marshal message: %w", err)
+	}
 	return json.Marshal(&mCid{
 		RawMessage: (*RawMessage)(m),
-		CID:        m.Cid(),
+		CID:        b.Cid(),
 	})
 }
 
