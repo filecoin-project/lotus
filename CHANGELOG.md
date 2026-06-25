@@ -30,7 +30,7 @@ This is the first release candidate for Lotus Node and Miner v1.36.1, a recommen
 - feat(eth): add `eth_baseFee` JSON-RPC method returning the base fee for the next block, matching geth behavior via `ComputeBaseFee` on the current tipset ([filecoin-project/lotus#13615](https://github.com/filecoin-project/lotus/pull/13615))
 
 ## 🐛 Bug Fixes
-- fix(rpc): `GasEstimateMessageGas` with an empty `To` or `From` address no longer crashes the WebSocket server. ([filecoin-project/lotus#13672](https://github.com/filecoin-project/lotus/pull/13672))
+- fix(rpc): `GasEstimateMessageGas` with an empty `To` or `From` address ([filecoin-project/lotus#13672](https://github.com/filecoin-project/lotus/pull/13672))
 - fix(api): trace transaction api returns the correct error ([filecoin-project/lotus#13614](https://github.com/filecoin-project/lotus/pull/13614))
 - fix(cli): warn when `lotus daemon --api` overrides the configured `API.ListenAddress` / `LOTUS_API_LISTENADDRESS`, making the selected API endpoint visible to operators ([filecoin-project/lotus#13670](https://github.com/filecoin-project/lotus/pull/13670))
 - fix(cli): RPC API URLs ending with a trailing slash no longer produce duplicate slashes before `/rpc/<version>` ([filecoin-project/lotus#13662](https://github.com/filecoin-project/lotus/pull/13662))
