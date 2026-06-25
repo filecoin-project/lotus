@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"testing"
 	"time"
@@ -24,10 +25,15 @@ import (
 
 func TestAPIV2_ThroughRPC(t *testing.T) {
 	const (
-		timeout          = 2 * time.Minute
-		blockTime        = 10 * time.Millisecond
-		f3FinalizedEpoch = 123
-		targetHeight     = 20 + policy.ChainFinality
+		timeout                    = 5 * time.Minute
+		blockTime                  = 10 * time.Millisecond
+		f3FinalizedEpoch           = 123
+		f3BehindECFinalizedEpoch   = 50
+		ecCalculatorFinalizedEpoch = 200
+		f3AheadOfECFinalizedEpoch  = 500
+		f3SafeFinalizedEpoch       = 890
+		ecCalculatorSafeEpoch      = 900
+		targetHeight               = 20 + policy.ChainFinality
 	)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	t.Cleanup(cancel)
@@ -36,35 +42,38 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 	mockF3 := kit.NewMockF3Backend()
 	mockECFinality := kit.NewMockECFinalityProvider()
 	subject, miner, network := kit.EnsembleMinimal(t, kit.ThroughRPC(), kit.F3Backend(mockF3), kit.ECFinalityProvider(mockECFinality))
-	network.BeginMining(blockTime)
+	blockMiners := network.BeginMining(blockTime)
 	subject.WaitTillChain(ctx, kit.HeightAtLeast(targetHeight))
+	for _, bm := range blockMiners {
+		bm.Stop()
+	}
+	head, err := subject.ChainHead(ctx)
+	require.NoError(t, err)
+	headHeight := head.Height()
+	ecFinalizedEpoch := headHeight - policy.ChainFinality
+	f3OlderThanECEpoch := ecFinalizedEpoch - 5
+	ecCalculatorThresholdDepth := int(headHeight - ecCalculatorFinalizedEpoch)
 
 	var (
-		heaviest = func(t *testing.T) *types.TipSet {
-			head, err := subject.ChainHead(ctx)
-			require.NoError(t, err)
-			return head
-		}
-		ecFinalized = func(t *testing.T) *types.TipSet {
-			head, err := subject.ChainHead(ctx)
-			require.NoError(t, err)
-			ecFinalized, err := subject.ChainGetTipSetByHeight(ctx, head.Height()-policy.ChainFinality, head.Key())
-			require.NoError(t, err)
-			return ecFinalized
-		}
-		safe = func(t *testing.T) *types.TipSet {
-			head, err := subject.ChainHead(ctx)
-			require.NoError(t, err)
-			safe, err := subject.ChainGetTipSetByHeight(ctx, head.Height()-buildconstants.SafeHeightDistance, head.Key())
-			require.NoError(t, err)
-			return safe
-		}
 		tipSetAtHeight = func(height abi.ChainEpoch) func(t *testing.T) *types.TipSet {
 			return func(t *testing.T) *types.TipSet {
 				ts, err := subject.ChainGetTipSetByHeight(ctx, height, types.EmptyTSK)
 				require.NoError(t, err)
 				return ts
 			}
+		}
+		heaviest = func(t *testing.T) *types.TipSet {
+			head, err := subject.ChainHead(ctx)
+			require.NoError(t, err)
+			return head
+		}
+		ecFinalized = tipSetAtHeight(ecFinalizedEpoch)
+		safe        = func(t *testing.T) *types.TipSet {
+			head, err := subject.ChainHead(ctx)
+			require.NoError(t, err)
+			safe, err := subject.ChainGetTipSetByHeight(ctx, head.Height()-buildconstants.SafeHeightDistance, head.Key())
+			require.NoError(t, err)
+			return safe
 		}
 		internalF3Error = errors.New("lost hearing in left eye")
 		plausibleCertAt = func(t *testing.T, epoch abi.ChainEpoch) *certs.FinalityCertificate {
@@ -85,6 +94,16 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 					Key:   []byte(`🐠`),
 				}},
 			},
+		}
+		resetFinalityMocks = func(t *testing.T) {
+			mockF3.Running = false
+			mockF3.Finalizing = false
+			mockF3.LatestCert = nil
+			mockF3.LatestCertErr = nil
+
+			mockECFinality.FinalizedTipSet = nil
+			mockECFinality.ThresholdDepth = -1
+			mockECFinality.Err = nil
 		}
 	)
 
@@ -140,10 +159,10 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 					mockF3.Running = true
 					mockF3.Finalizing = true
 					mockF3.LatestCertErr = nil
-					mockF3.LatestCert = plausibleCertAt(t, targetHeight-policy.ChainFinality-5)
+					mockF3.LatestCert = plausibleCertAt(t, f3OlderThanECEpoch)
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"tag":"finalized"}],"id":1}`,
-				wantTipSet:         tipSetAtHeight(targetHeight - policy.ChainFinality),
+				wantTipSet:         ecFinalized,
 				wantResponseStatus: http.StatusOK,
 			},
 			{
@@ -164,10 +183,10 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 					mockF3.Running = true
 					mockF3.Finalizing = true
 					mockF3.LatestCertErr = nil
-					mockF3.LatestCert = plausibleCertAt(t, 890)
+					mockF3.LatestCert = plausibleCertAt(t, f3SafeFinalizedEpoch)
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"tag":"safe"}],"id":1}`,
-				wantTipSet:         tipSetAtHeight(890),
+				wantTipSet:         tipSetAtHeight(f3SafeFinalizedEpoch),
 				wantResponseStatus: http.StatusOK,
 			},
 			{
@@ -292,14 +311,14 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 					mockF3.Running = true
 					mockF3.Finalizing = true
 					mockF3.LatestCertErr = nil
-					mockF3.LatestCert = plausibleCertAt(t, 50) // F3 at 50
-					ecTipSet := tipSetAtHeight(200)(t)         // EC calculator at 200
+					mockF3.LatestCert = plausibleCertAt(t, f3BehindECFinalizedEpoch)
+					ecTipSet := tipSetAtHeight(ecCalculatorFinalizedEpoch)(t)
 					mockECFinality.FinalizedTipSet = ecTipSet
-					mockECFinality.ThresholdDepth = int(targetHeight - 200)
+					mockECFinality.ThresholdDepth = ecCalculatorThresholdDepth
 					mockECFinality.Err = nil
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"tag":"finalized"}],"id":1}`,
-				wantTipSet:         tipSetAtHeight(200),
+				wantTipSet:         tipSetAtHeight(ecCalculatorFinalizedEpoch),
 				wantResponseStatus: http.StatusOK,
 			},
 			{
@@ -308,14 +327,14 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 					mockF3.Running = true
 					mockF3.Finalizing = true
 					mockF3.LatestCertErr = nil
-					mockF3.LatestCert = plausibleCertAt(t, 500) // F3 at 500
-					ecTipSet := tipSetAtHeight(200)(t)          // EC calculator at 200
+					mockF3.LatestCert = plausibleCertAt(t, f3AheadOfECFinalizedEpoch)
+					ecTipSet := tipSetAtHeight(ecCalculatorFinalizedEpoch)(t)
 					mockECFinality.FinalizedTipSet = ecTipSet
-					mockECFinality.ThresholdDepth = int(targetHeight - 200)
+					mockECFinality.ThresholdDepth = ecCalculatorThresholdDepth
 					mockECFinality.Err = nil
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"tag":"finalized"}],"id":1}`,
-				wantTipSet:         tipSetAtHeight(500),
+				wantTipSet:         tipSetAtHeight(f3AheadOfECFinalizedEpoch),
 				wantResponseStatus: http.StatusOK,
 			},
 			{
@@ -346,13 +365,13 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 				name: "safe tag uses ec calculator when finalized beats safe distance",
 				when: func(t *testing.T) {
 					mockF3.Running = false
-					ecTipSet := tipSetAtHeight(900)(t) // well ahead of safe distance
+					ecTipSet := tipSetAtHeight(ecCalculatorSafeEpoch)(t)
 					mockECFinality.FinalizedTipSet = ecTipSet
-					mockECFinality.ThresholdDepth = int(targetHeight - 900)
+					mockECFinality.ThresholdDepth = int(headHeight - ecCalculatorSafeEpoch)
 					mockECFinality.Err = nil
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"tag":"safe"}],"id":1}`,
-				wantTipSet:         tipSetAtHeight(900),
+				wantTipSet:         tipSetAtHeight(ecCalculatorSafeEpoch),
 				wantResponseStatus: http.StatusOK,
 			},
 			{
@@ -366,12 +385,13 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 					mockECFinality.ThresholdDepth = -1
 					mockECFinality.Err = nil
 				},
-				request:            `{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"height":{"at":890,"anchor":{"tag":"latest"}}}],"id":1}`,
-				wantTipSet:         tipSetAtHeight(890),
+				request:            fmt.Sprintf(`{"jsonrpc":"2.0","method":"Filecoin.ChainGetTipSet","params":[{"height":{"at":%d,"anchor":{"tag":"latest"}}}],"id":1}`, f3SafeFinalizedEpoch),
+				wantTipSet:         tipSetAtHeight(f3SafeFinalizedEpoch),
 				wantResponseStatus: http.StatusOK,
 			},
 		} {
 			t.Run(test.name, func(t *testing.T) {
+				resetFinalityMocks(t)
 				if test.when != nil {
 					test.when(t)
 				}
@@ -476,6 +496,7 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 			},
 		} {
 			t.Run(test.name, func(t *testing.T) {
+				resetFinalityMocks(t)
 				if test.when != nil {
 					test.when(t)
 				}
@@ -534,16 +555,16 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 					mockF3.Running = true
 					mockF3.Finalizing = true
 					mockF3.LatestCertErr = nil
-					mockF3.LatestCert = plausibleCertAt(t, 500)
-					ecTipSet := tipSetAtHeight(200)(t)
+					mockF3.LatestCert = plausibleCertAt(t, f3AheadOfECFinalizedEpoch)
+					ecTipSet := tipSetAtHeight(ecCalculatorFinalizedEpoch)(t)
 					mockECFinality.FinalizedTipSet = ecTipSet
-					mockECFinality.ThresholdDepth = int(targetHeight - 200)
+					mockECFinality.ThresholdDepth = ecCalculatorThresholdDepth
 					mockECFinality.Err = nil
 				},
-				wantECThresholdDepth:  int(targetHeight - 200),
-				wantECFinalizedHeight: 200,
-				wantF3FinalizedHeight: 500,
-				wantFinalizedHeight:   500,
+				wantECThresholdDepth:  ecCalculatorThresholdDepth,
+				wantECFinalizedHeight: ecCalculatorFinalizedEpoch,
+				wantF3FinalizedHeight: f3AheadOfECFinalizedEpoch,
+				wantFinalizedHeight:   f3AheadOfECFinalizedEpoch,
 			},
 			{
 				name: "ec calculator ahead of f3",
@@ -551,16 +572,16 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 					mockF3.Running = true
 					mockF3.Finalizing = true
 					mockF3.LatestCertErr = nil
-					mockF3.LatestCert = plausibleCertAt(t, 50)
-					ecTipSet := tipSetAtHeight(200)(t)
+					mockF3.LatestCert = plausibleCertAt(t, f3BehindECFinalizedEpoch)
+					ecTipSet := tipSetAtHeight(ecCalculatorFinalizedEpoch)(t)
 					mockECFinality.FinalizedTipSet = ecTipSet
-					mockECFinality.ThresholdDepth = int(targetHeight - 200)
+					mockECFinality.ThresholdDepth = ecCalculatorThresholdDepth
 					mockECFinality.Err = nil
 				},
-				wantECThresholdDepth:  int(targetHeight - 200),
-				wantECFinalizedHeight: 200,
-				wantF3FinalizedHeight: 50,
-				wantFinalizedHeight:   200,
+				wantECThresholdDepth:  ecCalculatorThresholdDepth,
+				wantECFinalizedHeight: ecCalculatorFinalizedEpoch,
+				wantF3FinalizedHeight: f3BehindECFinalizedEpoch,
+				wantFinalizedHeight:   ecCalculatorFinalizedEpoch,
 			},
 			{
 				name: "ec calculator not met and no f3 falls back to static finality",
@@ -590,6 +611,7 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 			},
 		} {
 			t.Run(test.name, func(t *testing.T) {
+				resetFinalityMocks(t)
 				if test.when != nil {
 					test.when(t)
 				}
@@ -663,10 +685,11 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 				},
 				request:            `{"jsonrpc":"2.0","method":"Filecoin.StateGetID","params":["f01000",{"tag":"finalized"}],"id":1}`,
 				wantResponseStatus: http.StatusOK,
-				wantTipSet:         tipSetAtHeight(f3FinalizedEpoch),
+				wantTipSet:         ecFinalized,
 			},
 		} {
 			t.Run(test.name, func(t *testing.T) {
+				resetFinalityMocks(t)
 				if test.when != nil {
 					test.when(t)
 				}
