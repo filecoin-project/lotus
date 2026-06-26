@@ -41,7 +41,7 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 
 	mockF3 := kit.NewMockF3Backend()
 	mockECFinality := kit.NewMockECFinalityProvider()
-	subject, miner, network := kit.EnsembleMinimal(t, kit.ThroughRPC(), kit.F3Backend(mockF3), kit.ECFinalityProvider(mockECFinality))
+	subject, miner, network := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.F3Backend(mockF3), kit.ECFinalityProvider(mockECFinality))
 	blockMiners := network.BeginMining(blockTime)
 	subject.WaitTillChain(ctx, kit.HeightAtLeast(targetHeight))
 	for _, bm := range blockMiners {
