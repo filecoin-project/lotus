@@ -96,6 +96,7 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 			},
 		}
 		resetFinalityMocks = func(t *testing.T) {
+			t.Helper()
 			mockF3.Running = false
 			mockF3.Finalizing = false
 			mockF3.LatestCert = nil
