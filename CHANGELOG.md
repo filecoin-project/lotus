@@ -17,6 +17,7 @@
 - feat(cli): `lotus-miner actor settle-deal` now uses gas-aware adaptive batching — deal batches whose estimated gas would exceed a fraction of the block gas limit (tunable via `--max-gas-fraction`, default 1/4) are automatically split so no single `SettleDealPaymentsExported` message hogs block capacity ([filecoin-project/lotus#13471](https://github.com/filecoin-project/lotus/issues/13471))
 
 ## 🐛 Bug Fixes
+- fix(eth): `eth_getTransactionByHash` no longer returns a false negative for a locally pending Ethereum transaction when the chain indexer has no txHash → message CID mapping for it. The mpool fallback now also matches pending Ethereum (delegated) messages by their real Ethereum transaction hash instead of relying solely on a Filecoin CID fabricated from the Ethereum tx hash ([filecoin-project/lotus#13665](https://github.com/filecoin-project/lotus/issues/13665))
 - fix(rpc): `GasEstimateMessageGas` with an empty `To` or `From` address no longer crashes the WebSocket server. ([filecoin-project/lotus#13672](https://github.com/filecoin-project/lotus/pull/13672))
 - fix(api): trace transaction api returns the correct error ([filecoin-project/lotus#13614](https://github.com/filecoin-project/lotus/pull/13614))
 - fix(cli): warn when `lotus daemon --api` overrides the configured `API.ListenAddress` / `LOTUS_API_LISTENADDRESS`, making the selected API endpoint visible to operators ([filecoin-project/lotus#13670](https://github.com/filecoin-project/lotus/pull/13670))

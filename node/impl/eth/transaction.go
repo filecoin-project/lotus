@@ -10,6 +10,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/api"
 	builtinactors "github.com/filecoin-project/lotus/chain/actors/builtin"
@@ -161,7 +162,23 @@ func (e *ethTransaction) EthGetTransactionByHashLimited(ctx context.Context, txH
 	}
 
 	for _, p := range pending {
-		if p.Cid() == c {
+		// Match a pending message either by its message CID or, for Ethereum (delegated)
+		// messages, by its real Ethereum transaction hash.
+		//
+		// The CID comparison covers the case where the chain indexer has the txHash -> CID
+		// mapping (c is the real message CID) as well as native messages whose Eth hash is
+		// derived from their CID. The hash comparison is required for the case where the
+		// indexer has no mapping for an Ethereum transaction: getCidForTransaction then
+		// cannot produce the real message CID from the Ethereum tx hash (EthHash.ToCid is
+		// only valid for blocks and Filecoin messages, not Ethereum tx hashes), so a
+		// locally pending Ethereum transaction would otherwise be reported as not found.
+		matched := p.Cid() == c
+		if !matched && p.Signature.Type == crypto.SigTypeDelegated {
+			if h, herr := ethTxHashFromSignedMessage(p); herr == nil && h == *txHash {
+				matched = true
+			}
+		}
+		if matched {
 			// We only return pending eth-account messages because we can't guarantee
 			// that the from/to addresses of other messages are conversable to 0x-style
 			// addresses. So we just ignore them.
