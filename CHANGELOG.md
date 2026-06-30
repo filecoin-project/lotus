@@ -21,8 +21,6 @@
 
 This is the stable release of Lotus Node and Miner v1.36.1, a recommended patch release focused on Ethereum RPC correctness, gateway API alignment, and release/build reliability.
 
-Compared with v1.36.1-rc1, this stable release includes additional backports for `GasEstimateMessageGas`, daemon API listen address visibility, go-state-types release readiness, and removal of obsolete network-version compatibility guards.
-
 ## ☢️ Upgrade Warnings ☢️
 
 - There are no upgrade warnings for this release.
