@@ -24,7 +24,7 @@ import (
 
 func TestAPI(t *testing.T) {
 
-	ts := apiSuite{}
+	ts := apiSuite{opts: []interface{}{kit.RealProofs()}}
 	t.Run("testMiningReal", ts.testMiningReal)
 	ts.opts = append(ts.opts, kit.ThroughRPC())
 	t.Run("testMiningReal", ts.testMiningReal)

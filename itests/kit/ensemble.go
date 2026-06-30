@@ -81,7 +81,7 @@ func init() {
 //
 // Create a new ensemble with:
 //
-//	ens := kit.NewEnsemble()
+//	ens := kit.NewEnsemble(t, kit.MockProofs())
 //
 // Create full nodes and miners:
 //
@@ -107,14 +107,14 @@ func init() {
 //
 // The API is chainable, so it's possible to do a lot in a very succinct way:
 //
-//	kit.NewEnsemble().FullNode(&full).Miner(&miner, &full).Start().InterconnectAll().BeginMining()
+//	kit.NewEnsemble(t, kit.MockProofs()).FullNode(&full).Miner(&miner, &full).Start().InterconnectAll().BeginMining()
 //
 // You can also find convenient fullnode:miner presets, such as 1:1, 1:2,
 // and 2:1, e.g.:
 //
-//	kit.EnsembleMinimal()
-//	kit.EnsembleOneTwo()
-//	kit.EnsembleTwoOne()
+//	kit.EnsembleMinimal(t, kit.MockProofs())
+//	kit.EnsembleOneTwo(t, kit.MockProofs())
+//	kit.EnsembleTwoOne(t, kit.MockProofs())
 type Ensemble struct {
 	t            *testing.T
 	bootstrapped bool
@@ -149,6 +149,7 @@ func NewEnsemble(t *testing.T, opts ...EnsembleOpt) *Ensemble {
 		err := o(&options)
 		require.NoError(t, err)
 	}
+	require.NotEqual(t, proofModeUnset, options.proofMode, "proof mode must be explicit: use kit.MockProofs() or kit.RealProofs()")
 
 	n := &Ensemble{t: t, options: &options}
 	n.active.bms = make(map[*TestMiner]*BlockMiner)

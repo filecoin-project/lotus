@@ -1,6 +1,7 @@
 package kit
 
 import (
+	"errors"
 	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -13,6 +14,14 @@ import (
 
 type EnsembleOpt func(opts *ensembleOpts) error
 
+type proofMode int
+
+const (
+	proofModeUnset proofMode = iota
+	proofModeMock
+	proofModeReal
+)
+
 type genesisAccount struct {
 	key            *key.Key
 	initialBalance abi.TokenAmount
@@ -22,6 +31,7 @@ type ensembleOpts struct {
 	pastOffset   time.Duration
 	verifiedRoot genesisAccount
 	accounts     []genesisAccount
+	proofMode    proofMode
 	mockProofs   bool
 	networkName  string
 
@@ -38,18 +48,31 @@ var DefaultEnsembleOpts = ensembleOpts{
 }
 
 // MockProofs activates mock proofs for the entire ensemble.
-func MockProofs(e ...bool) EnsembleOpt {
-	if len(e) > 0 && !e[0] {
-		return func(opts *ensembleOpts) error {
-			return nil
-		}
-	}
-
+func MockProofs() EnsembleOpt {
 	return func(opts *ensembleOpts) error {
+		if opts.proofMode == proofModeReal {
+			return errors.New("proof mode already set to real proofs; use either kit.MockProofs() or kit.RealProofs()")
+		}
+		opts.proofMode = proofModeMock
 		opts.mockProofs = true
 		// since we're using mock proofs, we don't need to download
 		// proof parameters
 		build.DisableBuiltinAssets = true
+		return nil
+	}
+}
+
+// RealProofs activates real proofs for the entire ensemble.
+// CI scans for this marker when deciding whether to download proof parameters
+// for an itest.
+func RealProofs() EnsembleOpt {
+	return func(opts *ensembleOpts) error {
+		if opts.proofMode == proofModeMock {
+			return errors.New("proof mode already set to mock proofs; use either kit.MockProofs() or kit.RealProofs()")
+		}
+		opts.proofMode = proofModeReal
+		opts.mockProofs = false
+		build.DisableBuiltinAssets = false
 		return nil
 	}
 }
