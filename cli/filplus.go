@@ -22,10 +22,8 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
 	verifregtypes13 "github.com/filecoin-project/go-state-types/builtin/v13/verifreg"
-	verifregtypes8 "github.com/filecoin-project/go-state-types/builtin/v8/verifreg"
 	datacap2 "github.com/filecoin-project/go-state-types/builtin/v9/datacap"
 	verifregtypes9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
-	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v0api"
@@ -896,30 +894,17 @@ var filplusSignRemoveDataCapProposal = &cli.Command{
 			}
 		}
 
-		nv, err := api.StateNetworkVersion(ctx, types.EmptyTSK)
-		if err != nil {
-			return xerrors.Errorf("failed to get network version: %w", err)
-		}
-
 		paramBuf := new(bytes.Buffer)
 		paramBuf.WriteString(verifregtypes9.SignatureDomainSeparation_RemoveDataCap)
-		if nv <= network.Version16 {
-			params := verifregtypes8.RemoveDataCapProposal{
-				RemovalProposalID: id,
-				DataCapAmount:     allowanceToRemove,
-				VerifiedClient:    clientIdAddr,
-			}
 
-			err = params.MarshalCBOR(paramBuf)
-		} else {
-			params := verifregtypes9.RemoveDataCapProposal{
-				RemovalProposalID: verifregtypes9.RmDcProposalID{ProposalID: id},
-				DataCapAmount:     allowanceToRemove,
-				VerifiedClient:    clientIdAddr,
-			}
-
-			err = params.MarshalCBOR(paramBuf)
+		params := verifregtypes9.RemoveDataCapProposal{
+			RemovalProposalID: verifregtypes9.RmDcProposalID{ProposalID: id},
+			DataCapAmount:     allowanceToRemove,
+			VerifiedClient:    clientIdAddr,
 		}
+
+		err = params.MarshalCBOR(paramBuf)
+
 		if err != nil {
 			return xerrors.Errorf("failed to marshall paramBuf: %w", err)
 		}
