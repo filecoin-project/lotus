@@ -130,10 +130,10 @@ func (cs *ChainStore) ComputeNextBaseFeeFromPremiums(ctx context.Context, ts *ty
 
 	percentilePremium := WeightedQuickSelect(premiums, limits, buildconstants.BlockGasTargetIndex)
 
-	return nextBaseFeeFromPremium(parentBaseFee, percentilePremium), nil
+	return NextBaseFeeFromPremium(parentBaseFee, percentilePremium), nil
 }
 
-func nextBaseFeeFromPremium(baseFee, premiumP abi.TokenAmount) abi.TokenAmount {
+func NextBaseFeeFromPremium(baseFee, premiumP abi.TokenAmount) abi.TokenAmount {
 	denom := big.NewInt(buildconstants.BaseFeeMaxChangeDenom)
 	maxAdj := big.Div(big.Add(baseFee, big.Sub(denom, big.NewInt(1))), denom)
 	return big.Max(
