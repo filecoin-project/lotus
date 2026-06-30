@@ -1,0 +1,61 @@
+name: Publish Snapcraft Deprecation
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the built snaps to the Snap Store
+        required: true
+        type: boolean
+        default: false
+      release_channels:
+        description: Comma-separated Snap channels to release to
+        required: true
+        type: string
+        default: stable,candidate,edge
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+
+jobs:
+  snapcraft:
+    name: Build ${{ matrix.snap-name }} deprecation snap
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        snap-name:
+          - lotus-filecoin
+          - lotus
+    steps:
+      - name: Check out lotus
+        uses: actions/checkout@v4
+
+      - name: Set snap name
+        if: matrix.snap-name != 'lotus-filecoin'
+        run: |
+          sed 's/^name: lotus-filecoin$/name: lotus/' snap/snapcraft.yaml > edited-snapcraft.yaml
+          mv edited-snapcraft.yaml snap/snapcraft.yaml
+
+      - name: Build snap
+        id: build
+        uses: snapcore/action-build@v1
+
+      - name: Upload snap artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.snap-name }}-deprecation-snap
+          path: ${{ steps.build.outputs.snap }}
+
+      - name: Publish snap
+        if: inputs.publish
+        uses: snapcore/action-publish@v1
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
+        with:
+          snap: ${{ steps.build.outputs.snap }}
+          release: ${{ inputs.release_channels }}
