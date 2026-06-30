@@ -157,8 +157,7 @@ func (vm *LegacyVM) makeRuntime(ctx context.Context, msg *types.Message, parent 
 	}
 
 	if parent != nil {
-		// TODO: The version check here should be unnecessary, but we can wait to take it out
-		if !parent.allowInternal && rt.NetworkVersion() >= network.Version7 {
+		if !parent.allowInternal {
 			rt.Abortf(exitcode.SysErrForbidden, "internal calls currently disabled")
 		}
 		rt.gasUsed = parent.gasUsed

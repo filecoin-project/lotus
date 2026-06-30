@@ -9,7 +9,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -50,7 +49,7 @@ func (ds *PieceDealInfo) isBuiltinMarketDeal() bool {
 
 // Valid validates the deal info after being accepted through RPC, checks that
 // the deal metadata is well-formed.
-func (ds *PieceDealInfo) Valid(nv network.Version) error {
+func (ds *PieceDealInfo) Valid() error {
 	hasLegacyDealInfo := ds.PublishCid != nil && ds.DealID != 0 && ds.DealProposal != nil
 	hasPieceActivationManifest := ds.PieceActivationManifest != nil
 
@@ -76,14 +75,6 @@ func (ds *PieceDealInfo) Valid(nv network.Version) error {
 	}
 	if ds.DealSchedule.EndEpoch <= ds.DealSchedule.StartEpoch {
 		return xerrors.Errorf("invalid deal end epoch %d (start %d)", ds.DealSchedule.EndEpoch, ds.DealSchedule.StartEpoch)
-	}
-
-	if hasPieceActivationManifest {
-		if nv < network.Version22 {
-			return xerrors.Errorf("direct-data-onboarding pieces aren't accepted before network version 22")
-		}
-
-		// todo any more checks seem reasonable to put here?
 	}
 
 	return nil
