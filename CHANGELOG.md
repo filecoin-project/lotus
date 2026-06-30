@@ -32,6 +32,7 @@
 * Silence libp2p config log spam ([filecoin-project/lotus#13612](https://github.com/filecoin-project/lotus/pull/13612))
 * feat(mempool): raise the default per-actor cap on the untrusted push path (`MaxUntrustedActorPendingMessages`) from 10 to 100, reducing spurious `ErrTooManyPendingMessages` rejections for normal-cadence senders relaying through `lotus-gateway` / public RPC ([filecoin-project/lotus#13636](https://github.com/filecoin-project/lotus/pull/13636))
 * chore(cli): `lotus-miner info` supports `--actor` to query any miner without a local miner repo; miner-daemon-only sections (subsystems, start time, alerts, workers, sectors) are skipped when `--actor` is set
+* chore: remove obsolete network-version guards across CLI, state-manager, storage, and miner code. ([filecoin-project/lotus#13680](https://github.com/filecoin-project/lotus/pull/13680))
 
 # Node and Miner v1.36.0 / 2026-05-13
 
