@@ -144,8 +144,11 @@ func (e *ethTransaction) EthGetTransactionByHashLimited(ctx context.Context, txH
 	}
 
 	// first, try to get the cid from mined transactions
-	msgLookup, err := e.stateApi.StateSearchMsg(ctx, types.EmptyTSK, c, limit, true)
+	msgLookup, err := e.stateApi.StateSearchMsg(ctx, types.EmptyTSK, c, limit, false)
 	if err == nil && msgLookup != nil {
+		if msgLookup.Message != c {
+			return nil, nil
+		}
 		tx, err := newEthTxFromMessageLookup(ctx, msgLookup, -1, e.chainStore, e.stateManager)
 		if err == nil {
 			return &tx, nil
@@ -304,10 +307,9 @@ func (e *ethTransaction) EthGetTransactionReceiptLimited(ctx context.Context, tx
 		return nil, err
 	}
 
-	msgLookup, err := e.stateApi.StateSearchMsg(ctx, types.EmptyTSK, c, limit, true)
+	msgLookup, err := e.stateApi.StateSearchMsg(ctx, types.EmptyTSK, c, limit, false)
 	if err != nil {
 		if ipld.IsNotFound(err) || errors.Is(err, stmgr.ErrFailedToLoadMessage) {
-			// error came from not being able to turn the cid into something we can find in the chainstore
 			return nil, nil
 		}
 		return nil, xerrors.Errorf("could not find transaction %s: %w", txHash, err)
@@ -316,6 +318,9 @@ func (e *ethTransaction) EthGetTransactionReceiptLimited(ctx context.Context, tx
 		// limit applied and not searched far back enough, but we don't have a way to go. Because
 		// Ethereum tooling expects an empty response for transaction-not-found, we don't have a way of
 		// differentiating between "can't find" and "doesn't exist".
+		return nil, nil
+	}
+	if msgLookup.Message != c {
 		return nil, nil
 	}
 
@@ -337,7 +342,7 @@ func (e *ethTransaction) EthGetTransactionReceiptLimited(ctx context.Context, tx
 
 	baseFee := parentTs.Blocks()[0].ParentBaseFee
 
-	receipt, err := newEthTxReceipt(ctx, tx, c, baseFee, msgLookup.Receipt, e.ethEvents)
+	receipt, err := newEthTxReceipt(ctx, tx, msgLookup.Message, baseFee, msgLookup.Receipt, e.ethEvents)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to create Eth receipt: %w", err)
 	}

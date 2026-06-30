@@ -657,6 +657,9 @@ func (m *StateModule) StateSearchMsg(ctx context.Context, tsk types.TipSetKey, m
 
 	ts, recpt, found, err := m.StateManager.SearchForMessage(ctx, fromTs, msg, lookbackLimit, allowReplaced)
 	if err != nil {
+		if !allowReplaced && errors.Is(err, stmgr.ErrMessageReplaced) {
+			return nil, nil
+		}
 		return nil, err
 	}
 

@@ -26,6 +26,7 @@
 - fix(eth): return indexed block-level `logsBloom` for `eth_getBlockByHash`, `eth_getBlockByNumber`, and new-head subscription payloads when chain-index bloom data is available; existing tipsets without bloom rows continue to fall back to the previous full bloom. This adds a chain index DB migration for the `tipset_bloom` table and requires no RPC-provider config changes. ([filecoin-project/lotus#13618](https://github.com/filecoin-project/lotus/pull/13618))
 - fix(gateway): align v2 RPC surface (`/rpc/v2`) with v1; remove `*Limited` and `*Untrusted` eth method variants ([filecoin-project/lotus#13628](https://github.com/filecoin-project/lotus/pull/13628))
 - fix(eth): `eth_call`, `eth_estimateGas` and `StateCall` are no longer refused at the epoch immediately after an expensive network-upgrade migration; that block's migrated state is already available, so only the upgrade epoch itself is refused. This unblocks indexers (e.g. The Graph) that replay `eth_call` at the block of each event. The refusal now returns a typed error with the registered JSON-RPC code `-32002` and a recognisable message, instead of the generic application code `1` ([filecoin-project/lotus#13644](https://github.com/filecoin-project/lotus/pull/13644))
+- fix(eth): return `null` from `eth_getTransactionByHash` and `eth_getTransactionReceipt` for transaction hashes that were replaced before execution, matching Ethereum replacement semantics ([filecoin-project/lotus#13664](https://github.com/filecoin-project/lotus/pull/13664))
 
 ## 👌 Improvements
 
