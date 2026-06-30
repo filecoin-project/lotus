@@ -309,13 +309,9 @@ func getPackages(testGroupName string) []string {
 func getNeedsParameters(testGroupName string) bool {
 	testGroupNames := []string{
 		"conformance",
-		"itest-api_v2",
 		"itest-api",
-		"itest-direct_data_onboard_verified",
 		"itest-direct_data_onboard",
-		"itest-eth_api_f3",
 		"itest-manual_onboarding",
-		"itest-net",
 		"itest-niporep_manual",
 		"itest-path_detach_redeclare",
 		"itest-sealing_resources",
