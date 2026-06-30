@@ -17,6 +17,8 @@
 
 ## 🐛 Bug Fixes
 
+- fix(eth): restore lite node Eth transaction API (`EthGetTransactionByHash`, `EthGetTransactionReceipt`, etc.) that returned nil results when the gateway was used as the backing full node ([filecoin-project/lotus#13577](https://github.com/filecoin-project/lotus/pull/13577))
+
 ## 👌 Improvements
 
 # Node and Miner v1.36.1 / 2026-06-30
