@@ -2,6 +2,9 @@ package main
 
 import (
 	"encoding/json"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"os"
 	"path/filepath"
 	"slices"
@@ -275,6 +278,9 @@ func getPackages(testGroupName string) []string {
 		return []string{createPackagePath("itests", strings.Join([]string{strings.TrimPrefix(testGroupName, "itest-"), "test.go"}, "_"))}
 	}
 
+	// Keep the non-itest groups in sync with the Makefile's unittests target:
+	// go list ./... excluding ./itests. unit-rest is the catch-all bucket for
+	// packages that do not have a more specific CI group.
 	testGroupNameToPackages := map[string][]string{
 		"multicore-sdr": {createPackagePath("storage", "sealer", "ffiwrapper")},
 		"conformance":   {createPackagePath("conformance")},
@@ -295,10 +301,16 @@ func getPackages(testGroupName string) []string {
 			createPackagePath("build", "..."),
 			createPackagePath("chain", "..."),
 			createPackagePath("conformance", "..."),
+			createPackagePath("gen", "..."),
+			createPackagePath("genesis", "..."),
 			createPackagePath("gateway", "..."),
 			createPackagePath("journal", "..."),
 			createPackagePath("lib", "..."),
+			createPackagePath("metrics", "..."),
+			createPackagePath("miner", "..."),
 			createPackagePath("paychmgr", "..."),
+			createPackagePath("scripts", "..."),
+			createPackagePath("system", "..."),
 			createPackagePath("tools", "..."),
 		},
 	}
@@ -307,27 +319,92 @@ func getPackages(testGroupName string) []string {
 }
 
 func getNeedsParameters(testGroupName string) bool {
+	if testGroupCallsFunction(testGroupName, "RealProofs") {
+		return true
+	}
+
 	testGroupNames := []string{
 		"conformance",
-		"itest-api",
-		"itest-direct_data_onboard",
-		"itest-manual_onboarding",
-		"itest-niporep_manual",
-		"itest-path_detach_redeclare",
-		"itest-sealing_resources",
-		"itest-sector_import_full",
-		"itest-sector_import_simple",
-		"itest-sector_pledge",
-		"itest-sector_unseal",
-		"itest-wdpost_no_miner_storage",
-		"itest-wdpost_worker_config",
-		"itest-wdpost",
-		"itest-worker",
 		"multicore-sdr",
-		"unit-cli",
 		"unit-storage",
 	}
 	return slices.Contains(testGroupNames, testGroupName)
+}
+
+func testGroupCallsFunction(testGroupName string, name string) bool {
+	for _, packagePath := range getPackages(testGroupName) {
+		if pathCallsFunction(packagePath, name) {
+			return true
+		}
+	}
+	return false
+}
+
+func pathCallsFunction(packagePath string, name string) bool {
+	if strings.HasSuffix(packagePath, string(os.PathSeparator)+"...") {
+		return dirCallsFunction(strings.TrimSuffix(packagePath, string(os.PathSeparator)+"..."), name, true)
+	}
+
+	info, err := os.Stat(packagePath)
+	if err != nil {
+		log.WithError(err).WithField("path", packagePath).Warn("failed to scan test path for proof mode")
+		return false
+	}
+	if !info.IsDir() {
+		return fileCallsFunction(packagePath, name)
+	}
+	return dirCallsFunction(packagePath, name, false)
+}
+
+func dirCallsFunction(dir string, name string, recursive bool) bool {
+	found := false
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			if path != dir && !recursive {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if strings.HasSuffix(info.Name(), "_test.go") && fileCallsFunction(path, name) {
+			found = true
+		}
+		return nil
+	})
+	if err != nil {
+		log.WithError(err).WithField("dir", dir).Warn("failed to scan test directory for proof mode")
+	}
+	return found
+}
+
+func fileCallsFunction(filename string, name string) bool {
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, filename, nil, 0)
+	if err != nil {
+		log.WithError(err).WithField("file", filename).Warn("failed to scan test file for proof mode")
+		return false
+	}
+
+	found := false
+	ast.Inspect(file, func(n ast.Node) bool {
+		if found {
+			return false
+		}
+		call, ok := n.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		switch fn := call.Fun.(type) {
+		case *ast.Ident:
+			found = fn.Name == name
+		case *ast.SelectorExpr:
+			found = fn.Sel.Name == name
+		}
+		return !found
+	})
+	return found
 }
 
 func getSkipConformance(testGroupName string) bool {

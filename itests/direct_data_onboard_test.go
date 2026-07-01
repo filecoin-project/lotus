@@ -357,7 +357,7 @@ func TestOnboardRawPieceSnap(t *testing.T) {
 		ctx       = context.Background()
 	)
 
-	client, miner, ens := kit.EnsembleMinimal(t, kit.ThroughRPC(), kit.MutateSealingConfig(func(sc *config.SealingConfig) {
+	client, miner, ens := kit.EnsembleMinimal(t, kit.RealProofs(), kit.ThroughRPC(), kit.MutateSealingConfig(func(sc *config.SealingConfig) {
 		sc.PreferNewSectorsForDeals = false
 		sc.MakeNewSectorForDeals = false
 		sc.MakeCCSectorsAvailable = true

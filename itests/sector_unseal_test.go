@@ -22,12 +22,12 @@ func TestUnsealPiece(t *testing.T) {
 	blockTime := 1 * time.Millisecond
 	kit.QuietMiningLogs()
 
-	_, miner, ens := kit.EnsembleMinimal(t, kit.WithAllSubsystems(), kit.ThroughRPC(), kit.WithNoLocalSealing(true),
+	_, miner, ens := kit.EnsembleMinimal(t, kit.RealProofs(), kit.WithAllSubsystems(), kit.ThroughRPC(), kit.WithNoLocalSealing(true),
 		kit.NoStorage(), // no storage to have better control over path settings
 		kit.MutateSealingConfig(func(sc *config.SealingConfig) {
 			sc.FinalizeEarly = true
 			sc.AlwaysKeepUnsealedCopy = false
-		})) // no mock proofs
+		}))
 
 	var worker kit.TestWorker
 	ens.Worker(miner, &worker, kit.ThroughRPC(), kit.NoStorage(), // no storage to have better control over path settings
