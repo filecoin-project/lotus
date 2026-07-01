@@ -28,12 +28,13 @@ type genesisAccount struct {
 }
 
 type ensembleOpts struct {
-	pastOffset   time.Duration
-	verifiedRoot genesisAccount
-	accounts     []genesisAccount
-	proofMode    proofMode
-	mockProofs   bool
-	networkName  string
+	pastOffset         time.Duration
+	verifiedRoot       genesisAccount
+	accounts           []genesisAccount
+	proofMode          proofMode
+	mockProofs         bool
+	realStorageManager bool
+	networkName        string
 
 	upgradeSchedule stmgr.UpgradeSchedule
 }
@@ -73,6 +74,16 @@ func RealProofs() EnsembleOpt {
 		opts.proofMode = proofModeReal
 		opts.mockProofs = false
 		build.DisableBuiltinAssets = false
+		return nil
+	}
+}
+
+// WithRealStorageManager keeps the real storage manager wired when using
+// MockProofs. This is useful for tests that exercise the storage-manager API
+// surface without needing real cryptographic proofs.
+func WithRealStorageManager() EnsembleOpt {
+	return func(opts *ensembleOpts) error {
+		opts.realStorageManager = true
 		return nil
 	}
 }

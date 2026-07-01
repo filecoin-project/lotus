@@ -785,18 +785,22 @@ func (n *Ensemble) Start() *Ensemble {
 
 		if n.options.mockProofs {
 			opts = append(opts,
-				node.Override(new(*mock.SectorMgr), func() (*mock.SectorMgr, error) {
-					return mock.NewMockSectorMgr(presealSectors), nil
-				}),
-				node.Override(new(sectorstorage.SectorManager), node.From(new(*mock.SectorMgr))),
-				node.Override(new(sectorstorage.Unsealer), node.From(new(*mock.SectorMgr))),
-				node.Override(new(sectorstorage.PieceProvider), node.From(new(*mock.SectorMgr))),
-
 				node.Override(new(proofs.Verifier), proofsmock.MockVerifier),
 				node.Override(new(storiface.Verifier), mock.MockVerifier),
 				node.Override(new(storiface.Prover), mock.MockProver),
-				node.Unset(new(*sectorstorage.Manager)),
 			)
+
+			if !n.options.realStorageManager {
+				opts = append(opts,
+					node.Override(new(*mock.SectorMgr), func() (*mock.SectorMgr, error) {
+						return mock.NewMockSectorMgr(presealSectors), nil
+					}),
+					node.Override(new(sectorstorage.SectorManager), node.From(new(*mock.SectorMgr))),
+					node.Override(new(sectorstorage.Unsealer), node.From(new(*mock.SectorMgr))),
+					node.Override(new(sectorstorage.PieceProvider), node.From(new(*mock.SectorMgr))),
+					node.Unset(new(*sectorstorage.Manager)),
+				)
+			}
 		}
 
 		// start node

@@ -50,7 +50,7 @@ func TestGetNeedsParametersScansTestFiles(t *testing.T) {
 		{name: "itest-api_v2", want: false},
 		{name: "itest-direct_data_onboard", want: true},
 		{name: "itest-direct_data_onboard_verified", want: false},
-		{name: "unit-cli", want: true},
+		{name: "unit-cli", want: false},
 		{name: "unit-storage", want: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
