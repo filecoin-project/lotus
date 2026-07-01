@@ -182,6 +182,9 @@ func NewEnsemble(t *testing.T, opts ...EnsembleOpt) *Ensemble {
 	if n.options.mockProofs {
 		require.NoError(t, build.UseNetworkBundle("testing-fake-proofs"))
 	} else {
+		// MockProofs disables built-in assets globally; restore them for later
+		// ensembles that need real proof parameters or other bundled assets.
+		build.DisableBuiltinAssets = false
 		require.NoError(t, build.UseNetworkBundle(n.options.networkName))
 	}
 

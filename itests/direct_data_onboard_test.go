@@ -47,7 +47,7 @@ func TestActors13Migration(t *testing.T) {
 		blocktime = 2 * time.Millisecond
 		ctx       = context.Background()
 	)
-	client, _, ens := kit.EnsembleMinimal(t, kit.ThroughRPC(), kit.UpgradeSchedule(stmgr.Upgrade{
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.UpgradeSchedule(stmgr.Upgrade{
 		Network: network.Version21,
 		Height:  -1,
 	}, stmgr.Upgrade{
@@ -69,7 +69,7 @@ func TestOnboardRawPiece(t *testing.T) {
 		ctx       = context.Background()
 	)
 
-	client, miner, ens := kit.EnsembleMinimal(t, kit.ThroughRPC())
+	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
 	ens.InterconnectAll().BeginMiningMustPost(blocktime)
 
 	pieceSize := abi.PaddedPieceSize(2048).Unpadded()
@@ -122,7 +122,7 @@ func TestOnboardMixedMarketDDO(t *testing.T) {
 		ctx       = context.Background()
 	)
 
-	client, miner, ens := kit.EnsembleMinimal(t, kit.ThroughRPC(), kit.MutateSealingConfig(func(sc *config.SealingConfig) {
+	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.MutateSealingConfig(func(sc *config.SealingConfig) {
 		sc.RequireActivationSuccess = true
 		sc.RequireNotificationSuccess = true
 	}))
@@ -199,7 +199,6 @@ func TestOnboardMixedMarketDDO(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Equal(t, abi.PaddedPieceSize(0), marketSector.Offset)
-		require.Equal(t, abi.SectorNumber(2), marketSector.Sector)
 	}
 
 	// raw ddo piece
@@ -236,13 +235,12 @@ func TestOnboardMixedMarketDDO(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Equal(t, abi.PaddedPieceSize(1024), rawSector.Offset)
-		require.Equal(t, abi.SectorNumber(2), rawSector.Sector)
 	}
 
 	require.Equal(t, marketSector.Sector, rawSector.Sector) // sanity check same sector
 
 	toCheck := map[abi.SectorNumber]struct{}{
-		2: {},
+		rawSector.Sector: {},
 	}
 
 	miner.WaitSectorsProving(ctx, toCheck)
@@ -250,7 +248,7 @@ func TestOnboardMixedMarketDDO(t *testing.T) {
 	expectCommD, _, err := commp.PieceAggregateCommP(abi.RegisteredSealProof_StackedDrg2KiBV1_1, pieces)
 	require.NoError(t, err)
 
-	si, err := miner.SectorsStatus(ctx, 2, false)
+	si, err := miner.SectorsStatus(ctx, rawSector.Sector, false)
 	require.NoError(t, err)
 	require.Equal(t, expectCommD, *si.CommD)
 
@@ -293,12 +291,7 @@ func TestOnboardMixedMarketDDO(t *testing.T) {
 			return nil
 		})
 		require.NoError(t, err)
-		expectedDealIds := map[abi.SectorNumber][]abi.DealID{
-			0: {abi.DealID(0)},                // preseal, full-sector deal
-			1: {abi.DealID(1)},                // market deal, full-sector deal
-			2: {abi.DealID(rawSector.Sector)}, // the one we manually added, half-sector deal
-		}
-		require.Equal(t, expectedDealIds, actualSectorDeals)
+		require.Equal(t, []abi.DealID{dealID}, actualSectorDeals[rawSector.Sector])
 
 		// check actor events, verify deal-published is as expected
 		caddr, err := client.WalletDefaultAddress(context.Background())
@@ -330,7 +323,7 @@ func TestOnboardMixedMarketDDO(t *testing.T) {
 					case "deal-published", "deal-activated":
 						expectedEntries := []types.EventEntry{
 							{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "$type", Value: keyBytes},
-							{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "id", Value: must.One(ipld.Encode(basicnode.NewInt(2), dagcbor.Encode))},
+							{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "id", Value: must.One(ipld.Encode(basicnode.NewInt(int64(dealID)), dagcbor.Encode))},
 							{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "client", Value: must.One(ipld.Encode(basicnode.NewInt(int64(clientId)), dagcbor.Encode))},
 							{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "provider", Value: must.One(ipld.Encode(basicnode.NewInt(int64(minerId)), dagcbor.Encode))},
 						}

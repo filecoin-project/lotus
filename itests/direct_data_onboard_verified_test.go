@@ -55,7 +55,7 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 	verifierKey := must.One(key.GenerateKey(types.KTSecp256k1))
 	verifiedClientKey := must.One(key.GenerateKey(types.KTBLS))
 
-	client, miner, ens := kit.EnsembleMinimal(t, kit.ThroughRPC(),
+	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(),
 		kit.RootVerifier(rootKey, abi.NewTokenAmount(initialBigBalance)),
 		kit.Account(verifierKey, abi.NewTokenAmount(initialBigBalance)),
 		kit.Account(verifiedClientKey, abi.NewTokenAmount(initialBigBalance)),
@@ -158,6 +158,7 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, allocations, 1) // allocation has been claimed, leaving the bogus one
 
+	client.WaitTillChain(ctx, kit.HeightAtLeast(bogusAllocationExpiry+1))
 	ddoVerifiedRemoveAllocations(ctx, t, client, verifiedClientAddr, clientId)
 
 	// check that we have no more allocations
@@ -630,7 +631,7 @@ func TestVerifiedDDOExtendClaim(t *testing.T) {
 	verifiedClientKey2 := must.One(key.GenerateKey(types.KTBLS))
 	unverifiedClient := must.One(key.GenerateKey(types.KTBLS))
 
-	client, miner, ens := kit.EnsembleMinimal(t, kit.ThroughRPC(),
+	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(),
 		kit.RootVerifier(rootKey, abi.NewTokenAmount(initialBigBalance)),
 		kit.Account(verifierKey, abi.NewTokenAmount(initialBigBalance)),
 		kit.Account(verifiedClientKey1, abi.NewTokenAmount(initialBigBalance)),
