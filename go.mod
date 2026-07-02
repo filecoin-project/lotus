@@ -144,7 +144,7 @@ require (
 	github.com/xeipuuv/gojsonschema v1.2.0
 	github.com/xorcare/golden v0.8.3 // dependency-check-ignore: unknown
 	github.com/yugabyte/pgx/v5 v5.7.6-yb-1 // dependency-check-ignore: unknown
-	github.com/zondax/ledger-filecoin-go v1.2.1
+	github.com/zondax/ledger-filecoin-go v1.2.2
 	github.com/zyedidia/generic v1.2.1
 	go.opencensus.io v0.24.0
 	go.opentelemetry.io/otel v1.44.0
