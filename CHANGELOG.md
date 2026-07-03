@@ -21,6 +21,8 @@
 
 ## 👌 Improvements
 
+- chore(deps): update libp2p networking dependencies. This includes libp2p's updated handling of unspecified listen addresses, so nodes listening on `0.0.0.0`/`::` may report or advertise concrete interface addresses returned by libp2p. ([filecoin-project/lotus#13588](https://github.com/filecoin-project/lotus/pull/13588))
+
 # Node and Miner v1.36.1 / 2026-06-30
 
 This is the stable release of Lotus Node and Miner v1.36.1, a recommended patch release focused on Ethereum RPC correctness, gateway API alignment, and release/build reliability.

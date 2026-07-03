@@ -572,7 +572,7 @@ func (trw *tracerWrapper) Trace(evt *pubsub_pb.TraceEvent) {
 			}
 		}
 
-	case pubsub_pb.TraceEvent_ADD_PEER:
+	case pubsub_pb.TraceEvent_ON_NEW_OUTBOUND_STREAM:
 		if trw.lp2pTracer != nil {
 			trw.lp2pTracer.Trace(evt)
 		}
@@ -580,7 +580,7 @@ func (trw *tracerWrapper) Trace(evt *pubsub_pb.TraceEvent) {
 			trw.lotusTracer.Trace(evt)
 		}
 
-	case pubsub_pb.TraceEvent_REMOVE_PEER:
+	case pubsub_pb.TraceEvent_ON_CLOSED_OUTBOUND_STREAM:
 		if trw.lp2pTracer != nil {
 			trw.lp2pTracer.Trace(evt)
 		}
