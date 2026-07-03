@@ -17,7 +17,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-keccak"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -1657,6 +1656,7 @@ func TestEthNullRoundHandling(t *testing.T) {
 	}
 
 	nullBlockHex := fmt.Sprintf("0x%x", int(nullHeight))
+	nullBlockParam := ethtypes.NewEthBlockNumberOrHashFromNumber(ethtypes.EthUint64(nullHeight))
 	client.WaitTillChain(ctx, kit.HeightAtLeast(nullHeight+2))
 	testCases := []struct {
 		name     string
@@ -1670,9 +1670,30 @@ func TestEthNullRoundHandling(t *testing.T) {
 			},
 		},
 		{
-			name: "EthFeeHistory",
+			name: "EthGetBlockTransactionCountByNumber",
 			testFunc: func() error {
-				_, err := client.EthFeeHistory(ctx, jsonrpc.RawParams([]byte(`[1,"`+nullBlockHex+`",[]]`)))
+				_, err := client.EthGetBlockTransactionCountByNumber(ctx, nullBlockHex)
+				return err
+			},
+		},
+		{
+			name: "EthGetTransactionByBlockNumberAndIndex",
+			testFunc: func() error {
+				_, err := client.EthGetTransactionByBlockNumberAndIndex(ctx, nullBlockHex, ethtypes.EthUint64(0))
+				return err
+			},
+		},
+		{
+			name: "EthGetBlockReceipts",
+			testFunc: func() error {
+				_, err := client.EthGetBlockReceipts(ctx, nullBlockParam)
+				return err
+			},
+		},
+		{
+			name: "EthGetBlockReceiptsLimited",
+			testFunc: func() error {
+				_, err := client.EthGetBlockReceiptsLimited(ctx, nullBlockParam, api.LookbackNoLimit)
 				return err
 			},
 		},
@@ -1695,9 +1716,6 @@ func TestEthNullRoundHandling(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			err := tc.testFunc()
-			if err == nil {
-				return
-			}
 			require.Error(t, err)
 
 			// Test errors.Is

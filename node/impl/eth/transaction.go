@@ -256,7 +256,7 @@ func (e *ethTransaction) EthGetTransactionCount(ctx context.Context, sender etht
 	}
 
 	// For all other cases, get the tipset based on the block parameter
-	ts, err := e.tipsetResolver.GetTipsetByBlockNumberOrHash(ctx, blkParam)
+	ts, err := e.tipsetResolver.GetTipsetByBlockNumberOrHash(ctx, blkParam, false)
 	if err != nil {
 		return ethtypes.EthUint64(0), err // don't wrap, to preserve ErrNullRound
 	}
@@ -350,7 +350,7 @@ func (e *ethTransaction) EthGetBlockReceipts(ctx context.Context, blockParam eth
 }
 
 func (e *ethTransaction) EthGetBlockReceiptsLimited(ctx context.Context, blockParam ethtypes.EthBlockNumberOrHash, limit abi.ChainEpoch) ([]*ethtypes.EthTxReceipt, error) {
-	ts, err := e.tipsetResolver.GetTipsetByBlockNumberOrHash(ctx, blockParam)
+	ts, err := e.tipsetResolver.GetTipsetByBlockNumberOrHash(ctx, blockParam, true)
 	if err != nil {
 		return nil, err // don't wrap, to preserve ErrNullRound
 	}
