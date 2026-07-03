@@ -17,6 +17,8 @@
 
 ## 🐛 Bug Fixes
 
+- fix(eth): return `ErrNullRound` for explicit null epochs in singleton block-execution ETH APIs. `eth_getBlockReceipts` / `EthGetBlockReceiptsLimited` now reject a null block number instead of returning receipts for the previous non-null tipset. State-at-epoch APIs such as `eth_getBalance`, `eth_getCode`, `eth_getStorageAt`, `eth_getTransactionCount`, `eth_call`, `eth_estimateGas`, and `FilecoinAddressToEthAddress` continue to resolve null epochs to the previous non-null tipset because Filecoin state is defined at the null epoch and is unchanged from that previous state. Range/sampling APIs such as `eth_feeHistory` also continue to walk real tipsets and skip null epochs, including when resolving a null `newestBlock` anchor to the previous non-null tipset. ([filecoin-project/lotus#13694](https://github.com/filecoin-project/lotus/pull/13694))
+
 ## 👌 Improvements
 
 # Node and Miner v1.36.1 / 2026-06-30
