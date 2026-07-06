@@ -79,7 +79,15 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 			require.NoError(t, err)
 			return head
 		}
-		ecFinalized = tipSetAtHeight(ecFinalizedEpoch)
+		// The static EC finality fallback is computed server-side from live head,
+		// and a straggler block from the stopped miners can advance head at any
+		// point during the run, so mirror the server rather than snapshotting.
+		// MakeStableExecute retries the request if head moves across it.
+		ecFinalized = func(t *testing.T) *types.TipSet {
+			head, err := subject.ChainHead(ctx)
+			require.NoError(t, err)
+			return tipSetAtHeight(head.Height() - policy.ChainFinality)(t)
+		}
 		safe        = func(t *testing.T) *types.TipSet {
 			head, err := subject.ChainHead(ctx)
 			require.NoError(t, err)
