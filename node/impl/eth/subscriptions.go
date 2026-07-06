@@ -22,14 +22,16 @@ const maxSendQueue = 20000
 type EthSubscriptionManager struct {
 	chainStore   ChainStore
 	stateManager StateManager
+	chainIndexer index.Indexer
 	mu           sync.Mutex
 	subs         map[ethtypes.EthSubscriptionID]*ethSubscription
 }
 
-func NewEthSubscriptionManager(chainStore ChainStore, stateManager StateManager) *EthSubscriptionManager {
+func NewEthSubscriptionManager(chainStore ChainStore, stateManager StateManager, chainIndexer index.Indexer) *EthSubscriptionManager {
 	return &EthSubscriptionManager{
 		chainStore:   chainStore,
 		stateManager: stateManager,
+		chainIndexer: chainIndexer,
 	}
 }
 
@@ -46,6 +48,7 @@ func (e *EthSubscriptionManager) StartSubscription(ctx context.Context, out ethS
 	sub := &ethSubscription{
 		chainStore:      e.chainStore,
 		stateManager:    e.stateManager,
+		chainIndexer:    e.chainIndexer,
 		uninstallFilter: dropFilter,
 		id:              id,
 		in:              make(chan interface{}, 200),
@@ -86,6 +89,7 @@ func (e *EthSubscriptionManager) StopSubscription(ctx context.Context, id ethtyp
 type ethSubscription struct {
 	chainStore      ChainStore
 	stateManager    StateManager
+	chainIndexer    index.Indexer
 	uninstallFilter func(context.Context, filter.Filter) error
 	id              ethtypes.EthSubscriptionID
 	in              chan interface{}
@@ -204,7 +208,7 @@ func (e *ethSubscription) start(ctx context.Context) {
 					log.Warnw("failed to load parent tipset", "tipset", parentTipSetKey, "error", loadErr)
 					continue
 				}
-				ethBlock, ethBlockErr := newEthBlockFromFilecoinTipSet(ctx, parentTipSet, true, e.chainStore, e.stateManager)
+				ethBlock, ethBlockErr := newEthBlockFromFilecoinTipSet(ctx, parentTipSet, true, e.chainStore, e.stateManager, e.chainIndexer)
 				if ethBlockErr != nil {
 					continue
 				}

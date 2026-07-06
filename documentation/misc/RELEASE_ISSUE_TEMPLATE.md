@@ -4,8 +4,14 @@
 [//]: # (Learn more at https://github.com/filecoin-project/lotus/tree/master/cmd/release#readme.)
 <!--{{end}}-->
 [//]: # (❗️ Complete the steps below as part of creating a release issue and mark them complete with an X or ✅ when done.)
+[//]: # (Agent/operator guide for completing this release issue:)
+[//]: # (1. Treat this issue as the mutable release ledger. Edit it for concrete release progress: links, checked boxes, dates, release URLs, CI/release status, announcement comment links, and short release-specific facts.)
+[//]: # (2. Put process/template improvements in the release-template-improvements PR from Before RC1, not directly in this issue.)
+[//]: # (3. Work top-to-bottom. Do not start RC release PR work until Dependencies for releases/rc1 has either linked blockers or an explicit "No additional dependencies" entry and the dependency checkpoint is complete.)
+[//]: # (4. For regular releases, create release branches from origin/master after dependencies are resolved. For critical security patches, follow the visible release/vX.Y.x guidance.)
+[//]: # (5. Keep the release issue and linked PRs synchronized as each step completes.)
 <!--{{if not .ContentGeneratedWithLotusReleaseCli}}-->
-[//]: # ([ ] Start an issue with title "Lotus {{.Type}} v{{.Tag}} Release" and adjust the title for whether it's a Node or Miner release.)
+[//]: # ([ ] Start an issue with title "Lotus {{.Type}} v{{.Tag}} Release{{if .NetworkUpgrade}} (nv{{.NetworkUpgrade}}){{end}}" and adjust the title for whether it's a Node or Miner release.)
 [//]: # ([ ] Copy in the content of https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md)
 [//]: # ([ ] Find all the "go templating" "control" logic that is in \{\{ \}\} blocks and mimic the logic manually.)
 [//]: # ([ ] Adjust the "Meta" section values)
@@ -43,7 +49,7 @@
 <!--{{$rcVersions := list "rc1" "rcX" "Stable Release (non-RC)"}}-->
 <!--{{range $rc := $rcVersions}}-->
 ## {{$rc}}
-- [ ] To Be Added
+- [ ] Add linked PRs/issues for changes that must land before {{$rc}}, or write "No additional dependencies for {{$rc}}" and mark the corresponding dependency checkpoint complete when confirmed.
 
 <!--{{end}}-->
 # ✅ Release Checklist
@@ -58,24 +64,51 @@
 <!--{{end}}-->
 - [ ] Open PR against [RELEASE_ISSUE_TEMPLATE.md](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md) with title `docs(release): v{{.Tag}} release template improvements` for improving future releases.
    - Link to PR:
-   - There likely aren't any changes at this point, but this can be opened with a small whitespace change so the PR is open and we can more easily hold the standard of making improvements incrementally since improvements are usually better done by collecting changes/notes along the way rather than just thinking about it at the end. 
+   - Open this as a draft PR and use it to collect release-process improvements discovered while running this checklist.
+   - Suggested branch: `docs/release-v{{.Tag}}-template-improvements`
    - This will get merged in a `Post Release` step.
 <!--{{if eq .Level "patch"}})-->
 <!--  {{if contains "Node" .Type}}-->
 - [ ] Fork a new `release/v{{.Tag}}` branch from the `master` branch and make any further release-related changes to this branch.
+   - For regular releases, use `origin/master` after confirming every rc1 dependency above has landed.
+   - Suggested commands:
+      ```sh
+      git fetch origin master --tags
+      git push origin origin/master:refs/heads/release/v{{.Tag}}
+      git ls-remote --heads origin release/v{{.Tag}}
+      ```
    - Note: For critical security patches, fork a new branch from the last stable `release/vX.Y.x` to expedite the release process.
 <!--  {{end}}-->
 <!--  {{if contains "Miner" .Type}}-->
 - [ ] Fork a new `release/miner/v{{.Tag}}` branch from the `master` branch and make any further release-related changes to this branch.
+   - For regular releases, use `origin/master` after confirming every rc1 dependency above has landed.
+   - Suggested commands:
+      ```sh
+      git fetch origin master --tags
+      git push origin origin/master:refs/heads/release/miner/v{{.Tag}}
+      git ls-remote --heads origin release/miner/v{{.Tag}}
+      ```
    - Note: For critical security patches, fork a new branch from the last stable `release/vX.Y.x` to expedite the release process.
 <!--  {{end}}-->
 <!--{{end}}-->
 <!--{{if eq .Level "minor"}}-->
 <!--  {{if contains "Node" .Type}}-->
 - [ ] Fork a new `release/v{{.Tag}}` branch from `master` and make any further release-related changes to this branch.
+   - Suggested commands:
+      ```sh
+      git fetch origin master --tags
+      git push origin origin/master:refs/heads/release/v{{.Tag}}
+      git ls-remote --heads origin release/v{{.Tag}}
+      ```
 <!--  {{end}}-->
 <!--  {{if contains "Miner" .Type}}-->
 - [ ] Fork a new `release/miner/v{{.Tag}}` branch from `master` and make any further release-related changes to this branch.
+   - Suggested commands:
+      ```sh
+      git fetch origin master --tags
+      git push origin origin/master:refs/heads/release/miner/v{{.Tag}}
+      git ls-remote --heads origin release/miner/v{{.Tag}}
+      ```
 <!--  {{end}}-->
 <!--{{end}}-->
 <!--{{if ne .Level "patch"}}-->
@@ -88,7 +121,7 @@
       - Ensure to update `MinerBuildVersion`
 <!--{{  end}}-->
    - [ ] Run `make gen && make docsgen-cli` before committing changes.
-   - [ ] Update the CHANGELOG
+   - [ ] `master` branch CHANGELOG updates
      - [ ] Change the `UNRELEASED` section header to `UNRELEASED v{{.Tag}}`
      - [ ] Set the `UNRELEASED v{{.Tag}}` section's content to be "_See https://github.com/filecoin-project/lotus/blob/release/v{{.Tag}}/CHANGELOG.md_"
      - [ ] Add a new `UNRELEASED` header to top.
@@ -123,19 +156,30 @@
 <!--  {{end}}-->
 
 #### Release PR for {{$rc}}
-- [ ] Update the version string(s) in `build/version.go` to one {{if contains "rc" $rc}}ending with '-{{$rc}}'{{else}}**NOT** ending with 'rcX'{{end}}.
+- [ ] Update the version string(s) in `build/version.go` to `{{$.Tag}}{{$tagSuffix}}` (without a leading `v`).
 <!--  {{if contains "Node" $.Type}}-->
-    - Ensure to update `NodeBuildVersion`
+    - Change `NodeBuildVersion` to `{{$.Tag}}{{$tagSuffix}}`
 <!--  {{end}}-->
 <!--  {{if contains "Miner" $.Type}}-->
-    - Ensure to update `MinerBuildVersion`
+    - Change `MinerBuildVersion` to `{{$.Tag}}{{$tagSuffix}}`
+<!--  {{end}}-->
+    - The release tags include the leading `v`; the values in `build/version.go` do not.
+<!--  {{if and (contains "Node" $.Type) (contains "Miner" $.Type)}}-->
+    - If the release branches still point at the same commit, one PR that updates both version strings is expected. If the branches diverge later, add/link one PR per branch here.
 <!--  {{end}}-->
 - [ ] Run `make gen && make docsgen-cli` to generate documentation
 - [ ] Create a draft PR with title `build: release Lotus {{$.Type}} v{{$.Tag}}{{$tagSuffix}}`
    - Link to PR:
    - Opening a PR will trigger a CI run that will build assets, create a draft GitHub release, and attach the assets.
 - [ ] Changelog prep
-   - [ ] Go to the [releases page](https://github.com/filecoin-project/lotus/releases) and copy the auto-generated release notes into the CHANGELOG
+   - [ ] After the draft release exists, copy the auto-generated release notes into the CHANGELOG.
+      - Note: after a draft release exists, rerunning the [release workflow](https://github.com/filecoin-project/lotus/blob/master/.github/workflows/release.yml#L220-L229) preserves the existing draft release body. If editorial review changes release-note content in CHANGELOG, update the draft GitHub release body too before merge; the [push-triggered publish step](https://github.com/filecoin-project/lotus/blob/master/.github/workflows/release.yml#L307-L308) publishes that draft body.
+<!--  {{if contains "Node" $.Type}}-->
+      - Node release body: `gh release view v{{$.Tag}}{{$tagSuffix}} --repo filecoin-project/lotus --json body -q .body`
+<!--  {{end}}-->
+<!--  {{if contains "Miner" $.Type}}-->
+      - Miner release body: `gh release view miner/v{{$.Tag}}{{$tagSuffix}} --repo filecoin-project/lotus --json body -q .body`
+<!--  {{end}}-->
    - [ ] Perform editorial review (e.g., callout breaking changes, new features, FIPs, actor bundles)
 <!--  {{if ne $.NetworkUpgrade ""}}-->
 <!--    {{if contains "rc" $rc}}-->
@@ -146,9 +190,16 @@
 <!--    {{end}}-->
 <!--  {{end}}-->
    - [ ] Ensure no missing content when spot checking git history
-      - Example command looking at git commits: `git log --oneline --graph vA.B.C..`, where A.B.C correspond to the previous release.
-      - Example GitHub UI search looking at merged PRs into master: https://github.com/filecoin-project/lotus/pulls?q=is%3Apr+base%3Amaster+merged%3A%3EYYYY-MM-DD
-      - Example `gh` cli command looking at merged PRs into master and sorted by title to group similar areas (where `YYYY-MM-DD` is the start search date): `gh pr list --repo filecoin-project/lotus --search "base:master merged:>YYYY-MM-DD" --json number,mergedAt,author,title | jq -r '.[] | [.number, .mergedAt, .author.login, .title] | @tsv' | sort -k4`
+      - Find the previous stable tag first:
+<!--  {{if contains "Node" $.Type}}-->
+         - Node: `git tag -l 'v*' | grep -v '-' | sort -V -r | head -n 1`
+<!--  {{end}}-->
+<!--  {{if contains "Miner" $.Type}}-->
+         - Miner: `git tag -l 'miner/v*' | grep -v '-' | sort -V -r | head -n 1`
+<!--  {{end}}-->
+      - Example command looking at git commits: `git log --oneline --graph PREVIOUS_TAG..HEAD`
+      - Example GitHub UI search looking at merged PRs into master, where `YYYY-MM-DD` is the previous stable release publish date: https://github.com/filecoin-project/lotus/pulls?q=is%3Apr+base%3Amaster+merged%3A%3EYYYY-MM-DD
+      - Example `gh` cli command looking at merged PRs into master and sorted by title to group similar areas: `gh pr list --repo filecoin-project/lotus --search "base:master merged:>YYYY-MM-DD" --json number,mergedAt,author,title | jq -r '.[] | [.number, .mergedAt, .author.login, .title] | @tsv' | sort -k4`
     - [ ] Update the PR with the commit(s) made to the CHANGELOG
 - [ ] Mark the PR "ready for review" (non-draft)
 - [ ] Merge the PR

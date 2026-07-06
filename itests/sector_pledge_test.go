@@ -64,7 +64,11 @@ func TestPledgeBatching(t *testing.T) {
 
 		kit.QuietMiningLogs()
 
-		client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(!aggregate))
+		proofs := kit.RealProofs()
+		if !aggregate {
+			proofs = kit.MockProofs()
+		}
+		client, miner, ens := kit.EnsembleMinimal(t, proofs)
 		ens.InterconnectAll().BeginMiningMustPost(blockTime)
 
 		client.WaitTillChain(ctx, kit.HeightAtLeast(10))
@@ -198,9 +202,9 @@ func TestPledgeSynth(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		_, miner, ens := kit.EnsembleMinimal(t, kit.MutateSealingConfig(func(sc *config.SealingConfig) {
+		_, miner, ens := kit.EnsembleMinimal(t, kit.RealProofs(), kit.MutateSealingConfig(func(sc *config.SealingConfig) {
 			sc.UseSyntheticPoRep = true
-		})) // no mock proofs
+		}))
 
 		ens.InterconnectAll().BeginMiningMustPost(blockTime)
 

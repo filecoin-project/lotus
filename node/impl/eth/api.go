@@ -160,12 +160,25 @@ type EthModuleAPI interface {
 // TipSetResolver is responsible for translating Ethereum API input to tipsets. It may use static
 // rules or F3 to resolve "latest" and "safe" tags as appropriate.
 //
-// In most cases, errors from TipSetResolver should be returned as-is if they are within the
-// top-level of a JSONRPC method so ErrNullRound is properly wrapped when encountered.
+// Explicit numeric block parameters need a per-call-site choice for null epochs:
+//
+//   - strict=true means the API needs an actual tipset at the requested epoch. Use this for
+//     block identity and block execution APIs, such as block lookups, transaction-by-block-index,
+//     block receipts, and block traces. A null epoch returns api.ErrNullRound.
+//   - strict=false means the API is reading or simulating against state at the requested epoch.
+//     Filecoin state is defined across null epochs and is identical to the previous non-null
+//     tipset state, so resolving to that previous tipset is intentional. Range or sampling APIs
+//     such as eth_feeHistory may also use non-strict resolution when they operate on real tipsets
+//     at or before an epoch rather than requiring every epoch in the range to contain a tipset.
+//
+// Tags such as "latest", "pending", "safe", and "finalized" resolve to a concrete tipset before
+// this distinction applies. Block-hash lookups are naturally strict because null epochs have no
+// block hash. In most cases, errors from TipSetResolver should be returned as-is if they are within
+// the top-level of a JSONRPC method so ErrNullRound is properly wrapped when encountered.
 type TipSetResolver interface {
 	GetTipSetByHash(ctx context.Context, blkParam ethtypes.EthHash) (*types.TipSet, error)
 	GetTipsetByBlockNumber(ctx context.Context, blkParam string, strict bool) (*types.TipSet, error)
-	GetTipsetByBlockNumberOrHash(ctx context.Context, blkParam ethtypes.EthBlockNumberOrHash) (*types.TipSet, error)
+	GetTipsetByBlockNumberOrHash(ctx context.Context, blkParam ethtypes.EthBlockNumberOrHash, strict bool) (*types.TipSet, error)
 }
 
 // SyncAPI is a minimal version of full.SyncAPI

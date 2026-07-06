@@ -208,7 +208,7 @@ func (e *ethGas) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (ethty
 	if params.BlkParam == nil {
 		ts = e.chainStore.GetHeaviestTipSet()
 	} else {
-		ts, err = e.tipsetResolver.GetTipsetByBlockNumberOrHash(ctx, *params.BlkParam)
+		ts, err = e.tipsetResolver.GetTipsetByBlockNumberOrHash(ctx, *params.BlkParam, false)
 		if err != nil {
 			return ethtypes.EthUint64(0), err
 		}
@@ -251,7 +251,7 @@ func (e *ethGas) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam etht
 		return nil, xerrors.Errorf("failed to convert ethcall to filecoin message: %w", err)
 	}
 
-	ts, err := e.tipsetResolver.GetTipsetByBlockNumberOrHash(ctx, blkParam)
+	ts, err := e.tipsetResolver.GetTipsetByBlockNumberOrHash(ctx, blkParam, false)
 	if err != nil {
 		return nil, err // don't wrap, to preserve ErrNullRound
 	}

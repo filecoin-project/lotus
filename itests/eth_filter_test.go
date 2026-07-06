@@ -648,6 +648,11 @@ func TestTxReceiptBloom(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
+	client.WaitTillChain(ctx, kit.HeightAtLeast(2))
+	emptyBlock, err := client.EthGetBlockByNumber(ctx, "latest", false)
+	require.NoError(t, err)
+	require.Equal(t, ethtypes.EthBytes(ethtypes.NewEmptyEthBloom()), emptyBlock.LogsBloom)
+
 	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, "contracts/EventMatrix.hex")
 
 	_, ml, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "logEventZeroData()", nil)
@@ -671,6 +676,27 @@ func TestTxReceiptBloom(t *testing.T) {
 	ethtypes.EthBloomSet(expectedBloom, receipt.To[:])
 
 	require.Equal(t, expectedBloom, []uint8(receipt.LogsBloom))
+
+	block, err := client.EthGetBlockByHash(ctx, receipt.BlockHash, false)
+	require.NoError(t, err)
+
+	blockReceipts, err := client.EthGetBlockReceipts(ctx, ethtypes.EthBlockNumberOrHash{BlockHash: &receipt.BlockHash})
+	require.NoError(t, err)
+	require.NotEmpty(t, blockReceipts)
+
+	expectedBlockBloom := ethtypes.NewEmptyEthBloom()
+	for _, receipt := range blockReceipts {
+		for i, b := range receipt.LogsBloom {
+			expectedBlockBloom[i] |= b
+		}
+	}
+	require.Equal(t, ethtypes.EthBytes(expectedBlockBloom), block.LogsBloom)
+	require.False(t, bytes.Equal(ethtypes.NewFullEthBloom(), block.LogsBloom))
+
+	blockByNumber, err := client.EthGetBlockByNumber(ctx, receipt.BlockNumber.Hex(), false)
+	require.NoError(t, err)
+	require.Equal(t, ethtypes.EthBytes(expectedBlockBloom), blockByNumber.LogsBloom)
+	require.False(t, bytes.Equal(ethtypes.NewFullEthBloom(), blockByNumber.LogsBloom))
 }
 
 func TestMultipleEvents(t *testing.T) {
