@@ -14,7 +14,10 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-var ErrFailedToLoadMessage = errors.New("failed to load message")
+var (
+	ErrFailedToLoadMessage = errors.New("failed to load message")
+	ErrMessageReplaced     = errors.New("message was replaced")
+)
 
 // WaitForMessage blocks until a message appears on chain. It looks backwards in the chain to see if this has already
 // happened, with an optional limit to how many epochs it will search. It guarantees that the message has been on
@@ -330,7 +333,8 @@ func (sm *StateManager) tipsetExecutedMessage(ctx context.Context, ts *types.Tip
 			if m.VMMessage().Nonce == vmm.Nonce {
 				if !m.VMMessage().EqualCall(vmm) {
 					// this is an entirely different message, fail
-					return nil, cid.Undef, xerrors.Errorf("found message with equal nonce as the one we are looking for that is NOT a valid replacement message (F:%s n %d, TS: %s n%d)",
+					return nil, cid.Undef, xerrors.Errorf("%w: found message with equal nonce as the one we are looking for that is NOT a valid replacement message (F:%s n %d, TS: %s n%d)",
+						ErrMessageReplaced,
 						msg, vmm.Nonce, m.Cid(), m.VMMessage().Nonce)
 				}
 
@@ -338,7 +342,8 @@ func (sm *StateManager) tipsetExecutedMessage(ctx context.Context, ts *types.Tip
 					if !allowReplaced {
 						log.Warnw("found message with equal nonce and call params but different CID",
 							"wanted", msg, "found", m.Cid(), "nonce", vmm.Nonce, "from", vmm.From)
-						return nil, cid.Undef, xerrors.Errorf("found message with equal nonce as the one we are looking for (F:%s n %d, TS: %s n%d)",
+						return nil, cid.Undef, xerrors.Errorf("%w: found message with equal nonce as the one we are looking for (F:%s n %d, TS: %s n%d)",
+							ErrMessageReplaced,
 							msg, vmm.Nonce, m.Cid(), m.VMMessage().Nonce)
 					}
 				}
