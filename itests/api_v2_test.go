@@ -88,7 +88,7 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 			require.NoError(t, err)
 			return tipSetAtHeight(head.Height() - policy.ChainFinality)(t)
 		}
-		safe        = func(t *testing.T) *types.TipSet {
+		safe = func(t *testing.T) *types.TipSet {
 			head, err := subject.ChainHead(ctx)
 			require.NoError(t, err)
 			safe, err := subject.ChainGetTipSetByHeight(ctx, head.Height()-buildconstants.SafeHeightDistance, head.Key())
