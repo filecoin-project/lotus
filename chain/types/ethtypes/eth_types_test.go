@@ -266,6 +266,23 @@ func TestUnmarshalEthBytes(t *testing.T) {
 	}
 }
 
+func TestUnmarshalEthNonce(t *testing.T) {
+	// a well-formed 8-byte nonce round-trips unchanged
+	valid := `"0x0102030405060708"`
+	var n EthNonce
+	require.NoError(t, n.UnmarshalJSON([]byte(valid)))
+	data, err := n.MarshalJSON()
+	require.NoError(t, err)
+	require.Equal(t, valid, string(data))
+
+	// anything that does not decode to exactly 8 bytes is rejected instead of
+	// panicking (short input) or being silently truncated (long input)
+	for _, tc := range []string{`"0x"`, `"0x01"`, `"0x010203040506070809"`} {
+		var n EthNonce
+		require.Error(t, n.UnmarshalJSON([]byte(tc)))
+	}
+}
+
 func TestEthFilterResultMarshalJSON(t *testing.T) {
 	hash1, err := ParseEthHash("013dbb9442ca9667baccc6230fcd5c1c4b2d4d2870f4bd20681d4d47cfd15184")
 	require.NoError(t, err, "eth hash")

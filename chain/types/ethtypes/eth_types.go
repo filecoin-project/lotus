@@ -420,16 +420,11 @@ func (n *EthNonce) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
-	s = strings.Replace(s, "0x", "", -1)
-	if len(s)%2 == 1 {
-		s = "0" + s
-	}
-
-	decoded, err := hex.DecodeString(s)
+	decoded, err := decodeHexString(s, len(n))
 	if err != nil {
 		return err
 	}
-	copy(n[:], decoded[:8])
+	copy(n[:], decoded)
 	return nil
 }
 
