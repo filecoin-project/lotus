@@ -47,8 +47,20 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 	for _, bm := range blockMiners {
 		bm.Stop()
 	}
+	// Stop does not wait for the last mined block to propagate into the chain
+	// head; wait for the head to quiesce, since expected epochs below are computed
+	// relative to it and the server recomputes static EC finality from live head.
 	head, err := subject.ChainHead(ctx)
 	require.NoError(t, err)
+	require.Eventually(t, func() bool {
+		latest, err := subject.ChainHead(ctx)
+		require.NoError(t, err)
+		if latest.Equals(head) {
+			return true
+		}
+		head = latest
+		return false
+	}, 10*time.Second, 50*blockTime, "chain head did not quiesce after mining stopped")
 	headHeight := head.Height()
 	ecFinalizedEpoch := headHeight - policy.ChainFinality
 	f3OlderThanECEpoch := ecFinalizedEpoch - 5
