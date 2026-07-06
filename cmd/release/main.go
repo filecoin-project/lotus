@@ -132,6 +132,12 @@ func getProject(name, version string) project {
 
 const releaseDateStringPattern = `^(Week of )?\d{4}-\d{2}-\d{2}( \(estimate\))?$`
 
+const (
+	releaseFlowAuto = "auto"
+	releaseFlowRC   = "rc"
+	releaseFlowNoRC = "no-rc"
+)
+
 func main() {
 	app := &cli.App{
 		Name:  "release",
@@ -213,6 +219,12 @@ func main() {
 						Required: false,
 					},
 					&cli.StringFlag{
+						Name:     "release-flow",
+						Usage:    "Which release flow should the issue use? (Options: auto, rc, no-rc). auto uses rc for network upgrades and no-rc otherwise.",
+						Value:    releaseFlowAuto,
+						Required: false,
+					},
+					&cli.StringFlag{
 						Name:     "rc1-date",
 						Usage:    fmt.Sprintf("What's the expected shipping date for RC1? (Pattern: '%s'))", releaseDateStringPattern),
 						Value:    "TBD",
@@ -275,6 +287,24 @@ func main() {
 						}
 					}
 
+					requestedReleaseFlow := c.String("release-flow")
+					switch requestedReleaseFlow {
+					case releaseFlowAuto, releaseFlowRC, releaseFlowNoRC:
+					default:
+						return fmt.Errorf("invalid value for the 'release-flow' flag. Allowed values are 'auto', 'rc', and 'no-rc'")
+					}
+					releaseFlow := requestedReleaseFlow
+					if releaseFlow == releaseFlowAuto {
+						if networkUpgrade != "" {
+							releaseFlow = releaseFlowRC
+						} else {
+							releaseFlow = releaseFlowNoRC
+						}
+					}
+					if releaseFlow == releaseFlowNoRC && networkUpgrade != "" {
+						return fmt.Errorf("invalid value for the 'release-flow' flag. no-rc releases are not allowed for network upgrades; use 'auto' or 'rc'")
+					}
+
 					changelogLink := c.String("changelog-link")
 					if changelogLink != "" {
 						_, err := url.ParseRequestURI(changelogLink)
@@ -286,7 +316,9 @@ func main() {
 					releaseDateStringRegexp := regexp.MustCompile(releaseDateStringPattern)
 
 					rc1Date := c.String("rc1-date")
-					if rc1Date != "TBD" {
+					if releaseFlow == releaseFlowNoRC {
+						rc1Date = "n/a"
+					} else if rc1Date != "TBD" {
 						matches := releaseDateStringRegexp.FindStringSubmatch(rc1Date)
 						if matches == nil {
 							return fmt.Errorf("rc1-date must be of form %s", releaseDateStringPattern)
@@ -310,6 +342,15 @@ func main() {
 					repoOwner := matches[1]
 					repoName := matches[2]
 
+					firstReleaseTarget := "Stable Release"
+					rcCandidates := []string{}
+					releaseTargets := []string{"Stable Release"}
+					if releaseFlow == releaseFlowRC {
+						firstReleaseTarget = "rc1"
+						rcCandidates = []string{"rc1", "rcX"}
+						releaseTargets = []string{"rc1", "rcX", "Stable Release"}
+					}
+
 					// Prepare template data
 					data := map[string]any{
 						"ContentGeneratedWithLotusReleaseCli": true,
@@ -318,6 +359,13 @@ func main() {
 						"Tag":                                 releaseVersion.String(),
 						"NextTag":                             releaseVersion.IncPatch().String(),
 						"Level":                               releaseLevel,
+						"RequestedReleaseFlow":                requestedReleaseFlow,
+						"ReleaseFlow":                         releaseFlow,
+						"NoRCRelease":                         releaseFlow == releaseFlowNoRC,
+						"RCRelease":                           releaseFlow == releaseFlowRC,
+						"FirstReleaseTarget":                  firstReleaseTarget,
+						"RCCandidates":                        rcCandidates,
+						"ReleaseTargets":                      releaseTargets,
 						"NetworkUpgrade":                      networkUpgrade,
 						"NetworkUpgradeDiscussionLink":        discussionLink,
 						"NetworkUpgradeChangelogEntryLink":    changelogLink,
@@ -348,7 +396,7 @@ func main() {
 					}
 					issueBody := issueBodyBuffer.String()
 
-					// Remove duplicate newlines before headers and list items since the templating leaves a lot extra newlines around.
+					// Remove duplicate newlines before headers, list items, and table rows since the templating leaves a lot extra newlines around.
 					// Extra newlines are present because go formatting control statements are done within HTML comments rather than using {{- -}}.
 					// HTML comments are used instead so that the template file parses as clean markdown on its own.
 					// In addition, HTML comments were also required within "ranges" in the template.
@@ -356,7 +404,7 @@ func main() {
 					// The one exception is after `</summary>` tags.  In that case we preserve the newlines,
 					// as without newlines the section doesn't do markdown formatting on GitHub.
 					// Since Go regexp doesn't support negative lookbehind, we just look for any non ">".
-					re := regexp.MustCompile(`([^>])\n\n+([^#*\[\|])`)
+					re := regexp.MustCompile(`([^>])\n\n+([^#*\[])`)
 					issueBody = re.ReplaceAllString(issueBody, "$1\n$2")
 
 					if !createOnGitHub {
