@@ -48,8 +48,8 @@ services:
     ports:
       - 1234:1234
     environment:
-      - LOTUS_JAEGER_AGENT_HOST=jaeger
-      - LOTUS_JAEGER_AGENT_PORT=6831
+      - LOTUS_OTEL_EXPORTER_ENDPOINT=jaeger:4318
+      - LOTUS_OTEL_EXPORTER_INSECURE=true
     # - DOCKER_LOTUS_IMPORT_WALLET=/tmp/wallet
     deploy:
       restart_policy:
@@ -75,8 +75,8 @@ services:
       - 1235:1234
     environment:
       - FULLNODE_API_INFO=/dns/lotus/tcp/1234/http
-      - LOTUS_JAEGER_AGENT_HOST=jaeger
-      - LOTUS_JAEGER_AGENT_PORT=6831
+      - LOTUS_OTEL_EXPORTER_ENDPOINT=jaeger:4318
+      - LOTUS_OTEL_EXPORTER_INSECURE=true
     deploy:
       restart_policy:
         condition: on-failure
@@ -101,8 +101,8 @@ services:
   #     - 2345:2345
   #   environment:
   #     - FULLNODE_API_INFO=/dns/lotus/tcp/1234/http
-  #     - LOTUS_JAEGER_AGENT_HOST=jaeger
-  #     - LOTUS_JAEGER_AGENT_PORT=6831
+  #     - LOTUS_OTEL_EXPORTER_ENDPOINT=jaeger:4318
+  #     - LOTUS_OTEL_EXPORTER_INSECURE=true
   #     - DOCKER_LOTUS_MINER_INIT=true
   #   deploy:
   #     restart_policy:
@@ -126,8 +126,8 @@ services:
   #     - lotus-worker
   #   environment:
   #     - MINER_API_INFO=/dns/lotus-miner/tcp/1234/http
-  #     - LOTUS_JAEGER_AGENT_HOST=jaeger
-  #     - LOTUS_JAEGER_AGENT_PORT=6831
+  #     - LOTUS_OTEL_EXPORTER_ENDPOINT=jaeger:4318
+  #     - LOTUS_OTEL_EXPORTER_INSECURE=true
   #   deploy:
   #     restart_policy:
   #       condition: on-failure
@@ -138,7 +138,7 @@ services:
   jaeger:
     image: jaegertracing/all-in-one
     ports:
-      - "6831:6831/udp"
+      - "4318:4318"
       - "16686:16686"
     deploy:
       restart_policy:
