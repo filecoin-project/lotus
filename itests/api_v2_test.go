@@ -47,8 +47,20 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 	for _, bm := range blockMiners {
 		bm.Stop()
 	}
+	// Stop does not wait for the last mined block to propagate into the chain
+	// head; wait for the head to quiesce, since expected epochs below are computed
+	// relative to it and the server recomputes static EC finality from live head.
 	head, err := subject.ChainHead(ctx)
 	require.NoError(t, err)
+	require.Eventually(t, func() bool {
+		latest, err := subject.ChainHead(ctx)
+		require.NoError(t, err)
+		if latest.Equals(head) {
+			return true
+		}
+		head = latest
+		return false
+	}, 10*time.Second, 50*blockTime, "chain head did not quiesce after mining stopped")
 	headHeight := head.Height()
 	ecFinalizedEpoch := headHeight - policy.ChainFinality
 	f3OlderThanECEpoch := ecFinalizedEpoch - 5
@@ -67,8 +79,16 @@ func TestAPIV2_ThroughRPC(t *testing.T) {
 			require.NoError(t, err)
 			return head
 		}
-		ecFinalized = tipSetAtHeight(ecFinalizedEpoch)
-		safe        = func(t *testing.T) *types.TipSet {
+		// The static EC finality fallback is computed server-side from live head,
+		// and a straggler block from the stopped miners can advance head at any
+		// point during the run, so mirror the server rather than snapshotting.
+		// MakeStableExecute retries the request if head moves across it.
+		ecFinalized = func(t *testing.T) *types.TipSet {
+			head, err := subject.ChainHead(ctx)
+			require.NoError(t, err)
+			return tipSetAtHeight(head.Height() - policy.ChainFinality)(t)
+		}
+		safe = func(t *testing.T) *types.TipSet {
 			head, err := subject.ChainHead(ctx)
 			require.NoError(t, err)
 			safe, err := subject.ChainGetTipSetByHeight(ctx, head.Height()-buildconstants.SafeHeightDistance, head.Key())
