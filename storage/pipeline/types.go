@@ -10,7 +10,6 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
@@ -50,7 +49,7 @@ type UniversalPieceInfo interface {
 	String() string
 	Key() piece.PieceKey
 
-	Valid(nv network.Version) error
+	Valid() error
 	StartEpoch() (abi.ChainEpoch, error)
 	EndEpoch() (abi.ChainEpoch, error)
 	PieceCID() cid.Cid
@@ -306,8 +305,8 @@ func (sp *SafeSectorPiece) Key() piece.PieceKey {
 	return sp.real.DealInfo.Key()
 }
 
-func (sp *SafeSectorPiece) Valid(nv network.Version) error {
-	return sp.real.DealInfo.Valid(nv)
+func (sp *SafeSectorPiece) Valid() error {
+	return sp.real.DealInfo.Valid()
 }
 
 func (sp *SafeSectorPiece) StartEpoch() (abi.ChainEpoch, error) {

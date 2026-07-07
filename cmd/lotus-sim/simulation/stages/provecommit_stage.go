@@ -10,7 +10,6 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin"
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/exitcode"
-	"github.com/filecoin-project/go-state-types/network"
 	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 	power5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/power"
 
@@ -130,105 +129,102 @@ func (stage *ProveCommitStage) packProveCommitsMiner(
 
 	log := bb.L().With("miner", minerAddr)
 
-	nv := bb.NetworkVersion()
 	for sealType, snos := range pending {
-		if nv >= network.Version13 {
-			for len(snos) > minProveCommitBatchSize {
-				batchSize := maxProveCommitBatchSize
-				if len(snos) < batchSize {
-					batchSize = len(snos)
-				}
-				batch := snos[:batchSize]
+		for len(snos) > minProveCommitBatchSize {
+			batchSize := maxProveCommitBatchSize
+			if len(snos) < batchSize {
+				batchSize = len(snos)
+			}
+			batch := snos[:batchSize]
 
-				proof, err := mock.MockAggregateSealProof(sealType, minerAddr, batchSize)
+			proof, err := mock.MockAggregateSealProof(sealType, minerAddr, batchSize)
+			if err != nil {
+				return res, err
+			}
+
+			params := miner5.ProveCommitAggregateParams{
+				SectorNumbers:  bitfield.New(),
+				AggregateProof: proof,
+			}
+			for _, sno := range batch {
+				params.SectorNumbers.Set(uint64(sno))
+			}
+
+			enc, err := actors.SerializeParams(&params)
+			if err != nil {
+				return res, err
+			}
+
+			if _, err := stage.funding.SendAndFund(bb, &types.Message{
+				From:   info.Worker,
+				To:     minerAddr,
+				Value:  abi.NewTokenAmount(0),
+				Method: builtin.MethodsMiner.ProveCommitAggregate,
+				Params: enc,
+			}); err == nil {
+				res.done += len(batch)
+			} else if blockbuilder.IsOutOfGas(err) {
+				res.full = true
+				return res, nil
+			} else if aerr, ok := err.(aerrors.ActorError); !ok || aerr.IsFatal() {
+				// If we get a random error, or a fatal actor error, bail.
+				return res, err
+			} else if aerr.RetCode() == exitcode.ErrNotFound || aerr.RetCode() == exitcode.ErrIllegalArgument {
+				// If we get a "not-found" or illegal argument error, try to
+				// remove any missing prove-commits and continue. This can
+				// happen either because:
+				//
+				// 1. The pre-commit failed on execution (but not when
+				// packing). This shouldn't happen, but we might as well
+				// gracefully handle it.
+				// 2. The pre-commit has expired. We'd have to be really
+				// backloged to hit this case, but we might as well handle
+				// it.
+				// First, split into "good" and "missing"
+				good, err := stage.filterProveCommits(ctx, bb, minerAddr, batch)
 				if err != nil {
-					return res, err
+					log.Errorw("failed to filter prove commits", "error", err)
+					// fail with the original error.
+					return res, aerr
 				}
-
-				params := miner5.ProveCommitAggregateParams{
-					SectorNumbers:  bitfield.New(),
-					AggregateProof: proof,
-				}
-				for _, sno := range batch {
-					params.SectorNumbers.Set(uint64(sno))
-				}
-
-				enc, err := actors.SerializeParams(&params)
-				if err != nil {
-					return res, err
-				}
-
-				if _, err := stage.funding.SendAndFund(bb, &types.Message{
-					From:   info.Worker,
-					To:     minerAddr,
-					Value:  abi.NewTokenAmount(0),
-					Method: builtin.MethodsMiner.ProveCommitAggregate,
-					Params: enc,
-				}); err == nil {
-					res.done += len(batch)
-				} else if blockbuilder.IsOutOfGas(err) {
-					res.full = true
-					return res, nil
-				} else if aerr, ok := err.(aerrors.ActorError); !ok || aerr.IsFatal() {
-					// If we get a random error, or a fatal actor error, bail.
-					return res, err
-				} else if aerr.RetCode() == exitcode.ErrNotFound || aerr.RetCode() == exitcode.ErrIllegalArgument {
-					// If we get a "not-found" or illegal argument error, try to
-					// remove any missing prove-commits and continue. This can
-					// happen either because:
-					//
-					// 1. The pre-commit failed on execution (but not when
-					// packing). This shouldn't happen, but we might as well
-					// gracefully handle it.
-					// 2. The pre-commit has expired. We'd have to be really
-					// backloged to hit this case, but we might as well handle
-					// it.
-					// First, split into "good" and "missing"
-					good, err := stage.filterProveCommits(ctx, bb, minerAddr, batch)
-					if err != nil {
-						log.Errorw("failed to filter prove commits", "error", err)
-						// fail with the original error.
-						return res, aerr
-					}
-					removed := len(batch) - len(good)
-					if removed == 0 {
-						log.Errorw("failed to prove-commit for unknown reasons",
-							"error", aerr,
-							"sectors", batch,
-						)
-						res.failed += len(batch)
-					} else if len(good) == 0 {
-						log.Errorw("failed to prove commit missing pre-commits",
-							"error", aerr,
-							"discarded", removed,
-						)
-						res.failed += len(batch)
-					} else {
-						// update the pending sector numbers in-place to remove the expired ones.
-						snos = snos[removed:]
-						copy(snos, good)
-						pending.finish(sealType, removed)
-
-						log.Errorw("failed to prove commit expired/missing pre-commits",
-							"error", aerr,
-							"discarded", removed,
-							"kept", len(good),
-						)
-						res.failed += removed
-
-						// Then try again.
-						continue
-					}
-				} else {
-					log.Errorw("failed to prove commit sector(s)",
-						"error", err,
+				removed := len(batch) - len(good)
+				if removed == 0 {
+					log.Errorw("failed to prove-commit for unknown reasons",
+						"error", aerr,
 						"sectors", batch,
 					)
 					res.failed += len(batch)
+				} else if len(good) == 0 {
+					log.Errorw("failed to prove commit missing pre-commits",
+						"error", aerr,
+						"discarded", removed,
+					)
+					res.failed += len(batch)
+				} else {
+					// update the pending sector numbers in-place to remove the expired ones.
+					snos = snos[removed:]
+					copy(snos, good)
+					pending.finish(sealType, removed)
+
+					log.Errorw("failed to prove commit expired/missing pre-commits",
+						"error", aerr,
+						"discarded", removed,
+						"kept", len(good),
+					)
+					res.failed += removed
+
+					// Then try again.
+					continue
 				}
-				pending.finish(sealType, len(batch))
-				snos = snos[len(batch):]
+			} else {
+				log.Errorw("failed to prove commit sector(s)",
+					"error", err,
+					"sectors", batch,
+				)
+				res.failed += len(batch)
 			}
+			pending.finish(sealType, len(batch))
+			snos = snos[len(batch):]
 		}
 		for len(snos) > 0 && res.unbatched < power5.MaxMinerProveCommitsPerEpoch {
 			sno := snos[0]

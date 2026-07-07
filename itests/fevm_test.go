@@ -17,7 +17,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-keccak"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -1035,7 +1034,7 @@ func TestEthGetBlockReceipts(t *testing.T) {
 	kit.SendFunds(ctx, t, client, deployer, types.FromFil(10))
 
 	// Deploy MultipleEvents contract
-	tx := deployContractWithEth(ctx, t, client, ethAddr, "./contracts/MultipleEvents.hex")
+	tx := client.EVM().BuildDeployContractTx(ctx, ethAddr, "./contracts/MultipleEvents.hex")
 
 	client.EVM().SignTransaction(tx, key.PrivateKey)
 	hash := client.EVM().SubmitTransaction(ctx, tx)
@@ -1146,42 +1145,6 @@ func TestEthGetBlockReceipts(t *testing.T) {
 		require.ErrorContains(t, err, "older than the allowed")
 		require.Nil(t, blockReceipts, "should not return any receipts")
 	})
-}
-
-func deployContractWithEth(ctx context.Context, t *testing.T, client *kit.TestFullNode, ethAddr ethtypes.EthAddress,
-	contractPath string) *ethtypes.Eth1559TxArgs {
-	// install contract
-	contractHex, err := os.ReadFile(contractPath)
-	require.NoError(t, err)
-
-	contract, err := hex.DecodeString(string(contractHex))
-	require.NoError(t, err)
-
-	gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
-		From: &ethAddr,
-		Data: contract,
-	}})
-	require.NoError(t, err)
-
-	gaslimit, err := client.EthEstimateGas(ctx, gasParams)
-	require.NoError(t, err)
-
-	maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)
-	require.NoError(t, err)
-
-	// now deploy a contract from the embryo, and validate it went well
-	return &ethtypes.Eth1559TxArgs{
-		ChainID:              build.Eip155ChainId,
-		Value:                big.Zero(),
-		Nonce:                0,
-		MaxFeePerGas:         types.NanoFil,
-		MaxPriorityFeePerGas: big.Int(maxPriorityFeePerGas),
-		GasLimit:             int(gaslimit),
-		Input:                contract,
-		V:                    big.Zero(),
-		R:                    big.Zero(),
-		S:                    big.Zero(),
-	}
 }
 
 func TestEthGetTransactionCount(t *testing.T) {
@@ -1657,6 +1620,7 @@ func TestEthNullRoundHandling(t *testing.T) {
 	}
 
 	nullBlockHex := fmt.Sprintf("0x%x", int(nullHeight))
+	nullBlockParam := ethtypes.NewEthBlockNumberOrHashFromNumber(ethtypes.EthUint64(nullHeight))
 	client.WaitTillChain(ctx, kit.HeightAtLeast(nullHeight+2))
 	testCases := []struct {
 		name     string
@@ -1670,9 +1634,30 @@ func TestEthNullRoundHandling(t *testing.T) {
 			},
 		},
 		{
-			name: "EthFeeHistory",
+			name: "EthGetBlockTransactionCountByNumber",
 			testFunc: func() error {
-				_, err := client.EthFeeHistory(ctx, jsonrpc.RawParams([]byte(`[1,"`+nullBlockHex+`",[]]`)))
+				_, err := client.EthGetBlockTransactionCountByNumber(ctx, nullBlockHex)
+				return err
+			},
+		},
+		{
+			name: "EthGetTransactionByBlockNumberAndIndex",
+			testFunc: func() error {
+				_, err := client.EthGetTransactionByBlockNumberAndIndex(ctx, nullBlockHex, ethtypes.EthUint64(0))
+				return err
+			},
+		},
+		{
+			name: "EthGetBlockReceipts",
+			testFunc: func() error {
+				_, err := client.EthGetBlockReceipts(ctx, nullBlockParam)
+				return err
+			},
+		},
+		{
+			name: "EthGetBlockReceiptsLimited",
+			testFunc: func() error {
+				_, err := client.EthGetBlockReceiptsLimited(ctx, nullBlockParam, api.LookbackNoLimit)
 				return err
 			},
 		},
@@ -1695,9 +1680,6 @@ func TestEthNullRoundHandling(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			err := tc.testFunc()
-			if err == nil {
-				return
-			}
 			require.Error(t, err)
 
 			// Test errors.Is

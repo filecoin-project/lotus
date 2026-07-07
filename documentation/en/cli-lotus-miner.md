@@ -8,7 +8,7 @@ USAGE:
    lotus-miner [global options] command [command options]
 
 VERSION:
-   v1.36.1-dev
+   v1.36.2-dev
 
 COMMANDS:
    init     Initialize a lotus miner repo
@@ -256,13 +256,14 @@ USAGE:
    lotus-miner actor settle-deal [command options] [...dealIds]
 
 OPTIONS:
-   --confidence value  number of block confirmations to wait for (default: 5)
-   --from value        specify where to send the message from (any address)
-   --max-deals value   the maximum number of deals contained in each message (default: 20)
-   --skip-wait-msg     skip to check the message status (default: false)
-   --all-deals         settle all deals. only expired deals are calculated by default (default: false)
-   --really-do-it      Actually send transaction performing the action (default: false)
-   --help, -h          show help
+   --confidence value        number of block confirmations to wait for (default: 5)
+   --from value              specify where to send the message from (any address)
+   --max-deals value         the maximum number of deals contained in each message (default: 20)
+   --max-gas-fraction value  denominator of build.BlockGasLimit used as the per-message gas ceiling (default 4 = 1/4 block) (default: 4)
+   --skip-wait-msg           skip to check the message status (default: false)
+   --all-deals               settle all deals. only expired deals are calculated by default (default: false)
+   --really-do-it            Actually send transaction performing the action (default: false)
+   --help, -h                show help
 ```
 
 ### lotus-miner actor withdraw

@@ -263,7 +263,7 @@ func TestWindowPostV1P1NV20(t *testing.T) {
 
 	blocktime := 2 * time.Millisecond
 
-	client, miner, ens := kit.EnsembleMinimal(t, kit.GenesisNetworkVersion(network.Version20))
+	client, miner, ens := kit.EnsembleMinimal(t, kit.RealProofs(), kit.GenesisNetworkVersion(network.Version20))
 	ens.InterconnectAll().BeginMining(blocktime)
 
 	maddr, err := miner.ActorAddress(ctx)
