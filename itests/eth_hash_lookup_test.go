@@ -309,6 +309,18 @@ func TestTransactionHashLookupBlsFilecoinMessage(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, &toEth, chainTx.To)
 
+	blockHashTx, err := client.EthGetTransactionByBlockHashAndIndex(ctx, *chainTx.BlockHash, *chainTx.TransactionIndex)
+	require.NoError(t, err)
+	require.NotNil(t, blockHashTx)
+	require.Equal(t, hash, blockHashTx.Hash)
+	require.Equal(t, &toEth, blockHashTx.To)
+
+	blockNumberTx, err := client.EthGetTransactionByBlockNumberAndIndex(ctx, chainTx.BlockNumber.Hex(), *chainTx.TransactionIndex)
+	require.NoError(t, err)
+	require.NotNil(t, blockNumberTx)
+	require.Equal(t, hash, blockNumberTx.Hash)
+	require.Equal(t, &toEth, blockNumberTx.To)
+
 	const expectedHex = "868e10c4" +
 		"0000000000000000000000000000000000000000000000000000000000000000" +
 		"0000000000000000000000000000000000000000000000000000000000000000" +

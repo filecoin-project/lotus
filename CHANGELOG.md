@@ -17,6 +17,7 @@
 
 ## 🐛 Bug Fixes
 
+- fix(eth): resolve native Filecoin transaction recipients in `eth_getTransactionByBlockHashAndIndex` and `eth_getTransactionByBlockNumberAndIndex` against the block post-state, matching `eth_getBlockByNumber` and `eth_getTransactionByHash` for transfers that create the recipient account ([filecoin-project/lotus#13699](https://github.com/filecoin-project/lotus/pull/13699))
 - fix(eth): return `ErrNullRound` for explicit null epochs in singleton block-execution ETH APIs. `eth_getBlockReceipts` / `EthGetBlockReceiptsLimited` now reject a null block number instead of returning receipts for the previous non-null tipset. State-at-epoch APIs such as `eth_getBalance`, `eth_getCode`, `eth_getStorageAt`, `eth_getTransactionCount`, `eth_call`, `eth_estimateGas`, and `FilecoinAddressToEthAddress` continue to resolve null epochs to the previous non-null tipset because Filecoin state is defined at the null epoch and is unchanged from that previous state. Range/sampling APIs such as `eth_feeHistory` also continue to walk real tipsets and skip null epochs, including when resolving a null `newestBlock` anchor to the previous non-null tipset. ([filecoin-project/lotus#13694](https://github.com/filecoin-project/lotus/pull/13694))
 - fix(eth): return `null` from `eth_getTransactionByHash` and `eth_getTransactionReceipt` for transaction hashes that were replaced before execution, matching Ethereum replacement semantics ([filecoin-project/lotus#13664](https://github.com/filecoin-project/lotus/pull/13664))
 
