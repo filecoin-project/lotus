@@ -207,7 +207,16 @@ func lookupEthAddress(addr address.Address, st *state.StateTree) (ethtypes.EthAd
 	return ethtypes.EthAddressFromFilecoinAddress(idAddr)
 }
 
+// maxEthTopicsPerFilter is the maximum number of topic positions an Ethereum
+// log filter may specify. EVM logs are emitted with the LOG0..LOG4 opcodes, so
+// an event carries at most four topics (t1..t4); go-ethereum enforces the same
+// bound.
+const maxEthTopicsPerFilter = 4
+
 func parseEthTopics(topics ethtypes.EthTopicSpec) (map[string][][]byte, error) {
+	if len(topics) > maxEthTopicsPerFilter {
+		return nil, xerrors.Errorf("too many topics in filter: %d, max: %d", len(topics), maxEthTopicsPerFilter)
+	}
 	keys := map[string][][]byte{}
 	for idx, vals := range topics {
 		if len(vals) == 0 {

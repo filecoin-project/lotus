@@ -8,6 +8,8 @@ import (
 	"github.com/multiformats/go-multicodec"
 	"github.com/stretchr/testify/require"
 	cbg "github.com/whyrusleeping/cbor-gen"
+
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
 func TestABIEncoding(t *testing.T) {
@@ -58,5 +60,33 @@ func TestDecodePayload(t *testing.T) {
 
 	// random codec should fail
 	_, err = decodePayload(w.Bytes(), 42)
+	require.Error(t, err)
+}
+
+func TestParseEthTopics(t *testing.T) {
+	topic := func(b byte) ethtypes.EthHash {
+		var h ethtypes.EthHash
+		h[31] = b
+		return h
+	}
+
+	// Up to four topic positions are accepted and mapped to t1..t4. Empty
+	// positions are skipped.
+	keys, err := parseEthTopics(ethtypes.EthTopicSpec{
+		{topic(1)},
+		{topic(2)},
+		nil,
+		{topic(4)},
+	})
+	require.NoError(t, err)
+	require.Contains(t, keys, "t1")
+	require.Contains(t, keys, "t2")
+	require.NotContains(t, keys, "t3")
+	require.Contains(t, keys, "t4")
+
+	// A fifth topic position can never match an event and is rejected.
+	_, err = parseEthTopics(ethtypes.EthTopicSpec{
+		{topic(1)}, {topic(2)}, {topic(3)}, {topic(4)}, {topic(5)},
+	})
 	require.Error(t, err)
 }
