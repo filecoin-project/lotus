@@ -447,8 +447,15 @@ func (e *ethTransaction) getTransactionByTipsetAndIndex(ctx context.Context, ts 
 		return nil, xerrors.Errorf("failed to get tipset key cid: %w", err)
 	}
 
-	// First, get the state tree
-	st, err := e.stateManager.StateTree(ts.ParentState())
+	// Native-message EthTx conversion needs this tipset's post-state. Filecoin
+	// messages execute after ts.ParentState(); a transfer can create its
+	// recipient here, and parent state would resolve the receiver to the sentinel.
+	stateRoot, _, err := e.stateManager.TipSetState(ctx, ts)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to compute tipset state: %w", err)
+	}
+
+	st, err := e.stateManager.StateTree(stateRoot)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load state tree: %w", err)
 	}
