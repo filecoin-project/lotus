@@ -380,6 +380,45 @@ func TestV1GatewayStateMessageLookbackClamped(t *testing.T) {
 	}
 }
 
+func TestV1GatewayStateWaitMsgConfidenceLimit(t *testing.T) {
+	ctx := context.Background()
+	const bound = uint64(10)
+	msgCid := cid.Undef
+
+	tests := []struct {
+		name       string
+		confidence uint64
+		wantErr    bool
+	}{
+		{"zero confidence", 0, false},
+		{"confidence at bound", bound, false},
+		{"confidence above bound", bound + 1, true},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+			mockV1 := v1mocks.NewMockFullNode(ctrl)
+			mockV2 := v2mocks.NewMockFullNode(ctrl)
+			a := NewNode(mockV1, mockV2, WithMaxMessageConfidence(bound))
+
+			if !test.wantErr {
+				mockV1.EXPECT().
+					StateWaitMsg(gomock.AssignableToTypeOf(ctx), gomock.Eq(msgCid), gomock.Eq(test.confidence), gomock.Eq(DefaultMaxMessageLookbackEpochs), gomock.Eq(true)).
+					Return(nil, nil)
+			}
+
+			_, err := a.v1Proxy.StateWaitMsg(ctx, msgCid, test.confidence, api.LookbackNoLimit, true)
+			if test.wantErr {
+				require.ErrorContains(t, err, "exceeds gateway maximum")
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
 // TestGatewayInterfacesDoNotExposeLimitedOrUntrusted asserts the invariant
 // that neither Gateway interface exposes a `*Limited` or `*Untrusted` method
 // variant. Those variants exist on FullNode for internal use by the gateway

@@ -131,6 +131,11 @@ var runCmd = &cli.Command{
 			Usage: "maximum number of blocks to search back through for message inclusion",
 			Value: int64(gateway.DefaultMaxMessageLookbackEpochs),
 		},
+		&cli.Uint64Flag{
+			Name:  "api-wait-confidence-limit",
+			Usage: "maximum confidence accepted by StateWaitMsg",
+			Value: gateway.DefaultMaxMessageConfidence,
+		},
 		&cli.Int64Flag{
 			Name: "rate-limit",
 			Usage: fmt.Sprintf(
@@ -206,6 +211,7 @@ var runCmd = &cli.Command{
 			lookbackCap                 = cctx.Duration("api-max-lookback")
 			address                     = cctx.String("listen")
 			waitLookback                = abi.ChainEpoch(cctx.Int64("api-wait-lookback-limit"))
+			waitConfidence              = cctx.Uint64("api-wait-confidence-limit")
 			globalRateLimit             = cctx.Int("rate-limit")
 			perConnectionRateLimit      = cctx.Int("per-conn-rate-limit")
 			rateLimitTimeout            = cctx.Duration("rate-limit-timeout")
@@ -239,6 +245,7 @@ var runCmd = &cli.Command{
 			gateway.WithV2EthSubHandler(v2SubHnd),
 			gateway.WithMaxLookbackDuration(lookbackCap),
 			gateway.WithMaxMessageLookbackEpochs(waitLookback),
+			gateway.WithMaxMessageConfidence(waitConfidence),
 			gateway.WithRateLimit(globalRateLimit),
 			gateway.WithRateLimitTimeout(rateLimitTimeout),
 			gateway.WithEthMaxFiltersPerConn(maxFiltersPerConn),

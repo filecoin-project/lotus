@@ -425,6 +425,9 @@ func (pv1 *reverseProxyV1) StateWaitMsg(ctx context.Context, msg cid.Cid, confid
 	if err := pv1.gateway.limit(ctx, stateRateLimitTokens); err != nil {
 		return nil, err
 	}
+	if confidence > pv1.gateway.maxMessageConfidence {
+		return nil, xerrors.Errorf("confidence %d exceeds gateway maximum %d", confidence, pv1.gateway.maxMessageConfidence)
+	}
 	if limit == api.LookbackNoLimit {
 		limit = pv1.gateway.maxMessageLookbackEpochs
 	}
