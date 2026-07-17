@@ -16,6 +16,28 @@
                     "description": "storiface.SectorRef",
                     "summary": "",
                     "schema": {
+                        "properties": {
+                            "ID": {
+                                "properties": {
+                                    "Miner": {
+                                        "type": "number",
+                                        "title": "number"
+                                    },
+                                    "Number": {
+                                        "type": "number",
+                                        "title": "number"
+                                    }
+                                },
+                                "additionalProperties": false,
+                                "type": "object"
+                            },
+                            "ProofType": {
+                                "type": "number",
+                                "title": "number"
+                            }
+                        },
+                        "additionalProperties": false,
+                        "type": "object",
                         "examples": [
                             {
                                 "ID": {
@@ -24,30 +46,6 @@
                                 },
                                 "ProofType": 8
                             }
-                        ],
-                        "additionalProperties": false,
-                        "properties": {
-                            "ID": {
-                                "additionalProperties": false,
-                                "properties": {
-                                    "Miner": {
-                                        "title": "number",
-                                        "type": "number"
-                                    },
-                                    "Number": {
-                                        "title": "number",
-                                        "type": "number"
-                                    }
-                                },
-                                "type": "object"
-                            },
-                            "ProofType": {
-                                "title": "number",
-                                "type": "number"
-                            }
-                        },
-                        "type": [
-                            "object"
                         ]
                     },
                     "required": true,
@@ -58,22 +56,16 @@
                     "description": "[]abi.UnpaddedPieceSize",
                     "summary": "",
                     "schema": {
+                        "items": {
+                            "type": "number",
+                            "title": "number",
+                            "description": "Number is a number"
+                        },
+                        "type": "array",
                         "examples": [
                             [
                                 1024
                             ]
-                        ],
-                        "items": [
-                            {
-                                "title": "number",
-                                "description": "Number is a number",
-                                "type": [
-                                    "number"
-                                ]
-                            }
-                        ],
-                        "type": [
-                            "array"
                         ]
                     },
                     "required": true,
@@ -84,13 +76,11 @@
                     "description": "abi.UnpaddedPieceSize",
                     "summary": "",
                     "schema": {
+                        "type": "number",
                         "title": "number",
                         "description": "Number is a number",
                         "examples": [
                             1024
-                        ],
-                        "type": [
-                            "number"
                         ]
                     },
                     "required": true,
@@ -103,8 +93,7 @@
                     "schema": {
                         "examples": [
                             {}
-                        ],
-                        "additionalProperties": true
+                        ]
                     },
                     "required": true,
                     "deprecated": false
@@ -115,6 +104,34 @@
                 "description": "storiface.CallID",
                 "summary": "",
                 "schema": {
+                    "properties": {
+                        "Sector": {
+                            "properties": {
+                                "Miner": {
+                                    "type": "number",
+                                    "title": "number"
+                                },
+                                "Number": {
+                                    "type": "number",
+                                    "title": "number"
+                                }
+                            },
+                            "additionalProperties": false,
+                            "type": "object"
+                        },
+                        "ID": {
+                            "items": {
+                                "type": "number",
+                                "title": "number",
+                                "description": "Number is a number"
+                            },
+                            "type": "array",
+                            "maxItems": 16,
+                            "minItems": 16
+                        }
+                    },
+                    "additionalProperties": false,
+                    "type": "object",
                     "examples": [
                         {
                             "Sector": {
@@ -123,46 +140,16 @@
                             },
                             "ID": "07070707-0707-0707-0707-070707070707"
                         }
-                    ],
-                    "additionalProperties": false,
-                    "properties": {
-                        "ID": {
-                            "items": {
-                                "description": "Number is a number",
-                                "title": "number",
-                                "type": "number"
-                            },
-                            "maxItems": 16,
-                            "minItems": 16,
-                            "type": "array"
-                        },
-                        "Sector": {
-                            "additionalProperties": false,
-                            "properties": {
-                                "Miner": {
-                                    "title": "number",
-                                    "type": "number"
-                                },
-                                "Number": {
-                                    "title": "number",
-                                    "type": "number"
-                                }
-                            },
-                            "type": "object"
-                        }
-                    },
-                    "type": [
-                        "object"
                     ]
                 },
                 "required": true,
                 "deprecated": false
             },
-            "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
                 "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6608"
-            }
+            },
+            "deprecated": false
         },
         {
             "name": "Filecoin.DataCid",
@@ -175,13 +162,11 @@
                     "description": "abi.UnpaddedPieceSize",
                     "summary": "",
                     "schema": {
+                        "type": "number",
                         "title": "number",
                         "description": "Number is a number",
                         "examples": [
                             1024
-                        ],
-                        "type": [
-                            "number"
                         ]
                     },
                     "required": true,
@@ -194,8 +179,7 @@
                     "schema": {
                         "examples": [
                             {}
-                        ],
-                        "additionalProperties": true
+                        ]
                     },
                     "required": true,
                     "deprecated": false
@@ -206,6 +190,34 @@
                 "description": "storiface.CallID",
                 "summary": "",
                 "schema": {
+                    "properties": {
+                        "Sector": {
+                            "properties": {
+                                "Miner": {
+                                    "type": "number",
+                                    "title": "number"
+                                },
+                                "Number": {
+                                    "type": "number",
+                                    "title": "number"
+                                }
+                            },
+                            "additionalProperties": false,
+                            "type": "object"
+                        },
+                        "ID": {
+                            "items": {
+                                "type": "number",
+                                "title": "number",
+                                "description": "Number is a number"
+                            },
+                            "type": "array",
+                            "maxItems": 16,
+                            "minItems": 16
+                        }
+                    },
+                    "additionalProperties": false,
+                    "type": "object",
                     "examples": [
                         {
                             "Sector": {
@@ -214,46 +226,16 @@
                             },
                             "ID": "07070707-0707-0707-0707-070707070707"
                         }
-                    ],
-                    "additionalProperties": false,
-                    "properties": {
-                        "ID": {
-                            "items": {
-                                "description": "Number is a number",
-                                "title": "number",
-                                "type": "number"
-                            },
-                            "maxItems": 16,
-                            "minItems": 16,
-                            "type": "array"
-                        },
-                        "Sector": {
-                            "additionalProperties": false,
-                            "properties": {
-                                "Miner": {
-                                    "title": "number",
-                                    "type": "number"
-                                },
-                                "Number": {
-                                    "title": "number",
-                                    "type": "number"
-                                }
-                            },
-                            "type": "object"
-                        }
-                    },
-                    "type": [
-                        "object"
                     ]
                 },
                 "required": true,
                 "deprecated": false
             },
-            "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
                 "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6619"
-            }
+            },
+            "deprecated": false
         },
         {
             "name": "Filecoin.DownloadSectorData",
@@ -266,6 +248,28 @@
                     "description": "storiface.SectorRef",
                     "summary": "",
                     "schema": {
+                        "properties": {
+                            "ID": {
+                                "properties": {
+                                    "Miner": {
+                                        "type": "number",
+                                        "title": "number"
+                                    },
+                                    "Number": {
+                                        "type": "number",
+                                        "title": "number"
+                                    }
+                                },
+                                "additionalProperties": false,
+                                "type": "object"
+                            },
+                            "ProofType": {
+                                "type": "number",
+                                "title": "number"
+                            }
+                        },
+                        "additionalProperties": false,
+                        "type": "object",
                         "examples": [
                             {
                                 "ID": {
@@ -274,30 +278,6 @@
                                 },
                                 "ProofType": 8
                             }
-                        ],
-                        "additionalProperties": false,
-                        "properties": {
-                            "ID": {
-                                "additionalProperties": false,
-                                "properties": {
-                                    "Miner": {
-                                        "title": "number",
-                                        "type": "number"
-                                    },
-                                    "Number": {
-                                        "title": "number",
-                                        "type": "number"
-                                    }
-                                },
-                                "type": "object"
-                            },
-                            "ProofType": {
-                                "title": "number",
-                                "type": "number"
-                            }
-                        },
-                        "type": [
-                            "object"
                         ]
                     },
                     "required": true,
@@ -308,11 +288,9 @@
                     "description": "bool",
                     "summary": "",
                     "schema": {
+                        "type": "boolean",
                         "examples": [
                             true
-                        ],
-                        "type": [
-                            "boolean"
                         ]
                     },
                     "required": true,
@@ -323,22 +301,17 @@
                     "description": "map[storiface.SectorFileType]storiface.SectorLocation",
                     "summary": "",
                     "schema": {
-                        "examples": [
-                            {
-                                "2": {
-                                    "Local": false,
-                                    "URL": "https://example.com/sealingservice/sectors/s-f0123-12345",
-                                    "Headers": null
-                                }
-                            }
-                        ],
                         "patternProperties": {
-                            ".*": {
-                                "additionalProperties": false,
+                            "^[0-9]+$": {
                                 "properties": {
+                                    "Local": {
+                                        "type": "boolean"
+                                    },
+                                    "URL": {
+                                        "type": "string"
+                                    },
                                     "Headers": {
                                         "items": {
-                                            "additionalProperties": false,
                                             "properties": {
                                                 "Key": {
                                                     "type": "string"
@@ -347,22 +320,26 @@
                                                     "type": "string"
                                                 }
                                             },
+                                            "additionalProperties": false,
                                             "type": "object"
                                         },
                                         "type": "array"
-                                    },
-                                    "Local": {
-                                        "type": "boolean"
-                                    },
-                                    "URL": {
-                                        "type": "string"
                                     }
                                 },
+                                "additionalProperties": false,
                                 "type": "object"
                             }
                         },
-                        "type": [
-                            "object"
+                        "additionalProperties": false,
+                        "type": "object",
+                        "examples": [
+                            {
+                                "2": {
+                                    "Local": false,
+                                    "URL": "https://example.com/sealingservice/sectors/s-f0123-12345",
+                                    "Headers": null
+                                }
+                            }
                         ]
                     },
                     "required": true,
@@ -374,6 +351,34 @@
                 "description": "storiface.CallID",
                 "summary": "",
                 "schema": {
+                    "properties": {
+                        "Sector": {
+                            "properties": {
+                                "Miner": {
+                                    "type": "number",
+                                    "title": "number"
+                                },
+                                "Number": {
+                                    "type": "number",
+                                    "title": "number"
+                                }
+                            },
+                            "additionalProperties": false,
+                            "type": "object"
+                        },
+                        "ID": {
+                            "items": {
+                                "type": "number",
+                                "title": "number",
+                                "description": "Number is a number"
+                            },
+                            "type": "array",
+                            "maxItems": 16,
+                            "minItems": 16
+                        }
+                    },
+                    "additionalProperties": false,
+                    "type": "object",
                     "examples": [
                         {
                             "Sector": {
@@ -382,46 +387,16 @@
                             },
                             "ID": "07070707-0707-0707-0707-070707070707"
                         }
-                    ],
-                    "additionalProperties": false,
-                    "properties": {
-                        "ID": {
-                            "items": {
-                                "description": "Number is a number",
-                                "title": "number",
-                                "type": "number"
-                            },
-                            "maxItems": 16,
-                            "minItems": 16,
-                            "type": "array"
-                        },
-                        "Sector": {
-                            "additionalProperties": false,
-                            "properties": {
-                                "Miner": {
-                                    "title": "number",
-                                    "type": "number"
-                                },
-                                "Number": {
-                                    "title": "number",
-                                    "type": "number"
-                                }
-                            },
-                            "type": "object"
-                        }
-                    },
-                    "type": [
-                        "object"
                     ]
                 },
                 "required": true,
                 "deprecated": false
             },
-            "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
                 "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6630"
-            }
+            },
+            "deprecated": false
         },
         {
             "name": "Filecoin.Enabled",
@@ -434,21 +409,19 @@
                 "description": "bool",
                 "summary": "",
                 "schema": {
+                    "type": "boolean",
                     "examples": [
                         true
-                    ],
-                    "type": [
-                        "boolean"
                     ]
                 },
                 "required": true,
                 "deprecated": false
             },
-            "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
                 "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6641"
-            }
+            },
+            "deprecated": false
         },
         {
             "name": "Filecoin.Fetch",
@@ -461,6 +434,28 @@
                     "description": "storiface.SectorRef",
                     "summary": "",
                     "schema": {
+                        "properties": {
+                            "ID": {
+                                "properties": {
+                                    "Miner": {
+                                        "type": "number",
+                                        "title": "number"
+                                    },
+                                    "Number": {
+                                        "type": "number",
+                                        "title": "number"
+                                    }
+                                },
+                                "additionalProperties": false,
+                                "type": "object"
+                            },
+                            "ProofType": {
+                                "type": "number",
+                                "title": "number"
+                            }
+                        },
+                        "additionalProperties": false,
+                        "type": "object",
                         "examples": [
                             {
                                 "ID": {
@@ -469,30 +464,6 @@
                                 },
                                 "ProofType": 8
                             }
-                        ],
-                        "additionalProperties": false,
-                        "properties": {
-                            "ID": {
-                                "additionalProperties": false,
-                                "properties": {
-                                    "Miner": {
-                                        "title": "number",
-                                        "type": "number"
-                                    },
-                                    "Number": {
-                                        "title": "number",
-                                        "type": "number"
-                                    }
-                                },
-                                "type": "object"
-                            },
-                            "ProofType": {
-                                "title": "number",
-                                "type": "number"
-                            }
-                        },
-                        "type": [
-                            "object"
                         ]
                     },
                     "required": true,
@@ -503,13 +474,11 @@
                     "description": "storiface.SectorFileType",
                     "summary": "",
                     "schema": {
+                        "type": "number",
                         "title": "number",
                         "description": "Number is a number",
                         "examples": [
                             1
-                        ],
-                        "type": [
-                            "number"
                         ]
                     },
                     "required": true,
@@ -520,11 +489,9 @@
                     "description": "storiface.PathType",
                     "summary": "",
                     "schema": {
+                        "type": "string",
                         "examples": [
                             "sealing"
-                        ],
-                        "type": [
-                            "string"
                         ]
                     },
                     "required": true,
@@ -535,11 +502,9 @@
                     "description": "storiface.AcquireMode",
                     "summary": "",
                     "schema": {
+                        "type": "string",
                         "examples": [
                             "move"
-                        ],
-                        "type": [
-                            "string"
                         ]
                     },
                     "required": true,
@@ -551,6 +516,34 @@
                 "description": "storiface.CallID",
                 "summary": "",
                 "schema": {
+                    "properties": {
+                        "Sector": {
+                            "properties": {
+                                "Miner": {
+                                    "type": "number",
+                                    "title": "number"
+                                },
+                                "Number": {
+                                    "type": "number",
+                                    "title": "number"
+                                }
+                            },
+                            "additionalProperties": false,
+                            "type": "object"
+                        },
+                        "ID": {
+                            "items": {
+                                "type": "number",
+                                "title": "number",
+                                "description": "Number is a number"
+                            },
+                            "type": "array",
+                            "maxItems": 16,
+                            "minItems": 16
+                        }
+                    },
+                    "additionalProperties": false,
+                    "type": "object",
                     "examples": [
                         {
                             "Sector": {
@@ -559,46 +552,16 @@
                             },
                             "ID": "07070707-0707-0707-0707-070707070707"
                         }
-                    ],
-                    "additionalProperties": false,
-                    "properties": {
-                        "ID": {
-                            "items": {
-                                "description": "Number is a number",
-                                "title": "number",
-                                "type": "number"
-                            },
-                            "maxItems": 16,
-                            "minItems": 16,
-                            "type": "array"
-                        },
-                        "Sector": {
-                            "additionalProperties": false,
-                            "properties": {
-                                "Miner": {
-                                    "title": "number",
-                                    "type": "number"
-                                },
-                                "Number": {
-                                    "title": "number",
-                                    "type": "number"
-                                }
-                            },
-                            "type": "object"
-                        }
-                    },
-                    "type": [
-                        "object"
                     ]
                 },
                 "required": true,
                 "deprecated": false
             },
-            "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
                 "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6652"
-            }
+            },
+            "deprecated": false
         },
         {
             "name": "Filecoin.FinalizeReplicaUpdate",
@@ -611,6 +574,28 @@
                     "description": "storiface.SectorRef",
                     "summary": "",
                     "schema": {
+                        "properties": {
+                            "ID": {
+                                "properties": {
+                                    "Miner": {
+                                        "type": "number",
+                                        "title": "number"
+                                    },
+                                    "Number": {
+                                        "type": "number",
+                                        "title": "number"
+                                    }
+                                },
+                                "additionalProperties": false,
+                                "type": "object"
+                            },
+                            "ProofType": {
+                                "type": "number",
+                                "title": "number"
+                            }
+                        },
+                        "additionalProperties": false,
+                        "type": "object",
                         "examples": [
                             {
                                 "ID": {
@@ -619,30 +604,6 @@
                                 },
                                 "ProofType": 8
                             }
-                        ],
-                        "additionalProperties": false,
-                        "properties": {
-                            "ID": {
-                                "additionalProperties": false,
-                                "properties": {
-                                    "Miner": {
-                                        "title": "number",
-                                        "type": "number"
-                                    },
-                                    "Number": {
-                                        "title": "number",
-                                        "type": "number"
-                                    }
-                                },
-                                "type": "object"
-                            },
-                            "ProofType": {
-                                "title": "number",
-                                "type": "number"
-                            }
-                        },
-                        "type": [
-                            "object"
                         ]
                     },
                     "required": true,
@@ -654,6 +615,34 @@
                 "description": "storiface.CallID",
                 "summary": "",
                 "schema": {
+                    "properties": {
+                        "Sector": {
+                            "properties": {
+                                "Miner": {
+                                    "type": "number",
+                                    "title": "number"
+                                },
+                                "Number": {
+                                    "type": "number",
+                                    "title": "number"
+                                }
+                            },
+                            "additionalProperties": false,
+                            "type": "object"
+                        },
+                        "ID": {
+                            "items": {
+                                "type": "number",
+                                "title": "number",
+                                "description": "Number is a number"
+                            },
+                            "type": "array",
+                            "maxItems": 16,
+                            "minItems": 16
+                        }
+                    },
+                    "additionalProperties": false,
+                    "type": "object",
                     "examples": [
                         {
                             "Sector": {
@@ -662,46 +651,16 @@
                             },
                             "ID": "07070707-0707-0707-0707-070707070707"
                         }
-                    ],
-                    "additionalProperties": false,
-                    "properties": {
-                        "ID": {
-                            "items": {
-                                "description": "Number is a number",
-                                "title": "number",
-                                "type": "number"
-                            },
-                            "maxItems": 16,
-                            "minItems": 16,
-                            "type": "array"
-                        },
-                        "Sector": {
-                            "additionalProperties": false,
-                            "properties": {
-                                "Miner": {
-                                    "title": "number",
-                                    "type": "number"
-                                },
-                                "Number": {
-                                    "title": "number",
-                                    "type": "number"
-                                }
-                            },
-                            "type": "object"
-                        }
-                    },
-                    "type": [
-                        "object"
                     ]
                 },
                 "required": true,
                 "deprecated": false
             },
-            "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
                 "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6663"
-            }
+            },
+            "deprecated": false
         },
         {
             "name": "Filecoin.FinalizeSector",
@@ -714,6 +673,28 @@
                     "description": "storiface.SectorRef",
                     "summary": "",
                     "schema": {
+                        "properties": {
+                            "ID": {
+                                "properties": {
+                                    "Miner": {
+                                        "type": "number",
+                                        "title": "number"
+                                    },
+                                    "Number": {
+                                        "type": "number",
+                                        "title": "number"
+                                    }
+                                },
+                                "additionalProperties": false,
+                                "type": "object"
+                            },
+                            "ProofType": {
+                                "type": "number",
+                                "title": "number"
+                            }
+                        },
+                        "additionalProperties": false,
+                        "type": "object",
                         "examples": [
                             {
                                 "ID": {
@@ -722,30 +703,6 @@
                                 },
                                 "ProofType": 8
                             }
-                        ],
-                        "additionalProperties": false,
-                        "properties": {
-                            "ID": {
-                                "additionalProperties": false,
-                                "properties": {
-                                    "Miner": {
-                                        "title": "number",
-                                        "type": "number"
-                                    },
-                                    "Number": {
-                                        "title": "number",
-                                        "type": "number"
-                                    }
-                                },
-                                "type": "object"
-                            },
-                            "ProofType": {
-                                "title": "number",
-                                "type": "number"
-                            }
-                        },
-                        "type": [
-                            "object"
                         ]
                     },
                     "required": true,
@@ -757,6 +714,34 @@
                 "description": "storiface.CallID",
                 "summary": "",
                 "schema": {
+                    "properties": {
+                        "Sector": {
+                            "properties": {
+                                "Miner": {
+                                    "type": "number",
+                                    "title": "number"
+                                },
+                                "Number": {
+                                    "type": "number",
+                                    "title": "number"
+                                }
+                            },
+                            "additionalProperties": false,
+                            "type": "object"
+                        },
+                        "ID": {
+                            "items": {
+                                "type": "number",
+                                "title": "number",
+                                "description": "Number is a number"
+                            },
+                            "type": "array",
+                            "maxItems": 16,
+                            "minItems": 16
+                        }
+                    },
+                    "additionalProperties": false,
+                    "type": "object",
                     "examples": [
                         {
                             "Sector": {
@@ -765,46 +750,16 @@
                             },
                             "ID": "07070707-0707-0707-0707-070707070707"
                         }
-                    ],
-                    "additionalProperties": false,
-                    "properties": {
-                        "ID": {
-                            "items": {
-                                "description": "Number is a number",
-                                "title": "number",
-                                "type": "number"
-                            },
-                            "maxItems": 16,
-                            "minItems": 16,
-                            "type": "array"
-                        },
-                        "Sector": {
-                            "additionalProperties": false,
-                            "properties": {
-                                "Miner": {
-                                    "title": "number",
-                                    "type": "number"
-                                },
-                                "Number": {
-                                    "title": "number",
-                                    "type": "number"
-                                }
-                            },
-                            "type": "object"
-                        }
-                    },
-                    "type": [
-                        "object"
                     ]
                 },
                 "required": true,
                 "deprecated": false
             },
-            "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
                 "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6674"
-            }
+            },
+            "deprecated": false
         },
         {
             "name": "Filecoin.GenerateSectorKeyFromData",
@@ -817,6 +772,28 @@
                     "description": "storiface.SectorRef",
                     "summary": "",
                     "schema": {
+                        "properties": {
+                            "ID": {
+                                "properties": {
+                                    "Miner": {
+                                        "type": "number",
+                                        "title": "number"
+                                    },
+                                    "Number": {
+                                        "type": "number",
+                                        "title": "number"
+                                    }
+                                },
+                                "additionalProperties": false,
+                                "type": "object"
+                            },
+                            "ProofType": {
+                                "type": "number",
+                                "title": "number"
+                            }
+                        },
+                        "additionalProperties": false,
+                        "type": "object",
                         "examples": [
                             {
                                 "ID": {
@@ -825,30 +802,6 @@
                                 },
                                 "ProofType": 8
                             }
-                        ],
-                        "additionalProperties": false,
-                        "properties": {
-                            "ID": {
-                                "additionalProperties": false,
-                                "properties": {
-                                    "Miner": {
-                                        "title": "number",
-                                        "type": "number"
-                                    },
-                                    "Number": {
-                                        "title": "number",
-                                        "type": "number"
-                                    }
-                                },
-                                "type": "object"
-                            },
-                            "ProofType": {
-                                "title": "number",
-                                "type": "number"
-                            }
-                        },
-                        "type": [
-                            "object"
                         ]
                     },
                     "required": true,
@@ -859,15 +812,13 @@
                     "description": "cid.Cid",
                     "summary": "",
                     "schema": {
+                        "type": "string",
                         "title": "Content Identifier",
                         "description": "Cid represents a self-describing content addressed identifier. It is formed by a Version, a Codec (which indicates a multicodec-packed content type) and a Multihash.",
                         "examples": [
                             {
                                 "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
                             }
-                        ],
-                        "type": [
-                            "string"
                         ]
                     },
                     "required": true,
@@ -879,6 +830,34 @@
                 "description": "storiface.CallID",
                 "summary": "",
                 "schema": {
+                    "properties": {
+                        "Sector": {
+                            "properties": {
+                                "Miner": {
+                                    "type": "number",
+                                    "title": "number"
+                                },
+                                "Number": {
+                                    "type": "number",
+                                    "title": "number"
+                                }
+                            },
+                            "additionalProperties": false,
+                            "type": "object"
+                        },
+                        "ID": {
+                            "items": {
+                                "type": "number",
+                                "title": "number",
+                                "description": "Number is a number"
+                            },
+                            "type": "array",
+                            "maxItems": 16,
+                            "minItems": 16
+                        }
+                    },
+                    "additionalProperties": false,
+                    "type": "object",
                     "examples": [
                         {
                             "Sector": {
@@ -887,46 +866,16 @@
                             },
                             "ID": "07070707-0707-0707-0707-070707070707"
                         }
-                    ],
-                    "additionalProperties": false,
-                    "properties": {
-                        "ID": {
-                            "items": {
-                                "description": "Number is a number",
-                                "title": "number",
-                                "type": "number"
-                            },
-                            "maxItems": 16,
-                            "minItems": 16,
-                            "type": "array"
-                        },
-                        "Sector": {
-                            "additionalProperties": false,
-                            "properties": {
-                                "Miner": {
-                                    "title": "number",
-                                    "type": "number"
-                                },
-                                "Number": {
-                                    "title": "number",
-                                    "type": "number"
-                                }
-                            },
-                            "type": "object"
-                        }
-                    },
-                    "type": [
-                        "object"
                     ]
                 },
                 "required": true,
                 "deprecated": false
             },
-            "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
                 "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6685"
-            }
+            },
+            "deprecated": false
         },
         {
             "name": "Filecoin.GenerateWindowPoSt",
@@ -939,13 +888,11 @@
                     "description": "abi.RegisteredPoStProof",
                     "summary": "",
                     "schema": {
+                        "type": "number",
                         "title": "number",
                         "description": "Number is a number",
                         "examples": [
                             8
-                        ],
-                        "type": [
-                            "number"
                         ]
                     },
                     "required": true,
@@ -956,13 +903,11 @@
                     "description": "abi.ActorID",
                     "summary": "",
                     "schema": {
+                        "type": "number",
                         "title": "number",
                         "description": "Number is a number",
                         "examples": [
                             1000
-                        ],
-                        "type": [
-                            "number"
                         ]
                     },
                     "required": true,
@@ -973,6 +918,36 @@
                     "description": "[]storiface.PostSectorChallenge",
                     "summary": "",
                     "schema": {
+                        "items": {
+                            "properties": {
+                                "SealProof": {
+                                    "type": "number",
+                                    "title": "number"
+                                },
+                                "SectorNumber": {
+                                    "type": "number",
+                                    "title": "number"
+                                },
+                                "SealedCID": {
+                                    "type": "string",
+                                    "title": "Content Identifier"
+                                },
+                                "Challenge": {
+                                    "items": {
+                                        "type": "number",
+                                        "title": "number",
+                                        "description": "Number is a number"
+                                    },
+                                    "type": "array"
+                                },
+                                "Update": {
+                                    "type": "boolean"
+                                }
+                            },
+                            "additionalProperties": false,
+                            "type": "object"
+                        },
+                        "type": "array",
                         "examples": [
                             [
                                 {
@@ -987,42 +962,6 @@
                                     "Update": true
                                 }
                             ]
-                        ],
-                        "items": [
-                            {
-                                "additionalProperties": false,
-                                "properties": {
-                                    "Challenge": {
-                                        "items": {
-                                            "description": "Number is a number",
-                                            "title": "number",
-                                            "type": "number"
-                                        },
-                                        "type": "array"
-                                    },
-                                    "SealProof": {
-                                        "title": "number",
-                                        "type": "number"
-                                    },
-                                    "SealedCID": {
-                                        "title": "Content Identifier",
-                                        "type": "string"
-                                    },
-                                    "SectorNumber": {
-                                        "title": "number",
-                                        "type": "number"
-                                    },
-                                    "Update": {
-                                        "type": "boolean"
-                                    }
-                                },
-                                "type": [
-                                    "object"
-                                ]
-                            }
-                        ],
-                        "type": [
-                            "array"
                         ]
                     },
                     "required": true,
@@ -1033,13 +972,11 @@
                     "description": "int",
                     "summary": "",
                     "schema": {
+                        "type": "number",
                         "title": "number",
                         "description": "Number is a number",
                         "examples": [
                             123
-                        ],
-                        "type": [
-                            "number"
                         ]
                     },
                     "required": true,
@@ -1050,20 +987,10 @@
                     "description": "abi.PoStRandomness",
                     "summary": "",
                     "schema": {
+                        "type": "string",
+                        "contentEncoding": "base64",
                         "examples": [
                             "Bw=="
-                        ],
-                        "items": [
-                            {
-                                "title": "number",
-                                "description": "Number is a number",
-                                "type": [
-                                    "number"
-                                ]
-                            }
-                        ],
-                        "type": [
-                            "array"
                         ]
                     },
                     "required": true,
@@ -1075,6 +1002,41 @@
                 "description": "storiface.WindowPoStResult",
                 "summary": "",
                 "schema": {
+                    "properties": {
+                        "PoStProofs": {
+                            "properties": {
+                                "PoStProof": {
+                                    "type": "number",
+                                    "title": "number"
+                                },
+                                "ProofBytes": {
+                                    "type": "string",
+                                    "contentEncoding": "base64"
+                                }
+                            },
+                            "additionalProperties": false,
+                            "type": "object"
+                        },
+                        "Skipped": {
+                            "items": {
+                                "properties": {
+                                    "Miner": {
+                                        "type": "number",
+                                        "title": "number"
+                                    },
+                                    "Number": {
+                                        "type": "number",
+                                        "title": "number"
+                                    }
+                                },
+                                "additionalProperties": false,
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "additionalProperties": false,
+                    "type": "object",
                     "examples": [
                         {
                             "PoStProofs": {
@@ -1088,55 +1050,16 @@
                                 }
                             ]
                         }
-                    ],
-                    "additionalProperties": false,
-                    "properties": {
-                        "PoStProofs": {
-                            "additionalProperties": false,
-                            "properties": {
-                                "PoStProof": {
-                                    "title": "number",
-                                    "type": "number"
-                                },
-                                "ProofBytes": {
-                                    "media": {
-                                        "binaryEncoding": "base64"
-                                    },
-                                    "type": "string"
-                                }
-                            },
-                            "type": "object"
-                        },
-                        "Skipped": {
-                            "items": {
-                                "additionalProperties": false,
-                                "properties": {
-                                    "Miner": {
-                                        "title": "number",
-                                        "type": "number"
-                                    },
-                                    "Number": {
-                                        "title": "number",
-                                        "type": "number"
-                                    }
-                                },
-                                "type": "object"
-                            },
-                            "type": "array"
-                        }
-                    },
-                    "type": [
-                        "object"
                     ]
                 },
                 "required": true,
                 "deprecated": false
             },
-            "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
                 "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6696"
-            }
+            },
+            "deprecated": false
         },
         {
             "name": "Filecoin.GenerateWinningPoSt",
@@ -1149,13 +1072,11 @@
                     "description": "abi.RegisteredPoStProof",
                     "summary": "",
                     "schema": {
+                        "type": "number",
                         "title": "number",
                         "description": "Number is a number",
                         "examples": [
                             8
-                        ],
-                        "type": [
-                            "number"
                         ]
                     },
                     "required": true,
@@ -1166,13 +1087,11 @@
                     "description": "abi.ActorID",
                     "summary": "",
                     "schema": {
+                        "type": "number",
                         "title": "number",
                         "description": "Number is a number",
                         "examples": [
                             1000
-                        ],
-                        "type": [
-                            "number"
                         ]
                     },
                     "required": true,
@@ -1183,6 +1102,36 @@
                     "description": "[]storiface.PostSectorChallenge",
                     "summary": "",
                     "schema": {
+                        "items": {
+                            "properties": {
+                                "SealProof": {
+                                    "type": "number",
+                                    "title": "number"
+                                },
+                                "SectorNumber": {
+                                    "type": "number",
+                                    "title": "number"
+                                },
+                                "SealedCID": {
+                                    "type": "string",
+                                    "title": "Content Identifier"
+                                },
+                                "Challenge": {
+                                    "items": {
+                                        "type": "number",
+                                        "title": "number",
+                                        "description": "Number is a number"
+                                    },
+                                    "type": "array"
+                                },
+                                "Update": {
+                                    "type": "boolean"
+                                }
+                            },
+                            "additionalProperties": false,
+                            "type": "object"
+                        },
+                        "type": "array",
                         "examples": [
                             [
                                 {
@@ -1197,42 +1146,6 @@
                                     "Update": true
                                 }
                             ]
-                        ],
-                        "items": [
-                            {
-                                "additionalProperties": false,
-                                "properties": {
-                                    "Challenge": {
-                                        "items": {
-                                            "description": "Number is a number",
-                                            "title": "number",
-                                            "type": "number"
-                                        },
-                                        "type": "array"
-                                    },
-                                    "SealProof": {
-                                        "title": "number",
-                                        "type": "number"
-                                    },
-                                    "SealedCID": {
-                                        "title": "Content Identifier",
-                                        "type": "string"
-                                    },
-                                    "SectorNumber": {
-                                        "title": "number",
-                                        "type": "number"
-                                    },
-                                    "Update": {
-                                        "type": "boolean"
-                                    }
-                                },
-                                "type": [
-                                    "object"
-                                ]
-                            }
-                        ],
-                        "type": [
-                            "array"
                         ]
                     },
                     "required": true,
@@ -1243,20 +1156,10 @@
                     "description": "abi.PoStRandomness",
                     "summary": "",
                     "schema": {
+                        "type": "string",
+                        "contentEncoding": "base64",
                         "examples": [
                             "Bw=="
-                        ],
-                        "items": [
-                            {
-                                "title": "number",
-                                "description": "Number is a number",
-                                "type": [
-                                    "number"
-                                ]
-                            }
-                        ],
-                        "type": [
-                            "array"
                         ]
                     },
                     "required": true,
@@ -1268,6 +1171,21 @@
                 "description": "[]proof.PoStProof",
                 "summary": "",
                 "schema": {
+                    "items": {
+                        "properties": {
+                            "PoStProof": {
+                                "type": "number",
+                                "title": "number"
+                            },
+                            "ProofBytes": {
+                                "type": "string",
+                                "contentEncoding": "base64"
+                            }
+                        },
+                        "additionalProperties": false,
+                        "type": "object"
+                    },
+                    "type": "array",
                     "examples": [
                         [
                             {
@@ -1275,39 +1193,16 @@
                                 "ProofBytes": "Ynl0ZSBhcnJheQ=="
                             }
                         ]
-                    ],
-                    "items": [
-                        {
-                            "additionalProperties": false,
-                            "properties": {
-                                "PoStProof": {
-                                    "title": "number",
-                                    "type": "number"
-                                },
-                                "ProofBytes": {
-                                    "media": {
-                                        "binaryEncoding": "base64"
-                                    },
-                                    "type": "string"
-                                }
-                            },
-                            "type": [
-                                "object"
-                            ]
-                        }
-                    ],
-                    "type": [
-                        "array"
                     ]
                 },
                 "required": true,
                 "deprecated": false
             },
-            "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
                 "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6707"
-            }
+            },
+            "deprecated": false
         },
         {
             "name": "Filecoin.Info",
@@ -1320,6 +1215,90 @@
                 "description": "storiface.WorkerInfo",
                 "summary": "",
                 "schema": {
+                    "properties": {
+                        "Hostname": {
+                            "type": "string"
+                        },
+                        "IgnoreResources": {
+                            "type": "boolean"
+                        },
+                        "Resources": {
+                            "properties": {
+                                "MemPhysical": {
+                                    "type": "number",
+                                    "title": "number"
+                                },
+                                "MemUsed": {
+                                    "type": "number",
+                                    "title": "number"
+                                },
+                                "MemSwap": {
+                                    "type": "number",
+                                    "title": "number"
+                                },
+                                "MemSwapUsed": {
+                                    "type": "number",
+                                    "title": "number"
+                                },
+                                "CPUs": {
+                                    "type": "number",
+                                    "title": "number"
+                                },
+                                "GPUs": {
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "type": "array"
+                                },
+                                "Resources": {
+                                    "additionalProperties": {
+                                        "patternProperties": {
+                                            "^[0-9]+$": {
+                                                "properties": {
+                                                    "MinMemory": {
+                                                        "type": "number",
+                                                        "title": "number"
+                                                    },
+                                                    "MaxMemory": {
+                                                        "type": "number",
+                                                        "title": "number"
+                                                    },
+                                                    "GPUUtilization": {
+                                                        "type": "number"
+                                                    },
+                                                    "MaxParallelism": {
+                                                        "type": "number",
+                                                        "title": "number"
+                                                    },
+                                                    "MaxParallelismGPU": {
+                                                        "type": "number",
+                                                        "title": "number"
+                                                    },
+                                                    "BaseMinMemory": {
+                                                        "type": "number",
+                                                        "title": "number"
+                                                    },
+                                                    "MaxConcurrent": {
+                                                        "type": "number",
+                                                        "title": "number"
+                                                    }
+                                                },
+                                                "additionalProperties": false,
+                                                "type": "object"
+                                            }
+                                        },
+                                        "additionalProperties": false,
+                                        "type": "object"
+                                    },
+                                    "type": "object"
+                                }
+                            },
+                            "additionalProperties": false,
+                            "type": "object"
+                        }
+                    },
+                    "additionalProperties": false,
+                    "type": "object",
                     "examples": [
                         {
                             "Hostname": "string value",
@@ -3255,103 +3234,16 @@
                                 }
                             }
                         }
-                    ],
-                    "additionalProperties": false,
-                    "properties": {
-                        "Hostname": {
-                            "type": "string"
-                        },
-                        "IgnoreResources": {
-                            "type": "boolean"
-                        },
-                        "Resources": {
-                            "additionalProperties": false,
-                            "properties": {
-                                "CPUs": {
-                                    "title": "number",
-                                    "type": "number"
-                                },
-                                "GPUs": {
-                                    "items": {
-                                        "type": "string"
-                                    },
-                                    "type": "array"
-                                },
-                                "MemPhysical": {
-                                    "title": "number",
-                                    "type": "number"
-                                },
-                                "MemSwap": {
-                                    "title": "number",
-                                    "type": "number"
-                                },
-                                "MemSwapUsed": {
-                                    "title": "number",
-                                    "type": "number"
-                                },
-                                "MemUsed": {
-                                    "title": "number",
-                                    "type": "number"
-                                },
-                                "Resources": {
-                                    "patternProperties": {
-                                        ".*": {
-                                            "patternProperties": {
-                                                ".*": {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "BaseMinMemory": {
-                                                            "title": "number",
-                                                            "type": "number"
-                                                        },
-                                                        "GPUUtilization": {
-                                                            "type": "number"
-                                                        },
-                                                        "MaxConcurrent": {
-                                                            "title": "number",
-                                                            "type": "number"
-                                                        },
-                                                        "MaxMemory": {
-                                                            "title": "number",
-                                                            "type": "number"
-                                                        },
-                                                        "MaxParallelism": {
-                                                            "title": "number",
-                                                            "type": "number"
-                                                        },
-                                                        "MaxParallelismGPU": {
-                                                            "title": "number",
-                                                            "type": "number"
-                                                        },
-                                                        "MinMemory": {
-                                                            "title": "number",
-                                                            "type": "number"
-                                                        }
-                                                    },
-                                                    "type": "object"
-                                                }
-                                            },
-                                            "type": "object"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            },
-                            "type": "object"
-                        }
-                    },
-                    "type": [
-                        "object"
                     ]
                 },
                 "required": true,
                 "deprecated": false
             },
-            "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
                 "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6718"
-            }
+            },
+            "deprecated": false
         },
         {
             "name": "Filecoin.MoveStorage",
@@ -3364,6 +3256,28 @@
                     "description": "storiface.SectorRef",
                     "summary": "",
                     "schema": {
+                        "properties": {
+                            "ID": {
+                                "properties": {
+                                    "Miner": {
+                                        "type": "number",
+                                        "title": "number"
+                                    },
+                                    "Number": {
+                                        "type": "number",
+                                        "title": "number"
+                                    }
+                                },
+                                "additionalProperties": false,
+                                "type": "object"
+                            },
+                            "ProofType": {
+                                "type": "number",
+                                "title": "number"
+                            }
+                        },
+                        "additionalProperties": false,
+                        "type": "object",
                         "examples": [
                             {
                                 "ID": {
@@ -3372,30 +3286,6 @@
                                 },
                                 "ProofType": 8
                             }
-                        ],
-                        "additionalProperties": false,
-                        "properties": {
-                            "ID": {
-                                "additionalProperties": false,
-                                "properties": {
-                                    "Miner": {
-                                        "title": "number",
-                                        "type": "number"
-                                    },
-                                    "Number": {
-                                        "title": "number",
-                                        "type": "number"
-                                    }
-                                },
-                                "type": "object"
-                            },
-                            "ProofType": {
-                                "title": "number",
-                                "type": "number"
-                            }
-                        },
-                        "type": [
-                            "object"
                         ]
                     },
                     "required": true,
@@ -3406,13 +3296,11 @@
                     "description": "storiface.SectorFileType",
                     "summary": "",
                     "schema": {
+                        "type": "number",
                         "title": "number",
                         "description": "Number is a number",
                         "examples": [
                             1
-                        ],
-                        "type": [
-                            "number"
                         ]
                     },
                     "required": true,
@@ -3424,6 +3312,34 @@
                 "description": "storiface.CallID",
                 "summary": "",
                 "schema": {
+                    "properties": {
+                        "Sector": {
+                            "properties": {
+                                "Miner": {
+                                    "type": "number",
+                                    "title": "number"
+                                },
+                                "Number": {
+                                    "type": "number",
+                                    "title": "number"
+                                }
+                            },
+                            "additionalProperties": false,
+                            "type": "object"
+                        },
+                        "ID": {
+                            "items": {
+                                "type": "number",
+                                "title": "number",
+                                "description": "Number is a number"
+                            },
+                            "type": "array",
+                            "maxItems": 16,
+                            "minItems": 16
+                        }
+                    },
+                    "additionalProperties": false,
+                    "type": "object",
                     "examples": [
                         {
                             "Sector": {
@@ -3432,46 +3348,16 @@
                             },
                             "ID": "07070707-0707-0707-0707-070707070707"
                         }
-                    ],
-                    "additionalProperties": false,
-                    "properties": {
-                        "ID": {
-                            "items": {
-                                "description": "Number is a number",
-                                "title": "number",
-                                "type": "number"
-                            },
-                            "maxItems": 16,
-                            "minItems": 16,
-                            "type": "array"
-                        },
-                        "Sector": {
-                            "additionalProperties": false,
-                            "properties": {
-                                "Miner": {
-                                    "title": "number",
-                                    "type": "number"
-                                },
-                                "Number": {
-                                    "title": "number",
-                                    "type": "number"
-                                }
-                            },
-                            "type": "object"
-                        }
-                    },
-                    "type": [
-                        "object"
                     ]
                 },
                 "required": true,
                 "deprecated": false
             },
-            "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
                 "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6729"
-            }
+            },
+            "deprecated": false
         },
         {
             "name": "Filecoin.Paths",
@@ -3484,6 +3370,29 @@
                 "description": "[]storiface.StoragePath",
                 "summary": "",
                 "schema": {
+                    "items": {
+                        "properties": {
+                            "ID": {
+                                "type": "string"
+                            },
+                            "Weight": {
+                                "type": "number",
+                                "title": "number"
+                            },
+                            "LocalPath": {
+                                "type": "string"
+                            },
+                            "CanSeal": {
+                                "type": "boolean"
+                            },
+                            "CanStore": {
+                                "type": "boolean"
+                            }
+                        },
+                        "additionalProperties": false,
+                        "type": "object"
+                    },
+                    "type": "array",
                     "examples": [
                         [
                             {
@@ -3494,45 +3403,16 @@
                                 "CanStore": true
                             }
                         ]
-                    ],
-                    "items": [
-                        {
-                            "additionalProperties": false,
-                            "properties": {
-                                "CanSeal": {
-                                    "type": "boolean"
-                                },
-                                "CanStore": {
-                                    "type": "boolean"
-                                },
-                                "ID": {
-                                    "type": "string"
-                                },
-                                "LocalPath": {
-                                    "type": "string"
-                                },
-                                "Weight": {
-                                    "title": "number",
-                                    "type": "number"
-                                }
-                            },
-                            "type": [
-                                "object"
-                            ]
-                        }
-                    ],
-                    "type": [
-                        "array"
                     ]
                 },
                 "required": true,
                 "deprecated": false
             },
-            "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
                 "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6740"
-            }
+            },
+            "deprecated": false
         },
         {
             "name": "Filecoin.ProcessSession",
@@ -3545,32 +3425,26 @@
                 "description": "uuid.UUID",
                 "summary": "",
                 "schema": {
-                    "examples": [
-                        "07070707-0707-0707-0707-070707070707"
-                    ],
-                    "items": [
-                        {
-                            "title": "number",
-                            "description": "Number is a number",
-                            "type": [
-                                "number"
-                            ]
-                        }
-                    ],
+                    "items": {
+                        "type": "number",
+                        "title": "number",
+                        "description": "Number is a number"
+                    },
+                    "type": "array",
                     "maxItems": 16,
                     "minItems": 16,
-                    "type": [
-                        "array"
+                    "examples": [
+                        "07070707-0707-0707-0707-070707070707"
                     ]
                 },
                 "required": true,
                 "deprecated": false
             },
-            "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
                 "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6751"
-            }
+            },
+            "deprecated": false
         },
         {
             "name": "Filecoin.ProveReplicaUpdate1",
@@ -3583,6 +3457,28 @@
                     "description": "storiface.SectorRef",
                     "summary": "",
                     "schema": {
+                        "properties": {
+                            "ID": {
+                                "properties": {
+                                    "Miner": {
+                                        "type": "number",
+                                        "title": "number"
+                                    },
+                                    "Number": {
+                                        "type": "number",
+                                        "title": "number"
+                                    }
+                                },
+                                "additionalProperties": false,
+                                "type": "object"
+                            },
+                            "ProofType": {
+                                "type": "number",
+                                "title": "number"
+                            }
+                        },
+                        "additionalProperties": false,
+                        "type": "object",
                         "examples": [
                             {
                                 "ID": {
@@ -3591,30 +3487,6 @@
                                 },
                                 "ProofType": 8
                             }
-                        ],
-                        "additionalProperties": false,
-                        "properties": {
-                            "ID": {
-                                "additionalProperties": false,
-                                "properties": {
-                                    "Miner": {
-                                        "title": "number",
-                                        "type": "number"
-                                    },
-                                    "Number": {
-                                        "title": "number",
-                                        "type": "number"
-                                    }
-                                },
-                                "type": "object"
-                            },
-                            "ProofType": {
-                                "title": "number",
-                                "type": "number"
-                            }
-                        },
-                        "type": [
-                            "object"
                         ]
                     },
                     "required": true,
@@ -3625,15 +3497,13 @@
                     "description": "cid.Cid",
                     "summary": "",
                     "schema": {
+                        "type": "string",
                         "title": "Content Identifier",
                         "description": "Cid represents a self-describing content addressed identifier. It is formed by a Version, a Codec (which indicates a multicodec-packed content type) and a Multihash.",
                         "examples": [
                             {
                                 "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
                             }
-                        ],
-                        "type": [
-                            "string"
                         ]
                     },
                     "required": true,
@@ -3644,15 +3514,13 @@
                     "description": "cid.Cid",
                     "summary": "",
                     "schema": {
+                        "type": "string",
                         "title": "Content Identifier",
                         "description": "Cid represents a self-describing content addressed identifier. It is formed by a Version, a Codec (which indicates a multicodec-packed content type) and a Multihash.",
                         "examples": [
                             {
                                 "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
                             }
-                        ],
-                        "type": [
-                            "string"
                         ]
                     },
                     "required": true,
@@ -3663,15 +3531,13 @@
                     "description": "cid.Cid",
                     "summary": "",
                     "schema": {
+                        "type": "string",
                         "title": "Content Identifier",
                         "description": "Cid represents a self-describing content addressed identifier. It is formed by a Version, a Codec (which indicates a multicodec-packed content type) and a Multihash.",
                         "examples": [
                             {
                                 "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
                             }
-                        ],
-                        "type": [
-                            "string"
                         ]
                     },
                     "required": true,
@@ -3683,6 +3549,34 @@
                 "description": "storiface.CallID",
                 "summary": "",
                 "schema": {
+                    "properties": {
+                        "Sector": {
+                            "properties": {
+                                "Miner": {
+                                    "type": "number",
+                                    "title": "number"
+                                },
+                                "Number": {
+                                    "type": "number",
+                                    "title": "number"
+                                }
+                            },
+                            "additionalProperties": false,
+                            "type": "object"
+                        },
+                        "ID": {
+                            "items": {
+                                "type": "number",
+                                "title": "number",
+                                "description": "Number is a number"
+                            },
+                            "type": "array",
+                            "maxItems": 16,
+                            "minItems": 16
+                        }
+                    },
+                    "additionalProperties": false,
+                    "type": "object",
                     "examples": [
                         {
                             "Sector": {
@@ -3691,46 +3585,16 @@
                             },
                             "ID": "07070707-0707-0707-0707-070707070707"
                         }
-                    ],
-                    "additionalProperties": false,
-                    "properties": {
-                        "ID": {
-                            "items": {
-                                "description": "Number is a number",
-                                "title": "number",
-                                "type": "number"
-                            },
-                            "maxItems": 16,
-                            "minItems": 16,
-                            "type": "array"
-                        },
-                        "Sector": {
-                            "additionalProperties": false,
-                            "properties": {
-                                "Miner": {
-                                    "title": "number",
-                                    "type": "number"
-                                },
-                                "Number": {
-                                    "title": "number",
-                                    "type": "number"
-                                }
-                            },
-                            "type": "object"
-                        }
-                    },
-                    "type": [
-                        "object"
                     ]
                 },
                 "required": true,
                 "deprecated": false
             },
-            "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
                 "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6762"
-            }
+            },
+            "deprecated": false
         },
         {
             "name": "Filecoin.ProveReplicaUpdate2",
@@ -3743,6 +3607,28 @@
                     "description": "storiface.SectorRef",
                     "summary": "",
                     "schema": {
+                        "properties": {
+                            "ID": {
+                                "properties": {
+                                    "Miner": {
+                                        "type": "number",
+                                        "title": "number"
+                                    },
+                                    "Number": {
+                                        "type": "number",
+                                        "title": "number"
+                                    }
+                                },
+                                "additionalProperties": false,
+                                "type": "object"
+                            },
+                            "ProofType": {
+                                "type": "number",
+                                "title": "number"
+                            }
+                        },
+                        "additionalProperties": false,
+                        "type": "object",
                         "examples": [
                             {
                                 "ID": {
@@ -3751,30 +3637,6 @@
                                 },
                                 "ProofType": 8
                             }
-                        ],
-                        "additionalProperties": false,
-                        "properties": {
-                            "ID": {
-                                "additionalProperties": false,
-                                "properties": {
-                                    "Miner": {
-                                        "title": "number",
-                                        "type": "number"
-                                    },
-                                    "Number": {
-                                        "title": "number",
-                                        "type": "number"
-                                    }
-                                },
-                                "type": "object"
-                            },
-                            "ProofType": {
-                                "title": "number",
-                                "type": "number"
-                            }
-                        },
-                        "type": [
-                            "object"
                         ]
                     },
                     "required": true,
@@ -3785,15 +3647,13 @@
                     "description": "cid.Cid",
                     "summary": "",
                     "schema": {
+                        "type": "string",
                         "title": "Content Identifier",
                         "description": "Cid represents a self-describing content addressed identifier. It is formed by a Version, a Codec (which indicates a multicodec-packed content type) and a Multihash.",
                         "examples": [
                             {
                                 "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
                             }
-                        ],
-                        "type": [
-                            "string"
                         ]
                     },
                     "required": true,
@@ -3804,15 +3664,13 @@
                     "description": "cid.Cid",
                     "summary": "",
                     "schema": {
+                        "type": "string",
                         "title": "Content Identifier",
                         "description": "Cid represents a self-describing content addressed identifier. It is formed by a Version, a Codec (which indicates a multicodec-packed content type) and a Multihash.",
                         "examples": [
                             {
                                 "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
                             }
-                        ],
-                        "type": [
-                            "string"
                         ]
                     },
                     "required": true,
@@ -3823,15 +3681,13 @@
                     "description": "cid.Cid",
                     "summary": "",
                     "schema": {
+                        "type": "string",
                         "title": "Content Identifier",
                         "description": "Cid represents a self-describing content addressed identifier. It is formed by a Version, a Codec (which indicates a multicodec-packed content type) and a Multihash.",
                         "examples": [
                             {
                                 "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
                             }
-                        ],
-                        "type": [
-                            "string"
                         ]
                     },
                     "required": true,
@@ -3842,20 +3698,15 @@
                     "description": "storiface.ReplicaVanillaProofs",
                     "summary": "",
                     "schema": {
+                        "items": {
+                            "type": "string",
+                            "contentEncoding": "base64"
+                        },
+                        "type": "array",
                         "examples": [
                             [
                                 "Ynl0ZSBhcnJheQ=="
                             ]
-                        ],
-                        "items": [
-                            {
-                                "type": [
-                                    "string"
-                                ]
-                            }
-                        ],
-                        "type": [
-                            "array"
                         ]
                     },
                     "required": true,
@@ -3867,6 +3718,34 @@
                 "description": "storiface.CallID",
                 "summary": "",
                 "schema": {
+                    "properties": {
+                        "Sector": {
+                            "properties": {
+                                "Miner": {
+                                    "type": "number",
+                                    "title": "number"
+                                },
+                                "Number": {
+                                    "type": "number",
+                                    "title": "number"
+                                }
+                            },
+                            "additionalProperties": false,
+                            "type": "object"
+                        },
+                        "ID": {
+                            "items": {
+                                "type": "number",
+                                "title": "number",
+                                "description": "Number is a number"
+                            },
+                            "type": "array",
+                            "maxItems": 16,
+                            "minItems": 16
+                        }
+                    },
+                    "additionalProperties": false,
+                    "type": "object",
                     "examples": [
                         {
                             "Sector": {
@@ -3875,46 +3754,16 @@
                             },
                             "ID": "07070707-0707-0707-0707-070707070707"
                         }
-                    ],
-                    "additionalProperties": false,
-                    "properties": {
-                        "ID": {
-                            "items": {
-                                "description": "Number is a number",
-                                "title": "number",
-                                "type": "number"
-                            },
-                            "maxItems": 16,
-                            "minItems": 16,
-                            "type": "array"
-                        },
-                        "Sector": {
-                            "additionalProperties": false,
-                            "properties": {
-                                "Miner": {
-                                    "title": "number",
-                                    "type": "number"
-                                },
-                                "Number": {
-                                    "title": "number",
-                                    "type": "number"
-                                }
-                            },
-                            "type": "object"
-                        }
-                    },
-                    "type": [
-                        "object"
                     ]
                 },
                 "required": true,
                 "deprecated": false
             },
-            "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
                 "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6773"
-            }
+            },
+            "deprecated": false
         },
         {
             "name": "Filecoin.ReleaseUnsealed",
@@ -3927,6 +3776,28 @@
                     "description": "storiface.SectorRef",
                     "summary": "",
                     "schema": {
+                        "properties": {
+                            "ID": {
+                                "properties": {
+                                    "Miner": {
+                                        "type": "number",
+                                        "title": "number"
+                                    },
+                                    "Number": {
+                                        "type": "number",
+                                        "title": "number"
+                                    }
+                                },
+                                "additionalProperties": false,
+                                "type": "object"
+                            },
+                            "ProofType": {
+                                "type": "number",
+                                "title": "number"
+                            }
+                        },
+                        "additionalProperties": false,
+                        "type": "object",
                         "examples": [
                             {
                                 "ID": {
@@ -3935,30 +3806,6 @@
                                 },
                                 "ProofType": 8
                             }
-                        ],
-                        "additionalProperties": false,
-                        "properties": {
-                            "ID": {
-                                "additionalProperties": false,
-                                "properties": {
-                                    "Miner": {
-                                        "title": "number",
-                                        "type": "number"
-                                    },
-                                    "Number": {
-                                        "title": "number",
-                                        "type": "number"
-                                    }
-                                },
-                                "type": "object"
-                            },
-                            "ProofType": {
-                                "title": "number",
-                                "type": "number"
-                            }
-                        },
-                        "type": [
-                            "object"
                         ]
                     },
                     "required": true,
@@ -3969,6 +3816,21 @@
                     "description": "[]storiface.Range",
                     "summary": "",
                     "schema": {
+                        "items": {
+                            "properties": {
+                                "Offset": {
+                                    "type": "number",
+                                    "title": "number"
+                                },
+                                "Size": {
+                                    "type": "number",
+                                    "title": "number"
+                                }
+                            },
+                            "additionalProperties": false,
+                            "type": "object"
+                        },
+                        "type": "array",
                         "examples": [
                             [
                                 {
@@ -3976,27 +3838,6 @@
                                     "Size": 1024
                                 }
                             ]
-                        ],
-                        "items": [
-                            {
-                                "additionalProperties": false,
-                                "properties": {
-                                    "Offset": {
-                                        "title": "number",
-                                        "type": "number"
-                                    },
-                                    "Size": {
-                                        "title": "number",
-                                        "type": "number"
-                                    }
-                                },
-                                "type": [
-                                    "object"
-                                ]
-                            }
-                        ],
-                        "type": [
-                            "array"
                         ]
                     },
                     "required": true,
@@ -4008,6 +3849,34 @@
                 "description": "storiface.CallID",
                 "summary": "",
                 "schema": {
+                    "properties": {
+                        "Sector": {
+                            "properties": {
+                                "Miner": {
+                                    "type": "number",
+                                    "title": "number"
+                                },
+                                "Number": {
+                                    "type": "number",
+                                    "title": "number"
+                                }
+                            },
+                            "additionalProperties": false,
+                            "type": "object"
+                        },
+                        "ID": {
+                            "items": {
+                                "type": "number",
+                                "title": "number",
+                                "description": "Number is a number"
+                            },
+                            "type": "array",
+                            "maxItems": 16,
+                            "minItems": 16
+                        }
+                    },
+                    "additionalProperties": false,
+                    "type": "object",
                     "examples": [
                         {
                             "Sector": {
@@ -4016,46 +3885,16 @@
                             },
                             "ID": "07070707-0707-0707-0707-070707070707"
                         }
-                    ],
-                    "additionalProperties": false,
-                    "properties": {
-                        "ID": {
-                            "items": {
-                                "description": "Number is a number",
-                                "title": "number",
-                                "type": "number"
-                            },
-                            "maxItems": 16,
-                            "minItems": 16,
-                            "type": "array"
-                        },
-                        "Sector": {
-                            "additionalProperties": false,
-                            "properties": {
-                                "Miner": {
-                                    "title": "number",
-                                    "type": "number"
-                                },
-                                "Number": {
-                                    "title": "number",
-                                    "type": "number"
-                                }
-                            },
-                            "type": "object"
-                        }
-                    },
-                    "type": [
-                        "object"
                     ]
                 },
                 "required": true,
                 "deprecated": false
             },
-            "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
                 "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6784"
-            }
+            },
+            "deprecated": false
         },
         {
             "name": "Filecoin.Remove",
@@ -4068,25 +3907,23 @@
                     "description": "abi.SectorID",
                     "summary": "",
                     "schema": {
+                        "properties": {
+                            "Miner": {
+                                "type": "number",
+                                "title": "number"
+                            },
+                            "Number": {
+                                "type": "number",
+                                "title": "number"
+                            }
+                        },
+                        "additionalProperties": false,
+                        "type": "object",
                         "examples": [
                             {
                                 "Miner": 1000,
                                 "Number": 9
                             }
-                        ],
-                        "additionalProperties": false,
-                        "properties": {
-                            "Miner": {
-                                "title": "number",
-                                "type": "number"
-                            },
-                            "Number": {
-                                "title": "number",
-                                "type": "number"
-                            }
-                        },
-                        "type": [
-                            "object"
                         ]
                     },
                     "required": true,
@@ -4097,18 +3934,16 @@
                 "name": "Null",
                 "description": "Null",
                 "schema": {
-                    "type": [
-                        "null"
-                    ]
+                    "type": "null"
                 },
                 "required": true,
                 "deprecated": false
             },
-            "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
                 "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6795"
-            }
+            },
+            "deprecated": false
         },
         {
             "name": "Filecoin.ReplicaUpdate",
@@ -4121,6 +3956,28 @@
                     "description": "storiface.SectorRef",
                     "summary": "",
                     "schema": {
+                        "properties": {
+                            "ID": {
+                                "properties": {
+                                    "Miner": {
+                                        "type": "number",
+                                        "title": "number"
+                                    },
+                                    "Number": {
+                                        "type": "number",
+                                        "title": "number"
+                                    }
+                                },
+                                "additionalProperties": false,
+                                "type": "object"
+                            },
+                            "ProofType": {
+                                "type": "number",
+                                "title": "number"
+                            }
+                        },
+                        "additionalProperties": false,
+                        "type": "object",
                         "examples": [
                             {
                                 "ID": {
@@ -4129,30 +3986,6 @@
                                 },
                                 "ProofType": 8
                             }
-                        ],
-                        "additionalProperties": false,
-                        "properties": {
-                            "ID": {
-                                "additionalProperties": false,
-                                "properties": {
-                                    "Miner": {
-                                        "title": "number",
-                                        "type": "number"
-                                    },
-                                    "Number": {
-                                        "title": "number",
-                                        "type": "number"
-                                    }
-                                },
-                                "type": "object"
-                            },
-                            "ProofType": {
-                                "title": "number",
-                                "type": "number"
-                            }
-                        },
-                        "type": [
-                            "object"
                         ]
                     },
                     "required": true,
@@ -4163,6 +3996,21 @@
                     "description": "[]abi.PieceInfo",
                     "summary": "",
                     "schema": {
+                        "items": {
+                            "properties": {
+                                "Size": {
+                                    "type": "number",
+                                    "title": "number"
+                                },
+                                "PieceCID": {
+                                    "type": "string",
+                                    "title": "Content Identifier"
+                                }
+                            },
+                            "additionalProperties": false,
+                            "type": "object"
+                        },
+                        "type": "array",
                         "examples": [
                             [
                                 {
@@ -4172,27 +4020,6 @@
                                     }
                                 }
                             ]
-                        ],
-                        "items": [
-                            {
-                                "additionalProperties": false,
-                                "properties": {
-                                    "PieceCID": {
-                                        "title": "Content Identifier",
-                                        "type": "string"
-                                    },
-                                    "Size": {
-                                        "title": "number",
-                                        "type": "number"
-                                    }
-                                },
-                                "type": [
-                                    "object"
-                                ]
-                            }
-                        ],
-                        "type": [
-                            "array"
                         ]
                     },
                     "required": true,
@@ -4204,6 +4031,34 @@
                 "description": "storiface.CallID",
                 "summary": "",
                 "schema": {
+                    "properties": {
+                        "Sector": {
+                            "properties": {
+                                "Miner": {
+                                    "type": "number",
+                                    "title": "number"
+                                },
+                                "Number": {
+                                    "type": "number",
+                                    "title": "number"
+                                }
+                            },
+                            "additionalProperties": false,
+                            "type": "object"
+                        },
+                        "ID": {
+                            "items": {
+                                "type": "number",
+                                "title": "number",
+                                "description": "Number is a number"
+                            },
+                            "type": "array",
+                            "maxItems": 16,
+                            "minItems": 16
+                        }
+                    },
+                    "additionalProperties": false,
+                    "type": "object",
                     "examples": [
                         {
                             "Sector": {
@@ -4212,46 +4067,16 @@
                             },
                             "ID": "07070707-0707-0707-0707-070707070707"
                         }
-                    ],
-                    "additionalProperties": false,
-                    "properties": {
-                        "ID": {
-                            "items": {
-                                "description": "Number is a number",
-                                "title": "number",
-                                "type": "number"
-                            },
-                            "maxItems": 16,
-                            "minItems": 16,
-                            "type": "array"
-                        },
-                        "Sector": {
-                            "additionalProperties": false,
-                            "properties": {
-                                "Miner": {
-                                    "title": "number",
-                                    "type": "number"
-                                },
-                                "Number": {
-                                    "title": "number",
-                                    "type": "number"
-                                }
-                            },
-                            "type": "object"
-                        }
-                    },
-                    "type": [
-                        "object"
                     ]
                 },
                 "required": true,
                 "deprecated": false
             },
-            "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
                 "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6806"
-            }
+            },
+            "deprecated": false
         },
         {
             "name": "Filecoin.SealCommit1",
@@ -4264,6 +4089,28 @@
                     "description": "storiface.SectorRef",
                     "summary": "",
                     "schema": {
+                        "properties": {
+                            "ID": {
+                                "properties": {
+                                    "Miner": {
+                                        "type": "number",
+                                        "title": "number"
+                                    },
+                                    "Number": {
+                                        "type": "number",
+                                        "title": "number"
+                                    }
+                                },
+                                "additionalProperties": false,
+                                "type": "object"
+                            },
+                            "ProofType": {
+                                "type": "number",
+                                "title": "number"
+                            }
+                        },
+                        "additionalProperties": false,
+                        "type": "object",
                         "examples": [
                             {
                                 "ID": {
@@ -4272,30 +4119,6 @@
                                 },
                                 "ProofType": 8
                             }
-                        ],
-                        "additionalProperties": false,
-                        "properties": {
-                            "ID": {
-                                "additionalProperties": false,
-                                "properties": {
-                                    "Miner": {
-                                        "title": "number",
-                                        "type": "number"
-                                    },
-                                    "Number": {
-                                        "title": "number",
-                                        "type": "number"
-                                    }
-                                },
-                                "type": "object"
-                            },
-                            "ProofType": {
-                                "title": "number",
-                                "type": "number"
-                            }
-                        },
-                        "type": [
-                            "object"
                         ]
                     },
                     "required": true,
@@ -4306,20 +4129,10 @@
                     "description": "abi.SealRandomness",
                     "summary": "",
                     "schema": {
+                        "type": "string",
+                        "contentEncoding": "base64",
                         "examples": [
                             "Bw=="
-                        ],
-                        "items": [
-                            {
-                                "title": "number",
-                                "description": "Number is a number",
-                                "type": [
-                                    "number"
-                                ]
-                            }
-                        ],
-                        "type": [
-                            "array"
                         ]
                     },
                     "required": true,
@@ -4330,20 +4143,10 @@
                     "description": "abi.InteractiveSealRandomness",
                     "summary": "",
                     "schema": {
+                        "type": "string",
+                        "contentEncoding": "base64",
                         "examples": [
                             "Bw=="
-                        ],
-                        "items": [
-                            {
-                                "title": "number",
-                                "description": "Number is a number",
-                                "type": [
-                                    "number"
-                                ]
-                            }
-                        ],
-                        "type": [
-                            "array"
                         ]
                     },
                     "required": true,
@@ -4354,6 +4157,21 @@
                     "description": "[]abi.PieceInfo",
                     "summary": "",
                     "schema": {
+                        "items": {
+                            "properties": {
+                                "Size": {
+                                    "type": "number",
+                                    "title": "number"
+                                },
+                                "PieceCID": {
+                                    "type": "string",
+                                    "title": "Content Identifier"
+                                }
+                            },
+                            "additionalProperties": false,
+                            "type": "object"
+                        },
+                        "type": "array",
                         "examples": [
                             [
                                 {
@@ -4363,27 +4181,6 @@
                                     }
                                 }
                             ]
-                        ],
-                        "items": [
-                            {
-                                "additionalProperties": false,
-                                "properties": {
-                                    "PieceCID": {
-                                        "title": "Content Identifier",
-                                        "type": "string"
-                                    },
-                                    "Size": {
-                                        "title": "number",
-                                        "type": "number"
-                                    }
-                                },
-                                "type": [
-                                    "object"
-                                ]
-                            }
-                        ],
-                        "type": [
-                            "array"
                         ]
                     },
                     "required": true,
@@ -4394,6 +4191,18 @@
                     "description": "storiface.SectorCids",
                     "summary": "",
                     "schema": {
+                        "properties": {
+                            "Unsealed": {
+                                "type": "string",
+                                "title": "Content Identifier"
+                            },
+                            "Sealed": {
+                                "type": "string",
+                                "title": "Content Identifier"
+                            }
+                        },
+                        "additionalProperties": false,
+                        "type": "object",
                         "examples": [
                             {
                                 "Unsealed": {
@@ -4403,20 +4212,6 @@
                                     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
                                 }
                             }
-                        ],
-                        "additionalProperties": false,
-                        "properties": {
-                            "Sealed": {
-                                "title": "Content Identifier",
-                                "type": "string"
-                            },
-                            "Unsealed": {
-                                "title": "Content Identifier",
-                                "type": "string"
-                            }
-                        },
-                        "type": [
-                            "object"
                         ]
                     },
                     "required": true,
@@ -4428,6 +4223,34 @@
                 "description": "storiface.CallID",
                 "summary": "",
                 "schema": {
+                    "properties": {
+                        "Sector": {
+                            "properties": {
+                                "Miner": {
+                                    "type": "number",
+                                    "title": "number"
+                                },
+                                "Number": {
+                                    "type": "number",
+                                    "title": "number"
+                                }
+                            },
+                            "additionalProperties": false,
+                            "type": "object"
+                        },
+                        "ID": {
+                            "items": {
+                                "type": "number",
+                                "title": "number",
+                                "description": "Number is a number"
+                            },
+                            "type": "array",
+                            "maxItems": 16,
+                            "minItems": 16
+                        }
+                    },
+                    "additionalProperties": false,
+                    "type": "object",
                     "examples": [
                         {
                             "Sector": {
@@ -4436,46 +4259,16 @@
                             },
                             "ID": "07070707-0707-0707-0707-070707070707"
                         }
-                    ],
-                    "additionalProperties": false,
-                    "properties": {
-                        "ID": {
-                            "items": {
-                                "description": "Number is a number",
-                                "title": "number",
-                                "type": "number"
-                            },
-                            "maxItems": 16,
-                            "minItems": 16,
-                            "type": "array"
-                        },
-                        "Sector": {
-                            "additionalProperties": false,
-                            "properties": {
-                                "Miner": {
-                                    "title": "number",
-                                    "type": "number"
-                                },
-                                "Number": {
-                                    "title": "number",
-                                    "type": "number"
-                                }
-                            },
-                            "type": "object"
-                        }
-                    },
-                    "type": [
-                        "object"
                     ]
                 },
                 "required": true,
                 "deprecated": false
             },
-            "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
                 "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6817"
-            }
+            },
+            "deprecated": false
         },
         {
             "name": "Filecoin.SealCommit2",
@@ -4488,6 +4281,28 @@
                     "description": "storiface.SectorRef",
                     "summary": "",
                     "schema": {
+                        "properties": {
+                            "ID": {
+                                "properties": {
+                                    "Miner": {
+                                        "type": "number",
+                                        "title": "number"
+                                    },
+                                    "Number": {
+                                        "type": "number",
+                                        "title": "number"
+                                    }
+                                },
+                                "additionalProperties": false,
+                                "type": "object"
+                            },
+                            "ProofType": {
+                                "type": "number",
+                                "title": "number"
+                            }
+                        },
+                        "additionalProperties": false,
+                        "type": "object",
                         "examples": [
                             {
                                 "ID": {
@@ -4496,30 +4311,6 @@
                                 },
                                 "ProofType": 8
                             }
-                        ],
-                        "additionalProperties": false,
-                        "properties": {
-                            "ID": {
-                                "additionalProperties": false,
-                                "properties": {
-                                    "Miner": {
-                                        "title": "number",
-                                        "type": "number"
-                                    },
-                                    "Number": {
-                                        "title": "number",
-                                        "type": "number"
-                                    }
-                                },
-                                "type": "object"
-                            },
-                            "ProofType": {
-                                "title": "number",
-                                "type": "number"
-                            }
-                        },
-                        "type": [
-                            "object"
                         ]
                     },
                     "required": true,
@@ -4530,20 +4321,10 @@
                     "description": "storiface.Commit1Out",
                     "summary": "",
                     "schema": {
+                        "type": "string",
+                        "contentEncoding": "base64",
                         "examples": [
                             "Bw=="
-                        ],
-                        "items": [
-                            {
-                                "title": "number",
-                                "description": "Number is a number",
-                                "type": [
-                                    "number"
-                                ]
-                            }
-                        ],
-                        "type": [
-                            "array"
                         ]
                     },
                     "required": true,
@@ -4555,6 +4336,34 @@
                 "description": "storiface.CallID",
                 "summary": "",
                 "schema": {
+                    "properties": {
+                        "Sector": {
+                            "properties": {
+                                "Miner": {
+                                    "type": "number",
+                                    "title": "number"
+                                },
+                                "Number": {
+                                    "type": "number",
+                                    "title": "number"
+                                }
+                            },
+                            "additionalProperties": false,
+                            "type": "object"
+                        },
+                        "ID": {
+                            "items": {
+                                "type": "number",
+                                "title": "number",
+                                "description": "Number is a number"
+                            },
+                            "type": "array",
+                            "maxItems": 16,
+                            "minItems": 16
+                        }
+                    },
+                    "additionalProperties": false,
+                    "type": "object",
                     "examples": [
                         {
                             "Sector": {
@@ -4563,46 +4372,16 @@
                             },
                             "ID": "07070707-0707-0707-0707-070707070707"
                         }
-                    ],
-                    "additionalProperties": false,
-                    "properties": {
-                        "ID": {
-                            "items": {
-                                "description": "Number is a number",
-                                "title": "number",
-                                "type": "number"
-                            },
-                            "maxItems": 16,
-                            "minItems": 16,
-                            "type": "array"
-                        },
-                        "Sector": {
-                            "additionalProperties": false,
-                            "properties": {
-                                "Miner": {
-                                    "title": "number",
-                                    "type": "number"
-                                },
-                                "Number": {
-                                    "title": "number",
-                                    "type": "number"
-                                }
-                            },
-                            "type": "object"
-                        }
-                    },
-                    "type": [
-                        "object"
                     ]
                 },
                 "required": true,
                 "deprecated": false
             },
-            "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
                 "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6828"
-            }
+            },
+            "deprecated": false
         },
         {
             "name": "Filecoin.SealPreCommit1",
@@ -4615,6 +4394,28 @@
                     "description": "storiface.SectorRef",
                     "summary": "",
                     "schema": {
+                        "properties": {
+                            "ID": {
+                                "properties": {
+                                    "Miner": {
+                                        "type": "number",
+                                        "title": "number"
+                                    },
+                                    "Number": {
+                                        "type": "number",
+                                        "title": "number"
+                                    }
+                                },
+                                "additionalProperties": false,
+                                "type": "object"
+                            },
+                            "ProofType": {
+                                "type": "number",
+                                "title": "number"
+                            }
+                        },
+                        "additionalProperties": false,
+                        "type": "object",
                         "examples": [
                             {
                                 "ID": {
@@ -4623,30 +4424,6 @@
                                 },
                                 "ProofType": 8
                             }
-                        ],
-                        "additionalProperties": false,
-                        "properties": {
-                            "ID": {
-                                "additionalProperties": false,
-                                "properties": {
-                                    "Miner": {
-                                        "title": "number",
-                                        "type": "number"
-                                    },
-                                    "Number": {
-                                        "title": "number",
-                                        "type": "number"
-                                    }
-                                },
-                                "type": "object"
-                            },
-                            "ProofType": {
-                                "title": "number",
-                                "type": "number"
-                            }
-                        },
-                        "type": [
-                            "object"
                         ]
                     },
                     "required": true,
@@ -4657,20 +4434,10 @@
                     "description": "abi.SealRandomness",
                     "summary": "",
                     "schema": {
+                        "type": "string",
+                        "contentEncoding": "base64",
                         "examples": [
                             "Bw=="
-                        ],
-                        "items": [
-                            {
-                                "title": "number",
-                                "description": "Number is a number",
-                                "type": [
-                                    "number"
-                                ]
-                            }
-                        ],
-                        "type": [
-                            "array"
                         ]
                     },
                     "required": true,
@@ -4681,6 +4448,21 @@
                     "description": "[]abi.PieceInfo",
                     "summary": "",
                     "schema": {
+                        "items": {
+                            "properties": {
+                                "Size": {
+                                    "type": "number",
+                                    "title": "number"
+                                },
+                                "PieceCID": {
+                                    "type": "string",
+                                    "title": "Content Identifier"
+                                }
+                            },
+                            "additionalProperties": false,
+                            "type": "object"
+                        },
+                        "type": "array",
                         "examples": [
                             [
                                 {
@@ -4690,27 +4472,6 @@
                                     }
                                 }
                             ]
-                        ],
-                        "items": [
-                            {
-                                "additionalProperties": false,
-                                "properties": {
-                                    "PieceCID": {
-                                        "title": "Content Identifier",
-                                        "type": "string"
-                                    },
-                                    "Size": {
-                                        "title": "number",
-                                        "type": "number"
-                                    }
-                                },
-                                "type": [
-                                    "object"
-                                ]
-                            }
-                        ],
-                        "type": [
-                            "array"
                         ]
                     },
                     "required": true,
@@ -4722,6 +4483,34 @@
                 "description": "storiface.CallID",
                 "summary": "",
                 "schema": {
+                    "properties": {
+                        "Sector": {
+                            "properties": {
+                                "Miner": {
+                                    "type": "number",
+                                    "title": "number"
+                                },
+                                "Number": {
+                                    "type": "number",
+                                    "title": "number"
+                                }
+                            },
+                            "additionalProperties": false,
+                            "type": "object"
+                        },
+                        "ID": {
+                            "items": {
+                                "type": "number",
+                                "title": "number",
+                                "description": "Number is a number"
+                            },
+                            "type": "array",
+                            "maxItems": 16,
+                            "minItems": 16
+                        }
+                    },
+                    "additionalProperties": false,
+                    "type": "object",
                     "examples": [
                         {
                             "Sector": {
@@ -4730,46 +4519,16 @@
                             },
                             "ID": "07070707-0707-0707-0707-070707070707"
                         }
-                    ],
-                    "additionalProperties": false,
-                    "properties": {
-                        "ID": {
-                            "items": {
-                                "description": "Number is a number",
-                                "title": "number",
-                                "type": "number"
-                            },
-                            "maxItems": 16,
-                            "minItems": 16,
-                            "type": "array"
-                        },
-                        "Sector": {
-                            "additionalProperties": false,
-                            "properties": {
-                                "Miner": {
-                                    "title": "number",
-                                    "type": "number"
-                                },
-                                "Number": {
-                                    "title": "number",
-                                    "type": "number"
-                                }
-                            },
-                            "type": "object"
-                        }
-                    },
-                    "type": [
-                        "object"
                     ]
                 },
                 "required": true,
                 "deprecated": false
             },
-            "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
                 "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6839"
-            }
+            },
+            "deprecated": false
         },
         {
             "name": "Filecoin.SealPreCommit2",
@@ -4782,6 +4541,28 @@
                     "description": "storiface.SectorRef",
                     "summary": "",
                     "schema": {
+                        "properties": {
+                            "ID": {
+                                "properties": {
+                                    "Miner": {
+                                        "type": "number",
+                                        "title": "number"
+                                    },
+                                    "Number": {
+                                        "type": "number",
+                                        "title": "number"
+                                    }
+                                },
+                                "additionalProperties": false,
+                                "type": "object"
+                            },
+                            "ProofType": {
+                                "type": "number",
+                                "title": "number"
+                            }
+                        },
+                        "additionalProperties": false,
+                        "type": "object",
                         "examples": [
                             {
                                 "ID": {
@@ -4790,30 +4571,6 @@
                                 },
                                 "ProofType": 8
                             }
-                        ],
-                        "additionalProperties": false,
-                        "properties": {
-                            "ID": {
-                                "additionalProperties": false,
-                                "properties": {
-                                    "Miner": {
-                                        "title": "number",
-                                        "type": "number"
-                                    },
-                                    "Number": {
-                                        "title": "number",
-                                        "type": "number"
-                                    }
-                                },
-                                "type": "object"
-                            },
-                            "ProofType": {
-                                "title": "number",
-                                "type": "number"
-                            }
-                        },
-                        "type": [
-                            "object"
                         ]
                     },
                     "required": true,
@@ -4824,20 +4581,10 @@
                     "description": "storiface.PreCommit1Out",
                     "summary": "",
                     "schema": {
+                        "type": "string",
+                        "contentEncoding": "base64",
                         "examples": [
                             "Bw=="
-                        ],
-                        "items": [
-                            {
-                                "title": "number",
-                                "description": "Number is a number",
-                                "type": [
-                                    "number"
-                                ]
-                            }
-                        ],
-                        "type": [
-                            "array"
                         ]
                     },
                     "required": true,
@@ -4849,6 +4596,34 @@
                 "description": "storiface.CallID",
                 "summary": "",
                 "schema": {
+                    "properties": {
+                        "Sector": {
+                            "properties": {
+                                "Miner": {
+                                    "type": "number",
+                                    "title": "number"
+                                },
+                                "Number": {
+                                    "type": "number",
+                                    "title": "number"
+                                }
+                            },
+                            "additionalProperties": false,
+                            "type": "object"
+                        },
+                        "ID": {
+                            "items": {
+                                "type": "number",
+                                "title": "number",
+                                "description": "Number is a number"
+                            },
+                            "type": "array",
+                            "maxItems": 16,
+                            "minItems": 16
+                        }
+                    },
+                    "additionalProperties": false,
+                    "type": "object",
                     "examples": [
                         {
                             "Sector": {
@@ -4857,46 +4632,16 @@
                             },
                             "ID": "07070707-0707-0707-0707-070707070707"
                         }
-                    ],
-                    "additionalProperties": false,
-                    "properties": {
-                        "ID": {
-                            "items": {
-                                "description": "Number is a number",
-                                "title": "number",
-                                "type": "number"
-                            },
-                            "maxItems": 16,
-                            "minItems": 16,
-                            "type": "array"
-                        },
-                        "Sector": {
-                            "additionalProperties": false,
-                            "properties": {
-                                "Miner": {
-                                    "title": "number",
-                                    "type": "number"
-                                },
-                                "Number": {
-                                    "title": "number",
-                                    "type": "number"
-                                }
-                            },
-                            "type": "object"
-                        }
-                    },
-                    "type": [
-                        "object"
                     ]
                 },
                 "required": true,
                 "deprecated": false
             },
-            "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
                 "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6850"
-            }
+            },
+            "deprecated": false
         },
         {
             "name": "Filecoin.Session",
@@ -4909,32 +4654,26 @@
                 "description": "uuid.UUID",
                 "summary": "",
                 "schema": {
-                    "examples": [
-                        "07070707-0707-0707-0707-070707070707"
-                    ],
-                    "items": [
-                        {
-                            "title": "number",
-                            "description": "Number is a number",
-                            "type": [
-                                "number"
-                            ]
-                        }
-                    ],
+                    "items": {
+                        "type": "number",
+                        "title": "number",
+                        "description": "Number is a number"
+                    },
+                    "type": "array",
                     "maxItems": 16,
                     "minItems": 16,
-                    "type": [
-                        "array"
+                    "examples": [
+                        "07070707-0707-0707-0707-070707070707"
                     ]
                 },
                 "required": true,
                 "deprecated": false
             },
-            "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
                 "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6861"
-            }
+            },
+            "deprecated": false
         },
         {
             "name": "Filecoin.SetEnabled",
@@ -4947,11 +4686,9 @@
                     "description": "bool",
                     "summary": "",
                     "schema": {
+                        "type": "boolean",
                         "examples": [
                             true
-                        ],
-                        "type": [
-                            "boolean"
                         ]
                     },
                     "required": true,
@@ -4962,18 +4699,16 @@
                 "name": "Null",
                 "description": "Null",
                 "schema": {
-                    "type": [
-                        "null"
-                    ]
+                    "type": "null"
                 },
                 "required": true,
                 "deprecated": false
             },
-            "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
                 "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6872"
-            }
+            },
+            "deprecated": false
         },
         {
             "name": "Filecoin.Shutdown",
@@ -4985,18 +4720,16 @@
                 "name": "Null",
                 "description": "Null",
                 "schema": {
-                    "type": [
-                        "null"
-                    ]
+                    "type": "null"
                 },
                 "required": true,
                 "deprecated": false
             },
-            "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
                 "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6883"
-            }
+            },
+            "deprecated": false
         },
         {
             "name": "Filecoin.StorageAddLocal",
@@ -5009,11 +4742,9 @@
                     "description": "string",
                     "summary": "",
                     "schema": {
+                        "type": "string",
                         "examples": [
                             "string value"
-                        ],
-                        "type": [
-                            "string"
                         ]
                     },
                     "required": true,
@@ -5024,18 +4755,16 @@
                 "name": "Null",
                 "description": "Null",
                 "schema": {
-                    "type": [
-                        "null"
-                    ]
+                    "type": "null"
                 },
                 "required": true,
                 "deprecated": false
             },
-            "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
                 "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6894"
-            }
+            },
+            "deprecated": false
         },
         {
             "name": "Filecoin.StorageDetachAll",
@@ -5047,18 +4776,16 @@
                 "name": "Null",
                 "description": "Null",
                 "schema": {
-                    "type": [
-                        "null"
-                    ]
+                    "type": "null"
                 },
                 "required": true,
                 "deprecated": false
             },
-            "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
                 "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6905"
-            }
+            },
+            "deprecated": false
         },
         {
             "name": "Filecoin.StorageDetachLocal",
@@ -5071,11 +4798,9 @@
                     "description": "string",
                     "summary": "",
                     "schema": {
+                        "type": "string",
                         "examples": [
                             "string value"
-                        ],
-                        "type": [
-                            "string"
                         ]
                     },
                     "required": true,
@@ -5086,18 +4811,16 @@
                 "name": "Null",
                 "description": "Null",
                 "schema": {
-                    "type": [
-                        "null"
-                    ]
+                    "type": "null"
                 },
                 "required": true,
                 "deprecated": false
             },
-            "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
                 "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6916"
-            }
+            },
+            "deprecated": false
         },
         {
             "name": "Filecoin.StorageLocal",
@@ -5110,28 +4833,24 @@
                 "description": "map[storiface.ID]string",
                 "summary": "",
                 "schema": {
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "type": "object",
                     "examples": [
                         {
                             "76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8": "/data/path"
                         }
-                    ],
-                    "patternProperties": {
-                        ".*": {
-                            "type": "string"
-                        }
-                    },
-                    "type": [
-                        "object"
                     ]
                 },
                 "required": true,
                 "deprecated": false
             },
-            "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
                 "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6927"
-            }
+            },
+            "deprecated": false
         },
         {
             "name": "Filecoin.StorageRedeclareLocal",
@@ -5144,11 +4863,9 @@
                     "description": "*storiface.ID",
                     "summary": "",
                     "schema": {
+                        "type": "string",
                         "examples": [
                             "1399aa04-2625-44b1-bad4-bd07b59b22c4"
-                        ],
-                        "type": [
-                            "string"
                         ]
                     },
                     "required": true,
@@ -5159,11 +4876,9 @@
                     "description": "bool",
                     "summary": "",
                     "schema": {
+                        "type": "boolean",
                         "examples": [
                             true
-                        ],
-                        "type": [
-                            "boolean"
                         ]
                     },
                     "required": true,
@@ -5174,18 +4889,16 @@
                 "name": "Null",
                 "description": "Null",
                 "schema": {
-                    "type": [
-                        "null"
-                    ]
+                    "type": "null"
                 },
                 "required": true,
                 "deprecated": false
             },
-            "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
                 "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6938"
-            }
+            },
+            "deprecated": false
         },
         {
             "name": "Filecoin.TaskDisable",
@@ -5198,11 +4911,9 @@
                     "description": "sealtasks.TaskType",
                     "summary": "",
                     "schema": {
+                        "type": "string",
                         "examples": [
                             "seal/v0/commit/2"
-                        ],
-                        "type": [
-                            "string"
                         ]
                     },
                     "required": true,
@@ -5213,18 +4924,16 @@
                 "name": "Null",
                 "description": "Null",
                 "schema": {
-                    "type": [
-                        "null"
-                    ]
+                    "type": "null"
                 },
                 "required": true,
                 "deprecated": false
             },
-            "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
                 "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6949"
-            }
+            },
+            "deprecated": false
         },
         {
             "name": "Filecoin.TaskEnable",
@@ -5237,11 +4946,9 @@
                     "description": "sealtasks.TaskType",
                     "summary": "",
                     "schema": {
+                        "type": "string",
                         "examples": [
                             "seal/v0/commit/2"
-                        ],
-                        "type": [
-                            "string"
                         ]
                     },
                     "required": true,
@@ -5252,18 +4959,16 @@
                 "name": "Null",
                 "description": "Null",
                 "schema": {
-                    "type": [
-                        "null"
-                    ]
+                    "type": "null"
                 },
                 "required": true,
                 "deprecated": false
             },
-            "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
                 "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6960"
-            }
+            },
+            "deprecated": false
         },
         {
             "name": "Filecoin.TaskTypes",
@@ -5276,29 +4981,26 @@
                 "description": "map[sealtasks.TaskType]struct{}",
                 "summary": "",
                 "schema": {
+                    "additionalProperties": {
+                        "properties": {},
+                        "additionalProperties": false,
+                        "type": "object"
+                    },
+                    "type": "object",
                     "examples": [
                         {
                             "seal/v0/precommit/2": {}
                         }
-                    ],
-                    "patternProperties": {
-                        ".*": {
-                            "additionalProperties": false,
-                            "type": "object"
-                        }
-                    },
-                    "type": [
-                        "object"
                     ]
                 },
                 "required": true,
                 "deprecated": false
             },
-            "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
                 "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6971"
-            }
+            },
+            "deprecated": false
         },
         {
             "name": "Filecoin.UnsealPiece",
@@ -5311,6 +5013,28 @@
                     "description": "storiface.SectorRef",
                     "summary": "",
                     "schema": {
+                        "properties": {
+                            "ID": {
+                                "properties": {
+                                    "Miner": {
+                                        "type": "number",
+                                        "title": "number"
+                                    },
+                                    "Number": {
+                                        "type": "number",
+                                        "title": "number"
+                                    }
+                                },
+                                "additionalProperties": false,
+                                "type": "object"
+                            },
+                            "ProofType": {
+                                "type": "number",
+                                "title": "number"
+                            }
+                        },
+                        "additionalProperties": false,
+                        "type": "object",
                         "examples": [
                             {
                                 "ID": {
@@ -5319,30 +5043,6 @@
                                 },
                                 "ProofType": 8
                             }
-                        ],
-                        "additionalProperties": false,
-                        "properties": {
-                            "ID": {
-                                "additionalProperties": false,
-                                "properties": {
-                                    "Miner": {
-                                        "title": "number",
-                                        "type": "number"
-                                    },
-                                    "Number": {
-                                        "title": "number",
-                                        "type": "number"
-                                    }
-                                },
-                                "type": "object"
-                            },
-                            "ProofType": {
-                                "title": "number",
-                                "type": "number"
-                            }
-                        },
-                        "type": [
-                            "object"
                         ]
                     },
                     "required": true,
@@ -5353,13 +5053,11 @@
                     "description": "storiface.UnpaddedByteIndex",
                     "summary": "",
                     "schema": {
+                        "type": "number",
                         "title": "number",
                         "description": "Number is a number",
                         "examples": [
                             1040384
-                        ],
-                        "type": [
-                            "number"
                         ]
                     },
                     "required": true,
@@ -5370,13 +5068,11 @@
                     "description": "abi.UnpaddedPieceSize",
                     "summary": "",
                     "schema": {
+                        "type": "number",
                         "title": "number",
                         "description": "Number is a number",
                         "examples": [
                             1024
-                        ],
-                        "type": [
-                            "number"
                         ]
                     },
                     "required": true,
@@ -5387,20 +5083,10 @@
                     "description": "abi.SealRandomness",
                     "summary": "",
                     "schema": {
+                        "type": "string",
+                        "contentEncoding": "base64",
                         "examples": [
                             "Bw=="
-                        ],
-                        "items": [
-                            {
-                                "title": "number",
-                                "description": "Number is a number",
-                                "type": [
-                                    "number"
-                                ]
-                            }
-                        ],
-                        "type": [
-                            "array"
                         ]
                     },
                     "required": true,
@@ -5411,15 +5097,13 @@
                     "description": "cid.Cid",
                     "summary": "",
                     "schema": {
+                        "type": "string",
                         "title": "Content Identifier",
                         "description": "Cid represents a self-describing content addressed identifier. It is formed by a Version, a Codec (which indicates a multicodec-packed content type) and a Multihash.",
                         "examples": [
                             {
                                 "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
                             }
-                        ],
-                        "type": [
-                            "string"
                         ]
                     },
                     "required": true,
@@ -5431,6 +5115,34 @@
                 "description": "storiface.CallID",
                 "summary": "",
                 "schema": {
+                    "properties": {
+                        "Sector": {
+                            "properties": {
+                                "Miner": {
+                                    "type": "number",
+                                    "title": "number"
+                                },
+                                "Number": {
+                                    "type": "number",
+                                    "title": "number"
+                                }
+                            },
+                            "additionalProperties": false,
+                            "type": "object"
+                        },
+                        "ID": {
+                            "items": {
+                                "type": "number",
+                                "title": "number",
+                                "description": "Number is a number"
+                            },
+                            "type": "array",
+                            "maxItems": 16,
+                            "minItems": 16
+                        }
+                    },
+                    "additionalProperties": false,
+                    "type": "object",
                     "examples": [
                         {
                             "Sector": {
@@ -5439,46 +5151,16 @@
                             },
                             "ID": "07070707-0707-0707-0707-070707070707"
                         }
-                    ],
-                    "additionalProperties": false,
-                    "properties": {
-                        "ID": {
-                            "items": {
-                                "description": "Number is a number",
-                                "title": "number",
-                                "type": "number"
-                            },
-                            "maxItems": 16,
-                            "minItems": 16,
-                            "type": "array"
-                        },
-                        "Sector": {
-                            "additionalProperties": false,
-                            "properties": {
-                                "Miner": {
-                                    "title": "number",
-                                    "type": "number"
-                                },
-                                "Number": {
-                                    "title": "number",
-                                    "type": "number"
-                                }
-                            },
-                            "type": "object"
-                        }
-                    },
-                    "type": [
-                        "object"
                     ]
                 },
                 "required": true,
                 "deprecated": false
             },
-            "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
                 "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6982"
-            }
+            },
+            "deprecated": false
         },
         {
             "name": "Filecoin.Version",
@@ -5491,23 +5173,21 @@
                 "description": "Version",
                 "summary": "",
                 "schema": {
+                    "type": "number",
                     "title": "number",
                     "description": "Number is a number",
                     "examples": [
                         131840
-                    ],
-                    "type": [
-                        "number"
                     ]
                 },
                 "required": true,
                 "deprecated": false
             },
-            "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
                 "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6993"
-            }
+            },
+            "deprecated": false
         },
         {
             "name": "Filecoin.WaitQuiet",
@@ -5519,18 +5199,16 @@
                 "name": "Null",
                 "description": "Null",
                 "schema": {
-                    "type": [
-                        "null"
-                    ]
+                    "type": "null"
                 },
                 "required": true,
                 "deprecated": false
             },
-            "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
                 "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L7004"
-            }
+            },
+            "deprecated": false
         }
     ]
 }
