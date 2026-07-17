@@ -84,7 +84,7 @@ require (
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/icza/backscanner v0.0.0-20210726202459-ac2ffc679f94
 	github.com/influxdata/influxdb1-client v0.0.0-20200827194710-b269163b24ab
-	github.com/invopop/jsonschema v0.13.0
+	github.com/invopop/jsonschema v0.14.0
 	github.com/ipfs/bbloom v0.1.0
 	github.com/ipfs/boxo v0.41.0
 	github.com/ipfs/go-block-format v0.2.4
@@ -245,7 +245,6 @@ require (
 	github.com/libp2p/go-reuseport v0.4.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.3.0 // indirect
 	github.com/magefile/mage v1.9.0 // indirect
-	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/marten-seemann/tcp v0.0.0-20210406111302-dfbc87cc63fd // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-runewidth v0.0.21 // indirect
@@ -294,7 +293,6 @@ require (
 	github.com/valyala/fasttemplate v1.0.1 // indirect
 	github.com/whyrusleeping/cbor v0.0.0-20171005072247-63513f603b11 // indirect
 	github.com/whyrusleeping/go-keyspace v0.0.0-20160322163242-5b898ac5add1 // indirect
-	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
 	github.com/wlynxg/anet v0.0.5 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
@@ -362,4 +360,9 @@ require (
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/telemetry v0.0.0-20260625142307-59b4966ccb57 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260526163538-3dc84a4a5aaa // indirect
+)
+
+require (
+	github.com/pb33f/ordered-map/v2 v2.3.1 // indirect
+	go.yaml.in/yaml/v4 v4.0.0-rc.2 // indirect
 )
