@@ -144,7 +144,7 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, head *types.Tip
 			return nil
 		}
 
-		// apply all missing tipsets by walking the chain backwards starting from head upto the reconciliation epoch
+		// apply all missing tipsets by walking the chain backwards starting from head up to the reconciliation epoch
 		log.Infof("indexing missing tipsets backwards from head height %d to reconciliation epoch %d", head.Height(), reconciliationEpoch)
 
 		// if head.Height == reconciliationEpoch, this will only index head and return
