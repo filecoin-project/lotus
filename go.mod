@@ -87,15 +87,15 @@ require (
 	github.com/invopop/jsonschema v0.13.0
 	github.com/ipfs/bbloom v0.1.0
 	github.com/ipfs/boxo v0.41.0
-	github.com/ipfs/go-block-format v0.2.3
-	github.com/ipfs/go-cid v0.6.1
+	github.com/ipfs/go-block-format v0.2.4
+	github.com/ipfs/go-cid v0.6.2
 	github.com/ipfs/go-datastore v0.9.2
 	github.com/ipfs/go-ds-badger2 v0.1.5
 	github.com/ipfs/go-ds-leveldb v0.5.2
-	github.com/ipfs/go-ds-measure v0.2.2
+	github.com/ipfs/go-ds-measure v0.2.3
 	github.com/ipfs/go-fs-lock v0.1.1
-	github.com/ipfs/go-ipld-cbor v0.2.1
-	github.com/ipfs/go-ipld-format v0.6.3
+	github.com/ipfs/go-ipld-cbor v0.3.0
+	github.com/ipfs/go-ipld-format v0.6.4
 	github.com/ipfs/go-log/v2 v2.9.2
 	github.com/ipfs/go-metrics-interface v0.3.0
 	github.com/ipfs/go-metrics-prometheus v0.1.0
