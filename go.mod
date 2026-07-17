@@ -21,7 +21,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
-	github.com/alecthomas/jsonschema v0.0.0-20200530073317-71f438968921
+	github.com/alecthomas/jsonschema v0.0.0-20200530073317-71f438968921 // dependency-check-ignore: required by github.com/etclabscore/go-openrpc-reflect
 	github.com/cheggaaa/pb/v3 v3.1.7
 	github.com/chzyer/readline v1.5.1
 	github.com/consensys/gnark-crypto v0.20.1
@@ -339,6 +339,7 @@ require (
 	github.com/ipfs/go-dsqueue v0.2.0 // indirect
 	github.com/libp2p/go-yamux/v5 v5.0.1 // indirect
 	github.com/onsi/gomega v1.36.3 // indirect
+	github.com/pb33f/ordered-map/v2 v2.3.1 // indirect
 	github.com/pion/dtls/v3 v3.1.2 // indirect
 	github.com/pion/ice/v4 v4.0.10 // indirect
 	github.com/pion/mdns/v2 v2.0.7 // indirect
@@ -358,11 +359,7 @@ require (
 	go.opentelemetry.io/proto/otlp v1.10.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
+	go.yaml.in/yaml/v4 v4.0.0-rc.2 // indirect; dependency-check-ignore: required by github.com/invopop/jsonschema
 	golang.org/x/telemetry v0.0.0-20260625142307-59b4966ccb57 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260526163538-3dc84a4a5aaa // indirect
-)
-
-require (
-	github.com/pb33f/ordered-map/v2 v2.3.1 // indirect
-	go.yaml.in/yaml/v4 v4.0.0-rc.2 // indirect
 )
