@@ -9,12 +9,17 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/index"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
+// MaxMessageConfidence bounds message waits to one chain-finality period.
+const MaxMessageConfidence = uint64(policy.ChainFinality)
+
 var (
+	ErrConfidenceTooHigh   = errors.New("message confidence exceeds maximum")
 	ErrFailedToLoadMessage = errors.New("failed to load message")
 	ErrMessageReplaced     = errors.New("message was replaced")
 )
@@ -23,6 +28,10 @@ var (
 // happened, with an optional limit to how many epochs it will search. It guarantees that the message has been on
 // chain for at least confidence epochs without being reverted before returning.
 func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid, confidence uint64, lookbackLimit abi.ChainEpoch, allowReplaced bool) (*types.TipSet, *types.MessageReceipt, cid.Cid, error) {
+	if confidence > MaxMessageConfidence {
+		return nil, nil, cid.Undef, xerrors.Errorf("%w: %d > %d", ErrConfidenceTooHigh, confidence, MaxMessageConfidence)
+	}
+
 	// TODO use the index to speed this up.
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -52,37 +61,45 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid, confid
 		return nil, nil, cid.Undef, err
 	}
 
-	if r != nil {
-		return head[0].Val, r, foundMsg, nil
-	}
-
-	var backTs *types.TipSet
-	var backRcp *types.MessageReceipt
-	var backFm cid.Cid
-	backSearchWait := make(chan struct{})
-	go func() {
-		fts, r, foundMsg, err := sm.searchForIndexedMsg(ctx, mcid, msg)
-
-		found := (err == nil && r != nil && foundMsg.Defined())
-		if !found {
-			fts, r, foundMsg, err = sm.searchBackForMsg(ctx, head[0].Val, msg, lookbackLimit, allowReplaced)
-			if err != nil {
-				log.Warnf("failed to look back through chain for message: %v", err)
-				return
-			}
-		}
-
-		backTs = fts
-		backRcp = r
-		backFm = foundMsg
-		close(backSearchWait)
-	}()
-
 	var candidateTs *types.TipSet
 	var candidateRcp *types.MessageReceipt
 	var candidateFm cid.Cid
+	var backTs *types.TipSet
+	var backRcp *types.MessageReceipt
+	var backFm cid.Cid
+	var backSearchWait chan struct{}
+	var reverts map[types.TipSetKey]bool
+
+	if r != nil {
+		if confidence == 0 {
+			return head[0].Val, r, foundMsg, nil
+		}
+		candidateTs = head[0].Val
+		candidateRcp = r
+		candidateFm = foundMsg
+	} else {
+		backSearchWait = make(chan struct{})
+		reverts = map[types.TipSetKey]bool{}
+		go func() {
+			fts, r, foundMsg, err := sm.searchForIndexedMsg(ctx, mcid, msg)
+
+			found := (err == nil && r != nil && foundMsg.Defined())
+			if !found {
+				fts, r, foundMsg, err = sm.searchBackForMsg(ctx, head[0].Val, msg, lookbackLimit, allowReplaced)
+				if err != nil {
+					log.Warnf("failed to look back through chain for message: %v", err)
+					return
+				}
+			}
+
+			backTs = fts
+			backRcp = r
+			backFm = foundMsg
+			close(backSearchWait)
+		}()
+	}
+
 	heightOfHead := head[0].Val.Height()
-	reverts := map[types.TipSetKey]bool{}
 
 	for {
 		select {
@@ -102,7 +119,7 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid, confid
 						reverts[val.Val.Key()] = true
 					}
 				case store.HCApply:
-					if candidateTs != nil && val.Val.Height() >= candidateTs.Height()+abi.ChainEpoch(confidence) {
+					if candidateTs != nil && confidenceReached(val.Val.Height(), candidateTs.Height(), confidence) {
 						return candidateTs, candidateRcp, candidateFm, nil
 					}
 					r, foundMsg, err := sm.tipsetExecutedMessage(ctx, val.Val, mcid, msg.VMMessage(), allowReplaced)
@@ -124,7 +141,7 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid, confid
 			// check if we found the message in the chain and that is hasn't been reverted since we started searching
 			if backTs != nil && !reverts[backTs.Key()] {
 				// if head is at or past confidence interval, return immediately
-				if heightOfHead >= backTs.Height()+abi.ChainEpoch(confidence) {
+				if confidenceReached(heightOfHead, backTs.Height(), confidence) {
 					return backTs, backRcp, backFm, nil
 				}
 
@@ -139,6 +156,10 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid, confid
 			return nil, nil, cid.Undef, ctx.Err()
 		}
 	}
+}
+
+func confidenceReached(current, candidate abi.ChainEpoch, confidence uint64) bool {
+	return candidate >= 0 && current >= candidate && uint64(current-candidate) >= confidence
 }
 
 func (sm *StateManager) SearchForMessage(ctx context.Context, head *types.TipSet, mcid cid.Cid, lookbackLimit abi.ChainEpoch, allowReplaced bool) (*types.TipSet, *types.MessageReceipt, cid.Cid, error) {
