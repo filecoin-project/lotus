@@ -24,6 +24,7 @@
 
 ## 👌 Improvements
 
+- chore(deps): update `go-libp2p-pubsub` to v0.17.0. Lotus now uses the replacement outbound-stream trace events and the Google Protobuf size API. ([filecoin-project/lotus#13707](https://github.com/filecoin-project/lotus/pull/13707))
 - chore(deps): update libp2p networking dependencies. This includes libp2p's updated handling of unspecified listen addresses, so nodes listening on `0.0.0.0`/`::` may report or advertise concrete interface addresses returned by libp2p. ([filecoin-project/lotus#13588](https://github.com/filecoin-project/lotus/pull/13588))
 - refactor(tracing): replace deprecated `jaeger` exporter with OTLP HTTP exporter. The `LOTUS_JAEGER_*` environment variables have been replaced by `LOTUS_OTEL_EXPORTER_ENDPOINT` and `LOTUS_OTEL_EXPORTER_INSECURE`. ([filecoin-project/lotus#13533](https://github.com/filecoin-project/lotus/pull/13533))
 
