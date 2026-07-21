@@ -79,6 +79,7 @@ var (
 	_ jsonrpc.RPCErrorCodec = (*ErrBlockRangeExceeded)(nil)
 	_ error                 = (*ErrExpensiveFork)(nil)
 	_ jsonrpc.RPCErrorCodec = (*ErrExpensiveFork)(nil)
+	_ error                 = (*ErrSenderValidationFailed)(nil)
 )
 
 func init() {
@@ -150,8 +151,9 @@ func (errF3NotReady) Error() string { return "f3 isn't yet ready to participate"
 
 // ErrExecutionReverted is used to return execution reverted with a reason for a revert in the `data` field.
 type ErrExecutionReverted struct {
-	Message string
-	Data    string
+	Message  string
+	Data     string
+	ExitCode exitcode.ExitCode
 }
 
 // Error returns the error message.
@@ -189,8 +191,9 @@ func NewErrExecutionReverted(exitCode exitcode.ExitCode, error, reason string, d
 		revertReason = fmt.Sprintf(", revert reason=[%s]", reason)
 	}
 	return &ErrExecutionReverted{
-		Message: fmt.Sprintf("message execution failed (exit=[%s]%s, vm error=[%s])", exitCode, revertReason, error),
-		Data:    fmt.Sprintf("0x%x", data),
+		Message:  fmt.Sprintf("message execution failed (exit=[%s]%s, vm error=[%s])", exitCode, revertReason, error),
+		Data:     fmt.Sprintf("0x%x", data),
+		ExitCode: exitCode,
 	}
 }
 
@@ -342,5 +345,23 @@ func (e *ErrBlockRangeExceeded) ToJSONRPCError() (jsonrpc.JSONRPCError, error) {
 // Is performs a non-strict type check so errors.Is works regardless of field values.
 func (e *ErrBlockRangeExceeded) Is(target error) bool {
 	_, ok := target.(*ErrBlockRangeExceeded)
+	return ok
+}
+
+// ErrSenderValidationFailed signals that sender validation failed during message simulation.
+// This can occur when the sender actor doesn't exist on chain or is not a valid sender type.
+// This error is internal and used for control flow - not exposed via JSON-RPC.
+type ErrSenderValidationFailed struct {
+	Address string
+	Reason  string
+}
+
+func (e *ErrSenderValidationFailed) Error() string {
+	return fmt.Sprintf("sender validation failed for %s: %s", e.Address, e.Reason)
+}
+
+// Is performs a non-strict type check for errors.Is() support.
+func (e *ErrSenderValidationFailed) Is(target error) bool {
+	_, ok := target.(*ErrSenderValidationFailed)
 	return ok
 }
