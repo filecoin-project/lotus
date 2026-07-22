@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"sync/atomic"
 	"testing"
 
 	"github.com/ipfs/go-cid"
@@ -43,7 +44,8 @@ type testMpoolAPI struct {
 
 	tipsets []*types.TipSet
 
-	published int
+	published atomic.Int64
+	publishFn func(string, []byte) error
 
 	baseFee types.BigInt
 }
@@ -116,9 +118,16 @@ func (tma *testMpoolAPI) IsLite() bool {
 	return false
 }
 
-func (tma *testMpoolAPI) PubSubPublish(string, []byte) error {
-	tma.published++
+func (tma *testMpoolAPI) PubSubPublish(topic string, data []byte) error {
+	if tma.publishFn != nil {
+		return tma.publishFn(topic, data)
+	}
+	tma.published.Add(1)
 	return nil
+}
+
+func (tma *testMpoolAPI) publishedCount() int {
+	return int(tma.published.Load())
 }
 
 func (tma *testMpoolAPI) GetActorBefore(addr address.Address, ts *types.TipSet) (*types.Actor, error) {
