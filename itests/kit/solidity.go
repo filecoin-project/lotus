@@ -48,6 +48,15 @@ func EvmWordUint64(n uint64) []byte {
 	return word
 }
 
+// EvmCalldata builds calldata from a function signature and pre-encoded EVM words.
+func EvmCalldata(sig string, words ...[]byte) []byte {
+	data := EthFunctionHash(sig)
+	for _, w := range words {
+		data = append(data, w...)
+	}
+	return data
+}
+
 // EvmWordFromAddr resolves a Filecoin address to its corresponding Ethereum
 // address and returns it as a 32-byte big-endian EVM word.
 func EvmWordFromAddr(ctx context.Context, t *testing.T, client *TestFullNode, from address.Address) []byte {

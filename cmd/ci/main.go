@@ -200,6 +200,7 @@ func getRunners(testGroupName string) []Runner {
 		"itest-eth_api":                  {linux_x64_xlarge},
 		"itest-eth_balance":              {linux_x64_xlarge},
 		"itest-eth_bytecode":             {linux_x64_xlarge},
+		"itest-eth_call_estimate":        {linux_x64_xlarge},
 		"itest-eth_config":               {linux_x64_xlarge},
 		"itest-eth_conformance":          {linux_x64_xlarge},
 		"itest-eth_deploy":               {linux_x64_xlarge},
