@@ -37,6 +37,10 @@ const (
 // ErrExpensiveFork matches any expensive-fork refusal; the returned errors carry the epoch.
 var ErrExpensiveFork error = &api.ErrExpensiveFork{}
 
+// ErrSenderValidationFailed signals that the sender actor doesn't exist on chain or is not a
+// valid sender type. Control flow only: callers use it to retry with skip-sender-validation.
+var ErrSenderValidationFailed = errors.New("sender validation failed")
+
 // Call applies the given message to the given tipset's parent state, at the epoch following the
 // tipset's parent. In the presence of null blocks, the height at which the message is invoked may
 // be less than the specified tipset.
@@ -90,7 +94,7 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 }
 
 // CallWithGasSkipSenderValidation is like CallWithGas but skips sender validation,
-// creating a synthetic EthAccount actor if the sender doesn't exist on chain.
+// creating an ephemeral placeholder actor if the sender doesn't exist on chain.
 // This enables eth_estimateGas to work with non-existent addresses, matching Geth's behavior.
 func (sm *StateManager) CallWithGasSkipSenderValidation(ctx context.Context, msg *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet, applyTsMessages bool) (*api.InvocResult, error) {
 	var strategy execMessageStrategy
@@ -248,28 +252,51 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 		return nil, xerrors.Errorf("loading state tree: %w", err)
 	}
 
+	senderCreated := false
 	fromActor, err := stTree.GetActor(msg.From)
 	if err != nil {
+		if !errors.Is(err, types.ErrActorNotFound) {
+			return nil, xerrors.Errorf("getting sender actor: %w", err)
+		}
 		if !skipSenderValidation {
-			// Wrap as ErrSenderValidationFailed so callers can distinguish sender validation
-			// failures from other errors and potentially retry with skip-sender-validation.
-			return nil, &api.ErrSenderValidationFailed{
-				Address: msg.From.String(),
-				Reason:  fmt.Sprintf("actor not found: %v", err),
-			}
+			return nil, xerrors.Errorf("sender %s not found on chain: %w", msg.From, ErrSenderValidationFailed)
 		}
-		// When skipping sender validation (for eth_call/eth_estimateGas simulation),
-		// create a synthetic actor if the sender doesn't exist. This allows simulating
-		// calls from contract addresses or non-existent addresses, matching Geth's behavior.
-		fromActor, stateCid, vmi, err = sm.createSyntheticSenderActor(ctx, msg.From, ts, vmopt)
+		// The sender doesn't exist on chain. Apply an implicit zero-value send to the
+		// address: the FVM assigns it an ID address and instantiates a placeholder actor,
+		// exactly as a real first transfer to the address would. A placeholder with nonce
+		// 0 and an EAM-namespaced delegated address is a valid message sender, so the
+		// message itself can then be applied explicitly, keeping gas accounting identical
+		// to a real first send from a fresh account. This happens on the buffered
+		// blockstore and is never persisted.
+		createRet, err := vmi.ApplyImplicitMessage(ctx, &types.Message{
+			From:       builtin.SystemActorAddr,
+			To:         msg.From,
+			Value:      big.Zero(),
+			Method:     builtin.MethodSend,
+			GasLimit:   buildconstants.BlockGasLimit,
+			GasFeeCap:  big.Zero(),
+			GasPremium: big.Zero(),
+		})
 		if err != nil {
-			return nil, err
+			return nil, xerrors.Errorf("creating ephemeral sender placeholder: %w", err)
 		}
+		if createRet.ExitCode != 0 {
+			return nil, xerrors.Errorf("creating ephemeral sender placeholder (exit %s): %s", createRet.ExitCode, createRet.ActorErr)
+		}
+		stateCid, err = vmi.Flush(ctx)
+		if err != nil {
+			return nil, xerrors.Errorf("flushing vm after placeholder creation: %w", err)
+		}
+		stTree, err = state.LoadStateTree(cbor.NewCborStore(buffStore), stateCid)
+		if err != nil {
+			return nil, xerrors.Errorf("loading state tree after placeholder creation: %w", err)
+		}
+		fromActor, err = stTree.GetActor(msg.From)
+		if err != nil {
+			return nil, xerrors.Errorf("getting ephemeral sender placeholder: %w", err)
+		}
+		senderCreated = true
 	}
-	// When skipSenderValidation is true and the actor exists, the FVM's implicit
-	// apply path skips the sender account-type, nonce and balance checks. This
-	// allows EVM contracts and other actor types to be used as senders without
-	// needing to modify their state.
 
 	msg.Nonce = fromActor.Nonce
 
@@ -323,9 +350,14 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 			}
 		}
 
-		if skipSenderValidation {
+		if skipSenderValidation && !senderCreated {
+			// The sender exists but is not a valid message sender (e.g. an EVM contract):
+			// apply via the FVM's implicit path, which skips the sender account-type,
+			// nonce and balance checks.
 			ret, err = vmi.ApplyMessageSkipSenderValidation(ctx, msgApply)
 		} else {
+			// Valid senders, including a freshly created ephemeral placeholder, take the
+			// explicit path so gas accounting matches a real execution.
 			ret, err = vmi.ApplyMessage(ctx, msgApply)
 		}
 		if err != nil {
@@ -372,114 +404,4 @@ func (sm *StateManager) Replay(ctx context.Context, ts *types.TipSet, mcid cid.C
 	}
 
 	return finder.outm, finder.outr, nil
-}
-
-// createSyntheticSenderActor creates an EthAccount actor for simulation when the sender
-// address doesn't exist on chain. This enables eth_call/eth_estimateGas to work with non-existent
-// addresses, matching Geth's behavior.
-//
-// This function uses implicit messages to create the actor through the normal message system,
-// rather than directly mutating state. This ensures all actor invariants are properly maintained
-// by the FVM's actor creation logic.
-//
-// The process:
-//  1. Apply an implicit message TO the sender address (creates a Placeholder actor)
-//  2. Apply an implicit message FROM the sender address (promotes Placeholder to EthAccount)
-//
-// IMPORTANT: State modifications are isolated via the buffered blockstore - changes are NOT
-// persisted to the underlying store. The VM operates on a copy of state that is discarded after
-// the simulation completes. This ensures eth_call simulations don't affect actual chain state.
-//
-// The resulting actor will have:
-//   - Code: EthAccount (allows it to be a valid sender)
-//   - Nonce: 1 (incremented by the promotion message)
-//   - Balance: 0 (value transfers will fail as expected)
-func (sm *StateManager) createSyntheticSenderActor(
-	ctx context.Context,
-	fromAddr address.Address,
-	ts *types.TipSet,
-	vmopt *vm.VMOpts,
-) (*types.Actor, cid.Cid, vm.Interface, error) {
-	log.Debugw("creating synthetic sender actor for simulation via implicit messages",
-		"address", fromAddr,
-		"height", ts.Height())
-
-	// Create VM with current state to apply implicit messages
-	vmi, err := sm.newVM(ctx, vmopt)
-	if err != nil {
-		return nil, cid.Undef, nil, xerrors.Errorf("failed to set up vm for actor creation: %w", err)
-	}
-
-	// Step 1: Apply an implicit message TO the sender address.
-	// This creates a Placeholder actor at that address (for f4/delegated addresses).
-	// Using SystemActorAddr as sender for implicit messages.
-	createPlaceholderMsg := &types.Message{
-		From:       builtin.SystemActorAddr,
-		To:         fromAddr,
-		Value:      big.Zero(),
-		Method:     builtin.MethodSend,
-		Params:     nil,
-		GasLimit:   1 << 30,
-		GasFeeCap:  big.Zero(),
-		GasPremium: big.Zero(),
-	}
-
-	ret, err := vmi.ApplyImplicitMessage(ctx, createPlaceholderMsg)
-	if err != nil {
-		return nil, cid.Undef, nil, xerrors.Errorf("failed to apply implicit message to create placeholder: %w", err)
-	}
-	if ret.ExitCode != 0 {
-		return nil, cid.Undef, nil, xerrors.Errorf("implicit message to create placeholder failed with exit code %d: %s",
-			ret.ExitCode, ret.ActorErr)
-	}
-
-	// Step 2: Apply an implicit message FROM the sender address.
-	// For f4 addresses with nonce 0, the FVM automatically promotes the Placeholder to EthAccount.
-	// We send to the sender itself (self-send) which is a valid no-op.
-	promoteToEthAccountMsg := &types.Message{
-		From:       fromAddr,
-		To:         fromAddr,
-		Value:      big.Zero(),
-		Method:     builtin.MethodSend,
-		Params:     nil,
-		GasLimit:   1 << 30,
-		GasFeeCap:  big.Zero(),
-		GasPremium: big.Zero(),
-		Nonce:      0, // Placeholder has nonce 0, needed for promotion
-	}
-
-	ret, err = vmi.ApplyImplicitMessage(ctx, promoteToEthAccountMsg)
-	if err != nil {
-		return nil, cid.Undef, nil, xerrors.Errorf("failed to apply implicit message to promote to EthAccount: %w", err)
-	}
-	if ret.ExitCode != 0 {
-		return nil, cid.Undef, nil, xerrors.Errorf("implicit message to promote to EthAccount failed with exit code %d: %s",
-			ret.ExitCode, ret.ActorErr)
-	}
-
-	// Flush the VM to get the new state root with the created actor
-	newStateCid, err := vmi.Flush(ctx)
-	if err != nil {
-		return nil, cid.Undef, nil, xerrors.Errorf("failed to flush vm after actor creation: %w", err)
-	}
-
-	// Load the newly created actor from state
-	newStTree, err := state.LoadStateTree(cbor.NewCborStore(vmopt.Bstore), newStateCid)
-	if err != nil {
-		return nil, cid.Undef, nil, xerrors.Errorf("failed to load state tree after actor creation: %w", err)
-	}
-
-	fromActor, err := newStTree.GetActor(fromAddr)
-	if err != nil {
-		return nil, cid.Undef, nil, xerrors.Errorf("failed to get created actor: %w", err)
-	}
-
-	// Create a new VM with the updated state for subsequent operations
-	vmopt.StateBase = newStateCid
-	vmi, err = sm.newVM(ctx, vmopt)
-	if err != nil {
-		return nil, cid.Undef, nil, xerrors.Errorf("failed to set up vm with created actor: %w", err)
-	}
-
-	return fromActor, newStateCid, vmi, nil
 }

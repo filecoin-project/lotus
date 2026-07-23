@@ -56,12 +56,6 @@ type GasMeta struct {
 	Limit int64
 }
 
-// shouldApplyTsMessages returns whether tipset messages should be applied during gas estimation.
-// This can be disabled by setting LOTUS_SKIP_APPLY_TS_MESSAGE_CALL_WITH_GAS=1.
-func shouldApplyTsMessages() bool {
-	return os.Getenv("LOTUS_SKIP_APPLY_TS_MESSAGE_CALL_WITH_GAS") != "1"
-}
-
 type GasPriceCache struct {
 	c *lru.TwoQueueCache[types.TipSetKey, []GasMeta]
 }
@@ -122,12 +116,7 @@ func gasEstimateCallWithGasInternal(
 		// Resolve to deterministic address for normal validation path
 		resolvedAddr, err := smgr.ResolveToDeterministicAddress(ctx, msgIn.From, currTs)
 		if err != nil {
-			// Wrap as ErrSenderValidationFailed so callers can distinguish sender validation
-			// failures from other errors and potentially retry with skip-sender-validation.
-			return nil, []types.ChainMsg{}, nil, &api.ErrSenderValidationFailed{
-				Address: msgIn.From.String(),
-				Reason:  err.Error(),
-			}
+			return nil, []types.ChainMsg{}, nil, xerrors.Errorf("resolving sender %s (%v): %w", msgIn.From, err, stmgr.ErrSenderValidationFailed)
 		}
 		fromAddr = resolvedAddr
 	}
@@ -141,7 +130,10 @@ func gasEstimateCallWithGasInternal(
 		priorMsgs = append(priorMsgs, m)
 	}
 
-	applyTsMessages := shouldApplyTsMessages()
+	applyTsMessages := true
+	if os.Getenv("LOTUS_SKIP_APPLY_TS_MESSAGE_CALL_WITH_GAS") == "1" {
+		applyTsMessages = false
+	}
 
 	// Try calling until we find a height with no migration.
 	var res *api.InvocResult
@@ -185,8 +177,8 @@ func GasEstimateCallWithGas(
 	return gasEstimateCallWithGasInternal(ctx, cstore, smgr, mpool, msgIn, currTs, false)
 }
 
-// GasEstimateCallWithGasSkipSenderValidation is like GasEstimateCallWithGas but skips sender validation.
-// This allows gas estimation for messages from non-existent addresses, matching Geth's eth_estimateGas behavior.
+// GasEstimateCallWithGasSkipSenderValidation is like GasEstimateCallWithGas but skips sender
+// validation, allowing invocation from contract or non-existent senders.
 func GasEstimateCallWithGasSkipSenderValidation(
 	ctx context.Context,
 	cstore ChainStoreAPI,
@@ -277,6 +269,12 @@ func gasEstimateGasLimitInternal(
 	}
 
 	if res.MsgRct.ExitCode != exitcode.Ok {
+		if !skipSenderValidation && res.MsgRct.ExitCode == exitcode.SysErrSenderInvalid {
+			// The FVM rejected the sender in preflight (e.g. an EVM contract). This was
+			// never a revert; signal callers to retry with skip-sender-validation. The
+			// exit code stays in the message for non-eth callers (e.g. mpool push).
+			return -1, xerrors.Errorf("message execution failed (exit=[%s], vm error=[%s]): %w", res.MsgRct.ExitCode, res.Error, stmgr.ErrSenderValidationFailed)
+		}
 		return -1, api.NewErrExecutionRevertedFromResult(res)
 	}
 
