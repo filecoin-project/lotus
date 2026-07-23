@@ -429,6 +429,12 @@ func (vm *LegacyVM) ApplyImplicitMessage(ctx context.Context, msg *types.Message
 	}, actorErr
 }
 
+// ApplyMessageSkipSenderValidation supports eth_call/eth_estimateGas simulation, which
+// requires nv18+; the LegacyVM (nv15 and earlier) never serves those paths.
+func (vm *LegacyVM) ApplyMessageSkipSenderValidation(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet, error) {
+	return nil, xerrors.Errorf("ApplyMessageSkipSenderValidation is not supported on LegacyVM")
+}
+
 func (vm *LegacyVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet, error) {
 	start := build.Clock.Now()
 	ctx, span := trace.StartSpan(ctx, "vm.ApplyMessage")
