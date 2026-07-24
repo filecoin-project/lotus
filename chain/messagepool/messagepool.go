@@ -142,6 +142,8 @@ type MessagePool struct {
 
 	republished map[cid.Cid]struct{}
 
+	localPubSub chan *types.SignedMessage
+
 	// do NOT access this map directly, use isLocal, setLocal, and forEachLocal respectively
 	localAddrs map[address.Address]struct{}
 
@@ -395,12 +397,18 @@ func New(ctx context.Context, api Provider, ds dtypes.MetadataDS, us stmgr.Upgra
 		j = journal.NilJournal()
 	}
 
+	localPubSubSize := cfg.SizeLimitHigh
+	if localPubSubSize < 0 {
+		localPubSubSize = 0
+	}
+
 	mp := &MessagePool{
 		ds:              ds,
 		addSema:         make(chan struct{}, 1),
 		closer:          make(chan struct{}),
 		repubTk:         build.Clock.Ticker(RepublishInterval),
 		repubTrigger:    make(chan struct{}, 1),
+		localPubSub:     make(chan *types.SignedMessage, localPubSubSize),
 		localAddrs:      make(map[address.Address]struct{}),
 		pending:         make(map[address.Address]*msgSet),
 		keyCache:        keycache,
@@ -454,6 +462,7 @@ func New(ctx context.Context, api Provider, ds dtypes.MetadataDS, us stmgr.Upgra
 
 		log.Info("mpool ready")
 
+		go mp.runLocalPubSubLoop(ctx)
 		mp.runLoop(ctx)
 	}()
 
@@ -719,15 +728,7 @@ func (mp *MessagePool) Push(ctx context.Context, m *types.SignedMessage, publish
 	mp.curTsLk.Unlock()
 
 	if ok && publish {
-		msgb, err := m.Serialize()
-		if err != nil {
-			return cid.Undef, xerrors.Errorf("error serializing message: %w", err)
-		}
-
-		err = mp.api.PubSubPublish(build.MessagesTopic(mp.netName), msgb)
-		if err != nil {
-			return cid.Undef, xerrors.Errorf("error publishing message: %w", err)
-		}
+		mp.enqueueLocalPubSub(m)
 	}
 
 	return m.Cid(), nil
@@ -1174,15 +1175,7 @@ func (mp *MessagePool) PushUntrusted(ctx context.Context, m *types.SignedMessage
 	mp.curTsLk.Unlock()
 
 	if publish {
-		msgb, err := m.Serialize()
-		if err != nil {
-			return cid.Undef, xerrors.Errorf("error serializing message: %w", err)
-		}
-
-		err = mp.api.PubSubPublish(build.MessagesTopic(mp.netName), msgb)
-		if err != nil {
-			return cid.Undef, xerrors.Errorf("error publishing message: %w", err)
-		}
+		mp.enqueueLocalPubSub(m)
 	}
 
 	return m.Cid(), nil
