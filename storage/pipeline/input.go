@@ -5,6 +5,7 @@ import (
 	"sort"
 	"time"
 
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"go.uber.org/zap"
 	"golang.org/x/xerrors"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/filecoin-project/go-padreader"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-statemachine"
 
 	"github.com/filecoin-project/lotus/api"
@@ -380,7 +382,7 @@ func (m *Sealing) sectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPiec
 			pieceInfo.PieceCID(), ts.Height(), startEpoch)
 	}
 
-	claimTerms, err := m.getClaimTerms(ctx, pieceInfo, ts.Key())
+	claimTerms, err := m.getClaimTerms(ctx, pieceInfo, ts.Key(), sp)
 	if err != nil {
 		return api.SectorOffset{}, err
 	}
@@ -412,13 +414,46 @@ func (m *Sealing) sectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPiec
 	return api.SectorOffset{Sector: res.sn, Offset: res.offset.Padded()}, res.err
 }
 
-func (m *Sealing) getClaimTerms(ctx context.Context, deal UniversalPieceInfo, tsk types.TipSetKey) (pieceClaimBounds, error) {
+func minAllocationTermForSealProof(nv network.Version, sp abi.RegisteredSealProof) (abi.ChainEpoch, error) {
+	av, err := actorstypes.VersionForNetwork(nv)
+	if err != nil {
+		return 0, xerrors.Errorf("getting actors version: %w", err)
+	}
+
+	msd, err := policy.GetMaxProveCommitDuration(av, sp)
+	if err != nil {
+		return 0, xerrors.Errorf("getting max prove commit duration: %w", err)
+	}
+
+	return policy.MaxPreCommitRandomnessLookback + msd + policy.GetMinSectorExpiration(), nil
+}
+
+func (m *Sealing) getClaimTerms(ctx context.Context, deal UniversalPieceInfo, tsk types.TipSetKey, sp abi.RegisteredSealProof) (pieceClaimBounds, error) {
 
 	all, err := deal.GetAllocation(ctx, m.Api, tsk)
 	if err != nil {
 		return pieceClaimBounds{}, err
 	}
 	if all != nil {
+		nv, err := m.Api.StateNetworkVersion(ctx, tsk)
+		if err != nil {
+			return pieceClaimBounds{}, err
+		}
+
+		minTerm, err := minAllocationTermForSealProof(nv, sp)
+		if err != nil {
+			return pieceClaimBounds{}, err
+		}
+		if all.TermMax < minTerm {
+			return pieceClaimBounds{}, xerrors.Errorf(
+				"allocation term max %d for piece %s is below the minimum required sector lifetime %d for seal proof %s",
+				all.TermMax,
+				deal.PieceCID(),
+				minTerm,
+				sp,
+			)
+		}
+
 		startEpoch, err := deal.StartEpoch()
 		if err != nil {
 			return pieceClaimBounds{}, err
