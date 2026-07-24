@@ -25,7 +25,7 @@ jobs:
             const title = context.payload.pull_request.title;
             // This should match https://github.com/filecoin-project/lotus/blob/master/CONTRIBUTING.md#pr-title-conventions
             // 202408: Beyond Conventional Commit conventions, we also optionally support the "scope" outside of parenthesis for a transitionary period from legacy conventions per https://github.com/filecoin-project/lotus/pull/12340 
-            const conventionalPattern = /^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([\w.]+\))?!?:?\s(\w+:)?\s?["'`a-z].+$/;
+            const conventionalPattern = /^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([\w.-]+\))?!?:?\s([\w.-]+:)?\s?["'`a-z].+$/;
             // Also accept "Revert ..." titles from GitHub's revert functionality
             const revertPattern = /^Revert\s".+"$/;
             const pattern = new RegExp(`(${conventionalPattern.source})|(${revertPattern.source})`);
