@@ -7,7 +7,7 @@ import (
 )
 
 // NodeBuildVersion is the local build version of the Lotus daemon
-const NodeBuildVersion string = "v1.36.2-dev"
+const NodeBuildVersion string = "1.36.2"
 
 func NodeUserVersion() BuildVersion {
 	if os.Getenv("LOTUS_VERSION_IGNORE_COMMIT") == "1" {
