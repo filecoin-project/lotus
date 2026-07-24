@@ -7,8 +7,7 @@ import (
 )
 
 func TestBlockProbability(t *testing.T) {
-	mp := &MessagePool{}
-	bp := mp.blockProbabilities(1 - 0.15)
+	bp := BlockProbabilities(1 - 0.15)
 	t.Logf("%+v\n", bp)
 	for i := 0; i < len(bp)-1; i++ {
 		if bp[i] < bp[i+1] {

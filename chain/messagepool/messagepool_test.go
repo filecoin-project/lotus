@@ -894,6 +894,67 @@ func TestMessageValueTooHigh(t *testing.T) {
 	}
 }
 
+func TestCheckBalanceInsufficientFunds(t *testing.T) {
+	tma := newTestMpoolAPI()
+
+	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	require.NoError(t, err)
+
+	from, err := w.WalletNew(context.Background(), types.KTBLS)
+	require.NoError(t, err)
+
+	to := mock.Address(1001)
+
+	// GasFeeCap=100, GasLimit=50_000_000 → RequiredFunds = 5_000_000_000 attoFIL
+	const gasLimit = 50_000_000
+	const feeCap = 100
+	requiredFunds := int64(feeCap * gasLimit)
+
+	// Set balance 1 attoFIL below what the message needs
+	tma.setBalanceRaw(from, types.NewInt(uint64(requiredFunds-1)))
+
+	ds := datastore.NewMapDatastore()
+	mp, err := New(context.Background(), tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
+	require.NoError(t, err)
+
+	sm := makeTestMessage(w, from, to, 0, gasLimit, 0)
+	err = mp.Add(context.TODO(), sm)
+	require.ErrorIs(t, err, ErrNotEnoughFunds)
+}
+
+func TestCheckBalanceCumulativePending(t *testing.T) {
+	tma := newTestMpoolAPI()
+
+	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	require.NoError(t, err)
+
+	from, err := w.WalletNew(context.Background(), types.KTBLS)
+	require.NoError(t, err)
+
+	to := mock.Address(1001)
+
+	// GasFeeCap=100, GasLimit=50_000_000 → RequiredFunds = 5_000_000_000 attoFIL per message
+	const gasLimit = 50_000_000
+	const feeCap = 100
+	requiredFunds := int64(feeCap * gasLimit)
+
+	// Set balance to cover exactly one message but not two
+	tma.setBalanceRaw(from, types.NewInt(uint64(2*requiredFunds-1)))
+
+	ds := datastore.NewMapDatastore()
+	mp, err := New(context.Background(), tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
+	require.NoError(t, err)
+
+	// First message fits within balance
+	sm0 := makeTestMessage(w, from, to, 0, gasLimit, 0)
+	require.NoError(t, mp.Add(context.TODO(), sm0))
+
+	// Second message pushes cumulative cost over balance
+	sm1 := makeTestMessage(w, from, to, 1, gasLimit, 0)
+	err = mp.Add(context.TODO(), sm1)
+	require.ErrorIs(t, err, ErrSoftValidationFailure)
+}
+
 func TestMessageSignatureInvalid(t *testing.T) {
 	tma := newTestMpoolAPI()
 
@@ -1138,4 +1199,373 @@ func TestCapGasFee(t *testing.T) {
 		assert.Equal(t, msg.GasFeeCap.Int64(), int64(100_000))
 		assert.Equal(t, msg.GasPremium.Int.Int64(), int64(100_000))
 	})
+}
+
+// makeMsgSetMsg creates a minimal SignedMessage for testing msgSet directly.
+// msgSet.add does not validate the signature, so a zero-filled one is sufficient.
+func makeMsgSetMsg(nonce uint64) *types.SignedMessage {
+	return &types.SignedMessage{
+		Message: types.Message{
+			From:       mock.Address(1000),
+			To:         mock.Address(1001),
+			Nonce:      nonce,
+			GasLimit:   50_000_000,
+			GasFeeCap:  types.NewInt(100),
+			GasPremium: types.NewInt(1),
+			Value:      types.NewInt(0),
+		},
+		Signature: crypto.Signature{
+			Type: crypto.SigTypeSecp256k1,
+			Data: make([]byte, 65),
+		},
+	}
+}
+
+// mustAddToMsgSet adds a message to ms, failing the test on error.
+func mustAddToMsgSet(t *testing.T, ms *msgSet, nonce uint64) {
+	t.Helper()
+	_, err := ms.add(makeMsgSetMsg(nonce), nil, false, false)
+	require.NoError(t, err)
+}
+
+// requireNoGapsBelowNextNonce checks the invariant: every nonce in [startNonce, ms.nextNonce)
+// must be present in ms.msgs.
+func requireNoGapsBelowNextNonce(t *testing.T, ms *msgSet, startNonce uint64) {
+	t.Helper()
+	for n := startNonce; n < ms.nextNonce; n++ {
+		if _, ok := ms.msgs[n]; !ok {
+			t.Errorf("invariant violated: nonce %d missing below nextNonce %d", n, ms.nextNonce)
+		}
+	}
+}
+
+// TestMsgSetNoGapBelowNextNonceSequentialAdd verifies that adding messages in nonce order
+// advances nextNonce one step at a time with no gaps below it.
+func TestMsgSetNoGapBelowNextNonceSequentialAdd(t *testing.T) {
+	ms := newMsgSet(0)
+	for i := uint64(0); i < 5; i++ {
+		mustAddToMsgSet(t, ms, i)
+		require.Equal(t, i+1, ms.nextNonce, "nextNonce after adding nonce %d", i)
+		requireNoGapsBelowNextNonce(t, ms, 0)
+	}
+}
+
+// TestMsgSetNoGapBelowNextNonceFillSimpleGap verifies that adding the missing message in a
+// one-nonce gap advances nextNonce past the already-present message above the gap.
+func TestMsgSetNoGapBelowNextNonceFillSimpleGap(t *testing.T) {
+	ms := newMsgSet(0)
+	mustAddToMsgSet(t, ms, 0)
+	mustAddToMsgSet(t, ms, 2) // gap at 1; nextNonce stays at 1
+	require.Equal(t, uint64(1), ms.nextNonce)
+	requireNoGapsBelowNextNonce(t, ms, 0)
+
+	mustAddToMsgSet(t, ms, 1) // fills gap; 2 was already present, so nextNonce advances to 3
+	require.Equal(t, uint64(3), ms.nextNonce)
+	requireNoGapsBelowNextNonce(t, ms, 0)
+}
+
+// TestMsgSetNoGapBelowNextNonceFillBridgesRun verifies that filling one gap in a multi-message
+// run advances nextNonce past all subsequent already-present messages in one step.
+func TestMsgSetNoGapBelowNextNonceFillBridgesRun(t *testing.T) {
+	ms := newMsgSet(0)
+	mustAddToMsgSet(t, ms, 0)
+	mustAddToMsgSet(t, ms, 1)
+	// Add 3, 4, 5 with a gap at 2; nextNonce stays at 2.
+	mustAddToMsgSet(t, ms, 3)
+	mustAddToMsgSet(t, ms, 4)
+	mustAddToMsgSet(t, ms, 5)
+	require.Equal(t, uint64(2), ms.nextNonce)
+	requireNoGapsBelowNextNonce(t, ms, 0)
+
+	// Filling nonce 2 bridges the gap and advances nextNonce all the way to 6.
+	mustAddToMsgSet(t, ms, 2)
+	require.Equal(t, uint64(6), ms.nextNonce)
+	requireNoGapsBelowNextNonce(t, ms, 0)
+}
+
+// TestMsgSetNoGapBelowNextNoncePruneBelow verifies that pruning a message below nextNonce
+// rewinds nextNonce so the removed nonce becomes the new gap boundary (at nextNonce, not below it).
+func TestMsgSetNoGapBelowNextNoncePruneBelow(t *testing.T) {
+	ms := newMsgSet(0)
+	mustAddToMsgSet(t, ms, 0)
+	mustAddToMsgSet(t, ms, 1)
+	mustAddToMsgSet(t, ms, 2)
+	require.Equal(t, uint64(3), ms.nextNonce)
+
+	// Prune nonce 1 (below nextNonce=3); nextNonce must rewind to 1.
+	ms.rm(1, false)
+	require.Equal(t, uint64(1), ms.nextNonce)
+	// The only nonce below nextNonce=1 is 0, which still exists.
+	requireNoGapsBelowNextNonce(t, ms, 0)
+}
+
+// TestMsgSetNoGapBelowNextNoncePruneAbove verifies that pruning a gapped message at or above
+// nextNonce leaves nextNonce unchanged and preserves the invariant.
+func TestMsgSetNoGapBelowNextNoncePruneAbove(t *testing.T) {
+	ms := newMsgSet(0)
+	mustAddToMsgSet(t, ms, 0)
+	mustAddToMsgSet(t, ms, 2) // gap at 1; nextNonce=1
+	require.Equal(t, uint64(1), ms.nextNonce)
+
+	// Prune the gapped message (nonce 2 >= nextNonce=1); nextNonce must not change.
+	ms.rm(2, false)
+	require.Equal(t, uint64(1), ms.nextNonce)
+	requireNoGapsBelowNextNonce(t, ms, 0)
+}
+
+// TestMsgSetNoGapBelowNextNonceAppliedUnknownFillsGap verifies that removing an unknown message
+// via applied=true advances nextNonce and fills any immediately-following gaps, so the invariant
+// holds with the new chain base as the start.
+func TestMsgSetNoGapBelowNextNonceAppliedUnknownFillsGap(t *testing.T) {
+	ms := newMsgSet(0)
+	// Add nonce 1 as a gapped message without adding nonce 0 first.
+	mustAddToMsgSet(t, ms, 1)
+	require.Equal(t, uint64(0), ms.nextNonce)
+
+	// Apply nonce 0, which we never saw: nextNonce advances to 1, then skips over the
+	// already-present nonce 1 to land at 2.
+	ms.rm(0, true)
+	require.Equal(t, uint64(2), ms.nextNonce)
+	// Base is now 1 (nonce 0 was applied on-chain).
+	requireNoGapsBelowNextNonce(t, ms, 1)
+}
+
+// TestMsgSetNoGapBelowNextNoncePruneAndRefill verifies that pruning a message and then
+// re-adding it restores the full contiguous run and advances nextNonce past all pre-existing
+// messages in the gap.
+func TestMsgSetNoGapBelowNextNoncePruneAndRefill(t *testing.T) {
+	ms := newMsgSet(0)
+	mustAddToMsgSet(t, ms, 0)
+	mustAddToMsgSet(t, ms, 1)
+	mustAddToMsgSet(t, ms, 2)
+	mustAddToMsgSet(t, ms, 3)
+	require.Equal(t, uint64(4), ms.nextNonce)
+
+	// Prune nonce 1; nextNonce rewinds to 1, nonces 2 and 3 become gaps above nextNonce.
+	ms.rm(1, false)
+	require.Equal(t, uint64(1), ms.nextNonce)
+	requireNoGapsBelowNextNonce(t, ms, 0)
+
+	// Re-add nonce 1; nextNonce must bridge over 2 and 3 to reach 4.
+	mustAddToMsgSet(t, ms, 1)
+	require.Equal(t, uint64(4), ms.nextNonce)
+	requireNoGapsBelowNextNonce(t, ms, 0)
+}
+
+// requireMpoolNoGapBelowNextNonce checks the msgSet invariant for addr in mp:
+// no nonce is missing in [minPendingNonce, nextNonce). Acquires mp.lk for the check.
+func requireMpoolNoGapBelowNextNonce(t *testing.T, mp *MessagePool, addr address.Address) {
+	t.Helper()
+	mp.lk.RLock()
+	defer mp.lk.RUnlock()
+	ms, ok := mp.pending[addr]
+	if !ok || len(ms.msgs) == 0 {
+		return
+	}
+	minNonce := ms.nextNonce
+	for n := range ms.msgs {
+		if n < minNonce {
+			minNonce = n
+		}
+	}
+	for n := minNonce; n < ms.nextNonce; n++ {
+		if _, ok := ms.msgs[n]; !ok {
+			t.Errorf("nonce gap below nextNonce: nonce %d missing, nextNonce=%d", n, ms.nextNonce)
+		}
+	}
+}
+
+// TestHeadChangeApplyNoGapBelowNextNonce verifies that applying a block with sequential
+// messages removes those messages from the mpool without leaving any gaps below nextNonce.
+func TestHeadChangeApplyNoGapBelowNextNonce(t *testing.T) {
+	tma := newTestMpoolAPI()
+	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	require.NoError(t, err)
+	sender, err := w.WalletNew(context.Background(), types.KTSecp256k1)
+	require.NoError(t, err)
+	target := mock.Address(1001)
+
+	ds := datastore.NewMapDatastore()
+	mp, err := New(context.Background(), tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
+	require.NoError(t, err)
+
+	tma.setBalance(sender, 1)
+
+	var msgs []*types.SignedMessage
+	for i := 0; i < 5; i++ {
+		m := mock.MkMessage(sender, target, uint64(i), w)
+		msgs = append(msgs, m)
+		mustAdd(t, mp, m)
+	}
+	requireMpoolNoGapBelowNextNonce(t, mp, sender)
+
+	block := tma.nextBlock()
+	tma.setBlockMessages(block, msgs[:3]...)
+	tma.setStateNonce(sender, 3)
+	tma.applyBlock(t, block)
+
+	requireMpoolNoGapBelowNextNonce(t, mp, sender)
+}
+
+// TestHeadChangeApplyUnknownFillsGap verifies that applying a block containing a message
+// not in the mpool (unknown to us) fills the gap and advances nextNonce correctly.
+func TestHeadChangeApplyUnknownFillsGap(t *testing.T) {
+	tma := newTestMpoolAPI()
+	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	require.NoError(t, err)
+	sender, err := w.WalletNew(context.Background(), types.KTSecp256k1)
+	require.NoError(t, err)
+	target := mock.Address(1001)
+
+	ds := datastore.NewMapDatastore()
+	mp, err := New(context.Background(), tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
+	require.NoError(t, err)
+
+	tma.setBalance(sender, 1)
+
+	// Add nonces 1, 2, 3 without nonce 0: gap at 0.
+	nonce0 := mock.MkMessage(sender, target, 0, w)
+	for i := 1; i <= 3; i++ {
+		mustAdd(t, mp, mock.MkMessage(sender, target, uint64(i), w))
+	}
+	requireMpoolNoGapBelowNextNonce(t, mp, sender)
+
+	// Apply a block containing nonce 0 (which was never in the mpool).
+	block := tma.nextBlock()
+	tma.setBlockMessages(block, nonce0)
+	tma.setStateNonce(sender, 1)
+	tma.applyBlock(t, block)
+
+	// After applying nonce 0, the gap closes and nextNonce must advance past 1, 2, 3.
+	requireMpoolNoGapBelowNextNonce(t, mp, sender)
+	mp.lk.RLock()
+	ms := mp.pending[sender]
+	mp.lk.RUnlock()
+	require.Equal(t, uint64(4), ms.nextNonce)
+}
+
+// TestHeadChangeRevertNoGapBelowNextNonce verifies that reverting a block re-adds its messages
+// to the mpool without leaving gaps below nextNonce.
+func TestHeadChangeRevertNoGapBelowNextNonce(t *testing.T) {
+	tma := newTestMpoolAPI()
+	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	require.NoError(t, err)
+	sender, err := w.WalletNew(context.Background(), types.KTSecp256k1)
+	require.NoError(t, err)
+	target := mock.Address(1001)
+
+	ds := datastore.NewMapDatastore()
+	mp, err := New(context.Background(), tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
+	require.NoError(t, err)
+
+	tma.setBalance(sender, 1)
+
+	var msgs []*types.SignedMessage
+	for i := 0; i < 5; i++ {
+		m := mock.MkMessage(sender, target, uint64(i), w)
+		msgs = append(msgs, m)
+		mustAdd(t, mp, m)
+	}
+
+	// Apply block with nonces 0-2.
+	block := tma.nextBlock()
+	tma.setBlockMessages(block, msgs[:3]...)
+	tma.setStateNonce(sender, 3)
+	tma.applyBlock(t, block)
+	requireMpoolNoGapBelowNextNonce(t, mp, sender)
+
+	// Revert the block: nonces 0-2 come back into the mpool.
+	tma.setStateNonce(sender, 0)
+	tma.revertBlock(t, block)
+
+	requireMpoolNoGapBelowNextNonce(t, mp, sender)
+}
+
+// TestHeadChangeReorgIncreaseNoGapBelowNextNonce verifies the invariant after a reorg that
+// increases the chain nonce (the replacing fork includes more messages than the reverted one).
+func TestHeadChangeReorgIncreaseNoGapBelowNextNonce(t *testing.T) {
+	tma := newTestMpoolAPI()
+	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	require.NoError(t, err)
+	sender, err := w.WalletNew(context.Background(), types.KTSecp256k1)
+	require.NoError(t, err)
+	target := mock.Address(1001)
+
+	ds := datastore.NewMapDatastore()
+	mp, err := New(context.Background(), tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
+	require.NoError(t, err)
+
+	tma.setBalance(sender, 1)
+
+	var allMsgs []*types.SignedMessage
+	for i := 0; i < 10; i++ {
+		m := mock.MkMessage(sender, target, uint64(i), w)
+		allMsgs = append(allMsgs, m)
+		mustAdd(t, mp, m)
+	}
+
+	// Apply fork A (nonces 0-4) so the mpool removes them.
+	parentTs := tma.tipsets[len(tma.tipsets)-1]
+	blockA := tma.nextBlock()
+	tma.setBlockMessages(blockA, allMsgs[:5]...)
+	tma.setStateNonce(sender, 5)
+	tma.applyBlock(t, blockA)
+	requireMpoolNoGapBelowNextNonce(t, mp, sender)
+
+	// Fork B (same parent, nonces 0-6) replaces A in a reorg.
+	blockB := mock.MkBlock(parentTs, 1, 2)
+	tma.tipsets = append(tma.tipsets, mock.TipSet(blockB))
+	tma.setBlockMessages(blockB, allMsgs[:7]...)
+	tma.setStateNonce(sender, 7)
+
+	err = tma.cb([]*types.TipSet{mock.TipSet(blockA)}, []*types.TipSet{mock.TipSet(blockB)})
+	require.NoError(t, err)
+
+	// After the reorg, nonces 7-9 remain pending with no gaps.
+	requireMpoolNoGapBelowNextNonce(t, mp, sender)
+}
+
+// TestHeadChangeReorgDecreaseNoGapBelowNextNonce verifies the invariant after a reorg that
+// decreases the chain nonce (the replacing fork includes fewer messages than the reverted one).
+func TestHeadChangeReorgDecreaseNoGapBelowNextNonce(t *testing.T) {
+	tma := newTestMpoolAPI()
+	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	require.NoError(t, err)
+	sender, err := w.WalletNew(context.Background(), types.KTSecp256k1)
+	require.NoError(t, err)
+	target := mock.Address(1001)
+
+	ds := datastore.NewMapDatastore()
+	mp, err := New(context.Background(), tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
+	require.NoError(t, err)
+
+	tma.setBalance(sender, 1)
+
+	var allMsgs []*types.SignedMessage
+	for i := 0; i < 10; i++ {
+		m := mock.MkMessage(sender, target, uint64(i), w)
+		allMsgs = append(allMsgs, m)
+		mustAdd(t, mp, m)
+	}
+
+	// Apply fork A (nonces 0-6) so the mpool removes them.
+	parentTs := tma.tipsets[len(tma.tipsets)-1]
+	blockA := tma.nextBlock()
+	tma.setBlockMessages(blockA, allMsgs[:7]...)
+	tma.setStateNonce(sender, 7)
+	tma.applyBlock(t, blockA)
+	requireMpoolNoGapBelowNextNonce(t, mp, sender)
+
+	// Fork B (same parent, nonces 0-2) replaces A in a reorg.
+	// Nonces 3-6 are reverted from A but not included in B, so they rejoin the mpool.
+	blockB := mock.MkBlock(parentTs, 1, 2)
+	tma.tipsets = append(tma.tipsets, mock.TipSet(blockB))
+	tma.setBlockMessages(blockB, allMsgs[:3]...)
+	tma.setStateNonce(sender, 3)
+
+	err = tma.cb([]*types.TipSet{mock.TipSet(blockA)}, []*types.TipSet{mock.TipSet(blockB)})
+	require.NoError(t, err)
+
+	// After the reorg, nonces 3-9 must all be pending with no gaps.
+	requireMpoolNoGapBelowNextNonce(t, mp, sender)
 }

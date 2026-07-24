@@ -31,7 +31,7 @@ var (
 	_ EthGasAPI = (*EthGasDisabled)(nil)
 )
 
-var minGasPremium = ethtypes.EthBigInt(types.NewInt(gasutils.MinGasPremium))
+var emptyBlockPremium = ethtypes.EthBigInt(big.Zero())
 
 type ethGas struct {
 	chainStore   ChainStore
@@ -432,11 +432,11 @@ func calculateRewardsAndGasUsed(rewardPercentiles []float64, txGasRewards gasRew
 	}
 
 	rewards := make([]ethtypes.EthBigInt, len(rewardPercentiles))
-	for i := range rewards {
-		rewards[i] = minGasPremium
-	}
 
 	if len(txGasRewards) == 0 {
+		for i := range rewards {
+			rewards[i] = emptyBlockPremium
+		}
 		return rewards, gasUsedTotal
 	}
 

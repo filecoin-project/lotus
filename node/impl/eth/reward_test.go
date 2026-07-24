@@ -9,7 +9,6 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
-	"github.com/filecoin-project/lotus/node/impl/gasutils"
 )
 
 func TestReward(t *testing.T) {
@@ -41,7 +40,7 @@ func TestRewardPercentiles(t *testing.T) {
 		{
 			percentiles:  []float64{25, 50, 75},
 			txGasRewards: []gasRewardTuple{},
-			answer:       []int64{gasutils.MinGasPremium, gasutils.MinGasPremium, gasutils.MinGasPremium},
+			answer:       []int64{0, 0, 0},
 		},
 		{
 			percentiles: []float64{25, 50, 75, 100},

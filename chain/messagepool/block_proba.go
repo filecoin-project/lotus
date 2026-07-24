@@ -61,7 +61,7 @@ func binomialCoefficient(n, k float64) float64 {
 	return r
 }
 
-func (mp *MessagePool) blockProbabilities(tq float64) []float64 {
+func BlockProbabilities(tq float64) []float64 {
 	noWinners := noWinnersProbAssumingMoreThanOne()
 
 	p := 1 - tq
