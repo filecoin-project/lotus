@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/fatih/color"
 	"github.com/ipfs/go-cid"
@@ -19,6 +20,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/gasstats"
 )
@@ -266,6 +268,12 @@ func printMessage(cctx *cli.Context, msg *types.Message) error {
 }
 
 func messageFromString(cctx *cli.Context, smsg string) (types.ChainMsg, error) {
+	if strings.HasPrefix(smsg, "0x") {
+		if txHash, err := ethtypes.ParseEthHash(smsg); err == nil {
+			return messageFromEthHash(cctx, txHash)
+		}
+	}
+
 	// a CID is least likely to just decode
 	if c, err := cid.Parse(smsg); err == nil {
 		return messageFromCID(cctx, c)
@@ -275,7 +283,14 @@ func messageFromString(cctx *cli.Context, smsg string) (types.ChainMsg, error) {
 	{
 		// hex first, some hay strings may be decodable as b64
 		if b, err := hex.DecodeString(smsg); err == nil {
-			return messageFromBytes(cctx, b)
+			msg, decodeErr := messageFromBytes(cctx, b)
+			if decodeErr == nil {
+				return msg, nil
+			}
+			if txHash, err := ethtypes.ParseEthHash(smsg); err == nil {
+				return messageFromEthHash(cctx, txHash)
+			}
+			return nil, decodeErr
 		}
 
 		// b64 next
@@ -387,6 +402,31 @@ func messageFromCID(cctx *cli.Context, c cid.Cid) (types.ChainMsg, error) {
 	msgb, err := api.ChainReadObj(ctx, c)
 	if err != nil {
 		return nil, err
+	}
+
+	return messageFromBytes(cctx, msgb)
+}
+
+func messageFromEthHash(cctx *cli.Context, txHash ethtypes.EthHash) (types.ChainMsg, error) {
+	api, closer, err := lcli.GetFullNodeAPIV1(cctx)
+	if err != nil {
+		return nil, err
+	}
+
+	defer closer()
+	ctx := lcli.ReqContext(cctx)
+
+	c, err := api.EthGetMessageCidByTransactionHash(ctx, &txHash)
+	if err != nil {
+		return nil, xerrors.Errorf("looking up Ethereum transaction hash %s: %w", txHash, err)
+	}
+	if c == nil {
+		return nil, xerrors.Errorf("message not found for Ethereum transaction hash %s", txHash)
+	}
+
+	msgb, err := api.ChainReadObj(ctx, *c)
+	if err != nil {
+		return nil, xerrors.Errorf("reading message %s for Ethereum transaction hash %s: %w", c, txHash, err)
 	}
 
 	return messageFromBytes(cctx, msgb)
