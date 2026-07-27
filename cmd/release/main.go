@@ -343,11 +343,9 @@ func main() {
 					repoName := matches[2]
 
 					firstReleaseTarget := "Stable Release"
-					rcCandidates := []string{}
 					releaseTargets := []string{"Stable Release"}
 					if releaseFlow == releaseFlowRC {
 						firstReleaseTarget = "rc1"
-						rcCandidates = []string{"rc1", "rcX"}
 						releaseTargets = []string{"rc1", "rcX", "Stable Release"}
 					}
 
@@ -364,7 +362,6 @@ func main() {
 						"NoRCRelease":                         releaseFlow == releaseFlowNoRC,
 						"RCRelease":                           releaseFlow == releaseFlowRC,
 						"FirstReleaseTarget":                  firstReleaseTarget,
-						"RCCandidates":                        rcCandidates,
 						"ReleaseTargets":                      releaseTargets,
 						"NetworkUpgrade":                      networkUpgrade,
 						"NetworkUpgradeDiscussionLink":        discussionLink,
