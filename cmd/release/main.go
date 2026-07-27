@@ -226,7 +226,7 @@ func main() {
 					},
 					&cli.StringFlag{
 						Name:     "rc1-date",
-						Usage:    fmt.Sprintf("What's the expected shipping date for RC1? (Pattern: '%s'))", releaseDateStringPattern),
+						Usage:    fmt.Sprintf("What's the expected shipping date for RC1? (Pattern: '%s')", releaseDateStringPattern),
 						Value:    "TBD",
 						Required: false,
 					},
@@ -396,7 +396,7 @@ func main() {
 					}
 					issueBody := issueBodyBuffer.String()
 
-					// Remove duplicate newlines before headers, list items, and table rows since the templating leaves a lot extra newlines around.
+					// Collapse duplicate newlines in generated prose and table rows while preserving spacing before headers and list items.
 					// Extra newlines are present because go formatting control statements are done within HTML comments rather than using {{- -}}.
 					// HTML comments are used instead so that the template file parses as clean markdown on its own.
 					// In addition, HTML comments were also required within "ranges" in the template.

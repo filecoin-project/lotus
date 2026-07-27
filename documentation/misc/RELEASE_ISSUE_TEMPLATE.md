@@ -32,7 +32,7 @@
 
 # Estimated shipping date
 
-[//]: # (If/when we know an exact date, remove the "week of".)
+[//]: # (If/when we know an exact date, remove the "Week of " prefix.)
 [//]: # (If a date week is an estimate, annotate with "estimate".)
 
 | Candidate | Expected Release Date | Release URL |
