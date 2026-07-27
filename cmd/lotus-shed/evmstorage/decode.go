@@ -401,6 +401,11 @@ func (d *Decoder) placeScalar(slot [32]byte, offset int, label string, t *Layout
 		return
 	}
 	size := t.size()
+	if size < 1 || offset < 0 || offset+size > 32 {
+		// a struct member offset from a malformed layout could push the
+		// range out of the slot; skip rather than panic
+		return
+	}
 	raw := value[32-offset-size : 32-offset]
 	decoded := t.decodeElementary(raw)
 	d.harvest(t, raw, decoded)
@@ -485,6 +490,9 @@ func (d *Decoder) placeDynamicArray(base [32]byte, label string, t *LayoutType, 
 	}
 	data := keccakSlot(base[:])
 	size := elem.size()
+	if size < 1 {
+		return
+	}
 	if elem.isElementary() && size <= 16 {
 		per := int64(32 / size)
 		for s := int64(0); s*per < n; s++ {
@@ -520,6 +528,9 @@ func (d *Decoder) placeStaticArray(base [32]byte, label string, t *LayoutType, d
 		return
 	}
 	size := elem.size()
+	if size < 1 {
+		return
+	}
 	n := t.size() / size
 	if elem.isElementary() && size <= 16 {
 		per := 32 / size

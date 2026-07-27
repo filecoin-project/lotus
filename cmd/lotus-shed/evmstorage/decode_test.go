@@ -182,6 +182,29 @@ func TestDecodeStaticAndMappings(t *testing.T) {
 	require.Equal(t, len(slots), cov.Annotated, "every slot should be labelled")
 }
 
+// TestMalformedLayoutSizes exercises the defensive bounds: a
+// programmatically supplied bad elementary size must not panic the
+// decoder (the CLI rejects these at LoadLayout; NewDecoder callers get
+// graceful skips).
+func TestMalformedLayoutSizes(t *testing.T) {
+	slots := map[[32]byte][32]byte{slotN(0): val(1), slotN(1): val(2)}
+	layout := &Layout{
+		Storage: []*LayoutEntry{
+			{Label: "zero", Slot: "0", Offset: 0, Type: "t_zero"},
+			{Label: "over", Slot: "1", Offset: 0, Type: "t_over"},
+			{Label: "arr", Slot: "2", Offset: 0, Type: "t_arr_zero"},
+		},
+		Types: map[string]*LayoutType{
+			"t_zero":     {Encoding: "inplace", Label: "uint0", NumberOfBytes: "0"},
+			"t_over":     {Encoding: "inplace", Label: "big", NumberOfBytes: "40"},
+			"t_arr_zero": {Encoding: "dynamic_array", Label: "uint0[]", NumberOfBytes: "32", Base: "t_zero"},
+		},
+	}
+	require.NotPanics(t, func() {
+		NewDecoder(layout, slots).Decode(Hints{}, 4, DefaultNestedProbeRange)
+	})
+}
+
 func TestWellKnownSlots(t *testing.T) {
 	slots := make(map[[32]byte][32]byte)
 	impl, _ := new(big.Int).SetString("360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc", 16)

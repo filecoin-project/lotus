@@ -56,6 +56,16 @@ func LoadLayout(path string) (*Layout, error) {
 			return nil, fmt.Errorf("layout references type %s with no entry in the types table", e.Type)
 		}
 	}
+	// An elementary value is read as a byte range within a 32-byte slot, so
+	// its width must fit. Reject bad sizes here rather than let a slice
+	// panic on a malformed layout file.
+	for name, t := range l.Types {
+		if t.isElementary() {
+			if s := t.size(); s < 1 || s > 32 {
+				return nil, fmt.Errorf("layout type %s has out-of-range size %d bytes (want 1..32)", name, s)
+			}
+		}
+	}
 	return &l, nil
 }
 
