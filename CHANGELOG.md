@@ -15,6 +15,7 @@
 
 - feat(lotus-shed): accept Ethereum transaction hashes in msg ([filecoin-project/lotus#13727](https://github.com/filecoin-project/lotus/pull/13727))
 - feat(cli): `lotus-miner actor settle-deal` now uses gas-aware adaptive batching — deal batches whose estimated gas would exceed a fraction of the block gas limit (tunable via `--max-gas-fraction`, default 1/4) are automatically split so no single `SettleDealPaymentsExported` message hogs block capacity ([filecoin-project/lotus#13471](https://github.com/filecoin-project/lotus/issues/13471))
+- feat(shed): add `lotus-shed eth storage-dump` / `eth storage-decode` to enumerate and decode an EVM contract's on-chain storage KAMT at a given tipset. Dumps slot-sorted NDJSON plus KAMT shape stats (optional CARv1 and `eth_getStorageAt` verification); decodes against a forge storage layout with ERC-1967/7201 support ([filecoin-project/lotus#13729](https://github.com/filecoin-project/lotus/pull/13729))
 
 ## 🐛 Bug Fixes
 
