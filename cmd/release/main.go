@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"html/template"
 	"net/url"
 	"os"
 	"os/exec"
@@ -13,6 +12,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"text/template"
 
 	masterminds "github.com/Masterminds/semver/v3"
 	"github.com/Masterminds/sprig/v3"
@@ -137,6 +137,42 @@ const (
 	releaseFlowRC   = "rc"
 	releaseFlowNoRC = "no-rc"
 )
+
+var (
+	// commentWrappedActionRegexp matches a template action wrapped in an HTML comment, e.g. `<!--{{if .Foo}}-->`.
+	commentWrappedActionRegexp = regexp.MustCompile(`<!--[ \t]*(\{\{.*?\}\})[ \t]*-->`)
+	// controlLineRegexp matches a line that, once unwrapped, holds nothing but template actions.
+	controlLineRegexp = regexp.MustCompile(`^[ \t]*(\{\{.*\}\})[ \t]*$`)
+)
+
+// findMalformedActionWrapper returns the first line holding a template action whose HTML comment
+// wrapper commentWrappedActionRegexp can't match, or "" when there is none.
+func findMalformedActionWrapper(templateSource string) string {
+	for _, line := range strings.Split(templateSource, "\n") {
+		if !strings.Contains(line, "{{") {
+			continue
+		}
+		if strings.Contains(commentWrappedActionRegexp.ReplaceAllString(line, "$1"), "<!--") {
+			return line
+		}
+	}
+	return ""
+}
+
+// stripControlLines appends the actions of every control-only line to the end of the preceding
+// line, so the line they occupied contributes no newline of its own to the rendered issue.
+func stripControlLines(templateSource string) string {
+	lines := strings.Split(templateSource, "\n")
+	kept := make([]string, 0, len(lines))
+	for _, line := range lines {
+		if match := controlLineRegexp.FindStringSubmatch(line); match != nil && len(kept) > 0 {
+			kept[len(kept)-1] += match[1]
+			continue
+		}
+		kept = append(kept, line)
+	}
+	return strings.Join(kept, "\n")
+}
 
 func main() {
 	app := &cli.App{
@@ -375,8 +411,24 @@ func main() {
 					if err != nil {
 						return fmt.Errorf("failed to read issue template: %w", err)
 					}
+					// A wrapper that doesn't match, e.g. `<!--{{if .Foo}})-->`, would leave a stray `<!--`
+					// in the issue body rather than failing, so reject it up front.
+					if line := findMalformedActionWrapper(string(issueTemplate)); line != "" {
+						return fmt.Errorf("malformed comment-wrapped template action in issue template: %s", line)
+					}
+
+					// Control flow in the template lives inside HTML comments so that the template file
+					// parses as clean markdown on its own.  That means Go's {{- -}} trim markers can't be
+					// used to swallow the newline a control statement leaves behind, since the whitespace
+					// sits outside the action but inside the comment.  Strip the comment wrappers here
+					// instead: an action that had a line to itself no longer contributes a newline, while
+					// actions embedded in a content line are unaffected.  The result is that whitespace in
+					// the generated issue matches the whitespace in the template.
+					templateSource := commentWrappedActionRegexp.ReplaceAllString(string(issueTemplate), "$1")
+					templateSource = stripControlLines(templateSource)
+
 					// Sprig used for String contains and Lists
-					tmpl, err := template.New("issue").Funcs(sprig.FuncMap()).Parse(string(issueTemplate))
+					tmpl, err := template.New("issue").Funcs(sprig.FuncMap()).Parse(templateSource)
 					if err != nil {
 						return fmt.Errorf("failed to parse issue template: %w", err)
 					}
@@ -392,17 +444,6 @@ func main() {
 						issueTitle += fmt.Sprintf(" (nv%s)", networkUpgrade)
 					}
 					issueBody := issueBodyBuffer.String()
-
-					// Collapse duplicate newlines in generated prose and table rows while preserving spacing before headers and list items.
-					// Extra newlines are present because go formatting control statements are done within HTML comments rather than using {{- -}}.
-					// HTML comments are used instead so that the template file parses as clean markdown on its own.
-					// In addition, HTML comments were also required within "ranges" in the template.
-					// Using HTML comments everywhere keeps things consistent.
-					// The one exception is after `</summary>` tags.  In that case we preserve the newlines,
-					// as without newlines the section doesn't do markdown formatting on GitHub.
-					// Since Go regexp doesn't support negative lookbehind, we just look for any non ">".
-					re := regexp.MustCompile(`([^>])\n\n+([^#*\[])`)
-					issueBody = re.ReplaceAllString(issueBody, "$1\n$2")
 
 					if !createOnGitHub {
 						// Create the URL-encoded parameters
