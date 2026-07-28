@@ -42,7 +42,7 @@ This document aims to describe how the Lotus maintainers ship releases of Lotus.
 - **`MINOR` releases** are shipped for [network upgrades](./documentation/misc/Building_a_network_skeleton.md#context), API breaking changes, or non-backwards-compatible feature enhancements.
 - **`PATCH` releases** contain backwards-compatible bug fixes or feature enhancements.
 - Releases are almost always branched from the `master` branch, even if they include a network upgrade. The main exception is if there is a critical security patch we need to rush out. In that case, we would patch an existing release to increase release speed and reduce barrier to adoption.
-- We aim to ship a new release of the Lotus Node software approximately every 4 weeks, except during network upgrade periods which may have longer release cycles.
+- We aim to ship a new release of the Lotus Node software weekly, except during network upgrade periods which may have longer release cycles.
 - Lotus Miner releases ship on an as-needed basis with no specified cadence. (See [Why isn't Lotus Miner released more frequently?](#why-isnt-lotus-miner-released-more-frequently))
 
 
@@ -55,7 +55,7 @@ In order to achieve this, we need the following from our release process and con
 - Lotus version conventions make it clear what kind of changes are included in a release.
 - The ability to ship critical fixes quickly when needed.
 - A regular cadence of releases, so that users can know when a new Lotus Node release will be available.
-- A clear description of the various stages of testing that a Lotus Release Candidate (RC) goes through.
+- A clear description of the release process, including when Lotus Release Candidates (RCs) are required and when a direct stable release is appropriate.
 - Lotus Release issues will present a single source of truth for what may be contained in Lotus software releases, including security fixes, and how they will be disclosed.
 
 ## Adopted Conventions
@@ -87,7 +87,7 @@ These releases are not mandatory but are highly recommended, as they may contain
 
 ## Release Cadence
 
-* Lotus Node: we aim to ship a new release every 4 weeks. However, releases that include network upgrades usually have longer development and testing periods.
+* Lotus Node: we aim to ship a new release weekly. However, releases that include network upgrades usually have longer development and testing periods.
 * Lotus Miner: releases ship on an as-needed basis with no specified cadence. (See [Why isn't Lotus Miner released more frequently?](#why-isnt-lotus-miner-released-more-frequently))
 
 ## Release Process
@@ -95,8 +95,9 @@ The specific steps executed for Lotus software releases are captured in the [Rel
 
 ## Release Candidates (RCs)
 
-- For regular (i.e., no critical security patch) releases with no accompanying network upgrade, the RC period is typically around 1 week.
-- For releases accompanying network upgrades, the release candidate period is a lot longer to allow for more extensive testing, usually around 5 to 6 weeks.
+- Releases accompanying network upgrades require RC mode. Their release candidate period is a lot longer to allow for more extensive testing, usually around 5 to 6 weeks.
+- Routine releases with no accompanying network upgrade may use a direct stable release flow without publishing an RC first. This is the default flow for the weekly Lotus Node release cadence.
+- Maintainers may require RC mode for any release, including non-network-upgrade releases, when extra soak time is valuable. Examples include large or risky changes, actor-bundle or consensus-sensitive changes, major dependency updates, API breaking changes, migrations, or release-owner discretion.
 - Releases rushing out a critical security patch will likely have an RC period on the order of hours or days, or may even forgo the RC phase. To compensate for the release speed, these releases will include the minimum delta necessary, meaning they'll be a patch on top of an existing release rather than taking the latest changes in the `master` branch.
 
 ## Security Fix Policy
@@ -132,7 +133,7 @@ Golang tightly couples source code with versioning (major versions beyond v1 lea
 
 ### Do more frequent Lotus releases mean a change to network upgrade schedules?
 
-No. The starting-in-2024Q3 goal of more frequent (every 4 weeks) Lotus releases does not mean that there will be changes in the network upgrade schedule. At least as of 202408, the current cadence of Filecoin network upgrades is ~3 per year. We expect to usually uphold a 2 weeks upgrade time between a Lotus release candidate and a network upgrade on the Calibration network, and a 3 week upgrade time for a network upgrade on the Mainnet.
+No. The goal of more frequent weekly Lotus Node releases does not mean that there will be changes in the network upgrade schedule. At least as of 202408, the current cadence of Filecoin network upgrades is ~3 per year. We expect to usually uphold a 2 weeks upgrade time between a Lotus release candidate and a network upgrade on the Calibration network, and a 3 week upgrade time for a network upgrade on the Mainnet.
 
 ### How often do exchanges and key stakeholders need to upgrade?
 

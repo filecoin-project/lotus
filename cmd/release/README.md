@@ -48,5 +48,10 @@ List Lotus Node and Lotus Miner version information with JSON formatted output:
 
 Create a new release issue from a template:
 ```sh
-./release create-issue --type node --tag 1.30.1 --level patch --network-upgrade --discussion-link https://github.com/filecoin-project/lotus/discussions/12010 --changelog-link https://github.com/filecoin-project/lotus/blob/v1.30.1/CHANGELOG.md --rc1-date 2023-04-01 --rc1-precision day --rc1-confidence confirmed --stable-date 2023-05-01 --stable-precision week --stable-confidence estimated
+./release create-issue --type node --tag 1.30.1 --level patch --release-flow auto --stable-date 2023-05-01
+```
+
+Create a network-upgrade release issue with RC mode:
+```sh
+./release create-issue --type node --tag 1.31.0 --level minor --release-flow auto --network-upgrade 25 --discussion-link https://github.com/filecoin-project/lotus/discussions/12010 --changelog-link https://github.com/filecoin-project/lotus/blob/v1.31.0/CHANGELOG.md --rc1-date 2023-04-01 --stable-date 2023-05-01
 ```
