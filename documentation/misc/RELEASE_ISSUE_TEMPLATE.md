@@ -167,14 +167,14 @@
 > Miner branch: `release/miner/v{{$.Tag}}`
 <!--  {{end}}-->
 
-#### Backport PR for {{$target}}
+#### Release blockers and backports for {{$target}}
 - [ ] All explicitly tracked items from `Dependencies for releases` have landed
 <!--  {{if $stable}}-->
-- [ ] Confirm there are no unresolved `release/backport` blockers unless they are intentionally deferred and linked here:
+- [ ] Account for every unresolved `release/backport` item: included in this release, intentionally deferred and linked below, or no longer a blocker.
    - Deferred items:
 <!--  {{end}}-->
 <!--  {{if and $stable $.NoRCRelease}}-->
-- [ ] No additional backport PR is needed because this no-RC release branch was created from `origin/master` after dependency resolution.
+- [ ] No additional backport PR is needed because this no-RC release branch was created from `origin/master` after all included dependencies landed.
 <!--  {{else if ne $target "rc1"}}-->
 - [ ] Backported [everything with the "backport" label](https://github.com/filecoin-project/lotus/issues?q=label%3Arelease%2Fbackport+)
 - [ ] Create a PR with title `build: backport changes for {{$.Type}} v{{$.Tag}}{{$tagSuffix}}`
