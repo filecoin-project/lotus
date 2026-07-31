@@ -1,3 +1,6 @@
 # Reference
 # https://docs.github.com/en/github/creating-cloning-and-archiving-repositories/creating-a-repository-on-github/about-code-owners
 
+# Codeowners per the FOC Engineering Workstreams proposal.
+# https://app.notion.com/p/filecoindev/FOC-Engineering-Workstreams-342dc41950c1818f99d2e857a7f3cb2e
+* @rvagg @Kubuxu @LexLuthr
