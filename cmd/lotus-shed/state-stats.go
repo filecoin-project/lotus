@@ -19,6 +19,10 @@ import (
 	"github.com/ipfs/boxo/ipld/merkledag"
 	"github.com/ipfs/go-cid"
 	format "github.com/ipfs/go-ipld-format"
+	"github.com/ipld/go-ipld-prime"
+	"github.com/ipld/go-ipld-prime/codec/dagcbor"
+	"github.com/ipld/go-ipld-prime/codec/dagjson"
+	"github.com/ipld/go-ipld-prime/printer"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
@@ -50,22 +54,33 @@ type actorStats struct {
 	Actor   *types.Actor
 	Fields  []fieldItem
 	Stats   api.ObjStat
+	Blocks  []blockRepr `json:",omitempty"`
 }
 
 type fieldItem struct {
-	Name  string
-	Cid   cid.Cid
-	Stats api.ObjStat
+	Name   string
+	Cid    cid.Cid
+	Stats  api.ObjStat
+	Blocks []blockRepr `json:",omitempty"`
+}
+
+type blockRepr struct {
+	Cid            cid.Cid
+	Size           uint64
+	Representation string `json:",omitempty"`
+	KnownType      string `json:",omitempty"`
 }
 
 type job struct {
 	c   cid.Cid
 	key string // prefix path for the region being recorded i.e. "/state/mineractor"
 }
+
 type cidCall struct {
 	c    cid.Cid
 	resp chan bool
 }
+
 type result struct {
 	key   string
 	stats api.ObjStat
@@ -121,12 +136,38 @@ func (cng *cacheNodeGetter) GetMany(ctx context.Context, list []cid.Cid) <-chan 
 	return out
 }
 
+type representationType string
+
+const (
+	representationTypeNone      representationType = "none"
+	representationTypeCid       representationType = "cid"
+	representationTypePrintable representationType = "printable"
+	representationTypeDagJson   representationType = "dagjson"
+)
+
+func parseRepresentationType(s string) (representationType, error) {
+	switch s {
+	case "", "none":
+		return representationTypeNone, nil
+	case "cid":
+		return representationTypeCid, nil
+	case "printable":
+		return representationTypePrintable, nil
+	case "dagjson":
+		return representationTypeDagJson, nil
+	default:
+		return "", xerrors.Errorf("unknown representation type: %s", s)
+	}
+}
+
 type dagStatCollector struct {
-	ds   format.NodeGetter
-	walk func(format.Node) ([]*format.Link, error)
+	ds                 format.NodeGetter
+	walk               func(format.Node) ([]*format.Link, error)
+	representationType representationType
 
 	statsLk sync.Mutex
 	stats   api.ObjStat
+	blocks  []blockRepr
 }
 
 func (dsc *dagStatCollector) record(ctx context.Context, nd format.Node) error {
@@ -140,6 +181,35 @@ func (dsc *dagStatCollector) record(ctx context.Context, nd format.Node) error {
 
 	dsc.stats.Size = dsc.stats.Size + size
 	dsc.stats.Links = dsc.stats.Links + 1
+	if dsc.representationType != representationTypeNone {
+		br := blockRepr{Cid: nd.Cid(), Size: size}
+
+		if dsc.representationType != representationTypeCid {
+			node, err := ipld.Decode(nd.RawData(), dagcbor.Decode)
+			if err != nil {
+				return xerrors.Errorf("decoding node: %w", err)
+			}
+
+			switch dsc.representationType {
+			case representationTypePrintable:
+				br.Representation = printer.Sprint(node)
+			case representationTypeDagJson:
+				dj, err := ipld.Encode(node, dagjson.Encode)
+				if err != nil {
+					return xerrors.Errorf("encoding node to dag-json: %w", err)
+				}
+				br.Representation = string(dj)
+			}
+		}
+
+		if typ, err := matchKnownBlockType(ctx, nd); err != nil {
+			log.Warnf("failed to match block type: %s", err)
+		} else {
+			br.KnownType = typ
+		}
+
+		dsc.blocks = append(dsc.blocks, br)
+	}
 
 	return nil
 }
@@ -360,7 +430,7 @@ var statSnapshotCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "tipset",
-			Usage: "specify tipset to call method on (pass comma separated array of cids)",
+			Usage: "specify tipset to call method on (pass comma separated array of cids or @<height> to specify tipset by height)",
 		},
 		&cli.IntFlag{
 			Name:  "workers",
@@ -618,11 +688,23 @@ The top level stats reported for an actor is computed independently of all field
 accounting of the true size of the actor in the state datastore.
 
 The calculation of these stats results in the actor state being traversed twice. The dag-cache-size flag can be used
-to reduce the number of decode operations performed by caching the decoded object after first access.`,
+to reduce the number of decode operations performed by caching the decoded object after first access.
+
+When using the diff-tipset flag, the stats output will only include the mutated state between the two tipsets, not
+the total state of the actor in either tipset.
+`,
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "tipset",
-			Usage: "specify tipset to call method on (pass comma separated array of cids)",
+			Usage: "specify tipset to call method on (pass comma separated array of cids or @<height> to specify tipset by height)",
+		},
+		&cli.StringFlag{
+			Name:  "diff-tipset",
+			Usage: "specify tipset to diff against, stat output will include only the mutated state between the two tipsets (pass comma separated array of cids or @<height> to specify tipset by height)",
+		},
+		&cli.StringFlag{
+			Name:  "show-blocks",
+			Usage: "show blocks as one of 'none', 'cid' a 'short' or 'full' representation of the block contents, or 'dagjson' to dump the full block contents as DAG-JSON. In the case of a diff-tipset this will be the blocks that are different between the two tipsets.",
 		},
 		&cli.IntFlag{
 			Name:  "workers",
@@ -687,13 +769,20 @@ to reduce the number of decode operations performed by caching the decoded objec
 
 		numWorkers := cctx.Int("workers")
 		dagCacheSize := cctx.Int("dag-cache-size")
-
-		eg, egctx := errgroup.WithContext(ctx)
+		reprType, err := parseRepresentationType(cctx.String("show-blocks"))
+		if err != nil {
+			return err
+		}
+		if cctx.IsSet("diff-tipset") { // if diff, don't list on first pass
+			reprType = representationTypeNone
+		}
 
 		jobs := make(chan address.Address, numWorkers)
 		results := make(chan actorStats, numWorkers)
 
-		worker := func(ctx context.Context, id int) error {
+		sc := &statCollector{representationType: reprType}
+
+		worker := func(ctx context.Context, id int, ts *types.TipSet) error {
 			completed := 0
 			defer func() {
 				log.Infow("worker done", "id", id, "completed", completed)
@@ -720,7 +809,7 @@ to reduce the number of decode operations performed by caching the decoded objec
 						}
 					}
 
-					actStats, err := collectStats(ctx, addr, actor, dag)
+					actStats, err := sc.collectStats(ctx, addr, actor, dag)
 					if err != nil {
 						return err
 					}
@@ -738,19 +827,69 @@ to reduce the number of decode operations performed by caching the decoded objec
 			}
 		}
 
+		eg, egctx := errgroup.WithContext(ctx)
 		for w := 0; w < numWorkers; w++ {
 			id := w
 			eg.Go(func() error {
-				return worker(egctx, id)
+				return worker(egctx, id, ts)
 			})
 		}
 
+		done := make(chan struct{})
 		go func() {
-			defer close(jobs)
+			defer func() {
+				close(jobs)
+				close(done)
+			}()
 			for _, addr := range addrs {
 				jobs <- addr
 			}
 		}()
+
+		// if diff-tipset is set, we need to load the actors from the diff tipset and compare, so we'll
+		// discard the results for this run, then run the workers again with a new set of jobs and take
+		// the results from the second run which should just include the diff.
+
+		if diffTs := cctx.String("diff-tipset"); diffTs != "" {
+			// read and discard results
+			go func() {
+				for range results { // nolint:revive
+				}
+			}()
+
+			_ = eg.Wait()
+			log.Infow("done with first pass, starting diff")
+			close(results)
+
+			<-done
+
+			dts, err := lcli.ParseTipSetRef(ctx, tsr, diffTs)
+			if err != nil {
+				return err
+			}
+			// TODO: if anyone cares for the "all" case, re-load actors here
+			log.Infow("diff tipset", "parentstate", dts.ParentState())
+
+			jobs = make(chan address.Address, numWorkers)
+			results = make(chan actorStats, numWorkers)
+			reprType, _ := parseRepresentationType(cctx.String("show-blocks"))
+			sc.representationType = reprType
+
+			eg, egctx = errgroup.WithContext(ctx)
+			for w := 0; w < numWorkers; w++ {
+				id := w
+				eg.Go(func() error {
+					return worker(egctx, id, dts)
+				})
+			}
+
+			go func() {
+				defer close(jobs)
+				for _, addr := range addrs {
+					jobs <- addr
+				}
+			}()
+		}
 
 		go func() {
 			// error is check later
@@ -866,7 +1005,18 @@ func collectSnapshotJobStats(ctx context.Context, in job, dag format.NodeGetter,
 	return results, nil
 }
 
-func collectStats(ctx context.Context, addr address.Address, actor *types.Actor, dag format.NodeGetter) (actorStats, error) {
+type statCollector struct {
+	rootCidSet         *cid.Set
+	representationType representationType
+	fieldCidSets       map[string]*cid.Set
+}
+
+func (sc *statCollector) collectStats(
+	ctx context.Context,
+	addr address.Address,
+	actor *types.Actor,
+	dag format.NodeGetter,
+) (actorStats, error) {
 	log.Infow("actor", "addr", addr, "code", actor.Code, "name", builtin.ActorNameByCode(actor.Code))
 
 	nd, err := dag.Get(ctx, actor.Head)
@@ -903,33 +1053,52 @@ func collectStats(ctx context.Context, addr address.Address, actor *types.Actor,
 		}
 	}
 
+	if sc.rootCidSet == nil {
+		sc.rootCidSet = cid.NewSet()
+		sc.fieldCidSets = make(map[string]*cid.Set)
+		for _, field := range fields {
+			sc.fieldCidSets[field.Name] = cid.NewSet()
+		}
+	}
+
 	actStats := actorStats{
 		Address: addr,
 		Actor:   actor,
 	}
 
 	dsc := &dagStatCollector{
-		ds:   dag,
-		walk: carWalkFunc,
+		ds:                 dag,
+		walk:               carWalkFunc,
+		representationType: sc.representationType,
 	}
 
-	if err := merkledag.Walk(ctx, dsc.walkLinks, actor.Head, cid.NewSet().Visit, merkledag.Concurrent()); err != nil {
+	if err := merkledag.Walk(ctx, dsc.walkLinks, actor.Head, sc.rootCidSet.Visit, merkledag.Concurrent()); err != nil {
 		return actorStats{}, err
 	}
 
 	actStats.Stats = dsc.stats
+	if sc.representationType != representationTypeNone {
+		actStats.Blocks = dsc.blocks
+	}
 
 	for _, field := range fields {
 		dsc := &dagStatCollector{
-			ds:   dag,
-			walk: carWalkFunc,
+			ds:                 dag,
+			walk:               carWalkFunc,
+			representationType: sc.representationType,
 		}
 
-		if err := merkledag.Walk(ctx, dsc.walkLinks, field.Cid, cid.NewSet().Visit, merkledag.Concurrent()); err != nil {
+		if err := merkledag.Walk(ctx, func(ctx context.Context, c cid.Cid) ([]*format.Link, error) {
+			links, err := dsc.walkLinks(ctx, c)
+			return links, err
+		}, field.Cid, sc.fieldCidSets[field.Name].Visit, merkledag.Concurrent()); err != nil {
 			return actorStats{}, err
 		}
 
 		field.Stats = dsc.stats
+		if sc.representationType != representationTypeNone {
+			field.Blocks = dsc.blocks
+		}
 
 		actStats.Fields = append(actStats.Fields, field)
 	}
