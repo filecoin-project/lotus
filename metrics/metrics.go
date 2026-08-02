@@ -34,7 +34,23 @@ var workMillisecondsDistribution = view.Distribution(
 
 var queueSizeDistribution = view.Distribution(0, 1, 2, 3, 5, 7, 10, 15, 25, 35, 50, 70, 90, 130, 200, 300, 500, 1000, 2000, 5000, 10000)
 
-// Global Tags
+// Gas distribution for message gas limits and used gas (ranges from thousands to billions)
+var gasDistribution = view.Distribution(
+	250e3, 500e3, // very small messages
+	1e6, 2e6, 5e6, 10e6, 20e6, 50e6, 100e6, // typical messages
+	200e6, 500e6, 1e9, 2e9, 5e9, 10e9, // large messages up to block limit
+)
+
+// Gas fee distribution for gas premium and gas fee cap (100 attoFIL to 10 nanoFIL)
+// 10 nanoFIL = 10 * 1e9 attoFIL = 1e10 attoFIL
+var gasFeeDistribution = view.Distribution(
+	100, 200, 500, // very low fees (100-500 attoFIL)
+	1e3, 500e3, // femtoFIL range (1e3 = 1 femtoFIL)
+	1e6, 100e6, 500e6, // picoFIL range (1e6 = 1 picoFIL)
+	1e9, 5e9, 10e9, 50e9, // nanoFIL range (1e9 = 1 nanoFIL)
+)
+
+// Tags
 var (
 	// common
 	Version, _     = tag.NewKey("version")
@@ -140,6 +156,30 @@ var (
 	MessageFetchLocal     = stats.Int64("message/fetch_local", "Number of messages found locally", stats.UnitDimensionless)
 	MessageFetchNetwork   = stats.Int64("message/fetch_network", "Number of messages fetched from network", stats.UnitDimensionless)
 	MessageFetchDuration  = stats.Float64("message/fetch_duration_ms", "Duration of message fetch operations", stats.UnitMilliseconds)
+
+	// gas metrics
+	// Note: attoFIL metrics use Float64 because values can exceed int64 range (atto = 1e-18)
+	BaseFee                             = stats.Float64("chain/basefee", "Current base fee in attoFIL", stats.UnitDimensionless)
+	MpoolGasPremium                     = stats.Float64("mpool/gas_premium", "Gas premium of messages in mpool in attoFIL (histogram)", stats.UnitDimensionless)
+	MpoolGasPremiumMean                 = stats.Float64("mpool/gas_premium_mean", "Mean gas premium of messages in mpool in attoFIL", stats.UnitDimensionless)
+	MpoolGasPremiumMedian               = stats.Float64("mpool/gas_premium_median", "Median gas premium of messages in mpool in attoFIL", stats.UnitDimensionless)
+	MpoolGasPremiumMedianByGasUnits     = stats.Float64("mpool/gas_premium_median_by_gas_units", "Median gas premium weighted by gas limit (what premium the median gas unit pays)", stats.UnitDimensionless)
+	MpoolGasFeeCap                      = stats.Float64("mpool/gas_fee_cap", "Gas fee cap of messages in mpool in attoFIL (histogram)", stats.UnitDimensionless)
+	MpoolGasFeeCapMean                  = stats.Float64("mpool/gas_fee_cap_mean", "Mean gas fee cap of messages in mpool in attoFIL", stats.UnitDimensionless)
+	MpoolGasFeeCapMedian                = stats.Float64("mpool/gas_fee_cap_median", "Median gas fee cap of messages in mpool in attoFIL", stats.UnitDimensionless)
+	MpoolGasFeeCapMedianByGasUnits      = stats.Float64("mpool/gas_fee_cap_median_by_gas_units", "Median gas fee cap weighted by gas limit", stats.UnitDimensionless)
+	MpoolTotalGasLimit                  = stats.Int64("mpool/total_gas_limit", "Total gas limit of all messages in mpool", stats.UnitDimensionless)
+	MpoolMessageGasLimit                = stats.Int64("mpool/message_gas_limit", "Gas limit of messages in mpool (histogram)", stats.UnitDimensionless)
+	MpoolGasLimitMedian                 = stats.Int64("mpool/gas_limit_median", "Median gas limit of messages in mpool", stats.UnitDimensionless)
+	SyncedBlockTotalGasLimit            = stats.Int64("chain/synced_block_total_gas_limit", "Total gas limit of all messages in synced block", stats.UnitDimensionless)
+	SyncedBlockMessageGasLimit          = stats.Int64("chain/synced_block_message_gas_limit", "Gas limit of messages in synced blocks (histogram)", stats.UnitDimensionless)
+	SyncedBlockGasLimitMedian           = stats.Int64("chain/synced_block_gas_limit_median", "Median gas limit of messages in synced block", stats.UnitDimensionless)
+	SyncedBlockGasLimitMedianByGasUnits = stats.Int64("chain/synced_block_gas_limit_median_by_gas_units", "Median gas limit weighted by gas used", stats.UnitDimensionless)
+	SyncedBlockTotalGasUsed             = stats.Int64("chain/synced_block_total_gas_used", "Total actual gas used in synced block", stats.UnitDimensionless)
+	SyncedBlockMessageGasUsed           = stats.Int64("chain/synced_block_message_gas_used", "Actual gas used per message in synced blocks (histogram)", stats.UnitDimensionless)
+	SyncedBlockGasUsedMedian            = stats.Int64("chain/synced_block_gas_used_median", "Median gas used per message in synced block", stats.UnitDimensionless)
+	SyncedBlockGasUsedMedianByGasUnits  = stats.Int64("chain/synced_block_gas_used_median_by_gas_units", "Median gas used weighted by gas used", stats.UnitDimensionless)
+	SyncedBlockMessageCount             = stats.Int64("chain/synced_block_message_count", "Number of messages in synced block", stats.UnitDimensionless)
 
 	// miner
 	WorkerCallsStarted           = stats.Int64("sealing/worker_calls_started", "Counter of started worker tasks", stats.UnitDimensionless)
@@ -482,6 +522,113 @@ var (
 		Measure:     MessageFetchDuration,
 		Aggregation: defaultMillisecondsDistribution,
 		TagKeys:     []tag.Key{FetchSource, Network},
+	}
+
+	// gas metrics
+	BaseFeeView = &view.View{
+		Measure:     BaseFee,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{Network},
+	}
+	MpoolGasPremiumView = &view.View{
+		Measure:     MpoolGasPremium,
+		Aggregation: gasFeeDistribution,
+		TagKeys:     []tag.Key{Network},
+	}
+	MpoolGasPremiumMeanView = &view.View{
+		Measure:     MpoolGasPremiumMean,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{Network},
+	}
+	MpoolGasPremiumMedianView = &view.View{
+		Measure:     MpoolGasPremiumMedian,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{Network},
+	}
+	MpoolGasPremiumMedianByGasUnitsView = &view.View{
+		Measure:     MpoolGasPremiumMedianByGasUnits,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{Network},
+	}
+	MpoolGasFeeCapView = &view.View{
+		Measure:     MpoolGasFeeCap,
+		Aggregation: gasFeeDistribution,
+		TagKeys:     []tag.Key{Network},
+	}
+	MpoolGasFeeCapMeanView = &view.View{
+		Measure:     MpoolGasFeeCapMean,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{Network},
+	}
+	MpoolGasFeeCapMedianView = &view.View{
+		Measure:     MpoolGasFeeCapMedian,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{Network},
+	}
+	MpoolGasFeeCapMedianByGasUnitsView = &view.View{
+		Measure:     MpoolGasFeeCapMedianByGasUnits,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{Network},
+	}
+	MpoolTotalGasLimitView = &view.View{
+		Measure:     MpoolTotalGasLimit,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{Network},
+	}
+	MpoolMessageGasLimitView = &view.View{
+		Measure:     MpoolMessageGasLimit,
+		Aggregation: gasDistribution,
+		TagKeys:     []tag.Key{Network},
+	}
+	MpoolGasLimitMedianView = &view.View{
+		Measure:     MpoolGasLimitMedian,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{Network},
+	}
+	SyncedBlockTotalGasLimitView = &view.View{
+		Measure:     SyncedBlockTotalGasLimit,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{Network},
+	}
+	SyncedBlockMessageGasLimitView = &view.View{
+		Measure:     SyncedBlockMessageGasLimit,
+		Aggregation: gasDistribution,
+		TagKeys:     []tag.Key{Network},
+	}
+	SyncedBlockGasLimitMedianView = &view.View{
+		Measure:     SyncedBlockGasLimitMedian,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{Network},
+	}
+	SyncedBlockGasLimitMedianByGasUnitsView = &view.View{
+		Measure:     SyncedBlockGasLimitMedianByGasUnits,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{Network},
+	}
+	SyncedBlockTotalGasUsedView = &view.View{
+		Measure:     SyncedBlockTotalGasUsed,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{Network},
+	}
+	SyncedBlockMessageGasUsedView = &view.View{
+		Measure:     SyncedBlockMessageGasUsed,
+		Aggregation: gasDistribution,
+		TagKeys:     []tag.Key{Network},
+	}
+	SyncedBlockGasUsedMedianView = &view.View{
+		Measure:     SyncedBlockGasUsedMedian,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{Network},
+	}
+	SyncedBlockGasUsedMedianByGasUnitsView = &view.View{
+		Measure:     SyncedBlockGasUsedMedianByGasUnits,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{Network},
+	}
+	SyncedBlockMessageCountView = &view.View{
+		Measure:     SyncedBlockMessageCount,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{Network},
 	}
 
 	// miner
@@ -864,6 +1011,27 @@ var ChainNodeViews = append([]*view.View{
 	MessageFetchLocalView,
 	MessageFetchNetworkView,
 	MessageFetchDurationView,
+	BaseFeeView,
+	MpoolGasPremiumView,
+	MpoolGasPremiumMeanView,
+	MpoolGasPremiumMedianView,
+	MpoolGasPremiumMedianByGasUnitsView,
+	MpoolGasFeeCapView,
+	MpoolGasFeeCapMeanView,
+	MpoolGasFeeCapMedianView,
+	MpoolGasFeeCapMedianByGasUnitsView,
+	MpoolTotalGasLimitView,
+	MpoolMessageGasLimitView,
+	MpoolGasLimitMedianView,
+	SyncedBlockTotalGasLimitView,
+	SyncedBlockMessageGasLimitView,
+	SyncedBlockGasLimitMedianView,
+	SyncedBlockGasLimitMedianByGasUnitsView,
+	SyncedBlockTotalGasUsedView,
+	SyncedBlockMessageGasUsedView,
+	SyncedBlockGasUsedMedianView,
+	SyncedBlockGasUsedMedianByGasUnitsView,
+	SyncedBlockMessageCountView,
 }, DefaultViews...)
 
 var MinerNodeViews = append([]*view.View{
