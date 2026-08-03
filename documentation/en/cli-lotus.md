@@ -1327,7 +1327,6 @@ CATEGORY:
 COMMANDS:
    power                       Query network or miner power
    sectors                     Query the sector set of a miner
-   active-sectors              Query the active sector set of a miner
    list-actors                 list all actors in the network
    list-miners                 list all miners in the network
    circulating-supply          Get the exact current circulating supply of Filecoin
@@ -1380,20 +1379,8 @@ USAGE:
 
 OPTIONS:
    --show-partitions  show sector deadlines and partitions (default: false)
-   --help, -h         show help
-```
-
-### lotus state active-sectors
-
-```
-NAME:
-   lotus state active-sectors - Query the active sector set of a miner
-
-USAGE:
-   lotus state active-sectors [command options] [minerAddress]
-
-OPTIONS:
-   --show-partitions  show sector deadlines and partitions (default: false)
+   --active           only show sectors that are currently active (have power) (default: false)
+   --human            show human-readable time and FIL values instead of raw epoch/attoFIL (default: false)
    --help, -h         show help
 ```
 

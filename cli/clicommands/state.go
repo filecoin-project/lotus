@@ -24,7 +24,6 @@ var StateCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		lcli.StatePowerCmd,
 		lcli.StateSectorsCmd,
-		lcli.StateActiveSectorsCmd,
 		lcli.StateListActorsCmd,
 		lcli.StateListMinersCmd,
 		lcli.StateCircSupplyCmd,

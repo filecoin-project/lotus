@@ -40,6 +40,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -247,66 +248,13 @@ var StateSectorsCmd = &cli.Command{
 			Name:  "show-partitions",
 			Usage: "show sector deadlines and partitions",
 		},
-	},
-	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer closer()
-
-		ctx := ReqContext(cctx)
-
-		if cctx.NArg() != 1 {
-			return IncorrectNumArgs(cctx)
-		}
-
-		maddr, err := address.NewFromString(cctx.Args().First())
-		if err != nil {
-			return err
-		}
-
-		ts, err := LoadTipSet(ctx, cctx, api)
-		if err != nil {
-			return err
-		}
-
-		sectors, err := api.StateMinerSectors(ctx, maddr, nil, ts.Key())
-		if err != nil {
-			return err
-		}
-
-		showPartitions := cctx.Bool("show-partitions")
-		header := "Sector Number, Sealed CID"
-		if showPartitions {
-			header = "Sector Number, Deadline, Partition, Sealed CID"
-		}
-		fmt.Println(header)
-
-		for _, s := range sectors {
-			if showPartitions {
-				sp, err := api.StateSectorPartition(ctx, maddr, s.SectorNumber, ts.Key())
-				if err != nil {
-					return err
-				}
-				fmt.Printf("%d, %d, %d, %s\n", s.SectorNumber, sp.Deadline, sp.Partition, s.SealedCID)
-			} else {
-				fmt.Printf("%d, %s\n", s.SectorNumber, s.SealedCID)
-			}
-		}
-
-		return nil
-	},
-}
-
-var StateActiveSectorsCmd = &cli.Command{
-	Name:      "active-sectors",
-	Usage:     "Query the active sector set of a miner",
-	ArgsUsage: "[minerAddress]",
-	Flags: []cli.Flag{
 		&cli.BoolFlag{
-			Name:  "show-partitions",
-			Usage: "show sector deadlines and partitions",
+			Name:  "active",
+			Usage: "only show sectors that are currently active (have power)",
+		},
+		&cli.BoolFlag{
+			Name:  "human",
+			Usage: "show human-readable time and FIL values instead of raw epoch/attoFIL",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -332,17 +280,41 @@ var StateActiveSectorsCmd = &cli.Command{
 			return err
 		}
 
-		sectors, err := api.StateMinerActiveSectors(ctx, maddr, ts.Key())
+		var sectors []*miner.SectorOnChainInfo
+		if cctx.Bool("active") {
+			sectors, err = api.StateMinerActiveSectors(ctx, maddr, ts.Key())
+		} else {
+			sectors, err = api.StateMinerSectors(ctx, maddr, nil, ts.Key())
+		}
 		if err != nil {
 			return err
 		}
 
 		showPartitions := cctx.Bool("show-partitions")
-		header := "Sector Number, Sealed CID"
+		human := cctx.Bool("human")
+
+		header := "Sector Number, Sealed CID, Activation, Expiration, InitialPledge, DailyFee"
 		if showPartitions {
-			header = "Sector Number, Deadline, Partition, Sealed CID"
+			header = "Sector Number, Deadline, Partition, Sealed CID, Activation, Expiration, InitialPledge, DailyFee"
 		}
 		fmt.Println(header)
+
+		epochStr := func(e abi.ChainEpoch) string {
+			if human {
+				return cliutil.EpochTimeTs(ts.Height(), e, ts)
+			}
+			return fmt.Sprintf("%d", e)
+		}
+
+		filStr := func(v abi.TokenAmount) string {
+			if human {
+				return types.FIL(v).String()
+			}
+			if v.Int == nil {
+				return "0"
+			}
+			return v.String()
+		}
 
 		for _, s := range sectors {
 			if showPartitions {
@@ -350,9 +322,11 @@ var StateActiveSectorsCmd = &cli.Command{
 				if err != nil {
 					return err
 				}
-				fmt.Printf("%d, %d, %d, %s\n", s.SectorNumber, sp.Deadline, sp.Partition, s.SealedCID)
+				fmt.Printf("%d, %d, %d, %s, %s, %s, %s, %s\n", s.SectorNumber, sp.Deadline, sp.Partition, s.SealedCID,
+					epochStr(s.Activation), epochStr(s.Expiration), filStr(s.InitialPledge), filStr(s.DailyFee))
 			} else {
-				fmt.Printf("%d, %s\n", s.SectorNumber, s.SealedCID)
+				fmt.Printf("%d, %s, %s, %s, %s, %s\n", s.SectorNumber, s.SealedCID,
+					epochStr(s.Activation), epochStr(s.Expiration), filStr(s.InitialPledge), filStr(s.DailyFee))
 			}
 		}
 
