@@ -254,7 +254,7 @@ var StateSectorsCmd = &cli.Command{
 		},
 		&cli.BoolFlag{
 			Name:  "human",
-			Usage: "show human-readable time and FIL values instead of raw epoch/attoFIL",
+			Usage: "show human-readable local time and FIL values instead of raw epoch/attoFIL",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -301,7 +301,9 @@ var StateSectorsCmd = &cli.Command{
 
 		epochStr := func(e abi.ChainEpoch) string {
 			if human {
-				return cliutil.EpochTimeTs(ts.Height(), e, ts)
+				// t is in the local timezone of the machine running this command.
+				t := time.Unix(int64(ts.MinTimestamp()+(uint64(e-ts.Height())*buildconstants.BlockDelaySecs)), 0)
+				return t.Format(time.DateTime)
 			}
 			return fmt.Sprintf("%d", e)
 		}

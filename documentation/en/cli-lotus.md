@@ -1380,7 +1380,7 @@ USAGE:
 OPTIONS:
    --show-partitions  show sector deadlines and partitions (default: false)
    --active           only show sectors that are currently active (have power) (default: false)
-   --human            show human-readable time and FIL values instead of raw epoch/attoFIL (default: false)
+   --human            show human-readable local time and FIL values instead of raw epoch/attoFIL (default: false)
    --help, -h         show help
 ```
 
