@@ -241,7 +241,7 @@ var StatePowerCmd = &cli.Command{
 
 var StateSectorsCmd = &cli.Command{
 	Name:      "sectors",
-	Usage:     "Query the sector set of a miner",
+	Usage:     "Query the active sector set of a miner (use --all for the full sector set)",
 	ArgsUsage: "[minerAddress]",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
@@ -249,8 +249,8 @@ var StateSectorsCmd = &cli.Command{
 			Usage: "show sector deadlines and partitions",
 		},
 		&cli.BoolFlag{
-			Name:  "active",
-			Usage: "only show sectors that are currently active (have power)",
+			Name:  "all",
+			Usage: "show all sectors",
 		},
 		&cli.BoolFlag{
 			Name:  "human",
@@ -281,10 +281,10 @@ var StateSectorsCmd = &cli.Command{
 		}
 
 		var sectors []*miner.SectorOnChainInfo
-		if cctx.Bool("active") {
-			sectors, err = api.StateMinerActiveSectors(ctx, maddr, ts.Key())
-		} else {
+		if cctx.Bool("all") {
 			sectors, err = api.StateMinerSectors(ctx, maddr, nil, ts.Key())
+		} else {
+			sectors, err = api.StateMinerActiveSectors(ctx, maddr, ts.Key())
 		}
 		if err != nil {
 			return err
