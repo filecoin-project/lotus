@@ -369,6 +369,39 @@ func parseBigInt(v interface{}) (big.Int, error) {
 	return big.NewFromGo(&b), nil
 }
 
+// checkMinimalInt rejects an RLP integer field that carries leading zero bytes.
+// Integers are encoded minimally, so a leading zero is a second encoding of a
+// value that already has one.
+func checkMinimalInt(v interface{}) error {
+	data, ok := v.([]byte)
+	if !ok {
+		return fmt.Errorf("cannot parse interface to int: input is not a byte array")
+	}
+	if len(data) > 0 && data[0] == 0 {
+		return fmt.Errorf("cannot parse interface to int: non-minimal encoding with leading zeros")
+	}
+	return nil
+}
+
+// parseRlpInt parses an integer field decoded from a transaction's RLP list.
+// Unlike parseInt, which is also used on fixed-width signature components where
+// leading zeros are part of the value, it requires a minimal encoding.
+func parseRlpInt(v interface{}) (int, error) {
+	if err := checkMinimalInt(v); err != nil {
+		return 0, err
+	}
+	return parseInt(v)
+}
+
+// parseRlpBigInt is parseBigInt for a field decoded from a transaction's RLP
+// list, requiring a minimal encoding.
+func parseRlpBigInt(v interface{}) (big.Int, error) {
+	if err := checkMinimalInt(v); err != nil {
+		return big.Zero(), err
+	}
+	return parseBigInt(v)
+}
+
 func parseBytes(v interface{}) ([]byte, error) {
 	val, ok := v.([]byte)
 	if !ok {
@@ -445,17 +478,17 @@ func parseLegacyTx(data []byte) (EthTransaction, error) {
 		return nil, fmt.Errorf("not a Legacy transaction: should have 9 elements in the rlp list")
 	}
 
-	nonce, err := parseInt(decoded[0])
+	nonce, err := parseRlpInt(decoded[0])
 	if err != nil {
 		return nil, err
 	}
 
-	gasPrice, err := parseBigInt(decoded[1])
+	gasPrice, err := parseRlpBigInt(decoded[1])
 	if err != nil {
 		return nil, err
 	}
 
-	gasLimit, err := parseInt(decoded[2])
+	gasLimit, err := parseRlpInt(decoded[2])
 	if err != nil {
 		return nil, err
 	}
@@ -465,7 +498,7 @@ func parseLegacyTx(data []byte) (EthTransaction, error) {
 		return nil, err
 	}
 
-	value, err := parseBigInt(decoded[4])
+	value, err := parseRlpBigInt(decoded[4])
 	if err != nil {
 		return nil, err
 	}
@@ -475,17 +508,17 @@ func parseLegacyTx(data []byte) (EthTransaction, error) {
 		return nil, fmt.Errorf("input is not a byte slice")
 	}
 
-	v, err := parseBigInt(decoded[6])
+	v, err := parseRlpBigInt(decoded[6])
 	if err != nil {
 		return nil, err
 	}
 
-	r, err := parseBigInt(decoded[7])
+	r, err := parseRlpBigInt(decoded[7])
 	if err != nil {
 		return nil, err
 	}
 
-	s, err := parseBigInt(decoded[8])
+	s, err := parseRlpBigInt(decoded[8])
 	if err != nil {
 		return nil, err
 	}
