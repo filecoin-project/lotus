@@ -303,7 +303,7 @@ var StateSectorsCmd = &cli.Command{
 			if human {
 				// t is in the local timezone of the machine running this command.
 				t := time.Unix(int64(ts.MinTimestamp()+(uint64(e-ts.Height())*buildconstants.BlockDelaySecs)), 0)
-				return t.Format(time.DateTime)
+				return t.Format(time.RFC3339)
 			}
 			return fmt.Sprintf("%d", e)
 		}
