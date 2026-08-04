@@ -5,6 +5,7 @@ import (
 	"context"
 	_ "embed"
 	"encoding/base64"
+	"encoding/csv"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -254,7 +255,7 @@ var StateSectorsCmd = &cli.Command{
 		},
 		&cli.BoolFlag{
 			Name:  "human",
-			Usage: "show human-readable local time and FIL values instead of raw epoch/attoFIL",
+			Usage: "show human-readable UTC time and FIL values instead of raw epoch/attoFIL",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -293,46 +294,58 @@ var StateSectorsCmd = &cli.Command{
 		showPartitions := cctx.Bool("show-partitions")
 		human := cctx.Bool("human")
 
-		header := "Sector Number, Sealed CID, Activation, Expiration, InitialPledge, DailyFee"
-		if showPartitions {
-			header = "Sector Number, Deadline, Partition, Sealed CID, Activation, Expiration, InitialPledge, DailyFee"
-		}
-		fmt.Println(header)
-
 		epochStr := func(e abi.ChainEpoch) string {
 			if human {
-				// t is in the local timezone of the machine running this command.
-				t := time.Unix(int64(ts.MinTimestamp()+(uint64(e-ts.Height())*buildconstants.BlockDelaySecs)), 0)
-				return t.Format(time.RFC3339)
+				t := time.Unix(int64(ts.MinTimestamp()+(uint64(e-ts.Height())*buildconstants.BlockDelaySecs)), 0).UTC()
+				return t.Format(time.DateTime)
 			}
 			return fmt.Sprintf("%d", e)
 		}
 
 		filStr := func(v abi.TokenAmount) string {
-			if human {
-				return types.FIL(v).String()
-			}
 			if v.Int == nil {
 				return "0"
+			}
+			if human {
+				return types.FIL(v).Unitless()
 			}
 			return v.String()
 		}
 
+		header := []string{"Sector Number"}
+		if showPartitions {
+			header = append(header, "Deadline", "Partition")
+		}
+		header = append(header, "Sealed CID")
+		if human {
+			header = append(header, "Activation (UTC)", "Expiration (UTC)", "InitialPledge (FIL)", "DailyFee (FIL)")
+		} else {
+			header = append(header, "Activation", "Expiration", "InitialPledge (attoFIL)", "DailyFee (attoFIL)")
+		}
+
+		w := csv.NewWriter(os.Stdout)
+		if err := w.Write(header); err != nil {
+			return xerrors.Errorf("writing csv header: %w", err)
+		}
+
 		for _, s := range sectors {
+			row := []string{fmt.Sprintf("%d", s.SectorNumber)}
 			if showPartitions {
 				sp, err := api.StateSectorPartition(ctx, maddr, s.SectorNumber, ts.Key())
 				if err != nil {
 					return err
 				}
-				fmt.Printf("%d, %d, %d, %s, %s, %s, %s, %s\n", s.SectorNumber, sp.Deadline, sp.Partition, s.SealedCID,
-					epochStr(s.Activation), epochStr(s.Expiration), filStr(s.InitialPledge), filStr(s.DailyFee))
-			} else {
-				fmt.Printf("%d, %s, %s, %s, %s, %s\n", s.SectorNumber, s.SealedCID,
-					epochStr(s.Activation), epochStr(s.Expiration), filStr(s.InitialPledge), filStr(s.DailyFee))
+				row = append(row, fmt.Sprintf("%d", sp.Deadline), fmt.Sprintf("%d", sp.Partition))
+			}
+			row = append(row, s.SealedCID.String(), epochStr(s.Activation), epochStr(s.Expiration), filStr(s.InitialPledge), filStr(s.DailyFee))
+
+			if err := w.Write(row); err != nil {
+				return xerrors.Errorf("writing csv row: %w", err)
 			}
 		}
 
-		return nil
+		w.Flush()
+		return w.Error()
 	},
 }
 
