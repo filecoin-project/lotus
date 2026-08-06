@@ -236,27 +236,27 @@ func parseEip1559Tx(data []byte) (*Eth1559TxArgs, error) {
 		return nil, xerrors.Errorf("not an EIP-1559 transaction: should have 12 elements in the rlp list")
 	}
 
-	chainId, err := parseInt(decoded[0])
+	chainId, err := parseRlpInt(decoded[0])
 	if err != nil {
 		return nil, err
 	}
 
-	nonce, err := parseInt(decoded[1])
+	nonce, err := parseRlpInt(decoded[1])
 	if err != nil {
 		return nil, err
 	}
 
-	maxPriorityFeePerGas, err := parseBigInt(decoded[2])
+	maxPriorityFeePerGas, err := parseRlpBigInt(decoded[2])
 	if err != nil {
 		return nil, err
 	}
 
-	maxFeePerGas, err := parseBigInt(decoded[3])
+	maxFeePerGas, err := parseRlpBigInt(decoded[3])
 	if err != nil {
 		return nil, err
 	}
 
-	gasLimit, err := parseInt(decoded[4])
+	gasLimit, err := parseRlpInt(decoded[4])
 	if err != nil {
 		return nil, err
 	}
@@ -266,7 +266,7 @@ func parseEip1559Tx(data []byte) (*Eth1559TxArgs, error) {
 		return nil, err
 	}
 
-	value, err := parseBigInt(decoded[6])
+	value, err := parseRlpBigInt(decoded[6])
 	if err != nil {
 		return nil, err
 	}
@@ -281,17 +281,17 @@ func parseEip1559Tx(data []byte) (*Eth1559TxArgs, error) {
 		return nil, xerrors.Errorf("access list should be an empty list")
 	}
 
-	r, err := parseBigInt(decoded[10])
+	r, err := parseRlpBigInt(decoded[10])
 	if err != nil {
 		return nil, err
 	}
 
-	s, err := parseBigInt(decoded[11])
+	s, err := parseRlpBigInt(decoded[11])
 	if err != nil {
 		return nil, err
 	}
 
-	v, err := parseBigInt(decoded[9])
+	v, err := parseRlpBigInt(decoded[9])
 	if err != nil {
 		return nil, err
 	}
