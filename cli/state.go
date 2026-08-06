@@ -5,6 +5,7 @@ import (
 	"context"
 	_ "embed"
 	"encoding/base64"
+	"encoding/csv"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -40,6 +41,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -240,12 +242,20 @@ var StatePowerCmd = &cli.Command{
 
 var StateSectorsCmd = &cli.Command{
 	Name:      "sectors",
-	Usage:     "Query the sector set of a miner",
+	Usage:     "Query the active sector set of a miner (use --all for the full sector set)",
 	ArgsUsage: "[minerAddress]",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:  "show-partitions",
 			Usage: "show sector deadlines and partitions",
+		},
+		&cli.BoolFlag{
+			Name:  "all",
+			Usage: "show all sectors",
+		},
+		&cli.BoolFlag{
+			Name:  "human",
+			Usage: "show human-readable UTC time and FIL values instead of raw epoch/attoFIL",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -271,92 +281,71 @@ var StateSectorsCmd = &cli.Command{
 			return err
 		}
 
-		sectors, err := api.StateMinerSectors(ctx, maddr, nil, ts.Key())
+		var sectors []*miner.SectorOnChainInfo
+		if cctx.Bool("all") {
+			sectors, err = api.StateMinerSectors(ctx, maddr, nil, ts.Key())
+		} else {
+			sectors, err = api.StateMinerActiveSectors(ctx, maddr, ts.Key())
+		}
 		if err != nil {
 			return err
 		}
 
 		showPartitions := cctx.Bool("show-partitions")
-		header := "Sector Number, Sealed CID"
-		if showPartitions {
-			header = "Sector Number, Deadline, Partition, Sealed CID"
+		human := cctx.Bool("human")
+
+		epochStr := func(e abi.ChainEpoch) string {
+			if human {
+				t := time.Unix(int64(ts.MinTimestamp()+(uint64(e-ts.Height())*buildconstants.BlockDelaySecs)), 0).UTC()
+				return t.Format(time.DateTime)
+			}
+			return fmt.Sprintf("%d", e)
 		}
-		fmt.Println(header)
+
+		filStr := func(v abi.TokenAmount) string {
+			if v.Int == nil {
+				return "0"
+			}
+			if human {
+				return types.FIL(v).Unitless()
+			}
+			return v.String()
+		}
+
+		header := []string{"Sector Number"}
+		if showPartitions {
+			header = append(header, "Deadline", "Partition")
+		}
+		header = append(header, "Sealed CID")
+		if human {
+			header = append(header, "Activation (UTC)", "Expiration (UTC)", "InitialPledge (FIL)", "DailyFee (FIL)")
+		} else {
+			header = append(header, "Activation", "Expiration", "InitialPledge (attoFIL)", "DailyFee (attoFIL)")
+		}
+
+		w := csv.NewWriter(os.Stdout)
+		if err := w.Write(header); err != nil {
+			return xerrors.Errorf("writing csv header: %w", err)
+		}
 
 		for _, s := range sectors {
+			row := []string{fmt.Sprintf("%d", s.SectorNumber)}
 			if showPartitions {
 				sp, err := api.StateSectorPartition(ctx, maddr, s.SectorNumber, ts.Key())
 				if err != nil {
 					return err
 				}
-				fmt.Printf("%d, %d, %d, %s\n", s.SectorNumber, sp.Deadline, sp.Partition, s.SealedCID)
-			} else {
-				fmt.Printf("%d, %s\n", s.SectorNumber, s.SealedCID)
+				row = append(row, fmt.Sprintf("%d", sp.Deadline), fmt.Sprintf("%d", sp.Partition))
+			}
+			row = append(row, s.SealedCID.String(), epochStr(s.Activation), epochStr(s.Expiration), filStr(s.InitialPledge), filStr(s.DailyFee))
+
+			if err := w.Write(row); err != nil {
+				return xerrors.Errorf("writing csv row: %w", err)
 			}
 		}
 
-		return nil
-	},
-}
-
-var StateActiveSectorsCmd = &cli.Command{
-	Name:      "active-sectors",
-	Usage:     "Query the active sector set of a miner",
-	ArgsUsage: "[minerAddress]",
-	Flags: []cli.Flag{
-		&cli.BoolFlag{
-			Name:  "show-partitions",
-			Usage: "show sector deadlines and partitions",
-		},
-	},
-	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer closer()
-
-		ctx := ReqContext(cctx)
-
-		if cctx.NArg() != 1 {
-			return IncorrectNumArgs(cctx)
-		}
-
-		maddr, err := address.NewFromString(cctx.Args().First())
-		if err != nil {
-			return err
-		}
-
-		ts, err := LoadTipSet(ctx, cctx, api)
-		if err != nil {
-			return err
-		}
-
-		sectors, err := api.StateMinerActiveSectors(ctx, maddr, ts.Key())
-		if err != nil {
-			return err
-		}
-
-		showPartitions := cctx.Bool("show-partitions")
-		header := "Sector Number, Sealed CID"
-		if showPartitions {
-			header = "Sector Number, Deadline, Partition, Sealed CID"
-		}
-		fmt.Println(header)
-
-		for _, s := range sectors {
-			if showPartitions {
-				sp, err := api.StateSectorPartition(ctx, maddr, s.SectorNumber, ts.Key())
-				if err != nil {
-					return err
-				}
-				fmt.Printf("%d, %d, %d, %s\n", s.SectorNumber, sp.Deadline, sp.Partition, s.SealedCID)
-			} else {
-				fmt.Printf("%d, %s\n", s.SectorNumber, s.SealedCID)
-			}
-		}
-
-		return nil
+		w.Flush()
+		return w.Error()
 	},
 }
 
