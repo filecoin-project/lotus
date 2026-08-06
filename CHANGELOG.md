@@ -19,6 +19,8 @@
 
 ## 🐛 Bug Fixes
 
+- fix(network): prevent remote memory exhaustion through Lotus's default WebTransport listener by updating go-libp2p and webtransport-go (CVE-2026-57497). ([filecoin-project/lotus#13734](https://github.com/filecoin-project/lotus/pull/13734))
+
 ## 👌 Improvements
 
 # Node v1.36.2 / 2026-07-27
