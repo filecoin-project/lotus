@@ -222,8 +222,8 @@ var EvmDeployCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		if argc := cctx.Args().Len(); argc != 1 {
-			return xerrors.Errorf("must pass the contract init code")
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgsWithHint(cctx, "contract init code required")
 		}
 
 		contract, err := os.ReadFile(cctx.Args().First())
@@ -350,8 +350,8 @@ var EvmInvokeCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		if argc := cctx.Args().Len(); argc != 2 {
-			return xerrors.Errorf("must pass the address and calldata")
+		if cctx.NArg() != 2 {
+			return IncorrectNumArgsWithHint(cctx, "address and calldata requried")
 		}
 
 		addr, err := address.NewFromString(cctx.Args().Get(0))

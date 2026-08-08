@@ -337,8 +337,8 @@ var f3SubCmdCerts = &cli.Command{
 				f3FlagOutput,
 			},
 			Before: func(cctx *cli.Context) error {
-				if count := cctx.NArg(); count > 1 {
-					return fmt.Errorf("too many arguments: expected at most 1 but got %d", count)
+				if cctx.NArg() > 1 {
+					return IncorrectNumArgsWithHint(cctx, "expected 1 at most")
 				}
 				return nil
 			},
@@ -418,8 +418,8 @@ Examples:
 				f3FlagReverseOrder,
 			},
 			Before: func(cctx *cli.Context) error {
-				if count := cctx.NArg(); count > 1 {
-					return fmt.Errorf("too many arguments: expected at most 1 but got %d", count)
+				if cctx.NArg() > 1 {
+					return IncorrectNumArgsWithHint(cctx, "expected 1 at most")
 				}
 				return nil
 			},
