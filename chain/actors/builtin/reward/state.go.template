@@ -33,11 +33,17 @@ func load{{.v}}(store adt.Store, root cid.Cid) (State, error) {
 	return &out, nil
 }
 
-func make{{.v}}(store adt.Store, currRealizedPower abi.StoragePower) (State, error) {
+{{if (ge .v 19)}}func make{{.v}}(store adt.Store, currRealizedPower abi.StoragePower) (State, error) {
+	st, err := reward{{.v}}.ConstructState(store, currRealizedPower)
+	if err != nil {
+		return nil, err
+	}
+	return &state{{.v}}{State: *st, store: store}, nil
+}{{else}}func make{{.v}}(store adt.Store, currRealizedPower abi.StoragePower) (State, error) {
 	out := state{{.v}}{store: store}
 	out.State = *reward{{.v}}.ConstructState(currRealizedPower)
 	return &out, nil
-}
+}{{end}}
 
 type state{{.v}} struct {
 	reward{{.v}}.State
@@ -64,8 +70,11 @@ func (s *state{{.v}}) ThisEpochBaselinePower() (abi.StoragePower, error) {
 }
 
 func (s *state{{.v}}) TotalStoragePowerReward() (abi.TokenAmount, error) {
-	return s.State.{{if (ge .v 2)}}TotalStoragePowerReward{{else}}TotalMined{{end}}, nil
-}
+{{if (ge .v 19)}}	// Since v19 this adapter reports all FIL minted by f02, not only miner rewards.
+	// Circulating supply subtracts the burnt-funds balance, cancelling f02's residual burn.
+	return s.State.TotalMintedReward, nil
+{{else}}	return s.State.{{if (ge .v 2)}}TotalStoragePowerReward{{else}}TotalMined{{end}}, nil
+{{end}}}
 
 func (s *state{{.v}}) EffectiveBaselinePower() (abi.StoragePower, error) {
 	return s.State.EffectiveBaselinePower, nil

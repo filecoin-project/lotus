@@ -53,7 +53,7 @@ require (
 	github.com/filecoin-project/go-keccak v0.1.0
 	github.com/filecoin-project/go-padreader v0.0.1
 	github.com/filecoin-project/go-paramfetch v0.0.5
-	github.com/filecoin-project/go-state-types v0.19.0-rc1 // dependency-check-ignore: unknown
+	github.com/filecoin-project/go-state-types v0.19.0-rc1.0.20260814083317-c3285ac189dc // dependency-check-ignore: unknown
 	github.com/filecoin-project/go-statemachine v1.0.3
 	github.com/filecoin-project/go-statestore v0.2.0
 	github.com/filecoin-project/go-storedcounter v0.1.0

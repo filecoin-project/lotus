@@ -6,6 +6,7 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"runtime"
 	"strconv"
@@ -35,6 +36,7 @@ import (
 	nv27 "github.com/filecoin-project/go-state-types/builtin/v17/migration"
 	nv28 "github.com/filecoin-project/go-state-types/builtin/v18/migration"
 	nv29 "github.com/filecoin-project/go-state-types/builtin/v19/migration"
+	reward19 "github.com/filecoin-project/go-state-types/builtin/v19/reward"
 	nv17 "github.com/filecoin-project/go-state-types/builtin/v9/migration"
 	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/go-state-types/migration"
@@ -3358,6 +3360,66 @@ func upgradeActorsV18Common(
 	return newRoot, nil
 }
 
+func solsticeRewardMigrationConfig() (nv29.RewardMigrationConfig, error) {
+	params := buildconstants.UpgradeXxRewardBootstrapParams
+	if params.ConsensusWeightRampDurationEpochs <= 0 {
+		return nv29.RewardMigrationConfig{}, xerrors.Errorf(
+			"Solstice consensus weight ramp duration must be positive, got %d", params.ConsensusWeightRampDurationEpochs)
+	}
+	if params.ConsensusWeight.VStart <= params.ConsensusWeight.Floor {
+		return nv29.RewardMigrationConfig{}, xerrors.Errorf(
+			"Solstice consensus weight start %d must exceed its floor %d",
+			params.ConsensusWeight.VStart, params.ConsensusWeight.Floor)
+	}
+	// Round the per-epoch decrement up so the record reaches its configured
+	// floor within the ramp duration even when the total is not divisible.
+	rampTotal := params.ConsensusWeight.VStart - params.ConsensusWeight.Floor
+	rampEpochs := uint64(params.ConsensusWeightRampDurationEpochs)
+	slope := rampTotal / rampEpochs
+	if rampTotal%rampEpochs != 0 {
+		slope++
+	}
+	if slope == 0 || slope > math.MaxInt64 {
+		return nv29.RewardMigrationConfig{}, xerrors.Errorf(
+			"Solstice consensus weight ramp produces invalid slope %d", slope)
+	}
+
+	activationEpoch := buildconstants.UpgradeXxHeight + 1
+	return nv29.RewardMigrationConfig{
+		ActivationEpoch:   activationEpoch,
+		SWATimelockEpochs: params.SWATimelockEpochs,
+		SWAActor:          params.SWAActor,
+		Streams: []reward19.RegisterStreamParams{
+			{
+				ID: 1,
+				Weight: reward19.WeightRecord{
+					VStart: params.ConsensusWeight.VStart,
+					Slope:  -int64(slope),
+					TStart: activationEpoch,
+					Floor:  params.ConsensusWeight.Floor,
+					Cap:    params.ConsensusWeight.Cap,
+				},
+				ActivationEpoch: activationEpoch,
+			},
+			{
+				ID: 2,
+				Weight: reward19.WeightRecord{
+					VStart: params.ServiceWeight.VStart,
+					Slope:  int64(slope),
+					TStart: activationEpoch,
+					Floor:  params.ServiceWeight.Floor,
+					Cap:    params.ServiceWeight.Cap,
+				},
+				Distribution: &reward19.DistributionInit{
+					Writer: params.SRAActor,
+					Shares: []reward19.RecipientShare{{Recipient: params.InitialOrchestrator, Share: reward19.Denom}},
+				},
+				ActivationEpoch: activationEpoch,
+			},
+		},
+	}, nil
+}
+
 func PreUpgradeActorsV19(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) error {
 	// Use half the CPUs for pre-migration, but leave at least 3.
 	workerCount := MigrationMaxWorkerCount
@@ -3388,6 +3450,10 @@ func PreUpgradeActorsV19(ctx context.Context, sm *stmgr.StateManager, cache stmg
 
 func UpgradeActorsV19(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, cb stmgr.ExecMonitor,
 	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+	if epoch != buildconstants.UpgradeXxHeight {
+		return cid.Undef, xerrors.Errorf(
+			"actors v19 upgrade epoch %d does not match configured height %d", epoch, buildconstants.UpgradeXxHeight)
+	}
 	// Use all the CPUs except 2.
 	workerCount := MigrationMaxWorkerCount - 3
 	if workerCount <= 0 {
@@ -3417,6 +3483,10 @@ func upgradeActorsV19Common(
 	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet,
 	config migration.Config,
 ) (cid.Cid, error) {
+	rewardConfig, err := solsticeRewardMigrationConfig()
+	if err != nil {
+		return cid.Undef, err
+	}
 	writeStore := blockstore.NewAutobatch(ctx, sm.ChainStore().StateBlockstore(), units.GiB/4)
 	adtStore := store.ActorStore(ctx, writeStore)
 	// ensure that the manifest is loaded in the blockstore
@@ -3443,7 +3513,7 @@ func upgradeActorsV19Common(
 	}
 
 	// Perform the migration
-	newHamtRoot, err := nv29.MigrateStateTree(ctx, adtStore, manifest, stateRoot.Actors, epoch, config,
+	newHamtRoot, err := nv29.MigrateStateTree(ctx, adtStore, manifest, stateRoot.Actors, epoch, rewardConfig, config,
 		migrationLogger{}, cache)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("upgrading to actors v19: %w", err)

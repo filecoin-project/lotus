@@ -16,6 +16,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 )
 
 var (
@@ -113,6 +115,24 @@ var (
 	UpgradeGoldenWeekHeight              abi.ChainEpoch = -34
 	UpgradeFireHorseHeight               abi.ChainEpoch = -35
 	UpgradeXxHeight                      abi.ChainEpoch = -36
+	// FIP-0118: reward actor bootstrap state installed by the Solstice migration.
+	UpgradeXxRewardBootstrapParams = SolsticeRewardBootstrapParams{
+		SWATimelockEpochs:                 50,
+		ConsensusWeightRampDurationEpochs: 900,
+		ConsensusWeight: SolsticeRewardWeightParams{
+			VStart: 95 * solsticeRewardWeightPercent,
+			Floor:  50 * solsticeRewardWeightPercent,
+			Cap:    95 * solsticeRewardWeightPercent,
+		},
+		ServiceWeight: SolsticeRewardWeightParams{
+			VStart: 5 * solsticeRewardWeightPercent,
+			Floor:  5 * solsticeRewardWeightPercent,
+			Cap:    10 * solsticeRewardWeightPercent,
+		},
+		SWAActor:            builtin.SystemActorAddr,
+		SRAActor:            builtin.SystemActorAddr,
+		InitialOrchestrator: builtin.BurntFundsActorAddr,
+	}
 
 	DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 		0:                    DrandMainnet,

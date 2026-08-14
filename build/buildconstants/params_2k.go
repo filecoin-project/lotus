@@ -13,6 +13,8 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
+
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 )
 
 const BootstrappersFile = ""
@@ -100,6 +102,26 @@ var UpgradeGoldenWeekHeight = abi.ChainEpoch(-31)
 var UpgradeFireHorseHeight = abi.ChainEpoch(-32)
 
 var UpgradeXxHeight = abi.ChainEpoch(200)
+
+// FIP-0118: reward actor bootstrap state installed by the Solstice migration.
+// Generic devnets disable governance and send service rewards to burnt funds.
+var UpgradeXxRewardBootstrapParams = SolsticeRewardBootstrapParams{
+	SWATimelockEpochs:                 50,
+	ConsensusWeightRampDurationEpochs: 900,
+	ConsensusWeight: SolsticeRewardWeightParams{
+		VStart: 95 * solsticeRewardWeightPercent,
+		Floor:  50 * solsticeRewardWeightPercent,
+		Cap:    95 * solsticeRewardWeightPercent,
+	},
+	ServiceWeight: SolsticeRewardWeightParams{
+		VStart: 5 * solsticeRewardWeightPercent,
+		Floor:  5 * solsticeRewardWeightPercent,
+		Cap:    10 * solsticeRewardWeightPercent,
+	},
+	SWAActor:            builtin.SystemActorAddr,
+	SRAActor:            builtin.SystemActorAddr,
+	InitialOrchestrator: builtin.BurntFundsActorAddr,
+}
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandQuicknet,

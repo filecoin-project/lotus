@@ -29,9 +29,11 @@ func load19(store adt.Store, root cid.Cid) (State, error) {
 }
 
 func make19(store adt.Store, currRealizedPower abi.StoragePower) (State, error) {
-	out := state19{store: store}
-	out.State = *reward19.ConstructState(currRealizedPower)
-	return &out, nil
+	st, err := reward19.ConstructState(store, currRealizedPower)
+	if err != nil {
+		return nil, err
+	}
+	return &state19{State: *st, store: store}, nil
 }
 
 type state19 struct {
@@ -57,7 +59,9 @@ func (s *state19) ThisEpochBaselinePower() (abi.StoragePower, error) {
 }
 
 func (s *state19) TotalStoragePowerReward() (abi.TokenAmount, error) {
-	return s.State.TotalStoragePowerReward, nil
+	// Since v19 this adapter reports all FIL minted by f02, not only miner rewards.
+	// Circulating supply subtracts the burnt-funds balance, cancelling f02's residual burn.
+	return s.State.TotalMintedReward, nil
 }
 
 func (s *state19) EffectiveBaselinePower() (abi.StoragePower, error) {
