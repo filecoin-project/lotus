@@ -459,6 +459,9 @@ type FullNode interface {
 	// and pass in the verified deal space directly.
 	// Note: The value returned is overestimated by 10% (multiplied by 110/100).
 	// See: node/impl/full/state.go StateMinerInitialPledgeCollateral implementation.
+	// From network version 29 (FIP-0118) every sector receives maximum quality-adjusted power
+	// regardless of its deal content, so the quality this derives is 1x where the network
+	// assigns 10x: the value returned is far too low and must not be relied on.
 	//
 	// Deprecated: Use StateMinerInitialPledgeForSector instead.
 	StateMinerInitialPledgeCollateral(context.Context, address.Address, miner.SectorPreCommitInfo, types.TipSetKey) (types.BigInt, error) //perm:read
@@ -466,6 +469,9 @@ type FullNode interface {
 	// duration, size, and combined size of any verified pieces within the sector. This calculation
 	// depends on current network conditions (total power, total pledge and current rewards) at the
 	// given tipset.
+	// From network version 29 (FIP-0118) every sector receives maximum quality-adjusted power
+	// regardless of its deal content: pass the full sector size as verifiedSize to get the
+	// pledge the network will actually charge.
 	// Note: The value returned is overestimated by 10% (multiplied by 110/100).
 	// See: node/impl/full/state.go StateMinerInitialPledgeForSector implementation.
 	StateMinerInitialPledgeForSector(ctx context.Context, sectorDuration abi.ChainEpoch, sectorSize abi.SectorSize, verifiedSize uint64, tsk types.TipSetKey) (types.BigInt, error) //perm:read
@@ -549,9 +555,10 @@ type FullNode interface {
 	// StateMarketProposalPending returns whether a given proposal CID is marked as pending in the market actor
 	StateMarketProposalPending(ctx context.Context, proposalCid cid.Cid, tsk types.TipSetKey) (bool, error) //perm:read
 	// StateGetAllocationForPendingDeal returns the allocation for a given deal ID of a pending deal. Returns nil if
-	// pending allocation is not found.
+	// pending allocation is not found. It returns an unsupported error for tipsets at network version 29 or later.
 	StateGetAllocationForPendingDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*verifreg.Allocation, error) //perm:read
-	// StateGetAllocationIdForPendingDeal is like StateGetAllocationForPendingDeal except it returns the allocation ID
+	// StateGetAllocationIdForPendingDeal is like StateGetAllocationForPendingDeal except it returns the allocation ID.
+	// It returns an unsupported error for tipsets at network version 29 or later.
 	StateGetAllocationIdForPendingDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (verifreg.AllocationId, error) //perm:read
 	// StateGetAllocation returns the allocation for a given address and allocation ID.
 	StateGetAllocation(ctx context.Context, clientAddr address.Address, allocationId verifreg.AllocationId, tsk types.TipSetKey) (*verifreg.Allocation, error) //perm:read

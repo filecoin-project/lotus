@@ -20082,7 +20082,7 @@
         {
             "name": "Filecoin.StateGetAllocationForPendingDeal",
             "description": "```go\nfunc (s *FullNodeStruct) StateGetAllocationForPendingDeal(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*verifreg.Allocation, error) {\n\tif s.Internal.StateGetAllocationForPendingDeal == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.StateGetAllocationForPendingDeal(p0, p1, p2)\n}\n```",
-            "summary": "StateGetAllocationForPendingDeal returns the allocation for a given deal ID of a pending deal. Returns nil if\npending allocation is not found.\n",
+            "summary": "StateGetAllocationForPendingDeal returns the allocation for a given deal ID of a pending deal. Returns nil if\npending allocation is not found. It returns an unsupported error for tipsets at network version 29 or later.\n",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -20191,7 +20191,7 @@
         {
             "name": "Filecoin.StateGetAllocationIdForPendingDeal",
             "description": "```go\nfunc (s *FullNodeStruct) StateGetAllocationIdForPendingDeal(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (verifreg.AllocationId, error) {\n\tif s.Internal.StateGetAllocationIdForPendingDeal == nil {\n\t\treturn *new(verifreg.AllocationId), ErrNotSupported\n\t}\n\treturn s.Internal.StateGetAllocationIdForPendingDeal(p0, p1, p2)\n}\n```",
-            "summary": "StateGetAllocationIdForPendingDeal is like StateGetAllocationForPendingDeal except it returns the allocation ID\n",
+            "summary": "StateGetAllocationIdForPendingDeal is like StateGetAllocationForPendingDeal except it returns the allocation ID.\nIt returns an unsupported error for tipsets at network version 29 or later.\n",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -22900,7 +22900,7 @@
         {
             "name": "Filecoin.StateMinerInitialPledgeCollateral",
             "description": "```go\nfunc (s *FullNodeStruct) StateMinerInitialPledgeCollateral(p0 context.Context, p1 address.Address, p2 miner.SectorPreCommitInfo, p3 types.TipSetKey) (types.BigInt, error) {\n\tif s.Internal.StateMinerInitialPledgeCollateral == nil {\n\t\treturn *new(types.BigInt), ErrNotSupported\n\t}\n\treturn s.Internal.StateMinerInitialPledgeCollateral(p0, p1, p2, p3)\n}\n```",
-            "summary": "StateMinerInitialPledgeCollateral attempts to calculate the initial pledge collateral based on a SectorPreCommitInfo.\nThis method uses the DealIDs field in SectorPreCommitInfo to determine the amount of verified\ndeal space in the sector in order to perform a QAP calculation. Since network version 22 and\nthe introduction of DDO, the DealIDs field can no longer be used to reliably determine verified\ndeal space; therefore, this method is deprecated. Use StateMinerInitialPledgeForSector instead\nand pass in the verified deal space directly.\nNote: The value returned is overestimated by 10% (multiplied by 110/100).\nSee: node/impl/full/state.go StateMinerInitialPledgeCollateral implementation.\n\nDeprecated: Use StateMinerInitialPledgeForSector instead.\n",
+            "summary": "StateMinerInitialPledgeCollateral attempts to calculate the initial pledge collateral based on a SectorPreCommitInfo.\nThis method uses the DealIDs field in SectorPreCommitInfo to determine the amount of verified\ndeal space in the sector in order to perform a QAP calculation. Since network version 22 and\nthe introduction of DDO, the DealIDs field can no longer be used to reliably determine verified\ndeal space; therefore, this method is deprecated. Use StateMinerInitialPledgeForSector instead\nand pass in the verified deal space directly.\nNote: The value returned is overestimated by 10% (multiplied by 110/100).\nSee: node/impl/full/state.go StateMinerInitialPledgeCollateral implementation.\nFrom network version 29 (FIP-0118) every sector receives maximum quality-adjusted power\nregardless of its deal content, so the quality this derives is 1x where the network\nassigns 10x: the value returned is far too low and must not be relied on.\n\nDeprecated: Use StateMinerInitialPledgeForSector instead.\n",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -23032,7 +23032,7 @@
         {
             "name": "Filecoin.StateMinerInitialPledgeForSector",
             "description": "```go\nfunc (s *FullNodeStruct) StateMinerInitialPledgeForSector(p0 context.Context, p1 abi.ChainEpoch, p2 abi.SectorSize, p3 uint64, p4 types.TipSetKey) (types.BigInt, error) {\n\tif s.Internal.StateMinerInitialPledgeForSector == nil {\n\t\treturn *new(types.BigInt), ErrNotSupported\n\t}\n\treturn s.Internal.StateMinerInitialPledgeForSector(p0, p1, p2, p3, p4)\n}\n```",
-            "summary": "StateMinerInitialPledgeForSector returns the initial pledge collateral for a given sector\nduration, size, and combined size of any verified pieces within the sector. This calculation\ndepends on current network conditions (total power, total pledge and current rewards) at the\ngiven tipset.\nNote: The value returned is overestimated by 10% (multiplied by 110/100).\nSee: node/impl/full/state.go StateMinerInitialPledgeForSector implementation.\n",
+            "summary": "StateMinerInitialPledgeForSector returns the initial pledge collateral for a given sector\nduration, size, and combined size of any verified pieces within the sector. This calculation\ndepends on current network conditions (total power, total pledge and current rewards) at the\ngiven tipset.\nFrom network version 29 (FIP-0118) every sector receives maximum quality-adjusted power\nregardless of its deal content: pass the full sector size as verifiedSize to get the\npledge the network will actually charge.\nNote: The value returned is overestimated by 10% (multiplied by 110/100).\nSee: node/impl/full/state.go StateMinerInitialPledgeForSector implementation.\n",
             "paramStructure": "by-position",
             "params": [
                 {

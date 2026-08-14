@@ -1,6 +1,44 @@
 package buildconstants
 
-import "github.com/filecoin-project/go-state-types/network"
+import (
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/builtin"
+	reward19 "github.com/filecoin-project/go-state-types/builtin/v19/reward"
+	"github.com/filecoin-project/go-state-types/network"
+)
+
+// UpgradeHeightUnscheduled parks an upgrade beyond any epoch the chain will reach, marking it
+// as not yet scheduled. Networks use it until the upgrade has a real height.
+const UpgradeHeightUnscheduled = abi.ChainEpoch(999999999999999)
+
+const solsticeRewardWeightPercent = reward19.Denom / 100
+
+type SolsticeRewardWeightParams struct {
+	VStart uint64
+	Floor  uint64
+	Cap    uint64
+}
+
+type SolsticeRewardBootstrapParams struct {
+	SWATimelockEpochs                 abi.ChainEpoch
+	ConsensusWeightRampDurationEpochs abi.ChainEpoch
+	ConsensusWeight                   SolsticeRewardWeightParams
+	ServiceWeight                     SolsticeRewardWeightParams
+	SWAActor                          address.Address
+	SRAActor                          address.Address
+	InitialOrchestrator               address.Address
+}
+
+// NeutralSolsticeRewardBootstrapParams defines a consensus-only bootstrap with no explicit stream dependencies.
+var NeutralSolsticeRewardBootstrapParams = SolsticeRewardBootstrapParams{
+	ConsensusWeight: SolsticeRewardWeightParams{
+		VStart: reward19.Denom,
+		Floor:  reward19.Denom,
+		Cap:    reward19.Denom,
+	},
+	SWAActor: builtin.SystemActorAddr,
+}
 
 const (
 	BuildDefault = iota

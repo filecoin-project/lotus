@@ -57,6 +57,7 @@ import (
 	"github.com/filecoin-project/lotus/blockstore"
 	badgerbs "github.com/filecoin-project/lotus/blockstore/badger"
 	"github.com/filecoin-project/lotus/blockstore/splitstore"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	lbuiltin "github.com/filecoin-project/lotus/chain/actors/builtin"
@@ -321,7 +322,8 @@ func getMigrationFuncsForNetwork(nv network.Version) (UpgradeActorsFunc, PreUpgr
 	case network.Version28:
 		return filcns.UpgradeActorsV18, filcns.PreUpgradeActorsV18, checkNv28Invariants, nil
 	case network.Version29:
-		return filcns.UpgradeActorsV19, filcns.PreUpgradeActorsV19, checkNv29Invariants, nil
+		return filcns.UpgradeActorsV19With(buildconstants.UpgradeXxRewardBootstrapParams),
+			filcns.PreUpgradeActorsV19With(buildconstants.UpgradeXxRewardBootstrapParams), checkNv29Invariants, nil
 	default:
 		return nil, nil, nil, xerrors.Errorf("migration not implemented for nv%d", nv)
 	}
