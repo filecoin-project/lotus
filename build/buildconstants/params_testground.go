@@ -112,7 +112,7 @@ var (
 	UpgradeTockFixHeight                 abi.ChainEpoch = -33
 	UpgradeGoldenWeekHeight              abi.ChainEpoch = -34
 	UpgradeFireHorseHeight               abi.ChainEpoch = -35
-	UpgradeXxHeight                      abi.ChainEpoch = -36
+	UpgradeSolsticeHeight                abi.ChainEpoch = -36
 
 	DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 		0:                    DrandMainnet,
