@@ -130,7 +130,7 @@ const UpgradeGoldenWeekHeight abi.ChainEpoch = 3007294
 // 2026-05-07T14:00:00Z
 const UpgradeFireHorseHeight = 3694534
 
-const UpgradeXxHeight = 999999999999999
+const UpgradeXxHeight abi.ChainEpoch = 999999999999999
 
 // FIP-0118: reward actor bootstrap state installed by the Solstice migration.
 // Addresses must be set before enabling the upgrade.

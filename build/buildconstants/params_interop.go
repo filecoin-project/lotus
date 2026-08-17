@@ -86,7 +86,7 @@ var UpgradeGoldenWeekHeight = abi.ChainEpoch(-31)
 
 const UpgradeFireHorseHeight = -32
 
-const UpgradeXxHeight = 50
+const UpgradeXxHeight abi.ChainEpoch = 50
 
 // FIP-0118: reward actor bootstrap state installed by the Solstice migration.
 // Generic devnets disable governance and send service rewards to burnt funds.
