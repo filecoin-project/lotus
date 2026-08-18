@@ -66,16 +66,25 @@ jobs:
       - uses: ./.github/actions/install-go
       - env:
           GITHUB_TOKEN: ${{ github.token }}
+          RELEASE_TYPE: ${{ github.event.inputs.type }}
+          RELEASE_TAG: ${{ github.event.inputs.tag }}
+          RELEASE_LEVEL: ${{ github.event.inputs.level }}
+          RELEASE_FLOW: ${{ github.event.inputs.release-flow }}
+          NETWORK_UPGRADE: ${{ github.event.inputs.network-upgrade }}
+          DISCUSSION_LINK: ${{ github.event.inputs.discussion-link }}
+          CHANGELOG_LINK: ${{ github.event.inputs.changelog-link }}
+          RC1_DATE: ${{ github.event.inputs.rc1-date }}
+          STABLE_DATE: ${{ github.event.inputs.stable-date }}
         run: |
           go run cmd/release/main.go create-issue \
             --create-on-github=true \
-            --type "${{ github.event.inputs.type }}" \
-            --tag "${{ github.event.inputs.tag }}" \
-            --level "${{ github.event.inputs.level }}" \
-            --release-flow "${{ github.event.inputs.release-flow }}" \
-            --network-upgrade "${{ github.event.inputs.network-upgrade }}" \
-            --discussion-link "${{ github.event.inputs.discussion-link }}" \
-            --changelog-link "${{ github.event.inputs.changelog-link }}" \
-            --rc1-date "${{ github.event.inputs.rc1-date }}" \
-            --stable-date "${{ github.event.inputs.stable-date }}" \
+            --type "$RELEASE_TYPE" \
+            --tag "$RELEASE_TAG" \
+            --level "$RELEASE_LEVEL" \
+            --release-flow "$RELEASE_FLOW" \
+            --network-upgrade "$NETWORK_UPGRADE" \
+            --discussion-link "$DISCUSSION_LINK" \
+            --changelog-link "$CHANGELOG_LINK" \
+            --rc1-date "$RC1_DATE" \
+            --stable-date "$STABLE_DATE" \
             --repo "filecoin-project/lotus"
