@@ -169,6 +169,9 @@ func parseHeightRange(heaviest abi.ChainEpoch, fromHeight, toHeight *abi.ChainEp
 	if fromHeight != nil && *fromHeight < 0 {
 		return 0, 0, fmt.Errorf("range 'from' must be greater than or equal to 0")
 	}
+	if toHeight != nil && *toHeight < 0 {
+		return 0, 0, fmt.Errorf("range 'to' must be greater than or equal to 0")
+	}
 	if fromHeight == nil {
 		minHeight = -1
 	} else {
