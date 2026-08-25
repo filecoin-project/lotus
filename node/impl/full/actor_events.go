@@ -196,7 +196,7 @@ func parseHeightRange(heaviest abi.ChainEpoch, fromHeight, toHeight *abi.ChainEp
 		}
 	} else if minHeight >= 0 && maxHeight >= 0 {
 		if minHeight > maxHeight {
-			return 0, 0, fmt.Errorf("invalid epoch range: 'to' height (%d) must be after 'from' height (%d)", minHeight, maxHeight)
+			return 0, 0, fmt.Errorf("invalid epoch range: 'to' height (%d) must be after 'from' height (%d)", maxHeight, minHeight)
 		} else if maxHeight-minHeight > maxRange {
 			return 0, 0, fmt.Errorf("invalid epoch range: range between to and 'from' heights is too large (maximum: %d)", maxRange)
 		}
