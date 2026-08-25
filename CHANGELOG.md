@@ -21,7 +21,7 @@
 
 - fix(network): prevent remote memory exhaustion through Lotus's default WebTransport listener by updating go-libp2p and webtransport-go (CVE-2026-57497). ([filecoin-project/lotus#13734](https://github.com/filecoin-project/lotus/pull/13734))
 - fix(events): `GetActorEventsRaw` and `SubscribeActorEventsRaw` now reject a filter whose `toHeight` is negative. ([filecoin-project/lotus#13751](https://github.com/filecoin-project/lotus/pull/13751))
-- fix(eth): `eth_sendRawTransaction` now rejects a transaction whose RLP integer fields are not minimally encoded, matching go-ethereum. A field padded with leading zero bytes decoded to the same transaction as its minimal form, so a re-encoded copy of an already-signed transaction recovered the same sender and reported the same transaction hash, while the hash handed back to the caller is derived from the submitted bytes and so no longer matched the one the node indexes. ([filecoin-project/lotus#13744](https://github.com/filecoin-project/lotus/pull/13744))
+- fix(eth): `eth_sendRawTransaction` now rejects a transaction whose RLP integer fields are not minimally encoded, matching go-ethereum. ([filecoin-project/lotus#13744](https://github.com/filecoin-project/lotus/pull/13744))
 
 ## 👌 Improvements
 
