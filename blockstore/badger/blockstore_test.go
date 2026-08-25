@@ -3,14 +3,17 @@ package badgerbs
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	badger "github.com/dgraph-io/badger/v2"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
 
@@ -258,4 +261,90 @@ func TestMoveWithPrefix(t *testing.T) {
 		opts.Prefix = "/prefixed/"
 		return opts
 	})
+}
+
+func verifyingOptions(path string) Options {
+	opts := DefaultOptions(path)
+	opts.VerifyReads = true
+	return opts
+}
+
+// damage overwrites the bytes stored under c, behind the blockstore's back, the
+// way a truncated or torn write does.
+func damage(tb testing.TB, bbs *Blockstore, c cid.Cid, with []byte) {
+	tb.Helper()
+	k, _ := bbs.PooledStorageKey(c)
+	require.NoError(tb, bbs.db.Update(func(txn *badger.Txn) error {
+		return txn.Set(k, with)
+	}))
+}
+
+func TestVerifyReadsReportsDamagedBlockAsMissing(t *testing.T) {
+	ctx := context.Background()
+	bs, _ := newBlockstore(verifyingOptions)(t)
+	bbs := bs.(*Blockstore)
+	defer bbs.Close() //nolint:errcheck
+
+	blk := blocks.NewBlock([]byte("some data worth keeping"))
+	require.NoError(t, bbs.Put(ctx, blk))
+	damage(t, bbs, blk.Cid(), []byte("truncated"))
+
+	_, err := bbs.Get(ctx, blk.Cid())
+	require.True(t, ipld.IsNotFound(err), "damaged block should read as missing, got %v", err)
+
+	err = bbs.View(ctx, blk.Cid(), func([]byte) error { return nil })
+	require.True(t, ipld.IsNotFound(err), "damaged block should view as missing, got %v", err)
+
+	has, err := bbs.Has(ctx, blk.Cid())
+	require.NoError(t, err)
+	require.True(t, has, "Has still reports presence; healing comes from the read paths")
+}
+
+func TestVerifyReadsAllowsGoodCopyToReplaceDamage(t *testing.T) {
+	ctx := context.Background()
+	bs, _ := newBlockstore(verifyingOptions)(t)
+	bbs := bs.(*Blockstore)
+	defer bbs.Close() //nolint:errcheck
+
+	blk := blocks.NewBlock([]byte("some data worth keeping"))
+	require.NoError(t, bbs.Put(ctx, blk))
+	damage(t, bbs, blk.Cid(), []byte("truncated"))
+
+	// Without this, the write is skipped as redundant and the damage is permanent.
+	require.NoError(t, bbs.Put(ctx, blk))
+
+	got, err := bbs.Get(ctx, blk.Cid())
+	require.NoError(t, err)
+	require.Equal(t, blk.RawData(), got.RawData())
+}
+
+func TestVerifyReadsPreservesCallbackError(t *testing.T) {
+	ctx := context.Background()
+	bs, _ := newBlockstore(verifyingOptions)(t)
+	bbs := bs.(*Blockstore)
+	defer bbs.Close() //nolint:errcheck
+
+	blk := blocks.NewBlock([]byte("intact"))
+	require.NoError(t, bbs.Put(ctx, blk))
+
+	sentinel := errors.New("callback failed")
+	err := bbs.View(ctx, blk.Cid(), func([]byte) error { return sentinel })
+	require.ErrorIs(t, err, sentinel, "an error from the caller must not be reported as a missing block")
+}
+
+func TestWithoutVerifyReadsDamageIsServed(t *testing.T) {
+	ctx := context.Background()
+	bs, _ := newBlockstore(DefaultOptions)(t)
+	bbs := bs.(*Blockstore)
+	defer bbs.Close() //nolint:errcheck
+
+	blk := blocks.NewBlock([]byte("some data worth keeping"))
+	require.NoError(t, bbs.Put(ctx, blk))
+	damage(t, bbs, blk.Cid(), []byte("truncated"))
+
+	// The default: damage is served as though it were the real block, which is
+	// what makes it worth being able to turn verification on.
+	got, err := bbs.Get(ctx, blk.Cid())
+	require.NoError(t, err)
+	require.Equal(t, []byte("truncated"), got.RawData())
 }
