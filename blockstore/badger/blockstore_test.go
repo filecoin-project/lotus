@@ -273,7 +273,10 @@ func verifyingOptions(path string) Options {
 // way a truncated or torn write does.
 func damage(tb testing.TB, bbs *Blockstore, c cid.Cid, with []byte) {
 	tb.Helper()
-	k, _ := bbs.PooledStorageKey(c)
+	k, pooled := bbs.PooledStorageKey(c)
+	if pooled {
+		defer KeyPool.Put(k)
+	}
 	require.NoError(tb, bbs.db.Update(func(txn *badger.Txn) error {
 		return txn.Set(k, with)
 	}))
