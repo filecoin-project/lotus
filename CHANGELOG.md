@@ -20,6 +20,7 @@
 ## 🐛 Bug Fixes
 
 - fix(network): prevent remote memory exhaustion through Lotus's default WebTransport listener by updating go-libp2p and webtransport-go (CVE-2026-57497). ([filecoin-project/lotus#13734](https://github.com/filecoin-project/lotus/pull/13734))
+- fix(events): `GetActorEventsRaw` and `SubscribeActorEventsRaw` now reject a filter whose `toHeight` is negative. ([filecoin-project/lotus#13751](https://github.com/filecoin-project/lotus/pull/13751))
 
 ## 👌 Improvements
 
