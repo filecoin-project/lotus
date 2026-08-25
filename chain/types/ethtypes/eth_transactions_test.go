@@ -167,11 +167,10 @@ func TestEthTransactionFromSignedFilecoinMessage(t *testing.T) {
 }
 
 func TestParseEthTransactionNonMinimalInts(t *testing.T) {
-	// RLP integers carry no leading zero bytes, so a field encoded with one
-	// decodes to a value that already has a shorter encoding. Both forms parse
-	// to the same transaction and recover the same sender, which would let
-	// anyone rewrite the bytes of someone else's signed transaction and get a
-	// different EthHashFromTxBytes out of it.
+	// RLP integers carry no leading zero bytes, so a padded field is a second
+	// encoding of a value that already has one. Rejecting it keeps a signed
+	// transaction to a single valid encoding, which is what makes the hash of the
+	// submitted bytes and the hash the transaction is indexed under the same hash.
 	testcases := []struct {
 		name  string
 		rawTx string
