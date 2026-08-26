@@ -1,7 +1,7 @@
 package chain
 
 import (
-	"sort"
+	"slices"
 	"sync"
 	"time"
 
@@ -63,8 +63,8 @@ func (brt *blockReceiptTracker) GetPeers(ts *types.TipSet) []peer.ID {
 		out = append(out, p)
 	}
 
-	sort.Slice(out, func(i, j int) bool {
-		return ps.peers[out[i]].Before(ps.peers[out[j]])
+	slices.SortFunc(out, func(a, b peer.ID) int {
+		return ps.peers[a].Compare(ps.peers[b])
 	})
 
 	return out

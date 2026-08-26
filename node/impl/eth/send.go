@@ -66,7 +66,9 @@ func (e *ethSend) ethSendRawTransaction(ctx context.Context, rawTx ethtypes.EthB
 		}
 	}
 
-	return ethtypes.EthHashFromTxBytes(rawTx), nil
+	// Callers look the transaction up by this hash, so it must be the one it is
+	// indexed under.
+	return txHash, nil
 }
 
 type EthSendDisabled struct{}

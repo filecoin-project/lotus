@@ -11,11 +11,33 @@
 
 ## ☢️ Upgrade Warnings ☢️
 
+- `lotus state active-sectors` has been removed and merged into `lotus state sectors`, which now defaults to active sectors only (previously it returned every committed sector). Use `lotus state sectors --all` for the previous full-sector-set behavior. ([filecoin-project/lotus#13743](https://github.com/filecoin-project/lotus/pull/13743))
+
+## ⭐ New Features
+
+- feat(cli): `lotus state sectors` now prints `Activation`, `Expiration`, `InitialPledge`, and `DailyFee` for each sector by default, and gained a `--human` flag to render epochs as local calendar time and attoFIL amounts as FIL instead of raw numbers. ([filecoin-project/lotus#13743](https://github.com/filecoin-project/lotus/pull/13743))
+- feat(shed): add `lotus-shed eth storage-dump` / `eth storage-decode` to enumerate and decode an EVM contract's on-chain storage KAMT at a given tipset. Dumps slot-sorted NDJSON plus KAMT shape stats (optional CARv1 and `eth_getStorageAt` verification); decodes against a forge storage layout with ERC-1967/7201 support ([filecoin-project/lotus#13730](https://github.com/filecoin-project/lotus/pull/13730))
+
+## 🐛 Bug Fixes
+
+- fix(network): prevent remote memory exhaustion through Lotus's default WebTransport listener by updating go-libp2p and webtransport-go (CVE-2026-57497). ([filecoin-project/lotus#13734](https://github.com/filecoin-project/lotus/pull/13734))
+- fix(events): `GetActorEventsRaw` and `SubscribeActorEventsRaw` now reject a filter whose `toHeight` is negative. ([filecoin-project/lotus#13751](https://github.com/filecoin-project/lotus/pull/13751))
+- fix(eth): `eth_sendRawTransaction` now rejects a transaction whose RLP integer fields are not minimally encoded, matching go-ethereum. ([filecoin-project/lotus#13744](https://github.com/filecoin-project/lotus/pull/13744))
+
+## 👌 Improvements
+
+# Node v1.36.2 / 2026-07-27
+
+Lotus Node v1.36.2 is a recommended patch release focused on Ethereum RPC correctness and compatibility, `StateWaitMsg` confidence handling, dependency reliability, and operator tooling.
+
+## ☢️ Upgrade Warnings ☢️
+
+- Tracing configuration has changed: the deprecated Jaeger exporter has been replaced by an OTLP HTTP exporter. The `LOTUS_JAEGER_*` environment variables are no longer supported; configure `LOTUS_OTEL_EXPORTER_ENDPOINT` and `LOTUS_OTEL_EXPORTER_INSECURE` instead. ([filecoin-project/lotus#13533](https://github.com/filecoin-project/lotus/pull/13533))
+
 ## ⭐ New Features
 
 - feat(lotus-shed): accept Ethereum transaction hashes in msg ([filecoin-project/lotus#13727](https://github.com/filecoin-project/lotus/pull/13727))
-- feat(cli): `lotus-miner actor settle-deal` now uses gas-aware adaptive batching — deal batches whose estimated gas would exceed a fraction of the block gas limit (tunable via `--max-gas-fraction`, default 1/4) are automatically split so no single `SettleDealPaymentsExported` message hogs block capacity ([filecoin-project/lotus#13471](https://github.com/filecoin-project/lotus/issues/13471))
-- feat(shed): add `lotus-shed eth storage-dump` / `eth storage-decode` to enumerate and decode an EVM contract's on-chain storage KAMT at a given tipset. Dumps slot-sorted NDJSON plus KAMT shape stats (optional CARv1 and `eth_getStorageAt` verification); decodes against a forge storage layout with ERC-1967/7201 support ([filecoin-project/lotus#13729](https://github.com/filecoin-project/lotus/pull/13729))
+- feat(cli): `lotus-miner actor settle-deal` now uses gas-aware adaptive batching — deal batches whose estimated gas would exceed a fraction of the block gas limit (tunable via `--max-gas-fraction`, default 1/4) are automatically split so no single `SettleDealPaymentsExported` message hogs block capacity ([filecoin-project/lotus#13669](https://github.com/filecoin-project/lotus/pull/13669))
 
 ## 🐛 Bug Fixes
 
@@ -25,12 +47,41 @@
 - fix(eth): return `ErrNullRound` for explicit null epochs in singleton block-execution ETH APIs. `eth_getBlockReceipts` / `EthGetBlockReceiptsLimited` now reject a null block number instead of returning receipts for the previous non-null tipset. State-at-epoch APIs such as `eth_getBalance`, `eth_getCode`, `eth_getStorageAt`, `eth_getTransactionCount`, `eth_call`, `eth_estimateGas`, and `FilecoinAddressToEthAddress` continue to resolve null epochs to the previous non-null tipset because Filecoin state is defined at the null epoch and is unchanged from that previous state. Range/sampling APIs such as `eth_feeHistory` also continue to walk real tipsets and skip null epochs, including when resolving a null `newestBlock` anchor to the previous non-null tipset. ([filecoin-project/lotus#13694](https://github.com/filecoin-project/lotus/pull/13694))
 - fix(eth): return `null` from `eth_getTransactionByHash` and `eth_getTransactionReceipt` for transaction hashes that were replaced before execution, matching Ethereum replacement semantics ([filecoin-project/lotus#13664](https://github.com/filecoin-project/lotus/pull/13664))
 - fix(eth): `eth_getLogs`, `eth_newFilter` and the `logs` variant of `eth_subscribe` now reject a filter that specifies more than 4 topic positions, matching the Ethereum JSON-RPC spec and go-ethereum. Previously the surplus positions were accepted but could never match an event (EVM logs carry at most `t1`..`t4`), so the filter silently returned no results while still adding one event-index join per position. ([filecoin-project/lotus#13676](https://github.com/filecoin-project/lotus/pull/13676))
+- fix(eth): reject malformed `EthNonce` JSON values that do not decode to exactly 8 bytes instead of panicking on short inputs or silently truncating long inputs. ([filecoin-project/lotus#13696](https://github.com/filecoin-project/lotus/pull/13696))
 
 ## 👌 Improvements
 
 - chore(deps): update `go-libp2p-pubsub` to v0.17.0. Lotus now uses the replacement outbound-stream trace events and the Google Protobuf size API. ([filecoin-project/lotus#13707](https://github.com/filecoin-project/lotus/pull/13707))
 - chore(deps): update libp2p networking dependencies. This includes libp2p's updated handling of unspecified listen addresses, so nodes listening on `0.0.0.0`/`::` may report or advertise concrete interface addresses returned by libp2p. ([filecoin-project/lotus#13588](https://github.com/filecoin-project/lotus/pull/13588))
-- refactor(tracing): replace deprecated `jaeger` exporter with OTLP HTTP exporter. The `LOTUS_JAEGER_*` environment variables have been replaced by `LOTUS_OTEL_EXPORTER_ENDPOINT` and `LOTUS_OTEL_EXPORTER_INSECURE`. ([filecoin-project/lotus#13533](https://github.com/filecoin-project/lotus/pull/13533))
+- chore(deps): update `go-jsonrpc` to v0.10.2 and `go-f3` to v0.8.14, including WebSocket ping handling, response/channel hardening, and delayed F3 bootstrap retry throttling. ([filecoin-project/lotus#13726](https://github.com/filecoin-project/lotus/pull/13726))
+- chore(bootstrap): use `/dnsaddr` for ChainSafe bootstrap peers to allow peer changes through DNS, and remove the inactive `fil.devtty.eu` peers. ([filecoin-project/lotus#13715](https://github.com/filecoin-project/lotus/pull/13715))
+
+## 📝 Changelog
+
+For the full set of changes since the last stable release:
+
+- Node: https://github.com/filecoin-project/lotus/compare/release/v1.36.1...release/v1.36.2
+
+## 👨‍👩‍👧‍👦 Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Rod Vagg | 17 | +2851/-1774 | 99 |
+| nijoe1 | 1 | +1277/-123 | 15 |
+| dependabot[bot] | 25 | +767/-340 | 50 |
+| Phi-rjan | 7 | +284/-299 | 21 |
+| ZenGround0 | 1 | +171/-366 | 17 |
+| Matt Van Horn | 1 | +246/-19 | 4 |
+| iyiola-dev | 1 | +89/-113 | 9 |
+| William Morriss | 1 | +114/-2 | 6 |
+| LexLuthr | 1 | +101/-6 | 3 |
+| Kaif | 2 | +59/-7 | 5 |
+| Linghao | 1 | +58/-0 | 3 |
+| Jakub Sztandera | 1 | +26/-10 | 2 |
+| Phi | 3 | +18/-16 | 15 |
+| Hubert | 1 | +2/-9 | 2 |
+| futurehua | 1 | +5/-5 | 5 |
+| web3-bot | 1 | +1/-1 | 1 |
 
 # Node and Miner v1.36.1 / 2026-06-30
 

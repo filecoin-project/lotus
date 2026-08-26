@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"html/template"
 	"net/url"
 	"os"
 	"os/exec"
@@ -13,6 +12,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"text/template"
 
 	masterminds "github.com/Masterminds/semver/v3"
 	"github.com/Masterminds/sprig/v3"
@@ -132,6 +132,48 @@ func getProject(name, version string) project {
 
 const releaseDateStringPattern = `^(Week of )?\d{4}-\d{2}-\d{2}( \(estimate\))?$`
 
+const (
+	releaseFlowAuto = "auto"
+	releaseFlowRC   = "rc"
+	releaseFlowNoRC = "no-rc"
+)
+
+var (
+	// commentWrappedActionRegexp matches a template action wrapped in an HTML comment, e.g. `<!--{{if .Foo}}-->`.
+	commentWrappedActionRegexp = regexp.MustCompile(`<!--[ \t]*(\{\{.*?\}\})[ \t]*-->`)
+	// controlLineRegexp matches a line that, once unwrapped, holds nothing but template actions.
+	controlLineRegexp = regexp.MustCompile(`^[ \t]*(\{\{.*\}\})[ \t]*$`)
+)
+
+// findMalformedActionWrapper returns the first line holding a template action whose HTML comment
+// wrapper commentWrappedActionRegexp can't match, or "" when there is none.
+func findMalformedActionWrapper(templateSource string) string {
+	for _, line := range strings.Split(templateSource, "\n") {
+		if !strings.Contains(line, "{{") {
+			continue
+		}
+		if strings.Contains(commentWrappedActionRegexp.ReplaceAllString(line, "$1"), "<!--") {
+			return line
+		}
+	}
+	return ""
+}
+
+// stripControlLines appends the actions of every control-only line to the end of the preceding
+// line, so the line they occupied contributes no newline of its own to the rendered issue.
+func stripControlLines(templateSource string) string {
+	lines := strings.Split(templateSource, "\n")
+	kept := make([]string, 0, len(lines))
+	for _, line := range lines {
+		if match := controlLineRegexp.FindStringSubmatch(line); match != nil && len(kept) > 0 {
+			kept[len(kept)-1] += match[1]
+			continue
+		}
+		kept = append(kept, line)
+	}
+	return strings.Join(kept, "\n")
+}
+
 func main() {
 	app := &cli.App{
 		Name:  "release",
@@ -213,8 +255,14 @@ func main() {
 						Required: false,
 					},
 					&cli.StringFlag{
+						Name:     "release-flow",
+						Usage:    "Which release flow should the issue use? (Options: auto, rc, no-rc). auto uses rc for network upgrades and no-rc otherwise.",
+						Value:    releaseFlowAuto,
+						Required: false,
+					},
+					&cli.StringFlag{
 						Name:     "rc1-date",
-						Usage:    fmt.Sprintf("What's the expected shipping date for RC1? (Pattern: '%s'))", releaseDateStringPattern),
+						Usage:    fmt.Sprintf("What's the expected shipping date for RC1? (Pattern: '%s')", releaseDateStringPattern),
 						Value:    "TBD",
 						Required: false,
 					},
@@ -275,6 +323,24 @@ func main() {
 						}
 					}
 
+					requestedReleaseFlow := c.String("release-flow")
+					switch requestedReleaseFlow {
+					case releaseFlowAuto, releaseFlowRC, releaseFlowNoRC:
+					default:
+						return fmt.Errorf("invalid value for the 'release-flow' flag. Allowed values are 'auto', 'rc', and 'no-rc'")
+					}
+					releaseFlow := requestedReleaseFlow
+					if releaseFlow == releaseFlowAuto {
+						if networkUpgrade != "" {
+							releaseFlow = releaseFlowRC
+						} else {
+							releaseFlow = releaseFlowNoRC
+						}
+					}
+					if releaseFlow == releaseFlowNoRC && networkUpgrade != "" {
+						return fmt.Errorf("invalid value for the 'release-flow' flag. no-rc releases are not allowed for network upgrades; use 'auto' or 'rc'")
+					}
+
 					changelogLink := c.String("changelog-link")
 					if changelogLink != "" {
 						_, err := url.ParseRequestURI(changelogLink)
@@ -286,7 +352,9 @@ func main() {
 					releaseDateStringRegexp := regexp.MustCompile(releaseDateStringPattern)
 
 					rc1Date := c.String("rc1-date")
-					if rc1Date != "TBD" {
+					if releaseFlow == releaseFlowNoRC {
+						rc1Date = "n/a"
+					} else if rc1Date != "TBD" {
 						matches := releaseDateStringRegexp.FindStringSubmatch(rc1Date)
 						if matches == nil {
 							return fmt.Errorf("rc1-date must be of form %s", releaseDateStringPattern)
@@ -310,6 +378,13 @@ func main() {
 					repoOwner := matches[1]
 					repoName := matches[2]
 
+					firstReleaseTarget := "Stable Release"
+					releaseTargets := []string{"Stable Release"}
+					if releaseFlow == releaseFlowRC {
+						firstReleaseTarget = "rc1"
+						releaseTargets = []string{"rc1", "rcX", "Stable Release"}
+					}
+
 					// Prepare template data
 					data := map[string]any{
 						"ContentGeneratedWithLotusReleaseCli": true,
@@ -318,6 +393,12 @@ func main() {
 						"Tag":                                 releaseVersion.String(),
 						"NextTag":                             releaseVersion.IncPatch().String(),
 						"Level":                               releaseLevel,
+						"RequestedReleaseFlow":                requestedReleaseFlow,
+						"ReleaseFlow":                         releaseFlow,
+						"NoRCRelease":                         releaseFlow == releaseFlowNoRC,
+						"RCRelease":                           releaseFlow == releaseFlowRC,
+						"FirstReleaseTarget":                  firstReleaseTarget,
+						"ReleaseTargets":                      releaseTargets,
 						"NetworkUpgrade":                      networkUpgrade,
 						"NetworkUpgradeDiscussionLink":        discussionLink,
 						"NetworkUpgradeChangelogEntryLink":    changelogLink,
@@ -330,8 +411,24 @@ func main() {
 					if err != nil {
 						return fmt.Errorf("failed to read issue template: %w", err)
 					}
+					// A wrapper that doesn't match, e.g. `<!--{{if .Foo}})-->`, would leave a stray `<!--`
+					// in the issue body rather than failing, so reject it up front.
+					if line := findMalformedActionWrapper(string(issueTemplate)); line != "" {
+						return fmt.Errorf("malformed comment-wrapped template action in issue template: %s", line)
+					}
+
+					// Control flow in the template lives inside HTML comments so that the template file
+					// parses as clean markdown on its own.  That means Go's {{- -}} trim markers can't be
+					// used to swallow the newline a control statement leaves behind, since the whitespace
+					// sits outside the action but inside the comment.  Strip the comment wrappers here
+					// instead: an action that had a line to itself no longer contributes a newline, while
+					// actions embedded in a content line are unaffected.  The result is that whitespace in
+					// the generated issue matches the whitespace in the template.
+					templateSource := commentWrappedActionRegexp.ReplaceAllString(string(issueTemplate), "$1")
+					templateSource = stripControlLines(templateSource)
+
 					// Sprig used for String contains and Lists
-					tmpl, err := template.New("issue").Funcs(sprig.FuncMap()).Parse(string(issueTemplate))
+					tmpl, err := template.New("issue").Funcs(sprig.FuncMap()).Parse(templateSource)
 					if err != nil {
 						return fmt.Errorf("failed to parse issue template: %w", err)
 					}
@@ -347,17 +444,6 @@ func main() {
 						issueTitle += fmt.Sprintf(" (nv%s)", networkUpgrade)
 					}
 					issueBody := issueBodyBuffer.String()
-
-					// Remove duplicate newlines before headers and list items since the templating leaves a lot extra newlines around.
-					// Extra newlines are present because go formatting control statements are done within HTML comments rather than using {{- -}}.
-					// HTML comments are used instead so that the template file parses as clean markdown on its own.
-					// In addition, HTML comments were also required within "ranges" in the template.
-					// Using HTML comments everywhere keeps things consistent.
-					// The one exception is after `</summary>` tags.  In that case we preserve the newlines,
-					// as without newlines the section doesn't do markdown formatting on GitHub.
-					// Since Go regexp doesn't support negative lookbehind, we just look for any non ">".
-					re := regexp.MustCompile(`([^>])\n\n+([^#*\[\|])`)
-					issueBody = re.ReplaceAllString(issueBody, "$1\n$2")
 
 					if !createOnGitHub {
 						// Create the URL-encoded parameters

@@ -312,7 +312,7 @@ type DealTerminatedEvent struct {
 
 #### Deal completed
 
-The `deal-completed` event is emitted when a deal is marked as successfully complete by the Market actor cron job. The cron job will deem a deal to be successfully completed if it is past it’s end epoch without being slashed.
+The `deal-completed` event is emitted when a deal is marked as successfully complete by the Market actor cron job. The cron job will deem a deal to be successfully completed if it is past its end epoch without being slashed.
 
 [FIP-0074](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0074.md) ensures that the processing of completed deals is done as part of a method called by the storage provider thus making this event available to clients and also to ensure that storage providers pay the gas costs of processing deal completion and event emission. This applies to new deals made after network version 22. For deals made before network version 22, this event will be emitted by the market actor cron job.
 
