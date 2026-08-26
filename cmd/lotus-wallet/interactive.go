@@ -141,6 +141,8 @@ func (c *InteractiveWallet) WalletSign(ctx context.Context, k address.Address, m
 			return xerrors.Errorf("TODO") // TODO
 		default:
 			log.Infow("WalletSign", "address", k, "type", meta.Type)
+			fmt.Printf("Signing bytes (%d bytes, hex):\n%s\n", len(msg), hex.EncodeToString(msg))
+			fmt.Println("WARNING: message type is not recognized; the above raw bytes are what will be signed. Approve only if you can verify them out-of-band.")
 		}
 
 		return nil
