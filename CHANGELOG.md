@@ -17,6 +17,8 @@
 
 - feat(cli): `lotus state sectors` now prints `Activation`, `Expiration`, `InitialPledge`, and `DailyFee` for each sector by default, and gained a `--human` flag to render epochs as local calendar time and attoFIL amounts as FIL instead of raw numbers. ([filecoin-project/lotus#13743](https://github.com/filecoin-project/lotus/pull/13743))
 - feat(shed): add `lotus-shed eth storage-dump` / `eth storage-decode` to enumerate and decode an EVM contract's on-chain storage KAMT at a given tipset. Dumps slot-sorted NDJSON plus KAMT shape stats (optional CARv1 and `eth_getStorageAt` verification); decodes against a forge storage layout with ERC-1967/7201 support ([filecoin-project/lotus#13730](https://github.com/filecoin-project/lotus/pull/13730))
+- feat(blockstore): `LOTUS_BLOCKSTORE_VERIFY_READS=1` enables a verify-after-read mode for the blockstore, which incurs a hash cost on every block load but can be used to help heal a damaged blockstore by re-importing blocks and overwriting damaged ones. ([filecoin-project/lotus#13752](https://github.com/filecoin-project/lotus/pull/13752))
+- feat(shed): `lotus-shed import-car` can now read and import modern FRC-0108 v2 snapshot CARs into the Lotus blockstore, similar to `lotus daemon --import-snapshot`. ([filecoin-project/lotus#13752](https://github.com/filecoin-project/lotus/pull/13752))
 
 ## 🐛 Bug Fixes
 
