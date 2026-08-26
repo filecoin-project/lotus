@@ -16,12 +16,15 @@
 ## ⭐ New Features
 
 - feat(cli): `lotus state sectors` now prints `Activation`, `Expiration`, `InitialPledge`, and `DailyFee` for each sector by default, and gained a `--human` flag to render epochs as local calendar time and attoFIL amounts as FIL instead of raw numbers. ([filecoin-project/lotus#13743](https://github.com/filecoin-project/lotus/pull/13743))
+- feat(shed): add `lotus-shed eth storage-dump` / `eth storage-decode` to enumerate and decode an EVM contract's on-chain storage KAMT at a given tipset. Dumps slot-sorted NDJSON plus KAMT shape stats (optional CARv1 and `eth_getStorageAt` verification); decodes against a forge storage layout with ERC-1967/7201 support ([filecoin-project/lotus#13730](https://github.com/filecoin-project/lotus/pull/13730))
 - feat(blockstore): `LOTUS_BLOCKSTORE_VERIFY_READS=1` enables a verify-after-read mode for the blockstore, which incurs a hash cost on every block load but can be used to help heal a damaged blockstore by re-importing blocks and overwriting damaged ones. ([filecoin-project/lotus#13752](https://github.com/filecoin-project/lotus/pull/13752))
 - feat(shed): `lotus-shed import-car` can now read and import modern FRC-0108 v2 snapshot CARs into the Lotus blockstore, similar to `lotus daemon --import-snapshot`. ([filecoin-project/lotus#13752](https://github.com/filecoin-project/lotus/pull/13752))
 
 ## 🐛 Bug Fixes
 
 - fix(network): prevent remote memory exhaustion through Lotus's default WebTransport listener by updating go-libp2p and webtransport-go (CVE-2026-57497). ([filecoin-project/lotus#13734](https://github.com/filecoin-project/lotus/pull/13734))
+- fix(events): `GetActorEventsRaw` and `SubscribeActorEventsRaw` now reject a filter whose `toHeight` is negative. ([filecoin-project/lotus#13751](https://github.com/filecoin-project/lotus/pull/13751))
+- fix(eth): `eth_sendRawTransaction` now rejects a transaction whose RLP integer fields are not minimally encoded, matching go-ethereum. ([filecoin-project/lotus#13744](https://github.com/filecoin-project/lotus/pull/13744))
 
 ## 👌 Improvements
 
