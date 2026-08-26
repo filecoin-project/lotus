@@ -140,13 +140,6 @@ func (c *InteractiveWallet) WalletSign(ctx context.Context, k address.Address, m
 		case api.MTDealProposal:
 			return xerrors.Errorf("TODO") // TODO
 		default:
-			// The node hardcodes MsgMeta{Type: api.MTUnknown} on this path, so
-			// the default branch is the NORMAL case, not an exotic one - and
-			// meta is entirely caller-supplied over JSON-RPC. Rendering only
-			// the address and type then asking "Accept the above?" lets a
-			// caller submit the CID bytes of an arbitrary crafted message and
-			// have the operator approve it blind. Render the signing bytes so
-			// the operator can see what is actually being approved.
 			log.Infow("WalletSign", "address", k, "type", meta.Type)
 			fmt.Printf("Signing bytes (%d bytes, hex):\n%s\n", len(msg), hex.EncodeToString(msg))
 			fmt.Println("WARNING: message type is not recognized; the above raw bytes are what will be signed. Approve only if you can verify them out-of-band.")
