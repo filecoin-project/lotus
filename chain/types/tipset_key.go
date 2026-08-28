@@ -96,6 +96,16 @@ func (k *TipSetKey) UnmarshalJSON(b []byte) error {
 	if err := json.Unmarshal(b, &cids); err != nil {
 		return err
 	}
+	// A JSON null decodes to cid.Undef, whose Bytes() is empty, so encodeKey
+	// would silently drop it: "[null]" becomes the empty key (which callers
+	// treat as chain head) and "[cid, null]" becomes a different, valid key.
+	// The binary and CBOR decoders reject malformed input via decodeKey; do the
+	// same here instead of coercing to a well-formed key.
+	for _, c := range cids {
+		if !c.Defined() {
+			return xerrors.New("tipset key contains an undefined CID")
+		}
+	}
 	k.value = string(encodeKey(cids))
 	return nil
 }
