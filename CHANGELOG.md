@@ -22,6 +22,7 @@
 
 ## 🐛 Bug Fixes
 
+- fix(types): `TipSetKey`'s JSON decoder now rejects a `null` element instead of silently dropping it. A `null` decodes to an undefined CID whose bytes are empty, so `["<cid>", null]` used to coerce to the unrelated key `["<cid>"]` and `[null]` to the empty key that callers resolve to chain head. ([filecoin-project/lotus#13755](https://github.com/filecoin-project/lotus/pull/13755))
 - fix(network): prevent remote memory exhaustion through Lotus's default WebTransport listener by updating go-libp2p and webtransport-go (CVE-2026-57497). ([filecoin-project/lotus#13734](https://github.com/filecoin-project/lotus/pull/13734))
 - fix(events): `GetActorEventsRaw` and `SubscribeActorEventsRaw` now reject a filter whose `toHeight` is negative. ([filecoin-project/lotus#13751](https://github.com/filecoin-project/lotus/pull/13751))
 - fix(eth): `eth_sendRawTransaction` now rejects a transaction whose RLP integer fields are not minimally encoded, matching go-ethereum. ([filecoin-project/lotus#13744](https://github.com/filecoin-project/lotus/pull/13744))
