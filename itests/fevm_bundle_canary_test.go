@@ -115,12 +115,9 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
-	reward19 "github.com/filecoin-project/go-state-types/builtin/v19/reward"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
 
-	"github.com/filecoin-project/lotus/build/buildconstants"
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -352,31 +349,6 @@ func measureBundleTransition(t *testing.T, tr bundleTransition) {
 	kit.QuietMiningLogs()
 
 	const upgradeHeight = abi.ChainEpoch(40)
-	originalUpgradeHeight := buildconstants.UpgradeXxHeight
-	originalBootstrap := buildconstants.UpgradeXxRewardBootstrapParams
-	pct := reward19.Denom / 100
-	buildconstants.UpgradeXxHeight = upgradeHeight
-	buildconstants.UpgradeXxRewardBootstrapParams = buildconstants.SolsticeRewardBootstrapParams{
-		SWATimelockEpochs:                 50,
-		ConsensusWeightRampDurationEpochs: 900,
-		ConsensusWeight: buildconstants.SolsticeRewardWeightParams{
-			VStart: 95 * pct,
-			Floor:  50 * pct,
-			Cap:    95 * pct,
-		},
-		ServiceWeight: buildconstants.SolsticeRewardWeightParams{
-			VStart: 5 * pct,
-			Floor:  5 * pct,
-			Cap:    10 * pct,
-		},
-		SWAActor:            builtin.SystemActorAddr,
-		SRAActor:            builtin.SystemActorAddr,
-		InitialOrchestrator: builtin.BurntFundsActorAddr,
-	}
-	t.Cleanup(func() {
-		buildconstants.UpgradeXxHeight = originalUpgradeHeight
-		buildconstants.UpgradeXxRewardBootstrapParams = originalBootstrap
-	})
 
 	client, _, ens := kit.EnsembleMinimal(t,
 		kit.MockProofs(),

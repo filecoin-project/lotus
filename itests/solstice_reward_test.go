@@ -68,13 +68,6 @@ func TestSolsticeRewardLifecycle(t *testing.T) {
 	recipient1ID := mustIDAddress(t, 102)
 	recipient2ID := mustIDAddress(t, 103)
 
-	originalUpgradeHeight := buildconstants.UpgradeXxHeight
-	originalBootstrapParams := buildconstants.UpgradeXxRewardBootstrapParams
-	t.Cleanup(func() {
-		buildconstants.UpgradeXxHeight = originalUpgradeHeight
-		buildconstants.UpgradeXxRewardBootstrapParams = originalBootstrapParams
-	})
-	buildconstants.UpgradeXxHeight = upgradeEpoch
 	bootstrapParams := buildconstants.SolsticeRewardBootstrapParams{
 		SWATimelockEpochs:                 timelock,
 		ConsensusWeightRampDurationEpochs: consensusWeightRampDuration,
@@ -92,7 +85,6 @@ func TestSolsticeRewardLifecycle(t *testing.T) {
 		SRAActor:            writerID,
 		InitialOrchestrator: recipient1ID,
 	}
-	buildconstants.UpgradeXxRewardBootstrapParams = bootstrapParams
 	rampTotal := bootstrapParams.ConsensusWeight.VStart - bootstrapParams.ConsensusWeight.Floor
 	// TODO: Tie ServiceWeight.Cap-VStart to rampTotal/9 so W2_BASE cannot drift from the nine-quarter schedule.
 	rampEpochs := uint64(bootstrapParams.ConsensusWeightRampDurationEpochs)
@@ -118,9 +110,9 @@ func TestSolsticeRewardLifecycle(t *testing.T) {
 			stmgr.Upgrade{
 				Network:   network.Version29,
 				Height:    upgradeEpoch,
-				Migration: filcns.UpgradeActorsV19,
+				Migration: filcns.UpgradeActorsV19With(bootstrapParams),
 				PreMigrations: []stmgr.PreMigration{{
-					PreMigration:    filcns.PreUpgradeActorsV19,
+					PreMigration:    filcns.PreUpgradeActorsV19With(bootstrapParams),
 					StartWithin:     15,
 					DontStartWithin: 2,
 					StopWithin:      2,

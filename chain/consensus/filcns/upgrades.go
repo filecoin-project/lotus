@@ -3360,11 +3360,29 @@ func upgradeActorsV18Common(
 	return newRoot, nil
 }
 
-func solsticeRewardMigrationConfig() (nv29.RewardMigrationConfig, error) {
-	params := buildconstants.UpgradeXxRewardBootstrapParams
-	if params.ConsensusWeightRampDurationEpochs <= 0 {
+func solsticeRewardMigrationConfig(params buildconstants.SolsticeRewardBootstrapParams) (nv29.RewardMigrationConfig, error) {
+	if params.ConsensusWeightRampDurationEpochs == 0 {
+		neutral := buildconstants.NeutralSolsticeRewardBootstrapParams
+		if params.ConsensusWeight != neutral.ConsensusWeight || params.ServiceWeight != neutral.ServiceWeight {
+			return nv29.RewardMigrationConfig{}, xerrors.Errorf(
+				"zero-duration Solstice bootstrap must have constant DENOM consensus weight and zero service weight")
+		}
+		return nv29.RewardMigrationConfig{
+			SWATimelockEpochs: params.SWATimelockEpochs,
+			SWAActor:          params.SWAActor,
+			Streams: []nv29.RewardMigrationStream{{
+				ID: 1,
+				Weight: nv29.RewardMigrationWeight{
+					VStart: neutral.ConsensusWeight.VStart,
+					Floor:  neutral.ConsensusWeight.Floor,
+					Cap:    neutral.ConsensusWeight.Cap,
+				},
+			}},
+		}, nil
+	}
+	if params.ConsensusWeightRampDurationEpochs < 0 {
 		return nv29.RewardMigrationConfig{}, xerrors.Errorf(
-			"Solstice consensus weight ramp duration must be positive, got %d", params.ConsensusWeightRampDurationEpochs)
+			"Solstice consensus weight ramp duration is negative: %d", params.ConsensusWeightRampDurationEpochs)
 	}
 	if params.ConsensusWeight.VStart <= params.ConsensusWeight.Floor {
 		return nv29.RewardMigrationConfig{}, xerrors.Errorf(
@@ -3384,29 +3402,24 @@ func solsticeRewardMigrationConfig() (nv29.RewardMigrationConfig, error) {
 			"Solstice consensus weight ramp produces invalid slope %d", slope)
 	}
 
-	activationEpoch := buildconstants.UpgradeXxHeight + 1
 	return nv29.RewardMigrationConfig{
-		ActivationEpoch:   activationEpoch,
 		SWATimelockEpochs: params.SWATimelockEpochs,
 		SWAActor:          params.SWAActor,
-		Streams: []reward19.RegisterStreamParams{
+		Streams: []nv29.RewardMigrationStream{
 			{
 				ID: 1,
-				Weight: reward19.WeightRecord{
+				Weight: nv29.RewardMigrationWeight{
 					VStart: params.ConsensusWeight.VStart,
 					Slope:  -int64(slope),
-					TStart: activationEpoch,
 					Floor:  params.ConsensusWeight.Floor,
 					Cap:    params.ConsensusWeight.Cap,
 				},
-				ActivationEpoch: activationEpoch,
 			},
 			{
 				ID: 2,
-				Weight: reward19.WeightRecord{
+				Weight: nv29.RewardMigrationWeight{
 					VStart: params.ServiceWeight.VStart,
 					Slope:  int64(slope),
-					TStart: activationEpoch,
 					Floor:  params.ServiceWeight.Floor,
 					Cap:    params.ServiceWeight.Cap,
 				},
@@ -3414,13 +3427,30 @@ func solsticeRewardMigrationConfig() (nv29.RewardMigrationConfig, error) {
 					Writer: params.SRAActor,
 					Shares: []reward19.RecipientShare{{Recipient: params.InitialOrchestrator, Share: reward19.Denom}},
 				},
-				ActivationEpoch: activationEpoch,
 			},
 		},
 	}, nil
 }
 
 func PreUpgradeActorsV19(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) error {
+	return preUpgradeActorsV19(
+		ctx, sm, cache, root, epoch, ts, buildconstants.UpgradeXxRewardBootstrapParams,
+	)
+}
+
+// PreUpgradeActorsV19With returns a V19 pre-migration with an explicit reward bootstrap.
+func PreUpgradeActorsV19With(params buildconstants.SolsticeRewardBootstrapParams) stmgr.PreMigrationFunc {
+	return func(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache,
+		root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) error {
+		return preUpgradeActorsV19(ctx, sm, cache, root, epoch, ts, params)
+	}
+}
+
+func preUpgradeActorsV19(
+	ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache,
+	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet,
+	rewardParams buildconstants.SolsticeRewardBootstrapParams,
+) error {
 	// Use half the CPUs for pre-migration, but leave at least 3.
 	workerCount := MigrationMaxWorkerCount
 	if workerCount <= 4 {
@@ -3444,7 +3474,7 @@ func PreUpgradeActorsV19(ctx context.Context, sm *stmgr.StateManager, cache stmg
 		ProgressLogPeriod: logPeriod,
 	}
 
-	_, err = upgradeActorsV19Common(ctx, sm, cache, lbRoot, epoch, lbts, config)
+	_, err = upgradeActorsV19Common(ctx, sm, cache, lbRoot, epoch, lbts, rewardParams, config)
 	return err
 }
 
@@ -3454,6 +3484,24 @@ func UpgradeActorsV19(ctx context.Context, sm *stmgr.StateManager, cache stmgr.M
 		return cid.Undef, xerrors.Errorf(
 			"actors v19 upgrade epoch %d does not match configured height %d", epoch, buildconstants.UpgradeXxHeight)
 	}
+	return upgradeActorsV19(
+		ctx, sm, cache, cb, root, epoch, ts, buildconstants.UpgradeXxRewardBootstrapParams,
+	)
+}
+
+// UpgradeActorsV19With returns a V19 migration with an explicit reward bootstrap.
+// Unlike the production entry point, it accepts any scheduled upgrade epoch.
+func UpgradeActorsV19With(params buildconstants.SolsticeRewardBootstrapParams) stmgr.MigrationFunc {
+	return func(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, cb stmgr.ExecMonitor,
+		root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+		return upgradeActorsV19(ctx, sm, cache, cb, root, epoch, ts, params)
+	}
+}
+
+func upgradeActorsV19(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, cb stmgr.ExecMonitor,
+	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet,
+	rewardParams buildconstants.SolsticeRewardBootstrapParams,
+) (cid.Cid, error) {
 	// Use all the CPUs except 2.
 	workerCount := MigrationMaxWorkerCount - 3
 	if workerCount <= 0 {
@@ -3471,7 +3519,7 @@ func UpgradeActorsV19(ctx context.Context, sm *stmgr.StateManager, cache stmgr.M
 		ResultQueueSize:   100,
 		ProgressLogPeriod: logPeriod,
 	}
-	newRoot, err := upgradeActorsV19Common(ctx, sm, cache, root, epoch, ts, config)
+	newRoot, err := upgradeActorsV19Common(ctx, sm, cache, root, epoch, ts, rewardParams, config)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("migrating actors v19 state: %w", err)
 	}
@@ -3481,9 +3529,9 @@ func UpgradeActorsV19(ctx context.Context, sm *stmgr.StateManager, cache stmgr.M
 func upgradeActorsV19Common(
 	ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache,
 	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet,
-	config migration.Config,
+	rewardParams buildconstants.SolsticeRewardBootstrapParams, config migration.Config,
 ) (cid.Cid, error) {
-	rewardConfig, err := solsticeRewardMigrationConfig()
+	rewardConfig, err := solsticeRewardMigrationConfig(rewardParams)
 	if err != nil {
 		return cid.Undef, err
 	}
