@@ -81,11 +81,10 @@ The process:
     - Each:
       - power.CreateMiner, set msg value to PowerBalance
       - market.AddFunds with correct value
-      - market.PublishDeals for related sectors
+      - market.PublishDeals for related sectors (before nv29 only)
     - Set network power in the power actor to what we'll have after genesis creation
 	- Recreate reward actor state with the right power
     - For each precommitted sector
-      - Get deal weight
       - Calculate QA Power
       - Remove fake power from the power actor
       - Calculate pledge
@@ -576,10 +575,13 @@ func MakeGenesisBlock(ctx context.Context, j journal.Journal, bs bstore.Blocksto
 	// temp chainstore
 	cs := store.NewChainStore(bs, bs, datastore.NewMapDatastore(), nil, j)
 
-	// Verify PreSealed Data
-	stateroot, err = VerifyPreSealedData(ctx, cs, sys, stateroot, template, keyIDs, template.NetworkVersion)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to verify presealed data: %w", err)
+	// Verify PreSealed Data. FIP-0118 removed verified deals, so from nv29 preseal sectors carry
+	// no deals and there is no verifier or client datacap to register.
+	if template.NetworkVersion < network.Version29 {
+		stateroot, err = VerifyPreSealedData(ctx, cs, sys, stateroot, template, keyIDs, template.NetworkVersion)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to verify presealed data: %w", err)
+		}
 	}
 
 	// setup Storage Miners

@@ -549,9 +549,10 @@ type FullNode interface {
 	// StateMarketProposalPending returns whether a given proposal CID is marked as pending in the market actor
 	StateMarketProposalPending(ctx context.Context, proposalCid cid.Cid, tsk types.TipSetKey) (bool, error) //perm:read
 	// StateGetAllocationForPendingDeal returns the allocation for a given deal ID of a pending deal. Returns nil if
-	// pending allocation is not found.
+	// pending allocation is not found. It returns an unsupported error for tipsets at network version 29 or later.
 	StateGetAllocationForPendingDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*verifreg.Allocation, error) //perm:read
-	// StateGetAllocationIdForPendingDeal is like StateGetAllocationForPendingDeal except it returns the allocation ID
+	// StateGetAllocationIdForPendingDeal is like StateGetAllocationForPendingDeal except it returns the allocation ID.
+	// It returns an unsupported error for tipsets at network version 29 or later.
 	StateGetAllocationIdForPendingDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (verifreg.AllocationId, error) //perm:read
 	// StateGetAllocation returns the allocation for a given address and allocation ID.
 	StateGetAllocation(ctx context.Context, clientAddr address.Address, allocationId verifreg.AllocationId, tsk types.TipSetKey) (*verifreg.Allocation, error) //perm:read

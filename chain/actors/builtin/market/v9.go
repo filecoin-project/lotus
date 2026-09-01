@@ -389,7 +389,6 @@ func (r *publishStorageDealsReturn9) DealIDs() ([]abi.DealID, error) {
 }
 
 func (s *state9) GetAllocationIdForPendingDeal(dealId abi.DealID) (verifregtypes.AllocationId, error) {
-
 	allocations, err := adt9.AsMap(s.store, s.PendingDealAllocationIds, builtin.DefaultHamtBitwidth)
 	if err != nil {
 		return verifregtypes.NoAllocationID, xerrors.Errorf("failed to load allocation id for %d: %w", dealId, err)
@@ -405,7 +404,6 @@ func (s *state9) GetAllocationIdForPendingDeal(dealId abi.DealID) (verifregtypes
 	}
 
 	return verifregtypes.AllocationId(allocationId), nil
-
 }
 
 func (s *state9) ActorKey() string {
