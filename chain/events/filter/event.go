@@ -293,12 +293,14 @@ type EventFilterManager struct {
 	mu            sync.Mutex // guards mutations to filters
 	filters       map[types.FilterID]EventFilter
 	currentHeight abi.ChainEpoch
+	chainRevision uint64 // incremented for every applied or reverted head change
 }
 
 func (m *EventFilterManager) Apply(ctx context.Context, from, to *types.TipSet) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.currentHeight = to.Height()
+	m.chainRevision++
 
 	if len(m.filters) == 0 {
 		return nil
@@ -330,6 +332,7 @@ func (m *EventFilterManager) Revert(ctx context.Context, from, to *types.TipSet)
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.currentHeight = to.Height()
+	m.chainRevision++
 
 	if len(m.filters) == 0 {
 		return nil
@@ -357,6 +360,9 @@ func (m *EventFilterManager) Revert(ctx context.Context, from, to *types.TipSet)
 	return nil
 }
 
+// Fill returns a snapshot filter populated from the exact requested range. A
+// minimum height of -1 means start at the next event and skips historical
+// lookup.
 func (m *EventFilterManager) Fill(
 	ctx context.Context,
 	minHeight,
@@ -365,24 +371,40 @@ func (m *EventFilterManager) Fill(
 	addresses []address.Address,
 	keysWithCodec map[string][]types.ActorEventBlock,
 ) (EventFilter, error) {
-	m.mu.Lock()
-	if m.currentHeight == 0 {
-		// sync in progress, we haven't had an Apply
-		m.currentHeight = m.ChainStore.GetHeaviestTipSet().Height()
+	f, err := m.newEventFilter(minHeight, maxHeight, tipsetCid, addresses, keysWithCodec)
+	if err != nil {
+		return nil, err
 	}
-	currentHeight := m.currentHeight
-	m.mu.Unlock()
 
-	if m.ChainIndexer == nil && minHeight != -1 && minHeight < currentHeight {
+	if minHeight == -1 {
+		return f, nil
+	}
+	if m.ChainIndexer == nil {
 		return nil, xerrors.Errorf("historic event index disabled")
 	}
 
+	ces, err := m.getHistoricalEvents(ctx, f, maxHeight)
+	if err != nil {
+		return nil, err
+	}
+	f.setCollectedEvents(ces)
+
+	return f, nil
+}
+
+func (m *EventFilterManager) newEventFilter(
+	minHeight,
+	maxHeight abi.ChainEpoch,
+	tipsetCid cid.Cid,
+	addresses []address.Address,
+	keysWithCodec map[string][]types.ActorEventBlock,
+) (*eventFilter, error) {
 	id, err := newFilterID()
 	if err != nil {
 		return nil, xerrors.Errorf("new filter id: %w", err)
 	}
 
-	f := &eventFilter{
+	return &eventFilter{
 		id:            id,
 		minHeight:     minHeight,
 		maxHeight:     maxHeight,
@@ -390,29 +412,32 @@ func (m *EventFilterManager) Fill(
 		addresses:     addresses,
 		keysWithCodec: keysWithCodec,
 		maxResults:    m.MaxFilterResults,
-	}
-
-	if m.ChainIndexer != nil && minHeight != -1 && minHeight < currentHeight {
-		ef := &index.EventFilter{
-			MinHeight:     minHeight,
-			MaxHeight:     maxHeight,
-			TipsetCid:     tipsetCid,
-			Addresses:     addresses,
-			KeysWithCodec: keysWithCodec,
-			MaxResults:    m.MaxFilterResults,
-		}
-
-		ces, err := m.ChainIndexer.GetEventsForFilter(ctx, ef)
-		if err != nil {
-			return nil, xerrors.Errorf("get events for filter: %w", err)
-		}
-
-		f.setCollectedEvents(ces)
-	}
-
-	return f, nil
+	}, nil
 }
 
+func (m *EventFilterManager) getHistoricalEvents(
+	ctx context.Context,
+	f *eventFilter,
+	maxHeight abi.ChainEpoch,
+) ([]*index.CollectedEvent, error) {
+	ef := &index.EventFilter{
+		MinHeight:     f.minHeight,
+		MaxHeight:     maxHeight,
+		TipsetCid:     f.tipsetCid,
+		Addresses:     f.addresses,
+		KeysWithCodec: f.keysWithCodec,
+		MaxResults:    f.maxResults,
+	}
+
+	ces, err := m.ChainIndexer.GetEventsForFilter(ctx, ef)
+	if err != nil {
+		return nil, xerrors.Errorf("get events for filter: %w", err)
+	}
+	return ces, nil
+}
+
+// Install preloads the executable part of the requested range, then publishes
+// the filter for live collection without leaving a gap between those phases.
 func (m *EventFilterManager) Install(
 	ctx context.Context,
 	minHeight,
@@ -421,19 +446,80 @@ func (m *EventFilterManager) Install(
 	addresses []address.Address,
 	keysWithCodec map[string][]types.ActorEventBlock,
 ) (EventFilter, error) {
-	f, err := m.Fill(ctx, minHeight, maxHeight, tipsetCid, addresses, keysWithCodec)
+	f, err := m.newEventFilter(minHeight, maxHeight, tipsetCid, addresses, keysWithCodec)
 	if err != nil {
 		return nil, err
 	}
 
-	m.mu.Lock()
+	for {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+
+		m.mu.Lock()
+		if err := ctx.Err(); err != nil {
+			m.mu.Unlock()
+			return nil, err
+		}
+		if m.currentHeight == 0 {
+			// Sync is still in progress and no Apply has established the
+			// manager's head yet.
+			m.currentHeight = m.ChainStore.GetHeaviestTipSet().Height()
+		}
+		currentHeight := m.currentHeight
+		chainRevision := m.chainRevision
+
+		// The filter starts at or after the current head, so there is no
+		// historical gap to fill. Register it while still holding the lock so
+		// the next Apply cannot pass it.
+		if minHeight == -1 || minHeight >= currentHeight {
+			m.installFilterLocked(f)
+			m.mu.Unlock()
+			return f, nil
+		}
+		if m.ChainIndexer == nil {
+			m.mu.Unlock()
+			return nil, xerrors.Errorf("historic event index disabled")
+		}
+
+		historicalMaxHeight := maxHeight
+		if historicalMaxHeight < 0 || historicalMaxHeight >= currentHeight {
+			// The installed filter retains its requested upper bound. Only its
+			// historical preload stops at the last executable tipset.
+			historicalMaxHeight = currentHeight - 1
+		}
+		m.mu.Unlock()
+
+		ces, queryErr := m.getHistoricalEvents(ctx, f, historicalMaxHeight)
+
+		m.mu.Lock()
+		if err := ctx.Err(); err != nil {
+			m.mu.Unlock()
+			return nil, err
+		}
+		if m.chainRevision != chainRevision {
+			// Apply or Revert moved the live boundary while the query was in
+			// flight. Discard both results and errors, then fill the new gap.
+			m.mu.Unlock()
+			continue
+		}
+		if queryErr != nil {
+			m.mu.Unlock()
+			return nil, queryErr
+		}
+
+		f.setCollectedEvents(ces)
+		m.installFilterLocked(f)
+		m.mu.Unlock()
+		return f, nil
+	}
+}
+
+func (m *EventFilterManager) installFilterLocked(f *eventFilter) {
 	if m.filters == nil {
 		m.filters = make(map[types.FilterID]EventFilter)
 	}
-	m.filters[f.(*eventFilter).id] = f
-	m.mu.Unlock()
-
-	return f, nil
+	m.filters[f.id] = f
 }
 
 func (m *EventFilterManager) Remove(ctx context.Context, id types.FilterID) error {

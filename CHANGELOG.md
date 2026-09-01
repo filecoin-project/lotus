@@ -22,6 +22,8 @@
 
 ## 🐛 Bug Fixes
 
+- fix(eth): prevent `eth_getLogs` from returning successful empty or partial results when historical event-index coverage is incomplete. Block-hash queries now require a completed block event index, and range queries verify every canonical non-null tipset before returning logs. ([filecoin-project/lotus#13749](https://github.com/filecoin-project/lotus/issues/13749))
+- fix(eth): prevent `eth_getTransactionReceipt` from returning a successful receipt with an empty `logs` array while that transaction's events are still being indexed. The call now fails until event indexing is complete, while transactions that completed with no events still return an empty array. ([filecoin-project/lotus#13758](https://github.com/filecoin-project/lotus/issues/13758))
 - fix(network): prevent remote memory exhaustion through Lotus's default WebTransport listener by updating go-libp2p and webtransport-go (CVE-2026-57497). ([filecoin-project/lotus#13734](https://github.com/filecoin-project/lotus/pull/13734))
 - fix(events): `GetActorEventsRaw` and `SubscribeActorEventsRaw` now reject a filter whose `toHeight` is negative. ([filecoin-project/lotus#13751](https://github.com/filecoin-project/lotus/pull/13751))
 - fix(eth): `eth_sendRawTransaction` now rejects a transaction whose RLP integer fields are not minimally encoded, matching go-ethereum. ([filecoin-project/lotus#13744](https://github.com/filecoin-project/lotus/pull/13744))

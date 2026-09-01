@@ -2,15 +2,46 @@ package eth
 
 import (
 	"bytes"
+	"context"
 	"encoding/hex"
 	"testing"
 
+	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multicodec"
 	"github.com/stretchr/testify/require"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/exitcode"
+
+	"github.com/filecoin-project/lotus/chain/index"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
+
+type unavailableEthEvents struct {
+	EthEventsInternal
+}
+
+func (unavailableEthEvents) GetEthLogsForBlockAndTransaction(context.Context, *ethtypes.EthHash, cid.Cid) ([]ethtypes.EthLog, error) {
+	return nil, index.ErrNotFound
+}
+
+func TestNewEthTxReceiptFailsWhenEventIndexIsIncomplete(t *testing.T) {
+	gasPrice := ethtypes.EthBigInt(big.NewInt(1))
+	to := ethtypes.EthAddress{}
+	tx := ethtypes.EthTx{
+		To:       &to,
+		Gas:      1,
+		GasPrice: &gasPrice,
+	}
+	eventsRoot := cid.Undef
+	msgReceipt := types.NewMessageReceiptV1(exitcode.Ok, nil, 1, &eventsRoot)
+
+	receipt, err := newEthTxReceipt(context.Background(), tx, cid.Undef, big.Zero(), msgReceipt, unavailableEthEvents{})
+	require.ErrorIs(t, err, index.ErrNotFound)
+	require.Equal(t, ethtypes.EthTxReceipt{}, receipt)
+}
 
 func TestABIEncoding(t *testing.T) {
 	// Generated from https://abi.hashex.org/
