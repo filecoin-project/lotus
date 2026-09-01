@@ -715,33 +715,43 @@ func (m *Sealing) handleSubmitCommit(ctx statemachine.Context, sector SectorInfo
 // - a list of deal IDs, if all non-filler pieces are deal-id pieces
 func (m *Sealing) processPieces(ctx context.Context, sector SectorInfo) ([]miner.PieceActivationManifest, error) {
 	pams := make([]miner.PieceActivationManifest, 0, len(sector.Pieces))
+	nv := network.VersionMax
 
 	for _, piece := range sector.Pieces {
 		if piece.HasDealInfo() {
 			info := piece.DealInfo()
 			// If we have a dealID then convert to PAM
 			if info.Impl().DealID > 0 {
-				alloc, err := m.Api.StateGetAllocationIdForPendingDeal(ctx, info.Impl().DealID, types.EmptyTSK)
-				if err != nil {
-					return nil, xerrors.Errorf("getting allocation for deal %d: %w", info.Impl().DealID, err)
-				}
-				clid, err := m.Api.StateLookupID(ctx, info.Impl().DealProposal.Client, types.EmptyTSK)
-				if err != nil {
-					return nil, xerrors.Errorf("getting client address for deal %d: %w", info.Impl().DealID, err)
-				}
-
-				clientId, err := address.IDFromAddress(clid)
-				if err != nil {
-					return nil, xerrors.Errorf("getting client address for deal %d: %w", info.Impl().DealID, err)
+				if nv == network.VersionMax {
+					var err error
+					if nv, err = m.Api.StateNetworkVersion(ctx, types.EmptyTSK); err != nil {
+						return nil, xerrors.Errorf("getting network version: %w", err)
+					}
 				}
 
 				var vac *miner2.VerifiedAllocationKey
-				if alloc != verifreg.NoAllocationID {
-					vac = &miner2.VerifiedAllocationKey{
-						Client: abi.ActorID(clientId),
-						ID:     verifreg13.AllocationId(alloc),
+				if nv < network.Version29 {
+					alloc, err := m.Api.StateGetAllocationIdForPendingDeal(ctx, info.Impl().DealID, types.EmptyTSK)
+					if err != nil {
+						return nil, xerrors.Errorf("getting allocation for deal %d: %w", info.Impl().DealID, err)
 					}
-				}
+					clid, err := m.Api.StateLookupID(ctx, info.Impl().DealProposal.Client, types.EmptyTSK)
+					if err != nil {
+						return nil, xerrors.Errorf("getting client address for deal %d: %w", info.Impl().DealID, err)
+					}
+
+					clientId, err := address.IDFromAddress(clid)
+					if err != nil {
+						return nil, xerrors.Errorf("getting client address for deal %d: %w", info.Impl().DealID, err)
+					}
+
+					if alloc != verifreg.NoAllocationID {
+						vac = &miner2.VerifiedAllocationKey{
+							Client: abi.ActorID(clientId),
+							ID:     verifreg13.AllocationId(alloc),
+						}
+					}
+				} // else FIP-0118 removed FIL+ and PendingDealAllocationIds
 
 				payload, err := cborutil.Dump(info.Impl().DealID)
 				if err != nil {
