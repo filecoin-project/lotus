@@ -565,8 +565,8 @@ github.com/invopop/jsonschema v0.14.0/go.mod h1:ygm6C2EaVNMBDPpaPlnOA2pFAxBnxGjF
 github.com/ipfs/bbloom v0.0.1/go.mod h1:oqo8CVWsJFMOZqTglBG4wydCE4IQA/G2/SEofB0rjUI=
 github.com/ipfs/bbloom v0.1.0 h1:nIWwfIE3AaG7RCDQIsrUonGCOTp7qSXzxH7ab/ss964=
 github.com/ipfs/bbloom v0.1.0/go.mod h1:lDy3A3i6ndgEW2z1CaRFvDi5/ZTzgM1IxA/pkL7Wgts=
-github.com/ipfs/boxo v0.42.1 h1:sbG7kjAvKozeNSI2d6S3qv8uCdO6xgzYB18IvI0Z6mc=
-github.com/ipfs/boxo v0.42.1/go.mod h1:Izfi844gxRpk7VYbgtMOufY811ohXciUvdgSwd+uPuo=
+github.com/ipfs/boxo v0.42.2 h1:c/lP/MQ2ChmfQ5I0JokqK53bAZuMsNjGia9sHc/RkqU=
+github.com/ipfs/boxo v0.42.2/go.mod h1:Izfi844gxRpk7VYbgtMOufY811ohXciUvdgSwd+uPuo=
 github.com/ipfs/go-bitfield v1.1.0 h1:fh7FIo8bSwaJEh6DdTWbCeZ1eqOaOkKFI74SCnsWbGA=
 github.com/ipfs/go-bitfield v1.1.0/go.mod h1:paqf1wjq/D2BBmzfTVFlJQ9IlFOZpg422HL0HqsGWHU=
 github.com/ipfs/go-bitswap v0.1.0/go.mod h1:FFJEf18E9izuCqUtHxbWEvq+reg7o4CW5wSAE1wsxj0=
