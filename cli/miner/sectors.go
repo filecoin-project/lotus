@@ -96,7 +96,7 @@ func legacyUpgradeQualityCompatMessage(nv network.Version) error {
 
 var sectorsUpgradeQualityCmd = &cli.Command{
 	Name:      "upgrade-quality",
-	Usage:     "upgrade legacy sectors to full QA power (requires actor support in the target builtin-actors branch)",
+	Usage:     "upgrade legacy sectors to full QA power",
 	ArgsUsage: "[sectorNumbers...(optional)]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
@@ -127,7 +127,7 @@ var sectorsUpgradeQualityCmd = &cli.Command{
 		},
 		&cli.BoolFlag{
 			Name:  "really-do-it",
-			Usage: "actually send the on-chain message once actor support is available",
+			Usage: "pass this flag to really send the messages, otherwise only simulates them",
 		},
 	},
 	Action: func(cctx *cli.Context) error {

@@ -3,8 +3,9 @@ package miner
 import (
 	"testing"
 
-	"github.com/filecoin-project/go-state-types/network"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-state-types/network"
 )
 
 func TestValidateUpgradeQualityNetworkVersion(t *testing.T) {

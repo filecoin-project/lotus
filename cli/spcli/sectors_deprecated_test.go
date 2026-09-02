@@ -4,9 +4,10 @@ import (
 	"flag"
 	"testing"
 
-	"github.com/filecoin-project/go-state-types/network"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v2"
+
+	"github.com/filecoin-project/go-state-types/network"
 )
 
 // newCtxWithFlags builds a urfave/cli Context with the given flag definitions

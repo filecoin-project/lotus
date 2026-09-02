@@ -2024,6 +2024,7 @@ Response:
   "DealWeight": "0",
   "VerifiedDealWeight": "0",
   "InitialPledge": "0",
+  "FullQaPower": true,
   "OnTime": 10101,
   "Early": 10101
 }

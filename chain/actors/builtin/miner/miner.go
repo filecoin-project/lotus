@@ -362,13 +362,6 @@ type SectorActivationManifest = minertypes13.SectorActivationManifest
 type ProveReplicaUpdates3Params = minertypes13.ProveReplicaUpdates3Params
 type SectorUpdateManifest = minertypes13.SectorUpdateManifest
 type SectorOnChainInfoFlags = minertypes19.SectorOnChainInfoFlags
-
-// FIP-0118: sectors with FULL_QA_POWER always receive maximum QA power (10x).
-const (
-	SIMPLE_QA_POWER = minertypes19.SIMPLE_QA_POWER
-	FULL_QA_POWER   = minertypes19.FULL_QA_POWER
-)
-
 type VerifiedAllocationKey = minertypes13.VerifiedAllocationKey
 
 var QAPowerMax = minertypes.QAPowerMax

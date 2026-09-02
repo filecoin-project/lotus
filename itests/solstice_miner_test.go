@@ -145,37 +145,28 @@ func TestMigrationNV29Solstice(t *testing.T) {
 
 	// ---- D3: a new CC sector onboarded on NV29 automatically gets 10x QA power.
 	//
-	// KNOWN GAP (external to this repo): FIP-0118 requires every new sector — regardless of content,
-	// including empty CC pieces — to carry FULL_QA_POWER and thus 10x QA power (qa_power_max). This
-	// flag is SET by the builtin-actors (Rust/WASM) miner at activation; the v19 actor currently only
-	// *consumes* FULL_QA_POWER in policy.QAPowerForSector and never *writes* it. Until that actor
-	// change lands, the assertions below are PINNED to the current behavior (new CC = 1x, no
-	// FULL_QA_POWER) so the suite stays green while documenting the gap. They act as a canary: once
-	// the actor is fixed they will FAIL — flip them to expect 10x (qa 20480, FULL_QA_POWER set) and
-	// remove this comment.
+	// FIP-0118 gives every new sector FULL_QA_POWER regardless of content, empty CC included, so
+	// the miner actor sets the flag at activation and the sector carries qa_power_max.
 	snew, _ := um.OnboardSectors(sealProofType, kit.NewSectorBatch().AddEmptySectors(1))
 	req.Len(snew, 1)
 
-	// Cumulative power: legacy (raw 2048, qa 2048) + new CC (raw 2048, qa 2048).
-	// Once the actor sets FULL_QA_POWER, the new CC sector contributes qa 20480 → totals 4096/22528.
+	// Cumulative power: the legacy sector keeps its pre-upgrade 1x (nothing migrates existing
+	// sectors), while the new CC sector contributes 10x.
 	um.WaitTillActivatedAndAssertPower(snew,
-		uint64(defaultSectorSize)*2, // raw 4096
-		uint64(defaultSectorSize)*2, // qa 4096 (PINNED: currently 1x, spec wants 10x)
+		uint64(defaultSectorSize)*2,      // raw 4096
+		uint64(defaultSectorSize)*(1+10), // qa 22528: legacy 1x + new 10x
 	)
 
 	newInfo, err := client.StateSectorGetInfo(ctx, maddr, snew[0], types.EmptyTSK)
 	req.NoError(err)
 	req.NotNil(newInfo)
-	// PINNED to current behavior: the v19 actor does not set FULL_QA_POWER at activation yet.
-	// Flip to NotZero when the actor is fixed (FIP-0118 requires FULL_QA_POWER on every new sector).
-	req.Zero(newInfo.Flags&miner.FULL_QA_POWER, "KNOWN GAP: v19 actor must set FULL_QA_POWER on new sectors (FIP-0118)")
-	req.Zero(newInfo.DealWeight, "new NV29 sector DealWeight must be zero (FIP-0118)")
+	req.NotZero(newInfo.Flags&miner.FULL_QA_POWER, "new NV29 sector must carry FULL_QA_POWER (FIP-0118)")
+	req.True(newInfo.DealWeight.NilOrZero(), "new NV29 sector DealWeight must be zero (FIP-0118)")
 
-	// The new sector alone is currently 1x raw size (2048). Snapshotted prePower is the legacy
-	// sector (unchanged), so the delta is the new sector's QAP. Flip to *10 when the actor is fixed.
+	// prePower snapshots the legacy sector, which is unchanged, so the delta is the new sector's QAP.
 	finalPower, err := client.StateMinerPower(ctx, maddr, types.EmptyTSK)
 	req.NoError(err)
-	req.Equal(uint64(defaultSectorSize),
+	req.Equal(uint64(defaultSectorSize)*10,
 		finalPower.MinerPower.QualityAdjPower.Uint64()-prePower.MinerPower.QualityAdjPower.Uint64(),
-		"KNOWN GAP: new NV29 CC sector QA power must be 10x raw size once the actor sets FULL_QA_POWER")
+		"new NV29 CC sector QA power must be 10x raw size")
 }
