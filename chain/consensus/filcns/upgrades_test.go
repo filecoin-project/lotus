@@ -3,10 +3,9 @@ package filcns
 import (
 	"testing"
 
-	"github.com/filecoin-project/go-address"
-
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-address"
 	nv29 "github.com/filecoin-project/go-state-types/builtin/v19/migration"
 	reward19 "github.com/filecoin-project/go-state-types/builtin/v19/reward"
 

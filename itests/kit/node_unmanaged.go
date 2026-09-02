@@ -1666,7 +1666,7 @@ func (tm *TestUnmanagedMiner) AssertNoPower() {
 	req := require.New(tm.t)
 
 	p := tm.CurrentPower()
-	tm.log("RBP: %v, QaP: %v", p.MinerPower.QualityAdjPower.String(), p.MinerPower.RawBytePower.String())
+	tm.log("RBP: %v, QaP: %v", p.MinerPower.RawBytePower.String(), p.MinerPower.QualityAdjPower.String())
 	req.True(p.MinerPower.RawBytePower.IsZero())
 }
 
@@ -1686,7 +1686,7 @@ func (tm *TestUnmanagedMiner) AssertPower(raw uint64, qa uint64) {
 	req := require.New(tm.t)
 
 	p := tm.CurrentPower()
-	tm.log("RBP: %v, QaP: %v", p.MinerPower.QualityAdjPower.String(), p.MinerPower.RawBytePower.String())
+	tm.log("RBP: %v, QaP: %v", p.MinerPower.RawBytePower.String(), p.MinerPower.QualityAdjPower.String())
 	req.Equal(raw, p.MinerPower.RawBytePower.Uint64())
 	req.Equal(qa, p.MinerPower.QualityAdjPower.Uint64())
 }

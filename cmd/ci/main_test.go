@@ -49,7 +49,7 @@ func TestGetNeedsParametersScansTestFiles(t *testing.T) {
 		{name: "itest-api", want: true},
 		{name: "itest-api_v2", want: false},
 		{name: "itest-direct_data_onboard", want: true},
-		{name: "itest-direct_data_onboard_verified", want: false},
+		{name: "itest-datacap_frozen", want: false},
 		{name: "unit-cli", want: false},
 		{name: "unit-storage", want: true},
 	} {
