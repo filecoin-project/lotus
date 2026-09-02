@@ -133,6 +133,12 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to get max extension: %w", err)
 	}
+
+	// FIP-0118 removed deals: from nv29 the miner actor rejects deal-bearing pre-commits and
+	// InternalSectorSetupForPreseal activates preseal sectors with maximum QA power instead of
+	// deriving it from deal weight.
+	presealDeals := nv < network.Version29
+
 	maxPeriods := maxLifetime / minertypes.WPoStProvingPeriod
 	rawPow, qaPow := big.NewInt(0), big.NewInt(0)
 	for i, m := range miners {
@@ -232,7 +238,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 			}
 		}
 
-		// Publish preseal deals, and calculate the QAPower
+		// Publish preseal deals (before nv29), and calculate the QAPower
 
 		{
 			publish := func(params *markettypes.PublishStorageDealsParams) error {
@@ -263,39 +269,48 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 			params := &markettypes.PublishStorageDealsParams{}
 			for _, presealTmp := range m.Sectors {
 				preseal := presealTmp
-				preseal.Deal.VerifiedDeal = true
-				preseal.Deal.EndEpoch = minerInfos[i].presealExp
-				p := markettypes.ClientDealProposal{
-					Proposal:        preseal.Deal,
-					ClientSignature: crypto.Signature{Type: crypto.SigTypeBLS},
-				}
 
-				if av >= actorstypes.Version8 {
-					buf, err := cborutil.Dump(&preseal.Deal)
-					if err != nil {
-						return cid.Undef, fmt.Errorf("failed to marshal proposal: %w", err)
+				// Match the power the miner actor assigns. Preseal sectors carry the
+				// FULL_QA_POWER flag, so they always get maximum quality-adjusted power;
+				// before nv29 it came from the (verified) deal weight instead.
+				sectorWeight := miner.QAPowerMax(m.SectorSize)
+
+				if presealDeals {
+					preseal.Deal.VerifiedDeal = true
+					preseal.Deal.EndEpoch = minerInfos[i].presealExp
+					sectorWeight = builtin.QAPowerForWeight(m.SectorSize, minerInfos[i].presealExp, markettypes.DealWeight(&preseal.Deal))
+
+					p := markettypes.ClientDealProposal{
+						Proposal:        preseal.Deal,
+						ClientSignature: crypto.Signature{Type: crypto.SigTypeBLS},
 					}
 
-					sig, err := sigs.Sign(key.ActSigType(preseal.DealClientKey.Type), preseal.DealClientKey.PrivateKey, buf)
-					if err != nil {
-						return cid.Undef, fmt.Errorf("failed to sign proposal: %w", err)
+					if av >= actorstypes.Version8 {
+						buf, err := cborutil.Dump(&preseal.Deal)
+						if err != nil {
+							return cid.Undef, fmt.Errorf("failed to marshal proposal: %w", err)
+						}
+
+						sig, err := sigs.Sign(key.ActSigType(preseal.DealClientKey.Type), preseal.DealClientKey.PrivateKey, buf)
+						if err != nil {
+							return cid.Undef, fmt.Errorf("failed to sign proposal: %w", err)
+						}
+
+						p.ClientSignature = *sig
 					}
 
-					p.ClientSignature = *sig
-				}
+					params.Deals = append(params.Deals, p)
 
-				params.Deals = append(params.Deals, p)
+					if len(params.Deals) == cbg.MaxLength {
+						if err := publish(params); err != nil {
+							return cid.Undef, err
+						}
 
-				if len(params.Deals) == cbg.MaxLength {
-					if err := publish(params); err != nil {
-						return cid.Undef, err
+						params = &markettypes.PublishStorageDealsParams{}
 					}
-
-					params = &markettypes.PublishStorageDealsParams{}
 				}
 
 				rawPow = big.Add(rawPow, big.NewInt(int64(m.SectorSize)))
-				sectorWeight := builtin.QAPowerForWeight(m.SectorSize, minerInfos[i].presealExp, markettypes.DealWeight(&preseal.Deal))
 				minerInfos[i].sectorWeight = append(minerInfos[i].sectorWeight, sectorWeight)
 				qaPow = big.Add(qaPow, sectorWeight)
 			}
@@ -384,6 +399,11 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 		// Commit sectors
 		{
 			for pi, preseal := range m.Sectors {
+				var dealIDs []abi.DealID
+				if presealDeals {
+					dealIDs = []abi.DealID{minerInfos[i].dealIDs[pi]}
+				}
+
 				var paramEnc []byte
 				var preCommitMethodNum abi.MethodNum
 				if nv >= network.Version22 {
@@ -394,7 +414,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 								SectorNumber:  preseal.SectorID,
 								SealedCID:     preseal.CommR,
 								SealRandEpoch: -1,
-								DealIDs:       []abi.DealID{minerInfos[i].dealIDs[pi]},
+								DealIDs:       dealIDs,
 								Expiration:    minerInfos[i].presealExp, // TODO: Allow setting externally!
 								UnsealedCid:   &preseal.CommD,
 							},
@@ -407,7 +427,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 						SectorNumber:  preseal.SectorID,
 						SealedCID:     preseal.CommR,
 						SealRandEpoch: -1,
-						DealIDs:       []abi.DealID{minerInfos[i].dealIDs[pi]},
+						DealIDs:       dealIDs,
 						Expiration:    minerInfos[i].presealExp, // TODO: Allow setting externally!
 					})
 					preCommitMethodNum = builtintypes.MethodsMiner.PreCommitSector

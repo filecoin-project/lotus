@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 
 	"github.com/docker/go-units"
 	"github.com/google/uuid"
@@ -27,7 +26,6 @@ import (
 	"github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin"
-	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/go-statestore"
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 	power2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/power"
@@ -55,7 +53,6 @@ import (
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/paths"
 	pipeline "github.com/filecoin-project/lotus/storage/pipeline"
-	"github.com/filecoin-project/lotus/storage/pipeline/piece"
 	"github.com/filecoin-project/lotus/storage/sealer"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
@@ -297,7 +294,7 @@ var initCmd = &cli.Command{
 	},
 }
 
-func migratePreSealMeta(ctx context.Context, api v1api.FullNode, metadata string, maddr address.Address, mds dtypes.MetadataDS) error {
+func migratePreSealMeta(ctx context.Context, metadata string, maddr address.Address, mds dtypes.MetadataDS) error {
 	metadata, err := homedir.Expand(metadata)
 	if err != nil {
 		return xerrors.Errorf("expanding preseal dir: %w", err)
@@ -322,10 +319,6 @@ func migratePreSealMeta(ctx context.Context, api v1api.FullNode, metadata string
 	for _, sector := range meta.Sectors {
 		sectorKey := datastore.NewKey(pipeline.SectorStorePrefix).ChildString(fmt.Sprint(sector.SectorID))
 
-		dealID, err := findMarketDealID(ctx, api, sector.Deal)
-		if err != nil {
-			return xerrors.Errorf("finding storage deal for pre-sealed sector %d: %w", sector.SectorID, err)
-		}
 		commD := sector.CommD
 		commR := sector.CommR
 
@@ -338,14 +331,7 @@ func migratePreSealMeta(ctx context.Context, api v1api.FullNode, metadata string
 						Size:     abi.PaddedPieceSize(meta.SectorSize),
 						PieceCID: commD,
 					},
-					DealInfo: &piece.PieceDealInfo{
-						DealID:       dealID,
-						DealProposal: &sector.Deal,
-						DealSchedule: piece.DealSchedule{
-							StartEpoch: sector.Deal.StartEpoch,
-							EndEpoch:   sector.Deal.EndEpoch,
-						},
-					},
+					DealInfo: nil, // genesis preseals carry no deal
 				}),
 			},
 			CommD:            &commD,
@@ -405,25 +391,6 @@ func migratePreSealMeta(ctx context.Context, api v1api.FullNode, metadata string
 	buf := make([]byte, binary.MaxVarintLen64)
 	size := binary.PutUvarint(buf, uint64(maxSectorID))
 	return mds.Put(ctx, datastore.NewKey(pipeline.StorageCounterDSPrefix), buf[:size])
-}
-
-func findMarketDealID(ctx context.Context, api v1api.FullNode, deal markettypes.DealProposal) (abi.DealID, error) {
-	// TODO: find a better way
-	//  (this is only used by genesis miners)
-
-	deals, err := api.StateMarketDeals(ctx, types.EmptyTSK)
-	if err != nil {
-		return 0, xerrors.Errorf("getting market deals: %w", err)
-	}
-
-	for k, v := range deals {
-		if v.Proposal.PieceCID.Equals(deal.PieceCID) {
-			id, err := strconv.ParseUint(k, 10, 64)
-			return abi.DealID(id), err
-		}
-	}
-
-	return 0, xerrors.New("deal not found")
 }
 
 func storageMinerInit(ctx context.Context, cctx *cli.Context, api v1api.FullNode, r repo.Repo, ssize abi.SectorSize, gasPrice types.BigInt, confidence uint64) error {
@@ -532,7 +499,7 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api v1api.FullNode
 
 				log.Infof("Importing pre-sealed sector metadata for %s", a)
 
-				if err := migratePreSealMeta(ctx, api, pssb, a, mds); err != nil {
+				if err := migratePreSealMeta(ctx, pssb, a, mds); err != nil {
 					return xerrors.Errorf("migrating presealed sector metadata: %w", err)
 				}
 			}
@@ -548,7 +515,7 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api v1api.FullNode
 
 			log.Infof("Importing pre-sealed sector metadata for %s", a)
 
-			if err := migratePreSealMeta(ctx, api, pssb, a, mds); err != nil {
+			if err := migratePreSealMeta(ctx, pssb, a, mds); err != nil {
 				return xerrors.Errorf("migrating presealed sector metadata: %w", err)
 			}
 		}
