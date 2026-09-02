@@ -720,8 +720,9 @@ func (m *Sealing) processPieces(ctx context.Context, sector SectorInfo) ([]miner
 	for _, piece := range sector.Pieces {
 		if piece.HasDealInfo() {
 			info := piece.DealInfo()
-			// If we have a dealID then convert to PAM
-			if info.Impl().DealID > 0 {
+			impl := info.Impl()
+			// Builtin-market pieces convert to a PAM that notifies the market actor.
+			if impl.IsBuiltinMarketDeal() {
 				if nv == network.VersionMax {
 					var err error
 					if nv, err = m.Api.StateNetworkVersion(ctx, types.EmptyTSK); err != nil {
