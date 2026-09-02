@@ -48,7 +48,7 @@ func TestDatacapFrozen(t *testing.T) {
 		verifregAddr = builtin.VerifiedRegistryActorAddr
 		datacapAddr  = builtin.DatacapActorAddr
 		amount       = big.Mul(big.NewInt(1<<30), builtin.TokenPrecision)
-		allowance    = verifreg19.DataCap(big.NewInt(1 << 30))
+		allowance    = big.NewInt(1 << 30)
 		// well-formed enough to deserialize; the actor never gets as far as verifying it
 		signature = crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: make([]byte, 65)}
 		// FRC-46 token receiver hook payload type, per the frc46_token library

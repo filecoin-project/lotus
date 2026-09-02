@@ -1,6 +1,7 @@
 package itests
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"testing"
@@ -55,18 +56,31 @@ func TestEthBlockHashesCorrect_MultiBlockTipset(t *testing.T) {
 	// let the chain run a little bit longer to minimise the chance of reorgs
 	n2.WaitTillChain(ctx, kit.HeightAtLeast(head.Height()+50))
 
-	tsk := head.Key()
 	for i := 1; i <= int(head.Height()); i++ {
 		hex := fmt.Sprintf("0x%x", i)
 
-		ts, err := n2.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(i), tsk)
+		// Skip null rounds. EthGetBlockByNumber resolves the block number against the current
+		// heaviest head, so look up the height the same way here.
+		curHead, err := n2.ChainHead(ctx)
 		require.NoError(t, err)
-		if ts.Height() != abi.ChainEpoch(i) { // null round
+		heightTs, err := n2.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(i), curHead.Key())
+		require.NoError(t, err)
+		if heightTs.Height() != abi.ChainEpoch(i) { // null round
 			continue
 		}
 
 		ethBlockA, err := n2.EthGetBlockByNumber(ctx, hex, true)
 		require.NoError(t, err)
+
+		// Derive the tipset from ethBlockA.Hash to avoid a reorg race between calls.
+		// EthBlock.Hash == EthHashFromCid(ts.Key().Cid()), so this round-trips to the exact tipset.
+		tipsetKeyRaw, err := n2.ChainReadObj(ctx, ethBlockA.Hash.ToCid())
+		require.NoError(t, err)
+		var tsk types.TipSetKey
+		require.NoError(t, tsk.UnmarshalCBOR(bytes.NewReader(tipsetKeyRaw)))
+		ts, err := n2.ChainGetTipSet(ctx, tsk)
+		require.NoError(t, err)
+
 		require.EqualValues(t, ts.Height(), ethBlockA.Number)
 
 		ethBlockB, err := n2.EthGetBlockByHash(ctx, ethBlockA.Hash, true)
