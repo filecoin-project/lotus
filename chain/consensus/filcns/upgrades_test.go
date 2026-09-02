@@ -3,6 +3,8 @@ package filcns
 import (
 	"testing"
 
+	"github.com/filecoin-project/go-address"
+
 	"github.com/stretchr/testify/require"
 
 	nv29 "github.com/filecoin-project/go-state-types/builtin/v19/migration"
@@ -117,4 +119,32 @@ func TestSolsticeRewardMigrationConfig(t *testing.T) {
 			},
 		}, config)
 	})
+}
+
+// The Solstice bootstrap names contracts that must exist before the upgrade runs, so a
+// scheduled height and real addresses go together. Checks the network being built.
+func TestSolsticeBootstrapMatchesSchedule(t *testing.T) {
+	params := buildconstants.UpgradeXxRewardBootstrapParams
+
+	addressesSet := params.SWAActor != address.Undef &&
+		params.SRAActor != address.Undef &&
+		params.InitialOrchestrator != address.Undef
+	scheduled := buildconstants.UpgradeXxHeight < buildconstants.UpgradeHeightUnscheduled
+
+	require.Equal(t, addressesSet, scheduled,
+		"Solstice upgrade height (%d) and bootstrap addresses disagree: "+
+			"addresses set = %v, upgrade reachable = %v. Schedule the upgrade only once "+
+			"SWAActor (%v), SRAActor (%v) and InitialOrchestrator (%v) are all real ID addresses.",
+		buildconstants.UpgradeXxHeight, addressesSet, scheduled,
+		params.SWAActor, params.SRAActor, params.InitialOrchestrator)
+
+	if !scheduled {
+		return
+	}
+
+	config, err := solsticeRewardMigrationConfig(params)
+	require.NoError(t, err)
+	require.NoError(t, nv29.ValidateRewardMigrationConfig(config, buildconstants.UpgradeXxHeight),
+		"Solstice is scheduled at epoch %d, so its reward bootstrap must be valid",
+		buildconstants.UpgradeXxHeight)
 }

@@ -8,6 +8,10 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 )
 
+// UpgradeHeightUnscheduled parks an upgrade beyond any epoch the chain will reach, marking it
+// as not yet scheduled. Networks use it until the upgrade has a real height.
+const UpgradeHeightUnscheduled = abi.ChainEpoch(999999999999999)
+
 const solsticeRewardWeightPercent = reward19.Denom / 100
 
 type SolsticeRewardWeightParams struct {
