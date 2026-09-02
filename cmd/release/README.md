@@ -55,3 +55,7 @@ Create a network-upgrade release issue with RC mode:
 ```sh
 ./release create-issue --type node --tag 1.31.0 --level minor --release-flow auto --network-upgrade 25 --discussion-link https://github.com/filecoin-project/lotus/discussions/12010 --changelog-link https://github.com/filecoin-project/lotus/blob/v1.31.0/CHANGELOG.md --rc1-date 2023-04-01 --stable-date 2023-05-01
 ```
+
+## Creating a Release Issue via GitHub Actions
+
+Instead of running `create-issue` locally, you can trigger the [Create Release Issue](https://github.com/filecoin-project/lotus/actions/workflows/create-release-issue.yml) workflow, which runs `create-issue` in CI with the same parameters. Unlike the local examples above, the workflow passes `--create-on-github=true` (so it actually opens the issue rather than just printing its content) and `--repo` to target this repository.
