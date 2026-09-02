@@ -20,10 +20,13 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/builtin"
+	stminer "github.com/filecoin-project/go-state-types/builtin/v19/miner"
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
@@ -53,6 +56,7 @@ var sectorsCmd = &cli.Command{
 		spcli.SectorsCheckExpireCmd(LMActorOrEnvGetter),
 		sectorsExpiredCmd,
 		spcli.SectorsExtendCmd(LMActorOrEnvGetter),
+		sectorsUpgradeQualityCmd,
 		sectorsTerminateCmd,
 		sectorsRemoveCmd,
 		sectorsSnapUpCmd,
@@ -74,6 +78,227 @@ func getOnDiskInfo(cctx *cli.Context, id abi.SectorNumber, onChainInfo bool) (ap
 	}
 	defer closer()
 	return minerApi.SectorsStatus(cctx.Context, id, onChainInfo)
+}
+
+func validateUpgradeQualityNetworkVersion(nv network.Version) error {
+	if nv < network.Version29 {
+		return xerrors.Errorf("upgrade-quality requires network version 29+ (Solstice); current: %d", nv)
+	}
+	return nil
+}
+
+// sectorLoc identifies an active sector's position in the miner's deadline/partition layout.
+type sectorLoc struct {
+	deadline  uint64
+	partition uint64
+	sectorNum uint64
+}
+
+// packUpgradeQualityMessages packs ordered sectors into UpgradeSectorQuality message params,
+// capped at addrSectors per message. Groups sharing a (deadline, partition) are kept together
+// and split across consecutive messages only when they exceed the remaining capacity.
+func packUpgradeQualityMessages(toUpgrade []sectorLoc, addrSectors int) []stminer.UpgradeSectorQualityParams {
+	var messages []stminer.UpgradeSectorQualityParams
+	cur := stminer.UpgradeSectorQualityParams{}
+	curCount := 0
+	for i := 0; i < len(toUpgrade); {
+		deadline := toUpgrade[i].deadline
+		partition := toUpgrade[i].partition
+
+		// End of this (deadline, partition) group.
+		end := i
+		for end < len(toUpgrade) && toUpgrade[end].deadline == deadline && toUpgrade[end].partition == partition {
+			end++
+		}
+
+		// Chunk the group into the current message; start a new one when full.
+		for i < end {
+			chunkEnd := i + (addrSectors - curCount)
+			if chunkEnd > end {
+				chunkEnd = end
+			}
+			sns := make([]uint64, chunkEnd-i)
+			for k, e := range toUpgrade[i:chunkEnd] {
+				sns[k] = e.sectorNum
+			}
+			cur.Upgrades = append(cur.Upgrades, stminer.UpgradeSectorQuality{
+				Deadline:  deadline,
+				Partition: partition,
+				Sectors:   bitfield.NewFromSet(sns),
+			})
+			curCount += len(sns)
+			i = chunkEnd
+			if curCount == addrSectors {
+				messages = append(messages, cur)
+				cur, curCount = stminer.UpgradeSectorQualityParams{}, 0
+			}
+		}
+	}
+	if len(cur.Upgrades) > 0 {
+		messages = append(messages, cur)
+	}
+	return messages
+}
+
+var sectorsUpgradeQualityCmd = &cli.Command{
+	Name:  "upgrade-quality",
+	Usage: "upgrade legacy sectors to full QA power",
+	Flags: []cli.Flag{
+		&cli.IntFlag{
+			Name:  "max-sectors",
+			Usage: "maximum number of sectors included in each message",
+			Value: 12500,
+		},
+		&cli.StringFlag{
+			Name:  "max-fee",
+			Usage: "maximum FIL to spend on gas per message",
+			Value: "0",
+		},
+		&cli.BoolFlag{
+			Name:  "really-do-it",
+			Usage: "must be specified for the action to take effect",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		fullNodeAPI, closer, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		nv, err := fullNodeAPI.StateNetworkVersion(ctx, types.EmptyTSK)
+		if err != nil {
+			return xerrors.Errorf("getting network version: %w", err)
+		}
+		if err := validateUpgradeQualityNetworkVersion(nv); err != nil {
+			return err
+		}
+
+		mf, err := types.ParseFIL(cctx.String("max-fee"))
+		if err != nil {
+			return err
+		}
+		spec := &api.MessageSendSpec{MaxFee: abi.TokenAmount(mf)}
+
+		maddr, err := getActorAddress(ctx, cctx)
+		if err != nil {
+			return err
+		}
+
+		mi, err := fullNodeAPI.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			return xerrors.Errorf("getting miner info: %w", err)
+		}
+
+		activeSet, err := fullNodeAPI.StateMinerActiveSectors(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			return xerrors.Errorf("getting active sectors: %w", err)
+		}
+		if len(activeSet) == 0 {
+			fmt.Println("no active sectors found")
+			return nil
+		}
+
+		// Index active sector info by sector number for O(1) lookup during state traversal.
+		activeSectorsInfo := make(map[abi.SectorNumber]*miner.SectorOnChainInfo, len(activeSet))
+		for _, info := range activeSet {
+			activeSectorsInfo[info.SectorNumber] = info
+		}
+
+		// Load miner state once to get all (deadline, partition) locations in a single read,
+		// avoiding one StateSectorPartition RPC call per sector.
+		mact, err := fullNodeAPI.StateGetActor(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			return xerrors.Errorf("getting miner actor: %w", err)
+		}
+		tbs := blockstore.NewTieredBstore(blockstore.NewAPIBlockstore(fullNodeAPI), blockstore.NewMemory())
+		mas, err := miner.Load(adt.WrapStore(ctx, cbor.NewCborStore(tbs)), mact)
+		if err != nil {
+			return xerrors.Errorf("loading miner state: %w", err)
+		}
+
+		// ForEachDeadline/ForEachPartition/ForEach iterates in ascending order,
+		// so toUpgrade is already sorted; no further sort needed.
+		var toUpgrade []sectorLoc
+		if err := mas.ForEachDeadline(func(dlIdx uint64, dl miner.Deadline) error {
+			return dl.ForEachPartition(func(partIdx uint64, part miner.Partition) error {
+				active, err := part.ActiveSectors()
+				if err != nil {
+					return err
+				}
+				return active.ForEach(func(sn uint64) error {
+					info, ok := activeSectorsInfo[abi.SectorNumber(sn)]
+					if !ok || miner.SectorIsFullQaPower(info) {
+						return nil
+					}
+					toUpgrade = append(toUpgrade, sectorLoc{dlIdx, partIdx, sn})
+					return nil
+				})
+			})
+		}); err != nil {
+			return xerrors.Errorf("traversing miner state: %w", err)
+		}
+		if len(toUpgrade) == 0 {
+			fmt.Println("no sectors to upgrade (all already at FULL_QA_POWER)")
+			return nil
+		}
+
+		// Resolve --max-sectors against the protocol limit.
+		sectorsMax, err := policy.GetAddressedSectorsMax(nv)
+		if err != nil {
+			return err
+		}
+		addrSectors := sectorsMax
+		if n := cctx.Int("max-sectors"); n != 0 {
+			if n < 0 {
+				return xerrors.Errorf("--max-sectors must be positive, got %d", n)
+			}
+			if n > sectorsMax {
+				return xerrors.Errorf("--max-sectors %d exceeds the protocol limit of %d", n, sectorsMax)
+			}
+			addrSectors = n
+		}
+
+		// Pack ordered sectors into messages, capped at addrSectors sectors per message.
+		messages := packUpgradeQualityMessages(toUpgrade, addrSectors)
+		total := len(toUpgrade)
+
+		// Send (or simulate) each message.
+		for idx := range messages {
+			sp, aerr := actors.SerializeParams(&messages[idx])
+			if aerr != nil {
+				return xerrors.Errorf("serializing params: %w", aerr)
+			}
+			msg := &types.Message{
+				From:   mi.Worker,
+				To:     maddr,
+				Method: builtin.MethodsMiner.UpgradeSectorQuality,
+				Value:  big.Zero(),
+				Params: sp,
+			}
+
+			if !cctx.Bool("really-do-it") {
+				if _, err = fullNodeAPI.GasEstimateMessageGas(ctx, msg, spec, types.EmptyTSK); err != nil {
+					return xerrors.Errorf("simulating message [%d/%d]: %w", idx+1, len(messages), err)
+				}
+				continue
+			}
+
+			smsg, err := fullNodeAPI.MpoolPushMessage(ctx, msg, spec)
+			if err != nil {
+				return xerrors.Errorf("[%d/%d] push failed: %w", idx+1, len(messages), err)
+			}
+			fmt.Printf("[%d/%d] %s\n", idx+1, len(messages), smsg.Cid())
+		}
+
+		if cctx.Bool("really-do-it") {
+			fmt.Printf("sent %d message(s) upgrading %d sectors\n", len(messages), total)
+		} else {
+			fmt.Printf("will send %d message(s) for %d sectors (pass --really-do-it to submit)\n", len(messages), total)
+		}
+		return nil
+	},
 }
 
 var sectorsPledgeCmd = &cli.Command{
@@ -135,6 +360,10 @@ var sectorsListCmd = &cli.Command{
 			Name:    "unproven",
 			Usage:   "only show sectors which aren't in the 'Proving' state",
 			Aliases: []string{"u"},
+		},
+		&cli.BoolFlag{
+			Name:  "legacy-qa-power",
+			Usage: "only show sectors that are NOT at FULL_QA_POWER (1x legacy, i.e. candidates for upgrade-quality)",
 		},
 		&cli.Int64Flag{
 			Name:  "check-parallelism",
@@ -207,6 +436,11 @@ var sectorsListCmd = &cli.Command{
 			return err
 		}
 
+		nv, err := fullApi.StateNetworkVersion(ctx, head.Key())
+		if err != nil {
+			return err
+		}
+
 		activeSet, err := fullApi.StateMinerActiveSectors(ctx, maddr, head.Key())
 		if err != nil {
 			return err
@@ -248,6 +482,13 @@ var sectorsListCmd = &cli.Command{
 
 		fast := cctx.Bool("fast")
 
+		// --legacy-qa-power filters on the on-chain FULL_QA_POWER flag, which is only populated when
+		// on-chain info is requested, so it cannot be combined with --fast.
+		showLegacyQA := cctx.Bool("legacy-qa-power")
+		if showLegacyQA && fast {
+			return xerrors.Errorf("--legacy-qa-power requires on-chain info and cannot be used with --fast")
+		}
+
 		throttle := make(chan struct{}, cctx.Int64("check-parallelism"))
 
 		slist := make([]result.Result[api.SectorInfo], len(list))
@@ -283,6 +524,15 @@ var sectorsListCmd = &cli.Command{
 				continue
 			}
 
+			// --legacy-qa-power: show only sectors NOT at FULL_QA_POWER (1x legacy, i.e. candidates
+			// for upgrade-quality). st.FullQaPower mirrors the on-chain FULL_QA_POWER flag via
+			// SectorIsFullQaPower and is only populated when on-chain info is requested (not --fast).
+			// Not-yet-on-chain sectors have FullQaPower=false and so match, consistent with on-chain
+			// truth until they land at 10x.
+			if showLegacyQA && st.FullQaPower {
+				continue
+			}
+
 			_, inSSet := commitedIDs[s]
 			_, inASet := activeIDs[s]
 
@@ -291,16 +541,34 @@ var sectorsListCmd = &cli.Command{
 			dw, vp := .0, .0
 			estimate := (st.Expiration-st.Activation <= 0) || sealing.IsUpgradeState(sealing.SectorState(st.State))
 			if !estimate {
-				rdw := big.Add(st.DealWeight, st.VerifiedDealWeight)
 				powerBaseEpoch := powerBaseEpochs[st.SectorID]
-				dw = float64(big.Div(rdw, big.NewInt(int64(st.Expiration-powerBaseEpoch))).Uint64())
-				vp = float64(big.Div(big.Mul(st.VerifiedDealWeight, big.NewInt(verifiedPowerGainMul)), big.NewInt(int64(st.Expiration-st.Activation))).Uint64())
+				duration := st.Expiration - powerBaseEpoch
+				if st.FullQaPower {
+					// FIP-0118 (NV29+): the sector always receives maximum QA power (10x)
+					// regardless of content. The authoritative QAP is the raw sector
+					// size x10 (QAPowerMax), independent of DealWeight/VerifiedDealWeight.
+					if size, err := st.SealProof.SectorSize(); err == nil {
+						vp = float64(size) * 10
+					}
+				} else {
+					rdw := big.Add(st.DealWeight, st.VerifiedDealWeight)
+					dw = float64(big.Div(rdw, big.NewInt(int64(duration))).Uint64())
+					vp = float64(big.Div(big.Mul(st.VerifiedDealWeight, big.NewInt(verifiedPowerGainMul)), big.NewInt(int64(st.Expiration-st.Activation))).Uint64())
+				}
 			} else {
-				for _, piece := range st.Pieces {
-					if piece.DealInfo != nil {
-						dw += float64(piece.Piece.Size)
-						if piece.DealInfo.DealProposal != nil && piece.DealInfo.DealProposal.VerifiedDeal {
-							vp += float64(piece.Piece.Size) * verifiedPowerGainMul
+				// Not yet on chain (or upgrade in progress): estimate expected QAP.
+				if nv >= network.Version29 {
+					// FIP-0118: every new sector receives 10x QAP regardless of content.
+					if size, err := st.SealProof.SectorSize(); err == nil {
+						vp = float64(size) * 10
+					}
+				} else {
+					for _, piece := range st.Pieces {
+						if piece.DealInfo != nil {
+							dw += float64(piece.Piece.Size)
+							if piece.DealInfo.DealProposal != nil && piece.DealInfo.DealProposal.VerifiedDeal {
+								vp += float64(piece.Piece.Size) * verifiedPowerGainMul
+							}
 						}
 					}
 				}
@@ -357,7 +625,7 @@ var sectorsListCmd = &cli.Command{
 				}
 			}
 
-			if !fast && deals > 0 {
+			if !fast && (deals > 0 || vp > 0) {
 				estWrap := func(s string) string {
 					if !estimate {
 						return s
