@@ -4751,7 +4751,8 @@ Response:
 ```
 
 ### StateGetAllocationForPendingDeal
-StateGetAllocationForPendingDeal returns the allocation for a given deal ID of a pending deal.
+StateGetAllocationForPendingDeal returns the allocation for a given deal ID of a pending deal. It returns an
+unsupported error for tipsets at network version 29 or later.
 
 
 Perms: read

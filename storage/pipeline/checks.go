@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-commp-utils/v2/zerocomm"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/network"
 	prooftypes "github.com/filecoin-project/go-state-types/proof"
 
 	"github.com/filecoin-project/lotus/chain/actors/policy"
@@ -47,6 +48,11 @@ func checkPieces(ctx context.Context, maddr address.Address, sn abi.SectorNumber
 	ts, err := api.ChainHead(ctx)
 	if err != nil {
 		return &ErrApi{xerrors.Errorf("getting chain head: %w", err)}
+	}
+
+	nv, err := api.StateNetworkVersion(ctx, ts.Key())
+	if err != nil {
+		return &ErrApi{xerrors.Errorf("getting network version: %w", err)}
 	}
 
 	dealCount := 0
@@ -99,6 +105,12 @@ func checkPieces(ctx context.Context, maddr address.Address, sn abi.SectorNumber
 			},
 			DDOHandler: func(pi UniversalPieceInfo) error {
 				dealCount++
+
+				// FIP-0118 froze the verified registry, the market no longer cares about allocations,
+				// so there is nothing to check.
+				if nv >= network.Version29 {
+					return nil
+				}
 
 				// try to get allocation to see if that still works
 				all, err := pi.GetAllocation(ctx, api, ts.Key())

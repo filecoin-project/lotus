@@ -3480,10 +3480,6 @@ func preUpgradeActorsV19(
 
 func UpgradeActorsV19(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, cb stmgr.ExecMonitor,
 	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
-	if epoch != buildconstants.UpgradeXxHeight {
-		return cid.Undef, xerrors.Errorf(
-			"actors v19 upgrade epoch %d does not match configured height %d", epoch, buildconstants.UpgradeXxHeight)
-	}
 	return upgradeActorsV19(
 		ctx, sm, cache, cb, root, epoch, ts, buildconstants.UpgradeXxRewardBootstrapParams,
 	)

@@ -459,6 +459,9 @@ type FullNode interface {
 	// and pass in the verified deal space directly.
 	// Note: The value returned is overestimated by 10% (multiplied by 110/100).
 	// See: node/impl/full/state.go StateMinerInitialPledgeCollateral implementation.
+	// From network version 29 (FIP-0118) every sector receives maximum quality-adjusted power
+	// regardless of its deal content, so the quality this derives is 1x where the network
+	// assigns 10x: the value returned is far too low and must not be relied on.
 	//
 	// Deprecated: Use StateMinerInitialPledgeForSector instead.
 	StateMinerInitialPledgeCollateral(context.Context, address.Address, miner.SectorPreCommitInfo, types.TipSetKey) (types.BigInt, error) //perm:read
@@ -466,6 +469,9 @@ type FullNode interface {
 	// duration, size, and combined size of any verified pieces within the sector. This calculation
 	// depends on current network conditions (total power, total pledge and current rewards) at the
 	// given tipset.
+	// From network version 29 (FIP-0118) every sector receives maximum quality-adjusted power
+	// regardless of its deal content: pass the full sector size as verifiedSize to get the
+	// pledge the network will actually charge.
 	// Note: The value returned is overestimated by 10% (multiplied by 110/100).
 	// See: node/impl/full/state.go StateMinerInitialPledgeForSector implementation.
 	StateMinerInitialPledgeForSector(ctx context.Context, sectorDuration abi.ChainEpoch, sectorSize abi.SectorSize, verifiedSize uint64, tsk types.TipSetKey) (types.BigInt, error) //perm:read
