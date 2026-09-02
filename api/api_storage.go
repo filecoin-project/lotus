@@ -296,6 +296,7 @@ type SectorInfo struct {
 	DealWeight         abi.DealWeight          // Integral of active deals over sector lifetime
 	VerifiedDealWeight abi.DealWeight          // Integral of active verified deals over sector lifetime
 	InitialPledge      abi.TokenAmount         // Pledge collected to commit this sector
+	FullQaPower        bool                    // FIP-0118: sector always receives maximum QA power (10x) regardless of content
 	// Expiration Info
 	OnTime abi.ChainEpoch
 	// non-zero if sector is faulty, epoch at which it will be permanently

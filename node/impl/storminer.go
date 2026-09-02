@@ -190,6 +190,7 @@ func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid abi.SectorNumb
 	sInfo.DealWeight = onChainInfo.DealWeight
 	sInfo.VerifiedDealWeight = onChainInfo.VerifiedDealWeight
 	sInfo.InitialPledge = onChainInfo.InitialPledge
+	sInfo.FullQaPower = onChainInfo.Flags&lminer.FULL_QA_POWER != 0
 
 	ex, err := sm.Full.StateSectorExpiration(ctx, sm.Miner.Address(), sid, types.EmptyTSK)
 	if err != nil {

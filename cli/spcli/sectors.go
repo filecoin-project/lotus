@@ -15,6 +15,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/network"
+
 	"github.com/fatih/color"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/samber/lo"
@@ -174,6 +176,11 @@ func SectorsStatusCmd(getActorAddress ActorAddressGetter, getOnDiskInfo OnDiskIn
 				fmt.Printf("Expiration:\t\t%s\n", cliutil.EpochTime(head.Height(), status.Expiration))
 				fmt.Printf("DealWeight:\t\t%v\n", status.DealWeight)
 				fmt.Printf("VerifiedDealWeight:\t\t%v\n", status.VerifiedDealWeight)
+				if status.Flags&miner.FULL_QA_POWER != 0 {
+					fmt.Printf("FullQaPower:\t\ttrue (10x QA power)\n")
+				} else {
+					fmt.Printf("FullQaPower:\t\tfalse\n")
+				}
 				fmt.Printf("InitialPledge:\t\t%v\n", types.FIL(status.InitialPledge))
 				fmt.Printf("SectorID:\t\t{Miner: %v, Number: %v}\n", abi.ActorID(mid), status.SectorNumber)
 			}
@@ -575,6 +582,20 @@ func SectorsCheckExpireCmd(getActorAddress ActorAddressGetter) *cli.Command {
 	}
 }
 
+func rejectDeprecatedOnlyCCFlag(cctx *cli.Context) error {
+	if cctx.IsSet("only-cc") {
+		return xerrors.Errorf("only-cc flag has been removed, use --exclude flag instead")
+	}
+	return nil
+}
+
+func rejectDeprecatedDropClaimsFlag(cctx *cli.Context, nv network.Version) error {
+	if cctx.IsSet("drop-claims") && nv >= network.Version29 {
+		return xerrors.Errorf("drop-claims flag has been removed after NV29; extend now applies uniformly to all sectors")
+	}
+	return nil
+}
+
 func SectorsExtendCmd(getActorAddress ActorAddressGetter) *cli.Command {
 	return &cli.Command{
 		Name:      "extend",
@@ -611,8 +632,12 @@ func SectorsExtendCmd(getActorAddress ActorAddressGetter) *cli.Command {
 				Hidden: true,
 			},
 			&cli.BoolFlag{
+				// Deprecated on NV29+ only: FIP-0118 removes verified claims, so
+				// drop-claims is only meaningful pre-NV29. It stays defined (visible)
+				// so IsSet can detect it: NV28 still uses it, NV29 rejects it via
+				// rejectDeprecatedDropClaimsFlag.
 				Name:  "drop-claims",
-				Usage: "drop claims for sectors that can be extended, but only by dropping some of their verified power claims",
+				Usage: "drop claims for sectors that can be extended, but only by dropping some of their verified power claims (deprecated on NV29+)",
 			},
 			&cli.Int64Flag{
 				Name:  "tolerance",
@@ -635,8 +660,8 @@ func SectorsExtendCmd(getActorAddress ActorAddressGetter) *cli.Command {
 			},
 		},
 		Action: func(cctx *cli.Context) error {
-			if cctx.IsSet("only-cc") {
-				return xerrors.Errorf("only-cc flag has been removed, use --exclude flag instead")
+			if err := rejectDeprecatedOnlyCCFlag(cctx); err != nil {
+				return err
 			}
 
 			mf, err := types.ParseFIL(cctx.String("max-fee"))
@@ -667,6 +692,9 @@ func SectorsExtendCmd(getActorAddress ActorAddressGetter) *cli.Command {
 
 			nv, err := fullApi.StateNetworkVersion(ctx, types.EmptyTSK)
 			if err != nil {
+				return err
+			}
+			if err := rejectDeprecatedDropClaimsFlag(cctx, nv); err != nil {
 				return err
 			}
 
@@ -840,24 +868,35 @@ func SectorsExtendCmd(getActorAddress ActorAddressGetter) *cli.Command {
 				}
 			}
 
-			verifregAct, err := fullApi.StateGetActor(ctx, builtin.VerifiedRegistryActorAddr, types.EmptyTSK)
-			if err != nil {
-				return xerrors.Errorf("failed to lookup verifreg actor: %w", err)
-			}
+			// FIP-0118 (NV29+): ExtendSectorExpiration2 no longer consults the verified registry.
+			// Claim declarations are accepted-and-ignored and every sector is extensible, so we
+			// skip the verifreg reads entirely. Pre-NV29, claim maintenance is still required.
+			// With claimIdsBySector left empty on NV29+, every sector takes the "no claims" path
+			// below: it is extended unconditionally, with no SectorsWithClaims and no skipping.
+			var (
+				claimsMap        map[verifreg.ClaimId]verifreg.Claim
+				claimIdsBySector map[abi.SectorNumber][]verifreg.ClaimId
+			)
+			if nv < network.Version29 {
+				verifregAct, err := fullApi.StateGetActor(ctx, builtin.VerifiedRegistryActorAddr, types.EmptyTSK)
+				if err != nil {
+					return xerrors.Errorf("failed to lookup verifreg actor: %w", err)
+				}
 
-			verifregSt, err := verifreg.Load(adtStore, verifregAct)
-			if err != nil {
-				return xerrors.Errorf("failed to load verifreg state: %w", err)
-			}
+				verifregSt, err := verifreg.Load(adtStore, verifregAct)
+				if err != nil {
+					return xerrors.Errorf("failed to load verifreg state: %w", err)
+				}
 
-			claimsMap, err := verifregSt.GetClaims(maddr)
-			if err != nil {
-				return xerrors.Errorf("failed to lookup claims for miner: %w", err)
-			}
+				claimsMap, err = verifregSt.GetClaims(maddr)
+				if err != nil {
+					return xerrors.Errorf("failed to lookup claims for miner: %w", err)
+				}
 
-			claimIdsBySector, err := verifregSt.GetClaimIdsBySector(maddr)
-			if err != nil {
-				return xerrors.Errorf("failed to lookup claim IDs by sector: %w", err)
+				claimIdsBySector, err = verifregSt.GetClaimIdsBySector(maddr)
+				if err != nil {
+					return xerrors.Errorf("failed to lookup claim IDs by sector: %w", err)
+				}
 			}
 
 			sectorsMax, err := policy.GetAddressedSectorsMax(nv)
