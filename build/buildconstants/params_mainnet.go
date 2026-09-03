@@ -143,7 +143,27 @@ const UpgradeGoldenWeekHeight = abi.ChainEpoch(5348280)
 // 2026-05-27T:14:00:00Z
 var UpgradeFireHorseHeight = abi.ChainEpoch(6052800)
 
-var UpgradeXxHeight = abi.ChainEpoch(9999999999)
+var UpgradeXxHeight = UpgradeHeightUnscheduled
+
+// FIP-0118: reward actor bootstrap state installed by the Solstice migration.
+// Addresses must be set before enabling the upgrade.
+var UpgradeXxRewardBootstrapParams = SolsticeRewardBootstrapParams{
+	SWATimelockEpochs:                 builtin.EpochsInDay * 7,
+	ConsensusWeightRampDurationEpochs: builtin.EpochsInDay * 90 * 9,
+	ConsensusWeight: SolsticeRewardWeightParams{
+		VStart: 95 * solsticeRewardWeightPercent,
+		Floor:  50 * solsticeRewardWeightPercent,
+		Cap:    95 * solsticeRewardWeightPercent,
+	},
+	ServiceWeight: SolsticeRewardWeightParams{
+		VStart: 5 * solsticeRewardWeightPercent,
+		Floor:  5 * solsticeRewardWeightPercent,
+		Cap:    10 * solsticeRewardWeightPercent,
+	},
+	SWAActor:            address.Undef,
+	SRAActor:            address.Undef,
+	InitialOrchestrator: address.Undef,
+}
 
 var UpgradeTeepInitialFilReserved = InitialFilReserved // FIP-0100: no change for mainnet
 

@@ -5508,6 +5508,7 @@
                             "DealWeight": "0",
                             "VerifiedDealWeight": "0",
                             "InitialPledge": "0",
+                            "FullQaPower": true,
                             "OnTime": 10101,
                             "Early": 10101
                         }
@@ -5549,6 +5550,9 @@
                         "Expiration": {
                             "title": "number",
                             "type": "number"
+                        },
+                        "FullQaPower": {
+                            "type": "boolean"
                         },
                         "InitialPledge": {
                             "additionalProperties": false,

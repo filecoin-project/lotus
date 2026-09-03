@@ -86,7 +86,27 @@ var UpgradeGoldenWeekHeight = abi.ChainEpoch(-31)
 
 const UpgradeFireHorseHeight = -32
 
-const UpgradeXxHeight = 999999999999999
+const UpgradeXxHeight = UpgradeHeightUnscheduled
+
+// FIP-0118: reward actor bootstrap state installed by the Solstice migration.
+// Addresses must be set before enabling the upgrade.
+var UpgradeXxRewardBootstrapParams = SolsticeRewardBootstrapParams{
+	SWATimelockEpochs:                 builtin.EpochsInDay * 7,
+	ConsensusWeightRampDurationEpochs: builtin.EpochsInDay * 90 * 9,
+	ConsensusWeight: SolsticeRewardWeightParams{
+		VStart: 95 * solsticeRewardWeightPercent,
+		Floor:  50 * solsticeRewardWeightPercent,
+		Cap:    95 * solsticeRewardWeightPercent,
+	},
+	ServiceWeight: SolsticeRewardWeightParams{
+		VStart: 5 * solsticeRewardWeightPercent,
+		Floor:  5 * solsticeRewardWeightPercent,
+		Cap:    10 * solsticeRewardWeightPercent,
+	},
+	SWAActor:            address.Undef,
+	SRAActor:            address.Undef,
+	InitialOrchestrator: address.Undef,
+}
 
 var ConsensusMinerMinPower = abi.NewStoragePower(2 << 30)
 var PreCommitChallengeDelay = abi.ChainEpoch(150)

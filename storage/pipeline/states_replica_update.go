@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-statemachine"
 
 	"github.com/filecoin-project/lotus/api"
@@ -138,15 +139,26 @@ func (m *Sealing) handleSubmitReplicaUpdate(ctx statemachine.Context, sector Sec
 		return xerrors.Errorf("failed to resolve sector size for seal proof: %w", err)
 	}
 
+	nv, err := m.Api.StateNetworkVersion(ctx.Context(), ts.Key())
+	if err != nil {
+		return xerrors.Errorf("getting network version: %w", err)
+	}
+
+	// FIP-0118 gives every sector maximum quality-adjusted power regardless of its deal
+	// content, which this API expresses as a fully verified sector.
 	var verifiedSize uint64
-	for _, piece := range sector.Pieces {
-		if piece.HasDealInfo() {
-			alloc, err := piece.GetAllocation(ctx.Context(), m.Api, ts.Key())
-			if err != nil || alloc == nil {
-				if err != nil {
-					log.Errorw("failed to get allocation", "error", err)
+	if nv >= network.Version29 {
+		verifiedSize = uint64(ssize)
+	} else {
+		for _, piece := range sector.Pieces {
+			if piece.HasDealInfo() {
+				alloc, err := piece.GetAllocation(ctx.Context(), m.Api, ts.Key())
+				if err != nil || alloc == nil {
+					if err != nil {
+						log.Errorw("failed to get allocation", "error", err)
+					}
+					verifiedSize += uint64(piece.Piece().Size)
 				}
-				verifiedSize += uint64(piece.Piece().Size)
 			}
 		}
 	}

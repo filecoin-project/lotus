@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-padreader"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-statemachine"
 
 	"github.com/filecoin-project/lotus/api"
@@ -153,6 +154,11 @@ func (m *Sealing) maybeStartSealing(ctx statemachine.Context, sector SectorInfo,
 			return false, xerrors.Errorf("API error getting head: %w", err)
 		}
 
+		nv, err := m.Api.StateNetworkVersion(ctx.Context(), ts.Key())
+		if err != nil {
+			return false, xerrors.Errorf("getting network version: %w", err)
+		}
+
 		var dealSafeSealEpoch abi.ChainEpoch
 		for _, piece := range sector.Pieces {
 			if !piece.HasDealInfo() {
@@ -166,6 +172,11 @@ func (m *Sealing) maybeStartSealing(ctx statemachine.Context, sector SectorInfo,
 			}
 
 			dealSafeSealEpoch = startEpoch - cfg.StartEpochSealingBuffer
+
+			// FIP-0118: from nv29 there are no allocations to tighten the seal deadline with.
+			if nv >= network.Version29 {
+				continue
+			}
 
 			alloc, err := piece.GetAllocation(ctx.Context(), m.Api, types.EmptyTSK)
 			if err != nil {
@@ -414,24 +425,28 @@ func (m *Sealing) sectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPiec
 
 func (m *Sealing) getClaimTerms(ctx context.Context, deal UniversalPieceInfo, tsk types.TipSetKey) (pieceClaimBounds, error) {
 
-	all, err := deal.GetAllocation(ctx, m.Api, tsk)
-	if err != nil {
-		return pieceClaimBounds{}, err
-	}
-	if all != nil {
-		startEpoch, err := deal.StartEpoch()
-		if err != nil {
-			return pieceClaimBounds{}, err
-		}
-
-		return pieceClaimBounds{
-			claimTermEnd: startEpoch + all.TermMax,
-		}, nil
-	}
-
 	nv, err := m.Api.StateNetworkVersion(ctx, tsk)
 	if err != nil {
 		return pieceClaimBounds{}, err
+	}
+
+	// FIP-0118 froze the verified registry: from nv29 no allocations exist and the market
+	// no longer answers for them, so every piece falls through to the deal-derived bound.
+	if nv < network.Version29 {
+		all, err := deal.GetAllocation(ctx, m.Api, tsk)
+		if err != nil {
+			return pieceClaimBounds{}, err
+		}
+		if all != nil {
+			startEpoch, err := deal.StartEpoch()
+			if err != nil {
+				return pieceClaimBounds{}, err
+			}
+
+			return pieceClaimBounds{
+				claimTermEnd: startEpoch + all.TermMax,
+			}, nil
+		}
 	}
 
 	endEpoch, err := deal.EndEpoch()

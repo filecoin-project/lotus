@@ -106,8 +106,9 @@ func TestManualSectorOnboarding(t *testing.T) {
 			blockMiner.WatchMinerForPost(minerC.ActorAddr)
 
 			// Wait till both miners' sectors have had their first post and are activated and check that this is reflected in miner power
-			minerB.WaitTillActivatedAndAssertPower(bSectors, uint64(defaultSectorSize), uint64(defaultSectorSize))
-			minerC.WaitTillActivatedAndAssertPower(cSectors, uint64(defaultSectorSize), uint64(defaultSectorSize))
+			// Solstice gives every sector maximum quality-adjusted power, 10x its raw bytes
+			minerB.WaitTillActivatedAndAssertPower(bSectors, uint64(defaultSectorSize), uint64(defaultSectorSize)*10)
+			minerC.WaitTillActivatedAndAssertPower(cSectors, uint64(defaultSectorSize), uint64(defaultSectorSize)*10)
 
 			// Miner B has activated the CC sector -> upgrade it with snapdeals
 			_, _ = minerB.SnapDeal(bSectors[0], kit.SectorManifest{Piece: kit.BogusPieceCid2})

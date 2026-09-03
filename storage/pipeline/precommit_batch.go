@@ -3,6 +3,7 @@ package sealing
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"sort"
 	"sync"
 	"time"
@@ -239,6 +240,18 @@ func (b *PreCommitBatcher) processPreCommitBatch(cfg sealiface.Config, bf abi.To
 	var res sealiface.PreCommitBatchRes
 
 	for _, p := range entries {
+		// FIP-0118 (Solstice, NV29+): PreCommitSectorBatch2 rejects a non-empty
+		// deal_ids field — every new sector automatically receives max QA power
+		// (10x) regardless of content, so deal_ids no longer carries any meaning.
+		// The sealing pipeline never populates DealIDs, so this is a defensive
+		// guard: it keeps the pipeline working on NV28 (where deal_ids remain
+		// allowed) while explicitly enforcing the NV29 invariant if a caller ever
+		// sets them.
+		if nv >= network.Version29 && len(p.pci.DealIDs) > 0 {
+			res.Error = fmt.Sprintf("sector %d has %d deal_ids, but FIP-0118 (NV29+) requires an empty deal_ids in PreCommitSectorBatch2", p.pci.SectorNumber, len(p.pci.DealIDs))
+			return []sealiface.PreCommitBatchRes{res}, xerrors.Errorf("sector %d precommit on NV29 must have empty DealIDs: %s", p.pci.SectorNumber, res.Error)
+		}
+
 		res.Sectors = append(res.Sectors, p.pci.SectorNumber)
 		params.Sectors = append(params.Sectors, *p.pci)
 		deposit = big.Add(deposit, p.deposit)

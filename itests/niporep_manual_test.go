@@ -326,8 +326,9 @@ func TestManualNISectorOnboarding(t *testing.T) {
 			}
 
 			// Wait till each miners' sectors have had their first post and are activated and check that this is reflected in miner power
+			// Solstice gives every sector maximum quality-adjusted power, 10x its raw bytes
 			for i, miner := range miners {
-				miner.WaitTillActivatedAndAssertPower(sectors[i], tc.miners[i].expectPower, tc.miners[i].expectPower)
+				miner.WaitTillActivatedAndAssertPower(sectors[i], tc.miners[i].expectPower, tc.miners[i].expectPower*10)
 			}
 
 			for i, tcMiner := range tc.miners {

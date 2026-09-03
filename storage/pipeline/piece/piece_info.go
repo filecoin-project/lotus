@@ -43,14 +43,16 @@ type DealSchedule struct {
 	EndEpoch   abi.ChainEpoch
 }
 
-func (ds *PieceDealInfo) isBuiltinMarketDeal() bool {
+// IsBuiltinMarketDeal reports whether this piece came from a builtin-market deal rather
+// than direct data onboarding.
+func (ds *PieceDealInfo) IsBuiltinMarketDeal() bool {
 	return ds.PublishCid != nil
 }
 
 // Valid validates the deal info after being accepted through RPC, checks that
 // the deal metadata is well-formed.
 func (ds *PieceDealInfo) Valid() error {
-	hasLegacyDealInfo := ds.PublishCid != nil && ds.DealID != 0 && ds.DealProposal != nil
+	hasLegacyDealInfo := ds.IsBuiltinMarketDeal() && ds.DealProposal != nil
 	hasPieceActivationManifest := ds.PieceActivationManifest != nil
 
 	if hasLegacyDealInfo && hasPieceActivationManifest {
@@ -87,7 +89,7 @@ type AllocationAPI interface {
 
 func (ds *PieceDealInfo) GetAllocation(ctx context.Context, aapi AllocationAPI, tsk types.TipSetKey) (*verifregtypes.Allocation, error) {
 	switch {
-	case ds.isBuiltinMarketDeal():
+	case ds.IsBuiltinMarketDeal():
 		return aapi.StateGetAllocationForPendingDeal(ctx, ds.DealID, tsk)
 	default:
 		if ds.PieceActivationManifest.VerifiedAllocationKey == nil {
@@ -120,7 +122,7 @@ func (ds *PieceDealInfo) GetAllocation(ctx context.Context, aapi AllocationAPI, 
 // must be sealed (committed) in order for the deal to be valid.
 func (ds *PieceDealInfo) StartEpoch() (abi.ChainEpoch, error) {
 	switch {
-	case ds.isBuiltinMarketDeal():
+	case ds.IsBuiltinMarketDeal():
 		return ds.DealSchedule.StartEpoch, nil
 	default:
 		// note - when implementing make sure to cache any dynamically computed values
@@ -133,7 +135,7 @@ func (ds *PieceDealInfo) StartEpoch() (abi.ChainEpoch, error) {
 // deal must be committed until.
 func (ds *PieceDealInfo) EndEpoch() (abi.ChainEpoch, error) {
 	switch {
-	case ds.isBuiltinMarketDeal():
+	case ds.IsBuiltinMarketDeal():
 		return ds.DealSchedule.EndEpoch, nil
 	default:
 		// note - when implementing make sure to cache any dynamically computed values
@@ -144,7 +146,7 @@ func (ds *PieceDealInfo) EndEpoch() (abi.ChainEpoch, error) {
 
 func (ds *PieceDealInfo) PieceCID() cid.Cid {
 	switch {
-	case ds.isBuiltinMarketDeal():
+	case ds.IsBuiltinMarketDeal():
 		return ds.DealProposal.PieceCID
 	default:
 		return ds.PieceActivationManifest.CID
@@ -153,7 +155,7 @@ func (ds *PieceDealInfo) PieceCID() cid.Cid {
 
 func (ds *PieceDealInfo) String() string {
 	switch {
-	case ds.isBuiltinMarketDeal():
+	case ds.IsBuiltinMarketDeal():
 		return fmt.Sprintf("BuiltinMarket{DealID: %d, PieceCID: %s, PublishCid: %s}", ds.DealID, ds.DealProposal.PieceCID, ds.PublishCid)
 	default:
 		// todo check that VAlloc doesn't print as a pointer
@@ -163,7 +165,7 @@ func (ds *PieceDealInfo) String() string {
 
 func (ds *PieceDealInfo) Size() abi.PaddedPieceSize {
 	switch {
-	case ds.isBuiltinMarketDeal():
+	case ds.IsBuiltinMarketDeal():
 		return ds.DealProposal.PieceSize
 	default:
 		return ds.PieceActivationManifest.Size

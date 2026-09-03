@@ -5,7 +5,15 @@ import (
 
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
+	minertypes19 "github.com/filecoin-project/go-state-types/builtin/v19/miner"
 	"github.com/filecoin-project/go-state-types/network"
+)
+
+// Sector quality flags. FULL_QA_POWER (FIP-0118) means the sector always receives maximum
+// quality-adjusted power regardless of its content.
+const (
+	SIMPLE_QA_POWER = minertypes19.SIMPLE_QA_POWER
+	FULL_QA_POWER   = minertypes19.FULL_QA_POWER
 )
 
 type SealProofVariant int
