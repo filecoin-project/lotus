@@ -11,6 +11,10 @@ on:
 permissions:
   pull-requests: write
 
+concurrency:
+  group: pr-title-check-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   check-pr-title:
     if: github.event.pull_request.draft == false
@@ -22,7 +26,22 @@ jobs:
         with:
           github-token: ${{secrets.GITHUB_TOKEN}}
           script: |
-            const title = context.payload.pull_request.title;
+            // Fetch the PR fresh rather than trusting context.payload.pull_request.title,
+            // which is a snapshot from when the triggering event was dispatched. A run can
+            // sit queued long enough that the title changes again before it executes,
+            // causing it to validate (and post a status for) a title that's already stale.
+            // Fall back to the payload title if the live fetch fails, so a transient API
+            // error doesn't block a merge over a title that was already valid.
+            let title = context.payload.pull_request.title;
+            try {
+              const { data: pr } = await github.rest.pulls.get({
+                ...context.repo,
+                pull_number: context.payload.pull_request.number
+              });
+              title = pr.title;
+            } catch (error) {
+              core.warning(`Failed to fetch live PR title, falling back to event payload title: ${error.message}`);
+            }
             // This should match https://github.com/filecoin-project/lotus/blob/master/CONTRIBUTING.md#pr-title-conventions
             // 202408: Beyond Conventional Commit conventions, we also optionally support the "scope" outside of parenthesis for a transitionary period from legacy conventions per https://github.com/filecoin-project/lotus/pull/12340 
             const conventionalPattern = /^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([\w.-]+\))?!?:?\s([\w.-]+:)?\s?["'`a-z].+$/;
