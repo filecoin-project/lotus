@@ -4,12 +4,37 @@ description: Install System dependencies for Filecoin Lotus
 runs:
   using: composite
   steps:
-    - if: runner.os == 'Linux'
+    - name: Install Ubuntu packages
+      if: runner.os == 'Linux'
       run: |
-        # List processes to enable debugging in case /var/lib/apt/lists/ is locked 
-        ps aux
-        sudo apt-get update -y
-        sudo apt-get install -y ocl-icd-opencl-dev libhwloc-dev pkg-config
+        retry_apt() {
+          local description="$1"
+          shift
+
+          local attempt
+          for attempt in 1 2 3; do
+            if sudo apt-get \
+              -o Acquire::Retries=3 \
+              -o Acquire::ForceIPv4=true \
+              -o Acquire::http::Timeout=30 \
+              -o Acquire::https::Timeout=30 \
+              "$@"; then
+              return 0
+            fi
+
+            if [[ "$attempt" -eq 3 ]]; then
+              echo "::error title=Ubuntu package setup failed::$description failed after $attempt attempts on ${RUNNER_NAME:-unknown} (${RUNNER_ARCH:-unknown}). The test suite did not run."
+              return 1
+            fi
+
+            local delay=$((attempt * 15))
+            echo "::warning title=Retrying Ubuntu package setup::$description failed on attempt $attempt/3; retrying in ${delay}s."
+            sleep "$delay"
+          done
+        }
+
+        retry_apt "Refreshing Ubuntu package indexes" update -y
+        retry_apt "Installing Lotus system dependencies" install -y ocl-icd-opencl-dev libhwloc-dev pkg-config
       shell: bash
     - if: runner.os == 'macOS'
       env:
