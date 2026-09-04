@@ -431,6 +431,10 @@ func (pv1 *reverseProxyV1) EthGetLogs(ctx context.Context, filter *ethtypes.EthF
 		return nil, err
 	}
 
+	if err := pv1.gateway.checkEthEventFilterBlockRange(ctx, filter, pv1.chainHeadHeight); err != nil {
+		return nil, err
+	}
+
 	if filter.FromBlock != nil {
 		if err := pv1.checkBlkParam(ctx, *filter.FromBlock, 0); err != nil {
 			return nil, err
@@ -486,6 +490,10 @@ func (pv1 *reverseProxyV1) EthGetFilterLogs(ctx context.Context, id ethtypes.Eth
 
 func (pv1 *reverseProxyV1) EthNewFilter(ctx context.Context, filter *ethtypes.EthFilterSpec) (ethtypes.EthFilterID, error) {
 	if err := pv1.gateway.limit(ctx, stateRateLimitTokens); err != nil {
+		return ethtypes.EthFilterID{}, err
+	}
+
+	if err := pv1.gateway.checkEthEventFilterBlockRange(ctx, filter, pv1.chainHeadHeight); err != nil {
 		return ethtypes.EthFilterID{}, err
 	}
 

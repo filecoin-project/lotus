@@ -38,6 +38,17 @@ func (pv2 *reverseProxyV2) ChainGetTipSet(ctx context.Context, selector types.Ti
 	return pv2.server.ChainGetTipSet(ctx, selector)
 }
 
+func (pv2 *reverseProxyV2) chainHeadHeight(ctx context.Context) (abi.ChainEpoch, error) {
+	head, err := pv2.server.ChainGetTipSet(ctx, types.TipSetSelectors.Latest)
+	if err != nil {
+		return 0, err
+	}
+	if head == nil {
+		return 0, xerrors.New("chain head is nil")
+	}
+	return head.Height(), nil
+}
+
 func (pv2 *reverseProxyV2) ChainGetTipSetFinalityStatus(ctx context.Context) (*types.FinalityStatus, error) {
 	if err := pv2.gateway.limit(ctx, chainRateLimitTokens); err != nil {
 		return nil, err
@@ -436,6 +447,10 @@ func (pv2 *reverseProxyV2) EthGetLogs(ctx context.Context, filter *ethtypes.EthF
 		return nil, err
 	}
 
+	if err := pv2.gateway.checkEthEventFilterBlockRange(ctx, filter, pv2.chainHeadHeight); err != nil {
+		return nil, err
+	}
+
 	if filter.FromBlock != nil {
 		if err := pv2.checkBlkParam(ctx, *filter.FromBlock, 0); err != nil {
 			return nil, err
@@ -477,6 +492,10 @@ func (pv2 *reverseProxyV2) EthNewPendingTransactionFilter(ctx context.Context) (
 
 func (pv2 *reverseProxyV2) EthNewFilter(ctx context.Context, filter *ethtypes.EthFilterSpec) (ethtypes.EthFilterID, error) {
 	if err := pv2.gateway.limit(ctx, stateRateLimitTokens); err != nil {
+		return ethtypes.EthFilterID{}, err
+	}
+
+	if err := pv2.gateway.checkEthEventFilterBlockRange(ctx, filter, pv2.chainHeadHeight); err != nil {
 		return ethtypes.EthFilterID{}, err
 	}
 

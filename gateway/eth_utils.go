@@ -11,9 +11,13 @@ package gateway
 // perform accurate range checks.
 
 import (
+	"context"
+	"math"
+
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
@@ -43,6 +47,121 @@ func (gw *Node) checkEthTraceFilterBlockRange(headHeight abi.ChainEpoch, filter 
 		return api.NewErrBlockRangeExceeded(maxRange, uint64(to-from))
 	}
 	return nil
+}
+
+type chainHeadHeightFunc func(context.Context) (abi.ChainEpoch, error)
+
+// checkEthEventFilterBlockRange checks the height range of an Ethereum event
+// filter.
+func (gw *Node) checkEthEventFilterBlockRange(ctx context.Context, filter *ethtypes.EthFilterSpec, getHeadHeight chainHeadHeightFunc) error {
+	if gw.eventFilterMaxHeightRange <= 0 || filter == nil || filter.BlockHash != nil {
+		return nil
+	}
+
+	fromTag := ethtypes.BlockTagLatest
+	if filter.FromBlock != nil {
+		fromTag = *filter.FromBlock
+	}
+	toTag := ethtypes.BlockTagLatest
+	if filter.ToBlock != nil {
+		toTag = *filter.ToBlock
+	}
+	if isEthEventHeadTag(fromTag) && isEthEventHeadTag(toTag) {
+		return nil
+	}
+
+	var headHeight abi.ChainEpoch
+	if isEthEventHeadTag(fromTag) || isEthEventHeadTag(toTag) {
+		var err error
+		headHeight, err = getHeadHeight(ctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	from, fromOK := resolveEthEventFilterBlockTag(fromTag, headHeight)
+	to, toOK := resolveEthEventFilterBlockTag(toTag, headHeight)
+	if !fromOK || !toOK {
+		// Let the full node return the authoritative error for unsupported or
+		// malformed block tags.
+		return nil
+	}
+	return gw.checkEventFilterHeightRange(from, to)
+}
+
+func (gw *Node) checkActorEventFilterHeightRange(ctx context.Context, filter *types.ActorEventFilter, getHeadHeight chainHeadHeightFunc) error {
+	if gw.eventFilterMaxHeightRange <= 0 || filter == nil {
+		return nil
+	}
+	if filter.TipSetKey != nil && !filter.TipSetKey.IsEmpty() {
+		return nil
+	}
+	if filter.FromHeight == nil && filter.ToHeight == nil {
+		return nil
+	}
+	if filter.FromHeight != nil && *filter.FromHeight < 0 {
+		return nil
+	}
+	if filter.ToHeight != nil && *filter.ToHeight < 0 {
+		return nil
+	}
+
+	var (
+		from abi.ChainEpoch
+		to   abi.ChainEpoch
+	)
+	if filter.FromHeight != nil && filter.ToHeight != nil {
+		from = *filter.FromHeight
+		to = *filter.ToHeight
+	} else {
+		headHeight, err := getHeadHeight(ctx)
+		if err != nil {
+			return err
+		}
+		if filter.FromHeight != nil {
+			from = *filter.FromHeight
+			if headHeight > 0 {
+				to = headHeight - 1
+			}
+		} else {
+			from = headHeight
+			to = *filter.ToHeight
+		}
+	}
+	return gw.checkEventFilterHeightRange(from, to)
+}
+
+func (gw *Node) checkEventFilterHeightRange(from, to abi.ChainEpoch) error {
+	if gw.eventFilterMaxHeightRange <= 0 || to <= from {
+		return nil
+	}
+	heightRange := to - from
+	if heightRange > gw.eventFilterMaxHeightRange {
+		return api.NewErrBlockRangeExceeded(uint64(gw.eventFilterMaxHeightRange), uint64(heightRange))
+	}
+	return nil
+}
+
+func isEthEventHeadTag(tag string) bool {
+	return tag == "" || tag == ethtypes.BlockTagLatest
+}
+
+func resolveEthEventFilterBlockTag(tag string, headHeight abi.ChainEpoch) (abi.ChainEpoch, bool) {
+	switch {
+	case isEthEventHeadTag(tag):
+		if headHeight > 0 {
+			return headHeight - 1, true
+		}
+		return 0, true
+	case tag == ethtypes.BlockTagEarliest:
+		return 0, true
+	default:
+		var num ethtypes.EthUint64
+		if err := num.UnmarshalJSON([]byte(`"` + tag + `"`)); err != nil || num > math.MaxInt64 {
+			return 0, false
+		}
+		return abi.ChainEpoch(num), true
+	}
 }
 
 // resolveTraceFilterBlockTag resolves the block tags supported by trace_filter
