@@ -1,6 +1,6 @@
 # Copilot code review instructions
 
-Use `AGENTS.md` for Lotus architecture, invariants and validation commands. Review the pull request's changed behaviour, not the repository in the abstract. Inspect relevant callers, interfaces and tests before commenting.
+Use `/AGENTS.md` for Lotus architecture, invariants and validation commands. Review the pull request's changed behaviour, not the repository in the abstract. Inspect relevant callers, interfaces and tests before commenting.
 
 Prioritise, in order:
 
