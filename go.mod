@@ -135,7 +135,7 @@ require (
 	github.com/rvagg/go-skellam-pmf v0.0.2
 	github.com/samber/lo v1.53.0
 	github.com/sirupsen/logrus v1.9.4
-	github.com/stretchr/testify v1.11.1
+	github.com/stretchr/testify v1.12.1
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7 // dependency-check-ignore: unknown
 	github.com/triplewz/poseidon v0.0.2
 	github.com/urfave/cli/v2 v2.27.7
@@ -148,13 +148,13 @@ require (
 	github.com/zondax/ledger-filecoin-go v1.2.2
 	github.com/zyedidia/generic v1.2.1
 	go.opencensus.io v0.24.0
-	go.opentelemetry.io/otel v1.44.0
+	go.opentelemetry.io/otel v1.46.0
 	go.opentelemetry.io/otel/bridge/opencensus v1.44.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.44.0
 	go.opentelemetry.io/otel/exporters/prometheus v0.50.0
-	go.opentelemetry.io/otel/metric v1.44.0
-	go.opentelemetry.io/otel/sdk v1.44.0
-	go.opentelemetry.io/otel/sdk/metric v1.44.0
+	go.opentelemetry.io/otel/metric v1.46.0
+	go.opentelemetry.io/otel/sdk v1.46.0
+	go.opentelemetry.io/otel/sdk/metric v1.46.0
 	go.uber.org/fx v1.24.0
 	go.uber.org/multierr v1.11.0
 	go.uber.org/zap v1.28.0
@@ -207,7 +207,7 @@ require (
 	github.com/gdamore/encoding v1.0.1 // indirect
 	github.com/go-kit/log v0.2.1 // indirect
 	github.com/go-logfmt/logfmt v0.6.0 // indirect
-	github.com/go-logr/logr v1.4.3 // indirect
+	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-openapi/jsonpointer v0.22.4 // indirect
@@ -276,7 +276,6 @@ require (
 	github.com/pion/sctp v1.8.39 // indirect
 	github.com/pion/sdp/v3 v3.0.18 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect; dependency-check-ignore: needed by github.com/drand/go-clients@v0.2.2
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.70.1 // indirect
 	github.com/prometheus/procfs v0.21.1 // indirect
@@ -304,7 +303,7 @@ require (
 	gitlab.com/yawning/tuplehash v0.0.0-20230713102510-df83abbf9a02 // indirect
 	go.dedis.ch/fixbuf v1.0.3 // indirect
 	go.dedis.ch/kyber/v4 v4.0.0-pre2.0.20240924132404-4de33740016e // indirect; dependency-check-ignore: unknown
-	go.opentelemetry.io/otel/trace v1.44.0 // indirect
+	go.opentelemetry.io/otel/trace v1.46.0 // indirect
 	go.uber.org/dig v1.19.0 // indirect
 	go.uber.org/mock v0.6.0 // indirect
 	go4.org v0.0.0-20230225012048-214862532bf5 // indirect
@@ -315,7 +314,6 @@ require (
 	google.golang.org/grpc v1.81.1 // indirect
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 	howett.net/plist v0.0.0-20181124034731-591f970eefbb // indirect; dependency-check-ignore: required by github.com/elastic/go-sysinfo
 	lukechampine.com/blake3 v1.4.1 // indirect
 )
@@ -358,7 +356,7 @@ require (
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.44.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.10.0 // indirect
-	go.yaml.in/yaml/v3 v3.0.4 // indirect
+	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	go.yaml.in/yaml/v4 v4.0.0-rc.2 // indirect; dependency-check-ignore: required by github.com/invopop/jsonschema
 	golang.org/x/telemetry v0.0.0-20260717140457-bdb89881bb75 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260526163538-3dc84a4a5aaa // indirect
