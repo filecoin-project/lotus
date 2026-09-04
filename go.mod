@@ -145,7 +145,7 @@ require (
 	github.com/xeipuuv/gojsonschema v1.2.0
 	github.com/xorcare/golden v0.8.4
 	github.com/yugabyte/pgx/v5 v5.7.6-yb-1 // dependency-check-ignore: unknown
-	github.com/zondax/ledger-filecoin-go v1.2.2
+	github.com/zondax/ledger-filecoin-go v1.2.3
 	github.com/zyedidia/generic v1.2.1
 	go.opencensus.io v0.24.0
 	go.opentelemetry.io/otel v1.46.0
@@ -158,7 +158,7 @@ require (
 	go.uber.org/fx v1.24.0
 	go.uber.org/multierr v1.11.0
 	go.uber.org/zap v1.28.0
-	golang.org/x/crypto v0.54.0
+	golang.org/x/crypto v0.55.0
 	golang.org/x/mod v0.38.0
 	golang.org/x/net v0.57.0 // indirect
 	golang.org/x/sync v0.22.0
@@ -308,10 +308,10 @@ require (
 	go.uber.org/mock v0.6.0 // indirect
 	go4.org v0.0.0-20230225012048-214862532bf5 // indirect
 	golang.org/x/exp v0.0.0-20260718201538-764159d718ef // indirect
-	golang.org/x/text v0.40.0 // indirect
+	golang.org/x/text v0.41.0 // indirect
 	gonum.org/v1/gonum v0.17.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260526163538-3dc84a4a5aaa // indirect
-	google.golang.org/grpc v1.81.1 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260729160029-791042a822c5 // indirect
+	google.golang.org/grpc v1.82.1 // indirect
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	howett.net/plist v0.0.0-20181124034731-591f970eefbb // indirect; dependency-check-ignore: required by github.com/elastic/go-sysinfo
@@ -352,7 +352,7 @@ require (
 	github.com/tklauser/go-sysconf v0.3.15 // indirect
 	github.com/tklauser/numcpus v0.10.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
-	github.com/zondax/golem v0.29.0 // indirect
+	github.com/zondax/golem v0.30.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.44.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.10.0 // indirect
