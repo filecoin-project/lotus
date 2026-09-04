@@ -533,11 +533,11 @@ func TestGatewayEventFilterRangeBoundaries(t *testing.T) {
 	fromHeight := abi.ChainEpoch(100)
 	actorFilter := &types.ActorEventFilter{FromHeight: &fromHeight}
 	headHeight = func(context.Context) (abi.ChainEpoch, error) {
-		return 460, nil
+		return 461, nil
 	}
 	require.NoError(t, gw.checkActorEventFilterHeightRange(ctx, actorFilter, headHeight))
 	headHeight = func(context.Context) (abi.ChainEpoch, error) {
-		return 461, nil
+		return 462, nil
 	}
 	rangeErr = nil
 	require.ErrorAs(t, gw.checkActorEventFilterHeightRange(ctx, actorFilter, headHeight), &rangeErr)

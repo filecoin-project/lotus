@@ -118,12 +118,13 @@ func (gw *Node) checkActorEventFilterHeightRange(ctx context.Context, filter *ty
 		if err != nil {
 			return err
 		}
-		from = headHeight
-		to = headHeight
 		if filter.FromHeight != nil {
 			from = *filter.FromHeight
-		}
-		if filter.ToHeight != nil {
+			if headHeight > 0 {
+				to = headHeight - 1
+			}
+		} else {
+			from = headHeight
 			to = *filter.ToHeight
 		}
 	}

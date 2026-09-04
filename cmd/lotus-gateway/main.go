@@ -189,6 +189,11 @@ var runCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		eventFilterMaxHeightRange := abi.ChainEpoch(cctx.Int64("event-filter-max-height-range"))
+		if eventFilterMaxHeightRange < 0 {
+			return fmt.Errorf("event-filter-max-height-range must be non-negative")
+		}
+
 		log.Info("Starting lotus gateway")
 
 		// Register all metric views
@@ -222,7 +227,6 @@ var runCmd = &cli.Command{
 			rateLimitTimeout            = cctx.Duration("rate-limit-timeout")
 			perHostConnectionsPerMinute = cctx.Int("conn-per-minute")
 			maxFiltersPerConn           = cctx.Int("eth-max-filters-per-conn")
-			eventFilterMaxHeightRange   = abi.ChainEpoch(cctx.Int64("event-filter-max-height-range"))
 			traceFilterMaxBlockRange    = cctx.Int64("eth-trace-filter-max-block-range")
 			enableCORS                  = cctx.Bool("cors")
 			enableRequestLogging        = cctx.Bool("request-logging")
