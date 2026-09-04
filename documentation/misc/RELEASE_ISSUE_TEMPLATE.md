@@ -195,6 +195,9 @@
 <!--  {{if and (contains "Node" $.Type) (contains "Miner" $.Type)}}-->
     - If the release branches still point at the same commit, one PR that updates both version strings is expected. If the branches diverge later, add/link one PR per branch here.
 <!--  {{end}}-->
+- [ ] Run `make clean` before generating and building, especially in a long-lived clone. `build/.update-modules` and `build/.filecoin-install` are stamp files that can be newer than the actual submodule commit, which makes `make deps` skip `git submodule update --init --recursive` and silently link against a stale `libfilcrypto.a`. `make clean` removes both stamps and also runs `filecoin-ffi`'s own clean target.
+   - After `make deps`, `git submodule status` should show no leading `+` on `extern/filecoin-ffi`.
+   - The built version string should have no `.dirty` suffix (check with the built binary's `--version`).
 - [ ] Run `make gen && make docsgen-cli` to generate documentation
 - [ ] Create a draft PR with title `build: release Lotus {{$.Type}} v{{$.Tag}}{{$tagSuffix}}`
    - Link to PR:
