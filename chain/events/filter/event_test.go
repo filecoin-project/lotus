@@ -4,6 +4,7 @@ import (
 	"context"
 	pseudo "math/rand"
 	"testing"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -22,6 +23,250 @@ import (
 	"github.com/filecoin-project/lotus/chain/index"
 	"github.com/filecoin-project/lotus/chain/types"
 )
+
+type recordingChainIndexer struct {
+	index.Indexer
+	filter *index.EventFilter
+	events []*index.CollectedEvent
+	err    error
+}
+
+func (r *recordingChainIndexer) GetEventsForFilter(_ context.Context, f *index.EventFilter) ([]*index.CollectedEvent, error) {
+	cpy := *f
+	r.filter = &cpy
+	return r.events, r.err
+}
+
+func TestEventFilterManagerFillPreservesRequestedRange(t *testing.T) {
+	tests := []struct {
+		name      string
+		minHeight abi.ChainEpoch
+		maxHeight abi.ChainEpoch
+	}{
+		{name: "future upper bound", minHeight: 90, maxHeight: 110},
+		{name: "open upper bound", minHeight: 90, maxHeight: -1},
+		{name: "entirely future range", minHeight: 105, maxHeight: 110},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			indexer := &recordingChainIndexer{}
+			manager := &EventFilterManager{
+				ChainIndexer:  indexer,
+				currentHeight: 100,
+			}
+
+			filter, err := manager.Fill(context.Background(), test.minHeight, test.maxHeight, cid.Undef, nil, nil)
+			require.NoError(t, err)
+			require.NotNil(t, indexer.filter)
+			require.Equal(t, test.minHeight, indexer.filter.MinHeight)
+			require.Equal(t, test.maxHeight, indexer.filter.MaxHeight)
+			require.Equal(t, test.maxHeight, filter.(*eventFilter).maxHeight)
+		})
+	}
+}
+
+func TestEventFilterManagerFillPropagatesSnapshotError(t *testing.T) {
+	wantErr := &index.ErrRangeInFuture{HighestEpoch: 100}
+	indexer := &recordingChainIndexer{err: wantErr}
+	manager := &EventFilterManager{
+		ChainIndexer:  indexer,
+		currentHeight: 100,
+	}
+
+	filter, err := manager.Fill(context.Background(), 105, 110, cid.Undef, nil, nil)
+	require.Nil(t, filter)
+	require.ErrorIs(t, err, wantErr)
+}
+
+func TestEventFilterManagerInstallClampsHistoricalQueryToLastExecutedTipset(t *testing.T) {
+	epoch95 := abi.ChainEpoch(95)
+	epoch99 := abi.ChainEpoch(99)
+	tests := []struct {
+		name                    string
+		minHeight               abi.ChainEpoch
+		maxHeight               abi.ChainEpoch
+		wantHistoricalMaxHeight *abi.ChainEpoch
+	}{
+		{name: "open upper bound", minHeight: 90, maxHeight: -1, wantHistoricalMaxHeight: &epoch99},
+		{name: "current upper bound", minHeight: 90, maxHeight: 100, wantHistoricalMaxHeight: &epoch99},
+		{name: "future upper bound", minHeight: 90, maxHeight: 110, wantHistoricalMaxHeight: &epoch99},
+		{name: "historical upper bound", minHeight: 90, maxHeight: 95, wantHistoricalMaxHeight: &epoch95},
+		{name: "starts at current head", minHeight: 100, maxHeight: 110},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			indexer := &recordingChainIndexer{}
+			manager := &EventFilterManager{
+				ChainIndexer:  indexer,
+				currentHeight: 100,
+			}
+
+			filter, err := manager.Install(context.Background(), test.minHeight, test.maxHeight, cid.Undef, nil, nil)
+			require.NoError(t, err)
+			if test.wantHistoricalMaxHeight == nil {
+				require.Nil(t, indexer.filter)
+			} else {
+				require.NotNil(t, indexer.filter)
+				require.Equal(t, *test.wantHistoricalMaxHeight, indexer.filter.MaxHeight)
+			}
+			require.Equal(t, test.maxHeight, filter.(*eventFilter).maxHeight)
+			require.Contains(t, manager.filters, filter.ID())
+		})
+	}
+}
+
+type blockingChainIndexer struct {
+	index.Indexer
+	calls        chan *index.EventFilter
+	releaseFirst chan struct{}
+	callCount    int
+	firstEvents  []*index.CollectedEvent
+	firstErr     error
+	retryEvents  []*index.CollectedEvent
+	retryErr     error
+}
+
+func (b *blockingChainIndexer) GetEventsForFilter(ctx context.Context, f *index.EventFilter) ([]*index.CollectedEvent, error) {
+	cpy := *f
+	b.callCount++
+	select {
+	case b.calls <- &cpy:
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+	if b.callCount == 1 {
+		select {
+		case <-b.releaseFirst:
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+		return b.firstEvents, b.firstErr
+	}
+	return b.retryEvents, b.retryErr
+}
+
+func TestEventFilterManagerInstallRetriesIfChainAdvancesDuringPreload(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	indexer := &blockingChainIndexer{
+		calls:        make(chan *index.EventFilter, 2),
+		releaseFirst: make(chan struct{}),
+		firstErr:     index.ErrNotFound,
+		retryEvents:  []*index.CollectedEvent{{Height: 100}},
+	}
+	manager := &EventFilterManager{
+		ChainIndexer:  indexer,
+		currentHeight: 100,
+	}
+
+	type installResult struct {
+		filter EventFilter
+		err    error
+	}
+	resultCh := make(chan installResult, 1)
+	go func() {
+		filter, err := manager.Install(ctx, 90, 110, cid.Undef, nil, nil)
+		resultCh <- installResult{filter: filter, err: err}
+	}()
+
+	var firstQuery *index.EventFilter
+	select {
+	case firstQuery = <-indexer.calls:
+	case <-ctx.Done():
+		t.Fatal("timed out waiting for first historical query")
+	}
+	require.Equal(t, abi.ChainEpoch(99), firstQuery.MaxHeight)
+
+	rng := pseudo.New(pseudo.NewSource(1374903))
+	ts100 := fakeTipSet(t, rng, 100, nil)
+	ts101 := fakeTipSet(t, rng, 101, ts100.Cids())
+	require.NoError(t, manager.Apply(ctx, ts100, ts101))
+	close(indexer.releaseFirst)
+
+	var secondQuery *index.EventFilter
+	select {
+	case secondQuery = <-indexer.calls:
+	case <-ctx.Done():
+		t.Fatal("timed out waiting for retried historical query")
+	}
+	require.Equal(t, abi.ChainEpoch(100), secondQuery.MaxHeight)
+
+	var result installResult
+	select {
+	case result = <-resultCh:
+	case <-ctx.Done():
+		t.Fatal("timed out waiting for filter installation")
+	}
+	require.NoError(t, result.err)
+	require.Equal(t, abi.ChainEpoch(110), result.filter.(*eventFilter).maxHeight)
+	require.Contains(t, manager.filters, result.filter.ID())
+	require.Equal(t, indexer.retryEvents, result.filter.TakeCollectedEvents(ctx))
+}
+
+func TestEventFilterManagerInstallRetriesAfterSameHeightReorg(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	indexer := &blockingChainIndexer{
+		calls:        make(chan *index.EventFilter, 2),
+		releaseFirst: make(chan struct{}),
+		firstEvents:  []*index.CollectedEvent{{Height: 98}},
+		retryEvents:  []*index.CollectedEvent{{Height: 99}},
+	}
+	manager := &EventFilterManager{
+		ChainIndexer:  indexer,
+		currentHeight: 100,
+	}
+
+	type installResult struct {
+		filter EventFilter
+		err    error
+	}
+	resultCh := make(chan installResult, 1)
+	go func() {
+		filter, err := manager.Install(ctx, 90, 110, cid.Undef, nil, nil)
+		resultCh <- installResult{filter: filter, err: err}
+	}()
+
+	var firstQuery *index.EventFilter
+	select {
+	case firstQuery = <-indexer.calls:
+	case <-ctx.Done():
+		t.Fatal("timed out waiting for first historical query")
+	}
+	require.Equal(t, abi.ChainEpoch(99), firstQuery.MaxHeight)
+
+	rng := pseudo.New(pseudo.NewSource(1374904))
+	ts99 := fakeTipSet(t, rng, 99, nil)
+	oldTs100 := fakeTipSet(t, rng, 100, ts99.Cids())
+	newTs100 := fakeTipSet(t, rng, 100, ts99.Cids())
+	require.NoError(t, manager.Revert(ctx, oldTs100, ts99))
+	require.NoError(t, manager.Apply(ctx, ts99, newTs100))
+	close(indexer.releaseFirst)
+
+	var secondQuery *index.EventFilter
+	select {
+	case secondQuery = <-indexer.calls:
+	case <-ctx.Done():
+		t.Fatal("timed out waiting for historical query after reorg")
+	}
+	// The final height is still 100, so both queries end at 99. The second
+	// call proves installation noticed the branch change, not just the height.
+	require.Equal(t, abi.ChainEpoch(99), secondQuery.MaxHeight)
+
+	var result installResult
+	select {
+	case result = <-resultCh:
+	case <-ctx.Done():
+		t.Fatal("timed out waiting for filter installation")
+	}
+	require.NoError(t, result.err)
+	require.Contains(t, manager.filters, result.filter.ID())
+	require.Equal(t, indexer.retryEvents, result.filter.TakeCollectedEvents(ctx))
+}
 
 func keysToKeysWithCodec(keys map[string][][]byte) map[string][]types.ActorEventBlock {
 	keysWithCodec := make(map[string][]types.ActorEventBlock)

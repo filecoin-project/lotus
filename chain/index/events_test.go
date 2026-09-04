@@ -30,52 +30,70 @@ func TestGetEventsForFilterNoEvents(t *testing.T) {
 	si, _, cs := setupWithHeadIndexed(t, headHeight, rng)
 	t.Cleanup(func() { _ = si.Close() })
 
-	// Create a fake tipset at various heights used in the test
-	fakeTipsets := make(map[abi.ChainEpoch]*types.TipSet)
-	for _, ts := range []abi.ChainEpoch{1, 10, 20} {
-		fakeTipsets[ts] = fakeTipSet(t, rng, ts, nil)
-		cs.SetTipsetByHeightAndKey(ts, fakeTipsets[ts].Key(), fakeTipsets[ts])
-		cs.SetTipSetByCid(t, fakeTipsets[ts])
+	// Create a sparse canonical chain for the heights used in the test.
+	fakeTipsets := map[abi.ChainEpoch]*types.TipSet{
+		1: fakeTipSet(t, rng, 1, nil),
+	}
+	fakeTipsets[10] = fakeTipSet(t, rng, 10, fakeTipsets[1].Cids())
+	fakeTipsets[20] = fakeTipSet(t, rng, 20, fakeTipsets[10].Cids())
+	for height, ts := range fakeTipsets {
+		cs.SetTipsetByHeightAndKey(height, ts.Key(), ts)
+		cs.SetTipSetByCid(t, ts)
 	}
 
 	// tipset is not indexed
-	f := &EventFilter{
+	heightFilter := &EventFilter{
 		MinHeight: 1,
 		MaxHeight: 1,
 	}
-	ces, err := si.GetEventsForFilter(ctx, f)
+	ces, err := si.GetEventsForFilter(ctx, heightFilter)
 	require.True(t, errors.Is(err, ErrNotFound))
 	require.Equal(t, 0, len(ces))
 
 	tsCid, err := fakeTipsets[1].Key().Cid()
 	require.NoError(t, err)
-	f = &EventFilter{
+	blockFilter := &EventFilter{
 		TipsetCid: tsCid,
 	}
 
-	ces, err = si.GetEventsForFilter(ctx, f)
+	ces, err = si.GetEventsForFilter(ctx, blockFilter)
 	require.True(t, errors.Is(err, ErrNotFound))
 	require.Equal(t, 0, len(ces))
 
-	// tipset is indexed but has no events
+	// Message metadata alone does not prove event indexing completed.
 	err = withTx(ctx, si.db, func(tx *sql.Tx) error {
 		return si.indexTipset(ctx, tx, fakeTipsets[1])
 	})
 	require.NoError(t, err)
 
-	ces, err = si.GetEventsForFilter(ctx, f)
-	require.NoError(t, err)
-	require.Equal(t, 0, len(ces))
+	ces, err = si.GetEventsForFilter(ctx, heightFilter)
+	require.ErrorIs(t, err, ErrNotFound)
+	require.Empty(t, ces)
+	ces, err = si.GetEventsForFilter(ctx, blockFilter)
+	require.ErrorIs(t, err, ErrNotFound)
+	require.Empty(t, ces)
 
-	f = &EventFilter{
-		TipsetCid: tsCid,
-	}
-	ces, err = si.GetEventsForFilter(ctx, f)
+	// A completed event index writes an empty bloom for a block with no events.
+	executionTipset := fakeTipSet(t, rng, 2, fakeTipsets[1].Cids())
+	cs.SetTipsetByHeightAndKey(executionTipset.Height(), executionTipset.Key(), executionTipset)
+	cs.SetTipSetByCid(t, executionTipset)
+	si.SetActorToDelegatedAddresFunc(func(context.Context, abi.ActorID, *types.TipSet) (address.Address, bool) {
+		return address.TestAddress, true
+	})
+	si.setExecutedMessagesLoaderFunc(func(context.Context, ChainStore, *types.TipSet, *types.TipSet) ([]executedMessage, error) {
+		return nil, nil
+	})
+	require.NoError(t, si.Apply(ctx, fakeTipsets[1], executionTipset))
+
+	ces, err = si.GetEventsForFilter(ctx, heightFilter)
 	require.NoError(t, err)
-	require.Equal(t, 0, len(ces))
+	require.Empty(t, ces)
+	ces, err = si.GetEventsForFilter(ctx, blockFilter)
+	require.NoError(t, err)
+	require.Empty(t, ces)
 
 	// search for a range that is not indexed
-	f = &EventFilter{
+	f := &EventFilter{
 		MinHeight: 10,
 		MaxHeight: 20,
 	}
@@ -100,6 +118,334 @@ func TestGetEventsForFilterNoEvents(t *testing.T) {
 	ces, err = si.GetEventsForFilter(ctx, f)
 	require.ErrorIs(t, err, &ErrRangeInFuture{})
 	require.Equal(t, 0, len(ces))
+}
+
+func TestGetEventsForFilterReturnsNotFoundUntilEventsAreIndexed(t *testing.T) {
+	ctx := context.Background()
+	rng := pseudo.New(pseudo.NewSource(13758))
+
+	msgTipset := fakeTipSet(t, rng, 1, nil)
+	executionTipset := fakeTipSet(t, rng, 2, msgTipset.Cids())
+
+	cs := newDummyChainStore()
+	cs.SetHeaviestTipSet(executionTipset)
+	cs.SetTipsetByHeightAndKey(msgTipset.Height(), msgTipset.Key(), msgTipset)
+	cs.SetTipsetByHeightAndKey(executionTipset.Height(), executionTipset.Key(), executionTipset)
+	cs.SetTipSetByCid(t, msgTipset)
+	cs.SetTipSetByCid(t, executionTipset)
+
+	msg := fakeMessage(address.TestAddress, address.TestAddress)
+	msgWithoutEvents := fakeMessage(address.TestAddress, address.TestAddress)
+	msgWithoutEvents.Nonce++
+	cs.SetMessagesForTipset(msgTipset, []types.ChainMsg{msg, msgWithoutEvents})
+
+	si, err := NewSqliteIndexer(":memory:", cs, 0, false, 0)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = si.Close() })
+
+	si.SetActorToDelegatedAddresFunc(func(context.Context, abi.ActorID, *types.TipSet) (address.Address, bool) {
+		return address.TestAddress, true
+	})
+	si.setExecutedMessagesLoaderFunc(func(context.Context, ChainStore, *types.TipSet, *types.TipSet) ([]executedMessage, error) {
+		return []executedMessage{
+			{
+				msg: msg,
+				evs: []types.Event{*fakeEvent(abi.ActorID(1), []kv{{k: "t1", v: []byte("topic")}}, nil)},
+			},
+			{msg: msgWithoutEvents},
+		}, nil
+	})
+
+	// Message-only population records tipsets and messages without executing
+	// them to collect events.
+	require.NoError(t, withTx(ctx, si.db, func(tx *sql.Tx) error {
+		if err := si.indexTipset(ctx, tx, msgTipset); err != nil {
+			return err
+		}
+		return si.indexTipset(ctx, tx, executionTipset)
+	}))
+
+	msgTipsetCid, err := msgTipset.Key().Cid()
+	require.NoError(t, err)
+	blockFilter := &EventFilter{
+		MinHeight: -1,
+		MaxHeight: -1,
+		TipsetCid: msgTipsetCid,
+		Codec:     multicodec.Raw,
+	}
+
+	events, err := si.GetEventsForFilter(ctx, blockFilter)
+	require.ErrorIs(t, err, ErrNotFound)
+	require.Empty(t, events)
+
+	filter := &EventFilter{
+		MinHeight: -1,
+		MaxHeight: -1,
+		TipsetCid: msgTipsetCid,
+		MsgCid:    msg.Cid(),
+		Codec:     multicodec.Raw,
+	}
+
+	events, err = si.GetEventsForFilter(ctx, filter)
+	require.ErrorIs(t, err, ErrNotFound)
+	require.Empty(t, events)
+
+	require.NoError(t, si.Apply(ctx, msgTipset, executionTipset))
+	events, err = si.GetEventsForFilter(ctx, blockFilter)
+	require.NoError(t, err)
+	require.Len(t, events, 1)
+	require.Equal(t, msg.Cid(), events[0].MsgCid)
+
+	events, err = si.GetEventsForFilter(ctx, filter)
+	require.NoError(t, err)
+	require.Len(t, events, 1)
+	require.Equal(t, msg.Cid(), events[0].MsgCid)
+
+	filter.MsgCid = msgWithoutEvents.Cid()
+	events, err = si.GetEventsForFilter(ctx, filter)
+	require.NoError(t, err)
+	require.Empty(t, events)
+	filter.MsgCid = msg.Cid()
+
+	// GC removes tipset rows (and cascades to events) before removing bloom
+	// rows. During that interval, the completion marker must not make missing
+	// event data look like an authoritative empty result.
+	_, err = si.stmts.removeTipsetsBeforeHeightStmt.ExecContext(ctx, executionTipset.Height())
+	require.NoError(t, err)
+	events, err = si.GetEventsForFilter(ctx, filter)
+	require.ErrorIs(t, err, ErrNotFound)
+	require.Empty(t, events)
+	events, err = si.GetEventsForFilter(ctx, blockFilter)
+	require.ErrorIs(t, err, ErrNotFound)
+	require.Empty(t, events)
+}
+
+func TestGetEventsForFilterRejectsPartiallyIndexedRange(t *testing.T) {
+	ctx := context.Background()
+	rng := pseudo.New(pseudo.NewSource(13749))
+
+	ts10 := fakeTipSet(t, rng, 10, nil)
+	ts11 := fakeTipSet(t, rng, 11, ts10.Cids())
+	ts12 := fakeTipSet(t, rng, 12, ts11.Cids())
+	ts13 := fakeTipSet(t, rng, 13, ts12.Cids())
+
+	cs := newDummyChainStore()
+	cs.SetHeaviestTipSet(ts13)
+	for _, ts := range []*types.TipSet{ts10, ts11, ts12, ts13} {
+		cs.SetTipsetByHeightAndKey(ts.Height(), ts.Key(), ts)
+		cs.SetTipSetByCid(t, ts)
+	}
+
+	msg10 := fakeMessage(address.TestAddress, address.TestAddress)
+	msg11 := fakeMessage(address.TestAddress, address.TestAddress)
+	msg11.Nonce++
+	msg12 := fakeMessage(address.TestAddress, address.TestAddress)
+	msg12.Nonce += 2
+	cs.SetMessagesForTipset(ts10, []types.ChainMsg{msg10})
+	cs.SetMessagesForTipset(ts11, []types.ChainMsg{msg11})
+	cs.SetMessagesForTipset(ts12, []types.ChainMsg{msg12})
+
+	si, err := NewSqliteIndexer(":memory:", cs, 0, false, 0)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = si.Close() })
+
+	si.SetActorToDelegatedAddresFunc(func(context.Context, abi.ActorID, *types.TipSet) (address.Address, bool) {
+		return address.TestAddress, true
+	})
+	si.setExecutedMessagesLoaderFunc(func(_ context.Context, _ ChainStore, msgTs, _ *types.TipSet) ([]executedMessage, error) {
+		switch msgTs.Height() {
+		case 10:
+			return []executedMessage{{
+				msg: msg10,
+				evs: []types.Event{*fakeEventWithCodec(abi.ActorID(1), []kv{{k: "t1", v: []byte("first")}}, multicodec.Raw)},
+			}}, nil
+		case 11:
+			return []executedMessage{{msg: msg11}}, nil
+		case 12:
+			return []executedMessage{{
+				msg: msg12,
+				evs: []types.Event{*fakeEventWithCodec(abi.ActorID(2), []kv{{k: "t1", v: []byte("last")}}, multicodec.Raw)},
+			}}, nil
+		default:
+			return nil, nil
+		}
+	})
+
+	require.NoError(t, si.Apply(ctx, ts10, ts11))
+	require.NoError(t, si.Apply(ctx, ts12, ts13))
+
+	// A completed non-canonical tipset at the missing height must not stand in
+	// for the canonical tipset. This gives the completion query the same number
+	// of rows as the requested range while leaving canonical ts11 incomplete.
+	staleTs11 := fakeTipSet(t, rng, 11, ts10.Cids())
+	staleTs12 := fakeTipSet(t, rng, 12, staleTs11.Cids())
+	cs.SetTipSetByCid(t, staleTs11)
+	cs.SetTipSetByCid(t, staleTs12)
+	cs.SetMessagesForTipset(staleTs11, []types.ChainMsg{msg11})
+	require.NoError(t, si.Apply(ctx, staleTs11, staleTs12))
+	staleTs11Cid, err := staleTs11.Key().Cid()
+	require.NoError(t, err)
+	staleEvents, err := si.GetEventsForFilter(ctx, &EventFilter{TipsetCid: staleTs11Cid})
+	require.NoError(t, err)
+	require.Empty(t, staleEvents)
+
+	filter := &EventFilter{MinHeight: 10, MaxHeight: 12, Codec: multicodec.Raw}
+	events, err := si.GetEventsForFilter(ctx, filter)
+	require.ErrorIs(t, err, ErrNotFound)
+	require.Empty(t, events)
+
+	require.NoError(t, si.Apply(ctx, ts11, ts12))
+	events, err = si.GetEventsForFilter(ctx, filter)
+	require.NoError(t, err)
+	require.Len(t, events, 2)
+	require.Equal(t, abi.ChainEpoch(10), events[0].Height)
+	require.Equal(t, abi.ChainEpoch(12), events[1].Height)
+
+	// An open upper bound is pinned to the captured head's last executable
+	// tipset, so it neither requires nor returns events from the head itself.
+	events, err = si.GetEventsForFilter(ctx, &EventFilter{MinHeight: 10, MaxHeight: -1, Codec: multicodec.Raw})
+	require.NoError(t, err)
+	require.Len(t, events, 2)
+	require.Equal(t, abi.ChainEpoch(10), events[0].Height)
+	require.Equal(t, abi.ChainEpoch(12), events[1].Height)
+}
+
+func TestGetEventsForFilterRejectsNonCanonicalEventRows(t *testing.T) {
+	ctx := context.Background()
+	rng := pseudo.New(pseudo.NewSource(1374902))
+
+	ts10 := fakeTipSet(t, rng, 10, nil)
+	ts11 := fakeTipSet(t, rng, 11, ts10.Cids())
+	ts12 := fakeTipSet(t, rng, 12, ts11.Cids())
+	staleTs11 := fakeTipSet(t, rng, 11, ts10.Cids())
+	staleTs12 := fakeTipSet(t, rng, 12, staleTs11.Cids())
+
+	cs := newDummyChainStore()
+	cs.SetHeaviestTipSet(ts12)
+	for _, ts := range []*types.TipSet{ts10, ts11, ts12} {
+		cs.SetTipsetByHeightAndKey(ts.Height(), ts.Key(), ts)
+		cs.SetTipSetByCid(t, ts)
+	}
+	cs.SetTipSetByCid(t, staleTs11)
+	cs.SetTipSetByCid(t, staleTs12)
+
+	msg10 := fakeMessage(address.TestAddress, address.TestAddress)
+	msg11 := fakeMessage(address.TestAddress, address.TestAddress)
+	msg11.Nonce++
+	staleMsg11 := fakeMessage(address.TestAddress, address.TestAddress)
+	staleMsg11.Nonce += 2
+	cs.SetMessagesForTipset(ts10, []types.ChainMsg{msg10})
+	cs.SetMessagesForTipset(ts11, []types.ChainMsg{msg11})
+	cs.SetMessagesForTipset(staleTs11, []types.ChainMsg{staleMsg11})
+
+	si, err := NewSqliteIndexer(":memory:", cs, 0, false, 0)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = si.Close() })
+
+	si.SetActorToDelegatedAddresFunc(func(context.Context, abi.ActorID, *types.TipSet) (address.Address, bool) {
+		return address.TestAddress, true
+	})
+	si.setExecutedMessagesLoaderFunc(func(_ context.Context, _ ChainStore, msgTs, _ *types.TipSet) ([]executedMessage, error) {
+		switch msgTs.Key() {
+		case ts10.Key():
+			return []executedMessage{{msg: msg10}}, nil
+		case ts11.Key():
+			return []executedMessage{{msg: msg11}}, nil
+		case staleTs11.Key():
+			return []executedMessage{{
+				msg: staleMsg11,
+				evs: []types.Event{*fakeEventWithCodec(abi.ActorID(1), []kv{{k: "t1", v: []byte("stale")}}, multicodec.Raw)},
+			}}, nil
+		default:
+			return nil, nil
+		}
+	})
+
+	// Complete the canonical range, then leave a non-reverted event row from a
+	// fork at the same height. The SQL height predicate can see that row, but
+	// the canonical coverage check must reject the whole result.
+	require.NoError(t, si.Apply(ctx, ts10, ts11))
+	require.NoError(t, si.Apply(ctx, ts11, ts12))
+	require.NoError(t, si.Apply(ctx, staleTs11, staleTs12))
+	staleTs11Cid, err := staleTs11.Key().Cid()
+	require.NoError(t, err)
+
+	// Leave the stale event row in place but remove its completion marker. This
+	// makes the canonical completion check pass using only canonical markers,
+	// so the result-membership check is what must reject the stale row.
+	_, err = si.stmts.removeTipsetBloomStmt.ExecContext(ctx, staleTs11Cid.Bytes())
+	require.NoError(t, err)
+	staleEvents, err := si.GetEventsForFilter(ctx, &EventFilter{TipsetCid: staleTs11Cid, Codec: multicodec.Raw})
+	require.NoError(t, err)
+	require.Len(t, staleEvents, 1)
+
+	events, err := si.GetEventsForFilter(ctx, &EventFilter{MinHeight: 10, MaxHeight: 11, Codec: multicodec.Raw})
+	require.ErrorIs(t, err, ErrNotFound)
+	require.Empty(t, events)
+}
+
+func TestGetEventsForFilterRangeSkipsNullRounds(t *testing.T) {
+	ctx := context.Background()
+	rng := pseudo.New(pseudo.NewSource(1374901))
+
+	ts10 := fakeTipSet(t, rng, 10, nil)
+	ts12 := fakeTipSet(t, rng, 12, ts10.Cids())
+	ts13 := fakeTipSet(t, rng, 13, ts12.Cids())
+
+	cs := newDummyChainStore()
+	cs.SetHeaviestTipSet(ts13)
+	cs.SetTipsetByHeightAndKey(10, ts10.Key(), ts10)
+	cs.SetTipsetByHeightAndKey(11, ts10.Key(), ts10)
+	cs.SetTipsetByHeightAndKey(12, ts12.Key(), ts12)
+	cs.SetTipsetByHeightAndKey(13, ts13.Key(), ts13)
+	for _, ts := range []*types.TipSet{ts10, ts12, ts13} {
+		cs.SetTipSetByCid(t, ts)
+	}
+
+	msg10 := fakeMessage(address.TestAddress, address.TestAddress)
+	msg12 := fakeMessage(address.TestAddress, address.TestAddress)
+	msg12.Nonce++
+	cs.SetMessagesForTipset(ts10, []types.ChainMsg{msg10})
+	cs.SetMessagesForTipset(ts12, []types.ChainMsg{msg12})
+
+	si, err := NewSqliteIndexer(":memory:", cs, 0, false, 0)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = si.Close() })
+
+	si.SetActorToDelegatedAddresFunc(func(context.Context, abi.ActorID, *types.TipSet) (address.Address, bool) {
+		return address.TestAddress, true
+	})
+	si.setExecutedMessagesLoaderFunc(func(_ context.Context, _ ChainStore, msgTs, _ *types.TipSet) ([]executedMessage, error) {
+		switch msgTs.Height() {
+		case 10:
+			return []executedMessage{{
+				msg: msg10,
+				evs: []types.Event{*fakeEventWithCodec(abi.ActorID(1), []kv{{k: "t1", v: []byte("before-null")}}, multicodec.Raw)},
+			}}, nil
+		case 12:
+			return []executedMessage{{
+				msg: msg12,
+				evs: []types.Event{*fakeEventWithCodec(abi.ActorID(2), []kv{{k: "t1", v: []byte("after-null")}}, multicodec.Raw)},
+			}}, nil
+		default:
+			return nil, nil
+		}
+	})
+
+	require.NoError(t, si.Apply(ctx, ts10, ts12))
+	require.NoError(t, si.Apply(ctx, ts12, ts13))
+
+	events, err := si.GetEventsForFilter(ctx, &EventFilter{MinHeight: 10, MaxHeight: 12, Codec: multicodec.Raw})
+	require.NoError(t, err)
+	require.Len(t, events, 2)
+	require.Equal(t, abi.ChainEpoch(10), events[0].Height)
+	require.Equal(t, abi.ChainEpoch(12), events[1].Height)
+
+	// A range containing only null rounds has no event-index completion
+	// markers to require and authoritatively returns no events.
+	events, err = si.GetEventsForFilter(ctx, &EventFilter{MinHeight: 11, MaxHeight: 11, Codec: multicodec.Raw})
+	require.NoError(t, err)
+	require.Empty(t, events)
 }
 
 func TestGetEventsForFilterWithEvents(t *testing.T) {
@@ -156,7 +502,7 @@ func TestGetEventsForFilterWithEvents(t *testing.T) {
 
 	// Create a fake tipset at height 1
 	fakeTipSet1 := fakeTipSet(t, rng, 1, nil)
-	fakeTipSet2 := fakeTipSet(t, rng, 2, nil)
+	fakeTipSet2 := fakeTipSet(t, rng, 2, fakeTipSet1.Cids())
 
 	// Set the dummy chainstore to return this tipset for height 1
 	cs.SetTipsetByHeightAndKey(1, fakeTipSet1.Key(), fakeTipSet1) // empty DB
@@ -227,14 +573,15 @@ func TestGetEventsForFilterWithEvents(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, reverted2)
 
-	// fetching events fails if excludeReverted is true i.e. we request events by height
+	// Revert removes the completion bloom for the parent whose events were
+	// reverted, so a canonical-height query must fail closed until re-execution.
 	f = &EventFilter{
 		MinHeight: 1,
 		MaxHeight: 1,
 	}
 	ces, err = si.GetEventsForFilter(ctx, f)
-	require.NoError(t, err)
-	require.Equal(t, 0, len(ces))
+	require.ErrorIs(t, err, ErrNotFound)
+	require.Empty(t, ces)
 
 	// works if excludeReverted is false i.e. we request events by hash
 	f = &EventFilter{
@@ -498,7 +845,7 @@ func TestGetEventsForFilterWithRawCodec(t *testing.T) {
 	t.Run("FilterEventsByRawCodecWithoutKeys", func(t *testing.T) {
 		f := &EventFilter{
 			MinHeight: 1,
-			MaxHeight: 2,
+			MaxHeight: 1,
 			Codec:     codecRaw, // Set to RAW codec
 		}
 
@@ -614,7 +961,7 @@ func TestMaxFilterResults(t *testing.T) {
 
 	// Create fake tipsets
 	fakeTipSet1 := fakeTipSet(t, rng, 1, nil)
-	fakeTipSet2 := fakeTipSet(t, rng, 2, nil)
+	fakeTipSet2 := fakeTipSet(t, rng, 2, fakeTipSet1.Cids())
 
 	// Associate tipsets with their heights and CIDs
 	cs.SetTipsetByHeightAndKey(1, fakeTipSet1.Key(), fakeTipSet1) // Height 1
@@ -644,7 +991,7 @@ func TestMaxFilterResults(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			f := &EventFilter{
 				MinHeight:  1,
-				MaxHeight:  2,
+				MaxHeight:  1,
 				MaxResults: tc.maxResults,
 			}
 
@@ -755,8 +1102,8 @@ func TestMaxFilterResultsTipsetBoundary(t *testing.T) {
 	}
 
 	fakeTipSet1 := fakeTipSet(t, rng, 1, nil)
-	fakeTipSet2 := fakeTipSet(t, rng, 2, nil)
-	fakeTipSet3 := fakeTipSet(t, rng, 3, nil)
+	fakeTipSet2 := fakeTipSet(t, rng, 2, fakeTipSet1.Cids())
+	fakeTipSet3 := fakeTipSet(t, rng, 3, fakeTipSet2.Cids())
 	cs.SetTipsetByHeightAndKey(1, fakeTipSet1.Key(), fakeTipSet1)
 	cs.SetTipsetByHeightAndKey(2, fakeTipSet2.Key(), fakeTipSet2)
 	cs.SetTipsetByHeightAndKey(3, fakeTipSet3.Key(), fakeTipSet3)
@@ -915,22 +1262,21 @@ func TestEventFilterMsgCid(t *testing.T) {
 		requireEventEmitter(t, ces, 1, 2)
 	})
 
-	t.Run("MsgCid combined with mismatched TipsetCid returns nothing", func(t *testing.T) {
+	t.Run("MsgCid with a TipsetCid whose events are not indexed returns not found", func(t *testing.T) {
 		ces, err := si.GetEventsForFilter(ctx, &EventFilter{
 			TipsetCid: otherTsCid,
 			MsgCid:    fm1.Cid(),
 		})
-		require.NoError(t, err)
+		require.ErrorIs(t, err, ErrNotFound)
 		require.Empty(t, ces)
 	})
 
 	t.Run("MsgCid not present in tipset returns nothing", func(t *testing.T) {
-		// A valid CID the indexer has not seen as a message; the tipset is indexed so the
-		// filter just returns no rows.
+		// A valid CID the indexer has not seen as a message; event indexing for the
+		// tipset completed, so the filter authoritatively returns no rows.
 		ces, err := si.GetEventsForFilter(ctx, &EventFilter{
-			MinHeight: 1,
-			MaxHeight: 1,
-			MsgCid:    tsCid,
+			TipsetCid: tsCid,
+			MsgCid:    otherTsCid,
 		})
 		require.NoError(t, err)
 		require.Empty(t, ces)

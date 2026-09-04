@@ -135,6 +135,13 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, head *types.Tip
 		if _, err = tx.StmtContext(ctx, si.stmts.updateEventsToRevertedFromHeightStmt).ExecContext(ctx, int64(reconciliationEpoch-1)); err != nil {
 			return xerrors.Errorf("failed to mark events as reverted: %w", err)
 		}
+		// A bloom is the completion marker for its tipset's event index. Events
+		// at reconciliationEpoch-1 are reverted because of deferred execution,
+		// so invalidate their marker and all later markers before replay. A
+		// successful replay rebuilds them; an incomplete replay must fail closed.
+		if _, err = tx.StmtContext(ctx, si.stmts.removeTipsetBloomsFromHeightStmt).ExecContext(ctx, int64(reconciliationEpoch-1)); err != nil {
+			return xerrors.Errorf("failed to remove event completion blooms: %w", err)
+		}
 
 		log.Infof("marked %d tipsets as reverted from height %d", rowsAffected, reconciliationEpoch)
 

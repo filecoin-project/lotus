@@ -35,6 +35,7 @@ type preparedStatements struct {
 	updateTipsetToNonRevertedStmt         *sql.Stmt
 	removeTipsetsBeforeHeightStmt         *sql.Stmt
 	removeTipsetBloomsBeforeHeightStmt    *sql.Stmt
+	removeTipsetBloomsFromHeightStmt      *sql.Stmt
 	removeEthHashesOlderThanStmt          *sql.Stmt
 	updateTipsetsToRevertedFromHeightStmt *sql.Stmt
 	updateEventsToRevertedFromHeightStmt  *sql.Stmt
@@ -51,6 +52,8 @@ type preparedStatements struct {
 	getTipsetEventEntriesStmt             *sql.Stmt
 	insertTipsetBloomStmt                 *sql.Stmt
 	hasTipsetBloomStmt                    *sql.Stmt
+	hasTipsetEventCompletionStmt          *sql.Stmt
+	getTipsetEventCompletionsByHeightStmt *sql.Stmt
 	getTipsetBloomStmt                    *sql.Stmt
 	removeTipsetBloomStmt                 *sql.Stmt
 
