@@ -25,12 +25,13 @@ import (
 var log = logger.Logger("gateway")
 
 const (
-	DefaultMaxLookbackDuration         = time.Hour * 24     // Default duration that a gateway request can look back in chain history
-	DefaultMaxMessageLookbackEpochs    = abi.ChainEpoch(20) // Default number of epochs that a gateway message lookup can look back in chain history
-	DefaultMaxMessageConfidence        = uint64(20)         // Default maximum confidence accepted by StateWaitMsg
-	DefaultRateLimitTimeout            = time.Second * 5    // Default timeout for rate limiting requests; where a request would take longer to wait than this value, it will be rejected
-	DefaultEthMaxFiltersPerConn        = 16                 // Default maximum number of ETH filters and subscriptions per websocket connection
-	DefaultEthTraceFilterMaxBlockRange = int64(100)         // Default maximum block range for EthTraceFilter on the gateway
+	DefaultMaxLookbackDuration         = time.Hour * 24      // Default duration that a gateway request can look back in chain history
+	DefaultMaxMessageLookbackEpochs    = abi.ChainEpoch(20)  // Default number of epochs that a gateway message lookup can look back in chain history
+	DefaultMaxMessageConfidence        = uint64(20)          // Default maximum confidence accepted by StateWaitMsg
+	DefaultRateLimitTimeout            = time.Second * 5     // Default timeout for rate limiting requests; where a request would take longer to wait than this value, it will be rejected
+	DefaultEthMaxFiltersPerConn        = 16                  // Default maximum number of ETH filters and subscriptions per websocket connection
+	DefaultEventFilterMaxHeightRange   = abi.ChainEpoch(360) // Default maximum height range for event queries on the gateway
+	DefaultEthTraceFilterMaxBlockRange = int64(100)          // Default maximum block range for EthTraceFilter on the gateway
 
 	basicRateLimitTokens  = 1
 	walletRateLimitTokens = 1
@@ -49,6 +50,7 @@ type Node struct {
 	rateLimiter                 *rate.Limiter
 	rateLimitTimeout            time.Duration
 	ethMaxFiltersPerConn        int
+	eventFilterMaxHeightRange   abi.ChainEpoch
 	ethTraceFilterMaxBlockRange int64
 	errLookback                 error
 }
@@ -62,6 +64,7 @@ type options struct {
 	rateLimit                   int
 	rateLimitTimeout            time.Duration
 	ethMaxFiltersPerConn        int
+	eventFilterMaxHeightRange   abi.ChainEpoch
 	ethTraceFilterMaxBlockRange int64
 }
 
@@ -128,6 +131,13 @@ func WithEthMaxFiltersPerConn(ethMaxFiltersPerConn int) Option {
 	}
 }
 
+// WithEventFilterMaxHeightRange sets the maximum height range allowed for event queries.
+func WithEventFilterMaxHeightRange(maxHeightRange abi.ChainEpoch) Option {
+	return func(opts *options) {
+		opts.eventFilterMaxHeightRange = maxHeightRange
+	}
+}
+
 // WithEthTraceFilterMaxBlockRange sets the maximum block range allowed for EthTraceFilter
 // requests on the gateway. This is typically tighter than the node-level MaxFilterHeightRange
 // because trace replay is significantly more expensive than log lookups.
@@ -145,6 +155,7 @@ func NewNode(v1 v1api.FullNode, v2 v2api.FullNode, opts ...Option) *Node {
 		maxMessageConfidence:        DefaultMaxMessageConfidence,
 		rateLimitTimeout:            DefaultRateLimitTimeout,
 		ethMaxFiltersPerConn:        DefaultEthMaxFiltersPerConn,
+		eventFilterMaxHeightRange:   DefaultEventFilterMaxHeightRange,
 		ethTraceFilterMaxBlockRange: DefaultEthTraceFilterMaxBlockRange,
 	}
 	for _, opt := range opts {
@@ -163,6 +174,7 @@ func NewNode(v1 v1api.FullNode, v2 v2api.FullNode, opts ...Option) *Node {
 		rateLimitTimeout:            options.rateLimitTimeout,
 		errLookback:                 fmt.Errorf("lookbacks of more than %s are disallowed", options.maxLookbackDuration),
 		ethMaxFiltersPerConn:        options.ethMaxFiltersPerConn,
+		eventFilterMaxHeightRange:   options.eventFilterMaxHeightRange,
 		ethTraceFilterMaxBlockRange: options.ethTraceFilterMaxBlockRange,
 	}
 	gateway.v1Proxy = &reverseProxyV1{

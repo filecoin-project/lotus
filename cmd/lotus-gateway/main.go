@@ -168,6 +168,11 @@ var runCmd = &cli.Command{
 			Value: gateway.DefaultEthMaxFiltersPerConn,
 		},
 		&cli.Int64Flag{
+			Name:  "event-filter-max-height-range",
+			Usage: "Maximum height range allowed for event queries and historical filter preloads (0 = no limit)",
+			Value: int64(gateway.DefaultEventFilterMaxHeightRange),
+		},
+		&cli.Int64Flag{
 			Name:  "eth-trace-filter-max-block-range",
 			Usage: "Maximum block range allowed for expensive trace_filter requests (0 = no limit)",
 			Value: gateway.DefaultEthTraceFilterMaxBlockRange,
@@ -217,6 +222,7 @@ var runCmd = &cli.Command{
 			rateLimitTimeout            = cctx.Duration("rate-limit-timeout")
 			perHostConnectionsPerMinute = cctx.Int("conn-per-minute")
 			maxFiltersPerConn           = cctx.Int("eth-max-filters-per-conn")
+			eventFilterMaxHeightRange   = abi.ChainEpoch(cctx.Int64("event-filter-max-height-range"))
 			traceFilterMaxBlockRange    = cctx.Int64("eth-trace-filter-max-block-range")
 			enableCORS                  = cctx.Bool("cors")
 			enableRequestLogging        = cctx.Bool("request-logging")
@@ -249,6 +255,7 @@ var runCmd = &cli.Command{
 			gateway.WithRateLimit(globalRateLimit),
 			gateway.WithRateLimitTimeout(rateLimitTimeout),
 			gateway.WithEthMaxFiltersPerConn(maxFiltersPerConn),
+			gateway.WithEventFilterMaxHeightRange(eventFilterMaxHeightRange),
 			gateway.WithEthTraceFilterMaxBlockRange(traceFilterMaxBlockRange),
 		)
 		handler, err := gateway.Handler(

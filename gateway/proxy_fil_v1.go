@@ -147,6 +147,17 @@ func (pv1 *reverseProxyV1) ChainHead(ctx context.Context) (*types.TipSet, error)
 	return pv1.server.ChainHead(ctx)
 }
 
+func (pv1 *reverseProxyV1) chainHeadHeight(ctx context.Context) (abi.ChainEpoch, error) {
+	head, err := pv1.server.ChainHead(ctx)
+	if err != nil {
+		return 0, err
+	}
+	if head == nil {
+		return 0, xerrors.New("chain head is nil")
+	}
+	return head.Height(), nil
+}
+
 func (pv1 *reverseProxyV1) ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error) {
 	if err := pv1.gateway.limit(ctx, chainRateLimitTokens); err != nil {
 		return nil, err
@@ -441,6 +452,10 @@ func (pv1 *reverseProxyV1) GetActorEventsRaw(ctx context.Context, filter *types.
 	if err := pv1.gateway.limit(ctx, stateRateLimitTokens); err != nil {
 		return nil, err
 	}
+
+	if err := pv1.gateway.checkActorEventFilterHeightRange(ctx, filter, pv1.chainHeadHeight); err != nil {
+		return nil, err
+	}
 	if filter != nil && filter.FromHeight != nil {
 		if err := pv1.gateway.checkKeyedTipSetHeight(ctx, *filter.FromHeight, types.EmptyTSK); err != nil {
 			return nil, err
@@ -451,6 +466,10 @@ func (pv1 *reverseProxyV1) GetActorEventsRaw(ctx context.Context, filter *types.
 
 func (pv1 *reverseProxyV1) SubscribeActorEventsRaw(ctx context.Context, filter *types.ActorEventFilter) (<-chan *types.ActorEvent, error) {
 	if err := pv1.gateway.limit(ctx, stateRateLimitTokens); err != nil {
+		return nil, err
+	}
+
+	if err := pv1.gateway.checkActorEventFilterHeightRange(ctx, filter, pv1.chainHeadHeight); err != nil {
 		return nil, err
 	}
 	if filter != nil && filter.FromHeight != nil {
