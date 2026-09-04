@@ -13,7 +13,7 @@ type HeadChangeStackBuffer struct {
 
 // NewHeadChangeStackBuffer buffer HeadChange events to avoid having to
 // deal with revert changes. Initialized size should be the average reorg
-// size + 1
+// size + 1. Non-positive sizes disable buffering.
 func NewHeadChangeStackBuffer(size int) *HeadChangeStackBuffer {
 	buffer := list.New()
 	buffer.Init()
@@ -28,6 +28,10 @@ func NewHeadChangeStackBuffer(size int) *HeadChangeStackBuffer {
 // the stack buffer grows larger than the initialized size, the
 // oldest HeadChange is returned.
 func (h *HeadChangeStackBuffer) Push(hc *api.HeadChange) (rethc *api.HeadChange) {
+	if h.size <= 0 {
+		return hc
+	}
+
 	if h.buffer.Len() >= h.size {
 		var ok bool
 
