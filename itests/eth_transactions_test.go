@@ -292,7 +292,7 @@ func TestContractInvocation(t *testing.T) {
 
 func TestContractInvocationMultiple(t *testing.T) {
 	const (
-		blockTime     = 100 * time.Millisecond
+		blockTime     = 500 * time.Millisecond
 		totalMessages = 20
 		maxUntrusted  = 10
 	)
@@ -313,7 +313,7 @@ func TestContractInvocationMultiple(t *testing.T) {
 				_ = client.Stop(ctx)
 				_ = miner.Stop(ctx)
 			})
-			ens.InterconnectAll().BeginMining(blockTime)
+			bms := ens.InterconnectAll().BeginMining(blockTime)
 
 			// install contract
 			contractHex, err := os.ReadFile("./contracts/SimpleCoin.hex")
@@ -375,6 +375,25 @@ func TestContractInvocationMultiple(t *testing.T) {
 				S:                    big.Zero(),
 			}
 
+			// Pause is best-effort: an in-flight block can still land and include freshly-submitted
+			// messages, draining the mempool and breaking the per-actor pending-limit assertion
+			// below. Wait until the chain head holds steady across 2*blockTime.
+			for _, bm := range bms {
+				bm.Pause()
+			}
+			require.Eventually(t, func() bool {
+				h1, err := client.ChainHead(ctx)
+				if err != nil {
+					return false
+				}
+				time.Sleep(2 * blockTime)
+				h2, err := client.ChainHead(ctx)
+				if err != nil {
+					return false
+				}
+				return h1.Height() == h2.Height()
+			}, 10*time.Second, 100*time.Millisecond, "chain head did not stabilize after Pause")
+
 			for i := 0; i < totalMessages; i++ {
 				invokeTx := baseMsg
 				invokeTx.Nonce = i + 1
@@ -397,6 +416,10 @@ func TestContractInvocationMultiple(t *testing.T) {
 					require.NoError(t, err)
 					hashes = append(hashes, hash)
 				}
+			}
+
+			for _, bm := range bms {
+				bm.Restart()
 			}
 
 			for _, hash := range hashes {
