@@ -450,7 +450,7 @@ func getSectorsFromFile(filePath string) ([]abi.SectorNumber, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer file.Close() //nolint:errcheck
 
 	scanner := bufio.NewScanner(file)
 	sectors := make([]abi.SectorNumber, 0)

@@ -503,6 +503,7 @@ COMMANDS:
    check-expire          Inspect expiring sectors
    expired               Get or cleanup expired sectors
    extend                Extend expiring sectors while not exceeding each sector's max life
+   upgrade-quality       upgrade legacy sectors to full QA power
    terminate             Terminate sector on-chain then remove (WARNING: This means losing power and collateral for the removed sector)
    remove                Forcefully remove a sector (WARNING: This means losing power and collateral for the removed sector (use 'terminate' for lower penalty))
    snap-up               Mark a committed capacity sector to be filled with deals
@@ -558,6 +559,8 @@ OPTIONS:
    --seal-time, -t            display how long it took for the sector to be sealed (default: false)
    --states value             filter sectors by a comma-separated list of states
    --unproven, -u             only show sectors which aren't in the 'Proving' state (default: false)
+   --full-qa-power            only show sectors that are at FULL_QA_POWER (10x QA power) (default: false)
+   --legacy-qa-power          only show sectors that are NOT at FULL_QA_POWER (1x legacy, i.e. candidates for upgrade-quality) (default: false)
    --check-parallelism value  number of parallel requests to make for checking sector states (default: 300)
    --help, -h                 show help
 ```
@@ -750,11 +753,31 @@ OPTIONS:
    --exclude value         optionally provide a file containing excluding sectors
    --extension value       try to extend selected sectors by this number of epochs, defaults to 540 days (default: 1555200)
    --new-expiration value  try to extend selected sectors to this epoch, ignoring extension (default: 0)
-   --drop-claims           drop claims for sectors that can be extended, but only by dropping some of their verified power claims (default: false)
+   --drop-claims           drop claims for sectors that can be extended, but only by dropping some of their verified power claims (deprecated on NV29+) (default: false)
    --tolerance value       don't try to extend sectors by fewer than this number of epochs, defaults to 7 days (default: 20160)
    --max-fee value         use up to this amount of FIL for one message. pass this flag to avoid message congestion. (default: "0")
    --max-sectors value     the maximum number of sectors contained in each message (default: 200)
    --really-do-it          pass this flag to really extend sectors, otherwise will only print out json representation of parameters (default: false)
+   --help, -h              show help
+```
+
+### lotus-miner sectors upgrade-quality
+
+```
+NAME:
+   lotus-miner sectors upgrade-quality - upgrade legacy sectors to full QA power
+
+USAGE:
+   lotus-miner sectors upgrade-quality [command options] [sectorNumbers...(optional)]
+
+OPTIONS:
+   --sector-file value     provide a file containing one sector number in each line
+   --deadline value        filter by deadline index (default: 0)
+   --partition value       filter by partition index (default: 0)
+   --new-expiration value  optional expiration target to apply during the upgrade (default: 0)
+   --max-sectors value     maximum number of sectors included in each message (default: 200)
+   --max-fee value         use up to this amount of FIL for one message (default: "0")
+   --really-do-it          pass this flag to really send the messages, otherwise only simulates them (default: false)
    --help, -h              show help
 ```
 

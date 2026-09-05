@@ -117,7 +117,7 @@ func NewUpgradeEnv(t *testing.T, o Opts) *Env {
 
 // WaitForMinerQAP polls the miner's quality-adjusted power (StateMinerPower) until it equals want,
 // failing the test after maxWait. Each poll advances the head ~50 epochs.
-func WaitForMinerQAP(t *testing.T, ctx context.Context, client *kit.TestFullNode, maddr address.Address, want uint64, maxWait time.Duration) {
+func WaitForMinerQAP(ctx context.Context, t *testing.T, client *kit.TestFullNode, maddr address.Address, want uint64, maxWait time.Duration) {
 	t.Helper()
 	endBy := time.Now().Add(maxWait)
 	for {
