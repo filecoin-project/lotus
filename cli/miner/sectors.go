@@ -94,6 +94,118 @@ func legacyUpgradeQualityCompatMessage(nv network.Version) error {
 	return nil
 }
 
+// validateQaPowerFilterFlags enforces the mutual-exclusion and --fast constraints on the
+// `sectors list` --full-qa-power / --legacy-qa-power filters.
+func validateQaPowerFilterFlags(showFullQA, showLegacyQA, fast bool) error {
+	if showFullQA && showLegacyQA {
+		return xerrors.Errorf("--full-qa-power and --legacy-qa-power are mutually exclusive")
+	}
+	if (showFullQA || showLegacyQA) && fast {
+		return xerrors.Errorf("--full-qa-power/--legacy-qa-power require on-chain info and cannot be used with --fast")
+	}
+	return nil
+}
+
+// qualifyQaPowerFilter reports whether a sector (whose on-chain FULL_QA_POWER flag is `fullQa`)
+// should be shown given the requested --full-qa-power (`showFullQA`) / --legacy-qa-power
+// (`showLegacyQA`) filters. Note SIMPLE_QA_POWER cannot be used as the inverse discriminator:
+// FIP-0118 keeps it set (dead) on new 10x sectors, so the discriminator is exclusively
+// FULL_QA_POWER. A not-yet-on-chain sector has fullQa=false and so matches --legacy-qa-power,
+// consistent with on-chain truth until it lands at 10x.
+func qualifyQaPowerFilter(fullQa, showFullQA, showLegacyQA bool) bool {
+	if showFullQA && !fullQa {
+		return false
+	}
+	if showLegacyQA && fullQa {
+		return false
+	}
+	return true
+}
+
+// upgradeKey identifies a (deadline, partition) group. Sectors can only be upgraded together when
+// they share a deadline+partition, so upgrade-quality groups by this key before batching.
+type upgradeKey struct {
+	deadline  uint64
+	partition uint64
+}
+
+// buildUpgradeQualityParams converts a (deadline, partition) -> sector-list grouping into the
+// on-chain message params to send for the actor's UpgradeSectorQuality method, honoring the
+// --max-sectors cap two ways:
+//
+//  1. each (deadline, partition) group whose sectors exceed maxSectors is split into multiple
+//     UpgradeSectorQuality sub-batches of at most maxSectors sectors; and
+//  2. the resulting sub-batches are packed into UpgradeSectorQualityParams messages such that no
+//     message addresses more than maxSectors total sectors.
+//
+// Groups are processed in sorted (deadline, partition) order and the sector lists in the order given
+// so the output is deterministic and unit-testable. newExpiration, when non-nil, is attached to
+// every sub-batch (mirroring the actor's FIP-0118 §5 extension semantics).
+func buildUpgradeQualityParams(grouped map[upgradeKey][]uint64, maxSectors int, newExpiration *abi.ChainEpoch) ([]stminer.UpgradeSectorQualityParams, error) {
+	if maxSectors <= 0 {
+		return nil, xerrors.Errorf("maxSectors must be positive, got %d", maxSectors)
+	}
+
+	keys := make([]upgradeKey, 0, len(grouped))
+	for k := range grouped {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		if keys[i].deadline != keys[j].deadline {
+			return keys[i].deadline < keys[j].deadline
+		}
+		return keys[i].partition < keys[j].partition
+	})
+
+	// Split each (deadline, partition) group's sectors into sub-batches of at most maxSectors.
+	var upgrades []stminer.UpgradeSectorQuality
+	for _, key := range keys {
+		sectorIDs := grouped[key]
+		for i := 0; i < len(sectorIDs); i += maxSectors {
+			end := i + maxSectors
+			if end > len(sectorIDs) {
+				end = len(sectorIDs)
+			}
+			upgrade := stminer.UpgradeSectorQuality{
+				Deadline:  key.deadline,
+				Partition: key.partition,
+				Sectors:   bitfield.NewFromSet(sectorIDs[i:end]),
+			}
+			if newExpiration != nil {
+				upgrade.NewExpiration = newExpiration
+			}
+			upgrades = append(upgrades, upgrade)
+		}
+	}
+
+	// Pack upgrades into messages, keeping each message under maxSectors total sectors.
+	// The split stage above guarantees every upgrade element has at most maxSectors sectors, so a
+	// single element always fits in an empty message. The guard "len(p.Upgrades) > 0" ensures we
+	// never stall: if adding the next element would overflow the cap we start a fresh message
+	// instead, but we always push the first element unconditionally.
+	var params []stminer.UpgradeSectorQualityParams
+	for i := 0; i < len(upgrades); {
+		p := stminer.UpgradeSectorQualityParams{}
+		count := 0
+		for i < len(upgrades) {
+			u := upgrades[i]
+			n, err := u.Sectors.Count()
+			if err != nil {
+				return nil, err
+			}
+			if len(p.Upgrades) > 0 && count+int(n) > maxSectors {
+				break
+			}
+			p.Upgrades = append(p.Upgrades, u)
+			count += int(n)
+			i++
+		}
+		params = append(params, p)
+	}
+
+	return params, nil
+}
+
 var sectorsUpgradeQualityCmd = &cli.Command{
 	Name:      "upgrade-quality",
 	Usage:     "upgrade legacy sectors to full QA power",
@@ -205,10 +317,6 @@ var sectorsUpgradeQualityCmd = &cli.Command{
 			return xerrors.Errorf("getting miner info: %w", err)
 		}
 
-		type upgradeKey struct {
-			deadline  uint64
-			partition uint64
-		}
 		// Per FIP-0118 §5: an already-10x sector is still extended (multiplier and
 		// pledge carry forward) when a new expiration is declared in the same call;
 		// without a new expiration it is a pure no-op. So only skip it when no
@@ -259,46 +367,15 @@ var sectorsUpgradeQualityCmd = &cli.Command{
 			}
 		}
 
-		// Split each (deadline, partition) group's sectors into sub-batches of at most addrSectors.
-		var upgrades []stminer.UpgradeSectorQuality
-		for key, sectorIDs := range grouped {
-			for i := 0; i < len(sectorIDs); i += addrSectors {
-				end := i + addrSectors
-				if end > len(sectorIDs) {
-					end = len(sectorIDs)
-				}
-				upgrade := stminer.UpgradeSectorQuality{
-					Deadline:  key.deadline,
-					Partition: key.partition,
-					Sectors:   bitfield.NewFromSet(sectorIDs[i:end]),
-				}
-				if cctx.IsSet("new-expiration") {
-					exp := abi.ChainEpoch(cctx.Int64("new-expiration"))
-					upgrade.NewExpiration = &exp
-				}
-				upgrades = append(upgrades, upgrade)
-			}
+		// Batch the (deadline, partition) groups into message params honoring --max-sectors.
+		var newExpiration *abi.ChainEpoch
+		if cctx.IsSet("new-expiration") {
+			exp := abi.ChainEpoch(cctx.Int64("new-expiration"))
+			newExpiration = &exp
 		}
-
-		// Pack upgrades into messages, keeping each message under addrSectors total sectors.
-		var params []stminer.UpgradeSectorQualityParams
-		for i := 0; i < len(upgrades); {
-			p := stminer.UpgradeSectorQualityParams{}
-			count := 0
-			for i < len(upgrades) {
-				u := upgrades[i]
-				n, err := u.Sectors.Count()
-				if err != nil {
-					return err
-				}
-				if count+int(n) > addrSectors && len(p.Upgrades) > 0 {
-					break
-				}
-				p.Upgrades = append(p.Upgrades, u)
-				count += int(n)
-				i++
-			}
-			params = append(params, p)
+		params, err := buildUpgradeQualityParams(grouped, addrSectors, newExpiration)
+		if err != nil {
+			return err
 		}
 
 		stotal := 0
@@ -582,11 +659,8 @@ var sectorsListCmd = &cli.Command{
 		// discriminator — FIP-0118 keeps it set (dead) on new 10x sectors.
 		showFullQA := cctx.Bool("full-qa-power")
 		showLegacyQA := cctx.Bool("legacy-qa-power")
-		if showFullQA && showLegacyQA {
-			return xerrors.Errorf("--full-qa-power and --legacy-qa-power are mutually exclusive")
-		}
-		if (showFullQA || showLegacyQA) && fast {
-			return xerrors.Errorf("--full-qa-power/--legacy-qa-power require on-chain info and cannot be used with --fast")
+		if err := validateQaPowerFilterFlags(showFullQA, showLegacyQA, fast); err != nil {
+			return err
 		}
 
 		throttle := make(chan struct{}, cctx.Int64("check-parallelism"))
@@ -627,10 +701,7 @@ var sectorsListCmd = &cli.Command{
 			// Apply the FIP-0118 FULL_QA_POWER filter. Not-yet-on-chain sectors
 			// have FullQaPower=false (no on-chain info yet), so they fall under
 			// --legacy-qa-power, matching on-chain truth until they land at 10x.
-			if showFullQA && !st.FullQaPower {
-				continue
-			}
-			if showLegacyQA && st.FullQaPower {
+			if !qualifyQaPowerFilter(st.FullQaPower, showFullQA, showLegacyQA) {
 				continue
 			}
 
