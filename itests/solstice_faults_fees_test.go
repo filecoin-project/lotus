@@ -26,6 +26,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
+	"github.com/filecoin-project/lotus/itests/solsticekit"
 	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/filecoin-project/lotus/storage/sealer/mock"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
@@ -48,9 +49,9 @@ func TestMigrationNV29SolsticeUpgradeQualityAuth(t *testing.T) {
 		upgradeEpoch      = abi.ChainEpoch(3000)
 	)
 
-	e := newSolsticeUpgradeEnv(t, solsticeOpts{upgradeEpoch: upgradeEpoch})
-	ctx, client, um, maddr := e.ctx, e.client, e.um, e.maddr
-	sealProofType := e.sealProof
+	e := solsticekit.NewUpgradeEnv(t, solsticekit.Opts{UpgradeEpoch: upgradeEpoch})
+	ctx, client, um, maddr := e.Ctx, e.Client, e.Um, e.Maddr
+	sealProofType := e.SealProof
 	defer um.Stop()
 
 	// fundAccount creates an account actor for `a` (so it can be used as a StateCall From) by funding it.
@@ -189,9 +190,9 @@ func TestMigrationNV29SolsticeUpgradeQualityPureOwnerAuth(t *testing.T) {
 
 	// Deliberately do NOT watch this miner's WindowPoSts (see below): once A loses the worker role
 	// nothing needs a post, and the sector may fault harmlessly for caller-validation-first.
-	e := newSolsticeUpgradeEnv(t, solsticeOpts{upgradeEpoch: upgradeEpoch, watchPost: false})
-	ctx, client, um, maddr := e.ctx, e.client, e.um, e.maddr
-	sealProofType := e.sealProof
+	e := solsticekit.NewUpgradeEnv(t, solsticekit.Opts{UpgradeEpoch: upgradeEpoch, WatchPost: false})
+	ctx, client, um, maddr := e.Ctx, e.Client, e.Um, e.Maddr
+	sealProofType := e.SealProof
 
 	ownerA := client.DefaultKey.Address
 
@@ -382,9 +383,9 @@ func TestMigrationNV29SolsticeFaultAndRecover(t *testing.T) {
 		upgradeEpoch      = abi.ChainEpoch(2000)
 	)
 
-	e := newSolsticeUpgradeEnv(t, solsticeOpts{upgradeEpoch: upgradeEpoch})
-	ctx, client, um, maddr := e.ctx, e.client, e.um, e.maddr
-	sealProofType := e.sealProof
+	e := solsticekit.NewUpgradeEnv(t, solsticekit.Opts{UpgradeEpoch: upgradeEpoch})
+	ctx, client, um, maddr := e.Ctx, e.Client, e.Um, e.Maddr
+	sealProofType := e.SealProof
 	defer um.Stop()
 
 	// minerBalanceFeeDebt reads the miner actor's current balance and outstanding FeeDebt (decoded
@@ -585,7 +586,7 @@ func TestMigrationNV29SolsticeFaultRecoverFullPower(t *testing.T) {
 	require.True(t, isRecovering, "the 10x sector must be recorded as recovering")
 
 	// Wait for QAP to return to the pre-fault 30x (full 10x restored, not a 1x residue).
-	waitForMinerQAP(t, ctx, client, maddr, preQAP, 3*time.Minute)
+	solsticekit.WaitForMinerQAP(t, ctx, client, maddr, preQAP, 3*time.Minute)
 
 	faultsAfter, err := client.StateMinerFaults(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
@@ -737,7 +738,7 @@ func TestMigrationNV29SolsticeFaultRecoverUsqdFullPower(t *testing.T) {
 	_, werr := client.StateWaitMsg(ctx, usqMsg.Cid(), 2, lapi.LookbackNoLimit, true)
 	require.NoError(t, werr, "USQ must be confirmed")
 
-	waitForMinerQAP(t, ctx, client, maddr, baseQA+uint64(ssz)*9, 3*time.Minute)
+	solsticekit.WaitForMinerQAP(t, ctx, client, maddr, baseQA+uint64(ssz)*9, 3*time.Minute)
 	fullInfo, err := client.StateSectorGetInfo(ctx, maddr, target, types.EmptyTSK)
 	require.NoError(t, err)
 	require.NotZero(t, fullInfo.Flags&miner.FULL_QA_POWER, "the USQ'd sector must carry FULL_QA_POWER (10x)")
@@ -778,7 +779,7 @@ func TestMigrationNV29SolsticeFaultRecoverUsqdFullPower(t *testing.T) {
 	require.True(t, isRecovering, "the USQ'd 10x sector must be recorded as recovering")
 
 	// QAP returns to the full pre-fault value (the USQ'd 10x restored, not a 1x residue).
-	waitForMinerQAP(t, ctx, client, maddr, usqdQA, 3*time.Minute)
+	solsticekit.WaitForMinerQAP(t, ctx, client, maddr, usqdQA, 3*time.Minute)
 
 	faultsAfter, err := client.StateMinerFaults(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
@@ -805,9 +806,9 @@ func TestMigrationNV29SolsticeUsqdSectorFault(t *testing.T) {
 		upgradeEpoch      = abi.ChainEpoch(2000)
 	)
 
-	e := newSolsticeUpgradeEnv(t, solsticeOpts{upgradeEpoch: upgradeEpoch})
-	ctx, client, um, maddr := e.ctx, e.client, e.um, e.maddr
-	sealProofType := e.sealProof
+	e := solsticekit.NewUpgradeEnv(t, solsticekit.Opts{UpgradeEpoch: upgradeEpoch})
+	ctx, client, um, maddr := e.Ctx, e.Client, e.Um, e.Maddr
+	sealProofType := e.SealProof
 	defer um.Stop()
 
 	// ---- A legacy CC sector onboarded and activated on NV28 is 1x with no FULL_QA flag.
@@ -1077,9 +1078,9 @@ func TestMigrationNV29SolsticeFaultFeeDebt(t *testing.T) {
 		upgradeEpoch      = abi.ChainEpoch(2000)
 	)
 
-	e := newSolsticeUpgradeEnv(t, solsticeOpts{upgradeEpoch: upgradeEpoch})
-	ctx, client, um, maddr := e.ctx, e.client, e.um, e.maddr
-	sealProofType := e.sealProof
+	e := solsticekit.NewUpgradeEnv(t, solsticekit.Opts{UpgradeEpoch: upgradeEpoch})
+	ctx, client, um, maddr := e.Ctx, e.Client, e.Um, e.Maddr
+	sealProofType := e.SealProof
 	defer um.Stop()
 
 	// balanceOnly reads just the actor balance (handy for log messages).
@@ -1219,9 +1220,9 @@ func TestMigrationNV29SolsticeUsqdTerminationFeeRealLedger(t *testing.T) {
 		upgradeEpoch      = abi.ChainEpoch(3000)
 	)
 
-	e := newSolsticeUpgradeEnv(t, solsticeOpts{upgradeEpoch: upgradeEpoch})
-	ctx, client, um, maddr := e.ctx, e.client, e.um, e.maddr
-	sealProofType := e.sealProof
+	e := solsticekit.NewUpgradeEnv(t, solsticekit.Opts{UpgradeEpoch: upgradeEpoch})
+	ctx, client, um, maddr := e.Ctx, e.Client, e.Um, e.Maddr
+	sealProofType := e.SealProof
 	defer um.Stop()
 
 	// minerBalance reads the miner actor's on-chain balance (the ledger the termination penalty debits).
@@ -1234,7 +1235,7 @@ func TestMigrationNV29SolsticeUsqdTerminationFeeRealLedger(t *testing.T) {
 	// settleAndRead advances a little past a QAP target so the deferred-termination cron has fully
 	// burned the penalty, then returns the miner balance.
 	settleAndRead := func(targetQA uint64) types.BigInt {
-		waitForMinerQAP(t, ctx, client, maddr, targetQA, 2*time.Minute)
+		solsticekit.WaitForMinerQAP(t, ctx, client, maddr, targetQA, 2*time.Minute)
 		head, herr := client.ChainHead(ctx)
 		req.NoError(herr)
 		client.WaitTillChain(ctx, kit.HeightAtLeast(head.Height()+20))
@@ -1308,9 +1309,9 @@ func TestMigrationNV29SolsticeTerminationFeeRealLedger(t *testing.T) {
 		upgradeEpoch      = abi.ChainEpoch(3000)
 	)
 
-	e := newSolsticeUpgradeEnv(t, solsticeOpts{upgradeEpoch: upgradeEpoch})
-	ctx, client, um, maddr := e.ctx, e.client, e.um, e.maddr
-	sealProofType := e.sealProof
+	e := solsticekit.NewUpgradeEnv(t, solsticekit.Opts{UpgradeEpoch: upgradeEpoch})
+	ctx, client, um, maddr := e.Ctx, e.Client, e.Um, e.Maddr
+	sealProofType := e.SealProof
 	defer um.Stop()
 
 	// minerBalance reads the miner actor's on-chain balance (the ledger we assert the penalty against).
@@ -1323,7 +1324,7 @@ func TestMigrationNV29SolsticeTerminationFeeRealLedger(t *testing.T) {
 	// settleAndRead advances a little past a QAP target so the deferred-termination cron has fully
 	// burned the penalty, then returns the miner balance.
 	settleAndRead := func(targetQA uint64) types.BigInt {
-		waitForMinerQAP(t, ctx, client, maddr, targetQA, 2*time.Minute)
+		solsticekit.WaitForMinerQAP(t, ctx, client, maddr, targetQA, 2*time.Minute)
 		head, herr := client.ChainHead(ctx)
 		req.NoError(herr)
 		client.WaitTillChain(ctx, kit.HeightAtLeast(head.Height()+20))
@@ -1413,9 +1414,9 @@ func TestMigrationNV29SolsticePowerAndFees(t *testing.T) {
 		upgradeEpoch      = abi.ChainEpoch(2000)
 	)
 
-	e := newSolsticeUpgradeEnv(t, solsticeOpts{upgradeEpoch: upgradeEpoch})
-	ctx, client, um, maddr := e.ctx, e.client, e.um, e.maddr
-	sealProofType := e.sealProof
+	e := solsticekit.NewUpgradeEnv(t, solsticekit.Opts{UpgradeEpoch: upgradeEpoch})
+	ctx, client, um, maddr := e.Ctx, e.Client, e.Um, e.Maddr
+	sealProofType := e.SealProof
 	defer um.Stop()
 
 	// ---- Two legacy CC sectors (1x) pre-upgrade.

@@ -1,7 +1,6 @@
 package itests
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -23,102 +22,12 @@ import (
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
-	"github.com/filecoin-project/lotus/chain/consensus/filcns"
-	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/itests/kit"
+	"github.com/filecoin-project/lotus/itests/solsticekit"
 	"github.com/filecoin-project/lotus/lib/must"
 )
-
-// solsticeEnv bundles the ensemble pieces (ctx, client, unmanaged miner, miner address, sector size,
-// seal proof) produced by newSolsticeUpgradeEnv for use by the solstice itests.
-type solsticeEnv struct {
-	ctx       context.Context
-	client    *kit.TestFullNode
-	um        *kit.TestUnmanagedMiner
-	maddr     address.Address
-	ssize     abi.SectorSize // always 2KiB
-	sealProof abi.RegisteredSealProof
-}
-
-// solsticeOpts configures newSolsticeUpgradeEnv.
-type solsticeOpts struct {
-	// upgradeEpoch > 0 upgrades the chain NV28 -> NV29 at this height (with the neutral Solstice
-	// reward bootstrap so the migration matches the other solstice itests). 0 keeps the chain on
-	// NV28 for the whole test.
-	upgradeEpoch abi.ChainEpoch
-	// watchPost drives the miner's WindowPoSt on the block miner (the common case). Tests that
-	// deliberately do not watch (e.g. a worker handover that strands WindowPoSt) set it false.
-	watchPost bool
-	// Optional verifreg plumbing: when rootKey/verifierKey/verifiedClientKey are non-nil the
-	// ensemble is created with a RootVerifier + two funded Accounts (default funding 100 FIL). The
-	// same keys are returned to the caller via the enclosing test's own locals, so SetupVerifiedClients
-	// / SetupAllocation can reuse them after the ensemble exists.
-	rootKey, verifierKey, verifiedClientKey *key.Key
-	bal                                     int64
-}
-
-// newSolsticeUpgradeEnv builds the standard solstice itest ensemble: a single unmanaged miner on a
-// chain that optionally upgrades NV28->NV29, mock proofs over RPC, mining started, and (by default)
-// the miner's WindowPoSt watched. It returns the pieces as a *solsticeEnv for the caller to bind.
-func newSolsticeUpgradeEnv(t *testing.T, o solsticeOpts) *solsticeEnv {
-	t.Helper()
-	req := require.New(t)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	t.Cleanup(cancel)
-
-	const ssize = abi.SectorSize(2 << 10) // 2KiB
-
-	sealProof, err := miner.SealProofTypeFromSectorSize(ssize, network.Version28, miner.SealProofVariant_Standard)
-	req.NoError(err)
-
-	var ensembleOpts []interface{}
-	ensembleOpts = append(ensembleOpts, kit.MockProofs(), kit.ThroughRPC())
-
-	bal := o.bal
-	if bal == 0 {
-		bal = types.MustParseFIL("100fil").Int64()
-	}
-	if o.rootKey != nil {
-		ensembleOpts = append(ensembleOpts,
-			kit.RootVerifier(o.rootKey, abi.NewTokenAmount(bal)),
-			kit.Account(o.verifierKey, abi.NewTokenAmount(bal)),
-			kit.Account(o.verifiedClientKey, abi.NewTokenAmount(bal)),
-		)
-	}
-
-	if o.upgradeEpoch > 0 {
-		ensembleOpts = append(ensembleOpts, kit.UpgradeSchedule(
-			stmgr.Upgrade{Network: network.Version28, Height: -1},
-			stmgr.Upgrade{
-				Network:   network.Version29,
-				Height:    o.upgradeEpoch,
-				Migration: filcns.UpgradeActorsV19With(buildconstants.NeutralSolsticeRewardBootstrapParams),
-			},
-		))
-	} else {
-		ensembleOpts = append(ensembleOpts, kit.UpgradeSchedule(
-			stmgr.Upgrade{Network: network.Version28, Height: -1},
-		))
-	}
-
-	client, _, ens := kit.EnsembleMinimal(t, ensembleOpts...)
-
-	um, ens := ens.UnmanagedMiner(ctx, client,
-		kit.SectorSize(ssize),
-		kit.OwnerAddr(client.DefaultKey),
-	)
-
-	blockMiners := ens.InterconnectAll().BeginMining(5 * time.Millisecond)
-	ens.Start()
-	if o.watchPost {
-		blockMiners[0].WatchMinerForPost(um.ActorAddr)
-	}
-
-	return &solsticeEnv{ctx: ctx, client: client, um: um, maddr: um.ActorAddr, ssize: ssize, sealProof: sealProof}
-}
 
 // TestMigrationNV29SolsticePreCommitProve proves a CC sector that is pre-committed before the NV29
 // upgrade lands at FULL_QA(10x) after being proved (activated) on NV29, since the QA tier is decided
@@ -130,9 +39,9 @@ func TestMigrationNV29SolsticePreCommitProve(t *testing.T) {
 
 	const upgradeEpoch = abi.ChainEpoch(3000)
 
-	e := newSolsticeUpgradeEnv(t, solsticeOpts{upgradeEpoch: upgradeEpoch})
-	ctx, client, um, maddr := e.ctx, e.client, e.um, e.maddr
-	sealProofType := e.sealProof
+	e := solsticekit.NewUpgradeEnv(t, solsticekit.Opts{UpgradeEpoch: upgradeEpoch})
+	ctx, client, um, maddr := e.Ctx, e.Client, e.Um, e.Maddr
+	sealProofType := e.SealProof
 	defer um.Stop()
 
 	const defaultSectorSize = abi.SectorSize(2 << 10) // 2KiB
@@ -195,9 +104,9 @@ func TestMigrationNV29SolsticePrecommitDeposit(t *testing.T) {
 		upgradeEpoch      = abi.ChainEpoch(1000)
 	)
 
-	e := newSolsticeUpgradeEnv(t, solsticeOpts{upgradeEpoch: upgradeEpoch})
-	ctx, client, um, maddr := e.ctx, e.client, e.um, e.maddr
-	sealProofType := e.sealProof
+	e := solsticekit.NewUpgradeEnv(t, solsticekit.Opts{UpgradeEpoch: upgradeEpoch})
+	ctx, client, um, maddr := e.Ctx, e.Client, e.Um, e.Maddr
+	sealProofType := e.SealProof
 	defer um.Stop()
 
 	// preCommitDeposits decodes the miner's on-chain reserved precommit deposit (v19 miner State).
@@ -274,9 +183,9 @@ func TestMigrationNV29SolsticeSnapAndOrdering(t *testing.T) {
 		upgradeEpoch      = abi.ChainEpoch(2000)
 	)
 
-	e := newSolsticeUpgradeEnv(t, solsticeOpts{upgradeEpoch: upgradeEpoch})
-	ctx, client, um, maddr := e.ctx, e.client, e.um, e.maddr
-	sealProofType := e.sealProof
+	e := solsticekit.NewUpgradeEnv(t, solsticekit.Opts{UpgradeEpoch: upgradeEpoch})
+	ctx, client, um, maddr := e.Ctx, e.Client, e.Um, e.Maddr
+	sealProofType := e.SealProof
 	defer um.Stop()
 
 	// Two pre-upgrade CC sectors, both 1x on NV28. They are the Snap targets.
@@ -352,7 +261,7 @@ func TestMigrationNV29SolsticeSnapAndOrdering(t *testing.T) {
 	// Wait until the native sector's first WindowPoSt is committed and its FULL_QA (10x) power is
 	// on-chain: miner QAP must rise by exactly defaultSectorSize*10 over the pre-onboard total.
 	nativeQA := powerBeforeNative.MinerPower.QualityAdjPower.Uint64() + uint64(defaultSectorSize)*10
-	waitForMinerQAP(t, ctx, client, maddr, nativeQA, 2*time.Minute)
+	solsticekit.WaitForMinerQAP(t, ctx, client, maddr, nativeQA, 2*time.Minute)
 
 	nInfo, err := client.StateSectorGetInfo(ctx, maddr, sC, types.EmptyTSK)
 	req.NoError(err)
@@ -399,15 +308,15 @@ func TestMigrationNV29SolsticeExtend(t *testing.T) {
 	verifiedClientKey := must.One(key.GenerateKey(types.KTBLS))
 	bal := types.MustParseFIL("100fil").Int64()
 
-	e := newSolsticeUpgradeEnv(t, solsticeOpts{
-		upgradeEpoch:      upgradeEpoch,
-		rootKey:           rootKey,
-		verifierKey:       verifierKey,
-		verifiedClientKey: verifiedClientKey,
-		bal:               bal,
+	e := solsticekit.NewUpgradeEnv(t, solsticekit.Opts{
+		UpgradeEpoch:      upgradeEpoch,
+		RootKey:           rootKey,
+		VerifierKey:       verifierKey,
+		VerifiedClientKey: verifiedClientKey,
+		Bal:               bal,
 	})
-	ctx, client, um, maddr := e.ctx, e.client, e.um, e.maddr
-	sealProofType := e.sealProof
+	ctx, client, um, maddr := e.Ctx, e.Client, e.Um, e.Maddr
+	sealProofType := e.SealProof
 	defer um.Stop()
 
 	// ---- Datacap plumbing for the verified deal sector.
@@ -550,9 +459,9 @@ func TestMigrationNV29SolsticeQaPowerFilters(t *testing.T) {
 		upgradeEpoch      = abi.ChainEpoch(3000)
 	)
 
-	e := newSolsticeUpgradeEnv(t, solsticeOpts{upgradeEpoch: upgradeEpoch})
-	ctx, client, um, maddr := e.ctx, e.client, e.um, e.maddr
-	sealProofType := e.sealProof
+	e := solsticekit.NewUpgradeEnv(t, solsticekit.Opts{UpgradeEpoch: upgradeEpoch})
+	ctx, client, um, maddr := e.Ctx, e.Client, e.Um, e.Maddr
+	sealProofType := e.SealProof
 	defer um.Stop()
 
 	// Onboard nLegacy legacy CC sectors on NV28; they activate at 1x each (no FULL_QA_POWER).
@@ -665,9 +574,9 @@ func TestMigrationNV29SolsticeDeadlineImmutabilityWindow(t *testing.T) {
 		upgradeEpoch      = abi.ChainEpoch(3000)
 	)
 
-	e := newSolsticeUpgradeEnv(t, solsticeOpts{upgradeEpoch: upgradeEpoch})
-	ctx, client, um, maddr := e.ctx, e.client, e.um, e.maddr
-	sealProofType := e.sealProof
+	e := solsticekit.NewUpgradeEnv(t, solsticekit.Opts{UpgradeEpoch: upgradeEpoch})
+	ctx, client, um, maddr := e.Ctx, e.Client, e.Um, e.Maddr
+	sealProofType := e.SealProof
 	defer um.Stop()
 
 	// ---- Onboard a legacy 1x CC sector on NV28, then cross to NV29 (it stays 1x, non-retroactive).
@@ -801,9 +710,9 @@ func TestMigrationNV29SolsticeMaxSectorsSplit(t *testing.T) {
 		upgradeEpoch      = abi.ChainEpoch(3000)
 	)
 
-	e := newSolsticeUpgradeEnv(t, solsticeOpts{upgradeEpoch: upgradeEpoch})
-	ctx, client, um, maddr := e.ctx, e.client, e.um, e.maddr
-	sealProofType := e.sealProof
+	e := solsticekit.NewUpgradeEnv(t, solsticekit.Opts{UpgradeEpoch: upgradeEpoch})
+	ctx, client, um, maddr := e.Ctx, e.Client, e.Um, e.Maddr
+	sealProofType := e.SealProof
 	defer um.Stop()
 
 	// Onboard nSectors legacy CC sectors on NV28; they activate at 1x each.
@@ -913,11 +822,11 @@ func TestSolsticeDealSmokeNoUpgrade(t *testing.T) {
 
 	// The chain stays on NV28 for the whole test (upgradeEpoch unset), pinning the "pre-upgrade"
 	// semantics the smoke needs to observe.
-	e := newSolsticeUpgradeEnv(t, solsticeOpts{
-		rootKey: rootKey, verifierKey: verifierKey, verifiedClientKey: verifiedClientKey, bal: bal,
+	e := solsticekit.NewUpgradeEnv(t, solsticekit.Opts{
+		RootKey: rootKey, VerifierKey: verifierKey, VerifiedClientKey: verifiedClientKey, Bal: bal,
 	})
-	ctx, client, um, maddr := e.ctx, e.client, e.um, e.maddr
-	sealProofType := e.sealProof
+	ctx, client, um, maddr := e.Ctx, e.Client, e.Um, e.Maddr
+	sealProofType := e.SealProof
 	defer um.Stop()
 
 	// Sanity: the chain must actually be on NV28 for the whole test, so the verified sector's 10x is
@@ -999,12 +908,12 @@ func TestMigrationNV29SolsticeDealVariants(t *testing.T) {
 	verifiedClientKey := must.One(key.GenerateKey(types.KTBLS))
 	bal := types.MustParseFIL("100fil").Int64()
 
-	e := newSolsticeUpgradeEnv(t, solsticeOpts{
-		upgradeEpoch: upgradeEpoch, rootKey: rootKey, verifierKey: verifierKey,
-		verifiedClientKey: verifiedClientKey, bal: bal,
+	e := solsticekit.NewUpgradeEnv(t, solsticekit.Opts{
+		UpgradeEpoch: upgradeEpoch, RootKey: rootKey, VerifierKey: verifierKey,
+		VerifiedClientKey: verifiedClientKey, Bal: bal,
 	})
-	ctx, client, um, maddr := e.ctx, e.client, e.um, e.maddr
-	sealProofType := e.sealProof
+	ctx, client, um, maddr := e.Ctx, e.Client, e.Um, e.Maddr
+	sealProofType := e.SealProof
 	defer um.Stop()
 
 	// ---- Datacap plumbing for the verified sector.
@@ -1104,12 +1013,12 @@ func TestMigrationNV29SolsticeDealOps(t *testing.T) {
 	verifiedClientKey := must.One(key.GenerateKey(types.KTBLS))
 	bal := types.MustParseFIL("100fil").Int64()
 
-	e := newSolsticeUpgradeEnv(t, solsticeOpts{
-		upgradeEpoch: upgradeEpoch, rootKey: rootKey, verifierKey: verifierKey,
-		verifiedClientKey: verifiedClientKey, bal: bal,
+	e := solsticekit.NewUpgradeEnv(t, solsticekit.Opts{
+		UpgradeEpoch: upgradeEpoch, RootKey: rootKey, VerifierKey: verifierKey,
+		VerifiedClientKey: verifiedClientKey, Bal: bal,
 	})
-	ctx, client, um, maddr := e.ctx, e.client, e.um, e.maddr
-	sealProofType := e.sealProof
+	ctx, client, um, maddr := e.Ctx, e.Client, e.Um, e.Maddr
+	sealProofType := e.SealProof
 	defer um.Stop()
 
 	// ---- Datacap plumbing for the single verified deal sector.
@@ -1194,13 +1103,13 @@ func TestMigrationNV29SolsticeDealOps(t *testing.T) {
 	// ---- Terminate × unverified deal (uvB, still at native 1x): removing it drops exactly 1x.
 	// At this point ver=10x, uvA=10x, uvB=1x (21 units); terminating uvB leaves 20 units.
 	um.TerminateSectors([]abi.SectorNumber{uvB})
-	waitForMinerQAP(t, ctx, client, maddr,
+	solsticekit.WaitForMinerQAP(t, ctx, client, maddr,
 		uint64(defaultSectorSize)*(10+10), // ver 10x + uvA 10x remain (uvB's 1x removed)
 		2*time.Minute)
 
 	// ---- Terminate × verified deal (ver, 10x): removing it drops exactly 10x, leaving uvA's 10x.
 	um.TerminateSectors([]abi.SectorNumber{ver[0]})
-	waitForMinerQAP(t, ctx, client, maddr,
+	solsticekit.WaitForMinerQAP(t, ctx, client, maddr,
 		uint64(defaultSectorSize)*10, // only uvA (USQ'd to 10x) remains
 		2*time.Minute)
 
@@ -1223,9 +1132,9 @@ func TestMigrationNV29SolsticePostUpgradeDeal(t *testing.T) {
 		upgradeEpoch      = abi.ChainEpoch(2000)
 	)
 
-	e := newSolsticeUpgradeEnv(t, solsticeOpts{upgradeEpoch: upgradeEpoch})
-	ctx, client, um, maddr := e.ctx, e.client, e.um, e.maddr
-	sealProofType := e.sealProof
+	e := solsticekit.NewUpgradeEnv(t, solsticekit.Opts{UpgradeEpoch: upgradeEpoch})
+	ctx, client, um, maddr := e.Ctx, e.Client, e.Um, e.Maddr
+	sealProofType := e.SealProof
 	defer um.Stop()
 
 	// ---- The legacy twin: an unverified deal sector proven on NV28. Random pieces = unverified

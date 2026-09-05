@@ -8,7 +8,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin"
@@ -24,6 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
+	"github.com/filecoin-project/lotus/itests/solsticekit"
 )
 
 // TestMigrationNV29Solstice verifies FIP-0118 (Solstice) miner compatibility across the NV28→NV29
@@ -385,33 +385,12 @@ func TestMigrationNV29SolsticeAccounting(t *testing.T) {
 	// its 10x QAP once the miner's deferred termination cron fires at the end of the proving period.
 	um.TerminateSectors([]abi.SectorNumber{legs[1]})
 	expectedQA := uint64(defaultSectorSize) * (1 + 10) // remaining: legs[0]=1x + legs[2]=10x
-	waitForMinerQAP(t, ctx, client, maddr, expectedQA, 2*time.Minute)
+	solsticekit.WaitForMinerQAP(t, ctx, client, maddr, expectedQA, 2*time.Minute)
 
 	// ---- Terminate x CC-1x: terminating a never-upgraded legacy CC sector (1x) must drop QAP by
 	// exactly its 1x contribution once the deferred termination cron fires, leaving only legs[2]=10x.
 	um.TerminateSectors([]abi.SectorNumber{legs[0]})
-	waitForMinerQAP(t, ctx, client, maddr, uint64(defaultSectorSize)*10, 2*time.Minute)
-}
-
-// waitForMinerQAP polls the miner's quality-adjusted power (StateMinerPower) until it equals want,
-// failing the test after maxWait. Each poll advances the head ~50 epochs.
-func waitForMinerQAP(t *testing.T, ctx context.Context, client *kit.TestFullNode, maddr address.Address, want uint64, maxWait time.Duration) {
-	t.Helper()
-	endBy := time.Now().Add(maxWait)
-	for {
-		pw, err := client.StateMinerPower(ctx, maddr, types.EmptyTSK)
-		require.NoError(t, err)
-		if pw.MinerPower.QualityAdjPower.Uint64() == want {
-			return
-		}
-		if time.Now().After(endBy) {
-			require.FailNowf(t, "QAP wait timeout",
-				"miner QAP did not reach %d in time; last=%d", want, pw.MinerPower.QualityAdjPower.Uint64())
-		}
-		head, err := client.ChainHead(ctx)
-		require.NoError(t, err)
-		client.WaitTillChain(ctx, kit.HeightAtLeast(head.Height()+50))
-	}
+	solsticekit.WaitForMinerQAP(t, ctx, client, maddr, uint64(defaultSectorSize)*10, 2*time.Minute)
 }
 
 // TestMigrationNV29SolsticeEconomic runs on an unmanaged miner with identical legacy CC sectors so
