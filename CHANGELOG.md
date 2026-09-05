@@ -7,7 +7,9 @@
 > * [CHANGELOG_1.1x.md](./documentation/changelog/CHANGELOG_1.1x.md) - v1.10.0 to v1.19.0
 > * [CHANGELOG_1.2x.md](./documentation/changelog/CHANGELOG_1.2x.md) - v1.20.0 to v1.29.2
 
-# UNRELEASED
+# Node v1.36.3 / 2026-09-07
+
+Lotus Node v1.36.3 is a recommended patch release focused on Ethereum RPC correctness (event-index completeness for `eth_getLogs`/`eth_getTransactionReceipt`, RLP validation), a WebTransport memory-exhaustion fix (CVE-2026-57497), sector-reporting UX, and operator tooling.
 
 ## ☢️ Upgrade Warnings ☢️
 
@@ -27,8 +29,31 @@
 - fix(network): prevent remote memory exhaustion through Lotus's default WebTransport listener by updating go-libp2p and webtransport-go (CVE-2026-57497). ([filecoin-project/lotus#13734](https://github.com/filecoin-project/lotus/pull/13734))
 - fix(events): `GetActorEventsRaw` and `SubscribeActorEventsRaw` now reject a filter whose `toHeight` is negative. ([filecoin-project/lotus#13751](https://github.com/filecoin-project/lotus/pull/13751))
 - fix(eth): `eth_sendRawTransaction` now rejects a transaction whose RLP integer fields are not minimally encoded, matching go-ethereum. ([filecoin-project/lotus#13744](https://github.com/filecoin-project/lotus/pull/13744))
+- fix(httpreader): `NewResumableReader` (used by `lotus daemon --import-snapshot` for HTTP(S) URLs) now returns the underlying parse error instead of silently returning `(nil, nil)` when a response is missing a valid `Content-Length` header. ([filecoin-project/lotus#13773](https://github.com/filecoin-project/lotus/pull/13773))
 
 ## 👌 Improvements
+
+## 📝 Changelog
+
+For the full set of changes since the last stable release:
+
+- Node: https://github.com/filecoin-project/lotus/compare/release/v1.36.2...release/v1.36.3
+
+## 👨‍👩‍👧‍👦 Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Rod Vagg | 4 | +2555/-46 | 21 |
+| LexLuthr | 1 | +1044/-217 | 10 |
+| Phi-rjan | 3 | +234/-90 | 19 |
+| Steve Loeppky | 7 | +275/-48 | 37 |
+| dependabot[bot] | 11 | +137/-141 | 24 |
+| Kaif | 2 | +102/-55 | 10 |
+| beck | 1 | +59/-80 | 4 |
+| fmterrors | 1 | +29/-5 | 2 |
+| Sash | 2 | +20/-9 | 2 |
+| zjuzhongwen | 1 | +3/-3 | 1 |
+| zloglevel | 1 | +2/-2 | 2 |
 
 # Node v1.36.2 / 2026-07-27
 
