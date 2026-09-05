@@ -8,7 +8,7 @@ USAGE:
    lotus [global options] command [command options]
 
 VERSION:
-   1.36.3
+   v1.36.2-dev
 
 COMMANDS:
    daemon   Start a lotus daemon process
