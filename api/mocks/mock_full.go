@@ -6,7 +6,7 @@ package mocks
 
 import (
 	context "context"
-	json "encoding/json"
+	jsontext "encoding/json/jsontext"
 	reflect "reflect"
 	time "time"
 
@@ -3018,7 +3018,7 @@ func (mr *MockFullNodeMockRecorder) StateDecodeParams(arg0, arg1, arg2, arg3, ar
 }
 
 // StateEncodeParams mocks base method.
-func (m *MockFullNode) StateEncodeParams(arg0 context.Context, arg1 cid.Cid, arg2 abi.MethodNum, arg3 json.RawMessage) ([]byte, error) {
+func (m *MockFullNode) StateEncodeParams(arg0 context.Context, arg1 cid.Cid, arg2 abi.MethodNum, arg3 jsontext.Value) ([]byte, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateEncodeParams", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].([]byte)
