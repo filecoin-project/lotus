@@ -1299,6 +1299,10 @@ var SlashConsensusFault = &cli.Command{
 		a := srv.FullNodeAPI()
 		ctx := ReqContext(cctx)
 
+		if cctx.NArg() != 2 {
+			return IncorrectNumArgs(cctx)
+		}
+
 		c1, err := cid.Parse(cctx.Args().Get(0))
 		if err != nil {
 			return xerrors.Errorf("parsing cid 1: %w", err)
