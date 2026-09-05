@@ -9,7 +9,7 @@
 
 # Node v1.36.3 / 2026-09-07
 
-Lotus Node v1.36.3 is a recommended patch release focused on Ethereum RPC correctness (event-index completeness for `eth_getLogs`/`eth_getTransactionReceipt`, RLP validation), a WebTransport memory-exhaustion fix (CVE-2026-57497), sector-reporting UX, and operator tooling.
+Lotus Node v1.36.3 is a recommended patch release focused on Ethereum RPC correctness (event-index completeness for `eth_getLogs`/`eth_getTransactionReceipt`, RLP validation), a WebTransport memory-exhaustion fix (CVE-2026-57497), sector-reporting UX, and operator tooling. This is the last expected patch release before a [minor release for nv29](https://github.com/filecoin-project/lotus/issues/13760).
 
 ## ☢️ Upgrade Warnings ☢️
 
@@ -30,8 +30,6 @@ Lotus Node v1.36.3 is a recommended patch release focused on Ethereum RPC correc
 - fix(events): `GetActorEventsRaw` and `SubscribeActorEventsRaw` now reject a filter whose `toHeight` is negative. ([filecoin-project/lotus#13751](https://github.com/filecoin-project/lotus/pull/13751))
 - fix(eth): `eth_sendRawTransaction` now rejects a transaction whose RLP integer fields are not minimally encoded, matching go-ethereum. ([filecoin-project/lotus#13744](https://github.com/filecoin-project/lotus/pull/13744))
 - fix(httpreader): `NewResumableReader` (used by `lotus daemon --import-snapshot` for HTTP(S) URLs) now returns the underlying parse error instead of silently returning `(nil, nil)` when a response is missing a valid `Content-Length` header. ([filecoin-project/lotus#13773](https://github.com/filecoin-project/lotus/pull/13773))
-
-## 👌 Improvements
 
 ## 📝 Changelog
 
