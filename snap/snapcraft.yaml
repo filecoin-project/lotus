@@ -1,0 +1,41 @@
+name: lotus-filecoin
+base: core20
+version: deprecated
+summary: Lotus Snap package deprecation notice
+description: |
+  Lotus is not distributed through Snap anymore.
+
+  Please install Lotus using another method from:
+  https://lotus.filecoin.io/lotus/install/prerequisites/
+
+  Deprecation tracking issue:
+  https://github.com/filecoin-project/lotus/issues/10002
+
+grade: stable
+confinement: strict
+
+parts:
+  lotus:
+    plugin: nil
+    source: .
+    build-snaps:
+      - go
+    override-build: |
+      set -eux
+
+      mkdir -p "$SNAPCRAFT_PART_INSTALL"
+      for binary in lotus lotus-miner lotus-worker; do
+        go build -trimpath -o "$SNAPCRAFT_PART_INSTALL/$binary" ./cmd/snapcraft-deprecation
+      done
+
+apps:
+  lotus:
+    command: lotus
+  lotus-miner:
+    command: lotus-miner
+  lotus-worker:
+    command: lotus-worker
+  lotus-daemon:
+    command: lotus
+    daemon: simple
+    install-mode: disable
