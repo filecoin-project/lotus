@@ -168,6 +168,11 @@ var runCmd = &cli.Command{
 			Value: gateway.DefaultEthMaxFiltersPerConn,
 		},
 		&cli.Int64Flag{
+			Name:  "event-filter-max-height-range",
+			Usage: "Maximum height range allowed for event queries and historical filter preloads (0 = no limit)",
+			Value: int64(gateway.DefaultEventFilterMaxHeightRange),
+		},
+		&cli.Int64Flag{
 			Name:  "eth-trace-filter-max-block-range",
 			Usage: "Maximum block range allowed for expensive trace_filter requests (0 = no limit)",
 			Value: gateway.DefaultEthTraceFilterMaxBlockRange,
@@ -184,6 +189,11 @@ var runCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		eventFilterMaxHeightRange := abi.ChainEpoch(cctx.Int64("event-filter-max-height-range"))
+		if eventFilterMaxHeightRange < 0 {
+			return fmt.Errorf("event-filter-max-height-range must be non-negative")
+		}
+
 		log.Info("Starting lotus gateway")
 
 		// Register all metric views
@@ -249,6 +259,7 @@ var runCmd = &cli.Command{
 			gateway.WithRateLimit(globalRateLimit),
 			gateway.WithRateLimitTimeout(rateLimitTimeout),
 			gateway.WithEthMaxFiltersPerConn(maxFiltersPerConn),
+			gateway.WithEventFilterMaxHeightRange(eventFilterMaxHeightRange),
 			gateway.WithEthTraceFilterMaxBlockRange(traceFilterMaxBlockRange),
 		)
 		handler, err := gateway.Handler(
