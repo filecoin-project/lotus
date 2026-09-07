@@ -130,9 +130,12 @@ jobs:
       - uses: ./.github/actions/install-go
       - id: group
         run: |
-          echo "metadata<<EOF" >> $GITHUB_OUTPUT
-          go run ./cmd/ci/main.go --json get-test-group-metadata --name "${{ matrix.name }}" | jq -r '.msg' | tee -a $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          metadata=$(go run ./cmd/ci/main.go --json get-test-group-metadata --name "${{ matrix.name }}" | jq -er '.msg | fromjson | tojson')
+          {
+            echo "metadata<<EOF"
+            echo "$metadata"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
       - name: Install gotestsum
         run: go install gotest.tools/gotestsum@latest
       - id: artifact
@@ -160,7 +163,7 @@ jobs:
           key: ${{ steps.cache.outputs.make_deps_key }}
           path: ${{ steps.cache.outputs.make_deps_path }}
           fail-on-cache-miss: true
-      - if: ${{ fromJson(steps.group.outputs.metadata).needs_parameters }}
+      - if: ${{ steps.group.outcome == 'success' && fromJson(steps.group.outputs.metadata || '{}').needs_parameters }}
         name: Restore cached fetch params outputs
         uses: actions/cache/restore@v4
         with:
@@ -184,7 +187,7 @@ jobs:
           LOTUS_SRC_DIR: ${{ github.workspace }}
           REPORTS_PATH: ${{ steps.reports.outputs.path }}
           SKIP_CONFORMANCE: ${{ fromJson(steps.group.outputs.metadata).skip_conformance && '1' || '0' }}
-          TEST_RUSTPROOFS_LOGS: ${{ fromJson(steps.group.outputs.metadata).test_rust_proofs_logs && '1' || '0' }}
+          TEST_RUSTPROOFS_LOGS: ${{ fromJson(steps.group.outputs.metadata).test_rust_proof_logs && '1' || '0' }}
           LOTUS_RUN_EXPENSIVE_TESTS: 1
           LOTUS_RUN_VERY_EXPENSIVE_TESTS: ${{ inputs.run_very_expensive_tests && '1' || '0' }}
           FORMAT: ${{ fromJson(steps.group.outputs.metadata).format || 'standard-verbose' }}

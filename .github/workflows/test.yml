@@ -131,13 +131,17 @@ jobs:
         with:
           submodules: 'recursive'
           fetch-depth: 0
-      - uses: ./.github/actions/install-system-dependencies
+      - name: Install system dependencies
+        uses: ./.github/actions/install-system-dependencies
       - uses: ./.github/actions/install-go
       - id: group
         run: |
-          echo "metadata<<EOF" >> $GITHUB_OUTPUT
-          go run ./cmd/ci/main.go --json get-test-group-metadata --name "${{ matrix.name }}" | jq -r '.msg' | tee -a $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          metadata=$(go run ./cmd/ci/main.go --json get-test-group-metadata --name "${{ matrix.name }}" | jq -er '.msg | fromjson | tojson')
+          {
+            echo "metadata<<EOF"
+            echo "$metadata"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
       - name: Install gotestsum
         run: go install gotest.tools/gotestsum@latest
       - id: artifact
@@ -165,7 +169,7 @@ jobs:
           key: ${{ steps.cache.outputs.make_deps_key }}
           path: ${{ steps.cache.outputs.make_deps_path }}
           fail-on-cache-miss: true
-      - if: ${{ fromJson(steps.group.outputs.metadata).needs_parameters }}
+      - if: ${{ steps.group.outcome == 'success' && fromJson(steps.group.outputs.metadata || '{}').needs_parameters }}
         name: Restore cached fetch params outputs
         uses: actions/cache/restore@v4
         with:
@@ -178,41 +182,53 @@ jobs:
         run: mktemp -d | xargs -0 -I{} echo "path={}" | tee -a $GITHUB_OUTPUT
       # TODO: Track coverage (used to be tracked for conformance)
       - name: Run tests
+        id: tests
+        if: ${{ steps.group.outcome == 'success' && steps.reports.outcome == 'success' }}
         env:
           NAME: ${{ matrix.name }}
           LOTUS_SRC_DIR: ${{ github.workspace }}
           REPORTS_PATH: ${{ steps.reports.outputs.path }}
-          SKIP_CONFORMANCE: ${{ fromJson(steps.group.outputs.metadata).skip_conformance && '1' || '0' }}
-          TEST_RUSTPROOFS_LOGS: ${{ fromJson(steps.group.outputs.metadata).test_rustproofs_logs && '1' || '0' }}
-          FORMAT: ${{ fromJson(steps.group.outputs.metadata).format || 'standard-verbose' }}
-          PACKAGES: ${{ join(fromJson(steps.group.outputs.metadata).packages, ' ') }}
+          SKIP_CONFORMANCE: ${{ fromJson(steps.group.outputs.metadata || '{}').skip_conformance && '1' || '0' }}
+          TEST_RUSTPROOFS_LOGS: ${{ fromJson(steps.group.outputs.metadata || '{}').test_rust_proof_logs && '1' || '0' }}
+          FORMAT: ${{ fromJson(steps.group.outputs.metadata || '{}').format || 'standard-verbose' }}
+          PACKAGES: ${{ join(fromJson(steps.group.outputs.metadata || '{"packages":[]}').packages, ' ') }}
         run: |
           gotestsum \
             --format "$FORMAT" \
             --junitfile "$REPORTS_PATH/$NAME.xml" \
             --jsonfile "$REPORTS_PATH/$NAME.json" \
             --packages="$PACKAGES" \
-            -- ${{ fromJson(steps.group.outputs.metadata).go_test_flags || '' }}
-      - name: Modify junit.xml for BuildPulse
+            -- ${{ fromJson(steps.group.outputs.metadata || '{}').go_test_flags || '' }}
+      - name: Normalize JUnit report names
         env:
           NAME: ${{ matrix.name }}
           REPORTS_PATH: ${{ steps.reports.outputs.path }}
-          PACKAGES: ${{ join(fromJson(steps.group.outputs.metadata).packages, ' ') }}
-        if: always()
+          PACKAGES: ${{ join(fromJson(steps.group.outputs.metadata || '{"packages":[]}').packages, ' ') }}
+        if: ${{ always() && steps.group.outcome == 'success' && steps.reports.outcome == 'success' }}
         run: |
+          report="$REPORTS_PATH/$NAME.xml"
+          if [[ ! -f "$report" ]]; then
+            if [[ "${{ steps.tests.outcome }}" == "success" ]]; then
+              echo "::error title=JUnit report missing::The test command succeeded but did not produce $report."
+              exit 1
+            fi
+            echo "::notice title=JUnit report unavailable::The test command failed before producing $report; skipping report normalization."
+            exit 0
+          fi
+
           # Modify test suite name and classname attributes in JUnit XML for better grouping
           # in BuildPulse. itests are run with go test ./itests/file_test.go and therefore Go
           # assigns the name and classname attributes to "command-line-arguments". Others get the
           # package name for both.
           if [[ "${{ matrix.name }}" == itest-* ]]; then
             PACKAGE_NAME=$(basename "$PACKAGES" .go)
-            sed -i 's/ name="command-line-arguments"/ name="itests"/g' "$REPORTS_PATH/$NAME.xml"
-            sed -i 's/classname="command-line-arguments"/classname="'"$PACKAGE_NAME"'"/g' "$REPORTS_PATH/$NAME.xml"
+            sed -i 's/ name="command-line-arguments"/ name="itests"/g' "$report"
+            sed -i 's/classname="command-line-arguments"/classname="'"$PACKAGE_NAME"'"/g' "$report"
           else
-            sed -i 's# name="github.com/filecoin-project/lotus/\(.*\)"# name="'${{ matrix.name }}':\1"#g' "$REPORTS_PATH/$NAME.xml"
+            sed -i 's# name="github.com/filecoin-project/lotus/\(.*\)"# name="'${{ matrix.name }}':\1"#g' "$report"
           fi
-          cat "$REPORTS_PATH/$NAME.xml"
-      - if: success() || failure()
+          cat "$report"
+      - if: ${{ always() && steps.reports.outcome == 'success' }}
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.name }}-${{ runner.os }}-${{ runner.arch }}
