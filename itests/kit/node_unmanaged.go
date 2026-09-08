@@ -1277,6 +1277,11 @@ func (tm *TestUnmanagedMiner) submitWindowPost(di *dline.Info, sectorNumbers []a
 	// di is passed in from the caller (wdPostLoop) so the deadline we post for is consistent with
 	// the one used to select sectors. Fetching a fresh di here would race with the chain advancing
 	// past the deadline boundary, causing a deadline mismatch error and killing the post loop.
+	//
+	// Use CurrentDeadlineIndex rather than di.Index: when a miner is not enrolled in cron,
+	// di.Index is not ticking and may differ from the epoch-derived deadline index that
+	// sectorsToPostWithDeadline used to select these sectors.
+	currentDeadlineIdx := CurrentDeadlineIndex(di)
 	chainRandomnessEpoch := di.Challenge
 
 	for _, sectorNumber := range sectorNumbers {
@@ -1290,8 +1295,8 @@ func (tm *TestUnmanagedMiner) submitWindowPost(di *dline.Info, sectorNumbers []a
 			return fmt.Errorf("Miner(%s): failed to get sector partition for sector %d: %w", tm.ActorAddr, sectorNumber, err)
 		}
 
-		if di.Index != sp.Deadline {
-			return fmt.Errorf("Miner(%s): sector %d is not in the expected deadline %d, but %d", tm.ActorAddr, sectorNumber, sp.Deadline, di.Index)
+		if currentDeadlineIdx != sp.Deadline {
+			return fmt.Errorf("Miner(%s): sector %d is not in the expected deadline %d, but %d", tm.ActorAddr, sectorNumber, sp.Deadline, currentDeadlineIdx)
 		}
 
 		if _, ok := partitionMap[sp.Partition]; !ok {
@@ -1303,7 +1308,7 @@ func (tm *TestUnmanagedMiner) submitWindowPost(di *dline.Info, sectorNumbers []a
 	chainRandomness, err := tm.FullNode.StateGetRandomnessFromTickets(tm.ctx, crypto.DomainSeparationTag_PoStChainCommit, chainRandomnessEpoch,
 		nil, head.Key())
 	if err != nil {
-		return fmt.Errorf("Miner(%s): failed to get chain randomness for deadline %d: %w", tm.ActorAddr, di.Index, err)
+		return fmt.Errorf("Miner(%s): failed to get chain randomness for deadline %d: %w", tm.ActorAddr, currentDeadlineIdx, err)
 	}
 
 	minerInfo, err := tm.FullNode.StateMinerInfo(tm.ctx, tm.ActorAddr, head.Key())
@@ -1320,11 +1325,11 @@ func (tm *TestUnmanagedMiner) submitWindowPost(di *dline.Info, sectorNumbers []a
 		} else {
 			proofBytes, err = tm.generateWindowPost(sectors)
 			if err != nil {
-				return fmt.Errorf("Miner(%s): failed to generate window post for deadline %d, partitions %v: %w", tm.ActorAddr, di.Index, partitions, err)
+				return fmt.Errorf("Miner(%s): failed to generate window post for deadline %d, partitions %v: %w", tm.ActorAddr, currentDeadlineIdx, partitions, err)
 			}
 		}
 
-		tm.log("WindowPoST submitting %d sectors for deadline %d, partitions %v", len(sectors), di.Index, partitions)
+		tm.log("WindowPoST submitting %d sectors for deadline %d, partitions %v", len(sectors), currentDeadlineIdx, partitions)
 
 		pp := make([]miner14.PoStPartition, len(partitions))
 		for i, p := range partitions {
@@ -1337,12 +1342,12 @@ func (tm *TestUnmanagedMiner) submitWindowPost(di *dline.Info, sectorNumbers []a
 		mCid, err := tm.mpoolPushMessage(&miner14.SubmitWindowedPoStParams{
 			ChainCommitEpoch: chainRandomnessEpoch,
 			ChainCommitRand:  chainRandomness,
-			Deadline:         di.Index,
+			Deadline:         currentDeadlineIdx,
 			Partitions:       pp,
 			Proofs:           []proof.PoStProof{{PoStProof: minerInfo.WindowPoStProofType, ProofBytes: proofBytes}}, // can only have 1
 		}, 0, builtin.MethodsMiner.SubmitWindowedPoSt)
 		if err != nil {
-			return fmt.Errorf("Miner(%s): failed to submit PoSt for deadline %d, partitions %v: %w", tm.ActorAddr, di.Index, partitions, err)
+			return fmt.Errorf("Miner(%s): failed to submit PoSt for deadline %d, partitions %v: %w", tm.ActorAddr, currentDeadlineIdx, partitions, err)
 		}
 
 		postMessages = append(postMessages, mCid)
@@ -1379,11 +1384,11 @@ func (tm *TestUnmanagedMiner) submitWindowPost(di *dline.Info, sectorNumbers []a
 			return fmt.Errorf("Miner(%s): failed to wait for PoSt message %s: %w", tm.ActorAddr, mCid, err)
 		}
 		if !r.Receipt.ExitCode.IsSuccess() {
-			return fmt.Errorf("Miner(%s): PoSt submission failed for deadline %d: %s", tm.ActorAddr, di.Index, r.Receipt.ExitCode)
+			return fmt.Errorf("Miner(%s): PoSt submission failed for deadline %d: %s", tm.ActorAddr, currentDeadlineIdx, r.Receipt.ExitCode)
 		}
 	}
 
-	tm.log("WindowPoST(%v) submitted for deadline %d", sectorNumbers, di.Index)
+	tm.log("WindowPoST(%v) submitted for deadline %d", sectorNumbers, currentDeadlineIdx)
 
 	return nil
 }
