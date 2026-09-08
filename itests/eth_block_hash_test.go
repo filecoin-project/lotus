@@ -12,7 +12,6 @@ import (
 
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/itests/kit"
 )
 
@@ -74,8 +73,12 @@ func TestEthBlockHashesCorrect_MultiBlockTipset(t *testing.T) {
 
 		require.Equal(t, ethBlockA, ethBlockB)
 
-		numBlocks := len(ts.Blocks())
-		expGasLimit := ethtypes.EthUint64(int64(numBlocks) * buildconstants.BlockGasLimit)
-		require.Equal(t, expGasLimit, ethBlockB.GasLimit, "expected gas limit to be %d for %d blocks", expGasLimit, numBlocks)
+		// Verify GasLimit is a positive integer multiple of BlockGasLimit.
+		// We don't use len(ts.Blocks()) here because EthGetBlockByNumber resolves against
+		// the current heaviest tipset while ChainGetTipSetByHeight uses tsk as anchor;
+		// after a reorg these can be different tipsets at the same height.
+		gasLimit := int64(ethBlockB.GasLimit)
+		require.Positive(t, gasLimit, "expected positive gas limit")
+		require.Zero(t, gasLimit%buildconstants.BlockGasLimit, "expected gas limit %d to be a multiple of BlockGasLimit %d", gasLimit, buildconstants.BlockGasLimit)
 	}
 }
