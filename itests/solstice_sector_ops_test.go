@@ -25,7 +25,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/itests/kit"
-	"github.com/filecoin-project/lotus/itests/solsticekit"
 	"github.com/filecoin-project/lotus/lib/must"
 )
 
@@ -39,7 +38,7 @@ func TestMigrationNV29SolsticePreCommitProve(t *testing.T) {
 
 	const upgradeEpoch = abi.ChainEpoch(3000)
 
-	e := solsticekit.NewUpgradeEnv(t, solsticekit.Opts{UpgradeEpoch: upgradeEpoch})
+	e := kit.NewSolsticeUpgradeEnv(t, kit.SolsticeOpts{UpgradeEpoch: upgradeEpoch})
 	ctx, client, um, maddr := e.Ctx, e.Client, e.Um, e.Maddr
 	sealProofType := e.SealProof
 	defer um.Stop()
@@ -104,7 +103,7 @@ func TestMigrationNV29SolsticePrecommitDeposit(t *testing.T) {
 		upgradeEpoch      = abi.ChainEpoch(1000)
 	)
 
-	e := solsticekit.NewUpgradeEnv(t, solsticekit.Opts{UpgradeEpoch: upgradeEpoch})
+	e := kit.NewSolsticeUpgradeEnv(t, kit.SolsticeOpts{UpgradeEpoch: upgradeEpoch})
 	ctx, client, um, maddr := e.Ctx, e.Client, e.Um, e.Maddr
 	sealProofType := e.SealProof
 	defer um.Stop()
@@ -183,7 +182,7 @@ func TestMigrationNV29SolsticeSnapAndOrdering(t *testing.T) {
 		upgradeEpoch      = abi.ChainEpoch(2000)
 	)
 
-	e := solsticekit.NewUpgradeEnv(t, solsticekit.Opts{UpgradeEpoch: upgradeEpoch})
+	e := kit.NewSolsticeUpgradeEnv(t, kit.SolsticeOpts{UpgradeEpoch: upgradeEpoch})
 	ctx, client, um, maddr := e.Ctx, e.Client, e.Um, e.Maddr
 	sealProofType := e.SealProof
 	defer um.Stop()
@@ -261,7 +260,7 @@ func TestMigrationNV29SolsticeSnapAndOrdering(t *testing.T) {
 	// Wait until the native sector's first WindowPoSt is committed and its FULL_QA (10x) power is
 	// on-chain: miner QAP must rise by exactly defaultSectorSize*10 over the pre-onboard total.
 	nativeQA := powerBeforeNative.MinerPower.QualityAdjPower.Uint64() + uint64(defaultSectorSize)*10
-	solsticekit.WaitForMinerQAP(ctx, t, client, maddr, nativeQA, 2*time.Minute)
+	kit.WaitForMinerQAP(ctx, t, client, maddr, nativeQA, 2*time.Minute)
 
 	nInfo, err := client.StateSectorGetInfo(ctx, maddr, sC, types.EmptyTSK)
 	req.NoError(err)
@@ -308,7 +307,7 @@ func TestMigrationNV29SolsticeExtend(t *testing.T) {
 	verifiedClientKey := must.One(key.GenerateKey(types.KTBLS))
 	bal := types.MustParseFIL("100fil").Int64()
 
-	e := solsticekit.NewUpgradeEnv(t, solsticekit.Opts{
+	e := kit.NewSolsticeUpgradeEnv(t, kit.SolsticeOpts{
 		UpgradeEpoch:      upgradeEpoch,
 		RootKey:           rootKey,
 		VerifierKey:       verifierKey,
@@ -458,7 +457,7 @@ func TestMigrationNV29SolsticeDeadlineImmutabilityWindow(t *testing.T) {
 		upgradeEpoch      = abi.ChainEpoch(3000)
 	)
 
-	e := solsticekit.NewUpgradeEnv(t, solsticekit.Opts{UpgradeEpoch: upgradeEpoch})
+	e := kit.NewSolsticeUpgradeEnv(t, kit.SolsticeOpts{UpgradeEpoch: upgradeEpoch})
 	ctx, client, um, maddr := e.Ctx, e.Client, e.Um, e.Maddr
 	sealProofType := e.SealProof
 	defer um.Stop()
@@ -551,6 +550,8 @@ func TestMigrationNV29SolsticeDeadlineImmutabilityWindow(t *testing.T) {
 	t.Logf("sector deadline %d is the NEXT proving deadline at %s", sd, nextTs)
 	req.Equal(exitcode.ErrIllegalArgument, stateCall(nextTs, builtin.MethodsMiner.TerminateSectors, termEnc),
 		"Terminate of a sector in the next (immutable) proving deadline must be rejected")
+	req.Equal(exitcode.Ok, stateCall(nextTs, builtin.MethodsMiner.UpgradeSectorQuality, usqEnc),
+		"USQ must be accepted even in the next proving deadline (USQ is not immutability-gated)")
 
 	// ---- Position 2: current = sd, so the sector sits in the CURRENT (immutable) proving deadline.
 	// Terminate is still rejected, but UpgradeSectorQuality is ACCEPTED -- documenting that USQ has no
@@ -571,6 +572,8 @@ func TestMigrationNV29SolsticeDeadlineImmutabilityWindow(t *testing.T) {
 	t.Logf("sector deadline %d is just past the current deadline at %s", sd, mutTs)
 	req.Equal(exitcode.Ok, stateCall(mutTs, builtin.MethodsMiner.TerminateSectors, termEnc),
 		"Terminate must be accepted once the sector's deadline is outside the immutability window")
+	req.Equal(exitcode.Ok, stateCall(mutTs, builtin.MethodsMiner.UpgradeSectorQuality, usqEnc),
+		"USQ must be accepted once the sector's deadline is outside the immutability window")
 
 	// No real termination / USQ was mined (all probes were virtual StateCalls), so the sector is still
 	// active and the unmanaged WindowPoSt loop ran clean throughout.
@@ -594,7 +597,7 @@ func TestMigrationNV29SolsticeMaxSectorsSplit(t *testing.T) {
 		upgradeEpoch      = abi.ChainEpoch(3000)
 	)
 
-	e := solsticekit.NewUpgradeEnv(t, solsticekit.Opts{UpgradeEpoch: upgradeEpoch})
+	e := kit.NewSolsticeUpgradeEnv(t, kit.SolsticeOpts{UpgradeEpoch: upgradeEpoch})
 	ctx, client, um, maddr := e.Ctx, e.Client, e.Um, e.Maddr
 	sealProofType := e.SealProof
 	defer um.Stop()

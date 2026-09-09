@@ -106,6 +106,7 @@ func validateQaPowerFilterFlags(showFullQA, showLegacyQA, fast bool) error {
 	return nil
 }
 
+
 // qualifyQaPowerFilter reports whether a sector (whose on-chain FULL_QA_POWER flag is `fullQa`)
 // should be shown given the requested --full-qa-power (`showFullQA`) / --legacy-qa-power
 // (`showLegacyQA`) filters. Note SIMPLE_QA_POWER cannot be used as the inverse discriminator:
@@ -157,8 +158,13 @@ func buildUpgradeQualityParams(grouped map[upgradeKey][]uint64, maxSectors int, 
 		return keys[i].partition < keys[j].partition
 	})
 
-	// Split each (deadline, partition) group's sectors into sub-batches of at most maxSectors.
-	var upgrades []stminer.UpgradeSectorQuality
+	// Split each (deadline, partition) group's sectors into sub-batches of at most maxSectors and
+	// pack them directly into params messages. Each sub-batch fits in an empty message by
+	// construction; the guard "len(p.Upgrades) > 0" ensures we never stall: if adding the next
+	// sub-batch would overflow the cap we start a fresh message instead.
+	var params []stminer.UpgradeSectorQualityParams
+	p := stminer.UpgradeSectorQualityParams{}
+	count := 0
 	for _, key := range keys {
 		sectorIDs := grouped[key]
 		for i := 0; i < len(sectorIDs); i += maxSectors {
@@ -174,32 +180,17 @@ func buildUpgradeQualityParams(grouped map[upgradeKey][]uint64, maxSectors int, 
 			if newExpiration != nil {
 				upgrade.NewExpiration = newExpiration
 			}
-			upgrades = append(upgrades, upgrade)
+			n := end - i
+			if len(p.Upgrades) > 0 && count+n > maxSectors {
+				params = append(params, p)
+				p = stminer.UpgradeSectorQualityParams{}
+				count = 0
+			}
+			p.Upgrades = append(p.Upgrades, upgrade)
+			count += n
 		}
 	}
-
-	// Pack upgrades into messages, keeping each message under maxSectors total sectors.
-	// The split stage above guarantees every upgrade element has at most maxSectors sectors, so a
-	// single element always fits in an empty message. The guard "len(p.Upgrades) > 0" ensures we
-	// never stall: if adding the next element would overflow the cap we start a fresh message
-	// instead, but we always push the first element unconditionally.
-	var params []stminer.UpgradeSectorQualityParams
-	for i := 0; i < len(upgrades); {
-		p := stminer.UpgradeSectorQualityParams{}
-		count := 0
-		for i < len(upgrades) {
-			u := upgrades[i]
-			n, err := u.Sectors.Count()
-			if err != nil {
-				return nil, err
-			}
-			if len(p.Upgrades) > 0 && count+int(n) > maxSectors {
-				break
-			}
-			p.Upgrades = append(p.Upgrades, u)
-			count += int(n)
-			i++
-		}
+	if len(p.Upgrades) > 0 {
 		params = append(params, p)
 	}
 
@@ -331,7 +322,7 @@ var sectorsUpgradeQualityCmd = &cli.Command{
 			if info == nil {
 				return xerrors.Errorf("sector %d not found on chain", sectorNum)
 			}
-			if info.Flags&miner.FULL_QA_POWER != 0 {
+			if miner.SectorIsFullQaPower(info) {
 				if !newExpirationSet {
 					fmt.Printf("sector %d already at FULL_QA_POWER (10x), skipping\n", sectorNum)
 					continue

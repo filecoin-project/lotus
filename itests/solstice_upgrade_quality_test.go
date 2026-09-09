@@ -26,7 +26,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
-	"github.com/filecoin-project/lotus/itests/solsticekit"
 	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/filecoin-project/lotus/storage/sealer/mock"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
@@ -49,7 +48,7 @@ func TestMigrationNV29SolsticeUpgradeQualityAuth(t *testing.T) {
 		upgradeEpoch      = abi.ChainEpoch(3000)
 	)
 
-	e := solsticekit.NewUpgradeEnv(t, solsticekit.Opts{UpgradeEpoch: upgradeEpoch})
+	e := kit.NewSolsticeUpgradeEnv(t, kit.SolsticeOpts{UpgradeEpoch: upgradeEpoch})
 	ctx, client, um, maddr := e.Ctx, e.Client, e.Um, e.Maddr
 	sealProofType := e.SealProof
 	defer um.Stop()
@@ -190,7 +189,7 @@ func TestMigrationNV29SolsticeUpgradeQualityPureOwnerAuth(t *testing.T) {
 
 	// Deliberately do NOT watch this miner's WindowPoSts (see below): once A loses the worker role
 	// nothing needs a post, and the sector may fault harmlessly for caller-validation-first.
-	e := solsticekit.NewUpgradeEnv(t, solsticekit.Opts{UpgradeEpoch: upgradeEpoch, WatchPost: false})
+	e := kit.NewSolsticeUpgradeEnv(t, kit.SolsticeOpts{UpgradeEpoch: upgradeEpoch, WatchPost: false})
 	ctx, client, um, maddr := e.Ctx, e.Client, e.Um, e.Maddr
 	sealProofType := e.SealProof
 
@@ -383,7 +382,7 @@ func TestMigrationNV29SolsticeFaultAndRecover(t *testing.T) {
 		upgradeEpoch      = abi.ChainEpoch(2000)
 	)
 
-	e := solsticekit.NewUpgradeEnv(t, solsticekit.Opts{UpgradeEpoch: upgradeEpoch})
+	e := kit.NewSolsticeUpgradeEnv(t, kit.SolsticeOpts{UpgradeEpoch: upgradeEpoch})
 	ctx, client, um, maddr := e.Ctx, e.Client, e.Um, e.Maddr
 	sealProofType := e.SealProof
 	defer um.Stop()
@@ -586,7 +585,7 @@ func TestMigrationNV29SolsticeFaultRecoverFullPower(t *testing.T) {
 	require.True(t, isRecovering, "the 10x sector must be recorded as recovering")
 
 	// Wait for QAP to return to the pre-fault 30x (full 10x restored, not a 1x residue).
-	solsticekit.WaitForMinerQAP(ctx, t, client, maddr, preQAP, 3*time.Minute)
+	kit.WaitForMinerQAP(ctx, t, client, maddr, preQAP, 3*time.Minute)
 
 	faultsAfter, err := client.StateMinerFaults(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
@@ -738,7 +737,7 @@ func TestMigrationNV29SolsticeFaultRecoverUsqdFullPower(t *testing.T) {
 	_, werr := client.StateWaitMsg(ctx, usqMsg.Cid(), 2, lapi.LookbackNoLimit, true)
 	require.NoError(t, werr, "USQ must be confirmed")
 
-	solsticekit.WaitForMinerQAP(ctx, t, client, maddr, baseQA+uint64(ssz)*9, 3*time.Minute)
+	kit.WaitForMinerQAP(ctx, t, client, maddr, baseQA+uint64(ssz)*9, 3*time.Minute)
 	fullInfo, err := client.StateSectorGetInfo(ctx, maddr, target, types.EmptyTSK)
 	require.NoError(t, err)
 	require.NotZero(t, fullInfo.Flags&miner.FULL_QA_POWER, "the USQ'd sector must carry FULL_QA_POWER (10x)")
@@ -779,7 +778,7 @@ func TestMigrationNV29SolsticeFaultRecoverUsqdFullPower(t *testing.T) {
 	require.True(t, isRecovering, "the USQ'd 10x sector must be recorded as recovering")
 
 	// QAP returns to the full pre-fault value (the USQ'd 10x restored, not a 1x residue).
-	solsticekit.WaitForMinerQAP(ctx, t, client, maddr, usqdQA, 3*time.Minute)
+	kit.WaitForMinerQAP(ctx, t, client, maddr, usqdQA, 3*time.Minute)
 
 	faultsAfter, err := client.StateMinerFaults(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)

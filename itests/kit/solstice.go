@@ -1,10 +1,4 @@
-// Package solsticekit holds shared helpers for the Solstice (nv29) integration tests.
-//
-// The lotus itest CI compiles and runs each *_test.go in itests as an independent unit via
-// `go test ./itests/<file>_test.go`, so helpers may not live in sibling _test.go files. Any code
-// shared across the solstice itest files therefore lives here as a normal (non-test) package that
-// each test file imports.
-package solsticekit
+package kit
 
 import (
 	"context"
@@ -23,28 +17,29 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet/key"
-	"github.com/filecoin-project/lotus/itests/kit"
 )
 
-// Env bundles the ensemble pieces (ctx, client, unmanaged miner, miner address, sector size, seal
-// proof) produced by NewUpgradeEnv for use by the solstice itests.
-type Env struct {
+// SolsticeEnv bundles the ensemble pieces (ctx, client, unmanaged miner, miner address, sector
+// size, seal proof) produced by NewSolsticeUpgradeEnv for use by the solstice itests.
+type SolsticeEnv struct {
 	Ctx       context.Context
-	Client    *kit.TestFullNode
-	Um        *kit.TestUnmanagedMiner
+	Client    *TestFullNode
+	Um        *TestUnmanagedMiner
 	Maddr     address.Address
 	Ssize     abi.SectorSize // always 2KiB
 	SealProof abi.RegisteredSealProof
 }
 
-// Opts configures NewUpgradeEnv.
-type Opts struct {
+// SolsticeOpts configures NewSolsticeUpgradeEnv.
+type SolsticeOpts struct {
 	// UpgradeEpoch > 0 upgrades the chain NV28 -> NV29 at this height (with the neutral Solstice
 	// reward bootstrap so the migration matches the other solstice itests). 0 keeps the chain on
 	// NV28 for the whole test.
 	UpgradeEpoch abi.ChainEpoch
-	// WatchPost drives the miner's WindowPoSt on the block miner (the common case). Tests that
-	// deliberately do not watch (e.g. a worker handover that strands WindowPoSt) set it false.
+	// WatchPost, when true, registers the miner with the block miner so a post-enforcing miner
+	// (MineBlocksMustPost) tracks/waits on its WindowPoSt. The miner's WindowPoSt is submitted by
+	// its own in-kit loop regardless of this flag; set it only when the test needs the block miner
+	// to also account for the miner's posts. It defaults to false (no extra block-miner watching).
 	WatchPost bool
 	// Optional verifreg plumbing: when RootKey/VerifierKey/VerifiedClientKey are non-nil the
 	// ensemble is created with a RootVerifier + two funded Accounts (default funding 100 FIL). The
@@ -54,10 +49,11 @@ type Opts struct {
 	Bal                                     int64
 }
 
-// NewUpgradeEnv builds the standard solstice itest ensemble: a single unmanaged miner on a chain
-// that optionally upgrades NV28->NV29, mock proofs over RPC, mining started, and (by default) the
-// miner's WindowPoSt watched. It returns the pieces as an *Env for the caller to bind.
-func NewUpgradeEnv(t *testing.T, o Opts) *Env {
+// NewSolsticeUpgradeEnv builds the standard solstice itest ensemble: a single unmanaged miner on a
+// chain that optionally upgrades NV28->NV29, mock proofs over RPC, mining started, and the miner's
+// WindowPoSt driven by its own in-kit loop (SolsticeOpts.WatchPost may additionally register the
+// miner with the block miner). It returns the pieces as a *SolsticeEnv for the caller to bind.
+func NewSolsticeUpgradeEnv(t *testing.T, o SolsticeOpts) *SolsticeEnv {
 	t.Helper()
 	req := require.New(t)
 
@@ -70,7 +66,7 @@ func NewUpgradeEnv(t *testing.T, o Opts) *Env {
 	req.NoError(err)
 
 	var ensembleOpts []interface{}
-	ensembleOpts = append(ensembleOpts, kit.MockProofs(), kit.ThroughRPC())
+	ensembleOpts = append(ensembleOpts, MockProofs(), ThroughRPC())
 
 	bal := o.Bal
 	if bal == 0 {
@@ -78,14 +74,14 @@ func NewUpgradeEnv(t *testing.T, o Opts) *Env {
 	}
 	if o.RootKey != nil {
 		ensembleOpts = append(ensembleOpts,
-			kit.RootVerifier(o.RootKey, abi.NewTokenAmount(bal)),
-			kit.Account(o.VerifierKey, abi.NewTokenAmount(bal)),
-			kit.Account(o.VerifiedClientKey, abi.NewTokenAmount(bal)),
+			RootVerifier(o.RootKey, abi.NewTokenAmount(bal)),
+			Account(o.VerifierKey, abi.NewTokenAmount(bal)),
+			Account(o.VerifiedClientKey, abi.NewTokenAmount(bal)),
 		)
 	}
 
 	if o.UpgradeEpoch > 0 {
-		ensembleOpts = append(ensembleOpts, kit.UpgradeSchedule(
+		ensembleOpts = append(ensembleOpts, UpgradeSchedule(
 			stmgr.Upgrade{Network: network.Version28, Height: -1},
 			stmgr.Upgrade{
 				Network:   network.Version29,
@@ -94,16 +90,16 @@ func NewUpgradeEnv(t *testing.T, o Opts) *Env {
 			},
 		))
 	} else {
-		ensembleOpts = append(ensembleOpts, kit.UpgradeSchedule(
+		ensembleOpts = append(ensembleOpts, UpgradeSchedule(
 			stmgr.Upgrade{Network: network.Version28, Height: -1},
 		))
 	}
 
-	client, _, ens := kit.EnsembleMinimal(t, ensembleOpts...)
+	client, _, ens := EnsembleMinimal(t, ensembleOpts...)
 
 	um, ens := ens.UnmanagedMiner(ctx, client,
-		kit.SectorSize(ssize),
-		kit.OwnerAddr(client.DefaultKey),
+		SectorSize(ssize),
+		OwnerAddr(client.DefaultKey),
 	)
 
 	blockMiners := ens.InterconnectAll().BeginMining(5 * time.Millisecond)
@@ -112,12 +108,12 @@ func NewUpgradeEnv(t *testing.T, o Opts) *Env {
 		blockMiners[0].WatchMinerForPost(um.ActorAddr)
 	}
 
-	return &Env{Ctx: ctx, Client: client, Um: um, Maddr: um.ActorAddr, Ssize: ssize, SealProof: sealProof}
+	return &SolsticeEnv{Ctx: ctx, Client: client, Um: um, Maddr: um.ActorAddr, Ssize: ssize, SealProof: sealProof}
 }
 
 // WaitForMinerQAP polls the miner's quality-adjusted power (StateMinerPower) until it equals want,
 // failing the test after maxWait. Each poll advances the head ~50 epochs.
-func WaitForMinerQAP(ctx context.Context, t *testing.T, client *kit.TestFullNode, maddr address.Address, want uint64, maxWait time.Duration) {
+func WaitForMinerQAP(ctx context.Context, t *testing.T, client *TestFullNode, maddr address.Address, want uint64, maxWait time.Duration) {
 	t.Helper()
 	endBy := time.Now().Add(maxWait)
 	for {
@@ -132,6 +128,6 @@ func WaitForMinerQAP(ctx context.Context, t *testing.T, client *kit.TestFullNode
 		}
 		head, err := client.ChainHead(ctx)
 		require.NoError(t, err)
-		client.WaitTillChain(ctx, kit.HeightAtLeast(head.Height()+50))
+		client.WaitTillChain(ctx, HeightAtLeast(head.Height()+50))
 	}
 }

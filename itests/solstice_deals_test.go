@@ -16,7 +16,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/itests/kit"
-	"github.com/filecoin-project/lotus/itests/solsticekit"
 	"github.com/filecoin-project/lotus/lib/must"
 )
 
@@ -36,7 +35,7 @@ func TestMigrationNV29SolsticeQaPowerFilters(t *testing.T) {
 		upgradeEpoch      = abi.ChainEpoch(3000)
 	)
 
-	e := solsticekit.NewUpgradeEnv(t, solsticekit.Opts{UpgradeEpoch: upgradeEpoch})
+	e := kit.NewSolsticeUpgradeEnv(t, kit.SolsticeOpts{UpgradeEpoch: upgradeEpoch})
 	ctx, client, um, maddr := e.Ctx, e.Client, e.Um, e.Maddr
 	sealProofType := e.SealProof
 	defer um.Stop()
@@ -156,7 +155,7 @@ func TestSolsticeDealSmokeNoUpgrade(t *testing.T) {
 
 	// The chain stays on NV28 for the whole test (upgradeEpoch unset), pinning the "pre-upgrade"
 	// semantics the smoke needs to observe.
-	e := solsticekit.NewUpgradeEnv(t, solsticekit.Opts{
+	e := kit.NewSolsticeUpgradeEnv(t, kit.SolsticeOpts{
 		RootKey: rootKey, VerifierKey: verifierKey, VerifiedClientKey: verifiedClientKey, Bal: bal,
 	})
 	ctx, client, um, maddr := e.Ctx, e.Client, e.Um, e.Maddr
@@ -242,7 +241,7 @@ func TestMigrationNV29SolsticeDealVariants(t *testing.T) {
 	verifiedClientKey := must.One(key.GenerateKey(types.KTBLS))
 	bal := types.MustParseFIL("100fil").Int64()
 
-	e := solsticekit.NewUpgradeEnv(t, solsticekit.Opts{
+	e := kit.NewSolsticeUpgradeEnv(t, kit.SolsticeOpts{
 		UpgradeEpoch: upgradeEpoch, RootKey: rootKey, VerifierKey: verifierKey,
 		VerifiedClientKey: verifiedClientKey, Bal: bal,
 	})
@@ -347,7 +346,7 @@ func TestMigrationNV29SolsticeDealOps(t *testing.T) {
 	verifiedClientKey := must.One(key.GenerateKey(types.KTBLS))
 	bal := types.MustParseFIL("100fil").Int64()
 
-	e := solsticekit.NewUpgradeEnv(t, solsticekit.Opts{
+	e := kit.NewSolsticeUpgradeEnv(t, kit.SolsticeOpts{
 		UpgradeEpoch: upgradeEpoch, RootKey: rootKey, VerifierKey: verifierKey,
 		VerifiedClientKey: verifiedClientKey, Bal: bal,
 	})
@@ -437,13 +436,13 @@ func TestMigrationNV29SolsticeDealOps(t *testing.T) {
 	// ---- Terminate × unverified deal (uvB, still at native 1x): removing it drops exactly 1x.
 	// At this point ver=10x, uvA=10x, uvB=1x (21 units); terminating uvB leaves 20 units.
 	um.TerminateSectors([]abi.SectorNumber{uvB})
-	solsticekit.WaitForMinerQAP(ctx, t, client, maddr,
+	kit.WaitForMinerQAP(ctx, t, client, maddr,
 		uint64(defaultSectorSize)*(10+10), // ver 10x + uvA 10x remain (uvB's 1x removed)
 		2*time.Minute)
 
 	// ---- Terminate × verified deal (ver, 10x): removing it drops exactly 10x, leaving uvA's 10x.
 	um.TerminateSectors([]abi.SectorNumber{ver[0]})
-	solsticekit.WaitForMinerQAP(ctx, t, client, maddr,
+	kit.WaitForMinerQAP(ctx, t, client, maddr,
 		uint64(defaultSectorSize)*10, // only uvA (USQ'd to 10x) remains
 		2*time.Minute)
 
@@ -466,7 +465,7 @@ func TestMigrationNV29SolsticePostUpgradeDeal(t *testing.T) {
 		upgradeEpoch      = abi.ChainEpoch(2000)
 	)
 
-	e := solsticekit.NewUpgradeEnv(t, solsticekit.Opts{UpgradeEpoch: upgradeEpoch})
+	e := kit.NewSolsticeUpgradeEnv(t, kit.SolsticeOpts{UpgradeEpoch: upgradeEpoch})
 	ctx, client, um, maddr := e.Ctx, e.Client, e.Um, e.Maddr
 	sealProofType := e.SealProof
 	defer um.Stop()
