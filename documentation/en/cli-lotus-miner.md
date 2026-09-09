@@ -559,7 +559,6 @@ OPTIONS:
    --seal-time, -t            display how long it took for the sector to be sealed (default: false)
    --states value             filter sectors by a comma-separated list of states
    --unproven, -u             only show sectors which aren't in the 'Proving' state (default: false)
-   --full-qa-power            only show sectors that are at FULL_QA_POWER (10x QA power) (default: false)
    --legacy-qa-power          only show sectors that are NOT at FULL_QA_POWER (1x legacy, i.e. candidates for upgrade-quality) (default: false)
    --check-parallelism value  number of parallel requests to make for checking sector states (default: 300)
    --help, -h                 show help
@@ -768,17 +767,13 @@ NAME:
    lotus-miner sectors upgrade-quality - upgrade legacy sectors to full QA power
 
 USAGE:
-   lotus-miner sectors upgrade-quality [command options] [sectorNumbers...(optional)]
+   lotus-miner sectors upgrade-quality [command options]
 
 OPTIONS:
-   --sector-file value     provide a file containing one sector number in each line
-   --deadline value        filter by deadline index (default: 0)
-   --partition value       filter by partition index (default: 0)
-   --new-expiration value  optional expiration target to apply during the upgrade (default: 0)
-   --max-sectors value     maximum number of sectors included in each message (default: 200)
-   --max-fee value         use up to this amount of FIL for one message (default: "0")
-   --really-do-it          pass this flag to really send the messages, otherwise only simulates them (default: false)
-   --help, -h              show help
+   --max-sectors value  maximum number of sectors included in each message (default: 12500)
+   --max-fee value      maximum FIL to spend on gas per message (default: "0")
+   --really-do-it       must be specified for the action to take effect (default: false)
+   --help, -h           show help
 ```
 
 ### lotus-miner sectors terminate

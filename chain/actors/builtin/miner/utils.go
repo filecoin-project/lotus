@@ -37,7 +37,7 @@ func SectorIsFullQaPower(info *SectorOnChainInfo) bool {
 	if info.Flags&FULL_QA_POWER != 0 {
 		return true
 	}
-	duration := int64(info.Expiration - info.Activation)
+	duration := int64(info.Expiration - info.PowerBaseEpoch)
 	if duration <= 0 {
 		return false
 	}

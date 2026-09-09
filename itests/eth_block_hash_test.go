@@ -12,6 +12,7 @@ import (
 
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/itests/kit"
 )
 
@@ -54,11 +55,16 @@ func TestEthBlockHashesCorrect_MultiBlockTipset(t *testing.T) {
 	// let the chain run a little bit longer to minimise the chance of reorgs
 	n2.WaitTillChain(ctx, kit.HeightAtLeast(head.Height()+50))
 
-	tsk := head.Key()
 	for i := 1; i <= int(head.Height()); i++ {
 		hex := fmt.Sprintf("0x%x", i)
 
-		ts, err := n2.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(i), tsk)
+		// Resolve the canonical tipset at this height against the CURRENT heaviest head each
+		// iteration, matching how EthGetBlockByNumber resolves internally. Anchoring on the
+		// earlier-captured `head` would race with reorgs: after a reorg the canonical tipset at
+		// height i can differ in block count, which would break the exact gas-limit comparison.
+		curHead, err := n2.ChainHead(ctx)
+		require.NoError(t, err)
+		ts, err := n2.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(i), curHead.Key())
 		require.NoError(t, err)
 		if ts.Height() != abi.ChainEpoch(i) { // null round
 			continue
@@ -73,12 +79,8 @@ func TestEthBlockHashesCorrect_MultiBlockTipset(t *testing.T) {
 
 		require.Equal(t, ethBlockA, ethBlockB)
 
-		// Verify GasLimit is a positive integer multiple of BlockGasLimit.
-		// We don't use len(ts.Blocks()) here because EthGetBlockByNumber resolves against
-		// the current heaviest tipset while ChainGetTipSetByHeight uses tsk as anchor;
-		// after a reorg these can be different tipsets at the same height.
-		gasLimit := int64(ethBlockB.GasLimit)
-		require.Positive(t, gasLimit, "expected positive gas limit")
-		require.Zero(t, gasLimit%buildconstants.BlockGasLimit, "expected gas limit %d to be a multiple of BlockGasLimit %d", gasLimit, buildconstants.BlockGasLimit)
+		numBlocks := len(ts.Blocks())
+		expGasLimit := ethtypes.EthUint64(int64(numBlocks) * buildconstants.BlockGasLimit)
+		require.Equal(t, expGasLimit, ethBlockB.GasLimit, "expected gas limit to be %d for %d blocks", expGasLimit, numBlocks)
 	}
 }

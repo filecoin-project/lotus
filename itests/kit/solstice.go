@@ -36,11 +36,6 @@ type SolsticeOpts struct {
 	// reward bootstrap so the migration matches the other solstice itests). 0 keeps the chain on
 	// NV28 for the whole test.
 	UpgradeEpoch abi.ChainEpoch
-	// WatchPost, when true, registers the miner with the block miner so a post-enforcing miner
-	// (MineBlocksMustPost) tracks/waits on its WindowPoSt. The miner's WindowPoSt is submitted by
-	// its own in-kit loop regardless of this flag; set it only when the test needs the block miner
-	// to also account for the miner's posts. It defaults to false (no extra block-miner watching).
-	WatchPost bool
 	// Optional verifreg plumbing: when RootKey/VerifierKey/VerifiedClientKey are non-nil the
 	// ensemble is created with a RootVerifier + two funded Accounts (default funding 100 FIL). The
 	// same keys are returned to the caller via the enclosing test's own locals, so SetupVerifiedClients
@@ -51,8 +46,8 @@ type SolsticeOpts struct {
 
 // NewSolsticeUpgradeEnv builds the standard solstice itest ensemble: a single unmanaged miner on a
 // chain that optionally upgrades NV28->NV29, mock proofs over RPC, mining started, and the miner's
-// WindowPoSt driven by its own in-kit loop (SolsticeOpts.WatchPost may additionally register the
-// miner with the block miner). It returns the pieces as a *SolsticeEnv for the caller to bind.
+// WindowPoSt driven by its own in-kit loop. It returns the pieces as a *SolsticeEnv for the caller
+// to bind.
 func NewSolsticeUpgradeEnv(t *testing.T, o SolsticeOpts) *SolsticeEnv {
 	t.Helper()
 	req := require.New(t)
@@ -102,11 +97,8 @@ func NewSolsticeUpgradeEnv(t *testing.T, o SolsticeOpts) *SolsticeEnv {
 		OwnerAddr(client.DefaultKey),
 	)
 
-	blockMiners := ens.InterconnectAll().BeginMining(5 * time.Millisecond)
+	ens.InterconnectAll().BeginMining(5 * time.Millisecond)
 	ens.Start()
-	if o.WatchPost {
-		blockMiners[0].WatchMinerForPost(um.ActorAddr)
-	}
 
 	return &SolsticeEnv{Ctx: ctx, Client: client, Um: um, Maddr: um.ActorAddr, Ssize: ssize, SealProof: sealProof}
 }
