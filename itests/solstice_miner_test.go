@@ -23,7 +23,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
-	"github.com/filecoin-project/lotus/itests/solsticekit"
 )
 
 // TestMigrationNV29Solstice verifies FIP-0118 (Solstice) miner compatibility across the NV28→NV29
@@ -385,12 +384,12 @@ func TestMigrationNV29SolsticeAccounting(t *testing.T) {
 	// its 10x QAP once the miner's deferred termination cron fires at the end of the proving period.
 	um.TerminateSectors([]abi.SectorNumber{legs[1]})
 	expectedQA := uint64(defaultSectorSize) * (1 + 10) // remaining: legs[0]=1x + legs[2]=10x
-	solsticekit.WaitForMinerQAP(ctx, t, client, maddr, expectedQA, 2*time.Minute)
+	kit.WaitForMinerQAP(ctx, t, client, maddr, expectedQA, 2*time.Minute)
 
 	// ---- Terminate x CC-1x: terminating a never-upgraded legacy CC sector (1x) must drop QAP by
 	// exactly its 1x contribution once the deferred termination cron fires, leaving only legs[2]=10x.
 	um.TerminateSectors([]abi.SectorNumber{legs[0]})
-	solsticekit.WaitForMinerQAP(ctx, t, client, maddr, uint64(defaultSectorSize)*10, 2*time.Minute)
+	kit.WaitForMinerQAP(ctx, t, client, maddr, uint64(defaultSectorSize)*10, 2*time.Minute)
 }
 
 // TestMigrationNV29SolsticeEconomic runs on an unmanaged miner with identical legacy CC sectors so

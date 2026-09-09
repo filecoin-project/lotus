@@ -24,7 +24,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
-	"github.com/filecoin-project/lotus/itests/solsticekit"
 )
 
 // TestMigrationNV29SolsticeUsqdSectorFault faults a sector that reached the FULL_QA(10x) tier via
@@ -40,7 +39,7 @@ func TestMigrationNV29SolsticeUsqdSectorFault(t *testing.T) {
 		upgradeEpoch      = abi.ChainEpoch(2000)
 	)
 
-	e := solsticekit.NewUpgradeEnv(t, solsticekit.Opts{UpgradeEpoch: upgradeEpoch})
+	e := kit.NewSolsticeUpgradeEnv(t, kit.SolsticeOpts{UpgradeEpoch: upgradeEpoch})
 	ctx, client, um, maddr := e.Ctx, e.Client, e.Um, e.Maddr
 	sealProofType := e.SealProof
 	defer um.Stop()
@@ -312,7 +311,7 @@ func TestMigrationNV29SolsticeFaultFeeDebt(t *testing.T) {
 		upgradeEpoch      = abi.ChainEpoch(2000)
 	)
 
-	e := solsticekit.NewUpgradeEnv(t, solsticekit.Opts{UpgradeEpoch: upgradeEpoch})
+	e := kit.NewSolsticeUpgradeEnv(t, kit.SolsticeOpts{UpgradeEpoch: upgradeEpoch})
 	ctx, client, um, maddr := e.Ctx, e.Client, e.Um, e.Maddr
 	sealProofType := e.SealProof
 	defer um.Stop()

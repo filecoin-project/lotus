@@ -17,7 +17,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
-	"github.com/filecoin-project/lotus/itests/solsticekit"
 )
 
 // TestMigrationNV29SolsticeUsqdTerminationFeeRealLedger verifies the termination fee of a sector that
@@ -33,7 +32,7 @@ func TestMigrationNV29SolsticeUsqdTerminationFeeRealLedger(t *testing.T) {
 		upgradeEpoch      = abi.ChainEpoch(3000)
 	)
 
-	e := solsticekit.NewUpgradeEnv(t, solsticekit.Opts{UpgradeEpoch: upgradeEpoch})
+	e := kit.NewSolsticeUpgradeEnv(t, kit.SolsticeOpts{UpgradeEpoch: upgradeEpoch})
 	ctx, client, um, maddr := e.Ctx, e.Client, e.Um, e.Maddr
 	sealProofType := e.SealProof
 	defer um.Stop()
@@ -48,7 +47,7 @@ func TestMigrationNV29SolsticeUsqdTerminationFeeRealLedger(t *testing.T) {
 	// settleAndRead advances a little past a QAP target so the deferred-termination cron has fully
 	// burned the penalty, then returns the miner balance.
 	settleAndRead := func(targetQA uint64) types.BigInt {
-		solsticekit.WaitForMinerQAP(ctx, t, client, maddr, targetQA, 2*time.Minute)
+		kit.WaitForMinerQAP(ctx, t, client, maddr, targetQA, 2*time.Minute)
 		head, herr := client.ChainHead(ctx)
 		req.NoError(herr)
 		client.WaitTillChain(ctx, kit.HeightAtLeast(head.Height()+20))
@@ -122,7 +121,7 @@ func TestMigrationNV29SolsticeTerminationFeeRealLedger(t *testing.T) {
 		upgradeEpoch      = abi.ChainEpoch(3000)
 	)
 
-	e := solsticekit.NewUpgradeEnv(t, solsticekit.Opts{UpgradeEpoch: upgradeEpoch})
+	e := kit.NewSolsticeUpgradeEnv(t, kit.SolsticeOpts{UpgradeEpoch: upgradeEpoch})
 	ctx, client, um, maddr := e.Ctx, e.Client, e.Um, e.Maddr
 	sealProofType := e.SealProof
 	defer um.Stop()
@@ -137,7 +136,7 @@ func TestMigrationNV29SolsticeTerminationFeeRealLedger(t *testing.T) {
 	// settleAndRead advances a little past a QAP target so the deferred-termination cron has fully
 	// burned the penalty, then returns the miner balance.
 	settleAndRead := func(targetQA uint64) types.BigInt {
-		solsticekit.WaitForMinerQAP(ctx, t, client, maddr, targetQA, 2*time.Minute)
+		kit.WaitForMinerQAP(ctx, t, client, maddr, targetQA, 2*time.Minute)
 		head, herr := client.ChainHead(ctx)
 		req.NoError(herr)
 		client.WaitTillChain(ctx, kit.HeightAtLeast(head.Height()+20))
@@ -227,7 +226,7 @@ func TestMigrationNV29SolsticePowerAndFees(t *testing.T) {
 		upgradeEpoch      = abi.ChainEpoch(2000)
 	)
 
-	e := solsticekit.NewUpgradeEnv(t, solsticekit.Opts{UpgradeEpoch: upgradeEpoch})
+	e := kit.NewSolsticeUpgradeEnv(t, kit.SolsticeOpts{UpgradeEpoch: upgradeEpoch})
 	ctx, client, um, maddr := e.Ctx, e.Client, e.Um, e.Maddr
 	sealProofType := e.SealProof
 	defer um.Stop()
