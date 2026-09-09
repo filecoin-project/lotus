@@ -106,7 +106,6 @@ func validateQaPowerFilterFlags(showFullQA, showLegacyQA, fast bool) error {
 	return nil
 }
 
-
 // qualifyQaPowerFilter reports whether a sector (whose on-chain FULL_QA_POWER flag is `fullQa`)
 // should be shown given the requested --full-qa-power (`showFullQA`) / --legacy-qa-power
 // (`showLegacyQA`) filters. Note SIMPLE_QA_POWER cannot be used as the inverse discriminator:
