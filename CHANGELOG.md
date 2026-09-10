@@ -22,6 +22,7 @@
 
 ## 🐛 Bug Fixes
 
+- fix(docker): update Debian from bullseye to trixie for `lotus-builder` and `lotus-base` stages; also fetch prebuilt filecoin-ffi libraries instead of compiling them. ([filecoin-project/lotus#13785](https://github.com/filecoin-project/lotus/pull/13785))
 - fix(eth): prevent `eth_getLogs` from returning successful empty or partial results when historical event-index coverage is incomplete. Block-hash queries now require a completed block event index, and range queries verify every canonical non-null tipset before returning logs. ([filecoin-project/lotus#13749](https://github.com/filecoin-project/lotus/issues/13749))
 - fix(eth): prevent `eth_getTransactionReceipt` from returning a successful receipt with an empty `logs` array while that transaction's events are still being indexed. The call now fails until event indexing is complete, while transactions that completed with no events still return an empty array. ([filecoin-project/lotus#13758](https://github.com/filecoin-project/lotus/issues/13758))
 - fix(network): prevent remote memory exhaustion through Lotus's default WebTransport listener by updating go-libp2p and webtransport-go (CVE-2026-57497). ([filecoin-project/lotus#13734](https://github.com/filecoin-project/lotus/pull/13734))
@@ -30,6 +31,7 @@
 
 ## 👌 Improvements
 
+- build: bump Go version to `1.25.14` from`1.25.7`; build Lotus with Go 1.25.14 or newer. ([filecoin-project/lotus#13786](https://github.com/filecoin-project/lotus/pull/13786))
 - feat(gateway): limit event queries and historical filter preloads to 360 epochs (three hours) by default across `EthGetLogs`, `EthNewFilter`, `GetActorEventsRaw`, and `SubscribeActorEventsRaw`. Gateway operators can change the limit with `--event-filter-max-height-range`, or set it to zero to disable the gateway limit. ([filecoin-project/lotus#13776](https://github.com/filecoin-project/lotus/pull/13776))
 
 # Node v1.36.2 / 2026-07-27
