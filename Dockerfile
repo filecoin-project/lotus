@@ -1,5 +1,5 @@
 #####################################
-FROM debian:bullseye AS lotus-builder
+FROM debian:trixie AS lotus-builder
 MAINTAINER Lotus Development Team
 
 ARG GO_VERSION=1.25.7
@@ -7,6 +7,7 @@ ARG TARGETARCH
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
+    curl \
     wget \
     git \
     build-essential \
@@ -74,7 +75,7 @@ ARG GOFLAGS=""
 RUN make buildall
 
 #####################################
-FROM ubuntu:22.04 AS lotus-base
+FROM debian:trixie AS lotus-base
 MAINTAINER Lotus Development Team
 
 # Base resources
