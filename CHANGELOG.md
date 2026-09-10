@@ -31,6 +31,7 @@
 
 ## 👌 Improvements
 
+- build: bump Go version to `1.25.14` from`1.25.7`; build Lotus with Go 1.25.14 or newer. ([filecoin-project/lotus#13786](https://github.com/filecoin-project/lotus/pull/13786))
 - feat(gateway): limit event queries and historical filter preloads to 360 epochs (three hours) by default across `EthGetLogs`, `EthNewFilter`, `GetActorEventsRaw`, and `SubscribeActorEventsRaw`. Gateway operators can change the limit with `--event-filter-max-height-range`, or set it to zero to disable the gateway limit. ([filecoin-project/lotus#13776](https://github.com/filecoin-project/lotus/pull/13776))
 
 # Node v1.36.2 / 2026-07-27
