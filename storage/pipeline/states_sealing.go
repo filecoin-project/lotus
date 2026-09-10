@@ -790,11 +790,6 @@ func (m *Sealing) handleSubmitCommitAggregate(ctx statemachine.Context, sector S
 		return err
 	}
 
-	// Detect historical sectors that were precommitted with DealIDs before NV29.
-	// ProveCommitSectors3 (processBatchV2) does not support such sectors, so flag
-	// them here to fall back to the individual ProveCommitSector path.
-	dealIDPrecommit := sectorHasDealIDPrecommit(ctx.Context(), m.Api, m.maddr, sector.SectorNumber)
-
 	res, err := m.commiter.AddCommit(ctx.Context(), sector, AggregateInput{
 		Info: proof.AggregateSealVerifyInfo{
 			Number:                sector.SectorNumber,
@@ -810,7 +805,6 @@ func (m *Sealing) handleSubmitCommitAggregate(ctx statemachine.Context, sector S
 			SectorNumber: sector.SectorNumber,
 			Pieces:       pams,
 		},
-		DealIDPrecommit: dealIDPrecommit,
 	})
 
 	if err != nil || res.Error != "" {
@@ -892,17 +886,4 @@ func (m *Sealing) handleFinalizeSector(ctx statemachine.Context, sector SectorIn
 		return ctx.Send(SectorFinalizedAvailable{})
 	}
 	return ctx.Send(SectorFinalized{})
-}
-
-// sectorHasDealIDPrecommit reports whether the sector's on-chain precommit contains DealIDs.
-// Sectors precommitted with DealIDs before NV29 must use the old ProveCommitSector path;
-// ProveCommitSectors3 does not support them. On API error the function returns false and logs
-// a warning so the caller can still attempt the batch path (which will fail safely if wrong).
-func sectorHasDealIDPrecommit(ctx context.Context, api SealingAPI, maddr address.Address, sectorNum abi.SectorNumber) bool {
-	pci, err := api.StateSectorPreCommitInfo(ctx, maddr, sectorNum, types.EmptyTSK)
-	if err != nil {
-		log.Warnf("sectorHasDealIDPrecommit: failed to get precommit info for sector %d: %v", sectorNum, err)
-		return false
-	}
-	return pci != nil && len(pci.Info.DealIDs) > 0
 }
