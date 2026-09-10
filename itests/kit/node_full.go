@@ -16,6 +16,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/exitcode"
 
 	"github.com/filecoin-project/lotus/api"
@@ -98,6 +99,38 @@ func (f *TestFullNode) WaitTillChain(ctx context.Context, pred ChainPredicate) *
 	}
 	require.Fail(f.t, "chain condition not met")
 	return nil
+}
+
+// CurrentProvingDeadline returns the miner's proving deadline at the current
+// chain head, rewound if necessary so that di.Open <= head height.
+//
+// StateMinerProvingDeadline reads the parent state of the queried tipset. At a
+// deadline boundary that follows a null round the miner cron has not yet
+// advanced the recorded deadline, so NextNotElapsed reports the same deadline
+// index one proving period later, and a test waiting for
+// di.Open + di.WPoStProvingPeriod would wait two periods instead of one.
+func (f *TestFullNode) CurrentProvingDeadline(ctx context.Context, maddr address.Address) *dline.Info {
+	head, err := f.ChainHead(ctx)
+	require.NoError(f.t, err)
+
+	di, err := f.StateMinerProvingDeadline(ctx, maddr, head.Key())
+	require.NoError(f.t, err)
+
+	return DeadlineNotAfter(di, head.Height())
+}
+
+// DeadlineNotAfter rewinds di by whole proving periods until di.Open <= height.
+// The result keeps di.Index and may already have closed at height, so callers
+// should rely only on Open, PeriodStart and Index. It is exported so it can be
+// unit tested from an itest file: cmd/ci treats every _test.go under itests/
+// as an integration test group.
+func DeadlineNotAfter(di *dline.Info, height abi.ChainEpoch) *dline.Info {
+	for di.Open > height {
+		di = dline.NewInfo(di.PeriodStart-di.WPoStProvingPeriod, di.Index, height,
+			di.WPoStPeriodDeadlines, di.WPoStProvingPeriod, di.WPoStChallengeWindow,
+			di.WPoStChallengeLookback, di.FaultDeclarationCutoff)
+	}
+	return di
 }
 
 // WaitTillChainOrError waits until a specified chain condition is met. It returns

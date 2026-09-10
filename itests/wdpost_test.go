@@ -63,8 +63,7 @@ func testWindowPostUpgrade(t *testing.T, blocktime time.Duration, nSectors int, 
 	maddr, err := miner.ActorAddress(ctx)
 	require.NoError(t, err)
 
-	di, err := client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
-	require.NoError(t, err)
+	di := client.CurrentProvingDeadline(ctx, maddr)
 
 	mid, err := address.IDFromAddress(maddr)
 	require.NoError(t, err)
@@ -142,8 +141,7 @@ func testWindowPostUpgrade(t *testing.T, blocktime time.Duration, nSectors int, 
 		require.NoError(t, err)
 	}
 
-	di, err = client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
-	require.NoError(t, err)
+	di = client.CurrentProvingDeadline(ctx, maddr)
 
 	t.Log("Go through another PP, wait for sectors to become faulty")
 	waitUntil = di.Open + di.WPoStProvingPeriod
@@ -165,8 +163,7 @@ func testWindowPostUpgrade(t *testing.T, blocktime time.Duration, nSectors int, 
 	err = miner.StorageMiner.(*impl.StorageMinerAPI).IStorageMgr.(*mock.SectorMgr).MarkFailed(s, false)
 	require.NoError(t, err)
 
-	di, err = client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
-	require.NoError(t, err)
+	di = client.CurrentProvingDeadline(ctx, maddr)
 
 	waitUntil = di.Open + di.WPoStProvingPeriod
 	t.Logf("End for head.Height > %d", waitUntil)
@@ -188,8 +185,7 @@ func testWindowPostUpgrade(t *testing.T, blocktime time.Duration, nSectors int, 
 
 	{
 		// Wait until proven.
-		di, err = client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
-		require.NoError(t, err)
+		di = client.CurrentProvingDeadline(ctx, maddr)
 
 		waitUntil := di.Open + di.WPoStProvingPeriod
 		t.Logf("End for head.Height > %d\n", waitUntil)
@@ -324,8 +320,7 @@ waitForProof:
 	require.Contains(t, ret.Error, "expected proof of type StackedDRGWindow2KiBV1P1, got StackedDRGWindow2KiBV1")
 
 	for {
-		di, err := client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
-		require.NoError(t, err)
+		di := client.CurrentProvingDeadline(ctx, maddr)
 		// wait until the deadline finishes.
 		if di.Index == ((params.Deadline + 1) % di.WPoStPeriodDeadlines) {
 			break

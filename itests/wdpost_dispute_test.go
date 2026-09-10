@@ -239,8 +239,7 @@ func TestWindowPostDisputeFails(t *testing.T) {
 
 	miner.PledgeSectors(ctx, 10, 0, nil)
 
-	di, err := client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
-	require.NoError(t, err)
+	di := client.CurrentProvingDeadline(ctx, maddr)
 
 	t.Log("Running one proving period")
 	waitUntil := di.PeriodStart + di.WPoStProvingPeriod*2 + 1

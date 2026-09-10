@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/dline"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
@@ -43,8 +44,7 @@ func TestWindowPostNoPreChecks(t *testing.T) {
 
 	maddr, err := miner.ActorAddress(ctx)
 	require.NoError(t, err)
-	di, err := client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
-	require.NoError(t, err)
+	di := client.CurrentProvingDeadline(ctx, maddr)
 
 	mid, err := address.IDFromAddress(maddr)
 	require.NoError(t, err)
@@ -122,8 +122,7 @@ func TestWindowPostNoPreChecks(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	di, err = client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
-	require.NoError(t, err)
+	di = client.CurrentProvingDeadline(ctx, maddr)
 
 	t.Log("Go through another PP, wait for sectors to become faulty")
 	waitUntil = di.Open + di.WPoStProvingPeriod
@@ -145,8 +144,7 @@ func TestWindowPostNoPreChecks(t *testing.T) {
 	err = miner.StorageMiner.(*impl.StorageMinerAPI).IStorageMgr.(*mock.SectorMgr).MarkFailed(s, false)
 	require.NoError(t, err)
 
-	di, err = client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
-	require.NoError(t, err)
+	di = client.CurrentProvingDeadline(ctx, maddr)
 
 	waitUntil = di.Open + di.WPoStProvingPeriod
 	t.Logf("End for head.Height > %d", waitUntil)
@@ -168,8 +166,7 @@ func TestWindowPostNoPreChecks(t *testing.T) {
 
 	{
 		// Wait until proven.
-		di, err = client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
-		require.NoError(t, err)
+		di = client.CurrentProvingDeadline(ctx, maddr)
 
 		waitUntil := di.Open + di.WPoStProvingPeriod
 		t.Logf("End for head.Height > %d\n", waitUntil)
@@ -208,8 +205,7 @@ func TestWindowPostMaxSectorsRecoveryConfig(t *testing.T) {
 
 	maddr, err := miner.ActorAddress(ctx)
 	require.NoError(t, err)
-	di, err := client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
-	require.NoError(t, err)
+	di := client.CurrentProvingDeadline(ctx, maddr)
 
 	mid, err := address.IDFromAddress(maddr)
 	require.NoError(t, err)
@@ -253,8 +249,7 @@ func TestWindowPostMaxSectorsRecoveryConfig(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	di, err = client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
-	require.NoError(t, err)
+	di = client.CurrentProvingDeadline(ctx, maddr)
 
 	t.Log("Go through another PP, wait for sectors to become faulty")
 	waitUntil = di.Open + di.WPoStProvingPeriod
@@ -283,8 +278,7 @@ func TestWindowPostMaxSectorsRecoveryConfig(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	di, err = client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
-	require.NoError(t, err)
+	di = client.CurrentProvingDeadline(ctx, maddr)
 
 	waitUntil = di.Open + di.WPoStProvingPeriod + 200
 	t.Logf("End for head.Height > %d", waitUntil)
@@ -322,8 +316,7 @@ func TestWindowPostManualSectorsRecovery(t *testing.T) {
 
 	maddr, err := miner.ActorAddress(ctx)
 	require.NoError(t, err)
-	di, err := client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
-	require.NoError(t, err)
+	di := client.CurrentProvingDeadline(ctx, maddr)
 
 	mid, err := address.IDFromAddress(maddr)
 	require.NoError(t, err)
@@ -377,8 +370,7 @@ func TestWindowPostManualSectorsRecovery(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	di, err = client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
-	require.NoError(t, err)
+	di = client.CurrentProvingDeadline(ctx, maddr)
 
 	t.Log("Go through another PP, wait for sectors to become faulty")
 	waitUntil = di.Open + di.WPoStProvingPeriod
@@ -443,8 +435,7 @@ func TestWindowPostManualSectorsRecovery(t *testing.T) {
 
 	require.Equal(t, recoveredCount, uint64(2))
 
-	di, err = client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
-	require.NoError(t, err)
+	di = client.CurrentProvingDeadline(ctx, maddr)
 
 	t.Log("Go through another PP, wait for sectors to become faulty")
 	waitUntil = di.Open + di.WPoStProvingPeriod
@@ -466,4 +457,51 @@ func TestWindowPostManualSectorsRecovery(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, recoveredCount, uint64(0))
+}
+
+// TestDeadlineNotAfter is a unit test for the clamp behind
+// kit.CurrentProvingDeadline. It lives here rather than in itests/kit because
+// cmd/ci treats every _test.go under itests/ as an integration test group.
+func TestDeadlineNotAfter(t *testing.T) {
+	const (
+		period      = abi.ChainEpoch(2880)
+		window      = abi.ChainEpoch(60)
+		periodStart = abi.ChainEpoch(658)
+		index       = uint64(37)
+	)
+	mk := func(ps, cur abi.ChainEpoch) *dline.Info {
+		return dline.NewInfo(ps, index, cur, 48, period, window, 20, 70)
+	}
+
+	t.Run("deadline containing height is unchanged", func(t *testing.T) {
+		di := mk(periodStart, periodStart+abi.ChainEpoch(index)*window+5)
+		require.Same(t, di, kit.DeadlineNotAfter(di, di.CurrentEpoch))
+	})
+
+	t.Run("deadline before height is unchanged", func(t *testing.T) {
+		di := mk(periodStart, periodStart+abi.ChainEpoch(index)*window+window)
+		require.Same(t, di, kit.DeadlineNotAfter(di, di.CurrentEpoch))
+	})
+
+	t.Run("next-period deadline is rewound to the current period", func(t *testing.T) {
+		// What StateMinerProvingDeadline returns at a deadline close when the
+		// preceding epoch was a null round: same index, next proving period.
+		height := periodStart + abi.ChainEpoch(index)*window + window
+		di := mk(periodStart+period, height)
+		require.Greater(t, di.Open, height)
+
+		got := kit.DeadlineNotAfter(di, height)
+		require.Equal(t, periodStart, got.PeriodStart)
+		require.Equal(t, index, got.Index)
+		require.Equal(t, height, got.CurrentEpoch)
+		require.Equal(t, height, got.Close)
+	})
+
+	t.Run("rewinds multiple periods", func(t *testing.T) {
+		height := periodStart + abi.ChainEpoch(index)*window
+		di := mk(periodStart+3*period, height)
+		got := kit.DeadlineNotAfter(di, height)
+		require.Equal(t, periodStart, got.PeriodStart)
+		require.Equal(t, height, got.Open)
+	})
 }
