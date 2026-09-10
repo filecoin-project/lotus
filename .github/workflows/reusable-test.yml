@@ -21,7 +21,7 @@ jobs:
     outputs:
       test_group_execution_contexts: ${{ steps.list_test_group_execution_contexts.outputs.test_group_execution_contexts }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           submodules: 'recursive'
           fetch-depth: 0
@@ -40,7 +40,7 @@ jobs:
         # We need to cache for each architecture we support: x86_64 and arm64
         runner: [ubuntu-latest, ubuntu-24.04-arm]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           submodules: 'recursive'
           fetch-depth: 0
@@ -63,13 +63,13 @@ jobs:
           echo -e "key=$CACHE_KEY" | tee -a $GITHUB_OUTPUT
           echo -e "path<<EOF\n$CACHE_PATH\nEOF" | tee -a $GITHUB_OUTPUT
       - id: restore_fetch_params
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           key: ${{ steps.fetch_params.outputs.key }}
           path: ${{ steps.fetch_params.outputs.path }}
           lookup-only: true
       - id: restore_make_deps
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           key: ${{ steps.make_deps.outputs.key }}
           path: ${{ steps.make_deps.outputs.path }}
@@ -87,12 +87,12 @@ jobs:
       - if: steps.restore_fetch_params.outputs.cache-hit != 'true'
         run: ./lotus fetch-params 2048
       - if: steps.restore_fetch_params.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           key: ${{ steps.fetch_params.outputs.key }}
           path: ${{ steps.fetch_params.outputs.path }}
       - if: steps.restore_make_deps.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           key: ${{ steps.make_deps.outputs.key }}
           path: ${{ steps.make_deps.outputs.path }}
@@ -109,7 +109,7 @@ jobs:
             "make_deps_key": env.make_deps_key,
             "make_deps_path": env.make_deps_path
           }' | tee -a "$file"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: jobs.cache.${{ runner.os }}.${{ runner.arch }}.outputs
           path: jobs.cache.${{ runner.os }}.${{ runner.arch }}.outputs.json
@@ -122,7 +122,7 @@ jobs:
       matrix:
         include: ${{ fromJson(needs.discover.outputs.test_group_execution_contexts) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           submodules: 'recursive'
           fetch-depth: 0
@@ -139,7 +139,7 @@ jobs:
       - name: Install gotestsum
         run: go install gotest.tools/gotestsum@latest
       - id: artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: jobs.cache.${{ runner.os }}.${{ runner.arch }}.outputs
       - id: cache
@@ -158,14 +158,14 @@ jobs:
 
           rm "$file"
       - name: Restore cached make deps outputs
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           key: ${{ steps.cache.outputs.make_deps_key }}
           path: ${{ steps.cache.outputs.make_deps_path }}
           fail-on-cache-miss: true
       - if: ${{ steps.group.outcome == 'success' && fromJson(steps.group.outputs.metadata || '{}').needs_parameters }}
         name: Restore cached fetch params outputs
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           key: ${{ steps.cache.outputs.fetch_params_key }}
           path: ${{ steps.cache.outputs.fetch_params_path }}
@@ -227,7 +227,7 @@ jobs:
           fi
           cat "$REPORTS_PATH/$NAME.xml"
       - if: (!cancelled())
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.name }}-${{ runner.os }}-${{ runner.arch }}
           path: |
