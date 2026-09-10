@@ -22,6 +22,7 @@
 
 ## 🐛 Bug Fixes
 
+- fix(docker): restore container builds after Debian bullseye's end of LTS by moving the `lotus-builder` and `lotus-base` stages to Debian 13 (trixie), and install `curl` so builds fetch prebuilt filecoin-ffi libraries instead of compiling them. Binaries extracted from the images now require a newer glibc than the previous bullseye-built binaries; check host compatibility before replacing extracted binaries. ([filecoin-project/lotus#13785](https://github.com/filecoin-project/lotus/pull/13785))
 - fix(eth): prevent `eth_getLogs` from returning successful empty or partial results when historical event-index coverage is incomplete. Block-hash queries now require a completed block event index, and range queries verify every canonical non-null tipset before returning logs. ([filecoin-project/lotus#13749](https://github.com/filecoin-project/lotus/issues/13749))
 - fix(eth): prevent `eth_getTransactionReceipt` from returning a successful receipt with an empty `logs` array while that transaction's events are still being indexed. The call now fails until event indexing is complete, while transactions that completed with no events still return an empty array. ([filecoin-project/lotus#13758](https://github.com/filecoin-project/lotus/issues/13758))
 - fix(network): prevent remote memory exhaustion through Lotus's default WebTransport listener by updating go-libp2p and webtransport-go (CVE-2026-57497). ([filecoin-project/lotus#13734](https://github.com/filecoin-project/lotus/pull/13734))
