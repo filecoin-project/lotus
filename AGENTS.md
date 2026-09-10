@@ -88,11 +88,18 @@ Prefer released dependency versions. Exceptions require the `dependency-check-ig
 
 ### Changelog
 
-Add a `CHANGELOG.md` entry when operators, users or downstream developers need to know about the change: new or changed behaviour, bug fixes, compatibility changes, API or CLI changes, configuration changes, security or performance consequences, or changed build and runtime requirements.
+Add a `CHANGELOG.md` entry only when operators, users or downstream developers are likely to care. It is a release-reading aid, not a record of every change.
 
 Do not add changelog noise for tests, documentation, CI, internal refactors, generated churn or maintenance with no observable effect. For these changes, a maintainer or administrator can apply the `skip/changelog` label; the documented `[skip changelog]` PR-body marker is also accepted by CI.
 
-Put entries under the appropriate `# UNRELEASED` subsection: Upgrade Warnings for required operator action or serious compatibility concerns, otherwise New Features, Bug Fixes or Improvements. Describe the observable effect and any action users must take.
+Default to zero or one entry per logical change, not one per implementation detail or subsection. Use one short, commit-subject-sized sentence naming the affected API, command or component and what changed for users. The PR link is the trail to details: omit implementation narratives, upstream fix inventories and assurances about unchanged behaviour. Prefer this brevity over verbose examples already in the changelog.
+
+Put entries under the appropriate `# UNRELEASED` subsection: Upgrade Warnings for required operator action or serious compatibility concerns, otherwise New Features, Bug Fixes or Improvements. Expand only when significant user impact warrants explanation or readers need instructions to use the change or upgrade safely, not because the diff is large.
+
+Good short entries from `CHANGELOG.md` (PR links omitted here):
+
+- feat(lotus-shed): accept Ethereum transaction hashes in msg
+- fix(rpc): `GasEstimateMessageGas` no longer panics when estimating messages with an empty `To` or `From` address
 
 End each entry with the eventual PR link in this form:
 
