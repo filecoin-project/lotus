@@ -31,8 +31,8 @@ permissions:
 
 jobs:
   docker:
-    name: Docker (${{ matrix.image }} / ${{ matrix.network }}) [publish=${{ github.event.inputs.publish == 'true' || github.event_name != 'pull_request' }}]
-    runs-on: ubuntu-latest
+    name: Docker (${{ matrix.image }} / ${{ matrix.network }} / ${{ matrix.platform.arch }}) [publish=${{ github.event.inputs.publish == 'true' || github.event_name != 'pull_request' }}]
+    runs-on: ${{ matrix.platform.runner }}
     if: github.repository_owner == 'filecoin-project'
     strategy:
       fail-fast: false
@@ -45,13 +45,28 @@ jobs:
           - calibnet
           - debug
           - 2k
+        platform:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
         include:
           - image: lotus
             network: mainnet
+            platform:
+              arch: amd64
+              runner: ubuntu-latest
+          - image: lotus
+            network: mainnet
+            platform:
+              arch: arm64
+              runner: ubuntu-24.04-arm
     env:
       PUBLISH: ${{ github.event.inputs.publish == 'true' || github.event_name != 'pull_request' }}
+      BUILD_TAG: &build-tag build-${{ github.run_id }}-${{ matrix.network }}
     steps:
-      - id: channel
+      - &channel
+        id: channel
         env:
           IS_MASTER: ${{ github.ref == 'refs/heads/master' }}
           IS_TAG: ${{ startsWith(github.ref, 'refs/tags/') }}
@@ -77,7 +92,8 @@ jobs:
         with:
           submodules: 'recursive'
           fetch-depth: 0
-      - id: git
+      - &git
+        id: git
         run: |
           ref="${GITHUB_REF#refs/heads/}"
           ref="${ref#refs/tags/}"
@@ -86,7 +102,8 @@ jobs:
           echo "sha=$sha" | tee -a "$GITHUB_OUTPUT"
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      - name: Docker meta
+      - &docker-meta
+        name: Docker meta
         id: meta
         uses: docker/metadata-action@v5
         with:
@@ -104,12 +121,90 @@ jobs:
         with:
           username: ${{ vars.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Build and push if channel is set (channel=${{ steps.channel.outputs.channel }})
+      - name: Build image
         uses: docker/build-push-action@v5
         with:
           context: .
+          platforms: linux/${{ matrix.platform.arch }}
           push: ${{ env.PUBLISH == 'true' }}
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: filecoin/${{ matrix.image }}:${{ env.BUILD_TAG }}-${{ matrix.platform.arch }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             ${{ matrix.network != 'mainnet' && format('GOFLAGS=-tags={0}', matrix.network) || ''}}
+
+  publish:
+    name: Publish Docker (${{ matrix.image }} / ${{ matrix.network }})
+    needs: docker
+    if: github.event.inputs.publish == 'true' || github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - lotus-all-in-one
+        network:
+          - mainnet
+          - butterflynet
+          - calibnet
+          - debug
+          - 2k
+        include:
+          - image: lotus
+            network: mainnet
+    env:
+      BUILD_TAG: *build-tag
+      IMAGE: filecoin/${{ matrix.image }}
+    steps:
+      - *channel
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - *git
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - *docker-meta
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Publish multi-platform image
+        env:
+          METADATA_JSON: ${{ steps.meta.outputs.json }}
+        run: |
+          sources=("$IMAGE:$BUILD_TAG-amd64" "$IMAGE:$BUILD_TAG-arm64")
+
+          tag_args=()
+          while IFS= read -r tag; do
+            tag_args+=(--tag "$tag")
+          done < <(jq -r '.tags[]' <<< "$METADATA_JSON")
+          [[ "${#tag_args[@]}" -gt 0 ]] || exit 1
+
+          docker buildx imagetools create --dry-run "${sources[@]}" > "$RUNNER_TEMP/manifest.json"
+          jq -e '
+            [.manifests[].platform | select(.os == "linux") | .architecture]
+            | sort | unique == ["amd64", "arm64"]
+          ' "$RUNNER_TEMP/manifest.json"
+          docker buildx imagetools create "${tag_args[@]}" "${sources[@]}"
+      - name: Remove temporary architecture tags
+        # A cleanup failure must not invalidate a successfully published image.
+        continue-on-error: true
+        env:
+          IMAGE_TAG: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
+          DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          docker buildx imagetools inspect --raw "$IMAGE_TAG" | jq -e '
+            [.manifests[].platform | select(.os == "linux") | .architecture]
+            | sort | unique == ["amd64", "arm64"]
+          '
+
+          hub_token="$(jq -n '{identifier: env.DOCKERHUB_USERNAME, secret: env.DOCKERHUB_TOKEN}' |
+            curl -fsS -H 'Content-Type: application/json' --data-binary @- \
+              https://hub.docker.com/v2/auth/token |
+            jq -er '.access_token // empty')"
+          echo "::add-mask::$hub_token"
+          for arch in amd64 arm64; do
+            curl -fsS -X DELETE -H "Authorization: Bearer $hub_token" \
+              "https://hub.docker.com/v2/namespaces/filecoin/repositories/${IMAGE#*/}/tags/$BUILD_TAG-$arch/"
+          done
