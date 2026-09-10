@@ -387,9 +387,9 @@ gen: actors-code-gen type-gen cfgdoc-gen docsgen api-gen  ## Run all generation 
 
 jen: gen  ## Alias for gen
 
-snap: lotus lotus-miner lotus-worker  ## Build snap package
+snap:  ## Build Snapcraft deprecation package
 	snapcraft
-	# snapcraft upload ./lotus_*.snap
+.PHONY: snap
 
 docsgen-cli:  ## Generate CLI documentation
 	$(GOCC) run ./scripts/docsgen-cli
