@@ -191,19 +191,19 @@ var sectorsUpgradeQualityCmd = &cli.Command{
 			return xerrors.Errorf("getting miner info: %w", err)
 		}
 
-		liveSet, err := fullNodeAPI.StateMinerSectors(ctx, maddr, nil, types.EmptyTSK)
+		activeSet, err := fullNodeAPI.StateMinerActiveSectors(ctx, maddr, types.EmptyTSK)
 		if err != nil {
-			return xerrors.Errorf("getting live sectors: %w", err)
+			return xerrors.Errorf("getting active sectors: %w", err)
 		}
-		if len(liveSet) == 0 {
-			fmt.Println("no live sectors found")
+		if len(activeSet) == 0 {
+			fmt.Println("no active sectors found")
 			return nil
 		}
 
-		// Index live sector info by sector number for O(1) lookup during state traversal.
-		liveSectorsInfo := make(map[abi.SectorNumber]*miner.SectorOnChainInfo, len(liveSet))
-		for _, info := range liveSet {
-			liveSectorsInfo[info.SectorNumber] = info
+		// Index active sector info by sector number for O(1) lookup during state traversal.
+		activeSectorsInfo := make(map[abi.SectorNumber]*miner.SectorOnChainInfo, len(activeSet))
+		for _, info := range activeSet {
+			activeSectorsInfo[info.SectorNumber] = info
 		}
 
 		// Load miner state once to get all (deadline, partition) locations in a single read,
@@ -223,14 +223,12 @@ var sectorsUpgradeQualityCmd = &cli.Command{
 		var toUpgrade []sectorLoc
 		if err := mas.ForEachDeadline(func(dlIdx uint64, dl miner.Deadline) error {
 			return dl.ForEachPartition(func(partIdx uint64, part miner.Partition) error {
-				live, err := part.LiveSectors()
+				active, err := part.ActiveSectors()
 				if err != nil {
 					return err
 				}
-				return live.ForEach(func(sn uint64) error {
-					// !ok should not happen: LiveSectors and StateMinerSectors(nil) both
-					// cover all non-terminated sectors; skip defensively if it does.
-					info, ok := liveSectorsInfo[abi.SectorNumber(sn)]
+				return active.ForEach(func(sn uint64) error {
+					info, ok := activeSectorsInfo[abi.SectorNumber(sn)]
 					if !ok || miner.SectorIsFullQaPower(info) {
 						return nil
 					}
