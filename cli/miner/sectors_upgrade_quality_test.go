@@ -2,6 +2,7 @@ package miner
 
 import (
 	"bytes"
+	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -79,6 +80,58 @@ func TestPackUpgradeQualityMessages_SingleMessage(t *testing.T) {
 	require.Equal(t, 3, sectorsInMessage(t, messages[0]))
 
 	require.Empty(t, packUpgradeQualityMessages(nil, 100))
+}
+
+// TestUpgradeQualityParams12500 stress-tests the full packing+CBOR path with 12500 sectors
+// (the CLI default per-message cap) spread across 48 deadlines × varied partitions, matching
+// realistic miner topology. It confirms that the CBOR marshaller can handle that many sectors
+// in a single message and that the serialized payload round-trips cleanly.
+func TestUpgradeQualityParams12500(t *testing.T) {
+	const total = 12500
+	const numDeadlines = 48
+
+	// Distribute sectors evenly across deadlines and partitions to mimic real miner state.
+	// packUpgradeQualityMessages requires the input sorted by (deadline, partition), matching
+	// the order produced by ForEachDeadline/ForEachPartition in the CLI.
+	toUpgrade := make([]sectorLoc, 0, total)
+	for i := 0; i < total; i++ {
+		dl := uint64(i % numDeadlines)
+		part := uint64(i / numDeadlines % 10)
+		toUpgrade = append(toUpgrade, sectorLoc{deadline: dl, partition: part, sectorNum: uint64(i + 1)})
+	}
+	sort.Slice(toUpgrade, func(i, j int) bool {
+		if toUpgrade[i].deadline != toUpgrade[j].deadline {
+			return toUpgrade[i].deadline < toUpgrade[j].deadline
+		}
+		return toUpgrade[i].partition < toUpgrade[j].partition
+	})
+
+	// Pack with the default cap — everything should fit in exactly one message.
+	messages := packUpgradeQualityMessages(toUpgrade, total)
+	require.Len(t, messages, 1, "all %d sectors must fit in a single message at cap=%d", total, total)
+
+	// Verify sector count.
+	require.Equal(t, total, sectorsInMessage(t, messages[0]))
+
+	// CBOR-serialize the params — this is what MpoolPushMessage does on the wire.
+	sp, err := actors.SerializeParams(&messages[0])
+	require.NoError(t, err, "CBOR serialization of %d sectors must not fail", total)
+	require.NotEmpty(t, sp)
+
+	t.Logf("serialized params size for %d sectors: %d bytes", total, len(sp))
+
+	// Round-trip: deserialize and verify all upgrades are intact.
+	var decoded stminer.UpgradeSectorQualityParams
+	require.NoError(t, decoded.UnmarshalCBOR(bytes.NewReader(sp)))
+	require.Len(t, decoded.Upgrades, len(messages[0].Upgrades))
+
+	totalDecoded := 0
+	for _, u := range decoded.Upgrades {
+		c, err := u.Sectors.Count()
+		require.NoError(t, err)
+		totalDecoded += int(c)
+	}
+	require.Equal(t, total, totalDecoded, "round-tripped sector count must match original")
 }
 
 // TestUpgradeQualityParamsSerialize confirms CBOR round-trip of the generated message params.
