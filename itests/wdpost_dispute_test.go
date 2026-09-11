@@ -66,8 +66,7 @@ func TestWindowPostDispute(t *testing.T) {
 	evilMinerAddr, err := evilMiner.ActorAddress(ctx)
 	require.NoError(t, err)
 
-	di, err := client.StateMinerProvingDeadline(ctx, evilMinerAddr, types.EmptyTSK)
-	require.NoError(t, err)
+	di := client.CurrentProvingDeadline(ctx, evilMinerAddr)
 
 	t.Logf("Running one proving period\n")
 
