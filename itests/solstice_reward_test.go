@@ -149,20 +149,14 @@ func TestSolsticeRewardLifecycle(t *testing.T) {
 	req.NoError(store.Get(ctx, preActor.Head, &pre))
 	preSimpleTotal := pre.SimpleTotal
 	preBaselineTotal := pre.BaselineTotal
-	// Migration must preserve the pre-funded allocation before later transitions
-	// are checked against it.
 	initialAllocation := big.Add(preActor.Balance, pre.TotalStoragePowerReward)
 
-	// A tipset exposes its parent state, so the activation tipset supplies the
-	// post-award v18 state consumed by the migration.
 	activationTS := tipsetAtOrAfter(ctx, t, client, activation)
 	migrationInputActor, err := client.StateGetActor(ctx, builtin.RewardActorAddr, activationTS.Key())
 	req.NoError(err)
 	var migrationInput reward18.State
 	req.NoError(store.Get(ctx, migrationInputActor.Head, &migrationInput))
 
-	// Compute from the preceding tipset to apply the activation fork without
-	// applying activation-tipset messages or its block reward.
 	computed, err := client.StateCompute(ctx, activation, nil, preTS.Key())
 	req.NoError(err)
 	migrationTree, err := chainstate.LoadStateTree(store, computed.Root)
@@ -265,8 +259,7 @@ func mustActor(ctx context.Context, t *testing.T, node api.FullNode, addr addres
 	return actor
 }
 
-// loadReward19 reads inline and offboarded state together and checks invariants
-// against the chain epoch represented by the observed tipset.
+// loadReward19 loads the v19 reward actor state and streams, checking invariants.
 func loadReward19(ctx context.Context, t *testing.T, node api.FullNode, store cbor.IpldStore, tsk types.TipSetKey) (*types.Actor, *reward19.State, *reward19.StreamsState) {
 	t.Helper()
 	req := require.New(t)
@@ -316,8 +309,7 @@ func adjacentReward19States(
 	return nil, nil
 }
 
-// computeRewardWithTotals mirrors the v19 calculation with caller-supplied issuance totals.
-// The lifecycle uses it to distinguish code constants from the v18 fields removed by migration.
+// computeRewardWithTotals mirrors v19 reward calculation with injectable issuance totals (to distinguish code constants from removed v18 fields).
 func computeRewardWithTotals(
 	epoch abi.ChainEpoch,
 	prevTheta big.Int,
@@ -346,9 +338,7 @@ func computeBaselineSupplyWithTotal(theta big.Int, baselineTotal abi.TokenAmount
 	return big.Mul(baselineTotal, big.Sub(one, expNegThetaLam))
 }
 
-// explicitServiceLiabilities totals service rewards that f02 still holds for claims.
-// A live explicit stream owes its current accrual, less same-period claims, plus
-// payables carried from closed periods. A tombstone owes only its payables.
+// explicitServiceLiabilities sums stream accruals (net of claimed) plus tombstone payables held by f02.
 func explicitServiceLiabilities(t *testing.T, state *reward19.State, streams *reward19.StreamsState) abi.TokenAmount {
 	t.Helper()
 	req := require.New(t)
@@ -379,15 +369,7 @@ func explicitServiceLiabilities(t *testing.T, state *reward19.State, streams *re
 	return total
 }
 
-// rewardAllocationAt reconstructs the lifetime reward allocation implied by an f02 snapshot.
-//
-// At rest, f02's balance is the unissued reserve plus explicit rewards retained
-// for claims. TotalMintedReward is cumulative gross issuance from the reserve:
-//
-//	allocation = TotalMintedReward + actor balance - explicit service liabilities
-//
-// Awards preserve the result by dividing gross issuance among miner payment,
-// burn, and service liability. Claims reduce balance and liability equally.
+// rewardAllocationAt returns TotalMintedReward + (actor balance - explicit service liabilities).
 func rewardAllocationAt(t *testing.T, actor *types.Actor, state *reward19.State, streams *reward19.StreamsState) abi.TokenAmount {
 	t.Helper()
 	explicitLiabilities := explicitServiceLiabilities(t, state, streams)
@@ -395,8 +377,7 @@ func rewardAllocationAt(t *testing.T, actor *types.Actor, state *reward19.State,
 	return big.Add(state.TotalMintedReward, remainingReserve)
 }
 
-// requireShareWithinAtto compares fixed-point cross-products with a rounding
-// allowance expressed in attoFIL, not percentage points.
+// requireShareWithinAtto checks part/total ≈ share/Denom with an attoFIL rounding allowance.
 func requireShareWithinAtto(t *testing.T, part abi.TokenAmount, total abi.TokenAmount, share uint64, roundingAtto int64) {
 	t.Helper()
 	req := require.New(t)
@@ -456,8 +437,7 @@ type solsticeClaimResult struct {
 	streams *reward19.StreamsState
 }
 
-// testMigrationAndAwardContinuity verifies the exact v18-to-v19 state cutover
-// and confirms that awards continue from the migrated state.
+// testMigrationAndAwardContinuity checks v18→v19 field mapping and that awards continue post-migration.
 func (f *solsticeRewardLifecycle) testMigrationAndAwardContinuity(t *testing.T) {
 	req := require.New(t)
 	expectedCode, ok := actors.GetActorCodeID(actorstypes.Version19, manifest.RewardKey)
@@ -503,8 +483,7 @@ func (f *solsticeRewardLifecycle) testMigrationAndAwardContinuity(t *testing.T) 
 	req.Positive(big.Cmp(postMiner.Balance, preMiner.Balance))
 }
 
-// testCirculatingSupplyContinuity proves that Lotus derives FilMined from the
-// renamed cumulative minted total across and after the migration.
+// testCirculatingSupplyContinuity proves FilMined tracks TotalMintedReward across and after migration.
 func (f *solsticeRewardLifecycle) testCirculatingSupplyContinuity(t *testing.T) {
 	req := require.New(t)
 	postMigrationTS := tipsetAtOrAfter(f.ctx, t, f.client, f.activationTS.Height()+1)
@@ -530,8 +509,7 @@ func (f *solsticeRewardLifecycle) testCirculatingSupplyContinuity(t *testing.T) 
 	)
 }
 
-// testRewardTotalConstants proves reward calculation uses the v19 issuance
-// constants rather than the retired totals stored in v18 state.
+// testRewardTotalConstants proves awards use v19 issuance constants, not the retired v18 stored totals.
 func (f *solsticeRewardLifecycle) testRewardTotalConstants(t *testing.T) {
 	req := require.New(t)
 	f.client.WaitTillChain(f.ctx, kit.HeightAtLeast(f.activation+25))
@@ -560,8 +538,7 @@ func (f *solsticeRewardLifecycle) testRewardTotalConstants(t *testing.T) {
 	req.NotEqual(fromStoredTotals, current.ThisEpochReward)
 }
 
-// testSlopedBootstrapWeight observes the consensus ramp reducing the miner
-// share by a lower bound derived from its on-chain slope.
+// testSlopedBootstrapWeight observes the consensus ramp reducing the miner share by at least slope*epochs.
 func (f *solsticeRewardLifecycle) testSlopedBootstrapWeight(t *testing.T) {
 	req := require.New(t)
 	const window = abi.ChainEpoch(5)
@@ -598,8 +575,7 @@ func (f *solsticeRewardLifecycle) testSlopedBootstrapWeight(t *testing.T) {
 	req.GreaterOrEqual(big.Cmp(actualDrop, big.Sub(minimumDropValue, earlyRoundingSlack)), 0)
 }
 
-// testRewardSplitEconomics checks the settled bootstrap weights divide gross
-// issuance exactly among miner, service, and burn.
+// testRewardSplitEconomics checks settled bootstrap weights split gross issuance among miner, service, and burn.
 func (f *solsticeRewardLifecycle) testRewardSplitEconomics(t *testing.T) {
 	req := require.New(t)
 	f.client.WaitTillChain(f.ctx, kit.HeightAtLeast(f.splitEnd+1))
@@ -620,8 +596,7 @@ func (f *solsticeRewardLifecycle) testRewardSplitEconomics(t *testing.T) {
 	f.requireAllocation(t, endActor, end, endStreams)
 }
 
-// testShareSettlementAndWalletPayouts exercises share replacement, partial
-// Claims, carried entitlements, and exact recipient balance changes.
+// testShareSettlementAndWalletPayouts exercises share replacement, partial claims, and recipient balance changes.
 func (f *solsticeRewardLifecycle) testShareSettlementAndWalletPayouts(t *testing.T) {
 	req := require.New(t)
 	lookup := f.sendRewardMessage(t, f.writerKey.Address, builtin.MethodsReward.SetSharesExported, &reward19.SetSharesParams{
@@ -696,8 +671,7 @@ func (f *solsticeRewardLifecycle) testShareSettlementAndWalletPayouts(t *testing
 	requireShareWithinAtto(t, secondDistribution.ClaimedPeriod[1].Amount, currentPeriodTotal, 60*f.pct, 1)
 }
 
-// testQueueControlsAndEvent checks SWA authorization, occupied-slot rejection,
-// cancellation, and the chain-visible write-queued payload.
+// testQueueControlsAndEvent checks SWA auth, occupied-slot rejection, cancellation, and write-queued event.
 func (f *solsticeRewardLifecycle) testQueueControlsAndEvent(t *testing.T) {
 	req := require.New(t)
 	params := &reward19.SetWeightRecordsParams{Updates: []reward19.WeightRecordUpdate{
@@ -740,8 +714,7 @@ func (f *solsticeRewardLifecycle) testQueueControlsAndEvent(t *testing.T) {
 	req.Equal(beforeWeights[1], afterStreams.Streams[1].Weight)
 }
 
-// testDeferredWeightSchedule proves a queued schedule remains inert through
-// its hold, applies when due, and controls subsequent reward allocation.
+// testDeferredWeightSchedule proves a queued schedule stays inert until due, then controls reward splits.
 func (f *solsticeRewardLifecycle) testDeferredWeightSchedule(t *testing.T) {
 	req := require.New(t)
 	consensusWeight := flatWeight(70 * f.pct)
@@ -796,8 +769,7 @@ func (f *solsticeRewardLifecycle) testDeferredWeightSchedule(t *testing.T) {
 	requireShareWithinAtto(t, delta.miner, delta.total, 70*f.pct, awardUpperBound)
 }
 
-// testRemoveStreamTombstoneClaim follows an explicit stream from queued removal
-// through tombstoning, payout, and final tombstone deletion.
+// testRemoveStreamTombstoneClaim exercises stream removal: queued, tombstoned, claimed, deleted.
 func (f *solsticeRewardLifecycle) testRemoveStreamTombstoneClaim(t *testing.T) {
 	req := require.New(t)
 	setShares := f.sendRewardMessage(t, f.writerKey.Address, builtin.MethodsReward.SetSharesExported, &reward19.SetSharesParams{

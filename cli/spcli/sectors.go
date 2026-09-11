@@ -175,7 +175,7 @@ func SectorsStatusCmd(getActorAddress ActorAddressGetter, getOnDiskInfo OnDiskIn
 				fmt.Printf("Expiration:\t\t%s\n", cliutil.EpochTime(head.Height(), status.Expiration))
 				fmt.Printf("DealWeight:\t\t%v\n", status.DealWeight)
 				fmt.Printf("VerifiedDealWeight:\t\t%v\n", status.VerifiedDealWeight)
-				if status.Flags&miner.FULL_QA_POWER != 0 {
+				if miner.SectorIsFullQaPower(status) {
 					fmt.Printf("FullQaPower:\t\ttrue (10x QA power)\n")
 				} else {
 					fmt.Printf("FullQaPower:\t\tfalse\n")

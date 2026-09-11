@@ -5,6 +5,7 @@ import (
 
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	minertypes19 "github.com/filecoin-project/go-state-types/builtin/v19/miner"
 	"github.com/filecoin-project/go-state-types/network"
 )
@@ -26,6 +27,27 @@ const (
 
 var MinSyntheticPoRepVersion = network.Version21
 var MinNonInteractivePoRepVersion = network.Version23
+
+// SectorIsFullQaPower reports whether a sector is effectively at full (10x) QA power.
+// This covers two cases:
+//  1. The FULL_QA_POWER flag is set — NV29+ sectors onboarded after the Solstice upgrade.
+//  2. The VerifiedDealWeight covers the sector's full duration — sectors that reached 10x
+//     via datacap before the NV29 upgrade; the migration does not set FULL_QA_POWER on them.
+func SectorIsFullQaPower(info *SectorOnChainInfo) bool {
+	if info.Flags&FULL_QA_POWER != 0 {
+		return true
+	}
+	duration := int64(info.Expiration - info.PowerBaseEpoch)
+	if duration <= 0 {
+		return false
+	}
+	sectorSize, err := info.SealProof.SectorSize()
+	if err != nil {
+		return false
+	}
+	fullWeight := big.Mul(big.NewInt(int64(sectorSize)), big.NewInt(duration))
+	return info.VerifiedDealWeight.GreaterThanEqual(fullWeight)
+}
 
 func AllPartSectors(mas State, sget func(Partition) (bitfield.BitField, error)) (bitfield.BitField, error) {
 	var parts []bitfield.BitField

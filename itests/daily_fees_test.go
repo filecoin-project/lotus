@@ -628,8 +628,12 @@ func TestDailyFees(t *testing.T) {
 	// We've passed our first deadline where fees were payable, both for the snapped nv24 sectors
 	// and the nv25 sectors
 	expectMinerBurn(expectTotalBurn)
-	// With only one fee payment so far for all sectors, the total in the records should be the same
-	// as the burn
-	checkFeeRecords(expectTotalBurn)
+	// checkFeeRecords expects the per-window DailyFee sum across all live sectors, not the
+	// cumulative burn (which may span multiple proving windows).
+	var expectSingleWindowFees abi.TokenAmount
+	for _, sector := range allSectors {
+		expectSingleWindowFees = big.Add(expectSingleWindowFees, sector.expectedFee)
+	}
+	checkFeeRecords(expectSingleWindowFees)
 	checkMiner16Invariants()
 }

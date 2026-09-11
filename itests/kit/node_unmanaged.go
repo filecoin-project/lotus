@@ -27,6 +27,7 @@ import (
 	"github.com/filecoin-project/go-state-types/batch"
 	"github.com/filecoin-project/go-state-types/builtin"
 	miner14 "github.com/filecoin-project/go-state-types/builtin/v14/miner"
+	stminer "github.com/filecoin-project/go-state-types/builtin/v19/miner"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/exitcode"
@@ -66,6 +67,13 @@ type TestUnmanagedMiner struct {
 
 	committedSectorsLk sync.Mutex
 	committedSectors   map[abi.SectorNumber]sectorInfo
+
+	// preparedSectors holds sectors that have been pre-committed (and had their ProveCommit proof
+	// generated) but whose ProveCommit has not yet been submitted. PreCommitSectors fills it and
+	// ProvePrecommittedSectors drains it, allowing a sector precommitted under one network version
+	// to be proved (and thus activated) under another, e.g. across a NV28→NV29 upgrade.
+	preparedSectorsLk sync.Mutex
+	preparedSectors   map[abi.SectorNumber]sectorInfo
 
 	runningWdPostLoop bool
 	postsLk           sync.Mutex
@@ -159,6 +167,7 @@ func NewTestUnmanagedMiner(ctx context.Context, t *testing.T, full *TestFullNode
 		sealedSectorDir:   sealedSectorDir,
 
 		committedSectors: make(map[abi.SectorNumber]sectorInfo),
+		preparedSectors:  make(map[abi.SectorNumber]sectorInfo),
 
 		ActorAddr:        actorAddr,
 		OwnerKey:         options.ownerKey,
@@ -388,6 +397,154 @@ func (tm *TestUnmanagedMiner) OnboardSectors(
 	return onboarded, tsk
 }
 
+// PreCommitSectors is the pre-commit half of OnboardSectors: it allocates sector numbers, runs
+// PC1/PC2/C1/C2, submits the PreCommit to the network and generates the ProveCommit proof, but
+// does NOT submit ProveCommit. The prepared sectors are retained internally so a later call to
+// ProvePrecommittedSectors (e.g. after the chain has crossed an upgrade) can complete onboarding.
+//
+// This lets a sector that is pre-committed under one network version land (activate) under another,
+// which is exactly the FIP-0118 "precommit NV28 / prove NV29" scenario: only the network version at
+// activation (prove) decides FULL_QA_POWER. Returns the precommitted sector numbers.
+func (tm *TestUnmanagedMiner) PreCommitSectors(
+	proofType abi.RegisteredSealProof,
+	sectorBatch *SectorBatch,
+) ([]abi.SectorNumber, error) {
+
+	req := require.New(tm.t)
+
+	sectors := make([]sectorInfo, len(sectorBatch.manifests))
+
+	sealRandEpoch, err := tm.waitPreCommitSealRandomness(proofType)
+	if err != nil {
+		return nil, err
+	}
+
+	var eg errgroup.Group
+
+	for idx, sm := range sectorBatch.manifests {
+		sector := tm.nextSector(proofType)
+		sector.sealRandomnessEpoch = sealRandEpoch
+		sector.duration = sm.Duration
+		if sector.duration == 0 {
+			sector.duration = builtin.EpochsInDay * 300
+		}
+
+		eg.Go(func() error {
+			s := sector
+			if sm.Piece.Defined() {
+				if tm.mockProofs {
+					s.pieces = []miner14.PieceActivationManifest{{
+						Size:                  abi.PaddedPieceSize(tm.options.sectorSize),
+						CID:                   sm.Piece,
+						VerifiedAllocationKey: sm.Verified,
+					}}
+				} else {
+					ns, err := tm.mkAndSavePiecesToOnboard(s)
+					if err != nil {
+						return fmt.Errorf("failed to create sector with pieces: %w", err)
+					}
+					s = ns
+				}
+			} else {
+				if !tm.mockProofs {
+					ns, err := tm.makeAndSaveCCSector(s)
+					if err != nil {
+						return fmt.Errorf("failed to create CC sector: %w", err)
+					}
+					s = ns
+				}
+			}
+
+			ns, err := tm.generatePreCommit(s, sealRandEpoch)
+			if err != nil {
+				return fmt.Errorf("failed to generate PreCommit for sector: %w", err)
+			}
+			s = ns
+
+			if err := tm.preCommitSectors(sealRandEpoch, proofType, s); err != nil {
+				return fmt.Errorf("failed to submit PreCommit for sector: %w", err)
+			}
+
+			sectorProof, err := tm.generateSectorProof(s)
+			if err != nil {
+				return fmt.Errorf("failed to generate ProveCommit for sector: %w", err)
+			}
+			s.sectorProof = sectorProof
+
+			sectors[idx] = s
+			return nil
+		})
+	}
+
+	if err := eg.Wait(); err != nil {
+		return nil, err
+	}
+
+	req.True(len(sectors) > 0, "no sectors pre-committed")
+
+	nums := make([]abi.SectorNumber, 0, len(sectors))
+	tm.preparedSectorsLk.Lock()
+	defer tm.preparedSectorsLk.Unlock()
+	for _, s := range sectors {
+		tm.preparedSectors[s.sectorNumber] = s
+		nums = append(nums, s.sectorNumber)
+	}
+
+	return nums, nil
+}
+
+// ProvePrecommittedSectors completes onboarding for sectors prepared by PreCommitSectors by
+// submitting their ProveCommit to the network. On success each sector is committed and registered
+// with the miner for WindowPoSt. Returns the sectors that were successfully committed.
+func (tm *TestUnmanagedMiner) ProvePrecommittedSectors(
+	proofType abi.RegisteredSealProof,
+	sectorNumbers []abi.SectorNumber,
+) ([]abi.SectorNumber, error) {
+
+	req := require.New(tm.t)
+
+	sectors := make([]sectorInfo, 0, len(sectorNumbers))
+	tm.preparedSectorsLk.Lock()
+	for _, n := range sectorNumbers {
+		s, ok := tm.preparedSectors[n]
+		if !ok {
+			tm.preparedSectorsLk.Unlock()
+			return nil, fmt.Errorf("sector %d was not prepared for prove-commit", n)
+		}
+		sectors = append(sectors, s)
+	}
+	tm.preparedSectorsLk.Unlock()
+
+	req.True(len(sectors) > 0, "no prepared sectors to prove")
+
+	exitCodes, _ := tm.submitProveCommit(proofType, sectors, true, nil)
+
+	onboarded := make([]abi.SectorNumber, 0, len(sectors))
+	for i, s := range sectors {
+		if exitCodes[i].IsSuccess() {
+			tm.setCommittedSector(s)
+			onboarded = append(onboarded, s.sectorNumber)
+		} else {
+			tm.log("sector %d ProveCommit failed with exit code %s", s.sectorNumber, exitCodes[i])
+		}
+	}
+
+	req.Equal(len(sectors), len(onboarded),
+		"expected all prepared sectors to prove-commit successfully")
+
+	// Drain the sectors we just proved from preparedSectors so a later ProvePrecommittedSectors
+	// (or a repeated call with the same numbers) is not offered them again as "prepared".
+	tm.preparedSectorsLk.Lock()
+	for _, n := range onboarded {
+		delete(tm.preparedSectors, n)
+	}
+	tm.preparedSectorsLk.Unlock()
+
+	tm.wdPostLoop()
+
+	return onboarded, nil
+}
+
 // SnapDeal snaps a deal into a sector, generating a new sealed sector and updating the sector's state.
 // WindowPoSt should continue to operate after this operation if required.
 // The SectorManifest argument (currently) only impacts mock proofs, and is ignored otherwise.
@@ -494,6 +651,10 @@ func (tm *TestUnmanagedMiner) SnapDeal(sectorNumber abi.SectorNumber, sm SectorM
 func (tm *TestUnmanagedMiner) ExtendSectorExpiration(sectorNumber abi.SectorNumber, expiration abi.ChainEpoch) types.TipSetKey {
 	req := require.New(tm.t)
 
+	// ExtendSectorExpiration2 is rejected on a sector in a sensitive/immutable deadline (current,
+	// next or previous), so wait until its deadline is mutable before submitting.
+	tm.waitForMutableDeadline(sectorNumber)
+
 	sl, err := tm.FullNode.StateSectorPartition(tm.ctx, tm.ActorAddr, sectorNumber, types.EmptyTSK)
 	req.NoError(err)
 
@@ -532,6 +693,14 @@ func (tm *TestUnmanagedMiner) setCommittedSector(sectorInfo sectorInfo) {
 	tm.committedSectorsLk.Lock()
 	tm.committedSectors[sectorInfo.sectorNumber] = sectorInfo
 	tm.committedSectorsLk.Unlock()
+}
+
+func (tm *TestUnmanagedMiner) unsetCommittedSectors(sectorNumbers []abi.SectorNumber) {
+	tm.committedSectorsLk.Lock()
+	defer tm.committedSectorsLk.Unlock()
+	for _, sn := range sectorNumbers {
+		delete(tm.committedSectors, sn)
+	}
 }
 
 // nextSector creates a new sectorInfo{} with a new unique sector number for this miner,
@@ -723,9 +892,16 @@ func (tm *TestUnmanagedMiner) waitForMutableDeadline(sectorNum abi.SectorNumber)
 	dlinfo, err := tm.FullNode.StateMinerProvingDeadline(tm.ctx, tm.ActorAddr, ts.Key())
 	req.NoError(err)
 
-	sectorDeadlineCurrent := sl.Deadline == dlinfo.Index                                                          // we are in the proving deadline
-	sectorDeadlineNext := (dlinfo.Index+1)%dlinfo.WPoStPeriodDeadlines == sl.Deadline                             // we are in the deadline after the proving deadline
-	sectorDeadlinePrev := (dlinfo.Index-1+dlinfo.WPoStPeriodDeadlines)%dlinfo.WPoStPeriodDeadlines == sl.Deadline // we are in the deadline before the proving deadline
+	// Classify against the epoch-derived current deadline index (CurrentDeadlineIndex) rather than
+	// dlinfo.Index. dlinfo.Index is the on-chain CurrentDeadline, which only ticks while the miner is
+	// enrolled in cron; when it is not it can lag the epoch-derived index that the actor actually
+	// enforces (the same source sectorsToPostWithDeadline/submitWindowPost use). Using dlinfo.Index
+	// here could misclassify a mutable sector as safe and land a message in an immutable window.
+	current := CurrentDeadlineIndex(dlinfo)
+
+	sectorDeadlineCurrent := sl.Deadline == current                                                          // we are in the proving deadline
+	sectorDeadlineNext := (current+1)%dlinfo.WPoStPeriodDeadlines == sl.Deadline                             // we are in the deadline after the proving deadline
+	sectorDeadlinePrev := (current-1+dlinfo.WPoStPeriodDeadlines)%dlinfo.WPoStPeriodDeadlines == sl.Deadline // we are in the deadline before the proving deadline
 
 	if sectorDeadlineCurrent || sectorDeadlineNext || sectorDeadlinePrev {
 		// We are in a sensitive, or immutable deadline, we need to wait
@@ -1008,7 +1184,7 @@ func (tm *TestUnmanagedMiner) waitForNextPostDeadlineFrom(di *dline.Info) error 
 	// the current deadline ends, which is also when the next deadline opens.
 	nextDeadlineEpoch := di.Close
 
-	tm.log("Window PoST waiting until next challenge window, currentDeadlineIdx: %d, nextDeadlineEpoch: %d", di.Index, nextDeadlineEpoch)
+	tm.log("Window PoST waiting until next challenge window, currentDeadlineIdx: %d, nextDeadlineEpoch: %d", CurrentDeadlineIndex(di), nextDeadlineEpoch)
 
 	heads, err := tm.FullNode.ChainNotify(ctx)
 	if err != nil {
@@ -1034,6 +1210,16 @@ func (tm *TestUnmanagedMiner) waitForNextPostDeadlineFrom(di *dline.Info) error 
 func (tm *TestUnmanagedMiner) sectorsToPostWithDeadline(di *dline.Info) ([]abi.SectorNumber, error) {
 	currentDeadlineIdx := CurrentDeadlineIndex(di)
 
+	// Skip sectors that are currently faulted: a WindowPoSt must not include a faulted sector, and the
+	// actor would reject such a post. (A recovering sector still needs a post to complete its recovery,
+	// but driving that reliably through this deadline-by-deadline loop is out of scope for the kit; the
+	// fault-free/healthy case that every other test exercises has empty fault + recovery sets, so this
+	// is a no-op for them.) This filter is what lets a test declare a fault and keep the loop alive.
+	faults, err := tm.FullNode.StateMinerFaults(tm.ctx, tm.ActorAddr, types.EmptyTSK)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get miner faults: %w", err)
+	}
+
 	var allSectors []abi.SectorNumber
 	var sectorsToPost []abi.SectorNumber
 
@@ -1044,6 +1230,14 @@ func (tm *TestUnmanagedMiner) sectorsToPostWithDeadline(di *dline.Info) ([]abi.S
 	tm.committedSectorsLk.Unlock()
 
 	for _, sectorNumber := range allSectors {
+		isFaulted, err := faults.IsSet(uint64(sectorNumber))
+		if err != nil {
+			return nil, fmt.Errorf("failed to check fault status for sector %d: %w", sectorNumber, err)
+		}
+		if isFaulted {
+			tm.log("WindowPoSt skipping faulted sector %d", sectorNumber)
+			continue
+		}
 		sp, err := tm.FullNode.StateSectorPartition(tm.ctx, tm.ActorAddr, sectorNumber, types.EmptyTSK)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get sector partition: %w", err)
@@ -1106,6 +1300,11 @@ func (tm *TestUnmanagedMiner) submitWindowPost(di *dline.Info, sectorNumbers []a
 	// di is passed in from the caller (wdPostLoop) so the deadline we post for is consistent with
 	// the one used to select sectors. Fetching a fresh di here would race with the chain advancing
 	// past the deadline boundary, causing a deadline mismatch error and killing the post loop.
+	//
+	// Use CurrentDeadlineIndex rather than di.Index: when a miner is not enrolled in cron,
+	// di.Index is not ticking and may differ from the epoch-derived deadline index that
+	// sectorsToPostWithDeadline used to select these sectors.
+	currentDeadlineIdx := CurrentDeadlineIndex(di)
 	chainRandomnessEpoch := di.Challenge
 
 	for _, sectorNumber := range sectorNumbers {
@@ -1119,8 +1318,8 @@ func (tm *TestUnmanagedMiner) submitWindowPost(di *dline.Info, sectorNumbers []a
 			return fmt.Errorf("Miner(%s): failed to get sector partition for sector %d: %w", tm.ActorAddr, sectorNumber, err)
 		}
 
-		if di.Index != sp.Deadline {
-			return fmt.Errorf("Miner(%s): sector %d is not in the expected deadline %d, but %d", tm.ActorAddr, sectorNumber, sp.Deadline, di.Index)
+		if currentDeadlineIdx != sp.Deadline {
+			return fmt.Errorf("Miner(%s): sector %d is not in the expected deadline %d, but %d", tm.ActorAddr, sectorNumber, sp.Deadline, currentDeadlineIdx)
 		}
 
 		if _, ok := partitionMap[sp.Partition]; !ok {
@@ -1132,7 +1331,7 @@ func (tm *TestUnmanagedMiner) submitWindowPost(di *dline.Info, sectorNumbers []a
 	chainRandomness, err := tm.FullNode.StateGetRandomnessFromTickets(tm.ctx, crypto.DomainSeparationTag_PoStChainCommit, chainRandomnessEpoch,
 		nil, head.Key())
 	if err != nil {
-		return fmt.Errorf("Miner(%s): failed to get chain randomness for deadline %d: %w", tm.ActorAddr, di.Index, err)
+		return fmt.Errorf("Miner(%s): failed to get chain randomness for deadline %d: %w", tm.ActorAddr, currentDeadlineIdx, err)
 	}
 
 	minerInfo, err := tm.FullNode.StateMinerInfo(tm.ctx, tm.ActorAddr, head.Key())
@@ -1149,11 +1348,11 @@ func (tm *TestUnmanagedMiner) submitWindowPost(di *dline.Info, sectorNumbers []a
 		} else {
 			proofBytes, err = tm.generateWindowPost(sectors)
 			if err != nil {
-				return fmt.Errorf("Miner(%s): failed to generate window post for deadline %d, partitions %v: %w", tm.ActorAddr, di.Index, partitions, err)
+				return fmt.Errorf("Miner(%s): failed to generate window post for deadline %d, partitions %v: %w", tm.ActorAddr, currentDeadlineIdx, partitions, err)
 			}
 		}
 
-		tm.log("WindowPoST submitting %d sectors for deadline %d, partitions %v", len(sectors), di.Index, partitions)
+		tm.log("WindowPoST submitting %d sectors for deadline %d, partitions %v", len(sectors), currentDeadlineIdx, partitions)
 
 		pp := make([]miner14.PoStPartition, len(partitions))
 		for i, p := range partitions {
@@ -1166,12 +1365,12 @@ func (tm *TestUnmanagedMiner) submitWindowPost(di *dline.Info, sectorNumbers []a
 		mCid, err := tm.mpoolPushMessage(&miner14.SubmitWindowedPoStParams{
 			ChainCommitEpoch: chainRandomnessEpoch,
 			ChainCommitRand:  chainRandomness,
-			Deadline:         di.Index,
+			Deadline:         currentDeadlineIdx,
 			Partitions:       pp,
 			Proofs:           []proof.PoStProof{{PoStProof: minerInfo.WindowPoStProofType, ProofBytes: proofBytes}}, // can only have 1
 		}, 0, builtin.MethodsMiner.SubmitWindowedPoSt)
 		if err != nil {
-			return fmt.Errorf("Miner(%s): failed to submit PoSt for deadline %d, partitions %v: %w", tm.ActorAddr, di.Index, partitions, err)
+			return fmt.Errorf("Miner(%s): failed to submit PoSt for deadline %d, partitions %v: %w", tm.ActorAddr, currentDeadlineIdx, partitions, err)
 		}
 
 		postMessages = append(postMessages, mCid)
@@ -1208,11 +1407,11 @@ func (tm *TestUnmanagedMiner) submitWindowPost(di *dline.Info, sectorNumbers []a
 			return fmt.Errorf("Miner(%s): failed to wait for PoSt message %s: %w", tm.ActorAddr, mCid, err)
 		}
 		if !r.Receipt.ExitCode.IsSuccess() {
-			return fmt.Errorf("Miner(%s): PoSt submission failed for deadline %d: %s", tm.ActorAddr, di.Index, r.Receipt.ExitCode)
+			return fmt.Errorf("Miner(%s): PoSt submission failed for deadline %d: %s", tm.ActorAddr, currentDeadlineIdx, r.Receipt.ExitCode)
 		}
 	}
 
-	tm.log("WindowPoST(%v) submitted for deadline %d", sectorNumbers, di.Index)
+	tm.log("WindowPoST(%v) submitted for deadline %d", sectorNumbers, currentDeadlineIdx)
 
 	return nil
 }
@@ -1513,6 +1712,198 @@ func (tm *TestUnmanagedMiner) SubmitMessage(
 	}
 
 	return tm.waitMessage(mCid)
+}
+
+// UpgradeSectorQuality sends the FIP-0118 (Solstice) method 37 batch message for the
+// given sector numbers, grouping them by (deadline, partition). If newExpiration is
+// non-nil each upgraded sector is also extended to that expiration in the same call
+// (per FIP-0118 §5 the multiplier/pledge carry forward and are not raised again for
+// an already-10x sector). The message is pushed from the miner's owner address, which
+// in the kit ensemble is also the worker, so it is an authorised caller for this
+// worker/control-gated method. It returns the confirmed lookup after asserting success.
+// sectorsByDeadlinePartition groups the given sector numbers by their on-chain (deadline,
+// partition) location. Shared by UpgradeSectorQuality, TerminateSectors, DeclareFaults and
+// RecoverFaults, whose batch params are all organized per (deadline, partition).
+func (tm *TestUnmanagedMiner) sectorsByDeadlinePartition(sectorNumbers []abi.SectorNumber) map[[2]uint64][]uint64 {
+	req := require.New(tm.t)
+	grouped := make(map[[2]uint64][]uint64)
+	for _, sn := range sectorNumbers {
+		loc, err := tm.FullNode.StateSectorPartition(tm.ctx, tm.ActorAddr, sn, types.EmptyTSK)
+		req.NoError(err, "locating sector %d", sn)
+		k := [2]uint64{loc.Deadline, loc.Partition}
+		grouped[k] = append(grouped[k], uint64(sn))
+	}
+	return grouped
+}
+
+func (tm *TestUnmanagedMiner) UpgradeSectorQuality(sectorNumbers []abi.SectorNumber, newExpiration *abi.ChainEpoch) (*api.MsgLookup, error) {
+	grouped := tm.sectorsByDeadlinePartition(sectorNumbers)
+	upgrades := make([]stminer.UpgradeSectorQuality, 0, len(grouped))
+	for k, sectorIDs := range grouped {
+		// No immutability-window wait is needed here: FIP-0118 UpgradeSectorQuality is NOT gated by
+		// the proving deadline (unlike TerminateSectors). It is accepted even in the current proving
+		// deadline and is only rejected on a faulted (inactive) sector. This is verified against the
+		// real chain by TestMigrationNV29SolsticeDeadlineImmutabilityWindow, so submitting
+		// immediately is safe.
+		u := stminer.UpgradeSectorQuality{
+			Deadline:  k[0],
+			Partition: k[1],
+			Sectors:   bitfield.NewFromSet(sectorIDs),
+		}
+		if newExpiration != nil {
+			exp := *newExpiration
+			u.NewExpiration = &exp
+		}
+		upgrades = append(upgrades, u)
+	}
+
+	tm.log("Submitting UpgradeSectorQuality for %d sector(s)", len(sectorNumbers))
+
+	lookup, err := tm.SubmitMessage(&stminer.UpgradeSectorQualityParams{Upgrades: upgrades}, 0, builtin.MethodsMiner.UpgradeSectorQuality)
+	if err != nil {
+		return nil, err
+	}
+	if lookup.Receipt.ExitCode != exitcode.Ok {
+		return lookup, fmt.Errorf("UpgradeSectorQuality failed with exit code %d (return: %x)", lookup.Receipt.ExitCode, lookup.Receipt.Return)
+	}
+	return lookup, nil
+}
+
+// waitForMutableDeadlineOfAll waits until every distinct deadline in `grouped` is mutable at the
+// same chain state (none of them is the current proving deadline or its predecessor/successor).
+// TerminateSectors/DeclareFaults reject a sector in that sensitive window, and a batch can span
+// several deadlines.
+//
+// Deadlines must be judged against one consistent current. Judging them one-by-one is racy: the wait
+// that frees one group advances the chain and can push an already-freed deadline back into the window.
+// So each iteration takes a fresh head, computes the current once, and returns only if every deadline
+// is mutable at it; otherwise it jumps to the next current index where all are simultaneously mutable,
+// waits for the chain, and loops back to re-verify.
+func (tm *TestUnmanagedMiner) waitForMutableDeadlineOfAll(grouped map[[2]uint64][]uint64) {
+	req := require.New(tm.t)
+
+	// Distinct involved deadlines (partition doesn't matter for mutability, only the deadline).
+	seen := make(map[uint64]struct{}, len(grouped))
+	var deadlines []uint64
+	for k := range grouped {
+		if _, ok := seen[k[0]]; !ok {
+			seen[k[0]] = struct{}{}
+			deadlines = append(deadlines, k[0])
+		}
+	}
+
+	// mutable reports whether current index `c` has deadline `d` outside the sensitive window
+	// {d-1, d, d+1} (mod WPoStPeriodDeadlines).
+	mutable := func(c, d, W uint64) bool {
+		cm := c % W
+		dm := d % W
+		return cm != dm && cm != (dm+1)%W && cm != (dm+W-1)%W
+	}
+
+	for {
+		ts, err := tm.FullNode.ChainHead(tm.ctx)
+		req.NoError(err)
+		dlinfo, err := tm.FullNode.StateMinerProvingDeadline(tm.ctx, tm.ActorAddr, ts.Key())
+		req.NoError(err)
+
+		// Classify against the epoch-derived current deadline rather than dlinfo.Index: it only ticks
+		// while the miner is enrolled in cron, otherwise it lags the index the actor actually enforces.
+		W := dlinfo.WPoStPeriodDeadlines
+		current := CurrentDeadlineIndex(dlinfo)
+
+		allMutable := true
+		for _, d := range deadlines {
+			if !mutable(current, d, W) {
+				allMutable = false
+				break
+			}
+		}
+		if allMutable {
+			return // every involved deadline is safe together at this current
+		}
+
+		// Jump to the next current index (within one full cycle) where all deadlines are simultaneously
+		// mutable. Each deadline forbids only 3 of the W indices, so such an index always exists in
+		// [current+1, current+W] for any realistic number of groups.
+		var target uint64
+		for cand := current + 1; cand <= current+W; cand++ {
+			ok := true
+			for _, d := range deadlines {
+				if !mutable(cand, d, W) {
+					ok = false
+					break
+				}
+			}
+			if ok {
+				target = cand
+				break
+			}
+		}
+		req.True(target != 0, "waitForMutableDeadlineOfAll: no future deadline frees all involved deadlines")
+
+		// The epoch-derived current index advances by one every WPoStChallengeWindow, so wait until it
+		// reaches `target`, then loop to re-verify all groups together against a fresh head.
+		targetEpoch := dlinfo.CurrentEpoch + abi.ChainEpoch(target-current)*dlinfo.WPoStChallengeWindow
+		_, err = tm.FullNode.WaitTillChainOrError(tm.ctx, HeightAtLeast(targetEpoch+5))
+		req.NoError(err)
+	}
+}
+
+// TerminateSectors terminates the given sectors. The miner actor defers actual removal + fee to the
+// end of the current proving period (OnDeferredCronEvent), so power is not dropped synchronously.
+// On success the terminated sectors are dropped from the local committedSectors set so the wdPost
+// loop stops trying to post them (they are no longer owed a WindowPoSt); otherwise a rejected post
+// for such a sector would kill the whole wdPost loop, including posts for still-healthy sectors.
+func (tm *TestUnmanagedMiner) TerminateSectors(sectorNumbers []abi.SectorNumber) {
+	req := require.New(tm.t)
+	if len(sectorNumbers) == 0 {
+		req.FailNow("TerminateSectors: no sectors to terminate")
+	}
+	grouped := tm.sectorsByDeadlinePartition(sectorNumbers)
+	tm.waitForMutableDeadlineOfAll(grouped)
+	terms := make([]stminer.TerminationDeclaration, 0, len(grouped))
+	for k, ids := range grouped {
+		terms = append(terms, stminer.TerminationDeclaration{Deadline: k[0], Partition: k[1], Sectors: bitfield.NewFromSet(ids)})
+	}
+	tm.log("Terminating %d sector(s)", len(sectorNumbers))
+	r, err := tm.SubmitMessage(&stminer.TerminateSectorsParams{Terminations: terms}, 0, builtin.MethodsMiner.TerminateSectors)
+	req.NoError(err)
+	req.True(r.Receipt.ExitCode.IsSuccess(), "TerminateSectors failed with exit %d", r.Receipt.ExitCode)
+
+	tm.unsetCommittedSectors(sectorNumbers)
+}
+
+// DeclareFaults declares the given sectors faulty (they must not be in the currently-open proving
+// window, so we wait for a mutable deadline first).
+func (tm *TestUnmanagedMiner) DeclareFaults(sectorNumbers []abi.SectorNumber) {
+	req := require.New(tm.t)
+	if len(sectorNumbers) == 0 {
+		req.FailNow("DeclareFaults: no sectors to declare faulty")
+	}
+	grouped := tm.sectorsByDeadlinePartition(sectorNumbers)
+	tm.waitForMutableDeadlineOfAll(grouped)
+	faults := make([]stminer.FaultDeclaration, 0, len(grouped))
+	for k, ids := range grouped {
+		faults = append(faults, stminer.FaultDeclaration{Deadline: k[0], Partition: k[1], Sectors: bitfield.NewFromSet(ids)})
+	}
+	tm.log("Declaring faults for %d sector(s)", len(sectorNumbers))
+	r, err := tm.SubmitMessage(&stminer.DeclareFaultsParams{Faults: faults}, 0, builtin.MethodsMiner.DeclareFaults)
+	req.NoError(err)
+	req.True(r.Receipt.ExitCode.IsSuccess(), "DeclareFaults failed with exit %d", r.Receipt.ExitCode)
+}
+
+// RecoverFaults declares the given (previously faulty) sectors as recovered.
+func (tm *TestUnmanagedMiner) RecoverFaults(sectorNumbers []abi.SectorNumber) {
+	req := require.New(tm.t)
+	grouped := tm.sectorsByDeadlinePartition(sectorNumbers)
+	recoveries := make([]stminer.RecoveryDeclaration, 0, len(grouped))
+	for k, ids := range grouped {
+		recoveries = append(recoveries, stminer.RecoveryDeclaration{Deadline: k[0], Partition: k[1], Sectors: bitfield.NewFromSet(ids)})
+	}
+	tm.log("Declaring recoveries for %d sector(s)", len(sectorNumbers))
+	r, err := tm.SubmitMessage(&stminer.DeclareFaultsRecoveredParams{Recoveries: recoveries}, 0, builtin.MethodsMiner.DeclareFaultsRecovered)
+	req.NoError(err)
+	req.True(r.Receipt.ExitCode.IsSuccess(), "DeclareFaultsRecovered failed with exit %d", r.Receipt.ExitCode)
 }
 
 func (tm *TestUnmanagedMiner) waitMessage(mCid cid.Cid) (*api.MsgLookup, error) {
