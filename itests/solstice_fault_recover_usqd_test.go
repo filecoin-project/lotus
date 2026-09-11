@@ -29,6 +29,30 @@ import (
 	"github.com/filecoin-project/lotus/storage/wdpost"
 )
 
+// waitUsqdFaultedAndPastDeadline waits until target is faulted (QAP drops to want) and the current deadline has passed the target's.
+func waitUsqdFaultedAndPastDeadline(ctx context.Context, t *testing.T, client *kit.TestFullNode, maddr address.Address, target abi.SectorNumber, targetDeadline uint64, want uint64, maxWait time.Duration) bool {
+	t.Helper()
+	endBy := time.Now().Add(maxWait)
+	for {
+		pw, err := client.StateMinerPower(ctx, maddr, types.EmptyTSK)
+		require.NoError(t, err)
+		if pw.MinerPower.QualityAdjPower.Uint64() == want {
+			di, err := client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
+			require.NoError(t, err)
+			if di.Index > targetDeadline {
+				return true
+			}
+		}
+		if time.Now().After(endBy) {
+			require.FailNowf(t, "fault wait timeout",
+				"target %d never became faulted with the deadline past %d", target, targetDeadline)
+		}
+		head, err := client.ChainHead(ctx)
+		require.NoError(t, err)
+		client.WaitTillChain(ctx, kit.HeightAtLeast(head.Height()+40))
+	}
+}
+
 // TestMigrationNV29SolsticeFaultRecoverUsqdFullPower drives fault→recover for a USQ'd legacy sector: fault removes its 10x, recovery restores FULL_QA flag and full 10x.
 func TestMigrationNV29SolsticeFaultRecoverUsqdFullPower(t *testing.T) {
 	kit.QuietMiningLogs()
@@ -147,7 +171,7 @@ func TestMigrationNV29SolsticeFaultRecoverUsqdFullPower(t *testing.T) {
 	}
 	markFailed(true)
 
-	faulted := waitFaultedAndPastDeadline(ctx, t, client, maddr, target, targetDeadline, baseQA-uint64(ssz), 4*time.Minute)
+	faulted := waitUsqdFaultedAndPastDeadline(ctx, t, client, maddr, target, targetDeadline, baseQA-uint64(ssz), 4*time.Minute)
 	require.True(t, faulted, "the USQ'd sector %d must be declared faulty", target)
 
 	markFailed(false)
