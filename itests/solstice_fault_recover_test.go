@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	stminer "github.com/filecoin-project/go-state-types/builtin/v19/miner"
 	"github.com/filecoin-project/go-state-types/network"
 	gstStore "github.com/filecoin-project/go-state-types/store"
 
@@ -23,8 +24,6 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/mock"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 	"github.com/filecoin-project/lotus/storage/wdpost"
-
-	stminer "github.com/filecoin-project/go-state-types/builtin/v19/miner"
 )
 
 // TestMigrationNV29SolsticeFaultAndRecover faults a native FULL_QA(10x) sector: QAP drops to zero, USQ on faulted sector rejected, recovery recorded.
