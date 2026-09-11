@@ -63,8 +63,7 @@ func TestTerminate(t *testing.T) {
 
 	{
 		// Wait until proven.
-		di, err := client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
-		require.NoError(t, err)
+		di := client.CurrentProvingDeadline(ctx, maddr)
 
 		waitUntil := di.Open + di.WPoStProvingPeriod
 		t.Logf("End for head.Height > %d", waitUntil)
@@ -291,8 +290,7 @@ loop:
 		require.Equal(t, uint64(0), bflen(parts[0].LiveSectors))
 	}
 
-	di, err := client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
-	require.NoError(t, err)
+	di := client.CurrentProvingDeadline(ctx, maddr)
 
 	waitUntil := di.PeriodStart + di.WPoStProvingPeriod + 20 // slack like above
 	t.Logf("End for head.Height > %d", waitUntil)
