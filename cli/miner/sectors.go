@@ -87,6 +87,59 @@ func validateUpgradeQualityNetworkVersion(nv network.Version) error {
 	return nil
 }
 
+// sectorLoc identifies an active sector's position in the miner's deadline/partition layout.
+type sectorLoc struct {
+	deadline  uint64
+	partition uint64
+	sectorNum uint64
+}
+
+// packUpgradeQualityMessages packs ordered sectors into UpgradeSectorQuality message params,
+// capped at addrSectors per message. Groups sharing a (deadline, partition) are kept together
+// and split across consecutive messages only when they exceed the remaining capacity.
+func packUpgradeQualityMessages(toUpgrade []sectorLoc, addrSectors int) []stminer.UpgradeSectorQualityParams {
+	var messages []stminer.UpgradeSectorQualityParams
+	cur := stminer.UpgradeSectorQualityParams{}
+	curCount := 0
+	for i := 0; i < len(toUpgrade); {
+		deadline := toUpgrade[i].deadline
+		partition := toUpgrade[i].partition
+
+		// End of this (deadline, partition) group.
+		end := i
+		for end < len(toUpgrade) && toUpgrade[end].deadline == deadline && toUpgrade[end].partition == partition {
+			end++
+		}
+
+		// Chunk the group into the current message; start a new one when full.
+		for i < end {
+			chunkEnd := i + (addrSectors - curCount)
+			if chunkEnd > end {
+				chunkEnd = end
+			}
+			sns := make([]uint64, chunkEnd-i)
+			for k, e := range toUpgrade[i:chunkEnd] {
+				sns[k] = e.sectorNum
+			}
+			cur.Upgrades = append(cur.Upgrades, stminer.UpgradeSectorQuality{
+				Deadline:  deadline,
+				Partition: partition,
+				Sectors:   bitfield.NewFromSet(sns),
+			})
+			curCount += len(sns)
+			i = chunkEnd
+			if curCount == addrSectors {
+				messages = append(messages, cur)
+				cur, curCount = stminer.UpgradeSectorQualityParams{}, 0
+			}
+		}
+	}
+	if len(cur.Upgrades) > 0 {
+		messages = append(messages, cur)
+	}
+	return messages
+}
+
 var sectorsUpgradeQualityCmd = &cli.Command{
 	Name:  "upgrade-quality",
 	Usage: "upgrade legacy sectors to full QA power",
@@ -165,14 +218,8 @@ var sectorsUpgradeQualityCmd = &cli.Command{
 			return xerrors.Errorf("loading miner state: %w", err)
 		}
 
-		// Traverse deadlines and partitions in order. ForEachDeadline/ForEachPartition/ForEach
-		// iterates in ascending (deadline, partition, sectorNum) order, so toUpgrade is already
-		// sorted and no further sort is needed.
-		type sectorLoc struct {
-			deadline  uint64
-			partition uint64
-			sectorNum uint64
-		}
+		// ForEachDeadline/ForEachPartition/ForEach iterates in ascending order,
+		// so toUpgrade is already sorted; no further sort needed.
 		var toUpgrade []sectorLoc
 		if err := mas.ForEachDeadline(func(dlIdx uint64, dl miner.Deadline) error {
 			return dl.ForEachPartition(func(partIdx uint64, part miner.Partition) error {
@@ -204,54 +251,17 @@ var sectorsUpgradeQualityCmd = &cli.Command{
 		}
 		addrSectors := sectorsMax
 		if n := cctx.Int("max-sectors"); n != 0 {
+			if n < 0 {
+				return xerrors.Errorf("--max-sectors must be positive, got %d", n)
+			}
 			if n > sectorsMax {
 				return xerrors.Errorf("--max-sectors %d exceeds the protocol limit of %d", n, sectorsMax)
 			}
 			addrSectors = n
 		}
 
-		// Pack sorted sectors into messages. Each message holds at most addrSectors total sectors
-		// across one or more (deadline, partition) groups. A group that exceeds the cap is split
-		// across consecutive messages.
-		var messages []stminer.UpgradeSectorQualityParams
-		cur := stminer.UpgradeSectorQualityParams{}
-		curCount := 0
-		for i := 0; i < len(toUpgrade); {
-			deadline := toUpgrade[i].deadline
-			partition := toUpgrade[i].partition
-
-			// Find the end of this (deadline, partition) group.
-			end := i
-			for end < len(toUpgrade) && toUpgrade[end].deadline == deadline && toUpgrade[end].partition == partition {
-				end++
-			}
-
-			// Add the group's sectors in chunks that fit the remaining space in the current message.
-			for i < end {
-				chunkEnd := i + (addrSectors - curCount)
-				if chunkEnd > end {
-					chunkEnd = end
-				}
-				sns := make([]uint64, chunkEnd-i)
-				for k, e := range toUpgrade[i:chunkEnd] {
-					sns[k] = e.sectorNum
-				}
-				cur.Upgrades = append(cur.Upgrades, stminer.UpgradeSectorQuality{
-					Deadline:  deadline,
-					Partition: partition,
-					Sectors:   bitfield.NewFromSet(sns),
-				})
-				curCount += len(sns)
-				i = chunkEnd
-				if curCount == addrSectors {
-					messages = append(messages, cur)
-					cur, curCount = stminer.UpgradeSectorQualityParams{}, 0
-				}
-			}
-		}
-		if len(cur.Upgrades) > 0 {
-			messages = append(messages, cur)
-		}
+		// Pack ordered sectors into messages, capped at addrSectors sectors per message.
+		messages := packUpgradeQualityMessages(toUpgrade, addrSectors)
 		total := len(toUpgrade)
 
 		// Send (or simulate) each message.

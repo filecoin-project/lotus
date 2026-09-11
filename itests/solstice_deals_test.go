@@ -8,6 +8,8 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/builtin"
 	miner14 "github.com/filecoin-project/go-state-types/builtin/v14/miner"
 	verifreg14 "github.com/filecoin-project/go-state-types/builtin/v14/verifreg"
 	"github.com/filecoin-project/go-state-types/network"
@@ -362,6 +364,145 @@ func TestMigrationNV29SolsticePostUpgradeDeal(t *testing.T) {
 	req.Equal(uint64(legacySet)*uint64(defaultSectorSize)+uint64(fullSet)*uint64(defaultSectorSize)*10,
 		pw.MinerPower.QualityAdjPower.Uint64(),
 		"filter-classified QAP (10x per FULL_QA deal sector, 1x per legacy) must equal the real miner QAP")
+
+	um.AssertNoWindowPostError()
+}
+
+// TestMigrationNV29SolsticeFullQaHelperSnapExtend verifies that miner.SectorIsFullQaPower
+// correctly classifies legacy verified sectors whose PowerBaseEpoch has been reset by a snap
+// or extension, and that its verdict matches on-chain QA power at every step.
+func TestMigrationNV29SolsticeFullQaHelperSnapExtend(t *testing.T) {
+	req := require.New(t)
+	kit.QuietMiningLogs()
+
+	const (
+		defaultSectorSize = abi.SectorSize(2 << 10) // 2KiB
+		upgradeEpoch      = abi.ChainEpoch(3000)
+	)
+
+	rootKey := must.One(key.GenerateKey(types.KTSecp256k1))
+	verifierKey := must.One(key.GenerateKey(types.KTSecp256k1))
+	verifiedClientKey := must.One(key.GenerateKey(types.KTBLS))
+	bal := types.MustParseFIL("100fil").Int64()
+
+	e := kit.NewSolsticeUpgradeEnv(t, kit.SolsticeOpts{
+		UpgradeEpoch: upgradeEpoch, RootKey: rootKey, VerifierKey: verifierKey,
+		VerifiedClientKey: verifiedClientKey, Bal: bal,
+	})
+	ctx, client, um, maddr := e.Ctx, e.Client, e.Um, e.Maddr
+	sealProofType := e.SealProof
+	defer um.Stop()
+
+	_, vclients := kit.SetupVerifiedClients(ctx, t, client, rootKey, verifierKey, []*key.Key{verifiedClientKey})
+	verifiedClientAddr := vclients[0]
+
+	minerId := must.One(address.IDFromAddress(maddr))
+	size := abi.PaddedPieceSize(defaultSectorSize)
+
+	// Allocations for: the directly-onboarded legacy verified sector, and the CC sector we snap into
+	// a verified deal.
+	pVer := abi.PieceInfo{Size: size, PieceCID: kit.BogusPieceCid2}
+	verClient, verAlloc := kit.SetupAllocation(ctx, t, client, minerId, pVer, verifiedClientAddr, 0, 0)
+	pSnap := abi.PieceInfo{Size: size, PieceCID: kit.BogusPieceCid1}
+	snapClient, snapAlloc := kit.SetupAllocation(ctx, t, client, minerId, pSnap, verifiedClientAddr, 0, 0)
+
+	ver, _ := um.OnboardSectors(sealProofType, kit.NewSectorBatch().AddSector(
+		kit.SectorWithVerifiedPiece(pVer.PieceCID, &miner14.VerifiedAllocationKey{
+			Client: verClient,
+			ID:     verifreg14.AllocationId(verAlloc),
+		})),
+	)
+	req.Len(ver, 1)
+
+	cc, _ := um.OnboardSectors(sealProofType, kit.NewSectorBatch().AddEmptySectors(2))
+	req.Len(cc, 2)
+	ccKeep, ccSnap := cc[0], cc[1]
+
+	um.WaitTillActivatedAndAssertPower([]abi.SectorNumber{ver[0], ccKeep, ccSnap},
+		uint64(defaultSectorSize)*3, // raw power
+		uint64(defaultSectorSize)*10+uint64(defaultSectorSize)+uint64(defaultSectorSize), // QAP: verified 10x + 1x + 1x
+	)
+
+	// assertHelperMatchesPower sums helper verdicts (10x or 1x) and checks against on-chain QA power.
+	assertHelperMatchesPower := func(tsk types.TipSetKey) {
+		active, err := client.StateMinerActiveSectors(ctx, maddr, tsk)
+		req.NoError(err)
+		power, err := client.StateMinerPower(ctx, maddr, tsk)
+		req.NoError(err)
+
+		sum := big.Zero()
+		for _, info := range active {
+			req.Greater(int64(info.Expiration), int64(info.PowerBaseEpoch),
+				"sector %d has non-positive duration (pbe=%d exp=%d)", info.SectorNumber, info.PowerBaseEpoch, info.Expiration)
+			mult := int64(1)
+			if miner.SectorIsFullQaPower(info) {
+				mult = 10
+			}
+			sum = big.Add(sum, big.Mul(big.NewInt(int64(defaultSectorSize)), big.NewInt(mult)))
+		}
+		req.Equal(power.MinerPower.QualityAdjPower.String(), sum.String(),
+			"miner.SectorIsFullQaPower classification must match on-chain QA power")
+	}
+
+	// Snap CC into a verified deal pre-upgrade; this resets its PowerBaseEpoch.
+	um.SnapDeal(ccSnap, kit.SectorWithVerifiedPiece(pSnap.PieceCID, &miner14.VerifiedAllocationKey{
+		Client: snapClient,
+		ID:     verifreg14.AllocationId(snapAlloc),
+	}))
+	kit.WaitForMinerQAP(ctx, t, client, maddr,
+		uint64(defaultSectorSize)*10+uint64(defaultSectorSize)+uint64(defaultSectorSize)*10, // 10x + 1x + 10x
+		2*time.Minute)
+
+	head, err := client.ChainHead(ctx)
+	req.NoError(err)
+
+	verInfo, err := client.StateSectorGetInfo(ctx, maddr, ver[0], head.Key())
+	req.NoError(err)
+	req.True(miner.SectorIsFullQaPower(verInfo), "legacy verified sector must classify as full-QA")
+	req.Zero(verInfo.Flags&miner.FULL_QA_POWER, "precondition: legacy verified sector is 10x by weight, not flag")
+	req.GreaterOrEqual(verInfo.PowerBaseEpoch, verInfo.Activation, "invariant: PowerBaseEpoch >= Activation")
+
+	ccSnapInfo, err := client.StateSectorGetInfo(ctx, maddr, ccSnap, head.Key())
+	req.NoError(err)
+	req.True(miner.SectorIsFullQaPower(ccSnapInfo),
+		"legacy CC sector snapped to a verified deal must classify as full-QA")
+
+	ccKeepInfo, err := client.StateSectorGetInfo(ctx, maddr, ccKeep, head.Key())
+	req.NoError(err)
+	req.False(miner.SectorIsFullQaPower(ccKeepInfo), "legacy CC sector must not classify as full-QA")
+
+	assertHelperMatchesPower(head.Key())
+
+	// Extend the legacy verified sector across the NV29 boundary: the extension moves its power base
+	// epoch/expiration, the case the helper's epoch choice must handle.
+	verTarget := verInfo.Expiration + abi.ChainEpoch(builtin.EpochsInDay)
+	um.ExtendSectorExpiration(ver[0], verTarget)
+
+	head, err = client.ChainHead(ctx)
+	req.NoError(err)
+	verExtInfo, err := client.StateSectorGetInfo(ctx, maddr, ver[0], head.Key())
+	req.NoError(err)
+	req.Equal(verTarget, verExtInfo.Expiration, "legacy verified sector must be extended")
+	req.True(miner.SectorIsFullQaPower(verExtInfo), "extended legacy verified sector must still classify as full-QA")
+	assertHelperMatchesPower(head.Key())
+
+	// Cross the NV29 boundary: the helper's verdicts and the miner's real power must be preserved.
+	client.WaitTillChain(ctx, kit.HeightAtLeast(upgradeEpoch+5))
+	head, err = client.ChainHead(ctx)
+	req.NoError(err)
+	nv, err := client.StateNetworkVersion(ctx, head.Key())
+	req.NoError(err)
+	req.Equal(network.Version29, nv, "chain must actually be on NV29 after the migration")
+
+	assertHelperMatchesPower(head.Key())
+	for _, sn := range []abi.SectorNumber{ver[0], ccSnap} {
+		info, err := client.StateSectorGetInfo(ctx, maddr, sn, head.Key())
+		req.NoError(err)
+		req.True(miner.SectorIsFullQaPower(info), "sector %d must remain full-QA after migration", sn)
+	}
+	ccKeepPost, err := client.StateSectorGetInfo(ctx, maddr, ccKeep, head.Key())
+	req.NoError(err)
+	req.False(miner.SectorIsFullQaPower(ccKeepPost), "legacy CC sector must remain 1x after migration")
 
 	um.AssertNoWindowPostError()
 }
