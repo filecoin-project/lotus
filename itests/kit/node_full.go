@@ -121,9 +121,7 @@ func (f *TestFullNode) CurrentProvingDeadline(ctx context.Context, maddr address
 
 // DeadlineNotAfter rewinds di by whole proving periods until di.Open <= height.
 // The result keeps di.Index and may already have closed at height, so callers
-// should rely only on Open, PeriodStart and Index. It is exported so it can be
-// unit tested from an itest file: cmd/ci treats every _test.go under itests/
-// as an integration test group.
+// should rely only on Open, PeriodStart and Index.
 func DeadlineNotAfter(di *dline.Info, height abi.ChainEpoch) *dline.Info {
 	for di.Open > height {
 		di = dline.NewInfo(di.PeriodStart-di.WPoStProvingPeriod, di.Index, height,

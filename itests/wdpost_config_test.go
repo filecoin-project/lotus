@@ -467,39 +467,52 @@ func TestDeadlineNotAfter(t *testing.T) {
 		period      = abi.ChainEpoch(2880)
 		window      = abi.ChainEpoch(60)
 		periodStart = abi.ChainEpoch(658)
-		index       = uint64(37)
 	)
-	mk := func(ps, cur abi.ChainEpoch) *dline.Info {
-		return dline.NewInfo(ps, index, cur, 48, period, window, 20, 70)
+	mk := func(index uint64, cur abi.ChainEpoch) *dline.Info {
+		return dline.NewInfo(periodStart, index, cur, 48, period, window, 20, 70)
 	}
 
 	t.Run("deadline containing height is unchanged", func(t *testing.T) {
-		di := mk(periodStart, periodStart+abi.ChainEpoch(index)*window+5)
+		di := mk(37, periodStart+37*window+5)
 		require.Same(t, di, kit.DeadlineNotAfter(di, di.CurrentEpoch))
 	})
 
 	t.Run("deadline before height is unchanged", func(t *testing.T) {
-		di := mk(periodStart, periodStart+abi.ChainEpoch(index)*window+window)
+		di := mk(37, periodStart+38*window)
 		require.Same(t, di, kit.DeadlineNotAfter(di, di.CurrentEpoch))
 	})
 
-	t.Run("next-period deadline is rewound to the current period", func(t *testing.T) {
-		// What StateMinerProvingDeadline returns at a deadline close when the
-		// preceding epoch was a null round: same index, next proving period.
-		height := periodStart + abi.ChainEpoch(index)*window + window
-		di := mk(periodStart+period, height)
-		require.Greater(t, di.Open, height)
+	// What StateMinerProvingDeadline returns at a deadline close when the
+	// preceding epochs were null rounds: the recorded deadline has elapsed, so
+	// NextNotElapsed moves it to the next proving period with the same index.
+	for _, tc := range []struct {
+		name  string
+		index uint64
+		nulls abi.ChainEpoch
+	}{
+		{"one null round", 37, 1},
+		{"two null rounds", 37, 2},
+		{"one null round at the last deadline of the period", 47, 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			recorded := mk(tc.index, periodStart+abi.ChainEpoch(tc.index)*window)
+			height := recorded.Close + tc.nulls - 1
+			jumped := dline.NewInfo(periodStart, tc.index, height, 48, period, window, 20, 70).NextNotElapsed()
+			require.Equal(t, periodStart+period, jumped.PeriodStart)
+			require.Greater(t, jumped.Open, height)
 
-		got := kit.DeadlineNotAfter(di, height)
-		require.Equal(t, periodStart, got.PeriodStart)
-		require.Equal(t, index, got.Index)
-		require.Equal(t, height, got.CurrentEpoch)
-		require.Equal(t, height, got.Close)
-	})
+			got := kit.DeadlineNotAfter(jumped, height)
+			require.Equal(t, periodStart, got.PeriodStart)
+			require.Equal(t, tc.index, got.Index)
+			require.Equal(t, recorded.Open, got.Open)
+			require.Equal(t, recorded.Close, got.Close)
+			require.Equal(t, height, got.CurrentEpoch)
+		})
+	}
 
 	t.Run("rewinds multiple periods", func(t *testing.T) {
-		height := periodStart + abi.ChainEpoch(index)*window
-		di := mk(periodStart+3*period, height)
+		height := periodStart + 37*window
+		di := dline.NewInfo(periodStart+3*period, 37, height, 48, period, window, 20, 70)
 		got := kit.DeadlineNotAfter(di, height)
 		require.Equal(t, periodStart, got.PeriodStart)
 		require.Equal(t, height, got.Open)
