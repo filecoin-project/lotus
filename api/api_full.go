@@ -214,7 +214,7 @@ type FullNode interface {
 	// except, depending on options, the snapshot can include receipts,
 	// messages and stateroots for the length between the specified head
 	// and tail, thus producing "archival-grade" snapshots that include
-	// all the on-chain data.  The header chain is included back to
+	// all the on-chain data. The header chain is included back to
 	// genesis and these snapshots can be used to initialize Filecoin
 	// nodes.
 	ChainExportRangeInternal(ctx context.Context, head, tail types.TipSetKey, cfg ChainExportConfig) error //perm:admin
@@ -421,7 +421,7 @@ type FullNode interface {
 	StateListMessages(ctx context.Context, match *MessageMatch, tsk types.TipSetKey, toht abi.ChainEpoch) ([]cid.Cid, error) //perm:read
 	// StateDecodeParams attempts to decode the provided params, based on the recipient actor address and method number.
 	StateDecodeParams(ctx context.Context, toAddr address.Address, method abi.MethodNum, params []byte, tsk types.TipSetKey) (interface{}, error) //perm:read
-	// StateEncodeParams attempts to encode the provided json params to the binary from
+	// StateEncodeParams attempts to encode the provided JSON params to the binary form
 	StateEncodeParams(ctx context.Context, toActCode cid.Cid, method abi.MethodNum, params json.RawMessage) ([]byte, error) //perm:read
 
 	// StateNetworkName returns the name of the network the node is synced to
@@ -901,7 +901,7 @@ type FullNode interface {
 	EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) //perm:read
 
 	EthSendRawTransaction(ctx context.Context, rawTx ethtypes.EthBytes) (ethtypes.EthHash, error) //perm:read
-	// EthSendRawTransactionUntrusted sends a transaction from and untrusted source, using MpoolPushUntrusted to submit the message.
+	// EthSendRawTransactionUntrusted sends a transaction from an untrusted source, using MpoolPushUntrusted to submit the message.
 	EthSendRawTransactionUntrusted(ctx context.Context, rawTx ethtypes.EthBytes) (ethtypes.EthHash, error) //perm:read
 
 	// Returns event logs matching given filter spec.
@@ -931,7 +931,7 @@ type FullNode interface {
 	// eventTypes is one or more of:
 	//  - newHeads: notify when new blocks arrive.
 	//  - pendingTransactions: notify when new messages arrive in the message pool.
-	//  - logs: notify new event logs that match a criteria
+	//  - logs: notify new event logs that match a criterion
 	// params contains additional parameters used with the log event type
 	// The client will receive a stream of EthSubscriptionResponse values until EthUnsubscribe is called.
 	EthSubscribe(ctx context.Context, params jsonrpc.RawParams) (ethtypes.EthSubscriptionID, error) //perm:read
@@ -1185,7 +1185,7 @@ type ChannelAvailableFunds struct {
 	Channel *address.Address
 	// From is the from address of the channel (channel creator)
 	From address.Address
-	// To is the to address of the channel
+	// To is the recipient address of the channel
 	To address.Address
 
 	// ConfirmedAmt is the total amount of funds that have been confirmed on-chain for the channel
