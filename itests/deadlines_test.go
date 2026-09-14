@@ -91,8 +91,7 @@ func TestDeadlineToggling(t *testing.T) {
 	{
 		minerC.PledgeSectors(ctx, sectorsC, 0, nil)
 
-		di, err := client.StateMinerProvingDeadline(ctx, maddrC, types.EmptyTSK)
-		require.NoError(t, err)
+		di := client.CurrentProvingDeadline(ctx, maddrC)
 
 		t.Log("Running one proving period (miner C)")
 		t.Logf("End for head.Height > %d", di.PeriodStart+di.WPoStProvingPeriod*2)

@@ -66,8 +66,7 @@ func TestWindowPostDispute(t *testing.T) {
 	evilMinerAddr, err := evilMiner.ActorAddress(ctx)
 	require.NoError(t, err)
 
-	di, err := client.StateMinerProvingDeadline(ctx, evilMinerAddr, types.EmptyTSK)
-	require.NoError(t, err)
+	di := client.CurrentProvingDeadline(ctx, evilMinerAddr)
 
 	t.Logf("Running one proving period\n")
 
@@ -239,8 +238,7 @@ func TestWindowPostDisputeFails(t *testing.T) {
 
 	miner.PledgeSectors(ctx, 10, 0, nil)
 
-	di, err := client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
-	require.NoError(t, err)
+	di := client.CurrentProvingDeadline(ctx, maddr)
 
 	t.Log("Running one proving period")
 	waitUntil := di.PeriodStart + di.WPoStProvingPeriod*2 + 1
