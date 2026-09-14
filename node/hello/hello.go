@@ -126,6 +126,28 @@ func (hs *Service) HandleStream(s inet.Stream) {
 	// We're trying to fetch the tipset from the peer that just said hello to us. No point in
 	// triggering any dials.
 	ctx := network.WithNoDial(context.Background(), "fetching filecoin hello tipset")
+
+	// Before dispatching the outbound FetchTipSet, verify the peer's claimed
+	// tipset weight is strictly heavier than our local heaviest. Without this
+	// gate, any unauthenticated peer can pin a handler goroutine and one
+	// outbound-stream slot for the full FetchTipSet deadline by advertising an
+	// arbitrary HeaviestTipSetWeight. See
+	// https://gist.github.com/MattHintz/3f4a1a82ef60cea6ea2df0fc9751426d
+	ourHead := hs.cs.GetHeaviestTipSet()
+	ourWeight, werr := hs.cs.Weight(ctx, ourHead)
+	if werr != nil {
+		log.Debugw("hello: failed to compute local chain weight, skipping fetch",
+			"peer", s.Conn().RemotePeer(), "err", werr)
+		return
+	}
+	if !hmsg.HeaviestTipSetWeight.GreaterThan(ourWeight) {
+		log.Debugw("hello: peer weight not heavier than local, skipping fetch",
+			"peer", s.Conn().RemotePeer(),
+			"peer_weight", hmsg.HeaviestTipSetWeight,
+			"local_weight", ourWeight)
+		return
+	}
+
 	ts, err := hs.syncer.FetchTipSet(ctx, s.Conn().RemotePeer(), types.NewTipSetKey(hmsg.HeaviestTipSet...))
 	if err != nil {
 		log.Debugf("failed to fetch tipset from peer during hello: %+v", err)
