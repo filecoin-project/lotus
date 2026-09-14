@@ -11,6 +11,18 @@
 
 ## ☢️ Upgrade Warnings ☢️
 
+## ⭐ New Features
+
+## 🐛 Bug Fixes
+
+## 👌 Improvements
+
+# Node v1.36.3 / 2026-09-10
+
+Lotus Node v1.36.3 is a recommended patch release focused on Ethereum RPC correctness (event-index completeness for `eth_getLogs`/`eth_getTransactionReceipt`, RLP validation), a WebTransport memory-exhaustion fix (CVE-2026-57497), gateway event-query bounding, sector-reporting UX, and operator tooling.
+
+## ☢️ Upgrade Warnings ☢️
+
 - `lotus state active-sectors` has been removed and merged into `lotus state sectors`, which now defaults to active sectors only (previously it returned every committed sector). Use `lotus state sectors --all` for the previous full-sector-set behavior. ([filecoin-project/lotus#13743](https://github.com/filecoin-project/lotus/pull/13743))
 
 ## ⭐ New Features
@@ -33,6 +45,28 @@
 
 - build: bump Go version to `1.25.14` from`1.25.7`; build Lotus with Go 1.25.14 or newer. ([filecoin-project/lotus#13786](https://github.com/filecoin-project/lotus/pull/13786))
 - feat(gateway): limit event queries and historical filter preloads to 360 epochs (three hours) by default across `EthGetLogs`, `EthNewFilter`, `GetActorEventsRaw`, and `SubscribeActorEventsRaw`. Gateway operators can change the limit with `--event-filter-max-height-range`, or set it to zero to disable the gateway limit. ([filecoin-project/lotus#13776](https://github.com/filecoin-project/lotus/pull/13776))
+
+## 📝 Changelog
+
+For the full set of changes since the last stable release:
+
+- Node: https://github.com/filecoin-project/lotus/compare/release/v1.36.2...release/v1.36.3
+
+## 👨‍👩‍👧‍👦 Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| dependabot[bot] | 11 | +137/-141 | 4 |
+| Rod Vagg | 6 | +2949/-80 | 31 |
+| Steve Loeppky | 4 | +242/-15 | 7 |
+| Phi-rjan | 3 | +234/-90 | 19 |
+| Kaif | 2 | +102/-55 | 9 |
+| Sash | 2 | +20/-9 | 2 |
+| LexLuthr | 1 | +1044/-217 | 10 |
+| beck | 1 | +59/-80 | 4 |
+| fmterrors | 1 | +29/-5 | 2 |
+| zjuzhongwen | 1 | +3/-3 | 1 |
+| zloglevel | 1 | +2/-2 | 2 |
 
 # Node v1.36.2 / 2026-07-27
 
