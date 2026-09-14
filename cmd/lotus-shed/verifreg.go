@@ -80,6 +80,10 @@ var verifRegAddVerifierFromMsigCmd = &cli.Command{
 		api := srv.FullNodeAPI()
 		ctx := lcli.ReqContext(cctx)
 
+		if err := lcli.WarnFilplusDeprecated(cctx, api); err != nil {
+			return err
+		}
+
 		vrk, err := api.StateVerifiedRegistryRootKey(ctx, types.EmptyTSK)
 		if err != nil {
 			return err
@@ -150,6 +154,10 @@ var verifRegAddVerifierFromAccountCmd = &cli.Command{
 		}
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
+
+		if err := lcli.WarnFilplusDeprecated(cctx, api); err != nil {
+			return err
+		}
 
 		msg := &types.Message{
 			To:     verifreg.Address,
@@ -226,6 +234,10 @@ var verifRegVerifyClientCmd = &cli.Command{
 		}
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
+
+		if err := lcli.WarnFilplusDeprecated(cctx, api); err != nil {
+			return err
+		}
 
 		msg := &types.Message{
 			To:     verifreg.Address,
@@ -398,6 +410,10 @@ var verifRegRemoveVerifiedClientDataCapCmd = &cli.Command{
 
 		api := srv.FullNodeAPI()
 		ctx := lcli.ReqContext(cctx)
+
+		if err := lcli.WarnFilplusDeprecated(cctx, api); err != nil {
+			return err
+		}
 
 		sender, err := address.NewFromString(cctx.Args().Get(0))
 		if err != nil {
