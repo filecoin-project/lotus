@@ -71,17 +71,15 @@ func Par(concurrency int, arr interface{}, f interface{}) {
 
 	rf := reflect.ValueOf(f)
 
-	wg.Add(l)
 	for i := 0; i < l; i++ {
 		throttle <- struct{}{}
 
-		go func(i int) {
-			defer wg.Done()
+		wg.Go(func() {
 			defer func() {
 				<-throttle
 			}()
 			rf.Call([]reflect.Value{varr.Index(i)})
-		}(i)
+		})
 	}
 
 	wg.Wait()
