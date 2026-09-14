@@ -375,7 +375,7 @@ Note: one only needs to update `filecoin-ffi`'s dependency on `go-state-types` w
         - `params_mainnet.go`
             - Set previous upgrade to `const UpgradeXxHeight = XX`
             - Add comment with ???? signaling that the new upgrade date is unknown
-            - Add `var UpgradeXxHeight = abi.ChainEpoch(9999999999)`
+            - Add `var UpgradeXxHeight = abi.ChainEpoch(999999999999999)`
             - Change the `LOTUS_DISABLE_XX` env variable to the new network name
         - `params_testground.go`
             - Add `UpgradeXxHeight     abi.ChainEpoch = (-xx-1)`
