@@ -98,18 +98,23 @@ func NewReadyHandler(api lapi.FullNode) *HealthHandler {
 	h := HealthHandler{}
 	go func() {
 		const heightTolerance = uint64(5)
-		var nethealth, synchealth bool
+		check := func() {
+			netstat, err := api.NetAutoNatStatus(ctx)
+			nethealth := err == nil && netstat.Reachability != network.ReachabilityUnknown
+
+			nodestat, err := api.NodeStatus(ctx, false)
+			synchealth := err == nil && nodestat.SyncStatus.Behind < heightTolerance
+
+			h.SetHealthy(nethealth && synchealth)
+		}
+
+		check()
+
 		minutely := time.NewTicker(time.Minute)
 		for {
 			select {
 			case <-minutely.C:
-				netstat, err := api.NetAutoNatStatus(ctx)
-				nethealth = err == nil && netstat.Reachability != network.ReachabilityUnknown
-
-				nodestat, err := api.NodeStatus(ctx, false)
-				synchealth = err == nil && nodestat.SyncStatus.Behind < heightTolerance
-
-				h.SetHealthy(nethealth && synchealth)
+				check()
 			}
 		}
 	}()
