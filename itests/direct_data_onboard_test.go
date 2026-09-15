@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-commp-utils/v2"
+	"github.com/filecoin-project/go-commp-utils/v2/zerocomm"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	miner16 "github.com/filecoin-project/go-state-types/builtin/v16/miner"
@@ -293,6 +294,23 @@ func TestOnboardMixedMarketDDO(t *testing.T) {
 	ds, err := client.StateMarketStorageDeal(ctx, dealID, types.EmptyTSK)
 	require.NoError(t, err)
 	require.NotEqual(t, -1, ds.State.SectorStartEpoch)
+
+	// Exercising the StateComputeDataCID API, because this is as good a place as any
+	dataCID, err := client.StateComputeDataCID(ctx, maddr, abi.RegisteredSealProof_StackedDrg2KiBV1_1, []abi.DealID{dealID}, types.EmptyTSK)
+	require.NoError(t, err)
+	// PieceAggregateCommP aggregates exactly the pieces it is given; the sector size is the
+	// aggregation width, so the remainder needs an explicit zero piece.
+	padSize := abi.PaddedPieceSize(2048) - ds.Proposal.PieceSize
+	expectDealCommD, _, err := commp.PieceAggregateCommP(abi.RegisteredSealProof_StackedDrg2KiBV1_1,
+		[]abi.PieceInfo{
+			{Size: ds.Proposal.PieceSize, PieceCID: ds.Proposal.PieceCID},
+			{Size: padSize, PieceCID: zerocomm.ZeroPieceCommitment(padSize.Unpadded())},
+		})
+	require.NoError(t, err)
+	require.Equal(t, expectDealCommD, dataCID)
+
+	_, err = client.StateComputeDataCID(ctx, ds.Proposal.Client, abi.RegisteredSealProof_StackedDrg2KiBV1_1, []abi.DealID{dealID}, types.EmptyTSK)
+	require.ErrorContains(t, err, "expected")
 
 	// verify that the daily fee was set up correctly
 	soci, err := client.StateSectorGetInfo(ctx, miner.ActorAddr, si.SectorID, types.EmptyTSK)

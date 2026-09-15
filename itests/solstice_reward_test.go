@@ -461,7 +461,7 @@ func (f *solsticeRewardLifecycle) testMigrationAndAwardContinuity(t *testing.T) 
 	req.Equal(f.timelock, f.migrated.SWATimelockEpochs)
 	req.Equal(f.swaID, f.migrated.SWAActor)
 	req.Len(f.migratedStreams.Streams, 2)
-	req.Empty(f.migratedStreams.PendingWrites)
+	req.Empty(f.migratedStreams.PendingWritesQueue)
 	req.Empty(f.migratedStreams.Tombstones)
 	req.Equal(f.activation, f.migratedStreams.Streams[0].Weight.TStart)
 	req.Equal(f.activation, f.migratedStreams.Streams[1].Weight.TStart)
@@ -690,8 +690,8 @@ func (f *solsticeRewardLifecycle) testQueueControlsAndEvent(t *testing.T) {
 	requireMessageSuccess(t, queuedLookup)
 	queuedActor, queued, queuedStreams := loadReward19(f.ctx, t, f.client, f.store, queuedLookup.TipSet)
 	f.requireAllocation(t, queuedActor, queued, queuedStreams)
-	req.Len(queuedStreams.PendingWrites, 1)
-	pending := queuedStreams.PendingWrites[0]
+	req.Len(queuedStreams.PendingWritesQueue, 1)
+	pending := queuedStreams.PendingWritesQueue[0]
 	req.Equal(reward19.PendingWriteOpSetWeightRecords, pending.Op)
 
 	collision := f.sendRewardMessage(t, f.swaKey.Address, builtin.MethodsReward.SetWeightRecordsExported, params)
@@ -702,14 +702,14 @@ func (f *solsticeRewardLifecycle) testQueueControlsAndEvent(t *testing.T) {
 	requireMessageSuccess(t, cancel)
 	cancelActor, cancelled, cancelledStreams := loadReward19(f.ctx, t, f.client, f.store, cancel.TipSet)
 	f.requireAllocation(t, cancelActor, cancelled, cancelledStreams)
-	req.Empty(cancelledStreams.PendingWrites)
+	req.Empty(cancelledStreams.PendingWritesQueue)
 	req.Equal(beforeWeights[0], cancelledStreams.Streams[0].Weight)
 	req.Equal(beforeWeights[1], cancelledStreams.Streams[1].Weight)
 	requireWriteQueuedEvent(f.ctx, t, f.client, pending)
 
 	f.client.WaitTillChain(f.ctx, kit.HeightAtLeast(pending.EffectiveEpoch+2))
 	_, _, afterStreams := f.stateAtOrAfter(t, pending.EffectiveEpoch+1)
-	req.Empty(afterStreams.PendingWrites)
+	req.Empty(afterStreams.PendingWritesQueue)
 	req.Equal(beforeWeights[0], afterStreams.Streams[0].Weight)
 	req.Equal(beforeWeights[1], afterStreams.Streams[1].Weight)
 }
@@ -734,8 +734,8 @@ func (f *solsticeRewardLifecycle) testDeferredWeightSchedule(t *testing.T) {
 	f.requireAllocation(t, queuedActor, queuedState, queuedStreams)
 	req.Equal(parentStreams.Streams[0].Weight, queuedStreams.Streams[0].Weight)
 	req.Equal(parentStreams.Streams[1].Weight, queuedStreams.Streams[1].Weight)
-	req.Len(queuedStreams.PendingWrites, 1)
-	pending := queuedStreams.PendingWrites[0]
+	req.Len(queuedStreams.PendingWritesQueue, 1)
+	pending := queuedStreams.PendingWritesQueue[0]
 	req.Nil(pending.ID)
 	req.Equal(reward19.PendingWriteOpSetWeightRecords, pending.Op)
 	req.Equal(parentTS.Height()+f.timelock, pending.EffectiveEpoch)
@@ -745,14 +745,14 @@ func (f *solsticeRewardLifecycle) testDeferredWeightSchedule(t *testing.T) {
 	dueAwardTS := tipsetAtOrAfter(f.ctx, t, f.client, pending.EffectiveEpoch)
 	dueActor, dueState, dueStreams := loadReward19(f.ctx, t, f.client, f.store, dueAwardTS.Key())
 	f.requireAllocation(t, dueActor, dueState, dueStreams)
-	req.Len(dueStreams.PendingWrites, 1)
+	req.Len(dueStreams.PendingWritesQueue, 1)
 	req.Equal(parentStreams.Streams[0].Weight, dueStreams.Streams[0].Weight)
 	req.Equal(parentStreams.Streams[1].Weight, dueStreams.Streams[1].Weight)
 
 	appliedTS := tipsetAtOrAfter(f.ctx, t, f.client, dueAwardTS.Height()+1)
 	appliedActor, appliedState, appliedStreams := loadReward19(f.ctx, t, f.client, f.store, appliedTS.Key())
 	f.requireAllocation(t, appliedActor, appliedState, appliedStreams)
-	req.Empty(appliedStreams.PendingWrites)
+	req.Empty(appliedStreams.PendingWritesQueue)
 	req.Equal(consensusWeight, appliedStreams.Streams[0].Weight)
 	req.Equal(serviceWeight, appliedStreams.Streams[1].Weight)
 
@@ -784,8 +784,8 @@ func (f *solsticeRewardLifecycle) testRemoveStreamTombstoneClaim(t *testing.T) {
 	lookup := f.sendRewardMessage(t, f.swaKey.Address, builtin.MethodsReward.RemoveStreamExported, &reward19.RemoveStreamParams{ID: 2})
 	requireMessageSuccess(t, lookup)
 	_, _, queuedStreams := loadReward19(f.ctx, t, f.client, f.store, lookup.TipSet)
-	req.Len(queuedStreams.PendingWrites, 1)
-	pending := queuedStreams.PendingWrites[0]
+	req.Len(queuedStreams.PendingWritesQueue, 1)
+	pending := queuedStreams.PendingWritesQueue[0]
 	req.NotNil(pending.ID)
 	req.Equal(reward19.StreamID(2), *pending.ID)
 	req.Equal(reward19.PendingWriteOpRemoveStream, pending.Op)
