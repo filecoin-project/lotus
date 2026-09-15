@@ -309,7 +309,7 @@ func (e *ethTransaction) EthGetTransactionReceiptLimited(ctx context.Context, tx
 
 	msgLookup, err := e.stateApi.StateSearchMsg(ctx, types.EmptyTSK, c, limit, false)
 	if err != nil {
-		if ipld.IsNotFound(err) || errors.Is(err, stmgr.ErrFailedToLoadMessage) {
+		if ipld.IsNotFound(err) || errors.Is(err, stmgr.ErrFailedToLoadMessage) || errors.Is(err, stmgr.ErrMessageReplaced) {
 			return nil, nil
 		}
 		return nil, xerrors.Errorf("could not find transaction %s: %w", txHash, err)
