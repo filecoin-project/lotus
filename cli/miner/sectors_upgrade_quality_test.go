@@ -7,9 +7,12 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	stminer "github.com/filecoin-project/go-state-types/builtin/v19/miner"
 
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 )
 
 func sectorsInMessage(t *testing.T, m stminer.UpgradeSectorQualityParams) int {
@@ -166,4 +169,43 @@ func TestUpgradeQualityParamsSerialize(t *testing.T) {
 			require.Equal(t, want, got)
 		}
 	}
+}
+
+func TestUpgradeQualityFaults(t *testing.T) {
+	legacy := func(sn abi.SectorNumber) *miner.SectorOnChainInfo {
+		return &miner.SectorOnChainInfo{
+			SectorNumber:       sn,
+			SealProof:          abi.RegisteredSealProof_StackedDrg2KiBV1_1,
+			PowerBaseEpoch:     100,
+			Expiration:         200,
+			VerifiedDealWeight: big.Zero(),
+		}
+	}
+	t.Run("no faults", func(t *testing.T) {
+		var faults upgradeQualityFaults
+		require.Empty(t, faults.note())
+	})
+	t.Run("already full power", func(t *testing.T) {
+		var faults upgradeQualityFaults
+		flagged := legacy(1)
+		flagged.Flags = miner.FULL_QA_POWER
+		faults.add(flagged)
+		verified := legacy(2)
+		// Use PowerBaseEpoch rather than Activation for previously extended sectors.
+		verified.VerifiedDealWeight = big.NewInt(2048 * 100)
+		faults.add(verified)
+		require.Empty(t, faults.note())
+		faults.add(legacy(12))
+		faults.add(legacy(47))
+		require.Equal(t, "skipped 2 faulted sector(s) requiring a QA power upgrade: 12, 47; recover them and re-run upgrade-quality", faults.note())
+	})
+	t.Run("bounded sample", func(t *testing.T) {
+		var faults upgradeQualityFaults
+		for sn := 1; sn <= 25; sn++ {
+			faults.add(legacy(abi.SectorNumber(sn)))
+		}
+		require.Equal(t, uint64(25), faults.count)
+		require.Len(t, faults.sample, 20)
+		require.Equal(t, "skipped 25 faulted sector(s) requiring a QA power upgrade: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, ...; recover them and re-run upgrade-quality", faults.note())
+	})
 }
