@@ -140,6 +140,32 @@ func packUpgradeQualityMessages(toUpgrade []sectorLoc, addrSectors int) []stmine
 	return messages
 }
 
+type upgradeQualityFaults struct {
+	count  uint64
+	sample []string
+}
+
+func (f *upgradeQualityFaults) add(info *miner.SectorOnChainInfo) {
+	if miner.SectorIsFullQaPower(info) {
+		return
+	}
+	f.count++
+	if len(f.sample) < 20 {
+		f.sample = append(f.sample, strconv.FormatUint(uint64(info.SectorNumber), 10))
+	}
+}
+
+func (f *upgradeQualityFaults) note() string {
+	if f.count == 0 {
+		return ""
+	}
+	sectors := strings.Join(f.sample, ", ")
+	if f.count > uint64(len(f.sample)) {
+		sectors += ", ..."
+	}
+	return fmt.Sprintf("skipped %d faulted sector(s) requiring a QA power upgrade: %s; recover them and re-run upgrade-quality", f.count, sectors)
+}
+
 var sectorsUpgradeQualityCmd = &cli.Command{
 	Name:  "upgrade-quality",
 	Usage: "upgrade legacy sectors to full QA power",
@@ -167,7 +193,12 @@ var sectorsUpgradeQualityCmd = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
-		nv, err := fullNodeAPI.StateNetworkVersion(ctx, types.EmptyTSK)
+		head, err := fullNodeAPI.ChainHead(ctx)
+		if err != nil {
+			return xerrors.Errorf("getting chain head: %w", err)
+		}
+		tsk := head.Key()
+		nv, err := fullNodeAPI.StateNetworkVersion(ctx, tsk)
 		if err != nil {
 			return xerrors.Errorf("getting network version: %w", err)
 		}
@@ -186,18 +217,14 @@ var sectorsUpgradeQualityCmd = &cli.Command{
 			return err
 		}
 
-		mi, err := fullNodeAPI.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+		mi, err := fullNodeAPI.StateMinerInfo(ctx, maddr, tsk)
 		if err != nil {
 			return xerrors.Errorf("getting miner info: %w", err)
 		}
 
-		activeSet, err := fullNodeAPI.StateMinerActiveSectors(ctx, maddr, types.EmptyTSK)
+		activeSet, err := fullNodeAPI.StateMinerActiveSectors(ctx, maddr, tsk)
 		if err != nil {
 			return xerrors.Errorf("getting active sectors: %w", err)
-		}
-		if len(activeSet) == 0 {
-			fmt.Println("no active sectors found")
-			return nil
 		}
 
 		// Index active sector info by sector number for O(1) lookup during state traversal.
@@ -208,7 +235,7 @@ var sectorsUpgradeQualityCmd = &cli.Command{
 
 		// Load miner state once to get all (deadline, partition) locations in a single read,
 		// avoiding one StateSectorPartition RPC call per sector.
-		mact, err := fullNodeAPI.StateGetActor(ctx, maddr, types.EmptyTSK)
+		mact, err := fullNodeAPI.StateGetActor(ctx, maddr, tsk)
 		if err != nil {
 			return xerrors.Errorf("getting miner actor: %w", err)
 		}
@@ -221,8 +248,20 @@ var sectorsUpgradeQualityCmd = &cli.Command{
 		// ForEachDeadline/ForEachPartition/ForEach iterates in ascending order,
 		// so toUpgrade is already sorted; no further sort needed.
 		var toUpgrade []sectorLoc
+		var skipped upgradeQualityFaults
 		if err := mas.ForEachDeadline(func(dlIdx uint64, dl miner.Deadline) error {
 			return dl.ForEachPartition(func(partIdx uint64, part miner.Partition) error {
+				faults, err := part.FaultySectors()
+				if err != nil {
+					return err
+				}
+				faultyInfos, err := mas.LoadSectors(&faults)
+				if err != nil {
+					return err
+				}
+				for _, info := range faultyInfos {
+					skipped.add(info)
+				}
 				active, err := part.ActiveSectors()
 				if err != nil {
 					return err
@@ -239,8 +278,11 @@ var sectorsUpgradeQualityCmd = &cli.Command{
 		}); err != nil {
 			return xerrors.Errorf("traversing miner state: %w", err)
 		}
+		if note := skipped.note(); note != "" {
+			fmt.Println(note)
+		}
 		if len(toUpgrade) == 0 {
-			fmt.Println("no sectors to upgrade (all already at FULL_QA_POWER)")
+			fmt.Println("no active sectors require a QA power upgrade")
 			return nil
 		}
 
