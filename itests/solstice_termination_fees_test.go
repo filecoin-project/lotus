@@ -19,8 +19,9 @@ import (
 	"github.com/filecoin-project/lotus/itests/kit"
 )
 
-// TestMigrationNV29SolsticeUsqdTerminationFeeRealLedger asserts USQ'd 10x termination fee exceeds 1x.
-func TestMigrationNV29SolsticeUsqdTerminationFeeRealLedger(t *testing.T) {
+// TestMigrationNV29SolsticeTerminationFeeRealLedger compares legacy 1x, USQ'd 10x,
+// and native 10x termination fees on the same ledger.
+func TestMigrationNV29SolsticeTerminationFeeRealLedger(t *testing.T) {
 	req := require.New(t)
 	kit.QuietMiningLogs()
 
@@ -69,6 +70,14 @@ func TestMigrationNV29SolsticeUsqdTerminationFeeRealLedger(t *testing.T) {
 	req.NoError(err)
 	req.Equal(network.Version29, nv, "chain must actually be on NV29 after the migration")
 
+	native, _ := um.OnboardSectors(sealProofType, kit.NewSectorBatch().AddEmptySectors(1))
+	req.Len(native, 1)
+	um.WaitTillActivatedAndAssertPower(native, uint64(defaultSectorSize)*3, uint64(defaultSectorSize)*12)
+	nInfo, err := client.StateSectorGetInfo(ctx, maddr, native[0], types.EmptyTSK)
+	req.NoError(err)
+	req.GreaterOrEqual(nInfo.Activation, upgradeEpoch, "native sector must activate on NV29 (10x)")
+	req.NotZero(nInfo.Flags&miner.FULL_QA_POWER, "native NV29 CC sector must carry FULL_QA_POWER (10x)")
+
 	_, err = um.UpgradeSectorQuality([]abi.SectorNumber{usqSn}, nil)
 	req.NoError(err, "USQ of a legacy CC sector must succeed")
 	uInfo, err := client.StateSectorGetInfo(ctx, maddr, usqSn, types.EmptyTSK)
@@ -76,18 +85,18 @@ func TestMigrationNV29SolsticeUsqdTerminationFeeRealLedger(t *testing.T) {
 	req.NotZero(uInfo.Flags&miner.FULL_QA_POWER, "USQ'd sector must carry FULL_QA_POWER (10x)")
 	power, err := client.StateMinerPower(ctx, maddr, types.EmptyTSK)
 	req.NoError(err)
-	req.Equal(uint64(defaultSectorSize)*(1+10), power.MinerPower.QualityAdjPower.Uint64(),
-		"USQ'd(10x) + anchor(1x) must sum to 11 units QAP")
+	req.Equal(uint64(defaultSectorSize)*(1+10+10), power.MinerPower.QualityAdjPower.Uint64(),
+		"USQ'd(10x) + anchor(1x) + native(10x) must sum to 21 units QAP")
 
-	preAnchor := settleAndRead(uint64(defaultSectorSize) * 11)  // stable 11-unit baseline
-	um.TerminateSectors([]abi.SectorNumber{anchorSn})           // anchor (1x) removed
-	postAnchor := settleAndRead(uint64(defaultSectorSize) * 10) // USQ'd 10x remains
+	preAnchor := settleAndRead(uint64(defaultSectorSize) * 21)
+	um.TerminateSectors([]abi.SectorNumber{anchorSn})
+	postAnchor := settleAndRead(uint64(defaultSectorSize) * 20) // USQ'd and native 10x remain
 	fee1x := types.BigSub(preAnchor, postAnchor)
 	req.True(fee1x.GreaterThan(types.NewInt(0)), "terminating the 1x anchor must debit some FIL; pre=%s post=%s", preAnchor, postAnchor)
 
-	preUsq := settleAndRead(uint64(defaultSectorSize) * 10) // stable before the USQ'd-sector termination
-	um.TerminateSectors([]abi.SectorNumber{usqSn})          // USQ'd 10x removed
-	postUsq := settleAndRead(0)                             // all miner power gone
+	preUsq := settleAndRead(uint64(defaultSectorSize) * 20)
+	um.TerminateSectors([]abi.SectorNumber{usqSn})
+	postUsq := settleAndRead(uint64(defaultSectorSize) * 10) // native 10x remains
 	feeUsqd10x := types.BigSub(preUsq, postUsq)
 	t.Logf("termination fee: anchor(1x)=%s, USQ'd(10x)=%s", fee1x, feeUsqd10x)
 	req.True(feeUsqd10x.GreaterThan(types.NewInt(0)), "terminating the USQ'd 10x sector must debit some FIL; pre=%s post=%s", preUsq, postUsq)
@@ -95,84 +104,15 @@ func TestMigrationNV29SolsticeUsqdTerminationFeeRealLedger(t *testing.T) {
 		"termination penalty of a USQ'd-to-10x sector must strictly exceed that of a 1x sector; feeUsqd10x=%s fee1x=%s",
 		feeUsqd10x, fee1x)
 
-	um.AssertNoWindowPostError()
-}
-
-// TestMigrationNV29SolsticeTerminationFeeRealLedger asserts native 10x termination fee exceeds 1x.
-func TestMigrationNV29SolsticeTerminationFeeRealLedger(t *testing.T) {
-	req := require.New(t)
-	kit.QuietMiningLogs()
-
-	const (
-		defaultSectorSize = abi.SectorSize(2 << 10) // 2KiB
-		upgradeEpoch      = abi.ChainEpoch(3000)
-	)
-
-	e := kit.NewSolsticeUpgradeEnv(t, kit.SolsticeOpts{UpgradeEpoch: upgradeEpoch})
-	ctx, client, um, maddr := e.Ctx, e.Client, e.Um, e.Maddr
-	sealProofType := e.SealProof
-	defer um.Stop()
-
-	minerBalance := func() types.BigInt {
-		act, aerr := client.StateGetActor(ctx, maddr, types.EmptyTSK)
-		req.NoError(aerr)
-		return act.Balance
-	}
-
-	// settleAndRead waits past targetQA so the deferred-termination cron fires, then reads balance.
-	settleAndRead := func(targetQA uint64) types.BigInt {
-		kit.WaitForMinerQAP(ctx, t, client, maddr, targetQA, 2*time.Minute)
-		head, herr := client.ChainHead(ctx)
-		req.NoError(herr)
-		client.WaitTillChain(ctx, kit.HeightAtLeast(head.Height()+20))
-		return minerBalance()
-	}
-
-	legacy, _ := um.OnboardSectors(sealProofType, kit.NewSectorBatch().AddEmptySectors(1))
-	req.Len(legacy, 1)
-	um.WaitTillActivatedAndAssertPower(legacy, uint64(defaultSectorSize), uint64(defaultSectorSize))
-
-	lInfo, err := client.StateSectorGetInfo(ctx, maddr, legacy[0], types.EmptyTSK)
-	req.NoError(err)
-	req.Less(lInfo.Activation, upgradeEpoch, "legacy sector must activate pre-upgrade (1x)")
-	req.Zero(lInfo.Flags&miner.FULL_QA_POWER, "legacy sector must not carry FULL_QA_POWER before upgrade")
-
-	client.WaitTillChain(ctx, kit.HeightAtLeast(upgradeEpoch+5))
-	head, err := client.ChainHead(ctx)
-	req.NoError(err)
-	nv, err := client.StateNetworkVersion(ctx, head.Key())
-	req.NoError(err)
-	req.Equal(network.Version29, nv, "chain must actually be on NV29 after the migration")
-
-	native, _ := um.OnboardSectors(sealProofType, kit.NewSectorBatch().AddEmptySectors(1))
-	req.Len(native, 1)
-	um.WaitTillActivatedAndAssertPower(native, uint64(defaultSectorSize)*2, uint64(defaultSectorSize)*11)
-
-	nInfo, err := client.StateSectorGetInfo(ctx, maddr, native[0], types.EmptyTSK)
-	req.NoError(err)
-	req.GreaterOrEqual(nInfo.Activation, upgradeEpoch, "native sector must activate on NV29 (10x)")
-	req.NotZero(nInfo.Flags&miner.FULL_QA_POWER, "native NV29 CC sector must carry FULL_QA_POWER (10x)")
-
-	power, err := client.StateMinerPower(ctx, maddr, types.EmptyTSK)
-	req.NoError(err)
-	req.Equal(uint64(defaultSectorSize)*11, power.MinerPower.QualityAdjPower.Uint64(), "1x legacy + 10x native")
-
-	pre1 := settleAndRead(uint64(defaultSectorSize) * 11) // stable 11x baseline before termination
-	um.TerminateSectors(legacy)
-	post1 := settleAndRead(uint64(defaultSectorSize) * 10) // legacy removed, native 10x remains
-	fee1x := types.BigSub(pre1, post1)
-	req.True(fee1x.GreaterThan(types.NewInt(0)), "terminating the 1x sector must debit some FIL; pre=%s post=%s", pre1, post1)
-
-	pre10 := settleAndRead(uint64(defaultSectorSize) * 10) // stable before the second termination
+	preNative := settleAndRead(uint64(defaultSectorSize) * 10)
 	um.TerminateSectors(native)
-	post10 := settleAndRead(0) // all miner power gone
-	fee10x := types.BigSub(pre10, post10)
-
-	t.Logf("termination fee: legacy(1x)=%s, native(10x)=%s", fee1x, fee10x)
-	req.True(fee10x.GreaterThan(types.NewInt(0)), "terminating the 10x sector must debit some FIL; pre=%s post=%s", pre10, post10)
-	req.True(fee10x.GreaterThan(fee1x),
-		"termination penalty of a FULL_QA(10x) sector must strictly exceed that of a 1x sector; fee10x=%s fee1x=%s",
-		fee10x, fee1x)
+	postNative := settleAndRead(0)
+	feeNative10x := types.BigSub(preNative, postNative)
+	t.Logf("termination fee: anchor(1x)=%s, native(10x)=%s", fee1x, feeNative10x)
+	req.True(feeNative10x.GreaterThan(types.NewInt(0)), "terminating the native 10x sector must debit some FIL; pre=%s post=%s", preNative, postNative)
+	req.True(feeNative10x.GreaterThan(fee1x),
+		"termination penalty of a native 10x sector must strictly exceed that of a 1x sector; feeNative10x=%s fee1x=%s",
+		feeNative10x, fee1x)
 
 	um.AssertNoWindowPostError()
 }
@@ -182,7 +122,7 @@ func TestMigrationNV29SolsticePowerAndFees(t *testing.T) {
 	req := require.New(t)
 	kit.QuietMiningLogs()
 
-	// Bump reserve to 1B FIL so circulating supply is ~700M and DailyFees are non-zero (same as daily_fees_test.go).
+	// Bump reserve to 1B FIL so circulating supply is ~700M and DailyFees are non-zero (same as TestDailyFees).
 	originalUpgradeTeepInitialFilReserved := buildconstants.UpgradeTeepInitialFilReserved
 	buildconstants.UpgradeTeepInitialFilReserved = types.MustParseFIL("1000000000 FIL").Int
 	t.Cleanup(func() {

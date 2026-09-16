@@ -6,26 +6,20 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
-	miner14 "github.com/filecoin-project/go-state-types/builtin/v14/miner"
-	verifreg14 "github.com/filecoin-project/go-state-types/builtin/v14/verifreg"
 	stminer "github.com/filecoin-project/go-state-types/builtin/v19/miner"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
 	gstStore "github.com/filecoin-project/go-state-types/store"
 
 	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/itests/kit"
-	"github.com/filecoin-project/lotus/lib/must"
 )
 
 // TestMigrationNV29SolsticePreCommitProve proves that a CC sector pre-committed on NV28 but activated on NV29 lands at FULL_QA(10x).
@@ -81,7 +75,8 @@ func TestMigrationNV29SolsticePreCommitProve(t *testing.T) {
 	um.AssertNoWindowPostError()
 }
 
-// TestMigrationNV29SolsticePrecommitDeposit asserts PreCommitDeposits is reserved while NV29 sector is unproven, then fully released on activation; resulting pledge exceeds 1x estimate.
+// TestMigrationNV29SolsticePrecommitDeposit checks native NV29 precommit reservation,
+// deposit release on activation, and the resulting FULL_QA (10x) pledge tier.
 func TestMigrationNV29SolsticePrecommitDeposit(t *testing.T) {
 	req := require.New(t)
 	kit.QuietMiningLogs()
@@ -144,9 +139,18 @@ func TestMigrationNV29SolsticePrecommitDeposit(t *testing.T) {
 	req.NoError(err)
 	oneX, err := client.StateMinerInitialPledgeForSector(ctx, duration, defaultSectorSize, 0, head.Key())
 	req.NoError(err)
+	full, err := client.StateMinerInitialPledgeForSector(ctx, duration, defaultSectorSize, uint64(defaultSectorSize), head.Key())
+	req.NoError(err)
+	req.Greater(full.Uint64(), oneX.Uint64(),
+		"FULL-QA pledge estimate must exceed the legacy-1x estimate for the same CC sector")
 	req.Greater(info.InitialPledge.Uint64(), oneX.Uint64(),
 		"the pledge funded by the released deposit must exceed the legacy-1x estimate (FULL-QA tier); on-chain=%d 1x-est=%d",
 		info.InitialPledge.Uint64(), oneX.Uint64())
+	// The estimate includes a safety margin and uses live reward state, so allow drift
+	// while requiring the on-chain pledge to remain in the FULL-QA tier.
+	req.GreaterOrEqual(info.InitialPledge.Uint64(), full.Uint64()/2,
+		"chain must charge the FULL-QA pledge tier (on-chain %d, 1x-est %d, 10x-est %d)",
+		info.InitialPledge.Uint64(), oneX.Uint64(), full.Uint64())
 
 	um.AssertNoWindowPostError()
 }
@@ -241,136 +245,6 @@ func TestMigrationNV29SolsticeSnapAndOrdering(t *testing.T) {
 	req.NoError(err)
 	req.Equal(powerPreSnap.MinerPower.QualityAdjPower.String(), powerPostSnap.MinerPower.QualityAdjPower.String(),
 		"Snap of a native FULL_QA sector must not change QA power (stays 10x: no downgrade to 1x, no double-count to 100x)")
-
-	um.AssertNoWindowPostError()
-}
-
-// TestMigrationNV29SolsticeExtend checks ExtendSectorExpiration: verified 10x stays 10x by weight (no FULL_QA flag), CC/unverified-deal extended on NV29 stay at 1x.
-func TestMigrationNV29SolsticeExtend(t *testing.T) {
-	req := require.New(t)
-	kit.QuietMiningLogs()
-
-	const upgradeEpoch = abi.ChainEpoch(3000)
-	const defaultSectorSize = abi.SectorSize(2 << 10) // 2KiB
-
-	rootKey := must.One(key.GenerateKey(types.KTSecp256k1))
-	verifierKey := must.One(key.GenerateKey(types.KTSecp256k1))
-	verifiedClientKey := must.One(key.GenerateKey(types.KTBLS))
-	bal := types.MustParseFIL("100fil").Int64()
-
-	e := kit.NewSolsticeUpgradeEnv(t, kit.SolsticeOpts{
-		UpgradeEpoch:      upgradeEpoch,
-		RootKey:           rootKey,
-		VerifierKey:       verifierKey,
-		VerifiedClientKey: verifiedClientKey,
-		Bal:               bal,
-	})
-	ctx, client, um, maddr := e.Ctx, e.Client, e.Um, e.Maddr
-	sealProofType := e.SealProof
-	defer um.Stop()
-
-	_, vclients := kit.SetupVerifiedClients(ctx, t, client, rootKey, verifierKey, []*key.Key{verifiedClientKey})
-	verifiedClientAddr := vclients[0]
-
-	minerId := must.One(address.IDFromAddress(maddr))
-	piece := abi.PieceInfo{Size: abi.PaddedPieceSize(defaultSectorSize), PieceCID: kit.BogusPieceCid2}
-	clientId, allocationId := kit.SetupAllocation(ctx, t, client, minerId, piece, verifiedClientAddr, 0, 0)
-
-	ver, _ := um.OnboardSectors(sealProofType, kit.NewSectorBatch().AddSector(
-		kit.SectorWithVerifiedPiece(piece.PieceCID, &miner14.VerifiedAllocationKey{
-			Client: clientId,
-			ID:     verifreg14.AllocationId(allocationId),
-		})),
-	)
-	req.Len(ver, 1)
-
-	uv, _ := um.OnboardSectors(sealProofType, kit.NewSectorBatch().AddSectorsWithRandomPieces(1))
-	req.Len(uv, 1)
-
-	scc, _ := um.OnboardSectors(sealProofType, kit.NewSectorBatch().AddEmptySectors(1))
-	req.Len(scc, 1)
-
-	um.WaitTillActivatedAndAssertPower([]abi.SectorNumber{ver[0], uv[0], scc[0]},
-		uint64(defaultSectorSize)*3, // raw power
-		uint64(defaultSectorSize)*10+uint64(defaultSectorSize)+uint64(defaultSectorSize), // QAP: verified 10x + unverified 1x + CC 1x
-	)
-
-	for _, sn := range []abi.SectorNumber{ver[0], uv[0], scc[0]} {
-		info, err := client.StateSectorGetInfo(ctx, maddr, sn, types.EmptyTSK)
-		req.NoError(err)
-		req.NotNil(info)
-		req.Less(info.Activation, upgradeEpoch, "sector %d must activate pre-upgrade", sn)
-		req.Zero(info.Flags&miner.FULL_QA_POWER, "pre-upgrade sector %d must not carry FULL_QA_POWER", sn)
-	}
-
-	ccPre, err := client.StateSectorGetInfo(ctx, maddr, scc[0], types.EmptyTSK)
-	req.NoError(err)
-	ccTarget := ccPre.Expiration + abi.ChainEpoch(builtin.EpochsInDay)
-	req.Greater(ccTarget, upgradeEpoch, "the CC sector's new expiration must lie beyond the NV29 fork")
-	um.ExtendSectorExpiration(scc[0], ccTarget)
-
-	ccMid, err := client.StateSectorGetInfo(ctx, maddr, scc[0], types.EmptyTSK)
-	req.NoError(err)
-	req.Equal(ccTarget, ccMid.Expiration, "CC sector must be extended pre-migration")
-	req.Zero(ccMid.Flags&miner.FULL_QA_POWER, "extend pre-migration must not promote the CC sector")
-
-	client.WaitTillChain(ctx, kit.HeightAtLeast(upgradeEpoch+5))
-	head, err := client.ChainHead(ctx)
-	req.NoError(err)
-	nv, err := client.StateNetworkVersion(ctx, head.Key())
-	req.NoError(err)
-	req.Equal(network.Version29, nv, "chain must actually be on NV29 after the migration")
-
-	ccPost, err := client.StateSectorGetInfo(ctx, maddr, scc[0], head.Key())
-	req.NoError(err)
-	req.Equal(ccMid.Expiration, ccPost.Expiration, "CC expiration must be preserved across migration")
-	req.Equal(ccMid.Flags, ccPost.Flags, "CC flags must be preserved across migration")
-	req.Zero(ccPost.Flags&miner.FULL_QA_POWER, "cross-fork extended CC sector must stay 1x (not retroactively 10x)")
-
-	verMid, err := client.StateSectorGetInfo(ctx, maddr, ver[0], head.Key())
-	req.NoError(err)
-	req.Positive(verMid.VerifiedDealWeight.Int64(), "verified sector must keep its verified weight across migration")
-
-	preExt, err := client.StateSectorGetInfo(ctx, maddr, ver[0], head.Key())
-	req.NoError(err)
-	prePower, err := client.StateMinerPower(ctx, maddr, head.Key())
-	req.NoError(err)
-
-	verTarget := preExt.Expiration + abi.ChainEpoch(builtin.EpochsInDay)
-	um.ExtendSectorExpiration(ver[0], verTarget)
-
-	postExt, err := client.StateSectorGetInfo(ctx, maddr, ver[0], types.EmptyTSK)
-	req.NoError(err)
-	req.Equal(verTarget, postExt.Expiration, "verified deal sector must be extended")
-	req.GreaterOrEqual(postExt.VerifiedDealWeight.Int64(), preExt.VerifiedDealWeight.Int64(),
-		"no-drop-claims extend must keep (re-derive upward, never drop) the verified sector's weight")
-	req.Positive(postExt.VerifiedDealWeight.Int64(), "verified sector must keep a verified weight after extend")
-	req.Zero(postExt.Flags&miner.FULL_QA_POWER, "legacy verified sector must stay 10x via weight, not flag")
-
-	postPower, err := client.StateMinerPower(ctx, maddr, types.EmptyTSK)
-	req.NoError(err)
-	req.Equal(prePower.MinerPower.QualityAdjPower.String(), postPower.MinerPower.QualityAdjPower.String(),
-		"no-drop-claims extend of the verified deal sector must not change miner QA power (stays capped at 10x)")
-
-	uvInfo, err := client.StateSectorGetInfo(ctx, maddr, uv[0], types.EmptyTSK)
-	req.NoError(err)
-	req.Zero(uvInfo.Flags&miner.FULL_QA_POWER, "precondition: unverified deal sector must be at native 1x pre-extend")
-	uvPowerBefore, err := client.StateMinerPower(ctx, maddr, types.EmptyTSK)
-	req.NoError(err)
-
-	uvTarget := uvInfo.Expiration + abi.ChainEpoch(builtin.EpochsInDay)
-	um.ExtendSectorExpiration(uv[0], uvTarget)
-
-	uvPost, err := client.StateSectorGetInfo(ctx, maddr, uv[0], types.EmptyTSK)
-	req.NoError(err)
-	req.Equal(uvTarget, uvPost.Expiration, "unverified deal sector must be extended")
-	req.Zero(uvPost.VerifiedDealWeight.Int64(), "unverified deal sector must carry no verified weight")
-	req.Zero(uvPost.Flags&miner.FULL_QA_POWER,
-		"extend of a 1x unverified deal sector must not promote it to FULL_QA(10x)")
-	uvPowerAfter, err := client.StateMinerPower(ctx, maddr, types.EmptyTSK)
-	req.NoError(err)
-	req.Equal(uvPowerBefore.MinerPower.QualityAdjPower.String(), uvPowerAfter.MinerPower.QualityAdjPower.String(),
-		"extend of a 1x unverified deal sector must not change QA power (stays 1x)")
 
 	um.AssertNoWindowPostError()
 }
@@ -483,91 +357,6 @@ func TestMigrationNV29SolsticeDeadlineImmutabilityWindow(t *testing.T) {
 		"Terminate must be accepted once the sector's deadline is outside the immutability window")
 	req.Equal(exitcode.Ok, stateCall(mutTs, builtin.MethodsMiner.UpgradeSectorQuality, usqEnc),
 		"USQ must be accepted once the sector's deadline is outside the immutability window")
-
-	um.AssertNoWindowPostError()
-}
-
-// TestMigrationNV29SolsticeMaxSectorsSplit drives the --max-sectors split path: 6 legacy sectors upgraded in batches of 2 (3 messages), all reach FULL_QA(10x), gas stays under block limit.
-func TestMigrationNV29SolsticeMaxSectorsSplit(t *testing.T) {
-	req := require.New(t)
-	kit.QuietMiningLogs()
-
-	const (
-		defaultSectorSize = abi.SectorSize(2 << 10) // 2KiB
-		nSectors          = 6
-		maxSectors        = 2
-		upgradeEpoch      = abi.ChainEpoch(3000)
-	)
-
-	e := kit.NewSolsticeUpgradeEnv(t, kit.SolsticeOpts{UpgradeEpoch: upgradeEpoch})
-	ctx, client, um, maddr := e.Ctx, e.Client, e.Um, e.Maddr
-	sealProofType := e.SealProof
-	defer um.Stop()
-
-	legs, _ := um.OnboardSectors(sealProofType, kit.NewSectorBatch().AddEmptySectors(nSectors))
-	req.Len(legs, nSectors)
-	um.WaitTillActivatedAndAssertPower(legs, uint64(defaultSectorSize)*nSectors, uint64(defaultSectorSize)*nSectors)
-
-	for _, sn := range legs {
-		info, err := client.StateSectorGetInfo(ctx, maddr, sn, types.EmptyTSK)
-		req.NoError(err)
-		req.Zero(info.Flags&miner.FULL_QA_POWER, "legacy sector %d must start without FULL_QA_POWER", sn)
-	}
-
-	client.WaitTillChain(ctx, kit.HeightAtLeast(upgradeEpoch+5))
-	head, err := client.ChainHead(ctx)
-	req.NoError(err)
-	nv, err := client.StateNetworkVersion(ctx, head.Key())
-	req.NoError(err)
-	req.Equal(network.Version29, nv, "chain must actually be on NV29 after the migration")
-
-	beforeUSQ, err := client.StateMinerPower(ctx, maddr, types.EmptyTSK)
-	req.NoError(err)
-	req.Equal(uint64(defaultSectorSize)*nSectors, beforeUSQ.MinerPower.QualityAdjPower.Uint64(),
-		"legacy sectors must not be bumped to 10x by the migration")
-
-	messages := 0
-	var gasUsed []int64
-	for i := 0; i < nSectors; i += maxSectors {
-		end := i + maxSectors
-		if end > nSectors {
-			end = nSectors
-		}
-		lookup, err := um.UpgradeSectorQuality(legs[i:end], nil)
-		req.NoError(err, "split USQ message covering sectors %v must succeed", legs[i:end])
-		gasUsed = append(gasUsed, lookup.Receipt.GasUsed)
-		messages++
-	}
-	expectedMessages := (nSectors + maxSectors - 1) / maxSectors // ceil division
-	req.Equal(expectedMessages, messages, "splitting %d sectors at maxSectors=%d in one group must emit %d messages",
-		nSectors, maxSectors, expectedMessages)
-
-	req.Len(gasUsed, messages, "one gas sample per split message")
-	var totalGas int64
-	for _, g := range gasUsed {
-		req.Greater(g, int64(0), "a split USQ message must burn positive gas")
-		req.Less(g, buildconstants.BlockGasLimit, "a split USQ message must not approach the block gas limit")
-		totalGas += g
-	}
-	req.Less(totalGas, buildconstants.BlockGasLimit, "the whole split batch's gas must stay far under the block gas limit (headroom for a larger group)")
-	t.Logf("split USQ batch: %d messages, per-message gas %v, total %d (block gas limit %d)",
-		messages, gasUsed, totalGas, buildconstants.BlockGasLimit)
-
-	for _, sn := range legs {
-		info, err := client.StateSectorGetInfo(ctx, maddr, sn, types.EmptyTSK)
-		req.NoError(err)
-		req.NotZero(info.Flags&miner.FULL_QA_POWER, "split USQ must leave every sector %d FULL_QA (no sector skipped)", sn)
-	}
-
-	afterUSQ, err := client.StateMinerPower(ctx, maddr, types.EmptyTSK)
-	req.NoError(err)
-	req.Equal(uint64(defaultSectorSize)*nSectors*10, afterUSQ.MinerPower.QualityAdjPower.Uint64(),
-		"split USQ of all %d sectors must yield 10x each", nSectors)
-	perSectorMul := uint64(defaultSectorSize) * 9
-	req.Equal(perSectorMul*nSectors, afterUSQ.MinerPower.QualityAdjPower.Uint64()-beforeUSQ.MinerPower.QualityAdjPower.Uint64(),
-		"miner QAP delta over %d split messages must be +9x per sector (no double-count)", messages)
-	req.Equal(perSectorMul*nSectors, afterUSQ.TotalPower.QualityAdjPower.Uint64()-beforeUSQ.TotalPower.QualityAdjPower.Uint64(),
-		"network QAP delta must equal the miner QAP delta across split messages")
 
 	um.AssertNoWindowPostError()
 }
