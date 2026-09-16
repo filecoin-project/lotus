@@ -364,18 +364,18 @@ Note: one only needs to update `filecoin-ffi`'s dependency on `go-state-types` w
         - `params_butterfly.go`
             - set previous upgrade to `var UpgradeXxHeigh = abi.ChainEpoch(-xx-1)`
             - Add comment with ?????? signaling that the new upgrade date is unknown
-            - Add `const UpgradeXxHeight = 999999999999999`
+            - Add `const UpgradeXxHeight = UpgradeHeightUnscheduled`
             - Set `const GenesisNetworkVersion = network.VersionXX` where XX is the network version you are upgrading from.
         - `params_calibnet.go`
             - Add comment with `??????` signaling that the new upgrade date is unknown
-            - Add `const UpgradeXxHeight = 999999999999999`
+            - Add `const UpgradeXxHeight = UpgradeHeightUnscheduled`
         - `params_interop.go`
             - set previous upgrade to `var UpgradeXxHeigh = abi.ChainEpoch(-xx-1)`
             - Add `const UpgradeXxHeight = 50`
         - `params_mainnet.go`
             - Set previous upgrade to `const UpgradeXxHeight = XX`
             - Add comment with ???? signaling that the new upgrade date is unknown
-            - Add `var UpgradeXxHeight = abi.ChainEpoch(9999999999)`
+            - Add `var UpgradeXxHeight = UpgradeHeightUnscheduled`
             - Change the `LOTUS_DISABLE_XX` env variable to the new network name
         - `params_testground.go`
             - Add `UpgradeXxHeight     abi.ChainEpoch = (-xx-1)`
