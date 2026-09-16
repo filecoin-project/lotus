@@ -1,9 +1,14 @@
 package buildconstants
 
 import (
+	"bytes"
+	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"math/big"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -13,6 +18,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/filecoin-project/go-state-types/abi"
+	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
@@ -30,6 +36,39 @@ func MustParseAddress(addr string) address.Address {
 		panic(err)
 	}
 
+	return ret
+}
+
+const ethAddressLength = 20
+
+// A masked-ID EVM address is 0xff, then zeroes, then a big-endian actor ID.
+var ethMaskedIDPrefix = [ethAddressLength - 8]byte{0xff}
+
+// MustParseFilOrEthAddress parses a Filecoin address or a 0x-prefixed EVM address; the masked-ID
+// EVM form yields f0 and any other EVM address f410. The EVM half mirrors
+// ethtypes.EthAddress.ToFilecoinAddress, which this package cannot import.
+func MustParseFilOrEthAddress(addr string) address.Address {
+	if !strings.HasPrefix(addr, "0x") {
+		return MustParseAddress(addr)
+	}
+	payload, err := hex.DecodeString(addr[len("0x"):])
+	if err != nil {
+		panic(err)
+	}
+	if len(payload) != ethAddressLength {
+		panic(fmt.Errorf("EVM address %s is %d bytes, want %d", addr, len(payload), ethAddressLength))
+	}
+	if bytes.HasPrefix(payload, ethMaskedIDPrefix[:]) {
+		ret, err := address.NewIDAddress(binary.BigEndian.Uint64(payload[len(ethMaskedIDPrefix):]))
+		if err != nil {
+			panic(err)
+		}
+		return ret
+	}
+	ret, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, payload)
+	if err != nil {
+		panic(err)
+	}
 	return ret
 }
 

@@ -105,7 +105,7 @@ var UpgradeSolsticeHeight = abi.ChainEpoch(200)
 
 // FIP-0118: reward actor bootstrap state installed by the Solstice migration.
 // Generic devnets disable governance and send service rewards to burnt funds.
-var UpgradeXxRewardBootstrapParams = SolsticeRewardBootstrapParams{
+var UpgradeSolsticeRewardBootstrapParams = SolsticeRewardBootstrapParams{
 	SWATimelockEpochs:                 50,
 	ConsensusWeightRampDurationEpochs: 900,
 	ConsensusWeight: SolsticeRewardWeightParams{

@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-keccak"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
@@ -20,24 +19,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/itests/kit"
 )
-
-func effectiveEthAddressForCreate(t *testing.T, sender address.Address) ethtypes.EthAddress {
-	switch sender.Protocol() {
-	case address.SECP256K1, address.BLS:
-		hasher := keccak.NewLegacyKeccak256()
-		hasher.Write(sender.Bytes())
-		addr, err := ethtypes.CastEthAddress(hasher.Sum(nil)[12:])
-		require.NoError(t, err)
-		return addr
-	case address.Delegated:
-		addr, err := ethtypes.EthAddressFromFilecoinAddress(sender)
-		require.NoError(t, err)
-		return addr
-	default:
-		require.FailNow(t, "unsupported protocol %d", sender.Protocol())
-	}
-	panic("unreachable")
-}
 
 func createAndDeploy(ctx context.Context, t *testing.T, client *kit.TestFullNode, fromAddr address.Address, contract []byte) *ethtypes.EthTxReceipt {
 	// Create and deploy evm actor
@@ -82,7 +63,7 @@ func TestAddressCreationBeforeDeploy(t *testing.T) {
 
 	// We hash the f1/f3 address into the EVM's address space when deploying contracts from
 	// accounts.
-	effectiveEvmAddress := effectiveEthAddressForCreate(t, fromAddr)
+	effectiveEvmAddress := kit.EthAddressForCreate(t, fromAddr)
 	ethAddr := client.EVM().ComputeContractAddress(effectiveEvmAddress, 1)
 
 	contractFilAddr, err := ethAddr.ToFilecoinAddress()
@@ -130,7 +111,7 @@ func TestDeployAddressMultipleTimes(t *testing.T) {
 
 	// We hash the f1/f3 address into the EVM's address space when deploying contracts from
 	// accounts.
-	effectiveEvmAddress := effectiveEthAddressForCreate(t, fromAddr)
+	effectiveEvmAddress := kit.EthAddressForCreate(t, fromAddr)
 	ethAddr := client.EVM().ComputeContractAddress(effectiveEvmAddress, 1)
 
 	contractFilAddr, err := ethAddr.ToFilecoinAddress()
