@@ -29,6 +29,8 @@
 
 ## 👌 Improvements
 
+- test(itests): consolidate Solstice integration coverage into six CI suites and share migration fixtures.
+
 # Node v1.36.2 / 2026-07-27
 
 Lotus Node v1.36.2 is a recommended patch release focused on Ethereum RPC correctness and compatibility, `StateWaitMsg` confidence handling, dependency reliability, and operator tooling.

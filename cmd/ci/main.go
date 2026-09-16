@@ -212,7 +212,6 @@ func getRunners(testGroupName string) []Runner {
 		"itest-gas_estimation":           {linux_x64_xlarge},
 		"itest-gateway":                  {linux_x64_2xlarge},
 		"itest-get_messages_in_ts":       {linux_x64_xlarge},
-		"itest-datacap_frozen":           {linux_x64_xlarge},
 		"itest-lite_migration":           {linux_x64_xlarge},
 		"itest-lookup_robust_address":    {linux_x64_xlarge},
 		"itest-manual_onboarding":        {linux_x64_4xlarge},
