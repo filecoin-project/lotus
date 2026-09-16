@@ -20,6 +20,11 @@ type SolsticeRewardWeightParams struct {
 	Cap    uint64
 }
 
+// SolsticeRewardBootstrapParams configures the reward actor state the Solstice migration installs.
+// SWAActor is required; a consensus-only bootstrap leaves SRAActor and InitialOrchestrator unset.
+// The migration resolves the addresses on chain: the SWA and SRA must be deployed before the
+// pre-migration starts and the orchestrator must exist ChainFinality epochs before that, or the
+// pre-migration fails and the migration runs cold.
 type SolsticeRewardBootstrapParams struct {
 	SWATimelockEpochs                 abi.ChainEpoch
 	ConsensusWeightRampDurationEpochs abi.ChainEpoch

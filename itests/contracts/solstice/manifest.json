@@ -1,0 +1,85 @@
+{
+  "source": {
+    "commit": "87fd57cda91f24dc3db3fd5695f4d4939befa452",
+    "dirty": false
+  },
+  "contracts": {
+    "ERC1967Proxy": {
+      "creationBytecode": "ERC1967Proxy.hex",
+      "constructorParameterTypes": [
+        "address",
+        "bytes"
+      ],
+      "functionSelectors": {}
+    },
+    "ServiceRewardsActor": {
+      "creationBytecode": "ServiceRewardsActor.hex",
+      "constructorParameterTypes": [
+        "address",
+        "address",
+        "address",
+        "address",
+        "uint64",
+        "uint64",
+        "uint64",
+        "uint64",
+        "uint64"
+      ],
+      "functionSelectors": {
+        "EPOCHS_PER_QUARTER()": "0xa07eb962",
+        "SRA_UPGRADE_HOLD()": "0x5e5575f2",
+        "UPGRADE_INTERFACE_VERSION()": "0xad3cb1cc",
+        "addOrchestrator(address,address)": "0x5bdf8732",
+        "admittedCount()": "0x9177f082",
+        "aggregatedFilecoinPayVolume(uint64)": "0x9f1d727e",
+        "bindingOf(address,address)": "0x3b24ceaf",
+        "cancelBinding(address,address)": "0x647ac416",
+        "correctVolume(address,uint64,uint256)": "0xee5f8e45",
+        "fpvOf(uint64,address)": "0x61c14c6a",
+        "initialize()": "0x8129fc1c",
+        "isAdmitted(address)": "0xd233fb38",
+        "orchestratorCount()": "0xff4b3865",
+        "postVolume(uint64,uint256)": "0x9e8c25f9",
+        "proxiableUUID()": "0x52d1902d",
+        "quarterStart(uint64)": "0xb313141d",
+        "reassignBinding(address,address,address,bool)": "0x7f4589ba",
+        "reassignBindings((address,address,address,bool)[])": "0x70ea20ce",
+        "registerPairs((address,address)[])": "0x43c2bb78",
+        "removeOrchestrator(address)": "0x19c28b20",
+        "replaceOwner(address,address)": "0xe20056e6",
+        "replaceWallet(address,address)": "0xe50b2bc2",
+        "setAdmittedLists(address[],address[])": "0xdd8f7e0b",
+        "setPricingParams(uint256,uint256,uint256,uint256,uint256)": "0x44845f2e",
+        "submitShares(uint64)": "0x6e78e1d5",
+        "upgradeToAndCall(address,bytes)": "0x4f1ef286",
+        "veto(bytes32)": "0xfb6f93f9"
+      }
+    },
+    "StreamWeightActor": {
+      "creationBytecode": "StreamWeightActor.hex",
+      "constructorParameterTypes": [
+        "address",
+        "address",
+        "uint64",
+        "address"
+      ],
+      "functionSelectors": {
+        "UPGRADE_INTERFACE_VERSION()": "0xad3cb1cc",
+        "cancelPending(uint64,uint8)": "0x1af6501c",
+        "cancelPendingWeight(uint8)": "0x34b52c4d",
+        "initialize()": "0x8129fc1c",
+        "proxiableUUID()": "0x52d1902d",
+        "quarterlyGateCheck()": "0x2dbab1b7",
+        "registerStream(uint64,(int256,int256,uint64,int256,int256),address,(address,uint256)[],uint64)": "0x53684749",
+        "registerStream(uint64,(int256,int256,uint64,int256,int256),uint64)": "0xd0687325",
+        "removeStream(uint64)": "0xd44efe16",
+        "replaceOwner(address,address)": "0xe20056e6",
+        "setDistribution(uint64,address)": "0x02f397f8",
+        "setGateParams(((uint256,uint256),uint64))": "0xe0eb9c34",
+        "setWeightRecords((uint64,(int256,int256,uint64,int256,int256))[])": "0xce6039ad",
+        "upgradeToAndCall(address,bytes)": "0x4f1ef286",
+        "veto(bytes32)": "0xfb6f93f9"
+      }
+    }
+  }
+}

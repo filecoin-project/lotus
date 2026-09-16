@@ -48,6 +48,18 @@ func EvmWordUint64(n uint64) []byte {
 	return word
 }
 
+// EvmWordInt64 encodes n as a two's complement 32-byte big-endian EVM word.
+func EvmWordInt64(n int64) []byte {
+	word := make([]byte, 32)
+	if n < 0 {
+		for i := range word {
+			word[i] = 0xff
+		}
+	}
+	binary.BigEndian.PutUint64(word[24:], uint64(n))
+	return word
+}
+
 // EvmCalldata builds calldata from a function signature and pre-encoded EVM words.
 func EvmCalldata(sig string, words ...[]byte) []byte {
 	data := EthFunctionHash(sig)
