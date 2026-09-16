@@ -143,13 +143,17 @@ const UpgradeGoldenWeekHeight = abi.ChainEpoch(5348280)
 // 2026-05-27T:14:00:00Z
 var UpgradeFireHorseHeight = abi.ChainEpoch(6052800)
 
-var UpgradeXxHeight = UpgradeHeightUnscheduled
+var UpgradeSolsticeHeight = UpgradeHeightUnscheduled
+
+// SolsticeEpochsPerQuarter matches the quarter the SRA is deployed with: a quarter of the
+// builtin-actors year, 31556925 seconds of 30 second epochs. The ramp runs nine of them.
+const SolsticeEpochsPerQuarter = abi.ChainEpoch(262974)
 
 // FIP-0118: reward actor bootstrap state installed by the Solstice migration.
 // Addresses must be set before enabling the upgrade.
-var UpgradeXxRewardBootstrapParams = SolsticeRewardBootstrapParams{
+var UpgradeSolsticeRewardBootstrapParams = SolsticeRewardBootstrapParams{
 	SWATimelockEpochs:                 builtin.EpochsInDay * 7,
-	ConsensusWeightRampDurationEpochs: builtin.EpochsInDay * 90 * 9,
+	ConsensusWeightRampDurationEpochs: SolsticeEpochsPerQuarter * 9,
 	ConsensusWeight: SolsticeRewardWeightParams{
 		VStart: 95 * solsticeRewardWeightPercent,
 		Floor:  50 * solsticeRewardWeightPercent,

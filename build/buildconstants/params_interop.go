@@ -86,13 +86,17 @@ var UpgradeGoldenWeekHeight = abi.ChainEpoch(-31)
 
 const UpgradeFireHorseHeight = -32
 
-const UpgradeXxHeight abi.ChainEpoch = 50
+const UpgradeSolsticeHeight = 50
+
+// SolsticeEpochsPerQuarter matches the quarter the SRA is deployed with: one day, as on
+// calibnet. The ramp runs nine of them.
+const SolsticeEpochsPerQuarter = abi.ChainEpoch(builtin.EpochsInDay)
 
 // FIP-0118: reward actor bootstrap state installed by the Solstice migration.
 // Generic devnets disable governance and send service rewards to burnt funds.
-var UpgradeXxRewardBootstrapParams = SolsticeRewardBootstrapParams{
-	SWATimelockEpochs:                 50,
-	ConsensusWeightRampDurationEpochs: 900,
+var UpgradeSolsticeRewardBootstrapParams = SolsticeRewardBootstrapParams{
+	SWATimelockEpochs:                 builtin2.EpochsInHour,
+	ConsensusWeightRampDurationEpochs: SolsticeEpochsPerQuarter * 9,
 	ConsensusWeight: SolsticeRewardWeightParams{
 		VStart: 95 * solsticeRewardWeightPercent,
 		Floor:  50 * solsticeRewardWeightPercent,
