@@ -8,14 +8,17 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin"
 	stminer "github.com/filecoin-project/go-state-types/builtin/v19/miner"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
+	gstStore "github.com/filecoin-project/go-state-types/store"
 
 	lapi "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -229,7 +232,8 @@ func TestMigrationNV29Solstice(t *testing.T) {
 		"USQ with new-expiration must not change QA power (multiplier carries forward)")
 }
 
-// TestMigrationNV29SolsticeAccounting verifies QAP accounting for partial batch USQ and termination.
+// TestMigrationNV29SolsticeAccounting verifies QAP and gas accounting across multiple USQ messages,
+// keeping a legacy 1x control until both upgraded and untouched sectors are terminated.
 func TestMigrationNV29SolsticeAccounting(t *testing.T) {
 	req := require.New(t)
 	kit.QuietMiningLogs()
@@ -239,9 +243,9 @@ func TestMigrationNV29SolsticeAccounting(t *testing.T) {
 
 	const (
 		defaultSectorSize = abi.SectorSize(2 << 10) // 2KiB
-		// A bit higher than the base test since a 3-sector batch needs slightly more time to
-		// activate pre-upgrade.
-		upgradeEpoch = abi.ChainEpoch(3000)
+		nSectors          = 7
+		sectorsPerMessage = 2
+		upgradeEpoch      = abi.ChainEpoch(3000)
 	)
 
 	sealProofType, err := miner.SealProofTypeFromSectorSize(defaultSectorSize, network.Version28, miner.SealProofVariant_Standard)
@@ -272,10 +276,8 @@ func TestMigrationNV29SolsticeAccounting(t *testing.T) {
 
 	maddr := um.ActorAddr
 
-	legs, _ := um.OnboardSectors(sealProofType, kit.NewSectorBatch().AddEmptySectors(3))
-	req.Len(legs, 3)
-	req.Less(legs[0], legs[1])
-	req.Less(legs[1], legs[2])
+	legs, _ := um.OnboardSectors(sealProofType, kit.NewSectorBatch().AddEmptySectors(nSectors))
+	req.Len(legs, nSectors)
 
 	for _, sn := range legs {
 		info, err := client.StateSectorGetInfo(ctx, maddr, sn, types.EmptyTSK)
@@ -285,7 +287,7 @@ func TestMigrationNV29SolsticeAccounting(t *testing.T) {
 		req.Zero(info.Flags&miner.FULL_QA_POWER, "legacy sector %d must start without FULL_QA_POWER", sn)
 	}
 
-	um.WaitTillActivatedAndAssertPower(legs, uint64(defaultSectorSize)*3, uint64(defaultSectorSize)*3)
+	um.WaitTillActivatedAndAssertPower(legs, uint64(defaultSectorSize)*nSectors, uint64(defaultSectorSize)*nSectors)
 
 	client.WaitTillChain(ctx, kit.HeightAtLeast(upgradeEpoch+5))
 	head, err := client.ChainHead(ctx)
@@ -296,38 +298,64 @@ func TestMigrationNV29SolsticeAccounting(t *testing.T) {
 
 	beforeUSQ, err := client.StateMinerPower(ctx, maddr, types.EmptyTSK)
 	req.NoError(err)
-	req.Equal(uint64(defaultSectorSize)*3, beforeUSQ.MinerPower.QualityAdjPower.Uint64(),
+	req.Equal(uint64(defaultSectorSize)*nSectors, beforeUSQ.MinerPower.QualityAdjPower.Uint64(),
 		"legacy sectors must not be bumped to 10x by the migration")
 
-	// batch-USQ legs[1] and legs[2], leaving legs[0] at 1x.
-	_, err = um.UpgradeSectorQuality([]abi.SectorNumber{legs[1], legs[2]}, nil)
-	req.NoError(err, "batch USQ of legacy sectors must succeed")
-	for _, sn := range []abi.SectorNumber{legs[1], legs[2]} {
+	// Submit three real two-sector messages, leaving legs[0] at 1x throughout.
+	// The CLI's packing and splitting decisions are covered by its unit tests.
+	var gasUsed []int64
+	var totalGas int64
+	var upgraded uint64
+	perSectorDelta := uint64(defaultSectorSize) * 9
+	for start := 1; start < len(legs); start += sectorsPerMessage {
+		batch := legs[start : start+sectorsPerMessage]
+		lookup, err := um.UpgradeSectorQuality(batch, nil)
+		req.NoError(err, "USQ message covering sectors %v must succeed", batch)
+		req.Equal(exitcode.Ok, lookup.Receipt.ExitCode)
+		req.Positive(lookup.Receipt.GasUsed, "each USQ message must burn gas")
+		req.Less(lookup.Receipt.GasUsed, buildconstants.BlockGasLimit,
+			"each USQ message must fit below the block gas limit")
+		gasUsed = append(gasUsed, lookup.Receipt.GasUsed)
+		totalGas += lookup.Receipt.GasUsed
+
+		afterBatch, err := client.StateMinerPower(ctx, maddr, types.EmptyTSK)
+		req.NoError(err)
+		upgraded += uint64(len(batch))
+		req.Equal(perSectorDelta*upgraded,
+			afterBatch.MinerPower.QualityAdjPower.Uint64()-beforeUSQ.MinerPower.QualityAdjPower.Uint64(),
+			"miner QAP must increase by exactly 9x for each sector upgraded across the messages")
+		req.Equal(perSectorDelta*upgraded,
+			afterBatch.TotalPower.QualityAdjPower.Uint64()-beforeUSQ.TotalPower.QualityAdjPower.Uint64(),
+			"network QAP must match the miner QAP increase across the messages")
+	}
+	req.Len(gasUsed, 3, "all three USQ messages must execute")
+	req.Less(totalGas, buildconstants.BlockGasLimit, "the combined batch gas must stay below the block gas limit")
+	t.Logf("USQ messages: per-message gas %v, total %d (block gas limit %d)",
+		gasUsed, totalGas, buildconstants.BlockGasLimit)
+
+	for _, sn := range legs[1:] {
 		info, err := client.StateSectorGetInfo(ctx, maddr, sn, types.EmptyTSK)
 		req.NoError(err)
+		req.NotNil(info)
 		req.NotZero(info.Flags&miner.FULL_QA_POWER, "USQ'd sector %d must carry FULL_QA_POWER", sn)
 	}
 	leftInfo, err := client.StateSectorGetInfo(ctx, maddr, legs[0], types.EmptyTSK)
 	req.NoError(err)
+	req.NotNil(leftInfo)
 	req.Zero(leftInfo.Flags&miner.FULL_QA_POWER, "skipped sector %d must stay at 1x", legs[0])
 
 	afterUSQ, err := client.StateMinerPower(ctx, maddr, types.EmptyTSK)
 	req.NoError(err)
-	req.Equal(uint64(defaultSectorSize)*(1+10+10), afterUSQ.MinerPower.QualityAdjPower.Uint64(),
-		"batch USQ of 2 sectors must yield 1x + 2x10x")
-
-	perSectorMul := uint64(defaultSectorSize) * 9
-	req.Equal(perSectorMul*2, afterUSQ.MinerPower.QualityAdjPower.Uint64()-beforeUSQ.MinerPower.QualityAdjPower.Uint64(),
-		"miner QAP delta over batch USQ of 2 legacy sectors")
-	req.Equal(perSectorMul*2, afterUSQ.TotalPower.QualityAdjPower.Uint64()-beforeUSQ.TotalPower.QualityAdjPower.Uint64(),
-		"network QAP delta must equal the miner QAP delta over batch USQ")
+	req.Equal(uint64(defaultSectorSize)*(1+10*(nSectors-1)), afterUSQ.MinerPower.QualityAdjPower.Uint64(),
+		"partial USQ must leave one legacy 1x sector and six upgraded 10x sectors")
 
 	um.TerminateSectors([]abi.SectorNumber{legs[1]})
-	expectedQA := uint64(defaultSectorSize) * (1 + 10) // remaining: legs[0]=1x + legs[2]=10x
+	expectedQA := uint64(defaultSectorSize) * (1 + 10*(nSectors-2))
 	kit.WaitForMinerQAP(ctx, t, client, maddr, expectedQA, 2*time.Minute)
 
 	um.TerminateSectors([]abi.SectorNumber{legs[0]})
-	kit.WaitForMinerQAP(ctx, t, client, maddr, uint64(defaultSectorSize)*10, 2*time.Minute)
+	kit.WaitForMinerQAP(ctx, t, client, maddr, uint64(defaultSectorSize)*10*(nSectors-2), 2*time.Minute)
+	um.AssertNoWindowPostError()
 }
 
 // TestMigrationNV29SolsticeEconomic tests USQ+new-expiration convergence, idempotency, auth, and fees.
@@ -509,46 +537,35 @@ func TestMigrationNV29SolsticeEconomic(t *testing.T) {
 		"the max termination fee of an upgraded 10x sector must exceed that of a 1x sibling")
 }
 
-// TestMigrationNV29SolsticePledge asserts a native NV29 CC sector is pledged at the FULL_QA (10x) tier.
-func TestMigrationNV29SolsticePledge(t *testing.T) {
+// TestMigrationNV29SolsticeUpgradeQualityAuth asserts USQ (method 37) caller authorization: owner/worker and control accepted, unrelated rejected with USR_FORBIDDEN.
+func TestMigrationNV29SolsticeUpgradeQualityAuth(t *testing.T) {
 	req := require.New(t)
 	kit.QuietMiningLogs()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	const (
 		defaultSectorSize = abi.SectorSize(2 << 10) // 2KiB
-		upgradeEpoch      = abi.ChainEpoch(1000)
+		upgradeEpoch      = abi.ChainEpoch(3000)
 	)
 
-	sealProofType, err := miner.SealProofTypeFromSectorSize(defaultSectorSize, network.Version28, miner.SealProofVariant_Standard)
-	req.NoError(err)
-
-	client, _, ens := kit.EnsembleMinimal(t,
-		kit.MockProofs(),
-		kit.ThroughRPC(),
-		kit.UpgradeSchedule(
-			stmgr.Upgrade{Network: network.Version28, Height: -1},
-			stmgr.Upgrade{
-				Network:   network.Version29,
-				Height:    upgradeEpoch,
-				Migration: filcns.UpgradeActorsV19With(buildconstants.NeutralSolsticeRewardBootstrapParams),
-			},
-		),
-	)
-
-	um, ens := ens.UnmanagedMiner(ctx, client,
-		kit.SectorSize(defaultSectorSize),
-		kit.OwnerAddr(client.DefaultKey),
-	)
+	e := kit.NewSolsticeUpgradeEnv(t, kit.SolsticeOpts{UpgradeEpoch: upgradeEpoch})
+	ctx, client, um, maddr := e.Ctx, e.Client, e.Um, e.Maddr
+	sealProofType := e.SealProof
 	defer um.Stop()
 
-	blockMiners := ens.InterconnectAll().BeginMining(5 * time.Millisecond)
-	ens.Start()
-	blockMiners[0].WatchMinerForPost(um.ActorAddr)
+	// fundAccount creates an account actor so `a` can be used as a StateCall From.
+	fundAccount := func(a address.Address) {
+		kit.SendFunds(ctx, t, client, a, types.FromFil(1))
+	}
 
-	maddr := um.ActorAddr
+	legacy, _ := um.OnboardSectors(sealProofType, kit.NewSectorBatch().AddEmptySectors(1))
+	req.Len(legacy, 1)
+	um.WaitTillActivatedAndAssertPower(legacy, uint64(defaultSectorSize), uint64(defaultSectorSize))
+	sn := legacy[0]
+
+	lInfo, err := client.StateSectorGetInfo(ctx, maddr, sn, types.EmptyTSK)
+	req.NoError(err)
+	req.Less(lInfo.Activation, upgradeEpoch, "legacy sector must activate pre-upgrade (1x)")
+	req.Zero(lInfo.Flags&miner.FULL_QA_POWER, "legacy sector must not carry FULL_QA_POWER before USQ")
 
 	client.WaitTillChain(ctx, kit.HeightAtLeast(upgradeEpoch+5))
 	head, err := client.ChainHead(ctx)
@@ -557,33 +574,240 @@ func TestMigrationNV29SolsticePledge(t *testing.T) {
 	req.NoError(err)
 	req.Equal(network.Version29, nv, "chain must actually be on NV29 after the migration")
 
-	snew, _ := um.OnboardSectors(sealProofType, kit.NewSectorBatch().AddEmptySectors(1))
-	req.Len(snew, 1)
-	um.WaitTillActivatedAndAssertPower(snew, uint64(defaultSectorSize), uint64(defaultSectorSize)*10)
-
-	info, err := client.StateSectorGetInfo(ctx, maddr, snew[0], types.EmptyTSK)
+	ctrlAddr, err := client.WalletNew(ctx, types.KTSecp256k1)
 	req.NoError(err)
-	req.NotNil(info)
-	req.NotZero(info.Flags&miner.FULL_QA_POWER, "post-upgrade CC sector must be FULL_QA")
-	onChain := info.InitialPledge.Uint64()
-	req.Greater(onChain, uint64(0), "post-upgrade CC sector must carry a nonzero initial pledge")
-
-	// verifiedSize=0 → legacy-1x estimate; verifiedSize=full → FULL_QA (10x) estimate.
-	duration := info.Expiration - info.PowerBaseEpoch
-	head, err = client.ChainHead(ctx)
+	unrelatedAddr, err := client.WalletNew(ctx, types.KTSecp256k1)
 	req.NoError(err)
+	fundAccount(ctrlAddr)
+	fundAccount(unrelatedAddr)
 
-	oneX, err := client.StateMinerInitialPledgeForSector(ctx, duration, defaultSectorSize, 0, head.Key())
+	mi, err := client.StateMinerInfo(ctx, maddr, types.EmptyTSK)
 	req.NoError(err)
-	full, err := client.StateMinerInitialPledgeForSector(ctx, duration, defaultSectorSize, uint64(defaultSectorSize), head.Key())
+	cwp := &stminer.ChangeWorkerAddressParams{
+		NewWorker:       mi.Worker, // unchanged -> no worker handover delay
+		NewControlAddrs: []address.Address{ctrlAddr},
+	}
+	cwEnc, aerr := actors.SerializeParams(cwp)
+	req.NoError(aerr)
+	cwMsg, err := client.MpoolPushMessage(ctx, &types.Message{
+		From:   client.DefaultKey.Address, // owner is the only authorised caller of ChangeWorkerAddress
+		To:     maddr,
+		Method: builtin.MethodsMiner.ChangeWorkerAddress,
+		Params: cwEnc,
+		Value:  types.FromFil(0),
+	}, nil)
 	req.NoError(err)
+	_, err = client.StateWaitMsg(ctx, cwMsg.Cid(), 2, lapi.LookbackNoLimit, true)
+	req.NoError(err, "ChangeWorkerAddress must be confirmed")
 
-	oneXv, fullv := oneX.Uint64(), full.Uint64()
-	req.Greater(fullv, oneXv, "FULL-QA pledge estimate must exceed the legacy-1x estimate for the same CC sector")
-	// Loose bound: on-chain pledge must be above 1x and at least half of the 10x oracle estimate.
-	// The oracle overestimates by ~10%; live reward state can drift from head-tipset estimate.
-	req.Greater(onChain, oneXv, "chain must charge more than the legacy-1x pledge for a post-upgrade CC sector")
-	req.GreaterOrEqual(onChain, fullv/2,
-		"chain must charge the FULL-QA (10x) pledge tier for a post-upgrade CC sector (on-chain %d, 1x-est %d, 10x-est %d)",
-		onChain, oneXv, fullv)
+	ctrlID, err := client.StateLookupID(ctx, ctrlAddr, types.EmptyTSK)
+	req.NoError(err)
+	defaultID, err := client.StateLookupID(ctx, client.DefaultKey.Address, types.EmptyTSK)
+	req.NoError(err)
+	mi, err = client.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+	req.NoError(err)
+	req.Contains(mi.ControlAddresses, ctrlID, "ctrlAddr must now be a control address")
+	req.Equal(defaultID, mi.Owner, "owner unchanged")
+	req.Equal(defaultID, mi.Worker, "worker unchanged (owner==worker in the kit ensemble)")
+
+	// usqCallExit probes USQ (method 37) via StateCall; returns the exit code.
+	usqCallExit := func(from address.Address) exitcode.ExitCode {
+		loc, lerr := client.StateSectorPartition(ctx, maddr, sn, types.EmptyTSK)
+		req.NoError(lerr)
+		enc, sErr := actors.SerializeParams(&stminer.UpgradeSectorQualityParams{
+			Upgrades: []stminer.UpgradeSectorQuality{{
+				Deadline:  loc.Deadline,
+				Partition: loc.Partition,
+				Sectors:   bitfield.NewFromSet([]uint64{uint64(sn)}),
+			}},
+		})
+		req.NoError(sErr)
+		res, cErr := client.StateCall(ctx, &types.Message{
+			From:   from,
+			To:     maddr,
+			Method: builtin.MethodsMiner.UpgradeSectorQuality,
+			Params: enc,
+			Value:  types.FromFil(0),
+		}, types.EmptyTSK)
+		req.NoError(cErr)
+		return res.MsgRct.ExitCode
+	}
+
+	req.Equal(exitcode.Ok, usqCallExit(ctrlAddr),
+		"a control address must be authorized to call UpgradeSectorQuality (Ok, not USR_FORBIDDEN)")
+
+	req.Equal(exitcode.ErrForbidden, usqCallExit(unrelatedAddr),
+		"an unrelated address must be forbidden from calling UpgradeSectorQuality")
+
+	_, err = um.UpgradeSectorQuality([]abi.SectorNumber{sn}, nil)
+	req.NoError(err, "owner/worker USQ must be accepted")
+
+	info, err := client.StateSectorGetInfo(ctx, maddr, sn, types.EmptyTSK)
+	req.NoError(err)
+	req.NotZero(info.Flags&miner.FULL_QA_POWER,
+		"the owner/worker USQ must actually raise the legacy sector to FULL_QA(10x)")
+	power, err := client.StateMinerPower(ctx, maddr, types.EmptyTSK)
+	req.NoError(err)
+	req.Equal(uint64(defaultSectorSize)*10, power.MinerPower.QualityAdjPower.Uint64(),
+		"owner/worker USQ lifts the miner's only sector to 10x QAP")
+
+	um.AssertNoWindowPostError()
+}
+
+// TestMigrationNV29SolsticeUpgradeQualityPureOwnerAuth asserts that a pure owner (owner != worker, not control) is authorized for USQ (method 37) while unrelated is USR_FORBIDDEN.
+func TestMigrationNV29SolsticeUpgradeQualityPureOwnerAuth(t *testing.T) {
+	req := require.New(t)
+	kit.QuietMiningLogs()
+
+	const (
+		defaultSectorSize = abi.SectorSize(2 << 10) // 2KiB
+		upgradeEpoch      = abi.ChainEpoch(2000)
+	)
+
+	e := kit.NewSolsticeUpgradeEnv(t, kit.SolsticeOpts{UpgradeEpoch: upgradeEpoch})
+	ctx, client, um, maddr := e.Ctx, e.Client, e.Um, e.Maddr
+	sealProofType := e.SealProof
+
+	ownerA := client.DefaultKey.Address
+
+	client.WaitTillChain(ctx, kit.HeightAtLeast(upgradeEpoch+5))
+	head, err := client.ChainHead(ctx)
+	req.NoError(err)
+	nv, err := client.StateNetworkVersion(ctx, head.Key())
+	req.NoError(err)
+	req.Equal(network.Version29, nv, "chain must actually be on NV29 after the migration")
+
+	onboarded, _ := um.OnboardSectors(sealProofType, kit.NewSectorBatch().AddEmptySectors(1))
+	req.Len(onboarded, 1)
+	um.WaitTillActivatedAndAssertPower(onboarded, uint64(defaultSectorSize), uint64(defaultSectorSize)*10)
+	sn := onboarded[0]
+	um.Stop()
+
+	// workerB must be BLS (actor rejects secp worker); control and unrelated may be secp.
+	workerB, err := client.WalletNew(ctx, types.KTBLS)
+	req.NoError(err)
+	controlC, err := client.WalletNew(ctx, types.KTSecp256k1)
+	req.NoError(err)
+	unrelatedD, err := client.WalletNew(ctx, types.KTSecp256k1)
+	req.NoError(err)
+	for _, a := range []address.Address{workerB, controlC, unrelatedD} {
+		kit.SendFunds(ctx, t, client, a, types.FromFil(1))
+	}
+
+	resolveToID := func(a address.Address) address.Address {
+		id, lerr := client.StateLookupID(ctx, a, types.EmptyTSK)
+		req.NoError(lerr)
+		return id
+	}
+	workerBID := resolveToID(workerB)
+
+	cwp := &stminer.ChangeWorkerAddressParams{
+		NewWorker:       workerB,
+		NewControlAddrs: []address.Address{controlC},
+	}
+	cwEnc, aerr := actors.SerializeParams(cwp)
+	req.NoError(aerr)
+	cwMsg, err := client.MpoolPushMessage(ctx, &types.Message{
+		From:   ownerA,
+		To:     maddr,
+		Method: builtin.MethodsMiner.ChangeWorkerAddress,
+		Params: cwEnc,
+		Value:  types.FromFil(0),
+	}, nil)
+	req.NoError(err)
+	_, err = client.StateWaitMsg(ctx, cwMsg.Cid(), 2, lapi.LookbackNoLimit, true)
+	req.NoError(err, "ChangeWorkerAddress must be confirmed")
+
+	saAct, saErr := client.StateGetActor(ctx, maddr, types.EmptyTSK)
+	req.NoError(saErr)
+	bs := gstStore.WrapBlockStore(ctx, blockstore.NewAPIBlockstore(client))
+	var mst stminer.State
+	req.NoError(bs.Get(ctx, saAct.Head, &mst))
+	var mInfo stminer.MinerInfo
+	req.NoError(bs.Get(ctx, mst.Info, &mInfo))
+	req.NotNil(mInfo.PendingWorkerKey, "a real worker change must register a pending worker key")
+	effectiveAt := mInfo.PendingWorkerKey.EffectiveAt
+	t.Logf("worker handover to %s pending, effective at epoch %d", workerBID, effectiveAt)
+
+	client.WaitTillChain(ctx, kit.HeightAtLeast(effectiveAt+20))
+
+	cfmMsg, cerr := client.MpoolPushMessage(ctx, &types.Message{
+		From:   ownerA,
+		To:     maddr,
+		Method: builtin.MethodsMiner.ConfirmChangeWorkerAddress,
+		Params: nil, // *abi.EmptyValue
+		Value:  types.FromFil(0),
+	}, nil)
+	req.NoError(cerr)
+	_, cerr = client.StateWaitMsg(ctx, cfmMsg.Cid(), 2, lapi.LookbackNoLimit, true)
+	req.NoError(cerr, "ConfirmChangeWorkerAddress must be confirmed")
+
+	// stateCallExit probes method m via StateCall; returns the exit code.
+	stateCallExit := func(from address.Address, m abi.MethodNum, params []byte) exitcode.ExitCode {
+		res, cerr := client.StateCall(ctx, &types.Message{
+			From:   from,
+			To:     maddr,
+			Method: m,
+			Params: params,
+			Value:  types.FromFil(0),
+		}, types.EmptyTSK)
+		req.NoError(cerr)
+		return res.MsgRct.ExitCode
+	}
+
+	mi, merr := client.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+	req.NoError(merr)
+	ownerAID := resolveToID(ownerA)
+	controlCID := resolveToID(controlC)
+	aIsControl := false
+	for _, c := range mi.ControlAddresses {
+		if c == ownerAID {
+			aIsControl = true
+			break
+		}
+	}
+	req.True(mi.Owner == ownerAID, "owner must be A after the handover; got %s want %s", mi.Owner, ownerAID)
+	req.True(mi.Worker == workerBID, "worker must be B after the handover (A is no longer worker); got %s want %s", mi.Worker, workerBID)
+	req.Contains(mi.ControlAddresses, controlCID, "control C must be installed after the handover")
+	req.False(aIsControl, "A must not be a control address (pure owner); controls=%v", mi.ControlAddresses)
+	req.True(mi.Owner == ownerAID && mi.Worker != ownerAID && !aIsControl,
+		"guard: A must be owner-only (Owner=A, Worker=B, A not in controls)")
+	t.Logf("guard ok: after handover Owner=%s Worker=%s Controls=%v -> A is a pure owner", mi.Owner, mi.Worker, mi.ControlAddresses)
+
+	loc, lerr := client.StateSectorPartition(ctx, maddr, sn, types.EmptyTSK)
+	req.NoError(lerr)
+	usqEnc, sErr := actors.SerializeParams(&stminer.UpgradeSectorQualityParams{
+		Upgrades: []stminer.UpgradeSectorQuality{{
+			Deadline:  loc.Deadline,
+			Partition: loc.Partition,
+			Sectors:   bitfield.NewFromSet([]uint64{uint64(sn)}),
+		}},
+	})
+	req.NoError(sErr)
+
+	ownerUSQ := stateCallExit(ownerA, builtin.MethodsMiner.UpgradeSectorQuality, usqEnc)
+	workerUSQ := stateCallExit(workerB, builtin.MethodsMiner.UpgradeSectorQuality, usqEnc)
+	controlUSQ := stateCallExit(controlC, builtin.MethodsMiner.UpgradeSectorQuality, usqEnc)
+	unrelatedUSQ := stateCallExit(unrelatedD, builtin.MethodsMiner.UpgradeSectorQuality, usqEnc)
+	t.Logf("UpgradeSectorQuality exit codes: owner(A)=%d worker(B)=%d control(C)=%d unrelated(D)=%d",
+		ownerUSQ, workerUSQ, controlUSQ, unrelatedUSQ)
+
+	req.Equal(exitcode.ErrForbidden, unrelatedUSQ, "an unrelated address must be forbidden from method 37")
+	req.NotEqual(exitcode.ErrForbidden, workerUSQ, "the distinct worker B must remain authorized for method 37")
+	req.NotEqual(exitcode.ErrForbidden, controlUSQ, "the control address must remain authorized for method 37")
+
+	// A pure owner cannot surface USR_FORBIDDEN; sector may fault after A lost worker role.
+	faults, ferr := client.StateMinerFaults(ctx, maddr, types.EmptyTSK)
+	req.NoError(ferr)
+	ownerSectorFaulted, fserr := faults.IsSet(uint64(sn))
+	req.NoError(fserr)
+	if ownerSectorFaulted {
+		req.NotEqual(exitcode.ErrForbidden, ownerUSQ,
+			"a pure owner (owner != worker, not a control) must be authorized for method 37; got %d (sector faulted: authorized owner surfaces only a sector-state error, not USR_FORBIDDEN)", ownerUSQ)
+		t.Logf("sector %d is faulted at probe time; pure-owner authorization asserted at the caller gate (ownerUSQ=%d)", sn, ownerUSQ)
+	} else {
+		req.Equal(exitcode.Ok, ownerUSQ,
+			"a pure owner (owner != worker, not a control) must be authorized for method 37 AND run it to completion on an active sector; got %d", ownerUSQ)
+		t.Logf("sector %d active at probe time; pure owner ran method 37 to OK on an active sector", sn)
+	}
 }

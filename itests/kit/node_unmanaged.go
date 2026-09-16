@@ -27,6 +27,7 @@ import (
 	"github.com/filecoin-project/go-state-types/batch"
 	"github.com/filecoin-project/go-state-types/builtin"
 	miner14 "github.com/filecoin-project/go-state-types/builtin/v14/miner"
+	verifreg14 "github.com/filecoin-project/go-state-types/builtin/v14/verifreg"
 	stminer "github.com/filecoin-project/go-state-types/builtin/v19/miner"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
@@ -648,7 +649,8 @@ func (tm *TestUnmanagedMiner) SnapDeal(sectorNumber abi.SectorNumber, sm SectorM
 	return pieces, r.TipSet
 }
 
-func (tm *TestUnmanagedMiner) ExtendSectorExpiration(sectorNumber abi.SectorNumber, expiration abi.ChainEpoch) types.TipSetKey {
+// ExtendSectorExpiration preserves the supplied verified claims when extending a sector.
+func (tm *TestUnmanagedMiner) ExtendSectorExpiration(sectorNumber abi.SectorNumber, expiration abi.ChainEpoch, maintainClaims ...verifreg14.ClaimId) types.TipSetKey {
 	req := require.New(tm.t)
 
 	// ExtendSectorExpiration2 is rejected on a sector in a sensitive/immutable deadline (current,
@@ -667,6 +669,13 @@ func (tm *TestUnmanagedMiner) ExtendSectorExpiration(sectorNumber abi.SectorNumb
 				NewExpiration: expiration,
 			},
 		},
+	}
+	if len(maintainClaims) > 0 {
+		params.Extensions[0].Sectors = bitfield.New()
+		params.Extensions[0].SectorsWithClaims = []miner14.SectorClaim{{
+			SectorNumber:   sectorNumber,
+			MaintainClaims: maintainClaims,
+		}}
 	}
 	r, err := tm.SubmitMessage(params, 1, builtin.MethodsMiner.ExtendSectorExpiration2)
 	req.NoError(err)
