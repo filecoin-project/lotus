@@ -87,6 +87,13 @@ func TestTipSetKey(t *testing.T) {
 			`{"/":"bafy2bzacebxfyh2fzoxrt6kcgc5dkaodpcstgwxxdizrww225vrhsizsfcg4g"},`+
 			`{"/":"bafy2bzacedwviarjtjraqakob5pslltmuo5n3xev3nt5zylezofkbbv5jclyu"}`+
 			`]`, k3)
+
+		// A null element decodes to cid.Undef and must be rejected.
+		for _, in := range []string{`[null]`, `[null, null]`,
+			`[{"/":"bafy2bzacecesrkxghscnq7vatble2hqdvwat6ed23vdu4vvo3uuggsoaya7ki"}, null]`} {
+			var k TipSetKey
+			assert.Error(t, json.Unmarshal([]byte(in), &k), "input %q", in)
+		}
 	})
 
 	t.Run("CBOR", func(t *testing.T) {
