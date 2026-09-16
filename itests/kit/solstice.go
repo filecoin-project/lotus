@@ -5,12 +5,17 @@ import (
 	"testing"
 	"time"
 
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/builtin"
+	reward19 "github.com/filecoin-project/go-state-types/builtin/v19/reward"
+	adt19 "github.com/filecoin-project/go-state-types/builtin/v19/util/adt"
 	"github.com/filecoin-project/go-state-types/network"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
@@ -122,4 +127,23 @@ func WaitForMinerQAP(ctx context.Context, t *testing.T, client *TestFullNode, ma
 		require.NoError(t, err)
 		client.WaitTillChain(ctx, HeightAtLeast(head.Height()+50))
 	}
+}
+
+// LoadReward19 loads the v19 reward actor state and streams, checking invariants.
+func LoadReward19(ctx context.Context, t *testing.T, node api.FullNode, store cbor.IpldStore, tsk types.TipSetKey) (*types.Actor, *reward19.State, *reward19.StreamsState) {
+	t.Helper()
+	req := require.New(t)
+	tipset, err := node.ChainGetTipSet(ctx, tsk)
+	req.NoError(err)
+	parent, err := node.ChainGetTipSet(ctx, tipset.Parents())
+	req.NoError(err)
+	actor := MustActor(ctx, t, node, builtin.RewardActorAddr, tsk)
+	var state reward19.State
+	req.NoError(store.Get(ctx, actor.Head, &state))
+	adtStore := adt19.WrapStore(ctx, store)
+	streams, err := state.LoadStreams(adtStore)
+	req.NoError(err)
+	_, messages := reward19.CheckStateInvariants(&state, adtStore, parent.Height(), actor.Balance)
+	req.Empty(messages.Messages())
+	return actor, &state, streams
 }

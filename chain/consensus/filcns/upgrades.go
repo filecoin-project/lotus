@@ -3360,6 +3360,48 @@ func upgradeActorsV18Common(
 	return newRoot, nil
 }
 
+// resolveSolsticeRewardBootstrapAt resolves the governance addresses against the state tree at root.
+func resolveSolsticeRewardBootstrapAt(
+	ctx context.Context, sm *stmgr.StateManager, root cid.Cid,
+	params buildconstants.SolsticeRewardBootstrapParams,
+) (buildconstants.SolsticeRewardBootstrapParams, error) {
+	actorsIn, err := state.LoadStateTree(store.ActorStore(ctx, sm.ChainStore().StateBlockstore()), root)
+	if err != nil {
+		return buildconstants.SolsticeRewardBootstrapParams{}, xerrors.Errorf("loading state tree: %w", err)
+	}
+	return resolveSolsticeRewardBootstrap(actorsIn, params)
+}
+
+// resolveSolsticeRewardBootstrap resolves the SWA, SRA and orchestrator addresses to ID addresses.
+// An address missing from the tree fails the migration.
+func resolveSolsticeRewardBootstrap(
+	actorsIn *state.StateTree, params buildconstants.SolsticeRewardBootstrapParams,
+) (buildconstants.SolsticeRewardBootstrapParams, error) {
+	if params.SWAActor == address.Undef {
+		return buildconstants.SolsticeRewardBootstrapParams{}, errors.New("Solstice bootstrap SWAActor is unset")
+	}
+	for _, field := range []struct {
+		name string
+		addr *address.Address
+	}{
+		{"SWAActor", &params.SWAActor},
+		{"SRAActor", &params.SRAActor},
+		{"InitialOrchestrator", &params.InitialOrchestrator},
+	} {
+		// A consensus-only bootstrap leaves the stream 2 addresses unset.
+		if *field.addr == address.Undef {
+			continue
+		}
+		id, err := actorsIn.LookupIDAddress(*field.addr)
+		if err != nil {
+			return buildconstants.SolsticeRewardBootstrapParams{}, xerrors.Errorf(
+				"Solstice bootstrap %s %s is not on chain: %w", field.name, *field.addr, err)
+		}
+		*field.addr = id
+	}
+	return params, nil
+}
+
 func solsticeRewardMigrationConfig(params buildconstants.SolsticeRewardBootstrapParams) (nv29.RewardMigrationConfig, error) {
 	if params.ConsensusWeightRampDurationEpochs == 0 {
 		neutral := buildconstants.NeutralSolsticeRewardBootstrapParams
@@ -3459,6 +3501,12 @@ func preUpgradeActorsV19(
 		workerCount /= 2
 	}
 
+	// The lookback tree may predate the contracts, so resolve here; IDs never change once assigned.
+	resolvedParams, err := resolveSolsticeRewardBootstrapAt(ctx, sm, root, rewardParams)
+	if err != nil {
+		return err
+	}
+
 	lbts, lbRoot, err := stmgr.GetLookbackTipSetForRound(ctx, sm, ts, epoch)
 	if err != nil {
 		return xerrors.Errorf("error getting lookback ts for premigration: %w", err)
@@ -3474,7 +3522,7 @@ func preUpgradeActorsV19(
 		ProgressLogPeriod: logPeriod,
 	}
 
-	_, err = upgradeActorsV19Common(ctx, sm, cache, lbRoot, epoch, lbts, rewardParams, config)
+	_, err = upgradeActorsV19Common(ctx, sm, cache, lbRoot, epoch, lbts, resolvedParams, config)
 	return err
 }
 
@@ -3515,22 +3563,31 @@ func upgradeActorsV19(ctx context.Context, sm *stmgr.StateManager, cache stmgr.M
 		ResultQueueSize:   100,
 		ProgressLogPeriod: logPeriod,
 	}
-	newRoot, err := upgradeActorsV19Common(ctx, sm, cache, root, epoch, ts, rewardParams, config)
+
+	resolvedParams, err := resolveSolsticeRewardBootstrapAt(ctx, sm, root, rewardParams)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	newRoot, err := upgradeActorsV19Common(ctx, sm, cache, root, epoch, ts, resolvedParams, config)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("migrating actors v19 state: %w", err)
 	}
 	return newRoot, nil
 }
 
+// upgradeActorsV19Common migrates root with reward bootstrap addresses its caller has already
+// resolved to ID form.
 func upgradeActorsV19Common(
 	ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache,
 	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet,
-	rewardParams buildconstants.SolsticeRewardBootstrapParams, config migration.Config,
+	resolvedRewardParams buildconstants.SolsticeRewardBootstrapParams, config migration.Config,
 ) (cid.Cid, error) {
-	rewardConfig, err := solsticeRewardMigrationConfig(rewardParams)
+	rewardConfig, err := solsticeRewardMigrationConfig(resolvedRewardParams)
 	if err != nil {
 		return cid.Undef, err
 	}
+
 	writeStore := blockstore.NewAutobatch(ctx, sm.ChainStore().StateBlockstore(), units.GiB/4)
 	adtStore := store.ActorStore(ctx, writeStore)
 	// ensure that the manifest is loaded in the blockstore

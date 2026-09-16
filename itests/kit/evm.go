@@ -313,18 +313,46 @@ func (e *EVM) SubmitTransaction(ctx context.Context, tx ethtypes.EthTransaction)
 // ComputeContractAddress computes the address of a contract deployed by the
 // specified address with the specified nonce.
 func (e *EVM) ComputeContractAddress(deployer ethtypes.EthAddress, nonce uint64) ethtypes.EthAddress {
+	return ComputeContractAddress(e.t, deployer, nonce)
+}
+
+// ComputeContractAddress computes the address of a contract deployed by the specified address with
+// the specified nonce: keccak256(rlp([deployer, nonce]))[12:], the EVM's CREATE rule.
+func ComputeContractAddress(t *testing.T, deployer ethtypes.EthAddress, nonce uint64) ethtypes.EthAddress {
+	t.Helper()
 	nonceRlp, err := formatInt(int(nonce))
-	require.NoError(e.t, err)
+	require.NoError(t, err)
 
 	encoded, err := ethtypes.EncodeRLP([]interface{}{
 		deployer[:],
 		nonceRlp,
 	})
-	require.NoError(e.t, err)
+	require.NoError(t, err)
 
 	hasher := keccak.NewLegacyKeccak256()
 	hasher.Write(encoded)
 	return *(*ethtypes.EthAddress)(hasher.Sum(nil)[12:])
+}
+
+// EthAddressForCreate returns the EVM-space address that the EAM derives sender's contract
+// addresses from: an f410 sender is already in that space, an f1/f3 sender hashes into it.
+func EthAddressForCreate(t *testing.T, sender address.Address) ethtypes.EthAddress {
+	t.Helper()
+	switch sender.Protocol() {
+	case address.SECP256K1, address.BLS:
+		hasher := keccak.NewLegacyKeccak256()
+		hasher.Write(sender.Bytes())
+		addr, err := ethtypes.CastEthAddress(hasher.Sum(nil)[12:])
+		require.NoError(t, err)
+		return addr
+	case address.Delegated:
+		addr, err := ethtypes.EthAddressFromFilecoinAddress(sender)
+		require.NoError(t, err)
+		return addr
+	default:
+		require.FailNowf(t, "cannot deploy from this address", "unsupported protocol %d", sender.Protocol())
+		panic("unreachable")
+	}
 }
 
 // GetEthBlockFromWait returns and eth block from a wait return.

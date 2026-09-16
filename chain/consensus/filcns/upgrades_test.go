@@ -1,16 +1,25 @@
 package filcns
 
 import (
+	"context"
 	"testing"
 
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/big"
+	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	nv29 "github.com/filecoin-project/go-state-types/builtin/v19/migration"
 	reward19 "github.com/filecoin-project/go-state-types/builtin/v19/reward"
 
 	"github.com/filecoin-project/lotus/build/buildconstants"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
+	"github.com/filecoin-project/lotus/chain/state"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 func TestSolsticeRewardMigrationConfig(t *testing.T) {
@@ -133,7 +142,7 @@ func TestSolsticeBootstrapMatchesSchedule(t *testing.T) {
 	require.Equal(t, addressesSet, scheduled,
 		"Solstice upgrade height (%d) and bootstrap addresses disagree: "+
 			"addresses set = %v, upgrade reachable = %v. Schedule the upgrade only once "+
-			"SWAActor (%v), SRAActor (%v) and InitialOrchestrator (%v) are all real ID addresses.",
+			"SWAActor (%v), SRAActor (%v) and InitialOrchestrator (%v) are all set.",
 		buildconstants.UpgradeXxHeight, addressesSet, scheduled,
 		params.SWAActor, params.SRAActor, params.InitialOrchestrator)
 
@@ -141,9 +150,142 @@ func TestSolsticeBootstrapMatchesSchedule(t *testing.T) {
 		return
 	}
 
+	// The migration resolves the addresses against its input state tree, so stand in ID addresses
+	// here and leave the weight geometry as the part a build-time check can reach.
+	params.SWAActor = builtin.SystemActorAddr
+	params.SRAActor = builtin.SystemActorAddr
+	params.InitialOrchestrator = builtin.BurntFundsActorAddr
+
 	config, err := solsticeRewardMigrationConfig(params)
 	require.NoError(t, err)
 	require.NoError(t, nv29.ValidateRewardMigrationConfig(config, buildconstants.UpgradeXxHeight),
 		"Solstice is scheduled at epoch %d, so its reward bootstrap must be valid",
 		buildconstants.UpgradeXxHeight)
+}
+
+func TestResolveSolsticeRewardBootstrap(t *testing.T) {
+	swa, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, ethAddressBytes(1))
+	require.NoError(t, err)
+	sra, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, ethAddressBytes(2))
+	require.NoError(t, err)
+	orchestrator, err := address.NewSecp256k1Address([]byte("solstice orchestrator"))
+	require.NoError(t, err)
+
+	deployed := func() buildconstants.SolsticeRewardBootstrapParams {
+		params := buildconstants.NeutralSolsticeRewardBootstrapParams
+		params.SWAActor = swa
+		params.SRAActor = sra
+		params.InitialOrchestrator = orchestrator
+		return params
+	}
+
+	t.Run("resolves f410 and f1 addresses", func(t *testing.T) {
+		tree, ids := solsticeStateTree(t, swa, sra, orchestrator)
+
+		resolved, err := resolveSolsticeRewardBootstrap(tree, deployed())
+		require.NoError(t, err)
+		require.Equal(t, ids[swa], resolved.SWAActor)
+		require.Equal(t, ids[sra], resolved.SRAActor)
+		require.Equal(t, ids[orchestrator], resolved.InitialOrchestrator)
+		for _, addr := range []address.Address{resolved.SWAActor, resolved.SRAActor, resolved.InitialOrchestrator} {
+			require.Equal(t, address.ID, addr.Protocol())
+		}
+	})
+
+	t.Run("ID addresses pass through", func(t *testing.T) {
+		tree, _ := solsticeStateTree(t)
+		params := buildconstants.NeutralSolsticeRewardBootstrapParams
+		params.SWAActor = builtin.SystemActorAddr
+		params.SRAActor = builtin.SystemActorAddr
+		params.InitialOrchestrator = builtin.BurntFundsActorAddr
+
+		resolved, err := resolveSolsticeRewardBootstrap(tree, params)
+		require.NoError(t, err)
+		require.Equal(t, params, resolved)
+	})
+
+	t.Run("unresolvable address fails", func(t *testing.T) {
+		for _, missing := range []struct {
+			field string
+			addr  address.Address
+		}{
+			{"SWAActor", swa},
+			{"SRAActor", sra},
+			{"InitialOrchestrator", orchestrator},
+		} {
+			t.Run(missing.field, func(t *testing.T) {
+				var registered []address.Address
+				for _, addr := range []address.Address{swa, sra, orchestrator} {
+					if addr != missing.addr {
+						registered = append(registered, addr)
+					}
+				}
+				tree, _ := solsticeStateTree(t, registered...)
+
+				_, err := resolveSolsticeRewardBootstrap(tree, deployed())
+				require.ErrorIs(t, err, types.ErrActorNotFound)
+				require.ErrorContains(t, err, missing.field)
+				require.ErrorContains(t, err, missing.addr.String())
+			})
+		}
+	})
+
+	t.Run("unset SWA fails", func(t *testing.T) {
+		tree, _ := solsticeStateTree(t, sra, orchestrator)
+		params := deployed()
+		params.SWAActor = address.Undef
+
+		_, err := resolveSolsticeRewardBootstrap(tree, params)
+		require.ErrorContains(t, err, "SWAActor is unset")
+	})
+
+	t.Run("unset SRA and orchestrator pass through", func(t *testing.T) {
+		tree, ids := solsticeStateTree(t, swa)
+		params := deployed()
+		params.SRAActor = address.Undef
+		params.InitialOrchestrator = address.Undef
+
+		resolved, err := resolveSolsticeRewardBootstrap(tree, params)
+		require.NoError(t, err)
+		require.Equal(t, ids[swa], resolved.SWAActor)
+		require.Equal(t, address.Undef, resolved.SRAActor)
+		require.Equal(t, address.Undef, resolved.InitialOrchestrator)
+	})
+}
+
+func ethAddressBytes(b byte) []byte {
+	addr := make([]byte, 20)
+	addr[19] = b
+	return addr
+}
+
+// solsticeStateTree returns a state tree whose init actor maps each address to a fresh ID address,
+// along with those mappings.
+func solsticeStateTree(
+	t *testing.T, addrs ...address.Address,
+) (*state.StateTree, map[address.Address]address.Address) {
+	t.Helper()
+
+	ctx := context.Background()
+	cst := cbor.NewMemCborStore()
+	tree, err := state.NewStateTree(cst, types.StateTreeVersion5)
+	require.NoError(t, err)
+
+	initState, err := init_.MakeState(adt.WrapStore(ctx, cst), actorstypes.Version18, "testnet")
+	require.NoError(t, err)
+	head, err := cst.Put(ctx, initState)
+	require.NoError(t, err)
+	require.NoError(t, tree.SetActor(init_.Address, &types.Actor{
+		Code:    initState.Code(),
+		Head:    head,
+		Balance: big.Zero(),
+	}))
+
+	ids := make(map[address.Address]address.Address, len(addrs))
+	for _, addr := range addrs {
+		id, err := tree.RegisterNewAddress(addr)
+		require.NoError(t, err)
+		ids[addr] = id
+	}
+	return tree, ids
 }

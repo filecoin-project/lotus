@@ -218,3 +218,26 @@ func BlocksMinedByAll(miner ...address.Address) ChainPredicate {
 		return false
 	}
 }
+
+// TipsetAtOrAfter skips null epochs and returns the first tipset at or after target.
+func TipsetAtOrAfter(ctx context.Context, t *testing.T, node api.FullNode, target abi.ChainEpoch) *types.TipSet {
+	t.Helper()
+	req := require.New(t)
+	head, err := node.ChainHead(ctx)
+	req.NoError(err)
+	req.GreaterOrEqual(head.Height(), target, "chain head has not reached target epoch")
+	for height := target; height <= head.Height(); height++ {
+		ts, err := node.ChainGetTipSetByHeight(ctx, height, head.Key())
+		req.NoError(err)
+		if ts.Height() >= target {
+			return ts
+		}
+	}
+	req.FailNow("no non-null tipset after target", "target epoch %d through head %d", target, head.Height())
+	return nil
+}
+
+func RequireMessageSuccess(t *testing.T, lookup *api.MsgLookup) {
+	t.Helper()
+	require.True(t, lookup.Receipt.ExitCode.IsSuccess(), lookup.Receipt.ExitCode.String())
+}
