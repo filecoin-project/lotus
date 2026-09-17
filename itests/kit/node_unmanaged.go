@@ -885,46 +885,11 @@ func (tm *TestUnmanagedMiner) mkStagedFileWithPieces(pt abi.RegisteredSealProof)
 	return publicPieces, unsealedSectorFile.Name(), nil
 }
 
-// waitForMutableDeadline will wait until we are not in the proving deadline for the given
-// sector, or the deadline after the proving deadline.
-// For safety, to avoid possible races with the window post loop, we will also avoid the
-// deadline before the proving deadline.
+// waitForMutableDeadline waits until the sector's deadline is neither the proving deadline nor the
+// one either side of it, so a message about the sector is accepted and cannot race the window post
+// loop.
 func (tm *TestUnmanagedMiner) waitForMutableDeadline(sectorNum abi.SectorNumber) {
-	req := require.New(tm.t)
-
-	ts, err := tm.FullNode.ChainHead(tm.ctx)
-	req.NoError(err)
-
-	sl, err := tm.FullNode.StateSectorPartition(tm.ctx, tm.ActorAddr, sectorNum, ts.Key())
-	req.NoError(err)
-
-	dlinfo, err := tm.FullNode.StateMinerProvingDeadline(tm.ctx, tm.ActorAddr, ts.Key())
-	req.NoError(err)
-
-	// Classify against the epoch-derived current deadline index (CurrentDeadlineIndex) rather than
-	// dlinfo.Index. dlinfo.Index is the on-chain CurrentDeadline, which only ticks while the miner is
-	// enrolled in cron; when it is not it can lag the epoch-derived index that the actor actually
-	// enforces (the same source sectorsToPostWithDeadline/submitWindowPost use). Using dlinfo.Index
-	// here could misclassify a mutable sector as safe and land a message in an immutable window.
-	current := CurrentDeadlineIndex(dlinfo)
-
-	sectorDeadlineCurrent := sl.Deadline == current                                                          // we are in the proving deadline
-	sectorDeadlineNext := (current+1)%dlinfo.WPoStPeriodDeadlines == sl.Deadline                             // we are in the deadline after the proving deadline
-	sectorDeadlinePrev := (current-1+dlinfo.WPoStPeriodDeadlines)%dlinfo.WPoStPeriodDeadlines == sl.Deadline // we are in the deadline before the proving deadline
-
-	if sectorDeadlineCurrent || sectorDeadlineNext || sectorDeadlinePrev {
-		// We are in a sensitive, or immutable deadline, we need to wait
-		targetEpoch := dlinfo.NextOpen() // end of current deadline
-		if sectorDeadlineCurrent {
-			// we are in the proving deadline, wait until the end of the next one
-			targetEpoch += dlinfo.WPoStChallengeWindow
-		} else if sectorDeadlinePrev {
-			// we are in the deadline before the proving deadline, wait an additional window
-			targetEpoch += dlinfo.WPoStChallengeWindow * 2
-		}
-		_, err := tm.FullNode.WaitTillChainOrError(tm.ctx, HeightAtLeast(targetEpoch+5))
-		req.NoError(err)
-	}
+	tm.waitForMutableDeadlineOfAll(tm.sectorsByDeadlinePartition([]abi.SectorNumber{sectorNum}), 1)
 }
 
 func (tm *TestUnmanagedMiner) preCommitSectors(
@@ -1153,11 +1118,17 @@ func (tm *TestUnmanagedMiner) wdPostLoop() {
 		for tm.ctx.Err() == nil {
 			// Get deadline info at the start of this iteration to avoid race conditions
 			// where the chain advances between checking sectors and waiting for next deadline.
-			di, err := tm.FullNode.StateMinerProvingDeadline(tm.ctx, tm.ActorAddr, types.EmptyTSK)
+			head, err := tm.FullNode.ChainHead(tm.ctx)
+			if err != nil {
+				recordPostOrError(windowPost{Error: fmt.Errorf("failed to get chain head: %w", err)})
+				return
+			}
+			di, err := tm.FullNode.StateMinerProvingDeadline(tm.ctx, tm.ActorAddr, head.Key())
 			if err != nil {
 				recordPostOrError(windowPost{Error: fmt.Errorf("failed to get proving deadline: %w", err)})
 				return
 			}
+			di = DeadlineForHeight(di, head.Height())
 
 			postSectors, err := tm.sectorsToPostWithDeadline(di)
 			if err != nil {
@@ -1185,6 +1156,7 @@ func (tm *TestUnmanagedMiner) wdPostLoop() {
 }
 
 // waitForNextPostDeadlineFrom waits until the deadline described in di closes and the next one opens.
+// If the chain is already past that, it returns at once.
 func (tm *TestUnmanagedMiner) waitForNextPostDeadlineFrom(di *dline.Info) error {
 	ctx, cancel := context.WithCancel(tm.ctx)
 	defer cancel()
@@ -1193,7 +1165,7 @@ func (tm *TestUnmanagedMiner) waitForNextPostDeadlineFrom(di *dline.Info) error 
 	// the current deadline ends, which is also when the next deadline opens.
 	nextDeadlineEpoch := di.Close
 
-	tm.log("Window PoST waiting until next challenge window, currentDeadlineIdx: %d, nextDeadlineEpoch: %d", CurrentDeadlineIndex(di), nextDeadlineEpoch)
+	tm.log("Window PoST waiting until next challenge window, currentDeadlineIdx: %d, nextDeadlineEpoch: %d", di.Index, nextDeadlineEpoch)
 
 	heads, err := tm.FullNode.ChainNotify(ctx)
 	if err != nil {
@@ -1202,7 +1174,7 @@ func (tm *TestUnmanagedMiner) waitForNextPostDeadlineFrom(di *dline.Info) error 
 
 	for chg := range heads {
 		for _, c := range chg {
-			if c.Type != "apply" {
+			if c.Type != "apply" && c.Type != "current" {
 				continue
 			}
 			if ts := c.Val; ts.Height() >= nextDeadlineEpoch+5 { // add some buffer
@@ -1217,7 +1189,7 @@ func (tm *TestUnmanagedMiner) waitForNextPostDeadlineFrom(di *dline.Info) error 
 // sectorsToPostWithDeadline returns the sectors that are due to be posted for the deadline
 // described in di.
 func (tm *TestUnmanagedMiner) sectorsToPostWithDeadline(di *dline.Info) ([]abi.SectorNumber, error) {
-	currentDeadlineIdx := CurrentDeadlineIndex(di)
+	currentDeadlineIdx := di.Index
 
 	// Skip sectors that are currently faulted: a WindowPoSt must not include a faulted sector, and the
 	// actor would reject such a post. (A recovering sector still needs a post to complete its recovery,
@@ -1309,11 +1281,9 @@ func (tm *TestUnmanagedMiner) submitWindowPost(di *dline.Info, sectorNumbers []a
 	// di is passed in from the caller (wdPostLoop) so the deadline we post for is consistent with
 	// the one used to select sectors. Fetching a fresh di here would race with the chain advancing
 	// past the deadline boundary, causing a deadline mismatch error and killing the post loop.
-	//
-	// Use CurrentDeadlineIndex rather than di.Index: when a miner is not enrolled in cron,
-	// di.Index is not ticking and may differ from the epoch-derived deadline index that
-	// sectorsToPostWithDeadline used to select these sectors.
-	currentDeadlineIdx := CurrentDeadlineIndex(di)
+	// Index and Challenge come from that same deadline, so the proof answers the challenge the actor
+	// draws for the deadline being posted.
+	currentDeadlineIdx := di.Index
 	chainRandomnessEpoch := di.Challenge
 
 	for _, sectorNumber := range sectorNumbers {
@@ -1355,7 +1325,7 @@ func (tm *TestUnmanagedMiner) submitWindowPost(di *dline.Info, sectorNumbers []a
 		if tm.mockProofs {
 			proofBytes = []byte{0xde, 0xad, 0xbe, 0xef}
 		} else {
-			proofBytes, err = tm.generateWindowPost(sectors)
+			proofBytes, err = tm.generateWindowPost(di, sectors)
 			if err != nil {
 				return fmt.Errorf("Miner(%s): failed to generate window post for deadline %d, partitions %v: %w", tm.ActorAddr, currentDeadlineIdx, partitions, err)
 			}
@@ -1425,7 +1395,9 @@ func (tm *TestUnmanagedMiner) submitWindowPost(di *dline.Info, sectorNumbers []a
 	return nil
 }
 
-func (tm *TestUnmanagedMiner) generateWindowPost(sectorInfos []sectorInfo) ([]byte, error) {
+// generateWindowPost answers the challenge of the deadline the caller is posting for (hence we take
+// the deadline info rather than deriving it).
+func (tm *TestUnmanagedMiner) generateWindowPost(di *dline.Info, sectorInfos []sectorInfo) ([]byte, error) {
 	head, err := tm.FullNode.ChainHead(tm.ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get chain head: %w", err)
@@ -1434,11 +1406,6 @@ func (tm *TestUnmanagedMiner) generateWindowPost(sectorInfos []sectorInfo) ([]by
 	minerInfo, err := tm.FullNode.StateMinerInfo(tm.ctx, tm.ActorAddr, head.Key())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get miner info: %w", err)
-	}
-
-	di, err := tm.FullNode.StateMinerProvingDeadline(tm.ctx, tm.ActorAddr, types.EmptyTSK)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get proving deadline: %w", err)
 	}
 
 	minerAddrBytes := new(bytes.Buffer)
@@ -1749,11 +1716,6 @@ func (tm *TestUnmanagedMiner) UpgradeSectorQuality(sectorNumbers []abi.SectorNum
 	grouped := tm.sectorsByDeadlinePartition(sectorNumbers)
 	upgrades := make([]stminer.UpgradeSectorQuality, 0, len(grouped))
 	for k, sectorIDs := range grouped {
-		// No immutability-window wait is needed here: FIP-0118 UpgradeSectorQuality is NOT gated by
-		// the proving deadline (unlike TerminateSectors). It is accepted even in the current proving
-		// deadline and is only rejected on a faulted (inactive) sector. This is verified against the
-		// real chain by TestMigrationNV29SolsticeDeadlineImmutabilityWindow, so submitting
-		// immediately is safe.
 		u := stminer.UpgradeSectorQuality{
 			Deadline:  k[0],
 			Partition: k[1],
@@ -1778,20 +1740,16 @@ func (tm *TestUnmanagedMiner) UpgradeSectorQuality(sectorNumbers []abi.SectorNum
 	return lookup, nil
 }
 
-// waitForMutableDeadlineOfAll waits until every distinct deadline in `grouped` is mutable at the
-// same chain state (none of them is the current proving deadline or its predecessor/successor).
-// TerminateSectors/DeclareFaults reject a sector in that sensitive window, and a batch can span
-// several deadlines.
+// waitForMutableDeadlineOfAll waits until every deadline in `grouped` is outside the proving window
+// at the same height, since the actor rejects a change to a sector it's about to challenge.
 //
-// Deadlines must be judged against one consistent current. Judging them one-by-one is racy: the wait
-// that frees one group advances the chain and can push an already-freed deadline back into the window.
-// So each iteration takes a fresh head, computes the current once, and returns only if every deadline
-// is mutable at it; otherwise it jumps to the next current index where all are simultaneously mutable,
-// waits for the chain, and loops back to re-verify.
-func (tm *TestUnmanagedMiner) waitForMutableDeadlineOfAll(grouped map[[2]uint64][]uint64) {
+// lead is how many windows ahead of a deadline the actor stops accepting the change. Terminations are
+// refused from the window before; fault and recovery declarations have a cutoff that reaches back
+// into the window before that, so they need one more.
+func (tm *TestUnmanagedMiner) waitForMutableDeadlineOfAll(grouped map[[2]uint64][]uint64, lead uint64) {
 	req := require.New(tm.t)
 
-	// Distinct involved deadlines (partition doesn't matter for mutability, only the deadline).
+	// Distinct involved deadlines (partition doesn't matter for mutability).
 	seen := make(map[uint64]struct{}, len(grouped))
 	var deadlines []uint64
 	for k := range grouped {
@@ -1801,12 +1759,20 @@ func (tm *TestUnmanagedMiner) waitForMutableDeadlineOfAll(grouped map[[2]uint64]
 		}
 	}
 
-	// mutable reports whether current index `c` has deadline `d` outside the sensitive window
-	// {d-1, d, d+1} (mod WPoStPeriodDeadlines).
+	// mutable reports whether current index `c` leaves deadline `d` alone: not d itself, not the one
+	// after it, and not the `lead` windows before it.
 	mutable := func(c, d, W uint64) bool {
 		cm := c % W
 		dm := d % W
-		return cm != dm && cm != (dm+1)%W && cm != (dm+W-1)%W
+		if cm == dm || cm == (dm+1)%W {
+			return false
+		}
+		for back := uint64(1); back <= lead; back++ {
+			if cm == (dm+W-back)%W {
+				return false
+			}
+		}
+		return true
 	}
 
 	for {
@@ -1814,11 +1780,10 @@ func (tm *TestUnmanagedMiner) waitForMutableDeadlineOfAll(grouped map[[2]uint64]
 		req.NoError(err)
 		dlinfo, err := tm.FullNode.StateMinerProvingDeadline(tm.ctx, tm.ActorAddr, ts.Key())
 		req.NoError(err)
+		dlinfo = DeadlineForHeight(dlinfo, ts.Height())
 
-		// Classify against the epoch-derived current deadline rather than dlinfo.Index: it only ticks
-		// while the miner is enrolled in cron, otherwise it lags the index the actor actually enforces.
 		W := dlinfo.WPoStPeriodDeadlines
-		current := CurrentDeadlineIndex(dlinfo)
+		current := dlinfo.Index
 
 		allMutable := true
 		for _, d := range deadlines {
@@ -1831,9 +1796,8 @@ func (tm *TestUnmanagedMiner) waitForMutableDeadlineOfAll(grouped map[[2]uint64]
 			return // every involved deadline is safe together at this current
 		}
 
-		// Jump to the next current index (within one full cycle) where all deadlines are simultaneously
-		// mutable. Each deadline forbids only 3 of the W indices, so such an index always exists in
-		// [current+1, current+W] for any realistic number of groups.
+		// Search one proving period for a window that passes the helper's safety checks for
+		// every involved deadline. Fail below if no such window exists.
 		var target uint64
 		for cand := current + 1; cand <= current+W; cand++ {
 			ok := true
@@ -1858,18 +1822,16 @@ func (tm *TestUnmanagedMiner) waitForMutableDeadlineOfAll(grouped map[[2]uint64]
 	}
 }
 
-// TerminateSectors terminates the given sectors. The miner actor defers actual removal + fee to the
-// end of the current proving period (OnDeferredCronEvent), so power is not dropped synchronously.
-// On success the terminated sectors are dropped from the local committedSectors set so the wdPost
-// loop stops trying to post them (they are no longer owed a WindowPoSt); otherwise a rejected post
-// for such a sector would kill the whole wdPost loop, including posts for still-healthy sectors.
+// TerminateSectors terminates the given sectors, dropping their power and charging their fee in the
+// same message. On success they leave the local committedSectors set so the wdPost loop stops posting
+// for them; a rejected post for a terminated sector would kill the whole loop, healthy sectors too.
 func (tm *TestUnmanagedMiner) TerminateSectors(sectorNumbers []abi.SectorNumber) {
 	req := require.New(tm.t)
 	if len(sectorNumbers) == 0 {
 		req.FailNow("TerminateSectors: no sectors to terminate")
 	}
 	grouped := tm.sectorsByDeadlinePartition(sectorNumbers)
-	tm.waitForMutableDeadlineOfAll(grouped)
+	tm.waitForMutableDeadlineOfAll(grouped, 1)
 	terms := make([]stminer.TerminationDeclaration, 0, len(grouped))
 	for k, ids := range grouped {
 		terms = append(terms, stminer.TerminationDeclaration{Deadline: k[0], Partition: k[1], Sectors: bitfield.NewFromSet(ids)})
@@ -1883,14 +1845,15 @@ func (tm *TestUnmanagedMiner) TerminateSectors(sectorNumbers []abi.SectorNumber)
 }
 
 // DeclareFaults declares the given sectors faulty (they must not be in the currently-open proving
-// window, so we wait for a mutable deadline first).
-func (tm *TestUnmanagedMiner) DeclareFaults(sectorNumbers []abi.SectorNumber) {
+// window, so we wait for a mutable deadline first). The lookup it returns says where the declaration
+// landed, which is what decides when the actor first charges for the fault.
+func (tm *TestUnmanagedMiner) DeclareFaults(sectorNumbers []abi.SectorNumber) *api.MsgLookup {
 	req := require.New(tm.t)
 	if len(sectorNumbers) == 0 {
 		req.FailNow("DeclareFaults: no sectors to declare faulty")
 	}
 	grouped := tm.sectorsByDeadlinePartition(sectorNumbers)
-	tm.waitForMutableDeadlineOfAll(grouped)
+	tm.waitForMutableDeadlineOfAll(grouped, 2)
 	faults := make([]stminer.FaultDeclaration, 0, len(grouped))
 	for k, ids := range grouped {
 		faults = append(faults, stminer.FaultDeclaration{Deadline: k[0], Partition: k[1], Sectors: bitfield.NewFromSet(ids)})
@@ -1899,12 +1862,17 @@ func (tm *TestUnmanagedMiner) DeclareFaults(sectorNumbers []abi.SectorNumber) {
 	r, err := tm.SubmitMessage(&stminer.DeclareFaultsParams{Faults: faults}, 0, builtin.MethodsMiner.DeclareFaults)
 	req.NoError(err)
 	req.True(r.Receipt.ExitCode.IsSuccess(), "DeclareFaults failed with exit %d", r.Receipt.ExitCode)
+	return r
 }
 
-// RecoverFaults declares the given (previously faulty) sectors as recovered.
-func (tm *TestUnmanagedMiner) RecoverFaults(sectorNumbers []abi.SectorNumber) {
+// RecoverFaults declares the given (previously faulty) sectors as recovered. The lookup it returns
+// says where the declaration landed, which is the only state in which it is certainly still recorded:
+// the proof that completes the recovery clears it.
+func (tm *TestUnmanagedMiner) RecoverFaults(sectorNumbers []abi.SectorNumber) *api.MsgLookup {
 	req := require.New(tm.t)
 	grouped := tm.sectorsByDeadlinePartition(sectorNumbers)
+	// A recovery declaration has the same cutoff as a fault declaration, so it needs the same wait.
+	tm.waitForMutableDeadlineOfAll(grouped, 2)
 	recoveries := make([]stminer.RecoveryDeclaration, 0, len(grouped))
 	for k, ids := range grouped {
 		recoveries = append(recoveries, stminer.RecoveryDeclaration{Deadline: k[0], Partition: k[1], Sectors: bitfield.NewFromSet(ids)})
@@ -1913,6 +1881,7 @@ func (tm *TestUnmanagedMiner) RecoverFaults(sectorNumbers []abi.SectorNumber) {
 	r, err := tm.SubmitMessage(&stminer.DeclareFaultsRecoveredParams{Recoveries: recoveries}, 0, builtin.MethodsMiner.DeclareFaultsRecovered)
 	req.NoError(err)
 	req.True(r.Receipt.ExitCode.IsSuccess(), "DeclareFaultsRecovered failed with exit %d", r.Receipt.ExitCode)
+	return r
 }
 
 func (tm *TestUnmanagedMiner) waitMessage(mCid cid.Cid) (*api.MsgLookup, error) {
@@ -1989,8 +1958,7 @@ func mkTempFile(t *testing.T, fileContentsReader io.Reader, size uint64) (*os.Fi
 func (tm *TestUnmanagedMiner) WaitTillActivatedAndAssertPower(sectors []abi.SectorNumber, raw uint64, qa uint64) {
 	req := require.New(tm.t)
 
-	di, err := tm.FullNode.StateMinerProvingDeadline(tm.ctx, tm.ActorAddr, types.EmptyTSK)
-	req.NoError(err)
+	di := tm.FullNode.DeadlineForHead(tm.ctx, tm.ActorAddr)
 
 	// wait till sectors are activated
 	for _, sectorNumber := range sectors {
@@ -2000,7 +1968,7 @@ func (tm *TestUnmanagedMiner) WaitTillActivatedAndAssertPower(sectors []abi.Sect
 			// if the sector is in the current or previous deadline, we can't dispute the PoSt
 			sl, err := tm.FullNode.StateSectorPartition(tm.ctx, tm.ActorAddr, sectorNumber, types.EmptyTSK)
 			req.NoError(err)
-			if sl.Deadline == CurrentDeadlineIndex(di) {
+			if sl.Deadline == di.Index {
 				tm.log("In current proving deadline for sector %d, waiting for the next deadline to dispute PoSt", sectorNumber)
 				// wait until we're past the proving deadline for this sector
 				tm.FullNode.WaitTillChain(tm.ctx, HeightAtLeast(di.Close+5))
@@ -2046,13 +2014,31 @@ func (tm *TestUnmanagedMiner) GetPostCountSince(epoch abi.ChainEpoch, sectorNumb
 	return postCount
 }
 
+// WaitTillPostCount waits until the sector appears in count successful WindowPoSts. A live sector is
+// proven once per proving period, so a miner that adds no post in one and a half of them has stopped:
+// fail there rather than spin until the test binary's own timeout.
 func (tm *TestUnmanagedMiner) WaitTillPostCount(sectorNumber abi.SectorNumber, count int) {
+	di := tm.FullNode.DeadlineForHead(tm.ctx, tm.ActorAddr)
+	allowance := di.WPoStProvingPeriod + di.WPoStProvingPeriod/2
+	posted := tm.GetPostCount(sectorNumber)
+	progressAt := di.CurrentEpoch
+
 	for i := 0; tm.ctx.Err() == nil; i++ {
+		if now := tm.GetPostCount(sectorNumber); now >= count {
+			return
+		} else if now > posted {
+			posted = now
+			progressAt = tm.head().Height()
+		}
 		if i%10 == 0 {
 			tm.log("Waiting for sector %d to be posted", sectorNumber)
-		}
-		if tm.GetPostCount(sectorNumber) >= count {
-			return
+			// Callers run this in their own goroutines, so fail the test and return rather than
+			// FailNow, which unwinds only this goroutine and strands whoever waits on it.
+			if height := tm.head().Height(); height >= progressAt+allowance {
+				tm.t.Errorf("miner %s stopped posting: sector %d reached %d of %d WindowPoSts, last one by epoch %d, now %d",
+					tm.ActorAddr, sectorNumber, posted, count, progressAt, height)
+				return
+			}
 		}
 		select {
 		case <-tm.ctx.Done():
@@ -2060,6 +2046,12 @@ func (tm *TestUnmanagedMiner) WaitTillPostCount(sectorNumber abi.SectorNumber, c
 		case <-time.After(time.Millisecond * 100):
 		}
 	}
+}
+
+func (tm *TestUnmanagedMiner) head() *types.TipSet {
+	head, err := tm.FullNode.ChainHead(tm.ctx)
+	require.NoError(tm.t, err)
+	return head
 }
 
 func (tm *TestUnmanagedMiner) AssertNoPower() {
@@ -2107,21 +2099,14 @@ func (tm *TestUnmanagedMiner) AssertDisputeFails(sector abi.SectorNumber) {
 // deadline after the next deadline in our check here to be conservative to avoid race conditions of
 // the chain progressing before messages land.
 func (tm *TestUnmanagedMiner) MaybeImmutableDeadline(deadlineIndex uint64) bool {
-	req := require.New(tm.t)
-	di, err := tm.FullNode.StateMinerProvingDeadline(tm.ctx, tm.ActorAddr, types.EmptyTSK)
-	req.NoError(err)
-	currentDeadlineIdx := CurrentDeadlineIndex(di)
+	di := tm.FullNode.DeadlineForHead(tm.ctx, tm.ActorAddr)
+	currentDeadlineIdx := di.Index
 	// Check if deadlineIndex is the current, next, or the one after next.
 	return deadlineIndex >= currentDeadlineIdx && deadlineIndex <= currentDeadlineIdx+2
 }
 
-// CurrentDeadlineIndex manually calculates the current deadline index. This may be useful in
-// situations where the miner hasn't been enrolled in cron and the deadline index isn't ticking
-// so dline.Info.Index may not be accurate.
+// CurrentDeadlineIndex is the deadline index di.CurrentEpoch falls in, which is what the actor
+// enforces.
 func CurrentDeadlineIndex(di *dline.Info) uint64 {
-	didx := int64((di.CurrentEpoch - di.PeriodStart) / di.WPoStChallengeWindow)
-	if didx < 0 { // before the first deadline
-		return uint64(int64(di.WPoStPeriodDeadlines) + didx)
-	}
-	return uint64(didx)
+	return DeadlineForHeight(di, di.CurrentEpoch).Index
 }

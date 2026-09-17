@@ -26,6 +26,12 @@ import (
 	"github.com/filecoin-project/lotus/miner"
 )
 
+// How long MineBlocksMustPost suspends block production, for all of an epoch's forced posts together.
+const (
+	postWaitTimeoutMockProofs = 20 * time.Second
+	postWaitTimeoutRealProofs = 90 * time.Second
+)
+
 // BlockMiner is a utility that makes a test miner Mine blocks on a timer.
 type BlockMiner struct {
 	t     *testing.T
@@ -34,19 +40,24 @@ type BlockMiner struct {
 	nextNulls         int64
 	postWatchMiners   []address.Address
 	postWatchMinersLk sync.Mutex
-	pause             chan struct{}
-	unpause           chan struct{}
-	wg                sync.WaitGroup
-	cancel            context.CancelFunc
+	postWait          time.Duration
+	// postsAbandoned is set when a forced post never arrived. Mining carries on so the test goroutine's
+	// chain waiters are not left hanging; the failure is already recorded against the test.
+	postsAbandoned atomic.Bool
+	pause          chan struct{}
+	unpause        chan struct{}
+	wg             sync.WaitGroup
+	cancel         context.CancelFunc
 }
 
 func NewBlockMiner(t *testing.T, miner *TestMiner) *BlockMiner {
 	return &BlockMiner{
-		t:       t,
-		miner:   miner,
-		cancel:  func() {},
-		unpause: make(chan struct{}),
-		pause:   make(chan struct{}),
+		t:        t,
+		miner:    miner,
+		cancel:   func() {},
+		unpause:  make(chan struct{}),
+		pause:    make(chan struct{}),
+		postWait: postWaitTimeoutRealProofs,
 	}
 }
 
@@ -86,26 +97,49 @@ func (mds minerDeadlines) FilterByLast(last abi.ChainEpoch) minerDeadlines {
 }
 
 type partitionTracker struct {
-	minerAddr  address.Address
-	partitions []api.Partition
-	posted     bitfield.BitField
+	minerAddr address.Address
+	// mustProve holds the indexes of the partitions that need a WindowPoSt this deadline.
+	mustProve []uint64
+	posted    bitfield.BitField
 }
 
 // newPartitionTracker creates a new partitionTracker that tracks the deadline index dlIdx for the
-// given minerAddr. It uses the BlockMiner bm to interact with the chain.
-func newPartitionTracker(ctx context.Context, t *testing.T, client v1api.FullNode, minerAddr address.Address, dlIdx uint64) *partitionTracker {
+// given minerAddr. withRecoveries belongs to the managed miner, whose scheduler proves recovering
+// sectors as well; the unmanaged post loop leaves them out.
+func newPartitionTracker(ctx context.Context, t *testing.T, client v1api.FullNode, minerAddr address.Address, dlIdx uint64, withRecoveries bool) *partitionTracker {
 	dlines, err := client.StateMinerDeadlines(ctx, minerAddr, types.EmptyTSK)
 	require.NoError(t, err)
 	dl := dlines[dlIdx]
 
+	return &partitionTracker{
+		minerAddr: minerAddr,
+		mustProve: partitionsToProve(ctx, t, client, minerAddr, dlIdx, withRecoveries),
+		posted:    dl.PostSubmissions,
+	}
+}
+
+// partitionsToProve lists the partitions of a deadline that get a WindowPoSt: those with a live
+// non-faulty sector, plus those with a recovering sector for the block-producing miner.
+func partitionsToProve(ctx context.Context, t *testing.T, client v1api.FullNode, minerAddr address.Address, dlIdx uint64, withRecoveries bool) []uint64 {
 	parts, err := client.StateMinerPartitions(ctx, minerAddr, dlIdx, types.EmptyTSK)
 	require.NoError(t, err)
 
-	return &partitionTracker{
-		minerAddr:  minerAddr,
-		partitions: parts,
-		posted:     dl.PostSubmissions,
+	var mustProve []uint64
+	for idx, part := range parts { // deadline partition AMTs are dense, so idx is the partition index
+		toProve, err := bitfield.SubtractBitField(part.LiveSectors, part.FaultySectors)
+		require.NoError(t, err)
+		if withRecoveries {
+			toProve, err = bitfield.MergeBitFields(toProve, part.RecoveringSectors)
+			require.NoError(t, err)
+		}
+		empty, err := toProve.IsEmpty()
+		require.NoError(t, err)
+		if empty {
+			continue
+		}
+		mustProve = append(mustProve, uint64(idx))
 	}
+	return mustProve
 }
 
 func (p *partitionTracker) count(t *testing.T) uint64 {
@@ -115,7 +149,14 @@ func (p *partitionTracker) count(t *testing.T) uint64 {
 }
 
 func (p *partitionTracker) done(t *testing.T) bool {
-	return uint64(len(p.partitions)) == p.count(t)
+	for _, idx := range p.mustProve {
+		posted, err := p.posted.IsSet(idx)
+		require.NoError(t, err)
+		if !posted {
+			return false
+		}
+	}
+	return true
 }
 
 func (p *partitionTracker) recordIfPost(t *testing.T, msg *types.Message) (ret bool) {
@@ -136,10 +177,16 @@ func (p *partitionTracker) recordIfPost(t *testing.T, msg *types.Message) (ret b
 	return
 }
 
-func (bm *BlockMiner) forcePoSt(ctx context.Context, ts *types.TipSet, minerAddr address.Address, dlinfo dline.Info) {
-	tracker := newPartitionTracker(ctx, bm.t, bm.miner.FullNode, minerAddr, dlinfo.Index)
+// forcePoSt suspends block production until minerAddr has posted for this deadline, or until
+// postDeadline passes, which fails the test. Its own chain and mpool reads use ctx, so this bound
+// does nothing for a chain that has already stopped.
+func (bm *BlockMiner) forcePoSt(ctx context.Context, postDeadline time.Time, ts *types.TipSet, minerAddr address.Address, dlinfo dline.Info) {
+	postCtx, cancel := context.WithDeadline(ctx, postDeadline)
+	defer cancel()
+
+	tracker := newPartitionTracker(ctx, bm.t, bm.miner.FullNode, minerAddr, dlinfo.Index, minerAddr == bm.miner.ActorAddr)
 	if !tracker.done(bm.t) { // need to wait for post
-		bm.t.Logf("expect %d partitions proved but only see %d", len(tracker.partitions), tracker.count(bm.t))
+		bm.t.Logf("expect %d partitions proved but only see %d", len(tracker.mustProve), tracker.count(bm.t))
 		poolEvts, err := bm.miner.FullNode.MpoolSub(ctx) // subscribe before checking pending so we don't miss any events
 		require.NoError(bm.t, err)
 
@@ -178,6 +225,17 @@ func (bm *BlockMiner) forcePoSt(ctx context.Context, ts *types.TipSet, minerAddr
 				select {
 				case <-ctx.Done():
 					return
+				case <-postCtx.Done():
+					if ctx.Err() != nil {
+						return // shutting down, not a missing post
+					}
+					// Failing here would only kill the mining goroutine and leave the test goroutine's
+					// chain waiters hanging, so record the failure and carry on producing blocks.
+					bm.postsAbandoned.Store(true)
+					bm.t.Errorf("no window post from miner %s for deadline %d within %s: %d of %d partitions proved, "+
+						"mining on with post enforcement off",
+						minerAddr, dlinfo.Index, bm.postWait, tracker.count(bm.t), len(tracker.mustProve))
+					return
 				case evt := <-poolEvts:
 					bm.t.Logf("pool event: %d", evt.Type)
 					if evt.Type == api.MpoolAdd {
@@ -205,7 +263,8 @@ func (bm *BlockMiner) WatchMinerForPost(minerAddr address.Address) {
 }
 
 // MineBlocksMustPost is like MineBlocks but refuses to mine until the window post scheduler has
-// wdpost messages in the mempool and everything shuts down if a post fails.  It also enforces that
+// wdpost messages in the mempool. A post that never arrives fails the test and mining carries on
+// without the enforcement, so waiters are not left on a stopped chain. It also enforces that
 // every block mined succeeds
 func (bm *BlockMiner) MineBlocksMustPost(ctx context.Context, blocktime time.Duration) {
 	time.Sleep(time.Second)
@@ -254,11 +313,18 @@ func (bm *BlockMiner) MineBlocksMustPost(ctx context.Context, blocktime time.Dur
 			bm.postWatchMinersLk.Unlock()
 			impendingDeadlines = impendingDeadlines.FilterByLast(ts.Height() + 5 + abi.ChainEpoch(nulls))
 
+			// One deadline for every post forced in this epoch: an absolute time stays passed once it has,
+			// where a timer channel hands its single value to the first miner that waits on it.
+			postDeadline := time.Now().Add(bm.postWait)
+
 			if len(impendingDeadlines) > 0 {
 				// Next block brings us too close for at least one deadline, we need to wait for miners to post
 				bm.t.Logf("forcing post to get in if due before deadline closes at %v for %v", impendingDeadlines.CloseList(), impendingDeadlines.MinerStringList())
 				for _, md := range impendingDeadlines {
-					bm.forcePoSt(ctx, ts, md.addr, md.deadline)
+					if bm.postsAbandoned.Load() {
+						break
+					}
+					bm.forcePoSt(ctx, postDeadline, ts, md.addr, md.deadline)
 				}
 			}
 
@@ -294,7 +360,10 @@ func (bm *BlockMiner) MineBlocksMustPost(ctx context.Context, blocktime time.Dur
 					if len(impendingDeadlines) > 0 {
 						bm.t.Logf("forcing post to get in if due before deadline closes at %v for %v", impendingDeadlines.CloseList(), impendingDeadlines.MinerStringList())
 						for _, md := range impendingDeadlines {
-							bm.forcePoSt(ctx, ts, md.addr, md.deadline)
+							if bm.postsAbandoned.Load() {
+								break
+							}
+							bm.forcePoSt(ctx, postDeadline, ts, md.addr, md.deadline)
 						}
 					}
 				}

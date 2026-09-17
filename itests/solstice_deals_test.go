@@ -45,11 +45,10 @@ func TestMigrationNV29SolsticeDeals(t *testing.T) {
 	rootKey := must.One(key.GenerateKey(types.KTSecp256k1))
 	verifierKey := must.One(key.GenerateKey(types.KTSecp256k1))
 	verifiedClientKey := must.One(key.GenerateKey(types.KTBLS))
-	bal := types.MustParseFIL("100fil").Int64()
 
 	e := kit.NewSolsticeUpgradeEnv(t, kit.SolsticeOpts{
 		UpgradeEpoch: upgradeEpoch, RootKey: rootKey, VerifierKey: verifierKey,
-		VerifiedClientKey: verifiedClientKey, Bal: bal,
+		VerifiedClientKey: verifiedClientKey,
 	})
 	ctx, client, um, maddr := e.Ctx, e.Client, e.Um, e.Maddr
 	sealProofType := e.SealProof
@@ -205,11 +204,10 @@ func TestMigrationNV29SolsticeFullQaHelperSnapExtend(t *testing.T) {
 	rootKey := must.One(key.GenerateKey(types.KTSecp256k1))
 	verifierKey := must.One(key.GenerateKey(types.KTSecp256k1))
 	verifiedClientKey := must.One(key.GenerateKey(types.KTBLS))
-	bal := types.MustParseFIL("100fil").Int64()
 
 	e := kit.NewSolsticeUpgradeEnv(t, kit.SolsticeOpts{
 		UpgradeEpoch: upgradeEpoch, RootKey: rootKey, VerifierKey: verifierKey,
-		VerifiedClientKey: verifiedClientKey, Bal: bal,
+		VerifiedClientKey: verifiedClientKey,
 	})
 	ctx, client, um, maddr := e.Ctx, e.Client, e.Um, e.Maddr
 	sealProofType := e.SealProof
