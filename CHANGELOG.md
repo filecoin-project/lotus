@@ -17,6 +17,8 @@
 
 ## 👌 Improvements
 
+- chore(deps): update filecoin-ffi to v1.37.0, which moves to ref-fvm v4.8.3 with the `nv29-dev` feature flag removed, so nv29 (Solstice) support is unconditional in the FVM. ([filecoin-project/lotus#13804](https://github.com/filecoin-project/lotus/pull/13804))
+
 # Node v1.36.3 / 2026-09-10
 
 Lotus Node v1.36.3 is a recommended patch release focused on Ethereum RPC correctness (event-index completeness for `eth_getLogs`/`eth_getTransactionReceipt`, RLP validation), a WebTransport memory-exhaustion fix (CVE-2026-57497), gateway event-query bounding, sector-reporting UX, and operator tooling.
