@@ -29,9 +29,11 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
 	reward18 "github.com/filecoin-project/go-state-types/builtin/v18/reward"
+	datacap19 "github.com/filecoin-project/go-state-types/builtin/v19/datacap"
 	reward19 "github.com/filecoin-project/go-state-types/builtin/v19/reward"
 	adt19 "github.com/filecoin-project/go-state-types/builtin/v19/util/adt"
 	rewardMath "github.com/filecoin-project/go-state-types/builtin/v19/util/math"
+	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/go-state-types/network"
 
@@ -39,6 +41,9 @@ import (
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/datacap"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	chainstate "github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -56,7 +61,9 @@ import (
 //   - the bootstrap weight ramp and the reward split it settles on;
 //   - the SWA's writes: the deferred-write queue, cancellation, registration, removal;
 //   - the SRA's quarterly gate stepping stream 2's weight and submitting its share map;
-//   - share settlement, wallet payouts, and tombstone claims on a stream the SWA registers.
+//   - share settlement, wallet payouts, and tombstone claims on a stream the SWA registers;
+//   - the SRA's registry reaching f02: a second orchestrator's share, its removal, a wallet swap;
+//   - a datacap write that crosses the fork in the message pool.
 func TestSolsticeRewardLifecycle(t *testing.T) {
 	req := require.New(t)
 	kit.QuietMiningLogs()
@@ -76,7 +83,8 @@ func TestSolsticeRewardLifecycle(t *testing.T) {
 
 		sraActivationEpoch = uint64(activation)
 		epochsPerQuarter   = uint64(90)
-		postPeriod         = uint64(60)
+		// Volumes bind 60 epochs into the 90-epoch quarter, leaving 30 for RemoveOrchestrator.
+		postPeriod         = uint64(50)
 		verificationWindow = uint64(10)
 		hold               = uint64(0) // no upgrade delay, fine for test deployment
 
@@ -113,6 +121,12 @@ func TestSolsticeRewardLifecycle(t *testing.T) {
 	recipient2Key, err := key.GenerateKey(types.KTSecp256k1)
 	req.NoError(err)
 	deployerKey, err := key.GenerateKey(types.KTSecp256k1)
+	req.NoError(err)
+	orchestrator2Key, err := key.GenerateKey(types.KTSecp256k1)
+	req.NoError(err)
+	wallet1BKey, err := key.GenerateKey(types.KTSecp256k1)
+	req.NoError(err)
+	datacapSenderKey, err := key.GenerateKey(types.KTSecp256k1)
 	req.NoError(err)
 
 	bootstrapParams := buildconstants.SolsticeRewardBootstrapParams{
@@ -173,6 +187,9 @@ func TestSolsticeRewardLifecycle(t *testing.T) {
 		kit.Account(recipient1Key, types.FromFil(100)),
 		kit.Account(recipient2Key, types.FromFil(100)),
 		kit.Account(deployerKey, types.FromFil(100)),
+		kit.Account(orchestrator2Key, types.FromFil(100)),
+		kit.Account(wallet1BKey, types.FromFil(100)),
+		kit.Account(datacapSenderKey, types.FromFil(100)),
 		kit.UpgradeSchedule(
 			stmgr.Upgrade{Network: network.Version28, Height: -1},
 			stmgr.Upgrade{
@@ -198,6 +215,7 @@ func TestSolsticeRewardLifecycle(t *testing.T) {
 
 	for _, account := range []*key.Key{
 		owner1Key, owner2Key, orchestratorKey, w3WriterKey, recipient1Key, recipient2Key, deployerKey,
+		orchestrator2Key, wallet1BKey, datacapSenderKey,
 	} {
 		_, err := client.WalletImport(ctx, &account.KeyInfo)
 		req.NoError(err)
@@ -215,6 +233,10 @@ func TestSolsticeRewardLifecycle(t *testing.T) {
 	recipient1ID, err := client.StateLookupID(ctx, recipient1Key.Address, types.EmptyTSK)
 	req.NoError(err)
 	recipient2ID, err := client.StateLookupID(ctx, recipient2Key.Address, types.EmptyTSK)
+	req.NoError(err)
+	orchestrator2ID, err := client.StateLookupID(ctx, orchestrator2Key.Address, types.EmptyTSK)
+	req.NoError(err)
+	wallet1BID, err := client.StateLookupID(ctx, wallet1BKey.Address, types.EmptyTSK)
 	req.NoError(err)
 
 	// Each deploy must land on the address the bootstrap identifies.
@@ -281,6 +303,14 @@ func TestSolsticeRewardLifecycle(t *testing.T) {
 	nonGovCall := solsticeInvoke(ctx, t, client, deployer, sraAddr, removeOrchestrator, orchestrator)
 	req.False(nonGovCall.Receipt.ExitCode.IsSuccess(), "a non-owner must not reach SRA governance")
 
+	// Nonce 0 runs pre-fork; nonce 2 waits in the pool behind the gap at nonce 1, filled after it.
+	datacapTransfer := &datacap19.TransferParams{
+		To:     builtin.VerifiedRegistryActorAddr,
+		Amount: big.Mul(big.NewInt(1<<30), builtin.TokenPrecision),
+	}
+	datacapControl := solsticeWait(ctx, t, client, solsticePushMessage(ctx, t, client,
+		datacapSenderKey.Address, 0, builtin.DatacapActorAddr, datacap.Methods.TransferExported, datacapTransfer))
+
 	setupHead, err := client.ChainHead(ctx)
 	req.NoError(err)
 	t.Logf("deployment and governance complete at epoch %d", setupHead.Height())
@@ -289,7 +319,13 @@ func TestSolsticeRewardLifecycle(t *testing.T) {
 		upgradeEpoch-preMigrationStart)
 
 	store := cbor.NewCborStore(blockstore.NewAPIBlockstore(client))
+	client.WaitTillChain(ctx, kit.HeightAtLeast(upgradeEpoch-2))
+	datacapInFlight := solsticePushMessage(ctx, t, client,
+		datacapSenderKey.Address, 2, builtin.DatacapActorAddr, datacap.Methods.TransferExported, datacapTransfer)
+
 	client.WaitTillChain(ctx, kit.HeightAtLeast(upgradeEpoch+8))
+	// Filling the gap releases the pre-fork message.
+	solsticePushMessage(ctx, t, client, datacapSenderKey.Address, 1, datacapSenderKey.Address, builtin.MethodSend, nil)
 
 	preTS := tipsetAtOrBefore(ctx, t, client, upgradeEpoch)
 	req.Equal(upgradeEpoch, preTS.Height(), "upgrade epoch must contain a tipset")
@@ -351,6 +387,12 @@ func TestSolsticeRewardLifecycle(t *testing.T) {
 		swaAddr:             swaAddr,
 		orchestrator:        orchestratorKey.Address,
 		orchestratorID:      orchestratorID,
+		orchestrator2:       orchestrator2Key.Address,
+		orchestrator2ID:     orchestrator2ID,
+		wallet1B:            wallet1BKey.Address,
+		wallet1BID:          wallet1BID,
+		datacapControl:      datacapControl,
+		datacapInFlight:     datacapInFlight,
 		w3WriterKey:         w3WriterKey,
 		w3WriterID:          w3WriterID,
 		recipients:          []address.Address{recipient1ID, recipient2ID},
@@ -376,12 +418,13 @@ func TestSolsticeRewardLifecycle(t *testing.T) {
 	}
 
 	t.Run("migration and award continuity", lifecycle.testMigrationAndAwardContinuity)
+	t.Run("a datacap transfer crossing the fork takes the new rules", lifecycle.testInFlightDatacapTransfer)
 	t.Run("circulating supply continuity", lifecycle.testCirculatingSupplyContinuity)
 	t.Run("reward total constants replace stored state", lifecycle.testRewardTotalConstants)
 	t.Run("sloped bootstrap weight", lifecycle.testSlopedBootstrapWeight)
 	t.Run("reward split economics", lifecycle.testRewardSplitEconomics)
 	t.Run("queue controls and write event", lifecycle.testQueueControlsAndEvent)
-	t.Run("deferred weight schedule", lifecycle.testDeferredWeightSchedule)
+	t.Run("deferred weight schedule applies across null rounds", lifecycle.testDeferredWeightSchedule)
 	t.Run("quarterly gate step and share submission", lifecycle.testQuarterlyGateAndShares)
 	t.Run("failed gate holds the stepped weight", lifecycle.testFailedGate)
 	// The w3 phases fill the wait for the missed-post quarter to bind and leave stream 2 as the only
@@ -390,6 +433,124 @@ func TestSolsticeRewardLifecycle(t *testing.T) {
 	t.Run("share settlement and wallet payouts", lifecycle.testShareSettlementAndWalletPayouts)
 	t.Run("remove stream tombstone claim", lifecycle.testRemoveStreamTombstoneClaim)
 	t.Run("missed volume post submits no shares", lifecycle.testMissedVolumePost)
+	t.Run("second orchestrator shares, removal and wallet replacement", lifecycle.testSecondOrchestrator)
+}
+
+// TestSolsticeUpgradeAcrossNullRound runs the NV29 migration when neither the upgrade epoch nor the
+// activation epoch has a tipset. The fork still applies at its scheduled epoch, the bootstrap
+// record anchors one epoch after it, and awards resume on the other side of the gap.
+func TestSolsticeUpgradeAcrossNullRound(t *testing.T) {
+	req := require.New(t)
+	kit.QuietMiningLogs()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	const (
+		blockTime    = 100 * time.Millisecond
+		upgradeEpoch = abi.ChainEpoch(50)
+		activation   = upgradeEpoch + 1
+	)
+
+	// The consensus-only bootstrap: one implicit stream at the whole denominator.
+	migration := filcns.UpgradeActorsV19With(buildconstants.NeutralSolsticeRewardBootstrapParams)
+	var migrationRuns, migrationEpoch atomic.Int64
+
+	client, _, ens := kit.EnsembleMinimal(t,
+		kit.MockProofs(),
+		kit.UpgradeSchedule(
+			stmgr.Upgrade{Network: network.Version28, Height: -1},
+			stmgr.Upgrade{
+				Network: network.Version29,
+				Height:  upgradeEpoch,
+				Migration: func(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache,
+					cb stmgr.ExecMonitor, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+					migrationRuns.Add(1)
+					migrationEpoch.Store(int64(epoch))
+					return migration(ctx, sm, cache, cb, root, epoch, ts)
+				},
+			},
+		),
+	)
+	blockMiners := ens.InterconnectAll().BeginMining(blockTime)
+
+	client.WaitTillChain(ctx, kit.HeightAtLeast(upgradeEpoch-10))
+	head, err := client.ChainHead(ctx)
+	req.NoError(err)
+	req.Lessf(head.Height(), upgradeEpoch,
+		"chain head %d has reached the upgrade epoch %d, too late to leave it null", head.Height(), upgradeEpoch)
+	for _, blockMiner := range blockMiners {
+		blockMiner.InjectNulls(activation + 1 - head.Height())
+	}
+	client.WaitTillChain(ctx, kit.HeightAtLeast(activation+10))
+
+	lastPre := tipsetAtOrBefore(ctx, t, client, upgradeEpoch)
+	req.Lessf(lastPre.Height(), upgradeEpoch, "upgrade epoch %d must be a null round", upgradeEpoch)
+	firstAfter := kit.TipsetAtOrAfter(ctx, t, client, activation)
+	req.Greaterf(firstAfter.Height(), activation, "activation epoch %d must be a null round", activation)
+	t.Logf("null rounds span epochs %d to %d", lastPre.Height()+1, firstAfter.Height()-1)
+
+	req.Positive(migrationRuns.Load(), "the nv29 migration must run")
+	req.Equal(int64(upgradeEpoch), migrationEpoch.Load(),
+		"the migration must run at its scheduled epoch, not the first epoch with a tipset")
+
+	store := cbor.NewCborStore(blockstore.NewAPIBlockstore(client))
+	// The null rounds and the fork apply while computing firstAfter, so its parent state is pre-fork.
+	preActor, err := client.StateGetActor(ctx, builtin.RewardActorAddr, firstAfter.Key())
+	req.NoError(err)
+	var pre reward18.State
+	req.NoError(store.Get(ctx, preActor.Head, &pre))
+
+	// Replays the fork on that state with nothing executed after it (i.e. the exact migration output).
+	computed, err := client.StateCompute(ctx, activation, nil, lastPre.Key())
+	req.NoError(err)
+	migrationTree, err := chainstate.LoadStateTree(store, computed.Root)
+	req.NoError(err)
+	migrationActor, err := migrationTree.GetActor(builtin.RewardActorAddr)
+	req.NoError(err)
+	expectedCode, ok := actors.GetActorCodeID(actorstypes.Version19, manifest.RewardKey)
+	req.True(ok)
+	req.Equal(expectedCode, migrationActor.Code)
+	var migrated reward19.State
+	req.NoError(store.Get(ctx, migrationActor.Head, &migrated))
+	adtStore := adt19.WrapStore(ctx, store)
+	migratedStreams, err := migrated.LoadStreams(adtStore)
+	req.NoError(err)
+	_, invariantMessages := reward19.CheckStateInvariants(&migrated, adtStore, lastPre.Height(), migrationActor.Balance)
+	req.Empty(invariantMessages.Messages())
+
+	// The bootstrap anchors on the scheduled epoch, not on the first epoch that has a tipset.
+	req.Len(migratedStreams.Streams, 1)
+	req.Equal(reward19.StreamID(1), migratedStreams.Streams[0].ID)
+	req.Nil(migratedStreams.Streams[0].Distribution, "the consensus stream is implicit")
+	req.Equal(reward19.WeightRecord{
+		VStart: reward19.Denom, TStart: activation, Floor: reward19.Denom, Cap: reward19.Denom,
+	}, migratedStreams.Streams[0].Weight)
+	req.Equal(pre.TotalStoragePowerReward, migrated.TotalMintedReward)
+	req.Equal(big.Zero(), migrated.TotalBurnMinted)
+	req.Equal(big.Zero(), migrated.TotalExplicitMinted)
+
+	// Awards resume on the first tipset after the gap, and FilMined keeps tracking them.
+	resumedTS := kit.TipsetAtOrAfter(ctx, t, client, firstAfter.Height()+1)
+	version, err := client.StateNetworkVersion(ctx, resumedTS.Key())
+	req.NoError(err)
+	req.Equal(network.Version29, version)
+	client.WaitTillChain(ctx, kit.HeightAtLeast(resumedTS.Height()+9))
+	laterTS := kit.TipsetAtOrAfter(ctx, t, client, resumedTS.Height()+8)
+	_, resumed, _ := kit.LoadReward19(ctx, t, client, store, resumedTS.Key())
+	_, later, _ := kit.LoadReward19(ctx, t, client, store, laterTS.Key())
+	req.Positive(big.Cmp(resumed.TotalMintedReward, migrated.TotalMintedReward),
+		"the first award after the null rounds must mint")
+	req.Positive(big.Cmp(later.TotalMintedReward, resumed.TotalMintedReward), "awards must continue")
+	req.Equal(big.Zero(), later.TotalBurnMinted, "a consensus-only bootstrap pays the miner everything")
+	req.Equal(big.Zero(), later.TotalExplicitMinted)
+
+	resumedSupply, err := client.StateVMCirculatingSupplyInternal(ctx, resumedTS.Key())
+	req.NoError(err)
+	laterSupply, err := client.StateVMCirculatingSupplyInternal(ctx, laterTS.Key())
+	req.NoError(err)
+	req.Equal(big.Sub(later.TotalMintedReward, resumed.TotalMintedReward),
+		big.Sub(laterSupply.FilMined, resumedSupply.FilMined))
 }
 
 func tipsetAtOrBefore(ctx context.Context, t *testing.T, node api.FullNode, target abi.ChainEpoch) *types.TipSet {
@@ -550,17 +711,24 @@ type solsticeRewardLifecycle struct {
 	splitEnd       abi.ChainEpoch
 	bootstrap      buildconstants.SolsticeRewardBootstrapParams
 
-	deployer       address.Address
-	owner1         address.Address
-	owner2         address.Address
-	sraAddr        address.Address
-	swaAddr        address.Address
-	orchestrator   address.Address
-	orchestratorID address.Address
-	w3WriterKey    *key.Key
-	w3WriterID     address.Address
-	recipients     []address.Address
-	newStream      reward19.StreamID
+	deployer        address.Address
+	owner1          address.Address
+	owner2          address.Address
+	sraAddr         address.Address
+	swaAddr         address.Address
+	orchestrator    address.Address
+	orchestratorID  address.Address
+	orchestrator2   address.Address
+	orchestrator2ID address.Address
+	wallet1B        address.Address
+	wallet1BID      address.Address
+	w3WriterKey     *key.Key
+	w3WriterID      address.Address
+	recipients      []address.Address
+	newStream       reward19.StreamID
+
+	datacapControl  *api.MsgLookup
+	datacapInFlight cid.Cid
 
 	gateQuarter       uint64
 	gateVolumeUSD     big.Int
@@ -655,6 +823,33 @@ func (f *solsticeRewardLifecycle) testMigrationAndAwardContinuity(t *testing.T) 
 	postMiner := kit.MustActor(f.ctx, t, f.client, f.miner.ActorAddr, laterTS.Key())
 	req.GreaterOrEqual(big.Cmp(big.Sub(postMiner.Balance, preMiner.Balance), consensusMinted), 0,
 		"the miner must receive at least the consensus share minted since the migration")
+}
+
+// testInFlightDatacapTransfer checks a datacap write that crosses the boundary in the message pool
+// executes under NV29's refusal, with the pre-fork failure for comparison.
+func (f *solsticeRewardLifecycle) testInFlightDatacapTransfer(t *testing.T) {
+	req := require.New(t)
+	controlTS, err := f.client.ChainGetTipSet(f.ctx, f.datacapControl.TipSet)
+	req.NoError(err)
+	req.Lessf(controlTS.Height(), f.activation, "the control must execute before the fork at epoch %d", f.activation)
+	req.False(f.datacapControl.Receipt.ExitCode.IsSuccess(), "an account holding no datacap cannot transfer any")
+	controlReplay, err := f.client.StateReplay(f.ctx, types.EmptyTSK, f.datacapControl.Message)
+	req.NoError(err)
+	req.NotContains(controlReplay.Error, "FIP-0118", "NV28's datacap actor refuses over the balance")
+
+	inFlight := solsticeWait(f.ctx, t, f.client, f.datacapInFlight)
+	inFlightTS, err := f.client.ChainGetTipSet(f.ctx, inFlight.TipSet)
+	req.NoError(err)
+	executionTS, err := f.client.ChainGetTipSet(f.ctx, inFlightTS.Parents())
+	req.NoError(err)
+	req.GreaterOrEqualf(executionTS.Height(), f.activation,
+		"the in-flight message executed at epoch %d, before the fork", executionTS.Height())
+	req.Equal(exitcode.ErrForbidden, inFlight.Receipt.ExitCode)
+	req.NotEqual(f.datacapControl.Receipt.ExitCode, inFlight.Receipt.ExitCode,
+		"the pre-fork refusal must differ from FIP-0118's")
+	inFlightReplay, err := f.client.StateReplay(f.ctx, types.EmptyTSK, inFlight.Message)
+	req.NoError(err)
+	req.Contains(inFlightReplay.Error, "FIP-0118")
 }
 
 // testCirculatingSupplyContinuity proves FilMined tracks TotalMintedReward across and after migration.
@@ -791,9 +986,9 @@ func (f *solsticeRewardLifecycle) testQueueControlsAndEvent(t *testing.T) {
 
 	// A single owner cancelling an empty slot is a no-op that proves proxy ownership and f02's
 	// SWAActor.
-	req.False(f.cancelPendingWeight(t, f.deployer).Receipt.ExitCode.IsSuccess(),
+	req.False(f.cancelPendingWeight(t, f.deployer, reward19.PendingWriteOpSetWeightRecords).Receipt.ExitCode.IsSuccess(),
 		"a non-owner must not reach SWA governance")
-	kit.RequireMessageSuccess(t, f.cancelPendingWeight(t, f.owner1))
+	kit.RequireMessageSuccess(t, f.cancelPendingWeight(t, f.owner1, reward19.PendingWriteOpSetWeightRecords))
 
 	unauthorized := f.sendRewardMessage(t, f.w3WriterKey.Address, builtin.MethodsReward.SetWeightRecordsExported,
 		&reward19.SetWeightRecordsParams{Updates: updates})
@@ -820,7 +1015,7 @@ func (f *solsticeRewardLifecycle) testQueueControlsAndEvent(t *testing.T) {
 	req.Len(collisionStreams.PendingWritesQueue, 1)
 	req.Equal(pending, collisionStreams.PendingWritesQueue[0], "a rejected write leaves the queued one intact")
 
-	cancel := f.cancelPendingWeight(t, f.owner1)
+	cancel := f.cancelPendingWeight(t, f.owner1, reward19.PendingWriteOpSetWeightRecords)
 	kit.RequireMessageSuccess(t, cancel)
 	cancelActor, cancelled, cancelledStreams := kit.LoadReward19(f.ctx, t, f.client, f.store, cancel.TipSet)
 	f.requireAllocation(t, cancelActor, cancelled, cancelledStreams)
@@ -842,7 +1037,8 @@ func (f *solsticeRewardLifecycle) testQueueControlsAndEvent(t *testing.T) {
 	req.Equal(beforeWeights[1], afterStreams.Streams[1].Weight)
 }
 
-// testDeferredWeightSchedule proves a queued schedule stays inert until due, then controls reward splits.
+// testDeferredWeightSchedule proves a queued schedule stays inert until due, survives null rounds
+// over its effective epoch, then controls reward splits.
 func (f *solsticeRewardLifecycle) testDeferredWeightSchedule(t *testing.T) {
 	req := require.New(t)
 	consensusWeight := flatWeight(70 * f.pct)
@@ -868,9 +1064,26 @@ func (f *solsticeRewardLifecycle) testDeferredWeightSchedule(t *testing.T) {
 	req.Equal(reward19.PendingWriteOpSetWeightRecords, pending.Op)
 	req.Equal(parentTS.Height()+f.timelock, pending.EffectiveEpoch)
 
-	// Covers a due write on a non-null epoch only; the null-epoch case is untested.
+	// Null rounds over the effective epoch, so the write waits for the first award after them.
+	f.client.WaitTillChain(f.ctx, kit.HeightAtLeast(pending.EffectiveEpoch-4))
+	head, err := f.client.ChainHead(f.ctx)
+	req.NoError(err)
+	req.Lessf(head.Height(), pending.EffectiveEpoch,
+		"chain head %d has reached the write's effective epoch %d, too late to leave it null",
+		head.Height(), pending.EffectiveEpoch)
+	for _, blockMiner := range f.blockMiners {
+		blockMiner.InjectNulls(pending.EffectiveEpoch + 1 - head.Height())
+	}
 	f.client.WaitTillChain(f.ctx, kit.HeightAtLeast(pending.EffectiveEpoch+10))
+	lastBeforeDue := tipsetAtOrBefore(f.ctx, t, f.client, pending.EffectiveEpoch)
+	req.Lessf(lastBeforeDue.Height(), pending.EffectiveEpoch,
+		"effective epoch %d must be a null round", pending.EffectiveEpoch)
+
 	dueAwardTS := kit.TipsetAtOrAfter(f.ctx, t, f.client, pending.EffectiveEpoch)
+	req.Greaterf(dueAwardTS.Height(), pending.EffectiveEpoch,
+		"the first award after effective epoch %d must follow the null rounds", pending.EffectiveEpoch)
+	t.Logf("null rounds span epochs %d to %d, over an effective epoch of %d",
+		lastBeforeDue.Height()+1, dueAwardTS.Height()-1, pending.EffectiveEpoch)
 	dueActor, dueState, dueStreams := kit.LoadReward19(f.ctx, t, f.client, f.store, dueAwardTS.Key())
 	f.requireAllocation(t, dueActor, dueState, dueStreams)
 	req.Len(dueStreams.PendingWritesQueue, 1)
@@ -921,8 +1134,20 @@ func (f *solsticeRewardLifecycle) testQuarterlyGateAndShares(t *testing.T) {
 	req.Nil(pending.ID)
 	req.Equal(reward19.PendingWriteOpStepWeightRecords, pending.Op)
 
+	refused := f.cancelPendingWeight(t, f.owner1, reward19.PendingWriteOpStepWeightRecords)
+	req.False(refused.Receipt.ExitCode.IsSuccess(), "f02 must refuse to cancel a gate-originated step")
+	refusedTS, err := f.client.ChainGetTipSet(f.ctx, refused.TipSet)
+	req.NoError(err)
+	req.Lessf(refusedTS.Height(), pending.EffectiveEpoch,
+		"the cancellation must reach f02 before the step applies at epoch %d", pending.EffectiveEpoch)
+	_, _, refusedStreams := kit.LoadReward19(f.ctx, t, f.client, f.store, refused.TipSet)
+	req.Equal([]reward19.PendingWrite{pending}, refusedStreams.PendingWritesQueue,
+		"the refused cancellation leaves the queued step exactly as it was")
+
 	f.client.WaitTillChain(f.ctx, kit.HeightAtLeast(pending.EffectiveEpoch+2))
-	appliedTS := kit.TipsetAtOrAfter(f.ctx, t, f.client, pending.EffectiveEpoch+1)
+	dueAwardTS := kit.TipsetAtOrAfter(f.ctx, t, f.client, pending.EffectiveEpoch)
+	f.client.WaitTillChain(f.ctx, kit.HeightAtLeast(dueAwardTS.Height()+1))
+	appliedTS := kit.TipsetAtOrAfter(f.ctx, t, f.client, dueAwardTS.Height()+1)
 	appliedActor, appliedState, appliedStreams := kit.LoadReward19(f.ctx, t, f.client, f.store, appliedTS.Key())
 	f.requireAllocation(t, appliedActor, appliedState, appliedStreams)
 	req.Empty(appliedStreams.PendingWritesQueue)
@@ -1068,6 +1293,156 @@ func (f *solsticeRewardLifecycle) testMissedVolumePost(t *testing.T) {
 	req.False(resubmitted.Receipt.ExitCode.IsSuccess(), "a quarter cannot be submitted twice")
 }
 
+// testSecondOrchestrator covers a two-row quarter: shares proportional to the posted volumes, a
+// removal that burns the departing slice, a prospective wallet swap, and the next redistribution.
+func (f *solsticeRewardLifecycle) testSecondOrchestrator(t *testing.T) {
+	req := require.New(t)
+	quarter := f.gateQuarter + 3
+	opens, postingEnds, binds := f.quarterEpochs(quarter)
+	nextOpens, nextPostingEnds, nextBinds := f.quarterEpochs(quarter + 1)
+
+	isAdmitted := solsticeSelector(t, "ServiceRewardsActor", "isAdmitted(address)")
+	orchestratorCount := solsticeSelector(t, "ServiceRewardsActor", "orchestratorCount()")
+	postVolume := solsticeSelector(t, "ServiceRewardsActor", "postVolume(uint64,uint256)")
+	submitShares := solsticeSelector(t, "ServiceRewardsActor", "submitShares(uint64)")
+	orchestrator1Word := kit.EvmWordFromAddr(f.ctx, t, f.client, f.orchestrator)
+	orchestrator2Word := kit.EvmWordFromAddr(f.ctx, t, f.client, f.orchestrator2)
+	wallet1BWord := kit.EvmWordFromAddr(f.ctx, t, f.client, f.wallet1B)
+	usd := func(amount int64) []byte {
+		return kit.EvmWordBytes(big.Mul(big.NewInt(amount), big.NewInt(1_000_000_000_000_000_000)).Int.Bytes())
+	}
+	sraRead := func(selector []byte, args ...[]byte) *api.MsgLookup {
+		return solsticeInvoke(f.ctx, t, f.client, f.deployer, f.sraAddr, selector, args...)
+	}
+
+	// The second orchestrator is its own payout wallet.
+	f.requireUnanimous(t, f.sraAddr,
+		solsticeSelector(t, "ServiceRewardsActor", "addOrchestrator(address,address)"),
+		orchestrator2Word, orchestrator2Word)
+	req.True(solsticeBool(t, sraRead(isAdmitted, orchestrator2Word)), "the admitted orchestrator must be seated")
+	req.Equal(kit.EvmWordUint64(2), solsticeWord(t, sraRead(orchestratorCount)))
+
+	// Volumes in a 4:1 ratio, so the quarter's share map is 80% and 20%.
+	f.client.WaitTillChain(f.ctx, kit.HeightAtLeast(opens))
+	for _, post := range []struct {
+		from   address.Address
+		volume int64
+	}{{f.orchestrator, 4000}, {f.orchestrator2, 1000}} {
+		posted := solsticeInvoke(f.ctx, t, f.client, post.from, f.sraAddr, postVolume,
+			kit.EvmWordUint64(quarter), usd(post.volume))
+		kit.RequireMessageSuccess(t, posted)
+		postedTS, err := f.client.ChainGetTipSet(f.ctx, posted.TipSet)
+		req.NoError(err)
+		req.Lessf(postedTS.Height(), postingEnds, "volume must land inside quarter %d's posting window", quarter)
+	}
+
+	f.client.WaitTillChain(f.ctx, kit.HeightAtLeast(binds))
+	submitted := solsticeInvoke(f.ctx, t, f.client, f.deployer, f.sraAddr, submitShares, kit.EvmWordUint64(quarter))
+	kit.RequireMessageSuccess(t, submitted)
+	submittedActor, submittedState, submittedStreams := kit.LoadReward19(f.ctx, t, f.client, f.store, submitted.TipSet)
+	f.requireAllocation(t, submittedActor, submittedState, submittedStreams)
+	shares := streamByID(t, submittedStreams, 2).Distribution.Shares
+	req.Len(shares, 2)
+	req.Equal(80*f.pct, shareOf(shares, f.orchestratorID), "shares follow the posted volumes")
+	req.Equal(20*f.pct, shareOf(shares, f.orchestrator2ID), "shares follow the posted volumes")
+
+	// One claim for both wallets divides the same pool, so their withdrawals hold the same ratio.
+	claim := f.claim(t, 2, []address.Address{f.orchestratorID, f.orchestrator2ID})
+	req.Positive(claim.amounts[0].Sign())
+	req.Positive(claim.amounts[1].Sign())
+	claimed := streamByID(t, claim.streams, 2).Distribution.ClaimedPeriod
+	liveFirst := payableOf(claimed, f.orchestratorID)
+	liveSecond := payableOf(claimed, f.orchestrator2ID)
+	requireShareWithinAtto(t, liveSecond, big.Add(liveFirst, liveSecond), 20*f.pct, 1)
+
+	// The SRA refuses a removal while an ended quarter awaits its share map, so remove before this one ends.
+	head, err := f.client.ChainHead(f.ctx)
+	req.NoError(err)
+	req.Lessf(head.Height(), nextOpens,
+		"quarter %d ends at epoch %d, where the removal guard closes again", quarter, nextOpens)
+	t.Logf("removing at epoch %d, %d epochs before quarter %d ends", head.Height(), nextOpens-head.Height(), quarter)
+	removed := f.requireUnanimous(t, f.sraAddr,
+		solsticeSelector(t, "ServiceRewardsActor", "removeOrchestrator(address)"), orchestrator2Word)
+	removedTS, err := f.client.ChainGetTipSet(f.ctx, removed.TipSet)
+	req.NoError(err)
+	removedActor, removedState, removedStreams := kit.LoadReward19(f.ctx, t, f.client, f.store, removed.TipSet)
+	f.requireAllocation(t, removedActor, removedState, removedStreams)
+	removedDistribution := streamByID(t, removedStreams, 2).Distribution
+	req.Len(removedDistribution.Shares, 1)
+	req.Equal(80*f.pct, shareOf(removedDistribution.Shares, f.orchestratorID),
+		"the survivor keeps its own share until the next submission")
+	secondCarried := payableOf(removedDistribution.Payable, f.orchestrator2ID)
+	req.Positive(secondCarried.Sign(), "the removed wallet keeps what it earned")
+	req.False(solsticeBool(t, sraRead(isAdmitted, orchestrator2Word)), "the removed orchestrator must be gone")
+	req.Equal(kit.EvmWordUint64(1), solsticeWord(t, sraRead(orchestratorCount)))
+
+	// The dropped 20% of stream 2's 15% weight burns until the map changes again.
+	f.client.WaitTillChain(f.ctx, kit.HeightAtLeast(removedTS.Height()+9))
+	_, burnStart, _ := f.stateAtOrAfter(t, removedTS.Height())
+	_, burnEnd, _ := f.stateAtOrAfter(t, removedTS.Height()+8)
+	f.requireServiceShareInForce(t, burnStart, burnEnd, 12*f.pct)
+	burnDelta := rewardDeltas(burnStart, burnEnd)
+	requireShareWithinAtto(t, burnDelta.burn, burnDelta.total, 18*f.pct, 2*int64(burnEnd.Epoch-burnStart.Epoch))
+
+	// The wallet swap renames the row and leaves earned balances where they are.
+	replaced := f.requireUnanimous(t, f.sraAddr,
+		solsticeSelector(t, "ServiceRewardsActor", "replaceWallet(address,address)"),
+		orchestrator1Word, wallet1BWord)
+	replacedActor, replacedState, replacedStreams := kit.LoadReward19(f.ctx, t, f.client, f.store, replaced.TipSet)
+	f.requireAllocation(t, replacedActor, replacedState, replacedStreams)
+	replacedDistribution := streamByID(t, replacedStreams, 2).Distribution
+	req.Len(replacedDistribution.Shares, 1)
+	req.Equal(80*f.pct, shareOf(replacedDistribution.Shares, f.wallet1BID), "the share moves to the new wallet")
+	req.Zero(shareOf(replacedDistribution.Shares, f.orchestratorID), "the old wallet earns nothing from here on")
+	firstCarried := payableOf(replacedDistribution.Payable, f.orchestratorID)
+	req.Positive(firstCarried.Sign(), "the old wallet keeps what it earned")
+	req.Zero(payableOf(replacedDistribution.Payable, f.wallet1BID).Sign(), "the new wallet starts from zero")
+	requireAddressReplacedEvents(f.ctx, t, f.client, f.messageHeight(t, replaced), 2, f.orchestratorID, f.wallet1BID)
+
+	payouts := f.claim(t, 2, []address.Address{f.orchestratorID, f.orchestrator2ID, f.wallet1BID})
+	req.Equalf(0, big.Cmp(firstCarried, payouts.amounts[0]),
+		"the old wallet is paid the %s it carried, not %s", firstCarried, payouts.amounts[0])
+	req.Equalf(0, big.Cmp(secondCarried, payouts.amounts[1]),
+		"the removed wallet is paid the %s it carried, not %s", secondCarried, payouts.amounts[1])
+	req.Positive(payouts.amounts[2].Sign(), "the new wallet is paid its live share while the map sums below Denom")
+
+	// The next submission redistributes to the survivor alone, under the wallet it now uses.
+	f.client.WaitTillChain(f.ctx, kit.HeightAtLeast(nextOpens))
+	nextPosted := solsticeInvoke(f.ctx, t, f.client, f.orchestrator, f.sraAddr, postVolume,
+		kit.EvmWordUint64(quarter+1), usd(4000))
+	kit.RequireMessageSuccess(t, nextPosted)
+	nextPostedTS, err := f.client.ChainGetTipSet(f.ctx, nextPosted.TipSet)
+	req.NoError(err)
+	req.Lessf(nextPostedTS.Height(), nextPostingEnds,
+		"volume must land inside quarter %d's posting window", quarter+1)
+
+	f.client.WaitTillChain(f.ctx, kit.HeightAtLeast(nextBinds))
+	resubmitted := solsticeInvoke(f.ctx, t, f.client, f.deployer, f.sraAddr, submitShares, kit.EvmWordUint64(quarter+1))
+	kit.RequireMessageSuccess(t, resubmitted)
+	resubmittedTS, err := f.client.ChainGetTipSet(f.ctx, resubmitted.TipSet)
+	req.NoError(err)
+	finalActor, finalState, finalStreams := kit.LoadReward19(f.ctx, t, f.client, f.store, resubmitted.TipSet)
+	f.requireAllocation(t, finalActor, finalState, finalStreams)
+	finalDistribution := streamByID(t, finalStreams, 2).Distribution
+	req.Equal([]reward19.RecipientShare{{Recipient: f.wallet1BID, Share: reward19.Denom}},
+		finalDistribution.Shares, "the survivor takes the whole map under its new wallet")
+	req.Positive(payableOf(finalDistribution.Payable, f.wallet1BID).Sign(),
+		"the new wallet earns from the replacement onward")
+	req.Zero(payableOf(finalDistribution.Payable, f.orchestratorID).Sign(),
+		"the old wallet's balance left with its claim")
+
+	replacementPayout := f.claim(t, 2, []address.Address{f.wallet1BID})
+	req.Positive(replacementPayout.amounts[0].Sign(), "the new wallet claims what it has earned")
+
+	// A map that sums to Denom again leaves stream 2's weight as the only explicit share.
+	f.client.WaitTillChain(f.ctx, kit.HeightAtLeast(resubmittedTS.Height()+9))
+	_, wholeStart, _ := f.stateAtOrAfter(t, resubmittedTS.Height())
+	_, wholeEnd, _ := f.stateAtOrAfter(t, resubmittedTS.Height()+8)
+	f.requireServiceShareInForce(t, wholeStart, wholeEnd, 15*f.pct)
+	wholeDelta := rewardDeltas(wholeStart, wholeEnd)
+	requireShareWithinAtto(t, wholeDelta.burn, wholeDelta.total, 15*f.pct, 2*int64(wholeEnd.Epoch-wholeStart.Epoch))
+}
+
 func (f *solsticeRewardLifecycle) testStreamRegistration(t *testing.T) {
 	req := require.New(t)
 	// Registration requires activation >= execution epoch + timelock; the slack covers inclusion
@@ -1084,7 +1459,7 @@ func (f *solsticeRewardLifecycle) testStreamRegistration(t *testing.T) {
 			"registerStream(uint64,(int256,int256,uint64,int256,int256),address,(address,uint256)[],uint64)"),
 		solsticeRegisterStreamInput(f.ctx, t, f.client, f.newStream, weight, f.w3WriterID, shares, activation))
 
-	_, _, queuedStreams := kit.LoadReward19(f.ctx, t, f.client, f.store, lookup.TipSet)
+	queuedActor, queuedState, queuedStreams := kit.LoadReward19(f.ctx, t, f.client, f.store, lookup.TipSet)
 	req.Len(queuedStreams.PendingWritesQueue, 1)
 	pending := queuedStreams.PendingWritesQueue[0]
 	req.NotNil(pending.ID)
@@ -1093,8 +1468,17 @@ func (f *solsticeRewardLifecycle) testStreamRegistration(t *testing.T) {
 	req.Equal(activation, pending.EffectiveEpoch)
 	req.Len(queuedStreams.Streams, 2, "a queued registration leaves the stream table alone")
 
+	ledger := f.requireAdapterLedger(t, lookup.TipSet, queuedActor, queuedState, queuedStreams)
+	queuedRegistration := ledger.PendingWrites[0].Register
+	req.NotNil(queuedRegistration)
+	req.Equal(weight, queuedRegistration.Weight)
+	req.Equal(f.w3WriterID, queuedRegistration.Distribution.Writer)
+	req.Equal(shares, queuedRegistration.Distribution.Shares)
+
 	f.client.WaitTillChain(f.ctx, kit.HeightAtLeast(activation+2))
-	liveActor, liveState, liveStreams := f.stateAtOrAfter(t, activation+1)
+	dueAwardTS := kit.TipsetAtOrAfter(f.ctx, t, f.client, activation)
+	f.client.WaitTillChain(f.ctx, kit.HeightAtLeast(dueAwardTS.Height()+1))
+	liveActor, liveState, liveStreams := f.stateAtOrAfter(t, dueAwardTS.Height()+1)
 	f.requireAllocation(t, liveActor, liveState, liveStreams)
 	req.Empty(liveStreams.PendingWritesQueue)
 	req.Len(liveStreams.Streams, 3)
@@ -1103,19 +1487,24 @@ func (f *solsticeRewardLifecycle) testStreamRegistration(t *testing.T) {
 	req.Equal(f.w3WriterID, registered.Distribution.Writer)
 	req.Equal(shares, registered.Distribution.Shares)
 	req.Positive(accrualOf(t, liveState, f.newStream).Sign())
+
+	requireRegistrationEventVisibility(f.ctx, t, f.client, f.messageHeight(t, lookup), dueAwardTS.Height(), f.newStream)
 }
 
 // testShareSettlementAndWalletPayouts exercises share replacement, partial claims, and recipient balance changes.
 func (f *solsticeRewardLifecycle) testShareSettlementAndWalletPayouts(t *testing.T) {
 	req := require.New(t)
+	newShares := []reward19.RecipientShare{
+		{Recipient: f.recipients[0], Share: 40 * f.pct},
+		{Recipient: f.recipients[1], Share: 60 * f.pct},
+	}
 	lookup := f.sendRewardMessage(t, f.w3WriterKey.Address, builtin.MethodsReward.SetSharesExported, &reward19.SetSharesParams{
-		ID: f.newStream,
-		Shares: []reward19.RecipientShare{
-			{Recipient: f.recipients[0], Share: 40 * f.pct},
-			{Recipient: f.recipients[1], Share: 60 * f.pct},
-		},
+		ID:     f.newStream,
+		Shares: newShares,
 	})
 	kit.RequireMessageSuccess(t, lookup)
+	accrued, dust := f.requireFoldDustBurned(t, lookup, f.newStream)
+	requireSetSharesEvents(f.ctx, t, f.client, f.messageHeight(t, lookup), f.newStream, accrued, dust, newShares)
 
 	settledActor, settledState, settledStreams := kit.LoadReward19(f.ctx, t, f.client, f.store, lookup.TipSet)
 	f.requireAllocation(t, settledActor, settledState, settledStreams)
@@ -1190,6 +1579,8 @@ func (f *solsticeRewardLifecycle) testRemoveStreamTombstoneClaim(t *testing.T) {
 		},
 	})
 	kit.RequireMessageSuccess(t, setShares)
+	// A two-row fold is where dust actually appears.
+	f.requireFoldDustBurned(t, setShares, f.newStream)
 
 	lookup := f.requireUnanimous(t, f.swaAddr,
 		solsticeSelector(t, "StreamWeightActor", "removeStream(uint64)"),
@@ -1208,6 +1599,7 @@ func (f *solsticeRewardLifecycle) testRemoveStreamTombstoneClaim(t *testing.T) {
 	appliedTS := kit.TipsetAtOrAfter(f.ctx, t, f.client, dueTS.Height()+1)
 	removedActor, removed, removedStreams := kit.LoadReward19(f.ctx, t, f.client, f.store, appliedTS.Key())
 	f.requireAllocation(t, removedActor, removed, removedStreams)
+	f.requireAdapterLedger(t, appliedTS.Key(), removedActor, removed, removedStreams)
 	req.Len(removedStreams.Streams, 2)
 	req.Equal(reward19.StreamID(1), removedStreams.Streams[0].ID)
 	req.Equal(reward19.StreamID(2), removedStreams.Streams[1].ID)
@@ -1309,12 +1701,12 @@ func (f *solsticeRewardLifecycle) swaSetWeightRecords(t *testing.T, updates []re
 	return f.requireUnanimous(t, f.swaAddr, solsticeSetWeightRecords(t), solsticeWeightUpdatesInput(updates))
 }
 
-// cancelPendingWeight clears the discretionary weight slot, which any single owner may do.
-func (f *solsticeRewardLifecycle) cancelPendingWeight(t *testing.T, from address.Address) *api.MsgLookup {
+// cancelPendingWeight clears a weight slot, which any single owner may do.
+func (f *solsticeRewardLifecycle) cancelPendingWeight(t *testing.T, from address.Address, op reward19.PendingWriteOp) *api.MsgLookup {
 	t.Helper()
 	return solsticeInvoke(f.ctx, t, f.client, from, f.swaAddr,
 		solsticeSelector(t, "StreamWeightActor", "cancelPendingWeight(uint8)"),
-		kit.EvmWordUint64(uint64(reward19.PendingWriteOpSetWeightRecords)))
+		kit.EvmWordUint64(uint64(op)))
 }
 
 func (f *solsticeRewardLifecycle) claim(t *testing.T, id reward19.StreamID, wallets []address.Address) solsticeClaimResult {
@@ -1350,6 +1742,18 @@ func (f *solsticeRewardLifecycle) stateAtOrAfter(t *testing.T, epoch abi.ChainEp
 	return kit.LoadReward19(f.ctx, t, f.client, f.store, ts.Key())
 }
 
+// messageHeight returns the height of the tipset that executed lookup's message, one epoch behind
+// its receipt.
+func (f *solsticeRewardLifecycle) messageHeight(t *testing.T, lookup *api.MsgLookup) abi.ChainEpoch {
+	t.Helper()
+	req := require.New(t)
+	receiptTS, err := f.client.ChainGetTipSet(f.ctx, lookup.TipSet)
+	req.NoError(err)
+	messageTS, err := f.client.ChainGetTipSet(f.ctx, receiptTS.Parents())
+	req.NoError(err)
+	return messageTS.Height()
+}
+
 // requireServiceShareInForce checks the share f02 actually paid the explicit streams, not the
 // stored weight. Stream 2 is the only explicit stream in the gate phases.
 func (f *solsticeRewardLifecycle) requireServiceShareInForce(t *testing.T, start, end *reward19.State, share uint64) {
@@ -1360,9 +1764,130 @@ func (f *solsticeRewardLifecycle) requireServiceShareInForce(t *testing.T, start
 	requireShareWithinAtto(t, delta.service, delta.total, share, awardUpperBound)
 }
 
+// requireFoldDustBurned checks the message sends its fold's rounding residue to f099 while the
+// tipset's award moves the counters by the weight split alone. Returns the period's accrual and
+// the dust from the fold.
+func (f *solsticeRewardLifecycle) requireFoldDustBurned(t *testing.T, lookup *api.MsgLookup, id reward19.StreamID) (accrued, dust abi.TokenAmount) {
+	t.Helper()
+	req := require.New(t)
+	receiptTS, err := f.client.ChainGetTipSet(f.ctx, lookup.TipSet)
+	req.NoError(err)
+	messageTS, err := f.client.ChainGetTipSet(f.ctx, receiptTS.Parents())
+	req.NoError(err)
+	req.Len(messageTS.Blocks(), 1, "the split below accounts for a single block's award")
+
+	_, before, beforeStreams := kit.LoadReward19(f.ctx, t, f.client, f.store, messageTS.Key())
+	_, after, afterStreams := kit.LoadReward19(f.ctx, t, f.client, f.store, receiptTS.Key())
+	req.Empty(beforeStreams.PendingWritesQueue, "a due write would fold and burn alongside the message")
+	req.Empty(afterStreams.PendingWritesQueue)
+
+	// Messages run before their block's award, so the fold divided the pool the message found.
+	accrued = accrualOf(t, before, id)
+	dust = foldDust(accrued, streamByID(t, beforeStreams, id).Distribution.Shares)
+	replay, err := f.client.StateReplay(f.ctx, types.EmptyTSK, lookup.Message)
+	req.NoError(err)
+	sent := burntFundsSent(replay.ExecutionTrace)
+	req.Equalf(0, big.Cmp(dust, sent), "the fold left %s of dust and the message sent %s to f099", dust, sent)
+	t.Logf("stream %d fold left %s attoFIL of dust", id, dust)
+
+	blockReward := big.Sub(after.TotalMintedReward, before.TotalMintedReward)
+	explicit, burn := big.Zero(), blockReward
+	for _, stream := range afterStreams.Streams {
+		req.Zerof(stream.Weight.Slope, "stream %d still slopes, so its award share is not VStart", stream.ID)
+		portion := big.Div(big.Mul(blockReward, big.NewIntUnsigned(stream.Weight.VStart)), denomInt())
+		burn = big.Sub(burn, portion)
+		if stream.Distribution == nil {
+			continue
+		}
+		// A map summing below Denom pays its streams only that fraction and burns the rest.
+		if shareTotal := shareTotalOf(stream.Distribution.Shares); big.Cmp(shareTotal, denomInt()) != 0 {
+			paid := big.Div(big.Mul(portion, shareTotal), denomInt())
+			burn = big.Add(burn, big.Sub(portion, paid))
+			portion = paid
+		}
+		explicit = big.Add(explicit, portion)
+	}
+	countedBurn := big.Sub(after.TotalBurnMinted, before.TotalBurnMinted)
+	countedExplicit := big.Sub(after.TotalExplicitMinted, before.TotalExplicitMinted)
+	req.Equalf(0, big.Cmp(burn, countedBurn),
+		"the award's weight split burns %s but the burn counter moved %s", burn, countedBurn)
+	req.Equalf(0, big.Cmp(explicit, countedExplicit),
+		"the award's weight split accrues %s but the explicit counter moved %s", explicit, countedExplicit)
+
+	burntBefore := kit.MustActor(f.ctx, t, f.client, builtin.BurntFundsActorAddr, messageTS.Key()).Balance
+	burntAfter := kit.MustActor(f.ctx, t, f.client, builtin.BurntFundsActorAddr, receiptTS.Key()).Balance
+	req.GreaterOrEqualf(big.Cmp(big.Sub(burntAfter, burntBefore), big.Add(countedBurn, dust)), 0,
+		"f099 must receive the counted burn %s and the dust %s", countedBurn, dust)
+	return accrued, dust
+}
+
 func (f *solsticeRewardLifecycle) requireAllocation(t *testing.T, actor *types.Actor, state *reward19.State, streams *reward19.StreamsState) {
 	t.Helper()
 	require.Equal(t, f.initialAllocation, rewardAllocationAt(t, actor, state, streams))
+}
+
+func (f *solsticeRewardLifecycle) requireAdapterLedger(
+	t *testing.T,
+	tsk types.TipSetKey,
+	actor *types.Actor,
+	state *reward19.State,
+	streams *reward19.StreamsState,
+) *reward.StreamLedger {
+	t.Helper()
+	req := require.New(t)
+	ts, err := f.client.ChainGetTipSet(f.ctx, tsk)
+	req.NoError(err)
+	adapted, err := reward.Load(adt.WrapStore(f.ctx, f.store), actor)
+	req.NoError(err)
+	ledger, err := adapted.StreamLedger(ts.Height())
+	req.NoError(err)
+
+	req.Equal(ts.Height(), ledger.Epoch)
+	req.Equal(state.SWAActor, ledger.SWAActor)
+	req.Equal(state.SWATimelockEpochs, ledger.SWATimelock)
+	req.Equal(state.TotalMintedReward, ledger.TotalMinted)
+	req.Equal(state.TotalBurnMinted, ledger.TotalBurnMinted)
+	req.Equal(state.TotalExplicitMinted, ledger.TotalExplicitMinted)
+	liabilities := explicitServiceLiabilities(t, state, streams)
+	req.Equalf(0, big.Cmp(liabilities, ledger.Liability()),
+		"the adapter holds %s for recipients where the state holds %s", ledger.Liability(), liabilities)
+
+	req.Len(ledger.Streams, len(streams.Streams))
+	for i, stream := range streams.Streams {
+		read := ledger.Streams[i]
+		req.Equal(stream.ID, read.ID)
+		req.Equal(stream.Weight, read.Weight)
+		req.Equal(stream.Distribution == nil, read.Implicit)
+		req.GreaterOrEqual(read.EvaluatedWeight, stream.Weight.Floor)
+		req.LessOrEqual(read.EvaluatedWeight, stream.Weight.Cap)
+		if stream.Weight.Slope == 0 {
+			req.Equal(stream.Weight.VStart, read.EvaluatedWeight, "a flat record holds its weight at every epoch")
+		}
+		if stream.Distribution == nil {
+			continue
+		}
+		req.Equal(stream.Distribution.Writer, read.Writer)
+		req.Equal(stream.Distribution.Shares, read.Shares)
+		req.Equal(stream.Distribution.Payable, read.Payable)
+		req.Equal(stream.Distribution.ClaimedPeriod, read.ClaimedPeriod)
+		req.Equal(accrualOf(t, state, stream.ID), read.Accrued)
+	}
+
+	req.Len(ledger.Tombstones, len(streams.Tombstones))
+	for i, tombstone := range streams.Tombstones {
+		req.Equal(tombstone.ID, ledger.Tombstones[i].ID)
+		req.Equal(tombstone.Payable, ledger.Tombstones[i].Payable)
+	}
+
+	req.Len(ledger.PendingWrites, len(streams.PendingWritesQueue))
+	for i, write := range streams.PendingWritesQueue {
+		read := ledger.PendingWrites[i]
+		req.Equal(write.ID, read.ID)
+		req.EqualValues(write.Op, read.Op)
+		req.Equal(write.EffectiveEpoch, read.EffectiveEpoch)
+	}
+
+	return ledger
 }
 
 func rewardDeltas(start, end *reward19.State) solsticeRewardDeltas {
@@ -1374,6 +1899,63 @@ func rewardDeltas(start, end *reward19.State) solsticeRewardDeltas {
 
 func flatWeight(weight uint64) reward19.WeightRecord {
 	return reward19.WeightRecord{VStart: weight, Floor: weight, Cap: weight}
+}
+
+func denomInt() big.Int {
+	return big.NewIntUnsigned(reward19.Denom)
+}
+
+func shareTotalOf(shares []reward19.RecipientShare) big.Int {
+	total := big.Zero()
+	for _, share := range shares {
+		total = big.Add(total, big.NewIntUnsigned(share.Share))
+	}
+	return total
+}
+
+// shareOf returns one recipient's share of a stream, zero when the map has no row for it.
+func shareOf(shares []reward19.RecipientShare, recipient address.Address) uint64 {
+	for _, share := range shares {
+		if share.Recipient == recipient {
+			return share.Share
+		}
+	}
+	return 0
+}
+
+// payableOf returns one recipient's carried balance, zero when the table has no row for it.
+func payableOf(rows []reward19.RecipientAmount, recipient address.Address) abi.TokenAmount {
+	for _, row := range rows {
+		if row.Recipient == recipient {
+			return row.Amount
+		}
+	}
+	return big.Zero()
+}
+
+// foldDust is the residue a period fold leaves behind: the pool less each share's floored slice.
+func foldDust(pool abi.TokenAmount, shares []reward19.RecipientShare) abi.TokenAmount {
+	total := shareTotalOf(shares)
+	if total.IsZero() {
+		return pool
+	}
+	allocated := big.Zero()
+	for _, share := range shares {
+		allocated = big.Add(allocated, big.Div(big.Mul(pool, big.NewIntUnsigned(share.Share)), total))
+	}
+	return big.Sub(pool, allocated)
+}
+
+// burntFundsSent totals what one message's execution sent to f099.
+func burntFundsSent(trace types.ExecutionTrace) abi.TokenAmount {
+	sent := big.Zero()
+	if trace.Msg.To == builtin.BurntFundsActorAddr {
+		sent = big.Add(sent, trace.Msg.Value)
+	}
+	for _, subcall := range trace.Subcalls {
+		sent = big.Add(sent, burntFundsSent(subcall))
+	}
+	return sent
 }
 
 func accruedShare(amount abi.TokenAmount, share uint64) abi.TokenAmount {
@@ -1415,6 +1997,168 @@ func eventEntry(t *testing.T, flags uint8, key string, value ipld.Node) types.Ev
 	return types.EventEntry{Flags: flags, Codec: uint64(multicodec.Cbor), Key: key, Value: encoded}
 }
 
+// rewardEventsInRange fetches the reward actor's indexed events over one height range.
+func rewardEventsInRange(ctx context.Context, t *testing.T, node api.FullNode, from, to abi.ChainEpoch) []*types.ActorEvent {
+	t.Helper()
+	events, err := node.GetActorEventsRaw(ctx, &types.ActorEventFilter{
+		Addresses:  []address.Address{builtin.RewardActorAddr},
+		FromHeight: &from,
+		ToHeight:   &to,
+	})
+	require.NoError(t, err)
+	return events
+}
+
+// requireActorEvent finds the one event whose leading entries match prefix, by key and encoded
+// value.
+func requireActorEvent(t *testing.T, events []*types.ActorEvent, prefix ...types.EventEntry) (int, *types.ActorEvent) {
+	t.Helper()
+	for i, event := range events {
+		if len(event.Entries) < len(prefix) {
+			continue
+		}
+		match := true
+		for j, want := range prefix {
+			if event.Entries[j].Key != want.Key || !bytes.Equal(event.Entries[j].Value, want.Value) {
+				match = false
+				break
+			}
+		}
+		if match {
+			return i, event
+		}
+	}
+	require.FailNowf(t, "actor event not found", "prefix %+v", prefix)
+	return -1, nil
+}
+
+// requireEventBigInt decodes a bigint event entry and checks it against want.
+func requireEventBigInt(t *testing.T, entry types.EventEntry, key string, want abi.TokenAmount) {
+	t.Helper()
+	req := require.New(t)
+	req.Equal(key, entry.Key)
+	var got big.Int
+	req.NoError(got.UnmarshalCBOR(bytes.NewReader(entry.Value)))
+	req.Equalf(0, big.Cmp(want, got), "%s is %s, not %s", key, got, want)
+}
+
+// decodeShareRows decodes a shares-set event's shares entry into recipient ID to share.
+func decodeShareRows(t *testing.T, entry types.EventEntry) map[uint64]uint64 {
+	t.Helper()
+	req := require.New(t)
+	req.Equal("shares", entry.Key)
+	node, err := ipld.Decode(entry.Value, dagcbor.Decode)
+	req.NoError(err)
+	rows := make(map[uint64]uint64, node.Length())
+	it := node.ListIterator()
+	for !it.Done() {
+		_, row, err := it.Next()
+		req.NoError(err)
+		recipientNode, err := row.LookupByIndex(0)
+		req.NoError(err)
+		shareNode, err := row.LookupByIndex(1)
+		req.NoError(err)
+		recipient, err := recipientNode.AsInt()
+		req.NoError(err)
+		share, err := shareNode.AsInt()
+		req.NoError(err)
+		rows[uint64(recipient)] = uint64(share)
+	}
+	return rows
+}
+
+// shareRowsOf converts a wire share map to recipient-ID rows, matching decodeShareRows.
+func shareRowsOf(t *testing.T, shares []reward19.RecipientShare) map[uint64]uint64 {
+	t.Helper()
+	req := require.New(t)
+	rows := make(map[uint64]uint64, len(shares))
+	for _, share := range shares {
+		id, err := address.IDFromAddress(share.Recipient)
+		req.NoError(err)
+		rows[id] = share.Share
+	}
+	return rows
+}
+
+// requireSetSharesEvents checks a SetShares message's period-folded and shares-set events: the
+// closed period's accrual and dust, and the newly installed map as actor-ID rows.
+func requireSetSharesEvents(
+	ctx context.Context, t *testing.T, node api.FullNode, height abi.ChainEpoch,
+	id reward19.StreamID, accrued, dust abi.TokenAmount, shares []reward19.RecipientShare,
+) {
+	t.Helper()
+	req := require.New(t)
+	events := rewardEventsInRange(ctx, t, node, height, height)
+
+	foldIdx, fold := requireActorEvent(t, events,
+		eventEntry(t, 0x03, "$type", basicnode.NewString("period-folded")),
+		eventEntry(t, 0x03, "stream-id", basicnode.NewInt(int64(id))),
+		eventEntry(t, 0x01, "cause", basicnode.NewString("SetShares")),
+	)
+	req.Len(fold.Entries, 5)
+	requireEventBigInt(t, fold.Entries[3], "accrued", accrued)
+	requireEventBigInt(t, fold.Entries[4], "dust", dust)
+
+	sharesIdx, sharesSet := requireActorEvent(t, events,
+		eventEntry(t, 0x03, "$type", basicnode.NewString("shares-set")),
+		eventEntry(t, 0x03, "stream-id", basicnode.NewInt(int64(id))),
+	)
+	req.Greater(sharesIdx, foldIdx, "shares-set must follow period-folded")
+	req.Equal(shareRowsOf(t, shares), decodeShareRows(t, sharesSet.Entries[2]))
+}
+
+// requireAddressReplacedEvents checks a ReplaceAddress message's period-folded and
+// address-replaced events, old and new recipients as actor IDs.
+func requireAddressReplacedEvents(
+	ctx context.Context, t *testing.T, node api.FullNode, height abi.ChainEpoch,
+	id reward19.StreamID, old, new address.Address,
+) {
+	t.Helper()
+	req := require.New(t)
+	events := rewardEventsInRange(ctx, t, node, height, height)
+
+	foldIdx, _ := requireActorEvent(t, events,
+		eventEntry(t, 0x03, "$type", basicnode.NewString("period-folded")),
+		eventEntry(t, 0x03, "stream-id", basicnode.NewInt(int64(id))),
+		eventEntry(t, 0x01, "cause", basicnode.NewString("ReplaceAddress")),
+	)
+
+	oldID, err := address.IDFromAddress(old)
+	req.NoError(err)
+	newID, err := address.IDFromAddress(new)
+	req.NoError(err)
+	replacedIdx, _ := requireActorEvent(t, events,
+		eventEntry(t, 0x03, "$type", basicnode.NewString("address-replaced")),
+		eventEntry(t, 0x03, "stream-id", basicnode.NewInt(int64(id))),
+		eventEntry(t, 0x03, "old-recipient", basicnode.NewInt(int64(oldID))),
+		eventEntry(t, 0x03, "new-recipient", basicnode.NewInt(int64(newID))),
+	)
+	req.Greater(replacedIdx, foldIdx, "address-replaced must follow period-folded")
+}
+
+// requireRegistrationEventVisibility checks one query covering a registration from its queuing
+// through the epoch it applies: the explicit message's write-queued is indexed, while the
+// shares-set its application emits is not. AwardBlockReward is implicit and lotus's event index
+// only walks messages in blocks, so the absence is the index, not a missing emission.
+func requireRegistrationEventVisibility(ctx context.Context, t *testing.T, node api.FullNode, from, to abi.ChainEpoch, id reward19.StreamID) {
+	t.Helper()
+	events := rewardEventsInRange(ctx, t, node, from, to)
+	requireActorEvent(t, events,
+		eventEntry(t, 0x03, "$type", basicnode.NewString("write-queued")),
+		eventEntry(t, 0x03, "op", basicnode.NewInt(int64(reward19.PendingWriteOpRegisterStream))),
+	)
+	sharesSetType := eventEntry(t, 0x03, "$type", basicnode.NewString("shares-set"))
+	streamIDEntry := eventEntry(t, 0x03, "stream-id", basicnode.NewInt(int64(id)))
+	for _, event := range events {
+		if len(event.Entries) >= 2 &&
+			bytes.Equal(event.Entries[0].Value, sharesSetType.Value) &&
+			bytes.Equal(event.Entries[1].Value, streamIDEntry.Value) {
+			require.FailNowf(t, "shares-set event must not be indexed from an implicit call",
+				"found at height %d", event.Height)
+		}
+	}
+}
+
 // solsticeInvoke sends an EVM call and returns its receipt without requiring a successful exit
 // code.
 func solsticeInvoke(
@@ -1433,6 +2177,37 @@ func solsticeInvoke(
 	lookup, err := client.EVM().InvokeSolidity(ctx, from, to, selector, input)
 	require.NoError(t, err)
 	return lookup
+}
+
+// solsticePushMessage signs and pushes one message at an explicit nonce, so a nonce gap can hold it
+// in the pool until the gap is filled. Gas is fixed because estimation refuses a failing message.
+func solsticePushMessage(
+	ctx context.Context,
+	t *testing.T,
+	client *kit.TestFullNode,
+	from address.Address,
+	nonce uint64,
+	to address.Address,
+	method abi.MethodNum,
+	params cbg.CBORMarshaler,
+) cid.Cid {
+	t.Helper()
+	req := require.New(t)
+	var serialized []byte
+	if params != nil {
+		var err error
+		serialized, err = actors.SerializeParams(params)
+		req.NoError(err)
+	}
+	signed, err := client.WalletSignMessage(ctx, from, &types.Message{
+		To: to, From: from, Nonce: nonce, Value: big.Zero(),
+		Method: method, Params: serialized, GasLimit: 10_000_000,
+		GasFeeCap: abi.NewTokenAmount(10_000), GasPremium: big.Zero(),
+	})
+	req.NoError(err)
+	pushed, err := client.MpoolPush(ctx, signed)
+	req.NoError(err)
+	return pushed
 }
 
 // solsticePush sends an EVM call without waiting for inclusion.

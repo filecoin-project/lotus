@@ -68,15 +68,15 @@ func NewSolsticeUpgradeEnv(t *testing.T, o SolsticeOpts) *SolsticeEnv {
 	var ensembleOpts []interface{}
 	ensembleOpts = append(ensembleOpts, MockProofs(), ThroughRPC())
 
-	bal := o.Bal
-	if bal == 0 {
-		bal = types.MustParseFIL("100fil").Int64()
+	bal := abi.NewTokenAmount(o.Bal)
+	if o.Bal == 0 {
+		bal = types.FromFil(100)
 	}
 	if o.RootKey != nil {
 		ensembleOpts = append(ensembleOpts,
-			RootVerifier(o.RootKey, abi.NewTokenAmount(bal)),
-			Account(o.VerifierKey, abi.NewTokenAmount(bal)),
-			Account(o.VerifiedClientKey, abi.NewTokenAmount(bal)),
+			RootVerifier(o.RootKey, bal),
+			Account(o.VerifierKey, bal),
+			Account(o.VerifiedClientKey, bal),
 		)
 	}
 

@@ -98,6 +98,10 @@ func (s *state12) PreCommitDepositForPower(networkQAPower builtin.FilterEstimate
 		sectorWeight), nil
 }
 
+func (s *state12) StreamLedger(abi.ChainEpoch) (*StreamLedger, error) {
+	return nil, fmt.Errorf("reward streams are unsupported in actors v12")
+}
+
 func (s *state12) GetState() interface{} {
 	return &s.State
 }

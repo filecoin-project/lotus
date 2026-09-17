@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	mathbig "math/big"
 	"os"
 	"reflect"
 	"sort"
@@ -42,6 +43,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -1793,6 +1795,210 @@ var StateSysActorCIDsCmd = &cli.Command{
 		}
 		return tw.Flush()
 	},
+}
+
+var StateRewardCmd = &cli.Command{
+	Name:  "reward",
+	Usage: "Inspect the reward actor's block-reward streams",
+	Description: `Read the reward actor's stream ledger at a tipset: each stream's
+weight evaluated at that epoch, what the explicit streams have accrued for
+their recipients and how they divide it, what removed streams still owe, and
+the writes the stream weights actor has queued.
+
+Weights and shares are fractions of 10^18, shown here as percentages of a block
+reward. The streams divide the whole reward between them; whatever they leave
+burns, as does the part of an explicit stream its share map leaves unallocated.`,
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "json",
+			Usage: "output the ledger as JSON",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Present() {
+			return ShowHelp(cctx, fmt.Errorf("doesn't expect any arguments"))
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		ts, err := LoadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+
+		act, err := api.StateGetActor(ctx, reward.Address, ts.Key())
+		if err != nil {
+			return err
+		}
+
+		store := adt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewAPIBlockstore(api)))
+		rewardState, err := reward.Load(store, act)
+		if err != nil {
+			return xerrors.Errorf("loading reward actor state: %w", err)
+		}
+
+		// The state at a tipset is what its blocks award from, so their split is the one its
+		// height evaluates.
+		ledger, err := rewardState.StreamLedger(ts.Height())
+		if err != nil {
+			return xerrors.Errorf("reading the reward stream ledger: %w", err)
+		}
+
+		if cctx.Bool("json") {
+			encoded, err := json.MarshalIndent(ledger, "", "  ")
+			if err != nil {
+				return err
+			}
+			fmt.Println(string(encoded))
+			return nil
+		}
+
+		return printRewardLedger(os.Stdout, act, ledger)
+	},
+}
+
+func printRewardLedger(out io.Writer, act *types.Actor, ledger *reward.StreamLedger) error {
+	_, _ = fmt.Fprintf(out, "Reward actor %s at epoch %d\n", reward.Address, ledger.Epoch)
+	_, _ = fmt.Fprintf(out, "Balance:              %s, of which %s is owed to stream recipients\n",
+		types.FIL(act.Balance), types.FIL(ledger.Liability()))
+	_, _ = fmt.Fprintf(out, "Minted:               %s, of which %s to miners, %s to streams, %s burnt\n",
+		types.FIL(ledger.TotalMinted), types.FIL(ledger.MinerMinted()),
+		types.FIL(ledger.TotalExplicitMinted), types.FIL(ledger.TotalBurnMinted))
+	_, _ = fmt.Fprintf(out, "Stream weights actor: %s, writing under a %d epoch timelock\n",
+		ledger.SWAActor, ledger.SWATimelock)
+
+	tw := tabwriter.NewWriter(out, 2, 4, 2, ' ', 0)
+
+	_, _ = fmt.Fprintln(tw, "\nSTREAM\tKIND\tWEIGHT\tACCRUED\tRECORD\t")
+	for _, stream := range ledger.Streams {
+		kind, accrued := "explicit", types.FIL(stream.Accrued).String()
+		if stream.Implicit {
+			kind, accrued = "implicit", "-"
+		}
+		_, _ = fmt.Fprintf(tw, "%d\t%s\t%s\t%s\t%s\t\n", stream.ID, kind,
+			fixedPercent(new(mathbig.Int).SetUint64(stream.EvaluatedWeight)), accrued, weightRecord(stream.Weight))
+	}
+	_, _ = fmt.Fprintf(tw, "burn\t\t%s\t\t\t\n", fixedPercent(ledger.BurnWeight()))
+
+	for _, stream := range ledger.Streams {
+		if stream.Implicit {
+			continue
+		}
+		_, _ = fmt.Fprintf(tw, "\nSTREAM %d RECIPIENTS, writer %s\tSHARE\tPAYABLE\tCLAIMED THIS PERIOD\t\n", stream.ID, stream.Writer)
+		for _, row := range recipientRows(stream) {
+			_, _ = fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t\n", row.recipient, fixedPercent(new(mathbig.Int).SetUint64(row.share)),
+				types.FIL(row.payable), types.FIL(row.claimed))
+		}
+		_, _ = fmt.Fprintf(tw, "burn\t%s\t\t\t\n", fixedPercent(stream.ShareBurn()))
+	}
+
+	if len(ledger.Tombstones) > 0 {
+		_, _ = fmt.Fprintln(tw, "\nREMOVED STREAM\tRECIPIENT\tPAYABLE\t")
+		for _, tombstone := range ledger.Tombstones {
+			for _, row := range tombstone.Payable {
+				_, _ = fmt.Fprintf(tw, "%d\t%s\t%s\t\n", tombstone.ID, row.Recipient, types.FIL(row.Amount))
+			}
+		}
+	}
+
+	if len(ledger.PendingWrites) > 0 {
+		_, _ = fmt.Fprintln(tw, "\nEFFECTIVE\tOPERATION\tSTREAM\tDETAIL\t")
+		for _, write := range ledger.PendingWrites {
+			stream := "-"
+			if write.ID != nil {
+				stream = fmt.Sprintf("%d", *write.ID)
+			}
+			_, _ = fmt.Fprintf(tw, "%d\t%s\t%s\t%s\t\n", write.EffectiveEpoch, write.Op, stream, pendingWriteDetail(write))
+		}
+	}
+
+	return tw.Flush()
+}
+
+type recipientRow struct {
+	recipient address.Address
+	share     uint64
+	payable   abi.TokenAmount
+	claimed   abi.TokenAmount
+}
+
+// recipientRows joins a stream's share map with the balances it holds, ascending by recipient.
+// A recipient with a balance from an earlier period doesn't necessarily have a current share.
+func recipientRows(stream reward.Stream) []recipientRow {
+	rows := map[address.Address]*recipientRow{}
+	row := func(recipient address.Address) *recipientRow {
+		if existing, ok := rows[recipient]; ok {
+			return existing
+		}
+		rows[recipient] = &recipientRow{recipient: recipient, payable: big.Zero(), claimed: big.Zero()}
+		return rows[recipient]
+	}
+	for _, share := range stream.Shares {
+		row(share.Recipient).share = share.Share
+	}
+	for _, payable := range stream.Payable {
+		row(payable.Recipient).payable = payable.Amount
+	}
+	for _, claimed := range stream.ClaimedPeriod {
+		row(claimed.Recipient).claimed = claimed.Amount
+	}
+
+	out := make([]recipientRow, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, *row)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		left, leftErr := address.IDFromAddress(out[i].recipient)
+		right, rightErr := address.IDFromAddress(out[j].recipient)
+		if leftErr != nil || rightErr != nil {
+			return out[i].recipient.String() < out[j].recipient.String()
+		}
+		return left < right
+	})
+	return out
+}
+
+func pendingWriteDetail(write reward.PendingWrite) string {
+	switch write.Op {
+	case reward.OpSetWeightRecords, reward.OpStepWeightRecords:
+		updates := make([]string, 0, len(write.Updates))
+		for _, update := range write.Updates {
+			updates = append(updates, fmt.Sprintf("stream %d %s", update.ID, weightRecord(update.Weight)))
+		}
+		return strings.Join(updates, ", ")
+	case reward.OpRegisterStream:
+		if write.Register == nil {
+			return ""
+		}
+		detail := weightRecord(write.Register.Weight)
+		if write.Register.Distribution == nil {
+			return detail + ", implicit"
+		}
+		return fmt.Sprintf("%s, writer %s, recipients=%d",
+			detail, write.Register.Distribution.Writer, len(write.Register.Distribution.Shares))
+	case reward.OpSetDistribution:
+		return "writer " + write.Writer.String()
+	default:
+		return ""
+	}
+}
+
+func weightRecord(record reward.WeightRecord) string {
+	return fmt.Sprintf("vstart=%s slope=%d tstart=%d floor=%s cap=%s",
+		fixedPercent(new(mathbig.Int).SetUint64(record.VStart)), record.Slope, record.TStart,
+		fixedPercent(new(mathbig.Int).SetUint64(record.Floor)), fixedPercent(new(mathbig.Int).SetUint64(record.Cap)))
+}
+
+// fixedPercent renders a fraction of reward.Denom as a percentage.
+func fixedPercent(value *mathbig.Int) string {
+	percent := new(mathbig.Rat).SetFrac(value, new(mathbig.Int).SetUint64(reward.Denom/100))
+	return strings.TrimRight(strings.TrimRight(percent.FloatString(8), "0"), ".") + "%"
 }
 
 // GetMarketDealIDs retrieves deal IDs for a sector from the market actor's ProviderSectors HAMT
