@@ -211,11 +211,11 @@ func (f *TestFullNode) DeadlineForHead(ctx context.Context, maddr address.Addres
 // DeadlineCloseAfter returns the first epoch at or after `from` at which deadline dlIdx closes, which
 // is when the actor next settles that deadline's faults and fees.
 func DeadlineCloseAfter(di *dline.Info, dlIdx uint64, from abi.ChainEpoch) abi.ChainEpoch {
-	close := di.PeriodStart + abi.ChainEpoch(dlIdx+1)*di.WPoStChallengeWindow
-	for close < from {
-		close += di.WPoStProvingPeriod
+	closeAt := di.PeriodStart + abi.ChainEpoch(dlIdx+1)*di.WPoStChallengeWindow
+	for closeAt < from {
+		closeAt += di.WPoStProvingPeriod
 	}
-	return close
+	return closeAt
 }
 
 // DeadlineForHeight returns the deadline that height falls in, on di's schedule. Index, Open, Close
