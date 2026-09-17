@@ -15,6 +15,7 @@ import (
     {{end}}
 {{end}}
     builtin{{.latestVersion}} "github.com/filecoin-project/go-state-types/builtin"
+    rewardtypes{{.latestVersion}} "github.com/filecoin-project/go-state-types/builtin/v{{.latestVersion}}/reward"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
@@ -93,10 +94,40 @@ type State interface {
 	// properties RampStartEpoch and RampDurationEpochs.
 	InitialPledgeForPower(qaPower abi.StoragePower, networkTotalPledge abi.TokenAmount, networkQAPower *builtin.FilterEstimate, circSupply abi.TokenAmount, epochsSinceRampStart int64, rampDurationEpochs uint64) (abi.TokenAmount, error)
 	PreCommitDepositForPower(builtin.FilterEstimate, abi.StoragePower) (abi.TokenAmount, error)
+
+	// StreamLedger reads the stream ledger, evaluating each stream's weight at epoch. The
+	// reward actor splits block rewards by those weights from actors version 19; earlier
+	// versions have no ledger and return an error.
+	StreamLedger(epoch abi.ChainEpoch) (*StreamLedger, error)
+
 	GetState() interface{}
 }
 
 type AwardBlockRewardParams = reward0.AwardBlockRewardParams
+
+// The stream ledger's leaf types, from the latest actors version.
+type (
+	StreamID = rewardtypes{{.latestVersion}}.StreamID
+	WeightRecord = rewardtypes{{.latestVersion}}.WeightRecord
+	WeightRecordUpdate = rewardtypes{{.latestVersion}}.WeightRecordUpdate
+	RecipientShare = rewardtypes{{.latestVersion}}.RecipientShare
+	RecipientAmount = rewardtypes{{.latestVersion}}.RecipientAmount
+	DistributionInit = rewardtypes{{.latestVersion}}.DistributionInit
+	RegisterStreamPayload = rewardtypes{{.latestVersion}}.RegisterStreamPayload
+)
+
+// Denom is the fixed-point denominator of stream weights and recipient shares.
+const Denom = rewardtypes{{.latestVersion}}.Denom
+
+// The operations that reach the reward actor through the queue. A weight step is
+// uncancellable; every other write can be cancelled while it waits.
+const (
+	OpSetWeightRecords = PendingWriteOp(rewardtypes{{.latestVersion}}.PendingWriteOpSetWeightRecords)
+	OpStepWeightRecords = PendingWriteOp(rewardtypes{{.latestVersion}}.PendingWriteOpStepWeightRecords)
+	OpRegisterStream = PendingWriteOp(rewardtypes{{.latestVersion}}.PendingWriteOpRegisterStream)
+	OpRemoveStream = PendingWriteOp(rewardtypes{{.latestVersion}}.PendingWriteOpRemoveStream)
+	OpSetDistribution = PendingWriteOp(rewardtypes{{.latestVersion}}.PendingWriteOpSetDistribution)
+)
 
 func AllCodes() []cid.Cid {
 	return []cid.Cid{ {{range .versions}}

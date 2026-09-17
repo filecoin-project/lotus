@@ -139,7 +139,7 @@ const SolsticeEpochsPerQuarter = abi.ChainEpoch(builtin.EpochsInDay)
 // FIP-0118: reward actor bootstrap state installed by the Solstice migration.
 // Addresses must be set before enabling the upgrade.
 var UpgradeSolsticeRewardBootstrapParams = SolsticeRewardBootstrapParams{
-	SWATimelockEpochs:                 builtin2.EpochsInHour,
+	SWATimelockEpochs:                 builtin2.EpochsInHour * 6,
 	ConsensusWeightRampDurationEpochs: SolsticeEpochsPerQuarter * 9,
 	ConsensusWeight: SolsticeRewardWeightParams{
 		VStart: 95 * solsticeRewardWeightPercent,
@@ -151,9 +151,9 @@ var UpgradeSolsticeRewardBootstrapParams = SolsticeRewardBootstrapParams{
 		Floor:  5 * solsticeRewardWeightPercent,
 		Cap:    10 * solsticeRewardWeightPercent,
 	},
-	SWAActor:            address.Undef,
-	SRAActor:            address.Undef,
-	InitialOrchestrator: address.Undef,
+	SWAActor:            MustParseFilOrEthAddress("0xDE4fBd083F18f96C241DdE0A83C3EDC422Be9BA6"),
+	SRAActor:            MustParseFilOrEthAddress("0xeDfCd0947F7E9d58E0035f032520d75ce8eCA451"),
+	InitialOrchestrator: MustParseFilOrEthAddress("0x97A90f5696be5E3C8d3752C92Adac287c2b4484e"),
 }
 
 var ConsensusMinerMinPower = abi.NewStoragePower(32 << 30)

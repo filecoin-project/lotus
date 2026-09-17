@@ -1458,6 +1458,12 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 		return types.EmptyInt, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
+	// From nv29 (FIP-0118) every sector holds maximum quality-adjusted power, so a
+	// SectorPreCommitInfo is irrelevant.
+	if a.StateManager.GetNetworkVersion(ctx, ts.Height()) >= network.Version29 {
+		return types.EmptyInt, errors.New("StateMinerInitialPledgeCollateral is unsupported from network version 29 (FIP-0118): use StateMinerInitialPledgeForSector")
+	}
+
 	state, err := a.StateManager.ParentState(ts)
 	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading state %s: %w", tsk, err)
@@ -1473,15 +1479,8 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 		return types.EmptyInt, xerrors.Errorf("loading reward actor state: %w", err)
 	}
 
-	var sectorWeight abi.StoragePower
-	if a.StateManager.GetNetworkVersion(ctx, ts.Height()) >= network.Version29 {
-		ssize, err := pci.SealProof.SectorSize()
-		if err != nil {
-			return types.EmptyInt, xerrors.Errorf("failed to resolve sector size for seal proof: %w", err)
-		}
-		// Every sector holds maximum quality-adjusted power, which deal weight does not describe.
-		sectorWeight = miner.QAPowerMax(ssize)
-	} else if sectorWeight, err = a.calculateSectorWeight(ctx, maddr, pci, ts.Height(), state); err != nil {
+	sectorWeight, err := a.calculateSectorWeight(ctx, maddr, pci, ts.Height(), state)
+	if err != nil {
 		return types.EmptyInt, err
 	}
 

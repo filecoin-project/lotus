@@ -1348,6 +1348,7 @@ COMMANDS:
    network-version             Returns the network version
    miner-proving-deadline      Retrieve information about a given miner's proving deadline
    actor-cids                  Returns the built-in actor bundle manifest ID & system actor cids
+   reward                      Inspect the reward actor's block-reward streams
    help, h                     Shows a list of commands or help for one command
 
 OPTIONS:
@@ -1709,6 +1710,30 @@ USAGE:
 OPTIONS:
    --network-version value  specify network version (default: 0)
    --help, -h               show help
+```
+
+### lotus state reward
+
+```
+NAME:
+   lotus state reward - Inspect the reward actor's block-reward streams
+
+USAGE:
+   lotus state reward [command options]
+
+DESCRIPTION:
+   Read the reward actor's stream ledger at a tipset: each stream's
+   weight evaluated at that epoch, what the explicit streams have accrued for
+   their recipients and how they divide it, what removed streams still owe, and
+   the writes the stream weights actor has queued.
+
+   Weights and shares are fractions of 10^18, shown here as percentages of a block
+   reward. The streams divide the whole reward between them; whatever they leave
+   burns, as does the part of an explicit stream its share map leaves unallocated.
+
+OPTIONS:
+   --json      output the ledger as JSON (default: false)
+   --help, -h  show help
 ```
 
 ## lotus chain

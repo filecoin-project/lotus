@@ -279,10 +279,10 @@ var sectorsUpgradeQualityCmd = &cli.Command{
 			return xerrors.Errorf("traversing miner state: %w", err)
 		}
 		if note := skipped.note(); note != "" {
-			fmt.Println(note)
+			_, _ = fmt.Fprintln(cctx.App.Writer, note)
 		}
 		if len(toUpgrade) == 0 {
-			fmt.Println("no active sectors require a QA power upgrade")
+			_, _ = fmt.Fprintln(cctx.App.Writer, "no active sectors require a QA power upgrade")
 			return nil
 		}
 
@@ -331,13 +331,13 @@ var sectorsUpgradeQualityCmd = &cli.Command{
 			if err != nil {
 				return xerrors.Errorf("[%d/%d] push failed: %w", idx+1, len(messages), err)
 			}
-			fmt.Printf("[%d/%d] %s\n", idx+1, len(messages), smsg.Cid())
+			_, _ = fmt.Fprintf(cctx.App.Writer, "[%d/%d] %s\n", idx+1, len(messages), smsg.Cid())
 		}
 
 		if cctx.Bool("really-do-it") {
-			fmt.Printf("sent %d message(s) upgrading %d sectors\n", len(messages), total)
+			_, _ = fmt.Fprintf(cctx.App.Writer, "sent %d message(s) upgrading %d sectors\n", len(messages), total)
 		} else {
-			fmt.Printf("will send %d message(s) for %d sectors (pass --really-do-it to submit)\n", len(messages), total)
+			_, _ = fmt.Fprintf(cctx.App.Writer, "will send %d message(s) for %d sectors (pass --really-do-it to submit)\n", len(messages), total)
 		}
 		return nil
 	},
@@ -1224,7 +1224,7 @@ var sectorsCapacityCollateralCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 
-		nApi, nCloser, err := lcli.GetFullNodeAPI(cctx)
+		nApi, nCloser, err := lcli.GetFullNodeAPIV1(cctx)
 		if err != nil {
 			return err
 		}
@@ -1252,25 +1252,32 @@ var sectorsCapacityCollateralCmd = &cli.Command{
 			return err
 		}
 
+		head, err := nApi.ChainHead(ctx)
+		if err != nil {
+			return err
+		}
+
 		pci := miner.SectorPreCommitInfo{
 			SealProof:  spt,
 			Expiration: abi.ChainEpoch(cctx.Uint64("expiration")),
 		}
 		if pci.Expiration == 0 {
-			h, err := nApi.ChainHead(ctx)
-			if err != nil {
-				return err
-			}
-
 			maxExtension, err := policy.GetMaxSectorExpirationExtension(nv)
 			if err != nil {
 				return xerrors.Errorf("failed to get max extension: %w", err)
 			}
 
-			pci.Expiration = maxExtension + h.Height()
+			pci.Expiration = maxExtension + head.Height()
 		}
 
-		pc, err := nApi.StateMinerInitialPledgeCollateral(ctx, maddr, pci, types.EmptyTSK)
+		// From nv29 (FIP-0118) every sector holds maximum quality-adjusted power, which this API
+		// expresses as a fully verified sector. Before that a committed capacity sector is 1x.
+		var verifiedSize uint64
+		if nv >= network.Version29 {
+			verifiedSize = uint64(mi.SectorSize)
+		}
+
+		pc, err := nApi.StateMinerInitialPledgeForSector(ctx, pci.Expiration-head.Height(), mi.SectorSize, verifiedSize, types.EmptyTSK)
 		if err != nil {
 			return err
 		}

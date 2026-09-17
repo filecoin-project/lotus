@@ -15,13 +15,19 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
+	stminer "github.com/filecoin-project/go-state-types/builtin/v19/miner"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	gstStore "github.com/filecoin-project/go-state-types/store"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/api/v2api"
+	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet/key"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
@@ -117,6 +123,116 @@ func (f *TestFullNode) CurrentProvingDeadline(ctx context.Context, maddr address
 	require.NoError(f.t, err)
 
 	return DeadlineNotAfter(di, head.Height())
+}
+
+// MinerQAP returns the miner's and the whole network's quality-adjusted power at tsk.
+func (f *TestFullNode) MinerQAP(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (minerQAP, networkQAP uint64) {
+	power, err := f.StateMinerPower(ctx, maddr, tsk)
+	require.NoError(f.t, err)
+	return power.MinerPower.QualityAdjPower.Uint64(), power.TotalPower.QualityAdjPower.Uint64()
+}
+
+// MinerRawPower returns the miner's raw byte power at tsk.
+func (f *TestFullNode) MinerRawPower(ctx context.Context, maddr address.Address, tsk types.TipSetKey) uint64 {
+	power, err := f.StateMinerPower(ctx, maddr, tsk)
+	require.NoError(f.t, err)
+	return power.MinerPower.RawBytePower.Uint64()
+}
+
+// MustSectorInfo reads a sector that has to be committed at tsk.
+func (f *TestFullNode) MustSectorInfo(ctx context.Context, maddr address.Address, sn abi.SectorNumber, tsk types.TipSetKey) *miner.SectorOnChainInfo {
+	info, err := f.StateSectorGetInfo(ctx, maddr, sn, tsk)
+	require.NoError(f.t, err)
+	require.NotNil(f.t, info, "sector %d of miner %s must be committed", sn, maddr)
+	return info
+}
+
+// Store gives an IPLD store backed by this node, for sneaky state reads.
+func (f *TestFullNode) Store(ctx context.Context) gstStore.Store {
+	return gstStore.WrapBlockStore(ctx, blockstore.NewAPIBlockstore(f))
+}
+
+// UpgradeSectorQualityParams builds the parameters for raising one sector's quality.
+func (f *TestFullNode) UpgradeSectorQualityParams(ctx context.Context, maddr address.Address, sector abi.SectorNumber, tsk types.TipSetKey) []byte {
+	loc, err := f.StateSectorPartition(ctx, maddr, sector, tsk)
+	require.NoError(f.t, err)
+
+	params, err := actors.SerializeParams(&stminer.UpgradeSectorQualityParams{
+		Upgrades: []stminer.UpgradeSectorQuality{{
+			Deadline:  loc.Deadline,
+			Partition: loc.Partition,
+			Sectors:   bitfield.NewFromSet([]uint64{uint64(sector)}),
+		}},
+	})
+	require.NoError(f.t, err)
+	return params
+}
+
+// MinerState loads a miner actor's v19 state at tsk.
+func (f *TestFullNode) MinerState(ctx context.Context, maddr address.Address, tsk types.TipSetKey) *stminer.State {
+	act, err := f.StateGetActor(ctx, maddr, tsk)
+	require.NoError(f.t, err)
+	var state stminer.State
+	require.NoError(f.t, f.Store(ctx).Get(ctx, act.Head, &state))
+	return &state
+}
+
+// WaitForDeadlineIndex advances the chain to the window in which idx is the miner's current proving
+// deadline, and returns a tipset inside it.
+func (f *TestFullNode) WaitForDeadlineIndex(ctx context.Context, maddr address.Address, idx uint64) types.TipSetKey {
+	for range 3 {
+		head, err := f.ChainHead(ctx)
+		require.NoError(f.t, err)
+		di, err := f.StateMinerProvingDeadline(ctx, maddr, head.Key())
+		require.NoError(f.t, err)
+		di = DeadlineForHeight(di, head.Height())
+		if di.Index == idx {
+			return head.Key()
+		}
+		steps := (idx + di.WPoStPeriodDeadlines - di.Index) % di.WPoStPeriodDeadlines
+		f.WaitTillChain(ctx, HeightAtLeast(di.Open+abi.ChainEpoch(steps)*di.WPoStChallengeWindow+5))
+	}
+	require.FailNow(f.t, "never landed inside a deadline", "miner %s deadline %d", maddr, idx)
+	return types.EmptyTSK
+}
+
+// DeadlineForHead returns the deadline the chain head falls in, for a miner whose recorded deadline
+// may be stale because it is not enrolled in cron.
+func (f *TestFullNode) DeadlineForHead(ctx context.Context, maddr address.Address) *dline.Info {
+	head, err := f.ChainHead(ctx)
+	require.NoError(f.t, err)
+
+	di, err := f.StateMinerProvingDeadline(ctx, maddr, head.Key())
+	require.NoError(f.t, err)
+
+	return DeadlineForHeight(di, head.Height())
+}
+
+// DeadlineCloseAfter returns the first epoch at or after `from` at which deadline dlIdx closes, which
+// is when the actor next settles that deadline's faults and fees.
+func DeadlineCloseAfter(di *dline.Info, dlIdx uint64, from abi.ChainEpoch) abi.ChainEpoch {
+	closeAt := di.PeriodStart + abi.ChainEpoch(dlIdx+1)*di.WPoStChallengeWindow
+	for closeAt < from {
+		closeAt += di.WPoStProvingPeriod
+	}
+	return closeAt
+}
+
+// DeadlineForHeight returns the deadline that height falls in, on di's schedule. Index, Open, Close
+// and Challenge all come from that one deadline, unlike the recorded deadline a miner out of cron
+// reports.
+func DeadlineForHeight(di *dline.Info, height abi.ChainEpoch) *dline.Info {
+	// Only the phase of PeriodStart matters: shift it to the period containing height.
+	periodStart := di.PeriodStart
+	periods := (height - periodStart) / di.WPoStProvingPeriod
+	if rem := (height - periodStart) % di.WPoStProvingPeriod; rem < 0 {
+		periods-- // Go truncates towards zero, and this period started before PeriodStart
+	}
+	periodStart += periods * di.WPoStProvingPeriod
+
+	return dline.NewInfo(periodStart, uint64((height-periodStart)/di.WPoStChallengeWindow), height,
+		di.WPoStPeriodDeadlines, di.WPoStProvingPeriod, di.WPoStChallengeWindow,
+		di.WPoStChallengeLookback, di.FaultDeclarationCutoff)
 }
 
 // DeadlineNotAfter rewinds di by whole proving periods until di.Open <= height.

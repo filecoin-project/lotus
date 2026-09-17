@@ -193,6 +193,7 @@ func getRunners(testGroupName string) []Runner {
 
 	testGroupNameToRunners := map[string][]Runner{
 		"itest-cli":                      {linux_x64_xlarge},
+		"itest-daily_fees":               {linux_x64_xlarge},
 		"itest-deals_invalid_utf8_label": {linux_x64_xlarge},
 		"itest-decode_params":            {linux_x64_xlarge},
 		"itest-dup_mpool_messages":       {linux_x64_xlarge},
@@ -230,6 +231,10 @@ func getRunners(testGroupName string) []Runner {
 		"itest-sector_numassign":         {linux_x64_xlarge},
 		"itest-sector_pledge":            {linux_x64_4xlarge},
 		"itest-self_sent_txn":            {linux_x64_xlarge},
+		"itest-solstice_fault_recover":   {linux_x64_2xlarge},
+		"itest-solstice_miner":           {linux_x64_2xlarge},
+		"itest-solstice_miner_fees":      {linux_x64_2xlarge},
+		"itest-solstice_reward":          {linux_x64_2xlarge},
 		"itest-wdpost":                   {linux_x64_2xlarge},
 		"itest-worker":                   {linux_x64_4xlarge},
 		"multicore-sdr":                  {linux_x64_xlarge},

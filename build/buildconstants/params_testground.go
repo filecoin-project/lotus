@@ -131,7 +131,7 @@ var (
 		},
 		SWAActor:            builtin.SystemActorAddr,
 		SRAActor:            builtin.SystemActorAddr,
-		InitialOrchestrator: builtin.BurntFundsActorAddr,
+		InitialOrchestrator: builtin.SystemActorAddr,
 	}
 
 	DrandSchedule = map[abi.ChainEpoch]DrandEnum{
