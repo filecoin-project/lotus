@@ -337,6 +337,9 @@ func formatBigInt(val big.Int) ([]byte, error) {
 	return removeLeadingZeros(b), nil
 }
 
+// parseInt parses an integer field of a transaction's RLP list. RLP integers are
+// minimally encoded, so a leading zero byte is a second encoding of a value that
+// already has one and is rejected.
 func parseInt(v interface{}) (int, error) {
 	data, ok := v.([]byte)
 	if !ok {
@@ -348,6 +351,9 @@ func parseInt(v interface{}) (int, error) {
 	if len(data) > 8 {
 		return 0, fmt.Errorf("cannot parse interface to int: length is more than 8 bytes")
 	}
+	if data[0] == 0 {
+		return 0, fmt.Errorf("cannot parse interface to int: non-minimal encoding with leading zeros")
+	}
 	var value int64
 	r := bytes.NewReader(append(make([]byte, 8-len(data)), data...))
 	if err := binary.Read(r, binary.BigEndian, &value); err != nil {
@@ -356,6 +362,10 @@ func parseInt(v interface{}) (int, error) {
 	return int(value), nil
 }
 
+// parseBigInt parses an integer field of a transaction's RLP list, requiring a
+// minimal encoding for the same reason as parseInt. Fixed-width values, where a
+// leading zero is part of the value rather than padding, go through
+// bigIntFromBytes instead.
 func parseBigInt(v interface{}) (big.Int, error) {
 	data, ok := v.([]byte)
 	if !ok {
@@ -364,9 +374,19 @@ func parseBigInt(v interface{}) (big.Int, error) {
 	if len(data) == 0 {
 		return big.Zero(), nil
 	}
+	if data[0] == 0 {
+		return big.Zero(), fmt.Errorf("cannot parse interface to big.Int: non-minimal encoding with leading zeros")
+	}
+	return bigIntFromBytes(data), nil
+}
+
+// bigIntFromBytes reads raw big-endian bytes as an unsigned integer, accepting
+// leading zeros. Signature components are stored at a fixed width, so their
+// leading zeros carry value and must not be treated as padding.
+func bigIntFromBytes(data []byte) big.Int {
 	var b mathbig.Int
 	b.SetBytes(data)
-	return big.NewFromGo(&b), nil
+	return big.NewFromGo(&b)
 }
 
 func parseBytes(v interface{}) ([]byte, error) {

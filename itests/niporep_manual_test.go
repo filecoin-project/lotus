@@ -219,10 +219,14 @@ func TestManualNISectorOnboarding(t *testing.T) {
 				client       kit.TestFullNode
 				genesisMiner kit.TestMiner
 			)
+			proofs := kit.RealProofs()
+			if tc.mockProofs {
+				proofs = kit.MockProofs()
+			}
 
 			// Setup and begin mining with a single genesis block miner, this miner won't be used
 			// in the test beyond mining the chain and maintaining power
-			ens := kit.NewEnsemble(t, kit.MockProofs(tc.mockProofs)).
+			ens := kit.NewEnsemble(t, proofs).
 				FullNode(&client, kit.SectorSize(defaultSectorSize)).
 				// preseal more than the default number of sectors to ensure that the genesis miner has power
 				// because our unmanaged miners won't produce blocks so we may get null rounds
@@ -374,7 +378,7 @@ func TestNISectorFailureCases(t *testing.T) {
 		client       kit.TestFullNode
 		genesisMiner kit.TestMiner
 	)
-	ens := kit.NewEnsemble(t, kit.MockProofs(true)).
+	ens := kit.NewEnsemble(t, kit.MockProofs()).
 		FullNode(&client, kit.SectorSize(defaultSectorSize)).
 		Miner(&genesisMiner, &client, kit.PresealSectors(5), kit.SectorSize(defaultSectorSize), kit.WithAllSubsystems()).
 		Start().

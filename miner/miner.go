@@ -230,7 +230,7 @@ minerLoop:
 		default:
 		}
 
-		var base *MiningBase // NOTE: This points to m.lastWork; Incrementing nulls here will increment it there.
+		var base *MiningBase // NOTE: This points to m.lastWork; Incrementing NullRounds here will increment it there.
 		var onDone func(bool, abi.ChainEpoch, error)
 		var injectNulls abi.ChainEpoch
 

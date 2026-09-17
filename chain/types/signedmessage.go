@@ -6,6 +6,7 @@ import (
 
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -72,9 +73,13 @@ type smCid struct {
 type RawSignedMessage SignedMessage
 
 func (sm *SignedMessage) MarshalJSON() ([]byte, error) {
+	b, err := sm.ToStorageBlock()
+	if err != nil {
+		return nil, xerrors.Errorf("failed to marshal signed message: %w", err)
+	}
 	return json.Marshal(&smCid{
 		RawSignedMessage: (*RawSignedMessage)(sm),
-		CID:              sm.Cid(),
+		CID:              b.Cid(),
 	})
 }
 

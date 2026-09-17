@@ -2,11 +2,13 @@ package stmgr_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/lotus/chain/gen"
+	"github.com/filecoin-project/lotus/chain/stmgr"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
 )
@@ -107,6 +109,9 @@ func TestSearchForMessageReplacements(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected search to fail")
 	}
+	if !errors.Is(err, stmgr.ErrMessageReplaced) {
+		t.Fatalf("expected replacement error, got %v", err)
+	}
 
 	// nrm is NOT a valid replacement message for m
 	nrm := m.Message
@@ -134,4 +139,33 @@ func TestSearchForMessageReplacements(t *testing.T) {
 		t.Fatal("expected search to fail")
 	}
 
+}
+
+func TestWaitForMessageCurrentHeadRespectsConfidence(t *testing.T) {
+	ctx := context.Background()
+	cg, err := gen.NewGenerator()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	included, err := cg.NextTipSet()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := cg.NextTipSet(); err != nil {
+		t.Fatal(err)
+	}
+
+	_, _, _, err = cg.StateManager().WaitForMessage(ctx, included.Messages[0].Cid(), stmgr.MaxMessageConfidence+1, stmgr.LookbackNoLimit, true)
+	if !errors.Is(err, stmgr.ErrConfidenceTooHigh) {
+		t.Fatalf("expected confidence limit error, got %v", err)
+	}
+
+	waitCtx, cancel := context.WithCancel(ctx)
+	cancel()
+
+	ts, receipt, _, err := cg.StateManager().WaitForMessage(waitCtx, included.Messages[0].Cid(), 1, stmgr.LookbackNoLimit, true)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected confidence wait to be canceled, got tipset %v, receipt %v, error %v", ts, receipt, err)
+	}
 }

@@ -24,6 +24,9 @@ jobs:
     name: Check (precheck)
     if: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     outputs:
       skip_checks: ${{ steps.changes.outputs.nonMarkdownFiles == 'false' }}
     steps:

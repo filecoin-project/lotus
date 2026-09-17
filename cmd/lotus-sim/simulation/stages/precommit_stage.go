@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
-	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
@@ -194,51 +193,49 @@ func (stage *PreCommitStage) packMiner(
 
 	// Commit the pre-commits.
 	added := 0
-	if nv >= network.Version13 {
-		targetBatchSize := maxPreCommitBatchSize
-		for targetBatchSize >= minPreCommitBatchSize && len(infos) >= minPreCommitBatchSize {
-			batch := infos
-			if len(batch) > targetBatchSize {
-				batch = batch[:targetBatchSize]
-			}
-			params := minertypes.PreCommitSectorBatchParams{
-				Sectors: batch,
-			}
-			enc, err := actors.SerializeParams(&params)
-			if err != nil {
-				return added, false, err
-			}
-			// NOTE: just in-case, sendAndFund will "fund" and re-try for any message
-			// that fails due to "insufficient funds".
-			if _, err := stage.funding.SendAndFund(bb, &types.Message{
-				To:     minerAddr,
-				From:   minerInfo.Worker,
-				Value:  abi.NewTokenAmount(0),
-				Method: builtin.MethodsMiner.PreCommitSectorBatch,
-				Params: enc,
-			}); blockbuilder.IsOutOfGas(err) {
-				// try again with a smaller batch.
-				targetBatchSize /= 2
-				continue
-			} else if aerr, ok := err.(aerrors.ActorError); ok && !aerr.IsFatal() {
-				// Log the error and move on. No reason to stop.
-				log.Errorw("failed to pre-commit for unknown reasons",
-					"error", aerr,
-					"sectors", batch,
-				)
-				return added, false, nil
-			} else if err != nil {
-				return added, false, err
-			}
-
-			for _, info := range batch {
-				if err := stage.committer.EnqueueProveCommit(minerAddr, epoch, toSectorPreCommitInfo(info)); err != nil {
-					return added, false, err
-				}
-				added++
-			}
-			infos = infos[len(batch):]
+	targetBatchSize := maxPreCommitBatchSize
+	for targetBatchSize >= minPreCommitBatchSize && len(infos) >= minPreCommitBatchSize {
+		batch := infos
+		if len(batch) > targetBatchSize {
+			batch = batch[:targetBatchSize]
 		}
+		params := minertypes.PreCommitSectorBatchParams{
+			Sectors: batch,
+		}
+		enc, err := actors.SerializeParams(&params)
+		if err != nil {
+			return added, false, err
+		}
+		// NOTE: just in-case, sendAndFund will "fund" and re-try for any message
+		// that fails due to "insufficient funds".
+		if _, err := stage.funding.SendAndFund(bb, &types.Message{
+			To:     minerAddr,
+			From:   minerInfo.Worker,
+			Value:  abi.NewTokenAmount(0),
+			Method: builtin.MethodsMiner.PreCommitSectorBatch,
+			Params: enc,
+		}); blockbuilder.IsOutOfGas(err) {
+			// try again with a smaller batch.
+			targetBatchSize /= 2
+			continue
+		} else if aerr, ok := err.(aerrors.ActorError); ok && !aerr.IsFatal() {
+			// Log the error and move on. No reason to stop.
+			log.Errorw("failed to pre-commit for unknown reasons",
+				"error", aerr,
+				"sectors", batch,
+			)
+			return added, false, nil
+		} else if err != nil {
+			return added, false, err
+		}
+
+		for _, info := range batch {
+			if err := stage.committer.EnqueueProveCommit(minerAddr, epoch, toSectorPreCommitInfo(info)); err != nil {
+				return added, false, err
+			}
+			added++
+		}
+		infos = infos[len(batch):]
 	}
 	for _, info := range infos {
 		enc, err := actors.SerializeParams(&info) //nolint

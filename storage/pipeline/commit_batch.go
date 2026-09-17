@@ -346,7 +346,7 @@ func (b *CommitBatcher) processBatchV2(cfg sealiface.Config, sectors []abi.Secto
 
 	if aggregate {
 		params.SectorProofs = nil // can't be set when aggregating
-		arp, err := b.aggregateProofType(nv)
+		arp, err := b.aggregateProofType()
 		if err != nil {
 			res.Error = err.Error()
 			return []sealiface.CommitBatchRes{res}, xerrors.Errorf("getting aggregate proof type: %w", err)
@@ -607,10 +607,7 @@ func (b *CommitBatcher) getSectorCollateral(sn abi.SectorNumber, pieces []miner.
 
 	return collateral, nil
 }
-func (b *CommitBatcher) aggregateProofType(nv network.Version) (abi.RegisteredAggregationProof, error) {
-	if nv < network.Version16 {
-		return abi.RegisteredAggregationProof_SnarkPackV1, nil
-	}
+func (b *CommitBatcher) aggregateProofType() (abi.RegisteredAggregationProof, error) {
 	return abi.RegisteredAggregationProof_SnarkPackV2, nil
 }
 

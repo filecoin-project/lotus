@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"math"
 	"strings"
@@ -24,6 +23,11 @@ import (
 )
 
 const maxLookBackForWait = 120 // one hour of tipsets
+
+// Avoid an unbounded eager allocation when a trusted caller configures a very
+// large event range. The default public range (2,880 epochs) still fits in the
+// hint; larger ranges grow the map normally as the canonical chain is walked.
+const maxEventRangePreallocation = 8192
 
 var (
 	ErrMaxResultsReached = xerrors.New("filter matches too many events, try a more restricted filter")
@@ -380,153 +384,129 @@ func loadExecutedMessages(ctx context.Context, cs ChainStore, recomputeTipSetSta
 	return ems, nil
 }
 
-// checkFilterTipsetsIndexed verifies if a tipset, or a range of tipsets, specified by a given
-// filter is indexed. It checks for the existence of non-null rounds at the range boundaries.
-func (si *SqliteIndexer) checkFilterTipsetsIndexed(ctx context.Context, f *EventFilter) error {
-	// Three cases to consider:
-	// 1. Specific tipset is provided
-	// 2. Single tipset is specified by the height range (min=max)
-	// 3. Range of tipsets is specified by the height range (min!=max)
-	// We'll handle the first two cases here and the third case in checkRangeIndexedStatus
-
-	var tipsetKeyCid []byte
-	var err error
-
-	switch {
-	case f.TipsetCid != cid.Undef:
-		tipsetKeyCid = f.TipsetCid.Bytes()
-	case f.MinHeight >= 0 && f.MinHeight == f.MaxHeight:
-		tipsetKeyCid, err = si.getTipsetKeyCidByHeight(ctx, f.MinHeight)
-		if err != nil {
-			if err == ErrNotFound {
-				// this means that this is a null round and there exist no events for this epoch
-				return nil
-			}
-			return xerrors.Errorf("failed to get tipset key cid by height: %w", err)
-		}
-	default:
-		return si.checkRangeIndexedStatus(ctx, f.MinHeight, f.MaxHeight)
-	}
-
-	// If we couldn't determine a specific tipset, return ErrNotFound
-	if tipsetKeyCid == nil {
-		return ErrNotFound
-	}
-
-	// Check if the determined tipset is indexed
-	if exists, err := si.isTipsetIndexed(ctx, tipsetKeyCid); err != nil {
-		return xerrors.Errorf("failed to check if tipset is indexed: %w", err)
-	} else if exists {
-		return nil // Tipset is indexed
-	}
-
-	return ErrNotFound // Tipset is not indexed
+type eventRangeCoverage struct {
+	minHeight abi.ChainEpoch
+	maxHeight abi.ChainEpoch
+	tipsets   map[cid.Cid]struct{}
 }
 
-// checkRangeIndexedStatus verifies if a range of tipsets specified by the given height range is
-// indexed. It checks for the existence of non-null rounds at the range boundaries.
-func (si *SqliteIndexer) checkRangeIndexedStatus(ctx context.Context, minHeight abi.ChainEpoch, maxHeight abi.ChainEpoch) error {
+func (si *SqliteIndexer) getEventRangeCoverage(ctx context.Context, minHeight, maxHeight abi.ChainEpoch) (*eventRangeCoverage, error) {
 	head := si.cs.GetHeaviestTipSet()
+	if head == nil {
+		return nil, xerrors.New("failed to get head: head is nil")
+	}
+
+	if minHeight < 0 && maxHeight < 0 {
+		return nil, xerrors.New("filter must specify a minimum or maximum height")
+	}
+	if minHeight < 0 {
+		minHeight = 0
+	}
+	if maxHeight < 0 {
+		// Events from the heaviest tipset are not available until its child is
+		// applied, so an open range is pinned to the captured head's parent.
+		maxHeight = head.Height() - 1
+	}
 	if minHeight > head.Height() || maxHeight > head.Height() {
-		return &ErrRangeInFuture{HighestEpoch: int(head.Height())}
+		return nil, &ErrRangeInFuture{HighestEpoch: int(head.Height())}
 	}
 
-	// Find the first non-null round in the range
-	startCid, startHeight, err := si.findFirstNonNullRound(ctx, minHeight, maxHeight)
-	if err != nil {
-		return xerrors.Errorf("failed to find first non-null round: %w", err)
-	}
-	// If all rounds are null, consider the range valid
-	if startCid == nil {
-		return nil
-	}
-
-	// Find the last non-null round in the range
-	endCid, endHeight, err := si.findLastNonNullRound(ctx, maxHeight, minHeight)
-	if err != nil {
-		return xerrors.Errorf("failed to find last non-null round: %w", err)
-	}
-	// We should have already rulled out all rounds being null in the startCid check
-	if endCid == nil {
-		return xerrors.Errorf("unexpected error finding last non-null round: all rounds are null but start round is not (%d to %d)", minHeight, maxHeight)
-	}
-
-	// Check indexing status for start and end tipsets
-	if err := si.checkTipsetIndexedStatus(ctx, startCid, startHeight); err != nil {
-		return err
-	}
-	if err := si.checkTipsetIndexedStatus(ctx, endCid, endHeight); err != nil {
-		return err
-	}
-	// Assume (not necessarily correctly, but likely) that all tipsets within the range are indexed
-
-	return nil
-}
-
-func (si *SqliteIndexer) checkTipsetIndexedStatus(ctx context.Context, tipsetKeyCid []byte, height abi.ChainEpoch) error {
-	exists, err := si.isTipsetIndexed(ctx, tipsetKeyCid)
-	if err != nil {
-		return xerrors.Errorf("failed to check if tipset at epoch %d is indexed: %w", height, err)
-	} else if exists {
-		return nil // has been indexed
-	}
-	return ErrNotFound
-}
-
-// findFirstNonNullRound finds the first non-null round starting from minHeight up to maxHeight.
-// It updates the minHeight to the found height and returns the tipset key CID.
-func (si *SqliteIndexer) findFirstNonNullRound(ctx context.Context, minHeight abi.ChainEpoch, maxHeight abi.ChainEpoch) ([]byte, abi.ChainEpoch, error) {
-	for height := minHeight; height <= maxHeight; height++ {
-		cid, err := si.getTipsetKeyCidByHeight(ctx, height)
-		if err != nil {
-			if !errors.Is(err, ErrNotFound) {
-				return nil, 0, xerrors.Errorf("failed to get tipset key cid for height %d: %w", height, err)
-			}
-			// else null round, keep searching
-			continue
-		}
-		return cid, height, nil
-	}
-	// All rounds are null
-	return nil, 0, nil
-}
-
-// findLastNonNullRound finds the last non-null round starting from maxHeight down to minHeight
-func (si *SqliteIndexer) findLastNonNullRound(ctx context.Context, maxHeight abi.ChainEpoch, minHeight abi.ChainEpoch) ([]byte, abi.ChainEpoch, error) {
-	for height := maxHeight; height >= minHeight; height-- {
-		cid, err := si.getTipsetKeyCidByHeight(ctx, height)
-		if err == nil {
-			return cid, height, nil
-		}
-		if !errors.Is(err, ErrNotFound) {
-			return nil, 0, xerrors.Errorf("failed to get tipset key cid for height %d: %w", height, err)
+	tipsetCapacity := 0
+	if maxHeight >= minHeight && maxHeight >= 0 {
+		span := maxHeight - minHeight
+		if span < maxEventRangePreallocation {
+			tipsetCapacity = int(span) + 1
+		} else {
+			tipsetCapacity = maxEventRangePreallocation
 		}
 	}
-	// All rounds are null
-	return nil, 0, nil
-}
+	coverage := &eventRangeCoverage{
+		minHeight: minHeight,
+		maxHeight: maxHeight,
+		tipsets:   make(map[cid.Cid]struct{}, tipsetCapacity),
+	}
+	if maxHeight < minHeight || maxHeight < 0 {
+		return coverage, nil
+	}
 
-// getTipsetKeyCidByHeight retrieves the tipset key CID for a given height from the ChainStore
-func (si *SqliteIndexer) getTipsetKeyCidByHeight(ctx context.Context, height abi.ChainEpoch) ([]byte, error) {
-	ts, err := si.cs.GetTipsetByHeight(ctx, height, nil, false)
+	ts, err := si.cs.GetTipsetByHeight(ctx, maxHeight, head, true)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get tipset by height: %w", err)
+		return nil, xerrors.Errorf("failed to get canonical tipset at or before height %d: %w", maxHeight, err)
 	}
 	if ts == nil {
-		return nil, xerrors.Errorf("tipset is nil for height: %d", height)
+		return nil, xerrors.Errorf("failed to get canonical tipset at or before height %d: tipset is nil", maxHeight)
+	}
+	tsKey := ts.Key()
+
+	for ts.Height() >= minHeight {
+		if ts.Height() > maxHeight {
+			return nil, xerrors.Errorf("canonical tipset height %d is above requested maximum %d", ts.Height(), maxHeight)
+		}
+
+		tsKeyCid, err := tsKey.Cid()
+		if err != nil {
+			return nil, xerrors.Errorf("failed to get tipset key cid at height %d: %w", ts.Height(), err)
+		}
+		coverage.tipsets[tsKeyCid] = struct{}{}
+
+		if ts.Height() == 0 || ts.Height() == minHeight {
+			break
+		}
+		parentKey := ts.Parents()
+		parent, err := si.cs.GetTipSetFromKey(ctx, parentKey)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to get parent of tipset at height %d: %w", ts.Height(), err)
+		}
+		if parent == nil {
+			return nil, xerrors.Errorf("failed to get parent of tipset at height %d: tipset is nil", ts.Height())
+		}
+		if parent.Height() >= ts.Height() {
+			return nil, xerrors.Errorf("invalid chain order: parent height %d is not below child height %d", parent.Height(), ts.Height())
+		}
+		ts = parent
+		tsKey = parentKey
 	}
 
-	if ts.Height() != height {
-		// this means that this is a null round
-		return nil, ErrNotFound
+	return coverage, nil
+}
+
+func (si *SqliteIndexer) isEventRangeIndexed(ctx context.Context, tx *sql.Tx, coverage *eventRangeCoverage) (bool, error) {
+	if len(coverage.tipsets) == 0 {
+		return true, nil
 	}
 
-	return toTipsetKeyCidBytes(ts)
+	rows, err := tx.Stmt(si.stmts.getTipsetEventCompletionsByHeightStmt).QueryContext(ctx, coverage.minHeight, coverage.maxHeight)
+	if err != nil {
+		return false, xerrors.Errorf("failed to query event index completion for range: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	completedTipsets := 0
+	for rows.Next() {
+		var tipsetKeyCidBytes []byte
+		if err := rows.Scan(&tipsetKeyCidBytes); err != nil {
+			return false, xerrors.Errorf("failed to read event index completion for range: %w", err)
+		}
+		tipsetKeyCid, err := cid.Cast(tipsetKeyCidBytes)
+		if err != nil {
+			return false, xerrors.Errorf("failed to parse event index completion tipset cid: %w", err)
+		}
+		if _, ok := coverage.tipsets[tipsetKeyCid]; ok {
+			// tipset_bloom.tipset_key_cid is a primary key, so each expected
+			// tipset can contribute at most once.
+			completedTipsets++
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return false, xerrors.Errorf("failed while reading event index completion for range: %w", err)
+	}
+
+	return completedTipsets == len(coverage.tipsets), nil
 }
 
 // GetEventsForFilter returns matching events for the given filter
 // Returns nil, nil if the filter has no matching events
-// Returns nil, ErrNotFound if the filter has no matching events and the tipset is not indexed
+// Returns nil, ErrNotFound if event-index completion cannot be established for the requested tipsets
 // Returns nil, ErrBackfillRequired if the index is in degraded mode and requires a backfill
 // Returns nil, err for all other errors
 func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter) ([]*CollectedEvent, error) {
@@ -681,6 +661,9 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter)
 				Value: row.value,
 			})
 		}
+		if err := q.Err(); err != nil {
+			return nil, xerrors.Errorf("failed while reading events: %w", err)
+		}
 
 		if len(ces) == 0 {
 			return nil, nil
@@ -689,7 +672,23 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter)
 		return ces, nil
 	}
 
-	values, query, err := makePrefillFilterQuery(f)
+	queryFilter := f
+	var (
+		rangeCoverage *eventRangeCoverage
+		err           error
+	)
+	if f.TipsetCid == cid.Undef {
+		rangeCoverage, err = si.getEventRangeCoverage(ctx, f.MinHeight, f.MaxHeight)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to determine canonical event range: %w", err)
+		}
+		normalized := *f
+		normalized.MinHeight = rangeCoverage.minHeight
+		normalized.MaxHeight = rangeCoverage.maxHeight
+		queryFilter = &normalized
+	}
+
+	values, query, err := makePrefillFilterQuery(queryFilter)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to make prefill filter query: %w", err)
 	}
@@ -700,51 +699,108 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter)
 	}
 	defer func() { _ = stmt.Close() }()
 
-	ces, err := getEventsFnc(stmt, values)
+	// indexEvents writes the tipset bloom after all event rows, including an
+	// empty bloom for a tipset with no events. Read rows and completion markers
+	// in one snapshot so a concurrent Apply, backfill, or GC cannot turn an
+	// incomplete read into an authoritative empty or partial result.
+	isTipsetCIDQuery := f.TipsetCid != cid.Undef
+	getEvents := func() ([]*CollectedEvent, bool, error) {
+		tx, err := si.db.BeginTx(ctx, nil)
+		if err != nil {
+			return nil, false, xerrors.Errorf("failed to begin event index read transaction: %w", err)
+		}
+		defer func() { _ = tx.Rollback() }()
+
+		if rangeCoverage != nil {
+			complete, err := si.isEventRangeIndexed(ctx, tx, rangeCoverage)
+			if err != nil {
+				return nil, false, err
+			}
+			if !complete {
+				return nil, false, nil
+			}
+		}
+
+		ces, err := getEventsFnc(tx.Stmt(stmt), values)
+		if err != nil {
+			return nil, false, err
+		}
+		if rangeCoverage != nil {
+			var lastTipsetKey types.TipSetKey
+			for i, ce := range ces {
+				// Results are ordered by height, message, and event index, so a
+				// contributing tipset's events are contiguous. Validate each run
+				// once instead of hashing the same TipSetKey for every event.
+				if i > 0 && ce.TipSetKey == lastTipsetKey {
+					continue
+				}
+				tsKeyCid, err := ce.TipSetKey.Cid()
+				if err != nil {
+					return nil, false, xerrors.Errorf("failed to get event tipset key cid: %w", err)
+				}
+				if _, ok := rangeCoverage.tipsets[tsKeyCid]; !ok {
+					return nil, false, nil
+				}
+				lastTipsetKey = ce.TipSetKey
+			}
+			return ces, true, nil
+		}
+
+		if len(ces) > 0 {
+			// Preserve reads from databases created before tipset blooms were
+			// introduced. Event rows are themselves sufficient for a non-empty
+			// result because indexEvents commits all rows atomically.
+			return ces, true, nil
+		}
+
+		var complete bool
+		if err := tx.Stmt(si.stmts.hasTipsetEventCompletionStmt).QueryRowContext(ctx, f.TipsetCid.Bytes()).Scan(&complete); err != nil {
+			return nil, false, xerrors.Errorf("failed to check if tipset event indexing is complete: %w", err)
+		}
+		return nil, complete, nil
+	}
+
+	ces, eventsComplete, err := getEvents()
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get events: %w", err)
 	}
-	if len(ces) == 0 {
-		height := f.MaxHeight
-		if f.TipsetCid != cid.Undef {
-			ts, err := si.cs.GetTipSetByCid(ctx, f.TipsetCid)
-			if err != nil {
-				return nil, xerrors.Errorf("failed to get tipset by cid: %w", err)
-			}
-			if ts == nil {
-				return nil, xerrors.Errorf("failed to get tipset from cid: tipset is nil for cid: %s", f.TipsetCid)
-			}
-			height = ts.Height()
-		}
-		if height > 0 {
-			head := si.cs.GetHeaviestTipSet()
-			if head == nil {
-				return nil, xerrors.New("failed to get head: head is nil")
-			}
-			headHeight := head.Height()
-			maxLookBackHeight := headHeight - maxLookBackForWait
+	if eventsComplete {
+		return ces, nil
+	}
 
-			// if the height is old enough, we'll assume the index is caught up to it and not bother
-			// waiting for it to be indexed
-			if height <= maxLookBackHeight {
-				return nil, si.checkFilterTipsetsIndexed(ctx, f)
-			}
-		}
-
-		// there's no matching events for the filter, wait till index has caught up to the head and then retry
-		if err := si.waitTillHeadIndexed(ctx); err != nil {
-			return nil, xerrors.Errorf("failed to wait for head to be indexed: %w", err)
-		}
-		ces, err = getEventsFnc(stmt, values)
+	height := queryFilter.MaxHeight
+	if isTipsetCIDQuery {
+		ts, err := si.cs.GetTipSetByCid(ctx, f.TipsetCid)
 		if err != nil {
-			return nil, xerrors.Errorf("failed to get events: %w", err)
+			return nil, xerrors.Errorf("failed to get tipset by cid: %w", err)
 		}
-
-		if len(ces) == 0 {
-			return nil, si.checkFilterTipsetsIndexed(ctx, f)
+		if ts == nil {
+			return nil, xerrors.Errorf("failed to get tipset from cid: tipset is nil for cid: %s", f.TipsetCid)
+		}
+		height = ts.Height()
+	}
+	if height > 0 {
+		head := si.cs.GetHeaviestTipSet()
+		if head == nil {
+			return nil, xerrors.New("failed to get head: head is nil")
+		}
+		if height <= head.Height()-maxLookBackForWait {
+			return nil, ErrNotFound
 		}
 	}
 
+	// Recent coverage may still be catching up. Preserve the existing wait,
+	// then require the event-completion markers on the retry as well.
+	if err := si.waitTillHeadIndexed(ctx); err != nil {
+		return nil, xerrors.Errorf("failed to wait for head to be indexed: %w", err)
+	}
+	ces, eventsComplete, err = getEvents()
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get events: %w", err)
+	}
+	if !eventsComplete {
+		return nil, ErrNotFound
+	}
 	return ces, nil
 }
 
@@ -775,8 +831,8 @@ func makePrefillFilterQuery(f *EventFilter) ([]any, string, error) {
 			}
 		}
 		// unless asking for a specific tipset, we never want to see reverted historical events
-		clauses = append(clauses, "e.reverted=?")
-		values = append(values, false)
+		clauses = append(clauses, "tm.reverted=?", "e.reverted=?")
+		values = append(values, false, false)
 	}
 
 	if f.MsgCid != cid.Undef {

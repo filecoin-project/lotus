@@ -375,7 +375,7 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 		}},
 		Expensive: true,
 	}, {
-		Height:    buildconstants.UpgradeXxHeight,
+		Height:    buildconstants.UpgradeSolsticeHeight,
 		Network:   network.Version29,
 		Migration: UpgradeActorsV19,
 		PreMigrations: []stmgr.PreMigration{{
@@ -2868,7 +2868,7 @@ func upgradeActorsV16Common(
 	}
 
 	if buildconstants.UpgradeTockFixHeight > 0 {
-		// If there is a UpgradeTockFixHeight height set, then we are expected to load v16.0.0 here and
+		// If there is an UpgradeTockFixHeight height set, then we are expected to load v16.0.0 here and
 		// then UpgradeTockFixHeight will take care of setting the actors to v16.0.1. If it's not set
 		// then there's nothing to fix and we'll proceed as normal.
 

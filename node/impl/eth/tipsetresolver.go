@@ -204,7 +204,7 @@ func (tsr *tipSetResolver) GetTipsetByBlockNumber(ctx context.Context, blkParam 
 	return ts, nil
 }
 
-func (tsr *tipSetResolver) GetTipsetByBlockNumberOrHash(ctx context.Context, blkParam ethtypes.EthBlockNumberOrHash) (*types.TipSet, error) {
+func (tsr *tipSetResolver) GetTipsetByBlockNumberOrHash(ctx context.Context, blkParam ethtypes.EthBlockNumberOrHash, strict bool) (*types.TipSet, error) {
 	head := tsr.cs.GetHeaviestTipSet()
 
 	predefined := blkParam.PredefinedBlock
@@ -220,6 +220,9 @@ func (tsr *tipSetResolver) GetTipsetByBlockNumberOrHash(ctx context.Context, blk
 		ts, err := tsr.cs.GetTipsetByHeight(ctx, height, head, true)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to get tipset at height: %v", height)
+		}
+		if strict && ts.Height() != height {
+			return nil, api.NewErrNullRound(height)
 		}
 		return ts, nil
 	}

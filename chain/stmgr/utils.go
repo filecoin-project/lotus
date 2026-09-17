@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/manifest"
+	"github.com/filecoin-project/go-state-types/network"
 	gstStore "github.com/filecoin-project/go-state-types/store"
 
 	"github.com/filecoin-project/lotus/api"
@@ -163,6 +164,7 @@ func TipSetGetterForTipset(cs *store.ChainStore, ts *types.TipSet) vm.TipSetGett
 
 func GetLookbackTipSetForRound(ctx context.Context, sm *StateManager, ts *types.TipSet, round abi.ChainEpoch) (*types.TipSet, cid.Cid, error) {
 	var lbr abi.ChainEpoch
+	nv := sm.GetNetworkVersion(ctx, round)
 	lb := policy.GetWinningPoStSectorSetLookback(sm.GetNetworkVersion(ctx, round))
 	if round > lb {
 		lbr = round - lb
@@ -170,13 +172,17 @@ func GetLookbackTipSetForRound(ctx context.Context, sm *StateManager, ts *types.
 
 	// more null blocks than our lookback
 	if lbr >= ts.Height() {
-		// This should never happen at this point, but may happen before
-		// network version 3 (where the lookback was only 10 blocks).
-		st, _, err := sm.TipSetState(ctx, ts)
-		if err != nil {
-			return nil, cid.Undef, err
+		// Legitimate while the 10-block WinningPoSt lookback was active (nv <= 3),
+		// where >9 consecutive null rounds could push lbr past ts.Height().
+		// Any lookback at genesis should resolve to genesis.
+		if nv <= network.Version3 || ts.Height() == 0 {
+			st, _, err := sm.TipSetState(ctx, ts)
+			if err != nil {
+				return nil, cid.Undef, err
+			}
+			return ts, st, nil
 		}
-		return ts, st, nil
+		return nil, cid.Undef, xerrors.Errorf("lookback height %d is at or after base height %d", lbr, ts.Height())
 	}
 
 	// Get the tipset after the lookback tipset, or the next non-null one.

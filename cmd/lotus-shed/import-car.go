@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"encoding/hex"
 	"fmt"
@@ -9,10 +11,12 @@ import (
 
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	"github.com/ipld/go-car"
+	carv2 "github.com/ipld/go-car/v2"
+	"github.com/klauspost/compress/zstd"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -60,9 +64,50 @@ var importCarCmd = &cli.Command{
 			}
 		}()
 
-		cr, err := car.NewCarReader(f)
+		// Snapshots are distributed zstd-compressed; read them in-stream rather
+		// than requiring the caller to decompress first.
+		bufr := bufio.NewReaderSize(f, 1<<20)
+		var src io.Reader = bufr
+		if hdr, err := bufr.Peek(4); err == nil && string(hdr[1:]) == "\xB5\x2F\xFD" {
+			zr, err := zstd.NewReader(bufr)
+			if err != nil {
+				return xerrors.Errorf("instantiating zstd reader: %w", err)
+			}
+			defer zr.Close()
+			src = zr
+		}
+
+		// BlockReader picks the CAR version from the pragma, so both v1 and v2
+		// are accepted.
+		cr, err := carv2.NewBlockReader(src)
 		if err != nil {
 			return err
+		}
+
+		// An FRC-0108 v2 snapshot leads with a metadata block, optionally
+		// followed by an F3 section. That section is far larger than the
+		// maximum block size, so it has to be streamed past rather than read
+		// as a block; otherwise the read fails on the section length.
+		if len(cr.Roots) == store.V2SnapshotRootCount {
+			blk, err := cr.Next()
+			if err != nil {
+				return xerrors.Errorf("reading snapshot metadata block: %w", err)
+			}
+			var metadata store.SnapshotMetadata
+			if err := metadata.UnmarshalCBOR(bytes.NewReader(blk.RawData())); err != nil {
+				// Not metadata after all; it belongs in the blockstore.
+				if err := bs.Put(ctx, blk); err != nil {
+					return xerrors.Errorf("put %s: %w", blk.Cid(), err)
+				}
+			} else if metadata.F3Data != nil {
+				_, f3Reader, _, err := cr.NextReader()
+				if err != nil {
+					return xerrors.Errorf("reading F3 section: %w", err)
+				}
+				if _, err := io.Copy(io.Discard, f3Reader); err != nil {
+					return xerrors.Errorf("skipping F3 section: %w", err)
+				}
+			}
 		}
 
 		for {
@@ -82,7 +127,7 @@ var importCarCmd = &cli.Command{
 				return err
 			case nil:
 				fmt.Printf("\r%s", blk.Cid())
-				if err := bs.Put(context.Background(), blk); err != nil {
+				if err := bs.Put(ctx, blk); err != nil {
 					if err := f.Close(); err != nil {
 						return err
 					}
@@ -146,7 +191,7 @@ var importObjectCmd = &cli.Command{
 			return err
 		}
 
-		if err := bs.Put(context.Background(), blk); err != nil {
+		if err := bs.Put(ctx, blk); err != nil {
 			return err
 		}
 

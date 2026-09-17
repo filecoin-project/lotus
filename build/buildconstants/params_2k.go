@@ -99,7 +99,7 @@ var UpgradeGoldenWeekHeight = abi.ChainEpoch(-31)
 
 var UpgradeFireHorseHeight = abi.ChainEpoch(-32)
 
-var UpgradeXxHeight = abi.ChainEpoch(200)
+var UpgradeSolsticeHeight = abi.ChainEpoch(200)
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandQuicknet,
@@ -182,7 +182,7 @@ func init() {
 	//	UpgradeTockFixHeight = getUpgradeHeight("LOTUS_TOCK_FIX_HEIGHT", UpgradeTockFixHeight)
 	UpgradeGoldenWeekHeight = getUpgradeHeight("LOTUS_GOLDENWEEK_HEIGHT", UpgradeGoldenWeekHeight)
 	UpgradeFireHorseHeight = getUpgradeHeight("LOTUS_FIREHORSE_HEIGHT", UpgradeFireHorseHeight)
-	UpgradeXxHeight = getUpgradeHeight("LOTUS_XX_HEIGHT", UpgradeXxHeight)
+	UpgradeSolsticeHeight = getUpgradeHeight("LOTUS_SOLSTICE_HEIGHT", UpgradeSolsticeHeight)
 
 	DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 		0: DrandQuicknet,

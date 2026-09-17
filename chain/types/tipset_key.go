@@ -3,6 +3,7 @@ package types
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -95,6 +96,13 @@ func (k *TipSetKey) UnmarshalJSON(b []byte) error {
 	var cids []cid.Cid
 	if err := json.Unmarshal(b, &cids); err != nil {
 		return err
+	}
+	// null decodes to cid.Undef (empty Bytes()); encodeKey would silently drop
+	// it instead of erroring, e.g. coercing "[null]" to the chain-head key.
+	for _, c := range cids {
+		if !c.Defined() {
+			return errors.New("tipset key contains an undefined CID")
+		}
 	}
 	k.value = string(encodeKey(cids))
 	return nil

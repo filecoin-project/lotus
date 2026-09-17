@@ -40,7 +40,7 @@ func TestSectorImportAfterPC2(t *testing.T) {
 	// Start a miner node
 
 	// We use two miners so that in case the actively tested miner misses PoSt, we still have a blockchain
-	client, miner, _, ens := kit.EnsembleOneTwo(t, kit.ThroughRPC())
+	client, miner, _, ens := kit.EnsembleOneTwo(t, kit.RealProofs(), kit.ThroughRPC())
 
 	ens.InterconnectAll().BeginMining(blockTime)
 

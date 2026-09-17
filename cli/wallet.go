@@ -19,7 +19,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
@@ -773,21 +772,14 @@ var walletMarketWithdraw = &cli.Command{
 			return err
 		}
 
-		nv, err := api.StateNetworkVersion(ctx, wait.TipSet)
-		if err != nil {
+		var withdrawn abi.TokenAmount
+		if err := withdrawn.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return)); err != nil {
 			return err
 		}
 
-		if nv >= network.Version14 {
-			var withdrawn abi.TokenAmount
-			if err := withdrawn.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return)); err != nil {
-				return err
-			}
-
-			afmt.Printf("Successfully withdrew %s \n", types.FIL(withdrawn))
-			if withdrawn.LessThan(amt) {
-				fmt.Printf("Note that this is less than the requested amount of %s \n", types.FIL(amt))
-			}
+		afmt.Printf("Successfully withdrew %s \n", types.FIL(withdrawn))
+		if withdrawn.LessThan(amt) {
+			fmt.Printf("Note that this is less than the requested amount of %s \n", types.FIL(amt))
 		}
 
 		return nil

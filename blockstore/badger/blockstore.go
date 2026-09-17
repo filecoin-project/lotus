@@ -57,6 +57,14 @@ type Options struct {
 
 	// Prefix is an optional prefix to prepend to keys. Default: "".
 	Prefix string
+
+	// VerifyReads checks that the bytes stored under a CID still hash to it,
+	// and treats a block that fails, or that the store cannot read back at all,
+	// as absent rather than serving it. Blocks are immutable and the store is
+	// otherwise trusted, so this is off by default: it costs a hash over every
+	// block read. Turn it on to recover a store damaged by truncated or torn
+	// writes, where bad bytes would otherwise be served silently and forever.
+	VerifyReads bool
 }
 
 func DefaultOptions(path string) Options {
@@ -636,16 +644,36 @@ func (b *Blockstore) View(ctx context.Context, cid cid.Cid, fn func([]byte) erro
 		defer KeyPool.Put(k)
 	}
 
-	return b.db.View(func(txn *badger.Txn) error {
+	// Only failures reading or verifying the stored bytes may be downgraded to
+	// a miss; an error from fn belongs to the caller and must surface intact.
+	var damage error
+	err := b.db.View(func(txn *badger.Txn) error {
 		switch item, err := txn.Get(k); err {
 		case nil:
-			return item.Value(fn)
+			if !b.opts.VerifyReads {
+				return item.Value(fn)
+			}
+			// Verifying costs a copy, so it is confined to this mode.
+			val, err := item.ValueCopy(nil)
+			if err != nil {
+				damage = err
+				return err
+			}
+			if err := checkStored(cid, val); err != nil {
+				damage = err
+				return err
+			}
+			return fn(val)
 		case badger.ErrKeyNotFound:
 			return ipld.ErrNotFound{Cid: cid}
 		default:
 			return fmt.Errorf("failed to view block from badger blockstore: %w", err)
 		}
 	})
+	if damage != nil {
+		return b.unreadable(cid, damage)
+	}
+	return err
 }
 
 func (b *Blockstore) Flush(context.Context) error {
@@ -699,6 +727,31 @@ func (b *Blockstore) Has(ctx context.Context, cid cid.Cid) (bool, error) {
 }
 
 // Get implements Blockstore.Get.
+
+// checkStored reports whether the stored bytes still hash to the CID they are
+// filed under. Content addressing makes this self-verifying: a mismatch means
+// the stored copy is damaged, never that the CID is wrong.
+func checkStored(c cid.Cid, val []byte) error {
+	actual, err := c.Prefix().Sum(val)
+	if err != nil {
+		return fmt.Errorf("hashing stored block: %w", err)
+	}
+	if !actual.Equals(c) {
+		return fmt.Errorf("stored bytes hash to %s", actual)
+	}
+	return nil
+}
+
+// unreadable turns a damaged block into a miss. Callers above treat a missing
+// block as something to refetch or recompute, whereas a read error aborts and
+// corrupt bytes propagate into state, so reporting absence is what lets a
+// damaged store heal itself (in the happy case).
+func (b *Blockstore) unreadable(c cid.Cid, cause error) error {
+	log.Errorw("blockstore: discarding damaged block, reporting it as missing so it can be refetched",
+		"cid", c, "cause", cause)
+	return ipld.ErrNotFound{Cid: c}
+}
+
 func (b *Blockstore) Get(ctx context.Context, cid cid.Cid) (blocks.Block, error) {
 	if !cid.Defined() {
 		return nil, ipld.ErrNotFound{Cid: cid}
@@ -730,7 +783,16 @@ func (b *Blockstore) Get(ctx context.Context, cid cid.Cid) (blocks.Block, error)
 		}
 	})
 	if err != nil {
+		// A value log that cannot be read back is damage, not a hard failure.
+		if b.opts.VerifyReads && !ipld.IsNotFound(err) {
+			return nil, b.unreadable(cid, err)
+		}
 		return nil, err
+	}
+	if b.opts.VerifyReads {
+		if err := checkStored(cid, val); err != nil {
+			return nil, b.unreadable(cid, err)
+		}
 	}
 	return blocks.NewBlockWithCid(val, cid)
 }
@@ -805,21 +867,27 @@ func (b *Blockstore) PutMany(ctx context.Context, blocks []blocks.Block) error {
 		keys = append(keys, k)
 	}
 
-	err := b.db.View(func(txn *badger.Txn) error {
-		for i, k := range keys {
-			switch _, err := txn.Get(k); err {
-			case badger.ErrKeyNotFound:
-			case nil:
-				keys[i] = nil
-			default:
-				// Something is actually wrong
-				return err
+	// Blocks are immutable, so a key already present normally means there is
+	// nothing to do. Skipping the check when verifying lets a good copy replace
+	// a damaged one: without it the write is silently dropped and the damage is
+	// permanent, since nothing else ever rewrites a block.
+	if !b.opts.VerifyReads {
+		err := b.db.View(func(txn *badger.Txn) error {
+			for i, k := range keys {
+				switch _, err := txn.Get(k); err {
+				case badger.ErrKeyNotFound:
+				case nil:
+					keys[i] = nil
+				default:
+					// Something is actually wrong
+					return err
+				}
 			}
+			return nil
+		})
+		if err != nil {
+			return err
 		}
-		return nil
-	})
-	if err != nil {
-		return err
 	}
 
 	put := func(db *badger.DB) error {

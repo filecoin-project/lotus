@@ -7,6 +7,11 @@ import (
 	badgerbs "github.com/filecoin-project/lotus/blockstore/badger"
 )
 
+// EnvBlockstoreVerifyReads enables blockstore read verification when set to
+// "1". See Options.VerifyReads; it trades a hash per block read for the ability
+// to detect and heal a damaged store.
+const EnvBlockstoreVerifyReads = "LOTUS_BLOCKSTORE_VERIFY_READS"
+
 // BadgerBlockstoreOptions returns the badger options to apply for the provided
 // domain.
 func BadgerBlockstoreOptions(domain BlockstoreDomain, path string, readonly bool) (badgerbs.Options, error) {
@@ -16,6 +21,11 @@ func BadgerBlockstoreOptions(domain BlockstoreDomain, path string, readonly bool
 	// blocks are prefixed with this namespace. In the future, this can go away,
 	// in order to shorten keys, but it'll require a migration.
 	opts.Prefix = "/blocks/"
+
+	// Opt-in recovery mode. A store damaged by truncated or bad writes serves
+	// bad bytes forever otherwise. Verifying reads turns a bad block into a
+	// miss, which the fallback blockstore and normal execution can then address.
+	opts.VerifyReads = os.Getenv(EnvBlockstoreVerifyReads) == "1"
 
 	// Blockstore values are immutable; therefore we do not expect any
 	// conflicts to emerge.

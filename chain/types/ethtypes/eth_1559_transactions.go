@@ -151,24 +151,9 @@ func (tx *Eth1559TxArgs) InitialiseSignature(sig typescrypto.Signature) error {
 		return xerrors.Errorf("signature should be 65 bytes long, but got %d bytes", len(sig.Data))
 	}
 
-	r_, err := parseBigInt(sig.Data[0:32])
-	if err != nil {
-		return xerrors.Errorf("cannot parse r into EthBigInt")
-	}
-
-	s_, err := parseBigInt(sig.Data[32:64])
-	if err != nil {
-		return xerrors.Errorf("cannot parse s into EthBigInt")
-	}
-
-	v_, err := parseBigInt([]byte{sig.Data[64]})
-	if err != nil {
-		return xerrors.Errorf("cannot parse v into EthBigInt")
-	}
-
-	tx.R = r_
-	tx.S = s_
-	tx.V = v_
+	tx.R = bigIntFromBytes(sig.Data[0:32])
+	tx.S = bigIntFromBytes(sig.Data[32:64])
+	tx.V = bigIntFromBytes(sig.Data[64:65])
 
 	return nil
 }

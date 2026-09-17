@@ -101,7 +101,7 @@ func TestDailyFees(t *testing.T) {
 	// Miner A will only be a genesis Miner with power allocated in the genesis block and will not
 	// onboard any sectors from here on
 	ens := kit.NewEnsemble(t,
-		kit.MockProofs(true),
+		kit.MockProofs(),
 		kit.RootVerifier(rootKey, abi.NewTokenAmount(initialBigBalance)),
 		kit.Account(verifierKey, abi.NewTokenAmount(initialBigBalance)),
 		kit.Account(verifiedClientKey, abi.NewTokenAmount(initialBigBalance)),

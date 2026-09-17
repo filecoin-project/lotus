@@ -42,10 +42,14 @@ func TestManualSectorOnboarding(t *testing.T) {
 				client    kit.TestFullNode
 				minerA    kit.TestMiner // A is a standard genesis miner
 			)
+			proofs := kit.RealProofs()
+			if withMockProofs {
+				proofs = kit.MockProofs()
+			}
 
 			// Setup and begin mining with a single miner (A)
 			// Miner A will only be a genesis Miner with power allocated in the genesis block and will not onboard any sectors from here on
-			ens := kit.NewEnsemble(t, kit.MockProofs(withMockProofs)).
+			ens := kit.NewEnsemble(t, proofs).
 				FullNode(&client, kit.SectorSize(defaultSectorSize)).
 				// preseal more than the default number of sectors to ensure that the genesis miner has power
 				// because our unmanaged miners won't produce blocks so we may get null rounds

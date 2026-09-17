@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"encoding/json"
@@ -19,7 +20,6 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/api"
-	apitypes "github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/mock"
 )
@@ -516,9 +516,13 @@ func TestWalletMarketWithdraw(t *testing.T) {
 	h, err := hex.DecodeString("12209cbc07c3f991725836a3aa2a581ca2029198aa420b9d99bc0e131d9f3e2cbe47")
 	assert.NoError(t, err)
 	cid := cid.NewCidV0(multihash.Multihash(h))
-	msgLookup := api.MsgLookup{}
 
-	var networkVers apitypes.NetworkVersion
+	withdrawn := abi.NewTokenAmount(80)
+	returnBuf := new(bytes.Buffer)
+	assert.NoError(t, withdrawn.MarshalCBOR(returnBuf))
+	msgLookup := api.MsgLookup{
+		Receipt: types.MessageReceipt{Return: returnBuf.Bytes()},
+	}
 
 	gomock.InOrder(
 		mockApi.EXPECT().StateMarketBalance(ctx, addr, types.TipSetKey{}).Return(balance, nil),
@@ -527,7 +531,6 @@ func TestWalletMarketWithdraw(t *testing.T) {
 		// available should be 80.. escrow - locked - reserve
 		mockApi.EXPECT().MarketWithdraw(ctx, addr, addr, big.NewInt(80)).Return(cid, nil),
 		mockApi.EXPECT().StateWaitMsg(ctx, cid, uint64(5), abi.ChainEpoch(int64(-1)), true).Return(&msgLookup, nil),
-		mockApi.EXPECT().StateNetworkVersion(ctx, types.TipSetKey{}).Return(networkVers, nil),
 	)
 
 	err = app.Run([]string{"wallet", "market", "withdraw", "--wallet", addr.String()})

@@ -2,6 +2,7 @@ package spcli
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"sort"
 	"strconv"
@@ -41,6 +42,47 @@ import (
 	"github.com/filecoin-project/lotus/node/impl"
 )
 
+// splitDealBatchesByGas takes pre-sorted deal IDs and an initial max chunk
+// size, then for each chunk estimates gas via the provided estimator; if a
+// chunk would exceed the ceiling it is split in half and retried until each
+// sub-batch fits (or cannot be split below a single deal). It returns the
+// final list of deal-ID batches.
+func splitDealBatchesByGas(dealIDs []uint64, maxDeals int, estimate func(deals []uint64) (gasLimit int64, err error), gasCeiling int64) ([][]uint64, error) {
+	var out [][]uint64
+	for _, chunk := range lo.Chunk(dealIDs, maxDeals) {
+		batches, err := splitDealBatchByGas(chunk, estimate, gasCeiling)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, batches...)
+	}
+	return out, nil
+}
+
+func splitDealBatchByGas(deals []uint64, estimate func(deals []uint64) (gasLimit int64, err error), gasCeiling int64) ([][]uint64, error) {
+	gasLimit, err := estimate(deals)
+	if err != nil {
+		return nil, err
+	}
+
+	if gasLimit <= gasCeiling || len(deals) == 1 {
+		return [][]uint64{deals}, nil
+	}
+
+	mid := len(deals) / 2
+	left, err := splitDealBatchByGas(deals[:mid], estimate, gasCeiling)
+	if err != nil {
+		return nil, err
+	}
+
+	right, err := splitDealBatchByGas(deals[mid:], estimate, gasCeiling)
+	if err != nil {
+		return nil, err
+	}
+
+	return append(left, right...), nil
+}
+
 func ActorDealSettlementCmd(getActor ActorAddressGetter) *cli.Command {
 	return &cli.Command{
 		Name:      "settle-deal",
@@ -60,6 +102,11 @@ func ActorDealSettlementCmd(getActor ActorAddressGetter) *cli.Command {
 				Name:  "max-deals",
 				Usage: "the maximum number of deals contained in each message",
 				Value: 20,
+			},
+			&cli.IntFlag{
+				Name:  "max-gas-fraction",
+				Usage: "denominator of build.BlockGasLimit used as the per-message gas ceiling (default 4 = 1/4 block)",
+				Value: 4,
 			},
 			&cli.BoolFlag{
 				Name:  "skip-wait-msg",
@@ -173,31 +220,91 @@ func ActorDealSettlementCmd(getActor ActorAddressGetter) *cli.Command {
 				}
 			}
 
-			msgLen := (len(dealIDs) + cctx.Int("max-deals") - 1) / cctx.Int("max-deals")
-			fmt.Printf("There are a total of %v deals, and about %v messages will be sent out.\n", len(dealIDs), msgLen)
-
-			if !cctx.Bool("really-do-it") {
-				return fmt.Errorf("pass --really-do-it to confirm this action")
-			}
-
 			sort.Slice(dealIDs, func(i, j int) bool {
 				return dealIDs[i] < dealIDs[j]
 			})
-			dealChucks := lo.Chunk(dealIDs, cctx.Int("max-deals"))
 
-			var msgs []*types.Message
-			for _, deals := range dealChucks {
+			makeSettleDealPaymentsMessage := func(deals []uint64) (*types.Message, error) {
 				dealParams := bitfield.NewFromSet(deals)
 				params, err := actors.SerializeParams(&dealParams)
 				if err != nil {
-					return err
+					return nil, err
 				}
-				msg := &types.Message{
+				return &types.Message{
 					To:     marketactor.Address,
 					From:   fromAddr,
 					Value:  types.NewInt(0),
 					Method: marketactor.Methods.SettleDealPaymentsExported,
 					Params: params,
+				}, nil
+			}
+
+			gasFraction := cctx.Int("max-gas-fraction")
+			if gasFraction <= 0 {
+				gasFraction = 4
+			}
+			gasCeiling := buildconstants.BlockGasLimit / int64(gasFraction)
+
+			type singleDealOverGasCeiling struct {
+				dealID   uint64
+				gasLimit int64
+			}
+			var singleDealWarnings []singleDealOverGasCeiling
+
+			estimate := func(deals []uint64) (int64, error) {
+				msg, err := makeSettleDealPaymentsMessage(deals)
+				if err != nil {
+					return 0, err
+				}
+
+				estimatedMsg, err := api.GasEstimateMessageGas(ctx, msg, nil, types.EmptyTSK)
+				if err != nil {
+					if errors.Is(err, &lapi.ErrOutOfGas{}) {
+						if len(deals) == 1 {
+							return 0, xerrors.Errorf("deal %d cannot be settled: its SettleDealPaymentsExported message exceeds the block gas limit: %w", deals[0], err)
+						}
+						return gasCeiling + 1, nil
+					}
+					return 0, err
+				}
+
+				if estimatedMsg.GasLimit > gasCeiling && len(deals) == 1 {
+					singleDealWarnings = append(singleDealWarnings, singleDealOverGasCeiling{
+						dealID:   deals[0],
+						gasLimit: estimatedMsg.GasLimit,
+					})
+				}
+
+				return estimatedMsg.GasLimit, nil
+			}
+
+			dealBatches, err := splitDealBatchesByGas(dealIDs, cctx.Int("max-deals"), estimate, gasCeiling)
+			if err != nil {
+				return err
+			}
+
+			dealCounts := make([]int, 0, len(dealBatches))
+			for _, deals := range dealBatches {
+				dealCounts = append(dealCounts, len(deals))
+			}
+			fmt.Printf("There are a total of %d deals; gas-aware splitting will send %d messages with deal counts: %v.\n", len(dealIDs), len(dealBatches), dealCounts)
+			for _, warning := range singleDealWarnings {
+				if warning.gasLimit > 0 {
+					fmt.Printf("warning: deal %d has estimated gas %d above ceiling %d; sending it as a single-deal batch because it cannot be split further.\n", warning.dealID, warning.gasLimit, gasCeiling)
+					continue
+				}
+				fmt.Printf("warning: deal %d exceeds gas ceiling %d; sending it as a single-deal batch because it cannot be split further.\n", warning.dealID, gasCeiling)
+			}
+
+			if !cctx.Bool("really-do-it") {
+				return fmt.Errorf("pass --really-do-it to confirm this action")
+			}
+
+			var msgs []*types.Message
+			for _, deals := range dealBatches {
+				msg, err := makeSettleDealPaymentsMessage(deals)
+				if err != nil {
+					return err
 				}
 				msgs = append(msgs, msg)
 			}

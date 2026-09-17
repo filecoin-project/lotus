@@ -35,8 +35,8 @@ import (
 
 func TestWorkerPledge(t *testing.T) {
 	ctx := context.Background()
-	_, miner, worker, ens := kit.EnsembleWorker(t, kit.WithAllSubsystems(), kit.ThroughRPC(), kit.WithNoLocalSealing(true),
-		kit.WithSealWorkerTasks) // no mock proofs
+	_, miner, worker, ens := kit.EnsembleWorker(t, kit.RealProofs(), kit.WithAllSubsystems(), kit.ThroughRPC(), kit.WithNoLocalSealing(true),
+		kit.WithSealWorkerTasks)
 
 	ens.InterconnectAll().BeginMining(50 * time.Millisecond)
 
@@ -49,10 +49,10 @@ func TestWorkerPledge(t *testing.T) {
 
 func TestWorkerPledgeSpread(t *testing.T) {
 	ctx := context.Background()
-	_, miner, worker, ens := kit.EnsembleWorker(t, kit.WithAllSubsystems(), kit.ThroughRPC(),
+	_, miner, worker, ens := kit.EnsembleWorker(t, kit.RealProofs(), kit.WithAllSubsystems(), kit.ThroughRPC(),
 		kit.WithSealWorkerTasks,
 		kit.WithAssigner("spread"),
-	) // no mock proofs
+	)
 
 	ens.InterconnectAll().BeginMining(50 * time.Millisecond)
 
@@ -65,10 +65,10 @@ func TestWorkerPledgeSpread(t *testing.T) {
 
 func TestWorkerPledgeLocalFin(t *testing.T) {
 	ctx := context.Background()
-	_, miner, worker, ens := kit.EnsembleWorker(t, kit.WithAllSubsystems(), kit.ThroughRPC(),
+	_, miner, worker, ens := kit.EnsembleWorker(t, kit.RealProofs(), kit.WithAllSubsystems(), kit.ThroughRPC(),
 		kit.WithSealWorkerTasks,
 		kit.WithDisallowRemoteFinalize(true),
-	) // no mock proofs
+	)
 
 	ens.InterconnectAll().BeginMining(50 * time.Millisecond)
 
@@ -81,8 +81,8 @@ func TestWorkerPledgeLocalFin(t *testing.T) {
 
 func TestWorkerDataCid(t *testing.T) {
 	ctx := context.Background()
-	_, miner, worker, _ := kit.EnsembleWorker(t, kit.WithAllSubsystems(), kit.ThroughRPC(), kit.WithNoLocalSealing(true),
-		kit.WithSealWorkerTasks) // no mock proofs
+	_, miner, worker, _ := kit.EnsembleWorker(t, kit.RealProofs(), kit.WithAllSubsystems(), kit.ThroughRPC(), kit.WithNoLocalSealing(true),
+		kit.WithSealWorkerTasks)
 
 	e, err := worker.Enabled(ctx)
 	require.NoError(t, err)
@@ -114,8 +114,8 @@ func TestWinningPostWorker(t *testing.T) {
 	}()
 
 	ctx := context.Background()
-	client, _, worker, ens := kit.EnsembleWorker(t, kit.WithAllSubsystems(), kit.ThroughRPC(),
-		kit.WithTaskTypes([]sealtasks.TaskType{sealtasks.TTGenerateWinningPoSt})) // no mock proofs
+	client, _, worker, ens := kit.EnsembleWorker(t, kit.RealProofs(), kit.WithAllSubsystems(), kit.ThroughRPC(),
+		kit.WithTaskTypes([]sealtasks.TaskType{sealtasks.TTGenerateWinningPoSt}))
 
 	ens.InterconnectAll().BeginMining(50 * time.Millisecond)
 
@@ -135,6 +135,7 @@ func TestWindowPostWorker(t *testing.T) {
 	sectors := 2 * 48 * 2
 
 	client, miner, _, ens := kit.EnsembleWorker(t,
+		kit.RealProofs(),
 		kit.PresealSectors(sectors), // 2 sectors per partition, 2 partitions in all 48 deadlines
 		kit.LatestActorsAt(-1),
 		kit.ThroughRPC(),
@@ -264,6 +265,7 @@ func TestWindowPostWorkerSkipBadSector(t *testing.T) {
 	var badsector uint64 = 100000
 
 	client, miner, _, ens := kit.EnsembleWorker(t,
+		kit.RealProofs(),
 		kit.PresealSectors(sectors), // 2 sectors per partition, 2 partitions in all 48 deadlines
 		kit.LatestActorsAt(-1),
 		kit.ThroughRPC(),
@@ -378,6 +380,7 @@ func TestWindowPostWorkerManualPoSt(t *testing.T) {
 	sectors := 2 * 48 * 2
 
 	client, miner, _, _ := kit.EnsembleWorker(t,
+		kit.RealProofs(),
 		kit.PresealSectors(sectors), // 2 sectors per partition, 2 partitions in all 48 deadlines
 		kit.LatestActorsAt(-1),
 		kit.ThroughRPC(),
@@ -411,6 +414,7 @@ func TestWindowPostWorkerDisconnected(t *testing.T) {
 	sectors := 2 * 48 * 2
 
 	_, miner, badWorker, ens := kit.EnsembleWorker(t,
+		kit.RealProofs(),
 		kit.PresealSectors(sectors), // 2 sectors per partition, 2 partitions in all 48 deadlines
 		kit.LatestActorsAt(-1),
 		kit.ThroughRPC(),
@@ -446,8 +450,8 @@ func TestWindowPostWorkerDisconnected(t *testing.T) {
 
 func TestSchedulerRemoveRequest(t *testing.T) {
 	ctx := context.Background()
-	_, miner, worker, _ := kit.EnsembleWorker(t, kit.WithAllSubsystems(), kit.ThroughRPC(), kit.WithNoLocalSealing(true),
-		kit.WithTaskTypes([]sealtasks.TaskType{sealtasks.TTAddPiece, sealtasks.TTPreCommit1})) // no mock proofs
+	_, miner, worker, _ := kit.EnsembleWorker(t, kit.RealProofs(), kit.WithAllSubsystems(), kit.ThroughRPC(), kit.WithNoLocalSealing(true),
+		kit.WithTaskTypes([]sealtasks.TaskType{sealtasks.TTAddPiece, sealtasks.TTPreCommit1}))
 
 	//ens.InterconnectAll().BeginMining(50 * time.Millisecond)
 
@@ -491,7 +495,7 @@ func TestWorkerName(t *testing.T) {
 	name := "thisstringisprobablynotahostnameihope"
 
 	ctx := context.Background()
-	_, miner, worker, ens := kit.EnsembleWorker(t, kit.WithAllSubsystems(), kit.ThroughRPC(), kit.WithWorkerName(name))
+	_, miner, worker, ens := kit.EnsembleWorker(t, kit.RealProofs(), kit.WithAllSubsystems(), kit.ThroughRPC(), kit.WithWorkerName(name))
 
 	ens.InterconnectAll().BeginMining(50 * time.Millisecond)
 
@@ -522,6 +526,7 @@ func TestWindowPostV1P1NV20Worker(t *testing.T) {
 	blocktime := 2 * time.Millisecond
 
 	client, miner, _, ens := kit.EnsembleWorker(t,
+		kit.RealProofs(),
 		kit.GenesisNetworkVersion(network.Version20),
 		kit.ConstructorOpts(
 			node.Override(new(config.ProvingConfig), func() config.ProvingConfig {

@@ -2,6 +2,7 @@ package full
 
 import (
 	"context"
+	"errors"
 
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
@@ -106,6 +107,12 @@ func (m *GasModule) GasEstimateGasLimit(ctx context.Context, msgIn *types.Messag
 }
 
 func (m *GasModule) GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, ts types.TipSetKey) (*types.Message, error) {
+	if msg.To == address.Undef {
+		return nil, errors.New("message To address is undefined")
+	}
+	if msg.From == address.Undef {
+		return nil, errors.New("message From address is undefined")
+	}
 	if msg.GasLimit == 0 {
 		gasLimit, err := m.GasEstimateGasLimit(ctx, msg, ts)
 		if err != nil {

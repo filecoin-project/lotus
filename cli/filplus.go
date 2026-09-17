@@ -22,7 +22,6 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
 	verifregtypes13 "github.com/filecoin-project/go-state-types/builtin/v13/verifreg"
-	verifregtypes8 "github.com/filecoin-project/go-state-types/builtin/v8/verifreg"
 	datacap2 "github.com/filecoin-project/go-state-types/builtin/v9/datacap"
 	verifregtypes9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/network"
@@ -38,6 +37,22 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/tablewriter"
 )
+
+// WarnFilplusDeprecated prints the retirement notice for FIL+ write commands before nv29.
+func WarnFilplusDeprecated(cctx *cli.Context, api interface {
+	StateNetworkVersion(context.Context, types.TipSetKey) (network.Version, error)
+}) error {
+	nv, err := api.StateNetworkVersion(cctx.Context, types.EmptyTSK)
+	if err != nil {
+		return err
+	}
+	if nv >= network.Version29 {
+		return nil
+	}
+
+	_, _ = fmt.Fprintln(cctx.App.ErrWriter, "WARNING: FIL+ DataCap and verified-registry writes will retire in NV29. From nv29, use `lotus-miner sectors upgrade-quality` for QAP.")
+	return nil
+}
 
 var FilplusCmd = &cli.Command{
 	Name:  "filplus",
@@ -100,6 +115,10 @@ var filplusVerifyClientCmd = &cli.Command{
 		}
 		defer closer()
 		ctx := ReqContext(cctx)
+
+		if err := WarnFilplusDeprecated(cctx, api); err != nil {
+			return err
+		}
 
 		found, dcap, err := checkNotary(ctx, api, fromk)
 		if err != nil {
@@ -556,6 +575,10 @@ var filplusRemoveExpiredAllocationsCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
+		if err := WarnFilplusDeprecated(cctx, api); err != nil {
+			return err
+		}
+
 		args := cctx.Args().Slice()
 
 		clientAddr, err := address.NewFromString(args[0])
@@ -648,6 +671,10 @@ var filplusRemoveExpiredClaimsCmd = &cli.Command{
 		}
 		defer closer()
 		ctx := ReqContext(cctx)
+
+		if err := WarnFilplusDeprecated(cctx, api); err != nil {
+			return err
+		}
 
 		args := cctx.Args().Slice()
 
@@ -835,6 +862,10 @@ var filplusSignRemoveDataCapProposal = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
+		if err := WarnFilplusDeprecated(cctx, api); err != nil {
+			return err
+		}
+
 		act, err := api.StateGetActor(ctx, verifreg.Address, types.EmptyTSK)
 		if err != nil {
 			return xerrors.Errorf("failed to get verifreg actor: %w", err)
@@ -896,30 +927,17 @@ var filplusSignRemoveDataCapProposal = &cli.Command{
 			}
 		}
 
-		nv, err := api.StateNetworkVersion(ctx, types.EmptyTSK)
-		if err != nil {
-			return xerrors.Errorf("failed to get network version: %w", err)
-		}
-
 		paramBuf := new(bytes.Buffer)
 		paramBuf.WriteString(verifregtypes9.SignatureDomainSeparation_RemoveDataCap)
-		if nv <= network.Version16 {
-			params := verifregtypes8.RemoveDataCapProposal{
-				RemovalProposalID: id,
-				DataCapAmount:     allowanceToRemove,
-				VerifiedClient:    clientIdAddr,
-			}
 
-			err = params.MarshalCBOR(paramBuf)
-		} else {
-			params := verifregtypes9.RemoveDataCapProposal{
-				RemovalProposalID: verifregtypes9.RmDcProposalID{ProposalID: id},
-				DataCapAmount:     allowanceToRemove,
-				VerifiedClient:    clientIdAddr,
-			}
-
-			err = params.MarshalCBOR(paramBuf)
+		params := verifregtypes9.RemoveDataCapProposal{
+			RemovalProposalID: verifregtypes9.RmDcProposalID{ProposalID: id},
+			DataCapAmount:     allowanceToRemove,
+			VerifiedClient:    clientIdAddr,
 		}
+
+		err = params.MarshalCBOR(paramBuf)
+
 		if err != nil {
 			return xerrors.Errorf("failed to marshall paramBuf: %w", err)
 		}
@@ -1020,6 +1038,10 @@ If the client id different then claim can be extended up to maximum 5 years from
 		}
 		defer closer()
 		ctx := ReqContext(cctx)
+
+		if err := WarnFilplusDeprecated(cctx, api); err != nil {
+			return err
+		}
 
 		clientAddr, err := address.NewFromString(client)
 		if err != nil {

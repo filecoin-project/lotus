@@ -14,6 +14,7 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/stats"
 	"golang.org/x/xerrors"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/filecoin-project/go-address"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
@@ -450,7 +451,7 @@ func CreateBlockHeader(ctx context.Context, sm *stmgr.StateManager, pts *types.T
 func validateLocalBlock(ctx context.Context, msg *pubsub.Message) (pubsub.ValidationResult, string) {
 	stats.Record(ctx, metrics.BlockPublished.M(1))
 
-	if size := msg.Size(); size > 1<<20-1<<15 {
+	if size := proto.Size(msg.Message); size > 1<<20-1<<15 {
 		log.Errorf("ignoring oversize block (%dB)", size)
 		return pubsub.ValidationIgnore, "oversize_block"
 	}

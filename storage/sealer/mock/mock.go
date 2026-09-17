@@ -77,7 +77,19 @@ func (mgr *SectorMgr) SectorsUnsealPiece(ctx context.Context, sector storiface.S
 }
 
 func (mgr *SectorMgr) DataCid(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader) (abi.PieceInfo, error) {
-	panic("todo")
+	c, err := commp.GeneratePieceCIDFromFile(abi.RegisteredSealProof_StackedDrg64GiBV1_1, r, size)
+	if err != nil {
+		return abi.PieceInfo{}, xerrors.Errorf("generating piece CID: %w", err)
+	}
+
+	if _, err := commcid.CIDToPieceCommitmentV1(c); err != nil {
+		return abi.PieceInfo{}, err
+	}
+
+	return abi.PieceInfo{
+		Size:     size.Padded(),
+		PieceCID: c,
+	}, nil
 }
 
 func (mgr *SectorMgr) AddPiece(ctx context.Context, sectorID storiface.SectorRef, existingPieces []abi.UnpaddedPieceSize, size abi.UnpaddedPieceSize, r io.Reader) (abi.PieceInfo, error) {

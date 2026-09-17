@@ -24,9 +24,9 @@ func NewJsonTracerTransport(file string) (TracerTransport, error) {
 func (jtt *jsonTracerTransport) Transport(evt TracerTransportEvent) error {
 	var e interface{}
 	if evt.lotusTraceEvent != nil {
-		e = *evt.lotusTraceEvent
+		e = evt.lotusTraceEvent
 	} else if evt.pubsubTraceEvent != nil {
-		e = *evt.pubsubTraceEvent
+		e = evt.pubsubTraceEvent
 	} else {
 		return nil
 	}

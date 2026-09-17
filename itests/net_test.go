@@ -19,7 +19,7 @@ import (
 func TestNetConn(t *testing.T) {
 	ctx := context.Background()
 
-	firstNode, secondNode, _, _ := kit.EnsembleTwoOne(t)
+	firstNode, secondNode, _, _ := kit.EnsembleTwoOne(t, kit.MockProofs())
 
 	secondNodeID, err := secondNode.ID(ctx)
 	require.NoError(t, err)
@@ -87,7 +87,7 @@ func TestNetConn(t *testing.T) {
 
 func TestNetStat(t *testing.T) {
 
-	firstNode, secondNode, _, _ := kit.EnsembleTwoOne(t)
+	firstNode, secondNode, _, _ := kit.EnsembleTwoOne(t, kit.MockProofs())
 	ctx := context.Background()
 
 	sId, err := secondNode.ID(ctx)
@@ -119,7 +119,7 @@ func TestNetStat(t *testing.T) {
 
 func TestNetLimit(t *testing.T) {
 
-	firstNode, secondNode, _, _ := kit.EnsembleTwoOne(t)
+	firstNode, secondNode, _, _ := kit.EnsembleTwoOne(t, kit.MockProofs())
 	ctx := context.Background()
 
 	sId, err := secondNode.ID(ctx)
@@ -140,7 +140,7 @@ func TestNetLimit(t *testing.T) {
 func TestNetBlockPeer(t *testing.T) {
 	ctx := context.Background()
 
-	firstNode, secondNode, _, _ := kit.EnsembleTwoOne(t)
+	firstNode, secondNode, _, _ := kit.EnsembleTwoOne(t, kit.MockProofs())
 
 	firstAddrInfo, _ := firstNode.NetAddrsListen(ctx)
 	firstNodeID, err := firstNode.ID(ctx)
@@ -193,7 +193,7 @@ func TestNetBlockPeer(t *testing.T) {
 func TestNetBlockIPAddr(t *testing.T) {
 	ctx := context.Background()
 
-	firstNode, secondNode, _, _ := kit.EnsembleTwoOne(t)
+	firstNode, secondNode, _, _ := kit.EnsembleTwoOne(t, kit.MockProofs())
 
 	firstAddrInfo, _ := firstNode.NetAddrsListen(ctx)
 	secondAddrInfo, _ := secondNode.NetAddrsListen(ctx)

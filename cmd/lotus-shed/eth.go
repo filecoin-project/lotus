@@ -25,6 +25,8 @@ var ethCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		checkTipsetsCmd,
 		computeEthHashCmd,
+		ethStorageDumpCmd,
+		ethStorageDecodeCmd,
 	},
 }
 

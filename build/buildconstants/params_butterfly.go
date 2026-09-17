@@ -86,7 +86,7 @@ var UpgradeGoldenWeekHeight = abi.ChainEpoch(-31)
 
 const UpgradeFireHorseHeight = -32
 
-const UpgradeXxHeight = 999999999999999
+const UpgradeSolsticeHeight = 999999999999999
 
 var ConsensusMinerMinPower = abi.NewStoragePower(2 << 30)
 var PreCommitChallengeDelay = abi.ChainEpoch(150)

@@ -29,7 +29,7 @@ func TestWindowPostNoMinerStorage(t *testing.T) {
 		miner           kit.TestMiner
 		wiw, wdw, sealw kit.TestWorker
 	)
-	ens := kit.NewEnsemble(t, kit.LatestActorsAt(-1)).
+	ens := kit.NewEnsemble(t, kit.RealProofs(), kit.LatestActorsAt(-1)).
 		FullNode(&client, kit.ThroughRPC()).
 		Miner(&miner, &client, kit.WithAllSubsystems(), kit.ThroughRPC(), kit.PresealSectors(presealSectors), kit.NoStorage()).
 		Worker(&miner, &wiw, kit.ThroughRPC(), kit.WithTaskTypes([]sealtasks.TaskType{sealtasks.TTGenerateWinningPoSt})).

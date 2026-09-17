@@ -61,12 +61,12 @@ func NewResumableReader(ctx context.Context, url string) (*ResumableReader, erro
 		return nil, fmt.Errorf("failed to fetch resource, status code: %d", resp.StatusCode)
 	}
 
-	contentLength, err := strconv.ParseInt(resp.Header.Get("Content-Length"), 10, 64)
-	if err != nil {
-		if err = resp.Body.Close(); err != nil {
-			err = multierr.Append(err, err)
+	contentLength, parseErr := strconv.ParseInt(resp.Header.Get("Content-Length"), 10, 64)
+	if parseErr != nil {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			return nil, multierr.Append(parseErr, closeErr)
 		}
-		return nil, err
+		return nil, parseErr
 	}
 
 	r.contentLength = contentLength

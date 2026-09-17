@@ -30,6 +30,9 @@ const (
 type Interface interface {
 	// Applies the given message onto the VM's current state, returning the result of the execution
 	ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet, error)
+	// ApplyMessageSkipSenderValidation applies the given message onto the VM's current state,
+	// returning the result of the execution. Skips sender validation checks.
+	ApplyMessageSkipSenderValidation(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet, error)
 	// Same as above but for system messages (the Cron invocation and block reward payments).
 	// Must NEVER fail.
 	ApplyImplicitMessage(ctx context.Context, msg *types.Message) (*ApplyRet, error)

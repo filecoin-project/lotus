@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
+	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
@@ -16,6 +17,53 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
+
+func TestReconcileInvalidatesEventCompletionBeforeIncompleteReplay(t *testing.T) {
+	ctx := context.Background()
+	rng := pseudo.New(pseudo.NewSource(13749))
+
+	common := fakeTipSet(t, rng, 1, nil)
+	oldHead := fakeTipSet(t, rng, 2, common.Cids())
+	newHead := fakeTipSet(t, rng, 2, common.Cids())
+
+	cs := newDummyChainStore()
+	cs.SetTipsetByHeightAndKey(common.Height(), common.Key(), common)
+	cs.SetTipsetByHeightAndKey(oldHead.Height(), oldHead.Key(), oldHead)
+	cs.SetTipSetByCid(t, common)
+	cs.SetTipSetByCid(t, oldHead)
+	cs.SetTipSetByCid(t, newHead)
+	cs.SetHeaviestTipSet(oldHead)
+
+	si, err := NewSqliteIndexer(":memory:", cs, 0, false, 100)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = si.Close() })
+
+	si.SetActorToDelegatedAddresFunc(func(context.Context, abi.ActorID, *types.TipSet) (address.Address, bool) {
+		return address.TestAddress, true
+	})
+	eventsAvailable := true
+	si.setExecutedMessagesLoaderFunc(func(context.Context, ChainStore, *types.TipSet, *types.TipSet) ([]executedMessage, error) {
+		if !eventsAvailable {
+			return nil, ipld.ErrNotFound{}
+		}
+		return nil, nil
+	})
+
+	require.NoError(t, si.Apply(ctx, common, oldHead))
+	filter := &EventFilter{MinHeight: common.Height(), MaxHeight: common.Height()}
+	events, err := si.GetEventsForFilter(ctx, filter)
+	require.NoError(t, err)
+	require.Empty(t, events)
+
+	cs.SetTipsetByHeightAndKey(newHead.Height(), newHead.Key(), newHead)
+	cs.SetHeaviestTipSet(newHead)
+	eventsAvailable = false
+	require.NoError(t, si.ReconcileWithChain(ctx, newHead))
+
+	events, err = si.GetEventsForFilter(ctx, filter)
+	require.ErrorIs(t, err, ErrNotFound)
+	require.Empty(t, events)
+}
 
 func TestReconcileGapTooLarge(t *testing.T) {
 	ctx := context.Background()

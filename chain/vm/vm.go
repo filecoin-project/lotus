@@ -157,8 +157,7 @@ func (vm *LegacyVM) makeRuntime(ctx context.Context, msg *types.Message, parent 
 	}
 
 	if parent != nil {
-		// TODO: The version check here should be unnecessary, but we can wait to take it out
-		if !parent.allowInternal && rt.NetworkVersion() >= network.Version7 {
+		if !parent.allowInternal {
 			rt.Abortf(exitcode.SysErrForbidden, "internal calls currently disabled")
 		}
 		rt.gasUsed = parent.gasUsed
@@ -428,6 +427,12 @@ func (vm *LegacyVM) ApplyImplicitMessage(ctx context.Context, msg *types.Message
 		GasCosts:       nil,
 		Duration:       time.Since(start),
 	}, actorErr
+}
+
+// ApplyMessageSkipSenderValidation supports eth_call/eth_estimateGas simulation, which
+// requires nv18+; the LegacyVM (nv15 and earlier) never serves those paths.
+func (vm *LegacyVM) ApplyMessageSkipSenderValidation(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet, error) {
+	return nil, xerrors.Errorf("ApplyMessageSkipSenderValidation is not supported on LegacyVM")
 }
 
 func (vm *LegacyVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet, error) {

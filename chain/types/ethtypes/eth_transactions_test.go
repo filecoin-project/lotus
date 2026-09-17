@@ -165,3 +165,46 @@ func TestEthTransactionFromSignedFilecoinMessage(t *testing.T) {
 		})
 	}
 }
+
+func TestParseEthTransactionNonMinimalInts(t *testing.T) {
+	// RLP integers carry no leading zero bytes, so a padded field is a second
+	// encoding of a value that already has one. Rejecting it keeps a signed
+	// transaction to a single valid encoding, which is what makes the hash of the
+	// submitted bytes and the hash the transaction is indexed under the same hash.
+	testcases := []struct {
+		name  string
+		rawTx string
+	}{
+		{
+			// nonce 0x02 re-encoded as the two byte string {0x00, 0x02}
+			"eip1559 nonce",
+			"0x02f85b8401df5e768200028301d69083086a5e835532dd808080c080a0457e33227ac7ceee2ef121755e26b872b6fb04221993f9939349bb7b0a3e1595a02d8ef379e1d2a9e30fa61c92623cc9ed72d80cf6a48cfea341cb916bcc0a81bc",
+		},
+		{
+			// maxPriorityFeePerGas 0x01d690 re-encoded as {0x00, 0x01, 0xd6, 0x90}
+			"eip1559 maxPriorityFeePerGas",
+			"0x02f85a8401df5e7602840001d69083086a5e835532dd808080c080a0457e33227ac7ceee2ef121755e26b872b6fb04221993f9939349bb7b0a3e1595a02d8ef379e1d2a9e30fa61c92623cc9ed72d80cf6a48cfea341cb916bcc0a81bc",
+		},
+		{
+			// nonce 0x03 re-encoded as the two byte string {0x00, 0x03}
+			"legacy nonce",
+			"0xf8618200030182520794b94f5374fce5edbc8e2a8697c15331677e6ebf0b0a801ba098ff921201554726367d2be8c804a7ff89ccf285ebc57dff8ae4c44b9c19ac4aa07778cde41a8a37f6a087622b38bc201bd3e7df06dce067569d4def1b53dba98c",
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := ParseEthTransaction(mustDecodeHex(tc.rawTx))
+			require.ErrorContains(t, err, "non-minimal encoding")
+		})
+	}
+
+	// the minimally encoded forms of the same transactions still parse
+	for _, rawTx := range []string{
+		"0x02f8598401df5e76028301d69083086a5e835532dd808080c080a0457e33227ac7ceee2ef121755e26b872b6fb04221993f9939349bb7b0a3e1595a02d8ef379e1d2a9e30fa61c92623cc9ed72d80cf6a48cfea341cb916bcc0a81bc",
+		"0xf85f030182520794b94f5374fce5edbc8e2a8697c15331677e6ebf0b0a801ba098ff921201554726367d2be8c804a7ff89ccf285ebc57dff8ae4c44b9c19ac4aa07778cde41a8a37f6a087622b38bc201bd3e7df06dce067569d4def1b53dba98c",
+	} {
+		_, err := ParseEthTransaction(mustDecodeHex(rawTx))
+		require.NoError(t, err)
+	}
+}

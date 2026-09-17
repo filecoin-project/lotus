@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -145,6 +146,41 @@ func (e *EVM) DeployContractFromFilenameWithValue(ctx context.Context, binFilena
 }
 func (e *EVM) DeployContractFromFilename(ctx context.Context, binFilename string) (address.Address, address.Address) {
 	return e.DeployContractFromFilenameWithValue(ctx, binFilename, big.Zero())
+}
+
+// BuildDeployContractTx returns an unsigned Ethereum transaction for deploying
+// the contract bytecode at contractPath from ethAddr.
+func (e *EVM) BuildDeployContractTx(ctx context.Context, ethAddr ethtypes.EthAddress, contractPath string) *ethtypes.Eth1559TxArgs {
+	contractHex, err := os.ReadFile(contractPath)
+	require.NoError(e.t, err)
+
+	contract, err := hex.DecodeString(string(bytes.TrimSpace(contractHex)))
+	require.NoError(e.t, err)
+
+	gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
+		From: &ethAddr,
+		Data: contract,
+	}})
+	require.NoError(e.t, err)
+
+	gaslimit, err := e.EthEstimateGas(ctx, gasParams)
+	require.NoError(e.t, err)
+
+	maxPriorityFeePerGas, err := e.EthMaxPriorityFeePerGas(ctx)
+	require.NoError(e.t, err)
+
+	return &ethtypes.Eth1559TxArgs{
+		ChainID:              buildconstants.Eip155ChainId,
+		Value:                big.Zero(),
+		Nonce:                0,
+		MaxFeePerGas:         types.NanoFil,
+		MaxPriorityFeePerGas: big.Int(maxPriorityFeePerGas),
+		GasLimit:             int(gaslimit),
+		Input:                contract,
+		V:                    big.Zero(),
+		R:                    big.Zero(),
+		S:                    big.Zero(),
+	}
 }
 
 func (e *EVM) InvokeSolidity(ctx context.Context, sender address.Address, target address.Address, selector []byte, inputData []byte) (*api.MsgLookup, error) {

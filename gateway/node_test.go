@@ -380,6 +380,45 @@ func TestV1GatewayStateMessageLookbackClamped(t *testing.T) {
 	}
 }
 
+func TestV1GatewayStateWaitMsgConfidenceLimit(t *testing.T) {
+	ctx := context.Background()
+	const bound = uint64(10)
+	msgCid := cid.Undef
+
+	tests := []struct {
+		name       string
+		confidence uint64
+		wantErr    bool
+	}{
+		{"zero confidence", 0, false},
+		{"confidence at bound", bound, false},
+		{"confidence above bound", bound + 1, true},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+			mockV1 := v1mocks.NewMockFullNode(ctrl)
+			mockV2 := v2mocks.NewMockFullNode(ctrl)
+			a := NewNode(mockV1, mockV2, WithMaxMessageConfidence(bound))
+
+			if !test.wantErr {
+				mockV1.EXPECT().
+					StateWaitMsg(gomock.AssignableToTypeOf(ctx), gomock.Eq(msgCid), gomock.Eq(test.confidence), gomock.Eq(DefaultMaxMessageLookbackEpochs), gomock.Eq(true)).
+					Return(nil, nil)
+			}
+
+			_, err := a.v1Proxy.StateWaitMsg(ctx, msgCid, test.confidence, api.LookbackNoLimit, true)
+			if test.wantErr {
+				require.ErrorContains(t, err, "exceeds gateway maximum")
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
 // TestGatewayInterfacesDoNotExposeLimitedOrUntrusted asserts the invariant
 // that neither Gateway interface exposes a `*Limited` or `*Untrusted` method
 // variant. Those variants exist on FullNode for internal use by the gateway
@@ -404,4 +443,116 @@ func TestGatewayInterfacesDoNotExposeLimitedOrUntrusted(t *testing.T) {
 	t.Run("v2", func(t *testing.T) {
 		check(t, reflect.TypeFor[v2api.Gateway]())
 	})
+}
+
+func TestGatewayRejectsOversizedEventRanges(t *testing.T) {
+	ctx := context.Background()
+	fromBlock := "0x64"
+	toBlock := "0x1cd" // 461 - 100 = 361 epochs
+	ethFilter := &ethtypes.EthFilterSpec{
+		FromBlock: &fromBlock,
+		ToBlock:   &toBlock,
+	}
+	fromHeight := abi.ChainEpoch(100)
+	toHeight := abi.ChainEpoch(461)
+	actorFilter := &types.ActorEventFilter{
+		FromHeight: &fromHeight,
+		ToHeight:   &toHeight,
+	}
+
+	cases := []struct {
+		name string
+		call func(*Node) error
+	}{
+		{"v1/EthGetLogs", func(gw *Node) error {
+			_, err := gw.v1Proxy.EthGetLogs(ctx, ethFilter)
+			return err
+		}},
+		{"v2/EthGetLogs", func(gw *Node) error {
+			_, err := gw.v2Proxy.EthGetLogs(ctx, ethFilter)
+			return err
+		}},
+		{"v1/EthNewFilter", func(gw *Node) error {
+			_, err := gw.v1Proxy.EthNewFilter(ctx, ethFilter)
+			return err
+		}},
+		{"v2/EthNewFilter", func(gw *Node) error {
+			_, err := gw.v2Proxy.EthNewFilter(ctx, ethFilter)
+			return err
+		}},
+		{"GetActorEventsRaw", func(gw *Node) error {
+			_, err := gw.v1Proxy.GetActorEventsRaw(ctx, actorFilter)
+			return err
+		}},
+		{"SubscribeActorEventsRaw", func(gw *Node) error {
+			_, err := gw.v1Proxy.SubscribeActorEventsRaw(ctx, actorFilter)
+			return err
+		}},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			mockV1 := v1mocks.NewMockFullNode(ctrl)
+			mockV2 := v2mocks.NewMockFullNode(ctrl)
+			gw := NewNode(mockV1, mockV2)
+
+			err := tc.call(gw)
+			var rangeErr *api.ErrBlockRangeExceeded
+			require.ErrorAs(t, err, &rangeErr)
+			require.Equal(t, "block range exceeds maximum of 360 (got 361)", rangeErr.Error())
+		})
+	}
+}
+
+func TestGatewayEventFilterRangeBoundaries(t *testing.T) {
+	ctx := context.Background()
+	gw := &Node{eventFilterMaxHeightRange: DefaultEventFilterMaxHeightRange}
+
+	require.NoError(t, gw.checkEventFilterHeightRange(100, 460))
+	var rangeErr *api.ErrBlockRangeExceeded
+	require.ErrorAs(t, gw.checkEventFilterHeightRange(100, 461), &rangeErr)
+
+	fromBlock := "0x64"
+	latest := ethtypes.BlockTagLatest
+	ethFilter := &ethtypes.EthFilterSpec{
+		FromBlock: &fromBlock,
+		ToBlock:   &latest,
+	}
+	headHeight := func(context.Context) (abi.ChainEpoch, error) {
+		// Event execution is available through the head's parent, height 460.
+		return 461, nil
+	}
+	require.NoError(t, gw.checkEthEventFilterBlockRange(ctx, ethFilter, headHeight))
+	headHeight = func(context.Context) (abi.ChainEpoch, error) {
+		return 462, nil
+	}
+	rangeErr = nil
+	require.ErrorAs(t, gw.checkEthEventFilterBlockRange(ctx, ethFilter, headHeight), &rangeErr)
+
+	fromHeight := abi.ChainEpoch(100)
+	actorFilter := &types.ActorEventFilter{FromHeight: &fromHeight}
+	headHeight = func(context.Context) (abi.ChainEpoch, error) {
+		return 461, nil
+	}
+	require.NoError(t, gw.checkActorEventFilterHeightRange(ctx, actorFilter, headHeight))
+	headHeight = func(context.Context) (abi.ChainEpoch, error) {
+		return 462, nil
+	}
+	rangeErr = nil
+	require.ErrorAs(t, gw.checkActorEventFilterHeightRange(ctx, actorFilter, headHeight), &rangeErr)
+}
+
+func TestGatewayEventFilterRangeConfiguration(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockV1 := v1mocks.NewMockFullNode(ctrl)
+	mockV2 := v2mocks.NewMockFullNode(ctrl)
+
+	gw := NewNode(mockV1, mockV2, WithEventFilterMaxHeightRange(10))
+	require.NoError(t, gw.checkEventFilterHeightRange(100, 110))
+	var rangeErr *api.ErrBlockRangeExceeded
+	require.ErrorAs(t, gw.checkEventFilterHeightRange(100, 111), &rangeErr)
+
+	gw = NewNode(mockV1, mockV2, WithEventFilterMaxHeightRange(0))
+	require.NoError(t, gw.checkEventFilterHeightRange(0, 1_000_000))
 }

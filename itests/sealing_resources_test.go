@@ -26,7 +26,7 @@ func TestPledgeMaxConcurrentGet(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	_, miner, ens := kit.EnsembleMinimal(t, kit.NoStorage()) // no mock proofs
+	_, miner, ens := kit.EnsembleMinimal(t, kit.RealProofs(), kit.NoStorage())
 	ens.InterconnectAll().BeginMiningMustPost(blockTime)
 
 	// separate sealed and storage paths so that finalize move needs to happen

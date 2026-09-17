@@ -87,11 +87,6 @@ func (m *Sealing) checkSectorMeta(ctx context.Context, meta api.RemoteSectorMeta
 		return SectorInfo{}, xerrors.Errorf("getting chain head: %w", err)
 	}
 
-	nv, err := m.Api.StateNetworkVersion(ctx, ts.Key())
-	if err != nil {
-		return SectorInfo{}, xerrors.Errorf("getting network version: %w", err)
-	}
-
 	var info SectorInfo
 	var validatePoRep bool
 
@@ -235,7 +230,7 @@ func (m *Sealing) checkSectorMeta(ctx context.Context, meta api.RemoteSectorMeta
 				continue // cc
 			}
 
-			err := info.Pieces[i].DealInfo().Valid(nv)
+			err := info.Pieces[i].DealInfo().Valid()
 			if err != nil {
 				return SectorInfo{}, xerrors.Errorf("piece %d deal info invalid: %w", i, err)
 			}

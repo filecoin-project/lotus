@@ -31,6 +31,7 @@ func TestWindowPostNoBuiltinWindow(t *testing.T) {
 	sectors := 2 * 48 * 2
 
 	client, miner, _, ens := kit.EnsembleWorker(t,
+		kit.RealProofs(),
 		kit.PresealSectors(sectors), // 2 sectors per partition, 2 partitions in all 48 deadlines
 		kit.LatestActorsAt(-1),
 		kit.ConstructorOpts(
@@ -88,6 +89,7 @@ func TestWindowPostNoBuiltinWindowWithWorker(t *testing.T) {
 	sectors := 2 * 48 * 2
 
 	client, miner, _, ens := kit.EnsembleWorker(t,
+		kit.RealProofs(),
 		kit.PresealSectors(sectors), // 2 sectors per partition, 2 partitions in all 48 deadlines
 		kit.LatestActorsAt(-1),
 		kit.ConstructorOpts(

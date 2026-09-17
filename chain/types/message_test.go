@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 
@@ -99,6 +100,33 @@ func TestEqualCall(t *testing.T) {
 	require.True(t, m1.EqualCall(m2))
 	require.True(t, m1.EqualCall(m3))
 	require.False(t, m1.EqualCall(m4))
+}
+
+func TestMessageMarshalJSONUndefinedAddress(t *testing.T) {
+	m := &Message{
+		To:         address.Undef,
+		From:       address.Undef,
+		Value:      big.Zero(),
+		GasFeeCap:  big.NewInt(1),
+		GasPremium: big.NewInt(1),
+	}
+	_, err := json.Marshal(m)
+	require.Error(t, err)
+}
+
+func TestSignedMessageMarshalJSONUndefinedAddress(t *testing.T) {
+	sm := &SignedMessage{
+		Message: Message{
+			To:         address.Undef,
+			From:       address.Undef,
+			Value:      big.Zero(),
+			GasFeeCap:  big.NewInt(1),
+			GasPremium: big.NewInt(1),
+		},
+		Signature: crypto.Signature{},
+	}
+	_, err := json.Marshal(sm)
+	require.Error(t, err)
 }
 
 func TestMessageJson(t *testing.T) {

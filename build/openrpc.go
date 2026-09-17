@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"embed"
 	"encoding/json"
+	"sync"
 
 	apitypes "github.com/filecoin-project/lotus/api/types"
 )
@@ -11,51 +12,44 @@ import (
 //go:embed openrpc
 var openrpcfs embed.FS
 
-func mustReadOpenRPCDocument(data []byte) apitypes.OpenRPCDocument {
+func mustReadOpenRPCDocument(path string) apitypes.OpenRPCDocument {
+	data, err := openrpcfs.ReadFile(path)
+	if err != nil {
+		panic(err)
+	}
 	m := apitypes.OpenRPCDocument{}
-	err := json.NewDecoder(bytes.NewBuffer(data)).Decode(&m)
+	err = json.NewDecoder(bytes.NewBuffer(data)).Decode(&m)
 	if err != nil {
 		log.Fatal(err)
 	}
 	return m
 }
 
+// Decoded once and cached for the process lifetime.
+var (
+	openRPCDiscoverJSON_Full      = sync.OnceValue(func() apitypes.OpenRPCDocument { return mustReadOpenRPCDocument("openrpc/full.json") })
+	openRPCDiscoverJSON_Miner     = sync.OnceValue(func() apitypes.OpenRPCDocument { return mustReadOpenRPCDocument("openrpc/miner.json") })
+	openRPCDiscoverJSON_Worker    = sync.OnceValue(func() apitypes.OpenRPCDocument { return mustReadOpenRPCDocument("openrpc/worker.json") })
+	openRPCDiscoverJSON_Gateway   = sync.OnceValue(func() apitypes.OpenRPCDocument { return mustReadOpenRPCDocument("openrpc/gateway.json") })
+	openRPCDiscoverJSON_GatewayV2 = sync.OnceValue(func() apitypes.OpenRPCDocument { return mustReadOpenRPCDocument("openrpc/v2/gateway.json") })
+)
+
 func OpenRPCDiscoverJSON_Full() apitypes.OpenRPCDocument {
-	data, err := openrpcfs.ReadFile("openrpc/full.json")
-	if err != nil {
-		panic(err)
-	}
-	return mustReadOpenRPCDocument(data)
+	return openRPCDiscoverJSON_Full()
 }
 
 func OpenRPCDiscoverJSON_Miner() apitypes.OpenRPCDocument {
-	data, err := openrpcfs.ReadFile("openrpc/miner.json")
-	if err != nil {
-		panic(err)
-	}
-	return mustReadOpenRPCDocument(data)
+	return openRPCDiscoverJSON_Miner()
 }
 
 func OpenRPCDiscoverJSON_Worker() apitypes.OpenRPCDocument {
-	data, err := openrpcfs.ReadFile("openrpc/worker.json")
-	if err != nil {
-		panic(err)
-	}
-	return mustReadOpenRPCDocument(data)
+	return openRPCDiscoverJSON_Worker()
 }
 
 func OpenRPCDiscoverJSON_Gateway() apitypes.OpenRPCDocument {
-	data, err := openrpcfs.ReadFile("openrpc/gateway.json")
-	if err != nil {
-		panic(err)
-	}
-	return mustReadOpenRPCDocument(data)
+	return openRPCDiscoverJSON_Gateway()
 }
 
 func OpenRPCDiscoverJSON_GatewayV2() apitypes.OpenRPCDocument {
-	data, err := openrpcfs.ReadFile("openrpc/v2/gateway.json")
-	if err != nil {
-		panic(err)
-	}
-	return mustReadOpenRPCDocument(data)
+	return openRPCDiscoverJSON_GatewayV2()
 }
