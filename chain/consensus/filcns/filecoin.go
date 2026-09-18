@@ -78,9 +78,13 @@ var RewardFunc = func(ctx context.Context, vmi vm.Interface, em stmgr.ExecMonito
 		Params:     ser,
 	}
 
-	before, flushErr := vmi.Flush(ctx)
-	if flushErr != nil {
-		return xerrors.Errorf("flushing state before reward: %w", flushErr)
+	var before, after cid.Cid
+	var flushErr error
+	if em != nil {
+		before, flushErr = vmi.Flush(ctx)
+		if flushErr != nil {
+			return xerrors.Errorf("flushing state before reward: %w", flushErr)
+		}
 	}
 
 	ret, actErr := vmi.ApplyImplicitMessage(ctx, rwMsg)
@@ -98,12 +102,12 @@ var RewardFunc = func(ctx context.Context, vmi vm.Interface, em stmgr.ExecMonito
 		}
 	}
 
-	after, flushErr := vmi.Flush(ctx)
-	if flushErr != nil {
-		return xerrors.Errorf("flushing state after reward: %w", flushErr)
-	}
-
 	if em != nil {
+		after, flushErr = vmi.Flush(ctx)
+		if flushErr != nil {
+			return xerrors.Errorf("flushing state after reward: %w", flushErr)
+		}
+
 		if err := em.RewardApplied(ts, before, after, rwMsg, ret); err != nil {
 			return xerrors.Errorf("observing reward state: %w", err)
 		}
