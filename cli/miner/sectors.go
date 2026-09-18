@@ -1224,7 +1224,7 @@ var sectorsCapacityCollateralCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 
-		nApi, nCloser, err := lcli.GetFullNodeAPI(cctx)
+		nApi, nCloser, err := lcli.GetFullNodeAPIV1(cctx)
 		if err != nil {
 			return err
 		}
@@ -1252,25 +1252,32 @@ var sectorsCapacityCollateralCmd = &cli.Command{
 			return err
 		}
 
+		head, err := nApi.ChainHead(ctx)
+		if err != nil {
+			return err
+		}
+
 		pci := miner.SectorPreCommitInfo{
 			SealProof:  spt,
 			Expiration: abi.ChainEpoch(cctx.Uint64("expiration")),
 		}
 		if pci.Expiration == 0 {
-			h, err := nApi.ChainHead(ctx)
-			if err != nil {
-				return err
-			}
-
 			maxExtension, err := policy.GetMaxSectorExpirationExtension(nv)
 			if err != nil {
 				return xerrors.Errorf("failed to get max extension: %w", err)
 			}
 
-			pci.Expiration = maxExtension + h.Height()
+			pci.Expiration = maxExtension + head.Height()
 		}
 
-		pc, err := nApi.StateMinerInitialPledgeCollateral(ctx, maddr, pci, types.EmptyTSK)
+		// From nv29 (FIP-0118) every sector holds maximum quality-adjusted power, which this API
+		// expresses as a fully verified sector. Before that a committed capacity sector is 1x.
+		var verifiedSize uint64
+		if nv >= network.Version29 {
+			verifiedSize = uint64(mi.SectorSize)
+		}
+
+		pc, err := nApi.StateMinerInitialPledgeForSector(ctx, pci.Expiration-head.Height(), mi.SectorSize, verifiedSize, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
