@@ -169,8 +169,16 @@ var sectorsUpgradeQualityCmd = &cli.Command{
 		var messages []stminer.UpgradeSectorQualityParams
 		cur := stminer.UpgradeSectorQualityParams{}
 		curCount, total := 0, 0
+		var done bool
 		if err := mas.ForEachDeadline(func(dlIdx uint64, dl miner.Deadline) error {
+			if done {
+				return nil
+			}
 			return dl.ForEachPartition(func(partIdx uint64, part miner.Partition) error {
+				if done {
+					return nil
+				}
+
 				active, err := part.ActiveSectors()
 				if err != nil {
 					return err
@@ -189,7 +197,7 @@ var sectorsUpgradeQualityCmd = &cli.Command{
 
 				var upgrade *stminer.UpgradeSectorQuality
 				return active.ForEach(func(sn uint64) error {
-					if total >= maxSectors && limit {
+					if done {
 						return nil
 					}
 
@@ -220,6 +228,7 @@ var sectorsUpgradeQualityCmd = &cli.Command{
 						cur, curCount = stminer.UpgradeSectorQualityParams{}, 0
 						upgrade = nil
 					}
+					done = limit && total >= maxSectors
 					return nil
 				})
 			})
