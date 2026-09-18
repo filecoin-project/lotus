@@ -70,6 +70,13 @@ func (pv2 *reverseProxyV2) StateGetID(ctx context.Context, address address.Addre
 	return pv2.server.StateGetID(ctx, address, selector)
 }
 
+func (pv2 *reverseProxyV2) StateRewardDistribution(ctx context.Context, selector types.TipSetSelector) (*v2api.RewardDistribution, error) {
+	if err := pv2.gateway.limit(ctx, stateRateLimitTokens); err != nil {
+		return nil, err
+	}
+	return pv2.server.StateRewardDistribution(ctx, selector)
+}
+
 func (pv2 *reverseProxyV2) EthAddressToFilecoinAddress(ctx context.Context, ethAddress ethtypes.EthAddress) (address.Address, error) {
 	return pv2.server.EthAddressToFilecoinAddress(ctx, ethAddress)
 }

@@ -128,6 +128,8 @@ type FullNodeMethods struct {
 
 	StateGetID func(p0 context.Context, p1 address.Address, p2 types.TipSetSelector) (*address.Address, error) `perm:"read"`
 
+	StateRewardDistribution func(p0 context.Context, p1 types.TipSetSelector) (*RewardDistribution, error) `perm:"read"`
+
 	Web3ClientVersion func(p0 context.Context) (string, error) `perm:"read"`
 }
 
@@ -236,6 +238,8 @@ type GatewayMethods struct {
 	StateGetActor func(p0 context.Context, p1 address.Address, p2 types.TipSetSelector) (*types.Actor, error) ``
 
 	StateGetID func(p0 context.Context, p1 address.Address, p2 types.TipSetSelector) (*address.Address, error) ``
+
+	StateRewardDistribution func(p0 context.Context, p1 types.TipSetSelector) (*RewardDistribution, error) ``
 
 	Web3ClientVersion func(p0 context.Context) (string, error) ``
 }
@@ -815,6 +819,17 @@ func (s *FullNodeStub) StateGetID(p0 context.Context, p1 address.Address, p2 typ
 	return nil, ErrNotSupported
 }
 
+func (s *FullNodeStruct) StateRewardDistribution(p0 context.Context, p1 types.TipSetSelector) (*RewardDistribution, error) {
+	if s.Internal.StateRewardDistribution == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.StateRewardDistribution(p0, p1)
+}
+
+func (s *FullNodeStub) StateRewardDistribution(p0 context.Context, p1 types.TipSetSelector) (*RewardDistribution, error) {
+	return nil, ErrNotSupported
+}
+
 func (s *FullNodeStruct) Web3ClientVersion(p0 context.Context) (string, error) {
 	if s.Internal.Web3ClientVersion == nil {
 		return "", ErrNotSupported
@@ -1362,6 +1377,17 @@ func (s *GatewayStruct) StateGetID(p0 context.Context, p1 address.Address, p2 ty
 }
 
 func (s *GatewayStub) StateGetID(p0 context.Context, p1 address.Address, p2 types.TipSetSelector) (*address.Address, error) {
+	return nil, ErrNotSupported
+}
+
+func (s *GatewayStruct) StateRewardDistribution(p0 context.Context, p1 types.TipSetSelector) (*RewardDistribution, error) {
+	if s.Internal.StateRewardDistribution == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.StateRewardDistribution(p0, p1)
+}
+
+func (s *GatewayStub) StateRewardDistribution(p0 context.Context, p1 types.TipSetSelector) (*RewardDistribution, error) {
 	return nil, ErrNotSupported
 }
 
