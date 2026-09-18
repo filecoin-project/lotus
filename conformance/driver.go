@@ -359,3 +359,7 @@ func (o *outputRecorder) MessageApplied(ctx context.Context, ts *types.TipSet, m
 	o.results = append(o.results, ret)
 	return nil
 }
+
+func (*outputRecorder) RewardApplied(*types.TipSet, cid.Cid, cid.Cid, *types.Message, *vm.ApplyRet) error {
+	return nil
+}
