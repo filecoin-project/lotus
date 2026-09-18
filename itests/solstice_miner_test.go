@@ -50,10 +50,13 @@ import (
 // Sector size for every miner here, and the unit power assertions count in.
 const solsticeSectorSize = abi.SectorSize(2 << 10) // 2KiB
 
+// An allocation id the verified registry never issued.
+const solsticeUnknownAllocation = verifreg14.AllocationId(1 << 40)
+
 // solsticeLifecycle is the shared fixture: one chain, three unmanaged miners.
 //
 //	mixed  9 legacy CC, a precommit held across the fork, and native CC sectors
-//	deals  2 verified and 2 unverified legacy deals, 2 legacy CC (one snapped to verified), a native deal
+//	deals  2 verified and 2 unverified legacy deals, 2 legacy CC (one snapped to verified), 3 native deals
 //	cli    6 legacy CC, upgraded as a set by lotus-miner sectors upgrade-quality
 type solsticeLifecycle struct {
 	ctx          context.Context
@@ -63,6 +66,10 @@ type solsticeLifecycle struct {
 	cli          *kit.TestUnmanagedMiner // legacy CC sectors the upgrade-quality CLI upgrades as a set
 	sealProof    abi.RegisteredSealProof
 	upgradeEpoch abi.ChainEpoch
+	migrated     types.TipSetKey // the first tipset that reads migrated state
+
+	verifiedClient address.Address // the account that holds allocV1, allocV2 and allocSnap
+	pieceV         abi.PieceInfo   // the piece allocV1 and allocV2 were made against
 
 	mL       []abi.SectorNumber // legacy CC
 	mP1      abi.SectorNumber   // precommitted on NV28, proven on NV29
@@ -70,6 +77,7 @@ type solsticeLifecycle struct {
 	dU1, dU2 abi.SectorNumber   // legacy unverified deals
 	dC1, dC2 abi.SectorNumber   // legacy CC, dC2 snapped into a verified deal before the fork
 	mN3      abi.SectorNumber   // native CC
+	dD1, dD2 abi.SectorNumber   // native deals pointing to a dangling allocation, unknown and already claimed
 	cL       []abi.SectorNumber // legacy CC
 
 	// The verified allocations the deal sectors claim, one per sector.
@@ -171,7 +179,6 @@ func TestSolsticeMinerLifecycle(t *testing.T) {
 	}
 
 	var pieceV, pieceSnap abi.PieceInfo
-	var migrated types.TipSetKey
 
 	t.Run("a verified client holds allocations before the fork", func(t *testing.T) {
 		pieceV, pieceSnap = f.setupVerifiedFixture(t, rootKey, verifierKey, clientKey)
@@ -180,13 +187,16 @@ func TestSolsticeMinerLifecycle(t *testing.T) {
 		f.onboardBeforeFork(t, pieceV, pieceSnap)
 	})
 	t.Run("the migration leaves every legacy sector as it was", func(t *testing.T) {
-		migrated = f.crossTheFork(t)
+		f.crossTheFork(t)
 	})
 	t.Run("datacap and verifreg writes are refused", func(t *testing.T) {
-		requireSolsticeFrozenActors(ctx, t, &client, migrated)
+		requireSolsticeFrozenActors(ctx, t, &client, f.migrated)
 	})
-	t.Run("sectors activated on NV29 are born at full quality", func(t *testing.T) {
+	t.Run("sectors activated on NV29 are created at full quality", func(t *testing.T) {
 		f.nativeSectors(t)
+	})
+	t.Run("a sector using a dangling allocation is created at full quality", func(t *testing.T) {
+		f.danglingAllocations(t)
 	})
 	t.Run("the upgrade-quality CLI packs one miner's sectors into capped messages", func(t *testing.T) {
 		f.upgradeQualityCLI(t, minerCLI)
@@ -222,10 +232,12 @@ func (f *solsticeLifecycle) setupVerifiedFixture(t *testing.T, rootKey, verifier
 	_, clients := kit.SetupVerifiedClients(f.ctx, t, f.client, rootKey, verifierKey, []*key.Key{clientKey})
 	req.Len(clients, 1)
 	clientAddr := clients[0]
+	f.verifiedClient = clientAddr
 
 	dealsID := must.One(address.IDFromAddress(f.deals.ActorAddr))
 	pieceV = abi.PieceInfo{Size: abi.PaddedPieceSize(solsticeSectorSize), PieceCID: kit.BogusPieceCid2}
 	pieceSnap = abi.PieceInfo{Size: abi.PaddedPieceSize(solsticeSectorSize), PieceCID: kit.BogusPieceCid1}
+	f.pieceV = pieceV
 
 	f.allocV1Client, f.allocV1 = kit.SetupAllocation(f.ctx, t, f.client, dealsID, pieceV, clientAddr, 0, 0)
 	f.allocV2Client, f.allocV2 = kit.SetupAllocation(f.ctx, t, f.client, dealsID, pieceV, clientAddr, 0, 0)
@@ -376,9 +388,8 @@ func (f *solsticeLifecycle) onboardBeforeFork(t *testing.T, pieceV, pieceSnap ab
 	req.Equal(network.Version28, nv, "every pre-fork assertion must be made on NV28")
 }
 
-// crossTheFork waits for NV29 and reads, at one tipset, everything the migration should have left
-// alone. It returns that tipset.
-func (f *solsticeLifecycle) crossTheFork(t *testing.T) types.TipSetKey {
+// crossTheFork waits for NV29, records the first migrated tipset as f.migrated and reads it.
+func (f *solsticeLifecycle) crossTheFork(t *testing.T) {
 	req := require.New(t)
 
 	type sectorState struct {
@@ -398,6 +409,12 @@ func (f *solsticeLifecycle) crossTheFork(t *testing.T) types.TipSetKey {
 			before[sn] = sectorState{miner: m.ActorAddr, info: f.sectorInfo(t, m.ActorAddr, sn, head.Key())}
 		}
 	}
+
+	verifiedStatusBefore, err := f.client.StateVerifiedClientStatus(f.ctx, f.verifiedClient, head.Key())
+	req.NoError(err)
+	allocationsBefore, err := f.client.StateGetAllocations(f.ctx, f.verifiedClient, head.Key())
+	req.NoError(err)
+	datacapBefore := f.datacapBalance(t, f.verifiedClient, head.Key())
 
 	f.client.WaitTillChain(f.ctx, kit.HeightAtLeast(f.upgradeEpoch+5))
 	head, err = f.client.ChainHead(f.ctx)
@@ -423,6 +440,23 @@ func (f *solsticeLifecycle) crossTheFork(t *testing.T) types.TipSetKey {
 	reward, err := f.client.StateGetActor(f.ctx, builtin.RewardActorAddr, head.Key())
 	req.NoError(err)
 	req.Equal(v19Reward, reward.Code, "this tipset must read migrated state, not a pre-upgrade parent")
+
+	// The migration touches neither verifreg nor datacap, so their state reads as before the fork.
+	verifiedStatusAfter, err := f.client.StateVerifiedClientStatus(f.ctx, f.verifiedClient, head.Key())
+	req.NoError(err)
+	req.Equal(verifiedStatusBefore.String(), verifiedStatusAfter.String(),
+		"client %s's verified status must be unchanged by the migration", f.verifiedClient)
+	allocationsAfter, err := f.client.StateGetAllocations(f.ctx, f.verifiedClient, head.Key())
+	req.NoError(err)
+	req.Equal(allocationsBefore, allocationsAfter,
+		"client %s's allocations must be unchanged by the migration", f.verifiedClient)
+	datacapAfter := f.datacapBalance(t, f.verifiedClient, head.Key())
+	req.Equal(datacapBefore.String(), datacapAfter.String(),
+		"client %s's datacap balance must be unchanged by the migration", f.verifiedClient)
+	claim, err := f.client.StateGetClaim(f.ctx, f.deals.ActorAddr, verifreg.ClaimId(f.allocV1), head.Key())
+	req.NoError(err)
+	req.NotNil(claim, "miner %s's claim %d, for sector %d, must still serve after the migration",
+		f.deals.ActorAddr, f.allocV1, f.dV1)
 
 	for sn, was := range before {
 		now := f.sectorInfo(t, was.miner, sn, head.Key())
@@ -476,7 +510,7 @@ func (f *solsticeLifecycle) crossTheFork(t *testing.T) types.TipSetKey {
 	f.deals.AssertNoWindowPostError()
 	f.cli.AssertNoWindowPostError()
 
-	return head.Key()
+	f.migrated = head.Key()
 }
 
 // nativeSectors proves the held precommit, runs a native precommit through its deposit accounting, and
@@ -510,24 +544,34 @@ func (f *solsticeLifecycle) nativeSectors(t *testing.T) {
 	req.Equal(nativePre, provenN2, "the native precommit must prove")
 	req.True(f.preCommitDeposits(t).Equals(big.Zero()), "activation must release the whole precommit deposit")
 
-	// Native sectors for the mixed miner, and a native deal twin for the deals miner.
+	// Native CC on mixed; on deals, a twin of the legacy unverified deal plus two sectors whose
+	// manifests point to allocations verifreg won't satisfy.
 	nativeCC, _ := f.mixed.OnboardSectors(f.sealProof, kit.NewSectorBatch().AddEmptySectors(1))
 	req.Len(nativeCC, 1)
 	f.mN3 = nativeCC[0]
-	dN1, _ := f.deals.OnboardSectors(f.sealProof, kit.NewSectorBatch().AddSectorsWithRandomPieces(1))
-	req.Len(dN1, 1)
+	dangling := func(alloc verifreg14.AllocationId) kit.SectorManifest {
+		return kit.SectorWithVerifiedPiece(f.pieceV.PieceCID,
+			&miner14.VerifiedAllocationKey{Client: f.allocV1Client, ID: alloc})
+	}
+	dNative, _ := f.deals.OnboardSectors(f.sealProof, kit.NewSectorBatch().
+		AddSectorsWithRandomPieces(1).
+		AddSector(dangling(solsticeUnknownAllocation)).
+		AddSector(dangling(verifreg14.AllocationId(f.allocV1))))
+	req.Len(dNative, 3, "miner %s must onboard all three native deal sectors", f.deals.ActorAddr)
+	dN1 := dNative[0]
+	f.dD1, f.dD2 = dNative[1], dNative[2]
 
 	// One wait covers every sector submitted above, since they all gain power at their own first post
 	// within the same proving period.
 	kit.WaitForMinerQAP(f.ctx, t, f.client, f.mixed.ActorAddr, unit*(9+10+10+10), 5*time.Minute)
-	kit.WaitForMinerQAP(f.ctx, t, f.client, f.deals.ActorAddr, unit*(10+10+1+1+1+10+10), 5*time.Minute)
+	kit.WaitForMinerQAP(f.ctx, t, f.client, f.deals.ActorAddr, unit*(10+10+1+1+1+10+10+10+10), 5*time.Minute)
 
 	head, err := f.client.ChainHead(f.ctx)
 	req.NoError(err)
 	req.Equal(unit*12, f.client.MinerRawPower(f.ctx, f.mixed.ActorAddr, head.Key()),
 		"miner %s holds twelve sectors", f.mixed.ActorAddr)
-	req.Equal(unit*7, f.client.MinerRawPower(f.ctx, f.deals.ActorAddr, head.Key()),
-		"miner %s holds seven sectors", f.deals.ActorAddr)
+	req.Equal(unit*9, f.client.MinerRawPower(f.ctx, f.deals.ActorAddr, head.Key()),
+		"miner %s holds nine sectors", f.deals.ActorAddr)
 
 	for _, sn := range []abi.SectorNumber{f.mP1, mN2, f.mN3} {
 		info := f.sectorInfo(t, f.mixed.ActorAddr, sn, head.Key())
@@ -554,8 +598,30 @@ func (f *solsticeLifecycle) nativeSectors(t *testing.T) {
 	req.GreaterOrEqual(n2.InitialPledge.Uint64(), fullQA.Uint64()/2,
 		"a native sector must be pledged at the FULL-QA tier; on-chain %s, FULL-QA oracle %s", n2.InitialPledge, fullQA)
 
+	_, err = f.client.StateMinerInitialPledgeCollateral(f.ctx, f.mixed.ActorAddr, miner.SectorPreCommitInfo{ //nolint:staticcheck // the deprecated call is the subject
+		SealProof: f.sealProof, SectorNumber: mN2, Expiration: n2.Expiration,
+	}, head.Key())
+	req.ErrorContains(err, "unsupported from network version 29",
+		"StateMinerInitialPledgeCollateral for miner %s sector %d must be refused on NV29",
+		f.mixed.ActorAddr, mN2)
+
+	// A precommit with a deal is rejected: deals are not activated at precommit.
+	dealPrecommit := must.One(actors.SerializeParams(&stminer.PreCommitSectorBatchParams2{
+		Sectors: []stminer.SectorPreCommitInfo{{
+			SealProof: f.sealProof, SectorNumber: abi.SectorNumber(1 << 20), SealedCID: kit.BogusPieceCid1,
+			SealRandEpoch: head.Height() - 1, DealIDs: []abi.DealID{1}, Expiration: head.Height() + abi.ChainEpoch(1<<20),
+		}},
+	}))
+	res, err := f.client.StateCall(f.ctx, &types.Message{
+		From: f.mixed.OwnerKey.Address, To: f.mixed.ActorAddr,
+		Method: builtin.MethodsMiner.PreCommitSectorBatch2, Params: dealPrecommit, Value: big.Zero(),
+	}, head.Key())
+	req.NoError(err)
+	req.Equal(exitcode.ErrIllegalArgument, res.MsgRct.ExitCode,
+		"miner %s: a precommit with a deal must be rejected", f.mixed.ActorAddr)
+
 	// The native deal twin against its legacy twin: same content, different onboarding epoch.
-	native := f.sectorInfo(t, f.deals.ActorAddr, dN1[0], head.Key())
+	native := f.sectorInfo(t, f.deals.ActorAddr, dN1, head.Key())
 	legacy := f.sectorInfo(t, f.deals.ActorAddr, f.dU1, head.Key())
 	req.NotZero(native.Flags&miner.FULL_QA_POWER, "a native deal sector must carry FULL_QA_POWER whatever its content")
 	req.Zero(native.DealWeight.Int64(), "FULL_QA zeroes DealWeight on a native deal sector")
@@ -570,6 +636,75 @@ func (f *solsticeLifecycle) nativeSectors(t *testing.T) {
 	f.requireHelperMatchesPower(t, f.mixed.ActorAddr, head.Key())
 
 	f.mixed.AssertNoWindowPostError()
+	f.deals.AssertNoWindowPostError()
+}
+
+// danglingAllocations proves dD1 (an allocation never issued) and dD2 (dV1's already claimed one)
+// are live at 10x with the verified registry untouched.
+func (f *solsticeLifecycle) danglingAllocations(t *testing.T) {
+	req := require.New(t)
+	unit := uint64(solsticeSectorSize)
+
+	head, err := f.client.ChainHead(f.ctx)
+	req.NoError(err)
+
+	active, err := f.client.StateMinerActiveSectors(f.ctx, f.deals.ActorAddr, head.Key())
+	req.NoError(err)
+	live := make(map[abi.SectorNumber]bool, len(active))
+	for _, info := range active {
+		live[info.SectorNumber] = true
+	}
+
+	for _, sn := range []abi.SectorNumber{f.dD1, f.dD2} {
+		req.True(live[sn], "miner %s sector %d must be active", f.deals.ActorAddr, sn)
+		info := f.sectorInfo(t, f.deals.ActorAddr, sn, head.Key())
+		req.GreaterOrEqual(info.Activation, f.upgradeEpoch,
+			"miner %s sector %d must have activated on NV29", f.deals.ActorAddr, sn)
+		req.NotZero(info.Flags&miner.FULL_QA_POWER,
+			"miner %s sector %d must carry FULL_QA_POWER", f.deals.ActorAddr, sn)
+		req.Zero(info.DealWeight.Int64(),
+			"miner %s sector %d must carry no deal weight", f.deals.ActorAddr, sn)
+		want := big.Mul(big.NewInt(int64(solsticeSectorSize)), big.NewInt(int64(info.Expiration-info.PowerBaseEpoch)))
+		req.Equal(want.String(), info.VerifiedDealWeight.String(),
+			"miner %s sector %d must hold the whole sector's space over its whole duration",
+			f.deals.ActorAddr, sn)
+		req.Positive(info.InitialPledge.Uint64(),
+			"miner %s sector %d must carry a pledge", f.deals.ActorAddr, sn)
+	}
+
+	qap, _ := f.client.MinerQAP(f.ctx, f.deals.ActorAddr, head.Key())
+	req.Equal(unit*(10+10+1+1+1+10+10+10+10), qap,
+		"miner %s holds nine sectors, sectors %d and %d among them at 10x",
+		f.deals.ActorAddr, f.dD1, f.dD2)
+	f.requireHelperMatchesPower(t, f.deals.ActorAddr, head.Key())
+
+	unknown, err := f.client.StateGetClaim(f.ctx, f.deals.ActorAddr, verifreg.ClaimId(solsticeUnknownAllocation), head.Key())
+	req.NoError(err)
+	req.Nil(unknown, "miner %s sector %d must not create claim %d",
+		f.deals.ActorAddr, f.dD1, solsticeUnknownAllocation)
+	reused, err := f.client.StateGetClaim(f.ctx, f.deals.ActorAddr, verifreg.ClaimId(f.allocV1), head.Key())
+	req.NoError(err)
+	req.NotNil(reused, "miner %s claim %d must still serve", f.deals.ActorAddr, f.allocV1)
+	req.Equal(f.dV1, reused.Sector,
+		"miner %s claim %d must still point to sector %d, not %d", f.deals.ActorAddr, f.allocV1, f.dV1, f.dD2)
+
+	claimsWere, err := f.client.StateGetClaims(f.ctx, f.deals.ActorAddr, f.migrated)
+	req.NoError(err)
+	claimsAre, err := f.client.StateGetClaims(f.ctx, f.deals.ActorAddr, head.Key())
+	req.NoError(err)
+	req.Equal(claimsWere, claimsAre,
+		"miner %s's claims must read as the migration left them", f.deals.ActorAddr)
+
+	allocationsWere, err := f.client.StateGetAllocations(f.ctx, f.verifiedClient, f.migrated)
+	req.NoError(err)
+	allocationsAre, err := f.client.StateGetAllocations(f.ctx, f.verifiedClient, head.Key())
+	req.NoError(err)
+	req.Equal(allocationsWere, allocationsAre,
+		"client %s's allocations must read as the migration left them", f.verifiedClient)
+	req.Equal(f.datacapBalance(t, f.verifiedClient, f.migrated).String(),
+		f.datacapBalance(t, f.verifiedClient, head.Key()).String(),
+		"client %s's datacap balance must read as the migration left it", f.verifiedClient)
+
 	f.deals.AssertNoWindowPostError()
 }
 
@@ -683,7 +818,7 @@ func (f *solsticeLifecycle) upgradeSectorQuality(t *testing.T) {
 
 	native := f.sectorInfo(t, f.mixed.ActorAddr, f.mN3, types.EmptyTSK)
 	_, err = f.mixed.UpgradeSectorQuality([]abi.SectorNumber{f.mN3}, nil)
-	req.NoError(err, "upgrading a sector born at 10x must be accepted")
+	req.NoError(err, "upgrading a sector created at 10x must be accepted")
 	req.Equal(afterFirst, f.minerQAP(t, f.mixed.ActorAddr), "upgrading a native 10x sector must not move power")
 	req.NotZero(f.sectorInfo(t, f.mixed.ActorAddr, f.mN3, types.EmptyTSK).Flags&miner.FULL_QA_POWER,
 		"the native sector keeps its flag")
@@ -713,7 +848,7 @@ func (f *solsticeLifecycle) upgradeSectorQuality(t *testing.T) {
 	req.Equal(afterFirst, f.minerQAP(t, f.mixed.ActorAddr),
 		"a new expiration on an upgraded legacy sector must not move miner %s's power", f.mixed.ActorAddr)
 
-	// A batch that leaves one sector out: the two named rise, the third stays where it was.
+	// A batch that leaves one sector out, the two here will rise, the third stays where it was.
 	beforeBatch, networkBeforeBatch := f.qapAtHead(t, f.mixed.ActorAddr)
 	_, err = f.mixed.UpgradeSectorQuality([]abi.SectorNumber{l2, l3}, nil)
 	req.NoError(err)
@@ -779,11 +914,13 @@ func (f *solsticeLifecycle) extendSectors(t *testing.T) {
 		name   string
 		miner  *kit.TestUnmanagedMiner
 		sector abi.SectorNumber
+		claims []verifreg14.ClaimId // used in SectorsWithClaims; ESE2 consults no verifreg and ignores it
 	}
 	subjects := []subject{
 		{name: "legacy CC at 1x", miner: f.mixed, sector: f.mL[3]},
 		{name: "native CC at 10x", miner: f.mixed, sector: f.mN3},
-		{name: "legacy verified deal already extended on NV28", miner: f.deals, sector: f.dV2},
+		{name: "legacy verified deal already extended on NV28", miner: f.deals, sector: f.dV2,
+			claims: []verifreg14.ClaimId{verifreg14.ClaimId(f.allocV2)}},
 		{name: "legacy unverified deal", miner: f.deals, sector: f.dU1},
 	}
 
@@ -798,7 +935,7 @@ func (f *solsticeLifecycle) extendSectors(t *testing.T) {
 		}
 
 		target := before.Expiration + builtin.EpochsInDay
-		sub.miner.ExtendSectorExpiration(sub.sector, target)
+		sub.miner.ExtendSectorExpiration(sub.sector, target, sub.claims...)
 
 		head, err = f.client.ChainHead(f.ctx)
 		req.NoError(err)
@@ -1062,8 +1199,8 @@ func (f *solsticeLifecycle) terminations(t *testing.T) {
 		tier   uint64
 		left   uint64 // what the miner's remaining sectors are worth, in sector-size units
 	}{
-		{name: "an unverified deal sector at 1x", miner: f.deals, sector: f.dU2, tier: 1, left: 51},
-		{name: "a verified deal sector at 10x", miner: f.deals, sector: f.dV1, tier: 10, left: 41},
+		{name: "an unverified deal sector at 1x", miner: f.deals, sector: f.dU2, tier: 1, left: 71},
+		{name: "a verified deal sector at 10x", miner: f.deals, sector: f.dV1, tier: 10, left: 61},
 		{name: "a CC sector at 1x", miner: f.mixed, sector: f.mL[3], tier: 1, left: 110},
 		{name: "a CC sector at 10x", miner: f.mixed, sector: f.mL[0], tier: 10, left: 100},
 	} {
@@ -1165,6 +1302,24 @@ func (f *solsticeLifecycle) maxTerminationFee(t *testing.T, power uint64, pledge
 	var fee miner.MaxTerminationFeeReturn
 	req.NoError(fee.UnmarshalCBOR(bytes.NewReader(lookup.Receipt.Return)))
 	return fee
+}
+
+// datacapBalance reads an address's datacap token balance through a StateCall.
+func (f *solsticeLifecycle) datacapBalance(t *testing.T, addr address.Address, tsk types.TipSetKey) abi.TokenAmount {
+	t.Helper()
+	req := require.New(t)
+
+	params := must.One(actors.SerializeParams(&addr))
+	res, err := f.client.StateCall(f.ctx, &types.Message{
+		From: f.mixed.OwnerKey.Address, To: datacap.Address,
+		Method: datacap.Methods.BalanceExported, Params: params, Value: big.Zero(),
+	}, tsk)
+	req.NoError(err)
+	req.Equal(exitcode.Ok, res.MsgRct.ExitCode, "datacap Balance for %s", addr)
+
+	var balance abi.TokenAmount
+	req.NoError(balance.UnmarshalCBOR(bytes.NewReader(res.MsgRct.Return)))
+	return balance
 }
 
 // qapAtHead reads the miner's and the network's quality-adjusted power together, at the head, so the
