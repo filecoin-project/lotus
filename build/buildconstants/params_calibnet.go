@@ -130,7 +130,8 @@ const UpgradeGoldenWeekHeight abi.ChainEpoch = 3007294
 // 2026-05-07T14:00:00Z
 const UpgradeFireHorseHeight = 3694534
 
-const UpgradeSolsticeHeight = 999999999999999
+// 2026-09-23T13:00:00Z
+const UpgradeSolsticeHeight = 4094734
 
 var ConsensusMinerMinPower = abi.NewStoragePower(32 << 30)
 var PreCommitChallengeDelay = abi.ChainEpoch(150)
