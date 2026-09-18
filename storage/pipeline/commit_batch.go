@@ -314,7 +314,9 @@ func (b *CommitBatcher) processBatchV2(cfg sealiface.Config, sectors []abi.Secto
 
 		collateral = big.Add(collateral, sc)
 
-		if len(manifest.Pieces) > 0 {
+		// From nv29 (FIP-0118) the miner actor ignores verified_allocation_key and claim terms no
+		// longer bound sector expiration, so there is nothing to check.
+		if nv < network.Version29 && len(manifest.Pieces) > 0 {
 			precomitInfo, err := b.api.StateSectorPreCommitInfo(b.mctx, b.maddr, sector, ts.Key())
 			if err != nil {
 				res.FailedSectors[sector] = err.Error()

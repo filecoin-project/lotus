@@ -2,6 +2,7 @@ package sealing
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -11,12 +12,13 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/crypto"
+	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/storage/pipeline/mocks"
+	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
 )
 
 // From nv29, FIP-0118 gives every sector maximum quality-adjusted power regardless of its deal
@@ -88,28 +90,90 @@ func TestGetSectorCollateralVerifiedSize(t *testing.T) {
 	}
 }
 
-func makeTestTipSet(t *testing.T, height abi.ChainEpoch) *types.TipSet {
-	t.Helper()
-
-	dummyCid, err := cid.Parse("bafkqaaa")
+// From nv29 (FIP-0118) the miner actor ignores verified_allocation_key, so ProveCommit shouldn't
+// gate on verifreg.
+func TestProcessBatchV2AllocationCheck(t *testing.T) {
+	maddr, err := address.NewIDAddress(123)
 	require.NoError(t, err)
 
-	dummyAddr, err := address.NewIDAddress(0)
+	const sectorNumber = abi.SectorNumber(42)
+	const height = abi.ChainEpoch(100)
+	const expiration = abi.ChainEpoch(1000)
+
+	sealProof := abi.RegisteredSealProof_StackedDrg32GiBV1_1
+	ssize, err := sealProof.SectorSize()
 	require.NoError(t, err)
 
-	ts, err := types.NewTipSet([]*types.BlockHeader{{
-		Height:                height,
-		Miner:                 dummyAddr,
-		Parents:               []cid.Cid{},
-		Ticket:                &types.Ticket{VRFProof: []byte{byte(height % 2)}},
-		ParentStateRoot:       dummyCid,
-		Messages:              dummyCid,
-		ParentMessageReceipts: dummyCid,
-		BlockSig:              &crypto.Signature{Type: crypto.SigTypeBLS},
-		BLSAggregate:          &crypto.Signature{Type: crypto.SigTypeBLS},
-		ParentBaseFee:         big.Zero(),
-	}})
+	pieceCid, err := cid.Parse("bafkqaaa")
 	require.NoError(t, err)
 
-	return ts
+	allocKey := &miner.VerifiedAllocationKey{Client: 1000, ID: 1}
+	client, err := address.NewIDAddress(uint64(allocKey.Client))
+	require.NoError(t, err)
+
+	for _, tc := range []struct {
+		name string
+		nv   network.Version
+	}{
+		{"nv28 checks the allocation", network.Version28},
+		{"nv29 skips the allocation", network.Version29},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+			api := mocks.NewMockCommitBatcherApi(ctrl)
+
+			ts := makeTestTipSet(t, height)
+			api.EXPECT().ChainHead(gomock.Any()).AnyTimes().Return(ts, nil)
+			api.EXPECT().StateSectorPreCommitInfo(gomock.Any(), maddr, sectorNumber, ts.Key()).AnyTimes().Return(
+				&miner.SectorPreCommitOnChainInfo{
+					Info:             miner.SectorPreCommitInfo{SealProof: sealProof, Expiration: expiration},
+					PreCommitDeposit: big.Zero(),
+				}, nil)
+			api.EXPECT().StateNetworkVersion(gomock.Any(), ts.Key()).AnyTimes().Return(tc.nv, nil)
+			api.EXPECT().StateMinerInitialPledgeForSector(
+				gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(),
+			).Return(big.NewInt(1000), nil)
+
+			b := &CommitBatcher{
+				api:   api,
+				maddr: maddr,
+				mctx:  context.Background(),
+				todo: map[abi.SectorNumber]AggregateInput{sectorNumber: {
+					Spt: sealProof,
+					ActivationManifest: miner.SectorActivationManifest{
+						SectorNumber: sectorNumber,
+						Pieces: []miner.PieceActivationManifest{{
+							CID:                   pieceCid,
+							Size:                  abi.PaddedPieceSize(ssize),
+							VerifiedAllocationKey: allocKey,
+						}},
+					},
+				}},
+			}
+
+			cfg := sealiface.Config{CollateralFromMinerBalance: true}
+
+			if tc.nv < network.Version29 {
+				// No allocation on chain, so the sector fails the check and the batch empties out.
+				api.EXPECT().StateGetAllocation(gomock.Any(), client, verifregtypes.AllocationId(allocKey.ID), ts.Key()).
+					Return(nil, nil)
+
+				res, err := b.processBatchV2(cfg, []abi.SectorNumber{sectorNumber}, tc.nv, false)
+				require.NoError(t, err)
+				require.Nil(t, res)
+				return
+			}
+
+			// Past the check the batch runs on; stop it at the next call out.
+			balanceErr := errors.New("no balance for you")
+			api.EXPECT().StateMinerAvailableBalance(gomock.Any(), maddr, types.EmptyTSK).Return(big.Zero(), balanceErr)
+
+			res, err := b.processBatchV2(cfg, []abi.SectorNumber{sectorNumber}, tc.nv, false)
+			require.ErrorIs(t, err, balanceErr)
+			require.Len(t, res, 1)
+			require.Empty(t, res[0].FailedSectors)
+			require.Equal(t, []abi.SectorNumber{sectorNumber}, res[0].Sectors)
+		})
+	}
 }
