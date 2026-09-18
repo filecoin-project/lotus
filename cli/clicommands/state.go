@@ -45,6 +45,7 @@ var StateCmd = &cli.Command{
 		lcli.StateNtwkVersionCmd,
 		lcli.StateMinerProvingDeadlineCmd,
 		lcli.StateSysActorCIDsCmd,
+		lcli.StateRewardCmd,
 	},
 }
 

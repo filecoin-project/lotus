@@ -86,7 +86,48 @@ var UpgradeGoldenWeekHeight = abi.ChainEpoch(-31)
 
 const UpgradeFireHorseHeight = -32
 
-const UpgradeSolsticeHeight = 999999999999999
+const UpgradeSolsticeHeight = UpgradeHeightUnscheduled
+
+// SolsticeEpochsPerQuarter matches the quarter the SRA is deployed with: two hours on
+// butterflynet. The ramp runs nine of them.
+const SolsticeEpochsPerQuarter = abi.ChainEpoch(builtin2.EpochsInHour * 2)
+
+// FIP-0118: reward actor bootstrap state installed by the Solstice migration.
+//
+// script/Deploy.s.sol in the solstice repo deploys the contracts from a throwaway key, published
+// here so anyone can redeploy after a butterflynet reset:
+//
+//	key 1, deployer, owner 1 and InitialOrchestrator
+//	  0x50891ab8b7707035ff59b3738aa36e8ddd6c996bd40799f8a41ce166ef0c99ea
+//	  0x48C7DC38e74C9fA9eA6484Ad6Ad0520349dC9B40
+//	key 2, owner 2
+//	  0x09a31df81dc2d88091221894caf8fc43f6b9e59e88f82383b500fc244c936ed8
+//	  0x831246Ec4A91eF36acA821068b95A9EF1765C514
+//
+// Deployer nonce 0 is the SRA implementation, 1 the SRA proxy, 2 the SWA implementation, 3 the
+// SWA proxy, so the two proxy addresses below follow from the deployer address alone. Fund key 1,
+// then take all four nonces in one run from the solstice repo, against the Eth RPC so the sender
+// is the f410 form of the deployer:
+//
+//	forge script script/Deploy.s.sol --broadcast --skip-simulation \
+//	  --rpc-url $ETH_RPC_URL --private-key 0x5089...99ea
+var UpgradeSolsticeRewardBootstrapParams = SolsticeRewardBootstrapParams{
+	SWATimelockEpochs:                 40, // twenty minutes
+	ConsensusWeightRampDurationEpochs: SolsticeEpochsPerQuarter * 9,
+	ConsensusWeight: SolsticeRewardWeightParams{
+		VStart: 95 * solsticeRewardWeightPercent,
+		Floor:  50 * solsticeRewardWeightPercent,
+		Cap:    95 * solsticeRewardWeightPercent,
+	},
+	ServiceWeight: SolsticeRewardWeightParams{
+		VStart: 5 * solsticeRewardWeightPercent,
+		Floor:  5 * solsticeRewardWeightPercent,
+		Cap:    10 * solsticeRewardWeightPercent,
+	},
+	SWAActor:            MustParseFilOrEthAddress("0x17c43bC9d8E8600ebE7599C18f2dA2D5CED68D95"),
+	SRAActor:            MustParseFilOrEthAddress("0xea340224F4df7D01d2657964215E37452165b0A1"),
+	InitialOrchestrator: MustParseFilOrEthAddress("0x48C7DC38e74C9fA9eA6484Ad6Ad0520349dC9B40"),
+}
 
 var ConsensusMinerMinPower = abi.NewStoragePower(2 << 30)
 var PreCommitChallengeDelay = abi.ChainEpoch(150)

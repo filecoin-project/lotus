@@ -118,6 +118,7 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
 
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -307,11 +308,20 @@ func bundleTransitionsFromSchedule() []bundleTransition {
 		if err != nil || newAV <= prevAV || prevAV < minActorsVersion {
 			continue
 		}
+		// nv29 uses the neutral, consensus-only reward bootstrap, as kit.LatestActorsAt does.
+		// The production parameters leave SWAActor/SRAActor/InitialOrchestrator as address.Undef
+		// until the Solstice contracts are deployed, and the migrator rejects an unset
+		// distribution writer. The canary only needs the bundle swap, not the reward wiring.
+		migration := up.Migration
+		if up.Network == network.Version29 {
+			migration = filcns.UpgradeActorsV19With(buildconstants.NeutralSolsticeRewardBootstrapParams)
+		}
+
 		out = append(out, bundleTransition{
 			label:     fmt.Sprintf("v%d->v%d (nv%d)", prevAV, newAV, up.Network),
 			genesisNV: up.Network - 1,
 			upgradeNV: up.Network,
-			migration: up.Migration,
+			migration: migration,
 		})
 	}
 	return out

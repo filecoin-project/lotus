@@ -422,9 +422,11 @@ func (r *publishStorageDealsReturn{{.v}}) DealIDs() ([]abi.DealID, error) {
 }
 
 func (s *state{{.v}}) GetAllocationIdForPendingDeal(dealId abi.DealID) (verifregtypes.AllocationId, error) {
-{{if (le .v 8)}}
-    	return verifregtypes.NoAllocationID, xerrors.Errorf("unsupported before actors v9")
-{{else}}
+{{- if (le .v 8)}}
+	return verifregtypes.NoAllocationID, xerrors.Errorf("unsupported before actors v9")
+{{else if (ge .v 19)}}
+	return verifregtypes.NoAllocationID, xerrors.Errorf("unsupported from actors v19")
+{{- else}}
 	allocations, err := adt{{.v}}.AsMap(s.store, s.PendingDealAllocationIds, builtin.DefaultHamtBitwidth)
     if err != nil {
         return verifregtypes.NoAllocationID, xerrors.Errorf("failed to load allocation id for %d: %w", dealId, err)
@@ -440,7 +442,7 @@ func (s *state{{.v}}) GetAllocationIdForPendingDeal(dealId abi.DealID) (verifreg
 	}
 
 	return verifregtypes.AllocationId(allocationId), nil
-{{end}}
+{{end -}}
 }
 
 

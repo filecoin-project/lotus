@@ -11,7 +11,16 @@
 
 ## ☢️ Upgrade Warnings ☢️
 
+- **Network version 29 (Solstice, [FIP-0118](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0118.md))** introduces built-in actors v19. Every new sector receives maximum quality-adjusted power regardless of its content, and the verified registry and DataCap actors are frozen. ([filecoin-project/lotus#13747](https://github.com/filecoin-project/lotus/pull/13747))
+- The Solstice migration installs reward actor bootstrap state from per-network parameters, resolving the service-weight authority, service-rewards actor and initial orchestrator to ID addresses against the state tree at the upgrade epoch. ([filecoin-project/lotus#13747](https://github.com/filecoin-project/lotus/pull/13747))
+- DataCap and verified-registry writes are refused from nv29: `lotus filplus` datacap commands retire, `lotus-miner sectors extend --drop-claims` is rejected, and `--only-cc` has been removed in favour of `--exclude`. Use `lotus-miner sectors upgrade-quality` to raise legacy sectors instead. ([filecoin-project/lotus#13747](https://github.com/filecoin-project/lotus/pull/13747))
+- `StateMinerInitialPledgeCollateral` returns an error from nv29, because a `SectorPreCommitInfo` no longer describes any part of the pledge. Use `StateMinerInitialPledgeForSector`, passing the full sector size as the verified size. ([filecoin-project/lotus#13747](https://github.com/filecoin-project/lotus/pull/13747))
+- `PreCommitSectorBatch2` rejects a non-empty `deal_ids` from nv29, and the sealing pipeline refuses such a sector when it is queued. ([filecoin-project/lotus#13747](https://github.com/filecoin-project/lotus/pull/13747))
+- **F3 Prometheus metric names may change**: The OpenTelemetry Prometheus exporter has been bumped from v0.50.0 to v0.68.0, which changes how metric unit suffixes are applied. F3 metrics with unit `"s"` (seconds) or `"By"` (bytes) may gain `_seconds` or `_bytes` suffixes in their Prometheus names. This only affects `f3_*` metrics -- core Lotus metrics (`lotus_*`) are exported via the separate OpenCensus exporter, which is unchanged. Operators with dashboards or alerting rules that query `f3_*` metrics should verify metric names after upgrading. ([filecoin-project/lotus#13511](https://github.com/filecoin-project/lotus/pull/13511))
+
 ## ⭐ New Features
+
+- feat(cli): `lotus-miner sectors` (FIP-0118 Solstice / nv29) gained an `upgrade-quality` subcommand to upgrade legacy 1x-QA sectors to full QA power. ([filecoin-project/lotus#13781](https://github.com/filecoin-project/lotus/pull/13781))
 
 ## 🐛 Bug Fixes
 
@@ -26,7 +35,6 @@ Lotus Node v1.36.3 is a recommended patch release focused on Ethereum RPC correc
 ## ☢️ Upgrade Warnings ☢️
 
 - `lotus state active-sectors` has been removed and merged into `lotus state sectors`, which now defaults to active sectors only (previously it returned every committed sector). Use `lotus state sectors --all` for the previous full-sector-set behavior. ([filecoin-project/lotus#13743](https://github.com/filecoin-project/lotus/pull/13743))
-- **F3 Prometheus metric names may change**: The OpenTelemetry Prometheus exporter has been bumped from v0.50.0 to v0.63.0, which changes how metric unit suffixes are applied. F3 metrics with unit `"s"` (seconds) or `"By"` (bytes) may gain `_seconds` or `_bytes` suffixes in their Prometheus names. This only affects `f3_*` metrics -- core Lotus metrics (`lotus_*`) are exported via the separate OpenCensus exporter, which is unchanged. Operators with dashboards or alerting rules that query `f3_*` metrics should verify metric names after upgrading. ([filecoin-project/lotus#13511](https://github.com/filecoin-project/lotus/pull/13511))
 
 ## ⭐ New Features
 

@@ -88,6 +88,30 @@ const UpgradeFireHorseHeight = -32
 
 const UpgradeSolsticeHeight = 50
 
+// SolsticeEpochsPerQuarter matches the quarter the SRA is deployed with: one day, as on
+// calibnet. The ramp runs nine of them.
+const SolsticeEpochsPerQuarter = abi.ChainEpoch(builtin.EpochsInDay)
+
+// FIP-0118: reward actor bootstrap state installed by the Solstice migration.
+// Generic devnets disable governance and send service rewards to burnt funds.
+var UpgradeSolsticeRewardBootstrapParams = SolsticeRewardBootstrapParams{
+	SWATimelockEpochs:                 builtin2.EpochsInHour,
+	ConsensusWeightRampDurationEpochs: SolsticeEpochsPerQuarter * 9,
+	ConsensusWeight: SolsticeRewardWeightParams{
+		VStart: 95 * solsticeRewardWeightPercent,
+		Floor:  50 * solsticeRewardWeightPercent,
+		Cap:    95 * solsticeRewardWeightPercent,
+	},
+	ServiceWeight: SolsticeRewardWeightParams{
+		VStart: 5 * solsticeRewardWeightPercent,
+		Floor:  5 * solsticeRewardWeightPercent,
+		Cap:    10 * solsticeRewardWeightPercent,
+	},
+	SWAActor:            builtin.SystemActorAddr,
+	SRAActor:            builtin.SystemActorAddr,
+	InitialOrchestrator: builtin.SystemActorAddr,
+}
+
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandQuicknet,
 }

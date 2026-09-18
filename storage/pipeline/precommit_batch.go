@@ -324,6 +324,19 @@ func (b *PreCommitBatcher) AddPreCommit(ctx context.Context, s SectorInfo, depos
 		return sealiface.PreCommitBatchRes{}, err
 	}
 
+	nv, err := b.api.StateNetworkVersion(b.mctx, ts.Key())
+	if err != nil {
+		return sealiface.PreCommitBatchRes{}, xerrors.Errorf("getting network version: %w", err)
+	}
+
+	// From nv29 (FIP-0118) a sector carrying deal IDs cannot pre-commit: the market no longer
+	// records pre-commit deals.
+	if nv >= network.Version29 && len(in.DealIDs) > 0 {
+		return sealiface.PreCommitBatchRes{}, xerrors.Errorf(
+			"sector %d carries %d deal_ids, which PreCommitSectorBatch2 rejects from network version 29 (FIP-0118)",
+			s.SectorNumber, len(in.DealIDs))
+	}
+
 	dealStartCutoff := getDealStartCutoff(s)
 	if dealStartCutoff <= ts.Height() {
 		return sealiface.PreCommitBatchRes{}, xerrors.Errorf("cutoff has already passed (cutoff %d <= curEpoch %d)", dealStartCutoff, ts.Height())

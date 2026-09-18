@@ -2,12 +2,14 @@ package kit
 
 import (
 	"context"
+	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -30,4 +32,12 @@ func (f *TestFullNode) AssertActorType(ctx context.Context, addr address.Address
 
 	// check the code CID
 	require.Equal(f.t, codecid, act.Code)
+}
+
+func MustActor(ctx context.Context, t *testing.T, node api.FullNode, addr address.Address, tsk types.TipSetKey) *types.Actor {
+	t.Helper()
+	req := require.New(t)
+	actor, err := node.StateGetActor(ctx, addr, tsk)
+	req.NoError(err)
+	return actor
 }

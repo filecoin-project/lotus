@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-commp-utils/v2"
+	"github.com/filecoin-project/go-commp-utils/v2/zerocomm"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	miner16 "github.com/filecoin-project/go-state-types/builtin/v16/miner"
@@ -112,6 +113,44 @@ func TestOnboardRawPiece(t *testing.T) {
 	si, err := miner.SectorsStatus(ctx, so.Sector, false)
 	require.NoError(t, err)
 	require.Equal(t, dc.PieceCID, *si.CommD)
+
+	var epochZero abi.ChainEpoch
+	events, err := miner.FullNode.GetActorEventsRaw(ctx, &types.ActorEventFilter{FromHeight: &epochZero})
+	require.NoError(t, err)
+
+	// genesis preseals emit no events, so the only sector in the lifecycle events is ours
+	precommitted := filterEvents(events, "sector-precommitted")
+	require.Len(t, precommitted, 1)
+	require.Equal(t, []types.EventEntry{
+		{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "$type", Value: must.One(ipld.Encode(basicnode.NewString("sector-precommitted"), dagcbor.Encode))},
+		{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "sector", Value: must.One(ipld.Encode(basicnode.NewInt(int64(so.Sector)), dagcbor.Encode))},
+	}, precommitted[0].Entries)
+
+	// the sector carries only our piece, so its unsealed CID is that piece's CID
+	activated := filterEvents(events, "sector-activated")
+	require.Len(t, activated, 1)
+	require.Equal(t, []types.EventEntry{
+		{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "$type", Value: must.One(ipld.Encode(basicnode.NewString("sector-activated"), dagcbor.Encode))},
+		{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "sector", Value: must.One(ipld.Encode(basicnode.NewInt(int64(so.Sector)), dagcbor.Encode))},
+		{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "unsealed-cid", Value: must.One(ipld.Encode(basicnode.NewLink(cidlink.Link{Cid: dc.PieceCID}), dagcbor.Encode))},
+		{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "piece-cid", Value: must.One(ipld.Encode(basicnode.NewLink(cidlink.Link{Cid: dc.PieceCID}), dagcbor.Encode))},
+		{Flags: 0x01, Codec: uint64(multicodec.Cbor), Key: "piece-size", Value: must.One(ipld.Encode(basicnode.NewInt(int64(pieceSize.Padded())), dagcbor.Encode))},
+	}, activated[0].Entries)
+}
+
+// filterEvents returns the events whose $type entry matches key.
+func filterEvents(events []*types.ActorEvent, key string) []*types.ActorEvent {
+	keyBytes := must.One(ipld.Encode(basicnode.NewString(key), dagcbor.Encode))
+	filtered := make([]*types.ActorEvent, 0)
+	for _, event := range events {
+		for _, e := range event.Entries {
+			if e.Key == "$type" && bytes.Equal(e.Value, keyBytes) {
+				filtered = append(filtered, event)
+				break
+			}
+		}
+	}
+	return filtered
 }
 
 func TestOnboardMixedMarketDDO(t *testing.T) {
@@ -255,6 +294,23 @@ func TestOnboardMixedMarketDDO(t *testing.T) {
 	ds, err := client.StateMarketStorageDeal(ctx, dealID, types.EmptyTSK)
 	require.NoError(t, err)
 	require.NotEqual(t, -1, ds.State.SectorStartEpoch)
+
+	// Exercising the StateComputeDataCID API, because this is as good a place as any
+	dataCID, err := client.StateComputeDataCID(ctx, maddr, abi.RegisteredSealProof_StackedDrg2KiBV1_1, []abi.DealID{dealID}, types.EmptyTSK)
+	require.NoError(t, err)
+	// PieceAggregateCommP aggregates exactly the pieces it is given; the sector size is the
+	// aggregation width, so the remainder needs an explicit zero piece.
+	padSize := abi.PaddedPieceSize(2048) - ds.Proposal.PieceSize
+	expectDealCommD, _, err := commp.PieceAggregateCommP(abi.RegisteredSealProof_StackedDrg2KiBV1_1,
+		[]abi.PieceInfo{
+			{Size: ds.Proposal.PieceSize, PieceCID: ds.Proposal.PieceCID},
+			{Size: padSize, PieceCID: zerocomm.ZeroPieceCommitment(padSize.Unpadded())},
+		})
+	require.NoError(t, err)
+	require.Equal(t, expectDealCommD, dataCID)
+
+	_, err = client.StateComputeDataCID(ctx, ds.Proposal.Client, abi.RegisteredSealProof_StackedDrg2KiBV1_1, []abi.DealID{dealID}, types.EmptyTSK)
+	require.ErrorContains(t, err, "expected")
 
 	// verify that the daily fee was set up correctly
 	soci, err := client.StateSectorGetInfo(ctx, miner.ActorAddr, si.SectorID, types.EmptyTSK)

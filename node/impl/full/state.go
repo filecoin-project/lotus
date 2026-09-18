@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math"
 	"strconv"
 
 	"github.com/ipfs/go-cid"
@@ -19,7 +18,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
-	market12 "github.com/filecoin-project/go-state-types/builtin/v12/market"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
@@ -987,45 +985,33 @@ func (a *StateAPI) StateComputeDataCID(ctx context.Context, maddr address.Addres
 		return cid.Undef, nil
 	}
 
-	var err error
-	ccparams, err := actors.SerializeParams(&market12.VerifyDealsForActivationParams{
-		Sectors: []market12.SectorDeals{{
-			SectorType:   sectorType,
-			SectorExpiry: math.MaxInt64,
-			DealIDs:      deals,
-		}},
-	})
-
+	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("computing params for VerifyDealsForActivation: %w", err)
-	}
-	ccmt := &types.Message{
-		To:     market.Address,
-		From:   maddr,
-		Value:  types.NewInt(0),
-		Method: market.Methods.VerifyDealsForActivation,
-		Params: ccparams,
-	}
-	r, err := a.StateCall(ctx, ccmt, tsk)
-	if err != nil {
-		return cid.Undef, xerrors.Errorf("calling VerifyDealsForActivation: %w", err)
-	}
-	if r.MsgRct.ExitCode != 0 {
-		return cid.Undef, xerrors.Errorf("receipt for VerifyDealsForActivation had exit code %d", r.MsgRct.ExitCode)
+		return cid.Undef, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	var cr market12.VerifyDealsForActivationReturn
-	if err := cr.UnmarshalCBOR(bytes.NewReader(r.MsgRct.Return)); err != nil {
-		return cid.Undef, xerrors.Errorf("failed to unmarshal CBOR to VerifyDealsForActivationReturn: %w", err)
+	// Deal proposals record the provider as an ID address.
+	provider, err := a.StateLookupID(ctx, maddr, tsk)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("resolving provider %s: %w", maddr, err)
 	}
-	if len(cr.UnsealedCIDs) != 1 {
-		return cid.Undef, xerrors.Errorf("Sectors output must have 1 entry")
+
+	pieces := make([]abi.PieceInfo, 0, len(deals))
+	for _, dealID := range deals {
+		deal, err := stmgr.GetStorageDeal(ctx, a.StateManager, dealID, ts)
+		if err != nil {
+			return cid.Undef, xerrors.Errorf("loading deal %d: %w", dealID, err)
+		}
+		if deal.Proposal.Provider != provider {
+			return cid.Undef, xerrors.Errorf("deal %d has provider %s, expected %s", dealID, deal.Proposal.Provider, provider)
+		}
+		pieces = append(pieces, abi.PieceInfo{
+			Size:     deal.Proposal.PieceSize,
+			PieceCID: deal.Proposal.PieceCID,
+		})
 	}
-	ucid := cr.UnsealedCIDs[0]
-	if ucid == nil {
-		return cid.Undef, xerrors.Errorf("computed data CID is nil")
-	}
-	return *ucid, nil
+
+	return proofs.GenerateUnsealedCID(sectorType, pieces)
 }
 
 func (a *StateAPI) StateChangedActors(ctx context.Context, old cid.Cid, new cid.Cid) (map[string]types.Actor, error) {
@@ -1470,6 +1456,12 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	// From nv29 (FIP-0118) every sector holds maximum quality-adjusted power, so a
+	// SectorPreCommitInfo is irrelevant.
+	if a.StateManager.GetNetworkVersion(ctx, ts.Height()) >= network.Version29 {
+		return types.EmptyInt, errors.New("StateMinerInitialPledgeCollateral is unsupported from network version 29 (FIP-0118): use StateMinerInitialPledgeForSector")
 	}
 
 	state, err := a.StateManager.ParentState(ts)

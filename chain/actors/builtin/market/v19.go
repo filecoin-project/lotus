@@ -389,23 +389,7 @@ func (r *publishStorageDealsReturn19) DealIDs() ([]abi.DealID, error) {
 }
 
 func (s *state19) GetAllocationIdForPendingDeal(dealId abi.DealID) (verifregtypes.AllocationId, error) {
-
-	allocations, err := adt19.AsMap(s.store, s.PendingDealAllocationIds, builtin.DefaultHamtBitwidth)
-	if err != nil {
-		return verifregtypes.NoAllocationID, xerrors.Errorf("failed to load allocation id for %d: %w", dealId, err)
-	}
-
-	var allocationId cbg.CborInt
-	found, err := allocations.Get(abi.UIntKey(uint64(dealId)), &allocationId)
-	if err != nil {
-		return verifregtypes.NoAllocationID, xerrors.Errorf("failed to load allocation id for %d: %w", dealId, err)
-	}
-	if !found {
-		return verifregtypes.NoAllocationID, nil
-	}
-
-	return verifregtypes.AllocationId(allocationId), nil
-
+	return verifregtypes.NoAllocationID, xerrors.Errorf("unsupported from actors v19")
 }
 
 func (s *state19) ActorKey() string {

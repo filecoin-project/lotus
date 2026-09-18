@@ -4751,7 +4751,8 @@ Response:
 ```
 
 ### StateGetAllocationForPendingDeal
-StateGetAllocationForPendingDeal returns the allocation for a given deal ID of a pending deal.
+StateGetAllocationForPendingDeal returns the allocation for a given deal ID of a pending deal. It returns an
+unsupported error for tipsets at network version 29 or later.
 
 
 Perms: read
@@ -5478,7 +5479,10 @@ Response:
 ```
 
 ### StateMinerInitialPledgeCollateral
-StateMinerInitialPledgeCollateral returns the initial pledge collateral for the specified miner's sector
+StateMinerInitialPledgeCollateral returns the initial pledge collateral for the specified miner's sector.
+From network version 29 (FIP-0118) it returns an error: every sector receives maximum
+quality-adjusted power regardless of its deal content, so a SectorPreCommitInfo no longer
+describes a pledge. Use StateMinerInitialPledgeForSector on the v1 API instead.
 
 
 Perms: read

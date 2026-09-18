@@ -5,6 +5,10 @@ import (
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
+{{if (ge .v 19)}}
+	"github.com/filecoin-project/go-state-types/big"
+	"golang.org/x/xerrors"
+{{end}}
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
@@ -33,11 +37,17 @@ func load{{.v}}(store adt.Store, root cid.Cid) (State, error) {
 	return &out, nil
 }
 
-func make{{.v}}(store adt.Store, currRealizedPower abi.StoragePower) (State, error) {
+{{if (ge .v 19)}}func make{{.v}}(store adt.Store, currRealizedPower abi.StoragePower) (State, error) {
+	st, err := reward{{.v}}.ConstructState(store, currRealizedPower)
+	if err != nil {
+		return nil, err
+	}
+	return &state{{.v}}{State: *st, store: store}, nil
+}{{else}}func make{{.v}}(store adt.Store, currRealizedPower abi.StoragePower) (State, error) {
 	out := state{{.v}}{store: store}
 	out.State = *reward{{.v}}.ConstructState(currRealizedPower)
 	return &out, nil
-}
+}{{end}}
 
 type state{{.v}} struct {
 	reward{{.v}}.State
@@ -64,8 +74,11 @@ func (s *state{{.v}}) ThisEpochBaselinePower() (abi.StoragePower, error) {
 }
 
 func (s *state{{.v}}) TotalStoragePowerReward() (abi.TokenAmount, error) {
-	return s.State.{{if (ge .v 2)}}TotalStoragePowerReward{{else}}TotalMined{{end}}, nil
-}
+{{if (ge .v 19)}}	// Since v19 this adapter reports all FIL minted by f02, not only miner rewards.
+	// Circulating supply subtracts the burnt-funds balance, cancelling f02's residual burn.
+	return s.State.TotalMintedReward, nil
+{{else}}	return s.State.{{if (ge .v 2)}}TotalStoragePowerReward{{else}}TotalMined{{end}}, nil
+{{end}}}
 
 func (s *state{{.v}}) EffectiveBaselinePower() (abi.StoragePower, error) {
 	return s.State.EffectiveBaselinePower, nil
@@ -129,6 +142,147 @@ func (s *state{{.v}}) PreCommitDepositForPower(networkQAPower builtin.FilterEsti
 		},
 		sectorWeight), nil
 }
+
+{{if (ge .v 19)}}func (s *state{{.v}}) StreamLedger(epoch abi.ChainEpoch) (*StreamLedger, error) {
+	streams, err := s.State.LoadStreams(s.store)
+	if err != nil {
+		return nil, err
+	}
+
+	accrued := make(map[StreamID]abi.TokenAmount, len(s.State.Accrued))
+	for _, accrual := range s.State.Accrued {
+		accrued[StreamID(accrual.ID)] = accrual.Amount
+	}
+
+	ledger := &StreamLedger{
+		Epoch:               epoch,
+		SWAActor:            s.State.SWAActor,
+		SWATimelock:         s.State.SWATimelockEpochs,
+		TotalMinted:         s.State.TotalMintedReward,
+		TotalBurnMinted:     s.State.TotalBurnMinted,
+		TotalExplicitMinted: s.State.TotalExplicitMinted,
+		Streams:             make([]Stream, 0, len(streams.Streams)),
+		Tombstones:          make([]Tombstone, 0, len(streams.Tombstones)),
+		PendingWrites:       make([]PendingWrite, 0, len(streams.PendingWritesQueue)),
+	}
+
+	explicit := 0
+	for _, stream := range streams.Streams {
+		weight := WeightRecord(stream.Weight)
+		out := Stream{
+			ID:              StreamID(stream.ID),
+			Weight:          weight,
+			EvaluatedWeight: ComputeWeight(weight, epoch),
+			Implicit:        stream.Distribution == nil,
+			Accrued:         big.Zero(),
+		}
+		if stream.Distribution != nil {
+			amount, ok := accrued[StreamID(stream.ID)]
+			if !ok {
+				return nil, fmt.Errorf("explicit stream %d has no accrual row", stream.ID)
+			}
+			explicit++
+			out.Writer = stream.Distribution.Writer
+			out.Accrued = amount
+			out.Shares = fromV{{.v}}RecipientShares(stream.Distribution.Shares)
+			out.Payable = fromV{{.v}}RecipientAmounts(stream.Distribution.Payable)
+			out.ClaimedPeriod = fromV{{.v}}RecipientAmounts(stream.Distribution.ClaimedPeriod)
+		}
+		ledger.Streams = append(ledger.Streams, out)
+	}
+	if explicit != len(s.State.Accrued) {
+		return nil, fmt.Errorf("%d accrual rows for %d explicit streams", len(s.State.Accrued), explicit)
+	}
+
+	for _, tombstone := range streams.Tombstones {
+		ledger.Tombstones = append(ledger.Tombstones, Tombstone{
+			ID:      StreamID(tombstone.ID),
+			Payable: fromV{{.v}}RecipientAmounts(tombstone.Payable),
+		})
+	}
+
+	for _, write := range streams.PendingWritesQueue {
+		decoded, err := fromV{{.v}}PendingWrite(write)
+		if err != nil {
+			return nil, err
+		}
+		ledger.PendingWrites = append(ledger.PendingWrites, decoded)
+	}
+
+	return ledger, nil
+}
+
+func fromV{{.v}}RecipientShares(v{{.v}} []reward{{.v}}.RecipientShare) []RecipientShare {
+	if v{{.v}} == nil {
+		return nil
+	}
+	shares := make([]RecipientShare, 0, len(v{{.v}}))
+	for _, share := range v{{.v}} {
+		shares = append(shares, RecipientShare{Recipient: share.Recipient, Share: share.Share})
+	}
+	return shares
+}
+
+func fromV{{.v}}RecipientAmounts(v{{.v}} []reward{{.v}}.RecipientAmount) []RecipientAmount {
+	if v{{.v}} == nil {
+		return nil
+	}
+	amounts := make([]RecipientAmount, 0, len(v{{.v}}))
+	for _, row := range v{{.v}} {
+		amounts = append(amounts, RecipientAmount{Recipient: row.Recipient, Amount: row.Amount})
+	}
+	return amounts
+}
+
+func fromV{{.v}}PendingWrite(v{{.v}} reward{{.v}}.PendingWrite) (PendingWrite, error) {
+	out := PendingWrite{
+		Op:             PendingWriteOp(v{{.v}}.Op),
+		EffectiveEpoch: v{{.v}}.EffectiveEpoch,
+	}
+	if v{{.v}}.ID != nil {
+		id := StreamID(*v{{.v}}.ID)
+		out.ID = &id
+	}
+	switch out.Op {
+	case OpSetWeightRecords, OpStepWeightRecords:
+		var payload reward{{.v}}.SetWeightRecordsParams
+		if err := decodeStreamPayload(v{{.v}}.Payload, &payload); err != nil {
+			return PendingWrite{}, xerrors.Errorf("decoding pending %s payload: %w", out.Op, err)
+		}
+		out.Updates = make([]WeightRecordUpdate, 0, len(payload.Updates))
+		for _, update := range payload.Updates {
+			out.Updates = append(out.Updates, WeightRecordUpdate{
+				ID:     StreamID(update.ID),
+				Weight: WeightRecord(update.Weight),
+			})
+		}
+	case OpRegisterStream:
+		var payload reward{{.v}}.RegisterStreamPayload
+		if err := decodeStreamPayload(v{{.v}}.Payload, &payload); err != nil {
+			return PendingWrite{}, xerrors.Errorf("decoding pending %s payload: %w", out.Op, err)
+		}
+		out.Register = &RegisterStreamPayload{Weight: WeightRecord(payload.Weight)}
+		if payload.Distribution != nil {
+			out.Register.Distribution = &DistributionInit{
+				Writer: payload.Distribution.Writer,
+				Shares: fromV{{.v}}RecipientShares(payload.Distribution.Shares),
+			}
+		}
+	case OpRemoveStream:
+		// A removal names its stream and carries an empty payload.
+	case OpSetDistribution:
+		var payload reward{{.v}}.SetDistributionPayload
+		if err := decodeStreamPayload(v{{.v}}.Payload, &payload); err != nil {
+			return PendingWrite{}, xerrors.Errorf("decoding pending %s payload: %w", out.Op, err)
+		}
+		out.Writer = payload.Writer
+	default:
+		return PendingWrite{}, fmt.Errorf("unknown pending write operation %d", uint8(out.Op))
+	}
+	return out, nil
+}{{else}}func (s *state{{.v}}) StreamLedger(abi.ChainEpoch) (*StreamLedger, error) {
+	return nil, fmt.Errorf("reward streams are unsupported in actors v{{.v}}")
+}{{end}}
 
 func (s *state{{.v}}) GetState() interface{} {
 	return &s.State

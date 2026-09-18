@@ -314,7 +314,9 @@ func (b *CommitBatcher) processBatchV2(cfg sealiface.Config, sectors []abi.Secto
 
 		collateral = big.Add(collateral, sc)
 
-		if len(manifest.Pieces) > 0 {
+		// From nv29 (FIP-0118) the miner actor ignores verified_allocation_key and claim terms no
+		// longer bound sector expiration, so there is nothing to check.
+		if nv < network.Version29 && len(manifest.Pieces) > 0 {
 			precomitInfo, err := b.api.StateSectorPreCommitInfo(b.mctx, b.maddr, sector, ts.Key())
 			if err != nil {
 				res.FailedSectors[sector] = err.Error()
@@ -586,10 +588,21 @@ func (b *CommitBatcher) getSectorCollateral(sn abi.SectorNumber, pieces []miner.
 		return big.Zero(), xerrors.Errorf("failed to resolve sector size for seal proof: %w", err)
 	}
 
+	nv, err := b.api.StateNetworkVersion(b.mctx, ts.Key())
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("getting network version: %w", err)
+	}
+
+	// FIP-0118 gives every sector maximum quality-adjusted power regardless of its deal
+	// content, which this API expresses as a fully verified sector.
 	var verifiedSize uint64
-	for _, piece := range pieces {
-		if piece.VerifiedAllocationKey != nil {
-			verifiedSize += uint64(piece.Size)
+	if nv >= network.Version29 {
+		verifiedSize = uint64(ssize)
+	} else {
+		for _, piece := range pieces {
+			if piece.VerifiedAllocationKey != nil {
+				verifiedSize += uint64(piece.Size)
+			}
 		}
 	}
 

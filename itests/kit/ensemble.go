@@ -841,6 +841,13 @@ func (n *Ensemble) Start() *Ensemble {
 		proofType, err := miner.WindowPoStProofTypeFromSectorSize(m.options.sectorSize, n.genesis.version)
 		require.NoError(n.t, err)
 
+		has, err := m.FullNode.WalletHas(ctx, m.OwnerKey.Address)
+		require.NoError(n.t, err)
+		if !has {
+			_, err = m.FullNode.WalletImport(ctx, &m.OwnerKey.KeyInfo)
+			require.NoError(n.t, err)
+		}
+
 		params, aerr := actors.SerializeParams(&power3.CreateMinerParams{
 			Owner:               m.OwnerKey.Address,
 			Worker:              m.OwnerKey.Address,
@@ -874,16 +881,6 @@ func (n *Ensemble) Start() *Ensemble {
 		require.NoError(n.t, err, "failed to create miner")
 
 		m.ActorAddr = retval.IDAddress
-
-		has, err := m.FullNode.WalletHas(ctx, m.OwnerKey.Address)
-		require.NoError(n.t, err)
-
-		// Only import the owner's full key into our companion full node, if we
-		// don't have it still.
-		if !has {
-			_, err = m.FullNode.WalletImport(ctx, &m.OwnerKey.KeyInfo)
-			require.NoError(n.t, err)
-		}
 
 		enc, err := actors.SerializeParams(&miner2.ChangePeerIDParams{NewID: abi.PeerID(m.Libp2p.PeerID)})
 		require.NoError(n.t, err)
@@ -1061,6 +1058,9 @@ func (n *Ensemble) BeginMiningMustPost(blocktime time.Duration, miners ...*TestM
 
 	for _, m := range miners {
 		bm := NewBlockMiner(n.t, m)
+		if n.options.mockProofs {
+			bm.postWait = postWaitTimeoutMockProofs
+		}
 		bm.MineBlocksMustPost(ctx, blocktime)
 		n.t.Cleanup(bm.Stop)
 

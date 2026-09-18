@@ -21,16 +21,17 @@ type MockCLI struct {
 	out  *bytes.Buffer
 }
 
-func NewMockCLI(ctx context.Context, t *testing.T, cmds []*lcli.Command, nodeType api.NodeType) *MockCLI {
-	// Create a CLI App with an --api-url flag so that we can specify which node
-	// the command should be executed against
+// NewMockCLI builds a CLI app around cmds. It always uses an --api-url flag so that a command can
+// be pointed at a particular node; appFlags adds any further app-level flags the commands read, such
+// as lotus-miner's --actor.
+func NewMockCLI(ctx context.Context, t *testing.T, cmds []*lcli.Command, nodeType api.NodeType, appFlags ...lcli.Flag) *MockCLI {
 	app := &lcli.App{
-		Flags: []lcli.Flag{
+		Flags: append([]lcli.Flag{
 			&lcli.StringFlag{
 				Name:   "api-url",
 				Hidden: true,
 			},
-		},
+		}, appFlags...),
 		Commands: cmds,
 	}
 	// Set node type
