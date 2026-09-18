@@ -84,7 +84,7 @@ func TestSolsticeRewardMigrationConfig(t *testing.T) {
 			},
 			SWAActor:            builtin.SystemActorAddr,
 			SRAActor:            builtin.SystemActorAddr,
-			InitialOrchestrator: builtin.BurntFundsActorAddr,
+			InitialOrchestrator: builtin.SystemActorAddr,
 		}
 		rampTotal := params.ConsensusWeight.VStart - params.ConsensusWeight.Floor
 		rampEpochs := uint64(params.ConsensusWeightRampDurationEpochs)
@@ -197,7 +197,7 @@ func TestResolveSolsticeRewardBootstrap(t *testing.T) {
 		params := buildconstants.NeutralSolsticeRewardBootstrapParams
 		params.SWAActor = builtin.SystemActorAddr
 		params.SRAActor = builtin.SystemActorAddr
-		params.InitialOrchestrator = builtin.BurntFundsActorAddr
+		params.InitialOrchestrator = builtin.SystemActorAddr
 
 		resolved, err := resolveSolsticeRewardBootstrap(tree, params)
 		require.NoError(t, err)
@@ -237,6 +237,15 @@ func TestResolveSolsticeRewardBootstrap(t *testing.T) {
 
 		_, err := resolveSolsticeRewardBootstrap(tree, params)
 		require.ErrorContains(t, err, "SWAActor is unset")
+	})
+
+	t.Run("burn actor as orchestrator fails", func(t *testing.T) {
+		tree, _ := solsticeStateTree(t, swa, sra)
+		params := deployed()
+		params.InitialOrchestrator = builtin.BurntFundsActorAddr
+
+		_, err := resolveSolsticeRewardBootstrap(tree, params)
+		require.ErrorContains(t, err, "InitialOrchestrator is the burn actor")
 	})
 
 	t.Run("unset SRA and orchestrator pass through", func(t *testing.T) {

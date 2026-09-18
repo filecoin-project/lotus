@@ -139,7 +139,7 @@ const SolsticeEpochsPerQuarter = abi.ChainEpoch(builtin.EpochsInDay)
 // FIP-0118: reward actor bootstrap state installed by the Solstice migration.
 // Addresses must be set before enabling the upgrade.
 var UpgradeSolsticeRewardBootstrapParams = SolsticeRewardBootstrapParams{
-	SWATimelockEpochs:                 builtin2.EpochsInHour,
+	SWATimelockEpochs:                 builtin2.EpochsInHour * 6,
 	ConsensusWeightRampDurationEpochs: SolsticeEpochsPerQuarter * 9,
 	ConsensusWeight: SolsticeRewardWeightParams{
 		VStart: 95 * solsticeRewardWeightPercent,

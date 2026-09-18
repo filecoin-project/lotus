@@ -120,7 +120,7 @@ var UpgradeSolsticeRewardBootstrapParams = SolsticeRewardBootstrapParams{
 	},
 	SWAActor:            builtin.SystemActorAddr,
 	SRAActor:            builtin.SystemActorAddr,
-	InitialOrchestrator: builtin.BurntFundsActorAddr,
+	InitialOrchestrator: builtin.SystemActorAddr,
 }
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
