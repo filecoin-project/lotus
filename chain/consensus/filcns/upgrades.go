@@ -64,6 +64,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/system"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -3511,16 +3512,12 @@ func preUpgradeActorsV19(
 		workerCount /= 2
 	}
 
-	// The lookback tree may predate the contracts, so resolve here; IDs never change once assigned.
+	// Warms from the trigger tipset so the governance actors it validates exist; only the migration's own input matters.
 	resolvedParams, err := resolveSolsticeRewardBootstrapAt(ctx, sm, root, rewardParams)
 	if err != nil {
 		return err
 	}
-
-	lbts, lbRoot, err := stmgr.GetLookbackTipSetForRound(ctx, sm, ts, epoch)
-	if err != nil {
-		return xerrors.Errorf("error getting lookback ts for premigration: %w", err)
-	}
+	logSolsticeBootstrap("pre-migration", resolvedParams)
 
 	logPeriod, err := getMigrationProgressLogPeriod()
 	if err != nil {
@@ -3532,7 +3529,7 @@ func preUpgradeActorsV19(
 		ProgressLogPeriod: logPeriod,
 	}
 
-	_, err = upgradeActorsV19Common(ctx, sm, cache, lbRoot, epoch, lbts, resolvedParams, config)
+	_, err = upgradeActorsV19Common(ctx, sm, cache, root, epoch, ts, resolvedParams, config)
 	return err
 }
 
@@ -3578,12 +3575,63 @@ func upgradeActorsV19(ctx context.Context, sm *stmgr.StateManager, cache stmgr.M
 	if err != nil {
 		return cid.Undef, err
 	}
+	logSolsticeBootstrap("migration", resolvedParams)
 
 	newRoot, err := upgradeActorsV19Common(ctx, sm, cache, root, epoch, ts, resolvedParams, config)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("migrating actors v19 state: %w", err)
 	}
+	logSolsticeRewardState(ctx, sm, newRoot)
 	return newRoot, nil
+}
+
+// logSolsticeBootstrap names the governance actors a Solstice migration stage installs.
+func logSolsticeBootstrap(stage string, params buildconstants.SolsticeRewardBootstrapParams) {
+	log.Warnw("\U0001F305 Solstice "+stage+" bootstrap",
+		"swa", params.SWAActor, "sra", params.SRAActor, "orchestrator", params.InitialOrchestrator,
+		"timelock", params.SWATimelockEpochs, "rampEpochs", params.ConsensusWeightRampDurationEpochs)
+}
+
+// solsticePercent renders a Denom fixed-point weight as a percentage with two decimals.
+func solsticePercent(weight uint64) string {
+	return fmt.Sprintf("%d.%02d%%", weight/(reward19.Denom/100), weight%(reward19.Denom/100)/(reward19.Denom/10000))
+}
+
+// logSolsticeRewardState reports the reward streams the migration installed, or why it could not read them.
+func logSolsticeRewardState(ctx context.Context, sm *stmgr.StateManager, root cid.Cid) {
+	adtStore := store.ActorStore(ctx, sm.ChainStore().StateBlockstore())
+	tree, err := state.LoadStateTree(adtStore, root)
+	if err != nil {
+		log.Errorw("Solstice migration: reading migrated state tree", "error", err)
+		return
+	}
+	act, err := tree.GetActor(reward.Address)
+	if err != nil {
+		log.Errorw("Solstice migration: reading migrated reward actor", "error", err)
+		return
+	}
+	var st reward19.State
+	if err := adtStore.Get(ctx, act.Head, &st); err != nil {
+		log.Errorw("Solstice migration: decoding migrated reward state", "error", err)
+		return
+	}
+	streams, err := st.LoadStreams(adtStore)
+	if err != nil {
+		log.Errorw("Solstice migration: loading migrated reward streams", "error", err)
+		return
+	}
+	for _, stream := range streams.Streams {
+		writer := "implicit"
+		if stream.Distribution != nil {
+			writer = stream.Distribution.Writer.String()
+		}
+		log.Warnw("\u2600\ufe0f Solstice migration installed reward stream", "id", stream.ID, "writer", writer,
+			"tStart", stream.Weight.TStart, "vStart", solsticePercent(stream.Weight.VStart),
+			"floor", solsticePercent(stream.Weight.Floor), "cap", solsticePercent(stream.Weight.Cap),
+			"slope", stream.Weight.Slope)
+	}
+	log.Warnw("\U0001F31E Solstice migration installed reward state", "streams", len(streams.Streams),
+		"swa", st.SWAActor, "timelock", st.SWATimelockEpochs, "totalMinted", types.FIL(st.TotalMintedReward))
 }
 
 // upgradeActorsV19Common migrates root with reward bootstrap addresses its caller has already
