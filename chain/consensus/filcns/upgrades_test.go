@@ -154,7 +154,7 @@ func TestSolsticeBootstrapMatchesSchedule(t *testing.T) {
 	// here and leave the weight geometry as the part a build-time check can reach.
 	params.SWAActor = builtin.SystemActorAddr
 	params.SRAActor = builtin.SystemActorAddr
-	params.InitialOrchestrator = builtin.BurntFundsActorAddr
+	params.InitialOrchestrator = builtin.SystemActorAddr
 
 	config, err := solsticeRewardMigrationConfig(params)
 	require.NoError(t, err)
