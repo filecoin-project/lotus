@@ -35,7 +35,8 @@ const feesSectorSize = abi.SectorSize(2 << 10) // 2KiB
 // solsticeFees is the shared fixture: one chain, four unmanaged miners.
 //
 //	ledger   a 1x sector, one upgraded to 10x and a native 10x sector, terminated one by one
-//	fault1x  a single 1x sector, drained and faulted
+//	fault1x  two 1x sectors: one drained and faulted, the other left healthy to probe the
+//	         fee-debt gate on UpgradeSectorQuality once the miner is drained too
 //	fault10x a single native 10x sector, drained and faulted, then repaid
 //	usqd     a single sector upgraded to 10x and faulted, funded throughout so it can recover
 type solsticeFees struct {
@@ -52,6 +53,7 @@ type solsticeFees struct {
 	upgraded  abi.SectorNumber // 1x then 10x, terminated second
 	native    abi.SectorNumber // born 10x, terminated third
 	faulted1x abi.SectorNumber
+	healthy1x abi.SectorNumber // fault1x's other sector, never faulted
 	faulted10 abi.SectorNumber
 	faultedUp abi.SectorNumber
 
@@ -133,12 +135,12 @@ func TestSolsticeMinerFees(t *testing.T) {
 
 	f.terminationFees(t)
 	firstDebt10x := f.faultFees(t, closes)
+	f.usqAgainstFeeDebt(t)
 	f.repayDebt(t, closes[f.fault10x.ActorAddr], firstDebt10x)
 	f.declareRecoveries(t)
 }
 
-// onboardBeforeFork brings up the sectors that have to be legacy: the ledger's anchor and the sector
-// it upgrades later, and one each for the miner that faults at 1x and the miner that faults upgraded.
+// onboardBeforeFork seals every sector that must be legacy: two on ledger, two on fault1x, one on usqd.
 func (f *solsticeFees) onboardBeforeFork(t *testing.T, blockMiner *kit.BlockMiner) {
 	req := require.New(t)
 	unit := uint64(feesSectorSize)
@@ -150,7 +152,7 @@ func (f *solsticeFees) onboardBeforeFork(t *testing.T, blockMiner *kit.BlockMine
 		return nil
 	})
 	eg.Go(func() error {
-		fault1xSectors, _ = f.fault1x.OnboardSectors(f.sealProof, kit.NewSectorBatch().AddEmptySectors(1))
+		fault1xSectors, _ = f.fault1x.OnboardSectors(f.sealProof, kit.NewSectorBatch().AddEmptySectors(2))
 		return nil
 	})
 	eg.Go(func() error {
@@ -159,11 +161,11 @@ func (f *solsticeFees) onboardBeforeFork(t *testing.T, blockMiner *kit.BlockMine
 	})
 	req.NoError(eg.Wait())
 	req.Len(ledgerSectors, 2, "the ledger miner did not finish onboarding")
-	req.Len(fault1xSectors, 1, "the 1x fault miner did not finish onboarding")
+	req.Len(fault1xSectors, 2, "the 1x fault miner did not finish onboarding")
 	req.Len(usqdSectors, 1, "the usqd miner did not finish onboarding")
 
 	f.anchor, f.upgraded = ledgerSectors[0], ledgerSectors[1]
-	f.faulted1x = fault1xSectors[0]
+	f.faulted1x, f.healthy1x = fault1xSectors[0], fault1xSectors[1]
 	f.faultedUp = usqdSectors[0]
 
 	for _, m := range []*kit.TestUnmanagedMiner{f.ledger, f.fault1x, f.fault10x, f.usqd} {
@@ -171,7 +173,7 @@ func (f *solsticeFees) onboardBeforeFork(t *testing.T, blockMiner *kit.BlockMine
 	}
 
 	f.ledger.WaitTillActivatedAndAssertPower(ledgerSectors, unit*2, unit*2)
-	f.fault1x.WaitTillActivatedAndAssertPower(fault1xSectors, unit, unit)
+	f.fault1x.WaitTillActivatedAndAssertPower(fault1xSectors, unit*2, unit*2)
 	f.usqd.WaitTillActivatedAndAssertPower(usqdSectors, unit, unit)
 
 	head, err := f.client.ChainHead(f.ctx)
@@ -394,12 +396,18 @@ func (f *solsticeFees) faultFees(t *testing.T, closes map[address.Address]abi.Ch
 			"1x owes %s at epoch %d, 10x owes %s at epoch %d",
 		debt1x, at1x, debt10x, at10x)
 
+	unit := uint64(feesSectorSize)
 	head, err := f.client.ChainHead(f.ctx)
 	req.NoError(err)
 	for _, s := range []struct {
-		m      *kit.TestUnmanagedMiner
-		sector abi.SectorNumber
-	}{{f.fault1x, f.faulted1x}, {f.fault10x, f.faulted10}, {f.usqd, f.faultedUp}} {
+		m           *kit.TestUnmanagedMiner
+		sector      abi.SectorNumber
+		rawExpected uint64 // the miner's other sectors, none of them faulted, keep contributing
+	}{
+		{f.fault1x, f.faulted1x, unit}, // healthy1x is still active
+		{f.fault10x, f.faulted10, 0},
+		{f.usqd, f.faultedUp, 0},
+	} {
 		faults, err := f.client.StateMinerFaults(f.ctx, s.m.ActorAddr, head.Key())
 		req.NoError(err)
 		isFaulted, err := faults.IsSet(uint64(s.sector))
@@ -409,12 +417,14 @@ func (f *solsticeFees) faultFees(t *testing.T, closes map[address.Address]abi.Ch
 		info, err := f.client.StateSectorGetInfo(f.ctx, s.m.ActorAddr, s.sector, head.Key())
 		req.NoError(err)
 		req.NotNil(info, "a fee must not terminate miner %s sector %d", s.m.ActorAddr, s.sector)
+		req.Equal(s.rawExpected, f.client.MinerRawPower(f.ctx, s.m.ActorAddr, head.Key()),
+			"miner %s sector %d is faulted, so it must contribute no raw power", s.m.ActorAddr, s.sector)
 	}
 
-	// TODO: Assert the legacy 1x sector also loses its QA power, and all three faulted
-	// sectors lose their raw power, at this same tipset.
+	legacyQAP, _ := f.client.MinerQAP(f.ctx, f.fault1x.ActorAddr, head.Key())
 	usqdQAP, _ := f.client.MinerQAP(f.ctx, f.usqd.ActorAddr, head.Key())
 	nativeQAP, _ := f.client.MinerQAP(f.ctx, f.fault10x.ActorAddr, head.Key())
+	req.Equal(unit, legacyQAP, "faulting miner %s's 1x sector takes its 1x, leaving the healthy sector's", f.fault1x.ActorAddr)
 	req.Zero(usqdQAP, "faulting miner %s's upgraded sector takes its whole 10x", f.usqd.ActorAddr)
 	req.Zero(nativeQAP, "faulting miner %s's native sector takes its whole 10x", f.fault10x.ActorAddr)
 
@@ -428,6 +438,67 @@ func (f *solsticeFees) faultFees(t *testing.T, closes map[address.Address]abi.Ch
 			"miner %s sector %d is faulted, so the upgrade must say so", s.m.ActorAddr, s.sector)
 	}
 	return debt10x
+}
+
+// usqAgainstFeeDebt proves an upgrade must cover fee debt and the pledge top-up from available
+// balance in one message: short, it aborts whole; funded, it repays the debt and locks the pledge.
+func (f *solsticeFees) usqAgainstFeeDebt(t *testing.T) {
+	req := require.New(t)
+	unit := uint64(feesSectorSize)
+
+	head, err := f.client.ChainHead(f.ctx)
+	req.NoError(err)
+	before, err := f.client.StateSectorGetInfo(f.ctx, f.fault1x.ActorAddr, f.healthy1x, head.Key())
+	req.NoError(err)
+	req.NotNil(before)
+	req.Zero(before.Flags&miner.FULL_QA_POWER,
+		"miner %s sector %d must still be 1x for this probe to mean anything", f.fault1x.ActorAddr, f.healthy1x)
+	_, available, debt := f.minerLedger(t, f.fault1x.ActorAddr, head.Key())
+	req.True(debt.GreaterThan(big.Zero()),
+		"miner %s must owe a fee debt for this probe to mean anything", f.fault1x.ActorAddr)
+	req.True(available.LessThan(before.InitialPledge),
+		"miner %s must lack the pledge to upgrade sector %d", f.fault1x.ActorAddr, f.healthy1x)
+
+	// Gas estimation simulates the call first, so a reverting upgrade fails at the push, not in a receipt.
+	_, err = f.fault1x.UpgradeSectorQuality([]abi.SectorNumber{f.healthy1x}, nil)
+	req.Error(err, "miner %s: upgrading sector %d without funds to cover the top-up and the fee debt must abort",
+		f.fault1x.ActorAddr, f.healthy1x)
+	req.Contains(err.Error(), "insufficient funds",
+		"miner %s sector %d: an unfunded upgrade must abort for insufficient funds", f.fault1x.ActorAddr, f.healthy1x)
+
+	head, err = f.client.ChainHead(f.ctx)
+	req.NoError(err)
+	unchanged, err := f.client.StateSectorGetInfo(f.ctx, f.fault1x.ActorAddr, f.healthy1x, head.Key())
+	req.NoError(err)
+	req.Zero(unchanged.Flags&miner.FULL_QA_POWER,
+		"the aborted message must leave miner %s sector %d at 1x", f.fault1x.ActorAddr, f.healthy1x)
+	_, _, debtAfterAbort := f.minerLedger(t, f.fault1x.ActorAddr, head.Key())
+	req.Equal(debt.String(), debtAfterAbort.String(),
+		"the aborted message must not touch miner %s's fee debt", f.fault1x.ActorAddr)
+
+	f.sendFromOwner(t, f.fault1x, types.FromFil(10), builtin.MethodSend, nil)
+
+	_, err = f.fault1x.UpgradeSectorQuality([]abi.SectorNumber{f.healthy1x}, nil)
+	req.NoError(err, "miner %s: a funded upgrade must repay the debt and lock the pledge in the one message",
+		f.fault1x.ActorAddr)
+
+	head, err = f.client.ChainHead(f.ctx)
+	req.NoError(err)
+	_, _, debtAfterUpgrade := f.minerLedger(t, f.fault1x.ActorAddr, head.Key())
+	req.True(debtAfterUpgrade.IsZero(),
+		"miner %s's fee debt must reach zero in the message that upgraded sector %d",
+		f.fault1x.ActorAddr, f.healthy1x)
+	upgraded, err := f.client.StateSectorGetInfo(f.ctx, f.fault1x.ActorAddr, f.healthy1x, head.Key())
+	req.NoError(err)
+	req.NotZero(upgraded.Flags&miner.FULL_QA_POWER,
+		"miner %s sector %d must carry FULL_QA_POWER after the upgrade", f.fault1x.ActorAddr, f.healthy1x)
+	req.Greater(upgraded.InitialPledge.Uint64(), before.InitialPledge.Uint64(),
+		"miner %s sector %d must lock the higher FULL-QA pledge", f.fault1x.ActorAddr, f.healthy1x)
+
+	qap, _ := f.client.MinerQAP(f.ctx, f.fault1x.ActorAddr, head.Key())
+	req.Equal(unit*10, qap,
+		"miner %s: sector %d now at 10x and sector %d still faulted must leave the miner at exactly 10x",
+		f.fault1x.ActorAddr, f.healthy1x, f.faulted1x)
 }
 
 // debtAtFirstCharge returns what the miner owes at the state produced by its first fault charge, and
@@ -503,10 +574,6 @@ func (f *solsticeFees) repayDebt(t *testing.T, firstClose abi.ChainEpoch, firstD
 // state includes execution in the parent.
 func (f *solsticeFees) declareRecoveries(t *testing.T) {
 	req := require.New(t)
-
-	// TODO: Assert recovery declarations leave raw and QA power at zero, then wait for
-	// successful WindowPoSt and assert restored raw power, full 10x QA power, and cleared
-	// fault/recovery bits for both the upgraded and the repaid native sector.
 
 	for _, s := range []struct {
 		m      *kit.TestUnmanagedMiner
