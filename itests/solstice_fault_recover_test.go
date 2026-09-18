@@ -48,9 +48,6 @@ type solsticeRecover struct {
 
 // TestSolsticeFaultRecover takes a sector of each provenance through a storage failure and back: the
 // fault takes its whole 10x, the recovery is recorded, and proving it again restores the same power.
-// TODO: Cover unupgraded legacy 1x and verified-weight legacy 10x sectors with FULL_QA_POWER
-// unset. Assert raw/QA power before fault, while faulted, after recovery declaration, and
-// after successful WindowPoSt; declaration alone must not restore power in any tier.
 func TestSolsticeFaultRecover(t *testing.T) {
 	req := require.New(t)
 	kit.QuietMiningLogs()

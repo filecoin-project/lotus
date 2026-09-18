@@ -3,9 +3,13 @@
 package buildconstants_test
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/builtin"
 
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
@@ -28,6 +32,26 @@ func TestMustParseFilOrEthAddress(t *testing.T) {
 
 			require.Equal(t, expected, buildconstants.MustParseFilOrEthAddress(eth))
 			require.Equal(t, expected, buildconstants.MustParseFilOrEthAddress(expected.String()))
+		})
+	}
+
+	// Addresses with no EVM spelling take the plain Filecoin branch.
+	secp, err := address.NewSecp256k1Address(bytes.Repeat([]byte{0x02}, 65))
+	require.NoError(t, err)
+	bls, err := address.NewBLSAddress(bytes.Repeat([]byte{0x03}, 48))
+	require.NoError(t, err)
+	actor, err := address.NewActorAddress([]byte("actor"))
+	require.NoError(t, err)
+
+	for _, fil := range []address.Address{
+		builtin.SystemActorAddr,
+		builtin.BurntFundsActorAddr,
+		secp,
+		bls,
+		actor,
+	} {
+		t.Run(fil.String(), func(t *testing.T) {
+			require.Equal(t, fil, buildconstants.MustParseFilOrEthAddress(fil.String()))
 		})
 	}
 

@@ -3406,6 +3406,12 @@ func resolveSolsticeRewardBootstrap(
 	return params, nil
 }
 
+// FIP-0118 stream identities: w1 is consensus, w2 the service stream.
+const (
+	solsticeConsensusStreamID reward19.StreamID = 1
+	solsticeServiceStreamID   reward19.StreamID = 2
+)
+
 func solsticeRewardMigrationConfig(params buildconstants.SolsticeRewardBootstrapParams) (nv29.RewardMigrationConfig, error) {
 	if params.ConsensusWeightRampDurationEpochs == 0 {
 		neutral := buildconstants.NeutralSolsticeRewardBootstrapParams
@@ -3417,7 +3423,7 @@ func solsticeRewardMigrationConfig(params buildconstants.SolsticeRewardBootstrap
 			SWATimelockEpochs: params.SWATimelockEpochs,
 			SWAActor:          params.SWAActor,
 			Streams: []nv29.RewardMigrationStream{{
-				ID: 1,
+				ID: solsticeConsensusStreamID,
 				Weight: nv29.RewardMigrationWeight{
 					VStart: neutral.ConsensusWeight.VStart,
 					Floor:  neutral.ConsensusWeight.Floor,
@@ -3453,7 +3459,7 @@ func solsticeRewardMigrationConfig(params buildconstants.SolsticeRewardBootstrap
 		SWAActor:          params.SWAActor,
 		Streams: []nv29.RewardMigrationStream{
 			{
-				ID: 1,
+				ID: solsticeConsensusStreamID,
 				Weight: nv29.RewardMigrationWeight{
 					VStart: params.ConsensusWeight.VStart,
 					Slope:  -int64(slope),
@@ -3462,7 +3468,7 @@ func solsticeRewardMigrationConfig(params buildconstants.SolsticeRewardBootstrap
 				},
 			},
 			{
-				ID: 2,
+				ID: solsticeServiceStreamID,
 				Weight: nv29.RewardMigrationWeight{
 					VStart: params.ServiceWeight.VStart,
 					Slope:  int64(slope),
