@@ -359,6 +359,10 @@ func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubs
 		recordFailure(ctx, metrics.MessageValidationFailure, "add")
 		switch {
 
+		// Errors that arise from transient state disagreement between
+		// honest peers during reorgs or head advancement. Route to
+		// ValidationIgnore so peers with a stale head view do not accrue
+		// InvalidMessageDeliveries against them.
 		case errors.Is(err, messagepool.ErrSoftValidationFailure):
 			fallthrough
 		case errors.Is(err, messagepool.ErrRBFTooLowPremium):
@@ -367,15 +371,24 @@ func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubs
 			fallthrough
 		case errors.Is(err, messagepool.ErrNonceGap):
 			fallthrough
-		case errors.Is(err, messagepool.ErrGasFeeCapTooLow):
-			fallthrough
 		case errors.Is(err, messagepool.ErrNonceTooLow):
-			fallthrough
-		case errors.Is(err, messagepool.ErrNotEnoughFunds):
 			fallthrough
 		case errors.Is(err, messagepool.ErrExistingNonce):
 			return pubsub.ValidationIgnore
 
+		// Errors that a well-behaved peer would not gossip: the network
+		// minimum base fee and the sender's on-chain balance are both
+		// deterministically observable, so any peer forwarding a message
+		// that fails these checks is either malicious or catastrophically
+		// mis-configured. Route to ValidationReject so the -1000-weighted
+		// InvalidMessageDeliveriesWeight configured at
+		// node/modules/lp2p/pubsub.go actually engages. Prevents a peer
+		// from sustainably flooding the validator hot path (CBOR decode +
+		// state reads + optional sig verify) with zero peer-score cost.
+		case errors.Is(err, messagepool.ErrGasFeeCapTooLow):
+			fallthrough
+		case errors.Is(err, messagepool.ErrNotEnoughFunds):
+			fallthrough
 		case errors.Is(err, messagepool.ErrMessageTooBig):
 			fallthrough
 		case errors.Is(err, messagepool.ErrMessageValueTooHigh):
