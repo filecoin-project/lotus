@@ -15,6 +15,7 @@ import (
 	jsonrpc "github.com/filecoin-project/go-jsonrpc"
 	abi "github.com/filecoin-project/go-state-types/abi"
 
+	v2api "github.com/filecoin-project/lotus/api/v2api"
 	types "github.com/filecoin-project/lotus/chain/types"
 	ethtypes "github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
@@ -820,6 +821,21 @@ func (m *MockFullNode) StateGetID(arg0 context.Context, arg1 address.Address, ar
 func (mr *MockFullNodeMockRecorder) StateGetID(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetID", reflect.TypeOf((*MockFullNode)(nil).StateGetID), arg0, arg1, arg2)
+}
+
+// StateRewardDistribution mocks base method.
+func (m *MockFullNode) StateRewardDistribution(arg0 context.Context, arg1 types.TipSetSelector) (*v2api.RewardDistribution, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateRewardDistribution", arg0, arg1)
+	ret0, _ := ret[0].(*v2api.RewardDistribution)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateRewardDistribution indicates an expected call of StateRewardDistribution.
+func (mr *MockFullNodeMockRecorder) StateRewardDistribution(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateRewardDistribution", reflect.TypeOf((*MockFullNode)(nil).StateRewardDistribution), arg0, arg1)
 }
 
 // Web3ClientVersion mocks base method.
