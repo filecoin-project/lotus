@@ -41,7 +41,9 @@ import (
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/datacap"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	chainstate "github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -1454,7 +1456,7 @@ func (f *solsticeRewardLifecycle) testStreamRegistration(t *testing.T) {
 			"registerStream(uint64,(int256,int256,uint64,int256,int256),address,(address,uint256)[],uint64)"),
 		solsticeRegisterStreamInput(f.ctx, t, f.client, f.newStream, weight, f.w3WriterID, shares, activation))
 
-	_, _, queuedStreams := kit.LoadReward19(f.ctx, t, f.client, f.store, lookup.TipSet)
+	queuedActor, queuedState, queuedStreams := kit.LoadReward19(f.ctx, t, f.client, f.store, lookup.TipSet)
 	req.Len(queuedStreams.PendingWritesQueue, 1)
 	pending := queuedStreams.PendingWritesQueue[0]
 	req.NotNil(pending.ID)
@@ -1462,6 +1464,13 @@ func (f *solsticeRewardLifecycle) testStreamRegistration(t *testing.T) {
 	req.Equal(reward19.PendingWriteOpRegisterStream, pending.Op)
 	req.Equal(activation, pending.EffectiveEpoch)
 	req.Len(queuedStreams.Streams, 2, "a queued registration leaves the stream table alone")
+
+	ledger := f.requireAdapterLedger(t, lookup.TipSet, queuedActor, queuedState, queuedStreams)
+	queuedRegistration := ledger.PendingWrites[0].Register
+	req.NotNil(queuedRegistration)
+	req.Equal(weight, queuedRegistration.Weight)
+	req.Equal(f.w3WriterID, queuedRegistration.Distribution.Writer)
+	req.Equal(shares, queuedRegistration.Distribution.Shares)
 
 	f.client.WaitTillChain(f.ctx, kit.HeightAtLeast(activation+2))
 	liveActor, liveState, liveStreams := f.stateAtOrAfter(t, activation+1)
@@ -1581,6 +1590,7 @@ func (f *solsticeRewardLifecycle) testRemoveStreamTombstoneClaim(t *testing.T) {
 	appliedTS := kit.TipsetAtOrAfter(f.ctx, t, f.client, dueTS.Height()+1)
 	removedActor, removed, removedStreams := kit.LoadReward19(f.ctx, t, f.client, f.store, appliedTS.Key())
 	f.requireAllocation(t, removedActor, removed, removedStreams)
+	f.requireAdapterLedger(t, appliedTS.Key(), removedActor, removed, removedStreams)
 	req.Len(removedStreams.Streams, 2)
 	req.Equal(reward19.StreamID(1), removedStreams.Streams[0].ID)
 	req.Equal(reward19.StreamID(2), removedStreams.Streams[1].ID)
@@ -1790,6 +1800,70 @@ func (f *solsticeRewardLifecycle) requireFoldDustBurned(t *testing.T, lookup *ap
 func (f *solsticeRewardLifecycle) requireAllocation(t *testing.T, actor *types.Actor, state *reward19.State, streams *reward19.StreamsState) {
 	t.Helper()
 	require.Equal(t, f.initialAllocation, rewardAllocationAt(t, actor, state, streams))
+}
+
+func (f *solsticeRewardLifecycle) requireAdapterLedger(
+	t *testing.T,
+	tsk types.TipSetKey,
+	actor *types.Actor,
+	state *reward19.State,
+	streams *reward19.StreamsState,
+) *reward.StreamLedger {
+	t.Helper()
+	req := require.New(t)
+	ts, err := f.client.ChainGetTipSet(f.ctx, tsk)
+	req.NoError(err)
+	adapted, err := reward.Load(adt.WrapStore(f.ctx, f.store), actor)
+	req.NoError(err)
+	ledger, err := adapted.StreamLedger(ts.Height())
+	req.NoError(err)
+
+	req.Equal(ts.Height(), ledger.Epoch)
+	req.Equal(state.SWAActor, ledger.SWAActor)
+	req.Equal(state.SWATimelockEpochs, ledger.SWATimelock)
+	req.Equal(state.TotalMintedReward, ledger.TotalMinted)
+	req.Equal(state.TotalBurnMinted, ledger.TotalBurnMinted)
+	req.Equal(state.TotalExplicitMinted, ledger.TotalExplicitMinted)
+	liabilities := explicitServiceLiabilities(t, state, streams)
+	req.Equalf(0, big.Cmp(liabilities, ledger.Liability()),
+		"the adapter holds %s for recipients where the state holds %s", ledger.Liability(), liabilities)
+
+	req.Len(ledger.Streams, len(streams.Streams))
+	for i, stream := range streams.Streams {
+		read := ledger.Streams[i]
+		req.Equal(stream.ID, read.ID)
+		req.Equal(stream.Weight, read.Weight)
+		req.Equal(stream.Distribution == nil, read.Implicit)
+		req.GreaterOrEqual(read.EvaluatedWeight, stream.Weight.Floor)
+		req.LessOrEqual(read.EvaluatedWeight, stream.Weight.Cap)
+		if stream.Weight.Slope == 0 {
+			req.Equal(stream.Weight.VStart, read.EvaluatedWeight, "a flat record holds its weight at every epoch")
+		}
+		if stream.Distribution == nil {
+			continue
+		}
+		req.Equal(stream.Distribution.Writer, read.Writer)
+		req.Equal(stream.Distribution.Shares, read.Shares)
+		req.Equal(stream.Distribution.Payable, read.Payable)
+		req.Equal(stream.Distribution.ClaimedPeriod, read.ClaimedPeriod)
+		req.Equal(accrualOf(t, state, stream.ID), read.Accrued)
+	}
+
+	req.Len(ledger.Tombstones, len(streams.Tombstones))
+	for i, tombstone := range streams.Tombstones {
+		req.Equal(tombstone.ID, ledger.Tombstones[i].ID)
+		req.Equal(tombstone.Payable, ledger.Tombstones[i].Payable)
+	}
+
+	req.Len(ledger.PendingWrites, len(streams.PendingWritesQueue))
+	for i, write := range streams.PendingWritesQueue {
+		read := ledger.PendingWrites[i]
+		req.Equal(write.ID, read.ID)
+		req.EqualValues(write.Op, read.Op)
+		req.Equal(write.EffectiveEpoch, read.EffectiveEpoch)
+	}
+
+	return ledger
 }
 
 func rewardDeltas(start, end *reward19.State) solsticeRewardDeltas {
