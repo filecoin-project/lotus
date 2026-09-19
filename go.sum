@@ -281,8 +281,8 @@ github.com/filecoin-project/go-keccak v0.1.0 h1:SWoaAVbqKgB9iXBceIjmgMskr8DlJTAJ
 github.com/filecoin-project/go-keccak v0.1.0/go.mod h1:X3vAWrEOJSO5GnJfzRFZzv8QC/2IacwECuIj11cnE4Y=
 github.com/filecoin-project/go-padreader v0.0.1 h1:8h2tVy5HpoNbr2gBRr+WD6zV6VD6XHig+ynSGJg8ZOs=
 github.com/filecoin-project/go-padreader v0.0.1/go.mod h1:VYVPJqwpsfmtoHnAmPx6MUwmrK6HIcDqZJiuZhtmfLQ=
-github.com/filecoin-project/go-paramfetch v0.0.5 h1:swArYYMekRBkye7GEqL1nWvJm6yY51hyQyFdB7IKCKg=
-github.com/filecoin-project/go-paramfetch v0.0.5/go.mod h1:Dllgpm22B33tzgvrtwPhmz5HE89sXDDnpTwTmpZ8u+I=
+github.com/filecoin-project/go-paramfetch v0.0.6 h1:DbScadloxJpPAIMAZbwymTXVJR/7r5yOXpEfxlzqy40=
+github.com/filecoin-project/go-paramfetch v0.0.6/go.mod h1:vCzyvfUR8E2uV1o/aDygaTdHcZKw7tf2qsHOdRDZ0wM=
 github.com/filecoin-project/go-state-types v0.0.0-20200903145444-247639ffa6ad/go.mod h1:IQ0MBPnonv35CJHtWSN3YY1Hz2gkPru1Q9qoaYLxx9I=
 github.com/filecoin-project/go-state-types v0.0.0-20200928172055-2df22083d8ab/go.mod h1:ezYnPf0bNkTsDibL/psSz5dy4B5awOJ/E7P2Saeep8g=
 github.com/filecoin-project/go-state-types v0.0.0-20201102161440-c8033295a1fc/go.mod h1:ezYnPf0bNkTsDibL/psSz5dy4B5awOJ/E7P2Saeep8g=
