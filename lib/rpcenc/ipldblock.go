@@ -19,7 +19,7 @@ import (
 //
 // These are the custom client/server handlers to make ChainPutObj work
 
-// this struct would travel without a problem over jsonrpc
+// FlatBlock is a representation of blkfmt.Bloc that would travel without a problem over jsonrpc
 type FlatBlock struct {
 	Cid     cid.Cid
 	RawData []byte
