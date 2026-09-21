@@ -17,7 +17,7 @@ import (
 	"unicode"
 
 	"github.com/google/uuid"
-	blocks "github.com/ipfs/go-block-format"
+	blkfmt "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/metrics"
@@ -25,6 +25,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/multiformats/go-multiaddr"
+	"github.com/multiformats/go-multicodec"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
@@ -43,8 +44,10 @@ import (
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
+	"github.com/filecoin-project/lotus/chain/sub"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
+	"github.com/filecoin-project/lotus/lib/rpcenc"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
@@ -142,8 +145,18 @@ func init() {
 	addExample(f3Cert)
 	addExample(&f3Cert)
 
-	block := blocks.Block(&blocks.BasicBlock{})
-	ExampleValues[reflect.TypeFor[blocks.Block]()] = block
+	// The interface blkfmt.Block can not travel over jsonrpc
+	// Instead there are handlers on both sides de/inflating into rpcenc.FlatBlock{}
+	fb := rpcenc.FlatBlock{
+		RawData: []byte("SomeBlockData"),
+	}
+	fb.Cid, _ = cid.V1Builder{
+		Codec:  uint64(multicodec.DagCbor),
+		MhType: sub.DefaultHashFunction,
+	}.Sum(fb.RawData)
+	ExampleValues[reflect.TypeFor[blkfmt.Block]()] = fb
+	addExample(fb)
+
 	addExample(bitfield.NewFromSet([]uint64{5}))
 	addExample(abi.RegisteredSealProof_StackedDrg32GiBV1_1)
 	addExample(abi.RegisteredPoStProof_StackedDrgWindow32GiBV1)
