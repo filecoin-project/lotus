@@ -824,18 +824,18 @@ func (mr *MockFullNodeMockRecorder) StateGetID(arg0, arg1, arg2 interface{}) *go
 }
 
 // StateRewardDistribution mocks base method.
-func (m *MockFullNode) StateRewardDistribution(arg0 context.Context, arg1 types.TipSetSelector) (*v2api.RewardDistribution, error) {
+func (m *MockFullNode) StateRewardDistribution(arg0 context.Context, arg1 types.TipSetSelector, arg2 abi.ChainEpoch) (*v2api.RewardDistribution, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StateRewardDistribution", arg0, arg1)
+	ret := m.ctrl.Call(m, "StateRewardDistribution", arg0, arg1, arg2)
 	ret0, _ := ret[0].(*v2api.RewardDistribution)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // StateRewardDistribution indicates an expected call of StateRewardDistribution.
-func (mr *MockFullNodeMockRecorder) StateRewardDistribution(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockFullNodeMockRecorder) StateRewardDistribution(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateRewardDistribution", reflect.TypeOf((*MockFullNode)(nil).StateRewardDistribution), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateRewardDistribution", reflect.TypeOf((*MockFullNode)(nil).StateRewardDistribution), arg0, arg1, arg2)
 }
 
 // Web3ClientVersion mocks base method.

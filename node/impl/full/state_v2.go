@@ -7,6 +7,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/api/v2api"
@@ -16,7 +17,7 @@ import (
 var _ StateModuleAPIv2 = (*StateModuleV2)(nil)
 
 type StateModuleAPIv2 interface {
-	StateRewardDistribution(context.Context, types.TipSetSelector) (*v2api.RewardDistribution, error)
+	StateRewardDistribution(context.Context, types.TipSetSelector, abi.ChainEpoch) (*v2api.RewardDistribution, error)
 	StateGetActor(context.Context, address.Address, types.TipSetSelector) (*types.Actor, error)
 	StateGetID(context.Context, address.Address, types.TipSetSelector) (*address.Address, error)
 }
@@ -53,10 +54,13 @@ func (s *StateModuleV2) StateGetID(ctx context.Context, addr address.Address, se
 	return &id, nil
 }
 
-func (s *StateModuleV2) StateRewardDistribution(ctx context.Context, selector types.TipSetSelector) (*v2api.RewardDistribution, error) {
+func (s *StateModuleV2) StateRewardDistribution(ctx context.Context, selector types.TipSetSelector, limit abi.ChainEpoch) (*v2api.RewardDistribution, error) {
 	ts, err := s.Chain.ChainGetTipSet(ctx, selector)
 	if err != nil {
 		return nil, xerrors.Errorf("getting tipset: %w", err)
+	}
+	if limit >= 0 && s.Chain.Chain.GetHeaviestTipSet().Height()-ts.Height() > limit {
+		return nil, xerrors.Errorf("tipset %s is older than the allowed lookback limit of %d epochs", ts.Key(), limit)
 	}
 	if s.State.StateManager.GetNetworkVersion(ctx, ts.Height()) < network.Version29 {
 		return nil, xerrors.Errorf("StateRewardDistribution requires reward actor v19 (network version 29)")

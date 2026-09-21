@@ -128,7 +128,7 @@ type FullNodeMethods struct {
 
 	StateGetID func(p0 context.Context, p1 address.Address, p2 types.TipSetSelector) (*address.Address, error) `perm:"read"`
 
-	StateRewardDistribution func(p0 context.Context, p1 types.TipSetSelector) (*RewardDistribution, error) `perm:"read"`
+	StateRewardDistribution func(p0 context.Context, p1 types.TipSetSelector, p2 abi.ChainEpoch) (*RewardDistribution, error) `perm:"read"`
 
 	Web3ClientVersion func(p0 context.Context) (string, error) `perm:"read"`
 }
@@ -239,7 +239,7 @@ type GatewayMethods struct {
 
 	StateGetID func(p0 context.Context, p1 address.Address, p2 types.TipSetSelector) (*address.Address, error) ``
 
-	StateRewardDistribution func(p0 context.Context, p1 types.TipSetSelector) (*RewardDistribution, error) ``
+	StateRewardDistribution func(p0 context.Context, p1 types.TipSetSelector, p2 abi.ChainEpoch) (*RewardDistribution, error) ``
 
 	Web3ClientVersion func(p0 context.Context) (string, error) ``
 }
@@ -819,14 +819,14 @@ func (s *FullNodeStub) StateGetID(p0 context.Context, p1 address.Address, p2 typ
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) StateRewardDistribution(p0 context.Context, p1 types.TipSetSelector) (*RewardDistribution, error) {
+func (s *FullNodeStruct) StateRewardDistribution(p0 context.Context, p1 types.TipSetSelector, p2 abi.ChainEpoch) (*RewardDistribution, error) {
 	if s.Internal.StateRewardDistribution == nil {
 		return nil, ErrNotSupported
 	}
-	return s.Internal.StateRewardDistribution(p0, p1)
+	return s.Internal.StateRewardDistribution(p0, p1, p2)
 }
 
-func (s *FullNodeStub) StateRewardDistribution(p0 context.Context, p1 types.TipSetSelector) (*RewardDistribution, error) {
+func (s *FullNodeStub) StateRewardDistribution(p0 context.Context, p1 types.TipSetSelector, p2 abi.ChainEpoch) (*RewardDistribution, error) {
 	return nil, ErrNotSupported
 }
 
@@ -1380,14 +1380,14 @@ func (s *GatewayStub) StateGetID(p0 context.Context, p1 address.Address, p2 type
 	return nil, ErrNotSupported
 }
 
-func (s *GatewayStruct) StateRewardDistribution(p0 context.Context, p1 types.TipSetSelector) (*RewardDistribution, error) {
+func (s *GatewayStruct) StateRewardDistribution(p0 context.Context, p1 types.TipSetSelector, p2 abi.ChainEpoch) (*RewardDistribution, error) {
 	if s.Internal.StateRewardDistribution == nil {
 		return nil, ErrNotSupported
 	}
-	return s.Internal.StateRewardDistribution(p0, p1)
+	return s.Internal.StateRewardDistribution(p0, p1, p2)
 }
 
-func (s *GatewayStub) StateRewardDistribution(p0 context.Context, p1 types.TipSetSelector) (*RewardDistribution, error) {
+func (s *GatewayStub) StateRewardDistribution(p0 context.Context, p1 types.TipSetSelector, p2 abi.ChainEpoch) (*RewardDistribution, error) {
 	return nil, ErrNotSupported
 }
 

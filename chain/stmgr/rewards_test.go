@@ -235,7 +235,7 @@ func TestRewardDistributionMonitor(t *testing.T) {
 				transfer(reward.Address, builtin.BurntFundsActorAddr, 20, exitcode.Ok),
 			}
 		}
-		require.NoError(t, m.RewardApplied(ts, before, after, msg, ret))
+		require.NoError(t, m.RewardApplied()(ts, before, after, msg, ret))
 		row := m.result.Blocks[i]
 		require.Equal(t, block.Cid(), row.Block)
 		require.Equal(t, block.Miner, row.Miner)

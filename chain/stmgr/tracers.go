@@ -10,13 +10,16 @@ import (
 	"github.com/filecoin-project/lotus/chain/vm"
 )
 
+// RewardAppliedFunc observes a block reward with its before and after state roots.
+// Returning an error halts execution.
+type RewardAppliedFunc func(ts *types.TipSet, before, after cid.Cid, msg *types.Message, ret *vm.ApplyRet) error
+
 type ExecMonitor interface {
 	// MessageApplied is called after a message has been applied. Returning an error will halt execution of any further messages.
 	MessageApplied(ctx context.Context, ts *types.TipSet, mcid cid.Cid, msg *types.Message, ret *vm.ApplyRet, implicit bool) error
 
-	// RewardApplied is called after a block reward is applied, with the state
-	// roots before and after the award. Returning an error halts execution.
-	RewardApplied(ts *types.TipSet, before, after cid.Cid, msg *types.Message, ret *vm.ApplyRet) error
+	// RewardApplied returns the reward callback, or nil to skip reward snapshots.
+	RewardApplied() RewardAppliedFunc
 }
 
 var _ ExecMonitor = (*InvocationTracer)(nil)
@@ -43,7 +46,7 @@ func (i *InvocationTracer) MessageApplied(ctx context.Context, ts *types.TipSet,
 	return nil
 }
 
-func (*InvocationTracer) RewardApplied(*types.TipSet, cid.Cid, cid.Cid, *types.Message, *vm.ApplyRet) error {
+func (*InvocationTracer) RewardApplied() RewardAppliedFunc {
 	return nil
 }
 
@@ -64,6 +67,6 @@ func (m *messageFinder) MessageApplied(ctx context.Context, ts *types.TipSet, mc
 	return nil
 }
 
-func (*messageFinder) RewardApplied(*types.TipSet, cid.Cid, cid.Cid, *types.Message, *vm.ApplyRet) error {
+func (*messageFinder) RewardApplied() RewardAppliedFunc {
 	return nil
 }

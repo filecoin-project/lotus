@@ -360,6 +360,6 @@ func (o *outputRecorder) MessageApplied(ctx context.Context, ts *types.TipSet, m
 	return nil
 }
 
-func (*outputRecorder) RewardApplied(*types.TipSet, cid.Cid, cid.Cid, *types.Message, *vm.ApplyRet) error {
+func (*outputRecorder) RewardApplied() stmgr.RewardAppliedFunc {
 	return nil
 }

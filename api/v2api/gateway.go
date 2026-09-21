@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
+	"github.com/filecoin-project/go-state-types/abi"
 
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -18,7 +19,7 @@ type Gateway interface {
 	ChainGetTipSetFinalityStatus(context.Context) (*types.FinalityStatus, error)
 	StateGetActor(context.Context, address.Address, types.TipSetSelector) (*types.Actor, error)
 	StateGetID(context.Context, address.Address, types.TipSetSelector) (*address.Address, error)
-	StateRewardDistribution(context.Context, types.TipSetSelector) (*RewardDistribution, error)
+	StateRewardDistribution(ctx context.Context, selector types.TipSetSelector, limit abi.ChainEpoch) (*RewardDistribution, error)
 	EthAddressToFilecoinAddress(ctx context.Context, ethAddress ethtypes.EthAddress) (address.Address, error)
 	FilecoinAddressToEthAddress(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthAddress, error)
 	Web3ClientVersion(ctx context.Context) (string, error)

@@ -120,7 +120,11 @@ func (m *rewardDistributionMonitor) MessageApplied(context.Context, *types.TipSe
 	return nil
 }
 
-func (m *rewardDistributionMonitor) RewardApplied(ts *types.TipSet, before, after cid.Cid, msg *types.Message, ret *vm.ApplyRet) error {
+func (m *rewardDistributionMonitor) RewardApplied() RewardAppliedFunc {
+	return m.rewardApplied
+}
+
+func (m *rewardDistributionMonitor) rewardApplied(ts *types.TipSet, before, after cid.Cid, msg *types.Message, ret *vm.ApplyRet) error {
 	// RewardFunc calls this once per block, in tipset order.
 	block := ts.Blocks()[len(m.result.Blocks)]
 	var params reward.AwardBlockRewardParams
