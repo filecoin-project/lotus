@@ -20,7 +20,7 @@ import (
 // These are the custom client/server handlers to make ChainPutObj work
 
 // this struct would travel without a problem over jsonrpc
-type flatBlock struct {
+type FlatBlock struct {
 	Cid     cid.Cid
 	RawData []byte
 }
@@ -28,7 +28,7 @@ type flatBlock struct {
 func WithBlockfmtIfaceEncoder() jsonrpc.Option {
 	return jsonrpc.WithParamEncoder(new(blkfmt.Block), func(v reflect.Value) (reflect.Value, error) {
 		b := v.Interface().(blkfmt.Block)
-		return reflect.ValueOf(flatBlock{
+		return reflect.ValueOf(FlatBlock{
 			Cid:     b.Cid(),
 			RawData: b.RawData(),
 		}), nil
@@ -37,7 +37,7 @@ func WithBlockfmtIfaceEncoder() jsonrpc.Option {
 
 func WithBlockfmtIfaceDecoder() jsonrpc.ServerOption {
 	return jsonrpc.WithParamDecoder(new(blkfmt.Block), func(_ context.Context, j []byte) (reflect.Value, error) {
-		var fb flatBlock
+		var fb FlatBlock
 		if err := json.Unmarshal(j, &fb); err != nil {
 			return reflect.Value{}, xerrors.Errorf("decoding blkfmt.Block param: %w", err)
 		}
