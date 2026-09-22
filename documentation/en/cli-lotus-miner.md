@@ -770,7 +770,7 @@ USAGE:
    lotus-miner sectors upgrade-quality [command options]
 
 OPTIONS:
-   --max-sectors value  maximum number of sectors included in each message (default: 12500)
+   --max-sectors value  maximum number of sectors to upgrade (default: 0)
    --max-fee value      maximum FIL to spend on gas per message (default: "0")
    --really-do-it       must be specified for the action to take effect (default: false)
    --help, -h           show help

@@ -180,6 +180,10 @@ func TestSolsticeMinerLifecycle(t *testing.T) {
 
 	var pieceV, pieceSnap abi.PieceInfo
 
+	t.Run("the upgrade-quality CLI refuses NV28", func(t *testing.T) {
+		_, err := minerCLI.RunCmdRaw("sectors", "upgrade-quality", "--actor="+f.cli.ActorAddr.String())
+		require.ErrorContains(t, err, "requires network version 29+")
+	})
 	t.Run("a verified client holds allocations before the fork", func(t *testing.T) {
 		pieceV, pieceSnap = f.setupVerifiedFixture(t, rootKey, verifierKey, clientKey)
 	})
@@ -708,70 +712,127 @@ func (f *solsticeLifecycle) danglingAllocations(t *testing.T) {
 	f.deals.AssertNoWindowPostError()
 }
 
-// upgradeQualityCLI runs lotus-miner sectors upgrade-quality against a miner whose sectors are all
-// legacy, and checks that --max-sectors packs them into that many messages and that every one lands.
+// upgradeQualityCLI upgrades two of six legacy sectors, then the remainder, and checks that
+// simulations leave state alone, estimates match the power gained, and a final run does no work.
 func (f *solsticeLifecycle) upgradeQualityCLI(t *testing.T, minerCLI *kit.MockCLIClient) {
 	req := require.New(t)
 	unit := uint64(solsticeSectorSize)
-	const perMessage = 2
+	actorFlag := "--actor=" + f.cli.ActorAddr.String()
+	_, err := minerCLI.RunCmdRaw("sectors", "upgrade-quality", actorFlag, "--max-sectors=-1")
+	req.ErrorContains(err, "max-sectors must be >= 0")
 
-	before, err := f.client.StateMinerPower(f.ctx, f.cli.ActorAddr, types.EmptyTSK)
-	req.NoError(err)
-	req.Equal(unit*uint64(len(f.cL)), before.MinerPower.QualityAdjPower.Uint64(),
-		"the cli miner's sectors must all still be legacy 1x")
-	networkBefore := before.TotalPower.QualityAdjPower
-
-	args := []string{"sectors", "upgrade-quality",
-		"--actor=" + f.cli.ActorAddr.String(), fmt.Sprintf("--max-sectors=%d", perMessage)}
-	wantMessages := (len(f.cL) + perMessage - 1) / perMessage
-
-	dryRun := minerCLI.RunCmd(args...)
-	t.Logf("upgrade-quality dry run: %s", dryRun)
-	req.Contains(dryRun, fmt.Sprintf("will send %d message(s) for %d sectors", wantMessages, len(f.cL)),
-		"a dry run must pack %d sectors into %d messages", len(f.cL), wantMessages)
-	req.Empty(solsticeSentMessages(t, dryRun), "a dry run must report no message it pushed")
-	pending, err := f.client.MpoolPending(f.ctx, types.EmptyTSK)
-	req.NoError(err)
-	for _, msg := range pending {
-		req.False(msg.Message.To == f.cli.ActorAddr && msg.Message.Method == builtin.MethodsMiner.UpgradeSectorQuality,
-			"a dry run must leave no upgrade message for miner %s in the pool", f.cli.ActorAddr)
-	}
-
-	out := minerCLI.RunCmd(append(args, "--really-do-it")...)
-	t.Logf("upgrade-quality: %s", out)
-	sent := solsticeSentMessages(t, out)
-	req.Len(sent, wantMessages, "one message per %d sectors; output was:\n%s", perMessage, out)
-
-	var totalGas int64
-	for i, c := range sent {
-		lookup, err := f.client.StateWaitMsg(f.ctx, c, 2, lapi.LookbackNoLimit, true)
+	sectors := func() map[abi.SectorNumber]*miner.SectorOnChainInfo {
+		head, err := f.client.ChainHead(f.ctx)
 		req.NoError(err)
-		req.Equal(exitcode.Ok, lookup.Receipt.ExitCode, "message %d of %d failed", i+1, len(sent))
-		req.Greater(lookup.Receipt.GasUsed, int64(0), "message %d burned no gas", i+1)
-		req.Less(lookup.Receipt.GasUsed, buildconstants.BlockGasLimit, "message %d approaches the block gas limit", i+1)
+		infos := make(map[abi.SectorNumber]*miner.SectorOnChainInfo, len(f.cL))
+		for _, sn := range f.cL {
+			infos[sn] = f.sectorInfo(t, f.cli.ActorAddr, sn, head.Key())
+		}
+		return infos
+	}
+	noPendingUpgrades := func() {
+		pending, err := f.client.MpoolPending(f.ctx, types.EmptyTSK)
+		req.NoError(err)
+		for _, msg := range pending {
+			req.False(msg.Message.To == f.cli.ActorAddr && msg.Message.Method == builtin.MethodsMiner.UpgradeSectorQuality,
+				"no upgrade message for miner %s should be in the pool", f.cli.ActorAddr)
+		}
+	}
+	estimates := func(out string, count int, current uint64) {
+		lines := strings.Split(out, "\n")
+		delta := uint64(count) * unit * 9
+		req.Contains(lines, fmt.Sprintf("Sector upgrades: %d", count))
+		req.Contains(lines, "Current miner QAP: "+types.SizeStr(types.NewInt(current)))
+		req.Contains(lines, "Miner QAP after upgrades (estimated): "+types.SizeStr(types.NewInt(current+delta)))
+		req.Contains(lines, "QAP increase (estimated): "+types.SizeStr(types.NewInt(delta)))
+		req.Contains(lines, "skipped 0 faulty sectors")
+		pledgeLine := regexp.MustCompile(`(?m)^Additional pledge \(estimated, excluding gas\): (.+)$`).FindStringSubmatch(out)
+		req.Len(pledgeLine, 2, "the additional pledge estimate must be present")
+		pledge, err := types.ParseFIL(pledgeLine[1])
+		req.NoError(err)
+		pledgeAmount := abi.TokenAmount(pledge)
+		if count == 0 {
+			req.True(pledgeAmount.IsZero(), "a no-op must require no additional pledge")
+		} else {
+			// Mining advances between simulation and inclusion, so the pledge may change before
+			// execution.
+			req.True(pledgeAmount.GreaterThan(big.Zero()), "legacy CC upgrades require additional pledge")
+		}
+	}
+
+	upgraded := 0
+	var totalGas int64
+	for _, step := range []struct {
+		limit []string
+		count int
+	}{
+		{limit: []string{"--max-sectors=2"}, count: 2},
+		{count: 4}, // Omitting the limit upgrades every remaining eligible sector.
+	} {
+		args := append([]string{"sectors", "upgrade-quality", actorFlag}, step.limit...)
+		beforeSectors := sectors()
+		before, err := f.client.StateMinerPower(f.ctx, f.cli.ActorAddr, types.EmptyTSK)
+		req.NoError(err)
+		current := unit * uint64(len(f.cL)+9*upgraded)
+		req.Equal(current, before.MinerPower.QualityAdjPower.Uint64())
+
+		dryRun, err := minerCLI.RunCmdRaw(args...)
+		req.NoError(err)
+		t.Logf("upgrade-quality dry run: %s", dryRun)
+		req.Contains(dryRun, fmt.Sprintf("will send 1 message(s) for %d sectors", step.count))
+		req.Empty(solsticeSentMessages(t, dryRun), "a dry run must report no submitted messages")
+		estimates(dryRun, step.count, current)
+		noPendingUpgrades()
+		req.Equal(beforeSectors, sectors(), "a dry run must leave every sector unchanged")
+		req.Equal(current, f.minerQAP(t, f.cli.ActorAddr), "a dry run must not change power")
+
+		out, err := minerCLI.RunCmdRaw(append(args, "--really-do-it")...)
+		req.NoError(err)
+		t.Logf("upgrade-quality: %s", out)
+		req.Contains(out, fmt.Sprintf("sent 1 message(s) upgrading %d sectors", step.count))
+		estimates(out, step.count, current)
+		sent := solsticeSentMessages(t, out)
+		req.Len(sent, 1)
+		lookup, err := f.client.StateWaitMsg(f.ctx, sent[0], 2, lapi.LookbackNoLimit, true)
+		req.NoError(err)
+		req.Equal(exitcode.Ok, lookup.Receipt.ExitCode)
+		req.Greater(lookup.Receipt.GasUsed, int64(0))
+		req.Less(lookup.Receipt.GasUsed, buildconstants.BlockGasLimit)
 		totalGas += lookup.Receipt.GasUsed
+
+		newlyUpgraded := 0
+		for sn, after := range sectors() {
+			before := beforeSectors[sn]
+			if before.Flags&miner.FULL_QA_POWER == 0 && after.Flags&miner.FULL_QA_POWER != 0 {
+				newlyUpgraded++
+				req.True(after.InitialPledge.GreaterThan(before.InitialPledge), "sector %d must gain pledge", sn)
+			} else {
+				req.Equal(before, after, "sector %d outside this upgrade must remain unchanged", sn)
+			}
+		}
+		req.Equal(step.count, newlyUpgraded)
+		upgraded += newlyUpgraded
+		after, err := f.client.StateMinerPower(f.ctx, f.cli.ActorAddr, types.EmptyTSK)
+		req.NoError(err)
+		gain := types.NewInt(uint64(step.count) * unit * 9)
+		req.Equal(current+gain.Uint64(), after.MinerPower.QualityAdjPower.Uint64())
+		req.Equal(gain.String(), big.Sub(after.TotalPower.QualityAdjPower, before.TotalPower.QualityAdjPower).String(),
+			"network QAP must gain exactly what the miner gained")
 	}
-	req.Less(totalGas, buildconstants.BlockGasLimit,
-		"the whole batch must stay under one block's gas, leaving headroom for a larger miner")
-	t.Logf("upgrade-quality sent %d messages, %d gas in total", len(sent), totalGas)
+	req.Equal(len(f.cL), upgraded)
+	req.Less(totalGas, buildconstants.BlockGasLimit)
 
-	head, err := f.client.ChainHead(f.ctx)
-	req.NoError(err)
-	for _, sn := range f.cL {
-		info := f.sectorInfo(t, f.cli.ActorAddr, sn, head.Key())
-		req.NotZero(info.Flags&miner.FULL_QA_POWER, "the CLI must leave sector %d at FULL_QA, none skipped", sn)
+	finalSectors := sectors()
+	for _, flags := range [][]string{nil, {"--really-do-it"}} {
+		out, err := minerCLI.RunCmdRaw(append([]string{"sectors", "upgrade-quality", actorFlag}, flags...)...)
+		req.NoError(err)
+		req.Contains(out, "no active, unexpired sectors need a QA power upgrade")
+		req.Empty(solsticeSentMessages(t, out))
+		estimates(out, 0, unit*uint64(len(f.cL))*10)
+		noPendingUpgrades()
+		req.Equal(finalSectors, sectors(), "rerunning the command must leave upgraded sectors unchanged")
+		req.Equal(unit*uint64(len(f.cL))*10, f.minerQAP(t, f.cli.ActorAddr))
 	}
-
-	after, err := f.client.StateMinerPower(f.ctx, f.cli.ActorAddr, head.Key())
-	req.NoError(err)
-	req.Equal(unit*uint64(len(f.cL))*10, after.MinerPower.QualityAdjPower.Uint64(),
-		"every upgraded sector must be worth 10x its raw bytes")
-	gained := big.Sub(after.MinerPower.QualityAdjPower, before.MinerPower.QualityAdjPower)
-	req.Equal(big.NewInt(int64(unit*uint64(len(f.cL))*9)).String(), gained.String(),
-		"the miner must gain exactly +9x per sector, with nothing counted twice")
-	req.Equal(gained.String(), big.Sub(after.TotalPower.QualityAdjPower, networkBefore).String(),
-		"the network's QA power must move by what the miner gained")
-
 	f.cli.AssertNoWindowPostError()
 }
 
