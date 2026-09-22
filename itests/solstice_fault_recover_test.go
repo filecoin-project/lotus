@@ -314,7 +314,7 @@ func TestSolsticeWorkerHandover(t *testing.T) {
 
 	onboarded, _ := um.OnboardSectors(e.SealProof, kit.NewSectorBatch().AddEmptySectors(1))
 	req.Len(onboarded, 1)
-	um.WaitTillActivatedAndAssertPower(onboarded, uint64(e.Ssize), uint64(e.Ssize)*10)
+	req.NoError(um.WaitTillActivatedAndAssertPower(onboarded, uint64(e.Ssize), uint64(e.Ssize)*10))
 	sector := onboarded[0]
 
 	// Stop the post loop before handing over the worker. The owner remains authorized to submit

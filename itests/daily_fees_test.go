@@ -132,6 +132,7 @@ func TestDailyFees(t *testing.T) {
 	nodeOpts := []kit.NodeOpt{kit.SectorSize(defaultSectorSize), kit.OwnerAddr(client.DefaultKey)}
 	mminer, ens := ens.UnmanagedMiner(ctx, &client, nodeOpts...)
 	defer mminer.Stop()
+	ctx = ens.UnmanagedContext(ctx)
 
 	/*** Utility functions **************************************************************************/
 
@@ -481,7 +482,7 @@ func TestDailyFees(t *testing.T) {
 
 	t.Log("*** Waiting for PoST for sectors onboarded before the network upgrade")
 
-	mminer.WaitTillActivatedAndAssertPower(toSectorNumbers(allSectors), toExpectedRbp(allSectors), toExpectedQap(allSectors))
+	req.NoError(mminer.WaitTillActivatedAndAssertPower(toSectorNumbers(allSectors), toExpectedRbp(allSectors), toExpectedQap(allSectors)))
 
 	t.Log("*** Checking daily fees on sectors onboarded before the network upgrade, after their first PoST")
 
@@ -518,10 +519,11 @@ func TestDailyFees(t *testing.T) {
 	t.Logf("Snapped sectors %d and %d, now have fees: %v & %v", ccSectors24[0].sn, ccSectors24[1].sn, ccSectors24[0].expectedFee, ccSectors24[1].expectedFee)
 
 	cc24PostCount := mminer.GetPostCount(ccSectors24[0].sn) // should be 1, but just in case
+	postErrs := make(chan error, 5)
 	feePostWg.Add(1)
 	go func() {
-		mminer.WaitTillPostCount(ccSectors24[0].sn, cc24PostCount+1)
-		feePostWg.Done()
+		defer feePostWg.Done()
+		postErrs <- mminer.WaitTillPostCount(ccSectors24[0].sn, cc24PostCount+1)
 	}()
 
 	checkMiner16Invariants()
@@ -549,16 +551,16 @@ func TestDailyFees(t *testing.T) {
 	allSectors = append(allSectors, ccSectors25...)
 	feePostWg.Add(1)
 	go func() {
-		mminer.WaitTillPostCount(ccSectors25[0].sn, 1) // onboarded together, they should PoST together
-		feePostWg.Done()
+		defer feePostWg.Done()
+		postErrs <- mminer.WaitTillPostCount(ccSectors25[0].sn, 1) // onboarded together, they should PoST together
 	}()
 
 	dealSector25 := onboardSectors(kit.NewSectorBatch().AddSectorsWithRandomPieces(1), true, 1)
 	allSectors = append(allSectors, dealSector25...)
 	feePostWg.Add(1)
 	go func() {
-		mminer.WaitTillPostCount(dealSector25[0].sn, 1)
-		feePostWg.Done()
+		defer feePostWg.Done()
+		postErrs <- mminer.WaitTillPostCount(dealSector25[0].sn, 1)
 	}()
 
 	clientId, allocationId = kit.SetupAllocation(ctx, t, &client, minerId, piece, verifiedClientAddr, 0, 0)
@@ -571,8 +573,8 @@ func TestDailyFees(t *testing.T) {
 	allSectors = append(allSectors, verifiedSector25...)
 	feePostWg.Add(1)
 	go func() {
-		mminer.WaitTillPostCount(verifiedSector25[0].sn, 1)
-		feePostWg.Done()
+		defer feePostWg.Done()
+		postErrs <- mminer.WaitTillPostCount(verifiedSector25[0].sn, 1)
 	}()
 
 	// Before PoST
@@ -581,7 +583,7 @@ func TestDailyFees(t *testing.T) {
 
 	t.Log("*** Waiting for PoST for sectors onboarded after the network upgrade")
 
-	mminer.WaitTillActivatedAndAssertPower(toSectorNumbers(allSectors), toExpectedRbp(allSectors), toExpectedQap(allSectors))
+	req.NoError(mminer.WaitTillActivatedAndAssertPower(toSectorNumbers(allSectors), toExpectedRbp(allSectors), toExpectedQap(allSectors)))
 
 	// After PoST
 	checkDailyFeeHas(allSectors...)
@@ -606,13 +608,17 @@ func TestDailyFees(t *testing.T) {
 	posts := mminer.GetPostCount(ccSectors24[2].sn)
 	feePostWg.Add(1)
 	go func() {
-		mminer.WaitTillPostCount(ccSectors24[2].sn, posts+1)
-		feePostWg.Done()
+		defer feePostWg.Done()
+		postErrs <- mminer.WaitTillPostCount(ccSectors24[2].sn, posts+1)
 	}()
 
 	// Wait for all fees to be paid—we need each one to have reached its first deadline and they are
 	// likely spread out over multiple deadlines
 	feePostWg.Wait()
+	close(postErrs)
+	for err := range postErrs {
+		req.NoError(err)
+	}
 	// Wait one exta deadline to make sure we get to the end of the current deadline where we've done
 	// a PoST
 	head, err := client.ChainHead(ctx)

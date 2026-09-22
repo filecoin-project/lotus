@@ -118,6 +118,7 @@ func TestSolsticeMinerFees(t *testing.T) {
 	defer fault10x.Stop()
 	usqd, ens := ens.UnmanagedMiner(ctx, &client, minerOpts(usqdKey)...)
 	defer usqd.Stop()
+	ctx = ens.UnmanagedContext(ctx)
 	ens.Start()
 
 	f := &solsticeFees{
@@ -172,9 +173,9 @@ func (f *solsticeFees) onboardBeforeFork(t *testing.T, blockMiner *kit.BlockMine
 		blockMiner.WatchMinerForPost(m.ActorAddr)
 	}
 
-	f.ledger.WaitTillActivatedAndAssertPower(ledgerSectors, unit*2, unit*2)
-	f.fault1x.WaitTillActivatedAndAssertPower(fault1xSectors, unit*2, unit*2)
-	f.usqd.WaitTillActivatedAndAssertPower(usqdSectors, unit, unit)
+	req.NoError(f.ledger.WaitTillActivatedAndAssertPower(ledgerSectors, unit*2, unit*2))
+	req.NoError(f.fault1x.WaitTillActivatedAndAssertPower(fault1xSectors, unit*2, unit*2))
+	req.NoError(f.usqd.WaitTillActivatedAndAssertPower(usqdSectors, unit, unit))
 
 	head, err := f.client.ChainHead(f.ctx)
 	req.NoError(err)

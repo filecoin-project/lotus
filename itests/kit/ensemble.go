@@ -116,13 +116,14 @@ func init() {
 //	kit.EnsembleOneTwo(t, kit.MockProofs())
 //	kit.EnsembleTwoOne(t, kit.MockProofs())
 type Ensemble struct {
-	t            *testing.T
-	bootstrapped bool
-	genesisBlock bytes.Buffer
-	mn           mocknet.Mocknet
-	options      *ensembleOpts
-
-	inactive struct {
+	t               *testing.T
+	bootstrapped    bool
+	genesisBlock    bytes.Buffer
+	mn              mocknet.Mocknet
+	options         *ensembleOpts
+	unmanagedCtx    context.Context
+	unmanagedCancel context.CancelCauseFunc
+	inactive        struct {
 		fullnodes       []*TestFullNode
 		miners          []*TestMiner
 		workers         []*TestWorker
@@ -346,9 +347,37 @@ func (n *Ensemble) UnmanagedMiner(ctx context.Context, full *TestFullNode, opts 
 	actorAddr, err := address.NewIDAddress(genesis2.MinerStart + n.minerCount())
 	require.NoError(n.t, err)
 
-	minerNode := NewTestUnmanagedMiner(ctx, n.t, full, actorAddr, n.options.mockProofs, opts...)
+	n.unmanagedFailureContext()
+
+	minerCtx, cancel := context.WithCancelCause(ctx)
+	minerNode := NewTestUnmanagedMiner(minerCtx, n.t, full, actorAddr, n.options.mockProofs, opts...)
+	minerNode.stopFixtureContext = context.AfterFunc(n.unmanagedCtx, func() {
+		cancel(context.Cause(n.unmanagedCtx))
+	})
+	minerNode.postFailure = n.unmanagedCancel
 	n.AddInactiveUnmanagedMiner(minerNode)
 	return minerNode, n
+}
+
+func (n *Ensemble) unmanagedFailureContext() context.Context {
+	if n.unmanagedCtx == nil {
+		n.unmanagedCtx, n.unmanagedCancel = context.WithCancelCause(context.Background())
+		n.t.Cleanup(func() { n.unmanagedCancel(nil) })
+	}
+	return n.unmanagedCtx
+}
+
+// UnmanagedContext returns a caller-derived context cancelled by a terminal unmanaged WindowPoSt error.
+func (n *Ensemble) UnmanagedContext(ctx context.Context) context.Context {
+	linked, cancel := context.WithCancelCause(ctx)
+	stop := context.AfterFunc(n.unmanagedFailureContext(), func() {
+		cancel(context.Cause(n.unmanagedCtx))
+	})
+	n.t.Cleanup(func() {
+		stop()
+		cancel(nil)
+	})
+	return linked
 }
 
 // Worker enrolls a new worker, using the provided full node for chain
@@ -1033,7 +1062,7 @@ func (n *Ensemble) Connect(from api.Net, to ...api.Net) *Ensemble {
 }
 
 func (n *Ensemble) BeginMiningMustPost(blocktime time.Duration, miners ...*TestMiner) []*BlockMiner {
-	ctx := context.Background()
+	ctx := n.unmanagedFailureContext()
 
 	// wait one second to make sure that nodes are connected and have handshaken.
 	// TODO make this deterministic by listening to identify events on the
@@ -1058,9 +1087,6 @@ func (n *Ensemble) BeginMiningMustPost(blocktime time.Duration, miners ...*TestM
 
 	for _, m := range miners {
 		bm := NewBlockMiner(n.t, m)
-		if n.options.mockProofs {
-			bm.postWait = postWaitTimeoutMockProofs
-		}
 		bm.MineBlocksMustPost(ctx, blocktime)
 		n.t.Cleanup(bm.Stop)
 

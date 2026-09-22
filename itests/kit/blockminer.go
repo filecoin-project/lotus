@@ -26,12 +26,6 @@ import (
 	"github.com/filecoin-project/lotus/miner"
 )
 
-// How long MineBlocksMustPost suspends block production, for all of an epoch's forced posts together.
-const (
-	postWaitTimeoutMockProofs = 20 * time.Second
-	postWaitTimeoutRealProofs = 90 * time.Second
-)
-
 // BlockMiner is a utility that makes a test miner Mine blocks on a timer.
 type BlockMiner struct {
 	t     *testing.T
@@ -40,24 +34,19 @@ type BlockMiner struct {
 	nextNulls         int64
 	postWatchMiners   []address.Address
 	postWatchMinersLk sync.Mutex
-	postWait          time.Duration
-	// postsAbandoned is set when a forced post never arrived. Mining carries on so the test goroutine's
-	// chain waiters are not left hanging; the failure is already recorded against the test.
-	postsAbandoned atomic.Bool
-	pause          chan struct{}
-	unpause        chan struct{}
-	wg             sync.WaitGroup
-	cancel         context.CancelFunc
+	pause             chan struct{}
+	unpause           chan struct{}
+	wg                sync.WaitGroup
+	cancel            context.CancelFunc
 }
 
 func NewBlockMiner(t *testing.T, miner *TestMiner) *BlockMiner {
 	return &BlockMiner{
-		t:        t,
-		miner:    miner,
-		cancel:   func() {},
-		unpause:  make(chan struct{}),
-		pause:    make(chan struct{}),
-		postWait: postWaitTimeoutRealProofs,
+		t:       t,
+		miner:   miner,
+		cancel:  func() {},
+		unpause: make(chan struct{}),
+		pause:   make(chan struct{}),
 	}
 }
 
@@ -177,13 +166,9 @@ func (p *partitionTracker) recordIfPost(t *testing.T, msg *types.Message) (ret b
 	return
 }
 
-// forcePoSt suspends block production until minerAddr has posted for this deadline, or until
-// postDeadline passes, which fails the test. Its own chain and mpool reads use ctx, so this bound
-// does nothing for a chain that has already stopped.
-func (bm *BlockMiner) forcePoSt(ctx context.Context, postDeadline time.Time, ts *types.TipSet, minerAddr address.Address, dlinfo dline.Info) {
-	postCtx, cancel := context.WithDeadline(ctx, postDeadline)
-	defer cancel()
-
+// forcePoSt suspends block production until minerAddr has posted for this deadline or the test
+// context is cancelled. It does not guarantee immediate propagation of a scheduler error.
+func (bm *BlockMiner) forcePoSt(ctx context.Context, ts *types.TipSet, minerAddr address.Address, dlinfo dline.Info) {
 	tracker := newPartitionTracker(ctx, bm.t, bm.miner.FullNode, minerAddr, dlinfo.Index, minerAddr == bm.miner.ActorAddr)
 	if !tracker.done(bm.t) { // need to wait for post
 		bm.t.Logf("expect %d partitions proved but only see %d", len(tracker.mustProve), tracker.count(bm.t))
@@ -225,17 +210,6 @@ func (bm *BlockMiner) forcePoSt(ctx context.Context, postDeadline time.Time, ts 
 				select {
 				case <-ctx.Done():
 					return
-				case <-postCtx.Done():
-					if ctx.Err() != nil {
-						return // shutting down, not a missing post
-					}
-					// Failing here would only kill the mining goroutine and leave the test goroutine's
-					// chain waiters hanging, so record the failure and carry on producing blocks.
-					bm.postsAbandoned.Store(true)
-					bm.t.Errorf("no window post from miner %s for deadline %d within %s: %d of %d partitions proved, "+
-						"mining on with post enforcement off",
-						minerAddr, dlinfo.Index, bm.postWait, tracker.count(bm.t), len(tracker.mustProve))
-					return
 				case evt := <-poolEvts:
 					bm.t.Logf("pool event: %d", evt.Type)
 					if evt.Type == api.MpoolAdd {
@@ -263,9 +237,7 @@ func (bm *BlockMiner) WatchMinerForPost(minerAddr address.Address) {
 }
 
 // MineBlocksMustPost is like MineBlocks but refuses to mine until the window post scheduler has
-// wdpost messages in the mempool. A post that never arrives fails the test and mining carries on
-// without the enforcement, so waiters are not left on a stopped chain. It also enforces that
-// every block mined succeeds
+// wdpost messages in the mempool. It also enforces that every block mined succeeds.
 func (bm *BlockMiner) MineBlocksMustPost(ctx context.Context, blocktime time.Duration) {
 	time.Sleep(time.Second)
 
@@ -313,18 +285,11 @@ func (bm *BlockMiner) MineBlocksMustPost(ctx context.Context, blocktime time.Dur
 			bm.postWatchMinersLk.Unlock()
 			impendingDeadlines = impendingDeadlines.FilterByLast(ts.Height() + 5 + abi.ChainEpoch(nulls))
 
-			// One deadline for every post forced in this epoch: an absolute time stays passed once it has,
-			// where a timer channel hands its single value to the first miner that waits on it.
-			postDeadline := time.Now().Add(bm.postWait)
-
 			if len(impendingDeadlines) > 0 {
 				// Next block brings us too close for at least one deadline, we need to wait for miners to post
 				bm.t.Logf("forcing post to get in if due before deadline closes at %v for %v", impendingDeadlines.CloseList(), impendingDeadlines.MinerStringList())
 				for _, md := range impendingDeadlines {
-					if bm.postsAbandoned.Load() {
-						break
-					}
-					bm.forcePoSt(ctx, postDeadline, ts, md.addr, md.deadline)
+					bm.forcePoSt(ctx, ts, md.addr, md.deadline)
 				}
 			}
 
@@ -360,10 +325,7 @@ func (bm *BlockMiner) MineBlocksMustPost(ctx context.Context, blocktime time.Dur
 					if len(impendingDeadlines) > 0 {
 						bm.t.Logf("forcing post to get in if due before deadline closes at %v for %v", impendingDeadlines.CloseList(), impendingDeadlines.MinerStringList())
 						for _, md := range impendingDeadlines {
-							if bm.postsAbandoned.Load() {
-								break
-							}
-							bm.forcePoSt(ctx, postDeadline, ts, md.addr, md.deadline)
+							bm.forcePoSt(ctx, ts, md.addr, md.deadline)
 						}
 					}
 				}

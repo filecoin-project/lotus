@@ -244,6 +244,7 @@ func TestManualNISectorOnboarding(t *testing.T) {
 				miners[i], _ = ens.UnmanagedMiner(ctx, &client, nodeOpts...)
 				defer miners[i].Stop()
 			}
+			ctx = ens.UnmanagedContext(ctx)
 
 			ens.Start()
 
@@ -328,7 +329,7 @@ func TestManualNISectorOnboarding(t *testing.T) {
 			// Wait till each miners' sectors have had their first post and are activated and check that this is reflected in miner power
 			// Solstice gives every sector maximum quality-adjusted power, 10x its raw bytes
 			for i, miner := range miners {
-				miner.WaitTillActivatedAndAssertPower(sectors[i], tc.miners[i].expectPower, tc.miners[i].expectPower*10)
+				req.NoError(miner.WaitTillActivatedAndAssertPower(sectors[i], tc.miners[i].expectPower, tc.miners[i].expectPower*10))
 			}
 
 			for i, tcMiner := range tc.miners {
@@ -388,6 +389,7 @@ func TestNISectorFailureCases(t *testing.T) {
 
 	miner, _ := ens.UnmanagedMiner(ctx, &client, kit.SectorSize(defaultSectorSize), kit.OwnerAddr(client.DefaultKey))
 	defer miner.Stop()
+	ctx = ens.UnmanagedContext(ctx)
 
 	ens.Start()
 
