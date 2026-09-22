@@ -130,7 +130,8 @@ const UpgradeGoldenWeekHeight abi.ChainEpoch = 3007294
 // 2026-05-07T14:00:00Z
 const UpgradeFireHorseHeight = 3694534
 
-const UpgradeSolsticeHeight = UpgradeHeightUnscheduled
+// 2026-09-28T12:59:30Z
+const UpgradeSolsticeHeight = 4109133
 
 // SolsticeEpochsPerQuarter matches the quarter the SRA is deployed with: one day on calibnet.
 // The ramp runs nine of them.
@@ -151,8 +152,8 @@ var UpgradeSolsticeRewardBootstrapParams = SolsticeRewardBootstrapParams{
 		Floor:  5 * solsticeRewardWeightPercent,
 		Cap:    10 * solsticeRewardWeightPercent,
 	},
-	SWAActor:            MustParseFilOrEthAddress("0xDE4fBd083F18f96C241DdE0A83C3EDC422Be9BA6"),
-	SRAActor:            MustParseFilOrEthAddress("0xeDfCd0947F7E9d58E0035f032520d75ce8eCA451"),
+	SWAActor:            MustParseFilOrEthAddress("0x66C11A9F6dfEC3c1557958cF9f575a023EB01421"),
+	SRAActor:            MustParseFilOrEthAddress("0x0339f205314C8210AF7Cb075d1A96D012e7896a9"),
 	InitialOrchestrator: MustParseFilOrEthAddress("0x97A90f5696be5E3C8d3752C92Adac287c2b4484e"),
 }
 
