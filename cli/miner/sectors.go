@@ -86,6 +86,10 @@ var sectorsUpgradeQualityCmd = &cli.Command{
 	Name:  "upgrade-quality",
 	Usage: "upgrade legacy sectors to full QA power",
 	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "sectors",
+			Usage: "restrict the upgrade to a comma-separated list of sector numbers",
+		},
 		&cli.IntFlag{
 			Name:  "max-sectors",
 			Usage: "maximum number of sectors to upgrade",
@@ -136,6 +140,31 @@ var sectorsUpgradeQualityCmd = &cli.Command{
 		}
 
 		spec := &api.MessageSendSpec{MaxFee: abi.TokenAmount(mf)}
+
+		// selected narrows the candidate set to --sectors; without the flag every
+		// sector stays in scope.
+		selected := func(abi.SectorNumber) bool { return true }
+		if arg := cctx.String("sectors"); arg != "" {
+			only := make(map[abi.SectorNumber]struct{})
+			for _, field := range strings.Split(arg, ",") {
+				field = strings.TrimSpace(field)
+				if field == "" {
+					continue
+				}
+				sn, err := strconv.ParseUint(field, 10, 64)
+				if err != nil {
+					return xerrors.Errorf("parsing --sectors entry %q: %w", field, err)
+				}
+				only[abi.SectorNumber(sn)] = struct{}{}
+			}
+			if len(only) == 0 {
+				return xerrors.Errorf("--sectors listed no sector numbers")
+			}
+			selected = func(sn abi.SectorNumber) bool {
+				_, ok := only[sn]
+				return ok
+			}
+		}
 
 		mi, err := fullNodeAPI.StateMinerInfo(ctx, maddr, tsk)
 		if err != nil {
@@ -198,6 +227,9 @@ var sectorsUpgradeQualityCmd = &cli.Command{
 				var upgrade *stminer.UpgradeSectorQuality
 				return active.ForEach(func(sn uint64) error {
 					if done {
+						return nil
+					}
+					if !selected(abi.SectorNumber(sn)) {
 						return nil
 					}
 
