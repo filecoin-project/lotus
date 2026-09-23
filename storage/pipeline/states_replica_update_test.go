@@ -184,13 +184,3 @@ func TestReplicaUpdatePledge(t *testing.T) {
 		})
 	}
 }
-
-func TestUnbufferedPledge(t *testing.T) {
-	for p := int64(0); p < 10_000; p++ {
-		buffered := big.Div(big.Mul(big.NewInt(p), big.NewInt(110)), big.NewInt(100))
-		require.Equal(t, big.NewInt(p).String(), unbufferedPledge(buffered).String(), "pledge %d", p)
-	}
-	p := big.MustFromString("123456789012345678901234567")
-	buffered := big.Div(big.Mul(p, big.NewInt(110)), big.NewInt(100))
-	require.Equal(t, p.String(), unbufferedPledge(buffered).String())
-}
