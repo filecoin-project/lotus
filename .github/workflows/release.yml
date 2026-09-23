@@ -228,9 +228,14 @@ jobs:
             echo "$body" >> release_body.md
           else
             csplit --digits=4 --quiet --elide-empty-files CHANGELOG.md '/^# /' '{*}'
+            # Section headers are usually "# $tag ..." (e.g. "# v1.37.0-rc1 / 2026-09-22"),
+            # but a combined Node+Miner release uses one shared header carrying the bare
+            # version without the node/miner tag prefix (e.g. "# Node and Miner v1.37.0-rc1
+            # / 2026-09-22"), so also match on that bare version as a standalone token.
+            version="${tag#miner/}"
             # Checking the files in reverse order to get to the UNRELEASED section last
             for file in $(ls -r xx*); do
-              if grep -q "^# $tag " $file || grep -q "^# UNRELEASED" $file; then
+              if grep -q "^# $tag " $file || grep -q "^# UNRELEASED" $file || head -n 1 $file | tr -s ' /' '\n' | grep -qFx -- "$version"; then
                 tail -n +3 $file >> release_body.md
                 break
               fi
