@@ -20,7 +20,7 @@ import (
 func NewCommonRPCV0(ctx context.Context, addr string, requestHeader http.Header) (api.Common, jsonrpc.ClientCloser, error) {
 	var res v0api.CommonStruct
 	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin",
-		api.GetInternalStructs(&res), requestHeader, jsonrpc.WithErrors(api.RPCErrors))
+		api.GetInternalStructs(&res), requestHeader, jsonrpc.WithErrors(api.RPCErrors), rpcenc.WithBlockfmtIfaceEncoder())
 
 	return &res, closer, err
 }
@@ -30,7 +30,7 @@ func NewFullNodeRPCV0(ctx context.Context, addr string, requestHeader http.Heade
 	var res v0api.FullNodeStruct
 
 	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin",
-		api.GetInternalStructs(&res), requestHeader, jsonrpc.WithErrors(api.RPCErrors))
+		api.GetInternalStructs(&res), requestHeader, jsonrpc.WithErrors(api.RPCErrors), rpcenc.WithBlockfmtIfaceEncoder())
 
 	return &res, closer, err
 }
@@ -39,7 +39,7 @@ func NewFullNodeRPCV0(ctx context.Context, addr string, requestHeader http.Heade
 func NewFullNodeRPCV1(ctx context.Context, addr string, requestHeader http.Header, opts ...jsonrpc.Option) (api.FullNode, jsonrpc.ClientCloser, error) {
 	var res v1api.FullNodeStruct
 	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin",
-		api.GetInternalStructs(&res), requestHeader, append([]jsonrpc.Option{jsonrpc.WithErrors(api.RPCErrors)}, opts...)...)
+		api.GetInternalStructs(&res), requestHeader, append([]jsonrpc.Option{jsonrpc.WithErrors(api.RPCErrors), rpcenc.WithBlockfmtIfaceEncoder()}, opts...)...)
 
 	return &res, closer, err
 }
@@ -48,7 +48,7 @@ func NewFullNodeRPCV1(ctx context.Context, addr string, requestHeader http.Heade
 func NewFullNodeRPCV2(ctx context.Context, addr string, requestHeader http.Header, opts ...jsonrpc.Option) (v2api.FullNode, jsonrpc.ClientCloser, error) {
 	var res v2api.FullNodeStruct
 	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin",
-		api.GetInternalStructs(&res), requestHeader, append([]jsonrpc.Option{jsonrpc.WithErrors(api.RPCErrors)}, opts...)...)
+		api.GetInternalStructs(&res), requestHeader, append([]jsonrpc.Option{jsonrpc.WithErrors(api.RPCErrors), rpcenc.WithBlockfmtIfaceEncoder()}, opts...)...)
 
 	return &res, closer, err
 }
