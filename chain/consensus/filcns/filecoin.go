@@ -77,6 +77,17 @@ var RewardFunc = func(ctx context.Context, vmi vm.Interface, em stmgr.ExecMonito
 		Method:     reward.Methods.AwardBlockReward,
 		Params:     ser,
 	}
+
+	ro, _ := em.(stmgr.RewardObserver)
+	var before cid.Cid
+	if ro != nil {
+		var flushErr error
+		before, flushErr = vmi.Flush(ctx)
+		if flushErr != nil {
+			return xerrors.Errorf("flushing state before reward: %w", flushErr)
+		}
+	}
+
 	ret, actErr := vmi.ApplyImplicitMessage(ctx, rwMsg)
 	if actErr != nil {
 		return xerrors.Errorf("failed to apply reward message: %w", actErr)
@@ -89,6 +100,17 @@ var RewardFunc = func(ctx context.Context, vmi vm.Interface, em stmgr.ExecMonito
 	if em != nil {
 		if err := em.MessageApplied(ctx, ts, rwMsg.Cid(), rwMsg, ret, true); err != nil {
 			return xerrors.Errorf("callback failed on reward message: %w", err)
+		}
+	}
+
+	if ro != nil {
+		after, err := vmi.Flush(ctx)
+		if err != nil {
+			return xerrors.Errorf("flushing state after reward: %w", err)
+		}
+
+		if err := ro.RewardApplied(ts, before, after, rwMsg, ret); err != nil {
+			return xerrors.Errorf("observing reward state: %w", err)
 		}
 	}
 

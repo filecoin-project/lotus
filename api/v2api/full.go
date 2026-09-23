@@ -122,6 +122,27 @@ type FullNode interface {
 	// Experimental: This API is experimental and may change without notice.
 	StateGetID(context.Context, address.Address, types.TipSetSelector) (*address.Address, error) //perm:read
 
+	// StateRewardDistribution returns the rewards allocated while executing the
+	// selected tipset, with a breakdown for each block and totals for the tipset.
+	// Each block includes the stream weights and recipient shares used by its award,
+	// the resulting amounts, and the payments to the miner and burnt funds actors.
+	// Message rewards are reported separately from minted rewards.
+	//
+	// This method executes the selected tipset; a child tipset is not required.
+	// All token amounts are in attoFIL. Amounts, stream IDs, weights, and shares are
+	// encoded as decimal strings. Weights and shares use the returned Denom.
+	// Recipient earnings describe this tipset's awards, not unclaimed balances.
+	// This method requires reward actor v19 (network version 29) and
+	// returns an error for tipsets using earlier reward actors.
+	//
+	// A block with a positive WinCount and zero MintedReward received only its gas
+	// reward, a reward actor fallback that should not occur on a healthy network.
+	//
+	// See types.TipSetSelector for the supported selection criteria.
+	//
+	// Experimental: This API is experimental and may change without notice.
+	StateRewardDistribution(ctx context.Context, selector types.TipSetSelector) (*RewardDistribution, error) //perm:read
+
 	// MethodGroup: Eth
 	// These methods are used for Ethereum-compatible JSON-RPC calls
 	//

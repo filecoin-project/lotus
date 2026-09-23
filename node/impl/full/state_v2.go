@@ -7,13 +7,16 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/network"
 
+	"github.com/filecoin-project/lotus/api/v2api"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
 var _ StateModuleAPIv2 = (*StateModuleV2)(nil)
 
 type StateModuleAPIv2 interface {
+	StateRewardDistribution(context.Context, types.TipSetSelector) (*v2api.RewardDistribution, error)
 	StateGetActor(context.Context, address.Address, types.TipSetSelector) (*types.Actor, error)
 	StateGetID(context.Context, address.Address, types.TipSetSelector) (*address.Address, error)
 }
@@ -48,4 +51,15 @@ func (s *StateModuleV2) StateGetID(ctx context.Context, addr address.Address, se
 		return nil, xerrors.Errorf("looking up ID: %w", err)
 	}
 	return &id, nil
+}
+
+func (s *StateModuleV2) StateRewardDistribution(ctx context.Context, selector types.TipSetSelector) (*v2api.RewardDistribution, error) {
+	ts, err := s.Chain.ChainGetTipSet(ctx, selector)
+	if err != nil {
+		return nil, xerrors.Errorf("getting tipset: %w", err)
+	}
+	if s.State.StateManager.GetNetworkVersion(ctx, ts.Height()) < network.Version29 {
+		return nil, xerrors.Errorf("StateRewardDistribution requires reward actor v19 (network version 29)")
+	}
+	return s.State.StateManager.RewardDistribution(ctx, ts)
 }
