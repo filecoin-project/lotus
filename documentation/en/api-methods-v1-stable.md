@@ -489,7 +489,7 @@ CAR-snapshot directly to disk. It is similar to ChainExport,
 except, depending on options, the snapshot can include receipts,
 messages and stateroots for the length between the specified head
 and tail, thus producing "archival-grade" snapshots that include
-all the on-chain data.  The header chain is included back to
+all the on-chain data. The header chain is included back to
 genesis and these snapshots can be used to initialize Filecoin
 nodes.
 
@@ -2741,7 +2741,7 @@ Inputs:
 Response: `"0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"`
 
 ### EthSendRawTransactionUntrusted
-EthSendRawTransactionUntrusted sends a transaction from and untrusted source, using MpoolPushUntrusted to submit the message.
+EthSendRawTransactionUntrusted sends a transaction from an untrusted source, using MpoolPushUntrusted to submit the message.
 
 
 Perms: read
@@ -2760,7 +2760,7 @@ Subscribe to different event types using websockets
 eventTypes is one or more of:
  - newHeads: notify when new blocks arrive.
  - pendingTransactions: notify when new messages arrive in the message pool.
- - logs: notify new event logs that match a criteria
+ - logs: notify new event logs that match a criterion
 params contains additional parameters used with the log event type
 The client will receive a stream of EthSubscriptionResponse values until EthUnsubscribe is called.
 
@@ -5397,6 +5397,7 @@ Inputs:
 
 Response: `"string value"`
 
+
 ### NetAutoNatStatus
 
 
@@ -7143,7 +7144,7 @@ Inputs:
 Response: `{}`
 
 ### StateEncodeParams
-StateEncodeParams attempts to encode the provided json params to the binary from
+StateEncodeParams attempts to encode the provided JSON params to the binary form
 
 
 Perms: read
@@ -9949,4 +9950,3 @@ Perms: read
 Inputs: `null`
 
 Response: `"string value"`
-
