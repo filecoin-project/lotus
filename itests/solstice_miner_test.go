@@ -5,6 +5,8 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -745,7 +747,6 @@ func (f *solsticeLifecycle) upgradeQualityCLI(t *testing.T, minerCLI *kit.MockCL
 		req.Contains(lines, "Current miner QAP: "+types.SizeStr(types.NewInt(current)))
 		req.Contains(lines, "Miner QAP after upgrades (estimated): "+types.SizeStr(types.NewInt(current+delta)))
 		req.Contains(lines, "QAP increase (estimated): "+types.SizeStr(types.NewInt(delta)))
-		req.Contains(lines, "skipped 0 faulty sectors")
 		pledgeLine := regexp.MustCompile(`(?m)^Additional pledge \(estimated, excluding gas\): (.+)$`).FindStringSubmatch(out)
 		req.Len(pledgeLine, 2, "the additional pledge estimate must be present")
 		pledge, err := types.ParseFIL(pledgeLine[1])
@@ -827,13 +828,32 @@ func (f *solsticeLifecycle) upgradeQualityCLI(t *testing.T, minerCLI *kit.MockCL
 		out, err := minerCLI.RunCmdRaw(append([]string{"sectors", "upgrade-quality", actorFlag}, flags...)...)
 		req.NoError(err)
 		req.Contains(out, "no active, unexpired sectors need a QA power upgrade")
+		req.Contains(strings.Split(out, "\n"), fmt.Sprintf("skipped %d sectors (already at full QA power): %s", len(f.cL), solsticeSectorList(f.cL)))
 		req.Empty(solsticeSentMessages(t, out))
 		estimates(out, 0, unit*uint64(len(f.cL))*10)
 		noPendingUpgrades()
 		req.Equal(finalSectors, sectors(), "rerunning the command must leave upgraded sectors unchanged")
 		req.Equal(unit*uint64(len(f.cL))*10, f.minerQAP(t, f.cli.ActorAddr))
 	}
+
+	missing := f.cL[len(f.cL)-1] + 1000
+	out, err := minerCLI.RunCmdRaw("sectors", "upgrade-quality", actorFlag, fmt.Sprintf("--sectors=%d,%d", f.cL[0], missing))
+	req.ErrorContains(err, "none of the 2 sectors listed in --sectors can be upgraded")
+	req.Contains(out, "--sectors: 0 of 2 requested sectors can be upgraded")
+	req.Contains(out, fmt.Sprintf("skipped 1 sector (already at full QA power): %d", f.cL[0]))
+	req.Contains(out, fmt.Sprintf("skipped 1 sector (requested, not found on this miner): %d", missing))
 	f.cli.AssertNoWindowPostError()
+}
+
+// solsticeSectorList renders sector numbers as upgrade-quality lists them.
+func solsticeSectorList(sns []abi.SectorNumber) string {
+	sorted := slices.Clone(sns)
+	slices.Sort(sorted)
+	nums := make([]string, len(sorted))
+	for i, sn := range sorted {
+		nums[i] = strconv.FormatUint(uint64(sn), 10)
+	}
+	return strings.Join(nums, ", ")
 }
 
 // solsticeSentLine matches upgrade-quality's "[i/n] <cid>" report of a message it pushed.

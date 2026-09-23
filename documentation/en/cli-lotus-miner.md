@@ -769,7 +769,17 @@ NAME:
 USAGE:
    lotus-miner sectors upgrade-quality [command options]
 
+DESCRIPTION:
+   Upgrades active, unexpired sectors below full QA power. Sectors already at full
+   QA power (flag set or fully verified weight), expired sectors, and sectors that
+   are not active (faulty, recovering, unproven or terminated) are skipped; the
+   skip summary printed before the totals lists each group and why. Sectors listed
+   in --sectors that cannot be upgraded are reported the same way, and the command
+   fails if none of them can be upgraded.
+
 OPTIONS:
+   --sectors value      restrict the upgrade to a comma-separated list of sector numbers
+   --verbose            list every skipped sector rather than the first few per reason (default: false)
    --max-sectors value  maximum number of sectors to upgrade (default: 0)
    --max-fee value      maximum FIL to spend on gas per message (default: "0")
    --really-do-it       must be specified for the action to take effect (default: false)
