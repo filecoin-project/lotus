@@ -1867,7 +1867,7 @@ This method requires reward actor v19 (network version 29) and
 returns an error for tipsets using earlier reward actors.
 
 A block with a positive WinCount and zero MintedReward received only its gas
-reward, a reward actor fallback that should never occur on a healthy network.
+reward, a reward actor fallback that should not occur on a healthy network.
 
 See types.TipSetSelector for the supported selection criteria.
 
