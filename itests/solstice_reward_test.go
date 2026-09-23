@@ -1511,9 +1511,13 @@ func (f *solsticeRewardLifecycle) testSecondOrchestrator(t *testing.T) {
 	requireShareWithinAtto(t, burnDelta.burn, burnDelta.total, 18*f.pct, 2*int64(burnEnd.Epoch-burnStart.Epoch))
 
 	// The wallet swap renames the row and leaves earned balances where they are.
-	replaced := f.requireUnanimous(t, f.sraAddr,
+	replaceFirst, replaceSecond := f.unanimousInvoke(t, f.sraAddr,
 		solsticeSelector(t, "ServiceRewardsActor", "replaceWallet(address,address)"),
 		orchestrator1Word, wallet1BWord)
+	kit.RequireMessageSuccess(t, replaceFirst)
+	kit.RequireMessageSuccess(t, replaceSecond)
+	f.requireReplaceAddressOutcome(t, reward19.ReplaceAddressReturnAddressReplaced, replaceFirst, replaceSecond)
+	replaced := solsticeLaterLookup(replaceFirst, replaceSecond)
 	replacedActor, replacedState, replacedStreams := kit.LoadReward19(f.ctx, t, f.client, f.store, replaced.TipSet)
 	f.requireAllocation(t, replacedActor, replacedState, replacedStreams)
 	replacedDistribution := streamByID(t, replacedStreams, 2).Distribution
@@ -1720,6 +1724,29 @@ func (f *solsticeRewardLifecycle) testShareSettlementAndWalletPayouts(t *testing
 	currentPeriodTotal := big.Add(secondDistribution.ClaimedPeriod[0].Amount, secondDistribution.ClaimedPeriod[1].Amount)
 	requireShareWithinAtto(t, secondDistribution.ClaimedPeriod[0].Amount, currentPeriodTotal, 40*f.pct, 1)
 	requireShareWithinAtto(t, secondDistribution.ClaimedPeriod[1].Amount, currentPeriodTotal, 60*f.pct, 1)
+
+	// Replacing a resolvable address that doesn't have a share succeeds without replacing anything.
+	missing := f.sendRewardMessage(t, f.w3WriterKey.Address, builtin.MethodsReward.ReplaceAddressExported, &reward19.ReplaceAddressParams{
+		ID:         f.newStream,
+		OldAddress: f.w3WriterID,
+		NewAddress: solsticeIDAddress(t, 1<<40),
+	})
+	kit.RequireMessageSuccess(t, missing)
+	f.requireReplaceAddressOutcome(t, reward19.ReplaceAddressReturnOldAddressNotInLedger, missing)
+
+	missingTS, err := f.client.ChainGetTipSet(f.ctx, missing.TipSet)
+	req.NoError(err)
+	_, _, beforeMissing := kit.LoadReward19(f.ctx, t, f.client, f.store, missingTS.Parents())
+	_, _, afterMissing := kit.LoadReward19(f.ctx, t, f.client, f.store, missingTS.Key())
+	req.Empty(beforeMissing.PendingWritesQueue, "a due write would fold and emit alongside the message")
+	req.Zero(shareOf(streamByID(t, beforeMissing, f.newStream).Distribution.Shares, f.w3WriterID))
+	req.Equal(streamByID(t, beforeMissing, f.newStream), streamByID(t, afterMissing, f.newStream),
+		"a missing old address leaves the stream untouched")
+	// With nothing due there is no fold, no dust and no address-replaced event.
+	req.Nil(missing.Receipt.EventsRoot, "the message must not emit events")
+	replay, err := f.client.StateReplay(f.ctx, types.EmptyTSK, missing.Message)
+	req.NoError(err)
+	req.Zero(burntFundsSent(replay.ExecutionTrace).Sign())
 }
 
 // testRemoveStreamTombstoneClaim exercises stream removal: queued, tombstoned, claimed, deleted.
@@ -2098,6 +2125,35 @@ func foldDust(pool abi.TokenAmount, shares []reward19.RecipientShare) abi.TokenA
 		allocated = big.Add(allocated, big.Div(big.Mul(pool, big.NewIntUnsigned(share.Share)), total))
 	}
 	return big.Sub(pool, allocated)
+}
+
+// requireReplaceAddressOutcome finds the one f02 ReplaceAddress call across the messages'
+// execution traces and checks it succeeded with outcome `want`.
+func (f *solsticeRewardLifecycle) requireReplaceAddressOutcome(t *testing.T, want reward19.ReplaceAddressReturn, lookups ...*api.MsgLookup) {
+	t.Helper()
+	req := require.New(t)
+	var calls []types.ExecutionTrace
+	for _, lookup := range lookups {
+		replay, err := f.client.StateReplay(f.ctx, types.EmptyTSK, lookup.Message)
+		req.NoError(err)
+		calls = append(calls, replaceAddressCalls(replay.ExecutionTrace)...)
+	}
+	req.Len(calls, 1, "exactly one message must reach f02's ReplaceAddress")
+	req.Equal(exitcode.Ok, calls[0].MsgRct.ExitCode)
+	var got reward19.ReplaceAddressReturn
+	req.NoError(got.UnmarshalCBOR(bytes.NewReader(calls[0].MsgRct.Return)))
+	req.Equal(want, got)
+}
+
+func replaceAddressCalls(trace types.ExecutionTrace) []types.ExecutionTrace {
+	var calls []types.ExecutionTrace
+	if trace.Msg.To == builtin.RewardActorAddr && trace.Msg.Method == builtin.MethodsReward.ReplaceAddressExported {
+		calls = append(calls, trace)
+	}
+	for _, subcall := range trace.Subcalls {
+		calls = append(calls, replaceAddressCalls(subcall)...)
+	}
+	return calls
 }
 
 // burntFundsSent totals what one message's execution sent to f099.
