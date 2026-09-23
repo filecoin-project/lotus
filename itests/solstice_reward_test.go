@@ -992,7 +992,7 @@ func (f *solsticeRewardLifecycle) testRewardDistributionAtHead(t *testing.T) {
 	head, err := f.client.ChainHead(f.ctx)
 	req.NoError(err)
 	_, before, _ := kit.LoadReward19(f.ctx, t, f.client, f.store, head.Key())
-	result, err := f.client.V2.StateRewardDistribution(f.ctx, types.TipSetSelectors.Latest, 0)
+	result, err := f.client.V2.StateRewardDistribution(f.ctx, types.TipSetSelectors.Latest)
 	req.NoError(err)
 	req.Equal(head.Key(), result.TipSetKey)
 	req.Equal(head.Height(), result.Height)
@@ -1041,24 +1041,15 @@ func (f *solsticeRewardLifecycle) testRewardDistributionAtHead(t *testing.T) {
 		req.Equal(service.Amount, recipient.EarnedAmount)
 	}
 
-	pinned, err := f.client.V2.StateRewardDistribution(f.ctx, types.TipSetSelectors.Key(head.Key()), api.LookbackNoLimit)
+	pinned, err := f.client.V2.StateRewardDistribution(f.ctx, types.TipSetSelectors.Key(head.Key()))
 	req.NoError(err)
 	req.Equal(result, pinned)
-
-	parent, err := f.client.ChainGetTipSet(f.ctx, head.Parents())
-	req.NoError(err)
-	lookback := head.Height() - parent.Height()
-	withinLimit, err := f.client.V2.StateRewardDistribution(f.ctx, types.TipSetSelectors.Key(parent.Key()), lookback)
-	req.NoError(err)
-	req.Equal(parent.Key(), withinLimit.TipSetKey)
-	_, err = f.client.V2.StateRewardDistribution(f.ctx, types.TipSetSelectors.Key(parent.Key()), lookback-1)
-	req.ErrorContains(err, "older than the allowed lookback limit")
 
 	stillHead, err := f.client.ChainHead(f.ctx)
 	req.NoError(err)
 	req.Equal(head.Key(), stillHead.Key(), "the query must work before a child tipset exists")
 
-	legacy, err := f.client.V2.StateRewardDistribution(f.ctx, types.TipSetSelectors.Key(f.preTS.Key()), api.LookbackNoLimit)
+	legacy, err := f.client.V2.StateRewardDistribution(f.ctx, types.TipSetSelectors.Key(f.preTS.Key()))
 	req.Error(err, "v18 has no reward stream distribution")
 	req.Nil(legacy)
 }
@@ -1660,7 +1651,7 @@ func (f *solsticeRewardLifecycle) testShareSettlementAndWalletPayouts(t *testing
 	_, _, previousStreams := kit.LoadReward19(f.ctx, t, f.client, f.store, awardTS.Key())
 	req.Len(streamByID(t, previousStreams, f.newStream).Distribution.Shares, 1,
 		"the block starts with the previous one-recipient share map")
-	reported, err := f.client.V2.StateRewardDistribution(f.ctx, types.TipSetSelectors.Key(awardTS.Key()), api.LookbackNoLimit)
+	reported, err := f.client.V2.StateRewardDistribution(f.ctx, types.TipSetSelectors.Key(awardTS.Key()))
 	req.NoError(err)
 	requireRewardAPIConservation(t, reported)
 	req.Len(reported.Blocks, 1)

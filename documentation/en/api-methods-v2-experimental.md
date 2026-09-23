@@ -1866,9 +1866,8 @@ Recipient earnings describe this tipset's awards, not unclaimed balances.
 This method requires reward actor v19 (network version 29) and
 returns an error for tipsets using earlier reward actors.
 
-limit bounds the number of epochs behind the current head. Negative limits
-disable this bound on full nodes. Gateways cap the limit to their configured
-lookback duration, converted to epochs.
+A block with a positive WinCount and zero MintedReward received only its gas
+reward, a reward actor fallback that should never occur on a healthy network.
 
 See types.TipSetSelector for the supported selection criteria.
 
@@ -1882,8 +1881,7 @@ Inputs:
 [
   {
     "tag": "finalized"
-  },
-  10101
+  }
 ]
 ```
 

@@ -39,6 +39,10 @@ type BlockReward struct {
 // MintedReward = MinerReward + ExplicitReward + BurnAllocation.
 type RewardAmounts struct {
 	// MintedReward is the block subsidy released from the reward actor's reserve.
+	// A block with a positive WinCount and zero MintedReward received only its gas
+	// reward: the reward actor's fallback when it cannot award normally, because
+	// its reserve is exhausted or a stream accounting invariant failed. This should
+	// not happen on a healthy network and warrants investigating the reward actor.
 	MintedReward abi.TokenAmount
 	// MinerReward is the minted reward allocated to the implicit miner stream.
 	MinerReward abi.TokenAmount

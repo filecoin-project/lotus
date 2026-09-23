@@ -22,6 +22,7 @@ import (
 	"github.com/filecoin-project/specs-actors/v8/actors/migration/nv16"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v2api"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	_init "github.com/filecoin-project/lotus/chain/actors/builtin/init"
@@ -164,6 +165,10 @@ type StateManager struct {
 	// We need a lock while making the copy as to prevent other callers
 	// overwrite the cache while making the copy
 	execTraceCacheLock sync.Mutex
+
+	// Results of RewardDistribution, sized by execTraceCacheSize. Cached values
+	// are shared between callers and must not be modified.
+	rewardDistributionCache *arc.ARCCache[types.TipSetKey, *v2api.RewardDistribution]
 }
 
 // Caches a single state tree
@@ -219,9 +224,14 @@ func NewStateManager(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder,
 
 	log.Debugf("execTraceCache size: %d", execTraceCacheSize)
 	var execTraceCache *arc.ARCCache[types.TipSetKey, tipSetCacheEntry]
+	var rewardDistributionCache *arc.ARCCache[types.TipSetKey, *v2api.RewardDistribution]
 	var err error
 	if execTraceCacheSize > 0 {
 		execTraceCache, err = arc.NewARC[types.TipSetKey, tipSetCacheEntry](execTraceCacheSize)
+		if err != nil {
+			return nil, err
+		}
+		rewardDistributionCache, err = arc.NewARC[types.TipSetKey, *v2api.RewardDistribution](execTraceCacheSize)
 		if err != nil {
 			return nil, err
 		}
@@ -242,9 +252,10 @@ func NewStateManager(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder,
 			root: cid.Undef,
 			tree: nil,
 		},
-		compWait:       make(map[string]chan struct{}),
-		chainIndexer:   chainIndexer,
-		execTraceCache: execTraceCache,
+		compWait:                make(map[string]chan struct{}),
+		chainIndexer:            chainIndexer,
+		execTraceCache:          execTraceCache,
+		rewardDistributionCache: rewardDistributionCache,
 	}, nil
 }
 

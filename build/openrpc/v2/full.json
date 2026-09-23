@@ -5756,8 +5756,8 @@
         },
         {
             "name": "Filecoin.StateRewardDistribution",
-            "description": "```go\nfunc (s *FullNodeStruct) StateRewardDistribution(p0 context.Context, p1 types.TipSetSelector, p2 abi.ChainEpoch) (*RewardDistribution, error) {\n\tif s.Internal.StateRewardDistribution == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.StateRewardDistribution(p0, p1, p2)\n}\n```",
-            "summary": "StateRewardDistribution returns the rewards allocated while executing the\nselected tipset, with a breakdown for each block and totals for the tipset.\nEach block includes the stream weights and recipient shares used by its award,\nthe resulting amounts, and the payments to the miner and burnt funds actors.\nMessage rewards are reported separately from minted rewards.\n\nThis method executes the selected tipset; a child tipset is not required.\nAll token amounts are in attoFIL. Amounts, stream IDs, weights, and shares are\nencoded as decimal strings. Weights and shares use the returned Denom.\nRecipient earnings describe this tipset's awards, not unclaimed balances.\nThis method requires reward actor v19 (network version 29) and\nreturns an error for tipsets using earlier reward actors.\n\nlimit bounds the number of epochs behind the current head. Negative limits\ndisable this bound on full nodes. Gateways cap the limit to their configured\nlookback duration, converted to epochs.\n\nSee types.TipSetSelector for the supported selection criteria.\n\nExperimental: This API is experimental and may change without notice.\n",
+            "description": "```go\nfunc (s *FullNodeStruct) StateRewardDistribution(p0 context.Context, p1 types.TipSetSelector) (*RewardDistribution, error) {\n\tif s.Internal.StateRewardDistribution == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.StateRewardDistribution(p0, p1)\n}\n```",
+            "summary": "StateRewardDistribution returns the rewards allocated while executing the\nselected tipset, with a breakdown for each block and totals for the tipset.\nEach block includes the stream weights and recipient shares used by its award,\nthe resulting amounts, and the payments to the miner and burnt funds actors.\nMessage rewards are reported separately from minted rewards.\n\nThis method executes the selected tipset; a child tipset is not required.\nAll token amounts are in attoFIL. Amounts, stream IDs, weights, and shares are\nencoded as decimal strings. Weights and shares use the returned Denom.\nRecipient earnings describe this tipset's awards, not unclaimed balances.\nThis method requires reward actor v19 (network version 29) and\nreturns an error for tipsets using earlier reward actors.\n\nA block with a positive WinCount and zero MintedReward received only its gas\nreward, a reward actor fallback that should never occur on a healthy network.\n\nSee types.TipSetSelector for the supported selection criteria.\n\nExperimental: This API is experimental and may change without notice.\n",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -5808,23 +5808,6 @@
                         },
                         "type": [
                             "object"
-                        ]
-                    },
-                    "required": true,
-                    "deprecated": false
-                },
-                {
-                    "name": "p2",
-                    "description": "abi.ChainEpoch",
-                    "summary": "",
-                    "schema": {
-                        "title": "number",
-                        "description": "Number is a number",
-                        "examples": [
-                            10101
-                        ],
-                        "type": [
-                            "number"
                         ]
                     },
                     "required": true,

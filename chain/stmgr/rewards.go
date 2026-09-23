@@ -20,8 +20,14 @@ import (
 	"github.com/filecoin-project/lotus/chain/vm"
 )
 
-// RewardDistribution executes ts and reports its block rewards.
+// RewardDistribution executes ts and reports its block rewards. The result may
+// be shared with other callers and must not be modified.
 func (sm *StateManager) RewardDistribution(ctx context.Context, ts *types.TipSet) (*v2api.RewardDistribution, error) {
+	if sm.rewardDistributionCache != nil {
+		if cached, ok := sm.rewardDistributionCache.Get(ts.Key()); ok {
+			return cached, nil
+		}
+	}
 	monitor := &rewardDistributionMonitor{
 		store: sm.ChainStore().ActorStore(ctx),
 		result: v2api.RewardDistribution{
@@ -36,6 +42,9 @@ func (sm *StateManager) RewardDistribution(ctx context.Context, ts *types.TipSet
 	// fees. This also works at head, before a child commits the resulting state.
 	if _, err := sm.ExecutionTraceWithMonitor(ctx, ts, monitor); err != nil {
 		return nil, xerrors.Errorf("executing tipset rewards: %w", err)
+	}
+	if sm.rewardDistributionCache != nil {
+		sm.rewardDistributionCache.Add(ts.Key(), &monitor.result)
 	}
 	return &monitor.result, nil
 }
@@ -114,18 +123,17 @@ type rewardDistributionMonitor struct {
 	result v2api.RewardDistribution
 }
 
-var _ ExecMonitor = (*rewardDistributionMonitor)(nil)
+var _ RewardObserver = (*rewardDistributionMonitor)(nil)
 
 func (m *rewardDistributionMonitor) MessageApplied(context.Context, *types.TipSet, cid.Cid, *types.Message, *vm.ApplyRet, bool) error {
 	return nil
 }
 
-func (m *rewardDistributionMonitor) RewardApplied() RewardAppliedFunc {
-	return m.rewardApplied
-}
-
-func (m *rewardDistributionMonitor) rewardApplied(ts *types.TipSet, before, after cid.Cid, msg *types.Message, ret *vm.ApplyRet) error {
+func (m *rewardDistributionMonitor) RewardApplied(ts *types.TipSet, before, after cid.Cid, msg *types.Message, ret *vm.ApplyRet) error {
 	// RewardFunc calls this once per block, in tipset order.
+	if len(m.result.Blocks) >= len(ts.Blocks()) {
+		return fmt.Errorf("reward applied for more than the %d blocks in tipset %s", len(ts.Blocks()), ts.Key())
+	}
 	block := ts.Blocks()[len(m.result.Blocks)]
 	var params reward.AwardBlockRewardParams
 	if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {

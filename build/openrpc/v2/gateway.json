@@ -4956,7 +4956,7 @@
         },
         {
             "name": "Filecoin.StateRewardDistribution",
-            "description": "```go\nfunc (s *GatewayStruct) StateRewardDistribution(p0 context.Context, p1 types.TipSetSelector, p2 abi.ChainEpoch) (*RewardDistribution, error) {\n\tif s.Internal.StateRewardDistribution == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.StateRewardDistribution(p0, p1, p2)\n}\n```",
+            "description": "```go\nfunc (s *GatewayStruct) StateRewardDistribution(p0 context.Context, p1 types.TipSetSelector) (*RewardDistribution, error) {\n\tif s.Internal.StateRewardDistribution == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.StateRewardDistribution(p0, p1)\n}\n```",
             "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
@@ -5008,23 +5008,6 @@
                         },
                         "type": [
                             "object"
-                        ]
-                    },
-                    "required": true,
-                    "deprecated": false
-                },
-                {
-                    "name": "p2",
-                    "description": "abi.ChainEpoch",
-                    "summary": "",
-                    "schema": {
-                        "title": "number",
-                        "description": "Number is a number",
-                        "examples": [
-                            10101
-                        ],
-                        "type": [
-                            "number"
                         ]
                     },
                     "required": true,

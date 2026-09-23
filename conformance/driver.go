@@ -359,7 +359,3 @@ func (o *outputRecorder) MessageApplied(ctx context.Context, ts *types.TipSet, m
 	o.results = append(o.results, ret)
 	return nil
 }
-
-func (*outputRecorder) RewardApplied() stmgr.RewardAppliedFunc {
-	return nil
-}
