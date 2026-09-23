@@ -56,6 +56,7 @@
 * [State](#State)
   * [StateGetActor](#StateGetActor)
   * [StateGetID](#StateGetID)
+  * [StateRewardDistribution](#StateRewardDistribution)
 * [Web3](#Web3)
   * [Web3ClientVersion](#Web3ClientVersion)
 ## Chain
@@ -1850,6 +1851,111 @@ Inputs:
 ```
 
 Response: `"f01234"`
+
+### StateRewardDistribution
+StateRewardDistribution returns the rewards allocated while executing the
+selected tipset, with a breakdown for each block and totals for the tipset.
+Each block includes the stream weights and recipient shares used by its award,
+the resulting amounts, and the payments to the miner and burnt funds actors.
+Message rewards are reported separately from minted rewards.
+
+This method executes the selected tipset; a child tipset is not required.
+All token amounts are in attoFIL. Amounts, stream IDs, weights, and shares are
+encoded as decimal strings. Weights and shares use the returned Denom.
+Recipient earnings describe this tipset's awards, not unclaimed balances.
+This method requires reward actor v19 (network version 29) and
+returns an error for tipsets using earlier reward actors.
+
+A block with a positive WinCount and zero MintedReward received only its gas
+reward, a reward actor fallback that should not occur on a healthy network.
+
+See types.TipSetSelector for the supported selection criteria.
+
+Experimental: This API is experimental and may change without notice.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "tag": "finalized"
+  }
+]
+```
+
+Response:
+```json
+{
+  "TipSetKey": [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
+  ],
+  "Height": 101,
+  "Denom": "1000000000000000000",
+  "Totals": {
+    "MintedReward": "1000",
+    "MinerReward": "600",
+    "MessageReward": "20",
+    "ExplicitReward": "270",
+    "BurnAllocation": "130",
+    "MinerPaid": "620",
+    "BurnPaid": "130"
+  },
+  "Blocks": [
+    {
+      "Block": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      "Miner": "f01000",
+      "WinCount": 1,
+      "Amounts": {
+        "MintedReward": "1000",
+        "MinerReward": "600",
+        "MessageReward": "20",
+        "ExplicitReward": "270",
+        "BurnAllocation": "130",
+        "MinerPaid": "620",
+        "BurnPaid": "130"
+      },
+      "BurnWeight": "100000000000000000",
+      "Streams": [
+        {
+          "ID": "1",
+          "Weight": "600000000000000000",
+          "Amount": "600",
+          "Distribution": null
+        },
+        {
+          "ID": "2",
+          "Weight": "300000000000000000",
+          "Amount": "300",
+          "Distribution": {
+            "Writer": "f01001",
+            "Recipients": [
+              {
+                "Recipient": "f01002",
+                "Share": "500000000000000000",
+                "EarnedAmount": "150"
+              },
+              {
+                "Recipient": "f01003",
+                "Share": "400000000000000000",
+                "EarnedAmount": "120"
+              }
+            ],
+            "BurnShare": "100000000000000000",
+            "BurnAmount": "30",
+            "RoundingAdjustment": "0"
+          }
+        }
+      ]
+    }
+  ]
+}
+```
 
 ## Web3
 

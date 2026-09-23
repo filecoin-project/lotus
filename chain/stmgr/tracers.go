@@ -15,6 +15,13 @@ type ExecMonitor interface {
 	MessageApplied(ctx context.Context, ts *types.TipSet, mcid cid.Cid, msg *types.Message, ret *vm.ApplyRet, implicit bool) error
 }
 
+// RewardObserver is an ExecMonitor that also receives each block reward with
+// the state roots before and after it.
+type RewardObserver interface {
+	ExecMonitor
+	RewardApplied(ts *types.TipSet, before, after cid.Cid, msg *types.Message, ret *vm.ApplyRet) error
+}
+
 var _ ExecMonitor = (*InvocationTracer)(nil)
 
 type InvocationTracer struct {

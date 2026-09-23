@@ -488,6 +488,52 @@ func init() {
 		FinalizedTipSet:          &ts,
 		Head:                     &ts,
 	})
+
+	const rewardDenom = 1_000_000_000_000_000_000
+	rewardMiner, _ := address.NewIDAddress(1000)
+	rewardWriter, _ := address.NewIDAddress(1001)
+	rewardRecipientA, _ := address.NewIDAddress(1002)
+	rewardRecipientB, _ := address.NewIDAddress(1003)
+	rewardAmounts := v2api.RewardAmounts{
+		MintedReward:   abi.NewTokenAmount(1000),
+		MinerReward:    abi.NewTokenAmount(600),
+		MessageReward:  abi.NewTokenAmount(20),
+		ExplicitReward: abi.NewTokenAmount(270),
+		BurnAllocation: abi.NewTokenAmount(130),
+		MinerPaid:      abi.NewTokenAmount(620),
+		BurnPaid:       abi.NewTokenAmount(130),
+	}
+	addExample(&v2api.RewardDistribution{
+		TipSetKey: types.NewTipSetKey(c),
+		Height:    101,
+		Denom:     rewardDenom,
+		Totals:    rewardAmounts,
+		Blocks: []v2api.BlockReward{{
+			Block:      c,
+			Miner:      rewardMiner,
+			WinCount:   1,
+			Amounts:    rewardAmounts,
+			BurnWeight: rewardDenom / 10,
+			Streams: []v2api.StreamReward{
+				{ID: 1, Weight: rewardDenom * 6 / 10, Amount: abi.NewTokenAmount(600)},
+				{
+					ID:     2,
+					Weight: rewardDenom * 3 / 10,
+					Amount: abi.NewTokenAmount(300),
+					Distribution: &v2api.ExplicitRewardDistribution{
+						Writer: rewardWriter,
+						Recipients: []v2api.RecipientReward{
+							{Recipient: rewardRecipientA, Share: rewardDenom / 2, EarnedAmount: abi.NewTokenAmount(150)},
+							{Recipient: rewardRecipientB, Share: rewardDenom * 4 / 10, EarnedAmount: abi.NewTokenAmount(120)},
+						},
+						BurnShare:          rewardDenom / 10,
+						BurnAmount:         abi.NewTokenAmount(30),
+						RoundingAdjustment: abi.NewTokenAmount(0),
+					},
+				},
+			},
+		}},
+	})
 }
 
 func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []reflect.Type) {
