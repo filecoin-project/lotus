@@ -153,9 +153,9 @@ fails if none of them can be upgraded.`,
 		spec := &api.MessageSendSpec{MaxFee: abi.TokenAmount(mf)}
 
 		var skips upgradeSkips
-		if arg := cctx.String("sectors"); arg != "" {
+		if cctx.IsSet("sectors") {
 			only := make(map[abi.SectorNumber]bool)
-			for _, field := range strings.Split(arg, ",") {
+			for _, field := range strings.Split(cctx.String("sectors"), ",") {
 				field = strings.TrimSpace(field)
 				if field == "" {
 					continue
