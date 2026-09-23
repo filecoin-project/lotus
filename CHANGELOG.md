@@ -14,6 +14,7 @@
 ## ⭐ New Features
 
 - feat(api): add v2 `StateRewardDistribution` with per-block reward allocations, recipient earnings, payments and tipset totals. ([filecoin-project/lotus#13808](https://github.com/filecoin-project/lotus/pull/13808))
+- feat(cli): `lotus-miner sectors upgrade-quality` gained a `--sectors` flag to upgrade only the listed sectors, and reports a summary of skipped sectors with the reason for each. ([filecoin-project/lotus#13818](https://github.com/filecoin-project/lotus/pull/13818))
 
 ## 🐛 Bug Fixes
 
