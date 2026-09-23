@@ -132,52 +132,9 @@ func (m *Sealing) handleSubmitReplicaUpdate(ctx statemachine.Context, sector Sec
 		return ctx.Send(SectorSubmitReplicaUpdateFailed{})
 	}
 
-	duration := onChainInfo.Expiration - ts.Height()
-
-	ssize, err := sector.SectorType.SectorSize()
+	collateral, err := m.replicaUpdatePledge(ctx.Context(), sector, onChainInfo, ts)
 	if err != nil {
-		return xerrors.Errorf("failed to resolve sector size for seal proof: %w", err)
-	}
-
-	nv, err := m.Api.StateNetworkVersion(ctx.Context(), ts.Key())
-	if err != nil {
-		return xerrors.Errorf("getting network version: %w", err)
-	}
-
-	// FIP-0118 gives every sector maximum quality-adjusted power regardless of its deal
-	// content, which this API expresses as a fully verified sector.
-	var verifiedSize uint64
-	if nv >= network.Version29 {
-		verifiedSize = uint64(ssize)
-	} else {
-		for _, piece := range sector.Pieces {
-			if piece.HasDealInfo() {
-				alloc, err := piece.GetAllocation(ctx.Context(), m.Api, ts.Key())
-				if err != nil || alloc == nil {
-					if err != nil {
-						log.Errorw("failed to get allocation", "error", err)
-					}
-					verifiedSize += uint64(piece.Piece().Size)
-				}
-			}
-		}
-	}
-
-	collateral, err := m.Api.StateMinerInitialPledgeForSector(ctx.Context(), duration, ssize, verifiedSize, ts.Key())
-	if err != nil {
-		return xerrors.Errorf("getting initial pledge collateral: %w", err)
-	}
-
-	log.Infow("submitting replica update",
-		"sector", sector.SectorNumber,
-		"verifiedSize", verifiedSize,
-		"totalPledge", types.FIL(collateral),
-		"initialPledge", types.FIL(onChainInfo.InitialPledge),
-		"toPledge", types.FIL(big.Sub(collateral, onChainInfo.InitialPledge)))
-
-	collateral = big.Sub(collateral, onChainInfo.InitialPledge)
-	if collateral.LessThan(big.Zero()) {
-		collateral = big.Zero()
+		return err
 	}
 
 	collateral, err = collateralSendAmount(ctx.Context(), m.Api, m.maddr, cfg, collateral)
@@ -237,6 +194,73 @@ func (m *Sealing) handleSubmitReplicaUpdate(ctx statemachine.Context, sector Sec
 	}
 
 	return ctx.Send(SectorReplicaUpdateSubmitted{Message: mcid})
+}
+
+// replicaUpdatePledge returns the collateral to send with ProveReplicaUpdates3: the amount by which
+// the pledge the miner actor requires after the update exceeds the sector's recorded pledge, plus
+// 10% headroom, and zero when the update doesn't touch power.
+func (m *Sealing) replicaUpdatePledge(ctx context.Context, sector SectorInfo, onChainInfo *miner.SectorOnChainInfo, ts *types.TipSet) (abi.TokenAmount, error) {
+	nv, err := m.Api.StateNetworkVersion(ctx, ts.Key())
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("getting network version: %w", err)
+	}
+
+	ssize, err := sector.SectorType.SectorSize()
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("failed to resolve sector size for seal proof: %w", err)
+	}
+
+	var verifiedSize uint64
+	if nv >= network.Version29 {
+		// FIP-0118: the update grants maximum quality-adjusted power, which this API expresses as
+		// a fully verified sector, and re-derives the pledge only when that raises the sector's power.
+		if miner.SectorIsFullQaPower(onChainInfo) {
+			log.Infow("submitting replica update", "sector", sector.SectorNumber, "fullQaPower", true,
+				"initialPledge", types.FIL(onChainInfo.InitialPledge), "toPledge", types.FIL(big.Zero()))
+			return big.Zero(), nil
+		}
+		verifiedSize = uint64(ssize)
+	} else {
+		// The update claims each piece's verified allocation, and quality-adjusted power follows
+		// the claimed space.
+		for _, piece := range sector.Pieces {
+			if !piece.HasDealInfo() {
+				continue
+			}
+			alloc, err := piece.GetAllocation(ctx, m.Api, ts.Key())
+			if err != nil {
+				// Counting the piece as verified can only over-fund the update; the actor leaves any
+				// excess in available balance.
+				log.Errorw("failed to get allocation, pledging piece as verified", "sector", sector.SectorNumber, "error", err)
+			}
+			if err != nil || alloc != nil {
+				verifiedSize += uint64(piece.Piece().Size)
+			}
+		}
+	}
+
+	estimate, err := m.Api.StateMinerInitialPledgeForSector(ctx, onChainInfo.Expiration-ts.Height(), ssize, verifiedSize, ts.Key())
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("getting initial pledge collateral: %w", err)
+	}
+
+	// Unbuffer the estimate to get the actual pledge required by the network.
+	scaled := big.Mul(estimate, big.NewInt(100))
+	pledge := big.Div(big.Add(scaled, big.NewInt(109)), big.NewInt(110))
+
+	delta := big.Max(big.Sub(pledge, onChainInfo.InitialPledge), big.Zero())
+	// Re-buffer the pledge to include the 10% headroom for changes in network conditions.
+	toPledge := big.Div(big.Mul(delta, big.NewInt(110)), big.NewInt(100))
+
+	log.Infow("submitting replica update",
+		"sector", sector.SectorNumber,
+		"verifiedSize", verifiedSize,
+		"totalPledge", types.FIL(pledge),
+		"initialPledge", types.FIL(onChainInfo.InitialPledge),
+		"pledgeDelta", types.FIL(delta),
+		"toPledge", types.FIL(toPledge))
+
+	return toPledge, nil
 }
 
 func (m *Sealing) handleWaitMutable(ctx statemachine.Context, sector SectorInfo) error {

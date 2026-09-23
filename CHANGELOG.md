@@ -25,6 +25,8 @@
 
 ## 🐛 Bug Fixes
 
+- fix(miner): accurate pledge calculation for ProveReplicaUpdate3 (snap) messages, 10x sectors need zero pledge, properly scale the estimate for others. ([filecoin-project/lotus#13819](https://github.com/filecoin-project/lotus/pull/13819))
+
 ## 👌 Improvements
 
 - chore(deps): update filecoin-ffi to [v1.37.0](https://github.com/filecoin-project/filecoin-ffi/releases/tag/v1.37.0), which moves to ref-fvm v4.8.3 with nv29 (Solstice) support in the FVM. ([filecoin-project/lotus#13804](https://github.com/filecoin-project/lotus/pull/13804))
