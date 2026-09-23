@@ -7,6 +7,16 @@
 > * [CHANGELOG_1.1x.md](./documentation/changelog/CHANGELOG_1.1x.md) - v1.10.0 to v1.19.0
 > * [CHANGELOG_1.2x.md](./documentation/changelog/CHANGELOG_1.2x.md) - v1.20.0 to v1.29.2
 
+# UNRELEASED
+
+## ☢️ Upgrade Warnings ☢️
+
+## ⭐ New Features
+
+## 🐛 Bug Fixes
+
+## 👌 Improvements
+
 # Node and Miner v1.37.0-rc1 / 2026-09-22
 
 This is the first release candidate of the upcoming MANDATORY Lotus v1.37.0 release, which will deliver [Filecoin network version 29, codenamed "Solstice"](https://github.com/filecoin-project/core-devs/discussions/221). This release candidate sets the upgrade epoch for the Calibration network to Epoch 4109133: `2026-09-28T12:59:30Z`. [See the local time for other timezones.](https://www.worldtimebuddy.com/?qm=1&lid=100,1816670,2643743,5368361&h=100&date=2026-9-28&hf=0)
@@ -37,6 +47,60 @@ Mainnet activation is not yet scheduled in this release candidate, and will be d
 - chore(deps): update go-paramfetch to v0.0.6, adding a second proof-parameter download gateway with automatic fallback and removing the retired `proofs.filecoin.io` source. ([filecoin-project/lotus#13810](https://github.com/filecoin-project/lotus/pull/13810))
 - feat(cli): `lotus filplus` commands now print a retirement warning ahead of nv29, when DataCap and verified-registry writes stop working. ([filecoin-project/lotus#13798](https://github.com/filecoin-project/lotus/pull/13798))
 - chore(deps): update filecoin-ffi to [v1.37.0](https://github.com/filecoin-project/filecoin-ffi/releases/tag/v1.37.0), which moves to ref-fvm v4.8.3 with nv29 (Solstice) support in the FVM. ([filecoin-project/lotus#13804](https://github.com/filecoin-project/lotus/pull/13804))
+
+## 📝 Changelog
+
+For the set of changes since each project's last stable release:
+
+- Node: https://github.com/filecoin-project/lotus/compare/release/v1.36.3...release/v1.37.0
+- Miner: https://github.com/filecoin-project/lotus/compare/release/miner/v1.36.1...release/miner/v1.37.0
+
+## 👨‍👩‍👧‍👦 Contributors
+
+### Node (since v1.36.3)
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Rod Vagg | 8 | +16316/-6311 | 209 |
+| snail8501 | 1 | +4353/-90 | 28 |
+| LexLuthr | 3 | +1335/-2088 | 21 |
+| Steve Loeppky | 12 | +360/-253 | 39 |
+| beck-8 | 3 | +387/-51 | 4 |
+| dependabot[bot] | 11 | +70/-76 | 23 |
+| beck | 4 | +99/-15 | 6 |
+| Kaif | 1 | +16/-0 | 3 |
+| zloglevel | 1 | +2/-4 | 1 |
+| Andrew Jackson (Ajax) | 1 | +4/-2 | 2 |
+
+### Miner (since miner/v1.36.1)
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Rod Vagg | 31 | +22116/-8165 | 341 |
+| LexLuthr | 5 | +2480/-2311 | 34 |
+| snail8501 | 1 | +4353/-90 | 28 |
+| dependabot[bot] | 47 | +974/-557 | 97 |
+| nijoe1 | 1 | +1277/-123 | 15 |
+| Phi-rjan | 10 | +518/-389 | 40 |
+| Steve Loeppky | 16 | +602/-268 | 46 |
+| ZenGround0 | 1 | +171/-366 | 17 |
+| beck-8 | 3 | +387/-51 | 4 |
+| Matt Van Horn | 1 | +246/-19 | 4 |
+| beck | 5 | +158/-95 | 10 |
+| Kaif | 5 | +177/-62 | 18 |
+| iyiola-dev | 1 | +89/-113 | 9 |
+| William Morriss | 1 | +114/-2 | 6 |
+| Linghao | 1 | +58/-0 | 3 |
+| Jakub Sztandera | 1 | +26/-10 | 2 |
+| fmterrors | 1 | +29/-5 | 2 |
+| Sash | 2 | +20/-9 | 2 |
+| Phi | 2 | +9/-7 | 6 |
+| Hubert | 1 | +2/-9 | 2 |
+| zloglevel | 2 | +4/-6 | 3 |
+| futurehua | 1 | +5/-5 | 5 |
+| zjuzhongwen | 1 | +3/-3 | 1 |
+| Andrew Jackson (Ajax) | 1 | +4/-2 | 2 |
+| web3-bot | 1 | +1/-1 | 1 |
 
 # Node v1.36.3 / 2026-09-10
 
