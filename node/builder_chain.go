@@ -151,11 +151,12 @@ var ChainNode = Options(
 		If(build.IsF3Enabled(), Override(new(full.F3CertificateProvider), From(new(api.Gateway)))),
 		// EthSendAPI is a special case, we block the Untrusted method via GatewayEthSend even though it
 		// shouldn't be exposed on the Gateway API.
-		Override(new(eth.EthSendAPI), new(modules.GatewayEthSend)),
-		// EthTransactionAPIV1 is a special case, we block the Limited methods via
-		// GatewayEthTransaction even though it shouldn't be exposed on the Gateway API.
-		Override(new(full.EthTransactionAPIV1), new(modules.GatewayEthTransaction)),
-		Override(new(full.EthTransactionAPIV2), new(modules.GatewayEthTransaction)),
+		Override(new(eth.EthSendAPI), modules.NewGatewayEthSend),
+		// EthTransactionAPIV1/V2 are special cases: the V1 Gateway API is missing the Limited methods
+		// altogether, and even on V2 we want to block them as a precautionary measure. These wrappers
+		// delegate to the underlying Gateway implementations for the rest.
+		Override(new(full.EthTransactionAPIV1), modules.NewGatewayEthTransactionV1),
+		Override(new(full.EthTransactionAPIV2), modules.NewGatewayEthTransactionV2),
 
 		Override(new(index.Indexer), modules.ChainIndexer(config.ChainIndexerConfig{
 			EnableIndexer: false,
