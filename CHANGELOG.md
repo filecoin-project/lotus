@@ -26,6 +26,8 @@
 
 ## 🐛 Bug Fixes
 
+- fix(beacon): centralize `LOTUS_IGNORE_DRAND` guard so every code path through `DrandBeacon` short-circuits when the env var is set, not only `RandomSchedule` ([filecoin-project/lotus#13584](https://github.com/filecoin-project/lotus/pull/13584))
+
 ## 👌 Improvements
 
 - chore(deps): update filecoin-ffi to [v1.37.0](https://github.com/filecoin-project/filecoin-ffi/releases/tag/v1.37.0), which moves to ref-fvm v4.8.3 with nv29 (Solstice) support in the FVM. ([filecoin-project/lotus#13804](https://github.com/filecoin-project/lotus/pull/13804))
