@@ -37,21 +37,24 @@ jobs:
     if: github.repository_owner == 'filecoin-project' && (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == 'failure')
     steps:
       - name: Check out lotus
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           path: lotus
           ref: ${{ github.event.inputs.head_commit_id || github.event.workflow_run.head_commit.id }}
+          # BuildPulse reads commit metadata and CODEOWNERS; no code from this checkout is executed.
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
       - name: Check out buildpulse-action
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: buildpulse/buildpulse-action
           path: buildpulse-action
-          ref: d0d30f53585cf16b2e01811a5a753fd47968654a # v0.11.0
+          ref: d4d8e00c645a2e3db0419a43664bbcf868080234 # v0.12.0
       - name: Create a temporary directory to store the JUnit XML reports
         id: reports
         run: mktemp -d | xargs -0 -I{} echo "path={}" | tee -a $GITHUB_OUTPUT
       - name: Download the artifacts so can access the JUnit XML reports from the Test workflow run
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           run-id: ${{ github.event.inputs.run_id || github.event.workflow_run.id }}
           github-token: ${{ github.token }}
