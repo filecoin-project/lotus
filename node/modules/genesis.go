@@ -11,6 +11,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/node/bundle"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 )
@@ -40,6 +41,9 @@ func LoadGenesis(genBytes []byte) func(fx.Lifecycle, helpers.MetricsCtx, dtypes.
 			h, err := types.DecodeBlock(root.RawData())
 			if err != nil {
 				return nil, xerrors.Errorf("decoding block failed: %w", err)
+			}
+			if err := bundle.LoadGenesisBundle(ctx, bs, h); err != nil {
+				return nil, xerrors.Errorf("loading actors bundle for genesis: %w", err)
 			}
 			return h, nil
 		}
