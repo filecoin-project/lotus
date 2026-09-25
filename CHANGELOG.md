@@ -24,6 +24,8 @@
 
 ## 👌 Improvements
 
+- fix(genesis): the daemon loads the built-in actors bundle for the genesis state's actors version at startup, so a genesis car written on a bundle version (v8 or later) no longer needs actors. ([filecoin-project/lotus#13821](https://github.com/filecoin-project/lotus/pull/13821))
+
 # UNRELEASED v1.37.0
 
 _See https://github.com/filecoin-project/lotus/blob/release/v1.37.0/CHANGELOG.md_
