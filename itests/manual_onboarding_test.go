@@ -70,7 +70,6 @@ func TestManualSectorOnboarding(t *testing.T) {
 			// MinerC is similar to MinerB, but onboards pieces instead of a pure CC sector
 			minerC, ens := ens.UnmanagedMiner(ctx, &client, nodeOpts...)
 			defer minerC.Stop()
-			ctx = ens.UnmanagedContext(ctx)
 
 			ens.Start()
 

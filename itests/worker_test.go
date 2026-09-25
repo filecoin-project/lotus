@@ -546,6 +546,7 @@ func TestWindowPostV1P1NV20Worker(t *testing.T) {
 		kit.WithTaskTypes([]sealtasks.TaskType{sealtasks.TTGenerateWindowPoSt}))
 
 	ens.InterconnectAll().BeginMiningMustPost(blocktime)
+	ctx = ens.FailureContext(ctx)
 
 	maddr, err := miner.ActorAddress(ctx)
 	require.NoError(t, err)
@@ -567,7 +568,11 @@ waitForProof:
 			break waitForProof
 		}
 
-		build.Clock.Sleep(blocktime)
+		select {
+		case <-ctx.Done():
+			t.Fatal(context.Cause(ctx))
+		case <-build.Clock.After(blocktime):
+		}
 	}
 
 	slm, err := client.StateListMessages(ctx, &api.MessageMatch{To: maddr}, types.EmptyTSK, 0)

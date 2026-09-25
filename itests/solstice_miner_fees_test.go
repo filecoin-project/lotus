@@ -118,7 +118,6 @@ func TestSolsticeMinerFees(t *testing.T) {
 	defer fault10x.Stop()
 	usqd, ens := ens.UnmanagedMiner(ctx, &client, minerOpts(usqdKey)...)
 	defer usqd.Stop()
-	ctx = ens.UnmanagedContext(ctx)
 	ens.Start()
 
 	f := &solsticeFees{
@@ -286,7 +285,7 @@ func (f *solsticeFees) drainAndFault(t *testing.T) map[address.Address]abi.Chain
 			Method: builtin.MethodsMiner.WithdrawBalance, Params: params,
 		}, nil)
 		req.NoError(err)
-		lookup, err := f.client.StateWaitMsg(f.ctx, msg.Cid(), 2, lapi.LookbackNoLimit, true)
+		lookup, err := f.client.WaitMsgResult(f.ctx, msg.Cid(), 2)
 		req.NoError(err)
 		req.Equal(exitcode.Ok, lookup.Receipt.ExitCode, "draining miner %s", m.ActorAddr)
 
@@ -619,7 +618,7 @@ func (f *solsticeFees) sendFromOwner(t *testing.T, m *kit.TestUnmanagedMiner, va
 		From: m.OwnerKey.Address, To: m.ActorAddr, Value: value, Method: method, Params: params,
 	}, nil)
 	req.NoError(err)
-	lookup, err := f.client.StateWaitMsg(f.ctx, msg.Cid(), 2, lapi.LookbackNoLimit, true)
+	lookup, err := f.client.WaitMsgResult(f.ctx, msg.Cid(), 2)
 	req.NoError(err)
 	req.Equal(exitcode.Ok, lookup.Receipt.ExitCode, "message to %s with method %d", m.ActorAddr, method)
 	return lookup

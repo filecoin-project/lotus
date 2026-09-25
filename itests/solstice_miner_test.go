@@ -160,7 +160,6 @@ func TestSolsticeMinerLifecycle(t *testing.T) {
 	defer deals.Stop()
 	cliMiner, ens := ens.UnmanagedMiner(ctx, &client, minerOpts(cliKey)...)
 	defer cliMiner.Stop()
-	ctx = ens.UnmanagedContext(ctx)
 	ens.Start()
 
 	// Watch every miner from the moment it exists, so no miner's first window goes unprotected. A
@@ -816,7 +815,7 @@ func (f *solsticeLifecycle) upgradeQualityCLI(t *testing.T, minerCLI *kit.MockCL
 		estimates(out, step.count, current)
 		sent := solsticeSentMessages(t, out)
 		req.Len(sent, 1)
-		lookup, err := f.client.StateWaitMsg(f.ctx, sent[0], 2, lapi.LookbackNoLimit, true)
+		lookup, err := f.client.WaitMsgResult(f.ctx, sent[0], 2)
 		req.NoError(err)
 		req.Equal(exitcode.Ok, lookup.Receipt.ExitCode)
 		req.Greater(lookup.Receipt.GasUsed, int64(0))
@@ -1235,7 +1234,7 @@ func (f *solsticeLifecycle) upgradeAuthorization(t *testing.T) {
 		Method: builtin.MethodsMiner.ChangeWorkerAddress, Params: changed, Value: big.Zero(),
 	}, nil)
 	req.NoError(err)
-	lookup, err := f.client.StateWaitMsg(f.ctx, msg.Cid(), 2, lapi.LookbackNoLimit, true)
+	lookup, err := f.client.WaitMsgResult(f.ctx, msg.Cid(), 2)
 	req.NoError(err)
 	req.Equal(exitcode.Ok, lookup.Receipt.ExitCode, "installing a control address")
 
@@ -1379,7 +1378,7 @@ func (f *solsticeLifecycle) maxTerminationFee(t *testing.T, power uint64, pledge
 		Method: builtin.MethodsMiner.MaxTerminationFeeExported, Params: params, Value: big.Zero(),
 	}, nil)
 	req.NoError(err)
-	lookup, err := f.client.StateWaitMsg(f.ctx, msg.Cid(), 1, lapi.LookbackNoLimit, true)
+	lookup, err := f.client.WaitMsgResult(f.ctx, msg.Cid(), 1)
 	req.NoError(err)
 	req.Equal(exitcode.Ok, lookup.Receipt.ExitCode, "MaxTerminationFeeExported on miner %s", f.mixed.ActorAddr)
 

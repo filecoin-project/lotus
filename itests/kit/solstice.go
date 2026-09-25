@@ -101,7 +101,6 @@ func NewSolsticeUpgradeEnv(t *testing.T, o SolsticeOpts) *SolsticeEnv {
 		SectorSize(ssize),
 		OwnerAddr(client.DefaultKey),
 	)
-	ctx = ens.UnmanagedContext(ctx)
 
 	ens.InterconnectAll().BeginMining(5 * time.Millisecond)
 	ens.Start()

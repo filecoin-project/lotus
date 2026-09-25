@@ -132,7 +132,6 @@ func TestDailyFees(t *testing.T) {
 	nodeOpts := []kit.NodeOpt{kit.SectorSize(defaultSectorSize), kit.OwnerAddr(client.DefaultKey)}
 	mminer, ens := ens.UnmanagedMiner(ctx, &client, nodeOpts...)
 	defer mminer.Stop()
-	ctx = ens.UnmanagedContext(ctx)
 
 	/*** Utility functions **************************************************************************/
 

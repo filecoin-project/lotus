@@ -244,7 +244,6 @@ func TestManualNISectorOnboarding(t *testing.T) {
 				miners[i], _ = ens.UnmanagedMiner(ctx, &client, nodeOpts...)
 				defer miners[i].Stop()
 			}
-			ctx = ens.UnmanagedContext(ctx)
 
 			ens.Start()
 
@@ -389,7 +388,6 @@ func TestNISectorFailureCases(t *testing.T) {
 
 	miner, _ := ens.UnmanagedMiner(ctx, &client, kit.SectorSize(defaultSectorSize), kit.OwnerAddr(client.DefaultKey))
 	defer miner.Stop()
-	ctx = ens.UnmanagedContext(ctx)
 
 	ens.Start()
 

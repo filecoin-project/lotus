@@ -210,7 +210,7 @@ func TestOnboardMixedMarketDDO(t *testing.T) {
 		smsg, err := client.MpoolPushMessage(ctx, psdMsg, nil)
 		require.NoError(t, err)
 
-		r, err := client.StateWaitMsg(ctx, smsg.Cid(), 1, stmgr.LookbackNoLimit, true)
+		r, err := client.WaitMsgResult(ctx, smsg.Cid(), 1)
 		require.NoError(t, err)
 
 		require.Equal(t, exitcode.Ok, r.Receipt.ExitCode)
