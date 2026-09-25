@@ -7,16 +7,20 @@ import (
 	"os"
 
 	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/ipld/go-car"
 	"golang.org/x/xerrors"
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/builtin"
 
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/state"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 var log = logging.Logger("bundle")
@@ -87,5 +91,29 @@ func LoadBundles(ctx context.Context, bs blockstore.Blockstore, versions ...acto
 		}
 	}
 
+	return nil
+}
+
+// LoadGenesisBundle loads the bundle for the actors version the genesis state is based on, if that's
+// a wasm bundle version (v8 or later).
+// Legacy genesis states (v0 to v7, identity-hashed code CIDs) and code CIDs unknown to this build are
+// left alone.
+func LoadGenesisBundle(ctx context.Context, bs blockstore.Blockstore, genesis *types.BlockHeader) error {
+	st, err := state.LoadStateTree(cbor.NewCborStore(bs), genesis.ParentStateRoot)
+	if err != nil {
+		return xerrors.Errorf("loading genesis state tree: %w", err)
+	}
+	sys, err := st.GetActor(builtin.SystemActorAddr)
+	if err != nil {
+		return xerrors.Errorf("loading genesis system actor: %w", err)
+	}
+
+	_, av, ok := actors.GetActorMetaByCode(sys.Code)
+	if !ok {
+		return nil
+	}
+	if err := LoadBundles(ctx, bs, av); err != nil {
+		return xerrors.Errorf("loading actors v%d bundle for genesis: %w", av, err)
+	}
 	return nil
 }
