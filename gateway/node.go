@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/hashicorp/golang-lru/arc/v2"
 	logger "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/stats"
 	"golang.org/x/time/rate"
@@ -14,8 +15,8 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/api/v2api"
-	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/delegated"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
@@ -53,6 +54,9 @@ type Node struct {
 	eventFilterMaxHeightRange   abi.ChainEpoch
 	ethTraceFilterMaxBlockRange int64
 	errLookback                 error
+	networkParams               networkParams
+	tipSetHeights               *arc.ARCCache[types.TipSetKey, abi.ChainEpoch]
+	tipSetKeysByEthHash         *arc.ARCCache[ethtypes.EthHash, types.TipSetKey]
 }
 
 type options struct {
@@ -177,6 +181,8 @@ func NewNode(v1 v1api.FullNode, v2 v2api.FullNode, opts ...Option) *Node {
 		eventFilterMaxHeightRange:   options.eventFilterMaxHeightRange,
 		ethTraceFilterMaxBlockRange: options.ethTraceFilterMaxBlockRange,
 	}
+	gateway.tipSetHeights, _ = arc.NewARC[types.TipSetKey, abi.ChainEpoch](lookbackCacheSize)
+	gateway.tipSetKeysByEthHash, _ = arc.NewARC[ethtypes.EthHash, types.TipSetKey](lookbackCacheSize)
 	gateway.v1Proxy = &reverseProxyV1{
 		gateway:       gateway,
 		server:        v1,
@@ -193,77 +199,6 @@ func NewNode(v1 v1api.FullNode, v2 v2api.FullNode, opts ...Option) *Node {
 func (gw *Node) V1ReverseProxy() api.Gateway { return gw.v1Proxy }
 
 func (gw *Node) V2ReverseProxy() v2api.Gateway { return gw.v2Proxy }
-
-func (gw *Node) checkTipSetKey(ctx context.Context, tsk types.TipSetKey) error {
-	if tsk.IsEmpty() {
-		return nil
-	}
-
-	ts, err := gw.v1Proxy.ChainGetTipSet(ctx, tsk)
-	if err != nil {
-		return err
-	}
-
-	return gw.checkTipSet(ts)
-}
-
-func (gw *Node) checkTipSet(ts *types.TipSet) error {
-	at := time.Unix(int64(ts.Blocks()[0].Timestamp), 0)
-	if err := gw.checkTimestamp(at); err != nil {
-		return fmt.Errorf("bad tipset: %w", err)
-	}
-	return nil
-}
-
-func (gw *Node) checkKeyedTipSetHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) error {
-	var ts *types.TipSet
-	if tsk.IsEmpty() {
-		head, err := gw.v1Proxy.ChainHead(ctx)
-		if err != nil {
-			return err
-		}
-		ts = head
-	} else {
-		gts, err := gw.v1Proxy.ChainGetTipSet(ctx, tsk)
-		if err != nil {
-			return err
-		}
-		ts = gts
-	}
-
-	// Check if the tipset key refers to gw tipset that's too far in the past
-	if err := gw.checkTipSet(ts); err != nil {
-		return err
-	}
-
-	// Check if the height is too far in the past
-	if err := gw.checkTipSetHeight(ts, h); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (gw *Node) checkTipSetHeight(ts *types.TipSet, h abi.ChainEpoch) error {
-	if h > ts.Height() {
-		return fmt.Errorf("tipset height in future")
-	}
-	tsBlock := ts.Blocks()[0]
-	heightDelta := time.Duration(uint64(tsBlock.Height-h)*buildconstants.BlockDelaySecs) * time.Second
-	timeAtHeight := time.Unix(int64(tsBlock.Timestamp), 0).Add(-heightDelta)
-
-	if err := gw.checkTimestamp(timeAtHeight); err != nil {
-		return fmt.Errorf("bad tipset height: %w", err)
-	}
-	return nil
-}
-
-func (gw *Node) checkTimestamp(at time.Time) error {
-	if time.Since(at) > gw.maxLookbackDuration {
-		return gw.errLookback
-	}
-	return nil
-}
 
 func (gw *Node) limit(ctx context.Context, tokens int) error {
 	ctx2, cancel := context.WithTimeout(ctx, gw.rateLimitTimeout)
