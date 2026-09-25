@@ -3,7 +3,6 @@ package gateway
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
@@ -17,7 +16,6 @@ import (
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/api/v2api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/events/filter"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
@@ -35,7 +33,34 @@ func (pv2 *reverseProxyV2) ChainGetTipSet(ctx context.Context, selector types.Ti
 	if err := pv2.gateway.limit(ctx, chainRateLimitTokens); err != nil {
 		return nil, err
 	}
+	if selector.Height != nil {
+		if err := pv2.checkTipSetSelector(ctx, selector); err != nil {
+			return nil, err
+		}
+	}
 	return pv2.server.ChainGetTipSet(ctx, selector)
+}
+
+// checkTipSetSelector enforces the lookback bound on the tipset selector names.
+func (pv2 *reverseProxyV2) checkTipSetSelector(ctx context.Context, selector types.TipSetSelector) error {
+	if err := selector.Validate(); err != nil {
+		return xerrors.Errorf("validating selector: %w", err)
+	}
+	switch {
+	case selector.Height != nil:
+		// The anchor only picks a fork and Previous moves back at most a few
+		// null rounds, so the requested height decides.
+		return pv2.gateway.checkEpoch(ctx, *selector.Height.At)
+	case selector.Key != nil:
+		return pv2.gateway.checkTipSetKey(ctx, *selector.Key)
+	case selector.Tag != nil && *selector.Tag == types.TipSetTags.Latest:
+		return nil
+	}
+	ts, err := pv2.server.ChainGetTipSet(ctx, selector)
+	if err != nil {
+		return err
+	}
+	return pv2.gateway.checkTipSet(ctx, ts)
 }
 
 func (pv2 *reverseProxyV2) chainHeadHeight(ctx context.Context) (abi.ChainEpoch, error) {
@@ -60,6 +85,9 @@ func (pv2 *reverseProxyV2) StateGetActor(ctx context.Context, address address.Ad
 	if err := pv2.gateway.limit(ctx, stateRateLimitTokens); err != nil {
 		return nil, err
 	}
+	if err := pv2.checkTipSetSelector(ctx, selector); err != nil {
+		return nil, err
+	}
 	return pv2.server.StateGetActor(ctx, address, selector)
 }
 
@@ -67,11 +95,17 @@ func (pv2 *reverseProxyV2) StateGetID(ctx context.Context, address address.Addre
 	if err := pv2.gateway.limit(ctx, stateRateLimitTokens); err != nil {
 		return nil, err
 	}
+	if err := pv2.checkTipSetSelector(ctx, selector); err != nil {
+		return nil, err
+	}
 	return pv2.server.StateGetID(ctx, address, selector)
 }
 
 func (pv2 *reverseProxyV2) StateRewardDistribution(ctx context.Context, selector types.TipSetSelector) (*v2api.RewardDistribution, error) {
 	if err := pv2.gateway.limit(ctx, stateRateLimitTokens); err != nil {
+		return nil, err
+	}
+	if err := pv2.checkTipSetSelector(ctx, selector); err != nil {
 		return nil, err
 	}
 	return pv2.server.StateRewardDistribution(ctx, selector)
@@ -168,7 +202,7 @@ func (pv2 *reverseProxyV2) EthGetBlockTransactionCountByNumber(ctx context.Conte
 		return 0, err
 	}
 
-	if err := pv2.checkBlkParam(ctx, blkNum, 0); err != nil {
+	if err := pv2.gateway.checkEthBlockNumber(ctx, blkNum, 0); err != nil {
 		return 0, err
 	}
 
@@ -188,7 +222,7 @@ func (pv2 *reverseProxyV2) EthGetBlockByHash(ctx context.Context, blkHash ethtyp
 		return ethtypes.EthBlock{}, err
 	}
 
-	if err := pv2.checkBlkHash(ctx, blkHash); err != nil {
+	if err := pv2.gateway.checkEthBlockHash(ctx, blkHash); err != nil {
 		return ethtypes.EthBlock{}, err
 	}
 
@@ -200,7 +234,7 @@ func (pv2 *reverseProxyV2) EthGetBlockByNumber(ctx context.Context, blkNum strin
 		return ethtypes.EthBlock{}, err
 	}
 
-	if err := pv2.checkBlkParam(ctx, blkNum, 0); err != nil {
+	if err := pv2.gateway.checkEthBlockNumber(ctx, blkNum, 0); err != nil {
 		return ethtypes.EthBlock{}, err
 	}
 
@@ -219,7 +253,7 @@ func (pv2 *reverseProxyV2) EthGetTransactionByBlockHashAndIndex(ctx context.Cont
 		return nil, err
 	}
 
-	if err := pv2.checkBlkHash(ctx, blkHash); err != nil {
+	if err := pv2.gateway.checkEthBlockHash(ctx, blkHash); err != nil {
 		return nil, err
 	}
 
@@ -231,7 +265,7 @@ func (pv2 *reverseProxyV2) EthGetTransactionByBlockNumberAndIndex(ctx context.Co
 		return nil, err
 	}
 
-	if err := pv2.checkBlkParam(ctx, blkNum, 0); err != nil {
+	if err := pv2.gateway.checkEthBlockNumber(ctx, blkNum, 0); err != nil {
 		return nil, err
 	}
 
@@ -259,7 +293,7 @@ func (pv2 *reverseProxyV2) EthGetTransactionCount(ctx context.Context, sender et
 		return 0, err
 	}
 
-	if err := pv2.checkEthBlockParam(ctx, blkParam, 0); err != nil {
+	if err := pv2.gateway.checkEthBlockParam(ctx, blkParam, 0); err != nil {
 		return 0, err
 	}
 
@@ -285,7 +319,7 @@ func (pv2 *reverseProxyV2) EthGetCode(ctx context.Context, address ethtypes.EthA
 		return nil, err
 	}
 
-	if err := pv2.checkEthBlockParam(ctx, blkParam, 0); err != nil {
+	if err := pv2.gateway.checkEthBlockParam(ctx, blkParam, 0); err != nil {
 		return nil, err
 	}
 
@@ -297,7 +331,7 @@ func (pv2 *reverseProxyV2) EthGetStorageAt(ctx context.Context, address ethtypes
 		return nil, err
 	}
 
-	if err := pv2.checkEthBlockParam(ctx, blkParam, 0); err != nil {
+	if err := pv2.gateway.checkEthBlockParam(ctx, blkParam, 0); err != nil {
 		return nil, err
 	}
 
@@ -309,7 +343,7 @@ func (pv2 *reverseProxyV2) EthGetBalance(ctx context.Context, address ethtypes.E
 		return ethtypes.EthBigInt(big.Zero()), err
 	}
 
-	if err := pv2.checkEthBlockParam(ctx, blkParam, 0); err != nil {
+	if err := pv2.gateway.checkEthBlockParam(ctx, blkParam, 0); err != nil {
 		return ethtypes.EthBigInt(big.Zero()), err
 	}
 
@@ -321,7 +355,7 @@ func (pv2 *reverseProxyV2) EthTraceBlock(ctx context.Context, blkNum string) ([]
 		return nil, err
 	}
 
-	if err := pv2.checkBlkParam(ctx, blkNum, 0); err != nil {
+	if err := pv2.gateway.checkEthBlockNumber(ctx, blkNum, 0); err != nil {
 		return nil, err
 	}
 
@@ -333,7 +367,7 @@ func (pv2 *reverseProxyV2) EthTraceReplayBlockTransactions(ctx context.Context, 
 		return nil, err
 	}
 
-	if err := pv2.checkBlkParam(ctx, blkNum, 0); err != nil {
+	if err := pv2.gateway.checkEthBlockNumber(ctx, blkNum, 0); err != nil {
 		return nil, err
 	}
 
@@ -354,13 +388,13 @@ func (pv2 *reverseProxyV2) EthTraceFilter(ctx context.Context, filter ethtypes.E
 	}
 
 	if filter.ToBlock != nil {
-		if err := pv2.checkBlkParam(ctx, *filter.ToBlock, 0); err != nil {
+		if err := pv2.gateway.checkEthBlockNumber(ctx, *filter.ToBlock, 0); err != nil {
 			return nil, err
 		}
 	}
 
 	if filter.FromBlock != nil {
-		if err := pv2.checkBlkParam(ctx, *filter.FromBlock, 0); err != nil {
+		if err := pv2.gateway.checkEthBlockNumber(ctx, *filter.FromBlock, 0); err != nil {
 			return nil, err
 		}
 	}
@@ -402,7 +436,7 @@ func (pv2 *reverseProxyV2) EthFeeHistory(ctx context.Context, p jsonrpc.RawParam
 		return ethtypes.EthFeeHistory{}, err
 	}
 
-	if err := pv2.checkBlkParam(ctx, params.NewestBlkNum, params.BlkCount); err != nil {
+	if err := pv2.gateway.checkEthBlockNumber(ctx, params.NewestBlkNum, params.BlkCount); err != nil {
 		return ethtypes.EthFeeHistory{}, err
 	}
 
@@ -441,7 +475,7 @@ func (pv2 *reverseProxyV2) EthCall(ctx context.Context, tx ethtypes.EthCall, blk
 		return nil, err
 	}
 
-	if err := pv2.checkEthBlockParam(ctx, blkParam, 0); err != nil {
+	if err := pv2.gateway.checkEthBlockParam(ctx, blkParam, 0); err != nil {
 		return nil, err
 	}
 
@@ -459,17 +493,17 @@ func (pv2 *reverseProxyV2) EthGetLogs(ctx context.Context, filter *ethtypes.EthF
 	}
 
 	if filter.FromBlock != nil {
-		if err := pv2.checkBlkParam(ctx, *filter.FromBlock, 0); err != nil {
+		if err := pv2.gateway.checkEthBlockNumber(ctx, *filter.FromBlock, 0); err != nil {
 			return nil, err
 		}
 	}
 	if filter.ToBlock != nil {
-		if err := pv2.checkBlkParam(ctx, *filter.ToBlock, 0); err != nil {
+		if err := pv2.gateway.checkEthBlockNumber(ctx, *filter.ToBlock, 0); err != nil {
 			return nil, err
 		}
 	}
 	if filter.BlockHash != nil {
-		if err := pv2.checkBlkHash(ctx, *filter.BlockHash); err != nil {
+		if err := pv2.gateway.checkEthBlockHash(ctx, *filter.BlockHash); err != nil {
 			return nil, err
 		}
 	}
@@ -709,98 +743,4 @@ func (pv2 *reverseProxyV2) addUserFilterLimited(
 	}
 
 	return id, nil
-}
-
-func (pv2 *reverseProxyV2) tskByEthHash(ctx context.Context, blkHash ethtypes.EthHash) (types.TipSetKey, error) {
-	// Fall back to V2 to convert the EthHash to a TipSetKey. Because, v2 has not
-	// implemented Filecoin.ChainReadObj yet.
-
-	// TODO: Once v2 APIs offer Filecoin.ChainReadObj, replace this with direct call
-	//       to whatever the equivalent v2 would be.
-	return pv2.gateway.v1Proxy.tskByEthHash(ctx, blkHash)
-}
-
-func (pv2 *reverseProxyV2) checkBlkHash(ctx context.Context, blkHash ethtypes.EthHash) error {
-	tsk, err := pv2.tskByEthHash(ctx, blkHash)
-	if err != nil {
-		return err
-	}
-	return pv2.gateway.checkTipSetKey(ctx, tsk)
-}
-
-func (pv2 *reverseProxyV2) checkEthBlockParam(ctx context.Context, blkParam ethtypes.EthBlockNumberOrHash, lookback ethtypes.EthUint64) error {
-	// first check if it's a predefined block or a block number
-	if blkParam.PredefinedBlock != nil || blkParam.BlockNumber != nil {
-		head, err := pv2.ChainGetTipSet(ctx, types.TipSetSelectors.Latest)
-		if err != nil {
-			return err
-		}
-
-		var num ethtypes.EthUint64
-		if blkParam.PredefinedBlock != nil {
-			if *blkParam.PredefinedBlock == "earliest" {
-				return xerrors.New("block param \"earliest\" is not supported")
-			} else if *blkParam.PredefinedBlock == "pending" || *blkParam.PredefinedBlock == "latest" {
-				// Head is always ok.
-				if lookback == 0 {
-					return nil
-				}
-
-				if lookback <= ethtypes.EthUint64(head.Height()) {
-					num = ethtypes.EthUint64(head.Height()) - lookback
-				}
-			}
-		} else {
-			num = *blkParam.BlockNumber
-		}
-
-		return pv2.gateway.checkTipSetHeight(head, abi.ChainEpoch(num))
-	}
-
-	// otherwise it's a block hash
-	if blkParam.BlockHash != nil {
-		return pv2.checkBlkHash(ctx, *blkParam.BlockHash)
-	}
-
-	return xerrors.New("invalid block param")
-}
-
-func (pv2 *reverseProxyV2) checkBlkParam(ctx context.Context, blkParam string, lookback ethtypes.EthUint64) error {
-	if blkParam == "earliest" {
-		// also not supported in node impl
-		return xerrors.New(`block param "earliest" is not supported`)
-	}
-
-	head, err := pv2.ChainGetTipSet(ctx, types.TipSetSelectors.Latest)
-	if err != nil {
-		return err
-	}
-
-	var num ethtypes.EthUint64
-	switch blkParam {
-	case "pending", "latest":
-		// Head is always ok.
-		if lookback == 0 {
-			return nil
-		}
-		// Can't look beyond 0 anyways.
-		if lookback > ethtypes.EthUint64(head.Height()) {
-			break
-		}
-		num = ethtypes.EthUint64(head.Height()) - lookback
-
-	// "safe" and "finalized" resolved `num` will not accurate for v2 APIs with F3 active; we would
-	// need to query the F3 APIs to get the correct value, but for now we'll go with worst-case and
-	// if the lookback limit is very short (2880 by default) then these will fail
-	case "safe":
-		num = ethtypes.EthUint64(head.Height()) - lookback - ethtypes.EthUint64(ethtypes.SafeEpochDelay)
-	case "finalized":
-		num = ethtypes.EthUint64(head.Height()) - lookback - ethtypes.EthUint64(policy.ChainFinality)
-	default:
-		if err := num.UnmarshalJSON([]byte(`"` + blkParam + `"`)); err != nil {
-			return fmt.Errorf("cannot parse block number: %v", err)
-		}
-
-	}
-	return pv2.gateway.checkTipSetHeight(head, abi.ChainEpoch(num))
 }

@@ -26,6 +26,8 @@
 
 ## 🐛 Bug Fixes
 
+- fix(gateway): enforce the lookback limit on v2 `TipSetSelector` methods (`StateGetActor`, `StateGetID`, `ChainGetTipSet` by height), and derive lookback checks from memoised network parameters and cached tipsets instead of fetching head per request. Internal lookback fetches no longer consume rate-limit tokens on top of the calling method's own charge, and the `safe` and `finalized` block tags now pass the lookback check on `EthGetBalance`, `EthCall`, `EthGetCode`, `EthGetStorageAt` and `EthGetTransactionCount`, where they were always rejected before. ([filecoin-project/lotus#13822](https://github.com/filecoin-project/lotus/pull/13822))
+
 ## 👌 Improvements
 
 - chore(deps): update filecoin-ffi to [v1.37.0](https://github.com/filecoin-project/filecoin-ffi/releases/tag/v1.37.0), which moves to ref-fvm v4.8.3 with nv29 (Solstice) support in the FVM. ([filecoin-project/lotus#13804](https://github.com/filecoin-project/lotus/pull/13804))
