@@ -26,6 +26,8 @@
 
 ## 🐛 Bug Fixes
 
+- fix(eth): `EthBigInt`'s JSON decoder now rejects malformed hex input instead of silently decoding it to `0x0`. ([filecoin-project/lotus#13824](https://github.com/filecoin-project/lotus/pull/13824))
+
 ## 👌 Improvements
 
 - chore(deps): update filecoin-ffi to [v1.37.0](https://github.com/filecoin-project/filecoin-ffi/releases/tag/v1.37.0), which moves to ref-fvm v4.8.3 with nv29 (Solstice) support in the FVM. ([filecoin-project/lotus#13804](https://github.com/filecoin-project/lotus/pull/13804))
