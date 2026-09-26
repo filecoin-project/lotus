@@ -70,6 +70,7 @@ func TestPledgeBatching(t *testing.T) {
 		}
 		client, miner, ens := kit.EnsembleMinimal(t, proofs)
 		ens.InterconnectAll().BeginMiningMustPost(blockTime)
+		ctx = ens.FailureContext(ctx)
 
 		client.WaitTillChain(ctx, kit.HeightAtLeast(10))
 
@@ -107,7 +108,11 @@ func TestPledgeBatching(t *testing.T) {
 				}
 			}
 
-			build.Clock.Sleep(100 * time.Millisecond)
+			select {
+			case <-ctx.Done():
+				t.Fatal(context.Cause(ctx))
+			case <-build.Clock.After(100 * time.Millisecond):
+			}
 			fmt.Printf("WaitSeal: %d %+v\n", len(toCheck), states)
 		}
 	}

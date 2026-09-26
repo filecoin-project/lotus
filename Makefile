@@ -317,7 +317,7 @@ install-completions:  ## Install shell completions
 	install -C ./scripts/zsh-completion/lotus /usr/local/share/zsh/site-functions/_lotus
 
 unittests:  ## Run unit tests
-	@$(GOCC) test $(shell go list ./... | grep -v /lotus/itests)
+	@$(GOCC) test $(shell go list ./... | grep -v /lotus/itests$$)
 .PHONY: unittests
 
 lint:

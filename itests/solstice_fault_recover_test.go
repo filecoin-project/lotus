@@ -16,7 +16,6 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
 
-	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -148,7 +147,7 @@ func (f *solsticeRecover) upgradeLegacy(t *testing.T) {
 		Method: builtin.MethodsMiner.UpgradeSectorQuality, Params: params, Value: big.Zero(),
 	}, nil)
 	req.NoError(err)
-	lookup, err := f.client.StateWaitMsg(f.ctx, msg.Cid(), 2, lapi.LookbackNoLimit, true)
+	lookup, err := f.client.WaitMsgResult(f.ctx, msg.Cid(), 2)
 	req.NoError(err)
 	req.Equal(exitcode.Ok, lookup.Receipt.ExitCode, "upgrading miner %s sector %d", f.maddr, f.upgraded)
 
@@ -208,7 +207,7 @@ func (f *solsticeRecover) failAndRecover(t *testing.T, sector abi.SectorNumber, 
 	recover, err := f.miner.RecoverFault(f.ctx, []abi.SectorNumber{sector})
 	req.NoError(err, "recovering %s must be accepted", name)
 	req.NotEmpty(recover, "recovering %s must send a message", name)
-	lookup, err := f.client.StateWaitMsg(f.ctx, recover[0], 2, lapi.LookbackNoLimit, true)
+	lookup, err := f.client.WaitMsgResult(f.ctx, recover[0], 2)
 	req.NoError(err)
 	req.Equal(exitcode.Ok, lookup.Receipt.ExitCode, "recovering %s", name)
 
@@ -314,7 +313,7 @@ func TestSolsticeWorkerHandover(t *testing.T) {
 
 	onboarded, _ := um.OnboardSectors(e.SealProof, kit.NewSectorBatch().AddEmptySectors(1))
 	req.Len(onboarded, 1)
-	um.WaitTillActivatedAndAssertPower(onboarded, uint64(e.Ssize), uint64(e.Ssize)*10)
+	req.NoError(um.WaitTillActivatedAndAssertPower(onboarded, uint64(e.Ssize), uint64(e.Ssize)*10))
 	sector := onboarded[0]
 
 	// Stop the post loop before handing over the worker. The owner remains authorized to submit
@@ -341,7 +340,7 @@ func TestSolsticeWorkerHandover(t *testing.T) {
 		Params: changed, Value: big.Zero(),
 	}, nil)
 	req.NoError(err)
-	lookup, err := client.StateWaitMsg(ctx, msg.Cid(), 2, lapi.LookbackNoLimit, true)
+	lookup, err := client.WaitMsgResult(ctx, msg.Cid(), 2)
 	req.NoError(err)
 	req.Equal(exitcode.Ok, lookup.Receipt.ExitCode, "changing the worker")
 
@@ -367,7 +366,7 @@ func TestSolsticeWorkerHandover(t *testing.T) {
 		From: owner, To: maddr, Method: builtin.MethodsMiner.ConfirmChangeWorkerAddress, Value: big.Zero(),
 	}, nil)
 	req.NoError(err)
-	lookup, err = client.StateWaitMsg(ctx, confirm.Cid(), 2, lapi.LookbackNoLimit, true)
+	lookup, err = client.WaitMsgResult(ctx, confirm.Cid(), 2)
 	req.NoError(err)
 	req.Equal(exitcode.Ok, lookup.Receipt.ExitCode, "confirming the worker change")
 

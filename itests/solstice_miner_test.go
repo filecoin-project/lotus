@@ -179,53 +179,74 @@ func TestSolsticeMinerLifecycle(t *testing.T) {
 	}
 
 	var pieceV, pieceSnap abi.PieceInfo
+	run := func(name string, f func(*testing.T)) bool {
+		return t.Run(name, func(t *testing.T) {
+			if err := context.Cause(ctx); err != nil {
+				t.Fatal(err)
+			}
+			f(t)
+			if err := context.Cause(ctx); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
 
-	t.Run("the upgrade-quality CLI refuses NV28", func(t *testing.T) {
+	if !run("the upgrade-quality CLI refuses NV28", func(t *testing.T) {
 		_, err := minerCLI.RunCmdRaw("sectors", "upgrade-quality", "--actor="+f.cli.ActorAddr.String())
 		require.ErrorContains(t, err, "requires network version 29+")
-	})
-	t.Run("a verified client holds allocations before the fork", func(t *testing.T) {
+	}) {
+		return
+	}
+	if !run("a verified client holds allocations before the fork", func(t *testing.T) {
 		pieceV, pieceSnap = f.setupVerifiedFixture(t, rootKey, verifierKey, clientKey)
-	})
-	t.Run("legacy sectors of every content type gain power on NV28", func(t *testing.T) {
+	}) {
+		return
+	}
+	if !run("legacy sectors of every content type gain power on NV28", func(t *testing.T) {
 		f.onboardBeforeFork(t, pieceV, pieceSnap)
-	})
-	t.Run("the migration leaves every legacy sector as it was", func(t *testing.T) {
-		f.crossTheFork(t)
-	})
-	t.Run("datacap and verifreg writes are refused", func(t *testing.T) {
+	}) {
+		return
+	}
+	if !run("the migration leaves every legacy sector as it was", f.crossTheFork) {
+		return
+	}
+	if !run("datacap and verifreg writes are refused", func(t *testing.T) {
 		requireSolsticeFrozenActors(ctx, t, &client, f.migrated)
-	})
-	t.Run("sectors activated on NV29 are created at full quality", func(t *testing.T) {
-		f.nativeSectors(t)
-	})
-	t.Run("a sector using a dangling allocation is created at full quality", func(t *testing.T) {
-		f.danglingAllocations(t)
-	})
-	t.Run("the upgrade-quality CLI packs one miner's sectors into capped messages", func(t *testing.T) {
+	}) {
+		return
+	}
+	if !run("sectors activated on NV29 are created at full quality", f.nativeSectors) {
+		return
+	}
+	if !run("a sector using a dangling allocation is created at full quality", f.danglingAllocations) {
+		return
+	}
+	if !run("the upgrade-quality CLI packs one miner's sectors into capped messages", func(t *testing.T) {
 		f.upgradeQualityCLI(t, minerCLI)
-	})
-	t.Run("upgrading a legacy sector raises it once and only once", func(t *testing.T) {
-		f.upgradeSectorQuality(t)
-	})
-	t.Run("an extension moves the expiration and re-derives the weights", func(t *testing.T) {
-		f.extendSectors(t)
-	})
-	t.Run("snapping and upgrading reach 10x in either order", func(t *testing.T) {
-		f.snapOrdering(t)
-	})
-	t.Run("a deal sector rises only if its content did not already pay for it", func(t *testing.T) {
-		f.dealTiers(t)
-	})
-	t.Run("the proving window refuses a termination and allows an upgrade", func(t *testing.T) {
-		f.deadlineImmutability(t)
-	})
-	t.Run("only the owner, worker and control addresses may upgrade a sector", func(t *testing.T) {
-		f.upgradeAuthorization(t)
-	})
-	t.Run("terminating a sector removes exactly its own power", func(t *testing.T) {
-		f.terminations(t)
-	})
+	}) {
+		return
+	}
+	if !run("upgrading a legacy sector raises it once and only once", f.upgradeSectorQuality) {
+		return
+	}
+	if !run("an extension moves the expiration and re-derives the weights", f.extendSectors) {
+		return
+	}
+	if !run("snapping and upgrading reach 10x in either order", f.snapOrdering) {
+		return
+	}
+	if !run("a deal sector rises only if its content did not already pay for it", f.dealTiers) {
+		return
+	}
+	if !run("the proving window refuses a termination and allows an upgrade", f.deadlineImmutability) {
+		return
+	}
+	if !run("only the owner, worker and control addresses may upgrade a sector", f.upgradeAuthorization) {
+		return
+	}
+	if !run("terminating a sector removes exactly its own power", f.terminations) {
+		return
+	}
 }
 
 // setupVerifiedFixture creates the verifier, the verified client and the three allocations the deal
@@ -282,6 +303,7 @@ func (f *solsticeLifecycle) onboardBeforeFork(t *testing.T, pieceV, pieceSnap ab
 		return nil
 	})
 	req.NoError(eg.Wait())
+	req.NoError(context.Cause(f.ctx))
 	// A require failure inside the kit unwinds only its own goroutine, so Wait returning nil proves
 	// nothing on its own: check that each miner actually came back with its sectors.
 	req.Len(mSectors, 9, "the mixed miner did not finish onboarding")
@@ -297,9 +319,9 @@ func (f *solsticeLifecycle) onboardBeforeFork(t *testing.T, pieceV, pieceSnap ab
 	// Every pre-fork sector has its first post in, so its power is claimed and the migration reads
 	// have something to compare.
 	unit := uint64(solsticeSectorSize)
-	f.mixed.WaitTillActivatedAndAssertPower(mSectors, unit*9, unit*9)
-	f.deals.WaitTillActivatedAndAssertPower(dSectors, unit*6, unit*(10+10+1+1+1+1))
-	f.cli.WaitTillActivatedAndAssertPower(cSectors, unit*6, unit*6)
+	req.NoError(f.mixed.WaitTillActivatedAndAssertPower(mSectors, unit*9, unit*9))
+	req.NoError(f.deals.WaitTillActivatedAndAssertPower(dSectors, unit*6, unit*(10+10+1+1+1+1)))
+	req.NoError(f.cli.WaitTillActivatedAndAssertPower(cSectors, unit*6, unit*6))
 
 	head, err := f.client.ChainHead(f.ctx)
 	req.NoError(err)
@@ -793,7 +815,7 @@ func (f *solsticeLifecycle) upgradeQualityCLI(t *testing.T, minerCLI *kit.MockCL
 		estimates(out, step.count, current)
 		sent := solsticeSentMessages(t, out)
 		req.Len(sent, 1)
-		lookup, err := f.client.StateWaitMsg(f.ctx, sent[0], 2, lapi.LookbackNoLimit, true)
+		lookup, err := f.client.WaitMsgResult(f.ctx, sent[0], 2)
 		req.NoError(err)
 		req.Equal(exitcode.Ok, lookup.Receipt.ExitCode)
 		req.Greater(lookup.Receipt.GasUsed, int64(0))
@@ -1212,7 +1234,7 @@ func (f *solsticeLifecycle) upgradeAuthorization(t *testing.T) {
 		Method: builtin.MethodsMiner.ChangeWorkerAddress, Params: changed, Value: big.Zero(),
 	}, nil)
 	req.NoError(err)
-	lookup, err := f.client.StateWaitMsg(f.ctx, msg.Cid(), 2, lapi.LookbackNoLimit, true)
+	lookup, err := f.client.WaitMsgResult(f.ctx, msg.Cid(), 2)
 	req.NoError(err)
 	req.Equal(exitcode.Ok, lookup.Receipt.ExitCode, "installing a control address")
 
@@ -1356,7 +1378,7 @@ func (f *solsticeLifecycle) maxTerminationFee(t *testing.T, power uint64, pledge
 		Method: builtin.MethodsMiner.MaxTerminationFeeExported, Params: params, Value: big.Zero(),
 	}, nil)
 	req.NoError(err)
-	lookup, err := f.client.StateWaitMsg(f.ctx, msg.Cid(), 1, lapi.LookbackNoLimit, true)
+	lookup, err := f.client.WaitMsgResult(f.ctx, msg.Cid(), 1)
 	req.NoError(err)
 	req.Equal(exitcode.Ok, lookup.Receipt.ExitCode, "MaxTerminationFeeExported on miner %s", f.mixed.ActorAddr)
 
@@ -1595,7 +1617,7 @@ func TestSolsticeDailyFee(t *testing.T) {
 
 	legacy, _ := um.OnboardSectors(e.SealProof, kit.NewSectorBatch().AddEmptySectors(2))
 	req.Len(legacy, 2)
-	um.WaitTillActivatedAndAssertPower(legacy, unit*2, unit*2)
+	req.NoError(um.WaitTillActivatedAndAssertPower(legacy, unit*2, unit*2))
 
 	client.WaitTillChain(ctx, kit.HeightAtLeast(upgradeEpoch+5))
 	nv, err := client.StateNetworkVersion(ctx, types.EmptyTSK)
@@ -1604,7 +1626,7 @@ func TestSolsticeDailyFee(t *testing.T) {
 
 	native, _ := um.OnboardSectors(e.SealProof, kit.NewSectorBatch().AddEmptySectors(1))
 	req.Len(native, 1)
-	um.WaitTillActivatedAndAssertPower(native, unit*3, unit*(1+1+10))
+	req.NoError(um.WaitTillActivatedAndAssertPower(native, unit*3, unit*(1+1+10)))
 
 	dailyFee := func(sn abi.SectorNumber, tsk types.TipSetKey) abi.TokenAmount {
 		return client.MustSectorInfo(ctx, maddr, sn, tsk).DailyFee

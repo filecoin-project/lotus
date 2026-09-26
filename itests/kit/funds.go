@@ -14,7 +14,6 @@ import (
 	verifregtypes13 "github.com/filecoin-project/go-state-types/builtin/v13/verifreg"
 	datacap2 "github.com/filecoin-project/go-state-types/builtin/v9/datacap"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/datacap"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
@@ -41,7 +40,7 @@ func SendFunds(ctx context.Context, t *testing.T, sender *TestFullNode, recipien
 }
 
 func (f *TestFullNode) WaitMsg(ctx context.Context, msg cid.Cid) {
-	res, err := f.StateWaitMsg(ctx, msg, 3, api.LookbackNoLimit, true)
+	res, err := f.stateWaitMsg(ctx, msg, 3)
 	require.NoError(f.t, err)
 
 	require.EqualValues(f.t, 0, res.Receipt.ExitCode, "message did not successfully execute")
@@ -82,7 +81,7 @@ func SetupVerifiedClients(ctx context.Context, t *testing.T, client *TestFullNod
 	sm, err := client.MpoolPushMessage(ctx, msg, nil)
 	require.NoError(t, err, "AddVerifier failed")
 
-	res, err := client.StateWaitMsg(ctx, sm.Cid(), 1, api.LookbackNoLimit, true)
+	res, err := client.stateWaitMsg(ctx, sm.Cid(), 1)
 	require.NoError(t, err)
 	require.EqualValues(t, 0, res.Receipt.ExitCode)
 
@@ -108,7 +107,7 @@ func SetupVerifiedClients(ctx context.Context, t *testing.T, client *TestFullNod
 		sm, err = client.MpoolPushMessage(ctx, msg, nil)
 		require.NoError(t, err)
 
-		res, err = client.StateWaitMsg(ctx, sm.Cid(), 1, api.LookbackNoLimit, true)
+		res, err = client.stateWaitMsg(ctx, sm.Cid(), 1)
 		require.NoError(t, err)
 		require.EqualValues(t, 0, res.Receipt.ExitCode)
 	}
@@ -119,7 +118,7 @@ func SetupVerifiedClients(ctx context.Context, t *testing.T, client *TestFullNod
 func SetupAllocation(
 	ctx context.Context,
 	t *testing.T,
-	node api.FullNode,
+	node *TestFullNode,
 	minerId uint64,
 	dc abi.PieceInfo,
 	verifiedClientAddr address.Address,
@@ -170,7 +169,7 @@ func SetupAllocation(
 	sm, err := node.MpoolPushMessage(ctx, msg, nil)
 	require.NoError(t, err)
 
-	res, err := node.StateWaitMsg(ctx, sm.Cid(), 1, api.LookbackNoLimit, true)
+	res, err := node.stateWaitMsg(ctx, sm.Cid(), 1)
 	require.NoError(t, err)
 	require.EqualValues(t, 0, res.Receipt.ExitCode)
 
