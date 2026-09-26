@@ -85,6 +85,9 @@ type NetworkStore struct {
 	closing chan struct{}
 	closed  chan struct{}
 
+	stopOnce        sync.Once
+	closeStreamOnce sync.Once
+
 	closeLk sync.Mutex
 	onClose []func()
 }
@@ -104,10 +107,20 @@ func NewNetworkStore(mss msgio.ReadWriteCloser) *NetworkStore {
 	return ns
 }
 
+// closeMsgStream closes the underlying stream at most once. Closing the stream
+// is what makes a receive loop parked in ReadMsg return, so both Stop and
+// shutdown go through here; the once keeps the second caller from reporting a
+// spurious "already closed" error.
+func (n *NetworkStore) closeMsgStream() {
+	n.closeStreamOnce.Do(func() {
+		if err := n.msgStream.Close(); err != nil {
+			log.Errorw("closing netstore msg stream", "error", err)
+		}
+	})
+}
+
 func (n *NetworkStore) shutdown(msg string) {
-	if err := n.msgStream.Close(); err != nil {
-		log.Errorw("closing netstore msg stream", "error", err)
-	}
+	n.closeMsgStream()
 
 	nerr := NetRpcErr{
 		Type: NRpcErrGeneric,
@@ -169,7 +182,15 @@ func (n *NetworkStore) receive() {
 
 		msg, err := n.msgStream.ReadMsg()
 		if err != nil {
-			n.shutdown(fmt.Sprintf("netstore ReadMsg: %s", err))
+			// Stop closes the stream to break us out of ReadMsg, so an error
+			// here after closing was asked for is the expected path, not a
+			// transport failure.
+			select {
+			case <-n.closing:
+				n.shutdown("netstore stopping")
+			default:
+				n.shutdown(fmt.Sprintf("netstore ReadMsg: %s", err))
+			}
 			return
 		}
 
@@ -407,8 +428,18 @@ func (n *NetworkStore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) 
 
 func (*NetworkStore) Flush(context.Context) error { return nil }
 
+// Stop shuts the store down and waits for the receive loop to finish. It is
+// safe to call more than once, and from multiple goroutines.
 func (n *NetworkStore) Stop(ctx context.Context) error {
-	close(n.closing)
+	n.stopOnce.Do(func() {
+		close(n.closing)
+
+		// Signalling n.closing is not enough on its own: an idle connection
+		// leaves the receive loop parked in ReadMsg, which only returns once
+		// the stream is closed or the remote peer sends something. Without
+		// this the wait below runs until ctx expires.
+		n.closeMsgStream()
+	})
 
 	select {
 	case <-n.closed:
