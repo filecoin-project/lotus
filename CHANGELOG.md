@@ -21,6 +21,7 @@
 - fix(chainindex): `lotus index validate-backfill --backfill` now restores the event-index completion marker (tipset bloom) missing from tipsets indexed before v1.36.1. Since v1.36.3, `eth_getLogs` rejects ranges covering such tipsets with `not found in index`; run `validate-backfill --backfill` over the affected range to repair them. Without `--backfill`, validation reports them as failures. ([filecoin-project/lotus#13829](https://github.com/filecoin-project/lotus/issues/13829))
 - fix(eth): `eth_getTransactionByHash` finds pending Ethereum transactions missing from the chain index ([filecoin-project/lotus#13677](https://github.com/filecoin-project/lotus/pull/13677))
 - fix(miner): accurate pledge calculation for ProveReplicaUpdate3 (snap) messages, 10x sectors need zero pledge, properly scale the estimate for others. ([filecoin-project/lotus#13819](https://github.com/filecoin-project/lotus/pull/13819))
+- fix(eth): `EthBigInt` JSON decoding rejects malformed hex instead of reading it as `0x0` ([filecoin-project/lotus#13824](https://github.com/filecoin-project/lotus/pull/13824))
 
 ## 👌 Improvements
 
