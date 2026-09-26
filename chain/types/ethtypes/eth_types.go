@@ -152,8 +152,10 @@ func (e *EthBigInt) UnmarshalJSON(b []byte) error {
 		replaced = "0" + replaced
 	}
 
-	i := new(mathbig.Int)
-	i.SetString(replaced, 16)
+	i, ok := new(mathbig.Int).SetString(replaced, 16)
+	if !ok {
+		return xerrors.Errorf("cannot parse %q as a hex-encoded big int", s)
+	}
 
 	*e = EthBigInt(big.NewFromGo(i))
 	return nil

@@ -87,6 +87,12 @@ func TestEthBigIntUnmarshalJSON(t *testing.T) {
 		require.Nil(t, err)
 		require.Equal(t, i, tc.Output)
 	}
+
+	// Malformed values must be rejected rather than silently decoded to 0x0.
+	for _, in := range []string{`"0xhello"`, `"garbage"`, `"0xzz"`, `"0x"`} {
+		var i EthBigInt
+		require.Error(t, i.UnmarshalJSON([]byte(in)), "expected %s to be rejected", in)
+	}
 }
 
 func TestEthHash(t *testing.T) {
