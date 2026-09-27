@@ -196,10 +196,10 @@ jobs:
           popd
           ls -la .
       - name: Install Kubo (checksums generation dependency)
-        uses: ipfs/download-ipfs-distribution-action@v1
+        uses: ipfs/download-ipfs-distribution-action@v2
         with:
           name: kubo
-          version: v0.16.0
+          version: v0.36.0
           cache: false
       - name: Generate checksums
         run: |
