@@ -34,6 +34,15 @@ const metaTableDdl = `CREATE TABLE IF NOT EXISTS _meta (
 	version UINT64 NOT NULL UNIQUE
 )`
 
+const (
+	// vacuumMinFreePages is the smallest number of free pages (a page is typically 4KiB) that
+	// makes a post-migration VACUUM worth its cost.
+	vacuumMinFreePages = 1000
+	// vacuumMinFreeRatioPercent is the smallest percentage of the database that has to hold free
+	// pages for a post-migration VACUUM to be worth its cost.
+	vacuumMinFreeRatioPercent = 1
+)
+
 // metaDdl returns the DDL statements required to create the _meta table and add the required
 // up to the given version.
 func metaDdl(version uint64) []string {
@@ -161,16 +170,89 @@ func InitDb(
 		// During the large migrations, we have likely increased the WAL size a lot, so lets do some
 		// simple DB administration to free up space (VACUUM followed by truncating the WAL file)
 		// as this would be a good time to do it when no other writes are happening.
-		log.Infof("Performing %s database vacuum and wal checkpointing to free up space after the migration", name)
-		_, err := db.ExecContext(ctx, "VACUUM")
-		if err != nil {
-			log.Warnf("error vacuuming %s database: %s", name, err)
+		//
+		// A VACUUM rewrites the whole database into a temporary copy and then replaces the original
+		// with it, so it is only worth running when the migration actually left free pages behind
+		// for us to reclaim: migrations that only add tables or indexes (the common case) free
+		// nothing, and an unconditional VACUUM then spends a full database rewrite to reclaim
+		// nothing. For a chain index database (tens of GiB) that can add hours to node startup.
+		pageCount, freelistCount, err := databasePages(ctx, db)
+		switch {
+		case err != nil:
+			log.Warnf("error checking free pages in %s database, skipping vacuum: %s", name, err)
+		case !vacuumWorthwhile(pageCount, freelistCount):
+			log.Infof("Skipping %s database vacuum: only %d of %d pages are free space, which is not worth a full database rewrite", name, freelistCount, pageCount)
+		default:
+			log.Infof("Performing %s database vacuum to reclaim %d free pages out of %d", name, freelistCount, pageCount)
+			if err := vacuum(ctx, db); err != nil {
+				log.Warnf("error vacuuming %s database: %s", name, err)
+			}
 		}
-		_, err = db.ExecContext(ctx, "PRAGMA wal_checkpoint(TRUNCATE)")
-		if err != nil {
+		// Truncating the WAL is cheap compared to a VACUUM and returns whatever the migration left
+		// in it, so it is always worth doing once the schema has changed.
+		if _, err := db.ExecContext(ctx, "PRAGMA wal_checkpoint(TRUNCATE)"); err != nil {
 			log.Warnf("error checkpointing %s database wal: %s", name, err)
 		}
 	}
 
+	return nil
+}
+
+// databasePages returns the total number of pages in the database and the number of those pages
+// that are on the freelist, i.e. the space that a VACUUM would return to the filesystem.
+func databasePages(ctx context.Context, db *sql.DB) (pageCount, freelistCount int64, err error) {
+	if err := db.QueryRowContext(ctx, "PRAGMA page_count").Scan(&pageCount); err != nil {
+		return 0, 0, xerrors.Errorf("error reading database page count: %w", err)
+	}
+	if err := db.QueryRowContext(ctx, "PRAGMA freelist_count").Scan(&freelistCount); err != nil {
+		return 0, 0, xerrors.Errorf("error reading database freelist count: %w", err)
+	}
+	return pageCount, freelistCount, nil
+}
+
+// vacuumWorthwhile reports whether the free pages in a database are a large enough part of it to be
+// worth rewriting the whole database for.
+func vacuumWorthwhile(pageCount, freelistCount int64) bool {
+	if pageCount <= 0 || freelistCount < vacuumMinFreePages {
+		return false
+	}
+	return freelistCount*100 >= pageCount*vacuumMinFreeRatioPercent
+}
+
+// vacuum rebuilds the database, returning the space held by free pages to the filesystem.
+//
+// It runs on a connection of its own with temp_store forced to file, because VACUUM copies the
+// whole database into a temporary database before replacing the original: with the
+// temp_store = memory pragma set by Open(), that temporary copy is held in RAM, and a
+// database-sized allocation is enough to exhaust the memory of the machine running the node, push
+// it into swap and turn the vacuum into an hours-long step that also risks the OOM killer.
+//
+// Note that SQLite chooses the temporary file location from SQLITE_TMPDIR, TMPDIR, /var/tmp or
+// /tmp; wherever that resolves to needs room for a database-sized temporary file (and on systems
+// where /tmp is a memory backed tmpfs, SQLITE_TMPDIR has to be pointed at a disk backed directory
+// for this to help).
+func vacuum(ctx context.Context, db *sql.DB) error {
+	conn, err := db.Conn(ctx)
+	if err != nil {
+		return xerrors.Errorf("error getting database connection: %w", err)
+	}
+	defer func() { _ = conn.Close() }()
+
+	if _, err := conn.ExecContext(ctx, "PRAGMA temp_store = file"); err != nil {
+		return xerrors.Errorf("error setting temp_store for vacuum: %w", err)
+	}
+
+	// 0 == DEFAULT, 1 == FILE, 2 == MEMORY
+	var tempStore int
+	if err := conn.QueryRowContext(ctx, "PRAGMA temp_store").Scan(&tempStore); err != nil {
+		return xerrors.Errorf("error checking temp_store for vacuum: %w", err)
+	}
+	if tempStore != 1 {
+		return xerrors.Errorf("refusing to vacuum with temp_store %d (expected file): the temporary database would be held in memory", tempStore)
+	}
+
+	if _, err := conn.ExecContext(ctx, "VACUUM"); err != nil {
+		return xerrors.Errorf("error vacuuming database: %w", err)
+	}
 	return nil
 }
