@@ -15,6 +15,8 @@
 
 ## 🐛 Bug Fixes
 
+- fix(chainindex): `lotus index validate-backfill --backfill` now restores the event-index completion marker (tipset bloom) missing from tipsets indexed before v1.36.1. Since v1.36.3, `eth_getLogs` rejects ranges covering such tipsets with `not found in index`; run `validate-backfill --backfill` over the affected range to repair them. Without `--backfill`, validation reports them as failures. ([filecoin-project/lotus#13829](https://github.com/filecoin-project/lotus/issues/13829))
+
 ## 👌 Improvements
 
 # Node and Miner v1.37.0-rc1 / 2026-09-22

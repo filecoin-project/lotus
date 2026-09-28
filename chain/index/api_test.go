@@ -1,6 +1,7 @@
 package index
 
 import (
+	"bytes"
 	"context"
 	pseudo "math/rand"
 	"testing"
@@ -13,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
 func TestValidateIsNullRoundSimple(t *testing.T) {
@@ -244,6 +246,108 @@ func TestBackfillMissingEpoch(t *testing.T) {
 	require.Equal(t, result.IndexedMessagesCount, verificationResult.IndexedMessagesCount)
 	require.Equal(t, result.IndexedEventsCount, verificationResult.IndexedEventsCount)
 	require.Equal(t, result.IndexedEventEntriesCount, verificationResult.IndexedEventEntriesCount)
+}
+
+func TestValidateRestoresMissingTipsetBloom(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		withEvents bool
+	}{
+		{name: "with events", withEvents: true},
+		{name: "without events", withEvents: false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			seed := time.Now().UnixNano()
+			t.Logf("seed: %d", seed)
+			rng := pseudo.New(pseudo.NewSource(seed))
+
+			// Far enough below head that an incomplete query fails without waiting
+			headHeight := abi.ChainEpoch(300)
+			epoch := abi.ChainEpoch(50)
+
+			si, _, cs := setupWithHeadIndexed(t, headHeight, rng)
+			t.Cleanup(func() { _ = si.Close() })
+			si.Start()
+			si.SetActorToDelegatedAddresFunc(func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool) {
+				idAddr, err := address.NewIDAddress(uint64(emitter))
+				if err != nil {
+					return address.Undef, false
+				}
+				return idAddr, true
+			})
+
+			parentTs := fakeTipSet(t, rng, epoch-1, []cid.Cid{})
+			cs.SetTipsetByHeightAndKey(epoch-1, parentTs.Key(), parentTs)
+			ts := fakeTipSet(t, rng, epoch, parentTs.Cids())
+			cs.SetTipsetByHeightAndKey(epoch, ts.Key(), ts)
+			cs.SetTipSetByCid(t, ts)
+			executionTs := fakeTipSet(t, rng, epoch+1, ts.Key().Cids())
+			cs.SetTipsetByHeightAndKey(epoch+1, executionTs.Key(), executionTs)
+
+			msg := fakeMessage(randomIDAddr(t, rng), randomIDAddr(t, rng))
+			executedMsg := executedMessage{msg: msg}
+			if tc.withEvents {
+				topic := make([]byte, 32)
+				rng.Read(topic)
+				executedMsg.evs = []types.Event{*fakeEvent(1, []kv{{k: "t1", v: topic}}, nil)}
+				ec := randomCid(t, rng)
+				executedMsg.rct.EventsRoot = &ec
+			}
+			cs.SetMessagesForTipset(ts, []types.ChainMsg{msg})
+			si.setExecutedMessagesLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
+				if msgTs.Height() == epoch {
+					return []executedMessage{executedMsg}, nil
+				}
+				return nil, nil
+			})
+
+			_, err := si.ChainValidateIndex(ctx, epoch, true)
+			require.NoError(t, err)
+
+			tsKeyCid, err := ts.Key().Cid()
+			require.NoError(t, err)
+			if tc.withEvents {
+				root, ok, err := si.amtRootForEvents(ctx, tsKeyCid, msg.Cid())
+				require.NoError(t, err)
+				require.True(t, ok)
+				executedMsg.rct.EventsRoot = &root
+			}
+
+			wantBloom, ok, err := si.GetTipsetBloom(ctx, tsKeyCid)
+			require.NoError(t, err)
+			require.True(t, ok)
+			require.Equal(t, tc.withEvents, !bytes.Equal(wantBloom, ethtypes.NewEmptyEthBloom()))
+
+			// Simulate a tipset indexed before tipset blooms existed
+			_, err = si.stmts.removeTipsetBloomStmt.ExecContext(ctx, tsKeyCid.Bytes())
+			require.NoError(t, err)
+
+			filter := &EventFilter{MinHeight: epoch, MaxHeight: epoch}
+			_, err = si.GetEventsForFilter(ctx, filter)
+			require.ErrorIs(t, err, ErrNotFound)
+
+			_, err = si.ChainValidateIndex(ctx, epoch, false)
+			require.ErrorContains(t, err, "missing event index completion marker")
+
+			result, err := si.ChainValidateIndex(ctx, epoch, true)
+			require.NoError(t, err)
+			require.True(t, result.Backfilled)
+
+			gotBloom, ok, err := si.GetTipsetBloom(ctx, tsKeyCid)
+			require.NoError(t, err)
+			require.True(t, ok)
+			require.Equal(t, wantBloom, gotBloom)
+
+			ces, err := si.GetEventsForFilter(ctx, filter)
+			require.NoError(t, err)
+			require.Len(t, ces, len(executedMsg.evs))
+
+			result, err = si.ChainValidateIndex(ctx, epoch, false)
+			require.NoError(t, err)
+			require.False(t, result.Backfilled)
+		})
+	}
 }
 
 func TestIndexCorruption(t *testing.T) {
