@@ -109,7 +109,7 @@
         {
             "name": "Filecoin.ChainExportRangeInternal",
             "description": "```go\nfunc (s *FullNodeStruct) ChainExportRangeInternal(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey, p3 ChainExportConfig) error {\n\tif s.Internal.ChainExportRangeInternal == nil {\n\t\treturn ErrNotSupported\n\t}\n\treturn s.Internal.ChainExportRangeInternal(p0, p1, p2, p3)\n}\n```",
-            "summary": "ChainExportRangeInternal triggers the export of a chain\nCAR-snapshot directly to disk. It is similar to ChainExport,\nexcept, depending on options, the snapshot can include receipts,\nmessages and stateroots for the length between the specified head\nand tail, thus producing \"archival-grade\" snapshots that include\nall the on-chain data.  The header chain is included back to\ngenesis and these snapshots can be used to initialize Filecoin\nnodes.\n",
+            "summary": "ChainExportRangeInternal triggers the export of a chain\nCAR-snapshot directly to disk. It is similar to ChainExport,\nexcept, depending on options, the snapshot can include receipts,\nmessages and stateroots for the length between the specified head\nand tail, thus producing \"archival-grade\" snapshots that include\nall the on-chain data. The header chain is included back to\ngenesis and these snapshots can be used to initialize Filecoin\nnodes.\n",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -6687,7 +6687,7 @@
         {
             "name": "Filecoin.EthSendRawTransactionUntrusted",
             "description": "```go\nfunc (s *FullNodeStruct) EthSendRawTransactionUntrusted(p0 context.Context, p1 ethtypes.EthBytes) (ethtypes.EthHash, error) {\n\tif s.Internal.EthSendRawTransactionUntrusted == nil {\n\t\treturn *new(ethtypes.EthHash), ErrNotSupported\n\t}\n\treturn s.Internal.EthSendRawTransactionUntrusted(p0, p1)\n}\n```",
-            "summary": "EthSendRawTransactionUntrusted sends a transaction from and untrusted source, using MpoolPushUntrusted to submit the message.\n",
+            "summary": "EthSendRawTransactionUntrusted sends a transaction from an untrusted source, using MpoolPushUntrusted to submit the message.\n",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -6750,7 +6750,7 @@
         {
             "name": "Filecoin.EthSubscribe",
             "description": "```go\nfunc (s *FullNodeStruct) EthSubscribe(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthSubscriptionID, error) {\n\tif s.Internal.EthSubscribe == nil {\n\t\treturn *new(ethtypes.EthSubscriptionID), ErrNotSupported\n\t}\n\treturn s.Internal.EthSubscribe(p0, p1)\n}\n```",
-            "summary": "Subscribe to different event types using websockets\neventTypes is one or more of:\n - newHeads: notify when new blocks arrive.\n - pendingTransactions: notify when new messages arrive in the message pool.\n - logs: notify new event logs that match a criteria\nparams contains additional parameters used with the log event type\nThe client will receive a stream of EthSubscriptionResponse values until EthUnsubscribe is called.\n",
+            "summary": "Subscribe to different event types using websockets\neventTypes is one or more of:\n - newHeads: notify when new blocks arrive.\n - pendingTransactions: notify when new messages arrive in the message pool.\n - logs: notify new event logs that match a criterion\nparams contains additional parameters used with the log event type\nThe client will receive a stream of EthSubscriptionResponse values until EthUnsubscribe is called.\n",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -19591,7 +19591,7 @@
         {
             "name": "Filecoin.StateEncodeParams",
             "description": "```go\nfunc (s *FullNodeStruct) StateEncodeParams(p0 context.Context, p1 cid.Cid, p2 abi.MethodNum, p3 json.RawMessage) ([]byte, error) {\n\tif s.Internal.StateEncodeParams == nil {\n\t\treturn *new([]byte), ErrNotSupported\n\t}\n\treturn s.Internal.StateEncodeParams(p0, p1, p2, p3)\n}\n```",
-            "summary": "StateEncodeParams attempts to encode the provided json params to the binary from\n",
+            "summary": "StateEncodeParams attempts to encode the provided JSON params to the binary form\n",
             "paramStructure": "by-position",
             "params": [
                 {
