@@ -78,24 +78,10 @@ func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *typ
 	if err != nil {
 		return xerrors.Errorf("failed to get rows affected by unreverting events for tipset: %w", err)
 	}
-	blockBloom := ethtypes.NewEmptyEthBloom()
-
 	if rows > 0 {
 		log.Debugf("unreverted %d events for tipset: %s", rows, msgTs.Key())
-		hasBloom, err := si.hasTipsetBloom(ctx, tx, msgTsKeyCidBytes)
-		if err != nil {
-			return xerrors.Errorf("failed to check tipset bloom: %w", err)
-		}
-		if hasBloom {
-			return nil
-		}
-		if err := si.buildTipsetBloomFromIndex(ctx, tx, msgTsKeyCidBytes, blockBloom); err != nil {
-			return xerrors.Errorf("failed to build tipset bloom from index: %w", err)
-		}
-		if err := si.upsertTipsetBloom(ctx, tx, msgTsKeyCidBytes, msgTs.Height(), blockBloom); err != nil {
-			return xerrors.Errorf("failed to store tipset bloom: %w", err)
-		}
-		return nil
+		_, err := si.ensureTipsetBloomFromIndex(ctx, tx, msgTsKeyCidBytes, msgTs.Height())
+		return err
 	}
 
 	if !si.cs.IsStoringEvents() {
@@ -107,6 +93,7 @@ func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *typ
 		return xerrors.Errorf("failed to load executed messages: %w", err)
 	}
 
+	blockBloom := ethtypes.NewEmptyEthBloom()
 	eventCount := 0
 	messageIDs := make(map[string]int64)
 
@@ -254,6 +241,26 @@ func (si *SqliteIndexer) buildTipsetBloomFromIndex(ctx context.Context, tx *sql.
 		return xerrors.Errorf("read indexed event rows: %w", err)
 	}
 	return flush()
+}
+
+// ensureTipsetBloomFromIndex writes a bloom built from the tipset's indexed
+// events if the tipset has none, and reports whether one was written.
+func (si *SqliteIndexer) ensureTipsetBloomFromIndex(ctx context.Context, tx *sql.Tx, tipsetKeyCid []byte, height abi.ChainEpoch) (bool, error) {
+	hasBloom, err := si.hasTipsetBloom(ctx, tx, tipsetKeyCid)
+	if err != nil {
+		return false, xerrors.Errorf("failed to check tipset bloom: %w", err)
+	}
+	if hasBloom {
+		return false, nil
+	}
+	bloom := ethtypes.NewEmptyEthBloom()
+	if err := si.buildTipsetBloomFromIndex(ctx, tx, tipsetKeyCid, bloom); err != nil {
+		return false, xerrors.Errorf("failed to build tipset bloom from index: %w", err)
+	}
+	if err := si.upsertTipsetBloom(ctx, tx, tipsetKeyCid, height, bloom); err != nil {
+		return false, xerrors.Errorf("failed to store tipset bloom: %w", err)
+	}
+	return true, nil
 }
 
 func addEventToBloom(blockBloom ethtypes.EthBytes, emitterAddr address.Address, entries []types.EventEntry) {
