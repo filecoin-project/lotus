@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -390,6 +391,11 @@ func (st *Local) declareSectors(ctx context.Context, p string, id storiface.ID, 
 
 		for _, ent := range ents {
 			if ent.Name() == FetchTempSubdir {
+				continue
+			}
+
+			// skip hidden files, e.g. NFS silly-rename (.nfsXXXX) files
+			if strings.HasPrefix(ent.Name(), ".") {
 				continue
 			}
 
