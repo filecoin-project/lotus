@@ -167,6 +167,11 @@ func (si *SqliteIndexer) ChainValidateIndex(ctx context.Context, epoch abi.Chain
 			return nil, xerrors.Errorf("failed to verify indexed data at height %d after backfill: %w", expectedTs.Height(), err)
 		}
 		bf = true
+	} else {
+		// This should only be needed for cases where the tipset was indexed before tipset blooms were introduced.
+		if bf, err = si.restoreTipsetBloom(ctx, expectedTs, backfill); err != nil {
+			return nil, err
+		}
 	}
 
 	return &types.IndexValidation{
@@ -366,6 +371,37 @@ func (si *SqliteIndexer) backfillMissingTipset(ctx context.Context, ts *types.Ti
 		IndexedEventsCount:       indexedData.nonRevertedEventCount,
 		IndexedEventEntriesCount: indexedData.nonRevertedEventEntriesCount,
 	}, nil
+}
+
+// restoreTipsetBloom writes the event-index completion marker for a tipset
+// whose indexed events have been verified against the chain, and reports
+// whether one was written. Without backfill, a missing marker is an error.
+func (si *SqliteIndexer) restoreTipsetBloom(ctx context.Context, ts *types.TipSet, backfill bool) (bool, error) {
+	tsKeyCidBytes, err := toTipsetKeyCidBytes(ts)
+	if err != nil {
+		return false, xerrors.Errorf("failed to get tipset key cid: %w", err)
+	}
+
+	if !backfill {
+		var hasBloom bool
+		if err := si.stmts.hasTipsetBloomStmt.QueryRowContext(ctx, tsKeyCidBytes).Scan(&hasBloom); err != nil {
+			return false, xerrors.Errorf("failed to check tipset bloom at height %d: %w", ts.Height(), err)
+		}
+		if !hasBloom {
+			return false, xerrors.Errorf("missing event index completion marker for tipset at height %d, set backfill flag to true to fix", ts.Height())
+		}
+		return false, nil
+	}
+
+	var restored bool
+	err = withTx(ctx, si.db, func(tx *sql.Tx) error {
+		restored, err = si.ensureTipsetBloomFromIndex(ctx, tx, tsKeyCidBytes, ts.Height())
+		return err
+	})
+	if err != nil {
+		return false, xerrors.Errorf("failed to restore tipset bloom at height %d: %w", ts.Height(), err)
+	}
+	return restored, nil
 }
 
 func (si *SqliteIndexer) getNextTipset(ctx context.Context, ts *types.TipSet) (*types.TipSet, error) {
