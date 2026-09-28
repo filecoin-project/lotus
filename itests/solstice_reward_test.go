@@ -38,6 +38,7 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v2api"
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -59,6 +60,7 @@ import (
 //
 //   - the v18 to v19 migration, award continuity, and circulating supply;
 //   - the bootstrap weight ramp and the reward split it settles on;
+//   - the v2 reward distribution API at head and after an in-block share update;
 //   - the SWA's writes: the deferred-write queue, cancellation, registration, removal;
 //   - the SRA's quarterly gate stepping stream 2's weight and submitting its share map;
 //   - share settlement, wallet payouts, and tombstone claims on a stream the SWA registers;
@@ -423,6 +425,7 @@ func TestSolsticeRewardLifecycle(t *testing.T) {
 	t.Run("reward total constants replace stored state", lifecycle.testRewardTotalConstants)
 	t.Run("sloped bootstrap weight", lifecycle.testSlopedBootstrapWeight)
 	t.Run("reward split economics", lifecycle.testRewardSplitEconomics)
+	t.Run("reward distribution API at head without a child", lifecycle.testRewardDistributionAtHead)
 	t.Run("queue controls and write event", lifecycle.testQueueControlsAndEvent)
 	t.Run("deferred weight schedule applies across null rounds", lifecycle.testDeferredWeightSchedule)
 	t.Run("quarterly gate step and share submission", lifecycle.testQuarterlyGateAndShares)
@@ -972,6 +975,129 @@ func (f *solsticeRewardLifecycle) testRewardSplitEconomics(t *testing.T) {
 	f.requireAllocation(t, endActor, end, endStreams)
 }
 
+func (f *solsticeRewardLifecycle) testRewardDistributionAtHead(t *testing.T) {
+	req := require.New(t)
+	for _, blockMiner := range f.blockMiners {
+		blockMiner.Pause()
+	}
+	defer func() {
+		for _, blockMiner := range f.blockMiners {
+			blockMiner.Restart()
+		}
+	}()
+	// Pause stops scheduling, but the last asynchronous mining request may still
+	// be publishing. Complete a synchronous request before selecting the head.
+	f.blockMiners[0].MineUntilBlock(f.ctx, f.client, nil)
+
+	head, err := f.client.ChainHead(f.ctx)
+	req.NoError(err)
+	_, before, _ := kit.LoadReward19(f.ctx, t, f.client, f.store, head.Key())
+	result, err := f.client.V2.StateRewardDistribution(f.ctx, types.TipSetSelectors.Latest)
+	req.NoError(err)
+	req.Equal(head.Key(), result.TipSetKey)
+	req.Equal(head.Height(), result.Height)
+	req.Equal(reward19.Denom, result.Denom)
+	req.Len(result.Blocks, len(head.Blocks()))
+	requireRewardAPIConservation(t, result)
+
+	// No child can commit this result while mining is paused. Independently
+	// compute the selected head's output and compare its minted-counter changes.
+	computed, err := f.client.StateCompute(f.ctx, head.Height(), nil, head.Key())
+	req.NoError(err)
+	tree, err := chainstate.LoadStateTree(f.store, computed.Root)
+	req.NoError(err)
+	actor, err := tree.GetActor(builtin.RewardActorAddr)
+	req.NoError(err)
+	var after reward19.State
+	req.NoError(f.store.Get(f.ctx, actor.Head, &after))
+	delta := rewardDeltas(before, &after)
+	req.Equal(delta.total, result.Totals.MintedReward)
+	req.Equal(delta.miner, result.Totals.MinerReward)
+	req.Equal(delta.service, result.Totals.ExplicitReward)
+	req.Equal(delta.burn, result.Totals.BurnAllocation)
+	req.Positive(result.Totals.MintedReward.Sign())
+	req.Equal(big.Add(result.Totals.MinerReward, result.Totals.MessageReward), result.Totals.MinerPaid)
+	req.Equal(result.Totals.BurnAllocation, result.Totals.BurnPaid)
+
+	for i, block := range result.Blocks {
+		header := head.Blocks()[i]
+		req.Equal(header.Cid(), block.Block)
+		req.Equal(header.Miner, block.Miner)
+		req.Equal(header.ElectionProof.WinCount, block.WinCount)
+		req.Len(block.Streams, 2)
+		req.Equal(uint64(1), block.Streams[0].ID)
+		req.Equal(reward.ComputeWeight(f.migratedStreams.Streams[0].Weight, head.Height()), block.Streams[0].Weight)
+		req.Nil(block.Streams[0].Distribution)
+		req.Equal(block.Amounts.MinerReward, block.Streams[0].Amount)
+		service := block.Streams[1]
+		req.Equal(uint64(2), service.ID)
+		req.Equal(reward.ComputeWeight(f.migratedStreams.Streams[1].Weight, head.Height()), service.Weight)
+		req.NotNil(service.Distribution)
+		req.Equal(f.sraAddr, service.Distribution.Writer)
+		req.Len(service.Distribution.Recipients, 1)
+		recipient := service.Distribution.Recipients[0]
+		req.Equal(f.orchestratorID, recipient.Recipient)
+		req.Equal(reward19.Denom, recipient.Share)
+		req.Equal(service.Amount, recipient.EarnedAmount)
+	}
+
+	pinned, err := f.client.V2.StateRewardDistribution(f.ctx, types.TipSetSelectors.Key(head.Key()))
+	req.NoError(err)
+	req.Equal(result, pinned)
+
+	stillHead, err := f.client.ChainHead(f.ctx)
+	req.NoError(err)
+	req.Equal(head.Key(), stillHead.Key(), "the query must work before a child tipset exists")
+
+	legacy, err := f.client.V2.StateRewardDistribution(f.ctx, types.TipSetSelectors.Key(f.preTS.Key()))
+	req.Error(err, "v18 has no reward stream distribution")
+	req.Nil(legacy)
+}
+
+func requireRewardAPIConservation(t *testing.T, result *v2api.RewardDistribution) {
+	t.Helper()
+	req := require.New(t)
+	for _, block := range result.Blocks {
+		req.Equal(block.Amounts.MintedReward,
+			big.Sum(block.Amounts.MinerReward, block.Amounts.ExplicitReward, block.Amounts.BurnAllocation))
+		weights := block.BurnWeight
+		gross, streamBurn := big.Zero(), big.Zero()
+		for _, stream := range block.Streams {
+			weights += stream.Weight
+			gross = big.Add(gross, stream.Amount)
+			if stream.Distribution == nil {
+				continue
+			}
+			distribution := stream.Distribution
+			shares, earned := distribution.BurnShare, big.Zero()
+			for _, recipient := range distribution.Recipients {
+				shares += recipient.Share
+				earned = big.Add(earned, recipient.EarnedAmount)
+			}
+			req.Equal(result.Denom, shares)
+			req.Equal(stream.Amount, big.Sum(earned, distribution.BurnAmount, distribution.RoundingAdjustment))
+			streamBurn = big.Add(streamBurn, distribution.BurnAmount)
+		}
+		req.Equal(result.Denom, weights)
+		req.Equal(block.Amounts.MintedReward, big.Sub(big.Add(gross, block.Amounts.BurnAllocation), streamBurn))
+	}
+	for _, field := range []func(v2api.RewardAmounts) abi.TokenAmount{
+		func(a v2api.RewardAmounts) abi.TokenAmount { return a.MintedReward },
+		func(a v2api.RewardAmounts) abi.TokenAmount { return a.MinerReward },
+		func(a v2api.RewardAmounts) abi.TokenAmount { return a.MessageReward },
+		func(a v2api.RewardAmounts) abi.TokenAmount { return a.ExplicitReward },
+		func(a v2api.RewardAmounts) abi.TokenAmount { return a.BurnAllocation },
+		func(a v2api.RewardAmounts) abi.TokenAmount { return a.MinerPaid },
+		func(a v2api.RewardAmounts) abi.TokenAmount { return a.BurnPaid },
+	} {
+		sum := big.Zero()
+		for _, block := range result.Blocks {
+			sum = big.Add(sum, field(block.Amounts))
+		}
+		req.Equal(sum, field(result.Totals))
+	}
+}
+
 // testQueueControlsAndEvent checks SWA auth, occupied-slot rejection, cancellation, and write-queued event.
 func (f *solsticeRewardLifecycle) testQueueControlsAndEvent(t *testing.T) {
 	req := require.New(t)
@@ -1385,9 +1511,13 @@ func (f *solsticeRewardLifecycle) testSecondOrchestrator(t *testing.T) {
 	requireShareWithinAtto(t, burnDelta.burn, burnDelta.total, 18*f.pct, 2*int64(burnEnd.Epoch-burnStart.Epoch))
 
 	// The wallet swap renames the row and leaves earned balances where they are.
-	replaced := f.requireUnanimous(t, f.sraAddr,
+	replaceFirst, replaceSecond := f.unanimousInvoke(t, f.sraAddr,
 		solsticeSelector(t, "ServiceRewardsActor", "replaceWallet(address,address)"),
 		orchestrator1Word, wallet1BWord)
+	kit.RequireMessageSuccess(t, replaceFirst)
+	kit.RequireMessageSuccess(t, replaceSecond)
+	f.requireReplaceAddressOutcome(t, reward19.ReplaceAddressReturnAddressReplaced, replaceFirst, replaceSecond)
+	replaced := solsticeLaterLookup(replaceFirst, replaceSecond)
 	replacedActor, replacedState, replacedStreams := kit.LoadReward19(f.ctx, t, f.client, f.store, replaced.TipSet)
 	f.requireAllocation(t, replacedActor, replacedState, replacedStreams)
 	replacedDistribution := streamByID(t, replacedStreams, 2).Distribution
@@ -1520,6 +1650,34 @@ func (f *solsticeRewardLifecycle) testShareSettlementAndWalletPayouts(t *testing
 
 	setSharesTS, err := f.client.ChainGetTipSet(f.ctx, lookup.TipSet)
 	req.NoError(err)
+	awardTS, err := f.client.ChainGetTipSet(f.ctx, setSharesTS.Parents())
+	req.NoError(err)
+	_, _, previousStreams := kit.LoadReward19(f.ctx, t, f.client, f.store, awardTS.Key())
+	req.Len(streamByID(t, previousStreams, f.newStream).Distribution.Shares, 1,
+		"the block starts with the previous one-recipient share map")
+	reported, err := f.client.V2.StateRewardDistribution(f.ctx, types.TipSetSelectors.Key(awardTS.Key()))
+	req.NoError(err)
+	requireRewardAPIConservation(t, reported)
+	req.Len(reported.Blocks, 1)
+	var reportedStream *v2api.StreamReward
+	for i := range reported.Blocks[0].Streams {
+		stream := &reported.Blocks[0].Streams[i]
+		if stream.ID == uint64(f.newStream) {
+			reportedStream = stream
+			break
+		}
+	}
+	req.NotNil(reportedStream)
+	req.NotNil(reportedStream.Distribution)
+	req.Len(reportedStream.Distribution.Recipients, 2,
+		"the award must use SetShares from its own block, not the parent-state map")
+	for i, recipient := range reportedStream.Distribution.Recipients {
+		req.Equal(distribution.Shares[i].Recipient, recipient.Recipient)
+		req.Equal(distribution.Shares[i].Share, recipient.Share)
+		// SetShares resets the period before this award; prior-period payable
+		// balances must not be included in the block's recipient earnings.
+		req.Equal(accruedShare(accrualOf(t, settledState, f.newStream), recipient.Share), recipient.EarnedAmount)
+	}
 	f.client.WaitTillChain(f.ctx, kit.HeightAtLeast(setSharesTS.Height()+5))
 	beforeClaimsTS := kit.TipsetAtOrAfter(f.ctx, t, f.client, setSharesTS.Height()+5)
 	beforeBalances := []abi.TokenAmount{
@@ -1566,6 +1724,29 @@ func (f *solsticeRewardLifecycle) testShareSettlementAndWalletPayouts(t *testing
 	currentPeriodTotal := big.Add(secondDistribution.ClaimedPeriod[0].Amount, secondDistribution.ClaimedPeriod[1].Amount)
 	requireShareWithinAtto(t, secondDistribution.ClaimedPeriod[0].Amount, currentPeriodTotal, 40*f.pct, 1)
 	requireShareWithinAtto(t, secondDistribution.ClaimedPeriod[1].Amount, currentPeriodTotal, 60*f.pct, 1)
+
+	// Replacing a resolvable address that doesn't have a share succeeds without replacing anything.
+	missing := f.sendRewardMessage(t, f.w3WriterKey.Address, builtin.MethodsReward.ReplaceAddressExported, &reward19.ReplaceAddressParams{
+		ID:         f.newStream,
+		OldAddress: f.w3WriterID,
+		NewAddress: solsticeIDAddress(t, 1<<40),
+	})
+	kit.RequireMessageSuccess(t, missing)
+	f.requireReplaceAddressOutcome(t, reward19.ReplaceAddressReturnOldAddressNotInLedger, missing)
+
+	missingTS, err := f.client.ChainGetTipSet(f.ctx, missing.TipSet)
+	req.NoError(err)
+	_, _, beforeMissing := kit.LoadReward19(f.ctx, t, f.client, f.store, missingTS.Parents())
+	_, _, afterMissing := kit.LoadReward19(f.ctx, t, f.client, f.store, missingTS.Key())
+	req.Empty(beforeMissing.PendingWritesQueue, "a due write would fold and emit alongside the message")
+	req.Zero(shareOf(streamByID(t, beforeMissing, f.newStream).Distribution.Shares, f.w3WriterID))
+	req.Equal(streamByID(t, beforeMissing, f.newStream), streamByID(t, afterMissing, f.newStream),
+		"a missing old address leaves the stream untouched")
+	// With nothing due there is no fold, no dust and no address-replaced event.
+	req.Nil(missing.Receipt.EventsRoot, "the message must not emit events")
+	replay, err := f.client.StateReplay(f.ctx, types.EmptyTSK, missing.Message)
+	req.NoError(err)
+	req.Zero(burntFundsSent(replay.ExecutionTrace).Sign())
 }
 
 // testRemoveStreamTombstoneClaim exercises stream removal: queued, tombstoned, claimed, deleted.
@@ -1944,6 +2125,35 @@ func foldDust(pool abi.TokenAmount, shares []reward19.RecipientShare) abi.TokenA
 		allocated = big.Add(allocated, big.Div(big.Mul(pool, big.NewIntUnsigned(share.Share)), total))
 	}
 	return big.Sub(pool, allocated)
+}
+
+// requireReplaceAddressOutcome finds the one f02 ReplaceAddress call across the messages'
+// execution traces and checks it succeeded with outcome `want`.
+func (f *solsticeRewardLifecycle) requireReplaceAddressOutcome(t *testing.T, want reward19.ReplaceAddressReturn, lookups ...*api.MsgLookup) {
+	t.Helper()
+	req := require.New(t)
+	var calls []types.ExecutionTrace
+	for _, lookup := range lookups {
+		replay, err := f.client.StateReplay(f.ctx, types.EmptyTSK, lookup.Message)
+		req.NoError(err)
+		calls = append(calls, replaceAddressCalls(replay.ExecutionTrace)...)
+	}
+	req.Len(calls, 1, "exactly one message must reach f02's ReplaceAddress")
+	req.Equal(exitcode.Ok, calls[0].MsgRct.ExitCode)
+	var got reward19.ReplaceAddressReturn
+	req.NoError(got.UnmarshalCBOR(bytes.NewReader(calls[0].MsgRct.Return)))
+	req.Equal(want, got)
+}
+
+func replaceAddressCalls(trace types.ExecutionTrace) []types.ExecutionTrace {
+	var calls []types.ExecutionTrace
+	if trace.Msg.To == builtin.RewardActorAddr && trace.Msg.Method == builtin.MethodsReward.ReplaceAddressExported {
+		calls = append(calls, trace)
+	}
+	for _, subcall := range trace.Subcalls {
+		calls = append(calls, replaceAddressCalls(subcall)...)
+	}
+	return calls
 }
 
 // burntFundsSent totals what one message's execution sent to f099.

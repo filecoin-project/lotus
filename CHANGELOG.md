@@ -9,6 +9,16 @@
 
 # UNRELEASED
 
+## ☢️ Upgrade Warnings ☢️
+
+## ⭐ New Features
+
+- feat(api): add v2 `StateRewardDistribution` with per-block reward allocations, recipient earnings, payments and tipset totals. ([filecoin-project/lotus#13808](https://github.com/filecoin-project/lotus/pull/13808))
+
+## 🐛 Bug Fixes
+
+## 👌 Improvements
+
 # UNRELEASED v1.37.0
 
 _See https://github.com/filecoin-project/lotus/blob/release/v1.37.0/CHANGELOG.md_
