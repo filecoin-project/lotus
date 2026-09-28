@@ -3,6 +3,7 @@ package sqlite_test
 import (
 	"context"
 	"database/sql"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -177,6 +178,29 @@ func TestSqlite(t *testing.T) {
 	req.Equal(expectedData, actualData)
 
 	req.NoError(db.Close())
+}
+
+func TestMigrationTruncatesWal(t *testing.T) {
+	req := require.New(t)
+	ctx := context.Background()
+	dbPath := filepath.Join(t.TempDir(), "test.db")
+
+	ddl := []string{`CREATE TABLE IF NOT EXISTS blip (id INTEGER PRIMARY KEY, blip_name TEXT NOT NULL)`}
+
+	db, err := sqlite.Open(dbPath)
+	req.NoError(err)
+	defer func() { req.NoError(db.Close()) }()
+	req.NoError(sqlite.InitDb(ctx, "testdb", db, ddl, nil))
+
+	migration := func(ctx context.Context, tx *sql.Tx) error {
+		_, err := tx.Exec(`INSERT INTO blip (blip_name) VALUES ('blip1')`)
+		return err
+	}
+	req.NoError(sqlite.InitDb(ctx, "testdb", db, ddl, []sqlite.MigrationFunc{migration}))
+
+	wal, err := os.Stat(dbPath + "-wal")
+	req.NoError(err)
+	req.Zero(wal.Size())
 }
 
 func dumpTables(t *testing.T, db *sql.DB) ([]string, []tabledata) {
