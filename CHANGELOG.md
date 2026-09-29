@@ -13,20 +13,51 @@
 
 ## ⭐ New Features
 
-- feat(api): add v2 `StateRewardDistribution` with per-block reward allocations, recipient earnings, payments and tipset totals. ([filecoin-project/lotus#13808](https://github.com/filecoin-project/lotus/pull/13808))
-- feat(cli): `lotus-miner sectors upgrade-quality` gained a `--sectors` flag to upgrade only the listed sectors, and reports a summary of skipped sectors with the reason for each. ([filecoin-project/lotus#13818](https://github.com/filecoin-project/lotus/pull/13818))
-
 ## 🐛 Bug Fixes
-
-- fix(chainindex): `lotus index validate-backfill --backfill` now restores the event-index completion marker (tipset bloom) missing from tipsets indexed before v1.36.1. Since v1.36.3, `eth_getLogs` rejects ranges covering such tipsets with `not found in index`; run `validate-backfill --backfill` over the affected range to repair them. Without `--backfill`, validation reports them as failures. ([filecoin-project/lotus#13829](https://github.com/filecoin-project/lotus/pull/13829))
-- fix(miner): accurate pledge calculation for ProveReplicaUpdate3 (snap) messages, 10x sectors need zero pledge, properly scale the estimate for others. ([filecoin-project/lotus#13819](https://github.com/filecoin-project/lotus/pull/13819))
-- fix(gateway): enforce the lookback limit on v2 `TipSetSelector` methods (`StateGetActor`, `StateGetID`, `ChainGetTipSet` by height), and derive lookback checks from memoised network parameters and cached tipsets instead of fetching head per request. Internal lookback fetches no longer consume rate-limit tokens on top of the calling method's own charge, and the `safe` and `finalized` block tags now pass the lookback check on `EthGetBalance`, `EthCall`, `EthGetCode`, `EthGetStorageAt` and `EthGetTransactionCount`, where they were always rejected before. ([filecoin-project/lotus#13822](https://github.com/filecoin-project/lotus/pull/13822))
-- fix(eth): `EthBigInt` JSON decoding rejects malformed hex instead of reading it as `0x0` ([filecoin-project/lotus#13824](https://github.com/filecoin-project/lotus/pull/13824))
-- fix(chainindex): don't sqlite vacuum during migrations. ([filecoin-project/lotus#13828](https://github.com/filecoin-project/lotus/pull/13828))
 
 ## 👌 Improvements
 
-- fix(genesis): the daemon loads the built-in actors bundle for the genesis state's actors version at startup, so a genesis car written on a bundle version (v8 or later) no longer needs actors. ([filecoin-project/lotus#13821](https://github.com/filecoin-project/lotus/pull/13821))
+# Node and Miner v1.37.0-rc2 / 2026-09-29
+
+This is the second release candidate of the upcoming mandatory Lotus v1.37.0 release for [Filecoin network version 29, Solstice](https://github.com/filecoin-project/core-devs/discussions/221). The changes below are since RC1 and include reward-distribution reporting, sector upgrade controls, and fixes for pledge estimates, gateway lookback handling and chain-index maintenance.
+
+The Calibration upgrade remains configured at epoch 4109133 (`2026-09-28T12:59:30Z`). This is an optional Release Candidate for Calibration. Mainnet activation is not yet scheduled in this release candidate.
+
+## ☢️ Upgrade Warnings ☢️
+
+- Operators upgrading from a release before RC1 should also review the [RC1 upgrade warnings](https://github.com/filecoin-project/lotus/releases/tag/v1.37.0-rc1) for Solstice API/CLI changes and F3 Prometheus metric names.
+
+## ⭐ New Features
+
+- feat(api): add v2 `StateRewardDistribution` for block rewards, recipient earnings, payments and tipset totals. ([filecoin-project/lotus#13808](https://github.com/filecoin-project/lotus/pull/13808))
+- feat(cli): add `--sectors` selection and skipped-sector summaries to `lotus-miner sectors upgrade-quality`. ([filecoin-project/lotus#13818](https://github.com/filecoin-project/lotus/pull/13818))
+
+## 🐛 Bug Fixes
+
+- fix(chainindex): `lotus index validate-backfill --backfill` restores missing event-index completion markers in older indexed tipsets. Run it over affected ranges if `eth_getLogs` reports `not found in index`; validation without `--backfill` reports missing markers as failures. ([filecoin-project/lotus#13829](https://github.com/filecoin-project/lotus/pull/13829))
+- fix(miner): correct replica-update pledge estimates, including zero additional pledge for sectors already at full QA power from nv29. ([filecoin-project/lotus#13819](https://github.com/filecoin-project/lotus/pull/13819))
+- fix(gateway): enforce v2 selector lookback limits, accept `safe`/`finalized` tags in Ethereum state calls, and avoid duplicate preflight rate-limit charges. ([filecoin-project/lotus#13822](https://github.com/filecoin-project/lotus/pull/13822))
+- fix(eth): reject malformed `EthBigInt` JSON instead of decoding it as zero. ([filecoin-project/lotus#13824](https://github.com/filecoin-project/lotus/pull/13824))
+- fix(chainindex): avoid memory-intensive SQLite `VACUUM` operations after migrations. ([filecoin-project/lotus#13828](https://github.com/filecoin-project/lotus/pull/13828))
+- fix(genesis): load embedded actor bundles when genesis CAR files omit actor bytecode. ([filecoin-project/lotus#13821](https://github.com/filecoin-project/lotus/pull/13821))
+
+## 📝 Changelog
+
+Changes since RC1:
+
+- [Node](https://github.com/filecoin-project/lotus/compare/v1.37.0-rc1...v1.37.0-rc2)
+- [Miner](https://github.com/filecoin-project/lotus/compare/miner/v1.37.0-rc1...miner/v1.37.0-rc2)
+
+## 👨‍👩‍👧‍👦 Contributors
+
+Since Node and Miner v1.37.0-rc1:
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Rod Vagg | 8 | +1805/-743 | 34 |
+| LexLuthr | 1 | +1734/-106 | 18 |
+| Phi | 1 | +26/-23 | 12 |
+| Kaif | 1 | +22/-3 | 3 |
 
 # Node and Miner v1.37.0-rc1 / 2026-09-22
 
