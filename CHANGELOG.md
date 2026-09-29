@@ -24,6 +24,7 @@
 - fix(gateway): enforce the lookback limit on v2 `TipSetSelector` methods (`StateGetActor`, `StateGetID`, `ChainGetTipSet` by height), and derive lookback checks from memoised network parameters and cached tipsets instead of fetching head per request. Internal lookback fetches no longer consume rate-limit tokens on top of the calling method's own charge, and the `safe` and `finalized` block tags now pass the lookback check on `EthGetBalance`, `EthCall`, `EthGetCode`, `EthGetStorageAt` and `EthGetTransactionCount`, where they were always rejected before. ([filecoin-project/lotus#13822](https://github.com/filecoin-project/lotus/pull/13822))
 - fix(eth): `EthBigInt` JSON decoding rejects malformed hex instead of reading it as `0x0` ([filecoin-project/lotus#13824](https://github.com/filecoin-project/lotus/pull/13824))
 - fix(paths): storage path scanning no longer fails on hidden files such as NFS `.nfsXXXX` leftovers in sector directories. ([filecoin-project/lotus#13830](https://github.com/filecoin-project/lotus/pull/13830))
+- fix(chainindex): don't sqlite vacuum during migrations. ([filecoin-project/lotus#13828](https://github.com/filecoin-project/lotus/pull/13828))
 
 ## 👌 Improvements
 
