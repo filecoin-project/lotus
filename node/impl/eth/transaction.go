@@ -10,6 +10,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/api"
 	builtinactors "github.com/filecoin-project/lotus/chain/actors/builtin"
@@ -164,7 +165,14 @@ func (e *ethTransaction) EthGetTransactionByHashLimited(ctx context.Context, txH
 	}
 
 	for _, p := range pending {
-		if p.Cid() == c {
+		// Without an index entry c is txHash.ToCid(), which cannot match a delegated
+		// message's CID, so those are also matched by their Eth tx hash.
+		matched := p.Cid() == c
+		if !matched && p.Signature.Type == crypto.SigTypeDelegated {
+			h, err := ethTxHashFromSignedMessage(p)
+			matched = err == nil && h == *txHash
+		}
+		if matched {
 			// We only return pending eth-account messages because we can't guarantee
 			// that the from/to addresses of other messages are conversable to 0x-style
 			// addresses. So we just ignore them.
