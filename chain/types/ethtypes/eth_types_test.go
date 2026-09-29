@@ -87,6 +87,16 @@ func TestEthBigIntUnmarshalJSON(t *testing.T) {
 		require.Nil(t, err)
 		require.Equal(t, i, tc.Output)
 	}
+
+	for _, in := range []string{`"0xhello"`, `"garbage"`, `"0xzz"`, `"0x"`, `""`, `"0x10x1"`} {
+		var i EthBigInt
+		require.Error(t, i.UnmarshalJSON([]byte(in)), "expected %s to be rejected", in)
+	}
+
+	var call EthCall
+	require.NoError(t, json.Unmarshal([]byte(`{"value":null,"gasPrice":null}`), &call))
+	require.Equal(t, EthBigIntZero, call.Value)
+	require.Equal(t, EthBigIntZero, call.GasPrice)
 }
 
 func TestEthHash(t *testing.T) {
