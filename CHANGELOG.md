@@ -21,7 +21,7 @@
 
 This is the second release candidate of the upcoming mandatory Lotus v1.37.0 release for [Filecoin network version 29, Solstice](https://github.com/filecoin-project/core-devs/discussions/221). The changes below are since RC1 and include reward-distribution reporting, sector upgrade controls, and fixes for pledge estimates, gateway lookback handling and chain-index maintenance.
 
-The Calibration upgrade remains configured at epoch 4109133 (`2026-09-28T12:59:30Z`). Mainnet activation is not yet scheduled in this release candidate.
+The Calibration upgrade remains configured at epoch 4109133 (`2026-09-28T12:59:30Z`). This is an optional Release Candidate for Calibration. Mainnet activation is not yet scheduled in this release candidate.
 
 ## ☢️ Upgrade Warnings ☢️
 
