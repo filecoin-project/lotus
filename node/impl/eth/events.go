@@ -273,6 +273,8 @@ func (e *ethEvents) EthSubscribe(ctx context.Context, p jsonrpc.RawParams) (etht
 			for _, ea := range params.Params.Address {
 				a, err := ea.ToFilecoinAddress()
 				if err != nil {
+					// clean up any previous filters added and stop the sub
+					_, _ = e.EthUnsubscribe(ctx, sub.id)
 					return ethtypes.EthSubscriptionID{}, xerrors.Errorf("invalid address %x", ea)
 				}
 				addresses = append(addresses, a)
@@ -296,6 +298,8 @@ func (e *ethEvents) EthSubscribe(ctx context.Context, p jsonrpc.RawParams) (etht
 
 		sub.addFilter(f)
 	default:
+		// clean up any previous filters added and stop the sub
+		_, _ = e.EthUnsubscribe(ctx, sub.id)
 		return ethtypes.EthSubscriptionID{}, xerrors.Errorf("unsupported event type: %s", params.EventType)
 	}
 
