@@ -203,6 +203,8 @@ func (f *solsticeRecover) failAndRecover(t *testing.T, sector abi.SectorNumber, 
 	req.Equal(whole-uint64(f.sectorSize)*10, faultedQAP,
 		"%s must take its whole 10x with it, not a 1x residue", name)
 
+	// The fault can surface close to the sector's next deadline, wait so the recovery isn't refused.
+	f.client.WaitForDeclarableDeadline(f.ctx, f.maddr, loc.Deadline)
 	f.markFailed(t, sector, false)
 	recover, err := f.miner.RecoverFault(f.ctx, []abi.SectorNumber{sector})
 	req.NoError(err, "recovering %s must be accepted", name)
