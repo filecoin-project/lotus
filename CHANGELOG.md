@@ -13,6 +13,9 @@
 
 ## ⭐ New Features
 
+- feat(api): add v2 `StateRewardDistribution` with per-block reward allocations, recipient earnings, payments and tipset totals. ([filecoin-project/lotus#13808](https://github.com/filecoin-project/lotus/pull/13808))
+- feat(cli): `lotus-miner sectors upgrade-quality` gained a `--sectors` flag to upgrade only the listed sectors, and reports a summary of skipped sectors with the reason for each. ([filecoin-project/lotus#13818](https://github.com/filecoin-project/lotus/pull/13818))
+
 ## 🐛 Bug Fixes
 
 - fix(chainindex): `lotus index validate-backfill --backfill` now restores the event-index completion marker (tipset bloom) missing from tipsets indexed before v1.36.1. Since v1.36.3, `eth_getLogs` rejects ranges covering such tipsets with `not found in index`; run `validate-backfill --backfill` over the affected range to repair them. Without `--backfill`, validation reports them as failures. ([filecoin-project/lotus#13829](https://github.com/filecoin-project/lotus/issues/13829))
@@ -38,7 +41,6 @@ Mainnet activation is not yet scheduled in this release candidate, and will be d
 
 ## ⭐ New Features
 
-- feat(api): add v2 `StateRewardDistribution` with per-block reward allocations, recipient earnings, payments and tipset totals. ([filecoin-project/lotus#13808](https://github.com/filecoin-project/lotus/pull/13808))
 - feat(cli): `lotus-miner sectors` (FIP-0118 Solstice / nv29) gained an `upgrade-quality` subcommand to upgrade legacy 1x-QA sectors to full QA power. ([filecoin-project/lotus#13781](https://github.com/filecoin-project/lotus/pull/13781))
 
 ## 🐛 Bug Fixes
