@@ -128,7 +128,7 @@ func InitDb(
 		return xerrors.Errorf("invalid %s database version: version %d is greater than the number of migrations %d", name, foundVersion, len(versionMigrations))
 	}
 
-	runVacuum := foundVersion != schemaVersion
+	migrated := foundVersion != schemaVersion
 
 	// run a migration for each version that we have not yet applied, where foundVersion is what is
 	// currently in the database and schemaVersion is the target version. If they are the same,
@@ -157,17 +157,9 @@ func InitDb(
 		log.Infof("Successfully migrated %s database from version %d to %d in %s", name, i-1, i, time.Since(now))
 	}
 
-	if runVacuum {
-		// During the large migrations, we have likely increased the WAL size a lot, so lets do some
-		// simple DB administration to free up space (VACUUM followed by truncating the WAL file)
-		// as this would be a good time to do it when no other writes are happening.
-		log.Infof("Performing %s database vacuum and wal checkpointing to free up space after the migration", name)
-		_, err := db.ExecContext(ctx, "VACUUM")
-		if err != nil {
-			log.Warnf("error vacuuming %s database: %s", name, err)
-		}
-		_, err = db.ExecContext(ctx, "PRAGMA wal_checkpoint(TRUNCATE)")
-		if err != nil {
+	if migrated {
+		// Migrations can grow the WAL substantially; truncate it while no other writes are happening.
+		if _, err := db.ExecContext(ctx, "PRAGMA wal_checkpoint(TRUNCATE)"); err != nil {
 			log.Warnf("error checkpointing %s database wal: %s", name, err)
 		}
 	}
