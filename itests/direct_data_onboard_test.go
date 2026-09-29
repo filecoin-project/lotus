@@ -432,6 +432,10 @@ func TestOnboardRawPieceSnap(t *testing.T) {
 
 	client.WaitForSectorActive(ctx, t, snum, maddr)
 
+	ccInfo, err := client.StateSectorGetInfo(ctx, maddr, snum, types.EmptyTSK)
+	require.NoError(t, err)
+	require.NotZero(t, ccInfo.Flags&minertypes.FULL_QA_POWER, "a new CC sector holds maximum quality-adjusted power")
+
 	pieceSize := abi.PaddedPieceSize(2048).Unpadded()
 	pieceData := make([]byte, pieceSize)
 	_, _ = rand.Read(pieceData)
@@ -468,6 +472,20 @@ func TestOnboardRawPieceSnap(t *testing.T) {
 	}
 
 	miner.WaitSectorsProving(ctx, toCheck)
+	require.Equal(t, snum, so.Sector, "the piece must be snapped into the CC sector")
+
+	// A snap onto a sector already at maximum quality-adjusted power shouldn't raise either
+	// power or pledge, so no collateral required.
+	status, err := miner.SectorsStatus(ctx, snum, false)
+	require.NoError(t, err)
+	require.NotNil(t, status.ReplicaUpdateMessage)
+	msg, err := client.ChainGetMessage(ctx, *status.ReplicaUpdateMessage)
+	require.NoError(t, err)
+	require.True(t, msg.Value.IsZero(), "replica update must not send collateral, sent %s", types.FIL(msg.Value))
+
+	snapInfo, err := client.StateSectorGetInfo(ctx, maddr, snum, types.EmptyTSK)
+	require.NoError(t, err)
+	require.Equal(t, ccInfo.InitialPledge, snapInfo.InitialPledge, "the snap must leave the pledge unchanged")
 }
 
 func makeMarketDealProposal(t *testing.T, client *kit.TestFullNode, miner *kit.TestMiner, data cid.Cid, ps abi.PaddedPieceSize, start, end abi.ChainEpoch) market2.ClientDealProposal {
