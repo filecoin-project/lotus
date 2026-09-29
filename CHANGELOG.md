@@ -9,6 +9,16 @@
 
 # UNRELEASED
 
+## ☢️ Upgrade Warnings ☢️
+
+## ⭐ New Features
+
+## 🐛 Bug Fixes
+
+## 👌 Improvements
+
+# Node and Miner v1.37.0-rc2 / 2026-09-29
+
 This is the second release candidate of the upcoming mandatory Lotus v1.37.0 release for [Filecoin network version 29, Solstice](https://github.com/filecoin-project/core-devs/discussions/221). The changes below are since RC1 and include reward-distribution reporting, sector upgrade controls, and fixes for pledge estimates, gateway lookback handling and chain-index maintenance.
 
 The Calibration upgrade remains configured at epoch 4109133 (`2026-09-28T12:59:30Z`). Mainnet activation is not yet scheduled in this release candidate.
@@ -30,6 +40,24 @@ The Calibration upgrade remains configured at epoch 4109133 (`2026-09-28T12:59:3
 - fix(eth): reject malformed `EthBigInt` JSON instead of decoding it as zero. ([filecoin-project/lotus#13824](https://github.com/filecoin-project/lotus/pull/13824))
 - fix(chainindex): avoid memory-intensive SQLite `VACUUM` operations after migrations. ([filecoin-project/lotus#13828](https://github.com/filecoin-project/lotus/pull/13828))
 - fix(genesis): load embedded actor bundles when genesis CAR files omit actor bytecode. ([filecoin-project/lotus#13821](https://github.com/filecoin-project/lotus/pull/13821))
+
+## 📝 Changelog
+
+Changes since RC1:
+
+- [Node](https://github.com/filecoin-project/lotus/compare/v1.37.0-rc1...v1.37.0-rc2)
+- [Miner](https://github.com/filecoin-project/lotus/compare/miner/v1.37.0-rc1...miner/v1.37.0-rc2)
+
+## 👨‍👩‍👧‍👦 Contributors
+
+Since Node and Miner v1.37.0-rc1:
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Rod Vagg | 8 | +1805/-743 | 34 |
+| LexLuthr | 1 | +1734/-106 | 18 |
+| Phi | 1 | +26/-23 | 12 |
+| Kaif | 1 | +22/-3 | 3 |
 
 # Node and Miner v1.37.0-rc1 / 2026-09-22
 
