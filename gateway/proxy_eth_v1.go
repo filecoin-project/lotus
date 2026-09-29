@@ -1,11 +1,9 @@
 package gateway
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"sync"
 
 	"github.com/ipfs/go-cid"
@@ -13,13 +11,10 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/events/filter"
-	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
@@ -61,111 +56,11 @@ func (pv1 *reverseProxyV1) EthGetBlockTransactionCountByNumber(ctx context.Conte
 		return 0, err
 	}
 
-	if err := pv1.checkBlkParam(ctx, blkNum, 0); err != nil {
+	if err := pv1.gateway.checkEthBlockNumber(ctx, blkNum, 0); err != nil {
 		return 0, err
 	}
 
 	return pv1.server.EthGetBlockTransactionCountByNumber(ctx, blkNum)
-}
-
-func (pv1 *reverseProxyV1) tskByEthHash(ctx context.Context, blkHash ethtypes.EthHash) (types.TipSetKey, error) {
-	tskCid := blkHash.ToCid()
-	tskBlk, err := pv1.ChainReadObj(ctx, tskCid)
-	if err != nil {
-		return types.EmptyTSK, err
-	}
-	tsk := new(types.TipSetKey)
-	if err := tsk.UnmarshalCBOR(bytes.NewReader(tskBlk)); err != nil {
-		return types.EmptyTSK, xerrors.Errorf("cannot unmarshal block into tipset key: %w", err)
-	}
-
-	return *tsk, nil
-}
-
-func (pv1 *reverseProxyV1) checkBlkHash(ctx context.Context, blkHash ethtypes.EthHash) error {
-	tsk, err := pv1.tskByEthHash(ctx, blkHash)
-	if err != nil {
-		return err
-	}
-
-	return pv1.gateway.checkTipSetKey(ctx, tsk)
-}
-
-func (pv1 *reverseProxyV1) checkEthBlockParam(ctx context.Context, blkParam ethtypes.EthBlockNumberOrHash, lookback ethtypes.EthUint64) error {
-	// first check if it's a predefined block or a block number
-	if blkParam.PredefinedBlock != nil || blkParam.BlockNumber != nil {
-		head, err := pv1.ChainHead(ctx)
-		if err != nil {
-			return err
-		}
-
-		var num ethtypes.EthUint64
-		if blkParam.PredefinedBlock != nil {
-			if *blkParam.PredefinedBlock == "earliest" {
-				return xerrors.New("block param \"earliest\" is not supported")
-			} else if *blkParam.PredefinedBlock == "pending" || *blkParam.PredefinedBlock == "latest" {
-				// Head is always ok.
-				if lookback == 0 {
-					return nil
-				}
-
-				if lookback <= ethtypes.EthUint64(head.Height()) {
-					num = ethtypes.EthUint64(head.Height()) - lookback
-				}
-			}
-		} else {
-			num = *blkParam.BlockNumber
-		}
-
-		return pv1.gateway.checkTipSetHeight(head, abi.ChainEpoch(num))
-	}
-
-	// otherwise it's a block hash
-	if blkParam.BlockHash != nil {
-		return pv1.checkBlkHash(ctx, *blkParam.BlockHash)
-	}
-
-	return xerrors.New("invalid block param")
-}
-
-func (pv1 *reverseProxyV1) checkBlkParam(ctx context.Context, blkParam string, lookback ethtypes.EthUint64) error {
-	if blkParam == "earliest" {
-		// also not supported in node impl
-		return xerrors.New("block param \"earliest\" is not supported")
-	}
-
-	head, err := pv1.ChainHead(ctx)
-	if err != nil {
-		return err
-	}
-
-	var num ethtypes.EthUint64
-	switch blkParam {
-	case "pending", "latest":
-		// Head is always ok.
-		if lookback == 0 {
-			return nil
-		}
-		// Can't look beyond 0 anyways.
-		if lookback > ethtypes.EthUint64(head.Height()) {
-			break
-		}
-		num = ethtypes.EthUint64(head.Height()) - lookback
-
-	// "safe" and "finalized" resolved `num` will not accurate for v2 APIs with F3 active; we would
-	// need to query the F3 APIs to get the correct value, but for now we'll go with worst-case and
-	// if the lookback limit is very short (2880 by default) then these will fail
-	case "safe":
-		num = ethtypes.EthUint64(head.Height()) - lookback - ethtypes.EthUint64(ethtypes.SafeEpochDelay)
-	case "finalized":
-		num = ethtypes.EthUint64(head.Height()) - lookback - ethtypes.EthUint64(policy.ChainFinality)
-	default:
-		if err := num.UnmarshalJSON([]byte(`"` + blkParam + `"`)); err != nil {
-			return fmt.Errorf("cannot parse block number: %v", err)
-		}
-
-	}
-	return pv1.gateway.checkTipSetHeight(head, abi.ChainEpoch(num))
 }
 
 func (pv1 *reverseProxyV1) EthGetBlockTransactionCountByHash(ctx context.Context, blkHash ethtypes.EthHash) (ethtypes.EthUint64, error) {
@@ -181,7 +76,7 @@ func (pv1 *reverseProxyV1) EthGetBlockByHash(ctx context.Context, blkHash ethtyp
 		return ethtypes.EthBlock{}, err
 	}
 
-	if err := pv1.checkBlkHash(ctx, blkHash); err != nil {
+	if err := pv1.gateway.checkEthBlockHash(ctx, blkHash); err != nil {
 		return ethtypes.EthBlock{}, err
 	}
 
@@ -193,7 +88,7 @@ func (pv1 *reverseProxyV1) EthGetBlockByNumber(ctx context.Context, blkNum strin
 		return ethtypes.EthBlock{}, err
 	}
 
-	if err := pv1.checkBlkParam(ctx, blkNum, 0); err != nil {
+	if err := pv1.gateway.checkEthBlockNumber(ctx, blkNum, 0); err != nil {
 		return ethtypes.EthBlock{}, err
 	}
 
@@ -205,7 +100,7 @@ func (pv1 *reverseProxyV1) EthGetTransactionByBlockHashAndIndex(ctx context.Cont
 		return nil, err
 	}
 
-	if err := pv1.checkBlkHash(ctx, blkHash); err != nil {
+	if err := pv1.gateway.checkEthBlockHash(ctx, blkHash); err != nil {
 		return nil, err
 	}
 
@@ -217,7 +112,7 @@ func (pv1 *reverseProxyV1) EthGetTransactionByBlockNumberAndIndex(ctx context.Co
 		return nil, err
 	}
 
-	if err := pv1.checkBlkParam(ctx, blkNum, 0); err != nil {
+	if err := pv1.gateway.checkEthBlockNumber(ctx, blkNum, 0); err != nil {
 		return nil, err
 	}
 
@@ -252,7 +147,7 @@ func (pv1 *reverseProxyV1) EthGetTransactionCount(ctx context.Context, sender et
 		return 0, err
 	}
 
-	if err := pv1.checkEthBlockParam(ctx, blkParam, 0); err != nil {
+	if err := pv1.gateway.checkEthBlockParam(ctx, blkParam, 0); err != nil {
 		return 0, err
 	}
 
@@ -271,7 +166,7 @@ func (pv1 *reverseProxyV1) EthGetCode(ctx context.Context, address ethtypes.EthA
 		return nil, err
 	}
 
-	if err := pv1.checkEthBlockParam(ctx, blkParam, 0); err != nil {
+	if err := pv1.gateway.checkEthBlockParam(ctx, blkParam, 0); err != nil {
 		return nil, err
 	}
 
@@ -283,7 +178,7 @@ func (pv1 *reverseProxyV1) EthGetStorageAt(ctx context.Context, address ethtypes
 		return nil, err
 	}
 
-	if err := pv1.checkEthBlockParam(ctx, blkParam, 0); err != nil {
+	if err := pv1.gateway.checkEthBlockParam(ctx, blkParam, 0); err != nil {
 		return nil, err
 	}
 
@@ -295,7 +190,7 @@ func (pv1 *reverseProxyV1) EthGetBalance(ctx context.Context, address ethtypes.E
 		return ethtypes.EthBigInt(big.Zero()), err
 	}
 
-	if err := pv1.checkEthBlockParam(ctx, blkParam, 0); err != nil {
+	if err := pv1.gateway.checkEthBlockParam(ctx, blkParam, 0); err != nil {
 		return ethtypes.EthBigInt(big.Zero()), err
 	}
 
@@ -370,7 +265,7 @@ func (pv1 *reverseProxyV1) EthFeeHistory(ctx context.Context, jparams jsonrpc.Ra
 		return ethtypes.EthFeeHistory{}, err
 	}
 
-	if err := pv1.checkBlkParam(ctx, params.NewestBlkNum, params.BlkCount); err != nil {
+	if err := pv1.gateway.checkEthBlockNumber(ctx, params.NewestBlkNum, params.BlkCount); err != nil {
 		return ethtypes.EthFeeHistory{}, err
 	}
 
@@ -409,7 +304,7 @@ func (pv1 *reverseProxyV1) EthCall(ctx context.Context, tx ethtypes.EthCall, blk
 		return nil, err
 	}
 
-	if err := pv1.checkEthBlockParam(ctx, blkParam, 0); err != nil {
+	if err := pv1.gateway.checkEthBlockParam(ctx, blkParam, 0); err != nil {
 		return nil, err
 	}
 
@@ -436,17 +331,17 @@ func (pv1 *reverseProxyV1) EthGetLogs(ctx context.Context, filter *ethtypes.EthF
 	}
 
 	if filter.FromBlock != nil {
-		if err := pv1.checkBlkParam(ctx, *filter.FromBlock, 0); err != nil {
+		if err := pv1.gateway.checkEthBlockNumber(ctx, *filter.FromBlock, 0); err != nil {
 			return nil, err
 		}
 	}
 	if filter.ToBlock != nil {
-		if err := pv1.checkBlkParam(ctx, *filter.ToBlock, 0); err != nil {
+		if err := pv1.gateway.checkEthBlockNumber(ctx, *filter.ToBlock, 0); err != nil {
 			return nil, err
 		}
 	}
 	if filter.BlockHash != nil {
-		if err := pv1.checkBlkHash(ctx, *filter.BlockHash); err != nil {
+		if err := pv1.gateway.checkEthBlockHash(ctx, *filter.BlockHash); err != nil {
 			return nil, err
 		}
 	}
@@ -654,7 +549,7 @@ func (pv1 *reverseProxyV1) EthTraceBlock(ctx context.Context, blkNum string) ([]
 		return nil, err
 	}
 
-	if err := pv1.checkBlkParam(ctx, blkNum, 0); err != nil {
+	if err := pv1.gateway.checkEthBlockNumber(ctx, blkNum, 0); err != nil {
 		return nil, err
 	}
 
@@ -666,7 +561,7 @@ func (pv1 *reverseProxyV1) EthTraceReplayBlockTransactions(ctx context.Context, 
 		return nil, err
 	}
 
-	if err := pv1.checkBlkParam(ctx, blkNum, 0); err != nil {
+	if err := pv1.gateway.checkEthBlockNumber(ctx, blkNum, 0); err != nil {
 		return nil, err
 	}
 
@@ -687,13 +582,13 @@ func (pv1 *reverseProxyV1) EthTraceFilter(ctx context.Context, filter ethtypes.E
 	}
 
 	if filter.ToBlock != nil {
-		if err := pv1.checkBlkParam(ctx, *filter.ToBlock, 0); err != nil {
+		if err := pv1.gateway.checkEthBlockNumber(ctx, *filter.ToBlock, 0); err != nil {
 			return nil, err
 		}
 	}
 
 	if filter.FromBlock != nil {
-		if err := pv1.checkBlkParam(ctx, *filter.FromBlock, 0); err != nil {
+		if err := pv1.gateway.checkEthBlockNumber(ctx, *filter.FromBlock, 0); err != nil {
 			return nil, err
 		}
 	}
