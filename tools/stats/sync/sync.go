@@ -2,6 +2,7 @@ package sync
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -95,6 +96,10 @@ type BufferedTipsetChannelApi interface {
 // ChainNotify changes. The returned channel can output tipsets at the same height twice if a reorg larger the
 // provided `size` occurs.
 func BufferedTipsetChannel(ctx context.Context, api BufferedTipsetChannelApi, lastHeight abi.ChainEpoch, size int) (<-chan *types.TipSet, error) {
+	if size < 0 {
+		return nil, fmt.Errorf("buffer size must not be negative: %d", size)
+	}
+
 	chmain := make(chan *types.TipSet)
 
 	hb := headbuffer.NewHeadChangeStackBuffer(size)
