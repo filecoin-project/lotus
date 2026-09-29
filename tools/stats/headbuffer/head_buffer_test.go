@@ -52,4 +52,8 @@ func TestHeadBuffer(t *testing.T) {
 		hc = hb.Push(&api.HeadChange{Type: "2"})
 		require.Equal(t, "2", hc.Type)
 	})
+
+	t.Run("Negative size panics", func(t *testing.T) {
+		require.Panics(t, func() { NewHeadChangeStackBuffer(-1) })
+	})
 }
