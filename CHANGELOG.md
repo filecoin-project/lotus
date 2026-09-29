@@ -25,7 +25,7 @@
 - fix(eth): `EthBigInt` JSON decoding rejects malformed hex instead of reading it as `0x0` ([filecoin-project/lotus#13824](https://github.com/filecoin-project/lotus/pull/13824))
 - fix(paths): storage path scanning no longer fails on hidden files such as NFS `.nfsXXXX` leftovers in sector directories. ([filecoin-project/lotus#13830](https://github.com/filecoin-project/lotus/pull/13830))
 - fix(chainindex): don't sqlite vacuum during migrations. ([filecoin-project/lotus#13828](https://github.com/filecoin-project/lotus/pull/13828))
-- fix(chainindex): `validate-backfill` retries a failed epoch once and no longer flags null rounds holding a reverted fork tipset; SQLite pragmas now apply to every pooled connection, restoring foreign-key cascades on index GC. ([filecoin-project/lotus#13833](https://github.com/filecoin-project/lotus/pull/13833))
+- fix(chainindex): `lotus index validate-backfill` retries failed epochs and accepts reverted fork tipsets at null rounds; index database pragmas apply to every connection. ([filecoin-project/lotus#13833](https://github.com/filecoin-project/lotus/pull/13833))
 
 ## 👌 Improvements
 

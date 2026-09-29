@@ -84,3 +84,28 @@ func TestValidateBackfillSummaryOmitsRetriesWhenNone(t *testing.T) {
 	require.Contains(t, out, "Total failed validations: 0")
 	require.NotContains(t, out, "retry")
 }
+
+func TestValidateBackfillQuietRetry(t *testing.T) {
+	app, mockSrvcs, buf, done := newMockApp(t, IndexCmd)
+	defer done()
+	app.ErrWriter = io.Discard
+
+	full := mocks.NewMockFullNode(gomock.NewController(t))
+	mockSrvcs.EXPECT().FullNodeAPI().Return(full)
+	mockSrvcs.EXPECT().Close().Return(nil)
+
+	head := mock.MkBlock(nil, 0, 0)
+	head.Height = 100
+	full.EXPECT().ChainHead(gomock.Any()).Return(mock.TipSet(head), nil)
+	gomock.InOrder(
+		full.EXPECT().ChainValidateIndex(gomock.Any(), abi.ChainEpoch(10), true).Return(nil, errors.New("transient failure")),
+		full.EXPECT().ChainValidateIndex(gomock.Any(), abi.ChainEpoch(10), true).Return(&types.IndexValidation{Height: 10}, nil),
+	)
+
+	err := app.Run([]string{"lotus", "index", validateBackfillChainIndexCmd.Name, "--from", "10", "--to", "10", "--quiet"})
+	require.NoError(t, err)
+
+	out := buf.String()
+	require.Contains(t, out, "! Epoch 10; failure, retrying: transient failure")
+	require.NotContains(t, out, "succeeded on retry")
+}

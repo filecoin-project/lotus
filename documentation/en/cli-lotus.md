@@ -2515,10 +2515,12 @@ DESCRIPTION:
    like cron.
 
    An epoch that fails validation is retried once before moving on. A failure on retry is reported as such and
-   points to a problem that will likely persist, rather than a transient one.
+   points to a problem that will likely persist, rather than a transient one. Validation halts without retrying at
+   an epoch for which the chain store has no data.
 
-   If there are any errors during the validation process, the command will exit with a non-zero status and log the
-   number of failed validations. Otherwise, it will exit with a zero status.
+   If any epoch still fails after its retry, or validation halts, the command will exit with a non-zero status and
+   log the number of failed validations. Otherwise, including when every failure succeeded on retry, it will exit
+   with a zero status.
      
 
 OPTIONS:
