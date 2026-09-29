@@ -2514,8 +2514,11 @@ DESCRIPTION:
    the new ChainIndexer. It can also be run periodically to validate the index's integrity using system schedulers
    like cron.
 
+   An epoch that fails validation is retried once before moving on. A failure on retry is reported as such and
+   points to a problem that will likely persist, rather than a transient one.
+
    If there are any errors during the validation process, the command will exit with a non-zero status and log the
-   number of failed RPC calls. Otherwise, it will exit with a zero status.
+   number of failed validations. Otherwise, it will exit with a zero status.
      
 
 OPTIONS:
