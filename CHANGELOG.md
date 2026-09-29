@@ -14,13 +14,19 @@
 ## ⭐ New Features
 
 - feat(api): add v2 `StateRewardDistribution` with per-block reward allocations, recipient earnings, payments and tipset totals. ([filecoin-project/lotus#13808](https://github.com/filecoin-project/lotus/pull/13808))
+- feat(cli): `lotus-miner sectors upgrade-quality` gained a `--sectors` flag to upgrade only the listed sectors, and reports a summary of skipped sectors with the reason for each. ([filecoin-project/lotus#13818](https://github.com/filecoin-project/lotus/pull/13818))
 
 ## 🐛 Bug Fixes
 
 - fix(chainindex): `lotus index validate-backfill --backfill` now restores the event-index completion marker (tipset bloom) missing from tipsets indexed before v1.36.1. Since v1.36.3, `eth_getLogs` rejects ranges covering such tipsets with `not found in index`; run `validate-backfill --backfill` over the affected range to repair them. Without `--backfill`, validation reports them as failures. ([filecoin-project/lotus#13829](https://github.com/filecoin-project/lotus/issues/13829))
+- fix(eth): `eth_getTransactionByHash` finds pending Ethereum transactions missing from the chain index ([filecoin-project/lotus#13677](https://github.com/filecoin-project/lotus/pull/13677))
+- fix(miner): accurate pledge calculation for ProveReplicaUpdate3 (snap) messages, 10x sectors need zero pledge, properly scale the estimate for others. ([filecoin-project/lotus#13819](https://github.com/filecoin-project/lotus/pull/13819))
+- fix(eth): `EthBigInt` JSON decoding rejects malformed hex instead of reading it as `0x0` ([filecoin-project/lotus#13824](https://github.com/filecoin-project/lotus/pull/13824))
 - fix(paths): storage path scanning no longer fails on hidden files such as NFS `.nfsXXXX` leftovers in sector directories. ([filecoin-project/lotus#13830](https://github.com/filecoin-project/lotus/pull/13830))
 
 ## 👌 Improvements
+
+- fix(genesis): the daemon loads the built-in actors bundle for the genesis state's actors version at startup, so a genesis car written on a bundle version (v8 or later) no longer needs actors. ([filecoin-project/lotus#13821](https://github.com/filecoin-project/lotus/pull/13821))
 
 # UNRELEASED v1.37.0
 

@@ -142,18 +142,26 @@ func (e EthBigInt) MarshalJSON() ([]byte, error) {
 }
 
 func (e *EthBigInt) UnmarshalJSON(b []byte) error {
+	// Non-pointer fields receive a JSON null here; read it as zero.
+	if string(b) == "null" {
+		*e = EthBigInt(big.Zero())
+		return nil
+	}
+
 	var s string
 	if err := json.Unmarshal(b, &s); err != nil {
 		return err
 	}
 
-	replaced := strings.Replace(s, "0x", "", -1)
+	replaced := strings.TrimPrefix(s, "0x")
 	if len(replaced)%2 == 1 {
 		replaced = "0" + replaced
 	}
 
-	i := new(mathbig.Int)
-	i.SetString(replaced, 16)
+	i, ok := new(mathbig.Int).SetString(replaced, 16)
+	if !ok {
+		return xerrors.Errorf("cannot parse %q as a hex-encoded big int", s)
+	}
 
 	*e = EthBigInt(big.NewFromGo(i))
 	return nil

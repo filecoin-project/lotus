@@ -86,7 +86,8 @@ var UpgradeGoldenWeekHeight = abi.ChainEpoch(-31)
 
 const UpgradeFireHorseHeight = -32
 
-const UpgradeSolsticeHeight = UpgradeHeightUnscheduled
+// 2026-09-21T04:30:00Z
+const UpgradeSolsticeHeight = 5220
 
 // SolsticeEpochsPerQuarter matches the quarter the SRA is deployed with: two hours on
 // butterflynet. The ramp runs nine of them.

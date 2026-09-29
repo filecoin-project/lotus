@@ -40,4 +40,20 @@ func TestHeadBuffer(t *testing.T) {
 		hc = hb.Push(&api.HeadChange{Type: "8"})
 		require.Equal(t, hc.Type, "3b")
 	})
+
+	t.Run("Zero size passes changes through", func(t *testing.T) {
+		hb := NewHeadChangeStackBuffer(0)
+
+		hc := hb.Push(&api.HeadChange{Type: "1"})
+		require.Equal(t, "1", hc.Type)
+
+		hb.Pop()
+
+		hc = hb.Push(&api.HeadChange{Type: "2"})
+		require.Equal(t, "2", hc.Type)
+	})
+
+	t.Run("Negative size panics", func(t *testing.T) {
+		require.Panics(t, func() { NewHeadChangeStackBuffer(-1) })
+	})
 }
