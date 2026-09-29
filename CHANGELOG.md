@@ -22,6 +22,7 @@
 - fix(eth): `eth_getTransactionByHash` finds pending Ethereum transactions missing from the chain index ([filecoin-project/lotus#13677](https://github.com/filecoin-project/lotus/pull/13677))
 - fix(miner): accurate pledge calculation for ProveReplicaUpdate3 (snap) messages, 10x sectors need zero pledge, properly scale the estimate for others. ([filecoin-project/lotus#13819](https://github.com/filecoin-project/lotus/pull/13819))
 - fix(gateway): enforce the lookback limit on v2 `TipSetSelector` methods (`StateGetActor`, `StateGetID`, `ChainGetTipSet` by height), and derive lookback checks from memoised network parameters and cached tipsets instead of fetching head per request. Internal lookback fetches no longer consume rate-limit tokens on top of the calling method's own charge, and the `safe` and `finalized` block tags now pass the lookback check on `EthGetBalance`, `EthCall`, `EthGetCode`, `EthGetStorageAt` and `EthGetTransactionCount`, where they were always rejected before. ([filecoin-project/lotus#13822](https://github.com/filecoin-project/lotus/pull/13822))
+- fix(eth): `EthBigInt` JSON decoding rejects malformed hex instead of reading it as `0x0` ([filecoin-project/lotus#13824](https://github.com/filecoin-project/lotus/pull/13824))
 
 ## 👌 Improvements
 
