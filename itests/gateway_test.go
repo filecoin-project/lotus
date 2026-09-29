@@ -225,6 +225,12 @@ func withFunds() startOption {
 	}
 }
 
+func withLookbackCap(lookbackCap time.Duration) startOption {
+	return func(opts *startOptions) {
+		opts.lookbackCap = lookbackCap
+	}
+}
+
 func withPerConnectionAPIRateLimit(rateLimit int) startOption {
 	return func(opts *startOptions) {
 		opts.perConnectionAPIRateLimit = rateLimit
@@ -613,6 +619,30 @@ func TestGatewayF3(t *testing.T) {
 		require.ErrorIs(t, err, api.ErrF3Disabled)
 		require.Nil(t, cert)
 	})
+}
+
+// TestGatewayV2SelectorLookback verifies that the v2 gateway rejects
+// TipSetSelectors naming a tipset older than its lookback bound. Itest genesis
+// is far in the past, so every tipset except the head is out of bound.
+func TestGatewayV2SelectorLookback(t *testing.T) {
+	kit.QuietMiningLogs()
+	ctx := context.Background()
+
+	nodes := startNodes(ctx, t, withLookbackCap(gateway.DefaultMaxLookbackDuration))
+	nodes.full.WaitTillChain(ctx, kit.HeightAtLeast(5))
+
+	gw, closer, err := client.NewGatewayRPCV2(ctx, "ws://"+nodes.gatewayAddr+"/rpc/v2", nil)
+	require.NoError(t, err)
+	t.Cleanup(closer)
+
+	addr, err := nodes.full.WalletDefaultAddress(ctx)
+	require.NoError(t, err)
+
+	_, err = gw.StateGetActor(ctx, addr, types.TipSetSelectors.Latest)
+	require.NoError(t, err)
+
+	_, err = gw.StateGetActor(ctx, addr, types.TipSetSelectors.Height(1, false, types.TipSetAnchors.Latest))
+	require.ErrorContains(t, err, "lookbacks of more than")
 }
 
 // TestEthBlockRangeLimits verifies that block range limits are enforced on
