@@ -11,7 +11,7 @@
 
 ## ☢️ Upgrade Warnings ☢️
 
-- The minimum supported Golang version is now `1.26.8`. ([filecoin-project/lotus#13790](https://github.com/filecoin-project/lotus/issues/13790))
+- The minimum supported Golang version is now `1.26.8`. ([filecoin-project/lotus#13841](https://github.com/filecoin-project/lotus/pull/13841))
 
 ## ⭐ New Features
 
