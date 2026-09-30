@@ -11,6 +11,8 @@
 
 ## ☢️ Upgrade Warnings ☢️
 
+- The minimum supported Golang version is now `1.26.8`. ([filecoin-project/lotus#13841](https://github.com/filecoin-project/lotus/pull/13841))
+
 ## ⭐ New Features
 
 - feat(api): add v2 `StateRewardDistribution` with per-block reward allocations, recipient earnings, payments and tipset totals. ([filecoin-project/lotus#13808](https://github.com/filecoin-project/lotus/pull/13808))
