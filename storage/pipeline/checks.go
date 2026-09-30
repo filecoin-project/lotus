@@ -248,6 +248,10 @@ func (m *Sealing) checkCommit(ctx context.Context, si SectorInfo, proof []byte, 
 		return &ErrBadSeed{xerrors.Errorf("seed has changed")}
 	}
 
+	if si.CommD == nil || si.CommR == nil {
+		return xerrors.Errorf("sector %d had nil commR or commD", si.SectorNumber)
+	}
+
 	if *si.CommR != pci.Info.SealedCID {
 		log.Warn("on-chain sealed CID doesn't match!")
 	}
