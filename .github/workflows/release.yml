@@ -221,7 +221,14 @@ jobs:
         env:
           tag: ${{ fromJSON(steps.project.outputs.config).tag }}
           previous: ${{ fromJSON(steps.project.outputs.config).previous }}
-          body: ${{ steps.before.outputs.release == 'null' && '' || fromJSON(steps.before.outputs.release).body }}
+          # Reuse the existing draft body across reruns while the release PR is still
+          # under review, so CI reruns don't clobber a body edited directly on GitHub.
+          # But on the push-triggered run that publishes the release (i.e. after the
+          # release PR merges), always regenerate from CHANGELOG.md: that's the final,
+          # reviewed text, and it may have been edited (e.g. during editorial review)
+          # after the draft body was first generated, with the workflow-preserves-body
+          # behavior silently leaving the published release out of sync otherwise.
+          body: ${{ (steps.before.outputs.release == 'null' || github.event_name == 'push' || github.event.inputs.publish == 'true') && '' || fromJSON(steps.before.outputs.release).body }}
           current: ${{ github.event.inputs.ref || github.sha }}
         run: |
           if [[ -n "$body" ]]; then
