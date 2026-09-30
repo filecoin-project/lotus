@@ -74,42 +74,15 @@ Here are some real examples:
 
 		var cmds []*CMD
 		for _, str := range cctx.StringSlice("cmd") {
-			entries := strings.SplitN(str, ":", 3)
-			if len(entries) == 0 {
-				return errors.New("invalid cmd format")
+			cmd, err := parseCmdEntry(str, cctx.Int("concurrency"), cctx.Int("qps"))
+			if err != nil {
+				return err
 			}
 
-			// check if concurrency was specified
-			concurrency := cctx.Int("concurrency")
-			if len(entries) > 1 {
-				if len(entries[1]) > 0 {
-					var err error
-					concurrency, err = strconv.Atoi(entries[1])
-					if err != nil {
-						return fmt.Errorf("could not parse concurrency value from command %s: %v", entries[0], err)
-					}
-				}
-			}
+			cmd.w = os.Stdout
+			cmd.printResp = cctx.Bool("print-response")
 
-			// check if qps was specified
-			qps := cctx.Int("qps")
-			if len(entries) > 2 {
-				if len(entries[2]) > 0 {
-					var err error
-					qps, err = strconv.Atoi(entries[2])
-					if err != nil {
-						return fmt.Errorf("could not parse qps value from command %s: %v", entries[0], err)
-					}
-				}
-			}
-
-			cmds = append(cmds, &CMD{
-				w:           os.Stdout,
-				cmd:         entries[0],
-				concurrency: concurrency,
-				qps:         qps,
-				printResp:   cctx.Bool("print-response"),
-			})
+			cmds = append(cmds, cmd)
 		}
 
 		// terminate early on ctrl+c
@@ -194,6 +167,47 @@ Here are some real examples:
 
 		return nil
 	},
+}
+
+// parseCmdEntry parses a single --cmd value of the form CMD[:CONCURRENCY][:QPS].
+// Concurrency and qps default to defConcurrency and defQPS, which are the values
+// of the corresponding command line flags, when they are omitted from the entry.
+func parseCmdEntry(str string, defConcurrency, defQPS int) (*CMD, error) {
+	entries := strings.SplitN(str, ":", 3)
+
+	// SplitN always returns at least one element, so the previous
+	// len(entries) == 0 check could never fire. An empty or whitespace only
+	// command slipped through instead, and startWorker then indexed the empty
+	// slice returned by strings.Fields, panicking with "index out of range".
+	if strings.TrimSpace(entries[0]) == "" {
+		return nil, errors.New("command must not be empty")
+	}
+
+	// check if concurrency was specified
+	concurrency := defConcurrency
+	if len(entries) > 1 && len(entries[1]) > 0 {
+		var err error
+		concurrency, err = strconv.Atoi(entries[1])
+		if err != nil {
+			return nil, fmt.Errorf("could not parse concurrency value from command %s: %v", entries[0], err)
+		}
+	}
+
+	// check if qps was specified
+	qps := defQPS
+	if len(entries) > 2 && len(entries[2]) > 0 {
+		var err error
+		qps, err = strconv.Atoi(entries[2])
+		if err != nil {
+			return nil, fmt.Errorf("could not parse qps value from command %s: %v", entries[0], err)
+		}
+	}
+
+	return &CMD{
+		cmd:         entries[0],
+		concurrency: concurrency,
+		qps:         qps,
+	}, nil
 }
 
 // CMD handles the benchmarking of a single command.
