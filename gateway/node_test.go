@@ -59,6 +59,13 @@ func TestGatewayAPIChainGetTipSetByHeight(t *testing.T) {
 			tskh: abi.ChainEpoch(5),
 		},
 	}, {
+		name: "negative height",
+		args: args{
+			h:    abi.ChainEpoch(-1),
+			tskh: abi.ChainEpoch(5),
+		},
+		expErr: "negative height",
+	}, {
 		name: "tipset too old",
 		args: args{
 			// Tipset height is 5, genesis is at LookbackCap - 10 epochs.
@@ -224,6 +231,7 @@ func TestV2GatewayTipSetSelectorLookback(t *testing.T) {
 			{name: "key too old", selector: types.TipSetSelectors.Key(oldTs.Key()), checked: true, byKey: oldTs, lookback: true},
 			{name: "height in bound", selector: types.TipSetSelectors.Height(recentTs.Height(), false, nil), checked: true, forwarded: true},
 			{name: "height too old", selector: types.TipSetSelectors.Height(oldTs.Height(), false, nil), checked: true, lookback: true},
+			{name: "height negative", selector: types.TipSetSelectors.Height(-1, false, nil)},
 			{name: "finalized in bound", selector: types.TipSetSelectors.Finalized, checked: true, byTag: recentTs, forwarded: true},
 			{name: "finalized too old", selector: types.TipSetSelectors.Finalized, checked: true, byTag: oldTs, lookback: true},
 			{name: "invalid", selector: invalid},
@@ -394,6 +402,7 @@ func TestGatewayEthBlockParamLookback(t *testing.T) {
 		{name: "old number", param: "0x1", checked: true, wantErr: "lookbacks of more than"},
 		{name: "recent number", param: "0xd", checked: true},
 		{name: "huge number", param: "0x10000000000", checked: true, wantErr: "tipset height in future"},
+		{name: "number above MaxInt64", param: "0x8000000000000000", wantErr: "negative height"},
 		{name: "safe", param: "safe", checked: true},
 		{name: "finalized", param: "finalized", checked: true},
 		{name: "finalized tight bound resolves old", param: "finalized", opts: []Option{WithMaxLookbackDuration(time.Hour)}, checked: true, resolved: oldTs, wantErr: "lookbacks of more than"},
