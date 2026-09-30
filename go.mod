@@ -1,6 +1,6 @@
 module github.com/filecoin-project/lotus
 
-go 1.25.14
+go 1.26.8
 
 retract v1.14.0 // Accidentally force-pushed tag, use v1.14.1+ instead.
 
