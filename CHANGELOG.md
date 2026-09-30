@@ -11,6 +11,8 @@
 
 ## ☢️ Upgrade Warnings ☢️
 
+- fix(lotus-fountain)!: remove the deprecated DataCap faucet; remove `--data-cap` from startup commands. ([filecoin-project/lotus#13840](https://github.com/filecoin-project/lotus/pull/13840))
+
 ## ⭐ New Features
 
 - feat(api): add v2 `StateRewardDistribution` with per-block reward allocations, recipient earnings, payments and tipset totals. ([filecoin-project/lotus#13808](https://github.com/filecoin-project/lotus/pull/13808))
