@@ -125,6 +125,9 @@ var runCmd = &cli.Command{
 			recapThreshold: cctx.Float64("captcha-threshold"),
 			box:            box,
 		}
+		http.Handle("/", http.FileServer(box.HTTPBox()))
+		http.HandleFunc("/funds.html", prepFundsHtml(box))
+		http.Handle("/send", h)
 		fmt.Printf("Open http://%s\n", cctx.String("front"))
 
 		go func() {
@@ -139,7 +142,6 @@ var runCmd = &cli.Command{
 
 		server := &http.Server{
 			Addr:              cctx.String("front"),
-			Handler:           h.routes(),
 			ReadHeaderTimeout: timeout,
 		}
 
@@ -168,14 +170,6 @@ type handler struct {
 	limiter        *Limiter
 	recapThreshold float64
 	box            *rice.Box
-}
-
-func (h *handler) routes() *http.ServeMux {
-	mux := http.NewServeMux()
-	mux.Handle("/", http.FileServer(h.box.HTTPBox()))
-	mux.HandleFunc("/funds.html", prepFundsHtml(h.box))
-	mux.Handle("/send", h)
-	return mux
 }
 
 func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
