@@ -11,7 +11,7 @@ import (
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
-	_ "github.com/mattn/go-sqlite3"
+	"github.com/mattn/go-sqlite3"
 	"golang.org/x/xerrors"
 )
 
@@ -28,6 +28,22 @@ var pragmas = []string{
 	"PRAGMA journal_mode = WAL",
 	"PRAGMA journal_size_limit = 0", // always reset journal and wal files
 	"PRAGMA foreign_keys = ON",
+}
+
+const driverName = "sqlite3_lotus"
+
+func init() {
+	// Apply pragmas to every connection opened by the driver.
+	sql.Register(driverName, &sqlite3.SQLiteDriver{
+		ConnectHook: func(conn *sqlite3.SQLiteConn) error {
+			for _, pragma := range pragmas {
+				if _, err := conn.Exec(pragma, nil); err != nil {
+					return xerrors.Errorf("error setting database pragma %q: %w", pragma, err)
+				}
+			}
+			return nil
+		},
+	})
 }
 
 const metaTableDdl = `CREATE TABLE IF NOT EXISTS _meta (
@@ -55,23 +71,18 @@ func Open(path string) (*sql.DB, error) {
 		return nil, xerrors.Errorf("error checking file status for database [@ %s]: %w", path, err)
 	}
 
-	db, err := sql.Open("sqlite3", path+"?mode=rwc")
+	db, err := sql.Open(driverName, path+"?mode=rwc")
 	if err != nil {
 		return nil, xerrors.Errorf("error opening database [@ %s]: %w", path, err)
 	}
 
-	for _, pragma := range pragmas {
-		if _, err := db.Exec(pragma); err != nil {
-			_ = db.Close()
-			return nil, xerrors.Errorf("error setting database pragma %q: %w", pragma, err)
-		}
-	}
-
 	var foreignKeysEnabled int
 	if err := db.QueryRow("PRAGMA foreign_keys;").Scan(&foreignKeysEnabled); err != nil {
+		_ = db.Close()
 		return nil, xerrors.Errorf("failed to check foreign keys setting: %w", err)
 	}
 	if foreignKeysEnabled == 0 {
+		_ = db.Close()
 		return nil, xerrors.Errorf("foreign keys are not enabled for database [@ %s]", path)
 	}
 
