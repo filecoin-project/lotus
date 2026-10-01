@@ -3,6 +3,7 @@ package config
 import (
 	"bytes"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -91,6 +92,21 @@ func TestValidateSplitstoreSet(t *testing.T) {
 	`
 	err = ValidateSplitstoreSet(cfgCommentedOut)
 	assert.Error(t, err)
+}
+
+func TestValidateSplitstoreSetFromEnv(t *testing.T) {
+	t.Setenv("LOTUS_CHAINSTORE_ENABLESPLITSTORE", "false")
+
+	fname := filepath.Join(t.TempDir(), "config.toml")
+	cfgMissing := `
+	[Chainstore.Splitstore]
+	  ColdStoreType = "discard"
+	`
+	require.NoError(t, os.WriteFile(fname, []byte(cfgMissing), 0644))
+
+	cfg, err := FromFile(fname, SetDefault(fullNodeDefault), SetValidate(ValidateSplitstoreSet))
+	require.NoError(t, err)
+	require.False(t, cfg.(*FullNode).Chainstore.EnableSplitstore)
 }
 
 // Default config keeps EnableSplitstore field uncommented
