@@ -364,6 +364,10 @@ func (m *Sealing) handleCommitFailed(ctx statemachine.Context, sector SectorInfo
 			}
 
 			return ctx.Send(SectorRetryCommitWait{})
+		case *ErrMissingCommitments:
+			// PreCommit1 and PreCommit2 recompute CommR and CommD with the sector's ticket. The
+			// precommit is already on chain, so the sector then goes straight back to WaitSeed.
+			return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("redoing precommit: %w", err)})
 		default:
 			return xerrors.Errorf("checkCommit sanity check error (%T): %w", err, err)
 		}
