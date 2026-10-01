@@ -203,7 +203,7 @@ type SplitStore struct {
 	txnRefsMx       sync.Mutex
 	txnRefs         map[cid.Cid]struct{}
 	txnMissing      map[cid.Cid]struct{}
-	txnMarkSet      MarkSet
+	txnMarkSet      *liveMarkSet
 	txnSyncMx       sync.Mutex
 	txnSyncCond     sync.Cond
 	txnSync         bool
