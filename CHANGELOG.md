@@ -26,6 +26,7 @@
 - fix(paths): storage path scanning no longer fails on hidden files such as NFS `.nfsXXXX` leftovers in sector directories. ([filecoin-project/lotus#13830](https://github.com/filecoin-project/lotus/pull/13830))
 - fix(chainindex): don't sqlite vacuum during migrations. ([filecoin-project/lotus#13828](https://github.com/filecoin-project/lotus/pull/13828))
 - fix(eth): `eth_subscribe` no longer leaks a subscription on the node when the event type or an address is rejected. ([filecoin-project/lotus#13838](https://github.com/filecoin-project/lotus/pull/13838))
+- fix(f3): node shutdown no longer fails with `could not close datastore: leveldb: closed` and leaves `repo.lock` behind. The F3 datastore was closed twice, so closing the repo stopped before it released the lock. ([filecoin-project/lotus#13850](https://github.com/filecoin-project/lotus/pull/13850))
 
 ## 👌 Improvements
 
