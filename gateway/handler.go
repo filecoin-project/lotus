@@ -141,7 +141,9 @@ func Handler(gateway *Node, options ...HandlerOption) (ShutdownHandler, error) {
 	m.Handle("/debug/metrics", exporter)
 	m.Handle("/health/livez", node.NewLiveHandler(gateway.v1Proxy.server))
 	m.Handle("/health/readyz", node.NewReadyHandler(gateway.v1Proxy.server))
-	m.PathPrefix("/").Handler(http.DefaultServeMux)
+	// No catch-all route: the gateway serves an untrusted network without
+	// authentication, and http.DefaultServeMux carries whatever the process
+	// registered globally, including net/http/pprof and expvar.
 
 	var handler http.Handler = &statefulCallHandler{m}
 
