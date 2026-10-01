@@ -194,7 +194,7 @@ func (s *ethSubscribeOnly) EthSubscribe(ctx context.Context, p jsonrpc.RawParams
 	return s.events.EthSubscribe(ctx, p)
 }
 
-func TestEthSubscribeRejectedParamsStopSubscription(t *testing.T) {
+func TestEthSubscribeRejectedParamsStartNoSubscription(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -226,6 +226,6 @@ func TestEthSubscribeRejectedParamsStopSubscription(t *testing.T) {
 	} {
 		_, err := client.EthSubscribe(ctx, jsonrpc.RawParams(params))
 		require.Error(t, err)
-		require.Zero(t, activeSubs(), "rejected eth_subscribe %s left a subscription registered", params)
+		require.Zero(t, activeSubs(), "rejected eth_subscribe %s started a subscription", params)
 	}
 }

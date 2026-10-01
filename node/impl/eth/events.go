@@ -241,69 +241,59 @@ func (e *ethEvents) EthSubscribe(ctx context.Context, p jsonrpc.RawParams) (etht
 		return ethtypes.EthSubscriptionID{}, xerrors.New("connection doesn't support callbacks")
 	}
 
-	sub, err := e.subscriptionManager.StartSubscription(e.subscriptionCtx, ethCb.EthSubscription, e.uninstallFilter)
+	// Validate the request and install its filter before the subscription exists, so a
+	// rejected request has nothing to tear down.
+	f, err := e.installSubscriptionFilter(ctx, params)
 	if err != nil {
 		return ethtypes.EthSubscriptionID{}, err
 	}
 
+	sub, err := e.subscriptionManager.StartSubscription(e.subscriptionCtx, ethCb.EthSubscription, e.uninstallFilter)
+	if err != nil {
+		if err := e.uninstallFilter(ctx, f); err != nil {
+			log.Warnf("failed to remove filter after subscription failed to start: %v", err)
+		}
+		return ethtypes.EthSubscriptionID{}, err
+	}
+	sub.addFilter(f)
+
+	return sub.id, nil
+}
+
+// installSubscriptionFilter validates an eth_subscribe request and installs the filter
+// that feeds the subscription. Nothing is installed if the request is rejected.
+func (e *ethEvents) installSubscriptionFilter(ctx context.Context, params ethtypes.EthSubscribeParams) (filter.Filter, error) {
 	switch params.EventType {
 	case EthSubscribeEventTypeHeads:
-		f, err := e.tipSetFilterManager.Install(ctx)
-		if err != nil {
-			// clean up any previous filters added and stop the sub
-			_, _ = e.EthUnsubscribe(ctx, sub.id)
-			return ethtypes.EthSubscriptionID{}, err
-		}
-		sub.addFilter(f)
+		return e.tipSetFilterManager.Install(ctx)
 
 	case EthSubscribeEventTypeLogs:
 		keys := map[string][][]byte{}
+		var addresses []address.Address
 		if params.Params != nil {
 			var err error
 			keys, err = parseEthTopics(params.Params.Topics)
 			if err != nil {
-				// clean up any previous filters added and stop the sub
-				_, _ = e.EthUnsubscribe(ctx, sub.id)
-				return ethtypes.EthSubscriptionID{}, err
+				return nil, err
 			}
-		}
 
-		var addresses []address.Address
-		if params.Params != nil {
 			for _, ea := range params.Params.Address {
 				a, err := ea.ToFilecoinAddress()
 				if err != nil {
-					// clean up any previous filters added and stop the sub
-					_, _ = e.EthUnsubscribe(ctx, sub.id)
-					return ethtypes.EthSubscriptionID{}, xerrors.Errorf("invalid address %x", ea)
+					return nil, xerrors.Errorf("invalid address %x", ea)
 				}
 				addresses = append(addresses, a)
 			}
 		}
 
-		f, err := e.eventFilterManager.Install(ctx, -1, -1, cid.Undef, addresses, keysToKeysWithCodec(keys))
-		if err != nil {
-			// clean up any previous filters added and stop the sub
-			_, _ = e.EthUnsubscribe(ctx, sub.id)
-			return ethtypes.EthSubscriptionID{}, err
-		}
-		sub.addFilter(f)
+		return e.eventFilterManager.Install(ctx, -1, -1, cid.Undef, addresses, keysToKeysWithCodec(keys))
+
 	case EthSubscribeEventTypePendingTransactions:
-		f, err := e.memPoolFilterManager.Install(ctx)
-		if err != nil {
-			// clean up any previous filters added and stop the sub
-			_, _ = e.EthUnsubscribe(ctx, sub.id)
-			return ethtypes.EthSubscriptionID{}, err
-		}
+		return e.memPoolFilterManager.Install(ctx)
 
-		sub.addFilter(f)
 	default:
-		// clean up any previous filters added and stop the sub
-		_, _ = e.EthUnsubscribe(ctx, sub.id)
-		return ethtypes.EthSubscriptionID{}, xerrors.Errorf("unsupported event type: %s", params.EventType)
+		return nil, xerrors.Errorf("unsupported event type: %s", params.EventType)
 	}
-
-	return sub.id, nil
 }
 
 func (e *ethEvents) EthUnsubscribe(ctx context.Context, id ethtypes.EthSubscriptionID) (bool, error) {
