@@ -15,7 +15,8 @@ func scansLinks(c cid.Cid) bool {
 // liveMarkSet is a MarkSet with a codec-aware Visit. Marks are keyed by multihash, so a mark
 // placed through an unscanned codec, such as raw bytes identical to a DAG-CBOR block, says
 // nothing about whether that block's links were walked. The first DAG-CBOR arrival on such a
-// mark is granted one visit.
+// mark is granted one visit. This assumes DAG-CBOR is the only codec walks scan; another would
+// need its own grant.
 type liveMarkSet struct {
 	MarkSet
 
