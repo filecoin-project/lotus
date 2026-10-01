@@ -11,8 +11,6 @@
 
 ## ☢️ Upgrade Warnings ☢️
 
-- The minimum supported Golang version is now `1.26.8`. ([filecoin-project/lotus#13841](https://github.com/filecoin-project/lotus/pull/13841))
-
 ## ⭐ New Features
 
 - feat(api): add v2 `StateRewardDistribution` with per-block reward allocations, recipient earnings, payments and tipset totals. ([filecoin-project/lotus#13808](https://github.com/filecoin-project/lotus/pull/13808))
@@ -27,6 +25,7 @@
 - fix(eth): `EthBigInt` JSON decoding rejects malformed hex instead of reading it as `0x0` ([filecoin-project/lotus#13824](https://github.com/filecoin-project/lotus/pull/13824))
 - fix(paths): storage path scanning no longer fails on hidden files such as NFS `.nfsXXXX` leftovers in sector directories. ([filecoin-project/lotus#13830](https://github.com/filecoin-project/lotus/pull/13830))
 - fix(chainindex): don't sqlite vacuum during migrations. ([filecoin-project/lotus#13828](https://github.com/filecoin-project/lotus/pull/13828))
+- fix(eth): `eth_subscribe` no longer leaks a subscription on the node when the event type or an address is rejected. ([filecoin-project/lotus#13838](https://github.com/filecoin-project/lotus/pull/13838))
 - fix(miner): a sector in `CommitFailed` without CommR or CommD no longer panics in the commit check. It redoes PreCommit1 and PreCommit2 to regenerate them, then goes back to `WaitSeed`. ([filecoin-project/lotus#13843](https://github.com/filecoin-project/lotus/pull/13843))
 
 ## 👌 Improvements

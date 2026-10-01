@@ -1,11 +1,14 @@
 package eth
 
 import (
+	"context"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/api"
@@ -178,4 +181,51 @@ func TestEthLogFromEvent(t *testing.T) {
 	require.Nil(t, data)
 	require.Len(t, topics, 1)
 	require.Equal(t, topics[0], ethtypes.EthHash{})
+}
+
+// ethSubscribeOnly exposes EthSubscribe alone over JSON-RPC so the test can
+// reach it through a websocket connection, which is what supplies the reverse
+// client EthSubscribe needs.
+type ethSubscribeOnly struct {
+	events *ethEvents
+}
+
+func (s *ethSubscribeOnly) EthSubscribe(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthSubscriptionID, error) {
+	return s.events.EthSubscribe(ctx, p)
+}
+
+func TestEthSubscribeRejectedParamsStartNoSubscription(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	subMgr := NewEthSubscriptionManager(nil, nil, nil)
+	events := &ethEvents{subscriptionCtx: ctx, subscriptionManager: subMgr}
+
+	rpcServer := jsonrpc.NewServer(jsonrpc.WithReverseClient[api.EthSubscriberMethods]("Filecoin"))
+	rpcServer.Register("Filecoin", &ethSubscribeOnly{events: events})
+	srv := httptest.NewServer(rpcServer)
+	defer srv.Close()
+
+	var client struct {
+		EthSubscribe func(context.Context, jsonrpc.RawParams) (ethtypes.EthSubscriptionID, error)
+	}
+	closer, err := jsonrpc.NewMergeClient(ctx, "ws://"+srv.Listener.Addr().String(), "Filecoin", []any{&client}, nil)
+	require.NoError(t, err)
+	defer closer()
+
+	activeSubs := func() int {
+		subMgr.mu.Lock()
+		defer subMgr.mu.Unlock()
+		return len(subMgr.subs)
+	}
+
+	for _, params := range []string{
+		`["bogus"]`,
+		// a masked ID address whose ID is 2^63, which ToFilecoinAddress rejects
+		`["logs",{"address":"0xff00000000000000000000008000000000000000"}]`,
+	} {
+		_, err := client.EthSubscribe(ctx, jsonrpc.RawParams(params))
+		require.Error(t, err)
+		require.Zero(t, activeSubs(), "rejected eth_subscribe %s started a subscription", params)
+	}
 }
