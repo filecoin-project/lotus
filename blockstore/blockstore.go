@@ -97,31 +97,9 @@ type BlockstoreSize interface {
 	Size() (int64, error)
 }
 
-// WrapIDStore wraps the underlying blockstore in an "identity" blockstore.
-// The ID store filters out all puts for blocks with CIDs using the "identity"
-// hash function. It also extracts inlined blocks from CIDs using the identity
-// hash function and returns them on get/has, ignoring the contents of the
-// blockstore.
-func WrapIDStore(bstore blockstore.Blockstore) Blockstore {
-	if is, ok := bstore.(*idstore); ok {
-		// already wrapped
-		return is
-	}
-
-	if bs, ok := bstore.(Blockstore); ok {
-		// we need to wrap our own because we don't want to neuter the DeleteMany method
-		// the underlying blockstore has implemented an (efficient) DeleteMany
-		return NewIDStore(bs)
-	}
-
-	// The underlying blockstore does not implement DeleteMany, so we need to shim it.
-	// This is less efficient as it'll iterate and perform single deletes.
-	return NewIDStore(Adapt(bstore))
-}
-
 // FromDatastore creates a new blockstore backed by the given datastore.
 func FromDatastore(dstore ds.Batching) Blockstore {
-	return WrapIDStore(blockstore.NewBlockstore(dstore))
+	return RejectIdentityCids(blockstore.NewBlockstore(dstore))
 }
 
 type adaptedBlockstore struct {
