@@ -1687,7 +1687,12 @@ Perms: admin
 Inputs:
 ```json
 [
-  {}
+  {
+    "Cid": {
+      "/": "bafy2bzacebiufyskb3rsfxarunoyylmjr4u2wvfypishpa5okfpup76p35i6k"
+    },
+    "RawData": "U29tZUJsb2NrRGF0YQ=="
+  }
 ]
 ```
 
