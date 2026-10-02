@@ -19,6 +19,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/exitcode"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build/buildconstants"
@@ -957,6 +958,55 @@ func TestEthCall(t *testing.T) {
 		require.Equal(t, dataErr.Data, "0x4e487b710000000000000000000000000000000000000000000000000000000000000012", "Expected error data to contain 'DivideByZero()'")
 	})
 }
+
+func TestEthCallGasLimit(t *testing.T) {
+	env := setupSkipSenderTest(t)
+	defer env.cancel()
+
+	blkParam := ethtypes.NewEthBlockNumberOrHashFromPredefined("latest")
+	data := kit.EvmCalldata("getBalance(address)", kit.EvmWordBytes(env.eoaAddr[:]))
+	// The funded EOA has no tokens in SimpleCoin.
+	want := ethtypes.EthBytes(make([]byte, 32))
+
+	for _, sender := range []struct {
+		name string
+		from *ethtypes.EthAddress
+	}{
+		{"FundedEOA", &env.eoaAddr},
+		{"OmittedFrom", nil},
+		{"Contract", &env.contractAddr},
+	} {
+		t.Run(sender.name, func(t *testing.T) {
+			for _, tc := range []struct {
+				name    string
+				gas     ethtypes.EthUint64
+				wantErr bool
+			}{
+				{"Default", 0, false},
+				{"BlockLimit", ethtypes.EthUint64(buildconstants.BlockGasLimit), false},
+				{"Insufficient", 1, true},
+			} {
+				t.Run(tc.name, func(t *testing.T) {
+					result, err := env.client.EthCall(env.ctx, ethtypes.EthCall{
+						From: sender.from,
+						To:   &env.contractAddr,
+						Data: data,
+						Gas:  tc.gas,
+					}, blkParam)
+					if tc.wantErr {
+						var execErr *api.ErrExecutionReverted
+						require.ErrorAs(t, err, &execErr)
+						require.Contains(t, execErr.Message, exitcode.SysErrOutOfGas.String())
+						return
+					}
+					require.NoError(t, err)
+					require.Equal(t, want, result)
+				})
+			}
+		})
+	}
+}
+
 func TestEthEstimateGas(t *testing.T) {
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
