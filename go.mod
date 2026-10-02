@@ -149,7 +149,7 @@ require (
 	github.com/zyedidia/generic v1.2.1
 	go.opencensus.io v0.24.0
 	go.opentelemetry.io/otel v1.46.0
-	go.opentelemetry.io/otel/bridge/opencensus v1.44.0
+	go.opentelemetry.io/otel/bridge/opencensus v1.46.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.44.0
 	go.opentelemetry.io/otel/exporters/prometheus v0.68.0
 	go.opentelemetry.io/otel/metric v1.46.0
