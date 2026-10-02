@@ -60,32 +60,16 @@ func (mp *MessagePool) CheckPendingMessages(ctx context.Context, from address.Ad
 // CheckReplaceMessages performs a set of logical checks for related messages while performing a
 // replacement.
 func (mp *MessagePool) CheckReplaceMessages(ctx context.Context, replace []*types.Message) ([][]api.MessageCheckStatus, error) {
-	msgMap := make(map[address.Address]map[uint64]*types.Message)
-	count := 0
-
-	mp.lk.RLock()
-	for _, m := range replace {
-		mmap, ok := msgMap[m.From]
-		if !ok {
-			mmap = make(map[uint64]*types.Message)
-			msgMap[m.From] = mmap
-			mset, ok, err := mp.getPendingMset(ctx, m.From)
-			if err != nil {
-				mp.lk.RUnlock()
-				return nil, xerrors.Errorf("errored while getting pending mset: %w", err)
-			}
-			if ok {
-				count += len(mset.msgs)
-				for _, sm := range mset.msgs {
-					mmap[sm.Message.Nonce] = &sm.Message
-				}
-			} else {
-				count++
-			}
+	for i, m := range replace {
+		if m == nil {
+			return nil, xerrors.Errorf("replacement message at index %d is nil", i)
 		}
-		mmap[m.Nonce] = m
 	}
-	mp.lk.RUnlock()
+
+	msgMap, count, err := mp.getReplaceMessageMap(ctx, replace)
+	if err != nil {
+		return nil, err
+	}
 
 	msgs := make([]*types.Message, 0, count)
 	start := 0
@@ -104,6 +88,37 @@ func (mp *MessagePool) CheckReplaceMessages(ctx context.Context, replace []*type
 	}
 
 	return mp.checkMessages(ctx, msgs, true, nil)
+}
+
+func (mp *MessagePool) getReplaceMessageMap(ctx context.Context, replace []*types.Message) (map[address.Address]map[uint64]*types.Message, int, error) {
+	msgMap := make(map[address.Address]map[uint64]*types.Message)
+	count := 0
+
+	mp.lk.RLock()
+	defer mp.lk.RUnlock()
+
+	for _, m := range replace {
+		mmap, ok := msgMap[m.From]
+		if !ok {
+			mmap = make(map[uint64]*types.Message)
+			msgMap[m.From] = mmap
+			mset, ok, err := mp.getPendingMset(ctx, m.From)
+			if err != nil {
+				return nil, 0, xerrors.Errorf("errored while getting pending mset: %w", err)
+			}
+			if ok {
+				count += len(mset.msgs)
+				for _, sm := range mset.msgs {
+					mmap[sm.Message.Nonce] = &sm.Message
+				}
+			} else {
+				count++
+			}
+		}
+		mmap[m.Nonce] = m
+	}
+
+	return msgMap, count, nil
 }
 
 // checkMessages should be either nil or of len(msgs), it signifies that message at given index
