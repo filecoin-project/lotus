@@ -202,10 +202,6 @@ func (e *ethGas) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (ethty
 		return ethtypes.EthUint64(0), err
 	}
 
-	// Set the gas limit to the zero sentinel value, which makes
-	// gas estimation actually run.
-	msg.GasLimit = 0
-
 	var ts *types.TipSet
 	if params.BlkParam == nil {
 		ts = e.chainStore.GetHeaviestTipSet()
@@ -225,6 +221,14 @@ func (e *ethGas) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (ethty
 			needsSkipSenderValidation = true
 		}
 	}
+
+	if params.Tx.Gas > 0 {
+		return e.estimateGasWithLimit(ctx, msg, ts, needsSkipSenderValidation)
+	}
+
+	// Set the gas limit to the zero sentinel value, which makes
+	// gas estimation actually run when no cap was supplied.
+	msg.GasLimit = 0
 
 	if needsSkipSenderValidation {
 		return e.estimateGasSkipSender(ctx, msg, ts)
@@ -253,6 +257,103 @@ func (e *ethGas) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (ethty
 	}
 
 	return ethtypes.EthUint64(expectedGas), nil
+}
+
+// estimateGasWithLimit first proves that the call can execute within its gas cap,
+// then estimates using that cap as a known successful upper bound.
+func (e *ethGas) estimateGasWithLimit(ctx context.Context, msg *types.Message, ts *types.TipSet, skipSenderValidation bool) (ethtypes.EthUint64, error) {
+	callWithGas := gasutils.GasEstimateCallWithGas
+	if skipSenderValidation {
+		callWithGas = gasutils.GasEstimateCallWithGasSkipSenderValidation
+	}
+	res, priorMsgs, callTs, err := callWithGas(ctx, e.chainStore, e.stateManager, e.messagePool, msg, ts)
+	if !skipSenderValidation && (errors.Is(err, stmgr.ErrSenderValidationFailed) ||
+		(err == nil && res.MsgRct.ExitCode == exitcode.SysErrSenderInvalid)) {
+		skipSenderValidation = true
+		res, priorMsgs, callTs, err = gasutils.GasEstimateCallWithGasSkipSenderValidation(ctx, e.chainStore, e.stateManager, e.messagePool, msg, ts)
+	}
+	if err != nil {
+		return 0, xerrors.Errorf("failed to estimate gas: %w", err)
+	}
+	if res.MsgRct.ExitCode == exitcode.SysErrOutOfGas {
+		return 0, xerrors.Errorf("gas required exceeds allowance (%d): %w", msg.GasLimit, &api.ErrOutOfGas{})
+	}
+	if res.MsgRct.ExitCode.IsError() {
+		return 0, api.NewErrExecutionRevertedFromResult(res)
+	}
+
+	// Keep the same tipset and prior messages for every probe, including when
+	// the initial call selected a tipset without an expensive migration.
+	applyTsMessages := os.Getenv("LOTUS_SKIP_APPLY_TS_MESSAGE_CALL_WITH_GAS") != "1"
+	probe := *msg
+	canSucceed := func(limit int64) (bool, error) {
+		probe.GasLimit = limit
+		var result *api.InvocResult
+		var err error
+		if skipSenderValidation {
+			result, err = e.stateManager.CallWithGasSkipSenderValidation(ctx, &probe, priorMsgs, callTs, applyTsMessages)
+		} else {
+			result, err = e.stateManager.CallWithGas(ctx, &probe, priorMsgs, callTs, applyTsMessages)
+		}
+		if err != nil {
+			return false, err
+		}
+		// A contract may revert at a lower limit without an out-of-gas exit code.
+		return result.MsgRct.ExitCode.IsSuccess(), nil
+	}
+	gasLimit, err := gasSearchWithCap(res.MsgRct.GasUsed, msg.GasLimit, e.messagePool.GetConfig().GasLimitOverestimation, canSucceed)
+	if err != nil {
+		return 0, xerrors.Errorf("gas search failed: %w", err)
+	}
+	return ethtypes.EthUint64(gasLimit), nil
+}
+
+// gasSearchWithCap returns a tested successful limit, never exceeding gasCap.
+// The caller must have already executed successfully at gasCap.
+func gasSearchWithCap(gasUsed, gasCap int64, overestimation float64, canSucceed func(int64) (bool, error)) (int64, error) {
+	withMargin := func(gas int64) int64 {
+		return max(int64(1), int64(min(float64(gas)*overestimation, float64(gasCap))))
+	}
+	limit := withMargin(gasUsed)
+	if limit == gasCap {
+		return gasCap, nil
+	}
+	ok, err := canSucceed(limit)
+	if err != nil {
+		return 0, err
+	}
+	if ok {
+		return limit, nil
+	}
+
+	low, high := limit, gasCap
+	for high-low > max(int64(1), high/100) {
+		mid := low + (high-low)/2
+		ok, err := canSucceed(mid)
+		if err != nil {
+			return 0, err
+		}
+		if ok {
+			high = mid
+		} else {
+			low = mid
+		}
+	}
+
+	// Preserve the safety margin where it fits, but verify it: contracts can
+	// change behavior with gasleft(), so more gas need not preserve success.
+	limit = withMargin(high)
+	if limit == gasCap || limit == high {
+		return limit, nil
+	}
+	ok, err = canSucceed(limit)
+	if err != nil {
+		return 0, err
+	}
+	if ok {
+		return limit, nil
+	}
+	return high, nil
 }
 
 // estimateGasSkipSender estimates gas for a message whose sender is a contract or doesn't
