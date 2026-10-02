@@ -867,27 +867,33 @@ func (b *Blockstore) PutMany(ctx context.Context, blocks []blocks.Block) error {
 		keys = append(keys, k)
 	}
 
-	// Blocks are immutable, so a key already present normally means there is
-	// nothing to do. Skipping the check when verifying lets a good copy replace
-	// a damaged one: without it the write is silently dropped and the damage is
-	// permanent, since nothing else ever rewrites a block.
-	if !b.opts.VerifyReads {
-		err := b.db.View(func(txn *badger.Txn) error {
-			for i, k := range keys {
-				switch _, err := txn.Get(k); err {
-				case badger.ErrKeyNotFound:
-				case nil:
-					keys[i] = nil
-				default:
-					// Something is actually wrong
-					return err
+	// Blocks are immutable, so a valid key already present means there is
+	// nothing to do. In verify-on-read mode, inspect the stored value before
+	// skipping it so that a good copy can still replace damaged bytes.
+	err := b.db.View(func(txn *badger.Txn) error {
+		for i, k := range keys {
+			item, err := txn.Get(k)
+			switch err {
+			case badger.ErrKeyNotFound:
+				continue
+			case nil:
+			default:
+				return err
+			}
+
+			if b.opts.VerifyReads {
+				if err := item.Value(func(val []byte) error {
+					return checkStored(blocks[i].Cid(), val)
+				}); err != nil {
+					continue
 				}
 			}
-			return nil
-		})
-		if err != nil {
-			return err
+			keys[i] = nil
 		}
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 
 	put := func(db *badger.DB) error {

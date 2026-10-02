@@ -1,6 +1,7 @@
 package sealing
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -9,25 +10,23 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-commp-utils/v2/zerocomm"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/dline"
+	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/go-statemachine"
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 	"github.com/filecoin-project/lotus/storage/pipeline/mocks"
 	"github.com/filecoin-project/lotus/storage/pipeline/piece"
-	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
-	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
-// handleSubmitReplicaUpdate carries the same FIP-0118 gate as getSectorCollateral: from nv29 the
-// pledge must be asked for at full sector size, because every sector gets maximum
-// quality-adjusted power regardless of what its pieces claim.
-func TestHandleSubmitReplicaUpdateVerifiedSize(t *testing.T) {
+// replicaUpdatePledge funds the pledge ProveReplicaUpdates3 re-derives, with 10% headroom on any
+// top-up. Before nv29 the update's power follows the verified allocations it claims. From nv29
+// (FIP-0118) it grants maximum quality-adjusted power, re-deriving the pledge only for a sector
+// not already there.
+func TestReplicaUpdatePledge(t *testing.T) {
 	maddr, err := address.NewIDAddress(123)
 	require.NoError(t, err)
 
@@ -39,39 +38,102 @@ func TestHandleSubmitReplicaUpdateVerifiedSize(t *testing.T) {
 	ssize, err := sealProof.SectorSize()
 	require.NoError(t, err)
 
-	// a single DDO piece, an eighth of the sector, with no allocation on chain
+	pieceCid, err := cid.Parse("bafkqaaa")
+	require.NoError(t, err)
 	pieceSize := abi.PaddedPieceSize(1 << 20)
-	sectorPiece := SafePiece(lapi.SectorPiece{
-		Piece: abi.PieceInfo{Size: pieceSize, PieceCID: zerocomm.ZeroPieceCommitment(pieceSize.Unpadded())},
-		DealInfo: &piece.PieceDealInfo{
-			DealID:                  1,
-			PieceActivationManifest: &miner.PieceActivationManifest{Size: pieceSize},
-		},
-	})
 
-	updateSealed, err := cid.Parse("bafkqaaa")
+	allocKey := &miner.VerifiedAllocationKey{Client: 1000, ID: 7}
+	allocClient, err := address.NewIDAddress(uint64(allocKey.Client))
 	require.NoError(t, err)
 
-	sector := SectorInfo{
-		SectorNumber:       sectorNumber,
-		SectorType:         sealProof,
-		CCUpdate:           true,
-		Pieces:             []SafeSectorPiece{sectorPiece},
-		UpdateSealed:       &updateSealed,
-		ReplicaUpdateProof: storiface.ReplicaUpdateProof("proof"),
+	ddoPiece := func(key *miner.VerifiedAllocationKey) SafeSectorPiece {
+		return SafePiece(lapi.SectorPiece{
+			Piece: abi.PieceInfo{Size: pieceSize, PieceCID: pieceCid},
+			DealInfo: &piece.PieceDealInfo{
+				PieceActivationManifest: &miner.PieceActivationManifest{
+					CID:                   pieceCid,
+					Size:                  pieceSize,
+					VerifiedAllocationKey: key,
+				},
+			},
+		})
 	}
 
-	unsealed, err := computeUnsealedCIDFromPieces(sector)
-	require.NoError(t, err)
-	sector.UpdateUnsealed = &unsealed
+	fullWeight := big.Mul(big.NewInt(int64(ssize)), big.NewInt(int64(expiration-height)))
+
+	type allocLookup struct {
+		alloc *verifreg.Allocation
+		err   error
+	}
 
 	for _, tc := range []struct {
-		name               string
-		nv                 network.Version
-		expectVerifiedSize uint64
+		name        string
+		nv          network.Version
+		piece       SafeSectorPiece
+		lookup      *allocLookup
+		flags       miner.SectorOnChainInfoFlags
+		weight      abi.DealWeight
+		recorded    int64
+		pledge      int64 // what the actor charges; zero when no estimate is expected
+		expectDelta int64 // the charge above the recorded pledge, before headroom
+		expectSize  uint64
 	}{
-		{"nv28 sizes from the pieces", network.Version28, uint64(pieceSize)},
-		{"nv29 sizes from the sector", network.Version29, uint64(ssize)},
+		{
+			name:  "nv28 verified piece pledges its claimed space",
+			nv:    network.Version28,
+			piece: ddoPiece(allocKey), lookup: &allocLookup{alloc: &verifreg.Allocation{Client: allocKey.Client}},
+			recorded: 1_000, pledge: 3_463, expectSize: uint64(pieceSize), expectDelta: 2_463,
+		},
+		{
+			name:  "nv28 allocation not found pledges the piece at 1x",
+			nv:    network.Version28,
+			piece: ddoPiece(allocKey), lookup: &allocLookup{},
+			recorded: 1_000, pledge: 1_021, expectSize: 0, expectDelta: 21,
+		},
+		{
+			name:  "nv28 allocation lookup failure pledges the piece as verified",
+			nv:    network.Version28,
+			piece: ddoPiece(allocKey), lookup: &allocLookup{err: errors.New("no allocation for you")},
+			recorded: 1_000, pledge: 3_463, expectSize: uint64(pieceSize), expectDelta: 2_463,
+		},
+		{
+			name:     "nv28 unverified piece pledges at 1x",
+			nv:       network.Version28,
+			piece:    ddoPiece(nil),
+			recorded: 1_000, pledge: 1_021, expectSize: 0, expectDelta: 21,
+		},
+		{
+			name:     "nv28 recorded pledge above the requirement stands",
+			nv:       network.Version28,
+			piece:    ddoPiece(nil),
+			recorded: 1_500, pledge: 1_021, expectSize: 0, expectDelta: 0,
+		},
+		{
+			name:     "nv29 1x sector rises to the full-power pledge",
+			nv:       network.Version29,
+			piece:    ddoPiece(allocKey),
+			recorded: 1_000, pledge: 10_007, expectSize: uint64(ssize), expectDelta: 9_007,
+		},
+		{
+			name:     "nv29 recorded pledge above the full-power requirement stands",
+			nv:       network.Version29,
+			piece:    ddoPiece(nil),
+			recorded: 12_000, pledge: 10_007, expectSize: uint64(ssize), expectDelta: 0,
+		},
+		{
+			name:     "nv29 FULL_QA_POWER sector pledges nothing",
+			nv:       network.Version29,
+			piece:    ddoPiece(allocKey),
+			flags:    miner.FULL_QA_POWER,
+			recorded: 1_000, expectDelta: 0,
+		},
+		{
+			name:     "nv29 legacy fully verified sector pledges nothing",
+			nv:       network.Version29,
+			piece:    ddoPiece(nil),
+			weight:   fullWeight,
+			recorded: 1_000, expectDelta: 0,
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
@@ -79,35 +141,46 @@ func TestHandleSubmitReplicaUpdateVerifiedSize(t *testing.T) {
 			api := mocks.NewMockSealingAPI(ctrl)
 
 			ts := makeTestTipSet(t, height)
-
-			api.EXPECT().ChainHead(gomock.Any()).AnyTimes().Return(ts, nil)
-			api.EXPECT().StateSectorPartition(gomock.Any(), maddr, sectorNumber, ts.Key()).
-				Return(&miner.SectorLocation{Deadline: 5, Partition: 0}, nil)
-			api.EXPECT().StateMinerProvingDeadline(gomock.Any(), maddr, ts.Key()).
-				Return(&dline.Info{Index: 0, WPoStPeriodDeadlines: 48}, nil)
-			api.EXPECT().StateSectorGetInfo(gomock.Any(), maddr, sectorNumber, ts.Key()).
-				Return(&miner.SectorOnChainInfo{Expiration: expiration, InitialPledge: big.Zero()}, nil)
 			api.EXPECT().StateNetworkVersion(gomock.Any(), ts.Key()).Return(tc.nv, nil).AnyTimes()
 
-			// the pledge lookup is where the gate shows up, and failing it stops the handler
-			// before it needs a working statemachine.Context to send events through
-			pledgeErr := errors.New("no pledge for you")
-			api.EXPECT().StateMinerInitialPledgeForSector(
-				gomock.Any(),
-				gomock.Eq(expiration-height),
-				gomock.Eq(ssize),
-				gomock.Eq(tc.expectVerifiedSize),
-				gomock.Eq(ts.Key()),
-			).Return(big.Zero(), pledgeErr)
-
-			m := &Sealing{
-				Api:       api,
-				maddr:     maddr,
-				getConfig: func() (sealiface.Config, error) { return sealiface.Config{}, nil },
+			if tc.lookup != nil {
+				api.EXPECT().StateGetAllocation(gomock.Any(), allocClient, verifregtypes.AllocationId(allocKey.ID), ts.Key()).
+					Return(tc.lookup.alloc, tc.lookup.err)
+			}
+			if tc.pledge != 0 {
+				// the API reports 110% of the charge, floored
+				estimate := big.Div(big.Mul(big.NewInt(tc.pledge), big.NewInt(110)), big.NewInt(100))
+				api.EXPECT().StateMinerInitialPledgeForSector(
+					gomock.Any(), expiration-height, ssize, tc.expectSize, ts.Key(),
+				).Return(estimate, nil)
 			}
 
-			err := m.handleSubmitReplicaUpdate(statemachine.Context{}, sector)
-			require.ErrorIs(t, err, pledgeErr)
+			weight := tc.weight
+			if weight.Nil() {
+				weight = big.Zero()
+			}
+			onChainInfo := &miner.SectorOnChainInfo{
+				SectorNumber:       sectorNumber,
+				SealProof:          sealProof,
+				Expiration:         expiration,
+				PowerBaseEpoch:     height,
+				Flags:              tc.flags,
+				VerifiedDealWeight: weight,
+				InitialPledge:      big.NewInt(tc.recorded),
+			}
+			sector := SectorInfo{
+				SectorNumber: sectorNumber,
+				SectorType:   sealProof,
+				CCUpdate:     true,
+				Pieces:       []SafeSectorPiece{tc.piece},
+			}
+
+			m := &Sealing{Api: api, maddr: maddr}
+			delta, err := m.replicaUpdatePledge(context.Background(), sector, onChainInfo, ts)
+			require.NoError(t, err)
+			// 10% headroom on the delta, floored
+			expect := big.Div(big.Mul(big.NewInt(tc.expectDelta), big.NewInt(110)), big.NewInt(100))
+			require.Equal(t, expect.String(), delta.String())
 		})
 	}
 }

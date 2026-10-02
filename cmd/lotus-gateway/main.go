@@ -123,7 +123,7 @@ var runCmd = &cli.Command{
 		},
 		&cli.DurationFlag{
 			Name:  "api-max-lookback",
-			Usage: "maximum duration allowable for tipset lookbacks",
+			Usage: "maximum duration allowable for tipset lookbacks, measured at the requested height or tipset; a height selector with Previous set may resolve a few null rounds older",
 			Value: gateway.DefaultMaxLookbackDuration,
 		},
 		&cli.Int64Flag{

@@ -14,13 +14,29 @@
 ## ⭐ New Features
 
 - feat(api): add v2 `StateRewardDistribution` with per-block reward allocations, recipient earnings, payments and tipset totals. ([filecoin-project/lotus#13808](https://github.com/filecoin-project/lotus/pull/13808))
+- feat(cli): `lotus-miner sectors upgrade-quality` gained a `--sectors` flag to upgrade only the listed sectors, and reports a summary of skipped sectors with the reason for each. ([filecoin-project/lotus#13818](https://github.com/filecoin-project/lotus/pull/13818))
 
 ## 🐛 Bug Fixes
 
+- fix(lotus-fountain): remove the deprecated DataCap faucet. ([filecoin-project/lotus#13840](https://github.com/filecoin-project/lotus/pull/13840))
 - fix(chainindex): `lotus index validate-backfill --backfill` now restores the event-index completion marker (tipset bloom) missing from tipsets indexed before v1.36.1. Since v1.36.3, `eth_getLogs` rejects ranges covering such tipsets with `not found in index`; run `validate-backfill --backfill` over the affected range to repair them. Without `--backfill`, validation reports them as failures. ([filecoin-project/lotus#13829](https://github.com/filecoin-project/lotus/issues/13829))
+- fix(eth): `eth_getTransactionByHash` finds pending Ethereum transactions missing from the chain index ([filecoin-project/lotus#13677](https://github.com/filecoin-project/lotus/pull/13677))
+- fix(miner): accurate pledge calculation for ProveReplicaUpdate3 (snap) messages, 10x sectors need zero pledge, properly scale the estimate for others. ([filecoin-project/lotus#13819](https://github.com/filecoin-project/lotus/pull/13819))
+- fix(gateway): enforce the lookback limit on v2 `TipSetSelector` methods (`StateGetActor`, `StateGetID`, `ChainGetTipSet` by height), and derive lookback checks from memoised network parameters and cached tipsets instead of fetching head per request. Internal lookback fetches no longer consume rate-limit tokens on top of the calling method's own charge, and the `safe` and `finalized` block tags now pass the lookback check on `EthGetBalance`, `EthCall`, `EthGetCode`, `EthGetStorageAt` and `EthGetTransactionCount`, where they were always rejected before. ([filecoin-project/lotus#13822](https://github.com/filecoin-project/lotus/pull/13822))
+- fix(eth): `EthBigInt` JSON decoding rejects malformed hex instead of reading it as `0x0` ([filecoin-project/lotus#13824](https://github.com/filecoin-project/lotus/pull/13824))
+- fix(paths): storage path scanning no longer fails on hidden files such as NFS `.nfsXXXX` leftovers in sector directories. ([filecoin-project/lotus#13830](https://github.com/filecoin-project/lotus/pull/13830))
+- fix(chainindex): don't sqlite vacuum during migrations. ([filecoin-project/lotus#13828](https://github.com/filecoin-project/lotus/pull/13828))
+- fix(lotus-bench): `cli --cmd` rejects an empty command, non-positive concurrency or out-of-range qps instead of panicking. ([filecoin-project/lotus#13842](https://github.com/filecoin-project/lotus/pull/13842))
+- fix(eth): `eth_subscribe` no longer leaks a subscription on the node when the event type or an address is rejected. ([filecoin-project/lotus#13838](https://github.com/filecoin-project/lotus/pull/13838))
+- fix(config): the daemon no longer refuses to load a config without `EnableSplitstore` when `LOTUS_CHAINSTORE_ENABLESPLITSTORE` is set. ([filecoin-project/lotus#13851](https://github.com/filecoin-project/lotus/pull/13851))
+- fix(gateway): `lotus-gateway` no longer serves the process-global `/debug/pprof` and `/debug/vars` handlers on its public API port. ([filecoin-project/lotus#13853](https://github.com/filecoin-project/lotus/pull/13853))
+- fix(f3): node shutdown no longer fails with `could not close datastore: leveldb: closed` and leaves `repo.lock` behind. ([filecoin-project/lotus#13850](https://github.com/filecoin-project/lotus/pull/13850))
 - fix(mpool): `MpoolClear` now publishes removal updates to `MpoolSub` subscribers, records journal events and updates the pool size used for pruning and metrics. ([filecoin-project/lotus#13831](https://github.com/filecoin-project/lotus/pull/13831))
 
 ## 👌 Improvements
+
+- fix(genesis): the daemon loads the built-in actors bundle for the genesis state's actors version at startup, so a genesis car written on a bundle version (v8 or later) no longer needs actors. ([filecoin-project/lotus#13821](https://github.com/filecoin-project/lotus/pull/13821))
+- chore(blockstore): drop support for inline (identity-multihash) CIDs, which Filecoin does not use; `ChainReadObj` and `ChainHasObj` now return an error for them. ([filecoin-project/lotus#13847](https://github.com/filecoin-project/lotus/pull/13847))
 
 # UNRELEASED v1.37.0
 
@@ -43,6 +59,7 @@ Lotus Node v1.36.3 is a recommended patch release focused on Ethereum RPC correc
 
 ## 🐛 Bug Fixes
 
+- fix(api): check `/health/readyz` immediately on startup instead of waiting for the first one-minute polling interval.
 - fix(docker): update Debian from bullseye to trixie for `lotus-builder` and `lotus-base` stages; also fetch prebuilt filecoin-ffi libraries instead of compiling them. ([filecoin-project/lotus#13785](https://github.com/filecoin-project/lotus/pull/13785))
 - fix(eth): prevent `eth_getLogs` from returning successful empty or partial results when historical event-index coverage is incomplete. Block-hash queries now require a completed block event index, and range queries verify every canonical non-null tipset before returning logs. ([filecoin-project/lotus#13749](https://github.com/filecoin-project/lotus/issues/13749))
 - fix(eth): prevent `eth_getTransactionReceipt` from returning a successful receipt with an empty `logs` array while that transaction's events are still being indexed. The call now fails until event indexing is complete, while transactions that completed with no events still return an empty array. ([filecoin-project/lotus#13758](https://github.com/filecoin-project/lotus/issues/13758))
