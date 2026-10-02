@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ipfs/go-cid"
 	libp2pcrypto "github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
@@ -62,6 +63,10 @@ type TestFullNode struct {
 	EthSubRouter *gateway.EthSubHandler
 
 	options nodeOpts
+
+	// failure is the ensemble's failure context, nil for a node made outside an ensemble. Waits on
+	// the chain end when it is cancelled.
+	failure context.Context
 }
 
 func MergeFullNodes(fullNodes []*TestFullNode) *TestFullNode {
@@ -85,26 +90,16 @@ func (f TestFullNode) Shutdown(ctx context.Context) error {
 }
 
 // WaitTillChain waits until a specified chain condition is met. It returns
-// the first tipset where the condition is met.
+// the first tipset where the condition is met. A failure reported to the
+// ensemble fails the test with that failure; a wait still open at test cleanup
+// ends its goroutine quietly.
 func (f *TestFullNode) WaitTillChain(ctx context.Context, pred ChainPredicate) *types.TipSet {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	heads, err := f.ChainNotify(ctx)
-	require.NoError(f.t, err)
-
-	for chg := range heads {
-		for _, c := range chg {
-			if c.Type != "apply" {
-				continue
-			}
-			if ts := c.Val; pred(ts) {
-				return ts
-			}
-		}
+	ts, err := f.WaitTillChainOrError(ctx, pred)
+	if err != nil {
+		haltOn(f.failure, f.t)
+		require.NoError(f.t, err, "chain condition not met")
 	}
-	require.Fail(f.t, "chain condition not met")
-	return nil
+	return ts
 }
 
 // CurrentProvingDeadline returns the miner's proving deadline at the current
@@ -249,12 +244,16 @@ func DeadlineNotAfter(di *dline.Info, height abi.ChainEpoch) *dline.Info {
 
 // WaitTillChainOrError waits until a specified chain condition is met. It returns
 // the first tipset where the condition is met. In the case of an error it will return the error.
+// A wait cut short by ctx or by a failure reported to the ensemble returns the cancellation cause.
 func (f *TestFullNode) WaitTillChainOrError(ctx context.Context, pred ChainPredicate) (*types.TipSet, error) {
-	ctx, cancel := context.WithCancel(ctx)
+	ctx, cancel := withCancelOn(ctx, f.failure)
 	defer cancel()
 
 	heads, err := f.ChainNotify(ctx)
 	if err != nil {
+		if cause := context.Cause(ctx); cause != nil {
+			return nil, cause
+		}
 		return nil, err
 	}
 
@@ -268,12 +267,20 @@ func (f *TestFullNode) WaitTillChainOrError(ctx context.Context, pred ChainPredi
 			}
 		}
 	}
+	if cause := context.Cause(ctx); cause != nil {
+		return nil, cause
+	}
 	return nil, xerrors.New("chain condition not met")
 }
 
 func (f *TestFullNode) WaitForSectorActive(ctx context.Context, t *testing.T, sn abi.SectorNumber, maddr address.Address) {
+	ctx, cancel := withCancelOn(ctx, f.failure)
+	defer cancel()
 	for {
 		active, err := f.StateMinerActiveSectors(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			haltOn(f.failure, t)
+		}
 		require.NoError(t, err)
 		for _, si := range active {
 			if si.SectorNumber == sn {
@@ -282,7 +289,12 @@ func (f *TestFullNode) WaitForSectorActive(ctx context.Context, t *testing.T, sn
 			}
 		}
 
-		time.Sleep(time.Second)
+		select {
+		case <-ctx.Done():
+			haltOn(f.failure, t)
+			require.NoError(t, context.Cause(ctx))
+		case <-time.After(time.Second):
+		}
 	}
 }
 
@@ -324,7 +336,7 @@ func (f *TestFullNode) ExpectSend(ctx context.Context, from, to address.Address,
 		m, err := f.MpoolPushMessage(ctx, msg, nil)
 		require.NoError(f.t, err)
 
-		r, err := f.StateWaitMsg(ctx, m.Cid(), 1, api.LookbackNoLimit, true)
+		r, err := f.stateWaitMsg(ctx, m.Cid(), 1)
 		require.NoError(f.t, err)
 
 		require.Equal(f.t, exitcode.Ok, r.Receipt.ExitCode)
@@ -387,4 +399,28 @@ func TipsetAtOrAfter(ctx context.Context, t *testing.T, node api.FullNode, targe
 func RequireMessageSuccess(t *testing.T, lookup *api.MsgLookup) {
 	t.Helper()
 	require.True(t, lookup.Receipt.ExitCode.IsSuccess(), lookup.Receipt.ExitCode.String())
+}
+
+// WaitMsgResult is StateWaitMsg with no lookback limit, bounded by the ensemble's failure context.
+// A wait cut short by ctx or by a failure reported to the ensemble returns the cancellation cause.
+func (f *TestFullNode) WaitMsgResult(ctx context.Context, msg cid.Cid, confidence uint64) (*api.MsgLookup, error) {
+	ctx, cancel := withCancelOn(ctx, f.failure)
+	defer cancel()
+	res, err := f.StateWaitMsg(ctx, msg, confidence, api.LookbackNoLimit, true)
+	if err != nil {
+		if cause := context.Cause(ctx); cause != nil {
+			return nil, cause
+		}
+	}
+	return res, err
+}
+
+// stateWaitMsg is WaitMsgResult ending the calling goroutine through haltOn if the ensemble's
+// failure context is cancelled.
+func (f *TestFullNode) stateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64) (*api.MsgLookup, error) {
+	res, err := f.WaitMsgResult(ctx, msg, confidence)
+	if err != nil {
+		haltOn(f.failure, f.t)
+	}
+	return res, err
 }

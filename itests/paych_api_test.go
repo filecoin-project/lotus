@@ -53,6 +53,8 @@ func TestPaymentChannelsAPI(t *testing.T) {
 		Start().
 		InterconnectAll()
 	ens.BeginMiningMustPost(blockTime)
+	// PaychGetWaitReady and the other paych calls wait on the chain with this context.
+	ctx = ens.FailureContext(ctx)
 
 	waitRecvInSync := func() {
 		// paymentCreator is the block miner, in some cases paymentReceiver may fall behind, so we wait for it to catch up
@@ -209,7 +211,7 @@ func TestPaymentChannelsAPI(t *testing.T) {
 	collectMsg, err := paymentReceiver.PaychCollect(ctx, channel)
 	require.NoError(t, err)
 
-	res, err = paymentReceiver.StateWaitMsg(ctx, collectMsg, 3, api.LookbackNoLimit, true)
+	res, err = paymentReceiver.WaitMsgResult(ctx, collectMsg, 3)
 	require.NoError(t, err)
 	require.EqualValues(t, 0, res.Receipt.ExitCode, "unable to collect on payment channel")
 

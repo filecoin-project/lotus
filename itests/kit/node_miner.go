@@ -99,6 +99,7 @@ func (tm *TestMiner) WaitSectorsProving(ctx context.Context, toCheck map[abi.Sec
 
 func (tm *TestMiner) WaitSectorsProvingAllowFails(ctx context.Context, toCheck map[abi.SectorNumber]struct{}, okFails map[api.SectorState]struct{}) {
 	for len(toCheck) > 0 {
+		tm.haltOnFailure()
 		tm.FlushSealingBatches(ctx)
 
 		states := map[api.SectorState]int{}
@@ -133,6 +134,7 @@ func (tm *TestMiner) StartPledge(ctx context.Context, n, existing int, blockNoti
 	}
 
 	for {
+		tm.haltOnFailure()
 		s, err := tm.SectorsListNonGenesis(ctx)
 		require.NoError(tm.t, err)
 		fmt.Printf("Sectors: %d (n %d, ex %d)\n", len(s), n, existing)
@@ -154,6 +156,14 @@ func (tm *TestMiner) StartPledge(ctx context.Context, n, existing int, blockNoti
 	}
 
 	return toCheck
+}
+
+// haltOnFailure ends a sealing wait once the ensemble's failure context is cancelled, since sealing
+// needs a chain that is no longer being produced.
+func (tm *TestMiner) haltOnFailure() {
+	if tm.FullNode != nil {
+		haltOn(tm.FullNode.failure, tm.t)
+	}
 }
 
 func (tm *TestMiner) FlushSealingBatches(ctx context.Context) {

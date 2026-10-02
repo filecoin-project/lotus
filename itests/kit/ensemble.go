@@ -5,10 +5,12 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
 	"os"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -116,13 +118,14 @@ func init() {
 //	kit.EnsembleOneTwo(t, kit.MockProofs())
 //	kit.EnsembleTwoOne(t, kit.MockProofs())
 type Ensemble struct {
-	t            *testing.T
-	bootstrapped bool
-	genesisBlock bytes.Buffer
-	mn           mocknet.Mocknet
-	options      *ensembleOpts
-
-	inactive struct {
+	t             *testing.T
+	bootstrapped  bool
+	genesisBlock  bytes.Buffer
+	mn            mocknet.Mocknet
+	options       *ensembleOpts
+	failureCtx    context.Context
+	failureCancel context.CancelCauseFunc
+	inactive      struct {
 		fullnodes       []*TestFullNode
 		miners          []*TestMiner
 		workers         []*TestWorker
@@ -234,7 +237,7 @@ func (n *Ensemble) FullNode(full *TestFullNode, opts ...NodeOpt) *Ensemble {
 		n.genesis.accounts = append(n.genesis.accounts, genacc)
 	}
 
-	*full = TestFullNode{t: n.t, options: options, DefaultKey: key, EthSubRouter: gateway.NewEthSubHandler()}
+	*full = TestFullNode{t: n.t, options: options, DefaultKey: key, EthSubRouter: gateway.NewEthSubHandler(), failure: n.failureContext()}
 
 	n.inactive.fullnodes = append(n.inactive.fullnodes, full)
 	return n
@@ -346,9 +349,63 @@ func (n *Ensemble) UnmanagedMiner(ctx context.Context, full *TestFullNode, opts 
 	actorAddr, err := address.NewIDAddress(genesis2.MinerStart + n.minerCount())
 	require.NoError(n.t, err)
 
-	minerNode := NewTestUnmanagedMiner(ctx, n.t, full, actorAddr, n.options.mockProofs, opts...)
+	failureCtx := n.failureContext()
+
+	minerCtx, cancel := context.WithCancelCause(ctx)
+	minerNode := NewTestUnmanagedMiner(minerCtx, n.t, full, actorAddr, n.options.mockProofs, opts...)
+	minerNode.stopFixtureContext = context.AfterFunc(failureCtx, func() {
+		cancel(context.Cause(failureCtx))
+	})
+	minerNode.postFailure = n.failureCancel
 	n.AddInactiveUnmanagedMiner(minerNode)
 	return minerNode, n
+}
+
+// failureContext is cancelled, with the failure as its cause, when a WindowPoSt producer fails
+// terminally. This can come from an unmanaged miner's post loop or a MustPost block miner whose
+// forced post never arrived. Test cleanup cancels it with context.Canceled before the nodes stop.
+func (n *Ensemble) failureContext() context.Context {
+	if n.failureCtx == nil {
+		n.failureCtx, n.failureCancel = context.WithCancelCause(context.Background())
+		n.t.Cleanup(func() { n.failureCancel(nil) })
+	}
+	return n.failureCtx
+}
+
+// FailureContext returns a caller-derived context cancelled by a terminal WindowPoSt failure from
+// an unmanaged miner or a MustPost block miner.
+func (n *Ensemble) FailureContext(ctx context.Context) context.Context {
+	linked, cancel := withCancelOn(ctx, n.failureContext())
+	n.t.Cleanup(cancel)
+	return linked
+}
+
+// withCancelOn derives a context from `ctx` that is also cancelled when `failure` is, with
+// `failure`'s cause.
+func withCancelOn(ctx, failure context.Context) (context.Context, context.CancelFunc) {
+	linked, cancel := context.WithCancelCause(ctx)
+	stop := context.AfterFunc(failure, func() {
+		cancel(context.Cause(failure))
+	})
+	return linked, func() {
+		stop()
+		cancel(nil)
+	}
+}
+
+// haltOn returns while `failure` is live. Once it's cancelled it ends the calling goroutine:
+// failing the test with the failure's cause, or quietly when test cleanup cancelled it, since a
+// wait still running then belongs to a goroutine the test has left behind.
+func haltOn(failure context.Context, t *testing.T) {
+	t.Helper()
+	if failure.Err() == nil {
+		return
+	}
+	cause := context.Cause(failure)
+	if errors.Is(cause, context.Canceled) {
+		runtime.Goexit() // Same as t.FailNow
+	}
+	t.Fatalf("ensemble failure: %v", cause)
 }
 
 // Worker enrolls a new worker, using the provided full node for chain
@@ -584,7 +641,7 @@ func (n *Ensemble) Start() *Ensemble {
 				})
 				require.NoError(n.t, err)
 
-				mw, err := m.FullNode.FullNode.StateWaitMsg(ctx, signed.Cid(), buildconstants.MessageConfidence, api.LookbackNoLimit, true)
+				mw, err := m.FullNode.stateWaitMsg(ctx, signed.Cid(), buildconstants.MessageConfidence)
 				require.NoError(n.t, err)
 				require.Equal(n.t, exitcode.Ok, mw.Receipt.ExitCode)
 
@@ -610,7 +667,7 @@ func (n *Ensemble) Start() *Ensemble {
 				})
 				require.NoError(n.t, err2)
 
-				mw, err2 := m.FullNode.FullNode.StateWaitMsg(ctx, signed.Cid(), buildconstants.MessageConfidence, api.LookbackNoLimit, true)
+				mw, err2 := m.FullNode.stateWaitMsg(ctx, signed.Cid(), buildconstants.MessageConfidence)
 				require.NoError(n.t, err2)
 				require.Equal(n.t, exitcode.Ok, mw.Receipt.ExitCode)
 			}
@@ -872,7 +929,7 @@ func (n *Ensemble) Start() *Ensemble {
 		})
 		require.NoError(n.t, err)
 
-		mw, err := m.FullNode.FullNode.StateWaitMsg(ctx, signed.Cid(), buildconstants.MessageConfidence, api.LookbackNoLimit, true)
+		mw, err := m.FullNode.stateWaitMsg(ctx, signed.Cid(), buildconstants.MessageConfidence)
 		require.NoError(n.t, err)
 		require.Equal(n.t, exitcode.Ok, mw.Receipt.ExitCode)
 
@@ -1002,6 +1059,11 @@ func (n *Ensemble) Start() *Ensemble {
 		n.bootstrapped = true
 	}
 
+	// Registered after the nodes' own cleanups so it runs before them: waits still open at teardown
+	// see the failure context cancelled and end quietly instead of failing on a stopping node.
+	n.failureContext()
+	n.t.Cleanup(func() { n.failureCancel(nil) })
+
 	return n
 }
 
@@ -1033,7 +1095,7 @@ func (n *Ensemble) Connect(from api.Net, to ...api.Net) *Ensemble {
 }
 
 func (n *Ensemble) BeginMiningMustPost(blocktime time.Duration, miners ...*TestMiner) []*BlockMiner {
-	ctx := context.Background()
+	ctx := n.failureContext()
 
 	// wait one second to make sure that nodes are connected and have handshaken.
 	// TODO make this deterministic by listening to identify events on the
@@ -1057,10 +1119,7 @@ func (n *Ensemble) BeginMiningMustPost(blocktime time.Duration, miners ...*TestM
 	}
 
 	for _, m := range miners {
-		bm := NewBlockMiner(n.t, m)
-		if n.options.mockProofs {
-			bm.postWait = postWaitTimeoutMockProofs
-		}
+		bm := n.newBlockMiner(m)
 		bm.MineBlocksMustPost(ctx, blocktime)
 		n.t.Cleanup(bm.Stop)
 
@@ -1096,7 +1155,7 @@ func (n *Ensemble) BeginMining(blocktime time.Duration, miners ...*TestMiner) []
 	}
 
 	for _, m := range miners {
-		bm := NewBlockMiner(n.t, m)
+		bm := n.newBlockMiner(m)
 		bm.MineBlocks(ctx, blocktime)
 		n.t.Cleanup(bm.Stop)
 
@@ -1106,6 +1165,18 @@ func (n *Ensemble) BeginMining(blocktime time.Duration, miners ...*TestMiner) []
 	}
 
 	return bms
+}
+
+// newBlockMiner returns a BlockMiner that reports a missing forced post to the ensemble's failure
+// context, should it later mine with MineBlocksMustPost.
+func (n *Ensemble) newBlockMiner(m *TestMiner) *BlockMiner {
+	bm := NewBlockMiner(n.t, m)
+	n.failureContext()
+	bm.postFailure = n.failureCancel
+	if n.options.mockProofs {
+		bm.postWait = postWaitTimeoutMockProofs
+	}
+	return bm
 }
 
 func (n *Ensemble) minerCount() uint64 {
