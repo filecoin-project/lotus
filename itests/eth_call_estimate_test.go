@@ -1042,10 +1042,10 @@ func TestEthEstimateGasLimit(t *testing.T) {
 
 				gas, err := estimate(t, call)
 				require.NoError(t, err)
-				require.Greater(t, gas, ethtypes.EthUint64(0))
-				require.LessOrEqual(t, gas, tc.cap)
-				if tc.cap > baseline {
-					require.Less(t, gas, tc.cap, "estimation must do more than return the cap")
+				if tc.cap >= baseline {
+					require.Equal(t, baseline, gas, "a generous cap must preserve the normal estimate")
+				} else {
+					require.Equal(t, tc.cap, gas, "an executable cap must replace the estimation margin")
 				}
 				call.Gas = gas
 				result, err = env.client.EthCall(env.ctx, call, blkParam)
