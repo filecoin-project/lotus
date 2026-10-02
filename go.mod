@@ -197,7 +197,7 @@ require (
 	github.com/drand/kyber-bls12381 v0.3.4 // indirect
 	github.com/elastic/go-windows v1.0.2 // indirect
 	github.com/etclabscore/go-jsonschema-walk v0.0.6 // indirect
-	github.com/filecoin-project/go-amt-ipld/v2 v2.1.0 // indirect
+	github.com/filecoin-project/go-amt-ipld/v2 v2.2.0
 	github.com/filecoin-project/go-amt-ipld/v3 v3.1.0 // indirect
 	github.com/filecoin-project/go-clock v0.1.0 // indirect
 	github.com/filecoin-project/go-fil-commp-hashhash v0.2.0 // indirect
@@ -226,7 +226,6 @@ require (
 	github.com/iancoleman/orderedmap v0.1.0 // indirect
 	github.com/ipfs/go-ipfs-pq v0.0.4 // indirect
 	github.com/ipfs/go-ipld-legacy v0.3.0 // indirect
-	github.com/ipfs/go-log v1.0.5 // indirect
 	github.com/ipfs/go-peertaskqueue v0.8.3 // indirect
 	github.com/ipld/go-codec-dagpb v1.7.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
@@ -264,7 +263,6 @@ require (
 	github.com/nikkolasg/hexjson v0.1.0 // indirect
 	github.com/nkovacs/streamquote v1.0.0 // indirect
 	github.com/opencontainers/runtime-spec v1.2.1 // indirect
-	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58 // indirect
 	github.com/petar/GoLLRB v0.0.0-20210522233825-ae3b015fd3e9 // indirect
 	github.com/pion/datachannel v1.5.10 // indirect
