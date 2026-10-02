@@ -37,6 +37,7 @@
 
 ## 👌 Improvements
 
+- fix(cli): an API info URL that already ends in an RPC path such as `/rpc/v1` is rejected with an error that says to remove it, instead of being dialed as `/rpc/v1/rpc/v1`. ([filecoin-project/lotus#13870](https://github.com/filecoin-project/lotus/pull/13870))
 - fix(genesis): the daemon loads the built-in actors bundle for the genesis state's actors version at startup, so a genesis car written on a bundle version (v8 or later) no longer needs actors. ([filecoin-project/lotus#13821](https://github.com/filecoin-project/lotus/pull/13821))
 - fix(splitstore): GC walks decide traversal by CID codec while keeping liveness keyed by multihash. ([filecoin-project/lotus#13848](https://github.com/filecoin-project/lotus/pull/13848))
 - chore(blockstore): drop support for inline (identity-multihash) CIDs, which Filecoin does not use; `ChainReadObj` and `ChainHasObj` now return an error for them. ([filecoin-project/lotus#13847](https://github.com/filecoin-project/lotus/pull/13847))
