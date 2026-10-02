@@ -16,13 +16,10 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	verifregtypes9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/build/buildconstants"
-	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -76,11 +73,6 @@ var runCmd = &cli.Command{
 			EnvVars: []string{"LOTUS_FOUNTAIN_AMOUNT"},
 			Value:   "50",
 		},
-		&cli.Uint64Flag{
-			Name:    "data-cap",
-			EnvVars: []string{"LOTUS_DATACAP_AMOUNT"},
-			Value:   verifregtypes9.MinVerifiedDealSize.Uint64(),
-		},
 		&cli.Float64Flag{
 			Name:  "captcha-threshold",
 			Value: 0.5,
@@ -121,7 +113,6 @@ var runCmd = &cli.Command{
 			ctx:            ctx,
 			api:            nodeApi,
 			from:           from,
-			allowance:      types.NewInt(cctx.Uint64("data-cap")),
 			sendPerRequest: sendPerRequest,
 			limiter: NewLimiter(LimiterConfig{
 				TotalRate:   500 * time.Millisecond,
@@ -137,8 +128,6 @@ var runCmd = &cli.Command{
 		http.Handle("/", http.FileServer(box.HTTPBox()))
 		http.HandleFunc("/funds.html", prepFundsHtml(box))
 		http.Handle("/send", h)
-		http.HandleFunc("/datacap.html", prepDataCapHtml(box))
-		http.Handle("/datacap", h)
 		fmt.Printf("Open http://%s\n", cctx.String("front"))
 
 		go func() {
@@ -171,24 +160,12 @@ func prepFundsHtml(box *rice.Box) http.HandlerFunc {
 	}
 }
 
-func prepDataCapHtml(box *rice.Box) http.HandlerFunc {
-	tmpl := template.Must(template.New("datacaps").Parse(box.MustString("datacap.html")))
-	return func(w http.ResponseWriter, r *http.Request) {
-		err := tmpl.Execute(w, os.Getenv("RECAPTCHA_SITE_KEY"))
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadGateway)
-			return
-		}
-	}
-}
-
 type handler struct {
 	ctx context.Context
 	api v0api.FullNode
 
 	from           address.Address
 	sendPerRequest types.FIL
-	allowance      types.BigInt
 
 	limiter        *Limiter
 	recapThreshold float64
@@ -251,7 +228,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Limit based on wallet address
 	limiter := h.limiter.GetWalletLimiter(filecoinAddress.String())
 	if !limiter.Allow() {
-		http.Error(w, http.StatusText(http.StatusTooManyRequests)+": wallet limit\nYou can request tFIL and DataCap every 2 hours.", http.StatusTooManyRequests)
+		http.Error(w, http.StatusText(http.StatusTooManyRequests)+": wallet limit\nYou can request tFIL every 2 hours.", http.StatusTooManyRequests)
 		return
 	}
 
@@ -272,36 +249,12 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var smsg *types.SignedMessage
-	if r.RequestURI == "/send" {
-		smsg, err = h.api.MpoolPushMessage(
-			h.ctx, &types.Message{
-				Value: types.BigInt(h.sendPerRequest),
-				From:  h.from,
-				To:    filecoinAddress,
-			}, nil)
-	} else if r.RequestURI == "/datacap" {
-		var params []byte
-		params, err = actors.SerializeParams(
-			&verifregtypes9.AddVerifiedClientParams{
-				Address:   filecoinAddress,
-				Allowance: h.allowance,
-			})
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		smsg, err = h.api.MpoolPushMessage(
-			h.ctx, &types.Message{
-				Params: params,
-				From:   h.from,
-				To:     verifreg.Address,
-				Method: verifreg.Methods.AddVerifiedClient,
-			}, nil)
-	} else {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+	smsg, err := h.api.MpoolPushMessage(
+		h.ctx, &types.Message{
+			Value: types.BigInt(h.sendPerRequest),
+			From:  h.from,
+			To:    filecoinAddress,
+		}, nil)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -309,19 +262,15 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Render the success HTML template
-	if r.RequestURI == "/send" {
-		tmpl, err := template.New("send_success").Parse(h.box.MustString("send_success.html"))
-		if err != nil {
-			http.Error(w, "Template error: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
+	tmpl, err := template.New("send_success").Parse(h.box.MustString("send_success.html"))
+	if err != nil {
+		http.Error(w, "Template error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-		w.Header().Set("Content-Type", "text/html")
-		if err := tmpl.Execute(w, map[string]string{"CID": smsg.Cid().String()}); err != nil {
-			http.Error(w, "Template execution error: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-	} else {
-		_, _ = w.Write([]byte(smsg.Cid().String()))
+	w.Header().Set("Content-Type", "text/html")
+	if err := tmpl.Execute(w, map[string]string{"CID": smsg.Cid().String()}); err != nil {
+		http.Error(w, "Template execution error: "+err.Error(), http.StatusInternalServerError)
+		return
 	}
 }
