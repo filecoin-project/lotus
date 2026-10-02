@@ -15,6 +15,8 @@
 
 ## 🐛 Bug Fixes
 
+- fix(gateway): `lotus-gateway` no longer serves the process-global `/debug/pprof` and `/debug/vars` handlers on its public API port. ([filecoin-project/lotus#13853](https://github.com/filecoin-project/lotus/pull/13853))
+
 ## 👌 Improvements
 
 - chore(blockstore): drop support for inline (identity-multihash) CIDs, which Filecoin does not use; `ChainReadObj` and `ChainHasObj` now return an error for them. ([filecoin-project/lotus#13847](https://github.com/filecoin-project/lotus/pull/13847))
