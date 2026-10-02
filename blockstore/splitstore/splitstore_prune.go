@@ -157,7 +157,7 @@ func (s *SplitStore) doPrune(curTs *types.TipSet, retainStateP func(int64) bool,
 
 	log.Infow("running prune", "currentEpoch", currentEpoch, "pruneEpoch", s.pruneEpoch)
 
-	markSet, err := s.markSetEnv.New("live", s.markSetSize)
+	markSet, err := s.newLiveMarkSet("live", s.markSetSize)
 	if err != nil {
 		return xerrors.Errorf("error creating mark set: %w", err)
 	}
@@ -188,17 +188,20 @@ func (s *SplitStore) doPrune(curTs *types.TipSet, retainStateP func(int64) bool,
 				return errStopWalk
 			}
 
-			mark, err := markSet.Has(c)
+			fresh, visit, err := markSet.markLive(c)
 			if err != nil {
 				return xerrors.Errorf("error checking markset: %w", err)
 			}
 
-			if mark {
+			if fresh {
+				atomic.AddInt64(count, 1)
+			}
+
+			if !visit {
 				return errStopWalk
 			}
 
-			atomic.AddInt64(count, 1)
-			return markSet.Mark(c)
+			return nil
 		})
 
 	if err != nil {
@@ -556,7 +559,7 @@ func (s *SplitStore) walkObjectLax(c cid.Cid, f func(cid.Cid) error) error {
 		return err
 	}
 
-	if c.Prefix().Codec != cid.DagCBOR {
+	if !scansLinks(c) {
 		return nil
 	}
 
