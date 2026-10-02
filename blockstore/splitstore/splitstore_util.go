@@ -5,7 +5,6 @@ import (
 
 	"github.com/ipfs/go-cid"
 	mh "github.com/multiformats/go-multihash"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
 )
@@ -45,22 +44,4 @@ func isUnitaryObject(c cid.Cid) bool {
 	default:
 		return pre.MhType == mh.IDENTITY
 	}
-}
-
-func isIdentiyCid(c cid.Cid) bool {
-	return c.Prefix().MhType == mh.IDENTITY
-}
-
-func decodeIdentityCid(c cid.Cid) ([]byte, error) {
-	dmh, err := mh.Decode(c.Hash())
-	if err != nil {
-		return nil, xerrors.Errorf("error decoding identity cid %s: %w", c, err)
-	}
-
-	// sanity check
-	if dmh.Code != mh.IDENTITY {
-		return nil, xerrors.Errorf("error decoding identity cid %s: hash type is not identity", c)
-	}
-
-	return dmh.Digest, nil
 }
