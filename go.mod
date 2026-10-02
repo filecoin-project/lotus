@@ -1,6 +1,6 @@
 module github.com/filecoin-project/lotus
 
-go 1.25.14
+go 1.26.0
 
 retract v1.14.0 // Accidentally force-pushed tag, use v1.14.1+ instead.
 
@@ -162,7 +162,7 @@ require (
 	golang.org/x/mod v0.38.0
 	golang.org/x/net v0.58.0 // indirect
 	golang.org/x/sync v0.22.0
-	golang.org/x/sys v0.47.0
+	golang.org/x/sys v0.48.0
 	golang.org/x/term v0.45.0
 	golang.org/x/time v0.15.0
 	golang.org/x/tools v0.48.0
