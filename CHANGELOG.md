@@ -31,6 +31,7 @@
 - fix(config): the daemon no longer refuses to load a config without `EnableSplitstore` when `LOTUS_CHAINSTORE_ENABLESPLITSTORE` is set. ([filecoin-project/lotus#13851](https://github.com/filecoin-project/lotus/pull/13851))
 - fix(gateway): `lotus-gateway` no longer serves the process-global `/debug/pprof` and `/debug/vars` handlers on its public API port. ([filecoin-project/lotus#13853](https://github.com/filecoin-project/lotus/pull/13853))
 - fix(f3): node shutdown no longer fails with `could not close datastore: leveldb: closed` and leaves `repo.lock` behind. ([filecoin-project/lotus#13850](https://github.com/filecoin-project/lotus/pull/13850))
+- fix(miner): a sector in `CommitFailed` without CommR or CommD no longer panics in the commit check. It redoes PreCommit1 and PreCommit2 to regenerate them, then goes back to `WaitSeed`. ([filecoin-project/lotus#13843](https://github.com/filecoin-project/lotus/pull/13843))
 
 ## 👌 Improvements
 
