@@ -19,6 +19,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/exitcode"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build/buildconstants"
@@ -957,6 +958,167 @@ func TestEthCall(t *testing.T) {
 		require.Equal(t, dataErr.Data, "0x4e487b710000000000000000000000000000000000000000000000000000000000000012", "Expected error data to contain 'DivideByZero()'")
 	})
 }
+
+func TestEthCallGasLimit(t *testing.T) {
+	env := setupSkipSenderTest(t)
+	defer env.cancel()
+
+	blkParam := ethtypes.NewEthBlockNumberOrHashFromPredefined("latest")
+	data := kit.EvmCalldata("getBalance(address)", kit.EvmWordBytes(env.eoaAddr[:]))
+	// The funded EOA has no tokens in SimpleCoin.
+	want := ethtypes.EthBytes(make([]byte, 32))
+
+	call := ethtypes.EthCall{From: &env.eoaAddr, To: &env.contractAddr, Data: data}
+	gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: call, BlkParam: &blkParam})
+	require.NoError(t, err)
+	gasLimit, err := env.client.EthEstimateGas(env.ctx, gasParams)
+	require.NoError(t, err)
+	require.Greater(t, gasLimit, ethtypes.EthUint64(1))
+
+	for _, tc := range []struct {
+		name    string
+		gas     ethtypes.EthUint64
+		wantErr bool
+	}{
+		{"Default", 0, false},
+		{"Estimated", gasLimit, false},
+		{"Insufficient", gasLimit / 2, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			call.Gas = tc.gas
+			result, err := env.client.EthCall(env.ctx, call, blkParam)
+			if tc.wantErr {
+				var execErr *api.ErrExecutionReverted
+				require.ErrorAs(t, err, &execErr)
+				require.Contains(t, execErr.Message, exitcode.SysErrOutOfGas.String())
+				require.Contains(t, execErr.Message, "message failed with backtrace",
+					"gas must be exhausted during execution, not message inclusion")
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, want, result)
+		})
+	}
+}
+
+func TestEthEstimateGasLimit(t *testing.T) {
+	env := setupSkipSenderTest(t)
+	defer env.cancel()
+
+	blkParam := ethtypes.NewEthBlockNumberOrHashFromPredefined("latest")
+	estimate := func(t *testing.T, call ethtypes.EthCall) (ethtypes.EthUint64, error) {
+		t.Helper()
+		params, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: call, BlkParam: &blkParam})
+		require.NoError(t, err)
+		return env.client.EthEstimateGas(env.ctx, params)
+	}
+	testCaps := func(t *testing.T, call ethtypes.EthCall, want ethtypes.EthBytes) {
+		t.Helper()
+		baseline, err := estimate(t, call)
+		require.NoError(t, err)
+		require.Greater(t, baseline, ethtypes.EthUint64(1))
+
+		for _, tc := range []struct {
+			name    string
+			cap     ethtypes.EthUint64
+			wantErr bool
+		}{
+			{"Generous", baseline * 2, false},
+			// This cap permits execution but leaves less room for the estimation margin.
+			{"BelowEstimationMargin", baseline * 9 / 10, false},
+			{"Insufficient", baseline / 2, true},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				call.Gas = tc.cap
+				result, callErr := env.client.EthCall(env.ctx, call, blkParam)
+				if tc.wantErr {
+					require.Error(t, callErr, "the cap must be insufficient for execution")
+					_, err := estimate(t, call)
+					require.Error(t, err, "estimation must not exceed the requested gas cap")
+					return
+				}
+				require.NoError(t, callErr, "the cap must permit execution")
+				require.Equal(t, want, result)
+
+				gas, err := estimate(t, call)
+				require.NoError(t, err)
+				if tc.cap >= baseline {
+					require.Equal(t, baseline, gas, "a generous cap must preserve the normal estimate")
+				} else {
+					require.Equal(t, tc.cap, gas, "an executable cap must replace the estimation margin")
+				}
+				call.Gas = gas
+				result, err = env.client.EthCall(env.ctx, call, blkParam)
+				require.NoError(t, err, "the returned estimate must permit execution")
+				require.Equal(t, want, result)
+			})
+		}
+	}
+
+	nonExistent := nonExistentAddr(0x75)
+	for _, sender := range []struct {
+		name string
+		from *ethtypes.EthAddress
+	}{
+		{"FundedEOA", &env.eoaAddr},
+		{"Contract", &env.contractAddr},
+		{"NonExistent", &nonExistent},
+	} {
+		t.Run(sender.name, func(t *testing.T) {
+			testCaps(t, ethtypes.EthCall{
+				From: sender.from,
+				To:   &env.contractAddr,
+				Data: kit.EvmCalldata("getBalance(address)", kit.EvmWordBytes(env.eoaAddr[:])),
+			}, ethtypes.EthBytes(make([]byte, 32)))
+		})
+	}
+
+	t.Run("NestedCall", func(t *testing.T) {
+		// Nested calls require gas search because the 63/64 stipend rule makes the
+		// limit needed for execution higher than the gas consumed.
+		_, recursiveFilAddr := env.client.EVM().DeployContractFromFilename(env.ctx, "contracts/ExternalRecursiveCallSimple.hex")
+		recursiveAddr, err := ethtypes.EthAddressFromFilecoinAddress(recursiveFilAddr)
+		require.NoError(t, err)
+		testCaps(t, ethtypes.EthCall{
+			From: &env.eoaAddr,
+			To:   &recursiveAddr,
+			Data: kit.EvmCalldata("exec1(uint256)", kit.EvmWordUint64(100)),
+		}, ethtypes.EthBytes{})
+	})
+
+	t.Run("OutOfGasError", func(t *testing.T) {
+		call := ethtypes.EthCall{
+			From: &env.eoaAddr,
+			To:   &env.contractAddr,
+			Data: kit.EvmCalldata("getBalance(address)", kit.EvmWordBytes(env.eoaAddr[:])),
+		}
+		gas, err := estimate(t, call)
+		require.NoError(t, err)
+		call.Gas = gas / 2
+		_, err = estimate(t, call)
+		var outOfGas *api.ErrOutOfGas
+		require.ErrorAs(t, err, &outOfGas, "preserve the registered error type through RPC")
+	})
+
+	t.Run("RevertAtCap", func(t *testing.T) {
+		_, errorsFilAddr := env.client.EVM().DeployContractFromFilename(env.ctx, "contracts/Errors.hex")
+		errorsAddr, err := ethtypes.EthAddressFromFilecoinAddress(errorsFilAddr)
+		require.NoError(t, err)
+		for _, from := range []*ethtypes.EthAddress{&env.eoaAddr, &env.contractAddr} {
+			_, err := estimate(t, ethtypes.EthCall{
+				From: from,
+				To:   &errorsAddr,
+				Data: kit.CalcFuncSignature("failDivZero()"),
+				Gas:  ethtypes.EthUint64(buildconstants.BlockGasLimit),
+			})
+			var execErr *api.ErrExecutionReverted
+			require.ErrorAs(t, err, &execErr)
+			require.Contains(t, execErr.Message, "DivideByZero")
+			require.Equal(t, "0x"+panicSelector(0x12), execErr.Data)
+		}
+	})
+}
+
 func TestEthEstimateGas(t *testing.T) {
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
