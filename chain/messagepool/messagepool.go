@@ -1661,12 +1661,21 @@ func (mp *MessagePool) Clear(ctx context.Context, local bool) {
 			}
 		})
 
+		var removed []*types.SignedMessage
+		mp.forEachPending(func(_ address.Address, ms *msgSet) {
+			for _, m := range ms.msgs {
+				removed = append(removed, m)
+			}
+		})
+
 		mp.clearPending()
 		mp.republished = nil
 
+		mp.notifyCleared(ctx, removed)
 		return
 	}
 
+	var removed []*types.SignedMessage
 	mp.forEachPending(func(a address.Address, ms *msgSet) {
 		isLocal, err := mp.isLocal(ctx, a)
 		if err != nil {
@@ -1682,7 +1691,44 @@ func (mp *MessagePool) Clear(ctx context.Context, local bool) {
 			log.Warnf("errored while deleting mset: %w", err)
 			return
 		}
+
+		for _, m := range ms.msgs {
+			removed = append(removed, m)
+		}
 	})
+
+	mp.notifyCleared(ctx, removed)
+}
+
+// notifyCleared publishes, journals and accounts for messages removed by Clear,
+// matching what remove does for a single message. Must be called with mp.lk held.
+func (mp *MessagePool) notifyCleared(ctx context.Context, removed []*types.SignedMessage) {
+	if len(removed) == 0 {
+		return
+	}
+
+	for _, m := range removed {
+		mp.changes.Pub(api.MpoolUpdate{
+			Type:    api.MpoolRemove,
+			Message: m,
+		}, localUpdates)
+	}
+
+	mp.journal.RecordEvent(mp.evtTypes[evtTypeMpoolRemove], func() interface{} {
+		msgs := make([]MessagePoolEvtMessage, 0, len(removed))
+		for _, m := range removed {
+			msgs = append(msgs, MessagePoolEvtMessage{Message: m.Message, CID: m.Cid()})
+		}
+		return MessagePoolEvt{
+			Action:   "remove",
+			Messages: msgs,
+		}
+	})
+
+	mp.currentSize -= len(removed)
+
+	// Record the current size of the Mpool
+	stats.Record(ctx, metrics.MpoolMessageCount.M(int64(mp.currentSize)))
 }
 
 func getBaseFeeLowerBound(baseFee, factor types.BigInt) types.BigInt {
