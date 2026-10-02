@@ -30,6 +30,7 @@
 ## 👌 Improvements
 
 - fix(genesis): the daemon loads the built-in actors bundle for the genesis state's actors version at startup, so a genesis car written on a bundle version (v8 or later) no longer needs actors. ([filecoin-project/lotus#13821](https://github.com/filecoin-project/lotus/pull/13821))
+- chore(blockstore): drop support for inline (identity-multihash) CIDs, which Filecoin does not use; `ChainReadObj` and `ChainHasObj` now return an error for them. ([filecoin-project/lotus#13847](https://github.com/filecoin-project/lotus/pull/13847))
 
 # UNRELEASED v1.37.0
 
