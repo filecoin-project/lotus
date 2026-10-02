@@ -430,7 +430,7 @@ func TestLiveMarkSetConcurrent(t *testing.T) {
 		}
 	})
 
-	t.Run("one grant per shadow", func(t *testing.T) {
+	t.Run("one resolver per shadow", func(t *testing.T) {
 		s := newLiveMarkSet(newMarkSet(t))
 		for _, c := range []cid.Cid{dag, raw} {
 			if _, _, err := s.markLive(c); err != nil {
@@ -439,7 +439,7 @@ func TestLiveMarkSetConcurrent(t *testing.T) {
 		}
 
 		const contenders = 16
-		var grants atomic.Int32
+		var resolvers atomic.Int32
 		var wg sync.WaitGroup
 		for range contenders {
 			wg.Add(1)
@@ -450,14 +450,14 @@ func TestLiveMarkSetConcurrent(t *testing.T) {
 					t.Error(err)
 				}
 				if visit {
-					grants.Add(1)
+					resolvers.Add(1)
 				}
 			}()
 		}
 		wg.Wait()
 
-		if n := grants.Load(); n != 1 {
-			t.Errorf("got %d grants on a shadowed multihash, want 1", n)
+		if n := resolvers.Load(); n != 1 {
+			t.Errorf("got %d resolvers of one shadow, want 1", n)
 		}
 	})
 }

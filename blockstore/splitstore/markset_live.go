@@ -12,21 +12,25 @@ func scansLinks(c cid.Cid) bool {
 	return c.Prefix().Codec == cid.DagCBOR
 }
 
-// liveMarkSet is a MarkSet with a codec-aware Visit. Marks are keyed by multihash, so a mark
-// placed through an unscanned codec, such as raw bytes identical to a DAG-CBOR block, says
-// nothing about whether that block's links were walked. The first DAG-CBOR arrival on such a
-// mark is granted one visit. This assumes DAG-CBOR is the only codec walks scan; another would
-// need its own grant.
+// liveMarkSet is a MarkSet whose Visit understands codecs.
+//
+// Marks are keyed by multihash, but only DAG-CBOR is scanned for links. A mark placed through a
+// codec without links (as raw bytes identical to a DAG-CBOR block would be) may be shadowing
+// that block so its links may never have been walked. Such a multihash stays maybe shadowed until a
+// DAG-CBOR visit resolves it, so a multihash is visited at most twice.
+//
+// This assumes DAG-CBOR is the only codec walks scan; another would need its own resolution.
 type liveMarkSet struct {
 	MarkSet
 
 	mx sync.RWMutex
-	// multihashes marked through an unscanned codec -> whether the DAG-CBOR visit was granted
-	shadowed map[string]bool
+	// multihashes marked through a codec without links -> whether that mark may still be hiding an
+	// unscanned DAG-CBOR block
+	maybeShadowed map[string]bool
 }
 
 func newLiveMarkSet(ms MarkSet) *liveMarkSet {
-	return &liveMarkSet{MarkSet: ms, shadowed: make(map[string]bool)}
+	return &liveMarkSet{MarkSet: ms, maybeShadowed: make(map[string]bool)}
 }
 
 func (s *liveMarkSet) Visit(c cid.Cid) (bool, error) {
@@ -39,17 +43,8 @@ func (s *liveMarkSet) markLive(c cid.Cid) (fresh, visit bool, err error) {
 	key := string(c.Hash())
 
 	if !scansLinks(c) {
-		// before marking: a walker that sees the mark must see this
-		s.mx.RLock()
-		_, ok := s.shadowed[key]
-		s.mx.RUnlock()
-		if !ok {
-			s.mx.Lock()
-			if _, ok := s.shadowed[key]; !ok {
-				s.shadowed[key] = false
-			}
-			s.mx.Unlock()
-		}
+		// before marking, a walker that sees the mark must see this
+		s.noteShadow(key)
 
 		fresh, err = s.MarkSet.Visit(c)
 		return fresh, fresh, err
@@ -60,36 +55,59 @@ func (s *liveMarkSet) markLive(c cid.Cid) (fresh, visit bool, err error) {
 		return fresh, fresh, err
 	}
 
+	return false, s.resolveShadow(key), nil
+}
+
+// walked reports whether c is marked and that its mark is known to not be hiding unscanned links.
+func (s *liveMarkSet) walked(c cid.Cid) (bool, error) {
+	mark, err := s.Has(c)
+	if err != nil || !mark {
+		return false, err
+	}
+
+	return !scansLinks(c) || !s.isMaybeShadowed(string(c.Hash())), nil
+}
+
+// noteShadow records key as maybe shadowed, unless a DAG-CBOR visit has already resolved it.
+func (s *liveMarkSet) noteShadow(key string) {
 	s.mx.RLock()
-	granted, shadowed := s.shadowed[key]
+	_, ok := s.maybeShadowed[key]
 	s.mx.RUnlock()
-	if !shadowed || granted {
-		return false, false, nil
+	if ok {
+		return
 	}
 
 	s.mx.Lock()
 	defer s.mx.Unlock()
 
-	if s.shadowed[key] {
-		return false, false, nil
+	if _, ok := s.maybeShadowed[key]; !ok {
+		s.maybeShadowed[key] = true
 	}
-
-	s.shadowed[key] = true
-	return false, true, nil
 }
 
-// walked reports whether c is marked and needs no further visit.
-func (s *liveMarkSet) walked(c cid.Cid) (bool, error) {
-	mark, err := s.Has(c)
-	if err != nil || !mark || !scansLinks(c) {
-		return mark, err
-	}
-
+func (s *liveMarkSet) isMaybeShadowed(key string) bool {
 	s.mx.RLock()
 	defer s.mx.RUnlock()
 
-	granted, shadowed := s.shadowed[string(c.Hash())]
-	return !shadowed || granted, nil
+	return s.maybeShadowed[key]
+}
+
+// resolveShadow resolves a maybe shadowed key, reporting whether this caller did so and must
+// therefore visit the DAG-CBOR block.
+func (s *liveMarkSet) resolveShadow(key string) bool {
+	if !s.isMaybeShadowed(key) {
+		return false
+	}
+
+	s.mx.Lock()
+	defer s.mx.Unlock()
+
+	if !s.maybeShadowed[key] {
+		return false
+	}
+
+	s.maybeShadowed[key] = false
+	return true
 }
 
 func (s *SplitStore) newLiveMarkSet(name string, sizeHint int64) (*liveMarkSet, error) {
