@@ -241,6 +241,9 @@ func MatchEnableSplitstoreField(s string) bool {
 }
 
 func ValidateSplitstoreSet(cfgRaw string) error {
+	if _, ok := os.LookupEnv("LOTUS_CHAINSTORE_ENABLESPLITSTORE"); ok {
+		return nil
+	}
 	if !MatchEnableSplitstoreField(cfgRaw) {
 		return xerrors.Errorf("Config does not contain explicit set of EnableSplitstore field, refusing to load. Please explicitly set EnableSplitstore. Set it to false if you are running a full archival node")
 	}

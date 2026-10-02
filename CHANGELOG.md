@@ -26,10 +26,15 @@
 - fix(paths): storage path scanning no longer fails on hidden files such as NFS `.nfsXXXX` leftovers in sector directories. ([filecoin-project/lotus#13830](https://github.com/filecoin-project/lotus/pull/13830))
 - fix(chainindex): don't sqlite vacuum during migrations. ([filecoin-project/lotus#13828](https://github.com/filecoin-project/lotus/pull/13828))
 - fix(lotus-bench): `cli --cmd` rejects an empty command, non-positive concurrency or out-of-range qps instead of panicking. ([filecoin-project/lotus#13842](https://github.com/filecoin-project/lotus/pull/13842))
+- fix(eth): `eth_subscribe` no longer leaks a subscription on the node when the event type or an address is rejected. ([filecoin-project/lotus#13838](https://github.com/filecoin-project/lotus/pull/13838))
+- fix(config): the daemon no longer refuses to load a config without `EnableSplitstore` when `LOTUS_CHAINSTORE_ENABLESPLITSTORE` is set. ([filecoin-project/lotus#13851](https://github.com/filecoin-project/lotus/pull/13851))
+- fix(gateway): `lotus-gateway` no longer serves the process-global `/debug/pprof` and `/debug/vars` handlers on its public API port. ([filecoin-project/lotus#13853](https://github.com/filecoin-project/lotus/pull/13853))
+- fix(f3): node shutdown no longer fails with `could not close datastore: leveldb: closed` and leaves `repo.lock` behind. ([filecoin-project/lotus#13850](https://github.com/filecoin-project/lotus/pull/13850))
 
 ## 👌 Improvements
 
 - fix(genesis): the daemon loads the built-in actors bundle for the genesis state's actors version at startup, so a genesis car written on a bundle version (v8 or later) no longer needs actors. ([filecoin-project/lotus#13821](https://github.com/filecoin-project/lotus/pull/13821))
+- chore(blockstore): drop support for inline (identity-multihash) CIDs, which Filecoin does not use; `ChainReadObj` and `ChainHasObj` now return an error for them. ([filecoin-project/lotus#13847](https://github.com/filecoin-project/lotus/pull/13847))
 
 # UNRELEASED v1.37.0
 

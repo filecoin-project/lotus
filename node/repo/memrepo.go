@@ -162,7 +162,7 @@ func NewMemory(opts *MemRepoOptions) *MemRepo {
 
 	return &MemRepo{
 		repoLock:   make(chan struct{}, 1),
-		blockstore: blockstore.WrapIDStore(blockstore.NewMemorySync()),
+		blockstore: blockstore.RejectIdentityCids(blockstore.NewMemorySync()),
 		datastore:  opts.Ds,
 		keystore:   opts.KeyStore,
 	}
