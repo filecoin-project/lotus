@@ -27,7 +27,7 @@ var cliCmd = &cli.Command{
 
 To use this benchmark you must specify the commands you want to test using the --cmd options, the format of it is:
 
-  --cmd=CMD[:CONCURRENCY][:QPS] where only NAME is required.
+  --cmd=CMD[:CONCURRENCY][:QPS] where only CMD is required.
 
 Here are some real examples:
   lotus-bench cli --cmd='lotus-shed mpool miner-select-messages' // runs the command with default concurrency and qps
@@ -74,42 +74,15 @@ Here are some real examples:
 
 		var cmds []*CMD
 		for _, str := range cctx.StringSlice("cmd") {
-			entries := strings.SplitN(str, ":", 3)
-			if len(entries) == 0 {
-				return errors.New("invalid cmd format")
+			cmd, err := parseCmdEntry(str, cctx.Int("concurrency"), cctx.Int("qps"))
+			if err != nil {
+				return err
 			}
 
-			// check if concurrency was specified
-			concurrency := cctx.Int("concurrency")
-			if len(entries) > 1 {
-				if len(entries[1]) > 0 {
-					var err error
-					concurrency, err = strconv.Atoi(entries[1])
-					if err != nil {
-						return fmt.Errorf("could not parse concurrency value from command %s: %v", entries[0], err)
-					}
-				}
-			}
+			cmd.w = os.Stdout
+			cmd.printResp = cctx.Bool("print-response")
 
-			// check if qps was specified
-			qps := cctx.Int("qps")
-			if len(entries) > 2 {
-				if len(entries[2]) > 0 {
-					var err error
-					qps, err = strconv.Atoi(entries[2])
-					if err != nil {
-						return fmt.Errorf("could not parse qps value from command %s: %v", entries[0], err)
-					}
-				}
-			}
-
-			cmds = append(cmds, &CMD{
-				w:           os.Stdout,
-				cmd:         entries[0],
-				concurrency: concurrency,
-				qps:         qps,
-				printResp:   cctx.Bool("print-response"),
-			})
+			cmds = append(cmds, cmd)
 		}
 
 		// terminate early on ctrl+c
@@ -194,6 +167,45 @@ Here are some real examples:
 
 		return nil
 	},
+}
+
+// parseCmdEntry parses a --cmd value of the form CMD[:CONCURRENCY][:QPS],
+// falling back to defConcurrency and defQPS for omitted options.
+func parseCmdEntry(str string, defConcurrency, defQPS int) (*CMD, error) {
+	entries := strings.SplitN(str, ":", 3)
+	if strings.TrimSpace(entries[0]) == "" {
+		return nil, errors.New("command must not be empty")
+	}
+
+	concurrency := defConcurrency
+	if len(entries) > 1 && len(entries[1]) > 0 {
+		var err error
+		concurrency, err = strconv.Atoi(entries[1])
+		if err != nil {
+			return nil, fmt.Errorf("could not parse concurrency value from command %s: %v", entries[0], err)
+		}
+	}
+	if concurrency < 1 {
+		return nil, fmt.Errorf("concurrency for command %s must be at least 1", entries[0])
+	}
+
+	qps := defQPS
+	if len(entries) > 2 && len(entries[2]) > 0 {
+		var err error
+		qps, err = strconv.Atoi(entries[2])
+		if err != nil {
+			return nil, fmt.Errorf("could not parse qps value from command %s: %v", entries[0], err)
+		}
+	}
+	if qps < 0 || qps > int(time.Second) {
+		return nil, fmt.Errorf("qps for command %s must be between 0 and %d", entries[0], int(time.Second))
+	}
+
+	return &CMD{
+		cmd:         entries[0],
+		concurrency: concurrency,
+		qps:         qps,
+	}, nil
 }
 
 // CMD handles the benchmarking of a single command.

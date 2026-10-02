@@ -20,6 +20,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
+	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/metrics"
@@ -1262,13 +1263,8 @@ func (s *SplitStore) walkObjectIncomplete(c cid.Cid, visitor ObjectVisitor, f, m
 
 // internal version used during compaction and related operations
 func (s *SplitStore) view(c cid.Cid, cb func([]byte) error) error {
-	if isIdentiyCid(c) {
-		data, err := decodeIdentityCid(c)
-		if err != nil {
-			return err
-		}
-
-		return cb(data)
+	if bstore.IsIdentityCid(c) {
+		return bstore.IdentityCidError(c)
 	}
 
 	err := s.hot.View(s.ctx, c, cb)
@@ -1279,8 +1275,8 @@ func (s *SplitStore) view(c cid.Cid, cb func([]byte) error) error {
 }
 
 func (s *SplitStore) has(c cid.Cid) (bool, error) {
-	if isIdentiyCid(c) {
-		return true, nil
+	if bstore.IsIdentityCid(c) {
+		return false, bstore.IdentityCidError(c)
 	}
 
 	has, err := s.hot.Has(s.ctx, c)

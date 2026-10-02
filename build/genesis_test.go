@@ -67,7 +67,7 @@ func requireGenesisCodeLoadable(t *testing.T, genesisCar []byte, network string,
 	require.NoError(t, build.UseNetworkBundle(network))
 	t.Cleanup(func() { require.NoError(t, build.UseNetworkBundle(original)) })
 
-	bs := blockstore.NewMemory()
+	bs := blockstore.RejectIdentityCids(blockstore.NewMemory())
 	header, err := car.LoadCar(ctx, bs, bytes.NewReader(genesisCar))
 	require.NoError(t, err)
 	require.Len(t, header.Roots, 1)
@@ -98,7 +98,8 @@ func genesisActorCode(t *testing.T, bs blockstore.Blockstore, genesis *types.Blo
 	require.NoError(t, err)
 
 	codes := make(map[cid.Cid]struct{})
-	require.NoError(t, st.ForEach(func(_ address.Address, act *types.Actor) error {
+	require.NoError(t, st.ForEach(func(addr address.Address, act *types.Actor) error {
+		require.False(t, blockstore.IsIdentityCid(act.Head), "actor %s has an identity head", addr)
 		if act.Code.Prefix().MhType != multihash.IDENTITY {
 			codes[act.Code] = struct{}{}
 		}

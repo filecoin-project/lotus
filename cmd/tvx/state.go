@@ -16,6 +16,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
+	"github.com/filecoin-project/lotus/blockstore"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -140,6 +141,9 @@ func (sg *StateSurgeon) WriteCAR(w io.Writer, roots ...cid.Cid) error {
 			if link.Cid.Prefix().Codec == cid.FilCommitmentSealed || link.Cid.Prefix().Codec == cid.FilCommitmentUnsealed {
 				continue
 			}
+			if blockstore.IsIdentityCid(link.Cid) {
+				continue
+			}
 			out = append(out, link)
 		}
 		return out, nil
@@ -156,6 +160,9 @@ func (sg *StateSurgeon) WriteCARIncluding(w io.Writer, include map[cid.Cid]struc
 				continue
 			}
 			if link.Cid.Prefix().Codec == cid.FilCommitmentSealed || link.Cid.Prefix().Codec == cid.FilCommitmentUnsealed {
+				continue
+			}
+			if blockstore.IsIdentityCid(link.Cid) {
 				continue
 			}
 			out = append(out, link)
