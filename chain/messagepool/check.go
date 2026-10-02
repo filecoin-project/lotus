@@ -66,7 +66,6 @@ func (mp *MessagePool) CheckReplaceMessages(ctx context.Context, replace []*type
 		}
 	}
 
-	// Release the pool lock before checkMessages, which acquires it again.
 	msgMap, count, err := mp.getReplaceMessageMap(ctx, replace)
 	if err != nil {
 		return nil, err
