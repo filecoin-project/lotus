@@ -347,6 +347,10 @@ func CarWalkFunc(nd format.Node) (out []*format.Link, err error) {
 		if pref.Codec == cid.FilCommitmentSealed || pref.Codec == cid.FilCommitmentUnsealed {
 			continue
 		}
+		// identity CIDs, such as the pre-nv16 actor code CIDs, have no block to load or write
+		if blockstore.IsIdentityCid(link.Cid) {
+			continue
+		}
 		out = append(out, link)
 	}
 

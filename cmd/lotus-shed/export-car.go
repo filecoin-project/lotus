@@ -25,6 +25,9 @@ func carWalkFunc(nd format.Node) (out []*format.Link, err error) {
 		if link.Cid.Prefix().Codec == cid.FilCommitmentSealed || link.Cid.Prefix().Codec == cid.FilCommitmentUnsealed {
 			continue
 		}
+		if blockstore.IsIdentityCid(link.Cid) {
+			continue
+		}
 		out = append(out, link)
 	}
 	return out, nil

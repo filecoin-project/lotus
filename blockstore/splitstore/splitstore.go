@@ -314,8 +314,8 @@ func (s *SplitStore) DeleteMany(_ context.Context, _ []cid.Cid) error {
 }
 
 func (s *SplitStore) Has(ctx context.Context, cid cid.Cid) (bool, error) {
-	if isIdentiyCid(cid) {
-		return true, nil
+	if bstore.IsIdentityCid(cid) {
+		return false, bstore.IdentityCidError(cid)
 	}
 
 	s.txnLk.RLock()
@@ -365,13 +365,8 @@ func (s *SplitStore) Has(ctx context.Context, cid cid.Cid) (bool, error) {
 }
 
 func (s *SplitStore) Get(ctx context.Context, cid cid.Cid) (blocks.Block, error) {
-	if isIdentiyCid(cid) {
-		data, err := decodeIdentityCid(cid)
-		if err != nil {
-			return nil, err
-		}
-
-		return blocks.NewBlockWithCid(data, cid)
+	if bstore.IsIdentityCid(cid) {
+		return nil, bstore.IdentityCidError(cid)
 	}
 
 	s.txnLk.RLock()
@@ -426,13 +421,8 @@ func (s *SplitStore) Get(ctx context.Context, cid cid.Cid) (blocks.Block, error)
 }
 
 func (s *SplitStore) GetSize(ctx context.Context, cid cid.Cid) (int, error) {
-	if isIdentiyCid(cid) {
-		data, err := decodeIdentityCid(cid)
-		if err != nil {
-			return 0, err
-		}
-
-		return len(data), nil
+	if bstore.IsIdentityCid(cid) {
+		return 0, bstore.IdentityCidError(cid)
 	}
 
 	s.txnLk.RLock()
@@ -504,7 +494,7 @@ func (s *SplitStore) Flush(ctx context.Context) error {
 }
 
 func (s *SplitStore) Put(ctx context.Context, blk blocks.Block) error {
-	if isIdentiyCid(blk.Cid()) {
+	if bstore.IsIdentityCid(blk.Cid()) {
 		return nil
 	}
 
@@ -529,29 +519,9 @@ func (s *SplitStore) Put(ctx context.Context, blk blocks.Block) error {
 }
 
 func (s *SplitStore) PutMany(ctx context.Context, blks []blocks.Block) error {
-	// filter identities
-	idcids := 0
-	for _, blk := range blks {
-		if isIdentiyCid(blk.Cid()) {
-			idcids++
-		}
-	}
-
-	if idcids > 0 {
-		if idcids == len(blks) {
-			// it's all identities
-			return nil
-		}
-
-		filtered := make([]blocks.Block, 0, len(blks)-idcids)
-		for _, blk := range blks {
-			if isIdentiyCid(blk.Cid()) {
-				continue
-			}
-			filtered = append(filtered, blk)
-		}
-
-		blks = filtered
+	blks = bstore.WithoutIdentityBlocks(blks)
+	if len(blks) == 0 {
+		return nil
 	}
 
 	batch := make([]cid.Cid, 0, len(blks))
@@ -620,13 +590,8 @@ func (s *SplitStore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 }
 
 func (s *SplitStore) View(ctx context.Context, cid cid.Cid, cb func([]byte) error) error {
-	if isIdentiyCid(cid) {
-		data, err := decodeIdentityCid(cid)
-		if err != nil {
-			return err
-		}
-
-		return cb(data)
+	if bstore.IsIdentityCid(cid) {
+		return bstore.IdentityCidError(cid)
 	}
 
 	// critical section
