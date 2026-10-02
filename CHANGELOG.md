@@ -24,6 +24,7 @@
 
 ## 🐛 Bug Fixes
 
+- fix(rpc): allow `ChainPutObj` to store blocks over JSON-RPC. ([filecoin-project/lotus#13868](https://github.com/filecoin-project/lotus/pull/13868))
 - fix(chainindex): `lotus index validate-backfill` now restores the event-index completion marker (tipset bloom) missing from tipsets indexed before v1.36.1. Since v1.36.3, `eth_getLogs` rejects ranges covering such tipsets with `not found in index`; run `validate-backfill` over the affected range to repair them. With `--backfill=false`, validation reports them as failures. ([filecoin-project/lotus#13829](https://github.com/filecoin-project/lotus/pull/13829))
 - fix(mpool): `MpoolCheckReplaceMessages` rejects nil replacement messages. ([filecoin-project/lotus#13866](https://github.com/filecoin-project/lotus/pull/13866))
 - fix(lotus-fountain): remove the deprecated DataCap faucet. ([filecoin-project/lotus#13840](https://github.com/filecoin-project/lotus/pull/13840))
