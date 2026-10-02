@@ -27,7 +27,7 @@ var cliCmd = &cli.Command{
 
 To use this benchmark you must specify the commands you want to test using the --cmd options, the format of it is:
 
-  --cmd=CMD[:CONCURRENCY][:QPS] where only NAME is required.
+  --cmd=CMD[:CONCURRENCY][:QPS] where only CMD is required.
 
 Here are some real examples:
   lotus-bench cli --cmd='lotus-shed mpool miner-select-messages' // runs the command with default concurrency and qps
@@ -169,21 +169,14 @@ Here are some real examples:
 	},
 }
 
-// parseCmdEntry parses a single --cmd value of the form CMD[:CONCURRENCY][:QPS].
-// Concurrency and qps default to defConcurrency and defQPS, which are the values
-// of the corresponding command line flags, when they are omitted from the entry.
+// parseCmdEntry parses a --cmd value of the form CMD[:CONCURRENCY][:QPS],
+// falling back to defConcurrency and defQPS for omitted options.
 func parseCmdEntry(str string, defConcurrency, defQPS int) (*CMD, error) {
 	entries := strings.SplitN(str, ":", 3)
-
-	// SplitN always returns at least one element, so the previous
-	// len(entries) == 0 check could never fire. An empty or whitespace only
-	// command slipped through instead, and startWorker then indexed the empty
-	// slice returned by strings.Fields, panicking with "index out of range".
 	if strings.TrimSpace(entries[0]) == "" {
 		return nil, errors.New("command must not be empty")
 	}
 
-	// check if concurrency was specified
 	concurrency := defConcurrency
 	if len(entries) > 1 && len(entries[1]) > 0 {
 		var err error
@@ -192,8 +185,10 @@ func parseCmdEntry(str string, defConcurrency, defQPS int) (*CMD, error) {
 			return nil, fmt.Errorf("could not parse concurrency value from command %s: %v", entries[0], err)
 		}
 	}
+	if concurrency < 1 {
+		return nil, fmt.Errorf("concurrency for command %s must be at least 1", entries[0])
+	}
 
-	// check if qps was specified
 	qps := defQPS
 	if len(entries) > 2 && len(entries[2]) > 0 {
 		var err error
@@ -201,6 +196,9 @@ func parseCmdEntry(str string, defConcurrency, defQPS int) (*CMD, error) {
 		if err != nil {
 			return nil, fmt.Errorf("could not parse qps value from command %s: %v", entries[0], err)
 		}
+	}
+	if qps < 0 || qps > int(time.Second) {
+		return nil, fmt.Errorf("qps for command %s must be between 0 and %d", entries[0], int(time.Second))
 	}
 
 	return &CMD{
