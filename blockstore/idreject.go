@@ -94,34 +94,33 @@ func (b *idRejectStore) DeleteBlock(ctx context.Context, c cid.Cid) error {
 }
 
 func (b *idRejectStore) DeleteMany(ctx context.Context, cids []cid.Cid) error {
-	kept := make([]cid.Cid, 0, len(cids))
-	for _, c := range cids {
-		if !IsIdentityCid(c) {
-			kept = append(kept, c)
-		}
-	}
-	if len(kept) == 0 {
+	cids = withoutIdentity(cids, func(c cid.Cid) cid.Cid { return c })
+	if len(cids) == 0 {
 		return nil
 	}
-	return b.Blockstore.DeleteMany(ctx, kept)
+	return b.Blockstore.DeleteMany(ctx, cids)
 }
 
 // WithoutIdentityBlocks returns blks minus any identity-CID blocks, reusing blks when
 // there are none.
 func WithoutIdentityBlocks(blks []blocks.Block) []blocks.Block {
-	for i, blk := range blks {
-		if !IsIdentityCid(blk.Cid()) {
+	return withoutIdentity(blks, blocks.Block.Cid)
+}
+
+func withoutIdentity[T any](items []T, cidOf func(T) cid.Cid) []T {
+	for i, item := range items {
+		if !IsIdentityCid(cidOf(item)) {
 			continue
 		}
-		kept := append(make([]blocks.Block, 0, len(blks)-1), blks[:i]...)
-		for _, blk := range blks[i+1:] {
-			if !IsIdentityCid(blk.Cid()) {
-				kept = append(kept, blk)
+		out := append(make([]T, 0, len(items)-1), items[:i]...)
+		for _, item := range items[i+1:] {
+			if !IsIdentityCid(cidOf(item)) {
+				out = append(out, item)
 			}
 		}
-		return kept
+		return out
 	}
-	return blks
+	return items
 }
 
 // The remaining methods are optional blockstore traits; forward them so that wrapping
