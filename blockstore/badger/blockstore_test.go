@@ -321,6 +321,36 @@ func TestVerifyReadsAllowsGoodCopyToReplaceDamage(t *testing.T) {
 	require.Equal(t, blk.RawData(), got.RawData())
 }
 
+func TestVerifyReadsDoesNotRewriteIntactBlock(t *testing.T) {
+	ctx := context.Background()
+	bs, _ := newBlockstore(verifyingOptions)(t)
+	bbs := bs.(*Blockstore)
+	defer bbs.Close() //nolint:errcheck
+
+	blk := blocks.NewBlock([]byte("some data worth keeping"))
+	require.NoError(t, bbs.Put(ctx, blk))
+
+	k, pooled := bbs.PooledStorageKey(blk.Cid())
+	if pooled {
+		defer KeyPool.Put(k)
+	}
+	storedVersion := func() uint64 {
+		var version uint64
+		require.NoError(t, bbs.db.View(func(txn *badger.Txn) error {
+			item, err := txn.Get(k)
+			if err == nil {
+				version = item.Version()
+			}
+			return err
+		}))
+		return version
+	}
+
+	before := storedVersion()
+	require.NoError(t, bbs.Put(ctx, blk))
+	require.Equal(t, before, storedVersion(), "putting an intact block must not create another Badger version")
+}
+
 func TestVerifyReadsPreservesCallbackError(t *testing.T) {
 	ctx := context.Background()
 	bs, _ := newBlockstore(verifyingOptions)(t)

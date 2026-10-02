@@ -336,6 +336,9 @@ func writeStateToTempCAR(bs blockstore.Blockstore, roots ...cid.Cid) (string, er
 			if link.Cid.Prefix().Codec == cid.FilCommitmentSealed || link.Cid.Prefix().Codec == cid.FilCommitmentUnsealed {
 				continue
 			}
+			if blockstore.IsIdentityCid(link.Cid) {
+				continue
+			}
 			// ignore things we don't have, the state tree is incomplete.
 			if has, err := bs.Has(context.TODO(), link.Cid); err != nil {
 				return nil, err
@@ -361,7 +364,7 @@ func writeStateToTempCAR(bs blockstore.Blockstore, roots ...cid.Cid) (string, er
 }
 
 func LoadBlockstore(vectorCAR schema.Base64EncodedBytes) (blockstore.Blockstore, error) {
-	bs := blockstore.Blockstore(blockstore.NewMemory())
+	bs := blockstore.RejectIdentityCids(blockstore.NewMemory())
 
 	// Read the base64-encoded CAR from the vector, and inflate the gzip.
 	buf := bytes.NewReader(vectorCAR)

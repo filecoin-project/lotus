@@ -361,6 +361,11 @@ func (a *ChainAPI) ChainStatObj(ctx context.Context, obj cid.Cid, base cid.Cid) 
 			return []*ipld.Link{}, nil
 		}
 
+		// identity CIDs, such as the pre-nv16 actor code CIDs, have no block to stat
+		if blockstore.IsIdentityCid(c) {
+			return []*ipld.Link{}, nil
+		}
+
 		nd, err := dag.Get(ctx, c)
 		if err != nil {
 			return nil, err

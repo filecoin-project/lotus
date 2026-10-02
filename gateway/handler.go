@@ -141,7 +141,6 @@ func Handler(gateway *Node, options ...HandlerOption) (ShutdownHandler, error) {
 	m.Handle("/debug/metrics", exporter)
 	m.Handle("/health/livez", node.NewLiveHandler(gateway.v1Proxy.server))
 	m.Handle("/health/readyz", node.NewReadyHandler(gateway.v1Proxy.server))
-	m.PathPrefix("/").Handler(http.DefaultServeMux)
 
 	var handler http.Handler = &statefulCallHandler{m}
 
