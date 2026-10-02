@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	blocks "github.com/ipfs/go-block-format"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/require"
@@ -308,4 +309,46 @@ func (ts *apiSuite) testNonGenesisMiner(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, uint64(1002), tid) // ETH0 is 1001
+}
+
+func TestChainPutObjRestoresActorState(t *testing.T) {
+	t.Setenv("LOTUS_ENABLE_CHAINSTORE_FALLBACK", "")
+	ctx := context.Background()
+
+	full, miner, _ := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.SplitstoreDisable())
+
+	bm := kit.NewBlockMiner(t, miner)
+	t.Cleanup(bm.Stop)
+	bm.MineUntilBlock(ctx, full, nil)
+	head, err := full.ChainHead(ctx)
+	require.NoError(t, err)
+
+	originalState, err := full.StateReadState(ctx, miner.ActorAddr, head.Key())
+	require.NoError(t, err)
+	require.NotNil(t, originalState.State)
+
+	actor, err := full.StateGetActor(ctx, miner.ActorAddr, head.Key())
+	require.NoError(t, err)
+	data, err := full.ChainReadObj(ctx, actor.Head)
+	require.NoError(t, err)
+	block, err := blocks.NewBlockWithCid(data, actor.Head)
+	require.NoError(t, err)
+
+	require.NoError(t, full.ChainDeleteObj(ctx, actor.Head))
+	has, err := full.ChainHasObj(ctx, actor.Head)
+	require.NoError(t, err)
+	require.False(t, has)
+	_, err = full.StateReadState(ctx, miner.ActorAddr, head.Key())
+	require.ErrorContains(t, err, "getting actor head")
+	require.ErrorContains(t, err, block.Cid().String())
+
+	require.NoError(t, full.ChainPutObj(ctx, block))
+	restoredState, err := full.StateReadState(ctx, miner.ActorAddr, head.Key())
+	require.NoError(t, err)
+	require.Equal(t, originalState, restoredState)
+
+	bm.MineUntilBlock(ctx, full, nil)
+	newHead, err := full.ChainHead(ctx)
+	require.NoError(t, err)
+	require.Greater(t, int64(newHead.Height()), int64(head.Height()))
 }
