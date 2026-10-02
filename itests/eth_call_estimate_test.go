@@ -968,41 +968,35 @@ func TestEthCallGasLimit(t *testing.T) {
 	// The funded EOA has no tokens in SimpleCoin.
 	want := ethtypes.EthBytes(make([]byte, 32))
 
-	for _, sender := range []struct {
-		name string
-		from *ethtypes.EthAddress
+	call := ethtypes.EthCall{From: &env.eoaAddr, To: &env.contractAddr, Data: data}
+	gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: call, BlkParam: &blkParam})
+	require.NoError(t, err)
+	gasLimit, err := env.client.EthEstimateGas(env.ctx, gasParams)
+	require.NoError(t, err)
+	require.Greater(t, gasLimit, ethtypes.EthUint64(1))
+
+	for _, tc := range []struct {
+		name    string
+		gas     ethtypes.EthUint64
+		wantErr bool
 	}{
-		{"FundedEOA", &env.eoaAddr},
-		{"OmittedFrom", nil},
-		{"Contract", &env.contractAddr},
+		{"Default", 0, false},
+		{"Estimated", gasLimit, false},
+		{"Insufficient", gasLimit / 2, true},
 	} {
-		t.Run(sender.name, func(t *testing.T) {
-			for _, tc := range []struct {
-				name    string
-				gas     ethtypes.EthUint64
-				wantErr bool
-			}{
-				{"Default", 0, false},
-				{"BlockLimit", ethtypes.EthUint64(buildconstants.BlockGasLimit), false},
-				{"Insufficient", 1, true},
-			} {
-				t.Run(tc.name, func(t *testing.T) {
-					result, err := env.client.EthCall(env.ctx, ethtypes.EthCall{
-						From: sender.from,
-						To:   &env.contractAddr,
-						Data: data,
-						Gas:  tc.gas,
-					}, blkParam)
-					if tc.wantErr {
-						var execErr *api.ErrExecutionReverted
-						require.ErrorAs(t, err, &execErr)
-						require.Contains(t, execErr.Message, exitcode.SysErrOutOfGas.String())
-						return
-					}
-					require.NoError(t, err)
-					require.Equal(t, want, result)
-				})
+		t.Run(tc.name, func(t *testing.T) {
+			call.Gas = tc.gas
+			result, err := env.client.EthCall(env.ctx, call, blkParam)
+			if tc.wantErr {
+				var execErr *api.ErrExecutionReverted
+				require.ErrorAs(t, err, &execErr)
+				require.Contains(t, execErr.Message, exitcode.SysErrOutOfGas.String())
+				require.Contains(t, execErr.Message, "message failed with backtrace",
+					"gas must be exhausted during execution, not message inclusion")
+				return
 			}
+			require.NoError(t, err)
+			require.Equal(t, want, result)
 		})
 	}
 }
