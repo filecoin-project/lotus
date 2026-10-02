@@ -21,7 +21,7 @@
 
 Lotus Node and Miner v1.37.0 delivers [Filecoin network version 29, Solstice](https://github.com/filecoin-project/core-devs/discussions/221), including FIP-0118, built-in actors v19.0.1, reward-distribution reporting, sector quality upgrades, and fixes for chain indexing, gateway APIs and splitstore garbage collection. These notes consolidate the RC1, RC2 and final backport changes.
 
-**Draft release:** Mainnet activation is not yet configured. The Mainnet upgrade epoch and release date must be finalized before this release is published. Calibration is configured at epoch 4109133 (`2026-09-28T12:59:30Z`).
+**Draft release:** Mainnet activation is not yet configured. The Mainnet upgrade epoch and release date must be finalized before this release is published.
 
 ## ☢️ Upgrade Warnings ☢️
 
