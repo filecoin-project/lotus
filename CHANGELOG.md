@@ -11,6 +11,8 @@
 
 ## ☢️ Upgrade Warnings ☢️
 
+- `eth_call` and `eth_estimateGas` now honor positive `gas` limits. Requests that previously succeeded with an insufficient limit can now fail. Applications and RPC providers should review default or injected `gas` values and increase them, or omit `gas` when no explicit cap is intended. ([filecoin-project/lotus#13865](https://github.com/filecoin-project/lotus/pull/13865))
+
 ## ⭐ New Features
 
 - feat(api): add v2 `StateRewardDistribution` with per-block reward allocations, recipient earnings, payments and tipset totals. ([filecoin-project/lotus#13808](https://github.com/filecoin-project/lotus/pull/13808))
@@ -18,7 +20,6 @@
 
 ## 🐛 Bug Fixes
 
-- fix(eth): `eth_call` and `eth_estimateGas` honor supplied gas limits. ([filecoin-project/lotus#13865](https://github.com/filecoin-project/lotus/pull/13865))
 - fix(lotus-fountain): remove the deprecated DataCap faucet. ([filecoin-project/lotus#13840](https://github.com/filecoin-project/lotus/pull/13840))
 - fix(chainindex): `lotus index validate-backfill --backfill` now restores the event-index completion marker (tipset bloom) missing from tipsets indexed before v1.36.1. Since v1.36.3, `eth_getLogs` rejects ranges covering such tipsets with `not found in index`; run `validate-backfill --backfill` over the affected range to repair them. Without `--backfill`, validation reports them as failures. ([filecoin-project/lotus#13829](https://github.com/filecoin-project/lotus/issues/13829))
 - fix(eth): `eth_getTransactionByHash` finds pending Ethereum transactions missing from the chain index ([filecoin-project/lotus#13677](https://github.com/filecoin-project/lotus/pull/13677))
