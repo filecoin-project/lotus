@@ -17,6 +17,8 @@
 
 ## 👌 Improvements
 
+- chore(blockstore): drop support for inline (identity-multihash) CIDs, which Filecoin does not use; `ChainReadObj` and `ChainHasObj` now return an error for them. ([filecoin-project/lotus#13847](https://github.com/filecoin-project/lotus/pull/13847))
+
 # Node and Miner v1.37.0-rc2 / 2026-09-29
 
 This is the second release candidate of the upcoming mandatory Lotus v1.37.0 release for [Filecoin network version 29, Solstice](https://github.com/filecoin-project/core-devs/discussions/221). The changes below are since RC1 and include reward-distribution reporting, sector upgrade controls, and fixes for pledge estimates, gateway lookback handling and chain-index maintenance.

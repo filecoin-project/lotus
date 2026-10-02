@@ -30,8 +30,8 @@ func (es *exposedSplitStore) DeleteMany(_ context.Context, _ []cid.Cid) error {
 }
 
 func (es *exposedSplitStore) Has(ctx context.Context, c cid.Cid) (bool, error) {
-	if isIdentiyCid(c) {
-		return true, nil
+	if bstore.IsIdentityCid(c) {
+		return false, bstore.IdentityCidError(c)
 	}
 
 	has, err := es.s.hot.Has(ctx, c)
@@ -44,13 +44,8 @@ func (es *exposedSplitStore) Has(ctx context.Context, c cid.Cid) (bool, error) {
 
 func (es *exposedSplitStore) Get(ctx context.Context, c cid.Cid) (blocks.Block, error) {
 
-	if isIdentiyCid(c) {
-		data, err := decodeIdentityCid(c)
-		if err != nil {
-			return nil, err
-		}
-
-		return blocks.NewBlockWithCid(data, c)
+	if bstore.IsIdentityCid(c) {
+		return nil, bstore.IdentityCidError(c)
 	}
 
 	blk, err := es.s.hot.Get(ctx, c)
@@ -61,13 +56,8 @@ func (es *exposedSplitStore) Get(ctx context.Context, c cid.Cid) (blocks.Block, 
 }
 
 func (es *exposedSplitStore) GetSize(ctx context.Context, c cid.Cid) (int, error) {
-	if isIdentiyCid(c) {
-		data, err := decodeIdentityCid(c)
-		if err != nil {
-			return 0, err
-		}
-
-		return len(data), nil
+	if bstore.IsIdentityCid(c) {
+		return 0, bstore.IdentityCidError(c)
 	}
 
 	size, err := es.s.hot.GetSize(ctx, c)
@@ -94,13 +84,8 @@ func (es *exposedSplitStore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, e
 }
 
 func (es *exposedSplitStore) View(ctx context.Context, c cid.Cid, f func([]byte) error) error {
-	if isIdentiyCid(c) {
-		data, err := decodeIdentityCid(c)
-		if err != nil {
-			return err
-		}
-
-		return f(data)
+	if bstore.IsIdentityCid(c) {
+		return bstore.IdentityCidError(c)
 	}
 
 	err := es.s.hot.View(ctx, c, f)
