@@ -15,6 +15,7 @@
 
 ## 🐛 Bug Fixes
 
+- fix(mpool): `MpoolCheckReplaceMessages` rejects nil replacement messages. ([filecoin-project/lotus#13866](https://github.com/filecoin-project/lotus/pull/13866))
 - fix(gateway): `lotus-gateway` no longer serves the process-global `/debug/pprof` and `/debug/vars` handlers on its public API port. ([filecoin-project/lotus#13853](https://github.com/filecoin-project/lotus/pull/13853))
 
 ## 👌 Improvements
