@@ -25,6 +25,7 @@
 - fix(eth): `EthBigInt` JSON decoding rejects malformed hex instead of reading it as `0x0` ([filecoin-project/lotus#13824](https://github.com/filecoin-project/lotus/pull/13824))
 - fix(paths): storage path scanning no longer fails on hidden files such as NFS `.nfsXXXX` leftovers in sector directories. ([filecoin-project/lotus#13830](https://github.com/filecoin-project/lotus/pull/13830))
 - fix(chainindex): don't sqlite vacuum during migrations. ([filecoin-project/lotus#13828](https://github.com/filecoin-project/lotus/pull/13828))
+- fix(lotus-bench): `cli --cmd` rejects an empty command, non-positive concurrency or out-of-range qps instead of panicking. ([filecoin-project/lotus#13842](https://github.com/filecoin-project/lotus/pull/13842))
 - fix(eth): `eth_subscribe` no longer leaks a subscription on the node when the event type or an address is rejected. ([filecoin-project/lotus#13838](https://github.com/filecoin-project/lotus/pull/13838))
 - fix(config): the daemon no longer refuses to load a config without `EnableSplitstore` when `LOTUS_CHAINSTORE_ENABLESPLITSTORE` is set. ([filecoin-project/lotus#13851](https://github.com/filecoin-project/lotus/pull/13851))
 - fix(gateway): `lotus-gateway` no longer serves the process-global `/debug/pprof` and `/debug/vars` handlers on its public API port. ([filecoin-project/lotus#13853](https://github.com/filecoin-project/lotus/pull/13853))
