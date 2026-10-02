@@ -1086,6 +1086,20 @@ func TestEthEstimateGasLimit(t *testing.T) {
 		}, ethtypes.EthBytes{})
 	})
 
+	t.Run("OutOfGasError", func(t *testing.T) {
+		call := ethtypes.EthCall{
+			From: &env.eoaAddr,
+			To:   &env.contractAddr,
+			Data: kit.EvmCalldata("getBalance(address)", kit.EvmWordBytes(env.eoaAddr[:])),
+		}
+		gas, err := estimate(t, call)
+		require.NoError(t, err)
+		call.Gas = gas / 2
+		_, err = estimate(t, call)
+		var outOfGas *api.ErrOutOfGas
+		require.ErrorAs(t, err, &outOfGas, "preserve the registered error type through RPC")
+	})
+
 	t.Run("RevertAtCap", func(t *testing.T) {
 		_, errorsFilAddr := env.client.EVM().DeployContractFromFilename(env.ctx, "contracts/Errors.hex")
 		errorsAddr, err := ethtypes.EthAddressFromFilecoinAddress(errorsFilAddr)

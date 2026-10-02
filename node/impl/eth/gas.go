@@ -276,7 +276,7 @@ func (e *ethGas) estimateGasWithLimit(ctx context.Context, msg *types.Message, t
 		return 0, xerrors.Errorf("failed to estimate gas: %w", err)
 	}
 	if res.MsgRct.ExitCode == exitcode.SysErrOutOfGas {
-		return 0, xerrors.Errorf("gas required exceeds allowance (%d): %w", msg.GasLimit, &api.ErrOutOfGas{})
+		return 0, &api.ErrOutOfGas{}
 	}
 	if res.MsgRct.ExitCode.IsError() {
 		return 0, api.NewErrExecutionRevertedFromResult(res)
