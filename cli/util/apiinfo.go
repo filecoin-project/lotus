@@ -3,14 +3,18 @@ package cliutil
 import (
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
+	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("cliutil")
+
+var rpcPathSuffix = regexp.MustCompile(`/rpc/v\d+/?$`)
 
 type APIInfo struct {
 	Addr  string
@@ -67,9 +71,13 @@ func (a APIInfo) DialArgs(version string) (string, error) {
 		return url.JoinPath(scheme+"://"+addr, "rpc", version)
 	}
 
-	_, err = url.Parse(a.Addr)
+	u, err := url.Parse(a.Addr)
 	if err != nil {
 		return "", err
+	}
+	if rpcPath := rpcPathSuffix.FindString(u.Path); rpcPath != "" {
+		return "", xerrors.Errorf("API address %q ends with %q; remove it, Lotus adds /rpc/%s itself",
+			a.Addr, strings.TrimSuffix(rpcPath, "/"), version)
 	}
 	return url.JoinPath(a.Addr, "rpc", version)
 }

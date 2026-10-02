@@ -148,6 +148,26 @@ func TestAPIInfoDialArgs(t *testing.T) {
 			addr: "wss://host.example",
 			want: "wss://host.example/rpc/v1",
 		},
+		{
+			name: "https URL with a path prefix",
+			addr: "https://node.glif.io/space06/lotus",
+			want: "https://node.glif.io/space06/lotus/rpc/v1",
+		},
+		{
+			name:    "https URL ending in the RPC path",
+			addr:    "https://api.node.glif.io/rpc/v1",
+			wantErr: true,
+		},
+		{
+			name:    "ws URL ending in another RPC version with trailing slash",
+			addr:    "ws://host:1234/rpc/v0/",
+			wantErr: true,
+		},
+		{
+			name:    "URL with a path prefix ending in the RPC path",
+			addr:    "https://node.glif.io/space06/lotus/rpc/v1",
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {
