@@ -613,11 +613,12 @@ func TestDailyFees(t *testing.T) {
 	// Wait for all fees to be paid—we need each one to have reached its first deadline and they are
 	// likely spread out over multiple deadlines
 	feePostWg.Wait()
-	// Wait one exta deadline to make sure we get to the end of the current deadline where we've done
-	// a PoST
-	head, err := client.ChainHead(ctx)
+	// Wait until just after the current deadline window closes so the cron has processed fee
+	// payments. Using dlInfo.Close+5 (rather than head+WPoStChallengeWindow+10) ensures we don't
+	// overshoot into a second proving window for any sector, which would make paymentsPast > 1.
+	dlInfo, err := client.StateMinerProvingDeadline(ctx, mminer.ActorAddr, types.EmptyTSK)
 	req.NoError(err)
-	client.WaitTillChain(ctx, kit.HeightAtLeast(head.Height()+miner.WPoStChallengeWindow()+10))
+	client.WaitTillChain(ctx, kit.HeightAtLeast(dlInfo.Close+5))
 
 	var expectTotalBurn abi.TokenAmount
 	for _, sector := range allSectors {
