@@ -1813,7 +1813,7 @@ Response:
 ### MinerCreateBlock
 
 
-Perms: write
+Perms: sign
 
 Inputs:
 ```json
