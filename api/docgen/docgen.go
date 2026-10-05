@@ -25,7 +25,6 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/multiformats/go-multiaddr"
-	"github.com/multiformats/go-multicodec"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
@@ -44,7 +43,6 @@ import (
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
-	"github.com/filecoin-project/lotus/chain/sub"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/lib/rpcenc"
@@ -145,15 +143,15 @@ func init() {
 	addExample(f3Cert)
 	addExample(&f3Cert)
 
-	// The interface blkfmt.Block can not travel over jsonrpc
-	// Instead there are handlers on both sides de/inflating into rpcenc.FlatBlock{}
-	fb := rpcenc.FlatBlock{
-		RawData: []byte("SomeBlockData"),
+	// Serialize a block from the sample tipset and use its JSON-RPC representation.
+	block, err := ts.Blocks()[0].ToStorageBlock()
+	if err != nil {
+		panic(err)
 	}
-	fb.Cid, _ = cid.V1Builder{
-		Codec:  uint64(multicodec.DagCbor),
-		MhType: sub.DefaultHashFunction,
-	}.Sum(fb.RawData)
+	fb := rpcenc.FlatBlock{
+		Cid:     block.Cid(),
+		RawData: block.RawData(),
+	}
 	ExampleValues[reflect.TypeFor[blkfmt.Block]()] = fb
 	addExample(fb)
 

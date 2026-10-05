@@ -77,7 +77,7 @@ func TestBlockRPC(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			calls := handler.calls.Load()
 			_, err := client.Echo(context.Background(), test.block)
-			require.Error(t, err)
+			require.ErrorContains(t, err, "cannot encode a nil block")
 			require.Equal(t, calls, handler.calls.Load(), "nil blocks must not reach the handler")
 		})
 	}

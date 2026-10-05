@@ -415,6 +415,8 @@ func TestChainPutObjRestoresActorState(t *testing.T) {
 	require.ErrorContains(t, err, "getting actor head")
 	require.ErrorContains(t, err, block.Cid().String())
 
+	require.Error(t, full.ChainPutObj(ctx, nil))
+
 	require.NoError(t, full.ChainPutObj(ctx, block))
 	restoredState, err := full.StateReadState(ctx, miner.ActorAddr, head.Key())
 	require.NoError(t, err)

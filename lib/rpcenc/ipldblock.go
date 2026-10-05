@@ -19,7 +19,7 @@ import (
 //
 // These are the custom client/server handlers to make ChainPutObj work
 
-// FlatBlock is a representation of blkfmt.Bloc that would travel without a problem over jsonrpc
+// FlatBlock is a representation of blkfmt.Block that would travel without a problem over jsonrpc
 type FlatBlock struct {
 	Cid     cid.Cid
 	RawData []byte
@@ -27,6 +27,10 @@ type FlatBlock struct {
 
 func WithBlockfmtIfaceEncoder() jsonrpc.Option {
 	return jsonrpc.WithParamEncoder(new(blkfmt.Block), func(v reflect.Value) (reflect.Value, error) {
+		// Reject nil interfaces and nil block pointers before calling their methods.
+		if v.IsNil() || (v.Elem().Kind() == reflect.Pointer && v.Elem().IsNil()) {
+			return reflect.Value{}, xerrors.New("cannot encode a nil block")
+		}
 		b := v.Interface().(blkfmt.Block)
 		return reflect.ValueOf(FlatBlock{
 			Cid:     b.Cid(),
