@@ -11,7 +11,7 @@
 
 ## ☢️ Upgrade Warnings ☢️
 
-- chore: schedule mainnet Solstice (nv29) at epoch 6470279 for activation on 2026-10-19 at 13:00 UTC. ([filecoin-project/lotus#13874](https://github.com/filecoin-project/lotus/pull/13874))
+- Schedule mainnet Solstice (nv29) at epoch 6470279 for activation on 2026-10-19 at 13:00 UTC. ([filecoin-project/lotus#13874](https://github.com/filecoin-project/lotus/pull/13874))
 
 - `eth_call` and `eth_estimateGas` now honor positive `gas` limits. Requests that previously succeeded with an insufficient limit can now fail. Applications and RPC providers should review default or injected `gas` values and increase them, or omit `gas` when no explicit cap is intended. ([filecoin-project/lotus#13865](https://github.com/filecoin-project/lotus/pull/13865))
 
