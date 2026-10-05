@@ -200,7 +200,7 @@ type ChainStore interface {
 	GetMessage(ctx context.Context, c cid.Cid) (*types.Message, error)
 	BlockMsgsForTipset(ctx context.Context, ts *types.TipSet) ([]store.BlockMessages, error)
 	MessagesForTipset(ctx context.Context, ts *types.TipSet) ([]types.ChainMsg, error)
-	ReadReceipts(ctx context.Context, root cid.Cid) ([]types.MessageReceipt, error)
+	ReadReceipts(ctx context.Context, root cid.Cid, maxBytes uint64) ([]types.MessageReceipt, error)
 
 	// Misc
 	ActorStore(ctx context.Context) adt.Store
