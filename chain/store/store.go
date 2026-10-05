@@ -900,18 +900,25 @@ func (cs *ChainStore) GetBlock(ctx context.Context, c cid.Cid) (*types.BlockHead
 	return blk, err
 }
 
+// loadTipSetConcurrency bounds the parallel block header loads for one tipset.
+const loadTipSetConcurrency = 8
+
 func (cs *ChainStore) LoadTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error) {
 	if ts, ok := cs.tsCache.Get(tsk); ok {
 		return ts, nil
 	}
 
 	// Fetch tipset block headers from blockstore in parallel
-	var eg errgroup.Group
+	eg, ectx := errgroup.WithContext(ctx)
+	eg.SetLimit(loadTipSetConcurrency)
 	cids := tsk.Cids()
 	blks := make([]*types.BlockHeader, len(cids))
 	for i, c := range cids {
+		if ectx.Err() != nil {
+			break
+		}
 		eg.Go(func() error {
-			b, err := cs.GetBlock(ctx, c)
+			b, err := cs.GetBlock(ectx, c)
 			if err != nil {
 				return xerrors.Errorf("get block %s: %w", c, err)
 			}
@@ -920,8 +927,11 @@ func (cs *ChainStore) LoadTipSet(ctx context.Context, tsk types.TipSetKey) (*typ
 			return nil
 		})
 	}
-	err := eg.Wait()
-	if err != nil {
+	if err := eg.Wait(); err != nil {
+		return nil, err
+	}
+	// Unscheduled slots are left nil when the caller's context ends first.
+	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 
@@ -1146,6 +1156,15 @@ func (cs *ChainStore) FormHeaviestTipSetForHeight(ctx context.Context, height ab
 		ts, err := types.NewTipSet(headers)
 		if err != nil {
 			return nil, types.NewInt(0), xerrors.Errorf("unexpected error forming tipset: %w", err)
+		}
+		// Peers refuse tipsets wider than MaxTipSetSize, so a wider group would
+		// leave every child block unrelayed. Keep the canonical prefix; the
+		// remaining blocks are orphaned.
+		if len(ts.Blocks()) > types.MaxTipSetSize {
+			ts, err = types.NewTipSet(ts.Blocks()[:types.MaxTipSetSize])
+			if err != nil {
+				return nil, types.NewInt(0), xerrors.Errorf("unexpected error forming capped tipset: %w", err)
+			}
 		}
 
 		weight, err := cs.Weight(ctx, ts)
