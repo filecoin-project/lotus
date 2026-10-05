@@ -174,6 +174,23 @@ func (gw *Node) checkEthBlockParam(ctx context.Context, blkParam ethtypes.EthBlo
 	return errors.New("invalid block param")
 }
 
+// checkEthFilterLookback checks the blocks a new eth filter preloads from. The
+// to block is left alone, as a filter may run on to a height not yet reached.
+func (gw *Node) checkEthFilterLookback(ctx context.Context, filter *ethtypes.EthFilterSpec) error {
+	if filter == nil {
+		return nil
+	}
+	if filter.FromBlock != nil {
+		if err := gw.checkEthBlockNumber(ctx, *filter.FromBlock, 0); err != nil {
+			return err
+		}
+	}
+	if filter.BlockHash != nil {
+		return gw.checkEthBlockHash(ctx, *filter.BlockHash)
+	}
+	return nil
+}
+
 // checkEthBlockNumber checks an eth block number or tag, less lookback epochs
 // for a tag.
 func (gw *Node) checkEthBlockNumber(ctx context.Context, blkParam string, lookback ethtypes.EthUint64) error {
