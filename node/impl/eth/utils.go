@@ -153,7 +153,7 @@ func executeTipset(ctx context.Context, ts *types.TipSet, cs ChainStore, sm Stat
 		return cid.Undef, nil, nil, xerrors.Errorf("failed to compute tipset state: %w", err)
 	}
 
-	rcpts, err := cs.ReadReceipts(ctx, rcptRoot)
+	rcpts, err := cs.ReadReceipts(ctx, rcptRoot, 0)
 	if err != nil {
 		return cid.Undef, nil, nil, xerrors.Errorf("error loading receipts for tipset: %v: %w", ts, err)
 	}

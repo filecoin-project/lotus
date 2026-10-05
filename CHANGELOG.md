@@ -22,6 +22,7 @@
 
 - fix(splitstore): GC walks decide traversal by CID codec while keeping liveness keyed by multihash. ([filecoin-project/lotus#13848](https://github.com/filecoin-project/lotus/pull/13848))
 - chore(blockstore): drop support for inline (identity-multihash) CIDs, which Filecoin does not use; `ChainReadObj` and `ChainHasObj` now return an error for them. ([filecoin-project/lotus#13847](https://github.com/filecoin-project/lotus/pull/13847))
+- refactor(chain): consolidate event and receipt AMT reads; `ChainGetEvents` and `ChainGetParentReceipts` responses are capped at 128 MiB and 32 MiB of decoded data. ([filecoin-project/lotus#13875](https://github.com/filecoin-project/lotus/pull/13875))
 
 # Node and Miner v1.37.0-rc2 / 2026-09-29
 
