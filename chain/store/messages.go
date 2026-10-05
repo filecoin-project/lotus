@@ -2,6 +2,8 @@ package store
 
 import (
 	"context"
+	"errors"
+	"unsafe"
 
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -10,7 +12,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
+	amtv2 "github.com/filecoin-project/go-amt-ipld/v2"
 
 	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build/buildconstants"
@@ -67,29 +69,52 @@ func (cs *ChainStore) GetSignedMessage(ctx context.Context, c cid.Cid) (*types.S
 
 func (cs *ChainStore) readAMTCids(root cid.Cid) ([]cid.Cid, error) {
 	ctx := context.TODO()
-	// block headers use adt0, for now.
-	a, err := blockadt.AsArray(cs.ActorStore(ctx), root)
+	cids, err := readBlockAMT[cbg.CborCid](ctx, cs.ActorStore(ctx), root, uint64(buildconstants.BlockMessageLimit), nil)
+	if err != nil {
+		return nil, xerrors.Errorf("reading message amt: %w", err)
+	}
+	out := make([]cid.Cid, len(cids))
+	for i, c := range cids {
+		out[i] = cid.Cid(c)
+	}
+	return out, nil
+}
+
+// readBlockAMT reads the entries of a block message or receipt AMT. These keep
+// the go-amt-ipld/v2 encoding ([height, count, node], bitwidth 3) and are
+// dense, so entries are read by index from 0 to Count-1. A non-zero maxCount
+// rejects larger arrays before any entries are read; a non-nil each is called
+// on every entry before it is kept.
+func readBlockAMT[T any, P interface {
+	*T
+	cbg.CBORUnmarshaler
+}](ctx context.Context, cst cbor.IpldStore, root cid.Cid, maxCount uint64, each func(P) error) ([]T, error) {
+	arr, err := amtv2.LoadAMT(ctx, cst, root)
 	if err != nil {
 		return nil, xerrors.Errorf("amt load: %w", err)
 	}
-
-	var (
-		cids    []cid.Cid
-		cborCid cbg.CborCid
-	)
-	if err := a.ForEach(&cborCid, func(i int64) error {
-		c := cid.Cid(cborCid)
-		cids = append(cids, c)
-		return nil
-	}); err != nil {
-		return nil, xerrors.Errorf("failed to traverse amt: %w", err)
+	if maxCount > 0 && arr.Count > maxCount {
+		return nil, xerrors.Errorf("amt has %d entries, limit is %d", arr.Count, maxCount)
 	}
 
-	if uint64(len(cids)) != a.Length() {
-		return nil, xerrors.Errorf("found %d cids, expected %d", len(cids), a.Length())
+	entries := []T{}
+	for i := uint64(0); i < arr.Count; i++ {
+		var v T
+		if err := arr.Get(ctx, i, P(&v)); err != nil {
+			var nf *amtv2.ErrNotFound
+			if errors.As(err, &nf) {
+				return nil, xerrors.Errorf("amt entry %d of %d not found", i, arr.Count)
+			}
+			return nil, xerrors.Errorf("amt entry %d: %w", i, err)
+		}
+		if each != nil {
+			if err := each(&v); err != nil {
+				return nil, err
+			}
+		}
+		entries = append(entries, v)
 	}
-
-	return cids, nil
+	return entries, nil
 }
 
 type BlockMessages struct {
@@ -240,6 +265,10 @@ func (cs *ChainStore) ReadMsgMetaCids(ctx context.Context, mmc cid.Cid) ([]cid.C
 		return nil, nil, xerrors.Errorf("loading secpk message cids for block: %w", err)
 	}
 
+	if n := len(blscids) + len(secpkcids); n > buildconstants.BlockMessageLimit {
+		return nil, nil, xerrors.Errorf("block has %d messages, limit is %d", n, buildconstants.BlockMessageLimit)
+	}
+
 	cs.mmCache.Add(mmc, mmCids{
 		bls:   blscids,
 		secpk: secpkcids,
@@ -248,24 +277,18 @@ func (cs *ChainStore) ReadMsgMetaCids(ctx context.Context, mmc cid.Cid) ([]cid.C
 	return blscids, secpkcids, nil
 }
 
-func (cs *ChainStore) ReadReceipts(ctx context.Context, root cid.Cid) ([]types.MessageReceipt, error) {
-	a, err := blockadt.AsArray(cs.ActorStore(ctx), root)
-	if err != nil {
-		return nil, err
-	}
-
-	receipts := make([]types.MessageReceipt, 0, a.Length())
-	var rcpt types.MessageReceipt
-	if err := a.ForEach(&rcpt, func(i int64) error {
-		if int64(len(receipts)) != i {
-			return xerrors.Errorf("missing receipt %d", i)
+// ReadReceipts loads the receipts under a receipts AMT root. Receipt AMTs are
+// dense, so entries are read by index from 0 to Count-1. A non-zero maxBytes
+// bounds the decoded receipts' estimated size: struct size plus return data.
+func (cs *ChainStore) ReadReceipts(ctx context.Context, root cid.Cid, maxBytes uint64) ([]types.MessageReceipt, error) {
+	var size uint64
+	return readBlockAMT(ctx, cs.ActorStore(ctx), root, 0, func(r *types.MessageReceipt) error {
+		size += uint64(unsafe.Sizeof(*r)) + uint64(len(r.Return))
+		if maxBytes > 0 && size > maxBytes {
+			return xerrors.Errorf("receipts exceed %d bytes", maxBytes)
 		}
-		receipts = append(receipts, rcpt)
 		return nil
-	}); err != nil {
-		return nil, err
-	}
-	return receipts, nil
+	})
 }
 
 func (cs *ChainStore) MessagesForBlock(ctx context.Context, b *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error) {
@@ -302,17 +325,18 @@ func (cs *ChainStore) SecpkMessagesForBlock(ctx context.Context, b *types.BlockH
 }
 
 func (cs *ChainStore) GetParentReceipt(ctx context.Context, b *types.BlockHeader, i int) (*types.MessageReceipt, error) {
-	// block headers use adt0, for now.
-	a, err := blockadt.AsArray(cs.ActorStore(ctx), b.ParentMessageReceipts)
+	a, err := amtv2.LoadAMT(ctx, cs.ActorStore(ctx), b.ParentMessageReceipts)
 	if err != nil {
 		return nil, xerrors.Errorf("amt load: %w", err)
 	}
 
 	var r types.MessageReceipt
-	if found, err := a.Get(uint64(i), &r); err != nil {
+	if err := a.Get(ctx, uint64(i), &r); err != nil {
+		var nf *amtv2.ErrNotFound
+		if errors.As(err, &nf) {
+			return nil, xerrors.Errorf("failed to find receipt %d", i)
+		}
 		return nil, err
-	} else if !found {
-		return nil, xerrors.Errorf("failed to find receipt %d", i)
 	}
 
 	return &r, nil

@@ -20,7 +20,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	amt4 "github.com/filecoin-project/go-amt-ipld/v4"
 	"github.com/filecoin-project/go-keccak"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -32,6 +31,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/chain/wallet/key"
@@ -228,21 +228,9 @@ func (e *EVM) InvokeSolidityWithValue(ctx context.Context, sender address.Addres
 func (e *EVM) LoadEvents(ctx context.Context, eventsRoot cid.Cid) []types.Event {
 	require := require.New(e.t)
 
-	s := &apiIpldStore{ctx, e}
-	amt, err := amt4.LoadAMT(ctx, s, eventsRoot, amt4.UseTreeBitWidth(types.EventAMTBitwidth))
+	events, err := store.ReadEvents(ctx, &apiIpldStore{ctx, e}, eventsRoot, 0)
 	require.NoError(err)
-
-	ret := make([]types.Event, 0, amt.Len())
-	err = amt.ForEach(ctx, func(u uint64, deferred *cbg.Deferred) error {
-		var evt types.Event
-		if err := evt.UnmarshalCBOR(bytes.NewReader(deferred.Raw)); err != nil {
-			return err
-		}
-		ret = append(ret, evt)
-		return nil
-	})
-	require.NoError(err)
-	return ret
+	return events
 }
 
 func (e *EVM) NewAccount() (*key.Key, ethtypes.EthAddress, address.Address) {

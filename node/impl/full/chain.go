@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -29,7 +28,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	amt4 "github.com/filecoin-project/go-amt-ipld/v4"
 	"github.com/filecoin-project/go-f3/certs"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
@@ -189,6 +187,12 @@ func (a *ChainAPI) ChainGetParentMessages(ctx context.Context, bcid cid.Cid) ([]
 	return out, nil
 }
 
+// chainGetParentReceiptsMaxBytes bounds the estimated decoded size of the
+// receipts returned by a single ChainGetParentReceipts call. A receipt
+// decodes to 56 bytes plus return data; a five-block tipset at
+// BlockMessageLimit is under 3 MiB of that, leaving the rest for return data.
+const chainGetParentReceiptsMaxBytes = 32 << 20
+
 func (a *ChainAPI) ChainGetParentReceipts(ctx context.Context, bcid cid.Cid) ([]*types.MessageReceipt, error) {
 	b, err := a.Chain.GetBlock(ctx, bcid)
 	if err != nil {
@@ -199,7 +203,7 @@ func (a *ChainAPI) ChainGetParentReceipts(ctx context.Context, bcid cid.Cid) ([]
 		return nil, nil
 	}
 
-	receipts, err := a.Chain.ReadReceipts(ctx, b.ParentMessageReceipts)
+	receipts, err := a.Chain.ReadReceipts(ctx, b.ParentMessageReceipts, chainGetParentReceiptsMaxBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -358,6 +362,11 @@ func (a *ChainAPI) ChainStatObj(ctx context.Context, obj cid.Cid, base cid.Cid) 
 
 	walker := func(ctx context.Context, c cid.Cid) ([]*ipld.Link, error) {
 		if c.Prefix().Codec == cid.FilCommitmentSealed || c.Prefix().Codec == cid.FilCommitmentUnsealed {
+			return []*ipld.Link{}, nil
+		}
+
+		// identity CIDs, such as the pre-nv16 actor code CIDs, have no block to stat
+		if blockstore.IsIdentityCid(c) {
 			return []*ipld.Link{}, nil
 		}
 
@@ -770,31 +779,26 @@ func (a *ChainAPI) ChainBlockstoreInfo(ctx context.Context) (map[string]interfac
 	return info.Info(), nil
 }
 
-// ChainGetEvents returns the events under an event AMT root CID.
+// chainGetEventsMaxBytes bounds the estimated decoded size (see
+// store.ReadEvents) of the events returned by a single ChainGetEvents call.
 //
-// TODO (raulk) make copies of this logic elsewhere use this (e.g. itests, CLI, events filter).
+// This is a policy limit and could be tweaked in the future if legitimate use
+// bumps up against this.
+// At ~16.5k gas per event plus ~17 gas per encoded byte, a message within the
+// block gas limit can emit around 55-70 MiB of small events, or hundreds of MiB
+// of large values. The largest observed is ~28 MiB: calibnet messages of
+// 216,000 single-entry events at ~8B gas (e.g.
+// bafy2bzaced46lu75i5gelejyavdegxzjemetlznpx5irlo2ubqymif5dbvpco, height
+// 3695112). 128 MiB covers a full block of small events with headroom.
+const chainGetEventsMaxBytes = 128 << 20
+
+// ChainGetEvents returns the events under an event AMT root CID.
 func (a *ChainAPI) ChainGetEvents(ctx context.Context, root cid.Cid) ([]types.Event, error) {
-	store := cbor.NewCborStore(a.ExposedBlockstore)
-	evtArr, err := amt4.LoadAMT(ctx, store, root, amt4.UseTreeBitWidth(types.EventAMTBitwidth))
+	events, err := store.ReadEvents(ctx, cbor.NewCborStore(a.ExposedBlockstore), root, chainGetEventsMaxBytes)
 	if err != nil {
-		return nil, xerrors.Errorf("load events amt: %w", err)
+		return nil, xerrors.Errorf("ChainGetEvents %s: %w", root, err)
 	}
-
-	ret := make([]types.Event, 0, evtArr.Len())
-	var evt types.Event
-	err = evtArr.ForEach(ctx, func(u uint64, deferred *cbg.Deferred) error {
-		if u > math.MaxInt {
-			return xerrors.Errorf("too many events")
-		}
-		if err := evt.UnmarshalCBOR(bytes.NewReader(deferred.Raw)); err != nil {
-			return err
-		}
-
-		ret = append(ret, evt)
-		return nil
-	})
-
-	return ret, err
+	return events, nil
 }
 
 func (a *ChainAPI) ChainPrune(ctx context.Context, opts api.PruneOpts) error {

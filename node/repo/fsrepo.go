@@ -452,7 +452,7 @@ func (fsr *fsLockedRepo) Blockstore(ctx context.Context, domain BlockstoreDomain
 			fsr.bsErr = err
 			return
 		}
-		fsr.bs = blockstore.WrapIDStore(bs)
+		fsr.bs = blockstore.RejectIdentityCids(bs)
 	})
 
 	return fsr.bs, fsr.bsErr
