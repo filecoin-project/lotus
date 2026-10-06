@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Create issue
-        uses: ipdxco/create-or-update-issue@v1
+        uses: ipdxco/create-or-update-issue@1c3635e06dd2f09272e49c6f1ad4619ba949120b # v1.0.1
         with:
           GITHUB_TOKEN: ${{ github.token }}
           title: Very expensive test run failed

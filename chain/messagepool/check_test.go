@@ -5,9 +5,13 @@ import (
 	"fmt"
 	"testing"
 
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-address"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
@@ -139,6 +143,56 @@ func TestCheckPendingMessages(t *testing.T) {
 			assert.True(t, jStatus.OK)
 		}
 	}
+}
+
+func TestCheckReplaceMessagesNilMessage(t *testing.T) {
+	for nilIndex := 0; nilIndex < 3; nilIndex++ {
+		t.Run(fmt.Sprintf("nil_at_index_%d", nilIndex), func(t *testing.T) {
+			msgs := []*types.Message{{}, {}, {}}
+			msgs[nilIndex] = nil
+
+			// Invalid input must be rejected before accessing pool state or its provider.
+			mp := &MessagePool{}
+			var statuses [][]api.MessageCheckStatus
+			var err error
+			require.NotPanics(t, func() {
+				statuses, err = mp.CheckReplaceMessages(context.Background(), msgs)
+			})
+			require.EqualError(t, err, fmt.Sprintf("replacement message at index %d is nil", nilIndex))
+			require.Nil(t, statuses)
+			require.True(t, mp.lk.TryLock(), "invalid input must not leave the pool locked")
+			mp.lk.Unlock()
+		})
+	}
+}
+
+type checkReplaceMessagesProvider struct {
+	Provider
+	resolve func() (address.Address, error)
+}
+
+func (p checkReplaceMessagesProvider) StateDeterministicAddressAtFinality(context.Context, address.Address, *types.TipSet) (address.Address, error) {
+	return p.resolve()
+}
+
+func TestCheckReplaceMessagesAlwaysUnlocks(t *testing.T) {
+	sender, err := address.NewIDAddress(1001)
+	require.NoError(t, err)
+	const errMsg = "address resolution panic"
+
+	keyCache, err := lru.New[address.Address, address.Address](1)
+	require.NoError(t, err)
+	mp := &MessagePool{
+		keyCache: keyCache,
+		api: checkReplaceMessagesProvider{resolve: func() (address.Address, error) {
+			panic(errMsg)
+		}},
+	}
+	require.PanicsWithValue(t, errMsg, func() {
+		_, _ = mp.CheckReplaceMessages(context.Background(), []*types.Message{{From: sender}})
+	})
+	require.True(t, mp.lk.TryLock(), "provider panic must not leave the pool locked")
+	mp.lk.Unlock()
 }
 
 func TestCheckReplaceMessages(t *testing.T) {

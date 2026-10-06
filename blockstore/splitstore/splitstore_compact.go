@@ -20,6 +20,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
+	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/metrics"
@@ -237,16 +238,19 @@ func (s *SplitStore) markLiveRefs(cids []cid.Cid) {
 					return errStopWalk
 				}
 
-				visit, err := s.txnMarkSet.Visit(c)
+				fresh, visit, err := s.txnMarkSet.markLive(c)
 				if err != nil {
 					return xerrors.Errorf("error visiting object: %w", err)
+				}
+
+				if fresh {
+					atomic.AddInt32(count, 1)
 				}
 
 				if !visit {
 					return errStopWalk
 				}
 
-				atomic.AddInt32(count, 1)
 				return nil
 			},
 			func(missing cid.Cid) error {
@@ -378,7 +382,7 @@ func (s *SplitStore) trackTxnRefMany(cids []cid.Cid) {
 }
 
 // protect all pending transactional references
-func (s *SplitStore) protectTxnRefs(markSet MarkSet) error {
+func (s *SplitStore) protectTxnRefs(markSet *liveMarkSet) error {
 	for {
 		var txnRefs map[cid.Cid]struct{}
 
@@ -400,12 +404,12 @@ func (s *SplitStore) protectTxnRefs(markSet MarkSet) error {
 		startProtect := time.Now()
 
 		for c := range txnRefs {
-			mark, err := markSet.Has(c)
+			walked, err := markSet.walked(c)
 			if err != nil {
 				return xerrors.Errorf("error checking markset: %w", err)
 			}
 
-			if mark {
+			if walked {
 				continue
 			}
 
@@ -452,7 +456,7 @@ func (s *SplitStore) protectTxnRefs(markSet MarkSet) error {
 
 // transactionally protect a reference by walking the object and marking.
 // concurrent markings are short circuited by checking the markset.
-func (s *SplitStore) doTxnProtect(root cid.Cid, markSet MarkSet) (int64, error) {
+func (s *SplitStore) doTxnProtect(root cid.Cid, markSet *liveMarkSet) (int64, error) {
 	if err := s.checkClosing(); err != nil {
 		return 0, err
 	}
@@ -465,7 +469,7 @@ func (s *SplitStore) doTxnProtect(root cid.Cid, markSet MarkSet) (int64, error) 
 				return errStopWalk
 			}
 
-			visit, err := markSet.Visit(c)
+			_, visit, err := markSet.markLive(c)
 			if err != nil {
 				return xerrors.Errorf("error visiting object: %w", err)
 			}
@@ -558,14 +562,14 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 
 	log.Infow("running compaction", "currentEpoch", currentEpoch, "baseEpoch", s.baseEpoch, "boundaryEpoch", boundaryEpoch, "inclMsgsEpoch", inclMsgsEpoch, "compactionIndex", s.compactionIndex)
 
-	markSet, err := s.markSetEnv.New("live", s.markSetSize)
+	markSet, err := s.newLiveMarkSet("live", s.markSetSize)
 	if err != nil {
 		return xerrors.Errorf("error creating mark set: %w", err)
 	}
 	defer markSet.Close() //nolint:errcheck
 	defer s.debug.Flush()
 
-	coldSet, err := s.markSetEnv.New("cold", s.markSetSize)
+	coldSet, err := s.newLiveMarkSet("cold", s.markSetSize)
 	if err != nil {
 		return xerrors.Errorf("error creating cold mark set: %w", err)
 	}
@@ -604,16 +608,19 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 			return errStopWalk
 		}
 
-		visit, err := coldSet.Visit(c)
+		fresh, visit, err := coldSet.markLive(c)
 		if err != nil {
 			return xerrors.Errorf("error visiting object: %w", err)
+		}
+
+		if fresh {
+			atomic.AddInt64(coldCount, 1)
 		}
 
 		if !visit {
 			return errStopWalk
 		}
 
-		atomic.AddInt64(coldCount, 1)
 		return nil
 	}
 	fHot := func(c cid.Cid) error {
@@ -621,16 +628,19 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 			return errStopWalk
 		}
 
-		visit, err := markSet.Visit(c)
+		fresh, visit, err := markSet.markLive(c)
 		if err != nil {
 			return xerrors.Errorf("error visiting object: %w", err)
+		}
+
+		if fresh {
+			atomic.AddInt64(count, 1)
 		}
 
 		if !visit {
 			return errStopWalk
 		}
 
-		atomic.AddInt64(count, 1)
 		return nil
 	}
 
@@ -864,7 +874,7 @@ func (s *SplitStore) beginTxnProtect() {
 	s.txnMissing = make(map[cid.Cid]struct{})
 }
 
-func (s *SplitStore) beginCriticalSection(markSet MarkSet) error {
+func (s *SplitStore) beginCriticalSection(markSet *liveMarkSet) error {
 	log.Info("beginning critical section")
 
 	// do that once first to get the bulk before the markset is in critical section
@@ -1150,7 +1160,7 @@ func (s *SplitStore) walkObject(c cid.Cid, visitor ObjectVisitor, f func(cid.Cid
 		return 0, err
 	}
 
-	if c.Prefix().Codec != cid.DagCBOR {
+	if !scansLinks(c) {
 		return sz, nil
 	}
 
@@ -1195,7 +1205,7 @@ func (s *SplitStore) walkObjectIncomplete(c cid.Cid, visitor ObjectVisitor, f, m
 	}
 
 	// occurs check -- only for DAGs
-	if c.Prefix().Codec == cid.DagCBOR {
+	if scansLinks(c) {
 		has, err := s.has(c)
 		if err != nil {
 			return 0, xerrors.Errorf("error occur checking %s: %w", c, err)
@@ -1219,7 +1229,7 @@ func (s *SplitStore) walkObjectIncomplete(c cid.Cid, visitor ObjectVisitor, f, m
 		return 0, err
 	}
 
-	if c.Prefix().Codec != cid.DagCBOR {
+	if !scansLinks(c) {
 		return sz, nil
 	}
 
@@ -1253,13 +1263,8 @@ func (s *SplitStore) walkObjectIncomplete(c cid.Cid, visitor ObjectVisitor, f, m
 
 // internal version used during compaction and related operations
 func (s *SplitStore) view(c cid.Cid, cb func([]byte) error) error {
-	if isIdentiyCid(c) {
-		data, err := decodeIdentityCid(c)
-		if err != nil {
-			return err
-		}
-
-		return cb(data)
+	if bstore.IsIdentityCid(c) {
+		return bstore.IdentityCidError(c)
 	}
 
 	err := s.hot.View(s.ctx, c, cb)
@@ -1270,8 +1275,8 @@ func (s *SplitStore) view(c cid.Cid, cb func([]byte) error) error {
 }
 
 func (s *SplitStore) has(c cid.Cid) (bool, error) {
-	if isIdentiyCid(c) {
-		return true, nil
+	if bstore.IsIdentityCid(c) {
+		return false, bstore.IdentityCidError(c)
 	}
 
 	has, err := s.hot.Has(s.ctx, c)
@@ -1600,7 +1605,7 @@ func (s *SplitStore) clearSizeMeasurements() {
 // have this gem[TM].
 // My best guess is that they are parent message receipts or yet to be computed state roots; magik
 // thinks the cause may be block validation.
-func (s *SplitStore) waitForMissingRefs(markSet MarkSet) {
+func (s *SplitStore) waitForMissingRefs(markSet *liveMarkSet) {
 	s.txnLk.Lock()
 	missing := s.txnMissing
 	s.txnMissing = nil
@@ -1639,16 +1644,19 @@ func (s *SplitStore) waitForMissingRefs(markSet MarkSet) {
 						return errStopWalk
 					}
 
-					visit, err := markSet.Visit(c)
+					fresh, visit, err := markSet.markLive(c)
 					if err != nil {
 						return xerrors.Errorf("error visiting object: %w", err)
+					}
+
+					if fresh {
+						count++
 					}
 
 					if !visit {
 						return errStopWalk
 					}
 
-					count++
 					return nil
 				},
 				func(c cid.Cid) error {

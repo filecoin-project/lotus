@@ -143,7 +143,8 @@ const UpgradeGoldenWeekHeight = abi.ChainEpoch(5348280)
 // 2026-05-27T:14:00:00Z
 var UpgradeFireHorseHeight = abi.ChainEpoch(6052800)
 
-var UpgradeSolsticeHeight = UpgradeHeightUnscheduled
+// 2026-10-19T12:59:30Z
+var UpgradeSolsticeHeight = abi.ChainEpoch(6470279)
 
 // SolsticeEpochsPerQuarter matches the quarter the SRA is deployed with: a quarter of the
 // builtin-actors year, 31556925 seconds of 30 second epochs. The ramp runs nine of them.

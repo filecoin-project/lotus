@@ -145,6 +145,11 @@ func (dsc *dagStatCollector) record(ctx context.Context, nd format.Node) error {
 }
 
 func (dsc *dagStatCollector) walkLinks(ctx context.Context, c cid.Cid) ([]*format.Link, error) {
+	// identity CIDs, such as the pre-nv16 actor code CIDs, have no block to load
+	if blockstore.IsIdentityCid(c) {
+		return nil, nil
+	}
+
 	nd, err := dsc.ds.Get(ctx, c)
 	if err != nil {
 		return nil, err

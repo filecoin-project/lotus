@@ -24,7 +24,6 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -326,13 +325,20 @@ func (c *EthCall) ToFilecoinMessage() (*types.Message, error) {
 		method = builtintypes.MethodsEVM.InvokeContract
 	}
 
+	// Zero represents both omitted and explicitly zero gas. Preserve the block
+	// limit as the default and ceiling, and bound the value before converting to int64.
+	gasLimit := buildconstants.BlockGasLimit
+	if c.Gas > 0 && c.Gas < EthUint64(gasLimit) {
+		gasLimit = int64(c.Gas)
+	}
+
 	return &types.Message{
 		From:       from,
 		To:         to,
 		Value:      big.Int(c.Value),
 		Method:     method,
 		Params:     params,
-		GasLimit:   build.BlockGasLimit,
+		GasLimit:   gasLimit,
 		GasFeeCap:  big.Zero(),
 		GasPremium: big.Zero(),
 	}, nil

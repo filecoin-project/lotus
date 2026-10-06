@@ -12,6 +12,8 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
+
+	"github.com/filecoin-project/lotus/build/buildconstants"
 )
 
 type TestCase struct {
@@ -218,6 +220,32 @@ func TestMaskedIDInF4(t *testing.T) {
 
 	_, err = EthAddressFromFilecoinAddress(badaddr)
 	require.Error(t, err)
+}
+
+func TestEthCallGasLimit(t *testing.T) {
+	blockGasLimit := buildconstants.BlockGasLimit
+	tests := []struct {
+		name string
+		call string
+		want int64
+	}{
+		{name: "omitted", call: `{}`, want: blockGasLimit},
+		{name: "zero", call: `{"gas":"0x0"}`, want: blockGasLimit},
+		{name: "small", call: `{"gas":"0x3e8"}`, want: 1000},
+		{name: "below block limit", call: fmt.Sprintf(`{"gas":"0x%x"}`, blockGasLimit-1), want: blockGasLimit - 1},
+		{name: "block limit", call: fmt.Sprintf(`{"gas":"0x%x"}`, blockGasLimit), want: blockGasLimit},
+		{name: "above block limit", call: fmt.Sprintf(`{"gas":"0x%x"}`, blockGasLimit+1), want: blockGasLimit},
+		{name: "max uint64", call: `{"gas":"0xffffffffffffffff"}`, want: blockGasLimit},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var call EthCall
+			require.NoError(t, json.Unmarshal([]byte(tt.call), &call))
+			msg, err := call.ToFilecoinMessage()
+			require.NoError(t, err)
+			require.Equal(t, tt.want, msg.GasLimit)
+		})
+	}
 }
 
 func TestUnmarshalEthCall(t *testing.T) {

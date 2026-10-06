@@ -3,6 +3,7 @@ package gateway
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"reflect"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/api"
@@ -58,6 +60,13 @@ func TestGatewayAPIChainGetTipSetByHeight(t *testing.T) {
 			h:    abi.ChainEpoch(5),
 			tskh: abi.ChainEpoch(5),
 		},
+	}, {
+		name: "negative height",
+		args: args{
+			h:    abi.ChainEpoch(-1),
+			tskh: abi.ChainEpoch(5),
+		},
+		expErr: "negative height",
 	}, {
 		name: "tipset too old",
 		args: args{
@@ -224,6 +233,7 @@ func TestV2GatewayTipSetSelectorLookback(t *testing.T) {
 			{name: "key too old", selector: types.TipSetSelectors.Key(oldTs.Key()), checked: true, byKey: oldTs, lookback: true},
 			{name: "height in bound", selector: types.TipSetSelectors.Height(recentTs.Height(), false, nil), checked: true, forwarded: true},
 			{name: "height too old", selector: types.TipSetSelectors.Height(oldTs.Height(), false, nil), checked: true, lookback: true},
+			{name: "height negative", selector: types.TipSetSelectors.Height(-1, false, nil)},
 			{name: "finalized in bound", selector: types.TipSetSelectors.Finalized, checked: true, byTag: recentTs, forwarded: true},
 			{name: "finalized too old", selector: types.TipSetSelectors.Finalized, checked: true, byTag: oldTs, lookback: true},
 			{name: "invalid", selector: invalid},
@@ -394,6 +404,7 @@ func TestGatewayEthBlockParamLookback(t *testing.T) {
 		{name: "old number", param: "0x1", checked: true, wantErr: "lookbacks of more than"},
 		{name: "recent number", param: "0xd", checked: true},
 		{name: "huge number", param: "0x10000000000", checked: true, wantErr: "tipset height in future"},
+		{name: "number above MaxInt64", param: "0x8000000000000000", wantErr: "negative height"},
 		{name: "safe", param: "safe", checked: true},
 		{name: "finalized", param: "finalized", checked: true},
 		{name: "finalized tight bound resolves old", param: "finalized", opts: []Option{WithMaxLookbackDuration(time.Hour)}, checked: true, resolved: oldTs, wantErr: "lookbacks of more than"},
@@ -425,6 +436,122 @@ func TestGatewayEthBlockParamLookback(t *testing.T) {
 				} else {
 					require.NoError(t, err)
 				}
+			})
+		}
+	}
+}
+
+func TestGatewayEthEstimateGasLookback(t *testing.T) {
+	ctx := context.Background()
+
+	// Height 1 is older than the default lookback bound; height 13 is within it.
+	lookbackTimestamp := uint64(time.Now().Unix()) - uint64(DefaultMaxLookbackDuration.Seconds())
+	tss := generateTipSets(15, lookbackTimestamp-buildconstants.BlockDelaySecs*10)
+	genesisTS := tss[0].MinTimestamp()
+
+	for _, tc := range []struct {
+		name     string
+		blkParam string // empty for a call without a block param
+		checked  bool   // the check consults network params
+		wantErr  string
+	}{
+		{name: "no block param"},
+		{name: "latest", blkParam: "latest"},
+		{name: "recent number", blkParam: "0xd", checked: true},
+		{name: "old number", blkParam: "0x1", checked: true, wantErr: "lookbacks of more than"},
+	} {
+		var params ethtypes.EthEstimateGasParams
+		if tc.blkParam != "" {
+			params.BlkParam = new(ethtypes.EthBlockNumberOrHash)
+			require.NoError(t, params.BlkParam.UnmarshalJSON([]byte(`"`+tc.blkParam+`"`)))
+		}
+		raw, err := json.Marshal(params)
+		require.NoError(t, err)
+
+		for _, v := range []struct {
+			name   string
+			expect func(v1 *v1mocks.MockFullNode, v2 *v2mocks.MockFullNode)
+			call   func(a *Node) error
+		}{
+			{"v1", func(v1 *v1mocks.MockFullNode, _ *v2mocks.MockFullNode) {
+				v1.EXPECT().EthEstimateGas(gomock.Any(), jsonrpc.RawParams(raw)).Return(ethtypes.EthUint64(0), nil)
+			}, func(a *Node) error { _, err := a.v1Proxy.EthEstimateGas(ctx, raw); return err }},
+			{"v2", func(_ *v1mocks.MockFullNode, v2 *v2mocks.MockFullNode) {
+				v2.EXPECT().EthEstimateGas(gomock.Any(), jsonrpc.RawParams(raw)).Return(ethtypes.EthUint64(0), nil)
+			}, func(a *Node) error { _, err := a.v2Proxy.EthEstimateGas(ctx, raw); return err }},
+		} {
+			t.Run(v.name+"/"+tc.name, func(t *testing.T) {
+				ctrl := gomock.NewController(t)
+				mockV1 := v1mocks.NewMockFullNode(ctrl)
+				mockV2 := v2mocks.NewMockFullNode(ctrl)
+				a := NewNode(mockV1, mockV2)
+				if tc.checked {
+					expectNetworkParams(mockV1, genesisTS)
+				}
+				if tc.wantErr == "" {
+					v.expect(mockV1, mockV2)
+				}
+				err := v.call(a)
+				if tc.wantErr != "" {
+					require.ErrorContains(t, err, tc.wantErr)
+				} else {
+					require.NoError(t, err)
+				}
+			})
+		}
+	}
+}
+
+func TestGatewayEthNewFilterLookback(t *testing.T) {
+	ctx := context.Background()
+
+	// Height 1 is older than the default lookback bound; height 13 is within it.
+	lookbackTimestamp := uint64(time.Now().Unix()) - uint64(DefaultMaxLookbackDuration.Seconds())
+	tss := generateTipSets(15, lookbackTimestamp-buildconstants.BlockDelaySecs*10)
+	genesisTS := tss[0].MinTimestamp()
+	oldTs := tss[1]
+
+	tskCid, err := oldTs.Key().Cid()
+	require.NoError(t, err)
+	oldHash, err := ethtypes.EthHashFromCid(tskCid)
+	require.NoError(t, err)
+	var tskBytes bytes.Buffer
+	require.NoError(t, oldTs.Key().MarshalCBOR(&tskBytes))
+
+	oldFrom, oldTo := "0x1", "0x2"
+	recentFrom, recentTo := "0xd", "0xe"
+	// Without a websocket connection, a filter that passes the checks stops at
+	// the stateful call tracker.
+	const notInstalled = "stateful methods are only available on websocket connections"
+
+	for _, tc := range []struct {
+		name    string
+		filter  *ethtypes.EthFilterSpec
+		byHash  bool
+		wantErr string
+	}{
+		{name: "old fromBlock", filter: &ethtypes.EthFilterSpec{FromBlock: &oldFrom, ToBlock: &oldTo}, wantErr: "lookbacks of more than"},
+		{name: "old blockHash", filter: &ethtypes.EthFilterSpec{BlockHash: &oldHash}, byHash: true, wantErr: "lookbacks of more than"},
+		{name: "recent fromBlock", filter: &ethtypes.EthFilterSpec{FromBlock: &recentFrom, ToBlock: &recentTo}, wantErr: notInstalled},
+	} {
+		for _, v := range []struct {
+			name string
+			call func(a *Node) error
+		}{
+			{"v1", func(a *Node) error { _, err := a.v1Proxy.EthNewFilter(ctx, tc.filter); return err }},
+			{"v2", func(a *Node) error { _, err := a.v2Proxy.EthNewFilter(ctx, tc.filter); return err }},
+		} {
+			t.Run(v.name+"/"+tc.name, func(t *testing.T) {
+				ctrl := gomock.NewController(t)
+				mockV1 := v1mocks.NewMockFullNode(ctrl)
+				mockV2 := v2mocks.NewMockFullNode(ctrl)
+				a := NewNode(mockV1, mockV2)
+				expectNetworkParams(mockV1, genesisTS)
+				if tc.byHash {
+					mockV1.EXPECT().ChainReadObj(gomock.Any(), tskCid).Return(tskBytes.Bytes(), nil)
+					mockV1.EXPECT().ChainGetTipSet(gomock.Any(), oldTs.Key()).Return(oldTs, nil)
+				}
+				require.ErrorContains(t, v.call(a), tc.wantErr)
 			})
 		}
 	}
