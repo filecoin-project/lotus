@@ -17,6 +17,8 @@
 
 ## 🐛 Bug Fixes
 
+- fix(gateway): the lookback limit now applies to the block parameter of `eth_estimateGas` and to the `fromBlock` and `blockHash` of `eth_newFilter`. ([filecoin-project/lotus#13873](https://github.com/filecoin-project/lotus/pull/13873))
+
 ## 👌 Improvements
 
 # Node and Miner v1.37.0 / 2026-10-06
