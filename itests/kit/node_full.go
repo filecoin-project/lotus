@@ -186,6 +186,26 @@ func (f *TestFullNode) DeadlineForHead(ctx context.Context, maddr address.Addres
 	return DeadlineForHeight(di, head.Height())
 }
 
+// WaitForDeclarableDeadline returns the first head at which a declaration for deadline dlIdx would
+// land a challenge window ahead of its fault declaration cutoff.
+func (f *TestFullNode) WaitForDeclarableDeadline(ctx context.Context, maddr address.Address, dlIdx uint64) *types.TipSet {
+	for {
+		head, err := f.ChainHead(ctx)
+		require.NoError(f.t, err)
+		di, err := f.StateMinerProvingDeadline(ctx, maddr, head.Key())
+		require.NoError(f.t, err)
+		di = DeadlineForHeight(di, head.Height())
+
+		// The actor declares against the first occurrence of dlIdx that has not yet closed.
+		closeAt := DeadlineCloseAfter(di, dlIdx, head.Height()+1)
+		cutoff := closeAt - di.WPoStChallengeWindow - di.FaultDeclarationCutoff
+		if head.Height()+di.WPoStChallengeWindow < cutoff {
+			return head
+		}
+		f.WaitTillChain(ctx, HeightAtLeast(closeAt))
+	}
+}
+
 // DeadlineCloseAfter returns the first epoch at or after `from` at which deadline dlIdx closes, which
 // is when the actor next settles that deadline's faults and fees.
 func DeadlineCloseAfter(di *dline.Info, dlIdx uint64, from abi.ChainEpoch) abi.ChainEpoch {

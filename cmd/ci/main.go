@@ -233,6 +233,7 @@ func getRunners(testGroupName string) []Runner {
 		"itest-solstice_miner_fees":      {linux_x64_2xlarge},
 		"itest-solstice_reward":          {linux_x64_2xlarge},
 		"itest-wdpost":                   {linux_x64_2xlarge},
+		"itest-wdpost_config":            {linux_x64_2xlarge},
 		"itest-worker":                   {linux_x64_4xlarge},
 		"multicore-sdr":                  {linux_x64_xlarge},
 		"unit-cli":                       {linux_x64, linux_arm64},
