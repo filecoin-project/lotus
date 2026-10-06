@@ -145,7 +145,7 @@ require (
 	github.com/xeipuuv/gojsonschema v1.2.0
 	github.com/xorcare/golden v0.8.4
 	github.com/yugabyte/pgx/v5 v5.7.6-yb-1 // dependency-check-ignore: unknown
-	github.com/zondax/ledger-filecoin-go v1.2.2
+	github.com/zondax/ledger-filecoin-go v1.2.3
 	github.com/zyedidia/generic v1.2.1
 	go.opencensus.io v0.24.0
 	go.opentelemetry.io/otel v1.47.0
@@ -349,7 +349,7 @@ require (
 	github.com/tklauser/go-sysconf v0.3.15 // indirect
 	github.com/tklauser/numcpus v0.10.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
-	github.com/zondax/golem v0.29.0 // indirect
+	github.com/zondax/golem v0.30.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.46.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.11.0 // indirect
