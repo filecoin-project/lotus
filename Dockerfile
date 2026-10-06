@@ -2,7 +2,7 @@
 FROM debian:trixie AS lotus-builder
 MAINTAINER Lotus Development Team
 
-ARG GO_VERSION=1.25.14
+ARG GO_VERSION=1.26.8
 ARG TARGETARCH
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
