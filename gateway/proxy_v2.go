@@ -457,14 +457,19 @@ func (pv2 *reverseProxyV2) EthMaxPriorityFeePerGas(ctx context.Context) (ethtype
 }
 
 func (pv2 *reverseProxyV2) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthUint64, error) {
-	// validate params
-	_, err := jsonrpc.DecodeParams[ethtypes.EthEstimateGasParams](p)
+	params, err := jsonrpc.DecodeParams[ethtypes.EthEstimateGasParams](p)
 	if err != nil {
 		return ethtypes.EthUint64(0), xerrors.Errorf("decoding params: %w", err)
 	}
 
 	if err := pv2.gateway.limit(ctx, stateRateLimitTokens); err != nil {
 		return 0, err
+	}
+
+	if params.BlkParam != nil {
+		if err := pv2.gateway.checkEthBlockParam(ctx, *params.BlkParam, 0); err != nil {
+			return 0, err
+		}
 	}
 
 	// todo limit gas? to what?
@@ -538,6 +543,10 @@ func (pv2 *reverseProxyV2) EthNewFilter(ctx context.Context, filter *ethtypes.Et
 	}
 
 	if err := pv2.gateway.checkEthEventFilterBlockRange(ctx, filter, pv2.chainHeadHeight); err != nil {
+		return ethtypes.EthFilterID{}, err
+	}
+
+	if err := pv2.gateway.checkEthFilterLookback(ctx, filter); err != nil {
 		return ethtypes.EthFilterID{}, err
 	}
 
