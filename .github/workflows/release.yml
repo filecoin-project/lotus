@@ -43,7 +43,7 @@ jobs:
       projects: ${{ steps.projects.outputs.projects }}
     steps:
       - name: Check out lotus
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           ref: ${{ github.event.inputs.ref }}
@@ -87,7 +87,7 @@ jobs:
             xargs -I {} -0 echo "config={}" |
             tee -a $GITHUB_OUTPUT
       - name: Check out lotus
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: 'recursive'
           fetch-depth: 0
@@ -96,7 +96,7 @@ jobs:
       - name: Install Go
         uses: ./.github/actions/install-go
       - if: github.event.inputs.ref
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: 'recursive'
           fetch-depth: 0
@@ -132,7 +132,7 @@ jobs:
             fi
           done
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: lotus-${{ matrix.project }}-${{ runner.os }}-${{ runner.arch }}
           path: |
@@ -162,17 +162,17 @@ jobs:
             xargs -I {} -0 echo "config={}" |
             tee -a $GITHUB_OUTPUT
       - name: Check out lotus
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: 'recursive'
           fetch-depth: 0
       - name: Download Linux X64 binaries
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: lotus-${{ matrix.project }}-Linux-X64
           path: linux_amd64_v1
       - name: Download macOS ARM64 binaries
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: lotus-${{ matrix.project }}-macOS-ARM64
           path: darwin_arm64
