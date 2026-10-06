@@ -184,7 +184,7 @@
 - [ ] Backported [everything with the "backport" label](https://github.com/filecoin-project/lotus/issues?q=label%3Arelease%2Fbackport+)
 - [ ] Create a PR with title `build: backport changes for {{$.Type}} v{{$.Tag}}{{$tagSuffix}}`
    - Link to PR:
-- [ ] Squash-merge the backport PR, then base the release PR on the updated release branch.
+- [ ] Rebase-merge the backport PR, then base the release PR on the updated release branch.
 - [ ] Remove the "backport" label from all backported PRs (no ["backport" issues](https://github.com/filecoin-project/lotus/issues?q=label%3Arelease%2Fbackport+))
 <!--  {{end}}-->
 
