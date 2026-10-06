@@ -53,8 +53,13 @@ This command is useful for backfilling the chain index over a range of historica
 the new ChainIndexer. It can also be run periodically to validate the index's integrity using system schedulers
 like cron.
 
-If there are any errors during the validation process, the command will exit with a non-zero status and log the
-number of failed RPC calls. Otherwise, it will exit with a zero status.
+An epoch that fails validation is retried once before moving on. A failure on retry is reported as such and
+points to a problem that will likely persist, rather than a transient one. Validation halts without retrying at
+an epoch for which the chain store has no data.
+
+If any epoch still fails after its retry, or validation halts, the command will exit with a non-zero status and
+log the number of failed validations. Otherwise, including when every failure succeeded on retry, it will exit
+with a zero status.
 	`,
 	Flags: []cli.Flag{
 		&cli.IntFlag{
@@ -124,7 +129,8 @@ number of failed RPC calls. Otherwise, it will exit with a zero status.
 
 		quiet := cctx.Bool("quiet")
 
-		failedRPCs := 0
+		failedValidations := 0
+		successfulRetries := 0
 		successfulBackfills := 0
 		successfulValidations := 0
 		successfulNullRounds := 0
@@ -152,14 +158,29 @@ number of failed RPC calls. Otherwise, it will exit with a zero status.
 			}
 
 			indexValidateResp, err := api.ChainValidateIndex(ctx, abi.ChainEpoch(epoch), backfill)
+			if err != nil && !isMissingChainData(err) {
+				if ctx.Err() != nil {
+					return ctx.Err()
+				}
+				_, _ = fmt.Fprintf(cctx.App.Writer, "%s ! Epoch %d; failure, retrying: %s\n", currentTimeString(), epoch, err)
+				indexValidateResp, err = api.ChainValidateIndex(ctx, abi.ChainEpoch(epoch), backfill)
+				if err == nil {
+					if !quiet || logGood {
+						_, _ = fmt.Fprintf(cctx.App.Writer, "%s ✓ Epoch %d; succeeded on retry\n", currentTimeString(), epoch)
+					}
+					successfulRetries++
+				}
+			}
 			if err != nil {
-				if strings.Contains(err.Error(), "chain store does not contain data") {
+				if isMissingChainData(err) {
 					haltHeight = epoch
 					break
 				}
-
-				_, _ = fmt.Fprintf(cctx.App.Writer, "%s ✗ Epoch %d; failure: %s\n", currentTimeString(), epoch, err)
-				failedRPCs++
+				if ctx.Err() != nil {
+					return ctx.Err()
+				}
+				_, _ = fmt.Fprintf(cctx.App.Writer, "%s ✗ Epoch %d; FAILED AGAIN ON RETRY: %s\n", currentTimeString(), epoch, err)
+				failedValidations++
 				continue
 			}
 
@@ -189,20 +210,27 @@ number of failed RPC calls. Otherwise, it will exit with a zero status.
 
 		if !quiet {
 			_, _ = fmt.Fprintf(cctx.App.Writer, "\n%s Chain index validation summary:\n", currentTimeString())
-			_, _ = fmt.Fprintf(cctx.App.Writer, "Total failed RPC calls: %d\n", failedRPCs)
+			_, _ = fmt.Fprintf(cctx.App.Writer, "Total failed validations: %d\n", failedValidations)
+			if successfulRetries > 0 {
+				_, _ = fmt.Fprintf(cctx.App.Writer, "Total validations that succeeded on retry: %d\n", successfulRetries)
+			}
 			_, _ = fmt.Fprintf(cctx.App.Writer, "Total successful backfills: %d\n", successfulBackfills)
 			_, _ = fmt.Fprintf(cctx.App.Writer, "Total successful validations without backfilling: %d\n", successfulValidations)
 			_, _ = fmt.Fprintf(cctx.App.Writer, "Total successful Null round validations: %d\n", successfulNullRounds)
 		}
 
 		if haltHeight >= 0 {
-			return fmt.Errorf("chain index validation and backfilled halted at height %d as chain state does contain data for that height", haltHeight)
-		} else if failedRPCs > 0 {
-			return fmt.Errorf("chain index validation failed with %d RPC errors", failedRPCs)
+			return fmt.Errorf("chain index validation and backfill halted at height %d as chain state does not contain data for that height", haltHeight)
+		} else if failedValidations > 0 {
+			return fmt.Errorf("chain index validation failed with %d failed validations", failedValidations)
 		}
 
 		return nil
 	},
+}
+
+func isMissingChainData(err error) bool {
+	return strings.Contains(err.Error(), "chain store does not contain data")
 }
 
 func currentTimeString() string {

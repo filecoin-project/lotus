@@ -185,7 +185,8 @@ func (si *SqliteIndexer) ChainValidateIndex(ctx context.Context, epoch abi.Chain
 }
 
 func (si *SqliteIndexer) validateIsNullRound(ctx context.Context, epoch abi.ChainEpoch) (*types.IndexValidation, error) {
-	// make sure we do not have tipset(reverted or non-reverted) indexed at this epoch
+	// make sure we do not have a non-reverted tipset indexed at this epoch; a
+	// reverted tipset from an abandoned fork may legitimately remain here
 	var isNullRound bool
 	err := si.stmts.hasNullRoundAtHeightStmt.QueryRowContext(ctx, epoch).Scan(&isNullRound)
 	if err != nil {

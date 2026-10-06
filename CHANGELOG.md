@@ -22,6 +22,7 @@
 
 ## 🐛 Bug Fixes
 
+- fix(chainindex): `lotus index validate-backfill` now restores the event-index completion marker (tipset bloom) missing from tipsets indexed before v1.36.1. Since v1.36.3, `eth_getLogs` rejects ranges covering such tipsets with `not found in index`; run `validate-backfill` over the affected range to repair them. With `--backfill=false`, validation reports them as failures. ([filecoin-project/lotus#13829](https://github.com/filecoin-project/lotus/pull/13829))
 - fix(mpool): `MpoolCheckReplaceMessages` rejects nil replacement messages. ([filecoin-project/lotus#13866](https://github.com/filecoin-project/lotus/pull/13866))
 - fix(lotus-fountain): remove the deprecated DataCap faucet. ([filecoin-project/lotus#13840](https://github.com/filecoin-project/lotus/pull/13840))
 - fix(chainindex): `lotus index validate-backfill --backfill` now restores the event-index completion marker (tipset bloom) missing from tipsets indexed before v1.36.1. Since v1.36.3, `eth_getLogs` rejects ranges covering such tipsets with `not found in index`; run `validate-backfill --backfill` over the affected range to repair them. Without `--backfill`, validation reports them as failures. ([filecoin-project/lotus#13829](https://github.com/filecoin-project/lotus/issues/13829))
@@ -31,6 +32,7 @@
 - fix(eth): `EthBigInt` JSON decoding rejects malformed hex instead of reading it as `0x0` ([filecoin-project/lotus#13824](https://github.com/filecoin-project/lotus/pull/13824))
 - fix(paths): storage path scanning no longer fails on hidden files such as NFS `.nfsXXXX` leftovers in sector directories. ([filecoin-project/lotus#13830](https://github.com/filecoin-project/lotus/pull/13830))
 - fix(chainindex): don't sqlite vacuum during migrations. ([filecoin-project/lotus#13828](https://github.com/filecoin-project/lotus/pull/13828))
+- fix(chainindex): `lotus index validate-backfill` retries failed epochs and accepts reverted fork tipsets at null rounds; index database pragmas apply to every connection. ([filecoin-project/lotus#13833](https://github.com/filecoin-project/lotus/pull/13833))
 - fix(lotus-bench): `cli --cmd` rejects an empty command, non-positive concurrency or out-of-range qps instead of panicking. ([filecoin-project/lotus#13842](https://github.com/filecoin-project/lotus/pull/13842))
 - fix(eth): `eth_subscribe` no longer leaks a subscription on the node when the event type or an address is rejected. ([filecoin-project/lotus#13838](https://github.com/filecoin-project/lotus/pull/13838))
 - fix(config): the daemon no longer refuses to load a config without `EnableSplitstore` when `LOTUS_CHAINSTORE_ENABLESPLITSTORE` is set. ([filecoin-project/lotus#13851](https://github.com/filecoin-project/lotus/pull/13851))
