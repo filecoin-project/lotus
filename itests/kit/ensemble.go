@@ -380,9 +380,11 @@ func (n *Ensemble) FailureContext(ctx context.Context) context.Context {
 	return linked
 }
 
-// withCancelOn derives a context from `ctx` that is also cancelled when `failure` is, with
-// `failure`'s cause.
+// withCancelOn derives a context from ctx, also cancelled with failure's cause when non-nil.
 func withCancelOn(ctx, failure context.Context) (context.Context, context.CancelFunc) {
+	if failure == nil {
+		return context.WithCancel(ctx)
+	}
 	linked, cancel := context.WithCancelCause(ctx)
 	stop := context.AfterFunc(failure, func() {
 		cancel(context.Cause(failure))
@@ -393,12 +395,12 @@ func withCancelOn(ctx, failure context.Context) (context.Context, context.Cancel
 	}
 }
 
-// haltOn returns while `failure` is live. Once it's cancelled it ends the calling goroutine:
+// haltOn returns while failure is nil or live. Once it's cancelled it ends the calling goroutine:
 // failing the test with the failure's cause, or quietly when test cleanup cancelled it, since a
 // wait still running then belongs to a goroutine the test has left behind.
 func haltOn(failure context.Context, t *testing.T) {
 	t.Helper()
-	if failure.Err() == nil {
+	if failure == nil || failure.Err() == nil {
 		return
 	}
 	cause := context.Cause(failure)

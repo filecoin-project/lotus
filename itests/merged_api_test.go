@@ -2,12 +2,15 @@ package itests
 
 import (
 	"context"
+	"errors"
 	"testing"
 
+	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-state-types/big"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/itests/kit"
@@ -31,12 +34,26 @@ func TestAPIMergeProxy(t *testing.T) {
 		ens.FullNode(&nd, nopts...)
 		nodes[i] = &nd
 	}
-	merged := kit.MergeFullNodes(nodes)
+	var proxy api.FullNodeStruct
+	cliutil.FullNodeProxy(nodes, &proxy)
+	merged := *nodes[0]
+	merged.FullNode = &proxy
 
 	var miner kit.TestMiner
-	ens.Miner(&miner, merged, nopts...)
+	ens.Miner(&miner, &merged, nopts...)
 
 	ens.Start()
+
+	t.Run("cancelled waits preserve the cause", func(t *testing.T) {
+		cause := errors.New("caller stopped waiting")
+		waitCtx, cancel := context.WithCancelCause(ctx)
+		cancel(cause)
+
+		_, err := merged.WaitMsgResult(waitCtx, cid.Undef, 0)
+		require.ErrorIs(t, err, cause)
+		_, err = merged.WaitTillChainOrError(waitCtx, func(*types.TipSet) bool { return false })
+		require.ErrorIs(t, err, cause)
+	})
 
 	nd1ID, err := nodes[0].ID(ctx)
 	require.NoError(t, err)

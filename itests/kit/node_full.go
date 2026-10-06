@@ -31,7 +31,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet/key"
-	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/gateway"
 	"github.com/filecoin-project/lotus/node"
 )
@@ -67,22 +66,6 @@ type TestFullNode struct {
 	// failure is the ensemble's failure context, nil for a node made outside an ensemble. Waits on
 	// the chain end when it is cancelled.
 	failure context.Context
-}
-
-func MergeFullNodes(fullNodes []*TestFullNode) *TestFullNode {
-	var wrappedFullNode TestFullNode
-	var fns api.FullNodeStruct
-	wrappedFullNode.FullNode = &fns
-
-	cliutil.FullNodeProxy(fullNodes, &fns)
-
-	wrappedFullNode.t = fullNodes[0].t
-	wrappedFullNode.ListenAddr = fullNodes[0].ListenAddr
-	wrappedFullNode.DefaultKey = fullNodes[0].DefaultKey
-	wrappedFullNode.Stop = fullNodes[0].Stop
-	wrappedFullNode.options = fullNodes[0].options
-
-	return &wrappedFullNode
 }
 
 func (f TestFullNode) Shutdown(ctx context.Context) error {
