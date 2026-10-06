@@ -9,7 +9,7 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+    - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
       with:
         go-version: stable
         cache: false
@@ -17,7 +17,7 @@ runs:
       uses: ipdxco/unified-github-workflows/.github/actions/read-go-mod@d9b156f4be9fae6843707f5e5cda2fb079f821ac # v1.0.45
       with:
         working-directory: ${{ inputs.working-directory || github.workspace }}
-    - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+    - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
       with:
         go-version: ${{ fromJSON(steps.go-mod.outputs.json).Go }}
         cache: false
