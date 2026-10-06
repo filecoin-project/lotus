@@ -59,6 +59,8 @@
 <details open>
   <summary>Section</summary>
 
+- [ ] Use the exact Go version from `go.mod` for generation and builds: `export GOTOOLCHAIN="go$(awk '$1 == "go" {print $2}' go.mod)"`. Recompute this after switching branches; a newer installed Go does not automatically downgrade to the version used by CI.
+
 <!--{{if ne .NetworkUpgrade ""}}-->
 - [ ] Make sure all [Lotus dependencies are updated to the correct versions for the network upgrade](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/Update_Dependencies_Lotus.md)
    - Link to Lotus PR:
@@ -159,7 +161,10 @@
 <!--  {{end}}-->
 
 > [!IMPORTANT]
-> These PRs should be done in and target the relevant release branch for this issue.
+> Work on a feature branch and open PRs targeting the relevant release branch. Do not push release changes directly to a release branch, even if branch protection can be bypassed.
+<!--  {{if and (contains "Node" $.Type) (contains "Miner" $.Type)}}-->
+> The verified fast-forward for a combined release below is the exception.
+<!--  {{end}}-->
 <!--  {{if contains "Node" $.Type}}-->
 > Node branch: `release/v{{$.Tag}}`
 <!--  {{end}}-->
@@ -179,7 +184,7 @@
 - [ ] Backported [everything with the "backport" label](https://github.com/filecoin-project/lotus/issues?q=label%3Arelease%2Fbackport+)
 - [ ] Create a PR with title `build: backport changes for {{$.Type}} v{{$.Tag}}{{$tagSuffix}}`
    - Link to PR:
-- [ ] Merge PR
+- [ ] Squash-merge the backport PR, then base the release PR on the updated release branch.
 - [ ] Remove the "backport" label from all backported PRs (no ["backport" issues](https://github.com/filecoin-project/lotus/issues?q=label%3Arelease%2Fbackport+))
 <!--  {{end}}-->
 
@@ -195,23 +200,22 @@
 <!--  {{if and (contains "Node" $.Type) (contains "Miner" $.Type)}}-->
     - If the release branches still point at the same commit, one PR that updates both version strings is expected. If the branches diverge later, add/link one PR per branch here.
 <!--  {{end}}-->
-- [ ] Run `make clean` before generating and building, especially in a long-lived clone. `build/.update-modules` and `build/.filecoin-install` are stamp files that can be newer than the actual submodule commit, which makes `make deps` skip `git submodule update --init --recursive` and silently link against a stale `libfilcrypto.a`. `make clean` removes both stamps and also runs `filecoin-ffi`'s own clean target.
-   - After `make deps`, `git submodule status` should show no leading `+` on `extern/filecoin-ffi`.
-   - The built version string should have no `.dirty` suffix (check with the built binary's `--version`).
+- [ ] Run `make clean && make deps` before generating and building to remove stale dependency stamps and rebuild FFI for the pinned submodule commit.
+   - Check `git submodule status extern/filecoin-ffi`: it must have no leading `+`, `-`, or `U`.
+   - After committing the release changes, build each release binary and verify its `--version` reports the intended version without a `.dirty` suffix.
 - [ ] Run `make gen && make docsgen-cli` to generate documentation
 - [ ] Create a draft PR with title `build: release Lotus {{$.Type}} v{{$.Tag}}{{$tagSuffix}}`
    - Link to PR:
    - Opening a PR will trigger a CI run that will build assets, create a draft GitHub release, and attach the assets.
 - [ ] Changelog prep
-   - [ ] Convert the top of `CHANGELOG.md` from a plain `UNRELEASED` section into the dated release entry, **without renaming or removing the `# UNRELEASED` header**:
-      1. Insert a new `# {{$.Type}} v{{$.Tag}}{{$tagSuffix}} / {date}` section directly below `# UNRELEASED`, with a one-sentence summary paragraph.
-      2. Move each bullet from `# UNRELEASED`'s subsections (`Upgrade Warnings`, `New Features`, `Bug Fixes`, `Improvements`) down into the matching subsection under the new dated section. Do not duplicate content between the two, and do not add anything beyond what is already in `UNRELEASED` at this point (confirm any additions with the release owner first).
-      3. Leave `# UNRELEASED` in place above the dated section, with its subsection headers present but now empty of bullets. See `release/v1.36.2`'s tip for a worked example of the expected shape.
-      4. Add `## 📝 Changelog` (compare link against the previous stable tag found earlier, e.g. `https://github.com/filecoin-project/lotus/compare/release/vPREVIOUS...release/v{{$.Tag}}{{$tagSuffix}}`) and `## 👨‍👩‍👧‍👦 Contributors` (commit/lines/files-changed table) sections at the end of the dated entry.
-      - **Why the `# UNRELEASED` header must stay:** the [release workflow](https://github.com/filecoin-project/lotus/blob/master/.github/workflows/release.yml#L220-L229)'s draft-release-body generation parses `CHANGELOG.md` fresh only on the *first* CI run for this tag and on the run that finally publishes the release; every other rerun just reuses whatever draft body already exists instead of re-parsing the file. That parse splits the file on `^# ` boundaries and matches, working from the bottom of the file up, either the literal tag string `^# {{$.Tag}}{{$tagSuffix}} ` (note: this is the bare tag, e.g. `v1.36.3`, not `Node v1.36.3`), the bare version as a standalone token in the header line (covers a shared `Node and Miner` header for both projects), or `^# UNRELEASED`. If none of those match before a draft release exists for this tag, the generated body comes out empty. ([Caught by Copilot review on the v1.36.3 release PR](https://github.com/filecoin-project/lotus/pull/13782#discussion_r3983862233) after an agent renamed `UNRELEASED` away entirely; the bare-version matching was added in [filecoin-project/lotus#13816](https://github.com/filecoin-project/lotus/pull/13816) after the same pattern nearly repeated on the v1.37.0-rc1 release PR.)
-      - **If you ever need to delete an existing draft release** (e.g. because its content looks stale from an earlier attempt): do not assume the next CI run will regenerate it correctly unless it's the push-triggered publish run (see the note below). By that point `UNRELEASED` is usually already emptied, so an interim rerun's auto-generated body will come out empty or wrong. Recreate it yourself first with the real content, e.g. `gh release create v{{$.Tag}}{{$tagSuffix}} --draft --title v{{$.Tag}}{{$tagSuffix}} --notes-file <file-built-from-the-dated-CHANGELOG-section>`.
-      - Note: after a draft release exists, rerunning the [release workflow](https://github.com/filecoin-project/lotus/blob/master/.github/workflows/release.yml#L220-L229) on further CI runs during review preserves the existing draft release body — it does not re-parse `CHANGELOG.md`. If editorial review changes release-note content in CHANGELOG *before* merge, update the draft GitHub release body too so reviewers actually see the current text ([filecoin-project/lotus#13816](https://github.com/filecoin-project/lotus/pull/13816) fixed the underlying bug where this sync was silently skipped even past merge — the [push-triggered publish step](https://github.com/filecoin-project/lotus/blob/master/.github/workflows/release.yml#L307-L308) now always regenerates the body fresh from `CHANGELOG.md` at that point, so the final published release is guaranteed to match the merged `CHANGELOG.md` even if the manual draft sync was missed — but the manual sync during review is still good practice for reviewer visibility).
-      - Commit structure: past releases folded this change into the same commit/PR as the version bump (e.g. `release/v1.36.1`'s [`d7491c12d`](https://github.com/filecoin-project/lotus/commit/d7491c12d3b67da4416192c079e1c1718fcf3db9), `release/v1.36.2`'s [`c6f4d0240`](https://github.com/filecoin-project/lotus/commit/c6f4d02400dba55ebc5ab3677ef2ae5a5f4d1aef)). A single dedicated commit titled `docs(release): finalize v{{$.Tag}}{{$tagSuffix}} release notes in CHANGELOG` also works and makes the Post-Release cherry-pick-back-to-master step cleaner by isolating exactly the CHANGELOG diff. Past releases used inconsistent titles for this step (`docs: prepare vX.Y.Z changelog`, `chore: prep changelog Lotus vX.Y.Z`, `chore: update changelog`) with no real convention; pick one of the two approaches above and stay consistent through Post-Release.
+   - [ ] Prepare `# {{$.Type}} v{{$.Tag}}{{$tagSuffix}} / {date}` below `# UNRELEASED`, with a short release summary and the relevant warnings, features, fixes, and improvements.
+      - Move this release's entries out of `UNRELEASED`, keeping that header and its empty subsection headers. When promoting an RC, carry its release content forward into the new entry along with subsequent fixes; do not lose it by copying only the now-empty `UNRELEASED` section.
+      - Include each change once in the new entry. Check against the previous stable release and git history so already-released changes are not presented as new; preserve historical release entries.
+      - Add `## 📝 Changelog` and `## 👨‍👩‍👧‍👦 Contributors` sections using the actual previous stable tag for each project and the intended release tag. Use tags in compare links (`PREVIOUS_TAG...TARGET_TAG`), not RC-named release branches. Generate contributor statistics with `./scripts/mkreleaselog PREVIOUS_TAG HEAD`.
+      - Keep changelog edits separate from unrelated fixes where practical, so the final release diff is easy to review and copy back to `master`.
+   - [ ] Copy the reviewed dated entry into each draft GitHub release body, and repeat after editorial changes: `gh release edit TAG --repo filecoin-project/lotus --notes-file RELEASE_NOTES_FILE`.
+      - Check the workflow on the release branch: existing nonempty draft bodies are currently reused even during publication, and a combined `Node and Miner` heading is not matched by the current parser. Do not assume a rerun, a recreated draft, or the publish step will recover the dated entry. [#13816](https://github.com/filecoin-project/lotus/pull/13816) proposes fixes but must be merged and included in the release branch before relying on them.
+      - If a draft must be recreated, supply the reviewed notes explicitly with `gh release create TAG --repo filecoin-project/lotus --draft --title TAG --notes-file RELEASE_NOTES_FILE`, then verify its body and assets before publishing.
 <!--  {{if contains "Node" $.Type}}-->
       - Node release body: `gh release view v{{$.Tag}}{{$tagSuffix}} --repo filecoin-project/lotus --json body -q .body`
 <!--  {{end}}-->
@@ -220,6 +224,9 @@
 <!--  {{end}}-->
    - [ ] Perform editorial review (e.g., callout breaking changes, new features, FIPs, actor bundles)
 <!--  {{if ne $.NetworkUpgrade ""}}-->
+      - Read the linked [FIP documents](https://github.com/filecoin-project/FIPs) for the exact titles and scope; do not infer titles from the change descriptions.
+      - Cite actual migration benchmarks and their hardware/context. If measurements are missing, leave a clearly marked TODO for the release owner instead of inventing durations.
+      - Verify the upgrade epoch's UTC timestamp and open the local-time link to check its date/time. For World Time Buddy, include and recompute `sln` for this upgrade; do not copy an earlier release's hour range.
 <!--    {{if $stable}}-->
    - [ ] (network upgrade) Ensure the Mainnet upgrade epoch is specified.
 <!--    {{else}}-->
@@ -238,9 +245,6 @@
       - Example command looking at git commits: `git log --oneline --graph PREVIOUS_TAG..HEAD`
       - Example GitHub UI search looking at merged PRs into master, where `YYYY-MM-DD` is the previous stable release publish date: https://github.com/filecoin-project/lotus/pulls?q=is%3Apr+base%3Amaster+merged%3A%3EYYYY-MM-DD
       - Example `gh` cli command looking at merged PRs into master and sorted by title to group similar areas: `gh pr list --repo filecoin-project/lotus --search "base:master merged:>YYYY-MM-DD" --json number,mergedAt,author,title | jq -r '.[] | [.number, .mergedAt, .author.login, .title] | @tsv' | sort -k4`
-<!--  {{if $stable}}-->
-   - [ ] Review and update the draft GitHub release body so it matches the CHANGELOG.
-<!--  {{end}}-->
    - [ ] Update the PR with the commit(s) made to the CHANGELOG
 <!--  {{if $stable}}-->
 - [ ] Confirm the release PR CI is green, including release asset generation.
@@ -250,6 +254,16 @@
 - [ ] Mark the PR "ready for review" (non-draft)
 - [ ] Merge the PR
    - Merging the PR will trigger a CI run that will build assets, attach the assets to the GitHub release, publish the GitHub release, and create the corresponding git tag.
+- [ ] Wait for the post-merge Release workflow to finish, then verify each published release's tag commit, binaries, checksums, and complete notes against the reviewed CHANGELOG entry.
+<!--  {{if and (contains "Node" $.Type) (contains "Miner" $.Type)}}-->
+- [ ] If one PR released both projects from the node branch, fast-forward the miner branch only after that Release workflow completes successfully. Both branch pushes can otherwise try to update the same releases concurrently.
+   - Fetch both branches and confirm the miner branch is an ancestor of the node release commit before pushing:
+      ```sh
+      git fetch origin release/v{{$.Tag}} release/miner/v{{$.Tag}}
+      git merge-base --is-ancestor origin/release/miner/v{{$.Tag}} origin/release/v{{$.Tag}} && git push origin origin/release/v{{$.Tag}}:refs/heads/release/miner/v{{$.Tag}}
+      ```
+   - If ancestry verification fails, reconcile the branches through a PR; do not force-push. Wait for any second Release workflow and verify both branch heads, release tags, assets, and bodies again.
+<!--  {{end}}-->
 - [ ] Update `Estimated shipping date` table
 - [ ] Comment on this issue announcing the release:
    - Link to issue comment:
@@ -274,10 +288,14 @@
 <!--{{if contains "Miner" .Type}}-->
    - Miner source branch: `release/miner/v{{.Tag}}`
 <!--{{end}}-->
-   - Assuming we followed [the process of merging changes into `master` first before backporting to the release branch](https://github.com/filecoin-project/lotus/blob/master/LOTUS_RELEASE_FLOW.md#branch-and-tag-strategy), the only changes should be CHANGELOG updates.
+   - Bring back only `CHANGELOG.md` changes. If a release commit also changes versions or generated files, extract its changelog diff (for example, `git diff RELEASE_COMMIT^ RELEASE_COMMIT -- CHANGELOG.md`) and apply that diff with `git apply --3way` instead of cherry-picking the whole commit.
+   - Replace the `UNRELEASED v{{.Tag}}` placeholder (if present) with the final dated release entry, preserving newer `master`-only entries under `UNRELEASED` and all historical releases. Remove entries from `UNRELEASED` only when they are included in the released entry; resolve conflicts by checking both histories.
+   - Confirm the PR changes only `CHANGELOG.md`, with each released change appearing once in the final entry and no version rollback or duplicate release heading.
 - [ ] Finish updating/merging the [RELEASE_ISSUE_TEMPLATE.md](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md) PR from `Release Setup` with any improvements determined from this latest release iteration.
+- If a version-update PR is missing, trigger that repository's version-bump workflow manually, then review the generated diff.
 - [ ] Review and approve the auto-generated PR in [lotus-docs](https://github.com/filecoin-project/lotus-docs/pulls) that updates the latest Lotus version information.
 - [ ] Review and approve the auto-generated PR in [homebrew-lotus](https://github.com/filecoin-project/homebrew-lotus/pulls) that updates the homebrew to the latest Lotus version.
+   - Verify the formula's asset URLs and independently calculate SHA-256 checksums from the published archives before approving.
 - [ ] Stage any security advisories for future publishing per [policy](https://github.com/filecoin-project/lotus/blob/master/LOTUS_RELEASE_FLOW.md#security-fix-policy).
 </details>
 
