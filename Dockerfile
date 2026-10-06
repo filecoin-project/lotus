@@ -1,6 +1,6 @@
 #####################################
 FROM debian:trixie AS lotus-builder
-MAINTAINER Lotus Development Team
+LABEL org.opencontainers.image.authors="Lotus Development Team"
 
 ARG GO_VERSION=1.25.14
 ARG TARGETARCH
@@ -38,7 +38,7 @@ ENV XDG_CACHE_HOME="/tmp"
 ENV RUSTUP_HOME=/usr/local/rustup \
     CARGO_HOME=/usr/local/cargo \
     PATH=/usr/local/cargo/bin:$PATH \
-    RUST_VERSION=1.86.0
+    RUST_VERSION=1.94.0
 
 RUN set -eux; \
     dpkgArch="$(dpkg --print-architecture)"; \
@@ -76,7 +76,9 @@ RUN make buildall
 
 #####################################
 FROM debian:trixie AS lotus-base
-MAINTAINER Lotus Development Team
+RUN apt-get update && apt-get install -y --no-install-recommends libudev1 \
+ && rm -rf /var/lib/apt/lists/*
+LABEL org.opencontainers.image.authors="Lotus Development Team"
 
 # Base resources
 COPY --from=lotus-builder /etc/ssl/certs                           /etc/ssl/certs
@@ -95,17 +97,17 @@ RUN useradd -r -u 532 -U fc \
 
 #####################################
 FROM lotus-base AS lotus
-MAINTAINER Lotus Development Team
+LABEL org.opencontainers.image.authors="Lotus Development Team"
 
 COPY --from=lotus-builder /opt/filecoin/lotus /usr/local/bin/
 COPY --from=lotus-builder /opt/filecoin/lotus-shed /usr/local/bin/
 COPY scripts/docker-lotus-entrypoint.sh /
 
 ARG DOCKER_LOTUS_IMPORT_SNAPSHOT=https://forest-archive.chainsafe.dev/latest/mainnet/
-ENV DOCKER_LOTUS_IMPORT_SNAPSHOT ${DOCKER_LOTUS_IMPORT_SNAPSHOT}
-ENV FIL_PROOFS_PARAMETER_CACHE /var/tmp/filecoin-proof-parameters
-ENV LOTUS_PATH /var/lib/lotus
-ENV DOCKER_LOTUS_IMPORT_WALLET ""
+ENV DOCKER_LOTUS_IMPORT_SNAPSHOT=${DOCKER_LOTUS_IMPORT_SNAPSHOT}
+ENV FIL_PROOFS_PARAMETER_CACHE=/var/tmp/filecoin-proof-parameters
+ENV LOTUS_PATH=/var/lib/lotus
+ENV DOCKER_LOTUS_IMPORT_WALLET=""
 
 RUN mkdir /var/lib/lotus /var/tmp/filecoin-proof-parameters
 RUN chown fc: /var/lib/lotus /var/tmp/filecoin-proof-parameters
@@ -124,11 +126,11 @@ CMD ["-help"]
 #####################################
 FROM lotus-base AS lotus-all-in-one
 
-ENV FIL_PROOFS_PARAMETER_CACHE /var/tmp/filecoin-proof-parameters
-ENV LOTUS_MINER_PATH /var/lib/lotus-miner
-ENV LOTUS_PATH /var/lib/lotus
-ENV LOTUS_WORKER_PATH /var/lib/lotus-worker
-ENV WALLET_PATH /var/lib/lotus-wallet
+ENV FIL_PROOFS_PARAMETER_CACHE=/var/tmp/filecoin-proof-parameters
+ENV LOTUS_MINER_PATH=/var/lib/lotus-miner
+ENV LOTUS_PATH=/var/lib/lotus
+ENV LOTUS_WORKER_PATH=/var/lib/lotus-worker
+ENV WALLET_PATH=/var/lib/lotus-wallet
 
 COPY --from=lotus-builder /opt/filecoin/lotus          /usr/local/bin/
 COPY --from=lotus-builder /opt/filecoin/lotus-seed     /usr/local/bin/
