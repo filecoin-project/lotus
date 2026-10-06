@@ -33,6 +33,8 @@
 
 ## 👌 Improvements
 
+- chore(deps): update `go-libp2p` to v0.50.0, `go-libp2p-pubsub` to v0.18.0 and `quic-go` to v0.62.0. ([filecoin-project/lotus#13882](https://github.com/filecoin-project/lotus/pull/13882))
+
 # Node and Miner v1.37.0 / 2026-10-06
 
 This is the stable release of the **MANDATORY Lotus v1.37.0 release**, which delivers [Filecoin network version 29, codenamed "Solstice"](https://github.com/filecoin-project/core-devs/discussions/221). This release sets the upgrade epoch for the Mainnet network to **Epoch 6470279: 2026-10-19T12:59:30Z**. [See the local time for other timezones.](https://www.worldtimebuddy.com/?qm=1&lid=100,1816670,2643743,5368361&h=100&date=2026-10-19&sln=13-14&hf=0)
