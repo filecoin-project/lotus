@@ -278,21 +278,27 @@ func TestWindowPostMaxSectorsRecoveryConfig(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	di = client.CurrentProvingDeadline(ctx, maddr)
+	// RecoveringSectorLimit caps each declaration at one sector, so the first deadline 2 close that
+	// restores power restores exactly one. Allow a second period in case the first declaration missed
+	// its cutoff.
+	di = client.DeadlineForHead(ctx, maddr)
+	firstClose := kit.DeadlineCloseAfter(di, 2, di.CurrentEpoch)
+	for period := range 2 {
+		closeAt := firstClose + abi.ChainEpoch(period)*di.WPoStProvingPeriod
+		ts = client.WaitTillChain(ctx, kit.HeightAtLeast(closeAt+5))
+		t.Logf("Now head.Height = %d, after deadline 2 closed at %d", ts.Height(), closeAt)
 
-	waitUntil = di.Open + di.WPoStProvingPeriod + 200
-	t.Logf("End for head.Height > %d", waitUntil)
+		p, err = client.StateMinerPower(ctx, maddr, ts.Key())
+		require.NoError(t, err)
+		require.Equal(t, p.MinerPower, p.TotalPower)
 
-	ts = client.WaitTillChain(ctx, kit.HeightAtLeast(waitUntil))
-	t.Logf("Now head.Height = %d", ts.Height())
-
-	p, err = client.StateMinerPower(ctx, maddr, types.EmptyTSK)
-	require.NoError(t, err)
-
-	require.Equal(t, p.MinerPower, p.TotalPower)
-
-	sectors = p.MinerPower.RawBytePower.Uint64() / uint64(ssz)
-	require.Equal(t, nSectors+kit.DefaultPresealsPerBootstrapMiner-1, int(sectors)) // -1 not recovered sector
+		sectors = p.MinerPower.RawBytePower.Uint64() / uint64(ssz)
+		if int(sectors) > nSectors+kit.DefaultPresealsPerBootstrapMiner-2 {
+			require.Equal(t, nSectors+kit.DefaultPresealsPerBootstrapMiner-1, int(sectors)) // -1 not recovered sector
+			return
+		}
+	}
+	t.Fatal("no sector recovered")
 }
 
 func TestWindowPostManualSectorsRecovery(t *testing.T) {
@@ -397,6 +403,10 @@ func TestWindowPostManualSectorsRecovery(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, p.MinerPower, p.TotalPower)
+
+	// Repair storage only once a recovery for deadline 2 is on time, so the scheduler cannot declare
+	// it first and the manual declaration is not refused as late.
+	client.WaitForDeclarableDeadline(ctx, maddr, 2)
 
 	t.Log("Make the sectors recoverable")
 
