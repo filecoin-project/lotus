@@ -73,7 +73,7 @@ jobs:
         project: ${{ fromJSON(needs.check.outputs.projects).*.name }}
         runner:
           - ubuntu-latest # Linux X64
-          - macos-14 # MacOS ARM64
+          - macos-latest # MacOS ARM64
     steps:
       - name: Print runner information
         run: echo "Building on $RUNNER_OS/$RUNNER_ARCH"
