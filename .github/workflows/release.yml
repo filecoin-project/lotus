@@ -147,6 +147,13 @@ jobs:
       # This enables the job to create and/or update GitHub releases
       contents: write
     runs-on: ubuntu-latest
+    # Serialize release jobs per project across runs. Every run releases every
+    # unreleased project, so pushes to release/vX and release/miner/vX close together
+    # would otherwise update the same GitHub release concurrently. Queued, not
+    # cancelled: the later job then finds the release published and skips it.
+    concurrency:
+      group: ${{ github.workflow }}-release-${{ matrix.project }}
+      cancel-in-progress: false
     strategy:
       fail-fast: false
       matrix:
@@ -217,17 +224,36 @@ jobs:
           gh api --paginate /repos/$GITHUB_REPOSITORY/releases --jq 'map(select(.tag_name == env.tag))' |
             jq -s add | jq -r 'map({"id": .id, "draft": .draft, "html_url": .html_url, "body": .body}) | .[0]' | tee -a $GITHUB_OUTPUT
           echo "EOF" | tee -a $GITHUB_OUTPUT
-      - name: Generate release body
+      - name: Check whether the release is already published
+        id: published
         env:
+          release: ${{ steps.before.outputs.release }}
+        run: |
+          # The check job only selects projects whose tag does not exist yet, but a
+          # concurrent run (e.g. near-simultaneous pushes to release/vX and
+          # release/miner/vX, which each release every unreleased project) may have
+          # published it since. Updating a published release would re-PATCH its body
+          # and delete and re-upload its assets, so leave it alone.
+          if jq -e '. != null and .draft == false' <<< "$release" > /dev/null; then
+            echo "::notice title=Already published::$(jq -r '.html_url' <<< "$release") was published by another run; skipping"
+            echo "skip=true" | tee -a $GITHUB_OUTPUT
+          else
+            echo "skip=false" | tee -a $GITHUB_OUTPUT
+          fi
+      - name: Generate release body
+        if: steps.published.outputs.skip != 'true'
+        env:
+          project: ${{ matrix.project }}
           tag: ${{ fromJSON(steps.project.outputs.config).tag }}
           previous: ${{ fromJSON(steps.project.outputs.config).previous }}
+          # Runs that publish the release: the push after the release PR merges, or a
+          # manual workflow_dispatch with publish=true.
+          publishing: ${{ github.event_name == 'push' || github.event.inputs.publish == 'true' }}
           # Reuse the existing draft body across reruns while the release PR is still
           # under review, so CI reruns don't clobber a body edited directly on GitHub.
-          # But on the push-triggered run that publishes the release (i.e. after the
-          # release PR merges), always regenerate from CHANGELOG.md: that's the final,
-          # reviewed text, and it may have been edited (e.g. during editorial review)
-          # after the draft body was first generated, with the workflow-preserves-body
-          # behavior silently leaving the published release out of sync otherwise.
+          # But on the run that publishes the release, always regenerate from
+          # CHANGELOG.md: that's the final, reviewed text, and it may have been edited
+          # after the draft body was first generated.
           body: ${{ (steps.before.outputs.release == 'null' || github.event_name == 'push' || github.event.inputs.publish == 'true') && '' || fromJSON(steps.before.outputs.release).body }}
           current: ${{ github.event.inputs.ref || github.sha }}
         run: |
@@ -235,18 +261,48 @@ jobs:
             echo "$body" >> release_body.md
           else
             csplit --digits=4 --quiet --elide-empty-files CHANGELOG.md '/^# /' '{*}'
-            # Section headers are usually "# $tag ..." (e.g. "# v1.37.0-rc1 / 2026-09-22"),
-            # but a combined Node+Miner release uses one shared header carrying the bare
-            # version without the node/miner tag prefix (e.g. "# Node and Miner v1.37.0-rc1
-            # / 2026-09-22"), so also match on that bare version as a standalone token.
+            # Section headers are "# <Project(s)> <version> / <date>", e.g.
+            # "# Node v1.36.3 / 2026-09-10" or, for a combined release, "# Node and Miner
+            # v1.37.0-rc1 / 2026-09-22". Match the bare version (tag without the "miner/"
+            # prefix) as a whole word, so v1.37.0 never matches v1.37.0-rc1, and require
+            # this project's name in the header, so a miner release never picks up a
+            # Node-only section of the same version. "# $tag " is the legacy form.
             version="${tag#miner/}"
+            case "$project" in
+              node) name=Node ;;
+              miner) name=Miner ;;
+              *) echo "::error::Unknown project $project"; exit 1 ;;
+            esac
+            section=""
             # Checking the files in reverse order to get to the UNRELEASED section last
             for file in $(ls -r xx*); do
-              if grep -q "^# $tag " $file || grep -q "^# UNRELEASED" $file || head -n 1 $file | tr -s ' /' '\n' | grep -qFx -- "$version"; then
-                tail -n +3 $file >> release_body.md
-                break
+              header=" $(head -n 1 "$file" | tr -s ' /' '  ') "
+              if grep -q "^# UNRELEASED" "$file"; then
+                section=unreleased
+              elif grep -q "^# $tag " "$file" || [[ "$header" == *" $version "* && "$header" == *" $name "* ]]; then
+                section=version
+              else
+                continue
               fi
+              echo "Using CHANGELOG.md section:$header"
+              tail -n +3 "$file" >> release_body.md
+              break
             done
+            # Fail rather than publish placeholder notes: the release stays a draft
+            # until CHANGELOG.md has a populated section for this version.
+            if [[ "$section" != version ]]; then
+              if [[ "$publishing" == true ]]; then
+                echo "::error title=No CHANGELOG section::CHANGELOG.md has no '# ... $name ... $version' header for $tag"
+                exit 1
+              fi
+              echo "::warning title=No CHANGELOG section::CHANGELOG.md has no '# ... $name ... $version' header for $tag; using ${section:-no section}"
+            elif ! grep -v '^#' release_body.md | grep -q '[^[:space:]]'; then
+              if [[ "$publishing" == true ]]; then
+                echo "::error title=Empty CHANGELOG section::The CHANGELOG.md section for $tag has no content"
+                exit 1
+              fi
+              echo "::warning title=Empty CHANGELOG section::The CHANGELOG.md section for $tag has no content"
+            fi
             if [[ "$previous" != '' ]]; then
               mkdir -p "$(go env GOPATH)/src/github.com/filecoin-project/lotus"
               rm -rf "$(go env GOPATH)/src/github.com/filecoin-project/lotus"
@@ -258,6 +314,7 @@ jobs:
           fi
           cat release_body.md
       - name: Create or update release
+        if: steps.published.outputs.skip != 'true'
         id: after
         env:
           method: ${{ steps.before.outputs.release == 'null' && 'POST' || 'PATCH' }}
@@ -285,6 +342,7 @@ jobs:
             tee -a $GITHUB_OUTPUT
           echo "EOF" | tee -a $GITHUB_OUTPUT
       - name: Delete old assets
+        if: steps.published.outputs.skip != 'true'
         env:
           asset_ids: ${{ toJSON(fromJSON(steps.after.outputs.release).assets.*.id) }}
           GITHUB_TOKEN: ${{ github.token }}
@@ -297,6 +355,7 @@ jobs:
               jq -r '.'
           done <<< "$(jq '.[]' <<< "$asset_ids")"
       - name: Upload new assets
+        if: steps.published.outputs.skip != 'true'
         env:
           release_id: ${{ fromJSON(steps.after.outputs.release).id }}
           GITHUB_TOKEN: ${{ github.token }}
@@ -317,7 +376,7 @@ jobs:
           done
         working-directory: dist
       - name: Publish release
-        if: github.event.inputs.publish == 'true' || github.event_name == 'push'
+        if: steps.published.outputs.skip != 'true' && (github.event.inputs.publish == 'true' || github.event_name == 'push')
         env:
           endpoint: ${{ format('/repos/{0}/releases/{1}', github.repository, fromJSON(steps.after.outputs.release).id) }}
           make_latest: ${{ matrix.project == 'node' && fromJSON(steps.project.outputs.config).latest || false }}
