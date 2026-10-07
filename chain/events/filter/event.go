@@ -3,18 +3,15 @@ package filter
 import (
 	"bytes"
 	"context"
-	"math"
 	"slices"
 	"sync"
 	"time"
 
 	"github.com/ipfs/go-cid"
-	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	amt4 "github.com/filecoin-project/go-amt-ipld/v4"
 	"github.com/filecoin-project/go-state-types/abi"
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 
@@ -568,30 +565,15 @@ func (m *EventFilterManager) loadExecutedMessages(ctx context.Context, msgTs, rc
 			continue
 		}
 
-		evtArr, err := amt4.LoadAMT(ctx, st, *rct.EventsRoot, amt4.UseTreeBitWidth(types.EventAMTBitwidth))
-		if err != nil {
-			return nil, xerrors.Errorf("load events amt: %w", err)
-		}
-
-		ems[i].evs = make([]*types.Event, evtArr.Len())
-		var evt types.Event
-		err = evtArr.ForEach(ctx, func(u uint64, deferred *cbg.Deferred) error {
-			if u > math.MaxInt {
-				return xerrors.Errorf("too many events")
-			}
-			if err := evt.UnmarshalCBOR(bytes.NewReader(deferred.Raw)); err != nil {
-				return err
-			}
-
-			cpy := evt
-			ems[i].evs[int(u)] = &cpy //nolint:scopelint
-			return nil
-		})
-
+		evs, err := cstore.ReadEvents(ctx, st, *rct.EventsRoot, 0)
 		if err != nil {
 			return nil, xerrors.Errorf("read events: %w", err)
 		}
 
+		ems[i].evs = make([]*types.Event, len(evs))
+		for j := range evs {
+			ems[i].evs[j] = &evs[j]
+		}
 	}
 
 	return ems, nil

@@ -261,3 +261,27 @@ type tabledata struct {
 	cols []string
 	data [][]interface{}
 }
+
+func TestPragmasApplyToEveryConnection(t *testing.T) {
+	ctx := context.Background()
+	db, err := sqlite.Open(filepath.Join(t.TempDir(), "test.db"))
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = db.Close() })
+
+	// Holding each connection open forces the pool to create a new one
+	var conns []*sql.Conn
+	for range 3 {
+		conn, err := db.Conn(ctx)
+		require.NoError(t, err)
+		t.Cleanup(func() { _ = conn.Close() })
+		conns = append(conns, conn)
+	}
+
+	for i, conn := range conns {
+		var foreignKeys, synchronous int
+		require.NoError(t, conn.QueryRowContext(ctx, "PRAGMA foreign_keys").Scan(&foreignKeys))
+		require.NoError(t, conn.QueryRowContext(ctx, "PRAGMA synchronous").Scan(&synchronous))
+		require.Equal(t, 1, foreignKeys, "connection %d foreign_keys", i)
+		require.Equal(t, 1, synchronous, "connection %d synchronous (NORMAL)", i)
+	}
+}

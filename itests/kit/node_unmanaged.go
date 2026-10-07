@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -55,11 +56,12 @@ var niPorepInteractiveRandomness = abi.InteractiveSealRandomness([]byte{1, 1, 1,
 // TestUnmanagedMiner is a miner that's not managed by the storage/infrastructure, all tasks must be manually executed, managed and scheduled by the test or test kit.
 // Note: `TestUnmanagedMiner` is not thread safe and assumes linear access of its methods
 type TestUnmanagedMiner struct {
-	ctx        context.Context
-	cancelFunc context.CancelFunc
-	t          *testing.T
-	options    nodeOpts
-	mockProofs bool
+	ctx                context.Context
+	cancelFunc         context.CancelFunc
+	stopFixtureContext func() bool
+	t                  *testing.T
+	options            nodeOpts
+	mockProofs         bool
 
 	cacheDir          string
 	unsealedSectorDir string
@@ -79,6 +81,9 @@ type TestUnmanagedMiner struct {
 	runningWdPostLoop bool
 	postsLk           sync.Mutex
 	posts             []windowPost
+	postFailure       func(error)
+	postFailureOnce   sync.Once
+	postErrorReported bool
 
 	ActorAddr address.Address
 	OwnerKey  *key.Key
@@ -182,6 +187,10 @@ func NewTestUnmanagedMiner(ctx context.Context, t *testing.T, full *TestFullNode
 }
 
 func (tm *TestUnmanagedMiner) Stop() {
+	if tm.stopFixtureContext != nil {
+		tm.stopFixtureContext()
+		tm.stopFixtureContext = nil
+	}
 	tm.cancelFunc()
 	tm.AssertNoWindowPostError()
 }
@@ -1096,19 +1105,33 @@ func (tm *TestUnmanagedMiner) wdPostLoop() {
 		var postCount int
 
 		recordPostOrError := func(post windowPost) {
+			if post.Error != nil {
+				if tm.ctx.Err() != nil {
+					return
+				}
+				tm.postsLk.Lock()
+				tm.posts = append(tm.posts, post)
+				tm.postErrorReported = true
+				tm.postsLk.Unlock()
+				tm.postFailureOnce.Do(func() {
+					failure := fmt.Errorf("unmanaged miner %s WindowPoSt failed: %w", tm.ActorAddr, post.Error)
+					tm.t.Error(failure)
+					if tm.postFailure != nil {
+						tm.postFailure(failure)
+					}
+				})
+				return
+			}
+
 			head, err := tm.FullNode.ChainHead(tm.ctx)
 			if err != nil {
 				tm.log("WindowPoSt submission failed to get chain head: %s", err)
 			} else {
 				post.Epoch = head.Height()
 			}
-			if post.Error != nil && tm.ctx.Err() == nil {
-				tm.log("WindowPoSt submission failed for sectors %v at epoch %d: %s", post.Posted, post.Epoch, post.Error)
-			} else if tm.ctx.Err() == nil {
+			if tm.ctx.Err() == nil {
 				postCount++
 				tm.log("WindowPoSt loop completed post %d at epoch %d for sectors %v", postCount, post.Epoch, post.Posted)
-			}
-			if tm.ctx.Err() == nil {
 				tm.postsLk.Lock()
 				tm.posts = append(tm.posts, post)
 				tm.postsLk.Unlock()
@@ -1955,38 +1978,70 @@ func mkTempFile(t *testing.T, fileContentsReader io.Reader, size uint64) (*os.Fi
 	return tempFile, nil
 }
 
-func (tm *TestUnmanagedMiner) WaitTillActivatedAndAssertPower(sectors []abi.SectorNumber, raw uint64, qa uint64) {
-	req := require.New(tm.t)
-
-	di := tm.FullNode.DeadlineForHead(tm.ctx, tm.ActorAddr)
+func (tm *TestUnmanagedMiner) WaitTillActivatedAndAssertPower(sectors []abi.SectorNumber, raw uint64, qa uint64) error {
+	di, err := tm.postWaitDeadline()
+	if err != nil {
+		return err
+	}
 
 	// wait till sectors are activated
 	for _, sectorNumber := range sectors {
-		tm.WaitTillPostCount(sectorNumber, 1)
+		if err := tm.WaitTillPostCount(sectorNumber, 1); err != nil {
+			return err
+		}
 
 		if !tm.mockProofs { // else it would pass, which we don't want
 			// if the sector is in the current or previous deadline, we can't dispute the PoSt
 			sl, err := tm.FullNode.StateSectorPartition(tm.ctx, tm.ActorAddr, sectorNumber, types.EmptyTSK)
-			req.NoError(err)
+			if err != nil {
+				return err
+			}
 			if sl.Deadline == di.Index {
 				tm.log("In current proving deadline for sector %d, waiting for the next deadline to dispute PoSt", sectorNumber)
 				// wait until we're past the proving deadline for this sector
-				tm.FullNode.WaitTillChain(tm.ctx, HeightAtLeast(di.Close+5))
+				_, err = tm.FullNode.WaitTillChainOrError(tm.ctx, HeightAtLeast(di.Close+5))
+				if err != nil {
+					return err
+				}
 			}
 			// WindowPost Dispute should fail
-			tm.AssertDisputeFails(sectorNumber)
+			if err := context.Cause(tm.ctx); err != nil {
+				return err
+			}
+			err = tm.submitPostDispute(sectorNumber)
+			if cause := context.Cause(tm.ctx); cause != nil {
+				return cause
+			}
+			if err == nil || !strings.Contains(err.Error(), "failed to dispute valid post") || !strings.Contains(err.Error(), "(RetCode=16)") {
+				return fmt.Errorf("expected valid WindowPoSt dispute rejection: %v", err)
+			}
 		}
 	}
 
 	tm.t.Log("Checking power after PoSt ...")
 
-	// Miner B should now have power
-	tm.AssertPower(raw, qa)
+	head, err := tm.FullNode.ChainHead(tm.ctx)
+	if err != nil {
+		return err
+	}
+	power, err := tm.FullNode.StateMinerPower(tm.ctx, tm.ActorAddr, head.Key())
+	if err != nil {
+		return err
+	}
+	if power.MinerPower.RawBytePower.Uint64() != raw || power.MinerPower.QualityAdjPower.Uint64() != qa {
+		return fmt.Errorf("miner %s power: expected raw %d, QA %d; got raw %s, QA %s",
+			tm.ActorAddr, raw, qa, power.MinerPower.RawBytePower, power.MinerPower.QualityAdjPower)
+	}
+	return nil
 }
 
 func (tm *TestUnmanagedMiner) AssertNoWindowPostError() {
 	tm.postsLk.Lock()
 	defer tm.postsLk.Unlock()
+	if tm.postErrorReported {
+		// wdPostLoop has already reported this terminal failure to the fixture.
+		return
+	}
 	for _, post := range tm.posts {
 		require.NoError(tm.t, post.Error, "expected no error in window post but found one at epoch %d", post.Epoch)
 	}
@@ -2002,7 +2057,6 @@ func (tm *TestUnmanagedMiner) GetPostCountSince(epoch abi.ChainEpoch, sectorNumb
 
 	var postCount int
 	for _, post := range tm.posts {
-		require.NoError(tm.t, post.Error, "expected no error in window post but found one at epoch %d", post.Epoch)
 		if post.Error == nil {
 			for _, sn := range post.Posted {
 				if post.Epoch >= epoch && sn == sectorNumber {
@@ -2014,44 +2068,65 @@ func (tm *TestUnmanagedMiner) GetPostCountSince(epoch abi.ChainEpoch, sectorNumb
 	return postCount
 }
 
+func (tm *TestUnmanagedMiner) postWaitDeadline() (*dline.Info, error) {
+	if err := context.Cause(tm.ctx); err != nil {
+		return nil, err
+	}
+	head, err := tm.FullNode.ChainHead(tm.ctx)
+	if err != nil {
+		return nil, err
+	}
+	di, err := tm.FullNode.StateMinerProvingDeadline(tm.ctx, tm.ActorAddr, head.Key())
+	if err != nil {
+		return nil, err
+	}
+	return DeadlineForHeight(di, head.Height()), nil
+}
+
 // WaitTillPostCount waits until the sector appears in count successful WindowPoSts. A live sector is
-// proven once per proving period, so a miner that adds no post in one and a half of them has stopped:
-// fail there rather than spin until the test binary's own timeout.
-func (tm *TestUnmanagedMiner) WaitTillPostCount(sectorNumber abi.SectorNumber, count int) {
-	di := tm.FullNode.DeadlineForHead(tm.ctx, tm.ActorAddr)
+// proven once per proving period, so a miner that adds no post in one and a half of them has stopped.
+// Cancellation and stalled progress return errors for the caller to report on its own goroutine.
+func (tm *TestUnmanagedMiner) WaitTillPostCount(sectorNumber abi.SectorNumber, count int) error {
+	di, err := tm.postWaitDeadline()
+	if err != nil {
+		return err
+	}
 	allowance := di.WPoStProvingPeriod + di.WPoStProvingPeriod/2
 	posted := tm.GetPostCount(sectorNumber)
 	progressAt := di.CurrentEpoch
 
 	for i := 0; tm.ctx.Err() == nil; i++ {
+		if err := context.Cause(tm.ctx); err != nil {
+			return err
+		}
 		if now := tm.GetPostCount(sectorNumber); now >= count {
-			return
+			return nil
 		} else if now > posted {
 			posted = now
-			progressAt = tm.head().Height()
+			head, err := tm.FullNode.ChainHead(tm.ctx)
+			if err != nil {
+				return err
+			}
+			progressAt = head.Height()
 		}
 		if i%10 == 0 {
 			tm.log("Waiting for sector %d to be posted", sectorNumber)
-			// Callers run this in their own goroutines, so fail the test and return rather than
-			// FailNow, which unwinds only this goroutine and strands whoever waits on it.
-			if height := tm.head().Height(); height >= progressAt+allowance {
-				tm.t.Errorf("miner %s stopped posting: sector %d reached %d of %d WindowPoSts, last one by epoch %d, now %d",
+			head, err := tm.FullNode.ChainHead(tm.ctx)
+			if err != nil {
+				return err
+			}
+			if height := head.Height(); height >= progressAt+allowance {
+				return fmt.Errorf("miner %s stopped posting: sector %d reached %d of %d WindowPoSts, last one by epoch %d, now %d",
 					tm.ActorAddr, sectorNumber, posted, count, progressAt, height)
-				return
 			}
 		}
 		select {
 		case <-tm.ctx.Done():
-			return
+			return context.Cause(tm.ctx)
 		case <-time.After(time.Millisecond * 100):
 		}
 	}
-}
-
-func (tm *TestUnmanagedMiner) head() *types.TipSet {
-	head, err := tm.FullNode.ChainHead(tm.ctx)
-	require.NoError(tm.t, err)
-	return head
+	return context.Cause(tm.ctx)
 }
 
 func (tm *TestUnmanagedMiner) AssertNoPower() {
