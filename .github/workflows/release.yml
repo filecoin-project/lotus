@@ -254,6 +254,7 @@ jobs:
         run: |
           # CHANGELOG.md is the source of truth, so the body is regenerated on every run.
           # Edits made directly to a draft release on GitHub are overwritten.
+          # Section selection lives in cmd/release rather than shell so its matching rules are unit tested.
           # See `changelog-section` in cmd/release for how the section is selected.
           # On publishing runs it fails, leaving the release a draft, if CHANGELOG.md has no populated section for this release.
           go run cmd/release/main.go changelog-section --project "$project" --tag "$tag" --publishing="$publishing" > release_body.md

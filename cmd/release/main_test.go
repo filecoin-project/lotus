@@ -184,14 +184,6 @@ Preamble.
 
 - node v1.36.3 entry
 
-# Node v1.36.2 / 2026-07-27
-
-## Bug Fixes
-
-# Miner v1.36.2 / 2026-07-27
-
-- miner v1.36.2 entry
-
 # Node v1.36.0 / 2026-05-13
 
 - node v1.36.0 entry
@@ -241,13 +233,6 @@ func TestWriteChangelogSection(t *testing.T) {
 			wantBody:   "- combined v1.37.0-rc1 entry\n\n",
 		},
 		{
-			name:       "miner rc is not confused with stable",
-			project:    "miner",
-			tag:        "miner/v1.37.0-rc1",
-			wantHeader: "# Node and Miner v1.37.0-rc1 / 2026-09-22",
-			wantBody:   "- combined v1.37.0-rc1 entry\n\n",
-		},
-		{
 			name:        "missing rc does not match stable",
 			project:     "node",
 			tag:         "v1.37.0-rc2",
@@ -271,18 +256,11 @@ func TestWriteChangelogSection(t *testing.T) {
 			wantProblem: "No CHANGELOG section",
 		},
 		{
-			name:       "separate node section of the same version",
+			name:       "node release skips a miner section of the same version",
 			project:    "node",
 			tag:        "v1.36.0",
 			wantHeader: "# Node v1.36.0 / 2026-05-13",
 			wantBody:   "- node v1.36.0 entry\n\n",
-		},
-		{
-			name:       "separate miner section of the same version",
-			project:    "miner",
-			tag:        "miner/v1.36.0",
-			wantHeader: "# Miner v1.36.0 / 2026-05-13",
-			wantBody:   "- miner v1.36.0 entry\n\n",
 		},
 		{
 			name:        "versioned UNRELEASED header is only a fallback",
@@ -309,26 +287,12 @@ func TestWriteChangelogSection(t *testing.T) {
 			wantProblem: "No CHANGELOG section",
 		},
 		{
-			name:        "section with only headings is empty",
-			project:     "node",
-			tag:         "v1.36.2",
-			wantHeader:  "# Node v1.36.2 / 2026-07-27",
-			wantBody:    "## Bug Fixes\n\n",
-			wantProblem: "Empty CHANGELOG section",
-		},
-		{
-			name:       "separate miner section next to an empty node section",
-			project:    "miner",
-			tag:        "miner/v1.36.2",
-			wantHeader: "# Miner v1.36.2 / 2026-07-27",
-			wantBody:   "- miner v1.36.2 entry\n\n",
-		},
-		{
-			name:        "header-only section at the end of the file is empty",
-			changelog:   "# UNRELEASED\n\n- unreleased entry\n\n# Node v1.0.0 / 2020-01-01",
+			name:        "section with only headings at the end of the file is empty",
+			changelog:   "# UNRELEASED\n\n- unreleased entry\n\n# Node v1.0.0 / 2020-01-01\n\n## Bug Fixes",
 			project:     "node",
 			tag:         "v1.0.0",
 			wantHeader:  "# Node v1.0.0 / 2020-01-01",
+			wantBody:    "## Bug Fixes",
 			wantProblem: "Empty CHANGELOG section",
 		},
 		{

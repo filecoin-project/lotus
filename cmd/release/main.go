@@ -231,6 +231,7 @@ func isVersionHeader(header, tag, name string) bool {
 // findChangelogSection selects the CHANGELOG.md section to use as the body of the release of tag by project.
 // Sections are scanned from the bottom of the file up, and the first that is either an UNRELEASED section or the release's own section wins.
 // An "# UNRELEASED ..." header is always the fallback, even when it names a version.
+// isVersionHeader holds the matching rules, which keep combined Node and Miner headers, rc and stable versions, and Node-only sections apart.
 func findChangelogSection(changelog, project, tag string) (changelogSection, error) {
 	name, err := projectDisplayName(project)
 	if err != nil {
