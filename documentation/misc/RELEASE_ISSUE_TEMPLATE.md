@@ -14,7 +14,7 @@
 [//]: # (7. Never push to a release branch directly, even if your token can bypass the PR rule: force-push is blocked, so a mistake cannot be undone. The combined-release miner fast-forward is the only exception.)
 [//]: # (8. Set GOTOOLCHAIN to the exact go.mod version again after every branch switch. A newer installed Go does not downgrade and can generate code that fails CI.)
 [//]: # (9. Before treating a CI failure as a regression, check whether the same test also fails in master's recent CI runs.)
-[//]: # (10. Release PR history: squash the version bump and changelog editorial commits together, but keep cherry-picked fixes as separate commits.)
+[//]: # (10. Squash-merge release PRs, which carry only the version bump and changelog. Fixes reach the release branch only through rebase-merged backport PRs, never by updating the release PR's base.)
 <!--{{if not .ContentGeneratedWithLotusReleaseCli}}-->
 [//]: # ([ ] Start an issue with title "Lotus {{.Type}} v{{.Tag}} Release{{if .NetworkUpgrade}} (nv{{.NetworkUpgrade}}){{end}}" and adjust the title for whether it's a Node or Miner release.)
 [//]: # ([ ] Copy in the content of https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md)
@@ -259,7 +259,7 @@
 - [ ] Confirm any security-advisory staging needed for this release has an owner and follows [policy](https://github.com/filecoin-project/lotus/blob/master/LOTUS_RELEASE_FLOW.md#security-fix-policy).
 <!--  {{end}}-->
 - [ ] Mark the PR "ready for review" (non-draft)
-- [ ] Merge the PR
+- [ ] Squash-merge the PR
    - Merging the PR will trigger a CI run that will build assets, attach the assets to the GitHub release, publish the GitHub release, and create the corresponding git tag.
 - [ ] Wait for the post-merge Release workflow to finish, then check each published release's notes, binaries and checksums.
    <!-- agent: Also confirm each tag points at the merge commit and each body matches the reviewed CHANGELOG entry. -->
