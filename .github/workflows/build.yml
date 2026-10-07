@@ -22,8 +22,24 @@ permissions:
   contents: read
 
 jobs:
+  markdown-only:
+    name: Detect Markdown-only update
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      skip: ${{ steps.markdown-only.outputs.skip }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: .github/actions
+      - id: markdown-only
+        uses: ./.github/actions/detect-markdown-only-update
   build:
     name: Build
+    needs: [markdown-only]
+    if: ${{ needs.markdown-only.outputs.skip != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

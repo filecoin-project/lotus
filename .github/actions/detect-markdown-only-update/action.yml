@@ -1,0 +1,74 @@
+name: Detect Markdown-only update
+description: >
+  Decide whether a pull_request run can be skipped because the commits pushed since the previous
+  head only change hand-written Markdown and the same workflow already passed on that previous head.
+
+  Workflow-level `paths-ignore` filters compare the whole pull request against its base, so they never
+  match a release PR (which always changes build/version.go) even when a push only edits CHANGELOG.md.
+  This action compares the push itself instead. Requiring a successful run on the previous head keeps a
+  red PR from turning green through a Markdown-only push. Any error falls back to running everything.
+  The calling job needs `actions: read` and `contents: read`.
+
+outputs:
+  skip:
+    description: "'true' when the workflow's remaining jobs can be skipped, otherwise 'false'."
+    value: ${{ steps.detect.outputs.skip }}
+
+runs:
+  using: composite
+  steps:
+    - id: detect
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        REPO: ${{ github.repository }}
+        RUN_ID: ${{ github.run_id }}
+        EVENT_NAME: ${{ github.event_name }}
+        ACTION: ${{ github.event.action }}
+        BEFORE: ${{ github.event.before }}
+        AFTER: ${{ github.event.pull_request.head.sha }}
+      run: |
+        set -uo pipefail
+
+        result() {
+          echo "$2"
+          echo "skip=$1" >> "$GITHUB_OUTPUT"
+          exit 0
+        }
+
+        if [[ "$EVENT_NAME" != "pull_request" || "$ACTION" != "synchronize" || -z "$BEFORE" || -z "$AFTER" ]]; then
+          result false "Not a pull_request push; running all jobs."
+        fi
+
+        if ! compare=$(gh api "repos/$REPO/compare/$BEFORE...$AFTER"); then
+          result false "Could not compare $BEFORE...$AFTER; running all jobs."
+        fi
+
+        # Only a fast-forward push makes the compare diff exactly the files changed since the previous head.
+        status=$(jq -r '.status' <<<"$compare")
+        if [[ "$status" != "ahead" ]]; then
+          result false "Push is not a fast-forward of $BEFORE (status: $status); running all jobs."
+        fi
+
+        # The compare API lists at most 300 files.
+        if ! count=$(jq -e '.files | length' <<<"$compare") || [[ "$count" -ge 300 ]]; then
+          result false "Could not list every changed file; running all jobs."
+        fi
+
+        # Generated documentation under documentation/en/ is verified by the Check workflow, so it does not count as skippable.
+        if ! others=$(jq -r '.files[] | .filename, (.previous_filename // empty)
+          | select(endswith(".md") and (startswith("documentation/en/") | not) | not)' <<<"$compare") || [[ -n "$others" ]]; then
+          result false "Push changes files other than hand-written Markdown; running all jobs."
+        fi
+
+        if ! workflow_id=$(gh api "repos/$REPO/actions/runs/$RUN_ID" --jq '.workflow_id'); then
+          result false "Could not look up the current workflow; running all jobs."
+        fi
+        if ! passed=$(gh api "repos/$REPO/actions/workflows/$workflow_id/runs?event=pull_request&head_sha=$BEFORE&status=success&per_page=1" --jq '.total_count'); then
+          result false "Could not look up runs for $BEFORE; running all jobs."
+        fi
+        if [[ ! "$passed" =~ ^[1-9][0-9]*$ ]]; then
+          result false "This workflow has not passed on $BEFORE; running all jobs."
+        fi
+
+        result true "Only hand-written Markdown changed since $BEFORE, which already passed this workflow; skipping."
