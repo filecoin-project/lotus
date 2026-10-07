@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 	"os/exec"
@@ -174,6 +175,151 @@ func stripControlLines(templateSource string) string {
 	return strings.Join(kept, "\n")
 }
 
+// changelogSection is the part of CHANGELOG.md selected as the body of a GitHub release.
+type changelogSection struct {
+	// Header is the selected section's header line, or "" when no section was selected.
+	Header string
+	// Body is the section without its header line and the line after it (normally blank).
+	Body string
+	// Versioned is true when the section is the release's own, false for the UNRELEASED fallback or no section.
+	Versioned bool
+}
+
+// projectDisplayName returns the name a project is given in CHANGELOG.md section headers.
+func projectDisplayName(project string) (string, error) {
+	switch project {
+	case "node":
+		return "Node", nil
+	case "miner":
+		return "Miner", nil
+	default:
+		return "", fmt.Errorf("unknown project %q (expected node or miner)", project)
+	}
+}
+
+// splitChangelogSections splits a changelog before every line that starts with "# ".
+// Any text before the first header is returned as a section of its own.
+func splitChangelogSections(changelog string) []string {
+	var sections []string
+	var current strings.Builder
+	for _, line := range strings.SplitAfter(changelog, "\n") {
+		if strings.HasPrefix(line, "# ") && current.Len() > 0 {
+			sections = append(sections, current.String())
+			current.Reset()
+		}
+		current.WriteString(line)
+	}
+	if current.Len() > 0 {
+		sections = append(sections, current.String())
+	}
+	return sections
+}
+
+// isVersionHeader reports whether a section header belongs to the release of tag by the project called name.
+// Headers look like "# Node v1.36.3 / 2026-09-10" or, for a combined release, "# Node and Miner v1.37.0-rc1 / 2026-09-22".
+// The bare version (tag without the "miner/" prefix) and the project name must both appear as whole tokens once "/" is treated as whitespace.
+// So v1.37.0 never matches v1.37.0-rc1, and a miner release never matches a Node-only section of the same version.
+// "# <tag> ..." is the legacy form.
+func isVersionHeader(header, tag, name string) bool {
+	if strings.HasPrefix(header, "# "+tag+" ") {
+		return true
+	}
+	tokens := strings.Fields(strings.ReplaceAll(header, "/", " "))
+	return slices.Contains(tokens, strings.TrimPrefix(tag, "miner/")) && slices.Contains(tokens, name)
+}
+
+// findChangelogSection selects the CHANGELOG.md section to use as the body of the release of tag by project.
+// Sections are scanned from the bottom of the file up, and the first that is either an UNRELEASED section or the release's own section wins.
+// An "# UNRELEASED ..." header is always the fallback, even when it names a version.
+func findChangelogSection(changelog, project, tag string) (changelogSection, error) {
+	name, err := projectDisplayName(project)
+	if err != nil {
+		return changelogSection{}, err
+	}
+	sections := splitChangelogSections(changelog)
+	for i := len(sections) - 1; i >= 0; i-- {
+		header, _, _ := strings.Cut(sections[i], "\n")
+		var versioned bool
+		switch {
+		case strings.HasPrefix(header, "# UNRELEASED"):
+			versioned = false
+		case isVersionHeader(header, tag, name):
+			versioned = true
+		default:
+			continue
+		}
+		body := sections[i]
+		// Drop the header line and the line after it.
+		for range 2 {
+			_, body, _ = strings.Cut(body, "\n")
+		}
+		return changelogSection{Header: header, Body: body, Versioned: versioned}, nil
+	}
+	return changelogSection{}, nil
+}
+
+// hasChangelogContent reports whether a section body has any non-blank line other than a Markdown heading.
+func hasChangelogContent(body string) bool {
+	for _, line := range strings.Split(body, "\n") {
+		if !strings.HasPrefix(line, "#") && strings.TrimSpace(line) != "" {
+			return true
+		}
+	}
+	return false
+}
+
+// workflowAnnotation formats a message as a GitHub Actions workflow command when running in GitHub Actions, so it shows up as an annotation.
+func workflowAnnotation(githubActions bool, level, title, message string) string {
+	if githubActions {
+		return fmt.Sprintf("::%s title=%s::%s", level, title, message)
+	}
+	return fmt.Sprintf("%s: %s: %s", level, title, message)
+}
+
+// writeChangelogSection writes the CHANGELOG.md section for the release of tag by project to out, logging to errOut.
+// When the release has no populated section of its own, it fails if publishing, and otherwise warns and writes the UNRELEASED fallback.
+func writeChangelogSection(out, errOut io.Writer, changelog, project, tag string, publishing, githubActions bool) error {
+	name, err := projectDisplayName(project)
+	if err != nil {
+		return err
+	}
+	section, err := findChangelogSection(changelog, project, tag)
+	if err != nil {
+		return err
+	}
+	if section.Header != "" {
+		_, _ = fmt.Fprintf(errOut, "Using CHANGELOG.md section: %s\n", section.Header)
+	}
+	if _, err := io.WriteString(out, section.Body); err != nil {
+		return err
+	}
+
+	var title, message string
+	switch {
+	case !section.Versioned:
+		title = "No CHANGELOG section"
+		message = fmt.Sprintf("CHANGELOG.md has no '# ... %s ... %s' header for %s", name, strings.TrimPrefix(tag, "miner/"), tag)
+		if !publishing {
+			if section.Header != "" {
+				message += "; using the UNRELEASED section"
+			} else {
+				message += "; using no section"
+			}
+		}
+	case !hasChangelogContent(section.Body):
+		title = "Empty CHANGELOG section"
+		message = fmt.Sprintf("The CHANGELOG.md section for %s has no content", tag)
+	default:
+		return nil
+	}
+	// Fail rather than publish placeholder notes: the release stays a draft until CHANGELOG.md has a populated section for this version.
+	if publishing {
+		return cli.Exit(workflowAnnotation(githubActions, "error", title, message), 1)
+	}
+	_, _ = fmt.Fprintln(errOut, workflowAnnotation(githubActions, "warning", title, message))
+	return nil
+}
+
 func main() {
 	app := &cli.App{
 		Name:  "release",
@@ -211,6 +357,38 @@ func main() {
 					}
 					log.Info(string(b))
 					return nil
+				},
+			},
+			{
+				Name:  "changelog-section",
+				Usage: "Print the CHANGELOG.md section for a release, without its header, for use as the GitHub release body",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "project",
+						Usage:    "Which project is being released? (Options: node, miner)",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:     "tag",
+						Usage:    "What's the tag of the release? (e.g., v1.37.0 or miner/v1.37.0)",
+						Required: true,
+					},
+					&cli.BoolFlag{
+						Name:  "publishing",
+						Usage: "Fail instead of warning and falling back to the UNRELEASED section when the release has no populated section",
+					},
+					&cli.StringFlag{
+						Name:  "changelog",
+						Usage: "Path to the changelog",
+						Value: "CHANGELOG.md",
+					},
+				},
+				Action: func(c *cli.Context) error {
+					changelog, err := os.ReadFile(c.String("changelog"))
+					if err != nil {
+						return fmt.Errorf("failed to read changelog: %w", err)
+					}
+					return writeChangelogSection(c.App.Writer, c.App.ErrWriter, string(changelog), c.String("project"), c.String("tag"), c.Bool("publishing"), os.Getenv("GITHUB_ACTIONS") == "true")
 				},
 			},
 			{

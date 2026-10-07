@@ -31,6 +31,10 @@ The `release` tool provides several commands and options to interact with the Lo
     ```sh
     ./release create-issue
     ```
+- **Changelog Section**: Print the CHANGELOG.md section for a release, without its header, as used for the GitHub release body. A header matches when it contains the release's bare version (e.g. `v1.37.0` for `miner/v1.37.0`) and the project's name (`Node` or `Miner`) as whole words, so `# Node and Miner v1.37.0 / 2026-10-06` matches both projects but not `v1.37.0-rc1`. Without a populated section it warns and falls back to the UNRELEASED section, or with `--publishing` it fails.
+    ```sh
+    ./release changelog-section --project miner --tag miner/v1.37.0 --publishing
+    ```
 
 ### Global Options
 

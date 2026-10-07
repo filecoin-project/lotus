@@ -151,6 +151,7 @@ jobs:
     # unreleased project, so pushes to release/vX and release/miner/vX close together
     # would otherwise update the same GitHub release concurrently. Queued, not
     # cancelled: the later job then finds the release published and skips it.
+    # Cancelling could also interrupt a half-finished publish, e.g. with the body PATCHed and the assets deleted but not yet re-uploaded.
     concurrency:
       group: ${{ github.workflow }}-release-${{ matrix.project }}
       cancel-in-progress: false
@@ -222,7 +223,7 @@ jobs:
         run: |
           echo "release<<EOF" | tee -a $GITHUB_OUTPUT
           gh api --paginate /repos/$GITHUB_REPOSITORY/releases --jq 'map(select(.tag_name == env.tag))' |
-            jq -s add | jq -r 'map({"id": .id, "draft": .draft, "html_url": .html_url, "body": .body}) | .[0]' | tee -a $GITHUB_OUTPUT
+            jq -s add | jq -r 'map({"id": .id, "draft": .draft, "html_url": .html_url}) | .[0]' | tee -a $GITHUB_OUTPUT
           echo "EOF" | tee -a $GITHUB_OUTPUT
       - name: Check whether the release is already published
         id: published
@@ -249,68 +250,20 @@ jobs:
           # Runs that publish the release: the push after the release PR merges, or a
           # manual workflow_dispatch with publish=true.
           publishing: ${{ github.event_name == 'push' || github.event.inputs.publish == 'true' }}
-          # Reuse the existing draft body across reruns while the release PR is still
-          # under review, so CI reruns don't clobber a body edited directly on GitHub.
-          # But on the run that publishes the release, always regenerate from
-          # CHANGELOG.md: that's the final, reviewed text, and it may have been edited
-          # after the draft body was first generated.
-          body: ${{ (steps.before.outputs.release == 'null' || github.event_name == 'push' || github.event.inputs.publish == 'true') && '' || fromJSON(steps.before.outputs.release).body }}
           current: ${{ github.event.inputs.ref || github.sha }}
         run: |
-          if [[ -n "$body" ]]; then
-            echo "$body" >> release_body.md
-          else
-            csplit --digits=4 --quiet --elide-empty-files CHANGELOG.md '/^# /' '{*}'
-            # Section headers are "# <Project(s)> <version> / <date>", e.g.
-            # "# Node v1.36.3 / 2026-09-10" or, for a combined release, "# Node and Miner
-            # v1.37.0-rc1 / 2026-09-22". Match the bare version (tag without the "miner/"
-            # prefix) as a whole word, so v1.37.0 never matches v1.37.0-rc1, and require
-            # this project's name in the header, so a miner release never picks up a
-            # Node-only section of the same version. "# $tag " is the legacy form.
-            version="${tag#miner/}"
-            case "$project" in
-              node) name=Node ;;
-              miner) name=Miner ;;
-              *) echo "::error::Unknown project $project"; exit 1 ;;
-            esac
-            section=""
-            # Checking the files in reverse order to get to the UNRELEASED section last
-            for file in $(ls -r xx*); do
-              header=" $(head -n 1 "$file" | tr -s ' /' '  ') "
-              if grep -q "^# UNRELEASED" "$file"; then
-                section=unreleased
-              elif grep -q "^# $tag " "$file" || [[ "$header" == *" $version "* && "$header" == *" $name "* ]]; then
-                section=version
-              else
-                continue
-              fi
-              echo "Using CHANGELOG.md section:$header"
-              tail -n +3 "$file" >> release_body.md
-              break
-            done
-            # Fail rather than publish placeholder notes: the release stays a draft
-            # until CHANGELOG.md has a populated section for this version.
-            if [[ "$section" != version ]]; then
-              if [[ "$publishing" == true ]]; then
-                echo "::error title=No CHANGELOG section::CHANGELOG.md has no '# ... $name ... $version' header for $tag"
-                exit 1
-              fi
-              echo "::warning title=No CHANGELOG section::CHANGELOG.md has no '# ... $name ... $version' header for $tag; using ${section:-no section}"
-            elif ! grep -v '^#' release_body.md | grep -q '[^[:space:]]'; then
-              if [[ "$publishing" == true ]]; then
-                echo "::error title=Empty CHANGELOG section::The CHANGELOG.md section for $tag has no content"
-                exit 1
-              fi
-              echo "::warning title=Empty CHANGELOG section::The CHANGELOG.md section for $tag has no content"
-            fi
-            if [[ "$previous" != '' ]]; then
-              mkdir -p "$(go env GOPATH)/src/github.com/filecoin-project/lotus"
-              rm -rf "$(go env GOPATH)/src/github.com/filecoin-project/lotus"
-              ln -s "$(pwd)" "$(go env GOPATH)/src/github.com/filecoin-project/lotus"
-              echo "## Release Log" >> release_body.md
-              echo "" >> release_body.md
-              ./scripts/mkreleaselog "$previous" "$current" >> release_body.md
-            fi
+          # CHANGELOG.md is the source of truth, so the body is regenerated on every run.
+          # Edits made directly to a draft release on GitHub are overwritten.
+          # See `changelog-section` in cmd/release for how the section is selected.
+          # On publishing runs it fails, leaving the release a draft, if CHANGELOG.md has no populated section for this release.
+          go run cmd/release/main.go changelog-section --project "$project" --tag "$tag" --publishing="$publishing" > release_body.md
+          if [[ "$previous" != '' ]]; then
+            mkdir -p "$(go env GOPATH)/src/github.com/filecoin-project/lotus"
+            rm -rf "$(go env GOPATH)/src/github.com/filecoin-project/lotus"
+            ln -s "$(pwd)" "$(go env GOPATH)/src/github.com/filecoin-project/lotus"
+            echo "## Release Log" >> release_body.md
+            echo "" >> release_body.md
+            ./scripts/mkreleaselog "$previous" "$current" >> release_body.md
           fi
           cat release_body.md
       - name: Create or update release
