@@ -10,6 +10,11 @@
 [//]: # (3. Work top-to-bottom. Do not start release PR work for a target until its Dependencies for releases section has linked blockers or an explicit "No additional dependencies" entry and the dependency checkpoint is complete.)
 [//]: # (4. For regular releases, create release branches from origin/master after dependencies are resolved. For critical security patches, follow the visible release/vX.Y.x guidance.)
 [//]: # (5. Keep the release issue and linked PRs synchronized as each step completes.)
+[//]: # (6. Step-specific hints are in "agent:" HTML comments beneath the relevant checklist items. Read the raw issue body to see them.)
+[//]: # (7. Never push to a release branch directly, even if your token can bypass the PR rule: force-push is blocked, so a mistake cannot be undone. The combined-release miner fast-forward is the only exception.)
+[//]: # (8. Set GOTOOLCHAIN to the exact go.mod version again after every branch switch. A newer installed Go does not downgrade and can generate code that fails CI.)
+[//]: # (9. Before treating a CI failure as a regression, check whether the same test also fails in master's recent CI runs.)
+[//]: # (10. Release PR history: squash the version bump and changelog editorial commits together, but keep cherry-picked fixes as separate commits.)
 <!--{{if not .ContentGeneratedWithLotusReleaseCli}}-->
 [//]: # ([ ] Start an issue with title "Lotus {{.Type}} v{{.Tag}} Release{{if .NetworkUpgrade}} (nv{{.NetworkUpgrade}}){{end}}" and adjust the title for whether it's a Node or Miner release.)
 [//]: # ([ ] Copy in the content of https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md)
@@ -59,7 +64,7 @@
 <details open>
   <summary>Section</summary>
 
-- [ ] Use the exact Go version from `go.mod` for generation and builds: `export GOTOOLCHAIN="go$(awk '$1 == "go" {print $2}' go.mod)"`. Recompute this after switching branches; a newer installed Go does not automatically downgrade to the version used by CI.
+- [ ] Use the exact Go version from `go.mod` for generation and builds: `export GOTOOLCHAIN="go$(awk '$1 == "go" {print $2}' go.mod)"`
 
 <!--{{if ne .NetworkUpgrade ""}}-->
 - [ ] Make sure all [Lotus dependencies are updated to the correct versions for the network upgrade](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/Update_Dependencies_Lotus.md)
@@ -161,10 +166,7 @@
 <!--  {{end}}-->
 
 > [!IMPORTANT]
-> Work on a feature branch and open PRs targeting the relevant release branch. Do not push release changes directly to a release branch, even if branch protection can be bypassed.
-<!--  {{if and (contains "Node" $.Type) (contains "Miner" $.Type)}}-->
-> The verified fast-forward for a combined release below is the exception.
-<!--  {{end}}-->
+> Make changes through PRs that target the release branch; never push to it directly.
 <!--  {{if contains "Node" $.Type}}-->
 > Node branch: `release/v{{$.Tag}}`
 <!--  {{end}}-->
@@ -185,6 +187,7 @@
 - [ ] Create a PR with title `build: backport changes for {{$.Type}} v{{$.Tag}}{{$tagSuffix}}`
    - Link to PR:
 - [ ] Rebase-merge the backport PR, then base the release PR on the updated release branch.
+   <!-- agent: Rebase, not squash: each backported commit should stay traceable to its master PR. Land later fixes as another small backport PR, then rebase the release PR on top. -->
 - [ ] Remove the "backport" label from all backported PRs (no ["backport" issues](https://github.com/filecoin-project/lotus/issues?q=label%3Arelease%2Fbackport+))
 <!--  {{end}}-->
 
@@ -200,33 +203,36 @@
 <!--  {{if and (contains "Node" $.Type) (contains "Miner" $.Type)}}-->
     - If the release branches still point at the same commit, one PR that updates both version strings is expected. If the branches diverge later, add/link one PR per branch here.
 <!--  {{end}}-->
-- [ ] Run `make clean && make deps` before generating and building to remove stale dependency stamps and rebuild FFI for the pinned submodule commit.
-   - Check `git submodule status extern/filecoin-ffi`: it must have no leading `+`, `-`, or `U`.
-   - After committing the release changes, build each release binary and verify its `--version` reports the intended version without a `.dirty` suffix.
+- [ ] Run `make clean && make deps` so FFI is rebuilt for the pinned submodule commit.
+   <!-- agent:
+   Stale make stamps can silently skip the FFI rebuild. `git submodule status extern/filecoin-ffi` must show no leading `+`, `-` or `U`.
+   After committing, build each release binary and confirm `--version` reports the intended version with no `.dirty` suffix.
+   -->
 - [ ] Run `make gen && make docsgen-cli` to generate documentation
 - [ ] Create a draft PR with title `build: release Lotus {{$.Type}} v{{$.Tag}}{{$tagSuffix}}`
    - Link to PR:
    - Opening a PR will trigger a CI run that will build assets, create a draft GitHub release, and attach the assets.
 - [ ] Changelog prep
-   - [ ] Prepare `# {{$.Type}} v{{$.Tag}}{{$tagSuffix}} / {date}` below `# UNRELEASED`, with a short release summary and the relevant warnings, features, fixes, and improvements.
-      - Move this release's entries out of `UNRELEASED`, keeping that header and its empty subsection headers. When promoting an RC, carry its release content forward into the new entry along with subsequent fixes; do not lose it by copying only the now-empty `UNRELEASED` section.
-      - Include each change once in the new entry. Check against the previous stable release and git history so already-released changes are not presented as new; preserve historical release entries.
-      - Add `## 📝 Changelog` and `## 👨‍👩‍👧‍👦 Contributors` sections using the actual previous stable tag for each project and the intended release tag. Use tags in compare links (`PREVIOUS_TAG...TARGET_TAG`), not RC-named release branches. Generate contributor statistics with `./scripts/mkreleaselog PREVIOUS_TAG HEAD`.
-      - Keep changelog edits separate from unrelated fixes where practical, so the final release diff is easy to review and copy back to `master`.
-   - [ ] Copy the reviewed dated entry into each draft GitHub release body, and repeat after editorial changes: `gh release edit TAG --repo filecoin-project/lotus --notes-file RELEASE_NOTES_FILE`.
-      - Check the workflow on the release branch: existing nonempty draft bodies are currently reused even during publication, and a combined `Node and Miner` heading is not matched by the current parser. Do not assume a rerun, a recreated draft, or the publish step will recover the dated entry. [#13816](https://github.com/filecoin-project/lotus/pull/13816) proposes fixes but must be merged and included in the release branch before relying on them.
-      - If a draft must be recreated, supply the reviewed notes explicitly with `gh release create TAG --repo filecoin-project/lotus --draft --title TAG --notes-file RELEASE_NOTES_FILE`, then verify its body and assets before publishing.
-<!--  {{if contains "Node" $.Type}}-->
-      - Node release body: `gh release view v{{$.Tag}}{{$tagSuffix}} --repo filecoin-project/lotus --json body -q .body`
-<!--  {{end}}-->
-<!--  {{if contains "Miner" $.Type}}-->
-      - Miner release body: `gh release view miner/v{{$.Tag}}{{$tagSuffix}} --repo filecoin-project/lotus --json body -q .body`
-<!--  {{end}}-->
+   - [ ] Add a dated `# {{$.Type}} v{{$.Tag}}{{$tagSuffix}} / {date}` entry below `# UNRELEASED` with a short summary, and move this release's entries into it.
+      <!-- agent:
+      Keep the `# UNRELEASED` header and its empty subsection headers. When promoting an RC, carry the RC entry's content forward plus later fixes; UNRELEASED is already empty by then.
+      Each change appears once. Check the previous stable release so already-released changes are not presented as new, and never edit historical entries.
+      End with `## 📝 Changelog` (compare link `PREVIOUS_TAG...TARGET_TAG` using tags, not branches) and `## 👨‍👩‍👧‍👦 Contributors` (from `./scripts/mkreleaselog PREVIOUS_TAG HEAD`).
+      Keep changelog edits out of cherry-picked fix commits so the post-release copy to master is clean.
+      -->
+   - [ ] After each editorial change, sync the draft GitHub release body so reviewers see current text. Publishing regenerates the body from the merged `CHANGELOG.md`.
+      <!-- agent:
+      TAG is `v{{$.Tag}}{{$tagSuffix}}` for node and `miner/v{{$.Tag}}{{$tagSuffix}}` for miner. Sync with `gh release edit TAG --repo filecoin-project/lotus --notes-file NOTES_FILE`; view with `gh release view TAG --repo filecoin-project/lotus --json body -q .body`.
+      To recreate a deleted draft, pass the notes explicitly: `gh release create TAG --repo filecoin-project/lotus --draft --title TAG --notes-file NOTES_FILE`.
+      -->
    - [ ] Perform editorial review (e.g., callout breaking changes, new features, FIPs, actor bundles)
 <!--  {{if ne $.NetworkUpgrade ""}}-->
-      - Read the linked [FIP documents](https://github.com/filecoin-project/FIPs) for the exact titles and scope; do not infer titles from the change descriptions.
-      - Cite actual migration benchmarks and their hardware/context. If measurements are missing, leave a clearly marked TODO for the release owner instead of inventing durations.
-      - Verify the upgrade epoch's UTC timestamp and open the local-time link to check its date/time. For World Time Buddy, include and recompute `sln` for this upgrade; do not copy an earlier release's hour range.
+      - Migration durations come from real benchmarks; if there are none, leave a marked TODO.
+      - Recompute the upgrade epoch's local-time link for this release; never copy an earlier one.
+      <!-- agent:
+      Take FIP titles and scope from https://github.com/filecoin-project/FIPs; do not infer them. Search for an existing benchmark issue or comment for this upgrade before writing migration estimates.
+      World Time Buddy needs `sln=H-H+1`, where H is the UTC hour containing the epoch's timestamp; the page returns 500 without it.
+      -->
 <!--    {{if $stable}}-->
    - [ ] (network upgrade) Ensure the Mainnet upgrade epoch is specified.
 <!--    {{else}}-->
@@ -254,15 +260,16 @@
 - [ ] Mark the PR "ready for review" (non-draft)
 - [ ] Merge the PR
    - Merging the PR will trigger a CI run that will build assets, attach the assets to the GitHub release, publish the GitHub release, and create the corresponding git tag.
-- [ ] Wait for the post-merge Release workflow to finish, then verify each published release's tag commit, binaries, checksums, and complete notes against the reviewed CHANGELOG entry.
+- [ ] Wait for the post-merge Release workflow to finish, then check each published release's notes, binaries and checksums.
+   <!-- agent: Also confirm each tag points at the merge commit and each body matches the reviewed CHANGELOG entry. -->
 <!--  {{if and (contains "Node" $.Type) (contains "Miner" $.Type)}}-->
-- [ ] If one PR released both projects from the node branch, fast-forward the miner branch only after that Release workflow completes successfully. Both branch pushes can otherwise try to update the same releases concurrently.
-   - Fetch both branches and confirm the miner branch is an ancestor of the node release commit before pushing:
-      ```sh
-      git fetch origin release/v{{$.Tag}} release/miner/v{{$.Tag}}
-      git merge-base --is-ancestor origin/release/miner/v{{$.Tag}} origin/release/v{{$.Tag}} && git push origin origin/release/v{{$.Tag}}:refs/heads/release/miner/v{{$.Tag}}
-      ```
-   - If ancestry verification fails, reconcile the branches through a PR; do not force-push. Wait for any second Release workflow and verify both branch heads, release tags, assets, and bodies again.
+- [ ] Once the node Release workflow has finished, fast-forward `release/miner/v{{$.Tag}}` to the node release commit, then check both releases again.
+   <!-- agent:
+   Pushing both branches close together raced the workflow and blanked both release bodies in v1.37.0, so wait for the first run to finish.
+   git fetch origin release/v{{$.Tag}} release/miner/v{{$.Tag}}
+   git merge-base --is-ancestor origin/release/miner/v{{$.Tag}} origin/release/v{{$.Tag}} && git push origin origin/release/v{{$.Tag}}:refs/heads/release/miner/v{{$.Tag}}
+   If the ancestry check fails, reconcile through a PR; never force-push.
+   -->
 <!--  {{end}}-->
 - [ ] Update `Estimated shipping date` table
 - [ ] Comment on this issue announcing the release:
@@ -280,7 +287,7 @@
 <details>
   <summary>Section</summary>
 
-- [ ] Open a PR against `master` cherry-picking the CHANGELOG commits from the release branch. Title it `chore(release): cherry-pick v{{.Tag}} changelog back to master`
+- [ ] Open a PR against `master` that copies the final stable CHANGELOG entry from the release branch. Title it `chore(release): cherry-pick v{{.Tag}} changelog back to master`
    - Link to PR:
 <!--{{if contains "Node" .Type}}-->
    - Node source branch: `release/v{{.Tag}}`
@@ -288,14 +295,20 @@
 <!--{{if contains "Miner" .Type}}-->
    - Miner source branch: `release/miner/v{{.Tag}}`
 <!--{{end}}-->
-   - Bring back only `CHANGELOG.md` changes. If a release commit also changes versions or generated files, extract its changelog diff (for example, `git diff RELEASE_COMMIT^ RELEASE_COMMIT -- CHANGELOG.md`) and apply that diff with `git apply --3way` instead of cherry-picking the whole commit.
-   - Replace the `UNRELEASED v{{.Tag}}` placeholder (if present) with the final dated release entry, preserving newer `master`-only entries under `UNRELEASED` and all historical releases. Remove entries from `UNRELEASED` only when they are included in the released entry; resolve conflicts by checking both histories.
-   - Confirm the PR changes only `CHANGELOG.md`, with each released change appearing once in the final entry and no version rollback or duplicate release heading.
+   - Change only `CHANGELOG.md`, and copy only the final stable entry; RC entries stay on the release branch.
+   <!-- agent:
+   Release commits also bump versions and generated files, so do not cherry-pick them. Extract the diff with `git diff RELEASE_COMMIT^ RELEASE_COMMIT -- CHANGELOG.md` and apply it with `git apply --3way`.
+   Replace the `UNRELEASED v{{.Tag}}` placeholder with the final entry. Keep newer master-only entries under `UNRELEASED`, and remove an `UNRELEASED` entry only if it shipped in this release.
+   Confirm the diff touches only `CHANGELOG.md`, with no version rollback and no duplicate release heading.
+   -->
 - [ ] Finish updating/merging the [RELEASE_ISSUE_TEMPLATE.md](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md) PR from `Release Setup` with any improvements determined from this latest release iteration.
-- If a version-update PR is missing, trigger that repository's version-bump workflow manually, then review the generated diff.
 - [ ] Review and approve the auto-generated PR in [lotus-docs](https://github.com/filecoin-project/lotus-docs/pulls) that updates the latest Lotus version information.
+   - The PR comes from a daily schedule; to get it sooner, run [Bump Lotus Version](https://github.com/filecoin-project/lotus-docs/actions/workflows/update-version.yml).
+   <!-- agent: `gh workflow run update-version.yml --repo filecoin-project/lotus-docs` -->
 - [ ] Review and approve the auto-generated PR in [homebrew-lotus](https://github.com/filecoin-project/homebrew-lotus/pulls) that updates the homebrew to the latest Lotus version.
-   - Verify the formula's asset URLs and independently calculate SHA-256 checksums from the published archives before approving.
+   - Check the asset URLs, and compute the SHA-256 checksums from the published archives yourself.
+   - The PR comes from a daily schedule; to get it sooner, run [Bump Lotus Version](https://github.com/filecoin-project/homebrew-lotus/actions/workflows/update-version.yml).
+   <!-- agent: `gh workflow run update-version.yml --repo filecoin-project/homebrew-lotus` -->
 - [ ] Stage any security advisories for future publishing per [policy](https://github.com/filecoin-project/lotus/blob/master/LOTUS_RELEASE_FLOW.md#security-fix-policy).
 </details>
 
