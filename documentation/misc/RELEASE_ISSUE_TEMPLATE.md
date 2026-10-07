@@ -220,11 +220,10 @@
       End with `## 📝 Changelog` (compare link `PREVIOUS_TAG...TARGET_TAG` using tags, not branches) and `## 👨‍👩‍👧‍👦 Contributors` (from `./scripts/mkreleaselog PREVIOUS_TAG HEAD`).
       Keep changelog edits out of cherry-picked fix commits so the post-release copy to master is clean.
       -->
-   - [ ] After each editorial change, sync the draft GitHub release body so reviewers see current text. Publishing regenerates the body from the merged `CHANGELOG.md`.
+   - [ ] After pushing CHANGELOG edits, check the draft GitHub release body. Every Release workflow run regenerates it from `CHANGELOG.md`, so fix the text there, not on GitHub.
       <!-- agent:
-      TAG is `v{{$.Tag}}{{$tagSuffix}}` for node and `miner/v{{$.Tag}}{{$tagSuffix}}` for miner. Sync with `gh release edit TAG --repo filecoin-project/lotus --notes-file NOTES_FILE`; view with `gh release view TAG --repo filecoin-project/lotus --json body -q .body`.
-      The workflow picks the CHANGELOG section whose header has this project's name and the version, so keep the header format above. Publishing fails, leaving a draft, if no section with content matches.
-      To recreate a deleted draft, pass the notes explicitly: `gh release create TAG --repo filecoin-project/lotus --draft --title TAG --notes-file NOTES_FILE`.
+      TAG is `v{{$.Tag}}{{$tagSuffix}}` for node and `miner/v{{$.Tag}}{{$tagSuffix}}` for miner. View with `gh release view TAG --repo filecoin-project/lotus --json body -q .body`.
+      The workflow uses the CHANGELOG section whose header has this project's name and the version, so keep the header format above. Publishing fails, leaving a draft, if no section with content matches.
       -->
    - [ ] Perform editorial review (e.g., callout breaking changes, new features, FIPs, actor bundles)
 <!--  {{if ne $.NetworkUpgrade ""}}-->
