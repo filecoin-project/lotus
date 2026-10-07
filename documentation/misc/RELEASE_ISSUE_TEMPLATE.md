@@ -223,6 +223,7 @@
    - [ ] After each editorial change, sync the draft GitHub release body so reviewers see current text. Publishing regenerates the body from the merged `CHANGELOG.md`.
       <!-- agent:
       TAG is `v{{$.Tag}}{{$tagSuffix}}` for node and `miner/v{{$.Tag}}{{$tagSuffix}}` for miner. Sync with `gh release edit TAG --repo filecoin-project/lotus --notes-file NOTES_FILE`; view with `gh release view TAG --repo filecoin-project/lotus --json body -q .body`.
+      The workflow picks the CHANGELOG section whose header has this project's name and the version, so keep the header format above. Publishing fails, leaving a draft, if no section with content matches.
       To recreate a deleted draft, pass the notes explicitly: `gh release create TAG --repo filecoin-project/lotus --draft --title TAG --notes-file NOTES_FILE`.
       -->
    - [ ] Perform editorial review (e.g., callout breaking changes, new features, FIPs, actor bundles)
@@ -263,9 +264,8 @@
 - [ ] Wait for the post-merge Release workflow to finish, then check each published release's notes, binaries and checksums.
    <!-- agent: Also confirm each tag points at the merge commit and each body matches the reviewed CHANGELOG entry. -->
 <!--  {{if and (contains "Node" $.Type) (contains "Miner" $.Type)}}-->
-- [ ] Once the node Release workflow has finished, fast-forward `release/miner/v{{$.Tag}}` to the node release commit, then check both releases again.
+- [ ] Fast-forward `release/miner/v{{$.Tag}}` to the node release commit, then check both releases again.
    <!-- agent:
-   Pushing both branches close together raced the workflow and blanked both release bodies in v1.37.0, so wait for the first run to finish.
    git fetch origin release/v{{$.Tag}} release/miner/v{{$.Tag}}
    git merge-base --is-ancestor origin/release/miner/v{{$.Tag}} origin/release/v{{$.Tag}} && git push origin origin/release/v{{$.Tag}}:refs/heads/release/miner/v{{$.Tag}}
    If the ancestry check fails, reconcile through a PR; never force-push.
