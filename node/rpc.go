@@ -99,8 +99,8 @@ func FullNodeHandler(v1 v1api.FullNode, v2 v2api.FullNode, permissioned bool, op
 
 	// debugging
 	m.Handle("/debug/metrics", metrics.Exporter())
-	m.Handle("/debug/pprof-set/block", handleFractionOpt("BlockProfileRate", runtime.SetBlockProfileRate))
-	m.Handle("/debug/pprof-set/mutex", handleFractionOpt("MutexProfileFraction", setMutexProfileFraction))
+	m.Handle("/debug/pprof-set/block", adminOnly(permissioned, v1.AuthVerify, handleFractionOpt("BlockProfileRate", runtime.SetBlockProfileRate)))
+	m.Handle("/debug/pprof-set/mutex", adminOnly(permissioned, v1.AuthVerify, handleFractionOpt("MutexProfileFraction", setMutexProfileFraction)))
 	m.Handle("/health/livez", NewLiveHandler(v1))
 	m.Handle("/health/readyz", NewReadyHandler(v1))
 	m.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
@@ -164,6 +164,27 @@ func MinerHandler(a api.StorageMiner, permissioned bool) (http.Handler, error) {
 	}
 
 	return rootMux, nil
+}
+
+// adminOnly requires the admin permission on a handler that is served outside
+// the permissioned RPC proxy. auth.Handler only attaches the permissions a token
+// carries to the request context, it does not reject a request that carries no
+// token at all, so the handler has to check for itself; StorageMinerAPI.ServeRemote
+// and the lotus-worker /remote handler do the same.
+func adminOnly(permissioned bool, verify func(context.Context, string) ([]auth.Permission, error), next http.HandlerFunc) http.Handler {
+	if !permissioned {
+		return next
+	}
+	return &auth.Handler{
+		Verify: verify,
+		Next: func(rw http.ResponseWriter, r *http.Request) {
+			if !auth.HasPerm(r.Context(), nil, api.PermAdmin) {
+				http.Error(rw, "unauthorized: missing admin permission", http.StatusUnauthorized)
+				return
+			}
+			next(rw, r)
+		},
+	}
 }
 
 func handleFractionOpt(name string, setter func(int)) http.HandlerFunc {

@@ -30,6 +30,7 @@
 - fix(config): the daemon no longer refuses to load a config without `EnableSplitstore` when `LOTUS_CHAINSTORE_ENABLESPLITSTORE` is set. ([filecoin-project/lotus#13851](https://github.com/filecoin-project/lotus/pull/13851))
 - fix(f3): node shutdown no longer fails with `could not close datastore: leveldb: closed` and leaves `repo.lock` behind. ([filecoin-project/lotus#13850](https://github.com/filecoin-project/lotus/pull/13850))
 - fix(gateway): the lookback limit now applies to the block parameter of `eth_estimateGas` and to the `fromBlock` and `blockHash` of `eth_newFilter`. ([filecoin-project/lotus#13873](https://github.com/filecoin-project/lotus/pull/13873))
+- fix(api): `/debug/pprof-set/block` and `/debug/pprof-set/mutex` now require an admin token on a permissioned node API. ([filecoin-project/lotus#13888](https://github.com/filecoin-project/lotus/pull/13888))
 
 ## 👌 Improvements
 
