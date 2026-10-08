@@ -72,7 +72,7 @@ jobs:
               channel=stable
             fi
           fi
-          echo "channel=$channel" | tee -a $GITHUB_OUTPUT
+          echo "channel=$channel" | tee -a "$GITHUB_OUTPUT"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: 'recursive'

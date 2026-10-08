@@ -61,7 +61,7 @@ jobs:
               (env.GITHUB_EVENT_NAME == "workflow_dispatch" and (.name as $name | env.projects | fromjson | index($name) != null))
             ))' |
             jq -c '.' | xargs -I {} -0 echo "projects={}" |
-            tee -a $GITHUB_OUTPUT
+            tee -a "$GITHUB_OUTPUT"
   build:
     needs: [check]
     if: needs.check.outputs.projects != '[]'
@@ -85,7 +85,7 @@ jobs:
         run: |
           jq -nc 'env.projects | fromjson | map(select(.name == env.name)) | .[0]' |
             xargs -I {} -0 echo "config={}" |
-            tee -a $GITHUB_OUTPUT
+            tee -a "$GITHUB_OUTPUT"
       - name: Check out lotus
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -111,7 +111,7 @@ jobs:
             if [[ -z "$binary" ]]; then
               continue
             fi
-            make $binary
+            make "$binary"
           done <<< "$(jq -r '.[]' <<< "$binaries")"
       - name: Run otool
         if: runner.os == 'macOS'
@@ -122,9 +122,9 @@ jobs:
           expected: ${{ fromJSON(steps.project.outputs.config).version }}
         run: |
           for bin in lotus lotus-miner lotus-worker; do
-            if [[ -f ./$bin ]]; then
-              chmod +x ./$bin
-              actual=$(./$bin --version | cut -d' ' -f3)
+            if [[ -f "./$bin" ]]; then
+              chmod +x "./$bin"
+              actual=$("./$bin" --version | cut -d' ' -f3)
               if [[ "$actual" != "$expected" ]]; then
                 echo "::error title=Version Mismatch::Expected $expected, got $actual (./$bin)"
                 exit 1
@@ -170,7 +170,7 @@ jobs:
         run: |
           jq -nc 'env.projects | fromjson | map(select(.name == env.name)) | .[0]' |
             xargs -I {} -0 echo "config={}" |
-            tee -a $GITHUB_OUTPUT
+            tee -a "$GITHUB_OUTPUT"
       - name: Check out lotus
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -199,9 +199,9 @@ jobs:
           pushd dist
           for directory in darwin_arm64 linux_amd64_v1; do
             archive_name="${prefix}_v${version}_${directory}"
-            cp -r ../$directory $archive_name
-            tar -czf $archive_name.tar.gz $archive_name
-            rm -r $archive_name
+            cp -r "../$directory" "$archive_name"
+            tar -czf "$archive_name.tar.gz" "$archive_name"
+            rm -r "$archive_name"
           done
           popd
           ls -la .
@@ -217,10 +217,10 @@ jobs:
           tag: ${{ fromJSON(steps.project.outputs.config).tag }}
           GITHUB_TOKEN: ${{ github.token }}
         run: |
-          echo "release<<EOF" | tee -a $GITHUB_OUTPUT
-          gh api --paginate /repos/$GITHUB_REPOSITORY/releases --jq 'map(select(.tag_name == env.tag))' |
-            jq -s add | jq -r 'map({"id": .id, "draft": .draft, "html_url": .html_url}) | .[0]' | tee -a $GITHUB_OUTPUT
-          echo "EOF" | tee -a $GITHUB_OUTPUT
+          echo "release<<EOF" | tee -a "$GITHUB_OUTPUT"
+          gh api --paginate "/repos/$GITHUB_REPOSITORY/releases" --jq 'map(select(.tag_name == env.tag))' |
+            jq -s add | jq -r 'map({"id": .id, "draft": .draft, "html_url": .html_url}) | .[0]' | tee -a "$GITHUB_OUTPUT"
+          echo "EOF" | tee -a "$GITHUB_OUTPUT"
       - name: Check whether the release is already published
         id: published
         env:
@@ -233,9 +233,9 @@ jobs:
           # and delete and re-upload its assets, so leave it alone.
           if jq -e '. != null and .draft == false' <<< "$release" > /dev/null; then
             echo "::notice title=Already published::$(jq -r '.html_url' <<< "$release") was published by another run; skipping"
-            echo "skip=true" | tee -a $GITHUB_OUTPUT
+            echo "skip=true" | tee -a "$GITHUB_OUTPUT"
           else
-            echo "skip=false" | tee -a $GITHUB_OUTPUT
+            echo "skip=false" | tee -a "$GITHUB_OUTPUT"
           fi
       - name: Generate release body
         if: steps.published.outputs.skip != 'true'
@@ -266,9 +266,11 @@ jobs:
             mkdir -p "$(go env GOPATH)/src/github.com/filecoin-project/lotus"
             rm -rf "$(go env GOPATH)/src/github.com/filecoin-project/lotus"
             ln -s "$(pwd)" "$(go env GOPATH)/src/github.com/filecoin-project/lotus"
-            echo "## Release Log" >> release_body.md
-            echo "" >> release_body.md
-            ./scripts/mkreleaselog "$previous" "$current" >> release_body.md
+            {
+              echo "## Release Log"
+              echo ""
+              ./scripts/mkreleaselog "$previous" "$current"
+            } >> release_body.md
           fi
           cat release_body.md
       - name: Create or update release
@@ -286,19 +288,19 @@ jobs:
           discussion_category_name: ""
           GITHUB_TOKEN: ${{ github.token }}
         run: |
-          echo "release<<EOF" | tee -a $GITHUB_OUTPUT
+          echo "release<<EOF" | tee -a "$GITHUB_OUTPUT"
           gh api -X "$method" "$endpoint" \
             --raw-field tag_name="$tag_name" \
             --raw-field target_commitish="$target_commitish" \
             --raw-field name="$name" \
-            --raw-field body="$(cat release_body.md | head -c 125000)" \
-            --field draft=$draft \
-            --field prerelease=$prerelease \
+            --raw-field body="$(head -c 125000 release_body.md)" \
+            --field draft="$draft" \
+            --field prerelease="$prerelease" \
             --raw-field make_latest="$make_latest" \
             --raw-field discussion_category_name="$discussion_category_name" |
             jq -r '{"id": .id, "assets": (.assets | map({"id": .id})), "html_url": .html_url}' |
-            tee -a $GITHUB_OUTPUT
-          echo "EOF" | tee -a $GITHUB_OUTPUT
+            tee -a "$GITHUB_OUTPUT"
+          echo "EOF" | tee -a "$GITHUB_OUTPUT"
       - name: Delete old assets
         if: steps.published.outputs.skip != 'true'
         env:
@@ -309,7 +311,7 @@ jobs:
             if [[ -z "$asset_id" ]]; then
               continue
             fi
-            gh api -X DELETE /repos/$GITHUB_REPOSITORY/releases/assets/$asset_id |
+            gh api -X DELETE "/repos/$GITHUB_REPOSITORY/releases/assets/$asset_id" |
               jq -r '.'
           done <<< "$(jq '.[]' <<< "$asset_ids")"
       - name: Upload new assets
