@@ -152,9 +152,11 @@ jobs:
     # would otherwise update the same GitHub release concurrently. Queued, not
     # cancelled: the later job then finds the release published and skips it.
     # Cancelling could also interrupt a half-finished publish, e.g. with the body PATCHed and the assets deleted but not yet re-uploaded.
+    # queue: max keeps every pending job; by default a newer pending job cancels the older pending one.
     concurrency:
       group: ${{ github.workflow }}-release-${{ matrix.project }}
       cancel-in-progress: false
+      queue: max
     strategy:
       fail-fast: false
       matrix:
@@ -251,13 +253,21 @@ jobs:
           # manual workflow_dispatch with publish=true.
           publishing: ${{ github.event_name == 'push' || github.event.inputs.publish == 'true' }}
           current: ${{ github.event.inputs.ref || github.sha }}
+          ref: ${{ github.event.inputs.ref }}
         run: |
+          # A manual run builds from the supplied ref, so read its CHANGELOG.md rather than that of the branch the workflow runs on.
+          changelog=CHANGELOG.md
+          if [[ -n "$ref" ]]; then
+            git fetch --quiet origin "$ref"
+            changelog="$RUNNER_TEMP/CHANGELOG.md"
+            git show FETCH_HEAD:CHANGELOG.md > "$changelog"
+          fi
           # CHANGELOG.md is the source of truth, so the body is regenerated on every run.
           # Edits made directly to a draft release on GitHub are overwritten.
           # Section selection lives in cmd/release rather than shell so its matching rules are unit tested.
           # See `changelog-section` in cmd/release for how the section is selected.
           # On publishing runs it fails, leaving the release a draft, if CHANGELOG.md has no populated section for this release.
-          go run cmd/release/main.go changelog-section --project "$project" --tag "$tag" --publishing="$publishing" > release_body.md
+          go run cmd/release/main.go changelog-section --project "$project" --tag "$tag" --publishing="$publishing" --changelog "$changelog" > release_body.md
           if [[ "$previous" != '' ]]; then
             mkdir -p "$(go env GOPATH)/src/github.com/filecoin-project/lotus"
             rm -rf "$(go env GOPATH)/src/github.com/filecoin-project/lotus"
