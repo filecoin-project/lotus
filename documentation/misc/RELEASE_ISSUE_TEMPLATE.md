@@ -8,7 +8,11 @@
 [//]: # (1. Treat this issue as the mutable release ledger. Edit it for concrete release progress: links, checked boxes, dates, release URLs, CI/release status, announcement comment links, and short release-specific facts.)
 [//]: # (2. Put process/template improvements in the release-template-improvements PR from Release Setup, not directly in this issue.)
 [//]: # (3. Work top-to-bottom. Do not start release PR work for a target until its Dependencies for releases section has linked blockers or an explicit "No additional dependencies" entry and the dependency checkpoint is complete.)
+<!--{{if .BaseTag}}-->
+[//]: # (4. Create release branches from the v{{.BaseTag}} tag, not origin/master. Changes reach them only through backport PRs that cherry-pick release/backport-labelled PRs from master.)
+<!--{{else}}-->
 [//]: # (4. For regular releases, create release branches from origin/master after dependencies are resolved. For critical security patches, follow the visible release/vX.Y.x guidance.)
+<!--{{end}}-->
 [//]: # (5. Keep the release issue and linked PRs synchronized as each step completes.)
 [//]: # (6. Step-specific hints are in "agent:" HTML comments beneath the relevant checklist items. Read the raw issue body to see them.)
 [//]: # (7. Never push to a release branch directly, even if your token can bypass the PR rule. Undoing a direct push needs a force-push, which branch protection blocks. The combined-release miner fast-forward is the only exception.)
@@ -30,6 +34,7 @@
 * Type: {{.Type}}
 * Level: {{.Level}}
 * Release flow: {{.ReleaseFlow}}<!--{{if ne .RequestedReleaseFlow .ReleaseFlow}}--> (resolved from {{.RequestedReleaseFlow}})<!--{{end}}-->
+* Base: <!--{{if .BaseTag}}-->the v{{.BaseTag}} release, not `master`; changes are cherry-picked from `master` for PRs labelled [`release/backport`](https://github.com/filecoin-project/lotus/issues?q=label%3Arelease%2Fbackport+)<!--{{else}}-->`master`<!--{{end}}-->
 * Related network upgrade version: <!--{{if not .NetworkUpgrade}}-->n/a<!--{{else}}-->nv{{.NetworkUpgrade}}
    * Scope, dates, and epochs: {{.NetworkUpgradeDiscussionLink}}
    * Lotus changelog with Lotus specifics: {{.NetworkUpgradeChangelogEntryLink}}
@@ -80,6 +85,15 @@
    - This will get merged in a `Post-Release` step.
 <!--{{if eq .Level "patch"}}-->
 <!--  {{if contains "Node" .Type}}-->
+<!--    {{if .BaseTag}}-->
+- [ ] Fork a new `release/v{{.Tag}}` branch from the `v{{.BaseTag}}` tag (not `master`) and make any further release-related changes to this branch.
+   - Suggested commands:
+      ```sh
+      git fetch origin --tags
+      git push origin v{{.BaseTag}}^{commit}:refs/heads/release/v{{.Tag}}
+      git ls-remote --heads origin release/v{{.Tag}}
+      ```
+<!--    {{else}}-->
 - [ ] Fork a new `release/v{{.Tag}}` branch from the `master` branch and make any further release-related changes to this branch.
    - For regular releases, use `origin/master` after confirming every {{.FirstReleaseTarget}} dependency above has landed.
    - Suggested commands:
@@ -89,8 +103,18 @@
       git ls-remote --heads origin release/v{{.Tag}}
       ```
    - Note: For critical security patches, fork a new branch from the last stable `release/vX.Y.x` to expedite the release process.
+<!--    {{end}}-->
 <!--  {{end}}-->
 <!--  {{if contains "Miner" .Type}}-->
+<!--    {{if .BaseTag}}-->
+- [ ] Fork a new `release/miner/v{{.Tag}}` branch from the `miner/v{{.BaseTag}}` tag (not `master`) and make any further release-related changes to this branch.
+   - Suggested commands:
+      ```sh
+      git fetch origin --tags
+      git push origin miner/v{{.BaseTag}}^{commit}:refs/heads/release/miner/v{{.Tag}}
+      git ls-remote --heads origin release/miner/v{{.Tag}}
+      ```
+<!--    {{else}}-->
 - [ ] Fork a new `release/miner/v{{.Tag}}` branch from the `master` branch and make any further release-related changes to this branch.
    - For regular releases, use `origin/master` after confirming every {{.FirstReleaseTarget}} dependency above has landed.
    - Suggested commands:
@@ -100,6 +124,7 @@
       git ls-remote --heads origin release/miner/v{{.Tag}}
       ```
    - Note: For critical security patches, fork a new branch from the last stable `release/vX.Y.x` to expedite the release process.
+<!--    {{end}}-->
 <!--  {{end}}-->
 <!--{{end}}-->
 <!--{{if eq .Level "minor"}}-->
@@ -183,15 +208,20 @@
 - [ ] Account for every unresolved `release/backport` item: included in this release, intentionally deferred and linked below, or no longer a blocker.
    - Deferred items:
 <!--  {{end}}-->
-<!--  {{if and $stable $.NoRCRelease}}-->
+<!--  {{if and $stable $.NoRCRelease (not $.BaseTag)}}-->
 - [ ] No additional backport PR is needed because this no-RC release branch was created from `origin/master` after all included dependencies landed.
-<!--  {{else if ne $target "rc1"}}-->
+<!--  {{else if or $.BaseTag (ne $target "rc1")}}-->
 - [ ] Backported [everything with the "backport" label](https://github.com/filecoin-project/lotus/issues?q=label%3Arelease%2Fbackport+)
 - [ ] Create a PR with title `build: backport changes for {{$.Type}} v{{$.Tag}}{{$tagSuffix}}`
    - Link to PR:
 - [ ] Rebase-merge the backport PR.
    <!-- agent:
    - Rebase, not squash: each backported commit should stay traceable to its master PR.
+<!--  {{if $.BaseTag}}-->
+   - Cherry-pick each labelled PR's squash commit from master with `git cherry-pick -x`, oldest first.
+   - Leave `CHANGELOG.md` hunks out of cherry-picks; the release PR writes this release's entry.
+   - Call out any non-trivial conflict resolution in the PR body.
+<!--  {{end}}-->
    - If the release PR already exists, rebase it onto the updated release branch.
    - Land later fixes as another small backport PR, not in the release PR.
    -->
@@ -255,16 +285,21 @@
 <!--    {{end}}-->
 <!--  {{end}}-->
    - [ ] Ensure no missing content when spot checking git history
+<!--  {{if $.BaseTag}}-->
+      - PREVIOUS_TAG is the base release: `v{{$.BaseTag}}` for node and `miner/v{{$.BaseTag}}` for miner.
+      - Every commit in `git log --oneline --graph PREVIOUS_TAG..HEAD` should be a backported fix or a release commit; compare against the `release/backport` PRs rather than everything merged into master.
+<!--  {{else}}-->
       - Find the previous stable tag first:
-<!--  {{if contains "Node" $.Type}}-->
+<!--    {{if contains "Node" $.Type}}-->
          - Node: `git tag -l 'v*' | grep -v '-' | sort -V -r | head -n 1`
-<!--  {{end}}-->
-<!--  {{if contains "Miner" $.Type}}-->
+<!--    {{end}}-->
+<!--    {{if contains "Miner" $.Type}}-->
          - Miner: `git tag -l 'miner/v*' | grep -v '-' | sort -V -r | head -n 1`
-<!--  {{end}}-->
+<!--    {{end}}-->
       - Example command looking at git commits: `git log --oneline --graph PREVIOUS_TAG..HEAD`
       - Example GitHub UI search looking at merged PRs into master, where `YYYY-MM-DD` is the previous stable release publish date: https://github.com/filecoin-project/lotus/pulls?q=is%3Apr+base%3Amaster+merged%3A%3EYYYY-MM-DD
       - Example `gh` cli command looking at merged PRs into master and sorted by title to group similar areas: `gh pr list --repo filecoin-project/lotus --search "base:master merged:>YYYY-MM-DD" --json number,mergedAt,author,title | jq -r '.[] | [.number, .mergedAt, .author.login, .title] | @tsv' | sort -k4`
+<!--  {{end}}-->
    - [ ] Update the PR with the commit(s) made to the CHANGELOG
 <!--  {{if $stable}}-->
 - [ ] Confirm the release PR CI is green, including release asset generation.

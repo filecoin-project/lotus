@@ -125,34 +125,47 @@ func TestReleaseIssueTemplateRenders(t *testing.T) {
 
 	for _, releaseType := range []string{"Node", "Miner", "Node and Miner"} {
 		for _, releaseLevel := range []string{"minor", "patch"} {
-			for _, flow := range releaseFlows {
-				t.Run(releaseType+"/"+releaseLevel+"/"+flow.name, func(t *testing.T) {
-					var buffer bytes.Buffer
-					err := tmpl.Execute(&buffer, map[string]any{
-						"ContentGeneratedWithLotusReleaseCli": true,
-						"LotusReleaseCliString":               "release create-issue",
-						"Type":                                releaseType,
-						"Tag":                                 "1.30.0",
-						"NextTag":                             "1.30.1",
-						"Level":                               releaseLevel,
-						"RequestedReleaseFlow":                flow.requestedReleaseFlow,
-						"ReleaseFlow":                         flow.releaseFlow,
-						"NoRCRelease":                         flow.noRCRelease,
-						"RCRelease":                           flow.rcRelease,
-						"FirstReleaseTarget":                  flow.firstReleaseTarget,
-						"ReleaseTargets":                      flow.releaseTargets,
-						"NetworkUpgrade":                      flow.networkUpgrade,
-						"NetworkUpgradeDiscussionLink":        "https://example.com/discussion?a=1&b=2",
-						"NetworkUpgradeChangelogEntryLink":    "https://example.com/changelog?a=1&b=2",
-						"RC1DateString":                       "TBD",
-						"StableDateString":                    "TBD",
+			for _, baseTag := range []string{"", "1.29.9"} {
+				if baseTag != "" && releaseLevel != "patch" {
+					continue
+				}
+				for _, flow := range releaseFlows {
+					t.Run(releaseType+"/"+releaseLevel+"/base="+baseTag+"/"+flow.name, func(t *testing.T) {
+						var buffer bytes.Buffer
+						err := tmpl.Execute(&buffer, map[string]any{
+							"ContentGeneratedWithLotusReleaseCli": true,
+							"LotusReleaseCliString":               "release create-issue",
+							"Type":                                releaseType,
+							"Tag":                                 "1.30.0",
+							"NextTag":                             "1.30.1",
+							"Level":                               releaseLevel,
+							"RequestedReleaseFlow":                flow.requestedReleaseFlow,
+							"ReleaseFlow":                         flow.releaseFlow,
+							"NoRCRelease":                         flow.noRCRelease,
+							"RCRelease":                           flow.rcRelease,
+							"FirstReleaseTarget":                  flow.firstReleaseTarget,
+							"ReleaseTargets":                      flow.releaseTargets,
+							"BaseTag":                             baseTag,
+							"NetworkUpgrade":                      flow.networkUpgrade,
+							"NetworkUpgradeDiscussionLink":        "https://example.com/discussion?a=1&b=2",
+							"NetworkUpgradeChangelogEntryLink":    "https://example.com/changelog?a=1&b=2",
+							"RC1DateString":                       "TBD",
+							"StableDateString":                    "TBD",
+						})
+						require.NoError(t, err)
+						// A leaked comment delimiter means a control statement reached the issue body.
+						require.NotContains(t, buffer.String(), "<!--{{")
+						// The issue body is Markdown, so links must not be HTML-escaped.
+						require.NotContains(t, buffer.String(), "&amp;")
+						if baseTag != "" {
+							// A release cut from an earlier tag must never be told to fork from master or skip backports.
+							require.NotContains(t, buffer.String(), "origin/master:refs/heads/")
+							require.NotContains(t, buffer.String(), "No additional backport PR is needed")
+							require.Contains(t, buffer.String(), "v"+baseTag+"^{commit}:refs/heads/release/")
+							require.Contains(t, buffer.String(), "build: backport changes for")
+						}
 					})
-					require.NoError(t, err)
-					// A leaked comment delimiter means a control statement reached the issue body.
-					require.NotContains(t, buffer.String(), "<!--{{")
-					// The issue body is Markdown, so links must not be HTML-escaped.
-					require.NotContains(t, buffer.String(), "&amp;")
-				})
+				}
 			}
 		}
 	}
