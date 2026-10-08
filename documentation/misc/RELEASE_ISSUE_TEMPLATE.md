@@ -69,10 +69,11 @@
 <details open>
   <summary>Section</summary>
 
-- [ ] Use the exact Go version from `go.mod` for generation and builds: `export GOTOOLCHAIN="go$(awk '$1 == "go" {print $2}' go.mod)"`
-   <!-- agent:
-   - Rerun this after every branch switch. A newer installed Go does not downgrade and can generate code that fails CI.
-   -->
+> [!IMPORTANT]
+> Throughout this release, use the exact Go version from `go.mod` for generation and builds. Rerun this in every shell and after every branch switch: `export GOTOOLCHAIN="go$(awk '$1 == "go" {print $2}' go.mod)"`
+<!-- agent:
+- A newer installed Go does not downgrade and can generate code that fails CI.
+-->
 
 <!--{{if ne .NetworkUpgrade ""}}-->
 - [ ] Make sure all [Lotus dependencies are updated to the correct versions for the network upgrade](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/Update_Dependencies_Lotus.md)
