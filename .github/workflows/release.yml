@@ -205,12 +205,6 @@ jobs:
           done
           popd
           ls -la .
-      - name: Install Kubo (checksums generation dependency)
-        uses: ipfs/download-ipfs-distribution-action@v2
-        with:
-          name: kubo
-          version: v0.36.0
-          cache: false
       - name: Generate checksums
         run: |
           ./scripts/generate-checksums.sh
@@ -324,7 +318,7 @@ jobs:
           release_id: ${{ fromJSON(steps.after.outputs.release).id }}
           GITHUB_TOKEN: ${{ github.token }}
         run: |
-          for asset in *.tar.gz *.cid *.sha512; do
+          for asset in *.tar.gz *.sha512; do
             if [[ ! -f "$asset" ]]; then
               continue
             fi
