@@ -147,6 +147,16 @@ jobs:
       # This enables the job to create and/or update GitHub releases
       contents: write
     runs-on: ubuntu-latest
+    # Serialize release jobs per project across runs. Every run releases every
+    # unreleased project, so pushes to release/vX and release/miner/vX close together
+    # would otherwise update the same GitHub release concurrently. Queued, not
+    # cancelled: the later job then finds the release published and skips it.
+    # Cancelling could also interrupt a half-finished publish, e.g. with the body PATCHed and the assets deleted but not yet re-uploaded.
+    # queue: max keeps every pending job; by default a newer pending job cancels the older pending one.
+    concurrency:
+      group: ${{ github.workflow }}-release-${{ matrix.project }}
+      cancel-in-progress: false
+      queue: max
     strategy:
       fail-fast: false
       matrix:
@@ -215,37 +225,60 @@ jobs:
         run: |
           echo "release<<EOF" | tee -a $GITHUB_OUTPUT
           gh api --paginate /repos/$GITHUB_REPOSITORY/releases --jq 'map(select(.tag_name == env.tag))' |
-            jq -s add | jq -r 'map({"id": .id, "draft": .draft, "html_url": .html_url, "body": .body}) | .[0]' | tee -a $GITHUB_OUTPUT
+            jq -s add | jq -r 'map({"id": .id, "draft": .draft, "html_url": .html_url}) | .[0]' | tee -a $GITHUB_OUTPUT
           echo "EOF" | tee -a $GITHUB_OUTPUT
-      - name: Generate release body
+      - name: Check whether the release is already published
+        id: published
         env:
+          release: ${{ steps.before.outputs.release }}
+        run: |
+          # The check job only selects projects whose tag does not exist yet, but a
+          # concurrent run (e.g. near-simultaneous pushes to release/vX and
+          # release/miner/vX, which each release every unreleased project) may have
+          # published it since. Updating a published release would re-PATCH its body
+          # and delete and re-upload its assets, so leave it alone.
+          if jq -e '. != null and .draft == false' <<< "$release" > /dev/null; then
+            echo "::notice title=Already published::$(jq -r '.html_url' <<< "$release") was published by another run; skipping"
+            echo "skip=true" | tee -a $GITHUB_OUTPUT
+          else
+            echo "skip=false" | tee -a $GITHUB_OUTPUT
+          fi
+      - name: Generate release body
+        if: steps.published.outputs.skip != 'true'
+        env:
+          project: ${{ matrix.project }}
           tag: ${{ fromJSON(steps.project.outputs.config).tag }}
           previous: ${{ fromJSON(steps.project.outputs.config).previous }}
-          body: ${{ steps.before.outputs.release == 'null' && '' || fromJSON(steps.before.outputs.release).body }}
+          # Runs that publish the release: the push after the release PR merges, or a
+          # manual workflow_dispatch with publish=true.
+          publishing: ${{ github.event_name == 'push' || github.event.inputs.publish == 'true' }}
           current: ${{ github.event.inputs.ref || github.sha }}
+          ref: ${{ github.event.inputs.ref }}
         run: |
-          if [[ -n "$body" ]]; then
-            echo "$body" >> release_body.md
-          else
-            csplit --digits=4 --quiet --elide-empty-files CHANGELOG.md '/^# /' '{*}'
-            # Checking the files in reverse order to get to the UNRELEASED section last
-            for file in $(ls -r xx*); do
-              if grep -q "^# $tag " $file || grep -q "^# UNRELEASED" $file; then
-                tail -n +3 $file >> release_body.md
-                break
-              fi
-            done
-            if [[ "$previous" != '' ]]; then
-              mkdir -p "$(go env GOPATH)/src/github.com/filecoin-project/lotus"
-              rm -rf "$(go env GOPATH)/src/github.com/filecoin-project/lotus"
-              ln -s "$(pwd)" "$(go env GOPATH)/src/github.com/filecoin-project/lotus"
-              echo "## Release Log" >> release_body.md
-              echo "" >> release_body.md
-              ./scripts/mkreleaselog "$previous" "$current" >> release_body.md
-            fi
+          # A manual run builds from the supplied ref, so read its CHANGELOG.md rather than that of the branch the workflow runs on.
+          changelog=CHANGELOG.md
+          if [[ -n "$ref" ]]; then
+            git fetch --quiet origin "$ref"
+            changelog="$RUNNER_TEMP/CHANGELOG.md"
+            git show FETCH_HEAD:CHANGELOG.md > "$changelog"
+          fi
+          # CHANGELOG.md is the source of truth, so the body is regenerated on every run.
+          # Edits made directly to a draft release on GitHub are overwritten.
+          # Section selection lives in cmd/release rather than shell so its matching rules are unit tested.
+          # See `changelog-section` in cmd/release for how the section is selected.
+          # On publishing runs it fails, leaving the release a draft, if CHANGELOG.md has no populated section for this release.
+          go run cmd/release/main.go changelog-section --project "$project" --tag "$tag" --publishing="$publishing" --changelog "$changelog" > release_body.md
+          if [[ "$previous" != '' ]]; then
+            mkdir -p "$(go env GOPATH)/src/github.com/filecoin-project/lotus"
+            rm -rf "$(go env GOPATH)/src/github.com/filecoin-project/lotus"
+            ln -s "$(pwd)" "$(go env GOPATH)/src/github.com/filecoin-project/lotus"
+            echo "## Release Log" >> release_body.md
+            echo "" >> release_body.md
+            ./scripts/mkreleaselog "$previous" "$current" >> release_body.md
           fi
           cat release_body.md
       - name: Create or update release
+        if: steps.published.outputs.skip != 'true'
         id: after
         env:
           method: ${{ steps.before.outputs.release == 'null' && 'POST' || 'PATCH' }}
@@ -273,6 +306,7 @@ jobs:
             tee -a $GITHUB_OUTPUT
           echo "EOF" | tee -a $GITHUB_OUTPUT
       - name: Delete old assets
+        if: steps.published.outputs.skip != 'true'
         env:
           asset_ids: ${{ toJSON(fromJSON(steps.after.outputs.release).assets.*.id) }}
           GITHUB_TOKEN: ${{ github.token }}
@@ -285,6 +319,7 @@ jobs:
               jq -r '.'
           done <<< "$(jq '.[]' <<< "$asset_ids")"
       - name: Upload new assets
+        if: steps.published.outputs.skip != 'true'
         env:
           release_id: ${{ fromJSON(steps.after.outputs.release).id }}
           GITHUB_TOKEN: ${{ github.token }}
@@ -305,7 +340,7 @@ jobs:
           done
         working-directory: dist
       - name: Publish release
-        if: github.event.inputs.publish == 'true' || github.event_name == 'push'
+        if: steps.published.outputs.skip != 'true' && (github.event.inputs.publish == 'true' || github.event_name == 'push')
         env:
           endpoint: ${{ format('/repos/{0}/releases/{1}', github.repository, fromJSON(steps.after.outputs.release).id) }}
           make_latest: ${{ matrix.project == 'node' && fromJSON(steps.project.outputs.config).latest || false }}
