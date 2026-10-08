@@ -14,7 +14,7 @@ on:
     paths-ignore:
       - '**/*.md'
       - 'cmd/release/**'
-      - '.github/workflows/release-tool.yml'
+      - '.github/workflows/release-tool-test.yml'
   schedule:
     - cron: '0 0 * * *'
   workflow_dispatch:
@@ -47,10 +47,10 @@ jobs:
       - id: markdown-only
         uses: ./.github/actions/detect-markdown-only-update
         with:
-          # cmd/release is tested by the Release Tool workflow and is not part of any binary built here.
+          # cmd/release is tested by the Release Tool Test workflow and is not part of any binary built here.
           skippable-paths: |
             cmd/release/
-            .github/workflows/release-tool.yml
+            .github/workflows/release-tool-test.yml
   docker:
     name: Docker (${{ matrix.image }} / ${{ matrix.network }}) [publish=${{ github.event.inputs.publish == 'true' || github.event_name != 'pull_request' }}]
     needs: [markdown-only]

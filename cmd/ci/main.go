@@ -282,7 +282,7 @@ func getPackages(testGroupName string) []string {
 	// Keep the non-itest groups in sync with the Makefile's unittests target:
 	// go list ./... excluding the itests package itself. unit-rest is the catch-all bucket for
 	// packages that do not have a more specific CI group. The one deliberate exception is
-	// cmd/release, which the Release Tool workflow tests on its own.
+	// cmd/release, which the Release Tool Test workflow tests on its own.
 	testGroupNameToPackages := map[string][]string{
 		"multicore-sdr": {createPackagePath("storage", "sealer", "ffiwrapper")},
 		"conformance":   {createPackagePath("conformance")},
@@ -321,7 +321,7 @@ func getPackages(testGroupName string) []string {
 }
 
 // getCmdPackages returns a package pattern for each directory under cmd except cmd/release,
-// whose tests run in the Release Tool workflow (.github/workflows/release-tool.yml) instead.
+// whose tests run in the Release Tool Test workflow (.github/workflows/release-tool-test.yml) instead.
 func getCmdPackages() []string {
 	entries, err := os.ReadDir("cmd")
 	if err != nil {

@@ -73,7 +73,7 @@ func TestUnitCLIExcludesReleaseTool(t *testing.T) {
 	release := createPackagePath("cmd", "release", "...")
 	lotus := createPackagePath("cmd", "lotus", "...")
 	if slices.Contains(packages, release) || slices.Contains(packages, createPackagePath("cmd", "...")) {
-		t.Fatalf("unit-cli packages %v should not include %s; the Release Tool workflow tests it", packages, release)
+		t.Fatalf("unit-cli packages %v should not include %s; the Release Tool Test workflow tests it", packages, release)
 	}
 	if !slices.Contains(packages, lotus) {
 		t.Fatalf("unit-cli packages %v should include %s", packages, lotus)

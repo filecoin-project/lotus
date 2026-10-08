@@ -19,7 +19,7 @@ inputs:
     description: >
       Newline-separated path prefixes that the calling workflow does not depend on, which count as
       skippable alongside hand-written Markdown. For example, Test, Build and Docker do not build or
-      test cmd/release, which the Release Tool workflow covers.
+      test cmd/release, which the Release Tool Test workflow covers.
     required: false
     default: ''
 
