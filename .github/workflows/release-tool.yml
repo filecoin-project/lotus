@@ -1,0 +1,30 @@
+name: Release Tool
+
+# The release CLI parses documentation/misc/RELEASE_ISSUE_TEMPLATE.md as a Go template. That file is Markdown, so the
+# Test workflow reuses its previous result when only the template changes; this quick check covers it instead.
+on:
+  pull_request:
+    paths:
+      - 'cmd/release/**'
+      - 'documentation/misc/RELEASE_ISSUE_TEMPLATE.md'
+      - '.github/workflows/release-tool.yml'
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Release Tool (test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/install-go
+      - run: go test ./cmd/release/...
