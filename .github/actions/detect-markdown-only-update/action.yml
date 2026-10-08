@@ -14,6 +14,15 @@ description: >
 
   The calling job must check out the repository and needs `actions: read` and `contents: read`.
 
+inputs:
+  skippable-paths:
+    description: >
+      Newline-separated path prefixes that the calling workflow does not depend on, which count as
+      skippable alongside hand-written Markdown. For example, Test, Build and Docker do not build or
+      test cmd/release, which the Release Tool workflow covers.
+    required: false
+    default: ''
+
 outputs:
   skip:
     description: "'true' when the workflow's remaining jobs can be skipped, otherwise 'false'."
@@ -32,6 +41,7 @@ runs:
         HEAD_REF: ${{ github.event.pull_request.head.ref }}
         HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
         TESTED: ${{ github.sha }}
+        SKIPPABLE_PATHS: ${{ inputs.skippable-paths }}
         DOWNLOAD_DIR: ${{ runner.temp }}/previous-tested-commit
       run: |
         set -uo pipefail
@@ -75,12 +85,15 @@ runs:
         fi
 
         # Generated documentation under documentation/en/ is verified by the Check workflow, so it does not count as skippable.
-        others=$(awk '!/\.md$/ || /^documentation\/en\//' <<<"$changed")
+        others=$(awk '
+          BEGIN { n = split(ENVIRON["SKIPPABLE_PATHS"], prefixes, "\n") }
+          /\.md$/ && !/^documentation\/en\// { next }
+          { for (i = 1; i <= n; i++) if (prefixes[i] != "" && index($0, prefixes[i]) == 1) next; print }' <<<"$changed")
         if [[ -n "$others" ]]; then
-          result false "Files other than hand-written Markdown changed since run $previous_run tested $previous; running all jobs."
+          result false "Files other than hand-written Markdown or this workflow's skippable paths changed since run $previous_run tested $previous; running all jobs."
         fi
 
-        result true "Only hand-written Markdown changed since run $previous_run passed on $previous; skipping."
+        result true "Only hand-written Markdown or this workflow's skippable paths changed since run $previous_run passed on $previous; skipping."
     - if: github.event_name == 'pull_request'
       shell: bash
       env:

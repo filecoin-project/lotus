@@ -4,6 +4,8 @@ on:
   pull_request:
     paths-ignore:
       - '**/*.md'
+      - 'cmd/release/**'
+      - '.github/workflows/release-tool.yml'
   push:
     branches:
       - master
@@ -36,6 +38,11 @@ jobs:
           sparse-checkout: .github/actions
       - id: markdown-only
         uses: ./.github/actions/detect-markdown-only-update
+        with:
+          # cmd/release is tested by the Release Tool workflow and is not part of any binary built here.
+          skippable-paths: |
+            cmd/release/
+            .github/workflows/release-tool.yml
   build:
     name: Build
     needs: [markdown-only]
