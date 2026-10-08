@@ -1,4 +1,4 @@
-name: Release Tool
+name: Release Tool Test
 
 # The release CLI parses documentation/misc/RELEASE_ISSUE_TEMPLATE.md as a Go template. That file is Markdown, so the
 # Test workflow reuses its previous result when only the template changes; this quick check covers it instead.
@@ -7,7 +7,7 @@ on:
     paths:
       - 'cmd/release/**'
       - 'documentation/misc/RELEASE_ISSUE_TEMPLATE.md'
-      - '.github/workflows/release-tool.yml'
+      - '.github/workflows/release-tool-test.yml'
 
 defaults:
   run:
@@ -22,7 +22,7 @@ permissions:
 
 jobs:
   test:
-    name: Release Tool (test)
+    name: Release Tool Test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
