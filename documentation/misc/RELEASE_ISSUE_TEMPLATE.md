@@ -334,7 +334,8 @@
    - The PR comes from a daily schedule; to get it sooner, run [Bump Lotus Version](https://github.com/filecoin-project/homebrew-lotus/actions/workflows/update-version.yml).
    <!-- agent:
    - `gh workflow run update-version.yml --repo filecoin-project/homebrew-lotus`
-   - Download the archives the formula references: `gh release download v{{.Tag}} --repo filecoin-project/lotus --pattern '*.tar.gz'`.
+   - Check each formula this release updates: `Formula/lotus.rb` for node and `Formula/lotus-miner.rb` for miner.
+   - Download that project's archives: `gh release download v{{.Tag}} --repo filecoin-project/lotus --pattern '*.tar.gz'` for node, and `gh release download miner/v{{.Tag}} --repo filecoin-project/lotus --pattern '*.tar.gz'` for miner.
    - Run `shasum -a 256 *.tar.gz` and compare with the `url` and `sha256` lines in `gh pr diff PR_NUMBER --repo filecoin-project/homebrew-lotus`.
    -->
 - [ ] Stage any security advisories for future publishing per [policy](https://github.com/filecoin-project/lotus/blob/master/LOTUS_RELEASE_FLOW.md#security-fix-policy).
