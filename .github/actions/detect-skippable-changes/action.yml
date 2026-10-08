@@ -1,0 +1,121 @@
+name: Detect skippable changes
+description: >
+  Decide whether a pull_request run can skip the calling workflow's remaining jobs because nothing it
+  depends on has changed.
+
+  A pull_request run tests GitHub's merge of the PR head into the base (`github.sha`). Each run records
+  that commit as a `tested-commit` artifact. The workflow can skip when every file that differs from
+  either of these baselines is in the selected skippable set:
+  the commit tested by this workflow's last successful run on the same pull request (so CHANGELOG
+  edits, force pushes and rebases that only touch skippable files reuse that result), or the PR's base
+  (so a pull request that only touches skippable files never runs the heavy jobs).
+  Any error falls back to running everything.
+
+  The calling job must check out the repository and needs `actions: read` and `contents: read`.
+
+inputs:
+  paths:
+    description: >
+      Which set of paths the calling workflow can skip.
+      `binaries` (Test, Build, Docker): all Markdown, plus cmd/release and its workflow, which the
+      Release Tool Test workflow covers and no binary or image includes.
+      `check` (Check): Markdown except the generated documentation/en/, which gen-check verifies.
+    required: true
+
+outputs:
+  skip:
+    description: "'true' when the workflow's remaining jobs can be skipped, otherwise 'false'."
+    value: ${{ steps.detect.outputs.skip }}
+
+runs:
+  using: composite
+  steps:
+    - id: detect
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        REPO: ${{ github.repository }}
+        RUN_ID: ${{ github.run_id }}
+        EVENT_NAME: ${{ github.event_name }}
+        HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+        TESTED: ${{ github.sha }}
+        PATHS: ${{ inputs.paths }}
+        DOWNLOAD_DIR: ${{ runner.temp }}/previous-tested-commit
+      run: |
+        set -uo pipefail
+
+        result() {
+          echo "$2"
+          echo "skip=$1" >> "$GITHUB_OUTPUT"
+          exit 0
+        }
+
+        # Prints the files in $1..$TESTED that are not in the $PATHS skippable set; fails if the diff fails.
+        unskippable() {
+          local changed
+          changed=$(git diff --no-renames --name-only "$1" "$TESTED") || return 1
+          awk '
+            ENVIRON["PATHS"] == "binaries" && (/\.md$/ || index($0, "cmd/release/") == 1 || $0 == ".github/workflows/release-tool-test.yml") { next }
+            ENVIRON["PATHS"] == "check" && /\.md$/ && !/^documentation\/en\// { next }
+            { print }' <<<"$changed"
+        }
+
+        if [[ "$EVENT_NAME" != "pull_request" ]]; then
+          result false "Not a pull_request run; running all jobs."
+        fi
+        if [[ "$PATHS" != "binaries" && "$PATHS" != "check" ]]; then
+          result false "Unknown paths set '$PATHS'; running all jobs."
+        fi
+
+        # Depth 2 also fetches the merge commit's first parent, the base it was tested against.
+        if ! git fetch --quiet --no-tags --depth=2 --filter=blob:none origin "$TESTED"; then
+          result false "Could not fetch $TESTED; running all jobs."
+        fi
+
+        # Baseline 1: the commit tested by this workflow's last successful run on this pull request.
+        previous=""
+        if workflow_id=$(gh api "repos/$REPO/actions/runs/$RUN_ID" --jq '.workflow_id') &&
+          runs=$(gh api -X GET "repos/$REPO/actions/workflows/$workflow_id/runs" \
+            -f event=pull_request -f branch="$HEAD_REF" -f status=success -F per_page=30) &&
+          previous_run=$(jq -r --arg repo "$HEAD_REPO" --argjson run "$RUN_ID" \
+            '[.workflow_runs[] | select(.head_repository.full_name == $repo and .id != $run)][0].id // empty' <<<"$runs") &&
+          [[ -n "$previous_run" ]] &&
+          gh run download "$previous_run" -R "$REPO" -n tested-commit -D "$DOWNLOAD_DIR"; then
+          previous=$(cat "$DOWNLOAD_DIR/tested-commit")
+        fi
+        if [[ "$previous" =~ ^[0-9a-f]{40}$ ]] && git fetch --quiet --no-tags --depth=1 --filter=blob:none origin "$previous"; then
+          if others=$(unskippable "$previous"); then
+            if [[ -z "$others" ]]; then
+              result true "Only skippable files ($PATHS) changed since run $previous_run passed on $previous; skipping."
+            fi
+            echo "Files this workflow depends on changed since run $previous_run passed on $previous:"
+            head -n 10 <<<"$others"
+          fi
+        else
+          echo "No earlier successful run on this pull request recorded the commit it tested."
+        fi
+
+        # Baseline 2: the PR's base.
+        if others=$(unskippable "$TESTED^1"); then
+          if [[ -z "$others" ]]; then
+            result true "This pull request only changes skippable files ($PATHS); skipping."
+          fi
+          echo "Files this pull request changes that this workflow depends on:"
+          head -n 10 <<<"$others"
+        fi
+
+        result false "Running all jobs."
+    - if: github.event_name == 'pull_request'
+      shell: bash
+      env:
+        TESTED: ${{ github.sha }}
+        RECORD_DIR: ${{ runner.temp }}/tested-commit
+      run: mkdir -p "$RECORD_DIR" && echo "$TESTED" > "$RECORD_DIR/tested-commit"
+    - if: github.event_name == 'pull_request'
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: tested-commit
+        path: ${{ runner.temp }}/tested-commit/tested-commit
+        retention-days: 90
+        overwrite: true

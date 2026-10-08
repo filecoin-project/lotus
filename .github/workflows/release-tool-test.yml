@@ -1,8 +1,8 @@
 name: Release Tool Test
 
-# This workflow is the only place cmd/release is tested: cmd/ci leaves it out of the Test workflow's unit-cli group, and
-# Test, Build and Docker skip changes confined to cmd/release. It also covers documentation/misc/RELEASE_ISSUE_TEMPLATE.md,
-# which the release CLI parses as a Go template but which those workflows treat as skippable Markdown.
+# This workflow is the only place cmd/release is tested.
+# cmd/ci leaves it out of the Test workflow's unit-cli group, and Test, Build and Docker skip changes confined to it.
+# It also covers documentation/misc/RELEASE_ISSUE_TEMPLATE.md, which the release CLI parses as a Go template but which those workflows treat as skippable Markdown.
 on:
   pull_request:
     paths:
