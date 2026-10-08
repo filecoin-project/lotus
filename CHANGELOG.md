@@ -24,9 +24,17 @@ This is an **optional** patch release on top of [v1.37.0](https://github.com/fil
 - **Already on v1.37.0?** You are ready for the nv29 (Solstice) upgrade at epoch `6470279` (`2026-10-19T12:59:30Z`). Upgrading to v1.37.1 is optional.
 - **Not on v1.37.0 yet?** Upgrade directly to v1.37.1 to get these improvements along with nv29 support.
 
+Ethereum RPC providers should read the upgrade warning below before upgrading.
+
+## ☢️ Upgrade Warnings ☢️
+
+- `eth_call` and `eth_estimateGas` now honor positive `gas` limits. Requests that previously succeeded with an insufficient limit can now fail. Applications and RPC providers should review default or injected `gas` values and increase them, or omit `gas` when no explicit cap is intended. ([filecoin-project/lotus#13865](https://github.com/filecoin-project/lotus/pull/13865))
+
 ## ⭐ New Features
 
 ## 🐛 Bug Fixes
+
+- fix(gateway): the lookback limit now applies to the block parameter of `eth_estimateGas` and to the `fromBlock` and `blockHash` of `eth_newFilter`. ([filecoin-project/lotus#13873](https://github.com/filecoin-project/lotus/pull/13873))
 
 ## 👌 Improvements
 
