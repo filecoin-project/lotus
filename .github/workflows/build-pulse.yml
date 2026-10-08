@@ -63,9 +63,9 @@ jobs:
         # A Test run skips its test jobs when a pull request push only changes Markdown.
         run: |
           if find "$REPORTS_PATH" -name '*.xml' -print -quit | grep -q .; then
-            echo "reports=true" | tee -a $GITHUB_OUTPUT
+            echo "reports=true" | tee -a "$GITHUB_OUTPUT"
           else
-            echo "reports=false" | tee -a $GITHUB_OUTPUT
+            echo "reports=false" | tee -a "$GITHUB_OUTPUT"
           fi
       - name: Upload test results to BuildPulse for flaky test detection
         if: steps.found.outputs.reports == 'true'
