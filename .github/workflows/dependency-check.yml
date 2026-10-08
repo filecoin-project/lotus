@@ -70,7 +70,7 @@ jobs:
           echo "tagged<<EOF" >> "$GITHUB_OUTPUT"
           grep -P "$V0_PATTERN" go.mod | grep -Pv "$IGNORE_PATTERN" | while read -r line; do
             dep=$(echo "$line" | cut -d' ' -f1)
-            if [ ! -z "$(go list -m -versions "$dep" 2>/dev/null | awk 'NF>1')" ]; then
+            if [ -n "$(go list -m -versions "$dep" 2>/dev/null | awk 'NF>1')" ]; then
               echo "$dep"
             fi
           done | tee -a "$GITHUB_OUTPUT"

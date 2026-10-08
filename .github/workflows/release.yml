@@ -299,7 +299,7 @@ jobs:
             --raw-field tag_name="$tag_name" \
             --raw-field target_commitish="$target_commitish" \
             --raw-field name="$name" \
-            --raw-field body="$(cat release_body.md | head -c 125000)" \
+            --raw-field body="$(head -c 125000 release_body.md)" \
             --field draft="$draft" \
             --field prerelease="$prerelease" \
             --raw-field make_latest="$make_latest" \
