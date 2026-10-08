@@ -5,7 +5,7 @@ name: Release Tool Test
 # It also covers documentation/misc/RELEASE_ISSUE_TEMPLATE.md, which the release CLI parses as a Go template but which those workflows treat as skippable Markdown.
 on:
   pull_request:
-    paths:
+    paths: &paths
       - 'cmd/release/**'
       - 'documentation/misc/RELEASE_ISSUE_TEMPLATE.md'
       - '.github/workflows/release-tool-test.yml'
@@ -13,10 +13,7 @@ on:
     branches:
       - master
       - release/*
-    paths:
-      - 'cmd/release/**'
-      - 'documentation/misc/RELEASE_ISSUE_TEMPLATE.md'
-      - '.github/workflows/release-tool-test.yml'
+    paths: *paths
 
 defaults:
   run:

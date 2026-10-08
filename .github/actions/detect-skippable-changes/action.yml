@@ -16,10 +16,8 @@ description: >
 inputs:
   paths:
     description: >
-      Which set of paths the calling workflow can skip.
-      `binaries` (Test, Build, Docker): all Markdown, plus cmd/release and its workflow, which the
-      Release Tool Test workflow covers and no binary or image includes.
-      `check` (Check): Markdown except the generated documentation/en/, which gen-check verifies.
+      Which set of paths the calling workflow can skip: `binaries` (Test, Build, Docker) or `check`
+      (Check). The sets are listed at the top of the detect step's script.
     required: true
 
 outputs:
@@ -51,21 +49,57 @@ runs:
           exit 0
         }
 
-        # Prints the files in $1..$TESTED that are not in the $PATHS skippable set; fails if the diff fails.
+        # The skippable path sets, as extended regexes joined with |.
+        # A changed file is skippable when it matches SKIPPABLE and does not match REQUIRED.
+        case "$PATHS" in
+          binaries) # Test, Build, Docker: nothing here is built into a binary or image, or read by their tests.
+            SKIPPABLE=(
+              '\.md$'
+              '^documentation/'
+              '^LICENSE-'
+              '^\.github/ISSUE_TEMPLATE/'
+              '^\.github/CODEOWNERS$'
+              '^\.github/dependabot\.yml$'
+              '^cmd/release/' # Tested by the Release Tool Test workflow.
+              '^\.github/workflows/release-tool-test\.yml$'
+            )
+            REQUIRED=()
+            ;;
+          check) # Check: gofmt, lint and gen-check apply to all code, and gen-check regenerates documentation/en/.
+            SKIPPABLE=(
+              '\.md$'
+              '^documentation/images/'
+              '^LICENSE-'
+              '^\.github/ISSUE_TEMPLATE/'
+              '^\.github/CODEOWNERS$'
+              '^\.github/dependabot\.yml$'
+            )
+            REQUIRED=(
+              '^documentation/en/'
+            )
+            ;;
+          *)
+            result false "Unknown paths set '$PATHS'; running all jobs."
+            ;;
+        esac
+        skippable=$(IFS='|'; echo "${SKIPPABLE[*]:-}")
+        required=$(IFS='|'; echo "${REQUIRED[*]:-}")
+
+        # Prints the files in $1..$TESTED that are not skippable; fails if the diff fails.
         unskippable() {
-          local changed
+          local changed file
           changed=$(git diff --no-renames --name-only "$1" "$TESTED") || return 1
-          awk '
-            ENVIRON["PATHS"] == "binaries" && (/\.md$/ || index($0, "cmd/release/") == 1 || $0 == ".github/workflows/release-tool-test.yml") { next }
-            ENVIRON["PATHS"] == "check" && /\.md$/ && !/^documentation\/en\// { next }
-            { print }' <<<"$changed"
+          while IFS= read -r file; do
+            [[ -z "$file" ]] && continue
+            if [[ "$file" =~ $skippable ]] && ! [[ -n "$required" && "$file" =~ $required ]]; then
+              continue
+            fi
+            echo "$file"
+          done <<<"$changed"
         }
 
         if [[ "$EVENT_NAME" != "pull_request" ]]; then
           result false "Not a pull_request run; running all jobs."
-        fi
-        if [[ "$PATHS" != "binaries" && "$PATHS" != "check" ]]; then
-          result false "Unknown paths set '$PATHS'; running all jobs."
         fi
 
         # Depth 2 also fetches the merge commit's first parent, the base it was tested against.
@@ -117,5 +151,5 @@ runs:
       with:
         name: tested-commit
         path: ${{ runner.temp }}/tested-commit/tested-commit
-        retention-days: 90
+        retention-days: 30
         overwrite: true
