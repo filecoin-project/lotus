@@ -219,14 +219,14 @@
 - [ ] Rebase-merge the backport PR.
    <!-- agent:
    - Rebase, not squash: each backported commit should stay traceable to its master PR.
-<!--  {{if $.BaseTag}}-->
    - Cherry-pick each labelled PR's squash commit from master with `git cherry-pick -x`, oldest first.
-   - Leave `CHANGELOG.md` hunks out of cherry-picks; the release PR writes this release's entry.
+   - Keep each cherry-pick's own `CHANGELOG.md` line, so a fix and its changelog entry travel together. Resolve changelog conflicts into the matching `UNRELEASED` subsection and drop neighbouring lines from PRs that are not being backported. The release PR later moves these entries into the dated section.
    - Call out any non-trivial conflict resolution in the PR body.
+<!--  {{if $.BaseTag}}-->
    - The release branch runs the base release's `.github/workflows/release.yml` and `cmd/release`, not master's. Check `git log v{{$.BaseTag}}..origin/master -- .github/workflows/release.yml cmd/release scripts/generate-checksums.sh` and label any release-tooling fixes `release/backport` too.
    - A labelled PR that is already in the base release cherry-picks as empty; skip it and note it in the PR body.
 <!--  {{end}}-->
-   - If the release PR already exists, rebase it onto the updated release branch.
+   - If the release PR already exists, rebase it onto the updated release branch after this merges. Keep the release PR based on the release branch, not on the backport branch: the Release workflow only runs for PRs into `release/v*` and `release/miner/v*`.
    - Land later fixes as another small backport PR, not in the release PR.
    -->
 - [ ] Remove the "backport" label from all backported PRs (no ["backport" issues](https://github.com/filecoin-project/lotus/issues?q=label%3Arelease%2Fbackport+))
