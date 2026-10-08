@@ -179,6 +179,7 @@
 - If release-owner review finds risk that needs soak time, regenerate or edit this issue with `--release-flow=rc`.
 
 </details>
+
 <!--{{end}}-->
 <!--{{range $target := .ReleaseTargets}}-->
 <!--  {{$stable := eq $target "Stable Release"}}-->

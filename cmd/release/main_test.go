@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"os"
+	"strings"
 	"testing"
 	"text/template"
 
@@ -157,6 +158,14 @@ func TestReleaseIssueTemplateRenders(t *testing.T) {
 						require.NotContains(t, buffer.String(), "<!--{{")
 						// The issue body is Markdown, so links must not be HTML-escaped.
 						require.NotContains(t, buffer.String(), "&amp;")
+						// A heading directly after an HTML line such as `</details>` is swallowed into the
+						// HTML block and renders as literal text, so headings need a blank line before them.
+						lines := strings.Split(buffer.String(), "\n")
+						for i, line := range lines {
+							if i > 0 && strings.HasPrefix(line, "#") && strings.HasPrefix(strings.TrimSpace(lines[i-1]), "<") {
+								t.Errorf("heading %q directly follows HTML line %q", line, lines[i-1])
+							}
+						}
 						if baseTag != "" {
 							// A release cut from an earlier tag must never be told to fork from master or skip backports.
 							require.NotContains(t, buffer.String(), "origin/master:refs/heads/")
