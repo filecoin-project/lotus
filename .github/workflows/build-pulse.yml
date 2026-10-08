@@ -56,7 +56,19 @@ jobs:
           run-id: ${{ github.event.inputs.run_id || github.event.workflow_run.id }}
           github-token: ${{ github.token }}
           path: ${{ steps.reports.outputs.path }}
+      - name: Check whether the Test workflow run produced any JUnit XML reports
+        id: found
+        env:
+          REPORTS_PATH: ${{ steps.reports.outputs.path }}
+        # A Test run skips its test jobs when a pull request push only changes Markdown.
+        run: |
+          if find "$REPORTS_PATH" -name '*.xml' -print -quit | grep -q .; then
+            echo "reports=true" | tee -a "$GITHUB_OUTPUT"
+          else
+            echo "reports=false" | tee -a "$GITHUB_OUTPUT"
+          fi
       - name: Upload test results to BuildPulse for flaky test detection
+        if: steps.found.outputs.reports == 'true'
         env:
           INPUT_ACCOUNT: ${{ vars.BUIDPULSE_ACCOUNT_ID }}
           INPUT_REPOSITORY: ${{ vars.BUILDPULSE_REPOSITORY_ID }}

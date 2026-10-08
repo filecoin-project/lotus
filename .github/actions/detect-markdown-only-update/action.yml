@@ -1,0 +1,96 @@
+name: Detect Markdown-only update
+description: >
+  Decide whether a pull_request run can reuse the result of this workflow's last successful run for
+  the same pull request, because the code under test differs from what that run tested only in
+  hand-written Markdown.
+
+  A pull_request run tests GitHub's merge of the PR head into the base (`github.sha`). Each run
+  records that commit as a `tested-commit` artifact. A later run diffs its own merge commit against
+  the one recorded by the last successful run, so pushes, force pushes, rebases and base-branch
+  updates are all judged by the same rule: anything other than hand-written Markdown changed means
+  run everything. Workflow-level `paths-ignore` filters cannot do this because they compare the
+  whole PR against its base, which never matches a release PR. Any error falls back to running
+  everything.
+
+  The calling job must check out the repository and needs `actions: read` and `contents: read`.
+
+outputs:
+  skip:
+    description: "'true' when the workflow's remaining jobs can be skipped, otherwise 'false'."
+    value: ${{ steps.detect.outputs.skip }}
+
+runs:
+  using: composite
+  steps:
+    - id: detect
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        REPO: ${{ github.repository }}
+        RUN_ID: ${{ github.run_id }}
+        EVENT_NAME: ${{ github.event_name }}
+        HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+        TESTED: ${{ github.sha }}
+        DOWNLOAD_DIR: ${{ runner.temp }}/previous-tested-commit
+      run: |
+        set -uo pipefail
+
+        result() {
+          echo "$2"
+          echo "skip=$1" >> "$GITHUB_OUTPUT"
+          exit 0
+        }
+
+        if [[ "$EVENT_NAME" != "pull_request" ]]; then
+          result false "Not a pull_request run; running all jobs."
+        fi
+
+        if ! workflow_id=$(gh api "repos/$REPO/actions/runs/$RUN_ID" --jq '.workflow_id'); then
+          result false "Could not look up the current workflow; running all jobs."
+        fi
+        if ! runs=$(gh api -X GET "repos/$REPO/actions/workflows/$workflow_id/runs" \
+          -f event=pull_request -f branch="$HEAD_REF" -f status=success -F per_page=30); then
+          result false "Could not list previous runs; running all jobs."
+        fi
+        previous_run=$(jq -r --arg repo "$HEAD_REPO" --argjson run "$RUN_ID" \
+          '[.workflow_runs[] | select(.head_repository.full_name == $repo and .id != $run)][0].id // empty' <<<"$runs")
+        if [[ -z "$previous_run" ]]; then
+          result false "This workflow has not passed on this pull request before; running all jobs."
+        fi
+
+        if ! gh run download "$previous_run" -R "$REPO" -n tested-commit -D "$DOWNLOAD_DIR"; then
+          result false "Run $previous_run did not record the commit it tested; running all jobs."
+        fi
+        previous=$(cat "$DOWNLOAD_DIR/tested-commit")
+        if [[ ! "$previous" =~ ^[0-9a-f]{40}$ ]]; then
+          result false "Run $previous_run recorded an invalid commit; running all jobs."
+        fi
+
+        if ! git fetch --quiet --no-tags --depth=1 --filter=blob:none origin "$previous" "$TESTED"; then
+          result false "Could not fetch $previous and $TESTED; running all jobs."
+        fi
+        if ! changed=$(git diff --no-renames --name-only "$previous" "$TESTED"); then
+          result false "Could not diff $previous and $TESTED; running all jobs."
+        fi
+
+        # Generated documentation under documentation/en/ is verified by the Check workflow, so it does not count as skippable.
+        others=$(awk '!/\.md$/ || /^documentation\/en\//' <<<"$changed")
+        if [[ -n "$others" ]]; then
+          result false "Files other than hand-written Markdown changed since run $previous_run tested $previous; running all jobs."
+        fi
+
+        result true "Only hand-written Markdown changed since run $previous_run passed on $previous; skipping."
+    - if: github.event_name == 'pull_request'
+      shell: bash
+      env:
+        TESTED: ${{ github.sha }}
+        RECORD_DIR: ${{ runner.temp }}/tested-commit
+      run: mkdir -p "$RECORD_DIR" && echo "$TESTED" > "$RECORD_DIR/tested-commit"
+    - if: github.event_name == 'pull_request'
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: tested-commit
+        path: ${{ runner.temp }}/tested-commit/tested-commit
+        retention-days: 90
+        overwrite: true

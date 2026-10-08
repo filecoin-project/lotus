@@ -25,10 +25,11 @@ jobs:
     if: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       contents: read
       pull-requests: read
     outputs:
-      skip_checks: ${{ steps.changes.outputs.nonMarkdownFiles == 'false' }}
+      skip_checks: ${{ steps.changes.outputs.nonMarkdownFiles == 'false' || steps.markdown-only.outputs.skip == 'true' }}
       run_actionlint: ${{ steps.changes.outputs.actions == 'true' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -43,6 +44,8 @@ jobs:
               - '.github/actions/**'
               - '.github/actionlint.yaml'
               - 'Makefile'
+      - id: markdown-only
+        uses: ./.github/actions/detect-markdown-only-update
   check-gen:
     name: Check (gen-check)
     needs: [pre-check]
@@ -103,7 +106,7 @@ jobs:
   check-actionlint:
     name: Check (actionlint)
     needs: [pre-check]
-    if: ${{ needs.pre-check.outputs.run_actionlint == 'true' }}
+    if: ${{ needs.pre-check.outputs.run_actionlint == 'true' && needs.pre-check.outputs.skip_checks != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
