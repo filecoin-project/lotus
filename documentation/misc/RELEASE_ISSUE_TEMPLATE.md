@@ -14,7 +14,7 @@
 [//]: # (7. Never push to a release branch directly, even if your token can bypass the PR rule. Undoing a direct push needs a force-push, which branch protection blocks. The combined-release miner fast-forward is the only exception.)
 [//]: # (8. Before treating a CI failure as a regression, check whether the same test also fails in master's recent CI runs.)
 [//]: # (9. Rebase-merge backport PRs into the release branch.)
-[//]: # (10. Squash-merge release PRs, which carry only the version bump and changelog, into the release branch. Fixes go through a backport PR, never the release PR.)
+[//]: # (10. Squash-merge release PRs, which carry only the version bump and changelog, into the release branch. Fixes go through a backport PR from master, never the release PR.)
 <!--{{if not .ContentGeneratedWithLotusReleaseCli}}-->
 [//]: # ([ ] Start an issue with title "Lotus {{.Type}} v{{.Tag}} Release{{if .NetworkUpgrade}} (nv{{.NetworkUpgrade}}){{end}}" and adjust the title for whether it's a Node or Miner release.)
 [//]: # ([ ] Copy in the content of https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md)
@@ -241,11 +241,11 @@
 <!--  {{if ne $.NetworkUpgrade ""}}-->
       <!-- agent:
       - Take FIP titles and scope from https://github.com/filecoin-project/FIPs; do not infer them.
-      - Take migration durations from the mainnet benchmark comment for nv{{$.NetworkUpgrade}} in https://github.com/filecoin-project/lotus/issues/12432, and link that comment directly, as the v1.37.0 entry did (https://github.com/filecoin-project/lotus/issues/12432#issuecomment-5736833329).
+      - Take migration durations from the mainnet benchmark comment for nv{{$.NetworkUpgrade}} in https://github.com/filecoin-project/lotus/issues/12432, and link that comment directly.
       - Compare with the previous network upgrade's CHANGELOG entry for wording and context.
       - If there are no benchmark numbers yet, leave a clearly marked TODO; never invent durations.
-      - Recompute the upgrade epoch's local-time link for this release; never copy an earlier one.
-      - World Time Buddy needs `sln=H-H+1`, where H is the UTC hour containing the epoch's timestamp; the page returns 500 without it.
+      - Recompute the upgrade epoch's time-zone link (World Time Buddy) for this release; never copy an earlier one.
+      - World Time Buddy URLs need `sln=H-H+1` in the query string, where H is the UTC hour containing the epoch's timestamp; the page returns 500 without it.
       -->
 <!--    {{if $stable}}-->
    - [ ] (network upgrade) Ensure the Mainnet upgrade epoch is specified.
