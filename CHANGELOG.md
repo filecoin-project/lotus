@@ -17,6 +17,28 @@
 
 ## 👌 Improvements
 
+# Node and Miner v1.37.1 / TBD
+
+This is an **optional** patch release on top of [v1.37.0](https://github.com/filecoin-project/lotus/releases/tag/v1.37.0). It adds a small, selected set of improvements and fixes; it does not include everything that has landed on `master` since the v1.37.0 release cycle began.
+
+- **Already on v1.37.0?** You are ready for the nv29 (Solstice) upgrade at epoch `6470279` (`2026-10-19T12:59:30Z`). Upgrading to v1.37.1 is optional.
+- **Not on v1.37.0 yet?** Upgrade directly to v1.37.1 to get these improvements along with nv29 support.
+
+## ⭐ New Features
+
+## 🐛 Bug Fixes
+
+## 👌 Improvements
+
+## 📝 Changelog
+
+For the full set of changes since the last stable release:
+
+- Node: https://github.com/filecoin-project/lotus/compare/v1.37.0...v1.37.1
+- Miner: https://github.com/filecoin-project/lotus/compare/miner/v1.37.0...miner/v1.37.1
+
+## 👨‍👩‍👧‍👦 Contributors
+
 # Node and Miner v1.37.0 / 2026-10-06
 
 This is the stable release of the **MANDATORY Lotus v1.37.0 release**, which delivers [Filecoin network version 29, codenamed "Solstice"](https://github.com/filecoin-project/core-devs/discussions/221). This release sets the upgrade epoch for the Mainnet network to **Epoch 6470279: 2026-10-19T12:59:30Z**. [See the local time for other timezones.](https://www.worldtimebuddy.com/?qm=1&lid=100,1816670,2643743,5368361&h=100&date=2026-10-19&sln=13-14&hf=0)
