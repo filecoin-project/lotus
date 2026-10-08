@@ -23,7 +23,7 @@ const GenesisFile = ""
 var NetworkBundle = "devnet"
 var ActorDebugging = true
 
-var GenesisNetworkVersion = network.Version28
+var GenesisNetworkVersion = network.Version29
 
 var UpgradeBreezeHeight = abi.ChainEpoch(-1)
 
@@ -101,10 +101,9 @@ var UpgradeGoldenWeekHeight = abi.ChainEpoch(-31)
 
 var UpgradeFireHorseHeight = abi.ChainEpoch(-32)
 
-var UpgradeSolsticeHeight = abi.ChainEpoch(200)
+var UpgradeSolsticeHeight = abi.ChainEpoch(-33)
 
-// NV30: activation epoch to be determined.
-var UpgradeXxHeight = UpgradeHeightUnscheduled
+var UpgradeXxHeight = abi.ChainEpoch(200)
 
 // FIP-0118: reward actor bootstrap state installed by the Solstice migration.
 // Generic devnets disable governance and send service rewards to burnt funds.

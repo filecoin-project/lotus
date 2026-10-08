@@ -194,7 +194,9 @@ func init() {
 		UpgradeFireHorseHeight = math.MaxInt64 - 1
 	}
 	if os.Getenv("LOTUS_DISABLE_SOLSTICE") == "1" {
-		UpgradeSolsticeHeight = math.MaxInt64 - 1
+		// Later upgrades must also be deferred, in order.
+		UpgradeSolsticeHeight = math.MaxInt64 - 2
+		UpgradeXxHeight = math.MaxInt64 - 1
 	}
 	if os.Getenv("LOTUS_DISABLE_XX") == "1" {
 		UpgradeXxHeight = math.MaxInt64 - 1

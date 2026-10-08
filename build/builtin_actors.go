@@ -110,11 +110,6 @@ func loadManifests(netw string) error {
 		if meta.Network != netw {
 			continue
 		}
-		// Skeleton bundles can reuse actor CIDs from the previous version. Keep them
-		// inactive until the corresponding actor adapters are available.
-		if meta.Version > actorstypes.Version(actors.LatestVersion) {
-			continue
-		}
 		if _, ok := overridden[meta.Version]; ok {
 			continue
 		}

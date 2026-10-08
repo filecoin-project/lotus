@@ -9,8 +9,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
-	builtin19 "github.com/filecoin-project/go-state-types/builtin"
-	powertypes19 "github.com/filecoin-project/go-state-types/builtin/v19/power"
+	builtin20 "github.com/filecoin-project/go-state-types/builtin"
+	powertypes20 "github.com/filecoin-project/go-state-types/builtin/v20/power"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/manifest"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
@@ -28,8 +28,8 @@ import (
 )
 
 var (
-	Address = builtin19.StoragePowerActorAddr
-	Methods = builtin19.MethodsPower
+	Address = builtin20.StoragePowerActorAddr
+	Methods = builtin20.MethodsPower
 )
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
@@ -75,6 +75,9 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 		case actorstypes.Version19:
 			return load19(store, act.Head)
+
+		case actorstypes.Version20:
+			return load20(store, act.Head)
 
 		}
 	}
@@ -167,6 +170,9 @@ func MakeState(store adt.Store, av actorstypes.Version) (State, error) {
 	case actorstypes.Version19:
 		return make19(store)
 
+	case actorstypes.Version20:
+		return make20(store)
+
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
@@ -207,7 +213,7 @@ type State interface {
 	// before returning the actor.
 	ForEachClaim(cb func(miner address.Address, claim Claim) error, onlyEligible bool) error
 	ClaimsChanged(State) (bool, error)
-	CollectEligibleClaims(cacheInOut *builtin19.MapReduceCache) ([]builtin19.OwnedClaim, error)
+	CollectEligibleClaims(cacheInOut *builtin20.MapReduceCache) ([]builtin20.OwnedClaim, error)
 
 	// Testing or genesis setup only
 	SetTotalQualityAdjPower(abi.StoragePower) error
@@ -256,10 +262,11 @@ func AllCodes() []cid.Cid {
 		(&state17{}).Code(),
 		(&state18{}).Code(),
 		(&state19{}).Code(),
+		(&state20{}).Code(),
 	}
 }
 
 type (
-	MinerPowerParams = powertypes19.MinerPowerParams
-	MinerPowerReturn = powertypes19.MinerPowerReturn
+	MinerPowerParams = powertypes20.MinerPowerParams
+	MinerPowerReturn = powertypes20.MinerPowerReturn
 )
