@@ -147,7 +147,7 @@ type MemRepoOptions struct {
 }
 
 // NewMemory creates new memory based repo with provided options.
-// opts can be nil, it  will be replaced with defaults.
+// opts can be nil, it will be replaced with defaults.
 // Any field in opts can be nil, they will be replaced by defaults.
 func NewMemory(opts *MemRepoOptions) *MemRepo {
 	if opts == nil {
