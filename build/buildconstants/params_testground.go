@@ -115,6 +115,7 @@ var (
 	UpgradeGoldenWeekHeight              abi.ChainEpoch = -34
 	UpgradeFireHorseHeight               abi.ChainEpoch = -35
 	UpgradeSolsticeHeight                abi.ChainEpoch = -36
+	UpgradeXxHeight                      abi.ChainEpoch = UpgradeHeightUnscheduled
 	// FIP-0118: reward actor bootstrap state installed by the Solstice migration.
 	UpgradeSolsticeRewardBootstrapParams = SolsticeRewardBootstrapParams{
 		SWATimelockEpochs:                 50,

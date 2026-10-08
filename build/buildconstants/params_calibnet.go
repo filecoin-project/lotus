@@ -133,6 +133,9 @@ const UpgradeFireHorseHeight = 3694534
 // 2026-09-28T12:59:30Z
 const UpgradeSolsticeHeight = 4109133
 
+// NV30: activation epoch to be determined.
+const UpgradeXxHeight = UpgradeHeightUnscheduled
+
 // SolsticeEpochsPerQuarter matches the quarter the SRA is deployed with: one day on calibnet.
 // The ramp runs nine of them.
 const SolsticeEpochsPerQuarter = abi.ChainEpoch(builtin.EpochsInDay)

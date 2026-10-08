@@ -103,6 +103,9 @@ var UpgradeFireHorseHeight = abi.ChainEpoch(-32)
 
 var UpgradeSolsticeHeight = abi.ChainEpoch(200)
 
+// NV30: activation epoch to be determined.
+var UpgradeXxHeight = UpgradeHeightUnscheduled
+
 // FIP-0118: reward actor bootstrap state installed by the Solstice migration.
 // Generic devnets disable governance and send service rewards to burnt funds.
 var UpgradeSolsticeRewardBootstrapParams = SolsticeRewardBootstrapParams{
@@ -205,6 +208,7 @@ func init() {
 	UpgradeGoldenWeekHeight = getUpgradeHeight("LOTUS_GOLDENWEEK_HEIGHT", UpgradeGoldenWeekHeight)
 	UpgradeFireHorseHeight = getUpgradeHeight("LOTUS_FIREHORSE_HEIGHT", UpgradeFireHorseHeight)
 	UpgradeSolsticeHeight = getUpgradeHeight("LOTUS_SOLSTICE_HEIGHT", UpgradeSolsticeHeight)
+	UpgradeXxHeight = getUpgradeHeight("LOTUS_XX_HEIGHT", UpgradeXxHeight)
 
 	DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 		0: DrandQuicknet,

@@ -146,6 +146,9 @@ var UpgradeFireHorseHeight = abi.ChainEpoch(6052800)
 // 2026-10-19T12:59:30Z
 var UpgradeSolsticeHeight = abi.ChainEpoch(6470279)
 
+// NV30: activation epoch to be determined.
+var UpgradeXxHeight = UpgradeHeightUnscheduled
+
 // SolsticeEpochsPerQuarter matches the quarter the SRA is deployed with: a quarter of the
 // builtin-actors year, 31556925 seconds of 30 second epochs. The ramp runs nine of them.
 const SolsticeEpochsPerQuarter = abi.ChainEpoch(262974)
@@ -192,6 +195,9 @@ func init() {
 	}
 	if os.Getenv("LOTUS_DISABLE_SOLSTICE") == "1" {
 		UpgradeSolsticeHeight = math.MaxInt64 - 1
+	}
+	if os.Getenv("LOTUS_DISABLE_XX") == "1" {
+		UpgradeXxHeight = math.MaxInt64 - 1
 	}
 
 	// NOTE: DO NOT change this unless you REALLY know what you're doing. This is not consensus critical, however,
