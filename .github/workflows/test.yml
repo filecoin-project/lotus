@@ -34,9 +34,9 @@ jobs:
           fetch-depth: 0
       - id: list_test_group_execution_contexts
         run: |
-          echo "test_group_execution_contexts<<EOF" >> $GITHUB_OUTPUT
-          go run ./cmd/ci/main.go --json list-test-group-execution-contexts | jq -r '.msg' | tee -a $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          echo "test_group_execution_contexts<<EOF" >> "$GITHUB_OUTPUT"
+          go run ./cmd/ci/main.go --json list-test-group-execution-contexts | jq -r '.msg' | tee -a "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
   cache:
     name: Cache Dependencies
     runs-on: ${{ matrix.runner }}
@@ -55,8 +55,8 @@ jobs:
           CACHE_PATH: |
             /var/tmp/filecoin-proof-parameters/
         run: |
-          echo -e "key=$CACHE_KEY" | tee -a $GITHUB_OUTPUT
-          echo -e "path<<EOF\n$CACHE_PATH\nEOF" | tee -a $GITHUB_OUTPUT
+          echo -e "key=$CACHE_KEY" | tee -a "$GITHUB_OUTPUT"
+          echo -e "path<<EOF\n$CACHE_PATH\nEOF" | tee -a "$GITHUB_OUTPUT"
       - id: make_deps
         env:
           CACHE_KEY: ${{ runner.os }}-${{ runner.arch }}-make-deps-${{ hashFiles('./.git/modules/extern/filecoin-ffi/HEAD') }}-p
@@ -65,8 +65,8 @@ jobs:
             ./extern/filecoin-ffi/libfilcrypto.a
             ./extern/filecoin-ffi/filcrypto.pc
         run: |
-          echo -e "key=$CACHE_KEY" | tee -a $GITHUB_OUTPUT
-          echo -e "path<<EOF\n$CACHE_PATH\nEOF" | tee -a $GITHUB_OUTPUT
+          echo -e "key=$CACHE_KEY" | tee -a "$GITHUB_OUTPUT"
+          echo -e "path<<EOF\n$CACHE_PATH\nEOF" | tee -a "$GITHUB_OUTPUT"
       - id: restore_fetch_params
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -152,15 +152,15 @@ jobs:
         env:
           file: jobs.cache.${{ runner.os }}.${{ runner.arch }}.outputs.json
         run: |
-          echo "make_deps_key=$(jq -r .make_deps_key "$file")" | tee -a $GITHUB_OUTPUT
-          echo "make_deps_path<<EOF" | tee -a $GITHUB_OUTPUT
-          jq -r .make_deps_path "$file" | tee -a $GITHUB_OUTPUT
-          echo "EOF" | tee -a $GITHUB_OUTPUT
+          echo "make_deps_key=$(jq -r .make_deps_key "$file")" | tee -a "$GITHUB_OUTPUT"
+          echo "make_deps_path<<EOF" | tee -a "$GITHUB_OUTPUT"
+          jq -r .make_deps_path "$file" | tee -a "$GITHUB_OUTPUT"
+          echo "EOF" | tee -a "$GITHUB_OUTPUT"
 
-          echo "fetch_params_key=$(jq -r .fetch_params_key "$file")" | tee -a $GITHUB_OUTPUT
-          echo "fetch_params_path<<EOF" | tee -a $GITHUB_OUTPUT
-          jq -r .fetch_params_path "$file" | tee -a $GITHUB_OUTPUT
-          echo "EOF" | tee -a $GITHUB_OUTPUT
+          echo "fetch_params_key=$(jq -r .fetch_params_key "$file")" | tee -a "$GITHUB_OUTPUT"
+          echo "fetch_params_path<<EOF" | tee -a "$GITHUB_OUTPUT"
+          jq -r .fetch_params_path "$file" | tee -a "$GITHUB_OUTPUT"
+          echo "EOF" | tee -a "$GITHUB_OUTPUT"
 
           rm "$file"
       - name: Restore cached make deps outputs
@@ -179,7 +179,7 @@ jobs:
       # TODO: Install statediff (used to be used for conformance)
       - name: Create temporary directory for reports
         id: reports
-        run: mktemp -d | xargs -0 -I{} echo "path={}" | tee -a $GITHUB_OUTPUT
+        run: mktemp -d | xargs -0 -I{} echo "path={}" | tee -a "$GITHUB_OUTPUT"
       # TODO: Track coverage (used to be tracked for conformance)
       - name: Run tests
         id: tests
@@ -220,12 +220,12 @@ jobs:
           # in BuildPulse. itests are run with go test ./itests/file_test.go and therefore Go
           # assigns the name and classname attributes to "command-line-arguments". Others get the
           # package name for both.
-          if [[ "${{ matrix.name }}" == itest-* ]]; then
+          if [[ "$NAME" == itest-* ]]; then
             PACKAGE_NAME=$(basename "$PACKAGES" .go)
             sed -i 's/ name="command-line-arguments"/ name="itests"/g' "$report"
             sed -i 's/classname="command-line-arguments"/classname="'"$PACKAGE_NAME"'"/g' "$report"
           else
-            sed -i 's# name="github.com/filecoin-project/lotus/\(.*\)"# name="'${{ matrix.name }}':\1"#g' "$report"
+            sed -i 's# name="github.com/filecoin-project/lotus/\(.*\)"# name="'"$NAME"':\1"#g' "$report"
           fi
           cat "$report"
       - if: ${{ always() && steps.reports.outcome == 'success' }}
