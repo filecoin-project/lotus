@@ -15,6 +15,7 @@
 - `eth_call` and `eth_estimateGas` now honor positive `gas` limits. Requests that previously succeeded with an insufficient limit can now fail. Applications and RPC providers should review default or injected `gas` values and increase them, or omit `gas` when no explicit cap is intended. ([filecoin-project/lotus#13865](https://github.com/filecoin-project/lotus/pull/13865))
 
 - `lotus-gateway` now caps JSON-RPC requests at 16MiB and headers at 64KiB and applies 10s header, 60s read and 120s idle timeouts, all tunable via `lotus-gateway run --help`. ([filecoin-project/lotus#13912](https://github.com/filecoin-project/lotus/pull/13912))
+- `lotus-gateway` now limits each WebSocket connection to 16 live `ChainNotify` and `SubscribeActorEventsRaw` subscriptions; raise it with `--per-conn-subscription-limit`. ([filecoin-project/lotus#13914](https://github.com/filecoin-project/lotus/pull/13914))
 ## ⭐ New Features
 
 ## 🐛 Bug Fixes
