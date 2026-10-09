@@ -17,7 +17,7 @@ import (
 	"unicode"
 
 	"github.com/google/uuid"
-	blocks "github.com/ipfs/go-block-format"
+	blkfmt "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/metrics"
@@ -45,6 +45,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
+	"github.com/filecoin-project/lotus/lib/rpcenc"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
@@ -142,8 +143,18 @@ func init() {
 	addExample(f3Cert)
 	addExample(&f3Cert)
 
-	block := blocks.Block(&blocks.BasicBlock{})
-	ExampleValues[reflect.TypeFor[blocks.Block]()] = block
+	// Serialize a block from the sample tipset and use its JSON-RPC representation.
+	block, err := ts.Blocks()[0].ToStorageBlock()
+	if err != nil {
+		panic(err)
+	}
+	fb := rpcenc.FlatBlock{
+		Cid:     block.Cid(),
+		RawData: block.RawData(),
+	}
+	ExampleValues[reflect.TypeFor[blkfmt.Block]()] = fb
+	addExample(fb)
+
 	addExample(bitfield.NewFromSet([]uint64{5}))
 	addExample(abi.RegisteredSealProof_StackedDrg32GiBV1_1)
 	addExample(abi.RegisteredPoStProof_StackedDrgWindow32GiBV1)

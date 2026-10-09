@@ -10,6 +10,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
 	miner14 "github.com/filecoin-project/go-state-types/builtin/v14/miner"
@@ -17,11 +18,13 @@ import (
 	miner15 "github.com/filecoin-project/go-state-types/builtin/v15/miner"
 	miner16 "github.com/filecoin-project/go-state-types/builtin/v16/miner"
 	"github.com/filecoin-project/go-state-types/builtin/v8/util/adt"
+	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/go-state-types/network"
 	gstStore "github.com/filecoin-project/go-state-types/store"
 
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build/buildconstants"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/state"
@@ -188,6 +191,13 @@ func TestDailyFees(t *testing.T) {
 		sector.feeEpoch = ts.Height()
 	}
 
+	minerActorVersion := func(act *types.Actor) actorstypes.Version {
+		name, av, ok := actors.GetActorMetaByCode(act.Code)
+		req.True(ok, "unknown actor code %s", act.Code)
+		req.Equal(manifest.MinerKey, name, "actor code %s is not a miner", act.Code)
+		return av
+	}
+
 	// checkMiner16Invariants checks the v16 invariants of the miner actor's state
 	checkMiner16Invariants := func() {
 		act, err := client.StateGetActor(ctx, mminer.ActorAddr, types.EmptyTSK)
@@ -212,23 +222,21 @@ func TestDailyFees(t *testing.T) {
 
 		var sectorsArr *adt.Array
 		{
-			nv, err := client.StateNetworkVersion(ctx, head.Key())
-			req.NoError(err)
-			switch nv {
-			case network.Version24:
+			switch av := minerActorVersion(act); av {
+			case actorstypes.Version15:
 				var miner miner15.State
 				err = store.Get(ctx, act.Head, &miner)
 				req.NoError(err)
 				sectorsArr, err = adt.AsArray(store, miner.Sectors, miner15.SectorsAmtBitwidth)
 				req.NoError(err)
-			case network.Version25, network.Version26:
+			case actorstypes.Version16:
 				var miner miner16.State
 				err = store.Get(ctx, act.Head, &miner)
 				req.NoError(err)
 				sectorsArr, err = adt.AsArray(store, miner.Sectors, miner16.SectorsAmtBitwidth)
 				req.NoError(err)
 			default:
-				t.Fatalf("unexpected network version: %d", nv)
+				t.Fatalf("unexpected miner actor version: %d", av)
 			}
 		}
 
@@ -334,16 +342,20 @@ func TestDailyFees(t *testing.T) {
 	checkFeeRecords := func(expectTotalFees abi.TokenAmount) {
 		t.Log("*** Check consistency of deadline fee records and expiration queue fee deduction records")
 
-		// deadline DailyFee values should sum up the live sectors in that deadline
-		sectors, err := client.StateMinerSectors(ctx, mminer.ActorAddr, nil, types.EmptyTSK)
+		// Every read comes from one tipset, so the records compared all belong to the same state.
+		head, err := client.ChainHead(ctx)
 		req.NoError(err)
-		deadlines, err := client.StateMinerDeadlines(ctx, mminer.ActorAddr, types.EmptyTSK)
+
+		// deadline DailyFee values should sum up the live sectors in that deadline
+		sectors, err := client.StateMinerSectors(ctx, mminer.ActorAddr, nil, head.Key())
+		req.NoError(err)
+		deadlines, err := client.StateMinerDeadlines(ctx, mminer.ActorAddr, head.Key())
 		req.NoError(err)
 		expectedDeadlineFees := make([]abi.TokenAmount, len(deadlines))
 		expectedExpirationQueueFees := make(map[miner.SectorLocation]abi.TokenAmount, len(deadlines))
 		var actualTotalFees abi.TokenAmount
 		for _, sector := range sectors {
-			loc, err := client.StateSectorPartition(ctx, mminer.ActorAddr, sector.SectorNumber, types.EmptyTSK)
+			loc, err := client.StateSectorPartition(ctx, mminer.ActorAddr, sector.SectorNumber, head.Key())
 			req.NoError(err)
 			expectedDeadlineFees[loc.Deadline] = big.Add(expectedDeadlineFees[loc.Deadline], sector.DailyFee)
 			expectedExpirationQueueFees[*loc] = big.Add(expectedExpirationQueueFees[*loc], sector.DailyFee)
@@ -358,16 +370,13 @@ func TestDailyFees(t *testing.T) {
 			req.Equal(0, big.Cmp(fee, deadline.DailyFee), "expected %s, got %s for deadline %d", fee, deadline.DailyFee, i)
 		}
 
-		nv, err := client.StateNetworkVersion(ctx, types.EmptyTSK)
+		// we need to go deeper for the queues, which carry fee deductions from miner actor v16 on;
+		// the state's actor code says which version it is, even on the epoch the upgrade lands
+		act, err := client.StateGetActor(ctx, mminer.ActorAddr, head.Key())
 		req.NoError(err)
-		if nv < network.Version25 {
-			// nothing to see here, we're done
+		if minerActorVersion(act) < actorstypes.Version16 {
 			return
 		}
-
-		// we need to go deeper for the queues
-		act, err := client.StateGetActor(ctx, mminer.ActorAddr, types.EmptyTSK)
-		req.NoError(err)
 		var minerState miner16.State
 		err = store.Get(ctx, act.Head, &minerState)
 		req.NoError(err)
@@ -481,7 +490,7 @@ func TestDailyFees(t *testing.T) {
 
 	t.Log("*** Waiting for PoST for sectors onboarded before the network upgrade")
 
-	mminer.WaitTillActivatedAndAssertPower(toSectorNumbers(allSectors), toExpectedRbp(allSectors), toExpectedQap(allSectors))
+	req.NoError(mminer.WaitTillActivatedAndAssertPower(toSectorNumbers(allSectors), toExpectedRbp(allSectors), toExpectedQap(allSectors)))
 
 	t.Log("*** Checking daily fees on sectors onboarded before the network upgrade, after their first PoST")
 
@@ -518,10 +527,11 @@ func TestDailyFees(t *testing.T) {
 	t.Logf("Snapped sectors %d and %d, now have fees: %v & %v", ccSectors24[0].sn, ccSectors24[1].sn, ccSectors24[0].expectedFee, ccSectors24[1].expectedFee)
 
 	cc24PostCount := mminer.GetPostCount(ccSectors24[0].sn) // should be 1, but just in case
+	postErrs := make(chan error, 5)
 	feePostWg.Add(1)
 	go func() {
-		mminer.WaitTillPostCount(ccSectors24[0].sn, cc24PostCount+1)
-		feePostWg.Done()
+		defer feePostWg.Done()
+		postErrs <- mminer.WaitTillPostCount(ccSectors24[0].sn, cc24PostCount+1)
 	}()
 
 	checkMiner16Invariants()
@@ -549,16 +559,16 @@ func TestDailyFees(t *testing.T) {
 	allSectors = append(allSectors, ccSectors25...)
 	feePostWg.Add(1)
 	go func() {
-		mminer.WaitTillPostCount(ccSectors25[0].sn, 1) // onboarded together, they should PoST together
-		feePostWg.Done()
+		defer feePostWg.Done()
+		postErrs <- mminer.WaitTillPostCount(ccSectors25[0].sn, 1) // onboarded together, they should PoST together
 	}()
 
 	dealSector25 := onboardSectors(kit.NewSectorBatch().AddSectorsWithRandomPieces(1), true, 1)
 	allSectors = append(allSectors, dealSector25...)
 	feePostWg.Add(1)
 	go func() {
-		mminer.WaitTillPostCount(dealSector25[0].sn, 1)
-		feePostWg.Done()
+		defer feePostWg.Done()
+		postErrs <- mminer.WaitTillPostCount(dealSector25[0].sn, 1)
 	}()
 
 	clientId, allocationId = kit.SetupAllocation(ctx, t, &client, minerId, piece, verifiedClientAddr, 0, 0)
@@ -571,8 +581,8 @@ func TestDailyFees(t *testing.T) {
 	allSectors = append(allSectors, verifiedSector25...)
 	feePostWg.Add(1)
 	go func() {
-		mminer.WaitTillPostCount(verifiedSector25[0].sn, 1)
-		feePostWg.Done()
+		defer feePostWg.Done()
+		postErrs <- mminer.WaitTillPostCount(verifiedSector25[0].sn, 1)
 	}()
 
 	// Before PoST
@@ -581,7 +591,7 @@ func TestDailyFees(t *testing.T) {
 
 	t.Log("*** Waiting for PoST for sectors onboarded after the network upgrade")
 
-	mminer.WaitTillActivatedAndAssertPower(toSectorNumbers(allSectors), toExpectedRbp(allSectors), toExpectedQap(allSectors))
+	req.NoError(mminer.WaitTillActivatedAndAssertPower(toSectorNumbers(allSectors), toExpectedRbp(allSectors), toExpectedQap(allSectors)))
 
 	// After PoST
 	checkDailyFeeHas(allSectors...)
@@ -606,13 +616,17 @@ func TestDailyFees(t *testing.T) {
 	posts := mminer.GetPostCount(ccSectors24[2].sn)
 	feePostWg.Add(1)
 	go func() {
-		mminer.WaitTillPostCount(ccSectors24[2].sn, posts+1)
-		feePostWg.Done()
+		defer feePostWg.Done()
+		postErrs <- mminer.WaitTillPostCount(ccSectors24[2].sn, posts+1)
 	}()
 
 	// Wait for all fees to be paid—we need each one to have reached its first deadline and they are
 	// likely spread out over multiple deadlines
 	feePostWg.Wait()
+	close(postErrs)
+	for err := range postErrs {
+		req.NoError(err)
+	}
 	// Wait one exta deadline to make sure we get to the end of the current deadline where we've done
 	// a PoST
 	head, err := client.ChainHead(ctx)

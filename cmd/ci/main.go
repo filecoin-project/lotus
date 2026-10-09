@@ -131,21 +131,18 @@ func main() {
 func getIntegrationTestGroups() ([]TestGroupExecutionContext, error) {
 	groups := []TestGroupExecutionContext{}
 
-	err := filepath.Walk("itests", func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		if !info.IsDir() && strings.HasSuffix(info.Name(), "_test.go") {
-			parts := strings.Split(path, string(os.PathSeparator))
-			testGroupName := strings.Join([]string{"itest", strings.TrimSuffix(parts[1], "_test.go")}, "-")
-			groups = append(groups, getTestGroups(testGroupName)...)
-		}
-		return nil
-	})
-
+	// Only files directly under itests are integration tests, one group per
+	// file. Subdirectories such as itests/kit hold ordinary Go packages whose
+	// tests run with the unit groups.
+	entries, err := os.ReadDir("itests")
 	if err != nil {
 		return nil, err
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() && strings.HasSuffix(entry.Name(), "_test.go") {
+			testGroupName := strings.Join([]string{"itest", strings.TrimSuffix(entry.Name(), "_test.go")}, "-")
+			groups = append(groups, getTestGroups(testGroupName)...)
+		}
 	}
 
 	return groups, nil
@@ -236,6 +233,7 @@ func getRunners(testGroupName string) []Runner {
 		"itest-solstice_miner_fees":      {linux_x64_2xlarge},
 		"itest-solstice_reward":          {linux_x64_2xlarge},
 		"itest-wdpost":                   {linux_x64_2xlarge},
+		"itest-wdpost_config":            {linux_x64_2xlarge},
 		"itest-worker":                   {linux_x64_4xlarge},
 		"multicore-sdr":                  {linux_x64_xlarge},
 		"unit-cli":                       {linux_x64, linux_arm64},
@@ -282,7 +280,7 @@ func getPackages(testGroupName string) []string {
 	}
 
 	// Keep the non-itest groups in sync with the Makefile's unittests target:
-	// go list ./... excluding ./itests. unit-rest is the catch-all bucket for
+	// go list ./... excluding the itests package itself. unit-rest is the catch-all bucket for
 	// packages that do not have a more specific CI group.
 	testGroupNameToPackages := map[string][]string{
 		"multicore-sdr": {createPackagePath("storage", "sealer", "ffiwrapper")},
@@ -307,6 +305,7 @@ func getPackages(testGroupName string) []string {
 			createPackagePath("gen", "..."),
 			createPackagePath("genesis", "..."),
 			createPackagePath("gateway", "..."),
+			createPackagePath("itests", "kit", "..."),
 			createPackagePath("journal", "..."),
 			createPackagePath("lib", "..."),
 			createPackagePath("metrics", "..."),

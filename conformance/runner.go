@@ -110,7 +110,7 @@ func ExecuteMessageVector(r Reporter, vector *schema.TestVector, variant *schema
 	// Load the CAR into a new temporary Blockstore.
 	bs, err := LoadBlockstore(vector.CAR)
 	if err != nil {
-		r.Fatalf("failed to load the vector CAR: %w", err)
+		r.Fatalf("failed to load the vector CAR: %v", err)
 	}
 
 	// Create a new Driver.
@@ -155,7 +155,7 @@ func ExecuteMessageVector(r Reporter, vector *schema.TestVector, variant *schema
 	// the expected postcondition root.
 	if expected, actual := vector.Post.StateTree.RootCID, root; expected != actual {
 		ierr := fmt.Errorf("wrong post root cid; expected %v, but got %v", expected, actual)
-		r.Errorf(ierr.Error())
+		r.Errorf("%s", ierr)
 		err = multierror.Append(err, ierr)
 		diffs = dumpThreeWayStateDiff(r, vector, bs, root)
 	}
@@ -174,7 +174,7 @@ func ExecuteTipsetVector(r Reporter, vector *schema.TestVector, variant *schema.
 	// Load the vector CAR into a new temporary Blockstore.
 	bs, err := LoadBlockstore(vector.CAR)
 	if err != nil {
-		r.Fatalf("failed to load the vector CAR: %w", err)
+		r.Fatalf("failed to load the vector CAR: %v", err)
 		return nil, err
 	}
 
@@ -212,7 +212,7 @@ func ExecuteTipsetVector(r Reporter, vector *schema.TestVector, variant *schema.
 		// Compare the receipts root.
 		if expected, actual := vector.Post.ReceiptsRoots[i], ret.ReceiptsRoot; expected != actual {
 			ierr := fmt.Errorf("post receipts root doesn't match; expected: %s, was: %s", expected, actual)
-			r.Errorf(ierr.Error())
+			r.Errorf("%s", ierr)
 			err = multierror.Append(err, ierr)
 		}
 
@@ -224,7 +224,7 @@ func ExecuteTipsetVector(r Reporter, vector *schema.TestVector, variant *schema.
 	// the expected postcondition root.
 	if expected, actual := vector.Post.StateTree.RootCID, root; expected != actual {
 		ierr := fmt.Errorf("wrong post root cid; expected %v, but got %v", expected, actual)
-		r.Errorf(ierr.Error())
+		r.Errorf("%s", ierr)
 		err = multierror.Append(err, ierr)
 		diffs = dumpThreeWayStateDiff(r, vector, bs, root)
 	}

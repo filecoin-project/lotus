@@ -89,7 +89,7 @@ func preparedStatementMapping(ps *preparedStatements) map[**sql.Stmt]string {
 	return map[**sql.Stmt]string{
 		&ps.hasTipsetStmt:                             "SELECT EXISTS(SELECT 1 FROM tipset_message WHERE tipset_key_cid = ?)",
 		&ps.isIndexEmptyStmt:                          "SELECT NOT EXISTS(SELECT 1 FROM tipset_message LIMIT 1)",
-		&ps.hasNullRoundAtHeightStmt:                  "SELECT NOT EXISTS(SELECT 1 FROM tipset_message WHERE height = ?)",
+		&ps.hasNullRoundAtHeightStmt:                  "SELECT NOT EXISTS(SELECT 1 FROM tipset_message WHERE height = ? AND reverted = 0)",
 		&ps.getNonRevertedTipsetAtHeightStmt:          "SELECT tipset_key_cid FROM tipset_message WHERE height = ? AND reverted = 0 LIMIT 1",
 		&ps.countTipsetsAtHeightStmt:                  "SELECT COUNT(CASE WHEN reverted = 1 THEN 1 END) AS reverted_count, COUNT(CASE WHEN reverted = 0 THEN 1 END) AS non_reverted_count FROM (SELECT tipset_key_cid, MAX(reverted) AS reverted FROM tipset_message WHERE height = ? GROUP BY tipset_key_cid) AS unique_tipsets",
 		&ps.getNonRevertedTipsetMessageCountStmt:      "SELECT COUNT(*) FROM tipset_message WHERE tipset_key_cid = ? AND reverted = 0 AND message_cid IS NOT NULL",

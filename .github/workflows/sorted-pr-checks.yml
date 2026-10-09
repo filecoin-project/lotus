@@ -28,7 +28,7 @@ concurrency:
 jobs:
   comment:
     if: github.event.inputs.pull_number || github.event.workflow_run.event == 'pull_request'
-    uses: ipdxco/sorted-pr-checks/.github/workflows/comment.yml@v2
+    uses: ipdxco/sorted-pr-checks/.github/workflows/comment.yml@e93469d12abf23967b6346a76599e1a087161c82 # v2.0.0
     with:
       pull_number: ${{ github.event.inputs.pull_number }}
       template: unsuccessful_only

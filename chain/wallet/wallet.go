@@ -83,7 +83,7 @@ func (w *LocalWallet) findKey(addr address.Address) (*key.Key, error) {
 		return k, nil
 	}
 	if w.keystore == nil {
-		log.Warn("findKey didn't find the key in in-memory wallet")
+		log.Warn("findKey didn't find the key in the in-memory wallet")
 		return nil, nil
 	}
 
