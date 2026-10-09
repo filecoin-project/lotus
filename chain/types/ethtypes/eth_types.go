@@ -271,12 +271,13 @@ func NewEthBlock(hasTransactions bool, tipsetLen int) EthBlock {
 }
 
 type EthCall struct {
-	From     *EthAddress `json:"from"`
-	To       *EthAddress `json:"to"`
-	Gas      EthUint64   `json:"gas"`
-	GasPrice EthBigInt   `json:"gasPrice"`
-	Value    EthBigInt   `json:"value"`
-	Data     EthBytes    `json:"data"`
+	From         *EthAddress `json:"from"`
+	To           *EthAddress `json:"to"`
+	Gas          EthUint64   `json:"gas"`
+	GasPrice     EthBigInt   `json:"gasPrice"`
+	MaxFeePerGas *EthBigInt  `json:"maxFeePerGas,omitempty"`
+	Value        EthBigInt   `json:"value"`
+	Data         EthBytes    `json:"data"`
 }
 
 func (c *EthCall) ToFilecoinMessage() (*types.Message, error) {

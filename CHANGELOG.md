@@ -12,8 +12,7 @@
 ## ☢️ Upgrade Warnings ☢️
 
 - `MinerCreateBlock` now requires the `sign` permission instead of `write`. Tokens or miner configurations that call this method with `write` but not `sign` are denied; grant `sign` or stop calling it. ([filecoin-project/lotus#13871](https://github.com/filecoin-project/lotus/pull/13871))
-- `eth_call` and `eth_estimateGas` now honor positive `gas` limits. Requests that previously succeeded with an insufficient limit can now fail. Applications and RPC providers should review default or injected `gas` values and increase them, or omit `gas` when no explicit cap is intended. Unmet caps in `eth_estimateGas` return reth's `-32000` and `-32003` errors. ([filecoin-project/lotus#13865](https://github.com/filecoin-project/lotus/pull/13865), [filecoin-project/lotus#13911](https://github.com/filecoin-project/lotus/pull/13911))
-
+- `eth_call` and `eth_estimateGas` now honor positive `gas` limits. Requests that previously succeeded with an insufficient limit can now fail. Applications and RPC providers should review default or injected `gas` values and increase them, or omit `gas` when no explicit cap is intended. `eth_estimateGas` returns reth's `-32000` and `-32003` errors for unmet caps and out-of-gas calls, and a `gasPrice` or `maxFeePerGas` limits the estimate to what the sender can afford. ([filecoin-project/lotus#13865](https://github.com/filecoin-project/lotus/pull/13865), [filecoin-project/lotus#13911](https://github.com/filecoin-project/lotus/pull/13911))
 - build: raise the minimum Go version to `1.26.8`. ([filecoin-project/lotus#13878](https://github.com/filecoin-project/lotus/pull/13878))
 - `lotus-gateway` now caps JSON-RPC requests at 16MiB and headers at 64KiB and applies 10s header, 60s read and 120s idle timeouts, all tunable via `lotus-gateway run --help`. ([filecoin-project/lotus#13912](https://github.com/filecoin-project/lotus/pull/13912))
 

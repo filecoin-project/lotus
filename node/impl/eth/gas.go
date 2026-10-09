@@ -196,6 +196,10 @@ func (e *ethGas) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (ethty
 	if err != nil {
 		return ethtypes.EthUint64(0), xerrors.Errorf("decoding params: %w", err)
 	}
+	// A zero gasPrice can't be told apart from an absent one.
+	if legacyPrice := big.Int(params.Tx.GasPrice); params.Tx.MaxFeePerGas != nil && !legacyPrice.NilOrZero() {
+		return ethtypes.EthUint64(0), api.NewErrConflictingGasPrices()
+	}
 
 	msg, err := params.Tx.ToFilecoinMessage()
 	if err != nil {
@@ -212,19 +216,41 @@ func (e *ethGas) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (ethty
 		}
 	}
 
+	// Read the sender from the state the call executes on, after ts's messages.
+	st, _, err := e.stateManager.TipSetState(ctx, ts)
+	if err != nil {
+		return ethtypes.EthUint64(0), xerrors.Errorf("computing tipset state: %w", err)
+	}
 	// An EVM contract sender fails the FVM's explicit-path sender check, so detect it up
 	// front and estimate via the skip-sender-validation path, as Geth allows. A sender
 	// that doesn't exist at all is caught below when GasEstimateMessageGas fails.
 	needsSkipSenderValidation := false
-	if fromActor, err := e.stateManager.LoadActor(ctx, msg.From, ts); err == nil {
-		if builtinactors.IsEvmActor(fromActor.Code) {
-			needsSkipSenderValidation = true
-		}
+	balance := big.Zero()
+	fromActor, actorErr := e.stateManager.LoadActorRaw(ctx, msg.From, st)
+	if actorErr == nil {
+		needsSkipSenderValidation = builtinactors.IsEvmActor(fromActor.Code)
+		balance = fromActor.Balance
 	}
 
 	var gasCap int64
 	if params.Tx.Gas > 0 {
 		gasCap = msg.GasLimit
+	}
+	// With a gas price, the estimate is also limited to the gas the sender can pay for.
+	if price := gasPrice(params.Tx); !price.NilOrZero() {
+		if actorErr != nil && !errors.Is(actorErr, types.ErrActorNotFound) {
+			return ethtypes.EthUint64(0), xerrors.Errorf("loading sender: %w", actorErr)
+		}
+		allowance, err := gasAllowance(balance, msg.Value, price)
+		if err != nil {
+			return ethtypes.EthUint64(0), err
+		}
+		if allowance == 0 {
+			return ethtypes.EthUint64(0), api.NewErrGasAllowance(0)
+		}
+		if gasCap == 0 || allowance < gasCap {
+			gasCap = allowance
+		}
 	}
 	// Always run normal estimation first; check the caller's cap afterward.
 	msg.GasLimit = 0
@@ -275,16 +301,41 @@ func (e *ethGas) estimateGasSkipSender(ctx context.Context, msg *types.Message, 
 	return ethtypes.EthUint64(expectedGas), nil
 }
 
+// gasPrice returns the most the caller will pay per unit of gas: maxFeePerGas if given,
+// otherwise gasPrice.
+func gasPrice(tx ethtypes.EthCall) big.Int {
+	if tx.MaxFeePerGas != nil {
+		return big.Int(*tx.MaxFeePerGas)
+	}
+	return big.Int(tx.GasPrice)
+}
+
+// gasAllowance returns how much gas the sender can pay for at price after sending value,
+// up to the block gas limit.
+func gasAllowance(balance, value, price big.Int) (int64, error) {
+	if value.Int == nil {
+		value = big.Zero()
+	}
+	if balance.LessThan(value) {
+		return 0, api.NewErrInsufficientFunds(balance, value)
+	}
+	allowance := big.Div(big.Sub(balance, value), price)
+	if allowance.GreaterThanEqual(big.NewInt(buildconstants.BlockGasLimit)) {
+		return buildconstants.BlockGasLimit, nil
+	}
+	return allowance.Int64(), nil
+}
+
 // estimateGasError maps a failed estimate at the block gas limit to the error returned to the
-// caller. A call out of gas there cannot fit a caller-supplied cap either. Registered RPC
-// errors are returned unwrapped so the JSON-RPC layer keeps their codes.
+// caller. A call out of gas there cannot fit a caller-supplied cap either; without one, the
+// block gas limit is the cap, as in reth. Registered RPC errors are returned unwrapped so the
+// JSON-RPC layer keeps their codes.
 func estimateGasError(err error, gasCap int64) error {
-	var outOfGas *api.ErrOutOfGas
-	if errors.As(err, &outOfGas) {
-		if gasCap > 0 {
-			return api.NewErrGasCapExceeded(gasCap)
+	if errors.As(err, new(*api.ErrOutOfGas)) {
+		if gasCap == 0 {
+			gasCap = buildconstants.BlockGasLimit
 		}
-		return outOfGas
+		return api.NewErrGasCapExceeded(gasCap)
 	}
 	var reverted *api.ErrExecutionReverted
 	if errors.As(err, &reverted) {
@@ -372,9 +423,10 @@ func (e *ethGas) applyMessage(ctx context.Context, msg *types.Message, tsk types
 }
 
 // ethGasSearch executes a message for gas estimation using the previously estimated gas.
-// If the message fails due to an out of gas error then a gas search is performed.
-// A positive gasCap bounds both the search and the result; failures within it are reported
-// with reth's codes and messages. See gasSearch.
+// The message already succeeded at the block gas limit, so if it fails here it needs more gas
+// and a gas search is performed. A positive gasCap replaces the block gas limit as the bound
+// on the search and the result. Failures are reported with reth's codes and messages. See
+// gasSearch.
 func ethGasSearch(
 	ctx context.Context,
 	chainStore ChainStore,
@@ -385,12 +437,13 @@ func ethGasSearch(
 	skipSenderValidation bool,
 	gasCap int64,
 ) (int64, error) {
+	if gasCap == 0 {
+		gasCap = buildconstants.BlockGasLimit
+	}
 	msg := *msgIn
 	msg.GasFeeCap = big.Zero()
 	msg.GasPremium = big.Zero()
-	if gasCap > 0 {
-		msg.GasLimit = min(msg.GasLimit, gasCap)
-	}
+	msg.GasLimit = min(msg.GasLimit, gasCap)
 
 	callWithGas := gasutils.GasEstimateCallWithGas
 	if skipSenderValidation {
@@ -405,29 +458,17 @@ func ethGasSearch(
 		return msg.GasLimit, nil
 	}
 
-	if gasCap > 0 {
-		// At the cap any failure is final; below it, only a preflight rejection unrelated
-		// to gas is.
-		capErr := gasCapError(res, gasCap)
-		if msg.GasLimit == gasCap || errors.As(capErr, new(*api.ErrExecutionReverted)) {
-			return -1, capErr
-		}
-	} else if !traceContainsExitCode(res.ExecutionTrace, exitcode.SysErrOutOfGas) {
-		return -1, api.NewErrExecutionRevertedFromResult(res)
+	// At the cap any failure is final; below it, only a preflight rejection unrelated to gas is.
+	capErr := gasCapError(res, gasCap)
+	if msg.GasLimit == gasCap || errors.As(capErr, new(*api.ErrExecutionReverted)) {
+		return -1, capErr
 	}
 
-	expectedGas, err := gasSearch(ctx, stateManager, &msg, priorMsgs, ts, skipSenderValidation, gasCap)
-	if err != nil {
-		return -1, err // do not wrap registered RPC errors
-	}
-	expectedGas = int64(float64(expectedGas) * messagePool.GetConfig().GasLimitOverestimation)
-	if gasCap > 0 {
-		expectedGas = min(expectedGas, gasCap)
-	}
-	return expectedGas, nil
+	overestimation := messagePool.GetConfig().GasLimitOverestimation
+	return gasSearch(ctx, stateManager, &msg, priorMsgs, ts, skipSenderValidation, gasCap, overestimation)
 }
 
-// gasCapError reports a call that failed within a caller-supplied gas limit. If no gas was
+// gasCapError reports a call that failed within gasCap. If no gas was
 // used, the message was rejected before it ran; out of gas there means the limit is below the
 // message inclusion cost. If it failed while running, the limit is too low, since the call
 // already succeeded at the block gas limit.
@@ -443,25 +484,12 @@ func gasCapError(res *api.InvocResult, gasCap int64) error {
 	}
 }
 
-func traceContainsExitCode(et types.ExecutionTrace, ex exitcode.ExitCode) bool {
-	if et.MsgRct.ExitCode == ex {
-		return true
-	}
-
-	for _, et := range et.Subcalls {
-		if traceContainsExitCode(et, ex) {
-			return true
-		}
-	}
-
-	return false
-}
-
 // gasSearch does an exponential search to find a gas value to execute the
 // message with. It first finds a high gas limit that allows the message to execute
 // by doubling the previous gas limit until it succeeds then does a binary
-// search till it gets within a range of 1%. A positive gasCap replaces the block
-// gas limit as the ceiling, and the search fails if the message does not fit.
+// search till it gets within a range of 1%. The search never exceeds gasCap and
+// fails if the message does not fit. The result includes the overestimation margin
+// when the message still succeeds with it.
 func gasSearch(
 	ctx context.Context,
 	stateManager StateManager,
@@ -470,13 +498,10 @@ func gasSearch(
 	ts *types.TipSet,
 	skipSenderValidation bool,
 	gasCap int64,
+	overestimation float64,
 ) (int64, error) {
 	msg := *msgIn
 
-	maxGas := buildconstants.BlockGasLimit
-	if gasCap > 0 {
-		maxGas = gasCap
-	}
 	high := msg.GasLimit
 	low := msg.GasLimit
 
@@ -507,7 +532,7 @@ func gasSearch(
 		return res.MsgRct.ExitCode.IsSuccess(), nil
 	}
 
-	for high < maxGas {
+	for high < gasCap {
 		ok, err := canSucceed(high)
 		if err != nil {
 			return -1, xerrors.Errorf("searching for high gas limit failed: %w", err)
@@ -517,12 +542,11 @@ func gasSearch(
 		}
 
 		low = high
-		high = min(high*2, maxGas)
+		high = min(high*2, gasCap)
 	}
 
-	// The doubling stops at the ceiling without trying it. The initial estimate proved the
-	// block gas limit, but not a caller's cap.
-	if gasCap > 0 && high == gasCap {
+	// The doubling stops at the cap without trying it.
+	if high == gasCap {
 		res, err := call(gasCap)
 		if err != nil {
 			return -1, xerrors.Errorf("checking gas cap failed: %w", err)
@@ -549,7 +573,20 @@ func gasSearch(
 		checkThreshold = median / 100
 	}
 
-	return high, nil
+	// A contract that checks gasleft() can fail with more gas, so keep the tested limit
+	// if the margin breaks the call.
+	withMargin := min(int64(float64(high)*overestimation), gasCap)
+	if withMargin == high {
+		return high, nil
+	}
+	ok, err := canSucceed(withMargin)
+	if err != nil {
+		return -1, xerrors.Errorf("checking estimation margin failed: %w", err)
+	}
+	if !ok {
+		return high, nil
+	}
+	return withMargin, nil
 }
 
 func calculateRewardsAndGasUsed(rewardPercentiles []float64, txGasRewards gasRewardSorter) ([]ethtypes.EthBigInt, int64) {
