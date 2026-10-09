@@ -4,7 +4,6 @@ import (
 	"context"
 	"net"
 	"net/http"
-	_ "net/http/pprof"
 	"runtime"
 	"strconv"
 	"time"
@@ -23,6 +22,7 @@ import (
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/api/v2api"
+	"github.com/filecoin-project/lotus/lib/debughttp"
 	"github.com/filecoin-project/lotus/lib/rpcenc"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/metrics/proxy"
@@ -99,11 +99,11 @@ func FullNodeHandler(v1 v1api.FullNode, v2 v2api.FullNode, permissioned bool, op
 
 	// debugging
 	m.Handle("/debug/metrics", metrics.Exporter())
-	m.Handle("/debug/pprof-set/block", handleFractionOpt("BlockProfileRate", runtime.SetBlockProfileRate))
-	m.Handle("/debug/pprof-set/mutex", handleFractionOpt("MutexProfileFraction", setMutexProfileFraction))
+	m.Handle("/debug/pprof-set/block", debughttp.LocalOnly(handleFractionOpt("BlockProfileRate", runtime.SetBlockProfileRate)))
+	m.Handle("/debug/pprof-set/mutex", debughttp.LocalOnly(handleFractionOpt("MutexProfileFraction", setMutexProfileFraction)))
 	m.Handle("/health/livez", NewLiveHandler(v1))
 	m.Handle("/health/readyz", NewReadyHandler(v1))
-	m.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
+	m.PathPrefix("/").Handler(debughttp.Handler())
 
 	return m, nil
 }
@@ -150,7 +150,7 @@ func MinerHandler(a api.StorageMiner, permissioned bool) (http.Handler, error) {
 		m.Handle("/rpc/streams/v0/push/{uuid}", readerHandler)
 		// debugging
 		m.Handle("/debug/metrics", metrics.Exporter())
-		m.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
+		m.PathPrefix("/").Handler(debughttp.Handler())
 
 		var hnd http.Handler = m
 		if permissioned {

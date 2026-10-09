@@ -36,6 +36,7 @@
 
 - chore(deps): update `go-libp2p` to v0.50.0, `go-libp2p-pubsub` to v0.18.0 and `quic-go` to v0.62.0. ([filecoin-project/lotus#13882](https://github.com/filecoin-project/lotus/pull/13882))
 - ci(release): stop publishing IPFS `.cid` files beside release archives; `.sha512` checksums remain. ([filecoin-project/lotus#13896](https://github.com/filecoin-project/lotus/pull/13896))
+- feat(api): debug endpoints (`/debug/pprof/*`, `/debug/vars`, `/debug/pprof-set/*`) on the daemon, miner, worker and wallet only answer local, non-browser-cross-origin clients; set `LOTUS_DEBUG_ALLOW_REMOTE=1` to serve all clients. ([filecoin-project/lotus#13913](https://github.com/filecoin-project/lotus/pull/13913))
 
 # Node and Miner v1.37.0 / 2026-10-06
 
