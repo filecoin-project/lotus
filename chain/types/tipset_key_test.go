@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	cborrpc "github.com/filecoin-project/go-cbor-util"
+	"github.com/filecoin-project/go-state-types/abi"
 )
 
 func TestTipSetKey(t *testing.T) {
@@ -94,6 +95,22 @@ func TestTipSetKey(t *testing.T) {
 			var k TipSetKey
 			assert.Error(t, json.Unmarshal([]byte(in), &k), "input %q", in)
 		}
+
+		var k TipSetKey
+		require.NoError(t, json.Unmarshal([]byte("null"), &k))
+		assert.Equal(t, EmptyTSK, k)
+
+		dup, err := json.Marshal([]cid.Cid{c1, c1})
+		require.NoError(t, err)
+		assert.Error(t, json.Unmarshal(dup, &k), "duplicate CIDs")
+
+		wide := make([]cid.Cid, MaxTipSetSize+1)
+		for i := range wide {
+			wide[i], _ = cb.Sum([]byte{byte(i)})
+		}
+		b, err := json.Marshal(wide)
+		require.NoError(t, err)
+		assert.Error(t, json.Unmarshal(b, &k), "too many CIDs")
 	})
 
 	t.Run("CBOR", func(t *testing.T) {
@@ -113,4 +130,37 @@ func verifyJSON(t *testing.T, expected string, k TipSetKey) {
 	err = json.Unmarshal(bytes, &rehydrated)
 	require.NoError(t, err)
 	assert.Equal(t, k, rehydrated)
+}
+
+func TestValidateTipSetCids(t *testing.T) {
+	cids := make([]cid.Cid, MaxTipSetSize+1)
+	for i := range cids {
+		c, err := abi.CidBuilder.Sum([]byte{byte(i)})
+		require.NoError(t, err)
+		cids[i] = c
+	}
+	withPrefix := func(p cid.Prefix) cid.Cid {
+		c, err := p.Sum([]byte("a"))
+		require.NoError(t, err)
+		return c
+	}
+
+	require.NoError(t, ValidateTipSetCids(cids[:1]))
+	require.NoError(t, ValidateTipSetCids(cids[:MaxTipSetSize]))
+
+	for name, key := range map[string][]cid.Cid{
+		"empty":        {},
+		"too wide":     cids,
+		"duplicate":    {cids[0], cids[1], cids[0]},
+		"undefined":    {cids[0], cid.Undef},
+		"raw codec":    {withPrefix(cid.Prefix{Version: 1, Codec: cid.Raw, MhType: multihash.BLAKE2B_MIN + 31, MhLength: 32})},
+		"short digest": {withPrefix(cid.Prefix{Version: 1, Codec: cid.DagCBOR, MhType: multihash.BLAKE2B_MIN + 31, MhLength: 20})},
+		"sha2-256":     {withPrefix(cid.Prefix{Version: 1, Codec: cid.DagCBOR, MhType: multihash.SHA2_256, MhLength: 32})},
+		"identity":     {withPrefix(cid.Prefix{Version: 1, Codec: cid.DagCBOR, MhType: multihash.IDENTITY, MhLength: -1})},
+		"cidv0":        {withPrefix(cid.Prefix{Version: 0, Codec: cid.DagProtobuf, MhType: multihash.SHA2_256, MhLength: 32})},
+	} {
+		t.Run(name, func(t *testing.T) {
+			require.Error(t, ValidateTipSetCids(key))
+		})
+	}
 }

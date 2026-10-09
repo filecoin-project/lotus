@@ -64,6 +64,7 @@ All node operators, including storage providers, should be aware that ONE pre-mi
 
 ## 🐛 Bug Fixes
 
+- fix(chain): p2p ingress hardening. Tipsets from peers are limited to 34 distinct blocks, and ChainExchange serves messages for at most 8 tipsets per request. ([filecoin-project/lotus#13909](https://github.com/filecoin-project/lotus/pull/13909))
 - fix(miner): deal sectors start sealing ahead of the earliest deal start epoch, not the last piece's. ([filecoin-project/lotus#13872](https://github.com/filecoin-project/lotus/pull/13872))
 - fix(mpool): `MpoolCheckReplaceMessages` rejects nil replacement messages. ([filecoin-project/lotus#13866](https://github.com/filecoin-project/lotus/pull/13866))
 - fix(types): `TipSetKey`'s JSON decoder now rejects a `null` element instead of silently dropping it. ([filecoin-project/lotus#13755](https://github.com/filecoin-project/lotus/pull/13755))

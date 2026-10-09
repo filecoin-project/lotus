@@ -50,7 +50,7 @@ func (s *server) HandleStream(stream inet.Stream) {
 	_ = stream.SetReadDeadline(time.Time{})
 
 	log.Debugw("block sync request",
-		"start", req.Head, "len", req.Length)
+		"headSize", len(req.Head), "len", req.Length)
 
 	resp, err := s.processRequest(ctx, &req)
 	if err != nil {
@@ -58,8 +58,9 @@ func (s *server) HandleStream(stream inet.Stream) {
 		return
 	}
 
-	_ = stream.SetDeadline(time.Now().Add(WriteResDeadline))
-	buffered := bufio.NewWriter(stream)
+	// The write deadline advances only as writes complete, so a slow reader
+	// cannot keep the stream and its response alive without consuming it.
+	buffered := bufio.NewWriter(newProgressWriter(stream, time.Now))
 	if err = cborutil.WriteCborRPC(buffered, resp); err == nil {
 		err = buffered.Flush()
 	}
@@ -103,6 +104,7 @@ func validateRequest(ctx context.Context, req *Request) (*validatedRequest, *Res
 	}
 
 	validReq.length = req.Length
+	validReq.requestedLength = req.Length
 	if validReq.length > MaxRequestLength {
 		return nil, &Response{
 			Status: BadRequest,
@@ -116,11 +118,16 @@ func validateRequest(ctx context.Context, req *Request) (*validatedRequest, *Res
 			ErrorMessage: "invalid request length of zero",
 		}
 	}
+	// Serve messages for a short segment only; the client continues from the
+	// partial response.
+	if validReq.options.IncludeMessages && validReq.length > MaxMessagesRequestLength {
+		validReq.length = MaxMessagesRequestLength
+	}
 
-	if len(req.Head) == 0 {
+	if err := types.ValidateTipSetCids(req.Head); err != nil {
 		return nil, &Response{
 			Status:       BadRequest,
-			ErrorMessage: "no cids in request",
+			ErrorMessage: fmt.Sprintf("invalid request head: %s", err),
 		}
 	}
 	validReq.head = types.NewTipSetKey(req.Head...)
@@ -149,7 +156,7 @@ func (s *server) serviceRequest(ctx context.Context, req *validatedRequest) (*Re
 	}
 
 	status := Ok
-	if len(chain) < int(req.length) {
+	if uint64(len(chain)) < req.requestedLength {
 		status = Partial
 	}
 
@@ -164,6 +171,10 @@ func collectChainSegment(ctx context.Context, cs *store.ChainStore, req *validat
 
 	cur := req.head
 	for {
+		if err := types.ValidateTipSetCids(cur.Cids()); err != nil {
+			return nil, xerrors.Errorf("invalid tipset key in chain segment: %w", err)
+		}
+
 		var bst BSTipSet
 		ts, err := cs.LoadTipSet(ctx, cur)
 		if err != nil {

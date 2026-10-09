@@ -10,6 +10,7 @@ import (
 
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	"github.com/multiformats/go-multihash"
 	typegen "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
@@ -17,6 +18,54 @@ import (
 )
 
 var EmptyTSK = TipSetKey{}
+
+// MaxTipSetSize bounds the number of blocks accepted in a tipset, or CIDs in a
+// tipset key, from an untrusted source. It is a resource limit, not a validity
+// rule.
+//
+// A tipset holds at most one block per winning miner, so its size is bounded
+// by total wins in the epoch, which are stochastically dominated by
+// Poisson(BlocksPerEpoch = 5). P(Poisson(5) > 34) = 2^-58.7. Over 100 years
+// of 30 second epochs (2^26.6) the union bound is 2^-32.0, within a 2^-30
+// budget; 33 does not meet it. Revisit if BlocksPerEpoch changes.
+const MaxTipSetSize = 34
+
+// ValidateTipSetCids checks that cids, received from an untrusted source as a
+// tipset key, a block's Parents or a tipset's blocks, are plausible: between 1
+// and MaxTipSetSize distinct block header CIDs. Canonical order is not
+// checked; that requires the block headers.
+func ValidateTipSetCids(cids []cid.Cid) error {
+	if len(cids) == 0 {
+		return errors.New("tipset CID list is empty")
+	}
+	if len(cids) > MaxTipSetSize {
+		return fmt.Errorf("tipset CID list has %d entries, more than the maximum of %d", len(cids), MaxTipSetSize)
+	}
+	// Don't echo back sketchy CIDs in error messages, reference by index only.
+	for i, c := range cids {
+		if !isBlockHeaderCid(c) {
+			return fmt.Errorf("tipset CID at index %d is not a block header CID", i)
+		}
+		for j, prev := range cids[:i] {
+			if c == prev {
+				return fmt.Errorf("tipset CIDs at indices %d and %d are duplicates", j, i)
+			}
+		}
+	}
+	return nil
+}
+
+// isBlockHeaderCid reports whether c looks like a block header CID: CIDv1, DAG-CBOR, BLAKE2b-256.
+func isBlockHeaderCid(c cid.Cid) bool {
+	if !c.Defined() {
+		return false
+	}
+	p := c.Prefix()
+	return p.Version == 1 &&
+		p.Codec == cid.DagCBOR &&
+		p.MhType == multihash.BLAKE2B_MIN+31 &&
+		p.MhLength == 32
+}
 
 // The length of a block header CID in bytes.
 var blockHeaderCIDLen int
@@ -97,11 +146,12 @@ func (k *TipSetKey) UnmarshalJSON(b []byte) error {
 	if err := json.Unmarshal(b, &cids); err != nil {
 		return err
 	}
-	// null decodes to cid.Undef (empty Bytes()); encodeKey would silently drop
-	// it instead of erroring, e.g. coercing "[null]" to the chain-head key.
-	for _, c := range cids {
-		if !c.Defined() {
-			return errors.New("tipset key contains an undefined CID")
+	// An empty key is the RPC sentinel for the chain head. Anything else must
+	// be a plausible tipset; this also rejects "[null]", which would otherwise
+	// encode to the empty key.
+	if len(cids) > 0 {
+		if err := ValidateTipSetCids(cids); err != nil {
+			return err
 		}
 	}
 	k.value = string(encodeKey(cids))

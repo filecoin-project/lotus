@@ -29,6 +29,10 @@ const (
 //	 qualifier to avoid "const initializer [...] is not a constant" error.)
 var MaxRequestLength = uint64(policy.ChainFinality)
 
+// MaxMessagesRequestLength is the most tipsets served in one request that
+// includes messages; longer requests receive a partial response.
+const MaxMessagesRequestLength = 8
+
 const (
 	// Extracted constants from the code.
 	// FIXME: Should be reviewed and confirmed.
@@ -59,8 +63,10 @@ type Request struct { // FIXME: Rename. Make private.
 // `Request` processed and validated to query the tipsets needed.
 type validatedRequest struct {
 	head    types.TipSetKey
-	length  uint64
+	length  uint64 // tipsets to serve, at most requestedLength
 	options *parsedOptions
+
+	requestedLength uint64
 }
 
 // Request options. When fetching the chain segment we can fetch
