@@ -39,6 +39,9 @@ const (
 	defaultWriteTimeout      = 0                // bounds the whole request, would cut off StateWaitMsg
 	defaultIdleTimeout       = 120 * time.Second
 	defaultMaxHeaderBytes    = 64 << 10
+	// ChainNotify and SubscribeActorEventsRaw are the only channel methods;
+	// each one holds a subscription on the shared backend connection.
+	defaultPerConnSubscriptionLimit = 16
 )
 
 func main() {
@@ -165,6 +168,11 @@ var runCmd = &cli.Command{
 			),
 			Value: 0,
 		},
+		&cli.IntFlag{
+			Name:  "per-conn-subscription-limit",
+			Usage: "Maximum live subscriptions (ChainNotify, SubscribeActorEventsRaw) per WebSocket connection. Use 0 for the JSON-RPC library default (16384)",
+			Value: defaultPerConnSubscriptionLimit,
+		},
 		&cli.DurationFlag{
 			Name:  "rate-limit-timeout",
 			Usage: "The maximum time to wait for the API call throttling rate limiter before returning an error to clients",
@@ -278,6 +286,9 @@ var runCmd = &cli.Command{
 		serverOptions := make([]jsonrpc.ServerOption, 0)
 		if maxRequestSize := cctx.Int("api-max-req-size"); maxRequestSize != 0 {
 			serverOptions = append(serverOptions, jsonrpc.WithMaxRequestSize(int64(maxRequestSize)))
+		}
+		if subscriptionLimit := cctx.Int("per-conn-subscription-limit"); subscriptionLimit != 0 {
+			serverOptions = append(serverOptions, jsonrpc.WithMaxSubscriptions(subscriptionLimit))
 		}
 
 		log.Info("setting up API endpoint at " + address)

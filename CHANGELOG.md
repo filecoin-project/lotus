@@ -16,6 +16,7 @@
 
 - build: raise the minimum Go version to `1.26.8`. ([filecoin-project/lotus#13878](https://github.com/filecoin-project/lotus/pull/13878))
 - `lotus-gateway` now caps JSON-RPC requests at 16MiB and headers at 64KiB and applies 10s header, 60s read and 120s idle timeouts, all tunable via `lotus-gateway run --help`. ([filecoin-project/lotus#13912](https://github.com/filecoin-project/lotus/pull/13912))
+- `lotus-gateway` now limits each WebSocket connection to 16 live `ChainNotify` and `SubscribeActorEventsRaw` subscriptions; raise it with `--per-conn-subscription-limit`. (TODO PR link)
 
 ## ⭐ New Features
 
