@@ -10,6 +10,7 @@ import (
 
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
 
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
@@ -32,21 +33,23 @@ const (
 	EPaymentChannelDisabled
 )
 
+// EInvalidParams is the JSON-RPC "invalid params" code, used for ErrInvalidParams.
+const EInvalidParams jsonrpc.ErrorCode = -32602
+
 // ELimitExceeded is the standard Ethereum JSON-RPC error code for request limit
 // violations (EIP-1474). Used when a block range exceeds the configured maximum.
 const ELimitExceeded jsonrpc.ErrorCode = -32005
 
-// EGasCapExceeded is the EIP-1474 "transaction rejected" code, used for ErrGasCapExceeded when
-// a call runs out of gas within a caller-supplied gas limit.
-const EGasCapExceeded jsonrpc.ErrorCode = -32003
+// ETransactionRejected is the EIP-1474 "transaction rejected" code, used for
+// ErrTransactionRejected.
+const ETransactionRejected jsonrpc.ErrorCode = -32003
 
 // EExpensiveFork is the EIP-1474 "resource unavailable" code, used for ErrExpensiveFork when an
 // explicit call targets a block whose state is not available to serve.
 const EExpensiveFork jsonrpc.ErrorCode = -32002
 
-// EGasAllowance is the EIP-1474 "invalid input" code, used for ErrGasAllowance when a
-// caller-supplied gas limit is below the message inclusion cost.
-const EGasAllowance jsonrpc.ErrorCode = -32000
+// EInvalidInput is the EIP-1474 "invalid input" code, used for ErrInvalidInput.
+const EInvalidInput jsonrpc.ErrorCode = -32000
 
 var (
 	RPCErrors = jsonrpc.NewErrors()
@@ -83,14 +86,16 @@ var (
 	_ error                 = (*ErrNullRound)(nil)
 	_ jsonrpc.RPCErrorCodec = (*ErrNullRound)(nil)
 	_ error                 = (*errPaymentChannelDisabled)(nil)
+	_ error                 = (*ErrInvalidParams)(nil)
+	_ jsonrpc.RPCErrorCodec = (*ErrInvalidParams)(nil)
 	_ error                 = (*ErrBlockRangeExceeded)(nil)
 	_ jsonrpc.RPCErrorCodec = (*ErrBlockRangeExceeded)(nil)
-	_ error                 = (*ErrGasCapExceeded)(nil)
-	_ jsonrpc.RPCErrorCodec = (*ErrGasCapExceeded)(nil)
+	_ error                 = (*ErrTransactionRejected)(nil)
+	_ jsonrpc.RPCErrorCodec = (*ErrTransactionRejected)(nil)
 	_ error                 = (*ErrExpensiveFork)(nil)
 	_ jsonrpc.RPCErrorCodec = (*ErrExpensiveFork)(nil)
-	_ error                 = (*ErrGasAllowance)(nil)
-	_ jsonrpc.RPCErrorCodec = (*ErrGasAllowance)(nil)
+	_ error                 = (*ErrInvalidInput)(nil)
+	_ jsonrpc.RPCErrorCodec = (*ErrInvalidInput)(nil)
 )
 
 func init() {
@@ -106,10 +111,11 @@ func init() {
 	RPCErrors.Register(EExecutionReverted, new(*ErrExecutionReverted))
 	RPCErrors.Register(ENullRound, new(*ErrNullRound))
 	RPCErrors.Register(EPaymentChannelDisabled, new(*errPaymentChannelDisabled))
+	RPCErrors.Register(EInvalidParams, new(*ErrInvalidParams))
 	RPCErrors.Register(ELimitExceeded, new(*ErrBlockRangeExceeded))
-	RPCErrors.Register(EGasCapExceeded, new(*ErrGasCapExceeded))
+	RPCErrors.Register(ETransactionRejected, new(*ErrTransactionRejected))
 	RPCErrors.Register(EExpensiveFork, new(*ErrExpensiveFork))
-	RPCErrors.Register(EGasAllowance, new(*ErrGasAllowance))
+	RPCErrors.Register(EInvalidInput, new(*ErrInvalidInput))
 }
 
 func ErrorIsIn(err error, errorTypes []error) bool {
@@ -269,6 +275,42 @@ func (e *ErrNullRound) Is(target error) bool {
 	return ok
 }
 
+// ErrInvalidParams signals that an eth request's parameters are inconsistent. Messages match
+// geth and reth.
+type ErrInvalidParams struct {
+	Message string
+}
+
+// NewErrConflictingGasPrices reports a request that sets both a legacy and an EIP-1559 price.
+func NewErrConflictingGasPrices() *ErrInvalidParams {
+	return &ErrInvalidParams{Message: "both gasPrice and (maxFeePerGas or maxPriorityFeePerGas) specified"}
+}
+
+func (e *ErrInvalidParams) Error() string {
+	return e.Message
+}
+
+func (e *ErrInvalidParams) FromJSONRPCError(jerr jsonrpc.JSONRPCError) error {
+	if jerr.Code != EInvalidParams {
+		return fmt.Errorf("unexpected error code: %d", jerr.Code)
+	}
+	e.Message = jerr.Message
+	return nil
+}
+
+func (e *ErrInvalidParams) ToJSONRPCError() (jsonrpc.JSONRPCError, error) {
+	return jsonrpc.JSONRPCError{
+		Code:    EInvalidParams,
+		Message: e.Error(),
+	}, nil
+}
+
+// Is performs a non-strict type check so errors.Is works regardless of field values.
+func (e *ErrInvalidParams) Is(target error) bool {
+	_, ok := target.(*ErrInvalidParams)
+	return ok
+}
+
 // ErrBlockRangeExceeded signals that a request's block range exceeds the configured
 // maximum. Returned with the standard Ethereum JSON-RPC -32005 "limit exceeded" code.
 type ErrBlockRangeExceeded struct {
@@ -306,38 +348,44 @@ func (e *ErrBlockRangeExceeded) Is(target error) bool {
 	return ok
 }
 
-// ErrGasCapExceeded signals that a call cannot succeed within a caller-supplied gas limit
-// but needs more gas. The message matches reth.
-type ErrGasCapExceeded struct {
+// ErrTransactionRejected signals that an eth call cannot succeed as given, for example
+// because it needs more gas than it may use. Messages match reth.
+type ErrTransactionRejected struct {
 	Message string
 }
 
-func NewErrGasCapExceeded(gasLimit int64) *ErrGasCapExceeded {
-	return &ErrGasCapExceeded{Message: fmt.Sprintf("out of gas: gas required exceeds: %d", gasLimit)}
+// NewErrGasCapExceeded reports a call that needs more gas than gasLimit allows.
+func NewErrGasCapExceeded(gasLimit int64) *ErrTransactionRejected {
+	return &ErrTransactionRejected{Message: fmt.Sprintf("out of gas: gas required exceeds: %d", gasLimit)}
 }
 
-func (e *ErrGasCapExceeded) Error() string {
+// NewErrInsufficientFunds reports a sender whose balance cannot cover the cost of a call.
+func NewErrInsufficientFunds(balance, cost big.Int) *ErrTransactionRejected {
+	return &ErrTransactionRejected{Message: fmt.Sprintf("insufficient funds for gas * price + value: have %s want %s", balance, cost)}
+}
+
+func (e *ErrTransactionRejected) Error() string {
 	return e.Message
 }
 
-func (e *ErrGasCapExceeded) FromJSONRPCError(jerr jsonrpc.JSONRPCError) error {
-	if jerr.Code != EGasCapExceeded {
+func (e *ErrTransactionRejected) FromJSONRPCError(jerr jsonrpc.JSONRPCError) error {
+	if jerr.Code != ETransactionRejected {
 		return fmt.Errorf("unexpected error code: %d", jerr.Code)
 	}
 	e.Message = jerr.Message
 	return nil
 }
 
-func (e *ErrGasCapExceeded) ToJSONRPCError() (jsonrpc.JSONRPCError, error) {
+func (e *ErrTransactionRejected) ToJSONRPCError() (jsonrpc.JSONRPCError, error) {
 	return jsonrpc.JSONRPCError{
-		Code:    EGasCapExceeded,
+		Code:    ETransactionRejected,
 		Message: e.Error(),
 	}, nil
 }
 
 // Is performs a non-strict type check so errors.Is works regardless of field values.
-func (e *ErrGasCapExceeded) Is(target error) bool {
-	_, ok := target.(*ErrGasCapExceeded)
+func (e *ErrTransactionRejected) Is(target error) bool {
+	_, ok := target.(*ErrTransactionRejected)
 	return ok
 }
 
@@ -394,37 +442,38 @@ func (errPaymentChannelDisabled) Error() string {
 	return "payment channels disabled (EnablePaymentChannelManager=false)"
 }
 
-// ErrGasAllowance signals that a caller-supplied gas limit is below the cost of including the
-// message, so it was rejected before execution. The message matches geth and reth.
-type ErrGasAllowance struct {
+// ErrInvalidInput signals that an eth call was rejected before it ran because of how it was
+// specified. Messages match geth and reth.
+type ErrInvalidInput struct {
 	Message string
 }
 
-func NewErrGasAllowance(gasLimit int64) *ErrGasAllowance {
-	return &ErrGasAllowance{Message: fmt.Sprintf("gas required exceeds allowance (%d)", gasLimit)}
+// NewErrGasAllowance reports a gas limit too low for the call to start.
+func NewErrGasAllowance(gasLimit int64) *ErrInvalidInput {
+	return &ErrInvalidInput{Message: fmt.Sprintf("gas required exceeds allowance (%d)", gasLimit)}
 }
 
-func (e *ErrGasAllowance) Error() string {
+func (e *ErrInvalidInput) Error() string {
 	return e.Message
 }
 
-func (e *ErrGasAllowance) FromJSONRPCError(jerr jsonrpc.JSONRPCError) error {
-	if jerr.Code != EGasAllowance {
+func (e *ErrInvalidInput) FromJSONRPCError(jerr jsonrpc.JSONRPCError) error {
+	if jerr.Code != EInvalidInput {
 		return fmt.Errorf("unexpected error code: %d", jerr.Code)
 	}
 	e.Message = jerr.Message
 	return nil
 }
 
-func (e *ErrGasAllowance) ToJSONRPCError() (jsonrpc.JSONRPCError, error) {
+func (e *ErrInvalidInput) ToJSONRPCError() (jsonrpc.JSONRPCError, error) {
 	return jsonrpc.JSONRPCError{
-		Code:    EGasAllowance,
+		Code:    EInvalidInput,
 		Message: e.Error(),
 	}, nil
 }
 
 // Is performs a non-strict type check so errors.Is works regardless of field values.
-func (e *ErrGasAllowance) Is(target error) bool {
-	_, ok := target.(*ErrGasAllowance)
+func (e *ErrInvalidInput) Is(target error) bool {
+	_, ok := target.(*ErrInvalidInput)
 	return ok
 }
