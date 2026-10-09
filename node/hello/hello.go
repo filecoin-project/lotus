@@ -85,12 +85,16 @@ func (hs *Service) HandleStream(s inet.Stream) {
 	arrived := build.Clock.Now()
 
 	log.Debugw("genesis from hello",
-		"tipset", hmsg.HeaviestTipSet,
 		"peer", s.Conn().RemotePeer(),
 		"hash", hmsg.GenesisHash)
 
 	if hmsg.GenesisHash != hs.syncer.Genesis.Cids()[0] {
 		log.Debugf("other peer has different genesis! (%s)", hmsg.GenesisHash)
+		_ = s.Conn().Close()
+		return
+	}
+	if err := types.ValidateTipSetCids(hmsg.HeaviestTipSet); err != nil {
+		log.Debugw("invalid heaviest tipset in hello, disconnecting", "peer", s.Conn().RemotePeer(), "error", err)
 		_ = s.Conn().Close()
 		return
 	}

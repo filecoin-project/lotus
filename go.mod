@@ -16,7 +16,6 @@ require (
 	contrib.go.opencensus.io/exporter/prometheus v0.4.2
 	github.com/BurntSushi/toml v1.6.0
 	github.com/GeertJohan/go.rice v1.0.3
-	github.com/Gurpartap/async v0.0.0-20180927173644-4f7f499dd9ee
 	github.com/Kubuxu/imtui v0.0.0-20210401140320-41663d68d0fa
 	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/Masterminds/sprig/v3 v3.3.0

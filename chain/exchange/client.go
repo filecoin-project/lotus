@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -19,6 +20,7 @@ import (
 	cborutil "github.com/filecoin-project/go-cbor-util"
 
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	incrt "github.com/filecoin-project/lotus/lib/increadtimeout"
@@ -88,6 +90,9 @@ func (c *client) doRequest(
 	}
 	if req.Options == 0 {
 		return nil, xerrors.Errorf("request with no options set")
+	}
+	if err := types.ValidateTipSetCids(req.Head); err != nil {
+		return nil, xerrors.Errorf("request head: %w", err)
 	}
 
 	// Generate the list of peers to be queried, either the
@@ -199,11 +204,29 @@ func (c *client) processResponse(req *Request, res *Response, tipsets []*types.T
 			if res.Chain[i] == nil {
 				return nil, xerrors.Errorf("response with nil tipset in pos %d", i)
 			}
+			if n := len(res.Chain[i].Blocks); n > types.MaxTipSetSize {
+				return nil, xerrors.Errorf("tipset at height (head - %d) has %d blocks, more than the maximum of %d",
+					i, n, types.MaxTipSetSize)
+			}
+			blockCids := make([]cid.Cid, len(res.Chain[i].Blocks))
 			for blockIdx, block := range res.Chain[i].Blocks {
 				if block == nil {
 					return nil, xerrors.Errorf("tipset with nil block in pos %d", blockIdx)
 					// FIXME: Maybe we should move this check to `NewTipSet`.
 				}
+				// Genesis parents are not a tipset key (mainnet's is a sha2-256
+				// CID), so only later blocks are checked.
+				if block.Height > 0 {
+					if err := types.ValidateTipSetCids(block.Parents); err != nil {
+						return nil, xerrors.Errorf("block %d parents at height (head - %d): %w", blockIdx, i, err)
+					}
+				}
+				blockCids[blockIdx] = block.Cid()
+			}
+			// Distinct blocks make the CidArrsEqual head and IsChildOf linkage
+			// checks below exact.
+			if err := types.ValidateTipSetCids(blockCids); err != nil {
+				return nil, xerrors.Errorf("invalid tipset blocks at height (head - %d): %w", i, err)
 			}
 
 			validRes.tipsets[i], err = types.NewTipSet(res.Chain[i].Blocks)
@@ -275,6 +298,11 @@ func (c *client) validateCompressedIndices(chain []*BSTipSet) error {
 		msgs := chain[tipsetIdx].Messages
 		blocksNum := len(chain[tipsetIdx].Blocks)
 
+		// Hold compacted responses to the shape of a valid tipset.
+		if blocksNum > types.MaxTipSetSize {
+			return xerrors.Errorf("tipset has %d blocks, more than the maximum of %d", blocksNum, types.MaxTipSetSize)
+		}
+
 		if len(msgs.BlsIncludes) != blocksNum {
 			return xerrors.Errorf("BlsIncludes (%d) does not match number of blocks (%d)",
 				len(msgs.BlsIncludes), blocksNum)
@@ -288,6 +316,9 @@ func (c *client) validateCompressedIndices(chain []*BSTipSet) error {
 		blsLen := uint64(len(msgs.Bls))
 		secpLen := uint64(len(msgs.Secpk))
 		for blockIdx := 0; blockIdx < blocksNum; blockIdx++ {
+			if n := len(msgs.BlsIncludes[blockIdx]) + len(msgs.SecpkIncludes[blockIdx]); n > buildconstants.BlockMessageLimit {
+				return xerrors.Errorf("block %d has %d messages, more than the maximum of %d", blockIdx, n, buildconstants.BlockMessageLimit)
+			}
 			for _, mi := range msgs.BlsIncludes[blockIdx] {
 				if mi >= blsLen {
 					return xerrors.Errorf("index in BlsIncludes (%d) exceeds number of messages (%d)",
