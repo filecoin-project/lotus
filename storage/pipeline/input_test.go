@@ -69,9 +69,7 @@ func dealPiece(t *testing.T, startEpoch abi.ChainEpoch) SafeSectorPiece {
 
 // TestMaybeStartSealingEarliestDeadline checks that a sector with several deals
 // starts sealing before the earliest of their deadlines, not before the one
-// belonging to the last piece iterated. Regression test: the deadline used to
-// be overwritten for every piece, so only the last piece's deal deadline was
-// honoured.
+// belonging to the last piece iterated.
 func TestMaybeStartSealingEarliestDeadline(t *testing.T) {
 	const (
 		buffer     = abi.ChainEpoch(10)
