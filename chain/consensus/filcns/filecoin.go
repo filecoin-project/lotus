@@ -88,7 +88,7 @@ var RewardFunc = func(ctx context.Context, vmi vm.Interface, em stmgr.ExecMonito
 		}
 	}
 
-	ret, actErr := vmi.ApplyImplicitMessage(ctx, rwMsg)
+	ret, actErr := vmi.ApplySystemImplicitMessage(ctx, rwMsg)
 	if actErr != nil {
 		return xerrors.Errorf("failed to apply reward message: %w", actErr)
 	}
