@@ -17,12 +17,14 @@
 
 ## 👌 Improvements
 
-# Node and Miner v1.37.1 / TBD
+# Node and Miner v1.37.1 / 2026-10-12
 
-This is an **optional** patch release on top of [v1.37.0](https://github.com/filecoin-project/lotus/releases/tag/v1.37.0). It adds a small, selected set of improvements and fixes; it does not include everything that has landed on `master` since the v1.37.0 release cycle began.
+This is a **recommended** patch release on top of [v1.37.0](https://github.com/filecoin-project/lotus/releases/tag/v1.37.0). It adds a small, selected set of improvements and fixes; it does not include everything that has landed on `master` since the v1.37.0 release cycle began.
 
-- **Already on v1.37.0?** You are ready for the nv29 (Solstice) upgrade at epoch `6470279` (`2026-10-19T12:59:30Z`). Upgrading to v1.37.1 is optional.
+- **Already on v1.37.0?** You are ready for the nv29 (Solstice) upgrade at epoch `6470279` (`2026-10-19T12:59:30Z`). Upgrading to v1.37.1 is recommended but not required for nv29.
 - **Not on v1.37.0 yet?** Upgrade directly to v1.37.1 to get these improvements along with nv29 support.
+
+Review the upgrade warnings below before upgrading: they cover `MinerCreateBlock` permissions, Ethereum `gas` limits and new `lotus-gateway` limits.
 
 ## ⭐ New Features
 
