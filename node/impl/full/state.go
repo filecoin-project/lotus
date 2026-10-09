@@ -2069,6 +2069,7 @@ func (a *StateAPI) StateGetNetworkParams(ctx context.Context) (*api.NetworkParam
 			UpgradeGoldenWeekHeight:  buildconstants.UpgradeGoldenWeekHeight,
 			UpgradeFireHorseHeight:   buildconstants.UpgradeFireHorseHeight,
 			UpgradeSolsticeHeight:    buildconstants.UpgradeSolsticeHeight,
+			UpgradeXxHeight:          buildconstants.UpgradeXxHeight,
 		},
 	}, nil
 }

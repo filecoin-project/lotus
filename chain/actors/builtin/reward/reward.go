@@ -6,8 +6,8 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
-	builtin19 "github.com/filecoin-project/go-state-types/builtin"
-	rewardtypes19 "github.com/filecoin-project/go-state-types/builtin/v19/reward"
+	builtin20 "github.com/filecoin-project/go-state-types/builtin"
+	rewardtypes20 "github.com/filecoin-project/go-state-types/builtin/v20/reward"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/manifest"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
@@ -26,8 +26,8 @@ import (
 )
 
 var (
-	Address = builtin19.RewardActorAddr
-	Methods = builtin19.MethodsReward
+	Address = builtin20.RewardActorAddr
+	Methods = builtin20.MethodsReward
 )
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
@@ -73,6 +73,9 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 		case actorstypes.Version19:
 			return load19(store, act.Head)
+
+		case actorstypes.Version20:
+			return load20(store, act.Head)
 
 		}
 	}
@@ -165,6 +168,9 @@ func MakeState(store adt.Store, av actorstypes.Version, currRealizedPower abi.St
 	case actorstypes.Version19:
 		return make19(store, currRealizedPower)
 
+	case actorstypes.Version20:
+		return make20(store, currRealizedPower)
+
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
@@ -210,26 +216,26 @@ type AwardBlockRewardParams = reward0.AwardBlockRewardParams
 
 // The stream ledger's leaf types, from the latest actors version.
 type (
-	StreamID              = rewardtypes19.StreamID
-	WeightRecord          = rewardtypes19.WeightRecord
-	WeightRecordUpdate    = rewardtypes19.WeightRecordUpdate
-	RecipientShare        = rewardtypes19.RecipientShare
-	RecipientAmount       = rewardtypes19.RecipientAmount
-	DistributionInit      = rewardtypes19.DistributionInit
-	RegisterStreamPayload = rewardtypes19.RegisterStreamPayload
+	StreamID              = rewardtypes20.StreamID
+	WeightRecord          = rewardtypes20.WeightRecord
+	WeightRecordUpdate    = rewardtypes20.WeightRecordUpdate
+	RecipientShare        = rewardtypes20.RecipientShare
+	RecipientAmount       = rewardtypes20.RecipientAmount
+	DistributionInit      = rewardtypes20.DistributionInit
+	RegisterStreamPayload = rewardtypes20.RegisterStreamPayload
 )
 
 // Denom is the fixed-point denominator of stream weights and recipient shares.
-const Denom = rewardtypes19.Denom
+const Denom = rewardtypes20.Denom
 
 // The operations that reach the reward actor through the queue. A weight step is
 // uncancellable; every other write can be cancelled while it waits.
 const (
-	OpSetWeightRecords  = PendingWriteOp(rewardtypes19.PendingWriteOpSetWeightRecords)
-	OpStepWeightRecords = PendingWriteOp(rewardtypes19.PendingWriteOpStepWeightRecords)
-	OpRegisterStream    = PendingWriteOp(rewardtypes19.PendingWriteOpRegisterStream)
-	OpRemoveStream      = PendingWriteOp(rewardtypes19.PendingWriteOpRemoveStream)
-	OpSetDistribution   = PendingWriteOp(rewardtypes19.PendingWriteOpSetDistribution)
+	OpSetWeightRecords  = PendingWriteOp(rewardtypes20.PendingWriteOpSetWeightRecords)
+	OpStepWeightRecords = PendingWriteOp(rewardtypes20.PendingWriteOpStepWeightRecords)
+	OpRegisterStream    = PendingWriteOp(rewardtypes20.PendingWriteOpRegisterStream)
+	OpRemoveStream      = PendingWriteOp(rewardtypes20.PendingWriteOpRemoveStream)
+	OpSetDistribution   = PendingWriteOp(rewardtypes20.PendingWriteOpSetDistribution)
 )
 
 func AllCodes() []cid.Cid {
@@ -253,5 +259,6 @@ func AllCodes() []cid.Cid {
 		(&state17{}).Code(),
 		(&state18{}).Code(),
 		(&state19{}).Code(),
+		(&state20{}).Code(),
 	}
 }
