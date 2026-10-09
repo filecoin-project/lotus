@@ -239,12 +239,7 @@ func (e *ethGas) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (ethty
 		// resolution failed) and one the FVM rejected in preflight (e.g. a contract);
 		// either way, retry with skip-sender-validation.
 		if !errors.Is(err, stmgr.ErrSenderValidationFailed) {
-			// Return reverts as-is to preserve the JSON-RPC error codec.
-			var execErr *api.ErrExecutionReverted
-			if errors.As(err, &execErr) {
-				return ethtypes.EthUint64(0), err
-			}
-			return ethtypes.EthUint64(0), xerrors.Errorf("failed to estimate gas: %w", err)
+			return ethtypes.EthUint64(0), estimateGasError(err, gasCap)
 		}
 
 		return e.estimateGasSkipSender(ctx, msg, ts, gasCap)
@@ -264,15 +259,7 @@ func (e *ethGas) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (ethty
 func (e *ethGas) estimateGasSkipSender(ctx context.Context, msg *types.Message, ts *types.TipSet, gasCap int64) (ethtypes.EthUint64, error) {
 	gasLimit, err := gasutils.GasEstimateGasLimitSkipSenderValidation(ctx, e.chainStore, e.stateManager, e.messagePool, msg, ts)
 	if err != nil {
-		// Re-execute via applyMessage to recover revert data.
-		msg.GasLimit = buildconstants.BlockGasLimit
-		if _, err2 := e.applyMessage(ctx, msg, ts.Key()); err2 != nil {
-			var ed *api.ErrExecutionReverted
-			if errors.As(err2, &ed) {
-				return ethtypes.EthUint64(0), err2
-			}
-		}
-		return ethtypes.EthUint64(0), xerrors.Errorf("failed to estimate gas: %w", err)
+		return ethtypes.EthUint64(0), estimateGasError(err, gasCap)
 	}
 
 	gasLimit = int64(float64(gasLimit) * e.messagePool.GetConfig().GasLimitOverestimation)
@@ -286,6 +273,24 @@ func (e *ethGas) estimateGasSkipSender(ctx context.Context, msg *types.Message, 
 		return 0, err // do not wrap registered RPC errors
 	}
 	return ethtypes.EthUint64(expectedGas), nil
+}
+
+// estimateGasError maps a failed estimate at the block gas limit to the error returned to the
+// caller. A call out of gas there cannot fit a caller-supplied cap either. Registered RPC
+// errors are returned unwrapped so the JSON-RPC layer keeps their codes.
+func estimateGasError(err error, gasCap int64) error {
+	var outOfGas *api.ErrOutOfGas
+	if errors.As(err, &outOfGas) {
+		if gasCap > 0 {
+			return api.NewErrGasCapExceeded(gasCap)
+		}
+		return outOfGas
+	}
+	var reverted *api.ErrExecutionReverted
+	if errors.As(err, &reverted) {
+		return reverted
+	}
+	return xerrors.Errorf("failed to estimate gas: %w", err)
 }
 
 func (e *ethGas) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {
@@ -368,8 +373,8 @@ func (e *ethGas) applyMessage(ctx context.Context, msg *types.Message, tsk types
 
 // ethGasSearch executes a message for gas estimation using the previously estimated gas.
 // If the message fails due to an out of gas error then a gas search is performed.
-// If gasCap is positive, an estimate above it is checked by executing at the cap.
-// See gasSearch.
+// A positive gasCap bounds both the search and the result; failures within it are reported
+// with reth's codes and messages. See gasSearch.
 func ethGasSearch(
 	ctx context.Context,
 	chainStore ChainStore,
@@ -381,51 +386,61 @@ func ethGasSearch(
 	gasCap int64,
 ) (int64, error) {
 	msg := *msgIn
-	currTs := ts
+	msg.GasFeeCap = big.Zero()
+	msg.GasPremium = big.Zero()
+	if gasCap > 0 {
+		msg.GasLimit = min(msg.GasLimit, gasCap)
+	}
 
 	callWithGas := gasutils.GasEstimateCallWithGas
 	if skipSenderValidation {
 		callWithGas = gasutils.GasEstimateCallWithGasSkipSenderValidation
 	}
-	res, priorMsgs, ts, err := callWithGas(ctx, chainStore, stateManager, messagePool, &msg, currTs)
+	res, priorMsgs, ts, err := callWithGas(ctx, chainStore, stateManager, messagePool, &msg, ts)
 	if err != nil {
 		return -1, xerrors.Errorf("gas estimation failed: %w", err)
 	}
 
-	expectedGas := msg.GasLimit
-	if !res.MsgRct.ExitCode.IsSuccess() {
-		if !traceContainsExitCode(res.ExecutionTrace, exitcode.SysErrOutOfGas) {
-			return -1, api.NewErrExecutionRevertedFromResult(res)
-		}
-		expectedGas, err = gasSearch(ctx, stateManager, &msg, priorMsgs, ts, skipSenderValidation)
-		if err != nil {
-			return -1, xerrors.Errorf("gas estimation search failed: %w", err)
-		}
-		expectedGas = int64(float64(expectedGas) * messagePool.GetConfig().GasLimitOverestimation)
-	}
-	if gasCap == 0 || expectedGas <= gasCap {
-		return expectedGas, nil
+	if res.MsgRct.ExitCode.IsSuccess() {
+		return msg.GasLimit, nil
 	}
 
-	// The estimate includes a safety margin, so execution may still succeed at
-	// the cap. Check it using the same tipset and prior messages as estimation.
-	msg.GasLimit = gasCap
-	applyTsMessages := os.Getenv("LOTUS_SKIP_APPLY_TS_MESSAGE_CALL_WITH_GAS") != "1"
-	if skipSenderValidation {
-		res, err = stateManager.CallWithGasSkipSenderValidation(ctx, &msg, priorMsgs, ts, applyTsMessages)
-	} else {
-		res, err = stateManager.CallWithGas(ctx, &msg, priorMsgs, ts, applyTsMessages)
-	}
-	if err != nil {
-		return -1, xerrors.Errorf("gas cap execution failed: %w", err)
-	}
-	if res.MsgRct.ExitCode == exitcode.SysErrOutOfGas {
-		return -1, &api.ErrOutOfGas{}
-	}
-	if res.MsgRct.ExitCode.IsError() {
+	if gasCap > 0 {
+		// At the cap any failure is final; below it, only a preflight rejection unrelated
+		// to gas is.
+		capErr := gasCapError(res, gasCap)
+		if msg.GasLimit == gasCap || errors.As(capErr, new(*api.ErrExecutionReverted)) {
+			return -1, capErr
+		}
+	} else if !traceContainsExitCode(res.ExecutionTrace, exitcode.SysErrOutOfGas) {
 		return -1, api.NewErrExecutionRevertedFromResult(res)
 	}
-	return gasCap, nil
+
+	expectedGas, err := gasSearch(ctx, stateManager, &msg, priorMsgs, ts, skipSenderValidation, gasCap)
+	if err != nil {
+		return -1, err // do not wrap registered RPC errors
+	}
+	expectedGas = int64(float64(expectedGas) * messagePool.GetConfig().GasLimitOverestimation)
+	if gasCap > 0 {
+		expectedGas = min(expectedGas, gasCap)
+	}
+	return expectedGas, nil
+}
+
+// gasCapError reports a call that failed within a caller-supplied gas limit. If no gas was
+// used, the message was rejected before it ran; out of gas there means the limit is below the
+// message inclusion cost. If it failed while running, the limit is too low, since the call
+// already succeeded at the block gas limit.
+func gasCapError(res *api.InvocResult, gasCap int64) error {
+	preflight := res.MsgRct.GasUsed == 0
+	switch {
+	case preflight && res.MsgRct.ExitCode == exitcode.SysErrOutOfGas:
+		return api.NewErrGasAllowance(gasCap)
+	case preflight:
+		return api.NewErrExecutionRevertedFromResult(res)
+	default:
+		return api.NewErrGasCapExceeded(gasCap)
+	}
 }
 
 func traceContainsExitCode(et types.ExecutionTrace, ex exitcode.ExitCode) bool {
@@ -445,7 +460,8 @@ func traceContainsExitCode(et types.ExecutionTrace, ex exitcode.ExitCode) bool {
 // gasSearch does an exponential search to find a gas value to execute the
 // message with. It first finds a high gas limit that allows the message to execute
 // by doubling the previous gas limit until it succeeds then does a binary
-// search till it gets within a range of 1%
+// search till it gets within a range of 1%. A positive gasCap replaces the block
+// gas limit as the ceiling, and the search fails if the message does not fit.
 func gasSearch(
 	ctx context.Context,
 	stateManager StateManager,
@@ -453,9 +469,14 @@ func gasSearch(
 	priorMsgs []types.ChainMsg,
 	ts *types.TipSet,
 	skipSenderValidation bool,
+	gasCap int64,
 ) (int64, error) {
 	msg := *msgIn
 
+	maxGas := buildconstants.BlockGasLimit
+	if gasCap > 0 {
+		maxGas = gasCap
+	}
 	high := msg.GasLimit
 	low := msg.GasLimit
 
@@ -464,9 +485,8 @@ func gasSearch(
 		applyTsMessages = false
 	}
 
-	canSucceed := func(limit int64) (bool, error) {
+	call := func(limit int64) (*api.InvocResult, error) {
 		msg.GasLimit = limit
-
 		var res *api.InvocResult
 		var err error
 		if skipSenderValidation {
@@ -475,17 +495,19 @@ func gasSearch(
 			res, err = stateManager.CallWithGas(ctx, &msg, priorMsgs, ts, applyTsMessages)
 		}
 		if err != nil {
-			return false, xerrors.Errorf("CallWithGas failed: %w", err)
+			return nil, xerrors.Errorf("CallWithGas failed: %w", err)
 		}
-
-		if res.MsgRct.ExitCode.IsSuccess() {
-			return true, nil
+		return res, nil
+	}
+	canSucceed := func(limit int64) (bool, error) {
+		res, err := call(limit)
+		if err != nil {
+			return false, err
 		}
-
-		return false, nil
+		return res.MsgRct.ExitCode.IsSuccess(), nil
 	}
 
-	for {
+	for high < maxGas {
 		ok, err := canSucceed(high)
 		if err != nil {
 			return -1, xerrors.Errorf("searching for high gas limit failed: %w", err)
@@ -495,11 +517,18 @@ func gasSearch(
 		}
 
 		low = high
-		high = high * 2
+		high = min(high*2, maxGas)
+	}
 
-		if high > buildconstants.BlockGasLimit {
-			high = buildconstants.BlockGasLimit
-			break
+	// The doubling stops at the ceiling without trying it. The initial estimate proved the
+	// block gas limit, but not a caller's cap.
+	if gasCap > 0 && high == gasCap {
+		res, err := call(gasCap)
+		if err != nil {
+			return -1, xerrors.Errorf("checking gas cap failed: %w", err)
+		}
+		if !res.MsgRct.ExitCode.IsSuccess() {
+			return -1, gasCapError(res, gasCap)
 		}
 	}
 

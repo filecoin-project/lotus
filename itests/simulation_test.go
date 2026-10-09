@@ -1042,7 +1042,9 @@ func TestEthEstimateGasLimit(t *testing.T) {
 				if tc.wantErr {
 					require.Error(t, callErr, "the cap must be insufficient for execution")
 					_, err := estimate(t, call)
-					require.Error(t, err, "estimation must not exceed the requested gas cap")
+					var capErr *api.ErrGasCapExceeded
+					require.ErrorAs(t, err, &capErr, "estimation must not exceed the requested gas cap")
+					require.Equal(t, fmt.Sprintf("out of gas: gas required exceeds: %d", tc.cap), capErr.Message)
 					return
 				}
 				require.NoError(t, callErr, "the cap must permit execution")
@@ -1094,18 +1096,23 @@ func TestEthEstimateGasLimit(t *testing.T) {
 		}, ethtypes.EthBytes{})
 	})
 
-	t.Run("OutOfGasError", func(t *testing.T) {
-		call := ethtypes.EthCall{
-			From: &env.eoaAddr,
-			To:   &env.contractAddr,
-			Data: kit.EvmCalldata("getBalance(address)", kit.EvmWordBytes(env.eoaAddr[:])),
+	t.Run("BelowInclusionCost", func(t *testing.T) {
+		// Preflight rejects the message before execution: reth's "invalid input" error.
+		// Contract senders are applied implicitly, without an inclusion cost, so they run
+		// out of gas during execution instead.
+		for name, from := range map[string]*ethtypes.EthAddress{"FundedEOA": &env.eoaAddr, "NonExistent": &nonExistent} {
+			t.Run(name, func(t *testing.T) {
+				_, err := estimate(t, ethtypes.EthCall{
+					From: from,
+					To:   &env.contractAddr,
+					Data: kit.EvmCalldata("getBalance(address)", kit.EvmWordBytes(env.eoaAddr[:])),
+					Gas:  1000,
+				})
+				var allowanceErr *api.ErrGasAllowance
+				require.ErrorAs(t, err, &allowanceErr, "preserve the registered error type through RPC")
+				require.Equal(t, "gas required exceeds allowance (1000)", allowanceErr.Message)
+			})
 		}
-		gas, err := estimate(t, call)
-		require.NoError(t, err)
-		call.Gas = gas / 2
-		_, err = estimate(t, call)
-		var outOfGas *api.ErrOutOfGas
-		require.ErrorAs(t, err, &outOfGas, "preserve the registered error type through RPC")
 	})
 
 	t.Run("RevertAtCap", func(t *testing.T) {

@@ -36,9 +36,17 @@ const (
 // violations (EIP-1474). Used when a block range exceeds the configured maximum.
 const ELimitExceeded jsonrpc.ErrorCode = -32005
 
+// EGasCapExceeded is the EIP-1474 "transaction rejected" code, used for ErrGasCapExceeded when
+// a call runs out of gas within a caller-supplied gas limit.
+const EGasCapExceeded jsonrpc.ErrorCode = -32003
+
 // EExpensiveFork is the EIP-1474 "resource unavailable" code, used for ErrExpensiveFork when an
 // explicit call targets a block whose state is not available to serve.
 const EExpensiveFork jsonrpc.ErrorCode = -32002
+
+// EGasAllowance is the EIP-1474 "invalid input" code, used for ErrGasAllowance when a
+// caller-supplied gas limit is below the message inclusion cost.
+const EGasAllowance jsonrpc.ErrorCode = -32000
 
 var (
 	RPCErrors = jsonrpc.NewErrors()
@@ -77,8 +85,12 @@ var (
 	_ error                 = (*errPaymentChannelDisabled)(nil)
 	_ error                 = (*ErrBlockRangeExceeded)(nil)
 	_ jsonrpc.RPCErrorCodec = (*ErrBlockRangeExceeded)(nil)
+	_ error                 = (*ErrGasCapExceeded)(nil)
+	_ jsonrpc.RPCErrorCodec = (*ErrGasCapExceeded)(nil)
 	_ error                 = (*ErrExpensiveFork)(nil)
 	_ jsonrpc.RPCErrorCodec = (*ErrExpensiveFork)(nil)
+	_ error                 = (*ErrGasAllowance)(nil)
+	_ jsonrpc.RPCErrorCodec = (*ErrGasAllowance)(nil)
 )
 
 func init() {
@@ -95,7 +107,9 @@ func init() {
 	RPCErrors.Register(ENullRound, new(*ErrNullRound))
 	RPCErrors.Register(EPaymentChannelDisabled, new(*errPaymentChannelDisabled))
 	RPCErrors.Register(ELimitExceeded, new(*ErrBlockRangeExceeded))
+	RPCErrors.Register(EGasCapExceeded, new(*ErrGasCapExceeded))
 	RPCErrors.Register(EExpensiveFork, new(*ErrExpensiveFork))
+	RPCErrors.Register(EGasAllowance, new(*ErrGasAllowance))
 }
 
 func ErrorIsIn(err error, errorTypes []error) bool {
@@ -255,6 +269,78 @@ func (e *ErrNullRound) Is(target error) bool {
 	return ok
 }
 
+// ErrBlockRangeExceeded signals that a request's block range exceeds the configured
+// maximum. Returned with the standard Ethereum JSON-RPC -32005 "limit exceeded" code.
+type ErrBlockRangeExceeded struct {
+	Message string
+}
+
+func NewErrBlockRangeExceeded(maxBlockRange, given uint64) *ErrBlockRangeExceeded {
+	return &ErrBlockRangeExceeded{
+		Message: fmt.Sprintf("block range exceeds maximum of %d (got %d)", maxBlockRange, given),
+	}
+}
+
+func (e *ErrBlockRangeExceeded) Error() string {
+	return e.Message
+}
+
+func (e *ErrBlockRangeExceeded) FromJSONRPCError(jerr jsonrpc.JSONRPCError) error {
+	if jerr.Code != ELimitExceeded {
+		return fmt.Errorf("unexpected error code: %d", jerr.Code)
+	}
+	e.Message = jerr.Message
+	return nil
+}
+
+func (e *ErrBlockRangeExceeded) ToJSONRPCError() (jsonrpc.JSONRPCError, error) {
+	return jsonrpc.JSONRPCError{
+		Code:    ELimitExceeded,
+		Message: e.Error(),
+	}, nil
+}
+
+// Is performs a non-strict type check so errors.Is works regardless of field values.
+func (e *ErrBlockRangeExceeded) Is(target error) bool {
+	_, ok := target.(*ErrBlockRangeExceeded)
+	return ok
+}
+
+// ErrGasCapExceeded signals that a call cannot succeed within a caller-supplied gas limit
+// but needs more gas. The message matches reth.
+type ErrGasCapExceeded struct {
+	Message string
+}
+
+func NewErrGasCapExceeded(gasLimit int64) *ErrGasCapExceeded {
+	return &ErrGasCapExceeded{Message: fmt.Sprintf("out of gas: gas required exceeds: %d", gasLimit)}
+}
+
+func (e *ErrGasCapExceeded) Error() string {
+	return e.Message
+}
+
+func (e *ErrGasCapExceeded) FromJSONRPCError(jerr jsonrpc.JSONRPCError) error {
+	if jerr.Code != EGasCapExceeded {
+		return fmt.Errorf("unexpected error code: %d", jerr.Code)
+	}
+	e.Message = jerr.Message
+	return nil
+}
+
+func (e *ErrGasCapExceeded) ToJSONRPCError() (jsonrpc.JSONRPCError, error) {
+	return jsonrpc.JSONRPCError{
+		Code:    EGasCapExceeded,
+		Message: e.Error(),
+	}, nil
+}
+
+// Is performs a non-strict type check so errors.Is works regardless of field values.
+func (e *ErrGasCapExceeded) Is(target error) bool {
+	_, ok := target.(*ErrGasCapExceeded)
+	return ok
+}
+
 // ErrExpensiveFork signals that an explicit call cannot be served at the requested epoch
 // because an expensive state migration would have to run on demand to serve it.
 type ErrExpensiveFork struct {
@@ -308,39 +394,37 @@ func (errPaymentChannelDisabled) Error() string {
 	return "payment channels disabled (EnablePaymentChannelManager=false)"
 }
 
-// ErrBlockRangeExceeded signals that a request's block range exceeds the configured
-// maximum. Returned with the standard Ethereum JSON-RPC -32005 "limit exceeded" code.
-type ErrBlockRangeExceeded struct {
+// ErrGasAllowance signals that a caller-supplied gas limit is below the cost of including the
+// message, so it was rejected before execution. The message matches geth and reth.
+type ErrGasAllowance struct {
 	Message string
 }
 
-func NewErrBlockRangeExceeded(maxBlockRange, given uint64) *ErrBlockRangeExceeded {
-	return &ErrBlockRangeExceeded{
-		Message: fmt.Sprintf("block range exceeds maximum of %d (got %d)", maxBlockRange, given),
-	}
+func NewErrGasAllowance(gasLimit int64) *ErrGasAllowance {
+	return &ErrGasAllowance{Message: fmt.Sprintf("gas required exceeds allowance (%d)", gasLimit)}
 }
 
-func (e *ErrBlockRangeExceeded) Error() string {
+func (e *ErrGasAllowance) Error() string {
 	return e.Message
 }
 
-func (e *ErrBlockRangeExceeded) FromJSONRPCError(jerr jsonrpc.JSONRPCError) error {
-	if jerr.Code != ELimitExceeded {
+func (e *ErrGasAllowance) FromJSONRPCError(jerr jsonrpc.JSONRPCError) error {
+	if jerr.Code != EGasAllowance {
 		return fmt.Errorf("unexpected error code: %d", jerr.Code)
 	}
 	e.Message = jerr.Message
 	return nil
 }
 
-func (e *ErrBlockRangeExceeded) ToJSONRPCError() (jsonrpc.JSONRPCError, error) {
+func (e *ErrGasAllowance) ToJSONRPCError() (jsonrpc.JSONRPCError, error) {
 	return jsonrpc.JSONRPCError{
-		Code:    ELimitExceeded,
+		Code:    EGasAllowance,
 		Message: e.Error(),
 	}, nil
 }
 
 // Is performs a non-strict type check so errors.Is works regardless of field values.
-func (e *ErrBlockRangeExceeded) Is(target error) bool {
-	_, ok := target.(*ErrBlockRangeExceeded)
+func (e *ErrGasAllowance) Is(target error) bool {
+	_, ok := target.(*ErrGasAllowance)
 	return ok
 }
