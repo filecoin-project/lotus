@@ -26,7 +26,7 @@ jobs:
       - id: all
         name: Extract all dependencies from go.mod (include indirect dependencies and comments)
         run: |
-          echo "dependencies<<EOF" >> $GITHUB_OUTPUT
+          echo "dependencies<<EOF" >> "$GITHUB_OUTPUT"
           # `go list` isn't used because:
           # 1. it lists ALL the transitive dependencies, even those that are unused and don't make it to the go.mod file
           # 2. It doesn't extract the inline `dependency-check-ignore` comments.
@@ -43,38 +43,38 @@ jobs:
           sed 's/^[[:space:]]*//' |
 
           # Append the result to the file specified by the GITHUB_OUTPUT environment variable.
-          tee -a $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          tee -a "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
 
       - id: unreleased
         name: Find all dependencies that use prerelease versions (i.e., exclude vX.Y.Z and v0.0.0 versions)
         env:
           DEPENDENCIES: ${{ steps.all.outputs.dependencies }}
         run: |
-          echo "dependencies<<EOF" >> $GITHUB_OUTPUT
-          grep -Pv "$V0_PATTERN|$RELEASE_PATTERN" <<< "$DEPENDENCIES" | tee -a $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          echo "dependencies<<EOF" >> "$GITHUB_OUTPUT"
+          grep -Pv "$V0_PATTERN|$RELEASE_PATTERN" <<< "$DEPENDENCIES" | tee -a "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
 
       - id: unexplained
         name: Find all unreleased dependencies without a dependency-check-ignore comment
         env:
           DEPENDENCIES: ${{ steps.unreleased.outputs.dependencies }}
         run: |
-          echo "dependencies<<EOF" >> $GITHUB_OUTPUT
-          grep -Pv "$IGNORE_PATTERN" <<< "$DEPENDENCIES" | tee -a $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          echo "dependencies<<EOF" >> "$GITHUB_OUTPUT"
+          grep -Pv "$IGNORE_PATTERN" <<< "$DEPENDENCIES" | tee -a "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
 
       - id: v0check
         name: Check v0.0.0 dependencies for available tags
         run: |
-          echo "tagged<<EOF" >> $GITHUB_OUTPUT
+          echo "tagged<<EOF" >> "$GITHUB_OUTPUT"
           grep -P "$V0_PATTERN" go.mod | grep -Pv "$IGNORE_PATTERN" | while read -r line; do
             dep=$(echo "$line" | cut -d' ' -f1)
-            if [ ! -z "$(go list -m -versions $dep 2>/dev/null | awk 'NF>1')" ]; then
+            if [ -n "$(go list -m -versions "$dep" 2>/dev/null | awk 'NF>1')" ]; then
               echo "$dep"
             fi
-          done | tee -a $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          done | tee -a "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
 
       - if: steps.unexplained.outputs.dependencies != '' || steps.v0check.outputs.tagged != ''
         name: Throw if any unexplained dependencies exist

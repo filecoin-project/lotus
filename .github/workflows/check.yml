@@ -25,10 +25,12 @@ jobs:
     if: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       contents: read
       pull-requests: read
     outputs:
-      skip_checks: ${{ steps.changes.outputs.nonMarkdownFiles == 'false' }}
+      skip_checks: ${{ steps.changes.outputs.nonMarkdownFiles == 'false' || steps.markdown-only.outputs.skip == 'true' }}
+      run_actionlint: ${{ steps.changes.outputs.actions == 'true' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: changes
@@ -37,6 +39,13 @@ jobs:
           filters: |
             nonMarkdownFiles:
               - '!**/*.md'
+            actions:
+              - '.github/workflows/**'
+              - '.github/actions/**'
+              - '.github/actionlint.yaml'
+              - 'Makefile'
+      - id: markdown-only
+        uses: ./.github/actions/detect-markdown-only-update
   check-gen:
     name: Check (gen-check)
     needs: [pre-check]
@@ -94,14 +103,23 @@ jobs:
       - uses: ./.github/actions/install-go
       - run: go mod tidy -v
       - run: git diff --exit-code
+  check-actionlint:
+    name: Check (actionlint)
+    needs: [pre-check]
+    if: ${{ needs.pre-check.outputs.run_actionlint == 'true' && needs.pre-check.outputs.skip_checks != 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/install-go
+      - run: make actionlint
   post-check:
     name: Check (postcheck)
-    needs: [check-gen, check-lint, check-fmt, check-mod-tidy]
+    needs: [check-gen, check-lint, check-fmt, check-mod-tidy, check-actionlint]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
       - env:
-          failure: ${{ needs.check-gen.result == 'failure' || needs.check-lint.result == 'failure' || needs.check-fmt.result == 'failure' || needs.check-mod-tidy.result == 'failure' }}
+          failure: ${{ needs.check-gen.result == 'failure' || needs.check-lint.result == 'failure' || needs.check-fmt.result == 'failure' || needs.check-mod-tidy.result == 'failure' || needs.check-actionlint.result == 'failure' }}
         run: |
           if [[ "$failure" == "true" ]]; then
             echo "Some checks failed, see the workflow results for more information."

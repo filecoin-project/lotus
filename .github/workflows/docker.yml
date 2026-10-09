@@ -30,10 +30,25 @@ permissions:
   contents: read
 
 jobs:
+  markdown-only:
+    name: Detect Markdown-only update
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      skip: ${{ steps.markdown-only.outputs.skip }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: .github/actions
+      - id: markdown-only
+        uses: ./.github/actions/detect-markdown-only-update
   docker:
     name: Docker (${{ matrix.image }} / ${{ matrix.network }}) [publish=${{ github.event.inputs.publish == 'true' || github.event_name != 'pull_request' }}]
+    needs: [markdown-only]
     runs-on: ubuntu-latest
-    if: github.repository_owner == 'filecoin-project'
+    if: ${{ github.repository_owner == 'filecoin-project' && needs.markdown-only.outputs.skip != 'true' }}
     strategy:
       fail-fast: false
       matrix:
@@ -72,7 +87,7 @@ jobs:
               channel=stable
             fi
           fi
-          echo "channel=$channel" | tee -a $GITHUB_OUTPUT
+          echo "channel=$channel" | tee -a "$GITHUB_OUTPUT"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: 'recursive'

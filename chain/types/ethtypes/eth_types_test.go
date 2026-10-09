@@ -302,6 +302,34 @@ func TestUnmarshalEthBytes(t *testing.T) {
 		require.Nil(t, err)
 		require.Equal(t, string(data), tc)
 	}
+
+	// a second 0x anywhere in the string is malformed and must be rejected, not
+	// silently stripped and mis-decoded (e.g. "0xab0xcd" -> abcd)
+	for _, tc := range []string{`"0x0x"`, `"0xab0xcd"`, `"0xdead0xbeef"`} {
+		var s EthBytes
+		require.Error(t, s.UnmarshalJSON([]byte(tc)), "expected %s to be rejected", tc)
+	}
+}
+
+func TestEthUint64FromHex(t *testing.T) {
+	for _, tc := range []struct {
+		in  string
+		out EthUint64
+	}{
+		{"0x0", 0},
+		{"0x41", 65},
+		{"0x400", 1024},
+	} {
+		got, err := EthUint64FromHex(tc.in)
+		require.NoError(t, err)
+		require.Equal(t, tc.out, got)
+	}
+
+	// a second 0x is malformed and must be rejected rather than stripped
+	for _, in := range []string{"0x40x1", "0x10x1"} {
+		_, err := EthUint64FromHex(in)
+		require.Error(t, err, "expected %s to be rejected", in)
+	}
 }
 
 func TestUnmarshalEthNonce(t *testing.T) {

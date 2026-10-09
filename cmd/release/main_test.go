@@ -157,3 +157,189 @@ func TestReleaseIssueTemplateRenders(t *testing.T) {
 		}
 	}
 }
+
+const testChangelog = `# Lotus changelog
+
+Preamble.
+
+# UNRELEASED
+
+## New Features
+
+- unreleased entry
+
+# UNRELEASED v9.9.9
+
+- pending v9.9.9 entry
+
+# Node and Miner v1.37.0 / 2026-10-06
+
+- combined v1.37.0 entry
+
+# Node and Miner v1.37.0-rc1 / 2026-09-22
+
+- combined v1.37.0-rc1 entry
+
+# Node v1.36.3 / 2026-09-10
+
+- node v1.36.3 entry
+
+# Node v1.36.0 / 2026-05-13
+
+- node v1.36.0 entry
+
+# Miner v1.36.0 / 2026-05-13
+
+- miner v1.36.0 entry
+
+# v1.2.3 / 2020-01-01
+
+- legacy v1.2.3 entry
+`
+
+func TestWriteChangelogSection(t *testing.T) {
+	// The bottom-most UNRELEASED section in testChangelog is the fallback.
+	const unreleasedHeader = "# UNRELEASED v9.9.9"
+	const unreleasedBody = "- pending v9.9.9 entry\n\n"
+	for _, tc := range []struct {
+		name       string
+		changelog  string
+		project    string
+		tag        string
+		wantHeader string
+		wantBody   string
+		// wantProblem is the annotation title expected when the release has no populated section of its own, or "" for none.
+		wantProblem string
+	}{
+		{
+			name:       "node stable from a combined header",
+			project:    "node",
+			tag:        "v1.37.0",
+			wantHeader: "# Node and Miner v1.37.0 / 2026-10-06",
+			wantBody:   "- combined v1.37.0 entry\n\n",
+		},
+		{
+			name:       "miner stable from a combined header",
+			project:    "miner",
+			tag:        "miner/v1.37.0",
+			wantHeader: "# Node and Miner v1.37.0 / 2026-10-06",
+			wantBody:   "- combined v1.37.0 entry\n\n",
+		},
+		{
+			name:       "node rc is not confused with stable",
+			project:    "node",
+			tag:        "v1.37.0-rc1",
+			wantHeader: "# Node and Miner v1.37.0-rc1 / 2026-09-22",
+			wantBody:   "- combined v1.37.0-rc1 entry\n\n",
+		},
+		{
+			name:        "missing rc does not match stable",
+			project:     "node",
+			tag:         "v1.37.0-rc2",
+			wantHeader:  unreleasedHeader,
+			wantBody:    unreleasedBody,
+			wantProblem: "No CHANGELOG section",
+		},
+		{
+			name:       "node only section",
+			project:    "node",
+			tag:        "v1.36.3",
+			wantHeader: "# Node v1.36.3 / 2026-09-10",
+			wantBody:   "- node v1.36.3 entry\n\n",
+		},
+		{
+			name:        "node only section does not match a miner tag",
+			project:     "miner",
+			tag:         "miner/v1.36.3",
+			wantHeader:  unreleasedHeader,
+			wantBody:    unreleasedBody,
+			wantProblem: "No CHANGELOG section",
+		},
+		{
+			name:       "node release skips a miner section of the same version",
+			project:    "node",
+			tag:        "v1.36.0",
+			wantHeader: "# Node v1.36.0 / 2026-05-13",
+			wantBody:   "- node v1.36.0 entry\n\n",
+		},
+		{
+			name:        "versioned UNRELEASED header is only a fallback",
+			project:     "node",
+			tag:         "v9.9.9",
+			wantHeader:  unreleasedHeader,
+			wantBody:    unreleasedBody,
+			wantProblem: "No CHANGELOG section",
+		},
+		{
+			name:        "partial version does not match",
+			changelog:   "# UNRELEASED\n\n- unreleased entry\n\n# Node v9.9.9 / 2030-01-01\n\n- node v9.9.9 entry\n",
+			project:     "node",
+			tag:         "v9.9",
+			wantHeader:  "# UNRELEASED",
+			wantBody:    "- unreleased entry\n\n",
+			wantProblem: "No CHANGELOG section",
+		},
+		{
+			name:        "missing section without an UNRELEASED fallback",
+			changelog:   "# Lotus changelog\n\n# Node v1.0.0 / 2020-01-01\n\n- node v1.0.0 entry\n",
+			project:     "node",
+			tag:         "v1.0.1",
+			wantProblem: "No CHANGELOG section",
+		},
+		{
+			name:        "section with only headings at the end of the file is empty",
+			changelog:   "# UNRELEASED\n\n- unreleased entry\n\n# Node v1.0.0 / 2020-01-01\n\n## Bug Fixes",
+			project:     "node",
+			tag:         "v1.0.0",
+			wantHeader:  "# Node v1.0.0 / 2020-01-01",
+			wantBody:    "## Bug Fixes",
+			wantProblem: "Empty CHANGELOG section",
+		},
+		{
+			name:       "legacy header",
+			project:    "node",
+			tag:        "v1.2.3",
+			wantHeader: "# v1.2.3 / 2020-01-01",
+			wantBody:   "- legacy v1.2.3 entry\n",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			changelog := tc.changelog
+			if changelog == "" {
+				changelog = testChangelog
+			}
+
+			section, err := findChangelogSection(changelog, tc.project, tc.tag)
+			require.NoError(t, err)
+			require.Equal(t, tc.wantHeader, section.Header)
+			require.Equal(t, tc.wantBody, section.Body)
+
+			for _, publishing := range []bool{false, true} {
+				var out, errOut bytes.Buffer
+				err := writeChangelogSection(&out, &errOut, changelog, tc.project, tc.tag, publishing, true)
+				require.Equal(t, tc.wantBody, out.String())
+				switch {
+				case tc.wantProblem == "":
+					require.NoError(t, err)
+					require.NotContains(t, errOut.String(), "::")
+				case publishing:
+					require.ErrorContains(t, err, "::error title="+tc.wantProblem+"::")
+					require.NotContains(t, errOut.String(), "::warning")
+				default:
+					require.NoError(t, err)
+					require.Contains(t, errOut.String(), "::warning title="+tc.wantProblem+"::")
+				}
+			}
+		})
+	}
+}
+
+func TestWriteChangelogSectionUnknownProject(t *testing.T) {
+	var out, errOut bytes.Buffer
+	require.Error(t, writeChangelogSection(&out, &errOut, testChangelog, "worker", "v1.37.0", false, false))
+}
+
+func TestWorkflowAnnotation(t *testing.T) {
+	require.Equal(t, "::warning title=T::m", workflowAnnotation(true, "warning", "T", "m"))
+	require.Equal(t, "warning: T: m", workflowAnnotation(false, "warning", "T", "m"))
+}
