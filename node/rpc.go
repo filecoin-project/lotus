@@ -37,7 +37,10 @@ var rpclog = logging.Logger("rpc")
 // It returns the stop function to be called to terminate the endpoint.
 //
 // The supplied ID is used in tracing, by inserting a tag in the context.
-func ServeRPC(h http.Handler, id string, addr multiaddr.Multiaddr) (StopFunc, error) {
+//
+// Optional opts are applied to the http.Server before it starts serving, for
+// callers that need to adjust its timeouts or other settings.
+func ServeRPC(h http.Handler, id string, addr multiaddr.Multiaddr, opts ...func(*http.Server)) (StopFunc, error) {
 	// Start listening to the addr; if invalid or occupied, we will fail early.
 	lst, err := manet.Listen(addr)
 	if err != nil {
@@ -54,6 +57,9 @@ func ServeRPC(h http.Handler, id string, addr multiaddr.Multiaddr) (StopFunc, er
 			ctx, _ = tag.New(ctx, tag.Upsert(metrics.APIInterface, id))
 			return ctx
 		},
+	}
+	for _, opt := range opts {
+		opt(srv)
 	}
 
 	go func() {

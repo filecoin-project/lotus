@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
+	"time"
 
 	logging "github.com/ipfs/go-log/v2"
 	manet "github.com/multiformats/go-multiaddr/net"
@@ -28,6 +30,19 @@ import (
 )
 
 var log = logging.Logger("gateway")
+
+const (
+	// defaultReadTimeout bounds how long a client may take to send a complete
+	// request, body included; it stops slow senders from holding connections open.
+	defaultReadTimeout = 60 * time.Second
+	// defaultWriteTimeout is disabled by default: it is a deadline on the whole
+	// request, so any non-zero value caps long-running calls such as
+	// StateWaitMsg/StateSearchMsg over plain HTTP.
+	defaultWriteTimeout = 0
+	// defaultIdleTimeout bounds how long an idle keep-alive connection is kept.
+	// Note that http.Server treats 0 as "inherit ReadTimeout", not "disabled".
+	defaultIdleTimeout = 60 * time.Second
+)
 
 func main() {
 	lotuslog.SetupLogLevels()
@@ -187,6 +202,21 @@ var runCmd = &cli.Command{
 			Usage: "Enable logging of incoming API requests. Note: This will log POST request bodies which may impact performance due to body buffering and may expose sensitive data in logs",
 			Value: false,
 		},
+		&cli.DurationFlag{
+			Name:  "read-timeout",
+			Usage: "Maximum duration for reading the entire request, including the body. Use 0 to disable",
+			Value: defaultReadTimeout,
+		},
+		&cli.DurationFlag{
+			Name:  "write-timeout",
+			Usage: "Maximum duration before timing out writes of the response. This is a deadline on the whole request, so a non-zero value will cut off long-running calls such as StateWaitMsg. Use 0 to disable",
+			Value: defaultWriteTimeout,
+		},
+		&cli.DurationFlag{
+			Name:  "idle-timeout",
+			Usage: "Maximum amount of time to wait for the next request when keep-alives are enabled. 0 falls back to the read timeout, a negative value disables it",
+			Value: defaultIdleTimeout,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		eventFilterMaxHeightRange := abi.ChainEpoch(cctx.Int64("event-filter-max-height-range"))
@@ -230,6 +260,9 @@ var runCmd = &cli.Command{
 			traceFilterMaxBlockRange    = cctx.Int64("eth-trace-filter-max-block-range")
 			enableCORS                  = cctx.Bool("cors")
 			enableRequestLogging        = cctx.Bool("request-logging")
+			readTimeout                 = cctx.Duration("read-timeout")
+			writeTimeout                = cctx.Duration("write-timeout")
+			idleTimeout                 = cctx.Duration("idle-timeout")
 		)
 
 		serverOptions := make([]jsonrpc.ServerOption, 0)
@@ -274,7 +307,13 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("failed to set up gateway HTTP handler: %w", err)
 		}
 
-		stopFunc, err := node.ServeRPC(handler, "lotus-gateway", maddr)
+		stopFunc, err := node.ServeRPC(handler, "lotus-gateway", maddr, func(srv *http.Server) {
+			// Note: these deadlines do not apply to WebSocket connections, whose
+			// deadlines are cleared when the connection is hijacked on upgrade.
+			srv.ReadTimeout = readTimeout
+			srv.WriteTimeout = writeTimeout
+			srv.IdleTimeout = idleTimeout
+		})
 		if err != nil {
 			return xerrors.Errorf("failed to serve rpc endpoint: %w", err)
 		}
