@@ -314,6 +314,16 @@ func TestHasNullRoundAtHeightStmt(t *testing.T) {
 
 	// verify not a null round
 	verifyHasNullRoundAtHeightStmt(t, s, 1, false)
+
+	// a reverted tipset does not occupy its height
+	insertTipsetMessage(t, s, tipsetMessage{
+		tipsetKeyCid: []byte(tipsetKeyCid2),
+		height:       2,
+		reverted:     true,
+		messageCid:   []byte(messageCid2),
+		messageIndex: 0,
+	})
+	verifyHasNullRoundAtHeightStmt(t, s, 2, true)
 }
 
 func TestHasTipsetStmt(t *testing.T) {

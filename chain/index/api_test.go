@@ -53,6 +53,20 @@ func TestValidateIsNullRoundSimple(t *testing.T) {
 			errorContains: "index corruption",
 		},
 		{
+			name:  "happy path - null round with reverted fork tipset",
+			epoch: 50,
+			setupFunc: func(si *SqliteIndexer) {
+				insertTipsetMessage(t, si, tipsetMessage{
+					tipsetKeyCid: randomCid(t, rng).Bytes(),
+					height:       50,
+					reverted:     true,
+					messageCid:   randomCid(t, rng).Bytes(),
+					messageIndex: 0,
+				})
+			},
+			expectedResult: true,
+		},
+		{
 			name:           "edge case - epoch 0",
 			epoch:          0,
 			expectedResult: true,

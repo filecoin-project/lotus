@@ -188,6 +188,7 @@ func execVectorFile(r conformance.Reporter, path string) (diffs []string, error 
 	if err != nil {
 		return nil, fmt.Errorf("failed to open test vector: %w", err)
 	}
+	defer file.Close() //nolint:errcheck
 
 	var tv schema.TestVector
 	if err = json.NewDecoder(file).Decode(&tv); err != nil {

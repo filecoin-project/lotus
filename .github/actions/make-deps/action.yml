@@ -13,7 +13,7 @@ runs:
   using: composite
   steps:
     - id: cache-ffi
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         key: ${{ runner.os }}-${{ runner.arch }}-ffi-${{ hashFiles('./.git/modules/extern/filecoin-ffi/HEAD') }}
         path: |
@@ -29,7 +29,7 @@ runs:
         GITHUB_TOKEN: ${{ inputs.github-token || github.token }}
       run: FFI_PORTABLE=1 make deps
     - if: steps.cache-ffi.outputs.cache-hit != 'true'
-      uses: actions/cache/save@v4
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         key: ${{ runner.os }}-${{ runner.arch }}-ffi-${{ hashFiles('./.git/modules/extern/filecoin-ffi/HEAD') }}
         path: |

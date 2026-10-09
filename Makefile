@@ -17,6 +17,7 @@ $(error Update Golang to version to at least $(shell cat GO_VERSION_MIN))
 endif
 
 GOLANGCI_LINT_VERSION=v1.64.8
+ACTIONLINT_VERSION=v1.7.12
 
 # git modules that need to be loaded
 MODULES:=
@@ -317,7 +318,7 @@ install-completions:  ## Install shell completions
 	install -C ./scripts/zsh-completion/lotus /usr/local/share/zsh/site-functions/_lotus
 
 unittests:  ## Run unit tests
-	@$(GOCC) test $(shell go list ./... | grep -v /lotus/itests)
+	@$(GOCC) test $(shell go list ./... | grep -v /lotus/itests$$)
 .PHONY: unittests
 
 lint:
@@ -325,6 +326,11 @@ lint:
 	go vet ./...
 	go run github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION) run --timeout 10m --concurrency 4
 .PHONY: lint
+
+actionlint:  ## Lint GitHub Actions workflows, including shellcheck on run: blocks
+	@command -v shellcheck >/dev/null || { echo "shellcheck is required for actionlint to check run: blocks; install it (e.g. apt install shellcheck or brew install shellcheck)"; exit 1; }
+	go run github.com/rhysd/actionlint/cmd/actionlint@$(ACTIONLINT_VERSION)
+.PHONY: actionlint
 
 clean:  ## Clean build artifacts
 	rm -rf $(CLEAN) $(BINS)

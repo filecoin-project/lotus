@@ -88,7 +88,7 @@ func (e *EthUint64) UnmarshalJSON(b []byte) error {
 }
 
 func EthUint64FromHex(s string) (EthUint64, error) {
-	parsedInt, err := strconv.ParseUint(strings.Replace(s, "0x", "", -1), 16, 64)
+	parsedInt, err := strconv.ParseUint(strings.TrimPrefix(s, "0x"), 16, 64)
 	if err != nil {
 		return EthUint64(0), err
 	}
@@ -186,7 +186,7 @@ func (e *EthBytes) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
-	s = strings.Replace(s, "0x", "", -1)
+	s = strings.TrimPrefix(s, "0x")
 	if len(s)%2 == 1 {
 		s = "0" + s
 	}

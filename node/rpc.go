@@ -31,13 +31,51 @@ import (
 
 var rpclog = logging.Logger("rpc")
 
+// Timeouts are the deadlines of the server started by ServeRPC. Zero values
+// carry net/http's meaning: ReadHeader and Idle inherit Read, negative disables.
+type Timeouts struct {
+	ReadHeader time.Duration
+	Read       time.Duration
+	Write      time.Duration
+	Idle       time.Duration
+}
+
+type rpcServerConfig struct {
+	timeouts       Timeouts
+	maxHeaderBytes int
+}
+
+// RPCOption configures the server started by ServeRPC.
+type RPCOption func(*rpcServerConfig)
+
+// WithTimeouts sets every deadline of the server at once.
+func WithTimeouts(t Timeouts) RPCOption {
+	return func(cfg *rpcServerConfig) {
+		cfg.timeouts = t
+	}
+}
+
+// WithMaxHeaderBytes caps bytes read parsing headers; zero keeps net/http's 1MiB.
+func WithMaxHeaderBytes(n int) RPCOption {
+	return func(cfg *rpcServerConfig) {
+		cfg.maxHeaderBytes = n
+	}
+}
+
 // ServeRPC serves an HTTP handler over the supplied listen multiaddr.
 //
 // This function spawns a goroutine to run the server, and returns immediately.
 // It returns the stop function to be called to terminate the endpoint.
 //
 // The supplied ID is used in tracing, by inserting a tag in the context.
-func ServeRPC(h http.Handler, id string, addr multiaddr.Multiaddr) (StopFunc, error) {
+//
+// With no options only a 30s header deadline applies.
+func ServeRPC(h http.Handler, id string, addr multiaddr.Multiaddr, opts ...RPCOption) (StopFunc, error) {
+	cfg := rpcServerConfig{timeouts: Timeouts{ReadHeader: 30 * time.Second}}
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+
 	// Start listening to the addr; if invalid or occupied, we will fail early.
 	lst, err := manet.Listen(addr)
 	if err != nil {
@@ -47,7 +85,11 @@ func ServeRPC(h http.Handler, id string, addr multiaddr.Multiaddr) (StopFunc, er
 	// Instantiate the server and start listening.
 	srv := &http.Server{
 		Handler:           h,
-		ReadHeaderTimeout: 30 * time.Second,
+		ReadHeaderTimeout: cfg.timeouts.ReadHeader,
+		ReadTimeout:       cfg.timeouts.Read,
+		WriteTimeout:      cfg.timeouts.Write,
+		IdleTimeout:       cfg.timeouts.Idle,
+		MaxHeaderBytes:    cfg.maxHeaderBytes,
 		BaseContext: func(listener net.Listener) context.Context {
 			ctx := context.Background()
 			ctx = metrics.AddNetworkTag(ctx)
@@ -71,7 +113,7 @@ func FullNodeHandler(v1 v1api.FullNode, v2 v2api.FullNode, permissioned bool, op
 	m := mux.NewRouter()
 
 	serveRpc := func(path string, hnd interface{}) {
-		rpcServer := jsonrpc.NewServer(append(opts, jsonrpc.WithReverseClient[api.EthSubscriberMethods]("Filecoin"), jsonrpc.WithServerErrors(api.RPCErrors))...)
+		rpcServer := jsonrpc.NewServer(append(opts, jsonrpc.WithReverseClient[api.EthSubscriberMethods]("Filecoin"), jsonrpc.WithServerErrors(api.RPCErrors), rpcenc.WithBlockfmtIfaceDecoder())...)
 		rpcServer.Register("Filecoin", hnd)
 		rpcServer.AliasMethod("rpc.discover", "Filecoin.Discover")
 

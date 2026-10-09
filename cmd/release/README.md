@@ -31,6 +31,10 @@ The `release` tool provides several commands and options to interact with the Lo
     ```sh
     ./release create-issue
     ```
+- **Changelog Section**: Print the CHANGELOG.md section used as a GitHub release body. See `findChangelogSection` in [`main.go`](main.go) for the matching rules.
+    ```sh
+    ./release changelog-section --project miner --tag miner/v1.37.0 --publishing
+    ```
 
 ### Global Options
 

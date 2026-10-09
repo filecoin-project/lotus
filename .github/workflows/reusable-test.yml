@@ -21,7 +21,7 @@ jobs:
     outputs:
       test_group_execution_contexts: ${{ steps.list_test_group_execution_contexts.outputs.test_group_execution_contexts }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: 'recursive'
           fetch-depth: 0
@@ -29,9 +29,9 @@ jobs:
         env:
           VERY_EXPENSIVE_TESTS_RUN: ${{ inputs.run_very_expensive_tests }}
         run: |
-          echo "test_group_execution_contexts<<EOF" >> $GITHUB_OUTPUT
-          go run ./cmd/ci/main.go --json list-test-group-execution-contexts --very-expensive-tests-run=$VERY_EXPENSIVE_TESTS_RUN | jq -r '.msg' | tee -a $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          echo "test_group_execution_contexts<<EOF" >> "$GITHUB_OUTPUT"
+          go run ./cmd/ci/main.go --json list-test-group-execution-contexts --very-expensive-tests-run="$VERY_EXPENSIVE_TESTS_RUN" | jq -r '.msg' | tee -a "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
   cache:
     name: Cache Dependencies
     runs-on: ${{ matrix.runner }}
@@ -40,7 +40,7 @@ jobs:
         # We need to cache for each architecture we support: x86_64 and arm64
         runner: [ubuntu-latest, ubuntu-24.04-arm]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: 'recursive'
           fetch-depth: 0
@@ -50,8 +50,8 @@ jobs:
           CACHE_PATH: |
             /var/tmp/filecoin-proof-parameters/
         run: |
-          echo -e "key=$CACHE_KEY" | tee -a $GITHUB_OUTPUT
-          echo -e "path<<EOF\n$CACHE_PATH\nEOF" | tee -a $GITHUB_OUTPUT
+          echo -e "key=$CACHE_KEY" | tee -a "$GITHUB_OUTPUT"
+          echo -e "path<<EOF\n$CACHE_PATH\nEOF" | tee -a "$GITHUB_OUTPUT"
       - id: make_deps
         env:
           CACHE_KEY: ${{ runner.os }}-${{ runner.arch }}-make-deps-${{ hashFiles('./.git/modules/extern/filecoin-ffi/HEAD') }}-p
@@ -60,16 +60,16 @@ jobs:
             ./extern/filecoin-ffi/libfilcrypto.a
             ./extern/filecoin-ffi/filcrypto.pc
         run: |
-          echo -e "key=$CACHE_KEY" | tee -a $GITHUB_OUTPUT
-          echo -e "path<<EOF\n$CACHE_PATH\nEOF" | tee -a $GITHUB_OUTPUT
+          echo -e "key=$CACHE_KEY" | tee -a "$GITHUB_OUTPUT"
+          echo -e "path<<EOF\n$CACHE_PATH\nEOF" | tee -a "$GITHUB_OUTPUT"
       - id: restore_fetch_params
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           key: ${{ steps.fetch_params.outputs.key }}
           path: ${{ steps.fetch_params.outputs.path }}
           lookup-only: true
       - id: restore_make_deps
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           key: ${{ steps.make_deps.outputs.key }}
           path: ${{ steps.make_deps.outputs.path }}
@@ -87,12 +87,12 @@ jobs:
       - if: steps.restore_fetch_params.outputs.cache-hit != 'true'
         run: ./lotus fetch-params 2048
       - if: steps.restore_fetch_params.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           key: ${{ steps.fetch_params.outputs.key }}
           path: ${{ steps.fetch_params.outputs.path }}
       - if: steps.restore_make_deps.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           key: ${{ steps.make_deps.outputs.key }}
           path: ${{ steps.make_deps.outputs.path }}
@@ -109,7 +109,7 @@ jobs:
             "make_deps_key": env.make_deps_key,
             "make_deps_path": env.make_deps_path
           }' | tee -a "$file"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: jobs.cache.${{ runner.os }}.${{ runner.arch }}.outputs
           path: jobs.cache.${{ runner.os }}.${{ runner.arch }}.outputs.json
@@ -122,7 +122,7 @@ jobs:
       matrix:
         include: ${{ fromJson(needs.discover.outputs.test_group_execution_contexts) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: 'recursive'
           fetch-depth: 0
@@ -139,33 +139,33 @@ jobs:
       - name: Install gotestsum
         run: go install gotest.tools/gotestsum@latest
       - id: artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: jobs.cache.${{ runner.os }}.${{ runner.arch }}.outputs
       - id: cache
         env:
           file: jobs.cache.${{ runner.os }}.${{ runner.arch }}.outputs.json
         run: |
-          echo "make_deps_key=$(jq -r .make_deps_key "$file")" | tee -a $GITHUB_OUTPUT
-          echo "make_deps_path<<EOF" | tee -a $GITHUB_OUTPUT
-          jq -r .make_deps_path "$file" | tee -a $GITHUB_OUTPUT
-          echo "EOF" | tee -a $GITHUB_OUTPUT
+          echo "make_deps_key=$(jq -r .make_deps_key "$file")" | tee -a "$GITHUB_OUTPUT"
+          echo "make_deps_path<<EOF" | tee -a "$GITHUB_OUTPUT"
+          jq -r .make_deps_path "$file" | tee -a "$GITHUB_OUTPUT"
+          echo "EOF" | tee -a "$GITHUB_OUTPUT"
 
-          echo "fetch_params_key=$(jq -r .fetch_params_key "$file")" | tee -a $GITHUB_OUTPUT
-          echo "fetch_params_path<<EOF" | tee -a $GITHUB_OUTPUT
-          jq -r .fetch_params_path "$file" | tee -a $GITHUB_OUTPUT
-          echo "EOF" | tee -a $GITHUB_OUTPUT
+          echo "fetch_params_key=$(jq -r .fetch_params_key "$file")" | tee -a "$GITHUB_OUTPUT"
+          echo "fetch_params_path<<EOF" | tee -a "$GITHUB_OUTPUT"
+          jq -r .fetch_params_path "$file" | tee -a "$GITHUB_OUTPUT"
+          echo "EOF" | tee -a "$GITHUB_OUTPUT"
 
           rm "$file"
       - name: Restore cached make deps outputs
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           key: ${{ steps.cache.outputs.make_deps_key }}
           path: ${{ steps.cache.outputs.make_deps_path }}
           fail-on-cache-miss: true
       - if: ${{ steps.group.outcome == 'success' && fromJson(steps.group.outputs.metadata || '{}').needs_parameters }}
         name: Restore cached fetch params outputs
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           key: ${{ steps.cache.outputs.fetch_params_key }}
           path: ${{ steps.cache.outputs.fetch_params_path }}
@@ -178,7 +178,7 @@ jobs:
       # TODO: Install statediff (used to be used for conformance)
       - name: Create temporary directory for reports
         id: reports
-        run: mktemp -d | xargs -0 -I{} echo "path={}" | tee -a $GITHUB_OUTPUT
+        run: mktemp -d | xargs -0 -I{} echo "path={}" | tee -a "$GITHUB_OUTPUT"
       # TODO: Track coverage (used to be tracked for conformance)
       - name: Run tests
         id: tests
@@ -218,16 +218,16 @@ jobs:
           # in BuildPulse. itests are run with go test ./itests/file_test.go and therefore Go
           # assigns the name and classname attributes to "command-line-arguments". Others get the
           # package name for both.
-          if [[ "${{ matrix.name }}" == itest-* ]]; then
+          if [[ "$NAME" == itest-* ]]; then
             PACKAGE_NAME=$(basename "$PACKAGES" .go)
             sed -i 's/ name="command-line-arguments"/ name="itests"/g' "$REPORTS_PATH/$NAME.xml"
             sed -i 's/classname="command-line-arguments"/classname="'"$PACKAGE_NAME"'"/g' "$REPORTS_PATH/$NAME.xml"
           else
-            sed -i 's# name="github.com/filecoin-project/lotus/\(.*\)"# name="'${{ matrix.name }}':\1"#g' "$REPORTS_PATH/$NAME.xml"
+            sed -i 's# name="github.com/filecoin-project/lotus/\(.*\)"# name="'"$NAME"':\1"#g' "$REPORTS_PATH/$NAME.xml"
           fi
           cat "$REPORTS_PATH/$NAME.xml"
       - if: (!cancelled())
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ matrix.name }}-${{ runner.os }}-${{ runner.arch }}
           path: |
