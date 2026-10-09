@@ -807,3 +807,61 @@ func TestEthBlockRangeLimits(t *testing.T) {
 		}
 	})
 }
+
+func TestGatewaySubscriptionLimit(t *testing.T) {
+	req := require.New(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	full, _, _ := kit.EnsembleMinimal(t, kit.MockProofs())
+	gwapi := gateway.NewNode(full, full.V2)
+	handler, err := gateway.Handler(gwapi, gateway.WithJsonrpcServerOptions(jsonrpc.WithMaxSubscriptions(2)))
+	req.NoError(err)
+	t.Cleanup(func() { _ = handler.Shutdown(ctx) })
+
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	req.NoError(err)
+	srv, _, _ := kit.CreateRPCServer(t, handler, l)
+	url := "ws://" + srv.Listener.Addr().String() + "/rpc/v1"
+
+	gw, closer, err := client.NewGatewayRPCV1(ctx, url, nil)
+	req.NoError(err)
+	t.Cleanup(closer)
+
+	subscribe := func(gw api.Gateway) (context.CancelFunc, error) {
+		subCtx, subCancel := context.WithCancel(ctx)
+		ch, err := gw.ChainNotify(subCtx)
+		if err != nil {
+			subCancel()
+			return nil, err
+		}
+		// The first notification is the current head.
+		<-ch
+		return subCancel, nil
+	}
+
+	first, err := subscribe(gw)
+	req.NoError(err)
+	_, err = subscribe(gw)
+	req.NoError(err)
+	_, err = subscribe(gw)
+	req.ErrorContains(err, "subscription limit exceeded")
+
+	// The limit is per connection.
+	other, otherCloser, err := client.NewGatewayRPCV1(ctx, url, nil)
+	req.NoError(err)
+	t.Cleanup(otherCloser)
+	_, err = subscribe(other)
+	req.NoError(err)
+
+	// Cancelling a subscription releases its slot once the producer exits.
+	first()
+	req.Eventually(func() bool {
+		subCancel, err := subscribe(gw)
+		if err != nil {
+			return false
+		}
+		subCancel()
+		return true
+	}, 10*time.Second, 100*time.Millisecond)
+}
