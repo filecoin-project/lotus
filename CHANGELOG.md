@@ -22,6 +22,7 @@
 - fix(gateway): the lookback limit now applies to the block parameter of `eth_estimateGas` and to the `fromBlock` and `blockHash` of `eth_newFilter`. ([filecoin-project/lotus#13873](https://github.com/filecoin-project/lotus/pull/13873))
 - fix(eth): `eth_subscribe` no longer leaks a subscription on the node when the event type or an address is rejected. ([filecoin-project/lotus#13838](https://github.com/filecoin-project/lotus/pull/13838))
 - fix(gateway): cap JSON-RPC request size, which previously defaulted to 100MiB. ([filecoin-project/lotus#13912](https://github.com/filecoin-project/lotus/pull/13912))
+- fix(stmgr): `StateCall` honours `GasLimit`, matching `eth_call`; zero selects the default limit, which is the network block gas limit unless set with the new `API.StateCallGasLimit` option, and a larger `GasLimit` is rejected. ([filecoin-project/lotus#13910](https://github.com/filecoin-project/lotus/pull/13910))
 
 ## 👌 Improvements
 
