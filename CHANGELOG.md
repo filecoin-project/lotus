@@ -15,6 +15,7 @@
 - `eth_call` and `eth_estimateGas` now honor positive `gas` limits. Requests that previously succeeded with an insufficient limit can now fail. Applications and RPC providers should review default or injected `gas` values and increase them, or omit `gas` when no explicit cap is intended. ([filecoin-project/lotus#13865](https://github.com/filecoin-project/lotus/pull/13865))
 
 - build: raise the minimum Go version to `1.26.8`. ([filecoin-project/lotus#13878](https://github.com/filecoin-project/lotus/pull/13878))
+- `lotus-gateway` now caps JSON-RPC requests at 16MiB and headers at 64KiB and applies 10s header, 60s read and 120s idle timeouts, all tunable via `lotus-gateway run --help`. ([filecoin-project/lotus#13912](https://github.com/filecoin-project/lotus/pull/13912))
 
 ## ⭐ New Features
 
@@ -32,6 +33,7 @@
 - fix(f3): node shutdown no longer fails with `could not close datastore: leveldb: closed` and leaves `repo.lock` behind. ([filecoin-project/lotus#13850](https://github.com/filecoin-project/lotus/pull/13850))
 - fix(gateway): the lookback limit now applies to the block parameter of `eth_estimateGas` and to the `fromBlock` and `blockHash` of `eth_newFilter`. ([filecoin-project/lotus#13873](https://github.com/filecoin-project/lotus/pull/13873))
 - fix(eth): `EthBytes` and `EthUint64FromHex` reject hex values with an embedded `0x` instead of silently stripping it and mis-decoding. ([filecoin-project/lotus#13908](https://github.com/filecoin-project/lotus/pull/13908))
+- fix(gateway): cap JSON-RPC request size, which previously defaulted to 100MiB. ([filecoin-project/lotus#13912](https://github.com/filecoin-project/lotus/pull/13912))
 
 ## 👌 Improvements
 
