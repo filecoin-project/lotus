@@ -288,6 +288,10 @@ func parseEip1559Tx(data []byte) (*Eth1559TxArgs, error) {
 		return nil, xerrors.Errorf("EIP-1559 transactions only support 0 or 1 for v")
 	}
 
+	if err := validateSignatureValues(r, s); err != nil {
+		return nil, err
+	}
+
 	args := Eth1559TxArgs{
 		ChainID:              chainId,
 		Nonce:                nonce,
