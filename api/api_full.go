@@ -346,7 +346,7 @@ type FullNode interface {
 	// MethodGroup: Miner
 
 	MinerGetBaseInfo(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*MiningBaseInfo, error) //perm:read
-	MinerCreateBlock(context.Context, *BlockTemplate) (*types.BlockMsg, error)                                   //perm:write
+	MinerCreateBlock(context.Context, *BlockTemplate) (*types.BlockMsg, error)                                   //perm:sign
 
 	// // UX ?
 
