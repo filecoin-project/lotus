@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
 
@@ -80,6 +81,27 @@ func TestGasAllowance(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, tc.want, got)
 		})
+	}
+
+	// A non-positive price must not yield an allowance, whatever the balance: a large negative
+	// quotient would otherwise wrap in Int64 to a limit above the block gas limit.
+	for _, price := range []big.Int{{}, big.Zero(), big.NewInt(-1)} {
+		_, err := gasAllowance(big.Mul(big.NewInt(1e18), big.NewInt(1e18)), big.Zero(), price)
+		require.Error(t, err)
+	}
+}
+
+func TestEthEstimateGasNegativePrice(t *testing.T) {
+	// Rejected before any chain state is read, so ethGas needs no dependencies here.
+	for _, tx := range []string{
+		`{"gasPrice":"0x-1"}`,
+		`{"maxFeePerGas":"0x-1"}`,
+		`{"gasPrice":"0x-de0b6b3a7640000"}`,
+	} {
+		_, err := (&ethGas{}).EthEstimateGas(context.Background(), jsonrpc.RawParams(`[`+tx+`]`))
+		var invalid *api.ErrInvalidParams
+		require.ErrorAs(t, err, &invalid, tx)
+		require.Equal(t, "gas price must not be negative", invalid.Message)
 	}
 }
 

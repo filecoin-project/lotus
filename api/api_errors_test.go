@@ -19,6 +19,7 @@ func TestEthErrorWireCodes(t *testing.T) {
 		{NewErrInsufficientFunds(big.NewInt(1), big.NewInt(2)), -32003},
 		{NewErrGasAllowance(1000), -32000},
 		{NewErrConflictingGasPrices(), -32602},
+		{NewErrNegativeGasPrice(), -32602},
 	} {
 		jerr, err := tc.err.ToJSONRPCError()
 		require.NoError(t, err)

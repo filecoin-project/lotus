@@ -275,8 +275,8 @@ func (e *ErrNullRound) Is(target error) bool {
 	return ok
 }
 
-// ErrInvalidParams signals that an eth request's parameters are inconsistent. Messages match
-// geth and reth.
+// ErrInvalidParams signals that an eth request's parameters are inconsistent or out of range.
+// Messages match geth and reth where they have an equivalent.
 type ErrInvalidParams struct {
 	Message string
 }
@@ -284,6 +284,11 @@ type ErrInvalidParams struct {
 // NewErrConflictingGasPrices reports a request that sets both a legacy and an EIP-1559 price.
 func NewErrConflictingGasPrices() *ErrInvalidParams {
 	return &ErrInvalidParams{Message: "both gasPrice and (maxFeePerGas or maxPriorityFeePerGas) specified"}
+}
+
+// NewErrNegativeGasPrice reports a request with a negative gasPrice or maxFeePerGas.
+func NewErrNegativeGasPrice() *ErrInvalidParams {
+	return &ErrInvalidParams{Message: "gas price must not be negative"}
 }
 
 func (e *ErrInvalidParams) Error() string {
