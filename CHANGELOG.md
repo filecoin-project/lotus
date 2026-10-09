@@ -24,6 +24,8 @@
 - fix(eth): `eth_subscribe` no longer leaks a subscription on the node when the event type or an address is rejected. ([filecoin-project/lotus#13838](https://github.com/filecoin-project/lotus/pull/13838))
 - fix(gateway): cap JSON-RPC request size, which previously defaulted to 100MiB. ([filecoin-project/lotus#13912](https://github.com/filecoin-project/lotus/pull/13912))
 - fix(stmgr): `StateCall` honours `GasLimit`, matching `eth_call`; zero selects the default limit, which is the network block gas limit unless set with the new `API.StateCallGasLimit` option, and a larger `GasLimit` is rejected. ([filecoin-project/lotus#13910](https://github.com/filecoin-project/lotus/pull/13910))
+- fix(chain): p2p ingress hardening. Tipsets from peers are limited to 34 distinct blocks, and ChainExchange serves messages for at most 8 tipsets per request. ([filecoin-project/lotus#13909](https://github.com/filecoin-project/lotus/pull/13909))
+- fix(miner): deal sectors start sealing ahead of the earliest deal start epoch, not the last piece's. ([filecoin-project/lotus#13872](https://github.com/filecoin-project/lotus/pull/13872))
 
 ## 👌 Improvements
 
@@ -65,8 +67,6 @@ All node operators, including storage providers, should be aware that ONE pre-mi
 
 ## 🐛 Bug Fixes
 
-- fix(chain): p2p ingress hardening. Tipsets from peers are limited to 34 distinct blocks, and ChainExchange serves messages for at most 8 tipsets per request. ([filecoin-project/lotus#13909](https://github.com/filecoin-project/lotus/pull/13909))
-- fix(miner): deal sectors start sealing ahead of the earliest deal start epoch, not the last piece's. ([filecoin-project/lotus#13872](https://github.com/filecoin-project/lotus/pull/13872))
 - fix(mpool): `MpoolCheckReplaceMessages` rejects nil replacement messages. ([filecoin-project/lotus#13866](https://github.com/filecoin-project/lotus/pull/13866))
 - fix(types): `TipSetKey`'s JSON decoder now rejects a `null` element instead of silently dropping it. ([filecoin-project/lotus#13755](https://github.com/filecoin-project/lotus/pull/13755))
 - fix(chainindex): `lotus index validate-backfill --backfill` restores missing event-index completion markers in older indexed tipsets. Run it over affected ranges if `eth_getLogs` reports `not found in index`; validation without `--backfill` reports missing markers as failures. ([filecoin-project/lotus#13829](https://github.com/filecoin-project/lotus/pull/13829))
