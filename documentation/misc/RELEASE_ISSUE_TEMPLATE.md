@@ -221,6 +221,7 @@
    - Rebase, not squash: each backported commit should stay traceable to its master PR.
    - Cherry-pick each labelled PR's squash commit from master with `git cherry-pick -x`, oldest first.
    - Keep each cherry-pick's own `CHANGELOG.md` line, so a fix and its changelog entry travel together. Resolve changelog conflicts into the matching `UNRELEASED` subsection and drop neighbouring lines from PRs that are not being backported. The release PR later moves these entries into the dated section.
+   - Check the changelog even after a clean cherry-pick: git can place the line in an already-published section whose context matches master's `UNRELEASED`. Published sections must stay identical to their tags, e.g. `diff <(git show PREVIOUS_TAG:CHANGELOG.md | sed -n '/^# .*PREVIOUS_VERSION /,$p') <(sed -n '/^# .*PREVIOUS_VERSION /,$p' CHANGELOG.md)`.
    - Call out any non-trivial conflict resolution in the PR body.
 <!--  {{if $.BaseTag}}-->
    - The release branch runs the base release's `.github/workflows/release.yml` and `cmd/release`, not master's. Check `git log v{{$.BaseTag}}..origin/master -- .github/workflows/release.yml cmd/release scripts/generate-checksums.sh` and label any release-tooling fixes `release/backport` too.
