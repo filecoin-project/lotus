@@ -200,6 +200,11 @@ func (e *ethGas) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (ethty
 	if legacyPrice := big.Int(params.Tx.GasPrice); params.Tx.MaxFeePerGas != nil && !legacyPrice.NilOrZero() {
 		return ethtypes.EthUint64(0), api.NewErrConflictingGasPrices()
 	}
+	// The hex quantity parser accepts a sign, so reject a negative price before it reaches
+	// gasAllowance.
+	if price := gasPrice(params.Tx); !price.NilOrZero() && price.Sign() < 0 {
+		return ethtypes.EthUint64(0), api.NewErrNegativeGasPrice()
+	}
 
 	msg, err := params.Tx.ToFilecoinMessage()
 	if err != nil {
@@ -311,8 +316,11 @@ func gasPrice(tx ethtypes.EthCall) big.Int {
 }
 
 // gasAllowance returns how much gas the sender can pay for at price after sending value,
-// up to the block gas limit.
+// up to the block gas limit. price must be positive.
 func gasAllowance(balance, value, price big.Int) (int64, error) {
+	if price.NilOrZero() || price.Sign() < 0 {
+		return 0, xerrors.Errorf("gas price must be positive, got %s", price)
+	}
 	if value.Int == nil {
 		value = big.Zero()
 	}
