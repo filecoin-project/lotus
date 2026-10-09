@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
+	"unicode"
 
 	"github.com/fatih/color"
 	"github.com/ipfs/go-cid"
@@ -48,4 +50,19 @@ func PrintJson(obj interface{}) error {
 
 	fmt.Println(string(resJson))
 	return nil
+}
+
+// escapeControl replaces control characters, including the C1 range that JSON
+// encoding leaves as-is, with \uXXXX escapes so chain-sourced strings cannot
+// drive the terminal. JSON input stays valid JSON.
+func escapeControl(s string) string {
+	var b strings.Builder
+	for _, r := range s {
+		if unicode.IsControl(r) {
+			_, _ = fmt.Fprintf(&b, "\\u%04x", r)
+			continue
+		}
+		b.WriteRune(r)
+	}
+	return b.String()
 }
