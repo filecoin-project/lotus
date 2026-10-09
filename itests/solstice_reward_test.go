@@ -463,6 +463,7 @@ func TestSolsticeRewardSWA(t *testing.T) {
 	client, miner, ens := kit.EnsembleMinimal(t,
 		kit.MockProofs(),
 		kit.ThroughRPC(),
+		kit.GenesisNetworkVersion(network.Version29),
 		kit.RewardSWA(swaKey, timelock),
 		kit.Account(w3WriterKey, types.FromFil(100)),
 		kit.Account(recipient1Key, types.FromFil(100)),
@@ -692,9 +693,9 @@ func (f *solsticeRewardSWA) testStreamRegistration(t *testing.T) {
 	ledger := f.requireAdapterLedger(t, lookup.TipSet, queuedActor, queuedState, queuedStreams)
 	queuedRegistration := ledger.PendingWrites[0].Register
 	req.NotNil(queuedRegistration)
-	req.Equal(weight, queuedRegistration.Weight)
+	req.Equal(reward.WeightRecord(weight), queuedRegistration.Weight)
 	req.Equal(f.w3WriterID, queuedRegistration.Distribution.Writer)
-	req.Equal(shares, queuedRegistration.Distribution.Shares)
+	req.Equal(adapterShares(shares), queuedRegistration.Distribution.Shares)
 
 	f.client.WaitTillChain(f.ctx, kit.HeightAtLeast(activation+2))
 	dueAwardTS := kit.TipsetAtOrAfter(f.ctx, t, f.client, activation)
@@ -2006,9 +2007,9 @@ func (f *solsticeRewardLifecycle) testStreamRegistrationAndRemoval(t *testing.T)
 	req.Equal(activation, pending.EffectiveEpoch)
 	queuedRegistration := f.requireAdapterLedger(t, registered.TipSet, queuedActor, queuedState, queuedStreams).PendingWrites[0].Register
 	req.NotNil(queuedRegistration)
-	req.Equal(weight, queuedRegistration.Weight)
+	req.Equal(reward.WeightRecord(weight), queuedRegistration.Weight)
 	req.Equal(f.w3WriterID, queuedRegistration.Distribution.Writer)
-	req.Equal(shares, queuedRegistration.Distribution.Shares)
+	req.Equal(adapterShares(shares), queuedRegistration.Distribution.Shares)
 
 	f.client.WaitTillChain(f.ctx, kit.HeightAtLeast(activation+2))
 	liveActor, liveState, liveStreams := f.stateAtOrAfter(t, activation+1)
@@ -2250,8 +2251,8 @@ func (f *solsticeRewardChain) requireAdapterLedger(
 	req.Len(ledger.Streams, len(streams.Streams))
 	for i, stream := range streams.Streams {
 		read := ledger.Streams[i]
-		req.Equal(stream.ID, read.ID)
-		req.Equal(stream.Weight, read.Weight)
+		req.Equal(reward.StreamID(stream.ID), read.ID)
+		req.Equal(reward.WeightRecord(stream.Weight), read.Weight)
 		req.Equal(stream.Distribution == nil, read.Implicit)
 		req.GreaterOrEqual(read.EvaluatedWeight, stream.Weight.Floor)
 		req.LessOrEqual(read.EvaluatedWeight, stream.Weight.Cap)
@@ -2262,22 +2263,22 @@ func (f *solsticeRewardChain) requireAdapterLedger(
 			continue
 		}
 		req.Equal(stream.Distribution.Writer, read.Writer)
-		req.Equal(stream.Distribution.Shares, read.Shares)
-		req.Equal(stream.Distribution.Payable, read.Payable)
-		req.Equal(stream.Distribution.ClaimedPeriod, read.ClaimedPeriod)
+		req.Equal(adapterShares(stream.Distribution.Shares), read.Shares)
+		req.Equal(adapterAmounts(stream.Distribution.Payable), read.Payable)
+		req.Equal(adapterAmounts(stream.Distribution.ClaimedPeriod), read.ClaimedPeriod)
 		req.Equal(accrualOf(t, state, stream.ID), read.Accrued)
 	}
 
 	req.Len(ledger.Tombstones, len(streams.Tombstones))
 	for i, tombstone := range streams.Tombstones {
-		req.Equal(tombstone.ID, ledger.Tombstones[i].ID)
-		req.Equal(tombstone.Payable, ledger.Tombstones[i].Payable)
+		req.Equal(reward.StreamID(tombstone.ID), ledger.Tombstones[i].ID)
+		req.Equal(adapterAmounts(tombstone.Payable), ledger.Tombstones[i].Payable)
 	}
 
 	req.Len(ledger.PendingWrites, len(streams.PendingWritesQueue))
 	for i, write := range streams.PendingWritesQueue {
 		read := ledger.PendingWrites[i]
-		req.Equal(write.ID, read.ID)
+		req.Equal((*reward.StreamID)(write.ID), read.ID)
 		req.EqualValues(write.Op, read.Op)
 		req.Equal(write.EffectiveEpoch, read.EffectiveEpoch)
 	}
@@ -2882,4 +2883,26 @@ func solsticeEncodeArgs(t *testing.T, contract string, args []solsticeArg) []byt
 		head = append(head, arg.data...)
 	}
 	return append(head, tail...)
+}
+
+func adapterShares(shares []reward19.RecipientShare) []reward.RecipientShare {
+	if shares == nil {
+		return nil
+	}
+	out := make([]reward.RecipientShare, len(shares))
+	for i, share := range shares {
+		out[i] = reward.RecipientShare(share)
+	}
+	return out
+}
+
+func adapterAmounts(amounts []reward19.RecipientAmount) []reward.RecipientAmount {
+	if amounts == nil {
+		return nil
+	}
+	out := make([]reward.RecipientAmount, len(amounts))
+	for i, amount := range amounts {
+		out[i] = reward.RecipientAmount(amount)
+	}
+	return out
 }
