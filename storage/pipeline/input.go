@@ -63,7 +63,7 @@ func (m *Sealing) handleWaitDeals(ctx statemachine.Context, sector SectorInfo) e
 		return ctx.Send(SectorAddPiece{})
 	}
 
-	started, err := m.maybeStartSealing(ctx, sector, used)
+	started, err := m.maybeStartSealing(&ctx, sector, used)
 	if err != nil || started {
 		delete(m.openSectors, m.minerSectorID(sector.SectorNumber))
 
@@ -101,7 +101,7 @@ func (m *Sealing) handleWaitDeals(ctx statemachine.Context, sector SectorInfo) e
 	return nil
 }
 
-func (m *Sealing) maybeStartSealing(ctx statemachine.Context, sector SectorInfo, used abi.UnpaddedPieceSize) (bool, error) {
+func (m *Sealing) maybeStartSealing(ctx Context, sector SectorInfo, used abi.UnpaddedPieceSize) (bool, error) {
 	log := log.WithOptions(zap.Fields(
 		zap.Uint64("sector", uint64(sector.SectorNumber)),
 		zap.Int("dataPieces", len(sector.nonPaddingPieceInfos())),
@@ -160,6 +160,7 @@ func (m *Sealing) maybeStartSealing(ctx statemachine.Context, sector SectorInfo,
 		}
 
 		var dealSafeSealEpoch abi.ChainEpoch
+		hasDealSafeSealEpoch := false
 		for _, piece := range sector.Pieces {
 			if !piece.HasDealInfo() {
 				continue
@@ -171,7 +172,13 @@ func (m *Sealing) maybeStartSealing(ctx statemachine.Context, sector SectorInfo,
 				continue // not ideal, but skipping the check should break things less
 			}
 
-			dealSafeSealEpoch = startEpoch - cfg.StartEpochSealingBuffer
+			// Track the earliest safe seal epoch across all deals in the sector: the
+			// sector must start sealing before the deal that comes due first.
+			pieceSealEpoch := startEpoch - cfg.StartEpochSealingBuffer
+			if !hasDealSafeSealEpoch || pieceSealEpoch < dealSafeSealEpoch {
+				dealSafeSealEpoch = pieceSealEpoch
+				hasDealSafeSealEpoch = true
+			}
 
 			// FIP-0118: from nv29 there are no allocations to tighten the seal deadline with.
 			if nv >= network.Version29 {

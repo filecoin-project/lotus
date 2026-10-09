@@ -72,6 +72,7 @@ All node operators, including storage providers, should be aware that ONE pre-mi
 
 ## 🐛 Bug Fixes
 
+- fix(miner): deal sectors start sealing ahead of the earliest deal start epoch, not the last piece's. ([filecoin-project/lotus#13872](https://github.com/filecoin-project/lotus/pull/13872))
 - fix(mpool): `MpoolCheckReplaceMessages` rejects nil replacement messages. ([filecoin-project/lotus#13866](https://github.com/filecoin-project/lotus/pull/13866))
 - fix(types): `TipSetKey`'s JSON decoder now rejects a `null` element instead of silently dropping it. ([filecoin-project/lotus#13755](https://github.com/filecoin-project/lotus/pull/13755))
 - fix(chainindex): `lotus index validate-backfill --backfill` restores missing event-index completion markers in older indexed tipsets. Run it over affected ranges if `eth_getLogs` reports `not found in index`; validation without `--backfill` reports missing markers as failures. ([filecoin-project/lotus#13829](https://github.com/filecoin-project/lotus/pull/13829))
