@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"time"
 
 	logging "github.com/ipfs/go-log/v2"
 	manet "github.com/multiformats/go-multiaddr/net"
@@ -28,6 +29,17 @@ import (
 )
 
 var log = logging.Logger("gateway")
+
+// Limits for the public-facing HTTP server. Peak memory is roughly concurrent
+// requests times the request cap; connection count is not bounded here.
+const (
+	defaultMaxRequestSize    = 16 << 20 // a Filecoin message is at most 64KiB
+	defaultReadHeaderTimeout = 10 * time.Second
+	defaultReadTimeout       = 60 * time.Second // ~2.2Mbit/s floor for a 16MiB request
+	defaultWriteTimeout      = 0                // bounds the whole request, would cut off StateWaitMsg
+	defaultIdleTimeout       = 120 * time.Second
+	defaultMaxHeaderBytes    = 64 << 10
+)
 
 func main() {
 	lotuslog.SetupLogLevels()
@@ -119,7 +131,8 @@ var runCmd = &cli.Command{
 		},
 		&cli.IntFlag{
 			Name:  "api-max-req-size",
-			Usage: "maximum API request size accepted by the JSON RPC server",
+			Usage: "maximum API request size accepted by the JSON RPC server. Use 0 for the JSON-RPC library default (100MiB)",
+			Value: defaultMaxRequestSize,
 		},
 		&cli.DurationFlag{
 			Name:  "api-max-lookback",
@@ -187,6 +200,31 @@ var runCmd = &cli.Command{
 			Usage: "Enable logging of incoming API requests. Note: This will log POST request bodies which may impact performance due to body buffering and may expose sensitive data in logs",
 			Value: false,
 		},
+		&cli.DurationFlag{
+			Name:  "read-header-timeout",
+			Usage: "Maximum duration for reading request headers. 0 inherits the read timeout, a negative value disables it",
+			Value: defaultReadHeaderTimeout,
+		},
+		&cli.DurationFlag{
+			Name:  "read-timeout",
+			Usage: "Maximum duration for reading the entire request, including the body. Use 0 to disable",
+			Value: defaultReadTimeout,
+		},
+		&cli.DurationFlag{
+			Name:  "write-timeout",
+			Usage: "Maximum duration before timing out writes of the response. This is a deadline on the whole request, so a non-zero value will cut off long-running calls such as StateWaitMsg. Use 0 to disable",
+			Value: defaultWriteTimeout,
+		},
+		&cli.DurationFlag{
+			Name:  "idle-timeout",
+			Usage: "Maximum amount of time to wait for the next request when keep-alives are enabled. 0 inherits the read timeout, a negative value disables it",
+			Value: defaultIdleTimeout,
+		},
+		&cli.IntFlag{
+			Name:  "max-header-bytes",
+			Usage: "Maximum number of bytes the server will read parsing the request headers",
+			Value: defaultMaxHeaderBytes,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		eventFilterMaxHeightRange := abi.ChainEpoch(cctx.Int64("event-filter-max-height-range"))
@@ -230,6 +268,11 @@ var runCmd = &cli.Command{
 			traceFilterMaxBlockRange    = cctx.Int64("eth-trace-filter-max-block-range")
 			enableCORS                  = cctx.Bool("cors")
 			enableRequestLogging        = cctx.Bool("request-logging")
+			readHeaderTimeout           = cctx.Duration("read-header-timeout")
+			readTimeout                 = cctx.Duration("read-timeout")
+			writeTimeout                = cctx.Duration("write-timeout")
+			idleTimeout                 = cctx.Duration("idle-timeout")
+			maxHeaderBytes              = cctx.Int("max-header-bytes")
 		)
 
 		serverOptions := make([]jsonrpc.ServerOption, 0)
@@ -274,7 +317,16 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("failed to set up gateway HTTP handler: %w", err)
 		}
 
-		stopFunc, err := node.ServeRPC(handler, "lotus-gateway", maddr)
+		// Deadlines do not apply to WebSockets, which clear them on hijack.
+		stopFunc, err := node.ServeRPC(handler, "lotus-gateway", maddr,
+			node.WithTimeouts(node.Timeouts{
+				ReadHeader: readHeaderTimeout,
+				Read:       readTimeout,
+				Write:      writeTimeout,
+				Idle:       idleTimeout,
+			}),
+			node.WithMaxHeaderBytes(maxHeaderBytes),
+		)
 		if err != nil {
 			return xerrors.Errorf("failed to serve rpc endpoint: %w", err)
 		}
