@@ -29,7 +29,7 @@ func mustEnc(i cbg.CBORMarshaler) []byte {
 }
 
 func doExecValue(ctx context.Context, vm vm.Interface, to, from address.Address, value types.BigInt, method abi.MethodNum, params []byte) ([]byte, error) {
-	ret, err := vm.ApplyImplicitMessage(ctx, &types.Message{
+	ret, err := vm.ApplySystemImplicitMessage(ctx, &types.Message{
 		To:       to,
 		From:     from,
 		Method:   method,

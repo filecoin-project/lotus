@@ -34,10 +34,10 @@ func TestJSONMarshalling(t *testing.T) {
 				Emitter:   randomF4Addr(t, rng),
 				Reverted:  false,
 				Height:    1001,
-				TipSetKey: NewTipSetKey(randomCid(t, rng)),
+				TipSetKey: NewTipSetKey(randomBlockCid(t, rng)),
 				MsgCid:    randomCid(t, rng),
 			},
-			`{"entries":[{"Flags":0,"Key":"key1","Codec":81,"Value":"dmFsdWUx"},{"Flags":0,"Key":"key2","Codec":82,"Value":"dmFsdWUy"}],"emitter":"f410fagkp3qx2f76maqot74jaiw3tzbxe76k76zrkl3xifk67isrnbn2sll3yua","reverted":false,"height":1001,"tipsetKey":[{"/":"bafkqacx3dag26sfht3qlcdi"}],"msgCid":{"/":"bafkqacrziziykd6uuf4islq"}}`,
+			`{"entries":[{"Flags":0,"Key":"key1","Codec":81,"Value":"dmFsdWUx"},{"Flags":0,"Key":"key2","Codec":82,"Value":"dmFsdWUy"}],"emitter":"f410fagkp3qx2f76maqot74jaiw3tzbxe76k76zrkl3xifk67isrnbn2sll3yua","reverted":false,"height":1001,"tipsetKey":[{"/":"bafy2bzacebiad4fnbnfhv6p6hg5lz36mxrlozaacmbdo2jrdti5uxhtloshny"}],"msgCid":{"/":"bafkqacrziziykd6uuf4islq"}}`,
 		),
 	)
 
@@ -66,7 +66,7 @@ func TestJSONMarshalling(t *testing.T) {
 				ToHeight:   heightOf(100),
 				TipSetKey:  randomTipSetKey(t, rng),
 			},
-			`{"addresses":["f410fagkp3qx2f76maqot74jaiw3tzbxe76k76zrkl3xifk67isrnbn2sll3yua","f410fagkp3qx2f76maqot74jaiw3tzbxe76k76zrkl3xifk67isrnbn2sll3yua"],"fields":{"key1":[{"codec":81,"value":"dmFsdWUx"}],"key2":[{"codec":82,"value":"dmFsdWUy"}]},"fromHeight":0,"toHeight":100,"tipsetKey":[{"/":"bafkqacxcqxwocuiukv4aq5i"}]}`,
+			`{"addresses":["f410fagkp3qx2f76maqot74jaiw3tzbxe76k76zrkl3xifk67isrnbn2sll3yua","f410fagkp3qx2f76maqot74jaiw3tzbxe76k76zrkl3xifk67isrnbn2sll3yua"],"fields":{"key1":[{"codec":81,"value":"dmFsdWUx"}],"key2":[{"codec":82,"value":"dmFsdWUy"}]},"fromHeight":0,"toHeight":100,"tipsetKey":[{"/":"bafy2bzacebf42eztbmtx75z4v6ef2ovw5m4c2nw5bud45lq65otdexu4u3ako"}]}`,
 		),
 	)
 	t.Run("actor event block",
@@ -98,7 +98,7 @@ func heightOf(h int64) *abi.ChainEpoch {
 
 func randomTipSetKey(tb testing.TB, rng *pseudo.Rand) *TipSetKey {
 	tb.Helper()
-	tk := NewTipSetKey(randomCid(tb, rng))
+	tk := NewTipSetKey(randomBlockCid(tb, rng))
 	return &tk
 }
 
@@ -114,6 +114,15 @@ func randomCid(tb testing.TB, rng *pseudo.Rand) cid.Cid {
 	tb.Helper()
 	cb := cid.V1Builder{Codec: cid.Raw, MhType: mh.IDENTITY}
 	c, err := cb.Sum(randomBytes(10, rng))
+	require.NoError(tb, err)
+	return c
+}
+
+// randomBlockCid returns a CID shaped like a block header CID, as tipset keys
+// require.
+func randomBlockCid(tb testing.TB, rng *pseudo.Rand) cid.Cid {
+	tb.Helper()
+	c, err := abi.CidBuilder.Sum(randomBytes(10, rng))
 	require.NoError(tb, err)
 	return c
 }

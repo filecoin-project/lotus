@@ -138,7 +138,7 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 			Method:     cron.Methods.EpochTick,
 			Params:     nil,
 		}
-		ret, err := vmCron.ApplyImplicitMessage(ctx, cronMsg)
+		ret, err := vmCron.ApplySystemImplicitMessage(ctx, cronMsg)
 		if err != nil {
 			return xerrors.Errorf("running cron: %w", err)
 		}

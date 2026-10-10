@@ -5,10 +5,14 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/ipfs/go-cid"
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/go-address"
 
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types/mock"
 )
 
 func TestSignedMessageJsonRoundtrip(t *testing.T) {
@@ -74,4 +78,15 @@ func makeRandomAddress() (string, error) {
 	}
 
 	return addr.String(), nil
+}
+
+func TestValidateParentsKeyGenesis(t *testing.T) {
+	gen := mock.MkBlock(nil, 1, 1)
+	// Mainnet genesis parents: a sha2-256 CID, not a block header CID.
+	gen.Parents = []cid.Cid{cid.MustParse("bafyreiaqpwbbyjo4a42saasj36kkrpv4tsherf2e7bvezkert2a7dhonoi")}
+	require.NoError(t, validateParentsKey(mock.TipSet(gen)))
+
+	child := mock.MkBlock(mock.TipSet(gen), 1, 2)
+	child.Parents = gen.Parents
+	require.Error(t, validateParentsKey(mock.TipSet(child)))
 }
