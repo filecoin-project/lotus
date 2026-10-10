@@ -36,6 +36,7 @@
 - fix(eth): `EthBytes` and `EthUint64FromHex` reject hex values with an embedded `0x` instead of silently stripping it and mis-decoding. ([filecoin-project/lotus#13908](https://github.com/filecoin-project/lotus/pull/13908))
 - fix(gateway): cap JSON-RPC request size, which previously defaulted to 100MiB. ([filecoin-project/lotus#13912](https://github.com/filecoin-project/lotus/pull/13912))
 - fix(stmgr): `StateCall` honours `GasLimit`, matching `eth_call`; zero selects the default limit, which is the network block gas limit unless set with the new `API.StateCallGasLimit` option, and a larger `GasLimit` is rejected. ([filecoin-project/lotus#13910](https://github.com/filecoin-project/lotus/pull/13910))
+- fix(cli): an API info URL that already ends in an RPC path such as `/rpc/v1` is rejected with an error that names the address to use, instead of being dialed as `/rpc/v1/rpc/v1`. ([filecoin-project/lotus#13870](https://github.com/filecoin-project/lotus/pull/13870))
 
 ## 👌 Improvements
 
