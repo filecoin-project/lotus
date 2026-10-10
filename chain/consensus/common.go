@@ -477,6 +477,10 @@ func decodeAndCheckBlock(msg *pubsub.Message) (*types.BlockMsg, string, error) {
 		return nil, "too_many_messages", fmt.Errorf("block contains too many messages (%d)", count)
 	}
 
+	if err := types.ValidateTipSetCids(blk.Header.Parents); err != nil {
+		return nil, "invalid_parents", fmt.Errorf("block parents: %w", err)
+	}
+
 	// make sure we have a signature
 	if blk.Header.BlockSig == nil {
 		return nil, "missing_signature", fmt.Errorf("block without a signature")

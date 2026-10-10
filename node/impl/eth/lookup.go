@@ -94,7 +94,6 @@ func (e *ethLookup) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress,
 		Value:      big.Zero(),
 		Method:     builtintypes.MethodsEVM.GetBytecode,
 		Params:     nil,
-		GasLimit:   buildconstants.BlockGasLimit,
 		GasFeeCap:  big.Zero(),
 		GasPremium: big.Zero(),
 	}
@@ -193,7 +192,6 @@ func (e *ethLookup) EthGetStorageAt(ctx context.Context, ethAddr ethtypes.EthAdd
 		Value:      big.Zero(),
 		Method:     builtintypes.MethodsEVM.GetStorageAt,
 		Params:     params,
-		GasLimit:   buildconstants.BlockGasLimit,
 		GasFeeCap:  big.Zero(),
 		GasPremium: big.Zero(),
 	}

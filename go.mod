@@ -16,7 +16,6 @@ require (
 	contrib.go.opencensus.io/exporter/prometheus v0.4.2
 	github.com/BurntSushi/toml v1.6.0
 	github.com/GeertJohan/go.rice v1.0.3
-	github.com/Gurpartap/async v0.0.0-20180927173644-4f7f499dd9ee
 	github.com/Kubuxu/imtui v0.0.0-20210401140320-41663d68d0fa
 	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/Masterminds/sprig/v3 v3.3.0
@@ -48,7 +47,7 @@ require (
 	github.com/filecoin-project/go-f3 v0.8.14
 	github.com/filecoin-project/go-fil-commcid v0.3.1
 	github.com/filecoin-project/go-hamt-ipld/v3 v3.4.1
-	github.com/filecoin-project/go-jsonrpc v0.10.2
+	github.com/filecoin-project/go-jsonrpc v0.10.3
 	github.com/filecoin-project/go-kamt-ipld v0.1.0
 	github.com/filecoin-project/go-keccak v0.1.0
 	github.com/filecoin-project/go-padreader v0.0.1
