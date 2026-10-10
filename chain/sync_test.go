@@ -1302,3 +1302,54 @@ func TestSyncState(t *testing.T) {
 	require.Equal(tu.t, len(state.ActiveSyncs), 1)
 	require.Equal(tu.t, state.ActiveSyncs[0].Stage, api.StageSyncComplete)
 }
+
+// TestSyncRejectsInvalidParentKeys checks that invalid parent keys are rejected
+// before they are loaded, for the incoming tipset and for tipsets reached while
+// walking back.
+func TestSyncRejectsInvalidParentKeys(t *testing.T) {
+	H := 10
+	tu := prepSyncTest(t, H)
+
+	client := tu.addClientNode()
+	require.NoError(t, tu.mn.LinkAll())
+	tu.connect(client, 0)
+	tu.waitUntilSync(0, client)
+
+	s := tu.nds[client].(*impl.FullNodeAPI).SyncAPI.Syncer
+	head := tu.getHead(client)
+	local := head.Cids()[0]
+
+	forge := func(parents []cid.Cid, height abi.ChainEpoch) *types.TipSet {
+		h := *head.Blocks()[0]
+		h.Parents = parents
+		h.Height = height
+		h.ParentWeight = types.BigMul(head.ParentWeight(), types.NewInt(2))
+		return mocktypes.TipSet(&h)
+	}
+	repeated := []cid.Cid{local, local}
+
+	t.Run("incoming parents", func(t *testing.T) {
+		err := s.Sync(tu.ctx, forge(repeated, head.Height()+1))
+		require.ErrorContains(t, err, "duplicates")
+	})
+
+	t.Run("walked parents", func(t *testing.T) {
+		// A stored intermediate tipset carries the bad key, so it is reached
+		// only by walking back from a valid incoming key.
+		mid := forge(repeated, head.Height()+2)
+		cs := tu.nds[client].(*impl.FullNodeAPI).ChainAPI.Chain
+		require.NoError(t, cs.PersistTipsets(tu.ctx, []*types.TipSet{mid}))
+		err := s.Sync(tu.ctx, forge(mid.Cids(), head.Height()+3))
+		require.ErrorContains(t, err, "duplicates")
+	})
+
+	t.Run("final parents", func(t *testing.T) {
+		// The walk ends at the stored tipset, whose parents syncFork then
+		// loads.
+		mid := forge(repeated, head.Height()+1)
+		cs := tu.nds[client].(*impl.FullNodeAPI).ChainAPI.Chain
+		require.NoError(t, cs.PersistTipsets(tu.ctx, []*types.TipSet{mid}))
+		err := s.Sync(tu.ctx, forge(mid.Cids(), head.Height()+2))
+		require.ErrorContains(t, err, "duplicates")
+	})
+}

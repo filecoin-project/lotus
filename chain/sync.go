@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Gurpartap/async"
 	"github.com/hashicorp/go-multierror"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -21,6 +20,7 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/trace"
+	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -55,7 +55,7 @@ var (
 	log = logging.Logger("chain")
 
 	concurrentSyncRequests = exchange.ShufflePeersPrefix
-	syncRequestBatchSize   = 8
+	syncRequestBatchSize   = exchange.MaxMessagesRequestLength
 	syncRequestRetries     = 5
 )
 
@@ -582,6 +582,10 @@ func isPermanent(err error) bool {
 	return !errors.Is(err, consensus.ErrTemporal)
 }
 
+// validateTipSetConcurrency bounds the blocks of one tipset validated at once;
+// each block validation verifies a WinningPoSt proof.
+const validateTipSetConcurrency = 8
+
 func (syncer *Syncer) ValidateTipSet(ctx context.Context, fts *store.FullTipSet, useCache bool) error {
 	ctx, span := trace.StartSpan(ctx, "validateTipSet")
 	defer span.End()
@@ -593,28 +597,32 @@ func (syncer *Syncer) ValidateTipSet(ctx context.Context, fts *store.FullTipSet,
 		return nil
 	}
 
-	var futures []async.ErrorFuture
+	eg, ectx := errgroup.WithContext(ctx)
+	eg.SetLimit(validateTipSetConcurrency)
 	for _, b := range fts.Blocks {
-		futures = append(futures, async.Err(func() error {
-			if err := syncer.ValidateBlock(ctx, b, useCache); err != nil {
-				if isPermanent(err) {
+		if ectx.Err() != nil {
+			break
+		}
+		eg.Go(func() error {
+			if err := syncer.ValidateBlock(ectx, b, useCache); err != nil {
+				// A block cut short by a sibling's failure or by the caller is
+				// not known to be bad.
+				if isPermanent(err) && ectx.Err() == nil {
 					syncer.bad.Add(b.Cid(), NewBadBlockReason([]cid.Cid{b.Cid()}, "%s", err.Error()))
 				}
 				return xerrors.Errorf("validating block %s: %w", b.Cid(), err)
 			}
 
-			if err := syncer.sm.ChainStore().AddToTipSetTracker(ctx, b.Header); err != nil {
+			if err := syncer.sm.ChainStore().AddToTipSetTracker(ectx, b.Header); err != nil {
 				return xerrors.Errorf("failed to add validated header to tipset tracker: %w", err)
 			}
 			return nil
-		}))
+		})
 	}
-	for _, f := range futures {
-		if err := f.AwaitContext(ctx); err != nil {
-			return err
-		}
+	if err := eg.Wait(); err != nil {
+		return err
 	}
-	return nil
+	return ctx.Err()
 }
 
 // ValidateBlock should match up with 'Semantical Validation' in validation.md in the spec
@@ -670,6 +678,20 @@ func extractSyncState(ctx context.Context) *SyncerState {
 	return nil
 }
 
+// validateParentsKey checks the parents of a tipset reached while collecting
+// headers before they are loaded, including after the walk ends, since
+// syncFork loads the parents of the last tipset collected. Genesis parents are
+// not a tipset key (mainnet's is a sha2-256 CID) and are never loaded.
+func validateParentsKey(ts *types.TipSet) error {
+	if ts.Height() == 0 {
+		return nil
+	}
+	if err := types.ValidateTipSetCids(ts.Parents().Cids()); err != nil {
+		return xerrors.Errorf("parents of tipset at height %d: %w", ts.Height(), err)
+	}
+	return nil
+}
+
 // collectHeaders collects the headers from the blocks between any two tipsets.
 //
 // `incoming` is the heaviest/projected/target tipset we have learned about, and
@@ -710,9 +732,15 @@ func (syncer *Syncer) collectHeaders(ctx context.Context, incoming *types.TipSet
 		trace.Int64Attribute("knownHeight", int64(known.Height())),
 	)
 
+	// Parent of the new (possibly better) tipset that we need to fetch next.
+	at := incoming.Parents()
+	if err := types.ValidateTipSetCids(at.Cids()); err != nil {
+		return nil, xerrors.Errorf("incoming tipset parents: %w", err)
+	}
+
 	// Check if the parents of the from block are in the denylist.
 	// i.e. if a fork of the chain has been requested that we know to be bad.
-	for _, pcid := range incoming.Parents().Cids() {
+	for _, pcid := range at.Cids() {
 		if reason, ok := syncer.bad.Has(pcid); ok {
 			newReason := reason.Linked("linked to %s", pcid)
 			for _, b := range incoming.Cids() {
@@ -750,9 +778,6 @@ func (syncer *Syncer) collectHeaders(ctx context.Context, incoming *types.TipSet
 
 	blockSet := []*types.TipSet{incoming}
 
-	// Parent of the new (possibly better) tipset that we need to fetch next.
-	at := incoming.Parents()
-
 	// we want to sync all the blocks until the height above our
 	// best tipset so far
 	untilHeight := known.Height() + 1
@@ -781,6 +806,9 @@ loop:
 
 			blockSet = append(blockSet, ts)
 			at = ts.Parents()
+			if err := validateParentsKey(ts); err != nil {
+				return nil, err
+			}
 			continue
 		}
 		if !ipld.IsNotFound(err) {
@@ -845,6 +873,9 @@ loop:
 
 		ss.SetHeight(blks[len(blks)-1].Height())
 		at = blks[len(blks)-1].Parents()
+		if err := validateParentsKey(blks[len(blks)-1]); err != nil {
+			return nil, err
+		}
 	}
 
 	base := blockSet[len(blockSet)-1]
