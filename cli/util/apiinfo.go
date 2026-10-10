@@ -1,6 +1,7 @@
 package cliutil
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -9,7 +10,6 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
-	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("cliutil")
@@ -76,8 +76,11 @@ func (a APIInfo) DialArgs(version string) (string, error) {
 		return "", err
 	}
 	if rpcPath := rpcPathSuffix.FindString(u.Path); rpcPath != "" {
-		return "", xerrors.Errorf("API address %q ends with %q; remove it, Lotus adds /rpc/%s itself",
-			a.Addr, strings.TrimSuffix(rpcPath, "/"), version)
+		fixed := *u
+		fixed.Path = strings.TrimSuffix(u.Path, rpcPath)
+		fixed.RawPath = ""
+		return "", fmt.Errorf("API address %q ends with %q; use %q, Lotus adds /rpc/%s itself",
+			a.Addr, strings.TrimSuffix(rpcPath, "/"), fixed.String(), version)
 	}
 	return url.JoinPath(a.Addr, "rpc", version)
 }
