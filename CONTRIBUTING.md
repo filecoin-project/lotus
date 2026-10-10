@@ -64,7 +64,7 @@ If the change does not require a CHANGELOG.md entry, do one of the following:
 
 Note that this is enforced with https://github.com/filecoin-project/lotus/blob/master/.github/workflows/changelog.yml
 
-Editing CHANGELOG.md on an open PR does not rerun the full CI suite. When the only difference from what a workflow last tested successfully on the PR is hand-written Markdown (anything outside the generated `documentation/en/`), the Test, Build, Docker and Check workflows reuse that result. See [detect-markdown-only-update](.github/actions/detect-markdown-only-update/action.yml).
+Editing CHANGELOG.md on an open PR does not rerun the full CI suite. When the only difference from what a workflow last tested successfully on the PR, or from the PR's base, is in files that workflow does not depend on (such as hand-written Markdown), the Test, Build, Docker and Check workflows skip their remaining jobs. See [detect-skippable-changes](.github/actions/detect-skippable-changes/action.yml) for the exact paths.
 
 ## Dependency Management
 

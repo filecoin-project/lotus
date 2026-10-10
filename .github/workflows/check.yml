@@ -29,7 +29,7 @@ jobs:
       contents: read
       pull-requests: read
     outputs:
-      skip_checks: ${{ steps.changes.outputs.nonMarkdownFiles == 'false' || steps.markdown-only.outputs.skip == 'true' }}
+      skip_checks: ${{ steps.skippable.outputs.skip == 'true' }}
       run_actionlint: ${{ steps.changes.outputs.actions == 'true' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -37,15 +37,15 @@ jobs:
         uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         with:
           filters: |
-            nonMarkdownFiles:
-              - '!**/*.md'
             actions:
               - '.github/workflows/**'
               - '.github/actions/**'
               - '.github/actionlint.yaml'
               - 'Makefile'
-      - id: markdown-only
-        uses: ./.github/actions/detect-markdown-only-update
+      - id: skippable
+        uses: ./.github/actions/detect-skippable-changes
+        with:
+          paths: check
   check-gen:
     name: Check (gen-check)
     needs: [pre-check]
