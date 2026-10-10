@@ -40,6 +40,7 @@ type ErrBadSeed struct{ error }
 type ErrInvalidProof struct{ error }
 type ErrNoPrecommit struct{ error }
 type ErrCommitWaitFailed struct{ error }
+type ErrMissingCommitments struct{ error }
 
 type ErrBadRU struct{ error }
 type ErrBadPR struct{ error }
@@ -246,6 +247,10 @@ func (m *Sealing) checkCommit(ctx context.Context, si SectorInfo, proof []byte, 
 
 	if string(seed) != string(si.SeedValue) {
 		return &ErrBadSeed{xerrors.Errorf("seed has changed")}
+	}
+
+	if si.CommD == nil || si.CommR == nil {
+		return &ErrMissingCommitments{xerrors.Errorf("sector %d had nil commR or commD", si.SectorNumber)}
 	}
 
 	if *si.CommR != pci.Info.SealedCID {
