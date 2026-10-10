@@ -389,6 +389,31 @@ func bigIntFromBytes(data []byte) big.Int {
 	return big.NewFromGo(&b)
 }
 
+// secp256k1N is the order of the secp256k1 curve and secp256k1HalfN is half of
+// it, the EIP-2 upper bound for a canonical s value.
+var (
+	secp256k1N, _  = new(mathbig.Int).SetString("fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141", 16)
+	secp256k1HalfN = new(mathbig.Int).Rsh(secp256k1N, 1)
+)
+
+// validateSignatureValues checks that the r and s of a submitted transaction
+// are canonical ECDSA signature values: both in [1, N-1] and s at most N/2, as
+// Ethereum has required since EIP-2. For a signature with a high s, (r, N-s)
+// with the recovery bit flipped is a second valid signature over the same
+// payload that recovers the same sender but gives the transaction a different
+// hash, so anyone could reissue a pending transaction under a hash its sender
+// is not watching. Applied when parsing raw transaction bytes, not to
+// signatures already on chain.
+func validateSignatureValues(r, s big.Int) error {
+	if r.Int.Sign() < 1 || r.Int.Cmp(secp256k1N) >= 0 {
+		return fmt.Errorf("signature r value out of range")
+	}
+	if s.Int.Sign() < 1 || s.Int.Cmp(secp256k1HalfN) > 0 {
+		return fmt.Errorf("signature s value out of range; a canonical (low) s per EIP-2 is required")
+	}
+	return nil
+}
+
 func parseBytes(v interface{}) ([]byte, error) {
 	val, ok := v.([]byte)
 	if !ok {
@@ -507,6 +532,10 @@ func parseLegacyTx(data []byte) (EthTransaction, error) {
 
 	s, err := parseBigInt(decoded[8])
 	if err != nil {
+		return nil, err
+	}
+
+	if err := validateSignatureValues(r, s); err != nil {
 		return nil, err
 	}
 
