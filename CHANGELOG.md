@@ -22,6 +22,7 @@
 
 ## 🐛 Bug Fixes
 
+- fix(sealing): a cancelled task in the scheduler queue no longer stops other tasks from being scheduled. ([filecoin-project/lotus#13869](https://github.com/filecoin-project/lotus/pull/13869))
 - fix(api): check `/health/readyz` immediately on startup instead of waiting for the first one-minute polling interval. ([filecoin-project/lotus#13796](https://github.com/filecoin-project/lotus/pull/13796))
 - fix(rpc): allow `ChainPutObj` to store blocks over JSON-RPC. ([filecoin-project/lotus#13868](https://github.com/filecoin-project/lotus/pull/13868))
 - fix(lotus-fountain): remove the deprecated DataCap faucet. ([filecoin-project/lotus#13840](https://github.com/filecoin-project/lotus/pull/13840))
