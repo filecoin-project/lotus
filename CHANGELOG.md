@@ -20,6 +20,8 @@
 
 ## ⭐ New Features
 
+- feat(lotus-shed): add `evm-analytics evm-storage` command to dump contract storage ([filecoin-project/lotus#13806](https://github.com/filecoin-project/lotus/pull/13806))
+
 ## 🐛 Bug Fixes
 
 - fix(api): check `/health/readyz` immediately on startup instead of waiting for the first one-minute polling interval. ([filecoin-project/lotus#13796](https://github.com/filecoin-project/lotus/pull/13796))
