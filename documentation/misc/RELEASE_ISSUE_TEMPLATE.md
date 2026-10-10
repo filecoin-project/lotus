@@ -290,6 +290,10 @@
 <!--    {{end}}-->
 <!--  {{end}}-->
    - [ ] Ensure no missing content when spot checking git history
+      <!-- agent:
+      - For each PR in range with no CHANGELOG entry, check whether its author opted out before proposing one: a `skip/changelog` label or a `[skip changelog]` marker in the PR body, e.g. `gh pr view N --repo filecoin-project/lotus --json labels,body`. Respect an explicit opt-out; only raise PRs without one.
+      - A change already in the previous stable release (often via a backport with a different commit) is not missing.
+      -->
 <!--  {{if $.BaseTag}}-->
       - PREVIOUS_TAG is the base release: `v{{$.BaseTag}}` for node and `miner/v{{$.BaseTag}}` for miner.
       - Every commit in `git log --oneline --graph PREVIOUS_TAG..HEAD` should be a backported fix or a release commit; compare against the `release/backport` PRs rather than everything merged into master.
