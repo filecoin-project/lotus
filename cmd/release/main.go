@@ -440,6 +440,11 @@ func main() {
 						Required: false,
 					},
 					&cli.StringFlag{
+						Name:     "base-tag",
+						Usage:    "Which earlier release in the same minor series should a patch release branch from instead of master? (e.g., 1.30.0)",
+						Required: false,
+					},
+					&cli.StringFlag{
 						Name:     "rc1-date",
 						Usage:    fmt.Sprintf("What's the expected shipping date for RC1? (Pattern: '%s')", releaseDateStringPattern),
 						Value:    "TBD",
@@ -520,6 +525,21 @@ func main() {
 						return fmt.Errorf("invalid value for the 'release-flow' flag. no-rc releases are not allowed for network upgrades; use 'auto' or 'rc'")
 					}
 
+					baseTag := strings.TrimPrefix(c.String("base-tag"), "v")
+					if baseTag != "" {
+						baseVersion, err := masterminds.StrictNewVersion(baseTag)
+						if err != nil {
+							return fmt.Errorf("invalid value for the 'base-tag' flag. Must be a valid semantic version (e.g. 1.30.0)")
+						}
+						if releaseLevel != "patch" {
+							return fmt.Errorf("the 'base-tag' flag is only supported for patch releases")
+						}
+						if baseVersion.Prerelease() != "" || baseVersion.Major() != releaseVersion.Major() || baseVersion.Minor() != releaseVersion.Minor() || !baseVersion.LessThan(releaseVersion) {
+							return fmt.Errorf("invalid value for the 'base-tag' flag. Must be an earlier stable release in the same minor series as %s", releaseTag)
+						}
+						baseTag = baseVersion.String()
+					}
+
 					changelogLink := c.String("changelog-link")
 					if changelogLink != "" {
 						_, err := url.ParseRequestURI(changelogLink)
@@ -578,6 +598,7 @@ func main() {
 						"RCRelease":                           releaseFlow == releaseFlowRC,
 						"FirstReleaseTarget":                  firstReleaseTarget,
 						"ReleaseTargets":                      releaseTargets,
+						"BaseTag":                             baseTag,
 						"NetworkUpgrade":                      networkUpgrade,
 						"NetworkUpgradeDiscussionLink":        discussionLink,
 						"NetworkUpgradeChangelogEntryLink":    changelogLink,
