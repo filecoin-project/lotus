@@ -263,7 +263,6 @@
       - Each change appears once. Check the previous stable release so already-released changes are not presented as new.
       - Never edit historical entries.
       - End with `## 📝 Changelog` (compare link `PREVIOUS_TAG...TARGET_TAG` using tags, not branches) and `## 👨‍👩‍👧‍👦 Contributors` (from `./scripts/mkreleaselog PREVIOUS_TAG HEAD`).
-      - Keep changelog edits out of cherry-picked fix commits so the post-release copy to master is clean.
       -->
    - [ ] After pushing CHANGELOG edits, check the draft GitHub release body. Every Release workflow run regenerates it from `CHANGELOG.md`, so fix the text there, not on GitHub.
       <!-- agent:
@@ -325,7 +324,7 @@
    - Flags: not a draft; prerelease only for RCs; the node stable release is marked latest.
    - Tag: `git rev-list -n 1 TAG` is the squash-merge commit on the release branch.
    - Assets: the Linux amd64 and macOS arm64 archives plus their checksum files are attached.
-   - Checksums: download one archive and its checksum file with `gh release download` and confirm they match.
+   - Checksums: use a fresh directory for each tag. Download its archives and checksum files with `gh release download TAG --repo filecoin-project/lotus --pattern '*.tar.gz' --pattern '*.sha512' --dir dist`, then run `shasum -a 512 -c dist/*.sha512` from that directory. Published checksum files name `dist/ARCHIVE`, so preserve that layout. Repeat for each published release.
    -->
 <!--  {{if and (contains "Node" $.Type) (contains "Miner" $.Type)}}-->
 - [ ] Fast-forward `release/miner/v{{$.Tag}}` to the node release commit, then check both releases again.
