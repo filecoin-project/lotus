@@ -31,6 +31,9 @@ on:
           - auto
           - rc
           - no-rc
+      base-tag:
+        description: "Patch releases only: branch from this earlier release in the same minor series instead of master (e.g. 1.30.0). Leave empty to branch from master."
+        required: false
       network-upgrade:
         description: "What's the version of the network upgrade this release is related to? (e.g. 25)"
         required: false
@@ -70,6 +73,7 @@ jobs:
           RELEASE_TAG: ${{ github.event.inputs.tag }}
           RELEASE_LEVEL: ${{ github.event.inputs.level }}
           RELEASE_FLOW: ${{ github.event.inputs.release-flow }}
+          BASE_TAG: ${{ github.event.inputs.base-tag }}
           NETWORK_UPGRADE: ${{ github.event.inputs.network-upgrade }}
           DISCUSSION_LINK: ${{ github.event.inputs.discussion-link }}
           CHANGELOG_LINK: ${{ github.event.inputs.changelog-link }}
@@ -82,6 +86,7 @@ jobs:
             --tag "$RELEASE_TAG" \
             --level "$RELEASE_LEVEL" \
             --release-flow "$RELEASE_FLOW" \
+            --base-tag "$BASE_TAG" \
             --network-upgrade "$NETWORK_UPGRADE" \
             --discussion-link "$DISCUSSION_LINK" \
             --changelog-link "$CHANGELOG_LINK" \
