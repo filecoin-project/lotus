@@ -324,7 +324,7 @@
    - Flags: not a draft; prerelease only for RCs; the node stable release is marked latest.
    - Tag: `git rev-list -n 1 TAG` is the squash-merge commit on the release branch.
    - Assets: the Linux amd64 and macOS arm64 archives plus their checksum files are attached.
-   - Checksums: use a fresh directory for each tag. Download its archives and checksum files with `gh release download TAG --repo filecoin-project/lotus --pattern '*.tar.gz' --pattern '*.sha512' --dir dist`, then run `shasum -a 512 -c dist/*.sha512` from that directory. Published checksum files name `dist/ARCHIVE`, so preserve that layout. Repeat for each published release.
+   - Checksums: use a fresh directory for each tag. From that directory, download its archives and checksum files with `gh release download TAG --repo filecoin-project/lotus --pattern '*.tar.gz' --pattern '*.sha512' --dir dist` and run `shasum -a 512 -c dist/*.sha512`. Published checksum files name `dist/ARCHIVE`, so preserve that layout. Repeat for each published release.
    -->
 <!--  {{if and (contains "Node" $.Type) (contains "Miner" $.Type)}}-->
 - [ ] Fast-forward `release/miner/v{{$.Tag}}` to the node release commit, then check both releases again.
