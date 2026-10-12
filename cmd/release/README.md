@@ -55,6 +55,11 @@ Create a new release issue from a template:
 ./release create-issue --type node --tag 1.30.1 --level patch --release-flow auto --stable-date 2023-05-01
 ```
 
+Create a patch release issue that branches from an earlier release in the same minor series and cherry-picks backports from master, instead of branching from master:
+```sh
+./release create-issue --type both --tag 1.37.1 --level patch --release-flow no-rc --base-tag 1.37.0
+```
+
 Create a network-upgrade release issue with RC mode:
 ```sh
 ./release create-issue --type node --tag 1.31.0 --level minor --release-flow auto --network-upgrade 25 --discussion-link https://github.com/filecoin-project/lotus/discussions/12010 --changelog-link https://github.com/filecoin-project/lotus/blob/v1.31.0/CHANGELOG.md --rc1-date 2023-04-01 --stable-date 2023-05-01
