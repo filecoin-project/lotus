@@ -11,29 +11,44 @@
 
 ## ☢️ Upgrade Warnings ☢️
 
+## ⭐ New Features
+
+## 🐛 Bug Fixes
+
+## 👌 Improvements
+
+# Node and Miner v1.38.0 / 2026-10-12
+
+This is the **recommended** Lotus release for the nv29 (Solstice) network upgrade at epoch `6470279` (`2026-10-19T12:59:30Z`). It is cut from `master` and adds stability and hardening improvements made since v1.37.0.
+
+- **v1.37.0 is the minimum required version for nv29.** If you are already running v1.37.0, you are ready for the upgrade.
+- **v1.38.0 is recommended.** It includes everything in v1.37.0 plus the changes below.
+
+## ☢️ Upgrade Warnings ☢️
+
 - `MinerCreateBlock` now requires the `sign` permission instead of `write`. Tokens or miner configurations that call this method with `write` but not `sign` are denied; grant `sign` or stop calling it. ([filecoin-project/lotus#13871](https://github.com/filecoin-project/lotus/pull/13871))
 - `eth_call` and `eth_estimateGas` now honor positive `gas` limits. Requests that previously succeeded with an insufficient limit can now fail. Applications and RPC providers should review default or injected `gas` values and increase them, or omit `gas` when no explicit cap is intended. `eth_estimateGas` returns reth's `-32000` and `-32003` errors for unmet caps and out-of-gas calls, and a `gasPrice` or `maxFeePerGas` limits the estimate to what the sender can afford. ([filecoin-project/lotus#13865](https://github.com/filecoin-project/lotus/pull/13865), [filecoin-project/lotus#13911](https://github.com/filecoin-project/lotus/pull/13911))
-- build: raise the minimum Go version to `1.26.8`. ([filecoin-project/lotus#13878](https://github.com/filecoin-project/lotus/pull/13878))
 - `lotus-gateway` now caps JSON-RPC requests at 16MiB and headers at 64KiB and applies 10s header, 60s read and 120s idle timeouts, all tunable via `lotus-gateway run --help`. ([filecoin-project/lotus#13912](https://github.com/filecoin-project/lotus/pull/13912))
 - `lotus-gateway` now limits each WebSocket connection to 16 live `ChainNotify` and `SubscribeActorEventsRaw` subscriptions; raise it with `--per-conn-subscription-limit`. ([filecoin-project/lotus#13914](https://github.com/filecoin-project/lotus/pull/13914))
-
-## ⭐ New Features
+- build: raise the minimum Go version to `1.26.8`. ([filecoin-project/lotus#13878](https://github.com/filecoin-project/lotus/pull/13878))
 
 ## 🐛 Bug Fixes
 
 - fix(api): check `/health/readyz` immediately on startup instead of waiting for the first one-minute polling interval. ([filecoin-project/lotus#13796](https://github.com/filecoin-project/lotus/pull/13796))
 - fix(rpc): allow `ChainPutObj` to store blocks over JSON-RPC. ([filecoin-project/lotus#13868](https://github.com/filecoin-project/lotus/pull/13868))
-- fix(lotus-fountain): remove the deprecated DataCap faucet. ([filecoin-project/lotus#13840](https://github.com/filecoin-project/lotus/pull/13840))
-- fix(eth): `eth_getTransactionByHash` finds pending Ethereum transactions missing from the chain index ([filecoin-project/lotus#13677](https://github.com/filecoin-project/lotus/pull/13677))
-- fix(paths): storage path scanning no longer fails on hidden files such as NFS `.nfsXXXX` leftovers in sector directories. ([filecoin-project/lotus#13830](https://github.com/filecoin-project/lotus/pull/13830))
+- fix(chain): p2p ingress hardening. Tipsets from peers are limited to 34 distinct blocks, and ChainExchange serves messages for at most 8 tipsets per request. ([filecoin-project/lotus#13909](https://github.com/filecoin-project/lotus/pull/13909))
 - fix(chainindex): `lotus index validate-backfill` retries failed epochs and accepts reverted fork tipsets at null rounds; index database pragmas apply to every connection. ([filecoin-project/lotus#13833](https://github.com/filecoin-project/lotus/pull/13833))
-- fix(lotus-bench): `cli --cmd` rejects an empty command, non-positive concurrency or out-of-range qps instead of panicking. ([filecoin-project/lotus#13842](https://github.com/filecoin-project/lotus/pull/13842))
-- fix(eth): `eth_subscribe` no longer leaks a subscription on the node when the event type or an address is rejected. ([filecoin-project/lotus#13838](https://github.com/filecoin-project/lotus/pull/13838))
 - fix(config): the daemon no longer refuses to load a config without `EnableSplitstore` when `LOTUS_CHAINSTORE_ENABLESPLITSTORE` is set. ([filecoin-project/lotus#13851](https://github.com/filecoin-project/lotus/pull/13851))
+- fix(eth): `eth_getTransactionByHash` finds pending Ethereum transactions missing from the chain index ([filecoin-project/lotus#13677](https://github.com/filecoin-project/lotus/pull/13677))
+- fix(eth): `eth_subscribe` no longer leaks a subscription on the node when the event type or an address is rejected. ([filecoin-project/lotus#13838](https://github.com/filecoin-project/lotus/pull/13838))
+- fix(eth): `EthBytes` and `EthUint64FromHex` reject hex values with an embedded `0x` instead of silently stripping it and mis-decoding. ([filecoin-project/lotus#13908](https://github.com/filecoin-project/lotus/pull/13908))
 - fix(f3): node shutdown no longer fails with `could not close datastore: leveldb: closed` and leaves `repo.lock` behind. ([filecoin-project/lotus#13850](https://github.com/filecoin-project/lotus/pull/13850))
 - fix(gateway): the lookback limit now applies to the block parameter of `eth_estimateGas` and to the `fromBlock` and `blockHash` of `eth_newFilter`. ([filecoin-project/lotus#13873](https://github.com/filecoin-project/lotus/pull/13873))
-- fix(eth): `EthBytes` and `EthUint64FromHex` reject hex values with an embedded `0x` instead of silently stripping it and mis-decoding. ([filecoin-project/lotus#13908](https://github.com/filecoin-project/lotus/pull/13908))
 - fix(gateway): cap JSON-RPC request size, which previously defaulted to 100MiB. ([filecoin-project/lotus#13912](https://github.com/filecoin-project/lotus/pull/13912))
+- fix(lotus-bench): `cli --cmd` rejects an empty command, non-positive concurrency or out-of-range qps instead of panicking. ([filecoin-project/lotus#13842](https://github.com/filecoin-project/lotus/pull/13842))
+- fix(lotus-fountain): remove the deprecated DataCap faucet. ([filecoin-project/lotus#13840](https://github.com/filecoin-project/lotus/pull/13840))
+- fix(miner): deal sectors start sealing ahead of the earliest deal start epoch, not the last piece's. ([filecoin-project/lotus#13872](https://github.com/filecoin-project/lotus/pull/13872))
+- fix(paths): storage path scanning no longer fails on hidden files such as NFS `.nfsXXXX` leftovers in sector directories. ([filecoin-project/lotus#13830](https://github.com/filecoin-project/lotus/pull/13830))
 - fix(stmgr): `StateCall` honours `GasLimit`, matching `eth_call`; zero selects the default limit, which is the network block gas limit unless set with the new `API.StateCallGasLimit` option, and a larger `GasLimit` is rejected. ([filecoin-project/lotus#13910](https://github.com/filecoin-project/lotus/pull/13910))
 
 ## 👌 Improvements
@@ -41,6 +56,36 @@
 - chore(deps): update `go-libp2p` to v0.50.0, `go-libp2p-pubsub` to v0.18.0 and `quic-go` to v0.62.0. ([filecoin-project/lotus#13882](https://github.com/filecoin-project/lotus/pull/13882))
 - ci(release): stop publishing IPFS `.cid` files beside release archives; `.sha512` checksums remain. ([filecoin-project/lotus#13896](https://github.com/filecoin-project/lotus/pull/13896))
 
+## 📝 Changelog
+
+For the full set of changes since the last stable release:
+
+- Node: https://github.com/filecoin-project/lotus/compare/v1.37.0...v1.38.0
+- Miner: https://github.com/filecoin-project/lotus/compare/miner/v1.37.0...miner/v1.38.0
+
+## 👨‍👩‍👧‍👦 Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Rod Vagg | 25 | +7366/-2405 | 214 |
+| LexLuthr | 4 | +3912/-301 | 41 |
+| Steve Loeppky | 8 | +878/-175 | 44 |
+| dependabot[bot] | 16 | +315/-288 | 46 |
+| Phi-rjan | 6 | +375/-228 | 28 |
+| Kaif | 6 | +329/-41 | 18 |
+| parthshah1 | 1 | +247/-4 | 4 |
+| snail8501 | 2 | +134/-9 | 10 |
+| myetcd | 1 | +90/-34 | 3 |
+| Ben Abulafia | 1 | +118/-2 | 2 |
+| Matt Van Horn | 1 | +118/-1 | 3 |
+| Hamed Yousefi | 3 | +77/-19 | 13 |
+| Jakub Sztandera | 1 | +54/-18 | 2 |
+| wangjingshuiku | 1 | +48/-8 | 3 |
+| Viraj Bhartiya | 1 | +46/-0 | 3 |
+| blackflytech | 1 | +30/-1 | 3 |
+| ginavalent | 1 | +13/-13 | 3 |
+| fmtappendf | 2 | +5/-4 | 5 |
+| Piotr Galar | 1 | +2/-2 | 1 |
 # Node and Miner v1.37.0 / 2026-10-06
 
 This is the stable release of the **MANDATORY Lotus v1.37.0 release**, which delivers [Filecoin network version 29, codenamed "Solstice"](https://github.com/filecoin-project/core-devs/discussions/221). This release sets the upgrade epoch for the Mainnet network to **Epoch 6470279: 2026-10-19T12:59:30Z**. [See the local time for other timezones.](https://www.worldtimebuddy.com/?qm=1&lid=100,1816670,2643743,5368361&h=100&date=2026-10-19&sln=13-14&hf=0)
@@ -77,8 +122,6 @@ All node operators, including storage providers, should be aware that ONE pre-mi
 
 ## 🐛 Bug Fixes
 
-- fix(chain): p2p ingress hardening. Tipsets from peers are limited to 34 distinct blocks, and ChainExchange serves messages for at most 8 tipsets per request. ([filecoin-project/lotus#13909](https://github.com/filecoin-project/lotus/pull/13909))
-- fix(miner): deal sectors start sealing ahead of the earliest deal start epoch, not the last piece's. ([filecoin-project/lotus#13872](https://github.com/filecoin-project/lotus/pull/13872))
 - fix(mpool): `MpoolCheckReplaceMessages` rejects nil replacement messages. ([filecoin-project/lotus#13866](https://github.com/filecoin-project/lotus/pull/13866))
 - fix(types): `TipSetKey`'s JSON decoder now rejects a `null` element instead of silently dropping it. ([filecoin-project/lotus#13755](https://github.com/filecoin-project/lotus/pull/13755))
 - fix(chainindex): `lotus index validate-backfill --backfill` restores missing event-index completion markers in older indexed tipsets. Run it over affected ranges if `eth_getLogs` reports `not found in index`; validation without `--backfill` reports missing markers as failures. ([filecoin-project/lotus#13829](https://github.com/filecoin-project/lotus/pull/13829))
