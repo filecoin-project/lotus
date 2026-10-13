@@ -15,9 +15,26 @@
 
 ## 🐛 Bug Fixes
 
+## 👌 Improvements
+
+# Node v1.38.1 / 2026-10-13
+
+This node-only patch fixes incomplete Ethereum log query and receipt results when indexed events refer to unavailable message data.
+
+## 🐛 Bug Fixes
+
 - fix(eth): log queries and receipts now fail explicitly when event messages are unavailable instead of returning incomplete logs. ([filecoin-project/lotus#13926](https://github.com/filecoin-project/lotus/pull/13926))
 
-## 👌 Improvements
+## 📝 Changelog
+
+[Changes since v1.38.0](https://github.com/filecoin-project/lotus/compare/v1.38.0...v1.38.1)
+
+## 👨‍👩‍👧‍👦 Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| LexLuthr | 1 | +105/-8 | 3 |
+| Phi | 1 | +27/-10 | 10 |
 
 # Node and Miner v1.38.0 / 2026-10-12
 
