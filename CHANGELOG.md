@@ -19,7 +19,11 @@
 
 # Node v1.38.1 / 2026-10-13
 
-This node-only patch fixes incomplete Ethereum log query and receipt results when indexed events refer to unavailable message data.
+This node-only patch release is only needed for indexers and RPC nodes serving Ethereum log queries and receipts. These APIs now return an explicit error when required message data is unavailable, instead of incomplete results.
+
+- **v1.37.0 is the minimum required version for nv29.** If you are already running v1.37.0, you are ready for the upgrade.
+- **v1.38.0 remains recommended for nv29.** It includes everything in v1.37.0 plus the stability and hardening improvements listed in the v1.38.0 release notes.
+- **v1.38.1 is recommended for indexers and RPC nodes serving them.** Other operators do not need this patch for nv29 readiness.
 
 ## 🐛 Bug Fixes
 
@@ -34,7 +38,7 @@ This node-only patch fixes incomplete Ethereum log query and receipt results whe
 | Contributor | Commits | Lines ± | Files Changed |
 |-------------|---------|---------|---------------|
 | LexLuthr | 1 | +105/-8 | 3 |
-| Phi | 1 | +27/-10 | 10 |
+| Phi | 2 | +33/-12 | 11 |
 
 # Node and Miner v1.38.0 / 2026-10-12
 
