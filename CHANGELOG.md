@@ -15,9 +15,30 @@
 
 ## 🐛 Bug Fixes
 
+## 👌 Improvements
+
+# Node v1.38.1 / 2026-10-13
+
+This node-only patch release is only needed for indexers and RPC nodes serving Ethereum log queries and receipts. These APIs now return an explicit error when required message data is unavailable, instead of incomplete results.
+
+- **v1.37.0 is the minimum required version for nv29.** If you are already running v1.37.0, you are ready for the upgrade.
+- **v1.38.0 remains recommended for nv29.** It includes everything in v1.37.0 plus the stability and hardening improvements listed in the v1.38.0 release notes.
+- **v1.38.1 is recommended for indexers and RPC nodes serving them.** Other operators do not need this patch for nv29 readiness.
+
+## 🐛 Bug Fixes
+
 - fix(eth): log queries and receipts now fail explicitly when event messages are unavailable instead of returning incomplete logs. ([filecoin-project/lotus#13926](https://github.com/filecoin-project/lotus/pull/13926))
 
-## 👌 Improvements
+## 📝 Changelog
+
+[Changes since v1.38.0](https://github.com/filecoin-project/lotus/compare/v1.38.0...v1.38.1)
+
+## 👨‍👩‍👧‍👦 Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| LexLuthr | 1 | +105/-8 | 3 |
+| Phi | 2 | +33/-12 | 11 |
 
 # Node and Miner v1.38.0 / 2026-10-12
 
