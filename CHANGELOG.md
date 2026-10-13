@@ -15,6 +15,8 @@
 
 ## 🐛 Bug Fixes
 
+- fix(eth): log queries and receipts now fail explicitly when event messages are unavailable instead of returning incomplete logs. ([filecoin-project/lotus#13926](https://github.com/filecoin-project/lotus/pull/13926))
+
 ## 👌 Improvements
 
 # Node and Miner v1.38.0 / 2026-10-12
