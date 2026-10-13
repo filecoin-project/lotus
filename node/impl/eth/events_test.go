@@ -2,16 +2,23 @@ package eth
 
 import (
 	"context"
+	"errors"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
+	format "github.com/ipfs/go-ipld-format"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/chain/index"
+	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
@@ -227,5 +234,96 @@ func TestEthSubscribeRejectedParamsStartNoSubscription(t *testing.T) {
 		_, err := client.EthSubscribe(ctx, jsonrpc.RawParams(params))
 		require.Error(t, err)
 		require.Zero(t, activeSubs(), "rejected eth_subscribe %s started a subscription", params)
+	}
+}
+
+func TestEthFilterLogsFromEvents(t *testing.T) {
+	ctx := context.Background()
+	bs := blockstore.NewMemorySync()
+	cs := store.NewChainStore(bs, bs, datastore.NewMapDatastore(), nil, nil)
+	t.Cleanup(func() { require.NoError(t, cs.Close()) })
+	addr, err := (ethtypes.EthAddress{1}).ToFilecoinAddress()
+	require.NoError(t, err)
+	msg := &types.Message{
+		From: addr, To: addr,
+		Value: big.Zero(), GasFeeCap: big.Zero(), GasPremium: big.Zero(),
+	}
+	readable, err := cs.PutMessage(ctx, msg)
+	require.NoError(t, err)
+	msg.Nonce++
+	missing := msg.Cid()
+	missingErr := format.ErrNotFound{Cid: missing}
+	wantHash, err := ethtypes.EthHashFromCid(readable)
+	require.NoError(t, err)
+
+	// Exercise the real unsigned/BLS fallback after signed decoding fails.
+	_, err = cs.GetSignedMessage(ctx, readable)
+	require.Error(t, err)
+	event := func(c cid.Cid) *index.CollectedEvent {
+		return &index.CollectedEvent{
+			MsgCid: c, EmitterAddr: addr, TipSetKey: types.NewTipSetKey(readable),
+			Entries: []types.EventEntry{{Key: "d", Codec: cid.Raw, Value: []byte{1}}},
+		}
+	}
+	nonEth := event(missing)
+	nonEth.Entries[0].Codec = cid.DagCBOR
+
+	for _, tc := range []struct {
+		name     string
+		events   []*index.CollectedEvent
+		wantLogs int
+		wantErr  error
+	}{
+		{"BLS fallback", []*index.CollectedEvent{event(readable)}, 1, nil},
+		{"missing message", []*index.CollectedEvent{event(missing)}, 0, missingErr},
+		{"readable then missing", []*index.CollectedEvent{event(readable), event(missing)}, 0, missingErr},
+		{"empty", nil, 0, nil},
+		{"non-Ethereum", []*index.CollectedEvent{nonEth}, 0, nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			logs, err := ethFilterLogsFromEvents(ctx, tc.events, cs, nil)
+			if tc.wantErr != nil {
+				require.ErrorIs(t, err, tc.wantErr)
+				require.ErrorContains(t, err, missing.String())
+				require.Nil(t, logs, "must not return partial logs")
+				return
+			}
+			require.NoError(t, err)
+			require.NotNil(t, logs)
+			require.Len(t, logs, tc.wantLogs)
+			if tc.wantLogs > 0 {
+				require.Equal(t, wantHash, logs[0].TransactionHash)
+			}
+		})
+	}
+}
+
+type eventMessageReadErrors struct {
+	ChainStore
+	signedErr   error
+	unsignedErr error
+}
+
+func (s eventMessageReadErrors) GetSignedMessage(context.Context, cid.Cid) (*types.SignedMessage, error) {
+	return nil, s.signedErr
+}
+
+func (s eventMessageReadErrors) GetMessage(context.Context, cid.Cid) (*types.Message, error) {
+	return nil, s.unsignedErr
+}
+
+func TestEthTxHashFromMessageCidReadErrors(t *testing.T) {
+	c, err := abi.CidBuilder.Sum([]byte("event message"))
+	require.NoError(t, err)
+	for _, cause := range []error{errors.New("storage failure"), context.Canceled} {
+		t.Run(cause.Error(), func(t *testing.T) {
+			// The fallback must not mask the original read failure.
+			unsignedErr := errors.New("unsigned message read failed")
+			cs := eventMessageReadErrors{signedErr: cause, unsignedErr: unsignedErr}
+			_, err := ethTxHashFromMessageCid(context.Background(), c, cs)
+			require.ErrorIs(t, err, cause)
+			require.ErrorIs(t, err, unsignedErr)
+			require.ErrorContains(t, err, c.String())
+		})
 	}
 }
