@@ -540,10 +540,6 @@ func ethFilterLogsFromEvents(ctx context.Context, evs []*index.CollectedEvent, c
 		if err != nil {
 			return nil, err
 		}
-		if log.TransactionHash == ethtypes.EmptyEthHash {
-			// We've garbage collected the message, ignore the events and continue.
-			continue
-		}
 
 		log.BlockHash, err = blockHashFor(ev.TipSetKey)
 		if err != nil {
@@ -561,19 +557,20 @@ func ethLogFromEvent(entries []types.EventEntry) (data []byte, topics []ethtypes
 }
 
 func ethTxHashFromMessageCid(ctx context.Context, c cid.Cid, cs ChainStore) (ethtypes.EthHash, error) {
-	smsg, err := cs.GetSignedMessage(ctx, c)
-	if err == nil {
+	smsg, signedErr := cs.GetSignedMessage(ctx, c)
+	if signedErr == nil {
 		// This is an Eth Tx, Secp message, Or BLS message in the mpool
 		return ethTxHashFromSignedMessage(smsg)
 	}
 
-	_, err = cs.GetMessage(ctx, c)
+	// An unsigned/BLS message fails signed decoding, so always try the fallback.
+	_, err := cs.GetMessage(ctx, c)
 	if err == nil {
 		// This is a BLS message
 		return ethtypes.EthHashFromCid(c)
 	}
 
-	return ethtypes.EmptyEthHash, nil
+	return ethtypes.EmptyEthHash, xerrors.Errorf("failed to load event message %s: %w", c.String(), errors.Join(signedErr, err))
 }
 
 // parseBlockRange is similar to actor event's parseHeightRange but with slightly different semantics
