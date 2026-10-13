@@ -361,7 +361,7 @@ var msigInspectCmd = &cli.Command{
 							return xerrors.Errorf("could not json marshal parameter type: %w", err)
 						}
 
-						paramStr = string(b)
+						paramStr = escapeControl(string(b))
 					}
 
 					_, _ = fmt.Fprintf(
