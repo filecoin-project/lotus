@@ -191,6 +191,31 @@ func (gw *Node) checkEthFilterLookback(ctx context.Context, filter *ethtypes.Eth
 	return nil
 }
 
+// checkEthTraceTransaction checks the transaction a trace request names, as
+// tracing it re-executes the whole tipset that contains it. The transaction is
+// resolved through the backend's bounded lookup, which applies
+// maxMessageLookbackEpochs like the gateway's other hash-based lookups, and the
+// containing block is checked against the lookback bound like EthTraceBlock's
+// block parameter.
+func (gw *Node) checkEthTraceTransaction(ctx context.Context, txHash string,
+	getTx func(context.Context, *ethtypes.EthHash, abi.ChainEpoch) (*ethtypes.EthTx, error)) error {
+	hash, err := ethtypes.ParseEthHash(txHash)
+	if err != nil {
+		return fmt.Errorf("cannot parse eth hash: %w", err)
+	}
+	tx, err := getTx(ctx, &hash, gw.maxMessageLookbackEpochs)
+	if err != nil {
+		return err
+	}
+	if tx == nil {
+		return errors.New("transaction not found")
+	}
+	if tx.BlockNumber == nil {
+		return errors.New("no trace for pending transactions")
+	}
+	return gw.checkEpoch(ctx, abi.ChainEpoch(*tx.BlockNumber))
+}
+
 // checkEthBlockNumber checks an eth block number or tag, less lookback epochs
 // for a tag.
 func (gw *Node) checkEthBlockNumber(ctx context.Context, blkParam string, lookback ethtypes.EthUint64) error {

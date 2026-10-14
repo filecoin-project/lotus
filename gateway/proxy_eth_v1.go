@@ -582,6 +582,10 @@ func (pv1 *reverseProxyV1) EthTraceTransaction(ctx context.Context, txHash strin
 		return nil, err
 	}
 
+	if err := pv1.gateway.checkEthTraceTransaction(ctx, txHash, pv1.server.EthGetTransactionByHashLimited); err != nil {
+		return nil, err
+	}
+
 	return pv1.server.EthTraceTransaction(ctx, txHash)
 }
 
