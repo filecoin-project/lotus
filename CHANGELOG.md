@@ -15,6 +15,8 @@
 
 ## 🐛 Bug Fixes
 
+- fix(blockstore): `NetworkStore.Stop` no longer waits for its context to expire when the connection is idle, and is now safe to call more than once. ([filecoin-project/lotus#13823](https://github.com/filecoin-project/lotus/pull/13823))
+
 ## 👌 Improvements
 
 # Node v1.38.1 / 2026-10-13
