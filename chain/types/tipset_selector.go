@@ -69,7 +69,7 @@ type TipSetTag string
 // The supported criterion for selection is one of the following:
 //   - Key: the tipset key, see TipSetKey.
 //   - Height: the tipset height with an optional fallback to non-null parent, see TipSetHeight.
-//   - Tag: the tipset tag, either "latest" or "finalized", see TipSetTags.
+//   - Tag: the tipset tag: "latest", "finalized" or "safe", see TipSetTags.
 //
 // At most, one such criterion can be specified at a time. Otherwise, the
 // criterion is considered to be invalid. See Validate.
@@ -108,9 +108,9 @@ func (tss TipSetSelector) Validate() error {
 // TipSetHeight is a criterion that selects a tipset At given height anchored to
 // a given parent tipset.
 //
-// In a case where the tipset at given height is null, and Previous is true,
-// it'll select the previous non-null tipset instead. Otherwise, it returns the
-// null tipset at the given height.
+// If the requested height is a null round, Previous selects the preceding
+// non-null tipset. Otherwise, the first non-null tipset after that height is
+// returned.
 //
 // The Anchor may optionally be specified as TipSetTag, or TipSetKey. If
 // specified, the selected tipset is guaranteed to be a child of the tipset
