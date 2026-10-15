@@ -13,6 +13,8 @@
 
 ## ⭐ New Features
 
+- feat(lotus-shed): add `evm-analytics evm-storage` command to dump contract storage ([filecoin-project/lotus#13806](https://github.com/filecoin-project/lotus/pull/13806))
+
 ## 🐛 Bug Fixes
 
 ## 👌 Improvements

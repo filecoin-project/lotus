@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -14,6 +15,8 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	gstbuiltin "github.com/filecoin-project/go-state-types/builtin"
+	adt15 "github.com/filecoin-project/go-state-types/builtin/v15/util/adt"
 
 	badgerbs "github.com/filecoin-project/lotus/blockstore/badger"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
@@ -21,6 +24,8 @@ import (
 	evm2 "github.com/filecoin-project/lotus/chain/actors/builtin/evm"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
+	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -36,6 +41,7 @@ var FevmAnalyticsCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		FevmBalanceCmd,
 		FevmActorsCmd,
+		FevmStorageCmd,
 	},
 }
 
@@ -242,6 +248,124 @@ var FevmActorsCmd = &cli.Command{
 		fmt.Println("# of placeholder: ", PlaceholderCount)
 		return nil
 	},
+}
+
+var FevmStorageCmd = &cli.Command{
+	Name:      "evm-storage",
+	Usage:     "Dump every populated storage slot of an FEVM contract",
+	ArgsUsage: "[eth or filecoin address]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "tipset",
+			Usage: "specify tipset to look up the actor at (pass comma separated array of cids, or @height, or @head)",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.NArg() != 1 {
+			return lcli.IncorrectNumArgs(cctx)
+		}
+
+		addr, err := parseEvmActorAddress(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		ctx := lcli.ReqContext(cctx)
+
+		h, err := loadChainStore(ctx, cctx.String("repo"))
+		if err != nil {
+			return err
+		}
+		defer h.closer()
+
+		ts, err := lcli.LoadTipSet(ctx, cctx, &ChainStoreTipSetResolver{Chain: h.cs})
+		if err != nil {
+			return err
+		}
+
+		act, err := h.sm.LoadActor(ctx, addr, ts)
+		if err != nil {
+			return xerrors.Errorf("failed to load actor %s: %w", addr, err)
+		}
+
+		if !builtin.IsEvmActor(act.Code) {
+			return xerrors.Errorf("actor %s is not an EVM actor (type: %s)", addr, builtin.ActorNameByCode(act.Code))
+		}
+
+		store := adt.WrapStore(ctx, cbor.NewCborStore(h.bs))
+
+		est, err := evm2.Load(store, act)
+		if err != nil {
+			return xerrors.Errorf("failed to load evm actor state: %w", err)
+		}
+
+		root, err := contractStateRoot(est)
+		if err != nil {
+			return err
+		}
+
+		m, err := adt15.AsMap(store, root, gstbuiltin.DefaultHamtBitwidth)
+		if err != nil {
+			return xerrors.Errorf("failed to load storage tree %s: %w", root, err)
+		}
+
+		count := 0
+		var val abi.CborBytes
+		err = m.ForEach(&val, func(k string) error {
+			if len(k) != 32 {
+				return xerrors.Errorf("unexpected storage key length %d (want 32)", len(k))
+			}
+
+			fmt.Printf("0x%x: 0x%x\n", []byte(k), []byte(val))
+			count++
+			return nil
+		})
+		if err != nil {
+			return xerrors.Errorf("failed to walk storage tree %s: %w", root, err)
+		}
+
+		fmt.Fprintf(os.Stderr, "%d populated storage slot(s)\n", count)
+
+		return nil
+	},
+}
+
+// parseEvmActorAddress accepts either a native filecoin address (including
+// f410 delegated addresses) or a 0x-prefixed hex Ethereum address.
+func parseEvmActorAddress(s string) (address.Address, error) {
+	if addr, err := address.NewFromString(s); err == nil {
+		return addr, nil
+	}
+
+	eaddr, err := ethtypes.ParseEthAddress(s)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("%q is neither a filecoin address nor an eth address", s)
+	}
+
+	return eaddr.ToFilecoinAddress()
+}
+
+// contractStateRoot extracts the ContractState field (the root of the
+// contract's storage tree) from a versioned evm actor state via reflection,
+// since the field is present in every actor version but the concrete state
+// struct differs per version.
+func contractStateRoot(st evm2.State) (cid.Cid, error) {
+	v := reflect.ValueOf(st.GetState())
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+
+	f := v.FieldByName("ContractState")
+	if !f.IsValid() {
+		return cid.Undef, xerrors.Errorf("evm actor state has no ContractState field")
+	}
+
+	root, ok := f.Interface().(cid.Cid)
+	if !ok {
+		return cid.Undef, xerrors.Errorf("ContractState field is not a cid")
+	}
+
+	return root, nil
 }
 
 func unique(intSlice []cid.Cid) []cid.Cid {
