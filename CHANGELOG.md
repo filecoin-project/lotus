@@ -15,6 +15,8 @@
 
 ## 🐛 Bug Fixes
 
+- fix(gateway): `StateSearchMsg` and `StateWaitMsg` now clamp every negative lookback limit to the gateway's message lookback bound. ([filecoin-project/lotus#13933](https://github.com/filecoin-project/lotus/pull/13933))
+
 ## 👌 Improvements
 
 # Node v1.38.1 / 2026-10-13
