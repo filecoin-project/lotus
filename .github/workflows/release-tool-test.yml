@@ -1,13 +1,19 @@
 name: Release Tool Test
 
-# The release CLI parses documentation/misc/RELEASE_ISSUE_TEMPLATE.md as a Go template. That file is Markdown, so the
-# Test workflow reuses its previous result when only the template changes; this quick check covers it instead.
+# This workflow is the only place cmd/release is tested.
+# cmd/ci leaves it out of the Test workflow's unit-cli group, and Test, Build and Docker skip changes confined to it.
+# It also covers documentation/misc/RELEASE_ISSUE_TEMPLATE.md, which the release CLI parses as a Go template but which those workflows treat as skippable Markdown.
 on:
   pull_request:
-    paths:
+    paths: &paths
       - 'cmd/release/**'
       - 'documentation/misc/RELEASE_ISSUE_TEMPLATE.md'
       - '.github/workflows/release-tool-test.yml'
+  push:
+    branches:
+      - master
+      - release/*
+    paths: *paths
 
 defaults:
   run:
@@ -15,7 +21,7 @@ defaults:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
