@@ -111,16 +111,16 @@ func WithMaxMessageConfidence(maxMessageConfidence uint64) Option {
 	}
 }
 
-// WithRateLimit sets the maximum number of requests per second globally that will be allowed
-// before the gateway starts to rate limit requests.
+// WithRateLimit sets the global rate limit in tokens per second. Gateway methods consume different
+// numbers of tokens according to their cost, so this is not a raw request-per-second limit.
 func WithRateLimit(rateLimit int) Option {
 	return func(opts *options) {
 		opts.rateLimit = rateLimit
 	}
 }
 
-// WithRateLimitTimeout sets the timeout for rate limiting requests such that when rate limiting is
-// being applied, if the timeout is reached the request will be allowed.
+// WithRateLimitTimeout sets the maximum time a request can wait for rate-limit tokens before it is
+// rejected.
 func WithRateLimitTimeout(rateLimitTimeout time.Duration) Option {
 	return func(opts *options) {
 		opts.rateLimitTimeout = rateLimitTimeout
