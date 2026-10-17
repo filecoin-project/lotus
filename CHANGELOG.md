@@ -57,6 +57,7 @@ This is the **recommended** Lotus release for the nv29 (Solstice) network upgrad
 
 ## 🐛 Bug Fixes
 
+- fix(sealing): a cancelled task in the scheduler queue no longer stops other tasks from being scheduled. ([filecoin-project/lotus#13869](https://github.com/filecoin-project/lotus/pull/13869))
 - fix(api): check `/health/readyz` immediately on startup instead of waiting for the first one-minute polling interval. ([filecoin-project/lotus#13796](https://github.com/filecoin-project/lotus/pull/13796))
 - fix(rpc): allow `ChainPutObj` to store blocks over JSON-RPC. ([filecoin-project/lotus#13868](https://github.com/filecoin-project/lotus/pull/13868))
 - fix(chain): p2p ingress hardening. Tipsets from peers are limited to 34 distinct blocks, and ChainExchange serves messages for at most 8 tipsets per request. ([filecoin-project/lotus#13909](https://github.com/filecoin-project/lotus/pull/13909))
