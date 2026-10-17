@@ -19,7 +19,7 @@ var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandQuicknet,
 }
 
-const GenesisNetworkVersion = network.Version28
+const GenesisNetworkVersion = network.Version29
 
 var NetworkBundle = "butterflynet"
 var ActorDebugging = false
@@ -86,8 +86,10 @@ var UpgradeGoldenWeekHeight = abi.ChainEpoch(-31)
 
 const UpgradeFireHorseHeight = -32
 
-// 2026-09-21T04:30:00Z
-const UpgradeSolsticeHeight = 5220
+const UpgradeSolsticeHeight = -33
+
+// NV30: activation epoch to be determined.
+const UpgradeXxHeight = UpgradeHeightUnscheduled
 
 // SolsticeEpochsPerQuarter matches the quarter the SRA is deployed with: two hours on
 // butterflynet. The ramp runs nine of them.
