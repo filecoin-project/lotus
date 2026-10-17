@@ -557,6 +557,78 @@ func TestGatewayEthNewFilterLookback(t *testing.T) {
 	}
 }
 
+// TestGatewayEthTraceTransactionLookback verifies that both gateway proxies
+// resolve the transaction an eth_traceTransaction request names through the
+// backend's bounded lookup and refuse to trace a block older than the lookback
+// bound, instead of forwarding the trace unchecked.
+func TestGatewayEthTraceTransactionLookback(t *testing.T) {
+	ctx := context.Background()
+
+	// Height 1 is older than the default lookback bound; height 13 is within it.
+	lookbackTimestamp := uint64(time.Now().Unix()) - uint64(DefaultMaxLookbackDuration.Seconds())
+	tss := generateTipSets(15, lookbackTimestamp-buildconstants.BlockDelaySecs*10)
+	genesisTS := tss[0].MinTimestamp()
+
+	txHash := ethtypes.EthHash{0xde, 0xad}
+	oldBlk, recentBlk := ethtypes.EthUint64(1), ethtypes.EthUint64(13)
+
+	for _, tc := range []struct {
+		name    string
+		hash    string
+		tx      *ethtypes.EthTx
+		lookup  bool // the backend transaction lookup runs
+		checked bool // the check consults network params
+		wantErr string
+	}{
+		{name: "bad hash", hash: "not-a-hash", wantErr: "cannot parse eth hash"},
+		{name: "not found", hash: txHash.String(), lookup: true, wantErr: "transaction not found"},
+		{name: "pending", hash: txHash.String(), lookup: true, tx: &ethtypes.EthTx{}, wantErr: "no trace for pending transactions"},
+		{name: "old block", hash: txHash.String(), lookup: true, tx: &ethtypes.EthTx{BlockNumber: &oldBlk}, checked: true, wantErr: "lookbacks of more than"},
+		{name: "recent block", hash: txHash.String(), lookup: true, tx: &ethtypes.EthTx{BlockNumber: &recentBlk}, checked: true},
+	} {
+		for _, v := range []struct {
+			name   string
+			expect func(v1 *v1mocks.MockFullNode, v2 *v2mocks.MockFullNode, forward bool)
+			call   func(a *Node) error
+		}{
+			{"v1", func(v1 *v1mocks.MockFullNode, _ *v2mocks.MockFullNode, forward bool) {
+				if tc.lookup {
+					v1.EXPECT().EthGetTransactionByHashLimited(gomock.Any(), gomock.Eq(&txHash), gomock.Eq(DefaultMaxMessageLookbackEpochs)).Return(tc.tx, nil)
+				}
+				if forward {
+					v1.EXPECT().EthTraceTransaction(gomock.Any(), tc.hash).Return(nil, nil)
+				}
+			}, func(a *Node) error { _, err := a.v1Proxy.EthTraceTransaction(ctx, tc.hash); return err }},
+			{"v2", func(_ *v1mocks.MockFullNode, v2 *v2mocks.MockFullNode, forward bool) {
+				if tc.lookup {
+					v2.EXPECT().EthGetTransactionByHashLimited(gomock.Any(), gomock.Eq(&txHash), gomock.Eq(DefaultMaxMessageLookbackEpochs)).Return(tc.tx, nil)
+				}
+				if forward {
+					v2.EXPECT().EthTraceTransaction(gomock.Any(), tc.hash).Return(nil, nil)
+				}
+			}, func(a *Node) error { _, err := a.v2Proxy.EthTraceTransaction(ctx, tc.hash); return err }},
+		} {
+			t.Run(v.name+"/"+tc.name, func(t *testing.T) {
+				ctrl := gomock.NewController(t)
+				defer ctrl.Finish()
+				mockV1 := v1mocks.NewMockFullNode(ctrl)
+				mockV2 := v2mocks.NewMockFullNode(ctrl)
+				a := NewNode(mockV1, mockV2)
+				if tc.checked {
+					expectNetworkParams(mockV1, genesisTS)
+				}
+				v.expect(mockV1, mockV2, tc.wantErr == "")
+				err := v.call(a)
+				if tc.wantErr != "" {
+					require.ErrorContains(t, err, tc.wantErr)
+				} else {
+					require.NoError(t, err)
+				}
+			})
+		}
+	}
+}
+
 func TestGatewayVersion(t *testing.T) {
 	ctx := context.Background()
 	ctrl := gomock.NewController(t)

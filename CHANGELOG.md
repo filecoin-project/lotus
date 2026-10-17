@@ -15,6 +15,8 @@
 
 ## 🐛 Bug Fixes
 
+- fix(gateway): `eth_traceTransaction` now applies the gateway's message and chain lookback bounds instead of tracing arbitrarily old blocks. ([filecoin-project/lotus#13931](https://github.com/filecoin-project/lotus/pull/13931))
+
 ## 👌 Improvements
 
 # Node v1.38.1 / 2026-10-13
