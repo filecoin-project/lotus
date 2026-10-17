@@ -73,6 +73,7 @@ This is the **recommended** Lotus release for the nv29 (Solstice) network upgrad
 - fix(miner): deal sectors start sealing ahead of the earliest deal start epoch, not the last piece's. ([filecoin-project/lotus#13872](https://github.com/filecoin-project/lotus/pull/13872))
 - fix(paths): storage path scanning no longer fails on hidden files such as NFS `.nfsXXXX` leftovers in sector directories. ([filecoin-project/lotus#13830](https://github.com/filecoin-project/lotus/pull/13830))
 - fix(stmgr): `StateCall` honours `GasLimit`, matching `eth_call`; zero selects the default limit, which is the network block gas limit unless set with the new `API.StateCallGasLimit` option, and a larger `GasLimit` is rejected. ([filecoin-project/lotus#13910](https://github.com/filecoin-project/lotus/pull/13910))
+- fix(cli): an API info URL that already ends in an RPC path such as `/rpc/v1` is rejected with an error that names the address to use, instead of being dialed as `/rpc/v1/rpc/v1`. ([filecoin-project/lotus#13870](https://github.com/filecoin-project/lotus/pull/13870))
 
 ## 👌 Improvements
 
