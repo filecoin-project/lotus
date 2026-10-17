@@ -67,6 +67,7 @@ This is the **recommended** Lotus release for the nv29 (Solstice) network upgrad
 - fix(eth): `EthBytes` and `EthUint64FromHex` reject hex values with an embedded `0x` instead of silently stripping it and mis-decoding. ([filecoin-project/lotus#13908](https://github.com/filecoin-project/lotus/pull/13908))
 - fix(f3): node shutdown no longer fails with `could not close datastore: leveldb: closed` and leaves `repo.lock` behind. ([filecoin-project/lotus#13850](https://github.com/filecoin-project/lotus/pull/13850))
 - fix(gateway): the lookback limit now applies to the block parameter of `eth_estimateGas` and to the `fromBlock` and `blockHash` of `eth_newFilter`. ([filecoin-project/lotus#13873](https://github.com/filecoin-project/lotus/pull/13873))
+- fix(miner): a sector in `CommitFailed` without CommR or CommD no longer panics in the commit check. It redoes PreCommit1 and PreCommit2 to regenerate them, then goes back to `WaitSeed`. ([filecoin-project/lotus#13843](https://github.com/filecoin-project/lotus/pull/13843))
 - fix(gateway): cap JSON-RPC request size, which previously defaulted to 100MiB. ([filecoin-project/lotus#13912](https://github.com/filecoin-project/lotus/pull/13912))
 - fix(lotus-bench): `cli --cmd` rejects an empty command, non-positive concurrency or out-of-range qps instead of panicking. ([filecoin-project/lotus#13842](https://github.com/filecoin-project/lotus/pull/13842))
 - fix(lotus-fountain): remove the deprecated DataCap faucet. ([filecoin-project/lotus#13840](https://github.com/filecoin-project/lotus/pull/13840))
