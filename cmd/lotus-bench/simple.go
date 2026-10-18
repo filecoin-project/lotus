@@ -575,7 +575,7 @@ var simpleCommit2 = &cli.Command{
 		}
 
 		if !c.Args().Present() {
-			return xerrors.Errorf("Usage: lotus-bench prove [input.json]")
+			return xerrors.Errorf("Usage: lotus-bench simple commit2 [c1out.json]")
 		}
 
 		inb, err := os.ReadFile(c.Args().First())
