@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/http/httptest"
 	"reflect"
 	"strings"
 	"testing"
@@ -19,6 +20,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/client"
 	v1mocks "github.com/filecoin-project/lotus/api/mocks"
 	"github.com/filecoin-project/lotus/api/v2api"
 	"github.com/filecoin-project/lotus/api/v2api/v2mocks"
@@ -966,4 +968,100 @@ func TestGatewayEventFilterRangeConfiguration(t *testing.T) {
 
 	gw = NewNode(mockV1, mockV2, WithEventFilterMaxHeightRange(0))
 	require.NoError(t, gw.checkEventFilterHeightRange(0, 1_000_000))
+}
+
+func TestGatewayEthSubscribeRemovesSinkOnConnectionClose(t *testing.T) {
+	ctx := context.Background()
+	subParams, err := json.Marshal(ethtypes.EthSubscribeParams{EventType: "newHeads"})
+	require.NoError(t, err)
+
+	ctrl := gomock.NewController(t)
+	mockV1 := v1mocks.NewMockFullNode(ctrl)
+	mockV2 := v2mocks.NewMockFullNode(ctrl)
+	v1Subs, v2Subs := NewEthSubHandler(), NewEthSubHandler()
+
+	// The health handlers poll the node in the background.
+	notSupported := errors.New("not supported")
+	mockV1.EXPECT().ChainNotify(gomock.Any()).Return(nil, notSupported).AnyTimes()
+	mockV1.EXPECT().NetAutoNatStatus(gomock.Any()).Return(api.NatInfo{}, notSupported).AnyTimes()
+	mockV1.EXPECT().NodeStatus(gomock.Any(), gomock.Any()).Return(api.NodeStatus{}, notSupported).AnyTimes()
+
+	h, err := Handler(NewNode(mockV1, mockV2, WithV1EthSubHandler(v1Subs), WithV2EthSubHandler(v2Subs)))
+	require.NoError(t, err)
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+	wsAddr := "ws" + strings.TrimPrefix(srv.URL, "http")
+
+	sinks := func(subs *EthSubHandler) int {
+		subs.lk.Lock()
+		defer subs.lk.Unlock()
+		return len(subs.sinks)
+	}
+
+	for _, tc := range []struct {
+		name      string
+		subs      *EthSubHandler
+		expect    func(id ethtypes.EthSubscriptionID, unsubscribed chan struct{})
+		subscribe func() (ethtypes.EthSubscriptionID, jsonrpc.ClientCloser, error)
+	}{
+		{
+			name: "v1",
+			subs: v1Subs,
+			expect: func(id ethtypes.EthSubscriptionID, unsubscribed chan struct{}) {
+				mockV1.EXPECT().EthSubscribe(gomock.Any(), gomock.Any()).Return(id, nil)
+				mockV1.EXPECT().EthUnsubscribe(gomock.Any(), id).DoAndReturn(func(context.Context, ethtypes.EthSubscriptionID) (bool, error) {
+					close(unsubscribed)
+					return true, nil
+				})
+			},
+			subscribe: func() (ethtypes.EthSubscriptionID, jsonrpc.ClientCloser, error) {
+				gw, closer, err := client.NewGatewayRPCV1(ctx, wsAddr+"/rpc/v1", nil, jsonrpc.WithClientHandler("Filecoin", NewEthSubHandler()))
+				if err != nil {
+					return ethtypes.EthSubscriptionID{}, nil, err
+				}
+				id, err := gw.EthSubscribe(ctx, subParams)
+				return id, closer, err
+			},
+		},
+		{
+			name: "v2",
+			subs: v2Subs,
+			expect: func(id ethtypes.EthSubscriptionID, unsubscribed chan struct{}) {
+				mockV2.EXPECT().EthSubscribe(gomock.Any(), gomock.Any()).Return(id, nil)
+				mockV2.EXPECT().EthUnsubscribe(gomock.Any(), id).DoAndReturn(func(context.Context, ethtypes.EthSubscriptionID) (bool, error) {
+					close(unsubscribed)
+					return true, nil
+				})
+			},
+			subscribe: func() (ethtypes.EthSubscriptionID, jsonrpc.ClientCloser, error) {
+				gw, closer, err := client.NewGatewayRPCV2(ctx, wsAddr+"/rpc/v2", nil, jsonrpc.WithClientHandler("Filecoin", NewEthSubHandler()))
+				if err != nil {
+					return ethtypes.EthSubscriptionID{}, nil, err
+				}
+				id, err := gw.EthSubscribe(ctx, subParams)
+				return id, closer, err
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			id := ethtypes.EthSubscriptionID{1}
+			unsubscribed := make(chan struct{})
+			tc.expect(id, unsubscribed)
+
+			got, closer, err := tc.subscribe()
+			require.NoError(t, err)
+			require.Equal(t, id, got)
+			require.Equal(t, 1, sinks(tc.subs))
+
+			// Closing the websocket unsubscribes on the node, and the sink
+			// for the closed connection must go with it.
+			closer()
+			select {
+			case <-unsubscribed:
+			case <-time.After(10 * time.Second):
+				t.Fatal("subscription was not unsubscribed on connection close")
+			}
+			require.Eventually(t, func() bool { return sinks(tc.subs) == 0 }, 5*time.Second, 10*time.Millisecond)
+		})
+	}
 }
