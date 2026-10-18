@@ -2,8 +2,6 @@ name: Build
 
 on:
   pull_request:
-    paths-ignore:
-      - '**/*.md'
   push:
     branches:
       - master
@@ -22,24 +20,26 @@ permissions:
   contents: read
 
 jobs:
-  markdown-only:
-    name: Detect Markdown-only update
+  skippable:
+    name: Detect skippable changes
     runs-on: ubuntu-latest
     permissions:
       actions: read
       contents: read
     outputs:
-      skip: ${{ steps.markdown-only.outputs.skip }}
+      skip: ${{ steps.skippable.outputs.skip }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           sparse-checkout: .github/actions
-      - id: markdown-only
-        uses: ./.github/actions/detect-markdown-only-update
+      - id: skippable
+        uses: ./.github/actions/detect-skippable-changes
+        with:
+          paths: binaries
   build:
     name: Build
-    needs: [markdown-only]
-    if: ${{ needs.markdown-only.outputs.skip != 'true' }}
+    needs: [skippable]
+    if: ${{ needs.skippable.outputs.skip != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

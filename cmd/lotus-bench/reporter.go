@@ -10,7 +10,8 @@ import (
 	"time"
 )
 
-// result is the result of a single rpc method request.
+// result is the outcome of a single benchmark request, issued by either the cli
+// or the rpc subcommand.
 type result struct {
 	err        error
 	statusCode *int

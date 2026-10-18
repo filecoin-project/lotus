@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 )
 
@@ -58,5 +59,23 @@ func TestGetNeedsParametersScansTestFiles(t *testing.T) {
 				t.Fatalf("getNeedsParameters(%q) = %t, want %t", tc.name, got, tc.want)
 			}
 		})
+	}
+}
+
+func TestUnitCLIExcludesReleaseTool(t *testing.T) {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(filepath.Join(wd, "..", ".."))
+
+	packages := getPackages("unit-cli")
+	release := createPackagePath("cmd", "release", "...")
+	lotus := createPackagePath("cmd", "lotus", "...")
+	if slices.Contains(packages, release) || slices.Contains(packages, createPackagePath("cmd", "...")) {
+		t.Fatalf("unit-cli packages %v should not include %s; the Release Tool Test workflow tests it", packages, release)
+	}
+	if !slices.Contains(packages, lotus) {
+		t.Fatalf("unit-cli packages %v should include %s", packages, lotus)
 	}
 }
