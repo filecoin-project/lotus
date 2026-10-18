@@ -15,6 +15,8 @@
 
 ## 🐛 Bug Fixes
 
+- fix(gateway): `eth_subscribe` subscriptions no longer leave an entry behind in the gateway when the websocket closes without unsubscribing. ([filecoin-project/lotus#13936](https://github.com/filecoin-project/lotus/pull/13936))
+
 ## 👌 Improvements
 
 # Node v1.38.1 / 2026-10-13
