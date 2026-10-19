@@ -96,8 +96,8 @@ func (s *state9) GetState() interface{} {
 
 func (s *state9) GetAllocation(clientIdAddr address.Address, allocationId verifreg9.AllocationId) (*Allocation, bool, error) {
 
-	alloc, ok, err := s.FindAllocation(s.store, clientIdAddr, verifreg9.AllocationId(allocationId))
-	return (*Allocation)(alloc), ok, err
+	alloc, ok, err := s.FindAllocation(s.store, clientIdAddr, allocationId)
+	return alloc, ok, err
 }
 
 func (s *state9) GetAllocations(clientIdAddr address.Address) (map[AllocationId]Allocation, error) {
@@ -106,7 +106,7 @@ func (s *state9) GetAllocations(clientIdAddr address.Address) (map[AllocationId]
 
 	retMap := make(map[AllocationId]Allocation, len(v9Map))
 	for k, v := range v9Map {
-		retMap[AllocationId(k)] = Allocation(v)
+		retMap[k] = v
 	}
 
 	return retMap, err
@@ -119,7 +119,7 @@ func (s *state9) GetAllAllocations() (map[AllocationId]Allocation, error) {
 
 	retMap := make(map[AllocationId]Allocation, len(v9Map))
 	for k, v := range v9Map {
-		retMap[AllocationId(k)] = Allocation(v)
+		retMap[k] = v
 	}
 
 	return retMap, err
@@ -128,8 +128,8 @@ func (s *state9) GetAllAllocations() (map[AllocationId]Allocation, error) {
 
 func (s *state9) GetClaim(providerIdAddr address.Address, claimId verifreg9.ClaimId) (*Claim, bool, error) {
 
-	claim, ok, err := s.FindClaim(s.store, providerIdAddr, verifreg9.ClaimId(claimId))
-	return (*Claim)(claim), ok, err
+	claim, ok, err := s.FindClaim(s.store, providerIdAddr, claimId)
+	return claim, ok, err
 
 }
 
@@ -139,7 +139,7 @@ func (s *state9) GetClaims(providerIdAddr address.Address) (map[ClaimId]Claim, e
 
 	retMap := make(map[ClaimId]Claim, len(v9Map))
 	for k, v := range v9Map {
-		retMap[ClaimId(k)] = Claim(v)
+		retMap[k] = v
 	}
 
 	return retMap, err
@@ -152,7 +152,7 @@ func (s *state9) GetAllClaims() (map[ClaimId]Claim, error) {
 
 	retMap := make(map[ClaimId]Claim, len(v9Map))
 	for k, v := range v9Map {
-		retMap[ClaimId(k)] = Claim(v)
+		retMap[k] = v
 	}
 
 	return retMap, err
@@ -167,9 +167,9 @@ func (s *state9) GetClaimIdsBySector(providerIdAddr address.Address) (map[abi.Se
 	for k, v := range v9Map {
 		claims, ok := retMap[v.Sector]
 		if !ok {
-			retMap[v.Sector] = []ClaimId{ClaimId(k)}
+			retMap[v.Sector] = []ClaimId{k}
 		} else {
-			retMap[v.Sector] = append(claims, ClaimId(k))
+			retMap[v.Sector] = append(claims, k)
 		}
 	}
 

@@ -113,7 +113,7 @@ func (s *state19) decodeTransaction(val *cbg.Deferred) (Transaction, error) {
 	if err := tx.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
 		return Transaction{}, err
 	}
-	return Transaction(tx), nil
+	return tx, nil
 }
 
 func (s *state19) GetState() interface{} {

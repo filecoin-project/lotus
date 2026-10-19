@@ -90,7 +90,7 @@ func (s *state8) MinerNominalPowerMeetsConsensusMinimum(a address.Address) (bool
 }
 
 func (s *state8) TotalPowerSmoothed() (builtin.FilterEstimate, error) {
-	return builtin.FilterEstimate(s.State.ThisEpochQAPowerSmoothed), nil
+	return s.State.ThisEpochQAPowerSmoothed, nil
 }
 
 func (s *state8) MinerCounts() (uint64, uint64, error) {

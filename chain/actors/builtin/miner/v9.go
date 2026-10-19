@@ -379,7 +379,7 @@ func (s *state9) Info() (MinerInfo, error) {
 		Worker:           info.Worker,
 		ControlAddresses: info.ControlAddresses,
 
-		PendingWorkerKey: (*WorkerKeyChange)(info.PendingWorkerKey),
+		PendingWorkerKey: info.PendingWorkerKey,
 
 		PeerId:                     info.PeerId,
 		Multiaddrs:                 info.Multiaddrs,
@@ -389,8 +389,8 @@ func (s *state9) Info() (MinerInfo, error) {
 		ConsensusFaultElapsed:      info.ConsensusFaultElapsed,
 
 		Beneficiary:            info.Beneficiary,
-		BeneficiaryTerm:        BeneficiaryTerm(info.BeneficiaryTerm),
-		PendingBeneficiaryTerm: (*PendingBeneficiaryChange)(info.PendingBeneficiaryTerm),
+		BeneficiaryTerm:        info.BeneficiaryTerm,
+		PendingBeneficiaryTerm: info.PendingBeneficiaryTerm,
 	}
 
 	return mi, nil

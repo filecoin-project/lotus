@@ -368,7 +368,7 @@ func (r *publishStorageDealsReturn16) IsDealValid(index uint64) (bool, int, erro
 		return false, -1, err
 	}
 	maskBf, err := bitfield.NewFromIter(&rlepluslazy.RunSliceIterator{
-		Runs: []rlepluslazy.Run{rlepluslazy.Run{Val: true, Len: index}}})
+		Runs: []rlepluslazy.Run{{Val: true, Len: index}}})
 	if err != nil {
 		return false, -1, err
 	}

@@ -114,7 +114,7 @@ func (s *state19) StreamLedger(epoch abi.ChainEpoch) (*StreamLedger, error) {
 
 	accrued := make(map[StreamID]abi.TokenAmount, len(s.State.Accrued))
 	for _, accrual := range s.State.Accrued {
-		accrued[StreamID(accrual.ID)] = accrual.Amount
+		accrued[accrual.ID] = accrual.Amount
 	}
 
 	ledger := &StreamLedger{
@@ -131,16 +131,16 @@ func (s *state19) StreamLedger(epoch abi.ChainEpoch) (*StreamLedger, error) {
 
 	explicit := 0
 	for _, stream := range streams.Streams {
-		weight := WeightRecord(stream.Weight)
+		weight := stream.Weight
 		out := Stream{
-			ID:              StreamID(stream.ID),
+			ID:              stream.ID,
 			Weight:          weight,
 			EvaluatedWeight: ComputeWeight(weight, epoch),
 			Implicit:        stream.Distribution == nil,
 			Accrued:         big.Zero(),
 		}
 		if stream.Distribution != nil {
-			amount, ok := accrued[StreamID(stream.ID)]
+			amount, ok := accrued[stream.ID]
 			if !ok {
 				return nil, fmt.Errorf("explicit stream %d has no accrual row", stream.ID)
 			}
@@ -159,7 +159,7 @@ func (s *state19) StreamLedger(epoch abi.ChainEpoch) (*StreamLedger, error) {
 
 	for _, tombstone := range streams.Tombstones {
 		ledger.Tombstones = append(ledger.Tombstones, Tombstone{
-			ID:      StreamID(tombstone.ID),
+			ID:      tombstone.ID,
 			Payable: fromV19RecipientAmounts(tombstone.Payable),
 		})
 	}
@@ -203,7 +203,7 @@ func fromV19PendingWrite(v19 reward19.PendingWrite) (PendingWrite, error) {
 		EffectiveEpoch: v19.EffectiveEpoch,
 	}
 	if v19.ID != nil {
-		id := StreamID(*v19.ID)
+		id := *v19.ID
 		out.ID = &id
 	}
 	switch out.Op {
@@ -215,8 +215,8 @@ func fromV19PendingWrite(v19 reward19.PendingWrite) (PendingWrite, error) {
 		out.Updates = make([]WeightRecordUpdate, 0, len(payload.Updates))
 		for _, update := range payload.Updates {
 			out.Updates = append(out.Updates, WeightRecordUpdate{
-				ID:     StreamID(update.ID),
-				Weight: WeightRecord(update.Weight),
+				ID:     update.ID,
+				Weight: update.Weight,
 			})
 		}
 	case OpRegisterStream:
@@ -224,7 +224,7 @@ func fromV19PendingWrite(v19 reward19.PendingWrite) (PendingWrite, error) {
 		if err := decodeStreamPayload(v19.Payload, &payload); err != nil {
 			return PendingWrite{}, xerrors.Errorf("decoding pending %s payload: %w", out.Op, err)
 		}
-		out.Register = &RegisterStreamPayload{Weight: WeightRecord(payload.Weight)}
+		out.Register = &RegisterStreamPayload{Weight: payload.Weight}
 		if payload.Distribution != nil {
 			out.Register.Distribution = &DistributionInit{
 				Writer: payload.Distribution.Writer,

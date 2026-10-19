@@ -558,7 +558,7 @@ func fromV19SectorOnChainInfo(v19 miner19.SectorOnChainInfo) SectorOnChainInfo {
 		SectorKeyCID:          v19.SectorKeyCID,
 		PowerBaseEpoch:        v19.PowerBaseEpoch,
 		ReplacedDayReward:     v19.ReplacedDayReward,
-		Flags:                 SectorOnChainInfoFlags(v19.Flags),
+		Flags:                 v19.Flags,
 		DailyFee:              dailyFee,
 	}
 	return info
