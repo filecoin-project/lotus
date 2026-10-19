@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"math"
 	"reflect"
 	"strings"
 	"testing"
@@ -738,8 +739,9 @@ func TestGatewayEthSendRawTransactionUsesUntrusted(t *testing.T) {
 
 // TestV1GatewayStateMessageLookbackClamped exercises the limit normalisation
 // applied to StateSearchMsg and StateWaitMsg: a caller-supplied limit is
-// normalised to maxMessageLookbackEpochs when it is LookbackNoLimit (-1) or
-// when it exceeds the bound; a limit below the bound is forwarded unchanged.
+// normalised to maxMessageLookbackEpochs when it is negative, including
+// LookbackNoLimit (-1), or when it exceeds the bound; a limit below the bound
+// is forwarded unchanged.
 func TestV1GatewayStateMessageLookbackClamped(t *testing.T) {
 	ctx := context.Background()
 	const bound = abi.ChainEpoch(10)
@@ -750,6 +752,8 @@ func TestV1GatewayStateMessageLookbackClamped(t *testing.T) {
 		want abi.ChainEpoch
 	}{
 		{"LookbackNoLimit clamps to bound", api.LookbackNoLimit, bound},
+		{"other negative limit clamps to bound", -2, bound},
+		{"MinInt64 limit clamps to bound", math.MinInt64, bound},
 		{"limit above bound clamps", bound + 5, bound},
 		{"limit at bound passes through", bound, bound},
 		{"limit below bound passes through", bound - 1, bound - 1},
