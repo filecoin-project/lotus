@@ -95,6 +95,13 @@ func TestEthBigIntUnmarshalJSON(t *testing.T) {
 		require.Error(t, i.UnmarshalJSON([]byte(in)), "expected %s to be rejected", in)
 	}
 
+	// Ethereum JSON-RPC quantities are unsigned: a leading sign must be rejected
+	// (matches geth's hexutil.Big decoder). See issue #13917.
+	for _, in := range []string{`"0x-1"`, `"-0x1"`, `"-0x10"`} {
+		var i EthBigInt
+		require.Error(t, i.UnmarshalJSON([]byte(in)), "expected %s to be rejected", in)
+	}
+
 	var call EthCall
 	require.NoError(t, json.Unmarshal([]byte(`{"value":null,"gasPrice":null}`), &call))
 	require.Equal(t, EthBigIntZero, call.Value)

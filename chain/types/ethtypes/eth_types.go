@@ -152,6 +152,23 @@ func (e *EthBigInt) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
+	// Ethereum JSON-RPC quantities are unsigned: the digits after 0x must be
+	// hex digits only. big.Int.SetString accepts a leading sign, which would
+	// let "0x-1" through as a negative value (see geth's hexutil.Big decoder,
+	// which rejects it).
+	trimmed := s
+	if len(trimmed) >= 2 && trimmed[:2] == "0x" {
+		trimmed = trimmed[2:]
+	}
+	if len(trimmed) == 0 {
+		return xerrors.Errorf("cannot parse %q as a hex-encoded big int: empty quantity", s)
+	}
+	for _, c := range trimmed {
+		if !strings.ContainsRune("0123456789abcdefABCDEF", c) {
+			return xerrors.Errorf("cannot parse %q as a hex-encoded big int: invalid hex digit %q", s, c)
+		}
+	}
+
 	replaced := strings.TrimPrefix(s, "0x")
 	if len(replaced)%2 == 1 {
 		replaced = "0" + replaced
