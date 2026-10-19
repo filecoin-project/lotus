@@ -109,4 +109,4 @@ End each entry with the eventual PR link in this form:
 
 Prediction hint: issues and PRs share one sequence; fetch `GET /repos/filecoin-project/lotus/issues?state=all&sort=created&direction=desc&per_page=1` and add one to `.[0].number`.
 
-Before the PR exists, either use a carefully predicted next number or add the link after opening it. Verify every predicted number before merge; do not leave placeholders or links to another PR.
+Before the PR exists, either use a carefully predicted next number or add the link after opening it. Verify every predicted number before merge; do not leave placeholders or links to another PR. For PRs into `master`, the Changelog check fails unless an added `CHANGELOG.md` line links to the PR itself.
