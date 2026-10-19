@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	mathbig "math/big"
 	"strconv"
 	"strings"
@@ -40,6 +41,9 @@ var expectedHashPrefix = cid.Prefix{
 }.Bytes()
 
 var ErrInvalidAddress = errors.New("invalid Filecoin Eth address")
+
+// ethQuantityRe matches a 0x-prefixed hex quantity of at most 256 bits (64 hex digits).
+var ethQuantityRe = regexp.MustCompile(`^0x[0-9a-fA-F]{1,64}$`)
 
 // Research into Filecoin chain behaviour suggests that probabilistic finality
 // generally approaches the intended stability guarantee at, or near, 30 epochs.
@@ -152,21 +156,13 @@ func (e *EthBigInt) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
-	// Ethereum JSON-RPC quantities are unsigned: the digits after 0x must be
-	// hex digits only. big.Int.SetString accepts a leading sign, which would
-	// let "0x-1" through as a negative value (see geth's hexutil.Big decoder,
-	// which rejects it).
-	trimmed := s
-	if len(trimmed) >= 2 && trimmed[:2] == "0x" {
-		trimmed = trimmed[2:]
-	}
-	if len(trimmed) == 0 {
-		return xerrors.Errorf("cannot parse %q as a hex-encoded big int: empty quantity", s)
-	}
-	for _, c := range trimmed {
-		if !strings.ContainsRune("0123456789abcdefABCDEF", c) {
-			return xerrors.Errorf("cannot parse %q as a hex-encoded big int: invalid hex digit %q", s, c)
-		}
+	// Ethereum JSON-RPC quantities are unsigned 256-bit hex numbers: the digits
+	// after 0x must be hex digits only, and the value must fit in 256 bits (the
+	// same bounds geth's hexutil.Big enforces). big.Int.SetString accepts a
+	// leading sign and unbounded digit runs, which would let "0x-1" parse as a
+	// negative value and a multi-kilobyte digit string allocate a huge integer.
+	if !ethQuantityRe.MatchString(s) {
+		return xerrors.Errorf("cannot parse %q as a hex-encoded big int: want 0x-prefixed hex, at most 256 bits", s)
 	}
 
 	replaced := strings.TrimPrefix(s, "0x")
@@ -177,6 +173,9 @@ func (e *EthBigInt) UnmarshalJSON(b []byte) error {
 	i, ok := new(mathbig.Int).SetString(replaced, 16)
 	if !ok {
 		return xerrors.Errorf("cannot parse %q as a hex-encoded big int", s)
+	}
+	if i.BitLen() > 256 {
+		return xerrors.Errorf("hex-encoded big int %q exceeds 256 bits", s)
 	}
 
 	*e = EthBigInt(big.NewFromGo(i))
