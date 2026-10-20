@@ -42,8 +42,9 @@ var expectedHashPrefix = cid.Prefix{
 
 var ErrInvalidAddress = errors.New("invalid Filecoin Eth address")
 
-// ethQuantityRe matches a 0x-prefixed hex quantity of at most 256 bits (64 hex digits).
-var ethQuantityRe = regexp.MustCompile(`^0x[0-9a-fA-F]{1,64}$`)
+// ethHexDigitsRe matches 1-64 hex digits: the magnitude of a 0x-prefixed quantity,
+// capped at 256 bits (the same bound geth's hexutil.Big enforces).
+var ethHexDigitsRe = regexp.MustCompile(`^[0-9a-fA-F]{1,64}$`)
 
 // Research into Filecoin chain behaviour suggests that probabilistic finality
 // generally approaches the intended stability guarantee at, or near, 30 epochs.
@@ -156,26 +157,34 @@ func (e *EthBigInt) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
-	// Ethereum JSON-RPC quantities are unsigned 256-bit hex numbers: the digits
-	// after 0x must be hex digits only, and the value must fit in 256 bits (the
-	// same bounds geth's hexutil.Big enforces). big.Int.SetString accepts a
-	// leading sign and unbounded digit runs, which would let "0x-1" parse as a
-	// negative value and a multi-kilobyte digit string allocate a huge integer.
-	if !ethQuantityRe.MatchString(s) {
+	// Ethereum JSON-RPC quantities are hex numbers with a 0x prefix, optionally
+	// signed before the digits ("0x-1") as big.Int.SetString accepted; the digits
+	// must be hex and the magnitude must fit in 256 bits (the same bounds geth's
+	// hexutil.Big enforces). big.Int.SetString accepts unbounded digit runs, so a
+	// multi-kilobyte digit string would otherwise allocate a huge integer.
+	// The sign is preserved rather than rejected here: callers of a signed field
+	// report a negative value with a domain-specific error (e.g. "gas price must
+	// not be negative"), and swallowing it in the parser would hide that path.
+	body := strings.TrimPrefix(s, "0x")
+	neg := strings.HasPrefix(body, "-")
+	digits := strings.TrimPrefix(body, "-")
+	if !ethHexDigitsRe.MatchString(digits) {
 		return xerrors.Errorf("cannot parse %q as a hex-encoded big int: want 0x-prefixed hex, at most 256 bits", s)
 	}
 
-	replaced := strings.TrimPrefix(s, "0x")
-	if len(replaced)%2 == 1 {
-		replaced = "0" + replaced
+	if len(digits)%2 == 1 {
+		digits = "0" + digits
 	}
 
-	i, ok := new(mathbig.Int).SetString(replaced, 16)
+	i, ok := new(mathbig.Int).SetString(digits, 16)
 	if !ok {
 		return xerrors.Errorf("cannot parse %q as a hex-encoded big int", s)
 	}
 	if i.BitLen() > 256 {
 		return xerrors.Errorf("hex-encoded big int %q exceeds 256 bits", s)
+	}
+	if neg {
+		i.Neg(i)
 	}
 
 	*e = EthBigInt(big.NewFromGo(i))
