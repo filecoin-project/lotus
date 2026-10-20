@@ -402,8 +402,7 @@ var (
 // with the recovery bit flipped is a second valid signature over the same
 // payload that recovers the same sender but gives the transaction a different
 // hash, so anyone could reissue a pending transaction under a hash its sender
-// is not watching. Applied when parsing raw transaction bytes, not to
-// signatures already on chain.
+// is not watching.
 func validateSignatureValues(r, s big.Int) error {
 	if r.Int.Sign() < 1 || r.Int.Cmp(secp256k1N) >= 0 {
 		return fmt.Errorf("signature r value out of range")
