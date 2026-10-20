@@ -639,7 +639,9 @@ func (a *ChainAPI) ChainGetNode(ctx context.Context, p string) (*api.IpldObject,
 		return nil, xerrors.Errorf("parsing path: %w", err)
 	}
 
-	bs := a.ExposedBlockstore
+	// Resolving @H, @A and @state segments stores intermediate objects; keep
+	// them in memory so a read-only call never writes to the chain blockstore.
+	bs := blockstore.NewTieredBstore(a.ExposedBlockstore, blockstore.NewMemory())
 	bsvc := blockservice.New(bs, offline.Exchange(bs))
 	dag := merkledag.NewDAGService(bsvc)
 
