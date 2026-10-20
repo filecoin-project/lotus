@@ -126,8 +126,8 @@ func (s *state{{.v}}) GetAllocation(clientIdAddr address.Address, allocationId v
 {{if (le .v 8)}}
     return nil, false, xerrors.Errorf("unsupported in actors v{{.v}}")
 {{else}}
-	alloc, ok, err := s.FindAllocation(s.store, clientIdAddr, verifreg{{.v}}.AllocationId(allocationId))
-	return (*Allocation)(alloc), ok, err{{end}}
+	alloc, ok, err := s.FindAllocation(s.store, clientIdAddr, {{if ne .v 9}}verifreg{{.v}}.{{end}}AllocationId(allocationId))
+	return {{if ne .v 9}}(*Allocation)(alloc){{else}}alloc{{end}}, ok, err{{end}}
 }
 
 func (s *state{{.v}}) GetAllocations(clientIdAddr address.Address) (map[AllocationId]Allocation, error) {
@@ -138,7 +138,7 @@ func (s *state{{.v}}) GetAllocations(clientIdAddr address.Address) (map[Allocati
 
 	retMap := make(map[AllocationId]Allocation, len(v{{.v}}Map))
 	for k, v := range v{{.v}}Map {
-		retMap[AllocationId(k)] = Allocation(v)
+		retMap[AllocationId(k)] = {{if ne .v 9}}Allocation(v){{else}}v{{end}}
 	}
 
 	return retMap, err
@@ -153,7 +153,7 @@ func (s *state{{.v}}) GetAllAllocations() (map[AllocationId]Allocation, error) {
 
 	retMap := make(map[AllocationId]Allocation, len(v{{.v}}Map))
 	for k, v := range v{{.v}}Map {
-		retMap[AllocationId(k)] = Allocation(v)
+		retMap[AllocationId(k)] = {{if ne .v 9}}Allocation(v){{else}}v{{end}}
 	}
 
 	return retMap, err
@@ -164,8 +164,8 @@ func (s *state{{.v}}) GetClaim(providerIdAddr address.Address, claimId verifreg9
 {{if (le .v 8)}}
     return nil, false, xerrors.Errorf("unsupported in actors v{{.v}}")
 {{else}}
-	claim, ok, err := s.FindClaim(s.store, providerIdAddr, verifreg{{.v}}.ClaimId(claimId))
-	return (*Claim)(claim), ok, err
+	claim, ok, err := s.FindClaim(s.store, providerIdAddr, {{if ne .v 9}}verifreg{{.v}}.{{end}}ClaimId(claimId))
+	return {{if ne .v 9}}(*Claim)(claim){{else}}claim{{end}}, ok, err
 {{end}}
 }
 
@@ -177,7 +177,7 @@ func (s *state{{.v}}) GetClaims(providerIdAddr address.Address) (map[ClaimId]Cla
 
 	retMap := make(map[ClaimId]Claim, len(v{{.v}}Map))
 	for k, v := range v{{.v}}Map {
-		retMap[ClaimId(k)] = Claim(v)
+		retMap[ClaimId(k)] = {{if ne .v 9}}Claim(v){{else}}v{{end}}
 	}
 
 	return retMap, err
@@ -193,7 +193,7 @@ func (s *state{{.v}}) GetAllClaims() (map[ClaimId]Claim, error) {
 
 	retMap := make(map[ClaimId]Claim, len(v{{.v}}Map))
 	for k, v := range v{{.v}}Map {
-		retMap[ClaimId(k)] = Claim(v)
+		retMap[ClaimId(k)] = {{if ne .v 9}}Claim(v){{else}}v{{end}}
 	}
 
 	return retMap, err
