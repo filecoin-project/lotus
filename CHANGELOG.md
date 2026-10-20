@@ -16,6 +16,7 @@
 ## 🐛 Bug Fixes
 
 - fix(gateway): `StateSearchMsg` and `StateWaitMsg` now clamp every negative lookback limit to the gateway's message lookback bound. ([filecoin-project/lotus#13934](https://github.com/filecoin-project/lotus/pull/13934))
+- fix(splitstore): excessive memory use after a snapshot import (regression in v1.38.0). ([filecoin-project/lotus#13943](https://github.com/filecoin-project/lotus/pull/13943))
 
 ## 👌 Improvements
 
