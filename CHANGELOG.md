@@ -15,10 +15,34 @@
 
 ## 🐛 Bug Fixes
 
+## 👌 Improvements
+
+# Node v1.38.2 / 2026-10-20
+
+This Node-only patch release fixes excessive splitstore memory use during initial warmup after a snapshot import and during `lotus-shed splitstore check`. It also fixes the gateway message lookback bound for negative limits.
+
+## 🐛 Bug Fixes
+
 - fix(gateway): `StateSearchMsg` and `StateWaitMsg` now clamp every negative lookback limit to the gateway's message lookback bound. ([filecoin-project/lotus#13934](https://github.com/filecoin-project/lotus/pull/13934))
 - fix(splitstore): excessive memory use after a snapshot import (regression in v1.38.0). ([filecoin-project/lotus#13943](https://github.com/filecoin-project/lotus/pull/13943))
 
-## 👌 Improvements
+## 📝 Changelog
+
+[Changes since v1.38.1](https://github.com/filecoin-project/lotus/compare/v1.38.1...v1.38.2)
+
+## 👨‍👩‍👧‍👦 Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Steve Loeppky | 6 | +416/-231 | 32 |
+| LexLuthr | 1 | +105/-8 | 3 |
+| Rod Vagg | 2 | +99/-3 | 6 |
+| Phi-rjan | 2 | +89/-3 | 2 |
+| Kaif | 1 | +14/-4 | 3 |
+| zoupingcenter | 1 | +4/-4 | 1 |
+| luangucun | 1 | +4/-4 | 1 |
+| elonfliter | 1 | +3/-4 | 1 |
+| kleonyuan | 1 | +3/-2 | 2 |
 
 # Node v1.38.1 / 2026-10-13
 
