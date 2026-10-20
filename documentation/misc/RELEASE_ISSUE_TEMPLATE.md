@@ -187,7 +187,7 @@
 <!--  {{if not $stable}}{{$tagSuffix = printf "-%s" $target}}{{end}}-->
 <!--  {{if $stable}}-->
 ## Stable Release
-<details{{if $.NoRCRelease}} open{{end}}>
+<details>
   <summary>Section</summary>
 <!--  {{else}}-->
 ### {{$target}}
@@ -315,6 +315,7 @@
 - [ ] Confirm any security-advisory staging needed for this release has an owner and follows [policy](https://github.com/filecoin-project/lotus/blob/master/LOTUS_RELEASE_FLOW.md#security-fix-policy).
 <!--  {{end}}-->
 - [ ] Mark the PR "ready for review" (non-draft)
+- [ ] Confirm the release PR has the required approving maintainer review(s).
 - [ ] Squash-merge the PR
    - Merging the PR will trigger a CI run that will build assets, attach the assets to the GitHub release, publish the GitHub release, and create the corresponding git tag.
 - [ ] Wait for the post-merge Release workflow to finish, then verify each published release.
