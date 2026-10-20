@@ -187,7 +187,7 @@
 <!--  {{if not $stable}}{{$tagSuffix = printf "-%s" $target}}{{end}}-->
 <!--  {{if $stable}}-->
 ## Stable Release
-<details{{if $.NoRCRelease}} open{{end}}>
+<details>
   <summary>Section</summary>
 <!--  {{else}}-->
 ### {{$target}}
