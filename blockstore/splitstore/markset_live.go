@@ -43,8 +43,12 @@ func (s *liveMarkSet) markLive(c cid.Cid) (fresh, visit bool, err error) {
 	key := string(c.Hash())
 
 	if !scansLinks(c) {
-		// before marking, a walker that sees the mark must see this
-		s.noteShadow(key)
+		// Unitary objects cannot shadow a stored block, and walks using a liveMarkSet as their
+		// visitor reach every sector and piece commitment in state, far too many to hold.
+		if !isUnitaryObject(c) {
+			// before marking, a walker that sees the mark must see this
+			s.noteShadow(key)
+		}
 
 		fresh, err = s.MarkSet.Visit(c)
 		return fresh, fresh, err

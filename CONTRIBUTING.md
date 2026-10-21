@@ -58,6 +58,7 @@ If it is unclear why one's title is getting flagged, it the regex defined in [pr
 To expedite the release process, the CHANGELOG is built-up incrementally.
 We enforce that each PR updates CHANGELOG.md or signals that the change doesn't need it.
 If the PR affects users (e.g., new feature, bug fix, system requirements change), update the CHANGELOG.md and add details to the UNRELEASED section.
+For PRs into `master`, at least one line the PR adds to CHANGELOG.md must link to the PR itself (`https://github.com/filecoin-project/lotus/pull/<number>`), so predicted PR numbers are verified. PRs into release branches, which carry entries from other PRs, only need to modify CHANGELOG.md.
 If the change does not require a CHANGELOG.md entry, do one of the following:
 - Add `[skip changelog]` to the PR description
 - Add the label `skip/changelog` to the PR
