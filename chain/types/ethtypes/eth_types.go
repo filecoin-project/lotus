@@ -7,8 +7,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"regexp"
 	mathbig "math/big"
+	"regexp"
 	"strconv"
 	"strings"
 
