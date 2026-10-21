@@ -272,6 +272,9 @@
       - Each change appears once. Check the previous stable release so already-released changes are not presented as new.
       - Never edit historical entries.
       - End with `## 📝 Changelog` (compare link `PREVIOUS_TAG...TARGET_TAG` using tags, not branches) and `## 👨‍👩‍👧‍👦 Contributors` (from `./scripts/mkreleaselog PREVIOUS_TAG HEAD`).
+<!--      {{if eq $.Type "Node and Miner"}}-->
+      - Node and miner share one section here but can have different previous tags (for example `v1.38.2` and `miner/v1.38.0`). If they differ, list one compare link per project, and build the Contributors table from the node range.
+<!--      {{end}}-->
       -->
    - [ ] After pushing CHANGELOG edits, check the draft GitHub release body. Every Release workflow run regenerates it from `CHANGELOG.md`, so fix the text there, not on GitHub.
       <!-- agent:
