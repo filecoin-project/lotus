@@ -45,9 +45,9 @@ func (s *moveSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi.
 		return false, false, xerrors.Errorf("getting worker paths: %w", err)
 	}
 
-	workerPaths := map[storiface.ID]int{}
+	workerPaths := map[storiface.ID]struct{}{}
 	for _, path := range paths {
-		workerPaths[path.ID] = 0
+		workerPaths[path.ID] = struct{}{}
 	}
 
 	ssize, err := spt.SectorSize()
@@ -62,9 +62,11 @@ func (s *moveSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi.
 		return false, false, xerrors.Errorf("finding preferred storage: %w", err)
 	}
 
+	var local bool
 	for _, info := range preferred {
 		if _, ok := workerPaths[info.ID]; ok {
-			workerPaths[info.ID]++
+			local = true
+			break
 		}
 	}
 
@@ -73,20 +75,12 @@ func (s *moveSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi.
 		return false, false, xerrors.Errorf("finding best dest storage: %w", err)
 	}
 
-	var ok, pref bool
+	var ok bool
 	requested := s.alloc
 
 	for _, info := range best {
-		if n, has := workerPaths[info.ID]; has {
+		if _, has := workerPaths[info.ID]; has {
 			ok = true
-
-			// if the worker has a local path with the sector already in it
-			// prefer that worker; This usually meant that the move operation is
-			// either a no-op because the sector is already in the correct path,
-			// or the move a local move.
-			if n > 0 {
-				pref = true
-			}
 
 			requested = requested.SubAllowed(info.AllowTypes, info.DenyTypes)
 
@@ -96,6 +90,11 @@ func (s *moveSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi.
 			}
 		}
 	}
+
+	// if the worker has a local path with the sector already in it, and a
+	// destination path, prefer that worker; The move operation is either a
+	// no-op because the sector is already in the correct path, or a local move.
+	pref := ok && local
 
 	return (ok && s.allowRemote) || pref, pref, nil
 }

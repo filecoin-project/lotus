@@ -15,6 +15,8 @@
 
 ## 🐛 Bug Fixes
 
+- fix(miner): with `DisallowRemoteFinalize` enabled, sectors no longer get stuck in `FinalizeSector` when a worker has both the sealing path with the sector and a long-term storage path. Such workers are now also preferred for the move when remote finalize is allowed. ([filecoin-project/lotus#13948](https://github.com/filecoin-project/lotus/pull/13948))
+
 ## 👌 Improvements
 
 # Node v1.38.2 / 2026-10-20
