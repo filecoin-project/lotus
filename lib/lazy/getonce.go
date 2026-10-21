@@ -2,6 +2,7 @@ package lazy
 
 import (
 	"context"
+	"errors"
 	"sync"
 )
 
@@ -30,7 +31,8 @@ func (l *Lazy[T]) Val() (T, error) {
 type LazyCtx[T any] struct {
 	Get func(context.Context) (T, error)
 
-	once sync.Once
+	lk   sync.Mutex
+	done bool
 
 	val T
 	err error
@@ -42,9 +44,18 @@ func MakeLazyCtx[T any](get func(ctx context.Context) (T, error)) *LazyCtx[T] {
 	}
 }
 
+// Val calls Get once and caches the result. A failed call whose context was
+// cancelled is not cached, so the next caller with a live context calls Get again.
 func (l *LazyCtx[T]) Val(ctx context.Context) (T, error) {
-	l.once.Do(func() {
-		l.val, l.err = l.Get(ctx)
-	})
+	l.lk.Lock()
+	defer l.lk.Unlock()
+
+	if !l.done {
+		val, err := l.Get(ctx)
+		if err != nil && errors.Is(ctx.Err(), context.Canceled) {
+			return val, err
+		}
+		l.val, l.err, l.done = val, err, true
+	}
 	return l.val, l.err
 }
