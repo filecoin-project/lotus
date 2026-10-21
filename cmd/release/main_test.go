@@ -172,6 +172,10 @@ func TestReleaseIssueTemplateRenders(t *testing.T) {
 							require.NotContains(t, buffer.String(), "No additional backport PR is needed")
 							require.Contains(t, buffer.String(), "v"+baseTag+"^{commit}:refs/heads/release/")
 							require.Contains(t, buffer.String(), "build: backport changes for")
+							if releaseType == "Node and Miner" {
+								// A combined release shares the node tag as its source base; a matching miner tag may not exist.
+								require.NotContains(t, buffer.String(), "miner/v"+baseTag)
+							}
 						}
 					})
 				}
