@@ -17,6 +17,8 @@
 
 ## 🐛 Bug Fixes
 
+- fix(paths): a file in a sector directory that isn't named like a sector, such as a stray `nohup.out`, is now skipped with a warning instead of failing to open the storage path and stopping `lotus-miner` or `lotus-worker` from starting. ([filecoin-project/lotus#13950](https://github.com/filecoin-project/lotus/pull/13950))
+
 ## 👌 Improvements
 
 # Node v1.38.2 / 2026-10-20
