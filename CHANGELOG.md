@@ -15,7 +15,7 @@
 
 ## 🐛 Bug Fixes
 
-- fix(miner): moving sector files that are already in long-term storage, for example the sealed and cache files in `FinalizeReplicaUpdate`, is no longer stuck in the scheduler when the storage path is full. ([filecoin-project/lotus#TBD](https://github.com/filecoin-project/lotus/pull/TBD))
+- fix(miner): moving sector files that are already in long-term storage, for example the sealed and cache files in `FinalizeReplicaUpdate`, is no longer stuck in the scheduler when the storage path is full. ([filecoin-project/lotus#13949](https://github.com/filecoin-project/lotus/pull/13949))
 
 ## 👌 Improvements
 
