@@ -107,7 +107,16 @@
 <!--    {{end}}-->
 <!--  {{end}}-->
 <!--  {{if contains "Miner" .Type}}-->
-<!--    {{if .BaseTag}}-->
+<!--    {{if and .BaseTag (contains "Node" .Type)}}-->
+- [ ] Fork a new `release/miner/v{{.Tag}}` branch from the same `v{{.BaseTag}}` node tag as the node release branch (not `master`) and make any further release-related changes to this branch.
+   - A combined release shares one source base, so do not assume a miner tag exists at the same version.
+   - Suggested commands:
+      ```sh
+      git fetch origin --tags
+      git push origin v{{.BaseTag}}^{commit}:refs/heads/release/miner/v{{.Tag}}
+      git ls-remote --heads origin release/miner/v{{.Tag}}
+      ```
+<!--    {{else if .BaseTag}}-->
 - [ ] Fork a new `release/miner/v{{.Tag}}` branch from the `miner/v{{.BaseTag}}` tag (not `master`) and make any further release-related changes to this branch.
    - Suggested commands:
       ```sh
@@ -263,6 +272,9 @@
       - Each change appears once. Check the previous stable release so already-released changes are not presented as new.
       - Never edit historical entries.
       - End with `## 📝 Changelog` (compare link `PREVIOUS_TAG...TARGET_TAG` using tags, not branches) and `## 👨‍👩‍👧‍👦 Contributors` (from `./scripts/mkreleaselog PREVIOUS_TAG HEAD`).
+<!--      {{if eq $.Type "Node and Miner"}}-->
+      - Node and miner share one section here but can have different previous tags (for example `v1.38.2` and `miner/v1.38.0`). If they differ, list one compare link per project, and build the Contributors table from the node range.
+<!--      {{end}}-->
       -->
    - [ ] After pushing CHANGELOG edits, check the draft GitHub release body. Every Release workflow run regenerates it from `CHANGELOG.md`, so fix the text there, not on GitHub.
       <!-- agent:
@@ -294,7 +306,13 @@
       - A change already in the previous stable release (often via a backport with a different commit) is not missing.
       -->
 <!--  {{if $.BaseTag}}-->
-      - PREVIOUS_TAG is the base release: `v{{$.BaseTag}}` for node and `miner/v{{$.BaseTag}}` for miner.
+<!--    {{if eq $.Type "Node and Miner"}}-->
+      - PREVIOUS_TAG for node is the base release `v{{$.BaseTag}}`. For miner it is the latest stable miner tag, which may be older: `git tag -l 'miner/v*' | grep -v '-' | sort -V -r | head -n 1`. Review miner history from that tag, accounting for node fixes already in the `v{{$.BaseTag}}` source base.
+<!--    {{else if contains "Node" $.Type}}-->
+      - PREVIOUS_TAG is the base release `v{{$.BaseTag}}`.
+<!--    {{else}}-->
+      - PREVIOUS_TAG is the base release `miner/v{{$.BaseTag}}`.
+<!--    {{end}}-->
       - Every commit in `git log --oneline --graph PREVIOUS_TAG..HEAD` should be a backported fix or a release commit; compare against the `release/backport` PRs rather than everything merged into master.
 <!--  {{else}}-->
       - Find the previous stable tag first:
