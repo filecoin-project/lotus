@@ -78,9 +78,11 @@ func TestEthBigIntMarshalJSON(t *testing.T) {
 func TestEthBigIntUnmarshalJSON(t *testing.T) {
 	testcases := []TestCase{
 		{[]byte("\"0x0\""), EthBigInt(big.MustFromString("0"))},
+		{[]byte("\"0x1\""), EthBigInt(big.MustFromString("1"))},
 		{[]byte("\"0x41\""), EthBigInt(big.MustFromString("65"))},
 		{[]byte("\"0x400\""), EthBigInt(big.MustFromString("1024"))},
 		{[]byte("\"0xff1000000000000000000000000\""), EthBigInt(big.MustFromString("323330131220712761719252861321216"))},
+		{[]byte("null"), EthBigInt(big.Zero())},
 	}
 
 	for _, tc := range testcases {
@@ -93,6 +95,38 @@ func TestEthBigIntUnmarshalJSON(t *testing.T) {
 	for _, in := range []string{`"0xhello"`, `"garbage"`, `"0xzz"`, `"0x"`, `""`, `"0x10x1"`} {
 		var i EthBigInt
 		require.Error(t, i.UnmarshalJSON([]byte(in)), "expected %s to be rejected", in)
+	}
+
+	for _, in := range []string{
+		`"0x-1"`,
+		`"-0x1"`,
+		`"0x-12"`,
+		`"-0x12"`,
+		`"0x-de0b6b3a7640000"`,
+		`"0x+1"`,
+		`"+0x1"`,
+		`"0x+12"`,
+		`"+0x12"`,
+		`"-1"`,
+		`"+1"`,
+	} {
+		var i EthBigInt
+		err := i.UnmarshalJSON([]byte(in))
+		require.Error(t, err, "expected %s to be rejected", in)
+		require.ErrorContains(t, err, "quantities are unsigned", "expected unsigned error for %s", in)
+	}
+
+	for _, callJSON := range []string{
+		`{"value":"0x-1"}`,
+		`{"value":"-0x1"}`,
+		`{"gasPrice":"0x-1"}`,
+		`{"gasPrice":"-0x1"}`,
+		`{"gasPrice":"0x-de0b6b3a7640000"}`,
+		`{"maxFeePerGas":"0x-1"}`,
+		`{"maxFeePerGas":"-0x1"}`,
+	} {
+		var call EthCall
+		require.Error(t, json.Unmarshal([]byte(callJSON), &call), "expected %s to fail unmarshal", callJSON)
 	}
 
 	var call EthCall
