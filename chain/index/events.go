@@ -415,7 +415,7 @@ func (si *SqliteIndexer) getEventRangeCoverage(ctx context.Context, minHeight, m
 		return coverage, nil
 	}
 
-	ts, err := si.cs.GetTipsetByHeight(ctx, maxHeight, head, true)
+	ts, err := si.cs.GetTipsetByHeightBounded(ctx, maxHeight, head, true)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get canonical tipset at or before height %d: %w", maxHeight, err)
 	}

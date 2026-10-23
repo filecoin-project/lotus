@@ -19,6 +19,8 @@
 
 ## 👌 Improvements
 
+- feat(eth): a lookup by block number that stalls on the chain height index warming after a restart now fails after 5s with a `-32002` "resource unavailable" error instead of timing out. Go API: `api.ErrExpensiveFork` is now `api.ErrResourceUnavailable` with a `Reason`. ([filecoin-project/lotus#13959](https://github.com/filecoin-project/lotus/pull/13959))
+
 # Node and Miner v1.38.3 / 2026-10-21
 
 This patch release rebuilds the Lotus node, miner and worker binaries and Docker images with Go 1.26.10, which makes `crypto/x509` reject known compromised intermediate certificates ([GO-2026-6809](https://pkg.go.dev/vuln/GO-2026-6809)). It has no other functional changes since Node v1.38.2, and aligns the Miner release with Node at v1.38.3 (the previous Miner release was `miner/v1.38.0`).

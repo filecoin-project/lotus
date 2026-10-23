@@ -194,9 +194,9 @@ func (tsr *tipSetResolver) GetTipsetByBlockNumber(ctx context.Context, blkParam 
 	if abi.ChainEpoch(num) > head.Height()-1 {
 		return nil, xerrors.New("requested a future epoch (beyond 'latest')")
 	}
-	ts, err := tsr.cs.GetTipsetByHeight(ctx, abi.ChainEpoch(num), head, true)
+	ts, err := tsr.tipSetAtHeight(ctx, abi.ChainEpoch(num), head)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get tipset at height: %v", num)
+		return nil, err
 	}
 	if strict && ts.Height() != abi.ChainEpoch(num) {
 		return nil, api.NewErrNullRound(abi.ChainEpoch(num))
@@ -217,9 +217,9 @@ func (tsr *tipSetResolver) GetTipsetByBlockNumberOrHash(ctx context.Context, blk
 		if height > head.Height()-1 {
 			return nil, xerrors.New("requested a future epoch (beyond 'latest')")
 		}
-		ts, err := tsr.cs.GetTipsetByHeight(ctx, height, head, true)
+		ts, err := tsr.tipSetAtHeight(ctx, height, head)
 		if err != nil {
-			return nil, xerrors.Errorf("failed to get tipset at height: %v", height)
+			return nil, err
 		}
 		if strict && ts.Height() != height {
 			return nil, api.NewErrNullRound(height)
@@ -236,9 +236,9 @@ func (tsr *tipSetResolver) GetTipsetByBlockNumberOrHash(ctx context.Context, blk
 		// verify that the tipset is in the canonical chain
 		if blkParam.RequireCanonical {
 			// walk up the current chain (our head) until we reach ts.Height()
-			walkTs, err := tsr.cs.GetTipsetByHeight(ctx, ts.Height(), head, true)
+			walkTs, err := tsr.tipSetAtHeight(ctx, ts.Height(), head)
 			if err != nil {
-				return nil, xerrors.Errorf("failed to get tipset at height: %v", ts.Height())
+				return nil, err
 			}
 
 			// verify that it equals the expected tipset
@@ -251,6 +251,21 @@ func (tsr *tipSetResolver) GetTipsetByBlockNumberOrHash(ctx context.Context, blk
 	}
 
 	return nil, xerrors.New("invalid block param")
+}
+
+// tipSetAtHeight resolves height from head, or the tipset before it if height
+// is a null round. A height-index-cold api.ErrResourceUnavailable is returned
+// unwrapped so go-jsonrpc maps it to its code.
+func (tsr *tipSetResolver) tipSetAtHeight(ctx context.Context, height abi.ChainEpoch, head *types.TipSet) (*types.TipSet, error) {
+	ts, err := tsr.cs.GetTipsetByHeightBounded(ctx, height, head, true)
+	if err != nil {
+		var unavailable *api.ErrResourceUnavailable
+		if errors.As(err, &unavailable) {
+			return nil, unavailable
+		}
+		return nil, xerrors.Errorf("failed to get tipset at height %d: %w", height, err)
+	}
+	return ts, nil
 }
 
 func (tsr *tipSetResolver) GetTipSetByHash(ctx context.Context, blkParam ethtypes.EthHash) (*types.TipSet, error) {

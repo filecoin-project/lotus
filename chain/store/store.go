@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -48,6 +49,10 @@ var (
 
 var DefaultTipSetCacheSize = 8192
 var DefaultMsgMetaCacheSize = 2048
+
+// heightLookupBudget bounds GetTipsetByHeightBounded. It sits under common
+// Ethereum client timeouts so callers see why a lookup failed.
+var heightLookupBudget = 5 * time.Second
 
 var ErrNotifeeDone = errors.New("notifee is done and should be removed")
 
@@ -129,6 +134,9 @@ type ChainStore struct {
 
 	storeEvents bool
 
+	warmOnce sync.Once
+
+	ctx      context.Context
 	cancelFn context.CancelFunc
 	wg       sync.WaitGroup
 }
@@ -154,6 +162,7 @@ func NewChainStore(chainBs bstore.Blockstore, stateBs bstore.Blockstore, ds dsto
 		tipsets:              make(map[abi.ChainEpoch][]cid.Cid),
 		mmCache:              c,
 		tsCache:              tsc,
+		ctx:                  ctx,
 		cancelFn:             cancel,
 		journal:              j,
 	}
@@ -1273,6 +1282,57 @@ func (cs *ChainStore) TryFillTipSet(ctx context.Context, ts *types.TipSet) (*Ful
 		out = append(out, fb)
 	}
 	return NewFullTipSet(out), nil
+}
+
+// GetTipsetByHeightBounded is GetTipsetByHeight for request paths. Resolving a
+// height below the warmed height index loads every header down to it, which
+// can take minutes on a deep chain after a restart. A lookup that exceeds
+// heightLookupBudget fails with a height-index-cold api.ErrResourceUnavailable
+// and starts the warm-up; filled entries are kept, so a retry gets further.
+func (cs *ChainStore) GetTipsetByHeightBounded(ctx context.Context, h abi.ChainEpoch, ts *types.TipSet, prev bool) (*types.TipSet, error) {
+	lctx, cancel := context.WithTimeout(ctx, heightLookupBudget)
+	defer cancel()
+
+	res, err := cs.GetTipsetByHeight(lctx, h, ts, prev)
+	if err == nil || lctx.Err() == nil {
+		return res, err
+	}
+
+	cs.WarmHeightIndex()
+	coldErr := api.NewErrHeightIndexCold(h, cs.cindex.ReadyTo())
+	if ctx.Err() != nil {
+		// The caller is gone; keep the cancellation matchable.
+		return nil, fmt.Errorf("%w: %w", coldErr, ctx.Err())
+	}
+	return nil, coldErr
+}
+
+// WarmHeightIndex fills the height index from the current head down to genesis
+// in the background, once, so deep GetTipsetByHeight lookups are cheap.
+func (cs *ChainStore) WarmHeightIndex() {
+	cs.warmOnce.Do(func() {
+		head := cs.GetHeaviestTipSet()
+		if head == nil {
+			return
+		}
+
+		cs.wg.Add(1)
+		go func() {
+			defer cs.wg.Done()
+
+			start := time.Now()
+			log.Infow("warming chain height index", "head", head.Height())
+			err := cs.cindex.Warm(cs.ctx, head)
+			if cs.ctx.Err() != nil {
+				return
+			}
+			if err != nil {
+				log.Warnw("chain height index warm-up stopped", "readyTo", cs.cindex.ReadyTo(), "took", time.Since(start), "error", err)
+				return
+			}
+			log.Infow("chain height index warm", "readyTo", cs.cindex.ReadyTo(), "took", time.Since(start))
+		}()
+	})
 }
 
 // GetTipsetByHeight returns the tipset on the chain behind 'ts' at the given
