@@ -13,7 +13,11 @@
 
 ## ⭐ New Features
 
+- feat(shed): `lotus-shed chainindex restore-blooms` restores missing tipset blooms on a stopped node from its existing index. ([filecoin-project/lotus#13960](https://github.com/filecoin-project/lotus/pull/13960))
+
 ## 🐛 Bug Fixes
+
+- fix(chainindex): a tipset bloom rebuilt from the index, as `lotus index validate-backfill` does, now includes the emitter of an event with no topics or data, such as EVM `LOG0` with empty data, matching the bloom written at indexing time. ([filecoin-project/lotus#13960](https://github.com/filecoin-project/lotus/pull/13960))
 
 - fix(paths): a file in a sector directory that isn't named like a sector, such as a stray `nohup.out`, is now skipped with a warning instead of failing to open the storage path and stopping `lotus-miner` or `lotus-worker` from starting. ([filecoin-project/lotus#13950](https://github.com/filecoin-project/lotus/pull/13950))
 
