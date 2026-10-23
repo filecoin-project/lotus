@@ -4,7 +4,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 
-	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 )
@@ -36,12 +35,12 @@ func LatestActorsAt(upgradeHeight abi.ChainEpoch) EnsembleOpt {
 		})
 	/* inline-gen start */
 	return UpgradeSchedule(stmgr.Upgrade{
-		Network: network.Version28,
+		Network: network.Version29,
 		Height:  -1,
 	}, stmgr.Upgrade{
-		Network:   network.Version29,
+		Network:   network.Version30,
 		Height:    upgradeHeight,
-		Migration: filcns.UpgradeActorsV19With(buildconstants.NeutralSolsticeRewardBootstrapParams),
+		Migration: filcns.UpgradeActorsV20,
 	})
 	/* inline-gen end */
 }
