@@ -82,11 +82,15 @@ func NewEthEventsAPI(
 func (e *ethEvents) EthGetLogs(ctx context.Context, filterSpec *ethtypes.EthFilterSpec) (*ethtypes.EthFilterResult, error) {
 	ces, err := e.ethGetEventsForFilter(ctx, filterSpec)
 	if err != nil {
-		// Propagate ErrBlockRangeExceeded unwrapped so go-jsonrpc can match the
-		// type and return the correct -32005 error code.
+		// Propagate these unwrapped so go-jsonrpc can match the type and
+		// return the correct error code.
 		var bre *api.ErrBlockRangeExceeded
 		if errors.As(err, &bre) {
 			return nil, bre
+		}
+		var unavailable *api.ErrResourceUnavailable
+		if errors.As(err, &unavailable) {
+			return nil, unavailable
 		}
 		return nil, xerrors.Errorf("failed to get events for filter: %w", err)
 	}

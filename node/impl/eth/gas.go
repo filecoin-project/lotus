@@ -367,7 +367,7 @@ func (e *ethGas) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam etht
 	invokeResult, err := e.applyMessage(ctx, msg, ts.Key())
 	if err != nil {
 		// Don't wrap: the jsonrpc layer maps the concrete error type to its code and
-		// codec (ErrExecutionReverted, ErrExpensiveFork, ErrNullRound).
+		// codec (ErrExecutionReverted, ErrResourceUnavailable, ErrNullRound).
 		return nil, err
 	}
 

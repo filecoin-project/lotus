@@ -215,6 +215,10 @@ func (d *dummyChainStore) GetTipsetByHeight(ctx context.Context, h abi.ChainEpoc
 	return ts, nil
 }
 
+func (d *dummyChainStore) GetTipsetByHeightBounded(ctx context.Context, h abi.ChainEpoch, ts *types.TipSet, prev bool) (*types.TipSet, error) {
+	return d.GetTipsetByHeight(ctx, h, ts, prev)
+}
+
 func (d *dummyChainStore) IsStoringEvents() bool {
 	return true
 }

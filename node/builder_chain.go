@@ -306,6 +306,8 @@ func ConfigFullNode(c interface{}) Option {
 				Override(new(eth.MessagePool), From(new(*messagepool.MessagePool))),
 				Override(new(eth.GasAPI), From(new(full.GasModule))),
 
+				Override(WarmHeightIndexKey, modules.WarmHeightIndex),
+
 				Override(new(eth.EthBasicAPI), eth.NewEthBasicAPI),
 				Override(new(eth.EthSendAPI), eth.NewEthSendAPI),
 				Override(new(eth.EthEventsInternal), modules.MakeEthEventsExtended(cfg.Events, cfg.Fevm.EnableEthRPC)),
