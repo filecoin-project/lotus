@@ -16,6 +16,7 @@
 ## ⭐ New Features
 
 - feat(genesis): 2k devnets now start at nv29. A genesis template's optional `RewardSWA` installs an account or multisig as the reward actor's FIP-0118 stream weight actor, so a fresh network can change reward weights without a migration; unset, the SWA stays the system actor. ([filecoin-project/lotus#13967](https://github.com/filecoin-project/lotus/pull/13967))
+- feat(shed): `lotus-shed chainindex restore-blooms` restores missing tipset blooms on a stopped node from its existing index. ([filecoin-project/lotus#13960](https://github.com/filecoin-project/lotus/pull/13960))
 
 ## 🐛 Bug Fixes
 
@@ -23,7 +24,7 @@
 - fix(eth): `eth_getLogs`, `eth_getFilterLogs` and transaction receipts now include EVM `LOG0` events with empty data, matching `eth_subscribe`. ([filecoin-project/lotus#13961](https://github.com/filecoin-project/lotus/pull/13961))
 - fix(miner): moving sector files that are already in long-term storage, for example the sealed and cache files in `FinalizeReplicaUpdate`, is no longer stuck in the scheduler when the storage path is full. ([filecoin-project/lotus#13949](https://github.com/filecoin-project/lotus/pull/13949))
 - fix(chainindex): historical `eth_getLogs` and `GetActorEventsRaw` range queries no longer time out after a node restart; the range check now starts from the chain index instead of walking back from head. ([filecoin-project/lotus#13957](https://github.com/filecoin-project/lotus/pull/13957))
-
+- fix(chainindex): a tipset bloom rebuilt from the index, as `lotus index validate-backfill` does, now includes the emitter of an event with no topics or data, such as EVM `LOG0` with empty data, matching the bloom written at indexing time. ([filecoin-project/lotus#13960](https://github.com/filecoin-project/lotus/pull/13960))
 
 ## 👌 Improvements
 
