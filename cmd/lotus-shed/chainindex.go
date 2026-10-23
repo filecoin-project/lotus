@@ -21,10 +21,10 @@ import (
 
 const (
 	restoreBatch = 2880
-	// restoreQuietStretch is the span of unverified tipsets worth reporting:
-	// a day without indexed events is plausible early after FEVM, but is also
-	// what event storage being off looks like
-	restoreQuietStretch = 2880
+	// restoreQuietStretch is the span of unverified tipsets worth reporting.
+	// Natural runs are a few epochs on mainnet and calibnet, while a snapshot
+	// import leaves its whole message window, at least finality, without events
+	restoreQuietStretch = policy.ChainFinality / 2
 )
 
 var chainIndexCmd = &cli.Command{
@@ -51,9 +51,10 @@ The index proves a tipset's events are complete if the tipset has no messages, h
 or predates FEVM. A tipset with messages but no indexed events after FEVM is unverified: it may
 have emitted none, or its events may never have been indexed, for example because it was indexed
 from a snapshot import or with event storage off. Unverified tipsets are restored too, with an
-empty bloom, so queries over them answer rather than fail, and stretches of a day or more of them
-are listed with the 'lotus index validate-backfill' command that verifies them against the chain
-and repairs any that are wrong. Tipsets whose indexed events are reverted are left alone and listed.
+empty bloom, so queries over them answer rather than fail, and stretches of 450 epochs (half of
+finality) or more of them are listed with the 'lotus index validate-backfill' command that verifies
+them against the chain and repairs any that are wrong. Tipsets whose indexed events are reverted are
+left alone and listed.
 
 The Lotus daemon must be stopped. Back up chainindex.db, -wal and -shm together first. Opening the
 index migrates its schema as the daemon would, which can prevent a downgrade to an older Lotus.

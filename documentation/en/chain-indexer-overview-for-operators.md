@@ -246,7 +246,7 @@ The chain index stores a logs bloom per tipset, and treats a tipset without one 
 lotus-shed --repo <lotus_repo> chainindex restore-blooms [--from <epoch>] [--to <epoch>] [--dry-run]
 ```
 
-The index proves a tipset's events are complete if it has no messages, has indexed events, or predates FEVM. A tipset with messages but no indexed events after FEVM may have emitted none, or its events may never have been indexed, for example if it was indexed from a snapshot import or with event storage off. These are restored too, with an empty bloom, so queries over them answer rather than fail, and the command lists stretches of a day or more of them, each with the `lotus index validate-backfill` command that verifies it against the chain and repairs anything wrong once the daemon is back up. Use `--dry-run` first to see the counts.
+The index proves a tipset's events are complete if it has no messages, has indexed events, or predates FEVM. A tipset with messages but no indexed events after FEVM may have emitted none, or its events may never have been indexed, for example if it was indexed from a snapshot import or with event storage off. These are restored too, with an empty bloom, so queries over them answer rather than fail, and the command lists stretches of half of finality (450 epochs) or more of them, each with the `lotus index validate-backfill` command that verifies it against the chain and repairs anything wrong once the daemon is back up. Use `--dry-run` first to see the counts.
 
 ## Regular Checks
 
