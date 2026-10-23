@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -44,9 +45,9 @@ const ELimitExceeded jsonrpc.ErrorCode = -32005
 // ErrTransactionRejected.
 const ETransactionRejected jsonrpc.ErrorCode = -32003
 
-// EExpensiveFork is the EIP-1474 "resource unavailable" code, used for ErrExpensiveFork when an
-// explicit call targets a block whose state is not available to serve.
-const EExpensiveFork jsonrpc.ErrorCode = -32002
+// EResourceUnavailable is the EIP-1474 "resource unavailable" code, used for
+// ErrResourceUnavailable.
+const EResourceUnavailable jsonrpc.ErrorCode = -32002
 
 // EInvalidInput is the EIP-1474 "invalid input" code, used for ErrInvalidInput.
 const EInvalidInput jsonrpc.ErrorCode = -32000
@@ -92,8 +93,8 @@ var (
 	_ jsonrpc.RPCErrorCodec = (*ErrBlockRangeExceeded)(nil)
 	_ error                 = (*ErrTransactionRejected)(nil)
 	_ jsonrpc.RPCErrorCodec = (*ErrTransactionRejected)(nil)
-	_ error                 = (*ErrExpensiveFork)(nil)
-	_ jsonrpc.RPCErrorCodec = (*ErrExpensiveFork)(nil)
+	_ error                 = (*ErrResourceUnavailable)(nil)
+	_ jsonrpc.RPCErrorCodec = (*ErrResourceUnavailable)(nil)
 	_ error                 = (*ErrInvalidInput)(nil)
 	_ jsonrpc.RPCErrorCodec = (*ErrInvalidInput)(nil)
 )
@@ -114,7 +115,7 @@ func init() {
 	RPCErrors.Register(EInvalidParams, new(*ErrInvalidParams))
 	RPCErrors.Register(ELimitExceeded, new(*ErrBlockRangeExceeded))
 	RPCErrors.Register(ETransactionRejected, new(*ErrTransactionRejected))
-	RPCErrors.Register(EExpensiveFork, new(*ErrExpensiveFork))
+	RPCErrors.Register(EResourceUnavailable, new(*ErrResourceUnavailable))
 	RPCErrors.Register(EInvalidInput, new(*ErrInvalidInput))
 }
 
@@ -394,29 +395,63 @@ func (e *ErrTransactionRejected) Is(target error) bool {
 	return ok
 }
 
-// ErrExpensiveFork signals that an explicit call cannot be served at the requested epoch
-// because an expensive state migration would have to run on demand to serve it.
-type ErrExpensiveFork struct {
+// ResourceUnavailableReason identifies the cause of an ErrResourceUnavailable.
+// It travels in the JSON-RPC error meta so Go clients can match on it.
+type ResourceUnavailableReason string
+
+const (
+	// ReasonExpensiveFork: an explicit call would have to run an expensive
+	// state migration on demand.
+	ReasonExpensiveFork ResourceUnavailableReason = "expensive-fork"
+	// ReasonHeightIndexCold: resolving a height ran out of time while the node
+	// is still indexing chain heights.
+	ReasonHeightIndexCold ResourceUnavailableReason = "height-index-cold"
+)
+
+// ErrResourceUnavailable signals that a request cannot be served at the
+// requested epoch for the given Reason.
+type ErrResourceUnavailable struct {
+	Reason  ResourceUnavailableReason
 	Epoch   abi.ChainEpoch
 	Message string
 }
 
-func NewErrExpensiveFork(epoch abi.ChainEpoch) *ErrExpensiveFork {
-	return &ErrExpensiveFork{
+type resourceUnavailableMeta struct {
+	Reason ResourceUnavailableReason `json:"reason"`
+}
+
+func NewErrExpensiveFork(epoch abi.ChainEpoch) *ErrResourceUnavailable {
+	return &ErrResourceUnavailable{
+		Reason:  ReasonExpensiveFork,
 		Epoch:   epoch,
 		Message: fmt.Sprintf("required historical state unavailable: refusing explicit call due to state fork at epoch %d", epoch),
 	}
 }
 
-func (e *ErrExpensiveFork) Error() string {
+// NewErrHeightIndexCold reports a lookup of epoch that ran out of time.
+// readyTo is the lowest epoch the height index resolves quickly, or negative
+// if unknown.
+func NewErrHeightIndexCold(epoch, readyTo abi.ChainEpoch) *ErrResourceUnavailable {
+	progress := "not started"
+	if readyTo >= 0 {
+		progress = fmt.Sprintf("ready down to epoch %d", readyTo)
+	}
+	return &ErrResourceUnavailable{
+		Reason:  ReasonHeightIndexCold,
+		Epoch:   epoch,
+		Message: fmt.Sprintf("timed out resolving epoch %d: node is still indexing chain heights (%s), retry later", epoch, progress),
+	}
+}
+
+func (e *ErrResourceUnavailable) Error() string {
 	if e.Message == "" {
-		return "required historical state unavailable: refusing explicit call due to state fork"
+		return fmt.Sprintf("resource unavailable: %s", e.Reason)
 	}
 	return e.Message
 }
 
-func (e *ErrExpensiveFork) FromJSONRPCError(jerr jsonrpc.JSONRPCError) error {
-	if jerr.Code != EExpensiveFork {
+func (e *ErrResourceUnavailable) FromJSONRPCError(jerr jsonrpc.JSONRPCError) error {
+	if jerr.Code != EResourceUnavailable {
 		return fmt.Errorf("unexpected error code: %d", jerr.Code)
 	}
 	e.Message = jerr.Message
@@ -424,21 +459,36 @@ func (e *ErrExpensiveFork) FromJSONRPCError(jerr jsonrpc.JSONRPCError) error {
 	if epoch, ok := jerr.Data.(float64); ok {
 		e.Epoch = abi.ChainEpoch(epoch)
 	}
+	// Nodes that predate the meta only sent expensive-fork refusals.
+	e.Reason = ReasonExpensiveFork
+	if len(jerr.Meta) > 0 {
+		var meta resourceUnavailableMeta
+		if err := json.Unmarshal(jerr.Meta, &meta); err != nil {
+			return fmt.Errorf("decoding resource unavailable meta: %w", err)
+		}
+		e.Reason = meta.Reason
+	}
 	return nil
 }
 
-func (e *ErrExpensiveFork) ToJSONRPCError() (jsonrpc.JSONRPCError, error) {
+func (e *ErrResourceUnavailable) ToJSONRPCError() (jsonrpc.JSONRPCError, error) {
+	meta, err := json.Marshal(resourceUnavailableMeta{Reason: e.Reason})
+	if err != nil {
+		return jsonrpc.JSONRPCError{}, err
+	}
 	return jsonrpc.JSONRPCError{
-		Code:    EExpensiveFork,
+		Code:    EResourceUnavailable,
 		Message: e.Error(),
+		Meta:    meta,
 		Data:    e.Epoch,
 	}, nil
 }
 
-// Is performs a non-strict type check so errors.Is works regardless of the Epoch value.
-func (e *ErrExpensiveFork) Is(target error) bool {
-	_, ok := target.(*ErrExpensiveFork)
-	return ok
+// Is matches any ErrResourceUnavailable when the target has no Reason, and
+// otherwise only one with the same Reason.
+func (e *ErrResourceUnavailable) Is(target error) bool {
+	t, ok := target.(*ErrResourceUnavailable)
+	return ok && (t.Reason == "" || t.Reason == e.Reason)
 }
 
 type errPaymentChannelDisabled struct{}
