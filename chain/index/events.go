@@ -540,8 +540,8 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter)
 			messageIndex int
 			reverted     bool
 			flags        []byte
-			key          string
-			codec        uint64
+			key          sql.NullString
+			codec        sql.NullInt64
 			value        []byte
 		}
 
@@ -640,10 +640,18 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter)
 				ce.MsgCid = lastMsgCid
 			}
 
+			// An event with no entries, such as EVM LOG0 with no data, comes back
+			// as one row with NULL entry columns.
+			if !row.key.Valid {
+				continue
+			}
+			if len(row.flags) == 0 {
+				return nil, fmt.Errorf("event entry for event %d has no flags", row.id)
+			}
 			ce.Entries = append(ce.Entries, types.EventEntry{
 				Flags: row.flags[0],
-				Key:   row.key,
-				Codec: row.codec,
+				Key:   row.key.String,
+				Codec: uint64(row.codec.Int64),
 				Value: row.value,
 			})
 		}
@@ -880,7 +888,8 @@ func makePrefillFilterQuery(f *EventFilter) ([]any, string, error) {
 			}
 		}
 	} else if f.Codec != 0 { // if no keys are specified, we can use the codec filter
-		clauses = append(clauses, "ee.codec=?")
+		// An event with no entries has no codec to mismatch.
+		clauses = append(clauses, "(ee.codec=? OR ee.event_id IS NULL)")
 		values = append(values, f.Codec)
 	}
 
@@ -900,7 +909,7 @@ func makePrefillFilterQuery(f *EventFilter) ([]any, string, error) {
 			ee.value
 		FROM event e
 		JOIN tipset_message tm ON e.message_id = tm.id
-		JOIN event_entry ee ON e.id = ee.event_id`
+		LEFT JOIN event_entry ee ON e.id = ee.event_id`
 
 	if len(joins) > 0 {
 		s = s + ", " + strings.Join(joins, ", ")
