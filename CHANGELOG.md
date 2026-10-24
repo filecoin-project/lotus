@@ -17,6 +17,7 @@
 
 - fix(paths): a file in a sector directory that isn't named like a sector, such as a stray `nohup.out`, is now skipped with a warning instead of failing to open the storage path and stopping `lotus-miner` or `lotus-worker` from starting. ([filecoin-project/lotus#13950](https://github.com/filecoin-project/lotus/pull/13950))
 - fix(eth): `eth_getLogs`, `eth_getFilterLogs` and transaction receipts now include EVM `LOG0` events with empty data, matching `eth_subscribe`. ([filecoin-project/lotus#13961](https://github.com/filecoin-project/lotus/pull/13961))
+- fix(chain): `Percent.String` now zero-pads the hundredths digit, so a value with a 1..9 hundredths component (e.g. `Percent(5)` → `"0.05"`, not `"0.5"`) renders correctly and round-trips through JSON, matching the type's documented contract. ([filecoin-project/lotus#13965](https://github.com/filecoin-project/lotus/pull/13965))
 
 ## 👌 Improvements
 
