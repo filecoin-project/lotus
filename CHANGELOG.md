@@ -17,7 +17,7 @@
 
 ## 🐛 Bug Fixes
 
-- fix(gateway): `StateReplay` with an empty tipset key now finds the message within the gateway's message lookback and applies the lookback bound to the replayed tipset. ([filecoin-project/lotus#13951](https://github.com/filecoin-project/lotus/pull/13951))
+- fix(gateway): `StateReplay` with an empty tipset key now finds the message within the gateway's message lookback and applies the lookback bound to the replayed tipset. ([filecoin-project/lotus#13958](https://github.com/filecoin-project/lotus/pull/13958))
 - fix(paths): a file in a sector directory that isn't named like a sector, such as a stray `nohup.out`, is now skipped with a warning instead of failing to open the storage path and stopping `lotus-miner` or `lotus-worker` from starting. ([filecoin-project/lotus#13950](https://github.com/filecoin-project/lotus/pull/13950))
 
 ## 👌 Improvements
