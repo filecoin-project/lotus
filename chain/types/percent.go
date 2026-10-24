@@ -19,7 +19,7 @@ func (p Percent) String() string {
 		abs = -abs
 		sign = "-"
 	}
-	return fmt.Sprintf(`%s%d.%d`, sign, abs/100, abs%100)
+	return fmt.Sprintf(`%s%d.%02d`, sign, abs/100, abs%100)
 }
 
 func (p Percent) MarshalJSON() ([]byte, error) {
