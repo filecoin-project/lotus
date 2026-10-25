@@ -15,9 +15,34 @@
 
 ## 🐛 Bug Fixes
 
+- fix(paths): a file in a sector directory that isn't named like a sector, such as a stray `nohup.out`, is now skipped with a warning instead of failing to open the storage path and stopping `lotus-miner` or `lotus-worker` from starting. ([filecoin-project/lotus#13950](https://github.com/filecoin-project/lotus/pull/13950))
+- fix(eth): `eth_getLogs`, `eth_getFilterLogs` and transaction receipts now include EVM `LOG0` events with empty data, matching `eth_subscribe`. ([filecoin-project/lotus#13961](https://github.com/filecoin-project/lotus/pull/13961))
 - fix(miner): with `DisallowRemoteFinalize` enabled, sectors no longer get stuck in `FinalizeSector` when a worker has both the sealing path with the sector and a long-term storage path. Such workers are now also preferred for the move when remote finalize is allowed. ([filecoin-project/lotus#13948](https://github.com/filecoin-project/lotus/pull/13948))
 
 ## 👌 Improvements
+
+# Node and Miner v1.38.3 / 2026-10-21
+
+This patch release rebuilds the Lotus node, miner and worker binaries and Docker images with Go 1.26.10, which makes `crypto/x509` reject known compromised intermediate certificates ([GO-2026-6809](https://pkg.go.dev/vuln/GO-2026-6809)). It has no other functional changes since Node v1.38.2, and aligns the Miner release with Node at v1.38.3 (the previous Miner release was `miner/v1.38.0`).
+
+- Operators running earlier published binaries or Docker images should upgrade.
+- Building from source now requires Go 1.26.10 or later.
+- Operators upgrading directly from v1.37.0 should review the [v1.38.0 upgrade warnings](https://github.com/filecoin-project/lotus/releases/tag/v1.38.0), including API permissions, gas limits and gateway limits.
+
+## ☢️ Upgrade Warnings ☢️
+
+- build: raise the minimum Go version to `1.26.10`. ([filecoin-project/lotus#13951](https://github.com/filecoin-project/lotus/pull/13951))
+
+## 📝 Changelog
+
+- Node: [Changes since v1.38.2](https://github.com/filecoin-project/lotus/compare/v1.38.2...v1.38.3)
+- Miner: [Changes since miner/v1.38.0](https://github.com/filecoin-project/lotus/compare/miner/v1.38.0...miner/v1.38.3)
+
+## 👨‍👩‍👧‍👦 Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Phi-rjan | 3 | +37/-10 | 8 |
 
 # Node v1.38.2 / 2026-10-20
 
@@ -86,6 +111,7 @@ This is the **recommended** Lotus release for the nv29 (Solstice) network upgrad
 
 ## 🐛 Bug Fixes
 
+- fix(sealing): a cancelled task in the scheduler queue no longer stops other tasks from being scheduled. ([filecoin-project/lotus#13869](https://github.com/filecoin-project/lotus/pull/13869))
 - fix(api): check `/health/readyz` immediately on startup instead of waiting for the first one-minute polling interval. ([filecoin-project/lotus#13796](https://github.com/filecoin-project/lotus/pull/13796))
 - fix(rpc): allow `ChainPutObj` to store blocks over JSON-RPC. ([filecoin-project/lotus#13868](https://github.com/filecoin-project/lotus/pull/13868))
 - fix(chain): p2p ingress hardening. Tipsets from peers are limited to 34 distinct blocks, and ChainExchange serves messages for at most 8 tipsets per request. ([filecoin-project/lotus#13909](https://github.com/filecoin-project/lotus/pull/13909))
