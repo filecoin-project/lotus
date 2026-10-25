@@ -401,7 +401,8 @@ func (st *Local) declareSectors(ctx context.Context, p string, id storiface.ID, 
 
 			sid, err := storiface.ParseSectorID(ent.Name())
 			if err != nil {
-				return xerrors.Errorf("parse sector id %s: %w", ent.Name(), err)
+				log.Warnw("skipping unknown entry in storage path", "path", filepath.Join(p, t.String(), ent.Name()), "error", err)
+				continue
 			}
 
 			delete(indexed, storiface.Decl{
