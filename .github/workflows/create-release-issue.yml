@@ -32,7 +32,7 @@ on:
           - rc
           - no-rc
       base-tag:
-        description: "Patch releases only: branch from this earlier release in the same minor series instead of master (e.g. 1.30.0). Leave empty to branch from master."
+        description: "Leave empty for normal releases, which branch from master. Patch releases only: set to an earlier release in the same minor series (e.g. 1.30.0) to branch from that tag and backport fixes instead, typically for critical security patches that cannot take recent master changes."
         required: false
       network-upgrade:
         description: "What's the version of the network upgrade this release is related to? (e.g. 25)"
