@@ -24,6 +24,17 @@ func TestHumanBitfield(t *testing.T) {
 	check([]uint64{0, 1, 5, 9, 11, 13, 14, 19}, "0-1,5,9,11,13-14,19")
 }
 
+func TestHumanRangesRejectsMalformed(t *testing.T) {
+	// A range token with more than one dash (e.g. "1-2-3") used to fall through
+	// the len(lr) switch with no match, leaving start/end at their zero value and
+	// returning a nil error - so a malformed input silently resolved to sector 0.
+	// Every malformed token must now error instead.
+	for _, in := range []string{"1-2-3", "1-2-3,5", "1-", "-5", "a", "5-x", "", "1--2"} {
+		_, err := HumanRangesToBitField(in)
+		require.Error(t, err, "expected error for malformed input %q", in)
+	}
+}
+
 func TestHumanBitfieldRoundtrip(t *testing.T) {
 	check := func(ints []uint64, out string) {
 		parsed, err := HumanRangesToBitField(out)
