@@ -1204,6 +1204,16 @@ func (n *Ensemble) generateGenesis() *genesis.Template {
 		VerifregRootKey:  verifRoot,
 		RemainderAccount: gen.DefaultRemainderAccountActor,
 	}
+	if swa := n.options.rewardSWA; swa != nil {
+		templ.RewardSWA = &genesis.RewardSWA{
+			Actor: genesis.Actor{
+				Type:    genesis.TAccount,
+				Balance: types.FromFil(100),
+				Meta:    (&genesis.AccountMeta{Owner: swa.key.Address}).ActorMeta(),
+			},
+			TimelockEpochs: swa.timelock,
+		}
+	}
 
 	return templ
 }
