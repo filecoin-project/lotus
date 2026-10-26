@@ -55,6 +55,28 @@ func (s *moveSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi.
 		return false, false, xerrors.Errorf("getting sector size: %w", err)
 	}
 
+	// if the worker already has all files in destination paths, the move is a
+	// no-op and must not depend on free space in the destination paths
+	inDest := storiface.FTNone
+	for _, ft := range s.alloc.AllSet() {
+		found, err := s.index.StorageFindSector(ctx, s.sector, ft, ssize, false)
+		if err != nil {
+			return false, false, xerrors.Errorf("finding sector files: %w", err)
+		}
+
+		for _, info := range found {
+			if _, has := workerPaths[info.ID]; !has || !ft.Allowed(info.AllowTypes, info.DenyTypes) {
+				continue
+			}
+			if (s.destPtype == storiface.PathStorage && info.CanStore) || (s.destPtype == storiface.PathSealing && info.CanSeal) {
+				inDest |= ft
+			}
+		}
+	}
+	if inDest == s.alloc {
+		return true, true, nil
+	}
+
 	// note: allowFetch is always false here, because we want to find workers with
 	// the sector available locally
 	preferred, err := s.index.StorageFindSector(ctx, s.sector, s.alloc, ssize, false)

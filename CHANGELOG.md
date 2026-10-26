@@ -19,7 +19,9 @@
 
 - fix(paths): a file in a sector directory that isn't named like a sector, such as a stray `nohup.out`, is now skipped with a warning instead of failing to open the storage path and stopping `lotus-miner` or `lotus-worker` from starting. ([filecoin-project/lotus#13950](https://github.com/filecoin-project/lotus/pull/13950))
 - fix(eth): `eth_getLogs`, `eth_getFilterLogs` and transaction receipts now include EVM `LOG0` events with empty data, matching `eth_subscribe`. ([filecoin-project/lotus#13961](https://github.com/filecoin-project/lotus/pull/13961))
+- fix(miner): moving sector files that are already in long-term storage, for example the sealed and cache files in `FinalizeReplicaUpdate`, is no longer stuck in the scheduler when the storage path is full. ([filecoin-project/lotus#13949](https://github.com/filecoin-project/lotus/pull/13949))
 - fix(chainindex): historical `eth_getLogs` and `GetActorEventsRaw` range queries no longer time out after a node restart; the range check now starts from the chain index instead of walking back from head. ([filecoin-project/lotus#13957](https://github.com/filecoin-project/lotus/pull/13957))
+
 
 ## 👌 Improvements
 
