@@ -11,6 +11,8 @@
 
 ## ☢️ Upgrade Warnings ☢️
 
+- chore(cli): remove obsolete `filplus` and `verifreg` write commands and `sectors extend --drop-claims` after nv29. ([filecoin-project/lotus#13968](https://github.com/filecoin-project/lotus/pull/13968))
+
 ## ⭐ New Features
 
 - feat(genesis): 2k devnets now start at nv29. A genesis template's optional `RewardSWA` installs an account or multisig as the reward actor's FIP-0118 stream weight actor, so a fresh network can change reward weights without a migration; unset, the SWA stays the system actor. ([filecoin-project/lotus#13967](https://github.com/filecoin-project/lotus/pull/13967))

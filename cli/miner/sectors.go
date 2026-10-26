@@ -136,15 +136,6 @@ fails if none of them can be upgraded.`,
 
 		tsk := head.Key()
 
-		nv, err := fullNodeAPI.StateNetworkVersion(ctx, tsk)
-		if err != nil {
-			return xerrors.Errorf("getting network version: %w", err)
-		}
-
-		if nv < network.Version29 {
-			return xerrors.Errorf("upgrade-quality requires network version 29+ (Solstice); current: %d", nv)
-		}
-
 		mf, err := types.ParseFIL(cctx.String("max-fee"))
 		if err != nil {
 			return err
@@ -648,11 +639,6 @@ var sectorsListCmd = &cli.Command{
 			return err
 		}
 
-		nv, err := fullApi.StateNetworkVersion(ctx, head.Key())
-		if err != nil {
-			return err
-		}
-
 		activeSet, err := fullApi.StateMinerActiveSectors(ctx, maddr, head.Key())
 		if err != nil {
 			return err
@@ -763,26 +749,16 @@ var sectorsListCmd = &cli.Command{
 						vp = float64(size) * 10
 					}
 				} else {
+					// Legacy sectors retain their on-chain deal weights after nv29.
 					rdw := big.Add(st.DealWeight, st.VerifiedDealWeight)
 					dw = float64(big.Div(rdw, big.NewInt(int64(duration))).Uint64())
 					vp = float64(big.Div(big.Mul(st.VerifiedDealWeight, big.NewInt(verifiedPowerGainMul)), big.NewInt(int64(st.Expiration-st.Activation))).Uint64())
 				}
 			} else {
-				// Not yet on chain (or upgrade in progress): estimate expected QAP.
-				if nv >= network.Version29 {
-					// FIP-0118: every new sector receives 10x QAP regardless of content.
-					if size, err := st.SealProof.SectorSize(); err == nil {
-						vp = float64(size) * 10
-					}
-				} else {
-					for _, piece := range st.Pieces {
-						if piece.DealInfo != nil {
-							dw += float64(piece.Piece.Size)
-							if piece.DealInfo.DealProposal != nil && piece.DealInfo.DealProposal.VerifiedDeal {
-								vp += float64(piece.Piece.Size) * verifiedPowerGainMul
-							}
-						}
-					}
+				// Not yet on chain (or upgrade in progress): every new sector receives
+				// 10x QAP regardless of content (FIP-0118).
+				if size, err := st.SealProof.SectorSize(); err == nil {
+					vp = float64(size) * 10
 				}
 			}
 
