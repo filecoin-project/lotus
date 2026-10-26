@@ -88,4 +88,14 @@ type Template struct {
 
 	VerifregRootKey  Actor
 	RemainderAccount Actor
+
+	// RewardSWA, when set, is installed as the reward actor's FIP-0118 stream weight actor.
+	// Unset, the SWA is f00, which only the system can act as, leaving weight changes to a migration.
+	RewardSWA *RewardSWA `json:",omitempty"`
+}
+
+type RewardSWA struct {
+	Actor Actor
+	// TimelockEpochs is the hold the reward actor applies to SWA writes.
+	TimelockEpochs abi.ChainEpoch
 }
