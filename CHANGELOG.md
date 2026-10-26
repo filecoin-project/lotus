@@ -21,6 +21,8 @@
 
 ## 👌 Improvements
 
+- chore(sub): remove the unused `chain/sub/ratelimit` package, left behind when the IPNI pubsub relay was removed. ([filecoin-project/lotus#13969](https://github.com/filecoin-project/lotus/pull/13969))
+
 # Node and Miner v1.38.3 / 2026-10-21
 
 This patch release rebuilds the Lotus node, miner and worker binaries and Docker images with Go 1.26.10, which makes `crypto/x509` reject known compromised intermediate certificates ([GO-2026-6809](https://pkg.go.dev/vuln/GO-2026-6809)). It has no other functional changes since Node v1.38.2, and aligns the Miner release with Node at v1.38.3 (the previous Miner release was `miner/v1.38.0`).
