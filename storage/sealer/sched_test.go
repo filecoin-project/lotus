@@ -752,3 +752,55 @@ func TestWindowCompact(t *testing.T) {
 		[][]sealtasks.TaskType{{sealtasks.TTPreCommit1, sealtasks.TTPreCommit1, sealtasks.TTAddPiece}, {sealtasks.TTPreCommit1, sealtasks.TTPreCommit2}}),
 	)
 }
+
+func TestMoveSelectorFullStorage(t *testing.T) {
+	ctx := context.Background()
+	spt := abi.RegisteredSealProof_StackedDrg2KiBV1_1
+	sector := abi.SectorID{Miner: 1000, Number: 1}
+
+	index := paths.NewMemIndex(nil)
+	attach := func(id storiface.ID, canSeal, canStore bool, available int64) storiface.StoragePath {
+		require.NoError(t, index.StorageAttach(ctx, storiface.StorageInfo{
+			ID:       id,
+			Weight:   1,
+			CanSeal:  canSeal,
+			CanStore: canStore,
+		}, fsutil.FsStat{
+			Capacity:    1 << 40,
+			Available:   available,
+			FSAvailable: available,
+		}))
+		return storiface.StoragePath{ID: id, Weight: 1, CanSeal: canSeal, CanStore: canStore}
+	}
+	seal := attach("seal", true, false, 1<<40)
+	store := attach("store", false, true, 0)
+
+	require.NoError(t, index.StorageDeclareSector(ctx, store.ID, sector, storiface.FTSealed, true))
+	require.NoError(t, index.StorageDeclareSector(ctx, store.ID, sector, storiface.FTCache, true))
+	require.NoError(t, index.StorageDeclareSector(ctx, seal.ID, sector, storiface.FTUnsealed, true))
+
+	wh, err := newWorkerHandle(ctx, &schedTestWorker{
+		taskTypes: map[sealtasks.TaskType]struct{}{sealtasks.TTFetch: {}},
+		paths:     []storiface.StoragePath{seal, store},
+	})
+	require.NoError(t, err)
+	wid := storiface.WorkerID(uuid.New())
+	workers := &schedWorkerCache{
+		Workers: map[storiface.WorkerID]*WorkerHandle{wid: wh},
+		cached:  map[storiface.WorkerID]*cachedSchedWorker{},
+	}
+	worker, found := workers.Get(wid)
+	require.True(t, found)
+
+	// sealed and cache files are already in the full long-term storage path
+	sel := newMoveSelector(index, sector, storiface.FTCache|storiface.FTSealed, storiface.PathStorage, sector.Miner, false)
+	ok, pref, err := sel.Ok(ctx, sealtasks.TTFetch, spt, worker)
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.True(t, pref)
+
+	// the unsealed file still has to be moved, and there is no space for it
+	sel = newMoveSelector(index, sector, storiface.FTCache|storiface.FTSealed|storiface.FTUnsealed, storiface.PathStorage, sector.Miner, false)
+	_, _, err = sel.Ok(ctx, sealtasks.TTFetch, spt, worker)
+	require.ErrorContains(t, err, "no good path found")
+}
