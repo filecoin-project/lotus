@@ -983,6 +983,35 @@ func TestAddMessageTwice(t *testing.T) {
 	}
 }
 
+func TestAddStaleNonceSkipsSignature(t *testing.T) {
+	mp, tma := makeTestMpool()
+
+	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	require.NoError(t, err)
+
+	from, err := w.WalletNew(context.Background(), types.KTBLS)
+	require.NoError(t, err)
+
+	tma.setBalance(from, 1000e9)
+	tma.setStateNonce(from, 5)
+
+	to := mock.Address(1001)
+
+	// A signature over different bytes fails verification if it is checked.
+	badSig := func(nonce uint64) *types.SignedMessage {
+		sm := makeTestMessage(w, from, to, nonce, 50000000, minimumBaseFee.Uint64())
+		other := makeTestMessage(w, from, to, nonce+100, 50000000, minimumBaseFee.Uint64())
+		sm.Signature = other.Signature
+		return sm
+	}
+
+	err = mp.Add(context.TODO(), badSig(4))
+	require.ErrorIs(t, err, ErrNonceTooLow)
+
+	err = mp.Add(context.TODO(), badSig(5))
+	require.ErrorContains(t, err, "signature verification failed")
+}
+
 func TestAddMessageTwiceNonceGap(t *testing.T) {
 	tma := newTestMpoolAPI()
 
