@@ -53,6 +53,9 @@ const AccountStart = 100
 const MinerStart = 1000
 const MaxAccounts = MinerStart - AccountStart
 
+// RewardSWAID is the actor ID a template's RewardSWA is created at.
+const RewardSWAID = 82
+
 var log = logging.Logger("genesis")
 
 type GenesisBootstrap struct {
@@ -143,6 +146,17 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 		return nil, nil, xerrors.Errorf("loading actors for genesis block: %w", err)
 	}
 
+	var rewardSWA *genesis.Actor
+	if swa := template.RewardSWA; swa != nil {
+		if av < actorstypes.Version19 {
+			return nil, nil, xerrors.Errorf("reward SWA requires actors v19 or later, genesis is on v%d", av)
+		}
+		if swa.TimelockEpochs < 0 {
+			return nil, nil, xerrors.Errorf("reward SWA timelock is negative: %d", swa.TimelockEpochs)
+		}
+		rewardSWA = &swa.Actor
+	}
+
 	// Create system actor
 
 	sysact, err := SetupSystemActor(ctx, bs, av)
@@ -155,7 +169,7 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 
 	// Create init actor
 
-	idStart, initact, keyIDs, err := SetupInitActor(ctx, bs, template.NetworkName, template.Accounts, template.VerifregRootKey, template.RemainderAccount, av)
+	idStart, initact, keyIDs, err := SetupInitActor(ctx, bs, template.NetworkName, template.Accounts, template.VerifregRootKey, template.RemainderAccount, rewardSWA, av)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("setup init actor: %w", err)
 	}
@@ -278,6 +292,33 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 		}
 	default:
 		return nil, nil, xerrors.Errorf("unknown account type for verifreg rootkey: %w", err)
+	}
+
+	if rewardSWA != nil {
+		swaID, err := address.NewIDAddress(RewardSWAID)
+		if err != nil {
+			return nil, nil, err
+		}
+		switch rewardSWA.Type {
+		case genesis.TAccount:
+			var ainfo genesis.AccountMeta
+			if err := json.Unmarshal(rewardSWA.Meta, &ainfo); err != nil {
+				return nil, nil, xerrors.Errorf("unmarshaling account meta: %w", err)
+			}
+			if _, ok := keyIDs[ainfo.Owner]; ok {
+				return nil, nil, fmt.Errorf("reward SWA account has already been declared, cannot be assigned %d: %s", RewardSWAID, ainfo.Owner)
+			}
+			keyIDs[ainfo.Owner] = swaID
+			if err := CreateAccountActor(ctx, cst, state, *rewardSWA, keyIDs, av); err != nil {
+				return nil, nil, xerrors.Errorf("creating reward SWA account: %w", err)
+			}
+		case genesis.TMultisig:
+			if err := CreateMultisigAccount(ctx, cst, state, swaID, *rewardSWA, keyIDs, av); err != nil {
+				return nil, nil, xerrors.Errorf("creating reward SWA multisig: %w", err)
+			}
+		default:
+			return nil, nil, xerrors.Errorf("unknown account type for reward SWA: %s", rewardSWA.Type)
+		}
 	}
 
 	// Setup the first verifier as ID-address 81
@@ -593,6 +634,17 @@ func MakeGenesisBlock(ctx context.Context, j journal.Journal, bs bstore.Blocksto
 	st, err = state.LoadStateTree(st.Store, stateroot)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load updated state tree: %w", err)
+	}
+
+	// SetupStorageMiners rebuilds the reward actor, so the SWA goes in after it.
+	if swa := template.RewardSWA; swa != nil {
+		swaID, err := address.NewIDAddress(RewardSWAID)
+		if err != nil {
+			return nil, err
+		}
+		if err := SetRewardSWA(ctx, st, swaID, swa.TimelockEpochs); err != nil {
+			return nil, xerrors.Errorf("setting reward SWA: %w", err)
+		}
 	}
 
 	// Set up Eth null addresses.

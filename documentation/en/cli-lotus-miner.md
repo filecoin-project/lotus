@@ -752,7 +752,6 @@ OPTIONS:
    --exclude value         optionally provide a file containing excluding sectors
    --extension value       try to extend selected sectors by this number of epochs, defaults to 540 days (default: 1555200)
    --new-expiration value  try to extend selected sectors to this epoch, ignoring extension (default: 0)
-   --drop-claims           drop claims for sectors that can be extended, but only by dropping some of their verified power claims (deprecated on NV29+) (default: false)
    --tolerance value       don't try to extend sectors by fewer than this number of epochs, defaults to 7 days (default: 20160)
    --max-fee value         use up to this amount of FIL for one message. pass this flag to avoid message congestion. (default: "0")
    --max-sectors value     the maximum number of sectors contained in each message (default: 200)
