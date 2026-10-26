@@ -27,9 +27,15 @@ type genesisAccount struct {
 	initialBalance abi.TokenAmount
 }
 
+type rewardSWA struct {
+	key      *key.Key
+	timelock abi.ChainEpoch
+}
+
 type ensembleOpts struct {
 	pastOffset         time.Duration
 	verifiedRoot       genesisAccount
+	rewardSWA          *rewardSWA
 	accounts           []genesisAccount
 	proofMode          proofMode
 	mockProofs         bool
@@ -94,6 +100,16 @@ func RootVerifier(key *key.Key, balance abi.TokenAmount) EnsembleOpt {
 	return func(opts *ensembleOpts) error {
 		opts.verifiedRoot.key = key
 		opts.verifiedRoot.initialBalance = balance
+		return nil
+	}
+}
+
+// RewardSWA installs key's account as the reward actor's FIP-0118 stream weight actor at genesis,
+// holding its writes for timelock epochs, so the key can send f02's SWA methods directly. The
+// account is funded with 100 FIL for gas. The genesis network version must be nv29 or later.
+func RewardSWA(key *key.Key, timelock abi.ChainEpoch) EnsembleOpt {
+	return func(opts *ensembleOpts) error {
+		opts.rewardSWA = &rewardSWA{key: key, timelock: timelock}
 		return nil
 	}
 }
