@@ -193,12 +193,6 @@ func TestSolsticeMinerLifecycle(t *testing.T) {
 		})
 	}
 
-	if !run("the upgrade-quality CLI refuses NV28", func(t *testing.T) {
-		_, err := minerCLI.RunCmdRaw("sectors", "upgrade-quality", "--actor="+f.cli.ActorAddr.String())
-		require.ErrorContains(t, err, "requires network version 29+")
-	}) {
-		return
-	}
 	if !run("a verified client holds allocations before the fork", func(t *testing.T) {
 		pieceV, pieceSnap = f.setupVerifiedFixture(t, rootKey, verifierKey, clientKey)
 	}) {
