@@ -24,6 +24,7 @@
 ## 👌 Improvements
 
 - chore(sub): remove the unused `chain/sub/ratelimit` package, left behind when the IPNI pubsub relay was removed. ([filecoin-project/lotus#13969](https://github.com/filecoin-project/lotus/pull/13969))
+- fix(mpool): messages received over pubsub with an already-used nonce are now rejected before their signature is verified. ([filecoin-project/lotus#13970](https://github.com/filecoin-project/lotus/pull/13970))
 
 # Node and Miner v1.38.3 / 2026-10-21
 
