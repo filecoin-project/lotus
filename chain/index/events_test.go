@@ -973,6 +973,127 @@ func TestGetEventsForFilterWithRawCodec(t *testing.T) {
 	})
 }
 
+func TestGetEventsForFilterHollowEvent(t *testing.T) {
+	ctx := context.Background()
+	seed := time.Now().UnixNano()
+	t.Logf("seed: %d", seed)
+	rng := pseudo.New(pseudo.NewSource(seed))
+	headHeight := abi.ChainEpoch(60)
+
+	si, _, cs := setupWithHeadIndexed(t, headHeight, rng)
+	t.Cleanup(func() { _ = si.Close() })
+
+	ev1 := fakeEvent(abi.ActorID(1), []kv{{k: "type", v: []byte("approval")}}, []kv{{k: "d", v: []byte("data1")}})
+	// EVM LOG0 with empty data: an event carrying only the emitter.
+	hollow := &types.Event{Emitter: abi.ActorID(2)}
+	ev3 := fakeEvent(abi.ActorID(3), []kv{{k: "type", v: []byte("transfer")}}, nil)
+
+	fm := fakeMessage(address.TestAddress, address.TestAddress)
+	em1 := executedMessage{
+		msg: fm,
+		evs: []types.Event{*ev1, *hollow, *ev3},
+	}
+
+	si.SetActorToDelegatedAddresFunc(func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool) {
+		idAddr, err := address.NewIDAddress(uint64(emitter))
+		if err != nil {
+			return address.Undef, false
+		}
+		return idAddr, true
+	})
+	si.setExecutedMessagesLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
+		return []executedMessage{em1}, nil
+	})
+
+	fakeTipSet1 := fakeTipSet(t, rng, 1, nil)
+	fakeTipSet2 := fakeTipSet(t, rng, 2, nil)
+	cs.SetTipsetByHeightAndKey(1, fakeTipSet1.Key(), fakeTipSet1)
+	cs.SetTipsetByHeightAndKey(2, fakeTipSet2.Key(), fakeTipSet2)
+	cs.SetTipSetByCid(t, fakeTipSet1)
+	cs.SetTipSetByCid(t, fakeTipSet2)
+	cs.SetMessagesForTipset(fakeTipSet1, []types.ChainMsg{fm})
+
+	require.NoError(t, si.Apply(ctx, fakeTipSet1, fakeTipSet2))
+
+	collected := func(ev *types.Event, idx int) *CollectedEvent {
+		return &CollectedEvent{
+			Entries:     ev.Entries,
+			EmitterAddr: must.One(address.NewIDAddress(uint64(ev.Emitter))),
+			EventIdx:    idx,
+			Height:      1,
+			TipSetKey:   fakeTipSet1.Key(),
+			MsgIdx:      0,
+			MsgCid:      fm.Cid(),
+		}
+	}
+	all := []*CollectedEvent{collected(ev1, 0), collected(hollow, 1), collected(ev3, 2)}
+
+	tsCid, err := fakeTipSet1.Key().Cid()
+	require.NoError(t, err)
+
+	testCases := []struct {
+		name     string
+		filter   *EventFilter
+		expected []*CollectedEvent
+	}{
+		{
+			name:     "unfiltered",
+			filter:   &EventFilter{MinHeight: 1, MaxHeight: 1},
+			expected: all,
+		},
+		{
+			name:     "raw codec",
+			filter:   &EventFilter{MinHeight: 1, MaxHeight: 1, Codec: multicodec.Raw},
+			expected: all,
+		},
+		{
+			name:     "tipset and message",
+			filter:   &EventFilter{MinHeight: -1, MaxHeight: -1, TipsetCid: tsCid, MsgCid: fm.Cid(), Codec: multicodec.Raw},
+			expected: all,
+		},
+		{
+			name: "emitter address",
+			filter: &EventFilter{
+				MinHeight: 1,
+				MaxHeight: 1,
+				Addresses: []address.Address{must.One(address.NewIDAddress(2))},
+			},
+			expected: []*CollectedEvent{collected(hollow, 1)},
+		},
+		{
+			name: "key",
+			filter: &EventFilter{
+				MinHeight: 1,
+				MaxHeight: 1,
+				KeysWithCodec: map[string][]types.ActorEventBlock{
+					"type": {{Codec: cid.Raw, Value: []byte("approval")}},
+				},
+			},
+			expected: []*CollectedEvent{collected(ev1, 0)},
+		},
+		{
+			name: "key and hollow emitter",
+			filter: &EventFilter{
+				MinHeight: 1,
+				MaxHeight: 1,
+				Addresses: []address.Address{must.One(address.NewIDAddress(2))},
+				KeysWithCodec: map[string][]types.ActorEventBlock{
+					"type": {{Codec: cid.Raw, Value: []byte("approval")}},
+				},
+			},
+			expected: nil,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ces, err := si.GetEventsForFilter(ctx, tc.filter)
+			require.NoError(t, err)
+			require.Equal(t, tc.expected, ces)
+		})
+	}
+}
+
 func TestMaxFilterResults(t *testing.T) {
 	ctx := context.Background()
 	seed := time.Now().UnixNano()
