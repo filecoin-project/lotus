@@ -130,9 +130,10 @@ type dummyChainStore struct {
 	keyToTipSet       map[types.TipSetKey]*types.TipSet
 	tipsetCidToTipset map[cid.Cid]*types.TipSet
 
-	heaviestTipSet   *types.TipSet
-	messagesForBlock func(ctx context.Context, b *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error)
-	actorStore       func(ctx context.Context) adt.Store
+	heaviestTipSet    *types.TipSet
+	heightLookupFroms []*types.TipSet
+	messagesForBlock  func(ctx context.Context, b *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error)
+	actorStore        func(ctx context.Context) adt.Store
 }
 
 func newDummyChainStore() *dummyChainStore {
@@ -179,6 +180,26 @@ func (d *dummyChainStore) SetTipSetByCid(t *testing.T, ts *types.TipSet) {
 	d.tipsetCidToTipset[tsKeyCid] = ts
 }
 
+func (d *dummyChainStore) RemoveTipSetByCid(t *testing.T, ts *types.TipSet) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	tsKeyCid, err := ts.Key().Cid()
+	require.NoError(t, err)
+	delete(d.tipsetCidToTipset, tsKeyCid)
+}
+
+// TakeHeightLookupFroms returns the start tipsets passed to GetTipsetByHeight
+// since the last call.
+func (d *dummyChainStore) TakeHeightLookupFroms() []*types.TipSet {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	froms := d.heightLookupFroms
+	d.heightLookupFroms = nil
+	return froms
+}
+
 func (d *dummyChainStore) GetTipSetFromKey(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error) {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
@@ -204,10 +225,11 @@ func (d *dummyChainStore) ActorStore(ctx context.Context) adt.Store {
 	return nil
 }
 
-func (d *dummyChainStore) GetTipsetByHeight(ctx context.Context, h abi.ChainEpoch, _ *types.TipSet, prev bool) (*types.TipSet, error) {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
+func (d *dummyChainStore) GetTipsetByHeight(ctx context.Context, h abi.ChainEpoch, from *types.TipSet, prev bool) (*types.TipSet, error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
 
+	d.heightLookupFroms = append(d.heightLookupFroms, from)
 	ts, ok := d.heightToTipSet[h]
 	if !ok {
 		return nil, errors.New("tipset not found")
