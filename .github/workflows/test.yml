@@ -152,6 +152,23 @@ jobs:
       - name: Install system dependencies
         uses: ./.github/actions/install-system-dependencies
       - uses: ./.github/actions/install-go
+      # Each job downloads the module graph from scratch, so a single transient proxy error would
+      # otherwise fail the job as "[setup failed]" before any test runs. Retries reuse whatever
+      # modules were already fetched.
+      - name: Download Go modules
+        run: |
+          for attempt in 1 2 3; do
+            if go mod download; then
+              exit 0
+            fi
+            if [[ "$attempt" -eq 3 ]]; then
+              echo "::error title=Go module download failed::go mod download failed after $attempt attempts on ${RUNNER_NAME:-unknown} (${RUNNER_ARCH:-unknown}). The test suite did not run."
+              exit 1
+            fi
+            delay=$((attempt * 15))
+            echo "::warning title=Retrying Go module download::go mod download failed on attempt $attempt/3; retrying in ${delay}s."
+            sleep "$delay"
+          done
       - id: group
         run: |
           metadata=$(go run ./cmd/ci/main.go --json get-test-group-metadata --name "${{ matrix.name }}" | jq -er '.msg | fromjson | tojson')
