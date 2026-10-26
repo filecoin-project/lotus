@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
@@ -415,7 +416,11 @@ func (si *SqliteIndexer) getEventRangeCoverage(ctx context.Context, minHeight, m
 		return coverage, nil
 	}
 
-	ts, err := si.cs.GetTipsetByHeight(ctx, maxHeight, head, true)
+	anchor, err := si.eventRangeAnchor(ctx, head, maxHeight)
+	if err != nil {
+		return nil, err
+	}
+	ts, err := si.cs.GetTipsetByHeight(ctx, maxHeight, anchor, true)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get canonical tipset at or before height %d: %w", maxHeight, err)
 	}
@@ -454,6 +459,51 @@ func (si *SqliteIndexer) getEventRangeCoverage(ctx context.Context, minHeight, m
 	}
 
 	return coverage, nil
+}
+
+// eventRangeAnchor returns a tipset above maxHeight to resolve it from.
+// Prefer this over chain head to avoid the walk cost or hitting a cold
+// skip-list. Below finality, non-reverted index rows are trusted as canonical.
+func (si *SqliteIndexer) eventRangeAnchor(ctx context.Context, head *types.TipSet, maxHeight abi.ChainEpoch) (*types.TipSet, error) {
+	finalHeight := head.Height() - policy.ChainFinality
+	if maxHeight >= finalHeight {
+		return head, nil
+	}
+
+	rows, err := si.stmts.getLowestNonRevertedTipsetsInRangeStmt.QueryContext(ctx, maxHeight, finalHeight)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to query event range anchor above height %d: %w", maxHeight, err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var candidates [][]byte
+	for rows.Next() {
+		var tsKeyCidBytes []byte
+		if err := rows.Scan(&tsKeyCidBytes); err != nil {
+			return nil, xerrors.Errorf("failed to read event range anchor: %w", err)
+		}
+		candidates = append(candidates, tsKeyCidBytes)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, xerrors.Errorf("failed while reading event range anchor: %w", err)
+	}
+	// None indexed, or several non-reverted tipsets at one height leaving the
+	// canonical one ambiguous.
+	if len(candidates) != 1 {
+		return head, nil
+	}
+
+	tsKeyCid, err := cid.Cast(candidates[0])
+	if err != nil {
+		return nil, xerrors.Errorf("failed to parse event range anchor tipset cid: %w", err)
+	}
+	// Snapshot imports persist tipset key blocks for recent tipsets only.
+	anchor, err := si.cs.GetTipSetByCid(ctx, tsKeyCid)
+	if err != nil || anchor == nil {
+		log.Debugw("event range anchor not loadable, resolving from head", "height", maxHeight, "tipset", tsKeyCid, "error", err)
+		return head, nil
+	}
+	return anchor, nil
 }
 
 func (si *SqliteIndexer) isEventRangeIndexed(ctx context.Context, tx *sql.Tx, coverage *eventRangeCoverage) (bool, error) {
