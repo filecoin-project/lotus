@@ -23,7 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/genesis"
 )
 
-func SetupInitActor(ctx context.Context, bs bstore.Blockstore, netname string, initialActors []genesis.Actor, rootVerifier genesis.Actor, remainder genesis.Actor, av actorstypes.Version) (int64, *types.Actor, map[address.Address]address.Address, error) {
+func SetupInitActor(ctx context.Context, bs bstore.Blockstore, netname string, initialActors []genesis.Actor, rootVerifier genesis.Actor, remainder genesis.Actor, rewardSWA *genesis.Actor, av actorstypes.Version) (int64, *types.Actor, map[address.Address]address.Address, error) {
 	if len(initialActors) > MaxAccounts {
 		return 0, nil, nil, xerrors.New("too many initial actors")
 	}
@@ -158,6 +158,23 @@ func SetupInitActor(ctx context.Context, bs bstore.Blockstore, netname string, i
 		err := setupMsig(remainder.Meta)
 		if err != nil {
 			return 0, nil, nil, xerrors.Errorf("setting up remainder msig: %w", err)
+		}
+	}
+
+	if rewardSWA != nil {
+		if rewardSWA.Type == genesis.TAccount {
+			var ainfo genesis.AccountMeta
+			if err := json.Unmarshal(rewardSWA.Meta, &ainfo); err != nil {
+				return 0, nil, nil, xerrors.Errorf("unmarshaling account meta: %w", err)
+			}
+			value := cbg.CborInt(RewardSWAID)
+			if err := amap.Put(abi.AddrKey(ainfo.Owner), &value); err != nil {
+				return 0, nil, nil, err
+			}
+		} else if rewardSWA.Type == genesis.TMultisig {
+			if err := setupMsig(rewardSWA.Meta); err != nil {
+				return 0, nil, nil, xerrors.Errorf("setting up reward SWA msig: %w", err)
+			}
 		}
 	}
 

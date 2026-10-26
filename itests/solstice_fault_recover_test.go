@@ -301,17 +301,14 @@ func TestSolsticeWorkerHandover(t *testing.T) {
 	req := require.New(t)
 	kit.QuietMiningLogs()
 
-	// Nothing here is read before the fork, so the chain only has to reach seal randomness.
-	upgradeEpoch := miner14.ChainFinality + 4*miner.WPoStChallengeWindow()
-	e := kit.NewSolsticeUpgradeEnv(t, kit.SolsticeOpts{UpgradeEpoch: upgradeEpoch})
+	e := kit.NewSolsticeUpgradeEnv(t, kit.SolsticeOpts{})
 	ctx, client, um, maddr := e.Ctx, e.Client, e.Um, e.Maddr
 	defer um.Stop()
 	owner := client.DefaultKey.Address
 
-	client.WaitTillChain(ctx, kit.HeightAtLeast(upgradeEpoch+5))
 	nv, err := client.StateNetworkVersion(ctx, types.EmptyTSK)
 	req.NoError(err)
-	req.Equal(network.Version29, nv, "the chain must be on NV29 after the migration")
+	req.Equal(network.Version29, nv, "the chain must start on NV29")
 
 	onboarded, _ := um.OnboardSectors(e.SealProof, kit.NewSectorBatch().AddEmptySectors(1))
 	req.Len(onboarded, 1)
