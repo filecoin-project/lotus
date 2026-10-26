@@ -731,35 +731,16 @@ CATEGORY:
    BASIC
 
 COMMANDS:
-   grant-datacap                  give allowance to the specified verified client address
-   list-notaries                  list all notaries
-   list-clients                   list all verified clients
-   check-client-datacap           check verified client remaining bytes
-   check-notary-datacap           check a notary's remaining bytes
-   sign-remove-data-cap-proposal  allows a notary to sign a Remove Data Cap Proposal
-   list-allocations               List allocations available in verified registry actor or made by a client if specified
-   list-claims                    List claims available in verified registry actor or made by provider if specified
-   remove-expired-allocations     remove expired allocations (if no allocations are specified all eligible allocations are removed)
-   remove-expired-claims          remove expired claims (if no claims are specified all eligible claims are removed)
-   extend-claim                   extends claim expiration (TermMax)
-   help, h                        Shows a list of commands or help for one command
+   list-notaries         list all notaries
+   list-clients          list all verified clients
+   check-client-datacap  check verified client remaining bytes
+   check-notary-datacap  check a notary's remaining bytes
+   list-allocations      List allocations available in verified registry actor or made by a client if specified
+   list-claims           List claims available in verified registry actor or made by provider if specified
+   help, h               Shows a list of commands or help for one command
 
 OPTIONS:
    --help, -h  show help
-```
-
-### lotus filplus grant-datacap
-
-```
-NAME:
-   lotus filplus grant-datacap - give allowance to the specified verified client address
-
-USAGE:
-   lotus filplus grant-datacap [command options] [clientAddress datacap]
-
-OPTIONS:
-   --from value  specify your notary address to send the message from
-   --help, -h    show help
 ```
 
 ### lotus filplus list-notaries
@@ -814,20 +795,6 @@ OPTIONS:
    --help, -h  show help
 ```
 
-### lotus filplus sign-remove-data-cap-proposal
-
-```
-NAME:
-   lotus filplus sign-remove-data-cap-proposal - allows a notary to sign a Remove Data Cap Proposal
-
-USAGE:
-   lotus filplus sign-remove-data-cap-proposal [command options] [verifierAddress clientAddress allowanceToRemove]
-
-OPTIONS:
-   --id value  specify the RemoveDataCapProposal ID (will look up on chain if unspecified) (default: 0)
-   --help, -h  show help
-```
-
 ### lotus filplus list-allocations
 
 ```
@@ -856,57 +823,6 @@ OPTIONS:
    --expired   list only expired claims (default: false)
    --json      output results in json format (default: false)
    --help, -h  show help
-```
-
-### lotus filplus remove-expired-allocations
-
-```
-NAME:
-   lotus filplus remove-expired-allocations - remove expired allocations (if no allocations are specified all eligible allocations are removed)
-
-USAGE:
-   lotus filplus remove-expired-allocations [command options] clientAddress Optional[...allocationId]
-
-OPTIONS:
-   --from value  optionally specify the account to send the message from
-   --help, -h    show help
-```
-
-### lotus filplus remove-expired-claims
-
-```
-NAME:
-   lotus filplus remove-expired-claims - remove expired claims (if no claims are specified all eligible claims are removed)
-
-USAGE:
-   lotus filplus remove-expired-claims [command options] providerAddress Optional[...claimId]
-
-OPTIONS:
-   --from value  optionally specify the account to send the message from
-   --help, -h    show help
-```
-
-### lotus filplus extend-claim
-
-```
-NAME:
-   lotus filplus extend-claim - extends claim expiration (TermMax)
-
-USAGE:
-   Extends claim expiration (TermMax).
-   If the client is original client then claim can be extended to maximum 5 years and no Datacap is required.
-   If the client id different then claim can be extended up to maximum 5 years from now and Datacap is required.
-
-
-OPTIONS:
-   --term-max value, --tmax value                                                                               The maximum period for which a provider can earn quality-adjusted power for the piece (epochs). Default is 5 years. (default: 5256000)
-   --client value                                                                                               the client address that will used to send the message
-   --all                                                                                                        automatically extend TermMax of all claims for specified miner[s] to --term-max (default: 5 years from claim start epoch) (default: false)
-   --miner value, -m value, --provider value, -p value [ --miner value, -m value, --provider value, -p value ]  storage provider address[es]
-   --assume-yes, -y, --yes                                                                                      automatic yes to prompts; assume 'yes' as answer to all prompts and run non-interactively (default: false)
-   --confidence value                                                                                           number of block confirmations to wait for (default: 5)
-   --batch-size value                                                                                           number of extend requests per batch. If set incorrectly, this will lead to out of gas error (default: 100)
-   --help, -h                                                                                                   show help
 ```
 
 ## lotus paych
