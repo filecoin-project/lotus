@@ -57,9 +57,10 @@ type preparedStatements struct {
 	getTipsetBloomStmt                    *sql.Stmt
 	removeTipsetBloomStmt                 *sql.Stmt
 
-	hasNullRoundAtHeightStmt         *sql.Stmt
-	getNonRevertedTipsetAtHeightStmt *sql.Stmt
-	countTipsetsAtHeightStmt         *sql.Stmt
+	hasNullRoundAtHeightStmt               *sql.Stmt
+	getNonRevertedTipsetAtHeightStmt       *sql.Stmt
+	getLowestNonRevertedTipsetsInRangeStmt *sql.Stmt
+	countTipsetsAtHeightStmt               *sql.Stmt
 
 	getNonRevertedTipsetMessageCountStmt      *sql.Stmt
 	getNonRevertedTipsetEventCountStmt        *sql.Stmt
