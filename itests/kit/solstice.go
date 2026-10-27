@@ -89,6 +89,9 @@ func NewSolsticeUpgradeEnv(t *testing.T, o SolsticeOpts) *SolsticeEnv {
 				Migration: filcns.UpgradeActorsV19With(buildconstants.NeutralSolsticeRewardBootstrapParams),
 			},
 		))
+	} else {
+		// Pin NV29 rather than following TestNetworkVersion, which moves on with later upgrades.
+		ensembleOpts = append(ensembleOpts, GenesisNetworkVersion(network.Version29))
 	}
 
 	client, _, ens := EnsembleMinimal(t, ensembleOpts...)

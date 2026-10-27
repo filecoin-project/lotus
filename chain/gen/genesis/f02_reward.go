@@ -11,6 +11,7 @@ import (
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	reward19 "github.com/filecoin-project/go-state-types/builtin/v19/reward"
+	reward20 "github.com/filecoin-project/go-state-types/builtin/v20/reward"
 	"github.com/filecoin-project/go-state-types/manifest"
 
 	bstore "github.com/filecoin-project/lotus/blockstore"
@@ -61,6 +62,9 @@ func SetRewardSWA(ctx context.Context, st *state.StateTree, swa address.Address,
 	}
 	switch s := rst.GetState().(type) {
 	case *reward19.State:
+		s.SWAActor = swa
+		s.SWATimelockEpochs = timelock
+	case *reward20.State:
 		s.SWAActor = swa
 		s.SWATimelockEpochs = timelock
 	default:

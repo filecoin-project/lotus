@@ -88,6 +88,6 @@ const UserAgent = "lotus"
 /* inline-gen template
 const TestNetworkVersion = network.Version{{.latestNetworkVersion}}
 /* inline-gen start */
-const TestNetworkVersion = network.Version29
+const TestNetworkVersion = network.Version30
 
 /* inline-gen end */
