@@ -5,7 +5,7 @@ import (
 	"golang.org/x/xerrors"
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
-	builtin19 "github.com/filecoin-project/go-state-types/builtin"
+	builtin20 "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/manifest"
@@ -15,7 +15,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-var Methods = builtin19.MethodsEVM
+var Methods = builtin20.MethodsEVM
 
 // See https://github.com/filecoin-project/builtin-actors/blob/6e781444cee5965278c46ef4ffe1fb1970f18d7d/actors/evm/src/lib.rs#L35-L42
 const (
@@ -67,6 +67,9 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 		case actorstypes.Version19:
 			return load19(store, act.Head)
 
+		case actorstypes.Version20:
+			return load20(store, act.Head)
+
 		}
 	}
 
@@ -105,6 +108,9 @@ func MakeState(store adt.Store, av actorstypes.Version, bytecode cid.Cid) (State
 
 	case actorstypes.Version19:
 		return make19(store, bytecode)
+
+	case actorstypes.Version20:
+		return make20(store, bytecode)
 
 	default:
 		return nil, xerrors.Errorf("evm actor only valid for actors v10 and above, got %d", av)
