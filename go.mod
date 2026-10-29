@@ -23,14 +23,14 @@ require (
 	github.com/alecthomas/jsonschema v0.0.0-20200530073317-71f438968921 // dependency-check-ignore: required by github.com/etclabscore/go-openrpc-reflect
 	github.com/cheggaaa/pb/v3 v3.2.1
 	github.com/chzyer/readline v1.5.1
-	github.com/consensys/gnark-crypto v0.21.0
+	github.com/consensys/gnark-crypto v0.22.0
 	github.com/containerd/cgroups v1.1.0
 	github.com/coreos/go-systemd/v22 v22.7.0
 	github.com/detailyang/go-fallocate v0.0.0-20180908115635-432fa640bd2e
 	github.com/dgraph-io/badger/v2 v2.2007.4
 	github.com/docker/go-units v0.5.0
 	github.com/drand/go-clients v0.2.3
-	github.com/drand/kyber v1.3.2
+	github.com/drand/kyber v1.3.3
 	github.com/dustin/go-humanize v1.1.0
 	github.com/elastic/go-elasticsearch/v7 v7.17.10
 	github.com/elastic/go-sysinfo v1.15.5
@@ -178,7 +178,7 @@ require (
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/benbjohnson/clock v1.3.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/bits-and-blooms/bitset v1.24.6 // indirect
+	github.com/bits-and-blooms/bitset v1.26.0 // indirect
 	github.com/buger/jsonparser v1.1.2 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
