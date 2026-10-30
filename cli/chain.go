@@ -33,7 +33,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
-	"github.com/filecoin-project/lotus/api"
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build/buildconstants"
@@ -1379,7 +1378,7 @@ var SlashConsensusFault = &cli.Command{
 			return err
 		}
 
-		proto := &api.MessagePrototype{
+		proto := &lapi.MessagePrototype{
 			Message: types.Message{
 				To:     b2.Miner,
 				From:   fromAddr,

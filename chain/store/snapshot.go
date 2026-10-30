@@ -28,7 +28,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-f3/certstore"
-	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/filecoin-project/go-state-types/abi"
 
 	bstore "github.com/filecoin-project/lotus/blockstore"
@@ -237,7 +236,7 @@ func (cs *ChainStore) Import(ctx context.Context, f3Ds dtypes.F3DS, r io.Reader)
 				prefix := F3DatastorePrefix()
 				f3DsWrapper := namespace.Wrap(f3Ds, prefix)
 
-				var f3Manifest *manifest.Manifest = buildconstants.F3Manifest()
+				f3Manifest := buildconstants.F3Manifest()
 				if f3Manifest != nil && f3Manifest.InitialPowerTable.Defined() {
 					log.Info("Importing F3Data to datastore")
 					if err := certstore.ImportSnapshotToDatastore(ctx, f3r, f3DsWrapper, f3Manifest); err != nil {
@@ -439,17 +438,15 @@ func (f *taskFifo) run() {
 			// no elements in fifo to put out.
 			// Try to read in and block.
 			// When done, try to put out or add to fifo.
+			elem, ok := <-f.in
+			if !ok {
+				close(f.out)
+				return
+			}
 			select {
-			case elem, ok := <-f.in:
-				if !ok {
-					close(f.out)
-					return
-				}
-				select {
-				case f.out <- elem:
-				default:
-					f.fifo = append(f.fifo, elem)
-				}
+			case f.out <- elem:
+			default:
+				f.fifo = append(f.fifo, elem)
 			}
 		}
 	}
@@ -556,14 +553,12 @@ func (s *walkScheduler) Wait() error {
 		if n := s.totalTasks.Load(); n == 0 {
 			break // finally fully done
 		}
-		select {
-		case task := <-s.workerTasks.out:
-			s.totalTasks.Add(-1)
-			if err != nil {
-				continue // just drain if errors happened.
-			}
-			err = s.processTask(task, 0)
+		task := <-s.workerTasks.out
+		s.totalTasks.Add(-1)
+		if err != nil {
+			continue // just drain if errors happened.
 		}
+		err = s.processTask(task, 0)
 	}
 	close(s.results)
 	errWrite := <-s.writeErrorChan

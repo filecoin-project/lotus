@@ -219,8 +219,8 @@ func DefaultStorageMiner() *StorageMiner {
 		},
 	}
 
-	cfg.Common.API.ListenAddress = "/ip4/127.0.0.1/tcp/2345/http"
-	cfg.Common.API.RemoteListenAddress = "127.0.0.1:2345"
+	cfg.API.ListenAddress = "/ip4/127.0.0.1/tcp/2345/http"
+	cfg.API.RemoteListenAddress = "127.0.0.1:2345"
 	return cfg
 }
 

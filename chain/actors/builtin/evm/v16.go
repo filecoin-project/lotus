@@ -42,7 +42,7 @@ func (s *state16) Nonce() (uint64, error) {
 }
 
 func (s *state16) IsAlive() (bool, error) {
-	return s.State.Tombstone == nil, nil
+	return s.Tombstone == nil, nil
 }
 
 func (s *state16) GetState() interface{} {
@@ -50,11 +50,11 @@ func (s *state16) GetState() interface{} {
 }
 
 func (s *state16) GetBytecodeCID() (cid.Cid, error) {
-	return s.State.Bytecode, nil
+	return s.Bytecode, nil
 }
 
 func (s *state16) GetBytecodeHash() ([32]byte, error) {
-	return s.State.BytecodeHash, nil
+	return s.BytecodeHash, nil
 }
 
 func (s *state16) GetBytecode() ([]byte, error) {

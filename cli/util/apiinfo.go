@@ -38,7 +38,7 @@ func ParseApiInfo(s string) APIInfo {
 func ParseApiInfoMulti(s string) []APIInfo {
 	var apiInfos []APIInfo
 
-	allAddrs := strings.SplitN(s, ",", -1)
+	allAddrs := strings.Split(s, ",")
 
 	for _, addr := range allAddrs {
 		apiInfos = append(apiInfos, ParseApiInfo(addr))

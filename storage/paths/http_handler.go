@@ -127,7 +127,7 @@ func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	stat, err := os.Stat(path)
+	stat, err := os.Stat(path) //nolint:gosec // path built from a parsed sector ID under a local storage root
 	if err != nil {
 		log.Errorf("os.Stat: %+v", err)
 		w.WriteHeader(500)
@@ -152,7 +152,7 @@ func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Requ
 	} else {
 		w.Header().Set("Content-Type", "application/octet-stream")
 		// will do a ranged read over the file at the given path if the caller has asked for a ranged read in the request headers.
-		http.ServeFile(w, r, path)
+		http.ServeFile(w, r, path) //nolint:gosec // path built from a parsed sector ID under a local storage root
 	}
 
 	log.Debugf("served sector file/dir, sectorID=%+v, fileType=%s, path=%s", id, ft, path)

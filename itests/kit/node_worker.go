@@ -59,7 +59,7 @@ func (tm *TestWorker) AddStorage(ctx context.Context, t *testing.T, conf func(*s
 
 	conf(cfg)
 
-	if !(cfg.CanStore || cfg.CanSeal) {
+	if !cfg.CanStore && !cfg.CanSeal {
 		t.Fatal("must specify at least one of CanStore or cfg.CanSeal")
 	}
 

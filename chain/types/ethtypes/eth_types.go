@@ -14,7 +14,6 @@ import (
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/multiformats/go-multihash"
-	mh "github.com/multiformats/go-multihash"
 	"github.com/multiformats/go-varint"
 	"golang.org/x/xerrors"
 
@@ -35,7 +34,7 @@ var log = logging.Logger("ethtypes")
 var expectedHashPrefix = cid.Prefix{
 	Version:  1,
 	Codec:    cid.DagCBOR,
-	MhType:   uint64(mh.BLAKE2B_MIN + 31),
+	MhType:   uint64(multihash.BLAKE2B_MIN + 31),
 	MhLength: 32,
 }.Bytes()
 
@@ -130,7 +129,7 @@ type EthBigInt big.Int
 var EthBigIntZero = EthBigInt{Int: big.Zero().Int}
 
 func (e EthBigInt) String() string {
-	if e.Int == nil || e.Int.BitLen() == 0 {
+	if e.Int == nil || e.BitLen() == 0 {
 		return "0x0"
 	}
 	return fmt.Sprintf("0x%x", e.Int)

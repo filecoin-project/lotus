@@ -13,7 +13,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	cborrpc "github.com/filecoin-project/go-cbor-util"
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
 
@@ -312,7 +311,7 @@ func dskeyForMsg(mcid cid.Cid) datastore.Key {
 func (ps *Store) SaveNewMessage(ctx context.Context, channelID string, mcid cid.Cid) error {
 	k := dskeyForMsg(mcid)
 
-	b, err := cborrpc.Dump(&MsgInfo{ChannelID: channelID, MsgCid: mcid})
+	b, err := cborutil.Dump(&MsgInfo{ChannelID: channelID, MsgCid: mcid})
 	if err != nil {
 		return err
 	}
@@ -333,7 +332,7 @@ func (ps *Store) SaveMessageResult(ctx context.Context, mcid cid.Cid, msgErr err
 		minfo.Err = msgErr.Error()
 	}
 
-	b, err := cborrpc.Dump(minfo)
+	b, err := cborutil.Dump(minfo)
 	if err != nil {
 		return err
 	}
@@ -501,7 +500,7 @@ func marshallChannelInfo(ci *ChannelInfo) ([]byte, error) {
 	if ci.Channel == nil {
 		ci.Channel = &emptyAddr
 	}
-	return cborrpc.Dump(ci)
+	return cborutil.Dump(ci)
 }
 
 func unmarshallChannelInfo(stored *ChannelInfo, value []byte) (*ChannelInfo, error) {

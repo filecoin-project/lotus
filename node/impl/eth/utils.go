@@ -248,14 +248,15 @@ func getTransactionHashByCid(ctx context.Context, cs ChainStore, c cid.Cid) (eth
 }
 
 func ethTxHashFromSignedMessage(smsg *types.SignedMessage) (ethtypes.EthHash, error) {
-	if smsg.Signature.Type == crypto.SigTypeDelegated {
+	switch smsg.Signature.Type {
+	case crypto.SigTypeDelegated:
 		tx, err := ethtypes.EthTransactionFromSignedFilecoinMessage(smsg)
 		if err != nil {
 			return ethtypes.EthHash{}, xerrors.Errorf("failed to convert from signed message: %w", err)
 		}
 
 		return tx.TxHash()
-	} else if smsg.Signature.Type == crypto.SigTypeSecp256k1 {
+	case crypto.SigTypeSecp256k1:
 		return ethtypes.EthHashFromCid(smsg.Cid())
 	}
 	// else BLS message
@@ -267,7 +268,8 @@ func newEthTxFromSignedMessage(smsg *types.SignedMessage, st *state.StateTree) (
 	var err error
 
 	// This is an eth tx
-	if smsg.Signature.Type == crypto.SigTypeDelegated {
+	switch smsg.Signature.Type {
+	case crypto.SigTypeDelegated:
 		ethTx, err := ethtypes.EthTransactionFromSignedFilecoinMessage(smsg)
 		if err != nil {
 			return ethtypes.EthTx{}, xerrors.Errorf("failed to convert from signed message: %w", err)
@@ -276,7 +278,7 @@ func newEthTxFromSignedMessage(smsg *types.SignedMessage, st *state.StateTree) (
 		if err != nil {
 			return ethtypes.EthTx{}, xerrors.Errorf("failed to convert from signed message: %w", err)
 		}
-	} else if smsg.Signature.Type == crypto.SigTypeSecp256k1 { // Secp Filecoin Message
+	case crypto.SigTypeSecp256k1: // Secp Filecoin Message
 		tx, err = ethTxFromNativeMessage(smsg.VMMessage(), st)
 		if err != nil {
 			return ethtypes.EthTx{}, err
@@ -285,7 +287,7 @@ func newEthTxFromSignedMessage(smsg *types.SignedMessage, st *state.StateTree) (
 		if err != nil {
 			return ethtypes.EthTx{}, err
 		}
-	} else { // BLS Filecoin message
+	default: // BLS Filecoin message
 		tx, err = ethTxFromNativeMessage(smsg.VMMessage(), st)
 		if err != nil {
 			return ethtypes.EthTx{}, err

@@ -771,7 +771,7 @@ var minerLockedVestedCmd = &cli.Command{
 		miners := make(map[address.Address]abi.TokenAmount)
 		var minerCount int
 		var lockedCount int
-		var lockedFunds abi.TokenAmount = big.Zero()
+		lockedFunds := big.Zero()
 		_, _ = fmt.Fprintf(cctx.App.ErrWriter, "Scanning actors at epoch %d", head.Height())
 		err = tree.ForEach(func(addr address.Address, act *types.Actor) error {
 			totalCount++

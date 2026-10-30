@@ -172,7 +172,7 @@ var jwtNewCmd = &cli.Command{
 			}
 		}()
 
-		bytes, err := json.Marshal(keyInfo)
+		bytes, err := json.Marshal(keyInfo) //nolint:gosec // writing the generated key is the purpose
 		if err != nil {
 			return err
 		}

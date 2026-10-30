@@ -28,12 +28,6 @@ func load8(store adt.Store, root cid.Cid) (State, error) {
 	return &out, nil
 }
 
-func make8(store adt.Store) (State, error) {
-	out := state8{store: store}
-	out.State = paych8.State{}
-	return &out, nil
-}
-
 type state8 struct {
 	paych8.State
 	store adt.Store
@@ -66,7 +60,7 @@ func (s *state8) getOrLoadLsAmt() (*adt8.Array, error) {
 	}
 
 	// Get the lane state from the chain
-	lsamt, err := adt8.AsArray(s.store, s.State.LaneStates, paych8.LaneStatesAmtBitwidth)
+	lsamt, err := adt8.AsArray(s.store, s.LaneStates, paych8.LaneStatesAmtBitwidth)
 	if err != nil {
 		return nil, err
 	}

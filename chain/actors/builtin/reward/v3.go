@@ -81,20 +81,14 @@ func (s *state3) InitialPledgeForPower(qaPower abi.StoragePower, _ abi.TokenAmou
 		qaPower,
 		s.State.ThisEpochBaselinePower,
 		s.State.ThisEpochRewardSmoothed,
-		smoothing3.FilterEstimate{
-			PositionEstimate: networkQAPower.PositionEstimate,
-			VelocityEstimate: networkQAPower.VelocityEstimate,
-		},
+		smoothing3.FilterEstimate(*networkQAPower),
 		circSupply,
 	), nil
 }
 
 func (s *state3) PreCommitDepositForPower(networkQAPower builtin.FilterEstimate, sectorWeight abi.StoragePower) (abi.TokenAmount, error) {
 	return miner3.PreCommitDepositForPower(s.State.ThisEpochRewardSmoothed,
-		smoothing3.FilterEstimate{
-			PositionEstimate: networkQAPower.PositionEstimate,
-			VelocityEstimate: networkQAPower.VelocityEstimate,
-		},
+		smoothing3.FilterEstimate(networkQAPower),
 		sectorWeight), nil
 }
 

@@ -8,7 +8,6 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
-	inet "github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"golang.org/x/xerrors"
@@ -45,7 +44,7 @@ type LatencyMessage struct {
 	TSent    int64
 }
 
-type NewStreamFunc func(context.Context, peer.ID, ...protocol.ID) (inet.Stream, error)
+type NewStreamFunc func(context.Context, peer.ID, ...protocol.ID) (network.Stream, error)
 
 type Service struct {
 	h host.Host
@@ -71,7 +70,7 @@ func NewHelloService(h host.Host, cs *store.ChainStore, syncer *chain.Syncer, co
 	}
 }
 
-func (hs *Service) HandleStream(s inet.Stream) {
+func (hs *Service) HandleStream(s network.Stream) {
 	var hmsg HelloMessage
 	_ = s.SetReadDeadline(time.Now().Add(streamDeadline))
 	if err := cborutil.ReadCborRPC(s, &hmsg); err != nil {

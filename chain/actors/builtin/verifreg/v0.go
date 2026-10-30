@@ -76,9 +76,7 @@ func (s *state0) ForEachClient(cb func(addr address.Address, dcap abi.StoragePow
 }
 
 func (s *state0) verifiedClients() (adt.Map, error) {
-
 	return adt0.AsMap(s.store, s.VerifiedClients)
-
 }
 
 func (s *state0) verifiers() (adt.Map, error) {

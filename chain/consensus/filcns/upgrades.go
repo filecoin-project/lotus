@@ -3391,11 +3391,11 @@ func resolveSolsticeRewardBootstrap(
 	actorsIn *state.StateTree, params buildconstants.SolsticeRewardBootstrapParams,
 ) (buildconstants.SolsticeRewardBootstrapParams, error) {
 	if params.SWAActor == address.Undef {
-		return buildconstants.SolsticeRewardBootstrapParams{}, errors.New("Solstice bootstrap SWAActor is unset")
+		return buildconstants.SolsticeRewardBootstrapParams{}, errors.New("SWAActor is unset in the Solstice bootstrap")
 	}
 	// f099 is the burn sentinel f02 strips from share maps, so a migration installing it fails.
 	if params.InitialOrchestrator == builtin.BurntFundsActorAddr {
-		return buildconstants.SolsticeRewardBootstrapParams{}, errors.New("Solstice bootstrap InitialOrchestrator is the burn actor")
+		return buildconstants.SolsticeRewardBootstrapParams{}, errors.New("the Solstice bootstrap InitialOrchestrator is the burn actor")
 	}
 	for _, field := range []struct {
 		name string

@@ -111,11 +111,8 @@ func NewReadyHandler(api lapi.FullNode) *HealthHandler {
 		check()
 
 		minutely := time.NewTicker(time.Minute)
-		for {
-			select {
-			case <-minutely.C:
-				check()
-			}
+		for range minutely.C {
+			check()
 		}
 	}()
 	return &h

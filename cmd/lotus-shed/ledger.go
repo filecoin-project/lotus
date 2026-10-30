@@ -185,7 +185,7 @@ var ledgerKeyInfoCmd = &cli.Command{
 
 		if cctx.Bool("verbose") {
 			fmt.Println(addr)
-			fmt.Println(pubk)
+			fmt.Printf("%v\n", pubk)
 		}
 
 		a, err := address.NewFromString(addr)
@@ -206,7 +206,7 @@ var ledgerKeyInfoCmd = &cli.Command{
 		ki.Type = types.KTSecp256k1Ledger
 		ki.PrivateKey = b
 
-		out, err := json.Marshal(ki)
+		out, err := json.Marshal(ki) //nolint:gosec // printing the key info is the purpose
 		if err != nil {
 			return err
 		}

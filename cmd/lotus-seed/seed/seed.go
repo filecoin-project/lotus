@@ -232,7 +232,7 @@ func WriteGenesisMiner(maddr address.Address, sbroot string, gm *genesis.Miner, 
 	}
 
 	if key != nil {
-		b, err := json.Marshal(key)
+		b, err := json.Marshal(key) //nolint:gosec // writing the pre-seal key is the purpose
 		if err != nil {
 			return err
 		}

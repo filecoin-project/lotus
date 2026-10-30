@@ -84,8 +84,8 @@ type parsedOptions struct {
 }
 
 func (options *parsedOptions) noOptionsSet() bool {
-	return options.IncludeHeaders == false &&
-		options.IncludeMessages == false
+	return !options.IncludeHeaders &&
+		!options.IncludeMessages
 }
 
 func parseOptions(optfield uint64) *parsedOptions {

@@ -36,7 +36,7 @@ func make20(store adt.Store, signers []address.Address, threshold uint64, startE
 	out := state20{store: store}
 	out.State = msig20.State{}
 	out.State.Signers = signers
-	out.State.NumApprovalsThreshold = threshold
+	out.NumApprovalsThreshold = threshold
 	out.State.StartEpoch = startEpoch
 	out.State.UnlockDuration = unlockDuration
 	out.State.InitialBalance = initialBalance
@@ -46,7 +46,7 @@ func make20(store adt.Store, signers []address.Address, threshold uint64, startE
 		return nil, err
 	}
 
-	out.State.PendingTxns = em
+	out.PendingTxns = em
 
 	return &out, nil
 }
@@ -57,7 +57,7 @@ type state20 struct {
 }
 
 func (s *state20) LockedBalance(currEpoch abi.ChainEpoch) (abi.TokenAmount, error) {
-	return s.State.AmountLocked(currEpoch - s.State.StartEpoch), nil
+	return s.AmountLocked(currEpoch - s.State.StartEpoch), nil
 }
 
 func (s *state20) StartEpoch() (abi.ChainEpoch, error) {
@@ -81,7 +81,7 @@ func (s *state20) Signers() ([]address.Address, error) {
 }
 
 func (s *state20) ForEachPendingTxn(cb func(id int64, txn Transaction) error) error {
-	arr, err := adt20.AsMap(s.store, s.State.PendingTxns, builtin20.DefaultHamtBitwidth)
+	arr, err := adt20.AsMap(s.store, s.PendingTxns, builtin20.DefaultHamtBitwidth)
 	if err != nil {
 		return err
 	}
@@ -101,7 +101,7 @@ func (s *state20) PendingTxnChanged(other State) (bool, error) {
 		// treat an upgrade as a change, always
 		return true, nil
 	}
-	return !s.State.PendingTxns.Equals(other20.PendingTxns), nil
+	return !s.PendingTxns.Equals(other20.PendingTxns), nil
 }
 
 func (s *state20) transactions() (adt.Map, error) {
@@ -113,7 +113,7 @@ func (s *state20) decodeTransaction(val *cbg.Deferred) (Transaction, error) {
 	if err := tx.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
 		return Transaction{}, err
 	}
-	return Transaction(tx), nil
+	return tx, nil
 }
 
 func (s *state20) GetState() interface{} {

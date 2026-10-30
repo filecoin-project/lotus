@@ -185,9 +185,9 @@ var importBenchCmd = &cli.Command{
 			bdgOpt := badger.DefaultOptions
 			bdgOpt.GcInterval = 0
 			bdgOpt.Options = bdg.DefaultOptions("")
-			bdgOpt.Options.SyncWrites = false
-			bdgOpt.Options.Truncate = true
-			bdgOpt.Options.DetectConflicts = false
+			bdgOpt.SyncWrites = false
+			bdgOpt.Truncate = true
+			bdgOpt.DetectConflicts = false
 
 			ds, err = badger.NewDatastore(tdir, &bdgOpt)
 		}

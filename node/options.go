@@ -112,7 +112,7 @@ func FromVal[T any](v T) func() T {
 func as(in interface{}, as interface{}) interface{} {
 	outType := reflect.TypeOf(as)
 
-	if outType.Kind() != reflect.Ptr {
+	if outType.Kind() != reflect.Pointer {
 		panic("outType is not a pointer")
 	}
 
