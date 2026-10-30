@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"sort"
@@ -13,6 +14,8 @@ import (
 	"strings"
 
 	"github.com/google/go-github/v66/github"
+	"golang.org/x/mod/modfile"
+	"golang.org/x/mod/module"
 	"golang.org/x/mod/semver"
 )
 
@@ -53,6 +56,8 @@ var (
 	// releaseNoteHeadingRegexp matches the heading of the optional release-note block in a PR description.
 	releaseNoteHeadingRegexp = regexp.MustCompile(`(?i)^##\s+release notes?\s*$`)
 	htmlCommentRegexp        = regexp.MustCompile(`(?s)<!--.*?-->`)
+	// majorVersionRegexp matches the major-version element at the end of a module path, e.g. the v4 of go-amt-ipld/v4.
+	majorVersionRegexp = regexp.MustCompile(`^v[0-9]+$`)
 )
 
 // commitInfo is one commit in the range a release is generated from.
@@ -261,11 +266,113 @@ func writeContributors(b *strings.Builder, commits []commitInfo) {
 	}
 }
 
+// dependencyPrefix selects the dependencies whose commits count towards a release's Contributors table.
+const dependencyPrefix = "github.com/filecoin-project/"
+
+// dependencyChange is a dependency whose version differs between the go.mod files at the ends of a release's range.
+type dependencyChange struct {
+	// Repo is the module path's repository, e.g. github.com/filecoin-project/go-state-types.
+	Repo   string
+	OldRef string
+	NewRef string
+}
+
+// moduleVersionRef returns the git ref of a module version: the commit of a pseudo-version, or else the tag,
+// which a module in a subdirectory of its repository prefixes with that subdirectory.
+func moduleVersionRef(subdir, version string) string {
+	if module.IsPseudoVersion(version) {
+		if rev, err := module.PseudoVersionRev(version); err == nil {
+			return rev
+		}
+	}
+	version = strings.TrimSuffix(version, "+incompatible")
+	if subdir != "" {
+		return subdir + "/" + version
+	}
+	return version
+}
+
+// changedDependencies returns the required modules under prefix whose version differs between two go.mod files, sorted by repository.
+func changedDependencies(oldGoMod, newGoMod []byte, prefix string) ([]dependencyChange, error) {
+	oldFile, err := modfile.ParseLax("go.mod", oldGoMod, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse the old go.mod: %w", err)
+	}
+	newFile, err := modfile.ParseLax("go.mod", newGoMod, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse the new go.mod: %w", err)
+	}
+	oldVersions := map[string]string{}
+	for _, r := range oldFile.Require {
+		oldVersions[r.Mod.Path] = r.Mod.Version
+	}
+	var changes []dependencyChange
+	seen := map[dependencyChange]bool{}
+	for _, r := range newFile.Require {
+		oldVersion, ok := oldVersions[r.Mod.Path]
+		if !strings.HasPrefix(r.Mod.Path, prefix) || !ok || oldVersion == r.Mod.Version {
+			continue
+		}
+		parts := strings.Split(r.Mod.Path, "/")
+		if len(parts) < 3 {
+			continue
+		}
+		// A trailing /vN is the major version, not a subdirectory.
+		subdirParts := parts[3:]
+		if n := len(subdirParts); n > 0 && majorVersionRegexp.MatchString(subdirParts[n-1]) {
+			subdirParts = subdirParts[:n-1]
+		}
+		subdir := strings.Join(subdirParts, "/")
+		change := dependencyChange{
+			Repo:   strings.Join(parts[:3], "/"),
+			OldRef: moduleVersionRef(subdir, oldVersion),
+			NewRef: moduleVersionRef(subdir, r.Mod.Version),
+		}
+		if !seen[change] {
+			seen[change] = true
+			changes = append(changes, change)
+		}
+	}
+	sort.Slice(changes, func(i, j int) bool { return changes[i].Repo < changes[j].Repo })
+	return changes, nil
+}
+
+// dependencyCommits returns the commits between the old and new version of each dependency, from bare clones kept in cacheDir.
+// A dependency that can't be cloned or resolved is left out with a warning.
+func dependencyCommits(errOut io.Writer, cacheDir string, changes []dependencyChange) []commitInfo {
+	var commits []commitInfo
+	for _, change := range changes {
+		dir := filepath.Join(cacheDir, change.Repo+".git")
+		if _, err := os.Stat(dir); err != nil {
+			_, _ = fmt.Fprintf(errOut, "Cloning %s for the Contributors table\n", change.Repo)
+			if _, err := gitOutput("clone", "--quiet", "--bare", "https://"+change.Repo, dir); err != nil {
+				_, _ = fmt.Fprintf(errOut, "warning: leaving %s out of the Contributors table: %v\n", change.Repo, err)
+				continue
+			}
+		}
+		rangeSpec := change.OldRef + ".." + change.NewRef
+		if _, err := gitOutput("-C", dir, "rev-parse", "--verify", "--quiet", change.NewRef+"^{commit}"); err != nil {
+			_, _ = gitOutput("-C", dir, "fetch", "--quiet", "--tags", "origin", "+refs/heads/*:refs/heads/*")
+		}
+		output, err := gitOutput("-C", dir, "log", "--no-merges", "--use-mailmap", "--shortstat", "--format=%x1e%H%x1f%aN%x1f%s", rangeSpec)
+		if err == nil {
+			var parsed []commitInfo
+			if parsed, err = parseGitLog(output); err == nil {
+				commits = append(commits, parsed...)
+				continue
+			}
+		}
+		_, _ = fmt.Fprintf(errOut, "warning: leaving %s %s out of the Contributors table: %v\n", change.Repo, rangeSpec, err)
+	}
+	return commits
+}
+
 // generateChangelogSection renders the CHANGELOG.md section for a release from the commits in its range, oldest first.
 // Commits whose PR is in released are skipped: the previous tag is not always an ancestor of the release, so the
 // range can hold changes that already shipped through a backport.
 // fetchPR reads a PR from GitHub; when it fails, the entry falls back to the commit subject and a warning is logged.
-func generateChangelogSection(errOut io.Writer, release changelogRelease, commits []commitInfo, released map[int]bool, fetchPR func(int) (pullRequestInfo, error)) string {
+// dependencyCommits are counted in the Contributors table only.
+func generateChangelogSection(errOut io.Writer, release changelogRelease, commits []commitInfo, released map[int]bool, fetchPR func(int) (pullRequestInfo, error), dependencyCommits []commitInfo) string {
 	var entries [sectionCount][]string
 	var contributors []commitInfo
 	listed := map[int]bool{}
@@ -325,7 +432,7 @@ func generateChangelogSection(errOut io.Writer, release changelogRelease, commit
 		_, _ = fmt.Fprintf(&b, "%s[Changes since %s](https://github.com/filecoin-project/lotus/compare/%s...%s)\n", prefix, link.From, link.From, link.To)
 	}
 	b.WriteString("\n")
-	writeContributors(&b, contributors)
+	writeContributors(&b, append(contributors, dependencyCommits...))
 	b.WriteString("\n")
 	return b.String()
 }
@@ -404,6 +511,8 @@ type changelogGenerateOptions struct {
 	Repo          string
 	Force         bool
 	DryRun        bool
+	// SkipDependencies leaves commits in filecoin-project dependencies out of the Contributors table.
+	SkipDependencies bool
 }
 
 // runChangelogGenerate generates the section for a release and writes it into the changelog, or to out for a dry run.
@@ -485,7 +594,15 @@ func runChangelogGenerate(out, errOut io.Writer, opts changelogGenerateOptions) 
 		return info, nil
 	}
 
-	section := generateChangelogSection(errOut, release, commits, released, fetchPR)
+	var depCommits []commitInfo
+	if !opts.SkipDependencies {
+		depCommits, err = changedDependencyCommits(errOut, from, opts.To)
+		if err != nil {
+			return err
+		}
+	}
+
+	section := generateChangelogSection(errOut, release, commits, released, fetchPR, depCommits)
 	if opts.DryRun {
 		_, err := io.WriteString(out, section)
 		return err
@@ -499,4 +616,26 @@ func runChangelogGenerate(out, errOut io.Writer, opts changelogGenerateOptions) 
 	}
 	_, _ = fmt.Fprintf(errOut, "Wrote the v%s section to %s\n", version, opts.ChangelogPath)
 	return nil
+}
+
+// changedDependencyCommits returns the commits in filecoin-project dependencies whose version changed between from and to,
+// cloning them into the user's cache directory.
+func changedDependencyCommits(errOut io.Writer, from, to string) ([]commitInfo, error) {
+	oldGoMod, err := gitOutput("show", from+":go.mod")
+	if err != nil {
+		return nil, err
+	}
+	newGoMod, err := gitOutput("show", to+":go.mod")
+	if err != nil {
+		return nil, err
+	}
+	changes, err := changedDependencies([]byte(oldGoMod), []byte(newGoMod), dependencyPrefix)
+	if err != nil {
+		return nil, err
+	}
+	cacheDir, err := os.UserCacheDir()
+	if err != nil {
+		return nil, fmt.Errorf("failed to find a cache directory for dependency clones: %w", err)
+	}
+	return dependencyCommits(errOut, filepath.Join(cacheDir, "lotus-release"), changes), nil
 }
