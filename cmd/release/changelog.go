@@ -221,7 +221,7 @@ func formatChangelogEntry(text string, pr int) string {
 			lines[i] = "  " + lines[i]
 		}
 	}
-	lines[len(lines)-1] += fmt.Sprintf(" ([filecoin-project/lotus#%d](https://github.com/filecoin-project/lotus/pull/%d))", pr, pr)
+	lines[len(lines)-1] += fmt.Sprintf(" ([#%d](https://github.com/filecoin-project/lotus/pull/%d))", pr, pr)
 	return "- " + strings.Join(lines, "\n") + "\n"
 }
 
