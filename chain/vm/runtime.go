@@ -205,7 +205,6 @@ func (rt *Runtime) shimCall(f func() interface{}) (rval []byte, aerr aerrors.Act
 
 func (rt *Runtime) ValidateImmediateCallerAcceptAny() {
 	rt.abortIfAlreadyValidated()
-	return
 }
 
 func (rt *Runtime) CurrentBalance() abi.TokenAmount {

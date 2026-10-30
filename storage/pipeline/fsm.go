@@ -374,7 +374,7 @@ func (state *SectorInfo) logAppend(l Log) {
 		state.Log[2000] = Log{
 			Timestamp: uint64(time.Now().Unix()),
 			Message:   "truncating log (above 8000 entries)",
-			Kind:      fmt.Sprintf("truncate"),
+			Kind:      "truncate",
 		}
 
 		state.Log = append(state.Log[:2000], state.Log[6000:]...)

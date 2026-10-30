@@ -20,10 +20,8 @@ func notifyHandler(ctx context.Context, n string, ch chan interface{}, sCh chan 
 		if err != nil {
 			return "", err
 		}
-		select {
-		case result := <-statusCh:
-			return result, nil
-		}
+		result := <-statusCh
+		return result, nil
 	// SIGTERM
 	case <-sCh:
 		os.Exit(1)

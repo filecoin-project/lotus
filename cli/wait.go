@@ -22,11 +22,7 @@ var WaitApiCmd = &cli.Command{
 		ctx := ReqContext(cctx)
 		ctx, cancel := context.WithTimeout(ctx, cctx.Duration("timeout"))
 		defer cancel()
-		for {
-			if ctx.Err() != nil {
-				break
-			}
-
+		for ctx.Err() == nil {
 			api, closer, err := GetAPI(cctx)
 			if err != nil {
 				fmt.Printf("Not online yet... (%s)\n", err)

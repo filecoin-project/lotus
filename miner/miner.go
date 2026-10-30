@@ -147,7 +147,7 @@ func (m *Miner) Start(_ context.Context) error {
 		return fmt.Errorf("miner already started")
 	}
 	m.stop = make(chan struct{})
-	go m.mine(context.TODO())
+	go m.mine(context.TODO()) //nolint:gosec // the mining loop outlives Start
 	return nil
 }
 
@@ -329,7 +329,7 @@ minerLoop:
 			now := build.Clock.Now()
 			// Handle timing for broadcasting the block.
 			switch {
-			case btime == now:
+			case btime.Equal(now):
 				// block timestamp is perfectly aligned with time.
 			case btime.After(now):
 				// Wait until it's time to broadcast the block.

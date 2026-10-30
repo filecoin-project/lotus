@@ -75,7 +75,7 @@ func (sh *Scheduler) runWorker(ctx context.Context, wid storiface.WorkerID, work
 		windowsRequested: 0,
 	}
 
-	go sw.handleWorker()
+	go sw.handleWorker() //nolint:gosec // the worker loop outlives the call that adds the worker
 
 	return nil
 }
