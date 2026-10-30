@@ -86,27 +86,8 @@ Use Conventional Commits form, `<type>(<scope>): <description>`, for commit subj
 
 Prefer released dependency versions. Exceptions require the `dependency-check-ignore` rationale documented beside the version in `go.mod`.
 
-### Changelog
+### Release notes
 
-Add a `CHANGELOG.md` entry only when operators, users or downstream developers are likely to care. It is a release-reading aid, not a record of every change.
+Do not edit `CHANGELOG.md` in a PR. Release sections are generated at release time from PR titles by `cmd/release changelog generate`; see [Release Notes](CONTRIBUTING.md#release-notes).
 
-Do not add changelog noise for tests, documentation, CI, internal refactors, generated churn or maintenance with no observable effect. For these changes, a maintainer or administrator can apply the `skip/changelog` label; the documented `[skip changelog]` PR-body marker is also accepted by CI.
-
-Default to zero or one entry per logical change, not one per implementation detail or subsection. Use one short, commit-subject-sized sentence naming the affected API, command or component and what changed for users. The PR link is the trail to details: omit implementation narratives, upstream fix inventories and assurances about unchanged behaviour. Prefer this brevity over verbose examples already in the changelog.
-
-Put entries under the appropriate `# UNRELEASED` subsection: Upgrade Warnings for required operator action or serious compatibility concerns, otherwise New Features, Bug Fixes or Improvements. Expand only when significant user impact warrants explanation or readers need instructions to use the change or upgrade safely, not because the diff is large.
-
-Good short entries from `CHANGELOG.md` (PR links omitted here):
-
-- feat(lotus-shed): accept Ethereum transaction hashes in msg
-- fix(rpc): `GasEstimateMessageGas` no longer panics when estimating messages with an empty `To` or `From` address
-
-End each entry with the eventual PR link in this form:
-
-```md
-([filecoin-project/lotus#12345](https://github.com/filecoin-project/lotus/pull/12345))
-```
-
-Prediction hint: issues and PRs share one sequence; fetch `GET /repos/filecoin-project/lotus/issues?state=all&sort=created&direction=desc&per_page=1` and add one to `.[0].number`.
-
-Before the PR exists, either use a carefully predicted next number or add the link after opening it. Verify every predicted number before merge; do not leave placeholders or links to another PR. For PRs into `master`, the Changelog check fails unless an added `CHANGELOG.md` line links to the PR itself.
+The PR title is the changelog line. Name the affected API, command or component and say what changed for users, not how it was implemented, and mark breaking changes with `!`. For changes operators must act on, suggest the `release-note/upgrade-warning` label and a `## Release note` block in the PR description with the wording they need.

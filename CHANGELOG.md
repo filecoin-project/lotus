@@ -7,31 +7,7 @@
 > * [CHANGELOG_1.1x.md](./documentation/changelog/CHANGELOG_1.1x.md) - v1.10.0 to v1.19.0
 > * [CHANGELOG_1.2x.md](./documentation/changelog/CHANGELOG_1.2x.md) - v1.20.0 to v1.29.2
 
-# UNRELEASED
-
-## ☢️ Upgrade Warnings ☢️
-
-- feat(api): debug endpoints (`/debug/pprof/*`, `/debug/vars`, `/debug/pprof-set/*`) on the daemon, miner, worker and wallet only answer local, non-browser-cross-origin clients; set `LOTUS_DEBUG_ALLOW_REMOTE=1` to serve all clients. ([filecoin-project/lotus#13913](https://github.com/filecoin-project/lotus/pull/13913))
-- chore(cli): remove obsolete `filplus` and `verifreg` write commands and `sectors extend --drop-claims` after nv29. ([filecoin-project/lotus#13968](https://github.com/filecoin-project/lotus/pull/13968))
-- chore(cli): remove the remaining read-only `lotus filplus` and `lotus-shed verifreg` commands; the verified registry and DataCap actors are frozen since nv29 and slated for removal. ([filecoin-project/lotus#13982](https://github.com/filecoin-project/lotus/pull/13982))
-
-## ⭐ New Features
-
-- feat(genesis): 2k devnets now start at nv29. A genesis template's optional `RewardSWA` installs an account or multisig as the reward actor's FIP-0118 stream weight actor, so a fresh network can change reward weights without a migration; unset, the SWA stays the system actor. ([filecoin-project/lotus#13967](https://github.com/filecoin-project/lotus/pull/13967))
-
-## 🐛 Bug Fixes
-
-- fix(paths): a file in a sector directory that isn't named like a sector, such as a stray `nohup.out`, is now skipped with a warning instead of failing to open the storage path and stopping `lotus-miner` or `lotus-worker` from starting. ([filecoin-project/lotus#13950](https://github.com/filecoin-project/lotus/pull/13950))
-- fix(eth): `eth_getLogs`, `eth_getFilterLogs` and transaction receipts now include EVM `LOG0` events with empty data, matching `eth_subscribe`. ([filecoin-project/lotus#13961](https://github.com/filecoin-project/lotus/pull/13961))
-- fix(miner): moving sector files that are already in long-term storage, for example the sealed and cache files in `FinalizeReplicaUpdate`, is no longer stuck in the scheduler when the storage path is full. ([filecoin-project/lotus#13949](https://github.com/filecoin-project/lotus/pull/13949))
-- fix(chainindex): historical `eth_getLogs` and `GetActorEventsRaw` range queries no longer time out after a node restart; the range check now starts from the chain index instead of walking back from head. ([filecoin-project/lotus#13957](https://github.com/filecoin-project/lotus/pull/13957))
-- fix(daemon): importing a snapshot from a URL now resumes after HTTP/2 stream resets and other transient read errors, with backoff, instead of failing. ([filecoin-project/lotus#13962](https://github.com/filecoin-project/lotus/pull/13962))
-
-## 👌 Improvements
-
-- chore(sub): remove the unused `chain/sub/ratelimit` package, left behind when the IPNI pubsub relay was removed. ([filecoin-project/lotus#13969](https://github.com/filecoin-project/lotus/pull/13969))
-- fix(mpool): messages received over pubsub with an already-used nonce are now rejected before their signature is verified. ([filecoin-project/lotus#13970](https://github.com/filecoin-project/lotus/pull/13970))
-- feat(eth): a lookup by block number that stalls on the chain height index warming after a restart now fails after 5s with a `-32002` "resource unavailable" error instead of timing out. Go API: `api.ErrExpensiveFork` is now `api.ErrResourceUnavailable` with a `Reason`. ([filecoin-project/lotus#13959](https://github.com/filecoin-project/lotus/pull/13959))
+Don't edit this file in a pull request. Each release's section is generated at release time from the titles of the PRs it includes; see [Release notes](./CONTRIBUTING.md#release-notes).
 
 # Node and Miner v1.38.3 / 2026-10-21
 

@@ -209,8 +209,6 @@ jobs:
         run: |
           ./scripts/generate-checksums.sh
           ls -la dist
-      - name: Install zsh (release body generation dependency)
-        run: sudo apt update && sudo apt install -y zsh
       - name: Find release
         id: before
         env:
@@ -242,11 +240,9 @@ jobs:
         env:
           project: ${{ matrix.project }}
           tag: ${{ fromJSON(steps.project.outputs.config).tag }}
-          previous: ${{ fromJSON(steps.project.outputs.config).previous }}
           # Runs that publish the release: the push after the release PR merges, or a
           # manual workflow_dispatch with publish=true.
           publishing: ${{ github.event_name == 'push' || github.event.inputs.publish == 'true' }}
-          current: ${{ github.event.inputs.ref || github.sha }}
           ref: ${{ github.event.inputs.ref }}
         run: |
           # A manual run builds from the supplied ref, so read its CHANGELOG.md rather than that of the branch the workflow runs on.
@@ -261,17 +257,8 @@ jobs:
           # Section selection lives in cmd/release rather than shell so its matching rules are unit tested.
           # See `changelog-section` in cmd/release for how the section is selected.
           # On publishing runs it fails, leaving the release a draft, if CHANGELOG.md has no populated section for this release.
+          # The section already ends with its PR list and Contributors table, from `changelog generate` in cmd/release.
           go run cmd/release/main.go changelog-section --project "$project" --tag "$tag" --publishing="$publishing" --changelog "$changelog" > release_body.md
-          if [[ "$previous" != '' ]]; then
-            mkdir -p "$(go env GOPATH)/src/github.com/filecoin-project/lotus"
-            rm -rf "$(go env GOPATH)/src/github.com/filecoin-project/lotus"
-            ln -s "$(pwd)" "$(go env GOPATH)/src/github.com/filecoin-project/lotus"
-            {
-              echo "## Release Log"
-              echo ""
-              ./scripts/mkreleaselog "$previous" "$current"
-            } >> release_body.md
-          fi
           cat release_body.md
       - name: Create or update release
         if: steps.published.outputs.skip != 'true'

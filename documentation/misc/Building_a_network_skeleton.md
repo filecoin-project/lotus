@@ -442,8 +442,6 @@ Note: one only needs to update `filecoin-ffi`'s dependency on `go-state-types` w
    - [nv24 example](https://github.com/filecoin-project/lotus/pull/12455)
    - [nv27 example](https://github.com/filecoin-project/lotus/pull/13125)
 
-    If the skeleton PR changes Go files, `go.mod`, or `go.sum` but does not need a user-facing changelog entry, add `[skip changelog]` to the PR body or apply the `skip/changelog` label before moving it out of draft. Otherwise the changelog workflow will fail.
-
 And you're done 🎉! This creates a basis where you can start testing new FIPs. 
 
 ## Special Cases

@@ -6,7 +6,7 @@ description: >
   A pull_request run tests GitHub's merge of the PR head into the base (`github.sha`). Each run records
   that commit as a `tested-commit` artifact. The workflow can skip when every file that differs from
   either of these baselines is in the selected skippable set:
-  the commit tested by this workflow's last successful run on the same pull request (so CHANGELOG
+  the commit tested by this workflow's last successful run on the same pull request (so Markdown
   edits, force pushes and rebases that only touch skippable files reuse that result), or the PR's base
   (so a pull request that only touches skippable files never runs the heavy jobs).
   Any error falls back to running everything.

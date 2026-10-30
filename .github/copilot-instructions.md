@@ -9,7 +9,7 @@ Prioritise, in order:
 3. Data loss or corruption, including non-atomic writes, incompatible schemas, stale caches and restart or revert paths that disagree with the forward path.
 4. API compatibility and completeness across interfaces, implementations, permission annotations, version wrappers, gateway exposure, generated proxies, mocks and OpenRPC output. New API work should normally target v2; v0/v1 are compatibility surfaces and should change only for an explicit compatibility need or bug fix.
 5. Goroutine leaks, deadlocks, races, blocking channel operations, missing cancellation and unbounded queues or retries.
-6. Tests that miss the changed contract, generated outputs that no longer match their source and user-visible changes missing the required changelog treatment.
+6. Tests that miss the changed contract, generated outputs that no longer match their source and PR titles that misdescribe the user-visible change or omit `!` for a breaking change, since titles become the release notes.
 
 Only leave a comment when there is a concrete, plausible failure introduced by the pull request. State the triggering input or system state, the incorrect result and its consequence. Verify assumptions against the current code; Lotus has intentional patterns that can look unusual in isolation.
 
