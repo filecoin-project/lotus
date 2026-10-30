@@ -24,7 +24,7 @@
 - fix(eth): `eth_getLogs`, `eth_getFilterLogs` and transaction receipts now include EVM `LOG0` events with empty data, matching `eth_subscribe`. ([filecoin-project/lotus#13961](https://github.com/filecoin-project/lotus/pull/13961))
 - fix(miner): moving sector files that are already in long-term storage, for example the sealed and cache files in `FinalizeReplicaUpdate`, is no longer stuck in the scheduler when the storage path is full. ([filecoin-project/lotus#13949](https://github.com/filecoin-project/lotus/pull/13949))
 - fix(chainindex): historical `eth_getLogs` and `GetActorEventsRaw` range queries no longer time out after a node restart; the range check now starts from the chain index instead of walking back from head. ([filecoin-project/lotus#13957](https://github.com/filecoin-project/lotus/pull/13957))
-
+- fix(daemon): importing a snapshot from a URL now resumes after HTTP/2 stream resets and other transient read errors, with backoff, instead of failing. ([filecoin-project/lotus#13962](https://github.com/filecoin-project/lotus/pull/13962))
 
 ## 👌 Improvements
 
