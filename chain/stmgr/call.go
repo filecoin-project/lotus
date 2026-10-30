@@ -35,7 +35,7 @@ const (
 )
 
 // ErrExpensiveFork matches any expensive-fork refusal; the returned errors carry the epoch.
-var ErrExpensiveFork error = &api.ErrExpensiveFork{}
+var ErrExpensiveFork error = &api.ErrResourceUnavailable{Reason: api.ReasonExpensiveFork}
 
 // ErrSenderValidationFailed signals that the sender actor doesn't exist on chain or is not a
 // valid sender type. Control flow only: callers use it to retry with skip-sender-validation.

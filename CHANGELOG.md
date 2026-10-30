@@ -29,6 +29,7 @@
 
 - chore(sub): remove the unused `chain/sub/ratelimit` package, left behind when the IPNI pubsub relay was removed. ([filecoin-project/lotus#13969](https://github.com/filecoin-project/lotus/pull/13969))
 - fix(mpool): messages received over pubsub with an already-used nonce are now rejected before their signature is verified. ([filecoin-project/lotus#13970](https://github.com/filecoin-project/lotus/pull/13970))
+- feat(eth): a lookup by block number that stalls on the chain height index warming after a restart now fails after 5s with a `-32002` "resource unavailable" error instead of timing out. Go API: `api.ErrExpensiveFork` is now `api.ErrResourceUnavailable` with a `Reason`. ([filecoin-project/lotus#13959](https://github.com/filecoin-project/lotus/pull/13959))
 
 # Node and Miner v1.38.3 / 2026-10-21
 

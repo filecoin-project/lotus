@@ -336,7 +336,7 @@ func testForkRefuseCall(t *testing.T, nullsBefore, nullsAfter int) {
 			// If I had a fork, or I _will_ have a fork, it should fail, reporting the fork epoch
 			// (not the queried tipset height, which differs when the fork is at the parent).
 			require.ErrorIs(t, err, ErrExpensiveFork)
-			var fe *api.ErrExpensiveFork
+			var fe *api.ErrResourceUnavailable
 			require.ErrorAs(t, err, &fe)
 			require.Equal(t, abi.ChainEpoch(testForkHeight), fe.Epoch)
 		} else {
