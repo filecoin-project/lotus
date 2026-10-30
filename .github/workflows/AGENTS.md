@@ -19,4 +19,3 @@
 
 ### Workflow Permissions
 - `pr-title-check.yml` needs `pull-requests: write` for reviews
-- `changelog.yml` uses default permissions (read-only)

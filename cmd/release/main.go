@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"text/template"
+	"time"
 
 	masterminds "github.com/Masterminds/semver/v3"
 	"github.com/Masterminds/sprig/v3"
@@ -390,6 +391,73 @@ func main() {
 						return fmt.Errorf("failed to read changelog: %w", err)
 					}
 					return writeChangelogSection(c.App.Writer, c.App.ErrWriter, string(changelog), c.String("project"), c.String("tag"), c.Bool("publishing"), os.Getenv("GITHUB_ACTIONS") == "true")
+				},
+			},
+			{
+				Name:  "changelog",
+				Usage: "Generate CHANGELOG.md content",
+				Subcommands: []*cli.Command{
+					{
+						Name:  "generate",
+						Usage: "Write a release's CHANGELOG.md section from the titles, labels and release notes of the PRs merged since the previous stable release",
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:     "type",
+								Usage:    "What's the type of the release? (Options: node, miner, both)",
+								Required: true,
+							},
+							&cli.StringFlag{
+								Name:     "tag",
+								Usage:    "What's the tag of the release? (e.g., 1.39.0 or 1.39.0-rc1)",
+								Required: true,
+							},
+							&cli.StringFlag{
+								Name:  "from",
+								Usage: "Start of the commit range (default: the previous stable tag of the node, or of the miner for --type miner)",
+							},
+							&cli.StringFlag{
+								Name:  "to",
+								Usage: "End of the commit range",
+								Value: "HEAD",
+							},
+							&cli.StringFlag{
+								Name:  "date",
+								Usage: "Release date in the section header",
+								Value: time.Now().UTC().Format("2006-01-02"),
+							},
+							&cli.StringFlag{
+								Name:  "changelog",
+								Usage: "Path to the changelog",
+								Value: "CHANGELOG.md",
+							},
+							&cli.StringFlag{
+								Name:  "repo",
+								Usage: "Which full repository name (i.e., OWNER/REPOSITORY) to read PRs from.",
+								Value: "filecoin-project/lotus",
+							},
+							&cli.BoolFlag{
+								Name:  "force",
+								Usage: "Replace an existing section for this release",
+							},
+							&cli.BoolFlag{
+								Name:  "dry-run",
+								Usage: "Print the section instead of writing it into the changelog",
+							},
+						},
+						Action: func(c *cli.Context) error {
+							return runChangelogGenerate(c.App.Writer, c.App.ErrWriter, changelogGenerateOptions{
+								ReleaseType:   c.String("type"),
+								Version:       c.String("tag"),
+								From:          c.String("from"),
+								To:            c.String("to"),
+								Date:          c.String("date"),
+								ChangelogPath: c.String("changelog"),
+								Repo:          c.String("repo"),
+								Force:         c.Bool("force"),
+								DryRun:        c.Bool("dry-run"),
+							})
+						},
+					},
 				},
 			},
 			{
