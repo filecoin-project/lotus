@@ -95,22 +95,9 @@ func TestEthBigIntUnmarshalJSON(t *testing.T) {
 		require.Error(t, i.UnmarshalJSON([]byte(in)), "expected %s to be rejected", in)
 	}
 
-	// A leading sign is parsed, not rejected: the sign must survive so a
-	// domain-specific check can report it (e.g. eth_estimateGas's
-	// "gas price must not be negative"). The unsigned spelling "-0x1" stays
-	// invalid because the sign belongs before "0x". See issue #13917.
-	for _, tc := range []struct {
-		in   string
-		want int64
-	}{
-		{`"0x-1"`, -1},
-		{`"0x-10"`, -16},
-	} {
-		var got EthBigInt
-		require.NoError(t, got.UnmarshalJSON([]byte(tc.in)), tc.in)
-		require.Equal(t, tc.want, got.Int.Int64(), tc.in)
-	}
-	for _, in := range []string{`"-0x1"`, `"-0x10"`, `"0x--1"`} {
+	// Quantities must be 0x-prefixed hex with up to 256 bits (geth hexutil.Big parity).
+// Negative signs are also rejected.
+for _, in := range []string{`"-0x1"`, `"-0x10"`, `"0x--1"`, `"0x-1"`, `"0x-10"`} {
 		var i EthBigInt
 		require.Error(t, i.UnmarshalJSON([]byte(in)), "expected %s to be rejected", in)
 	}

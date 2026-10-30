@@ -157,17 +157,13 @@ func (e *EthBigInt) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
-	// Ethereum JSON-RPC quantities are hex numbers with a 0x prefix, optionally
-	// signed before the digits ("0x-1") as big.Int.SetString accepted; the digits
-	// must be hex and the magnitude must fit in 256 bits (the same bounds geth's
+	// Ethereum JSON-RPC quantities are hex numbers with a 0x prefix.
+	// The quantity must be hex digits only, up to 256 bits (the same bounds geth's
 	// hexutil.Big enforces). big.Int.SetString accepts unbounded digit runs, so a
 	// multi-kilobyte digit string would otherwise allocate a huge integer.
-	// The sign is preserved rather than rejected here: callers of a signed field
-	// report a negative value with a domain-specific error (e.g. "gas price must
-	// not be negative"), and swallowing it in the parser would hide that path.
+	// Negative signs are not allowed per geth's hexutil.Big behavior.
 	body := strings.TrimPrefix(s, "0x")
-	neg := strings.HasPrefix(body, "-")
-	digits := strings.TrimPrefix(body, "-")
+	digits := body
 	if !ethHexDigitsRe.MatchString(digits) {
 		return xerrors.Errorf("cannot parse %q as a hex-encoded big int: want 0x-prefixed hex, at most 256 bits", s)
 	}
@@ -182,9 +178,6 @@ func (e *EthBigInt) UnmarshalJSON(b []byte) error {
 	}
 	if i.BitLen() > 256 {
 		return xerrors.Errorf("hex-encoded big int %q exceeds 256 bits", s)
-	}
-	if neg {
-		i.Neg(i)
 	}
 
 	*e = EthBigInt(big.NewFromGo(i))

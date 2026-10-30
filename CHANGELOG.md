@@ -26,7 +26,7 @@
 - fix(miner): moving sector files that are already in long-term storage, for example the sealed and cache files in `FinalizeReplicaUpdate`, is no longer stuck in the scheduler when the storage path is full. ([filecoin-project/lotus#13949](https://github.com/filecoin-project/lotus/pull/13949))
 - fix(chainindex): historical `eth_getLogs` and `GetActorEventsRaw` range queries no longer time out after a node restart; the range check now starts from the chain index instead of walking back from head. ([filecoin-project/lotus#13957](https://github.com/filecoin-project/lotus/pull/13957))
 - fix(daemon): importing a snapshot from a URL now resumes after HTTP/2 stream resets and other transient read errors, with backoff, instead of failing. ([filecoin-project/lotus#13962](https://github.com/filecoin-project/lotus/pull/13962))
-- fix(eth): `EthBigInt` now rejects hex quantities that are not 0x-prefixed hex or that exceed 256 bits, instead of parsing an unbounded digit run. Negative quantities such as `"0x-1"` still decode so that callers report their own domain-specific error. ([filecoin-project/lotus#13938](https://github.com/filecoin-project/lotus/pull/13938))
+- fix(eth): `EthBigInt` now rejects hex quantities that are not 0x-prefixed hex, exceed 256 bits, or contain negative signs, instead of parsing an unbounded digit run. Callers can still reject negative values with their own domain-specific error. ([filecoin-project/lotus#13938](https://github.com/filecoin-project/lotus/pull/13938))
 
 ## 👌 Improvements
 
