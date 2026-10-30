@@ -32,7 +32,7 @@ The `release` tool provides several commands and options to interact with the Lo
     ```sh
     ./release create-issue
     ```
-- **Changelog Generate**: Write a release's section into CHANGELOG.md from the titles, `release-note/*` labels and `## Release note` blocks of the PRs merged since the previous stable release. See `generateChangelogSection` in [`changelog.go`](changelog.go) for how PRs are grouped and which are skipped. It reads PRs from GitHub with `$GITHUB_TOKEN`, or the GitHub CLI's token when that is unset.
+- **Changelog Generate**: Write a release's section into CHANGELOG.md from the titles, `release-note/*` labels and `## Release note` blocks of the PRs merged since the previous stable release. See `generateChangelogSection` in [`changelog.go`](changelog.go) for how PRs are grouped and which are skipped. It reads PRs from GitHub with `$GITHUB_TOKEN`, or the GitHub CLI's token when that is unset. Like the former `scripts/mkreleaselog`, its Contributors table also counts commits in `filecoin-project` dependencies whose version changed, which it clones into your user cache directory; `--skip-dependencies` leaves them out.
     ```sh
     ./release changelog generate --type both --tag 1.39.0
     ```

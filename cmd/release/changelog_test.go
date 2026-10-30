@@ -178,7 +178,7 @@ func TestGenerateChangelogSection(t *testing.T) {
 	}
 
 	var errOut bytes.Buffer
-	section := generateChangelogSection(&errOut, release, commits, map[int]bool{3: true}, fetchPR)
+	section := generateChangelogSection(&errOut, release, commits, map[int]bool{3: true}, fetchPR, nil)
 	require.Equal(t, `# Node and Miner v1.39.0 / 2026-11-05
 
 ## ☢️ Upgrade Warnings ☢️
@@ -225,7 +225,7 @@ func TestGenerateChangelogSection(t *testing.T) {
 
 	// With nothing labelled as a highlight, the Highlights heading stays as a placeholder for the releaser.
 	release.CompareLinks = release.CompareLinks[:1]
-	section = generateChangelogSection(&errOut, release, commits[4:5], nil, fetchPR)
+	section = generateChangelogSection(&errOut, release, commits[4:5], nil, fetchPR, nil)
 	require.Contains(t, section, "## ✨ Highlights\n\n<!-- Draft the highlights of this release here, or delete this section. -->\n\n## 🐛 Bug Fixes\n")
 	require.Contains(t, section, "## 📝 Changelog\n\n[Changes since v1.38.3](https://github.com/filecoin-project/lotus/compare/v1.38.3...v1.39.0)\n")
 	require.NotContains(t, section, "Other changes")
@@ -261,4 +261,63 @@ func TestInsertChangelogSection(t *testing.T) {
 	replaced, err := insertChangelogSection(updated, replacement, "1.39.0", names, true)
 	require.NoError(t, err)
 	require.Equal(t, "# Lotus changelog\n\nPreamble.\n\n"+replacement+"# Node v1.38.3 / 2026-10-21\n\n- old entry\n", replaced)
+}
+
+func TestChangedDependencies(t *testing.T) {
+	oldGoMod := []byte(`module github.com/filecoin-project/lotus
+
+go 1.26
+
+require (
+	github.com/filecoin-project/go-state-types v0.16.0
+	github.com/filecoin-project/go-amt-ipld/v4 v4.4.0
+	github.com/filecoin-project/go-f3 v0.0.0-20260101000000-aaaaaaaaaaaa
+	github.com/filecoin-project/specs-actors/v8 v8.0.1
+	github.com/filecoin-project/go-crypto v0.1.0 // indirect
+	github.com/filecoin-project/go-paramfetch/sub v0.1.0
+	github.com/filecoin-project/old-dep v0.1.0
+	github.com/ipfs/go-cid v0.5.0
+)
+`)
+	newGoMod := []byte(`module github.com/filecoin-project/lotus
+
+go 1.26
+
+require (
+	github.com/filecoin-project/go-state-types v0.17.0
+	github.com/filecoin-project/go-amt-ipld/v4 v4.5.0
+	github.com/filecoin-project/go-f3 v0.0.0-20260201000000-bbbbbbbbbbbb
+	github.com/filecoin-project/specs-actors/v8 v8.0.1
+	github.com/filecoin-project/go-crypto v0.2.0+incompatible // indirect
+	github.com/filecoin-project/go-paramfetch/sub v0.2.0
+	github.com/filecoin-project/new-dep v0.1.0
+	github.com/ipfs/go-cid v0.6.0
+)
+`)
+	changes, err := changedDependencies(oldGoMod, newGoMod, dependencyPrefix)
+	require.NoError(t, err)
+	require.Equal(t, []dependencyChange{
+		{Repo: "github.com/filecoin-project/go-amt-ipld", OldRef: "v4.4.0", NewRef: "v4.5.0"},
+		{Repo: "github.com/filecoin-project/go-crypto", OldRef: "v0.1.0", NewRef: "v0.2.0"},
+		{Repo: "github.com/filecoin-project/go-f3", OldRef: "aaaaaaaaaaaa", NewRef: "bbbbbbbbbbbb"},
+		{Repo: "github.com/filecoin-project/go-paramfetch", OldRef: "sub/v0.1.0", NewRef: "sub/v0.2.0"},
+		{Repo: "github.com/filecoin-project/go-state-types", OldRef: "v0.16.0", NewRef: "v0.17.0"},
+	}, changes)
+}
+
+func TestGenerateChangelogSectionCountsDependencyContributors(t *testing.T) {
+	commits := []commitInfo{{Hash: "a1", Author: "Alice", Subject: "fix: a bug (#13)", PR: 13, Files: 1, Insertions: 5}}
+	dependencyCommits := []commitInfo{
+		{Hash: "d1", Author: "Alice", Subject: "fix the dependency (#99)", PR: 99, Files: 2, Insertions: 3, Deletions: 1},
+		{Hash: "d2", Author: "Erin", Subject: "a dependency change", Files: 1, Insertions: 100},
+	}
+	fetchPR := func(int) (pullRequestInfo, error) { return pullRequestInfo{Title: "fix: a bug"}, nil }
+	release := changelogRelease{Type: "Node", Version: "1.39.0", Date: "2026-11-05", CompareLinks: []compareLink{{Project: "Node", From: "v1.38.3", To: "v1.39.0"}}}
+
+	var errOut bytes.Buffer
+	section := generateChangelogSection(&errOut, release, commits, nil, fetchPR, dependencyCommits)
+	require.Contains(t, section, "| Erin | 1 | +100/-0 | 1 |\n| Alice | 2 | +8/-1 | 3 |\n")
+	// Dependency commits are not listed as changes, and their PR numbers are not lotus PRs.
+	require.NotContains(t, section, "lotus#99")
+	require.Empty(t, errOut.String())
 }
