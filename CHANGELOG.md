@@ -11,7 +11,9 @@
 
 ## ☢️ Upgrade Warnings ☢️
 
+- feat(api): debug endpoints (`/debug/pprof/*`, `/debug/vars`, `/debug/pprof-set/*`) on the daemon, miner, worker and wallet only answer local, non-browser-cross-origin clients; set `LOTUS_DEBUG_ALLOW_REMOTE=1` to serve all clients. ([filecoin-project/lotus#13913](https://github.com/filecoin-project/lotus/pull/13913))
 - chore(cli): remove obsolete `filplus` and `verifreg` write commands and `sectors extend --drop-claims` after nv29. ([filecoin-project/lotus#13968](https://github.com/filecoin-project/lotus/pull/13968))
+- chore(cli): remove the remaining read-only `lotus filplus` and `lotus-shed verifreg` commands; the verified registry and DataCap actors are frozen since nv29 and slated for removal. ([filecoin-project/lotus#13982](https://github.com/filecoin-project/lotus/pull/13982))
 
 ## ⭐ New Features
 
@@ -23,12 +25,13 @@
 - fix(eth): `eth_getLogs`, `eth_getFilterLogs` and transaction receipts now include EVM `LOG0` events with empty data, matching `eth_subscribe`. ([filecoin-project/lotus#13961](https://github.com/filecoin-project/lotus/pull/13961))
 - fix(miner): moving sector files that are already in long-term storage, for example the sealed and cache files in `FinalizeReplicaUpdate`, is no longer stuck in the scheduler when the storage path is full. ([filecoin-project/lotus#13949](https://github.com/filecoin-project/lotus/pull/13949))
 - fix(chainindex): historical `eth_getLogs` and `GetActorEventsRaw` range queries no longer time out after a node restart; the range check now starts from the chain index instead of walking back from head. ([filecoin-project/lotus#13957](https://github.com/filecoin-project/lotus/pull/13957))
-
+- fix(daemon): importing a snapshot from a URL now resumes after HTTP/2 stream resets and other transient read errors, with backoff, instead of failing. ([filecoin-project/lotus#13962](https://github.com/filecoin-project/lotus/pull/13962))
 
 ## 👌 Improvements
 
 - chore(sub): remove the unused `chain/sub/ratelimit` package, left behind when the IPNI pubsub relay was removed. ([filecoin-project/lotus#13969](https://github.com/filecoin-project/lotus/pull/13969))
 - fix(mpool): messages received over pubsub with an already-used nonce are now rejected before their signature is verified. ([filecoin-project/lotus#13970](https://github.com/filecoin-project/lotus/pull/13970))
+- feat(eth): a lookup by block number that stalls on the chain height index warming after a restart now fails after 5s with a `-32002` "resource unavailable" error instead of timing out. Go API: `api.ErrExpensiveFork` is now `api.ErrResourceUnavailable` with a `Reason`. ([filecoin-project/lotus#13959](https://github.com/filecoin-project/lotus/pull/13959))
 
 # Node and Miner v1.38.3 / 2026-10-21
 
@@ -131,6 +134,7 @@ This is the **recommended** Lotus release for the nv29 (Solstice) network upgrad
 - fix(eth): `EthBytes` and `EthUint64FromHex` reject hex values with an embedded `0x` instead of silently stripping it and mis-decoding. ([filecoin-project/lotus#13908](https://github.com/filecoin-project/lotus/pull/13908))
 - fix(f3): node shutdown no longer fails with `could not close datastore: leveldb: closed` and leaves `repo.lock` behind. ([filecoin-project/lotus#13850](https://github.com/filecoin-project/lotus/pull/13850))
 - fix(gateway): the lookback limit now applies to the block parameter of `eth_estimateGas` and to the `fromBlock` and `blockHash` of `eth_newFilter`. ([filecoin-project/lotus#13873](https://github.com/filecoin-project/lotus/pull/13873))
+- fix(miner): a sector in `CommitFailed` without CommR or CommD no longer panics in the commit check. It redoes PreCommit1 and PreCommit2 to regenerate them, then goes back to `WaitSeed`. ([filecoin-project/lotus#13843](https://github.com/filecoin-project/lotus/pull/13843))
 - fix(gateway): cap JSON-RPC request size, which previously defaulted to 100MiB. ([filecoin-project/lotus#13912](https://github.com/filecoin-project/lotus/pull/13912))
 - fix(lotus-bench): `cli --cmd` rejects an empty command, non-positive concurrency or out-of-range qps instead of panicking. ([filecoin-project/lotus#13842](https://github.com/filecoin-project/lotus/pull/13842))
 - fix(lotus-fountain): remove the deprecated DataCap faucet. ([filecoin-project/lotus#13840](https://github.com/filecoin-project/lotus/pull/13840))
