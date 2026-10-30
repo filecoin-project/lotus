@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"text/template"
@@ -368,4 +369,18 @@ func TestWriteChangelogSectionUnknownProject(t *testing.T) {
 func TestWorkflowAnnotation(t *testing.T) {
 	require.Equal(t, "::warning title=T::m", workflowAnnotation(true, "warning", "T", "m"))
 	require.Equal(t, "warning: T: m", workflowAnnotation(false, "warning", "T", "m"))
+}
+
+// TestCallersRunReleasePackage guards against running the release CLI as `go run cmd/release/main.go`, which compiles
+// only main.go and so fails now that the package has more than one file.
+func TestCallersRunReleasePackage(t *testing.T) {
+	callers, err := filepath.Glob("../../.github/workflows/*.yml")
+	require.NoError(t, err)
+	require.NotEmpty(t, callers)
+	callers = append(callers, "../../documentation/misc/RELEASE_ISSUE_TEMPLATE.md", "README.md")
+	for _, caller := range callers {
+		content, err := os.ReadFile(caller)
+		require.NoError(t, err)
+		require.NotContains(t, string(content), "cmd/release/main.go", "%s should run `go run ./cmd/release`", caller)
+	}
 }

@@ -343,7 +343,7 @@
 - [ ] Wait for the post-merge Release workflow to finish, then verify each published release.
    <!-- agent:
    - TAG is `v{{$.Tag}}{{$tagSuffix}}` for node and `miner/v{{$.Tag}}{{$tagSuffix}}` for miner; inspect with `gh release view TAG --repo filecoin-project/lotus --json isDraft,isPrerelease,body,assets,targetCommitish`.
-   - Body: the output of `go run cmd/release/main.go changelog-section --project PROJECT --tag TAG`.
+   - Body: the output of `go run ./cmd/release changelog-section --project PROJECT --tag TAG`.
    - Flags: not a draft; prerelease only for RCs; the node stable release is marked latest.
    - Tag: `git rev-list -n 1 TAG` is the squash-merge commit on the release branch.
    - Assets: the Linux amd64 and macOS arm64 archives plus their checksum files are attached.
