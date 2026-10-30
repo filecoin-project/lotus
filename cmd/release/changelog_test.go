@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -220,7 +221,7 @@ func TestGenerateChangelogSection(t *testing.T) {
 | dependabot[bot] | 1 | +1/-1 | 2 |
 
 `, section)
-	require.Contains(t, errOut.String(), `warning: f6 "chore: no PR number" has no (#N) PR number`)
+	require.Contains(t, errOut.String(), `warning: f6 "chore: no PR number" has no PR, so it is not listed`)
 	require.Contains(t, errOut.String(), "warning: using the commit subject for #16")
 
 	// With nothing labelled as a highlight, the Highlights heading stays as a placeholder for the releaser.
@@ -320,4 +321,26 @@ func TestGenerateChangelogSectionCountsDependencyContributors(t *testing.T) {
 	// Dependency commits are not listed as changes, and their PR numbers are not lotus PRs.
 	require.NotContains(t, section, "lotus#99")
 	require.Empty(t, errOut.String())
+}
+
+func TestResolveCommitPullRequests(t *testing.T) {
+	commits := []commitInfo{
+		{Hash: "a1", Subject: "fix: squash-merged (#10)", PR: 10},
+		{Hash: "b2", Subject: "fix: first commit of a rebase-merged PR"},
+		{Hash: "c3", Subject: "build: pushed directly"},
+		{Hash: "d4", Subject: "lookup fails"},
+	}
+	var looked []string
+	resolveCommitPullRequests(io.Discard, commits, func(hash string) (int, error) {
+		looked = append(looked, hash)
+		switch hash {
+		case "b2":
+			return 11, nil
+		case "d4":
+			return 0, fmt.Errorf("rate limited")
+		}
+		return 0, nil
+	})
+	require.Equal(t, []string{"b2", "c3", "d4"}, looked)
+	require.Equal(t, []int{10, 11, 0, 0}, []int{commits[0].PR, commits[1].PR, commits[2].PR, commits[3].PR})
 }

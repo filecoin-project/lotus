@@ -367,6 +367,22 @@ func dependencyCommits(errOut io.Writer, cacheDir string, changes []dependencyCh
 	return commits
 }
 
+// resolveCommitPullRequests fills in the PR of each commit whose subject has no "(#N)", using findPR.
+// A PR merged with "Rebase and merge" keeps its commits' own subjects, so its number is only known to GitHub.
+func resolveCommitPullRequests(errOut io.Writer, commits []commitInfo, findPR func(hash string) (int, error)) {
+	for i := range commits {
+		if commits[i].PR != 0 {
+			continue
+		}
+		pr, err := findPR(commits[i].Hash)
+		if err != nil {
+			_, _ = fmt.Fprintf(errOut, "warning: failed to find the PR of %s: %v\n", commits[i].Hash, err)
+			continue
+		}
+		commits[i].PR = pr
+	}
+}
+
 // generateChangelogSection renders the CHANGELOG.md section for a release from the commits in its range, oldest first.
 // Commits whose PR is in released are skipped: the previous tag is not always an ancestor of the release, so the
 // range can hold changes that already shipped through a backport.
@@ -378,7 +394,7 @@ func generateChangelogSection(errOut io.Writer, release changelogRelease, commit
 	listed := map[int]bool{}
 	for _, c := range commits {
 		if c.PR == 0 {
-			_, _ = fmt.Fprintf(errOut, "warning: %s %q has no (#N) PR number, so it is not listed\n", c.Hash[:min(len(c.Hash), 12)], c.Subject)
+			_, _ = fmt.Fprintf(errOut, "warning: %s %q has no PR, so it is not listed\n", c.Hash[:min(len(c.Hash), 12)], c.Subject)
 			contributors = append(contributors, c)
 			continue
 		}
@@ -593,6 +609,18 @@ func runChangelogGenerate(out, errOut io.Writer, opts changelogGenerateOptions) 
 		}
 		return info, nil
 	}
+	resolveCommitPullRequests(errOut, commits, func(hash string) (int, error) {
+		prs, _, err := client.PullRequests.ListPullRequestsWithCommit(context.Background(), owner, repo, hash, nil)
+		if err != nil {
+			return 0, err
+		}
+		for _, pr := range prs {
+			if pr.MergedAt != nil {
+				return pr.GetNumber(), nil
+			}
+		}
+		return 0, nil
+	})
 
 	var depCommits []commitInfo
 	if !opts.SkipDependencies {
