@@ -189,6 +189,17 @@ func UpgradeSchedule() stmgr.UpgradeSchedule {
 	return filcns.DefaultUpgradeSchedule()
 }
 
+// WarmHeightIndex starts the chain store's height index warm-up when the node
+// starts, so deep Ethereum block-number lookups are cheap after a restart.
+func WarmHeightIndex(lc fx.Lifecycle, cs *store.ChainStore) {
+	lc.Append(fx.Hook{
+		OnStart: func(context.Context) error {
+			cs.WarmHeightIndex()
+			return nil
+		},
+	})
+}
+
 func EnableStoringEvents(cs *store.ChainStore) {
 	cs.StoreEvents(true)
 }

@@ -103,8 +103,6 @@ func MakeEthGasV2(
 type EthTransactionParams struct {
 	fx.In
 
-	MetricsCtx        helpers.MetricsCtx
-	Lifecycle         fx.Lifecycle
 	ChainStore        eth.ChainStore
 	StateManager      eth.StateManager
 	StateAPI          eth.StateAPI
@@ -126,23 +124,6 @@ func MakeEthTransactionV2(cfg config.FevmConfig) func(EthTransactionParams, full
 }
 
 func makeEthTransaction(params EthTransactionParams, tipSetResolver eth.TipSetResolver, ethBlkCacheSize int) (full.EthTransactionAPIV1, error) {
-	// Prime the tipset cache with the entire chain to make sure tx and block lookups are fast
-	ctx := helpers.LifecycleCtx(params.MetricsCtx, params.Lifecycle) // cancelled OnStop
-	params.Lifecycle.Append(fx.Hook{
-		OnStart: func(_ context.Context) error {
-			go func() {
-				start := time.Now()
-				log.Infoln("Start prefilling GetTipsetByHeight cache")
-				_, err := params.ChainStore.GetTipsetByHeight(ctx, abi.ChainEpoch(0), params.ChainStore.GetHeaviestTipSet(), false)
-				if err != nil {
-					log.Warnf("error when prefilling GetTipsetByHeight cache: %w", err)
-				}
-				log.Infof("Prefilling GetTipsetByHeight done in %s", time.Since(start))
-			}()
-			return nil
-		},
-	})
-
 	return eth.NewEthTransactionAPI(
 		params.ChainStore,
 		params.StateManager,
