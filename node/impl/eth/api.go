@@ -191,6 +191,7 @@ type ChainStore interface {
 	// TipSets
 	GetHeaviestTipSet() *types.TipSet
 	GetTipsetByHeight(ctx context.Context, h abi.ChainEpoch, ts *types.TipSet, prev bool) (*types.TipSet, error)
+	GetTipsetByHeightBounded(ctx context.Context, h abi.ChainEpoch, ts *types.TipSet, prev bool) (*types.TipSet, error)
 	GetTipSetFromKey(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error)
 	GetTipSetByCid(ctx context.Context, c cid.Cid) (*types.TipSet, error)
 	LoadTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error)
