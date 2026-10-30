@@ -13,6 +13,7 @@
 
 - feat(api): debug endpoints (`/debug/pprof/*`, `/debug/vars`, `/debug/pprof-set/*`) on the daemon, miner, worker and wallet only answer local, non-browser-cross-origin clients; set `LOTUS_DEBUG_ALLOW_REMOTE=1` to serve all clients. ([filecoin-project/lotus#13913](https://github.com/filecoin-project/lotus/pull/13913))
 - chore(cli): remove obsolete `filplus` and `verifreg` write commands and `sectors extend --drop-claims` after nv29. ([filecoin-project/lotus#13968](https://github.com/filecoin-project/lotus/pull/13968))
+- chore(cli): remove the remaining read-only `lotus filplus` and `lotus-shed verifreg` commands; the verified registry and DataCap actors are frozen since nv29 and slated for removal. ([filecoin-project/lotus#13982](https://github.com/filecoin-project/lotus/pull/13982))
 
 ## ⭐ New Features
 

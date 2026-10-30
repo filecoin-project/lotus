@@ -51,7 +51,6 @@ func main() {
 		fetchParamCmd,
 		postFindCmd,
 		proofsCmd,
-		verifRegCmd,
 		marketCmd,
 		mpoolCmd,
 		helloCmd,
