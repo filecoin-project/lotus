@@ -1289,7 +1289,13 @@ func (cs *ChainStore) TryFillTipSet(ctx context.Context, ts *types.TipSet) (*Ful
 // can take minutes on a deep chain after a restart. A lookup that exceeds
 // heightLookupBudget fails with a height-index-cold api.ErrResourceUnavailable
 // and starts the warm-up; filled entries are kept, so a retry gets further.
+// Once the warm-up has reached h there's no budget: the index is warm there, so
+// a slow lookup means a slow store, not a cold index.
 func (cs *ChainStore) GetTipsetByHeightBounded(ctx context.Context, h abi.ChainEpoch, ts *types.TipSet, prev bool) (*types.TipSet, error) {
+	if readyTo := cs.cindex.ReadyTo(); readyTo >= 0 && h >= readyTo {
+		return cs.GetTipsetByHeight(ctx, h, ts, prev)
+	}
+
 	lctx, cancel := context.WithTimeout(ctx, heightLookupBudget)
 	defer cancel()
 

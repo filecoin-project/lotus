@@ -143,6 +143,18 @@ func TestGetTipsetByHeightBounded(t *testing.T) {
 		require.ErrorIs(t, err, context.Canceled)
 	})
 
+	t.Run("warm index skips budget", func(t *testing.T) {
+		restore := store.SetHeightLookupBudget(time.Nanosecond)
+		defer restore()
+
+		cs := coldStore(t)
+		require.NoError(t, cs.WarmHeightIndexSync(ctx))
+		cs.FailHeightIndexLoadsOnDone()
+		ts, err := cs.GetTipsetByHeightBounded(ctx, 1, nil, true)
+		require.NoError(t, err)
+		require.Equal(t, abi.ChainEpoch(1), ts.Height())
+	})
+
 	t.Run("within budget", func(t *testing.T) {
 		ts, err := coldStore(t).GetTipsetByHeightBounded(ctx, 1, nil, true)
 		require.NoError(t, err)
