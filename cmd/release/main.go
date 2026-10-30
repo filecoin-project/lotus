@@ -413,7 +413,7 @@ func main() {
 							},
 							&cli.StringFlag{
 								Name:  "from",
-								Usage: "Start of the commit range (default: the previous stable tag of the node, or of the miner for --type miner)",
+								Usage: "Start of the commit range and of its project's compare link (default: the previous stable tag of the node, or of the miner for --type miner). For --type both, the miner compare link still starts at the previous stable miner tag.",
 							},
 							&cli.StringFlag{
 								Name:  "to",

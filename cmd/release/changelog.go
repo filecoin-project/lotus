@@ -186,20 +186,17 @@ func extractReleaseNote(body string) string {
 }
 
 // classifyPullRequest picks the section a PR is listed in.
-// The release-note labels and a breaking-change "!" come first, then the Conventional Commits type of the title.
+// An upgrade-warning label or a breaking-change "!" comes first, then the highlight label, then the Conventional Commits type of the title.
 func classifyPullRequest(title string, labels []string) releaseNoteSection {
-	if slices.Contains(labels, labelUpgradeWarning) {
+	match := conventionalTitleRegexp.FindStringSubmatch(title)
+	if slices.Contains(labels, labelUpgradeWarning) || (match != nil && match[3] == "!") {
 		return sectionUpgradeWarnings
 	}
 	if slices.Contains(labels, labelHighlight) {
 		return sectionHighlights
 	}
-	match := conventionalTitleRegexp.FindStringSubmatch(title)
 	if match == nil {
 		return sectionImprovements
-	}
-	if match[3] == "!" {
-		return sectionUpgradeWarnings
 	}
 	switch strings.ToLower(match[1]) {
 	case "feat":
@@ -493,6 +490,23 @@ func previousStableTag(tags []string, name, version string) string {
 	return prefix + previous
 }
 
+// releaseCompareLinks returns one compare link per project, from its previous stable tag to the new release's tag.
+// An explicit from replaces the first project's start, since it is also the start of the commit range the section lists.
+func releaseCompareLinks(tags, projects, names []string, version, from string) ([]compareLink, error) {
+	var links []compareLink
+	for i, project := range projects {
+		previous := previousStableTag(tags, project, version)
+		if i == 0 && from != "" {
+			previous = from
+		}
+		if previous == "" {
+			return nil, fmt.Errorf("no stable %s tag older than v%s; fetch tags with `git fetch origin --tags` or pass --from", project, version)
+		}
+		links = append(links, compareLink{Project: names[i], From: previous, To: getPrefix(project) + version})
+	}
+	return links, nil
+}
+
 // githubToken returns $GITHUB_TOKEN, or else the token of the GitHub CLI.
 func githubToken() (string, error) {
 	if token := os.Getenv("GITHUB_TOKEN"); token != "" {
@@ -553,19 +567,13 @@ func runChangelogGenerate(out, errOut io.Writer, opts changelogGenerateOptions) 
 		return fmt.Errorf("invalid repository name format. Must be 'owner/repo'")
 	}
 
-	release := changelogRelease{Type: strings.Join(names, " and "), Version: version, Date: opts.Date}
-	for i, project := range projects {
-		previous := previousStableTag(getTags(), project, version)
-		if previous == "" {
-			return fmt.Errorf("no stable %s tag older than v%s; fetch tags with `git fetch origin --tags`", project, version)
-		}
-		release.CompareLinks = append(release.CompareLinks, compareLink{Project: names[i], From: previous, To: getPrefix(project) + version})
+	compareLinks, err := releaseCompareLinks(getTags(), projects, names, version, opts.From)
+	if err != nil {
+		return err
 	}
-	from := opts.From
-	if from == "" {
-		// The commit range follows the first project; for a combined release that is the node.
-		from = release.CompareLinks[0].From
-	}
+	release := changelogRelease{Type: strings.Join(names, " and "), Version: version, Date: opts.Date, CompareLinks: compareLinks}
+	// The commit range follows the first project; for a combined release that is the node.
+	from := compareLinks[0].From
 	for _, ref := range []string{from, opts.To} {
 		if _, err := gitOutput("rev-parse", "--verify", ref+"^{commit}"); err != nil {
 			return fmt.Errorf("%s does not name a commit: %w", ref, err)

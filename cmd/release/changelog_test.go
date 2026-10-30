@@ -81,6 +81,7 @@ func TestClassifyPullRequest(t *testing.T) {
 		{title: "fix(cli): remove commands", labels: []string{"area/cli", labelUpgradeWarning}, want: sectionUpgradeWarnings},
 		{title: "chore: something big", labels: []string{labelHighlight}, want: sectionHighlights},
 		{title: "feat: both labels", labels: []string{labelHighlight, labelUpgradeWarning}, want: sectionUpgradeWarnings},
+		{title: "feat(api)!: remove a method", labels: []string{labelHighlight}, want: sectionUpgradeWarnings},
 	} {
 		t.Run(tc.title, func(t *testing.T) {
 			require.Equal(t, tc.want, classifyPullRequest(tc.title, tc.labels))
@@ -351,4 +352,34 @@ func TestReleasedPullRequestsFromGeneratedEntries(t *testing.T) {
 	released := map[int]bool{}
 	releasedPullRequests(changelog, "1.40.0", released)
 	require.Equal(t, map[int]bool{42: true}, released)
+}
+
+func TestReleaseCompareLinks(t *testing.T) {
+	tags := []string{"v1.38.2", "v1.38.3", "miner/v1.38.0"}
+	both, bothNames := []string{"node", "miner"}, []string{"Node", "Miner"}
+
+	links, err := releaseCompareLinks(tags, both, bothNames, "1.39.0", "")
+	require.NoError(t, err)
+	require.Equal(t, []compareLink{
+		{Project: "Node", From: "v1.38.3", To: "v1.39.0"},
+		{Project: "Miner", From: "miner/v1.38.0", To: "miner/v1.39.0"},
+	}, links)
+
+	// An explicit --from is the start of both the listed range and the first project's compare link.
+	links, err = releaseCompareLinks(tags, both, bothNames, "1.39.0", "v1.38.2")
+	require.NoError(t, err)
+	require.Equal(t, []compareLink{
+		{Project: "Node", From: "v1.38.2", To: "v1.39.0"},
+		{Project: "Miner", From: "miner/v1.38.0", To: "miner/v1.39.0"},
+	}, links)
+
+	links, err = releaseCompareLinks(tags, []string{"miner"}, []string{"Miner"}, "1.39.0", "abc123")
+	require.NoError(t, err)
+	require.Equal(t, []compareLink{{Project: "Miner", From: "abc123", To: "miner/v1.39.0"}}, links)
+
+	// Without tags, an explicit --from is needed.
+	_, err = releaseCompareLinks(nil, []string{"node"}, []string{"Node"}, "1.39.0", "")
+	require.ErrorContains(t, err, "--from")
+	_, err = releaseCompareLinks(nil, []string{"node"}, []string{"Node"}, "1.39.0", "v1.0.0")
+	require.NoError(t, err)
 }
