@@ -130,7 +130,7 @@ func TestPreviousStableTag(t *testing.T) {
 }
 
 func TestFormatChangelogEntry(t *testing.T) {
-	const link = " ([filecoin-project/lotus#7](https://github.com/filecoin-project/lotus/pull/7))"
+	const link = " ([#7](https://github.com/filecoin-project/lotus/pull/7))"
 	require.Equal(t, "- fix: a bug"+link+"\n", formatChangelogEntry("fix: a bug", 7))
 	require.Equal(t, "- A note."+link+"\n", formatChangelogEntry("- A note.", 7))
 	require.Equal(t, "- First line.\n\n  Second paragraph."+link+"\n", formatChangelogEntry("First line.\n\nSecond paragraph.", 7))
@@ -184,25 +184,25 @@ func TestGenerateChangelogSection(t *testing.T) {
 
 ## ☢️ Upgrade Warnings ☢️
 
-- The `+"`lotus filplus`"+` commands are removed. ([filecoin-project/lotus#11](https://github.com/filecoin-project/lotus/pull/11))
-- build!: raise the minimum Go version ([filecoin-project/lotus#14](https://github.com/filecoin-project/lotus/pull/14))
+- The `+"`lotus filplus`"+` commands are removed. ([#11](https://github.com/filecoin-project/lotus/pull/11))
+- build!: raise the minimum Go version ([#14](https://github.com/filecoin-project/lotus/pull/14))
 
 ## ✨ Highlights
 
-- feat(api): add a thing ([filecoin-project/lotus#10](https://github.com/filecoin-project/lotus/pull/10))
+- feat(api): add a thing ([#10](https://github.com/filecoin-project/lotus/pull/10))
 
 ## 🐛 Bug Fixes
 
-- fix: a bug ([filecoin-project/lotus#13](https://github.com/filecoin-project/lotus/pull/13))
+- fix: a bug ([#13](https://github.com/filecoin-project/lotus/pull/13))
 
 ## 👌 Improvements
 
-- perf: faster ([filecoin-project/lotus#15](https://github.com/filecoin-project/lotus/pull/15))
+- perf: faster ([#15](https://github.com/filecoin-project/lotus/pull/15))
 
 <details><summary>Other changes</summary>
 
-- build(deps): bump x ([filecoin-project/lotus#12](https://github.com/filecoin-project/lotus/pull/12))
-- docs: renamed after merge ([filecoin-project/lotus#16](https://github.com/filecoin-project/lotus/pull/16))
+- build(deps): bump x ([#12](https://github.com/filecoin-project/lotus/pull/12))
+- docs: renamed after merge ([#16](https://github.com/filecoin-project/lotus/pull/16))
 
 </details>
 
@@ -319,7 +319,7 @@ func TestGenerateChangelogSectionCountsDependencyContributors(t *testing.T) {
 	section := generateChangelogSection(&errOut, release, commits, nil, fetchPR, dependencyCommits)
 	require.Contains(t, section, "| Erin | 1 | +100/-0 | 1 |\n| Alice | 2 | +8/-1 | 3 |\n")
 	// Dependency commits are not listed as changes, and their PR numbers are not lotus PRs.
-	require.NotContains(t, section, "lotus#99")
+	require.NotContains(t, section, "pull/99")
 	require.Empty(t, errOut.String())
 }
 
@@ -343,4 +343,12 @@ func TestResolveCommitPullRequests(t *testing.T) {
 	})
 	require.Equal(t, []string{"b2", "c3", "d4"}, looked)
 	require.Equal(t, []int{10, 11, 0, 0}, []int{commits[0].PR, commits[1].PR, commits[2].PR, commits[3].PR})
+}
+
+// TestReleasedPullRequestsFromGeneratedEntries guards against the generated link format drifting from what later runs skip.
+func TestReleasedPullRequestsFromGeneratedEntries(t *testing.T) {
+	changelog := "# Lotus changelog\n\n# Node v1.39.0 / 2026-11-05\n\n" + formatChangelogEntry("fix: a bug", 42)
+	released := map[int]bool{}
+	releasedPullRequests(changelog, "1.40.0", released)
+	require.Equal(t, map[int]bool{42: true}, released)
 }
