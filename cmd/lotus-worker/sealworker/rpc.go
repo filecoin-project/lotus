@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/lib/debughttp"
 	"github.com/filecoin-project/lotus/lib/rpcenc"
 	"github.com/filecoin-project/lotus/metrics/proxy"
 	"github.com/filecoin-project/lotus/storage/paths"
@@ -46,7 +47,7 @@ func WorkerHandler(
 	mux.Handle("/rpc/v0", rpcServer)
 	mux.Handle("/rpc/streams/v0/push/{uuid}", readerHandler)
 	mux.PathPrefix("/remote").HandlerFunc(remote)
-	mux.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
+	mux.PathPrefix("/").Handler(debughttp.Handler())
 
 	if !permissioned {
 		return mux
