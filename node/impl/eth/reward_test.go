@@ -28,7 +28,7 @@ func TestReward(t *testing.T) {
 	for _, tc := range testcases {
 		msg := &types.Message{GasFeeCap: tc.maxFeePerGas, GasPremium: tc.maxPriorityFeePerGas}
 		reward := msg.EffectiveGasPremium(baseFee)
-		require.Equal(t, 0, reward.Int.Cmp(tc.answer.Int), reward, tc.answer)
+		require.Equal(t, 0, reward.Cmp(tc.answer.Int), reward, tc.answer)
 	}
 }
 

@@ -107,8 +107,8 @@ func runExec(c *cli.Context) error {
 
 func processTipsetOpts() error {
 	for _, opt := range execFlags.driverOpts.Value() {
-		switch ss := strings.Split(opt, "="); {
-		case ss[0] == optSaveBalances:
+		switch ss := strings.Split(opt, "="); ss[0] {
+		case optSaveBalances:
 			filename := ss[1]
 			log.Printf("saving balances after each tipset in: %s", filename)
 			balancesFile, err := os.Create(filename)

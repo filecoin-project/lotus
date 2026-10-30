@@ -134,7 +134,7 @@ func moveFieldValue(valPtr interface{}, oldPath []string, newPath []string) erro
 
 // recursively iterate into `path` to find the terminal value
 func getFieldValue(val interface{}, path []string) (reflect.Value, error) {
-	if reflect.ValueOf(val).Kind() == reflect.Ptr {
+	if reflect.ValueOf(val).Kind() == reflect.Pointer {
 		val = reflect.ValueOf(val).Elem().Interface()
 	}
 	field := reflect.ValueOf(val).FieldByName(path[0])
@@ -158,7 +158,7 @@ type movedField struct {
 // inspect the fields recursively within a struct and find any with "moved" tags
 func findMovedFields(path []string, val interface{}) []movedField {
 	dep := make([]movedField, 0)
-	if reflect.ValueOf(val).Kind() == reflect.Ptr {
+	if reflect.ValueOf(val).Kind() == reflect.Pointer {
 		val = reflect.ValueOf(val).Elem().Interface()
 	}
 	t := reflect.TypeOf(val)

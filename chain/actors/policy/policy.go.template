@@ -7,11 +7,11 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/network"
 
 	{{range .versions}}
 	{{if (ge . 8)}}
-        builtin{{.}} "github.com/filecoin-project/go-state-types/builtin"
         miner{{.}} "github.com/filecoin-project/go-state-types/builtin{{import .}}miner"
         market{{.}} "github.com/filecoin-project/go-state-types/builtin{{import .}}market"
         verifreg{{.}} "github.com/filecoin-project/go-state-types/builtin{{import .}}verifreg"
@@ -36,7 +36,7 @@ const (
 	ChainFinality                  = miner{{.latestVersion}}.ChainFinality
 	SealRandomnessLookback         = ChainFinality
 	PaychSettleDelay               = paych{{.latestVersion}}.SettleDelay
-	MaxPreCommitRandomnessLookback = builtin{{.latestVersion}}.EpochsInDay + SealRandomnessLookback
+	MaxPreCommitRandomnessLookback = builtin.EpochsInDay + SealRandomnessLookback
 	DeclarationsMax                = 3000
 )
 
@@ -124,11 +124,11 @@ func SetConsensusMinerMinPower(p abi.StoragePower) {
 		{{if (eq . 0)}}
 			power{{.}}.ConsensusMinerMinPower = p
 		{{else if (eq . 2)}}
-			for _, policy := range builtin{{.}}.SealProofPolicies {
+			for _, policy := range builtin2.SealProofPolicies {
 				policy.ConsensusMinerMinPower = p
 			}
 		{{else}}
-			for _, policy := range builtin{{.}}.PoStProofPolicies {
+			for _, policy := range {{if (ge . 8)}}builtin{{else}}builtin{{.}}{{end}}.PoStProofPolicies {
 				policy.ConsensusMinerMinPower = p
 			}
 		{{end}}
@@ -164,7 +164,7 @@ func GetMaxProveCommitDuration(ver actorstypes.Version, t abi.RegisteredSealProo
 func SetProviderCollateralSupplyTarget(num, denom big.Int) {
 {{range .versions}}
 	{{if (ge . 2)}}
-	market{{.}}.ProviderCollateralSupplyTarget = builtin{{.}}.BigFrac{
+	market{{.}}.ProviderCollateralSupplyTarget = {{if (ge . 8)}}builtin{{else}}builtin{{.}}{{end}}.BigFrac{
 		Numerator:   num,
 		Denominator: denom,
 	}
@@ -245,7 +245,7 @@ func GetMinSectorExpiration() abi.ChainEpoch {
 }
 
 func GetMaxPoStPartitions(nv network.Version, p abi.RegisteredPoStProof) (int, error) {
-	sectorsPerPart, err := builtin{{.latestVersion}}.PoStProofWindowPoStPartitionSectors(p)
+	sectorsPerPart, err := builtin.PoStProofWindowPoStPartitionSectors(p)
 	if err != nil {
 		return 0, err
 	}
@@ -266,7 +266,7 @@ func GetSectorMaxLifetime(proof abi.RegisteredSealProof, nwVer network.Version) 
 		return builtin4.SealProofPoliciesV0[proof].SectorMaxLifetime
 	}
 
-	return builtin{{.latestVersion}}.SealProofPoliciesV11[proof].SectorMaxLifetime
+	return builtin.SealProofPoliciesV11[proof].SectorMaxLifetime
 }
 
 func GetAddressedSectorsMax(nwVer network.Version) (int, error) {

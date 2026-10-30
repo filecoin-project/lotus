@@ -513,10 +513,7 @@ func gasSearch(
 	high := msg.GasLimit
 	low := msg.GasLimit
 
-	applyTsMessages := true
-	if os.Getenv("LOTUS_SKIP_APPLY_TS_MESSAGE_CALL_WITH_GAS") == "1" {
-		applyTsMessages = false
-	}
+	applyTsMessages := os.Getenv("LOTUS_SKIP_APPLY_TS_MESSAGE_CALL_WITH_GAS") != "1"
 
 	call := func(limit int64) (*api.InvocResult, error) {
 		msg.GasLimit = limit
@@ -641,7 +638,7 @@ func (g gasRewardSorter) Swap(i, j int) {
 	g[i], g[j] = g[j], g[i]
 }
 func (g gasRewardSorter) Less(i, j int) bool {
-	return g[i].premium.Int.Cmp(g[j].premium.Int) == -1
+	return g[i].premium.Cmp(g[j].premium.Int) == -1
 }
 
 type EthGasDisabled struct{}

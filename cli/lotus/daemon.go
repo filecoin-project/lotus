@@ -517,7 +517,7 @@ func configuredAPIListenAddress(lr repo.LockedRepo) (string, error) {
 	if !ok {
 		return "", xerrors.Errorf("invalid config for repo, got: %T", c)
 	}
-	return cfg.Common.API.ListenAddress, nil
+	return cfg.API.ListenAddress, nil
 }
 
 func apiFlagOverrideWarning(configured string, override multiaddr.Multiaddr) string {

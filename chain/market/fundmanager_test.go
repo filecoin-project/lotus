@@ -178,8 +178,8 @@ func TestFundManagerParallel(t *testing.T) {
 	// Withdraw should not have been called yet, because reserve / release
 	// requests run first
 	select {
-	case <-withdrawReady:
-		require.Fail(t, "Withdraw should run after reserve / release")
+	case err := <-withdrawReady:
+		require.Fail(t, "Withdraw should run after reserve / release", "withdraw returned %v", err)
 	default:
 	}
 
@@ -424,9 +424,10 @@ func TestFundManagerWithdrawByWallet(t *testing.T) {
 		}
 		withdrawalCount = len(fa.withdrawals)
 
-		if withdrawalCount == 1 {
+		switch withdrawalCount {
+		case 1:
 			close(walletAQueuedUp)
-		} else if withdrawalCount == 3 {
+		case 3:
 			close(queueReady)
 			return true
 		}

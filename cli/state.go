@@ -33,7 +33,6 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
 
-	"github.com/filecoin-project/lotus/api"
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/blockstore"
@@ -401,7 +400,7 @@ var StateExecTraceCmd = &cli.Command{
 			return err
 		}
 
-		var trace *api.InvocResult
+		var trace *lapi.InvocResult
 		for _, t := range cso.Trace {
 			if t.Msg.From == msg.From && t.Msg.Nonce == msg.Nonce {
 				trace = t
@@ -571,9 +570,9 @@ var StateListMinersCmd = &cli.Command{
 				fmt.Printf("%s %d\n", miners[i], ndm[miners[i]])
 			}
 			return nil
+		case "", "none":
 		default:
 			return fmt.Errorf("unrecognized sorting order")
-		case "", "none":
 		}
 
 		for _, m := range miners {
@@ -1103,10 +1102,10 @@ var compStateMsg string
 
 type compStateHTMLIn struct {
 	TipSet *types.TipSet
-	Comp   *api.ComputeStateOutput
+	Comp   *lapi.ComputeStateOutput
 }
 
-func ComputeStateHTMLTempl(w io.Writer, ts *types.TipSet, o *api.ComputeStateOutput, printTiming bool, getCode func(addr address.Address) (cid.Cid, error)) error {
+func ComputeStateHTMLTempl(w io.Writer, ts *types.TipSet, o *lapi.ComputeStateOutput, printTiming bool, getCode func(addr address.Address) (cid.Cid, error)) error {
 	t, err := template.New("compute_state").Funcs(map[string]interface{}{
 		"GetCode":     getCode,
 		"GetMethod":   getMethod,

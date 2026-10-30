@@ -276,7 +276,7 @@ func (ss *syscallShim) VerifySeal(info proof7.SealVerifyInfo) error {
 	proof := info.Proof
 	seed := []byte(info.InteractiveRandomness)
 
-	log.Debugf("Verif r:%s; d:%s; m:%s; t:%x; s:%x; N:%d; p:%x", info.SealedCID, info.UnsealedCID, miner, ticket, seed, info.SectorID.Number, proof)
+	log.Debugf("Verif r:%s; d:%s; m:%s; t:%x; s:%x; N:%d; p:%x", info.SealedCID, info.UnsealedCID, miner, ticket, seed, info.Number, proof)
 
 	// func(ctx context.Context, maddr address.Address, ssize abi.SectorSize, commD, commR, ticket, proof, seed []byte, sectorID abi.SectorNumber)
 	ok, err := ss.verifier.VerifySeal(info)
@@ -346,7 +346,7 @@ func (ss *syscallShim) BatchVerifySeals(inp map[address.Address][]proof7.SealVer
 				sema <- struct{}{}
 
 				if err := ss.VerifySeal(svi); err != nil {
-					log.Warnw("seal verify in batch failed", "miner", ma, "sectorNumber", svi.SectorID.Number, "err", err)
+					log.Warnw("seal verify in batch failed", "miner", ma, "sectorNumber", svi.Number, "err", err)
 					res[ix] = false
 				} else {
 					res[ix] = true

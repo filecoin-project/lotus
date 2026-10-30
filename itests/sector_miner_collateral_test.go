@@ -69,7 +69,7 @@ func TestMinerBalanceCollateral(t *testing.T) {
 		for len(toCheck) > 0 {
 			states := map[api.SectorState]int{}
 			for n := range toCheck {
-				st, err := miner.StorageMiner.SectorsStatus(ctx, n, false)
+				st, err := miner.SectorsStatus(ctx, n, false)
 				require.NoError(t, err)
 				states[st.State]++
 				if st.State == api.SectorState(sealing.Proving) {

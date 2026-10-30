@@ -131,7 +131,7 @@ func TestPathDetachRedeclare(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, sps, 1)
 	require.Len(t, sps[newId], 1)
-	require.Equal(t, abi.SectorNumber(1), sps[newId][0].SectorID.Number)
+	require.Equal(t, abi.SectorNumber(1), sps[newId][0].Number)
 }
 
 func TestPathDetachRedeclareWorker(t *testing.T) {
@@ -290,7 +290,7 @@ func TestPathDetachRedeclareWorker(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, sps, 1)
 	require.Len(t, sps[newId], 1)
-	require.Equal(t, abi.SectorNumber(1), sps[newId][0].SectorID.Number)
+	require.Equal(t, abi.SectorNumber(1), sps[newId][0].Number)
 }
 
 func TestPathDetachShared(t *testing.T) {

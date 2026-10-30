@@ -13,6 +13,8 @@ import (
 
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/lotus/lib/parsehelper"
 )
 
 type methodMeta struct {
@@ -142,15 +144,15 @@ func generate(path, pkg, outpkg, outfile string) error {
 	if err != nil {
 		return err
 	}
-	pkgs, err := parser.ParseDir(fset, apiDir, nil, parser.AllErrors|parser.ParseComments)
+	files, err := parsehelper.ParseDir(fset, apiDir, pkg, parser.AllErrors|parser.ParseComments)
 	if err != nil {
 		return err
 	}
 
-	ap := pkgs[pkg]
-
 	v := &Visitor{make(map[string]map[string]*methodMeta), map[string][]string{}}
-	ast.Walk(v, ap)
+	for _, f := range files {
+		ast.Walk(v, f)
+	}
 
 	type methodInfo struct {
 		Num                                      string
@@ -177,7 +179,7 @@ func generate(path, pkg, outpkg, outfile string) error {
 		Imports: map[string]string{},
 	}
 
-	for fn, f := range ap.Files {
+	for fn, f := range files {
 		if strings.HasSuffix(fn, "gen.go") {
 			continue
 		}

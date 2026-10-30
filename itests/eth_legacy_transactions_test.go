@@ -62,7 +62,7 @@ func TestLegacyValueTransferValidSignature(t *testing.T) {
 
 	client.EVM().SignLegacyHomesteadTransaction(&tx, key.PrivateKey)
 	// Mangle signature
-	tx.V.Int.Xor(tx.V.Int, big.NewInt(1).Int)
+	tx.V.Xor(tx.V.Int, big.NewInt(1).Int)
 
 	signed, err := tx.ToRlpSignedMsg()
 	require.NoError(t, err)
@@ -205,7 +205,7 @@ func TestLegacyEIP155ValueTransferValidSignature(t *testing.T) {
 	client.EVM().SignLegacyEIP155Transaction(tx, key.PrivateKey, big.NewInt(buildconstants.Eip155ChainId))
 	// Mangle signature
 	innerTx := tx.GetLegacyTx()
-	innerTx.V.Int.Xor(innerTx.V.Int, big.NewInt(1).Int)
+	innerTx.V.Xor(innerTx.V.Int, big.NewInt(1).Int)
 
 	signed, err := tx.ToRawTxBytesSigned()
 	require.NoError(t, err)
@@ -275,7 +275,7 @@ func TestLegacyContractInvocation(t *testing.T) {
 
 	client.EVM().SignLegacyHomesteadTransaction(tx, key.PrivateKey)
 	// Mangle signature
-	tx.V.Int.Xor(tx.V.Int, big.NewInt(1).Int)
+	tx.V.Xor(tx.V.Int, big.NewInt(1).Int)
 
 	signed, err := tx.ToRlpSignedMsg()
 	require.NoError(t, err)
@@ -331,7 +331,7 @@ func TestLegacyContractInvocation(t *testing.T) {
 
 	client.EVM().SignLegacyHomesteadTransaction(&invokeTx, key.PrivateKey)
 	// Mangle signature
-	invokeTx.V.Int.Xor(invokeTx.V.Int, big.NewInt(1).Int)
+	invokeTx.V.Xor(invokeTx.V.Int, big.NewInt(1).Int)
 
 	signed, err = invokeTx.ToRlpSignedMsg()
 	require.NoError(t, err)

@@ -926,7 +926,7 @@ func TestSyncInputs(t *testing.T) {
 
 	fn := tu.nds[p1].(*impl.FullNodeAPI)
 
-	s := fn.SyncAPI.Syncer
+	s := fn.Syncer
 
 	err := s.ValidateBlock(context.TODO(), &types.FullBlock{
 		Header: &types.BlockHeader{},
@@ -1315,7 +1315,7 @@ func TestSyncRejectsInvalidParentKeys(t *testing.T) {
 	tu.connect(client, 0)
 	tu.waitUntilSync(0, client)
 
-	s := tu.nds[client].(*impl.FullNodeAPI).SyncAPI.Syncer
+	s := tu.nds[client].(*impl.FullNodeAPI).Syncer
 	head := tu.getHead(client)
 	local := head.Cids()[0]
 

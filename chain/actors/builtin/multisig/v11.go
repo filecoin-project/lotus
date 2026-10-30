@@ -36,7 +36,7 @@ func make11(store adt.Store, signers []address.Address, threshold uint64, startE
 	out := state11{store: store}
 	out.State = msig11.State{}
 	out.State.Signers = signers
-	out.State.NumApprovalsThreshold = threshold
+	out.NumApprovalsThreshold = threshold
 	out.State.StartEpoch = startEpoch
 	out.State.UnlockDuration = unlockDuration
 	out.State.InitialBalance = initialBalance
@@ -46,7 +46,7 @@ func make11(store adt.Store, signers []address.Address, threshold uint64, startE
 		return nil, err
 	}
 
-	out.State.PendingTxns = em
+	out.PendingTxns = em
 
 	return &out, nil
 }
@@ -57,7 +57,7 @@ type state11 struct {
 }
 
 func (s *state11) LockedBalance(currEpoch abi.ChainEpoch) (abi.TokenAmount, error) {
-	return s.State.AmountLocked(currEpoch - s.State.StartEpoch), nil
+	return s.AmountLocked(currEpoch - s.State.StartEpoch), nil
 }
 
 func (s *state11) StartEpoch() (abi.ChainEpoch, error) {
@@ -81,7 +81,7 @@ func (s *state11) Signers() ([]address.Address, error) {
 }
 
 func (s *state11) ForEachPendingTxn(cb func(id int64, txn Transaction) error) error {
-	arr, err := adt11.AsMap(s.store, s.State.PendingTxns, builtin11.DefaultHamtBitwidth)
+	arr, err := adt11.AsMap(s.store, s.PendingTxns, builtin11.DefaultHamtBitwidth)
 	if err != nil {
 		return err
 	}
@@ -101,7 +101,7 @@ func (s *state11) PendingTxnChanged(other State) (bool, error) {
 		// treat an upgrade as a change, always
 		return true, nil
 	}
-	return !s.State.PendingTxns.Equals(other11.PendingTxns), nil
+	return !s.PendingTxns.Equals(other11.PendingTxns), nil
 }
 
 func (s *state11) transactions() (adt.Map, error) {

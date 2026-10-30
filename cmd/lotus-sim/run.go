@@ -61,7 +61,7 @@ Signals:
 					_, _ = fmt.Fprintf(cctx.App.ErrWriter, "ERROR: failed to print info: %s\n", err)
 				}
 				_, _ = fmt.Fprintln(cctx.App.Writer, "---------------------")
-			case <-cctx.Context.Done():
+			case <-cctx.Done():
 				return cctx.Err()
 			default:
 			}

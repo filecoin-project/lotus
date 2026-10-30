@@ -165,10 +165,7 @@ func writeJournalTail(tailLen int, repoPath, file string) {
 	}
 	jScan := backscanner.New(j, int(js.Size()))
 	linesWritten := 0
-	for {
-		if linesWritten > tailLen {
-			break
-		}
+	for linesWritten <= tailLen {
 		line, _, err := jScan.LineBytes()
 		if err != nil {
 			if err != io.EOF {
