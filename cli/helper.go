@@ -38,6 +38,10 @@ func IncorrectNumArgs(cctx *ufcli.Context) error {
 	return ShowHelp(cctx, fmt.Errorf("incorrect number of arguments, got %d", cctx.NArg()))
 }
 
+func IncorrectNumArgsWithHint(cctx *ufcli.Context, hint string) error {
+	return ShowHelp(cctx, fmt.Errorf("incorrect number of arguments, got %d, %s", cctx.NArg(), hint))
+}
+
 func RunApp(app *ufcli.App) {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGTERM, syscall.SIGINT)
