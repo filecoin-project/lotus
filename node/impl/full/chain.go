@@ -162,7 +162,7 @@ func (a *ChainAPI) ChainGetParentMessages(ctx context.Context, bcid cid.Cid) ([]
 
 	// genesis block has no parent messages...
 	if b.Height == 0 {
-		return nil, nil
+		return []api.Message{}, nil
 	}
 
 	// TODO: need to get the number of messages better than this
@@ -176,7 +176,7 @@ func (a *ChainAPI) ChainGetParentMessages(ctx context.Context, bcid cid.Cid) ([]
 		return nil, err
 	}
 
-	var out []api.Message
+	out := make([]api.Message, 0, len(cm))
 	for _, m := range cm {
 		out = append(out, api.Message{
 			Cid:     m.Cid(),
@@ -200,7 +200,7 @@ func (a *ChainAPI) ChainGetParentReceipts(ctx context.Context, bcid cid.Cid) ([]
 	}
 
 	if b.Height == 0 {
-		return nil, nil
+		return []*types.MessageReceipt{}, nil
 	}
 
 	receipts, err := a.Chain.ReadReceipts(ctx, b.ParentMessageReceipts, chainGetParentReceiptsMaxBytes)
@@ -224,7 +224,7 @@ func (a *ChainAPI) ChainGetMessagesInTipset(ctx context.Context, tsk types.TipSe
 
 	// genesis block has no parent messages...
 	if ts.Height() == 0 {
-		return nil, nil
+		return []api.Message{}, nil
 	}
 
 	cm, err := a.Chain.MessagesForTipset(ctx, ts)
@@ -232,7 +232,7 @@ func (a *ChainAPI) ChainGetMessagesInTipset(ctx context.Context, tsk types.TipSe
 		return nil, err
 	}
 
-	var out []api.Message
+	out := make([]api.Message, 0, len(cm))
 	for _, m := range cm {
 		out = append(out, api.Message{
 			Cid:     m.Cid(),
