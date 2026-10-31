@@ -834,6 +834,66 @@ func TestV1GatewayStateWaitMsgConfidenceLimit(t *testing.T) {
 	}
 }
 
+// TestV1GatewayStateReplayEmptyKeyLookback checks that StateReplay with an
+// empty tipset key resolves the message within the message lookback and
+// replays the tipset it was included in by key, so the lookback bound applies.
+func TestV1GatewayStateReplayEmptyKeyLookback(t *testing.T) {
+	ctx := context.Background()
+	const bound = abi.ChainEpoch(10)
+
+	msgCid, err := cid.Decode("bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4")
+	require.NoError(t, err)
+	replacedCid, err := cid.Decode("bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s")
+	require.NoError(t, err)
+
+	lookbackTimestamp := uint64(time.Now().Unix()) - uint64(DefaultMaxLookbackDuration.Seconds())
+
+	newNode := func(t *testing.T) (*Node, *v1mocks.MockFullNode) {
+		ctrl := gomock.NewController(t)
+		mockV1 := v1mocks.NewMockFullNode(ctrl)
+		return NewNode(mockV1, v2mocks.NewMockFullNode(ctrl), WithMaxMessageLookbackEpochs(bound)), mockV1
+	}
+
+	t.Run("found within lookback", func(t *testing.T) {
+		tss := generateTipSets(5, 0)
+		execTs, inclTs := tss[5], tss[4]
+		a, mockV1 := newNode(t)
+		expectNetworkParams(mockV1, tss[0].MinTimestamp())
+		mockV1.EXPECT().StateSearchMsg(gomock.Any(), types.EmptyTSK, msgCid, bound, true).
+			Return(&api.MsgLookup{Message: replacedCid, TipSet: execTs.Key(), Height: execTs.Height()}, nil)
+		mockV1.EXPECT().ChainGetTipSet(gomock.Any(), execTs.Key()).Return(execTs, nil)
+		mockV1.EXPECT().ChainGetTipSet(gomock.Any(), inclTs.Key()).Return(inclTs, nil)
+		want := &api.InvocResult{MsgCid: replacedCid}
+		mockV1.EXPECT().StateReplay(gomock.Any(), inclTs.Key(), replacedCid).Return(want, nil)
+
+		res, err := a.v1Proxy.StateReplay(ctx, types.EmptyTSK, msgCid)
+		require.NoError(t, err)
+		require.Equal(t, want, res)
+	})
+
+	t.Run("not found within lookback", func(t *testing.T) {
+		a, mockV1 := newNode(t)
+		mockV1.EXPECT().StateSearchMsg(gomock.Any(), types.EmptyTSK, msgCid, bound, true).Return(nil, nil)
+
+		_, err := a.v1Proxy.StateReplay(ctx, types.EmptyTSK, msgCid)
+		require.ErrorContains(t, err, "didn't find msg")
+	})
+
+	t.Run("included tipset too old", func(t *testing.T) {
+		tss := generateTipSets(5, lookbackTimestamp-buildconstants.BlockDelaySecs*10)
+		execTs, inclTs := tss[5], tss[4]
+		a, mockV1 := newNode(t)
+		expectNetworkParams(mockV1, tss[0].MinTimestamp())
+		mockV1.EXPECT().StateSearchMsg(gomock.Any(), types.EmptyTSK, msgCid, bound, true).
+			Return(&api.MsgLookup{Message: msgCid, TipSet: execTs.Key(), Height: execTs.Height()}, nil)
+		mockV1.EXPECT().ChainGetTipSet(gomock.Any(), execTs.Key()).Return(execTs, nil)
+		mockV1.EXPECT().ChainGetTipSet(gomock.Any(), inclTs.Key()).Return(inclTs, nil)
+
+		_, err := a.v1Proxy.StateReplay(ctx, types.EmptyTSK, msgCid)
+		require.ErrorIs(t, err, a.errLookback)
+	})
+}
+
 // TestGatewayInterfacesDoNotExposeLimitedOrUntrusted asserts the invariant
 // that neither Gateway interface exposes a `*Limited` or `*Untrusted` method
 // variant. Those variants exist on FullNode for internal use by the gateway
