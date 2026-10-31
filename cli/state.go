@@ -522,7 +522,10 @@ var StateGetDealSetCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		fmt.Println(string(data))
+		// The deal label is client-supplied and only has to be valid UTF-8, so it
+		// can carry C1 control characters that JSON encoding leaves raw; escape
+		// them before writing to the terminal.
+		fmt.Println(escapeControl(string(data)))
 
 		return nil
 	},
