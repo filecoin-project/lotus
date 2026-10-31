@@ -153,6 +153,12 @@ func (e *EthBigInt) UnmarshalJSON(b []byte) error {
 	}
 
 	replaced := strings.TrimPrefix(s, "0x")
+	replaced = strings.TrimPrefix(replaced, "0X")
+	// Eth quantities are unsigned, but SetString accepts a sign.
+	if strings.HasPrefix(s, "-") || strings.HasPrefix(s, "+") ||
+		strings.HasPrefix(replaced, "-") || strings.HasPrefix(replaced, "+") {
+		return xerrors.Errorf("cannot parse %q as a hex-encoded big int: quantities are unsigned", s)
+	}
 	if len(replaced)%2 == 1 {
 		replaced = "0" + replaced
 	}
@@ -160,6 +166,9 @@ func (e *EthBigInt) UnmarshalJSON(b []byte) error {
 	i, ok := new(mathbig.Int).SetString(replaced, 16)
 	if !ok {
 		return xerrors.Errorf("cannot parse %q as a hex-encoded big int", s)
+	}
+	if i.Sign() < 0 {
+		return xerrors.Errorf("cannot parse %q as a hex-encoded big int: quantities are unsigned", s)
 	}
 
 	*e = EthBigInt(big.NewFromGo(i))
