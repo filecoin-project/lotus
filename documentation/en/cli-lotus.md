@@ -217,7 +217,6 @@ COMMANDS:
    new          Generate a new key of the given type
    list         List wallet address
    balance      Get account balance
-   export       export keys
    import       import keys
    default      Get default wallet address
    set-default  Set default wallet address
@@ -271,20 +270,6 @@ USAGE:
 
 OPTIONS:
    --help, -h  show help
-```
-
-### lotus wallet export
-
-```
-NAME:
-   lotus wallet export - export keys
-
-USAGE:
-   lotus wallet export [command options] [address]
-
-OPTIONS:
-   --format value  output format: 'hex-lotus' (hex-encoded JSON KeyInfo), 'json-lotus' (JSON KeyInfo), 'hex-eth' (raw 32-byte private key as hex, Ethereum-compatible; secp256k1 and delegated keys only) (default: "hex-lotus")
-   --help, -h      show help
 ```
 
 ### lotus wallet import
