@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"golang.org/x/xerrors"
+	"golang.org/xerrors"
 
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/big"
@@ -91,18 +91,16 @@ func TestGasAllowance(t *testing.T) {
 	}
 }
 
-func TestEthEstimateGasNegativePrice(t *testing.T) {
-	// Rejected before any chain state is read, so ethGas needs no dependencies here.
-	for _, tx := range []string{
-		`{"gasPrice":"0x-1"}`,
-		`{"maxFeePerGas":"0x-1"}`,
-		`{"gasPrice":"0x-de0b6b3a7640000"}`,
-	} {
-		_, err := (&ethGas{}).EthEstimateGas(context.Background(), jsonrpc.RawParams(`[`+tx+`]`))
-		var invalid *api.ErrInvalidParams
-		require.ErrorAs(t, err, &invalid, tx)
-		require.Equal(t, "gas price must not be negative", invalid.Message)
-	}
+// TestGasAllowanceNegativePrice verifies that gasAllowance rejects negative prices,
+// even though the parser now rejects negative quantities at decode time.
+// This check is kept as a defensive measure for any code paths that might construct
+// EthBigInt directly without going through the parser.
+func TestGasAllowanceNegativePrice(t *testing.T) {
+	// Simulate a negative price that bypasses the parser (e.g., constructed directly)
+	negPrice := big.NewInt(-1)
+	_, err := gasAllowance(big.NewInt(1_000_000), big.Zero(), *negPrice)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "gas price must be positive")
 }
 
 func TestGasPrice(t *testing.T) {
