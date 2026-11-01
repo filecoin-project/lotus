@@ -51,7 +51,7 @@ Alternatively, titles can match a GitHub revert title: `Revert "<original title>
 
 Note that this is enforced with https://github.com/filecoin-project/lotus/blob/master/.github/workflows/pr-title-check.yml
 
-If it is unclear why one's title is getting flagged, it the regex defined in [pr-title-check.yml](https://github.com/filecoin-project/lotus/blob/master/.github/workflows/pr-title-check.yml#L28) can be plugged into a debugger like [regex101.com](https://regex101.com/r/kUrU3F/2).
+If it is unclear why one's title is getting flagged, the regex defined in [pr-title-check.yml](https://github.com/filecoin-project/lotus/blob/master/.github/workflows/pr-title-check.yml#L28) can be plugged into a debugger like [regex101.com](https://regex101.com/r/kUrU3F/2).
 
 ## CHANGELOG Management
 
