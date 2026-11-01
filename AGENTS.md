@@ -88,6 +88,6 @@ Prefer released dependency versions. Exceptions require the `dependency-check-ig
 
 ### Release notes
 
-Do not edit `CHANGELOG.md` in a PR. Release sections are generated at release time from PR titles by `cmd/release changelog generate`; see [Release Notes](CONTRIBUTING.md#release-notes).
+Do not edit `CHANGELOG.md` in a feature, fix or other standard PR; only release PRs change it. Release sections are generated at release time from PR titles by `cmd/release changelog generate`; see [Release Notes](CONTRIBUTING.md#release-notes).
 
 The PR title is the changelog line. Name the affected API, command or component and say what changed for users, not how it was implemented, and mark breaking changes with `!`. For changes operators must act on, suggest the `release-note/upgrade-warning` label and a `## Release note` block in the PR description with the wording they need.

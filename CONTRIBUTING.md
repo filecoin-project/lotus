@@ -56,7 +56,7 @@ If it is unclear why one's title is getting flagged, it the regex defined in [pr
 
 ## Release Notes
 
-Don't edit `CHANGELOG.md` in a PR. At release time, `go run ./cmd/release changelog generate` writes the release's section from the PRs merged since the previous stable release, so all a PR needs is a good title:
+Don't edit [`CHANGELOG.md`](CHANGELOG.md) in a feature, fix or other standard PR; only release PRs change it. At release time, `go run ./cmd/release changelog generate` writes the release's section from the PRs merged since the previous stable release, so all a PR needs is a good title:
 
 - The PR title is the changelog line. Name the affected API, command or component and say what changes for users, operators or downstream developers, rather than how it was implemented. For example, `fix(chainindex): historical eth_getLogs range queries no longer time out after a restart` rather than `fix(chainindex): anchor historical event range checks on the index`.
 - PRs are grouped by type: `feat` under New Features, `fix` under Bug Fixes, `build`, `chore`, `ci`, `docs`, `style` and `test` under a collapsed "Other changes", and everything else under Improvements. A breaking change marked with `!` is listed under Upgrade Warnings.

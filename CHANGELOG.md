@@ -7,7 +7,8 @@
 > * [CHANGELOG_1.1x.md](./documentation/changelog/CHANGELOG_1.1x.md) - v1.10.0 to v1.19.0
 > * [CHANGELOG_1.2x.md](./documentation/changelog/CHANGELOG_1.2x.md) - v1.20.0 to v1.29.2
 
-Don't edit this file in a pull request. Each release's section is generated at release time from the titles of the PRs it includes; see [Release notes](./CONTRIBUTING.md#release-notes).
+> [!NOTE]
+> Don't edit this file in a feature, fix or other standard PR. Each release's section is [generated at release time](./CONTRIBUTING.md#release-notes) from the titles of the PRs it includes.
 
 # Node and Miner v1.38.3 / 2026-10-21
 
