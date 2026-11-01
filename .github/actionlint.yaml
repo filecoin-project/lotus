@@ -4,3 +4,7 @@ paths:
       # GitHub supports concurrency.queue, but actionlint v1.7.12 does not know it yet.
       # Remove once a release includes https://github.com/rhysd/actionlint/pull/654.
       - 'unexpected key "queue" for "concurrency" section'
+  .github/workflows/ai-title-check.yml:
+    ignore:
+      # GitHub supports the copilot-requests permission, but actionlint v1.7.12 does not know it yet.
+      - 'unknown permission scope "copilot-requests"'
