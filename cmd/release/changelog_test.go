@@ -51,6 +51,11 @@ func TestExtractReleaseNote(t *testing.T) {
 			body: "## release notes\r\nUse `--y` instead.\r\n",
 			want: "Use `--y` instead.",
 		},
+		{
+			name: "shell comment in a code fence does not end the block",
+			body: "## Release note\nRestart the daemon:\n```sh\n# Stop the daemon\nlotus daemon stop\n```\n## Checklist\n",
+			want: "Restart the daemon:\n```sh\n# Stop the daemon\nlotus daemon stop\n```",
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			require.Equal(t, tc.want, extractReleaseNote(tc.body))
@@ -135,6 +140,8 @@ func TestFormatChangelogEntry(t *testing.T) {
 	require.Equal(t, "- fix: a bug"+link+"\n", formatChangelogEntry("fix: a bug", 7))
 	require.Equal(t, "- A note."+link+"\n", formatChangelogEntry("- A note.", 7))
 	require.Equal(t, "- First line.\n\n  Second paragraph."+link+"\n", formatChangelogEntry("First line.\n\nSecond paragraph.", 7))
+	// A closing code fence stays on its own line, with the link in a paragraph after it.
+	require.Equal(t, "- Run:\n  ```sh\n  lotus daemon stop\n  ```\n\n  "+link[1:]+"\n", formatChangelogEntry("Run:\n```sh\nlotus daemon stop\n```", 7))
 }
 
 func TestGenerateChangelogSection(t *testing.T) {

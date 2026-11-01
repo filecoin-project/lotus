@@ -19,6 +19,12 @@ import (
 	"golang.org/x/mod/semver"
 )
 
+// The repository the changelog links to and reads PRs from.
+const (
+	githubOwner = "filecoin-project"
+	githubRepo  = "lotus"
+)
+
 // The release-note labels a maintainer can apply to a PR to pull it out of its type's section.
 const (
 	labelUpgradeWarning = "release-note/upgrade-warning"
@@ -166,21 +172,22 @@ func releasedPullRequests(changelog, version string, released map[int]bool) {
 }
 
 // extractReleaseNote returns the content of the "## Release note" block in a PR description, without HTML comments.
-// The block ends at the next heading of level one or two.
+// The block ends at the next heading of level one or two outside a fenced code block, so a shell comment in a fence doesn't end it.
 func extractReleaseNote(body string) string {
 	var note []string
-	inside := false
+	inside, fenced := false, false
 	for _, line := range strings.Split(strings.ReplaceAll(body, "\r\n", "\n"), "\n") {
-		if releaseNoteHeadingRegexp.MatchString(strings.TrimSpace(line)) {
-			inside = true
+		if !inside {
+			inside = releaseNoteHeadingRegexp.MatchString(strings.TrimSpace(line))
 			continue
 		}
-		if inside && (strings.HasPrefix(line, "# ") || strings.HasPrefix(line, "## ")) {
+		if isCodeFence(line) {
+			fenced = !fenced
+		}
+		if !fenced && (strings.HasPrefix(line, "# ") || strings.HasPrefix(line, "## ")) {
 			break
 		}
-		if inside {
-			note = append(note, line)
-		}
+		note = append(note, line)
 	}
 	return strings.TrimSpace(htmlCommentRegexp.ReplaceAllString(strings.Join(note, "\n"), ""))
 }
@@ -210,7 +217,14 @@ func classifyPullRequest(title string, labels []string) releaseNoteSection {
 	}
 }
 
+// isCodeFence reports whether a Markdown line opens or closes a fenced code block.
+func isCodeFence(line string) bool {
+	trimmed := strings.TrimSpace(line)
+	return strings.HasPrefix(trimmed, "```") || strings.HasPrefix(trimmed, "~~~")
+}
+
 // formatChangelogEntry formats a list item for a PR. Lines after the first are indented to stay in the item.
+// The PR link goes at the end of the last line, or in its own paragraph when the text ends with a code fence.
 func formatChangelogEntry(text string, pr int) string {
 	lines := strings.Split(strings.TrimPrefix(strings.TrimSpace(text), "- "), "\n")
 	for i := 1; i < len(lines); i++ {
@@ -218,7 +232,12 @@ func formatChangelogEntry(text string, pr int) string {
 			lines[i] = "  " + lines[i]
 		}
 	}
-	lines[len(lines)-1] += fmt.Sprintf(" ([#%d](https://github.com/filecoin-project/lotus/pull/%d))", pr, pr)
+	link := fmt.Sprintf("([#%d](https://github.com/filecoin-project/lotus/pull/%d))", pr, pr)
+	if len(lines) > 1 && isCodeFence(lines[len(lines)-1]) {
+		lines = append(lines, "", "  "+link)
+	} else {
+		lines[len(lines)-1] += " " + link
+	}
 	return "- " + strings.Join(lines, "\n") + "\n"
 }
 
@@ -538,7 +557,6 @@ type changelogGenerateOptions struct {
 	To            string
 	Date          string
 	ChangelogPath string
-	Repo          string
 	Force         bool
 	DryRun        bool
 	// SkipDependencies leaves commits in filecoin-project dependencies out of the Contributors table.
@@ -562,11 +580,6 @@ func runChangelogGenerate(out, errOut io.Writer, opts changelogGenerateOptions) 
 	default:
 		return fmt.Errorf("invalid value for the 'type' flag. Allowed values are 'node', 'miner', and 'both'")
 	}
-	owner, repo, ok := strings.Cut(opts.Repo, "/")
-	if !ok {
-		return fmt.Errorf("invalid repository name format. Must be 'owner/repo'")
-	}
-
 	compareLinks, err := releaseCompareLinks(getTags(), projects, names, version, opts.From)
 	if err != nil {
 		return err
@@ -607,7 +620,7 @@ func runChangelogGenerate(out, errOut io.Writer, opts changelogGenerateOptions) 
 	}
 	client := github.NewClient(nil).WithAuthToken(token)
 	fetchPR := func(number int) (pullRequestInfo, error) {
-		pr, _, err := client.PullRequests.Get(context.Background(), owner, repo, number)
+		pr, _, err := client.PullRequests.Get(context.Background(), githubOwner, githubRepo, number)
 		if err != nil {
 			return pullRequestInfo{}, err
 		}
@@ -618,7 +631,7 @@ func runChangelogGenerate(out, errOut io.Writer, opts changelogGenerateOptions) 
 		return info, nil
 	}
 	resolveCommitPullRequests(errOut, commits, func(hash string) (int, error) {
-		prs, _, err := client.PullRequests.ListPullRequestsWithCommit(context.Background(), owner, repo, hash, nil)
+		prs, _, err := client.PullRequests.ListPullRequestsWithCommit(context.Background(), githubOwner, githubRepo, hash, nil)
 		if err != nil {
 			return 0, err
 		}

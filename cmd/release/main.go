@@ -430,11 +430,6 @@ func main() {
 								Usage: "Path to the changelog",
 								Value: "CHANGELOG.md",
 							},
-							&cli.StringFlag{
-								Name:  "repo",
-								Usage: "Which full repository name (i.e., OWNER/REPOSITORY) to read PRs from.",
-								Value: "filecoin-project/lotus",
-							},
 							&cli.BoolFlag{
 								Name:  "force",
 								Usage: "Replace an existing section for this release",
@@ -456,7 +451,6 @@ func main() {
 								To:               c.String("to"),
 								Date:             c.String("date"),
 								ChangelogPath:    c.String("changelog"),
-								Repo:             c.String("repo"),
 								Force:            c.Bool("force"),
 								DryRun:           c.Bool("dry-run"),
 								SkipDependencies: c.Bool("skip-dependencies"),

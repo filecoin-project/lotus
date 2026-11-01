@@ -268,6 +268,9 @@
       - Read its warnings: commits without a `(#N)` PR number are not listed, and a PR it could not read from GitHub falls back to its commit subject.
       - After more backports land, rerun with `--force` to regenerate the section. That discards hand edits, so redo them afterwards.
       - Never edit historical sections.
+<!--      {{if $.BaseTag}}-->
+      - If `v{{$.BaseTag}}` predates `changelog generate`, the release branch's `cmd/release` doesn't have it. Build the tool from master (`go build -o /tmp/lotus-release ./cmd/release` in a master checkout) and run `/tmp/lotus-release changelog generate ...` from the release branch checkout; it only needs that checkout's git history and `CHANGELOG.md`. Delete the branch's leftover `# UNRELEASED` section in the same commit.
+<!--      {{end}}-->
 <!--      {{if eq $.Type "Node and Miner"}}-->
       - Node and miner can have different previous tags (for example `v1.38.2` and `miner/v1.38.0`). The section gets one compare link per project, and its PRs and Contributors come from the node range.
 <!--      {{end}}-->
