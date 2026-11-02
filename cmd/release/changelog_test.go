@@ -195,7 +195,7 @@ func TestGenerateChangelogSection(t *testing.T) {
 - The `+"`lotus filplus`"+` commands are removed. ([#11](https://github.com/filecoin-project/lotus/pull/11))
 - build!: raise the minimum Go version ([#14](https://github.com/filecoin-project/lotus/pull/14))
 
-## Highlights
+## ⭐ Highlights
 
 - feat(api): add a thing ([#10](https://github.com/filecoin-project/lotus/pull/10))
 
@@ -235,7 +235,7 @@ func TestGenerateChangelogSection(t *testing.T) {
 	// With nothing labelled as a highlight, the Highlights heading stays as a placeholder for the releaser.
 	release.CompareLinks = release.CompareLinks[:1]
 	section = generateChangelogSection(&errOut, release, commits[4:5], nil, fetchPR, nil)
-	require.Contains(t, section, "## Highlights\n\n<!-- Draft the highlights of this release here, or delete this section. -->\n\n## 🐛 Bug Fixes\n")
+	require.Contains(t, section, "## ⭐ Highlights\n\n<!-- Draft the highlights of this release here, or delete this section. -->\n\n## 🐛 Bug Fixes\n")
 	require.Contains(t, section, "## 📝 Changelog\n\n[Changes since v1.38.3](https://github.com/filecoin-project/lotus/compare/v1.38.3...v1.39.0)\n")
 	require.NotContains(t, section, "Other changes")
 }

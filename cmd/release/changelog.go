@@ -54,7 +54,7 @@ var releaseNoteSectionLayouts = [sectionCount]struct {
 }{
 	sectionUpgradeWarnings: {heading: "☢️ Upgrade Warnings ☢️"},
 	// The release issue asks the releaser to draft highlights here, or to delete the heading.
-	sectionHighlights:   {heading: "Highlights", placeholder: "<!-- Draft the highlights of this release here, or delete this section. -->"},
+	sectionHighlights:   {heading: "⭐ Highlights", placeholder: "<!-- Draft the highlights of this release here, or delete this section. -->"},
 	sectionNewFeatures:  {heading: "⭐ New Features"},
 	sectionBugFixes:     {heading: "🐛 Bug Fixes"},
 	sectionImprovements: {heading: "👌 Improvements"},
