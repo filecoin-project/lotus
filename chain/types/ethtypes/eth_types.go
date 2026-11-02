@@ -156,11 +156,6 @@ func (e *EthBigInt) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
-	// Ethereum JSON-RPC quantities are hex numbers with a 0x prefix.
-	// The quantity must be hex digits only, up to 256 bits (the same bounds geth's
-	// hexutil.Big enforces). big.Int.SetString accepts unbounded digit runs, so a
-	// multi-kilobyte digit string would otherwise allocate a huge integer.
-	// Negative signs are not allowed per geth's hexutil.Big behavior.
 	body := strings.TrimPrefix(s, "0x")
 	digits := body
 	if !ethHexDigitsRe.MatchString(digits) {
