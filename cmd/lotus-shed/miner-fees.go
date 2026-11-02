@@ -237,17 +237,17 @@ var minerFeesCmd = &cli.Command{
 							switch depth {
 							case 0:
 								// At depth 0: SystemActorAddr (f00) -> CronActorAddr (f03) method 2 (EpochTick)
-								if !(trace.Msg.From == builtin.SystemActorAddr && trace.Msg.To == builtin.CronActorAddr && trace.Msg.Method == 2) {
+								if trace.Msg.From != builtin.SystemActorAddr || trace.Msg.To != builtin.CronActorAddr || trace.Msg.Method != 2 {
 									return "", false, nil
 								}
 							case 1:
 								// At depth 1: CronActorAddr (f03) -> StoragePowerActorAddr (f04) method 5 (OnEpochTickEnd)
-								if !(trace.Msg.From == builtin.CronActorAddr && trace.Msg.To == power.Address && trace.Msg.Method == 5) {
+								if trace.Msg.From != builtin.CronActorAddr || trace.Msg.To != power.Address || trace.Msg.Method != 5 {
 									return "", false, nil
 								}
 							case 2:
 								// At depth 2: StoragePowerActorAddr (f04) -> miner actors method 12 (OnDeferredCronEvent)
-								if !(trace.Msg.From == power.Address && trace.Msg.Method == 12) {
+								if trace.Msg.From != power.Address || trace.Msg.Method != 12 {
 									return "", false, nil
 								}
 							}
@@ -623,17 +623,17 @@ var minerFeesInspect = &cli.Command{
 				switch depth {
 				case 0:
 					// At depth 0: SystemActorAddr (f00) -> CronActorAddr (f03) method 2 (EpochTick)
-					if !(trace.Msg.From == builtin.SystemActorAddr && trace.Msg.To == builtin.CronActorAddr && trace.Msg.Method == 2) {
+					if trace.Msg.From != builtin.SystemActorAddr || trace.Msg.To != builtin.CronActorAddr || trace.Msg.Method != 2 {
 						return nil
 					}
 				case 1:
 					// At depth 1: CronActorAddr (f03) -> StoragePowerActorAddr (f04) method 5 (OnEpochTickEnd)
-					if !(trace.Msg.From == builtin.CronActorAddr && trace.Msg.To == power.Address && trace.Msg.Method == 5) {
+					if trace.Msg.From != builtin.CronActorAddr || trace.Msg.To != power.Address || trace.Msg.Method != 5 {
 						return nil
 					}
 				case 2:
 					// At depth 2: StoragePowerActorAddr (f04) -> miner actors method 12 (OnDeferredCronEvent)
-					if !(trace.Msg.From == power.Address && trace.Msg.Method == 12) {
+					if trace.Msg.From != power.Address || trace.Msg.Method != 12 {
 						return nil
 					}
 				}

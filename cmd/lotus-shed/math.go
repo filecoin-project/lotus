@@ -30,11 +30,7 @@ func readLargeNumbers(i io.Reader) ([]types.BigInt, error) {
 	reader := bufio.NewReader(i)
 
 	exit := false
-	for {
-		if exit {
-			break
-		}
-
+	for !exit {
 		line, err := reader.ReadString('\n')
 		if err != nil && err != io.EOF {
 			break

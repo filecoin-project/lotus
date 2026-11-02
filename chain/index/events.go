@@ -200,15 +200,18 @@ func (si *SqliteIndexer) buildTipsetBloomFromIndex(ctx context.Context, tx *sql.
 			emitterID        uint64
 			emitterAddrBytes []byte
 			flags            []byte
-			key              string
-			codec            uint64
+			key              sql.NullString
+			codec            sql.NullInt64
 			value            []byte
 		)
 		if err := rows.Scan(&eventID, &emitterID, &emitterAddrBytes, &flags, &key, &codec, &value); err != nil {
 			return xerrors.Errorf("read indexed event row: %w", err)
 		}
-		if len(flags) == 0 {
-			return xerrors.Errorf("event entry for event %d has no flags", eventID)
+		// An event with no entries, such as EVM LOG0 with no data, comes back
+		// as one row with NULL entry columns.
+		hasEntry := key.Valid
+		if hasEntry && len(flags) == 0 {
+			return fmt.Errorf("event entry for event %d has no flags", eventID)
 		}
 		if eventID != currentID {
 			if err := flush(); err != nil {
@@ -228,10 +231,13 @@ func (si *SqliteIndexer) buildTipsetBloomFromIndex(ctx context.Context, tx *sql.
 				}
 			}
 		}
+		if !hasEntry {
+			continue
+		}
 		entries = append(entries, types.EventEntry{
 			Flags: flags[0],
-			Key:   key,
-			Codec: codec,
+			Key:   key.String,
+			Codec: uint64(codec.Int64),
 			Value: value,
 		})
 	}

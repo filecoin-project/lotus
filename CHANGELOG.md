@@ -18,6 +18,8 @@
 ## ⭐ New Features
 
 - feat(genesis): 2k devnets now start at nv29. A genesis template's optional `RewardSWA` installs an account or multisig as the reward actor's FIP-0118 stream weight actor, so a fresh network can change reward weights without a migration; unset, the SWA stays the system actor. ([filecoin-project/lotus#13967](https://github.com/filecoin-project/lotus/pull/13967))
+- Update go-libp2p to v0.51.0, go-libp2p-kad-dht to v0.43.0 and go-libp2p-pubsub to v0.19.0. The DHT now persists its routing table to the metadata datastore (hourly and on shutdown) and redials saved peers on restart, speeding up peer discovery after a restart. ([filecoin-project/lotus#13995](https://github.com/filecoin-project/lotus/pull/13995))
+- feat(shed): `lotus-shed chainindex restore-blooms` restores missing tipset blooms on a stopped node from its existing index. ([filecoin-project/lotus#13960](https://github.com/filecoin-project/lotus/pull/13960))
 
 ## 🐛 Bug Fixes
 
@@ -26,6 +28,7 @@
 - fix(miner): moving sector files that are already in long-term storage, for example the sealed and cache files in `FinalizeReplicaUpdate`, is no longer stuck in the scheduler when the storage path is full. ([filecoin-project/lotus#13949](https://github.com/filecoin-project/lotus/pull/13949))
 - fix(chainindex): historical `eth_getLogs` and `GetActorEventsRaw` range queries no longer time out after a node restart; the range check now starts from the chain index instead of walking back from head. ([filecoin-project/lotus#13957](https://github.com/filecoin-project/lotus/pull/13957))
 - fix(daemon): importing a snapshot from a URL now resumes after HTTP/2 stream resets and other transient read errors, with backoff, instead of failing. ([filecoin-project/lotus#13962](https://github.com/filecoin-project/lotus/pull/13962))
+- fix(chainindex): a tipset bloom rebuilt from the index, as `lotus index validate-backfill` does, now includes the emitter of an event with no topics or data, such as EVM `LOG0` with empty data, matching the bloom written at indexing time. ([filecoin-project/lotus#13960](https://github.com/filecoin-project/lotus/pull/13960))
 
 ## 👌 Improvements
 

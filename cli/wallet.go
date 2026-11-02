@@ -309,13 +309,13 @@ var walletExport = &cli.Command{
 
 		switch cctx.String("format") {
 		case "hex-lotus":
-			b, err := json.Marshal(ki)
+			b, err := json.Marshal(ki) //nolint:gosec // exporting the key is the purpose
 			if err != nil {
 				return err
 			}
 			afmt.Println(hex.EncodeToString(b))
 		case "json-lotus":
-			b, err := json.Marshal(ki)
+			b, err := json.Marshal(ki) //nolint:gosec // exporting the key is the purpose
 			if err != nil {
 				return err
 			}

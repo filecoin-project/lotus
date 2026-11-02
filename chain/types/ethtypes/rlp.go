@@ -77,14 +77,14 @@ func encodeRLP(val any) ([]byte, error) {
 		if len(data) == 1 && data[0] <= 0x7f {
 			return data, nil
 		} else if len(data) <= 55 {
-			prefix := byte(0x80 + len(data))
+			prefix := byte(0x80 + len(data)) //nolint:gosec // len(data) <= 55
 			return append([]byte{prefix}, data...), nil
 		}
 		lenInBytes, err := encodeLength(len(data))
 		if err != nil {
 			return nil, err
 		}
-		prefix := byte(0xb7 + len(lenInBytes))
+		prefix := byte(0xb7 + len(lenInBytes)) //nolint:gosec // len(lenInBytes) <= 8
 		return append(
 			[]byte{prefix},
 			append(lenInBytes, data...)...,
@@ -95,7 +95,7 @@ func encodeRLP(val any) ([]byte, error) {
 			return nil, err
 		}
 		if len(encodedList) <= 55 {
-			prefix := byte(0xc0 + len(encodedList))
+			prefix := byte(0xc0 + len(encodedList)) //nolint:gosec // len(encodedList) <= 55
 			return append(
 				[]byte{prefix},
 				encodedList...,
@@ -105,7 +105,7 @@ func encodeRLP(val any) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		prefix := byte(0xf7 + len(lenInBytes))
+		prefix := byte(0xf7 + len(lenInBytes)) //nolint:gosec // len(lenInBytes) <= 8
 		return append(
 			[]byte{prefix},
 			append(lenInBytes, encodedList...)...,

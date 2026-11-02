@@ -70,7 +70,7 @@ func (g *DocGenerator) generateDocs(name string) error {
 
 // writeAppHeader writes the application header documentation
 func (g *DocGenerator) writeAppHeader() error {
-	if _, err := g.writer.Write([]byte(fmt.Sprintf("# %s\n\n```\n", g.app.Name))); err != nil {
+	if _, err := fmt.Fprintf(g.writer, "# %s\n\n```\n", g.app.Name); err != nil {
 		return err
 	}
 
@@ -123,7 +123,7 @@ func (g *DocGenerator) writeCommands(commands cli.Commands, rootName string, dep
 
 		cmdName := fmt.Sprintf("%s %s", rootName, cmd.Name)
 
-		if _, err := g.writer.Write([]byte(fmt.Sprintf("\n%s %s\n\n```\n", strings.Repeat("#", depth+2), cmdName))); err != nil {
+		if _, err := fmt.Fprintf(g.writer, "\n%s %s\n\n```\n", strings.Repeat("#", depth+2), cmdName); err != nil {
 			return err
 		}
 
