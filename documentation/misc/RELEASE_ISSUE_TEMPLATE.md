@@ -265,7 +265,8 @@
       <!-- agent:
       - Fetch tags first (`git fetch origin --tags`). It reads PRs from GitHub with `GITHUB_TOKEN`, or the `gh` CLI's token.
       - It lists every PR merged since the previous stable tag by title type and `release-note/*` labels, skips PRs already linked from released sections, and ends with the compare links and Contributors table. Each RC and the stable section list everything since the previous stable release.
-      - Read its warnings: commits without a `(#N)` PR number are not listed, and a PR it could not read from GitHub falls back to its commit subject.
+      - Read its warnings: commits without a `(#N)` PR number are not listed.
+      - It stops if it can't read a PR from GitHub, or if a PR's title or description was last changed after merge by someone without write access, since the changelog only trusts post-merge edits from maintainers. Check each PR it lists: a maintainer either accepts the change by editing the flagged title or description (any small edit makes them its latest editor) or reverts it, then rerun.
       - After more backports land, rerun with `--force` to regenerate the section. That discards hand edits, so redo them afterwards.
       - Never edit historical sections.
 <!--      {{if eq $.Type "Node and Miner"}}-->

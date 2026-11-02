@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -411,10 +413,12 @@ func resolveCommitPullRequests(errOut io.Writer, commits []commitInfo, findPR fu
 // generateChangelogSection renders the CHANGELOG.md section for a release from the commits in its range, oldest first.
 // Commits whose PR is in released are skipped: the previous tag is not always an ancestor of the release, so the
 // range can hold changes that already shipped through a backport.
-// fetchPR reads a PR from GitHub; when it fails, the entry falls back to the commit subject and a warning is logged.
+// fetchPR returns the title, description and labels to use for a PR. If it fails for any PR, generation stops with an
+// error that lists every failure.
 // dependencyCommits are counted in the Contributors table only.
-func generateChangelogSection(errOut io.Writer, release changelogRelease, commits []commitInfo, released map[int]bool, fetchPR func(int) (pullRequestInfo, error), dependencyCommits []commitInfo) string {
+func generateChangelogSection(errOut io.Writer, release changelogRelease, commits []commitInfo, released map[int]bool, fetchPR func(int) (pullRequestInfo, error), dependencyCommits []commitInfo) (string, error) {
 	var entries [sectionCount][]string
+	var problems []error
 	var contributors []commitInfo
 	listed := map[int]bool{}
 	for _, c := range commits {
@@ -434,8 +438,8 @@ func generateChangelogSection(errOut io.Writer, release changelogRelease, commit
 
 		pr, err := fetchPR(c.PR)
 		if err != nil {
-			_, _ = fmt.Fprintf(errOut, "warning: using the commit subject for #%d: %v\n", c.PR, err)
-			pr = pullRequestInfo{Title: prNumberRegexp.ReplaceAllString(c.Subject, "")}
+			problems = append(problems, fmt.Errorf("#%d: %w", c.PR, err))
+			continue
 		}
 		section := classifyPullRequest(pr.Title, pr.Labels)
 		text := pr.Title
@@ -443,6 +447,10 @@ func generateChangelogSection(errOut io.Writer, release changelogRelease, commit
 			text = note
 		}
 		entries[section] = append(entries[section], formatChangelogEntry(text, c.PR))
+	}
+
+	if len(problems) > 0 {
+		return "", errors.Join(problems...)
 	}
 
 	var b strings.Builder
@@ -470,7 +478,7 @@ func generateChangelogSection(errOut io.Writer, release changelogRelease, commit
 	b.WriteString("\n")
 	writeContributors(&b, append(contributors, dependencyCommits...))
 	b.WriteString("\n")
-	return b.String()
+	return b.String(), nil
 }
 
 // insertChangelogSection adds section to changelog below its title and preamble, which must come first.
@@ -623,16 +631,32 @@ func runChangelogGenerate(out, errOut io.Writer, opts changelogGenerateOptions) 
 		return err
 	}
 	client := github.NewClient(nil).WithAuthToken(token)
+	writeAccess := map[string]bool{}
+	hasWriteAccess := func(login string) (bool, error) {
+		if ok, cached := writeAccess[login]; cached {
+			return ok, nil
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), githubRequestTimeout)
+		defer cancel()
+		level, resp, err := client.Repositories.GetPermissionLevel(ctx, githubOwner, githubRepo, login)
+		if resp != nil && resp.StatusCode == http.StatusNotFound {
+			err, level = nil, &github.RepositoryPermissionLevel{}
+		}
+		if err != nil {
+			return false, fmt.Errorf("failed to read %s's permission: %w", login, err)
+		}
+		// "write" includes the maintain role, and "admin" is the only level above it.
+		writeAccess[login] = level.GetPermission() == "write" || level.GetPermission() == "admin"
+		return writeAccess[login], nil
+	}
 	fetchPR := func(number int) (pullRequestInfo, error) {
-		pr, _, err := client.PullRequests.Get(context.Background(), githubOwner, githubRepo, number)
+		ctx, cancel := context.WithTimeout(context.Background(), githubRequestTimeout)
+		defer cancel()
+		history, err := fetchPullRequestHistory(ctx, token, number)
 		if err != nil {
 			return pullRequestInfo{}, err
 		}
-		info := pullRequestInfo{Title: pr.GetTitle(), Body: pr.GetBody()}
-		for _, label := range pr.Labels {
-			info.Labels = append(info.Labels, label.GetName())
-		}
-		return info, nil
+		return trustedPullRequest(history, hasWriteAccess)
 	}
 	resolveCommitPullRequests(errOut, commits, func(hash string) (int, error) {
 		prs, _, err := client.PullRequests.ListPullRequestsWithCommit(context.Background(), githubOwner, githubRepo, hash, nil)
@@ -655,7 +679,10 @@ func runChangelogGenerate(out, errOut io.Writer, opts changelogGenerateOptions) 
 		}
 	}
 
-	section := generateChangelogSection(errOut, release, commits, released, fetchPR, depCommits)
+	section, err := generateChangelogSection(errOut, release, commits, released, fetchPR, depCommits)
+	if err != nil {
+		return fmt.Errorf("can't generate the changelog until these PRs are checked:\n%w", err)
+	}
 	if opts.DryRun {
 		_, err := io.WriteString(out, section)
 		return err

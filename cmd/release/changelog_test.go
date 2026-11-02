@@ -167,7 +167,7 @@ func TestGenerateChangelogSection(t *testing.T) {
 		13: {Title: "fix: a bug", Body: "## Release note\n<!-- placeholder -->\n\n## Checklist\n"},
 		14: {Title: "build!: raise the minimum Go version"},
 		15: {Title: "perf: faster"},
-		// #16 is missing, so its entry falls back to the commit subject.
+		16: {Title: "docs: renamed after merge"},
 	}
 	fetchPR := func(number int) (pullRequestInfo, error) {
 		pr, ok := prs[number]
@@ -187,7 +187,8 @@ func TestGenerateChangelogSection(t *testing.T) {
 	}
 
 	var errOut bytes.Buffer
-	section := generateChangelogSection(&errOut, release, commits, map[int]bool{3: true}, fetchPR, nil)
+	section, err := generateChangelogSection(&errOut, release, commits, map[int]bool{3: true}, fetchPR, nil)
+	require.NoError(t, err)
 	require.Equal(t, `# Node and Miner v1.39.0 / 2026-11-05
 
 ## ☢️ Upgrade Warnings ☢️
@@ -230,14 +231,21 @@ func TestGenerateChangelogSection(t *testing.T) {
 
 `, section)
 	require.Contains(t, errOut.String(), `warning: f6 "chore: no PR number" has no PR, so it is not listed`)
-	require.Contains(t, errOut.String(), "warning: using the commit subject for #16")
 
 	// With nothing labelled as a highlight, the Highlights heading stays as a placeholder for the releaser.
 	release.CompareLinks = release.CompareLinks[:1]
-	section = generateChangelogSection(&errOut, release, commits[4:5], nil, fetchPR, nil)
+	section, err = generateChangelogSection(&errOut, release, commits[4:5], nil, fetchPR, nil)
+	require.NoError(t, err)
 	require.Contains(t, section, "## ✨ Highlights\n\n<!-- Draft the highlights of this release here, or delete this section. -->\n\n## 🐛 Bug Fixes\n")
 	require.Contains(t, section, "## 📝 Changelog\n\n[Changes since v1.38.3](https://github.com/filecoin-project/lotus/compare/v1.38.3...v1.39.0)\n")
 	require.NotContains(t, section, "Other changes")
+
+	// A PR that can't be read stops generation, and every such PR is reported at once.
+	delete(prs, 13)
+	delete(prs, 16)
+	_, err = generateChangelogSection(&errOut, release, commits, nil, fetchPR, nil)
+	require.ErrorContains(t, err, "#13: not found")
+	require.ErrorContains(t, err, "#16: not found")
 }
 
 func TestInsertChangelogSection(t *testing.T) {
@@ -324,7 +332,8 @@ func TestGenerateChangelogSectionCountsDependencyContributors(t *testing.T) {
 	release := changelogRelease{Type: "Node", Version: "1.39.0", Date: "2026-11-05", CompareLinks: []compareLink{{Project: "Node", From: "v1.38.3", To: "v1.39.0"}}}
 
 	var errOut bytes.Buffer
-	section := generateChangelogSection(&errOut, release, commits, nil, fetchPR, dependencyCommits)
+	section, err := generateChangelogSection(&errOut, release, commits, nil, fetchPR, dependencyCommits)
+	require.NoError(t, err)
 	require.Contains(t, section, "| Erin | 1 | +100/-0 | 1 |\n| Alice | 2 | +8/-1 | 3 |\n")
 	// Dependency commits are not listed as changes, and their PR numbers are not lotus PRs.
 	require.NotContains(t, section, "pull/99")

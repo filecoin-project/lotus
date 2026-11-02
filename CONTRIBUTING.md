@@ -67,6 +67,8 @@ Don't edit [`CHANGELOG.md`](CHANGELOG.md) in a feature, fix or other standard PR
 
 The release engineer reviews the generated section in the release PR and drafts its Highlights.
 
+Contributors can edit a PR's title and description after it merges without anyone being notified, so the generator uses the title and description as they were at merge, plus later edits by people with write access. If someone else made the latest edit, generation stops until a maintainer edits the PR to accept or revert the change. Maintainers can still fix a merged PR's title or add a `## Release note` block.
+
 Editing only hand-written Markdown on an open PR, such as `CHANGELOG.md` in a release PR, does not rerun the full CI suite. When the only difference from what a workflow last tested successfully on the PR, or from the PR's base, is in files that workflow does not depend on, the Test, Build, Docker and Check workflows skip their remaining jobs. See [detect-skippable-changes](.github/actions/detect-skippable-changes/action.yml) for the exact paths.
 
 ## Dependency Management
