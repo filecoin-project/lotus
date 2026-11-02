@@ -11,7 +11,6 @@ var Commands = []*cli.Command{
 	lcli.WithCategory("basic", lcli.WalletCmd),
 	lcli.WithCategory("basic", lcli.InfoCmd),
 	lcli.WithCategory("basic", lcli.MultisigCmd),
-	lcli.WithCategory("basic", lcli.FilplusCmd),
 	lcli.WithCategory("basic", lcli.PaychCmd),
 	lcli.WithCategory("developer", lcli.AuthCmd),
 	lcli.WithCategory("developer", lcli.MpoolCmd),

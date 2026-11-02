@@ -1310,9 +1310,9 @@ func TestMigrationTeepTockFix(t *testing.T) {
 	kit.QuietMiningLogs()
 
 	var (
-		nv25Epoch    abi.ChainEpoch = 100
-		nv26Epoch    abi.ChainEpoch = nv25Epoch + 100
-		teepFixEpoch abi.ChainEpoch = nv26Epoch + 100
+		nv25Epoch    = abi.ChainEpoch(100)
+		nv26Epoch    = nv25Epoch + 100
+		teepFixEpoch = nv26Epoch + 100
 	)
 	const networkName = "testing-fake-proofs"
 	buildconstants.UpgradeTockFixHeight = teepFixEpoch // needed to be set for migration to run
@@ -1495,9 +1495,10 @@ func TestEthCallAcrossExpensiveFork(t *testing.T) {
 
 	// Safety boundary preserved: the upgrade epoch U itself cannot be served, since serving it
 	// would require running the migration on demand. The typed error must survive the RPC round
-	// trip and decode back to *api.ErrExpensiveFork with its epoch.
+	// trip and decode back to an expensive-fork *api.ErrResourceUnavailable with its epoch.
 	_, err = client.EthCall(ctx, mkCall(), at(upgradeHeight))
-	var forkErr *api.ErrExpensiveFork
+	require.ErrorIs(t, err, stmgr.ErrExpensiveFork)
+	var forkErr *api.ErrResourceUnavailable
 	require.ErrorAs(t, err, &forkErr)
 	require.Equal(t, abi.ChainEpoch(upgradeHeight), forkErr.Epoch)
 	require.Equal(t, runsBefore, migrationRuns.Load(), "the refused call at U must not run the migration either")

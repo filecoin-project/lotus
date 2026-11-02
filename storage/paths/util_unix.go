@@ -38,7 +38,7 @@ func Move(from, to string) error {
 
 	var cmd *exec.Cmd
 	if runtime.GOOS == "darwin" {
-		if err := os.MkdirAll(toDir, 0777); err != nil {
+		if err := os.MkdirAll(toDir, 0777); err != nil { //nolint:gosec // moving between local sector paths
 			return xerrors.Errorf("failed exec MkdirAll: %s", err)
 		}
 

@@ -17,12 +17,11 @@ COMMANDS:
    version  Print version
    help, h  Shows a list of commands or help for one command
    BASIC:
-     send     Send funds between accounts
-     wallet   Manage wallet
-     info     Print node info
-     msig     Interact with a multisig wallet
-     filplus  Interact with the verified registry actor used by Filplus
-     paych    Manage payment channels
+     send    Send funds between accounts
+     wallet  Manage wallet
+     info    Print node info
+     msig    Interact with a multisig wallet
+     paych   Manage payment channels
    DEVELOPER:
      auth          Manage RPC permissions
      mpool         Manage message pool
@@ -716,113 +715,6 @@ USAGE:
 OPTIONS:
    --from value  account to send the proposal from
    --help, -h    show help
-```
-
-## lotus filplus
-
-```
-NAME:
-   lotus filplus - Interact with the verified registry actor used by Filplus
-
-USAGE:
-   lotus filplus [command options]
-
-CATEGORY:
-   BASIC
-
-COMMANDS:
-   list-notaries         list all notaries
-   list-clients          list all verified clients
-   check-client-datacap  check verified client remaining bytes
-   check-notary-datacap  check a notary's remaining bytes
-   list-allocations      List allocations available in verified registry actor or made by a client if specified
-   list-claims           List claims available in verified registry actor or made by provider if specified
-   help, h               Shows a list of commands or help for one command
-
-OPTIONS:
-   --help, -h  show help
-```
-
-### lotus filplus list-notaries
-
-```
-NAME:
-   lotus filplus list-notaries - list all notaries
-
-USAGE:
-   lotus filplus list-notaries [command options]
-
-OPTIONS:
-   --help, -h  show help
-```
-
-### lotus filplus list-clients
-
-```
-NAME:
-   lotus filplus list-clients - list all verified clients
-
-USAGE:
-   lotus filplus list-clients [command options]
-
-OPTIONS:
-   --help, -h  show help
-```
-
-### lotus filplus check-client-datacap
-
-```
-NAME:
-   lotus filplus check-client-datacap - check verified client remaining bytes
-
-USAGE:
-   lotus filplus check-client-datacap [command options] clientAddress
-
-OPTIONS:
-   --help, -h  show help
-```
-
-### lotus filplus check-notary-datacap
-
-```
-NAME:
-   lotus filplus check-notary-datacap - check a notary's remaining bytes
-
-USAGE:
-   lotus filplus check-notary-datacap [command options] notaryAddress
-
-OPTIONS:
-   --help, -h  show help
-```
-
-### lotus filplus list-allocations
-
-```
-NAME:
-   lotus filplus list-allocations - List allocations available in verified registry actor or made by a client if specified
-
-USAGE:
-   lotus filplus list-allocations [command options] clientAddress
-
-OPTIONS:
-   --expired   list only expired allocations (default: false)
-   --json      output results in json format (default: false)
-   --help, -h  show help
-```
-
-### lotus filplus list-claims
-
-```
-NAME:
-   lotus filplus list-claims - List claims available in verified registry actor or made by provider if specified
-
-USAGE:
-   lotus filplus list-claims [command options] providerAddress
-
-OPTIONS:
-   --expired   list only expired claims (default: false)
-   --json      output results in json format (default: false)
-   --help, -h  show help
 ```
 
 ## lotus paych

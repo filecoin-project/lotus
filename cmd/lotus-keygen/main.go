@@ -72,7 +72,7 @@ func main() {
 			}
 		}()
 
-		b, err := json.Marshal(ki)
+		b, err := json.Marshal(ki) //nolint:gosec // writing the generated key is the purpose
 		if err != nil {
 			return err
 		}

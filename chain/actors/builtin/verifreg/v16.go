@@ -77,12 +77,6 @@ func (s *state16) ForEachClient(cb func(addr address.Address, dcap abi.StoragePo
 
 }
 
-func (s *state16) verifiedClients() (adt.Map, error) {
-
-	return nil, xerrors.Errorf("unsupported in actors v16")
-
-}
-
 func (s *state16) verifiers() (adt.Map, error) {
 	return adt16.AsMap(s.store, s.Verifiers, builtin16.DefaultHamtBitwidth)
 }

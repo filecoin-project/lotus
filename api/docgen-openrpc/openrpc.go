@@ -108,7 +108,7 @@ func OpenRPCSchemaTypeMapper(ty reflect.Type) *jsonschema.Type {
 		return &js
 	}
 
-	if ty.Kind() == reflect.Ptr {
+	if ty.Kind() == reflect.Pointer {
 		ty = ty.Elem()
 	}
 
@@ -146,7 +146,7 @@ func OpenRPCSchemaTypeMapper(ty reflect.Type) *jsonschema.Type {
 	case reflect.Float32, reflect.Float64:
 	case reflect.Bool:
 	case reflect.String:
-	case reflect.Ptr, reflect.Interface:
+	case reflect.Pointer, reflect.Interface:
 	default:
 	}
 

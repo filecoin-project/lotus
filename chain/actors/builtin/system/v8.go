@@ -43,13 +43,13 @@ func (s *state8) GetState() interface{} {
 
 func (s *state8) GetBuiltinActors() cid.Cid {
 
-	return s.State.BuiltinActors
+	return s.BuiltinActors
 
 }
 
 func (s *state8) SetBuiltinActors(c cid.Cid) error {
 
-	s.State.BuiltinActors = c
+	s.BuiltinActors = c
 	return nil
 
 }

@@ -407,7 +407,7 @@ func (s *state{{.v}}) Info() (MinerInfo, error) {
 		Worker:           info.Worker,
 		ControlAddresses: info.ControlAddresses,
 
-		PendingWorkerKey:  (*WorkerKeyChange)(info.PendingWorkerKey),
+		PendingWorkerKey:  {{if (eq .v 9)}}info.PendingWorkerKey{{else}}(*WorkerKeyChange)(info.PendingWorkerKey){{end}},
 
 		PeerId:                     info.PeerId,
 		Multiaddrs:                 info.Multiaddrs,
@@ -417,8 +417,8 @@ func (s *state{{.v}}) Info() (MinerInfo, error) {
 		ConsensusFaultElapsed:      {{if (ge .v 2)}}info.ConsensusFaultElapsed{{else}}-1{{end}},
 		{{if (ge .v 9)}}
             Beneficiary:                info.Beneficiary,
-            BeneficiaryTerm:        BeneficiaryTerm(info.BeneficiaryTerm),
-            PendingBeneficiaryTerm: (*PendingBeneficiaryChange)(info.PendingBeneficiaryTerm),
+            BeneficiaryTerm:        {{if (eq .v 9)}}info.BeneficiaryTerm{{else}}BeneficiaryTerm(info.BeneficiaryTerm){{end}},
+            PendingBeneficiaryTerm: {{if (eq .v 9)}}info.PendingBeneficiaryTerm{{else}}(*PendingBeneficiaryChange)(info.PendingBeneficiaryTerm){{end}},
         {{end}}
 	}
 
@@ -512,7 +512,7 @@ func (d *deadline{{.v}}) LoadPartition(idx uint64) (Partition, error) {
 }
 
 func (d *deadline{{.v}}) ForEachPartition(cb func(uint64, Partition) error) error {
-	ps, err := d.Deadline.PartitionsArray(d.store)
+	ps, err := d.PartitionsArray(d.store)
 	if err != nil {
 		return err
 	}
@@ -529,11 +529,11 @@ func (d *deadline{{.v}}) PartitionsChanged(other Deadline) (bool, error) {
 		return true, nil
 	}
 
-	return !d.Deadline.Partitions.Equals(other{{.v}}.Deadline.Partitions), nil
+	return !d.Partitions.Equals(other{{.v}}.Partitions), nil
 }
 
 func (d *deadline{{.v}}) PartitionsPoSted() (bitfield.BitField, error) {
-	return d.Deadline.{{if (ge .v 3)}}PartitionsPoSted{{else}}PostSubmissions{{end}}, nil
+	return {{if (ge .v 3)}}d.Deadline.PartitionsPoSted{{else}}d.PostSubmissions{{end}}, nil
 }
 
 func (d *deadline{{.v}}) DisputableProofCount() (uint64, error) {
@@ -560,19 +560,19 @@ func (d *deadline{{.v}}) DailyFee() (abi.TokenAmount, error) {
 }
 
 func (p *partition{{.v}}) AllSectors() (bitfield.BitField, error) {
-	return p.Partition.Sectors, nil
+	return p.Sectors, nil
 }
 
 func (p *partition{{.v}}) FaultySectors() (bitfield.BitField, error) {
-	return p.Partition.Faults, nil
+	return p.Faults, nil
 }
 
 func (p *partition{{.v}}) RecoveringSectors() (bitfield.BitField, error) {
-	return p.Partition.Recoveries, nil
+	return p.Recoveries, nil
 }
 
 func (p *partition{{.v}}) UnprovenSectors() (bitfield.BitField, error) {
-	return {{if (ge .v 2)}}p.Partition.Unproven{{else}}bitfield.New(){{end}}, nil
+	return {{if (ge .v 2)}}p.Unproven{{else}}bitfield.New(){{end}}, nil
 }
 
 func fromV{{.v}}SectorOnChainInfo(v{{.v}} miner{{.v}}.SectorOnChainInfo) SectorOnChainInfo {
@@ -600,7 +600,7 @@ func fromV{{.v}}SectorOnChainInfo(v{{.v}} miner{{.v}}.SectorOnChainInfo) SectorO
 		{{- if (ge .v 12)}}
 		PowerBaseEpoch:        v{{.v}}.PowerBaseEpoch,
 		ReplacedDayReward:     {{ if (lt .v 16)}}&{{end}}v{{.v}}.ReplacedDayReward,
-		Flags:                 SectorOnChainInfoFlags(v{{.v}}.Flags),
+		Flags:                 {{if (eq .v .latestVersion)}}v{{.v}}.Flags{{else}}SectorOnChainInfoFlags(v{{.v}}.Flags){{end}},
 		{{- end}}
 		{{- if (ge .v 16)}}
 		DailyFee:              dailyFee,

@@ -127,7 +127,7 @@ func (fs *FundingStage) PackMessages(ctx context.Context, bb *blockbuilder.Block
 		if act.Balance.LessThan(fs.taxMin) {
 			return nil
 		}
-		if !(builtin.IsAccountActor(act.Code) || builtin.IsMultisigActor(act.Code)) {
+		if !builtin.IsAccountActor(act.Code) && !builtin.IsMultisigActor(act.Code) {
 			return nil
 		}
 		targets = append(targets, &actor{*act, addr})

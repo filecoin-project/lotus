@@ -87,10 +87,7 @@ func (s *state20) InitialPledgeForPower(qaPower abi.StoragePower, _ abi.TokenAmo
 		qaPower,
 		s.State.ThisEpochBaselinePower,
 		s.State.ThisEpochRewardSmoothed,
-		smoothing20.FilterEstimate{
-			PositionEstimate: networkQAPower.PositionEstimate,
-			VelocityEstimate: networkQAPower.VelocityEstimate,
-		},
+		smoothing20.FilterEstimate(*networkQAPower),
 		circSupply,
 		epochsSinceRampStart,
 		rampDurationEpochs,
@@ -99,10 +96,7 @@ func (s *state20) InitialPledgeForPower(qaPower abi.StoragePower, _ abi.TokenAmo
 
 func (s *state20) PreCommitDepositForPower(networkQAPower builtin.FilterEstimate, sectorWeight abi.StoragePower) (abi.TokenAmount, error) {
 	return miner20.PreCommitDepositForPower(s.State.ThisEpochRewardSmoothed,
-		smoothing20.FilterEstimate{
-			PositionEstimate: networkQAPower.PositionEstimate,
-			VelocityEstimate: networkQAPower.VelocityEstimate,
-		},
+		smoothing20.FilterEstimate(networkQAPower),
 		sectorWeight), nil
 }
 
@@ -114,7 +108,7 @@ func (s *state20) StreamLedger(epoch abi.ChainEpoch) (*StreamLedger, error) {
 
 	accrued := make(map[StreamID]abi.TokenAmount, len(s.State.Accrued))
 	for _, accrual := range s.State.Accrued {
-		accrued[StreamID(accrual.ID)] = accrual.Amount
+		accrued[accrual.ID] = accrual.Amount
 	}
 
 	ledger := &StreamLedger{
@@ -131,16 +125,16 @@ func (s *state20) StreamLedger(epoch abi.ChainEpoch) (*StreamLedger, error) {
 
 	explicit := 0
 	for _, stream := range streams.Streams {
-		weight := WeightRecord(stream.Weight)
+		weight := stream.Weight
 		out := Stream{
-			ID:              StreamID(stream.ID),
+			ID:              stream.ID,
 			Weight:          weight,
 			EvaluatedWeight: ComputeWeight(weight, epoch),
 			Implicit:        stream.Distribution == nil,
 			Accrued:         big.Zero(),
 		}
 		if stream.Distribution != nil {
-			amount, ok := accrued[StreamID(stream.ID)]
+			amount, ok := accrued[stream.ID]
 			if !ok {
 				return nil, fmt.Errorf("explicit stream %d has no accrual row", stream.ID)
 			}
@@ -159,7 +153,7 @@ func (s *state20) StreamLedger(epoch abi.ChainEpoch) (*StreamLedger, error) {
 
 	for _, tombstone := range streams.Tombstones {
 		ledger.Tombstones = append(ledger.Tombstones, Tombstone{
-			ID:      StreamID(tombstone.ID),
+			ID:      tombstone.ID,
 			Payable: fromV20RecipientAmounts(tombstone.Payable),
 		})
 	}
@@ -179,22 +173,14 @@ func fromV20RecipientShares(v20 []reward20.RecipientShare) []RecipientShare {
 	if v20 == nil {
 		return nil
 	}
-	shares := make([]RecipientShare, 0, len(v20))
-	for _, share := range v20 {
-		shares = append(shares, RecipientShare{Recipient: share.Recipient, Share: share.Share})
-	}
-	return shares
+	return append(make([]RecipientShare, 0, len(v20)), v20...)
 }
 
 func fromV20RecipientAmounts(v20 []reward20.RecipientAmount) []RecipientAmount {
 	if v20 == nil {
 		return nil
 	}
-	amounts := make([]RecipientAmount, 0, len(v20))
-	for _, row := range v20 {
-		amounts = append(amounts, RecipientAmount{Recipient: row.Recipient, Amount: row.Amount})
-	}
-	return amounts
+	return append(make([]RecipientAmount, 0, len(v20)), v20...)
 }
 
 func fromV20PendingWrite(v20 reward20.PendingWrite) (PendingWrite, error) {
@@ -203,7 +189,7 @@ func fromV20PendingWrite(v20 reward20.PendingWrite) (PendingWrite, error) {
 		EffectiveEpoch: v20.EffectiveEpoch,
 	}
 	if v20.ID != nil {
-		id := StreamID(*v20.ID)
+		id := *v20.ID
 		out.ID = &id
 	}
 	switch out.Op {
@@ -212,19 +198,13 @@ func fromV20PendingWrite(v20 reward20.PendingWrite) (PendingWrite, error) {
 		if err := decodeStreamPayload(v20.Payload, &payload); err != nil {
 			return PendingWrite{}, xerrors.Errorf("decoding pending %s payload: %w", out.Op, err)
 		}
-		out.Updates = make([]WeightRecordUpdate, 0, len(payload.Updates))
-		for _, update := range payload.Updates {
-			out.Updates = append(out.Updates, WeightRecordUpdate{
-				ID:     StreamID(update.ID),
-				Weight: WeightRecord(update.Weight),
-			})
-		}
+		out.Updates = append(make([]WeightRecordUpdate, 0, len(payload.Updates)), payload.Updates...)
 	case OpRegisterStream:
 		var payload reward20.RegisterStreamPayload
 		if err := decodeStreamPayload(v20.Payload, &payload); err != nil {
 			return PendingWrite{}, xerrors.Errorf("decoding pending %s payload: %w", out.Op, err)
 		}
-		out.Register = &RegisterStreamPayload{Weight: WeightRecord(payload.Weight)}
+		out.Register = &RegisterStreamPayload{Weight: payload.Weight}
 		if payload.Distribution != nil {
 			out.Register.Distribution = &DistributionInit{
 				Writer: payload.Distribution.Writer,

@@ -281,10 +281,10 @@ func SyncWait(ctx context.Context, napi v0api.FullNode, watch bool) error {
 		for i, ss := range state.ActiveSyncs {
 			switch ss.Stage {
 			case api.StageSyncComplete:
-			default:
-				working = i
 			case api.StageIdle:
 				// not complete, not actively working
+			default:
+				working = i
 			}
 		}
 

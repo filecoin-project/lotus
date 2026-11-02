@@ -35,7 +35,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/gen"
-	"github.com/filecoin-project/lotus/chain/stmgr"
 	. "github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
@@ -336,7 +335,7 @@ func testForkRefuseCall(t *testing.T, nullsBefore, nullsAfter int) {
 			// If I had a fork, or I _will_ have a fork, it should fail, reporting the fork epoch
 			// (not the queried tipset height, which differs when the fork is at the parent).
 			require.ErrorIs(t, err, ErrExpensiveFork)
-			var fe *api.ErrExpensiveFork
+			var fe *api.ErrResourceUnavailable
 			require.ErrorAs(t, err, &fe)
 			require.Equal(t, abi.ChainEpoch(testForkHeight), fe.Epoch)
 		} else {
@@ -685,7 +684,7 @@ func TestMigrtionCache(t *testing.T) {
 	ts, err := cg.ChainStore().GetTipsetByHeight(context.Background(), testForkHeight, nil, false)
 	require.NoError(t, err)
 
-	root, _, err := stmgr.ComputeState(context.Background(), sm, testForkHeight+1, []*types.Message{}, ts)
+	root, _, err := ComputeState(context.Background(), sm, testForkHeight+1, []*types.Message{}, ts)
 	require.NoError(t, err)
 	t.Log(root)
 

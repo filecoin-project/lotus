@@ -215,8 +215,8 @@ func (*ActorRegistry) transform(instance invokee) (nativeCode, error) {
 		if !runtimeType.Implements(t.In(0)) {
 			return nil, newErr("first argument should be vmr.Runtime")
 		}
-		if t.In(1).Kind() != reflect.Ptr {
-			return nil, newErr("second argument should be of kind reflect.Ptr")
+		if t.In(1).Kind() != reflect.Pointer {
+			return nil, newErr("second argument should be of kind reflect.Pointer")
 		}
 
 		if t.NumOut() != 1 {

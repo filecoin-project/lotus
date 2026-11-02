@@ -5,6 +5,7 @@ import (
 	"hash/maphash"
 	"os"
 	"strconv"
+	"sync/atomic"
 
 	"github.com/puzpuzpuz/xsync/v2"
 	"golang.org/x/xerrors"
@@ -37,6 +38,9 @@ type ChainIndex struct {
 	loadTipSet loadTipSetFunc
 
 	skipLength abi.ChainEpoch
+
+	// readyTo is the lowest height Warm has made cheap to resolve, or -1.
+	readyTo atomic.Int64
 }
 type loadTipSetFunc func(context.Context, types.TipSetKey) (*types.TipSet, error)
 
@@ -45,12 +49,14 @@ func maphashTSK(s maphash.Seed, tsk types.TipSetKey) uint64 {
 }
 
 func NewChainIndex(lts loadTipSetFunc) *ChainIndex {
-	return &ChainIndex{
+	ci := &ChainIndex{
 		indexCache:    xsync.NewTypedMapOfPresized[types.TipSetKey, *lbEntry](maphashTSK, DefaultChainIndexCacheSize),
 		fillCacheLock: shardedmutex.NewFor(maphashTSK, 32),
 		loadTipSet:    lts,
 		skipLength:    20,
 	}
+	ci.readyTo.Store(-1)
+	return ci
 }
 
 type lbEntry struct {
@@ -70,21 +76,9 @@ func (ci *ChainIndex) GetTipsetByHeight(ctx context.Context, from *types.TipSet,
 
 	cur := rounded.Key()
 	for {
-		lbe, ok := ci.indexCache.Load(cur) // check the cache
-		if !ok {
-			lk := ci.fillCacheLock.GetLock(cur)
-			lk.Lock()                         // if entry is missing, take the lock
-			lbe, ok = ci.indexCache.Load(cur) // check if someone else added it while we waited for lock
-			if !ok {
-				fc, err := ci.fillCache(ctx, cur)
-				if err != nil {
-					lk.Unlock()
-					return nil, xerrors.Errorf("failed to fill cache: %w", err)
-				}
-				lbe = fc
-				ci.indexCache.Store(cur, lbe)
-			}
-			lk.Unlock()
+		lbe, err := ci.entry(ctx, cur)
+		if err != nil {
+			return nil, err
 		}
 
 		if to == lbe.targetHeight {
@@ -105,6 +99,57 @@ func (ci *ChainIndex) GetTipsetByHeight(ctx context.Context, from *types.TipSet,
 
 		cur = lbe.target
 	}
+}
+
+// Warm fills skip entries from `from` down to genesis so later lookups are
+// cheap.
+func (ci *ChainIndex) Warm(ctx context.Context, from *types.TipSet) error {
+	rounded, err := ci.roundDown(ctx, from)
+	if err != nil {
+		return xerrors.Errorf("failed to round down: %w", err)
+	}
+
+	cur := rounded.Key()
+	for {
+		lbe, err := ci.entry(ctx, cur)
+		if err != nil {
+			return err
+		}
+		ci.readyTo.Store(int64(lbe.targetHeight))
+		if lbe.targetHeight == 0 {
+			return nil
+		}
+		cur = lbe.target
+	}
+}
+
+// ReadyTo returns the lowest height Warm has made cheap to resolve, or -1
+// before it has filled an entry.
+func (ci *ChainIndex) ReadyTo() abi.ChainEpoch {
+	return abi.ChainEpoch(ci.readyTo.Load())
+}
+
+// entry returns the skip entry for the rounded tipset tsk, filling it if
+// missing.
+func (ci *ChainIndex) entry(ctx context.Context, tsk types.TipSetKey) (*lbEntry, error) {
+	if lbe, ok := ci.indexCache.Load(tsk); ok {
+		return lbe, nil
+	}
+
+	lk := ci.fillCacheLock.GetLock(tsk)
+	lk.Lock()
+	defer lk.Unlock()
+	// another caller may have filled it while we waited for the lock
+	if lbe, ok := ci.indexCache.Load(tsk); ok {
+		return lbe, nil
+	}
+
+	lbe, err := ci.fillCache(ctx, tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to fill cache: %w", err)
+	}
+	ci.indexCache.Store(tsk, lbe)
+	return lbe, nil
 }
 
 func (ci *ChainIndex) GetTipsetByHeightWithoutCache(ctx context.Context, from *types.TipSet, to abi.ChainEpoch) (*types.TipSet, error) {
