@@ -77,12 +77,6 @@ func (s *state10) ForEachClient(cb func(addr address.Address, dcap abi.StoragePo
 
 }
 
-func (s *state10) verifiedClients() (adt.Map, error) {
-
-	return nil, xerrors.Errorf("unsupported in actors v10")
-
-}
-
 func (s *state10) verifiers() (adt.Map, error) {
 	return adt10.AsMap(s.store, s.Verifiers, builtin10.DefaultHamtBitwidth)
 }

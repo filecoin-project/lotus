@@ -194,14 +194,14 @@ func (tx *EthLegacy155TxArgs) InitialiseSignature(sig typescrypto.Signature) err
 	}
 
 	// ignore the first byte of the signature as it's only used for legacy transaction identification
-	v_ := bigIntFromBytes(sig.Data[65:])
-	if err := validateEIP155ChainId(v_); err != nil {
+	v := bigIntFromBytes(sig.Data[65:])
+	if err := validateEIP155ChainId(v); err != nil {
 		return fmt.Errorf("failed to validate EIP155 chain id: %w", err)
 	}
 
 	tx.legacyTx.R = bigIntFromBytes(sig.Data[1:33])
 	tx.legacyTx.S = bigIntFromBytes(sig.Data[33:65])
-	tx.legacyTx.V = v_
+	tx.legacyTx.V = v
 	return nil
 }
 

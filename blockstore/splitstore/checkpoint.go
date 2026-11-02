@@ -103,7 +103,7 @@ func readRawCid(buf *bufio.Reader, hbuf []byte) (cid.Cid, error) {
 
 func writeRawCid(buf *bufio.Writer, c cid.Cid, flush bool) error {
 	hash := c.Hash()
-	if err := buf.WriteByte(byte(len(hash))); err != nil {
+	if err := buf.WriteByte(byte(len(hash))); err != nil { //nolint:gosec // multihash digests are well under 256 bytes
 		return err
 	}
 	if _, err := buf.Write(hash); err != nil {

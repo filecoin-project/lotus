@@ -34,7 +34,7 @@ func main() {
 	}
 
 	var g errgroup.Group
-	if err := filepath.WalkDir(rootDir, func(path string, d fs.DirEntry, err error) error {
+	if err := filepath.WalkDir(rootDir, func(path string, d fs.DirEntry, err error) error { //nolint:gosec // generator paths come from its own command line
 		switch {
 		case err != nil:
 			return err
@@ -59,7 +59,7 @@ func main() {
 
 // readDataFromFile reads the JSON file and unmarshals it into a map.
 func readDataFromFile(filePath string) (map[string]any, error) {
-	db, err := os.ReadFile(filePath)
+	db, err := os.ReadFile(filePath) //nolint:gosec // generator paths come from its own command line
 	if err != nil {
 		return nil, err
 	}
@@ -158,5 +158,5 @@ func generateFromTemplate(templateLines []string, data map[string]any, path stri
 
 // writeFile writes the modified file back to disk
 func writeFile(path string, lines []string) error {
-	return os.WriteFile(path, []byte(strings.Join(lines, "\n")), 0664)
+	return os.WriteFile(path, []byte(strings.Join(lines, "\n")), 0664) //nolint:gosec // generator paths come from its own command line
 }

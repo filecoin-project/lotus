@@ -1,6 +1,7 @@
 package debughttp
 
 import (
+	"context"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -83,7 +84,10 @@ func TestLocalOnlyUnixSocket(t *testing.T) {
 	t.Cleanup(func() { _ = srv.Close() })
 
 	client := &http.Client{Transport: &http.Transport{
-		Dial: func(_, _ string) (net.Conn, error) { return net.Dial("unix", sock) },
+		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+			var d net.Dialer
+			return d.DialContext(ctx, "unix", sock)
+		},
 	}}
 	resp, err := client.Get("http://unix/debug/pprof/")
 	require.NoError(t, err)

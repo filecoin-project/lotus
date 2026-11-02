@@ -20,7 +20,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/api"
-	lotus_api "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/lf3"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -74,14 +73,14 @@ func TestF3_InactiveModes(t *testing.T) {
 		{
 			mode: "disabled",
 			expectedErrors: map[string]any{
-				"F3GetOrRenewParticipationTicket": lotus_api.ErrF3Disabled,
-				"F3Participate":                   lotus_api.ErrF3Disabled,
-				"F3GetCertificate":                lotus_api.ErrF3Disabled,
-				"F3GetLatestCertificate":          lotus_api.ErrF3Disabled,
-				"F3GetManifest":                   lotus_api.ErrF3Disabled,
-				"F3GetECPowerTable":               lotus_api.ErrF3Disabled,
-				"F3GetF3PowerTable":               lotus_api.ErrF3Disabled,
-				"F3IsRunning":                     lotus_api.ErrF3Disabled,
+				"F3GetOrRenewParticipationTicket": api.ErrF3Disabled,
+				"F3Participate":                   api.ErrF3Disabled,
+				"F3GetCertificate":                api.ErrF3Disabled,
+				"F3GetLatestCertificate":          api.ErrF3Disabled,
+				"F3GetManifest":                   api.ErrF3Disabled,
+				"F3GetECPowerTable":               api.ErrF3Disabled,
+				"F3GetF3PowerTable":               api.ErrF3Disabled,
+				"F3IsRunning":                     api.ErrF3Disabled,
 			},
 			expectedValues: map[string]any{
 				"F3GetOrRenewParticipationTicket": (api.F3ParticipationTicket)(nil),
@@ -219,14 +218,14 @@ func TestF3_JsonRPCErrorsPassThrough(t *testing.T) {
 	e.waitTillF3Runs(5 * time.Second)
 
 	lease, err := n.F3Participate(e.testCtx, []byte("fish"))
-	require.ErrorIs(t, err, lotus_api.ErrF3ParticipationTicketInvalid)
+	require.ErrorIs(t, err, api.ErrF3ParticipationTicketInvalid)
 	require.Zero(t, lease)
 
 	addr, err := address.NewIDAddress(1413)
 	require.NoError(t, err)
 
 	ticket, err := n.F3GetOrRenewParticipationTicket(e.testCtx, addr, nil, 100)
-	require.ErrorIs(t, err, lotus_api.ErrF3ParticipationTooManyInstances)
+	require.ErrorIs(t, err, api.ErrF3ParticipationTooManyInstances)
 	require.Zero(t, ticket)
 }
 

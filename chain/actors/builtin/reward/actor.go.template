@@ -105,8 +105,8 @@ type State interface {
 
 type AwardBlockRewardParams = reward0.AwardBlockRewardParams
 
-// The stream ledger's leaf types, from the latest actors version.
 type (
+	// StreamID and the types below are the stream ledger's leaf types, from the latest actors version.
 	StreamID = rewardtypes{{.latestVersion}}.StreamID
 	WeightRecord = rewardtypes{{.latestVersion}}.WeightRecord
 	WeightRecordUpdate = rewardtypes{{.latestVersion}}.WeightRecordUpdate

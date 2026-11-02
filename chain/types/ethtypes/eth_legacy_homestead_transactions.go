@@ -169,14 +169,14 @@ func (tx *EthLegacyHomesteadTxArgs) InitialiseSignature(sig typescrypto.Signatur
 	}
 
 	// ignore the first byte of the signature as it's only used for legacy transaction identification
-	v_ := bigIntFromBytes(sig.Data[65:66])
-	if !v_.Equals(big.NewInt(27)) && !v_.Equals(big.NewInt(28)) {
+	v := bigIntFromBytes(sig.Data[65:66])
+	if !v.Equals(big.NewInt(27)) && !v.Equals(big.NewInt(28)) {
 		return fmt.Errorf("legacy homestead transactions only support 27 or 28 for v")
 	}
 
 	tx.R = bigIntFromBytes(sig.Data[1:33])
 	tx.S = bigIntFromBytes(sig.Data[33:65])
-	tx.V = v_
+	tx.V = v
 	return nil
 }
 
