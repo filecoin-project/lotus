@@ -44,12 +44,21 @@ const (
 	sectionCount
 )
 
-var releaseNoteHeadings = [sectionCount]string{
-	sectionUpgradeWarnings: "## ☢️ Upgrade Warnings ☢️",
-	sectionHighlights:      "## ✨ Highlights",
-	sectionNewFeatures:     "## ⭐ New Features",
-	sectionBugFixes:        "## 🐛 Bug Fixes",
-	sectionImprovements:    "## 👌 Improvements",
+// releaseNoteSectionLayouts says how each section is written. Headings are written at level two ("## ").
+var releaseNoteSectionLayouts = [sectionCount]struct {
+	heading string
+	// placeholder is written in place of entries when there are none; without one, an empty section is left out.
+	placeholder string
+	// collapsed writes the section as a collapsed <details> block instead of under a heading.
+	collapsed bool
+}{
+	sectionUpgradeWarnings: {heading: "☢️ Upgrade Warnings ☢️"},
+	// The release issue asks the releaser to draft highlights here, or to delete the heading.
+	sectionHighlights:   {heading: "Highlights", placeholder: "<!-- Draft the highlights of this release here, or delete this section. -->"},
+	sectionNewFeatures:  {heading: "⭐ New Features"},
+	sectionBugFixes:     {heading: "🐛 Bug Fixes"},
+	sectionImprovements: {heading: "👌 Improvements"},
+	sectionOther:        {heading: "Other changes", collapsed: true},
 }
 
 var (
@@ -438,22 +447,17 @@ func generateChangelogSection(errOut io.Writer, release changelogRelease, commit
 
 	var b strings.Builder
 	_, _ = fmt.Fprintf(&b, "# %s v%s / %s\n\n", release.Type, release.Version, release.Date)
-	for section := sectionUpgradeWarnings; section < sectionOther; section++ {
-		if len(entries[section]) == 0 && section != sectionHighlights {
-			continue
+	for section, layout := range releaseNoteSectionLayouts {
+		list := strings.Join(entries[section], "")
+		switch {
+		case list == "" && layout.placeholder == "":
+		case layout.collapsed:
+			_, _ = fmt.Fprintf(&b, "<details><summary>%s</summary>\n\n%s\n</details>\n\n", layout.heading, list)
+		case list == "":
+			_, _ = fmt.Fprintf(&b, "## %s\n\n%s\n\n", layout.heading, layout.placeholder)
+		default:
+			_, _ = fmt.Fprintf(&b, "## %s\n\n%s\n", layout.heading, list)
 		}
-		b.WriteString(releaseNoteHeadings[section] + "\n\n")
-		if len(entries[section]) == 0 {
-			// The release issue asks the releaser to draft highlights here, or to delete the heading.
-			b.WriteString("<!-- Draft the highlights of this release here, or delete this section. -->\n\n")
-			continue
-		}
-		b.WriteString(strings.Join(entries[section], "") + "\n")
-	}
-	if len(entries[sectionOther]) > 0 {
-		b.WriteString("<details><summary>Other changes</summary>\n\n")
-		b.WriteString(strings.Join(entries[sectionOther], ""))
-		b.WriteString("\n</details>\n\n")
 	}
 	b.WriteString("## 📝 Changelog\n\n")
 	for _, link := range release.CompareLinks {
