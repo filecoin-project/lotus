@@ -80,6 +80,7 @@ func main() {
 		splitstoreCmd,
 		fr32Cmd,
 		chainCmd,
+		chainIndexCmd,
 		balancerCmd,
 		migrationsCmd,
 		diffCmd,
