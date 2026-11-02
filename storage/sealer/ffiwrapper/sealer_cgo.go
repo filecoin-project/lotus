@@ -1234,7 +1234,7 @@ func (sb *Sealer) FinalizeSectorInto(ctx context.Context, sector storiface.Secto
 		if err != nil {
 			return xerrors.Errorf("read %s: %w", file.Name(), err)
 		}
-		if err := os.WriteFile(filepath.Join(dest, file.Name()), d, 0666); err != nil {
+		if err := os.WriteFile(filepath.Join(dest, file.Name()), d, 0666); err != nil { //nolint:gosec // name from reading the sector cache directory
 			return xerrors.Errorf("write %s: %w", file.Name(), err)
 		}
 	}

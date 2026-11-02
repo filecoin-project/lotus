@@ -399,7 +399,7 @@ func EmptyDealState() DealState {
 	return &emptyDealState{}
 }
 
-// returns the earned fees and pending fees for a given deal
+// GetDealFees returns the earned fees and pending fees for a given deal.
 func GetDealFees(deal markettypes.DealProposal, height abi.ChainEpoch) (abi.TokenAmount, abi.TokenAmount) {
 	tf := big.Mul(deal.StoragePricePerEpoch, big.NewInt(int64(deal.EndEpoch-deal.StartEpoch)))
 

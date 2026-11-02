@@ -47,16 +47,6 @@ func (ms MinerSubsystem) Has(single MinerSubsystem) bool {
 	return ms&single == single
 }
 
-func (ms MinerSubsystem) All() [MinerSubsystems]bool {
-	var out [MinerSubsystems]bool
-
-	for i := range out {
-		out[i] = ms&(1<<i) > 0
-	}
-
-	return out
-}
-
 // TestMiner represents a miner enrolled in an Ensemble.
 type TestMiner struct {
 	api.StorageMiner
@@ -104,7 +94,7 @@ func (tm *TestMiner) WaitSectorsProvingAllowFails(ctx context.Context, toCheck m
 
 		states := map[api.SectorState]int{}
 		for n := range toCheck {
-			st, err := tm.StorageMiner.SectorsStatus(ctx, n, false)
+			st, err := tm.SectorsStatus(ctx, n, false)
 			require.NoError(tm.t, err)
 			states[st.State]++
 			if st.State == api.SectorState(sealing.Proving) || st.State == api.SectorState(sealing.Available) || st.State == api.SectorState(sealing.Removed) {
@@ -129,7 +119,7 @@ func (tm *TestMiner) StartPledge(ctx context.Context, n, existing int, blockNoti
 			tm.t.Log("WAIT")
 		}
 		tm.t.Logf("PLEDGING %d", i)
-		_, err := tm.StorageMiner.PledgeSector(ctx)
+		_, err := tm.PledgeSector(ctx)
 		require.NoError(tm.t, err)
 	}
 
@@ -167,13 +157,13 @@ func (tm *TestMiner) haltOnFailure() {
 }
 
 func (tm *TestMiner) FlushSealingBatches(ctx context.Context) {
-	pcb, err := tm.StorageMiner.SectorPreCommitFlush(ctx)
+	pcb, err := tm.SectorPreCommitFlush(ctx)
 	require.NoError(tm.t, err)
 	if pcb != nil {
 		fmt.Printf("PRECOMMIT BATCH: %+v\n", pcb)
 	}
 
-	cb, err := tm.StorageMiner.SectorCommitFlush(ctx)
+	cb, err := tm.SectorCommitFlush(ctx)
 	require.NoError(tm.t, err)
 	if cb != nil {
 		fmt.Printf("COMMIT BATCH: %+v\n", cb)
@@ -205,7 +195,7 @@ func (tm *TestMiner) AddStorage(ctx context.Context, t *testing.T, conf func(*st
 
 	conf(cfg)
 
-	if !(cfg.CanStore || cfg.CanSeal) {
+	if !cfg.CanStore && !cfg.CanSeal {
 		t.Fatal("must specify at least one of CanStore or cfg.CanSeal")
 	}
 

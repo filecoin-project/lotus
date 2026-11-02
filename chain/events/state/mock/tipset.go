@@ -18,7 +18,7 @@ func init() {
 func MockTipset(minerAddr address.Address, timestamp uint64) (*types.TipSet, error) {
 	return types.NewTipSet([]*types.BlockHeader{{
 		Miner:                 minerAddr,
-		Ticket:                &types.Ticket{VRFProof: []byte{byte(timestamp)}},
+		Ticket:                &types.Ticket{VRFProof: []byte{byte(timestamp)}}, //nolint:gosec // truncation is fine for a mock VRF proof
 		Height:                5,
 		ParentStateRoot:       dummyCid,
 		Messages:              dummyCid,

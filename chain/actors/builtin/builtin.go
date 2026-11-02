@@ -49,8 +49,7 @@ const (
 	MethodConstructor = builtin.MethodConstructor
 )
 
-// These are all just type aliases across actor versions. In the future, that might change
-// and we might need to do something fancier.
+// SectorInfo and the types below alias proof types shared across actor versions.
 type SectorInfo = proof.SectorInfo
 type ExtendedSectorInfo = proof.ExtendedSectorInfo
 type PoStProof = proof.PoStProof

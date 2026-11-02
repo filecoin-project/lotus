@@ -117,7 +117,7 @@ type MessageBuilder interface {
 	Cancel(msig address.Address, txID uint64, hash *ProposalHashData) (*types.Message, error)
 }
 
-// this type is the same between v0 and v2
+// ProposalHashData aliases the latest actors version's type.
 type ProposalHashData = msig{{.latestVersion}}.ProposalHashData
 type ProposeReturn = msig{{.latestVersion}}.ProposeReturn
 type ProposeParams = msig{{.latestVersion}}.ProposeParams

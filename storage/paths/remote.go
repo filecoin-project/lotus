@@ -253,7 +253,7 @@ func (r *Remote) acquireFromRemote(ctx context.Context, s abi.SectorID, fileType
 				return "", err
 			}
 
-			if err := os.RemoveAll(dest); err != nil {
+			if err := os.RemoveAll(dest); err != nil { //nolint:gosec // dest is a local sector path
 				return "", xerrors.Errorf("removing dest: %w", err)
 			}
 
@@ -375,14 +375,14 @@ func (r *Remote) deleteFromRemote(ctx context.Context, url string, keepIn storif
 
 	log.Infof("Delete %s", url)
 
-	req, err := http.NewRequest("DELETE", url, nil)
+	req, err := http.NewRequest("DELETE", url, nil) //nolint:gosec // URL from the authenticated sector index
 	if err != nil {
 		return xerrors.Errorf("request: %w", err)
 	}
 	req.Header = r.auth
 	req = req.WithContext(ctx)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := http.DefaultClient.Do(req) //nolint:gosec // URL from the authenticated sector index
 	if err != nil {
 		return xerrors.Errorf("do request: %w", err)
 	}

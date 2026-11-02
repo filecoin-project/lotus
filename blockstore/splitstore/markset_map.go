@@ -272,7 +272,7 @@ func (s *MapMarkSet) Close() error {
 }
 
 func (s *MapMarkSet) writeKey(k []byte, flush bool) error {
-	if err := s.buf.WriteByte(byte(len(k))); err != nil {
+	if err := s.buf.WriteByte(byte(len(k))); err != nil { //nolint:gosec // markset keys are multihashes, well under 256 bytes
 		return xerrors.Errorf("error writing markset key length to disk: %w", err)
 	}
 	if _, err := s.buf.Write(k); err != nil {
