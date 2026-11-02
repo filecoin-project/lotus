@@ -99,7 +99,8 @@ func (sm *selectedMessages) tryToAdd(mc *msgChain) bool {
 		return false
 	}
 
-	if mc.sigType == crypto.SigTypeBLS {
+	switch mc.sigType {
+	case crypto.SigTypeBLS:
 		if sm.blsLimit < l {
 			return false
 		}
@@ -107,7 +108,7 @@ func (sm *selectedMessages) tryToAdd(mc *msgChain) bool {
 		sm.msgs = append(sm.msgs, mc.msgs...)
 		sm.blsLimit -= l
 		sm.gasLimit -= mc.gasLimit
-	} else if mc.sigType == crypto.SigTypeSecp256k1 || mc.sigType == crypto.SigTypeDelegated {
+	case crypto.SigTypeSecp256k1, crypto.SigTypeDelegated:
 		if sm.secpLimit < l {
 			return false
 		}
@@ -131,11 +132,12 @@ func (sm *selectedMessages) tryToAddWithDeps(mc *msgChain, mp *MessagePool, base
 	depMsgLimit := 0
 	smMsgLimit := 0
 
-	if mc.sigType == crypto.SigTypeBLS {
+	switch mc.sigType {
+	case crypto.SigTypeBLS:
 		smMsgLimit = sm.blsLimit
-	} else if mc.sigType == crypto.SigTypeSecp256k1 || mc.sigType == crypto.SigTypeDelegated {
+	case crypto.SigTypeSecp256k1, crypto.SigTypeDelegated:
 		smMsgLimit = sm.secpLimit
-	} else {
+	default:
 		return false
 	}
 
@@ -182,9 +184,10 @@ func (sm *selectedMessages) tryToAddWithDeps(mc *msgChain, mp *MessagePool, base
 	sm.msgs = append(sm.msgs, mc.msgs...)
 	sm.gasLimit -= chainGasLimit
 
-	if mc.sigType == crypto.SigTypeBLS {
+	switch mc.sigType {
+	case crypto.SigTypeBLS:
 		sm.blsLimit -= chainMsgLimit
-	} else if mc.sigType == crypto.SigTypeSecp256k1 || mc.sigType == crypto.SigTypeDelegated {
+	case crypto.SigTypeSecp256k1, crypto.SigTypeDelegated:
 		sm.secpLimit -= chainMsgLimit
 	}
 
@@ -193,11 +196,12 @@ func (sm *selectedMessages) tryToAddWithDeps(mc *msgChain, mp *MessagePool, base
 
 func (sm *selectedMessages) trimChain(mc *msgChain, mp *MessagePool, baseFee types.BigInt) {
 	msgLimit := buildconstants.BlockMessageLimit - len(sm.msgs)
-	if mc.sigType == crypto.SigTypeBLS {
+	switch mc.sigType {
+	case crypto.SigTypeBLS:
 		if msgLimit > sm.blsLimit {
 			msgLimit = sm.blsLimit
 		}
-	} else if mc.sigType == crypto.SigTypeSecp256k1 || mc.sigType == crypto.SigTypeDelegated {
+	case crypto.SigTypeSecp256k1, crypto.SigTypeDelegated:
 		if msgLimit > sm.secpLimit {
 			msgLimit = sm.secpLimit
 		}
@@ -714,10 +718,7 @@ func (mp *MessagePool) getPendingMessages(ctx context.Context, curTs, ts *types.
 	}()
 
 	// are we in sync?
-	inSync := false
-	if curTs.Height() == ts.Height() && curTs.Equals(ts) {
-		inSync = true
-	}
+	inSync := curTs.Height() == ts.Height() && curTs.Equals(ts)
 
 	mp.forEachPending(func(a address.Address, mset *msgSet) {
 		if inSync {

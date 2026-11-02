@@ -13,7 +13,7 @@ import (
 )
 
 func mustDecodeHex(s string) []byte {
-	d, err := hex.DecodeString(strings.Replace(s, "0x", "", -1))
+	d, err := hex.DecodeString(strings.ReplaceAll(s, "0x", ""))
 	if err != nil {
 		panic(fmt.Errorf("err must be nil: %w", err))
 	}
@@ -84,10 +84,10 @@ func TestDecodeString(t *testing.T) {
 	}
 
 	for _, tc := range testcases {
-		input, err := hex.DecodeString(strings.Replace(tc.Input.(string), "0x", "", -1))
+		input, err := hex.DecodeString(strings.ReplaceAll(tc.Input.(string), "0x", ""))
 		require.NoError(t, err)
 
-		output, err := hex.DecodeString(strings.Replace(tc.Output.(string), "0x", "", -1))
+		output, err := hex.DecodeString(strings.ReplaceAll(tc.Output.(string), "0x", ""))
 		require.NoError(t, err)
 
 		result, err := DecodeRLP(input)
@@ -128,7 +128,7 @@ func TestDecodeList(t *testing.T) {
 	}
 
 	for _, tc := range testcases {
-		input, err := hex.DecodeString(strings.Replace(tc.Input.(string), "0x", "", -1))
+		input, err := hex.DecodeString(strings.ReplaceAll(tc.Input.(string), "0x", ""))
 		require.NoError(t, err)
 
 		result, err := DecodeRLP(input)
@@ -229,7 +229,7 @@ func TestDecodeLimits(t *testing.T) {
 		require.NoError(t, err)
 
 		// Unwrap the nested lists down to the leaf.
-		var cur interface{} = result
+		cur := result
 		for i := 0; i < depth; i++ {
 			lst, ok := cur.([]interface{})
 			require.True(t, ok, "expected list at depth %d", i)

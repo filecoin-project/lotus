@@ -46,17 +46,14 @@ func TestChainGetMessagesInTs(t *testing.T) {
 		<-headChangeCh //skip hccurrent
 
 		count := 0
-		for {
-			select {
-			case headChanges := <-headChangeCh:
-				for _, change := range headChanges {
-					if change.Type == store.HCApply {
-						msgs, err := client.ChainGetMessagesInTipset(ctx, change.Val.Key())
-						require.NoError(t, err)
-						count += len(msgs)
-						if count == iterations {
-							waitAllCh <- struct{}{}
-						}
+		for headChanges := range headChangeCh {
+			for _, change := range headChanges {
+				if change.Type == store.HCApply {
+					msgs, err := client.ChainGetMessagesInTipset(ctx, change.Val.Key())
+					require.NoError(t, err)
+					count += len(msgs)
+					if count == iterations {
+						waitAllCh <- struct{}{}
 					}
 				}
 			}

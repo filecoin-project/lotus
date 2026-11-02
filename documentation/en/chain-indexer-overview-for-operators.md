@@ -19,6 +19,7 @@
   - [Backfill Disk Space Requirements](#backfill-disk-space-requirements)
   - [`lotus index validate-backfill` CLI tool](#lotus-index-validate-backfill-cli-tool)
     - [Usage](#usage)
+  - [Restoring tipset blooms](#restoring-tipset-blooms)
 - [Regular Checks](#regular-checks)
 - [Downgrade Steps](#downgrade-steps)
 - [Terminology](#terminology)
@@ -234,6 +235,18 @@ The command validates the chain index entries for each epoch in the specified ra
 You can learn about how to use the tool with `lotus index validate-backfill -h`.
 
 Note: If you are using a non-standard Lotus repo directory then you can run the command with `lotus -repo /path/to/lotus/repo chainindex validate-backfill ...`, or by setting the `LOTUS_REPO` environment variable.
+
+### Restoring tipset blooms
+
+The chain index stores a logs bloom per tipset, and treats a tipset without one as not yet indexed: `eth_getLogs` and `GetActorEventsRaw` over it fail with a "not found in index" error. Indexes built by older Lotus versions can lack blooms for historical tipsets.
+
+`lotus index validate-backfill` restores missing blooms, but only after verifying each epoch against chain state, which can take weeks on a large archival node. `lotus-shed chainindex restore-blooms` builds them from the events already in the index instead, without reading the chain, and also replaces all-0xff placeholder blooms. The daemon must be stopped; back up `chainindex.db`, `-wal` and `-shm` first:
+
+```
+lotus-shed --repo <lotus_repo> chainindex restore-blooms [--from <epoch>] [--to <epoch>] [--dry-run]
+```
+
+The index proves a tipset's events are complete if it has no messages, has indexed events, or predates FEVM. A tipset with messages but no indexed events after FEVM may have emitted none, or its events may never have been indexed, for example if it was indexed from a snapshot import or with event storage off. These are restored too, with an empty bloom, so queries over them answer rather than fail, and the command lists stretches of half of finality (450 epochs) or more of them, each with the `lotus index validate-backfill` command that verifies it against the chain and repairs anything wrong once the daemon is back up. Use `--dry-run` first to see the counts.
 
 ## Regular Checks
 
