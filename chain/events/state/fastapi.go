@@ -25,7 +25,7 @@ func WrapFastAPI(api FastChainApiAPI) ChainAPI {
 }
 
 func (a *fastAPI) StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) {
-	ts, err := a.ChainGetTipSet(ctx, tsk)
+	ts, err := a.FastChainApiAPI.ChainGetTipSet(ctx, tsk)
 	if err != nil {
 		return nil, err
 	}
