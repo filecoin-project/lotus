@@ -18,6 +18,7 @@
 ## ⭐ New Features
 
 - feat(genesis): 2k devnets now start at nv29. A genesis template's optional `RewardSWA` installs an account or multisig as the reward actor's FIP-0118 stream weight actor, so a fresh network can change reward weights without a migration; unset, the SWA stays the system actor. ([filecoin-project/lotus#13967](https://github.com/filecoin-project/lotus/pull/13967))
+- Update go-libp2p to v0.51.0, go-libp2p-kad-dht to v0.43.0 and go-libp2p-pubsub to v0.19.0. The DHT now persists its routing table to the metadata datastore (hourly and on shutdown) and redials saved peers on restart, speeding up peer discovery after a restart. ([filecoin-project/lotus#13995](https://github.com/filecoin-project/lotus/pull/13995))
 
 ## 🐛 Bug Fixes
 
