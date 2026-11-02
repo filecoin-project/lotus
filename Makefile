@@ -16,6 +16,10 @@ $(warning Your Golang version is go$(shell expr $(GOVERSION) / 1000000).$(shell 
 $(error Update Golang to version to at least $(shell cat GO_VERSION_MIN))
 endif
 
+# Lint tool pins. Renovate (see renovate.json) opens PRs to bump these two lines
+# via regex managers, because Dependabot cannot track Makefile variables. Keep
+# each pin as a bare NAME=vX.Y.Z assignment so the regexes keep matching. Go
+# module updates stay with Dependabot.
 GOLANGCI_LINT_VERSION=v2.15.0
 ACTIONLINT_VERSION=v1.7.12
 
