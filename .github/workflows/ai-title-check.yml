@@ -74,7 +74,18 @@ jobs:
           # Bound each part so the whole prompt stays well under Linux's 128 KiB limit on one command-line argument.
           # (Files first, then truncate: with pipefail, piping into head can fail when head stops reading.)
           jq -r '.body // ""' pr.json > body.full
-          head -c 15000 body.full > body.txt
+          head -c 12000 body.full > body.txt
+          # The `## Release note` block replaces the title in the release notes, so take it from the full description
+          # in case truncation cut it off. Like the generator, the block ends at the next level-one or level-two
+          # heading outside a code fence.
+          awk '
+            { sub(/\r$/, "") }
+            !inside { if (tolower($0) ~ /^[ \t]*##[ \t]+release notes?[ \t]*$/) inside = 1; next }
+            /^[ \t]*(```|~~~)/ { fenced = !fenced }
+            !fenced && /^##? / { exit }
+            { print }
+          ' body.full > note.full
+          head -c 3000 note.full > note.txt
           head -c 15000 files.full > files.txt
           head -c 60000 pr.full.diff > pr.diff
           if [ "$(wc -c < pr.full.diff)" -gt 60000 ]; then
@@ -116,6 +127,11 @@ jobs:
             echo "Labels: $(jq -r '.labels | join(", ")' pr.json)"
             echo "Description:"
             cat body.txt
+            if [ -s note.txt ]; then
+              echo
+              echo "Release note block, taken from the full description:"
+              cat note.txt
+            fi
             echo
             echo "Changed files:"
             cat files.txt
