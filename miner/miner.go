@@ -329,16 +329,13 @@ minerLoop:
 			now := build.Clock.Now()
 			// Handle timing for broadcasting the block.
 			switch {
-			case btime.Equal(now):
-				// block timestamp is perfectly aligned with time.
 			case btime.After(now):
 				// Wait until it's time to broadcast the block.
 				if !m.niceSleep(build.Clock.Until(btime)) {
 					log.Warnf("received interrupt while waiting to broadcast block, will shutdown after block is sent out")
 					build.Clock.Sleep(build.Clock.Until(btime))
 				}
-			default:
-				// Log if the block was mined in the past.
+			case btime.Before(now):
 				log.Warnw("mined block in the past",
 					"block-time", btime, "time", build.Clock.Now(), "difference", build.Clock.Since(btime))
 			}

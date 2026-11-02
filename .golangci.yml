@@ -43,8 +43,6 @@ linters:
       - linters: [gosec]
         path: chain/vectors/gen/.*
       - linters: [gosec]
-        path: ^gen/
-      - linters: [gosec]
         path: cmd/lotus-bench/.*
       # staticcheck
       - linters: [staticcheck]
@@ -57,7 +55,7 @@ linters:
       - linters: [revive]
         text: '^exported: (func|type) name will be used as [^\s]+ by other packages, and that stutters; consider calling this \w+'
       - linters: [revive]
-        text: '^exported: comment on exported (const|function|type|var) [^\s]+ should be of the form "\w+ \.\.\."'
+        text: '^exported: comment on exported (const|var) [^\s]+ should be of the form "\w+ \.\.\."'
       - linters: [revive]
         text: '^exported: exported (const|function|method|type|var) [^\s]+ should have comment (\(or a comment on this block\) )?or be unexported'
       - linters: [revive]
@@ -76,8 +74,6 @@ linters:
         text: '^var-naming: .*(Api|Html|Http|Id|Json|Rpc|Url|Uuid|Vm)\w* should be .*(API|HTML|HTTP|ID|JSON|RPC|URL|UUID|VM)'
       - linters: [revive]
         text: '^var-naming: don''t use underscores in Go names'
-      - linters: [revive]
-        text: '^var-naming: \w+ \w+_ should be \w+'
       - linters: [revive]
         text: '^var-naming: don''t use ALL_CAPS in Go names; use CamelCase'
       - linters: [revive]
@@ -98,6 +94,3 @@ formatters:
       - vendor$
       - testdata$
       - examples$
-      # Generated actor versioned files use composite literal syntax ({{T{...}})
-      # that conflicts with Go template delimiters and can't be gofmt -s simplified
-      - chain/actors/builtin/
