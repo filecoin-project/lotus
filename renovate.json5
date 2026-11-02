@@ -1,0 +1,35 @@
+// Renovate configuration. Purpose: keep the lint tool versions pinned in the
+// Makefile (GOLANGCI_LINT_VERSION and ACTIONLINT_VERSION) up to date.
+//
+// Why Renovate: Dependabot cannot track Makefile variables, and `tool`
+// directives in go.mod were rejected (see
+// https://github.com/filecoin-project/lotus/issues/13898).
+//
+// Scope: only the two Makefile pins below are managed (`enabledManagers` is
+// limited to `custom.regex`). Go module updates stay with Dependabot.
+// If you rename or reformat those Makefile lines, update the regexes here.
+//
+// Requires the Renovate GitHub App to be installed on the repo.
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  extends: ["config:recommended", ":disableDependencyDashboard"],
+  enabledManagers: ["custom.regex"],
+  // Wait for releases to age before proposing them.
+  minimumReleaseAge: "14 days",
+  customManagers: [
+    {
+      customType: "regex",
+      managerFilePatterns: ["/^Makefile$/"],
+      matchStrings: ["GOLANGCI_LINT_VERSION=(?<currentValue>v\\S+)"],
+      depNameTemplate: "github.com/golangci/golangci-lint/v2",
+      datasourceTemplate: "go",
+    },
+    {
+      customType: "regex",
+      managerFilePatterns: ["/^Makefile$/"],
+      matchStrings: ["ACTIONLINT_VERSION=(?<currentValue>v\\S+)"],
+      depNameTemplate: "github.com/rhysd/actionlint",
+      datasourceTemplate: "go",
+    },
+  ],
+}
