@@ -3,6 +3,7 @@ package gateway
 import (
 	"context"
 	"encoding/json"
+	"strings"
 
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
@@ -459,6 +460,11 @@ func (pv2 *reverseProxyV2) EthMaxPriorityFeePerGas(ctx context.Context) (ethtype
 func (pv2 *reverseProxyV2) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthUint64, error) {
 	params, err := jsonrpc.DecodeParams[ethtypes.EthEstimateGasParams](p)
 	if err != nil {
+		// Preserve geth-compatible error for negative gas prices.
+		// EthBigInt.UnmarshalJSON rejects negative hex quantities; check for that case.
+		if strings.Contains(err.Error(), "cannot parse") {
+			return ethtypes.EthUint64(0), api.NewErrNegativeGasPrice()
+		}
 		return ethtypes.EthUint64(0), xerrors.Errorf("decoding params: %w", err)
 	}
 
