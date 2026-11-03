@@ -2,13 +2,16 @@ name: Release Tool Test
 
 # This workflow is the only place cmd/release is tested.
 # cmd/ci leaves it out of the Test workflow's unit-cli group, and Test, Build and Docker skip changes confined to it.
-# It also covers documentation/misc/RELEASE_ISSUE_TEMPLATE.md, which the release CLI parses as a Go template but which those workflows treat as skippable Markdown.
+# It also covers documentation/misc/RELEASE_ISSUE_TEMPLATE.md, which the release CLI parses as a Go template but which those workflows treat as skippable Markdown,
+# and the workflows that run the release CLI.
 on:
   pull_request:
     paths: &paths
       - 'cmd/release/**'
       - 'documentation/misc/RELEASE_ISSUE_TEMPLATE.md'
       - '.github/workflows/release-tool-test.yml'
+      - '.github/workflows/release.yml'
+      - '.github/workflows/create-release-issue.yml'
   push:
     branches:
       - master
@@ -34,3 +37,5 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/install-go
       - run: go test ./cmd/release/...
+      # Run the CLI the way release.yml and create-release-issue.yml do, so a build that only works under `go test` fails here.
+      - run: go run ./cmd/release --json list-projects

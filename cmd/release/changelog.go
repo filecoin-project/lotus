@@ -1,0 +1,559 @@
+package main
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"os/exec"
+	"regexp"
+	"slices"
+	"sort"
+	"strconv"
+	"strings"
+
+	"github.com/google/go-github/v66/github"
+	"golang.org/x/mod/semver"
+)
+
+// The repository the changelog links to and reads PRs from.
+const (
+	githubOwner = "filecoin-project"
+	githubRepo  = "lotus"
+)
+
+// The release-note labels a maintainer can apply to a PR to list it under a release's Notable Changes.
+const (
+	// labelUpgradeWarning marks a change operators must act on. It's listed first, as an upgrade warning.
+	labelUpgradeWarning = "release-note/upgrade-warning"
+	labelHighlight      = "release-note/highlight"
+)
+
+var (
+	// prNumberRegexp matches the "(#N)" GitHub appends to a squash-merge commit subject.
+	prNumberRegexp = regexp.MustCompile(`\s*\(#(\d+)\)\s*$`)
+	// breakingTitleRegexp matches the "type(scope)!:" prefix of a Conventional Commits title that marks a breaking change.
+	breakingTitleRegexp = regexp.MustCompile(`^[a-zA-Z]+(\([^)]*\))?!:`)
+	// pullLinkRegexp matches a link to a lotus PR in CHANGELOG.md.
+	pullLinkRegexp = regexp.MustCompile(`github\.com/filecoin-project/lotus/pull/(\d+)`)
+	// releaseNoteHeadingRegexp matches the heading of the optional release-note block in a PR description.
+	releaseNoteHeadingRegexp = regexp.MustCompile(`(?i)^##\s+release notes?\s*$`)
+	htmlCommentRegexp        = regexp.MustCompile(`(?s)<!--.*?-->`)
+)
+
+// commitInfo is one commit in the range a release is generated from.
+type commitInfo struct {
+	Hash    string
+	Author  string
+	Subject string
+	// PR is the number from the subject's trailing "(#N)", or 0 when there is none.
+	PR         int
+	Files      int
+	Insertions int
+	Deletions  int
+}
+
+// pullRequestInfo is what the generator reads from a PR on GitHub.
+type pullRequestInfo struct {
+	Title  string
+	Body   string
+	Labels []string
+}
+
+// compareLink is one project's line in a release's "All Changes" section.
+type compareLink struct {
+	Project string
+	From    string
+	To      string
+}
+
+// changelogRelease describes the release a section is generated for.
+type changelogRelease struct {
+	// Type is "Node", "Miner" or "Node and Miner", as in the section header.
+	Type string
+	// Version has no leading "v", e.g. 1.39.0 or 1.39.0-rc1.
+	Version      string
+	Date         string
+	CompareLinks []compareLink
+}
+
+// parseGitLog parses the output of `git log --shortstat --format=%x1e%H%x1f%aN%x1f%s`.
+func parseGitLog(output string) ([]commitInfo, error) {
+	var commits []commitInfo
+	for _, record := range strings.Split(output, "\x1e") {
+		record = strings.TrimSpace(record)
+		if record == "" {
+			continue
+		}
+		header, stat, _ := strings.Cut(record, "\n")
+		fields := strings.Split(header, "\x1f")
+		if len(fields) != 3 {
+			return nil, fmt.Errorf("unexpected git log record %q", header)
+		}
+		commit := commitInfo{Hash: fields[0], Author: fields[1], Subject: fields[2]}
+		if match := prNumberRegexp.FindStringSubmatch(commit.Subject); match != nil {
+			commit.PR, _ = strconv.Atoi(match[1])
+		}
+		// A shortstat line looks like " 3 files changed, 10 insertions(+), 2 deletions(-)"; either count can be missing.
+		for _, part := range strings.Split(strings.TrimSpace(stat), ",") {
+			count, event, ok := strings.Cut(strings.TrimSpace(part), " ")
+			if !ok {
+				continue
+			}
+			n, err := strconv.Atoi(count)
+			if err != nil {
+				return nil, fmt.Errorf("unexpected shortstat %q for %s", stat, commit.Hash)
+			}
+			switch {
+			case strings.HasPrefix(event, "file"):
+				commit.Files = n
+			case strings.HasPrefix(event, "insertion"):
+				commit.Insertions = n
+			case strings.HasPrefix(event, "deletion"):
+				commit.Deletions = n
+			}
+		}
+		commits = append(commits, commit)
+	}
+	return commits, nil
+}
+
+// isSameBaseVersionHeader reports whether a section header is for version or another pre-release of the same base version.
+// For 1.39.0-rc2 that is any of v1.39.0, v1.39.0-rc1, v1.39.0-rc2 and so on.
+func isSameBaseVersionHeader(header, version string) bool {
+	base := "v" + strings.SplitN(version, "-", 2)[0]
+	for _, token := range strings.Fields(strings.ReplaceAll(header, "/", " ")) {
+		if token == base || strings.HasPrefix(token, base+"-") {
+			return true
+		}
+	}
+	return false
+}
+
+// releasedPullRequests adds the PRs linked from released sections of a changelog to released.
+// UNRELEASED sections are not released, and sections for version and its other pre-releases are left out,
+// because each RC and the stable release list every change since the previous stable release.
+func releasedPullRequests(changelog, version string, released map[int]bool) {
+	for _, section := range splitChangelogSections(changelog) {
+		header, _, _ := strings.Cut(section, "\n")
+		if strings.HasPrefix(header, "# UNRELEASED") || isSameBaseVersionHeader(header, version) {
+			continue
+		}
+		for _, match := range pullLinkRegexp.FindAllStringSubmatch(section, -1) {
+			n, _ := strconv.Atoi(match[1])
+			released[n] = true
+		}
+	}
+}
+
+// extractReleaseNote returns the content of the "## Release note" block in a PR description, without HTML comments.
+// The block ends at the next heading of level one or two outside a fenced code block, so a shell comment in a fence doesn't end it.
+func extractReleaseNote(body string) string {
+	var note []string
+	inside, fenced := false, false
+	for _, line := range strings.Split(strings.ReplaceAll(body, "\r\n", "\n"), "\n") {
+		if !inside {
+			inside = releaseNoteHeadingRegexp.MatchString(strings.TrimSpace(line))
+			continue
+		}
+		if isCodeFence(line) {
+			fenced = !fenced
+		}
+		if !fenced && (strings.HasPrefix(line, "# ") || strings.HasPrefix(line, "## ")) {
+			break
+		}
+		note = append(note, line)
+	}
+	return strings.TrimSpace(htmlCommentRegexp.ReplaceAllString(strings.Join(note, "\n"), ""))
+}
+
+// notability says whether a PR is listed under Notable Changes, and whether as an upgrade warning. An upgrade-warning
+// label or a breaking-change "!" in the title makes it an upgrade warning; the highlight label or a `## Release note`
+// block makes it notable.
+func notability(pr pullRequestInfo) (notable, upgradeWarning bool) {
+	upgradeWarning = slices.Contains(pr.Labels, labelUpgradeWarning) || breakingTitleRegexp.MatchString(pr.Title)
+	notable = upgradeWarning || slices.Contains(pr.Labels, labelHighlight) || extractReleaseNote(pr.Body) != ""
+	return notable, upgradeWarning
+}
+
+// isCodeFence reports whether a Markdown line opens or closes a fenced code block.
+func isCodeFence(line string) bool {
+	trimmed := strings.TrimSpace(line)
+	return strings.HasPrefix(trimmed, "```") || strings.HasPrefix(trimmed, "~~~")
+}
+
+// formatChangelogEntry formats a list item for a PR. Lines after the first are indented to stay in the item.
+// The PR link goes at the end of the last line, or in its own paragraph when the text ends with a code fence.
+func formatChangelogEntry(text string, pr int) string {
+	lines := strings.Split(strings.TrimPrefix(strings.TrimSpace(text), "- "), "\n")
+	for i := 1; i < len(lines); i++ {
+		if strings.TrimSpace(lines[i]) != "" {
+			lines[i] = "  " + lines[i]
+		}
+	}
+	link := fmt.Sprintf("([#%d](https://github.com/filecoin-project/lotus/pull/%d))", pr, pr)
+	if len(lines) > 1 && isCodeFence(lines[len(lines)-1]) {
+		lines = append(lines, "", "  "+link)
+	} else {
+		lines[len(lines)-1] += " " + link
+	}
+	return "- " + strings.Join(lines, "\n") + "\n"
+}
+
+// contributorStats is one row of a release's Contributors table.
+type contributorStats struct {
+	Author     string
+	Commits    int
+	Insertions int
+	Deletions  int
+	Files      int
+}
+
+func writeContributors(b *strings.Builder, commits []commitInfo) {
+	byAuthor := map[string]*contributorStats{}
+	for _, c := range commits {
+		s, ok := byAuthor[c.Author]
+		if !ok {
+			s = &contributorStats{Author: c.Author}
+			byAuthor[c.Author] = s
+		}
+		s.Commits++
+		s.Insertions += c.Insertions
+		s.Deletions += c.Deletions
+		s.Files += c.Files
+	}
+	rows := make([]*contributorStats, 0, len(byAuthor))
+	for _, s := range byAuthor {
+		rows = append(rows, s)
+	}
+	sort.Slice(rows, func(i, j int) bool {
+		li, lj := rows[i].Insertions+rows[i].Deletions, rows[j].Insertions+rows[j].Deletions
+		if li != lj {
+			return li > lj
+		}
+		return rows[i].Author < rows[j].Author
+	})
+	b.WriteString("## 👨‍👩‍👧‍👦 Contributors\n\n")
+	b.WriteString("| Contributor | Commits | Lines ± | Files Changed |\n")
+	b.WriteString("|-------------|---------|---------|---------------|\n")
+	for _, s := range rows {
+		_, _ = fmt.Fprintf(b, "| %s | %d | +%d/-%d | %d |\n", s.Author, s.Commits, s.Insertions, s.Deletions, s.Files)
+	}
+}
+
+// resolveCommitPullRequests fills in the PR of each commit whose subject has no "(#N)", using findPR.
+// A PR merged with "Rebase and merge" keeps its commits' own subjects, so its number is only known to GitHub.
+// findPR returns 0 when a commit has no merged PR. If findPR fails for any commit, it returns an error that lists every
+// failure, since carrying on would silently leave those PRs out of the changelog.
+func resolveCommitPullRequests(commits []commitInfo, findPR func(hash string) (int, error)) error {
+	var problems []error
+	for i := range commits {
+		if commits[i].PR != 0 {
+			continue
+		}
+		pr, err := findPR(commits[i].Hash)
+		if err != nil {
+			problems = append(problems, fmt.Errorf("%s: %w", commits[i].Hash, err))
+			continue
+		}
+		commits[i].PR = pr
+	}
+	return errors.Join(problems...)
+}
+
+// generateChangelogSection renders the CHANGELOG.md section for a release from the commits in its range, oldest first.
+// Commits whose PR is in released are skipped: the previous tag is not always an ancestor of the release, so the
+// range can hold changes that already shipped through a backport.
+// fetchPR returns the title, description and labels to use for a PR. If it fails for any PR, generation stops with an
+// error that lists every failure.
+func generateChangelogSection(errOut io.Writer, release changelogRelease, commits []commitInfo, released map[int]bool, fetchPR func(int) (pullRequestInfo, error)) (string, error) {
+	var upgradeWarnings, notables, all []string
+	var problems []error
+	var contributors []commitInfo
+	listed := map[int]bool{}
+	for _, c := range commits {
+		if c.PR == 0 {
+			_, _ = fmt.Fprintf(errOut, "warning: %s %q has no PR, so it is not listed\n", c.Hash[:min(len(c.Hash), 12)], c.Subject)
+			contributors = append(contributors, c)
+			continue
+		}
+		if released[c.PR] {
+			continue
+		}
+		contributors = append(contributors, c)
+		if listed[c.PR] {
+			continue
+		}
+		listed[c.PR] = true
+
+		pr, err := fetchPR(c.PR)
+		if err != nil {
+			problems = append(problems, fmt.Errorf("#%d: %w", c.PR, err))
+			continue
+		}
+		all = append(all, formatChangelogEntry(pr.Title, c.PR))
+		notable, upgradeWarning := notability(pr)
+		if !notable {
+			continue
+		}
+		text := pr.Title
+		if note := extractReleaseNote(pr.Body); note != "" {
+			text = note
+		}
+		entry := formatChangelogEntry(text, c.PR)
+		if upgradeWarning {
+			// The marker goes before the entry's text, or on its own line when the text starts with a code fence, which
+			// must begin its line to open the block.
+			separator := " "
+			if isCodeFence(strings.SplitN(text, "\n", 2)[0]) {
+				separator = "\n\n  "
+			}
+			upgradeWarnings = append(upgradeWarnings, "- ⚠️ **Upgrade warning:**"+separator+strings.TrimPrefix(entry, "- "))
+		} else {
+			notables = append(notables, entry)
+		}
+	}
+
+	if len(problems) > 0 {
+		return "", errors.Join(problems...)
+	}
+
+	var b strings.Builder
+	_, _ = fmt.Fprintf(&b, "# %s v%s / %s\n\n", release.Type, release.Version, release.Date)
+	// The release issue asks the releaser to review this list: add anything else users should know, drop entries that
+	// aren't worth calling out, or delete the section.
+	b.WriteString("## ✨ Notable Changes\n\n")
+	if notable := slices.Concat(upgradeWarnings, notables); len(notable) > 0 {
+		b.WriteString(strings.Join(notable, "") + "\n")
+	} else {
+		b.WriteString("<!-- No PR was marked as notable. List what users should know about this release here, or delete this section. -->\n\n")
+	}
+	b.WriteString("## 📝 All Changes\n\n")
+	for _, link := range release.CompareLinks {
+		prefix := "- " + link.Project + ": "
+		if len(release.CompareLinks) == 1 {
+			prefix = ""
+		}
+		_, _ = fmt.Fprintf(&b, "%s[Changes since %s](https://github.com/filecoin-project/lotus/compare/%s...%s)\n", prefix, link.From, link.From, link.To)
+	}
+	b.WriteString("\n")
+	if len(all) > 0 {
+		_, _ = fmt.Fprintf(&b, "<details><summary>All PRs (%d)</summary>\n\n%s\n</details>\n\n", len(all), strings.Join(all, ""))
+	}
+	writeContributors(&b, contributors)
+	b.WriteString("\n")
+	return b.String(), nil
+}
+
+// insertChangelogSection adds section to changelog below its title and preamble, which must come first.
+// An existing section for the same version and any of names is an error unless force is set, in which case it is replaced.
+func insertChangelogSection(changelog, section, version string, names []string, force bool) (string, error) {
+	sections := splitChangelogSections(changelog)
+	for i, s := range sections {
+		header, _, _ := strings.Cut(s, "\n")
+		if strings.HasPrefix(header, "# UNRELEASED") || !slices.ContainsFunc(names, func(name string) bool { return isVersionHeader(header, "v"+version, name) }) {
+			continue
+		}
+		if !force {
+			return "", fmt.Errorf("the changelog already has a section for v%s (%q); pass --force to replace it", version, header)
+		}
+		sections[i] = section
+		return strings.Join(sections, ""), nil
+	}
+	if len(sections) == 0 {
+		return section, nil
+	}
+	return sections[0] + section + strings.Join(sections[1:], ""), nil
+}
+
+// previousStableTag returns the newest stable tag of a project that is older than version, or "" when there is none.
+func previousStableTag(tags []string, name, version string) string {
+	prefix := getPrefix(name)
+	previous := ""
+	for _, t := range tags {
+		v, ok := strings.CutPrefix(t, prefix)
+		if !ok || !semver.IsValid("v"+v) || isPrerelease(v) {
+			continue
+		}
+		if semver.Compare("v"+v, "v"+version) < 0 && (previous == "" || semver.Compare("v"+v, "v"+previous) > 0) {
+			previous = v
+		}
+	}
+	if previous == "" {
+		return ""
+	}
+	return prefix + previous
+}
+
+// releaseCompareLinks returns one compare link per project, from its previous stable tag to the new release's tag.
+// An explicit from replaces the first project's start, since it is also the start of the commit range the section lists.
+func releaseCompareLinks(tags, projects, names []string, version, from string) ([]compareLink, error) {
+	var links []compareLink
+	for i, project := range projects {
+		previous := previousStableTag(tags, project, version)
+		if i == 0 && from != "" {
+			previous = from
+		}
+		if previous == "" {
+			return nil, fmt.Errorf("no stable %s tag older than v%s; fetch tags with `git fetch origin --tags` or pass --from", project, version)
+		}
+		links = append(links, compareLink{Project: names[i], From: previous, To: getPrefix(project) + version})
+	}
+	return links, nil
+}
+
+// githubToken returns $GITHUB_TOKEN, or else the token of the GitHub CLI.
+func githubToken() (string, error) {
+	if token := os.Getenv("GITHUB_TOKEN"); token != "" {
+		return token, nil
+	}
+	output, err := exec.Command("gh", "auth", "token").Output()
+	if token := strings.TrimSpace(string(output)); err == nil && token != "" {
+		return token, nil
+	}
+	return "", fmt.Errorf("set GITHUB_TOKEN or log in with `gh auth login` to read PR titles, labels and descriptions")
+}
+
+// gitOutput runs git with args and returns its standard output.
+func gitOutput(args ...string) (string, error) {
+	output, err := exec.Command("git", args...).Output()
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			return "", fmt.Errorf("git %s: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(string(exitErr.Stderr)))
+		}
+		return "", fmt.Errorf("git %s: %w", strings.Join(args, " "), err)
+	}
+	return string(output), nil
+}
+
+type changelogGenerateOptions struct {
+	ReleaseType   string // node, miner or both
+	Version       string
+	From          string
+	To            string
+	Date          string
+	ChangelogPath string
+	Force         bool
+	DryRun        bool
+}
+
+// runChangelogGenerate generates the section for a release and writes it into the changelog, or to out for a dry run.
+func runChangelogGenerate(out, errOut io.Writer, opts changelogGenerateOptions) error {
+	version := strings.TrimPrefix(opts.Version, "v")
+	if !semver.IsValid("v" + version) {
+		return fmt.Errorf("invalid value for the 'tag' flag. Must be a valid semantic version (e.g. 1.39.0 or 1.39.0-rc1)")
+	}
+	var projects, names []string
+	switch opts.ReleaseType {
+	case "node":
+		projects, names = []string{"node"}, []string{"Node"}
+	case "miner":
+		projects, names = []string{"miner"}, []string{"Miner"}
+	case "both":
+		projects, names = []string{"node", "miner"}, []string{"Node", "Miner"}
+	default:
+		return fmt.Errorf("invalid value for the 'type' flag. Allowed values are 'node', 'miner', and 'both'")
+	}
+	compareLinks, err := releaseCompareLinks(getTags(), projects, names, version, opts.From)
+	if err != nil {
+		return err
+	}
+	release := changelogRelease{Type: strings.Join(names, " and "), Version: version, Date: opts.Date, CompareLinks: compareLinks}
+	// The commit range follows the first project; for a combined release that is the node.
+	from := compareLinks[0].From
+	for _, ref := range []string{from, opts.To} {
+		if _, err := gitOutput("rev-parse", "--verify", ref+"^{commit}"); err != nil {
+			return fmt.Errorf("%s does not name a commit: %w", ref, err)
+		}
+	}
+	_, _ = fmt.Fprintf(errOut, "Generating the v%s changelog from %s..%s\n", version, from, opts.To)
+
+	changelog, err := os.ReadFile(opts.ChangelogPath)
+	if err != nil {
+		return fmt.Errorf("failed to read changelog: %w", err)
+	}
+	released := map[int]bool{}
+	releasedPullRequests(string(changelog), version, released)
+	// The previous release's own CHANGELOG.md has its section even if it was never copied back to this branch.
+	if fromChangelog, err := gitOutput("show", from+":CHANGELOG.md"); err == nil {
+		releasedPullRequests(fromChangelog, version, released)
+	}
+
+	gitLog, err := gitOutput("log", "--reverse", "--no-merges", "--use-mailmap", "--shortstat", "--format=%x1e%H%x1f%aN%x1f%s", from+".."+opts.To)
+	if err != nil {
+		return err
+	}
+	commits, err := parseGitLog(gitLog)
+	if err != nil {
+		return err
+	}
+
+	token, err := githubToken()
+	if err != nil {
+		return err
+	}
+	client := github.NewClient(nil).WithAuthToken(token)
+	writeAccess := map[string]bool{}
+	hasWriteAccess := func(login string) (bool, error) {
+		if ok, cached := writeAccess[login]; cached {
+			return ok, nil
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), githubRequestTimeout)
+		defer cancel()
+		level, resp, err := client.Repositories.GetPermissionLevel(ctx, githubOwner, githubRepo, login)
+		if resp != nil && resp.StatusCode == http.StatusNotFound {
+			err, level = nil, &github.RepositoryPermissionLevel{}
+		}
+		if err != nil {
+			return false, fmt.Errorf("failed to read %s's permission: %w", login, err)
+		}
+		// "write" includes the maintain role, and "admin" is the only level above it.
+		writeAccess[login] = level.GetPermission() == "write" || level.GetPermission() == "admin"
+		return writeAccess[login], nil
+	}
+	fetchPR := func(number int) (pullRequestInfo, error) {
+		ctx, cancel := context.WithTimeout(context.Background(), githubRequestTimeout)
+		defer cancel()
+		history, err := fetchPullRequestHistory(ctx, token, number)
+		if err != nil {
+			return pullRequestInfo{}, err
+		}
+		return trustedPullRequest(history, hasWriteAccess)
+	}
+	if err := resolveCommitPullRequests(commits, func(hash string) (int, error) {
+		ctx, cancel := context.WithTimeout(context.Background(), githubRequestTimeout)
+		defer cancel()
+		prs, _, err := client.PullRequests.ListPullRequestsWithCommit(ctx, githubOwner, githubRepo, hash, nil)
+		if err != nil {
+			return 0, err
+		}
+		for _, pr := range prs {
+			if pr.MergedAt != nil {
+				return pr.GetNumber(), nil
+			}
+		}
+		return 0, nil
+	}); err != nil {
+		return fmt.Errorf("failed to find the PRs of these commits:\n%w", err)
+	}
+
+	section, err := generateChangelogSection(errOut, release, commits, released, fetchPR)
+	if err != nil {
+		return fmt.Errorf("can't generate the changelog until these PRs are checked:\n%w", err)
+	}
+	if opts.DryRun {
+		_, err := io.WriteString(out, section)
+		return err
+	}
+	updated, err := insertChangelogSection(string(changelog), section, version, names, opts.Force)
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(opts.ChangelogPath, []byte(updated), 0644); err != nil { //nolint:gosec // the release engineer chooses the changelog path
+		return fmt.Errorf("failed to write changelog: %w", err)
+	}
+	_, _ = fmt.Fprintf(errOut, "Wrote the v%s section to %s\n", version, opts.ChangelogPath)
+	return nil
+}
