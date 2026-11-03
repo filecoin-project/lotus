@@ -64,6 +64,7 @@ Don't edit [`CHANGELOG.md`](CHANGELOG.md) in a feature, fix or other standard PR
   - `release-note/upgrade-warning`: operators must act on the change, or it breaks compatibility. The PR is listed first under Notable Changes, as an upgrade warning. A title with `!` is treated the same way.
   - `release-note/highlight`: the change is worth calling out. The PR is listed under Notable Changes.
 - When a title can't carry what readers need, such as the action an upgrade warning asks of operators, add a `## Release note` block to the PR description. Its text is the PR's entry under Notable Changes. Most PRs don't need one.
+- The [AI Title Check](.github/workflows/ai-title-check.yml) asks Copilot whether the title, and any `## Release note` block, describes the diff, and whether the title marks a breaking change with `!`. It runs when a PR is opened or marked ready and when its title or description changes, not on new commits, so rerun it if later commits change what the PR does. Its failure message suggests a better title. If it's wrong, a maintainer can apply the `skip/ai-title-check` label to override it.
 
 The release engineer reviews the generated section in the release PR and decides what stays under Notable Changes.
 

@@ -19,3 +19,4 @@
 
 ### Workflow Permissions
 - `pr-title-check.yml` needs `pull-requests: write` for reviews
+- `ai-title-check.yml` uses `pull_request_target` with `checks: write` and `copilot-requests: write` so fork PRs can be checked; it must never check out or run PR code. Its header records why it is built this way
