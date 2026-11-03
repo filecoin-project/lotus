@@ -537,7 +537,7 @@ func runChangelogGenerate(out, errOut io.Writer, opts changelogGenerateOptions) 
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(opts.ChangelogPath, []byte(updated), 0644); err != nil {
+	if err := os.WriteFile(opts.ChangelogPath, []byte(updated), 0644); err != nil { //nolint:gosec // the release engineer chooses the changelog path
 		return fmt.Errorf("failed to write changelog: %w", err)
 	}
 	_, _ = fmt.Fprintf(errOut, "Wrote the v%s section to %s\n", version, opts.ChangelogPath)
