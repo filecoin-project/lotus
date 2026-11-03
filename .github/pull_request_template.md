@@ -8,7 +8,7 @@
 <!-- Callouts, links to documentation, and etc -->
 
 ## Release note
-<!-- Optional. The PR title is this PR's line in the release notes. Most PRs need nothing here; delete this section unless the title can't carry what users need, such as the action an upgrade warning asks of operators. Text here replaces the title. See https://github.com/filecoin-project/lotus/blob/master/CONTRIBUTING.md#release-notes -->
+<!-- Optional. The PR title is this PR's line in the release notes. Most PRs need nothing here; delete this section unless the title can't carry what users need, such as the action an upgrade warning asks of operators. Text here is this PR's entry under the release's Notable Changes. See https://github.com/filecoin-project/lotus/blob/master/CONTRIBUTING.md#release-notes -->
 
 ## Checklist
 

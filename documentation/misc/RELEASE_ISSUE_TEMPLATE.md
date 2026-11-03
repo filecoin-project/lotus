@@ -264,7 +264,7 @@
    - [ ] Generate the dated `# {{$.Type}} v{{$.Tag}}{{$tagSuffix}} / {date}` section with `go run ./cmd/release changelog generate --type <!--{{if eq $.Type "Node and Miner"}}-->both<!--{{else if eq $.Type "Node"}}-->node<!--{{else}}-->miner<!--{{end}}--> --tag {{$.Tag}}{{$tagSuffix}}` on the release branch, and commit it to the release PR.
       <!-- agent:
       - Fetch tags first (`git fetch origin --tags`). It reads PRs from GitHub with `GITHUB_TOKEN`, or the `gh` CLI's token.
-      - It lists every PR merged since the previous stable tag by title type and `release-note/*` labels, skips PRs already linked from released sections, and ends with the compare links and Contributors table. Each RC and the stable section list everything since the previous stable release.
+      - It writes Notable Changes (upgrade warnings first: PRs with `!` or `release-note/upgrade-warning`; then PRs with `release-note/highlight` or a `## Release note` block), then the compare links with a collapsed list of every PR merged since the previous stable tag, then the Contributors table. It skips PRs already linked from released sections. Each RC and the stable section list everything since the previous stable release.
       - Read its warnings: commits without a `(#N)` PR number are not listed.
       - It stops if it can't read a PR from GitHub, or if a PR's title or description was last changed after merge by someone without write access, since the changelog only trusts post-merge edits from maintainers. Check each PR it lists: a maintainer either accepts the change by editing the flagged title or description (any small edit makes them its latest editor) or reverts it, then rerun.
       - After more backports land, rerun with `--force` to regenerate the section. That discards hand edits, so redo them afterwards.
@@ -273,11 +273,11 @@
       - Node and miner can have different previous tags (for example `v1.38.2` and `miner/v1.38.0`). The section gets one compare link per project, and its PRs and Contributors come from the node range.
 <!--      {{end}}-->
       -->
-   - [ ] Write a short summary under the header, draft the Highlights, and check for missed upgrade warnings.
+   - [ ] Write a short summary under the header, review Notable Changes, and check for missed upgrade warnings.
       <!-- agent:
       - Summary: one or two sentences on what the release is for and who should upgrade, in the style of earlier sections.
-      - Highlights: read the PRs in the section (titles, descriptions and diffs) and draft two to five bullets on the changes operators and downstream developers care most about, each ending with its PR link. Keep any `release-note/highlight` entries. Delete the Highlights heading if nothing qualifies.
-      - Upgrade warnings: flag PRs outside Upgrade Warnings that remove or rename commands, flags, APIs, config or metrics, change defaults, permissions or limits, raise the minimum Go version, or otherwise need operator action. Propose moving each into Upgrade Warnings with the action operators must take, and ask its author or a maintainer to confirm.
+      - Notable Changes: read the PRs in the full list (titles, descriptions and diffs) and propose adding the changes operators and downstream developers care most about, each ending with its PR link, and dropping generated entries that aren't worth calling out. Delete the heading if nothing qualifies.
+      - Upgrade warnings: flag PRs not marked as upgrade warnings that remove or rename commands, flags, APIs, config or metrics, change defaults, permissions or limits, raise the minimum Go version, or otherwise need operator action. Propose listing each as an upgrade warning with the action operators must take, and ask its author or a maintainer to confirm.
       - Also flag titles that misdescribe what changed for users, and propose clearer wording.
       - Propose these edits in the release PR for review; do not rewrite entries silently.
       -->

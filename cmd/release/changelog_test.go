@@ -63,33 +63,28 @@ func TestExtractReleaseNote(t *testing.T) {
 	}
 }
 
-func TestClassifyPullRequest(t *testing.T) {
+func TestNotability(t *testing.T) {
 	for _, tc := range []struct {
-		title  string
-		labels []string
-		want   releaseNoteSection
+		name                  string
+		pr                    pullRequestInfo
+		notable, upgradeWarns bool
 	}{
-		{title: "feat(api): add a thing", want: sectionNewFeatures},
-		{title: "fix: a bug", want: sectionBugFixes},
-		{title: "perf(chain): faster", want: sectionImprovements},
-		{title: "refactor: tidy", want: sectionImprovements},
-		{title: `Revert "feat: add a thing"`, want: sectionImprovements},
-		{title: "not conventional", want: sectionImprovements},
-		{title: "chore(deps): bump x", want: sectionOther},
-		{title: "build(deps): bump x", want: sectionOther},
-		{title: "ci: faster", want: sectionOther},
-		{title: "test: more", want: sectionOther},
-		{title: "docs: words", want: sectionOther},
-		{title: "style: gofmt", want: sectionOther},
-		{title: "build!: raise the minimum Go version", want: sectionUpgradeWarnings},
-		{title: "feat(api)!: remove a method", want: sectionUpgradeWarnings},
-		{title: "fix(cli): remove commands", labels: []string{"area/cli", labelUpgradeWarning}, want: sectionUpgradeWarnings},
-		{title: "chore: something big", labels: []string{labelHighlight}, want: sectionHighlights},
-		{title: "feat: both labels", labels: []string{labelHighlight, labelUpgradeWarning}, want: sectionUpgradeWarnings},
-		{title: "feat(api)!: remove a method", labels: []string{labelHighlight}, want: sectionUpgradeWarnings},
+		{name: "a plain feature", pr: pullRequestInfo{Title: "feat(api): add a thing"}},
+		{name: "a plain fix", pr: pullRequestInfo{Title: "fix: a bug"}},
+		{name: "an unconventional title", pr: pullRequestInfo{Title: "not conventional"}},
+		{name: "a placeholder-only release note block", pr: pullRequestInfo{Title: "fix: a bug", Body: "## Release note\n<!-- placeholder -->\n"}},
+		{name: "a release note block", pr: pullRequestInfo{Title: "fix: a bug", Body: "## Release note\nOperators must do x.\n"}, notable: true},
+		{name: "the highlight label", pr: pullRequestInfo{Title: "chore: something big", Labels: []string{labelHighlight}}, notable: true},
+		{name: "a breaking change without a scope", pr: pullRequestInfo{Title: "build!: raise the minimum Go version"}, notable: true, upgradeWarns: true},
+		{name: "a breaking change with a scope", pr: pullRequestInfo{Title: "feat(api)!: remove a method"}, notable: true, upgradeWarns: true},
+		{name: "the upgrade-warning label", pr: pullRequestInfo{Title: "fix(cli): remove commands", Labels: []string{"area/cli", labelUpgradeWarning}}, notable: true, upgradeWarns: true},
+		{name: "a breaking change with the highlight label", pr: pullRequestInfo{Title: "feat(api)!: remove a method", Labels: []string{labelHighlight}}, notable: true, upgradeWarns: true},
+		{name: "an exclamation mark later in the title", pr: pullRequestInfo{Title: "fix: stop crashing!"}},
 	} {
-		t.Run(tc.title, func(t *testing.T) {
-			require.Equal(t, tc.want, classifyPullRequest(tc.title, tc.labels))
+		t.Run(tc.name, func(t *testing.T) {
+			notable, upgradeWarning := notability(tc.pr)
+			require.Equal(t, tc.notable, notable)
+			require.Equal(t, tc.upgradeWarns, upgradeWarning)
 		})
 	}
 }
@@ -187,38 +182,32 @@ func TestGenerateChangelogSection(t *testing.T) {
 	}
 
 	var errOut bytes.Buffer
-	section, err := generateChangelogSection(&errOut, release, commits, map[int]bool{3: true}, fetchPR, nil)
+	section, err := generateChangelogSection(&errOut, release, commits, map[int]bool{3: true}, fetchPR)
 	require.NoError(t, err)
 	require.Equal(t, `# Node and Miner v1.39.0 / 2026-11-05
 
-## ☢️ Upgrade Warnings ☢️
+## ✨ Notable Changes
 
-- The `+"`lotus filplus`"+` commands are removed. ([#11](https://github.com/filecoin-project/lotus/pull/11))
-- build!: raise the minimum Go version ([#14](https://github.com/filecoin-project/lotus/pull/14))
-
-## ✨ Highlights
-
+- ☢️ **Upgrade warning:** The `+"`lotus filplus`"+` commands are removed. ([#11](https://github.com/filecoin-project/lotus/pull/11))
+- ☢️ **Upgrade warning:** build!: raise the minimum Go version ([#14](https://github.com/filecoin-project/lotus/pull/14))
 - feat(api): add a thing ([#10](https://github.com/filecoin-project/lotus/pull/10))
-
-## 🐛 Bug Fixes
-
-- fix: a bug ([#13](https://github.com/filecoin-project/lotus/pull/13))
-
-## 👌 Improvements
-
-- perf: faster ([#15](https://github.com/filecoin-project/lotus/pull/15))
-
-<details><summary>Other changes</summary>
-
-- build(deps): bump x ([#12](https://github.com/filecoin-project/lotus/pull/12))
-- docs: renamed after merge ([#16](https://github.com/filecoin-project/lotus/pull/16))
-
-</details>
 
 ## 📝 Changelog
 
 - Node: [Changes since v1.38.3](https://github.com/filecoin-project/lotus/compare/v1.38.3...v1.39.0)
 - Miner: [Changes since miner/v1.38.0](https://github.com/filecoin-project/lotus/compare/miner/v1.38.0...miner/v1.39.0)
+
+<details><summary>All PRs (7)</summary>
+
+- feat(api): add a thing ([#10](https://github.com/filecoin-project/lotus/pull/10))
+- fix(cli): remove commands ([#11](https://github.com/filecoin-project/lotus/pull/11))
+- build(deps): bump x ([#12](https://github.com/filecoin-project/lotus/pull/12))
+- fix: a bug ([#13](https://github.com/filecoin-project/lotus/pull/13))
+- build!: raise the minimum Go version ([#14](https://github.com/filecoin-project/lotus/pull/14))
+- perf: faster ([#15](https://github.com/filecoin-project/lotus/pull/15))
+- docs: renamed after merge ([#16](https://github.com/filecoin-project/lotus/pull/16))
+
+</details>
 
 ## 👨‍👩‍👧‍👦 Contributors
 
@@ -232,18 +221,17 @@ func TestGenerateChangelogSection(t *testing.T) {
 `, section)
 	require.Contains(t, errOut.String(), `warning: f6 "chore: no PR number" has no PR, so it is not listed`)
 
-	// With nothing labelled as a highlight, the Highlights heading stays as a placeholder for the releaser.
+	// With nothing notable, the Notable Changes heading stays as a placeholder for the releaser.
 	release.CompareLinks = release.CompareLinks[:1]
-	section, err = generateChangelogSection(&errOut, release, commits[4:5], nil, fetchPR, nil)
+	section, err = generateChangelogSection(&errOut, release, commits[4:5], nil, fetchPR)
 	require.NoError(t, err)
-	require.Contains(t, section, "## ✨ Highlights\n\n<!-- Draft the highlights of this release here, or delete this section. -->\n\n## 🐛 Bug Fixes\n")
-	require.Contains(t, section, "## 📝 Changelog\n\n[Changes since v1.38.3](https://github.com/filecoin-project/lotus/compare/v1.38.3...v1.39.0)\n")
-	require.NotContains(t, section, "Other changes")
+	require.Contains(t, section, "## ✨ Notable Changes\n\n<!-- No PR was marked as notable. List what users should know about this release here, or delete this section. -->\n\n## 📝 Changelog\n")
+	require.Contains(t, section, "[Changes since v1.38.3](https://github.com/filecoin-project/lotus/compare/v1.38.3...v1.39.0)\n\n<details><summary>All PRs (1)</summary>")
 
 	// A PR that can't be read stops generation, and every such PR is reported at once.
 	delete(prs, 13)
 	delete(prs, 16)
-	_, err = generateChangelogSection(&errOut, release, commits, nil, fetchPR, nil)
+	_, err = generateChangelogSection(&errOut, release, commits, nil, fetchPR)
 	require.ErrorContains(t, err, "#13: not found")
 	require.ErrorContains(t, err, "#16: not found")
 }
@@ -278,66 +266,6 @@ func TestInsertChangelogSection(t *testing.T) {
 	replaced, err := insertChangelogSection(updated, replacement, "1.39.0", names, true)
 	require.NoError(t, err)
 	require.Equal(t, "# Lotus changelog\n\nPreamble.\n\n"+replacement+"# Node v1.38.3 / 2026-10-21\n\n- old entry\n", replaced)
-}
-
-func TestChangedDependencies(t *testing.T) {
-	oldGoMod := []byte(`module github.com/filecoin-project/lotus
-
-go 1.26
-
-require (
-	github.com/filecoin-project/go-state-types v0.16.0
-	github.com/filecoin-project/go-amt-ipld/v4 v4.4.0
-	github.com/filecoin-project/go-f3 v0.0.0-20260101000000-aaaaaaaaaaaa
-	github.com/filecoin-project/specs-actors/v8 v8.0.1
-	github.com/filecoin-project/go-crypto v0.1.0 // indirect
-	github.com/filecoin-project/go-paramfetch/sub v0.1.0
-	github.com/filecoin-project/old-dep v0.1.0
-	github.com/ipfs/go-cid v0.5.0
-)
-`)
-	newGoMod := []byte(`module github.com/filecoin-project/lotus
-
-go 1.26
-
-require (
-	github.com/filecoin-project/go-state-types v0.17.0
-	github.com/filecoin-project/go-amt-ipld/v4 v4.5.0
-	github.com/filecoin-project/go-f3 v0.0.0-20260201000000-bbbbbbbbbbbb
-	github.com/filecoin-project/specs-actors/v8 v8.0.1
-	github.com/filecoin-project/go-crypto v0.2.0+incompatible // indirect
-	github.com/filecoin-project/go-paramfetch/sub v0.2.0
-	github.com/filecoin-project/new-dep v0.1.0
-	github.com/ipfs/go-cid v0.6.0
-)
-`)
-	changes, err := changedDependencies(oldGoMod, newGoMod, dependencyPrefix)
-	require.NoError(t, err)
-	require.Equal(t, []dependencyChange{
-		{Repo: "github.com/filecoin-project/go-amt-ipld", OldRef: "v4.4.0", NewRef: "v4.5.0"},
-		{Repo: "github.com/filecoin-project/go-crypto", OldRef: "v0.1.0", NewRef: "v0.2.0"},
-		{Repo: "github.com/filecoin-project/go-f3", OldRef: "aaaaaaaaaaaa", NewRef: "bbbbbbbbbbbb"},
-		{Repo: "github.com/filecoin-project/go-paramfetch", OldRef: "sub/v0.1.0", NewRef: "sub/v0.2.0"},
-		{Repo: "github.com/filecoin-project/go-state-types", OldRef: "v0.16.0", NewRef: "v0.17.0"},
-	}, changes)
-}
-
-func TestGenerateChangelogSectionCountsDependencyContributors(t *testing.T) {
-	commits := []commitInfo{{Hash: "a1", Author: "Alice", Subject: "fix: a bug (#13)", PR: 13, Files: 1, Insertions: 5}}
-	dependencyCommits := []commitInfo{
-		{Hash: "d1", Author: "Alice", Subject: "fix the dependency (#99)", PR: 99, Files: 2, Insertions: 3, Deletions: 1},
-		{Hash: "d2", Author: "Erin", Subject: "a dependency change", Files: 1, Insertions: 100},
-	}
-	fetchPR := func(int) (pullRequestInfo, error) { return pullRequestInfo{Title: "fix: a bug"}, nil }
-	release := changelogRelease{Type: "Node", Version: "1.39.0", Date: "2026-11-05", CompareLinks: []compareLink{{Project: "Node", From: "v1.38.3", To: "v1.39.0"}}}
-
-	var errOut bytes.Buffer
-	section, err := generateChangelogSection(&errOut, release, commits, nil, fetchPR, dependencyCommits)
-	require.NoError(t, err)
-	require.Contains(t, section, "| Erin | 1 | +100/-0 | 1 |\n| Alice | 2 | +8/-1 | 3 |\n")
-	// Dependency commits are not listed as changes, and their PR numbers are not lotus PRs.
-	require.NotContains(t, section, "pull/99")
-	require.Empty(t, errOut.String())
 }
 
 func TestResolveCommitPullRequests(t *testing.T) {

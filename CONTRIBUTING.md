@@ -59,13 +59,13 @@ If it is unclear why one's title is getting flagged, it the regex defined in [pr
 Don't edit [`CHANGELOG.md`](CHANGELOG.md) in a feature, fix or other standard PR; only release PRs change it. At release time, `go run ./cmd/release changelog generate` writes the release's section from the PRs merged since the previous stable release, so all a PR needs is a good title:
 
 - The PR title is the changelog line. Name the affected API, command or component and say what changes for users, operators or downstream developers, rather than how it was implemented. For example, `fix(chainindex): historical eth_getLogs range queries no longer time out after a restart` rather than `fix(chainindex): anchor historical event range checks on the index`.
-- PRs are grouped by type: `feat` under New Features, `fix` under Bug Fixes, `build`, `chore`, `ci`, `docs`, `style` and `test` under a collapsed "Other changes", and everything else under Improvements. A breaking change marked with `!` is listed under Upgrade Warnings.
+- A release's section has two lists: Notable Changes, for what users should know about, and a collapsed list of every PR's title. A PR is notable if its title marks a breaking change with `!`, it has a `release-note/*` label, or its description has a `## Release note` block.
 - Maintainers can fix a title before merging, and can apply these labels:
-  - `release-note/upgrade-warning`: operators must act on the change, or it breaks compatibility. The PR is listed under Upgrade Warnings.
-  - `release-note/highlight`: the change is worth calling out at the top of the release. The PR is listed under Highlights.
-- When a title can't carry what readers need, such as the action an upgrade warning asks of operators, add a `## Release note` block to the PR description. Its text replaces the title in the release notes. Most PRs don't need one.
+  - `release-note/upgrade-warning`: operators must act on the change, or it breaks compatibility. The PR is listed first under Notable Changes, as an upgrade warning. A title with `!` is treated the same way.
+  - `release-note/highlight`: the change is worth calling out. The PR is listed under Notable Changes.
+- When a title can't carry what readers need, such as the action an upgrade warning asks of operators, add a `## Release note` block to the PR description. Its text is the PR's entry under Notable Changes. Most PRs don't need one.
 
-The release engineer reviews the generated section in the release PR and drafts its Highlights.
+The release engineer reviews the generated section in the release PR and decides what stays under Notable Changes.
 
 Contributors can edit a PR's title and description after it merges without anyone being notified, so the generator uses the title and description as they were at merge, plus later edits by people with write access. If someone else made the latest edit, generation stops until a maintainer edits the PR to accept or revert the change. Maintainers can still fix a merged PR's title or add a `## Release note` block.
 

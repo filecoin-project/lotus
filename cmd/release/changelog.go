@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"regexp"
 	"slices"
 	"sort"
@@ -16,8 +15,6 @@ import (
 	"strings"
 
 	"github.com/google/go-github/v66/github"
-	"golang.org/x/mod/modfile"
-	"golang.org/x/mod/module"
 	"golang.org/x/mod/semver"
 )
 
@@ -27,54 +24,23 @@ const (
 	githubRepo  = "lotus"
 )
 
-// The release-note labels a maintainer can apply to a PR to pull it out of its type's section.
+// The release-note labels a maintainer can apply to a PR to list it under a release's Notable Changes.
 const (
+	// labelUpgradeWarning marks a change operators must act on. It's listed first, as an upgrade warning.
 	labelUpgradeWarning = "release-note/upgrade-warning"
 	labelHighlight      = "release-note/highlight"
 )
 
-// releaseNoteSection is a section of a generated release, in the order the sections are written.
-type releaseNoteSection int
-
-const (
-	sectionUpgradeWarnings releaseNoteSection = iota
-	sectionHighlights
-	sectionNewFeatures
-	sectionBugFixes
-	sectionImprovements
-	sectionOther
-	sectionCount
-)
-
-// releaseNoteSectionLayouts says how each section is written. Headings are written at level two ("## ").
-var releaseNoteSectionLayouts = [sectionCount]struct {
-	heading string
-	// placeholder is written in place of entries when there are none; without one, an empty section is left out.
-	placeholder string
-	// collapsed writes the section as a collapsed <details> block instead of under a heading.
-	collapsed bool
-}{
-	sectionUpgradeWarnings: {heading: "☢️ Upgrade Warnings ☢️"},
-	// The release issue asks the releaser to draft highlights here, or to delete the heading.
-	sectionHighlights:   {heading: "✨ Highlights", placeholder: "<!-- Draft the highlights of this release here, or delete this section. -->"},
-	sectionNewFeatures:  {heading: "⭐ New Features"},
-	sectionBugFixes:     {heading: "🐛 Bug Fixes"},
-	sectionImprovements: {heading: "👌 Improvements"},
-	sectionOther:        {heading: "Other changes", collapsed: true},
-}
-
 var (
 	// prNumberRegexp matches the "(#N)" GitHub appends to a squash-merge commit subject.
 	prNumberRegexp = regexp.MustCompile(`\s*\(#(\d+)\)\s*$`)
-	// conventionalTitleRegexp matches the "type(scope)!:" prefix of a Conventional Commits title.
-	conventionalTitleRegexp = regexp.MustCompile(`^([a-zA-Z]+)(\([^)]*\))?(!)?:`)
+	// breakingTitleRegexp matches the "type(scope)!:" prefix of a Conventional Commits title that marks a breaking change.
+	breakingTitleRegexp = regexp.MustCompile(`^[a-zA-Z]+(\([^)]*\))?!:`)
 	// pullLinkRegexp matches a link to a lotus PR in CHANGELOG.md.
 	pullLinkRegexp = regexp.MustCompile(`github\.com/filecoin-project/lotus/pull/(\d+)`)
 	// releaseNoteHeadingRegexp matches the heading of the optional release-note block in a PR description.
 	releaseNoteHeadingRegexp = regexp.MustCompile(`(?i)^##\s+release notes?\s*$`)
 	htmlCommentRegexp        = regexp.MustCompile(`(?s)<!--.*?-->`)
-	// majorVersionRegexp matches the major-version element at the end of a module path, e.g. the v4 of go-amt-ipld/v4.
-	majorVersionRegexp = regexp.MustCompile(`^v[0-9]+$`)
 )
 
 // commitInfo is one commit in the range a release is generated from.
@@ -203,29 +169,13 @@ func extractReleaseNote(body string) string {
 	return strings.TrimSpace(htmlCommentRegexp.ReplaceAllString(strings.Join(note, "\n"), ""))
 }
 
-// classifyPullRequest picks the section a PR is listed in.
-// An upgrade-warning label or a breaking-change "!" comes first, then the highlight label, then the Conventional Commits type of the title.
-func classifyPullRequest(title string, labels []string) releaseNoteSection {
-	match := conventionalTitleRegexp.FindStringSubmatch(title)
-	if slices.Contains(labels, labelUpgradeWarning) || (match != nil && match[3] == "!") {
-		return sectionUpgradeWarnings
-	}
-	if slices.Contains(labels, labelHighlight) {
-		return sectionHighlights
-	}
-	if match == nil {
-		return sectionImprovements
-	}
-	switch strings.ToLower(match[1]) {
-	case "feat":
-		return sectionNewFeatures
-	case "fix":
-		return sectionBugFixes
-	case "build", "chore", "ci", "docs", "style", "test":
-		return sectionOther
-	default:
-		return sectionImprovements
-	}
+// notability says whether a PR is listed under Notable Changes, and whether as an upgrade warning. An upgrade-warning
+// label or a breaking-change "!" in the title makes it an upgrade warning; the highlight label or a `## Release note`
+// block makes it notable.
+func notability(pr pullRequestInfo) (notable, upgradeWarning bool) {
+	upgradeWarning = slices.Contains(pr.Labels, labelUpgradeWarning) || breakingTitleRegexp.MatchString(pr.Title)
+	notable = upgradeWarning || slices.Contains(pr.Labels, labelHighlight) || extractReleaseNote(pr.Body) != ""
+	return notable, upgradeWarning
 }
 
 // isCodeFence reports whether a Markdown line opens or closes a fenced code block.
@@ -293,107 +243,6 @@ func writeContributors(b *strings.Builder, commits []commitInfo) {
 	}
 }
 
-// dependencyPrefix selects the dependencies whose commits count towards a release's Contributors table.
-const dependencyPrefix = "github.com/filecoin-project/"
-
-// dependencyChange is a dependency whose version differs between the go.mod files at the ends of a release's range.
-type dependencyChange struct {
-	// Repo is the module path's repository, e.g. github.com/filecoin-project/go-state-types.
-	Repo   string
-	OldRef string
-	NewRef string
-}
-
-// moduleVersionRef returns the git ref of a module version: the commit of a pseudo-version, or else the tag,
-// which a module in a subdirectory of its repository prefixes with that subdirectory.
-func moduleVersionRef(subdir, version string) string {
-	if module.IsPseudoVersion(version) {
-		if rev, err := module.PseudoVersionRev(version); err == nil {
-			return rev
-		}
-	}
-	version = strings.TrimSuffix(version, "+incompatible")
-	if subdir != "" {
-		return subdir + "/" + version
-	}
-	return version
-}
-
-// changedDependencies returns the required modules under prefix whose version differs between two go.mod files, sorted by repository.
-func changedDependencies(oldGoMod, newGoMod []byte, prefix string) ([]dependencyChange, error) {
-	oldFile, err := modfile.ParseLax("go.mod", oldGoMod, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse the old go.mod: %w", err)
-	}
-	newFile, err := modfile.ParseLax("go.mod", newGoMod, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse the new go.mod: %w", err)
-	}
-	oldVersions := map[string]string{}
-	for _, r := range oldFile.Require {
-		oldVersions[r.Mod.Path] = r.Mod.Version
-	}
-	var changes []dependencyChange
-	seen := map[dependencyChange]bool{}
-	for _, r := range newFile.Require {
-		oldVersion, ok := oldVersions[r.Mod.Path]
-		if !strings.HasPrefix(r.Mod.Path, prefix) || !ok || oldVersion == r.Mod.Version {
-			continue
-		}
-		parts := strings.Split(r.Mod.Path, "/")
-		if len(parts) < 3 {
-			continue
-		}
-		// A trailing /vN is the major version, not a subdirectory.
-		subdirParts := parts[3:]
-		if n := len(subdirParts); n > 0 && majorVersionRegexp.MatchString(subdirParts[n-1]) {
-			subdirParts = subdirParts[:n-1]
-		}
-		subdir := strings.Join(subdirParts, "/")
-		change := dependencyChange{
-			Repo:   strings.Join(parts[:3], "/"),
-			OldRef: moduleVersionRef(subdir, oldVersion),
-			NewRef: moduleVersionRef(subdir, r.Mod.Version),
-		}
-		if !seen[change] {
-			seen[change] = true
-			changes = append(changes, change)
-		}
-	}
-	sort.Slice(changes, func(i, j int) bool { return changes[i].Repo < changes[j].Repo })
-	return changes, nil
-}
-
-// dependencyCommits returns the commits between the old and new version of each dependency, from bare clones kept in cacheDir.
-// A dependency that can't be cloned or resolved is left out with a warning.
-func dependencyCommits(errOut io.Writer, cacheDir string, changes []dependencyChange) []commitInfo {
-	var commits []commitInfo
-	for _, change := range changes {
-		dir := filepath.Join(cacheDir, change.Repo+".git")
-		if _, err := os.Stat(dir); err != nil {
-			_, _ = fmt.Fprintf(errOut, "Cloning %s for the Contributors table\n", change.Repo)
-			if _, err := gitOutput("clone", "--quiet", "--bare", "https://"+change.Repo, dir); err != nil {
-				_, _ = fmt.Fprintf(errOut, "warning: leaving %s out of the Contributors table: %v\n", change.Repo, err)
-				continue
-			}
-		}
-		rangeSpec := change.OldRef + ".." + change.NewRef
-		if _, err := gitOutput("-C", dir, "rev-parse", "--verify", "--quiet", change.NewRef+"^{commit}"); err != nil {
-			_, _ = gitOutput("-C", dir, "fetch", "--quiet", "--tags", "origin", "+refs/heads/*:refs/heads/*")
-		}
-		output, err := gitOutput("-C", dir, "log", "--no-merges", "--use-mailmap", "--shortstat", "--format=%x1e%H%x1f%aN%x1f%s", rangeSpec)
-		if err == nil {
-			var parsed []commitInfo
-			if parsed, err = parseGitLog(output); err == nil {
-				commits = append(commits, parsed...)
-				continue
-			}
-		}
-		_, _ = fmt.Fprintf(errOut, "warning: leaving %s %s out of the Contributors table: %v\n", change.Repo, rangeSpec, err)
-	}
-	return commits
-}
-
 // resolveCommitPullRequests fills in the PR of each commit whose subject has no "(#N)", using findPR.
 // A PR merged with "Rebase and merge" keeps its commits' own subjects, so its number is only known to GitHub.
 func resolveCommitPullRequests(errOut io.Writer, commits []commitInfo, findPR func(hash string) (int, error)) {
@@ -415,9 +264,8 @@ func resolveCommitPullRequests(errOut io.Writer, commits []commitInfo, findPR fu
 // range can hold changes that already shipped through a backport.
 // fetchPR returns the title, description and labels to use for a PR. If it fails for any PR, generation stops with an
 // error that lists every failure.
-// dependencyCommits are counted in the Contributors table only.
-func generateChangelogSection(errOut io.Writer, release changelogRelease, commits []commitInfo, released map[int]bool, fetchPR func(int) (pullRequestInfo, error), dependencyCommits []commitInfo) (string, error) {
-	var entries [sectionCount][]string
+func generateChangelogSection(errOut io.Writer, release changelogRelease, commits []commitInfo, released map[int]bool, fetchPR func(int) (pullRequestInfo, error)) (string, error) {
+	var upgradeWarnings, notables, all []string
 	var problems []error
 	var contributors []commitInfo
 	listed := map[int]bool{}
@@ -441,12 +289,21 @@ func generateChangelogSection(errOut io.Writer, release changelogRelease, commit
 			problems = append(problems, fmt.Errorf("#%d: %w", c.PR, err))
 			continue
 		}
-		section := classifyPullRequest(pr.Title, pr.Labels)
+		all = append(all, formatChangelogEntry(pr.Title, c.PR))
+		notable, upgradeWarning := notability(pr)
+		if !notable {
+			continue
+		}
 		text := pr.Title
 		if note := extractReleaseNote(pr.Body); note != "" {
 			text = note
 		}
-		entries[section] = append(entries[section], formatChangelogEntry(text, c.PR))
+		entry := formatChangelogEntry(text, c.PR)
+		if upgradeWarning {
+			upgradeWarnings = append(upgradeWarnings, "- ☢️ **Upgrade warning:** "+strings.TrimPrefix(entry, "- "))
+		} else {
+			notables = append(notables, entry)
+		}
 	}
 
 	if len(problems) > 0 {
@@ -455,17 +312,13 @@ func generateChangelogSection(errOut io.Writer, release changelogRelease, commit
 
 	var b strings.Builder
 	_, _ = fmt.Fprintf(&b, "# %s v%s / %s\n\n", release.Type, release.Version, release.Date)
-	for section, layout := range releaseNoteSectionLayouts {
-		list := strings.Join(entries[section], "")
-		switch {
-		case list == "" && layout.placeholder == "":
-		case layout.collapsed:
-			_, _ = fmt.Fprintf(&b, "<details><summary>%s</summary>\n\n%s\n</details>\n\n", layout.heading, list)
-		case list == "":
-			_, _ = fmt.Fprintf(&b, "## %s\n\n%s\n\n", layout.heading, layout.placeholder)
-		default:
-			_, _ = fmt.Fprintf(&b, "## %s\n\n%s\n", layout.heading, list)
-		}
+	// The release issue asks the releaser to review this list: add anything else users should know, drop entries that
+	// aren't worth calling out, or delete the section.
+	b.WriteString("## ✨ Notable Changes\n\n")
+	if notable := slices.Concat(upgradeWarnings, notables); len(notable) > 0 {
+		b.WriteString(strings.Join(notable, "") + "\n")
+	} else {
+		b.WriteString("<!-- No PR was marked as notable. List what users should know about this release here, or delete this section. -->\n\n")
 	}
 	b.WriteString("## 📝 Changelog\n\n")
 	for _, link := range release.CompareLinks {
@@ -476,7 +329,10 @@ func generateChangelogSection(errOut io.Writer, release changelogRelease, commit
 		_, _ = fmt.Fprintf(&b, "%s[Changes since %s](https://github.com/filecoin-project/lotus/compare/%s...%s)\n", prefix, link.From, link.From, link.To)
 	}
 	b.WriteString("\n")
-	writeContributors(&b, append(contributors, dependencyCommits...))
+	if len(all) > 0 {
+		_, _ = fmt.Fprintf(&b, "<details><summary>All PRs (%d)</summary>\n\n%s\n</details>\n\n", len(all), strings.Join(all, ""))
+	}
+	writeContributors(&b, contributors)
 	b.WriteString("\n")
 	return b.String(), nil
 }
@@ -571,8 +427,6 @@ type changelogGenerateOptions struct {
 	ChangelogPath string
 	Force         bool
 	DryRun        bool
-	// SkipDependencies leaves commits in filecoin-project dependencies out of the Contributors table.
-	SkipDependencies bool
 }
 
 // runChangelogGenerate generates the section for a release and writes it into the changelog, or to out for a dry run.
@@ -671,15 +525,7 @@ func runChangelogGenerate(out, errOut io.Writer, opts changelogGenerateOptions) 
 		return 0, nil
 	})
 
-	var depCommits []commitInfo
-	if !opts.SkipDependencies {
-		depCommits, err = changedDependencyCommits(errOut, from, opts.To)
-		if err != nil {
-			return err
-		}
-	}
-
-	section, err := generateChangelogSection(errOut, release, commits, released, fetchPR, depCommits)
+	section, err := generateChangelogSection(errOut, release, commits, released, fetchPR)
 	if err != nil {
 		return fmt.Errorf("can't generate the changelog until these PRs are checked:\n%w", err)
 	}
@@ -696,26 +542,4 @@ func runChangelogGenerate(out, errOut io.Writer, opts changelogGenerateOptions) 
 	}
 	_, _ = fmt.Fprintf(errOut, "Wrote the v%s section to %s\n", version, opts.ChangelogPath)
 	return nil
-}
-
-// changedDependencyCommits returns the commits in filecoin-project dependencies whose version changed between from and to,
-// cloning them into the user's cache directory.
-func changedDependencyCommits(errOut io.Writer, from, to string) ([]commitInfo, error) {
-	oldGoMod, err := gitOutput("show", from+":go.mod")
-	if err != nil {
-		return nil, err
-	}
-	newGoMod, err := gitOutput("show", to+":go.mod")
-	if err != nil {
-		return nil, err
-	}
-	changes, err := changedDependencies([]byte(oldGoMod), []byte(newGoMod), dependencyPrefix)
-	if err != nil {
-		return nil, err
-	}
-	cacheDir, err := os.UserCacheDir()
-	if err != nil {
-		return nil, fmt.Errorf("failed to find a cache directory for dependency clones: %w", err)
-	}
-	return dependencyCommits(errOut, filepath.Join(cacheDir, "lotus-release"), changes), nil
 }
