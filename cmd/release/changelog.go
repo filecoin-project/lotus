@@ -245,18 +245,22 @@ func writeContributors(b *strings.Builder, commits []commitInfo) {
 
 // resolveCommitPullRequests fills in the PR of each commit whose subject has no "(#N)", using findPR.
 // A PR merged with "Rebase and merge" keeps its commits' own subjects, so its number is only known to GitHub.
-func resolveCommitPullRequests(errOut io.Writer, commits []commitInfo, findPR func(hash string) (int, error)) {
+// findPR returns 0 when a commit has no merged PR. If findPR fails for any commit, it returns an error that lists every
+// failure, since carrying on would silently leave those PRs out of the changelog.
+func resolveCommitPullRequests(commits []commitInfo, findPR func(hash string) (int, error)) error {
+	var problems []error
 	for i := range commits {
 		if commits[i].PR != 0 {
 			continue
 		}
 		pr, err := findPR(commits[i].Hash)
 		if err != nil {
-			_, _ = fmt.Fprintf(errOut, "warning: failed to find the PR of %s: %v\n", commits[i].Hash, err)
+			problems = append(problems, fmt.Errorf("%s: %w", commits[i].Hash, err))
 			continue
 		}
 		commits[i].PR = pr
 	}
+	return errors.Join(problems...)
 }
 
 // generateChangelogSection renders the CHANGELOG.md section for a release from the commits in its range, oldest first.
@@ -306,7 +310,7 @@ func generateChangelogSection(errOut io.Writer, release changelogRelease, commit
 			if isCodeFence(strings.SplitN(text, "\n", 2)[0]) {
 				separator = "\n\n  "
 			}
-			upgradeWarnings = append(upgradeWarnings, "- ☢️ **Upgrade warning:**"+separator+strings.TrimPrefix(entry, "- "))
+			upgradeWarnings = append(upgradeWarnings, "- ⚠️ **Upgrade warning:**"+separator+strings.TrimPrefix(entry, "- "))
 		} else {
 			notables = append(notables, entry)
 		}
@@ -518,8 +522,10 @@ func runChangelogGenerate(out, errOut io.Writer, opts changelogGenerateOptions) 
 		}
 		return trustedPullRequest(history, hasWriteAccess)
 	}
-	resolveCommitPullRequests(errOut, commits, func(hash string) (int, error) {
-		prs, _, err := client.PullRequests.ListPullRequestsWithCommit(context.Background(), githubOwner, githubRepo, hash, nil)
+	if err := resolveCommitPullRequests(commits, func(hash string) (int, error) {
+		ctx, cancel := context.WithTimeout(context.Background(), githubRequestTimeout)
+		defer cancel()
+		prs, _, err := client.PullRequests.ListPullRequestsWithCommit(ctx, githubOwner, githubRepo, hash, nil)
 		if err != nil {
 			return 0, err
 		}
@@ -529,7 +535,9 @@ func runChangelogGenerate(out, errOut io.Writer, opts changelogGenerateOptions) 
 			}
 		}
 		return 0, nil
-	})
+	}); err != nil {
+		return fmt.Errorf("failed to find the PRs of these commits:\n%w", err)
+	}
 
 	section, err := generateChangelogSection(errOut, release, commits, released, fetchPR)
 	if err != nil {

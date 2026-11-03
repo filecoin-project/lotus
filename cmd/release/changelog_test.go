@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -188,8 +187,8 @@ func TestGenerateChangelogSection(t *testing.T) {
 
 ## ✨ Notable Changes
 
-- ☢️ **Upgrade warning:** The `+"`lotus filplus`"+` commands are removed. ([#11](https://github.com/filecoin-project/lotus/pull/11))
-- ☢️ **Upgrade warning:** build!: raise the minimum Go version ([#14](https://github.com/filecoin-project/lotus/pull/14))
+- ⚠️ **Upgrade warning:** The `+"`lotus filplus`"+` commands are removed. ([#11](https://github.com/filecoin-project/lotus/pull/11))
+- ⚠️ **Upgrade warning:** build!: raise the minimum Go version ([#14](https://github.com/filecoin-project/lotus/pull/14))
 - feat(api): add a thing ([#10](https://github.com/filecoin-project/lotus/pull/10))
 
 ## 📝 All Changes
@@ -233,7 +232,7 @@ func TestGenerateChangelogSection(t *testing.T) {
 	prs[13] = pullRequestInfo{Title: "fix!: a bug", Body: "## Release note\n```sh\nlotus daemon stop\n```\n"}
 	section, err = generateChangelogSection(&errOut, release, commits[4:5], nil, fetchPR)
 	require.NoError(t, err)
-	require.Contains(t, section, "- ☢️ **Upgrade warning:**\n\n  ```sh\n  lotus daemon stop\n  ```\n\n  ([#13](https://github.com/filecoin-project/lotus/pull/13))\n")
+	require.Contains(t, section, "- ⚠️ **Upgrade warning:**\n\n  ```sh\n  lotus daemon stop\n  ```\n\n  ([#13](https://github.com/filecoin-project/lotus/pull/13))\n")
 
 	// A PR that can't be read stops generation, and every such PR is reported at once.
 	delete(prs, 13)
@@ -283,7 +282,7 @@ func TestResolveCommitPullRequests(t *testing.T) {
 		{Hash: "d4", Subject: "lookup fails"},
 	}
 	var looked []string
-	resolveCommitPullRequests(io.Discard, commits, func(hash string) (int, error) {
+	err := resolveCommitPullRequests(commits, func(hash string) (int, error) {
 		looked = append(looked, hash)
 		switch hash {
 		case "b2":
@@ -293,6 +292,9 @@ func TestResolveCommitPullRequests(t *testing.T) {
 		}
 		return 0, nil
 	})
+	// A commit with no merged PR is fine, but a failed lookup is an error so the PR isn't silently left out.
+	require.ErrorContains(t, err, "d4: rate limited")
+	require.NotContains(t, err.Error(), "c3")
 	require.Equal(t, []string{"b2", "c3", "d4"}, looked)
 	require.Equal(t, []int{10, 11, 0, 0}, []int{commits[0].PR, commits[1].PR, commits[2].PR, commits[3].PR})
 }
