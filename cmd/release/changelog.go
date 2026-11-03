@@ -300,7 +300,13 @@ func generateChangelogSection(errOut io.Writer, release changelogRelease, commit
 		}
 		entry := formatChangelogEntry(text, c.PR)
 		if upgradeWarning {
-			upgradeWarnings = append(upgradeWarnings, "- ☢️ **Upgrade warning:** "+strings.TrimPrefix(entry, "- "))
+			// The marker goes before the entry's text, or on its own line when the text starts with a code fence, which
+			// must begin its line to open the block.
+			separator := " "
+			if isCodeFence(strings.SplitN(text, "\n", 2)[0]) {
+				separator = "\n\n  "
+			}
+			upgradeWarnings = append(upgradeWarnings, "- ☢️ **Upgrade warning:**"+separator+strings.TrimPrefix(entry, "- "))
 		} else {
 			notables = append(notables, entry)
 		}

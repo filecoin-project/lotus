@@ -228,6 +228,13 @@ func TestGenerateChangelogSection(t *testing.T) {
 	require.Contains(t, section, "## ✨ Notable Changes\n\n<!-- No PR was marked as notable. List what users should know about this release here, or delete this section. -->\n\n## 📝 All Changes\n")
 	require.Contains(t, section, "[Changes since v1.38.3](https://github.com/filecoin-project/lotus/compare/v1.38.3...v1.39.0)\n\n<details><summary>All PRs (1)</summary>")
 
+	// An upgrade warning whose note starts with a code fence puts the marker on its own line, so the fence still opens
+	// the block.
+	prs[13] = pullRequestInfo{Title: "fix!: a bug", Body: "## Release note\n```sh\nlotus daemon stop\n```\n"}
+	section, err = generateChangelogSection(&errOut, release, commits[4:5], nil, fetchPR)
+	require.NoError(t, err)
+	require.Contains(t, section, "- ☢️ **Upgrade warning:**\n\n  ```sh\n  lotus daemon stop\n  ```\n\n  ([#13](https://github.com/filecoin-project/lotus/pull/13))\n")
+
 	// A PR that can't be read stops generation, and every such PR is reported at once.
 	delete(prs, 13)
 	delete(prs, 16)
