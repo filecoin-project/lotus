@@ -62,7 +62,7 @@ type pullRequestInfo struct {
 	Labels []string
 }
 
-// compareLink is one project's line in a release's "Changelog" section.
+// compareLink is one project's line in a release's "All Changes" section.
 type compareLink struct {
 	Project string
 	From    string
@@ -320,7 +320,7 @@ func generateChangelogSection(errOut io.Writer, release changelogRelease, commit
 	} else {
 		b.WriteString("<!-- No PR was marked as notable. List what users should know about this release here, or delete this section. -->\n\n")
 	}
-	b.WriteString("## 📝 Changelog\n\n")
+	b.WriteString("## 📝 All Changes\n\n")
 	for _, link := range release.CompareLinks {
 		prefix := "- " + link.Project + ": "
 		if len(release.CompareLinks) == 1 {
