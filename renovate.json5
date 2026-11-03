@@ -9,7 +9,11 @@
 // limited to `custom.regex`). Go module updates stay with Dependabot.
 // If you rename or reformat those Makefile lines, update the regexes here.
 //
-// Requires the Renovate GitHub App to be installed on the repo.
+// Requires the Renovate GitHub App to be installed on the repo. If the app is
+// in Silent mode (it then runs with dryRun=lookup, a global setting that this
+// file cannot override), it only scans and opens no PRs by itself. To get
+// bump PRs, switch the repo or org to Interactive at https://developer.mend.io,
+// or request individual updates from the Mend UI.
 {
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
   extends: ["config:recommended", ":disableDependencyDashboard"],
