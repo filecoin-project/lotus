@@ -95,6 +95,21 @@ func TestEthBigIntUnmarshalJSON(t *testing.T) {
 		require.Error(t, i.UnmarshalJSON([]byte(in)), "expected %s to be rejected", in)
 	}
 
+	// Quantities must be 0x-prefixed hex with up to 256 bits (geth hexutil.Big parity).
+// Negative signs are also rejected.
+for _, in := range []string{`"-0x1"`, `"-0x10"`, `"0x--1"`, `"0x-1"`, `"0x-10"`} {
+		var i EthBigInt
+		require.Error(t, i.UnmarshalJSON([]byte(in)), "expected %s to be rejected", in)
+	}
+
+	// Quantities are capped at 256 bits and hex-digits only (geth hexutil.Big parity).
+	oversized := `"0x` + strings.Repeat("f", 65) + `"`
+	maxSized := `"0x` + strings.Repeat("f", 64) + `"`
+	var i EthBigInt
+	require.Error(t, i.UnmarshalJSON([]byte(oversized)), "expected >256-bit quantity to be rejected")
+	require.NoError(t, i.UnmarshalJSON([]byte(maxSized)))
+	require.Error(t, i.UnmarshalJSON([]byte(`"0x12 34"`)), "expected internal space to be rejected")
+
 	var call EthCall
 	require.NoError(t, json.Unmarshal([]byte(`{"value":null,"gasPrice":null}`), &call))
 	require.Equal(t, EthBigIntZero, call.Value)
