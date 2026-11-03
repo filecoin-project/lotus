@@ -14,6 +14,8 @@
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
   extends: ["config:recommended", ":disableDependencyDashboard"],
   enabledManagers: ["custom.regex"],
+  // Make Renovate PR titles follow Conventional Commits (enforced by our PR title linter).
+  semanticCommits: "enabled",
   // Wait for releases to age before proposing them.
   minimumReleaseAge: "14 days",
   customManagers: [
