@@ -29,7 +29,6 @@
 - fix(chainindex): historical `eth_getLogs` and `GetActorEventsRaw` range queries no longer time out after a node restart; the range check now starts from the chain index instead of walking back from head. ([filecoin-project/lotus#13957](https://github.com/filecoin-project/lotus/pull/13957))
 - fix(daemon): importing a snapshot from a URL now resumes after HTTP/2 stream resets and other transient read errors, with backoff, instead of failing. ([filecoin-project/lotus#13962](https://github.com/filecoin-project/lotus/pull/13962))
 - fix(chainindex): a tipset bloom rebuilt from the index, as `lotus index validate-backfill` does, now includes the emitter of an event with no topics or data, such as EVM `LOG0` with empty data, matching the bloom written at indexing time. ([filecoin-project/lotus#13960](https://github.com/filecoin-project/lotus/pull/13960))
-- fix(miner): with `DisallowRemoteFinalize` enabled, sectors no longer get stuck in `FinalizeSector` when a worker has both the sealing path with the sector and a long-term storage path. Such workers are now also preferred for the move when remote finalize is allowed. ([filecoin-project/lotus#13948](https://github.com/filecoin-project/lotus/pull/13948))
 
 ## 👌 Improvements
 
