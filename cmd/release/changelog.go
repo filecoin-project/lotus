@@ -36,6 +36,8 @@ var (
 	prNumberRegexp = regexp.MustCompile(`\s*\(#(\d+)\)\s*$`)
 	// breakingTitleRegexp matches the "type(scope)!:" prefix of a Conventional Commits title that marks a breaking change.
 	breakingTitleRegexp = regexp.MustCompile(`^[a-zA-Z]+(\([^)]*\))?!:`)
+	// titleTypeRegexp captures the type and scope of a Conventional Commits title, e.g. "fix" and "cli" in "fix(cli)!: ...".
+	titleTypeRegexp = regexp.MustCompile(`^([a-zA-Z]+)(?:\(([^)]*)\))?!?:`)
 	// pullLinkRegexp matches a link to a lotus PR in CHANGELOG.md.
 	pullLinkRegexp = regexp.MustCompile(`github\.com/filecoin-project/lotus/pull/(\d+)`)
 	// releaseNoteHeadingRegexp matches the heading of the optional release-note block in a PR description.
@@ -178,6 +180,69 @@ func notability(pr pullRequestInfo) (notable, upgradeWarning bool) {
 	return notable, upgradeWarning
 }
 
+// changeGroup is a heading in the list of all PRs, and the Conventional Commits types listed under it.
+type changeGroup struct {
+	Heading string
+	Types   []string
+}
+
+// changeGroups is the order of the groups in a release's list of all PRs: what users see first, upkeep last.
+// A type missing from here falls into the final group, which holds everything else.
+var changeGroups = []changeGroup{
+	{"Features", []string{"feat"}},
+	{"Fixes", []string{"fix"}},
+	{"Performance", []string{"perf"}},
+	{"Chores and other", nil},
+}
+
+// changeEntry is one PR in the list of all PRs, with what it's sorted by.
+type changeEntry struct {
+	Text  string
+	Title string
+	PR    int
+	Group int
+	Scope string
+}
+
+// newChangeEntry places a PR title in a group by its Conventional Commits type.
+func newChangeEntry(title string, pr int) changeEntry {
+	e := changeEntry{Text: formatChangelogEntry(title, pr), Title: title, PR: pr, Group: len(changeGroups) - 1}
+	if m := titleTypeRegexp.FindStringSubmatch(title); m != nil {
+		e.Scope = strings.ToLower(m[2])
+		for i, g := range changeGroups {
+			if slices.Contains(g.Types, strings.ToLower(m[1])) {
+				e.Group = i
+			}
+		}
+	}
+	return e
+}
+
+// compareChangeEntries orders by group. Within features, fixes and performance it is by scope (unscoped last), then PR
+// number. The final group is ordered by title, ignoring case, which keeps each type and scope together (for example all
+// dependency bumps); the PR number breaks ties so the order is stable.
+func compareChangeEntries(a, b changeEntry) int {
+	if a.Group != b.Group {
+		return a.Group - b.Group
+	}
+	if a.Group == len(changeGroups)-1 {
+		if c := strings.Compare(strings.ToLower(a.Title), strings.ToLower(b.Title)); c != 0 {
+			return c
+		}
+		return a.PR - b.PR
+	}
+	if a.Scope != b.Scope {
+		switch {
+		case a.Scope == "":
+			return 1
+		case b.Scope == "":
+			return -1
+		}
+		return strings.Compare(a.Scope, b.Scope)
+	}
+	return a.PR - b.PR
+}
+
 // isCodeFence reports whether a Markdown line opens or closes a fenced code block.
 func isCodeFence(line string) bool {
 	trimmed := strings.TrimSpace(line)
@@ -269,7 +334,7 @@ func resolveCommitPullRequests(commits []commitInfo, findPR func(hash string) (i
 // fetchPR returns the title, description and labels to use for a PR. If it fails for any PR, generation stops with an
 // error that lists every failure.
 func generateChangelogSection(errOut io.Writer, release changelogRelease, commits []commitInfo, released map[int]bool, fetchPR func(int) (pullRequestInfo, error)) (string, error) {
-	var upgradeWarnings, notables, all []string
+	var upgradeWarnings, notables, all []changeEntry
 	var problems []error
 	var contributors []commitInfo
 	listed := map[int]bool{}
@@ -293,7 +358,7 @@ func generateChangelogSection(errOut io.Writer, release changelogRelease, commit
 			problems = append(problems, fmt.Errorf("#%d: %w", c.PR, err))
 			continue
 		}
-		all = append(all, formatChangelogEntry(pr.Title, c.PR))
+		all = append(all, newChangeEntry(pr.Title, c.PR))
 		notable, upgradeWarning := notability(pr)
 		if !notable {
 			continue
@@ -302,7 +367,8 @@ func generateChangelogSection(errOut io.Writer, release changelogRelease, commit
 		if note := extractReleaseNote(pr.Body); note != "" {
 			text = note
 		}
-		entry := formatChangelogEntry(text, c.PR)
+		entry := newChangeEntry(pr.Title, c.PR)
+		entry.Text = formatChangelogEntry(text, c.PR)
 		if upgradeWarning {
 			// The marker goes before the entry's text, or on its own line when the text starts with a code fence, which
 			// must begin its line to open the block.
@@ -310,7 +376,8 @@ func generateChangelogSection(errOut io.Writer, release changelogRelease, commit
 			if isCodeFence(strings.SplitN(text, "\n", 2)[0]) {
 				separator = "\n\n  "
 			}
-			upgradeWarnings = append(upgradeWarnings, "- ⚠️ **Upgrade warning:**"+separator+strings.TrimPrefix(entry, "- "))
+			entry.Text = "- ⚠️ **Upgrade warning:**" + separator + strings.TrimPrefix(entry.Text, "- ")
+			upgradeWarnings = append(upgradeWarnings, entry)
 		} else {
 			notables = append(notables, entry)
 		}
@@ -325,8 +392,13 @@ func generateChangelogSection(errOut io.Writer, release changelogRelease, commit
 	// The release issue asks the releaser to review this list: add anything else users should know, drop entries that
 	// aren't worth calling out, or delete the section.
 	b.WriteString("## ✨ Notable Changes\n\n")
+	slices.SortFunc(upgradeWarnings, compareChangeEntries)
+	slices.SortFunc(notables, compareChangeEntries)
 	if notable := slices.Concat(upgradeWarnings, notables); len(notable) > 0 {
-		b.WriteString(strings.Join(notable, "") + "\n")
+		for _, e := range notable {
+			b.WriteString(e.Text)
+		}
+		b.WriteString("\n")
 	} else {
 		b.WriteString("<!-- No PR was marked as notable. List what users should know about this release here, or delete this section. -->\n\n")
 	}
@@ -340,7 +412,18 @@ func generateChangelogSection(errOut io.Writer, release changelogRelease, commit
 	}
 	b.WriteString("\n")
 	if len(all) > 0 {
-		_, _ = fmt.Fprintf(&b, "<details><summary>All PRs (%d)</summary>\n\n%s\n</details>\n\n", len(all), strings.Join(all, ""))
+		slices.SortFunc(all, compareChangeEntries)
+		_, _ = fmt.Fprintf(&b, "<details><summary>All PRs (%d)</summary>\n\n", len(all))
+		for i, e := range all {
+			if i == 0 || all[i-1].Group != e.Group {
+				if i > 0 {
+					b.WriteString("\n")
+				}
+				_, _ = fmt.Fprintf(&b, "**%s**\n\n", changeGroups[e.Group].Heading)
+			}
+			b.WriteString(e.Text)
+		}
+		b.WriteString("\n</details>\n\n")
 	}
 	writeContributors(&b, contributors)
 	b.WriteString("\n")

@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -138,6 +139,31 @@ func TestFormatChangelogEntry(t *testing.T) {
 	require.Equal(t, "- Run:\n  ```sh\n  lotus daemon stop\n  ```\n\n  "+link[1:]+"\n", formatChangelogEntry("Run:\n```sh\nlotus daemon stop\n```", 7))
 }
 
+func TestChangeEntryOrder(t *testing.T) {
+	titles := map[int]string{
+		1: "chore: tidy",
+		2: "fix: unscoped",
+		3: "fix(Gateway): upper-case scope",
+		4: "feat(cli): later",
+		5: "no conventional prefix",
+		6: "fix(api): first scope",
+		7: "feat(cli)!: breaking feature",
+		8: "fix(gateway): same scope, higher number",
+		9: "ci: workflow",
+	}
+	var entries []changeEntry
+	for pr, title := range titles {
+		entries = append(entries, newChangeEntry(title, pr))
+	}
+	slices.SortFunc(entries, compareChangeEntries)
+	var got []int
+	for _, e := range entries {
+		got = append(got, e.PR)
+	}
+	// Features by PR, then fixes by scope with the unscoped one last, then everything else alphabetically by title.
+	require.Equal(t, []int{4, 7, 6, 3, 8, 2, 1, 9, 5}, got)
+}
+
 func TestGenerateChangelogSection(t *testing.T) {
 	commits := []commitInfo{
 		{Hash: "a1", Author: "Alice", Subject: "feat(api): add a thing (#10)", PR: 10, Files: 3, Insertions: 10, Deletions: 2},
@@ -198,12 +224,23 @@ func TestGenerateChangelogSection(t *testing.T) {
 
 <details><summary>All PRs (7)</summary>
 
+**Features**
+
 - feat(api): add a thing ([#10](https://github.com/filecoin-project/lotus/pull/10))
+
+**Fixes**
+
 - fix(cli): remove commands ([#11](https://github.com/filecoin-project/lotus/pull/11))
-- build(deps): bump x ([#12](https://github.com/filecoin-project/lotus/pull/12))
 - fix: a bug ([#13](https://github.com/filecoin-project/lotus/pull/13))
-- build!: raise the minimum Go version ([#14](https://github.com/filecoin-project/lotus/pull/14))
+
+**Performance**
+
 - perf: faster ([#15](https://github.com/filecoin-project/lotus/pull/15))
+
+**Chores and other**
+
+- build!: raise the minimum Go version ([#14](https://github.com/filecoin-project/lotus/pull/14))
+- build(deps): bump x ([#12](https://github.com/filecoin-project/lotus/pull/12))
 - docs: renamed after merge ([#16](https://github.com/filecoin-project/lotus/pull/16))
 
 </details>
