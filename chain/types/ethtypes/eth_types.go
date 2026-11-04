@@ -160,8 +160,13 @@ func (e *EthBigInt) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
+	// Require 0x prefix per geth's hexutil.Big behavior
+	if !strings.HasPrefix(s, "0x") {
+		return xerrors.Errorf("cannot parse %q as a hex-encoded big int: missing 0x prefix", s)
+	}
 	body := strings.TrimPrefix(s, "0x")
 	digits := body
+
 	if !ethHexDigitsRe.MatchString(digits) {
 		return xerrors.Errorf("cannot parse %q as a hex-encoded big int: want 0x-prefixed hex, at most 256 bits", s)
 	}

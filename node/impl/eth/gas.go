@@ -6,7 +6,6 @@ import (
 	"errors"
 	"os"
 	"sort"
-	"strings"
 
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
@@ -195,12 +194,7 @@ func (e *ethGas) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (ethty
 
 	params, err := jsonrpc.DecodeParams[ethtypes.EthEstimateGasParams](p)
 	if err != nil {
-		// Negative hex quantities (e.g., "0x-1") are now rejected by the parser.
-		// Translate to ErrInvalidParams with the user-friendly eth_estimateGas message.
-		if strings.Contains(err.Error(), "cannot parse") {
-			return ethtypes.EthUint64(0), api.NewErrNegativeGasPrice()
-		}
-		return ethtypes.EthUint64(0), xerrors.Errorf("decoding params: %w", err)
+		return ethtypes.EthUint64(0), &api.ErrInvalidParams{Message: "decoding params: " + err.Error()}
 	}
 	// A zero gasPrice can't be told apart from an absent one.
 	if legacyPrice := big.Int(params.Tx.GasPrice); params.Tx.MaxFeePerGas != nil && !legacyPrice.NilOrZero() {
