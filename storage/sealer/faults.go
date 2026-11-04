@@ -93,7 +93,7 @@ func (m *Manager) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof,
 
 			if !locked {
 				log.Warnw("CheckProvable Sector FAULT: can't acquire read lock", "sector", sector)
-				addBad(sector.ID, fmt.Sprint("can't acquire read lock"))
+				addBad(sector.ID, "can't acquire read lock")
 				return
 			}
 

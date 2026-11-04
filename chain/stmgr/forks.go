@@ -146,7 +146,7 @@ func (us UpgradeSchedule) Validate() error {
 	for i := 1; i < len(us); i++ {
 		prev := &us[i-1]
 		curr := &us[i]
-		if !(prev.Network <= curr.Network) {
+		if prev.Network > curr.Network {
 			return xerrors.Errorf("cannot downgrade from version %d to version %d", prev.Network, curr.Network)
 		}
 		// Make sure the heights make sense.
@@ -154,7 +154,7 @@ func (us UpgradeSchedule) Validate() error {
 			// Previous upgrade was disabled.
 			continue
 		}
-		if !(prev.Height < curr.Height) {
+		if prev.Height >= curr.Height {
 			return xerrors.Errorf("upgrade heights must be strictly increasing: upgrade %d was at height %d, followed by upgrade %d at height %d", i-1, prev.Height, i, curr.Height)
 		}
 	}

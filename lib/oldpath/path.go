@@ -66,8 +66,7 @@ func (p Path) String() string {
 	return string(p)
 }
 
-// IsJustAKey returns true if the path is of the form <key> or /ipfs/<key>, or
-// /ipld/<key>
+// IsJustAKey returns true if the path is of the form /ipfs/<key> or /ipld/<key>.
 func (p Path) IsJustAKey() bool {
 	parts := p.Segments()
 	return len(parts) == 2 && (parts[0] == "ipfs" || parts[0] == "ipld")
@@ -97,8 +96,8 @@ func FromSegments(prefix string, seg ...string) (Path, error) {
 }
 
 // ParsePath returns a well-formed ipfs Path.
-// The returned path will always be prefixed with /ipfs/ or /ipns/.
-// The prefix will be added if not present in the given string.
+// The returned path will always be prefixed with /ipfs/, /ipld/, or /ipns/.
+// A bare CID or a CID followed by a subpath is prefixed with /ipfs/.
 // This function will return an error when the given string is
 // not a valid ipfs path.
 func ParsePath(txt string) (Path, error) {

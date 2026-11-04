@@ -125,7 +125,6 @@ var watchHeadCmd = &cli.Command{
 				log.Info("Chain head is healthy")
 				time.Sleep(interval)
 			}
-			return
 		}()
 
 		restart, err := notifyHandler(ctx, name, nCh, sCh)

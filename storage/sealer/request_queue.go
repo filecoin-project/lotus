@@ -37,6 +37,27 @@ func (q *RequestQueue) Push(x *WorkerRequest) {
 	sort.Sort(q)
 }
 
+// RemoveCancelled removes the requests whose context is done, keeping the
+// order of the rest, and returns how many were removed.
+func (q *RequestQueue) RemoveCancelled() int {
+	old := *q
+	n := 0
+	for _, req := range old {
+		if req.Ctx.Err() != nil {
+			req.index = -1
+			continue
+		}
+		req.index = n
+		old[n] = req
+		n++
+	}
+	for i := n; i < len(old); i++ {
+		old[i] = nil
+	}
+	*q = old[:n]
+	return len(old) - n
+}
+
 func (q *RequestQueue) Remove(i int) *WorkerRequest {
 	old := *q
 	n := len(old)

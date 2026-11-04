@@ -342,7 +342,7 @@ func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubs
 	}()
 
 	stats.Record(ctx, metrics.MessageReceived.M(1))
-	m, err := types.DecodeSignedMessage(msg.Message.GetData())
+	m, err := types.DecodeSignedMessage(msg.GetData())
 	if err != nil {
 		log.Warnf("failed to decode incoming message: %s", err)
 		ctx, _ = tag.New(ctx, tag.Insert(metrics.FailureType, "decode"))
@@ -411,7 +411,7 @@ func (mv *MessageValidator) validateLocalMessage(ctx context.Context, msg *pubsu
 	// do some lightweight validation
 	stats.Record(ctx, metrics.MessagePublished.M(1))
 
-	m, err := types.DecodeSignedMessage(msg.Message.GetData())
+	m, err := types.DecodeSignedMessage(msg.GetData())
 	if err != nil {
 		log.Warnf("failed to decode local message: %s", err)
 		recordFailure(ctx, metrics.MessageValidationFailure, "decode")

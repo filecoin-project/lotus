@@ -367,7 +367,7 @@ func (st *Local) declareSectors(ctx context.Context, p string, id storiface.ID, 
 		}
 
 		for _, decl := range decls[id] {
-			for _, fileType := range decl.SectorFileType.AllSet() {
+			for _, fileType := range decl.AllSet() {
 				indexed[storiface.Decl{
 					SectorID:       decl.SectorID,
 					SectorFileType: fileType,
@@ -401,7 +401,8 @@ func (st *Local) declareSectors(ctx context.Context, p string, id storiface.ID, 
 
 			sid, err := storiface.ParseSectorID(ent.Name())
 			if err != nil {
-				return xerrors.Errorf("parse sector id %s: %w", ent.Name(), err)
+				log.Warnw("skipping unknown entry in storage path", "path", filepath.Join(p, t.String(), ent.Name()), "error", err)
+				continue
 			}
 
 			delete(indexed, storiface.Decl{
@@ -807,7 +808,7 @@ func (st *Local) removeSector(ctx context.Context, sid abi.SectorID, typ storifa
 	spath := p.sectorPath(sid, typ)
 	log.Infow("remove", "path", spath, "id", sid, "type", typ, "storage", storage)
 
-	if err := os.RemoveAll(spath); err != nil {
+	if err := os.RemoveAll(spath); err != nil { //nolint:gosec // path built from a sector ID under a local storage root
 		log.Errorf("removing sector (%v) from %s: %+v", sid, spath, err)
 	}
 

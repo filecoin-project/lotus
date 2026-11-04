@@ -273,6 +273,38 @@ func TestPlanCommittingHandlesSectorCommitFailed(t *testing.T) {
 	require.Equal(t, CommitFailed, m.state.State)
 }
 
+// handleCommitFailed sends a sector without CommR or CommD back through PreCommit1 and
+// PreCommit2. Its precommit is already on chain, so it lands and waits for the seed again.
+func TestCommitFailedRedoPreCommit(t *testing.T) {
+	ma, _ := address.NewIDAddress(55151)
+	m := test{
+		s: &Sealing{
+			maddr: ma,
+			stats: SectorStats{
+				bySector: map[abi.SectorID]SectorState{},
+				byState:  map[SectorState]int64{},
+			},
+		},
+		t:     t,
+		state: &SectorInfo{State: CommitFailed},
+	}
+
+	m.planSingle(SectorSealPreCommit1Failed{xerrors.New("missing commitments")})
+	require.Equal(m.t, m.state.State, SealPreCommit1Failed)
+
+	m.planSingle(SectorRetrySealPreCommit1{})
+	require.Equal(m.t, m.state.State, PreCommit1)
+
+	m.planSingle(SectorPreCommit1{})
+	require.Equal(m.t, m.state.State, PreCommit2)
+
+	m.planSingle(SectorPreCommit2{})
+	require.Equal(m.t, m.state.State, SubmitPreCommitBatch)
+
+	m.planSingle(SectorPreCommitLanded{})
+	require.Equal(m.t, m.state.State, WaitSeed)
+}
+
 func TestPlannerList(t *testing.T) {
 	for state := range ExistSectorStateList {
 		_, ok := fsmPlanners[state]

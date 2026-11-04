@@ -79,6 +79,9 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 		case actorstypes.Version19:
 			return load19(store, act.Head)
 
+		case actorstypes.Version20:
+			return load20(store, act.Head)
+
 		}
 	}
 
@@ -169,6 +172,9 @@ func MakeState(store adt.Store, av actorstypes.Version) (State, error) {
 
 	case actorstypes.Version19:
 		return make19(store)
+
+	case actorstypes.Version20:
+		return make20(store)
 
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
@@ -295,6 +301,9 @@ func DecodePublishStorageDealsReturn(b []byte, nv network.Version) (PublishStora
 	case actorstypes.Version19:
 		return decodePublishStorageDealsReturn19(b)
 
+	case actorstypes.Version20:
+		return decodePublishStorageDealsReturn20(b)
+
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
@@ -390,7 +399,7 @@ func EmptyDealState() DealState {
 	return &emptyDealState{}
 }
 
-// returns the earned fees and pending fees for a given deal
+// GetDealFees returns the earned fees and pending fees for a given deal.
 func GetDealFees(deal markettypes.DealProposal, height abi.ChainEpoch) (abi.TokenAmount, abi.TokenAmount) {
 	tf := big.Mul(deal.StoragePricePerEpoch, big.NewInt(int64(deal.EndEpoch-deal.StartEpoch)))
 
@@ -439,5 +448,6 @@ func AllCodes() []cid.Cid {
 		(&state17{}).Code(),
 		(&state18{}).Code(),
 		(&state19{}).Code(),
+		(&state20{}).Code(),
 	}
 }

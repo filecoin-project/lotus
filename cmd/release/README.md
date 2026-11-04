@@ -6,6 +6,7 @@ The Lotus Release Tool is a CLI (Command Line Interface) utility designed to fac
 
 - List all projects with their expected version information.
 - Create a new release issue from a template.
+- Generate a release's CHANGELOG.md section from the PRs it includes.
 - Output logs in JSON or text format.
 
 ## Installation
@@ -30,6 +31,10 @@ The `release` tool provides several commands and options to interact with the Lo
 - **Create Issue**: Create a new release issue from a template.
     ```sh
     ./release create-issue
+    ```
+- **Changelog Generate**: Write a release's section into [`CHANGELOG.md`](../../CHANGELOG.md) from the titles, `release-note/*` labels and `## Release note` blocks of the PRs merged since the previous stable release. It writes two lists, Notable Changes and every PR's title; see `generateChangelogSection` in [`changelog.go`](changelog.go) for which PRs are notable and which are skipped. It reads PRs from GitHub with `$GITHUB_TOKEN`, or the GitHub CLI's token when that is unset. It uses each PR's title and description as they were at merge plus later edits by people with write access, and stops if anyone else made the latest edit; see `trustedPullRequest` in [`pull_request_history.go`](pull_request_history.go). Its Contributors table counts lotus commits only.
+    ```sh
+    ./release changelog generate --type both --tag 1.39.0
     ```
 - **Changelog Section**: Print the CHANGELOG.md section used as a GitHub release body. See `findChangelogSection` in [`main.go`](main.go) for the matching rules.
     ```sh
@@ -58,6 +63,11 @@ Create a new release issue from a template:
 Create a patch release issue that branches from an earlier release in the same minor series and cherry-picks backports from master, instead of branching from master:
 ```sh
 ./release create-issue --type both --tag 1.37.1 --level patch --release-flow no-rc --base-tag 1.37.0
+```
+
+Preview the changelog section for a release candidate, listing everything since the previous stable release, without writing it:
+```sh
+./release changelog generate --type node --tag 1.39.0-rc1 --dry-run
 ```
 
 Create a network-upgrade release issue with RC mode:

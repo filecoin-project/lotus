@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/must"
 )
@@ -446,6 +447,97 @@ func TestGetEventsForFilterRangeSkipsNullRounds(t *testing.T) {
 	events, err = si.GetEventsForFilter(ctx, &EventFilter{MinHeight: 11, MaxHeight: 11, Codec: multicodec.Raw})
 	require.NoError(t, err)
 	require.Empty(t, events)
+}
+
+func TestGetEventsForFilterAnchorsHistoricalRangeOnIndex(t *testing.T) {
+	ctx := context.Background()
+	rng := pseudo.New(pseudo.NewSource(1376201))
+
+	ts10 := fakeTipSet(t, rng, 10, nil)
+	ts11 := fakeTipSet(t, rng, 11, ts10.Cids())
+	ts12 := fakeTipSet(t, rng, 12, ts11.Cids())
+	ts13 := fakeTipSet(t, rng, 13, ts12.Cids())
+	head := fakeTipSet(t, rng, 13+policy.ChainFinality, ts13.Cids())
+
+	cs := newDummyChainStore()
+	cs.SetHeaviestTipSet(head)
+	for _, ts := range []*types.TipSet{ts10, ts11, ts12, ts13, head} {
+		cs.SetTipsetByHeightAndKey(ts.Height(), ts.Key(), ts)
+		cs.SetTipSetByCid(t, ts)
+	}
+	// Null rounds between ts13 and head.
+	for h := ts13.Height() + 1; h < head.Height(); h++ {
+		cs.SetTipsetByHeightAndKey(h, ts13.Key(), ts13)
+	}
+
+	msg10 := fakeMessage(address.TestAddress, address.TestAddress)
+	msg12 := fakeMessage(address.TestAddress, address.TestAddress)
+	msg12.Nonce++
+	cs.SetMessagesForTipset(ts10, []types.ChainMsg{msg10})
+	cs.SetMessagesForTipset(ts12, []types.ChainMsg{msg12})
+
+	si, err := NewSqliteIndexer(":memory:", cs, 0, false, 0)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = si.Close() })
+
+	si.SetActorToDelegatedAddresFunc(func(context.Context, abi.ActorID, *types.TipSet) (address.Address, bool) {
+		return address.TestAddress, true
+	})
+	si.setExecutedMessagesLoaderFunc(func(_ context.Context, _ ChainStore, msgTs, _ *types.TipSet) ([]executedMessage, error) {
+		switch msgTs.Height() {
+		case 10:
+			return []executedMessage{{
+				msg: msg10,
+				evs: []types.Event{*fakeEventWithCodec(abi.ActorID(1), []kv{{k: "t1", v: []byte("first")}}, multicodec.Raw)},
+			}}, nil
+		case 12:
+			return []executedMessage{{
+				msg: msg12,
+				evs: []types.Event{*fakeEventWithCodec(abi.ActorID(2), []kv{{k: "t1", v: []byte("last")}}, multicodec.Raw)},
+			}}, nil
+		default:
+			return nil, nil
+		}
+	})
+
+	require.NoError(t, si.Apply(ctx, ts10, ts11))
+	require.NoError(t, si.Apply(ctx, ts11, ts12))
+	require.NoError(t, si.Apply(ctx, ts12, ts13))
+	require.NoError(t, si.Apply(ctx, ts13, head))
+	cs.TakeHeightLookupFroms()
+
+	filter := &EventFilter{MinHeight: 10, MaxHeight: 12, Codec: multicodec.Raw}
+
+	// A range below finality resolves from the lowest indexed tipset above it.
+	events, err := si.GetEventsForFilter(ctx, filter)
+	require.NoError(t, err)
+	require.Len(t, events, 2)
+	require.Equal(t, []*types.TipSet{ts13}, cs.TakeHeightLookupFroms())
+
+	// A range within finality of head resolves from head.
+	events, err = si.GetEventsForFilter(ctx, &EventFilter{MinHeight: 10, MaxHeight: 13 + policy.ChainFinality - 1, Codec: multicodec.Raw})
+	require.NoError(t, err)
+	require.Len(t, events, 2)
+	require.Equal(t, []*types.TipSet{head}, cs.TakeHeightLookupFroms())
+
+	// The walk from the anchor still requires a completion marker for every
+	// canonical tipset in the range.
+	ts12Cid, err := ts12.Key().Cid()
+	require.NoError(t, err)
+	_, err = si.stmts.removeTipsetBloomStmt.ExecContext(ctx, ts12Cid.Bytes())
+	require.NoError(t, err)
+	events, err = si.GetEventsForFilter(ctx, filter)
+	require.ErrorIs(t, err, ErrNotFound)
+	require.Empty(t, events)
+	require.Equal(t, []*types.TipSet{ts13}, cs.TakeHeightLookupFroms())
+
+	// An anchor whose tipset key block is missing falls back to head.
+	require.NoError(t, si.Apply(ctx, ts12, ts13))
+	cs.RemoveTipSetByCid(t, ts13)
+	events, err = si.GetEventsForFilter(ctx, filter)
+	require.NoError(t, err)
+	require.Len(t, events, 2)
+	require.Equal(t, []*types.TipSet{head}, cs.TakeHeightLookupFroms())
 }
 
 func TestGetEventsForFilterWithEvents(t *testing.T) {
@@ -879,6 +971,127 @@ func TestGetEventsForFilterWithRawCodec(t *testing.T) {
 
 		require.Equal(t, expectedCES, ces)
 	})
+}
+
+func TestGetEventsForFilterHollowEvent(t *testing.T) {
+	ctx := context.Background()
+	seed := time.Now().UnixNano()
+	t.Logf("seed: %d", seed)
+	rng := pseudo.New(pseudo.NewSource(seed))
+	headHeight := abi.ChainEpoch(60)
+
+	si, _, cs := setupWithHeadIndexed(t, headHeight, rng)
+	t.Cleanup(func() { _ = si.Close() })
+
+	ev1 := fakeEvent(abi.ActorID(1), []kv{{k: "type", v: []byte("approval")}}, []kv{{k: "d", v: []byte("data1")}})
+	// EVM LOG0 with empty data: an event carrying only the emitter.
+	hollow := &types.Event{Emitter: abi.ActorID(2)}
+	ev3 := fakeEvent(abi.ActorID(3), []kv{{k: "type", v: []byte("transfer")}}, nil)
+
+	fm := fakeMessage(address.TestAddress, address.TestAddress)
+	em1 := executedMessage{
+		msg: fm,
+		evs: []types.Event{*ev1, *hollow, *ev3},
+	}
+
+	si.SetActorToDelegatedAddresFunc(func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool) {
+		idAddr, err := address.NewIDAddress(uint64(emitter))
+		if err != nil {
+			return address.Undef, false
+		}
+		return idAddr, true
+	})
+	si.setExecutedMessagesLoaderFunc(func(ctx context.Context, cs ChainStore, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
+		return []executedMessage{em1}, nil
+	})
+
+	fakeTipSet1 := fakeTipSet(t, rng, 1, nil)
+	fakeTipSet2 := fakeTipSet(t, rng, 2, nil)
+	cs.SetTipsetByHeightAndKey(1, fakeTipSet1.Key(), fakeTipSet1)
+	cs.SetTipsetByHeightAndKey(2, fakeTipSet2.Key(), fakeTipSet2)
+	cs.SetTipSetByCid(t, fakeTipSet1)
+	cs.SetTipSetByCid(t, fakeTipSet2)
+	cs.SetMessagesForTipset(fakeTipSet1, []types.ChainMsg{fm})
+
+	require.NoError(t, si.Apply(ctx, fakeTipSet1, fakeTipSet2))
+
+	collected := func(ev *types.Event, idx int) *CollectedEvent {
+		return &CollectedEvent{
+			Entries:     ev.Entries,
+			EmitterAddr: must.One(address.NewIDAddress(uint64(ev.Emitter))),
+			EventIdx:    idx,
+			Height:      1,
+			TipSetKey:   fakeTipSet1.Key(),
+			MsgIdx:      0,
+			MsgCid:      fm.Cid(),
+		}
+	}
+	all := []*CollectedEvent{collected(ev1, 0), collected(hollow, 1), collected(ev3, 2)}
+
+	tsCid, err := fakeTipSet1.Key().Cid()
+	require.NoError(t, err)
+
+	testCases := []struct {
+		name     string
+		filter   *EventFilter
+		expected []*CollectedEvent
+	}{
+		{
+			name:     "unfiltered",
+			filter:   &EventFilter{MinHeight: 1, MaxHeight: 1},
+			expected: all,
+		},
+		{
+			name:     "raw codec",
+			filter:   &EventFilter{MinHeight: 1, MaxHeight: 1, Codec: multicodec.Raw},
+			expected: all,
+		},
+		{
+			name:     "tipset and message",
+			filter:   &EventFilter{MinHeight: -1, MaxHeight: -1, TipsetCid: tsCid, MsgCid: fm.Cid(), Codec: multicodec.Raw},
+			expected: all,
+		},
+		{
+			name: "emitter address",
+			filter: &EventFilter{
+				MinHeight: 1,
+				MaxHeight: 1,
+				Addresses: []address.Address{must.One(address.NewIDAddress(2))},
+			},
+			expected: []*CollectedEvent{collected(hollow, 1)},
+		},
+		{
+			name: "key",
+			filter: &EventFilter{
+				MinHeight: 1,
+				MaxHeight: 1,
+				KeysWithCodec: map[string][]types.ActorEventBlock{
+					"type": {{Codec: cid.Raw, Value: []byte("approval")}},
+				},
+			},
+			expected: []*CollectedEvent{collected(ev1, 0)},
+		},
+		{
+			name: "key and hollow emitter",
+			filter: &EventFilter{
+				MinHeight: 1,
+				MaxHeight: 1,
+				Addresses: []address.Address{must.One(address.NewIDAddress(2))},
+				KeysWithCodec: map[string][]types.ActorEventBlock{
+					"type": {{Codec: cid.Raw, Value: []byte("approval")}},
+				},
+			},
+			expected: nil,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ces, err := si.GetEventsForFilter(ctx, tc.filter)
+			require.NoError(t, err)
+			require.Equal(t, tc.expected, ces)
+		})
+	}
 }
 
 func TestMaxFilterResults(t *testing.T) {

@@ -734,6 +734,20 @@ func (mp *MessagePool) Push(ctx context.Context, m *types.SignedMessage, publish
 }
 
 func (mp *MessagePool) checkMessage(ctx context.Context, m *types.SignedMessage) error {
+	if err := mp.checkMessageFields(ctx, m); err != nil {
+		return err
+	}
+
+	if err := mp.VerifyMsgSig(m); err != nil {
+		return xerrors.Errorf("signature verification failed: %s", err)
+	}
+
+	return nil
+}
+
+// checkMessageFields performs the stateless checks of checkMessage, without
+// signature verification.
+func (mp *MessagePool) checkMessageFields(ctx context.Context, m *types.SignedMessage) error {
 	// big messages are bad, anti DOS
 	if m.Size() > MaxMessageSize {
 		return xerrors.Errorf("mpool message too large (%dB): %w", m.Size(), ErrMessageTooBig)
@@ -756,10 +770,6 @@ func (mp *MessagePool) checkMessage(ctx context.Context, m *types.SignedMessage)
 		return ErrGasFeeCapTooLow
 	}
 
-	if err := mp.VerifyMsgSig(m); err != nil {
-		return xerrors.Errorf("signature verification failed: %s", err)
-	}
-
 	return nil
 }
 
@@ -767,9 +777,22 @@ func (mp *MessagePool) Add(ctx context.Context, m *types.SignedMessage) error {
 	done := metrics.Timer(ctx, metrics.MpoolAddDuration)
 	defer done()
 
-	err := mp.checkMessage(ctx, m)
+	err := mp.checkMessageFields(ctx, m)
 	if err != nil {
 		return err
+	}
+
+	mp.curTsLk.RLock()
+	tmpCurTs := mp.curTs
+	mp.curTsLk.RUnlock()
+
+	// Check the nonce before the more expensive signature verification.
+	if snonce, err := mp.getStateNonce(ctx, m.Message.From, tmpCurTs); err == nil && snonce > m.Message.Nonce {
+		return xerrors.Errorf("minimum expected nonce is %d, got %d: %w", snonce, m.Message.Nonce, ErrNonceTooLow)
+	}
+
+	if err := mp.VerifyMsgSig(m); err != nil {
+		return xerrors.Errorf("signature verification failed: %s", err)
 	}
 
 	// serialize push access to reduce lock contention
@@ -777,10 +800,6 @@ func (mp *MessagePool) Add(ctx context.Context, m *types.SignedMessage) error {
 	defer func() {
 		<-mp.addSema
 	}()
-
-	mp.curTsLk.RLock()
-	tmpCurTs := mp.curTs
-	mp.curTsLk.RUnlock()
 
 	//ensures computations are cached without holding lock
 	_, _ = mp.api.GetActorAfter(m.Message.From, tmpCurTs)

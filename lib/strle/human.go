@@ -40,6 +40,8 @@ func HumanRangesToBitField(h string) (bitfield.BitField, error) {
 			if err != nil {
 				return bitfield.BitField{}, xerrors.Errorf("parsing right side of run %d: %w", i, err)
 			}
+		default:
+			return bitfield.BitField{}, xerrors.Errorf("invalid run %d (%q): expected a number or a start-end range", i, strRange)
 		}
 
 		if start <= last && last > 0 {

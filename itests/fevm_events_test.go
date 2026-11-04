@@ -3,7 +3,7 @@ package itests
 import (
 	"context"
 	"encoding/hex"
-	"fmt"
+	"encoding/json"
 	"os"
 	"testing"
 	"time"
@@ -68,20 +68,42 @@ func TestFEVMEvents(t *testing.T) {
 	require.NoError(err)
 	require.True(ret.Receipt.ExitCode.IsSuccess(), "contract execution failed")
 	require.NotNil(ret.Receipt.EventsRoot)
-	fmt.Println(ret)
-	fmt.Printf("Events:\n %+v\n", client.EVM().LoadEvents(ctx, *ret.Receipt.EventsRoot))
 
-	// log a zero topic event with no data
+	// log a zero topic event with no data, which is an event with no entries
 	ret, err = client.EVM().InvokeSolidity(ctx, fromAddr, idAddr, []byte{0x00, 0x00, 0x00, 0x01}, nil)
 	require.NoError(err)
 	require.True(ret.Receipt.ExitCode.IsSuccess(), "contract execution failed")
-	fmt.Println(ret)
-	fmt.Printf("Events:\n %+v\n", client.EVM().LoadEvents(ctx, *ret.Receipt.EventsRoot))
+	events := client.EVM().LoadEvents(ctx, *ret.Receipt.EventsRoot)
+	require.Len(events, 1)
+	require.Empty(events[0].Entries)
+	noDataMsg := ret.Message
 
 	// log a four topic event with data
 	ret, err = client.EVM().InvokeSolidity(ctx, fromAddr, idAddr, []byte{0x00, 0x00, 0x00, 0x02}, nil)
 	require.NoError(err)
 	require.True(ret.Receipt.ExitCode.IsSuccess(), "contract execution failed")
-	fmt.Println(ret)
-	fmt.Printf("Events:\n %+v\n", client.EVM().LoadEvents(ctx, *ret.Receipt.EventsRoot))
+
+	// The no-data log is served from the chain index like any other, as a log
+	// with no topics and empty data
+	noDataHash, err := client.EthGetTransactionHashByCid(ctx, noDataMsg)
+	require.NoError(err)
+	require.NotNil(noDataHash)
+	receipt, err := client.EthGetTransactionReceipt(ctx, *noDataHash)
+	require.NoError(err)
+	require.NotNil(receipt)
+	require.Len(receipt.Logs, 1)
+	require.Empty(receipt.Logs[0].Topics)
+	require.Empty(receipt.Logs[0].Data)
+
+	noDataBlock := receipt.BlockNumber.Hex()
+	logs, err := client.EthGetLogs(ctx, &ethtypes.EthFilterSpec{FromBlock: &noDataBlock, ToBlock: &noDataBlock})
+	require.NoError(err)
+	require.Len(logs.Results, 1)
+	logJSON, err := json.Marshal(logs.Results[0])
+	require.NoError(err)
+	var noDataLog ethtypes.EthLog
+	require.NoError(json.Unmarshal(logJSON, &noDataLog))
+	require.Equal(*noDataHash, noDataLog.TransactionHash)
+	require.Empty(noDataLog.Topics)
+	require.Empty(noDataLog.Data)
 }

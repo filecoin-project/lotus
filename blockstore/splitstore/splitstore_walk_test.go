@@ -13,6 +13,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	dssync "github.com/ipfs/go-datastore/sync"
+	mh "github.com/multiformats/go-multihash"
 	"github.com/stretchr/testify/require"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
@@ -460,4 +461,43 @@ func TestLiveMarkSetConcurrent(t *testing.T) {
 			t.Errorf("got %d resolvers of one shadow, want 1", n)
 		}
 	})
+}
+
+// TestLiveMarkSetVisitorUnitary walks as warmup and check do, with the liveMarkSet as the visitor,
+// which sees unitary objects before the walk callback stops at them. Every sector and piece
+// commitment in state is one, so they must leave no shadow state.
+func TestLiveMarkSetVisitorUnitary(t *testing.T) {
+	var links []cid.Cid
+	for i := range 100 {
+		digest := make([]byte, 32)
+		digest[0] = byte(i)
+		h, err := mh.Encode(digest, mh.POSEIDON_BLS12_381_A1_FC1)
+		require.NoError(t, err)
+		links = append(links, cid.NewCidV1(cid.FilCommitmentSealed, h))
+	}
+	idh, err := mh.Sum([]byte("inline"), mh.IDENTITY, -1)
+	require.NoError(t, err)
+	links = append(links, cid.NewCidV1(cid.Raw, idh))
+
+	root := mkLinkBlock(t, links...)
+	hot := newMockStore()
+	require.NoError(t, hot.Put(context.Background(), root))
+	ss := &SplitStore{ctx: context.Background(), hot: hot, cold: newMockStore()}
+
+	env, err := OpenMarkSetEnv(t.TempDir(), "map")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = env.Close() })
+	ms, err := env.New("warmup", 0)
+	require.NoError(t, err)
+	visitor := newLiveMarkSet(ms)
+
+	_, err = ss.walkObject(root.Cid(), visitor, func(c cid.Cid) error {
+		if isUnitaryObject(c) {
+			return errStopWalk
+		}
+		return nil
+	})
+	require.NoError(t, err)
+
+	require.Zero(t, len(visitor.maybeShadowed), "unitary objects left maybe shadowed entries")
 }

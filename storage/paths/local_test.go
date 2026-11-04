@@ -132,3 +132,36 @@ func TestLocalStorageSkipsHiddenFiles(t *testing.T) {
 	require.Len(t, sectors, 1)
 	require.Equal(t, abi.SectorID{Miner: 1000, Number: 1}, sectors[0].SectorID)
 }
+
+func TestLocalStorageSkipsUnknownFiles(t *testing.T) {
+	ctx := context.TODO()
+
+	tstor := &TestingLocalStorage{
+		root: t.TempDir(),
+	}
+
+	p1 := filepath.Join(tstor.root, "1")
+	require.NoError(t, tstor.init("1"))
+	tstor.c.StoragePaths = []storiface.LocalPath{{Path: p1}}
+
+	unsealedDir := filepath.Join(p1, storiface.FTUnsealed.String())
+	require.NoError(t, os.Mkdir(unsealedDir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(unsealedDir, "nohup.out"), nil, 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(unsealedDir, "s-t01000-1"), nil, 0644))
+
+	index := NewMemIndex(nil)
+
+	_, err := NewLocal(ctx, tstor, index, nil)
+	require.NoError(t, err)
+
+	decls, err := index.StorageList(ctx)
+	require.NoError(t, err)
+
+	var sectors []storiface.Decl
+	for _, d := range decls {
+		sectors = append(sectors, d...)
+	}
+	require.Len(t, sectors, 1)
+	require.Equal(t, abi.SectorID{Miner: 1000, Number: 1}, sectors[0].SectorID)
+	require.Equal(t, storiface.FTUnsealed, sectors[0].SectorFileType)
+}

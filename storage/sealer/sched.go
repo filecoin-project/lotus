@@ -394,6 +394,11 @@ func (sh *Scheduler) trySched() {
 	done := metrics.Timer(sh.mctx, metrics.SchedAssignerCycleDuration)
 	defer done()
 
+	// Schedule already returned ctx.Err() to the callers of cancelled requests.
+	if n := sh.SchedQueue.RemoveCancelled(); n > 0 {
+		log.Debugw("dropped cancelled scheduling requests", "count", n)
+	}
+
 	sh.assigner.TrySched(sh)
 }
 

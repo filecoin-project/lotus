@@ -86,7 +86,9 @@ var UpgradeGoldenWeekHeight = abi.ChainEpoch(-31)
 
 const UpgradeFireHorseHeight = -32
 
-const UpgradeSolsticeHeight = 50
+const UpgradeSolsticeHeight = -33
+
+const UpgradeXxHeight = 50
 
 // SolsticeEpochsPerQuarter matches the quarter the SRA is deployed with: one day, as on
 // calibnet. The ramp runs nine of them.

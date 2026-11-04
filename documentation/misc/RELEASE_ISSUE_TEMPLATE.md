@@ -107,7 +107,16 @@
 <!--    {{end}}-->
 <!--  {{end}}-->
 <!--  {{if contains "Miner" .Type}}-->
-<!--    {{if .BaseTag}}-->
+<!--    {{if and .BaseTag (contains "Node" .Type)}}-->
+- [ ] Fork a new `release/miner/v{{.Tag}}` branch from the same `v{{.BaseTag}}` node tag as the node release branch (not `master`) and make any further release-related changes to this branch.
+   - A combined release shares one source base, so do not assume a miner tag exists at the same version.
+   - Suggested commands:
+      ```sh
+      git fetch origin --tags
+      git push origin v{{.BaseTag}}^{commit}:refs/heads/release/miner/v{{.Tag}}
+      git ls-remote --heads origin release/miner/v{{.Tag}}
+      ```
+<!--    {{else if .BaseTag}}-->
 - [ ] Fork a new `release/miner/v{{.Tag}}` branch from the `miner/v{{.BaseTag}}` tag (not `master`) and make any further release-related changes to this branch.
    - Suggested commands:
       ```sh
@@ -160,10 +169,6 @@
       - Ensure to update `MinerBuildVersion`
 <!--{{  end}}-->
    - [ ] Run `make gen && make docsgen-cli` before committing changes.
-   - [ ] `master` branch CHANGELOG updates
-     - [ ] Change the `UNRELEASED` section header to `UNRELEASED v{{.Tag}}`
-     - [ ] Set the `UNRELEASED v{{.Tag}}` section's content to be "_See https://github.com/filecoin-project/lotus/blob/release/v{{.Tag}}/CHANGELOG.md_"
-     - [ ] Add a new `UNRELEASED` header to top.
    - [ ] Create a PR with title `build: update Lotus {{.Type}} version to v{{.NextTag}}-dev in master`
      - Link to PR:
    - [ ] Merge PR
@@ -187,7 +192,7 @@
 <!--  {{if not $stable}}{{$tagSuffix = printf "-%s" $target}}{{end}}-->
 <!--  {{if $stable}}-->
 ## Stable Release
-<details{{if $.NoRCRelease}} open{{end}}>
+<details>
   <summary>Section</summary>
 <!--  {{else}}-->
 ### {{$target}}
@@ -220,8 +225,8 @@
    <!-- agent:
    - Rebase, not squash: each backported commit should stay traceable to its master PR.
    - Cherry-pick each labelled PR's squash commit from master with `git cherry-pick -x`, oldest first.
-   - Keep each cherry-pick's own `CHANGELOG.md` line, so a fix and its changelog entry travel together. Resolve changelog conflicts into the matching `UNRELEASED` subsection and drop neighbouring lines from PRs that are not being backported. The release PR later moves these entries into the dated section.
-   - Check the changelog even after a clean cherry-pick: git can place the line in an already-published section whose context matches master's `UNRELEASED`. Published sections must stay identical to their tags, e.g. `diff <(git show PREVIOUS_TAG:CHANGELOG.md | sed -n '/^# .*PREVIOUS_VERSION /,$p') <(sed -n '/^# .*PREVIOUS_VERSION /,$p' CHANGELOG.md)`.
+   - Each cherry-pick keeps its master PR's `(#N)` subject, which is how `changelog generate` lists it in the release PR.
+   - Drop any `CHANGELOG.md` hunks a cherry-pick brings along; the release PR generates this release's section. Published sections must stay identical to their tags, e.g. `diff <(git show PREVIOUS_TAG:CHANGELOG.md | sed -n '/^# .*PREVIOUS_VERSION /,$p') <(sed -n '/^# .*PREVIOUS_VERSION /,$p' CHANGELOG.md)`.
    - Call out any non-trivial conflict resolution in the PR body.
 <!--  {{if $.BaseTag}}-->
    - The release branch runs the base release's `.github/workflows/release.yml` and `cmd/release`, not master's. Check `git log v{{$.BaseTag}}..origin/master -- .github/workflows/release.yml cmd/release scripts/generate-checksums.sh` and label any release-tooling fixes `release/backport` too.
@@ -256,13 +261,25 @@
    - Link to PR:
    - Opening a PR will trigger a CI run that will build assets, create a draft GitHub release, and attach the assets.
 - [ ] Changelog prep
-   - [ ] Add a dated `# {{$.Type}} v{{$.Tag}}{{$tagSuffix}} / {date}` entry below `# UNRELEASED` with a short summary, and move this release's entries into it.
+   - [ ] Generate the dated `# {{$.Type}} v{{$.Tag}}{{$tagSuffix}} / {date}` section with `go run ./cmd/release changelog generate --type <!--{{if eq $.Type "Node and Miner"}}-->both<!--{{else if eq $.Type "Node"}}-->node<!--{{else}}-->miner<!--{{end}}--> --tag {{$.Tag}}{{$tagSuffix}}` on the release branch, and commit it to the release PR.
       <!-- agent:
-      - Keep the `# UNRELEASED` header and its empty subsection headers.
-      - When promoting an RC, carry the RC entry's content forward plus later fixes; UNRELEASED is already empty by then.
-      - Each change appears once. Check the previous stable release so already-released changes are not presented as new.
-      - Never edit historical entries.
-      - End with `## 📝 Changelog` (compare link `PREVIOUS_TAG...TARGET_TAG` using tags, not branches) and `## 👨‍👩‍👧‍👦 Contributors` (from `./scripts/mkreleaselog PREVIOUS_TAG HEAD`).
+      - Fetch tags first (`git fetch origin --tags`). It reads PRs from GitHub with `GITHUB_TOKEN`, or the `gh` CLI's token.
+      - It writes Notable Changes (upgrade warnings first: PRs with `!` or `release-note/upgrade-warning`; then PRs with `release-note/highlight` or a `## Release note` block), then the compare links with a collapsed list of every PR merged since the previous stable tag, then the Contributors table. It skips PRs already linked from released sections. Each RC and the stable section list everything since the previous stable release.
+      - Read its warnings: commits without a `(#N)` PR number are not listed.
+      - It stops if it can't read a PR from GitHub, or if a PR's title or description was last changed after merge by someone without write access, since the changelog only trusts post-merge edits from maintainers. Check each PR it lists: a maintainer either accepts the change by editing the flagged title or description (any small edit makes them its latest editor) or reverts it, then rerun.
+      - After more backports land, rerun with `--force` to regenerate the section. That discards hand edits, so redo them afterwards.
+      - Never edit historical sections.
+<!--      {{if eq $.Type "Node and Miner"}}-->
+      - Node and miner can have different previous tags (for example `v1.38.2` and `miner/v1.38.0`). The section gets one compare link per project, and its PRs and Contributors come from the node range.
+<!--      {{end}}-->
+      -->
+   - [ ] Write a short summary under the header, review Notable Changes, and check for missed upgrade warnings.
+      <!-- agent:
+      - Summary: one or two sentences on what the release is for and who should upgrade, in the style of earlier sections.
+      - Notable Changes: read the PRs in the full list (titles, descriptions and diffs) and propose adding the changes operators and downstream developers care most about, each ending with its PR link, and dropping generated entries that aren't worth calling out. Delete the heading if nothing qualifies.
+      - Upgrade warnings: flag PRs not marked as upgrade warnings that remove or rename commands, flags, APIs, config or metrics, change defaults, permissions or limits, raise the minimum Go version, or otherwise need operator action. Propose listing each as an upgrade warning with the action operators must take, and ask its author or a maintainer to confirm.
+      - Also flag titles that misdescribe what changed for users, and propose clearer wording.
+      - Propose these edits in the release PR for review; do not rewrite entries silently.
       -->
    - [ ] After pushing CHANGELOG edits, check the draft GitHub release body. Every Release workflow run regenerates it from `CHANGELOG.md`, so fix the text there, not on GitHub.
       <!-- agent:
@@ -290,11 +307,17 @@
 <!--  {{end}}-->
    - [ ] Ensure no missing content when spot checking git history
       <!-- agent:
-      - For each PR in range with no CHANGELOG entry, check whether its author opted out before proposing one: a `skip/changelog` label or a `[skip changelog]` marker in the PR body, e.g. `gh pr view N --repo filecoin-project/lotus --json labels,body`. Respect an explicit opt-out; only raise PRs without one.
+      - The generated section lists every PR in range, so look for commits it warned about (no `(#N)` PR number) that users would care about, and add those by hand.
       - A change already in the previous stable release (often via a backport with a different commit) is not missing.
       -->
 <!--  {{if $.BaseTag}}-->
-      - PREVIOUS_TAG is the base release: `v{{$.BaseTag}}` for node and `miner/v{{$.BaseTag}}` for miner.
+<!--    {{if eq $.Type "Node and Miner"}}-->
+      - PREVIOUS_TAG for node is the base release `v{{$.BaseTag}}`. For miner it is the latest stable miner tag, which may be older: `git tag -l 'miner/v*' | grep -v '-' | sort -V -r | head -n 1`. Review miner history from that tag, accounting for node fixes already in the `v{{$.BaseTag}}` source base.
+<!--    {{else if contains "Node" $.Type}}-->
+      - PREVIOUS_TAG is the base release `v{{$.BaseTag}}`.
+<!--    {{else}}-->
+      - PREVIOUS_TAG is the base release `miner/v{{$.BaseTag}}`.
+<!--    {{end}}-->
       - Every commit in `git log --oneline --graph PREVIOUS_TAG..HEAD` should be a backported fix or a release commit; compare against the `release/backport` PRs rather than everything merged into master.
 <!--  {{else}}-->
       - Find the previous stable tag first:
@@ -315,12 +338,13 @@
 - [ ] Confirm any security-advisory staging needed for this release has an owner and follows [policy](https://github.com/filecoin-project/lotus/blob/master/LOTUS_RELEASE_FLOW.md#security-fix-policy).
 <!--  {{end}}-->
 - [ ] Mark the PR "ready for review" (non-draft)
+- [ ] Confirm the release PR has the required approving maintainer review(s).
 - [ ] Squash-merge the PR
    - Merging the PR will trigger a CI run that will build assets, attach the assets to the GitHub release, publish the GitHub release, and create the corresponding git tag.
 - [ ] Wait for the post-merge Release workflow to finish, then verify each published release.
    <!-- agent:
    - TAG is `v{{$.Tag}}{{$tagSuffix}}` for node and `miner/v{{$.Tag}}{{$tagSuffix}}` for miner; inspect with `gh release view TAG --repo filecoin-project/lotus --json isDraft,isPrerelease,body,assets,targetCommitish`.
-   - Body: starts with the output of `go run cmd/release/main.go changelog-section --project PROJECT --tag TAG`, followed by the Release Log.
+   - Body: the output of `go run ./cmd/release changelog-section --project PROJECT --tag TAG`.
    - Flags: not a draft; prerelease only for RCs; the node stable release is marked latest.
    - Tag: `git rev-list -n 1 TAG` is the squash-merge commit on the release branch.
    - Assets: the Linux amd64 and macOS arm64 archives plus their checksum files are attached.
@@ -362,8 +386,7 @@
    <!-- agent:
    - Release commits also bump versions and generated files, so do not cherry-pick them.
    - Extract the diff with `git diff RELEASE_COMMIT^ RELEASE_COMMIT -- CHANGELOG.md` and apply it with `git apply --3way`.
-   - Replace the `UNRELEASED v{{.Tag}}` placeholder with the final entry.
-   - Keep newer master-only entries under `UNRELEASED`, and remove an `UNRELEASED` entry only if it shipped in this release.
+   - Put the entry above the newest section on master. Later `changelog generate` runs on master skip the PRs it links, so they are not listed as new again.
    - Confirm the diff touches only `CHANGELOG.md`, with no version rollback and no duplicate release heading.
    -->
 - [ ] Finish updating/merging the [RELEASE_ISSUE_TEMPLATE.md](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md) PR from `Release Setup` with any improvements determined from this latest release iteration.

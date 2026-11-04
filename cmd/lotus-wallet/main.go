@@ -26,6 +26,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet"
 	ledgerwallet "github.com/filecoin-project/lotus/chain/wallet/ledger"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/lib/debughttp"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/metrics/proxy"
@@ -218,7 +219,7 @@ var runCmd = &cli.Command{
 		rpcServer.Register("Filecoin", rpcApi)
 
 		mux.Handle("/rpc/v0", rpcServer)
-		mux.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
+		mux.PathPrefix("/").Handler(debughttp.Handler())
 
 		var handler http.Handler = mux
 

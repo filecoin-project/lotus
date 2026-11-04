@@ -96,7 +96,7 @@ func (st *SectorBlocks) writeRef(ctx context.Context, dealID abi.DealID, sectorI
 }
 
 func (st *SectorBlocks) AddPiece(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, d piece.PieceDealInfo) (abi.SectorNumber, abi.PaddedPieceSize, error) {
-	so, err := st.SectorBuilder.SectorAddPieceToAny(ctx, size, r, d)
+	so, err := st.SectorAddPieceToAny(ctx, size, r, d)
 	if err != nil {
 		return 0, 0, err
 	}

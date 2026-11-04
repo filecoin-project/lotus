@@ -7,15 +7,58 @@
 > * [CHANGELOG_1.1x.md](./documentation/changelog/CHANGELOG_1.1x.md) - v1.10.0 to v1.19.0
 > * [CHANGELOG_1.2x.md](./documentation/changelog/CHANGELOG_1.2x.md) - v1.20.0 to v1.29.2
 
-# UNRELEASED
+> [!NOTE]
+> Don't edit this file in a feature, fix or other standard PR. Each release's section is [generated at release time](./CONTRIBUTING.md#release-notes) from the titles of the PRs it includes.
+
+# Node and Miner v1.38.3 / 2026-10-21
+
+This patch release rebuilds the Lotus node, miner and worker binaries and Docker images with Go 1.26.10, which makes `crypto/x509` reject known compromised intermediate certificates ([GO-2026-6809](https://pkg.go.dev/vuln/GO-2026-6809)). It has no other functional changes since Node v1.38.2, and aligns the Miner release with Node at v1.38.3 (the previous Miner release was `miner/v1.38.0`).
+
+- Operators running earlier published binaries or Docker images should upgrade.
+- Building from source now requires Go 1.26.10 or later.
+- Operators upgrading directly from v1.37.0 should review the [v1.38.0 upgrade warnings](https://github.com/filecoin-project/lotus/releases/tag/v1.38.0), including API permissions, gas limits and gateway limits.
 
 ## ☢️ Upgrade Warnings ☢️
 
-## ⭐ New Features
+- build: raise the minimum Go version to `1.26.10`. ([filecoin-project/lotus#13951](https://github.com/filecoin-project/lotus/pull/13951))
+
+## 📝 Changelog
+
+- Node: [Changes since v1.38.2](https://github.com/filecoin-project/lotus/compare/v1.38.2...v1.38.3)
+- Miner: [Changes since miner/v1.38.0](https://github.com/filecoin-project/lotus/compare/miner/v1.38.0...miner/v1.38.3)
+
+## 👨‍👩‍👧‍👦 Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Phi-rjan | 3 | +37/-10 | 8 |
+
+# Node v1.38.2 / 2026-10-20
+
+This Node-only patch release fixes excessive splitstore memory use during initial warmup after a snapshot import and during `lotus-shed splitstore check`. It also fixes the gateway message lookback bound for negative limits.
 
 ## 🐛 Bug Fixes
 
-## 👌 Improvements
+- fix(gateway): `StateSearchMsg` and `StateWaitMsg` now clamp every negative lookback limit to the gateway's message lookback bound. ([filecoin-project/lotus#13934](https://github.com/filecoin-project/lotus/pull/13934))
+- fix(splitstore): excessive memory use after a snapshot import (regression in v1.38.0). ([filecoin-project/lotus#13943](https://github.com/filecoin-project/lotus/pull/13943))
+
+## 📝 Changelog
+
+[Changes since v1.38.1](https://github.com/filecoin-project/lotus/compare/v1.38.1...v1.38.2)
+
+## 👨‍👩‍👧‍👦 Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Steve Loeppky | 6 | +416/-231 | 32 |
+| LexLuthr | 1 | +105/-8 | 3 |
+| Rod Vagg | 2 | +99/-3 | 6 |
+| Phi-rjan | 2 | +89/-3 | 2 |
+| Kaif | 1 | +14/-4 | 3 |
+| zoupingcenter | 1 | +4/-4 | 1 |
+| luangucun | 1 | +4/-4 | 1 |
+| elonfliter | 1 | +3/-4 | 1 |
+| kleonyuan | 1 | +3/-2 | 2 |
 
 # Node v1.38.1 / 2026-10-13
 
@@ -57,6 +100,7 @@ This is the **recommended** Lotus release for the nv29 (Solstice) network upgrad
 
 ## 🐛 Bug Fixes
 
+- fix(sealing): a cancelled task in the scheduler queue no longer stops other tasks from being scheduled. ([filecoin-project/lotus#13869](https://github.com/filecoin-project/lotus/pull/13869))
 - fix(api): check `/health/readyz` immediately on startup instead of waiting for the first one-minute polling interval. ([filecoin-project/lotus#13796](https://github.com/filecoin-project/lotus/pull/13796))
 - fix(rpc): allow `ChainPutObj` to store blocks over JSON-RPC. ([filecoin-project/lotus#13868](https://github.com/filecoin-project/lotus/pull/13868))
 - fix(chain): p2p ingress hardening. Tipsets from peers are limited to 34 distinct blocks, and ChainExchange serves messages for at most 8 tipsets per request. ([filecoin-project/lotus#13909](https://github.com/filecoin-project/lotus/pull/13909))
@@ -67,6 +111,7 @@ This is the **recommended** Lotus release for the nv29 (Solstice) network upgrad
 - fix(eth): `EthBytes` and `EthUint64FromHex` reject hex values with an embedded `0x` instead of silently stripping it and mis-decoding. ([filecoin-project/lotus#13908](https://github.com/filecoin-project/lotus/pull/13908))
 - fix(f3): node shutdown no longer fails with `could not close datastore: leveldb: closed` and leaves `repo.lock` behind. ([filecoin-project/lotus#13850](https://github.com/filecoin-project/lotus/pull/13850))
 - fix(gateway): the lookback limit now applies to the block parameter of `eth_estimateGas` and to the `fromBlock` and `blockHash` of `eth_newFilter`. ([filecoin-project/lotus#13873](https://github.com/filecoin-project/lotus/pull/13873))
+- fix(miner): a sector in `CommitFailed` without CommR or CommD no longer panics in the commit check. It redoes PreCommit1 and PreCommit2 to regenerate them, then goes back to `WaitSeed`. ([filecoin-project/lotus#13843](https://github.com/filecoin-project/lotus/pull/13843))
 - fix(gateway): cap JSON-RPC request size, which previously defaulted to 100MiB. ([filecoin-project/lotus#13912](https://github.com/filecoin-project/lotus/pull/13912))
 - fix(lotus-bench): `cli --cmd` rejects an empty command, non-positive concurrency or out-of-range qps instead of panicking. ([filecoin-project/lotus#13842](https://github.com/filecoin-project/lotus/pull/13842))
 - fix(lotus-fountain): remove the deprecated DataCap faucet. ([filecoin-project/lotus#13840](https://github.com/filecoin-project/lotus/pull/13840))

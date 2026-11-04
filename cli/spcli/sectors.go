@@ -26,7 +26,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
-	"github.com/filecoin-project/go-state-types/network"
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/api"
@@ -34,7 +33,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -588,13 +586,6 @@ func rejectDeprecatedOnlyCCFlag(cctx *cli.Context) error {
 	return nil
 }
 
-func rejectDeprecatedDropClaimsFlag(cctx *cli.Context, nv network.Version) error {
-	if cctx.IsSet("drop-claims") && nv >= network.Version29 {
-		return xerrors.Errorf("drop-claims flag has been removed after NV29; extend now applies uniformly to all sectors")
-	}
-	return nil
-}
-
 func SectorsExtendCmd(getActorAddress ActorAddressGetter) *cli.Command {
 	return &cli.Command{
 		Name:      "extend",
@@ -629,14 +620,6 @@ func SectorsExtendCmd(getActorAddress ActorAddressGetter) *cli.Command {
 			&cli.BoolFlag{
 				Name:   "only-cc",
 				Hidden: true,
-			},
-			&cli.BoolFlag{
-				// Deprecated on NV29+ only: FIP-0118 removes verified claims, so
-				// drop-claims is only meaningful pre-NV29. It stays defined (visible)
-				// so IsSet can detect it: NV28 still uses it, NV29 rejects it via
-				// rejectDeprecatedDropClaimsFlag.
-				Name:  "drop-claims",
-				Usage: "drop claims for sectors that can be extended, but only by dropping some of their verified power claims (deprecated on NV29+)",
 			},
 			&cli.Int64Flag{
 				Name:  "tolerance",
@@ -691,9 +674,6 @@ func SectorsExtendCmd(getActorAddress ActorAddressGetter) *cli.Command {
 
 			nv, err := fullApi.StateNetworkVersion(ctx, types.EmptyTSK)
 			if err != nil {
-				return err
-			}
-			if err := rejectDeprecatedDropClaimsFlag(cctx, nv); err != nil {
 				return err
 			}
 
@@ -867,37 +847,6 @@ func SectorsExtendCmd(getActorAddress ActorAddressGetter) *cli.Command {
 				}
 			}
 
-			// FIP-0118 (NV29+): ExtendSectorExpiration2 no longer consults the verified registry.
-			// Claim declarations are accepted-and-ignored and every sector is extensible, so we
-			// skip the verifreg reads entirely. Pre-NV29, claim maintenance is still required.
-			// With claimIdsBySector left empty on NV29+, every sector takes the "no claims" path
-			// below: it is extended unconditionally, with no SectorsWithClaims and no skipping.
-			var (
-				claimsMap        map[verifreg.ClaimId]verifreg.Claim
-				claimIdsBySector map[abi.SectorNumber][]verifreg.ClaimId
-			)
-			if nv < network.Version29 {
-				verifregAct, err := fullApi.StateGetActor(ctx, builtin.VerifiedRegistryActorAddr, types.EmptyTSK)
-				if err != nil {
-					return xerrors.Errorf("failed to lookup verifreg actor: %w", err)
-				}
-
-				verifregSt, err := verifreg.Load(adtStore, verifregAct)
-				if err != nil {
-					return xerrors.Errorf("failed to load verifreg state: %w", err)
-				}
-
-				claimsMap, err = verifregSt.GetClaims(maddr)
-				if err != nil {
-					return xerrors.Errorf("failed to lookup claims for miner: %w", err)
-				}
-
-				claimIdsBySector, err = verifregSt.GetClaimIdsBySector(maddr)
-				if err != nil {
-					return xerrors.Errorf("failed to lookup claim IDs by sector: %w", err)
-				}
-			}
-
 			sectorsMax, err := policy.GetAddressedSectorsMax(nv)
 			if err != nil {
 				return err
@@ -926,77 +875,14 @@ func SectorsExtendCmd(getActorAddress ActorAddressGetter) *cli.Command {
 
 						batch := numbers[i:end]
 
-						sectorsWithoutClaimsToExtend := bitfield.New()
-						numbersToExtend := make([]abi.SectorNumber, 0, len(numbers))
-						var sectorsWithClaims []miner.SectorClaim
-						p := miner.ExtendSectorExpiration2Params{}
-
-						for _, sectorNumber := range batch {
-							claimIdsToMaintain := make([]verifreg.ClaimId, 0)
-							claimIdsToDrop := make([]verifreg.ClaimId, 0)
-							cannotExtendSector := false
-							claimIds, ok := claimIdsBySector[sectorNumber]
-							// Nothing to check, add to ccSectors
-							if !ok {
-								sectorsWithoutClaimsToExtend.Set(uint64(sectorNumber))
-								numbersToExtend = append(numbersToExtend, sectorNumber)
-							} else {
-								for _, claimId := range claimIds {
-									claim, ok := claimsMap[claimId]
-									if !ok {
-										return xerrors.Errorf("failed to find claim for claimId %d", claimId)
-									}
-									claimExpiration := claim.TermStart + claim.TermMax
-									// can be maintained in the extended sector
-									if claimExpiration > newExp {
-										claimIdsToMaintain = append(claimIdsToMaintain, claimId)
-									} else {
-										sectorInfo, ok := activeSectorsInfo[sectorNumber]
-										if !ok {
-											return xerrors.Errorf("failed to find sector in active sector set: %w", err)
-										}
-										if !cctx.Bool("drop-claims") {
-											fmt.Printf("skipping sector %d because claim %d (client f0%s, piece %s) cannot be maintained in the extended sector (use --drop-claims to drop claims)\n", sectorNumber, claimId, claim.Client, claim.Data)
-											cannotExtendSector = true
-											break
-										} else if currEpoch <= (claim.TermStart + claim.TermMin) {
-											// FIP-0045 requires the claim minimum duration to have passed
-											fmt.Printf("skipping sector %d because claim %d (client f0%s, piece %s) has not reached its minimum duration\n", sectorNumber, claimId, claim.Client, claim.Data)
-											cannotExtendSector = true
-											break
-										} else if currEpoch <= sectorInfo.Expiration-builtin.EndOfLifeClaimDropPeriod {
-											// FIP-0045 requires the sector to be in its last 30 days of life
-											fmt.Printf("skipping sector %d because claim %d (client f0%s, piece %s) is not in its last 30 days of life\n", sectorNumber, claimId, claim.Client, claim.Data)
-											cannotExtendSector = true
-											break
-										}
-
-										claimIdsToDrop = append(claimIdsToDrop, claimId)
-									}
-
-									numbersToExtend = append(numbersToExtend, sectorNumber)
-								}
-								if cannotExtendSector {
-									continue
-								}
-
-								if len(claimIdsToMaintain)+len(claimIdsToDrop) != 0 {
-									sectorsWithClaims = append(sectorsWithClaims, miner.SectorClaim{
-										SectorNumber:   sectorNumber,
-										MaintainClaims: claimIdsToMaintain,
-										DropClaims:     claimIdsToDrop,
-									})
-								}
-							}
+						p := miner.ExtendSectorExpiration2Params{
+							Extensions: []miner.ExpirationExtension2{{
+								Deadline:      l.Deadline,
+								Partition:     l.Partition,
+								Sectors:       SectorNumsToBitfield(batch),
+								NewExpiration: newExp,
+							}},
 						}
-
-						p.Extensions = append(p.Extensions, miner.ExpirationExtension2{
-							Deadline:          l.Deadline,
-							Partition:         l.Partition,
-							Sectors:           SectorNumsToBitfield(numbersToExtend),
-							SectorsWithClaims: sectorsWithClaims,
-							NewExpiration:     newExp,
-						})
 						params = append(params, p)
 					}
 

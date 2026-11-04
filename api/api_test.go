@@ -92,7 +92,7 @@ func TestReturnTypes(t *testing.T) {
 						}
 
 						switch typ.Kind() {
-						case reflect.Ptr:
+						case reflect.Pointer:
 							fallthrough
 						case reflect.Array:
 							fallthrough

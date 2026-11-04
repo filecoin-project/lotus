@@ -138,6 +138,8 @@ const (
 	InitChainIndexerKey
 	InitApiV2Key
 
+	WarmHeightIndexKey
+
 	_nInvokes // keep this last
 )
 

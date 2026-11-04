@@ -420,7 +420,9 @@ func (pv1 *reverseProxyV1) StateSearchMsg(ctx context.Context, from types.TipSet
 	if err := pv1.gateway.limit(ctx, stateRateLimitTokens); err != nil {
 		return nil, err
 	}
-	if limit == api.LookbackNoLimit {
+	// Any negative limit is treated as LookbackNoLimit; stmgr overflows on
+	// limits near math.MinInt64 and would search back without bound.
+	if limit < 0 {
 		limit = pv1.gateway.maxMessageLookbackEpochs
 	}
 	if pv1.gateway.maxMessageLookbackEpochs != api.LookbackNoLimit && limit > pv1.gateway.maxMessageLookbackEpochs {
@@ -439,7 +441,9 @@ func (pv1 *reverseProxyV1) StateWaitMsg(ctx context.Context, msg cid.Cid, confid
 	if confidence > pv1.gateway.maxMessageConfidence {
 		return nil, xerrors.Errorf("confidence %d exceeds gateway maximum %d", confidence, pv1.gateway.maxMessageConfidence)
 	}
-	if limit == api.LookbackNoLimit {
+	// Any negative limit is treated as LookbackNoLimit; stmgr overflows on
+	// limits near math.MinInt64 and would search back without bound.
+	if limit < 0 {
 		limit = pv1.gateway.maxMessageLookbackEpochs
 	}
 	if pv1.gateway.maxMessageLookbackEpochs != api.LookbackNoLimit && limit > pv1.gateway.maxMessageLookbackEpochs {

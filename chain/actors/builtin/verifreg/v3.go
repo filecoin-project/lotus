@@ -77,9 +77,7 @@ func (s *state3) ForEachClient(cb func(addr address.Address, dcap abi.StoragePow
 }
 
 func (s *state3) verifiedClients() (adt.Map, error) {
-
 	return adt3.AsMap(s.store, s.VerifiedClients, builtin3.DefaultHamtBitwidth)
-
 }
 
 func (s *state3) verifiers() (adt.Map, error) {

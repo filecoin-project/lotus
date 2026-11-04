@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
@@ -199,15 +200,18 @@ func (si *SqliteIndexer) buildTipsetBloomFromIndex(ctx context.Context, tx *sql.
 			emitterID        uint64
 			emitterAddrBytes []byte
 			flags            []byte
-			key              string
-			codec            uint64
+			key              sql.NullString
+			codec            sql.NullInt64
 			value            []byte
 		)
 		if err := rows.Scan(&eventID, &emitterID, &emitterAddrBytes, &flags, &key, &codec, &value); err != nil {
 			return xerrors.Errorf("read indexed event row: %w", err)
 		}
-		if len(flags) == 0 {
-			return xerrors.Errorf("event entry for event %d has no flags", eventID)
+		// An event with no entries, such as EVM LOG0 with no data, comes back
+		// as one row with NULL entry columns.
+		hasEntry := key.Valid
+		if hasEntry && len(flags) == 0 {
+			return fmt.Errorf("event entry for event %d has no flags", eventID)
 		}
 		if eventID != currentID {
 			if err := flush(); err != nil {
@@ -227,10 +231,13 @@ func (si *SqliteIndexer) buildTipsetBloomFromIndex(ctx context.Context, tx *sql.
 				}
 			}
 		}
+		if !hasEntry {
+			continue
+		}
 		entries = append(entries, types.EventEntry{
 			Flags: flags[0],
-			Key:   key,
-			Codec: codec,
+			Key:   key.String,
+			Codec: uint64(codec.Int64),
 			Value: value,
 		})
 	}
@@ -415,7 +422,11 @@ func (si *SqliteIndexer) getEventRangeCoverage(ctx context.Context, minHeight, m
 		return coverage, nil
 	}
 
-	ts, err := si.cs.GetTipsetByHeight(ctx, maxHeight, head, true)
+	anchor, err := si.eventRangeAnchor(ctx, head, maxHeight)
+	if err != nil {
+		return nil, err
+	}
+	ts, err := si.cs.GetTipsetByHeightBounded(ctx, maxHeight, anchor, true)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get canonical tipset at or before height %d: %w", maxHeight, err)
 	}
@@ -454,6 +465,51 @@ func (si *SqliteIndexer) getEventRangeCoverage(ctx context.Context, minHeight, m
 	}
 
 	return coverage, nil
+}
+
+// eventRangeAnchor returns a tipset above maxHeight to resolve it from.
+// Prefer this over chain head to avoid the walk cost or hitting a cold
+// skip-list. Below finality, non-reverted index rows are trusted as canonical.
+func (si *SqliteIndexer) eventRangeAnchor(ctx context.Context, head *types.TipSet, maxHeight abi.ChainEpoch) (*types.TipSet, error) {
+	finalHeight := head.Height() - policy.ChainFinality
+	if maxHeight >= finalHeight {
+		return head, nil
+	}
+
+	rows, err := si.stmts.getLowestNonRevertedTipsetsInRangeStmt.QueryContext(ctx, maxHeight, finalHeight)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to query event range anchor above height %d: %w", maxHeight, err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var candidates [][]byte
+	for rows.Next() {
+		var tsKeyCidBytes []byte
+		if err := rows.Scan(&tsKeyCidBytes); err != nil {
+			return nil, xerrors.Errorf("failed to read event range anchor: %w", err)
+		}
+		candidates = append(candidates, tsKeyCidBytes)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, xerrors.Errorf("failed while reading event range anchor: %w", err)
+	}
+	// None indexed, or several non-reverted tipsets at one height leaving the
+	// canonical one ambiguous.
+	if len(candidates) != 1 {
+		return head, nil
+	}
+
+	tsKeyCid, err := cid.Cast(candidates[0])
+	if err != nil {
+		return nil, xerrors.Errorf("failed to parse event range anchor tipset cid: %w", err)
+	}
+	// Snapshot imports persist tipset key blocks for recent tipsets only.
+	anchor, err := si.cs.GetTipSetByCid(ctx, tsKeyCid)
+	if err != nil || anchor == nil {
+		log.Debugw("event range anchor not loadable, resolving from head", "height", maxHeight, "tipset", tsKeyCid, "error", err)
+		return head, nil
+	}
+	return anchor, nil
 }
 
 func (si *SqliteIndexer) isEventRangeIndexed(ctx context.Context, tx *sql.Tx, coverage *eventRangeCoverage) (bool, error) {
@@ -540,8 +596,8 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter)
 			messageIndex int
 			reverted     bool
 			flags        []byte
-			key          string
-			codec        uint64
+			key          sql.NullString
+			codec        sql.NullInt64
 			value        []byte
 		}
 
@@ -640,10 +696,18 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter)
 				ce.MsgCid = lastMsgCid
 			}
 
+			// An event with no entries, such as EVM LOG0 with no data, comes back
+			// as one row with NULL entry columns.
+			if !row.key.Valid {
+				continue
+			}
+			if len(row.flags) == 0 {
+				return nil, fmt.Errorf("event entry for event %d has no flags", row.id)
+			}
 			ce.Entries = append(ce.Entries, types.EventEntry{
 				Flags: row.flags[0],
-				Key:   row.key,
-				Codec: row.codec,
+				Key:   row.key.String,
+				Codec: uint64(row.codec.Int64),
 				Value: row.value,
 			})
 		}
@@ -880,7 +944,8 @@ func makePrefillFilterQuery(f *EventFilter) ([]any, string, error) {
 			}
 		}
 	} else if f.Codec != 0 { // if no keys are specified, we can use the codec filter
-		clauses = append(clauses, "ee.codec=?")
+		// An event with no entries has no codec to mismatch.
+		clauses = append(clauses, "(ee.codec=? OR ee.event_id IS NULL)")
 		values = append(values, f.Codec)
 	}
 
@@ -900,7 +965,7 @@ func makePrefillFilterQuery(f *EventFilter) ([]any, string, error) {
 			ee.value
 		FROM event e
 		JOIN tipset_message tm ON e.message_id = tm.id
-		JOIN event_entry ee ON e.id = ee.event_id`
+		LEFT JOIN event_entry ee ON e.id = ee.event_id`
 
 	if len(joins) > 0 {
 		s = s + ", " + strings.Join(joins, ", ")

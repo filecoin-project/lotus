@@ -38,8 +38,8 @@ type SolsticeEnv struct {
 // SolsticeOpts configures NewSolsticeUpgradeEnv.
 type SolsticeOpts struct {
 	// UpgradeEpoch > 0 upgrades the chain NV28 -> NV29 at this height (with the neutral Solstice
-	// reward bootstrap so the migration matches the other solstice itests). 0 keeps the chain on
-	// NV28 for the whole test.
+	// reward bootstrap so the migration matches the other solstice itests). 0 starts the chain on
+	// NV29.
 	UpgradeEpoch abi.ChainEpoch
 	// Optional verifreg plumbing: when RootKey/VerifierKey/VerifiedClientKey are non-nil the
 	// ensemble is created with a RootVerifier + two funded Accounts (default funding 100 FIL). The
@@ -50,7 +50,7 @@ type SolsticeOpts struct {
 }
 
 // NewSolsticeUpgradeEnv builds the standard solstice itest ensemble: a single unmanaged miner on a
-// chain that optionally upgrades NV28->NV29, mock proofs over RPC, mining started, and the miner's
+// chain that upgrades NV28->NV29 or starts on NV29, mock proofs over RPC, mining started, and the miner's
 // WindowPoSt driven by its own in-kit loop. It returns the pieces as a *SolsticeEnv for the caller
 // to bind.
 func NewSolsticeUpgradeEnv(t *testing.T, o SolsticeOpts) *SolsticeEnv {
@@ -90,9 +90,8 @@ func NewSolsticeUpgradeEnv(t *testing.T, o SolsticeOpts) *SolsticeEnv {
 			},
 		))
 	} else {
-		ensembleOpts = append(ensembleOpts, UpgradeSchedule(
-			stmgr.Upgrade{Network: network.Version28, Height: -1},
-		))
+		// Pin NV29 rather than following TestNetworkVersion, which moves on with later upgrades.
+		ensembleOpts = append(ensembleOpts, GenesisNetworkVersion(network.Version29))
 	}
 
 	client, _, ens := EnsembleMinimal(t, ensembleOpts...)

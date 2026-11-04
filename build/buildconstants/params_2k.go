@@ -23,7 +23,7 @@ const GenesisFile = ""
 var NetworkBundle = "devnet"
 var ActorDebugging = true
 
-var GenesisNetworkVersion = network.Version28
+var GenesisNetworkVersion = network.Version29
 
 var UpgradeBreezeHeight = abi.ChainEpoch(-1)
 
@@ -101,7 +101,9 @@ var UpgradeGoldenWeekHeight = abi.ChainEpoch(-31)
 
 var UpgradeFireHorseHeight = abi.ChainEpoch(-32)
 
-var UpgradeSolsticeHeight = abi.ChainEpoch(200)
+var UpgradeSolsticeHeight = abi.ChainEpoch(-33)
+
+var UpgradeXxHeight = abi.ChainEpoch(200)
 
 // FIP-0118: reward actor bootstrap state installed by the Solstice migration.
 // Generic devnets disable governance and send service rewards to burnt funds.
@@ -205,6 +207,7 @@ func init() {
 	UpgradeGoldenWeekHeight = getUpgradeHeight("LOTUS_GOLDENWEEK_HEIGHT", UpgradeGoldenWeekHeight)
 	UpgradeFireHorseHeight = getUpgradeHeight("LOTUS_FIREHORSE_HEIGHT", UpgradeFireHorseHeight)
 	UpgradeSolsticeHeight = getUpgradeHeight("LOTUS_SOLSTICE_HEIGHT", UpgradeSolsticeHeight)
+	UpgradeXxHeight = getUpgradeHeight("LOTUS_XX_HEIGHT", UpgradeXxHeight)
 
 	DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 		0: DrandQuicknet,

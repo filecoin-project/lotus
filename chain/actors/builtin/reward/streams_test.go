@@ -68,16 +68,16 @@ func TestStreamLedger(t *testing.T) {
 
 	// A consensus stream ramping down to a 50% floor, and a service stream holding 30% of which
 	// its map allocates 90%, the remainder burning alongside the schedule's own residual.
-	consensus := WeightRecord{VStart: 70 * pct, Slope: -int64(pct) / 100, TStart: 1_000, Floor: 50 * pct, Cap: 70 * pct}
-	service := WeightRecord{VStart: 30 * pct, TStart: 1_000, Floor: 30 * pct, Cap: 30 * pct}
+	consensus := reward19.WeightRecord{VStart: 70 * pct, Slope: -int64(pct) / 100, TStart: 1_000, Floor: 50 * pct, Cap: 70 * pct}
+	service := reward19.WeightRecord{VStart: 30 * pct, TStart: 1_000, Floor: 30 * pct, Cap: 30 * pct}
 	distribution := &reward19.ExplicitDistribution{
 		Writer: writer,
-		Shares: []RecipientShare{
+		Shares: []reward19.RecipientShare{
 			{Recipient: recipients[0], Share: 40 * pct},
 			{Recipient: recipients[1], Share: 50 * pct},
 		},
-		Payable:       []RecipientAmount{{Recipient: recipients[0], Amount: abi.NewTokenAmount(5)}},
-		ClaimedPeriod: []RecipientAmount{{Recipient: recipients[1], Amount: abi.NewTokenAmount(7)}},
+		Payable:       []reward19.RecipientAmount{{Recipient: recipients[0], Amount: abi.NewTokenAmount(5)}},
+		ClaimedPeriod: []reward19.RecipientAmount{{Recipient: recipients[1], Amount: abi.NewTokenAmount(7)}},
 	}
 	streams := &reward19.StreamsState{
 		Streams: []reward19.Stream{
@@ -86,12 +86,12 @@ func TestStreamLedger(t *testing.T) {
 		},
 		Tombstones: []reward19.Tombstone{{
 			ID:      3,
-			Payable: []RecipientAmount{{Recipient: recipients[2], Amount: abi.NewTokenAmount(11)}},
+			Payable: []reward19.RecipientAmount{{Recipient: recipients[2], Amount: abi.NewTokenAmount(11)}},
 		}},
 		PendingWritesQueue: []reward19.PendingWrite{
 			{
 				Op: reward19.PendingWriteOpSetWeightRecords,
-				Payload: mustPayload(t, &reward19.SetWeightRecordsParams{Updates: []WeightRecordUpdate{
+				Payload: mustPayload(t, &reward19.SetWeightRecordsParams{Updates: []reward19.WeightRecordUpdate{
 					{ID: 1, Weight: consensus},
 					{ID: 2, Weight: service},
 				}}),
@@ -100,11 +100,11 @@ func TestStreamLedger(t *testing.T) {
 			{
 				ID: streamID(4),
 				Op: reward19.PendingWriteOpRegisterStream,
-				Payload: mustPayload(t, &RegisterStreamPayload{
+				Payload: mustPayload(t, &reward19.RegisterStreamPayload{
 					Weight: service,
-					Distribution: &DistributionInit{
+					Distribution: &reward19.DistributionInit{
 						Writer: writer,
-						Shares: []RecipientShare{{Recipient: recipients[2], Share: Denom}},
+						Shares: []reward19.RecipientShare{{Recipient: recipients[2], Share: Denom}},
 					},
 				}),
 				EffectiveEpoch: epoch + timelock + 1,
@@ -151,7 +151,7 @@ func TestStreamLedger(t *testing.T) {
 	implicit := ledger.Streams[0]
 	req.True(implicit.Implicit)
 	req.Equal(StreamID(1), implicit.ID)
-	req.Equal(consensus, implicit.Weight)
+	req.Equal(WeightRecord(consensus), implicit.Weight)
 	// A thousand epochs of ramp take the consensus stream ten points below its 70% start.
 	req.EqualValues(60*pct, implicit.EvaluatedWeight)
 	req.Equal(big.Zero(), implicit.Accrued)
@@ -164,9 +164,9 @@ func TestStreamLedger(t *testing.T) {
 	req.EqualValues(30*pct, explicit.EvaluatedWeight)
 	req.Equal(writer, explicit.Writer)
 	req.Equal(abi.NewTokenAmount(100), explicit.Accrued)
-	req.Equal(distribution.Shares, explicit.Shares)
-	req.Equal(distribution.Payable, explicit.Payable)
-	req.Equal(distribution.ClaimedPeriod, explicit.ClaimedPeriod)
+	req.Equal([]RecipientShare{{Recipient: recipients[0], Share: 40 * pct}, {Recipient: recipients[1], Share: 50 * pct}}, explicit.Shares)
+	req.Equal([]RecipientAmount{{Recipient: recipients[0], Amount: abi.NewTokenAmount(5)}}, explicit.Payable)
+	req.Equal([]RecipientAmount{{Recipient: recipients[1], Amount: abi.NewTokenAmount(7)}}, explicit.ClaimedPeriod)
 	req.EqualValues(90*pct, explicit.ShareTotal().Uint64())
 	req.EqualValues(10*pct, explicit.ShareBurn().Uint64())
 	// The period's accrual less what its recipients drew, plus the balance carried into it.
@@ -186,14 +186,14 @@ func TestStreamLedger(t *testing.T) {
 	req.Equal(OpSetWeightRecords, schedule.Op)
 	req.Equal("SetWeightRecords", schedule.Op.String())
 	req.Equal(epoch+timelock, schedule.EffectiveEpoch)
-	req.Equal([]WeightRecordUpdate{{ID: 1, Weight: consensus}, {ID: 2, Weight: service}}, schedule.Updates)
+	req.Equal([]WeightRecordUpdate{{ID: 1, Weight: WeightRecord(consensus)}, {ID: 2, Weight: WeightRecord(service)}}, schedule.Updates)
 
 	registration := ledger.PendingWrites[1]
 	req.NotNil(registration.ID)
 	req.Equal(StreamID(4), *registration.ID)
 	req.Equal(OpRegisterStream, registration.Op)
 	req.NotNil(registration.Register)
-	req.Equal(service, registration.Register.Weight)
+	req.Equal(WeightRecord(service), registration.Register.Weight)
 	req.Equal(writer, registration.Register.Distribution.Writer)
 	req.Equal([]RecipientShare{{Recipient: recipients[2], Share: Denom}}, registration.Register.Distribution.Shares)
 
@@ -212,7 +212,7 @@ func TestStreamLedger(t *testing.T) {
 func TestStreamLedgerAccrualPairing(t *testing.T) {
 	explicit := reward19.Stream{
 		ID:           2,
-		Weight:       WeightRecord{VStart: Denom, Floor: Denom, Cap: Denom},
+		Weight:       reward19.WeightRecord{VStart: Denom, Floor: Denom, Cap: Denom},
 		Distribution: &reward19.ExplicitDistribution{Writer: mustIDAddress(t, 100)},
 	}
 
@@ -264,7 +264,7 @@ func mustIDAddress(t *testing.T, id uint64) address.Address {
 	return addr
 }
 
-func streamID(id StreamID) *StreamID {
+func streamID(id reward19.StreamID) *reward19.StreamID {
 	return &id
 }
 

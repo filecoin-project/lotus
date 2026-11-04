@@ -718,7 +718,7 @@ func (fsr *fsLockedRepo) put(rawName string, info types.KeyInfo, retries int) er
 		return xerrors.Errorf("checking key before put '%s': %w", name, err)
 	}
 
-	keyData, err := json.Marshal(info)
+	keyData, err := json.Marshal(info) //nolint:gosec // the keystore persists private keys
 	if err != nil {
 		return xerrors.Errorf("encoding key '%s': %w", name, err)
 	}
