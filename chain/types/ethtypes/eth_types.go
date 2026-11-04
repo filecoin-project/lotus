@@ -43,6 +43,10 @@ var ErrInvalidAddress = errors.New("invalid Filecoin Eth address")
 
 // ethHexDigitsRe matches 1-64 hex digits: the magnitude of a 0x-prefixed quantity,
 // capped at 256 bits (the same bound geth's hexutil.Big enforces).
+// Ethereum JSON-RPC quantities are hex numbers with a 0x prefix. The quantity must be
+// hex digits only, up to 256 bits. big.Int.SetString accepts unbounded digit runs, so a
+// multi-kilobyte digit string would otherwise allocate a huge integer.
+// Negative signs are not allowed per geth's hexutil.Big behavior.
 var ethHexDigitsRe = regexp.MustCompile(`^[0-9a-fA-F]{1,64}$`)
 
 // Research into Filecoin chain behaviour suggests that probabilistic finality
