@@ -404,10 +404,10 @@ var (
 // hash, so anyone could reissue a pending transaction under a hash its sender
 // is not watching.
 func validateSignatureValues(r, s big.Int) error {
-	if r.Int.Sign() < 1 || r.Int.Cmp(secp256k1N) >= 0 {
+	if r.Sign() < 1 || r.Cmp(secp256k1N) >= 0 {
 		return fmt.Errorf("signature r value out of range")
 	}
-	if s.Int.Sign() < 1 || s.Int.Cmp(secp256k1HalfN) > 0 {
+	if s.Sign() < 1 || s.Cmp(secp256k1HalfN) > 0 {
 		return fmt.Errorf("signature s value out of range; a canonical (low) s per EIP-2 is required")
 	}
 	return nil
