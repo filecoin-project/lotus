@@ -507,6 +507,7 @@ func (pv1 *reverseProxyV1) EthSubscribe(ctx context.Context, jparams jsonrpc.Raw
 		if _, err := pv1.server.EthUnsubscribe(ctx, sub); err != nil {
 			log.Warnf("error unsubscribing after connection end: %v", err)
 		}
+		pv1.subscriptions.RemoveSub(sub)
 	}
 
 	return sub, err
