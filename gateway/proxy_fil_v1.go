@@ -66,6 +66,23 @@ func (pv1 *reverseProxyV1) StateReplay(ctx context.Context, tsk types.TipSetKey,
 	if err := pv1.gateway.limit(ctx, chainRateLimitTokens); err != nil {
 		return nil, err
 	}
+	// An empty key does not mean head here: the node searches for the message
+	// without a lookback limit and replays whichever tipset it landed in. Find
+	// it within the message lookback instead and replay that tipset by key.
+	if tsk.IsEmpty() {
+		lookup, err := pv1.server.StateSearchMsg(ctx, types.EmptyTSK, c, pv1.gateway.maxMessageLookbackEpochs, true)
+		if err != nil {
+			return nil, xerrors.Errorf("searching for msg %s: %w", c, err)
+		}
+		if lookup == nil {
+			return nil, xerrors.Errorf("didn't find msg %s", c)
+		}
+		execTs, err := pv1.server.ChainGetTipSet(ctx, lookup.TipSet)
+		if err != nil {
+			return nil, xerrors.Errorf("loading tipset %s: %w", lookup.TipSet, err)
+		}
+		tsk, c = execTs.Parents(), lookup.Message
+	}
 	if err := pv1.gateway.checkTipSetKey(ctx, tsk); err != nil {
 		return nil, err
 	}
