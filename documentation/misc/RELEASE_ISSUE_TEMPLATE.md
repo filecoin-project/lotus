@@ -273,7 +273,7 @@
       - Fetch tags first (`git fetch origin --tags`). It reads PRs from GitHub with `GITHUB_TOKEN`, or the `gh` CLI's token.
       - It writes Notable Changes (upgrade warnings first: PRs with `!` or `release-note/upgrade-warning`; then PRs with `release-note/highlight` or a `## Release note` block), then the compare links with a collapsed list of every PR merged since the previous stable tag, then the Contributors table. It skips PRs already linked from released sections. Each RC and the stable section list everything since the previous stable release.
       - Read its warnings: commits without a `(#N)` PR number are not listed.
-      - Keep script output and hand edits in separate commits, including after a `--force` rerun, so a reviewer can diff the editorial changes against the raw output.
+      - Commit the script output unedited, then put all hand edits in one separate editorial commit, so a reviewer can see exactly what changed against the raw output. Squash later edits into that commit rather than stacking more. After a `--force` rerun, repeat the same pair of commits.
       - It skips PRs linked from another section, so a line added to a published section on `master` hides that PR from this release. Compare the PR count with `git rev-list --count PREVIOUS_TAG..HEAD`. If a skipped PR's commit isn't in the tag for that section, the line never shipped: delete it in its own commit and rerun with `--force`, and make the same deletion in the changelog copy-back PR to `master`.
       - When a change needs a missing upgrade warning, get the wording approved, then have a maintainer add the `release-note/upgrade-warning` label and a `## Release note` block to the merged PR and rerun with `--force`, so the warning comes from the PR rather than a hand edit. A warning spanning several PRs still needs a hand edit to merge them.
       - It looks up every commit in the range on GitHub, so it fails with `422 No commit found for SHA` while the release PR's own commits are unpushed. Pass `--to origin/<release branch>` to stop at the pushed branch tip.
@@ -286,11 +286,12 @@
       -->
    - [ ] Write a short summary under the header, review Notable Changes, and check for missed upgrade warnings.
       <!-- agent:
-      - Summary: one or two sentences on what the release is for and who should upgrade, in the style of earlier sections.
-      - Notable Changes: read the PRs in the full list (titles, descriptions and diffs) and propose adding the changes operators and downstream developers care most about, each ending with its PR link, and dropping generated entries that aren't worth calling out. Delete the heading if nothing qualifies.
-      - Upgrade warnings: flag PRs not marked as upgrade warnings that remove or rename commands, flags, APIs, config or metrics, change defaults, permissions or limits, raise the minimum Go version, or otherwise need operator action. Propose listing each as an upgrade warning with the action operators must take, and ask its author or a maintainer to confirm.
-      - Also flag titles that misdescribe what changed for users, and propose clearer wording.
-      - Propose these edits in the release PR for review; do not rewrite entries silently.
+      - Start from the generated text. PR authors and maintainers already reviewed it, so keep it unless something is clearly wrong. Aim for the smallest possible diff, and don't reword entries for style or add detail because it's accurate.
+      - Summary: one or two sentences on what the release is for and who should upgrade, in the style of earlier sections. This is the only edit to make without asking.
+      - Clearly wrong means a factual error in an entry, or a missing upgrade warning for a change that will break operators on upgrade. Fix these in the editorial commit, keep them short (what changed and the action to take), and say why in the PR description.
+      - Everything else is a recommendation, not an edit. Give the release owner a list of what you'd add, drop or reword, each with why it matters to operators or downstream developers and the evidence for it (PR, code, or what you tested). Apply only what they approve.
+      - To build that list, read the PRs in the full list (titles, descriptions and diffs). Flag PRs not marked as upgrade warnings that remove or rename commands, flags, APIs, config or metrics, change defaults, permissions or limits, raise the minimum Go version, or otherwise need operator action. Also flag titles that misdescribe what changed for users. Any new upgrade warning needs its author or a maintainer to confirm.
+      - An independent reviewer returns findings to the release owner in the same form, and doesn't edit the section either.
       -->
    - [ ] After pushing CHANGELOG edits, check the draft GitHub release body. Every Release workflow run regenerates it from `CHANGELOG.md`, so fix the text there, not on GitHub.
       <!-- agent:
