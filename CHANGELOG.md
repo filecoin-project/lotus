@@ -10,6 +10,94 @@
 > [!NOTE]
 > Don't edit this file in a feature, fix or other standard PR. Each release's section is [generated at release time](./CONTRIBUTING.md#release-notes) from the titles of the PRs it includes.
 
+# Node and Miner v1.39.0 / 2026-11-05
+
+## ✨ Notable Changes
+
+- ⚠️ **Upgrade warning:** The debug endpoints (`/debug/pprof/*`, `/debug/vars`, `/debug/pprof-set/*`) on the daemon, miner, worker and wallet only answer local, non-browser-cross-origin clients. Set `LOTUS_DEBUG_ALLOW_REMOTE=1` to serve all clients. ([#13913](https://github.com/filecoin-project/lotus/pull/13913))
+- ⚠️ **Upgrade warning:** A lookup by block number that stalls while the chain height index is warming after a restart now fails after 5 seconds with a `-32002` "resource unavailable" error instead of timing out. Go API users must replace `api.ErrExpensiveFork` with `api.ErrResourceUnavailable`, which includes a `Reason`. ([#13959](https://github.com/filecoin-project/lotus/pull/13959))
+- ⚠️ **Upgrade warning:** The obsolete `lotus filplus` and `lotus-shed verifreg` write commands and `lotus-miner sectors extend --drop-claims` are removed after nv29. ([#13968](https://github.com/filecoin-project/lotus/pull/13968))
+- ⚠️ **Upgrade warning:** The remaining read-only `lotus filplus` and `lotus-shed verifreg` commands are removed. The verified registry and DataCap actors are frozen since nv29 and slated for removal. ([#13982](https://github.com/filecoin-project/lotus/pull/13982))
+- `lotus-shed chainindex restore-blooms` restores missing tipset blooms on a stopped node from its existing index. A tipset bloom rebuilt from the index, as `lotus index validate-backfill` does, now includes the emitter of an event with no topics or data, such as EVM `LOG0` with empty data, matching the bloom written at indexing time. ([#13960](https://github.com/filecoin-project/lotus/pull/13960))
+- go-libp2p is updated to v0.51.0, go-libp2p-kad-dht to v0.43.0 and go-libp2p-pubsub to v0.19.0. The DHT now persists its routing table to the metadata datastore (hourly and on shutdown) and redials saved peers on restart, speeding up peer discovery after a restart. ([#13995](https://github.com/filecoin-project/lotus/pull/13995))
+
+## 📝 All Changes
+
+- Node: [Changes since v1.38.3](https://github.com/filecoin-project/lotus/compare/v1.38.3...v1.39.0)
+- Miner: [Changes since miner/v1.38.3](https://github.com/filecoin-project/lotus/compare/miner/v1.38.3...miner/v1.39.0)
+
+<details><summary>All PRs (45)</summary>
+
+**Features**
+
+- feat(api): serve debug endpoints to local clients only ([#13913](https://github.com/filecoin-project/lotus/pull/13913))
+- feat(eth): err code -32002 for lookups stalled on a cold height index ([#13959](https://github.com/filecoin-project/lotus/pull/13959))
+- feat(genesis): optional reward SWA at genesis & 2k starts at nv29 ([#13967](https://github.com/filecoin-project/lotus/pull/13967))
+- feat(release): generate the changelog from PR titles at release ([#13984](https://github.com/filecoin-project/lotus/pull/13984))
+- feat(release): group the changelog's PR list by change type ([#14005](https://github.com/filecoin-project/lotus/pull/14005))
+- feat(shed): add chainindex restore-blooms ([#13960](https://github.com/filecoin-project/lotus/pull/13960))
+
+**Fixes**
+
+- fix(chain): zero-pad the hundredths digit in Percent.String ([#13965](https://github.com/filecoin-project/lotus/pull/13965))
+- fix(chainindex): prevent historical event queries timing out after restart ([#13957](https://github.com/filecoin-project/lotus/pull/13957))
+- fix(cli): reject API URLs that already end in the RPC path ([#13870](https://github.com/filecoin-project/lotus/pull/13870))
+- fix(cli): reject malformed ranges in `lotus-miner sectors numbers reserve` ([#13966](https://github.com/filecoin-project/lotus/pull/13966))
+- fix(cli): remove deprecated filplus commands ([#13968](https://github.com/filecoin-project/lotus/pull/13968))
+- fix(eth): reject non-canonical signature values in raw tx parsing ([#13918](https://github.com/filecoin-project/lotus/pull/13918))
+- fix(eth): include LOG0 events with empty data in getLogs and receipts ([#13961](https://github.com/filecoin-project/lotus/pull/13961))
+- fix(gateway): enforce lookback limits on trace_transaction ([#13931](https://github.com/filecoin-project/lotus/pull/13931))
+- fix(gateway): remove the eth subscription sink when the websocket closes ([#13936](https://github.com/filecoin-project/lotus/pull/13936))
+- fix(gateway): enforce lookback limits on StateReplay with an empty tipset key ([#13958](https://github.com/filecoin-project/lotus/pull/13958))
+- fix(httpreader): resume snapshot downloads after stream resets ([#13962](https://github.com/filecoin-project/lotus/pull/13962))
+- fix(miner): redo precommit when a CommitFailed sector has no CommR or CommD ([#13843](https://github.com/filecoin-project/lotus/pull/13843))
+- fix(mpool): correct pool size accounting and journaling on clear ([#13831](https://github.com/filecoin-project/lotus/pull/13831))
+- fix(mpool): check nonce before signature verification in Add ([#13970](https://github.com/filecoin-project/lotus/pull/13970))
+- fix(paths): skip stray files instead of blocking miner or worker startup ([#13950](https://github.com/filecoin-project/lotus/pull/13950))
+- fix(sealing): don't let a cancelled task block scheduling of other tasks ([#13869](https://github.com/filecoin-project/lotus/pull/13869))
+- fix(sealing): don't require free space to move files already in storage ([#13949](https://github.com/filecoin-project/lotus/pull/13949))
+
+**Chores and other**
+
+- build(deps): bump github.com/drand/drand/v2 from 2.1.6 to 2.1.8 ([#13981](https://github.com/filecoin-project/lotus/pull/13981))
+- build(deps): bump github.com/go-openapi/spec from 0.22.9 to 1.0.1 ([#13975](https://github.com/filecoin-project/lotus/pull/13975))
+- build(deps): bump github.com/jpillora/backoff from 1.0.0 to 1.1.0 ([#13976](https://github.com/filecoin-project/lotus/pull/13976))
+- build(deps): bump github.com/klauspost/compress from 1.19.1 to 1.20.3 ([#13994](https://github.com/filecoin-project/lotus/pull/13994))
+- build(deps): bump github.com/prometheus/client_golang from 1.24.1 to 1.25.0 ([#14000](https://github.com/filecoin-project/lotus/pull/14000))
+- build(deps): bump github.com/sirupsen/logrus from 1.9.4 to 1.10.2 ([#13999](https://github.com/filecoin-project/lotus/pull/13999))
+- build(deps): bump go.opentelemetry.io/otel/bridge/opencensus from 1.46.0 to 1.47.0 ([#13998](https://github.com/filecoin-project/lotus/pull/13998))
+- build(deps): bump go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp from 1.46.0 to 1.47.0 ([#13977](https://github.com/filecoin-project/lotus/pull/13977))
+- build(deps): bump go.opentelemetry.io/otel/exporters/prometheus from 0.68.0 to 0.69.0 ([#13997](https://github.com/filecoin-project/lotus/pull/13997))
+- build(deps): bump golang.org/x/tools from 0.51.0 to 0.52.0 ([#13978](https://github.com/filecoin-project/lotus/pull/13978))
+- build(deps): bump the github-actions group across 2 directories with 3 updates ([#14001](https://github.com/filecoin-project/lotus/pull/14001))
+- build(deps): bump the libp2p-ecosystem group across 1 directory with 3 updates ([#13995](https://github.com/filecoin-project/lotus/pull/13995))
+- build(docker): fix Dockerfile build-check warnings ([#13953](https://github.com/filecoin-project/lotus/pull/13953))
+- build(renovate): add Renovate config for golangci-lint and actionlint Makefile pins ([#13983](https://github.com/filecoin-project/lotus/pull/13983))
+- chore(cli): remove the remaining filplus & verifreg commands ([#13982](https://github.com/filecoin-project/lotus/pull/13982))
+- chore(lint): upgrade golangci-lint to v2 ([#13629](https://github.com/filecoin-project/lotus/pull/13629))
+- chore(release): copy v1.38.3 changelog back to master ([#13956](https://github.com/filecoin-project/lotus/pull/13956))
+- chore(sub): remove the ratelimit pkg ([#13969](https://github.com/filecoin-project/lotus/pull/13969))
+- chore: create nv30 Lotus skeleton ([#13900](https://github.com/filecoin-project/lotus/pull/13900))
+- ci: add an AI check that PR titles describe the change ([#13993](https://github.com/filecoin-project/lotus/pull/13993))
+- ci: retry Go module download before running tests ([#13971](https://github.com/filecoin-project/lotus/pull/13971))
+- docs(release): v1.38.3 release template improvements ([#13954](https://github.com/filecoin-project/lotus/pull/13954))
+
+</details>
+
+## 👨‍👩‍👧‍👦 Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Rod Vagg | 11 | +4370/-3228 | 381 |
+| Phi-rjan | 1 | +3635/-234 | 98 |
+| Steve Loeppky | 8 | +1973/-410 | 35 |
+| LexLuthr | 1 | +21/-1647 | 12 |
+| Hamed Yousefi | 5 | +552/-7 | 19 |
+| Kaif | 4 | +443/-0 | 12 |
+| dependabot[bot] | 12 | +169/-167 | 29 |
+| Viraj Bhartiya | 1 | +127/-0 | 2 |
+| parthod0x | 2 | +20/-3 | 4 |
+
 # Node and Miner v1.38.3 / 2026-10-21
 
 This patch release rebuilds the Lotus node, miner and worker binaries and Docker images with Go 1.26.10, which makes `crypto/x509` reject known compromised intermediate certificates ([GO-2026-6809](https://pkg.go.dev/vuln/GO-2026-6809)). It has no other functional changes since Node v1.38.2, and aligns the Miner release with Node at v1.38.3 (the previous Miner release was `miner/v1.38.0`).
