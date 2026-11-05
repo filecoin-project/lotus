@@ -284,6 +284,10 @@
       - Node and miner can have different previous tags (for example `v1.38.2` and `miner/v1.38.0`). The section gets one compare link per project, and its PRs and Contributors come from the node range.
 <!--      {{end}}-->
       -->
+<!--{{if eq $.Level "patch"}}-->
+   - [ ] Confirm this is still a patch release. Patch releases only contain backwards-compatible changes, so if an upgrade warning breaks an API, command or other behaviour, ask the release owner whether to move to a minor release ([policy](https://github.com/filecoin-project/lotus/blob/master/LOTUS_RELEASE_FLOW.md#adopted-conventions)).
+      <!-- agent: check this as soon as the generated section exists, before editing it. Moving to a minor release later means new release branches, a regenerated changelog and issue, and a new CI run; v1.38.4 became v1.39.0 this way after a maintainer raised it in review. -->
+<!--{{end}}-->
    - [ ] Write a short summary under the header, review Notable Changes, and check for missed upgrade warnings.
       <!-- agent:
       - Start from the generated text. PR authors and maintainers already reviewed it, so keep it unless something is clearly wrong. Aim for the smallest possible diff, and don't reword entries for style or add detail because it's accurate.
