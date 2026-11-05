@@ -217,6 +217,9 @@
 <!--  {{end}}-->
 <!--  {{if and $stable $.NoRCRelease (not $.BaseTag)}}-->
 - [ ] No additional backport PR is needed because this no-RC release branch was created from `origin/master` after all included dependencies landed.
+   <!-- agent:
+   - If a wanted change merges to `master` after the branch was cut and the release branch has no commits of its own yet, fast-forward the release branch to `origin/master` (`git push origin origin/master:refs/heads/release/vX.Y.Z`) instead of opening a backport PR. Check first with `git merge-base --is-ancestor origin/release/vX.Y.Z origin/master`; it must not need a force push.
+   -->
 <!--  {{else if or $.BaseTag (ne $target "rc1")}}-->
 - [ ] Backported [everything with the "backport" label](https://github.com/filecoin-project/lotus/issues?q=label%3Arelease%2Fbackport+)
 - [ ] Create a PR with title `build: backport changes for {{$.Type}} v{{$.Tag}}{{$tagSuffix}}`
@@ -257,6 +260,9 @@
    - After committing, build each release binary and confirm `--version` reports the intended version with no `.dirty` suffix.
    -->
 - [ ] Run `make gen && make docsgen-cli` to generate documentation
+   <!-- agent:
+   - On macOS, `make gen` can fail to link with `ld: library 'hwloc' not found`. Set `CGO_LDFLAGS="-L$(brew --prefix hwloc)/lib"`, `CGO_CFLAGS="-I$(brew --prefix hwloc)/include"` and `PKG_CONFIG_PATH="$(brew --prefix hwloc)/lib/pkgconfig"` first.
+   -->
 - [ ] Create a draft PR with title `build: release Lotus {{$.Type}} v{{$.Tag}}{{$tagSuffix}}`
    - Link to PR:
    - Opening a PR will trigger a CI run that will build assets, create a draft GitHub release, and attach the assets.
@@ -266,6 +272,7 @@
       - Fetch tags first (`git fetch origin --tags`). It reads PRs from GitHub with `GITHUB_TOKEN`, or the `gh` CLI's token.
       - It writes Notable Changes (upgrade warnings first: PRs with `!` or `release-note/upgrade-warning`; then PRs with `release-note/highlight` or a `## Release note` block), then the compare links with a collapsed list of every PR merged since the previous stable tag, then the Contributors table. It skips PRs already linked from released sections. Each RC and the stable section list everything since the previous stable release.
       - Read its warnings: commits without a `(#N)` PR number are not listed.
+      - It looks up every commit in the range on GitHub, so it fails with `422 No commit found for SHA` while the release PR's own commits are unpushed. Pass `--to origin/<release branch>` to stop at the pushed branch tip.
       - It stops if it can't read a PR from GitHub, or if a PR's title or description was last changed after merge by someone without write access, since the changelog only trusts post-merge edits from maintainers. Check each PR it lists: a maintainer either accepts the change by editing the flagged title or description (any small edit makes them its latest editor) or reverts it, then rerun.
       - After more backports land, rerun with `--force` to regenerate the section. That discards hand edits, so redo them afterwards.
       - Never edit historical sections.
