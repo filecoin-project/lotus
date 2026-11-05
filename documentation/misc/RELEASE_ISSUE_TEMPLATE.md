@@ -14,6 +14,7 @@
 [//]: # (4. For regular releases, create release branches from origin/master after dependencies are resolved. For critical security patches, follow the visible release/vX.Y.x guidance.)
 <!--{{end}}-->
 [//]: # (5. Keep the release issue and linked PRs synchronized as each step completes. When every checklist item in a collapsible section is done, change its `<details open>` to `<details>` so it collapses, and make the next section to be worked on `<details open>`. Only the section in progress should be open.)
+[//]: # (If the release type changes mid-release, for example Node to Node and Miner, regenerate this issue with `go run ./cmd/release create-issue --create-on-github=false` and the new `--type`, then carry over checked boxes, links and notes rather than editing lines by hand.)
 [//]: # (6. Step-specific hints are in "agent:" HTML comments beneath the relevant checklist items. Read the raw issue body to see them.)
 [//]: # (7. Never push to a release branch directly, even if your token can bypass the PR rule. Undoing a direct push needs a force-push, which branch protection blocks. The combined-release miner fast-forward is the only exception.)
 [//]: # (8. Before treating a CI failure as a regression, check whether the same test also fails in master's recent CI runs.)
