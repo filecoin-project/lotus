@@ -12,12 +12,15 @@
 
 # Node and Miner v1.39.0 / 2026-11-05
 
+This Node and Miner minor release is recommended for gateway operators and storage providers. It bounds expensive `lotus-gateway` trace and replay requests and fixes sealing problems, including a panic on `CommitFailed` sectors missing CommR or CommD and a cancelled task blocking the scheduler. Review the upgrade warnings before upgrading.
+
 ## ✨ Notable Changes
 
+- ⚠️ **Upgrade warning:** `lotus-gateway` now applies its message lookback to `trace_transaction` and to `StateReplay` with an empty tipset key, which previously reached any height. The default is 20 epochs (about 10 minutes). To look back further, raise `--api-wait-lookback-limit` and `--api-max-lookback`, or query a node directly. ([#13931](https://github.com/filecoin-project/lotus/pull/13931), [#13958](https://github.com/filecoin-project/lotus/pull/13958))
+- ⚠️ **Upgrade warning:** API addresses that are URLs ending in `/rpc/v<N>`, such as `KEY:https://api.node.glif.io/rpc/v1`, are now rejected because Lotus adds the RPC path itself. Remove the suffix. ([#13870](https://github.com/filecoin-project/lotus/pull/13870))
 - ⚠️ **Upgrade warning:** The debug endpoints (`/debug/pprof/*`, `/debug/vars`, `/debug/pprof-set/*`) on the daemon, miner, worker and wallet only answer local, non-browser-cross-origin clients. Set `LOTUS_DEBUG_ALLOW_REMOTE=1` to serve all clients. ([#13913](https://github.com/filecoin-project/lotus/pull/13913))
 - ⚠️ **Upgrade warning:** A lookup by block number that stalls while the chain height index is warming after a restart now fails after 5 seconds with a `-32002` "resource unavailable" error instead of timing out. Go API users must replace `api.ErrExpensiveFork` with `api.ErrResourceUnavailable`, which includes a `Reason`. ([#13959](https://github.com/filecoin-project/lotus/pull/13959))
-- ⚠️ **Upgrade warning:** The obsolete `lotus filplus` and `lotus-shed verifreg` write commands and `lotus-miner sectors extend --drop-claims` are removed after nv29. ([#13968](https://github.com/filecoin-project/lotus/pull/13968))
-- ⚠️ **Upgrade warning:** The remaining read-only `lotus filplus` and `lotus-shed verifreg` commands are removed. The verified registry and DataCap actors are frozen since nv29 and slated for removal. ([#13982](https://github.com/filecoin-project/lotus/pull/13982))
+- ⚠️ **Upgrade warning:** The `lotus filplus` and `lotus-shed verifreg` commands and `lotus-miner sectors extend --drop-claims` are removed. The verified registry and DataCap actors are frozen since nv29 and slated for removal. ([#13968](https://github.com/filecoin-project/lotus/pull/13968), [#13982](https://github.com/filecoin-project/lotus/pull/13982))
 - `lotus-shed chainindex restore-blooms` restores missing tipset blooms on a stopped node from its existing index. A tipset bloom rebuilt from the index, as `lotus index validate-backfill` does, now includes the emitter of an event with no topics or data, such as EVM `LOG0` with empty data, matching the bloom written at indexing time. ([#13960](https://github.com/filecoin-project/lotus/pull/13960))
 - go-libp2p is updated to v0.51.0, go-libp2p-kad-dht to v0.43.0 and go-libp2p-pubsub to v0.19.0. The DHT now persists its routing table to the metadata datastore (hourly and on shutdown) and redials saved peers on restart, speeding up peer discovery after a restart. ([#13995](https://github.com/filecoin-project/lotus/pull/13995))
 
