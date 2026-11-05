@@ -7,6 +7,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+
 func TestRunRejectsNegativeEventFilterRange(t *testing.T) {
 	app := &cli.App{Commands: []*cli.Command{runCmd}}
 	err := app.Run([]string{"lotus-gateway", "run", "--event-filter-max-height-range", "-1"})
