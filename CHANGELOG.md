@@ -12,6 +12,8 @@
 
 # Node v1.38.4 / 2026-11-05
 
+This patch release adds gateway and Ethereum API hardening, a faster peer-discovery restart path, and mempool, snapshot-download and chain-index fixes. Operators should review the upgrade warnings below: the debug endpoints are now local-only by default, and the `lotus filplus` and `lotus-shed verifreg` commands are removed.
+
 ## ✨ Notable Changes
 
 - ⚠️ **Upgrade warning:** The debug endpoints (`/debug/pprof/*`, `/debug/vars`, `/debug/pprof-set/*`) on the daemon, miner, worker and wallet only answer local, non-browser-cross-origin clients. Set `LOTUS_DEBUG_ALLOW_REMOTE=1` to serve all clients. ([#13913](https://github.com/filecoin-project/lotus/pull/13913))
