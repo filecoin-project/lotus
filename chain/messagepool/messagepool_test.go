@@ -811,7 +811,7 @@ func TestClearAccounting(t *testing.T) {
 			require.Len(t, evt.Messages, tc.expectedRemoved)
 			if !tc.local {
 				for _, m := range evt.Messages {
-					require.Equal(t, a2, m.Message.From)
+					require.Equal(t, a2, m.From)
 				}
 			}
 		})
