@@ -12,8 +12,6 @@
 
 # Node v1.38.4 / 2026-11-05
 
-This patch release adds gateway and Ethereum API hardening, a faster peer-discovery restart path, and mempool, snapshot-download and chain-index fixes. Operators should review the upgrade warnings below: the debug endpoints are now local-only by default, and the `lotus filplus` and `lotus-shed verifreg` commands are removed.
-
 ## ✨ Notable Changes
 
 - ⚠️ **Upgrade warning:** The debug endpoints (`/debug/pprof/*`, `/debug/vars`, `/debug/pprof-set/*`) on the daemon, miner, worker and wallet only answer local, non-browser-cross-origin clients. Set `LOTUS_DEBUG_ALLOW_REMOTE=1` to serve all clients. ([#13913](https://github.com/filecoin-project/lotus/pull/13913))
@@ -27,7 +25,7 @@ This patch release adds gateway and Ethereum API hardening, a faster peer-discov
 
 [Changes since v1.38.3](https://github.com/filecoin-project/lotus/compare/v1.38.3...v1.38.4)
 
-<details><summary>All PRs (43)</summary>
+<details><summary>All PRs (45)</summary>
 
 **Features**
 
@@ -51,9 +49,11 @@ This patch release adds gateway and Ethereum API hardening, a faster peer-discov
 - fix(gateway): remove the eth subscription sink when the websocket closes ([#13936](https://github.com/filecoin-project/lotus/pull/13936))
 - fix(gateway): enforce lookback limits on StateReplay with an empty tipset key ([#13958](https://github.com/filecoin-project/lotus/pull/13958))
 - fix(httpreader): resume snapshot downloads after stream resets ([#13962](https://github.com/filecoin-project/lotus/pull/13962))
+- fix(miner): redo precommit when a CommitFailed sector has no CommR or CommD ([#13843](https://github.com/filecoin-project/lotus/pull/13843))
 - fix(mpool): correct pool size accounting and journaling on clear ([#13831](https://github.com/filecoin-project/lotus/pull/13831))
 - fix(mpool): check nonce before signature verification in Add ([#13970](https://github.com/filecoin-project/lotus/pull/13970))
 - fix(paths): skip stray files instead of blocking miner or worker startup ([#13950](https://github.com/filecoin-project/lotus/pull/13950))
+- fix(sealing): don't let a cancelled task block scheduling of other tasks ([#13869](https://github.com/filecoin-project/lotus/pull/13869))
 - fix(sealing): don't require free space to move files already in storage ([#13949](https://github.com/filecoin-project/lotus/pull/13949))
 
 **Chores and other**
@@ -91,9 +91,9 @@ This patch release adds gateway and Ethereum API hardening, a faster peer-discov
 | Phi-rjan | 1 | +3635/-234 | 98 |
 | Steve Loeppky | 8 | +1973/-410 | 35 |
 | LexLuthr | 1 | +21/-1647 | 12 |
+| Hamed Yousefi | 5 | +552/-7 | 19 |
 | Kaif | 4 | +443/-0 | 12 |
 | dependabot[bot] | 12 | +169/-167 | 29 |
-| Hamed Yousefi | 3 | +149/-3 | 8 |
 | Viraj Bhartiya | 1 | +127/-0 | 2 |
 | parthod0x | 2 | +20/-3 | 4 |
 
