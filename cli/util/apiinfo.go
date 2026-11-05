@@ -75,10 +75,10 @@ func (a APIInfo) DialArgs(version string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if rpcPath := rpcPathSuffix.FindString(u.Path); rpcPath != "" {
+	if rpcPath := rpcPathSuffix.FindString(u.EscapedPath()); rpcPath != "" {
 		fixed := *u
 		fixed.Path = strings.TrimSuffix(u.Path, rpcPath)
-		fixed.RawPath = ""
+		fixed.RawPath = strings.TrimSuffix(u.EscapedPath(), rpcPath)
 		return "", fmt.Errorf("API address %q ends with %q; use %q, Lotus adds /rpc/%s itself",
 			a.Addr, strings.TrimSuffix(rpcPath, "/"), fixed.String(), version)
 	}
