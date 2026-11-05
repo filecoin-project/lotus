@@ -1700,19 +1700,17 @@ func (mp *MessagePool) Clear(ctx context.Context, local bool) {
 	mp.notifyCleared(ctx, removed)
 }
 
-// notifyCleared publishes, journals and accounts for messages removed by Clear,
-// matching what remove does for a single message. Must be called with mp.lk held.
+// notifyCleared journals and accounts for messages removed by Clear, updating
+// currentSize and the MpoolMessageCount metric. Unlike remove, it does not
+// publish MpoolRemove updates to subscribers. Must be called with mp.lk held.
 func (mp *MessagePool) notifyCleared(ctx context.Context, removed []*types.SignedMessage) {
 	if len(removed) == 0 {
 		return
 	}
 
-	for _, m := range removed {
-		mp.changes.Pub(api.MpoolUpdate{
-			Type:    api.MpoolRemove,
-			Message: m,
-		}, localUpdates)
-	}
+	// TODO: Notify subscribers in mutation order and prevent slow subscribers
+	// from blocking pool operations.
+	// See https://github.com/filecoin-project/lotus/pull/13831.
 
 	mp.journal.RecordEvent(mp.evtTypes[evtTypeMpoolRemove], func() interface{} {
 		msgs := make([]MessagePoolEvtMessage, 0, len(removed))
