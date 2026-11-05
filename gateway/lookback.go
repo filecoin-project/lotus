@@ -191,12 +191,8 @@ func (gw *Node) checkEthFilterLookback(ctx context.Context, filter *ethtypes.Eth
 	return nil
 }
 
-// checkEthTraceTransaction checks the transaction a trace request names, as
-// tracing it re-executes the whole tipset that contains it. The transaction is
-// resolved through the backend's bounded lookup, which applies
-// maxMessageLookbackEpochs like the gateway's other hash-based lookups, and the
-// containing block is checked against the lookback bound like EthTraceBlock's
-// block parameter.
+// checkEthTraceTransaction checks lookback limits before tracing, which
+// replays the whole tipset.
 func (gw *Node) checkEthTraceTransaction(ctx context.Context, txHash string,
 	getTx func(context.Context, *ethtypes.EthHash, abi.ChainEpoch) (*ethtypes.EthTx, error)) error {
 	hash, err := ethtypes.ParseEthHash(txHash)
