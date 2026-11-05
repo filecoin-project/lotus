@@ -148,13 +148,36 @@ func TestAPIInfoDialArgs(t *testing.T) {
 			addr: "wss://host.example",
 			want: "wss://host.example/rpc/v1",
 		},
+		{
+			name: "https URL with a path prefix",
+			addr: "https://node.glif.io/space06/lotus",
+			want: "https://node.glif.io/space06/lotus/rpc/v1",
+		},
+		{
+			name:    "https URL ending in the RPC path",
+			addr:    "https://api.node.glif.io/rpc/v1",
+			want:    `use "https://api.node.glif.io"`,
+			wantErr: true,
+		},
+		{
+			name:    "ws URL ending in another RPC version with trailing slash",
+			addr:    "ws://host:1234/rpc/v0/",
+			want:    `use "ws://host:1234"`,
+			wantErr: true,
+		},
+		{
+			name:    "URL with a path prefix ending in the RPC path",
+			addr:    "https://node.glif.io/space06/lotus/rpc/v1",
+			want:    `use "https://node.glif.io/space06/lotus"`,
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := APIInfo{Addr: tt.addr}.DialArgs("v1")
 			if tt.wantErr {
-				require.Error(t, err)
+				require.ErrorContains(t, err, tt.want)
 				return
 			}
 			require.NoError(t, err)
