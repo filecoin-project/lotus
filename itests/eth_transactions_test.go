@@ -313,7 +313,7 @@ func TestContractInvocationMultiple(t *testing.T) {
 				_ = client.Stop(ctx)
 				_ = miner.Stop(ctx)
 			})
-			ens.InterconnectAll().BeginMining(blockTime)
+			miners := ens.InterconnectAll().BeginMining(blockTime)
 
 			// install contract
 			contractHex, err := os.ReadFile("./contracts/SimpleCoin.hex")
@@ -375,6 +375,13 @@ func TestContractInvocationMultiple(t *testing.T) {
 				S:                    big.Zero(),
 			}
 
+			// Keep every invocation pending while checking the per-actor cap.
+			for _, miner := range miners {
+				miner.Pause()
+				// Finish any in-flight block before submitting invocations.
+				miner.MineUntilBlock(ctx, client, nil)
+			}
+
 			for i := 0; i < totalMessages; i++ {
 				invokeTx := baseMsg
 				invokeTx.Nonce = i + 1
@@ -397,6 +404,10 @@ func TestContractInvocationMultiple(t *testing.T) {
 					require.NoError(t, err)
 					hashes = append(hashes, hash)
 				}
+			}
+
+			for _, miner := range miners {
+				miner.Restart()
 			}
 
 			for _, hash := range hashes {
