@@ -16,6 +16,7 @@ $(warning Your Golang version is go$(shell expr $(GOVERSION) / 1000000).$(shell 
 $(error Update Golang to version to at least $(shell cat GO_VERSION_MIN))
 endif
 
+# These are kept up-to-date by "renovate.json5"
 GOLANGCI_LINT_VERSION=v2.15.0
 ACTIONLINT_VERSION=v1.7.12
 

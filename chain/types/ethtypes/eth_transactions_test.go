@@ -1,15 +1,19 @@
 package ethtypes
 
 import (
+	mathbig "math/big"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
+	gocrypto "github.com/filecoin-project/go-crypto"
+	"github.com/filecoin-project/go-keccak"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/crypto"
 
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -207,4 +211,133 @@ func TestParseEthTransactionNonMinimalInts(t *testing.T) {
 		_, err := ParseEthTransaction(mustDecodeHex(rawTx))
 		require.NoError(t, err)
 	}
+}
+
+// A signature with a high s has a second valid form (r, N-s) with the recovery
+// bit flipped that recovers the same sender but gives the transaction a
+// different hash, so raw transactions carrying one are rejected at parse time.
+func TestParseRejectsNonCanonicalSignatures(t *testing.T) {
+	priv, err := gocrypto.GenerateKey()
+	require.NoError(t, err)
+
+	toAddr, err := ParseEthAddress("0xd4c5fb16488Aa48081296299d54b0c648C9333dA")
+	require.NoError(t, err)
+
+	sign := func(tx EthTransaction) (r, s big.Int, recid int64) {
+		unsigned, err := tx.ToRlpUnsignedMsg()
+		require.NoError(t, err)
+		hasher := keccak.NewLegacyKeccak256()
+		hasher.Write(unsigned)
+		sig, err := gocrypto.Sign(priv, hasher.Sum(nil))
+		require.NoError(t, err)
+		return bigIntFromBytes(sig[0:32]), bigIntFromBytes(sig[32:64]), int64(sig[64])
+	}
+
+	// s' = N - s is the non-canonical twin; the recovery bit flips with it
+	flipS := func(s big.Int) big.Int {
+		return big.NewFromGo(new(mathbig.Int).Sub(secp256k1N, s.Int))
+	}
+
+	legacyTemplate := func() *EthLegacyHomesteadTxArgs {
+		return &EthLegacyHomesteadTxArgs{
+			Nonce:    3,
+			GasPrice: big.NewInt(1000000000),
+			GasLimit: 100000,
+			To:       &toAddr,
+			Value:    big.NewInt(10),
+		}
+	}
+
+	eip155V := func(recid int64) big.Int {
+		return big.NewFromGo(new(mathbig.Int).Add(
+			new(mathbig.Int).Mul(mathbig.NewInt(2), mathbig.NewInt(int64(buildconstants.Eip155ChainId))),
+			mathbig.NewInt(35+recid)))
+	}
+
+	testcases := []struct {
+		name  string
+		build func(v, r, s big.Int) EthTransaction
+		vFor  func(recid int64) big.Int
+		raw   func(tx EthTransaction) ([]byte, error)
+	}{
+		{
+			name: "eip1559",
+			build: func(v, r, s big.Int) EthTransaction {
+				return &Eth1559TxArgs{
+					ChainID:              buildconstants.Eip155ChainId,
+					Nonce:                7,
+					To:                   &toAddr,
+					Value:                big.NewInt(10),
+					MaxFeePerGas:         big.NewInt(100),
+					MaxPriorityFeePerGas: big.NewInt(1),
+					GasLimit:             100000,
+					V:                    v, R: r, S: s,
+				}
+			},
+			vFor: func(recid int64) big.Int { return big.NewInt(recid) },
+			raw:  func(tx EthTransaction) ([]byte, error) { return tx.ToRlpSignedMsg() },
+		},
+		{
+			name: "legacy homestead",
+			build: func(v, r, s big.Int) EthTransaction {
+				tx := legacyTemplate()
+				tx.V, tx.R, tx.S = v, r, s
+				return tx
+			},
+			vFor: func(recid int64) big.Int { return big.NewInt(27 + recid) },
+			raw:  func(tx EthTransaction) ([]byte, error) { return tx.ToRlpSignedMsg() },
+		},
+		{
+			name: "legacy eip-155",
+			build: func(v, r, s big.Int) EthTransaction {
+				tx := legacyTemplate()
+				tx.V, tx.R, tx.S = v, r, s
+				return &EthLegacy155TxArgs{legacyTx: tx}
+			},
+			vFor: eip155V,
+			// for eip-155 the wire form drops the chainId, r, s placeholders of the signing payload
+			raw: func(tx EthTransaction) ([]byte, error) { return tx.(*EthLegacy155TxArgs).ToRawTxBytesSigned() },
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			r, s, recid := sign(tc.build(big.Zero(), big.Zero(), big.Zero()))
+
+			signed := tc.build(tc.vFor(recid), r, s)
+			raw, err := tc.raw(signed)
+			require.NoError(t, err)
+			parsed, err := ParseEthTransaction(raw)
+			require.NoError(t, err)
+			sender, err := parsed.Sender()
+			require.NoError(t, err)
+
+			// the twin recovers the same sender today, which is exactly why it must not parse
+			twin := tc.build(tc.vFor(1-recid), r, flipS(s))
+			rawTwin, err := tc.raw(twin)
+			require.NoError(t, err)
+			require.NotEqual(t, raw, rawTwin)
+			_, err = ParseEthTransaction(rawTwin)
+			require.ErrorContains(t, err, "canonical")
+
+			twinSender, err := twin.Sender()
+			require.NoError(t, err)
+			require.Equal(t, sender, twinSender)
+		})
+	}
+
+	// out-of-range r and zero values are rejected too
+	t.Run("r and s bounds", func(t *testing.T) {
+		r, s, recid := sign(testcases[0].build(big.Zero(), big.Zero(), big.Zero()))
+		for name, tx := range map[string]EthTransaction{
+			"zero r": testcases[0].build(big.NewInt(recid), big.Zero(), s),
+			"zero s": testcases[0].build(big.NewInt(recid), r, big.Zero()),
+			"r = N":  testcases[0].build(big.NewInt(recid), big.NewFromGo(secp256k1N), s),
+		} {
+			raw, err := tx.ToRlpSignedMsg()
+			require.NoError(t, err, name)
+			_, err = ParseEthTransaction(raw)
+			require.ErrorContains(t, err, "out of range", name)
+		}
+	})
 }

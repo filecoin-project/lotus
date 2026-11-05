@@ -7,7 +7,7 @@ Lotus is a universally open project and welcomes contributions of all kinds: cod
 - [Implementing Changes](#implementing-changes)
 - [Working with builtin-actors](#working-with-builtin-actors)
 - [PR Title Conventions](#pr-title-conventions)
-- [CHANGELOG Management](#changelog-management)
+- [Release Notes](#release-notes)
 - [Dependency Management](#dependency-management)
 - [Go Version Management](#go-version-management)
 - [Markdown Conventions](#markdown-conventions)
@@ -45,6 +45,7 @@ This means the PR title should be in the form of `<type>(<scope>): <description>
   - `type`: MUST be one of _build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test_
   - `scope`: OPTIONAL arbitrary string that is usually one of _api, chain, deps, mempool, multisig, networking, paych, proving, sealing, state, wallet_
   - Breaking changes must add a `!`
+  - The title becomes the PR's line in the release notes, so describe the change as users will see it (see [Release Notes](#release-notes))
 
 Alternatively, titles can match a GitHub revert title: `Revert "<original title>"`
  - example: `Revert "feat: add new feature"`
@@ -53,19 +54,23 @@ Note that this is enforced with https://github.com/filecoin-project/lotus/blob/m
 
 If it is unclear why one's title is getting flagged, it the regex defined in [pr-title-check.yml](https://github.com/filecoin-project/lotus/blob/master/.github/workflows/pr-title-check.yml#L28) can be plugged into a debugger like [regex101.com](https://regex101.com/r/kUrU3F/2).
 
-## CHANGELOG Management
+## Release Notes
 
-To expedite the release process, the CHANGELOG is built-up incrementally.
-We enforce that each PR updates CHANGELOG.md or signals that the change doesn't need it.
-If the PR affects users (e.g., new feature, bug fix, system requirements change), update the CHANGELOG.md and add details to the UNRELEASED section.
-For PRs into `master`, at least one line the PR adds to CHANGELOG.md must link to the PR itself (`https://github.com/filecoin-project/lotus/pull/<number>`), so predicted PR numbers are verified. PRs into release branches, which carry entries from other PRs, only need to modify CHANGELOG.md.
-If the change does not require a CHANGELOG.md entry, do one of the following:
-- Add `[skip changelog]` to the PR description
-- Add the label `skip/changelog` to the PR
+Don't edit [`CHANGELOG.md`](CHANGELOG.md) in a feature, fix or other standard PR; only release PRs change it. At release time, `go run ./cmd/release changelog generate` writes the release's section from the PRs merged since the previous stable release, so all a PR needs is a good title:
 
-Note that this is enforced with https://github.com/filecoin-project/lotus/blob/master/.github/workflows/changelog.yml
+- The PR title is the changelog line. Name the affected API, command or component and say what changes for users, operators or downstream developers, rather than how it was implemented. For example, `fix(chainindex): historical eth_getLogs range queries no longer time out after a restart` rather than `fix(chainindex): anchor historical event range checks on the index`.
+- A release's section has two lists: Notable Changes, for what users should know about, and a collapsed list of every PR's title. A PR is notable if its title marks a breaking change with `!`, it has a `release-note/*` label, or its description has a `## Release note` block.
+- Maintainers can fix a title before merging, and can apply these labels:
+  - `release-note/upgrade-warning`: operators must act on the change, or it breaks compatibility. The PR is listed first under Notable Changes, as an upgrade warning. A title with `!` is treated the same way.
+  - `release-note/highlight`: the change is worth calling out. The PR is listed under Notable Changes.
+- When a title can't carry what readers need, such as the action an upgrade warning asks of operators, add a `## Release note` block to the PR description. Its text is the PR's entry under Notable Changes. Most PRs don't need one.
+- The [AI Title Check](.github/workflows/ai-title-check.yml) asks Copilot whether the title, and any `## Release note` block, describes the diff, and whether the title marks a breaking change with `!`. It runs when a PR is opened or marked ready and when its title or description changes, not on new commits, so rerun it if later commits change what the PR does. Its failure message suggests a better title. If it's wrong, a maintainer can apply the `skip/ai-title-check` label to override it.
 
-Editing CHANGELOG.md on an open PR does not rerun the full CI suite. When the only difference from what a workflow last tested successfully on the PR, or from the PR's base, is in files that workflow does not depend on (such as hand-written Markdown), the Test, Build, Docker and Check workflows skip their remaining jobs. See [detect-skippable-changes](.github/actions/detect-skippable-changes/action.yml) for the exact paths.
+The release engineer reviews the generated section in the release PR and decides what stays under Notable Changes.
+
+Contributors can edit a PR's title and description after it merges without anyone being notified, so the generator uses the title and description as they were at merge, plus later edits by people with write access. If someone else made the latest edit, generation stops until a maintainer edits the PR to accept or revert the change. Maintainers can still fix a merged PR's title or add a `## Release note` block.
+
+Editing only hand-written Markdown on an open PR, such as `CHANGELOG.md` in a release PR, does not rerun the full CI suite. When the only difference from what a workflow last tested successfully on the PR, or from the PR's base, is in files that workflow does not depend on, the Test, Build, Docker and Check workflows skip their remaining jobs. See [detect-skippable-changes](.github/actions/detect-skippable-changes/action.yml) for the exact paths.
 
 ## Dependency Management
 
@@ -144,7 +149,7 @@ sed -i "s/$OLD_GO_VERSION/$NEW_GO_VERSION/g" README.md
 # Update Dockerfile
 sed -i "s/ARG GO_VERSION=$OLD_GO_VERSION/ARG GO_VERSION=$NEW_GO_VERSION/" Dockerfile
 
-# Add a changelog entry
+# Apply the release-note/upgrade-warning label to the PR, since the minimum Go version changes
 
 # Validate
 go mod tidy

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"math"
+	"net/http/httptest"
 	"reflect"
 	"strings"
 	"testing"
@@ -20,6 +21,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/client"
 	v1mocks "github.com/filecoin-project/lotus/api/mocks"
 	"github.com/filecoin-project/lotus/api/v2api"
 	"github.com/filecoin-project/lotus/api/v2api/v2mocks"
@@ -558,6 +560,78 @@ func TestGatewayEthNewFilterLookback(t *testing.T) {
 	}
 }
 
+// TestGatewayEthTraceTransactionLookback verifies that both gateway proxies
+// resolve the transaction an eth_traceTransaction request names through the
+// backend's bounded lookup and refuse to trace a block older than the lookback
+// bound, instead of forwarding the trace unchecked.
+func TestGatewayEthTraceTransactionLookback(t *testing.T) {
+	ctx := context.Background()
+
+	// Height 1 is older than the default lookback bound; height 13 is within it.
+	lookbackTimestamp := uint64(time.Now().Unix()) - uint64(DefaultMaxLookbackDuration.Seconds())
+	tss := generateTipSets(15, lookbackTimestamp-buildconstants.BlockDelaySecs*10)
+	genesisTS := tss[0].MinTimestamp()
+
+	txHash := ethtypes.EthHash{0xde, 0xad}
+	oldBlk, recentBlk := ethtypes.EthUint64(1), ethtypes.EthUint64(13)
+
+	for _, tc := range []struct {
+		name    string
+		hash    string
+		tx      *ethtypes.EthTx
+		lookup  bool // the backend transaction lookup runs
+		checked bool // the check consults network params
+		wantErr string
+	}{
+		{name: "bad hash", hash: "not-a-hash", wantErr: "cannot parse eth hash"},
+		{name: "not found", hash: txHash.String(), lookup: true, wantErr: "transaction not found"},
+		{name: "pending", hash: txHash.String(), lookup: true, tx: &ethtypes.EthTx{}, wantErr: "no trace for pending transactions"},
+		{name: "old block", hash: txHash.String(), lookup: true, tx: &ethtypes.EthTx{BlockNumber: &oldBlk}, checked: true, wantErr: "lookbacks of more than"},
+		{name: "recent block", hash: txHash.String(), lookup: true, tx: &ethtypes.EthTx{BlockNumber: &recentBlk}, checked: true},
+	} {
+		for _, v := range []struct {
+			name   string
+			expect func(v1 *v1mocks.MockFullNode, v2 *v2mocks.MockFullNode, forward bool)
+			call   func(a *Node) error
+		}{
+			{"v1", func(v1 *v1mocks.MockFullNode, _ *v2mocks.MockFullNode, forward bool) {
+				if tc.lookup {
+					v1.EXPECT().EthGetTransactionByHashLimited(gomock.Any(), gomock.Eq(&txHash), gomock.Eq(DefaultMaxMessageLookbackEpochs)).Return(tc.tx, nil)
+				}
+				if forward {
+					v1.EXPECT().EthTraceTransaction(gomock.Any(), tc.hash).Return(nil, nil)
+				}
+			}, func(a *Node) error { _, err := a.v1Proxy.EthTraceTransaction(ctx, tc.hash); return err }},
+			{"v2", func(_ *v1mocks.MockFullNode, v2 *v2mocks.MockFullNode, forward bool) {
+				if tc.lookup {
+					v2.EXPECT().EthGetTransactionByHashLimited(gomock.Any(), gomock.Eq(&txHash), gomock.Eq(DefaultMaxMessageLookbackEpochs)).Return(tc.tx, nil)
+				}
+				if forward {
+					v2.EXPECT().EthTraceTransaction(gomock.Any(), tc.hash).Return(nil, nil)
+				}
+			}, func(a *Node) error { _, err := a.v2Proxy.EthTraceTransaction(ctx, tc.hash); return err }},
+		} {
+			t.Run(v.name+"/"+tc.name, func(t *testing.T) {
+				ctrl := gomock.NewController(t)
+				defer ctrl.Finish()
+				mockV1 := v1mocks.NewMockFullNode(ctrl)
+				mockV2 := v2mocks.NewMockFullNode(ctrl)
+				a := NewNode(mockV1, mockV2)
+				if tc.checked {
+					expectNetworkParams(mockV1, genesisTS)
+				}
+				v.expect(mockV1, mockV2, tc.wantErr == "")
+				err := v.call(a)
+				if tc.wantErr != "" {
+					require.ErrorContains(t, err, tc.wantErr)
+				} else {
+					require.NoError(t, err)
+				}
+			})
+		}
+	}
+}
+
 func TestGatewayVersion(t *testing.T) {
 	ctx := context.Background()
 	ctrl := gomock.NewController(t)
@@ -834,6 +908,66 @@ func TestV1GatewayStateWaitMsgConfidenceLimit(t *testing.T) {
 	}
 }
 
+// TestV1GatewayStateReplayEmptyKeyLookback checks that StateReplay with an
+// empty tipset key resolves the message within the message lookback and
+// replays the tipset it was included in by key, so the lookback bound applies.
+func TestV1GatewayStateReplayEmptyKeyLookback(t *testing.T) {
+	ctx := context.Background()
+	const bound = abi.ChainEpoch(10)
+
+	msgCid, err := cid.Decode("bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4")
+	require.NoError(t, err)
+	replacedCid, err := cid.Decode("bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s")
+	require.NoError(t, err)
+
+	lookbackTimestamp := uint64(time.Now().Unix()) - uint64(DefaultMaxLookbackDuration.Seconds())
+
+	newNode := func(t *testing.T) (*Node, *v1mocks.MockFullNode) {
+		ctrl := gomock.NewController(t)
+		mockV1 := v1mocks.NewMockFullNode(ctrl)
+		return NewNode(mockV1, v2mocks.NewMockFullNode(ctrl), WithMaxMessageLookbackEpochs(bound)), mockV1
+	}
+
+	t.Run("found within lookback", func(t *testing.T) {
+		tss := generateTipSets(5, 0)
+		execTs, inclTs := tss[5], tss[4]
+		a, mockV1 := newNode(t)
+		expectNetworkParams(mockV1, tss[0].MinTimestamp())
+		mockV1.EXPECT().StateSearchMsg(gomock.Any(), types.EmptyTSK, msgCid, bound, true).
+			Return(&api.MsgLookup{Message: replacedCid, TipSet: execTs.Key(), Height: execTs.Height()}, nil)
+		mockV1.EXPECT().ChainGetTipSet(gomock.Any(), execTs.Key()).Return(execTs, nil)
+		mockV1.EXPECT().ChainGetTipSet(gomock.Any(), inclTs.Key()).Return(inclTs, nil)
+		want := &api.InvocResult{MsgCid: replacedCid}
+		mockV1.EXPECT().StateReplay(gomock.Any(), inclTs.Key(), replacedCid).Return(want, nil)
+
+		res, err := a.v1Proxy.StateReplay(ctx, types.EmptyTSK, msgCid)
+		require.NoError(t, err)
+		require.Equal(t, want, res)
+	})
+
+	t.Run("not found within lookback", func(t *testing.T) {
+		a, mockV1 := newNode(t)
+		mockV1.EXPECT().StateSearchMsg(gomock.Any(), types.EmptyTSK, msgCid, bound, true).Return(nil, nil)
+
+		_, err := a.v1Proxy.StateReplay(ctx, types.EmptyTSK, msgCid)
+		require.ErrorContains(t, err, "didn't find msg")
+	})
+
+	t.Run("included tipset too old", func(t *testing.T) {
+		tss := generateTipSets(5, lookbackTimestamp-buildconstants.BlockDelaySecs*10)
+		execTs, inclTs := tss[5], tss[4]
+		a, mockV1 := newNode(t)
+		expectNetworkParams(mockV1, tss[0].MinTimestamp())
+		mockV1.EXPECT().StateSearchMsg(gomock.Any(), types.EmptyTSK, msgCid, bound, true).
+			Return(&api.MsgLookup{Message: msgCid, TipSet: execTs.Key(), Height: execTs.Height()}, nil)
+		mockV1.EXPECT().ChainGetTipSet(gomock.Any(), execTs.Key()).Return(execTs, nil)
+		mockV1.EXPECT().ChainGetTipSet(gomock.Any(), inclTs.Key()).Return(inclTs, nil)
+
+		_, err := a.v1Proxy.StateReplay(ctx, types.EmptyTSK, msgCid)
+		require.ErrorIs(t, err, a.errLookback)
+	})
+}
+
 // TestGatewayInterfacesDoNotExposeLimitedOrUntrusted asserts the invariant
 // that neither Gateway interface exposes a `*Limited` or `*Untrusted` method
 // variant. Those variants exist on FullNode for internal use by the gateway
@@ -970,4 +1104,100 @@ func TestGatewayEventFilterRangeConfiguration(t *testing.T) {
 
 	gw = NewNode(mockV1, mockV2, WithEventFilterMaxHeightRange(0))
 	require.NoError(t, gw.checkEventFilterHeightRange(0, 1_000_000))
+}
+
+func TestGatewayEthSubscribeRemovesSinkOnConnectionClose(t *testing.T) {
+	ctx := context.Background()
+	subParams, err := json.Marshal(ethtypes.EthSubscribeParams{EventType: "newHeads"})
+	require.NoError(t, err)
+
+	ctrl := gomock.NewController(t)
+	mockV1 := v1mocks.NewMockFullNode(ctrl)
+	mockV2 := v2mocks.NewMockFullNode(ctrl)
+	v1Subs, v2Subs := NewEthSubHandler(), NewEthSubHandler()
+
+	// The health handlers poll the node in the background.
+	notSupported := errors.New("not supported")
+	mockV1.EXPECT().ChainNotify(gomock.Any()).Return(nil, notSupported).AnyTimes()
+	mockV1.EXPECT().NetAutoNatStatus(gomock.Any()).Return(api.NatInfo{}, notSupported).AnyTimes()
+	mockV1.EXPECT().NodeStatus(gomock.Any(), gomock.Any()).Return(api.NodeStatus{}, notSupported).AnyTimes()
+
+	h, err := Handler(NewNode(mockV1, mockV2, WithV1EthSubHandler(v1Subs), WithV2EthSubHandler(v2Subs)))
+	require.NoError(t, err)
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+	wsAddr := "ws" + strings.TrimPrefix(srv.URL, "http")
+
+	sinks := func(subs *EthSubHandler) int {
+		subs.lk.Lock()
+		defer subs.lk.Unlock()
+		return len(subs.sinks)
+	}
+
+	for _, tc := range []struct {
+		name      string
+		subs      *EthSubHandler
+		expect    func(id ethtypes.EthSubscriptionID, unsubscribed chan struct{})
+		subscribe func() (ethtypes.EthSubscriptionID, jsonrpc.ClientCloser, error)
+	}{
+		{
+			name: "v1",
+			subs: v1Subs,
+			expect: func(id ethtypes.EthSubscriptionID, unsubscribed chan struct{}) {
+				mockV1.EXPECT().EthSubscribe(gomock.Any(), gomock.Any()).Return(id, nil)
+				mockV1.EXPECT().EthUnsubscribe(gomock.Any(), id).DoAndReturn(func(context.Context, ethtypes.EthSubscriptionID) (bool, error) {
+					close(unsubscribed)
+					return true, nil
+				})
+			},
+			subscribe: func() (ethtypes.EthSubscriptionID, jsonrpc.ClientCloser, error) {
+				gw, closer, err := client.NewGatewayRPCV1(ctx, wsAddr+"/rpc/v1", nil, jsonrpc.WithClientHandler("Filecoin", NewEthSubHandler()))
+				if err != nil {
+					return ethtypes.EthSubscriptionID{}, nil, err
+				}
+				id, err := gw.EthSubscribe(ctx, subParams)
+				return id, closer, err
+			},
+		},
+		{
+			name: "v2",
+			subs: v2Subs,
+			expect: func(id ethtypes.EthSubscriptionID, unsubscribed chan struct{}) {
+				mockV2.EXPECT().EthSubscribe(gomock.Any(), gomock.Any()).Return(id, nil)
+				mockV2.EXPECT().EthUnsubscribe(gomock.Any(), id).DoAndReturn(func(context.Context, ethtypes.EthSubscriptionID) (bool, error) {
+					close(unsubscribed)
+					return true, nil
+				})
+			},
+			subscribe: func() (ethtypes.EthSubscriptionID, jsonrpc.ClientCloser, error) {
+				gw, closer, err := client.NewGatewayRPCV2(ctx, wsAddr+"/rpc/v2", nil, jsonrpc.WithClientHandler("Filecoin", NewEthSubHandler()))
+				if err != nil {
+					return ethtypes.EthSubscriptionID{}, nil, err
+				}
+				id, err := gw.EthSubscribe(ctx, subParams)
+				return id, closer, err
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			id := ethtypes.EthSubscriptionID{1}
+			unsubscribed := make(chan struct{})
+			tc.expect(id, unsubscribed)
+
+			got, closer, err := tc.subscribe()
+			require.NoError(t, err)
+			require.Equal(t, id, got)
+			require.Equal(t, 1, sinks(tc.subs))
+
+			// Closing the websocket unsubscribes on the node, and the sink
+			// for the closed connection must go with it.
+			closer()
+			select {
+			case <-unsubscribed:
+			case <-time.After(10 * time.Second):
+				t.Fatal("subscription was not unsubscribed on connection close")
+			}
+			require.Eventually(t, func() bool { return sinks(tc.subs) == 0 }, 5*time.Second, 10*time.Millisecond)
+		})
+	}
 }

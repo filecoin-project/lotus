@@ -80,7 +80,7 @@ jobs:
           RC1_DATE: ${{ github.event.inputs.rc1-date }}
           STABLE_DATE: ${{ github.event.inputs.stable-date }}
         run: |
-          go run cmd/release/main.go create-issue \
+          go run ./cmd/release create-issue \
             --create-on-github=true \
             --type "$RELEASE_TYPE" \
             --tag "$RELEASE_TAG" \

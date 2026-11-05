@@ -507,6 +507,7 @@ func (pv1 *reverseProxyV1) EthSubscribe(ctx context.Context, jparams jsonrpc.Raw
 		if _, err := pv1.server.EthUnsubscribe(ctx, sub); err != nil {
 			log.Warnf("error unsubscribing after connection end: %v", err)
 		}
+		pv1.subscriptions.RemoveSub(sub)
 	}
 
 	return sub, err
@@ -579,6 +580,10 @@ func (pv1 *reverseProxyV1) EthTraceReplayBlockTransactions(ctx context.Context, 
 
 func (pv1 *reverseProxyV1) EthTraceTransaction(ctx context.Context, txHash string) ([]*ethtypes.EthTraceTransaction, error) {
 	if err := pv1.gateway.limit(ctx, stateRateLimitTokens); err != nil {
+		return nil, err
+	}
+
+	if err := pv1.gateway.checkEthTraceTransaction(ctx, txHash, pv1.server.EthGetTransactionByHashLimited); err != nil {
 		return nil, err
 	}
 

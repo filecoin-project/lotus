@@ -380,6 +380,10 @@ func (pv2 *reverseProxyV2) EthTraceTransaction(ctx context.Context, txHash strin
 		return nil, err
 	}
 
+	if err := pv2.gateway.checkEthTraceTransaction(ctx, txHash, pv2.server.EthGetTransactionByHashLimited); err != nil {
+		return nil, err
+	}
+
 	return pv2.server.EthTraceTransaction(ctx, txHash)
 }
 
@@ -670,6 +674,7 @@ func (pv2 *reverseProxyV2) EthSubscribe(ctx context.Context, p jsonrpc.RawParams
 		if _, err := pv2.server.EthUnsubscribe(ctx, sub); err != nil {
 			log.Warnf("error unsubscribing after connection end: %v", err)
 		}
+		pv2.subscriptions.RemoveSub(sub)
 	}
 
 	return sub, err
