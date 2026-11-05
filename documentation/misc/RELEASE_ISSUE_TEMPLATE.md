@@ -274,7 +274,7 @@
       - It writes Notable Changes (upgrade warnings first: PRs with `!` or `release-note/upgrade-warning`; then PRs with `release-note/highlight` or a `## Release note` block), then the compare links with a collapsed list of every PR merged since the previous stable tag, then the Contributors table. It skips PRs already linked from released sections. Each RC and the stable section list everything since the previous stable release.
       - Read its warnings: commits without a `(#N)` PR number are not listed.
       - Commit the script output unedited, then put all hand edits in one separate editorial commit, so a reviewer can see exactly what changed against the raw output. Squash later edits into that commit rather than stacking more. After a `--force` rerun, repeat the same pair of commits.
-      - It skips PRs linked from another section, so a line added to a published section on `master` hides that PR from this release. Compare the PR count with `git rev-list --count PREVIOUS_TAG..origin/<release branch>`, which leaves out the release PR's own commits. If a skipped PR's commit isn't in the tag for that section, the line never shipped: delete it in its own commit and rerun with `--force`, and make the same deletion in the changelog copy-back PR to `master`.
+      - It also warns about each PR it skips because another section links it. That's normal for a backport already released, but a line added to a published section on `master` hides that PR from this release. If the PR's commit isn't in the tag for that section, the line never shipped: delete it in its own commit and rerun with `--force`, and make the same deletion in the changelog copy-back PR to `master`.
       - When a change needs a missing upgrade warning, get the wording approved, then have a maintainer add the `release-note/upgrade-warning` label and a `## Release note` block to the merged PR and rerun with `--force`, so the warning comes from the PR rather than a hand edit. A warning spanning several PRs still needs a hand edit to merge them.
       - It looks up every commit in the range on GitHub, so it fails with `422 No commit found for SHA` while the release PR's own commits are unpushed. Pass `--to origin/<release branch>` to stop at the pushed branch tip.
       - It stops if it can't read a PR from GitHub, or if a PR's title or description was last changed after merge by someone without write access, since the changelog only trusts post-merge edits from maintainers. Check each PR it lists: a maintainer either accepts the change by editing the flagged title or description (any small edit makes them its latest editor) or reverts it, then rerun.
@@ -317,11 +317,7 @@
       - Example where these weren't specified yet: [PR #12169](https://github.com/filecoin-project/lotus/pull/12169)
 <!--    {{end}}-->
 <!--  {{end}}-->
-   - [ ] Ensure no missing content when spot checking git history
-      <!-- agent:
-      - The generated section lists every PR in range, so look for commits it warned about (no `(#N)` PR number) that users would care about, and add those by hand.
-      - A change already in the previous stable release (often via a backport with a different commit) is not missing.
-      -->
+   - [ ] Read the generator's warnings: add any commit without a PR number that users would care about, and check that each skipped PR really shipped in the section linking it.
 <!--  {{if $.BaseTag}}-->
 <!--    {{if eq $.Type "Node and Miner"}}-->
       - PREVIOUS_TAG for node is the base release `v{{$.BaseTag}}`. For miner it is the latest stable miner tag, which may be older: `git tag -l 'miner/v*' | grep -v '-' | sort -V -r | head -n 1`. Review miner history from that tag, accounting for node fixes already in the `v{{$.BaseTag}}` source base.
@@ -331,17 +327,6 @@
       - PREVIOUS_TAG is the base release `miner/v{{$.BaseTag}}`.
 <!--    {{end}}-->
       - Every commit in `git log --oneline --graph PREVIOUS_TAG..HEAD` should be a backported fix or a release commit; compare against the `release/backport` PRs rather than everything merged into master.
-<!--  {{else}}-->
-      - Find the previous stable tag first:
-<!--    {{if contains "Node" $.Type}}-->
-         - Node: `git tag -l 'v*' | grep -v '-' | sort -V -r | head -n 1`
-<!--    {{end}}-->
-<!--    {{if contains "Miner" $.Type}}-->
-         - Miner: `git tag -l 'miner/v*' | grep -v '-' | sort -V -r | head -n 1`
-<!--    {{end}}-->
-      - Example command looking at git commits: `git log --oneline --graph PREVIOUS_TAG..HEAD`
-      - Example GitHub UI search looking at merged PRs into master, where `YYYY-MM-DD` is the previous stable release publish date: https://github.com/filecoin-project/lotus/pulls?q=is%3Apr+base%3Amaster+merged%3A%3EYYYY-MM-DD
-      - Example `gh` cli command looking at merged PRs into master and sorted by title to group similar areas: `gh pr list --repo filecoin-project/lotus --search "base:master merged:>YYYY-MM-DD" --json number,mergedAt,author,title | jq -r '.[] | [.number, .mergedAt, .author.login, .title] | @tsv' | sort -k4`
 <!--  {{end}}-->
    - [ ] Update the PR with the commit(s) made to the CHANGELOG
 <!--  {{if $stable}}-->

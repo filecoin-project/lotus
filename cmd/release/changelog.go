@@ -134,10 +134,11 @@ func isSameBaseVersionHeader(header, version string) bool {
 	return false
 }
 
-// releasedPullRequests adds the PRs linked from released sections of a changelog to released.
+// releasedPullRequests adds the PRs linked from released sections of a changelog to released, each with the header of
+// the first section that links it. A PR already in released keeps its section.
 // UNRELEASED sections are not released, and sections for version and its other pre-releases are left out,
 // because each RC and the stable release list every change since the previous stable release.
-func releasedPullRequests(changelog, version string, released map[int]bool) {
+func releasedPullRequests(changelog, version string, released map[int]string) {
 	for _, section := range splitChangelogSections(changelog) {
 		header, _, _ := strings.Cut(section, "\n")
 		if strings.HasPrefix(header, "# UNRELEASED") || isSameBaseVersionHeader(header, version) {
@@ -145,7 +146,9 @@ func releasedPullRequests(changelog, version string, released map[int]bool) {
 		}
 		for _, match := range pullLinkRegexp.FindAllStringSubmatch(section, -1) {
 			n, _ := strconv.Atoi(match[1])
-			released[n] = true
+			if _, ok := released[n]; !ok {
+				released[n] = strings.TrimPrefix(header, "# ")
+			}
 		}
 	}
 }
@@ -330,10 +333,11 @@ func resolveCommitPullRequests(commits []commitInfo, findPR func(hash string) (i
 
 // generateChangelogSection renders the CHANGELOG.md section for a release from the commits in its range, oldest first.
 // Commits whose PR is in released are skipped: the previous tag is not always an ancestor of the release, so the
-// range can hold changes that already shipped through a backport.
+// range can hold changes that already shipped through a backport. Each one gets a warning naming the section that links
+// it, because a line added to a published section by mistake would otherwise hide the PR from this release.
 // fetchPR returns the title, description and labels to use for a PR. If it fails for any PR, generation stops with an
 // error that lists every failure.
-func generateChangelogSection(errOut io.Writer, release changelogRelease, commits []commitInfo, released map[int]bool, fetchPR func(int) (pullRequestInfo, error)) (string, error) {
+func generateChangelogSection(errOut io.Writer, release changelogRelease, commits []commitInfo, released map[int]string, fetchPR func(int) (pullRequestInfo, error)) (string, error) {
 	var upgradeWarnings, notables, all []changeEntry
 	var problems []error
 	var contributors []commitInfo
@@ -344,7 +348,8 @@ func generateChangelogSection(errOut io.Writer, release changelogRelease, commit
 			contributors = append(contributors, c)
 			continue
 		}
-		if released[c.PR] {
+		if section, ok := released[c.PR]; ok {
+			_, _ = fmt.Fprintf(errOut, "warning: #%d is linked from section %q, so it is not listed; check that it shipped in that release\n", c.PR, section)
 			continue
 		}
 		contributors = append(contributors, c)
@@ -557,7 +562,7 @@ func runChangelogGenerate(out, errOut io.Writer, opts changelogGenerateOptions) 
 	if err != nil {
 		return fmt.Errorf("failed to read changelog: %w", err)
 	}
-	released := map[int]bool{}
+	released := map[int]string{}
 	releasedPullRequests(string(changelog), version, released)
 	// The previous release's own CHANGELOG.md has its section even if it was never copied back to this branch.
 	if fromChangelog, err := gitOutput("show", from+":CHANGELOG.md"); err == nil {

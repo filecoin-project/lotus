@@ -108,17 +108,21 @@ func TestReleasedPullRequests(t *testing.T) {
 
 - not a v1.39 pre-release ([filecoin-project/lotus#5](https://github.com/filecoin-project/lotus/pull/5))
 `
-	released := map[int]bool{}
+	released := map[int]string{}
 	releasedPullRequests(changelog, "1.39.0", released)
-	require.Equal(t, map[int]bool{3: true, 4: true, 5: true}, released)
+	require.Equal(t, map[int]string{3: "Node v1.38.3 / 2026-10-21", 4: "Node v1.38.3 / 2026-10-21", 5: "Node v1.3.9 / 2020-01-01"}, released)
 
-	released = map[int]bool{}
+	released = map[int]string{}
 	releasedPullRequests(changelog, "1.39.0-rc2", released)
-	require.Equal(t, map[int]bool{3: true, 4: true, 5: true}, released)
+	require.Equal(t, map[int]string{3: "Node v1.38.3 / 2026-10-21", 4: "Node v1.38.3 / 2026-10-21", 5: "Node v1.3.9 / 2020-01-01"}, released)
 
-	released = map[int]bool{}
+	released = map[int]string{}
 	releasedPullRequests(changelog, "1.40.0", released)
-	require.Equal(t, map[int]bool{2: true, 3: true, 4: true, 5: true}, released)
+	require.Equal(t, map[int]string{2: "Node and Miner v1.39.0-rc1 / 2026-11-01", 3: "Node v1.38.3 / 2026-10-21", 4: "Node v1.38.3 / 2026-10-21", 5: "Node v1.3.9 / 2020-01-01"}, released)
+
+	// The previous tag's own changelog is read second, and doesn't replace a section already found.
+	releasedPullRequests("# Node v1.38.4 / 2026-11-05\n\n- ([#3](https://github.com/filecoin-project/lotus/pull/3))\n", "1.40.0", released)
+	require.Equal(t, "Node v1.38.3 / 2026-10-21", released[3])
 }
 
 func TestPreviousStableTag(t *testing.T) {
@@ -207,7 +211,7 @@ func TestGenerateChangelogSection(t *testing.T) {
 	}
 
 	var errOut bytes.Buffer
-	section, err := generateChangelogSection(&errOut, release, commits, map[int]bool{3: true}, fetchPR)
+	section, err := generateChangelogSection(&errOut, release, commits, map[int]string{3: "Node v1.38.0 / 2026-10-12"}, fetchPR)
 	require.NoError(t, err)
 	require.Equal(t, `# Node and Miner v1.39.0 / 2026-11-05
 
@@ -256,6 +260,7 @@ func TestGenerateChangelogSection(t *testing.T) {
 
 `, section)
 	require.Contains(t, errOut.String(), `warning: f6 "chore: no PR number" has no PR, so it is not listed`)
+	require.Contains(t, errOut.String(), `warning: #3 is linked from section "Node v1.38.0 / 2026-10-12", so it is not listed; check that it shipped in that release`)
 
 	// With nothing notable, the Notable Changes heading stays as a placeholder for the releaser.
 	release.CompareLinks = release.CompareLinks[:1]
@@ -339,9 +344,9 @@ func TestResolveCommitPullRequests(t *testing.T) {
 // TestReleasedPullRequestsFromGeneratedEntries guards against the generated link format drifting from what later runs skip.
 func TestReleasedPullRequestsFromGeneratedEntries(t *testing.T) {
 	changelog := "# Lotus changelog\n\n# Node v1.39.0 / 2026-11-05\n\n" + formatChangelogEntry("fix: a bug", 42)
-	released := map[int]bool{}
+	released := map[int]string{}
 	releasedPullRequests(changelog, "1.40.0", released)
-	require.Equal(t, map[int]bool{42: true}, released)
+	require.Equal(t, map[int]string{42: "Node v1.39.0 / 2026-11-05"}, released)
 }
 
 func TestReleaseCompareLinks(t *testing.T) {
