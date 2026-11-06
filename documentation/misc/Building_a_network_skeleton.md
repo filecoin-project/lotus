@@ -425,12 +425,6 @@ Note: one only needs to update `filecoin-ffi`'s dependency on `go-state-types` w
 
 13. Run `make docsgen-cli`.
 
-    On macOS, if local commands that link filecoin-ffi fail to find Homebrew libraries such as `hwloc`, prefix the command with:
-
-    ```bash
-    CGO_LDFLAGS="-L/opt/homebrew/lib"
-    ```
-
 14. Validate the network skeleton on a devnet by:
   - Have a local developer network that starts at the current network version.  See docs at https://docs.filecoin.io/networks/local-testnet .  
   - Be able to see the Actor CIDs/Actor version for the mock Actor-bundle through `lotus state actor-cids --network-version XX+1`

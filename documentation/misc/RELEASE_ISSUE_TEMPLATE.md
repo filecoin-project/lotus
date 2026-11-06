@@ -261,9 +261,6 @@
    - After committing, build each release binary and confirm `--version` reports the intended version with no `.dirty` suffix.
    -->
 - [ ] Run `make gen && make docsgen-cli` to generate documentation
-   <!-- agent:
-   - On macOS, `make gen` can fail to link with `ld: library 'hwloc' not found`. Set `CGO_LDFLAGS="-L$(brew --prefix hwloc)/lib"`, `CGO_CFLAGS="-I$(brew --prefix hwloc)/include"` and `PKG_CONFIG_PATH="$(brew --prefix hwloc)/lib/pkgconfig"` first.
-   -->
 - [ ] Create a draft PR with title `build: release Lotus {{$.Type}} v{{$.Tag}}{{$tagSuffix}}`
    - Link to PR:
    - Opening a PR will trigger a CI run that will build assets, create a draft GitHub release, and attach the assets.
@@ -286,7 +283,7 @@
       -->
 <!--{{if eq $.Level "patch"}}-->
    - [ ] Confirm this is still a patch release. Patch releases only contain backwards-compatible changes, so if an upgrade warning breaks an API, command or other behaviour, ask the release owner whether to move to a minor release ([policy](https://github.com/filecoin-project/lotus/blob/master/LOTUS_RELEASE_FLOW.md#adopted-conventions)).
-      <!-- agent: check this as soon as the generated section exists, before editing it. Moving to a minor release later means new release branches, a regenerated changelog and issue, and a new CI run; v1.38.4 became v1.39.0 this way after a maintainer raised it in review. -->
+      <!-- agent: check this as soon as the generated section exists, before editing it. Moving to a minor release later means new release branches, a regenerated changelog and issue, and a new CI run. -->
 <!--{{end}}-->
    - [ ] Write a short summary under the header, review Notable Changes, and check for missed upgrade warnings.
       <!-- agent:
@@ -295,7 +292,7 @@
       - Clearly wrong means a factual error in an entry, or a missing upgrade warning for a change that will break operators on upgrade. Fix these in the editorial commit, keep them short (what changed and the action to take), and say why in the PR description.
       - Everything else is a recommendation, not an edit. Give the release owner a list of what you'd add, drop or reword, each with why it matters to operators or downstream developers and the evidence for it (PR, code, or what you tested). Apply only what they approve.
       - To build that list, read the PRs in the full list (titles, descriptions and diffs). Flag PRs not marked as upgrade warnings that remove or rename commands, flags, APIs, config or metrics, change defaults, permissions or limits, raise the minimum Go version, or otherwise need operator action. Also flag titles that misdescribe what changed for users. Any new upgrade warning needs its author or a maintainer to confirm.
-      - An independent reviewer returns findings to the release owner in the same form, and doesn't edit the section either.
+      - Optionally, ask an independent reviewer, such as a separate agent session, to check the section against the PRs. It returns findings to the release owner as recommendations in the same form and doesn't edit the section. Check its claims against the code before repeating them.
       -->
    - [ ] After pushing CHANGELOG edits, check the draft GitHub release body. Every Release workflow run regenerates it from `CHANGELOG.md`, so fix the text there, not on GitHub.
       <!-- agent:
