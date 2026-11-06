@@ -968,6 +968,55 @@ func TestV1GatewayStateReplayEmptyKeyLookback(t *testing.T) {
 	})
 }
 
+// TestV1GatewayMinerGetBaseInfoLookback checks that the round passed to
+// MinerGetBaseInfo is held to the lookback bound, not just the tipset key.
+func TestV1GatewayMinerGetBaseInfoLookback(t *testing.T) {
+	ctx := context.Background()
+
+	// Height 1 is older than the default lookback bound; height 15 is within it.
+	lookbackTimestamp := uint64(time.Now().Unix()) - uint64(DefaultMaxLookbackDuration.Seconds())
+	tss := generateTipSets(15, lookbackTimestamp-buildconstants.BlockDelaySecs*10)
+	genesisTS := tss[0].MinTimestamp()
+	head := tss[len(tss)-1]
+	cur := abi.ChainEpoch(time.Since(time.Unix(int64(genesisTS), 0)) / (time.Duration(buildconstants.BlockDelaySecs) * time.Second))
+
+	maddr, err := address.NewIDAddress(1000)
+	require.NoError(t, err)
+
+	for _, tc := range []struct {
+		name    string
+		h       abi.ChainEpoch
+		wantErr string
+	}{
+		{name: "old round", h: 1, wantErr: "lookbacks of more than"},
+		{name: "negative round", h: -1, wantErr: "negative height"},
+		{name: "future round", h: cur + 10, wantErr: "tipset height in future"},
+		{name: "next round", h: head.Height() + 1},
+		{name: "current round after null rounds", h: cur + 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+			mockV1 := v1mocks.NewMockFullNode(ctrl)
+			a := NewNode(mockV1, v2mocks.NewMockFullNode(ctrl))
+			expectNetworkParams(mockV1, genesisTS)
+			mockV1.EXPECT().ChainGetTipSet(gomock.Any(), head.Key()).Return(head, nil)
+			want := &api.MiningBaseInfo{}
+			if tc.wantErr == "" {
+				mockV1.EXPECT().MinerGetBaseInfo(gomock.Any(), maddr, tc.h, head.Key()).Return(want, nil)
+			}
+
+			got, err := a.v1Proxy.MinerGetBaseInfo(ctx, maddr, tc.h, head.Key())
+			if tc.wantErr != "" {
+				require.ErrorContains(t, err, tc.wantErr)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, want, got)
+			}
+		})
+	}
+}
+
 // TestGatewayInterfacesDoNotExposeLimitedOrUntrusted asserts the invariant
 // that neither Gateway interface exposes a `*Limited` or `*Untrusted` method
 // variant. Those variants exist on FullNode for internal use by the gateway
