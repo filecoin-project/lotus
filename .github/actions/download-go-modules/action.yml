@@ -1,0 +1,29 @@
+name: Download Go modules
+description: Runs `go mod download`, retrying transient errors
+
+inputs:
+  working-directory:
+    description: Specifies the working directory where the command is run.
+    required: false
+
+runs:
+  using: composite
+  steps:
+    # Each job downloads the module graph from scratch, so a single transient proxy error would
+    # otherwise fail the job before it does any work. Retries reuse whatever modules were already
+    # fetched.
+    - shell: bash
+      working-directory: ${{ inputs.working-directory || github.workspace }}
+      run: |
+        for attempt in 1 2 3; do
+          if go mod download; then
+            exit 0
+          fi
+          if [[ "$attempt" -eq 3 ]]; then
+            echo "::error title=Go module download failed::go mod download failed after $attempt attempts on ${RUNNER_NAME:-unknown} (${RUNNER_ARCH:-unknown})."
+            exit 1
+          fi
+          delay=$((attempt * 15))
+          echo "::warning title=Retrying Go module download::go mod download failed on attempt $attempt/3; retrying in ${delay}s."
+          sleep "$delay"
+        done
