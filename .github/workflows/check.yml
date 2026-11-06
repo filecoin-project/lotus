@@ -58,6 +58,7 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/install-system-dependencies
       - uses: ./.github/actions/install-go
+      - uses: ./.github/actions/download-go-modules
       - uses: ./.github/actions/make-deps
       - run: make gen
       - run: git diff --exit-code
@@ -75,6 +76,7 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/install-system-dependencies
       - uses: ./.github/actions/install-go
+      - uses: ./.github/actions/download-go-modules
       - uses: ./.github/actions/make-deps
       - run: make lint
   check-fmt:
@@ -101,6 +103,7 @@ jobs:
           submodules: 'recursive'
           fetch-depth: 0
       - uses: ./.github/actions/install-go
+      - uses: ./.github/actions/download-go-modules
       - run: go mod tidy -v
       - run: git diff --exit-code
   check-actionlint:
