@@ -33,5 +33,6 @@ func TestChainGetNodeDoesNotWriteBlockstore(t *testing.T) {
 	want, err := cbor.WrapObject(uint64(42), mh.SHA2_256, 32)
 	require.NoError(t, err)
 	require.Equal(t, want.Cid(), obj.Cid)
+	require.Equal(t, want.RawData(), obj.RawData)
 	require.Len(t, bs, before, "ChainGetNode must not write to the exposed blockstore")
 }

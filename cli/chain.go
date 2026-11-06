@@ -810,11 +810,11 @@ var ChainGetCmd = &cli.Command{
 		case "actor":
 			cbu = new(types.Actor)
 		case "amt":
-			return handleAmt(ctx, api, obj.Cid)
+			return handleAmt(ctx, api, obj)
 		case "hamt-epoch":
-			return handleHamtEpoch(ctx, api, obj.Cid)
+			return handleHamtEpoch(ctx, api, obj)
 		case "hamt-address":
-			return handleHamtAddress(ctx, api, obj.Cid)
+			return handleHamtAddress(ctx, api, obj)
 		case "cronevent":
 			cbu = new(power.CronEvent)
 		case "account-state":
@@ -829,7 +829,7 @@ var ChainGetCmd = &cli.Command{
 			return fmt.Errorf("unknown type: %q", t)
 		}
 
-		raw, err := api.ChainReadObj(ctx, obj.Cid)
+		raw, err := ipldObjectRaw(ctx, api, obj)
 		if err != nil {
 			return err
 		}
@@ -852,9 +852,22 @@ var ChainGetCmd = &cli.Command{
 	},
 }
 
+// ipldObjectRaw returns the block bytes for a ChainGetNode result. Blocks
+// produced by @H, @A and @state resolution are not stored on the node, so the
+// bytes returned with the object are preferred over a ChainReadObj round trip.
+func ipldObjectRaw(ctx context.Context, api v0api.FullNode, obj *lapi.IpldObject) ([]byte, error) {
+	if obj.RawData != nil {
+		return obj.RawData, nil
+	}
+	return api.ChainReadObj(ctx, obj.Cid)
+}
+
 type apiIpldStore struct {
 	ctx context.Context
 	api v0api.FullNode
+
+	// root, when set, is served from memory instead of ChainReadObj.
+	root *lapi.IpldObject
 }
 
 func (ht *apiIpldStore) Context() context.Context {
@@ -862,7 +875,13 @@ func (ht *apiIpldStore) Context() context.Context {
 }
 
 func (ht *apiIpldStore) Get(ctx context.Context, c cid.Cid, out interface{}) error {
-	raw, err := ht.api.ChainReadObj(ctx, c)
+	var raw []byte
+	var err error
+	if ht.root != nil && c == ht.root.Cid {
+		raw, err = ipldObjectRaw(ctx, ht.api, ht.root)
+	} else {
+		raw, err = ht.api.ChainReadObj(ctx, c)
+	}
 	if err != nil {
 		return err
 	}
@@ -882,9 +901,9 @@ func (ht *apiIpldStore) Put(ctx context.Context, v interface{}) (cid.Cid, error)
 	panic("No mutations allowed")
 }
 
-func handleAmt(ctx context.Context, api v0api.FullNode, r cid.Cid) error {
-	s := &apiIpldStore{ctx, api}
-	mp, err := adt.AsArray(s, r)
+func handleAmt(ctx context.Context, api v0api.FullNode, obj *lapi.IpldObject) error {
+	s := &apiIpldStore{ctx: ctx, api: api, root: obj}
+	mp, err := adt.AsArray(s, obj.Cid)
 	if err != nil {
 		return err
 	}
@@ -895,9 +914,9 @@ func handleAmt(ctx context.Context, api v0api.FullNode, r cid.Cid) error {
 	})
 }
 
-func handleHamtEpoch(ctx context.Context, api v0api.FullNode, r cid.Cid) error {
-	s := &apiIpldStore{ctx, api}
-	mp, err := adt.AsMap(s, r)
+func handleHamtEpoch(ctx context.Context, api v0api.FullNode, obj *lapi.IpldObject) error {
+	s := &apiIpldStore{ctx: ctx, api: api, root: obj}
+	mp, err := adt.AsMap(s, obj.Cid)
 	if err != nil {
 		return err
 	}
@@ -913,9 +932,9 @@ func handleHamtEpoch(ctx context.Context, api v0api.FullNode, r cid.Cid) error {
 	})
 }
 
-func handleHamtAddress(ctx context.Context, api v0api.FullNode, r cid.Cid) error {
-	s := &apiIpldStore{ctx, api}
-	mp, err := adt.AsMap(s, r)
+func handleHamtAddress(ctx context.Context, api v0api.FullNode, obj *lapi.IpldObject) error {
+	s := &apiIpldStore{ctx: ctx, api: api, root: obj}
+	mp, err := adt.AsMap(s, obj.Cid)
 	if err != nil {
 		return err
 	}

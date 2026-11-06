@@ -656,8 +656,9 @@ func (a *ChainAPI) ChainGetNode(ctx context.Context, p string) (*api.IpldObject,
 	}
 
 	return &api.IpldObject{
-		Cid: node.Cid(),
-		Obj: node,
+		Cid:     node.Cid(),
+		Obj:     node,
+		RawData: node.RawData(),
 	}, nil
 }
 
