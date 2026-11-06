@@ -6,7 +6,7 @@
 [//]: # (Complete the steps below as part of creating a release issue and mark them complete with an X or checkmark when done.)
 [//]: # (Agent/operator guide for completing this release issue:)
 [//]: # (1. Treat this issue as the mutable release ledger. Edit it for concrete release progress: links, checked boxes, dates, release URLs, CI/release status, announcement comment links, and short release-specific facts.)
-[//]: # (2. Put process/template improvements in the release-template-improvements PR from Release Setup, not directly in this issue.)
+[//]: # (2. Put process/template improvements in the release process improvements PR from Release Setup, not directly in this issue.)
 [//]: # (3. Work top-to-bottom. Do not start release PR work for a target until its Dependencies for releases section has linked blockers or an explicit "No additional dependencies" entry and the dependency checkpoint is complete.)
 <!--{{if .BaseTag}}-->
 [//]: # (4. Create release branches from the v{{.BaseTag}} tag, not origin/master. Changes reach them only through backport PRs that cherry-pick release/backport-labelled PRs from master.)
@@ -80,10 +80,10 @@
 - [ ] Make sure all [Lotus dependencies are updated to the correct versions for the network upgrade](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/Update_Dependencies_Lotus.md)
    - Link to Lotus PR:
 <!--{{end}}-->
-- [ ] Open PR against [RELEASE_ISSUE_TEMPLATE.md](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md) with title `docs(release): v{{.Tag}} release template improvements` for improving future releases.
+- [ ] Open a PR with title `chore(release): v{{.Tag}} release process improvements` for improving future releases. It covers [RELEASE_ISSUE_TEMPLATE.md](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md) and anything else that would make the release process better, such as `cmd/release`, the `Makefile` or CI.
    - Link to PR:
    - Open this as a draft PR and use it to collect release-process improvements discovered while running this checklist.
-   - Suggested branch: `docs/release-v{{.Tag}}-template-improvements`
+   - Suggested branch: `chore/release-v{{.Tag}}-process-improvements`
    - This will get merged in a `Post-Release` step.
 <!--{{if eq .Level "patch"}}-->
 <!--  {{if contains "Node" .Type}}-->
@@ -387,7 +387,7 @@
    - Put the entry above the newest section on master. Later `changelog generate` runs on master skip the PRs it links, so they are not listed as new again.
    - Confirm the diff touches only `CHANGELOG.md`, with no version rollback and no duplicate release heading.
    -->
-- [ ] Finish updating/merging the [RELEASE_ISSUE_TEMPLATE.md](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md) PR from `Release Setup` with any improvements determined from this latest release iteration.
+- [ ] Finish updating/merging the release process improvements PR from `Release Setup` with any improvements determined from this latest release iteration.
 - [ ] Review and approve the auto-generated PR in [lotus-docs](https://github.com/filecoin-project/lotus-docs/pulls) that updates the latest Lotus version information.
    - The PR comes from a daily schedule; to get it sooner, run [Bump Lotus Version](https://github.com/filecoin-project/lotus-docs/actions/workflows/update-version.yml).
    <!-- agent:
