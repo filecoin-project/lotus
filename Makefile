@@ -17,16 +17,11 @@ $(error Update Golang to version to at least $(shell cat GO_VERSION_MIN))
 endif
 
 # Homebrew doesn't put hwloc on the default search paths on macOS, and linking filecoin-ffi needs it.
-# Setting these variables replaces Go's defaults, so keep them when adding to an unset variable.
+# Setting CGO_LDFLAGS replaces its existing value, so start from what Go would use.
 ifeq ($(shell uname -s),Darwin)
 HWLOC_PREFIX:=$(shell brew --prefix hwloc 2>/dev/null)
 ifneq ($(wildcard $(HWLOC_PREFIX)/lib/libhwloc*),)
-CGO_LDFLAGS?=-O2 -g
-CGO_CFLAGS?=-O2 -g
-CGO_LDFLAGS+=-L$(HWLOC_PREFIX)/lib
-CGO_CFLAGS+=-I$(HWLOC_PREFIX)/include
-PKG_CONFIG_PATH:=$(HWLOC_PREFIX)/lib/pkgconfig:$(PKG_CONFIG_PATH)
-export CGO_LDFLAGS CGO_CFLAGS PKG_CONFIG_PATH
+export CGO_LDFLAGS:=$(shell $(GOCC) env CGO_LDFLAGS) -L$(HWLOC_PREFIX)/lib
 endif
 endif
 
