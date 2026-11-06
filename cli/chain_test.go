@@ -12,6 +12,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -415,6 +416,28 @@ func TestChainGet(t *testing.T) {
 		err = json.Unmarshal(buf.Bytes(), &out)
 		assert.NoError(t, err)
 		assert.Equal(t, *blk, out)
+	})
+
+	// given -as-type=raw and RawData on the result, print it without ChainReadObj,
+	// since objects produced during resolution are not stored on the node
+	t.Run("raw-from-rawdata", func(t *testing.T) {
+		app, mockApi, buf, done := NewMockAppWithFullAPI(t, cmd)
+		defer done()
+
+		path := fmt.Sprintf("/ipfs/%s", blk.Cid().String())
+		raw, err := blk.Serialize()
+		require.NoError(t, err)
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		gomock.InOrder(
+			mockApi.EXPECT().ChainGetNode(ctx, path).Return(&api.IpldObject{Cid: blk.Cid(), Obj: blk, RawData: raw}, nil),
+		)
+
+		err = app.Run([]string{"chain", "get", "-as-type=raw", path})
+		assert.NoError(t, err)
+		assert.Equal(t, fmt.Sprintf("%x", raw), buf.String())
 	})
 
 	// given an unknown -as-type value, return an error

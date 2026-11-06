@@ -1314,6 +1314,10 @@ type InvocResult struct {
 type IpldObject struct {
 	Cid cid.Cid
 	Obj interface{}
+	// RawData is the encoded block for Cid. Objects produced while resolving
+	// @H, @A and @state path segments are not persisted, so callers that need
+	// the bytes must use this rather than ChainReadObj.
+	RawData []byte `json:",omitempty"`
 }
 
 type ActiveSync struct {
