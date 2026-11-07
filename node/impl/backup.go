@@ -4,7 +4,6 @@ import (
 	"context"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
@@ -44,7 +43,7 @@ func backup(ctx context.Context, mds dtypes.MetadataDS, fpath string) error {
 		return xerrors.Errorf("getting absolute file path: %w", err)
 	}
 
-	if !strings.HasPrefix(fpath, bb) {
+	if rel, err := filepath.Rel(bb, fpath); err != nil || !filepath.IsLocal(rel) {
 		return xerrors.Errorf("backup file name (%s) must be inside base path (%s)", fpath, bb)
 	}
 
