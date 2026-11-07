@@ -2,6 +2,7 @@ package itests
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
@@ -20,6 +21,7 @@ import (
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/build/buildconstants"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/itests/kit"
@@ -57,6 +59,69 @@ func runAPITest(t *testing.T, opts ...interface{}) {
 	t.Run("testOutOfGasError", ts.testOutOfGasError)
 	t.Run("testLookupNotFoundError", ts.testLookupNotFoundError)
 	t.Run("testNonGenesisMiner", ts.testNonGenesisMiner)
+	t.Run("testEmptySlices", ts.testEmptySlices)
+}
+
+// testEmptySlices checks that methods returning a list encode an empty result as
+// `[]` rather than `null`. encoding/json renders a nil slice as `null`, which is a
+// different value to clients that iterate the result without a nil check.
+//
+// Add any new list-returning method here.
+func (ts *apiSuite) testEmptySlices(t *testing.T) {
+	ctx := context.Background()
+
+	full, miner, _ := kit.EnsembleMinimal(t, ts.opts...)
+
+	gen, err := full.ChainGetGenesis(ctx)
+	require.NoError(t, err)
+	gtsk := gen.Key()
+	gcid := gen.Blocks()[0].Cid()
+
+	requireEmptyArray := func(v interface{}) {
+		t.Helper()
+		b, err := json.Marshal(v)
+		require.NoError(t, err)
+		require.Equal(t, "[]", string(b), "empty result must encode as [] and not null")
+	}
+
+	msgs, err := full.ChainGetMessagesInTipset(ctx, gtsk)
+	require.NoError(t, err)
+	requireEmptyArray(msgs)
+
+	parentMsgs, err := full.ChainGetParentMessages(ctx, gcid)
+	require.NoError(t, err)
+	requireEmptyArray(parentMsgs)
+
+	receipts, err := full.ChainGetParentReceipts(ctx, gcid)
+	require.NoError(t, err)
+	requireEmptyArray(receipts)
+
+	// The burnt funds actor never sends messages or emits events.
+	listed, err := full.StateListMessages(ctx, &lapi.MessageMatch{From: builtin.BurntFundsActorAddr}, gtsk, gen.Height())
+	require.NoError(t, err)
+	requireEmptyArray(listed)
+
+	from := gen.Height()
+	to := gen.Height()
+	events, err := full.GetActorEventsRaw(ctx, &types.ActorEventFilter{
+		Addresses:  []address.Address{builtin.BurntFundsActorAddr},
+		FromHeight: &from,
+		ToHeight:   &to,
+	})
+	require.NoError(t, err)
+	requireEmptyArray(events)
+
+	// A fresh miner leaves most deadlines with no partitions, which is the case
+	// that regressed; every deadline must still encode as an array.
+	deadlines, err := full.StateMinerDeadlines(ctx, miner.ActorAddr, gtsk)
+	require.NoError(t, err)
+	for dlIdx := range deadlines {
+		parts, err := full.StateMinerPartitions(ctx, miner.ActorAddr, uint64(dlIdx), gtsk)
+		require.NoError(t, err)
+		b, err := json.Marshal(parts)
+		require.NoError(t, err)
+		require.NotEqual(t, "null", string(b), "deadline %d must encode as an array", dlIdx)
+	}
 }
 
 func (ts *apiSuite) testVersion(t *testing.T) {
