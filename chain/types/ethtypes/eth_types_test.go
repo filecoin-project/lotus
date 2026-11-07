@@ -96,8 +96,9 @@ func TestEthBigIntUnmarshalJSON(t *testing.T) {
 	}
 
 	// Quantities must be 0x-prefixed hex with up to 256 bits (geth hexutil.Big parity).
-	// Negative signs are also rejected.
-	for _, in := range []string{`"-0x1"`, `"-0x10"`, `"0x--1"`, `"0x-1"`, `"0x-10"`} {
+	// Negative signs are rejected.
+	// Leading zeros are rejected for geth compatibility (e.g., 0x00, 0x01).
+	for _, in := range []string{`"-0x1"`, `"-0x10"`, `"0x--1"`, `"0x-1"`, `"0x-10"`, `"0x00"`, `"0x01"`, `"0x001"`} {
 		var i EthBigInt
 		require.Error(t, i.UnmarshalJSON([]byte(in)), "expected %s to be rejected", in)
 	}

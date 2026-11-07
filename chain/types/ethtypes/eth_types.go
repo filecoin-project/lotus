@@ -171,6 +171,12 @@ func (e *EthBigInt) UnmarshalJSON(b []byte) error {
 		return xerrors.Errorf("cannot parse %q as a hex-encoded big int: want 0x-prefixed hex, at most 256 bits", s)
 	}
 
+	// Reject leading zeros for geth compatibility (except for "0x0" itself).
+	// geth's hexutil.Big rejects 0x00, 0x01, etc.
+	if len(digits) > 1 && digits[0] == '0' {
+		return xerrors.Errorf("cannot parse %q as a hex-encoded big int: leading zeros not allowed", s)
+	}
+
 	if len(digits)%2 == 1 {
 		digits = "0" + digits
 	}
