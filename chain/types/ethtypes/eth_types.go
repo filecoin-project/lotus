@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	mathbig "math/big"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -39,6 +40,10 @@ var expectedHashPrefix = cid.Prefix{
 }.Bytes()
 
 var ErrInvalidAddress = errors.New("invalid Filecoin Eth address")
+
+// ethHexDigitsRe matches 1-64 hex digits: the magnitude of a 0x-prefixed quantity,
+// capped at 256 bits (the same bound geth's hexutil.Big enforces).
+var ethHexDigitsRe = regexp.MustCompile(`^[0-9a-fA-F]{1,64}$`)
 
 // Research into Filecoin chain behaviour suggests that probabilistic finality
 // generally approaches the intended stability guarantee at, or near, 30 epochs.
@@ -151,14 +156,33 @@ func (e *EthBigInt) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
-	replaced := strings.TrimPrefix(s, "0x")
-	if len(replaced)%2 == 1 {
-		replaced = "0" + replaced
+	// Require 0x prefix per geth's hexutil.Big behavior
+	if !strings.HasPrefix(s, "0x") {
+		return xerrors.Errorf("cannot parse %q as a hex-encoded big int: missing 0x prefix", s)
+	}
+	body := strings.TrimPrefix(s, "0x")
+	digits := body
+
+	if !ethHexDigitsRe.MatchString(digits) {
+		return xerrors.Errorf("cannot parse %q as a hex-encoded big int: want 0x-prefixed hex, at most 256 bits", s)
 	}
 
-	i, ok := new(mathbig.Int).SetString(replaced, 16)
+	// Reject leading zeros for geth compatibility (except for "0x0" itself).
+	// geth's hexutil.Big rejects 0x00, 0x01, etc.
+	if len(digits) > 1 && digits[0] == '0' {
+		return xerrors.Errorf("cannot parse %q as a hex-encoded big int: leading zeros not allowed", s)
+	}
+
+	if len(digits)%2 == 1 {
+		digits = "0" + digits
+	}
+
+	i, ok := new(mathbig.Int).SetString(digits, 16)
 	if !ok {
 		return xerrors.Errorf("cannot parse %q as a hex-encoded big int", s)
+	}
+	if i.BitLen() > 256 {
+		return xerrors.Errorf("hex-encoded big int %q exceeds 256 bits", s)
 	}
 
 	*e = EthBigInt(big.NewFromGo(i))
