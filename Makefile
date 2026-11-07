@@ -16,6 +16,18 @@ $(warning Your Golang version is go$(shell expr $(GOVERSION) / 1000000).$(shell 
 $(error Update Golang to version to at least $(shell cat GO_VERSION_MIN))
 endif
 
+# Perform additional setup on macOS if CGO_LDFLAGS isn't set, which automates what we would otherwise document.
+# Homebrew doesn't put hwloc on the default search paths, and linking filecoin-ffi needs it.
+# Setting CGO_LDFLAGS replaces Go's default, so start from what Go would use.
+ifeq ($(shell uname -s),Darwin)
+ifeq ($(origin CGO_LDFLAGS),undefined)
+HWLOC_PREFIX:=$(shell brew --prefix hwloc 2>/dev/null)
+ifneq ($(wildcard $(HWLOC_PREFIX)/lib/libhwloc*),)
+export CGO_LDFLAGS:=$(shell $(GOCC) env CGO_LDFLAGS) -L$(HWLOC_PREFIX)/lib
+endif
+endif
+endif
+
 # These are kept up-to-date by "renovate.json5"
 GOLANGCI_LINT_VERSION=v2.15.0
 ACTIONLINT_VERSION=v1.7.12
