@@ -194,14 +194,15 @@ func (e *ethGas) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (ethty
 
 	params, err := jsonrpc.DecodeParams[ethtypes.EthEstimateGasParams](p)
 	if err != nil {
-		return ethtypes.EthUint64(0), xerrors.Errorf("decoding params: %w", err)
+		return ethtypes.EthUint64(0), &api.ErrInvalidParams{Message: "decoding params: " + err.Error()}
 	}
 	// A zero gasPrice can't be told apart from an absent one.
 	if legacyPrice := big.Int(params.Tx.GasPrice); params.Tx.MaxFeePerGas != nil && !legacyPrice.NilOrZero() {
 		return ethtypes.EthUint64(0), api.NewErrConflictingGasPrices()
 	}
-	// The hex quantity parser accepts a sign, so reject a negative price before it reaches
-	// gasAllowance.
+	// The hex quantity parser now rejects negative signs, but we keep this check
+	// as a defensive measure for any code paths that might construct EthBigInt
+	// directly without going through the parser.
 	if price := gasPrice(params.Tx); !price.NilOrZero() && price.Sign() < 0 {
 		return ethtypes.EthUint64(0), api.NewErrNegativeGasPrice()
 	}
