@@ -6,16 +6,17 @@
 [//]: # (Complete the steps below as part of creating a release issue and mark them complete with an X or checkmark when done.)
 [//]: # (Agent/operator guide for completing this release issue:)
 [//]: # (1. Treat this issue as the mutable release ledger. Edit it for concrete release progress: links, checked boxes, dates, release URLs, CI/release status, announcement comment links, and short release-specific facts.)
-[//]: # (2. Put process/template improvements in the release-template-improvements PR from Release Setup, not directly in this issue.)
+[//]: # (2. Put process/template improvements in the release process improvements PR from Release Setup, not directly in this issue.)
 [//]: # (3. Work top-to-bottom. Do not start release PR work for a target until its Dependencies for releases section has linked blockers or an explicit "No additional dependencies" entry and the dependency checkpoint is complete.)
 <!--{{if .BaseTag}}-->
 [//]: # (4. Create release branches from the v{{.BaseTag}} tag, not origin/master. Changes reach them only through backport PRs that cherry-pick release/backport-labelled PRs from master.)
 <!--{{else}}-->
 [//]: # (4. For regular releases, create release branches from origin/master after dependencies are resolved. For critical security patches, follow the visible release/vX.Y.x guidance.)
 <!--{{end}}-->
-[//]: # (5. Keep the release issue and linked PRs synchronized as each step completes. When every checklist item in a collapsible section is done, change its `<details open>` to `<details>` so it collapses, and make the next section to be worked on `<details open>`. Only the section in progress should be open.)
+[//]: # (5. Keep the release issue and linked PRs synchronized as each step completes. Do this without being asked: in the same edit that ticks a collapsible section's last item, change its `<details open>` to `<details>` so it collapses, and make the next section to be worked on `<details open>`, so the open section shows where the release is. Only the section in progress should be open, plus any section with an item waiting on someone else, such as a PR review. If a later change unticks or adds items in a collapsed section, open it again.)
+[//]: # (If the release type changes mid-release, for example Node to Node and Miner, regenerate this issue with `go run ./cmd/release create-issue --create-on-github=false` and the new `--type`, then carry over checked boxes, links and notes rather than editing lines by hand.)
 [//]: # (6. Step-specific hints are in "agent:" HTML comments beneath the relevant checklist items. Read the raw issue body to see them.)
-[//]: # (7. Never push to a release branch directly, even if your token can bypass the PR rule. Undoing a direct push needs a force-push, which branch protection blocks. The combined-release miner fast-forward is the only exception.)
+[//]: # (7. Never push to a release branch directly, even if your token can bypass the PR rule. Undoing a direct push needs a force-push, which branch protection blocks. The only exceptions are the combined-release miner fast-forward and fast-forwarding a release branch that was cut from `origin/master` and has no commits of its own to `origin/master`.)
 [//]: # (8. Before treating a CI failure as a regression, check whether the same test also fails in master's recent CI runs.)
 [//]: # (9. Rebase-merge backport PRs into the release branch.)
 [//]: # (10. Squash-merge release PRs, which carry only the version bump and changelog, into the release branch. Fixes go through a backport PR from master, never the release PR.)
@@ -79,10 +80,10 @@
 - [ ] Make sure all [Lotus dependencies are updated to the correct versions for the network upgrade](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/Update_Dependencies_Lotus.md)
    - Link to Lotus PR:
 <!--{{end}}-->
-- [ ] Open PR against [RELEASE_ISSUE_TEMPLATE.md](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md) with title `docs(release): v{{.Tag}} release template improvements` for improving future releases.
+- [ ] Open a PR with title `chore(release): v{{.Tag}} release process improvements` for improving future releases. It covers [RELEASE_ISSUE_TEMPLATE.md](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md) and anything else that would make the release process better, such as `cmd/release`, the `Makefile` or CI.
    - Link to PR:
    - Open this as a draft PR and use it to collect release-process improvements discovered while running this checklist.
-   - Suggested branch: `docs/release-v{{.Tag}}-template-improvements`
+   - Suggested branch: `chore/release-v{{.Tag}}-process-improvements`
    - This will get merged in a `Post-Release` step.
 <!--{{if eq .Level "patch"}}-->
 <!--  {{if contains "Node" .Type}}-->
@@ -217,6 +218,9 @@
 <!--  {{end}}-->
 <!--  {{if and $stable $.NoRCRelease (not $.BaseTag)}}-->
 - [ ] No additional backport PR is needed because this no-RC release branch was created from `origin/master` after all included dependencies landed.
+   <!-- agent:
+   - If a wanted change merges to `master` after the branch was cut and the release branch has no commits of its own yet, fast-forward the release branch to `origin/master` (`git push origin origin/master:refs/heads/release/vX.Y.Z`) instead of opening a backport PR. Check first with `git merge-base --is-ancestor origin/release/vX.Y.Z origin/master`; it must not need a force push.
+   -->
 <!--  {{else if or $.BaseTag (ne $target "rc1")}}-->
 - [ ] Backported [everything with the "backport" label](https://github.com/filecoin-project/lotus/issues?q=label%3Arelease%2Fbackport+)
 - [ ] Create a PR with title `build: backport changes for {{$.Type}} v{{$.Tag}}{{$tagSuffix}}`
@@ -266,20 +270,29 @@
       - Fetch tags first (`git fetch origin --tags`). It reads PRs from GitHub with `GITHUB_TOKEN`, or the `gh` CLI's token.
       - It writes Notable Changes (upgrade warnings first: PRs with `!` or `release-note/upgrade-warning`; then PRs with `release-note/highlight` or a `## Release note` block), then the compare links with a collapsed list of every PR merged since the previous stable tag, then the Contributors table. It skips PRs already linked from released sections. Each RC and the stable section list everything since the previous stable release.
       - Read its warnings: commits without a `(#N)` PR number are not listed.
+      - Commit the script output unedited, then put all hand edits in one separate editorial commit, so a reviewer can see exactly what changed against the raw output. Squash later edits into that commit rather than stacking more. After a `--force` rerun, repeat the same pair of commits.
+      - It also warns about each PR it skips because another section links it. That's normal for a backport already released, but a line added to a published section on `master` hides that PR from this release. If the line isn't in that section at its tag (`git show TAG:CHANGELOG.md`), and neither the PR's commit nor a backport of it is in the tag (`git log TAG --grep='#N'`), the line never shipped: delete it in its own commit and rerun with `--force`, and make the same deletion in the changelog copy-back PR to `master`.
+      - When a change needs a missing upgrade warning, get the wording approved, then have a maintainer add the `release-note/upgrade-warning` label and a `## Release note` block to the merged PR and rerun with `--force`, so the warning comes from the PR rather than a hand edit. A warning spanning several PRs still needs a hand edit to merge them.
+      - It looks up every commit in the range on GitHub, so it fails with `422 No commit found for SHA` while the release PR's own commits are unpushed. Pass `--to origin/<release branch>` to stop at the pushed branch tip.
       - It stops if it can't read a PR from GitHub, or if a PR's title or description was last changed after merge by someone without write access, since the changelog only trusts post-merge edits from maintainers. Check each PR it lists: a maintainer either accepts the change by editing the flagged title or description (any small edit makes them its latest editor) or reverts it, then rerun.
       - After more backports land, rerun with `--force` to regenerate the section. That discards hand edits, so redo them afterwards.
-      - Never edit historical sections.
+      - Never edit historical sections, except to delete a line for a change that never shipped in that release, as described above.
 <!--      {{if eq $.Type "Node and Miner"}}-->
       - Node and miner can have different previous tags (for example `v1.38.2` and `miner/v1.38.0`). The section gets one compare link per project, and its PRs and Contributors come from the node range.
 <!--      {{end}}-->
       -->
+<!--{{if eq $.Level "patch"}}-->
+   - [ ] Confirm this is still a patch release. Patch releases only contain backwards-compatible changes, so if an upgrade warning breaks an API, command or other behaviour, ask the release owner whether to move to a minor release ([policy](https://github.com/filecoin-project/lotus/blob/master/LOTUS_RELEASE_FLOW.md#adopted-conventions)).
+      <!-- agent: check this as soon as the generated section exists, before editing it. Moving to a minor release later means new release branches, a regenerated changelog and issue, and a new CI run. -->
+<!--{{end}}-->
    - [ ] Write a short summary under the header, review Notable Changes, and check for missed upgrade warnings.
       <!-- agent:
-      - Summary: one or two sentences on what the release is for and who should upgrade, in the style of earlier sections.
-      - Notable Changes: read the PRs in the full list (titles, descriptions and diffs) and propose adding the changes operators and downstream developers care most about, each ending with its PR link, and dropping generated entries that aren't worth calling out. Delete the heading if nothing qualifies.
-      - Upgrade warnings: flag PRs not marked as upgrade warnings that remove or rename commands, flags, APIs, config or metrics, change defaults, permissions or limits, raise the minimum Go version, or otherwise need operator action. Propose listing each as an upgrade warning with the action operators must take, and ask its author or a maintainer to confirm.
-      - Also flag titles that misdescribe what changed for users, and propose clearer wording.
-      - Propose these edits in the release PR for review; do not rewrite entries silently.
+      - Start from the generated text. PR authors and maintainers already reviewed it, so keep it unless something is clearly wrong. Aim for the smallest possible diff, and don't reword entries for style or add detail because it's accurate.
+      - Summary: one or two sentences on what the release is for and who should upgrade, in the style of earlier sections. This is the only edit to make without asking.
+      - Clearly wrong means a factual error in an entry, or a missing upgrade warning for a change that will break operators on upgrade. Fix these in the editorial commit, keep them short (what changed and the action to take), and say why in the PR description.
+      - Everything else is a recommendation, not an edit. Give the release owner a list of what you'd add, drop or reword, each with why it matters to operators or downstream developers and the evidence for it (PR, code, or what you tested). Apply only what they approve.
+      - To build that list, read the PRs in the full list (titles, descriptions and diffs). Flag PRs not marked as upgrade warnings that remove or rename commands, flags, APIs, config or metrics, change defaults, permissions or limits, raise the minimum Go version, or otherwise need operator action. Also flag titles that misdescribe what changed for users. Any new upgrade warning needs its author or a maintainer to confirm.
+      - Optionally, ask an independent reviewer, such as a separate agent session, to check the section against the PRs. It returns findings to the release owner as recommendations in the same form and doesn't edit the section. Check its claims against the code before repeating them.
       -->
    - [ ] After pushing CHANGELOG edits, check the draft GitHub release body. Every Release workflow run regenerates it from `CHANGELOG.md`, so fix the text there, not on GitHub.
       <!-- agent:
@@ -305,11 +318,7 @@
       - Example where these weren't specified yet: [PR #12169](https://github.com/filecoin-project/lotus/pull/12169)
 <!--    {{end}}-->
 <!--  {{end}}-->
-   - [ ] Ensure no missing content when spot checking git history
-      <!-- agent:
-      - The generated section lists every PR in range, so look for commits it warned about (no `(#N)` PR number) that users would care about, and add those by hand.
-      - A change already in the previous stable release (often via a backport with a different commit) is not missing.
-      -->
+   - [ ] Read the generator's warnings: add any commit without a PR number that users would care about, and check that each skipped PR really shipped in the section linking it.
 <!--  {{if $.BaseTag}}-->
 <!--    {{if eq $.Type "Node and Miner"}}-->
       - PREVIOUS_TAG for node is the base release `v{{$.BaseTag}}`. For miner it is the latest stable miner tag, which may be older: `git tag -l 'miner/v*' | grep -v '-' | sort -V -r | head -n 1`. Review miner history from that tag, accounting for node fixes already in the `v{{$.BaseTag}}` source base.
@@ -319,17 +328,6 @@
       - PREVIOUS_TAG is the base release `miner/v{{$.BaseTag}}`.
 <!--    {{end}}-->
       - Every commit in `git log --oneline --graph PREVIOUS_TAG..HEAD` should be a backported fix or a release commit; compare against the `release/backport` PRs rather than everything merged into master.
-<!--  {{else}}-->
-      - Find the previous stable tag first:
-<!--    {{if contains "Node" $.Type}}-->
-         - Node: `git tag -l 'v*' | grep -v '-' | sort -V -r | head -n 1`
-<!--    {{end}}-->
-<!--    {{if contains "Miner" $.Type}}-->
-         - Miner: `git tag -l 'miner/v*' | grep -v '-' | sort -V -r | head -n 1`
-<!--    {{end}}-->
-      - Example command looking at git commits: `git log --oneline --graph PREVIOUS_TAG..HEAD`
-      - Example GitHub UI search looking at merged PRs into master, where `YYYY-MM-DD` is the previous stable release publish date: https://github.com/filecoin-project/lotus/pulls?q=is%3Apr+base%3Amaster+merged%3A%3EYYYY-MM-DD
-      - Example `gh` cli command looking at merged PRs into master and sorted by title to group similar areas: `gh pr list --repo filecoin-project/lotus --search "base:master merged:>YYYY-MM-DD" --json number,mergedAt,author,title | jq -r '.[] | [.number, .mergedAt, .author.login, .title] | @tsv' | sort -k4`
 <!--  {{end}}-->
    - [ ] Update the PR with the commit(s) made to the CHANGELOG
 <!--  {{if $stable}}-->
@@ -389,7 +387,7 @@
    - Put the entry above the newest section on master. Later `changelog generate` runs on master skip the PRs it links, so they are not listed as new again.
    - Confirm the diff touches only `CHANGELOG.md`, with no version rollback and no duplicate release heading.
    -->
-- [ ] Finish updating/merging the [RELEASE_ISSUE_TEMPLATE.md](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md) PR from `Release Setup` with any improvements determined from this latest release iteration.
+- [ ] Finish updating/merging the release process improvements PR from `Release Setup` with any improvements determined from this latest release iteration.
 - [ ] Review and approve the auto-generated PR in [lotus-docs](https://github.com/filecoin-project/lotus-docs/pulls) that updates the latest Lotus version information.
    - The PR comes from a daily schedule; to get it sooner, run [Bump Lotus Version](https://github.com/filecoin-project/lotus-docs/actions/workflows/update-version.yml).
    <!-- agent:
