@@ -30,6 +30,7 @@ func (h *HttpReader) Read(p []byte) (n int, err error) {
 			return 0, err
 		}
 		if res.StatusCode != http.StatusOK {
+			_ = res.Body.Close()
 			return 0, xerrors.Errorf("unexpected http status %d", res.StatusCode)
 		}
 
