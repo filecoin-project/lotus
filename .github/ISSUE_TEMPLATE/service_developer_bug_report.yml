@@ -77,7 +77,7 @@ body:
     label: Configuration Options
     render: text
     description: |
-      Please provide your updated FEVM related configuration options, or custome enviroment variables related to Lotus FEVM
+      Please provide your updated FEVM related configuration options, or custom environment variables related to Lotus FEVM
       * lotus: use `lotus config updated` to get your configuration options, and copy the [FEVM] section
   validations:
     required: true
