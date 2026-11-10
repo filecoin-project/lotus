@@ -24,9 +24,9 @@ type TestCase struct {
 func TestEthIntMarshalJSON(t *testing.T) {
 	// https://ethereum.org/en/developers/docs/apis/json-rpc/#quantities-encoding
 	testcases := []TestCase{
-		{EthUint64(0), []byte(`"0x0"`)},
-		{EthUint64(65), []byte(`"0x41"`)},
-		{EthUint64(1024), []byte(`"0x400"`)},
+		{EthUint64(0), []byte("\"0x0\"")},
+		{EthUint64(65), []byte("\"0x41\"")},
+		{EthUint64(1024), []byte("\"0x400\"")},
 	}
 
 	for _, tc := range testcases {
@@ -38,12 +38,12 @@ func TestEthIntMarshalJSON(t *testing.T) {
 
 func TestEthIntUnmarshalJSON(t *testing.T) {
 	testcases := []TestCase{
-		{[]byte(`"0x0"`), EthUint64(0)},
-		{[]byte(`"0x41"`), EthUint64(65)},
-		{[]byte(`"0x400"`), EthUint64(1024)},
-		{[]byte(`"0"`), EthUint64(0)},
-		{[]byte(`"41"`), EthUint64(41)},
-		{[]byte(`"400"`), EthUint64(400)},
+		{[]byte("\"0x0\""), EthUint64(0)},
+		{[]byte("\"0x41\""), EthUint64(65)},
+		{[]byte("\"0x400\""), EthUint64(1024)},
+		{[]byte("\"0\""), EthUint64(0)},
+		{[]byte("\"41\""), EthUint64(41)},
+		{[]byte("\"400\""), EthUint64(400)},
 		{[]byte("0"), EthUint64(0)},
 		{[]byte("100"), EthUint64(100)},
 		{[]byte("1024"), EthUint64(1024)},
@@ -63,10 +63,10 @@ func TestEthIntUnmarshalJSON(t *testing.T) {
 
 func TestEthBigIntMarshalJSON(t *testing.T) {
 	testcases := []TestCase{
-		{EthBigInt(big.NewInt(0)), []byte(`"0x0"`)},
-		{EthBigInt(big.NewInt(65)), []byte(`"0x41"`)},
-		{EthBigInt(big.NewInt(1024)), []byte(`"0x400"`)},
-		{EthBigInt(big.Int{}), []byte(`"0x0"`)},
+		{EthBigInt(big.NewInt(0)), []byte("\"0x0\"")},
+		{EthBigInt(big.NewInt(65)), []byte("\"0x41\"")},
+		{EthBigInt(big.NewInt(1024)), []byte("\"0x400\"")},
+		{EthBigInt(big.Int{}), []byte("\"0x0\"")},
 	}
 	for _, tc := range testcases {
 		j, err := tc.Input.(EthBigInt).MarshalJSON()
@@ -77,44 +77,50 @@ func TestEthBigIntMarshalJSON(t *testing.T) {
 
 func TestEthBigIntUnmarshalJSON(t *testing.T) {
 	testcases := []TestCase{
-		{[]byte(`"0x0"`), EthBigInt(big.MustFromString("0"))},
-		{[]byte(`"0x41"`), EthBigInt(big.MustFromString("65"))},
-		{[]byte(`"0x400"`), EthBigInt(big.MustFromString("1024"))},
+		{[]byte(`"0x0"`), EthBigInt(big.Zero())},
+		{[]byte(`"0x1"`), EthBigInt(big.NewInt(1))},
+		{[]byte(`"0x41"`), EthBigInt(big.NewInt(65))},
+		{[]byte(`"0x400"`), EthBigInt(big.NewInt(1024))},
+		{[]byte(`"0xABcd"`), EthBigInt(big.NewInt(43981))},
 		{[]byte(`"0xff1000000000000000000000000"`), EthBigInt(big.MustFromString("323330131220712761719252861321216"))},
+		{[]byte(`"0x` + strings.Repeat("f", 64) + `"`), EthBigInt(big.MustFromString("115792089237316195423570985008687907853269984665640564039457584007913129639935"))},
+		{[]byte(`null`), EthBigInt(big.Zero())},
 	}
 
 	for _, tc := range testcases {
-		var i EthBigInt
+		i := EthBigInt(big.NewInt(7))
 		err := i.UnmarshalJSON(tc.Input.([]byte))
-		require.Nil(t, err)
-		require.Equal(t, i, tc.Output)
+		require.NoError(t, err)
+		require.Equal(t, tc.Output, i)
 	}
 
-	for _, in := range []string{`"0xhello"`, `"garbage"`, `"0xzz"`, `"0x"`, `""`, `"0x10x1"`} {
-		var i EthBigInt
+	for _, in := range []string{
+		`"0xhello"`, `"garbage"`, `"0xzz"`, `"0x"`, `""`, `"0x10x1"`,
+		`"1"`, `"ff"`, `"0x00"`, `"0x01"`,
+		`"0x-1"`, `"0x-10"`, `"0x-de0b6b3a7640000"`, `"0x+1"`, `"0x+10"`, `"-0x1"`,
+		`"0x12 34"`, `"0x1_2"`, `"0x1\n"`,
+		`"0x` + strings.Repeat("f", 65) + `"`,
+		`42`, `true`, `{}`, `[]`,
+	} {
+		i := EthBigInt(big.NewInt(7))
 		require.Error(t, i.UnmarshalJSON([]byte(in)), "expected %s to be rejected", in)
+		require.Equal(t, EthBigInt(big.NewInt(7)), i, "failed decoding must preserve the receiver")
 	}
-
-	// Quantities must be 0x-prefixed hex with up to 256 bits (geth hexutil.Big parity).
-	// Negative signs are rejected.
-	// Leading zeros are rejected for geth compatibility (e.g., 0x00, 0x01).
-	for _, in := range []string{`"-0x1"`, `"-0x10"`, `"0x--1"`, `"0x-1"`, `"0x-10"`, `"0x00"`, `"0x01"`, `"0x001"`} {
-		var i EthBigInt
-		require.Error(t, i.UnmarshalJSON([]byte(in)), "expected %s to be rejected", in)
-	}
-
-	// Quantities are capped at 256 bits and hex-digits only (geth hexutil.Big parity).
-	oversized := `"0x` + strings.Repeat("f", 65) + `"`
-	maxSized := `"0x` + strings.Repeat("f", 64) + `"`
-	var i EthBigInt
-	require.Error(t, i.UnmarshalJSON([]byte(oversized)), "expected >256-bit quantity to be rejected")
-	require.NoError(t, i.UnmarshalJSON([]byte(maxSized)))
-	require.Error(t, i.UnmarshalJSON([]byte(`"0x12 34"`)), "expected internal space to be rejected")
 
 	var call EthCall
-	require.NoError(t, json.Unmarshal([]byte(`{"value":null,"gasPrice":null}`), &call))
+	require.NoError(t, json.Unmarshal([]byte(`{"value":null,"gasPrice":null,"maxFeePerGas":null}`), &call))
 	require.Equal(t, EthBigIntZero, call.Value)
 	require.Equal(t, EthBigIntZero, call.GasPrice)
+	require.Nil(t, call.MaxFeePerGas)
+}
+
+func TestEthCallUnmarshalNegativeQuantities(t *testing.T) {
+	for _, field := range []string{"value", "gasPrice", "maxFeePerGas"} {
+		t.Run(field, func(t *testing.T) {
+			var call EthCall
+			require.Error(t, json.Unmarshal([]byte(fmt.Sprintf(`{%q:"0x-1"}`, field)), &call))
+		})
+	}
 }
 
 func TestEthHash(t *testing.T) {
@@ -215,10 +221,10 @@ func TestParseEthAddr(t *testing.T) {
 		require.Nil(t, err)
 
 		eaddr, err := EthAddressFromFilecoinAddress(addr)
-		require.NoError(t, err)
+		require.Nil(t, err)
 
 		faddr, err := eaddr.ToFilecoinAddress()
-		require.NoError(t, err)
+		require.Nil(t, err)
 
 		require.Equal(t, addr, faddr)
 	}
@@ -359,7 +365,7 @@ func TestUnmarshalEthNonce(t *testing.T) {
 
 	// anything that does not decode to exactly 8 bytes is rejected instead of
 	// panicking (short input) or being silently truncated (long input)
-	for _, tc := range []string{`"0x""`, `"0x01"`, `"0x010203040506070809"`} {
+	for _, tc := range []string{`"0x"`, `"0x01"`, `"0x010203040506070809"`} {
 		var n EthNonce
 		require.Error(t, n.UnmarshalJSON([]byte(tc)))
 	}
@@ -697,24 +703,24 @@ func TestEthBlockNumberOrHashUnmarshalJSON(t *testing.T) {
 			},
 		},
 		{
-			name:     "Invalid: both block number and hash",
-			input:    `{"blockNumber": "0x1234", "blockHash": "0x1234567890123456789012345678901234567890123456789012345678901234"}`,
-			wantErr:  true,
+			name:    "Invalid: both block number and hash",
+			input:   `{"blockNumber": "0x1234", "blockHash": "0x1234567890123456789012345678901234567890123456789012345678901234"}`,
+			wantErr: true,
 		},
 		{
-			name:     "Invalid block number",
-			input:    `{"blockNumber": "invalid"}`,
-			wantErr:  true,
+			name:    "Invalid block number",
+			input:   `{"blockNumber": "invalid"}`,
+			wantErr: true,
 		},
 		{
-			name:     "Invalid block hash",
-			input:    `{"blockHash": "invalid"}`,
-			wantErr:  true,
+			name:    "Invalid block hash",
+			input:   `{"blockHash": "invalid"}`,
+			wantErr: true,
 		},
 		{
-			name:     "Invalid string",
-			input:    `"invalid"`,
-			wantErr:  true,
+			name:    "Invalid string",
+			input:   `"invalid"`,
+			wantErr: true,
 		},
 	}
 
@@ -735,8 +741,8 @@ func TestEthBlockNumberOrHashUnmarshalJSON(t *testing.T) {
 
 func TestEthSyncingResultMarshalJSON(t *testing.T) {
 	testcases := []TestCase{
-		{EthSyncingResult{DoneSync: true}, []byte(`false`)},
-		{EthSyncingResult{StartingBlock: 1, CurrentBlock: 2, HighestBlock: 3}, []byte(`{"startingBlock":"0x1","currentBlock":"0x2","highestBlock":"0x3"}`)},
+		{EthSyncingResult{DoneSync: true}, []byte("false")},
+		{EthSyncingResult{StartingBlock: 1, CurrentBlock: 2, HighestBlock: 3}, []byte("{\"startingBlock\":\"0x1\",\"currentBlock\":\"0x2\",\"highestBlock\":\"0x3\"}")},
 	}
 
 	for _, tc := range testcases {
@@ -748,8 +754,8 @@ func TestEthSyncingResultMarshalJSON(t *testing.T) {
 
 func TestEthSyncingResultUnmarshalJSON(t *testing.T) {
 	testcases := []TestCase{
-		{[]byte(`false`), EthSyncingResult{DoneSync: true}},
-		{[]byte(`{"startingBlock":"0x1","currentBlock":"0x2","highestBlock":"0x3"}`), EthSyncingResult{StartingBlock: 1, CurrentBlock: 2, HighestBlock: 3}},
+		{[]byte("false"), EthSyncingResult{DoneSync: true}},
+		{[]byte("{\"startingBlock\":\"0x1\",\"currentBlock\":\"0x2\",\"highestBlock\":\"0x3\"}"), EthSyncingResult{StartingBlock: 1, CurrentBlock: 2, HighestBlock: 3}},
 	}
 
 	for _, tc := range testcases {

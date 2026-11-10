@@ -287,11 +287,6 @@ func NewErrConflictingGasPrices() *ErrInvalidParams {
 	return &ErrInvalidParams{Message: "both gasPrice and (maxFeePerGas or maxPriorityFeePerGas) specified"}
 }
 
-// NewErrNegativeGasPrice reports a request with a negative gasPrice or maxFeePerGas.
-func NewErrNegativeGasPrice() *ErrInvalidParams {
-	return &ErrInvalidParams{Message: "gas price must not be negative"}
-}
-
 func (e *ErrInvalidParams) Error() string {
 	return e.Message
 }
