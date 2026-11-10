@@ -505,6 +505,47 @@ func TestGatewayEthEstimateGasLookback(t *testing.T) {
 	}
 }
 
+func TestGatewayEthEstimateGasInvalidParams(t *testing.T) {
+	node := NewNode(nil, nil)
+	for _, version := range []struct {
+		name    string
+		handler interface{}
+	}{
+		{"v1", node.V1ReverseProxy()},
+		{"v2", node.V2ReverseProxy()},
+	} {
+		t.Run(version.name, func(t *testing.T) {
+			rpc := jsonrpc.NewServer(jsonrpc.WithServerErrors(api.RPCErrors))
+			rpc.Register("Filecoin", version.handler)
+			rpc.AliasMethod("eth_estimateGas", "Filecoin.EthEstimateGas")
+
+			for _, tc := range []struct {
+				name   string
+				params string
+			}{
+				{"negative gas price", `[{"gasPrice":"0x-1"}]`},
+				{"negative fee cap", `[{"maxFeePerGas":"0x-1"}]`},
+				{"negative value", `[{"value":"0x-1"}]`},
+				{"oversized positive price", `[{"gasPrice":"0x` + strings.Repeat("f", 65) + `"}]`},
+				{"invalid hex", `[{"gasPrice":"0xgg"}]`},
+				{"wrong type", `[{"gasPrice":42}]`},
+			} {
+				t.Run(tc.name, func(t *testing.T) {
+					body := `{"jsonrpc":"2.0","id":1,"method":"eth_estimateGas","params":` + tc.params + `}`
+					rec := httptest.NewRecorder()
+					rpc.ServeHTTP(rec, httptest.NewRequest("POST", "/", strings.NewReader(body)))
+					var response struct {
+						Error *jsonrpc.JSONRPCError `json:"error"`
+					}
+					require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &response))
+					require.NotNil(t, response.Error)
+					require.Equal(t, api.EInvalidParams, response.Error.Code)
+				})
+			}
+		})
+	}
+}
+
 func TestGatewayEthNewFilterLookback(t *testing.T) {
 	ctx := context.Background()
 
