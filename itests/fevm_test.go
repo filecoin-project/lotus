@@ -1037,10 +1037,12 @@ func TestEthGetBlockReceipts(t *testing.T) {
 	require.Len(t, gethBlockReceipts, 3)
 
 	t.Run("EthGetBlockReceiptsLimited", func(t *testing.T) {
-		// just to be sure we're far enough in the chain for the limit to work
-		client.WaitTillChain(ctx, kit.HeightAtLeast(10))
-		// request epoch 2
-		bn := ethtypes.EthUint64(2)
+		// Request the deploy transaction's epoch, which is known to have a block. A fixed early
+		// epoch can be a null round when the lone miner loses that round's election, and a null
+		// round is reported before the lookback limit is checked.
+		bn := receipt.BlockNumber
+		// wait until that epoch is well beyond the 5 epoch lookback limit
+		client.WaitTillChain(ctx, kit.HeightAtLeast(abi.ChainEpoch(bn)+10))
 		// limit to 5 epochs lookback
 		blockReceipts, err := client.EthGetBlockReceiptsLimited(ctx, ethtypes.EthBlockNumberOrHash{BlockNumber: &bn}, 5)
 		require.ErrorContains(t, err, "older than the allowed")
