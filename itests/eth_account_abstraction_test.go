@@ -137,7 +137,7 @@ func TestEthAccountAbstraction(t *testing.T) {
 	require.True(t, builtin.IsEthAccountActor(eoaActor.Code))
 }
 
-// Tests that an placeholder turns into an EthAccout even if the message fails
+// Tests that a placeholder turns into an EthAccount even if the message fails
 func TestEthAccountAbstractionFailure(t *testing.T) {
 	kit.QuietMiningLogs()
 
