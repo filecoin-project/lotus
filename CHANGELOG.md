@@ -10,6 +10,49 @@
 > [!NOTE]
 > Don't edit this file in a feature, fix or other standard PR. Each release's section is [generated at release time](./CONTRIBUTING.md#release-notes) from the titles of the PRs it includes.
 
+# Node and Miner v1.39.1 / 2026-11-12
+
+This Node and Miner patch release is recommended for all node operators and storage providers. It moves the FVM to wasmtime 48 LTS for performance and security improvements, fixes `CreateBackup` path containment, and makes Ethereum JSON-RPC quantity validation stricter. Review the upgrade warning before upgrading.
+
+## ✨ Notable Changes
+
+- ⚠️ **Upgrade warning:** Ethereum JSON-RPC rejects negative, unprefixed, leading-zero and oversized (>256-bit) big integers. Use canonical `0x` encoding (`0x0` for zero). The Go helper `api.NewErrNegativeGasPrice` is removed. ([#13938](https://github.com/filecoin-project/lotus/pull/13938))
+- The FVM now runs on wasmtime 48 LTS for every network version, via [ref-fvm v4.9.0](https://github.com/filecoin-project/ref-fvm/releases/tag/fvm%40v4.9.0). **Security:** wasmtime 48 is a long-term-support release that gets security fixes until ~August 2028. **Performance:** on a mainnet node over 24 hours, median execution time per unit of gas fell about 18% for messages and 11% overall, with no regressions seen on mainnet or calibnet ([measurements](https://github.com/filecoin-project/ref-fvm/issues/2364#issuecomment-6652845311)). ([#14023](https://github.com/filecoin-project/lotus/pull/14023))
+
+## 📝 All Changes
+
+- Node: [Changes since v1.39.0](https://github.com/filecoin-project/lotus/compare/v1.39.0...v1.39.1)
+- Miner: [Changes since miner/v1.39.0](https://github.com/filecoin-project/lotus/compare/miner/v1.39.0...miner/v1.39.1)
+
+<details><summary>All PRs (9)</summary>
+
+**Fixes**
+
+- fix(api): reject CreateBackup paths outside LOTUS_BACKUP_BASE_PATH ([#14020](https://github.com/filecoin-project/lotus/pull/14020))
+- fix(eth)!: reject non-canonical and oversized JSON quantities ([#13938](https://github.com/filecoin-project/lotus/pull/13938))
+
+**Chores and other**
+
+- build: update Lotus Node and Miner version to v1.39.1-dev in master ([#14010](https://github.com/filecoin-project/lotus/pull/14010))
+- chore(deps): update filecoin-ffi to v1.38.0 (ref-fvm with wasmtime 48 LTS) ([#14023](https://github.com/filecoin-project/lotus/pull/14023))
+- chore(release): copy v1.39.0 changelog back to master ([#14011](https://github.com/filecoin-project/lotus/pull/14011))
+- chore(release): v1.39.0 release process improvements ([#14009](https://github.com/filecoin-project/lotus/pull/14009))
+- ci: retry transient Go module downloads in check jobs ([#14012](https://github.com/filecoin-project/lotus/pull/14012))
+- docs(issues): fix bug report form wording ([#14019](https://github.com/filecoin-project/lotus/pull/14019))
+- test(itests): stop EthGetBlockReceiptsLimited failing when epoch 2 is a null round ([#14024](https://github.com/filecoin-project/lotus/pull/14024))
+
+</details>
+
+## 👨‍👩‍👧‍👦 Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Steve Loeppky | 6 | +208/-87 | 23 |
+| Rod Vagg | 1 | +180/-107 | 11 |
+| HusseinAdeiza | 1 | +87/-46 | 5 |
+| Kaif | 1 | +42/-2 | 2 |
+| David Wood | 1 | +2/-2 | 2 |
+
 # Node and Miner v1.39.0 / 2026-11-05
 
 This Node and Miner minor release is recommended for gateway operators and storage providers. It bounds expensive `lotus-gateway` trace and replay requests and fixes sealing problems, including a panic on `CommitFailed` sectors missing CommR or CommD and a cancelled task blocking the scheduler. Review the upgrade warnings before upgrading.
