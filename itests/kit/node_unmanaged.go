@@ -1713,13 +1713,6 @@ func (tm *TestUnmanagedMiner) SubmitMessage(
 	return tm.waitMessage(mCid)
 }
 
-// UpgradeSectorQuality sends the FIP-0118 (Solstice) method 37 batch message for the
-// given sector numbers, grouping them by (deadline, partition). If newExpiration is
-// non-nil each upgraded sector is also extended to that expiration in the same call
-// (per FIP-0118 §5 the multiplier/pledge carry forward and are not raised again for
-// an already-10x sector). The message is pushed from the miner's owner address, which
-// in the kit ensemble is also the worker, so it is an authorised caller for this
-// worker/control-gated method. It returns the confirmed lookup after asserting success.
 // sectorsByDeadlinePartition groups the given sector numbers by their on-chain (deadline,
 // partition) location. Shared by UpgradeSectorQuality, TerminateSectors, DeclareFaults and
 // RecoverFaults, whose batch params are all organized per (deadline, partition).
@@ -1735,6 +1728,13 @@ func (tm *TestUnmanagedMiner) sectorsByDeadlinePartition(sectorNumbers []abi.Sec
 	return grouped
 }
 
+// UpgradeSectorQuality sends the FIP-0118 (Solstice) method 37 batch message for the
+// given sector numbers, grouping them by (deadline, partition). If newExpiration is
+// non-nil each upgraded sector is also extended to that expiration in the same call
+// (per FIP-0118 §5 the multiplier/pledge carry forward and are not raised again for
+// an already-10x sector). The message is pushed from the miner's owner address, which
+// in the kit ensemble is also the worker, so it is an authorised caller for this
+// worker/control-gated method. It returns the confirmed lookup after asserting success.
 func (tm *TestUnmanagedMiner) UpgradeSectorQuality(sectorNumbers []abi.SectorNumber, newExpiration *abi.ChainEpoch) (*api.MsgLookup, error) {
 	grouped := tm.sectorsByDeadlinePartition(sectorNumbers)
 	upgrades := make([]stminer.UpgradeSectorQuality, 0, len(grouped))
