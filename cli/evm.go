@@ -429,7 +429,7 @@ var EvmInvokeCmd = &cli.Command{
 		if eventsRoot := wait.Receipt.EventsRoot; eventsRoot != nil {
 			afmt.Println("Events emitted:")
 
-			s := &apiIpldStore{ctx, api}
+			s := &apiIpldStore{ctx: ctx, api: api}
 			amt, err := amt4.LoadAMT(ctx, s, *eventsRoot, amt4.UseTreeBitWidth(types.EventAMTBitwidth))
 			if err != nil {
 				return err

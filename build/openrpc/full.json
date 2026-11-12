@@ -1204,7 +1204,8 @@
                             "Cid": {
                                 "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
                             },
-                            "Obj": {}
+                            "Obj": {},
+                            "RawData": "Ynl0ZSBhcnJheQ=="
                         }
                     ],
                     "additionalProperties": false,
@@ -1216,6 +1217,12 @@
                         "Obj": {
                             "additionalProperties": true,
                             "type": "object"
+                        },
+                        "RawData": {
+                            "media": {
+                                "binaryEncoding": "base64"
+                            },
+                            "type": "string"
                         }
                     },
                     "type": [
