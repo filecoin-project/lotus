@@ -12,7 +12,7 @@
 
 # Node and Miner v1.39.1 / 2026-11-12
 
-This Node and Miner patch release is recommended for all node operators and storage providers. It moves the FVM to wasmtime 48 LTS, fixes `CreateBackup` path containment, and makes Ethereum JSON-RPC quantity validation stricter. Review the upgrade warning before upgrading.
+This Node and Miner patch release is recommended for all node operators and storage providers. It moves the FVM to wasmtime 48 LTS for performance and security improvements, fixes `CreateBackup` path containment, and makes Ethereum JSON-RPC quantity validation stricter. Review the upgrade warning before upgrading.
 
 ## ✨ Notable Changes
 
