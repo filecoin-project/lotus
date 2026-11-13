@@ -22,7 +22,6 @@ func TestEthErrorWireCodes(t *testing.T) {
 		{NewErrInsufficientFunds(big.NewInt(1), big.NewInt(2)), -32003},
 		{NewErrGasAllowance(1000), -32000},
 		{NewErrConflictingGasPrices(), -32602},
-		{NewErrNegativeGasPrice(), -32602},
 		{NewErrExpensiveFork(10), -32002},
 		{NewErrHeightIndexCold(10, 20), -32002},
 	} {

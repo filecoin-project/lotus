@@ -37,7 +37,7 @@ require (
 	github.com/elastic/gosigar v0.14.4
 	github.com/etclabscore/go-openrpc-reflect v0.0.37
 	github.com/fatih/color v1.19.0
-	github.com/filecoin-project/filecoin-ffi v1.38.0-dev // dependency-check-ignore: NV30 development release
+	github.com/filecoin-project/filecoin-ffi v1.38.0
 	github.com/filecoin-project/go-address v1.2.0
 	github.com/filecoin-project/go-amt-ipld/v4 v4.4.0
 	github.com/filecoin-project/go-bitfield v0.2.4

@@ -974,7 +974,8 @@ Response:
   "Cid": {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
-  "Obj": {}
+  "Obj": {},
+  "RawData": "Ynl0ZSBhcnJheQ=="
 }
 ```
 
@@ -1870,6 +1871,16 @@ Response: `{}`
 
 ## Eth
 These methods are used for Ethereum-compatible JSON-RPC calls
+
+### Quantities
+
+`value`, `gasPrice`, and `maxFeePerGas` use `0x`-prefixed, unsigned hex quantities
+of at most 256 bits. Encode zero as `0x0`. The decoder rejects signs and leading
+zeros, and accepts uppercase or lowercase hex digits. JSON `null` retains the
+field's zero or unset behavior.
+
+`eth_estimateGas` returns JSON-RPC error `-32602` when parameter decoding fails,
+on full nodes and both v1 and v2 gateways.
 
 ### Execution model reconciliation
 

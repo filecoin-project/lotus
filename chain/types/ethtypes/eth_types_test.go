@@ -77,28 +77,50 @@ func TestEthBigIntMarshalJSON(t *testing.T) {
 
 func TestEthBigIntUnmarshalJSON(t *testing.T) {
 	testcases := []TestCase{
-		{[]byte("\"0x0\""), EthBigInt(big.MustFromString("0"))},
-		{[]byte("\"0x41\""), EthBigInt(big.MustFromString("65"))},
-		{[]byte("\"0x400\""), EthBigInt(big.MustFromString("1024"))},
-		{[]byte("\"0xff1000000000000000000000000\""), EthBigInt(big.MustFromString("323330131220712761719252861321216"))},
+		{[]byte(`"0x0"`), EthBigInt(big.Zero())},
+		{[]byte(`"0x1"`), EthBigInt(big.NewInt(1))},
+		{[]byte(`"0x41"`), EthBigInt(big.NewInt(65))},
+		{[]byte(`"0x400"`), EthBigInt(big.NewInt(1024))},
+		{[]byte(`"0xABcd"`), EthBigInt(big.NewInt(43981))},
+		{[]byte(`"0xff1000000000000000000000000"`), EthBigInt(big.MustFromString("323330131220712761719252861321216"))},
+		{[]byte(`"0x` + strings.Repeat("f", 64) + `"`), EthBigInt(big.MustFromString("115792089237316195423570985008687907853269984665640564039457584007913129639935"))},
+		{[]byte(`null`), EthBigInt(big.Zero())},
 	}
 
 	for _, tc := range testcases {
-		var i EthBigInt
+		i := EthBigInt(big.NewInt(7))
 		err := i.UnmarshalJSON(tc.Input.([]byte))
-		require.Nil(t, err)
-		require.Equal(t, i, tc.Output)
+		require.NoError(t, err)
+		require.Equal(t, tc.Output, i)
 	}
 
-	for _, in := range []string{`"0xhello"`, `"garbage"`, `"0xzz"`, `"0x"`, `""`, `"0x10x1"`} {
-		var i EthBigInt
+	for _, in := range []string{
+		`"0xhello"`, `"garbage"`, `"0xzz"`, `"0x"`, `""`, `"0x10x1"`,
+		`"1"`, `"ff"`, `"0x00"`, `"0x01"`,
+		`"0x-1"`, `"0x-10"`, `"0x-de0b6b3a7640000"`, `"0x+1"`, `"0x+10"`, `"-0x1"`,
+		`"0x12 34"`, `"0x1_2"`, `"0x1\n"`,
+		`"0x` + strings.Repeat("f", 65) + `"`,
+		`42`, `true`, `{}`, `[]`,
+	} {
+		i := EthBigInt(big.NewInt(7))
 		require.Error(t, i.UnmarshalJSON([]byte(in)), "expected %s to be rejected", in)
+		require.Equal(t, EthBigInt(big.NewInt(7)), i, "failed decoding must preserve the receiver")
 	}
 
 	var call EthCall
-	require.NoError(t, json.Unmarshal([]byte(`{"value":null,"gasPrice":null}`), &call))
+	require.NoError(t, json.Unmarshal([]byte(`{"value":null,"gasPrice":null,"maxFeePerGas":null}`), &call))
 	require.Equal(t, EthBigIntZero, call.Value)
 	require.Equal(t, EthBigIntZero, call.GasPrice)
+	require.Nil(t, call.MaxFeePerGas)
+}
+
+func TestEthCallUnmarshalNegativeQuantities(t *testing.T) {
+	for _, field := range []string{"value", "gasPrice", "maxFeePerGas"} {
+		t.Run(field, func(t *testing.T) {
+			var call EthCall
+			require.Error(t, json.Unmarshal([]byte(fmt.Sprintf(`{%q:"0x-1"}`, field)), &call))
+		})
+	}
 }
 
 func TestEthHash(t *testing.T) {

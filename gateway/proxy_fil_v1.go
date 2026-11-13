@@ -59,6 +59,10 @@ func (pv1 *reverseProxyV1) MinerGetBaseInfo(ctx context.Context, addr address.Ad
 	if err := pv1.gateway.checkTipSetKey(ctx, tsk); err != nil {
 		return nil, err
 	}
+	// Miner state is read at round h's winning PoSt lookback, not at tsk.
+	if err := pv1.gateway.checkEpoch(ctx, h); err != nil {
+		return nil, err
+	}
 	return pv1.server.MinerGetBaseInfo(ctx, addr, h, tsk)
 }
 

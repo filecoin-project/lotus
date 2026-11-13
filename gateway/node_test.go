@@ -505,6 +505,47 @@ func TestGatewayEthEstimateGasLookback(t *testing.T) {
 	}
 }
 
+func TestGatewayEthEstimateGasInvalidParams(t *testing.T) {
+	node := NewNode(nil, nil)
+	for _, version := range []struct {
+		name    string
+		handler interface{}
+	}{
+		{"v1", node.V1ReverseProxy()},
+		{"v2", node.V2ReverseProxy()},
+	} {
+		t.Run(version.name, func(t *testing.T) {
+			rpc := jsonrpc.NewServer(jsonrpc.WithServerErrors(api.RPCErrors))
+			rpc.Register("Filecoin", version.handler)
+			rpc.AliasMethod("eth_estimateGas", "Filecoin.EthEstimateGas")
+
+			for _, tc := range []struct {
+				name   string
+				params string
+			}{
+				{"negative gas price", `[{"gasPrice":"0x-1"}]`},
+				{"negative fee cap", `[{"maxFeePerGas":"0x-1"}]`},
+				{"negative value", `[{"value":"0x-1"}]`},
+				{"oversized positive price", `[{"gasPrice":"0x` + strings.Repeat("f", 65) + `"}]`},
+				{"invalid hex", `[{"gasPrice":"0xgg"}]`},
+				{"wrong type", `[{"gasPrice":42}]`},
+			} {
+				t.Run(tc.name, func(t *testing.T) {
+					body := `{"jsonrpc":"2.0","id":1,"method":"eth_estimateGas","params":` + tc.params + `}`
+					rec := httptest.NewRecorder()
+					rpc.ServeHTTP(rec, httptest.NewRequest("POST", "/", strings.NewReader(body)))
+					var response struct {
+						Error *jsonrpc.JSONRPCError `json:"error"`
+					}
+					require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &response))
+					require.NotNil(t, response.Error)
+					require.Equal(t, api.EInvalidParams, response.Error.Code)
+				})
+			}
+		})
+	}
+}
+
 func TestGatewayEthNewFilterLookback(t *testing.T) {
 	ctx := context.Background()
 
@@ -966,6 +1007,55 @@ func TestV1GatewayStateReplayEmptyKeyLookback(t *testing.T) {
 		_, err := a.v1Proxy.StateReplay(ctx, types.EmptyTSK, msgCid)
 		require.ErrorIs(t, err, a.errLookback)
 	})
+}
+
+// TestV1GatewayMinerGetBaseInfoLookback checks that the round passed to
+// MinerGetBaseInfo is held to the lookback bound, not just the tipset key.
+func TestV1GatewayMinerGetBaseInfoLookback(t *testing.T) {
+	ctx := context.Background()
+
+	// Height 1 is older than the default lookback bound; height 15 is within it.
+	lookbackTimestamp := uint64(time.Now().Unix()) - uint64(DefaultMaxLookbackDuration.Seconds())
+	tss := generateTipSets(15, lookbackTimestamp-buildconstants.BlockDelaySecs*10)
+	genesisTS := tss[0].MinTimestamp()
+	head := tss[len(tss)-1]
+	cur := abi.ChainEpoch(time.Since(time.Unix(int64(genesisTS), 0)) / (time.Duration(buildconstants.BlockDelaySecs) * time.Second))
+
+	maddr, err := address.NewIDAddress(1000)
+	require.NoError(t, err)
+
+	for _, tc := range []struct {
+		name    string
+		h       abi.ChainEpoch
+		wantErr string
+	}{
+		{name: "old round", h: 1, wantErr: "lookbacks of more than"},
+		{name: "negative round", h: -1, wantErr: "negative height"},
+		{name: "future round", h: cur + 10, wantErr: "tipset height in future"},
+		{name: "next round", h: head.Height() + 1},
+		{name: "current round after null rounds", h: cur + 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+			mockV1 := v1mocks.NewMockFullNode(ctrl)
+			a := NewNode(mockV1, v2mocks.NewMockFullNode(ctrl))
+			expectNetworkParams(mockV1, genesisTS)
+			mockV1.EXPECT().ChainGetTipSet(gomock.Any(), head.Key()).Return(head, nil)
+			want := &api.MiningBaseInfo{}
+			if tc.wantErr == "" {
+				mockV1.EXPECT().MinerGetBaseInfo(gomock.Any(), maddr, tc.h, head.Key()).Return(want, nil)
+			}
+
+			got, err := a.v1Proxy.MinerGetBaseInfo(ctx, maddr, tc.h, head.Key())
+			if tc.wantErr != "" {
+				require.ErrorContains(t, err, tc.wantErr)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, want, got)
+			}
+		})
+	}
 }
 
 // TestGatewayInterfacesDoNotExposeLimitedOrUntrusted asserts the invariant

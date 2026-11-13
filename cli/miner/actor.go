@@ -151,7 +151,7 @@ var actorControlListCmd = &cli.Command{
 			b := actor.Balance
 
 			var k = a
-			// 'a' maybe a 'robust', in that case, 'StateAccountKey' returns an error.
+			// 'a' may be a 'robust' address, in which case 'StateAccountKey' returns an error.
 			if builtin2.IsAccountActor(actor.Code) {
 				if k, err = api.StateAccountKey(ctx, a, types.EmptyTSK); err != nil {
 					fmt.Printf("%s\t%s: error getting account key: %s\n", name, a, err)

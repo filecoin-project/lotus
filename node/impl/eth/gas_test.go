@@ -2,7 +2,10 @@ package eth
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -91,17 +94,34 @@ func TestGasAllowance(t *testing.T) {
 	}
 }
 
-func TestEthEstimateGasNegativePrice(t *testing.T) {
-	// Rejected before any chain state is read, so ethGas needs no dependencies here.
-	for _, tx := range []string{
-		`{"gasPrice":"0x-1"}`,
-		`{"maxFeePerGas":"0x-1"}`,
-		`{"gasPrice":"0x-de0b6b3a7640000"}`,
+func TestEthEstimateGasInvalidParams(t *testing.T) {
+	rpc := jsonrpc.NewServer(jsonrpc.WithServerErrors(api.RPCErrors))
+	rpc.Register("Filecoin", &ethGas{})
+	rpc.AliasMethod("eth_estimateGas", "Filecoin.EthEstimateGas")
+
+	for _, tc := range []struct {
+		name   string
+		params string
+	}{
+		{"negative gas price", `[{"gasPrice":"0x-1"}]`},
+		{"negative fee cap", `[{"maxFeePerGas":"0x-1"}]`},
+		{"negative value", `[{"value":"0x-1"}]`},
+		{"large negative gas price", `[{"gasPrice":"0x-de0b6b3a7640000"}]`},
+		{"oversized positive price", `[{"gasPrice":"0x` + strings.Repeat("f", 65) + `"}]`},
+		{"invalid hex", `[{"gasPrice":"0xgg"}]`},
+		{"wrong type", `[{"gasPrice":42}]`},
 	} {
-		_, err := (&ethGas{}).EthEstimateGas(context.Background(), jsonrpc.RawParams(`[`+tx+`]`))
-		var invalid *api.ErrInvalidParams
-		require.ErrorAs(t, err, &invalid, tx)
-		require.Equal(t, "gas price must not be negative", invalid.Message)
+		t.Run(tc.name, func(t *testing.T) {
+			body := `{"jsonrpc":"2.0","id":1,"method":"eth_estimateGas","params":` + tc.params + `}`
+			rec := httptest.NewRecorder()
+			rpc.ServeHTTP(rec, httptest.NewRequest("POST", "/", strings.NewReader(body)))
+			var response struct {
+				Error *jsonrpc.JSONRPCError `json:"error"`
+			}
+			require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &response))
+			require.NotNil(t, response.Error)
+			require.Equal(t, api.EInvalidParams, response.Error.Code)
+		})
 	}
 }
 

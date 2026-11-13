@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"math"
 	mathbig "math/big"
 
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -337,9 +338,7 @@ func formatBigInt(val big.Int) ([]byte, error) {
 	return removeLeadingZeros(b), nil
 }
 
-// parseInt parses an integer field of a transaction's RLP list. RLP integers are
-// minimally encoded, so a leading zero byte is a second encoding of a value that
-// already has one and is rejected.
+// parseInt parses a minimally encoded RLP integer in [0, math.MaxInt64].
 func parseInt(v interface{}) (int, error) {
 	data, ok := v.([]byte)
 	if !ok {
@@ -354,18 +353,19 @@ func parseInt(v interface{}) (int, error) {
 	if data[0] == 0 {
 		return 0, fmt.Errorf("cannot parse interface to int: non-minimal encoding with leading zeros")
 	}
-	var value int64
+	var value uint64
 	r := bytes.NewReader(append(make([]byte, 8-len(data)), data...))
 	if err := binary.Read(r, binary.BigEndian, &value); err != nil {
-		return 0, fmt.Errorf("cannot parse interface to EthUint64: %w", err)
+		return 0, fmt.Errorf("cannot parse interface to int: %w", err)
+	}
+	if value > math.MaxInt64 {
+		return 0, fmt.Errorf("cannot parse interface to int: value %d overflows int64", value)
 	}
 	return int(value), nil
 }
 
-// parseBigInt parses an integer field of a transaction's RLP list, requiring a
-// minimal encoding for the same reason as parseInt. Fixed-width values, where a
-// leading zero is part of the value rather than padding, go through
-// bigIntFromBytes instead.
+// parseBigInt parses a minimally encoded unsigned RLP integer.
+// Fixed-width values with permitted leading zeros use bigIntFromBytes.
 func parseBigInt(v interface{}) (big.Int, error) {
 	data, ok := v.([]byte)
 	if !ok {

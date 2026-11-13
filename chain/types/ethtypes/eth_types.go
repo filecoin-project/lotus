@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	mathbig "math/big"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -128,6 +129,8 @@ type EthBigInt big.Int
 
 var EthBigIntZero = EthBigInt{Int: big.Zero().Int}
 
+var ethBigIntQuantityRE = regexp.MustCompile(`^0x(?:0|[1-9a-fA-F][0-9a-fA-F]{0,63})$`)
+
 func (e EthBigInt) String() string {
 	if e.Int == nil || e.BitLen() == 0 {
 		return "0x0"
@@ -151,12 +154,11 @@ func (e *EthBigInt) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
-	replaced := strings.TrimPrefix(s, "0x")
-	if len(replaced)%2 == 1 {
-		replaced = "0" + replaced
+	if !ethBigIntQuantityRE.MatchString(s) {
+		return xerrors.Errorf("cannot parse %q as a hex-encoded big int: want a 0x-prefixed unsigned quantity of at most 256 bits with no leading zeros", s)
 	}
 
-	i, ok := new(mathbig.Int).SetString(replaced, 16)
+	i, ok := new(mathbig.Int).SetString(s[2:], 16)
 	if !ok {
 		return xerrors.Errorf("cannot parse %q as a hex-encoded big int", s)
 	}

@@ -802,6 +802,16 @@ type FullNode interface {
 	// MethodGroup: Eth
 	// These methods are used for Ethereum-compatible JSON-RPC calls
 	//
+	// ### Quantities
+	//
+	// `value`, `gasPrice`, and `maxFeePerGas` use `0x`-prefixed, unsigned hex quantities
+	// of at most 256 bits. Encode zero as `0x0`. The decoder rejects signs and leading
+	// zeros, and accepts uppercase or lowercase hex digits. JSON `null` retains the
+	// field's zero or unset behavior.
+	//
+	// `eth_estimateGas` returns JSON-RPC error `-32602` when parameter decoding fails,
+	// on full nodes and both v1 and v2 gateways.
+	//
 	// ### Execution model reconciliation
 	//
 	// Ethereum relies on an immediate block-based execution model. The block that includes
@@ -1314,6 +1324,10 @@ type InvocResult struct {
 type IpldObject struct {
 	Cid cid.Cid
 	Obj interface{}
+	// RawData is the encoded block for Cid. Objects produced while resolving
+	// @H, @A and @state path segments are not persisted, so callers that need
+	// the bytes must use this rather than ChainReadObj.
+	RawData []byte `json:",omitempty"`
 }
 
 type ActiveSync struct {
