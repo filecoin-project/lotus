@@ -61,8 +61,6 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 
 		blk, ok := msg.ValidatorData.(*types.BlockMsg)
 		if !ok {
-			// the block validator always sets a *types.BlockMsg, so this indicates a bug; don't let it
-			// stop block processing for the rest of the node's lifetime
 			log.Errorf("pubsub block validator passed on wrong type: %#v", msg.ValidatorData)
 			continue
 		}
