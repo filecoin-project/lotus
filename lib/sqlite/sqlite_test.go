@@ -278,10 +278,12 @@ func TestPragmasApplyToEveryConnection(t *testing.T) {
 	}
 
 	for i, conn := range conns {
-		var foreignKeys, synchronous int
+		var foreignKeys, synchronous, busyTimeout int
 		require.NoError(t, conn.QueryRowContext(ctx, "PRAGMA foreign_keys").Scan(&foreignKeys))
 		require.NoError(t, conn.QueryRowContext(ctx, "PRAGMA synchronous").Scan(&synchronous))
+		require.NoError(t, conn.QueryRowContext(ctx, "PRAGMA busy_timeout").Scan(&busyTimeout))
 		require.Equal(t, 1, foreignKeys, "connection %d foreign_keys", i)
 		require.Equal(t, 1, synchronous, "connection %d synchronous (NORMAL)", i)
+		require.Equal(t, 5000, busyTimeout, "connection %d busy_timeout", i)
 	}
 }
