@@ -338,11 +338,7 @@ func formatBigInt(val big.Int) ([]byte, error) {
 	return removeLeadingZeros(b), nil
 }
 
-// parseInt parses an integer field of a transaction's RLP list. RLP integers are
-// minimally encoded, so a leading zero byte is a second encoding of a value that
-// already has one and is rejected. The value is read as unsigned, so an 8-byte
-// encoding with the high bit set (a value of at least 2^63) does not fit the
-// int return type and is rejected rather than wrapped to a negative number.
+// parseInt parses a minimally encoded RLP integer in [0, math.MaxInt64].
 func parseInt(v interface{}) (int, error) {
 	data, ok := v.([]byte)
 	if !ok {
@@ -368,10 +364,8 @@ func parseInt(v interface{}) (int, error) {
 	return int(value), nil
 }
 
-// parseBigInt parses an integer field of a transaction's RLP list, requiring a
-// minimal encoding for the same reason as parseInt. Fixed-width values, where a
-// leading zero is part of the value rather than padding, go through
-// bigIntFromBytes instead.
+// parseBigInt parses a minimally encoded unsigned RLP integer.
+// Fixed-width values with permitted leading zeros use bigIntFromBytes.
 func parseBigInt(v interface{}) (big.Int, error) {
 	data, ok := v.([]byte)
 	if !ok {
