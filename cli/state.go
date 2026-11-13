@@ -518,11 +518,15 @@ var StateGetDealSetCmd = &cli.Command{
 			return err
 		}
 
-		data, err := json.MarshalIndent(deal, "", "  ")
+		data, err := json.Marshal(deal)
 		if err != nil {
 			return err
 		}
-		fmt.Println(escapeControl(string(data)))
+		var formatted bytes.Buffer
+		if err := json.Indent(&formatted, []byte(escapeControl(string(data))), "", "  "); err != nil {
+			return err
+		}
+		NewAppFmt(cctx.App).Println(formatted.String())
 
 		return nil
 	},

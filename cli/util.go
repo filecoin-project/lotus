@@ -54,7 +54,7 @@ func PrintJson(obj interface{}) error {
 
 // escapeControl replaces control characters, including the C1 range that JSON
 // encoding leaves as-is, with \uXXXX escapes so chain-sourced strings cannot
-// drive the terminal. JSON input stays valid JSON.
+// drive the terminal. Compact JSON input stays valid JSON.
 func escapeControl(s string) string {
 	var b strings.Builder
 	for _, r := range s {
