@@ -61,8 +61,8 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 
 		blk, ok := msg.ValidatorData.(*types.BlockMsg)
 		if !ok {
-			log.Warnf("pubsub block validator passed on wrong type: %#v", msg.ValidatorData)
-			return
+			log.Errorf("pubsub block validator passed on wrong type: %#v", msg.ValidatorData)
+			continue
 		}
 
 		src := msg.GetFrom()
