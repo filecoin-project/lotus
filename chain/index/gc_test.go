@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/multiformats/go-multicodec"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
@@ -204,9 +205,96 @@ func TestGCBatchesUnderWriterLock(t *testing.T) {
 		t.Fatal("gc did not complete after writerLk was released")
 	}
 
-	// Each table needed several batches of two to reach these counts.
+	// Tipset rows and eth tx hashes each needed several batches to get here.
 	requireCounts(6, 6, 2, 2)
 	var minHeight int
 	require.NoError(t, si.db.QueryRow("SELECT MIN(height) FROM tipset_message").Scan(&minHeight))
 	require.Equal(t, 200, minHeight)
+}
+
+func TestGCBatchRemovesWholeTipsets(t *testing.T) {
+	ctx := context.Background()
+	rng := pseudo.New(pseudo.NewSource(14030))
+
+	prevBatchSize := gcBatchSize
+	gcBatchSize = 2
+	t.Cleanup(func() { gcBatchSize = prevBatchSize })
+
+	msgTipset := fakeTipSet(t, rng, 10, nil)
+	executionTipset := fakeTipSet(t, rng, 11, msgTipset.Cids())
+	retainedTipset := fakeTipSet(t, rng, 200, executionTipset.Cids())
+
+	cs := newDummyChainStore()
+	cs.SetHeaviestTipSet(retainedTipset)
+	for _, ts := range []*types.TipSet{msgTipset, executionTipset} {
+		cs.SetTipsetByHeightAndKey(ts.Height(), ts.Key(), ts)
+		cs.SetTipSetByCid(t, ts)
+	}
+
+	// Three messages with one event each: more rows than one batch of two.
+	var msgs []types.ChainMsg
+	var executed []executedMessage
+	for i := range 3 {
+		msg := fakeMessage(address.TestAddress, address.TestAddress)
+		msg.Nonce = uint64(i)
+		msgs = append(msgs, msg)
+		executed = append(executed, executedMessage{
+			msg: msg,
+			evs: []types.Event{*fakeEvent(abi.ActorID(1), []kv{{k: "t1", v: []byte("topic")}}, nil)},
+		})
+	}
+	cs.SetMessagesForTipset(msgTipset, msgs)
+
+	si, err := NewSqliteIndexer(":memory:", cs, 0, false, 0)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = si.Close() })
+	si.SetActorToDelegatedAddresFunc(func(context.Context, abi.ActorID, *types.TipSet) (address.Address, bool) {
+		return address.TestAddress, true
+	})
+	si.setExecutedMessagesLoaderFunc(func(context.Context, ChainStore, *types.TipSet, *types.TipSet) ([]executedMessage, error) {
+		return executed, nil
+	})
+
+	require.NoError(t, si.Apply(ctx, msgTipset, executionTipset))
+	insertHead(t, si, retainedTipset, retainedTipset.Height())
+
+	msgTipsetCid, err := msgTipset.Key().Cid()
+	require.NoError(t, err)
+	blockFilter := &EventFilter{MinHeight: -1, MaxHeight: -1, TipsetCid: msgTipsetCid, Codec: multicodec.Raw}
+	events, err := si.GetEventsForFilter(ctx, blockFilter)
+	require.NoError(t, err)
+	require.Len(t, events, 3)
+
+	// The first batch reaches the second row, which is in msgTipset, so it
+	// removes all of msgTipset's rows and its bloom together.
+	rows, blooms, done, err := si.gcTipsetBatch(ctx, 100)
+	require.NoError(t, err)
+	require.Equal(t, int64(3), rows)
+	require.Equal(t, int64(1), blooms)
+	require.False(t, done)
+
+	// A block-hash read between batches finds the tipset unindexed rather
+	// than returning a truncated event set.
+	events, err = si.GetEventsForFilter(ctx, blockFilter)
+	require.ErrorIs(t, err, ErrNotFound)
+	require.Empty(t, events)
+
+	// Fewer than a batch of rows remain below the cutoff: the last batch takes them all.
+	rows, blooms, done, err = si.gcTipsetBatch(ctx, 100)
+	require.NoError(t, err)
+	require.Equal(t, int64(1), rows)
+	require.Equal(t, int64(0), blooms)
+	require.True(t, done)
+
+	var heights []int
+	r, err := si.db.Query("SELECT DISTINCT height FROM tipset_message")
+	require.NoError(t, err)
+	for r.Next() {
+		var h int
+		require.NoError(t, r.Scan(&h))
+		heights = append(heights, h)
+	}
+	require.NoError(t, r.Err())
+	require.NoError(t, r.Close())
+	require.Equal(t, []int{200}, heights)
 }

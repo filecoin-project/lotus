@@ -210,7 +210,7 @@ func TestGetEventsForFilterReturnsNotFoundUntilEventsAreIndexed(t *testing.T) {
 
 	// A completion marker whose tipset rows (and cascaded events) are gone must
 	// not make missing event data look like an authoritative empty result.
-	_, err = si.gcDelete(ctx, si.stmts.removeTipsetsBeforeHeightStmt, executionTipset.Height())
+	_, err = si.stmts.removeTipsetsBeforeHeightStmt.ExecContext(ctx, executionTipset.Height())
 	require.NoError(t, err)
 	events, err = si.GetEventsForFilter(ctx, filter)
 	require.ErrorIs(t, err, ErrNotFound)
