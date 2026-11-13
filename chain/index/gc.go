@@ -2,6 +2,7 @@ package index
 
 import (
 	"context"
+	"database/sql"
 	"strconv"
 	"time"
 
@@ -13,6 +14,10 @@ import (
 var (
 	log             = logging.Logger("chainindex")
 	cleanupInterval = time.Duration(4) * time.Hour
+
+	// gcBatchSize caps the rows removed by each GC delete. Each batch holds
+	// writerLk, so tipset indexing waits behind at most one batch.
+	gcBatchSize = 1000
 )
 
 func (si *SqliteIndexer) gcLoop() {
@@ -55,33 +60,21 @@ func (si *SqliteIndexer) gc(ctx context.Context) {
 
 	log.Infof("gc'ing all (reverted and non-reverted) tipsets before epoch %d", removalEpoch)
 
-	res, err := si.stmts.removeTipsetsBeforeHeightStmt.ExecContext(ctx, removalEpoch)
+	// Completion markers go first: a tipset whose rows are only partly removed
+	// must read as unindexed, not as a complete but smaller event set.
+	rows, err := si.gcDelete(ctx, si.stmts.removeTipsetBloomsBeforeHeightStmt, removalEpoch)
 	if err != nil {
-		log.Errorw("failed to remove reverted tipsets before height", "height", removalEpoch, "error", err)
+		log.Errorw("failed to remove tipset blooms before height", "height", removalEpoch, "removed", rows, "error", err)
 		return
 	}
-
-	rows, err := res.RowsAffected()
-	if err != nil {
-		log.Errorw("failed to get rows affected", "error", err)
-		return
-	}
-
-	log.Infof("gc'd %d entries before epoch %d", rows, removalEpoch)
-
-	res, err = si.stmts.removeTipsetBloomsBeforeHeightStmt.ExecContext(ctx, removalEpoch)
-	if err != nil {
-		log.Errorw("failed to remove tipset blooms before height", "height", removalEpoch, "error", err)
-		return
-	}
-
-	rows, err = res.RowsAffected()
-	if err != nil {
-		log.Errorw("failed to get rows affected", "error", err)
-		return
-	}
-
 	log.Infof("gc'd %d tipset blooms before epoch %d", rows, removalEpoch)
+
+	rows, err = si.gcDelete(ctx, si.stmts.removeTipsetsBeforeHeightStmt, removalEpoch)
+	if err != nil {
+		log.Errorw("failed to remove tipsets before height", "height", removalEpoch, "removed", rows, "error", err)
+		return
+	}
+	log.Infof("gc'd %d entries before epoch %d", rows, removalEpoch)
 
 	// -------------------------------------------------------------------------------------------------
 	// Also GC eth hashes
@@ -94,17 +87,38 @@ func (si *SqliteIndexer) gc(ctx context.Context) {
 	}
 
 	log.Infof("gc'ing eth hashes older than %d days", gcRetentionDays)
-	res, err = si.stmts.removeEthHashesOlderThanStmt.ExecContext(ctx, "-"+strconv.Itoa(int(gcRetentionDays))+" day")
+	rows, err = si.gcDelete(ctx, si.stmts.removeEthHashesOlderThanStmt, "-"+strconv.Itoa(int(gcRetentionDays))+" day")
 	if err != nil {
-		log.Errorf("failed to gc eth hashes older than %d days: %w", gcRetentionDays, err)
+		log.Errorw("failed to gc eth hashes", "days", gcRetentionDays, "removed", rows, "error", err)
 		return
 	}
-
-	rows, err = res.RowsAffected()
-	if err != nil {
-		log.Errorf("failed to get rows affected: %w", err)
-		return
-	}
-
 	log.Infof("gc'd %d eth hashes older than %d days", rows, gcRetentionDays)
+}
+
+// gcDelete runs a row-limited delete until a batch comes back short, taking
+// writerLk for each batch and releasing it between them. It returns the
+// number of rows removed, including those removed before an error.
+func (si *SqliteIndexer) gcDelete(ctx context.Context, stmt *sql.Stmt, cutoff any) (int64, error) {
+	var total int64
+	for {
+		if err := ctx.Err(); err != nil {
+			return total, err
+		}
+		n, err := si.gcDeleteBatch(ctx, stmt, cutoff)
+		total += n
+		if err != nil || n < int64(gcBatchSize) {
+			return total, err
+		}
+	}
+}
+
+func (si *SqliteIndexer) gcDeleteBatch(ctx context.Context, stmt *sql.Stmt, cutoff any) (int64, error) {
+	si.writerLk.Lock()
+	defer si.writerLk.Unlock()
+
+	res, err := stmt.ExecContext(ctx, cutoff, gcBatchSize)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
 }

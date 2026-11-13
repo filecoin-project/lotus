@@ -208,10 +208,9 @@ func TestGetEventsForFilterReturnsNotFoundUntilEventsAreIndexed(t *testing.T) {
 	require.Empty(t, events)
 	filter.MsgCid = msg.Cid()
 
-	// GC removes tipset rows (and cascades to events) before removing bloom
-	// rows. During that interval, the completion marker must not make missing
-	// event data look like an authoritative empty result.
-	_, err = si.stmts.removeTipsetsBeforeHeightStmt.ExecContext(ctx, executionTipset.Height())
+	// A completion marker whose tipset rows (and cascaded events) are gone must
+	// not make missing event data look like an authoritative empty result.
+	_, err = si.gcDelete(ctx, si.stmts.removeTipsetsBeforeHeightStmt, executionTipset.Height())
 	require.NoError(t, err)
 	events, err = si.GetEventsForFilter(ctx, filter)
 	require.ErrorIs(t, err, ErrNotFound)
