@@ -1,6 +1,7 @@
 package ethtypes
 
 import (
+	"math"
 	mathbig "math/big"
 	"testing"
 
@@ -211,6 +212,51 @@ func TestParseEthTransactionNonMinimalInts(t *testing.T) {
 		_, err := ParseEthTransaction(mustDecodeHex(rawTx))
 		require.NoError(t, err)
 	}
+}
+
+func TestParseIntOverflow(t *testing.T) {
+	t.Run("rejects values above int64 range", func(t *testing.T) {
+		// 2^63.
+		_, err := parseInt([]byte{0x80, 0, 0, 0, 0, 0, 0, 0})
+		require.ErrorContains(t, err, "overflows int64")
+
+		// 2^64-1.
+		_, err = parseInt([]byte{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff})
+		require.ErrorContains(t, err, "overflows int64")
+	})
+
+	t.Run("accepts values within int64 range", func(t *testing.T) {
+		v, err := parseInt([]byte{0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff})
+		require.NoError(t, err)
+		require.Equal(t, math.MaxInt64, v)
+
+		v, err = parseInt([]byte{0x01, 0x3a}) // 314
+		require.NoError(t, err)
+		require.Equal(t, 314, v)
+	})
+
+	t.Run("rejected end to end via ParseEthTransaction", func(t *testing.T) {
+		fields := []interface{}{
+			[]byte{0x01, 0x3a},                // chainId (314)
+			[]byte{},                          // nonce (0)
+			[]byte{},                          // maxPriorityFeePerGas (0)
+			[]byte{},                          // maxFeePerGas (0)
+			[]byte{0x80, 0, 0, 0, 0, 0, 0, 0}, // gasLimit (2^63, overflows int64)
+			[]byte{},                          // to (empty: contract creation)
+			[]byte{},                          // value (0)
+			[]byte{},                          // input (empty)
+			[]interface{}{},                   // access list (empty)
+			[]byte{},                          // v (0)
+			[]byte{0x01},                      // r (1, in range)
+			[]byte{0x01},                      // s (1, in range)
+		}
+		encoded, err := EncodeRLP(fields)
+		require.NoError(t, err)
+		raw := append([]byte{EIP1559TxType}, encoded...)
+
+		_, err = ParseEthTransaction(raw)
+		require.ErrorContains(t, err, "overflows int64")
+	})
 }
 
 // A signature with a high s has a second valid form (r, N-s) with the recovery
