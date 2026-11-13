@@ -66,9 +66,7 @@ func TestNetBstore(t *testing.T) {
 	require.Equal(t, "aoeu", string(b.RawData()))
 }
 
-// idleStream models a connection on which the remote peer never sends
-// anything: ReadMsg parks until the stream is closed. WriteMsg accepts
-// requests but no response ever arrives.
+// idleStream blocks reads until Close and discards writes.
 type idleStream struct {
 	readOnce sync.Once
 	reading  chan struct{}
@@ -111,9 +109,7 @@ func (s *idleStream) Close() error {
 	return nil
 }
 
-// awaitParked waits until the receive loop is blocked inside ReadMsg. A Stop
-// that runs before the loop gets that far is served by the check at the top of
-// the loop, which leaves the case these tests cover unexercised.
+// awaitParked waits for ReadMsg so Stop exercises stream closure.
 func (s *idleStream) awaitParked(ctx context.Context, t *testing.T) {
 	t.Helper()
 
@@ -126,8 +122,6 @@ func (s *idleStream) awaitParked(ctx context.Context, t *testing.T) {
 
 var _ msgio.ReadWriteCloser = (*idleStream)(nil)
 
-// testCtx bounds each case so a regression fails the test instead of hanging
-// it. The deadline is never reached on the happy path.
 func testCtx(t *testing.T) context.Context {
 	t.Helper()
 
@@ -144,18 +138,12 @@ func TestNetBstoreStopIdle(t *testing.T) {
 	nbs := NewNetworkStore(stream)
 	stream.awaitParked(ctx, t)
 
-	// The receive loop is parked in ReadMsg, so Stop only returns if it also
-	// closes the stream; signalling n.closing alone leaves it there.
 	require.NoError(t, nbs.Stop(ctx))
 
-	// Stop is idempotent: a second call used to panic closing a closed channel.
 	require.NoError(t, nbs.Stop(ctx))
 
-	// Both Stop and the receive loop's shutdown reach for the stream, but it is
-	// closed exactly once.
 	require.Equal(t, int64(1), stream.closeCalls.Load())
 
-	// A stopped store rejects new requests rather than blocking on them.
 	_, err := nbs.Has(ctx, block.NewBlock([]byte("aoeu")).Cid())
 	require.ErrorContains(t, err, "netstore closed")
 }
@@ -196,8 +184,7 @@ func TestNetBstoreStopFailsInflightRequest(t *testing.T) {
 		reqErr <- err
 	}()
 
-	// Stop only releases requests that shutdown can see in respMap, so wait for
-	// the call above to register before stopping.
+	// Ensure shutdown must release an in-flight request.
 	require.Eventually(t, func() bool {
 		nbs.respLk.Lock()
 		defer nbs.respLk.Unlock()
@@ -209,8 +196,6 @@ func TestNetBstoreStopFailsInflightRequest(t *testing.T) {
 
 	select {
 	case err := <-reqErr:
-		// A deliberate Stop is reported as such, not as the ReadMsg error that
-		// closing the stream produces.
 		require.ErrorContains(t, err, "netstore stopping")
 	case <-ctx.Done():
 		t.Fatal("in-flight request was not released by Stop")

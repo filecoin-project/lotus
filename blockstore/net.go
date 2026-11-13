@@ -107,10 +107,6 @@ func NewNetworkStore(mss msgio.ReadWriteCloser) *NetworkStore {
 	return ns
 }
 
-// closeMsgStream closes the underlying stream at most once. Closing the stream
-// is what makes a receive loop parked in ReadMsg return, so both Stop and
-// shutdown go through here; the once keeps the second caller from reporting a
-// spurious "already closed" error.
 func (n *NetworkStore) closeMsgStream() {
 	n.closeStreamOnce.Do(func() {
 		if err := n.msgStream.Close(); err != nil {
@@ -182,9 +178,6 @@ func (n *NetworkStore) receive() {
 
 		msg, err := n.msgStream.ReadMsg()
 		if err != nil {
-			// Stop closes the stream to break us out of ReadMsg, so an error
-			// here after closing was asked for is the expected path, not a
-			// transport failure.
 			select {
 			case <-n.closing:
 				n.shutdown("netstore stopping")
@@ -428,16 +421,13 @@ func (n *NetworkStore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) 
 
 func (*NetworkStore) Flush(context.Context) error { return nil }
 
-// Stop shuts the store down and waits for the receive loop to finish. It is
-// safe to call more than once, and from multiple goroutines.
+// Stop closes the store and waits for the receive loop to finish.
+// It is safe to call concurrently or repeatedly.
 func (n *NetworkStore) Stop(ctx context.Context) error {
 	n.stopOnce.Do(func() {
 		close(n.closing)
 
-		// Signalling n.closing is not enough on its own: an idle connection
-		// leaves the receive loop parked in ReadMsg, which only returns once
-		// the stream is closed or the remote peer sends something. Without
-		// this the wait below runs until ctx expires.
+		// Closing the stream unblocks ReadMsg on idle connections.
 		n.closeMsgStream()
 	})
 
