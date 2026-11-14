@@ -363,7 +363,7 @@ func (a *ActorEventHandler) SubscribeActorEventsRaw(ctx context.Context, evtFilt
 func getCollected(ctx context.Context, f filter.EventFilter) []*types.ActorEvent {
 	ces := f.TakeCollectedEvents(ctx)
 
-	var out []*types.ActorEvent
+	out := make([]*types.ActorEvent, 0, len(ces))
 
 	for _, e := range ces {
 		out = append(out, &types.ActorEvent{
