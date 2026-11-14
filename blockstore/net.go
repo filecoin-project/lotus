@@ -85,6 +85,9 @@ type NetworkStore struct {
 	closing chan struct{}
 	closed  chan struct{}
 
+	stopOnce        sync.Once
+	closeStreamOnce sync.Once
+
 	closeLk sync.Mutex
 	onClose []func()
 }
@@ -104,10 +107,16 @@ func NewNetworkStore(mss msgio.ReadWriteCloser) *NetworkStore {
 	return ns
 }
 
+func (n *NetworkStore) closeMsgStream() {
+	n.closeStreamOnce.Do(func() {
+		if err := n.msgStream.Close(); err != nil {
+			log.Errorw("closing netstore msg stream", "error", err)
+		}
+	})
+}
+
 func (n *NetworkStore) shutdown(msg string) {
-	if err := n.msgStream.Close(); err != nil {
-		log.Errorw("closing netstore msg stream", "error", err)
-	}
+	n.closeMsgStream()
 
 	nerr := NetRpcErr{
 		Type: NRpcErrGeneric,
@@ -169,7 +178,12 @@ func (n *NetworkStore) receive() {
 
 		msg, err := n.msgStream.ReadMsg()
 		if err != nil {
-			n.shutdown(fmt.Sprintf("netstore ReadMsg: %s", err))
+			select {
+			case <-n.closing:
+				n.shutdown("netstore stopping")
+			default:
+				n.shutdown(fmt.Sprintf("netstore ReadMsg: %s", err))
+			}
 			return
 		}
 
@@ -407,8 +421,15 @@ func (n *NetworkStore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) 
 
 func (*NetworkStore) Flush(context.Context) error { return nil }
 
+// Stop closes the store and waits for the receive loop to finish.
+// It is safe to call concurrently or repeatedly.
 func (n *NetworkStore) Stop(ctx context.Context) error {
-	close(n.closing)
+	n.stopOnce.Do(func() {
+		close(n.closing)
+
+		// Closing the stream unblocks ReadMsg on idle connections.
+		n.closeMsgStream()
+	})
 
 	select {
 	case <-n.closed:
