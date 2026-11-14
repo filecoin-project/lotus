@@ -616,7 +616,9 @@ func (bm *BlockMiner) InjectNulls(rounds abi.ChainEpoch) {
 	atomic.AddInt64(&bm.nextNulls, int64(rounds))
 }
 
-// Pause compels the miner to wait for a signal to restart
+// Pause stops new mining requests until Restart.
+// An accepted request can still be in flight; use MineUntilBlock after Pause
+// to finish mining before inspecting pending messages.
 func (bm *BlockMiner) Pause() {
 	bm.pause <- struct{}{}
 }
