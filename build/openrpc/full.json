@@ -25918,7 +25918,7 @@
         {
             "name": "Filecoin.SyncCheckpoint",
             "description": "```go\nfunc (s *FullNodeStruct) SyncCheckpoint(p0 context.Context, p1 types.TipSetKey) error {\n\tif s.Internal.SyncCheckpoint == nil {\n\t\treturn ErrNotSupported\n\t}\n\treturn s.Internal.SyncCheckpoint(p0, p1)\n}\n```",
-            "summary": "SyncCheckpoint marks a blocks as checkpointed, meaning that it won't ever fork away from it.\n",
+            "summary": "SyncCheckpoint marks a block as checkpointed, meaning that it won't ever fork away from it.\n",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -25965,7 +25965,7 @@
         {
             "name": "Filecoin.SyncMarkBad",
             "description": "```go\nfunc (s *FullNodeStruct) SyncMarkBad(p0 context.Context, p1 cid.Cid) error {\n\tif s.Internal.SyncMarkBad == nil {\n\t\treturn ErrNotSupported\n\t}\n\treturn s.Internal.SyncMarkBad(p0, p1)\n}\n```",
-            "summary": "SyncMarkBad marks a blocks as bad, meaning that it won't ever by synced.\nUse with extreme caution.\n",
+            "summary": "SyncMarkBad marks a block as bad, meaning that it won't ever be synced.\nUse with extreme caution.\n",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -26521,7 +26521,7 @@
         {
             "name": "Filecoin.SyncUnmarkBad",
             "description": "```go\nfunc (s *FullNodeStruct) SyncUnmarkBad(p0 context.Context, p1 cid.Cid) error {\n\tif s.Internal.SyncUnmarkBad == nil {\n\t\treturn ErrNotSupported\n\t}\n\treturn s.Internal.SyncUnmarkBad(p0, p1)\n}\n```",
-            "summary": "SyncUnmarkBad unmarks a blocks as bad, making it possible to be validated and synced again.\n",
+            "summary": "SyncUnmarkBad unmarks a block as bad, making it possible to be validated and synced again.\n",
             "paramStructure": "by-position",
             "params": [
                 {

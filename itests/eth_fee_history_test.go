@@ -22,13 +22,13 @@ import (
 )
 
 // calculateExpectations calculates the expected number of items to be included in the response
-// of eth_feeHistory. It takes care of null rounds by finding the closet tipset with height
+// of eth_feeHistory. It takes care of null rounds by finding the closest tipset with height
 // smaller than startHeight, and then looks back at requestAmount of items. It also considers
 // scenarios where there are not enough items to look back.
 func calculateExpectations(tsHeights []int, requestAmount, startHeight int) (count, oldestHeight int) {
 	latestIdx := sort.SearchInts(tsHeights, startHeight)
 	// SearchInts returns the index of the number that's larger than the target if the target
-	// doesn't exist. However, we're looking for the closet number that's smaller that the target
+	// doesn't exist. However, we're looking for the closest number that's smaller than the target
 	for tsHeights[latestIdx] > startHeight {
 		latestIdx--
 	}

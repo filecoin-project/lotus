@@ -9308,7 +9308,7 @@ Inputs:
 Response: `"string value"`
 
 ### SyncCheckpoint
-SyncCheckpoint marks a blocks as checkpointed, meaning that it won't ever fork away from it.
+SyncCheckpoint marks a block as checkpointed, meaning that it won't ever fork away from it.
 
 
 Perms: admin
@@ -9392,7 +9392,7 @@ Response:
 ```
 
 ### SyncMarkBad
-SyncMarkBad marks a blocks as bad, meaning that it won't ever by synced.
+SyncMarkBad marks a block as bad, meaning that it won't ever be synced.
 Use with extreme caution.
 
 
@@ -9659,7 +9659,7 @@ Inputs: `null`
 Response: `{}`
 
 ### SyncUnmarkBad
-SyncUnmarkBad unmarks a blocks as bad, making it possible to be validated and synced again.
+SyncUnmarkBad unmarks a block as bad, making it possible to be validated and synced again.
 
 
 Perms: admin
