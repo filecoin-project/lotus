@@ -331,8 +331,27 @@ func (w *RpcReader) redirect(to string) bool {
 }
 
 func ReaderParamDecoder() (http.HandlerFunc, jsonrpc.ServerOption) {
+	hnd, dec, _ := readerParamDecoder()
+	return hnd, dec
+}
+
+// readerParamDecoder is ReaderParamDecoder, also returning the number of push
+// ids currently tracked.
+func readerParamDecoder() (http.HandlerFunc, jsonrpc.ServerOption, func() int) {
 	var readersLk sync.Mutex
 	readers := map[uuid.UUID]chan *RpcReader{}
+
+	// The push id is chosen by the client, and the push endpoint is served
+	// before any permission check, so an entry must be dropped once its
+	// exchange is over. It is only kept between a HEAD that got resStart and
+	// the POST that follows it.
+	forget := func(u uuid.UUID, ch chan *RpcReader) {
+		readersLk.Lock()
+		if readers[u] == ch {
+			delete(readers, u)
+		}
+		readersLk.Unlock()
+	}
 
 	// runs on the rpc server side, called by the client before making the jsonrpc request
 	hnd := func(resp http.ResponseWriter, req *http.Request) {
@@ -365,6 +384,7 @@ func ReaderParamDecoder() (http.HandlerFunc, jsonrpc.ServerOption) {
 			wr.postBody = req.Body
 		default:
 			http.Error(resp, "unsupported method", http.StatusMethodNotAllowed)
+			return
 		}
 
 		tctx, cancel := context.WithTimeout(req.Context(), Timeout)
@@ -373,6 +393,7 @@ func ReaderParamDecoder() (http.HandlerFunc, jsonrpc.ServerOption) {
 		select {
 		case ch <- wr:
 		case <-tctx.Done():
+			forget(u, ch)
 			close(ch)
 			log.Errorf("context error in reader stream handler (1): %v", tctx.Err())
 			resp.WriteHeader(500)
@@ -381,6 +402,9 @@ func ReaderParamDecoder() (http.HandlerFunc, jsonrpc.ServerOption) {
 
 		select {
 		case res, ok := <-wr.res:
+			if !ok || res.rt != resStart {
+				forget(u, ch)
+			}
 			if !ok {
 				if req.Method == http.MethodHead {
 					resp.WriteHeader(http.StatusNoContent)
@@ -407,6 +431,7 @@ func ReaderParamDecoder() (http.HandlerFunc, jsonrpc.ServerOption) {
 			return
 		case <-req.Context().Done():
 			log.Errorf("context error in reader stream handler (2): %v", req.Context().Err())
+			forget(u, ch)
 
 			closed := make(chan struct{})
 			// start a draining goroutine
@@ -478,9 +503,16 @@ func ReaderParamDecoder() (http.HandlerFunc, jsonrpc.ServerOption) {
 
 			return reflect.ValueOf(wr), nil
 		case <-ctx.Done():
+			forget(u, ch)
 			return reflect.Value{}, ctx.Err()
 		}
 	})
 
-	return hnd, dec
+	pending := func() int {
+		readersLk.Lock()
+		defer readersLk.Unlock()
+		return len(readers)
+	}
+
+	return hnd, dec, pending
 }

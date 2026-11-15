@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
@@ -339,4 +341,56 @@ func testReaderRedirectDrop(t *testing.T) {
 	require.True(t,
 		strings.Contains(estr, "decoding params for 'ReaderHandler.ReadAll' (param: 0; custom decoder): context canceled") ||
 			strings.Contains(estr, "readall: unexpected EOF"), "unexpected error: %s", estr)
+}
+
+func TestReaderPushIDsAreForgotten(t *testing.T) {
+	oldTimeout := Timeout
+	Timeout = 100 * time.Millisecond
+	defer func() { Timeout = oldTimeout }()
+
+	var client struct {
+		ReadAll func(ctx context.Context, r io.Reader) ([]byte, error)
+	}
+
+	readerHandler, readerServerOpt, pending := readerParamDecoder()
+	rpcServer := jsonrpc.NewServer(readerServerOpt)
+	rpcServer.Register("ReaderHandler", &ReaderHandler{})
+
+	mux := mux.NewRouter()
+	mux.Handle("/rpc/v0", rpcServer)
+	mux.Handle("/rpc/streams/v0/push/{uuid}", readerHandler)
+
+	testServ := httptest.NewServer(mux)
+	defer testServ.Close()
+
+	// push requests that no rpc call ever consumes
+	for _, method := range []string{http.MethodHead, http.MethodPost} {
+		req, err := http.NewRequest(method, testServ.URL+"/rpc/streams/v0/push/"+uuid.NewString(), strings.NewReader("x"))
+		require.NoError(t, err)
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	}
+	require.Equal(t, 0, pending())
+
+	// an rpc call naming a push id that is never opened
+	body := fmt.Sprintf(`{"jsonrpc":"2.0","id":1,"method":"ReaderHandler.ReadAll","params":[{"Type":"push","Info":%q}]}`, uuid.NewString())
+	resp, err := http.Post(testServ.URL+"/rpc/v0", "application/json", strings.NewReader(body))
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, 0, pending())
+
+	// completed streams
+	re := ReaderParamEncoder("http://" + testServ.Listener.Addr().String() + "/rpc/streams/v0/push")
+	closer, err := jsonrpc.NewMergeClient(context.Background(), "ws://"+testServ.Listener.Addr().String()+"/rpc/v0", "ReaderHandler", []interface{}{&client}, nil, re)
+	require.NoError(t, err)
+	defer closer()
+
+	for i := 0; i < 3; i++ {
+		read, err := client.ReadAll(context.TODO(), strings.NewReader("pooooootato"))
+		require.NoError(t, err)
+		require.Equal(t, "pooooootato", string(read))
+	}
+	require.Eventually(t, func() bool { return pending() == 0 }, 5*time.Second, 10*time.Millisecond)
 }
