@@ -67,7 +67,11 @@ RUN scripts/docker-git-state-check.sh
 ARG FFI_BUILD_FROM_SOURCE=0
 ENV FFI_BUILD_FROM_SOURCE=${FFI_BUILD_FROM_SOURCE}
 
-RUN make clean deps
+# An optional GITHUB_TOKEN build secret authenticates filecoin-ffi's release
+# downloads, avoiding GitHub's unauthenticated API rate limit. Without the
+# secret the downloads are unauthenticated.
+RUN --mount=type=secret,id=GITHUB_TOKEN \
+    GITHUB_TOKEN="$(cat /run/secrets/GITHUB_TOKEN 2>/dev/null || true)" make clean deps
 
 ARG RUSTFLAGS=""
 ARG GOFLAGS=""

@@ -128,3 +128,5 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             ${{ matrix.network != 'mainnet' && format('GOFLAGS=-tags={0}', matrix.network) || ''}}
+          secrets: |
+            GITHUB_TOKEN=${{ github.token }}
