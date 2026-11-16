@@ -135,7 +135,7 @@ func (pv1 *reverseProxyV1) EthGetTransactionHashByCid(ctx context.Context, cid c
 }
 
 func (pv1 *reverseProxyV1) EthGetMessageCidByTransactionHash(ctx context.Context, txHash *ethtypes.EthHash) (*cid.Cid, error) {
-	if err := pv1.gateway.limit(ctx, chainRateLimitTokens); err != nil {
+	if err := pv1.gateway.limit(ctx, stateRateLimitTokens); err != nil {
 		return nil, err
 	}
 
