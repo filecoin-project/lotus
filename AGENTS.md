@@ -30,7 +30,7 @@ When a change crosses one of these boundaries, check the other side. If a siblin
 - `chain/store/` height lookups: `chain/store/AGENTS.md`
 - `chain/messagepool/`: `chain/messagepool/AGENTS.md`
 - `gateway/` or eth RPC range, lookback and rate limits: `gateway/AGENTS.md`
-- JSON-RPC error codes, messages or `data`: `api/AGENTS.md`
+- Adding or changing an API method, or JSON-RPC error codes, messages or `data`: `api/AGENTS.md`
 - Node assembly, startup hooks or lite mode: `node/AGENTS.md`
 - Integration tests, CI runners or `conformance/`: `itests/AGENTS.md`
 - Integrating builtin-actors changes or bundles: `documentation/misc/Builtin-actors_Development.md`
@@ -52,7 +52,7 @@ When a change crosses one of these boundaries, check the other side. If a siblin
 - Bound work and memory derived from RPC or network input. Validate CIDs, lengths and counts before caching or persisting data. Compare request cost with downstream CPU, memory, I/O and chain traversal, including concurrent amplification: a syntactically small request must not trigger attacker-controlled replay, state walks, scans or unbounded results.
 - `gateway/` is a security and resource-control boundary commonly exposed to the internet, not a transparent pass-through. Its rate-limit tokens are coarse admission control; bound the work inside each request too.
 - Respect blockstore roles and keep the typed blockstores in `node/modules/dtypes` distinct. `ExposedBlockstore` is deliberately isolated from internal caches; bypassing its cache-invalidation rules can serve stale or inconsistent data.
-- `api/api_full.go` is the stable v1 full-node API, `api/v0api/` is legacy and `api/v2api/full.go` is experimental. Preserve v0/v1 compatibility: put new or changed APIs in v2, and edit v0/v1 only for a required compatibility change or bug fix. An API change usually spans the interface, permissioned surface, implementation, version wrappers, gateway proxy, mocks and generated OpenRPC documentation; trace the complete call path.
+- The full-node API has three versions. v0 (`api/v0api/`) is frozen. v1 (`api/api_full.go`) is stable: keep its signatures and add to it only under strong pressure. v2 (`api/v2api/full.go`) takes new methods, built on `types.TipSetSelector` and options structs so they can grow without breaking callers. `Eth*` methods behave identically on v1 and v2. Read `api/AGENTS.md` for the policy and its precedents before adding or changing a method. An API change usually spans the interface, permissioned surface, implementation, version wrappers, gateway proxy, mocks and generated OpenRPC documentation; trace the complete call path.
 - Every goroutine needs an owner and a cancellation path that runs at shutdown. Avoid blocking channel sends while holding a lock.
 - Dependencies can add on-disk state. Lotus hands its metadata datastore to libp2p components, so a release that adds persistence starts writing to the node's repo even though Lotus code didn't change. Read release notes of libp2p and other datastore-holding dependencies for new persistent state and defaults.
 

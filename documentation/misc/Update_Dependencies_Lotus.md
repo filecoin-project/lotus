@@ -54,7 +54,7 @@ Updating these dependencies in Lotus is usually related to network upgrades.  Se
 
 2. Run this script `./pack.sh vXX vX.Y.Z-rcX` to pull in the builtin-actors bundle into your Lotus repo. 
 
-- `vXX` is the network version you are bundling this builtin-actors for.
+- `vXX` is the actors version you are bundling, e.g. `v18` (see `chain/consensus/filcns/upgrades.go` for the network version mapping).
 - `vX.Y.Z-rcX` is the builtin-actors release you are bundling.
 
 👉 Example of a [PR updating Builtin-Actors bundle](https://github.com/filecoin-project/lotus/pull/11682/)

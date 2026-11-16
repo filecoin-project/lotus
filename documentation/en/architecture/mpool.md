@@ -124,7 +124,7 @@ type MpoolConfig struct {
 	PriorityAddrs          []address.Address
 	SizeLimitHigh          int
 	SizeLimitLow           int
-	ReplaceByFeeRatio      float64
+	ReplaceByFeeRatio      Percent
 	PruneCooldown          time.Duration
 	GasLimitOverestimation float64
 }
@@ -143,8 +143,9 @@ The meaning of these fields is as follows:
 - `SizeLimitLow` -- this is the number of pending messages that should be kept after a prune.
   Default is 20000.
 - `ReplaceByFeeRatio` -- this is the gas fee ratio for replacing messages in the mpool.
-  Whenever a message is replaced, the `GasPremium` must be increased by this ratio.
-  Default is 1.25.
+  Whenever a message is replaced, the new `GasPremium` must exceed the old one multiplied by this ratio.
+  It is a `types.Percent`, held internally as hundredths (125) and written as a decimal in JSON and
+  `lotus mpool config`. Default is 1.25; the minimum is 1.10.
 - `PruneCooldown` -- this is the period of time to wait before triggering a new prune.
   Default is 1min.
 - `GasLimitOverestimation` -- this is a parameter that controls the gas limit overestimation for new messages.

@@ -15,11 +15,11 @@ may be subject to change.
 Complete gas balancing is performed using a `lotus-bench` the process is based on importing a chain export
 and collecting gas traces which are later aggregated.
 
-Before building `lotus-bench` make sure `EnableDetailedTracing` in `chain/vm/runtime.go` is set to `true`.
+Run `lotus-bench` with `LOTUS_VM_ENABLE_TRACING=1` to collect detailed gas traces (`EnableDetailedTracing` in `chain/vm/runtime.go`).
 
 The process can be started using `./lotus-bench import` with `--car` flag set to the location of
-CAR chain export. `--start-epoch` and `--end-epoch` can be used to limit the range of epochs to run
-the benchmark. Note that the state tree of `start-epoch` needs to be in the CAR file or has to be previously computed
+CAR chain export. `--start-tipset` and `--end-tipset` (tipset keys, `cid1,cid2,...`) can be used to limit the range of epochs to run
+the benchmark. Note that the state tree of the start tipset needs to be in the CAR file or has to be previously computed
 to work.
 
 The output will be a `bench.json` file containing information about every syscall invoked
@@ -49,6 +49,6 @@ of real execution.
 
 An in-vivo benchmark can be performed by running an example of such a syscall during block execution.
 The best place to hook-in such a benchmark is the message execution loop in
-`chain/stmgr/stmgr.go` in `ApplyBlocks()`. Depending on the time required to complete the syscall it might be
+`chain/consensus/compute_state.go` in `TipSetExecutor.ApplyBlocks()`. Depending on the time required to complete the syscall it might be
 advisable to run the execution only once every few messages.
 
