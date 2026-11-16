@@ -653,7 +653,7 @@ func traceNativeCreate(env *environment, addr []int, et *types.ExecutionTrace) (
 	if et.Msg.ReadOnly {
 		// "create" isn't valid in a staticcall, so we just skip this trace
 		// (couldn't have created an actor anyways).
-		// This mimic's the EVM: it doesn't trace CREATE calls when in
+		// This mimics the EVM: it doesn't trace CREATE calls when in
 		// read-only mode.
 		return nil, nil, nil
 	}
