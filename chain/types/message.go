@@ -59,8 +59,12 @@ func (m *Message) ValueReceived() abi.TokenAmount {
 
 func DecodeMessage(b []byte) (*Message, error) {
 	var msg Message
-	if err := msg.UnmarshalCBOR(bytes.NewReader(b)); err != nil {
+	r := bytes.NewReader(b)
+	if err := msg.UnmarshalCBOR(r); err != nil {
 		return nil, err
+	}
+	if l := r.Len(); l != 0 {
+		return nil, xerrors.Errorf("extraneous data in Message CBOR encoding: got %d unexpected bytes", l)
 	}
 
 	if msg.Version != MessageVersion {
