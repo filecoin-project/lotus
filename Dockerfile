@@ -67,7 +67,11 @@ RUN scripts/docker-git-state-check.sh
 ARG FFI_BUILD_FROM_SOURCE=0
 ENV FFI_BUILD_FROM_SOURCE=${FFI_BUILD_FROM_SOURCE}
 
-RUN make clean deps
+# Optional build secret: authenticates filecoin-ffi's GitHub release downloads
+# so they are not limited by GitHub's unauthenticated API rate limit. BuildKit
+# mounts a secret only for this RUN and never stores it in an image layer,
+# the build history or provenance. Builds without the secret are unauthenticated.
+RUN --mount=type=secret,id=GITHUB_TOKEN,env=GITHUB_TOKEN make clean deps
 
 ARG RUSTFLAGS=""
 ARG GOFLAGS=""
