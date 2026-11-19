@@ -37,7 +37,8 @@ type Path string
 // TODO: debate making this a private struct wrapped in a public interface
 // would allow us to control creation, and cache segments.
 
-// FromString safely converts a string type to a Path type.
+// FromString converts a string to a Path without validating it.
+// Use ParsePath to validate the path syntax.
 func FromString(s string) Path {
 	return Path(s)
 }
@@ -175,8 +176,8 @@ func SplitList(pth string) []string {
 	return strings.Split(pth, "/")
 }
 
-// SplitAbsPath clean up and split fpath. It extracts the first component (which
-// must be a Multihash) and return it separately.
+// SplitAbsPath cleans and splits fpath, removes an optional /ipfs/ or /ipld/
+// namespace, and returns the root CID and the remaining path segments.
 func SplitAbsPath(fpath Path) (cid.Cid, []string, error) {
 	parts := fpath.Segments()
 	if parts[0] == "ipfs" || parts[0] == "ipld" {
