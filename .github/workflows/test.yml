@@ -81,7 +81,7 @@ jobs:
           CACHE_PATH: |
             ./extern/filecoin-ffi/filcrypto.h
             ./extern/filecoin-ffi/libfilcrypto.a
-            ./extern/filecoin-ffi/filcrypto.pc
+            ./extern/filecoin-ffi/cgo/libs_generated.go
         run: |
           echo -e "key=$CACHE_KEY" | tee -a "$GITHUB_OUTPUT"
           echo -e "path<<EOF\n$CACHE_PATH\nEOF" | tee -a "$GITHUB_OUTPUT"
