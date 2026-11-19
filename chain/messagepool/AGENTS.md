@@ -1,0 +1,10 @@
+# Message pool (chain/messagepool)
+
+Treat small mpool bookkeeping changes as concurrency work. `currentSize` affects pruning and selection, and pending snapshots need invalidation alongside mutations. Lock `curTsLk` before `lk`, and audit head-pointer reads as well as map access. Existing code using a locking pattern is evidence to investigate, not proof that a new caller is safe.
+
+- `mp.changes.Pub` can block. Add and Remove publish under `mp.lk`; a bulk publisher there extends the hazard to that operation. Consumers include internal indexing and filter workers and read-permission JSON-RPC `MpoolSub` clients, so untrusted subscribers sit behind it. Libp2p gossip is a separate path.
+- Test beyond both subscription buffers, with an undrained receiver and with one that calls `Pending` from an update callback. Check that unrelated pool operations stay responsive, and exercise cancellation and shutdown. A test that fits within the buffers misses bulk backpressure. A clean race-detector run says nothing about liveness.
+- Passing a context doesn't make mutex acquisition or `Pub` cancellable; request cancellation can leave a goroutine holding or waiting for `mp.lk`. Distinguish client deadlines, operation-context deadlines and outer test timeouts when reporting a stall.
+- Async publication must preserve mutation order across Add, Remove and Clear. Clear can remove M and Add can re-admit the identical CID; publishing the old removal after the new addition leaves consumers tracking the wrong state. A goroutine per publication neither preserves order nor bounds backlog.
+- Disconnecting slow subscribers needs a burst and overflow policy and state recovery. Several internal receive loops assume the channel stays open; audit them before changing the stream contract.
+- The journal is a diagnostic event log, not crash recovery. Mpool add and remove events are off by default; when enabled, payload construction is synchronous and enqueueing can block behind the filesystem writer. Assess that I/O risk separately from subscriber backpressure.
