@@ -50,8 +50,12 @@ type SignedMessage struct {
 
 func DecodeSignedMessage(data []byte) (*SignedMessage, error) {
 	var msg SignedMessage
-	if err := msg.UnmarshalCBOR(bytes.NewReader(data)); err != nil {
+	r := bytes.NewReader(data)
+	if err := msg.UnmarshalCBOR(r); err != nil {
 		return nil, err
+	}
+	if l := r.Len(); l != 0 {
+		return nil, xerrors.Errorf("extraneous data in SignedMessage CBOR encoding: got %d unexpected bytes", l)
 	}
 
 	return &msg, nil
