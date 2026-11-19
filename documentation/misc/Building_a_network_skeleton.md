@@ -353,7 +353,7 @@ Note: one only needs to update `filecoin-ffi`'s dependency on `go-state-types` w
     - In `/build/actors` run `./pack.sh vXX+1 vXX.0.0` where XX is the current actor bundle version.
     - On macOS, run the pack script with `COPYFILE_DISABLE=1` if the generated bundle contains AppleDouble `._` files.
 
-3. Define upgrade heights in `build/params_`:
+3. Define upgrade heights in `build/buildconstants/params_`:
 
     - Update the following files:
         - `params_2k.go`
@@ -376,7 +376,7 @@ Note: one only needs to update `filecoin-ffi`'s dependency on `go-state-types` w
             - Set previous upgrade to `const UpgradeXxHeight = XX`
             - Add comment with ???? signaling that the new upgrade date is unknown
             - Add `var UpgradeXxHeight = UpgradeHeightUnscheduled`
-            - Change the `LOTUS_DISABLE_XX` env variable to the new network name
+            - Rename the `LOTUS_DISABLE_XX` env variable to the new network name and add a new `LOTUS_DISABLE_XX` for the next placeholder. Each disable switch must also defer every later upgrade, in order, because upgrade heights must be strictly increasing (`chain/stmgr/forks.go`)
         - `params_testground.go`
             - Add `UpgradeXxHeight     abi.ChainEpoch = (-xx-1)`
 

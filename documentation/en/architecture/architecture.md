@@ -319,7 +319,7 @@ When `StateManager::computeTipsetState()` is called with a tipset, `ts`,
 it retrieves the parent state root of the blocks in `ts`. It also creates a list of `BlockMessages`, which wraps the BLS
 and SecP messages in a block along with the miner that produced the block.
 
-Control then flows to `StateManager::ApplyBlocks()`, which builds a VM to apply the messages given to it. The VM
+Control then flows to `TipSetExecutor::ApplyBlocks()` (`chain/consensus/compute_state.go`), which builds a VM to apply the messages given to it. The VM
 is initialized with the parent state root of the blocks in `ts`. We apply the blocks in `ts` in order (see FIXME for
 ordering of blocks in a tipset).
 
@@ -353,6 +353,7 @@ is the computed state of the tipset.
 ## Virtual Machine
 
 The Virtual Machine (VM) is responsible for executing messages.
+This section describes the legacy Go VM, which executes epochs before network version 16. From nv16 onward, messages execute in the [FVM](https://github.com/filecoin-project/ref-fvm) through filecoin-ffi (`chain/vm/vmi.go`), running the WASM [builtin-actors](https://github.com/filecoin-project/builtin-actors) bundles.
 The [Lotus Virtual Machine](https://github.com/filecoin-project/lotus/blob/master/chain/vm/vm.go)
 invokes the appropriate methods in the builtin actors, and provides
 a [`Runtime`](https://github.com/filecoin-project/specs-actors/blob/master/actors/runtime/runtime.go)
