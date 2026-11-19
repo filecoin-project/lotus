@@ -19,7 +19,7 @@ runs:
         path: |
           ./extern/filecoin-ffi/filcrypto.h
           ./extern/filecoin-ffi/libfilcrypto.a
-          ./extern/filecoin-ffi/filcrypto.pc
+          ./extern/filecoin-ffi/cgo/libs_generated.go
           ./build/.filecoin-install
           ./build/.update-modules
     - if: steps.cache-ffi.outputs.cache-hit != 'true'
@@ -35,6 +35,6 @@ runs:
         path: |
           ./extern/filecoin-ffi/filcrypto.h
           ./extern/filecoin-ffi/libfilcrypto.a
-          ./extern/filecoin-ffi/filcrypto.pc
+          ./extern/filecoin-ffi/cgo/libs_generated.go
           ./build/.filecoin-install
           ./build/.update-modules
