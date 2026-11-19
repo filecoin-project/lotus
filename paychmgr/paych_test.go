@@ -3,6 +3,7 @@ package paychmgr
 import (
 	"bytes"
 	"context"
+	"math"
 	"testing"
 
 	"github.com/ipfs/go-cid"
@@ -57,6 +58,30 @@ func TestCheckVoucherValid(t *testing.T) {
 		key:           fromKeyPrivate,
 		actorBalance:  big.NewInt(10),
 		voucherAmount: big.NewInt(5),
+	}, {
+		name:          "fails when voucher amount is negative",
+		expectError:   true,
+		key:           fromKeyPrivate,
+		actorBalance:  big.NewInt(10),
+		voucherAmount: big.NewInt(-5),
+		voucherLane:   1,
+		laneStates: map[uint64]paych.LaneState{
+			// Lane 2 (different from voucher lane 1)
+			2: paychmock.NewMockLaneState(big.NewInt(10), 1),
+		},
+	}, {
+		name:          "fails when voucher lane is above the maximum lane",
+		expectError:   true,
+		key:           fromKeyPrivate,
+		actorBalance:  big.NewInt(10),
+		voucherAmount: big.NewInt(5),
+		voucherLane:   math.MaxInt64 + 1,
+	}, {
+		name:          "passes when voucher lane is the maximum lane",
+		key:           fromKeyPrivate,
+		actorBalance:  big.NewInt(10),
+		voucherAmount: big.NewInt(5),
+		voucherLane:   math.MaxInt64,
 	}, {
 		name:          "fails when funds too low",
 		expectError:   true,

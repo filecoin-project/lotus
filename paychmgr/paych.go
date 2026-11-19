@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
@@ -198,6 +199,14 @@ func (ca *channelAccessor) checkVoucherValidUnlocked(ctx context.Context, ch add
 	}
 	if len(sv.SecretHash) != 0 {
 		return nil, xerrors.Errorf("voucher is Hash Locked")
+	}
+
+	// The payment channel actor refuses to redeem these
+	if sv.Lane > math.MaxInt64 {
+		return nil, xerrors.Errorf("voucher lane %d is above the maximum lane %d", sv.Lane, uint64(math.MaxInt64))
+	}
+	if sv.Amount.LessThan(big.Zero()) {
+		return nil, xerrors.Errorf("voucher amount %s is negative", sv.Amount)
 	}
 
 	// Load payment channel actor state
