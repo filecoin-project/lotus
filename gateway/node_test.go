@@ -416,6 +416,9 @@ func TestGatewayEthBlockParamLookback(t *testing.T) {
 		{name: "latest with lookback", param: "latest", lookback: 100, checked: true},
 		{name: "latest with lookback short bound", param: "latest", lookback: 100, opts: []Option{WithMaxLookbackDuration(time.Minute)}, checked: true, wantErr: "lookbacks of more than"},
 		{name: "latest with lookback past genesis", param: "latest", lookback: 1 << 40, opts: []Option{WithMaxLookbackDuration(48 * time.Hour)}, checked: true},
+		{name: "recent number with lookback", param: "0xe", lookback: 1, checked: true},
+		{name: "recent number with lookback past bound", param: "0xd", lookback: 12, checked: true, wantErr: "lookbacks of more than"},
+		{name: "huge number with lookback", param: "0x10000000000", lookback: 1 << 40, checked: true, wantErr: "tipset height in future"},
 	} {
 		for _, c := range checkers {
 			t.Run(c.name+"/"+tc.name, func(t *testing.T) {
@@ -491,6 +494,59 @@ func TestGatewayEthEstimateGasLookback(t *testing.T) {
 				if tc.checked {
 					expectNetworkParams(mockV1, genesisTS)
 				}
+				if tc.wantErr == "" {
+					v.expect(mockV1, mockV2)
+				}
+				err := v.call(a)
+				if tc.wantErr != "" {
+					require.ErrorContains(t, err, tc.wantErr)
+				} else {
+					require.NoError(t, err)
+				}
+			})
+		}
+	}
+}
+
+func TestGatewayEthFeeHistoryLookback(t *testing.T) {
+	ctx := context.Background()
+
+	// Height 1 is older than the default lookback bound; height 13 is within it.
+	lookbackTimestamp := uint64(time.Now().Unix()) - uint64(DefaultMaxLookbackDuration.Seconds())
+	tss := generateTipSets(15, lookbackTimestamp-buildconstants.BlockDelaySecs*10)
+	genesisTS := tss[0].MinTimestamp()
+
+	for _, tc := range []struct {
+		name     string
+		blkCount ethtypes.EthUint64
+		newest   string
+		wantErr  string
+	}{
+		{name: "recent range", blkCount: 1, newest: "0xe"},
+		{name: "old newest", blkCount: 1, newest: "0x1", wantErr: "lookbacks of more than"},
+		{name: "recent newest reaching past bound", blkCount: 12, newest: "0xd", wantErr: "lookbacks of more than"},
+	} {
+		raw, err := json.Marshal([]interface{}{tc.blkCount, tc.newest})
+		require.NoError(t, err)
+
+		for _, v := range []struct {
+			name   string
+			expect func(v1 *v1mocks.MockFullNode, v2 *v2mocks.MockFullNode)
+			call   func(a *Node) error
+		}{
+			{"v1", func(v1 *v1mocks.MockFullNode, _ *v2mocks.MockFullNode) {
+				v1.EXPECT().EthFeeHistory(gomock.Any(), jsonrpc.RawParams(raw)).Return(ethtypes.EthFeeHistory{}, nil)
+			}, func(a *Node) error { _, err := a.v1Proxy.EthFeeHistory(ctx, raw); return err }},
+			{"v2", func(_ *v1mocks.MockFullNode, v2 *v2mocks.MockFullNode) {
+				v2.EXPECT().EthFeeHistory(gomock.Any(), jsonrpc.RawParams(raw)).Return(ethtypes.EthFeeHistory{}, nil)
+			}, func(a *Node) error { _, err := a.v2Proxy.EthFeeHistory(ctx, raw); return err }},
+		} {
+			t.Run(v.name+"/"+tc.name, func(t *testing.T) {
+				ctrl := gomock.NewController(t)
+				mockV1 := v1mocks.NewMockFullNode(ctrl)
+				mockV2 := v2mocks.NewMockFullNode(ctrl)
+				a := NewNode(mockV1, mockV2)
+				expectNetworkParams(mockV1, genesisTS)
 				if tc.wantErr == "" {
 					v.expect(mockV1, mockV2)
 				}
