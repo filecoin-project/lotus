@@ -2,6 +2,7 @@ package eth
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/ipfs/go-cid"
@@ -55,10 +56,22 @@ func (stubMpoolAPI) MpoolPushUntrusted(context.Context, *types.SignedMessage) (c
 	return cid.Undef, nil
 }
 
-func TestEthGetTransactionByHashLimitedPending(t *testing.T) {
-	ctx := context.Background()
+// stubChainStore holds no messages.
+type stubChainStore struct {
+	ChainStore
+}
 
-	// Signed EIP-1559 transaction, chain id 314.
+func (stubChainStore) GetSignedMessage(context.Context, cid.Cid) (*types.SignedMessage, error) {
+	return nil, errors.New("not found")
+}
+
+func (stubChainStore) GetMessage(context.Context, cid.Cid) (*types.Message, error) {
+	return nil, errors.New("not found")
+}
+
+// pendingEthTx returns a signed EIP-1559 transaction (chain id 314) as a
+// delegated Filecoin message, with its Eth tx hash.
+func pendingEthTx(t *testing.T) (*types.SignedMessage, ethtypes.EthHash) {
 	rawTx, err := ethtypes.DecodeHexString("0x02f86282013a8080808094ff000000000000000000000000000000000003ec8080c080a0f411a73e33523b40c1a916e79e67746bd01a4a4fb4ecfa87b441375a215ddfb4a0551692c1553574fab4c227ca70cb1c121dc3a2ef82179a9c984bd7acc0880a38")
 	require.NoError(t, err)
 	ethTx, err := ethtypes.ParseEthTransaction(rawTx)
@@ -70,6 +83,12 @@ func TestEthGetTransactionByHashLimitedPending(t *testing.T) {
 
 	// The index-miss fallback CID cannot match, so that case relies on the hash.
 	require.NotEqual(t, smsg.Cid(), txHash.ToCid())
+	return smsg, txHash
+}
+
+func TestEthGetTransactionByHashLimitedPending(t *testing.T) {
+	ctx := context.Background()
+	smsg, txHash := pendingEthTx(t)
 
 	for _, tc := range []struct {
 		name   string
@@ -105,4 +124,26 @@ func TestEthGetTransactionByHashLimitedPending(t *testing.T) {
 		require.NoError(t, err)
 		require.Nil(t, tx)
 	})
+}
+
+func TestEthGetMessageCidByTransactionHashPending(t *testing.T) {
+	ctx := context.Background()
+	smsg, txHash := pendingEthTx(t)
+
+	e := &ethTransaction{
+		chainStore:   stubChainStore{},
+		chainIndexer: stubIndexer{},
+		mpoolApi:     stubMpoolAPI{pending: []*types.SignedMessage{smsg}},
+	}
+
+	got, err := e.EthGetMessageCidByTransactionHash(ctx, &txHash)
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	require.Equal(t, smsg.Cid(), *got)
+
+	unknownHash := txHash
+	unknownHash[0] ^= 0xff
+	got, err = e.EthGetMessageCidByTransactionHash(ctx, &unknownHash)
+	require.NoError(t, err)
+	require.Nil(t, got)
 }

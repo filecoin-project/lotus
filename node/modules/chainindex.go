@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/events"
@@ -78,12 +79,6 @@ func InitChainIndexer(cfg config.ChainIndexerConfig) func(lc fx.Lifecycle, mctx 
 					return err
 				})
 
-				ch, err := mp.Updates(ctx)
-				if err != nil {
-					return err
-				}
-				go WaitForMpoolUpdates(ctx, ch, indexer)
-
 				ev, err := events.NewEvents(ctx, &evapi)
 				if err != nil {
 					return err
@@ -106,6 +101,15 @@ func InitChainIndexer(cfg config.ChainIndexerConfig) func(lc fx.Lifecycle, mctx 
 					unlockObserver()
 				}
 
+				// Reconciliation holds the indexer's writer lock for its whole run, so
+				// mpool messages are indexed from here on; earlier ones are indexed
+				// when included in a tipset.
+				ch, err := mp.Updates(ctx)
+				if err != nil {
+					return err
+				}
+				go WaitForMpoolUpdates(ctx, ch, indexer)
+
 				indexer.Start()
 
 				return nil
@@ -120,21 +124,42 @@ func ChainIndexHandler(cfg config.ChainIndexerConfig) func(helpers.MetricsCtx, r
 	}
 }
 
+const mpoolIndexQueueSize = 1024
+
+// WaitForMpoolUpdates indexes delegated messages added to the mpool under
+// their eth tx hash. The mpool publishes updates while holding its lock, so
+// this loop only queues them; a second goroutine indexes, waiting on the
+// indexer's writer lock as needed. Messages that overflow the queue are
+// indexed when included in a tipset.
 func WaitForMpoolUpdates(ctx context.Context, ch <-chan api.MpoolUpdate, indexer index.Indexer) {
-	for ctx.Err() == nil {
+	queue := make(chan *types.SignedMessage, mpoolIndexQueueSize)
+	defer close(queue)
+	go func() {
+		for msg := range queue {
+			if ctx.Err() != nil {
+				return
+			}
+			if err := indexer.IndexSignedMessage(ctx, msg); err != nil {
+				log.Errorw("failed to index signed Mpool message", "error", err)
+			}
+		}
+	}()
+
+	for {
 		select {
 		case <-ctx.Done():
 			return
-		case u := <-ch:
-			if u.Type != api.MpoolAdd {
+		case u, ok := <-ch:
+			if !ok {
+				return
+			}
+			if u.Type != api.MpoolAdd || u.Message == nil || u.Message.Signature.Type != crypto.SigTypeDelegated {
 				continue
 			}
-			if u.Message == nil {
-				continue
-			}
-			err := indexer.IndexSignedMessage(ctx, u.Message)
-			if err != nil {
-				log.Errorw("failed to index signed Mpool message", "error", err)
+			select {
+			case queue <- u.Message:
+			default:
+				log.Warnw("mpool eth tx hash index queue full; message will be indexed on inclusion", "cid", u.Message.Cid())
 			}
 		}
 	}

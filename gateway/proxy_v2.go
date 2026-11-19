@@ -274,7 +274,7 @@ func (pv2 *reverseProxyV2) EthGetTransactionByBlockNumberAndIndex(ctx context.Co
 }
 
 func (pv2 *reverseProxyV2) EthGetMessageCidByTransactionHash(ctx context.Context, txHash *ethtypes.EthHash) (*cid.Cid, error) {
-	if err := pv2.gateway.limit(ctx, chainRateLimitTokens); err != nil {
+	if err := pv2.gateway.limit(ctx, stateRateLimitTokens); err != nil {
 		return nil, err
 	}
 

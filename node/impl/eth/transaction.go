@@ -157,6 +157,39 @@ func (e *ethTransaction) EthGetTransactionByHashLimited(ctx context.Context, txH
 	}
 
 	// if not found, try to get it from the mempool
+	p, err := e.findPendingMessage(ctx, c, *txHash)
+	if err != nil {
+		return nil, err
+	}
+	if p == nil {
+		// Ethereum clients expect an empty response when the message was not found
+		return nil, nil
+	}
+
+	// We only return pending eth-account messages because we can't guarantee
+	// that the from/to addresses of other messages are conversable to 0x-style
+	// addresses. So we just ignore them.
+	//
+	// This should be fine, as anyone using an Ethereum-centric block
+	// explorer shouldn't care about seeing pending messages from native
+	// accounts.
+	ethtx, err := ethtypes.EthTransactionFromSignedFilecoinMessage(p)
+	if err != nil {
+		return nil, xerrors.Errorf("could not convert Filecoin message into tx: %w", err)
+	}
+
+	tx, err := ethtx.ToEthTx(p)
+	if err != nil {
+		return nil, xerrors.Errorf("could not convert Eth transaction to EthTx: %w", err)
+	}
+
+	return &tx, nil
+}
+
+// findPendingMessage returns the pending mpool message with CID c, or nil.
+// Without an index entry c is txHash.ToCid(), which cannot match a delegated
+// message's CID, so delegated messages are also matched by their Eth tx hash.
+func (e *ethTransaction) findPendingMessage(ctx context.Context, c cid.Cid, txHash ethtypes.EthHash) (*types.SignedMessage, error) {
 	pending, err := e.mpoolApi.MpoolPending(ctx, types.EmptyTSK)
 	if err != nil {
 		// inability to fetch mpool pending transactions is an internal node error
@@ -165,35 +198,15 @@ func (e *ethTransaction) EthGetTransactionByHashLimited(ctx context.Context, txH
 	}
 
 	for _, p := range pending {
-		// Without an index entry c is txHash.ToCid(), which cannot match a delegated
-		// message's CID, so those are also matched by their Eth tx hash.
-		matched := p.Cid() == c
-		if !matched && p.Signature.Type == crypto.SigTypeDelegated {
-			h, err := ethTxHashFromSignedMessage(p)
-			matched = err == nil && h == *txHash
+		if p.Cid() == c {
+			return p, nil
 		}
-		if matched {
-			// We only return pending eth-account messages because we can't guarantee
-			// that the from/to addresses of other messages are conversable to 0x-style
-			// addresses. So we just ignore them.
-			//
-			// This should be "fine" as anyone using an "Ethereum-centric" block
-			// explorer shouldn't care about seeing pending messages from native
-			// accounts.
-			ethtx, err := ethtypes.EthTransactionFromSignedFilecoinMessage(p)
-			if err != nil {
-				return nil, xerrors.Errorf("could not convert Filecoin message into tx: %w", err)
+		if p.Signature.Type == crypto.SigTypeDelegated {
+			if h, err := ethTxHashFromSignedMessage(p); err == nil && h == txHash {
+				return p, nil
 			}
-
-			tx, err := ethtx.ToEthTx(p)
-			if err != nil {
-				return nil, xerrors.Errorf("could not convert Eth transaction to EthTx: %w", err)
-			}
-
-			return &tx, nil
 		}
 	}
-	// Ethereum clients expect an empty response when the message was not found
 	return nil, nil
 }
 
@@ -234,6 +247,16 @@ func (e *ethTransaction) EthGetMessageCidByTransactionHash(ctx context.Context, 
 	if err == nil {
 		// This is a BLS message
 		return &c, nil
+	}
+
+	// A pending Eth tx whose hash the indexer hasn't recorded
+	p, err := e.findPendingMessage(ctx, c, *txHash)
+	if err != nil {
+		return nil, err
+	}
+	if p != nil {
+		pc := p.Cid()
+		return &pc, nil
 	}
 
 	// Ethereum clients expect an empty response when the message was not found
