@@ -11,7 +11,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -66,21 +65,12 @@ func (c *InteractiveWallet) WalletSign(ctx context.Context, k address.Address, m
 
 		switch meta.Type {
 		case api.MTChainMsg:
-			var cmsg types.Message
-			if err := cmsg.UnmarshalCBOR(bytes.NewReader(meta.Extra)); err != nil {
-				return xerrors.Errorf("unmarshalling message: %w", err)
-			}
-
-			_, bc, err := cid.CidFromBytes(msg)
+			cmsg, err := chainMsgForSigning(k, msg, meta)
 			if err != nil {
-				return xerrors.Errorf("getting cid from signing bytes: %w", err)
+				return err
 			}
 
-			if !cmsg.Cid().Equals(bc) {
-				return xerrors.Errorf("cid(meta.Extra).bytes() != msg")
-			}
-
-			jb, err := json.MarshalIndent(&cmsg, "", "  ")
+			jb, err := json.MarshalIndent(cmsg, "", "  ")
 			if err != nil {
 				return xerrors.Errorf("json-marshaling the message: %w", err)
 			}
