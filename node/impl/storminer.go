@@ -502,7 +502,7 @@ func (sm *StorageMinerAPI) listDeals(ctx context.Context) ([]*api.MarketDeal, er
 		return nil, err
 	}
 
-	var out []*api.MarketDeal
+	out := make([]*api.MarketDeal, 0, len(allDeals))
 
 	for _, deal := range allDeals {
 		if deal.Proposal.Provider == sm.Miner.Address() {
