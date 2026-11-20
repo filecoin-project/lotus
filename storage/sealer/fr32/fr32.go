@@ -1,9 +1,9 @@
 package fr32
 
 import (
-	"math/bits"
 	"runtime"
 	"sync"
+	"unsafe"
 
 	"github.com/filecoin-project/go-state-types/abi"
 )
@@ -23,27 +23,40 @@ func init() {
 	}
 }
 
+// MTTresh is the padded-size threshold above which multithreaded dispatch is
+// used. Exported for use by readers.go BufSize().
 var MTTresh = uint64(512 << 10)
 
+var (
+	padImpl   = padGo
+	unpadImpl = unpadGo
+)
+
+// mtChunkCount returns the number of worker goroutines for a given padded size.
+// The per-thread minimum work size is set to balance goroutine overhead against
+// parallelism. Pad uses a smaller minimum (512KB) because NT stores benefit from
+// more memory controllers. Unpad uses a larger minimum (2MB) because temporal
+// stores benefit from L3 cache locality.
 func mtChunkCount(usz abi.PaddedPieceSize) uint64 {
-	threads := (uint64(usz)) / MTTresh
-	if threads > uint64(runtime.NumCPU()) {
-		threads = 1 << (bits.Len32(uint32(runtime.NumCPU())))
+	return mtChunkCountMinWork(usz, MTTresh)
+}
+
+func mtChunkCountMinWork(usz abi.PaddedPieceSize, minWorkPerThread uint64) uint64 {
+	threads := uint64(usz) / minWorkPerThread
+	ncpu := uint64(runtime.NumCPU())
+	if threads > ncpu {
+		threads = ncpu
 	}
 	if threads == 0 {
 		return 1
 	}
-	if threads > 32 {
-		return 32 // avoid too large buffers
-	}
 	return threads
 }
 
-func mt(in, out []byte, padLen int, op func(unpadded, padded []byte)) {
-	threads := mtChunkCount(abi.PaddedPieceSize(padLen))
+func mtWithMinWork(in, out []byte, padLen int, minWork uint64, op func(unpadded, padded []byte)) {
+	threads := mtChunkCountMinWork(abi.PaddedPieceSize(padLen), minWork)
 
 	// Ensure threadBytes is aligned to 128-byte chunk boundaries.
-	// Each fr32 chunk is 128 padded bytes / 127 unpadded bytes.
 	chunksPerThread := (padLen / int(threads)) / 128
 	if chunksPerThread == 0 {
 		chunksPerThread = 1
@@ -60,12 +73,10 @@ func mt(in, out []byte, padLen int, op func(unpadded, padded []byte)) {
 			start := threadBytes * abi.PaddedPieceSize(thread)
 			end := start + threadBytes
 
-			// Last thread takes any remainder
 			if thread == int(threads)-1 {
 				end = abi.PaddedPieceSize(padLen)
 			}
 
-			// Skip if this thread has no work
 			if start >= abi.PaddedPieceSize(padLen) {
 				return
 			}
@@ -78,8 +89,11 @@ func mt(in, out []byte, padLen int, op func(unpadded, padded []byte)) {
 
 func Pad(in, out []byte) {
 	// Assumes len(in)%127==0 and len(out)%128==0
+	assertNoOverlap(in, out)
 	if len(out) > int(MTTresh) {
-		mt(in, out, len(out), pad)
+		// 512KB per thread: pad uses NT stores which bypass cache, so more
+		// threads = more memory controllers utilized.
+		mtWithMinWork(in, out, len(out), 512<<10, pad)
 		return
 	}
 
@@ -87,10 +101,40 @@ func Pad(in, out []byte) {
 }
 
 func PadSingle(in, out []byte) {
+	assertNoOverlap(in, out)
 	pad(in, out)
 }
 
+func assertNoOverlap(in, out []byte) {
+	if slicesOverlap(in, out) {
+		panic("fr32: input and output buffers must not overlap")
+	}
+}
+
+func slicesOverlap(a, b []byte) bool {
+	if len(a) == 0 || len(b) == 0 {
+		return false
+	}
+
+	aStart := uintptr(unsafe.Pointer(&a[0])) /* #nosec G103 -- pointer comparison only, no deref */
+	bStart := uintptr(unsafe.Pointer(&b[0])) /* #nosec G103 -- pointer comparison only, no deref */
+	aEnd := aStart + uintptr(len(a))
+	bEnd := bStart + uintptr(len(b))
+
+	overlap := aStart < bEnd && bStart < aEnd
+
+	// Keep slices live across the unsafe pointer arithmetic above.
+	runtime.KeepAlive(a)
+	runtime.KeepAlive(b)
+
+	return overlap
+}
+
 func pad(in, out []byte) {
+	padImpl(in, out)
+}
+
+func padGo(in, out []byte) {
 	chunks := len(out) / 128
 	for chunk := 0; chunk < chunks; chunk++ {
 		inOff := chunk * 127
@@ -132,8 +176,11 @@ func pad(in, out []byte) {
 
 func Unpad(in []byte, out []byte) {
 	// Assumes len(in)%128==0 and len(out)%127==0
+	assertNoOverlap(in, out)
 	if len(in) > int(MTTresh) {
-		mt(out, in, len(in), unpad)
+		// 2MB per thread: unpad uses temporal stores which benefit from L3
+		// cache locality, so fewer larger chunks improve hit rate.
+		mtWithMinWork(out, in, len(in), 2<<20, unpad)
 		return
 	}
 
@@ -141,6 +188,10 @@ func Unpad(in []byte, out []byte) {
 }
 
 func unpad(out, in []byte) {
+	unpadImpl(out, in)
+}
+
+func unpadGo(out, in []byte) {
 	chunks := len(in) / 128
 	for chunk := 0; chunk < chunks; chunk++ {
 		inOffNext := chunk*128 + 1
