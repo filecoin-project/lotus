@@ -670,8 +670,11 @@ func (pv2 *reverseProxyV2) EthSubscribe(ctx context.Context, p jsonrpc.RawParams
 		return ethtypes.EthSubscriptionID{}, err
 	}
 
+	// The call's context ends when it returns; the cleanup runs after the
+	// connection closes.
+	cleanupCtx := context.WithoutCancel(ctx)
 	ft.userSubscriptions[sub] = func() {
-		if _, err := pv2.server.EthUnsubscribe(ctx, sub); err != nil {
+		if _, err := pv2.server.EthUnsubscribe(cleanupCtx, sub); err != nil {
 			log.Warnf("error unsubscribing after connection end: %v", err)
 		}
 		pv2.subscriptions.RemoveSub(sub)
@@ -751,8 +754,11 @@ func (pv2 *reverseProxyV2) addUserFilterLimited(
 		return id, err
 	}
 
+	// The call's context ends when it returns; the cleanup runs after the
+	// connection closes.
+	cleanupCtx := context.WithoutCancel(ctx)
 	ft.userFilters[id] = func() {
-		if _, err := pv2.EthUninstallFilter(ctx, id); err != nil {
+		if _, err := pv2.server.EthUninstallFilter(cleanupCtx, id); err != nil {
 			log.Warnf("error uninstalling filter after connection end: %v", err)
 		}
 	}
