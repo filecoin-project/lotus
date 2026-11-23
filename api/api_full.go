@@ -268,14 +268,14 @@ type FullNode interface {
 	// yet synced block headers.
 	SyncIncomingBlocks(ctx context.Context) (<-chan *types.BlockHeader, error) //perm:read
 
-	// SyncCheckpoint marks a blocks as checkpointed, meaning that it won't ever fork away from it.
+	// SyncCheckpoint marks a block as checkpointed, meaning that it won't ever fork away from it.
 	SyncCheckpoint(ctx context.Context, tsk types.TipSetKey) error //perm:admin
 
-	// SyncMarkBad marks a blocks as bad, meaning that it won't ever by synced.
+	// SyncMarkBad marks a block as bad, meaning that it won't ever be synced.
 	// Use with extreme caution.
 	SyncMarkBad(ctx context.Context, bcid cid.Cid) error //perm:admin
 
-	// SyncUnmarkBad unmarks a blocks as bad, making it possible to be validated and synced again.
+	// SyncUnmarkBad unmarks a block as bad, making it possible to be validated and synced again.
 	SyncUnmarkBad(ctx context.Context, bcid cid.Cid) error //perm:admin
 
 	// SyncUnmarkAllBad purges bad block cache, making it possible to sync to chains previously marked as bad

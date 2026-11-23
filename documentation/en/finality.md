@@ -17,7 +17,7 @@ If both are unavailable, Lotus falls back to the static 900-epoch EC finality as
 
 A **finalized** tipset has a negligible probability of being reverted. In Ethereum terminology, this maps to the `"finalized"` block tag. Applications that need strong settlement guarantees (bridges, exchanges, payment confirmations) should wait for finality before considering a transaction settled.
 
-The **safe** tag returns a tipset that balances recency with confidence, sitting between `"finalized"` and `"latest"`. It is defined as whichever is more recent: the finalized tipset, or the tipset at a fixed lookback distance from head (200 epochs for v2 / Eth v2, 30 epochs for Eth v1). Under normal conditions where F3 and/or the EC calculator are providing a finality depth shallower than the safe distance, `"safe"` and `"finalized"` will return the same tipset. When finality mechanisms are degraded or lagging, `"safe"` provides a more recent tipset than `"finalized"` at the cost of a weaker guarantee.
+The **safe** tag returns a tipset that balances recency with confidence, sitting between `"finalized"` and `"latest"`. It is defined as whichever is more recent: the finalized tipset, or the tipset at a fixed lookback distance from head (200 epochs). Under normal conditions where F3 and/or the EC calculator are providing a finality depth shallower than the safe distance, `"safe"` and `"finalized"` will return the same tipset. When finality mechanisms are degraded or lagging, `"safe"` provides a more recent tipset than `"finalized"` at the cost of a weaker guarantee.
 
 Typically `"finalized"` is the right choice for most applications that don't want to be concerned with chain reorganization.
 

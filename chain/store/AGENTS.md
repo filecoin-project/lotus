@@ -1,0 +1,5 @@
+# Chain store (chain/store)
+
+- `GetTipsetByHeight` uses an in-memory skip-list (`skipLength` 20, `index.go`) filled lazily by walking headers. Cold, a lookup far below head walks thousands of headers from the blockstore, which on a large archival store can exceed a client timeout. Entries filled before a cancellation persist, so repeated attempts make progress.
+- Adding a height lookup to a hot RPC path changes its cold-start latency. Prefer anchors already in hand (a tipset by key, a parent walk from a known tipset), and check whether the path touched the skip-list before.
+- Request paths use `GetTipsetByHeightBounded`: past `heightLookupBudget` it fails with a height-index-cold `ErrResourceUnavailable` (-32002) and starts the background warm-up (`WarmHeightIndex`, once per process). Eth-enabled nodes also start the warm-up at startup (`modules.WarmHeightIndex`, wired in `node/builder_chain.go`). The warm-up logs and stops on error, so a cold index doesn't always mean "still filling". Reuse these before adding another warm-up or cache primer.

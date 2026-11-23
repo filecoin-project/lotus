@@ -93,7 +93,11 @@ type SqliteIndexer struct {
 	started       bool
 	needsBackfill bool
 
-	// ensures writes are serialized so backfilling does not race with index updates
+	// writerLk serializes writes to the index; only the offline tools
+	// (PopulateFromSnapshot, RestoreTipsetBlooms) write without it.
+	// Transactions that read before they write, such as Apply's, rely on it:
+	// SQLite fails their first write, without waiting, if another connection
+	// holds the write lock or has written since their first read.
 	writerLk sync.Mutex
 }
 
@@ -189,6 +193,9 @@ func (si *SqliteIndexer) initStatements() error {
 }
 
 func (si *SqliteIndexer) IndexEthTxHash(ctx context.Context, txHash ethtypes.EthHash, msgCid cid.Cid) error {
+	si.writerLk.Lock()
+	defer si.writerLk.Unlock()
+
 	if si.isClosed() {
 		return ErrClosed
 	}
@@ -212,6 +219,9 @@ func (si *SqliteIndexer) IndexSignedMessage(ctx context.Context, msg *types.Sign
 	if msg.Signature.Type != crypto.SigTypeDelegated {
 		return nil
 	}
+
+	si.writerLk.Lock()
+	defer si.writerLk.Unlock()
 
 	if si.isClosed() {
 		return ErrClosed

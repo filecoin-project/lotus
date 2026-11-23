@@ -234,7 +234,7 @@ The command validates the chain index entries for each epoch in the specified ra
 
 You can learn about how to use the tool with `lotus index validate-backfill -h`.
 
-Note: If you are using a non-standard Lotus repo directory then you can run the command with `lotus -repo /path/to/lotus/repo chainindex validate-backfill ...`, or by setting the `LOTUS_REPO` environment variable.
+Note: If you are using a non-standard Lotus repo directory then you can run the command with `lotus -repo /path/to/lotus/repo index validate-backfill ...`, or by setting the `LOTUS_REPO` environment variable.
 
 ### Restoring tipset blooms
 
@@ -279,8 +279,8 @@ epochs_to_validate=3000
 # Calculate the end epoch
 end_epoch=$((start_epoch - epochs_to_validate + 1))
 
-# Run the Lotus chainindex validate-backfill command
-validation_output=$("$LOTUS_BIN_PATH" chainindex validate-backfill --from="$start_epoch" --to="$end_epoch" --backfill="$BACKFILL_OPTION" --quiet 2>&1)
+# Run the Lotus index validate-backfill command
+validation_output=$("$LOTUS_BIN_PATH" index validate-backfill --from="$start_epoch" --to="$end_epoch" --backfill="$BACKFILL_OPTION" --quiet 2>&1)
 
 # Check the exit status of the command to determine if errors occurred
 if [ $? -ne 0 ]; then

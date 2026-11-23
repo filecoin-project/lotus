@@ -28,6 +28,7 @@ var pragmas = []string{
 	"PRAGMA journal_mode = WAL",
 	"PRAGMA journal_size_limit = 0", // always reset journal and wal files
 	"PRAGMA foreign_keys = ON",
+	"PRAGMA busy_timeout = 5000", // ms to wait on another connection's lock before SQLITE_BUSY
 }
 
 const driverName = "sqlite3_lotus"
