@@ -60,7 +60,10 @@ func RunApp(app *ufcli.App) {
 		_, _ = fmt.Fprintf(os.Stderr, "ERROR: %s\n\n", err)
 		var phe *PrintHelpErr
 		if errors.As(err, &phe) {
-			_ = ufcli.ShowCommandHelp(phe.Ctx, phe.Ctx.Command.Name)
+			// Command help is looked up by name among the parent's subcommands.
+			if lineage := phe.Ctx.Lineage(); len(lineage) > 1 {
+				_ = ufcli.ShowCommandHelp(lineage[1], phe.Ctx.Command.Name)
+			}
 		}
 		os.Exit(1)
 	}

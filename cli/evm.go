@@ -213,6 +213,10 @@ var EvmDeployCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgsWithHint(cctx, "expected contract file")
+		}
+
 		afmt := NewAppFmt(cctx.App)
 
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -221,10 +225,6 @@ var EvmDeployCmd = &cli.Command{
 		}
 		defer closer()
 		ctx := ReqContext(cctx)
-
-		if cctx.NArg() != 1 {
-			return IncorrectNumArgsWithHint(cctx, "contract init code required")
-		}
 
 		contract, err := os.ReadFile(cctx.Args().First())
 		if err != nil {
@@ -341,6 +341,10 @@ var EvmInvokeCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		if cctx.NArg() != 2 {
+			return IncorrectNumArgsWithHint(cctx, "expected address and calldata")
+		}
+
 		afmt := NewAppFmt(cctx.App)
 
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -349,10 +353,6 @@ var EvmInvokeCmd = &cli.Command{
 		}
 		defer closer()
 		ctx := ReqContext(cctx)
-
-		if cctx.NArg() != 2 {
-			return IncorrectNumArgsWithHint(cctx, "address and calldata requried")
-		}
 
 		addr, err := address.NewFromString(cctx.Args().Get(0))
 		if err != nil {

@@ -545,8 +545,10 @@ func TestWalletMarketAdd(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	toAddr := address.Address{}
-	defaultAddr := address.Address{}
+	defaultAddr, err := address.NewIDAddress(1234)
+	assert.NoError(t, err)
+	toAddr, err := address.NewIDAddress(5678)
+	assert.NoError(t, err)
 
 	h, err := hex.DecodeString("12209cbc07c3f991725836a3aa2a581ca2029198aa420b9d99bc0e131d9f3e2cbe47")
 	assert.NoError(t, err)
@@ -557,7 +559,21 @@ func TestWalletMarketAdd(t *testing.T) {
 		mockApi.EXPECT().MarketAddBalance(ctx, defaultAddr, toAddr, big.NewInt(80)).Return(cid, nil),
 	)
 
-	err = app.Run([]string{"wallet", "market", "add", "0.000000000000000080", "--address", toAddr.String()})
+	err = app.Run([]string{"wallet", "market", "add", "--address", toAddr.String(), "0.000000000000000080"})
 	assert.NoError(t, err)
 	assert.Contains(t, buffer.String(), fmt.Sprintf("AddBalance message cid: %s", cid))
+}
+
+func TestWalletMarketAddTrailingFlag(t *testing.T) {
+	app, _, _, done := NewMockAppWithFullAPI(t, WithCategory("wallet", walletMarket))
+	defer done()
+
+	toAddr, err := address.NewIDAddress(5678)
+	assert.NoError(t, err)
+
+	// Flag parsing stops at the first positional argument, so a flag after the
+	// amount arrives as extra arguments and must be rejected, not ignored.
+	err = app.Run([]string{"wallet", "market", "add", "0.000000000000000080", "--address", toAddr.String()})
+	assert.ErrorIs(t, err, &PrintHelpErr{})
+	assert.ErrorContains(t, err, "incorrect number of arguments, got 3")
 }

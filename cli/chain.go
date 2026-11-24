@@ -1294,7 +1294,7 @@ var ChainExportRangeCmd = &cli.Command{
 var SlashConsensusFault = &cli.Command{
 	Name:      "slash-consensus",
 	Usage:     "Report consensus fault",
-	ArgsUsage: "[blockCid1 blockCid2]",
+	ArgsUsage: "<blockCid1> <blockCid2>",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "from",
@@ -1306,6 +1306,10 @@ var SlashConsensusFault = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		if cctx.NArg() != 2 {
+			return IncorrectNumArgs(cctx)
+		}
+
 		afmt := NewAppFmt(cctx.App)
 
 		srv, err := GetFullNodeServices(cctx)
@@ -1316,10 +1320,6 @@ var SlashConsensusFault = &cli.Command{
 
 		a := srv.FullNodeAPI()
 		ctx := ReqContext(cctx)
-
-		if cctx.NArg() != 2 {
-			return IncorrectNumArgs(cctx)
-		}
 
 		c1, err := cid.Parse(cctx.Args().Get(0))
 		if err != nil {

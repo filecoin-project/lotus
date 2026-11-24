@@ -944,7 +944,7 @@ func ActorProposeChangeWorkerCmd(getActor ActorAddressGetter) *cli.Command {
 	return &cli.Command{
 		Name:      "propose-change-worker",
 		Usage:     "Propose a worker address change",
-		ArgsUsage: "[address]",
+		ArgsUsage: "<address>",
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
 				Name:  "really-do-it",
@@ -954,7 +954,7 @@ func ActorProposeChangeWorkerCmd(getActor ActorAddressGetter) *cli.Command {
 		},
 		Action: func(cctx *cli.Context) error {
 			if cctx.NArg() != 1 {
-				return lcli.IncorrectNumArgsWithHint(cctx, "must pass address of the new worker address")
+				return lcli.IncorrectNumArgsWithHint(cctx, "expected the new worker address")
 			}
 
 			api, acloser, err := lcli.GetFullNodeAPI(cctx)
@@ -1190,7 +1190,7 @@ func ActorConfirmChangeWorkerCmd(getActor ActorAddressGetter) *cli.Command {
 	return &cli.Command{
 		Name:      "confirm-change-worker",
 		Usage:     "Confirm a worker address change",
-		ArgsUsage: "[address]",
+		ArgsUsage: "<address>",
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
 				Name:  "really-do-it",
@@ -1200,7 +1200,7 @@ func ActorConfirmChangeWorkerCmd(getActor ActorAddressGetter) *cli.Command {
 		},
 		Action: func(cctx *cli.Context) error {
 			if cctx.NArg() != 1 {
-				return lcli.IncorrectNumArgsWithHint(cctx, "must pass address of new worker address")
+				return lcli.IncorrectNumArgsWithHint(cctx, "expected the new worker address")
 			}
 
 			api, acloser, err := lcli.GetFullNodeAPI(cctx)

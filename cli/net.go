@@ -266,18 +266,18 @@ var NetListen = &cli.Command{
 var NetDisconnect = &cli.Command{
 	Name:      "disconnect",
 	Usage:     "Disconnect from a peer",
-	ArgsUsage: "[peerID]",
+	ArgsUsage: "<peerID> ...",
 	Action: func(cctx *cli.Context) error {
+		if cctx.NArg() < 1 {
+			return IncorrectNumArgsWithHint(cctx, "expected at least one peer ID")
+		}
+
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 		ctx := ReqContext(cctx)
-
-		if cctx.NArg() == 0 {
-			return IncorrectNumArgsWithHint(cctx, "must provide at least one peerID")
-		}
 
 		ids := cctx.Args().Slice()
 		for _, id := range ids {
@@ -400,10 +400,10 @@ var NetFindPeer = &cli.Command{
 	Name:      "find-peer",
 	Aliases:   []string{"findpeer"},
 	Usage:     "Find the addresses of a given peerID",
-	ArgsUsage: "[peerId]",
+	ArgsUsage: "<peerID>",
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 1 {
-			return IncorrectNumArgsWithHint(cctx, "must provide a peerID")
+			return IncorrectNumArgsWithHint(cctx, "expected a peer ID")
 		}
 
 		pid, err := peer.Decode(cctx.Args().First())
