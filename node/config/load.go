@@ -281,8 +281,8 @@ func ValidateIndexerRetentionSet(cfgRaw string) error {
 		return nil
 	}
 	return errors.New("ChainIndexer.EnableIndexer is set to true without ChainIndexer.GCRetentionEpochs, refusing to load. " +
-		"Set GCRetentionEpochs in config.toml or LOTUS_CHAININDEXER_GCRETENTIONEPOCHS: 0 keeps all indexed history; " +
-		"2880 (one day) or more keeps that many epochs (20160 is 7 days) and the indexer deletes older history when the node starts")
+		"Set GCRetentionEpochs in config.toml or LOTUS_CHAININDEXER_GCRETENTIONEPOCHS: the default, 20160 (7 days), suits most nodes; " +
+		"archival nodes should set 0 to keep all indexed history. The indexer deletes history older than the retention when the node starts")
 }
 
 type cfgUpdateOpts struct {
