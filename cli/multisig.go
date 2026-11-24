@@ -189,7 +189,7 @@ var msigCreateCmd = &cli.Command{
 var msigInspectCmd = &cli.Command{
 	Name:      "inspect",
 	Usage:     "Inspect a multisig wallet",
-	ArgsUsage: "[address]",
+	ArgsUsage: "<address>",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:  "vesting",
@@ -201,8 +201,8 @@ var msigInspectCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if !cctx.Args().Present() {
-			return ShowHelp(cctx, fmt.Errorf("must specify address of multisig to inspect"))
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgsWithHint(cctx, "expected a multisig address")
 		}
 
 		api, closer, err := GetFullNodeAPI(cctx)

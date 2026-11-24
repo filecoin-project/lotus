@@ -803,6 +803,10 @@ var walletMarketAdd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
+		}
+
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return xerrors.Errorf("getting node API: %w", err)
@@ -813,9 +817,6 @@ var walletMarketAdd = &cli.Command{
 		afmt := NewAppFmt(cctx.App)
 
 		// Get amount param
-		if cctx.NArg() < 1 {
-			return IncorrectNumArgs(cctx)
-		}
 		f, err := types.ParseFIL(cctx.Args().First())
 		if err != nil {
 			return xerrors.Errorf("parsing 'amount' argument: %w", err)

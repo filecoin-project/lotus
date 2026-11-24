@@ -47,7 +47,7 @@ var LogList = &cli.Command{
 var LogSetLevel = &cli.Command{
 	Name:      "set-level",
 	Usage:     "Set log level",
-	ArgsUsage: "[level]",
+	ArgsUsage: "<level>",
 	Description: `Set the log level for logging systems:
 
    The system flag can be specified multiple times.
@@ -74,16 +74,16 @@ var LogSetLevel = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgsWithHint(cctx, "expected a log level")
+		}
+
 		api, closer, err := GetAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 		ctx := ReqContext(cctx)
-
-		if !cctx.Args().Present() {
-			return fmt.Errorf("level is required")
-		}
 
 		systems := cctx.StringSlice("system")
 		if len(systems) == 0 {
