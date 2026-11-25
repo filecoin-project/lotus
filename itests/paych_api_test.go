@@ -11,17 +11,25 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
+	init20 "github.com/filecoin-project/go-state-types/builtin/v20/init"
 	paychtypes "github.com/filecoin-project/go-state-types/builtin/v8/paych"
+	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build/buildconstants"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/events/state"
+	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/node/config"
@@ -33,6 +41,7 @@ func TestPaymentChannelsAPI(t *testing.T) {
 
 	ctx := context.Background()
 	blockTime := 10 * time.Millisecond
+	const upgradeHeight abi.ChainEpoch = 1000
 
 	var (
 		paymentCreator  kit.TestFullNode
@@ -46,9 +55,12 @@ func TestPaymentChannelsAPI(t *testing.T) {
 		}
 		return nil
 	})
-	ens := kit.NewEnsemble(t, kit.MockProofs()).
-		FullNode(&paymentCreator, enablePaychOpt).
-		FullNode(&paymentReceiver, enablePaychOpt).
+	ens := kit.NewEnsemble(t, kit.MockProofs(), kit.UpgradeSchedule(
+		stmgr.Upgrade{Network: network.Version29, Height: -1},
+		stmgr.Upgrade{Network: network.Version30, Height: upgradeHeight, Migration: filcns.UpgradeActorsV20},
+	)).
+		FullNode(&paymentCreator, kit.ThroughRPC(), enablePaychOpt).
+		FullNode(&paymentReceiver, kit.ThroughRPC(), enablePaychOpt).
 		Miner(&miner, &paymentCreator, kit.WithAllSubsystems()).
 		Start().
 		InterconnectAll()
@@ -75,7 +87,7 @@ func TestPaymentChannelsAPI(t *testing.T) {
 	createrAddr, err := paymentCreator.WalletDefaultAddress(ctx)
 	require.NoError(t, err)
 
-	channelAmt := int64(7000)
+	channelAmt := int64(6000)
 	channelInfo, err := paymentCreator.PaychGet(ctx, createrAddr, receiverAddr, abi.NewTokenAmount(channelAmt), api.PaychGetOpts{
 		OffChain: false,
 	})
@@ -83,6 +95,26 @@ func TestPaymentChannelsAPI(t *testing.T) {
 
 	channel, err := paymentCreator.PaychGetWaitReady(ctx, channelInfo.WaitSentinel)
 	require.NoError(t, err)
+
+	before, err := paymentCreator.StateGetActor(ctx, channel, types.EmptyTSK)
+	require.NoError(t, err)
+	nv, err := paymentCreator.StateNetworkVersion(ctx, types.EmptyTSK)
+	require.NoError(t, err)
+	require.Equal(t, network.Version29, nv)
+	paymentCreator.WaitTillChain(ctx, kit.HeightAtLeast(upgradeHeight+5))
+	paymentReceiver.WaitTillChain(ctx, kit.HeightAtLeast(upgradeHeight+5))
+	after, err := paymentCreator.StateGetActor(ctx, channel, types.EmptyTSK)
+	require.NoError(t, err)
+	require.NotEqual(t, before.Code, after.Code)
+	require.Equal(t, before.Head, after.Head)
+	require.Equal(t, before.Balance, after.Balance)
+
+	topUp, err := paymentCreator.PaychFund(ctx, createrAddr, receiverAddr, abi.NewTokenAmount(1000))
+	require.NoError(t, err)
+	fundedChannel, err := paymentCreator.PaychGetWaitReady(ctx, topUp.WaitSentinel)
+	require.NoError(t, err)
+	require.Equal(t, channel, fundedChannel)
+	channelAmt += 1000
 
 	waitRecvInSync()
 
@@ -228,6 +260,167 @@ func TestPaymentChannelsAPI(t *testing.T) {
 	expectedRefund := channelAmt - totalVouchers
 	delta := big.Sub(currentCreatorBalance, creatorPreCollectBalance)
 	require.EqualValues(t, abi.NewTokenAmount(expectedRefund), delta, "did not send correct funds from creator: expected %d, got %d", expectedRefund, delta)
+}
+
+func TestPaymentChannelsNV30(t *testing.T) {
+	kit.QuietMiningLogs()
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	defer cancel()
+	const upgradeHeight abi.ChainEpoch = 500
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(),
+		kit.WithCfgOpt(func(cfg *config.FullNode) error {
+			cfg.PaymentChannels.EnablePaymentChannelManager = true
+			return nil
+		}),
+		kit.UpgradeSchedule(
+			stmgr.Upgrade{Network: network.Version29, Height: -1},
+			stmgr.Upgrade{Network: network.Version30, Height: upgradeHeight, Migration: filcns.UpgradeActorsV20},
+		))
+	ens.InterconnectAll().BeginMiningMustPost(20 * time.Millisecond)
+	ctx = ens.FailureContext(ctx)
+	from := client.DefaultKey.Address
+	to, err := client.WalletNew(ctx, types.KTBLS)
+	require.NoError(t, err)
+	kit.SendFunds(ctx, t, client, to, abi.NewTokenAmount(1e18))
+	info, err := client.PaychGet(ctx, from, to, abi.NewTokenAmount(1000), api.PaychGetOpts{})
+	require.NoError(t, err)
+	channel, err := client.PaychGetWaitReady(ctx, info.WaitSentinel)
+	require.NoError(t, err)
+	voucher := &paychtypes.SignedVoucher{
+		ChannelAddr: channel, Amount: abi.NewTokenAmount(300), Lane: 42, Nonce: 7,
+		MinSettleHeight: upgradeHeight + 50,
+	}
+	encoded, err := voucher.SigningBytes()
+	require.NoError(t, err)
+	voucher.Signature, err = client.WalletSign(ctx, from, encoded)
+	require.NoError(t, err)
+	update, err := paych.Message(actorstypes.Version19, to).Update(channel, voucher, nil)
+	require.NoError(t, err)
+	signed, err := client.MpoolPushMessage(ctx, update, nil)
+	require.NoError(t, err)
+	updated, err := client.WaitMsgResult(ctx, signed.Cid(), 3)
+	require.NoError(t, err)
+	kit.RequireMessageSuccess(t, updated)
+	settleCID, err := client.PaychSettle(ctx, channel)
+	require.NoError(t, err)
+	settled, err := client.WaitMsgResult(ctx, settleCID, 3)
+	require.NoError(t, err)
+	kit.RequireMessageSuccess(t, settled)
+	before, err := client.ChainHead(ctx)
+	require.NoError(t, err)
+	require.Less(t, before.Height(), upgradeHeight)
+	oldActor, err := client.StateGetActor(ctx, channel, before.Key())
+	require.NoError(t, err)
+	store := adt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewAPIBlockstore(client)))
+	oldState, err := paych.Load(store, oldActor)
+	require.NoError(t, err)
+	settlingAt, err := oldState.SettlingAt()
+	require.NoError(t, err)
+	require.Greater(t, settlingAt, upgradeHeight)
+
+	oldCreate, err := paych.Message(actorstypes.Version19, from).Create(to, abi.NewTokenAmount(1000))
+	require.NoError(t, err)
+	allowed, err := client.StateCall(ctx, oldCreate, before.Key())
+	require.NoError(t, err)
+	require.Equal(t, exitcode.Ok, allowed.MsgRct.ExitCode, allowed.Error)
+	client.WaitTillChain(ctx, kit.HeightAtLeast(upgradeHeight+5))
+
+	create, err := paych.Message(actorstypes.Version20, from).Create(to, abi.NewTokenAmount(1000))
+	require.NoError(t, err)
+	denied, err := client.StateCall(ctx, create, types.EmptyTSK)
+	require.NoError(t, err)
+	require.Equal(t, exitcode.ErrForbidden, denied.MsgRct.ExitCode, denied.Error)
+	allowed, err = client.StateCall(ctx, oldCreate, before.Key())
+	require.NoError(t, err)
+	require.Equal(t, exitcode.Ok, allowed.MsgRct.ExitCode, allowed.Error)
+
+	newActor, err := client.StateGetActor(ctx, channel, types.EmptyTSK)
+	require.NoError(t, err)
+	require.NotEqual(t, oldActor.Code, newActor.Code)
+	require.Equal(t, oldActor.Head, newActor.Head)
+	require.Equal(t, oldActor.Balance, newActor.Balance)
+	newState, err := paych.Load(store, newActor)
+	require.NoError(t, err)
+	require.Equal(t, actorstypes.Version20, newState.ActorVersion())
+	newSettlingAt, err := newState.SettlingAt()
+	require.NoError(t, err)
+	require.Equal(t, settlingAt, newSettlingAt)
+	toSend, err := newState.ToSend()
+	require.NoError(t, err)
+	require.Equal(t, abi.NewTokenAmount(300), toSend)
+	lanes, err := newState.LaneCount()
+	require.NoError(t, err)
+	require.EqualValues(t, 1, lanes)
+	require.NoError(t, newState.ForEachLaneState(func(index uint64, lane paych.LaneState) error {
+		require.EqualValues(t, 42, index)
+		nonce, err := lane.Nonce()
+		require.NoError(t, err)
+		require.EqualValues(t, 7, nonce)
+		redeemed, err := lane.Redeemed()
+		require.NoError(t, err)
+		require.Equal(t, abi.NewTokenAmount(300), redeemed)
+		return nil
+	}))
+
+	initBefore, err := client.StateGetActor(ctx, builtin.InitActorAddr, types.EmptyTSK)
+	require.NoError(t, err)
+	for _, tc := range []struct {
+		name      string
+		value     abi.TokenAmount
+		malformed bool
+	}{{"funded", abi.NewTokenAmount(1000), false}, {"zero", big.Zero(), false}, {"malformed constructor", big.Zero(), true}} {
+		t.Run(tc.name, func(t *testing.T) {
+			message, err := paych.Message(actorstypes.Version20, from).Create(to, tc.value)
+			require.NoError(t, err)
+			if tc.malformed {
+				code, ok := actors.GetActorCodeID(actorstypes.Version20, "paymentchannel")
+				require.True(t, ok)
+				message.Params, err = actors.SerializeParams(&init20.ExecParams{CodeCID: code, ConstructorParams: []byte{0xff}})
+				require.NoError(t, err)
+			}
+			// Explicit gas bypasses estimation so rejection is checked in a mined receipt.
+			message.GasLimit = 10_000_000
+			signed, err := client.MpoolPushMessage(ctx, message, nil)
+			require.NoError(t, err)
+			result, err := client.WaitMsgResult(ctx, signed.Cid(), 3)
+			require.NoError(t, err)
+			require.Equal(t, exitcode.ErrForbidden, result.Receipt.ExitCode)
+		})
+	}
+	initAfter, err := client.StateGetActor(ctx, builtin.InitActorAddr, types.EmptyTSK)
+	require.NoError(t, err)
+	require.Equal(t, initBefore.Head, initAfter.Head)
+	require.Equal(t, initBefore.Balance, initAfter.Balance)
+
+	for _, fund := range []bool{false, true} {
+		if fund {
+			_, err = client.PaychFund(ctx, from, to, abi.NewTokenAmount(1000))
+		} else {
+			_, err = client.PaychGet(ctx, from, to, abi.NewTokenAmount(1000), api.PaychGetOpts{})
+		}
+		require.ErrorContains(t, err, "cannot exec actor type")
+		available, err := client.PaychAvailableFundsByFromTo(ctx, from, to)
+		require.NoError(t, err)
+		require.Nil(t, available.Channel)
+		require.Nil(t, available.PendingWaitSentinel)
+	}
+	channels, err := client.PaychList(ctx)
+	require.NoError(t, err)
+	require.Equal(t, []address.Address{channel}, channels)
+
+	client.WaitTillChain(ctx, kit.HeightAtLeast(settlingAt+5))
+	receiverBalance, err := client.WalletBalance(ctx, to)
+	require.NoError(t, err)
+	collectCID, err := client.PaychCollect(ctx, channel)
+	require.NoError(t, err)
+	collected, err := client.WaitMsgResult(ctx, collectCID, 3)
+	require.NoError(t, err)
+	kit.RequireMessageSuccess(t, collected)
+	paidBalance, err := client.WalletBalance(ctx, to)
+	require.NoError(t, err)
+	require.Equal(t, abi.NewTokenAmount(300), big.Sub(paidBalance, receiverBalance))
+	_, err = client.StateGetActor(ctx, channel, types.EmptyTSK)
+	require.ErrorContains(t, err, "actor not found")
 }
 
 func waitForMessage(ctx context.Context, t *testing.T, paymentCreator kit.TestFullNode, msgCid cid.Cid, duration time.Duration, desc string) *api.MsgLookup {

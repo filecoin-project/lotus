@@ -730,7 +730,7 @@ CATEGORY:
    BASIC
 
 COMMANDS:
-   add-funds          Add funds to the payment channel between fromAddress and toAddress. Creates the payment channel if it doesn't already exist.
+   add-funds          Add funds to the payment channel between fromAddress and toAddress. A missing channel is created only before network version 30.
    list               List all locally registered payment channels
    voucher            Interact with payment channel vouchers
    settle             Settle a payment channel
@@ -747,7 +747,7 @@ OPTIONS:
 
 ```
 NAME:
-   lotus paych add-funds - Add funds to the payment channel between fromAddress and toAddress. Creates the payment channel if it doesn't already exist.
+   lotus paych add-funds - Add funds to the payment channel between fromAddress and toAddress. A missing channel is created only before network version 30.
 
 USAGE:
    lotus paych add-funds [command options] [fromAddress toAddress amount]

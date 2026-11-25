@@ -36,7 +36,7 @@ var PaychCmd = &cli.Command{
 
 var paychAddFundsCmd = &cli.Command{
 	Name:      "add-funds",
-	Usage:     "Add funds to the payment channel between fromAddress and toAddress. Creates the payment channel if it doesn't already exist.",
+	Usage:     "Add funds to the payment channel between fromAddress and toAddress. A missing channel is created only before network version 30.",
 	ArgsUsage: "[fromAddress toAddress amount]",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
