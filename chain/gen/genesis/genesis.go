@@ -216,17 +216,19 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 		return nil, nil, xerrors.Errorf("set storage market actor: %w", err)
 	}
 
-	// Create verified registry
-	verifact, err := SetupVerifiedRegistryActor(ctx, bs, av)
-	if err != nil {
-		return nil, nil, xerrors.Errorf("setup verified registry market actor: %w", err)
-	}
-	if err := state.SetActor(verifreg.Address, verifact); err != nil {
-		return nil, nil, xerrors.Errorf("set verified registry actor: %w", err)
+	if av < actorstypes.Version20 {
+		// Create verified registry
+		verifact, err := SetupVerifiedRegistryActor(ctx, bs, av)
+		if err != nil {
+			return nil, nil, xerrors.Errorf("setup verified registry market actor: %w", err)
+		}
+		if err := state.SetActor(verifreg.Address, verifact); err != nil {
+			return nil, nil, xerrors.Errorf("set verified registry actor: %w", err)
+		}
 	}
 
 	// Create datacap actor
-	if av >= 9 {
+	if av >= actorstypes.Version9 && av < actorstypes.Version20 {
 		dcapact, err := SetupDatacapActor(ctx, bs, av)
 		if err != nil {
 			return nil, nil, xerrors.Errorf("setup datacap actor: %w", err)
@@ -267,31 +269,33 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 
 	}
 
-	switch template.VerifregRootKey.Type {
-	case genesis.TAccount:
-		var ainfo genesis.AccountMeta
-		if err := json.Unmarshal(template.VerifregRootKey.Meta, &ainfo); err != nil {
-			return nil, nil, xerrors.Errorf("unmarshaling account meta: %w", err)
-		}
+	if av < actorstypes.Version20 {
+		switch template.VerifregRootKey.Type {
+		case genesis.TAccount:
+			var ainfo genesis.AccountMeta
+			if err := json.Unmarshal(template.VerifregRootKey.Meta, &ainfo); err != nil {
+				return nil, nil, xerrors.Errorf("unmarshaling account meta: %w", err)
+			}
 
-		_, ok := keyIDs[ainfo.Owner]
-		if ok {
-			return nil, nil, fmt.Errorf("rootkey account has already been declared, cannot be assigned 80: %s", ainfo.Owner)
-		}
+			_, ok := keyIDs[ainfo.Owner]
+			if ok {
+				return nil, nil, fmt.Errorf("rootkey account has already been declared, cannot be assigned 80: %s", ainfo.Owner)
+			}
 
-		vact, err := MakeAccountActor(ctx, cst, av, ainfo.Owner, template.VerifregRootKey.Balance)
-		if err != nil {
-			return nil, nil, xerrors.Errorf("setup verifreg rootkey account state: %w", err)
+			vact, err := MakeAccountActor(ctx, cst, av, ainfo.Owner, template.VerifregRootKey.Balance)
+			if err != nil {
+				return nil, nil, xerrors.Errorf("setup verifreg rootkey account state: %w", err)
+			}
+			if err = state.SetActor(builtin.RootVerifierAddress, vact); err != nil {
+				return nil, nil, xerrors.Errorf("set verifreg rootkey account actor: %w", err)
+			}
+		case genesis.TMultisig:
+			if err = CreateMultisigAccount(ctx, cst, state, builtin.RootVerifierAddress, template.VerifregRootKey, keyIDs, av); err != nil {
+				return nil, nil, xerrors.Errorf("failed to set up verified registry signer: %w", err)
+			}
+		default:
+			return nil, nil, xerrors.Errorf("unknown account type for verifreg rootkey: %w", err)
 		}
-		if err = state.SetActor(builtin.RootVerifierAddress, vact); err != nil {
-			return nil, nil, xerrors.Errorf("set verifreg rootkey account actor: %w", err)
-		}
-	case genesis.TMultisig:
-		if err = CreateMultisigAccount(ctx, cst, state, builtin.RootVerifierAddress, template.VerifregRootKey, keyIDs, av); err != nil {
-			return nil, nil, xerrors.Errorf("failed to set up verified registry signer: %w", err)
-		}
-	default:
-		return nil, nil, xerrors.Errorf("unknown account type for verifreg rootkey: %w", err)
 	}
 
 	if rewardSWA != nil {
@@ -321,35 +325,35 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 		}
 	}
 
-	// Setup the first verifier as ID-address 81
-	// TODO: remove this
-	skBytes, err := sigs.Generate(crypto.SigTypeBLS)
-	if err != nil {
-		return nil, nil, xerrors.Errorf("creating random verifier secret key: %w", err)
-	}
+	if av < actorstypes.Version20 {
+		skBytes, err := sigs.Generate(crypto.SigTypeBLS)
+		if err != nil {
+			return nil, nil, xerrors.Errorf("creating random verifier secret key: %w", err)
+		}
 
-	verifierPk, err := sigs.ToPublic(crypto.SigTypeBLS, skBytes)
-	if err != nil {
-		return nil, nil, xerrors.Errorf("creating random verifier public key: %w", err)
-	}
+		verifierPk, err := sigs.ToPublic(crypto.SigTypeBLS, skBytes)
+		if err != nil {
+			return nil, nil, xerrors.Errorf("creating random verifier public key: %w", err)
+		}
 
-	verifierAd, err := address.NewBLSAddress(verifierPk)
-	if err != nil {
-		return nil, nil, xerrors.Errorf("creating random verifier address: %w", err)
-	}
+		verifierAd, err := address.NewBLSAddress(verifierPk)
+		if err != nil {
+			return nil, nil, xerrors.Errorf("creating random verifier address: %w", err)
+		}
 
-	verifierId, err := address.NewIDAddress(81)
-	if err != nil {
-		return nil, nil, err
-	}
+		verifierId, err := address.NewIDAddress(81)
+		if err != nil {
+			return nil, nil, err
+		}
 
-	verifierAct, err := MakeAccountActor(ctx, cst, av, verifierAd, big.Zero())
-	if err != nil {
-		return nil, nil, xerrors.Errorf("setup first verifier state: %w", err)
-	}
+		verifierAct, err := MakeAccountActor(ctx, cst, av, verifierAd, big.Zero())
+		if err != nil {
+			return nil, nil, xerrors.Errorf("setup first verifier state: %w", err)
+		}
 
-	if err = state.SetActor(verifierId, verifierAct); err != nil {
-		return nil, nil, xerrors.Errorf("set first verifier actor: %w", err)
+		if err = state.SetActor(verifierId, verifierAct); err != nil {
+			return nil, nil, xerrors.Errorf("set first verifier actor: %w", err)
+		}
 	}
 
 	totalFilAllocated := big.Zero()

@@ -26,9 +26,19 @@ var actors = map[string][]int{
 	"power":    lotusactors.Versions,
 	"system":   lotusactors.Versions,
 	"reward":   lotusactors.Versions,
-	"verifreg": lotusactors.Versions,
-	"datacap":  lotusactors.Versions[8:],
+	"verifreg": actorVersionsBetween(0, 19),
+	"datacap":  actorVersionsBetween(9, 19),
 	"evm":      lotusactors.Versions[9:],
+}
+
+func actorVersionsBetween(first, last int) []int {
+	var versions []int
+	for _, version := range lotusactors.Versions {
+		if version >= first && version <= last {
+			versions = append(versions, version)
+		}
+	}
+	return versions
 }
 
 func main() {

@@ -7216,6 +7216,7 @@ Response:
 
 ### StateGetAllAllocations
 StateGetAllAllocations returns the all the allocations available in verified registry actor.
+Returns an actor-not-found error for state at network version 30 or later.
 
 
 Perms: read
@@ -7238,6 +7239,7 @@ Response: `{}`
 
 ### StateGetAllClaims
 StateGetAllClaims returns the all the claims available in verified registry actor.
+Returns an actor-not-found error for state at network version 30 or later.
 
 
 Perms: read
@@ -7260,6 +7262,7 @@ Response: `{}`
 
 ### StateGetAllocation
 StateGetAllocation returns the allocation for a given address and allocation ID.
+Returns an actor-not-found error for state at network version 30 or later.
 
 
 Perms: read
@@ -7358,6 +7361,7 @@ Response: `0`
 
 ### StateGetAllocations
 StateGetAllocations returns the all the allocations for a given client.
+Returns an actor-not-found error for state at network version 30 or later.
 
 
 Perms: read
@@ -7405,6 +7409,7 @@ Response:
 
 ### StateGetClaim
 StateGetClaim returns the claim for a given address and claim ID.
+Returns an actor-not-found error for state at network version 30 or later.
 
 
 Perms: read
@@ -7443,6 +7448,7 @@ Response:
 
 ### StateGetClaims
 StateGetClaims returns the all the claims for a given provider.
+Returns an actor-not-found error for state at network version 30 or later.
 
 
 Perms: read
@@ -9083,6 +9089,7 @@ Response:
 StateVerifiedClientStatus returns the data cap for the given address.
 Returns nil if there is no entry in the data cap table for the
 address.
+Returns an actor-not-found error for state at network version 30 or later.
 
 
 Perms: read
@@ -9106,6 +9113,7 @@ Response: `"0"`
 
 ### StateVerifiedRegistryRootKey
 StateVerifiedRegistryRootKey returns the address of the Verified Registry's root key
+Returns an actor-not-found error for state at network version 30 or later.
 
 
 Perms: read
@@ -9130,6 +9138,7 @@ Response: `"f01234"`
 StateVerifierStatus returns the data cap for the given address.
 Returns nil if there is no entry in the data cap table for the
 address.
+Returns an actor-not-found error for state at network version 30 or later.
 
 
 Perms: read

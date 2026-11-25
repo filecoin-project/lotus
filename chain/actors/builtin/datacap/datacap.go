@@ -62,9 +62,6 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 		case actorstypes.Version19:
 			return load19(store, act.Head)
 
-		case actorstypes.Version20:
-			return load20(store, act.Head)
-
 		}
 	}
 
@@ -107,9 +104,6 @@ func MakeState(store adt.Store, av actorstypes.Version, governor address.Address
 	case actorstypes.Version19:
 		return make19(store, governor, bitwidth)
 
-	case actorstypes.Version20:
-		return make20(store, governor, bitwidth)
-
 	default:
 		return nil, xerrors.Errorf("datacap actor only valid for actors v9 and above, got %d", av)
 	}
@@ -141,6 +135,5 @@ func AllCodes() []cid.Cid {
 		(&state17{}).Code(),
 		(&state18{}).Code(),
 		(&state19{}).Code(),
-		(&state20{}).Code(),
 	}
 }

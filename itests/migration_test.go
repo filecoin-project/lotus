@@ -25,6 +25,7 @@ import (
 	miner14 "github.com/filecoin-project/go-state-types/builtin/v14/miner"
 	smoothing14 "github.com/filecoin-project/go-state-types/builtin/v14/util/smoothing"
 	miner15 "github.com/filecoin-project/go-state-types/builtin/v15/miner"
+	init19 "github.com/filecoin-project/go-state-types/builtin/v19/init"
 	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	migration "github.com/filecoin-project/go-state-types/builtin/v9/migration/test"
 	miner9 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
@@ -900,6 +901,206 @@ func TestMigrationNV23(t *testing.T) {
 	require.NoError(t, err)
 	state := f090StatePost.State.(*account14.State)
 	require.Equal(t, state.Address, f090Addr)
+}
+
+func TestMigrationNV30FilPlusRemoval(t *testing.T) {
+	kit.QuietMiningLogs()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	const upgradeEpoch abi.ChainEpoch = 100
+	client, testMiner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(),
+		kit.UpgradeSchedule(
+			stmgr.Upgrade{Network: network.Version29, Height: -1},
+			stmgr.Upgrade{Network: network.Version30, Height: upgradeEpoch, Migration: filcns.UpgradeActorsV20},
+		),
+	)
+	ens.InterconnectAll().BeginMining(100 * time.Millisecond)
+
+	var removed []address.Address
+	for _, id := range []uint64{6, 7, 80, 81} {
+		addr, err := address.NewIDAddress(id)
+		require.NoError(t, err)
+		removed = append(removed, addr)
+		kit.SendFunds(ctx, t, client, addr, types.FromFil(1))
+	}
+
+	deployer, contract, deployerKey := deployFilPlusRemovalContract(ctx, t, client)
+	requireFilPlusRemovalContractBalance(ctx, t, client, deployer, contract)
+	placeholderKey, _, placeholder := client.EVM().NewAccount()
+	kit.SendFunds(ctx, t, client, placeholder, types.FromFil(10))
+	client.AssertActorType(ctx, placeholder, manifest.PlaceholderKey)
+
+	proposal, err := client.MsigCreate(ctx, 1, []address.Address{client.DefaultKey.Address}, 0,
+		big.Zero(), client.DefaultKey.Address, big.Zero())
+	require.NoError(t, err)
+	message, err := client.MpoolPushMessage(ctx, &proposal.Message, nil)
+	require.NoError(t, err)
+	lookup, err := client.WaitMsgResult(ctx, message.Cid(), 3)
+	require.NoError(t, err)
+	kit.RequireMessageSuccess(t, lookup)
+	var multisig init19.ExecReturn
+	require.NoError(t, multisig.UnmarshalCBOR(bytes.NewReader(lookup.Receipt.Return)))
+
+	before, err := client.ChainHead(ctx)
+	require.NoError(t, err)
+	require.Less(t, before.Height(), upgradeEpoch)
+	burntBefore, err := client.StateGetActor(ctx, builtin.BurntFundsActorAddr, before.Key())
+	require.NoError(t, err)
+	removedBalance := big.Zero()
+	for _, addr := range removed {
+		actor, err := client.StateGetActor(ctx, addr, before.Key())
+		require.NoError(t, err)
+		require.True(t, actor.Balance.GreaterThanEqual(types.FromFil(1)))
+		removedBalance = big.Add(removedBalance, actor.Balance)
+	}
+	powerBefore, err := client.StateMinerPower(ctx, testMiner.ActorAddr, before.Key())
+	require.NoError(t, err)
+
+	client.WaitTillChain(ctx, kit.HeightAtLeast(upgradeEpoch+5))
+	after := kit.TipsetAtOrAfter(ctx, t, client, upgradeEpoch+2)
+	for _, addr := range removed {
+		_, err := client.StateGetActor(ctx, addr, after.Key())
+		require.ErrorContains(t, err, "actor not found")
+		_, err = client.StateGetActor(ctx, addr, before.Key())
+		require.NoError(t, err)
+	}
+	burntAfter, err := client.StateGetActor(ctx, builtin.BurntFundsActorAddr, after.Key())
+	require.NoError(t, err)
+	require.Equal(t, big.Add(burntBefore.Balance, removedBalance), burntAfter.Balance)
+	powerAfter, err := client.StateMinerPower(ctx, testMiner.ActorAddr, after.Key())
+	require.NoError(t, err)
+	require.Equal(t, powerBefore.MinerPower, powerAfter.MinerPower)
+
+	for _, addr := range removed {
+		result, err := client.StateCall(ctx, &types.Message{
+			From: client.DefaultKey.Address, To: addr, Value: big.Zero(), Method: builtin.MethodSend,
+		}, after.Key())
+		require.NoError(t, err)
+		require.Equal(t, exitcode.SysErrInvalidReceiver, result.MsgRct.ExitCode)
+	}
+	for _, check := range []struct {
+		tipset *types.TipSet
+		exit   exitcode.ExitCode
+	}{
+		{before, exitcode.ErrSerialization},
+		{after, exitcode.Ok},
+	} {
+		result, err := client.StateCall(ctx, &types.Message{
+			From: client.DefaultKey.Address, To: multisig.IDAddress, Value: big.Zero(),
+			Method: builtin.MustGenerateFRCMethodNum("Receive"), Params: []byte{0x80},
+		}, check.tipset.Key())
+		require.NoError(t, err)
+		require.Equal(t, check.exit, result.MsgRct.ExitCode)
+	}
+
+	_, err = client.StateVerifiedRegistryRootKey(ctx, before.Key())
+	require.NoError(t, err)
+	_, err = client.StateVerifiedRegistryRootKey(ctx, after.Key())
+	require.ErrorContains(t, err, "actor not found")
+	_, err = client.StateGetAllocations(ctx, client.DefaultKey.Address, before.Key())
+	require.NoError(t, err)
+	_, err = client.StateGetAllocations(ctx, client.DefaultKey.Address, after.Key())
+	require.ErrorContains(t, err, "actor not found")
+	_, err = client.StateGetClaims(ctx, testMiner.ActorAddr, before.Key())
+	require.NoError(t, err)
+	_, err = client.StateGetClaims(ctx, testMiner.ActorAddr, after.Key())
+	require.ErrorContains(t, err, "actor not found")
+
+	requireFilPlusRemovalContractBalance(ctx, t, client, deployer, contract)
+	requireFilPlusRemovalEthSend(ctx, t, client, deployerKey, deployer, 1)
+	client.AssertActorType(ctx, placeholder, manifest.PlaceholderKey)
+	requireFilPlusRemovalEthSend(ctx, t, client, placeholderKey, placeholder, 0)
+	deployer, contract, _ = deployFilPlusRemovalContract(ctx, t, client)
+	requireFilPlusRemovalContractBalance(ctx, t, client, deployer, contract)
+}
+
+func TestGenesisNV30FilPlusRemoval(t *testing.T) {
+	kit.QuietMiningLogs()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	rootKey, err := key.GenerateKey(types.KTSecp256k1)
+	require.NoError(t, err)
+	client, testMiner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(),
+		kit.RootVerifier(rootKey, big.Zero()), kit.GenesisNetworkVersion(network.Version30))
+	ens.InterconnectAll().BeginMining(100 * time.Millisecond)
+	client.WaitTillChain(ctx, kit.HeightAtLeast(5))
+
+	for _, id := range []uint64{6, 7, 80, 81} {
+		addr, err := address.NewIDAddress(id)
+		require.NoError(t, err)
+		_, err = client.StateGetActor(ctx, addr, types.EmptyTSK)
+		require.ErrorContains(t, err, "actor not found")
+	}
+	_, err = client.StateLookupID(ctx, rootKey.Address, types.EmptyTSK)
+	require.ErrorIs(t, err, &api.ErrActorNotFound{})
+	power, err := client.StateMinerPower(ctx, testMiner.ActorAddr, types.EmptyTSK)
+	require.NoError(t, err)
+	require.True(t, power.MinerPower.RawBytePower.GreaterThan(big.Zero()))
+	require.Equal(t, big.Mul(power.MinerPower.RawBytePower, big.NewInt(10)), power.MinerPower.QualityAdjPower)
+	pledge, err := client.StateMinerInitialPledgeForSector(ctx, builtin.EpochsInYear, 2<<10, 2<<10, types.EmptyTSK)
+	require.NoError(t, err)
+	require.True(t, pledge.GreaterThan(big.Zero()))
+	deposit, err := client.StateMinerCreationDeposit(ctx, types.EmptyTSK)
+	require.NoError(t, err)
+	require.True(t, deposit.GreaterThan(big.Zero()))
+
+	deployer, contract, _ := deployFilPlusRemovalContract(ctx, t, client)
+	requireFilPlusRemovalContractBalance(ctx, t, client, deployer, contract)
+}
+
+func deployFilPlusRemovalContract(ctx context.Context, t *testing.T, client *kit.TestFullNode) (address.Address, address.Address, *key.Key) {
+	t.Helper()
+	key, ethAddr, deployer := client.EVM().NewAccount()
+	kit.SendFunds(ctx, t, client, deployer, types.FromFil(10))
+	client.AssertActorType(ctx, deployer, manifest.PlaceholderKey)
+
+	tx := client.EVM().BuildDeployContractTx(ctx, ethAddr, "contracts/SimpleCoin.hex")
+	client.EVM().SignTransaction(tx, key.PrivateKey)
+	hash := client.EVM().SubmitTransaction(ctx, tx)
+	receipt, err := client.EVM().WaitTransaction(ctx, hash)
+	require.NoError(t, err)
+	require.NotNil(t, receipt)
+	require.EqualValues(t, 1, receipt.Status)
+	require.NotNil(t, receipt.ContractAddress)
+	contract, err := receipt.ContractAddress.ToFilecoinAddress()
+	require.NoError(t, err)
+	client.AssertActorType(ctx, deployer, manifest.EthAccountKey)
+	client.AssertActorType(ctx, builtin.EthereumAddressManagerActorAddr, manifest.EamKey)
+	client.AssertActorType(ctx, contract, manifest.EvmKey)
+	return deployer, contract, key
+}
+
+func requireFilPlusRemovalEthSend(ctx context.Context, t *testing.T, client *kit.TestFullNode, senderKey *key.Key, sender address.Address, nonce uint64) {
+	t.Helper()
+	ethAddr, err := ethtypes.EthAddressFromFilecoinAddress(sender)
+	require.NoError(t, err)
+	tx := ethtypes.Eth1559TxArgs{
+		ChainID: buildconstants.Eip155ChainId, Nonce: int(nonce), To: &ethAddr,
+		Value: big.Zero(), MaxFeePerGas: types.NanoFil, MaxPriorityFeePerGas: big.Zero(), GasLimit: 10_000_000,
+		V: big.Zero(), R: big.Zero(), S: big.Zero(),
+	}
+	client.EVM().SignTransaction(&tx, senderKey.PrivateKey)
+	hash := client.EVM().SubmitTransaction(ctx, &tx)
+	receipt, err := client.EVM().WaitTransaction(ctx, hash)
+	require.NoError(t, err)
+	require.NotNil(t, receipt)
+	require.EqualValues(t, 1, receipt.Status)
+	client.AssertActorType(ctx, sender, manifest.EthAccountKey)
+	actor, err := client.StateGetActor(ctx, sender, types.EmptyTSK)
+	require.NoError(t, err)
+	require.Equal(t, nonce+1, actor.Nonce)
+}
+
+func requireFilPlusRemovalContractBalance(ctx context.Context, t *testing.T, client *kit.TestFullNode, deployer, contract address.Address) {
+	t.Helper()
+	ethAddr, err := ethtypes.EthAddressFromFilecoinAddress(deployer)
+	require.NoError(t, err)
+	result, _, err := client.EVM().InvokeContractByFuncName(ctx, client.DefaultKey.Address, contract,
+		"getBalance(address)", kit.EvmWordBytes(ethAddr[:]))
+	require.NoError(t, err)
+	require.Equal(t, kit.EvmWordUint64(10000), result)
 }
 
 func TestMigrationNV24(t *testing.T) {

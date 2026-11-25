@@ -86,6 +86,7 @@ type Template struct {
 	NetworkName string
 	Timestamp   uint64 `json:",omitempty"`
 
+	// VerifregRootKey is used only before network version 30.
 	VerifregRootKey  Actor
 	RemainderAccount Actor
 

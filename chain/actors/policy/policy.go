@@ -40,7 +40,6 @@ import (
 	market20 "github.com/filecoin-project/go-state-types/builtin/v20/market"
 	miner20 "github.com/filecoin-project/go-state-types/builtin/v20/miner"
 	paych20 "github.com/filecoin-project/go-state-types/builtin/v20/paych"
-	verifreg20 "github.com/filecoin-project/go-state-types/builtin/v20/verifreg"
 	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
 	miner8 "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	verifreg8 "github.com/filecoin-project/go-state-types/builtin/v8/verifreg"
@@ -351,8 +350,6 @@ func SetMinVerifiedDealSize(size abi.StoragePower) {
 	verifreg18.MinVerifiedDealSize = size
 
 	verifreg19.MinVerifiedDealSize = size
-
-	verifreg20.MinVerifiedDealSize = size
 
 }
 

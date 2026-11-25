@@ -19796,7 +19796,7 @@
         {
             "name": "Filecoin.StateGetAllAllocations",
             "description": "```go\nfunc (s *FullNodeStruct) StateGetAllAllocations(p0 context.Context, p1 types.TipSetKey) (map[verifreg.AllocationId]verifreg.Allocation, error) {\n\tif s.Internal.StateGetAllAllocations == nil {\n\t\treturn *new(map[verifreg.AllocationId]verifreg.Allocation), ErrNotSupported\n\t}\n\treturn s.Internal.StateGetAllAllocations(p0, p1)\n}\n```",
-            "summary": "StateGetAllAllocations returns the all the allocations available in verified registry actor.\n",
+            "summary": "StateGetAllAllocations returns the all the allocations available in verified registry actor.\nReturns an actor-not-found error for state at network version 30 or later.\n",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -19883,7 +19883,7 @@
         {
             "name": "Filecoin.StateGetAllClaims",
             "description": "```go\nfunc (s *FullNodeStruct) StateGetAllClaims(p0 context.Context, p1 types.TipSetKey) (map[verifreg.ClaimId]verifreg.Claim, error) {\n\tif s.Internal.StateGetAllClaims == nil {\n\t\treturn *new(map[verifreg.ClaimId]verifreg.Claim), ErrNotSupported\n\t}\n\treturn s.Internal.StateGetAllClaims(p0, p1)\n}\n```",
-            "summary": "StateGetAllClaims returns the all the claims available in verified registry actor.\n",
+            "summary": "StateGetAllClaims returns the all the claims available in verified registry actor.\nReturns an actor-not-found error for state at network version 30 or later.\n",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -19974,7 +19974,7 @@
         {
             "name": "Filecoin.StateGetAllocation",
             "description": "```go\nfunc (s *FullNodeStruct) StateGetAllocation(p0 context.Context, p1 address.Address, p2 verifreg.AllocationId, p3 types.TipSetKey) (*verifreg.Allocation, error) {\n\tif s.Internal.StateGetAllocation == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.StateGetAllocation(p0, p1, p2, p3)\n}\n```",
-            "summary": "StateGetAllocation returns the allocation for a given address and allocation ID.\n",
+            "summary": "StateGetAllocation returns the allocation for a given address and allocation ID.\nReturns an actor-not-found error for state at network version 30 or later.\n",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -20278,7 +20278,7 @@
         {
             "name": "Filecoin.StateGetAllocations",
             "description": "```go\nfunc (s *FullNodeStruct) StateGetAllocations(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (map[verifreg.AllocationId]verifreg.Allocation, error) {\n\tif s.Internal.StateGetAllocations == nil {\n\t\treturn *new(map[verifreg.AllocationId]verifreg.Allocation), ErrNotSupported\n\t}\n\treturn s.Internal.StateGetAllocations(p0, p1, p2)\n}\n```",
-            "summary": "StateGetAllocations returns the all the allocations for a given client.\n",
+            "summary": "StateGetAllocations returns the all the allocations for a given client.\nReturns an actor-not-found error for state at network version 30 or later.\n",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -20442,7 +20442,7 @@
         {
             "name": "Filecoin.StateGetClaim",
             "description": "```go\nfunc (s *FullNodeStruct) StateGetClaim(p0 context.Context, p1 address.Address, p2 verifreg.ClaimId, p3 types.TipSetKey) (*verifreg.Claim, error) {\n\tif s.Internal.StateGetClaim == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.StateGetClaim(p0, p1, p2, p3)\n}\n```",
-            "summary": "StateGetClaim returns the claim for a given address and claim ID.\n",
+            "summary": "StateGetClaim returns the claim for a given address and claim ID.\nReturns an actor-not-found error for state at network version 30 or later.\n",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -20572,7 +20572,7 @@
         {
             "name": "Filecoin.StateGetClaims",
             "description": "```go\nfunc (s *FullNodeStruct) StateGetClaims(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (map[verifreg.ClaimId]verifreg.Claim, error) {\n\tif s.Internal.StateGetClaims == nil {\n\t\treturn *new(map[verifreg.ClaimId]verifreg.Claim), ErrNotSupported\n\t}\n\treturn s.Internal.StateGetClaims(p0, p1, p2)\n}\n```",
-            "summary": "StateGetClaims returns the all the claims for a given provider.\n",
+            "summary": "StateGetClaims returns the all the claims for a given provider.\nReturns an actor-not-found error for state at network version 30 or later.\n",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -25522,7 +25522,7 @@
         {
             "name": "Filecoin.StateVerifiedClientStatus",
             "description": "```go\nfunc (s *FullNodeStruct) StateVerifiedClientStatus(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*abi.StoragePower, error) {\n\tif s.Internal.StateVerifiedClientStatus == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.StateVerifiedClientStatus(p0, p1, p2)\n}\n```",
-            "summary": "StateVerifiedClientStatus returns the data cap for the given address.\nReturns nil if there is no entry in the data cap table for the\naddress.\n",
+            "summary": "StateVerifiedClientStatus returns the data cap for the given address.\nReturns nil if there is no entry in the data cap table for the\naddress.\nReturns an actor-not-found error for state at network version 30 or later.\n",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -25590,7 +25590,7 @@
         {
             "name": "Filecoin.StateVerifiedRegistryRootKey",
             "description": "```go\nfunc (s *FullNodeStruct) StateVerifiedRegistryRootKey(p0 context.Context, p1 types.TipSetKey) (address.Address, error) {\n\tif s.Internal.StateVerifiedRegistryRootKey == nil {\n\t\treturn *new(address.Address), ErrNotSupported\n\t}\n\treturn s.Internal.StateVerifiedRegistryRootKey(p0, p1)\n}\n```",
-            "summary": "StateVerifiedRegistryRootKey returns the address of the Verified Registry's root key\n",
+            "summary": "StateVerifiedRegistryRootKey returns the address of the Verified Registry's root key\nReturns an actor-not-found error for state at network version 30 or later.\n",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -25642,7 +25642,7 @@
         {
             "name": "Filecoin.StateVerifierStatus",
             "description": "```go\nfunc (s *FullNodeStruct) StateVerifierStatus(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*abi.StoragePower, error) {\n\tif s.Internal.StateVerifierStatus == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.StateVerifierStatus(p0, p1, p2)\n}\n```",
-            "summary": "StateVerifierStatus returns the data cap for the given address.\nReturns nil if there is no entry in the data cap table for the\naddress.\n",
+            "summary": "StateVerifierStatus returns the data cap for the given address.\nReturns nil if there is no entry in the data cap table for the\naddress.\nReturns an actor-not-found error for state at network version 30 or later.\n",
             "paramStructure": "by-position",
             "params": [
                 {

@@ -561,16 +561,22 @@ type FullNode interface {
 	// It returns an unsupported error for tipsets at network version 29 or later.
 	StateGetAllocationIdForPendingDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (verifreg.AllocationId, error) //perm:read
 	// StateGetAllocation returns the allocation for a given address and allocation ID.
+	// Returns an actor-not-found error for state at network version 30 or later.
 	StateGetAllocation(ctx context.Context, clientAddr address.Address, allocationId verifreg.AllocationId, tsk types.TipSetKey) (*verifreg.Allocation, error) //perm:read
 	// StateGetAllocations returns the all the allocations for a given client.
+	// Returns an actor-not-found error for state at network version 30 or later.
 	StateGetAllocations(ctx context.Context, clientAddr address.Address, tsk types.TipSetKey) (map[verifreg.AllocationId]verifreg.Allocation, error) //perm:read
 	// StateGetAllAllocations returns the all the allocations available in verified registry actor.
+	// Returns an actor-not-found error for state at network version 30 or later.
 	StateGetAllAllocations(ctx context.Context, tsk types.TipSetKey) (map[verifreg.AllocationId]verifreg.Allocation, error) //perm:read
 	// StateGetClaim returns the claim for a given address and claim ID.
+	// Returns an actor-not-found error for state at network version 30 or later.
 	StateGetClaim(ctx context.Context, providerAddr address.Address, claimId verifreg.ClaimId, tsk types.TipSetKey) (*verifreg.Claim, error) //perm:read
 	// StateGetClaims returns the all the claims for a given provider.
+	// Returns an actor-not-found error for state at network version 30 or later.
 	StateGetClaims(ctx context.Context, providerAddr address.Address, tsk types.TipSetKey) (map[verifreg.ClaimId]verifreg.Claim, error) //perm:read
 	// StateGetAllClaims returns the all the claims available in verified registry actor.
+	// Returns an actor-not-found error for state at network version 30 or later.
 	StateGetAllClaims(ctx context.Context, tsk types.TipSetKey) (map[verifreg.ClaimId]verifreg.Claim, error) //perm:read
 	// StateComputeDataCID computes DataCID from a set of on-chain deals
 	StateComputeDataCID(ctx context.Context, maddr address.Address, sectorType abi.RegisteredSealProof, deals []abi.DealID, tsk types.TipSetKey) (cid.Cid, error) //perm:read
@@ -623,12 +629,15 @@ type FullNode interface {
 	// StateVerifierStatus returns the data cap for the given address.
 	// Returns nil if there is no entry in the data cap table for the
 	// address.
+	// Returns an actor-not-found error for state at network version 30 or later.
 	StateVerifierStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error) //perm:read
 	// StateVerifiedClientStatus returns the data cap for the given address.
 	// Returns nil if there is no entry in the data cap table for the
 	// address.
+	// Returns an actor-not-found error for state at network version 30 or later.
 	StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error) //perm:read
 	// StateVerifiedRegistryRootKey returns the address of the Verified Registry's root key
+	// Returns an actor-not-found error for state at network version 30 or later.
 	StateVerifiedRegistryRootKey(ctx context.Context, tsk types.TipSetKey) (address.Address, error) //perm:read
 	// StateDealProviderCollateralBounds returns the min and max collateral a storage provider
 	// can issue. It takes the deal size and verified status as parameters.

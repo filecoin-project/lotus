@@ -172,7 +172,6 @@ import (
 	verifreg19 "github.com/filecoin-project/go-state-types/builtin/v19/verifreg"
 	account20 "github.com/filecoin-project/go-state-types/builtin/v20/account"
 	cron20 "github.com/filecoin-project/go-state-types/builtin/v20/cron"
-	datacap20 "github.com/filecoin-project/go-state-types/builtin/v20/datacap"
 	eam20 "github.com/filecoin-project/go-state-types/builtin/v20/eam"
 	ethaccount20 "github.com/filecoin-project/go-state-types/builtin/v20/ethaccount"
 	evm20 "github.com/filecoin-project/go-state-types/builtin/v20/evm"
@@ -185,7 +184,6 @@ import (
 	power20 "github.com/filecoin-project/go-state-types/builtin/v20/power"
 	reward20 "github.com/filecoin-project/go-state-types/builtin/v20/reward"
 	system20 "github.com/filecoin-project/go-state-types/builtin/v20/system"
-	verifreg20 "github.com/filecoin-project/go-state-types/builtin/v20/verifreg"
 	account8 "github.com/filecoin-project/go-state-types/builtin/v8/account"
 	cron8 "github.com/filecoin-project/go-state-types/builtin/v8/cron"
 	_init8 "github.com/filecoin-project/go-state-types/builtin/v8/init"
@@ -1535,18 +1533,6 @@ func MakeRegistry(av actorstypes.Version) []RegistryEntry {
 					code:    codeID,
 					methods: system20.Methods,
 					state:   new(system20.State),
-				})
-			case manifest.VerifregKey:
-				registry = append(registry, RegistryEntry{
-					code:    codeID,
-					methods: verifreg20.Methods,
-					state:   new(verifreg20.State),
-				})
-			case manifest.DatacapKey:
-				registry = append(registry, RegistryEntry{
-					code:    codeID,
-					methods: datacap20.Methods,
-					state:   new(datacap20.State),
 				})
 
 			case manifest.EvmKey:
