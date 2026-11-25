@@ -212,6 +212,13 @@ jobs:
           FORMAT: ${{ fromJson(steps.group.outputs.metadata || '{}').format || 'standard-verbose' }}
           PACKAGES: ${{ join(fromJson(steps.group.outputs.metadata || '{"packages":[]}').packages, ' ') }}
         run: |
+          if [[ "$NAME" == itest-* ]]; then
+            export GOLOG_FILE="$REPORTS_PATH/$NAME.log"
+            export GOLOG_OUTPUT=file
+            if [[ "${RUNNER_DEBUG:-}" == 1 ]]; then
+              export GOLOG_OUTPUT=file+stderr
+            fi
+          fi
           gotestsum \
             --format "$FORMAT" \
             --junitfile "$REPORTS_PATH/$NAME.xml" \
@@ -254,4 +261,5 @@ jobs:
           path: |
             ${{ steps.reports.outputs.path }}/${{ matrix.name }}.xml
             ${{ steps.reports.outputs.path }}/${{ matrix.name }}.json
+            ${{ steps.reports.outputs.path }}/${{ matrix.name }}.log
         continue-on-error: true
