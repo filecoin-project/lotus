@@ -29,6 +29,7 @@ defaults:
 
 permissions:
   actions: read
+  contents: read
 
 jobs:
   buildpulse:
@@ -40,13 +41,14 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: lotus
-          ref: ${{ github.event.inputs.head_commit_id || github.event.workflow_run.head_commit.id }}
+          persist-credentials: false
       - name: Check out buildpulse-action
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: buildpulse/buildpulse-action
           path: buildpulse-action
           ref: d0d30f53585cf16b2e01811a5a753fd47968654a # v0.11.0
+          persist-credentials: false
       - name: Create a temporary directory to store the JUnit XML reports
         id: reports
         run: mktemp -d | xargs -0 -I{} echo "path={}" | tee -a "$GITHUB_OUTPUT"
@@ -67,6 +69,18 @@ jobs:
           else
             echo "reports=false" | tee -a "$GITHUB_OUTPUT"
           fi
+      - name: Fetch the tested commit for BuildPulse
+        if: steps.found.outputs.reports == 'true'
+        env:
+          TESTED_COMMIT: ${{ github.event.inputs.head_commit_id || github.event.workflow_run.head_commit.id }}
+        # BuildPulse reads the commit object and the trusted checkout's CODEOWNERS.
+        run: |
+          if [[ ! "$TESTED_COMMIT" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Expected a full Git commit SHA for the tested commit" >&2
+            exit 1
+          fi
+          git -C lotus fetch --no-tags --no-recurse-submodules --depth=1 --filter=tree:0 origin "$TESTED_COMMIT"
+          test "$(git -C lotus cat-file -t "$TESTED_COMMIT")" = commit
       - name: Upload test results to BuildPulse for flaky test detection
         if: steps.found.outputs.reports == 'true'
         env:
