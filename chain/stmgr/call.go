@@ -212,11 +212,20 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 		BaseFee:        ts.Blocks()[0].ParentBaseFee,
 		LookbackState:  LookbackStateGetterForTipset(sm, ts),
 		TipSetGetter:   TipSetGetterForTipset(sm.cs, ts),
-		Tracing:        true,
 	}
-	vmi, err := sm.newVM(ctx, vmopt)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to set up vm: %w", err)
+
+	// State preparation (replaying prior messages, creating an ephemeral sender) runs untraced, on
+	// a VM created only when needed, since only the call's own trace is returned.
+	var prepVM vm.Interface
+	getPrepVM := func() (vm.Interface, error) {
+		if prepVM == nil {
+			vmopt.StateBase = stateCid
+			var err error
+			if prepVM, err = sm.newVM(ctx, vmopt); err != nil {
+				return nil, xerrors.Errorf("failed to set up vm: %w", err)
+			}
+		}
+		return prepVM, nil
 	}
 
 	switch strategy {
@@ -240,18 +249,23 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 			}
 			priorMsgs = append(filteredTsMsgs, priorMsgs...)
 		}
-		for i, m := range priorMsgs {
-			_, err = vmi.ApplyMessage(ctx, m)
+		if len(priorMsgs) > 0 {
+			pvm, err := getPrepVM()
 			if err != nil {
-				return nil, xerrors.Errorf("applying prior message (%d, %s): %w", i, m.Cid(), err)
+				return nil, err
 			}
-		}
+			for i, m := range priorMsgs {
+				if _, err := pvm.ApplyMessage(ctx, m); err != nil {
+					return nil, xerrors.Errorf("applying prior message (%d, %s): %w", i, m.Cid(), err)
+				}
+			}
 
-		// We flush to get the VM's view of the state tree after applying the above messages
-		// This is needed to get the correct nonce from the actor state to match the VM
-		stateCid, err = vmi.Flush(ctx)
-		if err != nil {
-			return nil, xerrors.Errorf("flushing vm: %w", err)
+			// We flush to get the VM's view of the state tree after applying the above messages
+			// This is needed to get the correct nonce from the actor state to match the VM
+			stateCid, err = pvm.Flush(ctx)
+			if err != nil {
+				return nil, xerrors.Errorf("flushing vm: %w", err)
+			}
 		}
 	}
 
@@ -276,7 +290,11 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 		// message itself can then be applied explicitly, keeping gas accounting identical
 		// to a real first send from a fresh account. This happens on the buffered
 		// blockstore and is never persisted.
-		createRet, err := vmi.ApplyImplicitMessageForSimulation(ctx, &types.Message{
+		pvm, err := getPrepVM()
+		if err != nil {
+			return nil, err
+		}
+		createRet, err := pvm.ApplyImplicitMessageForSimulation(ctx, &types.Message{
 			From:       builtin.SystemActorAddr,
 			To:         msg.From,
 			Value:      big.Zero(),
@@ -291,7 +309,7 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 		if createRet.ExitCode != 0 {
 			return nil, xerrors.Errorf("creating ephemeral sender placeholder (exit %s): %s", createRet.ExitCode, createRet.ActorErr)
 		}
-		stateCid, err = vmi.Flush(ctx)
+		stateCid, err = pvm.Flush(ctx)
 		if err != nil {
 			return nil, xerrors.Errorf("flushing vm after placeholder creation: %w", err)
 		}
@@ -308,16 +326,15 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 
 	msg.Nonce = fromActor.Nonce
 
+	vmopt.StateBase = stateCid
+	vmopt.Tracing = true
 	// If the fee cap is set to zero, make gas free.
 	if msg.GasFeeCap.NilOrZero() {
-		// Now estimate with a new VM with no base fee.
 		vmopt.BaseFee = big.Zero()
-		vmopt.StateBase = stateCid
-
-		vmi, err = sm.newVM(ctx, vmopt)
-		if err != nil {
-			return nil, xerrors.Errorf("failed to set up estimation vm: %w", err)
-		}
+	}
+	vmi, err := sm.newVM(ctx, vmopt)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to set up call vm: %w", err)
 	}
 
 	var ret *vm.ApplyRet

@@ -105,7 +105,7 @@ func NewSqliteIndexer(path string, cs ChainStore, gcRetentionEpochs int64, recon
 	maxReconcileTipsets uint64) (si *SqliteIndexer, err error) {
 
 	if gcRetentionEpochs != 0 && gcRetentionEpochs < builtin.EpochsInDay {
-		return nil, xerrors.Errorf("gc retention epochs must be 0 or greater than %d", builtin.EpochsInDay)
+		return nil, xerrors.Errorf("gc retention epochs must be 0 or at least %d", builtin.EpochsInDay)
 	}
 
 	db, err := sqlite.Open(path)

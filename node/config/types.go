@@ -538,9 +538,8 @@ type FeeConfig struct {
 }
 
 type FevmConfig struct {
-	// EnableEthRPC enables eth_ RPC methods.
-	// Note: Setting this to true will also require that ChainIndexer is enabled, otherwise it will cause an error at startup.
-	// Set EnableIndexer in the ChainIndexer section of the config to true to enable the ChainIndexer.
+	// EnableEthRPC enables eth_ RPC methods. Enabled by default.
+	// Requires ChainIndexer.EnableIndexer to also be true (the default); the node will fail to start otherwise.
 	EnableEthRPC bool
 
 	// EthTraceFilterMaxResults sets the maximum results returned per request by trace_filter
@@ -556,9 +555,8 @@ type FevmConfig struct {
 
 type EventsConfig struct {
 	// EnableActorEventsAPI enables the Actor events API that enables clients to consume events
-	// emitted by (smart contracts + built-in Actors).
-	// Note: Setting this to true will also require that ChainIndexer is enabled, otherwise it will cause an error at startup.
-	// Set EnableIndexer in the ChainIndexer section of the config to true to enable the ChainIndexer.
+	// emitted by (smart contracts + built-in Actors). Enabled by default.
+	// Requires ChainIndexer.EnableIndexer to also be true (the default); the node will fail to start otherwise.
 	EnableActorEventsAPI bool
 
 	// FilterTTL specifies the time to live for actor event filters. Filters that haven't been accessed longer than
@@ -596,25 +594,34 @@ type EventsConfig struct {
 type ChainIndexerConfig struct {
 	// EnableIndexer controls whether the chain indexer is active.
 	// The chain indexer is responsible for indexing tipsets, messages, and events from the chain state.
-	// It is a crucial component for optimizing Lotus RPC response times.
+	// It is a crucial component for optimizing Lotus RPC response times and is required by the Ethereum
+	// JSON-RPC (Fevm.EnableEthRPC) and Actor events (Events.EnableActorEventsAPI) APIs. Message
+	// lookups (StateSearchMsg, StateWaitMsg) also use it; without it they walk the chain.
 	//
-	// Default: false (indexer is disabled)
+	// Default: true (indexer is enabled)
 	//
-	// Setting this to true will enable the indexer, which will significantly improve RPC performance.
-	// It is strongly recommended to keep this set to true if you are an RPC provider.
-	//
-	// If EnableEthRPC or EnableActorEventsAPI are set to true, the ChainIndexer must be enabled using
-	// this option to avoid errors at startup.
+	// The indexer writes to ${LOTUS_PATH}/chainindex and, on mainnet, grows at roughly 200 MiB per day
+	// (around 6 GiB per month) until trimmed by GCRetentionEpochs. Operators who do not serve the
+	// Ethereum or Actor events APIs can set this to false to save disk; in that case Fevm.EnableEthRPC
+	// and Events.EnableActorEventsAPI must also be set to false or the node will fail to start.
+	// Setting this to true explicitly, in config.toml or the environment, requires GCRetentionEpochs
+	// to be set as well.
 	EnableIndexer bool
 
-	// GCRetentionEpochs specifies the number of epochs for which data is retained in the Indexer.
-	// The garbage collection (GC) process removes data older than this retention period.
-	// Setting this to 0 disables GC, preserving all historical data indefinitely.
+	// GCRetentionEpochs specifies the number of epochs, counting back from the head, for which data
+	// is retained in the Indexer. Garbage collection (GC) removes older data when the indexer starts
+	// and every 4 hours after that.
 	//
-	// If set, the minimum value must be greater than builtin.EpochsInDay (i.e. "2880" epochs for mainnet).
-	// This ensures a reasonable retention period for the indexed data.
+	// Default: 20160 epochs (7 days at 2880 epochs/day), more than the four to five finalities
+	// (about 30 to 38 hours) of messages and state that the default Splitstore configuration keeps.
 	//
-	// Default: 0 (GC disabled)
+	// Set to 0 to disable GC and retain all indexed data, as archival nodes and RPC providers serving
+	// deep history need. Any other value must be at least 2880 (one day); smaller non-zero values are
+	// rejected at startup. Nodes that keep more chain history than the default should set this to
+	// cover it.
+	//
+	// When EnableIndexer is set to true in config.toml or the environment, this must be set too,
+	// or Lotus refuses to start.
 	GCRetentionEpochs int64
 
 	// ReconcileEmptyIndex determines whether to reconcile the index with the chain state

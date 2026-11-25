@@ -376,7 +376,7 @@ NAME:
    lotus-miner actor propose-change-worker - Propose a worker address change
 
 USAGE:
-   lotus-miner actor propose-change-worker [command options] [address]
+   lotus-miner actor propose-change-worker [command options] <address>
 
 OPTIONS:
    --really-do-it  Actually send transaction performing the action (default: false)
@@ -390,7 +390,7 @@ NAME:
    lotus-miner actor confirm-change-worker - Confirm a worker address change
 
 USAGE:
-   lotus-miner actor confirm-change-worker [command options] [address]
+   lotus-miner actor confirm-change-worker [command options] <address>
 
 OPTIONS:
    --really-do-it  Actually send transaction performing the action (default: false)
@@ -1517,7 +1517,7 @@ NAME:
    lotus-miner log set-level - Set log level
 
 USAGE:
-   lotus-miner log set-level [command options] [level]
+   lotus-miner log set-level [command options] <level>
 
 DESCRIPTION:
    Set the log level for logging systems:

@@ -38,6 +38,10 @@ func IncorrectNumArgs(cctx *ufcli.Context) error {
 	return ShowHelp(cctx, fmt.Errorf("incorrect number of arguments, got %d", cctx.NArg()))
 }
 
+func IncorrectNumArgsWithHint(cctx *ufcli.Context, hint string) error {
+	return ShowHelp(cctx, fmt.Errorf("incorrect number of arguments, got %d, %s", cctx.NArg(), hint))
+}
+
 func RunApp(app *ufcli.App) {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGTERM, syscall.SIGINT)
@@ -56,7 +60,10 @@ func RunApp(app *ufcli.App) {
 		_, _ = fmt.Fprintf(os.Stderr, "ERROR: %s\n\n", err)
 		var phe *PrintHelpErr
 		if errors.As(err, &phe) {
-			_ = ufcli.ShowCommandHelp(phe.Ctx, phe.Ctx.Command.Name)
+			// Command help is looked up by name among the parent's subcommands.
+			if lineage := phe.Ctx.Lineage(); len(lineage) > 1 {
+				_ = ufcli.ShowCommandHelp(lineage[1], phe.Ctx.Command.Name)
+			}
 		}
 		os.Exit(1)
 	}

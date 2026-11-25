@@ -132,9 +132,8 @@ var disputerMsgCmd = &cli.Command{
 }
 
 var disputerStartCmd = &cli.Command{
-	Name:      "start",
-	Usage:     "Start the window post disputer",
-	ArgsUsage: "[minerAddress]",
+	Name:  "start",
+	Usage: "Start the window post disputer",
 	Flags: []cli.Flag{
 		&cli.Uint64Flag{
 			Name:  "start-epoch",
@@ -142,6 +141,10 @@ var disputerStartCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		if cctx.NArg() != 0 {
+			return IncorrectNumArgs(cctx)
+		}
+
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -161,8 +164,8 @@ var disputerStartCmd = &cli.Command{
 		}
 
 		startEpoch := abi.ChainEpoch(0)
-		if cctx.IsSet("height") {
-			startEpoch = abi.ChainEpoch(cctx.Uint64("height"))
+		if cctx.IsSet("start-epoch") {
+			startEpoch = abi.ChainEpoch(cctx.Uint64("start-epoch"))
 		}
 
 		disputeLog.Info("checking sync status")

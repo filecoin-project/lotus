@@ -496,7 +496,7 @@ NAME:
    lotus msig inspect - Inspect a multisig wallet
 
 USAGE:
-   lotus msig inspect [command options] [address]
+   lotus msig inspect [command options] <address>
 
 OPTIONS:
    --vesting        Include vesting details (default: false)
@@ -1825,7 +1825,7 @@ NAME:
    lotus chain slash-consensus - Report consensus fault
 
 USAGE:
-   lotus chain slash-consensus [command options] [blockCid1 blockCid2]
+   lotus chain slash-consensus [command options] <blockCid1> <blockCid2>
 
 OPTIONS:
    --from value   optionally specify the account to report consensus from
@@ -1954,7 +1954,7 @@ NAME:
    lotus chain disputer start - Start the window post disputer
 
 USAGE:
-   lotus chain disputer start [command options] [minerAddress]
+   lotus chain disputer start [command options]
 
 OPTIONS:
    --start-epoch value  only start disputing PoSts after this epoch  (default: 0)
@@ -2079,7 +2079,7 @@ NAME:
    lotus log set-level - Set log level
 
 USAGE:
-   lotus log set-level [command options] [level]
+   lotus log set-level [command options] <level>
 
 DESCRIPTION:
    Set the log level for logging systems:
@@ -2425,7 +2425,7 @@ NAME:
    lotus net disconnect - Disconnect from a peer
 
 USAGE:
-   lotus net disconnect [command options] [peerID]
+   lotus net disconnect [command options] <peerID> ...
 
 OPTIONS:
    --help, -h  show help
@@ -2464,7 +2464,7 @@ NAME:
    lotus net find-peer - Find the addresses of a given peerID
 
 USAGE:
-   lotus net find-peer [command options] [peerId]
+   lotus net find-peer [command options] <peerID>
 
 OPTIONS:
    --help, -h  show help
@@ -2811,7 +2811,7 @@ NAME:
    lotus sync mark-bad - Mark the given block as bad, will prevent syncing to a chain that contains it
 
 USAGE:
-   lotus sync mark-bad [command options] [blockCid]
+   lotus sync mark-bad [command options] <blockCid>
 
 OPTIONS:
    --help, -h  show help
@@ -2838,7 +2838,7 @@ NAME:
    lotus sync check-bad - check if the given block was marked bad, and for what reason
 
 USAGE:
-   lotus sync check-bad [command options] [blockCid]
+   lotus sync check-bad [command options] <blockCid>
 
 OPTIONS:
    --help, -h  show help

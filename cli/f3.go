@@ -98,8 +98,8 @@ var f3SubCmdPowerTable = &cli.Command{
 				},
 			},
 			Before: func(cctx *cli.Context) error {
-				if cctx.Args().Len() > 1 {
-					return fmt.Errorf("too many arguments")
+				if cctx.NArg() > 1 {
+					return IncorrectNumArgsWithHint(cctx, "expected at most 1")
 				}
 				return nil
 			},
@@ -204,8 +204,8 @@ var f3SubCmdPowerTable = &cli.Command{
 				f3FlagInstanceID,
 			},
 			Before: func(cctx *cli.Context) error {
-				if cctx.Args().Len() < 1 {
-					return fmt.Errorf("at least one actor ID must be specified")
+				if cctx.NArg() < 1 {
+					return IncorrectNumArgsWithHint(cctx, "expected at least one actor ID")
 				}
 				return nil
 			},
@@ -337,8 +337,8 @@ var f3SubCmdCerts = &cli.Command{
 				f3FlagOutput,
 			},
 			Before: func(cctx *cli.Context) error {
-				if count := cctx.NArg(); count > 1 {
-					return fmt.Errorf("too many arguments: expected at most 1 but got %d", count)
+				if cctx.NArg() > 1 {
+					return IncorrectNumArgsWithHint(cctx, "expected at most 1")
 				}
 				return nil
 			},
@@ -418,8 +418,8 @@ Examples:
 				f3FlagReverseOrder,
 			},
 			Before: func(cctx *cli.Context) error {
-				if count := cctx.NArg(); count > 1 {
-					return fmt.Errorf("too many arguments: expected at most 1 but got %d", count)
+				if cctx.NArg() > 1 {
+					return IncorrectNumArgsWithHint(cctx, "expected at most 1")
 				}
 				return nil
 			},
