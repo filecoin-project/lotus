@@ -52,7 +52,7 @@ require (
 	github.com/filecoin-project/go-keccak v0.1.0
 	github.com/filecoin-project/go-padreader v0.0.1
 	github.com/filecoin-project/go-paramfetch v0.0.6
-	github.com/filecoin-project/go-state-types v0.20.0-dev // dependency-check-ignore: NV30 development release
+	github.com/filecoin-project/go-state-types v0.20.0-dev.0.20261119145224-af49ff8fdcfd // dependency-check-ignore: FIP-0122 development commit (go-state-types#480)
 	github.com/filecoin-project/go-statemachine v1.0.3
 	github.com/filecoin-project/go-statestore v0.2.0
 	github.com/filecoin-project/go-storedcounter v0.1.0

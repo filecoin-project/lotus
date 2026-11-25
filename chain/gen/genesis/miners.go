@@ -22,6 +22,7 @@ import (
 	miner15 "github.com/filecoin-project/go-state-types/builtin/v15/miner"
 	power15 "github.com/filecoin-project/go-state-types/builtin/v15/power"
 	smoothing15 "github.com/filecoin-project/go-state-types/builtin/v15/util/smoothing"
+	reward20 "github.com/filecoin-project/go-state-types/builtin/v20/reward"
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -726,6 +727,14 @@ func currentEpochBlockReward(ctx context.Context, vm vm.Interface, maddr address
 			return big.Zero(), builtin.FilterEstimate{}, err
 		}
 
+		return epochReward.ThisEpochBaselinePower, builtin.FilterEstimate(epochReward.ThisEpochRewardSmoothed), nil
+	}
+
+	if av >= actorstypes.Version20 {
+		var epochReward reward20.ThisEpochRewardReturn
+		if err := epochReward.UnmarshalCBOR(bytes.NewReader(rwret)); err != nil {
+			return big.Zero(), builtin.FilterEstimate{}, err
+		}
 		return epochReward.ThisEpochBaselinePower, builtin.FilterEstimate(epochReward.ThisEpochRewardSmoothed), nil
 	}
 

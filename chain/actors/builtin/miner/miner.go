@@ -452,11 +452,28 @@ func AllCodes() []cid.Cid {
 	}
 }
 
+// PledgePenaltyForContinuedFault calculates the fault fee before network version 30.
+// At network version 30 or later, use PledgePenaltyForContinuedFaultWithWeight.
 func PledgePenaltyForContinuedFault(
 	nwVer network.Version,
 	rewardEstimate builtin.FilterEstimate,
 	networkQaPowerEstimate builtin.FilterEstimate,
 	qaSectorPower abi.StoragePower,
+) (abi.TokenAmount, error) {
+	if nwVer >= network.Version30 {
+		return big.Zero(), xerrors.Errorf("implicit stream weight required at network version %d: use PledgePenaltyForContinuedFaultWithWeight", nwVer)
+	}
+	return PledgePenaltyForContinuedFaultWithWeight(nwVer, rewardEstimate, networkQaPowerEstimate, qaSectorPower, 0)
+}
+
+// PledgePenaltyForContinuedFaultWithWeight calculates the fault fee using the implicit
+// stream weight, expressed over 10^18. The weight is ignored before network version 30.
+func PledgePenaltyForContinuedFaultWithWeight(
+	nwVer network.Version,
+	rewardEstimate builtin.FilterEstimate,
+	networkQaPowerEstimate builtin.FilterEstimate,
+	qaSectorPower abi.StoragePower,
+	implicitStreamWeight uint64,
 ) (abi.TokenAmount, error) {
 	v, err := actorstypes.VersionForNetwork(nwVer)
 	if err != nil {
@@ -525,6 +542,7 @@ func PledgePenaltyForContinuedFault(
 				VelocityEstimate: networkQaPowerEstimate.VelocityEstimate,
 			},
 			qaSectorPower,
+			implicitStreamWeight,
 		), nil
 	default:
 		return big.Zero(), xerrors.Errorf("unsupported network version: %d", nwVer)
