@@ -2,6 +2,7 @@ package config
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"math/big"
@@ -9,6 +10,7 @@ import (
 	"reflect"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"unicode"
 
@@ -52,8 +54,8 @@ func FromFile(path string, opts ...LoadCfgOpt) (interface{}, error) {
 		return nil, xerrors.Errorf("failed to read config for validation checks %w", err)
 	}
 	buf := bytes.NewBuffer(cfgBs)
-	if loadOpts.validate != nil {
-		if err := loadOpts.validate(buf.String()); err != nil {
+	for _, validate := range loadOpts.validators {
+		if err := validate(buf.String()); err != nil {
 			return nil, xerrors.Errorf("config failed validation: %w", err)
 		}
 	}
@@ -185,7 +187,7 @@ func findMovedFields(path []string, val interface{}) []movedField {
 type cfgLoadOpts struct {
 	defaultCfg           func() (interface{}, error)
 	canFallbackOnDefault func() error
-	validate             func(string) error
+	validators           []func(string) error
 	warningWriter        io.Writer
 }
 
@@ -216,9 +218,11 @@ func SetCanFallbackOnDefault(f func() error) LoadCfgOpt {
 	}
 }
 
+// SetValidate adds a check that FromFile runs against the raw config file before decoding it.
+// Checks run in the order they are added.
 func SetValidate(f func(string) error) LoadCfgOpt {
 	return func(opts *cfgLoadOpts) error {
-		opts.validate = f
+		opts.validators = append(opts.validators, f)
 		return nil
 	}
 }
@@ -248,6 +252,37 @@ func ValidateSplitstoreSet(cfgRaw string) error {
 		return xerrors.Errorf("Config does not contain explicit set of EnableSplitstore field, refusing to load. Please explicitly set EnableSplitstore. Set it to false if you are running a full archival node")
 	}
 	return nil
+}
+
+// ValidateIndexerRetentionSet requires ChainIndexer.GCRetentionEpochs to be set, in the config
+// file or the environment, when ChainIndexer.EnableIndexer is set to true in either. GC applies
+// the retention as soon as the node starts, deleting older index history, so a node that
+// explicitly enables the indexer must state how much history it keeps.
+func ValidateIndexerRetentionSet(cfgRaw string) error {
+	// Decode into a struct, as FromReader does, so keys match case-insensitively.
+	var raw struct {
+		ChainIndexer struct {
+			EnableIndexer     bool
+			GCRetentionEpochs *int64
+		}
+	}
+	if _, err := toml.Decode(cfgRaw, &raw); err != nil {
+		return err
+	}
+	enabled := raw.ChainIndexer.EnableIndexer
+	if v, ok := os.LookupEnv("LOTUS_CHAININDEXER_ENABLEINDEXER"); ok {
+		// envconfig reports an unparseable value when it decodes the config
+		enabled, _ = strconv.ParseBool(v)
+	}
+	if !enabled {
+		return nil
+	}
+	if _, ok := os.LookupEnv("LOTUS_CHAININDEXER_GCRETENTIONEPOCHS"); ok || raw.ChainIndexer.GCRetentionEpochs != nil {
+		return nil
+	}
+	return errors.New("ChainIndexer.EnableIndexer is set to true without ChainIndexer.GCRetentionEpochs, refusing to load. " +
+		"Set GCRetentionEpochs in config.toml or LOTUS_CHAININDEXER_GCRETENTIONEPOCHS: the default, 20160 (7 days), suits most nodes; " +
+		"archival nodes should set 0 to keep all indexed history. The indexer deletes history older than the retention when the node starts")
 }
 
 type cfgUpdateOpts struct {

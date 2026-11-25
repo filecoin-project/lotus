@@ -1,6 +1,7 @@
 package node
 
 import (
+	"errors"
 	"os"
 	"time"
 
@@ -200,11 +201,9 @@ func ConfigFullNode(c interface{}) Option {
 		return Error(xerrors.Errorf("invalid config from repo, got: %T", c))
 	}
 
-	if cfg.Fevm.EnableEthRPC && !cfg.ChainIndexer.EnableIndexer {
-		return Error(xerrors.New("EnableIndexer in the ChainIndexer configuration section must be set to true when setting EnableEthRPC to true"))
-	}
-	if cfg.Events.EnableActorEventsAPI && !cfg.ChainIndexer.EnableIndexer {
-		return Error(xerrors.New("EnableIndexer in the ChainIndexer configuration section must be set to true when setting EnableActorEventsAPI to true"))
+	if !cfg.ChainIndexer.EnableIndexer && (cfg.Fevm.EnableEthRPC || cfg.Events.EnableActorEventsAPI) {
+		return Error(errors.New("ChainIndexer.EnableIndexer is false, but Fevm.EnableEthRPC and Events.EnableActorEventsAPI " +
+			"(both true by default) need the indexer; set both to false, or enable the indexer"))
 	}
 
 	return Options(
