@@ -89,9 +89,8 @@ type State interface {
 	// to the network, given the current network total and baseline power, per-epoch reward, and
 	// circulating token supply.
 	//
-	// Prior to actors version 15, the epochsSinceRampStart and rampDurationEpochs arguments have
-	// no effect. After actors version 15, these values can be derived from the power actor state
-	// properties RampStartEpoch and RampDurationEpochs.
+	// The epochsSinceRampStart and rampDurationEpochs arguments apply only to actors versions
+	// 15 through 19 and are derived from the power actor's RampStartEpoch and RampDurationEpochs.
 	InitialPledgeForPower(qaPower abi.StoragePower, networkTotalPledge abi.TokenAmount, networkQAPower *builtin.FilterEstimate, circSupply abi.TokenAmount, epochsSinceRampStart int64, rampDurationEpochs uint64) (abi.TokenAmount, error)
 	PreCommitDepositForPower(builtin.FilterEstimate, abi.StoragePower) (abi.TokenAmount, error)
 

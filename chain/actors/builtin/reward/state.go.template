@@ -97,7 +97,7 @@ func (s *state{{.v}}) CumsumRealized() (reward{{.v}}.Spacetime, error) {
 }
 {{if (ge .v 2)}}
 func (s *state{{.v}}) InitialPledgeForPower(qaPower abi.StoragePower, _ abi.TokenAmount, networkQAPower *builtin.FilterEstimate, circSupply abi.TokenAmount, epochsSinceRampStart int64, rampDurationEpochs uint64) (abi.TokenAmount, error) {
-{{if (ge .v 15)}}return miner{{.v}}.InitialPledgeForPower(
+{{if and (ge .v 15) (lt .v 20)}}return miner{{.v}}.InitialPledgeForPower(
 		qaPower,
 		s.State.ThisEpochBaselinePower,
 		s.State.ThisEpochRewardSmoothed,

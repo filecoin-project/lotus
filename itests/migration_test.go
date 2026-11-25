@@ -12,6 +12,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -25,6 +26,8 @@ import (
 	miner14 "github.com/filecoin-project/go-state-types/builtin/v14/miner"
 	smoothing14 "github.com/filecoin-project/go-state-types/builtin/v14/util/smoothing"
 	miner15 "github.com/filecoin-project/go-state-types/builtin/v15/miner"
+	miner19 "github.com/filecoin-project/go-state-types/builtin/v19/miner"
+	smoothing19 "github.com/filecoin-project/go-state-types/builtin/v19/util/smoothing"
 	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	migration "github.com/filecoin-project/go-state-types/builtin/v9/migration/test"
 	miner9 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
@@ -900,6 +903,127 @@ func TestMigrationNV23(t *testing.T) {
 	require.NoError(t, err)
 	state := f090StatePost.State.(*account14.State)
 	require.Equal(t, state.Address, f090Addr)
+}
+
+func TestMigrationNV30PledgeRampCleanup(t *testing.T) {
+	kit.QuietMiningLogs()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	defer cancel()
+
+	const upgradeEpoch = abi.ChainEpoch(30)
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(),
+		kit.UpgradeSchedule(
+			stmgr.Upgrade{Network: network.Version29, Height: -1},
+			stmgr.Upgrade{
+				Network:   network.Version30,
+				Height:    upgradeEpoch,
+				Migration: filcns.UpgradeActorsV20,
+			},
+		),
+	)
+	ens.InterconnectAll().BeginMining(100 * time.Millisecond)
+
+	client.WaitTillChain(ctx, kit.HeightAtLeast(upgradeEpoch+5))
+	firstAfter := kit.TipsetAtOrAfter(ctx, t, client, upgradeEpoch+1)
+	// A child's parent state includes execution and migrations through its parent tipset.
+	post := client.WaitTillChain(ctx, kit.HeightAtLeast(firstAfter.Height()+1))
+	pre, err := client.ChainGetTipSetByHeight(ctx, upgradeEpoch-1, post.Key())
+	require.NoError(t, err)
+
+	for _, tc := range []struct {
+		name         string
+		tipset       *types.TipSet
+		version      actorstypes.Version
+		returnFields uint64
+	}{
+		{name: "historical v19", tipset: pre, version: actorstypes.Version19, returnFields: 6},
+		{name: "migrated v20", tipset: post, version: actorstypes.Version20, returnFields: 4},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			decoded, err := client.StateReadState(ctx, power.Address, tc.tipset.Key())
+			require.NoError(t, err)
+			code, ok := actors.GetActorCodeID(tc.version, manifest.PowerKey)
+			require.True(t, ok)
+			require.Equal(t, code, decoded.Code)
+			fields, ok := decoded.State.(map[string]interface{})
+			require.True(t, ok)
+			for _, field := range []string{"RampStartEpoch", "RampDurationEpochs"} {
+				if tc.version == actorstypes.Version19 {
+					require.Contains(t, fields, field)
+				} else {
+					require.NotContains(t, fields, field)
+				}
+			}
+
+			result, err := client.StateCall(ctx, &types.Message{
+				From:     client.DefaultKey.Address,
+				To:       power.Address,
+				Method:   power.Methods.CurrentTotalPower,
+				Value:    big.Zero(),
+				GasLimit: buildconstants.BlockGasLimit,
+			}, tc.tipset.Key())
+			require.NoError(t, err)
+			require.Equal(t, exitcode.Ok, result.MsgRct.ExitCode, result.Error)
+			majorType, fieldsCount, err := cbg.CborReadHeader(bytes.NewReader(result.MsgRct.Return))
+			require.NoError(t, err)
+			require.Equal(t, byte(cbg.MajArray), majorType)
+			require.Equal(t, tc.returnFields, fieldsCount)
+			requireCompletedRampPledge(ctx, t, client, tc.tipset.Key())
+		})
+	}
+}
+
+func TestGenesisNV30PledgeRampCleanup(t *testing.T) {
+	kit.QuietMiningLogs()
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(),
+		kit.UpgradeSchedule(stmgr.Upgrade{Network: network.Version30, Height: -1}),
+	)
+	ens.InterconnectAll().BeginMining(100 * time.Millisecond)
+	head := client.WaitTillChain(ctx, kit.HeightAtLeast(5))
+	requireCompletedRampPledge(ctx, t, client, head.Key())
+}
+
+func requireCompletedRampPledge(ctx context.Context, t *testing.T, client *kit.TestFullNode, tsk types.TipSetKey) {
+	t.Helper()
+	store := client.Store(ctx)
+	powerActor, err := client.StateGetActor(ctx, power.Address, tsk)
+	require.NoError(t, err)
+	powerState, err := power.Load(store, powerActor)
+	require.NoError(t, err)
+	powerEstimate, err := powerState.TotalPowerSmoothed()
+	require.NoError(t, err)
+	rewardActor, err := client.StateGetActor(ctx, reward.Address, tsk)
+	require.NoError(t, err)
+	rewardState, err := reward.Load(store, rewardActor)
+	require.NoError(t, err)
+	baselinePower, err := rewardState.ThisEpochBaselinePower()
+	require.NoError(t, err)
+	rewardEstimate, err := rewardState.ThisEpochRewardSmoothed()
+	require.NoError(t, err)
+	circulating, err := client.StateVMCirculatingSupplyInternal(ctx, tsk)
+	require.NoError(t, err)
+
+	// The v19 implementation at the end of its ramp is an independent reference for v20.
+	expectedPledge := func(qaPower abi.StoragePower) abi.TokenAmount {
+		return miner19.InitialPledgeForPower(qaPower, baselinePower,
+			smoothing19.FilterEstimate(rewardEstimate), smoothing19.FilterEstimate(powerEstimate),
+			circulating.FilCirculating, 0, 0)
+	}
+	const sectorSize = abi.SectorSize(2 << 10)
+	pledge, err := client.StateMinerInitialPledgeForSector(ctx, builtin.EpochsInYear, sectorSize, uint64(sectorSize), tsk)
+	require.NoError(t, err)
+	sectorPledge := expectedPledge(big.NewIntUnsigned(uint64(sectorSize) * 10))
+	require.Equal(t, big.Div(big.Mul(sectorPledge, big.NewInt(110)), big.NewInt(100)), pledge)
+
+	params, err := client.StateGetNetworkParams(ctx)
+	require.NoError(t, err)
+	deposit, err := client.StateMinerCreationDeposit(ctx, tsk)
+	require.NoError(t, err)
+	require.Equal(t, expectedPledge(big.Div(params.ConsensusMinerMinPower, big.NewInt(10))), deposit)
 }
 
 func TestMigrationNV24(t *testing.T) {
