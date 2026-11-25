@@ -391,7 +391,7 @@ func (e *ErrTransactionRejected) Is(target error) bool {
 }
 
 // ResourceUnavailableReason identifies the cause of an ErrResourceUnavailable.
-// It travels in the JSON-RPC error meta so Go clients can match on it.
+// It is carried in the JSON-RPC error data.
 type ResourceUnavailableReason string
 
 const (
@@ -411,7 +411,8 @@ type ErrResourceUnavailable struct {
 	Message string
 }
 
-type resourceUnavailableMeta struct {
+type resourceUnavailableData struct {
+	Epoch  *abi.ChainEpoch           `json:"epoch"`
 	Reason ResourceUnavailableReason `json:"reason"`
 }
 
@@ -451,31 +452,43 @@ func (e *ErrResourceUnavailable) FromJSONRPCError(jerr jsonrpc.JSONRPCError) err
 	}
 	e.Message = jerr.Message
 	e.Epoch = -1
+	e.Reason = ""
+
 	if epoch, ok := jerr.Data.(float64); ok {
 		e.Epoch = abi.ChainEpoch(epoch)
-	}
-	// Nodes that predate the meta only sent expensive-fork refusals.
-	e.Reason = ReasonExpensiveFork
-	if len(jerr.Meta) > 0 {
-		var meta resourceUnavailableMeta
+		// A bare epoch without metadata identifies a legacy expensive-fork refusal.
+		if len(jerr.Meta) == 0 {
+			e.Reason = ReasonExpensiveFork
+			return nil
+		}
+		var meta struct {
+			Reason ResourceUnavailableReason `json:"reason"`
+		}
 		if err := json.Unmarshal(jerr.Meta, &meta); err != nil {
 			return fmt.Errorf("decoding resource unavailable meta: %w", err)
 		}
 		e.Reason = meta.Reason
+		return nil
+	}
+
+	raw, err := json.Marshal(jerr.Data)
+	if err != nil {
+		return nil
+	}
+	var data resourceUnavailableData
+	if err := json.Unmarshal(raw, &data); err == nil && data.Epoch != nil {
+		e.Epoch = *data.Epoch
+		e.Reason = data.Reason
 	}
 	return nil
 }
 
 func (e *ErrResourceUnavailable) ToJSONRPCError() (jsonrpc.JSONRPCError, error) {
-	meta, err := json.Marshal(resourceUnavailableMeta{Reason: e.Reason})
-	if err != nil {
-		return jsonrpc.JSONRPCError{}, err
-	}
+	epoch := e.Epoch
 	return jsonrpc.JSONRPCError{
 		Code:    EResourceUnavailable,
 		Message: e.Error(),
-		Meta:    meta,
-		Data:    e.Epoch,
+		Data:    resourceUnavailableData{Epoch: &epoch, Reason: e.Reason},
 	}, nil
 }
 
