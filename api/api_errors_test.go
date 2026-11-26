@@ -71,19 +71,24 @@ func TestErrResourceUnavailableRoundTrip(t *testing.T) {
 		})
 	}
 
-	legacy := decode(t, []byte(`{"code":-32002,"message":"fork","data":7}`))
-	require.Equal(t, &ErrResourceUnavailable{Reason: ReasonExpensiveFork, Epoch: 7, Message: "fork"}, legacy)
-
-	legacyCold := decode(t, []byte(`{"code":-32002,"message":"index cold","data":7,"meta":{"reason":"height-index-cold"}}`))
-	require.Equal(t, &ErrResourceUnavailable{Reason: ReasonHeightIndexCold, Epoch: 7, Message: "index cold"}, legacyCold)
-
 	for _, raw := range []string{
 		`{"code":-32002,"message":"unavailable"}`,
-		`{"code":-32002,"message":"unavailable","data":{"reason":"expensive-fork"}}`,
+		`{"code":-32002,"message":"unavailable","data":7}`,
+		`{"code":-32002,"message":"unavailable","data":7,"meta":{"reason":"height-index-cold"}}`,
 		`{"code":-32002,"message":"unavailable","data":{"epoch":"7","reason":"expensive-fork"}}`,
 	} {
 		require.Equal(t, &ErrResourceUnavailable{Epoch: -1, Message: "unavailable"}, decode(t, []byte(raw)), raw)
 	}
+
+	for _, raw := range []string{
+		`{"code":-32002,"message":"unavailable","data":{"reason":"height-index-cold"}}`,
+		`{"code":-32002,"message":"unavailable","data":{"epoch":null,"reason":"height-index-cold"}}`,
+	} {
+		require.Equal(t, &ErrResourceUnavailable{Epoch: -1, Reason: ReasonHeightIndexCold, Message: "unavailable"}, decode(t, []byte(raw)), raw)
+	}
+
+	epochOnly := decode(t, []byte(`{"code":-32002,"message":"unavailable","data":{"epoch":0}}`))
+	require.Equal(t, &ErrResourceUnavailable{Epoch: 0, Message: "unavailable"}, epochOnly)
 }
 
 func TestErrResourceUnavailableIs(t *testing.T) {

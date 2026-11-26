@@ -412,7 +412,7 @@ type ErrResourceUnavailable struct {
 }
 
 type resourceUnavailableData struct {
-	Epoch  *abi.ChainEpoch           `json:"epoch"`
+	Epoch  abi.ChainEpoch            `json:"epoch"`
 	Reason ResourceUnavailableReason `json:"reason"`
 }
 
@@ -450,45 +450,25 @@ func (e *ErrResourceUnavailable) FromJSONRPCError(jerr jsonrpc.JSONRPCError) err
 	if jerr.Code != EResourceUnavailable {
 		return fmt.Errorf("unexpected error code: %d", jerr.Code)
 	}
-	e.Message = jerr.Message
-	e.Epoch = -1
-	e.Reason = ""
-
-	if epoch, ok := jerr.Data.(float64); ok {
-		e.Epoch = abi.ChainEpoch(epoch)
-		// A bare epoch without metadata identifies a legacy expensive-fork refusal.
-		if len(jerr.Meta) == 0 {
-			e.Reason = ReasonExpensiveFork
-			return nil
-		}
-		var meta struct {
-			Reason ResourceUnavailableReason `json:"reason"`
-		}
-		if err := json.Unmarshal(jerr.Meta, &meta); err != nil {
-			return fmt.Errorf("decoding resource unavailable meta: %w", err)
-		}
-		e.Reason = meta.Reason
-		return nil
-	}
+	*e = ErrResourceUnavailable{Epoch: -1, Message: jerr.Message}
 
 	raw, err := json.Marshal(jerr.Data)
 	if err != nil {
 		return nil
 	}
-	var data resourceUnavailableData
-	if err := json.Unmarshal(raw, &data); err == nil && data.Epoch != nil {
-		e.Epoch = *data.Epoch
+	data := resourceUnavailableData{Epoch: -1}
+	if err := json.Unmarshal(raw, &data); err == nil {
+		e.Epoch = data.Epoch
 		e.Reason = data.Reason
 	}
 	return nil
 }
 
 func (e *ErrResourceUnavailable) ToJSONRPCError() (jsonrpc.JSONRPCError, error) {
-	epoch := e.Epoch
 	return jsonrpc.JSONRPCError{
 		Code:    EResourceUnavailable,
 		Message: e.Error(),
-		Data:    resourceUnavailableData{Epoch: &epoch, Reason: e.Reason},
+		Data:    resourceUnavailableData{Epoch: e.Epoch, Reason: e.Reason},
 	}, nil
 }
 
