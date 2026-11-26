@@ -1291,3 +1291,86 @@ func TestGatewayEthSubscribeRemovesSinkOnConnectionClose(t *testing.T) {
 		})
 	}
 }
+
+func TestGatewayEthFilterUninstalledOnConnectionClose(t *testing.T) {
+	ctx := context.Background()
+
+	ctrl := gomock.NewController(t)
+	mockV1 := v1mocks.NewMockFullNode(ctrl)
+	mockV2 := v2mocks.NewMockFullNode(ctrl)
+
+	// The health handlers poll the node in the background.
+	notSupported := errors.New("not supported")
+	mockV1.EXPECT().ChainNotify(gomock.Any()).Return(nil, notSupported).AnyTimes()
+	mockV1.EXPECT().NetAutoNatStatus(gomock.Any()).Return(api.NatInfo{}, notSupported).AnyTimes()
+	mockV1.EXPECT().NodeStatus(gomock.Any(), gomock.Any()).Return(api.NodeStatus{}, notSupported).AnyTimes()
+
+	h, err := Handler(NewNode(mockV1, mockV2))
+	require.NoError(t, err)
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+	wsAddr := "ws" + strings.TrimPrefix(srv.URL, "http")
+
+	// The node only sees the uninstall if it is sent on a live context.
+	uninstall := func(uninstalled chan error) func(context.Context, ethtypes.EthFilterID) (bool, error) {
+		return func(ctx context.Context, _ ethtypes.EthFilterID) (bool, error) {
+			uninstalled <- ctx.Err()
+			return true, nil
+		}
+	}
+
+	for _, tc := range []struct {
+		name    string
+		expect  func(id ethtypes.EthFilterID, uninstalled chan error)
+		install func() (ethtypes.EthFilterID, jsonrpc.ClientCloser, error)
+	}{
+		{
+			name: "v1",
+			expect: func(id ethtypes.EthFilterID, uninstalled chan error) {
+				mockV1.EXPECT().EthNewBlockFilter(gomock.Any()).Return(id, nil)
+				mockV1.EXPECT().EthUninstallFilter(gomock.Any(), id).DoAndReturn(uninstall(uninstalled))
+			},
+			install: func() (ethtypes.EthFilterID, jsonrpc.ClientCloser, error) {
+				gw, closer, err := client.NewGatewayRPCV1(ctx, wsAddr+"/rpc/v1", nil)
+				if err != nil {
+					return ethtypes.EthFilterID{}, nil, err
+				}
+				id, err := gw.EthNewBlockFilter(ctx)
+				return id, closer, err
+			},
+		},
+		{
+			name: "v2",
+			expect: func(id ethtypes.EthFilterID, uninstalled chan error) {
+				mockV2.EXPECT().EthNewBlockFilter(gomock.Any()).Return(id, nil)
+				mockV2.EXPECT().EthUninstallFilter(gomock.Any(), id).DoAndReturn(uninstall(uninstalled))
+			},
+			install: func() (ethtypes.EthFilterID, jsonrpc.ClientCloser, error) {
+				gw, closer, err := client.NewGatewayRPCV2(ctx, wsAddr+"/rpc/v2", nil)
+				if err != nil {
+					return ethtypes.EthFilterID{}, nil, err
+				}
+				id, err := gw.EthNewBlockFilter(ctx)
+				return id, closer, err
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			id := ethtypes.EthFilterID{1}
+			uninstalled := make(chan error, 1)
+			tc.expect(id, uninstalled)
+
+			got, closer, err := tc.install()
+			require.NoError(t, err)
+			require.Equal(t, id, got)
+
+			closer()
+			select {
+			case err := <-uninstalled:
+				require.NoError(t, err)
+			case <-time.After(10 * time.Second):
+				t.Fatal("filter was not uninstalled on connection close")
+			}
+		})
+	}
+}
