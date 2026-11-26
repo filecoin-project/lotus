@@ -20,7 +20,7 @@ type SyncWaitApi interface {
 	ChainHead(context.Context) (*types.TipSet, error)
 }
 
-// SyncWait returns when ChainHead is within 20 epochs of the expected height
+// SyncWait returns when the chain head's minimum timestamp is within 30 block delays of the current time
 func SyncWait(ctx context.Context, napi SyncWaitApi) error {
 	for {
 		state, err := napi.SyncState(ctx)
