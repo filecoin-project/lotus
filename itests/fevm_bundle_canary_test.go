@@ -258,7 +258,7 @@ func TestFEVMRecursiveDelegatecallCanary(t *testing.T) {
 				problem = fmt.Sprintf("expected to reach %d, reached %d", tc.recursionCount, observedCount)
 			case !tc.expectSuccess && int(observedCount) == int(tc.recursionCount):
 				problem = fmt.Sprintf("expected to run out of gas before %d, reached %d anyway", tc.recursionCount, tc.recursionCount)
-			case !tc.expectSuccess && int(observedCount) != int(iterationsBeforeFail):
+			case !tc.expectSuccess && int(observedCount) != iterationsBeforeFail:
 				problem = fmt.Sprintf("expected to fail at iteration %d, failed at %d", iterationsBeforeFail, observedCount)
 			}
 			if problem == "" {
