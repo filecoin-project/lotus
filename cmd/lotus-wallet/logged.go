@@ -5,13 +5,13 @@ import (
 	"context"
 	"encoding/hex"
 
-	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/messagesigner"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -40,18 +40,9 @@ func (c *LoggedWallet) WalletList(ctx context.Context) ([]address.Address, error
 func (c *LoggedWallet) WalletSign(ctx context.Context, k address.Address, msg []byte, meta api.MsgMeta) (*crypto.Signature, error) {
 	switch meta.Type {
 	case api.MTChainMsg:
-		var cmsg types.Message
-		if err := cmsg.UnmarshalCBOR(bytes.NewReader(meta.Extra)); err != nil {
-			return nil, xerrors.Errorf("unmarshalling message: %w", err)
-		}
-
-		_, bc, err := cid.CidFromBytes(msg)
+		cmsg, err := chainMsgForSigning(k, msg, meta)
 		if err != nil {
-			return nil, xerrors.Errorf("getting cid from signing bytes: %w", err)
-		}
-
-		if !cmsg.Cid().Equals(bc) {
-			return nil, xerrors.Errorf("cid(meta.Extra).bytes() != msg")
+			return nil, err
 		}
 
 		log.Infow("WalletSign",
@@ -68,6 +59,27 @@ func (c *LoggedWallet) WalletSign(ctx context.Context, k address.Address, msg []
 	}
 
 	return c.under.WalletSign(ctx, k, msg, meta)
+}
+
+// chainMsgForSigning decodes the message in meta.Extra and checks that msg is
+// exactly the bytes a node signs for that message from k, so the message that
+// is logged or shown for approval is the one the signature covers.
+func chainMsgForSigning(k address.Address, msg []byte, meta api.MsgMeta) (*types.Message, error) {
+	var cmsg types.Message
+	if err := cmsg.UnmarshalCBOR(bytes.NewReader(meta.Extra)); err != nil {
+		return nil, xerrors.Errorf("unmarshalling message: %w", err)
+	}
+
+	sb, err := messagesigner.SigningBytes(&cmsg, k.Protocol())
+	if err != nil {
+		return nil, xerrors.Errorf("getting signing bytes for message: %w", err)
+	}
+
+	if !bytes.Equal(sb, msg) {
+		return nil, xerrors.Errorf("signing bytes do not match the message in meta.Extra")
+	}
+
+	return &cmsg, nil
 }
 
 func (c *LoggedWallet) WalletExport(ctx context.Context, a address.Address) (*types.KeyInfo, error) {
