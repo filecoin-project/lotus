@@ -97,7 +97,7 @@ func WithMaxLookbackDuration(maxLookbackDuration time.Duration) Option {
 	}
 }
 
-// WithMaxMessageLookbackEpochs sets the maximum lookback (epochs) for state queries.
+// WithMaxMessageLookbackEpochs sets the maximum lookback (epochs) for message and transaction lookups.
 func WithMaxMessageLookbackEpochs(maxMessageLookbackEpochs abi.ChainEpoch) Option {
 	return func(opts *options) {
 		opts.maxMessageLookbackEpochs = maxMessageLookbackEpochs
