@@ -167,7 +167,7 @@ func (gw *Node) checkEthBlockParam(ctx context.Context, blkParam ethtypes.EthBlo
 	case blkParam.PredefinedBlock != nil:
 		return gw.checkEthBlockNumber(ctx, *blkParam.PredefinedBlock, lookback)
 	case blkParam.BlockNumber != nil:
-		return gw.checkEpoch(ctx, abi.ChainEpoch(*blkParam.BlockNumber))
+		return gw.checkEpochLookback(ctx, abi.ChainEpoch(*blkParam.BlockNumber), lookback)
 	case blkParam.BlockHash != nil:
 		return gw.checkEthBlockHash(ctx, *blkParam.BlockHash)
 	}
@@ -212,8 +212,7 @@ func (gw *Node) checkEthTraceTransaction(ctx context.Context, txHash string,
 	return gw.checkEpoch(ctx, abi.ChainEpoch(*tx.BlockNumber))
 }
 
-// checkEthBlockNumber checks an eth block number or tag, less lookback epochs
-// for a tag.
+// checkEthBlockNumber checks an eth block number or tag, less lookback epochs.
 func (gw *Node) checkEthBlockNumber(ctx context.Context, blkParam string, lookback ethtypes.EthUint64) error {
 	var h abi.ChainEpoch
 	switch blkParam {
@@ -255,11 +254,24 @@ func (gw *Node) checkEthBlockNumber(ctx context.Context, blkParam string, lookba
 		if err := num.UnmarshalJSON([]byte(`"` + blkParam + `"`)); err != nil {
 			return fmt.Errorf("cannot parse block number: %v", err)
 		}
-		return gw.checkEpoch(ctx, abi.ChainEpoch(num))
+		h = abi.ChainEpoch(num)
 	}
-	// A lookback past genesis asks for what history there is, as eth_feeHistory
-	// does on a young chain, so it is checked at genesis rather than rejected.
-	return gw.checkEpoch(ctx, max(0, h-abi.ChainEpoch(lookback)))
+	return gw.checkEpochLookback(ctx, h, lookback)
+}
+
+// checkEpochLookback checks h and the oldest epoch of a request reading
+// lookback epochs back from it. A lookback past genesis asks for what history
+// there is, as eth_feeHistory does on a young chain, so it is checked at
+// genesis rather than rejected.
+func (gw *Node) checkEpochLookback(ctx context.Context, h abi.ChainEpoch, lookback ethtypes.EthUint64) error {
+	if err := gw.checkEpoch(ctx, h); err != nil || lookback == 0 {
+		return err
+	}
+	var oldest abi.ChainEpoch
+	if uint64(lookback) < uint64(h) {
+		oldest = h - abi.ChainEpoch(lookback)
+	}
+	return gw.checkEpoch(ctx, oldest)
 }
 
 // ethTagHeight resolves "safe" and "finalized" through the v2 backend, which
