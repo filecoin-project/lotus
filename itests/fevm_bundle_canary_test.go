@@ -93,8 +93,6 @@
 //	v17 -> v18 (nv28)   |        +14,402 |     +1,440,205 | wasm_exec only.
 //	                    |                |                |   Triggered PR #13585 (2026-04):
 //	                    |                |                |   actor-call pass 255 -> 254
-//	v19 -> v20 (nv30)  |        -33,313 |     -3,331,348 | wasm_exec only; custom FIP-0122
-//	                    |                |                |   bundle 89c7747fa675
 //
 // When retuning, regenerate this table by running:
 //
@@ -146,9 +144,11 @@ const (
 
 	// TestFEVMRecursiveDelegatecallCanary: max delegatecall depth.
 	// `highestSuccess` is the largest N where the contract returns N
-	// successfully. The table pins the stop count for each larger request.
-	delegatecallHighestSuccess         = 228
-	delegatecallPerIterGasApprox int64 = 5_200_000
+	// successfully; `iterationsBeforeFailing` is the N reached inside the
+	// contract before running out of gas on a too-large request.
+	delegatecallHighestSuccess             = 228
+	delegatecallIterationsBeforeFail       = 223
+	delegatecallPerIterGasApprox     int64 = 100_000
 
 	// Sub-boundary count used by the bundle-compare diagnostic. Must pass
 	// comfortably under both the current and the previous actors bundle.
@@ -206,21 +206,21 @@ func TestFEVMRecursiveDelegatecallCanary(t *testing.T) {
 
 	cases := []struct {
 		recursionCount uint64
-		expectedCount  uint64
+		expectSuccess  bool
 	}{
 		// successes up to the tuned boundary
-		{1, 1},
-		{2, 2},
-		{10, 10},
-		{100, 100},
-		{delegatecallHighestSuccess, delegatecallHighestSuccess},
+		{1, true},
+		{2, true},
+		{10, true},
+		{100, true},
+		{delegatecallHighestSuccess, true},
 		// failures past the boundary
-		{delegatecallHighestSuccess + 1, 221},
-		{1000, 223},
-		{10000000, 223},
+		{delegatecallHighestSuccess + 1, false},
+		{1000, false},
+		{10000000, false},
 	}
 	for _, tc := range cases {
-		t.Run(fmt.Sprintf("count=%d,success=%t", tc.recursionCount, tc.expectedCount == tc.recursionCount), func(t *testing.T) {
+		t.Run(fmt.Sprintf("count=%d,success=%t", tc.recursionCount, tc.expectSuccess), func(t *testing.T) {
 			fromAddr, actorAddr := client.EVM().DeployContractFromFilename(ctx, "contracts/RecursiveDelegeatecall.hex")
 			trace, exit, observedCount, err := runRecursiveDelegatecall(ctx, t, client, fromAddr, actorAddr, tc.recursionCount)
 			require.NoError(t, err)
@@ -233,7 +233,7 @@ func TestFEVMRecursiveDelegatecallCanary(t *testing.T) {
 				reportCanaryFailure(t, canaryFailure{
 					testName:       "TestFEVMRecursiveDelegatecallCanary",
 					caseLabel:      fmt.Sprintf("count=%d", tc.recursionCount),
-					recursionCount: int(observedCount),
+					recursionCount: int(tc.recursionCount),
 					expectedExit:   exitcode.Ok,
 					actualExit:     exit,
 					trace:          trace,
@@ -243,18 +243,36 @@ func TestFEVMRecursiveDelegatecallCanary(t *testing.T) {
 				return
 			}
 
-			if observedCount == tc.expectedCount {
+			// LLVM address-offset folding lowers WASM gas in the Rust 1.99.1 bundle:
+			// https://github.com/llvm/llvm-project/pull/80184. Reverting it restores
+			// 222 for all three failing requests. Request 229 reaches its base case;
+			// larger requests fail while recursing, so out-of-gas rollbacks differ.
+			iterationsBeforeFail := delegatecallIterationsBeforeFail
+			if tc.recursionCount == delegatecallHighestSuccess+1 {
+				iterationsBeforeFail = 221
+			}
+
+			var problem string
+			switch {
+			case tc.expectSuccess && int(observedCount) != int(tc.recursionCount):
+				problem = fmt.Sprintf("expected to reach %d, reached %d", tc.recursionCount, observedCount)
+			case !tc.expectSuccess && int(observedCount) == int(tc.recursionCount):
+				problem = fmt.Sprintf("expected to run out of gas before %d, reached %d anyway", tc.recursionCount, tc.recursionCount)
+			case !tc.expectSuccess && int(observedCount) != int(iterationsBeforeFail):
+				problem = fmt.Sprintf("expected to fail at iteration %d, failed at %d", iterationsBeforeFail, observedCount)
+			}
+			if problem == "" {
 				return
 			}
 			reportCanaryFailure(t, canaryFailure{
 				testName:       "TestFEVMRecursiveDelegatecallCanary",
 				caseLabel:      fmt.Sprintf("count=%d", tc.recursionCount),
-				recursionCount: int(observedCount),
+				recursionCount: int(tc.recursionCount),
 				expectedExit:   exitcode.Ok,
 				actualExit:     exit,
 				trace:          trace,
 				perIterApprox:  delegatecallPerIterGasApprox,
-				extraReason:    fmt.Sprintf("expected to reach %d, reached %d", tc.expectedCount, observedCount),
+				extraReason:    problem,
 			})
 		})
 	}
