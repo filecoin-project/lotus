@@ -15,7 +15,13 @@ func Retry[T any](ctx context.Context, attempts int, initialBackoff time.Duratio
 	for i := 0; i < attempts; i++ {
 		if i > 0 {
 			log.Info("Retrying after error:", err)
-			time.Sleep(initialBackoff)
+			timer := time.NewTimer(initialBackoff)
+			select {
+			case <-ctx.Done():
+				timer.Stop()
+				return result, ctx.Err()
+			case <-timer.C:
+			}
 			initialBackoff *= 2
 		}
 		result, err = f()
