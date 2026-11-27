@@ -127,20 +127,22 @@ func SetupInitActor(ctx context.Context, bs bstore.Blockstore, netname string, i
 		return nil
 	}
 
-	switch rootVerifier.Type {
-	case genesis.TAccount:
-		var ainfo genesis.AccountMeta
-		if err := json.Unmarshal(rootVerifier.Meta, &ainfo); err != nil {
-			return 0, nil, nil, xerrors.Errorf("unmarshaling account meta: %w", err)
-		}
-		value := cbg.CborInt(80)
-		if err := amap.Put(abi.AddrKey(ainfo.Owner), &value); err != nil {
-			return 0, nil, nil, err
-		}
-	case genesis.TMultisig:
-		err := setupMsig(rootVerifier.Meta)
-		if err != nil {
-			return 0, nil, nil, xerrors.Errorf("setting up root verifier msig: %w", err)
+	if av < actorstypes.Version20 {
+		switch rootVerifier.Type {
+		case genesis.TAccount:
+			var ainfo genesis.AccountMeta
+			if err := json.Unmarshal(rootVerifier.Meta, &ainfo); err != nil {
+				return 0, nil, nil, xerrors.Errorf("unmarshaling account meta: %w", err)
+			}
+			value := cbg.CborInt(80)
+			if err := amap.Put(abi.AddrKey(ainfo.Owner), &value); err != nil {
+				return 0, nil, nil, err
+			}
+		case genesis.TMultisig:
+			err := setupMsig(rootVerifier.Meta)
+			if err != nil {
+				return 0, nil, nil, xerrors.Errorf("setting up root verifier msig: %w", err)
+			}
 		}
 	}
 

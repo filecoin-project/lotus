@@ -14,7 +14,7 @@ import (
 	{{if (ge . 8)}}
         miner{{.}} "github.com/filecoin-project/go-state-types/builtin{{import .}}miner"
         market{{.}} "github.com/filecoin-project/go-state-types/builtin{{import .}}market"
-        verifreg{{.}} "github.com/filecoin-project/go-state-types/builtin{{import .}}verifreg"
+        {{if (lt . 20)}}verifreg{{.}} "github.com/filecoin-project/go-state-types/builtin{{import .}}verifreg"{{end}}
 	{{else}}
         {{if (ge . 2)}}
             builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"
@@ -139,7 +139,7 @@ func SetConsensusMinerMinPower(p abi.StoragePower) {
 // only be used for testing.
 func SetMinVerifiedDealSize(size abi.StoragePower) {
 	{{range .versions}}
-		verifreg{{.}}.MinVerifiedDealSize = size
+		{{if (lt . 20)}}verifreg{{.}}.MinVerifiedDealSize = size{{end}}
 	{{end}}
 }
 

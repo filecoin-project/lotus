@@ -20,9 +20,9 @@ import (
             paych{{.}} "github.com/filecoin-project/go-state-types/builtin/v{{.}}/paych"
             power{{.}} "github.com/filecoin-project/go-state-types/builtin/v{{.}}/power"
             system{{.}} "github.com/filecoin-project/go-state-types/builtin/v{{.}}/system"
-            verifreg{{.}} "github.com/filecoin-project/go-state-types/builtin/v{{.}}/verifreg"
+            {{if (lt . 20)}}verifreg{{.}} "github.com/filecoin-project/go-state-types/builtin/v{{.}}/verifreg"{{end}}
         {{end}}
-        {{if (ge . 9)}}
+        {{if and (ge . 9) (lt . 20)}}
             datacap{{.}} "github.com/filecoin-project/go-state-types/builtin/v{{.}}/datacap"
         {{end}}
         {{if (ge . 10)}}
@@ -168,13 +168,13 @@ func MakeRegistry(av actorstypes.Version) []RegistryEntry {
                                 methods: system{{.}}.Methods,
                                 state:   new(system{{.}}.State),
                             })
-                        case manifest.VerifregKey:
+                        {{if (lt . 20)}}case manifest.VerifregKey:
                             registry = append(registry, RegistryEntry{
                                 code: codeID,
                                 methods: verifreg{{.}}.Methods,
                                 state:   new(verifreg{{.}}.State),
-                            })
-                        {{if (ge . 9)}}case manifest.DatacapKey:
+                            }){{end}}
+                        {{if and (ge . 9) (lt . 20)}}case manifest.DatacapKey:
                             registry = append(registry, RegistryEntry{
                                 code:    codeID,
                                 methods: datacap{{.}}.Methods,
