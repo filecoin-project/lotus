@@ -147,7 +147,7 @@ const (
 	// successfully; `iterationsBeforeFailing` is the N reached inside the
 	// contract before running out of gas on a too-large request.
 	delegatecallHighestSuccess             = 228
-	delegatecallIterationsBeforeFail       = 222
+	delegatecallIterationsBeforeFail       = 223
 	delegatecallPerIterGasApprox     int64 = 100_000
 
 	// Sub-boundary count used by the bundle-compare diagnostic. Must pass
@@ -243,14 +243,23 @@ func TestFEVMRecursiveDelegatecallCanary(t *testing.T) {
 				return
 			}
 
+			// LLVM address-offset folding lowers WASM gas in the Rust 1.99.1 bundle:
+			// https://github.com/llvm/llvm-project/pull/80184. Reverting it restores
+			// 222 for all three failing requests. Request 229 reaches its base case;
+			// larger requests fail while recursing, so out-of-gas rollbacks differ.
+			iterationsBeforeFail := delegatecallIterationsBeforeFail
+			if tc.recursionCount == delegatecallHighestSuccess+1 {
+				iterationsBeforeFail = 221
+			}
+
 			var problem string
 			switch {
 			case tc.expectSuccess && int(observedCount) != int(tc.recursionCount):
 				problem = fmt.Sprintf("expected to reach %d, reached %d", tc.recursionCount, observedCount)
 			case !tc.expectSuccess && int(observedCount) == int(tc.recursionCount):
 				problem = fmt.Sprintf("expected to run out of gas before %d, reached %d anyway", tc.recursionCount, tc.recursionCount)
-			case !tc.expectSuccess && int(observedCount) != int(delegatecallIterationsBeforeFail):
-				problem = fmt.Sprintf("expected to fail at iteration %d, failed at %d", delegatecallIterationsBeforeFail, observedCount)
+			case !tc.expectSuccess && int(observedCount) != iterationsBeforeFail:
+				problem = fmt.Sprintf("expected to fail at iteration %d, failed at %d", iterationsBeforeFail, observedCount)
 			}
 			if problem == "" {
 				return

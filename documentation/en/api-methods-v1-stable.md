@@ -6036,6 +6036,7 @@ Response:
 
 ### PaychFund
 PaychFund gets or creates a payment channel between address pair.
+Creation is forbidden at network version 30 and later. Existing channels can be funded.
 The specified amount will be added to the channel through on-chain send for future use
 
 
@@ -6062,6 +6063,7 @@ Response:
 
 ### PaychGet
 PaychGet gets or creates a payment channel between address pair
+Creation is forbidden at network version 30 and later. Existing channels can be funded.
  The specified amount will be reserved for use. If there aren't enough non-reserved funds
    available, funds will be added through an on-chain message.
  - When opts.OffChain is true, this call will not cause any messages to be sent to the chain (no automatic

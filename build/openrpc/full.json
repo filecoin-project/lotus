@@ -15894,7 +15894,7 @@
         {
             "name": "Filecoin.PaychFund",
             "description": "```go\nfunc (s *FullNodeStruct) PaychFund(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt) (*ChannelInfo, error) {\n\tif s.Internal.PaychFund == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.PaychFund(p0, p1, p2, p3)\n}\n```",
-            "summary": "PaychFund gets or creates a payment channel between address pair.\nThe specified amount will be added to the channel through on-chain send for future use\n",
+            "summary": "PaychFund gets or creates a payment channel between address pair.\nCreation is forbidden at network version 30 and later. Existing channels can be funded.\nThe specified amount will be added to the channel through on-chain send for future use\n",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -15986,7 +15986,7 @@
         {
             "name": "Filecoin.PaychGet",
             "description": "```go\nfunc (s *FullNodeStruct) PaychGet(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt, p4 PaychGetOpts) (*ChannelInfo, error) {\n\tif s.Internal.PaychGet == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.PaychGet(p0, p1, p2, p3, p4)\n}\n```",
-            "summary": "PaychGet gets or creates a payment channel between address pair\n The specified amount will be reserved for use. If there aren't enough non-reserved funds\n   available, funds will be added through an on-chain message.\n - When opts.OffChain is true, this call will not cause any messages to be sent to the chain (no automatic\n   channel creation/funds adding). If the operation can't be performed without sending a message an error will be\n   returned. Note that even when this option is specified, this call can be blocked by previous operations on the\n   channel waiting for on-chain operations.\n",
+            "summary": "PaychGet gets or creates a payment channel between address pair\nCreation is forbidden at network version 30 and later. Existing channels can be funded.\n The specified amount will be reserved for use. If there aren't enough non-reserved funds\n   available, funds will be added through an on-chain message.\n - When opts.OffChain is true, this call will not cause any messages to be sent to the chain (no automatic\n   channel creation/funds adding). If the operation can't be performed without sending a message an error will be\n   returned. Note that even when this option is specified, this call can be blocked by previous operations on the\n   channel waiting for on-chain operations.\n",
             "paramStructure": "by-position",
             "params": [
                 {
