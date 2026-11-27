@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/filecoin-project/go-state-types/big"
 
@@ -139,6 +140,56 @@ func TestSearchForMessageReplacements(t *testing.T) {
 		t.Fatal("expected search to fail")
 	}
 
+}
+
+func TestWaitForMessageReplacedReturnsError(t *testing.T) {
+	ctx := context.Background()
+	cg, err := gen.NewGenerator()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mts1, err := cg.NextTipSet()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	m := mts1.Messages[0]
+
+	// Mine two more tipsets so the executed message is no longer in the
+	// current head's parent tipset and the wait must find it via the
+	// backwards search.
+	if _, err := cg.NextTipSet(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := cg.NextTipSet(); err != nil {
+		t.Fatal(err)
+	}
+
+	// nrm shares m's sender and nonce but changes the value, so it is not
+	// a valid replacement of m.
+	nrm := m.Message
+	nrm.Value = big.Add(m.Message.Value, m.Message.Value)
+
+	nrmb, err := nrm.ToStorageBlock()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := cg.Blockstore().Put(ctx, nrmb); err != nil {
+		t.Fatal(err)
+	}
+
+	waitCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	_, _, _, err = cg.StateManager().WaitForMessage(waitCtx, nrm.Cid(), 0, 100, false)
+	if err == nil {
+		t.Fatal("expected wait to fail")
+	}
+	if !errors.Is(err, stmgr.ErrMessageReplaced) {
+		t.Fatalf("expected replacement error, got %v", err)
+	}
 }
 
 func TestWaitForMessageCurrentHeadRespectsConfidence(t *testing.T) {

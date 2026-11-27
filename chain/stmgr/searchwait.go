@@ -67,6 +67,7 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid, confid
 	var backTs *types.TipSet
 	var backRcp *types.MessageReceipt
 	var backFm cid.Cid
+	var backErr error
 	var backSearchWait chan struct{}
 	var reverts map[types.TipSetKey]bool
 
@@ -88,6 +89,12 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid, confid
 				fts, r, foundMsg, err = sm.searchBackForMsg(ctx, head[0].Val, msg, lookbackLimit, allowReplaced)
 				if err != nil {
 					log.Warnf("failed to look back through chain for message: %v", err)
+					// Only a replaced message ends the wait. Other back-search failures, such as loading
+					// tipsets or actor state beyond splitstore retention, leave the wait running for a later head.
+					if errors.Is(err, ErrMessageReplaced) {
+						backErr = err
+					}
+					close(backSearchWait)
 					return
 				}
 			}
@@ -138,6 +145,9 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid, confid
 				}
 			}
 		case <-backSearchWait:
+			if backErr != nil {
+				return nil, nil, cid.Undef, backErr
+			}
 			// check if we found the message in the chain and that is hasn't been reverted since we started searching
 			if backTs != nil && !reverts[backTs.Key()] {
 				// if head is at or past confidence interval, return immediately
