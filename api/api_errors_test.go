@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-jsonrpc"
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 )
 
@@ -32,10 +31,8 @@ func TestEthErrorWireCodes(t *testing.T) {
 }
 
 func TestErrResourceUnavailableRoundTrip(t *testing.T) {
-	roundTrip := func(t *testing.T, jerr jsonrpc.JSONRPCError) *ErrResourceUnavailable {
-		// Data crosses the wire as JSON, so numbers decode as float64.
-		raw, err := json.Marshal(jerr)
-		require.NoError(t, err)
+	decode := func(t *testing.T, raw []byte) *ErrResourceUnavailable {
+		t.Helper()
 		var wire jsonrpc.JSONRPCError
 		require.NoError(t, json.Unmarshal(raw, &wire))
 		var out ErrResourceUnavailable
@@ -43,20 +40,55 @@ func TestErrResourceUnavailableRoundTrip(t *testing.T) {
 		return &out
 	}
 
-	for _, in := range []*ErrResourceUnavailable{
-		NewErrExpensiveFork(10),
-		NewErrHeightIndexCold(10, 20),
-		NewErrHeightIndexCold(10, -1),
+	for _, tc := range []struct {
+		name     string
+		in       *ErrResourceUnavailable
+		wantJSON string
+	}{
+		{
+			"expensive fork",
+			NewErrExpensiveFork(10),
+			`{"code":-32002,"message":"required historical state unavailable: refusing explicit call due to state fork at epoch 10","data":{"epoch":10,"reason":"expensive-fork"}}`,
+		},
+		{
+			"cold index with progress",
+			NewErrHeightIndexCold(10, 20),
+			`{"code":-32002,"message":"timed out resolving epoch 10: node is still indexing chain heights (ready down to epoch 20), retry later","data":{"epoch":10,"reason":"height-index-cold"}}`,
+		},
+		{
+			"cold index without progress",
+			NewErrHeightIndexCold(10, -1),
+			`{"code":-32002,"message":"timed out resolving epoch 10: node is still indexing chain heights (not started), retry later","data":{"epoch":10,"reason":"height-index-cold"}}`,
+		},
 	} {
-		jerr, err := in.ToJSONRPCError()
-		require.NoError(t, err)
-		require.Equal(t, abi.ChainEpoch(10), jerr.Data)
-		require.Equal(t, in, roundTrip(t, jerr))
+		t.Run(tc.name, func(t *testing.T) {
+			jerr, err := tc.in.ToJSONRPCError()
+			require.NoError(t, err)
+			raw, err := json.Marshal(jerr)
+			require.NoError(t, err)
+			require.JSONEq(t, tc.wantJSON, string(raw))
+			require.Equal(t, tc.in, decode(t, raw))
+		})
 	}
 
-	// Older nodes send no meta and only refused expensive forks.
-	legacy := roundTrip(t, jsonrpc.JSONRPCError{Code: EResourceUnavailable, Message: "fork", Data: 7})
-	require.Equal(t, &ErrResourceUnavailable{Reason: ReasonExpensiveFork, Epoch: 7, Message: "fork"}, legacy)
+	for _, raw := range []string{
+		`{"code":-32002,"message":"unavailable"}`,
+		`{"code":-32002,"message":"unavailable","data":7}`,
+		`{"code":-32002,"message":"unavailable","data":7,"meta":{"reason":"height-index-cold"}}`,
+		`{"code":-32002,"message":"unavailable","data":{"epoch":"7","reason":"expensive-fork"}}`,
+	} {
+		require.Equal(t, &ErrResourceUnavailable{Epoch: -1, Message: "unavailable"}, decode(t, []byte(raw)), raw)
+	}
+
+	for _, raw := range []string{
+		`{"code":-32002,"message":"unavailable","data":{"reason":"height-index-cold"}}`,
+		`{"code":-32002,"message":"unavailable","data":{"epoch":null,"reason":"height-index-cold"}}`,
+	} {
+		require.Equal(t, &ErrResourceUnavailable{Epoch: -1, Reason: ReasonHeightIndexCold, Message: "unavailable"}, decode(t, []byte(raw)), raw)
+	}
+
+	epochOnly := decode(t, []byte(`{"code":-32002,"message":"unavailable","data":{"epoch":0}}`))
+	require.Equal(t, &ErrResourceUnavailable{Epoch: 0, Message: "unavailable"}, epochOnly)
 }
 
 func TestErrResourceUnavailableIs(t *testing.T) {
