@@ -17,11 +17,16 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	miner15 "github.com/filecoin-project/go-state-types/builtin/v15/miner"
 	miner16 "github.com/filecoin-project/go-state-types/builtin/v16/miner"
+	smoothing16 "github.com/filecoin-project/go-state-types/builtin/v16/util/smoothing"
+	miner20 "github.com/filecoin-project/go-state-types/builtin/v20/miner"
+	"github.com/filecoin-project/go-state-types/manifest"
 
 	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	minertypes "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -220,7 +225,7 @@ var minerFeesCmd = &cli.Command{
 					_, _ = fmt.Fprintf(cctx.App.Writer, "\tInspecting last deadline cron @ %d:\n", dlEndTs.Height())
 
 					var burnValue *big.Int
-					var cronParams *miner16.DeferredCronEventParams
+					var cronParams *minerCronParams
 
 					// Sort through traces to find relevant ones
 					for _, invoc := range compute.Trace {
@@ -260,11 +265,11 @@ var minerFeesCmd = &cli.Command{
 									if cronParams != nil {
 										return "", false, xerrors.New("multiple cron calls to miner in one message")
 									}
-									var p miner16.DeferredCronEventParams
-									if err := p.UnmarshalCBOR(bytes.NewReader(trace.Msg.Params)); err != nil {
+									p, err := decodeMinerCronParams(trace)
+									if err != nil {
 										return "", false, xerrors.Errorf("unmarshalling cron params: %w", err)
 									}
-									cronParams = &p
+									cronParams = p
 								} else if trace.Msg.From == minerAddr && trace.Msg.To == burnAddr {
 									// miner paying fee debt
 									if burnValue != nil {
@@ -532,7 +537,7 @@ var minerFeesInspect = &cli.Command{
 			// know we are inside a cron call. We use the params from cron to avoid having to go and
 			// fetch RewardSmoothed and QualityAdjPowerSmoothed for the current epoch from the reward
 			// and power actors (but we could).
-			var cronParams *miner16.DeferredCronEventParams
+			var cronParams *minerCronParams
 
 			type minerBurn struct {
 				addr    address.Address
@@ -549,7 +554,7 @@ var minerFeesInspect = &cli.Command{
 					return big.Zero(), err
 				}
 
-				return minertypes.PledgePenaltyForContinuedFault(
+				return minertypes.PledgePenaltyForContinuedFaultWithWeight(
 					nv,
 					builtin.FilterEstimate{
 						PositionEstimate: cronParams.RewardSmoothed.PositionEstimate,
@@ -560,6 +565,7 @@ var minerFeesInspect = &cli.Command{
 						VelocityEstimate: cronParams.QualityAdjPowerSmoothed.VelocityEstimate,
 					},
 					qaPower,
+					cronParams.ImplicitStreamWeight,
 				)
 			}
 
@@ -646,11 +652,11 @@ var minerFeesInspect = &cli.Command{
 						}
 					}
 
-					var p miner16.DeferredCronEventParams
-					if err := p.UnmarshalCBOR(bytes.NewReader(trace.Msg.Params)); err != nil {
+					p, err := decodeMinerCronParams(trace)
+					if err != nil {
 						return xerrors.Errorf("unmarshalling cron params: %w", err)
 					}
-					cronParams = &p
+					cronParams = p
 
 					thisExecCronMiner = &minerBurn{
 						addr:    trace.Msg.To,
@@ -921,4 +927,38 @@ var minerExpectedRewardCmd = &cli.Command{
 		)
 		return nil
 	},
+}
+
+type minerCronParams struct {
+	miner16.DeferredCronEventParams
+	ImplicitStreamWeight uint64
+}
+
+func decodeMinerCronParams(trace types.ExecutionTrace) (*minerCronParams, error) {
+	if trace.InvokedActor == nil {
+		return nil, xerrors.New("cron trace has no invoked actor")
+	}
+	name, version, ok := actors.GetActorMetaByCode(trace.InvokedActor.State.Code)
+	if !ok || name != manifest.MinerKey {
+		return nil, xerrors.Errorf("unknown miner actor code %s", trace.InvokedActor.State.Code)
+	}
+	if version >= actorstypes.Version20 {
+		var params miner20.DeferredCronEventParams
+		if err := params.UnmarshalCBOR(bytes.NewReader(trace.Msg.Params)); err != nil {
+			return nil, err
+		}
+		return &minerCronParams{
+			DeferredCronEventParams: miner16.DeferredCronEventParams{
+				EventPayload:            params.EventPayload,
+				RewardSmoothed:          smoothing16.FilterEstimate(params.RewardSmoothed),
+				QualityAdjPowerSmoothed: smoothing16.FilterEstimate(params.QualityAdjPowerSmoothed),
+			},
+			ImplicitStreamWeight: params.ImplicitStreamWeight,
+		}, nil
+	}
+	var params miner16.DeferredCronEventParams
+	if err := params.UnmarshalCBOR(bytes.NewReader(trace.Msg.Params)); err != nil {
+		return nil, err
+	}
+	return &minerCronParams{DeferredCronEventParams: params, ImplicitStreamWeight: 1_000_000_000_000_000_000}, nil
 }

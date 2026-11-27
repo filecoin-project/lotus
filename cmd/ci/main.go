@@ -190,6 +190,7 @@ func getRunners(testGroupName string) []Runner {
 
 	testGroupNameToRunners := map[string][]Runner{
 		"itest-cli":                      {linux_x64_xlarge},
+		"itest-continued_fault_penalty":  {linux_x64_2xlarge},
 		"itest-daily_fees":               {linux_x64_xlarge},
 		"itest-deals_invalid_utf8_label": {linux_x64_xlarge},
 		"itest-decode_params":            {linux_x64_xlarge},

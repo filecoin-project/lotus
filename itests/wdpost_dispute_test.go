@@ -1,6 +1,7 @@
 package itests
 
 import (
+	"bytes"
 	"context"
 	"testing"
 	"time"
@@ -9,10 +10,19 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
+	miner19 "github.com/filecoin-project/go-state-types/builtin/v19/miner"
+	power19 "github.com/filecoin-project/go-state-types/builtin/v19/power"
+	reward19 "github.com/filecoin-project/go-state-types/builtin/v19/reward"
+	smoothing19 "github.com/filecoin-project/go-state-types/builtin/v19/util/smoothing"
+	reward20 "github.com/filecoin-project/go-state-types/builtin/v20/reward"
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
+	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/go-state-types/network"
 	prooftypes "github.com/filecoin-project/go-state-types/proof"
 
 	"github.com/filecoin-project/lotus/api"
@@ -20,8 +30,102 @@ import (
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/itests/kit"
 )
+
+func TestNV30WindowPostDisputePenaltyWeight(t *testing.T) {
+	kit.QuietMiningLogs()
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	defer cancel()
+	swa, err := key.GenerateKey(types.KTSecp256k1)
+	require.NoError(t, err)
+	var client kit.TestFullNode
+	var chainMiner, targetMiner kit.TestMiner
+	ens := kit.NewEnsemble(t, kit.MockProofs(), kit.GenesisNetworkVersion(network.Version30), kit.RewardSWA(swa, 0)).
+		FullNode(&client, kit.ThroughRPC()).
+		Miner(&chainMiner, &client, kit.WithAllSubsystems()).
+		Miner(&targetMiner, &client, kit.WithAllSubsystems(), kit.PresealSectors(1)).
+		Start()
+	require.NoError(t, targetMiner.Stop(ctx))
+	ens.InterconnectAll().BeginMiningMustPost(5*time.Millisecond, &chainMiner)
+	_, err = client.WalletImport(ctx, &swa.KeyInfo)
+	require.NoError(t, err)
+	kit.SendFunds(ctx, t, &client, targetMiner.ActorAddr, types.FromFil(1000))
+	sectors, err := client.StateMinerSectors(ctx, targetMiner.ActorAddr, nil, types.EmptyTSK)
+	require.NoError(t, err)
+	require.Len(t, sectors, 1)
+	location, err := client.StateSectorPartition(ctx, targetMiner.ActorAddr, sectors[0].SectorNumber, types.EmptyTSK)
+	require.NoError(t, err)
+	for {
+		dl := client.CurrentProvingDeadline(ctx, targetMiner.ActorAddr)
+		if dl.Index == location.Deadline && dl.CurrentEpoch > dl.Open+1 {
+			require.NoError(t, submitBadProof(ctx, client, targetMiner.OwnerKey.Address, targetMiner.ActorAddr, dl, location.Deadline, location.Partition))
+			client.WaitTillChain(ctx, kit.HeightAtLeast(dl.Close+3))
+			break
+		}
+		build.Clock.Sleep(5 * time.Millisecond)
+	}
+	params, err := actors.SerializeParams(&minertypes.DisputeWindowedPoStParams{Deadline: location.Deadline, PoStIndex: 0})
+	require.NoError(t, err)
+	const fullWeight uint64 = 1_000_000_000_000_000_000
+	for _, tc := range []struct {
+		name   string
+		weight uint64
+	}{{"full", fullWeight}, {"half", fullWeight / 2}, {"zero", 0}} {
+		t.Run(tc.name, func(t *testing.T) {
+			weights, encodeErr := actors.SerializeParams(&reward19.SetWeightRecordsParams{Updates: []reward19.WeightRecordUpdate{{
+				ID: 1, Weight: reward19.WeightRecord{VStart: tc.weight, Floor: tc.weight, Cap: tc.weight},
+			}}})
+			require.NoError(t, encodeErr)
+			msg, err := client.MpoolPushMessage(ctx, &types.Message{
+				From: swa.Address, To: builtin.RewardActorAddr, Method: builtin.MethodsReward.SetWeightRecordsExported,
+				Value: big.Zero(), Params: weights,
+			}, nil)
+			require.NoError(t, err)
+			lookup, err := client.WaitMsgResult(ctx, msg.Cid(), 3)
+			require.NoError(t, err)
+			kit.RequireMessageSuccess(t, lookup)
+			head, err := client.ChainHead(ctx)
+			require.NoError(t, err)
+			result, err := client.StateCall(ctx, &types.Message{
+				From: client.DefaultKey.Address, To: targetMiner.ActorAddr,
+				Method: builtin.MethodsMiner.DisputeWindowedPoSt, Params: params, Value: big.Zero(),
+			}, head.Key())
+			require.NoError(t, err)
+			require.Equal(t, exitcode.Ok, result.MsgRct.ExitCode, result.Error)
+			var reward reward20.ThisEpochRewardReturn
+			var power power19.CurrentTotalPowerReturn
+			var haveReward, havePower bool
+			burned, rewarded := big.Zero(), big.Zero()
+			for _, call := range result.ExecutionTrace.Subcalls {
+				switch {
+				case call.Msg.To == builtin.RewardActorAddr && call.Msg.Method == builtin.MethodsReward.ThisEpochReward:
+					require.NoError(t, reward.UnmarshalCBOR(bytes.NewReader(call.MsgRct.Return)))
+					haveReward = true
+				case call.Msg.To == builtin.StoragePowerActorAddr && call.Msg.Method == builtin.MethodsPower.CurrentTotalPower:
+					require.NoError(t, power.UnmarshalCBOR(bytes.NewReader(call.MsgRct.Return)))
+					havePower = true
+				case call.Msg.To == builtin.BurntFundsActorAddr:
+					burned = big.Add(burned, call.Msg.Value)
+				case call.Msg.Method == builtin.MethodSend:
+					rewarded = big.Add(rewarded, call.Msg.Value)
+				}
+			}
+			require.True(t, haveReward)
+			require.True(t, havePower)
+			require.Equal(t, tc.weight, reward.ThisEpochImplicitStreamWeight)
+			qaPower := big.NewInt(10 * 2 << 10)
+			projected := miner19.ExpectedRewardForPower(
+				smoothing19.FilterEstimate(reward.ThisEpochRewardSmoothed), power.QualityAdjPowerSmoothed,
+				qaPower, miner19.ContinuedFaultProjectionPeriod+2*abi.ChainEpoch(builtin.EpochsInDay))
+			require.True(t, projected.GreaterThan(big.Zero()))
+			scaled := big.Div(big.Mul(projected, big.NewIntUnsigned(tc.weight)), big.NewIntUnsigned(fullWeight))
+			require.Equal(t, big.Add(types.FromFil(20), scaled), burned)
+			require.Equal(t, types.FromFil(4), rewarded)
+		})
+	}
+}
 
 func TestWindowPostDispute(t *testing.T) {
 
