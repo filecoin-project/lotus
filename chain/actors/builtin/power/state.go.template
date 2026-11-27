@@ -121,11 +121,11 @@ func (s *state{{.v}}) MinerCounts() (uint64, uint64, error) {
 }
 
 func (s *state{{.v}}) RampStartEpoch() int64 {
-	return {{if (ge .v 15)}}s.State.RampStartEpoch{{else}}0{{end}}
+	return {{if and (ge .v 15) (lt .v 20)}}s.State.RampStartEpoch{{else}}0{{end}}
 }
 
 func (s *state{{.v}}) RampDurationEpochs() uint64 {
-	return {{if (ge .v 15)}}s.State.RampDurationEpochs{{else}}0{{end}}
+	return {{if and (ge .v 15) (lt .v 20)}}s.State.RampDurationEpochs{{else}}0{{end}}
 }
 
 func (s *state{{.v}}) ListAllMiners() ([]address.Address, error) {

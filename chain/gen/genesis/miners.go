@@ -22,6 +22,7 @@ import (
 	miner15 "github.com/filecoin-project/go-state-types/builtin/v15/miner"
 	power15 "github.com/filecoin-project/go-state-types/builtin/v15/power"
 	smoothing15 "github.com/filecoin-project/go-state-types/builtin/v15/util/smoothing"
+	power20 "github.com/filecoin-project/go-state-types/builtin/v20/power"
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -509,8 +510,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 					smoothing15.FilterEstimate(rewardSmoothed),
 					qaps,
 					big.Zero(),
-					// epochsSinceRampStart and rampDurationEpochs: InternalSectorSetupForPreseal uses 0,0 for
-					// these parameters, regardless of what the power actor state says.
+					// A zero duration selects the completed FIP-0081 pledge ramp.
 					0, 0,
 				)
 
@@ -688,6 +688,13 @@ func currentQualityAdjPowerSmoothed(ctx context.Context, nv network.Version, vm 
 	pwret, err := doExecValue(ctx, vm, power.Address, maddr, big.Zero(), builtin0.MethodsPower.CurrentTotalPower, nil)
 	if err != nil {
 		return smoothing15.FilterEstimate{}, err
+	}
+	if nv >= network.Version30 {
+		var pwr power20.CurrentTotalPowerReturn
+		if err := pwr.UnmarshalCBOR(bytes.NewReader(pwret)); err != nil {
+			return smoothing15.FilterEstimate{}, err
+		}
+		return smoothing15.FilterEstimate(pwr.QualityAdjPowerSmoothed), nil
 	}
 	if nv >= network.Version24 {
 		var pwr power15.CurrentTotalPowerReturn

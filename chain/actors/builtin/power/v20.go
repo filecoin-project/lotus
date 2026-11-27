@@ -97,11 +97,11 @@ func (s *state20) MinerCounts() (uint64, uint64, error) {
 }
 
 func (s *state20) RampStartEpoch() int64 {
-	return s.State.RampStartEpoch
+	return 0
 }
 
 func (s *state20) RampDurationEpochs() uint64 {
-	return s.State.RampDurationEpochs
+	return 0
 }
 
 func (s *state20) ListAllMiners() ([]address.Address, error) {

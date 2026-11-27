@@ -89,8 +89,6 @@ func (s *state20) InitialPledgeForPower(qaPower abi.StoragePower, _ abi.TokenAmo
 		s.State.ThisEpochRewardSmoothed,
 		smoothing20.FilterEstimate(*networkQAPower),
 		circSupply,
-		epochsSinceRampStart,
-		rampDurationEpochs,
 	), nil
 }
 
