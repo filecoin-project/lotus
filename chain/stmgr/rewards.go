@@ -130,6 +130,10 @@ func (m *rewardDistributionMonitor) MessageApplied(context.Context, *types.TipSe
 }
 
 func (m *rewardDistributionMonitor) RewardApplied(ts *types.TipSet, before, after cid.Cid, msg *types.Message, ret *vm.ApplyRet) error {
+	// MinerPaid and BurnPaid come from the trace, which buildApplyRet drops if it fails to decode.
+	if ret.ExecutionTrace.Msg.To.Empty() {
+		return fmt.Errorf("reward message execution trace unavailable in tipset %s", ts.Key())
+	}
 	// RewardFunc calls this once per block, in tipset order.
 	if len(m.result.Blocks) >= len(ts.Blocks()) {
 		return fmt.Errorf("reward applied for more than the %d blocks in tipset %s", len(ts.Blocks()), ts.Key())

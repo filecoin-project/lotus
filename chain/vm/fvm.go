@@ -413,9 +413,9 @@ func NewDebugFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 	return ret, nil
 }
 
-// buildApplyRet converts an FFI apply response into an ApplyRet. withGasCosts is false for
-// implicit (system) messages, which carry no gas accounting.
-func (vm *FVM) buildApplyRet(ret *ffi.ApplyRet, start time.Time, withGasCosts bool) (*ApplyRet, error) {
+// buildApplyRet converts the FFI apply response for cmsg into an ApplyRet. withGasCosts is false
+// for implicit (system) messages, which aren't charged for gas.
+func (vm *FVM) buildApplyRet(cmsg types.ChainMsg, ret *ffi.ApplyRet, start time.Time, withGasCosts bool) (*ApplyRet, error) {
 	duration := time.Since(start)
 
 	var receipt types.MessageReceipt
@@ -434,10 +434,13 @@ func (vm *FVM) buildApplyRet(ret *ffi.ApplyRet, start time.Time, withGasCosts bo
 		aerr = aerrors.New(exitcode.ExitCode(ret.ExitCode), amsg)
 	}
 
+	// The trace is diagnostic: the receipt, gas and state don't depend on it, so a trace that
+	// fails to decode is dropped rather than failing the message.
 	var et types.ExecutionTrace
 	if len(ret.ExecTraceBytes) != 0 {
 		if err := et.UnmarshalCBOR(bytes.NewReader(ret.ExecTraceBytes)); err != nil {
-			return nil, xerrors.Errorf("failed to unmarshal exectrace: %w", err)
+			log.Errorw("dropping execution trace that failed to decode", "msg", cmsg.Cid(), "error", err)
+			et = types.ExecutionTrace{}
 		}
 	}
 
@@ -484,7 +487,7 @@ func (vm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet
 		return nil, xerrors.Errorf("applying msg: %w", err)
 	}
 
-	return vm.buildApplyRet(ret, start, true)
+	return vm.buildApplyRet(cmsg, ret, start, true)
 }
 
 // ApplyMessageSkipSenderValidation applies the message while skipping sender type validation.
@@ -507,7 +510,7 @@ func (vm *FVM) ApplyMessageSkipSenderValidation(ctx context.Context, cmsg types.
 		return nil, xerrors.Errorf("applying msg for simulation: %w", err)
 	}
 
-	return vm.buildApplyRet(ret, start, true)
+	return vm.buildApplyRet(cmsg, ret, start, true)
 }
 
 // ApplyImplicitMessageForSimulation applies an implicit message for local
@@ -542,7 +545,7 @@ func (vm *FVM) applyImplicitMessage(ctx context.Context, cmsg *types.Message) (*
 		return nil, xerrors.Errorf("applying msg: %w", err)
 	}
 
-	return vm.buildApplyRet(ret, start, false)
+	return vm.buildApplyRet(cmsg, ret, start, false)
 }
 
 func (vm *FVM) Flush(ctx context.Context) (cid.Cid, error) {
