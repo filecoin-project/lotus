@@ -219,7 +219,7 @@ func TestRewardDistributionMonitor(t *testing.T) {
 		params, err := actors.SerializeParams(&reward.AwardBlockRewardParams{Miner: block.Miner, WinCount: block.ElectionProof.WinCount, GasReward: big.NewInt(fee), Penalty: big.Zero()})
 		require.NoError(t, err)
 		msg := &types.Message{From: builtin.SystemActorAddr, To: reward.Address, Method: reward.Methods.AwardBlockReward, Params: params}
-		ret := &vm.ApplyRet{}
+		ret := &vm.ApplyRet{ExecutionTrace: types.ExecutionTrace{Msg: types.MessageTrace{From: msg.From, To: msg.To}}}
 		if i == 0 {
 			minerCall := transfer(reward.Address, block.Miner, 107, exitcode.Ok)
 			minerCall.Subcalls = []types.ExecutionTrace{transfer(block.Miner, builtin.BurntFundsActorAddr, 13, exitcode.Ok)}
@@ -249,4 +249,7 @@ func TestRewardDistributionMonitor(t *testing.T) {
 	require.Equal(t, reward19.Denom, m.result.Blocks[0].Streams[0].Weight)
 	require.Equal(t, 3*reward19.Denom/5, m.result.Blocks[1].Streams[0].Weight)
 	require.Equal(t, big.Zero(), m.result.Blocks[1].Amounts.MinerPaid)
+
+	err = (&rewardDistributionMonitor{store: store}).RewardApplied(ts, root, root, &types.Message{}, &vm.ApplyRet{})
+	require.ErrorContains(t, err, "execution trace unavailable")
 }
