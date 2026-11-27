@@ -1,9 +1,10 @@
 package miner
 
 import (
+	"cmp"
 	"encoding/json"
 	"fmt"
-	"os"
+	"slices"
 	"strconv"
 	"sync"
 	"text/tabwriter"
@@ -107,9 +108,6 @@ var provingCheckProvableCmd = &cli.Command{
 			return err
 		}
 
-		tw := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
-		_, _ = fmt.Fprintln(tw, "deadline\tpartition\tsector\tstatus")
-
 		var filter map[abi.SectorID]struct{}
 
 		if cctx.IsSet("storage-id") {
@@ -157,6 +155,14 @@ var provingCheckProvableCmd = &cli.Command{
 			}
 		}
 
+		type sectorResult struct {
+			partition int
+			sector    abi.SectorNumber
+			status    string
+		}
+		var results []sectorResult
+		onlyBad := cctx.Bool("only-bad")
+
 		for parIdx, par := range partitions {
 			sectors := make(map[abi.SectorNumber]struct{})
 
@@ -191,15 +197,25 @@ var provingCheckProvableCmd = &cli.Command{
 				return err
 			}
 
-			for s := range sectors {
-				if err, exist := bad[s]; exist {
-					_, _ = fmt.Fprintf(tw, "%d\t%d\t%d\t%s\n", dlIdx, parIdx, s, color.RedString("bad")+fmt.Sprintf(" (%s)", err))
-				} else if !cctx.Bool("only-bad") {
-					_, _ = fmt.Fprintf(tw, "%d\t%d\t%d\t%s\n", dlIdx, parIdx, s, color.GreenString("good"))
+			for sector := range sectors {
+				if reason, isBad := bad[sector]; isBad {
+					status := fmt.Sprintf("%s (%s)", color.RedString("bad"), reason)
+					results = append(results, sectorResult{partition: parIdx, sector: sector, status: status})
+				} else if !onlyBad {
+					results = append(results, sectorResult{partition: parIdx, sector: sector, status: color.GreenString("good")})
 				}
 			}
 		}
 
+		slices.SortFunc(results, func(a, b sectorResult) int {
+			return cmp.Compare(a.sector, b.sector)
+		})
+
+		tw := tabwriter.NewWriter(cctx.App.Writer, 2, 4, 2, ' ', 0)
+		_, _ = fmt.Fprintln(tw, "deadline\tpartition\tsector\tstatus")
+		for _, result := range results {
+			_, _ = fmt.Fprintf(tw, "%d\t%d\t%d\t%s\n", dlIdx, result.partition, result.sector, result.status)
+		}
 		return tw.Flush()
 	},
 }
