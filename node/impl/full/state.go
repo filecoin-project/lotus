@@ -269,7 +269,7 @@ func (a *StateAPI) StateMinerPartitions(ctx context.Context, m address.Address, 
 		return nil, xerrors.Errorf("failed to load the deadline: %w", err)
 	}
 
-	var out []api.Partition
+	out := make([]api.Partition, 0)
 	err = dl.ForEachPartition(func(_ uint64, part miner.Partition) error {
 		allSectors, err := part.AllSectors()
 		if err != nil {
@@ -1178,7 +1178,7 @@ func (a *StateAPI) StateListMessages(ctx context.Context, match *api.MessageMatc
 		return true
 	}
 
-	var out []cid.Cid
+	out := make([]cid.Cid, 0)
 	for ts.Height() >= toheight {
 		msgs, err := a.Chain.MessagesForTipset(ctx, ts)
 		if err != nil {
