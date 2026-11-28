@@ -53,11 +53,11 @@ func TestPadChunkFFI(t *testing.T) {
 	testByteChunk := func(b byte) func(*testing.T) {
 		return func(t *testing.T) {
 			var buf [128]byte
-			copy(buf[:], bytes.Repeat([]byte{b}, 127))
+			input := bytes.Repeat([]byte{b}, 127)
 
-			fr32.Pad(buf[:], buf[:])
+			fr32.Pad(input, buf[:])
 
-			expect := padFFI(bytes.Repeat([]byte{b}, 127))
+			expect := padFFI(input)
 
 			require.Equal(t, expect, buf[:])
 		}
@@ -118,15 +118,36 @@ func TestRoundtripChunkRand(t *testing.T) {
 			panic(err)
 		}
 		var buf [128]byte
-		copy(buf[:], input[:])
 
-		fr32.Pad(buf[:], buf[:])
+		fr32.Pad(input[:], buf[:])
 
 		var out [127]byte
 		fr32.Unpad(buf[:], out[:])
 
 		require.Equal(t, input[:], out[:])
 	}
+}
+
+func TestRejectOverlappingBuffers(t *testing.T) {
+	padBuf := make([]byte, 128)
+	require.Panics(t, func() {
+		fr32.Pad(padBuf[:127], padBuf)
+	})
+
+	partialPad := make([]byte, 256)
+	require.Panics(t, func() {
+		fr32.Pad(partialPad[:127], partialPad[1:129])
+	})
+
+	unpadBuf := make([]byte, 128)
+	require.Panics(t, func() {
+		fr32.Unpad(unpadBuf, unpadBuf[:127])
+	})
+
+	partialUnpad := make([]byte, 256)
+	require.Panics(t, func() {
+		fr32.Unpad(partialUnpad[:128], partialUnpad[1:128])
+	})
 }
 
 func TestRoundtrip16MRand(t *testing.T) {
@@ -291,22 +312,22 @@ func BenchmarkPadChunk(b *testing.B) {
 
 func BenchmarkChunkRoundtrip(b *testing.B) {
 	var buf [128]byte
-	copy(buf[:], bytes.Repeat([]byte{0xff}, 127))
+	in := bytes.Repeat([]byte{0xff}, 127)
 	var out [127]byte
 
 	b.SetBytes(127)
 
 	for b.Loop() {
-		fr32.Pad(buf[:], buf[:])
+		fr32.Pad(in, buf[:])
 		fr32.Unpad(buf[:], out[:])
 	}
 }
 
 func BenchmarkUnpadChunk(b *testing.B) {
 	var buf [128]byte
-	copy(buf[:], bytes.Repeat([]byte{0xff}, 127))
+	in := bytes.Repeat([]byte{0xff}, 127)
 
-	fr32.Pad(buf[:], buf[:])
+	fr32.Pad(in, buf[:])
 	var out [127]byte
 
 	b.SetBytes(127)
