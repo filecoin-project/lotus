@@ -1124,6 +1124,35 @@ func TestAddMessageTwiceNonceGap(t *testing.T) {
 	}
 }
 
+func TestPushUntrustedNonceGap(t *testing.T) {
+	mp, tma := makeTestMpool()
+
+	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	require.NoError(t, err)
+
+	from, err := w.WalletNew(context.Background(), types.KTBLS)
+	require.NoError(t, err)
+
+	tma.setBalance(from, 1000e9)
+	tma.setStateNonce(from, 5)
+
+	to := mock.Address(1001)
+
+	// Untrusted pushes may not leave a nonce gap, unlike local pushes.
+	_, err = mp.PushUntrusted(context.TODO(), makeTestMessage(w, from, to, 6, 50_000_000, minimumBaseFee.Uint64()))
+	require.ErrorIs(t, err, ErrNonceGap)
+	_, err = mp.PushUntrusted(context.TODO(), makeTestMessage(w, from, to, 1000, 50_000_000, minimumBaseFee.Uint64()))
+	require.ErrorIs(t, err, ErrNonceGap)
+
+	for nonce := uint64(5); nonce < 8; nonce++ {
+		_, err = mp.PushUntrusted(context.TODO(), makeTestMessage(w, from, to, nonce, 50_000_000, minimumBaseFee.Uint64()))
+		require.NoError(t, err)
+	}
+
+	_, err = mp.Push(context.TODO(), makeTestMessage(w, from, to, 9, 50_000_000, minimumBaseFee.Uint64()), false)
+	require.NoError(t, err)
+}
+
 func TestAddMessageTwiceCidDiff(t *testing.T) {
 	tma := newTestMpoolAPI()
 

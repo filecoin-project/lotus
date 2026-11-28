@@ -936,7 +936,9 @@ func (mp *MessagePool) addTs(ctx context.Context, m *types.SignedMessage, curTs 
 		return false, xerrors.Errorf("failed to check balance: %w", err)
 	}
 
-	err = mp.addLocked(ctx, m, !local, untrusted)
+	// Untrusted messages are pushed as local, but still need the strict
+	// nonce gap checks.
+	err = mp.addLocked(ctx, m, !local || untrusted, untrusted)
 	if err != nil {
 		return false, xerrors.Errorf("failed to add locked: %w", err)
 	}
