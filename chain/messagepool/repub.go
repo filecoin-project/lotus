@@ -20,6 +20,43 @@ const repubMsgLimit = 30
 
 var RepublishBatchDelay = 100 * time.Millisecond
 
+func (mp *MessagePool) enqueueLocalPubSub(m *types.SignedMessage) {
+	select {
+	case mp.localPubSub <- m:
+	default:
+		log.Warnf("local pubsub publish queue full; message %s will be published by the republish loop", m.Cid())
+	}
+}
+
+func (mp *MessagePool) runLocalPubSubLoop(ctx context.Context) {
+	for {
+		select {
+		case m := <-mp.localPubSub:
+			if err := mp.publishMessage(m); err != nil {
+				log.Warnf("failed to publish local message %s: %s", m.Cid(), err)
+			}
+		case <-ctx.Done():
+			return
+		case <-mp.closer:
+			return
+		}
+	}
+}
+
+func (mp *MessagePool) publishMessage(m *types.SignedMessage) error {
+	mb, err := m.Serialize()
+	if err != nil {
+		return xerrors.Errorf("cannot serialize message: %w", err)
+	}
+
+	err = mp.api.PubSubPublish(build.MessagesTopic(mp.netName), mb)
+	if err != nil {
+		return xerrors.Errorf("cannot publish: %w", err)
+	}
+
+	return nil
+}
+
 func (mp *MessagePool) republishPendingMessages(ctx context.Context) error {
 	mp.curTsLk.RLock()
 	ts := mp.curTs
@@ -141,14 +178,8 @@ loop:
 
 	log.Infof("republishing %d messages", len(msgs))
 	for _, m := range msgs {
-		mb, err := m.Serialize()
-		if err != nil {
-			return xerrors.Errorf("cannot serialize message: %w", err)
-		}
-
-		err = mp.api.PubSubPublish(build.MessagesTopic(mp.netName), mb)
-		if err != nil {
-			return xerrors.Errorf("cannot publish: %w", err)
+		if err := mp.publishMessage(m); err != nil {
+			return err
 		}
 
 		count++
